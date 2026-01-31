@@ -8,14 +8,14 @@
 }
 
 :root {
-    --primary-color: #1d1d1f;
+    --primary-color: #3d3d3d;
     --secondary-color: #f5f5f7;
     --accent-color: #0071e3;
-    --text-primary: #1d1d1f;
+    --text-primary: #2c2e35;
     --text-secondary: #6e6e73;
     --white: #ffffff;
-    --gradient-start: #667eea;
-    --gradient-end: #764ba2;
+    --gradient-start: #3d3d3d;
+    --gradient-end: #3d3d3d;
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.08);
     --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.1);
@@ -135,7 +135,7 @@ body {
 .hero {
     padding: 160px 0 100px;
     text-align: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--primary-color);
     color: var(--white);
     position: relative;
     overflow: hidden;
@@ -287,7 +287,7 @@ section {
     max-width: 800px;
     margin: 0 auto;
     padding: 60px 40px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--primary-color);
     border-radius: 24px;
     position: relative;
     box-shadow: var(--shadow-lg);
@@ -402,7 +402,7 @@ section {
     max-width: 900px;
     margin: 0 auto;
     padding: 48px;
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    background: var(--primary-color);
     border-radius: 24px;
     color: var(--white);
     box-shadow: var(--shadow-lg);
@@ -634,4 +634,8 @@ section {
         grid-template-columns: 1fr;
         gap: 32px;
     }
+}
+
+.logo-img {
+    max-height: 40px;
 }
