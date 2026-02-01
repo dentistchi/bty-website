@@ -10,12 +10,12 @@
 :root {
     --primary-color: #3d3d3d;
     --secondary-color: #f5f5f7;
-    --accent-color: #0071e3;
+    --accent-color: #99D590;
     --text-primary: #2c2e35;
     --text-secondary: #6e6e73;
     --white: #ffffff;
-    --gradient-start: #3d3d3d;
-    --gradient-end: #3d3d3d;
+    --gradient-start: #99D590;
+    --gradient-end: #83c979;
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.08);
     --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.1);
