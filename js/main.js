@@ -26,7 +26,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize features based on page
     initializeDailyQuote();
     initializeWeeklyChallenge();
-    initializeScrollAnimations();
 });
 
 // ===================================
@@ -186,45 +185,6 @@ function initializeWeeklyChallenge() {
 
     challengeElement.innerHTML = challengeHTML;
 }
-
-// ===================================
-// SCROLL ANIMATIONS
-// ===================================
-function initializeScrollAnimations() {
-    const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('animate-in');
-                observer.unobserve(entry.target);
-            }
-        });
-    }, observerOptions);
-
-    // Observe elements that should animate on scroll
-    const animateElements = document.querySelectorAll('.philosophy-card, .practice-card, .skill-card, .strategy-card, .principle-card, .conflict-card, .culture-card, .financial-card, .spending-card, .education-card, .planning-card, .takeaway-card');
-    
-    animateElements.forEach(el => {
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(30px)';
-        el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-        observer.observe(el);
-    });
-}
-
-// Add CSS for animation
-const style = document.createElement('style');
-style.textContent = `
-    .animate-in {
-        opacity: 1 !important;
-        transform: translateY(0) !important;
-    }
-`;
-document.head.appendChild(style);
 
 // ===================================
 // SMOOTH SCROLLING
