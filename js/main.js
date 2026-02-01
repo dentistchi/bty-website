@@ -220,23 +220,4 @@ window.addEventListener('scroll', () => {
     lastScroll = currentScroll;
 });
 
-// ===================================
-// PAGE LOAD ANIMATIONS
-// ===================================
-window.addEventListener('load', () => {
-    document.body.classList.add('loaded');
-});
 
-// Add loading class styles
-const loadingStyle = document.createElement('style');
-loadingStyle.textContent = `
-    body {
-        opacity: 0;
-        transition: opacity 0.5s ease;
-    }
-    
-    body.loaded {
-        opacity: 1;
-    }
-`;
-document.head.appendChild(loadingStyle);
