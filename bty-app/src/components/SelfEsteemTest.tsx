@@ -162,7 +162,7 @@ export function SelfEsteemTest({
         </>
       ) : (
         <div className="space-y-4">
-          {/* 따뜻한 리포트 카드: 강점 문구가 메인, 점수는 작게 */}
+          {/* 강점 문구가 메인, 점수는 작게 (점수보다 궤적/회복 강조) */}
           <div
             className={cn(
               "p-5 rounded-xl",
@@ -173,17 +173,7 @@ export function SelfEsteemTest({
           >
             <p
               className={cn(
-                "text-sm mb-1",
-                isDear ? "text-dear-charcoal-soft" : "text-sanctuary-text-soft"
-              )}
-            >
-              {score}
-              {t.results.scoreSuffix} / {maxScore}
-              {t.results.scoreSuffix}
-            </p>
-            <p
-              className={cn(
-                "font-medium text-lg mb-4",
+                "font-medium text-lg mb-3",
                 isDear ? "font-serif text-dear-charcoal" : "text-sanctuary-text"
               )}
             >
@@ -193,11 +183,21 @@ export function SelfEsteemTest({
             </p>
             <p
               className={cn(
-                "leading-relaxed",
+                "leading-relaxed mb-3",
                 isDear ? "text-dear-charcoal" : "text-sanctuary-text"
               )}
             >
               {resultMessage}
+            </p>
+            <p
+              className={cn(
+                "text-xs",
+                isDear ? "text-dear-charcoal-soft" : "text-sanctuary-text-soft"
+              )}
+            >
+              {score}
+              {t.results.scoreSuffix} / {maxScore}
+              {t.results.scoreSuffix}
             </p>
           </div>
           <button

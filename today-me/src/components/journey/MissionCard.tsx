@@ -36,6 +36,7 @@ export function MissionCard({
   onComplete,
 }: MissionCardProps) {
   const [checks, setChecks] = useState<number[]>(initialChecks);
+  const [reflectionText, setReflectionText] = useState(initialReflection || "");
   const [reflectionDone, setReflectionDone] = useState(!!initialReflection);
   const [showEncouragement, setShowEncouragement] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,7 +58,8 @@ export function MissionCard({
     );
   }, []);
 
-  const handleReflectionComplete = useCallback(() => {
+  const handleReflectionComplete = useCallback((text: string) => {
+    setReflectionText(text);
     setReflectionDone(true);
   }, []);
 
@@ -67,13 +69,13 @@ export function MissionCard({
     try {
       await onComplete({
         mission_checks: checks,
-        reflection_text: initialReflection || "감정을 기록했습니다.",
+        reflection_text: reflectionText || "감정을 기록했습니다.",
       });
       setShowEncouragement(true);
     } finally {
       setIsSubmitting(false);
     }
-  }, [canComplete, checks, initialReflection, onComplete, isSubmitting]);
+  }, [canComplete, checks, reflectionText, onComplete, isSubmitting]);
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -129,7 +131,6 @@ export function MissionCard({
                   exit={{ opacity: 0 }}
                   className="space-y-6"
                 >
-                  {/* 1) 오늘의 읽을거리 */}
                   <section>
                     <h3 className="text-sm font-medium text-dojo-ink-soft mb-2">
                       오늘의 읽을거리
@@ -139,7 +140,6 @@ export function MissionCard({
                     </p>
                   </section>
 
-                  {/* 2) 오늘의 미션 (체크박스) */}
                   <section>
                     <h3 className="text-sm font-medium text-dojo-ink-soft mb-3">
                       오늘의 미션
@@ -179,26 +179,20 @@ export function MissionCard({
                     </ul>
                   </section>
 
-                  {/* 3) 감정 기록장 (AI 채팅) — edit 모드에서만 */}
                   {mode === "edit" && (
                     <section>
                       <h3 className="text-sm font-medium text-dojo-ink-soft mb-2">
                         감정 기록장
                       </h3>
                       <p className="text-xs text-dojo-ink-soft mb-2">
-                        오늘의 마음을 적어보세요. AI가 공감해줄 거예요.
+                        오늘의 마음을 적어보세요. 안전한 거울이 비춰드릴게요.
                       </p>
                       <div className="rounded-xl border border-dojo-purple-muted p-4 bg-dojo-purple-muted/10">
-                        <SafeMirror
-                          locale="ko"
-                          theme="sanctuary"
-                          onPositive={handleReflectionComplete}
-                        />
+                        <SafeMirror onPositive={handleReflectionComplete} />
                       </div>
                     </section>
                   )}
 
-                  {/* 과거 일기 보기 (view 모드) */}
                   {mode === "view" && initialReflection && (
                     <section>
                       <h3 className="text-sm font-medium text-dojo-ink-soft mb-2">
@@ -212,7 +206,6 @@ export function MissionCard({
                     </section>
                   )}
 
-                  {/* 완료 버튼 (edit 모드에서만) */}
                   {mode === "edit" && (
                   <button
                     type="button"

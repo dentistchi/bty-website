@@ -71,32 +71,35 @@ export async function POST(request: Request) {
 
     if (apiKey) {
       const contents = toGeminiContents(messages, userContent);
-      const res = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": apiKey,
-          },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-            contents,
-            generationConfig: {
-              maxOutputTokens: 320,
-              temperature: 0.8,
+      const payload = {
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents,
+        generationConfig: { maxOutputTokens: 320, temperature: 0.8 },
+      };
+      const models = ["gemini-2.0-flash", "gemini-1.5-flash"] as const;
+
+      for (const model of models) {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-goog-api-key": apiKey,
             },
-          }),
+            body: JSON.stringify(payload),
+          }
+        );
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+        if (text) return NextResponse.json({ message: text });
+
+        if (!res.ok || data.error) {
+          console.error(`[safe-mirror] Gemini ${model} error:`, res.status, JSON.stringify(data).slice(0, 400));
+          if (data.error?.message?.includes("not found") || res.status === 404) continue;
+          break;
         }
-      );
-
-      const data = await res.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-
-      if (text) return NextResponse.json({ message: text });
-
-      if (!res.ok || data.error) {
-        console.error("[safe-mirror] Gemini API error:", res.status, JSON.stringify(data).slice(0, 300));
       }
     }
 

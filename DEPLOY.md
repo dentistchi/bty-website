@@ -40,7 +40,10 @@ BTY **나의 여정** 대시보드에서 사용자 진행 상황을 저장하려
 
 1. [Supabase](https://supabase.com)에서 프로젝트 생성
 2. **Settings → API**에서 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` 확인
-3. **SQL Editor**에서 `bty-app/supabase/migrations/001_bty_journey.sql` 내용 실행
+3. **SQL Editor**에서 다음 순서로 실행:
+   - `bty-app/supabase/migrations/001_bty_journey.sql`
+   - `bty-app/supabase/migrations/002_bty_infinite_garden.sql` (season, bounce_back_count)
+   - `bty-app/supabase/migrations/003_24h_lock.sql` (last_completed_at, 24시간 잠금)
 4. Cloudflare **Variables and Secrets**에 아래 추가:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`

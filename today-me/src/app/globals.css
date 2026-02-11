@@ -16,12 +16,28 @@
   --sanctuary-text-soft: #8A8176;
   --sanctuary-accent: #C4A77D;
   --sanctuary-flower: #E8B4B8;
+  /* Journey / Dojo */
+  --dojo-white: #FFFFFF;
+  --dojo-purple: #5B4B8A;
+  --dojo-purple-dark: #4A3D6F;
+  --dojo-purple-muted: #E8E4F2;
+  --dojo-ink: #2D2A36;
+  --dojo-ink-soft: #5C5868;
+  --journey-done: #E8D4E4;
+  --journey-done-strong: #D4B8CF;
+  --journey-today: #D4E5D9;
+  --journey-locked: #E8E4F2;
 }
 
 body {
   background: linear-gradient(165deg, var(--sanctuary-cream) 0%, var(--sanctuary-sand) 50%, var(--sanctuary-sky) 100%);
   color: var(--sanctuary-text);
   min-height: 100vh;
+}
+
+body[data-theme="dojo"] {
+  background: var(--dojo-white);
+  color: var(--dojo-ink);
 }
 
 @layer utilities {

@@ -108,7 +108,12 @@ function SafeMirrorLayout({
   );
 }
 
-export function SafeMirror() {
+export function SafeMirror({
+  onPositive,
+}: {
+  /** Called when user gets reframing; receives the reflection text for saving */
+  onPositive?: (reflectionText: string) => void;
+} = {}) {
   const [input, setInput] = useState("");
   const [reframing, setReframing] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -122,6 +127,7 @@ export function SafeMirror() {
     setTimeout(() => {
       setReframing(getReframing(trimmed));
       setIsLoading(false);
+      onPositive?.(trimmed);
     }, 800);
   };
 

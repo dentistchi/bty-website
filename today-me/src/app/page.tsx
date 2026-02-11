@@ -23,7 +23,14 @@ export default function TodayMePage() {
           <SelfEsteemTest />
         </div>
 
-        <footer className="mt-12 pt-6 border-t border-sanctuary-peach/40 text-center text-sm text-sanctuary-text-soft">
+        <footer className="mt-12 pt-6 border-t border-sanctuary-peach/40 text-center text-sm text-sanctuary-text-soft space-x-4">
+          <a
+            href="/journey"
+            className="underline hover:text-sanctuary-text"
+          >
+            28일 여정
+          </a>
+          <span>·</span>
           <a
             href="https://bty-website.pages.dev"
             className="underline hover:text-sanctuary-text"

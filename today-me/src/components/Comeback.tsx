@@ -25,12 +25,6 @@ async function recordBounceBack() {
   }
 }
 
-/**
- * The Comeback (환영 인사)
- * - 3일 이상 미접속 후 복귀 시 "왜 안 왔어?"가 아닌 "다시 돌아와줘서 고마워요. 언제든 기다리고 있었어요." 표시.
- * - 로그인 사용자: 확인 시 bounce_back_count +1
- */
-
 export function Comeback() {
   const [show, setShow] = useState(false);
   const [mounted, setMounted] = useState(false);

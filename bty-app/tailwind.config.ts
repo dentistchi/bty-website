@@ -41,6 +41,14 @@ const config: Config = {
           terracotta: "#E2725B",
           "terracotta-soft": "#E89A8A",
         },
+        mentor: {
+          cream: "#F5F0E8",
+          paper: "#FDFBF7",
+          wood: "#8B7355",
+          "wood-soft": "#A68B6A",
+          ink: "#3D3229",
+          "ink-soft": "#6B5D52",
+        },
         journey: {
           done: "#E8D4E4",
           "done-strong": "#D4B8CF",

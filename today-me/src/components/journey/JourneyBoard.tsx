@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import { AuthGate } from "@/components/AuthGate";
 import { Comeback } from "@/components/Comeback";
-import { Nav } from "@/components/Nav";
 import { ThemeBody } from "@/components/ThemeBody";
 import { MissionCard } from "@/components/journey/MissionCard";
 import { cn } from "@/lib/utils";
@@ -13,11 +13,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { JOURNEY_DAYS, type DayContent } from "@/lib/journey-content";
 import type { DayEntry } from "@/lib/supabase";
 
-const API_BASE = "";
-
 async function fetchWithAuth(path: string, options?: RequestInit) {
   const token = getStoredToken();
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(path, {
     ...options,
     headers: {
       ...options?.headers,
@@ -63,7 +61,6 @@ export function JourneyBoard() {
           last_completed_at: p.last_completed_at ?? null,
         };
         setProfile(payload);
-        // Create profile on first visit
         if (p.is_new) {
           await fetchWithAuth("/api/journey/profile", {
             method: "POST",
@@ -123,7 +120,6 @@ export function JourneyBoard() {
         }),
       });
       if (!res.ok) throw new Error("Failed to save");
-      // Advance to next day + 24h lock (기다림도 훈련)
       const nextDay = Math.min(28, day + 1);
       await fetchWithAuth("/api/journey/profile", {
         method: "POST",
@@ -207,7 +203,13 @@ export function JourneyBoard() {
       <main className="min-h-screen bg-dojo-white">
         <Comeback />
         <div className="max-w-2xl mx-auto px-4 py-6 sm:py-10">
-          <Nav locale="ko" pathname="/bty" />
+          <nav className="flex items-center justify-center gap-4 py-3 text-sm">
+            <Link href="/" className="text-dojo-ink-soft hover:underline">
+              Dear Me로
+            </Link>
+            <span className="text-dojo-ink-soft/60">|</span>
+            <span className="font-medium text-dojo-purple-dark">28일 여정</span>
+          </nav>
           <header className="text-center mb-10">
             <h1 className="text-2xl sm:text-3xl font-semibold text-dojo-purple-dark">
               나의 여정 (My Journey)
@@ -240,7 +242,6 @@ export function JourneyBoard() {
             </div>
           )}
 
-          {/* 28-day path: 4 weeks × 7 days */}
           <div className="grid grid-cols-7 gap-2 sm:gap-3">
             {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => {
               const entry = getEntry(day);
@@ -326,7 +327,6 @@ export function JourneyBoard() {
             </p>
           )}
 
-          {/* Future lock + failure-is-ok message */}
           <div className="mt-8 rounded-2xl border border-dojo-purple-muted bg-dojo-purple-muted/20 p-6 text-center space-y-2">
             <p className="text-dojo-ink-soft text-sm">
               내일의 나를 위해 남겨두세요. 순서대로 하나씩 걸어가요.
@@ -336,22 +336,13 @@ export function JourneyBoard() {
             </p>
           </div>
 
-          <footer className="mt-12 pt-6 border-t border-dojo-purple-muted text-center text-sm text-dojo-ink-soft space-x-4">
-            <a href="/bty/mentor" className="text-dojo-purple hover:underline">
-              Dr. Chi Mentor
-            </a>
-            <span>·</span>
-            <a href="/bty/integrity" className="text-dojo-purple hover:underline">
-              역지사지 시뮬레이터
-            </a>
-            <span>·</span>
-            <a href="/" className="text-dojo-purple hover:underline">
+          <footer className="mt-12 pt-6 border-t border-dojo-purple-muted text-center text-sm text-dojo-ink-soft">
+            <Link href="/" className="text-dojo-purple hover:underline">
               Dear Me로 가기
-            </a>
+            </Link>
           </footer>
         </div>
 
-        {/* Toast: 잠금 클릭 시 */}
         {toast && (
           <div
             role="alert"

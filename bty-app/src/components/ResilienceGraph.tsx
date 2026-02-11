@@ -91,7 +91,9 @@ export function ResilienceGraph({
         </h3>
         <p className={cn("text-sm mb-4", labelColor)}>
           {history.length > 0
-            ? (locale === "ko" ? "자존감 테스트를 하면 여기에 날짜별로 쌓여요." : "Self-esteem results accumulate by date.")
+            ? (locale === "ko"
+                ? "점수보다 매일의 궤적이 중요해요. 날짜별로 쌓인 회복의 흐름이에요."
+                : "The trajectory matters more than scores. Your recovery over time.")
             : t.subtitle}
         </p>
         <div className="w-full aspect-[2/1] min-h-[120px] flex items-end">

@@ -18,6 +18,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const dayParam = searchParams.get("day");
+
   const db = getSupabaseAdmin();
   if (!db) {
     return NextResponse.json(
@@ -26,35 +29,35 @@ export async function GET(request: Request) {
     );
   }
 
+  if (dayParam) {
+    const day = parseInt(dayParam, 10);
+    if (day < 1 || day > 28) {
+      return NextResponse.json({ error: "Invalid day" }, { status: 400 });
+    }
+    const { data, error } = await db
+      .from("bty_day_entries")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("day", day)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json(data || null);
+  }
+
   const { data, error } = await db
-    .from("bty_profiles")
+    .from("bty_day_entries")
     .select("*")
     .eq("user_id", userId)
-    .single();
+    .order("day", { ascending: true });
 
-  if (error && error.code !== "PGRST116") {
+  if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (!data) {
-    return NextResponse.json({
-      current_day: 1,
-      started_at: new Date().toISOString(),
-      season: 1,
-      bounce_back_count: 0,
-      last_completed_at: null,
-      is_new: true,
-    });
-  }
-
-  return NextResponse.json({
-    current_day: data.current_day,
-    started_at: data.started_at,
-    updated_at: data.updated_at,
-    season: data.season ?? 1,
-    bounce_back_count: data.bounce_back_count ?? 0,
-    last_completed_at: data.last_completed_at ?? null,
-  });
+  return NextResponse.json(data || []);
 }
 
 export async function POST(request: Request) {
@@ -72,26 +75,29 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const currentDay = Math.min(28, Math.max(1, Number(body.current_day) || 1));
-  const season = Math.max(1, Number(body.season) || 1);
-  const lastCompletedAt =
-    body.last_completed_at === null
-      ? null
-      : typeof body.last_completed_at === "string"
-        ? body.last_completed_at
-        : undefined;
-
-  const row: Record<string, unknown> = {
-    user_id: userId,
-    current_day: currentDay,
-    season,
-    updated_at: new Date().toISOString(),
-  };
-  if (lastCompletedAt !== undefined) row.last_completed_at = lastCompletedAt;
+  const day = Math.min(28, Math.max(1, Number(body.day) || 1));
+  const completed = Boolean(body.completed);
+  const missionChecks = Array.isArray(body.mission_checks)
+    ? body.mission_checks.filter((n: unknown) => typeof n === "number")
+    : [];
+  const reflectionText =
+    typeof body.reflection_text === "string"
+      ? body.reflection_text.trim() || null
+      : null;
 
   const { data, error } = await db
-    .from("bty_profiles")
-    .upsert(row, { onConflict: "user_id", ignoreDuplicates: false })
+    .from("bty_day_entries")
+    .upsert(
+      {
+        user_id: userId,
+        day,
+        completed,
+        mission_checks: missionChecks,
+        reflection_text: reflectionText,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,day", ignoreDuplicates: false }
+    )
     .select()
     .single();
 
