@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
   getSelfEsteemResult,
@@ -67,7 +66,7 @@ export function EmotionalBridge({ theme = "sanctuary" }: { theme?: "dear" | "san
       >
         (Go to BTY Practice)
       </p>
-      <Link
+      <a
         href={BTY_PATH}
         className={cn(
           "inline-block rounded-xl px-6 py-3 font-medium text-sm transition-colors",
@@ -78,7 +77,7 @@ export function EmotionalBridge({ theme = "sanctuary" }: { theme?: "dear" | "san
         )}
       >
         이제 문을 열고 밖으로 나가볼까요? (Go to BTY Practice)
-      </Link>
+      </a>
     </section>
   );
 }

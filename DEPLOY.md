@@ -20,6 +20,20 @@
 - bty-app에서 일반 Next 개발: `cd bty-app && npm run dev`
 - Cloudflare Pages 로컬 미리보기: `cd bty-app && npm run preview` (먼저 `npm run pages:build` 실행됨)
 
+## Safe Mirror (AI) 환경 변수
+
+Safe Mirror의 Gemini AI를 사용하려면 **GEMINI_API_KEY**를 설정해야 합니다.
+
+1. **Workers & Pages** → **bty-website** → **Settings** → **Variables and Secrets**  
+   (또는 **Environment variables** — 런타임에 적용되는 항목으로 추가)
+2. **Add variable** 또는 **Add secret**
+3. **Variable name:** `GEMINI_API_KEY`
+4. **Value:** https://aistudio.google.com/apikey 에서 발급한 API 키
+5. **Production**에 체크 후 저장
+6. **Deployments** 탭에서 **Retry deployment**로 재배포
+
+> next-on-pages에서는 API 라우트가 Cloudflare 바인딩(`env`)을 통해 환경 변수에 접근합니다. `process.env`만으로는 런타임 변수를 읽지 못할 수 있으므로, 반드시 대시보드에서 변수/시크릿을 추가해야 합니다.
+
 ## 참고
 
 - API 라우트는 모두 Edge 런타임으로 설정되어 있어 Cloudflare Workers에서 동작합니다.

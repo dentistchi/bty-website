@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { getOptionalRequestContext } from "@cloudflare/next-on-pages";
 
 /**
  * Safe Mirror (안전한 거울) — AI 상담
  * 페르소나: 상담가이자 사용자 내면의 따뜻한 자아. 감정 이름 붙이기·검증·재해석만. 해결책/훈계/상투적 위로 금지.
  * Gemini API 사용. GEMINI_API_KEY 환경변수 필요.
+ * Cloudflare Pages: Settings > Variables and Secrets 에서 GEMINI_API_KEY 추가.
  */
 
 const SYSTEM_PROMPT = `You are a counselor and the user's warmest inner self (Inner Self). You respond as if you are the part of them that already understands and accepts.
@@ -56,7 +58,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Message required" }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const ctx = getOptionalRequestContext();
+    const env = ctx?.env as Record<string, string | undefined> | undefined;
+    const apiKey =
+      (typeof env?.GEMINI_API_KEY === "string" ? env.GEMINI_API_KEY : null) ??
+      process.env.GEMINI_API_KEY;
     if (apiKey) {
       const contents = toGeminiContents(messages, userContent);
       const res = await fetch(
