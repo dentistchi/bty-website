@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant - bty | Dr. Chi</title>
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/chatbot.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <img src="https://btydentalwa.com/wp-content/uploads/BTYLOGO-transparentgreen.png" alt="BTY Dental Logo" class="logo-img">
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html">bty Mindset</a></li>
+                <li><a href="clinical-skills.html">Clinical Skills</a></li>
+                <li><a href="patient-management.html">Patient Management</a></li>
+                <li><a href="team-relations.html">Team Relations</a></li>
+                <li><a href="financial-advice.html">Financial Advice</a></li>
+                <li><a href="chatbot.html" class="active">AI Assistant</a></li>
+            </ul>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Chatbot Container -->
+    <div class="chatbot-container">
+        <div class="chatbot-header">
+            <div class="header-content">
+                <div class="bot-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="header-text">
+                    <h2>Dr. Chi AI Assistant</h2>
+                    <p class="status-indicator">
+                        <span class="status-dot"></span>
+                        <span id="connection-status">Ready to help</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chat-messages">
+            <div class="message bot-message">
+                <div class="message-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="message-content">
+                    <p>안녕하세요! Dr. Chi의 AI 어시스턴트입니다. 🌱</p>
+                    <p>임상 기술, 환자 관리, 팀 관계, 재정 조언 등 무엇이든 물어보세요!</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <div class="input-wrapper">
+                <textarea 
+                    id="user-input" 
+                    placeholder="메시지를 입력하세요..." 
+                    rows="1"
+                ></textarea>
+                <button id="send-button" class="send-button">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+            <div class="input-footer">
+                <small>💡 Tip: 구체적인 질문을 하시면 더 정확한 답변을 드릴 수 있어요</small>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script src="js/chatbot.js"></script>
+</body>
+</html>
