@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 /**
  * Safe Mirror (안전한 거울) — AI 상담
  * 페르소나: 상담가이자 사용자 내면의 따뜻한 자아. 감정 이름 붙이기·검증·재해석만. 해결책/훈계/상투적 위로 금지.
+ * Gemini API 사용. GEMINI_API_KEY 환경변수 필요.
  */
 
 const SYSTEM_PROMPT = `You are a counselor and the user's warmest inner self (Inner Self). You respond as if you are the part of them that already understands and accepts.
@@ -26,6 +27,22 @@ const FALLBACK_EN =
 
 export const runtime = "edge";
 
+function toGeminiContents(
+  messages: { role: string; content?: string }[],
+  userContent: string
+) {
+  const filtered = messages
+    .filter((m): m is { role: string; content: string } => Boolean(m.role && m.content))
+    .slice(-12);
+  const hasLatest = filtered.some((m) => m.role === "user" && m.content === userContent);
+  const list = hasLatest ? filtered : [...filtered, { role: "user", content: userContent }];
+
+  return list.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -39,36 +56,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Message required" }, { status: 400 });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
-      const chatMessages = [
-        { role: "system" as const, content: SYSTEM_PROMPT },
-        ...messages
-          .filter((m: { role: string; content?: string }) => m.role && m.content)
-          .slice(-12)
-          .map((m: { role: string; content: string }) => ({ role: m.role, content: m.content })),
-      ];
-      if (
-        !chatMessages.some((m) => m.role === "user" && m.content === userContent)
-      ) {
-        chatMessages.push({ role: "user" as const, content: userContent });
-      }
-
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: chatMessages,
-          max_tokens: 320,
-        }),
-      });
+      const contents = toGeminiContents(messages, userContent);
+      const res = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey,
+          },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+            contents,
+            generationConfig: {
+              maxOutputTokens: 320,
+              temperature: 0.8,
+            },
+          }),
+        }
+      );
 
       const data = await res.json();
-      const text = data.choices?.[0]?.message?.content?.trim();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
       if (text) return NextResponse.json({ message: text });
     }
 
