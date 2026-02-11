@@ -2,6 +2,21 @@
 
 한 앱에서 **자존감 회복실(Dear Me)** 와 **훈련장(BTY)** 를 모두 제공. 한국어 + **영어(/en)** 지원. 기본 AI 챗봇 탑재.
 
+## Cloudflare Pages 배포 시 설정
+
+**반드시 아래처럼 설정해야 Dear Me 화면이 나옵니다.** (루트가 아니라 `bty-app`을 빌드해야 함)
+
+1. **Cloudflare Dashboard** → Workers & Pages → **bty-website** → **Settings** → **Builds & deployments**
+2. **Build configuration**에서:
+   - **Root directory (Build root):** `bty-app` 입력
+   - **Framework preset:** `Next.js` 선택
+   - **Build command:** `npm run build` (기본값 유지)
+   - **Build output directory:** Next.js 사용 시 Cloudflare가 자동 처리 (비워두거나 기본값)
+
+3. **Save** 후 **Retry deployment** 또는 새 커밋 푸시로 다시 배포.
+
+이후 `bty-website.pages.dev` 접속 시 Dear Me 랜딩이 보입니다.
+
 ## 경로
 
 | 경로 | 내용 |
@@ -18,7 +33,7 @@
 - 로그인/회원가입은 이 앱 한 곳. 로그인하면 모든 경로에서 동일 계정.
 - Dear Me 자존감 회복 데이터를 BTY에서 맞춤 제안에 활용할 수 있음.
 
-## 실행
+## 로컬 실행
 
 ```bash
 cd bty-app
@@ -27,8 +42,8 @@ npm run dev
 ```
 
 http://localhost:3001  
-- `/` → 안식처 (한국어)  
-- `/en` → Sanctuary (English)  
+- `/` → Dear Me (한국어)  
+- `/en` → Dear Me (English)  
 - `/bty` → 훈련장 (한국어)  
 - `/en/bty` → Dojo (English)
 
@@ -53,13 +68,4 @@ bty-app/src/
 │   ├── SafeMirror, SmallWinsStack, SelfEsteemTest  # Dear Me
 │   ├── IntegritySimulator, PracticeJournal, Comeback  # BTY
 │   ├── AuthGate, Chatbot, Nav, ThemeBody, SetLocale
-│   └── ...
-└── lib/
-    ├── i18n.ts   # ko/en 메시지
-    └── ...
 ```
-
-## UI 톤
-
-- **안식처 (/)** 파스텔(sanctuary). 평가·비교 금지.
-- **훈련장 (/bty)** 보라/흰색(dojo). 연습(Practice) 강조.

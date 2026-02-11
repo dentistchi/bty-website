@@ -24,7 +24,7 @@ const FALLBACK_KO =
 const FALLBACK_EN =
   "It makes sense to feel that way. It's not that you're lacking—it's that you care about what happened.";
 
-export const runtime = "nodejs";
+export const runtime = "edge";
 
 export async function POST(request: Request) {
   try {

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { findUserByEmail } from "@/lib/auth-store";
 import { signToken } from "@/lib/auth";
 
-export const runtime = "nodejs";
+export const runtime = "edge";
 
 function simpleHash(password: string): string {
   let h = 0;

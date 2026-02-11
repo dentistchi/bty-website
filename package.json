@@ -1,0 +1,9 @@
+{
+  "name": "bty-website",
+  "private": true,
+  "description": "Dear Me & BTY — 루트. Cloudflare에서는 bty-app을 빌드하도록 설정 필요.",
+  "scripts": {
+    "build": "cd bty-app && npm ci && npm run build",
+    "pages:build": "cd bty-app && npm ci && npm run pages:build"
+  }
+}

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 
-export const runtime = "nodejs";
+export const runtime = "edge";
 
 export async function GET(request: Request) {
   const auth = request.headers.get("authorization");

@@ -2,11 +2,15 @@
   "name": "bty-app",
   "version": "0.1.0",
   "private": true,
+  "engines": { "node": ">=18" },
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start -p 3001",
-    "lint": "next lint"
+    "lint": "next lint",
+    "pages:build": "npx @cloudflare/next-on-pages@1",
+    "preview": "npm run pages:build && wrangler pages dev",
+    "deploy": "npm run pages:build && wrangler pages deploy"
   },
   "dependencies": {
     "next": "14.2.18",
@@ -17,6 +21,7 @@
     "tailwind-merge": "^2.5.4"
   },
   "devDependencies": {
+    "@cloudflare/next-on-pages": "^1.13.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
