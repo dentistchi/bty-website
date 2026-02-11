@@ -7,14 +7,14 @@
 
 ## 하나의 경험, 두 개의 공간
 
-| | Today-Me | BTY |
+| | Dear Me | BTY |
 |---|----------|-----|
 | **비유** | The Hospital / Sanctuary | The Gym / Dojo |
-| **도메인** | today-me.pages.dev | bty-website.pages.dev |
+| **도메인** | dear-me.pages.dev (또는 today-me.pages.dev) | bty-website.pages.dev |
 
 ---
 
-## 1. Today-Me (The Hospital / Sanctuary)
+## 1. Dear Me (자존감 회복실 / Sanctuary)
 
 - **목적:** **회복(Recovery).** "나는 안전하다"는 감각을 되찾는 곳.
 - **핵심 철학:**

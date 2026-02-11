@@ -1,5 +1,5 @@
 /**
- * Shared auth client for bty and Today-Me. Same API base = one account.
+ * Shared auth client for bty and Dear Me. Same API base = one account.
  */
 
 const AUTH_TOKEN_KEY = "bty_auth_token";

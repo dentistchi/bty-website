@@ -1,22 +1,22 @@
-# Today-Me & BTY (통합 앱)
+# Dear Me & BTY (통합 앱)
 
-한 앱에서 **안식처(Today-Me)** 와 **훈련장(BTY)** 를 모두 제공. 한국어 + **영어(/en)** 지원. 기본 AI 챗봇 탑재.
+한 앱에서 **자존감 회복실(Dear Me)** 와 **훈련장(BTY)** 를 모두 제공. 한국어 + **영어(/en)** 지원. 기본 AI 챗봇 탑재.
 
 ## 경로
 
 | 경로 | 내용 |
 |------|------|
-| `/` | Today-Me (한국어) |
+| `/` | Dear Me (한국어) |
 | `/bty` | BTY 훈련장 (한국어) |
-| `/en` | Today-Me (English) |
+| `/en` | Dear Me (English) |
 | `/en/bty` | BTY (English) |
 
-상단 네비로 안식처 ↔ 훈련장, 한국어 ↔ English 전환.
+상단 네비로 Dear Me ↔ 훈련장, 한국어 ↔ English 전환.
 
 ## 하나의 계정
 
 - 로그인/회원가입은 이 앱 한 곳. 로그인하면 모든 경로에서 동일 계정.
-- Today-Me 자존감 회복 데이터를 BTY에서 맞춤 제안에 활용할 수 있음.
+- Dear Me 자존감 회복 데이터를 BTY에서 맞춤 제안에 활용할 수 있음.
 
 ## 실행
 
@@ -43,14 +43,14 @@ http://localhost:3001
 ```
 bty-app/src/
 ├── app/
-│   ├── page.tsx           # Today-Me (KO)
+│   ├── page.tsx           # Dear Me (KO)
 │   ├── bty/page.tsx       # BTY (KO)
-│   ├── en/page.tsx        # Today-Me (EN)
+│   ├── en/page.tsx        # Dear Me (EN)
 │   ├── en/bty/page.tsx    # BTY (EN)
 │   ├── api/auth/*         # 로그인/회원가입/세션
 │   └── api/chat/route.ts  # 챗봇 (비평가·실패 허용 페르소나)
 ├── components/
-│   ├── SafeMirror, SmallWinsStack, SelfEsteemTest  # Today-Me
+│   ├── SafeMirror, SmallWinsStack, SelfEsteemTest  # Dear Me
 │   ├── IntegritySimulator, PracticeJournal, Comeback  # BTY
 │   ├── AuthGate, Chatbot, Nav, ThemeBody, SetLocale
 │   └── ...

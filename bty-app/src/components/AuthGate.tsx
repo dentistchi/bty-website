@@ -47,7 +47,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             {isRegister ? "회원가입" : "로그인"}
           </h2>
           <p className="text-sm text-dojo-ink-soft mt-1">
-            Today-Me와 bty는 하나의 계정으로 이용해요.
+            Dear Me와 bty는 하나의 계정으로 이용해요.
           </p>
           <form onSubmit={handleSubmit} className="mt-4 space-y-3">
             <input
@@ -118,7 +118,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
               rel="noopener noreferrer"
               className="text-sm text-dojo-purple hover:underline"
             >
-              Today-Me에서도 로그인
+              Dear Me에서도 로그인
             </a>
             <button
               type="button"

@@ -48,7 +48,7 @@ export default function BTYPage() {
           </div>
           <footer className="mt-12 pt-6 border-t border-dojo-purple-muted text-center text-sm text-dojo-ink-soft">
             <a href="/" className="text-dojo-purple hover:underline">
-              안식처로 가기 (Today-Me)
+              Dear Me로 가기
             </a>
           </footer>
         </div>

@@ -1,4 +1,4 @@
-# Today-Me (안식처)
+# Dear Me (안식처)
 
 회복(Recovery)과 심리적 안전을 위한 공간. 평가·비교·"Better" 금지. Reframing & Validation만 제공.
 

@@ -3,7 +3,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Today-Me | 안식처",
+  title: "Dear Me | 안식처",
   description: "나는 안전하다. 회복과 심리적 안전을 위한 공간.",
 };
 

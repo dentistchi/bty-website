@@ -43,7 +43,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             {isRegister ? "회원가입" : "로그인"}
           </h2>
           <p className="text-sm text-sanctuary-text-soft mt-1">
-            Today-Me와 bty는 하나의 계정으로 이용해요.
+            Dear Me와 bty는 하나의 계정으로 이용해요.
           </p>
           <form onSubmit={handleSubmit} className="mt-4 space-y-3">
             <input

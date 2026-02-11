@@ -10,7 +10,7 @@ export default function TodayMePage() {
       <div className="max-w-xl mx-auto px-4 py-8 sm:py-12">
         <header className="text-center mb-10">
           <h1 className="text-2xl sm:text-3xl font-medium text-sanctuary-text mb-2">
-            Today-Me
+            Dear Me
           </h1>
           <p className="text-sanctuary-text-soft">
             나는 안전하다. 잠시 쉬어가도 돼요.

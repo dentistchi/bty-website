@@ -7,6 +7,7 @@ function corsHeaders(request: NextRequest) {
     origin.includes("localhost") ||
     origin.endsWith(".pages.dev") ||
     origin.endsWith("today-me.pages.dev") ||
+    origin.endsWith("dear-me.pages.dev") ||
     origin.endsWith("bty-website.pages.dev");
   return {
     "Access-Control-Allow-Origin": allowed ? origin : request.nextUrl.origin,
