@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Dear Me — 자존감 회복실 */
+  --dear-bg: #FDFCF8;
+  --dear-bg-paper: #FAF9F5;
+  --dear-charcoal: #333333;
+  --dear-charcoal-soft: #5C5C5C;
+  --dear-sage: #8A9A5B;
+  --dear-terracotta: #E2725B;
+  --dojo-white: #FFFFFF;
+  --dojo-purple: #5B4B8A;
+  --dojo-purple-light: #7B6BA8;
+  --dojo-purple-dark: #4A3D6F;
+  --dojo-ink: #2D2A36;
+  --dojo-ink-soft: #5C5868;
+  --sanctuary-cream: #FDF8F3;
+  --sanctuary-blush: #F5E6E0;
+  --sanctuary-sage: #D4E5D9;
+  --sanctuary-text: #5C5348;
+  --sanctuary-text-soft: #8A8176;
+  --sanctuary-flower: #E8B4B8;
+}
+
+body {
+  min-height: 100vh;
+}
+
+/* Dear Me: 조용한 다락방, 나에게 쓰는 편지 */
+body[data-theme="dear"] {
+  background-color: var(--dear-bg);
+  color: var(--dear-charcoal);
+  background-image:
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(138, 154, 91, 0.06), transparent),
+    radial-gradient(ellipse 80% 50% at 100% 50%, rgba(226, 114, 91, 0.04), transparent);
+}
+
+body[data-theme="sanctuary"] {
+  background: linear-gradient(165deg, var(--sanctuary-cream) 0%, #F5EFE7 50%, #E0EDF5 100%);
+  color: var(--sanctuary-text);
+}
+
+body[data-theme="dojo"],
+body:not([data-theme]) {
+  background: var(--dojo-white);
+  color: var(--dojo-ink);
+}

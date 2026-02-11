@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Sanctuary pastel palette – 따뜻한 안식처 */
+  --sanctuary-cream: #FDF8F3;
+  --sanctuary-blush: #F5E6E0;
+  --sanctuary-sage: #D4E5D9;
+  --sanctuary-lavender: #E8E0F0;
+  --sanctuary-peach: #F0D9D0;
+  --sanctuary-mint: #D8EDE4;
+  --sanctuary-sky: #E0EDF5;
+  --sanctuary-sand: #F5EFE7;
+  --sanctuary-text: #5C5348;
+  --sanctuary-text-soft: #8A8176;
+  --sanctuary-accent: #C4A77D;
+  --sanctuary-flower: #E8B4B8;
+}
+
+body {
+  background: linear-gradient(165deg, var(--sanctuary-cream) 0%, var(--sanctuary-sand) 50%, var(--sanctuary-sky) 100%);
+  color: var(--sanctuary-text);
+  min-height: 100vh;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
