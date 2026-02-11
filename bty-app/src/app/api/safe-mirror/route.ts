@@ -58,15 +58,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Message required" }, { status: 400 });
     }
 
+    // Cloudflare: nodejs_compat_populate_process_env로 process.env에 주입되거나, getRequestContext().env 사용
     const ctx = getOptionalRequestContext();
     const env = ctx?.env as Record<string, string | undefined> | undefined;
     const apiKey =
-      (typeof env?.GEMINI_API_KEY === "string" ? env.GEMINI_API_KEY : null) ??
-      process.env.GEMINI_API_KEY;
+      process.env.GEMINI_API_KEY ??
+      (typeof env?.GEMINI_API_KEY === "string" ? env.GEMINI_API_KEY : null);
+
+    if (!apiKey) {
+      console.error("[safe-mirror] GEMINI_API_KEY not found. process.env:", !!process.env.GEMINI_API_KEY, "ctx?.env:", !!ctx?.env);
+    }
+
     if (apiKey) {
       const contents = toGeminiContents(messages, userContent);
       const res = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
         {
           method: "POST",
           headers: {
@@ -86,7 +92,12 @@ export async function POST(request: Request) {
 
       const data = await res.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
       if (text) return NextResponse.json({ message: text });
+
+      if (!res.ok || data.error) {
+        console.error("[safe-mirror] Gemini API error:", res.status, JSON.stringify(data).slice(0, 300));
+      }
     }
 
     const isKo = /[가-힣]/.test(userContent);

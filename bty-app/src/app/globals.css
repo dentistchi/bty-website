@@ -16,6 +16,12 @@
   --dojo-purple-dark: #4A3D6F;
   --dojo-ink: #2D2A36;
   --dojo-ink-soft: #5C5868;
+  /* Journey Board pastels */
+  --journey-done: #E8D4E4;
+  --journey-done-strong: #D4B8CF;
+  --journey-today: #D4E5D9;
+  --journey-today-strong: #B8D4C0;
+  --journey-locked: #E8E4F2;
   --sanctuary-cream: #FDF8F3;
   --sanctuary-blush: #F5E6E0;
   --sanctuary-sage: #D4E5D9;

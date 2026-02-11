@@ -8,7 +8,10 @@ import {
 } from "@/lib/utils";
 
 const BRIDGE_CHECK_EVENT = "dear-bridge-check";
-const BTY_PATH = "/bty";
+
+function getBtyPath(locale: "ko" | "en"): string {
+  return locale === "en" ? "/en/bty" : "/bty";
+}
 
 /**
  * The Bridge — 회복이 어느 정도 되었을 때만 BTY(성장)로 가는 버튼 표시
@@ -35,9 +38,16 @@ function useBridgeVisible(): boolean {
   return visible;
 }
 
-export function EmotionalBridge({ theme = "sanctuary" }: { theme?: "dear" | "sanctuary" }) {
+export function EmotionalBridge({
+  theme = "sanctuary",
+  locale = "ko",
+}: {
+  theme?: "dear" | "sanctuary";
+  locale?: "ko" | "en";
+}) {
   const visible = useBridgeVisible();
   const isDear = theme === "dear";
+  const btyPath = getBtyPath(locale);
 
   if (!visible) return null;
 
@@ -67,7 +77,7 @@ export function EmotionalBridge({ theme = "sanctuary" }: { theme?: "dear" | "san
         (Go to BTY Practice)
       </p>
       <a
-        href={BTY_PATH}
+        href={btyPath}
         className={cn(
           "inline-block rounded-xl px-6 py-3 font-medium text-sm transition-colors",
           "animate-bridge-glow",

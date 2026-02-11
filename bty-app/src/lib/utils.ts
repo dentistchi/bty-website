@@ -56,8 +56,9 @@ export function appendPracticeEntry(entry: PracticeEntry): void {
   localStorage.setItem(PRACTICE_LOG_KEY, JSON.stringify(next));
 }
 
-// 자존감 테스트 결과 — AI 대화에서 참고용
-export const SELF_ESTEEM_RESULT_KEY = "dear_self_esteem_result";
+// 자존감 테스트 결과 — 날짜별 누적
+export const SELF_ESTEEM_HISTORY_KEY = "dear_self_esteem_history";
+export const SELF_ESTEEM_RESULT_KEY = "dear_self_esteem_result"; // 최신 결과 (하위 호환)
 
 export type SelfEsteemLevel = "high" | "mid" | "low";
 
@@ -70,6 +71,45 @@ export type SelfEsteemResult = {
   completedAt: string;
 };
 
+export type SelfEsteemHistoryEntry = SelfEsteemResult & { date: string }; // YYYY-MM-DD
+
+export function getSelfEsteemHistory(): SelfEsteemHistoryEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    let raw = localStorage.getItem(SELF_ESTEEM_HISTORY_KEY);
+    if (!raw) {
+      const oldRaw = localStorage.getItem(SELF_ESTEEM_RESULT_KEY);
+      if (oldRaw) {
+        const old = JSON.parse(oldRaw) as SelfEsteemResult;
+        const date = old.completedAt?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
+        const entry: SelfEsteemHistoryEntry = { ...old, date };
+        const next = [entry];
+        localStorage.setItem(SELF_ESTEEM_HISTORY_KEY, JSON.stringify(next));
+        return next;
+      }
+      return [];
+    }
+    const parsed = JSON.parse(raw) as SelfEsteemHistoryEntry[];
+    return Array.isArray(parsed) ? parsed.sort((a, b) => a.date.localeCompare(b.date)) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function appendSelfEsteemResult(result: SelfEsteemResult): void {
+  if (typeof window === "undefined") return;
+  const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const entry: SelfEsteemHistoryEntry = { ...result, date };
+  const history = getSelfEsteemHistory();
+  const withoutToday = history.filter((e) => e.date !== date);
+  const next = [...withoutToday, entry].sort((a, b) => a.date.localeCompare(b.date));
+  localStorage.setItem(SELF_ESTEEM_HISTORY_KEY, JSON.stringify(next));
+  localStorage.setItem(SELF_ESTEEM_RESULT_KEY, JSON.stringify(result)); // 하위 호환
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("dear-self-esteem-updated"));
+  }
+}
+
 export function getSelfEsteemResult(): SelfEsteemResult | null {
   if (typeof window === "undefined") return null;
   try {
@@ -81,9 +121,9 @@ export function getSelfEsteemResult(): SelfEsteemResult | null {
   }
 }
 
+/** @deprecated Use appendSelfEsteemResult for daily accumulation */
 export function setSelfEsteemResult(result: SelfEsteemResult): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(SELF_ESTEEM_RESULT_KEY, JSON.stringify(result));
+  appendSelfEsteemResult(result);
 }
 
 // BTY 브릿지 표시 조건: Safe Mirror에서 AI 답장을 받았을 때

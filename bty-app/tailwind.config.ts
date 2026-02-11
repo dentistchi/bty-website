@@ -41,6 +41,13 @@ const config: Config = {
           terracotta: "#E2725B",
           "terracotta-soft": "#E89A8A",
         },
+        journey: {
+          done: "#E8D4E4",
+          "done-strong": "#D4B8CF",
+          today: "#D4E5D9",
+          "today-strong": "#B8D4C0",
+          locked: "#E8E4F2",
+        },
         dojo: {
           white: "#FFFFFF",
           purple: "#5B4B8A",

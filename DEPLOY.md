@@ -34,6 +34,24 @@ Safe Mirror의 Gemini AI를 사용하려면 **GEMINI_API_KEY**를 설정해야 �
 
 > next-on-pages에서는 API 라우트가 Cloudflare 바인딩(`env`)을 통해 환경 변수에 접근합니다. `process.env`만으로는 런타임 변수를 읽지 못할 수 있으므로, 반드시 대시보드에서 변수/시크릿을 추가해야 합니다.
 
+## Supabase (BTY Journey 28일 진행 저장)
+
+BTY **나의 여정** 대시보드에서 사용자 진행 상황을 저장하려면 Supabase를 연결합니다.
+
+1. [Supabase](https://supabase.com)에서 프로젝트 생성
+2. **Settings → API**에서 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` 확인
+3. **SQL Editor**에서 `bty-app/supabase/migrations/001_bty_journey.sql` 내용 실행
+4. Cloudflare **Variables and Secrets**에 아래 추가:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY` (Secret)
+
+> Supabase가 없으면 BTY Journey가 동작하지 않습니다. API가 503을 반환하며 진행도가 저장되지 않습니다.
+
+## 알림(Reminder) — 추후 추가
+
+> 사용자가 24시간 접속하지 않으면 "00님, 오늘 Day N 미션이 기다리고 있어요" 이메일을 보내는 기능은 추후 구현 예정입니다.
+
 ## 참고
 
 - API 라우트는 모두 Edge 런타임으로 설정되어 있어 Cloudflare Workers에서 동작합니다.

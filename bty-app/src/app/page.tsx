@@ -44,7 +44,7 @@ export default function LandingPage() {
               <SelfEsteemTest locale="ko" theme="dear" />
             </PaperCard>
             <PaperCard>
-              <EmotionalBridge theme="dear" />
+              <EmotionalBridge theme="dear" locale="ko" />
             </PaperCard>
           </div>
 

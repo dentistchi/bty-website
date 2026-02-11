@@ -153,9 +153,11 @@ function SafeMirrorLayout({
 export function SafeMirror({
   locale = "ko",
   theme = "sanctuary",
+  onPositive,
 }: {
   locale?: "ko" | "en";
   theme?: "dear" | "sanctuary";
+  onPositive?: () => void;
 }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [input, setInput] = useState("");
@@ -188,6 +190,7 @@ export function SafeMirror({
       if (reply) {
         setEntries((prev) => [...prev, { role: "assistant", content: reply }]);
         setSafeMirrorPositive();
+        onPositive?.();
         if (typeof window !== "undefined") window.dispatchEvent(new Event(BRIDGE_CHECK_EVENT));
       }
     } catch {
@@ -197,6 +200,7 @@ export function SafeMirror({
           : "I can't write back right now. It's enough that you wrote it down.";
       setEntries((prev) => [...prev, { role: "assistant", content: fallback }]);
       setSafeMirrorPositive();
+      onPositive?.();
       if (typeof window !== "undefined") window.dispatchEvent(new Event(BRIDGE_CHECK_EVENT));
     } finally {
       setIsLoading(false);

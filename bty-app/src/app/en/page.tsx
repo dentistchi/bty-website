@@ -1,4 +1,5 @@
 import { AuthGate } from "@/components/AuthGate";
+import { EmotionalBridge } from "@/components/EmotionalBridge";
 import { Nav } from "@/components/Nav";
 import { ResilienceGraph } from "@/components/ResilienceGraph";
 import { SafeMirror } from "@/components/SafeMirror";
@@ -24,6 +25,7 @@ export default function TodayMeEnPage() {
             <SmallWinsStack locale="en" />
             <ResilienceGraph theme="sanctuary" locale="en" />
             <SelfEsteemTest locale="en" />
+            <EmotionalBridge theme="sanctuary" locale="en" />
           </div>
           <footer className="mt-12 pt-6 border-t border-sanctuary-peach/40 text-center text-sm text-sanctuary-text-soft">
             <a href="/en/bty" className="underline hover:text-sanctuary-text">
