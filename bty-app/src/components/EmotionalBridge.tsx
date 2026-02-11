@@ -8,7 +8,7 @@ import {
 } from "@/lib/utils";
 
 const BRIDGE_CHECK_EVENT = "dear-bridge-check";
-const BTY_URL = "https://bty-website.pages.dev";
+const BTY_PATH = "/bty";
 
 /**
  * The Bridge — 회복이 어느 정도 되었을 때만 BTY(성장)로 가는 버튼 표시
@@ -67,9 +67,7 @@ export function EmotionalBridge({ theme = "sanctuary" }: { theme?: "dear" | "san
         (Go to BTY Practice)
       </p>
       <a
-        href={BTY_URL}
-        target="_blank"
-        rel="noopener noreferrer"
+        href={BTY_PATH}
         className={cn(
           "inline-block rounded-xl px-6 py-3 font-medium text-sm transition-colors",
           "animate-bridge-glow",
