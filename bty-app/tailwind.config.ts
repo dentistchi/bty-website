@@ -2,9 +2,10 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: [
-    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/app/**/*.{js,ts,jsx,tsx}",
+    "./src/components/**/*.{js,ts,jsx,tsx}",
+    "./src/pages/**/*.{js,ts,jsx,tsx}",
+    "./src/contexts/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
@@ -23,12 +24,19 @@ const config: Config = {
           "0%, 100%": { boxShadow: "0 0 12px rgba(138, 154, 91, 0.25)" },
           "50%": { boxShadow: "0 0 20px rgba(138, 154, 91, 0.4)" },
         },
+        "maturity-popup": {
+          "0%": { opacity: "0", transform: "translate(-50%, 8px)" },
+          "15%": { opacity: "1", transform: "translate(-50%, 0)" },
+          "70%": { opacity: "1", transform: "translate(-50%, -4px)" },
+          "100%": { opacity: "0", transform: "translate(-50%, -12px)" },
+        },
       },
       animation: {
         fadeIn: "fadeIn 0.2s ease-out",
         bloom: "bloom 0.6s ease-out forwards",
         "soft-pulse": "soft-pulse 2s ease-in-out infinite",
         "bridge-glow": "bridge-glow 2.5s ease-in-out infinite",
+        "maturity-popup": "maturity-popup 3s ease-out forwards",
       },
       colors: {
         dear: {

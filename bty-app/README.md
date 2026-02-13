@@ -53,6 +53,49 @@ http://localhost:3001
 - **역할:** 사용자를 평가하지 않는 친구. "실패해도 괜찮다"고 말해 줌.
 - `GEMINI_API_KEY`가 있으면 Gemini로 응답, 없으면 고정 격려 문구로 응답.
 
+## Admin Dashboard (Quality Events)
+
+`/admin/quality` – Quality Events + Patch Suggestions. Microsoft Entra ID 로그인 후 접근.
+
+### How to configure Entra ID + env vars for admin dashboard
+
+1. **Azure Portal – Microsoft Entra ID (구 Azure AD)**  
+   - 앱 등록 → 새 등록  
+   - 이름: `bty-admin` (또는 원하는 이름)  
+   - 지원되는 계정: **이 조직 디렉터리만**  
+   - 리디렉션 URI: `웹` → `http://localhost:3001/api/auth/callback/azure-ad` (개발)  
+     - 프로덕션: `https://your-domain.com/api/auth/callback/azure-ad`
+
+2. **클라이언트 비밀 생성**  
+   - 인증서 및 비밀 → 클라이언트 비밀 → 새 클라이언트 비밀  
+   - 생성된 값을 복사 (한 번만 표시됨)
+
+3. **애플리케이션(클라이언트) ID, 디렉터리(테넌트) ID**  
+   - 앱 등록 개요에서 확인
+
+4. **`.env`에 다음 변수 설정:**
+
+   ```env
+   AZURE_AD_CLIENT_ID=<애플리케이션(클라이언트) ID>
+   AZURE_AD_CLIENT_SECRET=<클라이언트 비밀>
+   AZURE_AD_TENANT_ID=<디렉터리(테넌트) ID>
+   NEXTAUTH_URL=http://localhost:3001
+   NEXTAUTH_SECRET=<32자 이상 랜덤 문자열>
+   BTY_ADMIN_EMAILS=admin@yourcompany.com,other@yourcompany.com
+   ```
+
+5. **RBAC**  
+   - `BTY_ADMIN_EMAILS`: 쉼표로 구분된 이메일 목록. 이 목록에 있는 이메일만 admin 접근 가능  
+   - (선택) Entra ID에서 App Role(`bty_admin`, `bty_owner`)을 정의하고 사용자/그룹에 할당하면, 토큰의 `roles` 클레임으로도 판단 가능
+
+6. **접근**  
+   - 미인증 → `/api/auth/signin` 리다이렉트  
+   - 인증되어 있으나 admin 아님 → "권한이 없습니다" 페이지
+
+### 주의
+
+- 원문 대화는 저장·표시하지 않음. 시그니처/집계만 노출.
+
 ## 페이지·구조
 
 ```
@@ -60,11 +103,19 @@ bty-app/src/
 ├── app/
 │   ├── page.tsx           # Dear Me (KO)
 │   ├── bty/page.tsx       # BTY (KO)
+│   ├── admin/quality/     # Admin 대시보드 (Entra ID 필요)
 │   ├── en/page.tsx        # Dear Me (EN)
 │   ├── en/bty/page.tsx    # BTY (EN)
 │   ├── api/auth/*         # 로그인/회원가입/세션
-│   └── api/chat/route.ts  # 챗봇 (비평가·실패 허용 페르소나)
+│   ├── api/admin/quality  # Quality API 프록시
+│   ├── api/admin/patch    # Patch API 프록시
+│   └── api/chat/route.ts  # 챗봇
+├── lib/
+│   ├── auth.ts            # NextAuth + Entra ID
+│   ├── rbac.ts            # isAdmin (이메일/역할)
+│   └── admin-auth.ts      # API 가드
 ├── components/
+│   ├── admin/AdminHeader
 │   ├── SafeMirror, SmallWinsStack, SelfEsteemTest  # Dear Me
 │   ├── IntegritySimulator, PracticeJournal, Comeback  # BTY
 │   ├── AuthGate, Chatbot, Nav, ThemeBody, SetLocale
