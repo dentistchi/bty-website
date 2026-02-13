@@ -129,7 +129,6 @@ export function Chatbot() {
     }
   };
 
-  const isBtyPage = pathname.includes("/bty");
   const themeColors = isBtyPage
     ? {
         button: "bg-dojo-purple hover:bg-dojo-purple-dark text-white",
