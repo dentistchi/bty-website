@@ -18,5 +18,7 @@ dist/
 .idea/
 .vscode/
 
-# Wrangler
+# Wrangler / Vercel
 .wrangler/
+.vercel/
+*.pem
