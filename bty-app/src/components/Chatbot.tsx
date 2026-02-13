@@ -14,7 +14,8 @@ const TYPING_TIMEOUT_25S = 25_000;
 export function Chatbot() {
   const pathname = usePathname() ?? "";
   const locale: Locale = pathname.startsWith("/en") ? "en" : "ko";
-  const t = getMessages(locale).chat;
+  const messages = getMessages(locale);
+  const t = messages.chat;
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
