@@ -1,0 +1,545 @@
+/* ===================================
+   FINANCIAL ADVICE PAGE STYLES
+   =================================== */
+
+.financial-hero {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.financial-section {
+    padding: 100px 0;
+    background: var(--secondary-color);
+}
+
+/* Wealth Header */
+.wealth-header {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+/* Financial Cards Grid */
+.principle-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 32px;
+}
+
+.financial-card {
+    background: var(--white);
+    padding: 40px 32px;
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+}
+
+.financial-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+}
+
+.card-icon {
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    color: var(--white);
+    margin-bottom: 24px;
+}
+
+.financial-card h4 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+}
+
+.financial-card > p {
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+}
+
+.action-steps {
+    padding: 20px;
+    background: var(--secondary-color);
+    border-radius: 12px;
+}
+
+.action-steps strong {
+    display: block;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+    font-size: 16px;
+}
+
+.action-steps ul {
+    padding-left: 20px;
+    margin: 0;
+}
+
+.action-steps li {
+    margin-bottom: 8px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+/* Spending Section */
+.spending-section {
+    margin-top: 80px;
+    padding: 80px 48px;
+    background: var(--white);
+    border-radius: 24px;
+    box-shadow: var(--shadow-md);
+}
+
+.spending-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 32px;
+    margin-top: 40px;
+}
+
+.spending-card {
+    padding: 32px;
+    border-radius: 16px;
+    position: relative;
+    transition: var(--transition);
+}
+
+.spending-card:hover {
+    transform: translateY(-4px);
+}
+
+.good-spending {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border: 2px solid #28a745;
+}
+
+.cautious-spending {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border: 2px solid #ffc107;
+}
+
+.avoid-spending {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    border: 2px solid #dc3545;
+}
+
+.spending-badge {
+    display: inline-block;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.good-spending .spending-badge {
+    background: #28a745;
+    color: white;
+}
+
+.cautious-spending .spending-badge.cautious {
+    background: #ffc107;
+    color: #856404;
+}
+
+.avoid-spending .spending-badge.avoid {
+    background: #dc3545;
+    color: white;
+}
+
+.spending-card h4 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.good-spending h4 {
+    color: #155724;
+}
+
+.cautious-spending h4 {
+    color: #856404;
+}
+
+.avoid-spending h4 {
+    color: #721c24;
+}
+
+.spending-card > p {
+    font-size: 16px;
+    line-height: 1.7;
+    margin-bottom: 20px;
+}
+
+.good-spending > p {
+    color: #155724;
+}
+
+.cautious-spending > p {
+    color: #856404;
+}
+
+.avoid-spending > p {
+    color: #721c24;
+}
+
+.spending-example {
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.spending-example strong {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.spending-philosophy {
+    margin-top: 48px;
+    padding: 40px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px;
+    color: var(--white);
+    text-align: center;
+}
+
+.spending-philosophy h4 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.spending-philosophy p {
+    font-size: 18px;
+    line-height: 1.8;
+}
+
+/* Education Section */
+.education-section {
+    margin-top: 80px;
+    padding: 80px 48px;
+    background: var(--white);
+    border-radius: 24px;
+    box-shadow: var(--shadow-md);
+}
+
+.education-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 40px;
+    margin-top: 40px;
+}
+
+.education-card {
+    background: var(--secondary-color);
+    padding: 40px;
+    border-radius: 16px;
+    position: relative;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+}
+
+.education-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+}
+
+.education-number {
+    position: absolute;
+    top: -20px;
+    left: 32px;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--white);
+    box-shadow: var(--shadow-md);
+}
+
+.education-card h4 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    margin-top: 20px;
+    color: var(--text-primary);
+}
+
+.education-content p {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+.education-content p strong {
+    color: var(--text-primary);
+    display: block;
+    margin-bottom: 8px;
+}
+
+.education-content ul {
+    padding-left: 20px;
+    margin-bottom: 20px;
+}
+
+.education-content li {
+    margin-bottom: 8px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+.roi-box {
+    padding: 20px;
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    border-radius: 12px;
+    color: var(--white);
+    font-size: 15px;
+    line-height: 1.6;
+    margin-top: 20px;
+}
+
+.roi-box strong {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 16px;
+}
+
+.education-budget {
+    margin-top: 48px;
+    padding: 40px;
+    background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+    border-radius: 16px;
+    color: var(--white);
+}
+
+.education-budget h4 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.budget-recommendation {
+    font-size: 18px;
+    line-height: 1.8;
+}
+
+.budget-recommendation strong {
+    font-size: 22px;
+    text-decoration: underline;
+}
+
+.budget-note {
+    margin-top: 16px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    font-style: italic;
+}
+
+/* Planning Section */
+.planning-section {
+    margin-top: 80px;
+    padding: 80px 48px;
+    background: var(--white);
+    border-radius: 24px;
+    box-shadow: var(--shadow-md);
+}
+
+.planning-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 32px;
+    margin-top: 40px;
+}
+
+.planning-card {
+    background: var(--secondary-color);
+    padding: 40px 32px;
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+}
+
+.planning-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+}
+
+.timeline-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.timeline-icon i {
+    font-size: 48px;
+    color: var(--accent-color);
+    margin-bottom: 12px;
+}
+
+.timeline-icon span {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    padding: 8px 20px;
+    background: var(--white);
+    border-radius: 20px;
+}
+
+.planning-card h4 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.planning-card ul {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 20px;
+}
+
+.planning-card li {
+    padding: 12px 0;
+    padding-left: 28px;
+    position: relative;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.planning-card li:last-child {
+    border-bottom: none;
+}
+
+.planning-card li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--accent-color);
+    font-weight: 700;
+}
+
+.planning-tip {
+    padding: 16px;
+    background: var(--white);
+    border-left: 4px solid var(--accent-color);
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.planning-tip strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Takeaways Section */
+.takeaways-section {
+    margin-top: 80px;
+    padding: 80px 48px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 24px;
+    color: var(--white);
+    box-shadow: var(--shadow-lg);
+}
+
+.takeaways-section .section-title {
+    color: var(--white);
+}
+
+.takeaways-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 32px;
+    margin-top: 40px;
+}
+
+.takeaway-card {
+    padding: 32px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    text-align: center;
+    transition: var(--transition);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.takeaway-card:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-4px);
+}
+
+.takeaway-card i {
+    font-size: 48px;
+    margin-bottom: 20px;
+    opacity: 0.9;
+}
+
+.takeaway-card h4 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.takeaway-card p {
+    font-size: 15px;
+    line-height: 1.6;
+    opacity: 0.95;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .module-content {
+        padding: 32px 24px;
+    }
+
+    .principle-grid,
+    .spending-grid,
+    .education-grid,
+    .planning-grid,
+    .takeaways-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .spending-section,
+    .education-section,
+    .planning-section,
+    .takeaways-section {
+        padding: 48px 24px;
+    }
+
+    .intro-box {
+        padding: 32px 24px;
+    }
+}

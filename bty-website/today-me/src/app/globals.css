@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Sanctuary pastel palette – 따뜻한 안식처 */
+  --sanctuary-cream: #FDF8F3;
+  --sanctuary-blush: #F5E6E0;
+  --sanctuary-sage: #D4E5D9;
+  --sanctuary-lavender: #E8E0F0;
+  --sanctuary-peach: #F0D9D0;
+  --sanctuary-mint: #D8EDE4;
+  --sanctuary-sky: #E0EDF5;
+  --sanctuary-sand: #F5EFE7;
+  --sanctuary-text: #5C5348;
+  --sanctuary-text-soft: #8A8176;
+  --sanctuary-accent: #C4A77D;
+  --sanctuary-flower: #E8B4B8;
+  /* Journey / Dojo */
+  --dojo-white: #FFFFFF;
+  --dojo-purple: #5B4B8A;
+  --dojo-purple-dark: #4A3D6F;
+  --dojo-purple-muted: #E8E4F2;
+  --dojo-ink: #2D2A36;
+  --dojo-ink-soft: #5C5868;
+  --journey-done: #E8D4E4;
+  --journey-done-strong: #D4B8CF;
+  --journey-today: #D4E5D9;
+  --journey-locked: #E8E4F2;
+}
+
+body {
+  background: linear-gradient(165deg, var(--sanctuary-cream) 0%, var(--sanctuary-sand) 50%, var(--sanctuary-sky) 100%);
+  color: var(--sanctuary-text);
+  min-height: 100vh;
+}
+
+body[data-theme="dojo"] {
+  background: var(--dojo-white);
+  color: var(--dojo-ink);
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Typing indicator dots animation */
+@keyframes typing-dots {
+  0%, 60%, 100% { opacity: 0.3; }
+  30% { opacity: 1; }
+}
+
+.chat-typing-dots span {
+  animation: typing-dots 1.4s ease-in-out infinite;
+}
+.chat-typing-dots span:nth-child(1) { animation-delay: 0s; }
+.chat-typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.chat-typing-dots span:nth-child(3) { animation-delay: 0.4s; }
