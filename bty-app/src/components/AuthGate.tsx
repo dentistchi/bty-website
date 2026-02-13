@@ -33,8 +33,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-dojo-ink-soft">
-        로딩 중…
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="inline-block w-8 h-8 border-2 border-dear-sage/30 border-t-dear-sage rounded-full animate-spin mb-3"></div>
+          <p className="text-sm text-dear-charcoal-soft">로딩 중…</p>
+        </div>
       </div>
     );
   }

@@ -31,17 +31,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const loadSession = useCallback(async () => {
-    const tokenFromHash = readTokenFromHash();
-    if (tokenFromHash) {
-      setStoredToken(tokenFromHash);
-      if (typeof window !== "undefined") {
-        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    try {
+      const tokenFromHash = readTokenFromHash();
+      if (tokenFromHash) {
+        setStoredToken(tokenFromHash);
+        if (typeof window !== "undefined") {
+          window.history.replaceState(null, "", window.location.pathname + window.location.search);
+        }
       }
+      const token = tokenFromHash || getStoredToken();
+      const u = await fetchSession(token);
+      setUser(u);
+    } catch (err) {
+      console.error("[AuthContext] Failed to load session:", err);
+      // Continue without user - allow unauthenticated access
+      setUser(null);
+    } finally {
+      setLoading(false);
     }
-    const token = tokenFromHash || getStoredToken();
-    const u = await fetchSession(token);
-    setUser(u);
-    setLoading(false);
   }, []);
 
   useEffect(() => {
