@@ -19,7 +19,10 @@ export async function POST(request: Request) {
     const email = typeof body.email === "string" ? body.email.trim() : "";
     const password = typeof body.password === "string" ? body.password : "";
 
+    console.log("[auth/login] Attempt:", { email, passwordLength: password.length });
+
     if (!email || !password) {
+      console.log("[auth/login] Missing email or password");
       return NextResponse.json(
         { error: "이메일과 비밀번호를 입력해주세요." },
         { status: 400 }
@@ -27,20 +30,31 @@ export async function POST(request: Request) {
     }
 
     const user = findUserByEmail(email);
-    if (!user || user.passwordHash !== simpleHash(password)) {
+    if (!user) {
+      console.log("[auth/login] User not found:", email);
       return NextResponse.json(
         { error: "이메일 또는 비밀번호가 맞지 않아요." },
         { status: 401 }
       );
     }
 
+    const passwordHash = simpleHash(password);
+    if (user.passwordHash !== passwordHash) {
+      console.log("[auth/login] Password mismatch for:", email);
+      return NextResponse.json(
+        { error: "이메일 또는 비밀번호가 맞지 않아요." },
+        { status: 401 }
+      );
+    }
+
+    console.log("[auth/login] Success:", { id: user.id, email: user.email });
     const token = await signToken({ sub: user.id, email: user.email });
     return NextResponse.json({
       token,
       user: { id: user.id, email: user.email },
     });
   } catch (e) {
-    console.error(e);
+    console.error("[auth/login] Error:", e);
     return NextResponse.json(
       { error: "로그인 중 오류가 났어요." },
       { status: 500 }

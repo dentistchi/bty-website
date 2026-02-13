@@ -34,3 +34,19 @@ export function createUser(
   users.set(id, user);
   return user;
 }
+
+export function getAllUsers(): User[] {
+  return Array.from(users.values());
+}
+
+export function deleteUser(id: string): boolean {
+  return users.delete(id);
+}
+
+export function updateUserPassword(id: string, newPasswordHash: string): boolean {
+  const user = users.get(id);
+  if (!user) return false;
+  user.passwordHash = newPasswordHash;
+  users.set(id, user);
+  return true;
+}
