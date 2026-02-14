@@ -8,11 +8,14 @@ import { SmallWinsStack } from "@/components/SmallWinsStack";
 import { ThemeBody } from "@/components/ThemeBody";
 import { PaperCard } from "@/components/ui/PaperCard";
 import { getMessages } from "@/lib/i18n";
+import AuthHashGate from "./_components/AuthHashGate";
 
 export default function LandingPage() {
   const t = getMessages("ko").todayMe;
   return (
-    <AuthGate>
+    <>
+      <AuthHashGate />
+      <AuthGate>
       <ThemeBody theme="dear" />
       <main className="min-h-screen">
         <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
@@ -56,5 +59,6 @@ export default function LandingPage() {
         </div>
       </main>
     </AuthGate>
+    </>
   );
 }
