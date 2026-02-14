@@ -1,8 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-export async function POST(req: Request) {
-  const { email, password } = await req.json();
+export async function POST(request: NextRequest) {
+  const { email, password } = (await request.json().catch(() => ({}))) as {
+    email?: string;
+    password?: string;
+  };
 
   if (!email || !password) {
     return NextResponse.json(
@@ -11,47 +14,32 @@ export async function POST(req: Request) {
     );
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return NextResponse.json(
+      { ok: false, message: "Supabase env가 설정되지 않았습니다." },
+      { status: 500 }
+    );
+  }
 
-  const response = NextResponse.json({ ok: true });
+  const res = NextResponse.json({ ok: true });
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       get(name: string) {
-        return req.headers
-          .get("cookie")
-          ?.split("; ")
-          .find((c) => c.startsWith(name + "="))
-          ?.split("=")[1];
+        return request.cookies.get(name)?.value;
       },
       set(name: string, value: string, options: Record<string, unknown>) {
-        response.cookies.set({
-          name,
-          value,
-          httpOnly: true,
-          sameSite: "lax",
-          secure: true,
-          path: "/",
-          ...options,
-        });
+        res.cookies.set({ name, value, ...options });
       },
       remove(name: string, options: Record<string, unknown>) {
-        response.cookies.set({
-          name,
-          value: "",
-          maxAge: 0,
-          path: "/",
-          ...options,
-        });
+        res.cookies.set({ name, value: "", maxAge: 0, ...options });
       },
     },
   });
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     return NextResponse.json(
@@ -60,5 +48,5 @@ export async function POST(req: Request) {
     );
   }
 
-  return response;
+  return res;
 }
