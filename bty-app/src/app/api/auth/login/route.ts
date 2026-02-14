@@ -1,13 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
-import type { CookieOptions } from "@supabase/ssr";
 
 export async function POST(req: Request) {
-  const { email, password } = (await req.json().catch(() => ({}))) as {
-    email?: string;
-    password?: string;
-  };
+  const { email, password } = await req.json();
 
   if (!email || !password) {
     return NextResponse.json(
@@ -16,35 +11,54 @@ export async function POST(req: Request) {
     );
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return NextResponse.json(
-      { ok: false, message: "Supabase env가 설정되지 않았습니다." },
-      { status: 500 }
-    );
-  }
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  const cookieStore = await cookies();
+  const response = NextResponse.json({ ok: true });
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       get(name: string) {
-        return cookieStore.get(name)?.value;
+        return req.headers
+          .get("cookie")
+          ?.split("; ")
+          .find((c) => c.startsWith(name + "="))
+          ?.split("=")[1];
       },
-      set(name: string, value: string, options: CookieOptions) {
-        cookieStore.set({ name, value, ...options });
+      set(name: string, value: string, options: Record<string, unknown>) {
+        response.cookies.set({
+          name,
+          value,
+          httpOnly: true,
+          sameSite: "lax",
+          secure: true,
+          path: "/",
+          ...options,
+        });
       },
-      remove(name: string, options: CookieOptions) {
-        cookieStore.set({ name, value: "", maxAge: 0, ...options });
+      remove(name: string, options: Record<string, unknown>) {
+        response.cookies.set({
+          name,
+          value: "",
+          maxAge: 0,
+          path: "/",
+          ...options,
+        });
       },
     },
   });
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
   if (error) {
-    return NextResponse.json({ ok: false, message: error.message }, { status: 401 });
+    return NextResponse.json(
+      { ok: false, message: error.message },
+      { status: 401 }
+    );
   }
 
-  return NextResponse.json({ ok: true });
+  return response;
 }
