@@ -2,13 +2,5 @@ name = "bty-website"
 compatibility_date = "2026-02-14"
 pages_build_output_dir = ".vercel/output/static"
 
-[build]
-command = "npm run pages:build"
-
 [env.production]
-NODE_VERSION = "20"
-
-compatibility_flags = [
-  "nodejs_compat_v2",
-  "experimental_next"
-]
+compatibility_flags = ["nodejs_compat_v2"]
