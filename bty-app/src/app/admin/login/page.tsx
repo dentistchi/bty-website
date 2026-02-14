@@ -1,12 +1,11 @@
 "use client";
 
 import { Suspense, useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { useSearchParams } from "next/navigation";
 
 function AdminLoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
+
   const nextPath =
     searchParams.get("next") ||
     searchParams.get("callbackUrl") ||
@@ -17,23 +16,17 @@ function AdminLoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // 이미 로그인된 경우 자동 리다이렉트
   useEffect(() => {
     let cancelled = false;
-
-    async function checkSession() {
-      if (!supabase) return;
-      const { data } = await supabase.auth.getSession();
-      if (!cancelled && data.session) {
-        router.replace(nextPath);
-      }
+    async function check() {
+      const r = await fetch("/api/auth/session", { credentials: "include" }).catch(() => null);
+      if (!r || cancelled) return;
+      const j = await r.json().catch(() => null);
+      if (!cancelled && j?.user) window.location.assign(nextPath);
     }
-
-    checkSession();
-    return () => {
-      cancelled = true;
-    };
-  }, [router, nextPath]);
+    check();
+    return () => { cancelled = true; };
+  }, [nextPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,44 +34,20 @@ function AdminLoginForm() {
     setLoading(true);
 
     try {
-      const client = supabase;
-      if (!client) {
-        setError("Supabase가 설정되지 않았습니다.");
-        return;
-      }
-
-      const { data: signInData, error: signInError } = await client.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (signInError) {
-        setError(signInError.message);
-        return;
-      }
-
-      const { data } = await client.auth.getSession();
-      const session = data.session;
-      if (!session) {
-        setError("세션을 가져오지 못했습니다.");
-        return;
-      }
-
-      const r = await fetch("/api/auth/session", {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token,
-        }),
+        body: JSON.stringify({ email, password }),
       });
 
-      if (!r.ok) {
-        const txt = await r.text().catch(() => "");
-        setError(`세션 쿠키 설정 실패: ${r.status} ${txt}`);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) {
+        setError(json?.message || "로그인에 실패했습니다.");
         return;
       }
 
+      // 성공
       window.location.assign(nextPath);
       return;
     } catch (err) {
@@ -91,38 +60,12 @@ function AdminLoginForm() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-neutral-50 p-4">
       <div className="w-full max-w-sm rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-        <h1 className="text-lg font-semibold text-neutral-800">
-          Admin 로그인
-        </h1>
-
+        <h1 className="text-lg font-semibold text-neutral-800">Admin 로그인</h1>
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="이메일"
-            required
-            className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
-          />
-
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="비밀번호"
-            required
-            className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
-          />
-
-          {error && (
-            <p className="text-sm text-red-600">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded bg-neutral-800 py-2 text-sm font-medium text-white disabled:opacity-50"
-          >
+          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required className="w-full rounded border border-neutral-300 px-3 py-2 text-sm" placeholder="이메일" />
+          <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required className="w-full rounded border border-neutral-300 px-3 py-2 text-sm" placeholder="비밀번호" />
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <button disabled={loading} type="submit" className="w-full rounded bg-neutral-800 py-2 text-sm font-medium text-white disabled:opacity-50">
             {loading ? "로그인 중…" : "로그인"}
           </button>
         </form>
