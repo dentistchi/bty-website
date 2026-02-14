@@ -1,0 +1,18 @@
+# SSH config 예시
+# 사용법: 필요한 부분을 복사해 ~/.ssh/config 에 붙여넣기 (또는 이 파일을 config 로 복사 후 수정)
+# macOS/Linux: ~/.ssh/config
+# Windows: %USERPROFILE%\.ssh\config
+
+# GitHub
+Host github.com
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/id_ed25519
+  IdentitiesOnly yes
+
+# 다른 서버 예시 (호스트/유저/키 경로만 바꿔서 사용)
+# Host my-server
+#   HostName 192.168.1.100
+#   User deploy
+#   IdentityFile ~/.ssh/id_ed25519_deploy
+#   Port 22
