@@ -11,6 +11,9 @@ export async function GET(req: Request) {
   }
 
   const supabase = createServerSupabaseClient();
+  if (!supabase) {
+    return NextResponse.json({ error: "Supabase가 설정되지 않았습니다." }, { status: 503 });
+  }
 
   const { data, error } = await supabase
     .from("organizations")

@@ -16,9 +16,15 @@ export default function AdminOrganizationsPage() {
 
   useEffect(() => {
     let cancelled = false;
+    const client = supabase;
+    if (!client) {
+      setError("Supabase가 설정되지 않았습니다.");
+      setLoading(false);
+      return;
+    }
 
     async function load() {
-      const { data } = await supabase.auth.getSession();
+      const { data } = await client.auth.getSession();
       const token = data.session?.access_token;
 
       if (!token) {

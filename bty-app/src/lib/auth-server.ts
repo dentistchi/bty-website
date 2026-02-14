@@ -11,6 +11,7 @@ export async function getAuthUserFromRequest(request: Request): Promise<User | n
   if (!token) return null;
 
   const supabase = createServerSupabaseClient();
+  if (!supabase) return null;
   const {
     data: { user },
     error,

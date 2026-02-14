@@ -15,11 +15,12 @@ function ResetPasswordForm() {
   const [hasSession, setHasSession] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!supabase) {
+    const client = supabase;
+    if (!client) {
       setHasSession(false);
       return;
     }
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    client.auth.getSession().then(({ data: { session } }) => {
       setHasSession(!!session);
     });
   }, []);
@@ -35,12 +36,13 @@ function ResetPasswordForm() {
       setError("비밀번호가 일치하지 않습니다.");
       return;
     }
-    if (!supabase) {
+    const client = supabase;
+    if (!client) {
       setError("연결 오류가 발생했습니다.");
       return;
     }
     setLoading(true);
-    const { error: updateError } = await supabase.auth.updateUser({ password });
+    const { error: updateError } = await client.auth.updateUser({ password });
     setLoading(false);
     if (updateError) {
       setError(updateError.message);

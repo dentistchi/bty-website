@@ -31,7 +31,12 @@ function AdminLoginForm() {
     setError(null);
     setLoading(true);
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      const client = supabase;
+      if (!client) {
+        setError("Supabase가 설정되지 않았습니다.");
+        return;
+      }
+      const { error: signInError } = await client.auth.signInWithPassword({ email, password });
       if (signInError) {
         setError(signInError.message);
         return;
@@ -47,7 +52,8 @@ function AdminLoginForm() {
 
   const handleResetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!resetEmail.trim() || !supabase) return;
+    const client = supabase;
+    if (!resetEmail.trim() || !client) return;
     setError(null);
     setResetLoading(true);
     const redirectTo = getRedirectTo();
@@ -56,7 +62,7 @@ function AdminLoginForm() {
       setResetLoading(false);
       return;
     }
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
+    const { error: resetError } = await client.auth.resetPasswordForEmail(resetEmail.trim(), {
       redirectTo,
     });
     setResetLoading(false);

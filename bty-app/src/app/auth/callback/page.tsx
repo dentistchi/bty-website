@@ -22,7 +22,8 @@ function AuthCallbackForm() {
   const [message, setMessage] = useState<string>("");
 
   useEffect(() => {
-    if (!supabase) {
+    const client = supabase;
+    if (!client) {
       setStatus("error");
       setMessage("인증 처리에 실패했습니다. 다시 시도해주세요.");
       return;
@@ -36,7 +37,7 @@ function AuthCallbackForm() {
       const next = searchParams.get("next");
 
       if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        const { error } = await client.auth.exchangeCodeForSession(code);
         if (!mounted) return;
         if (error) {
           setStatus("error");
@@ -58,7 +59,7 @@ function AuthCallbackForm() {
       const recoveryType = hashParams.type || type;
 
       if (accessToken && refreshToken) {
-        const { error } = await supabase.auth.setSession({
+        const { error } = await client.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         });

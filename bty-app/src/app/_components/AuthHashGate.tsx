@@ -35,8 +35,9 @@ export default function AuthHashGate() {
         }
       };
 
-      if (type === "recovery" && accessToken && refreshToken && supabase) {
-        const { error } = await supabase.auth.setSession({
+      const client = supabase;
+      if (type === "recovery" && accessToken && refreshToken && client) {
+        const { error } = await client.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         });
@@ -51,8 +52,8 @@ export default function AuthHashGate() {
         return;
       }
 
-      if (type !== "recovery" && accessToken && refreshToken && supabase) {
-        const { error } = await supabase.auth.setSession({
+      if (type !== "recovery" && accessToken && refreshToken && client) {
+        const { error } = await client.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         });

@@ -3,6 +3,9 @@ import { isAdminRole } from "@/lib/roles";
 
 export async function requireAdmin(request: Request) {
   const supabase = createServerSupabaseClient();
+  if (!supabase) {
+    return { error: "Service unavailable", status: 503 };
+  }
 
   const authHeader = request.headers.get("authorization");
   const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;

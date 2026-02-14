@@ -5,6 +5,9 @@ const DEFAULT_ORG_ID = "11196cff-205e-4a58-aedc-289089ea4b07";
 
 export async function POST(req: Request) {
   const supabase = createServerSupabaseClient();
+  if (!supabase) {
+    return NextResponse.json({ error: "Supabase가 설정되지 않았습니다." }, { status: 503 });
+  }
   const { email, password } = await req.json();
 
   if (!email || !password || password.length < 6) {
