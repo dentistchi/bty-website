@@ -41,17 +41,41 @@ function AdminLoginForm() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/login", {
+      const client = supabase;
+      if (!client) {
+        setError("Supabase가 설정되지 않았습니다.");
+        return;
+      }
+
+      const { data: signInData, error: signInError } = await client.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (signInError) {
+        setError(signInError.message);
+        return;
+      }
+
+      const { data } = await client.auth.getSession();
+      const session = data.session;
+      if (!session) {
+        setError("세션을 가져오지 못했습니다.");
+        return;
+      }
+
+      const r = await fetch("/api/auth/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+        }),
       });
 
-      const json = await res.json().catch(() => ({}));
-
-      if (!res.ok || !json?.ok) {
-        setError(json?.message || "로그인에 실패했습니다.");
+      if (!r.ok) {
+        const txt = await r.text().catch(() => "");
+        setError(`세션 쿠키 설정 실패: ${r.status} ${txt}`);
         return;
       }
 
