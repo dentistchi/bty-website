@@ -1,11 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Cloudflare Pages용 필수 설정
+  // 빌드타임 env 주입 (클라이언트 번들 + 서버/Edge). Cloudflare Workers 런타임에서도 사용.
+  env: {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+  },
+
   images: {
     unoptimized: true,
   },
 
-  // 빌드 에러 우회 (일단 배포 성공 우선)
   eslint: {
     ignoreDuringBuilds: true,
   },

@@ -7,6 +7,7 @@ function corsHeaders(request: NextRequest) {
   const origin = request.headers.get("origin") || "";
   const allowed =
     origin.includes("localhost") ||
+    origin.endsWith(".workers.dev") ||
     origin.endsWith(".pages.dev") ||
     origin.endsWith("today-me.pages.dev") ||
     origin.endsWith("dear-me.pages.dev") ||

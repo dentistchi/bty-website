@@ -1,4 +1,4 @@
-// Type only: avoid runtime import on server/worker
+// Browser-only Supabase client. NEXT_PUBLIC_* must be inlined at build time (next.config.js env).
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
