@@ -14,10 +14,10 @@ const TYPING_TIMEOUT_25S = 25_000;
 export function Chatbot() {
   const pathname = usePathname() ?? "";
   const locale: Locale = pathname.startsWith("/en") ? "en" : "ko";
-  const messages = getMessages(locale);
-  const t = messages.chat;
+  const i18n = getMessages(locale);
+  const t = i18n.chat;
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [typingText, setTypingText] = useState<string | null>(null);
@@ -42,7 +42,7 @@ export function Chatbot() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, typingText, errorMsg]);
+  }, [chatMessages, typingText, errorMsg]);
 
   const isBtyPage = pathname.includes("/bty");
   const introMessage =
@@ -61,9 +61,9 @@ export function Chatbot() {
 
       setLastUserMessage(trimmed);
       setInput("");
-      setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
+      setChatMessages((prev) => [...prev, { role: "user", content: trimmed }]);
       setIsTyping(true);
-      setTypingText(t.typing);
+      setTypingText(t.thinking);
       setShowRetry(false);
       setErrorMsg(null);
       clearTimers();
@@ -71,7 +71,7 @@ export function Chatbot() {
       abortRef.current = new AbortController();
 
       timeout10Ref.current = setTimeout(() => {
-        setTypingText(t.typingSlow);
+        setTypingText(t.thinking);
       }, TYPING_TIMEOUT_10S);
 
       timeout25Ref.current = setTimeout(() => {
@@ -86,7 +86,7 @@ export function Chatbot() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            messages: [...messages, { role: "user", content: trimmed }],
+            messages: [...chatMessages, { role: "user", content: trimmed }],
             mode,
           }),
           signal: abortRef.current.signal,
@@ -97,12 +97,12 @@ export function Chatbot() {
           (locale === "ko"
             ? "말해줘서 고마워요. 여기선 뭐든 괜찮아요."
             : "Thanks for sharing. You're okay as you are.");
-        setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+        setChatMessages((prev) => [...prev, { role: "assistant", content: reply }]);
       } catch (err) {
         wasAborted = err instanceof Error && err.name === "AbortError";
         if (!wasAborted) {
           hadError = true;
-          setErrorMsg(t.errorMsg);
+          setErrorMsg(locale === "ko" ? "잠시 문제가 생겼어요. 다시 시도해 주세요." : "Something went wrong. Please try again.");
           setShowRetry(true);
         }
       } finally {
@@ -115,7 +115,7 @@ export function Chatbot() {
         }
       }
     },
-    [isTyping, messages, pathname, locale, t, clearTimers]
+    [isTyping, chatMessages, pathname, locale, t, clearTimers]
   );
 
   const send = () => {
@@ -195,10 +195,10 @@ export function Chatbot() {
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[120px]">
-            {messages.length === 0 && !typingText && !errorMsg && (
+            {chatMessages.length === 0 && !typingText && !errorMsg && (
               <p className="text-sm text-dear-charcoal-soft">{introMessage}</p>
             )}
-            {messages.map((m, i) => (
+            {chatMessages.map((m, i) => (
               <div
                 key={i}
                 className={cn(
@@ -230,7 +230,7 @@ export function Chatbot() {
                 onClick={retry}
                 className={cn("text-sm font-medium hover:underline", themeColors.retry)}
               >
-                {t.retry}
+                {locale === "ko" ? "다시 시도" : "Retry"}
               </button>
             )}
             <div ref={bottomRef} />
