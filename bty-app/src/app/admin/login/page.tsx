@@ -13,6 +13,18 @@ function AdminLoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showReset, setShowReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetSent, setResetSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+
+  const getRedirectTo = () => {
+    if (typeof window === "undefined") return "";
+    const base =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      (typeof window !== "undefined" ? window.location.origin : "");
+    return `${base.replace(/\/$/, "")}/auth/callback`;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +43,28 @@ function AdminLoginForm() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleResetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail.trim() || !supabase) return;
+    setError(null);
+    setResetLoading(true);
+    const redirectTo = getRedirectTo();
+    if (!redirectTo || redirectTo.includes("localhost")) {
+      setError("비밀번호 재설정 링크는 프로덕션 URL에서만 사용할 수 있습니다. NEXT_PUBLIC_SITE_URL을 설정하세요.");
+      setResetLoading(false);
+      return;
+    }
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
+      redirectTo,
+    });
+    setResetLoading(false);
+    if (resetError) {
+      setError(resetError.message);
+      return;
+    }
+    setResetSent(true);
   };
 
   return (
@@ -74,6 +108,49 @@ function AdminLoginForm() {
             {loading ? "로그인 중..." : "로그인"}
           </button>
         </form>
+        {!showReset ? (
+          <p className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => setShowReset(true)}
+              className="text-sm text-neutral-600 hover:text-neutral-900 underline"
+            >
+              비밀번호 재설정
+            </button>
+          </p>
+        ) : !resetSent ? (
+          <form onSubmit={handleResetSubmit} className="mt-4 pt-4 border-t border-neutral-200 space-y-3">
+            <label className="block text-sm font-medium text-neutral-700">재설정할 이메일</label>
+            <input
+              type="email"
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              placeholder="admin@example.com"
+              className="w-full rounded border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
+              required
+            />
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={resetLoading}
+                className="rounded bg-neutral-800 px-3 py-2 text-sm text-white hover:bg-neutral-700 disabled:opacity-50"
+              >
+                {resetLoading ? "전송 중..." : "재설정 메일 보내기"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowReset(false); setError(null); }}
+                className="rounded border border-neutral-300 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+              >
+                취소
+              </button>
+            </div>
+          </form>
+        ) : (
+          <p className="mt-4 text-sm text-neutral-600 text-center">
+            재설정 메일을 보냈습니다. 메일의 링크로 이동한 뒤 새 비밀번호를 설정해주세요.
+          </p>
+        )}
       </div>
     </div>
   );

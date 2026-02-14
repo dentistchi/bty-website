@@ -21,6 +21,11 @@ function corsHeaders(request: NextRequest) {
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
+  // Auth routes: always pass through (callback, reset-password, etc.) — never redirect to /admin/login
+  if (pathname.startsWith("/auth")) {
+    return NextResponse.next();
+  }
+
   // CORS for API only
   if (pathname.startsWith("/api/")) {
     if (request.method === "OPTIONS") {
@@ -85,5 +90,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/:path*", "/admin/:path*"],
+  matcher: ["/api/:path*", "/admin/:path*", "/auth/:path*"],
 };
