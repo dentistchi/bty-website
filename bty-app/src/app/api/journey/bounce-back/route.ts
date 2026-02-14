@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getAuthUserFromRequest } from "@/lib/auth-server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
+export const runtime = "edge";
+
 export async function POST(request: Request) {
   const user = await getAuthUserFromRequest(request);
   if (!user) {

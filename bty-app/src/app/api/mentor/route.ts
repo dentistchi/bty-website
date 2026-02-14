@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const runtime = "edge";
+
 /**
  * Dr. Chi Mentor Mode — 5가지 주제로 깊이 있는 대화
  * 감정 안전 밸브: 낮은 자존감 신호 감지 시 Dear Me로 유도

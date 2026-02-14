@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+export const runtime = "edge";
+
 export async function POST(req: NextRequest) {
   const { email, password } = (await req.json().catch(() => ({}))) as {
     email?: string;

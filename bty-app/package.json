@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "pages:build": "npx @cloudflare/next-on-pages@latest --experimental-minify",
+    "check-edge": "grep -r \"export const runtime\" src/app/api || echo 'Warning: Some routes may be missing edge runtime config'",
+    "pages:build": "npm run check-edge && npx @cloudflare/next-on-pages@latest --experimental-minify",
     "preview": "npm run pages:build && wrangler pages dev",
     "deploy": "npm run pages:build && wrangler pages deploy"
   },

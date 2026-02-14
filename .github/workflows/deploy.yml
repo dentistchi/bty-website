@@ -56,6 +56,18 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
+      - name: Verify Edge Runtime configuration
+        run: |
+          echo "=== Checking API routes for Edge Runtime config ==="
+          find src/app/api -name "route.ts" -o -name "route.js" | while read file; do
+            if ! grep -qE "export const runtime.*edge" "$file" 2>/dev/null; then
+              echo "⚠️  Missing edge runtime in: $file"
+            else
+              echo "✅ Edge runtime configured: $file"
+            fi
+          done
+        working-directory: bty-app
+
       - name: Build for Cloudflare Pages
         run: npm run pages:build
         working-directory: bty-app

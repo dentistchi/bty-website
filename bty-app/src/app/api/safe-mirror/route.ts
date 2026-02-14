@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const runtime = "edge";
+
 /**
  * Safe Mirror (안전한 거울) — AI 상담
  * 페르소나: 상담가이자 사용자 내면의 따뜻한 자아. 감정 이름 붙이기·검증·재해석만. 해결책/훈계/상투적 위로 금지.

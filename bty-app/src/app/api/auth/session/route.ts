@@ -3,6 +3,8 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { getAuthUserFromRequest } from "@/lib/auth-server";
 
+export const runtime = "edge";
+
 export async function GET(request: Request) {
   const user = await getAuthUserFromRequest(request);
   if (!user) {
