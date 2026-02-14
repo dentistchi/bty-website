@@ -1,12 +1,14 @@
 name = "bty-website"
-main = ".open-next/worker.js"
 compatibility_date = "2026-02-14"
-compatibility_flags = ["nodejs_compat", "nodejs_compat_v2", "nodejs_compat_populate_process_env", "global_fetch_strictly_public"]
+pages_build_output_dir = ".vercel/output/static"
 
-[assets]
-directory = ".open-next/assets"
-binding = "ASSETS"
+[build]
+command = "npm run pages:build"
 
-[[services]]
-binding = "WORKER_SELF_REFERENCE"
-service = "bty-website"
+[env.production]
+NODE_VERSION = "20"
+
+compatibility_flags = [
+  "nodejs_compat_v2",
+  "experimental_next"
+]

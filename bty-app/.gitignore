@@ -3,14 +3,19 @@ node_modules/
 .pnp
 .pnp.js
 package-lock.json
+.npmrc
 
-# Next
+# Next / Build
 .next/
 out/
+dist/
 
 # Vercel / OpenNext
 .vercel/
 .open-next/
+
+# Wrangler
+.wrangler/
 
 # Env
 .env

@@ -9,6 +9,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -17,37 +18,54 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "20.x"
+          cache: "npm"
+          cache-dependency-path: bty-app/package-lock.json
 
-      - name: Clean install dependencies
+      - name: Create .npmrc
+        run: |
+          echo "legacy-peer-deps=true" > .npmrc
+          echo "engine-strict=false" >> .npmrc
+        working-directory: bty-app
+
+      - name: Clean and install dependencies
         run: |
           rm -rf node_modules package-lock.json .next
           npm cache clean --force
-          npm install --legacy-peer-deps
+          npm install --legacy-peer-deps --no-audit --no-fund
         working-directory: bty-app
 
-      - name: Verify Next.js version
+      - name: Verify environment
         run: |
-          echo "=== Installed Next.js version ==="
-          npm list next
-          echo "=== Node version ==="
+          echo "=== Node.js version ==="
           node --version
+          echo "=== npm version ==="
+          npm --version
+          echo "=== Installed Next.js version ==="
+          npm list next || true
+          echo "=== Package tree ==="
+          npm ls --depth=0 || true
         working-directory: bty-app
 
-      - name: Build with Next.js
+      - name: Build Next.js
         run: npm run build
         working-directory: bty-app
         env:
           NODE_ENV: production
+          NODE_OPTIONS: "--max_old_space_size=4096"
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
-      - name: Deploy to Cloudflare Pages
-        run: npm run deploy
+      - name: Build for Cloudflare Pages
+        run: npm run pages:build
         working-directory: bty-app
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NODE_ENV: production
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy .vercel/output/static --project-name=bty-website
+          workingDirectory: bty-app
