@@ -1,23 +1,35 @@
 name: Deploy OpenNext to Cloudflare Workers
+
 on:
   push:
     branches: ["main"]
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: bty-website/bty-app/package-lock.json
+          cache-dependency-path: bty-app/package-lock.json
+
       - name: Install
         run: npm ci
-        working-directory: bty-website/bty-app
-      - name: Deploy
-        run: npm run deploy
-        working-directory: bty-website/bty-app
+        working-directory: bty-app
+
+      - name: Build (OpenNext)
+        run: npm run pages:build
+        working-directory: bty-app
+
+      - name: Deploy (Wrangler)
+        run: npx wrangler deploy --config wrangler.toml
+        working-directory: bty-app
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
