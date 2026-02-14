@@ -1,10 +1,10 @@
-# bty-app만 배포. 반드시 소스/의존성 모두 bty-app/ 안에서 완결.
-# (루트 package.json·다른 폴더 의존 시 CI 실패)
-name: Deploy OpenNext to Cloudflare Workers
+name: Deploy to Cloudflare Pages
 
 on:
   push:
-    branches: ["main"]
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   deploy:
@@ -14,27 +14,35 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"  # Next 15: Node.js 18.18+ (20 LTS 권장)
+          node-version: "20"
 
       - name: Clean install dependencies
         run: |
-          rm -rf node_modules package-lock.json
-          npm install
+          rm -rf node_modules package-lock.json .next
+          npm cache clean --force
+          npm install --legacy-peer-deps
         working-directory: bty-app
 
-      - name: Debug ENV
+      - name: Verify Next.js version
         run: |
-          echo "URL=$NEXT_PUBLIC_SUPABASE_URL"
-          echo "ANON=$NEXT_PUBLIC_SUPABASE_ANON_KEY"
+          echo "=== Installed Next.js version ==="
+          npm list next
+          echo "=== Node version ==="
+          node --version
+        working-directory: bty-app
+
+      - name: Build with Next.js
+        run: npm run build
         working-directory: bty-app
         env:
+          NODE_ENV: production
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
-      - name: Deploy (OpenNext build + Wrangler)
+      - name: Deploy to Cloudflare Pages
         run: npm run deploy
         working-directory: bty-app
         env:

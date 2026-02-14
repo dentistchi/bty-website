@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { AuthGate } from "@/components/AuthGate";
 import { Comeback } from "@/components/Comeback";
@@ -337,17 +338,17 @@ export function JourneyBoard() {
           </div>
 
           <footer className="mt-12 pt-6 border-t border-dojo-purple-muted text-center text-sm text-dojo-ink-soft space-x-4">
-            <a href="/bty/mentor" className="text-dojo-purple hover:underline">
+            <Link href="/bty/mentor" className="text-dojo-purple hover:underline">
               Dr. Chi Mentor
-            </a>
+            </Link>
             <span>·</span>
-            <a href="/bty/integrity" className="text-dojo-purple hover:underline">
+            <Link href="/bty/integrity" className="text-dojo-purple hover:underline">
               역지사지 시뮬레이터
-            </a>
+            </Link>
             <span>·</span>
-            <a href="/" className="text-dojo-purple hover:underline">
+            <Link href="/" className="text-dojo-purple hover:underline">
               Dear Me로 가기
-            </a>
+            </Link>
           </footer>
         </div>
 
