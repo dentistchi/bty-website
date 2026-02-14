@@ -3,7 +3,10 @@ node_modules/
 .pnp
 .pnp.js
 
-# Next
+# Next / OpenNext build output
+**/.open-next/
+**/.vercel/
+**/.next/
 .next/
 out/
 
@@ -23,8 +26,11 @@ yarn-error.log*
 .DS_Store
 *.pem
 
-# Vercel
-.vercel
 
 # TypeScript
 next-env.d.ts
+
+# OpenNext build output
+**/.open-next/
+**/.vercel/
+**/.next/

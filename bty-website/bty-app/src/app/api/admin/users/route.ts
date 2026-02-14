@@ -10,8 +10,6 @@ import {
 } from "@/lib/auth-store";
 import { signToken } from "@/lib/auth";
 
-export const runtime = "edge";
-
 // Simple hash function (same as login/register routes)
 function simpleHash(password: string): string {
   let h = 0;

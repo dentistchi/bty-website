@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { findUserByEmail, createUser } from "@/lib/auth-store";
 import { signToken } from "@/lib/auth";
 
-export const runtime = "edge";
-
 function simpleHash(password: string): string {
   // Demo only. In production use bcrypt or similar.
   let h = 0;

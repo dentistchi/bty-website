@@ -4,8 +4,6 @@
  */
 import { NextResponse } from "next/server";
 
-export const runtime = "edge";
-
 const BTY_AI_URL = process.env.NEXT_PUBLIC_BTY_AI_URL || "http://localhost:4000";
 const FETCH_TIMEOUT_MS = 5_000;
 

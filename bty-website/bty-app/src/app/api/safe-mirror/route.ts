@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getOptionalRequestContext } from "@cloudflare/next-on-pages";
 
 /**
  * Safe Mirror (안전한 거울) — AI 상담
@@ -26,8 +25,6 @@ const FALLBACK_KO =
   "그런 마음이 드는 건 당연해요. 그건 당신이 부족해서가 아니라, 그 상황을 소중히 여기기 때문이에요.";
 const FALLBACK_EN =
   "It makes sense to feel that way. It's not that you're lacking—it's that you care about what happened.";
-
-export const runtime = "edge";
 
 function toGeminiContents(
   messages: { role: string; content?: string }[],
@@ -58,15 +55,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Message required" }, { status: 400 });
     }
 
-    // Cloudflare: nodejs_compat_populate_process_env로 process.env에 주입되거나, getRequestContext().env 사용
-    const ctx = getOptionalRequestContext();
-    const env = ctx?.env as Record<string, string | undefined> | undefined;
-    const apiKey =
-      process.env.GEMINI_API_KEY ??
-      (typeof env?.GEMINI_API_KEY === "string" ? env.GEMINI_API_KEY : null);
+    const apiKey = process.env.GEMINI_API_KEY ?? null;
 
     if (!apiKey) {
-      console.error("[safe-mirror] GEMINI_API_KEY not found. process.env:", !!process.env.GEMINI_API_KEY, "ctx?.env:", !!ctx?.env);
+      console.error("[safe-mirror] GEMINI_API_KEY not found");
     }
 
     if (apiKey) {

@@ -1,7 +1,10 @@
 # Dependencies
 node_modules/
 
-# Build / Next
+# Build / Next / OpenNext build output
+**/.open-next/
+**/.vercel/
+**/.next/
 .next/
 out/
 build/
@@ -18,7 +21,10 @@ dist/
 .idea/
 .vscode/
 
-# Wrangler / Vercel
+# Wrangler
 .wrangler/
-.vercel/
 *.pem
+
+# Duplicate / backup files
+package-lock 2.json
+.github/workflows 2/

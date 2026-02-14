@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/admin-auth";
 
-export const runtime = "edge";
-
 const BTY_AI_URL = process.env.NEXT_PUBLIC_BTY_AI_URL || "http://localhost:4000";
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
 const FETCH_TIMEOUT_MS = 10_000;

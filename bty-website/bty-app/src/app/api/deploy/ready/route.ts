@@ -4,8 +4,6 @@
  * Never returns actual secrets.
  */
 
-export const runtime = "edge";
-
 const REQUIRED_ENV_VARS = [
   // NextAuth
   "NEXTAUTH_URL",

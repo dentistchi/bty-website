@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase";
 
-export const runtime = "edge";
-
 async function getUserId(request: Request): Promise<string | null> {
   const auth = request.headers.get("authorization");
   const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;

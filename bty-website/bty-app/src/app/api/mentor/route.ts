@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getOptionalRequestContext } from "@cloudflare/next-on-pages";
 
 /**
  * Dr. Chi Mentor Mode — 5가지 주제로 깊이 있는 대화
@@ -67,8 +66,6 @@ function isLowSelfEsteemSignal(text: string): boolean {
   return LOW_SELF_ESTEEM_PATTERNS.some((pat) => pat.test(text));
 }
 
-export const runtime = "edge";
-
 function toGeminiContents(
   messages: { role: string; content?: string }[],
   userContent: string
@@ -110,11 +107,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const ctx = getOptionalRequestContext();
-    const env = ctx?.env as Record<string, string | undefined> | undefined;
-    const apiKey =
-      process.env.GEMINI_API_KEY ??
-      (typeof env?.GEMINI_API_KEY === "string" ? env.GEMINI_API_KEY : null);
+    const apiKey = process.env.GEMINI_API_KEY ?? null;
 
     if (apiKey) {
       const systemPrompt = buildSystemPrompt(topic);
