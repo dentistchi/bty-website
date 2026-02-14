@@ -41,25 +41,24 @@ function AdminLoginForm() {
     setLoading(true);
 
     try {
-      if (!supabase) {
-        setError("Supabase가 설정되지 않았습니다.");
-        return;
-      }
-
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
       });
 
-      if (error) {
-        setError(error.message);
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok || !json?.ok) {
+        setError(json?.message || "로그인에 실패했습니다.");
         return;
       }
 
-      // 로그인 성공
       router.replace(nextPath);
-    } catch {
-      setError("로그인 중 오류가 발생했습니다.");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "로그인 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
