@@ -1,8 +1,9 @@
+export const runtime = "edge";
+
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { requireAdmin } from "@/lib/require-admin";
 
-export const runtime = "edge";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {

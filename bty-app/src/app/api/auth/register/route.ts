@@ -1,7 +1,7 @@
+export const runtime = "edge";
+
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-
-export const runtime = "edge";
 
 const DEFAULT_ORG_ID = "11196cff-205e-4a58-aedc-289089ea4b07";
 

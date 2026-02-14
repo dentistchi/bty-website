@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
-
 export const runtime = "edge";
+
+import { NextResponse } from "next/server";
 
 /**
  * Dr. Chi Mentor Mode — 5가지 주제로 깊이 있는 대화

@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
-
 export const runtime = "edge";
+
+import { NextResponse } from "next/server";
 
 /**
  * Safe Mirror (안전한 거울) — AI 상담

@@ -1,6 +1,0 @@
-name = "bty-website"
-compatibility_date = "2026-02-14"
-pages_build_output_dir = ".vercel/output/static"
-
-[env.production]
-compatibility_flags = ["nodejs_compat_v2"]

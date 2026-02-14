@@ -1,8 +1,8 @@
+export const runtime = "edge";
+
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/require-admin";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-
-export const runtime = "edge";
 
 // GET: List all users (Supabase Auth)
 export async function GET(req: NextRequest) {
