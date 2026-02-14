@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getPracticeLog, type PracticeEntry } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 /**
  * 나의 여정 — 파도 모양 그래프 위에 기록한 날짜를 점으로 표시
  * LocalStorage 데이터를 읽어와 점을 찍음
+ * - window 이벤트 "bty-practice-updated" 수신 시 자동 갱신
  */
 
 const WAVE_PATH =
@@ -30,15 +31,20 @@ function getDots(entries: PracticeEntry[]): { x: number; y: number; type: "succe
   });
 }
 
-export function JourneyGraph({
-  className,
-  refreshKey = 0,
-}: {
-  className?: string;
-  refreshKey?: number;
-}) {
-  const entries = useMemo(() => getPracticeLog(), [refreshKey]);
-  const dots = useMemo(() => getDots(entries), [entries]);
+export function JourneyGraph({ className }: { className?: string }) {
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const handler = () => setTick((k) => k + 1);
+    window.addEventListener("bty-practice-updated", handler);
+    return () => window.removeEventListener("bty-practice-updated", handler);
+  }, []);
+
+  const { entries } = useMemo(
+    () => ({ entries: getPracticeLog(), tick }),
+    [tick]
+  );
+  const entryDots = useMemo(() => getDots(entries), [entries]);
 
   if (entries.length === 0) {
     return (
@@ -114,7 +120,7 @@ export function JourneyGraph({
               strokeLinecap="round"
               strokeLinejoin="round"
             />
-            {dots.map((d, i) => (
+            {entryDots.map((d, i) => (
               <circle
                 key={i}
                 cx={d.x}

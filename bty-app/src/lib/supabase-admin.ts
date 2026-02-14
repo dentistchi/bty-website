@@ -9,22 +9,4 @@ export function getSupabaseAdmin(): SupabaseClient | null {
   return createClient(supabaseUrl, supabaseServiceKey);
 }
 
-export type JourneyProfile = {
-  user_id: string;
-  current_day: number;
-  started_at: string;
-  updated_at: string;
-  season?: number;
-  bounce_back_count?: number;
-};
-
-export type DayEntry = {
-  id?: string;
-  user_id: string;
-  day: number;
-  completed: boolean;
-  mission_checks: number[];
-  reflection_text: string | null;
-  created_at?: string;
-  updated_at?: string;
-};
+export type { DayEntry, JourneyProfile } from "./supabase-admin-types";

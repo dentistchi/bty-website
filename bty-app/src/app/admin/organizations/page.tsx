@@ -16,15 +16,15 @@ export default function AdminOrganizationsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    const client = supabase;
-    if (!client) {
-      setError("Supabase가 설정되지 않았습니다.");
+    if (!supabase) {
+      setError("Supabase 환경변수가 설정되지 않았습니다.");
       setLoading(false);
       return;
     }
+    const client = supabase;
 
-    async function load() {
-      const { data } = await client.auth.getSession();
+    async function load(supabaseClient: NonNullable<typeof supabase>) {
+      const { data } = await supabaseClient.auth.getSession();
       const token = data.session?.access_token;
 
       if (!token) {
@@ -54,7 +54,7 @@ export default function AdminOrganizationsPage() {
       setLoading(false);
     }
 
-    load();
+    load(client);
     return () => {
       cancelled = true;
     };

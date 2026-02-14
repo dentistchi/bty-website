@@ -54,14 +54,14 @@ export function ResilienceGraph({
   const stroke = isDear ? "#8A9A5B" : isSanctuary ? "var(--sanctuary-flower)" : "#5B4B8A";
   const labelColor = isDear ? "text-dear-charcoal-soft" : isSanctuary ? "text-sanctuary-text-soft" : "text-dojo-ink-soft";
 
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [tick, setTick] = useState(0);
   useEffect(() => {
-    const handler = () => setRefreshKey((k) => k + 1);
+    const handler = () => setTick((k) => k + 1);
     window.addEventListener("dear-self-esteem-updated", handler);
     return () => window.removeEventListener("dear-self-esteem-updated", handler);
   }, []);
-  const history = useMemo(() => getSelfEsteemHistory(), [refreshKey]);
-  const dots = useMemo(() => getDots(history), [history]);
+  const history = getSelfEsteemHistory();
+  const historyDots = useMemo(() => getDots(history), [history]);
 
   return (
     <div
@@ -121,7 +121,7 @@ export function ResilienceGraph({
               strokeLinecap="round"
               strokeLinejoin="round"
             />
-            {dots.map((d, i) => (
+            {historyDots.map((d, i) => (
               <circle
                 key={i}
                 cx={d.x}

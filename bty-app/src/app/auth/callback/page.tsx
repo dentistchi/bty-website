@@ -22,22 +22,21 @@ function AuthCallbackForm() {
   const [message, setMessage] = useState<string>("");
 
   useEffect(() => {
-    const client = supabase;
-    if (!client) {
+    if (!supabase) {
       setStatus("error");
-      setMessage("인증 처리에 실패했습니다. 다시 시도해주세요.");
+      setMessage("Supabase 환경변수가 설정되지 않았습니다.");
       return;
     }
-
+    const client = supabase;
     let mounted = true;
 
-    async function run() {
+    async function run(supabaseClient: NonNullable<typeof supabase>) {
       const code = searchParams.get("code");
       const type = searchParams.get("type");
       const next = searchParams.get("next");
 
       if (code) {
-        const { error } = await client.auth.exchangeCodeForSession(code);
+        const { error } = await supabaseClient.auth.exchangeCodeForSession(code);
         if (!mounted) return;
         if (error) {
           setStatus("error");
@@ -59,7 +58,7 @@ function AuthCallbackForm() {
       const recoveryType = hashParams.type || type;
 
       if (accessToken && refreshToken) {
-        const { error } = await client.auth.setSession({
+        const { error } = await supabaseClient.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         });
@@ -81,7 +80,7 @@ function AuthCallbackForm() {
       setMessage("인증 처리에 실패했습니다. 다시 시도해주세요.");
     }
 
-    run();
+    run(client);
     return () => {
       mounted = false;
     };

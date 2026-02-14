@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -17,6 +17,24 @@ function AdminLoginForm() {
   const [resetEmail, setResetEmail] = useState("");
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!supabase) {
+      setError("Supabase 환경변수가 설정되지 않았습니다.");
+      return;
+    }
+    const client = supabase;
+    async function run() {
+      const { data } = await client.auth.getSession();
+      if (cancelled) return;
+      if (data.session) router.replace(searchParams.get("next") || "/admin/debug");
+    }
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [router, searchParams]);
 
   const getRedirectTo = () => {
     if (typeof window === "undefined") return "";

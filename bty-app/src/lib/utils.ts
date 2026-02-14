@@ -54,6 +54,7 @@ export function appendPracticeEntry(entry: PracticeEntry): void {
   );
   if (typeof window === "undefined") return;
   localStorage.setItem(PRACTICE_LOG_KEY, JSON.stringify(next));
+  window.dispatchEvent(new Event("bty-practice-updated"));
 }
 
 // 자존감 테스트 결과 — 날짜별 누적

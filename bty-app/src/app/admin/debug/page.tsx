@@ -142,8 +142,8 @@ export default function DebugPage() {
           <ul className="list-disc list-inside space-y-1 text-xs">
             <li>브라우저 개발자 도구의 Network 탭에서 API 요청/응답을 확인하세요.</li>
             <li>Console 탭에서 서버 로그를 확인하세요 (서버 터미널).</li>
-            <li>localStorage에 저장된 토큰을 확인하려면: <code className="bg-yellow-100 px-1 rounded">localStorage.getItem('bty_auth_token')</code></li>
-            <li>토큰을 삭제하려면: <code className="bg-yellow-100 px-1 rounded">localStorage.removeItem('bty_auth_token')</code></li>
+            <li>localStorage에 저장된 토큰을 확인하려면: <code className="bg-yellow-100 px-1 rounded">{`localStorage.getItem('bty_auth_token')`}</code></li>
+            <li>토큰을 삭제하려면: <code className="bg-yellow-100 px-1 rounded">{`localStorage.removeItem('bty_auth_token')`}</code></li>
           </ul>
         </div>
       </div>
