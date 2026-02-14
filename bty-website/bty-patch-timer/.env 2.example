@@ -1,0 +1,7 @@
+# Same as bty-ai-core for local development
+DATABASE_URL=postgresql://user:pass@host:5432/db
+OPENAI_API_KEY=sk-...
+
+# Optional: Teams webhook for admin notification
+TEAMS_WEBHOOK_URL=https://outlook.office.com/webhook/...
+TEAMS_ADMIN_URL=https://your-bty-app/admin/quality

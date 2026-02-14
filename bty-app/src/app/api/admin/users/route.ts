@@ -1,41 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminSession } from "@/lib/admin-auth";
-import {
-  findUserByEmail,
-  findUserById,
-  createUser,
-  getAllUsers,
-  deleteUser,
-  updateUserPassword,
-} from "@/lib/auth-store";
-import { signToken } from "@/lib/auth";
+import { requireAdmin } from "@/lib/require-admin";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
 
-// Simple hash function (same as login/register routes)
-function simpleHash(password: string): string {
-  let h = 0;
-  for (let i = 0; i < password.length; i++) {
-    h = (h << 5) - h + password.charCodeAt(i);
-    h |= 0;
-  }
-  return String(h);
-}
-
-// GET: List all users
+// GET: List all users (Supabase Auth)
 export async function GET(req: NextRequest) {
-  const admin = await requireAdminSession(req);
-  if (!admin) {
-    return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
+  const auth = await requireAdmin(req);
+  if ("error" in auth) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
+    return NextResponse.json({ error: "Server not configured" }, { status: 503 });
   }
 
   try {
-    const users = getAllUsers();
-    // Don't expose password hashes
-    const safeUsers = users.map((u) => ({
+    const { data, error } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    const safeUsers = (data.users ?? []).map((u) => ({
       id: u.id,
-      email: u.email,
-      createdAt: u.createdAt,
+      email: u.email ?? "",
+      created_at: u.created_at,
     }));
     return NextResponse.json({ users: safeUsers });
   } catch (err: unknown) {
@@ -47,11 +36,16 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST: Create new user
+// POST: Create new user (Supabase Auth)
 export async function POST(req: NextRequest) {
-  const admin = await requireAdminSession(req);
-  if (!admin) {
-    return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
+  const auth = await requireAdmin(req);
+  if ("error" in auth) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
+    return NextResponse.json({ error: "Server not configured" }, { status: 503 });
   }
 
   try {
@@ -66,16 +60,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (findUserByEmail(email)) {
-      return NextResponse.json({ error: "이미 사용 중인 이메일입니다." }, { status: 409 });
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
+
+    if (error) {
+      if (error.message.includes("already been registered")) {
+        return NextResponse.json({ error: "이미 사용 중인 이메일입니다." }, { status: 409 });
+      }
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    const id = `user_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    const passwordHash = simpleHash(password);
-    const user = createUser(id, email, passwordHash);
-
     return NextResponse.json({
-      user: { id: user.id, email: user.email, createdAt: user.createdAt },
+      user: {
+        id: data.user?.id,
+        email: data.user?.email,
+        created_at: data.user?.created_at,
+      },
     });
   } catch (err: unknown) {
     console.error("[admin/users] POST error:", err);
@@ -86,11 +89,16 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// DELETE: Delete user
+// DELETE: Delete user by id or email (Supabase Auth)
 export async function DELETE(req: NextRequest) {
-  const admin = await requireAdminSession(req);
-  if (!admin) {
-    return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
+  const auth = await requireAdmin(req);
+  if ("error" in auth) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
+    return NextResponse.json({ error: "Server not configured" }, { status: 503 });
   }
 
   try {
@@ -102,13 +110,23 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "id 또는 email이 필요합니다." }, { status: 400 });
     }
 
-    const user = userId ? findUserById(userId) : findUserByEmail(email!);
-    if (!user) {
+    let uid = userId;
+    if (!uid && email) {
+      const { data } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+      const found = data.users?.find((u) => u.email === email);
+      uid = found?.id ?? null;
+    }
+
+    if (!uid) {
       return NextResponse.json({ error: "사용자를 찾을 수 없습니다." }, { status: 404 });
     }
 
-    deleteUser(user.id);
-    return NextResponse.json({ success: true, deleted: { id: user.id, email: user.email } });
+    const { error } = await supabase.auth.admin.deleteUser(uid);
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, deleted: { id: uid } });
   } catch (err: unknown) {
     console.error("[admin/users] DELETE error:", err);
     return NextResponse.json(
@@ -118,11 +136,16 @@ export async function DELETE(req: NextRequest) {
   }
 }
 
-// PATCH: Update user password
+// PATCH: Update user password (Supabase Auth)
 export async function PATCH(req: NextRequest) {
-  const admin = await requireAdminSession(req);
-  if (!admin) {
-    return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
+  const auth = await requireAdmin(req);
+  if ("error" in auth) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
+    return NextResponse.json({ error: "Server not configured" }, { status: 503 });
   }
 
   try {
@@ -138,17 +161,28 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    const user = userId ? findUserById(userId) : email ? findUserByEmail(email) : null;
-    if (!user) {
+    let uid = userId;
+    if (!uid && email) {
+      const { data } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+      const found = data.users?.find((u) => u.email === email);
+      uid = found?.id ?? null;
+    }
+
+    if (!uid) {
       return NextResponse.json({ error: "사용자를 찾을 수 없습니다." }, { status: 404 });
     }
 
-    const passwordHash = simpleHash(newPassword);
-    updateUserPassword(user.id, passwordHash);
+    const { data, error } = await supabase.auth.admin.updateUserById(uid, {
+      password: newPassword,
+    });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,
-      user: { id: user.id, email: user.email },
+      user: { id: data.user?.id, email: data.user?.email },
     });
   } catch (err: unknown) {
     console.error("[admin/users] PATCH error:", err);

@@ -1,0 +1,30 @@
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+
+/** Server-side (service role) for API routes */
+export function getSupabaseAdmin(): SupabaseClient | null {
+  if (!supabaseUrl || !supabaseServiceKey) return null;
+  return createClient(supabaseUrl, supabaseServiceKey);
+}
+
+export type JourneyProfile = {
+  user_id: string;
+  current_day: number;
+  started_at: string;
+  updated_at: string;
+  season?: number;
+  bounce_back_count?: number;
+};
+
+export type DayEntry = {
+  id?: string;
+  user_id: string;
+  day: number;
+  completed: boolean;
+  mission_checks: number[];
+  reflection_text: string | null;
+  created_at?: string;
+  updated_at?: string;
+};

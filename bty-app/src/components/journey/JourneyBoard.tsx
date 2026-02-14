@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { getStoredToken } from "@/lib/auth-client";
 import { useAuth } from "@/contexts/AuthContext";
 import { JOURNEY_DAYS, type DayContent } from "@/lib/journey-content";
-import type { DayEntry } from "@/lib/supabase";
+import type { DayEntry } from "@/lib/supabase-admin";
 
 const API_BASE = "";
 

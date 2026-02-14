@@ -11,7 +11,7 @@ export default async function AdminLayout({
 }) {
   const session = await getServerSession(authOptions);
   if (!session) {
-    redirect("/admin-login?callbackUrl=/admin/quality");
+    redirect("/admin/login?next=/admin/quality");
   }
   if (!isAdmin(session)) {
     return (

@@ -1,0 +1,8 @@
+PORT=3978
+BTY_AI_CORE_URL=http://localhost:4000
+DEFAULT_ROLE=leader
+DEFAULT_USER_ID=emulator-user
+
+# Bot Framework - 로컬 에뮬레이터: 설정하지 않거나 비워 두세요 (설정 시 400 오류)
+# MicrosoftAppId=
+# MicrosoftAppPassword=

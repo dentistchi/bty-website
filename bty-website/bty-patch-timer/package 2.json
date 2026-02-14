@@ -1,0 +1,22 @@
+{
+  "name": "bty-patch-timer",
+  "version": "1.0.0",
+  "description": "Azure Function: Weekly patch suggestion generation",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "prestart": "npm run build",
+    "start": "func start",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.0.0",
+    "dotenv": "^16.3.1",
+    "bty-ai-core": "file:../bty-ai-core"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.4",
+    "typescript": "^5.3.3"
+  }
+}

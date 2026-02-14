@@ -1,18 +1,10 @@
 import { NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth";
-import { getSupabaseAdmin } from "@/lib/supabase";
-
-async function getUserId(request: Request): Promise<string | null> {
-  const auth = request.headers.get("authorization");
-  const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
-  if (!token) return null;
-  const payload = await verifyToken(token);
-  return payload?.sub ?? null;
-}
+import { getAuthUserFromRequest } from "@/lib/auth-server";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export async function GET(request: Request) {
-  const userId = await getUserId(request);
-  if (!userId) {
+  const user = await getAuthUserFromRequest(request);
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -35,7 +27,7 @@ export async function GET(request: Request) {
     const { data, error } = await db
       .from("bty_day_entries")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", user.id)
       .eq("day", day)
       .single();
 
@@ -48,7 +40,7 @@ export async function GET(request: Request) {
   const { data, error } = await db
     .from("bty_day_entries")
     .select("*")
-    .eq("user_id", userId)
+    .eq("user_id", user.id)
     .order("day", { ascending: true });
 
   if (error) {
@@ -59,8 +51,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const userId = await getUserId(request);
-  if (!userId) {
+  const user = await getAuthUserFromRequest(request);
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -87,7 +79,7 @@ export async function POST(request: Request) {
     .from("bty_day_entries")
     .upsert(
       {
-        user_id: userId,
+        user_id: user.id,
         day,
         completed,
         mission_checks: missionChecks,

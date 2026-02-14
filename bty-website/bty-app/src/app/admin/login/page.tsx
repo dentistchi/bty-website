@@ -10,7 +10,8 @@ function AdminLoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/admin/quality";
+  const callbackUrl =
+    searchParams.get("next") || searchParams.get("callbackUrl") || "/admin/quality";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

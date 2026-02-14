@@ -1,0 +1,19 @@
+{
+  "name": "bty-teams-bot",
+  "version": "1.0.0",
+  "description": "BTY Teams Bot - Microsoft Bot Framework for Teams",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@azure/msal-node": "^5.0.4",
+    "botbuilder": "^4.22.0",
+    "dotenv": "^16.3.1",
+    "express": "^5.2.1"
+  }
+}

@@ -281,9 +281,8 @@ export default function UsersPage() {
       <div className="mt-6 rounded border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
         <p className="font-semibold mb-1">⚠️ 참고사항</p>
         <ul className="list-disc list-inside space-y-1 text-xs">
-          <li>현재 사용자 데이터는 메모리에 저장됩니다. 서버 재시작 시 초기화됩니다.</li>
-          <li>프로덕션 환경에서는 데이터베이스(Supabase 등)로 마이그레이션이 필요합니다.</li>
-          <li>비밀번호는 간단한 해시로 저장되므로, 프로덕션에서는 bcrypt 등을 사용해야 합니다.</li>
+          <li>사용자 관리는 Supabase Auth를 사용합니다.</li>
+          <li>목록·생성·삭제·비밀번호 변경은 Supabase 대시보드에서도 가능합니다.</li>
         </ul>
       </div>
     </div>

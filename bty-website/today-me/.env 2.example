@@ -1,0 +1,13 @@
+# BTY 앱 주소 (같은 계정 로그인용 API). 개발 시 bty-app이 3001에서 떠 있어야 함.
+NEXT_PUBLIC_AUTH_API_URL=http://localhost:3001
+
+# BTY 사이트 URL (다른 사이트에서도 로그인 링크용)
+NEXT_PUBLIC_BTY_URL=http://localhost:3001
+
+# bty-ai-core API (Dear Me chat)
+NEXT_PUBLIC_BTY_AI_URL=http://localhost:4000
+
+# 28일 여정용. bty-app과 동일한 값 사용 (같은 DB, 같은 JWT 검증)
+JWT_SECRET=your-secret-here
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key

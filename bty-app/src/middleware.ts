@@ -1,5 +1,7 @@
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { isAdminRole } from "@/lib/roles";
 
 function corsHeaders(request: NextRequest) {
   const origin = request.headers.get("origin") || "";
@@ -16,17 +18,72 @@ function corsHeaders(request: NextRequest) {
   };
 }
 
-export function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith("/api/") && request.method === "OPTIONS") {
-    return new NextResponse(null, { status: 204, headers: corsHeaders(request) });
+export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // CORS for API only
+  if (pathname.startsWith("/api/")) {
+    if (request.method === "OPTIONS") {
+      return new NextResponse(null, { status: 204, headers: corsHeaders(request) });
+    }
+    const res = NextResponse.next();
+    Object.entries(corsHeaders(request)).forEach(([k, v]) => res.headers.set(k, v));
+    return res;
   }
-  const res = NextResponse.next();
-  if (request.nextUrl.pathname.startsWith("/api/")) {
-    Object.entries(corsHeaders(request)).forEach(([k, v]) =>
-      res.headers.set(k, v)
-    );
+
+  // Admin routes: allow /admin/login without auth
+  if (pathname === "/admin/login") {
+    return NextResponse.next();
   }
-  return res;
+
+  if (!pathname.startsWith("/admin/")) {
+    return NextResponse.next();
+  }
+
+  const url = request.nextUrl.clone();
+  const nextPath = url.pathname + url.search;
+
+  let response = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options: { path?: string; maxAge?: number; domain?: string; sameSite?: "lax" | "strict" | "none"; secure?: boolean }) {
+          response.cookies.set({ name, value, ...options });
+        },
+        remove(name: string, options: { path?: string }) {
+          response.cookies.set({ name, value: "", maxAge: 0, ...options });
+        },
+      },
+    }
+  );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.redirect(new URL(`/admin/login?next=${encodeURIComponent(nextPath)}`, request.url));
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || !isAdminRole(profile.role)) {
+    return NextResponse.redirect(new URL("/forbidden", request.url));
+  }
+
+  return response;
 }
 
-export const config = { matcher: ["/api/:path*"] };
+export const config = {
+  matcher: ["/api/:path*", "/admin/:path*"],
+};
