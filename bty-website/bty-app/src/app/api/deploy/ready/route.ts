@@ -14,8 +14,9 @@ const REQUIRED_ENV_VARS = [
   "AZURE_AD_TENANT_ID",
   // Admin
   "BTY_ADMIN_EMAILS",
-  // Supabase
-  "SUPABASE_URL",
+  // Supabase (app uses NEXT_PUBLIC_* URL/anon; service role is server-only)
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "SUPABASE_SERVICE_ROLE_KEY",
 ] as const;
 
@@ -23,7 +24,7 @@ const CRITICAL_ENV_VARS = [
   "NEXTAUTH_URL",
   "NEXTAUTH_SECRET",
   "BTY_ADMIN_EMAILS",
-  "SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
 ] as const;
 
