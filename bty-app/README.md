@@ -2,6 +2,8 @@
 
 한 앱에서 **자존감 회복실(Dear Me)** 와 **훈련장(BTY)** 를 모두 제공. 한국어 + **영어(/en)** 지원. 기본 AI 챗봇 탑재.
 
+**CI:** GitHub Actions는 `working-directory: bty-app` 기준으로만 실행됩니다. Next.js 소스(`src/`)와 **모든 의존성은 반드시 이 폴더(bty-app/package.json, package-lock.json) 안에서 완결**해야 합니다. 루트 package.json이나 다른 폴더에만 있으면 CI에서 실패합니다.
+
 ## Cloudflare Pages 배포 시 설정
 
 **반드시 아래처럼 설정해야 Dear Me 화면이 나옵니다.** (루트가 아니라 `bty-app`을 빌드해야 함)

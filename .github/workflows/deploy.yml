@@ -1,3 +1,5 @@
+# bty-app만 배포. 반드시 소스/의존성 모두 bty-app/ 안에서 완결.
+# (루트 package.json·다른 폴더 의존 시 CI 실패)
 name: Deploy OpenNext to Cloudflare Workers
 
 on:
@@ -23,12 +25,8 @@ jobs:
         run: npm ci
         working-directory: bty-app
 
-      - name: Build (OpenNext)
-        run: npm run pages:build
-        working-directory: bty-app
-
-      - name: Deploy (Wrangler)
-        run: npx wrangler deploy --config wrangler.toml
+      - name: Deploy (OpenNext build + Wrangler)
+        run: npm run deploy
         working-directory: bty-app
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
