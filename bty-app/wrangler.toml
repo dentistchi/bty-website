@@ -1,6 +1,7 @@
+# Cloudflare Workers 단일 배포 (OpenNext)
 name = "bty-website"
 main = ".open-next/worker.js"
-compatibility_date = "2024-12-01"
+compatibility_date = "2025-02-11"
 compatibility_flags = ["nodejs_compat"]
 
 [assets]

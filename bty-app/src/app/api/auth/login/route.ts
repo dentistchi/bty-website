@@ -5,6 +5,10 @@ import { createServerClient } from "@supabase/ssr";
 
 const DEBUG_SESSION = process.env.NODE_ENV !== "production";
 
+export function GET() {
+  return NextResponse.json({ error: "Method Not Allowed" }, { status: 405 });
+}
+
 export async function POST(request: NextRequest) {
   const { email, password } = (await request.json().catch(() => ({}))) as { email?: string; password?: string };
 

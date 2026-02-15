@@ -5,7 +5,8 @@
   "scripts": {
     "prebuild": "node scripts/check-env.mjs",
     "build": "npm run prebuild && next build",
-    "deploy": "opennextjs-cloudflare build && wrangler deploy",
+    "opennext:build": "opennextjs-cloudflare build",
+    "deploy": "npm run prebuild && npm run opennext:build && wrangler deploy",
     "dev": "next dev",
     "start": "next start",
     "lint": "next lint"
