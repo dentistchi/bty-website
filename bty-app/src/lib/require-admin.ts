@@ -1,36 +1,39 @@
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import type { NextRequest } from "next/server";
+import { getSupabaseServer } from "@/lib/supabase-server";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { isAdminRole } from "@/lib/roles";
 
-export async function requireAdmin(request: Request) {
-  const supabase = createServerSupabaseClient();
-  if (!supabase) {
-    return { error: "Service unavailable", status: 503 };
-  }
+type Ok = { user: { id: string; email?: string | null } };
+type Err = { error: "Unauthorized" | "Forbidden" | "Server not configured"; status: number };
 
-  const authHeader = request.headers.get("authorization");
-  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  if (!token) {
-    return { error: "Unauthorized", status: 401 };
+export async function requireAdmin(request: NextRequest): Promise<Ok | Err> {
+  const supabase = getSupabaseServer(request);
+  if (!supabase) {
+    return { error: "Server not configured", status: 503 };
   }
 
   const {
     data: { user },
-    error: userError,
-  } = await supabase.auth.getUser(token);
-
-  if (userError || !user) {
+    error,
+  } = await supabase.auth.getUser();
+  if (error || !user) {
     return { error: "Unauthorized", status: 401 };
   }
 
-  const { data: profile } = await supabase
+  const admin = getSupabaseAdmin();
+  if (!admin) {
+    return { error: "Server not configured", status: 503 };
+  }
+
+  const { data: profile, error: profileError } = await admin
     .from("profiles")
     .select("role")
     .eq("id", user.id)
     .single();
 
-  if (!profile || !isAdminRole(profile.role)) {
+  if (profileError || !profile || !isAdminRole(profile.role)) {
     return { error: "Forbidden", status: 403 };
   }
 
-  return { user };
+  return { user: { id: user.id, email: user.email } };
 }
