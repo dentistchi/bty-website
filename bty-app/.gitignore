@@ -7,6 +7,7 @@ out/
 
 # vercel & cloudflare
 .vercel/
+.open-next/
 .wrangler/
 
 # logs

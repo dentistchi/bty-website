@@ -1,8 +1,0 @@
-name = "bty-website"
-compatibility_date = "2024-09-23"
-compatibility_flags = ["nodejs_compat", "nodejs_compat_populate_process_env"]
-pages_build_output_dir = ".vercel/output/static"
-
-# Node.js version for Cloudflare Pages
-# Note: This is set in Cloudflare Dashboard → Settings → Builds & deployments → Node version
-# But we document it here for reference
