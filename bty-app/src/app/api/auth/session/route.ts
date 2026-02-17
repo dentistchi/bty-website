@@ -3,28 +3,20 @@ import type { NextRequest } from "next/server";
 import { getAuthUserFromRequest } from "@/lib/auth-server";
 import { getSupabaseServer } from "@/lib/supabase-server";
 
-export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET(request: Request) {
   const user = await getAuthUserFromRequest(request);
 
-  if (!user) {
-    // 401 금지: 로그인 전 정상 상태로 취급
-    return NextResponse.json(
-      { ok: true, hasSession: false },
-      { status: 200 }
-    );
-  }
+  const body = user
+    ? { ok: true, hasSession: true, userId: user.id, user: { id: user.id, email: user.email ?? null } }
+    : { ok: true, hasSession: false };
 
-  return NextResponse.json(
-    {
-      ok: true,
-      hasSession: true,
-      userId: user.id,
-      user: { id: user.id, email: user.email ?? null },
-    },
-    { status: 200 }
-  );
+  return NextResponse.json(body, {
+    status: 200,
+    headers: { "Cache-Control": "no-store" },
+  });
 }
 
 /** 클라이언트에서 받은 access_token/refresh_token으로 세션 쿠키 설정 */
