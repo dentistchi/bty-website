@@ -1,7 +1,5 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { isAdminRole } from "@/lib/roles";
 
 function corsHeaders(request: NextRequest) {
   const origin = request.headers.get("origin") || "";
@@ -19,102 +17,50 @@ function corsHeaders(request: NextRequest) {
   };
 }
 
-function hasSupabaseCookie(request: NextRequest): boolean {
-  return request.cookies
-    .getAll()
-    .some((c) => c.name.startsWith("sb-") && c.name.endsWith("-auth-token") && c.value);
-}
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
 
-export async function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname;
-
-  // Auth routes: always pass through (callback, reset-password, etc.) — never redirect to /admin/login
+  // Auth routes: always pass through (callback, reset-password, etc.)
   if (pathname.startsWith("/auth")) {
     return NextResponse.next();
   }
 
   // CORS for API only
   if (pathname.startsWith("/api/")) {
-    if (request.method === "OPTIONS") {
-      return new NextResponse(null, { status: 204, headers: corsHeaders(request) });
+    if (req.method === "OPTIONS") {
+      return new NextResponse(null, { status: 204, headers: corsHeaders(req) });
     }
     const res = NextResponse.next();
-    Object.entries(corsHeaders(request)).forEach(([k, v]) => res.headers.set(k, v));
+    Object.entries(corsHeaders(req)).forEach(([k, v]) => res.headers.set(k, v));
     return res;
   }
 
-  // Admin routes: allow /admin/login without auth
+  // Admin login page: allow without auth
   if (pathname === "/admin/login") {
     return NextResponse.next();
   }
 
-  // /bty/* routes: simple cookie check, redirect to / if no session
-  if (pathname.startsWith("/bty/")) {
-    if (!hasSupabaseCookie(request)) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/";
-      url.searchParams.set("next", pathname + request.nextUrl.search);
-      return NextResponse.redirect(url);
-    }
-    return NextResponse.next();
+  // Protected routes: /bty and /admin
+  const isProtected =
+    pathname === "/bty" ||
+    pathname.startsWith("/bty/") ||
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/");
+
+  if (!isProtected) return NextResponse.next();
+
+  // Supabase 세션 쿠키(sb-*-auth-token) 존재 여부만 1차 체크
+  const hasAuthCookie = req.cookies.getAll().some((c) => c.name.includes("-auth-token"));
+
+  if (!hasAuthCookie) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
   }
 
-  // /admin/* routes: full session + role check (below)
-  if (!pathname.startsWith("/admin/")) {
-    return NextResponse.next();
-  }
-
-  const url = request.nextUrl.clone();
-  const nextPath = url.pathname + url.search;
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return NextResponse.redirect(new URL(`/admin/login?next=${encodeURIComponent(nextPath)}`, request.url));
-  }
-
-  let response = NextResponse.next({ request });
-
-  const supabase = createServerClient(
-    supabaseUrl,
-    supabaseAnonKey,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
-        },
-        set(name: string, value: string, options: { path?: string; maxAge?: number; domain?: string; sameSite?: "lax" | "strict" | "none"; secure?: boolean }) {
-          response.cookies.set({ name, value, ...options });
-        },
-        remove(name: string, options: { path?: string }) {
-          response.cookies.set({ name, value: "", maxAge: 0, ...options });
-        },
-      },
-    }
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.redirect(new URL(`/admin/login?next=${encodeURIComponent(nextPath)}`, request.url));
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || !isAdminRole(profile.role)) {
-    return NextResponse.redirect(new URL("/forbidden", request.url));
-  }
-
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
-  runtime: "experimental-edge",
-  matcher: ["/api/:path*", "/admin/:path*", "/bty/:path*", "/journey/:path*"],
+  matcher: ["/api/:path*", "/bty/:path*", "/admin/:path*"],
 };
