@@ -19,8 +19,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       if (isRegister) await register(email, password);
       else await login(email, password);
 
-      // ✅ 제일 확실: 전체 리로드로 /bty 진입
-      window.location.assign("/bty");
+      window.location.replace("/bty");
     } catch (err) {
       // error 상태는 context에서 표시
     }

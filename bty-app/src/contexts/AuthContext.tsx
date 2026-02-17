@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     await refreshSession();
-    window.location.assign("/bty");
+    window.location.replace("/bty");
   };
 
   const logout = async () => {
