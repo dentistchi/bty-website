@@ -1,33 +1,58 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getAuthUserFromRequest } from "@/lib/auth-server";
 import { getSupabaseServer } from "@/lib/supabase-server";
 
+/**
+ * ✅ 캐시 방지 (Next + Edge/Workers 모두)
+ */
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export async function GET(request: Request) {
-  const req = request as NextRequest;
-  const tempRes = NextResponse.json({ ok: true }, { status: 200 });
-  const supabase = getSupabaseServer(req, tempRes);
-  if (!supabase) {
-    return NextResponse.json({ ok: true, hasSession: false }, { status: 200 });
-  }
-
-  const { data: { user }, error } = await supabase.auth.getUser();
-
-  const body = user
-    ? { ok: true, hasSession: true, userId: user.id, user: { id: user.id, email: user.email ?? null } }
-    : { ok: true, hasSession: false };
-
+function noStoreJson(body: any) {
   const res = NextResponse.json(body, { status: 200 });
-  res.headers.set("Cache-Control", "no-store, max-age=0");
+  // ✅ 절대 캐시 금지
+  res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+  // ✅ Cookie에 따라 응답이 달라져야 함
+  res.headers.set("Vary", "Cookie");
+  // 디버그용(원인 확정)
+  res.headers.set("X-BTY-SESSION", body?.hasSession ? "1" : "0");
+  return res;
+}
 
-  const setCookies = tempRes.headers.getSetCookie?.();
-  if (setCookies?.length) {
-    setCookies.forEach((cookie) => res.headers.append("set-cookie", cookie));
+export async function GET(request: Request) {
+  // (1) Authorization bearer
+  const auth = request.headers.get("authorization");
+  const bearer = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+
+  // (2) Cookie 존재 여부(디버그)
+  const cookie = request.headers.get("cookie") || "";
+  const hasSbCookie = /sb-.*-auth-token=/.test(cookie);
+
+  // ✅ getAuthUserFromRequest가 bearer/cookie 둘 다 처리
+  const user = await getAuthUserFromRequest(request);
+
+  if (!user) {
+    return noStoreJson({
+      ok: true,
+      hasSession: false,
+      debug: {
+        hasAuthHeader: !!bearer,
+        hasSbCookie,
+      },
+    });
   }
 
-  return res;
+  return noStoreJson({
+    ok: true,
+    hasSession: true,
+    userId: user.id,
+    user: { id: user.id, email: user.email ?? null },
+    debug: {
+      hasAuthHeader: !!bearer,
+      hasSbCookie,
+    },
+  });
 }
 
 /** 클라이언트에서 받은 access_token/refresh_token으로 세션 쿠키 설정 */
