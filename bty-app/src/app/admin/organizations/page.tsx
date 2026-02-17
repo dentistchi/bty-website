@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 
 type OrganizationRow = {
   id: string;
@@ -16,45 +15,30 @@ export default function AdminOrganizationsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    if (!supabase) {
-      setError("Supabase 환경변수가 설정되지 않았습니다.");
-      setLoading(false);
-      return;
-    }
-    const client = supabase;
 
-    async function load(supabaseClient: NonNullable<typeof supabase>) {
-      const { data } = await supabaseClient.auth.getSession();
-      const token = data.session?.access_token;
-
-      if (!token) {
-        if (!cancelled) {
-          setError("로그인이 필요합니다.");
-          setLoading(false);
-        }
-        return;
-      }
-
+    async function load() {
       const res = await fetch("/api/admin/organizations", {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
         cache: "no-store",
       });
 
       if (cancelled) return;
 
       if (!res.ok) {
-        setError("조직 목록을 불러오지 못했습니다.");
+        if (!cancelled) setError("조직 목록을 불러오지 못했습니다.");
         setLoading(false);
         return;
       }
 
       const json = await res.json();
-      setOrganizations(json.organizations ?? []);
-      setError(null);
+      if (!cancelled) {
+        setOrganizations(json.organizations ?? []);
+        setError(null);
+      }
       setLoading(false);
     }
 
-    load(client);
+    load();
     return () => {
       cancelled = true;
     };

@@ -4,12 +4,10 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
 
-// GET: List all users (Supabase Auth)
+// GET: List all users. Scope: ?orgId= & regionId= (minRole: regional_manager)
 export async function GET(req: NextRequest) {
-  const auth = await requireAdmin(req);
-  if ("error" in auth) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
-  }
+  const auth = await requireAdmin(req, { minRole: "regional_manager" });
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const supabase = getSupabaseAdmin();
   if (!supabase) {
@@ -36,12 +34,11 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST: Create new user (Supabase Auth)
+// POST: Create new user. Scope: ?orgId= & regionId= (minRole: regional_manager)
 export async function POST(req: NextRequest) {
-  const auth = await requireAdmin(req);
-  if ("error" in auth) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
-  }
+  const auth = await requireAdmin(req, { minRole: "regional_manager" });
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const body = await req.json().catch(() => ({}));
 
   const supabase = getSupabaseAdmin();
   if (!supabase) {
@@ -49,7 +46,6 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json();
     const email = typeof body.email === "string" ? body.email.trim() : "";
     const password = typeof body.password === "string" ? body.password : "";
 
@@ -89,12 +85,10 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// DELETE: Delete user by id or email (Supabase Auth)
+// DELETE: Delete user. Scope: ?orgId= & regionId=
 export async function DELETE(req: NextRequest) {
-  const auth = await requireAdmin(req);
-  if ("error" in auth) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
-  }
+  const auth = await requireAdmin(req, { minRole: "regional_manager" });
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const supabase = getSupabaseAdmin();
   if (!supabase) {
@@ -136,12 +130,11 @@ export async function DELETE(req: NextRequest) {
   }
 }
 
-// PATCH: Update user password (Supabase Auth)
+// PATCH: Update user password. Scope: ?orgId= & regionId=
 export async function PATCH(req: NextRequest) {
-  const auth = await requireAdmin(req);
-  if ("error" in auth) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
-  }
+  const auth = await requireAdmin(req, { minRole: "regional_manager" });
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const body = await req.json().catch(() => ({}));
 
   const supabase = getSupabaseAdmin();
   if (!supabase) {
@@ -149,7 +142,6 @@ export async function PATCH(req: NextRequest) {
   }
 
   try {
-    const body = await req.json();
     const userId = body.id;
     const email = body.email;
     const newPassword = body.password;

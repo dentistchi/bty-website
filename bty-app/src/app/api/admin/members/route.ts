@@ -3,23 +3,22 @@ import { requireAdmin } from "@/lib/authz";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const auth = await requireAdmin(req);
+  const auth = await requireAdmin(req); // orgId/regionId 쿼리스트링 필요
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const admin = getSupabaseAdmin();
   if (!admin) return NextResponse.json({ error: "Server not configured" }, { status: 503 });
 
   const { data, error } = await admin
-    .from("organizations")
-    .select("id, name, slug, created_at")
-    .eq("id", auth.scope.orgId)
-    .maybeSingle();
+    .from("memberships")
+    .select("id, user_id, role, status, job_function, created_at")
+    .eq("org_id", auth.scope.orgId)
+    .eq("region_id", auth.scope.regionId)
+    .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  return NextResponse.json({ ok: true, organization: data });
+  return NextResponse.json({ ok: true, rows: data });
 }
