@@ -1,6 +1,8 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
-import type { NextRequest } from "next/server";
+import type { NextRequest, NextResponse } from "next/server";
+
+type CookieToSet = { name: string; value: string; options?: any };
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
@@ -11,22 +13,20 @@ export function createServerSupabaseClient(): SupabaseClient | null {
   return createClient(url, key);
 }
 
-/** SSR Supabase client using session cookies (read-only for API auth). */
-export function getSupabaseServer(request: NextRequest): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) return null;
+export function getSupabaseServer(req: NextRequest, res: NextResponse) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) return null;
 
-  return createServerClient(url, anonKey, {
+  return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
-        return request.cookies.getAll().map((c) => ({
-          name: c.name,
-          value: c.value,
-        }));
+        return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
       },
-      setAll() {
-        // no-op: API route에서 세션 갱신 쿠키를 굳이 쓰지 않음(필요해지면 Response로 set 가능)
+      setAll(cookies: CookieToSet[]) {
+        cookies.forEach(({ name, value, options }) => {
+          res.cookies.set(name, value, options);
+        });
       },
     },
   });

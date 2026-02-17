@@ -4,5 +4,9 @@
   "description": "Dear Me & BTY — 루트. Cloudflare Workers(bty-app) 단일 배포.",
   "scripts": {
     "build": "cd bty-app && npm ci && npm run build"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.95.3"
   }
 }

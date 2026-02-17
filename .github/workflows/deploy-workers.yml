@@ -35,6 +35,12 @@ jobs:
 
       - run: npm ci
 
+      - name: Debug package.json
+        run: |
+          ls -la
+          cat package.json | head -n 40
+          cat package.json | grep auth-helpers -n || true
+
       - name: Write env file
         working-directory: .
         run: |

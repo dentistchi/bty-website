@@ -6,7 +6,8 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const supabase = getSupabaseServer(req);
+  const res = NextResponse.json({ ok: true }, { status: 200 });
+  const supabase = getSupabaseServer(req, res);
   if (!supabase) return NextResponse.json({ error: "Server not configured" }, { status: 503 });
 
   const { data, error } = await supabase.auth.getUser();

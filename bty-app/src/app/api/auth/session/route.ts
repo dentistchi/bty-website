@@ -1,64 +1,61 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { getSupabaseServer } from "@/lib/supabase-server";
 
-export async function GET(request: NextRequest) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
-  if (!url || !anonKey) {
-    return NextResponse.json({ ok: true, hasSession: false }, { status: 200 });
+export const runtime = "nodejs";
+
+export async function GET(req: NextRequest) {
+  const res = NextResponse.json({ ok: true }, { status: 200 });
+  const supabase = getSupabaseServer(req, res);
+  if (!supabase) {
+    return NextResponse.json({ ok: false, error: "Server not configured" }, { status: 503 });
   }
 
-  const supabase = createServerClient(url, anonKey, {
-    cookies: {
-      get(name: string) {
-        return request.cookies.get(name)?.value;
-      },
-      set() {},
-      remove() {},
-    },
-  });
+  const { data, error } = await supabase.auth.getUser();
+  if (error) {
+    return NextResponse.json({ ok: false, hasSession: false, error: error.message }, { status: 401 });
+  }
 
-  const { data: { user } } = await supabase.auth.getUser();
-  return NextResponse.json({
-    ok: true,
-    hasSession: !!user,
-    userId: user?.id,
-    user: user ? { id: user.id, email: user.email ?? undefined } : null,
-  });
+  // res에 설정된 쿠키를 새 응답에 복사 (refresh 등으로 쿠키가 업데이트될 수 있음)
+  const response = NextResponse.json(
+    {
+      ok: true,
+      hasSession: !!data.user,
+      userId: data.user?.id ?? null,
+      user: data.user ? { id: data.user.id, email: data.user.email } : null,
+    },
+    { status: data.user ? 200 : 401 }
+  );
+  
+  const setCookies = res.headers.getSetCookie();
+  if (setCookies) {
+    setCookies.forEach((cookie) => {
+      response.headers.append("set-cookie", cookie);
+    });
+  }
+  
+  return response;
 }
 
 /** 클라이언트에서 받은 access_token/refresh_token으로 세션 쿠키 설정 */
 export async function POST(req: NextRequest) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) {
-    return NextResponse.json({ ok: false }, { status: 503 });
+  const res = NextResponse.json({ ok: true }, { status: 200 });
+  const supabase = getSupabaseServer(req, res);
+  if (!supabase) {
+    return NextResponse.json({ ok: false, error: "Server not configured" }, { status: 503 });
   }
 
   const body = (await req.json().catch(() => ({}))) as { access_token?: string; refresh_token?: string };
   const { access_token, refresh_token } = body;
   if (!access_token || !refresh_token) {
-    return NextResponse.json({ ok: false }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "missing access_token/refresh_token" }, { status: 400 });
   }
-
-  const response = NextResponse.json({ ok: true });
-  const supabase = createServerClient(url, anonKey, {
-    cookies: {
-      get(name: string) {
-        return req.cookies.get(name)?.value;
-      },
-      set(name: string, value: string, options: Record<string, unknown>) {
-        response.cookies.set({ name, value, ...options });
-      },
-      remove(name: string, options: Record<string, unknown>) {
-        response.cookies.set({ name, value: "", maxAge: 0, ...options });
-      },
-    },
-  });
 
   const { error } = await supabase.auth.setSession({ access_token, refresh_token });
   if (error) {
-    return NextResponse.json({ ok: false }, { status: 401 });
+    return NextResponse.json({ ok: false, error: error.message }, { status: 401 });
   }
-  return response;
+
+  // ✅ setSession 과정에서 setAll이 호출되어 res에 쿠키가 심김
+  return res;
 }
