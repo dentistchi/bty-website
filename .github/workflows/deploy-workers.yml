@@ -26,41 +26,20 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Write env file
-        run: |
-          cat > .env.production << EOF
-          NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          EOF
-
       - name: Build (OpenNext)
-        run: |
-          npx opennextjs-cloudflare build 2>&1 | tee build.log
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: npx opennextjs-cloudflare build 2>&1 | tee build.log
 
       - name: Inspect OpenNext output
+        if: always()
         run: |
-          echo "=== Build log (last 80 lines) ==="
-          tail -n 80 build.log || true
+          echo "=== build.log (last 120 lines) ==="
+          tail -n 120 build.log || true
           echo ""
-          echo "=== List repo ==="
-          ls -la
-          echo ""
-          echo "=== .open-next directory ==="
-          ls -la .open-next || true
-          echo ""
-          echo "=== Find OpenNext artifacts ==="
-          find . -maxdepth 4 -type f \( -name "open-next.config.*" -o -name "wrangler.toml" -o -name "*.worker.*" -o -name "*.mjs" \) -print || true
-
-      - name: Inspect OpenNext build output
-        run: |
-          echo "=== .open-next tree (depth 4) ==="
+          echo "=== .open-next tree ==="
           find .open-next -maxdepth 4 -type f -print || true
-          echo ""
-          echo "=== .open-next dirs ==="
-          find .open-next -maxdepth 3 -type d -print || true
-          echo ""
-          echo "=== show wrangler.toml main ==="
-          sed -n '1,200p' wrangler.toml
 
       - name: Deploy (OpenNext)
         env:
