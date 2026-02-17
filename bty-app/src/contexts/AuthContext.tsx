@@ -8,14 +8,26 @@ type AuthCtx = {
   user: AuthUser | null;
   loading: boolean;
   error: string | null;
+  setError: (msg: string | null) => void;
   clearError: () => void;
-  refreshSession: () => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
+  refreshSession: () => Promise<AuthUser | null>;
+  login: (email: string, password: string) => Promise<AuthUser>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
+
+async function fetchSession(): Promise<AuthUser | null> {
+  const res = await fetch("/api/auth/session", {
+    credentials: "include",
+    cache: "no-store",
+  });
+  const data = await res.json();
+  // session API는 항상 200이고 hasSession으로 판단
+  if (!data?.ok || !data?.hasSession) return null;
+  return data.user; // { id, email }
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -27,59 +39,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const clearError = () => setError(null);
 
   const refreshSession = async () => {
-    const r = await fetch("/api/auth/session", {
-      credentials: "include",
-      cache: "no-store",
-      headers: { "Cache-Control": "no-store" },
-    });
-
-    const data = await r.json();
-    if (debug()) console.log("[auth] session:", data);
-
-    if (data?.ok && data?.hasSession) {
-      setUser({ id: data.userId, email: data.user?.email ?? null });
-    } else {
-      setUser(null);
-    }
+    const u = await fetchSession();
+    setUser(u);
+    return u;
   };
 
   useEffect(() => {
+    let mounted = true;
+
     (async () => {
       try {
-        await refreshSession();
+        const u = await fetchSession();
+        if (!mounted) return;
+        setUser(u);
       } finally {
-        setLoading(false);
-        if (debug()) console.log("[auth] boot done. user =", user);
+        if (mounted) setLoading(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
-    clearError();
-
-    const r = await fetch("/api/auth/login", {
+    setError(null);
+    const res = await fetch("/api/auth/login", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      headers: { "Content-Type": "application/json" },
       credentials: "include",
-      cache: "no-store",
       body: JSON.stringify({ email, password }),
     });
 
-    const data = await r.json();
-    if (debug()) console.log("[auth] login:", data);
-
-    if (!data?.ok) {
-      setError(data?.error ?? "로그인 실패");
-      throw new Error(data?.error ?? "login failed");
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.ok) {
+      throw new Error(data?.error || "login failed");
     }
 
-    // ✅ 로그인 성공 시 user를 즉시 세팅 (UI가 바로 바뀌게)
-    if (data?.userId) setUser({ id: data.userId, email: data.email ?? null });
-    else await refreshSession();
-
-    // ✅ router push가 먹통/캐시 꼬임 방지: 하드 이동
-    window.location.assign("/bty");
+    // ✅ 쿠키가 진짜니까, 바로 세션 재조회
+    const u = await refreshSession();
+    if (!u) throw new Error("session not established");
+    return u;
   };
 
   const register = async (email: string, password: string) => {
@@ -103,22 +103,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    await fetch("/api/auth/logout", {
-      method: "POST",
-      credentials: "include",
-      cache: "no-store",
-      headers: { "Cache-Control": "no-store" },
-    });
-
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     setUser(null);
-
-    // ✅ 쿠키가 남아 보이는건 DevTools 지연/리프레시 문제일 수 있어.
-    // 실제 판정은 /api/auth/session hasSession=false로 확인.
-    window.location.assign("/");
   };
 
   const value = useMemo(
-    () => ({ user, loading, error, clearError, refreshSession, login, register, logout }),
+    () => ({ user, loading, error, setError, clearError, refreshSession, login, register, logout }),
     [user, loading, error]
   );
 
