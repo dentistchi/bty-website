@@ -1,5 +1,5 @@
 name = "bty-website"
-main = ".open-next/worker/index.mjs"
+main = ".open-next/worker.js"
 compatibility_date = "2025-01-01"
 
 [assets]
