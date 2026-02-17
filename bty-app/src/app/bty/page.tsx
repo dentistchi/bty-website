@@ -17,5 +17,14 @@ export default function BtyPage() {
   if (loading) return <div className="p-6">로딩 중…</div>;
   if (!user) return null;
 
-  return <div className="p-6">BTY ✅ {user.email ?? user.id}</div>;
+  return (
+    <div style={{ padding: 20 }}>
+      <div style={{ fontSize: 24, fontWeight: "bold", color: "red" }}>
+        BTY_PAGE_RENDERED ✅
+      </div>
+
+      {/* ↓ 기존 내용이 있으면 여기 아래에 그대로 두면 됨 */}
+      <div className="p-6">BTY ✅ {user.email ?? user.id}</div>
+    </div>
+  );
 }
