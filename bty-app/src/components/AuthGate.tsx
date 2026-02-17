@@ -2,20 +2,11 @@
 
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { buildCrossSiteLoginUrl, getStoredToken } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
-const TODAY_ME_ORIGIN =
-  typeof window !== "undefined"
-    ? process.env.NEXT_PUBLIC_TODAY_ME_URL || "http://localhost:3000"
-    : "";
-const BTY_ORIGIN =
-  typeof window !== "undefined"
-    ? process.env.NEXT_PUBLIC_BTY_URL || "http://localhost:3001"
-    : "";
-
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  const { user, loading, login, register, logout, error, clearError } = useAuth();
+  const { user, loading, login, register, error, clearError } = useAuth();
+
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,19 +14,19 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
-    try {
-      if (isRegister) await register(email, password);
-      else await login(email, password);
-    } catch (err) {
-      // error is set by login/register throwing; we show it below
-    }
+
+    if (isRegister) await register(email, password);
+    else await login(email, password);
+
+    // router.push 대신 이것으로 고정
+    window.location.replace("/bty");
   };
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="inline-block w-8 h-8 border-2 border-dear-sage/30 border-t-dear-sage rounded-full animate-spin mb-3"></div>
+          <div className="inline-block w-8 h-8 border-2 border-dear-sage/30 border-t-dear-sage rounded-full animate-spin mb-3" />
           <p className="text-sm text-dear-charcoal-soft">로딩 중…</p>
         </div>
       </div>
@@ -52,6 +43,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           <p className="text-sm text-dojo-ink-soft mt-1">
             Dear Me와 bty는 하나의 계정으로 이용해요.
           </p>
+
           <form onSubmit={handleSubmit} className="mt-4 space-y-3">
             <input
               type="email"
@@ -64,6 +56,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 "focus:outline-none focus:ring-2 focus:ring-dojo-purple/30"
               )}
             />
+
             <input
               type="password"
               value={password}
@@ -76,11 +69,13 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 "focus:outline-none focus:ring-2 focus:ring-dojo-purple/30"
               )}
             />
+
             {error && (
               <p className="text-sm text-red-600" role="alert">
                 {error}
               </p>
             )}
+
             <button
               type="submit"
               className={cn(
@@ -88,52 +83,21 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 "bg-dojo-purple text-dojo-white hover:bg-dojo-purple-dark"
               )}
             >
-              {isRegister ? "가입하기" : "로그인"}
+              {isRegister ? "회원가입" : "로그인"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsRegister((v) => !v)}
+              className="w-full text-sm text-dojo-ink-soft underline underline-offset-2"
+            >
+              {isRegister ? "이미 계정이 있어요 (로그인)" : "계정이 없어요 (회원가입)"}
             </button>
           </form>
-          <button
-            type="button"
-            onClick={() => {
-              setIsRegister(!isRegister);
-              clearError();
-            }}
-            className="mt-3 text-sm text-dojo-purple hover:underline"
-          >
-            {isRegister ? "이미 계정이 있어요" : "계정 만들기"}
-          </button>
         </div>
       </div>
     );
   }
 
-  return (
-    <>
-      <header className="sticky top-0 z-10 border-b border-dojo-purple-muted bg-dojo-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-xl items-center justify-between px-4 py-3">
-          <span className="text-sm text-dojo-ink-soft">{user.email}</span>
-          <div className="flex items-center gap-2">
-            <a
-              href={buildCrossSiteLoginUrl(
-                TODAY_ME_ORIGIN,
-                getStoredToken() || ""
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-dojo-purple hover:underline"
-            >
-              Dear Me에서도 로그인
-            </a>
-            <button
-              type="button"
-              onClick={logout}
-              className="text-sm text-dojo-ink-soft hover:underline"
-            >
-              로그아웃
-            </button>
-          </div>
-        </div>
-      </header>
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }

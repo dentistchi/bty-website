@@ -21,7 +21,7 @@ export default function AuthHashGate() {
         const res = await fetch("/api/auth/session", { credentials: "include" });
         const data = await res.json();
         if (data?.ok && data?.hasSession) {
-          window.location.href = "/bty";
+          window.location.replace("/bty");
         }
       } catch (err) {
         // 세션 체크 실패는 무시 (로그인 안 된 상태로 간주)
