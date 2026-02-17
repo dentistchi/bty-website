@@ -21,6 +21,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Show repo tree (top)
+        run: |
+          pwd
+          ls -la
+          find . -maxdepth 3 -type d -name "bty-app" -print
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -30,8 +36,10 @@ jobs:
       - run: npm ci
 
       - name: Write env file
+        working-directory: .
         run: |
-          cat > bty-app/.env.production << 'EOF'
+          mkdir -p bty-app
+          cat > bty-app/.env.production << EOF
           NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           EOF
