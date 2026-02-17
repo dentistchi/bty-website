@@ -4,16 +4,15 @@ on:
   push:
     branches: [main]
 
-defaults:
-  run:
-    working-directory: bty-app
-
 env:
   NODE_VERSION: "20"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bty-app
     steps:
       - uses: actions/checkout@v4
 
@@ -40,6 +39,22 @@ jobs:
           echo ""
           echo "=== .open-next tree ==="
           find .open-next -maxdepth 4 -type f -print || true
+
+      - name: Debug paths before deploy
+        if: always()
+        run: |
+          echo "=== PWD ==="
+          pwd
+          echo "=== LS ==="
+          ls -la
+          echo "=== wrangler.toml (in bty-app) ==="
+          cat wrangler.toml || true
+
+      - name: Wrangler whoami + config check
+        run: |
+          npx wrangler@4.65.0 whoami || true
+          echo "=== wrangler.toml ==="
+          cat wrangler.toml
 
       - name: Deploy (OpenNext)
         env:
