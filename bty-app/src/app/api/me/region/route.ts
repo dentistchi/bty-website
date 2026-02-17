@@ -10,25 +10,40 @@ export async function GET(req: NextRequest) {
   const regionId = url.searchParams.get("regionId");
 
   if (!orgId || !regionId) {
-    return NextResponse.json({ ok: false, error: "missing orgId/regionId" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "missing orgId or regionId" },
+      { status: 400 }
+    );
   }
 
-  const res = NextResponse.json({ ok: true }, { status: 200 });
+  const res = NextResponse.json({ ok: false }, { status: 200 });
   const supabase = getSupabaseServer(req, res);
   if (!supabase) {
-    return NextResponse.json({ ok: false, error: "Server not configured" }, { status: 503 });
+    return NextResponse.json(
+      { ok: false, error: "Server not configured" },
+      { status: 503 }
+    );
   }
 
-  const { data: userData, error: userErr } = await supabase.auth.getUser();
-  if (userErr || !userData.user) {
-    return NextResponse.json({ ok: false, hasSession: false, error: userErr?.message ?? "no session" }, { status: 401 });
+  const { data: { user }, error: userErr } = await supabase.auth.getUser();
+
+  if (userErr) {
+    return NextResponse.json(
+      { ok: false, error: "auth.getUser failed", detail: userErr.message },
+      { status: 401 }
+    );
   }
 
-  const user = userData.user;
+  if (!user) {
+    return NextResponse.json(
+      { ok: false, hasSession: false, error: "no session" },
+      { status: 401 }
+    );
+  }
 
   const { data: membership, error: memErr } = await supabase
     .from("memberships")
-    .select("id, user_id, org_id, region_id, role, status")
+    .select("id, user_id, org_id, region_id, status")
     .eq("user_id", user.id)
     .eq("org_id", orgId)
     .eq("region_id", regionId)
@@ -36,7 +51,10 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   if (memErr) {
-    return NextResponse.json({ ok: false, error: "membership lookup failed", detail: memErr.message }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "membership lookup failed", detail: memErr.message },
+      { status: 500 }
+    );
   }
 
   const allowed = !!membership;
@@ -49,7 +67,7 @@ export async function GET(req: NextRequest) {
       email: user.email ?? null,
       orgId,
       regionId,
-      membership: membership ?? null,
+      membership: allowed ? membership : null,
     },
     { status: allowed ? 200 : 403 }
   );
