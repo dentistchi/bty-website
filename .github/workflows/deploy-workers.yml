@@ -24,24 +24,34 @@ jobs:
           cache-dependency-path: bty-app/package-lock.json
 
       - name: Install
-        working-directory: bty-app
         run: npm ci
 
-      - name: Debug OpenNext bin
-        working-directory: bty-app
+      - name: Write env file
         run: |
-          ls -la node_modules/.bin | grep opennext || true
-          npx --version
+          cat > .env.production << EOF
+          NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          EOF
 
-      - name: Build
-        working-directory: bty-app
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-        run: npm run build
+      - name: Build (OpenNext)
+        run: |
+          npx opennextjs-cloudflare build 2>&1 | tee build.log
 
-      - name: Deploy
-        working-directory: bty-app
+      - name: Inspect OpenNext output
+        run: |
+          echo "=== Build log (last 80 lines) ==="
+          tail -n 80 build.log || true
+          echo ""
+          echo "=== List repo ==="
+          ls -la
+          echo ""
+          echo "=== .open-next directory ==="
+          ls -la .open-next || true
+          echo ""
+          echo "=== Find OpenNext artifacts ==="
+          find . -maxdepth 4 -type f \( -name "open-next.config.*" -o -name "wrangler.toml" -o -name "*.worker.*" -o -name "*.mjs" \) -print || true
+
+      - name: Deploy (OpenNext)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
