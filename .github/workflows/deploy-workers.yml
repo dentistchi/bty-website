@@ -51,6 +51,17 @@ jobs:
           echo "=== Find OpenNext artifacts ==="
           find . -maxdepth 4 -type f \( -name "open-next.config.*" -o -name "wrangler.toml" -o -name "*.worker.*" -o -name "*.mjs" \) -print || true
 
+      - name: Inspect OpenNext build output
+        run: |
+          echo "=== .open-next tree (depth 4) ==="
+          find .open-next -maxdepth 4 -type f -print || true
+          echo ""
+          echo "=== .open-next dirs ==="
+          find .open-next -maxdepth 3 -type d -print || true
+          echo ""
+          echo "=== show wrangler.toml main ==="
+          sed -n '1,200p' wrangler.toml
+
       - name: Deploy (OpenNext)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
