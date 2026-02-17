@@ -1,22 +1,33 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getAuthUserFromRequest } from "@/lib/auth-server";
 import { getSupabaseServer } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function GET(request: Request) {
-  const user = await getAuthUserFromRequest(request);
+  const req = request as NextRequest;
+  const tempRes = NextResponse.json({ ok: true }, { status: 200 });
+  const supabase = getSupabaseServer(req, tempRes);
+  if (!supabase) {
+    return NextResponse.json({ ok: true, hasSession: false }, { status: 200 });
+  }
+
+  const { data: { user }, error } = await supabase.auth.getUser();
 
   const body = user
     ? { ok: true, hasSession: true, userId: user.id, user: { id: user.id, email: user.email ?? null } }
     : { ok: true, hasSession: false };
 
-  return NextResponse.json(body, {
-    status: 200,
-    headers: { "Cache-Control": "no-store" },
-  });
+  const res = NextResponse.json(body, { status: 200 });
+  res.headers.set("Cache-Control", "no-store, max-age=0");
+
+  const setCookies = tempRes.headers.getSetCookie?.();
+  if (setCookies?.length) {
+    setCookies.forEach((cookie) => res.headers.append("set-cookie", cookie));
+  }
+
+  return res;
 }
 
 /** 클라이언트에서 받은 access_token/refresh_token으로 세션 쿠키 설정 */

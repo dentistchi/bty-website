@@ -1,112 +1,132 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
-import {
-  AuthUser,
-  clearStoredToken,
-  fetchSession,
-  getStoredToken,
-  readTokenFromHash,
-  setStoredToken,
-} from "@/lib/auth-client";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-type AuthState = {
+type AuthUser = { id: string; email?: string | null };
+
+type AuthCtx = {
   user: AuthUser | null;
   loading: boolean;
   error: string | null;
-};
-
-type AuthContextValue = AuthState & {
+  clearError: () => void;
+  refreshSession: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-  clearError: () => void;
+  logout: () => Promise<void>;
 };
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+const Ctx = createContext<AuthCtx | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadSession = useCallback(async () => {
-    try {
-      const tokenFromHash = readTokenFromHash();
-      if (tokenFromHash) {
-        setStoredToken(tokenFromHash);
-        if (typeof window !== "undefined") {
-          window.history.replaceState(null, "", window.location.pathname + window.location.search);
-        }
-      }
-      const token = tokenFromHash || getStoredToken();
-      const u = await fetchSession(token);
-      setUser(u);
-    } catch (err) {
-      console.error("[AuthContext] Failed to load session:", err);
-      // Continue without user - allow unauthenticated access
+  const debug = () => (typeof window !== "undefined" && (window as any).__AUTH_DEBUG__);
+
+  const clearError = () => setError(null);
+
+  const refreshSession = async () => {
+    const r = await fetch("/api/auth/session", {
+      credentials: "include",
+      cache: "no-store",
+      headers: { "Cache-Control": "no-store" },
+    });
+
+    const data = await r.json();
+    if (debug()) console.log("[auth] session:", data);
+
+    if (data?.ok && data?.hasSession) {
+      setUser({ id: data.userId, email: data.user?.email ?? null });
+    } else {
       setUser(null);
-    } finally {
-      setLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    loadSession();
-  }, [loadSession]);
-
-  const login = useCallback(
-    async (email: string, password: string) => {
-      setError(null);
-      try {
-        const { login: doLogin } = await import("@/lib/auth-client");
-        const { token, user: u } = await doLogin(email, password);
-        setStoredToken(token);
-        setUser(u);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "로그인에 실패했어요.");
-        throw e;
-      }
-    },
-    []
-  );
-
-  const register = useCallback(
-    async (email: string, password: string) => {
-      setError(null);
-      try {
-        const { register: doRegister } = await import("@/lib/auth-client");
-        const { token, user: u } = await doRegister(email, password);
-        setStoredToken(token);
-        setUser(u);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "회원가입에 실패했어요.");
-        throw e;
-      }
-    },
-    []
-  );
-
-  const logout = useCallback(() => {
-    clearStoredToken();
-    setUser(null);
-  }, []);
-
-  const value: AuthContextValue = {
-    user,
-    loading,
-    error,
-    login,
-    register,
-    logout,
-    clearError: () => setError(null),
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  useEffect(() => {
+    (async () => {
+      try {
+        await refreshSession();
+      } finally {
+        setLoading(false);
+        if (debug()) console.log("[auth] boot done. user =", user);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    clearError();
+
+    const r = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      credentials: "include",
+      cache: "no-store",
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await r.json();
+    if (debug()) console.log("[auth] login:", data);
+
+    if (!data?.ok) {
+      setError(data?.error ?? "로그인 실패");
+      throw new Error(data?.error ?? "login failed");
+    }
+
+    // ✅ 로그인 성공 시 user를 즉시 세팅 (UI가 바로 바뀌게)
+    if (data?.userId) setUser({ id: data.userId, email: data.email ?? null });
+    else await refreshSession();
+
+    // ✅ router push가 먹통/캐시 꼬임 방지: 하드 이동
+    window.location.assign("/bty");
+  };
+
+  const register = async (email: string, password: string) => {
+    clearError();
+    const r = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      credentials: "include",
+      cache: "no-store",
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await r.json();
+    if (!data?.ok) {
+      setError(data?.error ?? "회원가입 실패");
+      throw new Error(data?.error ?? "register failed");
+    }
+
+    await refreshSession();
+    window.location.assign("/bty");
+  };
+
+  const logout = async () => {
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      headers: { "Cache-Control": "no-store" },
+    });
+
+    setUser(null);
+
+    // ✅ 쿠키가 남아 보이는건 DevTools 지연/리프레시 문제일 수 있어.
+    // 실제 판정은 /api/auth/session hasSession=false로 확인.
+    window.location.assign("/");
+  };
+
+  const value = useMemo(
+    () => ({ user, loading, error, clearError, refreshSession, login, register, logout }),
+    [user, loading, error]
+  );
+
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+  const v = useContext(Ctx);
+  if (!v) throw new Error("AuthProvider missing");
+  return v;
 }

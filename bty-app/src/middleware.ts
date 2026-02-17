@@ -1,66 +1,40 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-function corsHeaders(request: NextRequest) {
-  const origin = request.headers.get("origin") || "";
-  const allowed =
-    origin.includes("localhost") ||
-    origin.endsWith(".workers.dev") ||
-    origin.endsWith(".pages.dev") ||
-    origin.endsWith("today-me.pages.dev") ||
-    origin.endsWith("dear-me.pages.dev") ||
-    origin.endsWith("bty-website.pages.dev");
-  return {
-    "Access-Control-Allow-Origin": allowed ? origin : request.nextUrl.origin,
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  };
-}
-
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Auth routes: always pass through (callback, reset-password, etc.)
-  if (pathname.startsWith("/auth")) {
+  // ✅ 1) 절대 건드리면 안 되는 경로들
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname === "/favicon.ico" ||
+    pathname.startsWith("/assets") ||
+    pathname.endsWith(".png") ||
+    pathname.endsWith(".jpg") ||
+    pathname.endsWith(".jpeg") ||
+    pathname.endsWith(".svg") ||
+    pathname.endsWith(".webp") ||
+    pathname.endsWith(".css") ||
+    pathname.endsWith(".js") ||
+    pathname.endsWith(".woff") ||
+    pathname.endsWith(".woff2")
+  ) {
     return NextResponse.next();
   }
 
-  // CORS for API only
-  if (pathname.startsWith("/api/")) {
-    if (req.method === "OPTIONS") {
-      return new NextResponse(null, { status: 204, headers: corsHeaders(req) });
-    }
-    const res = NextResponse.next();
-    Object.entries(corsHeaders(req)).forEach(([k, v]) => res.headers.set(k, v));
-    return res;
-  }
-
-  // Admin login page: allow without auth
-  if (pathname === "/admin/login") {
+  // ✅ 2) BTY 영역은 rewrite/locale 처리에서 완전 제외 (핵심)
+  if (pathname === "/bty" || pathname.startsWith("/bty/")) {
     return NextResponse.next();
   }
 
-  // Protected routes: /bty and /admin
-  const isProtected =
-    pathname === "/bty" ||
-    pathname.startsWith("/bty/") ||
-    pathname === "/admin" ||
-    pathname.startsWith("/admin/");
-
-  if (!isProtected) return NextResponse.next();
-
-  // Supabase 세션 쿠키(sb-*-auth-token) 존재 여부만 1차 체크
-  const hasAuthCookie = req.cookies.getAll().some((c) => c.name.includes("-auth-token"));
-
-  if (!hasAuthCookie) {
-    const url = req.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
-  }
-
+  // ✅ 3) (예) locale rewrite/redirect 같은 게 있다면 여기서만 처리
+  // 지금은 일단 안전하게 pass-through로 두고,
+  // 네 기존 로직이 있다면 이 아래에만 두면 돼.
   return NextResponse.next();
 }
 
+// ✅ matcher도 같이 안전하게
 export const config = {
-  matcher: ["/api/:path*", "/bty/:path*", "/admin/:path*"],
+  matcher: ["/((?!_next|api|favicon.ico).*)"],
 };

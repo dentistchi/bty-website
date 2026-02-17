@@ -1,37 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { JourneyBoard } from "@/components/journey/JourneyBoard";
+import { useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function BtyPage() {
-  const router = useRouter();
-  const [ready, setReady] = useState(false);
+  const { user, loading, refreshSession } = useAuth();
 
   useEffect(() => {
-    let cancelled = false;
+    refreshSession();
+  }, [refreshSession]);
 
-    (async () => {
-      const r = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
-      const data = await r.json();
+  useEffect(() => {
+    if (!loading && !user) window.location.replace("/");
+  }, [loading, user]);
 
-      if (cancelled) return;
+  if (loading) return <div className="p-6">로딩 중…</div>;
+  if (!user) return null;
 
-      if (!data?.hasSession) {
-        router.replace("/");
-        router.refresh();
-        return;
-      }
-
-      setReady(true);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [router]);
-
-  if (!ready) return <div>Loading...</div>;
-
-  return <JourneyBoard />;
+  return <div className="p-6">BTY ✅ {user.email ?? user.id}</div>;
 }
