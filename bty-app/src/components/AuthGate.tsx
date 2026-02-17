@@ -15,13 +15,16 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     e.preventDefault();
     clearError();
 
+    console.log("login clicked");
+
     try {
       if (isRegister) await register(email, password);
       else await login(email, password);
 
-      window.location.replace("/bty");
+      console.log("login ok, redirecting...");
+      window.location.assign("/bty"); // ✅ 결정타
     } catch (err) {
-      // error 상태는 context에서 표시
+      // error state는 login/register 내부에서 setError 하거나 throw 메세지로 처리
     }
   };
 

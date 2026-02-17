@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { getAuthUserFromRequest } from "@/lib/auth-server";
 import { getSupabaseServer } from "@/lib/supabase-server";
 
-export const runtime = "nodejs";          // ✅ 중요: OpenNext가 싫어하는 edge 제거
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 

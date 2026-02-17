@@ -11,7 +11,7 @@ type AuthCtx = {
   setError: (msg: string | null) => void;
   clearError: () => void;
   refreshSession: () => Promise<AuthUser | null>;
-  login: (email: string, password: string) => Promise<AuthUser>;
+  login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -27,6 +27,31 @@ async function fetchSession(): Promise<AuthUser | null> {
   // session API는 항상 200이고 hasSession으로 판단
   if (!data?.ok || !data?.hasSession) return null;
   return data.user; // { id, email }
+}
+
+async function apiJson<T>(url: string, body?: any, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, {
+    method: body ? "POST" : "GET",
+    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    body: body ? JSON.stringify(body) : undefined,
+    credentials: "include", // ✅ 핵심
+    cache: "no-store",
+    ...init,
+  });
+
+  const text = await res.text();
+  let data: any = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+
+  if (!res.ok) {
+    const msg = data?.error || data?.message || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return data as T;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -64,42 +89,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     setError(null);
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ email, password }),
-    });
+    await apiJson("/api/auth/login", { email, password });
 
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data?.ok) {
-      throw new Error(data?.error || "login failed");
-    }
+    const s = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json());
 
-    // ✅ 쿠키가 진짜니까, 바로 세션 재조회
-    const u = await refreshSession();
-    if (!u) throw new Error("session not established");
-    return u;
+    if (!s?.ok || !s?.hasSession) throw new Error("세션 생성 실패(쿠키 미설정)");
+
+    // ✅ 상태 업데이트도 하되, 화면 꼬임 방지 위해 하드 이동
+    setUser(s.user ?? { id: s.userId, email: s.email ?? null });
+
+    window.location.assign("/bty"); // ✅ 확실하게 화면 전환
   };
 
   const register = async (email: string, password: string) => {
-    clearError();
-    const r = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-      credentials: "include",
-      cache: "no-store",
-      body: JSON.stringify({ email, password }),
-    });
+    setError(null);
+    await apiJson("/api/auth/register", { email, password });
 
-    const data = await r.json();
-    if (!data?.ok) {
-      setError(data?.error ?? "회원가입 실패");
-      throw new Error(data?.error ?? "register failed");
-    }
-
-    await refreshSession();
-    window.location.replace("/bty");
+    const s = await fetch("/api/auth/session", { credentials: "include" }).then((r) => r.json());
+    if (s?.hasSession) setUser(s.user ?? { id: s.userId, email: s.email ?? null });
   };
 
   const logout = async () => {
