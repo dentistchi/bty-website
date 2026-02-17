@@ -19,6 +19,12 @@ function corsHeaders(request: NextRequest) {
   };
 }
 
+function hasSupabaseCookie(request: NextRequest): boolean {
+  return request.cookies
+    .getAll()
+    .some((c) => c.name.startsWith("sb-") && c.name.endsWith("-auth-token") && c.value);
+}
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
@@ -42,6 +48,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // /bty/* routes: simple cookie check, redirect to / if no session
+  if (pathname.startsWith("/bty/")) {
+    if (!hasSupabaseCookie(request)) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      url.searchParams.set("next", pathname + request.nextUrl.search);
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
+
+  // /admin/* routes: full session + role check (below)
   if (!pathname.startsWith("/admin/")) {
     return NextResponse.next();
   }
@@ -98,5 +116,5 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   runtime: "experimental-edge",
-  matcher: ["/api/:path*", "/admin/:path*", "/journey/:path*"],
+  matcher: ["/api/:path*", "/admin/:path*", "/bty/:path*", "/journey/:path*"],
 };

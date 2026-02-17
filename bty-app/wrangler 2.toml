@@ -1,0 +1,9 @@
+name = "bty-website"
+main = ".open-next/worker.js"
+compatibility_date = "2024-12-01"
+
+# OpenNext 빌드 산출물(assets)은 Workers Assets로 자동 바인딩됨
+# wrangler deploy 시 .open-next 폴더 기준
+
+[vars]
+NODE_ENV = "production"
