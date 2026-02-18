@@ -60,7 +60,7 @@ export default function ActionChecklist({
       </div>
 
       <div className="mt-3 text-xs text-gray-500">
-        These are "micro-actions." Completing even one counts.
+        These are &quot;micro-actions.&quot; Completing even one counts.
       </div>
     </div>
   );

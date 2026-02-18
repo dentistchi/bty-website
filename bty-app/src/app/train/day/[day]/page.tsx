@@ -161,7 +161,7 @@ export default function TrainDayPage() {
               (placeholder) Later: inject lesson context + store conversation.
             </div>
             <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 12 }}>
-              Prompt idea: "Today is Day {day}. Help me do the smallest 10-minute version of the practice."
+              Prompt idea: &quot;Today is Day {day}. Help me do the smallest 10-minute version of the practice.&quot;
             </div>
           </div>
         ) : (
@@ -169,7 +169,7 @@ export default function TrainDayPage() {
             <div style={{ fontWeight: 700, marginBottom: 6 }}>Completion summary</div>
             {!completionSummary ? (
               <div style={{ opacity: 0.7 }}>
-                No summary yet. Click "Mark today as complete" (or we can generate on demand).
+                No summary yet. Click &quot;Mark today as complete&quot; (or we can generate on demand).
               </div>
             ) : (
               <div style={{ display: "grid", gap: 12 }}>

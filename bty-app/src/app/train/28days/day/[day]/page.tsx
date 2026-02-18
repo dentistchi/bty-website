@@ -9,7 +9,7 @@ export default function DayLessonPage({ params }: { params: { day: string } }) {
 
       <div className="rounded-lg border p-4 space-y-2">
         <div className="font-medium">오늘의 한 문장</div>
-        <p className="opacity-80">"나는 안전하다. 지금은 내려놓아도 된다."</p>
+        <p className="opacity-80">{'"나는 안전하다. 지금은 내려놓아도 된다."'}</p>
       </div>
 
       <div className="rounded-lg border p-4 space-y-2">

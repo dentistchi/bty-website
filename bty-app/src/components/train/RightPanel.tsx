@@ -33,7 +33,7 @@ export function RightPanel() {
             <div className="rounded-xl border p-3 text-sm text-gray-700 bg-gray-50">
               Prompt idea:
               <div className="mt-2">
-                "Today is Day X. Help me shrink the core action into a 10-minute version and keep me accountable."
+                &quot;Today is Day X. Help me shrink the core action into a 10-minute version and keep me accountable.&quot;
               </div>
             </div>
           </div>

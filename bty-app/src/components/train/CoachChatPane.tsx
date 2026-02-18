@@ -89,9 +89,9 @@ export default function CoachChatPane({
           <div className="mt-4 rounded-xl border p-3 text-sm text-gray-600">
             프롬프트(예시)
             <div className="mt-2 whitespace-pre-wrap text-gray-700">
-              오늘은 Day {day}야.  
-              내가 지금 느끼는 감정/저항을 한 문장으로 말할게: "___".  
-              코치는 "핵심 실천"을 10분 버전으로 줄여서 제안하고, 한 번만 더 하게 만드는 말을 해줘.
+              오늘은 Day {day}야.{" "}
+              내가 지금 느끼는 감정/저항을 한 문장으로 말할게: &quot;___&quot;.{" "}
+              코치는 &quot;핵심 실천&quot;을 10분 버전으로 줄여서 제안하고, 한 번만 더 하게 만드는 말을 해줘.
             </div>
           </div>
         </div>
@@ -103,7 +103,7 @@ export default function CoachChatPane({
 
           {!completion && (
             <div className="text-sm text-gray-600">
-              아직 Day {day}가 완료되지 않았어. 좌측에서 "오늘 실천 완료"를 누르면 생성돼.
+              아직 Day {day}가 완료되지 않았어. 좌측에서 &quot;오늘 실천 완료&quot;를 누르면 생성돼.
             </div>
           )}
 
