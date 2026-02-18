@@ -4,29 +4,51 @@ import { getSupabaseServer } from "@/lib/supabase-server";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+function copySetCookie(from: NextResponse, to: NextResponse) {
+  const anyHeaders = from.headers as any;
+  const setCookies: string[] =
+    anyHeaders.getSetCookie?.() ??
+    (from.headers.get("set-cookie") ? [from.headers.get("set-cookie")!] : []);
+
+  for (const c of setCookies) to.headers.append("set-cookie", c);
+}
+
 export async function GET(req: NextRequest) {
-  // 쿠키 setAll()을 위해 res 객체를 먼저 만들고 전달
-  const res = NextResponse.next();
+  const cookieRes = NextResponse.next();
 
   try {
-    const supabase = getSupabaseServer(req, res); // ✅ 반드시 (req, res) 2개
+    const supabase = getSupabaseServer(req, cookieRes);
     if (!supabase) {
-      return NextResponse.json({ ok: false, error: "Supabase env missing" }, { status: 503 });
+      return NextResponse.json(
+        { ok: false, error: "Supabase env missing (url/key)" },
+        { status: 503 }
+      );
     }
 
     const { data, error } = await supabase.auth.getUser();
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 401 });
+      const out = NextResponse.json(
+        { ok: false, error: error.message, where: "supabase.auth.getUser()" },
+        { status: 401 }
+      );
+      copySetCookie(cookieRes, out);
+      return out;
     }
 
-    // ✅ res에 set-cookie가 들어갔다면 headers로 전달
-    return NextResponse.json(
+    const out = NextResponse.json(
       { ok: true, user: data.user ?? null },
-      { status: 200, headers: res.headers }
+      { status: 200 }
     );
+    copySetCookie(cookieRes, out);
+    return out;
   } catch (e: any) {
     return NextResponse.json(
-      { ok: false, error: e?.message ?? String(e), stack: e?.stack ?? null },
+      {
+        ok: false,
+        error: e?.message ?? String(e),
+        stack: e?.stack ?? null,
+        where: "/api/auth/session GET",
+      },
       { status: 500 }
     );
   }
