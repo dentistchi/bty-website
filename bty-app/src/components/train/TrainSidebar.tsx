@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { getLocaleFromPathname } from "@/lib/locale";
 import { t } from "@/lib/i18n/train";

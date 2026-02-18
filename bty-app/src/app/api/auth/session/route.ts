@@ -1,23 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser } from "@/lib/authz";
 import { getSupabaseServer } from "@/lib/supabase-server";
 
-export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
+  // 쿠키 setAll()을 위해 res 객체를 먼저 만들고 전달
   const res = NextResponse.next();
 
-  const auth = await requireUser(req, res);
-  if (!auth.ok) {
-    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status, headers: res.headers });
-  }
+  try {
+    const supabase = getSupabaseServer(req, res); // ✅ 반드시 (req, res) 2개
+    if (!supabase) {
+      return NextResponse.json({ ok: false, error: "Supabase env missing" }, { status: 503 });
+    }
 
-  return NextResponse.json(
-    { ok: true, hasSession: true, userId: auth.user.id, user: { id: auth.user.id, email: auth.user.email ?? null } },
-    { headers: res.headers }
-  );
+    const { data, error } = await supabase.auth.getUser();
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 401 });
+    }
+
+    // ✅ res에 set-cookie가 들어갔다면 headers로 전달
+    return NextResponse.json(
+      { ok: true, user: data.user ?? null },
+      { status: 200, headers: res.headers }
+    );
+  } catch (e: any) {
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? String(e), stack: e?.stack ?? null },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {
