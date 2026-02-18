@@ -1,3 +1,5 @@
+"use client";
+
 export default function Track28Home() {
   return (
     <div className="space-y-4">

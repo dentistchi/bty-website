@@ -37,21 +37,34 @@ export default function TrainSidebar({
   async function markComplete() {
     setBusy(true);
     setToast(null);
-    const r = await fetch("/api/train/progress", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ day: currentDay }),
-    }).then((x) => x.json());
+    try {
+      const r = await fetch("/api/train/complete", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ day: currentDay }),
+        cache: "no-store",
+      });
 
-    if (!r?.ok) {
-      setToast(r?.error ?? "Failed");
+      const ct = r.headers.get("content-type") || "";
+      const text = await r.text();
+      const j = ct.includes("application/json") ? JSON.parse(text) : { ok: false, error: text.slice(0, 120) };
+
+      if (!j?.ok) {
+        setToast(j?.error ?? "Failed");
+        console.log("complete failed", j);
+        return;
+      }
+
+      await onRefresh();
+      onMarkCompleteSuccess?.();
+    } catch (e) {
+      setToast(String(e) ?? "Network error");
+      console.log("complete error", e);
+    } finally {
+      // ✅ 무조건 busy 해제
       setBusy(false);
-      return;
     }
-    await onRefresh();
-    onMarkCompleteSuccess?.();
-    setBusy(false);
   }
 
   return (

@@ -139,3 +139,25 @@ export function setSafeMirrorPositive(): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(SAFE_MIRROR_POSITIVE_KEY, "1");
 }
+
+/**
+ * 안전한 JSON fetch 헬퍼:
+ * - Content-Type 검증
+ * - JSON 파싱 에러 처리
+ * - 디버깅을 위한 텍스트 헤드 포함
+ */
+export async function safeJson(url: string) {
+  const r = await fetch(url, { credentials: "include", cache: "no-store" });
+  const ct = r.headers.get("content-type") || "";
+  const text = await r.text();
+
+  if (!ct.includes("application/json")) {
+    return { ok: false, error: `non-json response (${r.status})`, debugTextHead: text.slice(0, 120) };
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { ok: false, error: `json parse failed (${r.status})`, debugTextHead: text.slice(0, 120) };
+  }
+}

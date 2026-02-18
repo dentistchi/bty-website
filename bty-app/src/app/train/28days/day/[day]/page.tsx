@@ -1,3 +1,5 @@
+"use client";
+
 export default function DayLessonPage({ params }: { params: { day: string } }) {
   const day = Number(params.day);
 
