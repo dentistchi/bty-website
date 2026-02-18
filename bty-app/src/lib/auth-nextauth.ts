@@ -28,7 +28,11 @@ const providers: NextAuthConfig["providers"] = hasAzure
       AzureADProvider({
         clientId: process.env.AZURE_AD_CLIENT_ID!,
         clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
-        tenantId: process.env.AZURE_AD_TENANT_ID,
+        // tenantId: process.env.AZURE_AD_TENANT_ID,  // ❌ 제거
+
+        // ✅ tenant를 issuer로 지정
+        issuer: `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/v2.0`,
+
         authorization: {
           params: { scope: "openid profile email" },
         },
