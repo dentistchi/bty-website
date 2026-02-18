@@ -19,7 +19,7 @@ type AuthCtx = {
 const Ctx = createContext<AuthCtx | null>(null);
 
 async function fetchSession(): Promise<AuthUser | null> {
-  const res = await fetch("/api/auth/session", {
+  const res = await fetch(`/api/auth/session?_t=${Date.now()}`, {
     credentials: "include",
     cache: "no-store",
   });
@@ -91,8 +91,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     await apiJson("/api/auth/login", { email, password });
 
-    const s = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" })
-      .then((r) => r.json());
+    const s = await fetch(`/api/auth/session?_t=${Date.now()}`, {
+      credentials: "include",
+      cache: "no-store",
+    }).then((r) => r.json());
 
     if (!s?.ok || !s?.hasSession) throw new Error("세션 생성 실패(쿠키 미설정)");
 
@@ -106,7 +108,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     await apiJson("/api/auth/register", { email, password });
 
-    const s = await fetch("/api/auth/session", { credentials: "include" }).then((r) => r.json());
+    const s = await fetch(`/api/auth/session?_t=${Date.now()}`, {
+      credentials: "include",
+      cache: "no-store",
+    }).then((r) => r.json());
     if (s?.hasSession) setUser(s.user ?? { id: s.userId, email: s.email ?? null });
   };
 

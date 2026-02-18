@@ -9,7 +9,7 @@ export default function BtyAuthGuard({ children }: { children: React.ReactNode }
     let alive = true;
 
     (async () => {
-      const r = await fetch("/api/auth/session", {
+      const r = await fetch(`/api/auth/session?_t=${Date.now()}`, {
         credentials: "include",
         cache: "no-store",
       });

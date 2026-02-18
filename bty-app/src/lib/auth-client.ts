@@ -29,7 +29,9 @@ export function clearStoredToken(): void {
 export async function fetchSession(token: string | null): Promise<AuthUser | null> {
   const base = getApiBase();
   const url = base ? `${base.replace(/\/$/, "")}/api/auth/session` : "/api/auth/session";
-  const res = await fetch(url, {
+  const res = await fetch(`${url}${url.includes("?") ? "&" : "?"}_t=${Date.now()}`, {
+    credentials: "include",
+    cache: "no-store",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   const data = await res.json();

@@ -48,7 +48,9 @@ export default function DebugPage() {
       return;
     }
     try {
-      const res = await fetch("/api/auth/session", {
+      const res = await fetch(`/api/auth/session?_t=${Date.now()}`, {
+        credentials: "include",
+        cache: "no-store",
         headers: { Authorization: `Bearer ${storedToken}` },
       });
       const data = await res.json();

@@ -1,10 +1,15 @@
-import BtyAuthGuard from "./_components/BtyAuthGuard";
+"use client";
 
-export default function Page() {
+import { useAuth } from "@/contexts/AuthContext";
+
+export default function BtyPage() {
+  const { user, loading } = useAuth();
+
   return (
-    <BtyAuthGuard>
-      {/* 기존 bty UI */}
-      <div>...bty contents...</div>
-    </BtyAuthGuard>
+    <div>
+      {loading && <div>loading...</div>}
+      {!loading && !user && <div>로그인이 필요합니다.</div>}
+      {!loading && user && <div>BTY UI (user: {user.email})</div>}
+    </div>
   );
 }
