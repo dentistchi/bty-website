@@ -1,4 +1,4 @@
-import type { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
@@ -24,16 +24,18 @@ export function canGrantRole(granter: MembershipRole, target: MembershipRole) {
 }
 
 export async function requireUser(request: NextRequest) {
-  const supabase = getSupabaseServer(request);
-  if (!supabase) return { ok: false as const, status: 503, error: "Server not configured" };
+  const response = NextResponse.next();
+  const supabase = getSupabaseServer(request, response);
+  if (!supabase) {
+    return { ok: false as const, status: 503, error: "Server not configured" };
+  }
 
   const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return { ok: false as const, status: 401, error: "Unauthorized" };
+  if (error || !data?.user) {
+    return { ok: false as const, status: 401, error: "Unauthorized" };
+  }
 
-  return {
-    ok: true as const,
-    user: { id: data.user.id, email: data.user.email ?? null },
-  };
+  return { ok: true as const, user: data.user };
 }
 
 function parseScope(request: NextRequest) {
