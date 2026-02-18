@@ -1,23 +1,51 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams, usePathname } from "next/navigation";
 import { getTrainDay } from "@/lib/trainContent";
 import { getLocaleFromPathname } from "@/lib/locale";
 import { t } from "@/lib/i18n/train";
 import { SECTION_KEY_MAP } from "@/lib/trainSectionMap";
 import { extractChecklist } from "@/lib/extractChecklist";
+import { useTrainLayout } from "@/contexts/TrainLayoutContext";
 import ActionChecklist from "@/components/train/ActionChecklist";
 import FocusTimer from "@/components/train/FocusTimer";
 import ReflectionBox from "@/components/train/ReflectionBox";
+
+/** 오늘의 1개 실천: 핵심 실천 첫 줄 또는 요약 */
+function todayOnePractice(dayData: { sections?: Record<string, string> }) {
+  const core = dayData.sections?.["핵심 실천"] ?? "";
+  const firstLine = core.split(/\n/)[0]?.trim() ?? "";
+  return firstLine || "오늘의 핵심 실천을 레슨에서 확인하세요.";
+}
 
 export default function TrainDayPage() {
   const params = useParams<{ day: string }>();
   const pathname = usePathname();
   const locale = getLocaleFromPathname(pathname);
+  const layout = useTrainLayout();
+
+  const [toast, setToast] = useState<string | null>(null);
 
   const dayNum = Number(params.day);
   const dayData = useMemo(() => getTrainDay(dayNum), [dayNum]);
+
+  async function markComplete(day: number) {
+    setToast(null);
+    const r = await fetch("/api/train/progress", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ day }),
+    }).then((x) => x.json());
+
+    if (!r?.ok) {
+      setToast(r?.error ?? "Failed");
+      return;
+    }
+    await layout?.refreshProgress();
+    layout?.onMarkCompleteSuccess();
+  }
 
   if (!dayData) return <div className="p-8">Invalid day.</div>;
 
@@ -32,6 +60,7 @@ export default function TrainDayPage() {
   }, [dayData.sections]);
 
   const checklistItems = useMemo(() => extractChecklist(mapped.actions ?? ""), [mapped.actions]);
+  const onePractice = useMemo(() => todayOnePractice(dayData), [dayData]);
 
   return (
     <div className="p-8 max-w-4xl">
@@ -46,6 +75,26 @@ export default function TrainDayPage() {
             <div className="text-sm font-semibold">{t(locale, "lesson")}</div>
             <div className="mt-3 text-sm leading-7 whitespace-pre-wrap text-gray-700">
               {dayData.raw}
+            </div>
+          </div>
+
+          {/* 오늘의 1개 실천 + Mark today as complete */}
+          <div className="rounded-xl border bg-white p-5 space-y-4">
+            <div className="text-sm font-semibold">오늘의 1개 실천</div>
+            <p className="text-sm text-gray-700">{onePractice}</p>
+            <div>
+              <button
+                type="button"
+                onClick={() => markComplete(dayNum)}
+                className="rounded-lg px-4 py-2 text-sm font-medium bg-black text-white hover:bg-gray-800 disabled:opacity-50"
+              >
+                {t(locale, "markComplete")}
+              </button>
+              {toast && (
+                <p className="mt-2 text-xs text-red-600" role="alert">
+                  {toast}
+                </p>
+              )}
             </div>
           </div>
 

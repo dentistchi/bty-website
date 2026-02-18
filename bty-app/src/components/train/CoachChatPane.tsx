@@ -33,7 +33,15 @@ function buildSummaryAndQuestions(day: number) {
   return { summary, questions };
 }
 
-export default function CoachChatPane({ progress }: { progress: Progress }) {
+export default function CoachChatPane({
+  progress,
+  showCompletionSummary = false,
+  onViewedCompletionSummary,
+}: {
+  progress: Progress;
+  showCompletionSummary?: boolean;
+  onViewedCompletionSummary?: () => void;
+}) {
   const pathname = usePathname();
   const day = useMemo(() => {
     const m = pathname.match(/\/train\/day\/(\d+)/);
@@ -41,6 +49,14 @@ export default function CoachChatPane({ progress }: { progress: Progress }) {
   }, [pathname]);
 
   const [tab, setTab] = useState<"chat" | "complete">("chat");
+
+  // 완료 성공 시 오른쪽 탭을 "완료 요약"으로 전환
+  useEffect(() => {
+    if (showCompletionSummary) {
+      setTab("complete");
+      onViewedCompletionSummary?.();
+    }
+  }, [showCompletionSummary, onViewedCompletionSummary]);
 
   const completion = useMemo(() => {
     // "현재 day가 완료된 상태"라면 요약 탭을 의미있게 보여줌

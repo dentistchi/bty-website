@@ -17,14 +17,17 @@ export default function TrainSidebar({
   userEmail,
   progress,
   onRefresh,
+  onMarkCompleteSuccess,
 }: {
   userEmail: string;
   progress: Progress;
   onRefresh: () => Promise<void>;
+  onMarkCompleteSuccess?: () => void;
 }) {
   const pathname = usePathname();
   const locale = getLocaleFromPathname(pathname);
   const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   const currentDay = useMemo(() => {
     const m = pathname.match(/\/train\/day\/(\d+)/);
@@ -33,13 +36,21 @@ export default function TrainSidebar({
 
   async function markComplete() {
     setBusy(true);
-    await fetch("/api/train/progress", {
+    setToast(null);
+    const r = await fetch("/api/train/progress", {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ day: currentDay }),
-    }).then((r) => r.json());
+    }).then((x) => x.json());
+
+    if (!r?.ok) {
+      setToast(r?.error ?? "Failed");
+      setBusy(false);
+      return;
+    }
     await onRefresh();
+    onMarkCompleteSuccess?.();
     setBusy(false);
   }
 
@@ -57,6 +68,11 @@ export default function TrainSidebar({
             {busy ? t(locale, "processing") : t(locale, "markComplete")}
           </button>
         </div>
+        {toast && (
+          <div className="mt-2 text-xs text-red-600" role="alert">
+            {toast}
+          </div>
+        )}
         <div className="text-[11px] text-gray-500 mt-2">
           {t(locale, "ruleNote")}
         </div>
