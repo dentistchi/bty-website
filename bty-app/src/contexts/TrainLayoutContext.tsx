@@ -1,17 +1,21 @@
 "use client";
 
-import { createContext, useContext, useCallback, type ReactNode } from "react";
+import React, { createContext, useContext, type ReactNode } from "react";
 
-type Progress = {
+export type Progress = {
   startDateISO: string;
   lastCompletedDay: number;
   lastCompletedAt: string | null;
+  completedDays?: number[];
 };
 
 type TrainLayoutContextValue = {
   progress: Progress | null;
   refreshProgress: () => Promise<void>;
-  onMarkCompleteSuccess: () => void;
+  onMarkCompleteSuccess?: () => void;
+  startDateISO: string | null;
+  completedDays: number[];
+  lastCompletedDay: number;
 };
 
 const TrainLayoutContext = createContext<TrainLayoutContextValue | null>(null);
@@ -29,14 +33,32 @@ export function TrainLayoutProvider({
 }: {
   progress: Progress | null;
   refreshProgress: () => Promise<void>;
-  onMarkCompleteSuccess: () => void;
+  onMarkCompleteSuccess?: () => void;
   children: ReactNode;
 }) {
-  const value: TrainLayoutContextValue = {
-    progress,
-    refreshProgress,
-    onMarkCompleteSuccess,
-  };
+  const value = React.useMemo(
+    () => ({
+      progress,
+      refreshProgress,
+      onMarkCompleteSuccess,
+      startDateISO: progress?.startDateISO ?? null,
+      completedDays: progress?.completedDays ?? [],
+      lastCompletedDay: progress?.lastCompletedDay ?? 0,
+    }),
+    [
+      progress,
+      refreshProgress,
+      onMarkCompleteSuccess,
+      progress?.startDateISO,
+      progress?.lastCompletedDay,
+      progress?.completedDays?.join(","),
+    ]
+  );
+
+  if (!progress) {
+    return <div className="min-h-screen p-6">loading...</div>;
+  }
+
   return (
     <TrainLayoutContext.Provider value={value}>
       {children}

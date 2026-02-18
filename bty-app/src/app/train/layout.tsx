@@ -1,13 +1,6 @@
-"use client";
-
-import React from "react";
-import { TrainUIProvider } from "@/contexts/TrainUIContext";
+import type { ReactNode } from "react";
 import TrainShell from "@/components/train/TrainShell";
 
-export default function TrainLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <TrainUIProvider>
-      <TrainShell>{children}</TrainShell>
-    </TrainUIProvider>
-  );
+export default function TrainLayout({ children }: { children: ReactNode }) {
+  return <TrainShell>{children}</TrainShell>;
 }
