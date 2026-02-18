@@ -4,7 +4,7 @@
  * When Entra ID is not configured, Credentials provider allows dev login for BTY_ADMIN_EMAILS.
  */
 
-import type { NextAuthOptions, Session } from "next-auth";
+import type { NextAuthConfig, Session } from "next-auth";
 import AzureADProvider from "next-auth/providers/azure-ad";
 import CredentialsProvider from "next-auth/providers/credentials";
 
@@ -23,7 +23,7 @@ const hasAzure = !!(
   process.env.AZURE_AD_CLIENT_SECRET
 );
 
-const providers: NextAuthOptions["providers"] = hasAzure
+const providers: NextAuthConfig["providers"] = hasAzure
   ? [
       AzureADProvider({
         clientId: process.env.AZURE_AD_CLIENT_ID!,
@@ -51,7 +51,7 @@ const providers: NextAuthOptions["providers"] = hasAzure
       }),
     ];
 
-export const authOptions: NextAuthOptions = {
+export const authOptions: NextAuthConfig = {
   providers,
   callbacks: {
     async jwt({ token, user, account, profile }) {

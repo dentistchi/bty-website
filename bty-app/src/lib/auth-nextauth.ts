@@ -4,7 +4,7 @@
  * When Entra ID is not configured, Credentials provider allows dev login for BTY_ADMIN_EMAILS.
  */
 
-import type { NextAuthConfig, Session } from "next-auth";
+import type { NextAuthConfig, Session, User } from "next-auth";
 import AzureADProvider from "next-auth/providers/azure-ad";
 import CredentialsProvider from "next-auth/providers/credentials";
 
@@ -28,14 +28,8 @@ const providers: NextAuthConfig["providers"] = hasAzure
       AzureADProvider({
         clientId: process.env.AZURE_AD_CLIENT_ID!,
         clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
-        // tenantId: process.env.AZURE_AD_TENANT_ID,  // ❌ 제거
-
-        // ✅ tenant를 issuer로 지정
         issuer: `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/v2.0`,
-
-        authorization: {
-          params: { scope: "openid profile email" },
-        },
+        authorization: { params: { scope: "openid profile email" } },
       }),
     ]
   : [
@@ -46,11 +40,17 @@ const providers: NextAuthConfig["providers"] = hasAzure
           secret: { label: "Dev secret", type: "password" },
         },
         async authorize(creds) {
-          const email = creds?.email;
-          const secret = process.env.DEV_ADMIN_SECRET || "dev-admin-ok";
-          if (!email || creds?.secret !== secret) return null;
+          const email =
+            typeof creds?.email === "string" ? creds.email.trim() : "";
+          const secret =
+            typeof creds?.secret === "string" ? creds.secret : "";
+
+          const expected = process.env.DEV_ADMIN_SECRET || "dev-admin-ok";
+          if (!email || secret !== expected) return null;
           if (!isAllowedEmail(email)) return null;
-          return { id: "dev", email };
+
+          const user: User = { id: "dev", email };
+          return user;
         },
       }),
     ];
