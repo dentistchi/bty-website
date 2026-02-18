@@ -23,9 +23,8 @@ export function canGrantRole(granter: MembershipRole, target: MembershipRole) {
   return false;
 }
 
-export async function requireUser(request: NextRequest) {
-  const response = NextResponse.next();
-  const supabase = getSupabaseServer(request, response);
+export async function requireUser(req: NextRequest, res: NextResponse) {
+  const supabase = getSupabaseServer(req, res);
   if (!supabase) {
     return { ok: false as const, status: 503, error: "Server not configured" };
   }
@@ -46,9 +45,10 @@ function parseScope(request: NextRequest) {
 
 export async function requireRegionAccess(
   request: NextRequest,
+  res: NextResponse,
   opts: { minRole: MembershipRole }
 ) {
-  const u = await requireUser(request);
+  const u = await requireUser(request, res);
   if (!u.ok) return u;
 
   const { orgId, regionId } = parseScope(request);
@@ -111,7 +111,8 @@ export async function requireRegionAccess(
 
 export async function requireAdmin(
   request: NextRequest,
+  res: NextResponse,
   opts?: { minRole?: MembershipRole }
 ) {
-  return requireRegionAccess(request, { minRole: opts?.minRole ?? "office_manager" });
+  return requireRegionAccess(request, res, { minRole: opts?.minRole ?? "office_manager" });
 }

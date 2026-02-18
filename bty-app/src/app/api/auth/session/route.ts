@@ -1,48 +1,23 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { getAuthUserFromRequest } from "@/lib/auth-server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireUser } from "@/lib/authz";
 import { getSupabaseServer } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-function buildRes(body: any) {
-  const res = NextResponse.json(body, { status: 200 });
-  res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
-  res.headers.set("Pragma", "no-cache");
-  res.headers.set("Expires", "0");
-  res.headers.set("CDN-Cache-Control", "no-store");
-  res.headers.set("Surrogate-Control", "no-store");
-  res.headers.append("Vary", "Cookie");
-  res.headers.set("X-REQ-ID", crypto.randomUUID());
-  return res;
-}
+export async function GET(req: NextRequest) {
+  const res = NextResponse.next();
 
-export async function GET(request: Request) {
-  const auth = request.headers.get("authorization");
-  const cookie = request.headers.get("cookie") || "";
+  const auth = await requireUser(req, res);
+  if (!auth.ok) {
+    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status, headers: res.headers });
+  }
 
-  const debug = {
-    now: Date.now(),
-    hasAuthHeader: !!auth,
-    hasSbCookie: /sb-[^=]+-auth-token=/.test(cookie),
-    cookieLen: cookie.length,
-    sbCookieSample: /sb-[^=]+-auth-token=/.test(cookie)
-      ? (cookie.match(/sb-[^=]+-auth-token=[^;]+/)?.[0]?.slice(0, 60) ?? null)
-      : null,
-  };
-
-  const user = await getAuthUserFromRequest(request);
-  if (!user) return buildRes({ ok: true, hasSession: false, debug });
-
-  return buildRes({
-    ok: true,
-    hasSession: true,
-    userId: user.id,
-    user: { id: user.id, email: user.email ?? null },
-    debug,
-  });
+  return NextResponse.json(
+    { ok: true, hasSession: true, userId: auth.user.id, user: { id: auth.user.id, email: auth.user.email ?? null } },
+    { headers: res.headers }
+  );
 }
 
 export async function POST(req: NextRequest) {
