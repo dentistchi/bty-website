@@ -1,20 +1,7 @@
 import type { ReactNode } from "react";
-import { redirect } from "next/navigation";
-import { getSupabaseServerReadonly } from "@/lib/supabase-server-readonly";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
-export default async function BtyLayout({ children }: { children: ReactNode }) {
-  const supabase = await getSupabaseServerReadonly();
-  if (!supabase) {
-    redirect("/bty/login");
-  }
-
-  const { data } = await supabase.auth.getUser();
-  if (!data.user) {
-    redirect(`/bty/login?next=${encodeURIComponent("/bty")}`);
-  }
-
+export default function BtyRootLayout({ children }: { children: ReactNode }) {
+  // ✅ 여기에는 절대 auth redirect/guard 넣지 말 것
+  // login까지 같이 감싸면 /bty/login이 무한 리다이렉트 됨
   return <>{children}</>;
 }
