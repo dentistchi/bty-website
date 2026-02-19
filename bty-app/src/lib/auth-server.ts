@@ -1,5 +1,5 @@
 import type { User } from "@supabase/supabase-js";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { getSupabaseServerReadonly } from "@/lib/supabase-server-readonly";
 
 // sb-<projectref>-auth-token 쿠키에서 access_token 꺼내기 (Workers-safe)
 function getAccessTokenFromCookieHeader(cookieHeader: string | null): string | null {
@@ -43,7 +43,7 @@ export async function getAuthUserFromRequest(request: Request): Promise<User | n
   const token = bearer || cookieToken;
   if (!token) return null;
 
-  const supabase = await createServerSupabaseClient();
+  const supabase = await getSupabaseServerReadonly();
   if (!supabase) {
     return null; // 또는 { ok: false as const, status: 503, error: "Server not configured" } 프로젝트 스타일에 맞게
   }
