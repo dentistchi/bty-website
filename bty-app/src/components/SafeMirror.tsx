@@ -187,10 +187,14 @@ export function SafeMirror({
       });
 
       if (!r.ok) {
-        const errObj = safeParse<{ error?: string; message?: string }>(r.raw);
-        const msg = errObj?.error ?? errObj?.message ?? r.raw ?? "Request failed";
+        let msg = r.raw ?? "Request failed";
+        try {
+          const obj = JSON.parse(r.raw ?? "") as { error?: string; message?: string };
+          msg = obj.error ?? obj.message ?? msg;
+        } catch {}
         throw new Error(msg);
       }
+
       const reply = typeof r.json?.message === "string" ? r.json.message : "";
       if (reply) {
         setEntries((prev) => [...prev, { role: "assistant", content: reply }]);
