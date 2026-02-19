@@ -5,6 +5,7 @@ import { getMessages } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { setSafeMirrorPositive } from "@/lib/utils";
 import { fetchJson } from "@/lib/read-json";
+import { safeParse } from "@/lib/safeParse";
 import type { Messages } from "@/lib/i18n";
 
 const BRIDGE_CHECK_EVENT = "dear-bridge-check";
@@ -185,7 +186,11 @@ export function SafeMirror({
         }),
       });
 
-      if (!r.ok) throw new Error(r.json?.error ?? r.raw ?? "Request failed");
+      if (!r.ok) {
+        const errObj = safeParse<{ error?: string; message?: string }>(r.raw);
+        const msg = errObj?.error ?? errObj?.message ?? r.raw ?? "Request failed";
+        throw new Error(msg);
+      }
       const reply = typeof r.json?.message === "string" ? r.json.message : "";
       if (reply) {
         setEntries((prev) => [...prev, { role: "assistant", content: reply }]);
