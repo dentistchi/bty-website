@@ -57,15 +57,26 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ✅ 최종 응답(바디는 성공)
+  // ✅ access_token과 refresh_token을 프론트엔드에 반환
+  // 프론트엔드에서 /api/auth/session POST로 쿠키 세션을 설정하도록 함
   const successRes = noStore(
     NextResponse.json(
-      { ok: true, userId: data.user?.id ?? null, email: data.user?.email ?? null },
+      {
+        ok: true,
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+        user: {
+          id: data.user?.id ?? null,
+          email: data.user?.email ?? null,
+        },
+      },
       { status: 200 }
     )
   );
 
   // ✅ cookieRes에 심긴 Set-Cookie를 successRes로 복사
+  // (Supabase가 자동으로 쿠키를 설정하지만, 프론트엔드에서도 토큰을 받아서
+  // /api/auth/session POST로 명시적으로 쿠키를 설정할 수 있도록 함)
   copySetCookies(cookieRes, successRes);
 
   return successRes;

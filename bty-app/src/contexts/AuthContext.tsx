@@ -107,16 +107,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     setError(null);
-    const loginRes = await fetchJson<{ error?: string; message?: string }>("/api/auth/login", {
+    
+    // 1. 로그인 요청
+    const loginRes = await fetchJson<{
+      ok?: boolean;
+      access_token?: string;
+      refresh_token?: string;
+      user?: AuthUser;
+      error?: string;
+    }>("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
     throwFromFetchJson(loginRes);
 
-    // ✅ 로그인 직후에는 쿠키 반영을 보장하기 위해 강제로 세션 확인 재시도
+    if (!loginRes.json?.ok || !loginRes.json?.access_token || !loginRes.json?.refresh_token) {
+      throw new Error("로그인 응답 형식 오류");
+    }
+
+    // 2. 받은 토큰으로 /api/auth/session POST로 쿠키 세션 설정
+    const sessionPostRes = await fetchJson<{ ok?: boolean; error?: string }>("/api/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        access_token: loginRes.json.access_token,
+        refresh_token: loginRes.json.refresh_token,
+      }),
+    });
+    throwFromFetchJson(sessionPostRes);
+
+    if (!sessionPostRes.json?.ok) {
+      throw new Error("세션 생성 실패(쿠키 미설정)");
+    }
+
+    // 3. 쿠키 세션 설정 후 /api/auth/session GET으로 사용자 정보 확인
     const j = await fetchSessionAfterLogin();
-    if (!j?.ok || !j?.user) throw new Error("세션 생성 실패(쿠키 미설정)");
+    if (!j?.ok || !j?.user) throw new Error("세션 확인 실패");
 
     setUser(j.user);
     // ✅ 세션 확인 완료 후 navigate
@@ -125,14 +152,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (email: string, password: string) => {
     setError(null);
-    const regRes = await fetchJson<{ error?: string; message?: string }>("/api/auth/register", {
+    
+    // 1. 회원가입 요청
+    const regRes = await fetchJson<{
+      ok?: boolean;
+      access_token?: string;
+      refresh_token?: string;
+      user?: AuthUser;
+      error?: string;
+    }>("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
     throwFromFetchJson(regRes);
 
-    const j = await fetchSessionOnce();
+    if (!regRes.json?.ok || !regRes.json?.access_token || !regRes.json?.refresh_token) {
+      throw new Error("회원가입 응답 형식 오류");
+    }
+
+    // 2. 받은 토큰으로 /api/auth/session POST로 쿠키 세션 설정
+    const sessionPostRes = await fetchJson<{ ok?: boolean; error?: string }>("/api/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        access_token: regRes.json.access_token,
+        refresh_token: regRes.json.refresh_token,
+      }),
+    });
+    throwFromFetchJson(sessionPostRes);
+
+    if (!sessionPostRes.json?.ok) {
+      throw new Error("세션 생성 실패(쿠키 미설정)");
+    }
+
+    // 3. 쿠키 세션 설정 후 /api/auth/session GET으로 사용자 정보 확인
+    const j = await fetchSessionAfterLogin();
     if (j?.ok && j?.user) setUser(j.user);
   };
 
