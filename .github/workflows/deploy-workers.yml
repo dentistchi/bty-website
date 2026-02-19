@@ -25,6 +25,14 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Type check (bty-app only)
+        working-directory: bty-app
+        run: |
+          # 명시적으로 bty-app/src만 타입 체크
+          # Next.js 빌드 전에 .next/types가 생성되지 않을 수 있으므로,
+          # 타입 체크는 src/**/*.ts, src/**/*.tsx만 검사하도록 tsconfig가 설정됨
+          npx tsc --noEmit --project tsconfig.json --skipLibCheck
+
       - name: Build (OpenNext)
         working-directory: bty-app
         env:
