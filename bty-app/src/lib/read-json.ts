@@ -1,12 +1,3 @@
-export function safeParse<T>(raw?: string): T | null {
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
-}
-
 export async function readJsonSafe<T>(res: Response): Promise<{ ok: boolean; data?: T; raw?: string }> {
   const ct = res.headers.get("content-type") || "";
   const raw = await res.text(); // json() 대신 text() — body 한 번만 소비

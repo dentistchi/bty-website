@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { fetchJson, safeParse } from "@/lib/read-json";
+import { fetchJson } from "@/lib/read-json";
+import { safeParse } from "@/lib/safeParse";
 
 type DebugResp = { ok: boolean; error?: string; where?: string };
 

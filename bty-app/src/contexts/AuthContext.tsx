@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { fetchJson } from "@/lib/read-json";
+import { safeParse } from "@/lib/safeParse";
 
 type AuthUser = { id: string; email?: string | null };
 
@@ -42,15 +43,8 @@ async function fetchSession(): Promise<AuthUser | null> {
 
 function throwFromFetchJson(r: { ok: boolean; status: number; raw?: string }) {
   if (r.ok) return;
-  let msg = `HTTP ${r.status}`;
-  if (r.raw) {
-    try {
-      const j = JSON.parse(r.raw) as { error?: string; message?: string };
-      msg = j.error || j.message || msg;
-    } catch {
-      // keep msg
-    }
-  }
+  const errObj = safeParse<{ error?: string; message?: string }>(r.raw);
+  const msg = errObj?.error ?? errObj?.message ?? r.raw ?? `HTTP ${r.status}`;
   throw new Error(msg);
 }
 

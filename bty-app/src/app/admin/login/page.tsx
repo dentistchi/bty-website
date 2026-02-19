@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { fetchJson } from "@/lib/read-json";
+import { safeParse } from "@/lib/safeParse";
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
@@ -21,7 +22,12 @@ export default function AdminLoginPage() {
     });
 
     if (!r.ok || !r.json?.ok) {
-      setError(r.ok ? (r.json?.error ?? "Login failed") : (r.raw?.slice(0, 200) ?? "Login failed"));
+      if (!r.ok) {
+        const errObj = safeParse<{ error?: string }>(r.raw);
+        setError(errObj?.error ?? r.raw?.slice(0, 200) ?? "Login failed");
+      } else {
+        setError(r.json?.error ?? "Login failed");
+      }
       setBusy(false);
       return;
     }

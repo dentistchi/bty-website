@@ -3,6 +3,7 @@
  */
 
 import { fetchJson } from "@/lib/read-json";
+import { safeParse } from "@/lib/safeParse";
 
 const AUTH_TOKEN_KEY = "bty_auth_token";
 
@@ -48,7 +49,11 @@ export async function login(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
-  if (!r.ok) throw new Error(r.raw?.slice(0, 300) || "로그인에 실패했어요.");
+  if (!r.ok) {
+    const errObj = safeParse<{ error?: string; message?: string }>(r.raw);
+    const msg = errObj?.error ?? errObj?.message ?? r.raw ?? "로그인에 실패했어요.";
+    throw new Error(msg);
+  }
   if (!r.json?.token || !r.json?.user) throw new Error("로그인 응답 형식 오류");
   return { token: r.json.token, user: r.json.user };
 }
@@ -66,7 +71,11 @@ export async function register(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
-  if (!r.ok) throw new Error(r.raw?.slice(0, 300) || "회원가입에 실패했어요.");
+  if (!r.ok) {
+    const errObj = safeParse<{ error?: string; message?: string }>(r.raw);
+    const msg = errObj?.error ?? errObj?.message ?? r.raw ?? "회원가입에 실패했어요.";
+    throw new Error(msg);
+  }
   if (!r.json?.token || !r.json?.user) throw new Error("회원가입 응답 형식 오류");
   return { token: r.json.token, user: r.json.user };
 }
