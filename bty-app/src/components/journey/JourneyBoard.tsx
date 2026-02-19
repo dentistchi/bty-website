@@ -9,7 +9,6 @@ import { Nav } from "@/components/Nav";
 import { ThemeBody } from "@/components/ThemeBody";
 import { MissionCard } from "@/components/journey/MissionCard";
 import { cn } from "@/lib/utils";
-import { getStoredToken } from "@/lib/auth-client";
 import { fetchJson } from "@/lib/read-json";
 import { useAuth } from "@/contexts/AuthContext";
 import { JOURNEY_DAYS, type DayContent } from "@/lib/journey-content";
@@ -17,9 +16,10 @@ import type { DayEntry } from "@/lib/supabase-admin-types";
 
 const API_BASE = "";
 
-function authHeaders(): Record<string, string> | undefined {
-  const token = getStoredToken();
-  return token ? { Authorization: `Bearer ${token}` } : undefined;
+function getAuthHeader(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const token = localStorage.getItem("bty_auth_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 export function JourneyBoard() {
@@ -44,7 +44,6 @@ export function JourneyBoard() {
     if (!user) return;
     setLoading(true);
     try {
-      const headers = { ...authHeaders(), "Content-Type": "application/json" } as Record<string, string>;
       const [rProfile, rEntries] = await Promise.all([
         fetchJson<{
           current_day?: number;
@@ -53,8 +52,8 @@ export function JourneyBoard() {
           bounce_back_count?: number;
           last_completed_at?: string | null;
           is_new?: boolean;
-        }>(`${API_BASE}/api/journey/profile`, { headers: authHeaders() }),
-        fetchJson<DayEntry[]>(`${API_BASE}/api/journey/entries`, { headers: authHeaders() }),
+        }>(`${API_BASE}/api/journey/profile`, { headers: getAuthHeader() }),
+        fetchJson<DayEntry[]>(`${API_BASE}/api/journey/entries`, { headers: getAuthHeader() }),
       ]);
       if (rProfile.ok && rProfile.json) {
         const p = rProfile.json;
@@ -67,14 +66,29 @@ export function JourneyBoard() {
         };
         setProfile(payload);
         if (p.is_new) {
-          await fetchJson(`${API_BASE}/api/journey/profile`, {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-              current_day: payload.current_day,
-              season: payload.season,
-            }),
-          });
+          const r = await fetchJson<{ ok?: boolean; error?: string; message?: string }>(
+            `${API_BASE}/api/journey/profile`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeader(),
+              },
+              body: JSON.stringify({
+                current_day: payload.current_day,
+                season: payload.season,
+              }),
+            }
+          );
+
+          if (!r.ok) {
+            let msg = r.raw ?? "Request failed";
+            try {
+              const obj = JSON.parse(r.raw ?? "") as { error?: string; message?: string };
+              msg = obj.error ?? obj.message ?? msg;
+            } catch {}
+            throw new Error(msg);
+          }
         }
       }
       if (rEntries.ok && Array.isArray(rEntries.json)) {
@@ -99,42 +113,88 @@ export function JourneyBoard() {
   }, [loadData]);
 
   const handleStartSeason2 = useCallback(async () => {
-    await fetchWithAuth("/api/journey/profile", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        current_day: 1,
-        season: (profile?.season ?? 1) + 1,
-        last_completed_at: null,
-      }),
-    });
+    const r = await fetchJson<{ ok?: boolean; error?: string; message?: string }>(
+      "/api/journey/profile",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeader(),
+        },
+        body: JSON.stringify({
+          current_day: 1,
+          season: (profile?.season ?? 1) + 1,
+          last_completed_at: null,
+        }),
+      }
+    );
+
+    if (!r.ok) {
+      let msg = r.raw ?? "Request failed";
+      try {
+        const obj = JSON.parse(r.raw ?? "") as { error?: string; message?: string };
+        msg = obj.error ?? obj.message ?? msg;
+      } catch {}
+      throw new Error(msg);
+    }
+
     await loadData();
   }, [profile?.season, loadData]);
 
   const handleComplete = useCallback(
     async (day: number, data: { mission_checks: number[]; reflection_text: string }) => {
-      const res = await fetchWithAuth("/api/journey/entries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          day,
-          completed: true,
-          mission_checks: data.mission_checks,
-          reflection_text: data.reflection_text,
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to save");
+      const r = await fetchJson<{ ok?: boolean; error?: string; message?: string }>(
+        "/api/journey/entries",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeader(),
+          },
+          body: JSON.stringify({
+            day,
+            completed: true,
+            mission_checks: data.mission_checks,
+            reflection_text: data.reflection_text,
+          }),
+        }
+      );
+
+      if (!r.ok) {
+        let msg = r.raw ?? "Request failed";
+        try {
+          const obj = JSON.parse(r.raw ?? "") as { error?: string; message?: string };
+          msg = obj.error ?? obj.message ?? msg;
+        } catch {}
+        throw new Error(msg);
+      }
+
       // Advance to next day + 24h lock (기다림도 훈련)
       const nextDay = Math.min(28, day + 1);
-      await fetchWithAuth("/api/journey/profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          current_day: nextDay,
-          season: profile?.season ?? 1,
-          last_completed_at: new Date().toISOString(),
-        }),
-      });
+      const r2 = await fetchJson<{ ok?: boolean; error?: string; message?: string }>(
+        "/api/journey/profile",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeader(),
+          },
+          body: JSON.stringify({
+            current_day: nextDay,
+            season: profile?.season ?? 1,
+            last_completed_at: new Date().toISOString(),
+          }),
+        }
+      );
+
+      if (!r2.ok) {
+        let msg = r2.raw ?? "Request failed";
+        try {
+          const obj = JSON.parse(r2.raw ?? "") as { error?: string; message?: string };
+          msg = obj.error ?? obj.message ?? msg;
+        } catch {}
+        throw new Error(msg);
+      }
       await loadData();
     },
     [loadData, profile?.season]
