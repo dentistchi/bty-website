@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { fetchJson } from "@/lib/read-json";
 
 type OrganizationRow = {
   id: string;
   name: string;
   created_at: string | null;
 };
+
+type OrgsResp = { organizations?: OrganizationRow[] };
 
 export default function AdminOrganizationsPage() {
   const [loading, setLoading] = useState(true);
@@ -17,22 +20,18 @@ export default function AdminOrganizationsPage() {
     let cancelled = false;
 
     async function load() {
-      const res = await fetch("/api/admin/organizations", {
-        credentials: "include",
-        cache: "no-store",
-      });
+      const r = await fetchJson<OrgsResp>("/api/admin/organizations");
 
       if (cancelled) return;
 
-      if (!res.ok) {
+      if (!r.ok) {
         if (!cancelled) setError("조직 목록을 불러오지 못했습니다.");
         setLoading(false);
         return;
       }
 
-      const json = await res.json();
       if (!cancelled) {
-        setOrganizations(json.organizations ?? []);
+        setOrganizations(r.json?.organizations ?? []);
         setError(null);
       }
       setLoading(false);

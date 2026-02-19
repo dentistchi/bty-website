@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
+import { fetchJson } from "@/lib/read-json";
 import { getLocaleFromPathname } from "@/lib/locale";
 import { t } from "@/lib/i18n/train";
 import { dayStatus } from "@/lib/trainLock";
@@ -38,21 +39,16 @@ export default function TrainSidebar({
     setBusy(true);
     setToast(null);
     try {
-      const r = await fetch("/api/train/complete", {
+      const r = await fetchJson<{ ok?: boolean; error?: string }>("/api/train/complete", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ day: currentDay }),
-        cache: "no-store",
       });
 
-      const ct = r.headers.get("content-type") || "";
-      const text = await r.text();
-      const j = ct.includes("application/json") ? JSON.parse(text) : { ok: false, error: text.slice(0, 120) };
-
-      if (!j?.ok) {
-        setToast(j?.error ?? "Failed");
-        console.log("complete failed", j);
+      if (!r.ok || !r.json?.ok) {
+        const msg = r.ok ? r.json?.error : r.raw?.slice(0, 120);
+        setToast(msg ?? "Failed");
+        console.log("complete failed", r.ok ? r.json : r.raw);
         return;
       }
 

@@ -2,6 +2,8 @@
  * Shared auth client for bty and Dear Me. Same API base = one account.
  */
 
+import { fetchJson } from "@/lib/read-json";
+
 const AUTH_TOKEN_KEY = "bty_auth_token";
 
 export type AuthUser = { id: string; email: string };
@@ -21,22 +23,19 @@ export function setStoredToken(token: string): void {
   localStorage.setItem(AUTH_TOKEN_KEY, token);
 }
 
-export function clearStoredToken(): void {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem(AUTH_TOKEN_KEY);
-}
+type SessionResp = { ok?: boolean; user?: AuthUser | null };
 
 export async function fetchSession(token: string | null): Promise<AuthUser | null> {
   const base = getApiBase();
   const url = base ? `${base.replace(/\/$/, "")}/api/auth/session` : "/api/auth/session";
-  const res = await fetch(`${url}${url.includes("?") ? "&" : "?"}_t=${Date.now()}`, {
-    credentials: "include",
-    cache: "no-store",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  const r = await fetchJson<SessionResp>(`${url}${url.includes("?") ? "&" : "?"}_t=${Date.now()}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
-  const data = await res.json();
-  return data.user || null;
+  if (!r.ok) return null;
+  return r.json?.user ?? null;
 }
+
+type LoginResp = { token?: string; user?: AuthUser; error?: string };
 
 export async function login(
   email: string,
@@ -44,15 +43,17 @@ export async function login(
 ): Promise<{ token: string; user: AuthUser }> {
   const base = getApiBase();
   const url = base ? `${base.replace(/\/$/, "")}/api/auth/login` : "/api/auth/login";
-  const res = await fetch(url, {
+  const r = await fetchJson<LoginResp>(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "로그인에 실패했어요.");
-  return { token: data.token, user: data.user };
+  if (!r.ok) throw new Error(r.raw?.slice(0, 300) || "로그인에 실패했어요.");
+  if (!r.json?.token || !r.json?.user) throw new Error("로그인 응답 형식 오류");
+  return { token: r.json.token, user: r.json.user };
 }
+
+type RegisterResp = { token?: string; user?: AuthUser; error?: string };
 
 export async function register(
   email: string,
@@ -60,14 +61,14 @@ export async function register(
 ): Promise<{ token: string; user: AuthUser }> {
   const base = getApiBase();
   const url = base ? `${base.replace(/\/$/, "")}/api/auth/register` : "/api/auth/register";
-  const res = await fetch(url, {
+  const r = await fetchJson<RegisterResp>(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "회원가입에 실패했어요.");
-  return { token: data.token, user: data.user };
+  if (!r.ok) throw new Error(r.raw?.slice(0, 300) || "회원가입에 실패했어요.");
+  if (!r.json?.token || !r.json?.user) throw new Error("회원가입 응답 형식 오류");
+  return { token: r.json.token, user: r.json.user };
 }
 
 /** Build URL for the other site with token in hash so it can store and stay logged in */

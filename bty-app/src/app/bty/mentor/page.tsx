@@ -6,6 +6,7 @@ import { AuthGate } from "@/components/AuthGate";
 import { Nav } from "@/components/Nav";
 import { ThemeBody } from "@/components/ThemeBody";
 import { cn } from "@/lib/utils";
+import { fetchJson } from "@/lib/read-json";
 
 const DEAR_ME_URL = process.env.NEXT_PUBLIC_DEAR_ME_URL ?? "https://dear-me.pages.dev";
 
@@ -54,7 +55,7 @@ export default function MentorPage() {
 
     try {
       const history = [...messages, { role: "user" as const, text }];
-      const res = await fetch("/api/mentor", {
+      const r = await fetchJson<{ message?: string; safety_valve?: boolean }>("/api/mentor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -63,15 +64,14 @@ export default function MentorPage() {
           messages: history.map((m) => ({ role: m.role, content: m.text })),
         }),
       });
-      const data = await res.json();
 
-      const reply = typeof data.message === "string" ? data.message : "무슨 말씀인지 다시 해주실래요?";
+      const reply = typeof r.json?.message === "string" ? r.json.message : "무슨 말씀인지 다시 해주실래요?";
       setMessages((prev) => [
         ...prev,
         {
           role: "chi",
           text: reply,
-          safetyValve: Boolean(data.safety_valve),
+          safetyValve: Boolean(r.json?.safety_valve),
         },
       ]);
     } catch {

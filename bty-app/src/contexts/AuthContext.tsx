@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { fetchJson } from "@/lib/read-json";
 
 type AuthUser = { id: string; email?: string | null };
 
@@ -18,40 +19,39 @@ type AuthCtx = {
 
 const Ctx = createContext<AuthCtx | null>(null);
 
-async function fetchSession(): Promise<AuthUser | null> {
-  const res = await fetch(`/api/auth/session?_t=${Date.now()}`, {
-    credentials: "include",
-    cache: "no-store",
-  });
-  const data = await res.json();
-  // session API는 항상 200이고 hasSession으로 판단
-  if (!data?.ok || !data?.hasSession) return null;
-  return data.user; // { id, email }
+type SessionResp = { ok: boolean; user?: AuthUser | null };
+
+let sessionInflight: Promise<SessionResp | null> | null = null;
+
+async function fetchSessionOnce(): Promise<SessionResp | null> {
+  if (!sessionInflight) {
+    sessionInflight = (async () => {
+      const r = await fetchJson<SessionResp>("/api/auth/session");
+      return r.ok ? r.json : null;
+    })().finally(() => {
+      sessionInflight = null;
+    });
+  }
+  return sessionInflight;
 }
 
-async function apiJson<T>(url: string, body?: any, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    method: body ? "POST" : "GET",
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-    body: body ? JSON.stringify(body) : undefined,
-    credentials: "include", // ✅ 핵심
-    cache: "no-store",
-    ...init,
-  });
+async function fetchSession(): Promise<AuthUser | null> {
+  const j = await fetchSessionOnce();
+  return j?.ok ? j.user ?? null : null;
+}
 
-  const text = await res.text();
-  let data: any = null;
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
+function throwFromFetchJson(r: { ok: boolean; status: number; raw?: string }) {
+  if (r.ok) return;
+  let msg = `HTTP ${r.status}`;
+  if (r.raw) {
+    try {
+      const j = JSON.parse(r.raw) as { error?: string; message?: string };
+      msg = j.error || j.message || msg;
+    } catch {
+      // keep msg
+    }
   }
-
-  if (!res.ok) {
-    const msg = data?.error || data?.message || `HTTP ${res.status}`;
-    throw new Error(msg);
-  }
-  return data as T;
+  throw new Error(msg);
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -74,9 +74,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     (async () => {
       try {
-        const u = await fetchSession();
+        const j = await fetchSessionOnce();
+
         if (!mounted) return;
-        setUser(u);
+        setUser(j?.ok ? j.user ?? null : null);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -89,30 +90,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     setError(null);
-    await apiJson("/api/auth/login", { email, password });
+    const loginRes = await fetchJson<{ error?: string; message?: string }>("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    throwFromFetchJson(loginRes);
 
-    const s = await fetch(`/api/auth/session?_t=${Date.now()}`, {
-      credentials: "include",
-      cache: "no-store",
-    }).then((r) => r.json());
+    const j = await fetchSessionOnce();
+    if (!j?.ok || !j?.user) throw new Error("세션 생성 실패(쿠키 미설정)");
 
-    if (!s?.ok || !s?.hasSession) throw new Error("세션 생성 실패(쿠키 미설정)");
-
-    // ✅ 상태 업데이트도 하되, 화면 꼬임 방지 위해 하드 이동
-    setUser(s.user ?? { id: s.userId, email: s.email ?? null });
-
-    window.location.assign("/bty"); // ✅ 확실하게 화면 전환
+    setUser(j.user);
+    window.location.assign("/bty");
   };
 
   const register = async (email: string, password: string) => {
     setError(null);
-    await apiJson("/api/auth/register", { email, password });
+    const regRes = await fetchJson<{ error?: string; message?: string }>("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    throwFromFetchJson(regRes);
 
-    const s = await fetch(`/api/auth/session?_t=${Date.now()}`, {
-      credentials: "include",
-      cache: "no-store",
-    }).then((r) => r.json());
-    if (s?.hasSession) setUser(s.user ?? { id: s.userId, email: s.email ?? null });
+    const j = await fetchSessionOnce();
+    if (j?.ok && j?.user) setUser(j.user);
   };
 
   const logout = async () => {

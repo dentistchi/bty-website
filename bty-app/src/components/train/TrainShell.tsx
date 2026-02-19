@@ -3,22 +3,20 @@
 import * as React from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { TrainProvider, type TrainProgress } from "@/contexts/TrainContext";
+import { fetchJson } from "@/lib/read-json";
 
 async function getJson(url: string) {
-  const r = await fetch(url, { credentials: "include" });
-  const j = await r.json().catch(() => null);
-  return { ok: r.ok, json: j };
+  const r = await fetchJson<Record<string, unknown>>(url);
+  return { ok: r.ok, json: r.ok ? r.json : null };
 }
 
 async function postJson(url: string, body: unknown) {
-  const r = await fetch(url, {
+  const r = await fetchJson<Record<string, unknown>>(url, {
     method: "POST",
-    credentials: "include",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
-  const j = await r.json().catch(() => null);
-  return { ok: r.ok, json: j };
+  return { ok: r.ok, json: r.ok ? r.json : null };
 }
 
 function mapApiProgressToTrainProgress(json: Record<string, unknown>): TrainProgress {

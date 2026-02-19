@@ -1,3 +1,4 @@
+import { fetchJson } from "@/lib/read-json";
 import { NextResponse } from "next/server";
 
 /**
@@ -69,8 +70,12 @@ export async function POST(request: Request) {
       };
       const models = ["gemini-2.0-flash", "gemini-1.5-flash"] as const;
 
+      type GeminiResp = {
+        candidates?: { content?: { parts?: { text?: string }[] } }[];
+        error?: { message?: string };
+      };
       for (const model of models) {
-        const res = await fetch(
+        const r = await fetchJson<GeminiResp>(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
           {
             method: "POST",
@@ -81,14 +86,23 @@ export async function POST(request: Request) {
             body: JSON.stringify(payload),
           }
         );
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-
-        if (text) return NextResponse.json({ message: text });
-
-        if (!res.ok || data.error) {
-          console.error(`[safe-mirror] Gemini ${model} error:`, res.status, JSON.stringify(data).slice(0, 400));
-          if (data.error?.message?.includes("not found") || res.status === 404) continue;
+        if (r.ok) {
+          const data = r.json;
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (text) return NextResponse.json({ message: text });
+        }
+        let errData: GeminiResp | null = null;
+        if (!r.ok && r.raw) {
+          try {
+            errData = JSON.parse(r.raw) as GeminiResp;
+          } catch {
+            errData = null;
+          }
+        }
+        const data = r.ok ? r.json : errData;
+        if (!r.ok || data?.error) {
+          console.error(`[safe-mirror] Gemini ${model} error:`, r.status, data ? JSON.stringify(data).slice(0, 400) : r.raw?.slice(0, 400));
+          if (data?.error?.message?.includes("not found") || r.status === 404) continue;
           break;
         }
       }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { fetchJson } from "@/lib/read-json";
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
@@ -10,29 +11,20 @@ export default function AdminLoginPage() {
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-
-    console.log("login clicked");
-
     setBusy(true);
     setError(null);
 
-    const res = await fetch("/api/auth/login", {
+    const r = await fetchJson<{ ok?: boolean; error?: string }>("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "include",
       body: JSON.stringify({ email, password }),
     });
 
-    const data = await res.json().catch(() => null);
-
-    if (!res.ok || !data?.ok) {
-      console.log("login failed");
-      setError(data?.error ?? "Login failed");
+    if (!r.ok || !r.json?.ok) {
+      setError(r.ok ? (r.json?.error ?? "Login failed") : (r.raw?.slice(0, 200) ?? "Login failed"));
       setBusy(false);
       return;
     }
-
-    console.log("login ok, redirecting...");
 
     window.location.replace("/bty");
   }

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { getMessages } from "@/lib/i18n";
+import { fetchJson } from "@/lib/read-json";
 import type { Locale } from "@/lib/i18n";
 
 type Message = { role: "user" | "assistant"; content: string };
@@ -82,7 +83,7 @@ export function Chatbot() {
       let wasAborted = false;
       try {
         const mode = pathname.includes("/bty") ? "bty" : "today-me";
-        const res = await fetch("/api/chat", {
+        const r = await fetchJson<{ message?: string }>("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -91,9 +92,8 @@ export function Chatbot() {
           }),
           signal: abortRef.current.signal,
         });
-        const data = await res.json();
         const reply =
-          data.message ||
+          (r.ok ? r.json?.message : null) ||
           (locale === "ko"
             ? "말해줘서 고마워요. 여기선 뭐든 괜찮아요."
             : "Thanks for sharing. You're okay as you are.");

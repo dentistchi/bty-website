@@ -10,22 +10,16 @@ import { ThemeBody } from "@/components/ThemeBody";
 import { MissionCard } from "@/components/journey/MissionCard";
 import { cn } from "@/lib/utils";
 import { getStoredToken } from "@/lib/auth-client";
+import { fetchJson } from "@/lib/read-json";
 import { useAuth } from "@/contexts/AuthContext";
 import { JOURNEY_DAYS, type DayContent } from "@/lib/journey-content";
 import type { DayEntry } from "@/lib/supabase-admin-types";
 
 const API_BASE = "";
 
-async function fetchWithAuth(path: string, options?: RequestInit) {
+function authHeaders(): Record<string, string> | undefined {
   const token = getStoredToken();
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      ...options?.headers,
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-  return res;
+  return token ? { Authorization: `Bearer ${token}` } : undefined;
 }
 
 export function JourneyBoard() {
@@ -50,12 +44,20 @@ export function JourneyBoard() {
     if (!user) return;
     setLoading(true);
     try {
-      const [profileRes, entriesRes] = await Promise.all([
-        fetchWithAuth("/api/journey/profile"),
-        fetchWithAuth("/api/journey/entries"),
+      const headers = { ...authHeaders(), "Content-Type": "application/json" } as Record<string, string>;
+      const [rProfile, rEntries] = await Promise.all([
+        fetchJson<{
+          current_day?: number;
+          started_at?: string;
+          season?: number;
+          bounce_back_count?: number;
+          last_completed_at?: string | null;
+          is_new?: boolean;
+        }>(`${API_BASE}/api/journey/profile`, { headers: authHeaders() }),
+        fetchJson<DayEntry[]>(`${API_BASE}/api/journey/entries`, { headers: authHeaders() }),
       ]);
-      if (profileRes.ok) {
-        const p = await profileRes.json();
+      if (rProfile.ok && rProfile.json) {
+        const p = rProfile.json;
         const payload = {
           current_day: p.current_day ?? 1,
           started_at: p.started_at ?? new Date().toISOString(),
@@ -64,11 +66,10 @@ export function JourneyBoard() {
           last_completed_at: p.last_completed_at ?? null,
         };
         setProfile(payload);
-        // Create profile on first visit
         if (p.is_new) {
-          await fetchWithAuth("/api/journey/profile", {
+          await fetchJson(`${API_BASE}/api/journey/profile`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers,
             body: JSON.stringify({
               current_day: payload.current_day,
               season: payload.season,
@@ -76,9 +77,8 @@ export function JourneyBoard() {
           });
         }
       }
-      if (entriesRes.ok) {
-        const e = await entriesRes.json();
-        setEntries(Array.isArray(e) ? e : []);
+      if (rEntries.ok && Array.isArray(rEntries.json)) {
+        setEntries(rEntries.json);
       }
     } catch {
       setProfile({

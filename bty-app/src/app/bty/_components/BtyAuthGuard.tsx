@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { fetchJson } from "@/lib/read-json";
+
+type SessionResp = { ok?: boolean; user?: unknown };
 
 export default function BtyAuthGuard({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -9,14 +12,9 @@ export default function BtyAuthGuard({ children }: { children: React.ReactNode }
     let alive = true;
 
     (async () => {
-      const r = await fetch(`/api/auth/session?_t=${Date.now()}`, {
-        credentials: "include",
-        cache: "no-store",
-      });
-      const j = await r.json();
+      const r = await fetchJson<SessionResp>(`/api/auth/session?_t=${Date.now()}`);
 
-      // ✅ 세션 없으면 즉시 루트로 보내기
-      if (!j?.ok || !j?.hasSession) {
+      if (!r.ok || !r.json?.ok || !r.json?.user) {
         window.location.replace("/?need_login=1");
         return;
       }

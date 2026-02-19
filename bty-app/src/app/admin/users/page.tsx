@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { fetchJson } from "@/lib/read-json";
 
 type User = {
   id: string;
   email: string;
   createdAt: number;
 };
+
+type UsersResp = { users?: User[]; error?: string };
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -24,14 +27,11 @@ export default function UsersPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/users", {
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setUsers(data.users || []);
+      const r = await fetchJson<UsersResp>("/api/admin/users");
+      if (r.ok) {
+        setUsers(r.json?.users ?? []);
       } else {
-        setError(data.error || "사용자 목록을 불러올 수 없습니다.");
+        setError(r.json?.error ?? r.raw?.slice(0, 200) ?? "사용자 목록을 불러올 수 없습니다.");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "네트워크 오류");
@@ -53,20 +53,18 @@ export default function UsersPage() {
     setCreating(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/users", {
+      const r = await fetchJson<{ error?: string }>("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ email: createEmail, password: createPassword }),
       });
-      const data = await res.json();
-      if (res.ok) {
+      if (r.ok) {
         setCreateEmail("");
         setCreatePassword("");
         setShowCreateForm(false);
         await fetchUsers();
       } else {
-        setError(data.error || "사용자 생성에 실패했습니다.");
+        setError(r.json?.error ?? r.raw?.slice(0, 200) ?? "사용자 생성에 실패했습니다.");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "네트워크 오류");
@@ -79,15 +77,11 @@ export default function UsersPage() {
     if (!confirm(`정말로 ${email} 사용자를 삭제하시겠습니까?`)) return;
     setError(null);
     try {
-      const res = await fetch(`/api/admin/users?id=${userId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (res.ok) {
+      const r = await fetchJson<{ error?: string }>(`/api/admin/users?id=${userId}`, { method: "DELETE" });
+      if (r.ok) {
         await fetchUsers();
       } else {
-        setError(data.error || "사용자 삭제에 실패했습니다.");
+        setError(r.json?.error ?? r.raw?.slice(0, 200) ?? "사용자 삭제에 실패했습니다.");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "네트워크 오류");
@@ -101,19 +95,17 @@ export default function UsersPage() {
     }
     setError(null);
     try {
-      const res = await fetch("/api/admin/users", {
+      const r = await fetchJson<{ error?: string }>("/api/admin/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ id: userId, password: newPassword }),
       });
-      const data = await res.json();
-      if (res.ok) {
+      if (r.ok) {
         setEditingUserId(null);
         setNewPassword("");
         alert("비밀번호가 변경되었습니다.");
       } else {
-        setError(data.error || "비밀번호 변경에 실패했습니다.");
+        setError(r.json?.error ?? r.raw?.slice(0, 200) ?? "비밀번호 변경에 실패했습니다.");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "네트워크 오류");

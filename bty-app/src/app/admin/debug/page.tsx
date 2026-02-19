@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { fetchJson } from "@/lib/read-json";
 
 export default function DebugPage() {
   const [testEmail, setTestEmail] = useState("");
@@ -18,21 +19,20 @@ export default function DebugPage() {
     setTesting(true);
     setTestResult(null);
     try {
-      const res = await fetch("/api/auth/login", {
+      const r = await fetchJson<{ token?: string; error?: string }>("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: testEmail, password: testPassword }),
       });
-      const data = await res.json();
-      if (res.ok) {
+      if (r.ok) {
+        const data = r.json;
         setTestResult(`✅ 성공: ${JSON.stringify(data, null, 2)}`);
-        // Store token and test session
-        if (data.token) {
+        if (data?.token) {
           localStorage.setItem("bty_auth_token", data.token);
           setTimeout(() => checkSession(data.token), 500);
         }
       } else {
-        setTestResult(`❌ 실패 (${res.status}): ${data.error || JSON.stringify(data)}`);
+        setTestResult(`❌ 실패 (${r.status}): ${r.json?.error ?? r.raw ?? ""}`);
       }
     } catch (e) {
       setTestResult(`❌ 네트워크 오류: ${e instanceof Error ? e.message : String(e)}`);
@@ -42,22 +42,20 @@ export default function DebugPage() {
   };
 
   const checkSession = async (token?: string) => {
-    const storedToken = token || localStorage.getItem("bty_auth_token");
+    const storedToken = token ?? (typeof localStorage !== "undefined" ? localStorage.getItem("bty_auth_token") : null);
     if (!storedToken) {
       setSessionCheck("토큰이 없습니다.");
       return;
     }
     try {
-      const res = await fetch(`/api/auth/session?_t=${Date.now()}`, {
-        credentials: "include",
-        cache: "no-store",
+      const r = await fetchJson<Record<string, unknown>>(`/api/auth/session?_t=${Date.now()}`, {
         headers: { Authorization: `Bearer ${storedToken}` },
       });
-      const data = await res.json();
+      const data = r.ok ? r.json : null;
       setSessionCheck(
-        res.ok
+        r.ok && data
           ? `✅ 세션 확인: ${JSON.stringify(data, null, 2)}`
-          : `❌ 세션 확인 실패: ${JSON.stringify(data)}`
+          : `❌ 세션 확인 실패: ${data ? JSON.stringify(data) : r.raw ?? ""}`
       );
     } catch (e) {
       setSessionCheck(`❌ 네트워크 오류: ${e instanceof Error ? e.message : String(e)}`);

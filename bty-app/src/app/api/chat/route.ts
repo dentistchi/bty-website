@@ -1,3 +1,4 @@
+import { fetchJson } from "@/lib/read-json";
 import { NextResponse } from "next/server";
 
 const SYSTEM_PROMPT_TODAY_ME = `You are a protective, non-evaluating presence for someone in recovery. Your only job is to make them feel safe and okay as they are. You NEVER say "더 잘하자", "try harder", "do better", or any encouragement to improve. You say: "지금 상태도 괜찮아", "you're safe here", "it's okay as you are". You never evaluate or compare. Use the same language as the user (Korean or English). Keep responses short and warm.`;
@@ -21,7 +22,8 @@ export async function POST(request: Request) {
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (apiKey) {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      type OpenAIChatResp = { choices?: { message?: { content?: string } }[] };
+      const r = await fetchJson<OpenAIChatResp>("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -39,9 +41,11 @@ export async function POST(request: Request) {
           max_tokens: 300,
         }),
       });
-      const data = await res.json();
-      const text = data.choices?.[0]?.message?.content?.trim();
-      if (text) return NextResponse.json({ message: text });
+      if (r.ok) {
+        const data = r.json;
+        const text = data.choices?.[0]?.message?.content?.trim();
+        if (text) return NextResponse.json({ message: text });
+      }
     }
 
     const reply = fallbackList[Math.floor(Math.random() * fallbackList.length)];
