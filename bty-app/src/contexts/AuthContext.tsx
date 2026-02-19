@@ -36,6 +36,29 @@ async function fetchSessionOnce(): Promise<SessionResp | null> {
   return sessionInflight;
 }
 
+/**
+ * 로그인 직후 쿠키가 반영될 때까지 세션 확인을 강제로 재시도
+ * sessionInflight를 리셋하여 새로운 요청을 보장
+ */
+async function fetchSessionAfterLogin(maxRetries = 3, delayMs = 100): Promise<SessionResp | null> {
+  for (let i = 0; i < maxRetries; i++) {
+    // sessionInflight를 리셋하여 새로운 요청 강제
+    sessionInflight = null;
+    
+    const r = await fetchJson<SessionResp>("/api/auth/session");
+    if (r.ok && r.json?.ok && r.json?.user) {
+      return r.json;
+    }
+    
+    // 마지막 시도가 아니면 대기 후 재시도
+    if (i < maxRetries - 1) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  
+  return null;
+}
+
 async function fetchSession(): Promise<AuthUser | null> {
   const j = await fetchSessionOnce();
   return j?.ok ? j.user ?? null : null;
@@ -91,10 +114,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     throwFromFetchJson(loginRes);
 
-    const j = await fetchSessionOnce();
+    // ✅ 로그인 직후에는 쿠키 반영을 보장하기 위해 강제로 세션 확인 재시도
+    const j = await fetchSessionAfterLogin();
     if (!j?.ok || !j?.user) throw new Error("세션 생성 실패(쿠키 미설정)");
 
     setUser(j.user);
+    // ✅ 세션 확인 완료 후 navigate
     window.location.assign("/bty");
   };
 
