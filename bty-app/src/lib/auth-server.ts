@@ -43,7 +43,7 @@ export async function getAuthUserFromRequest(request: Request): Promise<User | n
   const token = bearer || cookieToken;
   if (!token) return null;
 
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
   if (!supabase) return null;
 
   const {
