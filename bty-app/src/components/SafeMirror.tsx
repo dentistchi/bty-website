@@ -195,6 +195,7 @@ export function SafeMirror({
         throw new Error(msg);
       }
 
+      // ✅ 여기부터는 r.ok === true로 좁혀진 상태라 r.json 안전
       const reply = typeof r.json?.message === "string" ? r.json.message : "";
       if (reply) {
         setEntries((prev) => [...prev, { role: "assistant", content: reply }]);
