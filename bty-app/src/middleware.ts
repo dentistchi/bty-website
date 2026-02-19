@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient, type CookieToSet } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -28,14 +28,14 @@ export async function middleware(req: NextRequest) {
       getAll() {
         return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
       },
-      setAll(cookies: CookieToSet[]) {
+      setAll(cookies: Array<{ name: string; value: string; options?: Record<string, any> }>) {
         cookies.forEach(({ name, value, options }) => {
           res.cookies.set(name, value, {
             path: "/",
             sameSite: "lax",
             secure: true,
             httpOnly: true,
-            ...options,
+            ...(options ?? {}),
           });
         });
       },

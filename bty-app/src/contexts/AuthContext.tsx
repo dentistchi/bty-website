@@ -21,6 +21,7 @@ type Ctx = {
   user: AuthUser;
   loading: boolean;
   error: string | null;
+  clearError: () => void;
   refresh: () => Promise<void>;
   login: (email: string, password: string, next?: string) => Promise<void>;
   register: (email: string, password: string, next?: string) => Promise<void>;
@@ -81,6 +82,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const clearError = useCallback(() => setError(null), []);
 
   const mounted = useRef(true);
   useEffect(() => {
@@ -231,8 +234,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   const value = useMemo<Ctx>(
-    () => ({ user, loading, error, refresh, login, register, logout }),
-    [user, loading, error, refresh, login, register, logout]
+    () => ({ user, loading, error, clearError, refresh, login, register, logout }),
+    [user, loading, error, clearError, refresh, login, register, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
