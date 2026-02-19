@@ -45,15 +45,18 @@ export function getSupabaseServer(req: NextRequest, res: NextResponse) {
  * - 여기서는 응답 헤더에 set-cookie를 쓸 수 없어서 setAll은 noop
  * - 대신 "쿠키 읽기"로 getUser / getSession 체크 가능
  */
-export function createServerComponentSupabaseClient() {
+export async function createServerComponentSupabaseClient() {
   if (!url || !key) return null;
 
-  const store = nextCookies();
+  const store = await nextCookies(); // ✅ Next 15: Promise 반환
 
   return createServerClient(url, key, {
     cookies: {
       getAll() {
-        return store.getAll().map((c) => ({ name: c.name, value: c.value }));
+        return store.getAll().map((c: { name: string; value: string }) => ({
+          name: c.name,
+          value: c.value,
+        }));
       },
       setAll(_cookies: CookieToSet[]) {
         // RSC에서는 쿠키 set이 불가한 경우가 많아서 noop 처리
@@ -66,6 +69,6 @@ export function createServerComponentSupabaseClient() {
  * ✅ (레거시 호환) createServerSupabaseClient 이름을 기대하는 코드 대응
  * - 실제 구현은 RSC용과 동일하게 "읽기 전용"으로 둠
  */
-export function createServerSupabaseClient() {
+export async function createServerSupabaseClient() {
   return createServerComponentSupabaseClient();
 }
