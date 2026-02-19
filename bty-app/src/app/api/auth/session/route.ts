@@ -7,8 +7,15 @@ function setAuthDiagHeaders(out: NextResponse, cookieHeader: string, cookieNames
 }
 
 export async function GET(req: NextRequest) {
-  const cookieHeader = req.headers.get("cookie") || "";
-  const cookieNames = req.cookies.getAll().map((c) => c.name).join(","); // 값 노출 X
+  // ✅ diag: request cookie 헤더가 실제로 서버에 도착하는지 확인
+  const cookieHeader = req.headers.get("cookie") ?? "";
+  const cookieNames =
+    cookieHeader
+      .split(";")
+      .map((p) => p.trim().split("=")[0])
+      .filter(Boolean)
+      .slice(0, 50)
+      .join(",") || "none";
 
   try {
     const res = NextResponse.json({ ok: false });
