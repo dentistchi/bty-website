@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { getMessages } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { setSafeMirrorPositive } from "@/lib/utils";
+import { fetchJson } from "@/lib/read-json";
 import type { Messages } from "@/lib/i18n";
 
 const BRIDGE_CHECK_EVENT = "dear-bridge-check";
@@ -175,7 +176,7 @@ export function SafeMirror({
 
     try {
       const history = [...entries, { role: "user" as const, content: trimmed }];
-      const res = await fetch("/api/safe-mirror", {
+      const r = await fetchJson<{ message?: string; error?: string }>("/api/safe-mirror", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -183,10 +184,18 @@ export function SafeMirror({
           messages: history.map((m) => ({ role: m.role, content: m.content })),
         }),
       });
-      const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error || "Request failed");
-      const reply = typeof data.message === "string" ? data.message : "";
+      if (!r.ok) {
+        let msg = r.raw ?? "Request failed";
+        try {
+          const obj = JSON.parse(r.raw ?? "") as { error?: string; message?: string };
+          msg = obj.error ?? obj.message ?? msg;
+        } catch {}
+        throw new Error(msg);
+      }
+
+      // ✅ 여기부터는 r.ok === true로 좁혀진 상태라 r.json 안전
+      const reply = typeof r.json?.message === "string" ? r.json.message : "";
       if (reply) {
         setEntries((prev) => [...prev, { role: "assistant", content: reply }]);
         setSafeMirrorPositive();
