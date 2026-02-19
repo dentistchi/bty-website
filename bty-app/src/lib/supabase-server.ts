@@ -29,7 +29,13 @@ export function getSupabaseServer(req: NextRequest, res: NextResponse) {
       },
       setAll(cookies: CookieToSet[]) {
         cookies.forEach(({ name, value, options }) => {
-          res.cookies.set(name, value, options);
+          res.cookies.set(name, value, {
+            path: "/",
+            sameSite: "lax",
+            secure: true,
+            httpOnly: true,
+            ...options, // supabase가 준 옵션이 있으면 덮어씀
+          });
         });
       },
     },
