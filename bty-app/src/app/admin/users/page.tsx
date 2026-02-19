@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { fetchJson } from "@/lib/read-json";
+import { safeParse } from "@/lib/safeParse";
 
 type User = {
   id: string;
@@ -31,7 +32,8 @@ export default function UsersPage() {
       if (r.ok) {
         setUsers(r.json?.users ?? []);
       } else {
-        setError(r.json?.error ?? r.raw?.slice(0, 200) ?? "사용자 목록을 불러올 수 없습니다.");
+        const errObj = safeParse<{ error?: string }>(r.raw);
+        setError(errObj?.error ?? r.raw?.slice(0, 200) ?? "사용자 목록을 불러올 수 없습니다.");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "네트워크 오류");
@@ -64,7 +66,8 @@ export default function UsersPage() {
         setShowCreateForm(false);
         await fetchUsers();
       } else {
-        setError(r.json?.error ?? r.raw?.slice(0, 200) ?? "사용자 생성에 실패했습니다.");
+        const errObj = safeParse<{ error?: string }>(r.raw);
+        setError(errObj?.error ?? r.raw?.slice(0, 200) ?? "사용자 생성에 실패했습니다.");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "네트워크 오류");
@@ -81,7 +84,8 @@ export default function UsersPage() {
       if (r.ok) {
         await fetchUsers();
       } else {
-        setError(r.json?.error ?? r.raw?.slice(0, 200) ?? "사용자 삭제에 실패했습니다.");
+        const errObj = safeParse<{ error?: string }>(r.raw);
+        setError(errObj?.error ?? r.raw?.slice(0, 200) ?? "사용자 삭제에 실패했습니다.");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "네트워크 오류");
@@ -105,7 +109,8 @@ export default function UsersPage() {
         setNewPassword("");
         alert("비밀번호가 변경되었습니다.");
       } else {
-        setError(r.json?.error ?? r.raw?.slice(0, 200) ?? "비밀번호 변경에 실패했습니다.");
+        const errObj = safeParse<{ error?: string }>(r.raw);
+        setError(errObj?.error ?? r.raw?.slice(0, 200) ?? "비밀번호 변경에 실패했습니다.");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "네트워크 오류");
