@@ -3,24 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-
-function isSafeNextPath(v: string | null): v is string {
-  if (!v) return false;
-  // 내부 경로만 허용 (오픈 리다이렉트 방지)
-  if (!v.startsWith("/")) return false;
-  if (v.startsWith("//")) return false;
-  if (v.startsWith("/\\") || v.includes("://")) return false;
-  return true;
-}
+import { sanitizeNext } from "@/lib/sanitize-next";
 
 export default function BtyLoginPage() {
   const sp = useSearchParams();
   const { user, loading, error, login } = useAuth();
 
-  const nextPath = useMemo(() => {
-    const raw = sp.get("next");
-    return isSafeNextPath(raw) ? raw : "/bty";
-  }, [sp]);
+  const nextPath = useMemo(() => sanitizeNext(sp.get("next")), [sp]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

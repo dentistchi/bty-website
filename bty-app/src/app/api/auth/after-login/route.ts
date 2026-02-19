@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
+import { sanitizeNext } from "@/lib/sanitize-next";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 function pickNext(req: NextRequest) {
   const u = new URL(req.url);
-  const next = u.searchParams.get("next") || "/bty";
-  // 오픈리다이렉트 방지(상대경로만 허용)
-  if (!next.startsWith("/")) return "/bty";
-  return next;
+  return sanitizeNext(u.searchParams.get("next"));
 }
 
 export async function GET(req: NextRequest) {

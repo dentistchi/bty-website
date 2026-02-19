@@ -2,6 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { fetchJson } from "@/lib/read-json";
+import { sanitizeNext } from "@/lib/sanitize-next";
 
 type AuthUser = {
   id: string;
@@ -151,9 +152,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (mounted.current) setUser(j.user);
 
-      // 4) 이동 - 서버 after-login을 거쳐 쿠키 포함 요청으로 리다이렉트
-      const dest = next && next.startsWith("/") ? next : "/bty";
-      window.location.assign(`/api/auth/after-login?next=${encodeURIComponent(dest)}`);
+      // 4) 이동 - next 검증 후 서버 after-login을 거쳐 리다이렉트 (redirect loop 방지)
+      const nextSafe = sanitizeNext(next);
+      window.location.assign(`/api/auth/after-login?next=${encodeURIComponent(nextSafe)}`);
     } catch (e: any) {
       if (mounted.current) {
         setUser(null);
@@ -216,9 +217,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (mounted.current) setUser(j.user);
 
-      // 4) 이동 - 서버 after-login을 거쳐 쿠키 포함 요청으로 리다이렉트
-      const dest = next && next.startsWith("/") ? next : "/bty";
-      window.location.assign(`/api/auth/after-login?next=${encodeURIComponent(dest)}`);
+      // 4) 이동 - next 검증 후 서버 after-login을 거쳐 리다이렉트 (redirect loop 방지)
+      const nextSafe = sanitizeNext(next);
+      window.location.assign(`/api/auth/after-login?next=${encodeURIComponent(nextSafe)}`);
     } catch (e: any) {
       if (mounted.current) {
         setUser(null);

@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies as nextCookies, headers as nextHeaders } from "next/headers";
 import type { NextRequest, NextResponse } from "next/server";
+import { getAllFromNextRequest, withSupabaseCookieDefaults } from "./supabase-cookies";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -28,17 +29,11 @@ export function getSupabaseServer(req: NextRequest, res: NextResponse): Supabase
   return createServerClient(env.url, env.key, {
     cookies: {
       getAll() {
-        return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
+        return getAllFromNextRequest(req);
       },
       setAll(cookiesToSet: CookieSetInput[]) {
         cookiesToSet.forEach(({ name, value, options }) => {
-          res.cookies.set(name, value, {
-            ...(options ?? {}), // ✅ 먼저 supabase 옵션
-            path: "/", // ✅ 마지막에 강제 덮어쓰기
-            sameSite: "lax",
-            secure: true,
-            httpOnly: true,
-          });
+          res.cookies.set(name, value, withSupabaseCookieDefaults(req, options));
         });
       },
     },
