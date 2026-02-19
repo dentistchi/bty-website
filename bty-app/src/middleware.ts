@@ -33,11 +33,11 @@ export async function middleware(req: NextRequest) {
       setAll(cookies: CookieSetInput[]) {
         cookies.forEach(({ name, value, options }) => {
           res.cookies.set(name, value, {
-            path: "/",
+            ...(options ?? {}), // ✅ 먼저 supabase 옵션
+            path: "/", // ✅ 우리가 마지막에 강제
             sameSite: "lax",
             secure: true,
             httpOnly: true,
-            ...(options ?? {}),
           });
         });
       },

@@ -33,11 +33,11 @@ export function getSupabaseServer(req: NextRequest, res: NextResponse): Supabase
       setAll(cookiesToSet: CookieSetInput[]) {
         cookiesToSet.forEach(({ name, value, options }) => {
           res.cookies.set(name, value, {
-            path: "/",
+            ...(options ?? {}), // ✅ 먼저 supabase 옵션
+            path: "/", // ✅ 마지막에 강제 덮어쓰기
             sameSite: "lax",
             secure: true,
             httpOnly: true,
-            ...(options ?? {}),
           });
         });
       },
