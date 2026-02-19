@@ -1,60 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieToSet } from "@supabase/ssr";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 function isPublicPath(pathname: string) {
   if (pathname.startsWith("/_next")) return true;
   if (pathname.startsWith("/favicon")) return true;
   if (pathname.startsWith("/api")) return true;
+
   if (pathname === "/admin/login") return true;
   if (pathname === "/bty/login") return true;
   if (pathname === "/") return true;
-  return false;
-}
 
-function copySetCookie(from: NextResponse, to: NextResponse) {
-  const setCookie = from.headers.get("set-cookie");
-  if (setCookie) {
-    to.headers.set("set-cookie", setCookie);
-  }
+  return false;
 }
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  const base = NextResponse.next();
-  base.headers.set("x-mw-hit", "1");
-  base.headers.set("x-mw-path", pathname);
+  if (isPublicPath(pathname)) return NextResponse.next();
 
-  if (!url || !key) {
-    base.headers.set("x-mw-env-missing", "1");
-    return base;
-  }
-
-  if (isPublicPath(pathname)) {
-    base.headers.set("x-mw-public", "1");
-    return base;
-  }
-
-  type CookieToSet = {
-    name: string;
-    value: string;
-    options?: Parameters<NextResponse["cookies"]["set"]>[2];
-  };
+  const res = NextResponse.next();
 
   const supabase = createServerClient(url, key, {
     cookies: {
       getAll() {
-        return req.cookies.getAll().map((c) => ({
-          name: c.name,
-          value: c.value,
-        }));
+        return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
       },
       setAll(cookies: CookieToSet[]) {
         cookies.forEach(({ name, value, options }) => {
-          base.cookies.set(name, value, {
+          res.cookies.set(name, value, {
             path: "/",
             sameSite: "lax",
             secure: true,
@@ -71,19 +47,12 @@ export async function middleware(req: NextRequest) {
 
   if (!user) {
     const login = new URL("/bty/login", req.url);
-    login.searchParams.set(
-      "next",
-      req.nextUrl.pathname + req.nextUrl.search
-    );
-
-    const redirect = NextResponse.redirect(login);
-    copySetCookie(base, redirect);
-    redirect.headers.set("x-mw-auth", "no");
-    return redirect;
+    login.searchParams.set("next", req.nextUrl.pathname + req.nextUrl.search);
+    return NextResponse.redirect(login);
   }
 
-  base.headers.set("x-mw-auth", "yes");
-  return base;
+  res.headers.set("x-mw-hit", "1");
+  return res;
 }
 
 export const config = {

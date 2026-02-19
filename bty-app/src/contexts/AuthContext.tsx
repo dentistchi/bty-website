@@ -1,34 +1,63 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { fetchJson } from "@/lib/read-json";
-import { safeParse } from "@/lib/safeParse";
 
-type AuthUser = { id: string; email?: string | null };
+type AuthUser = {
+  id: string;
+  email?: string | null;
+} | null;
 
-type AuthCtx = {
-  user: AuthUser | null;
+type SessionResp = { ok: boolean; user?: any | null; error?: string; where?: string };
+type LoginResp =
+  | { ok: true; access_token: string; refresh_token: string; user?: { id: string; email?: string | null } | null }
+  | { ok: false; error?: string; where?: string };
+
+type RegisterResp =
+  | { ok: true; access_token?: string; refresh_token?: string; needs_email_confirm?: boolean; user?: { id: string; email?: string | null } | null }
+  | { ok: false; error?: string; where?: string };
+
+type Ctx = {
+  user: AuthUser;
   loading: boolean;
   error: string | null;
-  setError: (msg: string | null) => void;
-  clearError: () => void;
-  refreshSession: () => Promise<AuthUser | null>;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  refresh: () => Promise<void>;
+  login: (email: string, password: string, next?: string) => Promise<void>;
+  register: (email: string, password: string, next?: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
-const Ctx = createContext<AuthCtx | null>(null);
+const AuthContext = createContext<Ctx | null>(null);
 
-type SessionResp = { ok: boolean; user?: AuthUser | null };
+function safeJson(raw?: string | null): any | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function msgFromFetchFail(r: { raw?: string }) {
+  const obj = safeJson(r.raw) as { error?: string; message?: string; where?: string } | null;
+  return obj?.error ?? obj?.message ?? r.raw ?? "Request failed";
+}
+
+function assertOk<T extends { ok: boolean }>(
+  r: { ok: boolean; status: number; json?: T; raw?: string },
+  fallbackMsg: string
+): asserts r is { ok: true; status: number; json: T } {
+  if (!r.ok) throw new Error(msgFromFetchFail(r) || fallbackMsg);
+}
 
 let sessionInflight: Promise<SessionResp | null> | null = null;
 
+/** ✅ 중복 GET 방지 + 실패 시 null */
 async function fetchSessionOnce(): Promise<SessionResp | null> {
   if (!sessionInflight) {
     sessionInflight = (async () => {
-      const r = await fetchJson<SessionResp>("/api/auth/session");
-      return r.ok ? r.json : null;
+      const r = await fetchJson<SessionResp>(`/api/auth/session?_t=${Date.now()}`);
+      return r.ok ? (r.json as SessionResp) : null;
     })().finally(() => {
       sessionInflight = null;
     });
@@ -36,184 +65,181 @@ async function fetchSessionOnce(): Promise<SessionResp | null> {
   return sessionInflight;
 }
 
-/**
- * 로그인 직후 쿠키가 반영될 때까지 세션 확인을 강제로 재시도
- * sessionInflight를 리셋하여 새로운 요청을 보장
- */
-async function fetchSessionAfterLogin(maxRetries = 3, delayMs = 100): Promise<SessionResp | null> {
-  for (let i = 0; i < maxRetries; i++) {
-    // sessionInflight를 리셋하여 새로운 요청 강제
+/** ✅ 로그인 직후 쿠키 반영 레이스를 피하기 위한 재시도 */
+async function fetchSessionAfterLogin(retries = 3, delayMs = 120): Promise<SessionResp | null> {
+  for (let i = 0; i < retries; i++) {
+    // 캐시된 inflight 무조건 끊고 새 GET 강제
     sessionInflight = null;
-    
-    const r = await fetchJson<SessionResp>("/api/auth/session");
-    if (r.ok && r.json?.ok && r.json?.user) {
-      return r.json;
-    }
-    
-    // 마지막 시도가 아니면 대기 후 재시도
-    if (i < maxRetries - 1) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-    }
+    const j = await fetchSessionOnce();
+    if (j?.ok && j.user) return j;
+    await new Promise((r) => setTimeout(r, delayMs));
   }
-  
   return null;
 }
 
-async function fetchSession(): Promise<AuthUser | null> {
-  const j = await fetchSessionOnce();
-  return j?.ok ? j.user ?? null : null;
-}
-
-function throwFromFetchJson(r: { ok: boolean; status: number; raw?: string }) {
-  if (r.ok) return;
-  const errObj = safeParse<{ error?: string; message?: string }>(r.raw);
-  const msg = errObj?.error ?? errObj?.message ?? r.raw ?? `HTTP ${r.status}`;
-  throw new Error(msg);
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<AuthUser>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const debug = () => (typeof window !== "undefined" && (window as any).__AUTH_DEBUG__);
-
-  const clearError = () => setError(null);
-
-  const refreshSession = async () => {
-    const u = await fetchSession();
-    setUser(u);
-    return u;
-  };
-
+  const mounted = useRef(true);
   useEffect(() => {
-    let mounted = true;
-
-    (async () => {
-      try {
-        const j = await fetchSessionOnce();
-
-        if (!mounted) return;
-        setUser(j?.ok ? j.user ?? null : null);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-
     return () => {
-      mounted = false;
+      mounted.current = false;
     };
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const refresh = useCallback(async () => {
     setError(null);
-    
-    // 1. 로그인 요청
-    const loginRes = await fetchJson<{
-      ok?: boolean;
-      access_token?: string;
-      refresh_token?: string;
-      user?: AuthUser;
-      error?: string;
-    }>("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    throwFromFetchJson(loginRes);
-
-    if (!loginRes.json?.ok || !loginRes.json?.access_token || !loginRes.json?.refresh_token) {
-      throw new Error("로그인 응답 형식 오류");
+    setLoading(true);
+    try {
+      const j = await fetchSessionOnce();
+      if (!mounted.current) return;
+      setUser(j?.ok ? (j.user ?? null) : null);
+    } catch (e: any) {
+      if (!mounted.current) return;
+      setUser(null);
+      setError(e?.message ?? String(e));
+    } finally {
+      if (mounted.current) setLoading(false);
     }
+  }, []);
 
-    // 2. 받은 토큰으로 /api/auth/session POST로 쿠키 세션 설정
-    const sessionPostRes = await fetchJson<{ ok?: boolean; error?: string }>("/api/auth/session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        access_token: loginRes.json.access_token,
-        refresh_token: loginRes.json.refresh_token,
-      }),
-    });
-    throwFromFetchJson(sessionPostRes);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
-    if (!sessionPostRes.json?.ok) {
-      throw new Error("세션 생성 실패(쿠키 미설정)");
-    }
-
-    // ✅ POST 완료 후 sessionInflight 리셋하여 새로운 GET 요청 보장
-    sessionInflight = null;
-
-    // 3. 쿠키 세션 설정 완료 후 /api/auth/session GET으로 사용자 정보 확인
-    // 쿠키가 반영될 때까지 재시도
-    const j = await fetchSessionAfterLogin();
-    if (!j?.ok || !j?.user) throw new Error("세션 확인 실패");
-
-    setUser(j.user);
-    // ✅ 세션 확인 완료 후 navigate
-    window.location.assign("/bty");
-  };
-
-  const register = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, next?: string) => {
     setError(null);
-    
-    // 1. 회원가입 요청
-    const regRes = await fetchJson<{
-      ok?: boolean;
-      access_token?: string;
-      refresh_token?: string;
-      user?: AuthUser;
-      error?: string;
-    }>("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    throwFromFetchJson(regRes);
+    setLoading(true);
 
-    if (!regRes.json?.ok || !regRes.json?.access_token || !regRes.json?.refresh_token) {
-      throw new Error("회원가입 응답 형식 오류");
+    try {
+      // 1) 로그인 → 토큰 받기
+      const r1 = await fetchJson<LoginResp>("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!r1.ok) throw new Error(msgFromFetchFail(r1));
+      if (!r1.json || (r1.json as any).ok !== true) throw new Error((r1.json as any)?.error ?? "Login failed");
+
+      const data = r1.json as Extract<LoginResp, { ok: true }>;
+      const access_token = data.access_token;
+      const refresh_token = data.refresh_token;
+
+      if (!access_token || !refresh_token) throw new Error("missing tokens");
+
+      // 2) 토큰으로 쿠키 세션 세팅 (⭐ 여기서 Set-Cookie가 내려와야 함)
+      const r2 = await fetchJson<{ ok: boolean; error?: string }>("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ access_token, refresh_token }),
+      });
+      assertOk(r2 as any, "Session POST failed");
+      if (!r2.json?.ok) throw new Error(r2.json?.error ?? "세션 생성 실패(쿠키 미설정)");
+
+      // 3) 쿠키 반영될 때까지 GET 재시도
+      const j = await fetchSessionAfterLogin();
+      if (!j?.ok || !j.user) throw new Error("세션 생성 실패(쿠키 미설정)");
+
+      if (mounted.current) setUser(j.user);
+
+      // 4) 이동 (cookie 기반이므로 hard navigation이 가장 안전)
+      const dest = next && next.startsWith("/") ? next : "/bty";
+      window.location.assign(dest);
+    } catch (e: any) {
+      if (mounted.current) {
+        setUser(null);
+        setError(e?.message ?? String(e));
+      }
+    } finally {
+      if (mounted.current) setLoading(false);
     }
+  }, []);
 
-    // 2. 받은 토큰으로 /api/auth/session POST로 쿠키 세션 설정
-    const sessionPostRes = await fetchJson<{ ok?: boolean; error?: string }>("/api/auth/session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        access_token: regRes.json.access_token,
-        refresh_token: regRes.json.refresh_token,
-      }),
-    });
-    throwFromFetchJson(sessionPostRes);
+  const register = useCallback(async (email: string, password: string, next?: string) => {
+    setError(null);
+    setLoading(true);
 
-    if (!sessionPostRes.json?.ok) {
-      throw new Error("세션 생성 실패(쿠키 미설정)");
+    try {
+      // 1) 회원가입 → (설정에 따라) 토큰이 올 수도/안 올 수도 있음
+      const r1 = await fetchJson<RegisterResp>("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!r1.ok) throw new Error(msgFromFetchFail(r1));
+      if (!r1.json || (r1.json as any).ok !== true) throw new Error((r1.json as any)?.error ?? "Register failed");
+
+      const data = r1.json as Extract<RegisterResp, { ok: true }>;
+
+      // 이메일 확인이 필요한 경우: 여기서 종료 (UI 메시지)
+      if (data.needs_email_confirm) {
+        if (mounted.current) {
+          setUser(null);
+          setError("이메일 확인이 필요합니다. 받은 메일에서 인증 후 다시 로그인해주세요.");
+        }
+        return;
+      }
+
+      const access_token = data.access_token;
+      const refresh_token = data.refresh_token;
+
+      if (!access_token || !refresh_token) {
+        // needs_email_confirm가 아닌데 토큰이 없다면 서버 설정/응답 이상
+        throw new Error("missing tokens");
+      }
+
+      // 2) 토큰으로 쿠키 세션 세팅
+      const r2 = await fetchJson<{ ok: boolean; error?: string }>("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ access_token, refresh_token }),
+      });
+      assertOk(r2 as any, "Session POST failed");
+      if (!r2.json?.ok) throw new Error(r2.json?.error ?? "세션 생성 실패(쿠키 미설정)");
+
+      // 3) 쿠키 반영될 때까지 GET 재시도
+      const j = await fetchSessionAfterLogin();
+      if (!j?.ok || !j.user) throw new Error("세션 생성 실패(쿠키 미설정)");
+
+      if (mounted.current) setUser(j.user);
+
+      // 4) 이동
+      const dest = next && next.startsWith("/") ? next : "/bty";
+      window.location.assign(dest);
+    } catch (e: any) {
+      if (mounted.current) {
+        setUser(null);
+        setError(e?.message ?? String(e));
+      }
+    } finally {
+      if (mounted.current) setLoading(false);
     }
+  }, []);
 
-    // ✅ POST 완료 후 sessionInflight 리셋하여 새로운 GET 요청 보장
-    sessionInflight = null;
-
-    // 3. 쿠키 세션 설정 완료 후 /api/auth/session GET으로 사용자 정보 확인
-    // 쿠키가 반영될 때까지 재시도
-    const j = await fetchSessionAfterLogin();
-    if (j?.ok && j?.user) setUser(j.user);
-  };
-
-  const logout = async () => {
-    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+  const logout = useCallback(async () => {
+    // 서버에 logout route가 있으면 호출해도 좋지만, 지금은 쿠키 기반이라
+    // supabase signOut route를 만들거나, 쿠키 삭제 route를 만들기 전까지는
+    // 사용자 상태만 비우고 refresh로 동기화하는 방식
     setUser(null);
-  };
+    sessionInflight = null;
+    await refresh();
+    window.location.assign("/bty/login");
+  }, [refresh]);
 
-  const value = useMemo(
-    () => ({ user, loading, error, setError, clearError, refreshSession, login, register, logout }),
-    [user, loading, error]
+  const value = useMemo<Ctx>(
+    () => ({ user, loading, error, refresh, login, register, logout }),
+    [user, loading, error, refresh, login, register, logout]
   );
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const v = useContext(Ctx);
-  if (!v) throw new Error("AuthProvider missing");
-  return v;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
 }
