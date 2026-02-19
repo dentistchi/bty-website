@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { fetchJson } from "@/lib/read-json";
+import { fetchJson, safeParse } from "@/lib/read-json";
+
+type DebugResp = { ok: boolean; error?: string; where?: string };
 
 export default function DebugPage() {
   const [testEmail, setTestEmail] = useState("");
@@ -16,24 +18,32 @@ export default function DebugPage() {
       setTestResult("이메일과 비밀번호를 입력해주세요.");
       return;
     }
+
     setTesting(true);
     setTestResult(null);
+
     try {
       const r = await fetchJson<{ token?: string; error?: string }>("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: testEmail, password: testPassword }),
       });
+
       if (r.ok) {
         const data = r.json;
         setTestResult(`✅ 성공: ${JSON.stringify(data, null, 2)}`);
+
         if (data?.token) {
           localStorage.setItem("bty_auth_token", data.token);
           setTimeout(() => checkSession(data.token), 500);
         }
-      } else {
-        setTestResult(`❌ 실패 (${r.status}): ${r.json?.error ?? r.raw ?? ""}`);
+        return;
       }
+
+      // ❗️여기서 r.json은 접근 불가(정상). raw를 파싱해서 error 추출
+      const errObj = safeParse<{ error?: string }>(r.raw);
+      const errMsg = errObj?.error ?? r.raw ?? "";
+      setTestResult(`❌ 실패 (${r.status}): ${errMsg}`);
     } catch (e) {
       setTestResult(`❌ 네트워크 오류: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -48,14 +58,14 @@ export default function DebugPage() {
       return;
     }
     try {
-      const r = await fetchJson<Record<string, unknown>>(`/api/auth/session?_t=${Date.now()}`, {
+      const r = await fetchJson<DebugResp>("/api/auth/session", {
         headers: { Authorization: `Bearer ${storedToken}` },
       });
       const data = r.ok ? r.json : null;
       setSessionCheck(
         r.ok && data
           ? `✅ 세션 확인: ${JSON.stringify(data, null, 2)}`
-          : `❌ 세션 확인 실패: ${data ? JSON.stringify(data) : r.raw ?? ""}`
+          : `❌ 세션 확인 실패 (${r.status}): ${data ? JSON.stringify(data) : r.raw ?? ""}`
       );
     } catch (e) {
       setSessionCheck(`❌ 네트워크 오류: ${e instanceof Error ? e.message : String(e)}`);

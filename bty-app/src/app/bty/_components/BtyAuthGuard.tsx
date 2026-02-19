@@ -12,7 +12,7 @@ export default function BtyAuthGuard({ children }: { children: React.ReactNode }
     let alive = true;
 
     (async () => {
-      const r = await fetchJson<SessionResp>(`/api/auth/session?_t=${Date.now()}`);
+      const r = await fetchJson<SessionResp>("/api/auth/session");
 
       if (!r.ok || !r.json?.ok || !r.json?.user) {
         window.location.replace("/?need_login=1");

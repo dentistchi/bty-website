@@ -28,7 +28,7 @@ type SessionResp = { ok?: boolean; user?: AuthUser | null };
 export async function fetchSession(token: string | null): Promise<AuthUser | null> {
   const base = getApiBase();
   const url = base ? `${base.replace(/\/$/, "")}/api/auth/session` : "/api/auth/session";
-  const r = await fetchJson<SessionResp>(`${url}${url.includes("?") ? "&" : "?"}_t=${Date.now()}`, {
+  const r = await fetchJson<SessionResp>(url, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
   if (!r.ok) return null;
