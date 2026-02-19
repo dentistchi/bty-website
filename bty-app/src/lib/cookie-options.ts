@@ -1,21 +1,21 @@
-export type CookieLike = {
-  name: string;
-  value: string;
-  options?: Record<string, any>;
-};
-
 /**
- * Cloudflare/OpenNext에서 Supabase가 주는 options에 의해
- * httpOnly/secure/sameSite/path가 뒤집히는 케이스 방지용 "강제" 옵션 병합.
+ * Cloudflare/OpenNext에서 쿠키 옵션이 '절대' 뒤에서 덮어씌워지지 않도록
+ * 강제 옵션을 "마지막"에 적용한다.
  *
- * 핵심: ...options 를 먼저 깔고, 우리가 마지막에 강제로 덮어쓴다.
+ * ✅ 중요:
+ *   { ...options, forced }  => forced가 최종 승자
+ * ❌ 금지:
+ *   { forced, ...options }  => options가 forced를 다시 덮어씀 (HttpOnly=false 같은 문제)
  */
-export function mergeCookieOptions(options?: Record<string, any>) {
+export function normalizeSupabaseCookieOptions(
+  options?: Record<string, unknown>
+): { path: string; sameSite: "lax"; secure: boolean; httpOnly: boolean } {
   return {
     ...(options ?? {}),
+    // ✅ 우리가 강제하는 최종값(절대 뒤에서 덮이면 안 됨)
     path: "/",
     sameSite: "lax",
     secure: true,
     httpOnly: true,
-  } as Record<string, any>;
+  } as { path: string; sameSite: "lax"; secure: boolean; httpOnly: boolean };
 }

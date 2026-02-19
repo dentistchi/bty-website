@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { mergeCookieOptions } from "@/lib/cookie-options";
+import { normalizeSupabaseCookieOptions } from "@/lib/cookie-options";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
+type CookieToSet = { name: string; value: string; options?: Record<string, any> };
+
 function isPublicPath(pathname: string) {
-  // 정적/내부/API는 통과
+  // 정적/내부/헬스/API는 통과
   if (pathname.startsWith("/_next")) return true;
   if (pathname.startsWith("/favicon")) return true;
   if (pathname.startsWith("/api")) return true;
 
-  // 로그인 페이지는 반드시 통과 (여기서 막히면 무한 리다이렉트)
+  // 로그인 페이지는 무조건 통과(리다이렉트 루프 방지)
   if (pathname === "/admin/login") return true;
   if (pathname === "/bty/login") return true;
 
@@ -22,7 +24,7 @@ function isPublicPath(pathname: string) {
 }
 
 export async function middleware(req: NextRequest) {
-  const { pathname, search } = req.nextUrl;
+  const { pathname } = req.nextUrl;
 
   if (isPublicPath(pathname)) return NextResponse.next();
 
@@ -33,24 +35,20 @@ export async function middleware(req: NextRequest) {
       getAll() {
         return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
       },
-      setAll(cookies: Array<{ name: string; value: string; options?: Record<string, any> }>) {
-        for (const { name, value, options } of cookies as Array<{
-          name: string;
-          value: string;
-          options?: Record<string, any>;
-        }>) {
-          res.cookies.set(name, value, mergeCookieOptions(options));
+      setAll(cookies: CookieToSet[]) {
+        if (!cookies?.length) return;
+        for (const { name, value, options } of cookies) {
+          res.cookies.set(name, value, normalizeSupabaseCookieOptions(options as any));
         }
       },
     },
   });
 
   const { data } = await supabase.auth.getUser();
-  const user = data.user;
 
-  if (!user) {
+  if (!data.user) {
     const login = new URL("/bty/login", req.url);
-    login.searchParams.set("next", pathname + search);
+    login.searchParams.set("next", req.nextUrl.pathname + req.nextUrl.search);
     return NextResponse.redirect(login);
   }
 
@@ -59,6 +57,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // 로그인 필수로 막을 경로만
   matcher: ["/train/:path*", "/bty/:path*", "/admin/:path*"],
 };
