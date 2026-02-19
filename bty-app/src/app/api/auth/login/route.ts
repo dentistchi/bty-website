@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
+import { copySetCookies } from "@/lib/cookie-utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,20 +13,6 @@ function noStore(res: NextResponse) {
   res.headers.set("Expires", "0");
   res.headers.append("Vary", "Cookie");
   return res;
-}
-
-function copySetCookies(from: NextResponse, to: NextResponse) {
-  // 1) Next.js(Node)에서 지원하는 경우(복수 Set-Cookie)
-  const getter = (from.headers as any).getSetCookie?.bind(from.headers);
-  if (getter) {
-    const cookies: string[] = getter() || [];
-    cookies.forEach((c) => to.headers.append("set-cookie", c));
-    return;
-  }
-
-  // 2) 폴백: 단일 set-cookie만 있는 경우
-  const single = from.headers.get("set-cookie");
-  if (single) to.headers.append("set-cookie", single);
 }
 
 export async function POST(req: NextRequest) {

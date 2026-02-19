@@ -1,19 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
+import { copySetCookies } from "@/lib/cookie-utils";
 
 const DEFAULT_ORG_ID = "11196cff-205e-4a58-aedc-289089ea4b07";
-
-function copySetCookies(from: NextResponse, to: NextResponse) {
-  const getter = (from.headers as any).getSetCookie?.bind(from.headers);
-  if (getter) {
-    const cookies: string[] = getter() || [];
-    cookies.forEach((c) => to.headers.append("set-cookie", c));
-    return;
-  }
-  const single = from.headers.get("set-cookie");
-  if (single) to.headers.append("set-cookie", single);
-}
 
 export async function POST(req: NextRequest) {
   // ✅ 쿠키를 심기 위한 "템플릿 응답"
