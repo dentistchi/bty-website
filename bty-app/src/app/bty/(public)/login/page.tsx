@@ -1,13 +1,12 @@
-import { Suspense } from "react";
 import LoginClient from "./LoginClient";
+import { sanitizeNext } from "@/lib/sanitize-next";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default function Page() {
-  return (
-    <Suspense fallback={null}>
-      <LoginClient />
-    </Suspense>
-  );
+type SP = { next?: string };
+
+export default function Page({ searchParams }: { searchParams?: SP }) {
+  const nextPath = sanitizeNext(searchParams?.next);
+  return <LoginClient nextPath={nextPath} />;
 }
