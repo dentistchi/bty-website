@@ -4,6 +4,8 @@ import { createServerClient } from "@supabase/ssr";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
+type CookieSetInput = { name: string; value: string; options?: Record<string, any> };
+
 function isPublicPath(pathname: string) {
   if (pathname.startsWith("/_next")) return true;
   if (pathname.startsWith("/favicon")) return true;
@@ -28,7 +30,7 @@ export async function middleware(req: NextRequest) {
       getAll() {
         return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
       },
-      setAll(cookies: Array<{ name: string; value: string; options?: Record<string, any> }>) {
+      setAll(cookies: CookieSetInput[]) {
         cookies.forEach(({ name, value, options }) => {
           res.cookies.set(name, value, {
             path: "/",

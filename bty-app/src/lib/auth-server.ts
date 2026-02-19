@@ -44,12 +44,12 @@ export async function getAuthUserFromRequest(request: Request): Promise<User | n
   if (!token) return null;
 
   const supabase = await createServerSupabaseClient();
-  if (!supabase) return null;
+  if (!supabase) {
+    return null; // 또는 { ok: false as const, status: 503, error: "Server not configured" } 프로젝트 스타일에 맞게
+  }
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser(token);
+  const { data, error } = await supabase.auth.getUser(token);
+  const user = data?.user;
 
   if (error || !user) return null;
   return user;
