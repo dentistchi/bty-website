@@ -141,7 +141,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error("세션 생성 실패(쿠키 미설정)");
     }
 
-    // 3. 쿠키 세션 설정 후 /api/auth/session GET으로 사용자 정보 확인
+    // ✅ POST 완료 후 sessionInflight 리셋하여 새로운 GET 요청 보장
+    sessionInflight = null;
+
+    // 3. 쿠키 세션 설정 완료 후 /api/auth/session GET으로 사용자 정보 확인
+    // 쿠키가 반영될 때까지 재시도
     const j = await fetchSessionAfterLogin();
     if (!j?.ok || !j?.user) throw new Error("세션 확인 실패");
 
@@ -186,7 +190,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error("세션 생성 실패(쿠키 미설정)");
     }
 
-    // 3. 쿠키 세션 설정 후 /api/auth/session GET으로 사용자 정보 확인
+    // ✅ POST 완료 후 sessionInflight 리셋하여 새로운 GET 요청 보장
+    sessionInflight = null;
+
+    // 3. 쿠키 세션 설정 완료 후 /api/auth/session GET으로 사용자 정보 확인
+    // 쿠키가 반영될 때까지 재시도
     const j = await fetchSessionAfterLogin();
     if (j?.ok && j?.user) setUser(j.user);
   };
