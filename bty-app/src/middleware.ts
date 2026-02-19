@@ -38,6 +38,12 @@ export async function middleware(req: NextRequest) {
     return base;
   }
 
+  type CookieToSet = {
+    name: string;
+    value: string;
+    options?: Parameters<NextResponse["cookies"]["set"]>[2];
+  };
+
   const supabase = createServerClient(url, key, {
     cookies: {
       getAll() {
@@ -46,7 +52,7 @@ export async function middleware(req: NextRequest) {
           value: c.value,
         }));
       },
-      setAll(cookies) {
+      setAll(cookies: CookieToSet[]) {
         cookies.forEach(({ name, value, options }) => {
           base.cookies.set(name, value, {
             path: "/",
