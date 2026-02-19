@@ -142,15 +142,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       assertOk(r2 as any, "Session POST failed");
       if (!r2.json?.ok) throw new Error(r2.json?.error ?? "세션 생성 실패(쿠키 미설정)");
 
-      // 3) 쿠키 반영될 때까지 GET 재시도
+      // ✅ 캐시 리셋하여 새로운 GET 요청 강제
+      sessionInflight = null;
+
+      // 3) 쿠키 반영될 때까지 GET 재시도 (반드시 200 {ok:true,user} 받을 때까지)
       const j = await fetchSessionAfterLogin();
       if (!j?.ok || !j.user) throw new Error("세션 생성 실패(쿠키 미설정)");
 
       if (mounted.current) setUser(j.user);
 
-      // 4) 이동 (cookie 기반이므로 hard navigation이 가장 안전)
+      // 4) 이동 - 서버 after-login을 거쳐 쿠키 포함 요청으로 리다이렉트
       const dest = next && next.startsWith("/") ? next : "/bty";
-      window.location.assign(dest);
+      window.location.assign(`/api/auth/after-login?next=${encodeURIComponent(dest)}`);
     } catch (e: any) {
       if (mounted.current) {
         setUser(null);
@@ -204,15 +207,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       assertOk(r2 as any, "Session POST failed");
       if (!r2.json?.ok) throw new Error(r2.json?.error ?? "세션 생성 실패(쿠키 미설정)");
 
-      // 3) 쿠키 반영될 때까지 GET 재시도
+      // ✅ 캐시 리셋하여 새로운 GET 요청 강제
+      sessionInflight = null;
+
+      // 3) 쿠키 반영될 때까지 GET 재시도 (반드시 200 {ok:true,user} 받을 때까지)
       const j = await fetchSessionAfterLogin();
       if (!j?.ok || !j.user) throw new Error("세션 생성 실패(쿠키 미설정)");
 
       if (mounted.current) setUser(j.user);
 
-      // 4) 이동
+      // 4) 이동 - 서버 after-login을 거쳐 쿠키 포함 요청으로 리다이렉트
       const dest = next && next.startsWith("/") ? next : "/bty";
-      window.location.assign(dest);
+      window.location.assign(`/api/auth/after-login?next=${encodeURIComponent(dest)}`);
     } catch (e: any) {
       if (mounted.current) {
         setUser(null);

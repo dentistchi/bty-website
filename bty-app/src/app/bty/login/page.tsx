@@ -28,11 +28,11 @@ export default function BtyLoginPage() {
   const [localErr, setLocalErr] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // ✅ 이미 로그인 상태면 자동 이동 (이동은 hard nav로)
+  // ✅ 이미 로그인 상태면 서버 after-login을 거쳐 리다이렉트 (쿠키 포함 요청)
   useEffect(() => {
     if (loading) return;
     if (user) {
-      window.location.assign(nextPath);
+      window.location.assign(`/api/auth/after-login?next=${encodeURIComponent(nextPath)}`);
     }
   }, [loading, user, nextPath]);
 
