@@ -88,7 +88,11 @@ async function fetchSessionAfterLogin(retries = 3, delayMs = 120): Promise<Sessi
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const skipInitialSessionCheck = pathname === "/bty/login" || pathname === "/admin/login";
+  // ✅ 로그인/공개 페이지에서는 세션 자동조회 자체를 하지 않음 (401 노이즈 제거)
+  const skipInitialSessionCheck =
+    pathname === "/bty/login" ||
+    pathname === "/admin/login" ||
+    pathname.startsWith("/bty/login");
 
   const [user, setUser] = useState<AuthUser>(null);
   const [loading, setLoading] = useState(true);
@@ -120,9 +124,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (skipInitialSessionCheck) return;
+    // ✅ 로그인/공개 페이지에서는 세션 자동조회 자체를 하지 않음 (401 노이즈 제거)
+    if (skipInitialSessionCheck) {
+      // 로그인 페이지에서는 loading을 false로 설정 (초기 로딩 완료)
+      if (mounted.current) setLoading(false);
+      return;
+    }
     refresh();
-  }, [refresh, skipInitialSessionCheck]);
+  }, [refresh, skipInitialSessionCheck, pathname]);
 
   const login = useCallback(async (email: string, password: string, next?: string) => {
     setError(null);
