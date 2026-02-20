@@ -5,10 +5,11 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default function Page() {
-  // ✅ Next 15: useSearchParams()를 쓰는 Client 컴포넌트는
-  //    Server boundary에서 Suspense로 감싸야 prerender 시 빌드 에러가 나지 않음
+  // ✅ Server Component에서 Suspense로 감싸면
+  // useSearchParams()를 쓰는 Client Component가 CSR bailout 하더라도
+  // Next.js 빌드(prerender) 에러가 안 난다.
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center p-6">Loading...</div>}>
       <LoginClient />
     </Suspense>
   );

@@ -5,18 +5,16 @@ import { hardenCookieOptions } from "@/lib/cookie-defaults";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-type CookieToSetLocal = { name: string; value: string; options?: any };
-
 function isPublicPath(pathname: string) {
   if (pathname.startsWith("/_next")) return true;
   if (pathname.startsWith("/favicon")) return true;
   if (pathname.startsWith("/api")) return true;
 
-  // ✅ 로그인 페이지는 무조건 통과 (여기서 막히면 무한리다이렉트/쿠키폭증 발생)
-  if (pathname === "/admin/login") return true;
+  // 로그인 페이지는 무조건 통과 (루프 방지)
   if (pathname === "/bty/login") return true;
+  if (pathname === "/admin/login") return true;
 
-  // 공개 홈
+  // 홈은 공개
   if (pathname === "/") return true;
 
   return false;
@@ -27,6 +25,7 @@ export async function middleware(req: NextRequest) {
 
   if (isPublicPath(pathname)) return NextResponse.next();
 
+  // 보호 경로에서만 실행
   const res = NextResponse.next();
 
   const supabase = createServerClient(url, key, {
@@ -34,23 +33,28 @@ export async function middleware(req: NextRequest) {
       getAll() {
         return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
       },
-      setAll(cookies: CookieToSetLocal[]) {
-        cookies.forEach(({ name, value, options }) => {
+      setAll(cookies: Array<{ name: string; value: string; options?: unknown }>) {
+        // ✅ setAll 들어온 순간은 "무언가 쿠키를 쓰려는 상황"이므로,
+        //    우리가 강제 옵션으로 최종 덮어쓰기
+        for (const { name, value, options } of cookies) {
           res.cookies.set(name, value, hardenCookieOptions(options));
-        });
+        }
       },
     },
   });
 
   const { data } = await supabase.auth.getUser();
-  if (!data.user) {
+  const user = data.user;
+
+  // 미들웨어가 실제로 맞았는지 확인용
+  res.headers.set("x-mw-hit", "1");
+
+  if (!user) {
     const login = new URL("/bty/login", req.url);
     login.searchParams.set("next", req.nextUrl.pathname + req.nextUrl.search);
     return NextResponse.redirect(login);
   }
 
-  // 디버그용
-  res.headers.set("x-mw-hit", "1");
   return res;
 }
 
