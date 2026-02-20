@@ -1,6 +1,6 @@
-# Dear Me & BTY (통합 앱)
+# Dear Me & bty (통합 앱)
 
-한 앱에서 **자존감 회복실(Dear Me)** 와 **훈련장(BTY)** 를 모두 제공. 한국어 + **영어(/en)** 지원. 기본 AI 챗봇 탑재.
+한 앱에서 **자존감 회복실(Dear Me)** 와 **훈련장(bty)** 를 모두 제공. 한국어 + **영어(/en)** 지원. 기본 AI 챗봇 탑재.
 
 **CI:** GitHub Actions는 `working-directory: bty-app` 기준으로만 실행됩니다. Next.js 소스(`src/`)와 **모든 의존성은 반드시 이 폴더(bty-app/package.json, package-lock.json) 안에서 완결**해야 합니다. 루트 package.json이나 다른 폴더에만 있으면 CI에서 실패합니다.
 
@@ -24,16 +24,16 @@
 | 경로 | 내용 |
 |------|------|
 | `/` | Dear Me (한국어) |
-| `/bty` | BTY 훈련장 (한국어) |
+| `/bty` | bty 훈련장 (한국어) |
 | `/en` | Dear Me (English) |
-| `/en/bty` | BTY (English) |
+| `/en/bty` | bty (English) |
 
 상단 네비로 Dear Me ↔ 훈련장, 한국어 ↔ English 전환.
 
 ## 하나의 계정
 
 - 로그인/회원가입은 이 앱 한 곳. 로그인하면 모든 경로에서 동일 계정.
-- Dear Me 자존감 회복 데이터를 BTY에서 맞춤 제안에 활용할 수 있음.
+- Dear Me 자존감 회복 데이터를 bty에서 맞춤 제안에 활용할 수 있음.
 
 ## 로컬 실행
 
@@ -104,10 +104,10 @@ http://localhost:3001
 bty-app/src/
 ├── app/
 │   ├── page.tsx           # Dear Me (KO)
-│   ├── bty/page.tsx       # BTY (KO)
+│   ├── bty/page.tsx       # bty (KO)
 │   ├── admin/quality/     # Admin 대시보드 (Entra ID 필요)
 │   ├── en/page.tsx        # Dear Me (EN)
-│   ├── en/bty/page.tsx    # BTY (EN)
+│   ├── en/bty/page.tsx    # bty (EN)
 │   ├── api/auth/*         # 로그인/회원가입/세션
 │   ├── api/admin/quality  # Quality API 프록시
 │   ├── api/admin/patch    # Patch API 프록시
@@ -119,6 +119,6 @@ bty-app/src/
 ├── components/
 │   ├── admin/AdminHeader
 │   ├── SafeMirror, SmallWinsStack, SelfEsteemTest  # Dear Me
-│   ├── IntegritySimulator, PracticeJournal, Comeback  # BTY
+│   ├── IntegritySimulator, PracticeJournal, Comeback  # bty
 │   ├── AuthGate, Chatbot, Nav, ThemeBody, SetLocale
 ```

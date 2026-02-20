@@ -1,5 +1,5 @@
 /**
- * 28-day BTY Journey content (읽을거리, 미션)
+ * 28-day bty Journey content (읽을거리, 미션)
  * Day 1–28: reading + 2–3 missions per day
  */
 export type DayContent = {
