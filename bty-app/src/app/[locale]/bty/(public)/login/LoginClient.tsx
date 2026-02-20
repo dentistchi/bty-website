@@ -3,16 +3,15 @@
 import { useMemo, useState } from "react";
 import { fetchJson } from "@/lib/read-json";
 
-function safeNext(nextPath: string) {
-  // 오픈리다이렉트 방지: 같은 오리진 내부 경로만 허용
-  if (!nextPath || typeof nextPath !== "string") return "/bty";
-  if (!nextPath.startsWith("/")) return "/bty";
-  if (nextPath.startsWith("//")) return "/bty";
+function safeNext(nextPath: string, locale: "en" | "ko") {
+  if (!nextPath || typeof nextPath !== "string") return `/${locale}/bty`;
+  if (!nextPath.startsWith("/")) return `/${locale}/bty`;
+  if (nextPath.startsWith("//")) return `/${locale}/bty`;
   return nextPath;
 }
 
-export default function LoginClient({ nextPath }: { nextPath: string }) {
-  const next = useMemo(() => safeNext(nextPath), [nextPath]);
+export default function LoginClient({ nextPath, locale }: { nextPath: string; locale: "en" | "ko" }) {
+  const next = useMemo(() => safeNext(nextPath, locale), [nextPath, locale]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -47,8 +46,9 @@ export default function LoginClient({ nextPath }: { nextPath: string }) {
         throw new Error(msg);
       }
 
-      // ✅ 로그인 성공 후: next로 이동 (/bty 루트면 /bty/mentor로 보정해 404 방지)
-      const dest = next === "/bty" ? "/bty/mentor" : next;
+      // ✅ 로그인 성공 후: next로 이동 (bty 루트면 /:locale/bty/mentor로 보정)
+      const btyRoot = `/${locale}/bty`;
+      const dest = (next === btyRoot || next === "/bty") ? `/${locale}/bty/mentor` : next;
       window.location.assign(dest);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
