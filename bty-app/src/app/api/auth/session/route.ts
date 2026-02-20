@@ -1,19 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
 
-/**
- * GET: 세션 조회
- * - "미로그인"은 운영상 정상 케이스라 401을 쓰지 않고 200 + { ok:false }로 반환
- *   (브라우저 콘솔/네트워크 401 노이즈 제거 목적)
- */
+// GET: 쿠키 기반 세션에서 user 확인 (미로그인은 200 + ok:false로 401 노이즈 제거)
 export async function GET() {
   try {
     const supabase = await getSupabaseServer();
     const { data, error } = await supabase.auth.getUser();
 
-    // 로그인 안 됨: 200 + ok:false
     if (error || !data?.user) {
-      return NextResponse.json({ ok: false }, { status: 200 });
+      return NextResponse.json(
+        { ok: false, error: "Auth session missing!", where: "supabase.auth.getUser()" },
+        { status: 200 }
+      );
     }
 
     return NextResponse.json(
@@ -21,9 +19,8 @@ export async function GET() {
       { status: 200 }
     );
   } catch (e) {
-    // 서버 예외는 500 유지
     return NextResponse.json(
-      { ok: false, error: "Session check failed" },
+      { ok: false, error: "Session check failed", where: "GET catch" },
       { status: 500 }
     );
   }
@@ -41,7 +38,6 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = await getSupabaseServer();
-
     const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
 
     if (error || !data?.user) {
