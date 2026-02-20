@@ -1,12 +1,15 @@
 "use client";
 
 import { useCallback } from "react";
+import { usePathname } from "next/navigation";
 
 export function LogoutButton() {
+  const pathname = usePathname() ?? "";
+  const locale = pathname.startsWith("/ko") ? "ko" : "en";
   const onLogout = useCallback(() => {
-    // middleware가 처리하는 document navigation
-    window.location.assign("/bty/logout?next=%2Fbty");
-  }, []);
+    const next = encodeURIComponent(`/${locale}/bty`);
+    window.location.assign(`/${locale}/bty/logout?next=${next}`);
+  }, [locale]);
 
   return (
     <button

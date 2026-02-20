@@ -89,6 +89,7 @@ export function Chatbot() {
           body: JSON.stringify({
             messages: [...chatMessages, { role: "user", content: trimmed }],
             mode,
+            lang: locale,
           }),
           signal: abortRef.current.signal,
         });

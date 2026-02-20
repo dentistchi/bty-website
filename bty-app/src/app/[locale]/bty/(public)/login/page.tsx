@@ -1,4 +1,5 @@
 import LoginClient from "./LoginClient";
+import { LoginLocaleWrapper } from "./LoginLocaleWrapper";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -15,7 +16,7 @@ export default async function Page({ searchParams }: Props) {
       ? nextParam
       : Array.isArray(nextParam)
       ? nextParam[0]
-      : "/bty";
+      : "";
 
-  return <LoginClient nextPath={next || "/bty"} />;
+  return <LoginLocaleWrapper nextPath={next || ""} />;
 }
