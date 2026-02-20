@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import type { NextRequest, NextResponse } from "next/server";
-import { forceCookieOptions } from "@/lib/cookie-utils";
+import { hardenCookieOptions } from "@/lib/cookie-defaults";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -23,7 +23,7 @@ export function getSupabaseServer(req: NextRequest, res: NextResponse) {
       setAll(cookies: CookieToSetLocal[]) {
         cookies.forEach(({ name, value, options }) => {
           // ✅ 강제 옵션이 마지막에 와서 절대 덮어써지지 않음
-          res.cookies.set(name, value, forceCookieOptions(options));
+          res.cookies.set(name, value, hardenCookieOptions(options));
         });
       },
     },

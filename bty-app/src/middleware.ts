@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { forceCookieOptions } from "@/lib/cookie-utils";
+import { hardenCookieOptions } from "@/lib/cookie-defaults";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -36,7 +36,7 @@ export async function middleware(req: NextRequest) {
       },
       setAll(cookies: CookieToSetLocal[]) {
         cookies.forEach(({ name, value, options }) => {
-          res.cookies.set(name, value, forceCookieOptions(options));
+          res.cookies.set(name, value, hardenCookieOptions(options));
         });
       },
     },
