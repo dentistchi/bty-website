@@ -1,28 +1,31 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
-import { hardenCookieOptions } from "@/lib/cookie-defaults";
+import { createServerClient } from "@supabase/ssr";
+import { forceCookieOptions, type CookieToSet } from "@/lib/cookie-utils";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 /**
- * Route Handler용 Supabase 서버 클라이언트
- * - Cloudflare/OpenNext에서 Set-Cookie 손실/옵션 꼬임 방지
- * - options는 절대 우리 기본값을 덮어쓰지 못함(마지막에 강제)
+ * Route Handler 전용 (app/api/.../route.ts)
+ * - req: NextRequest
+ * - res: NextResponse (쿠키를 여기에 set 해야 브라우저로 Set-Cookie가 내려감)
  */
 export function getSupabaseServer(req: NextRequest, res: NextResponse) {
   if (!url || !key) return null;
 
-  return createServerClient(url, key, {
+  const supabase = createServerClient(url, key, {
     cookies: {
       getAll() {
+        // NextRequest cookies는 동기
         return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
       },
-      setAll(cookies: Array<{ name: string; value: string; options?: unknown }>) {
-        for (const { name, value, options } of cookies) {
-          res.cookies.set(name, value, hardenCookieOptions(options));
-        }
+      setAll(cookies: CookieToSet[]) {
+        cookies.forEach((c) => {
+          res.cookies.set(c.name, c.value, forceCookieOptions(c.options));
+        });
       },
     },
   });
+
+  return supabase;
 }
