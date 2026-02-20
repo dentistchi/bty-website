@@ -25,5 +25,6 @@ dist/
 
 # TypeScript
 next-env.d.ts
+*.tsbuildinfo
 
 # 주의: package-lock.json은 gitignore에 추가하지 말 것! (반드시 git에 커밋)
