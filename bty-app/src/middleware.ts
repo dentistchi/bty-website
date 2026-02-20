@@ -1,23 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { normalizeSupabaseCookieOptions } from "@/lib/cookie-options";
+import { forceCookieOptions } from "@/lib/cookie-utils";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-type CookieToSet = { name: string; value: string; options?: Record<string, any> };
+type CookieToSetLocal = { name: string; value: string; options?: any };
 
 function isPublicPath(pathname: string) {
-  // 정적/내부/헬스/API는 통과
   if (pathname.startsWith("/_next")) return true;
   if (pathname.startsWith("/favicon")) return true;
   if (pathname.startsWith("/api")) return true;
 
-  // 로그인 페이지는 무조건 통과(리다이렉트 루프 방지)
+  // ✅ 로그인 페이지는 무조건 통과 (여기서 막히면 무한리다이렉트/쿠키폭증 발생)
   if (pathname === "/admin/login") return true;
   if (pathname === "/bty/login") return true;
 
-  // 홈
+  // 공개 홈
   if (pathname === "/") return true;
 
   return false;
@@ -35,23 +34,22 @@ export async function middleware(req: NextRequest) {
       getAll() {
         return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
       },
-      setAll(cookies: CookieToSet[]) {
-        if (!cookies?.length) return;
-        for (const { name, value, options } of cookies) {
-          res.cookies.set(name, value, normalizeSupabaseCookieOptions(options as any));
-        }
+      setAll(cookies: CookieToSetLocal[]) {
+        cookies.forEach(({ name, value, options }) => {
+          res.cookies.set(name, value, forceCookieOptions(options));
+        });
       },
     },
   });
 
   const { data } = await supabase.auth.getUser();
-
   if (!data.user) {
     const login = new URL("/bty/login", req.url);
     login.searchParams.set("next", req.nextUrl.pathname + req.nextUrl.search);
     return NextResponse.redirect(login);
   }
 
+  // 디버그용
   res.headers.set("x-mw-hit", "1");
   return res;
 }

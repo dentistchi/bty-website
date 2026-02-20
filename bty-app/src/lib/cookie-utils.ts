@@ -1,38 +1,35 @@
-import { NextResponse } from "next/server";
+import type { NextResponse } from "next/server";
 
 /**
- * NextResponse의 Set-Cookie들을 모두 수집 (환경별 API 차이 대응)
- * - Next.js/Undici 계열: getSetCookie() 지원
- * - Cloudflare Workers: 모든 set-cookie 헤더 직접 추출
- * - Fallback: 단일 set-cookie만 있는 환경
+ * Cloudflare/OpenNext에서 쿠키 옵션이 뒤에서 덮어써지는 걸 막기 위해
+ * "우리가 강제할 값"을 마지막에 둔다.
  */
-export function getSetCookies(res: NextResponse): string[] {
-  const h: any = res.headers as any;
-
-  // Next.js/Undici 계열: getSetCookie() 지원
-  const a = h.getSetCookie?.();
-  if (Array.isArray(a) && a.length) return a;
-
-  // Cloudflare Workers 호환: 모든 set-cookie 헤더 직접 추출
-  const allHeaders = Array.from(res.headers.entries());
-  const setCookieHeaders = allHeaders
-    .filter(([key]) => key.toLowerCase() === 'set-cookie')
-    .map(([, value]) => value);
-  
-  if (setCookieHeaders.length > 0) return setCookieHeaders;
-
-  // Fallback: 단일 set-cookie만 있는 환경
-  const one = res.headers.get("set-cookie");
-  return one ? [one] : [];
+export function forceCookieOptions(options: any = {}) {
+  return {
+    ...options, // ✅ supabase가 준 옵션을 먼저
+    path: "/", // ✅ 항상 루트
+    sameSite: "lax", // ✅ 기본 Lax
+    secure: true, // ✅ HTTPS 강제 (workers.dev도 https)
+    httpOnly: true, // ✅ 세션 쿠키는 httpOnly 강제
+  };
 }
 
 /**
- * from의 Set-Cookie들을 to에 모두 append
- * 여러 개의 쿠키가 있어도 모두 안전하게 복사됨
+ * NextResponse headers에서 Set-Cookie를 가능한 방식으로 전부 꺼낸다.
+ * (환경별로 getSetCookie 유무가 달라서 방어적으로)
  */
-export function copySetCookies(from: NextResponse, to: NextResponse): void {
-  const cookies = getSetCookies(from);
-  for (const c of cookies) {
-    to.headers.append("set-cookie", c);
-  }
+export function getSetCookieStrings(res: NextResponse): string[] {
+  const h = res.headers as any;
+
+  // Next / 일부 런타임
+  const viaGetSetCookie = typeof h.getSetCookie === "function" ? h.getSetCookie() : null;
+  if (Array.isArray(viaGetSetCookie) && viaGetSetCookie.length) return viaGetSetCookie;
+
+  // 표준 get('set-cookie')는 하나로 합쳐질 수 있음
+  const sc = res.headers.get("set-cookie");
+  return sc ? [sc] : [];
+}
+
+export function copySetCookie(from: NextResponse, to: NextResponse) {
+  for (const c of getSetCookieStrings(from)) to.headers.append("set-cookie", c);
 }
