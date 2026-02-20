@@ -27,14 +27,17 @@ export async function fetchJson<T>(url: string, init?: RequestInit) {
   const parsed = await readJsonSafe<T>(res);
 
   if (!res.ok || !parsed.ok) {
-    // 여기 raw를 찍으면 "서버가 뭘 내보냈는지" 잡힘 (빈바디/HTML/에러메시지)
-    console.error("[fetchJson] failed", {
-      url,
-      status: res.status,
-      statusText: res.statusText,
-      contentType: res.headers.get("content-type"),
-      raw: parsed.raw?.slice(0, 300),
-    });
+    // 401(로그인 전)은 정상 흐름이라 콘솔에 찍지 않음
+    if (res.status !== 401) {
+      // 여기 raw를 찍으면 "서버가 뭘 내보냈는지" 잡힘 (빈바디/HTML/에러메시지)
+      console.error("[fetchJson] failed", {
+        url,
+        status: res.status,
+        statusText: res.statusText,
+        contentType: res.headers.get("content-type"),
+        raw: parsed.raw?.slice(0, 300),
+      });
+    }
     return { ok: false as const, status: res.status, raw: parsed.raw };
   }
 

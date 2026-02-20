@@ -60,7 +60,13 @@ async function fetchSessionOnce(): Promise<SessionResp | null> {
   if (!sessionInflight) {
     sessionInflight = (async () => {
       const r = await fetchJson<SessionResp>(`/api/auth/session?_t=${Date.now()}`);
-      return r.ok ? (r.json as SessionResp) : null;
+      if (!r.ok) {
+        // 401(로그인 전)은 정상 흐름이라 "에러"로 취급하지 말고 그냥 비로그인 상태로 둠
+        if (r.status === 401) return { ok: false as const };
+        // 그 외만 에러로 던지기
+        throw new Error(r.raw ?? "Session request failed");
+      }
+      return r.json as SessionResp;
     })().finally(() => {
       sessionInflight = null;
     });
