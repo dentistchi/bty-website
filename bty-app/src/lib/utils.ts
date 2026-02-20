@@ -127,7 +127,7 @@ export function setSelfEsteemResult(result: SelfEsteemResult): void {
   appendSelfEsteemResult(result);
 }
 
-// BTY 브릿지 표시 조건: Safe Mirror에서 AI 답장을 받았을 때
+// bty 브릿지 표시 조건: Safe Mirror에서 AI 답장을 받았을 때
 export const SAFE_MIRROR_POSITIVE_KEY = "dear_safe_mirror_positive";
 
 export function getSafeMirrorPositive(): boolean {

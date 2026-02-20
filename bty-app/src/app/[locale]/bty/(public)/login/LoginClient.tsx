@@ -60,7 +60,7 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-md border rounded-2xl p-6 bg-white">
-        <h1 className="text-xl font-semibold mb-1">BTY 로그인</h1>
+        <h1 className="text-xl font-semibold mb-1">bty 로그인</h1>
         <p className="text-sm text-gray-600 mb-4">
           로그인 후 <span className="font-medium">{next}</span> 로 이동합니다.
         </p>

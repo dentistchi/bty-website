@@ -40,7 +40,7 @@ export default function BtyLoginForm({ nextPath }: { nextPath: string }) {
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div style={{ width: "100%", maxWidth: 420, border: "1px solid rgba(0,0,0,0.1)", borderRadius: 16, padding: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>BTY 로그인</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>bty 로그인</h1>
         <p style={{ marginTop: 0, marginBottom: 16, opacity: 0.75, fontSize: 14 }}>
           로그인 후 <b>{nextPath}</b> 로 이동합니다.
         </p>

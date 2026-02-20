@@ -1,4 +1,4 @@
--- BTY Journey: 28-day program progress
+-- bty Journey: 28-day program progress
 -- Run this in Supabase SQL Editor
 
 -- User's journey profile (current day, start date)

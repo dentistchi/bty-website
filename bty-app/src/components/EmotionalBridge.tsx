@@ -14,7 +14,7 @@ function getBtyPath(locale: "ko" | "en"): string {
 }
 
 /**
- * The Bridge — 회복이 어느 정도 되었을 때만 BTY(성장)로 가는 버튼 표시
+ * The Bridge — 회복이 어느 정도 되었을 때만 bty(성장)로 가는 버튼 표시
  * 조건: 자존감 테스트 결과 mid 이상, 또는 Safe Mirror에서 AI 답장을 받은 경우
  */
 function useBridgeVisible(): boolean {
@@ -74,7 +74,7 @@ export function EmotionalBridge({
           isDear ? "text-dear-charcoal-soft" : "text-sanctuary-text-soft"
         )}
       >
-        (Go to BTY Practice)
+        (Go to bty practice)
       </p>
       <a
         href={btyPath}
@@ -86,7 +86,7 @@ export function EmotionalBridge({
             : "bg-sanctuary-sage/80 text-sanctuary-text hover:bg-sanctuary-sage border border-sanctuary-sage/60"
         )}
       >
-        이제 문을 열고 밖으로 나가볼까요? (Go to BTY Practice)
+        이제 문을 열고 밖으로 나가볼까요? (Go to bty practice)
       </a>
     </section>
   );

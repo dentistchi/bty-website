@@ -133,7 +133,7 @@ const en: Messages = {
   todayMe: {
     title: "Dear Me",
     tagline: "You are safe. It’s okay to rest here.",
-    linkToBty: "Go to bty (Practice)",
+    linkToBty: "Go to bty (practice)",
   },
   bty: {
     title: "bty",
