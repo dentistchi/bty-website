@@ -1,21 +1,24 @@
-// bty-app/src/middleware.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { withForcedAuthCookieDefaults } from "@/lib/cookie-defaults";
+import type { CookieOptions } from "@supabase/ssr";
+import { applyCookieDefaults } from "@/lib/cookie-defaults";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 function isPublicPath(pathname: string) {
+  // 정적/내부/헬스/API는 통과
   if (pathname.startsWith("/_next")) return true;
   if (pathname.startsWith("/favicon")) return true;
   if (pathname.startsWith("/api")) return true;
 
-  // ✅ 로그인 페이지는 무조건 통과(redirect loop 차단)
+  // 로그인 페이지는 통과
   if (pathname === "/admin/login") return true;
   if (pathname === "/bty/login") return true;
 
+  // 홈은 공개
   if (pathname === "/") return true;
+
   return false;
 }
 
@@ -31,10 +34,10 @@ export async function middleware(req: NextRequest) {
       getAll() {
         return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
       },
-      setAll(cookies) {
-        cookies.forEach(({ name, value, options }) => {
-          // ✅ 강제 옵션이 마지막: 절대 덮어써지지 않음
-          res.cookies.set(name, value, withForcedAuthCookieDefaults(options as any));
+      setAll(cookiesToSet: Array<{ name: string; value: string; options?: CookieOptions }>) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          // ✅ options가 와도 마지막에 우리가 덮어써서 "절대" 고정
+          res.cookies.set(name, value, applyCookieDefaults(options));
         });
       },
     },
@@ -54,5 +57,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
+  // 로그인 필수 영역만
   matcher: ["/train/:path*", "/bty/:path*", "/admin/:path*"],
 };
