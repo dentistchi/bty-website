@@ -1,5 +1,7 @@
+// bty-app/src/middleware.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { withForcedAuthCookieDefaults } from "@/lib/cookie-defaults";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -9,7 +11,7 @@ function isPublicPath(pathname: string) {
   if (pathname.startsWith("/favicon")) return true;
   if (pathname.startsWith("/api")) return true;
 
-  // 로그인 페이지 통과
+  // ✅ 로그인 페이지는 무조건 통과(redirect loop 차단)
   if (pathname === "/admin/login") return true;
   if (pathname === "/bty/login") return true;
 
@@ -29,16 +31,10 @@ export async function middleware(req: NextRequest) {
       getAll() {
         return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
       },
-      setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
+      setAll(cookies) {
         cookies.forEach(({ name, value, options }) => {
-          // ✅ options가 뭘 주든, 최종적으로 우리가 강제하는 값이 우선
-          res.cookies.set(name, value, {
-            ...(options ?? {}),
-            path: "/",
-            sameSite: "lax",
-            secure: true,
-            httpOnly: true,
-          });
+          // ✅ 강제 옵션이 마지막: 절대 덮어써지지 않음
+          res.cookies.set(name, value, withForcedAuthCookieDefaults(options as any));
         });
       },
     },

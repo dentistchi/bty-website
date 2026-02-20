@@ -1,16 +1,22 @@
-import type { CookieOptions } from "@supabase/ssr";
+// bty-app/src/lib/cookie-defaults.ts
+export type CookieOptions = {
+  domain?: string;
+  path?: string;
+  maxAge?: number;
+  expires?: Date;
+  httpOnly?: boolean;
+  secure?: boolean;
+  sameSite?: "lax" | "strict" | "none";
+};
 
-/**
- * Cloudflare/OpenNext에서 "절대 덮어쓰이지" 않게:
- * - options를 먼저 펼치고
- * - 우리가 강제할 값들을 마지막에 덮어쓴다 (핵심)
- */
-export function hardenCookieOptions(options?: CookieOptions): CookieOptions {
+export function withForcedAuthCookieDefaults(options: CookieOptions | undefined) {
+  const o = options ?? {};
   return {
-    ...(options ?? {}),
-    path: "/", // 항상 루트
-    sameSite: "lax", // 항상 Lax
-    secure: true, // 항상 HTTPS
-    httpOnly: true, // 항상 HttpOnly (JS에서 못 읽게)
+    ...o,
+    // ✅ Cloudflare/OpenNext에서는 이 4개는 "절대" 뒤집히면 안 됨
+    path: "/",
+    sameSite: "lax" as const,
+    secure: true,
+    httpOnly: true,
   };
 }
