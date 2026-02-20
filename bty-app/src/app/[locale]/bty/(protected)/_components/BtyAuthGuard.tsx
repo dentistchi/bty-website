@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { fetchJson } from "@/lib/read-json";
 
 type SessionResp = { ok?: boolean; user?: unknown };
 
 export default function BtyAuthGuard({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname() ?? "";
+  const locale = pathname.startsWith("/ko") ? "ko" : "en";
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -15,7 +18,8 @@ export default function BtyAuthGuard({ children }: { children: React.ReactNode }
       const r = await fetchJson<SessionResp>("/api/auth/session");
 
       if (!r.ok || !r.json?.ok || !r.json?.user) {
-        window.location.replace("/?need_login=1");
+        const next = encodeURIComponent(pathname || `/${locale}/bty`);
+        window.location.replace(`/${locale}/bty/login?next=${next}`);
         return;
       }
 
@@ -25,7 +29,7 @@ export default function BtyAuthGuard({ children }: { children: React.ReactNode }
     return () => {
       alive = false;
     };
-  }, []);
+  }, [pathname, locale]);
 
   // 세션 확인 전에는 아무것도 안 보여주기(깜빡임 방지)
   if (!ready) {
