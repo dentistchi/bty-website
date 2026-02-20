@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { fetchJson } from "@/lib/read-json";
 import { sanitizeNext } from "@/lib/sanitize-next";
 
@@ -80,6 +81,9 @@ async function fetchSessionAfterLogin(retries = 3, delayMs = 120): Promise<Sessi
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const skipInitialSessionCheck = pathname === "/bty/login" || pathname === "/admin/login";
+
   const [user, setUser] = useState<AuthUser>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,8 +114,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (skipInitialSessionCheck) return;
     refresh();
-  }, [refresh]);
+  }, [refresh, skipInitialSessionCheck]);
 
   const login = useCallback(async (email: string, password: string, next?: string) => {
     setError(null);

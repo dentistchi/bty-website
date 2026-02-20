@@ -6,28 +6,9 @@ import { getSupabaseServer } from "@/lib/supabase-server";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-function copySetCookie(from: NextResponse, to: NextResponse) {
-  const anyHeaders = from.headers as any;
-  const setCookies: string[] =
-    anyHeaders.getSetCookie?.() ??
-    (from.headers.get("set-cookie") ? [from.headers.get("set-cookie")!] : []);
-  for (const c of setCookies) to.headers.append("set-cookie", c);
-}
-
 export async function POST(req: NextRequest) {
-  // 쿠키를 "수집"할 응답 컨테이너
-  const cookieRes = NextResponse.next();
-
   try {
-    const supabase = getSupabaseServer(req, cookieRes);
-    if (!supabase) {
-      const out = NextResponse.json(
-        { ok: false, error: "Supabase env missing (url/key)" },
-        { status: 503 }
-      );
-      copySetCookie(cookieRes, out);
-      return out;
-    }
+    const supabase = await getSupabaseServer();
 
     const body = (await req.json().catch(() => ({}))) as {
       email?: string;
@@ -38,28 +19,24 @@ export async function POST(req: NextRequest) {
     const password = body.password ?? "";
 
     if (!email || !password) {
-      const out = NextResponse.json(
+      return NextResponse.json(
         { ok: false, error: "missing email/password" },
         { status: 400 }
       );
-      copySetCookie(cookieRes, out);
-      return out;
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      const out = NextResponse.json(
+      return NextResponse.json(
         { ok: false, error: error.message, where: "supabase.auth.signInWithPassword()" },
         { status: 401 }
       );
-      copySetCookie(cookieRes, out);
-      return out;
     }
 
     // ✅ 여기서는 "토큰 반환"도 가능하지만, 지금 목표는 쿠키 세션 확립
     // data.session이 있으면 /api/auth/session POST 없이도 쿠키가 세팅될 수 있음(SSR 쿠키)
-    const out = NextResponse.json(
+    return NextResponse.json(
       {
         ok: true,
         user: data.user ? { id: data.user.id, email: data.user.email } : null,
@@ -69,12 +46,9 @@ export async function POST(req: NextRequest) {
       },
       { status: 200 }
     );
-
-    copySetCookie(cookieRes, out);
-    return out;
   } catch (e: any) {
     // ✅ "빈 body 500" 방지: 항상 JSON
-    const out = NextResponse.json(
+    return NextResponse.json(
       {
         ok: false,
         error: e?.message ?? String(e),
@@ -83,7 +57,5 @@ export async function POST(req: NextRequest) {
       },
       { status: 500 }
     );
-    copySetCookie(cookieRes, out);
-    return out;
   }
 }

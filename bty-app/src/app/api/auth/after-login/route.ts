@@ -11,11 +11,7 @@ function pickNext(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const res = NextResponse.next();
-  const supabase = getSupabaseServer(req, res);
-  if (!supabase) {
-    return NextResponse.redirect(new URL("/bty/login?e=server_not_configured", req.url));
-  }
+  const supabase = await getSupabaseServer();
 
   const { data } = await supabase.auth.getUser();
   if (!data.user) {

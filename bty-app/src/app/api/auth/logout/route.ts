@@ -5,11 +5,7 @@ import { getSupabaseServer } from "@/lib/supabase-server";
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  const res = NextResponse.json({ ok: true }, { status: 200 });
-  const supabase = getSupabaseServer(req, res);
-  if (!supabase) {
-    return NextResponse.json({ ok: false, error: "Server not configured" }, { status: 503 });
-  }
+  const supabase = await getSupabaseServer();
 
   const { error } = await supabase.auth.signOut();
   if (error) {
@@ -17,5 +13,5 @@ export async function POST(req: NextRequest) {
   }
 
   // ✅ signOut 과정에서도 setAll이 호출되어 쿠키가 정리됨
-  return res;
+  return NextResponse.json({ ok: true }, { status: 200 });
 }

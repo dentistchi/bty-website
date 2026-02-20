@@ -16,14 +16,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const res = NextResponse.json({ ok: false }, { status: 200 });
-  const supabase = getSupabaseServer(req, res);
-  if (!supabase) {
-    return NextResponse.json(
-      { ok: false, error: "Server not configured" },
-      { status: 503 }
-    );
-  }
+  const supabase = await getSupabaseServer();
 
   const { data: { user }, error: userErr } = await supabase.auth.getUser();
 

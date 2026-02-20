@@ -18,17 +18,7 @@ export async function GET(req: NextRequest) {
       .join(",") || "none";
 
   try {
-    const res = NextResponse.json({ ok: false });
-    const supabase = getSupabaseServer(req, res);
-
-    if (!supabase) {
-      const out = NextResponse.json(
-        { ok: false, error: "Server not configured" },
-        { status: 503 }
-      );
-      setAuthDiagHeaders(out, cookieHeader, cookieNames);
-      return out;
-    }
+    const supabase = await getSupabaseServer();
 
     const { data, error } = await supabase.auth.getUser();
 

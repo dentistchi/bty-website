@@ -1,21 +1,21 @@
-/**
- * Cloudflare/OpenNext에서 쿠키 옵션이 '절대' 뒤에서 덮어씌워지지 않도록
- * 강제 옵션을 "마지막"에 적용한다.
- *
- * ✅ 중요:
- *   { ...options, forced }  => forced가 최종 승자
- * ❌ 금지:
- *   { forced, ...options }  => options가 forced를 다시 덮어씀 (HttpOnly=false 같은 문제)
- */
-export function normalizeSupabaseCookieOptions(
-  options?: Record<string, unknown>
-): { path: string; sameSite: "lax"; secure: boolean; httpOnly: boolean } {
+export type CookieOptionsLike = Record<string, unknown> & {
+  path?: string;
+  sameSite?: "lax" | "strict" | "none";
+  secure?: boolean;
+  httpOnly?: boolean;
+};
+
+export function forceCookieOptions(
+  options: CookieOptionsLike | undefined,
+  ctx: { isHttps: boolean }
+): Record<string, unknown> {
+  // 1) options를 먼저 깔고
+  // 2) 우리가 마지막에 강제값을 다시 덮어써서 "절대 안 흔들리게" 만든다
   return {
     ...(options ?? {}),
-    // ✅ 우리가 강제하는 최종값(절대 뒤에서 덮이면 안 됨)
     path: "/",
-    sameSite: "lax",
-    secure: true,
+    sameSite: "lax" as const,
+    secure: ctx.isHttps, // prod(https)에서는 true, dev(http)에서는 false
     httpOnly: true,
-  } as { path: string; sameSite: "lax"; secure: boolean; httpOnly: boolean };
+  };
 }

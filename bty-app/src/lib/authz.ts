@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
@@ -23,11 +23,8 @@ export function canGrantRole(granter: MembershipRole, target: MembershipRole) {
   return false;
 }
 
-export async function requireUser(req: NextRequest, res: NextResponse) {
-  const supabase = getSupabaseServer(req, res);
-  if (!supabase) {
-    return { ok: false as const, status: 503, error: "Server not configured" };
-  }
+export async function requireUser(req: NextRequest) {
+  const supabase = await getSupabaseServer();
 
   const { data, error } = await supabase.auth.getUser();
   if (error || !data?.user) {
@@ -45,10 +42,9 @@ function parseScope(request: NextRequest) {
 
 export async function requireRegionAccess(
   request: NextRequest,
-  res: NextResponse,
   opts: { minRole: MembershipRole }
 ) {
-  const u = await requireUser(request, res);
+  const u = await requireUser(request);
   if (!u.ok) return u;
 
   const { orgId, regionId } = parseScope(request);
@@ -111,8 +107,7 @@ export async function requireRegionAccess(
 
 export async function requireAdmin(
   request: NextRequest,
-  res: NextResponse,
   opts?: { minRole?: MembershipRole }
 ) {
-  return requireRegionAccess(request, res, { minRole: opts?.minRole ?? "office_manager" });
+  return requireRegionAccess(request, { minRole: opts?.minRole ?? "office_manager" });
 }
