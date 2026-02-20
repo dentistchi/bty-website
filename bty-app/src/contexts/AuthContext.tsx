@@ -92,7 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const skipInitialSessionCheck =
     pathname === "/bty/login" ||
     pathname === "/admin/login" ||
-    pathname.startsWith("/bty/login");
+    pathname.startsWith("/bty/login") ||
+    pathname.startsWith("/admin/login");
 
   const [user, setUser] = useState<AuthUser>(null);
   const [loading, setLoading] = useState(true);
