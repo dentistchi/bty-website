@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
-import { jsonFrom } from "@/lib/next-response-json";
+import { copySetCookies } from "@/lib/cookie-utils";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function POST(req: NextRequest) {
-  const res = NextResponse.next();
+  // ✅ route handler에서 쿠키를 모아둘 "빈 응답" (NextResponse.next() 대신)
+  const cookieRes = new NextResponse(null, { status: 200 });
 
   try {
-    const supabase = getSupabaseServer(req, res);
+    const supabase = getSupabaseServer(req, cookieRes);
     if (!supabase) {
-      return jsonFrom(res, { ok: false, error: "Server not configured" }, 503);
+      const out = NextResponse.json(
+        { ok: false, error: "Supabase env missing (url/key)", where: "/api/auth/login POST" },
+        { status: 503 }
+      );
+      copySetCookies(cookieRes, out);
+      return out;
     }
 
     const body = (await req.json().catch(() => ({}))) as {
@@ -19,36 +25,55 @@ export async function POST(req: NextRequest) {
       password?: string;
     };
 
-    const email = (body.email ?? "").trim();
-    const password = body.password ?? "";
+    const email = typeof body.email === "string" ? body.email : "";
+    const password = typeof body.password === "string" ? body.password : "";
 
     if (!email || !password) {
-      return jsonFrom(res, { ok: false, error: "missing email/password" }, 400);
+      const out = NextResponse.json(
+        { ok: false, error: "missing email/password", where: "/api/auth/login POST" },
+        { status: 400 }
+      );
+      copySetCookies(cookieRes, out);
+      return out;
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
     if (error) {
-      return jsonFrom(res, { ok: false, error: error.message }, 401);
+      const out = NextResponse.json(
+        { ok: false, error: error.message, where: "supabase.auth.signInWithPassword" },
+        { status: 401 }
+      );
+      copySetCookies(cookieRes, out);
+      return out;
     }
 
-    const session = data.session;
-    const user = data.user;
-
-    if (!session?.access_token || !session?.refresh_token) {
-      return jsonFrom(res, { ok: false, error: "missing tokens" }, 500);
-    }
-
-    return jsonFrom(
-      res,
+    // ✅ 세션 토큰을 프론트로 내려주고 (세션 POST로 쿠키 세팅하는 플로우 유지)
+    const out = NextResponse.json(
       {
         ok: true,
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
-        user: user ? { id: user.id, email: user.email } : null,
+        access_token: data.session?.access_token ?? null,
+        refresh_token: data.session?.refresh_token ?? null,
+        user: { id: data.user?.id ?? null, email: data.user?.email ?? null },
       },
-      200
+      { status: 200 }
     );
+
+    // ✅ Supabase SSR이 cookieRes에 set한 Set-Cookie를 out으로 복사
+    copySetCookies(cookieRes, out);
+    return out;
   } catch (e: any) {
-    return jsonFrom(res, { ok: false, error: e?.message ?? String(e), where: "/api/auth/login" }, 500);
+    // ✅ 500이어도 무조건 JSON body가 내려가게 강제
+    const out = NextResponse.json(
+      {
+        ok: false,
+        error: e?.message ?? String(e),
+        where: "/api/auth/login POST catch",
+        stack: e?.stack ?? null,
+      },
+      { status: 500 }
+    );
+    copySetCookies(cookieRes, out);
+    return out;
   }
 }
