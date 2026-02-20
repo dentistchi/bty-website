@@ -3,34 +3,39 @@ import { getSupabaseServer } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
-function expireCookie(res: NextResponse, name: string) {
+function expire(res: NextResponse, name: string, path: "/" | "/api") {
   res.cookies.set(name, "", {
-    path: "/",
+    path,
     sameSite: "lax",
     secure: true,
     httpOnly: true,
     maxAge: 0,
+    expires: new Date(0),
   });
 }
 
 export async function POST() {
   try {
     const res = NextResponse.json({ ok: true });
+    res.headers.set("Cache-Control", "no-store");
+    res.headers.set("Clear-Site-Data", '"cookies"');
 
     const supabase = await getSupabaseServer();
     try {
       await supabase.auth.signOut();
     } catch {
-      // signOut 실패해도 쿠키 삭제는 계속 진행
+      // signOut 실패해도 쿠키 삭제는 계속
     }
 
-    // sb-* 쿠키 이름들 강제 만료 (프로젝트 ref 등 변형 포함)
-    expireCookie(res, "sb-mveycersmqfiuddslnrj-auth-token");
-    expireCookie(res, "sb-mveycersmqfiuddslnrj-refresh-token");
-    expireCookie(res, "sb-access-token");
-    expireCookie(res, "sb-refresh-token");
+    const base = "sb-mveycersmqfiuddslnrj-auth-token";
+    const names = [base, `${base}.0`, `${base}.1`, `${base}.2`, `${base}.3`];
 
-    res.headers.set("Cache-Control", "no-store");
+    for (const n of names) {
+      expire(res, n, "/");
+      expire(res, n, "/api");
+    }
+
+    res.headers.set("x-auth-logout-cookie-names", names.join(","));
 
     return res;
   } catch {

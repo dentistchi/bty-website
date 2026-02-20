@@ -12,9 +12,8 @@ export function LogoutButton() {
     try {
       await fetchJson("/api/auth/logout", { method: "POST" });
     } finally {
-      const url = "/bty/login?next=%2Fbty&loggedOut=1";
-      window.location.replace(url);
-      window.location.reload();
+      // 다음 요청이 쿠키 없이 나가도록 강제
+      window.location.replace("/bty/login?next=%2Fbty&loggedOut=1");
     }
   };
 
