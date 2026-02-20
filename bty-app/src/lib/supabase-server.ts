@@ -1,25 +1,26 @@
-import { cookies } from "next/headers";
+import { cookies as nextCookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { forceCookieOptions } from "@/lib/cookie-options";
+import { forceAuthCookieDefaults } from "@/lib/auth-cookie-defaults";
 
-// Route Handler/Server Action에서 사용
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
+/**
+ * Route Handler / Server Action에서 쓰는 서버 클라이언트
+ * - cookies()가 Promise인 런타임/타입 조합이 있어서 await로 통일
+ * - setAll()에서 옵션을 마지막에 강제 덮어쓰기
+ */
 export async function getSupabaseServer() {
-  const cookieStore = await cookies(); // Next 15: Promise
-  // Route Handler는 항상 https로 들어오는 Cloudflare(OpenNext) 환경을 가정
-  // (dev에서 http면 secure=false가 필요하면 여기서 분기 가능)
-  const isHttps = true;
+  const cookieStore = await nextCookies();
 
   return createServerClient(url, key, {
     cookies: {
       getAll() {
         return cookieStore.getAll().map((c) => ({ name: c.name, value: c.value }));
       },
-      setAll(cookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          cookieStore.set(name, value, forceCookieOptions(options, { isHttps }) as any);
+      setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
+        cookies.forEach((c) => {
+          cookieStore.set(c.name, c.value, forceAuthCookieDefaults(c.options as any) as any);
         });
       },
     },
