@@ -4,7 +4,7 @@ import { LogoutButton } from "@/components/auth/LogoutButton";
 export default function BtyProtectedLayout({ children }: { children: ReactNode }) {
   return (
     <>
-      <div className="p-3 flex justify-end">
+      <div data-logout-button className="fixed top-4 right-4 z-[9999]">
         <LogoutButton />
       </div>
       {children}
