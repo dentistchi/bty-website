@@ -4,6 +4,7 @@ import { useCallback } from "react";
 
 export function LogoutButton() {
   const onLogout = useCallback(() => {
+    // middleware가 처리하는 document navigation
     window.location.assign("/bty/logout?next=%2Fbty");
   }, []);
 
