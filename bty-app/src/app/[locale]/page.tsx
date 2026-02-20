@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AuthGate } from "@/components/AuthGate";
 import { EmotionalBridge } from "@/components/EmotionalBridge";
 import { Nav } from "@/components/Nav";
@@ -39,9 +40,9 @@ export default async function LocaleLandingPage({ params }: Props) {
                 <EmotionalBridge theme="sanctuary" locale="en" />
               </div>
               <footer className="mt-12 pt-6 border-t border-sanctuary-peach/40 text-center text-sm text-sanctuary-text-soft">
-                <a href="/en/bty" className="underline hover:text-sanctuary-text">
+                <Link href="/en/bty" className="underline hover:text-sanctuary-text">
                   {t.linkToBty}
-                </a>
+                </Link>
               </footer>
             </div>
           </main>
@@ -86,9 +87,9 @@ export default async function LocaleLandingPage({ params }: Props) {
               </PaperCard>
             </div>
             <footer className="mt-12 pt-6 border-t border-dear-charcoal/10 text-center text-sm text-dear-charcoal-soft">
-              <a href="/ko/bty" className="text-dear-sage hover:text-dear-sage-soft underline underline-offset-2">
+              <Link href="/ko/bty" className="text-dear-sage hover:text-dear-sage-soft underline underline-offset-2">
                 {t.linkToBty}
-              </a>
+              </Link>
             </footer>
           </div>
         </main>

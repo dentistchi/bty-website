@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -97,12 +98,12 @@ function AuthCallbackForm() {
   return (
     <div className="min-h-[40vh] flex flex-col items-center justify-center px-4">
       <p className="text-red-600 text-center">{message}</p>
-      <a
+      <Link
         href="/admin/login"
         className="mt-4 text-sm text-neutral-600 hover:text-neutral-900 underline"
       >
         로그인으로 돌아가기
-      </a>
+      </Link>
     </div>
   );
 }
