@@ -47,9 +47,9 @@ export default function LoginClient({ nextPath }: { nextPath: string }) {
         throw new Error(msg);
       }
 
-      // ✅ 로그인 성공 후: next로 이동
-      // (세션 GET을 여기서 굳이 때리지 않음 — 쿠키 반영 타이밍/레이스 회피)
-      window.location.assign(next);
+      // ✅ 로그인 성공 후: next로 이동 (/bty 루트면 /bty/mentor로 보정해 404 방지)
+      const dest = next === "/bty" ? "/bty/mentor" : next;
+      window.location.assign(dest);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
