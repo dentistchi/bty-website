@@ -1,16 +1,16 @@
 // NOTE:
-// 이 페이지는 빌드/프리렌더 단계에서도 안전해야 하므로
-// useSearchParams() 같은 client hook을 사용하지 않고
-// Next.js App Router의 searchParams prop을 사용합니다.
+// Next.js 15(App Router)에서는 searchParams가 Promise로 타입 잡히는 케이스가 있어
+// 빌드(프리렌더) 단계 타입 에러를 피하려면 Promise 형태로 받아 await 해서 사용합니다.
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-export default function ForbiddenPage({
+export default async function ForbiddenPage({
   searchParams,
 }: {
-  searchParams?: SearchParams;
+  searchParams?: Promise<SearchParams>;
 }) {
-  const rawNext = searchParams?.next;
+  const sp = (await searchParams) ?? {};
+  const rawNext = sp.next;
   const next =
     typeof rawNext === "string"
       ? rawNext
