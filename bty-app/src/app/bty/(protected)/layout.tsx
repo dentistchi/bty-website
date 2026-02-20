@@ -1,7 +1,13 @@
 import type { ReactNode } from "react";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 export default function BtyProtectedLayout({ children }: { children: ReactNode }) {
-  // ✅ 필요하면 여기에서만 (클라이언트 가드/서버 가드) 추가 가능
-  // login은 (public)이라 여기에 영향 없음
-  return <>{children}</>;
+  return (
+    <>
+      <div className="p-3 flex justify-end">
+        <LogoutButton />
+      </div>
+      {children}
+    </>
+  );
 }
