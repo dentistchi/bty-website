@@ -1,13 +1,21 @@
-import { Suspense } from "react";
 import LoginClient from "./LoginClient";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default function Page() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center p-6">Loading...</div>}>
-      <LoginClient />
-    </Suspense>
-  );
+type Props = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function Page({ searchParams }: Props) {
+  const params = await searchParams;
+  const nextParam = params?.next;
+  const next =
+    typeof nextParam === "string"
+      ? nextParam
+      : Array.isArray(nextParam)
+      ? nextParam[0]
+      : "/bty";
+
+  return <LoginClient nextPath={next || "/bty"} />;
 }
