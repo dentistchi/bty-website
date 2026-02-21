@@ -3,6 +3,7 @@ import path from "node:path";
 
 const ROOT = path.resolve("src/app");
 
+// CSR bail-out 유발 훅들
 const HOOK_RE =
   /\buseSearchParams\s*\(|\buseRouter\s*\(|\busePathname\s*\(|\buseParams\s*\(/;
 
@@ -18,16 +19,15 @@ function walk(dir) {
 }
 
 function ensureUseClientTop(code) {
-  // 이미 있으면 그대로
   if (/^['"]use client['"];\s*/.test(code)) return code;
   return `'use client';\n\n${code}`;
 }
 
-function writeServerWrapper(serverPath, relativeClientImport) {
+function writeServerWrapper(serverPath) {
   const wrapper = `import { Suspense } from "react";
-import ClientPage from "${relativeClientImport}";
+import ClientPage from "./page.client";
 
-// CSR bail-out hooks(useSearchParams/useRouter/...) 사용 페이지는 정적 프리렌더 대상이 아니므로 동적 처리
+// CSR hook(useSearchParams/useRouter/...) 페이지는 정적 프리렌더 대상이 아니므로 동적 처리
 export const dynamic = "force-dynamic";
 
 export default function Page() {
@@ -47,48 +47,48 @@ function main() {
     process.exit(1);
   }
 
-  const files = walk(ROOT).filter((p) => path.basename(p) === "page.tsx");
+  const pages = walk(ROOT).filter((p) => path.basename(p) === "page.tsx");
 
   const targets = [];
-  for (const f of files) {
-    const code = fs.readFileSync(f, "utf8");
+  for (const pagePath of pages) {
+    const code = fs.readFileSync(pagePath, "utf8");
 
-    // 이미 server wrapper면 스킵 (ClientPage import + Suspense 형태)
+    // 이미 서버 래퍼면 스킵
     if (code.includes('import ClientPage from "./page.client"')) continue;
 
-    // hook이 들어간 page만 변환
+    // CSR hook이 없으면 스킵
     if (!HOOK_RE.test(code)) continue;
 
-    targets.push(f);
+    targets.push(pagePath);
   }
 
   if (targets.length === 0) {
-    console.log("No pages to wrap.");
+    console.log("No CSR-hook pages to wrap.");
     return;
   }
 
-  console.log(`Found ${targets.length} page(s) to wrap:\n- ${targets.join("\n- ")}`);
+  console.log(`Wrapping ${targets.length} page(s):\n- ${targets.join("\n- ")}\n`);
 
   for (const serverPath of targets) {
     const dir = path.dirname(serverPath);
     const clientPath = path.join(dir, "page.client.tsx");
 
-    // 1) 기존 page.tsx 내용을 client로 이동/병합
-    const serverCode = fs.readFileSync(serverPath, "utf8");
+    const original = fs.readFileSync(serverPath, "utf8");
+
+    // 기존에 page.client.tsx가 없으면 server 내용을 client로 이동
     if (!fs.existsSync(clientPath)) {
-      fs.writeFileSync(clientPath, ensureUseClientTop(serverCode), "utf8");
+      fs.writeFileSync(clientPath, ensureUseClientTop(original), "utf8");
     } else {
-      // 이미 client가 있으면 server 내용을 덮지 않고, server를 wrapper로만 교체
-      // (안전하게 기존 client 유지)
+      // 있으면 client는 유지(최소 안전)
       const existing = fs.readFileSync(clientPath, "utf8");
       fs.writeFileSync(clientPath, ensureUseClientTop(existing), "utf8");
     }
 
-    // 2) server wrapper 생성
-    writeServerWrapper(serverPath, "./page.client");
+    // server wrapper 생성
+    writeServerWrapper(serverPath);
   }
 
-  console.log("Done wrapping pages.");
+  console.log("Done.");
 }
 
 main();
