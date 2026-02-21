@@ -6,6 +6,8 @@ export type Messages = {
     title: string;
     tagline: string;
     linkToBty: string;
+    assessmentCta: string;
+    assessmentCtaSub: string;
   };
   bty: {
     title: string;
@@ -64,6 +66,8 @@ const ko: Messages = {
     title: "Dear Me",
     tagline: "나는 안전하다. 잠시 쉬어가도 돼요.",
     linkToBty: "어제보다 나은 연습하러 가기 (bty)",
+    assessmentCta: "자존감 진단 (50문항)",
+    assessmentCtaSub: "자기 존중감을 짧게 점검해 보세요.",
   },
   bty: {
     title: "bty",
@@ -134,6 +138,8 @@ const en: Messages = {
     title: "Dear Me",
     tagline: "You are safe. It’s okay to rest here.",
     linkToBty: "Go to bty (practice)",
+    assessmentCta: "Self-Esteem Assessment (50 items)",
+    assessmentCtaSub: "A short check on how you feel about yourself.",
   },
   bty: {
     title: "bty",

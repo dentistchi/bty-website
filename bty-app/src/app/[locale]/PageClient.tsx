@@ -16,6 +16,8 @@ type TodayMeMessages = {
   title: string;
   tagline: string;
   linkToBty: string;
+  assessmentCta: string;
+  assessmentCtaSub: string;
 };
 
 type Props = {
@@ -38,6 +40,13 @@ export default function LocaleLandingPage({ locale, lang, t }: Props) {
                 <h1 className="text-2xl sm:text-3xl font-medium text-sanctuary-text mb-2">{t.title}</h1>
                 <p className="text-sanctuary-text-soft">{t.tagline}</p>
               </header>
+              <Link
+                href={`/${locale}/assessment`}
+                className="block rounded-2xl border border-sanctuary-peach/50 bg-sanctuary-peach/10 p-5 text-center hover:bg-sanctuary-peach/20 transition-colors"
+              >
+                <span className="font-medium text-sanctuary-text">{t.assessmentCta}</span>
+                <p className="text-sm text-sanctuary-text-soft mt-1">{t.assessmentCtaSub}</p>
+              </Link>
               <div className="space-y-8">
                 <SafeMirror locale="en" />
                 <SmallWinsStack locale="en" />
@@ -75,6 +84,13 @@ export default function LocaleLandingPage({ locale, lang, t }: Props) {
                 {t.tagline}
               </p>
             </header>
+            <Link
+              href={`/${locale}/assessment`}
+              className="block rounded-2xl border border-dear-sage/30 bg-dear-sage/5 p-5 text-center hover:bg-dear-sage/10 transition-colors"
+            >
+              <span className="font-medium text-dear-charcoal">{t.assessmentCta}</span>
+              <p className="text-sm text-dear-charcoal-soft mt-1">{t.assessmentCtaSub}</p>
+            </Link>
             <div className="space-y-8">
               <PaperCard>
                 <SafeMirror locale="ko" theme="dear" />
