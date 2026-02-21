@@ -1,0 +1,302 @@
+[
+  {
+    "id": 1,
+    "dimension": "core",
+    "text": "나는 내가 다른 사람들처럼 가치 있는 사람이라고 생각한다",
+    "reverse": false
+  },
+  {
+    "id": 2,
+    "dimension": "core",
+    "text": "나는 좋은 성품을 가졌다고 생각한다",
+    "reverse": false
+  },
+  {
+    "id": 3,
+    "dimension": "core",
+    "text": "나는 대체적으로 실패한 사람이라는 느낌이 든다",
+    "reverse": true
+  },
+  {
+    "id": 4,
+    "dimension": "core",
+    "text": "나는 대부분의 다른 사람들과 같이 일을 잘 할 수 있다",
+    "reverse": false
+  },
+  {
+    "id": 5,
+    "dimension": "core",
+    "text": "나는 자랑할 것이 별로 없다",
+    "reverse": true
+  },
+  {
+    "id": 6,
+    "dimension": "core",
+    "text": "나는 나 자신에 대하여 긍정적인 태도를 가지고 있다",
+    "reverse": false
+  },
+  {
+    "id": 7,
+    "dimension": "core",
+    "text": "나는 나 자신에 대하여 대체로 만족한다",
+    "reverse": false
+  },
+  {
+    "id": 8,
+    "dimension": "core",
+    "text": "나는 나 자신을 좀 더 존중할 수 있으면 좋겠다",
+    "reverse": true
+  },
+  {
+    "id": 9,
+    "dimension": "core",
+    "text": "나는 가끔 내 자신이 쓸모없는 사람이라는 느낌이 든다",
+    "reverse": true
+  },
+  {
+    "id": 10,
+    "dimension": "core",
+    "text": "나는 때때로 내가 좋지 않은 사람이라고 생각한다",
+    "reverse": true
+  },
+  {
+    "id": 11,
+    "dimension": "compassion",
+    "text": "실수했을 때, 나는 나 자신에게 친절하게 대한다",
+    "reverse": false
+  },
+  {
+    "id": 12,
+    "dimension": "compassion",
+    "text": "힘들 때 나는 스스로를 따뜻하게 위로한다",
+    "reverse": false
+  },
+  {
+    "id": 13,
+    "dimension": "compassion",
+    "text": "나의 단점을 생각하면 다른 사람들과 단절된 느낌이 든다",
+    "reverse": true
+  },
+  {
+    "id": 14,
+    "dimension": "compassion",
+    "text": "고통스러운 감정이 들 때, 그것을 있는 그대로 바라본다",
+    "reverse": false
+  },
+  {
+    "id": 15,
+    "dimension": "compassion",
+    "text": "실패했을 때, 나는 내 자신을 가혹하게 비난한다",
+    "reverse": true
+  },
+  {
+    "id": 16,
+    "dimension": "compassion",
+    "text": "모든 사람이 때로는 부족함을 느낀다는 것을 이해한다",
+    "reverse": false
+  },
+  {
+    "id": 17,
+    "dimension": "compassion",
+    "text": "나는 나 자신의 가장 큰 응원자다",
+    "reverse": false
+  },
+  {
+    "id": 18,
+    "dimension": "compassion",
+    "text": "속상할 때, 스스로에게 '괜찮아'라고 말해준다",
+    "reverse": false
+  },
+  {
+    "id": 19,
+    "dimension": "compassion",
+    "text": "내 문제는 나만의 문제인 것 같아 외롭다",
+    "reverse": true
+  },
+  {
+    "id": 20,
+    "dimension": "compassion",
+    "text": "어려울 때, 내가 필요한 것을 스스로에게 준다",
+    "reverse": false
+  },
+  {
+    "id": 21,
+    "dimension": "stability",
+    "text": "성공했을 때만 나 자신이 가치 있다고 느낀다",
+    "reverse": true
+  },
+  {
+    "id": 22,
+    "dimension": "stability",
+    "text": "다른 사람이 나를 칭찬할 때만 기분이 좋다",
+    "reverse": true
+  },
+  {
+    "id": 23,
+    "dimension": "stability",
+    "text": "실패해도 나의 가치는 변하지 않는다",
+    "reverse": false
+  },
+  {
+    "id": 24,
+    "dimension": "stability",
+    "text": "외모나 능력과 관계없이 나는 소중하다",
+    "reverse": false
+  },
+  {
+    "id": 25,
+    "dimension": "stability",
+    "text": "타인의 평가가 나의 자존감을 크게 흔든다",
+    "reverse": true
+  },
+  {
+    "id": 26,
+    "dimension": "stability",
+    "text": "나는 무엇을 하든 존재 자체로 가치 있다",
+    "reverse": false
+  },
+  {
+    "id": 27,
+    "dimension": "stability",
+    "text": "좋은 성적을 받지 못하면 나는 쓸모없다고 느낀다",
+    "reverse": true
+  },
+  {
+    "id": 28,
+    "dimension": "stability",
+    "text": "나의 가치는 나의 성취와 별개다",
+    "reverse": false
+  },
+  {
+    "id": 29,
+    "dimension": "stability",
+    "text": "누군가와 비교당할 때마다 내 가치가 흔들린다",
+    "reverse": true
+  },
+  {
+    "id": 30,
+    "dimension": "stability",
+    "text": "나는 '있는 그대로의 나'로 충분하다",
+    "reverse": false
+  },
+  {
+    "id": 31,
+    "dimension": "growth",
+    "text": "나의 능력은 노력으로 얼마든지 향상될 수 있다",
+    "reverse": false
+  },
+  {
+    "id": 32,
+    "dimension": "growth",
+    "text": "실패는 나에게 배움의 기회다",
+    "reverse": false
+  },
+  {
+    "id": 33,
+    "dimension": "growth",
+    "text": "내 지능은 타고나는 것이라 바꿀 수 없다",
+    "reverse": true
+  },
+  {
+    "id": 34,
+    "dimension": "growth",
+    "text": "어려운 과제는 나를 더 성장시킨다",
+    "reverse": false
+  },
+  {
+    "id": 35,
+    "dimension": "growth",
+    "text": "나는 계속해서 발전하는 사람이다",
+    "reverse": false
+  },
+  {
+    "id": 36,
+    "dimension": "growth",
+    "text": "새로운 것을 배우는 과정이 즐겁다",
+    "reverse": false
+  },
+  {
+    "id": 37,
+    "dimension": "growth",
+    "text": "비판은 나를 더 나은 사람으로 만드는 정보다",
+    "reverse": false
+  },
+  {
+    "id": 38,
+    "dimension": "growth",
+    "text": "내 성격은 거의 바꿀 수 없다",
+    "reverse": true
+  },
+  {
+    "id": 39,
+    "dimension": "growth",
+    "text": "실수는 나의 성장을 증명하는 흔적이다",
+    "reverse": false
+  },
+  {
+    "id": 40,
+    "dimension": "growth",
+    "text": "나는 1년 후 지금보다 더 나아질 것이다",
+    "reverse": false
+  },
+  {
+    "id": 41,
+    "dimension": "social",
+    "text": "나는 다른 사람들과 함께 있을 때 편안하다",
+    "reverse": false
+  },
+  {
+    "id": 42,
+    "dimension": "social",
+    "text": "사람들이 나를 좋아하지 않을까봐 걱정된다",
+    "reverse": true
+  },
+  {
+    "id": 43,
+    "dimension": "social",
+    "text": "나는 내 의견을 자신있게 표현한다",
+    "reverse": false
+  },
+  {
+    "id": 44,
+    "dimension": "social",
+    "text": "다른 사람들 앞에서 나 자신이 되기가 어렵다",
+    "reverse": true
+  },
+  {
+    "id": 45,
+    "dimension": "social",
+    "text": "나는 관계에서 내 가치를 인정받고 있다고 느낀다",
+    "reverse": false
+  },
+  {
+    "id": 46,
+    "dimension": "social",
+    "text": "나는 다른 사람들에게 부담이 된다고 생각한다",
+    "reverse": true
+  },
+  {
+    "id": 47,
+    "dimension": "social",
+    "text": "사람들은 진짜 나를 알면 실망할 것이다",
+    "reverse": true
+  },
+  {
+    "id": 48,
+    "dimension": "social",
+    "text": "나는 타인과의 관계에서 당당하다",
+    "reverse": false
+  },
+  {
+    "id": 49,
+    "dimension": "social",
+    "text": "혼자 있어도 나는 괜찮은 사람이다",
+    "reverse": false
+  },
+  {
+    "id": 50,
+    "dimension": "social",
+    "text": "나는 사랑받을 자격이 있는 사람이다",
+    "reverse": false
+  }
+]
