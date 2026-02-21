@@ -1,11 +1,5 @@
-import { redirect } from "next/navigation";
-
-type Props = { params: Promise<{ locale: string }> };
-
+import ResultClient from "./ui/ResultClient";
 export const dynamic = "force-dynamic";
-
-/** Locale-prefixed entrypoint: /en/assessment/result, /ko/assessment/result → /assessment/result */
-export default async function LocaleAssessmentResultPage({ params }: Props) {
-  await params;
-  redirect("/assessment/result");
+export default function ResultPage() {
+  return <ResultClient />;
 }

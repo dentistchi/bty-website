@@ -9,7 +9,8 @@
     "deploy": "opennextjs-cloudflare deploy",
     "dev": "next dev",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "extract:questions": "node scripts/extract-questions.mjs"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",
