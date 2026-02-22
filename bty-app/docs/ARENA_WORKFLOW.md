@@ -10,6 +10,7 @@
 - [x] 1 Core XP Engine
 - [ ] 2 7-Step Simulation
 - [x] 2-2(A) Step 1 Start Gate
+- [x] 2-2(B) Step 6 Consolidation
 - [ ] 3 Dashboard UI
 
 ---
