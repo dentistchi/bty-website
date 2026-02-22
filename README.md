@@ -363,4 +363,10 @@ This is an educational platform created for dental professionals. All content is
 - See: `bty-app/docs/CONTEXT.md`
 - Env vars: `bty-app/docs/ENVIRONMENT.md`
 
+## Arena System Docs
+
+- Workflow: `bty-app/docs/ARENA_WORKFLOW.md`
+- Context: `bty-app/docs/CONTEXT.md`
+- Env: `bty-app/docs/ENVIRONMENT.md`
+
 # MBTI
