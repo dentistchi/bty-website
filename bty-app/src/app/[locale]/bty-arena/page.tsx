@@ -4,6 +4,7 @@ import React from "react";
 import { useParams } from "next/navigation";
 import { SCENARIOS } from "@/lib/bty/scenario/scenarios";
 import type { Scenario } from "@/lib/bty/scenario/types";
+import { evaluateChoice, evaluateFollowUp } from "@/lib/bty/arena/engine";
 
 // ---------- types for local UI state ----------
 type ArenaPhase = "CHOOSING" | "SHOW_RESULT" | "FOLLOW_UP" | "DONE";
@@ -60,12 +61,6 @@ function pickRandomScenario(excludeId?: string): Scenario {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function computeXp(xpBase: number, difficulty: number): number {
-  // 단순 MVP: 반올림
-  const raw = xpBase * (difficulty ?? 1);
-  return Math.max(0, Math.round(raw));
-}
-
 // followUp.options를 항상 배열로 정규화(없으면 빈 배열) — TS18048 방지
 function normalizeFollowUpOptions(choice: { followUp?: { options?: string[] } } | null | undefined): string[] {
   return choice?.followUp?.options ?? [];
@@ -81,15 +76,6 @@ const SYSTEM_MESSAGES: SystemMsg[] = [
   { id: "consistency", en: "Consistency detected. Operational rhythm established.", ko: "Consistency detected. 운영 리듬이 형성되었습니다." },
   { id: "integrity", en: "Integrity spike detected. Ethical alignment increased.", ko: "Integrity spike detected. 원칙 정렬이 강화되었습니다." },
 ];
-
-function pickSystemMessage(params: { xp: number; gratitudeDelta?: number; integrityDelta?: number }): SystemMsg {
-  const { xp, gratitudeDelta = 0, integrityDelta = 0 } = params;
-
-  if (gratitudeDelta >= 2) return SYSTEM_MESSAGES.find((m) => m.id === "gratitude")!;
-  if (integrityDelta >= 3) return SYSTEM_MESSAGES.find((m) => m.id === "integrity")!;
-  if (xp >= 90) return SYSTEM_MESSAGES.find((m) => m.id === "telemetry")!;
-  return SYSTEM_MESSAGES.find((m) => m.id === "arch_init")!;
-}
 
 // streak: 하루 1회 방문 기준(초간단)
 function updateStreak(): { streak: number; message?: SystemMsg } {
@@ -257,7 +243,19 @@ export default function BtyArenaPage() {
     const c = current.choices.find((x) => x.choiceId === selectedChoiceId);
     if (!c) return;
 
-    const xp = computeXp(c.xpBase, c.difficulty);
+    const evalResult = evaluateChoice({
+      scenarioId: current.scenarioId,
+      choiceId: c.choiceId,
+      intent: c.intent,
+      xpBase: c.xpBase,
+      difficulty: c.difficulty,
+      hiddenDelta: c.hiddenDelta ?? {},
+    });
+    const xp = evalResult.xp;
+    const msg =
+      SYSTEM_MESSAGES.find((m) => m.id === evalResult.systemMessageId) ??
+      SYSTEM_MESSAGES.find((m) => m.id === "arch_init")!;
+
     console.log("[arena] confirm", { runId, scenarioId: current.scenarioId, selectedChoiceId });
 
     const rid = await ensureRunId();
@@ -275,12 +273,6 @@ export default function BtyArenaPage() {
     await postArenaEvent(payload);
     console.log("[arena] postArenaEvent (choice) after");
 
-    const msg = pickSystemMessage({
-      xp,
-      gratitudeDelta: c.hiddenDelta?.gratitude ?? 0,
-      integrityDelta: c.hiddenDelta?.integrity ?? 0,
-    });
-
     setLastXp(xp);
     setSystemMessage(msg);
     setPhase("SHOW_RESULT");
@@ -293,6 +285,13 @@ export default function BtyArenaPage() {
   }
 
   async function submitFollowUp(idx: number) {
+    if (!choice) return;
+    const fu = evaluateFollowUp({
+      scenarioId: current.scenarioId,
+      choiceId: choice.choiceId,
+      followUpIndex: idx,
+    });
+
     const rid = await ensureRunId();
     const payload = {
       runId: rid,
@@ -300,7 +299,7 @@ export default function BtyArenaPage() {
       step: 2,
       eventType: "FOLLOW_UP_SELECTED",
       followUpIndex: idx,
-      xp: 0,
+      xp: fu.xp,
     };
     console.log("[arena] postArenaEvent (follow-up) before", payload);
     await postArenaEvent(payload);
