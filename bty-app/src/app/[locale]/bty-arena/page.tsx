@@ -5,6 +5,14 @@ import { useParams } from "next/navigation";
 import { SCENARIOS } from "@/lib/bty/scenario/scenarios";
 import type { Scenario } from "@/lib/bty/scenario/types";
 import { evaluateChoice, evaluateFollowUp } from "@/lib/bty/arena/engine";
+import {
+  ArenaHeader,
+  ScenarioIntro,
+  ChoiceList,
+  PrimaryActions,
+  OutputPanel,
+  type SystemMsg,
+} from "@/components/bty-arena";
 
 // ---------- types for local UI state ----------
 type ArenaPhase = "CHOOSING" | "SHOW_RESULT" | "FOLLOW_UP" | "DONE";
@@ -91,8 +99,6 @@ const REFLECTION_OPTIONS = [
   "다음엔 어떤 신호를 더 빨리 볼까?",
   "원칙을 유지하면서도 관계 비용을 줄이는 방법은?",
 ];
-
-type SystemMsg = { id: string; en: string; ko: string };
 
 // MVP용: 아주 단순한 트리거(나중에 streak/스탯과 연결)
 const SYSTEM_MESSAGES: SystemMsg[] = [
@@ -479,301 +485,66 @@ export default function BtyArenaPage() {
     persist({ step: 2, phase: "CHOOSING" });
   }
 
+  function handleComplete() {
+    setStep(7);
+    setPhase("DONE");
+    persist({ step: 7, phase: "DONE" });
+  }
+
+  function handleSkipFollowUp() {
+    setStep(6);
+    persist({ step: 6 });
+  }
+
   return (
     <div style={{ maxWidth: 860, margin: "0 auto", padding: "24px 16px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-        <div>
-          <div style={{ fontSize: 14, opacity: 0.7 }}>bty arena</div>
-          <h1 style={{ margin: 0, fontSize: 28 }}>Simulation</h1>
-          <div style={{ marginTop: 6, fontSize: 14, opacity: 0.7 }}>
-            한 판으로 끝. 멈춰도 이어짐. (MVP: 1 + 보완 1)
-          </div>
-          <div style={{ marginTop: 4, fontSize: 11, opacity: 0.4, fontFamily: "monospace" }}>
-            Step {step} · Phase {phase} · Run {runId?.slice(0, 8) ?? "—"}
-          </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={pause} style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #ddd" }}>
-            Pause
-          </button>
-          <button onClick={resetRun} style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #ddd" }}>
-            Reset
-          </button>
-        </div>
-      </div>
+      <ArenaHeader step={step} phase={phase} runId={runId} onPause={pause} onReset={resetRun} />
 
       <div style={{ marginTop: 18, padding: 18, border: "1px solid #eee", borderRadius: 14 }}>
-        <h2 style={{ marginTop: 0, marginBottom: 8 }}>{current.title}</h2>
-        <p style={{ marginTop: 0, lineHeight: 1.6, opacity: 0.9 }}>{current.context}</p>
-
-        {/* Step 1: Start Gate */}
         {step === 1 && (
-          <div style={{ marginTop: 20 }}>
-            <button
-              onClick={onStartSimulation}
-              style={{
-                padding: "14px 20px",
-                borderRadius: 12,
-                border: "1px solid #111",
-                background: "#111",
-                color: "white",
-                fontSize: 16,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Start Simulation
-            </button>
-          </div>
+          <ScenarioIntro title={current.title} context={current.context} onStart={onStartSimulation} />
         )}
 
-        {/* choice list: step 2 only */}
+        {step >= 2 && step !== 1 && (
+          <>
+            <h2 style={{ marginTop: 0, marginBottom: 8 }}>{current.title}</h2>
+            <p style={{ marginTop: 0, lineHeight: 1.6, opacity: 0.9 }}>{current.context}</p>
+          </>
+        )}
+
         {step === 2 && (
-        <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
-          {current.choices.map((c) => {
-            const active = selectedChoiceId === c.choiceId;
-            const disabled = false;
-            return (
-              <button
-                key={c.choiceId}
-                disabled={disabled}
-                onClick={() => setSelectedChoiceId(c.choiceId)}
-                style={{
-                  textAlign: "left",
-                  padding: 14,
-                  borderRadius: 14,
-                  border: active ? "2px solid #111" : "1px solid #e5e5e5",
-                  background: active ? "rgba(0,0,0,0.03)" : "white",
-                  opacity: disabled && !active ? 0.6 : 1,
-                  cursor: disabled ? "not-allowed" : "pointer",
-                }}
-              >
-                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
-                  Choice {c.choiceId} · {c.intent}
-                </div>
-                <div style={{ fontSize: 15 }}>{c.label}</div>
-              </button>
-            );
-          })}
-        </div>
+          <ChoiceList
+            choices={current.choices}
+            selectedChoiceId={selectedChoiceId}
+            onSelect={setSelectedChoiceId}
+          />
         )}
 
-        {/* primary actions */}
-        <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-          <button
-            onClick={onConfirmChoice}
-            disabled={step !== 2 || !selectedChoiceId}
-            style={{
-              padding: "12px 14px",
-              borderRadius: 12,
-              border: "1px solid #111",
-              background: "#111",
-              color: "white",
-              opacity: step !== 2 || !selectedChoiceId ? 0.5 : 1,
-              cursor: step !== 2 || !selectedChoiceId ? "not-allowed" : "pointer",
-            }}
-          >
-            Confirm
-          </button>
+        <PrimaryActions
+          confirmDisabled={step !== 2 || !selectedChoiceId}
+          continueDisabled={step !== 7}
+          onConfirm={onConfirmChoice}
+          onContinue={continueNextScenario}
+        />
 
-          <button
-            onClick={continueNextScenario}
-            disabled={step !== 7}
-            style={{
-              padding: "12px 14px",
-              borderRadius: 12,
-              border: "1px solid #ddd",
-              background: "white",
-              opacity: step !== 7 ? 0.5 : 1,
-              cursor: step !== 7 ? "not-allowed" : "pointer",
-            }}
-          >
-            Continue
-          </button>
-        </div>
-
-        {/* output: step >= 3 && choice 있을 때만 (step 중심) */}
         {step >= 3 && choice && (
-          <div style={{ marginTop: 18, borderTop: "1px solid #eee", paddingTop: 16 }}>
-            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>SYSTEM OUTPUT</div>
-
-            {systemMessage && (
-              <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 12, marginBottom: 10 }}>
-                <div style={{ fontWeight: 700 }}>{systemMessage.en}</div>
-                <div style={{ opacity: 0.8, marginTop: 6 }}>{systemMessage.ko}</div>
-              </div>
-            )}
-
-            <div style={{ fontSize: 18, fontWeight: 700 }}>XP +{lastXp}</div>
-            <div style={{ marginTop: 8, fontWeight: 600 }}>{choice.microInsight}</div>
-            <div style={{ marginTop: 10, lineHeight: 1.6, opacity: 0.9 }}>{choice.result}</div>
-
-            {/* step 3: Next -> Reflection */}
-            {step === 3 && (
-              <div style={{ marginTop: 14 }}>
-                <button
-                  onClick={goToReflection}
-                  style={{
-                    padding: "12px 14px",
-                    borderRadius: 12,
-                    border: "1px solid #111",
-                    background: "white",
-                    cursor: "pointer",
-                  }}
-                >
-                  Next
-                </button>
-              </div>
-            )}
-
-            {/* Reflection (step 4): 선택형 3개 */}
-            {step === 4 && (
-              <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
-                <div style={{ fontWeight: 700, marginBottom: 8 }}>Reflection</div>
-                <div style={{ display: "grid", gap: 10 }}>
-                  {REFLECTION_OPTIONS.map((opt, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => submitReflection(idx)}
-                      style={{
-                        textAlign: "left",
-                        padding: 12,
-                        borderRadius: 12,
-                        border: "1px solid #e5e5e5",
-                        background: "white",
-                        cursor: "pointer",
-                      }}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Step 6 · Consolidation */}
-            {step === 6 && choice && (
-              <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14, background: "rgba(0,0,0,0.02)" }}>
-                <div style={{ fontWeight: 700, marginBottom: 8 }}>Step 6 · Consolidation</div>
-                <div style={{ fontSize: 14, lineHeight: 1.6, opacity: 0.9, marginBottom: 12 }}>
-                  <p style={{ margin: "0 0 8px 0" }}>You chose {choice.choiceId} ({choice.intent}).</p>
-                  <p style={{ margin: "0 0 8px 0" }}>Key insight: {choice.microInsight}</p>
-                  <p style={{ margin: 0 }}>Principle: &quot;Stabilize people first, then fix the system.&quot;</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setStep(7);
-                    setPhase("DONE");
-                    persist({ step: 7, phase: "DONE" });
-                  }}
-                  style={{
-                    padding: "12px 14px",
-                    borderRadius: 12,
-                    border: "1px solid #111",
-                    background: "#111",
-                    color: "white",
-                    cursor: "pointer",
-                  }}
-                >
-                  Complete
-                </button>
-              </div>
-            )}
-
-            {/* step 5: Follow-up UI */}
-            {step === 5 && hasFollowUp && choice.followUp && (
-              <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
-                <div style={{ fontWeight: 700, marginBottom: 8 }}>{choice.followUp.prompt}</div>
-                <div style={{ display: "grid", gap: 10 }}>
-                  {followUpOptions.map((opt, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => submitFollowUp(idx)}
-                      style={{
-                        textAlign: "left",
-                        padding: 12,
-                        borderRadius: 12,
-                        border: "1px solid #e5e5e5",
-                        background: "white",
-                        cursor: "pointer",
-                      }}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Step 7 · Complete: DONE 화면 명시 */}
-            {step === 7 && (
-              <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14, background: "rgba(0,0,0,0.02)" }}>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>Step 7 · Complete</div>
-                <div style={{ fontSize: 14, lineHeight: 1.5, opacity: 0.9 }}>
-                  이 시나리오 기록이 저장되었습니다. Continue로 다음 시나리오로 이동합니다.
-                </div>
-              </div>
-            )}
-
-            {/* step 7: Done (follow-up 선택 시 추가 표시) */}
-            {step === 7 && hasFollowUp && choice.followUp && typeof followUpIndex === "number" && (
-              <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
-                <div style={{ fontSize: 12, opacity: 0.7 }}>FOLLOW-UP SELECTED</div>
-                <div style={{ marginTop: 6, fontWeight: 700 }}>{followUpOptions[followUpIndex]}</div>
-                <div style={{ marginTop: 10, opacity: 0.85 }}>
-                  다음 단계는 <b>Continue</b>로 진행합니다. (MVP: 1 + 보완 1 완료)
-                </div>
-              </div>
-            )}
-
-            {/* step 3: Next 버튼만 (위에 이미 렌더) */}
-
-            {/* step 5: 보완 선택 건너뛰고 → step 6 (Consolidation) */}
-            {step === 5 && (
-              <div style={{ marginTop: 14 }}>
-                <button
-                  onClick={() => {
-                    setStep(6);
-                    persist({ step: 6 });
-                  }}
-                  style={{
-                    padding: "12px 16px",
-                    borderRadius: 12,
-                    border: "1px solid #999",
-                    background: "white",
-                    color: "#555",
-                    cursor: "pointer",
-                  }}
-                >
-                  보완 선택 건너뛰고 Continue
-                </button>
-              </div>
-            )}
-
-            {/* step 7: Continue → 다음 시나리오 */}
-            {step === 7 && (
-              <div style={{ marginTop: 20 }}>
-                <button
-                  onClick={continueNextScenario}
-                  style={{
-                    padding: "14px 20px",
-                    borderRadius: 12,
-                    border: "1px solid #111",
-                    background: "#111",
-                    color: "white",
-                    fontSize: 16,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    width: "100%",
-                    maxWidth: 320,
-                  }}
-                >
-                  Continue → 다음 시나리오
-                </button>
-              </div>
-            )}
-          </div>
+          <OutputPanel
+            step={step as 3 | 4 | 5 | 6 | 7}
+            choice={choice}
+            systemMessage={systemMessage}
+            lastXp={lastXp}
+            reflectionOptions={REFLECTION_OPTIONS}
+            followUpPrompt={choice.followUp?.prompt ?? ""}
+            followUpOptions={followUpOptions}
+            hasFollowUp={hasFollowUp}
+            followUpIndex={followUpIndex}
+            onNextToReflection={goToReflection}
+            onSubmitReflection={submitReflection}
+            onSubmitFollowUp={submitFollowUp}
+            onSkipFollowUp={handleSkipFollowUp}
+            onComplete={handleComplete}
+            onContinue={continueNextScenario}
+          />
         )}
       </div>
     </div>
