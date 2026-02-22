@@ -26,7 +26,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           BASE="origin/${{ steps.base.outputs.BASE_REF }}"
           if ! git show-ref --verify --quiet "refs/remotes/${BASE}"; then
             echo "Base branch ref not found; skipping guard."
@@ -39,16 +38,7 @@ jobs:
 
           CONTEXT_DOC="bty-app/docs/CONTEXT.md"
 
-          # ✅ "Context 업데이트를 강제해야 하는" 변경만 잡는다.
-          # - 배포 파이프라인/워크플로우
-          # - OpenNext/Workers 설정
-          # - Next config
-          # - Middleware
-          # - Auth(API)/cookie/session 관련 서버 로직
-          # - locale routing / route group 구조 (public/protected)
-          #
-          # ❌ 일반 UI 컴포넌트/페이지 컨텐츠 변경은 제외(여긴 자주 바뀌므로 guard를 걸면 생산성 박살남)
-          INFRA_REGEX='(^\.github/workflows/(deploy|deploy-workers|ci-context-guard)\.yml$|^wrangler\.toml$|^bty-app/wrangler\.toml$|^open-next\.config\.(mjs|ts)$|^bty-app/open-next\.config\.(mjs|ts)$|^next\.config\.(js|mjs|ts)$|^bty-app/next\.config\.(js|mjs|ts)$|^bty-app/src/middleware\.(ts|js)$|^bty-app/src/lib/supabase/|^bty-app/src/lib/auth/|^bty-app/src/app/api/auth/|^bty-app/src/app/\[locale\]/auth/|^bty-app/src/app/\[locale\]/\((public|protected)\)/|^bty-app/src/app/\(.*\)/|^bty-app/src/lib/bty/auth/|^bty-app/src/lib/bty/cookie/|^bty-app/src/lib/bty/session/)'
+          INFRA_REGEX='(^\.github/workflows/(deploy|deploy-workers|ci-context-guard)\.yml$|^wrangler\.toml$|^bty-app/wrangler\.toml$|^open-next\.config\.(mjs|ts)$|^bty-app/open-next\.config\.(mjs|ts)$|^next\.config\.(js|mjs|ts)$|^bty-app/next\.config\.(js|mjs|ts)$|^bty-app/src/middleware\.(ts|js)$|^bty-app/src/lib/supabase/|^bty-app/src/lib/auth/|^bty-app/src/app/api/auth/|^bty-app/src/app/\[locale\]/auth/|^bty-app/src/app/\[locale\]/\((public|protected)\)/|^bty-app/src/lib/bty/auth/|^bty-app/src/lib/bty/cookie/|^bty-app/src/lib/bty/session/)'
 
           INFRA_TOUCHED="0"
           while IFS= read -r f; do
@@ -65,9 +55,7 @@ jobs:
               echo ""
               echo "❌ Context Guard failed."
               echo "You changed infra/auth/runtime-related files but did NOT update ${CONTEXT_DOC}."
-              echo ""
-              echo "Fix:"
-              echo " - Update ${CONTEXT_DOC} to reflect the change (1~5줄이면 충분)."
+              echo "Fix: update CONTEXT.md (1~5줄이면 충분)."
               exit 1
             fi
           fi
@@ -75,7 +63,7 @@ jobs:
           echo "✅ Context Guard passed."
 
   build-check:
-    name: Typecheck + Build (fast gate)
+    name: Typecheck + OpenNext Build (fast gate)
     runs-on: ubuntu-latest
     needs: context-guard
     defaults:
@@ -94,8 +82,8 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
-      - name: Build (requires NEXT_PUBLIC_SUPABASE_*)
+      - name: OpenNext build (requires NEXT_PUBLIC_SUPABASE_*)
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-        run: npm run build
+        run: npx opennextjs-cloudflare build
