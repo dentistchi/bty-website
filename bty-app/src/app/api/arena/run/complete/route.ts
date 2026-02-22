@@ -100,7 +100,6 @@ export async function POST(req: Request) {
     step: 7,
     scenario_id: scenarioId || "unknown",
     xp: 0,
-    meta: { deltaApplied: delta, spec: "weekly_xp:B:run-complete" },
   });
 
   if (markErr) return NextResponse.json({ error: markErr.message }, { status: 500 });
