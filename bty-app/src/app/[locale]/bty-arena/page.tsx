@@ -493,7 +493,7 @@ export default function BtyArenaPage() {
         <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
           {current.choices.map((c) => {
             const active = selectedChoiceId === c.choiceId;
-            const disabled = phase !== "CHOOSING";
+            const disabled = step !== 2;
             return (
               <button
                 key={c.choiceId}
@@ -522,15 +522,15 @@ export default function BtyArenaPage() {
         <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
           <button
             onClick={onConfirmChoice}
-            disabled={phase !== "CHOOSING" || !selectedChoiceId}
+            disabled={step !== 2 || !selectedChoiceId}
             style={{
               padding: "12px 14px",
               borderRadius: 12,
               border: "1px solid #111",
               background: "#111",
               color: "white",
-              opacity: phase !== "CHOOSING" || !selectedChoiceId ? 0.5 : 1,
-              cursor: phase !== "CHOOSING" || !selectedChoiceId ? "not-allowed" : "pointer",
+              opacity: step !== 2 || !selectedChoiceId ? 0.5 : 1,
+              cursor: step !== 2 || !selectedChoiceId ? "not-allowed" : "pointer",
             }}
           >
             Confirm
@@ -538,22 +538,22 @@ export default function BtyArenaPage() {
 
           <button
             onClick={continueNextScenario}
-            disabled={phase === "CHOOSING"}
+            disabled={step !== 7}
             style={{
               padding: "12px 14px",
               borderRadius: 12,
               border: "1px solid #ddd",
               background: "white",
-              opacity: phase === "CHOOSING" ? 0.5 : 1,
-              cursor: phase === "CHOOSING" ? "not-allowed" : "pointer",
+              opacity: step !== 7 ? 0.5 : 1,
+              cursor: step !== 7 ? "not-allowed" : "pointer",
             }}
           >
             Continue
           </button>
         </div>
 
-        {/* output */}
-        {phase !== "CHOOSING" && choice && (
+        {/* output: step >= 3 && choice 있을 때만 (step 중심) */}
+        {step >= 3 && choice && (
           <div style={{ marginTop: 18, borderTop: "1px solid #eee", paddingTop: 16 }}>
             <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>SYSTEM OUTPUT</div>
 
@@ -568,8 +568,8 @@ export default function BtyArenaPage() {
             <div style={{ marginTop: 8, fontWeight: 600 }}>{choice.microInsight}</div>
             <div style={{ marginTop: 10, lineHeight: 1.6, opacity: 0.9 }}>{choice.result}</div>
 
-            {/* Next -> Reflection (step 4) */}
-            {phase === "SHOW_RESULT" && step === 3 && (
+            {/* step 3: Next -> Reflection */}
+            {step === 3 && (
               <div style={{ marginTop: 14 }}>
                 <button
                   onClick={goToReflection}
@@ -611,7 +611,8 @@ export default function BtyArenaPage() {
               </div>
             )}
 
-            {step === 5 && phase === "FOLLOW_UP" && hasFollowUp && choice.followUp && (
+            {/* step 5: Follow-up UI */}
+            {step === 5 && hasFollowUp && choice.followUp && (
               <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
                 <div style={{ fontWeight: 700, marginBottom: 8 }}>{choice.followUp.prompt}</div>
                 <div style={{ display: "grid", gap: 10 }}>
@@ -635,7 +636,8 @@ export default function BtyArenaPage() {
               </div>
             )}
 
-            {step === 7 && phase === "DONE" && hasFollowUp && choice.followUp && typeof followUpIndex === "number" && (
+            {/* step 7: Done (follow-up 선택 시 표시) */}
+            {step === 7 && hasFollowUp && choice.followUp && typeof followUpIndex === "number" && (
               <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
                 <div style={{ fontSize: 12, opacity: 0.7 }}>FOLLOW-UP SELECTED</div>
                 <div style={{ marginTop: 6, fontWeight: 700 }}>{followUpOptions[followUpIndex]}</div>
@@ -645,8 +647,33 @@ export default function BtyArenaPage() {
               </div>
             )}
 
-            {/* 결과 영역 하단: 다음 시나리오로 이동 버튼 (접근성) */}
-            {(phase === "SHOW_RESULT" || phase === "DONE") && (
+            {/* step 3: Next 버튼만 (위에 이미 렌더) */}
+
+            {/* step 5: 보완 선택 건너뛰고 Continue → step 7로 */}
+            {step === 5 && (
+              <div style={{ marginTop: 14 }}>
+                <button
+                  onClick={() => {
+                    setStep(7);
+                    setPhase("DONE");
+                    persist({ step: 7, phase: "DONE" });
+                  }}
+                  style={{
+                    padding: "12px 16px",
+                    borderRadius: 12,
+                    border: "1px solid #999",
+                    background: "white",
+                    color: "#555",
+                    cursor: "pointer",
+                  }}
+                >
+                  보완 선택 건너뛰고 Continue
+                </button>
+              </div>
+            )}
+
+            {/* step 7: Continue → 다음 시나리오 */}
+            {step === 7 && (
               <div style={{ marginTop: 20 }}>
                 <button
                   onClick={continueNextScenario}
@@ -664,24 +691,6 @@ export default function BtyArenaPage() {
                   }}
                 >
                   Continue → 다음 시나리오
-                </button>
-              </div>
-            )}
-
-            {step === 5 && phase === "FOLLOW_UP" && (
-              <div style={{ marginTop: 14 }}>
-                <button
-                  onClick={continueNextScenario}
-                  style={{
-                    padding: "12px 16px",
-                    borderRadius: 12,
-                    border: "1px solid #999",
-                    background: "white",
-                    color: "#555",
-                    cursor: "pointer",
-                  }}
-                >
-                  보완 선택 건너뛰고 Continue
                 </button>
               </div>
             )}
