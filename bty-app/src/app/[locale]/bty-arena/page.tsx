@@ -121,6 +121,37 @@ function updateStreak(): { streak: number; message?: SystemMsg } {
   }
 }
 
+// ---------- API helpers (runId race 방지 + 이벤트 전송) ----------
+async function createRun(scenarioId: string, locale: string | undefined): Promise<string | null> {
+  try {
+    const res = await fetch("/api/arena/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scenarioId, locale: locale ?? null }),
+      credentials: "same-origin",
+    });
+    const data = (await res.json()) as { run?: { run_id: string } };
+    return data.run?.run_id ?? null;
+  } catch (e) {
+    console.warn("Arena createRun failed", e);
+    return null;
+  }
+}
+
+async function postArenaEvent(payload: Record<string, unknown>): Promise<void> {
+  try {
+    const res = await fetch("/api/arena/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      credentials: "same-origin",
+    });
+    if (!res.ok) throw new Error(await res.text());
+  } catch (e) {
+    console.warn("Arena postArenaEvent failed", e);
+  }
+}
+
 export default function BtyArenaPage() {
   const params = useParams();
   const locale = typeof params?.locale === "string" ? params.locale : null;
@@ -209,13 +240,40 @@ export default function BtyArenaPage() {
     });
   }
 
-  function onConfirmChoice() {
+  async function ensureRunId(): Promise<string | null> {
+    if (runId) return runId;
+    const id = await createRun(current.scenarioId, locale ?? undefined);
+    if (id) {
+      setRunId(id);
+      persist({ runId: id });
+      return id;
+    }
+    return null;
+  }
+
+  async function onConfirmChoice() {
     if (!selectedChoiceId) return;
 
     const c = current.choices.find((x) => x.choiceId === selectedChoiceId);
     if (!c) return;
 
     const xp = computeXp(c.xpBase, c.difficulty);
+    console.log("[arena] confirm", { runId, scenarioId: current.scenarioId, selectedChoiceId });
+
+    const rid = await ensureRunId();
+    const payload = {
+      runId: rid,
+      scenarioId: current.scenarioId,
+      step: 1,
+      eventType: "CHOICE_CONFIRMED",
+      choiceId: c.choiceId,
+      xp,
+      deltas: c.hiddenDelta ?? null,
+      meta: { intent: c.intent },
+    };
+    console.log("[arena] postArenaEvent (choice) before", payload);
+    await postArenaEvent(payload);
+    console.log("[arena] postArenaEvent (choice) after");
 
     const msg = pickSystemMessage({
       xp,
@@ -225,27 +283,8 @@ export default function BtyArenaPage() {
 
     setLastXp(xp);
     setSystemMessage(msg);
-
     setPhase("SHOW_RESULT");
     persist({ phase: "SHOW_RESULT", lastXp: xp, lastSystemMessage: msg.id });
-
-    if (runId) {
-      fetch("/api/arena/event", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          runId,
-          scenarioId: current.scenarioId,
-          step: 1,
-          eventType: "CHOICE_CONFIRMED",
-          choiceId: c.choiceId,
-          xp,
-          deltas: c.hiddenDelta ?? null,
-          meta: { intent: c.intent },
-        }),
-        credentials: "same-origin",
-      }).catch((e) => console.warn("Arena event (choice) failed", e));
-    }
   }
 
   function goToFollowUp() {
@@ -253,26 +292,23 @@ export default function BtyArenaPage() {
     persist({ phase: "FOLLOW_UP" });
   }
 
-  function submitFollowUp(idx: number) {
+  async function submitFollowUp(idx: number) {
+    const rid = await ensureRunId();
+    const payload = {
+      runId: rid,
+      scenarioId: current.scenarioId,
+      step: 2,
+      eventType: "FOLLOW_UP_SELECTED",
+      followUpIndex: idx,
+      xp: 0,
+    };
+    console.log("[arena] postArenaEvent (follow-up) before", payload);
+    await postArenaEvent(payload);
+    console.log("[arena] postArenaEvent (follow-up) after");
+
     setFollowUpIndex(idx);
     setPhase("DONE");
     persist({ phase: "DONE", followUpIndex: idx });
-
-    if (runId) {
-      fetch("/api/arena/event", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          runId,
-          scenarioId: current.scenarioId,
-          step: 2,
-          eventType: "FOLLOW_UP_SELECTED",
-          followUpIndex: idx,
-          xp: 0,
-        }),
-        credentials: "same-origin",
-      }).catch((e) => console.warn("Arena event (follow-up) failed", e));
-    }
   }
 
   function continueNextScenario() {
@@ -506,6 +542,47 @@ export default function BtyArenaPage() {
                 <div style={{ marginTop: 10, opacity: 0.85 }}>
                   다음 단계는 <b>Continue</b>로 진행합니다. (MVP: 1 + 보완 1 완료)
                 </div>
+              </div>
+            )}
+
+            {/* 결과 영역 하단: 다음 시나리오로 이동 버튼 (접근성) */}
+            {(phase === "SHOW_RESULT" || phase === "DONE") && (
+              <div style={{ marginTop: 20 }}>
+                <button
+                  onClick={continueNextScenario}
+                  style={{
+                    padding: "14px 20px",
+                    borderRadius: 12,
+                    border: "1px solid #111",
+                    background: "#111",
+                    color: "white",
+                    fontSize: 16,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    width: "100%",
+                    maxWidth: 320,
+                  }}
+                >
+                  Continue → 다음 시나리오
+                </button>
+              </div>
+            )}
+
+            {phase === "FOLLOW_UP" && (
+              <div style={{ marginTop: 14 }}>
+                <button
+                  onClick={continueNextScenario}
+                  style={{
+                    padding: "12px 16px",
+                    borderRadius: 12,
+                    border: "1px solid #999",
+                    background: "white",
+                    color: "#555",
+                    cursor: "pointer",
+                  }}
+                >
+                  보완 선택 건너뛰고 Continue
+                </button>
               </div>
             )}
           </div>
