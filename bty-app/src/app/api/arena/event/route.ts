@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { getSupabaseServer } from "@/lib/supabase-server";
+import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 
 export async function POST(req: Request) {
-  const supabase = await getSupabaseServer();
+  const supabase = await getSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
