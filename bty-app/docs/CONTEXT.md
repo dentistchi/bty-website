@@ -55,3 +55,21 @@
 
 ## 4) Known Build Pain
 - Next prerender + CSR hooks(useSearchParams 등) → Suspense wrapper 또는 `export const dynamic = "force-dynamic"`
+
+---
+
+## 6) Arena Persistence (DB) — 이벤트 소싱(단일 기준)
+
+### 저장 정책(현재)
+- Arena는 middleware로 로그인 강제됨 → 기본은 `auth.uid()` 기반 저장
+- MVP는 "이벤트를 쌓고 집계" 방식으로 확장성 확보
+
+### 테이블(권장 최소)
+- `arena_runs` : 런 단위(시나리오 세션)
+- `arena_events` : 선택/팔로업/완료 이벤트 로그
+- `arena_profiles` : 유저 누적/주간/리그
+- `arena_leagues` : 리그 정의(옵션)
+
+### RLS 원칙
+- `arena_*`는 기본적으로 "본인 데이터만" 읽기/쓰기
+- 집계(리그/랭킹)는 view 또는 별도 함수로 확장
