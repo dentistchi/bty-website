@@ -1,0 +1,26 @@
+# BTY Arena — Master Workflow
+
+> 이 파일이 현재 프로젝트 단계의 단일 기준이다.
+
+## Current Phase
+- [ ] 4-1 Schema + RLS
+- [ ] 4-2 API 연결
+- [ ] 4-3 UI 연결
+- [ ] 4-4 Deploy & Verification
+- [ ] 1 Core XP Engine
+- [ ] 2 7-Step Simulation
+- [ ] 3 Dashboard UI
+
+---
+
+```mermaid
+flowchart TD
+  A[Infra Fixed] --> B[4. DB Persistence MVP]
+  B --> B1[Schema + RLS]
+  B1 --> B2[API Routes]
+  B2 --> B3[UI Integration]
+  B3 --> B4[Deploy + Verify]
+  B4 --> C[1. Core XP Engine]
+  C --> D[2. 7-Step Simulation]
+  D --> E[3. Dashboard UI]
+```
