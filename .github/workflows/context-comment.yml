@@ -1,0 +1,61 @@
+name: Context PR Comment
+
+on:
+  pull_request:
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect infra-related changes
+        id: detect
+        run: |
+          BASE="origin/${{ github.base_ref }}"
+          git fetch origin "${{ github.base_ref }}" --depth=1 || true
+          CHANGED="$(git diff --name-only ${BASE}...HEAD)"
+
+          INFRA_REGEX='(^\.github/workflows/|wrangler\.toml$|open-next\.config\.(mjs|ts)$|next\.config\.(js|mjs|ts)$|src/middleware\.(ts|js)$|src/app/api/auth/|src/lib/supabase/|src/app/\[locale\]/auth/)'
+
+          INFRA="false"
+          while IFS= read -r f; do
+            if [[ "$f" =~ $INFRA_REGEX ]]; then
+              INFRA="true"
+              break
+            fi
+          done <<< "$CHANGED"
+
+          echo "infra=$INFRA" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR if infra changed
+        if: steps.detect.outputs.infra == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `
+⚠️ **Context Guard Notice**
+
+This PR modifies infrastructure/auth/runtime-related files.
+
+Please ensure:
+- \`bty-app/docs/CONTEXT.md\` is updated.
+- Deployment assumptions (Cloudflare Workers + OpenNext) remain consistent.
+- Auth cookie/session handling has not diverged.
+
+If CONTEXT.md was intentionally unchanged, confirm in this PR.
+
+— BTY Arena System
+            `;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
