@@ -389,7 +389,21 @@ export default function BtyArenaPage() {
     persist({ step: 6, followUpIndex: idx });
   }
 
-  function continueNextScenario() {
+  async function continueNextScenario() {
+    const currentRunId = runId;
+    if (currentRunId) {
+      try {
+        await fetch("/api/arena/run/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ runId: currentRunId }),
+          credentials: "same-origin",
+        });
+      } catch (e) {
+        console.warn("Arena run complete failed", e);
+      }
+    }
+
     const next = pickRandomScenario(current.scenarioId);
     setScenario(next);
 
