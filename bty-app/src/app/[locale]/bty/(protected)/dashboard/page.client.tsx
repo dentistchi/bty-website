@@ -115,7 +115,7 @@ export default function DashboardClient() {
                     <div>
                       <div style={{ fontWeight: 700 }}>{r.scenario_id}</div>
                       <div style={{ fontSize: 12, opacity: 0.7 }}>
-                        {r.started_at?.slice(0, 19).replace("T", " ")}
+                        {r.started_at ? new Date(r.started_at).toLocaleString() : ""}
                       </div>
                     </div>
                     <div style={{ textAlign: "right" }}>
