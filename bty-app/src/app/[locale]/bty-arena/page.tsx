@@ -157,6 +157,11 @@ async function createRun(scenarioId: string, locale: string | undefined): Promis
 }
 
 async function postArenaEvent(payload: Record<string, unknown>): Promise<void> {
+  if (payload.runId == null || payload.runId === "") {
+    console.warn("[arena] post event skipped: runId missing", payload);
+    return;
+  }
+  console.log("[arena] post event", payload);
   try {
     const res = await fetch("/api/arena/event", {
       method: "POST",
@@ -164,6 +169,7 @@ async function postArenaEvent(payload: Record<string, unknown>): Promise<void> {
       body: JSON.stringify(payload),
       credentials: "same-origin",
     });
+    console.log("[arena] event res", res.status);
     if (!res.ok) throw new Error(await res.text());
   } catch (e) {
     console.warn("Arena postArenaEvent failed", e);
