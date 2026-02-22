@@ -19,11 +19,10 @@ function readLocalStreak(): number {
   }
 }
 
-export default function DashboardPage() {
+export default function DashboardClient() {
   const [weekly, setWeekly] = React.useState<WeeklyXpRes | null>(null);
   const [runs, setRuns] = React.useState<RunRow[]>([]);
   const [streak, setStreak] = React.useState<number>(0);
-
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -79,26 +78,22 @@ export default function DashboardPage() {
           <div style={{ fontWeight: 700 }}>Error</div>
           <div style={{ marginTop: 6 }}>{error}</div>
           <div style={{ marginTop: 10, opacity: 0.7, fontSize: 13 }}>
-            (If you are logged out, these endpoints should return 401.)
+            (Logged out should return 401.)
           </div>
         </div>
       )}
 
       {!loading && !error && (
         <div style={{ display: "grid", gap: 12 }}>
-          {/* Weekly XP */}
           <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
             <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>THIS WEEK XP</div>
             <div style={{ fontSize: 28, fontWeight: 800 }}>{weekly?.xpTotal ?? 0}</div>
-            <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>
-              Events counted: {weekly?.count ?? 0}
-            </div>
+            <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>Events counted: {weekly?.count ?? 0}</div>
             <div style={{ marginTop: 6, fontSize: 12, opacity: 0.6 }}>
               {weekly?.weekStartISO?.slice(0, 10)} → {weekly?.weekEndISO?.slice(0, 10)}
             </div>
           </div>
 
-          {/* Recent Runs */}
           <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
             <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 10 }}>RECENT RUNS</div>
             {runs.length === 0 ? (
@@ -119,7 +114,9 @@ export default function DashboardPage() {
                   >
                     <div>
                       <div style={{ fontWeight: 700 }}>{r.scenario_id}</div>
-                      <div style={{ fontSize: 12, opacity: 0.7 }}>{r.started_at?.slice(0, 19).replace("T", " ")}</div>
+                      <div style={{ fontSize: 12, opacity: 0.7 }}>
+                        {r.started_at?.slice(0, 19).replace("T", " ")}
+                      </div>
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 12, opacity: 0.7 }}>{r.status}</div>
@@ -131,12 +128,11 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Streak */}
           <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
             <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>STREAK</div>
             <div style={{ fontSize: 28, fontWeight: 800 }}>{streak}</div>
             <div style={{ marginTop: 6, fontSize: 13, opacity: 0.75 }}>
-              (MVP: local streak. Supabase profile streak comes later.)
+              (MVP: local streak. Supabase profile streak later.)
             </div>
           </div>
         </div>
