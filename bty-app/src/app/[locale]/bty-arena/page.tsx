@@ -347,9 +347,8 @@ export default function BtyArenaPage() {
       setPhase("FOLLOW_UP");
       persist({ step: 5, phase: "FOLLOW_UP", reflectionIndex: idx });
     } else {
-      setStep(7);
-      setPhase("DONE");
-      persist({ step: 7, phase: "DONE", reflectionIndex: idx });
+      setStep(6);
+      persist({ step: 6, reflectionIndex: idx });
     }
   }
 
@@ -374,9 +373,8 @@ export default function BtyArenaPage() {
     await postArenaEvent(payload);
 
     setFollowUpIndex(idx);
-    setStep(7);
-    setPhase("DONE");
-    persist({ phase: "DONE", step: 7, followUpIndex: idx });
+    setStep(6);
+    persist({ step: 6, followUpIndex: idx });
   }
 
   function continueNextScenario() {
@@ -654,6 +652,35 @@ export default function BtyArenaPage() {
               </div>
             )}
 
+            {/* Step 6 · Consolidation */}
+            {step === 6 && choice && (
+              <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14, background: "rgba(0,0,0,0.02)" }}>
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>Step 6 · Consolidation</div>
+                <div style={{ fontSize: 14, lineHeight: 1.6, opacity: 0.9, marginBottom: 12 }}>
+                  <p style={{ margin: "0 0 8px 0" }}>You chose {choice.choiceId} ({choice.intent}).</p>
+                  <p style={{ margin: "0 0 8px 0" }}>Key insight: {choice.microInsight}</p>
+                  <p style={{ margin: 0 }}>Principle: &quot;Stabilize people first, then fix the system.&quot;</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setStep(7);
+                    setPhase("DONE");
+                    persist({ step: 7, phase: "DONE" });
+                  }}
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    border: "1px solid #111",
+                    background: "#111",
+                    color: "white",
+                    cursor: "pointer",
+                  }}
+                >
+                  Complete
+                </button>
+              </div>
+            )}
+
             {/* step 5: Follow-up UI */}
             {step === 5 && hasFollowUp && choice.followUp && (
               <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
@@ -702,14 +729,13 @@ export default function BtyArenaPage() {
 
             {/* step 3: Next 버튼만 (위에 이미 렌더) */}
 
-            {/* step 5: 보완 선택 건너뛰고 Continue → step 7로 */}
+            {/* step 5: 보완 선택 건너뛰고 → step 6 (Consolidation) */}
             {step === 5 && (
               <div style={{ marginTop: 14 }}>
                 <button
                   onClick={() => {
-                    setStep(7);
-                    setPhase("DONE");
-                    persist({ step: 7, phase: "DONE" });
+                    setStep(6);
+                    persist({ step: 6 });
                   }}
                   style={{
                     padding: "12px 16px",
