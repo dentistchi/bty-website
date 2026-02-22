@@ -13,6 +13,7 @@
 - [x] 2-2(B) Step 6 Consolidation
 - [x] 3-2 Arena UI 컴포넌트 분리
 - [x] 3-3 Dashboard 뼈대 구현
+- [x] 3-4 Run 완료 마킹 (COMPLETED)
 - [ ] 3 Dashboard UI
 
 ---
