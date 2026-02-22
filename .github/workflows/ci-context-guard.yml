@@ -38,6 +38,7 @@ jobs:
 
           CONTEXT_DOC="bty-app/docs/CONTEXT.md"
 
+          # ✅ "Context 업데이트를 강제해야 하는" 변경만 잡는다.
           INFRA_REGEX='(^\.github/workflows/(deploy|deploy-workers|ci-context-guard)\.yml$|^wrangler\.toml$|^bty-app/wrangler\.toml$|^open-next\.config\.(mjs|ts)$|^bty-app/open-next\.config\.(mjs|ts)$|^next\.config\.(js|mjs|ts)$|^bty-app/next\.config\.(js|mjs|ts)$|^bty-app/src/middleware\.(ts|js)$|^bty-app/src/lib/supabase/|^bty-app/src/lib/auth/|^bty-app/src/app/api/auth/|^bty-app/src/app/\[locale\]/auth/|^bty-app/src/app/\[locale\]/\((public|protected)\)/|^bty-app/src/lib/bty/auth/|^bty-app/src/lib/bty/cookie/|^bty-app/src/lib/bty/session/)'
 
           INFRA_TOUCHED="0"
