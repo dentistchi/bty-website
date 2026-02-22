@@ -3,7 +3,8 @@
   "private": true,
   "description": "Dear Me & BTY — 루트. Cloudflare Workers(bty-app) 단일 배포.",
   "scripts": {
-    "build": "cd bty-app && npm ci && npm run build"
+    "build": "cd bty-app && npm ci && npm run build",
+    "ci:guard": "echo 'Run via GitHub Actions: CI (Context Guard)'"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
