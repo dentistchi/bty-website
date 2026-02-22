@@ -170,7 +170,7 @@ export default function BtyArenaPage() {
 
   const [scenario, setScenario] = React.useState<Scenario | null>(null);
   const [phase, setPhase] = React.useState<ArenaPhase>("CHOOSING");
-  const [step, setStep] = React.useState<ArenaStep>(2);
+  const [step, setStep] = React.useState<ArenaStep>(1);
   const [reflectionIndex, setReflectionIndex] = React.useState<number | null>(null);
 
   const [selectedChoiceId, setSelectedChoiceId] = React.useState<string | null>(null);
@@ -228,7 +228,7 @@ export default function BtyArenaPage() {
             version: 1,
             scenarioId: s.scenarioId,
             phase: "CHOOSING",
-            step: 2,
+            step: 1,
             runId: data.run.run_id,
             updatedAtISO: safeNowISO(),
           });
@@ -384,7 +384,7 @@ export default function BtyArenaPage() {
     setScenario(next);
 
     setPhase("CHOOSING");
-    setStep(2);
+    setStep(1);
     setReflectionIndex(null);
     setSelectedChoiceId(null);
     setFollowUpIndex(null);
@@ -394,7 +394,7 @@ export default function BtyArenaPage() {
     persist({
       scenarioId: next.scenarioId,
       phase: "CHOOSING",
-      step: 2,
+      step: 1,
       reflectionIndex: undefined,
       selectedChoiceId: undefined,
       followUpIndex: undefined,
@@ -433,7 +433,7 @@ export default function BtyArenaPage() {
     const next = pickRandomScenario();
     setScenario(next);
     setPhase("CHOOSING");
-    setStep(2);
+    setStep(1);
     setReflectionIndex(null);
     setSelectedChoiceId(null);
     setFollowUpIndex(null);
@@ -455,13 +455,30 @@ export default function BtyArenaPage() {
             version: 1,
             scenarioId: next.scenarioId,
             phase: "CHOOSING",
-            step: 2,
+            step: 1,
             runId: data.run.run_id,
             updatedAtISO: safeNowISO(),
           });
         }
       })
       .catch((e) => console.warn("Arena run create (reset) failed", e));
+  }
+
+  async function onStartSimulation() {
+    const rid = await ensureRunId();
+    try {
+      await postArenaEvent({
+        runId: rid,
+        scenarioId: current.scenarioId,
+        step: 1,
+        eventType: "SCENARIO_STARTED",
+      });
+    } catch (e) {
+      console.warn("Arena SCENARIO_STARTED event failed", e);
+    }
+    setStep(2);
+    setPhase("CHOOSING");
+    persist({ step: 2, phase: "CHOOSING" });
   }
 
   return (
@@ -492,11 +509,33 @@ export default function BtyArenaPage() {
         <h2 style={{ marginTop: 0, marginBottom: 8 }}>{current.title}</h2>
         <p style={{ marginTop: 0, lineHeight: 1.6, opacity: 0.9 }}>{current.context}</p>
 
-        {/* choice list */}
+        {/* Step 1: Start Gate */}
+        {step === 1 && (
+          <div style={{ marginTop: 20 }}>
+            <button
+              onClick={onStartSimulation}
+              style={{
+                padding: "14px 20px",
+                borderRadius: 12,
+                border: "1px solid #111",
+                background: "#111",
+                color: "white",
+                fontSize: 16,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Start Simulation
+            </button>
+          </div>
+        )}
+
+        {/* choice list: step 2 only */}
+        {step === 2 && (
         <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
           {current.choices.map((c) => {
             const active = selectedChoiceId === c.choiceId;
-            const disabled = step !== 2;
+            const disabled = false;
             return (
               <button
                 key={c.choiceId}
@@ -520,6 +559,7 @@ export default function BtyArenaPage() {
             );
           })}
         </div>
+        )}
 
         {/* primary actions */}
         <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
