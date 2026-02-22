@@ -3,7 +3,7 @@
 > 이 파일이 현재 프로젝트 단계의 단일 기준이다.
 
 ## Current Phase
-- [ ] 4-1 Schema + RLS
+- [x] 4-1 Schema + RLS
 - [ ] 4-2 API 연결
 - [ ] 4-3 UI 연결
 - [ ] 4-4 Deploy & Verification
