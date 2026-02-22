@@ -64,6 +64,11 @@ function computeXp(xpBase: number, difficulty: number): number {
   return Math.max(0, Math.round(raw));
 }
 
+// followUp.options를 항상 배열로 정규화(없으면 빈 배열) — TS18048 방지
+function normalizeFollowUpOptions(choice: { followUp?: { options?: string[] } } | null | undefined): string[] {
+  return choice?.followUp?.options ?? [];
+}
+
 type SystemMsg = { id: string; en: string; ko: string };
 
 // MVP용: 아주 단순한 트리거(나중에 streak/스탯과 연결)
@@ -151,15 +156,19 @@ export default function BtyArenaPage() {
     if (streakInfo.message) setSystemMessage(streakInfo.message);
   }, []);
 
-  if (!scenario) return null;
+  if (!scenario) {
+    return <div>Scenario not found.</div>;
+  }
 
-  const choice = scenario.choices.find((c) => c.choiceId === selectedChoiceId) ?? null;
-  const hasFollowUp = Boolean(choice?.followUp?.enabled && choice.followUp.options?.length);
+  const current = scenario;
+  const choice = current.choices.find((c) => c.choiceId === selectedChoiceId) ?? null;
+  const followUpOptions = normalizeFollowUpOptions(choice);
+  const hasFollowUp = Boolean(choice?.followUp?.enabled && followUpOptions.length);
 
   function persist(next: Partial<SavedArenaState>) {
     saveState({
       version: 1,
-      scenarioId: scenario.scenarioId,
+      scenarioId: current.scenarioId,
       phase,
       selectedChoiceId: selectedChoiceId ?? undefined,
       followUpIndex: followUpIndex ?? undefined,
@@ -173,7 +182,7 @@ export default function BtyArenaPage() {
   function onConfirmChoice() {
     if (!selectedChoiceId) return;
 
-    const c = scenario.choices.find((x) => x.choiceId === selectedChoiceId);
+    const c = current.choices.find((x) => x.choiceId === selectedChoiceId);
     if (!c) return;
 
     const xp = computeXp(c.xpBase, c.difficulty);
@@ -204,7 +213,7 @@ export default function BtyArenaPage() {
   }
 
   function continueNextScenario() {
-    const next = pickRandomScenario(scenario.scenarioId);
+    const next = pickRandomScenario(current.scenarioId);
     setScenario(next);
 
     setPhase("CHOOSING");
@@ -266,12 +275,12 @@ export default function BtyArenaPage() {
       </div>
 
       <div style={{ marginTop: 18, padding: 18, border: "1px solid #eee", borderRadius: 14 }}>
-        <h2 style={{ marginTop: 0, marginBottom: 8 }}>{scenario.title}</h2>
-        <p style={{ marginTop: 0, lineHeight: 1.6, opacity: 0.9 }}>{scenario.context}</p>
+        <h2 style={{ marginTop: 0, marginBottom: 8 }}>{current.title}</h2>
+        <p style={{ marginTop: 0, lineHeight: 1.6, opacity: 0.9 }}>{current.context}</p>
 
         {/* choice list */}
         <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
-          {scenario.choices.map((c) => {
+          {current.choices.map((c) => {
             const active = selectedChoiceId === c.choiceId;
             const disabled = phase !== "CHOOSING";
             return (
@@ -370,7 +379,7 @@ export default function BtyArenaPage() {
               <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
                 <div style={{ fontWeight: 700, marginBottom: 8 }}>{choice.followUp.prompt}</div>
                 <div style={{ display: "grid", gap: 10 }}>
-                  {choice.followUp.options.map((opt, idx) => (
+                  {followUpOptions.map((opt, idx) => (
                     <button
                       key={idx}
                       onClick={() => submitFollowUp(idx)}
@@ -393,7 +402,7 @@ export default function BtyArenaPage() {
             {phase === "DONE" && hasFollowUp && choice.followUp && typeof followUpIndex === "number" && (
               <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
                 <div style={{ fontSize: 12, opacity: 0.7 }}>FOLLOW-UP SELECTED</div>
-                <div style={{ marginTop: 6, fontWeight: 700 }}>{choice.followUp.options[followUpIndex]}</div>
+                <div style={{ marginTop: 6, fontWeight: 700 }}>{followUpOptions[followUpIndex]}</div>
                 <div style={{ marginTop: 10, opacity: 0.85 }}>
                   다음 단계는 <b>Continue</b>로 진행합니다. (MVP: 1 + 보완 1 완료)
                 </div>
