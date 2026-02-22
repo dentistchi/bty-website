@@ -86,7 +86,7 @@ export default function DashboardClient() {
       {!loading && !error && (
         <div style={{ display: "grid", gap: 12 }}>
           <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
-            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>THIS WEEK XP</div>
+            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>COMPETITION XP</div>
             <div style={{ fontSize: 28, fontWeight: 800 }}>{weekly?.xpTotal ?? 0}</div>
             <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>Events counted: {weekly?.count ?? 0}</div>
             <div style={{ marginTop: 6, fontSize: 12, opacity: 0.6 }}>
