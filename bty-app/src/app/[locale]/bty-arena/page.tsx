@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useParams } from "next/navigation";
 import { SCENARIOS } from "@/lib/bty/scenario/scenarios";
 import type { Scenario } from "@/lib/bty/scenario/types";
 
@@ -15,6 +16,7 @@ type SavedArenaState = {
   followUpIndex?: number;
   lastXp?: number;
   lastSystemMessage?: string;
+  runId?: string;
   updatedAtISO: string;
 };
 
@@ -120,6 +122,9 @@ function updateStreak(): { streak: number; message?: SystemMsg } {
 }
 
 export default function BtyArenaPage() {
+  const params = useParams();
+  const locale = typeof params?.locale === "string" ? params.locale : null;
+
   const [scenario, setScenario] = React.useState<Scenario | null>(null);
   const [phase, setPhase] = React.useState<ArenaPhase>("CHOOSING");
 
@@ -128,6 +133,7 @@ export default function BtyArenaPage() {
   const [systemMessage, setSystemMessage] = React.useState<SystemMsg | null>(null);
 
   const [followUpIndex, setFollowUpIndex] = React.useState<number | null>(null);
+  const [runId, setRunId] = React.useState<string | null>(null);
 
   // resume on mount
   React.useEffect(() => {
@@ -141,6 +147,7 @@ export default function BtyArenaPage() {
       setSelectedChoiceId(saved.selectedChoiceId ?? null);
       setFollowUpIndex(typeof saved.followUpIndex === "number" ? saved.followUpIndex : null);
       setLastXp(saved.lastXp ?? 0);
+      setRunId(saved.runId ?? null);
 
       if (saved.lastSystemMessage) {
         const msg = SYSTEM_MESSAGES.find((m) => m.id === saved.lastSystemMessage) ?? null;
@@ -151,9 +158,31 @@ export default function BtyArenaPage() {
       return;
     }
 
-    // new session
-    setScenario(pickRandomScenario());
+    // new session: create run and persist runId
+    const s = pickRandomScenario();
+    setScenario(s);
     if (streakInfo.message) setSystemMessage(streakInfo.message);
+
+    fetch("/api/arena/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scenarioId: s.scenarioId, locale }),
+      credentials: "same-origin",
+    })
+      .then((r) => r.json())
+      .then((data: { run?: { run_id: string } }) => {
+        if (data.run?.run_id) {
+          setRunId(data.run.run_id);
+          saveState({
+            version: 1,
+            scenarioId: s.scenarioId,
+            phase: "CHOOSING",
+            runId: data.run.run_id,
+            updatedAtISO: safeNowISO(),
+          });
+        }
+      })
+      .catch((e) => console.warn("Arena run create failed", e));
   }, []);
 
   if (!scenario) {
@@ -174,6 +203,7 @@ export default function BtyArenaPage() {
       followUpIndex: followUpIndex ?? undefined,
       lastXp,
       lastSystemMessage: systemMessage?.id,
+      runId: runId ?? undefined,
       updatedAtISO: safeNowISO(),
       ...next,
     });
@@ -196,9 +226,25 @@ export default function BtyArenaPage() {
     setLastXp(xp);
     setSystemMessage(msg);
 
-    // 결과 출력 단계로
     setPhase("SHOW_RESULT");
     persist({ phase: "SHOW_RESULT", lastXp: xp, lastSystemMessage: msg.id });
+
+    if (runId) {
+      fetch("/api/arena/event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          runId,
+          scenarioId: current.scenarioId,
+          step: 1,
+          eventType: "CHOICE_CONFIRMED",
+          choiceId: c.choiceId,
+          xp,
+          deltas: c.hiddenDelta ?? null,
+        }),
+        credentials: "same-origin",
+      }).catch((e) => console.warn("Arena event (choice) failed", e));
+    }
   }
 
   function goToFollowUp() {
@@ -210,6 +256,22 @@ export default function BtyArenaPage() {
     setFollowUpIndex(idx);
     setPhase("DONE");
     persist({ phase: "DONE", followUpIndex: idx });
+
+    if (runId) {
+      fetch("/api/arena/event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          runId,
+          scenarioId: current.scenarioId,
+          step: 2,
+          eventType: "FOLLOW_UP_SELECTED",
+          followUpIndex: idx,
+          xp: 0,
+        }),
+        credentials: "same-origin",
+      }).catch((e) => console.warn("Arena event (follow-up) failed", e));
+    }
   }
 
   function continueNextScenario() {
@@ -220,16 +282,31 @@ export default function BtyArenaPage() {
     setSelectedChoiceId(null);
     setFollowUpIndex(null);
     setLastXp(0);
+    setRunId(null);
 
-    // 시스템 메시지는 유지하되, 새로 시작 느낌만 살짝:
-    // (원하면 여기서 arch_init 같은 걸로 바꿔도 됨)
     persist({
       scenarioId: next.scenarioId,
       phase: "CHOOSING",
       selectedChoiceId: undefined,
       followUpIndex: undefined,
       lastXp: 0,
+      runId: undefined,
     });
+
+    fetch("/api/arena/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scenarioId: next.scenarioId, locale }),
+      credentials: "same-origin",
+    })
+      .then((r) => r.json())
+      .then((data: { run?: { run_id: string } }) => {
+        if (data.run?.run_id) {
+          setRunId(data.run.run_id);
+          persist({ runId: data.run.run_id });
+        }
+      })
+      .catch((e) => console.warn("Arena run create (continue) failed", e));
   }
 
   function pause() {
