@@ -357,4 +357,10 @@ This is an educational platform created for dental professionals. All content is
 **Built with ❤️ for dental professionals worldwide**
 
 *"Better Than Yesterday - Every day is an opportunity to grow, learn, and make a positive impact."* — Dr. Chi
+
+## Project Context
+
+- See: `bty-app/docs/CONTEXT.md`
+- Env vars: `bty-app/docs/ENVIRONMENT.md`
+
 # MBTI
