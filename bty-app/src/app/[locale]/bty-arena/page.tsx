@@ -473,6 +473,9 @@ export default function BtyArenaPage() {
           <div style={{ marginTop: 6, fontSize: 14, opacity: 0.7 }}>
             한 판으로 끝. 멈춰도 이어짐. (MVP: 1 + 보완 1)
           </div>
+          <div style={{ marginTop: 4, fontSize: 11, opacity: 0.4, fontFamily: "monospace" }}>
+            Step {step} · Phase {phase} · Run {runId?.slice(0, 8) ?? "—"}
+          </div>
         </div>
 
         <div style={{ display: "flex", gap: 8 }}>
@@ -636,7 +639,17 @@ export default function BtyArenaPage() {
               </div>
             )}
 
-            {/* step 7: Done (follow-up 선택 시 표시) */}
+            {/* Step 7 · Complete: DONE 화면 명시 */}
+            {step === 7 && (
+              <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14, background: "rgba(0,0,0,0.02)" }}>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>Step 7 · Complete</div>
+                <div style={{ fontSize: 14, lineHeight: 1.5, opacity: 0.9 }}>
+                  이 시나리오 기록이 저장되었습니다. Continue로 다음 시나리오로 이동합니다.
+                </div>
+              </div>
+            )}
+
+            {/* step 7: Done (follow-up 선택 시 추가 표시) */}
             {step === 7 && hasFollowUp && choice.followUp && typeof followUpIndex === "number" && (
               <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
                 <div style={{ fontSize: 12, opacity: 0.7 }}>FOLLOW-UP SELECTED</div>
