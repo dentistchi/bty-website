@@ -5,8 +5,8 @@
 ## Current Phase
 - [x] 4-1 Schema + RLS
 - [x] 4-2 API 연결
-- [ ] 4-3 UI 연결
-- [ ] 4-4 Deploy & Verification
+- [x] 4-3 UI 연결
+- [x] 4-4 Deploy & Verification
 - [ ] 1 Core XP Engine
 - [ ] 2 7-Step Simulation
 - [ ] 3 Dashboard UI
