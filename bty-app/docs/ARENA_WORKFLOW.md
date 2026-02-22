@@ -9,6 +9,7 @@
 - [x] 4-4 Deploy & Verification
 - [x] 1 Core XP Engine
 - [ ] 2 7-Step Simulation
+- [x] 2-2(A) Step 1 Start Gate
 - [ ] 3 Dashboard UI
 
 ---
