@@ -8,6 +8,7 @@ import { evaluateChoice, evaluateFollowUp } from "@/lib/bty/arena/engine";
 
 // ---------- types for local UI state ----------
 type ArenaPhase = "CHOOSING" | "SHOW_RESULT" | "FOLLOW_UP" | "DONE";
+type ArenaStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 type SavedArenaState = {
   version: 1;
@@ -19,6 +20,9 @@ type SavedArenaState = {
   lastSystemMessage?: string;
   runId?: string;
   updatedAtISO: string;
+  /** 7-step authoritative state (backward compatible: absent => inferred from phase) */
+  step?: ArenaStep;
+  reflectionIndex?: number;
 };
 
 const STORAGE_KEY = "btyArenaState:v1";
@@ -65,6 +69,28 @@ function pickRandomScenario(excludeId?: string): Scenario {
 function normalizeFollowUpOptions(choice: { followUp?: { options?: string[] } } | null | undefined): string[] {
   return choice?.followUp?.options ?? [];
 }
+
+/** Infer step from phase for backward compatibility when loading saved state without step */
+function stepFromPhase(phase: ArenaPhase): ArenaStep {
+  switch (phase) {
+    case "CHOOSING":
+      return 2;
+    case "SHOW_RESULT":
+      return 3;
+    case "FOLLOW_UP":
+      return 5;
+    case "DONE":
+      return 7;
+    default:
+      return 2;
+  }
+}
+
+const REFLECTION_OPTIONS = [
+  "내가 놓친 시스템 원인은?",
+  "다음엔 어떤 신호를 더 빨리 볼까?",
+  "원칙을 유지하면서도 관계 비용을 줄이는 방법은?",
+];
 
 type SystemMsg = { id: string; en: string; ko: string };
 
@@ -144,6 +170,8 @@ export default function BtyArenaPage() {
 
   const [scenario, setScenario] = React.useState<Scenario | null>(null);
   const [phase, setPhase] = React.useState<ArenaPhase>("CHOOSING");
+  const [step, setStep] = React.useState<ArenaStep>(2);
+  const [reflectionIndex, setReflectionIndex] = React.useState<number | null>(null);
 
   const [selectedChoiceId, setSelectedChoiceId] = React.useState<string | null>(null);
   const [lastXp, setLastXp] = React.useState<number>(0);
@@ -151,6 +179,10 @@ export default function BtyArenaPage() {
 
   const [followUpIndex, setFollowUpIndex] = React.useState<number | null>(null);
   const [runId, setRunId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    console.log("[arena] step", { step, phase, runId: runId ?? null });
+  }, [step, phase, runId]);
 
   // resume on mount
   React.useEffect(() => {
@@ -161,6 +193,8 @@ export default function BtyArenaPage() {
       const s = getScenarioById(saved.scenarioId) ?? pickRandomScenario();
       setScenario(s);
       setPhase(saved.phase);
+      setStep(saved.step ?? stepFromPhase(saved.phase));
+      setReflectionIndex(typeof saved.reflectionIndex === "number" ? saved.reflectionIndex : null);
       setSelectedChoiceId(saved.selectedChoiceId ?? null);
       setFollowUpIndex(typeof saved.followUpIndex === "number" ? saved.followUpIndex : null);
       setLastXp(saved.lastXp ?? 0);
@@ -194,6 +228,7 @@ export default function BtyArenaPage() {
             version: 1,
             scenarioId: s.scenarioId,
             phase: "CHOOSING",
+            step: 2,
             runId: data.run.run_id,
             updatedAtISO: safeNowISO(),
           });
@@ -201,6 +236,10 @@ export default function BtyArenaPage() {
       })
       .catch((e) => console.warn("Arena run create failed", e));
   }, []);
+
+  React.useEffect(() => {
+    console.log("[arena] step", { step, phase, runId: runId ?? null });
+  }, [step, phase, runId]);
 
   if (!scenario) {
     return <div>Scenario not found.</div>;
@@ -216,6 +255,8 @@ export default function BtyArenaPage() {
       version: 1,
       scenarioId: current.scenarioId,
       phase,
+      step,
+      reflectionIndex: reflectionIndex ?? undefined,
       selectedChoiceId: selectedChoiceId ?? undefined,
       followUpIndex: followUpIndex ?? undefined,
       lastXp,
@@ -256,32 +297,60 @@ export default function BtyArenaPage() {
       SYSTEM_MESSAGES.find((m) => m.id === evalResult.systemMessageId) ??
       SYSTEM_MESSAGES.find((m) => m.id === "arch_init")!;
 
-    console.log("[arena] confirm", { runId, scenarioId: current.scenarioId, selectedChoiceId });
-
     const rid = await ensureRunId();
     const payload = {
       runId: rid,
       scenarioId: current.scenarioId,
-      step: 1,
+      step: 2,
       eventType: "CHOICE_CONFIRMED",
       choiceId: c.choiceId,
       xp,
       deltas: c.hiddenDelta ?? null,
       meta: { intent: c.intent },
     };
-    console.log("[arena] postArenaEvent (choice) before", payload);
+    console.log("[arena] postArenaEvent (choice)", { step: payload.step, eventType: payload.eventType, scenarioId: payload.scenarioId });
     await postArenaEvent(payload);
-    console.log("[arena] postArenaEvent (choice) after");
 
     setLastXp(xp);
     setSystemMessage(msg);
     setPhase("SHOW_RESULT");
-    persist({ phase: "SHOW_RESULT", lastXp: xp, lastSystemMessage: msg.id });
+    setStep(3);
+    persist({ phase: "SHOW_RESULT", step: 3, lastXp: xp, lastSystemMessage: msg.id });
+  }
+
+  function goToReflection() {
+    setStep(4);
+    persist({ step: 4 });
   }
 
   function goToFollowUp() {
     setPhase("FOLLOW_UP");
-    persist({ phase: "FOLLOW_UP" });
+    setStep(5);
+    persist({ phase: "FOLLOW_UP", step: 5 });
+  }
+
+  async function submitReflection(idx: number) {
+    const rid = await ensureRunId();
+    const payload = {
+      runId: rid,
+      scenarioId: current.scenarioId,
+      step: 4,
+      eventType: "REFLECTION_SELECTED",
+      reflectionIndex: idx,
+    };
+    console.log("[arena] postArenaEvent (reflection)", { step: payload.step, eventType: payload.eventType, scenarioId: payload.scenarioId });
+    await postArenaEvent(payload);
+
+    setReflectionIndex(idx);
+    if (hasFollowUp) {
+      setStep(5);
+      setPhase("FOLLOW_UP");
+      persist({ step: 5, phase: "FOLLOW_UP", reflectionIndex: idx });
+    } else {
+      setStep(7);
+      setPhase("DONE");
+      persist({ step: 7, phase: "DONE", reflectionIndex: idx });
+    }
   }
 
   async function submitFollowUp(idx: number) {
@@ -296,18 +365,18 @@ export default function BtyArenaPage() {
     const payload = {
       runId: rid,
       scenarioId: current.scenarioId,
-      step: 2,
+      step: 5,
       eventType: "FOLLOW_UP_SELECTED",
       followUpIndex: idx,
       xp: fu.xp,
     };
-    console.log("[arena] postArenaEvent (follow-up) before", payload);
+    console.log("[arena] postArenaEvent (follow-up)", { step: payload.step, eventType: payload.eventType, scenarioId: payload.scenarioId });
     await postArenaEvent(payload);
-    console.log("[arena] postArenaEvent (follow-up) after");
 
     setFollowUpIndex(idx);
+    setStep(7);
     setPhase("DONE");
-    persist({ phase: "DONE", followUpIndex: idx });
+    persist({ phase: "DONE", step: 7, followUpIndex: idx });
   }
 
   function continueNextScenario() {
@@ -315,6 +384,8 @@ export default function BtyArenaPage() {
     setScenario(next);
 
     setPhase("CHOOSING");
+    setStep(2);
+    setReflectionIndex(null);
     setSelectedChoiceId(null);
     setFollowUpIndex(null);
     setLastXp(0);
@@ -323,6 +394,8 @@ export default function BtyArenaPage() {
     persist({
       scenarioId: next.scenarioId,
       phase: "CHOOSING",
+      step: 2,
+      reflectionIndex: undefined,
       selectedChoiceId: undefined,
       followUpIndex: undefined,
       lastXp: 0,
@@ -360,6 +433,8 @@ export default function BtyArenaPage() {
     const next = pickRandomScenario();
     setScenario(next);
     setPhase("CHOOSING");
+    setStep(2);
+    setReflectionIndex(null);
     setSelectedChoiceId(null);
     setFollowUpIndex(null);
     setLastXp(0);
@@ -380,6 +455,7 @@ export default function BtyArenaPage() {
             version: 1,
             scenarioId: next.scenarioId,
             phase: "CHOOSING",
+            step: 2,
             runId: data.run.run_id,
             updatedAtISO: safeNowISO(),
           });
@@ -492,11 +568,11 @@ export default function BtyArenaPage() {
             <div style={{ marginTop: 8, fontWeight: 600 }}>{choice.microInsight}</div>
             <div style={{ marginTop: 10, lineHeight: 1.6, opacity: 0.9 }}>{choice.result}</div>
 
-            {/* follow up gate */}
-            {hasFollowUp && phase === "SHOW_RESULT" && (
+            {/* Next -> Reflection (step 4) */}
+            {phase === "SHOW_RESULT" && step === 3 && (
               <div style={{ marginTop: 14 }}>
                 <button
-                  onClick={goToFollowUp}
+                  onClick={goToReflection}
                   style={{
                     padding: "12px 14px",
                     borderRadius: 12,
@@ -505,12 +581,37 @@ export default function BtyArenaPage() {
                     cursor: "pointer",
                   }}
                 >
-                  보완 선택 (1개만)
+                  Next
                 </button>
               </div>
             )}
 
-            {phase === "FOLLOW_UP" && hasFollowUp && choice.followUp && (
+            {/* Reflection (step 4): 선택형 3개 */}
+            {step === 4 && (
+              <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>Reflection</div>
+                <div style={{ display: "grid", gap: 10 }}>
+                  {REFLECTION_OPTIONS.map((opt, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => submitReflection(idx)}
+                      style={{
+                        textAlign: "left",
+                        padding: 12,
+                        borderRadius: 12,
+                        border: "1px solid #e5e5e5",
+                        background: "white",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {step === 5 && phase === "FOLLOW_UP" && hasFollowUp && choice.followUp && (
               <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
                 <div style={{ fontWeight: 700, marginBottom: 8 }}>{choice.followUp.prompt}</div>
                 <div style={{ display: "grid", gap: 10 }}>
@@ -534,7 +635,7 @@ export default function BtyArenaPage() {
               </div>
             )}
 
-            {phase === "DONE" && hasFollowUp && choice.followUp && typeof followUpIndex === "number" && (
+            {step === 7 && phase === "DONE" && hasFollowUp && choice.followUp && typeof followUpIndex === "number" && (
               <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
                 <div style={{ fontSize: 12, opacity: 0.7 }}>FOLLOW-UP SELECTED</div>
                 <div style={{ marginTop: 6, fontWeight: 700 }}>{followUpOptions[followUpIndex]}</div>
@@ -567,7 +668,7 @@ export default function BtyArenaPage() {
               </div>
             )}
 
-            {phase === "FOLLOW_UP" && (
+            {step === 5 && phase === "FOLLOW_UP" && (
               <div style={{ marginTop: 14 }}>
                 <button
                   onClick={continueNextScenario}
