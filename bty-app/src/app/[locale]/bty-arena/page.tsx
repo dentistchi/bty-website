@@ -241,6 +241,7 @@ export default function BtyArenaPage() {
           choiceId: c.choiceId,
           xp,
           deltas: c.hiddenDelta ?? null,
+          meta: { intent: c.intent },
         }),
         credentials: "same-origin",
       }).catch((e) => console.warn("Arena event (choice) failed", e));
@@ -327,7 +328,29 @@ export default function BtyArenaPage() {
     setSelectedChoiceId(null);
     setFollowUpIndex(null);
     setLastXp(0);
+    setRunId(null);
     setSystemMessage(SYSTEM_MESSAGES.find((m) => m.id === "arch_init") ?? null);
+
+    fetch("/api/arena/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scenarioId: next.scenarioId, locale }),
+      credentials: "same-origin",
+    })
+      .then((r) => r.json())
+      .then((data: { run?: { run_id: string } }) => {
+        if (data.run?.run_id) {
+          setRunId(data.run.run_id);
+          saveState({
+            version: 1,
+            scenarioId: next.scenarioId,
+            phase: "CHOOSING",
+            runId: data.run.run_id,
+            updatedAtISO: safeNowISO(),
+          });
+        }
+      })
+      .catch((e) => console.warn("Arena run create (reset) failed", e));
   }
 
   return (
