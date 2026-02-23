@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { fetchJson } from "@/lib/read-json";
 
 function safeNext(nextPath: string, locale: "en" | "ko") {
   if (!nextPath || typeof nextPath !== "string") return `/${locale}/bty`;
@@ -28,28 +27,38 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
     setError("");
 
     try {
-      // ✅ 로그인 엔드포인트 호출
-      // 서버가 쿠키를 Set-Cookie로 내려주고, fetchJson은 credentials: "include" 이라 쿠키 저장 가능
-      const r = await fetchJson<{ ok?: boolean; error?: string }>("/api/auth/login", {
+      const loginUrl = next ? `/api/auth/login?next=${encodeURIComponent(next)}` : "/api/auth/login";
+      const r = await fetch(loginUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), password }),
+        credentials: "include",
+        redirect: "manual",
       });
 
-      if (!r.ok || !r.json?.ok) {
-        // 응답이 JSON이 아닐 수도 있어 raw 우선
-        let msg = r.raw || r.json?.error || "Login failed";
-        try {
-          const obj = JSON.parse(r.raw ?? "") as { error?: string; message?: string };
-          msg = obj.error ?? obj.message ?? msg;
-        } catch {}
-        throw new Error(msg);
+      if (r.status === 303) {
+        const loc = r.headers.get("Location");
+        if (loc) {
+          window.location.assign(loc);
+          return;
+        }
       }
 
-      // ✅ 로그인 성공 후: next로 이동 (bty 루트면 /:locale/bty/mentor로 보정)
-      const btyRoot = `/${locale}/bty`;
-      const dest = (next === btyRoot || next === "/bty") ? `/${locale}/bty/mentor` : next;
-      window.location.assign(dest);
+      const raw = await r.text();
+      let json: { ok?: boolean; error?: string } = {};
+      try {
+        json = JSON.parse(raw) as { ok?: boolean; error?: string };
+      } catch {}
+      if (!r.ok) {
+        throw new Error((json?.error ?? raw) || "Login failed");
+      }
+      if (json?.ok && r.status === 200) {
+        const btyRoot = `/${locale}/bty`;
+        const dest = (next === btyRoot || next === "/bty") ? `/${locale}/bty/mentor` : next;
+        window.location.assign(dest);
+        return;
+      }
+      throw new Error(json?.error ?? "Login failed");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

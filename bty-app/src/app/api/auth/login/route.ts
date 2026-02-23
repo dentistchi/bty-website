@@ -1,14 +1,34 @@
 // bty-app/src/app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseServer } from "@/lib/supabase-server";
+import { getSupabaseServerWithCookieCapture } from "@/lib/supabase-server";
 
 // OpenNext/Cloudflare에서 캐시/정적화 방지
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const DEFAULT_NEXT = "/en/bty/dashboard";
+const LOGIN_PATHS = ["/en/bty/login", "/ko/bty/login"];
+
+function sanitizeNext(raw: string | null): string {
+  if (raw == null || raw === "") return DEFAULT_NEXT;
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(raw.trim());
+  } catch {
+    return DEFAULT_NEXT;
+  }
+  if (!decoded.startsWith("/") || decoded.startsWith("//")) return DEFAULT_NEXT;
+  const normalized = decoded.split("?")[0];
+  if (LOGIN_PATHS.some((p) => normalized === p || normalized.startsWith(p + "/"))) return DEFAULT_NEXT;
+  return decoded;
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await getSupabaseServer();
+    const rawNext = req.nextUrl.searchParams.get("next");
+    const sanitizedNext = sanitizeNext(rawNext);
+
+    const { supabase, applyCookiesToResponse } = await getSupabaseServerWithCookieCapture(req);
 
     const body = (await req.json().catch(() => ({}))) as {
       email?: string;
@@ -34,20 +54,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ 여기서는 "토큰 반환"도 가능하지만, 지금 목표는 쿠키 세션 확립
-    // data.session이 있으면 /api/auth/session POST 없이도 쿠키가 세팅될 수 있음(SSR 쿠키)
-    return NextResponse.json(
-      {
-        ok: true,
-        user: data.user ? { id: data.user.id, email: data.user.email } : null,
-        // 필요하면 토큰도 같이 내보낼 수 있음(현재 플로우에 맞춰 선택)
-        access_token: data.session?.access_token,
-        refresh_token: data.session?.refresh_token,
-      },
-      { status: 200 }
-    );
+    const redirectUrl = new URL(sanitizedNext, req.url).toString();
+    const res = NextResponse.redirect(redirectUrl, 303);
+    applyCookiesToResponse(res);
+    res.headers.set("x-auth-cookie-path", "/");
+    res.headers.set("x-auth-next", sanitizedNext);
+    return res;
   } catch (e: any) {
-    // ✅ "빈 body 500" 방지: 항상 JSON
     return NextResponse.json(
       {
         ok: false,
