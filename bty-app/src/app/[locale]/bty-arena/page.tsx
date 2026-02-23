@@ -355,6 +355,7 @@ export default function BtyArenaPage() {
   }
 
   async function submitOther() {
+    // Event-only: do NOT setStep, setPhase, or setSelectedChoiceId (keeps flow stable; next scenario reset is in continueNextScenario).
     setOtherSubmitting(true);
     try {
       const rid = await ensureRunId();
@@ -476,7 +477,7 @@ export default function BtyArenaPage() {
       runId: undefined,
       otherSubmitted: undefined,
     });
-    console.log("[arena] continueNextScenario applied", { phase: "CHOOSING", selectedChoiceId: null });
+    console.log("[arena] continueNextScenario applied", { step: 1, phase: "CHOOSING" });
 
     fetch("/api/arena/run", {
       method: "POST",
