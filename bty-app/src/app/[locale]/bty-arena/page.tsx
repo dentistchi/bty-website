@@ -195,7 +195,24 @@ export default function BtyArenaPage() {
   const [runId, setRunId] = React.useState<string | null>(null);
   const [otherOpen, setOtherOpen] = React.useState(false);
   const [otherText, setOtherText] = React.useState("");
+  const [otherSubmitting, setOtherSubmitting] = React.useState(false);
   const [otherSubmitted, setOtherSubmitted] = React.useState(false);
+
+  React.useEffect(() => {
+    console.log("[arena] otherOpen", otherOpen);
+  }, [otherOpen]);
+
+  React.useEffect(() => {
+    if (!otherOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOtherOpen(false);
+        setOtherText("");
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [otherOpen]);
 
   React.useEffect(() => {
     console.log("[arena] step", { step, phase, runId: runId ?? null });
@@ -338,21 +355,25 @@ export default function BtyArenaPage() {
   }
 
   async function submitOther() {
-    const rid = await ensureRunId();
-    const payload = {
-      runId: rid,
-      scenarioId: current.scenarioId,
-      step: 2,
-      eventType: "OTHER_SELECTED",
-      xp: 0,
-    };
-    console.log("[arena] postArenaEvent (other)", { step: payload.step, eventType: payload.eventType, scenarioId: payload.scenarioId });
-    await postArenaEvent(payload);
+    setOtherSubmitting(true);
+    try {
+      const rid = await ensureRunId();
+      const payload = {
+        runId: rid,
+        scenarioId: current.scenarioId,
+        step: 2,
+        eventType: "OTHER_SELECTED",
+        xp: 0,
+      };
+      console.log("[arena] postArenaEvent (other)", { step: payload.step, eventType: payload.eventType, scenarioId: payload.scenarioId });
+      await postArenaEvent(payload);
+      setOtherSubmitted(true);
+      persist({ otherSubmitted: true });
+    } finally {
+      setOtherSubmitting(false);
+    }
     setOtherOpen(false);
     setOtherText("");
-    setOtherSubmitted(true);
-    // Do not change phase/step: Other is event-only; flow stays CHOOSING -> user continues via "Other submitted" -> goToReflection
-    persist({ otherSubmitted: true });
   }
 
   function goToReflection() {
@@ -441,6 +462,7 @@ export default function BtyArenaPage() {
     setRunId(null);
     setOtherOpen(false);
     setOtherText("");
+    setOtherSubmitting(false);
     setOtherSubmitted(false);
 
     persist({
@@ -495,6 +517,7 @@ export default function BtyArenaPage() {
     setRunId(null);
     setOtherOpen(false);
     setOtherText("");
+    setOtherSubmitting(false);
     setOtherSubmitted(false);
     setSystemMessage(SYSTEM_MESSAGES.find((m) => m.id === "arch_init") ?? null);
 
@@ -591,51 +614,6 @@ export default function BtyArenaPage() {
                 Other (Write your own)
               </button>
             </div>
-            {otherOpen && (
-              <div style={{ marginTop: 12, padding: 12, border: "1px solid #eee", borderRadius: 10 }}>
-                <textarea
-                  value={otherText}
-                  onChange={(e) => setOtherText(e.target.value)}
-                  placeholder="Write your own..."
-                  rows={3}
-                  style={{ width: "100%", padding: 10, borderRadius: 8, resize: "vertical" }}
-                />
-                <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={submitOther}
-                    style={{
-                      padding: "8px 16px",
-                      borderRadius: 8,
-                      border: "none",
-                      background: "#111",
-                      color: "white",
-                      cursor: "pointer",
-                      fontSize: 14,
-                    }}
-                  >
-                    Submit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOtherOpen(false);
-                      setOtherText("");
-                    }}
-                    style={{
-                      padding: "8px 16px",
-                      borderRadius: 8,
-                      border: "1px solid #e5e5e5",
-                      background: "white",
-                      cursor: "pointer",
-                      fontSize: 14,
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
           </>
         )}
 
@@ -687,6 +665,90 @@ export default function BtyArenaPage() {
           />
         )}
       </div>
+
+      {otherOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            role="presentation"
+            onClick={() => {
+              setOtherOpen(false);
+              setOtherText("");
+            }}
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(0,0,0,0.35)",
+            }}
+          />
+          <div
+            role="dialog"
+            aria-label="Other (Write your own)"
+            style={{
+              position: "relative",
+              width: "min(640px, 92vw)",
+              background: "white",
+              borderRadius: 16,
+              padding: 16,
+              boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontWeight: 800, marginBottom: 8 }}>Other (Write your own)</div>
+            <textarea
+              value={otherText}
+              onChange={(e) => setOtherText(e.target.value)}
+              placeholder="Write your own..."
+              rows={3}
+              style={{ width: "100%", padding: 10, borderRadius: 8, resize: "vertical", boxSizing: "border-box" }}
+            />
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 10 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setOtherOpen(false);
+                  setOtherText("");
+                }}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  border: "1px solid #e5e5e5",
+                  background: "white",
+                  cursor: "pointer",
+                  fontSize: 14,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={otherSubmitting || otherText.trim().length === 0}
+                onClick={submitOther}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: "#111",
+                  color: "white",
+                  cursor: otherSubmitting || otherText.trim().length === 0 ? "not-allowed" : "pointer",
+                  fontSize: 14,
+                  opacity: otherSubmitting || otherText.trim().length === 0 ? 0.6 : 1,
+                }}
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
