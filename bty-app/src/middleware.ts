@@ -15,7 +15,8 @@ function getLocale(pathname: string): (typeof LOCALES)[number] | null {
 function isPublicPath(pathname: string) {
   if (pathname.startsWith("/_next")) return true;
   if (pathname.startsWith("/favicon")) return true;
-  if (pathname.startsWith("/api")) return true;
+  if (pathname.startsWith("/api/auth")) return true;
+  if (pathname.startsWith("/api")) return false;
   if (pathname === "/") return true;
 
   const locale = getLocale(pathname);
@@ -109,18 +110,17 @@ export async function middleware(req: NextRequest) {
   const { data } = await supabase.auth.getUser();
   const user = data.user;
 
-  const cookieCount = req.cookies.getAll().length;
+  res.headers.set("x-mw-hit", "1");
   res.headers.set("x-mw-user", user ? "1" : "0");
-  res.headers.set("x-mw-cookie-count", String(cookieCount));
   res.headers.set("x-mw-path", pathname);
 
   if (!user) {
     const login = new URL(`/${locale}/bty/login`, req.url);
     login.searchParams.set("next", pathname + req.nextUrl.search);
-    const redirectRes = NextResponse.redirect(login);
+    const redirectRes = NextResponse.redirect(login, 303);
     redirectRes.headers.set("Cache-Control", "no-store");
+    redirectRes.headers.set("x-mw-hit", "1");
     redirectRes.headers.set("x-mw-user", "0");
-    redirectRes.headers.set("x-mw-cookie-count", String(cookieCount));
     redirectRes.headers.set("x-mw-path", pathname);
     for (const c of res.cookies.getAll()) {
       redirectRes.cookies.set(c.name, c.value, { path: "/", sameSite: "lax", secure: true, httpOnly: true });
@@ -128,7 +128,6 @@ export async function middleware(req: NextRequest) {
     return redirectRes;
   }
 
-  res.headers.set("x-mw-hit", "1");
   return res;
 }
 
