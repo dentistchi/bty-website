@@ -8,11 +8,9 @@ export type ArenaHeaderProps = {
   runId: string | null;
   onPause: () => void;
   onReset: () => void;
-  /** When false, Pause button is hidden (MVP: reduce confusion). Default true. */
-  showPause?: boolean;
 };
 
-export function ArenaHeader({ step, phase, runId, onPause, onReset, showPause = true }: ArenaHeaderProps) {
+export function ArenaHeader({ step, phase, runId, onPause, onReset }: ArenaHeaderProps) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
       <div>
@@ -27,11 +25,9 @@ export function ArenaHeader({ step, phase, runId, onPause, onReset, showPause = 
       </div>
 
       <div style={{ display: "flex", gap: 8 }}>
-        {showPause && (
-          <button onClick={onPause} style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #ddd" }}>
-            Pause
-          </button>
-        )}
+        <button onClick={onPause} style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #ddd" }}>
+          Pause
+        </button>
         <button onClick={onReset} style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #ddd" }}>
           Reset
         </button>

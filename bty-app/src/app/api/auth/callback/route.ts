@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getSupabaseServerWithCookieCapture } from "@/lib/supabase-server";
+import { getSupabaseServer } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
 
@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const code = url.searchParams.get("code");
   const next = url.searchParams.get("next") || "/";
 
-  const { supabase, applyCookiesToResponse } = await getSupabaseServerWithCookieCapture(req);
+  const supabase = await getSupabaseServer();
 
   if (!code) {
     return NextResponse.redirect(new URL(`/login?error=missing_code`, url.origin));
@@ -23,7 +23,5 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const res = NextResponse.redirect(new URL(next, url.origin));
-  applyCookiesToResponse(res);
-  return res;
+  return NextResponse.redirect(new URL(next, url.origin));
 }

@@ -29,39 +29,29 @@ function isPublicPath(pathname: string) {
   return false;
 }
 
-const AUTH_COOKIE_BASE = "sb-mveycersmqfiuddslnrj-auth-token";
-const AUTH_COOKIE_PATHS = [
-  "/",
-  "/api",
-  "/en",
-  "/ko",
-  "/en/bty",
-  "/ko/bty",
-  "/en/bty-arena",
-  "/ko/bty-arena",
-];
-
 function expireAuthCookies(res: NextResponse, host: string) {
-  const names = [
-    AUTH_COOKIE_BASE,
-    `${AUTH_COOKIE_BASE}.0`,
-    `${AUTH_COOKIE_BASE}.1`,
-    `${AUTH_COOKIE_BASE}.2`,
-    `${AUTH_COOKIE_BASE}.3`,
-  ];
-  const opts = {
-    domain: host,
-    expires: new Date(0),
-    maxAge: 0,
-    secure: true,
-    httpOnly: true,
-    sameSite: "lax" as const,
-  };
+  const base = "sb-mveycersmqfiuddslnrj-auth-token";
+  const names = [base, `${base}.0`, `${base}.1`, `${base}.2`, `${base}.3`];
 
-  for (const path of AUTH_COOKIE_PATHS) {
-    for (const name of names) {
-      res.cookies.set(name, "", { ...opts, path });
-    }
+  for (const name of names) {
+    res.cookies.set(name, "", {
+      path: "/",
+      domain: host,
+      expires: new Date(0),
+      maxAge: 0,
+      secure: true,
+      httpOnly: true,
+      sameSite: "lax",
+    });
+    res.cookies.set(name, "", {
+      path: "/api",
+      domain: host,
+      expires: new Date(0),
+      maxAge: 0,
+      secure: true,
+      httpOnly: true,
+      sameSite: "lax",
+    });
   }
   res.headers.set("x-auth-logout-cookie-names", names.join(","));
 }
@@ -97,7 +87,6 @@ export async function middleware(req: NextRequest) {
 
   const res = NextResponse.next();
 
-  const hostname = req.nextUrl.hostname;
   const supabase = createServerClient(url, key, {
     cookies: {
       getAll() {
@@ -108,7 +97,6 @@ export async function middleware(req: NextRequest) {
           res.cookies.set(name, value, {
             ...(options ?? {}),
             path: "/",
-            domain: hostname,
             sameSite: "lax",
             secure: true,
             httpOnly: true,
