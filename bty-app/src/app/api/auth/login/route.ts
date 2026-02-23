@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { appendSetCookies } from "@/lib/bty/cookies/setCookie";
+import { expireAuthCookiesEverywhere } from "@/lib/bty/cookies/authCookieMaintenance";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -11,12 +12,14 @@ export const revalidate = 0;
 function sanitizeNext(raw: string | null): string {
   const fallback = "/en/bty/dashboard";
   if (!raw) return fallback;
+
   let next = raw;
   try {
     next = decodeURIComponent(raw);
   } catch {
     next = raw;
   }
+
   if (!next.startsWith("/")) return fallback;
   if (next.startsWith("/en/bty/login") || next.startsWith("/ko/bty/login")) return fallback;
   return next;
@@ -43,6 +46,9 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.json({ ok: true, next: nextPath });
     res.headers.set("Cache-Control", "no-store");
 
+    // 로그인 시점에 과거 잘못된 Path 쿠키를 먼저 만료
+    expireAuthCookiesEverywhere(res);
+
     const supabase = createServerClient(url, key, {
       cookies: {
         getAll() {
@@ -50,8 +56,6 @@ export async function POST(req: NextRequest) {
         },
         setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
           appendSetCookies(res, cookies);
-          res.headers.set("x-cookie-writer", "login");
-          res.headers.set("x-auth-set-cookie-count", String(cookies.length));
         },
       },
     });
@@ -66,6 +70,8 @@ export async function POST(req: NextRequest) {
     }
 
     await supabase.auth.getSession();
+
+    res.headers.set("x-auth-next", nextPath);
 
     return res;
   } catch (e: unknown) {
