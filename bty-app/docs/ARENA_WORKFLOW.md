@@ -9,6 +9,12 @@
 - [x] 4-4 Deploy & Verification
 - [x] 1 Core XP Engine
 - [ ] 2 7-Step Simulation
+- [x] 2-2(A) Step 1 Start Gate
+- [x] 2-2(B) Step 6 Consolidation
+- [x] 3-2 Arena UI 컴포넌트 분리
+- [x] 3-3 Dashboard 뼈대 구현
+- [x] 3-4 Run 완료 마킹 (COMPLETED)
+- [x] 9-2 Create arena_profiles table
 - [ ] 3 Dashboard UI
 
 ---

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
-import { LangSwitch } from "@/components/LangSwitch";
+import { LocaleLayoutHeader } from "@/components/LocaleLayoutHeader";
 
 type Props = { children: ReactNode; params: Promise<{ locale: string }> };
 
@@ -15,9 +15,7 @@ export default async function LocaleLayout({ children, params }: Props) {
   }
   return (
     <>
-      <div className="fixed top-2 right-2 z-[9998]">
-        <LangSwitch />
-      </div>
+      <LocaleLayoutHeader />
       {children}
     </>
   );
