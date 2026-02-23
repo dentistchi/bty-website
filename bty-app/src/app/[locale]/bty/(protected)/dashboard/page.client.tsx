@@ -40,6 +40,43 @@ export default function DashboardClient() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
+  const [codeNameDraft, setCodeNameDraft] = React.useState("");
+  const [codeNameSaving, setCodeNameSaving] = React.useState(false);
+  const [codeNameError, setCodeNameError] = React.useState<string | null>(null);
+
+  async function saveCodeName() {
+    try {
+      setCodeNameSaving(true);
+      setCodeNameError(null);
+      const res = await fetch("/api/arena/code-name", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codeName: codeNameDraft }),
+        credentials: "same-origin",
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        reason?: string;
+        codeName?: string;
+        codeHidden?: boolean;
+      };
+      if (!res.ok) {
+        const msg = json?.reason ? `${json.error ?? "Error"} (${json.reason})` : (json?.error ?? `HTTP_${res.status}`);
+        throw new Error(msg);
+      }
+      const next = await fetch("/api/arena/core-xp", { credentials: "same-origin" }).then(async (r) =>
+        r.ok ? ((await r.json()) as CoreXpRes) : core
+      );
+      if (next) setCore(next);
+      setCodeNameDraft("");
+    } catch (e: unknown) {
+      setCodeNameError(e instanceof Error ? e.message : "FAILED_TO_SAVE");
+    } finally {
+      setCodeNameSaving(false);
+    }
+  }
+
   React.useEffect(() => {
     let alive = true;
     setStreak(readLocalStreak());
@@ -188,6 +225,78 @@ export default function DashboardClient() {
             <div style={{ marginTop: 6, fontSize: 12, opacity: 0.6 }}>
               Code Name: {core?.codeHidden ? "Hidden" : core?.codeName ?? "Unassigned"}
             </div>
+          </div>
+
+          <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
+            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>CODE NAME</div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 18 }}>
+                  {core?.codeHidden ? "Hidden-777" : (core?.codeName ?? "Not set")}
+                </div>
+                <div style={{ marginTop: 6, fontSize: 13, opacity: 0.75 }}>
+                  {core?.codeHidden
+                    ? "700+ zone: Code Name is hidden & locked."
+                    : "Set your Code Name (3–20 chars, A–Z / 0–9 / hyphen)."}
+                </div>
+              </div>
+
+              {!core?.codeHidden && (
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    value={codeNameDraft}
+                    onChange={(e) => setCodeNameDraft(e.target.value)}
+                    placeholder="e.g. Builder-07"
+                    style={{
+                      padding: "10px 12px",
+                      borderRadius: 10,
+                      border: "1px solid #ddd",
+                      minWidth: 220,
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={saveCodeName}
+                    disabled={codeNameSaving || codeNameDraft.trim().length === 0}
+                    style={{
+                      padding: "10px 12px",
+                      borderRadius: 10,
+                      border: "1px solid #111",
+                      background: "#111",
+                      color: "white",
+                      opacity: codeNameSaving || codeNameDraft.trim().length === 0 ? 0.5 : 1,
+                      cursor:
+                        codeNameSaving || codeNameDraft.trim().length === 0 ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {codeNameSaving ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {codeNameError && (
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: 10,
+                  borderRadius: 10,
+                  border: "1px solid #f1c0c0",
+                  background: "#fff7f7",
+                }}
+              >
+                <div style={{ fontWeight: 800 }}>Save failed</div>
+                <div style={{ marginTop: 6, opacity: 0.85 }}>{codeNameError}</div>
+              </div>
+            )}
           </div>
 
           <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
