@@ -33,32 +33,26 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), password }),
         credentials: "include",
-        redirect: "manual",
       });
 
-      if (r.status === 303) {
-        const loc = r.headers.get("Location");
-        if (loc) {
-          window.location.assign(loc);
-          return;
-        }
-      }
+      const data = (await r.json().catch(() => ({}))) as {
+        ok?: boolean;
+        next?: string;
+        error?: string;
+        detail?: string;
+      };
 
-      const raw = await r.text();
-      let json: { ok?: boolean; error?: string } = {};
-      try {
-        json = JSON.parse(raw) as { ok?: boolean; error?: string };
-      } catch {}
-      if (!r.ok) {
-        throw new Error((json?.error ?? raw) || "Login failed");
-      }
-      if (json?.ok && r.status === 200) {
-        const btyRoot = `/${locale}/bty`;
-        const dest = (next === btyRoot || next === "/bty") ? `/${locale}/bty/mentor` : next;
-        window.location.assign(dest);
+      if (data.ok && typeof data.next === "string") {
+        window.location.assign(data.next);
         return;
       }
-      throw new Error(json?.error ?? "Login failed");
+
+      if (!r.ok) {
+        const msg = data.detail ?? data.error ?? "Login failed";
+        throw new Error(msg);
+      }
+
+      throw new Error(data.error ?? "Login failed");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

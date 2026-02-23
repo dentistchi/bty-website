@@ -18,12 +18,8 @@ function sanitizeNext(raw: string | null): string {
     next = raw;
   }
 
-  // same-origin path only
   if (!next.startsWith("/")) return fallback;
-
-  // prevent login loop
   if (next.startsWith("/en/bty/login") || next.startsWith("/ko/bty/login")) return fallback;
-
   return next;
 }
 
@@ -32,8 +28,10 @@ export async function POST(req: NextRequest) {
     const requestUrl = new URL(req.url);
     const nextPath = sanitizeNext(requestUrl.searchParams.get("next"));
 
-    const res = NextResponse.json({ ok: true }, { status: 200 });
+    const res = NextResponse.json({ ok: false }, { status: 200 });
     res.headers.set("Cache-Control", "no-store");
+    res.headers.set("x-auth-login", "1");
+    res.headers.set("x-auth-next", nextPath);
 
     const supabase = createServerClient(url, key, {
       cookies: {
@@ -59,37 +57,35 @@ export async function POST(req: NextRequest) {
     const password = String(body?.password ?? "");
 
     if (!email || !password) {
-      return NextResponse.json({ error: "INVALID_CREDENTIALS" }, { status: 400 });
+      const out = NextResponse.json({ error: "INVALID_CREDENTIALS" }, { status: 400 });
+      res.headers.forEach((v, k) => out.headers.set(k, v));
+      return out;
     }
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      return NextResponse.json(
+      const out = NextResponse.json(
         { error: "LOGIN_FAILED", detail: error.message },
         { status: 401 }
       );
+      res.headers.forEach((v, k) => out.headers.set(k, v));
+      return out;
     }
 
-    const redirectRes = NextResponse.redirect(new URL(nextPath, req.url), 303);
-    redirectRes.headers.set("Cache-Control", "no-store");
-    redirectRes.headers.set("x-auth-next", nextPath);
-
+    const out = NextResponse.json({ ok: true, next: nextPath }, { status: 200 });
+    res.headers.forEach((v, k) => out.headers.set(k, v));
     for (const c of res.cookies.getAll()) {
-      redirectRes.cookies.set(c.name, c.value, {
+      out.cookies.set(c.name, c.value, {
         path: "/",
         sameSite: "lax",
         secure: true,
         httpOnly: true,
       });
     }
-
-    return redirectRes;
+    return out;
   } catch (e: unknown) {
     return NextResponse.json(
-      {
-        error: e instanceof Error ? e.message : String(e),
-        where: "/api/auth/login POST",
-      },
+      { error: e instanceof Error ? e.message : String(e), where: "/api/auth/login POST" },
       { status: 500 }
     );
   }
