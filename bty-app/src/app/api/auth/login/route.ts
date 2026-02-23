@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
     applyCookiesToResponse(res);
+    res.headers.set("x-auth-cookie-path", "/");
     return res;
   } catch (e: any) {
     // ✅ "빈 body 500" 방지: 항상 JSON
