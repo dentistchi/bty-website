@@ -5,8 +5,10 @@ import React from "react";
 export type PrimaryActionsProps = {
   confirmDisabled: boolean;
   continueDisabled: boolean;
-  onConfirm: () => void;
-  onContinue: () => void;
+  onConfirm: () => Promise<void> | void;
+  onContinue: () => Promise<void> | void;
+  /** When false, Continue button is not rendered (e.g. during CHOOSING). Default true. */
+  showContinue?: boolean;
 };
 
 export function PrimaryActions({
@@ -14,6 +16,7 @@ export function PrimaryActions({
   continueDisabled,
   onConfirm,
   onContinue,
+  showContinue = true,
 }: PrimaryActionsProps) {
   return (
     <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
@@ -33,20 +36,22 @@ export function PrimaryActions({
         Confirm
       </button>
 
-      <button
-        onClick={onContinue}
-        disabled={continueDisabled}
-        style={{
-          padding: "12px 14px",
-          borderRadius: 12,
-          border: "1px solid #ddd",
-          background: "white",
-          opacity: continueDisabled ? 0.5 : 1,
-          cursor: continueDisabled ? "not-allowed" : "pointer",
-        }}
-      >
-        Continue
-      </button>
+      {showContinue !== false && (
+        <button
+          onClick={onContinue}
+          disabled={continueDisabled}
+          style={{
+            padding: "12px 14px",
+            borderRadius: 12,
+            border: "1px solid #ddd",
+            background: "white",
+            opacity: continueDisabled ? 0.5 : 1,
+            cursor: continueDisabled ? "not-allowed" : "pointer",
+          }}
+        >
+          Continue
+        </button>
+      )}
     </div>
   );
 }
