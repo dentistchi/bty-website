@@ -2,6 +2,7 @@
 
 import React from "react";
 import BtyTopNav from "@/components/bty/BtyTopNav";
+import { arenaFetch } from "@/lib/http/arenaFetch";
 
 type WeeklyXpRes = { weekStartISO?: string | null; weekEndISO?: string | null; xpTotal: number; count?: number };
 type CoreXpRes = { coreXpTotal: number; stage: number; stageProgress: number; codeName: string | null; codeHidden: boolean };
@@ -49,26 +50,8 @@ export default function DashboardClient() {
     try {
       setCodeNameSaving(true);
       setCodeNameError(null);
-      const res = await fetch("/api/arena/code-name", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ codeName: codeNameDraft }),
-        credentials: "include",
-      });
-      const json = (await res.json().catch(() => ({}))) as {
-        ok?: boolean;
-        error?: string;
-        reason?: string;
-        codeName?: string;
-        codeHidden?: boolean;
-      };
-      if (!res.ok) {
-        const msg = json?.reason ? `${json.error ?? "Error"} (${json.reason})` : (json?.error ?? `HTTP_${res.status}`);
-        throw new Error(msg);
-      }
-      const next = await fetch("/api/arena/core-xp", { credentials: "include" }).then(async (r) =>
-        r.ok ? ((await r.json()) as CoreXpRes) : core
-      );
+      await arenaFetch("/api/arena/code-name", { json: { codeName: codeNameDraft } });
+      const next = await arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => core);
       if (next) setCore(next);
       setCodeNameDraft("");
     } catch (e: unknown) {
@@ -87,24 +70,20 @@ export default function DashboardClient() {
         setLoading(true);
         setError(null);
 
-        const w = await fetch("/api/arena/weekly-xp", { credentials: "include" })
-          .then(async (res) => {
-            if (!res.ok) throw new Error(`weekly-xp ${res.status}`);
-            return (await res.json()) as WeeklyXpRes;
-          })
-          .catch(() => ({ xpTotal: 0 } as WeeklyXpRes));
+        const w = await arenaFetch<WeeklyXpRes>("/api/arena/weekly-xp").catch(
+          () => ({ xpTotal: 0 } as WeeklyXpRes)
+        );
 
+        const fallbackCore: CoreXpRes = {
+          coreXpTotal: 0,
+          stage: 1,
+          stageProgress: 0,
+          codeName: null,
+          codeHidden: true,
+        };
         const [r, c] = await Promise.all([
-          fetch("/api/arena/runs?limit=10", { credentials: "include" })
-            .then(async (res) => (res.ok ? ((await res.json()) as RunsRes) : { runs: [] }))
-            .catch(() => ({ runs: [] as RunRow[] })),
-          fetch("/api/arena/core-xp", { credentials: "include" })
-            .then(async (res) =>
-              res.ok
-                ? ((await res.json()) as CoreXpRes)
-                : ({ coreXpTotal: 0, stage: 1, stageProgress: 0, codeName: null, codeHidden: true })
-            )
-            .catch(() => ({ coreXpTotal: 0, stage: 1, stageProgress: 0, codeName: null, codeHidden: true })),
+          arenaFetch<RunsRes>("/api/arena/runs?limit=10").catch(() => ({ runs: [] as RunRow[] })),
+          arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => fallbackCore),
         ]);
 
         if (!alive) return;

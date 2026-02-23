@@ -14,6 +14,7 @@ import {
   type SystemMsg,
 } from "@/components/bty-arena";
 import BtyTopNav from "@/components/bty/BtyTopNav";
+import { arenaFetch } from "@/lib/http/arenaFetch";
 
 // ---------- types for local UI state ----------
 type ArenaPhase = "CHOOSING" | "SHOW_RESULT" | "FOLLOW_UP" | "DONE";
@@ -148,13 +149,9 @@ function updateStreak(): { streak: number; message?: SystemMsg } {
 // ---------- API helpers (runId race 방지 + 이벤트 전송) ----------
 async function createRun(scenarioId: string, locale: string | undefined): Promise<string | null> {
   try {
-    const res = await fetch("/api/arena/run", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scenarioId, locale: locale ?? null }),
-      credentials: "include",
+    const data = await arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", {
+      json: { scenarioId, locale: locale ?? null },
     });
-    const data = (await res.json()) as { run?: { run_id: string } };
     return data.run?.run_id ?? null;
   } catch (e) {
     console.warn("Arena createRun failed", e);
@@ -169,14 +166,7 @@ async function postArenaEvent(payload: Record<string, unknown>): Promise<void> {
   }
   console.log("[arena] post event", payload);
   try {
-    const res = await fetch("/api/arena/event", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      credentials: "include",
-    });
-    console.log("[arena] event res", res.status);
-    if (!res.ok) throw new Error(await res.text());
+    await arenaFetch("/api/arena/event", { json: payload });
   } catch (e) {
     console.warn("Arena postArenaEvent failed", e);
   }
@@ -266,14 +256,10 @@ export default function BtyArenaPage() {
     setScenario(s);
     if (streakInfo.message) setSystemMessage(streakInfo.message);
 
-    fetch("/api/arena/run", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scenarioId: s.scenarioId, locale }),
-      credentials: "include",
+    arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", {
+      json: { scenarioId: s.scenarioId, locale },
     })
-      .then((r) => r.json())
-      .then((data: { run?: { run_id: string } }) => {
+      .then((data) => {
         if (data.run?.run_id) {
           setRunId(data.run.run_id);
           saveState({
@@ -462,12 +448,7 @@ export default function BtyArenaPage() {
     const currentRunId = runId;
     if (currentRunId) {
       try {
-        await fetch("/api/arena/run/complete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ runId: currentRunId }),
-          credentials: "include",
-        });
+        await arenaFetch("/api/arena/run/complete", { json: { runId: currentRunId } });
       } catch (e) {
         console.warn("Arena run complete failed", e);
       }
@@ -488,14 +469,10 @@ export default function BtyArenaPage() {
     setOtherSubmitted(false);
     console.log("[arena] continueNextScenario applied", { step: 1, phase: "CHOOSING" });
 
-    fetch("/api/arena/run", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scenarioId: next.scenarioId, locale }),
-      credentials: "include",
+    arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", {
+      json: { scenarioId: next.scenarioId, locale },
     })
-      .then((r) => r.json())
-      .then((data: { run?: { run_id: string } }) => {
+      .then((data) => {
         if (data.run?.run_id) {
           setRunId(data.run.run_id);
           saveState({
@@ -538,14 +515,10 @@ export default function BtyArenaPage() {
     setOtherSubmitted(false);
     setSystemMessage(SYSTEM_MESSAGES.find((m) => m.id === "arch_init") ?? null);
 
-    fetch("/api/arena/run", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scenarioId: next.scenarioId, locale }),
-      credentials: "include",
+    arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", {
+      json: { scenarioId: next.scenarioId, locale },
     })
-      .then((r) => r.json())
-      .then((data: { run?: { run_id: string } }) => {
+      .then((data) => {
         if (data.run?.run_id) {
           setRunId(data.run.run_id);
           saveState({

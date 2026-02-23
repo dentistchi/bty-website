@@ -2,6 +2,7 @@
 
 import React from "react";
 import BtyTopNav from "@/components/bty/BtyTopNav";
+import { arenaFetch } from "@/lib/http/arenaFetch";
 
 type Tier = "Bronze" | "Silver" | "Gold" | "Platinum";
 
@@ -29,17 +30,7 @@ export default function LeaderboardPage() {
         setLoading(true);
         setError(null);
 
-        const res = await fetch("/api/arena/leaderboard", { method: "GET", credentials: "include" });
-        const json = (await res.json().catch(() => ({}))) as {
-          leaderboard?: Row[];
-          error?: string;
-        };
-
-        if (!res.ok) {
-          const msg = json?.error ? String(json.error) : `HTTP_${res.status}`;
-          throw new Error(msg);
-        }
-
+        const json = await arenaFetch<{ leaderboard?: Row[] }>("/api/arena/leaderboard");
         if (!cancelled) setRows((json.leaderboard ?? []) as Row[]);
       } catch (e: unknown) {
         if (!cancelled)
