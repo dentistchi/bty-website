@@ -96,6 +96,8 @@ function stepFromPhase(phase: ArenaPhase): ArenaStep {
   }
 }
 
+const OTHER_CHOICE_ID = "__OTHER__";
+
 const REFLECTION_OPTIONS = [
   "내가 놓친 시스템 원인은?",
   "다음엔 어떤 신호를 더 빨리 볼까?",
@@ -109,6 +111,7 @@ const SYSTEM_MESSAGES: SystemMsg[] = [
   { id: "gratitude", en: "Gratitude frequency synchronized. Cultural impact detected.", ko: "감사 로그 기록됨. 문화적 영향이 감지되었습니다." },
   { id: "consistency", en: "Consistency detected. Operational rhythm established.", ko: "Consistency detected. 운영 리듬이 형성되었습니다." },
   { id: "integrity", en: "Integrity spike detected. Ethical alignment increased.", ko: "Integrity spike detected. 원칙 정렬이 강화되었습니다." },
+  { id: "other_recorded", en: "Other recorded.", ko: "Other recorded." },
 ];
 
 // streak: 하루 1회 방문 기준(초간단)
@@ -232,8 +235,9 @@ export default function BtyArenaPage() {
         step = 1;
         phase = "CHOOSING";
       }
-      // Safety: phase not CHOOSING but no selection => inconsistent; force CHOOSING so choices are active
-      if (phase !== "CHOOSING" && (saved.selectedChoiceId == null || saved.selectedChoiceId === undefined)) {
+      const noSelection = saved.selectedChoiceId == null || saved.selectedChoiceId === undefined;
+      // Safety: phase not CHOOSING but no selection => inconsistent; force CHOOSING (unless Other was submitted)
+      if (phase !== "CHOOSING" && noSelection && !saved.otherSubmitted) {
         phase = "CHOOSING";
         step = 1;
       }
@@ -241,7 +245,7 @@ export default function BtyArenaPage() {
       setPhase(phase);
       setStep(step as ArenaStep);
       setReflectionIndex(typeof saved.reflectionIndex === "number" ? saved.reflectionIndex : null);
-      setSelectedChoiceId(saved.selectedChoiceId ?? null);
+      setSelectedChoiceId(noSelection && saved.otherSubmitted ? OTHER_CHOICE_ID : (saved.selectedChoiceId ?? null));
       setOtherSubmitted(Boolean(saved.otherSubmitted));
       setFollowUpIndex(typeof saved.followUpIndex === "number" ? saved.followUpIndex : null);
       setLastXp(saved.lastXp ?? 0);
@@ -327,7 +331,7 @@ export default function BtyArenaPage() {
   }
 
   async function onConfirmChoice() {
-    if (!selectedChoiceId) return;
+    if (!selectedChoiceId || selectedChoiceId === OTHER_CHOICE_ID) return;
 
     const c = current.choices.find((x) => x.choiceId === selectedChoiceId);
     if (!c) return;
@@ -367,7 +371,6 @@ export default function BtyArenaPage() {
   }
 
   async function submitOther() {
-    // Event-only: do NOT setStep, setPhase, setSelectedChoiceId, or persist (avoids resume applying bad state).
     setOtherSubmitting(true);
     try {
       const rid = await ensureRunId();
@@ -380,7 +383,13 @@ export default function BtyArenaPage() {
       };
       console.log("[arena] postArenaEvent (other)", { step: payload.step, eventType: payload.eventType, scenarioId: payload.scenarioId });
       await postArenaEvent(payload);
-      setOtherSubmitted(true);
+      const otherMsg = SYSTEM_MESSAGES.find((m) => m.id === "other_recorded") ?? SYSTEM_MESSAGES[0];
+      setLastXp(0);
+      setSystemMessage(otherMsg);
+      setPhase("SHOW_RESULT");
+      setStep(3);
+      setSelectedChoiceId(OTHER_CHOICE_ID);
+      persist({ phase: "SHOW_RESULT", step: 3, lastXp: 0, lastSystemMessage: "other_recorded", selectedChoiceId: OTHER_CHOICE_ID });
     } finally {
       setOtherSubmitting(false);
     }
@@ -599,16 +608,20 @@ export default function BtyArenaPage() {
           <>
             <ChoiceList
               choices={current.choices}
-              selectedChoiceId={selectedChoiceId}
+              selectedChoiceId={selectedChoiceId === OTHER_CHOICE_ID ? null : selectedChoiceId}
               onSelect={(id) => {
                 setSelectedChoiceId(id);
                 setOtherOpen(false);
+                setOtherText("");
               }}
             />
             <div style={{ marginTop: 12 }}>
               <button
                 type="button"
-                onClick={() => setOtherOpen(true)}
+                onClick={() => {
+                  setSelectedChoiceId(OTHER_CHOICE_ID);
+                  setOtherOpen(true);
+                }}
                 style={{
                   padding: "12px 16px",
                   borderRadius: 14,
@@ -625,19 +638,22 @@ export default function BtyArenaPage() {
         )}
 
         <PrimaryActions
-          confirmDisabled={step !== 2 || !selectedChoiceId}
+          confirmDisabled={step !== 2 || !selectedChoiceId || selectedChoiceId === OTHER_CHOICE_ID}
           continueDisabled={step !== 7}
           onConfirm={onConfirmChoice}
           onContinue={continueNextScenario}
+          showContinue={phase !== "CHOOSING"}
         />
 
-        {(step === 2 || step === 3) && otherSubmitted && !choice && (
+        {step >= 3 && selectedChoiceId === OTHER_CHOICE_ID && (
           <div style={{ marginTop: 18, padding: 16, border: "1px solid #e5e5e5", borderRadius: 14 }}>
-            <p style={{ margin: "0 0 12px", fontWeight: 500 }}>Other submitted</p>
+            <p style={{ margin: "0 0 8px", fontWeight: 600 }}>{systemMessage?.ko ?? systemMessage?.en ?? "Other recorded."}</p>
+            <p style={{ margin: 0, fontSize: 14, opacity: 0.8 }}>XP +{lastXp}</p>
             <button
               type="button"
-              onClick={goToReflection}
+              onClick={continueNextScenario}
               style={{
+                marginTop: 12,
                 padding: "10px 20px",
                 borderRadius: 10,
                 border: "none",
