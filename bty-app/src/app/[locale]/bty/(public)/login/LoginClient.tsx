@@ -2,6 +2,14 @@
 
 import { useMemo, useState } from "react";
 
+async function fixCookiePath() {
+  try {
+    await fetch("/api/auth/fix-cookie-path", { method: "POST", credentials: "include" });
+  } catch {
+    // ignore
+  }
+}
+
 function safeNext(nextPath: string, locale: "en" | "ko") {
   if (!nextPath || typeof nextPath !== "string") return `/${locale}/bty`;
   if (!nextPath.startsWith("/")) return `/${locale}/bty`;
@@ -43,6 +51,7 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
       };
 
       if (data.ok && typeof data.next === "string") {
+        await fixCookiePath();
         window.location.assign(data.next);
         return;
       }
