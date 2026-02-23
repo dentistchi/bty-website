@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { NextRequest, NextResponse } from "next/server";
+import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 
 function computeStage(coreXpTotal: number) {
   const rawStage = Math.floor(coreXpTotal / 100) + 1;
@@ -9,12 +9,9 @@ function computeStage(coreXpTotal: number) {
   return { stage, stageProgress, codeHidden };
 }
 
-export async function GET() {
-  const supabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+export async function GET(req: NextRequest) {
+  const { user, supabase, base } = await requireUser(req);
+  if (!user) return unauthenticated(req, base);
 
   const { data: row, error } = await supabase
     .from("arena_profiles")
@@ -22,7 +19,11 @@ export async function GET() {
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    const out = NextResponse.json({ error: "DB_ERROR", detail: error.message }, { status: 500 });
+    copyCookiesAndDebug(base, out, req, true);
+    return out;
+  }
 
   if (!row) {
     const init = computeStage(0);
@@ -33,27 +34,35 @@ export async function GET() {
       code_name: null,
       code_hidden: init.codeHidden,
     });
-    if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
-
-    return NextResponse.json({
+    if (insErr) {
+      const out = NextResponse.json({ error: "DB_ERROR", detail: insErr.message }, { status: 500 });
+      copyCookiesAndDebug(base, out, req, true);
+      return out;
+    }
+    const out = NextResponse.json({
       coreXpTotal: 0,
       stage: init.stage,
       stageProgress: init.stageProgress,
       codeName: null,
       codeHidden: init.codeHidden,
     });
+    copyCookiesAndDebug(base, out, req, true);
+    return out;
   }
 
-  const coreXpTotal = typeof (row as { core_xp_total?: number }).core_xp_total === "number"
-    ? (row as { core_xp_total: number }).core_xp_total
-    : 0;
+  const coreXpTotal =
+    typeof (row as { core_xp_total?: number }).core_xp_total === "number"
+      ? (row as { core_xp_total: number }).core_xp_total
+      : 0;
   const calc = computeStage(coreXpTotal);
 
-  return NextResponse.json({
+  const out = NextResponse.json({
     coreXpTotal,
     stage: calc.stage,
     stageProgress: calc.stageProgress,
     codeName: (row as { code_name?: string | null }).code_name ?? null,
     codeHidden: calc.codeHidden,
   });
+  copyCookiesAndDebug(base, out, req, true);
+  return out;
 }
