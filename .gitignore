@@ -28,3 +28,14 @@ dist/
 # Duplicate / backup files
 package-lock 2.json
 .github/workflows 2/
+
+# --- local build artifacts ---
+bty-app/tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# --- local scratch / backups ---
+*.local
+* 2.md
+* 3.md
+* 2.sql
+* 3.sql

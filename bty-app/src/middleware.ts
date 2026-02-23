@@ -64,6 +64,32 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/en", req.url), 307);
   }
 
+  // API routes: run Supabase cookie refresh only (no redirect; APIs return 401 JSON)
+  if (pathname.startsWith("/api")) {
+    const res = NextResponse.next();
+    const supabase = createServerClient(url, key, {
+      cookies: {
+        getAll() {
+          return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
+        },
+        setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
+          cookies.forEach(({ name, value, options }) => {
+            res.cookies.set(name, value, {
+              ...(options ?? {}),
+              path: "/",
+              sameSite: "lax",
+              secure: true,
+              httpOnly: true,
+            });
+          });
+        },
+      },
+    });
+    await supabase.auth.getUser();
+    res.headers.set("x-mw-hit", "1");
+    return res;
+  }
+
   const locale = getLocale(pathname);
   if (!locale) {
     if (pathname.startsWith("/bty") || pathname.startsWith("/train") || pathname.startsWith("/admin")) {
@@ -132,5 +158,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/en", "/en/:path*", "/ko", "/ko/:path*", "/bty/:path*", "/train/:path*", "/admin/:path*"],
+  matcher: ["/", "/en", "/en/:path*", "/ko", "/ko/:path*", "/bty/:path*", "/train/:path*", "/admin/:path*", "/api/:path*"],
 };
