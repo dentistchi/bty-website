@@ -29,7 +29,7 @@ export default function LeaderboardPage() {
         setLoading(true);
         setError(null);
 
-        const res = await fetch("/api/arena/leaderboard", { method: "GET", credentials: "same-origin" });
+        const res = await fetch("/api/arena/leaderboard", { method: "GET", credentials: "include" });
         const json = (await res.json().catch(() => ({}))) as {
           leaderboard?: Row[];
           error?: string;

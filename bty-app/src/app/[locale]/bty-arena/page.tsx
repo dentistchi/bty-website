@@ -152,7 +152,7 @@ async function createRun(scenarioId: string, locale: string | undefined): Promis
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scenarioId, locale: locale ?? null }),
-      credentials: "same-origin",
+      credentials: "include",
     });
     const data = (await res.json()) as { run?: { run_id: string } };
     return data.run?.run_id ?? null;
@@ -173,7 +173,7 @@ async function postArenaEvent(payload: Record<string, unknown>): Promise<void> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-      credentials: "same-origin",
+      credentials: "include",
     });
     console.log("[arena] event res", res.status);
     if (!res.ok) throw new Error(await res.text());
@@ -270,7 +270,7 @@ export default function BtyArenaPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scenarioId: s.scenarioId, locale }),
-      credentials: "same-origin",
+      credentials: "include",
     })
       .then((r) => r.json())
       .then((data: { run?: { run_id: string } }) => {
@@ -466,7 +466,7 @@ export default function BtyArenaPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ runId: currentRunId }),
-          credentials: "same-origin",
+          credentials: "include",
         });
       } catch (e) {
         console.warn("Arena run complete failed", e);
@@ -492,7 +492,7 @@ export default function BtyArenaPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scenarioId: next.scenarioId, locale }),
-      credentials: "same-origin",
+      credentials: "include",
     })
       .then((r) => r.json())
       .then((data: { run?: { run_id: string } }) => {
@@ -542,7 +542,7 @@ export default function BtyArenaPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scenarioId: next.scenarioId, locale }),
-      credentials: "same-origin",
+      credentials: "include",
     })
       .then((r) => r.json())
       .then((data: { run?: { run_id: string } }) => {

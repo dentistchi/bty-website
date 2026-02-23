@@ -35,6 +35,9 @@ export function copyCookiesAndDebug(
   to.headers.set("Cache-Control", "no-store");
   to.headers.set("x-auth-user", userExists ? "1" : "0");
   to.headers.set("x-auth-path", new URL(req.url).pathname);
+  const all = req.cookies.getAll();
+  to.headers.set("x-auth-cookie-count", String(all.length));
+  to.headers.set("x-auth-cookie-names", all.slice(0, 8).map((c) => c.name).join(","));
   for (const c of from.cookies.getAll()) {
     to.cookies.set(c.name, c.value, cookieOptions);
   }

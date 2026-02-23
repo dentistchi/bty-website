@@ -53,7 +53,7 @@ export default function DashboardClient() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ codeName: codeNameDraft }),
-        credentials: "same-origin",
+        credentials: "include",
       });
       const json = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
@@ -66,7 +66,7 @@ export default function DashboardClient() {
         const msg = json?.reason ? `${json.error ?? "Error"} (${json.reason})` : (json?.error ?? `HTTP_${res.status}`);
         throw new Error(msg);
       }
-      const next = await fetch("/api/arena/core-xp", { credentials: "same-origin" }).then(async (r) =>
+      const next = await fetch("/api/arena/core-xp", { credentials: "include" }).then(async (r) =>
         r.ok ? ((await r.json()) as CoreXpRes) : core
       );
       if (next) setCore(next);
@@ -87,7 +87,7 @@ export default function DashboardClient() {
         setLoading(true);
         setError(null);
 
-        const w = await fetch("/api/arena/weekly-xp")
+        const w = await fetch("/api/arena/weekly-xp", { credentials: "include" })
           .then(async (res) => {
             if (!res.ok) throw new Error(`weekly-xp ${res.status}`);
             return (await res.json()) as WeeklyXpRes;
@@ -95,10 +95,10 @@ export default function DashboardClient() {
           .catch(() => ({ xpTotal: 0 } as WeeklyXpRes));
 
         const [r, c] = await Promise.all([
-          fetch("/api/arena/runs?limit=10")
+          fetch("/api/arena/runs?limit=10", { credentials: "include" })
             .then(async (res) => (res.ok ? ((await res.json()) as RunsRes) : { runs: [] }))
             .catch(() => ({ runs: [] as RunRow[] })),
-          fetch("/api/arena/core-xp")
+          fetch("/api/arena/core-xp", { credentials: "include" })
             .then(async (res) =>
               res.ok
                 ? ((await res.json()) as CoreXpRes)
