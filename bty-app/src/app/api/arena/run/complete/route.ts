@@ -93,6 +93,42 @@ export async function POST(req: Request) {
     if (uErr) return NextResponse.json({ error: uErr.message }, { status: 500 });
   }
 
+  // ---- Spec 9-2: Apply Core XP (Growth Engine) ONCE per run ----
+  const { data: prof, error: profErr } = await supabase
+    .from("arena_profiles")
+    .select("user_id, core_xp_total")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (profErr) return NextResponse.json({ error: profErr.message }, { status: 500 });
+
+  const currentCore =
+    prof && typeof (prof as { core_xp_total?: number }).core_xp_total === "number"
+      ? (prof as { core_xp_total: number }).core_xp_total
+      : 0;
+  const nextCore = currentCore + delta;
+
+  const rawStage = Math.floor(nextCore / 100) + 1;
+  const stage = Math.min(rawStage, 7);
+  const codeHidden = nextCore >= 700;
+
+  if (!prof) {
+    const { error: insProfErr } = await supabase.from("arena_profiles").insert({
+      user_id: user.id,
+      core_xp_total: nextCore,
+      stage,
+      code_name: null,
+      code_hidden: codeHidden,
+    });
+    if (insProfErr) return NextResponse.json({ error: insProfErr.message }, { status: 500 });
+  } else {
+    const { error: updProfErr } = await supabase
+      .from("arena_profiles")
+      .update({ core_xp_total: nextCore, stage, code_hidden: codeHidden })
+      .eq("user_id", user.id);
+    if (updProfErr) return NextResponse.json({ error: updProfErr.message }, { status: 500 });
+  }
+
   const { error: markErr } = await supabase.from("arena_events").insert({
     user_id: user.id,
     run_id: runId,

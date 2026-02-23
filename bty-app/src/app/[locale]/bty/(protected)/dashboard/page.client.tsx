@@ -3,6 +3,7 @@
 import React from "react";
 
 type WeeklyXpRes = { weekStartISO: string; weekEndISO: string; xpTotal: number; count: number };
+type CoreXpRes = { coreXpTotal: number; stage: number; stageProgress: number; codeName: string | null; codeHidden: boolean };
 type RunRow = { run_id: string; scenario_id: string; locale: string; started_at: string; status: string };
 type RunsRes = { runs: RunRow[] };
 
@@ -21,6 +22,7 @@ function readLocalStreak(): number {
 
 export default function DashboardClient() {
   const [weekly, setWeekly] = React.useState<WeeklyXpRes | null>(null);
+  const [core, setCore] = React.useState<CoreXpRes | null>(null);
   const [runs, setRuns] = React.useState<RunRow[]>([]);
   const [streak, setStreak] = React.useState<number>(0);
   const [loading, setLoading] = React.useState(true);
@@ -35,7 +37,7 @@ export default function DashboardClient() {
         setLoading(true);
         setError(null);
 
-        const [w, r] = await Promise.all([
+        const [w, r, c] = await Promise.all([
           fetch("/api/arena/weekly-xp").then(async (res) => {
             if (!res.ok) throw new Error(`weekly-xp ${res.status}`);
             return (await res.json()) as WeeklyXpRes;
@@ -44,11 +46,16 @@ export default function DashboardClient() {
             if (!res.ok) throw new Error(`runs ${res.status}`);
             return (await res.json()) as RunsRes;
           }),
+          fetch("/api/arena/core-xp").then(async (res) => {
+            if (!res.ok) throw new Error(`core-xp ${res.status}`);
+            return (await res.json()) as CoreXpRes;
+          }),
         ]);
 
         if (!alive) return;
         setWeekly(w);
         setRuns(r.runs ?? []);
+        setCore(c);
       } catch (e) {
         if (!alive) return;
         setError(e instanceof Error ? e.message : "Unknown error");
@@ -126,6 +133,17 @@ export default function DashboardClient() {
                 ))}
               </div>
             )}
+          </div>
+
+          <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
+            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>CORE XP</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{core?.coreXpTotal ?? 0}</div>
+            <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>
+              Stage {core?.stage ?? 1} · Progress {core?.stageProgress ?? 0}/100
+            </div>
+            <div style={{ marginTop: 6, fontSize: 12, opacity: 0.6 }}>
+              Code Name: {core?.codeHidden ? "Hidden" : core?.codeName ?? "Unassigned"}
+            </div>
           </div>
 
           <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
