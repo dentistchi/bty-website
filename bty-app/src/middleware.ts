@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { setAuthCookie } from "@/lib/supabase/route-client";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -66,13 +67,8 @@ export async function middleware(req: NextRequest) {
           return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
         },
         setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
-          cookies.forEach(({ name, value }) => {
-            res.cookies.set(name, value, {
-              path: "/",
-              sameSite: "lax",
-              secure: true,
-              httpOnly: true,
-            });
+          cookies.forEach(({ name, value, options }) => {
+            setAuthCookie(res, name, value, options);
           });
         },
       },
@@ -112,13 +108,8 @@ export async function middleware(req: NextRequest) {
         return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
       },
       setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
-        cookies.forEach(({ name, value }) => {
-          res.cookies.set(name, value, {
-            path: "/",
-            sameSite: "lax",
-            secure: true,
-            httpOnly: true,
-          });
+        cookies.forEach(({ name, value, options }) => {
+          setAuthCookie(res, name, value, options);
         });
       },
     },

@@ -4,6 +4,26 @@ import { createServerClient } from "@supabase/ssr";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
+/** Whitelist-only cookie setter: path="/" always, no domain; only expires/maxAge from options. */
+export function setAuthCookie(
+  res: NextResponse,
+  name: string,
+  value: string,
+  options?: Record<string, unknown>
+) {
+  const expires = options && "expires" in options ? (options as { expires?: Date }).expires : undefined;
+  const maxAge = options && "maxAge" in options ? (options as { maxAge?: number }).maxAge : undefined;
+
+  res.cookies.set(name, value, {
+    path: "/",
+    sameSite: "lax",
+    secure: true,
+    httpOnly: true,
+    ...(expires != null ? { expires } : {}),
+    ...(typeof maxAge === "number" ? { maxAge } : {}),
+  });
+}
+
 const cookieOptions = {
   path: "/",
   sameSite: "lax" as const,
@@ -19,7 +39,7 @@ export function createSupabaseRouteClient(req: NextRequest, res: NextResponse) {
       },
       setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
         cookies.forEach(({ name, value, options }) => {
-          res.cookies.set(name, value, { ...(options ?? {}), ...cookieOptions });
+          setAuthCookie(res, name, value, options);
         });
       },
     },

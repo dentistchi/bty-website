@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { setAuthCookie } from "@/lib/supabase/route-client";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -39,13 +40,8 @@ export async function POST(req: NextRequest) {
           return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
         },
         setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
-          cookies.forEach(({ name, value }) => {
-            res.cookies.set(name, value, {
-              path: "/",
-              sameSite: "lax",
-              secure: true,
-              httpOnly: true,
-            });
+          cookies.forEach(({ name, value, options }) => {
+            setAuthCookie(res, name, value, options);
           });
         },
       },
@@ -74,12 +70,7 @@ export async function POST(req: NextRequest) {
     const out = NextResponse.json({ ok: true, next: nextPath }, { status: 200 });
     res.headers.forEach((v, k) => out.headers.set(k, v));
     for (const c of res.cookies.getAll()) {
-      out.cookies.set(c.name, c.value, {
-        path: "/",
-        sameSite: "lax",
-        secure: true,
-        httpOnly: true,
-      });
+      setAuthCookie(out, c.name, c.value);
     }
     return out;
   } catch (e: unknown) {
