@@ -642,7 +642,7 @@ export default function BtyArenaPage() {
           continueDisabled={step !== 7}
           onConfirm={onConfirmChoice}
           onContinue={continueNextScenario}
-          showContinue={phase !== "CHOOSING"}
+          showContinue={false}
         />
 
         {step >= 3 && selectedChoiceId === OTHER_CHOICE_ID && (
