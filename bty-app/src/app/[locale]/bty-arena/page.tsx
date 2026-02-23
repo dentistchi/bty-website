@@ -13,6 +13,7 @@ import {
   OutputPanel,
   type SystemMsg,
 } from "@/components/bty-arena";
+import BtyTopNav from "@/components/bty/BtyTopNav";
 
 // ---------- types for local UI state ----------
 type ArenaPhase = "CHOOSING" | "SHOW_RESULT" | "FOLLOW_UP" | "DONE";
@@ -590,7 +591,9 @@ export default function BtyArenaPage() {
 
   return (
     <div style={{ maxWidth: 860, margin: "0 auto", padding: "24px 16px" }}>
-      <ArenaHeader step={step} phase={phase} runId={runId} onPause={pause} onReset={resetRun} showPause={false} />
+      <BtyTopNav locale={(locale as "en" | "ko") || "en"} />
+      <div style={{ marginTop: 18 }}>
+        <ArenaHeader step={step} phase={phase} runId={runId} onPause={pause} onReset={resetRun} showPause={false} />
 
       <div style={{ marginTop: 18, padding: 18, border: "1px solid #eee", borderRadius: 14 }}>
         {step === 1 && (
@@ -689,6 +692,7 @@ export default function BtyArenaPage() {
             onContinue={continueNextScenario}
           />
         )}
+      </div>
       </div>
 
       {otherOpen && (

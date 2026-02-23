@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
+import BtyTopNav from "@/components/bty/BtyTopNav";
 
 type Tier = "Bronze" | "Silver" | "Gold" | "Platinum";
 
@@ -59,48 +59,12 @@ export default function LeaderboardPage() {
 
   return (
     <div style={{ maxWidth: 860, margin: "0 auto", padding: "24px 16px" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 12,
-        }}
-      >
-        <div>
-          <div style={{ fontSize: 14, opacity: 0.7 }}>bty</div>
-          <h1 style={{ margin: 0, fontSize: 28 }}>Leaderboard</h1>
-          <div style={{ marginTop: 6, fontSize: 14, opacity: 0.7 }}>
-            Weekly XP ranking (Code Name only)
-          </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 8 }}>
-          <Link
-            href={`/${locale}/bty/dashboard`}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 10,
-              border: "1px solid #ddd",
-              textDecoration: "none",
-              color: "inherit",
-            }}
-          >
-            Dashboard
-          </Link>
-          <Link
-            href={`/${locale}/bty-arena`}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 10,
-              border: "1px solid #111",
-              textDecoration: "none",
-              color: "white",
-              background: "#111",
-            }}
-          >
-            Arena
-          </Link>
+      <BtyTopNav locale={(locale as "en" | "ko") || "en"} />
+      <div style={{ marginTop: 18 }}>
+        <div style={{ fontSize: 14, opacity: 0.7 }}>bty</div>
+        <h1 style={{ margin: 0, fontSize: 28 }}>Leaderboard</h1>
+        <div style={{ marginTop: 6, fontSize: 14, opacity: 0.7 }}>
+          Weekly XP ranking (Code Name only)
         </div>
       </div>
 

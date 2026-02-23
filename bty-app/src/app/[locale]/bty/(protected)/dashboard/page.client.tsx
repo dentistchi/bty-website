@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import { useParams } from "next/navigation";
+import BtyTopNav from "@/components/bty/BtyTopNav";
 
 type WeeklyXpRes = { weekStartISO?: string | null; weekEndISO?: string | null; xpTotal: number; count?: number };
 type CoreXpRes = { coreXpTotal: number; stage: number; stageProgress: number; codeName: string | null; codeHidden: boolean };
@@ -33,6 +35,9 @@ function computeLevelTier(xpTotal: number) {
 }
 
 export default function DashboardClient() {
+  const params = useParams();
+  const locale = (params?.locale as "en" | "ko") || "en";
+
   const [weekly, setWeekly] = React.useState<WeeklyXpRes | null>(null);
   const [core, setCore] = React.useState<CoreXpRes | null>(null);
   const [runs, setRuns] = React.useState<RunRow[]>([]);
@@ -129,7 +134,8 @@ export default function DashboardClient() {
 
   return (
     <div style={{ maxWidth: 980, margin: "0 auto", padding: "24px 16px" }}>
-      <div style={{ marginBottom: 16 }}>
+      <BtyTopNav locale={locale} />
+      <div style={{ marginTop: 18, marginBottom: 16 }}>
         <div style={{ fontSize: 14, opacity: 0.7 }}>bty</div>
         <h1 style={{ margin: 0, fontSize: 28 }}>Dashboard</h1>
         <div style={{ marginTop: 6, fontSize: 14, opacity: 0.7 }}>Your arena progress at a glance.</div>
