@@ -2,10 +2,18 @@
 
 import React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 type Props = { locale?: "en" | "ko" };
 
+function isActive(pathname: string, href: string): boolean {
+  if (pathname === href) return true;
+  const base = href.split("?")[0];
+  return pathname === base || pathname.startsWith(base + "/");
+}
+
 export default function BtyTopNav({ locale = "en" }: Props) {
+  const pathname = usePathname() ?? "";
   const dash = `/${locale}/bty/dashboard`;
   const arena = `/${locale}/bty-arena`;
   const lb = `/${locale}/bty/leaderboard`;
@@ -38,13 +46,13 @@ export default function BtyTopNav({ locale = "en" }: Props) {
       }}
     >
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <Link href={dash} style={linkStyle}>
+        <Link href={dash} style={isActive(pathname, dash) ? primaryStyle : linkStyle}>
           Dashboard
         </Link>
-        <Link href={arena} style={primaryStyle}>
+        <Link href={arena} style={isActive(pathname, arena) ? primaryStyle : linkStyle}>
           Arena
         </Link>
-        <Link href={lb} style={linkStyle}>
+        <Link href={lb} style={isActive(pathname, lb) ? primaryStyle : linkStyle}>
           Leaderboard
         </Link>
       </div>
