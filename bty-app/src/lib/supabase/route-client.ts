@@ -38,6 +38,13 @@ export function createSupabaseRouteClient(req: NextRequest, res: NextResponse) {
         return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
       },
       setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
+        try {
+          const names = cookies.map((c) => c.name).slice(0, 12);
+          res.headers.set("x-cookie-writer", "route-client");
+          res.headers.set("x-cookie-write-count", String(cookies.length));
+          res.headers.set("x-cookie-write-names", names.join(","));
+          res.headers.set("x-cookie-write-path", "/");
+        } catch {}
         cookies.forEach(({ name, value, options }) => {
           setAuthCookie(res, name, value, options);
         });
