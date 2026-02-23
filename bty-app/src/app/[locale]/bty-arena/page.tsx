@@ -225,9 +225,21 @@ export default function BtyArenaPage() {
     const saved = loadState();
     if (saved) {
       const s = getScenarioById(saved.scenarioId) ?? pickRandomScenario();
+      let phase = saved.phase;
+      let step = (saved.step ?? stepFromPhase(saved.phase)) as number;
+      // Safety: correct invalid step range so resume never leaves choices inactive
+      if (step < 1 || step > 7) {
+        step = 1;
+        phase = "CHOOSING";
+      }
+      // Safety: phase not CHOOSING but no selection => inconsistent; force CHOOSING so choices are active
+      if (phase !== "CHOOSING" && (saved.selectedChoiceId == null || saved.selectedChoiceId === undefined)) {
+        phase = "CHOOSING";
+        step = 1;
+      }
       setScenario(s);
-      setPhase(saved.phase);
-      setStep(saved.step ?? stepFromPhase(saved.phase));
+      setPhase(phase);
+      setStep(step as ArenaStep);
       setReflectionIndex(typeof saved.reflectionIndex === "number" ? saved.reflectionIndex : null);
       setSelectedChoiceId(saved.selectedChoiceId ?? null);
       setOtherSubmitted(Boolean(saved.otherSubmitted));
@@ -355,7 +367,7 @@ export default function BtyArenaPage() {
   }
 
   async function submitOther() {
-    // Event-only: do NOT setStep, setPhase, or setSelectedChoiceId (keeps flow stable; next scenario reset is in continueNextScenario).
+    // Event-only: do NOT setStep, setPhase, setSelectedChoiceId, or persist (avoids resume applying bad state).
     setOtherSubmitting(true);
     try {
       const rid = await ensureRunId();
@@ -369,7 +381,6 @@ export default function BtyArenaPage() {
       console.log("[arena] postArenaEvent (other)", { step: payload.step, eventType: payload.eventType, scenarioId: payload.scenarioId });
       await postArenaEvent(payload);
       setOtherSubmitted(true);
-      persist({ otherSubmitted: true });
     } finally {
       setOtherSubmitting(false);
     }
@@ -437,6 +448,7 @@ export default function BtyArenaPage() {
   }
 
   async function continueNextScenario() {
+    clearState();
     const currentRunId = runId;
     if (currentRunId) {
       try {
@@ -453,7 +465,6 @@ export default function BtyArenaPage() {
 
     const next = pickRandomScenario(current.scenarioId);
     setScenario(next);
-
     setPhase("CHOOSING");
     setStep(1);
     setReflectionIndex(null);
@@ -465,18 +476,6 @@ export default function BtyArenaPage() {
     setOtherText("");
     setOtherSubmitting(false);
     setOtherSubmitted(false);
-
-    persist({
-      scenarioId: next.scenarioId,
-      phase: "CHOOSING",
-      step: 1,
-      reflectionIndex: undefined,
-      selectedChoiceId: undefined,
-      followUpIndex: undefined,
-      lastXp: 0,
-      runId: undefined,
-      otherSubmitted: undefined,
-    });
     console.log("[arena] continueNextScenario applied", { step: 1, phase: "CHOOSING" });
 
     fetch("/api/arena/run", {
@@ -489,7 +488,14 @@ export default function BtyArenaPage() {
       .then((data: { run?: { run_id: string } }) => {
         if (data.run?.run_id) {
           setRunId(data.run.run_id);
-          persist({ runId: data.run.run_id });
+          saveState({
+            version: 1,
+            scenarioId: next.scenarioId,
+            phase: "CHOOSING",
+            step: 1,
+            runId: data.run.run_id,
+            updatedAtISO: safeNowISO(),
+          });
         }
       })
       .catch((e) => console.warn("Arena run create (continue) failed", e));
