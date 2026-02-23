@@ -9,10 +9,8 @@ const EPOCH = "Thu, 01 Jan 1970 00:00:00 GMT";
 function appendExpireCookie(
   res: NextResponse,
   name: string,
-  path: "/" | "/api",
+  path: "/" | "/api" | "/en" | "/en/bty" | "/ko" | "/ko/bty",
 ) {
-  // OpenNext/Cloudflare에서 res.cookies.set()이 path를 /api로 바꾸는 케이스가 있어
-  // Set-Cookie 문자열을 직접 append해서 Path=/ 삭제를 강제한다.
   const cookie = `${name}=; Path=${path}; Expires=${EPOCH}; Max-Age=0; Secure; HttpOnly; SameSite=Lax`;
   res.headers.append("Set-Cookie", cookie);
 }
@@ -32,10 +30,12 @@ export async function POST() {
 
     const base = "sb-mveycersmqfiuddslnrj-auth-token";
     const names = [base, `${base}.0`, `${base}.1`, `${base}.2`, `${base}.3`];
+    const paths = ["/", "/api", "/en", "/en/bty", "/ko", "/ko/bty"] as const;
 
     for (const n of names) {
-      appendExpireCookie(res, n, "/");
-      appendExpireCookie(res, n, "/api");
+      for (const p of paths) {
+        appendExpireCookie(res, n, p);
+      }
     }
 
     res.headers.set("x-auth-logout-cookie-names", names.join(","));

@@ -39,9 +39,8 @@ export async function POST(req: NextRequest) {
           return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
         },
         setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
-          cookies.forEach(({ name, value, options }) => {
+          cookies.forEach(({ name, value }) => {
             res.cookies.set(name, value, {
-              ...(options ?? {}),
               path: "/",
               sameSite: "lax",
               secure: true,

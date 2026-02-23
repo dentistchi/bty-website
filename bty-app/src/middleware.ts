@@ -30,29 +30,22 @@ function isPublicPath(pathname: string) {
   return false;
 }
 
-function expireAuthCookies(res: NextResponse, host: string) {
+function expireAuthCookies(res: NextResponse) {
   const base = "sb-mveycersmqfiuddslnrj-auth-token";
   const names = [base, `${base}.0`, `${base}.1`, `${base}.2`, `${base}.3`];
+  const paths = ["/", "/api", "/en", "/en/bty", "/ko", "/ko/bty"];
 
   for (const name of names) {
-    res.cookies.set(name, "", {
-      path: "/",
-      domain: host,
-      expires: new Date(0),
-      maxAge: 0,
-      secure: true,
-      httpOnly: true,
-      sameSite: "lax",
-    });
-    res.cookies.set(name, "", {
-      path: "/api",
-      domain: host,
-      expires: new Date(0),
-      maxAge: 0,
-      secure: true,
-      httpOnly: true,
-      sameSite: "lax",
-    });
+    for (const path of paths) {
+      res.cookies.set(name, "", {
+        path,
+        expires: new Date(0),
+        maxAge: 0,
+        secure: true,
+        httpOnly: true,
+        sameSite: "lax",
+      });
+    }
   }
   res.headers.set("x-auth-logout-cookie-names", names.join(","));
 }
@@ -73,9 +66,8 @@ export async function middleware(req: NextRequest) {
           return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
         },
         setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
-          cookies.forEach(({ name, value, options }) => {
+          cookies.forEach(({ name, value }) => {
             res.cookies.set(name, value, {
-              ...(options ?? {}),
               path: "/",
               sameSite: "lax",
               secure: true,
@@ -106,7 +98,7 @@ export async function middleware(req: NextRequest) {
     res.headers.set("Cache-Control", "no-store");
     res.headers.set("Clear-Site-Data", '"cookies"');
     res.headers.set("x-mw-hit", "1");
-    expireAuthCookies(res, req.nextUrl.hostname);
+    expireAuthCookies(res);
     return res;
   }
 
@@ -120,9 +112,8 @@ export async function middleware(req: NextRequest) {
         return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
       },
       setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
-        cookies.forEach(({ name, value, options }) => {
+        cookies.forEach(({ name, value }) => {
           res.cookies.set(name, value, {
-            ...(options ?? {}),
             path: "/",
             sameSite: "lax",
             secure: true,
