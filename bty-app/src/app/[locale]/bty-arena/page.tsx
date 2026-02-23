@@ -590,7 +590,7 @@ export default function BtyArenaPage() {
 
   return (
     <div style={{ maxWidth: 860, margin: "0 auto", padding: "24px 16px" }}>
-      <ArenaHeader step={step} phase={phase} runId={runId} onPause={pause} onReset={resetRun} />
+      <ArenaHeader step={step} phase={phase} runId={runId} onPause={pause} onReset={resetRun} showPause={false} />
 
       <div style={{ marginTop: 18, padding: 18, border: "1px solid #eee", borderRadius: 14 }}>
         {step === 1 && (
@@ -637,13 +637,15 @@ export default function BtyArenaPage() {
           </>
         )}
 
-        <PrimaryActions
-          confirmDisabled={step !== 2 || !selectedChoiceId || selectedChoiceId === OTHER_CHOICE_ID}
-          continueDisabled={step !== 7}
-          onConfirm={onConfirmChoice}
-          onContinue={continueNextScenario}
-          showContinue={false}
-        />
+        {step === 2 && phase === "CHOOSING" && (
+          <PrimaryActions
+            confirmDisabled={!selectedChoiceId || selectedChoiceId === OTHER_CHOICE_ID}
+            continueDisabled
+            onConfirm={onConfirmChoice}
+            onContinue={continueNextScenario}
+            showContinue={false}
+          />
+        )}
 
         {step >= 3 && selectedChoiceId === OTHER_CHOICE_ID && (
           <div style={{ marginTop: 18, padding: 16, border: "1px solid #e5e5e5", borderRadius: 14 }}>
