@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
             res.headers.set("x-cookie-write-count", String(cookies.length));
             res.headers.set("x-cookie-write-names", names.join(","));
             res.headers.set("x-cookie-write-path", "/");
+            res.headers.set("x-cookie-path-enforced", "/");
           } catch {}
           cookies.forEach(({ name, value, options }) => {
             setAuthCookie(res, name, value, options);

@@ -5,6 +5,9 @@ import { setAuthCookie } from "@/lib/supabase/route-client";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
+/** Set at build/deploy time for cache bust and deployment verification. */
+const BUILD_TAG = process.env.NEXT_PUBLIC_BUILD_TAG ?? "dev";
+
 const LOCALES = ["en", "ko"] as const;
 
 function getLocale(pathname: string): (typeof LOCALES)[number] | null {
@@ -61,6 +64,7 @@ export async function middleware(req: NextRequest) {
   // API routes: run Supabase cookie refresh only (no redirect; APIs return 401 JSON)
   if (pathname.startsWith("/api")) {
     const res = NextResponse.next();
+    res.headers.set("x-build-tag", BUILD_TAG);
     const supabase = createServerClient(url, key, {
       cookies: {
         getAll() {
@@ -73,6 +77,7 @@ export async function middleware(req: NextRequest) {
             res.headers.set("x-cookie-write-count", String(cookies.length));
             res.headers.set("x-cookie-write-names", names.join(","));
             res.headers.set("x-cookie-write-path", "/");
+            res.headers.set("x-cookie-path-enforced", "/");
           } catch {}
           cookies.forEach(({ name, value, options }) => {
             setAuthCookie(res, name, value, options);
@@ -88,9 +93,13 @@ export async function middleware(req: NextRequest) {
   const locale = getLocale(pathname);
   if (!locale) {
     if (pathname.startsWith("/bty") || pathname.startsWith("/train") || pathname.startsWith("/admin")) {
-      return NextResponse.redirect(new URL(`/en${pathname}`, req.url), 307);
+      const res = NextResponse.redirect(new URL(`/en${pathname}`, req.url), 307);
+      res.headers.set("x-build-tag", BUILD_TAG);
+      return res;
     }
-    return NextResponse.next();
+    const res = NextResponse.next();
+    res.headers.set("x-build-tag", BUILD_TAG);
+    return res;
   }
 
   if (pathname === `/${locale}/bty/logout`) {
@@ -98,6 +107,7 @@ export async function middleware(req: NextRequest) {
     const login = new URL(`/${locale}/bty/login`, req.url);
     login.searchParams.set("next", next);
     const res = NextResponse.redirect(login, 303);
+    res.headers.set("x-build-tag", BUILD_TAG);
     res.headers.set("Cache-Control", "no-store");
     res.headers.set("Clear-Site-Data", '"cookies"');
     res.headers.set("x-mw-hit", "1");
@@ -105,9 +115,14 @@ export async function middleware(req: NextRequest) {
     return res;
   }
 
-  if (isPublicPath(pathname)) return NextResponse.next();
+  if (isPublicPath(pathname)) {
+    const res = NextResponse.next();
+    res.headers.set("x-build-tag", BUILD_TAG);
+    return res;
+  }
 
   const res = NextResponse.next();
+  res.headers.set("x-build-tag", BUILD_TAG);
 
   const supabase = createServerClient(url, key, {
     cookies: {
@@ -121,6 +136,7 @@ export async function middleware(req: NextRequest) {
           res.headers.set("x-cookie-write-count", String(cookies.length));
           res.headers.set("x-cookie-write-names", names.join(","));
           res.headers.set("x-cookie-write-path", "/");
+          res.headers.set("x-cookie-path-enforced", "/");
         } catch {}
         cookies.forEach(({ name, value, options }) => {
           setAuthCookie(res, name, value, options);
@@ -140,6 +156,7 @@ export async function middleware(req: NextRequest) {
     const login = new URL(`/${locale}/bty/login`, req.url);
     login.searchParams.set("next", pathname + req.nextUrl.search);
     const redirectRes = NextResponse.redirect(login, 303);
+    redirectRes.headers.set("x-build-tag", BUILD_TAG);
     redirectRes.headers.set("Cache-Control", "no-store");
     redirectRes.headers.set("x-mw-hit", "1");
     redirectRes.headers.set("x-mw-user", "0");
