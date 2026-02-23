@@ -31,6 +31,8 @@ type SavedArenaState = {
   /** 7-step authoritative state (backward compatible: absent => inferred from phase) */
   step?: ArenaStep;
   reflectionIndex?: number;
+  /** true when user submitted "Other (Write your own)" — show "Other submitted" and allow continue */
+  otherSubmitted?: boolean;
 };
 
 const STORAGE_KEY = "btyArenaState:v1";
@@ -191,6 +193,9 @@ export default function BtyArenaPage() {
 
   const [followUpIndex, setFollowUpIndex] = React.useState<number | null>(null);
   const [runId, setRunId] = React.useState<string | null>(null);
+  const [otherOpen, setOtherOpen] = React.useState(false);
+  const [otherText, setOtherText] = React.useState("");
+  const [otherSubmitted, setOtherSubmitted] = React.useState(false);
 
   React.useEffect(() => {
     console.log("[arena] step", { step, phase, runId: runId ?? null });
@@ -208,6 +213,7 @@ export default function BtyArenaPage() {
       setStep(saved.step ?? stepFromPhase(saved.phase));
       setReflectionIndex(typeof saved.reflectionIndex === "number" ? saved.reflectionIndex : null);
       setSelectedChoiceId(saved.selectedChoiceId ?? null);
+      setOtherSubmitted(Boolean(saved.otherSubmitted));
       setFollowUpIndex(typeof saved.followUpIndex === "number" ? saved.followUpIndex : null);
       setLastXp(saved.lastXp ?? 0);
       setRunId(saved.runId ?? null);
@@ -274,6 +280,7 @@ export default function BtyArenaPage() {
       lastXp,
       lastSystemMessage: systemMessage?.id,
       runId: runId ?? undefined,
+      otherSubmitted: otherSubmitted || undefined,
       updatedAtISO: safeNowISO(),
       ...next,
     });
@@ -328,6 +335,25 @@ export default function BtyArenaPage() {
     setPhase("SHOW_RESULT");
     setStep(3);
     persist({ phase: "SHOW_RESULT", step: 3, lastXp: xp, lastSystemMessage: msg.id });
+  }
+
+  async function submitOther() {
+    const rid = await ensureRunId();
+    const payload = {
+      runId: rid,
+      scenarioId: current.scenarioId,
+      step: 2,
+      eventType: "OTHER_SELECTED",
+      xp: 0,
+    };
+    console.log("[arena] postArenaEvent (other)", { step: payload.step, eventType: payload.eventType, scenarioId: payload.scenarioId });
+    await postArenaEvent(payload);
+    setOtherOpen(false);
+    setOtherText("");
+    setOtherSubmitted(true);
+    setPhase("SHOW_RESULT");
+    setStep(3);
+    persist({ phase: "SHOW_RESULT", step: 3, otherSubmitted: true });
   }
 
   function goToReflection() {
@@ -414,6 +440,9 @@ export default function BtyArenaPage() {
     setFollowUpIndex(null);
     setLastXp(0);
     setRunId(null);
+    setOtherOpen(false);
+    setOtherText("");
+    setOtherSubmitted(false);
 
     persist({
       scenarioId: next.scenarioId,
@@ -424,6 +453,7 @@ export default function BtyArenaPage() {
       followUpIndex: undefined,
       lastXp: 0,
       runId: undefined,
+      otherSubmitted: undefined,
     });
 
     fetch("/api/arena/run", {
@@ -463,6 +493,9 @@ export default function BtyArenaPage() {
     setFollowUpIndex(null);
     setLastXp(0);
     setRunId(null);
+    setOtherOpen(false);
+    setOtherText("");
+    setOtherSubmitted(false);
     setSystemMessage(SYSTEM_MESSAGES.find((m) => m.id === "arch_init") ?? null);
 
     fetch("/api/arena/run", {
@@ -533,11 +566,77 @@ export default function BtyArenaPage() {
         )}
 
         {step === 2 && (
-          <ChoiceList
-            choices={current.choices}
-            selectedChoiceId={selectedChoiceId}
-            onSelect={setSelectedChoiceId}
-          />
+          <>
+            <ChoiceList
+              choices={current.choices}
+              selectedChoiceId={selectedChoiceId}
+              onSelect={(id) => {
+                setSelectedChoiceId(id);
+                setOtherOpen(false);
+              }}
+            />
+            <div style={{ marginTop: 12 }}>
+              <button
+                type="button"
+                onClick={() => setOtherOpen(true)}
+                style={{
+                  padding: "12px 16px",
+                  borderRadius: 14,
+                  border: "1px solid #e5e5e5",
+                  background: "white",
+                  cursor: "pointer",
+                  fontSize: 14,
+                }}
+              >
+                Other (Write your own)
+              </button>
+            </div>
+            {otherOpen && (
+              <div style={{ marginTop: 12, padding: 12, border: "1px solid #eee", borderRadius: 10 }}>
+                <textarea
+                  value={otherText}
+                  onChange={(e) => setOtherText(e.target.value)}
+                  placeholder="Write your own..."
+                  rows={3}
+                  style={{ width: "100%", padding: 10, borderRadius: 8, resize: "vertical" }}
+                />
+                <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={submitOther}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: "#111",
+                      color: "white",
+                      cursor: "pointer",
+                      fontSize: 14,
+                    }}
+                  >
+                    Submit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOtherOpen(false);
+                      setOtherText("");
+                    }}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 8,
+                      border: "1px solid #e5e5e5",
+                      background: "white",
+                      cursor: "pointer",
+                      fontSize: 14,
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         <PrimaryActions
@@ -546,6 +645,27 @@ export default function BtyArenaPage() {
           onConfirm={onConfirmChoice}
           onContinue={continueNextScenario}
         />
+
+        {step === 3 && otherSubmitted && !choice && (
+          <div style={{ marginTop: 18, padding: 16, border: "1px solid #e5e5e5", borderRadius: 14 }}>
+            <p style={{ margin: "0 0 12px", fontWeight: 500 }}>Other submitted</p>
+            <button
+              type="button"
+              onClick={goToReflection}
+              style={{
+                padding: "10px 20px",
+                borderRadius: 10,
+                border: "none",
+                background: "#111",
+                color: "white",
+                cursor: "pointer",
+                fontSize: 14,
+              }}
+            >
+              Continue
+            </button>
+          </div>
+        )}
 
         {step >= 3 && choice && (
           <OutputPanel
