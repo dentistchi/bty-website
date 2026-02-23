@@ -1,71 +1,93 @@
-// bty-app/src/app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseServerWithCookieCapture } from "@/lib/supabase-server";
+import { createServerClient } from "@supabase/ssr";
 
-// OpenNext/Cloudflare에서 캐시/정적화 방지
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const DEFAULT_NEXT = "/en/bty/dashboard";
-const LOGIN_PATHS = ["/en/bty/login", "/ko/bty/login"];
-
 function sanitizeNext(raw: string | null): string {
-  if (raw == null || raw === "") return DEFAULT_NEXT;
-  let decoded: string;
+  const fallback = "/en/bty/dashboard";
+  if (!raw) return fallback;
+
+  let next = raw;
   try {
-    decoded = decodeURIComponent(raw.trim());
+    next = decodeURIComponent(raw);
   } catch {
-    return DEFAULT_NEXT;
+    next = raw;
   }
-  if (!decoded.startsWith("/") || decoded.startsWith("//")) return DEFAULT_NEXT;
-  const normalized = decoded.split("?")[0];
-  if (LOGIN_PATHS.some((p) => normalized === p || normalized.startsWith(p + "/"))) return DEFAULT_NEXT;
-  return decoded;
+
+  // same-origin path only
+  if (!next.startsWith("/")) return fallback;
+
+  // prevent login loop
+  if (next.startsWith("/en/bty/login") || next.startsWith("/ko/bty/login")) return fallback;
+
+  return next;
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const rawNext = req.nextUrl.searchParams.get("next");
-    const sanitizedNext = sanitizeNext(rawNext);
+    const requestUrl = new URL(req.url);
+    const nextPath = sanitizeNext(requestUrl.searchParams.get("next"));
 
-    const { supabase, applyCookiesToResponse } = await getSupabaseServerWithCookieCapture(req);
+    const res = NextResponse.json({ ok: true }, { status: 200 });
+    res.headers.set("Cache-Control", "no-store");
 
-    const body = (await req.json().catch(() => ({}))) as {
-      email?: string;
-      password?: string;
-    };
+    const supabase = createServerClient(url, key, {
+      cookies: {
+        getAll() {
+          return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
+        },
+        setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
+          cookies.forEach(({ name, value, options }) => {
+            res.cookies.set(name, value, {
+              ...(options ?? {}),
+              path: "/",
+              sameSite: "lax",
+              secure: true,
+              httpOnly: true,
+            });
+          });
+        },
+      },
+    });
 
-    const email = (body.email ?? "").trim();
-    const password = body.password ?? "";
+    const body = (await req.json().catch(() => ({}))) as { email?: string; password?: string };
+    const email = String(body?.email ?? "").trim();
+    const password = String(body?.password ?? "");
 
     if (!email || !password) {
-      return NextResponse.json(
-        { ok: false, error: "missing email/password" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "INVALID_CREDENTIALS" }, { status: 400 });
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       return NextResponse.json(
-        { ok: false, error: error.message, where: "supabase.auth.signInWithPassword()" },
+        { error: "LOGIN_FAILED", detail: error.message },
         { status: 401 }
       );
     }
 
-    const redirectUrl = new URL(sanitizedNext, req.url).toString();
-    const res = NextResponse.redirect(redirectUrl, 303);
-    applyCookiesToResponse(res);
-    res.headers.set("x-auth-cookie-path", "/");
-    res.headers.set("x-auth-next", sanitizedNext);
-    return res;
-  } catch (e: any) {
+    const redirectRes = NextResponse.redirect(new URL(nextPath, req.url), 303);
+    redirectRes.headers.set("Cache-Control", "no-store");
+    redirectRes.headers.set("x-auth-next", nextPath);
+
+    for (const c of res.cookies.getAll()) {
+      redirectRes.cookies.set(c.name, c.value, {
+        path: "/",
+        sameSite: "lax",
+        secure: true,
+        httpOnly: true,
+      });
+    }
+
+    return redirectRes;
+  } catch (e: unknown) {
     return NextResponse.json(
       {
-        ok: false,
-        error: e?.message ?? String(e),
-        stack: e?.stack ?? null,
+        error: e instanceof Error ? e.message : String(e),
         where: "/api/auth/login POST",
       },
       { status: 500 }
