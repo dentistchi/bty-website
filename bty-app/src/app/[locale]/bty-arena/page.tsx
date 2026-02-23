@@ -351,9 +351,8 @@ export default function BtyArenaPage() {
     setOtherOpen(false);
     setOtherText("");
     setOtherSubmitted(true);
-    setPhase("SHOW_RESULT");
-    setStep(3);
-    persist({ phase: "SHOW_RESULT", step: 3, otherSubmitted: true });
+    // Do not change phase/step: Other is event-only; flow stays CHOOSING -> user continues via "Other submitted" -> goToReflection
+    persist({ otherSubmitted: true });
   }
 
   function goToReflection() {
@@ -455,6 +454,7 @@ export default function BtyArenaPage() {
       runId: undefined,
       otherSubmitted: undefined,
     });
+    console.log("[arena] continueNextScenario applied", { phase: "CHOOSING", selectedChoiceId: null });
 
     fetch("/api/arena/run", {
       method: "POST",
@@ -646,7 +646,7 @@ export default function BtyArenaPage() {
           onContinue={continueNextScenario}
         />
 
-        {step === 3 && otherSubmitted && !choice && (
+        {(step === 2 || step === 3) && otherSubmitted && !choice && (
           <div style={{ marginTop: 18, padding: 16, border: "1px solid #e5e5e5", borderRadius: 14 }}>
             <p style={{ margin: "0 0 12px", fontWeight: 500 }}>Other submitted</p>
             <button
