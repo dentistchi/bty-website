@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { applySeasonalXpToCore } from "@/lib/bty/arena/applyCoreXp";
 import { getBeginnerScenarioById } from "@/lib/bty/scenario/beginnerScenarios";
 import {
   computeBeginnerMaturityScore,
@@ -67,6 +68,24 @@ export async function POST(req: Request) {
     .eq("user_id", user.id);
 
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
+
+  const beginnerSeasonalXp = 30;
+  await supabase.rpc("ensure_arena_profile");
+  const { data: wRow } = await supabase
+    .from("weekly_xp")
+    .select("id, xp_total")
+    .eq("user_id", user.id)
+    .is("league_id", null)
+    .maybeSingle();
+  if (wRow) {
+    await supabase.from("weekly_xp").update({ xp_total: (Number(wRow.xp_total) || 0) + beginnerSeasonalXp }).eq("id", wRow.id);
+  } else {
+    await supabase.from("weekly_xp").insert({ user_id: user.id, league_id: null, xp_total: beginnerSeasonalXp });
+  }
+  const coreResult = await applySeasonalXpToCore(supabase, user.id, beginnerSeasonalXp);
+  if ("error" in coreResult) {
+    // log but don't fail the request
+  }
 
   // Store reflection event for analytics
   await supabase.from("arena_events").insert({

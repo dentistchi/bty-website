@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
-
-function computeStage(coreXpTotal: number) {
-  const rawStage = Math.floor(coreXpTotal / 100) + 1;
-  const stage = Math.min(rawStage, 7);
-  const stageProgress = coreXpTotal % 100;
-  const codeHidden = coreXpTotal >= 700;
-  return { stage, stageProgress, codeHidden };
-}
+import {
+  CODE_NAMES,
+  tierFromCoreXp,
+  codeIndexFromTier,
+  subTierGroupFromTier,
+  resolveSubName,
+  type CodeIndex,
+} from "@/lib/bty/arena/codes";
 
 export async function GET(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
   const { data: row, error } = await supabase
     .from("arena_profiles")
-    .select("user_id, core_xp_total, stage, code_name, code_hidden")
+    .select("user_id, core_xp_total, code_index, sub_name, sub_name_renamed_in_code, code_hidden")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -25,43 +25,55 @@ export async function GET(req: NextRequest) {
     return out;
   }
 
+  const coreXpTotal =
+    row && typeof (row as { core_xp_total?: number }).core_xp_total === "number"
+      ? (row as { core_xp_total: number }).core_xp_total
+      : 0;
+  const tier = tierFromCoreXp(coreXpTotal);
+  const codeIndex = (row && typeof (row as { code_index?: number }).code_index === "number"
+    ? (row as { code_index: number }).code_index
+    : codeIndexFromTier(tier)) as CodeIndex;
+  const subTierGroup = subTierGroupFromTier(tier);
+  const customSubName = row ? (row as { sub_name?: string | null }).sub_name ?? null : null;
+  const codeName = CODE_NAMES[Math.min(6, Math.max(0, codeIndex))];
+  const subName = resolveSubName(codeIndex, subTierGroup, customSubName);
+  const subNameRenameAvailable =
+    row &&
+    tier >= 25 &&
+    !(row as { sub_name_renamed_in_code?: boolean }).sub_name_renamed_in_code &&
+    codeIndex < 6;
+
+  let seasonalXpTotal = 0;
+  const { data: wRow } = await supabase
+    .from("weekly_xp")
+    .select("xp_total")
+    .eq("user_id", user.id)
+    .is("league_id", null)
+    .maybeSingle();
+  if (wRow && typeof (wRow as { xp_total?: number }).xp_total === "number") {
+    seasonalXpTotal = (wRow as { xp_total: number }).xp_total;
+  }
+
   if (!row) {
-    const init = computeStage(0);
-    const { error: insErr } = await supabase.from("arena_profiles").insert({
-      user_id: user.id,
-      core_xp_total: 0,
-      stage: init.stage,
-      code_name: null,
-      code_hidden: init.codeHidden,
-    });
-    if (insErr) {
-      const out = NextResponse.json({ error: "DB_ERROR", detail: insErr.message }, { status: 500 });
-      copyCookiesAndDebug(base, out, req, true);
-      return out;
-    }
     const out = NextResponse.json({
       coreXpTotal: 0,
-      stage: init.stage,
-      stageProgress: init.stageProgress,
-      codeName: null,
-      codeHidden: init.codeHidden,
+      codeName: CODE_NAMES[0],
+      subName: "Spark",
+      seasonalXpTotal: 0,
+      codeHidden: false,
+      subNameRenameAvailable: false,
     });
     copyCookiesAndDebug(base, out, req, true);
     return out;
   }
 
-  const coreXpTotal =
-    typeof (row as { core_xp_total?: number }).core_xp_total === "number"
-      ? (row as { core_xp_total: number }).core_xp_total
-      : 0;
-  const calc = computeStage(coreXpTotal);
-
   const out = NextResponse.json({
     coreXpTotal,
-    stage: calc.stage,
-    stageProgress: calc.stageProgress,
-    codeName: (row as { code_name?: string | null }).code_name ?? null,
-    codeHidden: calc.codeHidden,
+    codeName,
+    subName,
+    seasonalXpTotal,
+    codeHidden: coreXpTotal >= 700,
+    subNameRenameAvailable: Boolean(subNameRenameAvailable),
   });
   copyCookiesAndDebug(base, out, req, true);
   return out;

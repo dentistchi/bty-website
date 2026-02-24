@@ -4,22 +4,24 @@ import React from "react";
 import BtyTopNav from "@/components/bty/BtyTopNav";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 
-type Tier = "Bronze" | "Silver" | "Gold" | "Platinum";
-
 type Row = {
   rank: number;
-  userId: string;
   codeName: string;
+  subName: string;
   xpTotal: number;
-  level: number;
-  tier: Tier;
-  progressPct: number;
-  codeHidden: boolean;
+};
+
+type LeaderboardRes = {
+  leaderboard?: Row[];
+  nearMe?: Row[];
+  top10?: Row[];
+  myRank?: number | null;
+  myXp?: number;
+  count?: number;
 };
 
 export default function LeaderboardPage() {
-
-  const [rows, setRows] = React.useState<Row[]>([]);
+  const [data, setData] = React.useState<LeaderboardRes | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -29,12 +31,10 @@ export default function LeaderboardPage() {
       try {
         setLoading(true);
         setError(null);
-
-        const json = await arenaFetch<{ leaderboard?: Row[] }>("/api/arena/leaderboard");
-        if (!cancelled) setRows((json.leaderboard ?? []) as Row[]);
+        const json = await arenaFetch<LeaderboardRes>("/api/arena/leaderboard");
+        if (!cancelled) setData(json);
       } catch (e: unknown) {
-        if (!cancelled)
-          setError(e instanceof Error ? e.message : "FAILED_TO_LOAD");
+        if (!cancelled) setError(e instanceof Error ? e.message : "FAILED_TO_LOAD");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -45,6 +45,8 @@ export default function LeaderboardPage() {
     };
   }, []);
 
+  const rows = data?.nearMe?.length ? data.nearMe : (data?.leaderboard ?? []);
+
   return (
     <div style={{ maxWidth: 860, margin: "0 auto", padding: "24px 16px" }}>
       <BtyTopNav />
@@ -52,8 +54,13 @@ export default function LeaderboardPage() {
         <div style={{ fontSize: 14, opacity: 0.7 }}>bty</div>
         <h1 style={{ margin: 0, fontSize: 28 }}>Leaderboard</h1>
         <div style={{ marginTop: 6, fontSize: 14, opacity: 0.7 }}>
-          Weekly XP ranking (Code Name only)
+          Seasonal XP · Code · Sub Name (Tier hidden)
         </div>
+        {data?.myRank != null && (
+          <div style={{ marginTop: 10, fontSize: 14, fontWeight: 600 }}>
+            Your rank: #{data.myRank} · {data.myXp ?? 0} XP
+          </div>
+        )}
       </div>
 
       <div style={{ marginTop: 18, padding: 18, border: "1px solid #eee", borderRadius: 14 }}>
@@ -102,10 +109,10 @@ export default function LeaderboardPage() {
                     {r.rank}
                   </div>
                   <div>
-                    <div style={{ fontWeight: 800, fontSize: 16 }}>{r.codeName}</div>
-                    <div style={{ fontSize: 12, opacity: 0.7 }}>
-                      Level {r.level} · {r.tier} · Progress {r.progressPct}%
+                    <div style={{ fontWeight: 800, fontSize: 16 }}>
+                      {r.codeName} · {r.subName}
                     </div>
+                    <div style={{ fontSize: 12, opacity: 0.7 }}>Seasonal XP</div>
                   </div>
                 </div>
 

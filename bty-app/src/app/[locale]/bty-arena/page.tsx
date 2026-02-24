@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { SCENARIOS } from "@/lib/bty/scenario/scenarios";
 import type { Scenario } from "@/lib/bty/scenario/types";
 import { evaluateChoice, evaluateFollowUp } from "@/lib/bty/arena/engine";
@@ -174,7 +174,31 @@ async function postArenaEvent(payload: Record<string, unknown>): Promise<void> {
 
 export default function BtyArenaPage() {
   const params = useParams();
-  const locale = typeof params?.locale === "string" ? params.locale : null;
+  const router = useRouter();
+  const locale = typeof params?.locale === "string" ? params.locale : "en";
+
+  const [levelChecked, setLevelChecked] = React.useState(false);
+  const [coreXpTotal, setCoreXpTotal] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    arenaFetch<{ coreXpTotal?: number }>("/api/arena/core-xp")
+      .then((data) => {
+        if (!cancelled && typeof data.coreXpTotal === "number") setCoreXpTotal(data.coreXpTotal);
+        if (!cancelled) setLevelChecked(true);
+      })
+      .catch(() => {
+        if (!cancelled) setLevelChecked(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (!levelChecked || coreXpTotal === null) return;
+    if (coreXpTotal < 200) router.replace(`/${locale}/bty-arena/beginner`);
+  }, [levelChecked, coreXpTotal, locale, router]);
 
   const [scenario, setScenario] = React.useState<Scenario | null>(null);
   const [phase, setPhase] = React.useState<ArenaPhase>("CHOOSING");
@@ -278,6 +302,24 @@ export default function BtyArenaPage() {
   React.useEffect(() => {
     console.log("[arena] step", { step, phase, runId: runId ?? null });
   }, [step, phase, runId]);
+
+  if (!levelChecked) {
+    return (
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}>
+        <BtyTopNav />
+        <p style={{ marginTop: 24 }}>Loading…</p>
+      </div>
+    );
+  }
+  if (coreXpTotal !== null && coreXpTotal < 200) {
+    router.replace(`/${locale}/bty-arena/beginner`);
+    return (
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}>
+        <BtyTopNav />
+        <p style={{ marginTop: 24 }}>Redirecting to Beginner…</p>
+      </div>
+    );
+  }
 
   if (!scenario) {
     return <div>Scenario not found.</div>;

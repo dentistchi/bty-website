@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { applySeasonalXpToCore } from "@/lib/bty/arena/applyCoreXp";
 
 export async function POST(req: Request) {
   const supabase = await getSupabaseServerClient();
@@ -68,6 +69,18 @@ export async function POST(req: Request) {
 
   const delta = (evs ?? []).reduce((sum, row) => sum + (typeof row.xp === "number" ? row.xp : 0), 0);
 
+  const DAILY_CAP = 1200;
+  const now = new Date();
+  const startOfDayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const startOfDayISO = startOfDayUTC.toISOString();
+  const { data: todayEvs } = await supabase
+    .from("arena_events")
+    .select("xp")
+    .eq("user_id", user.id)
+    .gte("created_at", startOfDayISO);
+  const todayTotal = (todayEvs ?? []).reduce((s, r) => s + (typeof r.xp === "number" ? r.xp : 0), 0);
+  const deltaCapped = Math.max(0, Math.min(delta, DAILY_CAP - todayTotal));
+
   const { data: row, error: rowErr } = await supabase
     .from("weekly_xp")
     .select("id, xp_total")
@@ -77,14 +90,16 @@ export async function POST(req: Request) {
 
   if (rowErr) return NextResponse.json({ error: rowErr.message }, { status: 500 });
 
+  await supabase.rpc("ensure_arena_profile");
+
   if (!row) {
     const { error: insErr } = await supabase
       .from("weekly_xp")
-      .insert({ user_id: user.id, league_id: null, xp_total: delta });
+      .insert({ user_id: user.id, league_id: null, xp_total: deltaCapped });
 
     if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
   } else {
-    const nextTotal = (typeof row.xp_total === "number" ? row.xp_total : 0) + delta;
+    const nextTotal = (typeof row.xp_total === "number" ? row.xp_total : 0) + deltaCapped;
     const { error: uErr } = await supabase
       .from("weekly_xp")
       .update({ xp_total: nextTotal })
@@ -93,41 +108,9 @@ export async function POST(req: Request) {
     if (uErr) return NextResponse.json({ error: uErr.message }, { status: 500 });
   }
 
-  // ---- Spec 9-2: Apply Core XP (Growth Engine) ONCE per run ----
-  const { data: prof, error: profErr } = await supabase
-    .from("arena_profiles")
-    .select("user_id, core_xp_total")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (profErr) return NextResponse.json({ error: profErr.message }, { status: 500 });
-
-  const currentCore =
-    prof && typeof (prof as { core_xp_total?: number }).core_xp_total === "number"
-      ? (prof as { core_xp_total: number }).core_xp_total
-      : 0;
-  const nextCore = currentCore + delta;
-
-  const rawStage = Math.floor(nextCore / 100) + 1;
-  const stage = Math.min(rawStage, 7);
-  const codeHidden = nextCore >= 700;
-
-  if (!prof) {
-    const { error: insProfErr } = await supabase.from("arena_profiles").insert({
-      user_id: user.id,
-      core_xp_total: nextCore,
-      stage,
-      code_name: null,
-      code_hidden: codeHidden,
-    });
-    if (insProfErr) return NextResponse.json({ error: insProfErr.message }, { status: 500 });
-  } else {
-    const { error: updProfErr } = await supabase
-      .from("arena_profiles")
-      .update({ core_xp_total: nextCore, stage, code_hidden: codeHidden })
-      .eq("user_id", user.id);
-    if (updProfErr) return NextResponse.json({ error: updProfErr.message }, { status: 500 });
-  }
+  // Seasonal → Core conversion (45:1 Beginner, 60:1 else). Tier/code/sub_name updated in applySeasonalXpToCore.
+  const coreResult = await applySeasonalXpToCore(supabase, user.id, deltaCapped);
+  if ("error" in coreResult) return NextResponse.json({ error: coreResult.error }, { status: 500 });
 
   const { error: markErr } = await supabase.from("arena_events").insert({
     user_id: user.id,
@@ -140,5 +123,5 @@ export async function POST(req: Request) {
 
   if (markErr) return NextResponse.json({ error: markErr.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true, runId, status: "DONE", deltaApplied: delta });
+  return NextResponse.json({ ok: true, runId, status: "DONE", deltaApplied: deltaCapped });
 }

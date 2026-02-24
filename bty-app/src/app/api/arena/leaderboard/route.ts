@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { writeSupabaseAuthCookies } from "@/lib/bty/cookies/authCookies";
+import {
+  CODE_NAMES,
+  tierFromCoreXp,
+  codeIndexFromTier,
+  subTierGroupFromTier,
+  resolveSubName,
+  type CodeIndex,
+} from "@/lib/bty/arena/codes";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const dynamic = "force-dynamic";
-
-function fallbackCodeName(userId: string) {
-  const seed = userId.replace(/-/g, "").slice(-6);
-  const n = parseInt(seed, 16);
-  const num = Number.isFinite(n) ? (n % 99) + 1 : 7;
-  const labels = ["Builder", "Forge", "Nova", "Atlas", "Pulse", "Vertex", "Echo"];
-  const label = labels[(num + userId.length) % labels.length];
-  return `${label}-${String(num).padStart(2, "0")}`;
-}
 
 export async function GET(req: NextRequest) {
   const cookieHeader = req.headers.get("cookie") ?? "";
@@ -67,9 +66,10 @@ export async function GET(req: NextRequest) {
 
   const { data: weeklyRows, error: weeklyErr } = await supabase
     .from("weekly_xp")
-    .select("user_id,xp_total")
+    .select("user_id, xp_total")
+    .is("league_id", null)
     .order("xp_total", { ascending: false })
-    .limit(50);
+    .limit(100);
 
   if (weeklyErr) {
     const out = NextResponse.json(
@@ -83,38 +83,50 @@ export async function GET(req: NextRequest) {
   const rows = (weeklyRows ?? []).filter((r) => !!r.user_id) as { user_id: string; xp_total?: number }[];
   const userIds = rows.map((r) => r.user_id);
 
-  let profileMap = new Map<string, { code_name: string | null; code_hidden: boolean | null }>();
+  let profileMap = new Map<
+    string,
+    { core_xp_total: number; code_index: number; sub_name: string | null }
+  >();
   if (userIds.length > 0) {
     const { data: profiles } = await supabase
       .from("arena_profiles")
-      .select("user_id,code_name,code_hidden")
+      .select("user_id, core_xp_total, code_index, sub_name")
       .in("user_id", userIds);
 
-    (profiles ?? []).forEach((p: { user_id: string; code_name?: string | null; code_hidden?: boolean | null }) => {
-      profileMap.set(p.user_id, {
-        code_name: p.code_name ?? null,
-        code_hidden: p.code_hidden ?? null,
-      });
-    });
+    (profiles ?? []).forEach(
+      (p: { user_id: string; core_xp_total?: number; code_index?: number; sub_name?: string | null }) => {
+        profileMap.set(p.user_id, {
+          core_xp_total: Number(p.core_xp_total ?? 0),
+          code_index: Math.min(6, Math.max(0, Number(p.code_index ?? 0))),
+          sub_name: p.sub_name ?? null,
+        });
+      }
+    );
   }
 
   const leaderboard = rows.map((r, idx) => {
-    const userId = r.user_id;
     const xpTotal = Number(r.xp_total ?? 0);
-    const prof = profileMap.get(userId);
-
-    const codeHidden = Boolean(prof?.code_hidden);
-    const codeName = codeHidden ? "Hidden-777" : (prof?.code_name ? prof.code_name : fallbackCodeName(userId));
-
-    const level = Math.floor(Math.max(0, xpTotal) / 100) + 1;
-    const tier =
-      xpTotal >= 300 ? "Platinum" : xpTotal >= 200 ? "Gold" : xpTotal >= 100 ? "Silver" : "Bronze";
-    const progressPct = Math.max(0, xpTotal) % 100;
-
-    return { rank: idx + 1, userId, codeName, xpTotal, level, tier, progressPct, codeHidden };
+    const prof = profileMap.get(r.user_id);
+    const coreXp = prof?.core_xp_total ?? 0;
+    const tier = tierFromCoreXp(coreXp);
+    const codeIndex = (prof?.code_index ?? codeIndexFromTier(tier)) as CodeIndex;
+    const subTierGroup = subTierGroupFromTier(tier);
+    const customSubName = prof?.sub_name ?? null;
+    const codeName = CODE_NAMES[codeIndex];
+    const subName = resolveSubName(codeIndex, subTierGroup, customSubName);
+    return { rank: idx + 1, codeName, subName, xpTotal };
   });
 
-  const out = NextResponse.json({ leaderboard, count: leaderboard.length }, { status: 200 });
+  const myRank =
+    rows.findIndex((r) => r.user_id === user.id) + 1 || 0;
+  const nearMe = leaderboard.slice(Math.max(0, myRank - 6), Math.min(leaderboard.length, myRank + 5));
+  const top10 = leaderboard.slice(0, 10);
+
+  const myXp = rows.find((r) => r.user_id === user.id)?.xp_total ?? 0;
+  const out = NextResponse.json(
+    { leaderboard, nearMe, top10, myRank: myRank || null, myXp, count: leaderboard.length },
+    { status: 200 }
+  );
   tmp.headers.forEach((v, k) => out.headers.set(k, v));
   for (const c of tmp.cookies.getAll()) {
     out.cookies.set(c.name, c.value, {

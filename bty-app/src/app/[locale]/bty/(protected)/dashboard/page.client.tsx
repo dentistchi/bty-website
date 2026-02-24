@@ -7,9 +7,14 @@ import BtyTopNav from "@/components/bty/BtyTopNav";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 
 type WeeklyXpRes = { weekStartISO?: string | null; weekEndISO?: string | null; xpTotal: number; count?: number };
-type CoreXpRes = { coreXpTotal: number; stage: number; stageProgress: number; codeName: string | null; codeHidden: boolean };
-type RunRow = { run_id: string; scenario_id: string; locale: string; started_at: string; status: string };
-type RunsRes = { runs: RunRow[] };
+type CoreXpRes = {
+  coreXpTotal: number;
+  codeName: string;
+  subName: string;
+  seasonalXpTotal: number;
+  codeHidden?: boolean;
+  subNameRenameAvailable?: boolean;
+};
 type LeagueRes = { league_id: string; start_at: string; end_at: string; name?: string | null };
 type TodayXpRes = { xpToday: number };
 
@@ -41,7 +46,6 @@ function computeLevelTier(xpTotal: number) {
 export default function DashboardClient() {
   const [weekly, setWeekly] = React.useState<WeeklyXpRes | null>(null);
   const [core, setCore] = React.useState<CoreXpRes | null>(null);
-  const [runs, setRuns] = React.useState<RunRow[]>([]);
   const [league, setLeague] = React.useState<LeagueRes | null>(null);
   const [xpToday, setXpToday] = React.useState<number>(0);
   const [streak, setStreak] = React.useState<number>(0);
@@ -49,23 +53,21 @@ export default function DashboardClient() {
   const locale = (typeof params?.locale === "string" ? params.locale : "en") as string;
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [subNameDraft, setSubNameDraft] = React.useState("");
+  const [subNameSaving, setSubNameSaving] = React.useState(false);
 
-  const [codeNameDraft, setCodeNameDraft] = React.useState("");
-  const [codeNameSaving, setCodeNameSaving] = React.useState(false);
-  const [codeNameError, setCodeNameError] = React.useState<string | null>(null);
-
-  async function saveCodeName() {
+  async function saveSubName() {
+    if (!subNameDraft.trim() || subNameDraft.length > 7) return;
     try {
-      setCodeNameSaving(true);
-      setCodeNameError(null);
-      await arenaFetch("/api/arena/code-name", { json: { codeName: codeNameDraft } });
+      setSubNameSaving(true);
+      await arenaFetch("/api/arena/sub-name", { json: { subName: subNameDraft.trim() } });
       const next = await arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => core);
       if (next) setCore(next);
-      setCodeNameDraft("");
-    } catch (e: unknown) {
-      setCodeNameError(e instanceof Error ? e.message : "FAILED_TO_SAVE");
+      setSubNameDraft("");
+    } catch {
+      // ignore
     } finally {
-      setCodeNameSaving(false);
+      setSubNameSaving(false);
     }
   }
 
@@ -84,13 +86,11 @@ export default function DashboardClient() {
 
         const fallbackCore: CoreXpRes = {
           coreXpTotal: 0,
-          stage: 1,
-          stageProgress: 0,
-          codeName: null,
-          codeHidden: true,
+          codeName: "FORGE",
+          subName: "Spark",
+          seasonalXpTotal: 0,
         };
-        const [r, c, leagueRes, todayRes] = await Promise.all([
-          arenaFetch<RunsRes>("/api/arena/runs?limit=10").catch(() => ({ runs: [] as RunRow[] })),
+        const [c, leagueRes, todayRes] = await Promise.all([
           arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => fallbackCore),
           arenaFetch<LeagueRes>("/api/arena/league/active").catch(() => null),
           arenaFetch<TodayXpRes>("/api/arena/today-xp").catch(() => ({ xpToday: 0 })),
@@ -98,7 +98,6 @@ export default function DashboardClient() {
 
         if (!alive) return;
         setWeekly(w);
-        setRuns(r.runs ?? []);
         setCore(c);
         if (leagueRes) setLeague(leagueRes);
         setXpToday(todayRes?.xpToday ?? 0);
@@ -116,7 +115,7 @@ export default function DashboardClient() {
     };
   }, []);
 
-  const xpTotal = weekly?.xpTotal ?? 0;
+  const xpTotal = core?.seasonalXpTotal ?? weekly?.xpTotal ?? 0;
   const { level, tier, progressPct } = computeLevelTier(xpTotal);
 
   return (
@@ -184,7 +183,7 @@ export default function DashboardClient() {
           )}
 
           <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
-            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>COMPETITION XP</div>
+            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>SEASONAL XP</div>
             <div style={{ fontSize: 28, fontWeight: 800 }}>{xpTotal}</div>
             <div style={{ marginTop: 10 }}>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -227,82 +226,41 @@ export default function DashboardClient() {
           <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
             <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>CORE XP</div>
             <div style={{ fontSize: 28, fontWeight: 800 }}>{core?.coreXpTotal ?? 0}</div>
-            <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>
-              Stage {core?.stage ?? 1} · Progress {core?.stageProgress ?? 0}/100
-            </div>
-            <div style={{ marginTop: 6, fontSize: 12, opacity: 0.6 }}>
-              Code Name: {core?.codeHidden ? "Hidden" : core?.codeName ?? "Unassigned"}
-            </div>
+            <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>Permanent. Drives Code and Sub Name.</div>
           </div>
 
           <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
-            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>CODE NAME</div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 12,
-                flexWrap: "wrap",
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 18 }}>
-                  {core?.codeHidden ? "Hidden-777" : (core?.codeName ?? "Not set")}
-                </div>
-                <div style={{ marginTop: 6, fontSize: 13, opacity: 0.75 }}>
-                  {core?.codeHidden
-                    ? "700+ zone: Code Name is hidden & locked."
-                    : "Set your Code Name (3–20 chars, A–Z / 0–9 / hyphen)."}
-                </div>
-              </div>
-
-              {!core?.codeHidden && (
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input
-                    value={codeNameDraft}
-                    onChange={(e) => setCodeNameDraft(e.target.value)}
-                    placeholder="e.g. Builder-07"
-                    style={{
-                      padding: "10px 12px",
-                      borderRadius: 10,
-                      border: "1px solid #ddd",
-                      minWidth: 220,
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={saveCodeName}
-                    disabled={codeNameSaving || codeNameDraft.trim().length === 0}
-                    style={{
-                      padding: "10px 12px",
-                      borderRadius: 10,
-                      border: "1px solid #111",
-                      background: "#111",
-                      color: "white",
-                      opacity: codeNameSaving || codeNameDraft.trim().length === 0 ? 0.5 : 1,
-                      cursor:
-                        codeNameSaving || codeNameDraft.trim().length === 0 ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    {codeNameSaving ? "Saving…" : "Save"}
-                  </button>
-                </div>
-              )}
+            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>IDENTITY</div>
+            <div style={{ fontWeight: 800, fontSize: 18 }}>
+              {core?.codeName ?? "FORGE"} · {core?.subName ?? "Spark"}
             </div>
-
-            {codeNameError && (
-              <div
-                style={{
-                  marginTop: 10,
-                  padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid #f1c0c0",
-                  background: "#fff7f7",
-                }}
-              >
-                <div style={{ fontWeight: 800 }}>Save failed</div>
-                <div style={{ marginTop: 6, opacity: 0.85 }}>{codeNameError}</div>
+            <div style={{ marginTop: 6, fontSize: 13, opacity: 0.75 }}>
+              Code and Sub Name (Tier hidden; you’ll see celebrations at 25/50/75).
+            </div>
+            {core?.subNameRenameAvailable && (
+              <div style={{ marginTop: 12 }}>
+                <input
+                  value={subNameDraft}
+                  onChange={(e) => setSubNameDraft(e.target.value.slice(0, 7))}
+                  placeholder="Rename Sub Name (7 chars, once per code)"
+                  maxLength={7}
+                  style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #ddd", marginRight: 8 }}
+                />
+                <button
+                  type="button"
+                  onClick={saveSubName}
+                  disabled={subNameSaving || subNameDraft.trim().length === 0}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #111",
+                    background: "#111",
+                    color: "white",
+                    cursor: subNameSaving || subNameDraft.trim().length === 0 ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {subNameSaving ? "Saving…" : "Save"}
+                </button>
               </div>
             )}
           </div>
@@ -313,40 +271,6 @@ export default function DashboardClient() {
             <div style={{ marginTop: 6, fontSize: 13, opacity: 0.75 }}>
               (MVP: local streak. Supabase profile streak later.)
             </div>
-          </div>
-
-          <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
-            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 10 }}>RECENT RUNS</div>
-            {runs.length === 0 ? (
-              <div style={{ opacity: 0.7 }}>No runs yet.</div>
-            ) : (
-              <div style={{ display: "grid", gap: 8 }}>
-                {runs.map((r) => (
-                  <div
-                    key={r.run_id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      padding: 10,
-                      border: "1px solid #f0f0f0",
-                      borderRadius: 12,
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 700 }}>{r.scenario_id}</div>
-                      <div style={{ fontSize: 12, opacity: 0.7 }}>
-                        {r.started_at ? new Date(r.started_at).toLocaleString() : ""}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 12, opacity: 0.7 }}>{r.status}</div>
-                      <div style={{ fontSize: 12, opacity: 0.6 }}>{r.locale}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       )}
