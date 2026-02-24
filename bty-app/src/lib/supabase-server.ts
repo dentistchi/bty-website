@@ -2,16 +2,16 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { cookies as nextCookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { forceAuthCookieDefaults } from "@/lib/auth-cookie-defaults";
 import { writeSupabaseAuthCookies } from "@/lib/bty/cookies/authCookies";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 /**
- * Route Handler / Server Action에서 쓰는 서버 클라이언트
- * - cookies()가 Promise인 런타임/타입 조합이 있어서 await로 통일
- * - setAll()에서 옵션을 마지막에 강제 덮어쓰기
+ * Route Handler / Server Action에서 쓰는 서버 클라이언트 (읽기 전용 쿠키).
+ * - getAll()만 사용. setAll()은 no-op.
+ * - Edge/next/headers에서 setAll 시 요청 path(/en, /ko 등)로 쿠키가 설정되어
+ *   /api/* 에 쿠키가 안 붙는 문제가 있으므로, 쿠키 쓰기는 로그인/세션 API에서만 Path=/ 로 수행.
  */
 export async function getSupabaseServer() {
   const cookieStore = await nextCookies();
@@ -21,10 +21,8 @@ export async function getSupabaseServer() {
       getAll() {
         return cookieStore.getAll().map((c) => ({ name: c.name, value: c.value }));
       },
-      setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
-        cookies.forEach((c) => {
-          cookieStore.set(c.name, c.value, forceAuthCookieDefaults(c.options as any) as any);
-        });
+      setAll(_cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
+        // no-op: RSC/레이아웃에서 호출 시 요청 path로 쿠키가 설정되어 /api/* 에 쿠키 미전달 방지
       },
     },
   });
