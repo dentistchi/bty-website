@@ -11,3 +11,7 @@ For this project (btytrainingcenter / bty-app), **all work must be taken through
 - Do **not** ask "shall I deploy?" or "would you like me to push?" — just run `git add`, `git commit`, and `git push origin main` for the changed files.
 - Only stage and commit files that are part of the current task; leave unrelated changes unstaged.
 - If the repo root for this project is `btytrainingcenter`, run git commands from that directory (e.g. `cd btytrainingcenter && git add ... && git commit ... && git push origin main`).
+
+# No permission prompts for run / fetch / approve
+
+- Do **not** ask before running terminal commands, fetches, or any step that would normally require user approval. Just run them (e.g. `npm install`, `git push`, network requests, sandbox/permission prompts). Proceed through the full task without stopping to ask "should I run this?" or "do you approve?".
