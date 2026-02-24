@@ -105,6 +105,8 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(login);
   }
 
+  // 매 요청마다 /ko, /en 등 잘못된 path 쿠키 만료 → path=/ 만 유지 (세션 이동 시 로그인 유지)
+  expireAuthCookiesHard(req, res);
   res.headers.set("x-mw-hit", "1");
   res.headers.set("x-mw-user", "1");
   res.headers.set("x-mw-path", pathname);
