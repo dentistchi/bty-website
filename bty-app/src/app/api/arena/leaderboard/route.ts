@@ -28,7 +28,6 @@ export async function GET(req: NextRequest) {
   baseHeaders.set("x-auth-debug-cookie-names", cookieNames.slice(0, 10).join(","));
 
   let didSetAll = false;
-  const hostname = req.nextUrl.hostname;
 
   const tmp = NextResponse.json({ ok: true }, { status: 200, headers: baseHeaders });
 
@@ -40,13 +39,22 @@ export async function GET(req: NextRequest) {
       setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
         didSetAll = true;
         cookies.forEach(({ name, value, options }) => {
+          const opts = (options ?? {}) as Record<string, unknown>;
+          const maxAge = typeof opts.maxAge === "number" ? opts.maxAge : undefined;
+          const expiresRaw = opts.expires;
+          const expires =
+            expiresRaw instanceof Date
+              ? expiresRaw
+              : typeof expiresRaw === "string"
+                ? new Date(expiresRaw as string)
+                : undefined;
           tmp.cookies.set(name, value, {
-            ...(options ?? {}),
             path: "/",
-            domain: hostname,
             sameSite: "lax",
             secure: true,
             httpOnly: true,
+            ...(typeof maxAge === "number" ? { maxAge } : {}),
+            ...(expires && !Number.isNaN(expires.getTime()) ? { expires } : {}),
           });
         });
       },
@@ -129,7 +137,6 @@ export async function GET(req: NextRequest) {
   tmp.cookies.getAll().forEach((c) =>
     out.cookies.set(c.name, c.value, {
       path: "/",
-      domain: hostname,
       sameSite: "lax",
       secure: true,
       httpOnly: true,
