@@ -11,6 +11,7 @@ type CoreXpRes = { coreXpTotal: number; stage: number; stageProgress: number; co
 type RunRow = { run_id: string; scenario_id: string; locale: string; started_at: string; status: string };
 type RunsRes = { runs: RunRow[] };
 type LeagueRes = { league_id: string; start_at: string; end_at: string; name?: string | null };
+type TodayXpRes = { xpToday: number };
 
 const STREAK_KEY = "btyArenaStreak:v1";
 
@@ -42,6 +43,7 @@ export default function DashboardClient() {
   const [core, setCore] = React.useState<CoreXpRes | null>(null);
   const [runs, setRuns] = React.useState<RunRow[]>([]);
   const [league, setLeague] = React.useState<LeagueRes | null>(null);
+  const [xpToday, setXpToday] = React.useState<number>(0);
   const [streak, setStreak] = React.useState<number>(0);
   const params = useParams();
   const locale = (typeof params?.locale === "string" ? params.locale : "en") as string;
@@ -87,10 +89,11 @@ export default function DashboardClient() {
           codeName: null,
           codeHidden: true,
         };
-        const [r, c, leagueRes] = await Promise.all([
+        const [r, c, leagueRes, todayRes] = await Promise.all([
           arenaFetch<RunsRes>("/api/arena/runs?limit=10").catch(() => ({ runs: [] as RunRow[] })),
           arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => fallbackCore),
           arenaFetch<LeagueRes>("/api/arena/league/active").catch(() => null),
+          arenaFetch<TodayXpRes>("/api/arena/today-xp").catch(() => ({ xpToday: 0 })),
         ]);
 
         if (!alive) return;
@@ -98,6 +101,7 @@ export default function DashboardClient() {
         setRuns(r.runs ?? []);
         setCore(c);
         if (leagueRes) setLeague(leagueRes);
+        setXpToday(todayRes?.xpToday ?? 0);
       } catch (e) {
         if (!alive) return;
         setError(e instanceof Error ? e.message : "Unknown error");
@@ -215,37 +219,9 @@ export default function DashboardClient() {
           </div>
 
           <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
-            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 10 }}>RECENT RUNS</div>
-            {runs.length === 0 ? (
-              <div style={{ opacity: 0.7 }}>No runs yet.</div>
-            ) : (
-              <div style={{ display: "grid", gap: 8 }}>
-                {runs.map((r) => (
-                  <div
-                    key={r.run_id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      padding: 10,
-                      border: "1px solid #f0f0f0",
-                      borderRadius: 12,
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 700 }}>{r.scenario_id}</div>
-                      <div style={{ fontSize: 12, opacity: 0.7 }}>
-                        {r.started_at ? new Date(r.started_at).toLocaleString() : ""}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 12, opacity: 0.7 }}>{r.status}</div>
-                      <div style={{ fontSize: 12, opacity: 0.6 }}>{r.locale}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>POINTS TODAY</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{xpToday}</div>
+            <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>XP earned today (UTC date).</div>
           </div>
 
           <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
@@ -337,6 +313,40 @@ export default function DashboardClient() {
             <div style={{ marginTop: 6, fontSize: 13, opacity: 0.75 }}>
               (MVP: local streak. Supabase profile streak later.)
             </div>
+          </div>
+
+          <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
+            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 10 }}>RECENT RUNS</div>
+            {runs.length === 0 ? (
+              <div style={{ opacity: 0.7 }}>No runs yet.</div>
+            ) : (
+              <div style={{ display: "grid", gap: 8 }}>
+                {runs.map((r) => (
+                  <div
+                    key={r.run_id}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      padding: 10,
+                      border: "1px solid #f0f0f0",
+                      borderRadius: 12,
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 700 }}>{r.scenario_id}</div>
+                      <div style={{ fontSize: 12, opacity: 0.7 }}>
+                        {r.started_at ? new Date(r.started_at).toLocaleString() : ""}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 12, opacity: 0.7 }}>{r.status}</div>
+                      <div style={{ fontSize: 12, opacity: 0.6 }}>{r.locale}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
