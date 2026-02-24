@@ -15,3 +15,4 @@ For this project (btytrainingcenter / bty-app), **all work must be taken through
 # No permission prompts for run / fetch / approve
 
 - Do **not** ask before running terminal commands, fetches, or any step that would normally require user approval. Just run them (e.g. `npm install`, `git push`, network requests, sandbox/permission prompts). Proceed through the full task without stopping to ask "should I run this?" or "do you approve?".
+- Never show or propose a "Run command / Approve" step in chat — run the command with the required permissions (e.g. `git_write`, `network`) directly. If the Cursor IDE still shows a run-approval popup, the user can **Allowlist** that command/permission once so it is not asked again.
