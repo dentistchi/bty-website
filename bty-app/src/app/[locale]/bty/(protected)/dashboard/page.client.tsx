@@ -6,8 +6,6 @@ import { arenaFetch } from "@/lib/http/arenaFetch";
 
 type WeeklyXpRes = { weekStartISO?: string | null; weekEndISO?: string | null; xpTotal: number; count?: number };
 type CoreXpRes = { coreXpTotal: number; stage: number; stageProgress: number; codeName: string | null; codeHidden: boolean };
-type RunRow = { run_id: string; scenario_id: string; locale: string; started_at: string; status: string };
-type RunsRes = { runs: RunRow[] };
 
 const STREAK_KEY = "btyArenaStreak:v1";
 
@@ -37,7 +35,6 @@ function computeLevelTier(xpTotal: number) {
 export default function DashboardClient() {
   const [weekly, setWeekly] = React.useState<WeeklyXpRes | null>(null);
   const [core, setCore] = React.useState<CoreXpRes | null>(null);
-  const [runs, setRuns] = React.useState<RunRow[]>([]);
   const [streak, setStreak] = React.useState<number>(0);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -81,14 +78,10 @@ export default function DashboardClient() {
           codeName: null,
           codeHidden: true,
         };
-        const [r, c] = await Promise.all([
-          arenaFetch<RunsRes>("/api/arena/runs?limit=10").catch(() => ({ runs: [] as RunRow[] })),
-          arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => fallbackCore),
-        ]);
+        const c = await arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => fallbackCore);
 
         if (!alive) return;
         setWeekly(w);
-        setRuns(r.runs ?? []);
         setCore(c);
       } catch (e) {
         if (!alive) return;
@@ -129,7 +122,8 @@ export default function DashboardClient() {
       {!loading && !error && (
         <div style={{ display: "grid", gap: 12 }}>
           <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
-            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>COMPETITION XP</div>
+            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>SEASON XP</div>
+            <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 4 }}>시즌 경쟁용 · 기간 합산</div>
             <div style={{ fontSize: 28, fontWeight: 800 }}>{xpTotal}</div>
             <div style={{ marginTop: 10 }}>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -164,41 +158,8 @@ export default function DashboardClient() {
           </div>
 
           <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
-            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 10 }}>RECENT RUNS</div>
-            {runs.length === 0 ? (
-              <div style={{ opacity: 0.7 }}>No runs yet.</div>
-            ) : (
-              <div style={{ display: "grid", gap: 8 }}>
-                {runs.map((r) => (
-                  <div
-                    key={r.run_id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      padding: 10,
-                      border: "1px solid #f0f0f0",
-                      borderRadius: 12,
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 700 }}>{r.scenario_id}</div>
-                      <div style={{ fontSize: 12, opacity: 0.7 }}>
-                        {r.started_at ? new Date(r.started_at).toLocaleString() : ""}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 12, opacity: 0.7 }}>{r.status}</div>
-                      <div style={{ fontSize: 12, opacity: 0.6 }}>{r.locale}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
             <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>CORE XP</div>
+            <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 4 }}>장기 누적 · Stage·Code Name 연동</div>
             <div style={{ fontSize: 28, fontWeight: 800 }}>{core?.coreXpTotal ?? 0}</div>
             <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>
               Stage {core?.stage ?? 1} · Progress {core?.stageProgress ?? 0}/100
