@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { applySupabaseCookies } from "@/lib/bty/cookies/setCookie";
-import { expireAuthCookiesEverywhere } from "@/lib/bty/cookies/authCookieMaintenance";
+import { expireAuthCookiesHard, writeSupabaseAuthCookies } from "@/lib/bty/cookies/authCookies";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -41,7 +40,7 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.json({ ok: true, next: nextPath });
     res.headers.set("Cache-Control", "no-store");
 
-    expireAuthCookiesEverywhere(res);
+    expireAuthCookiesHard(req, res);
 
     const supabase = createServerClient(url, key, {
       cookies: {
@@ -49,7 +48,8 @@ export async function POST(req: NextRequest) {
           return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
         },
         setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
-          applySupabaseCookies(res, cookies);
+          writeSupabaseAuthCookies(res, cookies);
+          res.headers.set("x-cookie-writer", "login");
         },
       },
     });
