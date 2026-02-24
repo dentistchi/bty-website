@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import BtyTopNav from "@/components/bty/BtyTopNav";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 
@@ -8,6 +10,7 @@ type WeeklyXpRes = { weekStartISO?: string | null; weekEndISO?: string | null; x
 type CoreXpRes = { coreXpTotal: number; stage: number; stageProgress: number; codeName: string | null; codeHidden: boolean };
 type RunRow = { run_id: string; scenario_id: string; locale: string; started_at: string; status: string };
 type RunsRes = { runs: RunRow[] };
+type LeagueRes = { league_id: string; start_at: string; end_at: string; name?: string | null };
 
 const STREAK_KEY = "btyArenaStreak:v1";
 
@@ -38,7 +41,10 @@ export default function DashboardClient() {
   const [weekly, setWeekly] = React.useState<WeeklyXpRes | null>(null);
   const [core, setCore] = React.useState<CoreXpRes | null>(null);
   const [runs, setRuns] = React.useState<RunRow[]>([]);
+  const [league, setLeague] = React.useState<LeagueRes | null>(null);
   const [streak, setStreak] = React.useState<number>(0);
+  const params = useParams();
+  const locale = (typeof params?.locale === "string" ? params.locale : "en") as string;
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -81,15 +87,17 @@ export default function DashboardClient() {
           codeName: null,
           codeHidden: true,
         };
-        const [r, c] = await Promise.all([
+        const [r, c, leagueRes] = await Promise.all([
           arenaFetch<RunsRes>("/api/arena/runs?limit=10").catch(() => ({ runs: [] as RunRow[] })),
           arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => fallbackCore),
+          arenaFetch<LeagueRes>("/api/arena/league/active").catch(() => null),
         ]);
 
         if (!alive) return;
         setWeekly(w);
         setRuns(r.runs ?? []);
         setCore(c);
+        if (leagueRes) setLeague(leagueRes);
       } catch (e) {
         if (!alive) return;
         setError(e instanceof Error ? e.message : "Unknown error");
@@ -128,6 +136,49 @@ export default function DashboardClient() {
 
       {!loading && !error && (
         <div style={{ display: "grid", gap: 12 }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
+            <Link
+              href={`/${locale}/bty-arena`}
+              style={{
+                padding: "12px 20px",
+                borderRadius: 12,
+                background: "#111",
+                color: "white",
+                textDecoration: "none",
+                fontWeight: 700,
+                fontSize: 14,
+              }}
+            >
+              Go to Arena
+            </Link>
+            <Link
+              href={`/${locale}/bty/leaderboard`}
+              style={{
+                padding: "12px 20px",
+                borderRadius: 12,
+                border: "1px solid #111",
+                color: "#111",
+                textDecoration: "none",
+                fontWeight: 600,
+                fontSize: 14,
+              }}
+            >
+              View Leaderboard
+            </Link>
+          </div>
+
+          {league && (
+            <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
+              <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>ACTIVE SEASON</div>
+              <div style={{ fontSize: 15, fontWeight: 700 }}>{league.name ?? "Arena"}</div>
+              <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>
+                {league.start_at ? new Date(league.start_at).toLocaleDateString() : ""}
+                {" → "}
+                {league.end_at ? new Date(league.end_at).toLocaleDateString() : ""}
+              </div>
+            </div>
+          )}
+
           <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
             <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>COMPETITION XP</div>
             <div style={{ fontSize: 28, fontWeight: 800 }}>{xpTotal}</div>

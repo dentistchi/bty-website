@@ -15,7 +15,7 @@
 - [x] 3-3 Dashboard 뼈대 구현
 - [x] 3-4 Run 완료 마킹 (COMPLETED)
 - [x] 9-2 Create arena_profiles table
-- [ ] 3 Dashboard UI
+- [x] 3 Dashboard UI
 
 ---
 
