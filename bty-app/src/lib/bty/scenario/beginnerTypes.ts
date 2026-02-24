@@ -16,7 +16,7 @@ export type BeginnerScenario = {
   integrityTrigger: string;
   integrityOptions: [string, string];
   /** Step 5: 3 decision options (order = display; scoring by index) */
-  decisionOptions: [{ id: string; label: string }; { id: string; label: string }; { id: string; label: string }];
+  decisionOptions: [{ id: string; label: string }, { id: string; label: string }, { id: string; label: string }];
   /** Step 6: short growth message (max 2 sentences) */
   growth: string;
 };
