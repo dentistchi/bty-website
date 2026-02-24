@@ -10,6 +10,14 @@ async function fixCookiePath() {
   }
 }
 
+async function forceCookieCommit() {
+  try {
+    await fetch("/api/auth/whoami", { method: "GET", cache: "no-store" });
+  } catch {
+    // ignore
+  }
+}
+
 function safeNext(nextPath: string, locale: "en" | "ko") {
   if (!nextPath || typeof nextPath !== "string") return `/${locale}/bty`;
   if (!nextPath.startsWith("/")) return `/${locale}/bty`;
@@ -52,6 +60,8 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
 
       if (data.ok && typeof data.next === "string") {
         await fixCookiePath();
+        await forceCookieCommit();
+        await new Promise((r) => setTimeout(r, 50));
         window.location.assign(data.next);
         return;
       }
