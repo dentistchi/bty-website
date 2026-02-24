@@ -66,45 +66,23 @@ export function writeSupabaseAuthCookies(res: NextResponse, cookies: SupabaseCoo
 }
 
 /**
- * ✅ HARD expire: remove BOTH host-only and domain=host variants,
- * across common legacy paths that may have been used.
+ * ✅ HARD expire: 쿠키는 이제 Path=/ 또는 Path=/api 로만 발급되므로
+ * 만료도 "/" 와 "/api" 만 사용. locale path 제거 → Set-Cookie 경고/노출 감소.
+ * domain 미설정(host-only).
  */
-export function expireAuthCookiesHard(req: NextRequest, res: NextResponse) {
-  const host = req.nextUrl.hostname;
-
-  const paths = [
-    "/",
-    "/api",
-    "/en",
-    "/ko",
-    "/en/bty",
-    "/ko/bty",
-    "/en/bty/login",
-    "/ko/bty/login",
-    "/en/bty-arena",
-    "/ko/bty-arena",
-    "/en/bty/dashboard",
-    "/ko/bty/dashboard",
-    "/en/bty/leaderboard",
-    "/ko/bty/leaderboard",
-  ];
-
-  const expireOne = (name: string, path: string, domain?: string) => {
-    res.cookies.set(name, "", {
-      path,
-      ...(domain ? { domain } : {}),
-      expires: new Date(0),
-      maxAge: 0,
-      secure: true,
-      httpOnly: true,
-      sameSite: "lax",
-    });
-  };
+export function expireAuthCookiesHard(_req: NextRequest, res: NextResponse) {
+  const paths = ["/", "/api"];
 
   for (const name of AUTH_COOKIE_NAMES) {
     for (const path of paths) {
-      expireOne(name, path);
-      expireOne(name, path, host);
+      res.cookies.set(name, "", {
+        path,
+        expires: new Date(0),
+        maxAge: 0,
+        secure: true,
+        httpOnly: true,
+        sameSite: "lax",
+      });
     }
   }
 
