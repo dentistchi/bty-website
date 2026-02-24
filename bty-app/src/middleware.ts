@@ -105,8 +105,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  // 매 요청마다 /ko, /en 등 잘못된 path 쿠키 만료 후, 요청에 있는 인증 쿠키를 Path=/ 로 다시 설정
-  expireAuthCookiesHard(req, res);
+  // 요청에 있는 인증 쿠키를 Path=/ 로 다시 설정 (다른 path로 덮어쓰여진 것 복구)
   reassertAuthCookiesPathRoot(req, res);
   res.headers.set("x-mw-hit", "1");
   res.headers.set("x-mw-user", "1");
