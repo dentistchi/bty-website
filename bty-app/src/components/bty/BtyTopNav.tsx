@@ -19,6 +19,7 @@ export default function BtyTopNav() {
 
   const dash = `/${locale}/bty/dashboard`;
   const arena = `/${locale}/bty-arena`;
+  const beginner = `/${locale}/bty-arena/beginner`;
   const lb = `/${locale}/bty/leaderboard`;
   const logout = `/${locale}/bty/logout?next=/${locale}/bty/login`;
 
@@ -46,6 +47,9 @@ export default function BtyTopNav() {
         </Link>
         <Link href={arena} style={isActive(pathname, arena) ? activeStyle : base}>
           Arena
+        </Link>
+        <Link href={beginner} style={isActive(pathname, beginner) ? activeStyle : base}>
+          Beginner
         </Link>
         <Link href={lb} style={isActive(pathname, lb) ? activeStyle : base}>
           Leaderboard
