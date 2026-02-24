@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { expireAuthCookiesHard } from "@/lib/bty/cookies/authCookies";
+import { expireAuthCookiesHard, reassertAuthCookiesPathRoot } from "@/lib/bty/cookies/authCookies";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -105,8 +105,9 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  // 매 요청마다 /ko, /en 등 잘못된 path 쿠키 만료 → path=/ 만 유지 (세션 이동 시 로그인 유지)
+  // 매 요청마다 /ko, /en 등 잘못된 path 쿠키 만료 후, 요청에 있는 인증 쿠키를 Path=/ 로 다시 설정
   expireAuthCookiesHard(req, res);
+  reassertAuthCookiesPathRoot(req, res);
   res.headers.set("x-mw-hit", "1");
   res.headers.set("x-mw-user", "1");
   res.headers.set("x-mw-path", pathname);

@@ -9,6 +9,16 @@ export const AUTH_COOKIE_NAMES = [
   `${AUTH_BASE}.3`,
 ];
 
+/** 요청에 있는 인증 쿠키를 응답에 Path=/ 로 다시 씀 (다른 path로 덮어쓰여지는 것 방지) */
+export function reassertAuthCookiesPathRoot(req: NextRequest, res: NextResponse) {
+  const all = req.cookies.getAll();
+  const auth = all.filter((c) => AUTH_COOKIE_NAMES.includes(c.name));
+  if (auth.length === 0) return;
+  const opts = { path: "/" as const, sameSite: "lax" as const, secure: true, httpOnly: true };
+  auth.forEach((c) => res.cookies.set(c.name, c.value, opts));
+  res.headers.set("x-auth-reassert-count", String(auth.length));
+}
+
 type SupabaseCookie = { name: string; value: string; options?: Record<string, unknown> };
 
 function pickNumber(v: unknown): number | undefined {
