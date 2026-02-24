@@ -2,7 +2,9 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
 
 function parseHashParams(hash: string): Record<string, string> {
@@ -17,6 +19,10 @@ function parseHashParams(hash: string): Record<string, string> {
 }
 
 function AuthCallbackForm() {
+  const pathname = usePathname() ?? "";
+  const locale: Locale = pathname.startsWith("/ko") ? "ko" : "en";
+  const t = getMessages(locale).auth;
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<"loading" | "error">("loading");
@@ -25,7 +31,7 @@ function AuthCallbackForm() {
   useEffect(() => {
     if (!supabase) {
       setStatus("error");
-      setMessage("Supabase 환경변수가 설정되지 않았습니다.");
+      setMessage(t.callbackError);
       return;
     }
     const client = supabase;
@@ -41,7 +47,7 @@ function AuthCallbackForm() {
         if (!mounted) return;
         if (error) {
           setStatus("error");
-          setMessage("인증 처리에 실패했습니다. 다시 시도해주세요.");
+          setMessage(t.callbackError);
           return;
         }
         if (type === "recovery") {
@@ -66,7 +72,7 @@ function AuthCallbackForm() {
         if (!mounted) return;
         if (error) {
           setStatus("error");
-          setMessage("인증 처리에 실패했습니다. 다시 시도해주세요.");
+          setMessage(t.callbackError);
           return;
         }
         if (recoveryType === "recovery") {
@@ -78,7 +84,7 @@ function AuthCallbackForm() {
       }
 
       setStatus("error");
-      setMessage("인증 처리에 실패했습니다. 다시 시도해주세요.");
+      setMessage(t.callbackError);
     }
 
     run(client);
@@ -90,7 +96,7 @@ function AuthCallbackForm() {
   if (status === "loading") {
     return (
       <div className="min-h-[40vh] flex items-center justify-center px-4">
-        <p className="text-neutral-600">인증 처리 중...</p>
+        <p className="text-neutral-600">{t.loading}</p>
       </div>
     );
   }
@@ -99,10 +105,10 @@ function AuthCallbackForm() {
     <div className="min-h-[40vh] flex flex-col items-center justify-center px-4">
       <p className="text-red-600 text-center">{message}</p>
       <Link
-        href="/admin/login"
+        href={locale === "ko" ? "/ko/bty/login" : "/en/bty/login"}
         className="mt-4 text-sm text-neutral-600 hover:text-neutral-900 underline"
       >
-        로그인으로 돌아가기
+        {t.backToLogin}
       </Link>
     </div>
   );
@@ -113,7 +119,7 @@ export default function AuthCallbackPage() {
     <Suspense
       fallback={
         <div className="min-h-[40vh] flex items-center justify-center px-4">
-          <p className="text-neutral-600">인증 처리 중...</p>
+          <p className="text-neutral-600">Verifying…</p>
         </div>
       }
     >

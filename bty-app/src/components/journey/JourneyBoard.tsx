@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { AuthGate } from "@/components/AuthGate";
 import { Comeback } from "@/components/Comeback";
@@ -23,6 +24,8 @@ function getAuthHeader(): Record<string, string> {
 }
 
 export function JourneyBoard() {
+  const pathname = usePathname() ?? "";
+  const locale = pathname.startsWith("/ko") ? "ko" : "en";
   const { user } = useAuth();
   const [profile, setProfile] = useState<{
     current_day: number;
@@ -268,7 +271,7 @@ export function JourneyBoard() {
       <main className="min-h-screen bg-dojo-white">
         <Comeback />
         <div className="max-w-2xl mx-auto px-4 py-6 sm:py-10">
-          <Nav locale="ko" pathname="/bty" />
+          <Nav locale={locale} pathname={pathname} />
           <header className="text-center mb-10">
             <h1 className="text-2xl sm:text-3xl font-semibold text-dojo-purple-dark">
               나의 여정 (My Journey)

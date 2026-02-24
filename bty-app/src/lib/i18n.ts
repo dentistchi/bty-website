@@ -2,6 +2,29 @@ export type Locale = "ko" | "en";
 
 export type Messages = {
   nav: { todayMe: string; bty: string; en: string; ko: string };
+  login: {
+    title: string;
+    afterLoginGoTo: string;
+    email: string;
+    password: string;
+    submit: string;
+    submitting: string;
+    cookieNotice: string;
+    errorDefault: string;
+  };
+  auth: { backToLogin: string; loading: string; callbackError: string };
+  logout: string;
+  integrity: {
+    title: string;
+    subtitle: string;
+    intro: string;
+    placeholder: string;
+    send: string;
+    thinking: string;
+    emptyHint: string;
+    backToDojo: string;
+    reply: string;
+  };
   todayMe: {
     title: string;
     tagline: string;
@@ -62,6 +85,29 @@ export type Messages = {
 
 const ko: Messages = {
   nav: { todayMe: "Dear Me", bty: "훈련장", en: "English", ko: "한국어" },
+  login: {
+    title: "bty 로그인",
+    afterLoginGoTo: "로그인 후",
+    email: "이메일",
+    password: "비밀번호",
+    submit: "로그인",
+    submitting: "로그인 중...",
+    cookieNotice: "쿠키 기반 세션으로 동작합니다. 로그인 성공 직후 새로고침/이동이 발생할 수 있습니다.",
+    errorDefault: "로그인에 실패했습니다.",
+  },
+  auth: { backToLogin: "로그인으로 돌아가기", loading: "인증 처리 중...", callbackError: "인증 처리에 실패했습니다. 다시 시도해주세요." },
+  logout: "로그아웃",
+  integrity: {
+    title: "역지사지 시뮬레이터",
+    subtitle: "Dr. Chi와 함께 갈등 상황을 돌려보세요.",
+    intro: "겪었던 갈등을 한 줄로 적어보세요. Dr. Chi가 역지사지 질문으로 도와드릴게요.",
+    placeholder: "예: 직원에게 말했는데 상대가 불쾌해했어요",
+    send: "전송",
+    thinking: "Dr. Chi가 생각 중…",
+    emptyHint: "갈등 상황을 입력하고 전송해보세요.",
+    backToDojo: "훈련장으로 돌아가기",
+    reply: "만약 입장이 반대라면 어떨까요?",
+  },
   todayMe: {
     title: "Dear Me",
     tagline: "나는 안전하다. 잠시 쉬어가도 돼요.",
@@ -134,6 +180,29 @@ const ko: Messages = {
 
 const en: Messages = {
   nav: { todayMe: "Dear Me", bty: "Dojo", en: "English", ko: "한국어" },
+  login: {
+    title: "bty Sign in",
+    afterLoginGoTo: "After sign in you will go to",
+    email: "Email",
+    password: "Password",
+    submit: "Sign in",
+    submitting: "Signing in…",
+    cookieNotice: "Session uses cookies. The page may refresh or redirect after sign in.",
+    errorDefault: "Sign in failed.",
+  },
+  auth: { backToLogin: "Back to sign in", loading: "Verifying…", callbackError: "Verification failed. Please try again." },
+  logout: "Log out",
+  integrity: {
+    title: "Integrity Mirror",
+    subtitle: "Reframe the situation with Dr. Chi.",
+    intro: "Describe a conflict in one line. Dr. Chi will reflect with an integrity question.",
+    placeholder: "e.g. I said something and the other person got upset",
+    send: "Send",
+    thinking: "Dr. Chi is thinking…",
+    emptyHint: "Enter a conflict and send.",
+    backToDojo: "Back to Dojo",
+    reply: "What if the roles were reversed?",
+  },
   todayMe: {
     title: "Dear Me",
     tagline: "You are safe. It’s okay to rest here.",

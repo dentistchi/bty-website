@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
 import { Nav } from "@/components/Nav";
 import { ThemeBody } from "@/components/ThemeBody";
@@ -35,6 +36,8 @@ const DR_CHI_OPENINGS: Record<TopicId, string> = {
 };
 
 export default function MentorPage() {
+  const pathname = usePathname() ?? "";
+  const locale = pathname.startsWith("/ko") ? "ko" : "en";
   const [topic, setTopic] = useState<TopicId | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -107,7 +110,7 @@ export default function MentorPage() {
         }}
       >
         <div className="max-w-2xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
-          <Nav locale="ko" pathname="/bty/mentor" />
+          <Nav locale={locale} pathname={pathname} />
           <header className="text-center mb-8">
             <h1
               className="text-2xl sm:text-3xl font-semibold text-mentor-ink"

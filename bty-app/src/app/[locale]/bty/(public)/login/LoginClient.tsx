@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
 async function forceCookieCommit() {
   try {
@@ -19,6 +21,7 @@ function safeNext(nextPath: string, locale: "en" | "ko") {
 
 export default function LoginClient({ nextPath, locale }: { nextPath: string; locale: "en" | "ko" }) {
   const next = useMemo(() => safeNext(nextPath, locale), [nextPath, locale]);
+  const t = getMessages(locale as Locale).login;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -58,13 +61,13 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
       }
 
       if (!r.ok) {
-        const msg = data.detail ?? data.error ?? "Login failed";
+        const msg = data.detail ?? data.error ?? t.errorDefault;
         throw new Error(msg);
       }
 
-      throw new Error(data.error ?? "Login failed");
+      throw new Error(data.error ?? t.errorDefault);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : t.errorDefault);
     } finally {
       setIsLoading(false);
     }
@@ -73,13 +76,13 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-md border rounded-2xl p-6 bg-white">
-        <h1 className="text-xl font-semibold mb-1">bty 로그인</h1>
+        <h1 className="text-xl font-semibold mb-1">{t.title}</h1>
         <p className="text-sm text-gray-600 mb-4">
-          로그인 후 <span className="font-medium">{next}</span> 로 이동합니다.
+          {t.afterLoginGoTo} <span className="font-medium">{next}</span>
         </p>
 
         <form onSubmit={onSubmit}>
-          <label className="block text-sm mb-1">이메일</label>
+          <label className="block text-sm mb-1">{t.email}</label>
           <input
             className="w-full border rounded-lg px-3 py-2 mb-3"
             placeholder="you@example.com"
@@ -88,7 +91,7 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
             onChange={(e) => setEmail(e.target.value)}
           />
 
-          <label className="block text-sm mb-1">비밀번호</label>
+          <label className="block text-sm mb-1">{t.password}</label>
           <input
             className="w-full border rounded-lg px-3 py-2 mb-3"
             placeholder="••••••••"
@@ -105,12 +108,10 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
             disabled={!canSubmit}
             type="submit"
           >
-            {isLoading ? "로그인 중..." : "로그인"}
+            {isLoading ? t.submitting : t.submit}
           </button>
 
-          <div className="text-xs text-gray-500 mt-3">
-            쿠키 기반 세션으로 동작합니다. 로그인 성공 직후 새로고침/이동이 발생할 수 있습니다.
-          </div>
+          <div className="text-xs text-gray-500 mt-3">{t.cookieNotice}</div>
         </form>
       </div>
     </div>
