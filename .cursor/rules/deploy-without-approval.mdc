@@ -1,0 +1,13 @@
+---
+description: Complete work through deployment without asking for permission
+alwaysApply: true
+---
+
+# Deploy Without Mid-Task Approval
+
+For this project (btytrainingcenter / bty-app), **all work must be taken through to deployment** without stopping to ask for the user's permission in the middle.
+
+- After making code changes, **commit and push to `main`** in the same flow so that GitHub Actions deploy runs automatically.
+- Do **not** ask "shall I deploy?" or "would you like me to push?" — just run `git add`, `git commit`, and `git push origin main` for the changed files.
+- Only stage and commit files that are part of the current task; leave unrelated changes unstaged.
+- If the repo root for this project is `btytrainingcenter`, run git commands from that directory (e.g. `cd btytrainingcenter && git add ... && git commit ... && git push origin main`).
