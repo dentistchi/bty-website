@@ -1,5 +1,17 @@
 import type { NextRequest, NextResponse } from "next/server";
 
+/**
+ * # Auth cookie 정책 (BTY / Supabase SSR)
+ *
+ * - **발급**: 모든 인증 쿠키는 반드시 Path=/, domain 미설정(host-only).
+ *   Supabase options.path/domain 은 무시하고, maxAge/expires 만 허용.
+ * - **만료**: 로그인 직전·로그아웃·세션 POST 시에만 expireAuthCookiesHard 호출.
+ *   만료 시에도 Path=/ 와 /api 만 사용, domain 미설정.
+ * - **보호된 페이지**: 매 요청마다 reassertAuthCookiesPathRoot 로 기존 쿠키를 Path=/ 로 재설정만 함 (만료 아님).
+ * - **디버그 헤더**: x-auth-expire-*, x-cookie-writer, x-auth-set-cookie-count, x-auth-reassert-count 등은
+ *   배포/검증용으로 유지. 필요 시 프로덕션에서 제거 가능.
+ */
+
 export const AUTH_BASE = "sb-mveycersmqfiuddslnrj-auth-token";
 export const AUTH_COOKIE_NAMES = [
   AUTH_BASE,
