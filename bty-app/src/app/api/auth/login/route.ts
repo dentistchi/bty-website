@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { appendSetCookies } from "@/lib/bty/cookies/setCookie";
+import { applySupabaseCookies } from "@/lib/bty/cookies/setCookie";
 import { expireAuthCookiesEverywhere } from "@/lib/bty/cookies/authCookieMaintenance";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -25,11 +25,6 @@ function sanitizeNext(raw: string | null): string {
   return next;
 }
 
-/**
- * POST /api/auth/login
- * - returns JSON { ok: true, next }
- * - MUST emit Set-Cookie for supabase auth-token (httpOnly) on success
- */
 export async function POST(req: NextRequest) {
   try {
     const requestUrl = new URL(req.url);
@@ -46,7 +41,6 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.json({ ok: true, next: nextPath });
     res.headers.set("Cache-Control", "no-store");
 
-    // 로그인 시점에 과거 잘못된 Path 쿠키를 먼저 만료
     expireAuthCookiesEverywhere(res);
 
     const supabase = createServerClient(url, key, {
@@ -55,7 +49,7 @@ export async function POST(req: NextRequest) {
           return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
         },
         setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
-          appendSetCookies(res, cookies);
+          applySupabaseCookies(res, cookies);
         },
       },
     });
@@ -63,16 +57,12 @@ export async function POST(req: NextRequest) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error || !data.session) {
-      return NextResponse.json(
-        { ok: false, error: error?.message ?? "LOGIN_FAILED" },
-        { status: 401 }
-      );
+      return NextResponse.json({ ok: false, error: error?.message ?? "LOGIN_FAILED" }, { status: 401 });
     }
 
     await supabase.auth.getSession();
 
     res.headers.set("x-auth-next", nextPath);
-
     return res;
   } catch (e: unknown) {
     return NextResponse.json(

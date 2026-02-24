@@ -1,29 +1,20 @@
 import type { NextResponse } from "next/server";
 
 /**
- * Supabase(@supabase/ssr) createServerClient의 cookies.setAll()에서 넘어오는 쿠키들을
- * Response Header에 직접 append 한다.
- *
- * ✅ 강제 정책
- * - Path=/ (절대 변경 금지)
- * - SameSite=Lax
- * - Secure=true
- * - HttpOnly=true
- *
- * NOTE:
- * - options.path 등 Supabase가 준 값은 locale path(/ko/...)로 오염될 수 있으므로 무시한다.
+ * ✅ 단일 원칙: 쿠키는 res.cookies.set()으로만 쓴다.
+ * (headers.append("Set-Cookie") 금지 — Next 내부 직렬화 순서와 충돌 가능)
  */
-export function appendSetCookies(
+export function applySupabaseCookies(
   res: NextResponse,
   cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>
 ) {
-  const serialized: string[] = [];
+  let count = 0;
 
   for (const c of cookies) {
     const name = c.name;
     const value = String(c.value ?? "");
-
     const opts = (c.options ?? {}) as Record<string, unknown>;
+
     const maxAge = typeof opts.maxAge === "number" ? opts.maxAge : undefined;
     const expiresRaw = opts.expires;
     const expires =
@@ -33,18 +24,18 @@ export function appendSetCookies(
           ? new Date(expiresRaw)
           : undefined;
 
-    let line = `${name}=${encodeURIComponent(value)}; Path=/; SameSite=Lax; Secure; HttpOnly`;
+    res.cookies.set(name, value, {
+      path: "/",
+      sameSite: "lax",
+      secure: true,
+      httpOnly: true,
+      ...(typeof maxAge === "number" ? { maxAge } : {}),
+      ...(expires && !Number.isNaN(expires.getTime()) ? { expires } : {}),
+    });
 
-    if (typeof maxAge === "number") line += `; Max-Age=${maxAge}`;
-    if (expires && !Number.isNaN(expires.getTime())) line += `; Expires=${expires.toUTCString()}`;
-
-    serialized.push(line);
-  }
-
-  for (const line of serialized) {
-    res.headers.append("Set-Cookie", line);
+    count += 1;
   }
 
   res.headers.set("x-cookie-writer", "login");
-  res.headers.set("x-auth-set-cookie-count", String(serialized.length));
+  res.headers.set("x-auth-set-cookie-count", String(count));
 }

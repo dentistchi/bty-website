@@ -1,15 +1,11 @@
 import type { NextResponse } from "next/server";
 
-type CookieName = string;
-
 const AUTH_BASE = "sb-mveycersmqfiuddslnrj-auth-token";
 
-// Supabase가 chunk로 쪼개는 케이스까지 모두 포함
-export function getAuthCookieNames(): CookieName[] {
+export function getAuthCookieNames(): string[] {
   return [AUTH_BASE, `${AUTH_BASE}.0`, `${AUTH_BASE}.1`, `${AUTH_BASE}.2`, `${AUTH_BASE}.3`];
 }
 
-/** 과거 잘못된 Path(/ko/bty 등)로 남아있는 sb auth 쿠키를 여러 path에서 만료. domain 미설정(host-only). */
 export function expireAuthCookiesEverywhere(res: NextResponse) {
   const names = getAuthCookieNames();
 
