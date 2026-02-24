@@ -2,14 +2,6 @@
 
 import { useMemo, useState } from "react";
 
-async function fixCookiePath() {
-  try {
-    await fetch("/api/auth/fix-cookie-path", { method: "POST", credentials: "include" });
-  } catch {
-    // ignore
-  }
-}
-
 async function forceCookieCommit() {
   try {
     await fetch("/api/auth/whoami", { method: "GET", cache: "no-store" });
@@ -59,7 +51,6 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
       };
 
       if (data.ok && typeof data.next === "string") {
-        await fixCookiePath();
         await forceCookieCommit();
         await new Promise((r) => setTimeout(r, 50));
         window.location.assign(data.next);
