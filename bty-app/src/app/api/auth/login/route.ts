@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { expireAuthCookiesHard } from "@/lib/bty/cookies/authCookies";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -84,6 +85,8 @@ export async function POST(req: NextRequest) {
 
     const out = NextResponse.json({ ok: true, next: nextPath }, { status: 200 });
     res.headers.forEach((v, k) => out.headers.set(k, v));
+    // 기존 /ko, /en 등 잘못된 path 쿠키 제거 후 path=/ 로만 설정
+    expireAuthCookiesHard(req, out);
     for (const c of res.cookies.getAll()) {
       out.cookies.set(c.name, c.value, {
         path: "/",

@@ -22,6 +22,7 @@ function getClient(): SupabaseClient | null {
             autoRefreshToken: true,
             detectSessionInUrl: true,
           },
+          cookieOptions: { path: "/" },
         })
       : null;
   } catch {

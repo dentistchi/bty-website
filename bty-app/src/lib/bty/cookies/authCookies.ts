@@ -73,6 +73,10 @@ export function expireAuthCookiesHard(req: NextRequest, res: NextResponse) {
     "/ko/bty/login",
     "/en/bty-arena",
     "/ko/bty-arena",
+    "/en/bty/dashboard",
+    "/ko/bty/dashboard",
+    "/en/bty/leaderboard",
+    "/ko/bty/leaderboard",
   ];
 
   const expireOne = (name: string, path: string, domain?: string) => {

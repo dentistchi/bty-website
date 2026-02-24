@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getSupabaseServer } from "@/lib/supabase-server";
-import { writeSupabaseAuthCookies } from "@/lib/bty/cookies/authCookies";
+import { writeSupabaseAuthCookies, expireAuthCookiesHard } from "@/lib/bty/cookies/authCookies";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -69,6 +69,8 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
     res.headers.set("Cache-Control", "no-store");
+    // 기존 /ko, /en 등 잘못된 path 쿠키 제거 후 path=/ 로만 설정
+    expireAuthCookiesHard(req, res);
     writeSupabaseAuthCookies(res, captured);
     return res;
   } catch (err) {
