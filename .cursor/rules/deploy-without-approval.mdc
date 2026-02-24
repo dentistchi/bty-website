@@ -8,6 +8,7 @@ alwaysApply: true
 For this project (btytrainingcenter / bty-app), **all work must be taken through to deployment** without stopping to ask for the user's permission in the middle.
 
 - After making code changes, **commit and push to `main`** in the same flow so that GitHub Actions deploy runs automatically.
+- **배포 후 사이트에서 확인해야 하는 상황이면 무조건 배포한다.** "배포해 주세요" / "배포하고 체크해야 해" 등이 포함된 요청이거나, 변경 후 라이브에서 검증이 필요한 경우에는 반드시 `git add` → `git commit` → `git push origin main`까지 실행한다. "이제 배포하시면 됩니다"처럼 사용자에게 맡기지 않는다.
 - Do **not** ask "shall I deploy?" or "would you like me to push?" — just run `git add`, `git commit`, and `git push origin main` for the changed files.
 - Only stage and commit files that are part of the current task; leave unrelated changes unstaged.
 - If the repo root for this project is `btytrainingcenter`, run git commands from that directory (e.g. `cd btytrainingcenter && git add ... && git commit ... && git push origin main`).

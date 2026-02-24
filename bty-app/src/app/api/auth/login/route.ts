@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { expireAuthCookiesHard } from "@/lib/bty/cookies/authCookies";
+import { expireAuthCookiesHard, writeSupabaseAuthCookies } from "@/lib/bty/cookies/authCookies";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -29,10 +29,18 @@ export async function POST(req: NextRequest) {
     const requestUrl = new URL(req.url);
     const nextPath = sanitizeNext(requestUrl.searchParams.get("next"));
 
-    const res = NextResponse.json({ ok: false }, { status: 200 });
+    const body = (await req.json().catch(() => null)) as null | { email?: string; password?: string };
+    const email = (body?.email ?? "").trim();
+    const password = body?.password ?? "";
+
+    if (!email || !password) {
+      return NextResponse.json({ ok: false, error: "MISSING_CREDENTIALS" }, { status: 400 });
+    }
+
+    const res = NextResponse.json({ ok: true, next: nextPath });
     res.headers.set("Cache-Control", "no-store");
-    res.headers.set("x-auth-login", "1");
-    res.headers.set("x-auth-next", nextPath);
+
+    expireAuthCookiesHard(req, res);
 
     const supabase = createServerClient(url, key, {
       cookies: {
@@ -40,62 +48,22 @@ export async function POST(req: NextRequest) {
           return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
         },
         setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
-          cookies.forEach(({ name, value, options }) => {
-            const o = (options ?? {}) as Record<string, unknown>;
-            const maxAge = typeof o.maxAge === "number" ? o.maxAge : undefined;
-            const expiresRaw = o.expires;
-            const expires =
-              expiresRaw instanceof Date
-                ? expiresRaw
-                : typeof expiresRaw === "string"
-                  ? new Date(expiresRaw)
-                  : undefined;
-            res.cookies.set(name, value, {
-              path: "/",
-              sameSite: "lax",
-              secure: true,
-              httpOnly: true,
-              ...(typeof maxAge === "number" ? { maxAge } : {}),
-              ...(expires && !Number.isNaN((expires as Date).getTime()) ? { expires: expires as Date } : {}),
-            });
-          });
+          writeSupabaseAuthCookies(res, cookies);
+          res.headers.set("x-cookie-writer", "login");
         },
       },
     });
 
-    const body = (await req.json().catch(() => ({}))) as { email?: string; password?: string };
-    const email = String(body?.email ?? "").trim();
-    const password = String(body?.password ?? "");
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (!email || !password) {
-      const out = NextResponse.json({ error: "INVALID_CREDENTIALS" }, { status: 400 });
-      res.headers.forEach((v, k) => out.headers.set(k, v));
-      return out;
+    if (error || !data.session) {
+      return NextResponse.json({ ok: false, error: error?.message ?? "LOGIN_FAILED" }, { status: 401 });
     }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      const out = NextResponse.json(
-        { error: "LOGIN_FAILED", detail: error.message },
-        { status: 401 }
-      );
-      res.headers.forEach((v, k) => out.headers.set(k, v));
-      return out;
-    }
+    await supabase.auth.getSession();
 
-    const out = NextResponse.json({ ok: true, next: nextPath }, { status: 200 });
-    res.headers.forEach((v, k) => out.headers.set(k, v));
-    // 기존 /ko, /en 등 잘못된 path 쿠키 제거 후 path=/ 로만 설정
-    expireAuthCookiesHard(req, out);
-    for (const c of res.cookies.getAll()) {
-      out.cookies.set(c.name, c.value, {
-        path: "/",
-        sameSite: "lax",
-        secure: true,
-        httpOnly: true,
-      });
-    }
-    return out;
+    res.headers.set("x-auth-next", nextPath);
+    return res;
   } catch (e: unknown) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : String(e), where: "/api/auth/login POST" },
