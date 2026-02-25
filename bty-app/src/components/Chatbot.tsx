@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { getMessages } from "@/lib/i18n";
 import { fetchJson } from "@/lib/read-json";
 import type { Locale } from "@/lib/i18n";
 
-type Message = { role: "user" | "assistant"; content: string };
+type Message = { role: "user" | "assistant"; content: string; suggestDearMe?: boolean };
 
 const TYPING_TIMEOUT_10S = 10_000;
 const TYPING_TIMEOUT_25S = 25_000;
@@ -83,7 +84,7 @@ export function Chatbot() {
       let wasAborted = false;
       try {
         const mode = pathname.includes("/bty") ? "bty" : "today-me";
-        const r = await fetchJson<{ message?: string }>("/api/chat", {
+        const r = await fetchJson<{ message?: string; suggestDearMe?: boolean }>("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -98,7 +99,8 @@ export function Chatbot() {
           (locale === "ko"
             ? "말해줘서 고마워요. 여기선 뭐든 괜찮아요."
             : "Thanks for sharing. You're okay as you are.");
-        setChatMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+        const suggestDearMe = r.ok && r.json?.suggestDearMe === true;
+        setChatMessages((prev) => [...prev, { role: "assistant", content: reply, suggestDearMe }]);
       } catch (err) {
         wasAborted = err instanceof Error && err.name === "AbortError";
         if (!wasAborted) {
@@ -200,14 +202,24 @@ export function Chatbot() {
               <p className="text-sm text-dear-charcoal-soft">{introMessage}</p>
             )}
             {chatMessages.map((m, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "rounded-xl px-3 py-2 text-sm max-w-[85%]",
-                  m.role === "user" ? cn("ml-auto", themeColors.userMsg) : themeColors.botMsg
+              <div key={i} className={m.role === "user" ? "ml-auto max-w-[85%]" : "max-w-[85%]"}>
+                <div
+                  className={cn(
+                    "rounded-xl px-3 py-2 text-sm",
+                    m.role === "user" ? themeColors.userMsg : themeColors.botMsg
+                  )}
+                >
+                  {m.content}
+                </div>
+                {m.role === "assistant" && m.suggestDearMe && (
+                  <Link
+                    href={locale === "en" ? "/en/dear-me" : "/ko/dear-me"}
+                    className="mt-1.5 inline-block text-sm font-medium underline hover:no-underline"
+                    style={isBtyPage ? { color: "var(--dojo-purple)" } : { color: "var(--dear-sage)" }}
+                  >
+                    {locale === "ko" ? "Dear Me로 가기 →" : "Go to Dear Me →"}
+                  </Link>
                 )}
-              >
-                {m.content}
               </div>
             ))}
             {typingText && (

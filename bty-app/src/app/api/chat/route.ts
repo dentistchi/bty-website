@@ -1,6 +1,35 @@
 import { fetchJson } from "@/lib/read-json";
 import { NextResponse } from "next/server";
 
+/** 감정 안전 밸브: 낮은 자존감 신호 감지 시 Dear Me 유도 (mentor와 동일) */
+const LOW_SELF_ESTEEM_PATTERNS = [
+  /못하겠어/i,
+  /못하겠다/i,
+  /자격\s*이?\s*없어/i,
+  /자격\s*없다/i,
+  /너무\s*힘들어/i,
+  /너무\s*힘들다/i,
+  /진짜\s*힘들어/i,
+  /지쳐/i,
+  /포기/i,
+  /그만둘게/i,
+  /그만둬/i,
+  /안\s*돼/i,
+  /못\s*해/i,
+  /쓸모없/i,
+  /가치\s*없/i,
+  /의미\s*없/i,
+];
+
+const SAFETY_VALVE_MESSAGE_KO =
+  "잠깐만요, 지금 많이 지쳐 보여요. 기술을 배우는 것보다 마음을 돌보는 게 먼저인 것 같네요. 우리 Dear Me로 가서 잠시 쉬고 올까요? 거기서 당신의 마음 상태를 체크해보고 오세요.";
+const SAFETY_VALVE_MESSAGE_EN =
+  "You seem really worn out right now. Taking care of your heart might come before anything else. How about resting for a moment in Dear Me? You can check in with how you're feeling there.";
+
+function isLowSelfEsteemSignal(text: string): boolean {
+  return LOW_SELF_ESTEEM_PATTERNS.some((pat) => pat.test(text));
+}
+
 const SYSTEM_PROMPT_TODAY_ME_EN = `You are a protective, non-evaluating presence for someone in recovery. Your only job is to make them feel safe and okay as they are. You NEVER say "try harder", "do better", or any encouragement to improve. You say: "you're safe here", "it's okay as you are". You never evaluate or compare. Respond in English only. Keep responses short and warm.`;
 
 const SYSTEM_PROMPT_TODAY_ME_KO = `당신은 회복 중인 사람을 위한 보호적, 비평가적 존재입니다. 오직 그들이 안전하고 그대로 괜찮다고 느끼게 하는 것이 당신의 역할입니다. "더 잘하자", "노력해" 같은 격려나 개선 유도는 절대 하지 마세요. "지금 상태도 괜찮아", "여기는 안전한 곳이에요"라고 말하세요. 평가나 비교는 하지 마세요. 한국어로만 응답하세요. 짧고 따뜻하게 응답하세요.`;
@@ -29,6 +58,12 @@ export async function POST(request: Request) {
     if (!userContent || typeof userContent !== "string") {
       return NextResponse.json({ error: "Message required" }, { status: 400 });
     }
+
+    if (isLowSelfEsteemSignal(userContent)) {
+      const message = lang === "ko" ? SAFETY_VALVE_MESSAGE_KO : SAFETY_VALVE_MESSAGE_EN;
+      return NextResponse.json({ message, suggestDearMe: true });
+    }
+
     const systemPrompt = getSystemPrompt(mode, lang);
     const fallbackList = mode === "bty" ? FALLBACK_BTY : FALLBACK_TODAY_ME;
 
