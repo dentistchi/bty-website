@@ -1,10 +1,8 @@
 /**
- * BTY Arena Core Engine (Pure Functions)
- * - UI/DB/네트워크와 분리된 "결정 엔진"
- * - 현재는 MVP 결과를 유지한다:
- *   - xp = round(xpBase * difficulty), xp >= 0
- *   - systemMessage 규칙(감사>=2, integrity>=3, xp>=90) 동일
- *   - follow-up XP = 0 고정
+ * BTY Arena Core Engine (pure functions).
+ * - xp = round(xpBase * difficulty), xp >= 0
+ * - systemMessage: gratitude>=2 | integrity>=3 | xp>=90
+ * - follow-up XP = 0
  */
 
 export type HiddenDelta = Partial<{
@@ -21,7 +19,6 @@ export type SystemMessageId =
   | "gratitude"
   | "consistency"
   | "integrity"
-  // 확장용
   | "unknown";
 
 export type EngineChoiceInput = {
@@ -42,7 +39,7 @@ export type EngineFollowUpInput = {
 export type EngineOutput = {
   xp: number;
   deltas: HiddenDelta;
-  tags: string[]; // 향후 리그/대시보드 집계에 사용
+  tags: string[];
   systemMessageId: SystemMessageId;
 };
 
@@ -74,7 +71,9 @@ export function pickSystemMessageId(params: { xp: number; deltas?: HiddenDelta }
 
 export function evaluateChoice(input: EngineChoiceInput): EngineOutput {
   const deltas: HiddenDelta = input.hiddenDelta ?? {};
-  const xp = computeXp(input.xpBase, input.difficulty);
+  const baseXp = computeXp(input.xpBase, input.difficulty);
+  const integrityBonus = (deltas.integrity != null && deltas.integrity > 0) ? INTEGRITY_BONUS_XP : 0;
+  const xp = Math.max(0, baseXp + integrityBonus);
 
   const tags: string[] = [
     `scenario:${input.scenarioId}`,
@@ -89,7 +88,6 @@ export function evaluateChoice(input: EngineChoiceInput): EngineOutput {
 }
 
 export function evaluateFollowUp(_input: EngineFollowUpInput): EngineOutput {
-  // ✅ MVP 고정 정책: follow-up은 XP 0
   const xp = 0;
   const deltas: HiddenDelta = {};
   const tags: string[] = ["followup:selected"];

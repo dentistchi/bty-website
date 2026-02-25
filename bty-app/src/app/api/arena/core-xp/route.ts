@@ -37,12 +37,6 @@ export async function GET(req: NextRequest) {
   const customSubName = row ? (row as { sub_name?: string | null }).sub_name ?? null : null;
   const codeName = CODE_NAMES[Math.min(6, Math.max(0, codeIndex))];
   const subName = resolveSubName(codeIndex, subTierGroup, customSubName);
-  const subNameRenameAvailable =
-    row &&
-    tier >= 25 &&
-    !(row as { sub_name_renamed_in_code?: boolean }).sub_name_renamed_in_code &&
-    codeIndex < 6;
-
   let seasonalXpTotal = 0;
   const { data: wRow } = await supabase
     .from("weekly_xp")
@@ -54,9 +48,31 @@ export async function GET(req: NextRequest) {
     seasonalXpTotal = (wRow as { xp_total: number }).xp_total;
   }
 
+  const myXp = seasonalXpTotal;
+  const { count: totalCount } = await supabase
+    .from("weekly_xp")
+    .select("user_id", { count: "exact", head: true })
+    .is("league_id", null);
+  const { count: rankAbove } = await supabase
+    .from("weekly_xp")
+    .select("user_id", { count: "exact", head: true })
+    .is("league_id", null)
+    .gt("xp_total", myXp);
+  const total = totalCount ?? 0;
+  const rank = total > 0 ? (rankAbove ?? 0) + 1 : 0;
+  const isTop5Percent = total > 0 && rank > 0 && rank <= Math.ceil(0.05 * total);
+
+  const subNameRenameAvailable =
+    row &&
+    tier >= 25 &&
+    !(row as { sub_name_renamed_in_code?: boolean }).sub_name_renamed_in_code &&
+    codeIndex < 6 &&
+    isTop5Percent;
+
   if (!row) {
     const out = NextResponse.json({
       coreXpTotal: 0,
+      tier: 0,
       codeName: CODE_NAMES[0],
       subName: "Spark",
       seasonalXpTotal: 0,
@@ -69,6 +85,7 @@ export async function GET(req: NextRequest) {
 
   const out = NextResponse.json({
     coreXpTotal,
+    tier,
     codeName,
     subName,
     seasonalXpTotal,

@@ -30,6 +30,37 @@ export function tierFromCoreXp(coreXp: number): number {
   return Math.max(0, Math.floor(coreXp / 10));
 }
 
+/** One-line lore per code (for progress UI). */
+export const CODE_LORE: Record<CodeIndex, string> = {
+  0: "Shape your foundation.",
+  1: "Find your rhythm.",
+  2: "Build the structure.",
+  3: "Rise to the summit.",
+  4: "Let your light shine.",
+  5: "Design what endures.",
+  6: "You define the path.",
+};
+
+/**
+ * Progress to next tier (next tier = +10 Core XP). Tier is not shown to user.
+ * Returns xpToNext (0–10), progress 0–1 within current tier, and optional next code name at 100-tier boundary.
+ */
+export function progressToNextTier(coreXpTotal: number): {
+  xpToNext: number;
+  progressPct: number;
+  nextCodeName?: string;
+} {
+  const tier = tierFromCoreXp(coreXpTotal);
+  const nextTierAt = (tier + 1) * 10;
+  const xpToNext = Math.max(0, nextTierAt - coreXpTotal);
+  const segmentStart = tier * 10;
+  const segmentEnd = nextTierAt;
+  const progressPct = segmentEnd > segmentStart ? (coreXpTotal - segmentStart) / (segmentEnd - segmentStart) : 1;
+  const isNextCode = (tier + 1) % 100 === 0;
+  const nextCodeName = isNextCode && tier + 1 <= 700 ? CODE_NAMES[Math.floor((tier + 1) / 100) as CodeIndex] : undefined;
+  return { xpToNext, progressPct, nextCodeName };
+}
+
 export function codeIndexFromTier(tier: number): CodeIndex {
   const idx = Math.floor(tier / 100);
   return Math.min(6, Math.max(0, idx)) as CodeIndex;

@@ -4,7 +4,15 @@ import React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import BtyTopNav from "@/components/bty/BtyTopNav";
+import { TierMilestoneModal } from "@/components/bty-arena";
 import { arenaFetch } from "@/lib/http/arenaFetch";
+import { getMilestoneToShow } from "@/lib/bty/arena/milestone";
+import {
+  progressToNextTier,
+  CODE_LORE,
+  codeIndexFromTier,
+  tierFromCoreXp,
+} from "@/lib/bty/arena/codes";
 
 type WeeklyXpRes = { weekStartISO?: string | null; weekEndISO?: string | null; xpTotal: number; count?: number };
 type CoreXpRes = {
@@ -17,6 +25,13 @@ type CoreXpRes = {
 };
 type LeagueRes = { league_id: string; start_at: string; end_at: string; name?: string | null };
 type TodayXpRes = { xpToday: number };
+type WeeklyStatsRes = {
+  reflectionCount: number;
+  reflectionTarget: number;
+  reflectionQuestClaimed: boolean;
+  weekStartISO?: string;
+  weekMaxDailyXp?: number;
+};
 
 const STREAK_KEY = "btyArenaStreak:v1";
 
@@ -56,6 +71,15 @@ export default function DashboardClient() {
   const [subNameDraft, setSubNameDraft] = React.useState("");
   const [subNameSaving, setSubNameSaving] = React.useState(false);
 
+  type MilestoneModalState = {
+    milestone: 25 | 50 | 75;
+    previousSubName?: string;
+    subName: string;
+    subNameRenameAvailable: boolean;
+  };
+  const [milestoneModal, setMilestoneModal] = React.useState<MilestoneModalState | null>(null);
+  const [weeklyStats, setWeeklyStats] = React.useState<WeeklyStatsRes | null>(null);
+
   async function saveSubName() {
     if (!subNameDraft.trim() || subNameDraft.length > 7) return;
     try {
@@ -90,17 +114,28 @@ export default function DashboardClient() {
           subName: "Spark",
           seasonalXpTotal: 0,
         };
-        const [c, leagueRes, todayRes] = await Promise.all([
+        const [c, leagueRes, todayRes, statsRes] = await Promise.all([
           arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => fallbackCore),
           arenaFetch<LeagueRes>("/api/arena/league/active").catch(() => null),
           arenaFetch<TodayXpRes>("/api/arena/today-xp").catch(() => ({ xpToday: 0 })),
+          arenaFetch<WeeklyStatsRes>("/api/arena/weekly-stats").catch(() => null),
         ]);
 
         if (!alive) return;
         setWeekly(w);
         setCore(c);
+        const toShow = getMilestoneToShow(c.coreXpTotal);
+        if (toShow) {
+          setMilestoneModal({
+            milestone: toShow.milestone,
+            previousSubName: toShow.previousSubName,
+            subName: c.subName ?? "Spark",
+            subNameRenameAvailable: Boolean(c.subNameRenameAvailable),
+          });
+        }
         if (leagueRes) setLeague(leagueRes);
         setXpToday(todayRes?.xpToday ?? 0);
+        if (statsRes) setWeeklyStats(statsRes);
       } catch (e) {
         if (!alive) return;
         setError(e instanceof Error ? e.message : "Unknown error");
@@ -133,7 +168,6 @@ export default function DashboardClient() {
         <div style={{ padding: 14, border: "1px solid #f2c", borderRadius: 12 }}>
           <div style={{ fontWeight: 700 }}>Error</div>
           <div style={{ marginTop: 6 }}>{error}</div>
-          <div style={{ marginTop: 10, opacity: 0.7, fontSize: 13 }}>(Logged out should return 401.)</div>
         </div>
       )}
 
@@ -227,6 +261,23 @@ export default function DashboardClient() {
             <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>CORE XP</div>
             <div style={{ fontSize: 28, fontWeight: 800 }}>{core?.coreXpTotal ?? 0}</div>
             <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>Permanent. Drives Code and Sub Name.</div>
+            {typeof core?.coreXpTotal === "number" && (() => {
+              const tier = tierFromCoreXp(core.coreXpTotal);
+              const codeIndex = codeIndexFromTier(tier);
+              const { xpToNext, progressPct, nextCodeName } = progressToNextTier(core.coreXpTotal);
+              const lore = CODE_LORE[codeIndex];
+              return (
+                <>
+                  <div style={{ marginTop: 10, height: 8, borderRadius: 999, border: "1px solid #eee", overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${Math.min(100, progressPct * 100)}%`, background: "#111" }} />
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
+                    {nextCodeName ? `${xpToNext} XP to ${nextCodeName}` : `${xpToNext} XP to next phase`}
+                  </div>
+                  {lore && <div style={{ marginTop: 4, fontSize: 12, fontStyle: "italic", opacity: 0.75 }}>{lore}</div>}
+                </>
+              );
+            })()}
           </div>
 
           <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
@@ -235,7 +286,7 @@ export default function DashboardClient() {
               {core?.codeName ?? "FORGE"} · {core?.subName ?? "Spark"}
             </div>
             <div style={{ marginTop: 6, fontSize: 13, opacity: 0.75 }}>
-              Code and Sub Name (Tier hidden; you’ll see celebrations at 25/50/75).
+              Code · Sub Name
             </div>
             {core?.subNameRenameAvailable && (
               <div style={{ marginTop: 12 }}>
@@ -268,11 +319,54 @@ export default function DashboardClient() {
           <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
             <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>STREAK</div>
             <div style={{ fontSize: 28, fontWeight: 800 }}>{streak}</div>
-            <div style={{ marginTop: 6, fontSize: 13, opacity: 0.75 }}>
-              (MVP: local streak. Supabase profile streak later.)
+          </div>
+
+          {weeklyStats && (
+            <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
+              <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>WEEKLY REFLECTION</div>
+              <div style={{ fontSize: 18, fontWeight: 700 }}>
+                {weeklyStats.reflectionCount} / {weeklyStats.reflectionTarget} reflections this week
+              </div>
+              <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>
+                {weeklyStats.reflectionQuestClaimed
+                  ? "Quest complete! +15 Seasonal XP claimed."
+                  : "Complete 3 reflections in a week (Mon–Sun UTC) to earn +15 Seasonal XP once."}
+              </div>
             </div>
+          )}
+
+          <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
+            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>PERSONAL RECORD</div>
+            <div style={{ fontSize: 14, display: "flex", gap: 16, flexWrap: "wrap" }}>
+              <span>
+                <b>Best day this week</b> {typeof weeklyStats?.weekMaxDailyXp === "number" ? `${weeklyStats.weekMaxDailyXp} XP` : "—"}
+              </span>
+              <span>
+                <b>Streak</b> {streak} day{streak !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75 }}>Your growth, not compared to others.</div>
           </div>
         </div>
+      )}
+
+      {milestoneModal && (
+        <TierMilestoneModal
+          milestone={milestoneModal.milestone}
+          subName={milestoneModal.subName}
+          previousSubName={milestoneModal.previousSubName}
+          subNameRenameAvailable={milestoneModal.subNameRenameAvailable}
+          onRename={
+            milestoneModal.subNameRenameAvailable
+              ? async (name: string) => {
+                  await arenaFetch("/api/arena/sub-name", { json: { subName: name } });
+                  const next = await arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => null);
+                  if (next) setCore(next);
+                }
+              : undefined
+          }
+          onClose={() => setMilestoneModal(null)}
+        />
       )}
     </div>
   );

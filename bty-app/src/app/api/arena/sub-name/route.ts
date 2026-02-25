@@ -47,6 +47,15 @@ export async function POST(req: NextRequest) {
   if (alreadyRenamed) return NextResponse.json({ error: "ALREADY_RENAMED_IN_CODE" }, { status: 403 });
   if (codeIndex >= 6) return NextResponse.json({ error: "CODELESS_ZONE_USE_FREE_SET" }, { status: 400 });
 
+  const { data: wRow } = await supabase.from("weekly_xp").select("xp_total").eq("user_id", user.id).is("league_id", null).maybeSingle();
+  const myXp = typeof (wRow as { xp_total?: number } | null)?.xp_total === "number" ? (wRow as { xp_total: number }).xp_total : 0;
+  const { count: totalCount } = await supabase.from("weekly_xp").select("user_id", { count: "exact", head: true }).is("league_id", null);
+  const { count: rankAbove } = await supabase.from("weekly_xp").select("user_id", { count: "exact", head: true }).is("league_id", null).gt("xp_total", myXp);
+  const total = totalCount ?? 0;
+  const rank = total > 0 ? (rankAbove ?? 0) + 1 : 0;
+  const isTop5Percent = total > 0 && rank > 0 && rank <= Math.ceil(0.05 * total);
+  if (!isTop5Percent) return NextResponse.json({ error: "ELITE_TOP_5_PERCENT_REQUIRED" }, { status: 403 });
+
   const { error: updErr } = await supabase
     .from("arena_profiles")
     .update({ sub_name: validated.value, sub_name_renamed_in_code: true })

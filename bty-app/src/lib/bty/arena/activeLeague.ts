@@ -58,6 +58,9 @@ export async function getActiveLeague(
 
   if (!supabaseAdmin) return null;
 
+  // Spec: at season end, 10% Seasonal XP carryover before new league starts.
+  await supabaseAdmin.rpc("run_season_carryover").then(() => {});
+
   const { start, end } = getCurrentWindow();
   const startStr = start.toISOString();
   const endStr = end.toISOString();

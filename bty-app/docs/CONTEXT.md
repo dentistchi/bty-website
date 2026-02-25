@@ -12,10 +12,17 @@
 - OpenNext 기반 배포
 
 ### GitHub Actions (실행 커맨드)
+- **배포 트리거:** `main` 브랜치에 **push**하면 자동으로 빌드 후 Cloudflare Workers에 배포된다. (로컬에서 `npm run deploy` 할 필요 없음.)
 - Build:
   - `npx opennextjs-cloudflare build`
 - Deploy:
   - `npx opennextjs-cloudflare deploy`
+
+**필요한 GitHub Secrets (Settings → Secrets and variables → Actions):**
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 > 확인 근거: `.github/workflows/deploy-workers.yml`
 
@@ -46,7 +53,7 @@
 - Secure: `true`
 - SameSite: `Lax`
 - HttpOnly: `true` (세션 쿠키는 JS 접근 금지)
-- Domain: 배포 도메인(예: `bty-website.ywamer2022.workers.dev`)
+- Domain: 배포 도메인(프로덕션: `bty-website.ywamer2022.workers.dev`)
 - Path: **기본 `/` 권장**
   - (주의) `/api`로만 설정하면 페이지 요청에서 쿠키가 안 보일 수 있어 혼선이 생김.
   - 로그아웃 시에는 과거에 설정된 Path/Domain 변형까지 모두 지우도록 "복수 경로 삭제"가 필요할 수 있음.

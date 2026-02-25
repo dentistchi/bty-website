@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { applySeasonalXpToCore } from "@/lib/bty/arena/applyCoreXp";
+import {
+  getWeekStartUTC,
+  REFLECTION_QUEST_TARGET,
+  REFLECTION_QUEST_BONUS_XP,
+} from "@/lib/bty/arena/weeklyQuest";
 
 export async function POST(req: Request) {
   const supabase = await getSupabaseServerClient();
@@ -122,6 +127,43 @@ export async function POST(req: Request) {
   });
 
   if (markErr) return NextResponse.json({ error: markErr.message }, { status: 500 });
+
+  // Weekly reflection quest: 3 reflections in a week (Monday UTC) grant +15 Seasonal XP once.
+  const weekStart = getWeekStartUTC();
+  const weekStartISO = `${weekStart}T00:00:00.000Z`;
+  const { count: reflectionCount, error: countErr } = await supabase
+    .from("arena_events")
+    .select("event_id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .in("event_type", ["REFLECTION_SELECTED", "BEGINNER_REFLECTION"])
+    .gte("created_at", weekStartISO);
+  if (!countErr && (reflectionCount ?? 0) >= REFLECTION_QUEST_TARGET) {
+    const { data: existingClaim } = await supabase
+      .from("arena_weekly_quest_claims")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .eq("week_start", weekStart)
+      .eq("quest_type", "reflection")
+      .maybeSingle();
+    if (!existingClaim) {
+      const { data: wxRow } = await supabase
+        .from("weekly_xp")
+        .select("id, xp_total")
+        .eq("user_id", user.id)
+        .is("league_id", null)
+        .maybeSingle();
+      if (wxRow) {
+        const newTotal = (typeof (wxRow as { xp_total?: number }).xp_total === "number" ? (wxRow as { xp_total: number }).xp_total : 0) + REFLECTION_QUEST_BONUS_XP;
+        await supabase.from("weekly_xp").update({ xp_total: newTotal }).eq("id", (wxRow as { id: string }).id);
+        await applySeasonalXpToCore(supabase, user.id, REFLECTION_QUEST_BONUS_XP);
+      }
+      await supabase.from("arena_weekly_quest_claims").insert({
+        user_id: user.id,
+        week_start: weekStart,
+        quest_type: "reflection",
+      });
+    }
+  }
 
   return NextResponse.json({ ok: true, runId, status: "DONE", deltaApplied: deltaCapped });
 }

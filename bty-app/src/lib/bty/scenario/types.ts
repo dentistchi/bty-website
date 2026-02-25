@@ -27,6 +27,8 @@ export type Scenario = {
   context: string;
   choices: ScenarioChoice[];
   coachNotes?: ScenarioCoachNotes;
+  /** If set, only users with tier >= this value can get this scenario (e.g. 75 = Elite / Tier 75+). */
+  minTier?: number;
 };
 
 export type ScenarioSubmitPayload = {

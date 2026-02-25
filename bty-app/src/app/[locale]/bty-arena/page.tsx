@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useParams, useRouter } from "next/navigation";
+import { getContextForUser } from "@/lib/bty/scenario/engine";
 import { SCENARIOS } from "@/lib/bty/scenario/scenarios";
 import type { Scenario } from "@/lib/bty/scenario/types";
 import { evaluateChoice, evaluateFollowUp } from "@/lib/bty/arena/engine";
@@ -11,9 +12,11 @@ import {
   ChoiceList,
   PrimaryActions,
   OutputPanel,
+  TierMilestoneModal,
   type SystemMsg,
 } from "@/components/bty-arena";
 import BtyTopNav from "@/components/bty/BtyTopNav";
+import { getMilestoneToShow } from "@/lib/bty/arena/milestone";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 
 // ---------- types for local UI state ----------
@@ -77,9 +80,12 @@ function getScenarioById(id: string): Scenario | undefined {
   return SCENARIOS.find((s) => s.scenarioId === id);
 }
 
-function pickRandomScenario(excludeId?: string): Scenario {
-  const pool = excludeId ? SCENARIOS.filter((s) => s.scenarioId !== excludeId) : SCENARIOS;
-  // fallback if only 1 scenario
+/** Pick a random scenario. If userTier is provided, only scenarios with minTier <= userTier (or no minTier) are included. */
+function pickRandomScenario(excludeId?: string, userTier?: number): Scenario {
+  let pool = excludeId ? SCENARIOS.filter((s) => s.scenarioId !== excludeId) : [...SCENARIOS];
+  if (typeof userTier === "number") {
+    pool = pool.filter((s) => s.minTier == null || s.minTier <= userTier);
+  }
   const arr = pool.length > 0 ? pool : SCENARIOS;
   return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -223,6 +229,14 @@ export default function BtyArenaPage() {
   const [otherSubmitting, setOtherSubmitting] = React.useState(false);
   const [otherSubmitted, setOtherSubmitted] = React.useState(false);
 
+  type MilestoneModalState = {
+    milestone: 25 | 50 | 75;
+    previousSubName?: string;
+    subName: string;
+    subNameRenameAvailable: boolean;
+  };
+  const [milestoneModal, setMilestoneModal] = React.useState<MilestoneModalState | null>(null);
+
   React.useEffect(() => {
     console.log("[arena] otherOpen", otherOpen);
   }, [otherOpen]);
@@ -285,7 +299,8 @@ export default function BtyArenaPage() {
     }
 
     // new session: create run and persist runId
-    const s = pickRandomScenario();
+    const userTier = coreXpTotal !== null ? Math.floor(coreXpTotal / 10) : undefined;
+    const s = pickRandomScenario(undefined, userTier);
     setScenario(s);
     if (streakInfo.message) setSystemMessage(streakInfo.message);
 
@@ -510,12 +525,29 @@ export default function BtyArenaPage() {
     if (currentRunId) {
       try {
         await arenaFetch("/api/arena/run/complete", { json: { runId: currentRunId } });
+        const core = await arenaFetch<{
+          coreXpTotal?: number;
+          subName?: string;
+          subNameRenameAvailable?: boolean;
+        }>("/api/arena/core-xp").catch(() => null);
+        if (core && typeof core.coreXpTotal === "number") {
+          const toShow = getMilestoneToShow(core.coreXpTotal);
+          if (toShow) {
+            setMilestoneModal({
+              milestone: toShow.milestone,
+              previousSubName: toShow.previousSubName,
+              subName: core.subName ?? "Spark",
+              subNameRenameAvailable: Boolean(core.subNameRenameAvailable),
+            });
+          }
+        }
       } catch (e) {
         console.warn("Arena run complete failed", e);
       }
     }
 
-    const next = pickRandomScenario(current.scenarioId);
+    const nextTier = core && typeof core.coreXpTotal === "number" ? Math.floor(core.coreXpTotal / 10) : (coreXpTotal !== null ? Math.floor(coreXpTotal / 10) : undefined);
+    const next = pickRandomScenario(current.scenarioId, nextTier);
     setScenario(next);
     setPhase("CHOOSING");
     setStep(1);
@@ -561,7 +593,8 @@ export default function BtyArenaPage() {
 
   function resetRun() {
     clearState();
-    const next = pickRandomScenario();
+    const userTier = coreXpTotal !== null ? Math.floor(coreXpTotal / 10) : undefined;
+    const next = pickRandomScenario(undefined, userTier);
     setScenario(next);
     setPhase("CHOOSING");
     setStep(1);
@@ -633,13 +666,18 @@ export default function BtyArenaPage() {
 
       <div style={{ marginTop: 18, padding: 18, border: "1px solid #eee", borderRadius: 14 }}>
         {step === 1 && (
-          <ScenarioIntro locale={locale} title={current.title} context={current.context} onStart={onStartSimulation} />
+          <ScenarioIntro
+            locale={locale}
+            title={current.title}
+            context={getContextForUser(current.context)}
+            onStart={onStartSimulation}
+          />
         )}
 
         {step >= 2 && step !== 1 && (
           <>
             <h2 style={{ marginTop: 0, marginBottom: 8 }}>{current.title}</h2>
-            <p style={{ marginTop: 0, lineHeight: 1.6, opacity: 0.9 }}>{current.context}</p>
+            <p style={{ marginTop: 0, lineHeight: 1.6, opacity: 0.9 }}>{getContextForUser(current.context)}</p>
           </>
         )}
 
@@ -821,6 +859,23 @@ export default function BtyArenaPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {milestoneModal && (
+        <TierMilestoneModal
+          milestone={milestoneModal.milestone}
+          subName={milestoneModal.subName}
+          previousSubName={milestoneModal.previousSubName}
+          subNameRenameAvailable={milestoneModal.subNameRenameAvailable}
+          onRename={
+            milestoneModal.subNameRenameAvailable
+              ? async (name: string) => {
+                  await arenaFetch("/api/arena/sub-name", { json: { subName: name } });
+                }
+              : undefined
+          }
+          onClose={() => setMilestoneModal(null)}
+        />
       )}
     </div>
   );

@@ -5,4 +5,6 @@ export { ChoiceList } from "./ChoiceList";
 export { PrimaryActions } from "./PrimaryActions";
 export type { PrimaryActionsProps } from "./PrimaryActions";
 export { OutputPanel } from "./OutputPanel";
+export { TierMilestoneModal } from "./TierMilestoneModal";
+export type { TierMilestone, TierMilestoneModalProps } from "./TierMilestoneModal";
 export type { SystemMsg } from "./ResultBlock";

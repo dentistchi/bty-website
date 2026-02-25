@@ -1,6 +1,26 @@
 import { SCENARIOS } from "./scenarios";
 import type { Scenario, ScenarioSubmitPayload, ScenarioSubmitResult } from "./types";
 
+/** Meta phrases used only for design/scoring — never show to user. */
+const META_PHRASES =
+  /(?:hidden risk|integrity trigger|growth opportunity|leadership challenge|decision point)/i;
+
+/**
+ * Strip all design/system-only language from context. User sees only situation + emotion;
+ * no "calculation system" (hidden risk, integrity trigger, growth opportunity, etc.).
+ */
+export function getContextForUser(context: string): string {
+  let text = context.trim();
+  const stop = /\s+The (hidden risk|integrity trigger|growth opportunity|leadership challenge|decision point)[\s:]/i;
+  const m = text.match(stop);
+  if (m && m.index != null) text = text.slice(0, m.index).trim();
+  const sentences = text.split(/(?<=[.!])\s+/).filter((s) => {
+    const t = s.trim();
+    return t.length > 0 && !META_PHRASES.test(t);
+  });
+  return sentences.join(" ").trim() || text.trim();
+}
+
 export function getScenarioById(id: string): Scenario | undefined {
   return SCENARIOS.find((s) => s.scenarioId === id);
 }
@@ -12,10 +32,7 @@ export function getRandomScenario(excludeIds: string[] = []): Scenario {
 }
 
 /**
- * XP 계산(초기 버전)
- * - xpEarned = round(xpBase * difficulty)
- * - 난이도>1: 보상 커짐, 난이도<1: 보상 줄어듦
- * - 나중에 league_xp / core_xp 분리 가능
+ * XP: xpEarned = round(xpBase * difficulty). Higher difficulty => higher reward.
  */
 export function computeResult(payload: ScenarioSubmitPayload): ScenarioSubmitResult {
   const scenario = getScenarioById(payload.scenarioId);

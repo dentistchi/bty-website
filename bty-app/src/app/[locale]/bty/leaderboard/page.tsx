@@ -54,7 +54,7 @@ export default function LeaderboardPage() {
         <div style={{ fontSize: 14, opacity: 0.7 }}>bty</div>
         <h1 style={{ margin: 0, fontSize: 28 }}>Leaderboard</h1>
         <div style={{ marginTop: 6, fontSize: 14, opacity: 0.7 }}>
-          Seasonal XP · Code · Sub Name (Tier hidden)
+          Seasonal XP · Code · Sub Name
         </div>
         {data?.myRank != null && (
           <div style={{ marginTop: 10, fontSize: 14, fontWeight: 600 }}>

@@ -127,3 +127,4 @@ bty-app/src/
 
 - **운영/배포/인증 기준 문서:** `docs/CONTEXT.md`
 - **환경변수 단일 목록:** `docs/ENVIRONMENT.md`
+- **MVP 진행·검증 전략:** `docs/MVP_VERIFICATION.md`
