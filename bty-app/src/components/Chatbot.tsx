@@ -7,8 +7,9 @@ import { cn } from "@/lib/utils";
 import { getMessages } from "@/lib/i18n";
 import { fetchJson } from "@/lib/read-json";
 import type { Locale } from "@/lib/i18n";
+import { GuideCharacterAvatar } from "@/components/GuideCharacterAvatar";
 
-type Message = { role: "user" | "assistant"; content: string; suggestDearMe?: boolean };
+type Message = { role: "user" | "assistant"; content: string; suggestDearMe?: boolean; suggestDojo?: boolean };
 
 const TYPING_TIMEOUT_10S = 10_000;
 const TYPING_TIMEOUT_25S = 25_000;
@@ -84,7 +85,7 @@ export function Chatbot() {
       let wasAborted = false;
       try {
         const mode = pathname.includes("/bty") ? "bty" : "today-me";
-        const r = await fetchJson<{ message?: string; suggestDearMe?: boolean }>("/api/chat", {
+        const r = await fetchJson<{ message?: string; suggestDearMe?: boolean; suggestDojo?: boolean }>("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -100,7 +101,8 @@ export function Chatbot() {
             ? "말해줘서 고마워요. 여기선 뭐든 괜찮아요."
             : "Thanks for sharing. You're okay as you are.");
         const suggestDearMe = r.ok && r.json?.suggestDearMe === true;
-        setChatMessages((prev) => [...prev, { role: "assistant", content: reply, suggestDearMe }]);
+        const suggestDojo = r.ok && r.json?.suggestDojo === true;
+        setChatMessages((prev) => [...prev, { role: "assistant", content: reply, suggestDearMe, suggestDojo }]);
       } catch (err) {
         wasAborted = err instanceof Error && err.name === "AbortError";
         if (!wasAborted) {
@@ -184,8 +186,11 @@ export function Chatbot() {
             "bg-white shadow-xl flex flex-col max-h-[70vh] animate-fadeIn"
           )}
         >
-          <div className={cn("p-3 border-b", themeColors.border, "flex items-center justify-between")}>
-            <span className={cn("text-sm font-medium", themeColors.header)}>{t.title}</span>
+          <div className={cn("p-3 border-b", themeColors.border, "flex items-center justify-between gap-2")}>
+            <div className="flex items-center gap-2 min-w-0">
+              <GuideCharacterAvatar size="sm" className="flex-shrink-0" />
+              <span className={cn("text-sm font-medium truncate", themeColors.header)}>Dr. Chi</span>
+            </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
@@ -218,6 +223,15 @@ export function Chatbot() {
                     style={isBtyPage ? { color: "var(--dojo-purple)" } : { color: "var(--dear-sage)" }}
                   >
                     {locale === "ko" ? "Dear Me로 가기 →" : "Go to Dear Me →"}
+                  </Link>
+                )}
+                {m.role === "assistant" && m.suggestDojo && (
+                  <Link
+                    href={locale === "en" ? "/en/bty" : "/ko/bty"}
+                    className="mt-1.5 inline-block text-sm font-medium underline hover:no-underline"
+                    style={isBtyPage ? { color: "var(--dojo-purple)" } : { color: "var(--dear-sage)" }}
+                  >
+                    {locale === "ko" ? "훈련장(Dojo)으로 가기 →" : "Go to Dojo →"}
                   </Link>
                 )}
               </div>

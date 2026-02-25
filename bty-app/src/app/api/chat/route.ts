@@ -30,6 +30,33 @@ function isLowSelfEsteemSignal(text: string): boolean {
   return LOW_SELF_ESTEEM_PATTERNS.some((pat) => pat.test(text));
 }
 
+/** Dojo 추천: 학습/연습 의도 감지 시 훈련장(멘토·역지사지) 유도 */
+const DOJO_RECOMMEND_PATTERNS = [
+  /배우고\s*싶/i,
+  /어떻게\s*해야/i,
+  /연습하고\s*싶/i,
+  /도와\s*줘/i,
+  /가이드|가르쳐|알려\s*줘/i,
+  /how\s*to/i,
+  /learn\s*(to|about|how)/i,
+  /want\s*to\s*(learn|practice)/i,
+  /need\s*to\s*learn/i,
+  /help\s*me\s*(with|to)/i,
+  /practice\s*(with|together)/i,
+  /teach\s*me/i,
+  /멘토|mentor/i,
+  /역지사지|다른\s*사람\s*입장/i,
+];
+
+const DOJO_RECOMMEND_MESSAGE_KO =
+  "연습이나 배움이 필요하시다면 훈련장(Dojo)이 좋아요. Dr. Chi 멘토와 대화하거나 역지사지 시뮬레이터로 갈등 상황을 돌려볼 수 있어요.";
+const DOJO_RECOMMEND_MESSAGE_EN =
+  "If you want to practice or learn, the Dojo is a good place. You can talk with Dr. Chi or try the integrity simulator to reframe conflict situations.";
+
+function isDojoRecommendSignal(text: string): boolean {
+  return DOJO_RECOMMEND_PATTERNS.some((pat) => pat.test(text));
+}
+
 const SYSTEM_PROMPT_TODAY_ME_EN = `You are a protective, non-evaluating presence for someone in recovery. Your only job is to make them feel safe and okay as they are. You NEVER say "try harder", "do better", or any encouragement to improve. You say: "you're safe here", "it's okay as you are". You never evaluate or compare. Respond in English only. Keep responses short and warm.`;
 
 const SYSTEM_PROMPT_TODAY_ME_KO = `당신은 회복 중인 사람을 위한 보호적, 비평가적 존재입니다. 오직 그들이 안전하고 그대로 괜찮다고 느끼게 하는 것이 당신의 역할입니다. "더 잘하자", "노력해" 같은 격려나 개선 유도는 절대 하지 마세요. "지금 상태도 괜찮아", "여기는 안전한 곳이에요"라고 말하세요. 평가나 비교는 하지 마세요. 한국어로만 응답하세요. 짧고 따뜻하게 응답하세요.`;
@@ -62,6 +89,11 @@ export async function POST(request: Request) {
     if (isLowSelfEsteemSignal(userContent)) {
       const message = lang === "ko" ? SAFETY_VALVE_MESSAGE_KO : SAFETY_VALVE_MESSAGE_EN;
       return NextResponse.json({ message, suggestDearMe: true });
+    }
+
+    if (mode === "today-me" && isDojoRecommendSignal(userContent)) {
+      const message = lang === "ko" ? DOJO_RECOMMEND_MESSAGE_KO : DOJO_RECOMMEND_MESSAGE_EN;
+      return NextResponse.json({ message, suggestDojo: true });
     }
 
     const systemPrompt = getSystemPrompt(mode, lang);
