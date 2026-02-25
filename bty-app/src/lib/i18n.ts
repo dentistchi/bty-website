@@ -37,6 +37,21 @@ export type Messages = {
     tagline: string;
     linkToTodayMe: string;
   };
+  landing: {
+    heroTitle: string;
+    heroSubtitle: string;
+    recommended: string;
+    arenaTitle: string;
+    arenaDesc: string;
+    arenaCta: string;
+    dojoTitle: string;
+    dojoDesc: string;
+    dojoCta: string;
+    dearMeTitle: string;
+    dearMeDesc: string;
+    dearMeCta: string;
+    footerHint: string;
+  };
   safeMirror: {
     title: string;
     subtitle: string;
@@ -119,6 +134,21 @@ const ko: Messages = {
     title: "bty",
     tagline: "어제보다 나은 연습. Integrity & Practice.",
     linkToTodayMe: "Dear Me로 가기",
+  },
+  landing: {
+    heroTitle: "Better Than Yesterday",
+    heroSubtitle: "오늘 어디로 가볼까요?",
+    recommended: "추천",
+    arenaTitle: "Arena",
+    arenaDesc: "시나리오를 플레이하면서 선택과 성장을 쌓아요. XP, 주간 퀘스트, 리더보드.",
+    arenaCta: "플레이하기",
+    dojoTitle: "훈련장",
+    dojoDesc: "대시보드, 멘토, 역지사지 연습. 오늘 할 연습을 고르세요.",
+    dojoCta: "훈련장 가기",
+    dearMeTitle: "Dear Me",
+    dearMeDesc: "말 못 할 마음을 비추는 안전한 공간. 조언이 아니라 그대로 비춰드려요.",
+    dearMeCta: "쉬러 가기",
+    footerHint: "위에서 가고 싶은 곳을 골라주세요.",
   },
   safeMirror: {
     title: "안전한 거울",
@@ -214,6 +244,21 @@ const en: Messages = {
     title: "bty",
     tagline: "Practice. Integrity & Better Than Yesterday.",
     linkToTodayMe: "Go to Dear Me",
+  },
+  landing: {
+    heroTitle: "Better Than Yesterday",
+    heroSubtitle: "Where would you like to go today?",
+    recommended: "Recommended",
+    arenaTitle: "Arena",
+    arenaDesc: "Play scenarios, make choices, grow. XP, weekly quests, leaderboard.",
+    arenaCta: "Play",
+    dojoTitle: "Dojo",
+    dojoDesc: "Dashboard, mentor, integrity practice. Choose what to work on.",
+    dojoCta: "Go to Dojo",
+    dearMeTitle: "Dear Me",
+    dearMeDesc: "A safe space that reflects your feelings. No advice—just reflection.",
+    dearMeCta: "Rest here",
+    footerHint: "Choose a path above.",
   },
   safeMirror: {
     title: "Safe Mirror",

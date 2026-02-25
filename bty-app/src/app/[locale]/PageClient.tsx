@@ -23,10 +23,11 @@ type TodayMeMessages = {
 type Props = {
   locale: string;
   lang: "en" | "ko";
+  pathname: string;
   t: TodayMeMessages;
 };
 
-export default function LocaleLandingPage({ locale, lang, t }: Props) {
+export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) {
   if (lang === "en") {
     return (
       <>
@@ -35,7 +36,7 @@ export default function LocaleLandingPage({ locale, lang, t }: Props) {
           <ThemeBody theme="sanctuary" />
           <main className="min-h-screen">
             <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
-              <Nav locale="en" pathname="/en" theme="dear" />
+              <Nav locale="en" pathname={pathname} theme="dear" />
               <header className="text-center mb-10">
                 <h1 className="text-2xl sm:text-3xl font-medium text-sanctuary-text mb-2">{t.title}</h1>
                 <p className="text-sanctuary-text-soft">{t.tagline}</p>
@@ -73,7 +74,7 @@ export default function LocaleLandingPage({ locale, lang, t }: Props) {
         <ThemeBody theme="dear" />
         <main className="min-h-screen">
           <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
-            <Nav locale="ko" pathname="/ko" theme="dear" />
+            <Nav locale="ko" pathname={pathname} theme="dear" />
             <header className="text-center mb-14 sm:mb-16 pt-4">
               <h1 className="font-serif text-3xl sm:text-4xl md:text-[2.75rem] font-medium text-dear-charcoal tracking-tight leading-tight">
                 Dear Me,

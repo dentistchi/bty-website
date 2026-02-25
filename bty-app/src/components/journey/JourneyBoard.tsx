@@ -409,7 +409,7 @@ export function JourneyBoard() {
               역지사지 시뮬레이터
             </Link>
             <span>·</span>
-            <Link href="/" className="text-dojo-purple hover:underline">
+            <Link href={`/${locale}/dear-me`} className="text-dojo-purple hover:underline">
               Dear Me로 가기
             </Link>
           </footer>
