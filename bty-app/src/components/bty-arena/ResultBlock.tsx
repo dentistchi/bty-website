@@ -2,9 +2,10 @@
 
 import React from "react";
 
-export type SystemMsg = { id: string; en: string; ko: string };
+export type SystemMsg = { id: string; en: string; ko?: string };
 
 export type ResultBlockProps = {
+  locale: string;
   systemMessage: SystemMsg | null;
   lastXp: number;
   microInsight: string;
@@ -12,13 +13,15 @@ export type ResultBlockProps = {
   onNext: () => void;
 };
 
-export function ResultBlock({ systemMessage, lastXp, microInsight, result, onNext }: ResultBlockProps) {
+export function ResultBlock({ locale, systemMessage, lastXp, microInsight, result, onNext }: ResultBlockProps) {
+  const systemText =
+    systemMessage && (locale === "ko" && systemMessage.ko ? systemMessage.ko : systemMessage.en);
+
   return (
     <>
-      {systemMessage && (
+      {systemText && (
         <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 12, marginBottom: 10 }}>
-          <div style={{ fontWeight: 700 }}>{systemMessage.en}</div>
-          <div style={{ opacity: 0.8, marginTop: 6 }}>{systemMessage.ko}</div>
+          <div style={{ fontWeight: 700 }}>{systemText}</div>
         </div>
       )}
 
@@ -37,7 +40,7 @@ export function ResultBlock({ systemMessage, lastXp, microInsight, result, onNex
             cursor: "pointer",
           }}
         >
-          Next
+          {locale === "ko" ? "다음" : "Next"}
         </button>
       </div>
     </>

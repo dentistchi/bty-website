@@ -3,14 +3,15 @@
 import React from "react";
 
 export type ReflectionBlockProps = {
+  title?: string;
   options: string[];
   onSubmit: (index: number) => void;
 };
 
-export function ReflectionBlock({ options, onSubmit }: ReflectionBlockProps) {
+export function ReflectionBlock({ title = "Reflection", options, onSubmit }: ReflectionBlockProps) {
   return (
     <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
-      <div style={{ fontWeight: 700, marginBottom: 8 }}>Reflection</div>
+      <div style={{ fontWeight: 700, marginBottom: 8 }}>{title}</div>
       <div style={{ display: "grid", gap: 10 }}>
         {options.map((opt, idx) => (
           <button

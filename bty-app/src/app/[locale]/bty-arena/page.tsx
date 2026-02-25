@@ -100,23 +100,31 @@ function stepFromPhase(phase: ArenaPhase): ArenaStep {
 
 const OTHER_CHOICE_ID = "__OTHER__";
 
-const REFLECTION_OPTIONS = [
+const REFLECTION_OPTIONS_EN = [
+  "What system causes did I miss?",
+  "What signals should I look for faster next time?",
+  "How can I reduce relationship costs while maintaining principles?",
+];
+
+const REFLECTION_OPTIONS_KO = [
   "내가 놓친 시스템 원인은?",
   "다음엔 어떤 신호를 더 빨리 볼까?",
   "원칙을 유지하면서도 관계 비용을 줄이는 방법은?",
 ];
 
-// MVP용: 아주 단순한 트리거(나중에 streak/스탯과 연결)
+function getReflectionOptions(locale: string): string[] {
+  return locale === "ko" ? REFLECTION_OPTIONS_KO : REFLECTION_OPTIONS_EN;
+}
+
 const SYSTEM_MESSAGES: SystemMsg[] = [
-  { id: "arch_init", en: "Architecture initialized. The framework is stable.", ko: "Architecture initialized. 프레임워크가 안정화되었습니다." },
-  { id: "telemetry", en: "Leadership telemetry active. Your choices refine the arena.", ko: "Leadership telemetry active. 선택이 아레나를 학습시킵니다." },
-  { id: "gratitude", en: "Gratitude frequency synchronized. Cultural impact detected.", ko: "감사 로그 기록됨. 문화적 영향이 감지되었습니다." },
-  { id: "consistency", en: "Consistency detected. Operational rhythm established.", ko: "Consistency detected. 운영 리듬이 형성되었습니다." },
-  { id: "integrity", en: "Integrity spike detected. Ethical alignment increased.", ko: "Integrity spike detected. 원칙 정렬이 강화되었습니다." },
-  { id: "other_recorded", en: "Other recorded.", ko: "Other recorded." },
+  { id: "arch_init", en: "Architecture initialized. The framework is stable.", ko: "아키텍처 초기화됨. 프레임워크가 안정화되었습니다." },
+  { id: "telemetry", en: "Leadership telemetry active. Your choices refine the arena.", ko: "리더십 원격 측정 활성. 선택이 아레나를 다듬습니다." },
+  { id: "gratitude", en: "Gratitude frequency synchronized. Cultural impact detected.", ko: "감사 빈도 동기화됨. 문화적 영향이 감지되었습니다." },
+  { id: "consistency", en: "Consistency detected. Operational rhythm established.", ko: "일관성 감지됨. 운영 리듬이 확립되었습니다." },
+  { id: "integrity", en: "Integrity spike detected. Ethical alignment increased.", ko: "무결성 상승 감지. 윤리 정렬이 높아졌습니다." },
+  { id: "other_recorded", en: "Other recorded.", ko: "기타 기록됨." },
 ];
 
-// streak: 하루 1회 방문 기준(초간단)
 function updateStreak(): { streak: number; message?: SystemMsg } {
   try {
     const raw = localStorage.getItem(STREAK_KEY);
@@ -131,7 +139,6 @@ function updateStreak(): { streak: number; message?: SystemMsg } {
     const parsed = JSON.parse(raw) as { streak: number; lastDayKey: string };
     if (parsed.lastDayKey === dayKey) return { streak: parsed.streak };
 
-    // 아주 단순: 연속 여부는 "어제"만 체크
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
     const yKey = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()}`;
@@ -146,7 +153,6 @@ function updateStreak(): { streak: number; message?: SystemMsg } {
   }
 }
 
-// ---------- API helpers (runId race 방지 + 이벤트 전송) ----------
 async function createRun(scenarioId: string, locale: string | undefined): Promise<string | null> {
   try {
     const data = await arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", {
@@ -532,11 +538,9 @@ export default function BtyArenaPage() {
 
   function pause() {
     persist({});
-    // UI 상 피드백은 systemMessage로 처리
     setSystemMessage({
       id: "arch_init",
       en: "Session preserved. You can resume anytime.",
-      ko: "세션 저장됨. 언제든 이어할 수 있습니다.",
     });
   }
 
@@ -608,11 +612,11 @@ export default function BtyArenaPage() {
     <div style={{ maxWidth: 860, margin: "0 auto", padding: "24px 16px" }}>
       <BtyTopNav />
       <div style={{ marginTop: 18 }}>
-        <ArenaHeader step={step} phase={phase} runId={runId} onPause={pause} onReset={resetRun} showPause={false} />
+        <ArenaHeader locale={locale} step={step} phase={phase} runId={runId} onPause={pause} onReset={resetRun} showPause={false} />
 
       <div style={{ marginTop: 18, padding: 18, border: "1px solid #eee", borderRadius: 14 }}>
         {step === 1 && (
-          <ScenarioIntro title={current.title} context={current.context} onStart={onStartSimulation} />
+          <ScenarioIntro locale={locale} title={current.title} context={current.context} onStart={onStartSimulation} />
         )}
 
         {step >= 2 && step !== 1 && (
@@ -649,7 +653,7 @@ export default function BtyArenaPage() {
                   fontSize: 14,
                 }}
               >
-                Other (Write your own)
+                {locale === "ko" ? "기타 (직접 입력)" : "Other (Write your own)"}
               </button>
             </div>
           </>
@@ -657,6 +661,7 @@ export default function BtyArenaPage() {
 
         {step === 2 && phase === "CHOOSING" && (
           <PrimaryActions
+            locale={locale}
             confirmDisabled={!selectedChoiceId || selectedChoiceId === OTHER_CHOICE_ID}
             continueDisabled
             onConfirm={onConfirmChoice}
@@ -667,7 +672,9 @@ export default function BtyArenaPage() {
 
         {step >= 3 && selectedChoiceId === OTHER_CHOICE_ID && (
           <div style={{ marginTop: 18, padding: 16, border: "1px solid #e5e5e5", borderRadius: 14 }}>
-            <p style={{ margin: "0 0 8px", fontWeight: 600 }}>{systemMessage?.ko ?? systemMessage?.en ?? "Other recorded."}</p>
+            <p style={{ margin: "0 0 8px", fontWeight: 600 }}>
+              {locale === "ko" && systemMessage?.ko ? systemMessage.ko : systemMessage?.en ?? (locale === "ko" ? "기타 기록됨." : "Other recorded.")}
+            </p>
             <p style={{ margin: 0, fontSize: 14, opacity: 0.8 }}>XP +{lastXp}</p>
             <button
               type="button"
@@ -683,18 +690,19 @@ export default function BtyArenaPage() {
                 fontSize: 14,
               }}
             >
-              Continue
+              {locale === "ko" ? "다음 시나리오" : "Next scenario"}
             </button>
           </div>
         )}
 
         {step >= 3 && choice && (
           <OutputPanel
+            locale={locale}
             step={step as 3 | 4 | 5 | 6 | 7}
             choice={choice}
             systemMessage={systemMessage}
             lastXp={lastXp}
-            reflectionOptions={REFLECTION_OPTIONS}
+            reflectionOptions={getReflectionOptions(locale)}
             followUpPrompt={choice.followUp?.prompt ?? ""}
             followUpOptions={followUpOptions}
             hasFollowUp={hasFollowUp}
@@ -735,7 +743,7 @@ export default function BtyArenaPage() {
           />
           <div
             role="dialog"
-            aria-label="Other (Write your own)"
+            aria-label={locale === "ko" ? "기타 (직접 입력)" : "Other (Write your own)"}
             style={{
               position: "relative",
               width: "min(640px, 92vw)",
@@ -746,11 +754,13 @@ export default function BtyArenaPage() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ fontWeight: 800, marginBottom: 8 }}>Other (Write your own)</div>
+            <div style={{ fontWeight: 800, marginBottom: 8 }}>
+              {locale === "ko" ? "기타 (직접 입력)" : "Other (Write your own)"}
+            </div>
             <textarea
               value={otherText}
               onChange={(e) => setOtherText(e.target.value)}
-              placeholder="Write your own..."
+              placeholder={locale === "ko" ? "직접 입력해 주세요..." : "Write your own..."}
               rows={3}
               style={{ width: "100%", padding: 10, borderRadius: 8, resize: "vertical", boxSizing: "border-box" }}
             />
@@ -770,7 +780,7 @@ export default function BtyArenaPage() {
                   fontSize: 14,
                 }}
               >
-                Cancel
+                {locale === "ko" ? "취소" : "Cancel"}
               </button>
               <button
                 type="button"
@@ -787,7 +797,7 @@ export default function BtyArenaPage() {
                   opacity: otherSubmitting || otherText.trim().length === 0 ? 0.6 : 1,
                 }}
               >
-                Submit
+                {locale === "ko" ? "제출" : "Submit"}
               </button>
             </div>
           </div>

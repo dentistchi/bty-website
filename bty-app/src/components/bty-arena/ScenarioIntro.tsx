@@ -2,13 +2,17 @@
 
 import React from "react";
 
+const START_BTN = { en: "Start Simulation", ko: "시뮬레이션 시작" };
+
 export type ScenarioIntroProps = {
+  locale: string;
   title: string;
   context: string;
   onStart: () => void;
 };
 
-export function ScenarioIntro({ title, context, onStart }: ScenarioIntroProps) {
+export function ScenarioIntro({ locale, title, context, onStart }: ScenarioIntroProps) {
+  const startLabel = locale === "ko" ? START_BTN.ko : START_BTN.en;
   return (
     <>
       <h2 style={{ marginTop: 0, marginBottom: 8 }}>{title}</h2>
@@ -28,7 +32,7 @@ export function ScenarioIntro({ title, context, onStart }: ScenarioIntroProps) {
             cursor: "pointer",
           }}
         >
-          Start Simulation
+          {startLabel}
         </button>
       </div>
     </>

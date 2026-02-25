@@ -2,14 +2,31 @@
 
 import React from "react";
 
+const STEP6_TITLE = { en: "Step 6 · Consolidation", ko: "Step 6 · 정리" };
+const YOU_CHOSE = { en: "You chose", ko: "선택한 항목" };
+const KEY_INSIGHT = { en: "Key insight:", ko: "핵심 통찰:" };
+const PRINCIPLE = {
+  en: "Principle: \"Stabilize people first, then fix the system.\"",
+  ko: "원칙: \"사람을 먼저 안정시키고, 그다음 시스템을 고칩니다.\"",
+};
+const COMPLETE_BTN = { en: "Complete", ko: "완료" };
+
 export type ConsolidationBlockProps = {
+  locale: string;
   choiceId: string;
   intent: string;
   microInsight: string;
   onComplete: () => void;
 };
 
-export function ConsolidationBlock({ choiceId, intent, microInsight, onComplete }: ConsolidationBlockProps) {
+export function ConsolidationBlock({
+  locale,
+  choiceId,
+  intent,
+  microInsight,
+  onComplete,
+}: ConsolidationBlockProps) {
+  const isKo = locale === "ko";
   return (
     <div
       style={{
@@ -20,11 +37,15 @@ export function ConsolidationBlock({ choiceId, intent, microInsight, onComplete 
         background: "rgba(0,0,0,0.02)",
       }}
     >
-      <div style={{ fontWeight: 700, marginBottom: 8 }}>Step 6 · Consolidation</div>
+      <div style={{ fontWeight: 700, marginBottom: 8 }}>{isKo ? STEP6_TITLE.ko : STEP6_TITLE.en}</div>
       <div style={{ fontSize: 14, lineHeight: 1.6, opacity: 0.9, marginBottom: 12 }}>
-        <p style={{ margin: "0 0 8px 0" }}>You chose {choiceId} ({intent}).</p>
-        <p style={{ margin: "0 0 8px 0" }}>Key insight: {microInsight}</p>
-        <p style={{ margin: 0 }}>Principle: &quot;Stabilize people first, then fix the system.&quot;</p>
+        <p style={{ margin: "0 0 8px 0" }}>
+          {isKo ? YOU_CHOSE.ko : YOU_CHOSE.en} {choiceId} ({intent}).
+        </p>
+        <p style={{ margin: "0 0 8px 0" }}>
+          {isKo ? KEY_INSIGHT.ko : KEY_INSIGHT.en} {microInsight}
+        </p>
+        <p style={{ margin: 0 }}>{isKo ? PRINCIPLE.ko : PRINCIPLE.en}</p>
       </div>
       <button
         onClick={onComplete}
@@ -37,7 +58,7 @@ export function ConsolidationBlock({ choiceId, intent, microInsight, onComplete 
           cursor: "pointer",
         }}
       >
-        Complete
+        {isKo ? COMPLETE_BTN.ko : COMPLETE_BTN.en}
       </button>
     </div>
   );

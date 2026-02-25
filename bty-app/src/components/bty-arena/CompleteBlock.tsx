@@ -2,12 +2,29 @@
 
 import React from "react";
 
+const STEP7_TITLE = { en: "Step 7 · Complete", ko: "Step 7 · 완료" };
+const STEP7_BODY = {
+  en: "Saved. Use the button below to go to the next scenario.",
+  ko: "저장되었습니다. 아래 버튼으로 다음 시나리오로 이동합니다.",
+};
+const NEXT_SCENARIO_BTN = { en: "Next scenario", ko: "다음 시나리오" };
+
 export type CompleteBlockProps = {
+  locale: string;
   followUpSelectedLabel?: string | null;
+  followUpSelectedSectionLabel?: string;
   onContinue: () => void;
 };
 
-export function CompleteBlock({ followUpSelectedLabel, onContinue }: CompleteBlockProps) {
+export function CompleteBlock({
+  locale,
+  followUpSelectedLabel,
+  followUpSelectedSectionLabel,
+  onContinue,
+}: CompleteBlockProps) {
+  const isKo = locale === "ko";
+  const sectionLabel = followUpSelectedSectionLabel ?? (isKo ? "선택한 따라하기" : "FOLLOW-UP SELECTED");
+
   return (
     <>
       <div
@@ -19,19 +36,16 @@ export function CompleteBlock({ followUpSelectedLabel, onContinue }: CompleteBlo
           background: "rgba(0,0,0,0.02)",
         }}
       >
-        <div style={{ fontWeight: 700, marginBottom: 6 }}>Step 7 · Complete</div>
+        <div style={{ fontWeight: 700, marginBottom: 6 }}>{isKo ? STEP7_TITLE.ko : STEP7_TITLE.en}</div>
         <div style={{ fontSize: 14, lineHeight: 1.5, opacity: 0.9 }}>
-          이 시나리오 기록이 저장되었습니다. Continue로 다음 시나리오로 이동합니다.
+          {isKo ? STEP7_BODY.ko : STEP7_BODY.en}
         </div>
       </div>
 
       {followUpSelectedLabel != null && followUpSelectedLabel !== "" && (
         <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>FOLLOW-UP SELECTED</div>
+          <div style={{ fontSize: 12, opacity: 0.7 }}>{sectionLabel}</div>
           <div style={{ marginTop: 6, fontWeight: 700 }}>{followUpSelectedLabel}</div>
-          <div style={{ marginTop: 10, opacity: 0.85 }}>
-            다음 단계는 <b>Continue</b>로 진행합니다. (MVP: 1 + 보완 1 완료)
-          </div>
         </div>
       )}
 
@@ -51,7 +65,7 @@ export function CompleteBlock({ followUpSelectedLabel, onContinue }: CompleteBlo
             maxWidth: 320,
           }}
         >
-          Continue → 다음 시나리오
+          {isKo ? NEXT_SCENARIO_BTN.ko : NEXT_SCENARIO_BTN.en}
         </button>
       </div>
     </>

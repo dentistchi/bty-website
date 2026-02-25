@@ -2,22 +2,28 @@
 
 import React from "react";
 
+const CONFIRM_LABEL = { en: "Confirm", ko: "확인" };
+const NEXT_SCENARIO_LABEL = { en: "Next scenario", ko: "다음 시나리오" };
+
 export type PrimaryActionsProps = {
+  locale: string;
   confirmDisabled: boolean;
   continueDisabled: boolean;
   onConfirm: () => Promise<void> | void;
   onContinue: () => Promise<void> | void;
-  /** When false, Continue button is not rendered (e.g. during CHOOSING). Default true. */
+  /** When false, Next scenario button is not rendered (e.g. during CHOOSING). Default true. */
   showContinue?: boolean;
 };
 
 export function PrimaryActions({
+  locale,
   confirmDisabled,
   continueDisabled,
   onConfirm,
   onContinue,
   showContinue = true,
 }: PrimaryActionsProps) {
+  const isKo = locale === "ko";
   return (
     <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
       <button
@@ -33,7 +39,7 @@ export function PrimaryActions({
           cursor: confirmDisabled ? "not-allowed" : "pointer",
         }}
       >
-        Confirm
+        {isKo ? CONFIRM_LABEL.ko : CONFIRM_LABEL.en}
       </button>
 
       {showContinue !== false && (
@@ -49,7 +55,7 @@ export function PrimaryActions({
             cursor: continueDisabled ? "not-allowed" : "pointer",
           }}
         >
-          Continue
+          {isKo ? NEXT_SCENARIO_LABEL.ko : NEXT_SCENARIO_LABEL.en}
         </button>
       )}
     </div>
