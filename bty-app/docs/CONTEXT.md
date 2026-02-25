@@ -26,50 +26,62 @@
 ---
 
 ## 2) App 구조 요약
-- Next.js App Router (15.x)
-- Locale prefix: `/[locale]/...`
-- BTY Arena: `/[locale]/bty-arena`
-- Scenarios: `src/lib/bty/scenario/scenarios.ts`
+
+- Next.js App Router
+- Locale prefix 사용: `/[locale]/...`
+- BTY Arena UI: `/[locale]/bty-arena`
+- 시나리오 데이터: `src/lib/bty/scenario/scenarios.ts` (TS 상수)
 
 ---
 
 ## 3) Supabase Auth — 운영 원칙(절대 깨지면 안 됨)
-1) 쿠키 기반 세션이 서버까지 전달
-2) sb-... auth-token + chunk(.0~.3) 다중 쿠키는 정상
-3) Cloudflare/OpenNext에서 쿠키 옵션 불일치(도메인/경로/SameSite/Secure/HttpOnly) → 로그인 루프/401/500
-4) 쿠키 set/clear는 로그인/로그아웃 API에서만, middleware는 최소 개입
 
-### 쿠키 규격(프로덕션)
-- Secure: true
-- SameSite: Lax
-- HttpOnly: true
-- Domain: 배포 도메인
-- Path: /
+### 핵심 원칙
+1) **쿠키 기반 세션**이 서버까지 전달되어야 한다.
+2) **쿠키 이름(sb-... auth-token 및 chunk .0 .1 .2 .3)** 은 환경에 따라 여러 개로 쪼개질 수 있다(=정상).
+3) Cloudflare/OpenNext 환경에서 **쿠키 옵션(도메인/경로/SameSite/Secure/HttpOnly)** 은 "덮어쓰기/불일치"가 생기면 즉시 로그인 루프/401/500으로 이어진다.
+4) 따라서 쿠키 삭제/세팅은 **한 곳에서만** 수행하고(로그인/로그아웃 API), middleware는 "필요 최소"로만 만진다.
 
-### Auth 라우트
-- POST `/api/auth/login`
-- GET `/api/auth/session` (진단)
-- POST `/api/auth/logout` (chunk 포함 삭제)
+### 쿠키 규격 (프로덕션 기준)
+- Secure: `true`
+- SameSite: `Lax`
+- HttpOnly: `true` (세션 쿠키는 JS 접근 금지)
+- Domain: 배포 도메인(예: `bty-website.ywamer2022.workers.dev`)
+- Path: **기본 `/` 권장**
+  - (주의) `/api`로만 설정하면 페이지 요청에서 쿠키가 안 보일 수 있어 혼선이 생김.
+  - 로그아웃 시에는 과거에 설정된 Path/Domain 변형까지 모두 지우도록 "복수 경로 삭제"가 필요할 수 있음.
+
+### Auth 라우트 (기준)
+- `POST /api/auth/login`
+  - 이메일/비번 로그인 수행
+  - 성공 시 Supabase 세션을 쿠키로 세팅
+- `GET /api/auth/session`
+  - 진단/상태 확인용(운영/디버그)
+- `POST /api/auth/logout`
+  - auth 쿠키(및 chunk 쿠키) 삭제
+  - 필요 시 `Clear-Site-Data: "cookies"` 사용 가능
+
+> 로그인 문제 재발 시: 먼저 `/api/auth/session` 응답 헤더/바디로 "쿠키가 서버에 오는지/세션을 읽는지"부터 판정한다.
 
 ---
 
-## 4) Known Build Pain
-- Next prerender + CSR hooks(useSearchParams 등) → Suspense wrapper 또는 `export const dynamic = "force-dynamic"`
+## 4) 개발 시 금지 패턴 / 주의 패턴
+
+### (중요) Prerender / useSearchParams
+- `useSearchParams()` 사용 페이지는 빌드에서 "Suspense boundary" 요구로 터질 수 있다.
+- 원칙:
+  - 페이지(서버 컴포넌트)에서 searchParams를 받거나,
+  - 클라이언트 훅은 클라이언트 컴포넌트로 분리하고, 페이지에서 `<Suspense>`로 감싼다.
+  - 혹은 `export const dynamic = "force-dynamic"`로 정적 프리렌더를 회피.
+
+### (중요) 내부 네비게이션
+- `<a href="/...">` 대신 `next/link` 사용 (eslint 빌드 실패 방지)
 
 ---
 
-## 6) Arena Persistence (DB) — 이벤트 소싱(단일 기준)
+## 5) 작업 규칙(팀/AI 협업용)
 
-### 저장 정책(현재)
-- Arena는 middleware로 로그인 강제됨 → 기본은 `auth.uid()` 기반 저장
-- MVP는 "이벤트를 쌓고 집계" 방식으로 확장성 확보
-
-### 테이블(권장 최소)
-- `arena_runs` : 런 단위(시나리오 세션)
-- `arena_events` : 선택/팔로업/완료 이벤트 로그
-- `arena_profiles` : 유저 누적/주간/리그
-- `arena_leagues` : 리그 정의(옵션)
-
-### RLS 원칙
-- `arena_*`는 기본적으로 "본인 데이터만" 읽기/쓰기
-- 집계(리그/랭킹)는 view 또는 별도 함수로 확장
+새 기능/수정 PR을 열기 전, 아래 3가지를 확인:
+1) `npx tsc --noEmit` 통과
+2) `npm run build` 통과(환경변수 세팅된 상태에서)
+3) `/api/auth/session` 기준으로 로그인 쿠키/세션 판정 로직 유지
