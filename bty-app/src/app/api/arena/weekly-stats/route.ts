@@ -31,6 +31,19 @@ export async function GET() {
 
   if (claimErr) return NextResponse.json({ error: claimErr.message }, { status: 500 });
 
+  const { data: weekEvents } = await supabase
+    .from("arena_events")
+    .select("xp, created_at")
+    .eq("user_id", user.id)
+    .gte("created_at", weekStartISO);
+
+  const dailySums: Record<string, number> = {};
+  for (const row of weekEvents ?? []) {
+    const day = (row.created_at as string).slice(0, 10);
+    dailySums[day] = (dailySums[day] ?? 0) + (typeof row.xp === "number" ? row.xp : 0);
+  }
+  const weekMaxDailyXp = Object.values(dailySums).length > 0 ? Math.max(...Object.values(dailySums)) : 0;
+
   return NextResponse.json({
     reflectionCount: reflectionCount ?? 0,
     reflectionTarget: REFLECTION_QUEST_TARGET,

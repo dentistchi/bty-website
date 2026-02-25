@@ -522,10 +522,11 @@ export default function BtyArenaPage() {
   async function continueNextScenario() {
     clearState();
     const currentRunId = runId;
+    let core: { coreXpTotal?: number; subName?: string; subNameRenameAvailable?: boolean } | null = null;
     if (currentRunId) {
       try {
         await arenaFetch("/api/arena/run/complete", { json: { runId: currentRunId } });
-        const core = await arenaFetch<{
+        core = await arenaFetch<{
           coreXpTotal?: number;
           subName?: string;
           subNameRenameAvailable?: boolean;

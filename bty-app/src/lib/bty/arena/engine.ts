@@ -5,6 +5,9 @@
  * - follow-up XP = 0
  */
 
+/** Bonus XP when the chosen option has positive integrity (ethical choice). */
+export const INTEGRITY_BONUS_XP = 5;
+
 export type HiddenDelta = Partial<{
   integrity: number;
   communication: number;
