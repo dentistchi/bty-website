@@ -114,7 +114,7 @@ export default function MentorPage() {
           <Nav locale={locale} pathname={pathname} />
           <header className="text-center mb-8">
             <div className="flex justify-center mb-3">
-              <GuideCharacterAvatar size="lg" />
+              <GuideCharacterAvatar variant="warm" size="lg" />
             </div>
             <h1
               className="text-2xl sm:text-3xl font-semibold text-mentor-ink"
@@ -186,10 +186,13 @@ export default function MentorPage() {
                   <div
                     key={i}
                     className={cn(
-                      "flex",
+                      "flex gap-3",
                       m.role === "user" ? "justify-end" : "justify-start"
                     )}
                   >
+                    {m.role === "chi" && (
+                      <GuideCharacterAvatar variant="warm" size="sm" className="flex-shrink-0 mt-0.5" />
+                    )}
                     <div
                       className={cn(
                         "max-w-[88%] rounded-xl px-5 py-4 text-sm leading-relaxed",

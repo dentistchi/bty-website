@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { getMessages } from "@/lib/i18n";
 import { fetchJson } from "@/lib/read-json";
 import type { Locale } from "@/lib/i18n";
-import { GuideCharacterAvatar } from "@/components/GuideCharacterAvatar";
+import { GuideCharacterAvatar, type GuideAvatarVariant } from "@/components/GuideCharacterAvatar";
 
 type Message = { role: "user" | "assistant"; content: string; suggestDearMe?: boolean; suggestDojo?: boolean };
 
@@ -48,6 +48,11 @@ export function Chatbot() {
   }, [chatMessages, typingText, errorMsg]);
 
   const isBtyPage = pathname.includes("/bty");
+  const guideVariant: GuideAvatarVariant = pathname.includes("/dear-me")
+    ? "warm"
+    : pathname.includes("/bty-arena")
+      ? "welcome"
+      : "default";
   const introMessage =
     locale === "ko"
       ? isBtyPage
@@ -188,7 +193,7 @@ export function Chatbot() {
         >
           <div className={cn("p-3 border-b", themeColors.border, "flex items-center justify-between gap-2")}>
             <div className="flex items-center gap-2 min-w-0">
-              <GuideCharacterAvatar size="sm" className="flex-shrink-0" />
+              <GuideCharacterAvatar variant={guideVariant} size="sm" className="flex-shrink-0" />
               <span className={cn("text-sm font-medium truncate", themeColors.header)}>Dr. Chi</span>
             </div>
             <button
@@ -208,6 +213,12 @@ export function Chatbot() {
             )}
             {chatMessages.map((m, i) => (
               <div key={i} className={m.role === "user" ? "ml-auto max-w-[85%]" : "max-w-[85%]"}>
+                {m.role === "assistant" && (
+                  <div className="flex items-center gap-2 mb-1">
+                    <GuideCharacterAvatar variant={guideVariant} size="sm" className="flex-shrink-0" />
+                    <span className="text-xs font-medium opacity-80">Dr. Chi</span>
+                  </div>
+                )}
                 <div
                   className={cn(
                     "rounded-xl px-3 py-2 text-sm",
@@ -237,14 +248,20 @@ export function Chatbot() {
               </div>
             ))}
             {typingText && (
-              <div className={cn("rounded-xl px-3 py-2 text-sm w-fit flex items-center gap-0.5", themeColors.typing)}>
-                <span>{typingText}</span>
+              <>
+                <div className="flex items-center gap-2 mb-1">
+                  <GuideCharacterAvatar variant={guideVariant} size="sm" className="flex-shrink-0" />
+                  <span className="text-xs font-medium opacity-80">Dr. Chi</span>
+                </div>
+                <div className={cn("rounded-xl px-3 py-2 text-sm w-fit flex items-center gap-0.5", themeColors.typing)}>
+                  <span>{typingText}</span>
                 <span className="chat-typing-dots inline-flex">
                   <span>.</span>
                   <span>.</span>
                   <span>.</span>
                 </span>
-              </div>
+                </div>
+              </>
             )}
             {errorMsg && (
               <div className="rounded-xl px-3 py-2 text-sm bg-red-50 text-red-700 max-w-[85%] border border-red-100">
