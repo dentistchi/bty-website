@@ -14,13 +14,16 @@ export type OutputPanelProps = {
   choice: ScenarioChoice;
   systemMessage: SystemMsg | null;
   lastXp: number;
+  reflectionBonusXp: number;
+  /** Single takeaway prompt (one sentence per play). When set, Step 4 shows this + optional input + Next. */
+  reflectionPrompt: string;
   reflectionOptions: string[];
   followUpPrompt: string;
   followUpOptions: string[];
   hasFollowUp: boolean;
   followUpIndex: number | null;
   onNextToReflection: () => void;
-  onSubmitReflection: (index: number) => void;
+  onSubmitReflection: (index: number, reflectionText?: string) => void;
   onSubmitFollowUp: (index: number) => void;
   onSkipFollowUp: () => void;
   onComplete: () => void;
@@ -38,6 +41,8 @@ export function OutputPanel({
   choice,
   systemMessage,
   lastXp,
+  reflectionBonusXp,
+  reflectionPrompt,
   reflectionOptions,
   followUpPrompt,
   followUpOptions,
@@ -72,13 +77,16 @@ export function OutputPanel({
       {step === 4 && (
         <ReflectionBlock
           title={locale === "ko" ? REFLECTION_TITLE.ko : REFLECTION_TITLE.en}
+          reflectionPrompt={reflectionPrompt}
           options={reflectionOptions}
+          locale={locale}
           onSubmit={onSubmitReflection}
         />
       )}
 
       {step === 5 && hasFollowUp && choice.followUp && (
         <FollowUpBlock
+          skipLabel={skipLabel}
           prompt={followUpPrompt}
           options={followUpOptions}
           onSubmit={onSubmitFollowUp}
@@ -110,6 +118,8 @@ export function OutputPanel({
           choiceId={choice.choiceId}
           intent={choice.intent}
           microInsight={choice.microInsight}
+          lastXp={lastXp}
+          reflectionBonusXp={reflectionBonusXp}
           onComplete={onComplete}
         />
       )}

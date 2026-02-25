@@ -3,13 +3,15 @@
 import React from "react";
 
 export type FollowUpBlockProps = {
+  /** e.g. "Skip follow-up · Next scenario" or "따라하기 건너뛰기 · 다음 시나리오" */
+  skipLabel: string;
   prompt: string;
   options: string[];
   onSubmit: (index: number) => void;
   onSkip: () => void;
 };
 
-export function FollowUpBlock({ prompt, options, onSubmit, onSkip }: FollowUpBlockProps) {
+export function FollowUpBlock({ skipLabel, prompt, options, onSubmit, onSkip }: FollowUpBlockProps) {
   return (
     <>
       <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
@@ -46,7 +48,7 @@ export function FollowUpBlock({ prompt, options, onSubmit, onSkip }: FollowUpBlo
             cursor: "pointer",
           }}
         >
-          보완 선택 건너뛰고 Continue
+          {skipLabel}
         </button>
       </div>
     </>

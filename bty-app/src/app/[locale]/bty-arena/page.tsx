@@ -20,6 +20,11 @@ import { arenaFetch } from "@/lib/http/arenaFetch";
 type ArenaPhase = "CHOOSING" | "SHOW_RESULT" | "FOLLOW_UP" | "DONE";
 type ArenaStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
+/** Minimum trimmed length for reflection text to grant bonus XP. */
+const MIN_REFLECTION_LENGTH = 3;
+/** Bonus XP when user writes a meaningful one-sentence reflection (encourages serious engagement). */
+const REFLECTION_BONUS_XP = 10;
+
 type SavedArenaState = {
   version: 1;
   scenarioId: string;
@@ -33,6 +38,8 @@ type SavedArenaState = {
   /** 7-step authoritative state (backward compatible: absent => inferred from phase) */
   step?: ArenaStep;
   reflectionIndex?: number;
+  reflectionText?: string;
+  reflectionBonusXp?: number;
   /** true when user submitted "Other (Write your own)" — show "Other submitted" and allow continue */
   otherSubmitted?: boolean;
 };
@@ -100,20 +107,12 @@ function stepFromPhase(phase: ArenaPhase): ArenaStep {
 
 const OTHER_CHOICE_ID = "__OTHER__";
 
-const REFLECTION_OPTIONS_EN = [
-  "What system causes did I miss?",
-  "What signals should I look for faster next time?",
-  "How can I reduce relationship costs while maintaining principles?",
-];
+/** One-sentence takeaway per play: supports repeated learning (one clear takeaway per scenario). */
+const REFLECTION_PROMPT_EN = "In one sentence: what will you take from this scenario?";
+const REFLECTION_PROMPT_KO = "한 문장으로: 이 판에서 가져갈 것은?";
 
-const REFLECTION_OPTIONS_KO = [
-  "내가 놓친 시스템 원인은?",
-  "다음엔 어떤 신호를 더 빨리 볼까?",
-  "원칙을 유지하면서도 관계 비용을 줄이는 방법은?",
-];
-
-function getReflectionOptions(locale: string): string[] {
-  return locale === "ko" ? REFLECTION_OPTIONS_KO : REFLECTION_OPTIONS_EN;
+function getReflectionPrompt(locale: string): string {
+  return locale === "ko" ? REFLECTION_PROMPT_KO : REFLECTION_PROMPT_EN;
 }
 
 const SYSTEM_MESSAGES: SystemMsg[] = [
@@ -210,6 +209,8 @@ export default function BtyArenaPage() {
   const [phase, setPhase] = React.useState<ArenaPhase>("CHOOSING");
   const [step, setStep] = React.useState<ArenaStep>(1);
   const [reflectionIndex, setReflectionIndex] = React.useState<number | null>(null);
+  const [reflectionText, setReflectionText] = React.useState("");
+  const [reflectionBonusXp, setReflectionBonusXp] = React.useState(0);
 
   const [selectedChoiceId, setSelectedChoiceId] = React.useState<string | null>(null);
   const [lastXp, setLastXp] = React.useState<number>(0);
@@ -266,6 +267,8 @@ export default function BtyArenaPage() {
       setPhase(phase);
       setStep(step as ArenaStep);
       setReflectionIndex(typeof saved.reflectionIndex === "number" ? saved.reflectionIndex : null);
+      setReflectionText(typeof saved.reflectionText === "string" ? saved.reflectionText : "");
+      setReflectionBonusXp(typeof saved.reflectionBonusXp === "number" ? saved.reflectionBonusXp : 0);
       setSelectedChoiceId(noSelection && saved.otherSubmitted ? OTHER_CHOICE_ID : (saved.selectedChoiceId ?? null));
       setOtherSubmitted(Boolean(saved.otherSubmitted));
       setFollowUpIndex(typeof saved.followUpIndex === "number" ? saved.followUpIndex : null);
@@ -343,6 +346,8 @@ export default function BtyArenaPage() {
       phase,
       step,
       reflectionIndex: reflectionIndex ?? undefined,
+      reflectionText: reflectionText || undefined,
+      reflectionBonusXp: reflectionBonusXp || undefined,
       selectedChoiceId: selectedChoiceId ?? undefined,
       followUpIndex: followUpIndex ?? undefined,
       lastXp,
@@ -443,7 +448,11 @@ export default function BtyArenaPage() {
     persist({ phase: "FOLLOW_UP", step: 5 });
   }
 
-  async function submitReflection(idx: number) {
+  async function submitReflection(idx: number, text?: string) {
+    const trimmed = typeof text === "string" ? text.trim() : "";
+    const meaningful = trimmed.length >= MIN_REFLECTION_LENGTH;
+    const bonus = meaningful ? REFLECTION_BONUS_XP : 0;
+
     const rid = await ensureRunId();
     const payload = {
       runId: rid,
@@ -451,18 +460,22 @@ export default function BtyArenaPage() {
       step: 4,
       eventType: "REFLECTION_SELECTED",
       reflectionIndex: idx,
+      reflectionText: trimmed || undefined,
+      reflectionBonusXp: bonus,
     };
-    console.log("[arena] postArenaEvent (reflection)", { step: payload.step, eventType: payload.eventType, scenarioId: payload.scenarioId });
+    console.log("[arena] postArenaEvent (reflection)", { step: payload.step, reflectionBonusXp: bonus, scenarioId: payload.scenarioId });
     await postArenaEvent(payload);
 
     setReflectionIndex(idx);
+    setReflectionText(trimmed);
+    setReflectionBonusXp(bonus);
     if (hasFollowUp) {
       setStep(5);
       setPhase("FOLLOW_UP");
-      persist({ step: 5, phase: "FOLLOW_UP", reflectionIndex: idx });
+      persist({ step: 5, phase: "FOLLOW_UP", reflectionIndex: idx, reflectionText: trimmed || undefined, reflectionBonusXp: bonus });
     } else {
       setStep(6);
-      persist({ step: 6, reflectionIndex: idx });
+      persist({ step: 6, reflectionIndex: idx, reflectionText: trimmed || undefined, reflectionBonusXp: bonus });
     }
   }
 
@@ -507,6 +520,8 @@ export default function BtyArenaPage() {
     setPhase("CHOOSING");
     setStep(1);
     setReflectionIndex(null);
+    setReflectionText("");
+    setReflectionBonusXp(0);
     setSelectedChoiceId(null);
     setFollowUpIndex(null);
     setLastXp(0);
@@ -551,6 +566,8 @@ export default function BtyArenaPage() {
     setPhase("CHOOSING");
     setStep(1);
     setReflectionIndex(null);
+    setReflectionText("");
+    setReflectionBonusXp(0);
     setSelectedChoiceId(null);
     setFollowUpIndex(null);
     setLastXp(0);
@@ -702,7 +719,9 @@ export default function BtyArenaPage() {
             choice={choice}
             systemMessage={systemMessage}
             lastXp={lastXp}
-            reflectionOptions={getReflectionOptions(locale)}
+            reflectionBonusXp={reflectionBonusXp}
+            reflectionPrompt={getReflectionPrompt(locale)}
+            reflectionOptions={[]}
             followUpPrompt={choice.followUp?.prompt ?? ""}
             followUpOptions={followUpOptions}
             hasFollowUp={hasFollowUp}
