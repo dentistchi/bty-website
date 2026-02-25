@@ -1,7 +1,7 @@
 export type Locale = "ko" | "en";
 
 export type Messages = {
-  nav: { todayMe: string; bty: string; en: string; ko: string };
+  nav: { todayMe: string; bty: string; arena: string; en: string; ko: string };
   login: {
     title: string;
     afterLoginGoTo: string;
@@ -84,7 +84,7 @@ export type Messages = {
 };
 
 const ko: Messages = {
-  nav: { todayMe: "Dear Me", bty: "훈련장", en: "English", ko: "한국어" },
+  nav: { todayMe: "Dear Me", bty: "훈련장", arena: "Arena", en: "English", ko: "한국어" },
   login: {
     title: "bty 로그인",
     afterLoginGoTo: "로그인 후",
@@ -179,7 +179,7 @@ const ko: Messages = {
 };
 
 const en: Messages = {
-  nav: { todayMe: "Dear Me", bty: "Dojo", en: "English", ko: "한국어" },
+  nav: { todayMe: "Dear Me", bty: "Dojo", arena: "Arena", en: "English", ko: "한국어" },
   login: {
     title: "bty Sign in",
     afterLoginGoTo: "After sign in you will go to",

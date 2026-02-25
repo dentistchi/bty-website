@@ -18,17 +18,18 @@ export function Nav({
 }) {
   const t = getMessages(locale).nav;
   const isEn = pathname.startsWith("/en");
-  const isBty = pathname.includes("/bty");
+  const isBty = pathname.includes("/bty") && !pathname.includes("/bty-arena");
+  const isArena = pathname.includes("/bty-arena");
   const isDear = theme === "dear";
   const muted = isDear ? "text-dear-charcoal-soft" : "text-dojo-ink-soft";
   const mutedDivider = isDear ? "text-dear-charcoal-soft/60" : "text-dojo-ink-soft/60";
   const rest = pathname.slice(isEn ? 3 : 3) || "/";
   const toggleHref = isEn ? `/ko${rest}` : `/en${rest}`;
   return (
-    <nav className="flex items-center justify-center gap-4 py-3 text-sm">
+    <nav className="flex items-center justify-center gap-4 py-3 text-sm flex-wrap">
       <Link
         href={isEn ? "/en" : "/ko"}
-        className={!isBty ? "font-medium underline" : cn(muted, "hover:underline")}
+        className={!isBty && !isArena ? "font-medium underline" : cn(muted, "hover:underline")}
       >
         {t.todayMe}
       </Link>
@@ -37,6 +38,12 @@ export function Nav({
         className={isBty ? "font-medium underline" : cn(muted, "hover:underline")}
       >
         {t.bty}
+      </Link>
+      <Link
+        href={isEn ? "/en/bty-arena" : "/ko/bty-arena"}
+        className={isArena ? "font-medium underline" : cn(muted, "hover:underline")}
+      >
+        {t.arena}
       </Link>
       <span className={mutedDivider}>|</span>
       <Link href={toggleHref} className={cn(muted, "hover:underline")}>
