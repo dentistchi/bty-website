@@ -1,10 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
-import { GuideCharacterAvatar } from "@/components/GuideCharacterAvatar";
 import { Nav } from "@/components/Nav";
 import { ThemeBody } from "@/components/ThemeBody";
 import { cn } from "@/lib/utils";
@@ -36,18 +34,91 @@ const DR_CHI_OPENINGS: Record<TopicId, string> = {
   selflove: "요즘 자기 자신에게 어떤 느낌이 드니?",
 };
 
+function generateSessionId() {
+  return crypto.randomUUID();
+}
+
 export default function MentorPage() {
-  const pathname = usePathname() ?? "";
-  const locale = pathname.startsWith("/ko") ? "ko" : "en";
   const [topic, setTopic] = useState<TopicId | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [rememberMentor, setRememberMentor] = useState(false);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [isElite, setIsElite] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const saveMessage = useCallback(
+    async (role: "user" | "assistant", content: string) => {
+      if (!rememberMentor || !sessionId || !topic) return;
+      try {
+        await fetch("/api/me/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            channel: "mentor",
+            sessionId,
+            topic,
+            role,
+            content,
+          }),
+        });
+      } catch {
+        // ignore
+      }
+    },
+    [rememberMentor, sessionId, topic]
+  );
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [prefsRes, eliteRes] = await Promise.all([
+          fetch("/api/me/conversation-preferences"),
+          fetch("/api/me/elite"),
+        ]);
+        const prefs = prefsRes.ok ? await prefsRes.json() : {};
+        setRememberMentor(Boolean(prefs.rememberMentor));
+        setPrefsLoaded(true);
+        if (eliteRes.ok) {
+          const elite = await eliteRes.json();
+          setIsElite(Boolean(elite.isElite));
+        }
+      } catch {
+        setPrefsLoaded(true);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!prefsLoaded || !rememberMentor) return;
+    (async () => {
+      try {
+        const r = await fetch("/api/me/conversations?channel=mentor");
+        if (!r.ok) return;
+        const data = await r.json();
+        if (!data.sessionId || !data.messages?.length) return;
+        const t = (data.topic && TOPICS.some((x) => x.id === data.topic)) ? data.topic as TopicId : null;
+        if (!t) return;
+        setSessionId(data.sessionId);
+        setTopic(t);
+        setMessages(
+          data.messages.map((m: { role: string; content: string }) => ({
+            role: m.role === "assistant" ? "chi" : "user",
+            text: m.content,
+          }))
+        );
+      } catch {
+        // ignore
+      }
+    })();
+  }, [prefsLoaded, rememberMentor]);
 
   const send = async () => {
     const text = input.trim();
@@ -78,6 +149,8 @@ export default function MentorPage() {
           safetyValve: Boolean(r.json?.safety_valve),
         },
       ]);
+      await saveMessage("user", text);
+      await saveMessage("assistant", reply);
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -93,12 +166,40 @@ export default function MentorPage() {
 
   const startTopic = (t: TopicId) => {
     setTopic(t);
+    setSessionId(generateSessionId());
     setMessages([
       {
         role: "chi",
         text: DR_CHI_OPENINGS[t],
       },
     ]);
+  };
+
+  const toggleRemember = async () => {
+    const next = !rememberMentor;
+    setRememberMentor(next);
+    try {
+      await fetch("/api/me/conversation-preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rememberMentor: next }),
+      });
+    } catch {
+      setRememberMentor(!next);
+    }
+  };
+
+  const deleteHistory = async () => {
+    if (!confirm("저장된 멘토 대화 기록을 모두 삭제할까요?")) return;
+    setDeleting(true);
+    try {
+      await fetch("/api/me/conversations?channel=mentor", { method: "DELETE" });
+      setTopic(null);
+      setMessages([]);
+      setSessionId(null);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -111,20 +212,43 @@ export default function MentorPage() {
         }}
       >
         <div className="max-w-2xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
-          <Nav locale={locale} pathname={pathname} />
+          <Nav locale="ko" pathname="/bty/mentor" />
           <header className="text-center mb-8">
-            <div className="flex justify-center mb-3">
-              <GuideCharacterAvatar variant="warm" size="lg" />
-            </div>
             <h1
               className="text-2xl sm:text-3xl font-semibold text-mentor-ink"
               style={{ fontFamily: "Georgia, serif" }}
             >
               Dr. Chi&apos;s Mentor
+              {isElite && (
+                <span className="ml-2 inline-flex items-center rounded-full bg-mentor-wood/20 px-2.5 py-0.5 text-xs font-medium text-mentor-wood border border-mentor-wood-soft/40">
+                  상위 5%
+                </span>
+              )}
             </h1>
             <p className="text-mentor-ink-soft mt-1 text-sm">
               서재에서 차 한 잔 마시며 대화해요.
             </p>
+            {prefsLoaded && (
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm">
+                <label className="flex items-center gap-2 text-mentor-ink-soft cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={rememberMentor}
+                    onChange={toggleRemember}
+                    className="rounded border-mentor-wood-soft/50 text-mentor-wood focus:ring-mentor-wood-soft/30"
+                  />
+                  <span>대화 기억하기 (다음 로그인 시 이어보기)</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={deleteHistory}
+                  disabled={deleting}
+                  className="text-mentor-ink-soft hover:text-mentor-wood hover:underline disabled:opacity-50"
+                >
+                  {deleting ? "삭제 중…" : "기록 삭제"}
+                </button>
+              </div>
+            )}
           </header>
 
           {!topic ? (
@@ -186,13 +310,10 @@ export default function MentorPage() {
                   <div
                     key={i}
                     className={cn(
-                      "flex gap-3",
+                      "flex",
                       m.role === "user" ? "justify-end" : "justify-start"
                     )}
                   >
-                    {m.role === "chi" && (
-                      <GuideCharacterAvatar variant="warm" size="sm" className="flex-shrink-0 mt-0.5" />
-                    )}
                     <div
                       className={cn(
                         "max-w-[88%] rounded-xl px-5 py-4 text-sm leading-relaxed",

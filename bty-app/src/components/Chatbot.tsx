@@ -9,7 +9,14 @@ import { fetchJson } from "@/lib/read-json";
 import type { Locale } from "@/lib/i18n";
 import { GuideCharacterAvatar, type GuideAvatarVariant } from "@/components/GuideCharacterAvatar";
 
-type Message = { role: "user" | "assistant"; content: string; suggestDearMe?: boolean; suggestDojo?: boolean };
+type Message = {
+  role: "user" | "assistant";
+  content: string;
+  suggestDearMe?: boolean;
+  suggestDojo?: boolean;
+  suggestMentor?: boolean;
+  mentorPath?: string;
+};
 
 const TYPING_TIMEOUT_10S = 10_000;
 const TYPING_TIMEOUT_25S = 25_000;
@@ -27,10 +34,15 @@ export function Chatbot() {
   const [showRetry, setShowRetry] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [lastUserMessage, setLastUserMessage] = useState<string | null>(null);
+  const [rememberChat, setRememberChat] = useState(false);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+  const [deletingChat, setDeletingChat] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const timeout10Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
   const timeout25Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const sessionIdRef = useRef<string | null>(null);
 
   const clearTimers = useCallback(() => {
     if (timeout10Ref.current) {
@@ -47,7 +59,48 @@ export function Chatbot() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages, typingText, errorMsg]);
 
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      if (prefsLoaded) return;
+      try {
+        const prefsRes = await fetch("/api/me/conversation-preferences");
+        setPrefsLoaded(true);
+        if (!prefsRes.ok) return;
+        const prefs = await prefsRes.json();
+        setRememberChat(Boolean(prefs.rememberChat));
+        if (!prefs.rememberChat) return;
+        const convRes = await fetch("/api/me/conversations?channel=chat");
+        if (!convRes.ok) return;
+        const conv = await convRes.json();
+        if (!conv.sessionId || !conv.messages?.length) return;
+        const loaded: Message[] = conv.messages.map((m: { role: string; content: string }) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        }));
+        setChatMessages(loaded);
+        setChatSessionId(conv.sessionId);
+        sessionIdRef.current = conv.sessionId;
+      } catch {
+        setPrefsLoaded(true);
+      }
+    })();
+  }, [open, prefsLoaded]);
+
   const isBtyPage = pathname.includes("/bty");
+  const isDearMePage = pathname.includes("/dear-me");
+  const spaceLabel =
+    locale === "ko"
+      ? isDearMePage
+        ? "Dear Me"
+        : isBtyPage
+          ? "Dojo · 연습"
+          : "랜딩"
+      : isDearMePage
+        ? "Dear Me"
+        : isBtyPage
+          ? "Dojo"
+          : "Home";
   const guideVariant: GuideAvatarVariant = pathname.includes("/dear-me")
     ? "warm"
     : pathname.includes("/bty-arena")
@@ -66,6 +119,12 @@ export function Chatbot() {
     async (text: string) => {
       const trimmed = text.trim();
       if (!trimmed || isTyping) return;
+
+      const sid = sessionIdRef.current ?? crypto.randomUUID();
+      if (!sessionIdRef.current) {
+        sessionIdRef.current = sid;
+        setChatSessionId(sid);
+      }
 
       setLastUserMessage(trimmed);
       setInput("");
@@ -90,7 +149,13 @@ export function Chatbot() {
       let wasAborted = false;
       try {
         const mode = pathname.includes("/bty") ? "bty" : "today-me";
-        const r = await fetchJson<{ message?: string; suggestDearMe?: boolean; suggestDojo?: boolean }>("/api/chat", {
+        const r = await fetchJson<{
+          message?: string;
+          suggestDearMe?: boolean;
+          suggestDojo?: boolean;
+          suggestMentor?: boolean;
+          mentorPath?: string;
+        }>("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -107,7 +172,28 @@ export function Chatbot() {
             : "Thanks for sharing. You're okay as you are.");
         const suggestDearMe = r.ok && r.json?.suggestDearMe === true;
         const suggestDojo = r.ok && r.json?.suggestDojo === true;
-        setChatMessages((prev) => [...prev, { role: "assistant", content: reply, suggestDearMe, suggestDojo }]);
+        const suggestMentor = r.ok && r.json?.suggestMentor === true;
+        const mentorPath = r.ok && r.json?.mentorPath ? String(r.json.mentorPath) : undefined;
+        setChatMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: reply, suggestDearMe, suggestDojo, suggestMentor, mentorPath },
+        ]);
+        if (rememberChat && sid) {
+          try {
+            await fetch("/api/me/conversations", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ channel: "chat", sessionId: sid, role: "user", content: trimmed }),
+            });
+            await fetch("/api/me/conversations", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ channel: "chat", sessionId: sid, role: "assistant", content: reply }),
+            });
+          } catch {
+            // ignore
+          }
+        }
       } catch (err) {
         wasAborted = err instanceof Error && err.name === "AbortError";
         if (!wasAborted) {
@@ -125,7 +211,7 @@ export function Chatbot() {
         }
       }
     },
-    [isTyping, chatMessages, pathname, locale, t, clearTimers]
+    [isTyping, chatMessages, pathname, locale, t, clearTimers, rememberChat]
   );
 
   const send = () => {
@@ -137,6 +223,35 @@ export function Chatbot() {
       abortRef.current?.abort();
       setErrorMsg(null);
       performSend(lastUserMessage);
+    }
+  };
+
+  const toggleRememberChat = async () => {
+    const next = !rememberChat;
+    setRememberChat(next);
+    try {
+      const r = await fetch("/api/me/conversation-preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rememberChat: next }),
+      });
+      if (!r.ok) setRememberChat(!next);
+    } catch {
+      setRememberChat(!next);
+    }
+  };
+
+  const deleteChatHistory = async () => {
+    if (locale === "ko" && !confirm("저장된 챗 대화 기록을 모두 삭제할까요?")) return;
+    if (locale === "en" && !confirm("Delete all saved chat history?")) return;
+    setDeletingChat(true);
+    try {
+      await fetch("/api/me/conversations?channel=chat", { method: "DELETE" });
+      setChatMessages([]);
+      setChatSessionId(null);
+      sessionIdRef.current = null;
+    } finally {
+      setDeletingChat(false);
     }
   };
 
@@ -194,7 +309,10 @@ export function Chatbot() {
           <div className={cn("p-3 border-b", themeColors.border, "flex items-center justify-between gap-2")}>
             <div className="flex items-center gap-2 min-w-0">
               <GuideCharacterAvatar variant={guideVariant} size="sm" className="flex-shrink-0" />
-              <span className={cn("text-sm font-medium truncate", themeColors.header)}>Dr. Chi</span>
+              <div className="min-w-0 flex flex-col">
+                <span className={cn("text-sm font-medium truncate", themeColors.header)}>Dr. Chi</span>
+                <span className="text-xs opacity-70 truncate">{spaceLabel}</span>
+              </div>
             </div>
             <button
               type="button"
@@ -236,13 +354,22 @@ export function Chatbot() {
                     {locale === "ko" ? "Dear Me로 가기 →" : "Go to Dear Me →"}
                   </Link>
                 )}
-                {m.role === "assistant" && m.suggestDojo && (
+                {m.role === "assistant" && m.suggestDojo && !m.suggestMentor && (
                   <Link
                     href={locale === "en" ? "/en/bty" : "/ko/bty"}
                     className="mt-1.5 inline-block text-sm font-medium underline hover:no-underline"
                     style={isBtyPage ? { color: "var(--dojo-purple)" } : { color: "var(--dear-sage)" }}
                   >
                     {locale === "ko" ? "훈련장(Dojo)으로 가기 →" : "Go to Dojo →"}
+                  </Link>
+                )}
+                {m.role === "assistant" && m.suggestMentor && m.mentorPath && (
+                  <Link
+                    href={m.mentorPath}
+                    className="mt-1.5 inline-block text-sm font-medium underline hover:no-underline"
+                    style={isBtyPage ? { color: "var(--dojo-purple)" } : { color: "var(--dear-sage)" }}
+                  >
+                    {locale === "ko" ? "Dr. Chi 멘토와 깊이 대화하기 →" : "Talk with Dr. Chi Mentor →"}
                   </Link>
                 )}
               </div>
@@ -309,6 +436,28 @@ export function Chatbot() {
               {t.send}
             </button>
           </form>
+          {prefsLoaded && (
+            <div className={cn("px-3 pb-3 pt-1 border-t", themeColors.border, "flex flex-wrap items-center gap-2 text-xs")}>
+              <label className="flex items-center gap-1.5 cursor-pointer opacity-80">
+                <input
+                  type="checkbox"
+                  checked={rememberChat}
+                  onChange={toggleRememberChat}
+                  className="rounded border-current opacity-70"
+                />
+                <span>{locale === "ko" ? "대화 기억하기" : "Remember conversation"}</span>
+              </label>
+              <span className="opacity-50">·</span>
+              <button
+                type="button"
+                onClick={deleteChatHistory}
+                disabled={deletingChat}
+                className={cn("hover:underline disabled:opacity-50", themeColors.retry)}
+              >
+                {locale === "ko" ? "기록 삭제" : "Delete history"}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </>
