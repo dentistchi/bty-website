@@ -17,10 +17,13 @@ export default function BtyTopNav() {
   const pathname = usePathname() || "/";
   const locale = detectLocale(pathname);
 
+  const main = `/${locale}/bty`;
   const dash = `/${locale}/bty/dashboard`;
   const arena = `/${locale}/bty-arena`;
   const lb = `/${locale}/bty/leaderboard`;
   const logout = `/${locale}/bty/logout?next=/${locale}/bty/login`;
+
+  const mainLabel = locale === "ko" ? "메인" : "Main";
 
   const base: React.CSSProperties = {
     padding: "10px 12px",
@@ -41,6 +44,9 @@ export default function BtyTopNav() {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <Link href={main} style={isActive(pathname, main) ? activeStyle : base}>
+          {mainLabel}
+        </Link>
         <Link href={dash} style={isActive(pathname, dash) ? activeStyle : base}>
           Dashboard
         </Link>

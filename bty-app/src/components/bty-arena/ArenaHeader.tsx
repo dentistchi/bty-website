@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 
 export type ArenaStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 export type ArenaPhase = "CHOOSING" | "SHOW_RESULT" | "FOLLOW_UP" | "DONE";
@@ -11,6 +12,7 @@ const SUBTITLE = {
 };
 const PAUSE_LABEL = { en: "Pause", ko: "일시정지" };
 const RESET_LABEL = { en: "Reset", ko: "초기화" };
+const MAIN_LABEL = { en: "Main", ko: "메인" };
 
 export type ArenaHeaderProps = {
   locale: string;
@@ -43,7 +45,20 @@ export function ArenaHeader({
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 8 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <Link
+          href={`/${locale}/bty`}
+          style={{
+            padding: "10px 12px",
+            borderRadius: 10,
+            border: "1px solid #ddd",
+            textDecoration: "none",
+            color: "inherit",
+            fontSize: 14,
+          }}
+        >
+          {isKo ? MAIN_LABEL.ko : MAIN_LABEL.en}
+        </Link>
         {showPause !== false && (
           <button onClick={onPause} style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #ddd" }}>
             {isKo ? PAUSE_LABEL.ko : PAUSE_LABEL.en}
