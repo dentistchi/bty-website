@@ -90,13 +90,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   // ✅ 로그인/공개 페이지에서는 세션 자동조회 자체를 하지 않음 (401 노이즈 제거)
   const skipInitialSessionCheck =
-    pathname === "/bty/login" ||
-    pathname === "/admin/login" ||
-    pathname.startsWith("/bty/login") ||
-    pathname.startsWith("/admin/login");
+    pathname?.includes("/bty/login") ||
+    pathname?.includes("/admin/login");
+
+  // ✅ 랜딩·Arena·Dear Me는 먼저 화면 띄우고 세션은 백그라운드에서 조회 (로딩에 막히지 않음)
+  const isPublicFirstPaint =
+    pathname === "/en" ||
+    pathname === "/en/" ||
+    pathname === "/ko" ||
+    pathname === "/ko/" ||
+    pathname?.includes("/dear-me") ||
+    pathname?.includes("/bty-arena");
 
   const [user, setUser] = useState<AuthUser>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isPublicFirstPaint);
   const [error, setError] = useState<string | null>(null);
 
   const clearError = useCallback(() => setError(null), []);
@@ -125,14 +132,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // ✅ 로그인/공개 페이지에서는 세션 자동조회 자체를 하지 않음 (401 노이즈 제거)
     if (skipInitialSessionCheck) {
-      // 로그인 페이지에서는 loading을 false로 설정 (초기 로딩 완료)
       if (mounted.current) setLoading(false);
       return;
     }
+    if (isPublicFirstPaint) {
+      if (mounted.current) setLoading(false);
+      refresh();
+      return;
+    }
     refresh();
-  }, [refresh, skipInitialSessionCheck, pathname]);
+  }, [refresh, skipInitialSessionCheck, isPublicFirstPaint, pathname]);
 
   const login = useCallback(async (email: string, password: string, next?: string) => {
     setError(null);

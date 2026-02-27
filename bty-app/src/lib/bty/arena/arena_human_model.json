@@ -1,0 +1,366 @@
+{
+  "version": "1.0.0",
+  "notes": "Server-only internal calibration metadata. Not for UI display. Used to deepen reflection prompts only. Level unlock remains tenure-only.",
+  "tags": [
+    "defensive",
+    "blame",
+    "rushed",
+    "control",
+    "avoidant",
+    "people_blame",
+    "short_term",
+    "ego_threat"
+  ],
+  "levels": {
+    "S1": {
+      "stage_name": "Reaction Discipline",
+      "core_training_focus": "Emotional regulation before response",
+      "primary_shift": "Reaction → Pause",
+      "risk_pattern": ["Defensiveness", "Blame shifting", "Emotional immediacy"],
+      "maturity_marker": "Responds slower than stimulus",
+      "power_posture": "Does not escalate tension",
+      "reflection_bank": {
+        "baseline": [
+          "What exact facts do you know (without interpretation)?",
+          "What emotion showed up first, and what did it make you want to do?",
+          "If you wait 30 seconds, what response becomes possible?",
+          "What is one sentence you can say that is only observable truth?",
+          "What would a calm version of you do next?",
+          "What is the smallest next step that lowers tension?",
+          "What part of this is within your control today?",
+          "If you replay this moment tomorrow, what would you want to change?"
+        ],
+        "when_defensive": [
+          "What felt unfair, specifically—and what evidence supports it?",
+          "If you assume positive intent for 60 seconds, what changes?",
+          "What would you say if you were not protecting your pride?",
+          "What is one responsibility you can take without self-blame?"
+        ],
+        "when_blame": [
+          "What part did you contribute (even 1%) to the outcome?",
+          "What request could you make that improves the situation without accusing?",
+          "What would you do if you could not change them at all?",
+          "What is the most neutral explanation for their behavior?"
+        ],
+        "when_rushed": [
+          "What is the cost of acting fast here?",
+          "What decision can be delayed safely by 24 hours?",
+          "What is the one thing that must be true before you act?",
+          "If you slow down, what information becomes clearer?"
+        ],
+        "when_control": [
+          "What are you trying to control—and what fear is underneath it?",
+          "What would a 'firm but calm' boundary look like instead of force?",
+          "What can you influence without demanding compliance?",
+          "What would trust look like in one small step?"
+        ],
+        "when_avoidant": [
+          "What are you avoiding—and what is the likely cost of avoidance?",
+          "What is a 2-minute version of the conversation you can start?",
+          "What is the smallest action that moves this forward today?",
+          "If you do nothing, what gets worse in a week?"
+        ]
+      }
+    },
+    "S2": {
+      "stage_name": "Relational Awareness",
+      "core_training_focus": "Separating ego from team dynamics",
+      "primary_shift": "Self-focus → Team-awareness",
+      "risk_pattern": ["Taking sides", "Personalizing conflict", "Gossip alignment"],
+      "maturity_marker": "Sees dynamics, not enemies",
+      "power_posture": "Protects relational stability",
+      "reflection_bank": {
+        "baseline": [
+          "What does the other person likely care about most in this situation?",
+          "What is the relationship goal—not the argument goal?",
+          "What did you assume about their intent, and what else could be true?",
+          "What would 'respect' look like in one sentence here?",
+          "What pattern might be repeating between you two?",
+          "What boundaries do you need while still preserving dignity?",
+          "If you were a neutral observer, what would you notice?",
+          "What conversation would reduce future friction the most?"
+        ],
+        "when_defensive": [
+          "What are you protecting—status, competence, or fairness?",
+          "What part of their message might be valid even if the delivery was poor?",
+          "How can you respond to the need behind their words, not the tone?",
+          "What would it look like to 'lower the temperature' first?"
+        ],
+        "when_blame": [
+          "If you describe the issue without naming a person, what remains?",
+          "What shared outcome could both sides agree on?",
+          "What request can you make that invites cooperation, not resistance?",
+          "What would repair look like if neither side 'wins'?"
+        ],
+        "when_rushed": [
+          "What gets worse if you rush this relationship repair?",
+          "What single question can you ask before making any statement?",
+          "What would be a good 'pause' phrase you can use today?",
+          "Which part needs empathy before solutions?"
+        ],
+        "when_control": [
+          "Where could you offer choices instead of directives?",
+          "What is the minimum structure needed to keep things safe?",
+          "What does 'firm + kind' sound like in your words?",
+          "How could you ask for alignment without demanding agreement?"
+        ],
+        "when_avoidant": [
+          "What is the smallest 'repair' step you can take in 24 hours?",
+          "What are you hoping will disappear on its own—and will it?",
+          "Who needs a 1:1 conversation first, and why?",
+          "What is a safe opening line you can actually say?"
+        ]
+      }
+    },
+    "S3": {
+      "stage_name": "Structural Perception",
+      "core_training_focus": "Seeing systems over individuals",
+      "primary_shift": "Person-blame → System-thinking",
+      "risk_pattern": ["Short-term fixes", "Individual targeting", "Emotional bias"],
+      "maturity_marker": "Identifies patterns across time",
+      "power_posture": "Stabilizes through structure",
+      "reflection_bank": {
+        "baseline": [
+          "What part of this problem is a process issue, not a person issue?",
+          "Where does the handoff break down (who/when/what)?",
+          "What is the repeating pattern across days or weeks?",
+          "What metric or signal would tell you the system is improving?",
+          "What is the simplest process change that prevents recurrence?",
+          "What role clarity is missing here?",
+          "If you redesign this flow for a new hire, what would you change?",
+          "What constraint is real, and what constraint is assumed?"
+        ],
+        "when_defensive": [
+          "If you focus on process, what becomes less personal?",
+          "What feedback could you accept as 'system data' rather than criticism?",
+          "What experiment could you run without proving anyone wrong?",
+          "What would improvement look like independent of pride?"
+        ],
+        "when_blame": [
+          "What system allowed this to happen repeatedly?",
+          "If the same person left tomorrow, would the issue persist?",
+          "What safeguard would prevent this regardless of who is on shift?",
+          "What standard or checklist is missing?"
+        ],
+        "when_rushed": [
+          "Which step is being skipped when you rush?",
+          "What is the highest-leverage step to slow down for quality?",
+          "What can you standardize so speed doesn't create errors?",
+          "What is the minimum viable process you can implement this week?"
+        ],
+        "when_control": [
+          "Where does autonomy help performance, and where is a non-negotiable needed?",
+          "What rules are essential vs. micromanagement?",
+          "What structure reduces the need for constant oversight?",
+          "What is one governance mechanism that keeps freedom safe?"
+        ],
+        "when_avoidant": [
+          "What process change avoids the hard conversation while still fixing the issue?",
+          "What would happen if you do nothing for 30 days?",
+          "Who owns this system—and do they know it?",
+          "What is a low-drama way to start improving the flow?"
+        ]
+      }
+    },
+    "L1": {
+      "stage_name": "Influence Responsibility",
+      "core_training_focus": "Weight of words and tone",
+      "primary_shift": "Expression → Measured influence",
+      "risk_pattern": ["Authority tone", "Public correction", "Emotional leakage"],
+      "maturity_marker": "Speaks less as authority increases",
+      "power_posture": "Uses influence cautiously",
+      "reflection_bank": {
+        "baseline": [
+          "What did your tone signal—even if your words were correct?",
+          "What is the smallest phrase change that increases psychological safety?",
+          "Did you correct in public when it should be private?",
+          "What standard are you protecting, and how can you protect dignity too?",
+          "What behavior do you want to reinforce, not just what to stop?",
+          "What is one expectation you can clarify without pressure?",
+          "If your team copies your style, is that good for the culture?",
+          "What does 'calm authority' look like in your next message?"
+        ],
+        "when_defensive": [
+          "What part of this feels like a threat to your competence?",
+          "If you were not defending yourself, what would you ask first?",
+          "What is the lesson without the sting?",
+          "What would accountability sound like without self-justification?"
+        ],
+        "when_blame": [
+          "As the leader, what did you allow by default?",
+          "What system or expectation did you fail to clarify?",
+          "What coaching question is better than a verdict here?",
+          "What does shared responsibility look like in one sentence?"
+        ],
+        "when_rushed": [
+          "If you slow your response by one hour, what improves?",
+          "What message can wait until you're calm?",
+          "What is the cost of urgency to trust?",
+          "What does a 'pause + plan' response look like?"
+        ],
+        "when_control": [
+          "Are you building compliance or commitment?",
+          "What boundary is necessary—and what control is unnecessary?",
+          "What choice can you offer while keeping standards intact?",
+          "What does leadership by example replace in this moment?"
+        ],
+        "when_avoidant": [
+          "What conversation are you delaying that the team can feel?",
+          "What is the simplest 1:1 you can schedule in 24 hours?",
+          "What will the team assume if you say nothing?",
+          "What is the calmest opening line you can use?"
+        ]
+      }
+    },
+    "L2": {
+      "stage_name": "System Design",
+      "core_training_focus": "Designing incentive and stability frameworks",
+      "primary_shift": "Managing people → Designing systems",
+      "risk_pattern": ["Replacing people instead of fixing systems", "Short-term performance pressure"],
+      "maturity_marker": "Builds structures that reduce friction",
+      "power_posture": "Solves structurally, not emotionally",
+      "reflection_bank": {
+        "baseline": [
+          "What incentive is your current system rewarding (intentionally or not)?",
+          "What is the smallest structural change that prevents repeat incidents?",
+          "Where is the bottleneck—handoff, clarity, training, or accountability?",
+          "What should be centralized vs. left to office autonomy?",
+          "What metric would prove the system improved (not just activity)?",
+          "What would make the 'right behavior' the easiest behavior?",
+          "If you remove one meeting/report, what replaces it to keep alignment?",
+          "What risk increases if you optimize for speed only?"
+        ],
+        "when_defensive": [
+          "If feedback is 'system signal,' what is it telling you?",
+          "What would you change even if nobody admits fault?",
+          "What experiment could you run for 2 weeks to test improvement?",
+          "What outcome matters more than being right?"
+        ],
+        "when_blame": [
+          "If you replaced the person, would the system still fail?",
+          "Which role definition or training artifact is missing?",
+          "What escalation path should exist before the issue becomes a crisis?",
+          "What standardized checklist could prevent this?"
+        ],
+        "when_rushed": [
+          "What governance rhythm prevents urgency-driven chaos?",
+          "What must be measured weekly instead of reacting daily?",
+          "What decision rule would reduce impulsive changes?",
+          "What's the cost of 'quick fixes' to long-term stability?"
+        ],
+        "when_control": [
+          "What non-negotiables protect quality—and what controls reduce ownership?",
+          "How can you design guardrails rather than tight control?",
+          "What is the minimum standard that enables freedom safely?",
+          "Where do you need clarity more than authority?"
+        ],
+        "when_avoidant": [
+          "What structure avoids repeated conflict by making expectations explicit?",
+          "What are you tolerating that becomes culture?",
+          "What is one policy or SOP you can write in one page?",
+          "What is the smallest alignment meeting you can run this week?"
+        ]
+      }
+    },
+    "L3": {
+      "stage_name": "Identity Definition",
+      "core_training_focus": "Long-horizon institutional direction",
+      "primary_shift": "Operational thinking → Identity thinking",
+      "risk_pattern": ["Reactive strategy", "Competitive imitation", "Profit-only framing"],
+      "maturity_marker": "Evaluates decisions by 3–5 year identity impact",
+      "power_posture": "Defines direction before action",
+      "reflection_bank": {
+        "baseline": [
+          "What kind of organization are we becoming if we choose this?",
+          "What principle are we protecting—even if it costs short-term results?",
+          "What trade-off are we accepting, honestly?",
+          "How will this decision shape behavior across offices over 3 years?",
+          "What are the non-negotiables vs. flexible layers in this strategy?",
+          "If a competitor copied us, what would still make us unique?",
+          "What would be the regret in 36 months if we choose wrong?",
+          "What does 'stewardship' look like at the strategic level here?"
+        ],
+        "when_defensive": [
+          "If you detach from ego, what decision looks most aligned?",
+          "What would you recommend if your name were not attached?",
+          "What is the real fear—loss of control, loss of reputation, or loss of momentum?",
+          "What outcome matters more than being seen as decisive?"
+        ],
+        "when_blame": [
+          "What strategic design invited this outcome?",
+          "Where did governance fail to provide clarity?",
+          "What would a principle-based correction look like (not punishment-based)?",
+          "What system-level alignment is missing across regions?"
+        ],
+        "when_rushed": [
+          "What is the cost of speed to identity coherence?",
+          "What decision can be sequenced rather than rushed?",
+          "What needs a pilot before a full commitment?",
+          "What would 'slow is smooth' look like for the next 30 days?"
+        ],
+        "when_control": [
+          "Are you building alignment or obedience?",
+          "What core standards must be centralized—and what must remain local?",
+          "What governance mechanism reduces control needs over time?",
+          "What would trust-based scaling look like here?"
+        ],
+        "when_avoidant": [
+          "What hard choice are you postponing that is shaping identity anyway?",
+          "If you don't define the principle, what will the organization default to?",
+          "What single sentence principle can you write today?",
+          "What decision memo would clarify direction without drama?"
+        ]
+      }
+    },
+    "L4": {
+      "stage_name": "Stewardship",
+      "core_training_focus": "Power restraint under authority",
+      "primary_shift": "Control → Custodianship",
+      "risk_pattern": ["Power consolidation", "Short-term extraction", "Legacy neglect"],
+      "maturity_marker": "Authority increases humility",
+      "power_posture": "Carries weight quietly",
+      "reflection_bank": {
+        "baseline": [
+          "What responsibility increases because you have more authority now?",
+          "What decision protects the institution, not just the current quarter?",
+          "What is the quiet cost this choice imposes on people downstream?",
+          "What power could you release to build a stronger institution?",
+          "What would a future leader thank you for 10 years from now?",
+          "What governance boundary prevents drift without creating fear?",
+          "If you choose growth, what are you sacrificing (and is it worth it)?",
+          "How can you model restraint that others can copy?"
+        ],
+        "when_defensive": [
+          "What does humility look like without weakness here?",
+          "If reputation wasn't at stake, what would you choose?",
+          "What are you protecting—control, legacy, or pride?",
+          "What is the smallest public accountability you can take?"
+        ],
+        "when_blame": [
+          "Where did governance allow this to persist?",
+          "What accountability structure is missing at the top?",
+          "What principle-based correction reduces future blame cycles?",
+          "What would institutional ownership look like instead of fault-finding?"
+        ],
+        "when_rushed": [
+          "What becomes irreversible if you move too fast?",
+          "What requires deliberation and written reasoning?",
+          "What would a 72-hour cooling period change?",
+          "What is the cost of urgency to institutional trust?"
+        ],
+        "when_control": [
+          "Are you consolidating power or distributing responsibility?",
+          "What decision creates the strongest leaders around you?",
+          "What guardrails can replace direct control?",
+          "What would it mean to trust the system you built?"
+        ],
+        "when_avoidant": [
+          "What uncomfortable decision is being deferred at the top?",
+          "If you avoid it, what culture forms by default?",
+          "What one-page decision memo would force clarity?",
+          "What conversation must happen before the next quarter ends?"
+        ]
+      }
+    }
+  }
+}

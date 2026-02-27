@@ -45,6 +45,8 @@ type SavedArenaState = {
   reflectionBonusXp?: number;
   /** true when user submitted "Other (Write your own)" — show "Other submitted" and allow continue */
   otherSubmitted?: boolean;
+  /** When set, Step 3 "Other" block shows praise + suggestion from free-response API. */
+  freeResponseFeedback?: { praise: string; suggestion: string } | null;
 };
 
 const STORAGE_KEY = "btyArenaState:v1";
@@ -228,6 +230,12 @@ export default function BtyArenaPage() {
   const [otherText, setOtherText] = React.useState("");
   const [otherSubmitting, setOtherSubmitting] = React.useState(false);
   const [otherSubmitted, setOtherSubmitted] = React.useState(false);
+  const [otherError, setOtherError] = React.useState<string | null>(null);
+  const [freeResponseFeedback, setFreeResponseFeedback] = React.useState<{ praise: string; suggestion: string } | null>(null);
+
+  /** Result from POST /api/arena/reflect (summary, questions, next_action). Shown in ConsolidationBlock. */
+  type ReflectResult = { summary: string; questions: string[]; next_action: string; detected?: { tags: string[]; topTag?: string } };
+  const [reflectResult, setReflectResult] = React.useState<ReflectResult | null>(null);
 
   type MilestoneModalState = {
     milestone: 25 | 50 | 75;
@@ -288,6 +296,7 @@ export default function BtyArenaPage() {
       setFollowUpIndex(typeof saved.followUpIndex === "number" ? saved.followUpIndex : null);
       setLastXp(saved.lastXp ?? 0);
       setRunId(saved.runId ?? null);
+      setFreeResponseFeedback(saved.freeResponseFeedback ?? null);
 
       if (saved.lastSystemMessage) {
         const msg = SYSTEM_MESSAGES.find((m) => m.id === saved.lastSystemMessage) ?? null;
@@ -369,6 +378,7 @@ export default function BtyArenaPage() {
       lastSystemMessage: systemMessage?.id,
       runId: runId ?? undefined,
       otherSubmitted: otherSubmitted || undefined,
+      freeResponseFeedback: freeResponseFeedback ?? undefined,
       updatedAtISO: safeNowISO(),
       ...next,
     });
@@ -426,25 +436,77 @@ export default function BtyArenaPage() {
   }
 
   async function submitOther() {
+    setOtherError(null);
     setOtherSubmitting(true);
     try {
+      const trimmed = otherText.trim();
+      if (trimmed.length > 0) {
+        const rid = await ensureRunId();
+        if (!rid) {
+          setOtherError(locale === "ko" ? "런을 시작할 수 없습니다." : "Could not start run.");
+          setOtherSubmitting(false);
+          return;
+        }
+        try {
+          const res = await arenaFetch<{ ok?: boolean; xp?: number; feedback?: { praise: string; suggestion: string } }>(
+            "/api/arena/free-response",
+            { json: { runId: rid, scenarioId: current.scenarioId, responseText: trimmed } }
+          );
+          if (res.ok && typeof res.xp === "number" && res.feedback) {
+            const otherMsg = SYSTEM_MESSAGES.find((m) => m.id === "other_recorded") ?? SYSTEM_MESSAGES[0];
+            setLastXp(res.xp);
+            setSystemMessage(otherMsg);
+            setFreeResponseFeedback(res.feedback);
+            setPhase("SHOW_RESULT");
+            setStep(3);
+            setSelectedChoiceId(OTHER_CHOICE_ID);
+            setOtherSubmitted(true);
+            persist({
+              phase: "SHOW_RESULT",
+              step: 3,
+              lastXp: res.xp,
+              lastSystemMessage: "other_recorded",
+              selectedChoiceId: OTHER_CHOICE_ID,
+              otherSubmitted: true,
+              freeResponseFeedback: res.feedback,
+            });
+            setOtherOpen(false);
+            setOtherText("");
+            setOtherSubmitting(false);
+            return;
+          }
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          if (msg === "UNAUTHENTICATED" || msg.includes("401")) {
+            setOtherError(locale === "ko" ? "로그인이 필요합니다." : "Please sign in.");
+          } else if (msg === "FREE_RESPONSE_ALREADY_SUBMITTED" || msg === "RUN_NOT_FOUND") {
+            setOtherError(locale === "ko" ? "이미 제출되었거나 세션이 만료되었습니다." : "Already submitted or session expired.");
+          } else {
+            setOtherError(locale === "ko" ? "제출에 실패했습니다. 다시 시도해 주세요." : "Submission failed. Please try again.");
+          }
+          setOtherSubmitting(false);
+          return;
+        }
+      }
+
       const rid = await ensureRunId();
-      const payload = {
+      const eventPayload = {
         runId: rid,
         scenarioId: current.scenarioId,
         step: 2,
         eventType: "OTHER_SELECTED",
         xp: 0,
       };
-      console.log("[arena] postArenaEvent (other)", { step: payload.step, eventType: payload.eventType, scenarioId: payload.scenarioId });
-      await postArenaEvent(payload);
+      console.log("[arena] postArenaEvent (other)", { step: eventPayload.step, eventType: eventPayload.eventType, scenarioId: eventPayload.scenarioId });
+      await postArenaEvent(eventPayload);
       const otherMsg = SYSTEM_MESSAGES.find((m) => m.id === "other_recorded") ?? SYSTEM_MESSAGES[0];
       setLastXp(0);
       setSystemMessage(otherMsg);
+      setFreeResponseFeedback(null);
       setPhase("SHOW_RESULT");
       setStep(3);
       setSelectedChoiceId(OTHER_CHOICE_ID);
-      persist({ phase: "SHOW_RESULT", step: 3, lastXp: 0, lastSystemMessage: "other_recorded", selectedChoiceId: OTHER_CHOICE_ID });
+      persist({ phase: "SHOW_RESULT", step: 3, lastXp: 0, lastSystemMessage: "other_recorded", selectedChoiceId: OTHER_CHOICE_ID, otherSubmitted: true });
     } finally {
       setOtherSubmitting(false);
     }
@@ -484,6 +546,36 @@ export default function BtyArenaPage() {
     setReflectionIndex(idx);
     setReflectionText(trimmed);
     setReflectionBonusXp(bonus);
+    setReflectResult(null);
+
+    // Call Reflection Deepening API when user wrote something (server resolves levelId from tenure).
+    if (trimmed.length > 0) {
+      try {
+        const res = await arenaFetch<{ ok?: boolean; summary?: string; questions?: string[]; next_action?: string; detected?: { tags: string[]; topTag?: string } }>(
+          "/api/arena/reflect",
+          {
+            json: {
+              userText: trimmed,
+              scenario: {
+                situation: [current.title, current.context].filter(Boolean).join(" — ").slice(0, 280),
+                userChoice: trimmed,
+              },
+            },
+          }
+        );
+        if (res?.summary != null) {
+          setReflectResult({
+            summary: res.summary,
+            questions: Array.isArray(res.questions) ? res.questions : [],
+            next_action: res.next_action ?? "",
+            detected: res.detected,
+          });
+        }
+      } catch (e) {
+        console.warn("[arena] reflect API failed", e);
+      }
+    }
+
     if (hasFollowUp) {
       setStep(5);
       setPhase("FOLLOW_UP");
@@ -555,6 +647,7 @@ export default function BtyArenaPage() {
     setReflectionIndex(null);
     setReflectionText("");
     setReflectionBonusXp(0);
+    setReflectResult(null);
     setSelectedChoiceId(null);
     setFollowUpIndex(null);
     setLastXp(0);
@@ -563,6 +656,7 @@ export default function BtyArenaPage() {
     setOtherText("");
     setOtherSubmitting(false);
     setOtherSubmitted(false);
+    setFreeResponseFeedback(null);
     console.log("[arena] continueNextScenario applied", { step: 1, phase: "CHOOSING" });
 
     arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", {
@@ -610,6 +704,7 @@ export default function BtyArenaPage() {
     setOtherText("");
     setOtherSubmitting(false);
     setOtherSubmitted(false);
+    setFreeResponseFeedback(null);
     setSystemMessage(SYSTEM_MESSAGES.find((m) => m.id === "arch_init") ?? null);
 
     arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", {
@@ -728,10 +823,22 @@ export default function BtyArenaPage() {
 
         {step >= 3 && selectedChoiceId === OTHER_CHOICE_ID && (
           <div style={{ marginTop: 18, padding: 16, border: "1px solid #e5e5e5", borderRadius: 14 }}>
-            <p style={{ margin: "0 0 8px", fontWeight: 600 }}>
-              {locale === "ko" && systemMessage?.ko ? systemMessage.ko : systemMessage?.en ?? (locale === "ko" ? "기타 기록됨." : "Other recorded.")}
-            </p>
-            <p style={{ margin: 0, fontSize: 14, opacity: 0.8 }}>XP +{lastXp}</p>
+            {freeResponseFeedback ? (
+              <>
+                <p style={{ margin: "0 0 8px", fontWeight: 600 }}>{freeResponseFeedback.praise}</p>
+                {freeResponseFeedback.suggestion && (
+                  <p style={{ margin: "0 0 8px", fontSize: 14, opacity: 0.9 }}>{freeResponseFeedback.suggestion}</p>
+                )}
+                <p style={{ margin: 0, fontSize: 14, opacity: 0.8 }}>XP +{lastXp}</p>
+              </>
+            ) : (
+              <>
+                <p style={{ margin: "0 0 8px", fontWeight: 600 }}>
+                  {locale === "ko" && systemMessage?.ko ? systemMessage.ko : systemMessage?.en ?? (locale === "ko" ? "기타 기록됨." : "Other recorded.")}
+                </p>
+                <p style={{ margin: 0, fontSize: 14, opacity: 0.8 }}>XP +{lastXp}</p>
+              </>
+            )}
             <button
               type="button"
               onClick={continueNextScenario}
@@ -765,6 +872,7 @@ export default function BtyArenaPage() {
             followUpOptions={followUpOptions}
             hasFollowUp={hasFollowUp}
             followUpIndex={followUpIndex}
+            reflectResult={reflectResult}
             onNextToReflection={goToReflection}
             onSubmitReflection={submitReflection}
             onSubmitFollowUp={submitFollowUp}
@@ -792,6 +900,7 @@ export default function BtyArenaPage() {
             onClick={() => {
               setOtherOpen(false);
               setOtherText("");
+              setOtherError(null);
             }}
             style={{
               position: "absolute",
@@ -822,12 +931,16 @@ export default function BtyArenaPage() {
               rows={3}
               style={{ width: "100%", padding: 10, borderRadius: 8, resize: "vertical", boxSizing: "border-box" }}
             />
+            {otherError && (
+              <p style={{ margin: "8px 0 0", fontSize: 13, color: "#c00" }}>{otherError}</p>
+            )}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 10 }}>
               <button
                 type="button"
                 onClick={() => {
                   setOtherOpen(false);
                   setOtherText("");
+                  setOtherError(null);
                 }}
                 style={{
                   padding: "8px 16px",
@@ -842,7 +955,7 @@ export default function BtyArenaPage() {
               </button>
               <button
                 type="button"
-                disabled={otherSubmitting || otherText.trim().length === 0}
+                disabled={otherSubmitting}
                 onClick={submitOther}
                 style={{
                   padding: "8px 16px",
@@ -850,9 +963,9 @@ export default function BtyArenaPage() {
                   border: "none",
                   background: "#111",
                   color: "white",
-                  cursor: otherSubmitting || otherText.trim().length === 0 ? "not-allowed" : "pointer",
+                  cursor: otherSubmitting ? "not-allowed" : "pointer",
                   fontSize: 14,
-                  opacity: otherSubmitting || otherText.trim().length === 0 ? 0.6 : 1,
+                  opacity: otherSubmitting ? 0.6 : 1,
                 }}
               >
                 {locale === "ko" ? "제출" : "Submit"}

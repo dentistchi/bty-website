@@ -1,9 +1,20 @@
 import { fetchJson } from "@/lib/read-json";
 import { NextResponse } from "next/server";
+import { DR_CHI_PHILOSOPHY, DR_CHI_FEW_SHOT_EXAMPLES } from "@/lib/bty/mentor/drChiCharacter";
+import {
+  buildMentorMessagesDual,
+  inferLang,
+  type ChatMessage,
+} from "@/lib/bty/mentor/mentor_fewshot_dropin";
+import { recordActivityXp } from "@/lib/bty/arena/activityXp";
+import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { recordQualityEventApp } from "@/lib/bty/quality";
+import { checkRateLimit, getClientIdentifier } from "@/lib/rate-limit";
+import { logApiError } from "@/lib/log-api-error";
 
 /**
- * Dr. Chi Mentor Mode — 5가지 주제로 깊이 있는 대화
- * 감정 안전 밸브: 낮은 자존감 신호 감지 시 Dear Me로 유도
+ * Mentor (Dojo) — EN+KO dual few-shot bundles + weighted regex router.
+ * Emotional safety valve: low self-esteem signals → Dear Me redirect.
  */
 
 const DEAR_ME_URL = "https://dear-me.pages.dev";
@@ -30,76 +41,82 @@ const LOW_SELF_ESTEEM_PATTERNS = [
   /의미\s*없/i,
 ];
 
-const TOPICS = {
-  clinical: "Clinical Skills (임상 기술)",
-  patient: "Patient Management (환자 관리)",
-  team: "Team Relations (팀 관계)",
-  financial: "Financial Advice (재무 조언)",
-  selflove: "Self-Love (자기 사랑)",
-} as const;
-
-function buildSystemPrompt(topic: keyof typeof TOPICS): string {
-  const topicName = TOPICS[topic];
-  return `You are Dr. Chi, a dentist and life mentor. You have a warm, wise presence. The user chose the topic: ${topicName}.
-
-**Your teaching style:**
-- Do NOT lecture one-way. Ask questions to draw insight from the user.
-- Start with empathy: "요즘 환자 보면서 뭐가 제일 힘드니?", "어떤 부분이 가장 막막해 보여?"
-- Guide through conversation, not through giving answers.
-- Keep responses to 2-4 sentences. Be concise and warm.
-- Use the same language as the user (Korean or English).
-
-**Topics by choice:**
-- Clinical Skills: patient care, procedures, clinical confidence
-- Patient Management: difficult patients, communication, boundaries
-- Team Relations: staff dynamics, conflict, leadership
-- Financial Advice: practice finances, personal money, sustainability
-- Self-Love: burnout prevention, self-care, worthiness
-
-**CRITICAL - Emotional Safety Valve:**
-If the user's message clearly suggests low self-esteem, exhaustion, or despair (e.g. "못하겠어", "자격 없어", "너무 힘들어"), you MUST immediately pause education and say ONLY this exact message, nothing else:
-"${SAFETY_VALVE_MESSAGE}"
-
-Do not add any other advice or continue the topic.`;
-}
+const RATE_LIMIT_PER_MINUTE = 60;
 
 function isLowSelfEsteemSignal(text: string): boolean {
   return LOW_SELF_ESTEEM_PATTERNS.some((pat) => pat.test(text));
 }
 
-function toGeminiContents(
+/** 대화 이력만 OpenAI 형식으로 (role + content). */
+function toHistoryMessages(
   messages: { role: string; content?: string }[],
   userContent: string
-) {
+): { role: "user" | "assistant"; content: string }[] {
   const filtered = messages
     .filter((m): m is { role: string; content: string } => Boolean(m.role && m.content))
     .slice(-14);
   const hasLatest = filtered.some((m) => m.role === "user" && m.content === userContent);
   const list = hasLatest ? filtered : [...filtered, { role: "user", content: userContent }];
-
   return list.map((m) => ({
-    role: m.role === "assistant" ? "model" : "user",
-    parts: [{ text: m.content }],
+    role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
+    content: m.content,
   }));
 }
 
+/** Drop-in: [system with Dr. Chi philosophy + bundle, Dr. Chi examples (up to 2), ...bundle examples] + conversation history. */
+function buildOpenAIMessages(
+  bodyMessages: { role: string; content?: string }[],
+  userContent: string,
+  lang: "en" | "ko"
+): ChatMessage[] {
+  const { messages: dropinMsgs } = buildMentorMessagesDual(userContent, {
+    lang,
+    useBundleSystem: true,
+    includeDebugMeta: false,
+  });
+  const base = dropinMsgs.slice(0, -1) as ChatMessage[];
+  if (base[0]?.role === "system" && typeof base[0].content === "string") {
+    base[0] = {
+      role: "system",
+      content: DR_CHI_PHILOSOPHY + "\n\n" + base[0].content,
+    };
+  }
+  const drChiTurns: ChatMessage[] = [];
+  const cap = Math.min(2, DR_CHI_FEW_SHOT_EXAMPLES.length);
+  for (let i = 0; i < cap; i++) {
+    const ex = DR_CHI_FEW_SHOT_EXAMPLES[i];
+    if (ex?.user && ex?.assistant) {
+      drChiTurns.push({ role: "user", content: ex.user }, { role: "assistant", content: ex.assistant });
+    }
+  }
+  const rest = base.slice(1);
+  const history = toHistoryMessages(bodyMessages, userContent);
+  return [...base.slice(0, 1), ...drChiTurns, ...rest, ...history.map((m) => ({ role: m.role, content: m.content } as ChatMessage))];
+}
+
 export async function POST(request: Request) {
+  const id = getClientIdentifier(request);
+  const rate = checkRateLimit(id, RATE_LIMIT_PER_MINUTE);
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfterSeconds: rate.retryAfterSeconds },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } }
+    );
+  }
+
   try {
     const body = await request.json();
     const messages = Array.isArray(body.messages) ? body.messages : [];
-    const topic = Object.keys(TOPICS).includes(body.topic)
-      ? (body.topic as keyof typeof TOPICS)
-      : "clinical";
     const userContent =
       typeof body.message === "string"
         ? body.message
         : messages.filter((m: { role: string }) => m.role === "user").pop()?.content;
+    const lang = body.lang === "ko" ? "ko" : body.lang === "en" ? "en" : inferLang(userContent);
 
     if (!userContent || typeof userContent !== "string") {
       return NextResponse.json({ error: "Message required" }, { status: 400 });
     }
 
-    // Emotional Safety Valve: detect before AI call
     if (isLowSelfEsteemSignal(userContent)) {
       return NextResponse.json({
         message: SAFETY_VALVE_MESSAGE,
@@ -108,67 +125,60 @@ export async function POST(request: Request) {
       });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY ?? null;
-
-    if (apiKey) {
-      const systemPrompt = buildSystemPrompt(topic);
-      const contents = toGeminiContents(messages, userContent);
-      const payload = {
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents,
-        generationConfig: { maxOutputTokens: 400, temperature: 0.8 },
-      };
-      const models = ["gemini-2.0-flash", "gemini-1.5-flash"] as const;
-
-      type GeminiResp = {
-        candidates?: { content?: { parts?: { text?: string }[] } }[];
-        error?: { message?: string };
-      };
-      for (const model of models) {
-        const r = await fetchJson<GeminiResp>(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-goog-api-key": apiKey,
-            },
-            body: JSON.stringify(payload),
+    const openaiKey = process.env.OPENAI_API_KEY;
+    if (openaiKey) {
+      const openaiMessages = buildOpenAIMessages(messages, userContent, lang);
+      type OpenAIChatResp = { choices?: { message?: { content?: string } }[] };
+      const r = await fetchJson<OpenAIChatResp>("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${openaiKey}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: openaiMessages,
+          max_tokens: 400,
+        }),
+      });
+      if (r.ok) {
+        const text = r.json?.choices?.[0]?.message?.content?.trim();
+        if (text) {
+          const triggeredValve = isLowSelfEsteemSignal(text) || /Dear Me|dear-me|잠시 쉬고/i.test(text);
+          const supabase = await getSupabaseServerClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user?.id) {
+            recordActivityXp(supabase, user.id, "MENTOR_MESSAGE").catch((err) =>
+              console.warn("[mentor] recordActivityXp failed", err)
+            );
           }
-        );
-        if (r.ok) {
-          const data = r.json;
-          const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-          if (text) {
-            const triggeredValve = isLowSelfEsteemSignal(text) || /Dear Me|dear-me|잠시 쉬고/i.test(text);
-            return NextResponse.json({
-              message: text,
-              ...(triggeredValve && { safety_valve: true, dear_me_url: DEAR_ME_URL }),
-            });
-          }
+          return NextResponse.json({
+            message: text,
+            ...(triggeredValve && { safety_valve: true, dear_me_url: DEAR_ME_URL }),
+          });
         }
-        let errData: GeminiResp | null = null;
-        if (!r.ok && r.raw) {
-          try {
-            errData = JSON.parse(r.raw) as GeminiResp;
-          } catch {
-            errData = null;
-          }
-        }
-        const data = r.ok ? r.json : errData;
-        if (!r.ok || data?.error) {
-          console.error(`[mentor] Gemini ${model} error:`, r.status, data ? JSON.stringify(data).slice(0, 400) : r.raw?.slice(0, 400));
-          if (data?.error?.message?.includes("not found") || r.status === 404) continue;
-          break;
-        }
+        recordQualityEventApp({ route: "mentor", reason: "empty_response", lang });
+      } else {
+        recordQualityEventApp({ route: "mentor", reason: "fallback", lang });
       }
+    } else {
+      recordQualityEventApp({ route: "mentor", reason: "fallback", lang });
     }
 
     const fallback =
       "요즘 어떤 부분이 가장 고민되나요? 구체적으로 말해주시면 같이 생각해볼게요.";
-    return NextResponse.json({ message: fallback });
+    console.warn("[mentor] OpenAI unreachable — using fallback. Set OPENAI_API_KEY in .env.local");
+    const supabase = await getSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id) {
+      recordActivityXp(supabase, user.id, "MENTOR_MESSAGE").catch((err) =>
+        console.warn("[mentor] recordActivityXp failed", err)
+      );
+    }
+    return NextResponse.json({ message: fallback, usedFallback: true });
   } catch (e) {
-    console.error("[mentor]", e);
+    logApiError("mentor", 500, e);
+    recordQualityEventApp({ route: "mentor", reason: "error" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

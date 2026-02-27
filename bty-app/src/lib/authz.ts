@@ -34,6 +34,25 @@ export async function requireUser(req: NextRequest) {
   return { ok: true as const, user: data.user };
 }
 
+const ADMIN_EMAILS_RAW = process.env.BTY_ADMIN_EMAILS ?? "";
+const ADMIN_EMAIL_SET = new Set(
+  ADMIN_EMAILS_RAW.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
+);
+
+/**
+ * Admin-only by email allowlist (BTY_ADMIN_EMAILS).
+ * If BTY_ADMIN_EMAILS is not set, any authenticated user is allowed (dev-friendly).
+ */
+export async function requireAdminEmail(req: NextRequest) {
+  const u = await requireUser(req);
+  if (!u.ok) return u;
+
+  if (ADMIN_EMAIL_SET.size === 0) return u;
+  const email = (u.user.email ?? "").toLowerCase();
+  if (email && ADMIN_EMAIL_SET.has(email)) return u;
+  return { ok: false as const, status: 403, error: "Forbidden: Admin access required" };
+}
+
 function parseScope(request: NextRequest) {
   const orgId = request.nextUrl.searchParams.get("orgId");
   const regionId = request.nextUrl.searchParams.get("regionId");

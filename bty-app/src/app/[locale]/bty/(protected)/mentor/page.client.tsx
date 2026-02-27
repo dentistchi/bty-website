@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
+import { GuideCharacterAvatar } from "@/components/GuideCharacterAvatar";
 import { Nav } from "@/components/Nav";
 import { ThemeBody } from "@/components/ThemeBody";
 import { cn } from "@/lib/utils";
@@ -332,17 +333,20 @@ export default function MentorPage() {
         <div className="max-w-2xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
           <Nav locale={locale as "ko" | "en"} pathname={`/${locale}/bty/mentor`} />
           <header className="text-center mb-8">
-            <h1
-              className="text-2xl sm:text-3xl font-semibold text-mentor-ink"
-              style={{ fontFamily: "Georgia, serif" }}
-            >
-              Dr. Chi&apos;s Mentor
+            <div className="flex flex-col items-center gap-3">
+              <GuideCharacterAvatar variant="warm" size="lg" alt="Dr. Chi" className="flex-shrink-0" />
+              <h1
+                className="text-2xl sm:text-3xl font-semibold text-mentor-ink"
+                style={{ fontFamily: "Georgia, serif" }}
+              >
+                Dr. Chi&apos;s Mentor
               {isElite && (
                 <span className="ml-2 inline-flex items-center rounded-full bg-mentor-wood/20 px-2.5 py-0.5 text-xs font-medium text-mentor-wood border border-mentor-wood-soft/40">
                   {t.eliteBadge}
                 </span>
               )}
             </h1>
+            </div>
             <p className="text-mentor-ink-soft mt-1 text-sm">
               {t.slogan}
             </p>
@@ -454,10 +458,13 @@ export default function MentorPage() {
                   <div
                     key={i}
                     className={cn(
-                      "flex",
+                      "flex gap-3",
                       m.role === "user" ? "justify-end" : "justify-start"
                     )}
                   >
+                    {m.role === "chi" && (
+                      <GuideCharacterAvatar variant="warm" size="sm" alt="Dr. Chi" className="flex-shrink-0 mt-0.5" />
+                    )}
                     <div
                       className={cn(
                         "max-w-[88%] rounded-xl px-5 py-4 text-sm leading-relaxed",
@@ -493,7 +500,8 @@ export default function MentorPage() {
                   </div>
                 ))}
                 {sending && (
-                  <div className="flex justify-start">
+                  <div className="flex gap-3 justify-start">
+                    <GuideCharacterAvatar variant="warm" size="sm" alt="Dr. Chi" className="flex-shrink-0 mt-0.5" />
                     <div className="rounded-xl rounded-bl-sm px-5 py-4 bg-white/50 text-mentor-ink-soft text-sm border-l-4 border-mentor-wood-soft/30">
                       <span className="animate-pulse">{t.thinking}</span>
                     </div>

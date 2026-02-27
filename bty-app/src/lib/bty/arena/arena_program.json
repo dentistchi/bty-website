@@ -1,0 +1,4110 @@
+{
+  "program": "BTY Arena",
+  "version": "1.0",
+  "new_joiner_rule": {
+    "description": "회사에 처음 들어온 사람은 1개월간 일반 스텝(staff) 트레이닝을 받는다. 리더 직군이라도 동일.",
+    "staff_training_days": 30
+  },
+  "tracks": [
+    {
+      "track": "staff",
+      "title": "일반 스텝",
+      "job_functions": [
+        "assistant",
+        "admin",
+        "junior_doctor",
+        "hygienist"
+      ],
+      "job_function_labels": {
+        "assistant": "Assistant",
+        "admin": "Admin",
+        "junior_doctor": "초보 의사",
+        "hygienist": "Hygienist"
+      },
+      "levels": [
+        {
+          "level": "S1",
+          "title": "Staff Beginner",
+          "title_ko": "스태프 입문",
+          "structure": [
+            "situation",
+            "role",
+            "options",
+            "immediate_outcome",
+            "team_signal"
+          ],
+          "min_tenure_months": 0,
+          "tenure_basis": "joinedAt",
+          "human_model": {
+            "stage_name": "Reaction Discipline",
+            "core_training_focus": "Emotional regulation before response",
+            "primary_shift": "Reaction → Pause",
+            "risk_pattern": ["Defensiveness", "Blame shifting", "Emotional immediacy"],
+            "maturity_marker": "Responds slower than stimulus",
+            "power_posture": "Does not escalate tension"
+          },
+          "items": [
+            {
+              "id": "S1-01",
+              "situation": "환자가 30분 대기 후 불만 표출.",
+              "role": "Front Desk",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "지금 바쁩니다."
+                },
+                {
+                  "id": "B",
+                  "label": "사과 + 예상 시간 안내"
+                },
+                {
+                  "id": "C",
+                  "label": "무응답"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "갈등 확대",
+                "B": "긴장 완화",
+                "C": "리뷰 위험"
+              },
+              "team_signal": "우리는 환자 경험을 중요하게 여기는 팀인가?"
+            },
+            {
+              "id": "S1-02",
+              "situation": "SSO에서 보험 확인이 늦어 체크인 지연.",
+              "role": "Front",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "환자 앞에서 SSO 탓"
+                },
+                {
+                  "id": "B",
+                  "label": "내부 기록 후 OM 보고"
+                },
+                {
+                  "id": "C",
+                  "label": "환자에게 명확히 설명"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "blame 문화 형성",
+                "B": "해결 지연",
+                "C": "신뢰 유지"
+              },
+              "team_signal": "우리는 책임 전가 조직인가?"
+            },
+            {
+              "id": "S1-03",
+              "situation": "닥터가 스케줄 문제로 짜증.",
+              "role": "Assistant",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "반응적으로 대응"
+                },
+                {
+                  "id": "B",
+                  "label": "침착하게 상황 정리"
+                },
+                {
+                  "id": "C",
+                  "label": "침묵"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "긴장 증가",
+                "B": "안정",
+                "C": "오해"
+              },
+              "team_signal": "우리는 감정에 감정으로 반응하는 팀인가?"
+            },
+            {
+              "id": "S1-04",
+              "situation": "환자가 예상보다 높은 금액에 항의.",
+              "role": "Admin",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "\"정책입니다\""
+                },
+                {
+                  "id": "B",
+                  "label": "내역 설명"
+                },
+                {
+                  "id": "C",
+                  "label": "OM에게 즉시 전가"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "갈등",
+                "B": "이해 가능성",
+                "C": "긴장"
+              },
+              "team_signal": "우리는 설명하는 팀인가?"
+            },
+            {
+              "id": "S1-05",
+              "situation": "같은 시간에 환자 두 명 예약.",
+              "role": "Front",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "한 명 취소"
+                },
+                {
+                  "id": "B",
+                  "label": "상황 설명 후 조정"
+                },
+                {
+                  "id": "C",
+                  "label": "무시"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "불만",
+                "B": "해결 가능",
+                "C": "리뷰 위험"
+              },
+              "team_signal": "우리는 실수를 숨기는가?"
+            },
+            {
+              "id": "S1-06",
+              "situation": "SSO가 필요한 서류 요청.",
+              "role": "Admin",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "나중에 처리"
+                },
+                {
+                  "id": "B",
+                  "label": "즉시 전달"
+                },
+                {
+                  "id": "C",
+                  "label": "답장 없이 무시"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "지연",
+                "B": "프로세스 유지",
+                "C": "갈등"
+              },
+              "team_signal": "우리는 시스템을 존중하는가?"
+            },
+            {
+              "id": "S1-07",
+              "situation": "환자 치료 만족.",
+              "role": "Front",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "아무 요청 안 함"
+                },
+                {
+                  "id": "B",
+                  "label": "리뷰 요청"
+                },
+                {
+                  "id": "C",
+                  "label": "과도한 요청"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "기회 손실",
+                "B": "긍정 리뷰 가능",
+                "C": "불편"
+              },
+              "team_signal": "우리는 브랜드를 관리하는가?"
+            },
+            {
+              "id": "S1-08",
+              "situation": "동료가 반복 지각.",
+              "role": "Assistant",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "험담"
+                },
+                {
+                  "id": "B",
+                  "label": "직접 대화"
+                },
+                {
+                  "id": "C",
+                  "label": "OM에게 전달"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "팀 분열",
+                "B": "해결 가능",
+                "C": "긴장"
+              },
+              "team_signal": "우리는 문제를 직접 해결하는가?"
+            },
+            {
+              "id": "S1-09",
+              "situation": "환자가 다른 환자 정보를 묻는다.",
+              "role": "Front",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "알려줌"
+                },
+                {
+                  "id": "B",
+                  "label": "거절"
+                },
+                {
+                  "id": "C",
+                  "label": "애매하게 답변"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "HIPAA 위험",
+                "B": "안전",
+                "C": "혼란"
+              },
+              "team_signal": "우리는 규정을 지키는가?"
+            },
+            {
+              "id": "S1-10",
+              "situation": "체어 장비 일시 고장.",
+              "role": "Assistant",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "닥터에게 즉시 보고"
+                },
+                {
+                  "id": "B",
+                  "label": "무시"
+                },
+                {
+                  "id": "C",
+                  "label": "환자에게 과도한 설명"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "해결",
+                "B": "사고 위험",
+                "C": "불안 증가"
+              },
+              "team_signal": "우리는 문제를 숨기는가?"
+            },
+            {
+              "id": "S1-11",
+              "situation": "환자가 \"다음에 낼게요.\"",
+              "role": "Admin",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "허용"
+                },
+                {
+                  "id": "B",
+                  "label": "정책 설명"
+                },
+                {
+                  "id": "C",
+                  "label": "무시"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "AR 증가",
+                "B": "수금 유지",
+                "C": "혼란"
+              },
+              "team_signal": "우리는 원칙을 지키는가?"
+            },
+            {
+              "id": "S1-12",
+              "situation": "신규 환자 긴장 상태.",
+              "role": "Front",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "형식적 응대"
+                },
+                {
+                  "id": "B",
+                  "label": "친절한 안내"
+                },
+                {
+                  "id": "C",
+                  "label": "무시"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "불안",
+                "B": "신뢰 형성",
+                "C": "이탈 가능"
+              },
+              "team_signal": "우리는 환자 중심인가?"
+            },
+            {
+              "id": "S1-13",
+              "situation": "본인이 예약 입력 실수.",
+              "role": "Admin",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "숨김"
+                },
+                {
+                  "id": "B",
+                  "label": "즉시 보고"
+                },
+                {
+                  "id": "C",
+                  "label": "동료에게 전가"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "나중에 큰 문제",
+                "B": "즉시 해결",
+                "C": "신뢰 하락"
+              },
+              "team_signal": "우리는 책임을 지는가?"
+            },
+            {
+              "id": "S1-14",
+              "situation": "치료 15분 지연.",
+              "role": "Assistant",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "아무 말 안 함"
+                },
+                {
+                  "id": "B",
+                  "label": "환자에게 안내"
+                },
+                {
+                  "id": "C",
+                  "label": "다른 직원 탓"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "불만",
+                "B": "이해",
+                "C": "긴장"
+              },
+              "team_signal": "우리는 투명한가?"
+            },
+            {
+              "id": "S1-15",
+              "situation": "보험 클레임 거절.",
+              "role": "Admin",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "환자 탓"
+                },
+                {
+                  "id": "B",
+                  "label": "재청구"
+                },
+                {
+                  "id": "C",
+                  "label": "무시"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "불만",
+                "B": "해결 가능",
+                "C": "수익 손실"
+              },
+              "team_signal": "우리는 해결하는 조직인가?"
+            },
+            {
+              "id": "S1-16",
+              "situation": "동료가 회의 중 공개 불만.",
+              "role": "Assistant",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "공개 반박"
+                },
+                {
+                  "id": "B",
+                  "label": "침착"
+                },
+                {
+                  "id": "C",
+                  "label": "회의 후 대화"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "긴장",
+                "B": "안정",
+                "C": "해결 가능"
+              },
+              "team_signal": "우리는 존중 문화를 유지하는가?"
+            },
+            {
+              "id": "S1-17",
+              "situation": "과다 청구 발견.",
+              "role": "Admin",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "무시"
+                },
+                {
+                  "id": "B",
+                  "label": "즉시 수정"
+                },
+                {
+                  "id": "C",
+                  "label": "OM 보고 후 대기"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "법적 위험",
+                "B": "신뢰 강화",
+                "C": "지연"
+              },
+              "team_signal": "우리는 투명한가?"
+            },
+            {
+              "id": "S1-18",
+              "situation": "1시간 예약 공백.",
+              "role": "Front",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "방치"
+                },
+                {
+                  "id": "B",
+                  "label": "대기 환자 연락"
+                },
+                {
+                  "id": "C",
+                  "label": "닥터에게 보고"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "생산 손실",
+                "B": "회복 가능",
+                "C": "긴장"
+              },
+              "team_signal": "우리는 적극적인가?"
+            },
+            {
+              "id": "S1-19",
+              "situation": "SSO 이메일 톤이 딱딱하게 느껴짐.",
+              "role": "Admin",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "감정적 답장"
+                },
+                {
+                  "id": "B",
+                  "label": "OM에게 전달"
+                },
+                {
+                  "id": "C",
+                  "label": "명확화 요청"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "갈등",
+                "B": "해결 지연",
+                "C": "오해 해소 가능"
+              },
+              "team_signal": "우리는 문화 차이를 이해하는가?"
+            },
+            {
+              "id": "S1-20",
+              "situation": "환자가 재예약 없이 나감.",
+              "role": "Front",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "그냥 보냄"
+                },
+                {
+                  "id": "B",
+                  "label": "재예약 제안"
+                },
+                {
+                  "id": "C",
+                  "label": "OM 보고"
+                }
+              ],
+              "immediate_outcome": {
+                "A": "Reappoint 감소",
+                "B": "유지 가능",
+                "C": "행정 증가"
+              },
+              "team_signal": "우리는 프로세스를 지키는가?"
+            }
+          ],
+          "items_en": [
+            {
+              "id": "S1_01",
+              "situation": "A patient arrives 20 minutes late and insists on being seen immediately.",
+              "role": "Front Desk Coordinator",
+              "options": [
+                { "id": "A", "label": "Explain that the schedule is full and offer the next available time." },
+                { "id": "B", "label": "Apologize and force the assistant to squeeze them in." },
+                { "id": "C", "label": "Tell the patient they are late and must reschedule." }
+              ],
+              "immediate_outcome": { "A": "Maintains schedule stability.", "B": "Creates stress in the back office.", "C": "Patient may feel blamed." },
+              "team_signal": "How we handle lateness defines fairness standards."
+            },
+            {
+              "id": "S1_02",
+              "situation": "An assistant forgot to restock a room before your shift.",
+              "role": "Dental Assistant",
+              "options": [
+                { "id": "A", "label": "Fix it quietly and move on." },
+                { "id": "B", "label": "Tell the OM the previous assistant was careless." },
+                { "id": "C", "label": "Confront the assistant publicly." }
+              ],
+              "immediate_outcome": { "A": "Keeps workflow smooth.", "B": "Escalates tension.", "C": "Damages peer relationship." },
+              "team_signal": "Do we solve or assign blame?"
+            },
+            {
+              "id": "S1_03",
+              "situation": "A patient questions the treatment cost at checkout.",
+              "role": "Front Desk Coordinator",
+              "options": [
+                { "id": "A", "label": "Calmly review the treatment plan and insurance breakdown." },
+                { "id": "B", "label": "Say that billing is not your responsibility." },
+                { "id": "C", "label": "Tell them prices are non-negotiable." }
+              ],
+              "immediate_outcome": { "A": "Builds trust and clarity.", "B": "Patient frustration increases.", "C": "Creates defensiveness." },
+              "team_signal": "Transparency reduces tension."
+            },
+            {
+              "id": "S1_04",
+              "situation": "A doctor asks for an instrument that is not prepared.",
+              "role": "Dental Assistant",
+              "options": [
+                { "id": "A", "label": "Quickly retrieve it and refocus." },
+                { "id": "B", "label": "Explain it was not on the setup list." },
+                { "id": "C", "label": "Stay silent and appear flustered." }
+              ],
+              "immediate_outcome": { "A": "Procedure continues smoothly.", "B": "Creates friction during treatment.", "C": "Increases stress." },
+              "team_signal": "Preparedness impacts clinical flow."
+            },
+            {
+              "id": "S1_05",
+              "situation": "A patient leaves a mildly negative review online.",
+              "role": "Front Desk Coordinator",
+              "options": [
+                { "id": "A", "label": "Inform the OM and document details." },
+                { "id": "B", "label": "Ignore it." },
+                { "id": "C", "label": "Respond defensively online." }
+              ],
+              "immediate_outcome": { "A": "Allows structured response.", "B": "Issue may grow.", "C": "Escalates publicly." },
+              "team_signal": "Reputation requires calm handling."
+            },
+            {
+              "id": "S1_06",
+              "situation": "You notice a small scheduling overlap.",
+              "role": "Front Desk Coordinator",
+              "options": [
+                { "id": "A", "label": "Alert the assistant and adjust timing." },
+                { "id": "B", "label": "Leave it for someone else." },
+                { "id": "C", "label": "Blame the previous shift." }
+              ],
+              "immediate_outcome": { "A": "Prevents conflict.", "B": "Creates later stress.", "C": "Erodes trust." },
+              "team_signal": "Ownership prevents chaos."
+            },
+            {
+              "id": "S1_07",
+              "situation": "A patient is visibly anxious before treatment.",
+              "role": "Dental Assistant",
+              "options": [
+                { "id": "A", "label": "Acknowledge anxiety and reassure calmly." },
+                { "id": "B", "label": "Tell them it's routine." },
+                { "id": "C", "label": "Ignore emotional cues." }
+              ],
+              "immediate_outcome": { "A": "Reduces tension.", "B": "Feels dismissive.", "C": "Increases discomfort." },
+              "team_signal": "Empathy stabilizes the room."
+            },
+            {
+              "id": "S1_08",
+              "situation": "The phone is ringing while a patient waits to check out.",
+              "role": "Front Desk Coordinator",
+              "options": [
+                { "id": "A", "label": "Finish helping the in-person patient first." },
+                { "id": "B", "label": "Answer phone immediately." },
+                { "id": "C", "label": "Ignore both briefly." }
+              ],
+              "immediate_outcome": { "A": "Clear priority management.", "B": "In-person patient feels ignored.", "C": "Confusion increases." },
+              "team_signal": "Priority clarity matters."
+            },
+            {
+              "id": "S1_09",
+              "situation": "You discover a minor charting error.",
+              "role": "Dental Assistant",
+              "options": [
+                { "id": "A", "label": "Correct and notify appropriately." },
+                { "id": "B", "label": "Leave it." },
+                { "id": "C", "label": "Blame software." }
+              ],
+              "immediate_outcome": { "A": "Prevents bigger issues.", "B": "Risk increases.", "C": "Avoids responsibility." },
+              "team_signal": "Accuracy builds reliability."
+            },
+            {
+              "id": "S1_10",
+              "situation": "A coworker appears overwhelmed during a busy block.",
+              "role": "Dental Assistant",
+              "options": [
+                { "id": "A", "label": "Offer brief support." },
+                { "id": "B", "label": "Focus only on your own tasks." },
+                { "id": "C", "label": "Comment that they seem unprepared." }
+              ],
+              "immediate_outcome": { "A": "Reduces stress.", "B": "Team strain persists.", "C": "Creates resentment." },
+              "team_signal": "Support strengthens culture."
+            },
+            {
+              "id": "S1_11",
+              "situation": "A patient requests a same-day appointment that is not available.",
+              "role": "Front Desk Coordinator",
+              "options": [
+                { "id": "A", "label": "Offer next available slot and waitlist option." },
+                { "id": "B", "label": "Promise to call back later." },
+                { "id": "C", "label": "Say nothing is possible." }
+              ],
+              "immediate_outcome": { "A": "Maintains trust.", "B": "Delays clarity.", "C": "Patient frustration increases." },
+              "team_signal": "Clarity builds reliability."
+            },
+            {
+              "id": "S1_12",
+              "situation": "You are unsure about a sterilization step.",
+              "role": "Dental Assistant",
+              "options": [
+                { "id": "A", "label": "Confirm with protocol immediately." },
+                { "id": "B", "label": "Assume it's correct." },
+                { "id": "C", "label": "Wait and see." }
+              ],
+              "immediate_outcome": { "A": "Ensures safety.", "B": "Risk increases.", "C": "Delays action." },
+              "team_signal": "Safety over assumption."
+            },
+            {
+              "id": "S1_13",
+              "situation": "A patient complains about waiting 10 minutes.",
+              "role": "Front Desk Coordinator",
+              "options": [
+                { "id": "A", "label": "Acknowledge and provide update." },
+                { "id": "B", "label": "Defend the schedule." },
+                { "id": "C", "label": "Ignore complaint." }
+              ],
+              "immediate_outcome": { "A": "Reduces escalation.", "B": "Creates tension.", "C": "Frustration grows." },
+              "team_signal": "Acknowledgment diffuses stress."
+            },
+            {
+              "id": "S1_14",
+              "situation": "You forgot to log a supply order.",
+              "role": "Dental Assistant",
+              "options": [
+                { "id": "A", "label": "Inform OM and reorder immediately." },
+                { "id": "B", "label": "Wait to see if anyone notices." },
+                { "id": "C", "label": "Blame system glitch." }
+              ],
+              "immediate_outcome": { "A": "Quick correction.", "B": "Possible shortage.", "C": "Trust decreases." },
+              "team_signal": "Ownership builds credibility."
+            },
+            {
+              "id": "S1_15",
+              "situation": "A patient seems confused about post-op instructions.",
+              "role": "Dental Assistant",
+              "options": [
+                { "id": "A", "label": "Review instructions clearly again." },
+                { "id": "B", "label": "Assume they understood." },
+                { "id": "C", "label": "Rush explanation." }
+              ],
+              "immediate_outcome": { "A": "Reduces complications.", "B": "Risk increases.", "C": "Misunderstanding persists." },
+              "team_signal": "Clarity prevents rework."
+            },
+            {
+              "id": "S1_16",
+              "situation": "A coworker makes a small mistake in front of a patient.",
+              "role": "Dental Assistant",
+              "options": [
+                { "id": "A", "label": "Support calmly and correct privately later." },
+                { "id": "B", "label": "Correct them publicly." },
+                { "id": "C", "label": "Say nothing and criticize later." }
+              ],
+              "immediate_outcome": { "A": "Maintains professionalism.", "B": "Embarrassment occurs.", "C": "Hidden tension." },
+              "team_signal": "Respect preserves trust."
+            },
+            {
+              "id": "S1_17",
+              "situation": "You are asked to stay 15 minutes late unexpectedly.",
+              "role": "Front Desk Coordinator",
+              "options": [
+                { "id": "A", "label": "Clarify need and assist if possible." },
+                { "id": "B", "label": "Complain immediately." },
+                { "id": "C", "label": "Refuse without discussion." }
+              ],
+              "immediate_outcome": { "A": "Keeps communication open.", "B": "Creates friction.", "C": "Damages flexibility." },
+              "team_signal": "Professional dialogue matters."
+            },
+            {
+              "id": "S1_18",
+              "situation": "A patient asks for clinical advice outside your scope.",
+              "role": "Front Desk Coordinator",
+              "options": [
+                { "id": "A", "label": "Redirect to the doctor appropriately." },
+                { "id": "B", "label": "Provide your own opinion." },
+                { "id": "C", "label": "Dismiss question." }
+              ],
+              "immediate_outcome": { "A": "Maintains compliance.", "B": "Risk increases.", "C": "Patient feels unheard." },
+              "team_signal": "Scope clarity protects practice."
+            },
+            {
+              "id": "S1_19",
+              "situation": "You feel frustrated after a busy morning.",
+              "role": "Dental Assistant",
+              "options": [
+                { "id": "A", "label": "Take a short reset and refocus." },
+                { "id": "B", "label": "Express frustration openly." },
+                { "id": "C", "label": "Withdraw silently." }
+              ],
+              "immediate_outcome": { "A": "Restores stability.", "B": "Spreads stress.", "C": "Energy drops." },
+              "team_signal": "Self-regulation affects team tone."
+            },
+            {
+              "id": "S1_20",
+              "situation": "A patient forgets their insurance card.",
+              "role": "Front Desk Coordinator",
+              "options": [
+                { "id": "A", "label": "Offer to verify electronically." },
+                { "id": "B", "label": "Reschedule immediately." },
+                { "id": "C", "label": "Show visible frustration." }
+              ],
+              "immediate_outcome": { "A": "Maintains service continuity.", "B": "Patient inconvenience.", "C": "Damages rapport." },
+              "team_signal": "Problem-solving defines experience."
+            }
+          ]
+        },
+        {
+          "level": "S2",
+          "title": "Staff Intermediate",
+          "title_ko": "스태프 중급",
+          "structure": [
+            "situation",
+            "kpi",
+            "stakeholder",
+            "options",
+            "first_order",
+            "culture_signal"
+          ],
+          "min_tenure_months": 3,
+          "tenure_basis": "joinedAt",
+          "human_model": {
+            "stage_name": "Relational Awareness",
+            "core_training_focus": "Separating ego from team dynamics",
+            "primary_shift": "Self-focus → Team-awareness",
+            "risk_pattern": ["Taking sides", "Personalizing conflict", "Gossip alignment"],
+            "maturity_marker": "Sees dynamics, not enemies",
+            "power_posture": "Protects relational stability"
+          },
+          "items": [
+            {
+              "id": "S2_01",
+              "title": "보험 Verification 반복 지연",
+              "situation": "최근 2주간 보험 verification이 지연되어 체크인 시간이 평균 10분 증가.",
+              "kpi": "No-show 5% → 8% 증가",
+              "stakeholder": "Front / SSO / OM",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "환자 앞에서 SSO 문제 언급"
+                },
+                {
+                  "id": "B",
+                  "label": "내부 기록 후 OM 보고"
+                },
+                {
+                  "id": "C",
+                  "label": "SSO에 감정적 이메일 발송"
+                }
+              ],
+              "first_order": {
+                "A": "신뢰 저하",
+                "B": "구조 개선 가능",
+                "C": "갈등 확대"
+              },
+              "culture_signal": "우리는 문제를 비난으로 해결하는가, 기록과 개선으로 해결하는가?"
+            },
+            {
+              "id": "S2_02",
+              "title": "AR 증가",
+              "situation": "미수금 증가로 환자 후속 연락이 늘어남.",
+              "kpi": "AR Days 40 → 52",
+              "stakeholder": "Admin / SSO / 환자",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "환자에게 강경 태도"
+                },
+                {
+                  "id": "B",
+                  "label": "정책 재설명 후 유연한 플랜 제안"
+                },
+                {
+                  "id": "C",
+                  "label": "무시"
+                }
+              ],
+              "first_order": {
+                "A": "불만 증가",
+                "B": "수금 회복 가능",
+                "C": "현금흐름 악화"
+              },
+              "culture_signal": "우리는 단기 압박 중심인가, 관계 유지 중심인가?"
+            },
+            {
+              "id": "S2_03",
+              "title": "No-show 증가",
+              "situation": "예약 후 미방문 환자 증가.",
+              "kpi": "No-show 6% → 12%",
+              "stakeholder": "Front / 환자 / OM",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "재확인 콜 강화"
+                },
+                {
+                  "id": "B",
+                  "label": "패널티 도입"
+                },
+                {
+                  "id": "C",
+                  "label": "현상 유지"
+                }
+              ],
+              "first_order": {
+                "A": "시간 증가",
+                "B": "환자 불만",
+                "C": "수익 감소 지속"
+              },
+              "culture_signal": "우리는 예방 중심 조직인가?"
+            },
+            {
+              "id": "S2_04",
+              "title": "케이스 설명 부족",
+              "situation": "치료 동의율 감소.",
+              "kpi": "Acceptance 60% → 45%",
+              "stakeholder": "Assistant / TC / 환자",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "가격 강조"
+                },
+                {
+                  "id": "B",
+                  "label": "치료 필요성 설명 강화"
+                },
+                {
+                  "id": "C",
+                  "label": "OM 전가"
+                }
+              ],
+              "first_order": {
+                "A": "마진 하락",
+                "B": "신뢰 상승 가능",
+                "C": "해결 지연"
+              },
+              "culture_signal": "우리는 설명하는 팀인가?"
+            },
+            {
+              "id": "S2_05",
+              "title": "SSO 톤 오해",
+              "situation": "SSO 이메일이 차갑게 느껴져 내부 불만 증가.",
+              "kpi": "처리 속도 정상",
+              "stakeholder": "Admin / SSO / OM",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "공격적 답장"
+                },
+                {
+                  "id": "B",
+                  "label": "명확화 요청"
+                },
+                {
+                  "id": "C",
+                  "label": "OM에게 불만 전달"
+                }
+              ],
+              "first_order": {
+                "A": "갈등 확대",
+                "B": "오해 해소",
+                "C": "팀 긴장"
+              },
+              "culture_signal": "우리는 문화 차이를 이해하는가?"
+            },
+            {
+              "id": "S2_06",
+              "title": "스케줄 과밀",
+              "situation": "예약 과밀로 대기 시간 증가.",
+              "kpi": "환자 대기 15분 → 35분",
+              "stakeholder": "Front / Assistant / 환자",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "오버북 유지"
+                },
+                {
+                  "id": "B",
+                  "label": "일부 조정"
+                },
+                {
+                  "id": "C",
+                  "label": "신규 예약 제한"
+                }
+              ],
+              "first_order": {
+                "A": "생산 유지",
+                "B": "균형",
+                "C": "매출 감소"
+              },
+              "culture_signal": "우리는 수익과 경험의 균형을 이해하는가?"
+            },
+            {
+              "id": "S2_07",
+              "title": "청구 오류",
+              "situation": "최근 청구 오류 증가.",
+              "kpi": "Error rate 2% → 5%",
+              "stakeholder": "Admin / SSO / RCM",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "미국 QC 강화"
+                },
+                {
+                  "id": "B",
+                  "label": "SSO 재교육 요청"
+                },
+                {
+                  "id": "C",
+                  "label": "그대로 진행"
+                }
+              ],
+              "first_order": {
+                "A": "비용 상승",
+                "B": "개선 가능",
+                "C": "수익 손실"
+              },
+              "culture_signal": "우리는 품질을 관리하는가?"
+            },
+            {
+              "id": "S2_08",
+              "title": "환자 컴플레인",
+              "situation": "환자가 과잉 청구 주장.",
+              "kpi": "환불 요청 3건 발생",
+              "stakeholder": "Admin / 환자 / OM",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "즉시 환불"
+                },
+                {
+                  "id": "B",
+                  "label": "내역 설명 후 재확인"
+                },
+                {
+                  "id": "C",
+                  "label": "법적 대응 언급"
+                }
+              ],
+              "first_order": {
+                "A": "수익 감소",
+                "B": "신뢰 유지 가능",
+                "C": "긴장 증가"
+              },
+              "culture_signal": "우리는 투명성을 우선하는가?"
+            },
+            {
+              "id": "S2_09",
+              "title": "재예약 감소",
+              "situation": "치료 후 재예약률 감소.",
+              "kpi": "Reappoint 70% → 55%",
+              "stakeholder": "Front / Assistant / 환자",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "재예약 스크립트 개선"
+                },
+                {
+                  "id": "B",
+                  "label": "무시"
+                },
+                {
+                  "id": "C",
+                  "label": "프로모션 제안"
+                }
+              ],
+              "first_order": {
+                "A": "회복 가능",
+                "B": "지속 감소",
+                "C": "비용 증가"
+              },
+              "culture_signal": "우리는 프로세스를 점검하는가?"
+            },
+            {
+              "id": "S2_10",
+              "title": "동료 갈등",
+              "situation": "Assistant 간 업무 분담 불만.",
+              "kpi": "팀 만족도 하락",
+              "stakeholder": "Assistant / OM",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "공개 논쟁"
+                },
+                {
+                  "id": "B",
+                  "label": "1:1 대화"
+                },
+                {
+                  "id": "C",
+                  "label": "OM 보고"
+                }
+              ],
+              "first_order": {
+                "A": "분위기 악화",
+                "B": "해결 가능",
+                "C": "긴장 상승"
+              },
+              "culture_signal": "우리는 직접 소통하는가?"
+            },
+            {
+              "id": "S2_11",
+              "title": "SSO 파일 누락",
+              "situation": "필수 파일 업로드 누락으로 클레임 지연.",
+              "kpi": "청구 지연 5건",
+              "stakeholder": "Admin / SSO",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "SSO 탓"
+                },
+                {
+                  "id": "B",
+                  "label": "업로드 프로세스 점검"
+                },
+                {
+                  "id": "C",
+                  "label": "무시"
+                }
+              ],
+              "first_order": {
+                "A": "갈등",
+                "B": "시스템 개선",
+                "C": "수익 지연"
+              },
+              "culture_signal": "우리는 시스템을 점검하는가?"
+            },
+            {
+              "id": "S2_12",
+              "title": "리뷰 감소",
+              "situation": "리뷰 수 감소.",
+              "kpi": "월 리뷰 15 → 5",
+              "stakeholder": "Front / 환자",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "리뷰 요청 강화"
+                },
+                {
+                  "id": "B",
+                  "label": "무관심"
+                },
+                {
+                  "id": "C",
+                  "label": "할인 제안"
+                }
+              ],
+              "first_order": {
+                "A": "증가 가능",
+                "B": "브랜드 약화",
+                "C": "기대치 왜곡"
+              },
+              "culture_signal": "우리는 브랜드를 관리하는가?"
+            },
+            {
+              "id": "S2_13",
+              "title": "치료 지연 설명 부족",
+              "situation": "치료 지연 설명 없이 진행.",
+              "kpi": "환자 불만 2건",
+              "stakeholder": "Assistant / 환자",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "사과"
+                },
+                {
+                  "id": "B",
+                  "label": "설명 강화"
+                },
+                {
+                  "id": "C",
+                  "label": "무시"
+                }
+              ],
+              "first_order": {
+                "A": "단기 완화",
+                "B": "신뢰 형성",
+                "C": "리뷰 위험"
+              },
+              "culture_signal": "우리는 투명한가?"
+            },
+            {
+              "id": "S2_14",
+              "title": "보험 거절 반복",
+              "situation": "같은 보험 거절 반복 발생.",
+              "kpi": "재청구율 증가",
+              "stakeholder": "Admin / SSO",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "프로세스 검토 요청"
+                },
+                {
+                  "id": "B",
+                  "label": "환자 책임 전가"
+                },
+                {
+                  "id": "C",
+                  "label": "그대로 진행"
+                }
+              ],
+              "first_order": {
+                "A": "개선 가능",
+                "B": "신뢰 저하",
+                "C": "수익 손실"
+              },
+              "culture_signal": "우리는 원인을 찾는가?"
+            },
+            {
+              "id": "S2_15",
+              "title": "결제 플랜 오해",
+              "situation": "환자가 결제 플랜 조건 오해.",
+              "kpi": "연체 4건 발생",
+              "stakeholder": "Admin / 환자 / OM",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "계약 재설명"
+                },
+                {
+                  "id": "B",
+                  "label": "엄격 적용"
+                },
+                {
+                  "id": "C",
+                  "label": "무시"
+                }
+              ],
+              "first_order": {
+                "A": "회복 가능",
+                "B": "불만 증가",
+                "C": "AR 악화"
+              },
+              "culture_signal": "우리는 명확히 설명하는가?"
+            }
+          ],
+          "items_en": [
+            {
+              "id": "S2_01",
+              "situation": "Insurance verification has been delayed repeatedly, and check-in is backing up during the morning rush.",
+              "kpi": "Average check-in delay: 5 min → 12 min",
+              "stakeholder": "Front Desk / SSO / Office Manager / Patients",
+              "options": [
+                { "id": "A", "label": "Stay neutral with patients, document delays in a simple log, and escalate with examples to the OM." },
+                { "id": "B", "label": "Create a manual workaround for verification on the spot without documenting." },
+                { "id": "C", "label": "Email SSO with a frustrated tone and demand immediate fixes." }
+              ],
+              "first_order": { "A": "Patient experience stabilizes and data is created for process improvement.", "B": "Short-term flow improves but risk of errors and missing documentation increases.", "C": "May trigger a quick response but increases relationship tension." },
+              "culture_signal": "We fix problems with facts and systems, not blame."
+            },
+            {
+              "id": "S2_02",
+              "situation": "No-show rates increased, and the schedule has multiple gaps each week.",
+              "kpi": "No-show: 6% → 11%",
+              "stakeholder": "Front Desk / Patients / Office Manager",
+              "options": [
+                { "id": "A", "label": "Increase confirmation touches (text + call) for high-risk appointments and track outcomes." },
+                { "id": "B", "label": "Introduce a strict no-show fee immediately for all patients." },
+                { "id": "C", "label": "Do nothing and accept gaps as normal." }
+              ],
+              "first_order": { "A": "Reduces no-shows gradually and builds a repeatable process.", "B": "May reduce no-shows but increases complaints and review risk.", "C": "Production loss continues." },
+              "culture_signal": "Prevention beats reaction."
+            },
+            {
+              "id": "S2_03",
+              "situation": "Accounts receivable follow-up calls are increasing and patients are getting upset about balances.",
+              "kpi": "AR Days: 45 → 58",
+              "stakeholder": "Admin / Patients / Office Manager / SSO",
+              "options": [
+                { "id": "A", "label": "Use a consistent script: clarify balance, offer payment options, confirm timeline, and document the call." },
+                { "id": "B", "label": "Use a firm tone to push full payment immediately." },
+                { "id": "C", "label": "Avoid AR calls and wait for patients to pay later." }
+              ],
+              "first_order": { "A": "Improves collections while protecting patient relationships.", "B": "Short-term collections may improve but complaints increase.", "C": "Cashflow worsens and workload stacks up." },
+              "culture_signal": "Clear, respectful communication protects both revenue and trust."
+            },
+            {
+              "id": "S2_04",
+              "situation": "Case acceptance is dropping because patients say they don't understand why treatment is needed.",
+              "kpi": "Acceptance: 58% → 44%",
+              "stakeholder": "Assistant / Treatment Coordinator / Patients / Doctor",
+              "options": [
+                { "id": "A", "label": "Use a simple explanation template: problem → consequence → options, then confirm understanding." },
+                { "id": "B", "label": "Focus mainly on price discounts to persuade." },
+                { "id": "C", "label": "Redirect all questions to the OM to avoid taking time." }
+              ],
+              "first_order": { "A": "Patient clarity increases and acceptance improves over time.", "B": "May increase acceptance temporarily but shifts the relationship to price.", "C": "Reduces immediate load but acceptance drops further." },
+              "culture_signal": "We lead with education, not pressure."
+            },
+            {
+              "id": "S2_05",
+              "situation": "SSO emails feel blunt, and local staff are starting to disengage from collaboration.",
+              "kpi": "Processing speed stable, but internal rework feels higher",
+              "stakeholder": "Admin / SSO / Office Manager",
+              "options": [
+                { "id": "A", "label": "Reply with a neutral template: request → deadline → required documents, and ask for clarification when needed." },
+                { "id": "B", "label": "Ignore the tone and do things the local way without alignment." },
+                { "id": "C", "label": "Call out the tone publicly in a group message." }
+              ],
+              "first_order": { "A": "Reduces friction and keeps communication clear.", "B": "Short-term autonomy increases but mistakes and rework rise.", "C": "Escalates tension and reduces trust." },
+              "culture_signal": "We manage cross-cultural collaboration with structure, not emotion."
+            },
+            {
+              "id": "S2_06",
+              "situation": "Patients are waiting longer than usual due to overbooking, and the front desk is getting complaints.",
+              "kpi": "Average wait time: 15 min → 35 min",
+              "stakeholder": "Front Desk / Assistants / Patients / Office Manager",
+              "options": [
+                { "id": "A", "label": "Flag recurring delays by time block and propose a short trial adjustment to the OM." },
+                { "id": "B", "label": "Keep overbooking and ask the back office to move faster." },
+                { "id": "C", "label": "Stop all overbooking immediately without aligning with the OM." }
+              ],
+              "first_order": { "A": "Creates a practical path to reduce waits while protecting production.", "B": "Maintains production but increases stress and mistakes.", "C": "Wait time improves but production drops suddenly." },
+              "culture_signal": "We balance experience and production with testable adjustments."
+            },
+            {
+              "id": "S2_07",
+              "situation": "Claim submission errors increased, leading to denials and extra work.",
+              "kpi": "Claim error rate: 2% → 5%",
+              "stakeholder": "Admin / SSO / RCM / Office Manager",
+              "options": [
+                { "id": "A", "label": "Implement a simple QA checkpoint for high-risk claims and share a weekly error summary." },
+                { "id": "B", "label": "Ask SSO to fix everything without changing internal process." },
+                { "id": "C", "label": "Continue submitting as-is to avoid slowing down." }
+              ],
+              "first_order": { "A": "Error rate improves and rework decreases over time.", "B": "May improve temporarily but root cause persists.", "C": "Denials grow and revenue is delayed." },
+              "culture_signal": "Quality is a system, not a person."
+            },
+            {
+              "id": "S2_08",
+              "situation": "A patient claims they were overcharged and demands a refund at the front desk.",
+              "kpi": "Refund requests: 0 → 3 this month",
+              "stakeholder": "Admin / Patient / Office Manager",
+              "options": [
+                { "id": "A", "label": "Stay calm, review the ledger, explain clearly, and escalate to OM if needed with documentation." },
+                { "id": "B", "label": "Refund immediately to end the conflict." },
+                { "id": "C", "label": "Argue and insist the patient is wrong." }
+              ],
+              "first_order": { "A": "Protects trust and ensures accurate resolution.", "B": "Stops the conflict quickly but may create repeat behavior and revenue loss.", "C": "Escalates complaint and review risk." },
+              "culture_signal": "Transparency and documentation reduce conflict."
+            },
+            {
+              "id": "S2_09",
+              "situation": "Reappointment rates are dropping because patients leave without scheduling the next step.",
+              "kpi": "Reappoint: 70% → 55%",
+              "stakeholder": "Front Desk / Assistants / Patients",
+              "options": [
+                { "id": "A", "label": "Standardize a handoff: assistant confirms next step, then walks patient to front to schedule." },
+                { "id": "B", "label": "Leave reappointment entirely to the front desk only." },
+                { "id": "C", "label": "Send a text later and hope they schedule." }
+              ],
+              "first_order": { "A": "Reappointment improves with consistent workflow.", "B": "Some patients slip through during busy times.", "C": "Conversion stays low and follow-up workload increases." },
+              "culture_signal": "Handoffs are a team responsibility."
+            },
+            {
+              "id": "S2_10",
+              "situation": "Two assistants are frustrated about uneven room turnover duties.",
+              "kpi": "Team satisfaction decreasing (informal complaints rising)",
+              "stakeholder": "Assistants / Lead Assistant / Office Manager",
+              "options": [
+                { "id": "A", "label": "Have a calm 1:1, clarify task expectations, and propose a fair rotation to the lead/OM." },
+                { "id": "B", "label": "Argue publicly to prove a point." },
+                { "id": "C", "label": "Stop helping and do only your minimum tasks." }
+              ],
+              "first_order": { "A": "Reduces tension and improves fairness.", "B": "Escalates conflict and hurts patient experience indirectly.", "C": "Creates resentment and workflow breakdown." },
+              "culture_signal": "We solve workload fairness with clarity, not conflict."
+            },
+            {
+              "id": "S2_11",
+              "situation": "SSO reports that required documents are missing, causing claim delays.",
+              "kpi": "Claim delays: 2 → 6 cases this week",
+              "stakeholder": "Admin / SSO / RCM",
+              "options": [
+                { "id": "A", "label": "Confirm the exact missing items, update the upload checklist, and track repeat misses." },
+                { "id": "B", "label": "Blame SSO and insist they should figure it out." },
+                { "id": "C", "label": "Ignore it and hope it resolves." }
+              ],
+              "first_order": { "A": "Reduces repeat misses and builds a stable workflow.", "B": "Increases tension and delays continue.", "C": "Revenue delays worsen." },
+              "culture_signal": "We improve the system at the point of failure."
+            },
+            {
+              "id": "S2_12",
+              "situation": "Monthly Google reviews dropped sharply even though patient volume is stable.",
+              "kpi": "Reviews/month: 15 → 5",
+              "stakeholder": "Front Desk / Patients / Office Manager",
+              "options": [
+                { "id": "A", "label": "Reintroduce a simple review ask at checkout and track asks vs. results." },
+                { "id": "B", "label": "Offer discounts in exchange for reviews." },
+                { "id": "C", "label": "Assume reviews will return naturally." }
+              ],
+              "first_order": { "A": "Review volume improves without policy risk.", "B": "Creates ethical and platform compliance risk.", "C": "Brand visibility declines." },
+              "culture_signal": "We grow reputation with consistent service habits."
+            },
+            {
+              "id": "S2_13",
+              "situation": "A treatment is running late, but no one updated the waiting patient.",
+              "kpi": "Complaints about waiting: 1 → 3 this month",
+              "stakeholder": "Assistant / Front Desk / Patient",
+              "options": [
+                { "id": "A", "label": "Notify the front desk with a realistic time estimate and offer the patient options." },
+                { "id": "B", "label": "Wait until the patient complains." },
+                { "id": "C", "label": "Blame the schedule and say nothing." }
+              ],
+              "first_order": { "A": "Reduces escalation and protects trust.", "B": "Patient frustration increases.", "C": "More complaints and review risk." },
+              "culture_signal": "Proactive updates build reliability."
+            },
+            {
+              "id": "S2_14",
+              "situation": "The same insurance denial reason keeps happening across multiple claims.",
+              "kpi": "Resubmission rate increasing weekly",
+              "stakeholder": "Admin / SSO / Office Manager",
+              "options": [
+                { "id": "A", "label": "Identify the pattern, document examples, and request a process adjustment with SSO/OM." },
+                { "id": "B", "label": "Tell patients it's their insurance problem." },
+                { "id": "C", "label": "Keep resubmitting the same way." }
+              ],
+              "first_order": { "A": "Improves future approvals and reduces rework.", "B": "Patient trust drops and complaints rise.", "C": "Denials continue and cashflow slows." },
+              "culture_signal": "We fix patterns, not just incidents."
+            },
+            {
+              "id": "S2_15",
+              "situation": "A patient misunderstands the payment plan terms and is now past due.",
+              "kpi": "Past-due payment plans: 2 → 7 this quarter",
+              "stakeholder": "Admin / Patient / Office Manager",
+              "options": [
+                { "id": "A", "label": "Re-explain key terms (amount, due dates, autopay), document, and set a clear next step." },
+                { "id": "B", "label": "Apply the policy strictly without explanation." },
+                { "id": "C", "label": "Avoid the conversation to reduce conflict." }
+              ],
+              "first_order": { "A": "Improves clarity and increases chance of collection.", "B": "Increases complaint risk and relationship damage.", "C": "AR worsens and issues repeat." },
+              "culture_signal": "Clarity prevents conflict and protects cashflow."
+            }
+          ]
+        },
+        {
+          "level": "S3",
+          "title": "Staff Advanced",
+          "title_ko": "스태프 고급",
+          "structure": [
+            "situation",
+            "kpi_data",
+            "constraint",
+            "stakeholder_map",
+            "options",
+            "short_term",
+            "long_term"
+          ],
+          "min_tenure_months": 12,
+          "tenure_basis": "joinedAt",
+          "human_model": {
+            "stage_name": "Structural Perception",
+            "core_training_focus": "Seeing systems over individuals",
+            "primary_shift": "Person-blame → System-thinking",
+            "risk_pattern": ["Short-term fixes", "Individual targeting", "Emotional bias"],
+            "maturity_marker": "Identifies patterns across time",
+            "power_posture": "Stabilizes through structure"
+          },
+          "items": [
+            {
+              "id": "S3_01",
+              "title": "SSO 지연 + 현장 불만 누적",
+              "situation": "보험 verification 지연이 반복되며 현장에서는 '우리만 욕먹는다'는 분위기가 형성됨.",
+              "kpi_data": "체크인 지연 평균 12분 / No-show 7%→10% / 당일 수금 감소 체감",
+              "constraint": "SSO 계약 3개월 남음 / 현장 인력 추가 채용은 당장 불가",
+              "stakeholder_map": "Front: 환자 응대 부담↑ / OM: 성과 압박↑ / SSO: 자료 누락 불만 / 환자: 대기 불만",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "환자 앞에서는 중립 설명 + 내부적으로 지연 로그 표준화"
+                },
+                {
+                  "id": "B",
+                  "label": "현장에서 즉시 우회 처리(임시 수기 프로세스)"
+                },
+                {
+                  "id": "C",
+                  "label": "SSO에 강한 톤으로 즉시 개선 요구"
+                }
+              ],
+              "short_term": "A 환자 경험 안정, 데이터 확보 / B 당장 현장 숨통, 오류 위험↑ / C 단기 반응 가능, 관계 악화",
+              "long_term": "A 원인 분석·개선 가능 / B 임시가 고착되면 품질/컴플라이언스 위험 / C blame 문화 확산 가능"
+            },
+            {
+              "id": "S3_02",
+              "title": "AR 콜 갈등",
+              "situation": "미수금 콜을 두고 '너무 공격적' vs '너무 약하다'로 내부 의견 충돌.",
+              "kpi_data": "AR Days 45→58 / 90+일 연체 건수 증가",
+              "constraint": "환자 불만 민감 / 스크립트는 표준화되어 있지 않음",
+              "stakeholder_map": "Admin: 수금 압박 / 환자: 비용 스트레스 / OM: 리뷰 리스크 / SSO: 후속 처리량↑",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "톤은 부드럽게 유지하되 '옵션(플랜/기한)'을 명확히 표준화"
+                },
+                {
+                  "id": "B",
+                  "label": "강경 스크립트로 통일"
+                },
+                {
+                  "id": "C",
+                  "label": "콜 빈도 자체를 줄임"
+                }
+              ],
+              "short_term": "A 불만 관리+수금 개선 가능 / B 단기 수금↑, 불만↑ / C 업무 감소, 수금↓",
+              "long_term": "A 지속 가능한 관계형 수금 문화 / B 리뷰·이탈로 장기 손실 / C 현금흐름 약화로 운영 압박"
+            },
+            {
+              "id": "S3_03",
+              "title": "대기시간 증가와 팀 마찰",
+              "situation": "오버북이 누적되며 대기시간이 길어지고, Front-Back 팀이 서로 탓하기 시작.",
+              "kpi_data": "평균 대기 18분→40분 / 당일 취소 증가",
+              "constraint": "닥터 진료 속도는 단기간 개선 어려움 / 예약 규칙이 오피스마다 다름",
+              "stakeholder_map": "Front: 스케줄 방어 / Assistant: 체어턴 부담 / 환자: 불만 / 닥터: 스트레스",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "오버북 기준을 1주일만 '시간대 제한'으로 테스트"
+                },
+                {
+                  "id": "B",
+                  "label": "오버북을 즉시 중단"
+                },
+                {
+                  "id": "C",
+                  "label": "현 상태 유지하며 불만은 현장에서 처리"
+                }
+              ],
+              "short_term": "A 생산 일부 유지+대기 개선 검증 / B 대기 개선, 생산↓ / C 생산 유지, 불만↑",
+              "long_term": "A 규칙 기반 운영 문화 / B 보수적 운영 고착 가능 / C blame 문화·이직 위험"
+            },
+            {
+              "id": "S3_04",
+              "title": "치료 동의율 하락(설명 구조 문제)",
+              "situation": "환자들이 '왜 필요한지 모르겠다'며 치료를 미루는 사례 증가.",
+              "kpi_data": "Acceptance 58%→44% / 재내원 전환률 감소",
+              "constraint": "가격 할인은 제한적 / TC 시간이 부족",
+              "stakeholder_map": "TC: 설명 시간 부족 / 닥터: 치료 필요성 전달 / 환자: 비용·이해 부족 / Front: 일정 영향",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "'문제-결과-대안' 3문장 설명 템플릿 도입"
+                },
+                {
+                  "id": "B",
+                  "label": "가격 중심 설득 강화"
+                },
+                {
+                  "id": "C",
+                  "label": "환자 질문이 나오면 OM에게 넘김"
+                }
+              ],
+              "short_term": "A 이해 상승 기대 / B 단기 반응, 신뢰↓ 가능 / C 시간 절약, 전환↓",
+              "long_term": "A 교육형 문화 / B 가격 경쟁 프레임 강화 / C 책임 회피 문화"
+            },
+            {
+              "id": "S3_05",
+              "title": "SSO 커뮤니케이션 오해가 성과에 번짐",
+              "situation": "SSO의 딱딱한 이메일 톤이 반복되며 현장에서는 협조 의지가 떨어짐.",
+              "kpi_data": "처리 속도 정상이나 '응답 지연' 체감 증가",
+              "constraint": "시차로 실시간 조율 어려움 / 번역·표현 차이",
+              "stakeholder_map": "Admin: 감정 소진 / SSO: 규정 준수 강조 / OM: 갈등 중재 / 환자: 간접 영향",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "감정 표현을 배제하고 '요청-기한-필요자료' 템플릿으로 통일"
+                },
+                {
+                  "id": "B",
+                  "label": "무시하고 현장 방식대로 진행"
+                },
+                {
+                  "id": "C",
+                  "label": "공개적으로 SSO 문제를 회의에서 지적"
+                }
+              ],
+              "short_term": "A 충돌 감소 / B 단기 편의, 누락↑ / C 단기 통쾌, 관계 악화",
+              "long_term": "A 프로세스 중심 문화 / B 오류 누적 / C 글로벌 협업 붕괴 위험"
+            },
+            {
+              "id": "S3_06",
+              "title": "리뷰 대응 일관성 부족",
+              "situation": "부정 리뷰가 생길 때마다 대응 방식이 달라 내부 혼란.",
+              "kpi_data": "월 1점 리뷰 0→2건 / 문의 콜 증가",
+              "constraint": "개인정보 노출 금지(HIPAA) / 공개 댓글은 신중 필요",
+              "stakeholder_map": "Front: 응대 1차 / OM: 승인 / 마케팅: 문구 / 환자: 감정",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "'공개댓글 템플릿+개인 연락' 2단계 표준화"
+                },
+                {
+                  "id": "B",
+                  "label": "즉시 공개 반박"
+                },
+                {
+                  "id": "C",
+                  "label": "무대응"
+                }
+              ],
+              "short_term": "A 리스크 낮고 일관성↑ / B 감정 싸움 가능 / C 평판 방치",
+              "long_term": "A 브랜드 관리 문화 / B 조직 이미지 악화 / C 장기 평판 손실"
+            },
+            {
+              "id": "S3_07",
+              "title": "결제 플랜 오해로 연체 증가",
+              "situation": "결제 플랜 조건을 오해한 환자들이 연체하며 항의.",
+              "kpi_data": "연체 2건→7건 / AR 90+ 증가",
+              "constraint": "정책은 복잡하고 설명 시간이 짧음",
+              "stakeholder_map": "Admin: 설명 부담 / 환자: 불신 / OM: 컴플레인 처리 / SSO: 후속",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "플랜 안내를 3포인트(금액/기한/자동결제)로 고정"
+                },
+                {
+                  "id": "B",
+                  "label": "예외를 많이 허용"
+                },
+                {
+                  "id": "C",
+                  "label": "예외 없이 강경 적용"
+                }
+              ],
+              "short_term": "A 오해 감소 / B 단기 만족, 연체↑ / C 불만↑",
+              "long_term": "A 투명·일관 문화 / B 규정 붕괴 / C 관계 악화"
+            },
+            {
+              "id": "S3_08",
+              "title": "체어사이드 인수인계 누락",
+              "situation": "닥터-어시스턴트 인수인계가 빠져서 준비 누락이 반복됨.",
+              "kpi_data": "케이스 준비 누락 주 1→주 4 / 지연 발생",
+              "constraint": "스케줄이 타이트 / 체크리스트 미정착",
+              "stakeholder_map": "Assistant: 준비 부담 / 닥터: 시간 압박 / 환자: 대기 / Front: 일정 재조정",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "케이스 전날 5분 프리브리핑 체크리스트"
+                },
+                {
+                  "id": "B",
+                  "label": "당일 즉흥 대응"
+                },
+                {
+                  "id": "C",
+                  "label": "지연은 환자에게만 설명"
+                }
+              ],
+              "short_term": "A 지연 감소 / B 반복 / C 불만",
+              "long_term": "A 시스템 기반 협업 문화 / B 개인 탓 문화 / C 신뢰 하락"
+            },
+            {
+              "id": "S3_09",
+              "title": "재예약률 하락(스크립트/타이밍 문제)",
+              "situation": "환자들이 치료 후 재예약 없이 떠나는 경우 증가.",
+              "kpi_data": "Reappoint 68%→52%",
+              "constraint": "대기열이 길고 프론트가 바쁨",
+              "stakeholder_map": "Front: 업무 과부하 / Assistant: 환자 흐름 / 환자: 피로 / OM: 생산성",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "퇴실 전 '다음 단계 1문장+프론트 연결' 표준화"
+                },
+                {
+                  "id": "B",
+                  "label": "프론트에서만 처리"
+                },
+                {
+                  "id": "C",
+                  "label": "추후 문자로만 유도"
+                }
+              ],
+              "short_term": "A 즉시 전환↑ / B 누락↑ / C 전환 낮음",
+              "long_term": "A 과정 중심 문화 / B 개인 역량 의존 / C 회수 어려움"
+            },
+            {
+              "id": "S3_10",
+              "title": "신규 환자 온보딩 불일치",
+              "situation": "신규 환자 안내가 직원마다 달라 불만이 생김.",
+              "kpi_data": "신규 환자 컴플레인 월 1→4",
+              "constraint": "표준 스크립트 없음 / 피크타임 인력 부족",
+              "stakeholder_map": "Front: 안내 / Assistant: 이동 / 환자: 불안 / OM: 표준화 필요",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "60초 온보딩 스크립트 통일"
+                },
+                {
+                  "id": "B",
+                  "label": "바쁠 때는 생략"
+                },
+                {
+                  "id": "C",
+                  "label": "각자 스타일 유지"
+                }
+              ],
+              "short_term": "A 혼란 감소 / B 불만↑ / C 편차 지속",
+              "long_term": "A 일관성 문화 / B 환자경험 약화 / C 교육 어려움"
+            },
+            {
+              "id": "S3_11",
+              "title": "SSO 업로드 누락으로 클레임 지연",
+              "situation": "필수 서류 업로드 누락으로 클레임이 지연되고, 서로 책임 공방.",
+              "kpi_data": "지연 6건 / 재작업 시간 증가",
+              "constraint": "파일 규칙이 복잡 / 누가 최종 확인자인지 불명확",
+              "stakeholder_map": "Admin: 업로드 / SSO: 제출 / RCM: 결과 / OM: 중재",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "'업로드 완료 체크' 단일 담당자 지정"
+                },
+                {
+                  "id": "B",
+                  "label": "모두가 알아서"
+                },
+                {
+                  "id": "C",
+                  "label": "누락 시 개인에게 책임 추궁"
+                }
+              ],
+              "short_term": "A 누락 감소 / B 반복 / C 분위기 악화",
+              "long_term": "A 책임 명확화 문화 / B 시스템 불안정 / C 두려움 문화"
+            },
+            {
+              "id": "S3_12",
+              "title": "재고/소모품 부족으로 진료 지연",
+              "situation": "소모품 재고 부족으로 케이스가 지연되고 닥터가 불만.",
+              "kpi_data": "지연 3건 / 긴급 주문 비용 발생",
+              "constraint": "공급 리드타임 / 예산 제한",
+              "stakeholder_map": "Assistant: 재고 관리 / 닥터: 일정 / OM: 예산 / 환자: 대기",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "최소 재고 기준 설정+주간 체크"
+                },
+                {
+                  "id": "B",
+                  "label": "필요할 때마다 주문"
+                },
+                {
+                  "id": "C",
+                  "label": "다른 오피스에서 빌려오기 반복"
+                }
+              ],
+              "short_term": "A 안정 / B 긴급비용↑ / C 임시 해결",
+              "long_term": "A 예방 문화 / B 비효율 고착 / C 조직 피로"
+            },
+            {
+              "id": "S3_13",
+              "title": "환자 문의 전화 폭주",
+              "situation": "특정 주에 문의 전화가 폭주해 응대가 밀림.",
+              "kpi_data": "응답 지연 평균 2분→7분 / 콜백 누락 증가",
+              "constraint": "인력 추가 어려움 / SSO 콜센터 옵션 검토 중",
+              "stakeholder_map": "Front: 과부하 / 환자: 불만 / OM: 프로세스 / SSO: 지원 가능",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "콜백 로그+우선순위 규칙 적용"
+                },
+                {
+                  "id": "B",
+                  "label": "받은 순서대로만 처리"
+                },
+                {
+                  "id": "C",
+                  "label": "전화는 받지 말고 문자 유도"
+                }
+              ],
+              "short_term": "A 누락↓ / B 누락↑ / C 불만↑",
+              "long_term": "A 시스템 운영 문화 / B 번아웃 / C 브랜드 손상"
+            },
+            {
+              "id": "S3_14",
+              "title": "치료 지연 안내 부족으로 컴플레인",
+              "situation": "치료가 지연되었는데 안내가 부족해 컴플레인이 발생.",
+              "kpi_data": "컴플레인 월 0→3",
+              "constraint": "HIPAA 준수 / 다른 환자 사유 언급 불가",
+              "stakeholder_map": "Assistant: 안내 / Front: 대기관리 / 환자: 불만 / OM: 리뷰 위험",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "지연 즉시 '시간+옵션' 안내"
+                },
+                {
+                  "id": "B",
+                  "label": "끝나고 사과"
+                },
+                {
+                  "id": "C",
+                  "label": "안내 없이 진행"
+                }
+              ],
+              "short_term": "A 불만 감소 / B 불만 유지 / C 리뷰 위험",
+              "long_term": "A 투명 문화 / B 소극 대응 / C 불신 문화"
+            },
+            {
+              "id": "S3_15",
+              "title": "팀 내 피드백 방식 충돌",
+              "situation": "업무 피드백이 공개적으로 이루어져 감정 상처가 반복.",
+              "kpi_data": "팀 만족도 하락 / 이직 의사 표현 1건",
+              "constraint": "바쁜 환경 / 즉시 수정 필요 상황 존재",
+              "stakeholder_map": "Lead Assistant: 성과 압박 / Staff: 위축 / OM: 문화 / 환자: 간접 영향",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "공개는 '사실+요청 1문장'만, 코칭은 1:1로 분리"
+                },
+                {
+                  "id": "B",
+                  "label": "공개 지적 유지"
+                },
+                {
+                  "id": "C",
+                  "label": "피드백을 아예 하지 않음"
+                }
+              ],
+              "short_term": "A 분위기 안정 / B 긴장↑ / C 품질↓",
+              "long_term": "A 심리적 안전+품질 균형 / B 두려움 문화 / C 기준 붕괴"
+            }
+          ],
+          "items_en": [
+            {
+              "id": "S3_01",
+              "situation": "Over the last month, the office has frequent morning backups at check-in because insurance verification is not ready by arrival time.",
+              "kpi_data": "Avg check-in delay: 6 min → 14 min; Patient complaints: 1 → 6/month",
+              "constraint": "No additional front desk hours this quarter; SSO turnaround depends on offshore shift schedule",
+              "stakeholder_map": "Front Desk (patient-facing) / SSO (verification) / OM (operations) / Patients (experience)",
+              "options": [
+                { "id": "A", "label": "Start a 2-week log of delayed verifications (date, payer, appointment type), propose a 'verification cutoff time' and a backup script for patients." },
+                { "id": "B", "label": "Build a local workaround by calling payers same-day without tracking patterns." },
+                { "id": "C", "label": "Escalate emotionally to SSO leadership and demand immediate change." }
+              ],
+              "short_term": { "A": "Creates clarity and reduces patient friction with consistent messaging.", "B": "May reduce some delays but increases staff workload and error risk.", "C": "May trigger attention but increases tension and defensive behavior." },
+              "long_term": "A builds a repeatable system and cross-team trust; B creates fragile hero-work; C reinforces blame culture and communication breakdown."
+            },
+            {
+              "id": "S3_02",
+              "situation": "Case acceptance for higher-value treatment has declined, and doctors believe patients 'only care about price.'",
+              "kpi_data": "Case acceptance: 62% → 48%; Treatment plan value unchanged",
+              "constraint": "Doctors have limited chairside time; no new marketing budget",
+              "stakeholder_map": "Doctors / Assistants / Treatment Coordinator / Patients / OM",
+              "options": [
+                { "id": "A", "label": "Standardize a 3-step explanation flow (problem → consequence → options) and add a 1-minute 'teach-back' confirmation before checkout." },
+                { "id": "B", "label": "Push discounts more aggressively to close cases." },
+                { "id": "C", "label": "Stop presenting complex options and only offer minimal treatment." }
+              ],
+              "short_term": { "A": "Improves patient understanding with minimal time cost.", "B": "May increase acceptance short-term but erodes margin and trust.", "C": "Reduces discussion time but decreases revenue and outcomes." },
+              "long_term": "A builds a durable communication system; B creates price-first culture; C lowers clinical standards and future growth."
+            },
+            {
+              "id": "S3_03",
+              "situation": "No-show rates are uneven by appointment type, causing production instability.",
+              "kpi_data": "No-show overall: 9%; Hygiene: 6%; New patient: 14%; Major treatment consults: 18%",
+              "constraint": "Cannot add more confirmation staff time; cannot overbook hygiene heavily",
+              "stakeholder_map": "Front Desk / Patients / Hygiene / Doctors / OM",
+              "options": [
+                { "id": "A", "label": "Tag high-risk appointment types and apply targeted confirmation (text + call only for consults/new patients), then review after 4 weeks." },
+                { "id": "B", "label": "Apply a strict fee policy to all appointment types immediately." },
+                { "id": "C", "label": "Overbook all categories equally to 'protect production.'" }
+              ],
+              "short_term": { "A": "Reduces the highest-risk no-shows without overwhelming staff.", "B": "May reduce no-shows but increases conflict and review risk.", "C": "May fill gaps but increases wait time and staff stress." },
+              "long_term": "A creates a measured system; B creates enforcement culture; C creates burnout and patient dissatisfaction."
+            },
+            {
+              "id": "S3_04",
+              "situation": "Claims are being denied due to missing documentation, creating recurring rework between the office and SSO.",
+              "kpi_data": "Denials for missing docs: 3% → 7%; Resubmissions/week: 4 → 12",
+              "constraint": "Upload process varies by staff; no extra admin headcount",
+              "stakeholder_map": "Admin / SSO / RCM / OM / Doctors (notes) / Assistants (attachments)",
+              "options": [
+                { "id": "A", "label": "Create a single 'required upload checklist' per claim type and assign one final checkpoint owner per day." },
+                { "id": "B", "label": "Tell SSO to 'double check everything' before submitting." },
+                { "id": "C", "label": "Keep the current workflow and accept resubmissions as normal." }
+              ],
+              "short_term": { "A": "Reduces misses quickly and clarifies responsibility.", "B": "Creates friction and slows processing without fixing root cause.", "C": "Avoids change but rework continues." },
+              "long_term": "A builds reliability and trust; B creates blame loops; C normalizes waste and delays cashflow."
+            },
+            {
+              "id": "S3_05",
+              "situation": "Wait times increased after a schedule template change, but the team is unclear what exactly caused it.",
+              "kpi_data": "Avg wait time: 18 min → 41 min; Same-day cancellations: +22%",
+              "constraint": "Template cannot be fully reverted due to production targets; limited meeting time",
+              "stakeholder_map": "Front Desk / Assistants / Doctors / Patients / OM",
+              "options": [
+                { "id": "A", "label": "Run a 2-week time-block review (start times, room turnover, doctor availability) and propose one targeted template adjustment." },
+                { "id": "B", "label": "Tell assistants to 'turn rooms faster' without changing the template." },
+                { "id": "C", "label": "Stop overbooking entirely immediately." }
+              ],
+              "short_term": { "A": "Identifies the true bottleneck and reduces chaos.", "B": "Increases stress and errors with minimal improvement.", "C": "Improves waits but reduces production sharply." },
+              "long_term": "A strengthens continuous improvement; B creates burnout culture; C creates fear of change and reactive planning."
+            },
+            {
+              "id": "S3_06",
+              "situation": "Reappointment rates are down because patients leave without scheduling, especially after busy afternoons.",
+              "kpi_data": "Reappoint rate: 72% → 54%; Unscheduled treatment follow-ups: 9 → 21/week",
+              "constraint": "Front desk is often solo staffed after 3pm; phones are heavy",
+              "stakeholder_map": "Assistants / Front Desk / Patients / OM / Doctors",
+              "options": [
+                { "id": "A", "label": "Implement a consistent clinical-to-front handoff: assistant confirms next step + urgency, then warm-handoff to scheduling." },
+                { "id": "B", "label": "Rely only on automated texts to bring patients back." },
+                { "id": "C", "label": "Ask doctors to personally schedule every patient." }
+              ],
+              "short_term": { "A": "Improves capture without major staffing changes.", "B": "Saves time but conversion stays low.", "C": "Adds burden and slows clinical flow." },
+              "long_term": "A builds team ownership; B normalizes leakage; C creates frustration and inefficiency."
+            },
+            {
+              "id": "S3_07",
+              "situation": "AR follow-up is inconsistent, and patients report receiving different answers from different staff.",
+              "kpi_data": "AR Days: 49 → 63; Patient billing complaints: 2 → 7/month",
+              "constraint": "Policy cannot be changed this quarter; staff turnover recently increased",
+              "stakeholder_map": "Admin / Front Desk / Patients / OM / SSO (posting)",
+              "options": [
+                { "id": "A", "label": "Standardize a 3-point billing explanation (balance, due date, options) and require a note template for each contact." },
+                { "id": "B", "label": "Let each staff member handle billing in their own style." },
+                { "id": "C", "label": "Stop calling and only send statements." }
+              ],
+              "short_term": { "A": "Reduces confusion and escalations.", "B": "Confusion continues and complaints rise.", "C": "Reduces conflict but worsens cashflow." },
+              "long_term": "A creates consistent patient experience; B creates randomness and distrust; C creates chronic AR inflation."
+            },
+            {
+              "id": "S3_08",
+              "situation": "Room turnover is slow, and the back office feels the schedule is 'impossible,' while front office says 'we have to hit production.'",
+              "kpi_data": "Room turnover avg: 9 min → 15 min; End-of-day delays: +30–45 min daily",
+              "constraint": "No additional assistants this quarter; sterilization capacity fixed",
+              "stakeholder_map": "Assistants / Sterilization / Front Desk / Doctors / OM",
+              "options": [
+                { "id": "A", "label": "Map the turnover steps, remove one bottleneck (tray prep timing, instrument routing), and trial for 2 weeks." },
+                { "id": "B", "label": "Ask everyone to work faster with no process changes." },
+                { "id": "C", "label": "Reduce the schedule volume without OM alignment." }
+              ],
+              "short_term": { "A": "Improves flow with a specific change.", "B": "Stress increases and mistakes rise.", "C": "Immediate relief but production conflict grows." },
+              "long_term": "A builds a systems mindset; B creates burnout; C creates mistrust between teams."
+            },
+            {
+              "id": "S3_09",
+              "situation": "Supply shortages are causing case delays, and emergency ordering is becoming common.",
+              "kpi_data": "Emergency orders/month: 1 → 6; Delayed procedures: 2 → 9/month",
+              "constraint": "Budget is capped; vendor lead times vary",
+              "stakeholder_map": "Lead Assistant / Assistants / OM / Doctors",
+              "options": [
+                { "id": "A", "label": "Set minimum par levels for top 20 critical items and assign a weekly 15-minute inventory check." },
+                { "id": "B", "label": "Continue ordering only when something runs out." },
+                { "id": "C", "label": "Borrow supplies from other offices repeatedly." }
+              ],
+              "short_term": { "A": "Stabilizes availability and reduces emergencies.", "B": "Avoids setup time but delays continue.", "C": "Short-term fix but inconsistent." },
+              "long_term": "A creates prevention culture; B normalizes crisis mode; C drains relationships and adds hidden costs."
+            },
+            {
+              "id": "S3_10",
+              "situation": "Patients report inconsistent post-op instructions depending on which assistant they had.",
+              "kpi_data": "Post-op call-backs/week: 3 → 8; Minor complications: trending up",
+              "constraint": "Doctors cannot add chair time; multiple assistants rotate rooms",
+              "stakeholder_map": "Assistants / Doctors / Patients / OM",
+              "options": [
+                { "id": "A", "label": "Create a standard post-op script + printed checklist and require teach-back confirmation." },
+                { "id": "B", "label": "Let each assistant explain in their own words." },
+                { "id": "C", "label": "Tell patients to read the paper later without explanation." }
+              ],
+              "short_term": { "A": "Reduces confusion and call-backs.", "B": "Variation continues and errors persist.", "C": "Saves time but increases complications." },
+              "long_term": "A builds consistency and safety; B creates variability and risk; C damages trust and outcomes."
+            },
+            {
+              "id": "S3_11",
+              "situation": "A recurring denial reason is causing rework, but staff are unsure whether the issue is clinical notes or coding.",
+              "kpi_data": "Denials with same code reason: 10 cases/month; Resubmission time: 3–7 days",
+              "constraint": "Limited access to payer details; SSO handles most submissions",
+              "stakeholder_map": "Admin / SSO / Doctors (notes) / RCM / OM",
+              "options": [
+                { "id": "A", "label": "Collect 5 sample cases, identify the shared missing element, and propose a single note template update or attachment rule." },
+                { "id": "B", "label": "Resubmit repeatedly without analyzing the pattern." },
+                { "id": "C", "label": "Tell patients denials are unavoidable and move on." }
+              ],
+              "short_term": { "A": "Creates actionable clarity with minimal effort.", "B": "Keeps work moving but waste continues.", "C": "Reduces effort but increases dissatisfaction." },
+              "long_term": "A reduces structural waste; B normalizes rework; C harms reputation and collections."
+            },
+            {
+              "id": "S3_12",
+              "situation": "Hygiene production is stable, but doctor production is down because consult-to-treatment conversion is slipping.",
+              "kpi_data": "Doctor production: -12% YoY; Consult conversion: 52% → 38%",
+              "constraint": "No new marketing; consult slots limited",
+              "stakeholder_map": "Doctors / Assistants / Front Desk / Treatment Coordinator / OM",
+              "options": [
+                { "id": "A", "label": "Standardize consult workflow: pre-education, intra-visit summary, same-day scheduling attempt, and follow-up cadence." },
+                { "id": "B", "label": "Increase consult volume by overbooking consults." },
+                { "id": "C", "label": "Assume market conditions and accept lower production." }
+              ],
+              "short_term": { "A": "Improves conversion with structured follow-through.", "B": "Increases volume but reduces quality and wait times.", "C": "Less disruption but revenue decline continues." },
+              "long_term": "A builds a scalable conversion system; B creates chaos and patient dissatisfaction; C weakens growth mindset."
+            },
+            {
+              "id": "S3_13",
+              "situation": "Internal friction with SSO is increasing because the office feels 'they don't understand the front line,' while SSO feels 'the office doesn't follow rules.'",
+              "kpi_data": "Rework tickets/week: 5 → 14; Turnaround time: +20%",
+              "constraint": "Time zone limits meetings; both sides already overloaded",
+              "stakeholder_map": "Admin / SSO / OM / RCM",
+              "options": [
+                { "id": "A", "label": "Propose a weekly 20-minute standup with 2 metrics + 1 top issue + clear owners, and keep a shared issue tracker." },
+                { "id": "B", "label": "Escalate every issue individually to leadership." },
+                { "id": "C", "label": "Stop engaging and do things locally." }
+              ],
+              "short_term": { "A": "Reduces noise and aligns expectations.", "B": "Gets attention but increases fatigue and defensiveness.", "C": "Feels faster but increases errors and conflict later." },
+              "long_term": "A builds governance rhythm; B creates escalation culture; C creates fragmentation and risk."
+            },
+            {
+              "id": "S3_14",
+              "situation": "End-of-day closeout errors keep causing next-day confusion, but the checklist is long and compliance is inconsistent.",
+              "kpi_data": "Closeout misses/week: 1 → 4; Next-day rework: +30 min/day",
+              "constraint": "Overtime needs to be minimized; checklist currently 25 items",
+              "stakeholder_map": "Front Desk / Admin / OM",
+              "options": [
+                { "id": "A", "label": "Reduce checklist to the top 8 critical items, assign a daily owner, and audit once per week." },
+                { "id": "B", "label": "Keep the full checklist and remind everyone to 'be more careful.'" },
+                { "id": "C", "label": "Hold one person responsible for all misses without changing the process." }
+              ],
+              "short_term": { "A": "Improves compliance quickly with less friction.", "B": "Misses continue because behavior doesn't change.", "C": "Fear increases and reporting decreases." },
+              "long_term": "A creates sustainable standardization; B normalizes inconsistency; C creates blame culture and hidden errors."
+            },
+            {
+              "id": "S3_15",
+              "situation": "A rise in short-notice cancellations is creating unpredictable production swings, and the team feels like they are always in 'catch-up mode.'",
+              "kpi_data": "Same-day cancellations: 3/week → 9/week; Fill rate within 24h: 22% → 11%",
+              "constraint": "No additional marketing; staff time for outbound calls is limited",
+              "stakeholder_map": "Front Desk / Patients / OM / Assistants",
+              "options": [
+                { "id": "A", "label": "Build a 'short-notice fill list' (by availability + treatment type), assign 15 minutes daily for outreach, and track fill outcomes for 4 weeks." },
+                { "id": "B", "label": "Offer steep discounts to fill same-day openings." },
+                { "id": "C", "label": "Accept cancellations and end the day early." }
+              ],
+              "short_term": { "A": "Improves fill rate gradually and creates a repeatable rhythm.", "B": "Fills openings but trains patients to wait for discounts.", "C": "Reduces stress but revenue loss increases." },
+              "long_term": "A builds proactive operating habits; B damages pricing integrity; C creates complacency and weakens performance culture."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "track": "leader",
+      "title": "리더 스텝",
+      "job_functions": [
+        "doctor",
+        "office_manager",
+        "regional_om",
+        "director",
+        "dso"
+      ],
+      "job_function_labels": {
+        "doctor": "3년차 이상 의사",
+        "office_manager": "OM",
+        "regional_om": "Regional OM",
+        "director": "Director",
+        "dso": "DSO"
+      },
+      "levels": [
+        {
+          "level": "L1",
+          "title": "Beginner Leader",
+          "title_ko": "리더 입문",
+          "structure": [
+            "situation",
+            "constraint",
+            "stakeholder",
+            "options",
+            "first_order",
+            "second_order",
+            "identity_signal"
+          ],
+          "min_tenure_months": 24,
+          "tenure_basis": "leaderStartedAt",
+          "human_model": {
+            "stage_name": "Influence Responsibility",
+            "core_training_focus": "Weight of words and tone",
+            "primary_shift": "Expression → Measured influence",
+            "risk_pattern": ["Authority tone", "Public correction", "Emotional leakage"],
+            "maturity_marker": "Speaks less as authority increases",
+            "power_posture": "Uses influence cautiously"
+          },
+          "items": [
+            {
+              "id": "L1_01",
+              "title": "SSO 지연 문제를 '사실'로 고정하기",
+              "situation": "특정 오피스에서 보험 verification 지연으로 체크인이 자주 밀리고, OM과 SSO가 서로를 탓하는 상황.",
+              "constraint": "계약 변경은 당장 불가 / 현장 추가 채용도 이번 분기 불가",
+              "stakeholder": "OM / Front / SSO 팀 리드 / 파트너(또는 Regional)",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "지연 로그(날짜·환자유형·원인) 2주 수집 후 SLA 재협의"
+                },
+                {
+                  "id": "B",
+                  "label": "현장 우회 프로세스 즉시 도입"
+                },
+                {
+                  "id": "C",
+                  "label": "SSO 팀에 강경 경고 메일 발송"
+                }
+              ],
+              "first_order": "A 감정이 줄고 데이터가 쌓임 / B 단기 운영 숨통, 오류·누락 위험 / C 단기 긴장 해소처럼 보이나 관계 악화",
+              "second_order": "A 재발 방지 구조 가능 / B 임시방편 고착 시 품질·컴플라이언스 리스크 / C blame 문화 강화",
+              "identity_signal": "리더는 ‘누구 탓’이 아니라 ‘무슨 현상’으로 문제를 정의한다."
+            },
+            {
+              "id": "L1_02",
+              "title": "Associate 생산성 저하: 코칭 vs PIP",
+              "situation": "Associate 생산성이 목표 대비 75%이고 팀은 좋아하지만 일정이 자주 밀린다.",
+              "constraint": "계약 6개월 남음 / 환자 만족도는 평균 이상",
+              "stakeholder": "Associate / Clinical Lead / OM / 파트너",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "60일 코칭 플랜(케이스 선택·템포·어시스팅)"
+                },
+                {
+                  "id": "B",
+                  "label": "즉시 PIP 시작"
+                },
+                {
+                  "id": "C",
+                  "label": "케이스 믹스 재조정 후 30일 재평가"
+                }
+              ],
+              "first_order": "A 관계 유지, 개선 속도는 변수 / B 단기 긴장·방어 / C 원인 분리 가능",
+              "second_order": "A 성장 문화 강화 / B 이직·팀 위축 가능 / C 형평성 논쟁 가능",
+              "identity_signal": "리더는 ‘사람을 살리되 기준을 흐리지 않는다’는 신호를 준다."
+            },
+            {
+              "id": "L1_03",
+              "title": "대기시간 급증: 오버북 규칙 재설계",
+              "situation": "오버북이 누적되며 평균 대기시간이 20분에서 45분으로 상승하고 컴플레인이 늘었다.",
+              "constraint": "닥터 진료 속도 단기간 개선 어려움 / 광고 캠페인은 이미 집행 중",
+              "stakeholder": "Front / Assistant / 닥터 / 환자",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "오버북을 '특정 시간대만' 제한하는 2주 실험"
+                },
+                {
+                  "id": "B",
+                  "label": "오버북 전면 중단"
+                },
+                {
+                  "id": "C",
+                  "label": "현 상태 유지 + 현장 사과로 처리"
+                }
+              ],
+              "first_order": "A 생산 일부 유지+대기 개선 검증 / B 대기 개선, 생산 하락 / C 생산 유지, 불만 누적",
+              "second_order": "A 규칙 기반 운영 문화 / B 보수적 운영 고착 / C 리뷰·이직 위험",
+              "identity_signal": "리더는 ‘감으로’가 아니라 ‘실험으로’ 운영을 바꾼다."
+            },
+            {
+              "id": "L1_04",
+              "title": "Front-Back 갈등 중재",
+              "situation": "Front는 'Back이 느리다', Back은 'Front가 무리하게 잡는다'고 말하며 팀 분위기가 거칠어짐.",
+              "constraint": "피크타임 인력 추가 불가 / 회의 시간 제한",
+              "stakeholder": "Front Lead / Lead Assistant / OM",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "1주일만 '핸드오프 기준 3개'를 합의해 테스트"
+                },
+                {
+                  "id": "B",
+                  "label": "한쪽 책임을 명확히 지적"
+                },
+                {
+                  "id": "C",
+                  "label": "갈등을 방치"
+                }
+              ],
+              "first_order": "A 긴장 완화, 기준 생김 / B 단기 통제, 반발 / C 단기 편함, 장기 악화",
+              "second_order": "A 상호 기준 문화 / B 파벌화 / C 이직·품질 저하",
+              "identity_signal": "리더는 ‘누가 옳냐’보다 ‘기준을 합의’시킨다."
+            },
+            {
+              "id": "L1_05",
+              "title": "리뷰 대응 표준화",
+              "situation": "부정 리뷰가 생길 때마다 대응이 제각각이라 리스크가 커진다.",
+              "constraint": "HIPAA 준수 필요 / 공개 댓글은 환자 정보 언급 금지",
+              "stakeholder": "OM / Front / 마케팅 담당",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "공개 댓글 템플릿 + 비공개 연락 2단계 표준화"
+                },
+                {
+                  "id": "B",
+                  "label": "즉시 공개 반박"
+                },
+                {
+                  "id": "C",
+                  "label": "무대응"
+                }
+              ],
+              "first_order": "A 리스크 낮고 일관성↑ / B 감정 싸움 위험 / C 평판 방치",
+              "second_order": "A 브랜드 관리 문화 / B 온라인 갈등 확산 / C 장기 평판 손실",
+              "identity_signal": "리더는 ‘일관성’으로 팀을 보호한다."
+            },
+            {
+              "id": "L1_06",
+              "title": "결제 플랜 연체 증가",
+              "situation": "결제 플랜 오해로 연체와 항의가 늘어났다.",
+              "constraint": "정책 변경은 본사 승인 필요 / 설명 시간은 제한적",
+              "stakeholder": "Admin Lead / OM / 환자",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "3포인트(금액·기한·자동결제) 설명 고정 + 서명 확인"
+                },
+                {
+                  "id": "B",
+                  "label": "예외를 확대"
+                },
+                {
+                  "id": "C",
+                  "label": "예외 없이 강경 적용"
+                }
+              ],
+              "first_order": "A 오해 감소 / B 단기 만족, 연체↑ / C 불만↑",
+              "second_order": "A 투명·일관 문화 / B 규정 붕괴 / C 관계 악화",
+              "identity_signal": "리더는 ‘친절’과 ‘명확함’을 동시에 요구한다."
+            },
+            {
+              "id": "L1_07",
+              "title": "소모품 재고로 인한 진료 지연",
+              "situation": "소모품 부족으로 케이스가 지연되고 긴급 주문이 반복된다.",
+              "constraint": "예산 제한 / 공급 리드타임 존재",
+              "stakeholder": "Lead Assistant / OM / 닥터",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "최소 재고 기준 + 주간 체크"
+                },
+                {
+                  "id": "B",
+                  "label": "필요할 때마다 주문"
+                },
+                {
+                  "id": "C",
+                  "label": "다른 오피스에서 빌려오기 반복"
+                }
+              ],
+              "first_order": "A 안정 / B 긴급 비용↑ / C 임시 해결",
+              "second_order": "A 예방 문화 / B 비효율 고착 / C 조직 피로",
+              "identity_signal": "리더는 ‘사후 대응’에서 ‘예방 시스템’으로 전환한다."
+            },
+            {
+              "id": "L1_08",
+              "title": "환자 흐름(체어턴) 병목",
+              "situation": "체어턴이 느려져 하루 스케줄이 자주 밀린다.",
+              "constraint": "닥터 시간 고정 / 추가 체어 불가",
+              "stakeholder": "Assistant / Sterilization / Front",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "병목 지점을 1일 관찰 후 1개만 개선(예: tray 준비)"
+                },
+                {
+                  "id": "B",
+                  "label": "모든 문제를 한 번에 바꾸기"
+                },
+                {
+                  "id": "C",
+                  "label": "현장에 '빨리'만 요구"
+                }
+              ],
+              "first_order": "A 실행 가능 / B 혼란 / C 반발·번아웃",
+              "second_order": "A 지속 개선 문화 / B 피로 누적 / C 두려움 문화",
+              "identity_signal": "리더는 ‘한 번에 크게’보다 ‘작게 반복’으로 개선한다."
+            },
+            {
+              "id": "L1_09",
+              "title": "신규 직원 온보딩 실패",
+              "situation": "신규 직원이 2주째 실수가 반복되고 본인은 위축되어 있다.",
+              "constraint": "교육 시간 제한 / 현장 속도 요구",
+              "stakeholder": "신규 직원 / 트레이너 / OM",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "체크리스트 기반 5일 온보딩 리셋"
+                },
+                {
+                  "id": "B",
+                  "label": "실수할 때마다 공개 지적"
+                },
+                {
+                  "id": "C",
+                  "label": "본인에게 알아서 따라오라고 함"
+                }
+              ],
+              "first_order": "A 안정·학습↑ / B 단기 긴장 / C 방치",
+              "second_order": "A 교육 문화 / B 이직·위축 / C 품질 저하",
+              "identity_signal": "리더는 ‘사람을 키우는 방식’을 조직에 학습시킨다."
+            },
+            {
+              "id": "L1_10",
+              "title": "환자 컴플레인 증가: 원인 분리",
+              "situation": "컴플레인이 늘었지만 원인이 대기/비용/설명 중 무엇인지 혼재되어 있다.",
+              "constraint": "데이터가 분산 / 바쁜 운영",
+              "stakeholder": "Front / Admin / OM",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "컴플레인을 3카테고리로 태깅해 2주 수집"
+                },
+                {
+                  "id": "B",
+                  "label": "가장 시끄러운 사례만 즉시 처리"
+                },
+                {
+                  "id": "C",
+                  "label": "'원래 그렇다'로 방치"
+                }
+              ],
+              "first_order": "A 원인 명확화 / B 단기 진화, 재발 / C 악화",
+              "second_order": "A 데이터 기반 개선 / B 소방 문화 / C 평판·이직 리스크",
+              "identity_signal": "리더는 ‘느낌’이 아니라 ‘분류’로 문제를 만든다."
+            },
+            {
+              "id": "L1_11",
+              "title": "팀 내 피드백 방식 충돌",
+              "situation": "공개 피드백이 반복되며 팀이 위축되고 이직 이야기가 나온다.",
+              "constraint": "즉시 수정이 필요한 상황도 존재",
+              "stakeholder": "Lead / Staff / OM",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "공개는 사실+요청 1문장, 코칭은 1:1로 분리"
+                },
+                {
+                  "id": "B",
+                  "label": "공개 지적 유지"
+                },
+                {
+                  "id": "C",
+                  "label": "피드백을 아예 중단"
+                }
+              ],
+              "first_order": "A 분위기 안정 / B 긴장↑ / C 품질↓",
+              "second_order": "A 심리적 안전+품질 균형 / B 두려움 문화 / C 기준 붕괴",
+              "identity_signal": "리더는 ‘어떻게 말하느냐’로 문화를 만든다."
+            },
+            {
+              "id": "L1_12",
+              "title": "SSO 파일 누락 재발",
+              "situation": "클레임에 필요한 파일 누락이 반복되어 재작업이 늘어난다.",
+              "constraint": "업로드 규칙 복잡 / 최종 확인자 불명확",
+              "stakeholder": "Admin / SSO / RCM / OM",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "업로드 완료 체크의 단일 책임자 지정"
+                },
+                {
+                  "id": "B",
+                  "label": "모두가 알아서"
+                },
+                {
+                  "id": "C",
+                  "label": "누락 시 개인에게 책임 추궁"
+                }
+              ],
+              "first_order": "A 누락 감소 / B 반복 / C 분위기 악화",
+              "second_order": "A 책임 명확화 문화 / B 시스템 불안정 / C 방어 문화",
+              "identity_signal": "리더는 ‘책임’을 명확히 하고 ‘비난’을 줄인다."
+            },
+            {
+              "id": "L1_13",
+              "title": "하루 마감(End-of-day) 누락",
+              "situation": "하루 마감 체크가 누락되어 다음날 혼란이 발생한다.",
+              "constraint": "야근 최소화 필요 / 체크 항목이 많음",
+              "stakeholder": "Front / Admin / OM",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "마감 체크리스트 8개로 축소해 준수율을 올림"
+                },
+                {
+                  "id": "B",
+                  "label": "기존 체크리스트 유지"
+                },
+                {
+                  "id": "C",
+                  "label": "개인에게만 책임 부여"
+                }
+              ],
+              "first_order": "A 준수율↑ / B 누락 지속 / C 반발",
+              "second_order": "A 실행 가능한 표준화 / B 소방 반복 / C 두려움 문화",
+              "identity_signal": "리더는 ‘완벽’보다 ‘지속 가능’을 선택한다."
+            },
+            {
+              "id": "L1_14",
+              "title": "예약 공백 증가(생산 손실)",
+              "situation": "예약 공백이 늘어 생산 손실이 체감된다.",
+              "constraint": "마케팅 예산 추가 불가 / 급작스런 프로모션 제한",
+              "stakeholder": "Front / OM / 환자",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "당일 공백 리스트를 만들어 대기환자 연락 프로세스 고정"
+                },
+                {
+                  "id": "B",
+                  "label": "공백을 방치"
+                },
+                {
+                  "id": "C",
+                  "label": "무리한 할인으로 채움"
+                }
+              ],
+              "first_order": "A 회복 가능 / B 손실 지속 / C 단기 채움, 기대치 문제",
+              "second_order": "A 능동 운영 문화 / B 무기력 문화 / C 가격 왜곡",
+              "identity_signal": "리더는 ‘매일의 작은 규칙’으로 성과를 만든다."
+            },
+            {
+              "id": "L1_15",
+              "title": "현장-원격(SSO) 협업 회의 설계",
+              "situation": "현장에서는 'SSO는 현장을 모른다'고 느끼고, SSO는 '현장이 규칙을 안 지킨다'고 느낀다.",
+              "constraint": "시차로 긴 미팅 어려움 / 회의가 길어지면 실행이 떨어짐",
+              "stakeholder": "OM / SSO 리드 / RCM",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "20분 주간 스탠드업(지표 2개+이슈 1개) 고정"
+                },
+                {
+                  "id": "B",
+                  "label": "문제 생길 때만 미팅"
+                },
+                {
+                  "id": "C",
+                  "label": "문서 없이 구두로만 조율"
+                }
+              ],
+              "first_order": "A 기대치 정렬 / B 소방 반복 / C 누락·오해",
+              "second_order": "A 거버넌스 습관 형성 / B 신뢰 저하 / C 시스템 붕괴",
+              "identity_signal": "리더는 ‘회의’가 아니라 ‘리듬’을 만든다."
+            }
+          ],
+          "items_en": [
+            {
+              "id": "L1_01",
+              "situation": "Two assistants have ongoing tension that is beginning to affect room turnover speed.",
+              "kpi_data": "Room turnover: 8 min → 14 min; Informal complaints increasing",
+              "leadership_focus": "Conflict stabilization and operational clarity",
+              "stakeholder": "Assistants / Lead Assistant / OM / Doctors",
+              "options": [
+                { "id": "A", "label": "Hold separate 1:1 conversations, clarify expectations, then define a simple shared workflow agreement." },
+                { "id": "B", "label": "Warn both publicly that performance must improve immediately." },
+                { "id": "C", "label": "Ignore it and hope it resolves." }
+              ],
+              "first_order": { "A": "Reduces tension and restores predictable flow.", "B": "Creates compliance through pressure but increases resentment.", "C": "Conflict deepens and workflow slows further." },
+              "second_order": "A builds structured conflict resolution habits; B builds fear-based compliance; C normalizes avoidance.",
+              "identity_signal": "A builds structured conflict resolution habits; B builds fear-based compliance; C normalizes avoidance."
+            },
+            {
+              "id": "L1_02",
+              "situation": "Front desk staff feel overwhelmed due to rising call volume and patient complaints.",
+              "kpi_data": "Call abandonment rate: 4% → 12%; Check-in complaints rising",
+              "leadership_focus": "Workload clarity and prioritization",
+              "stakeholder": "Front Desk / Patients / OM / SSO (if centralized calls)",
+              "options": [
+                { "id": "A", "label": "Define call priority tiers and redistribute specific tasks during peak hours." },
+                { "id": "B", "label": "Tell staff to 'work faster.'" },
+                { "id": "C", "label": "Reduce service expectations without communication." }
+              ],
+              "first_order": { "A": "Improves focus and reduces overwhelm.", "B": "Increases stress without solving structural issues.", "C": "Reduces visible pressure but damages patient experience." },
+              "second_order": "A creates operational discipline; B increases burnout; C weakens service standards.",
+              "identity_signal": "A creates operational discipline; B increases burnout; C weakens service standards."
+            },
+            {
+              "id": "L1_03",
+              "situation": "A new assistant struggles clinically and slows procedures.",
+              "kpi_data": "Procedure time +20%; Doctor frustration visible",
+              "leadership_focus": "Coaching vs. replacement decision",
+              "stakeholder": "Assistant / Doctor / Lead Assistant / OM",
+              "options": [
+                { "id": "A", "label": "Create a 30-day skill focus plan with weekly checkpoints." },
+                { "id": "B", "label": "Immediately reduce their responsibilities without explanation." },
+                { "id": "C", "label": "Replace the assistant quickly." }
+              ],
+              "first_order": { "A": "Structured improvement path with accountability.", "B": "Short-term relief but unclear expectations.", "C": "Removes problem but increases hiring instability." },
+              "second_order": "A builds development culture; B builds uncertainty; C builds disposable culture.",
+              "identity_signal": "A builds development culture; B builds uncertainty; C builds disposable culture."
+            },
+            {
+              "id": "L1_04",
+              "situation": "Case acceptance has declined and the doctor blames front desk explanations.",
+              "kpi_data": "Case acceptance: 61% → 46%",
+              "leadership_focus": "Cross-functional alignment",
+              "stakeholder": "Doctor / Treatment Coordinator / Front Desk / Patients",
+              "options": [
+                { "id": "A", "label": "Facilitate a short workflow review and define a consistent patient explanation model." },
+                { "id": "B", "label": "Take the doctor's side and instruct front desk to push harder." },
+                { "id": "C", "label": "Stay neutral and avoid involvement." }
+              ],
+              "first_order": { "A": "Clarifies shared responsibility.", "B": "Creates division between teams.", "C": "Misalignment continues." },
+              "second_order": "A strengthens team cohesion; B creates silos; C normalizes dysfunction.",
+              "identity_signal": "A strengthens team cohesion; B creates silos; C normalizes dysfunction."
+            },
+            {
+              "id": "L1_05",
+              "situation": "SSO reports documentation inconsistencies causing delays, and local staff feel criticized.",
+              "kpi_data": "Claim rework cases: 3 → 10/week",
+              "leadership_focus": "Cross-cultural communication stabilization",
+              "stakeholder": "Admin / SSO / OM / RCM",
+              "options": [
+                { "id": "A", "label": "Clarify requirements in writing and host a short alignment call focused on process, not tone." },
+                { "id": "B", "label": "Defend the local team and reject feedback." },
+                { "id": "C", "label": "Push all responsibility to SSO." }
+              ],
+              "first_order": { "A": "Reduces confusion and emotional escalation.", "B": "Increases tension and rework.", "C": "Breaks collaboration." },
+              "second_order": "A builds structured collaboration; B builds defensive culture; C builds fragmentation.",
+              "identity_signal": "A builds structured collaboration; B builds defensive culture; C builds fragmentation."
+            },
+            {
+              "id": "L1_06",
+              "situation": "Production is stable but team morale feels low.",
+              "kpi_data": "Production steady; Sick calls increasing; Informal disengagement signs",
+              "leadership_focus": "Emotional climate awareness",
+              "stakeholder": "Entire team / OM / Doctors",
+              "options": [
+                { "id": "A", "label": "Conduct brief listening check-ins and identify one small improvement initiative." },
+                { "id": "B", "label": "Ignore morale because KPIs are stable." },
+                { "id": "C", "label": "Increase performance pressure." }
+              ],
+              "first_order": { "A": "Signals care and surfaces issues early.", "B": "Short-term calm but hidden burnout grows.", "C": "Raises production anxiety." },
+              "second_order": "A builds psychological safety; B builds quiet quitting; C builds fear-driven performance.",
+              "identity_signal": "A builds psychological safety; B builds quiet quitting; C builds fear-driven performance."
+            },
+            {
+              "id": "L1_07",
+              "situation": "Late starts are becoming common in the morning huddle.",
+              "kpi_data": "Huddle start delay avg: 3 min → 11 min",
+              "leadership_focus": "Norm-setting and consistency",
+              "stakeholder": "All clinical staff / Front Desk / OM",
+              "options": [
+                { "id": "A", "label": "Reset expectation clearly and model punctuality consistently." },
+                { "id": "B", "label": "Cancel huddles entirely." },
+                { "id": "C", "label": "Scold staff occasionally." }
+              ],
+              "first_order": { "A": "Restores clarity and rhythm.", "B": "Removes coordination time.", "C": "Creates resistance." },
+              "second_order": "A reinforces discipline; B reduces communication quality; C increases resentment.",
+              "identity_signal": "A reinforces discipline; B reduces communication quality; C increases resentment."
+            },
+            {
+              "id": "L1_08",
+              "situation": "A team member frequently brings personal stress into the workplace.",
+              "kpi_data": "Error frequency slightly increased; Peer tension rising",
+              "leadership_focus": "Boundaries and support balance",
+              "stakeholder": "Team member / Peers / OM",
+              "options": [
+                { "id": "A", "label": "Hold a private conversation: acknowledge stress, clarify performance expectations." },
+                { "id": "B", "label": "Ignore behavior out of sympathy." },
+                { "id": "C", "label": "Publicly criticize mood changes." }
+              ],
+              "first_order": { "A": "Maintains compassion with boundaries.", "B": "Performance inconsistency continues.", "C": "Damages trust." },
+              "second_order": "A builds accountable empathy; B builds uneven standards; C builds unsafe culture.",
+              "identity_signal": "A builds accountable empathy; B builds uneven standards; C builds unsafe culture."
+            },
+            {
+              "id": "L1_09",
+              "situation": "Overtime is increasing due to end-of-day inefficiencies.",
+              "kpi_data": "Overtime hours/month: 6 → 18",
+              "leadership_focus": "Process diagnosis",
+              "stakeholder": "Assistants / Front Desk / OM / Doctors",
+              "options": [
+                { "id": "A", "label": "Audit the final 60 minutes of the day and remove one delay driver." },
+                { "id": "B", "label": "Prohibit overtime strictly." },
+                { "id": "C", "label": "Accept overtime as normal." }
+              ],
+              "first_order": { "A": "Targets root inefficiency.", "B": "Forces early cut-offs and patient dissatisfaction.", "C": "Increases cost and burnout." },
+              "second_order": "A builds efficiency culture; B builds rigidity; C builds fatigue.",
+              "identity_signal": "A builds efficiency culture; B builds rigidity; C builds fatigue."
+            },
+            {
+              "id": "L1_10",
+              "situation": "A high performer dominates discussions and unintentionally silences others.",
+              "kpi_data": "Meeting participation uneven; New ideas decreasing",
+              "leadership_focus": "Inclusive leadership",
+              "stakeholder": "Team / OM / Lead Assistant",
+              "options": [
+                { "id": "A", "label": "Set clear meeting norms and invite structured input from quieter members." },
+                { "id": "B", "label": "Let dominance continue because performance is high." },
+                { "id": "C", "label": "Publicly confront the individual." }
+              ],
+              "first_order": { "A": "Balances voices without confrontation.", "B": "Short-term efficiency but reduced engagement.", "C": "Creates defensiveness." },
+              "second_order": "A builds inclusive environment; B creates imbalance; C builds fear of speaking.",
+              "identity_signal": "A builds inclusive environment; B creates imbalance; C builds fear of speaking."
+            },
+            {
+              "id": "L1_11",
+              "situation": "Doctors complain about slow sterilization turnaround.",
+              "kpi_data": "Instrument wait time: 4 min → 9 min",
+              "leadership_focus": "Data before blame",
+              "stakeholder": "Assistants / Sterilization / Doctors / OM",
+              "options": [
+                { "id": "A", "label": "Measure instrument cycle timing and identify bottleneck before reacting." },
+                { "id": "B", "label": "Tell sterilization staff to speed up immediately." },
+                { "id": "C", "label": "Defend sterilization without investigation." }
+              ],
+              "first_order": { "A": "Creates objective clarity.", "B": "Increases stress.", "C": "Doctor frustration continues." },
+              "second_order": "A builds fact-based culture; B builds pressure culture; C builds division.",
+              "identity_signal": "A builds fact-based culture; B builds pressure culture; C builds division."
+            },
+            {
+              "id": "L1_12",
+              "situation": "A new policy from corporate feels unnecessary to local staff.",
+              "kpi_data": "Compliance: 40%; Resistance comments increasing",
+              "leadership_focus": "Change communication",
+              "stakeholder": "Staff / OM / Corporate",
+              "options": [
+                { "id": "A", "label": "Explain purpose, expected outcome, and timeline clearly." },
+                { "id": "B", "label": "Enforce without explanation." },
+                { "id": "C", "label": "Quietly ignore policy." }
+              ],
+              "first_order": { "A": "Improves alignment gradually.", "B": "Creates compliance with resentment.", "C": "Creates risk exposure." },
+              "second_order": "A builds transparency; B builds compliance-only culture; C builds inconsistency.",
+              "identity_signal": "A builds transparency; B builds compliance-only culture; C builds inconsistency."
+            },
+            {
+              "id": "L1_13",
+              "situation": "Production is strong but team turnover risk is rising.",
+              "kpi_data": "Production +8%; Exit interviews mention burnout",
+              "leadership_focus": "Sustainable performance",
+              "stakeholder": "Entire team / OM / Doctors",
+              "options": [
+                { "id": "A", "label": "Adjust workload pacing and recognize effort publicly." },
+                { "id": "B", "label": "Focus only on maintaining production numbers." },
+                { "id": "C", "label": "Replace departing staff quickly without reflection." }
+              ],
+              "first_order": { "A": "Improves retention signals.", "B": "Production maintained but morale drops.", "C": "Stability risk increases." },
+              "second_order": "A builds durable performance; B builds burnout; C builds instability.",
+              "identity_signal": "A builds durable performance; B builds burnout; C builds instability."
+            },
+            {
+              "id": "L1_14",
+              "situation": "A mistake occurred that affected a patient's billing, and tension is rising.",
+              "kpi_data": "Refund case escalated to complaint",
+              "leadership_focus": "Accountability and containment",
+              "stakeholder": "Admin / Patient / OM / SSO",
+              "options": [
+                { "id": "A", "label": "Own the mistake, correct it quickly, and review process gap." },
+                { "id": "B", "label": "Shift blame to SSO." },
+                { "id": "C", "label": "Minimize the issue." }
+              ],
+              "first_order": { "A": "Restores trust.", "B": "Escalates conflict.", "C": "Complaint grows." },
+              "second_order": "A builds accountability; B builds blame cycle; C builds denial culture.",
+              "identity_signal": "A builds accountability; B builds blame cycle; C builds denial culture."
+            },
+            {
+              "id": "L1_15",
+              "situation": "A strong assistant wants more responsibility but current structure is unclear.",
+              "kpi_data": "High performer engagement risk",
+              "leadership_focus": "Development pathway clarity",
+              "stakeholder": "Assistant / Lead Assistant / OM",
+              "options": [
+                { "id": "A", "label": "Define a development milestone plan with measurable skill expansion." },
+                { "id": "B", "label": "Delay conversation indefinitely." },
+                { "id": "C", "label": "Promise future promotion without structure." }
+              ],
+              "first_order": { "A": "Increases motivation with clarity.", "B": "Engagement decreases.", "C": "Expectation mismatch risk." },
+              "second_order": "A builds growth culture; B builds stagnation; C builds broken trust.",
+              "identity_signal": "A builds growth culture; B builds stagnation; C builds broken trust."
+            }
+          ]
+        },
+        {
+          "level": "L2",
+          "title": "Intermediate Leader",
+          "title_ko": "리더 중급",
+          "structure": [
+            "situation",
+            "kpi_conflict",
+            "constraint",
+            "stakeholder_map",
+            "options",
+            "first_order",
+            "second_order",
+            "identity_signal"
+          ],
+          "min_tenure_months": 60,
+          "tenure_basis": "leaderStartedAt",
+          "human_model": {
+            "stage_name": "System Design",
+            "core_training_focus": "Designing incentive and stability frameworks",
+            "primary_shift": "Managing people → Designing systems",
+            "risk_pattern": ["Replacing people instead of fixing systems", "Short-term performance pressure"],
+            "maturity_marker": "Builds structures that reduce friction",
+            "power_posture": "Solves structurally, not emotionally"
+          },
+          "items": [
+            {
+              "id": "L2_01",
+              "title": "멀티 오피스 No-show 편차",
+              "situation": "3개 오피스 중 1곳의 No-show가 급증하며 다른 오피스 대비 성과 격차가 벌어짐.",
+              "kpi_conflict": "No-show A: 6% / B: 8% / C: 15% → 생산성 직접 영향",
+              "constraint": "광고 예산은 동일 / 인력 증원 불가",
+              "stakeholder_map": "OM C 압박 / 다른 OM은 형평성 문제 제기 / 파트너는 KPI 우려",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "C오피스에 집중 코칭 및 예약 규칙 재설계"
+                },
+                {
+                  "id": "B",
+                  "label": "광고 예산을 C에 추가 배정"
+                },
+                {
+                  "id": "C",
+                  "label": "KPI 패널티 적용"
+                }
+              ],
+              "first_order": "A 단기 안정 가능 / B 즉각 볼륨 보완 / C 긴장 고조",
+              "second_order": "A 학습 문화 / B 돈으로 해결 문화 / C 방어적 운영 확산",
+              "identity_signal": "우리는 격차를 처벌하는가, 학습 기회로 보는가?"
+            },
+            {
+              "id": "L2_02",
+              "title": "Associate 간 생산성 격차",
+              "situation": "같은 지역 두 Associate의 생산성 차이가 30% 이상 발생.",
+              "kpi_conflict": "Production 격차 월 $40k 이상",
+              "constraint": "계약 조건 다름 / PIP는 법적 검토 필요",
+              "stakeholder_map": "Associate A 불만 / Associate B 방어 / Clinical Director 압박",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "케이스 믹스 재배치 후 재평가"
+                },
+                {
+                  "id": "B",
+                  "label": "낮은 생산성 Associate에 PIP"
+                },
+                {
+                  "id": "C",
+                  "label": "고생산성 Associate에 인센티브 강화"
+                }
+              ],
+              "first_order": "A 원인 분리 가능 / B 단기 통제 / C 내부 경쟁 심화",
+              "second_order": "A 구조적 개선 / B 이직 가능성 / C 팀 문화 양극화",
+              "identity_signal": "우리는 비교로 운영하는가, 시스템으로 운영하는가?"
+            },
+            {
+              "id": "L2_03",
+              "title": "AR 개선 vs 환자 경험",
+              "situation": "AR 개선을 위해 강경 수금 정책 도입을 검토 중.",
+              "kpi_conflict": "AR Days 42→60 / 리뷰 점수 4.6 유지",
+              "constraint": "리뷰 하락 시 마케팅 영향 큼",
+              "stakeholder_map": "Admin팀 수금 압박 / Front는 리뷰 우려 / 파트너 현금흐름 우려",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "수금 스크립트 표준화 + 플랜 옵션 병행"
+                },
+                {
+                  "id": "B",
+                  "label": "강경 정책 즉시 도입"
+                },
+                {
+                  "id": "C",
+                  "label": "현 정책 유지"
+                }
+              ],
+              "first_order": "A 균형 시도 / B 단기 현금 확보 / C 현금 압박 지속",
+              "second_order": "A 지속 가능 모델 / B 리뷰 하락 리스크 / C 성장 제약",
+              "identity_signal": "우리는 현금 중심인가, 브랜드 중심인가?"
+            },
+            {
+              "id": "L2_04",
+              "title": "SSO vs 현장 권한 충돌",
+              "situation": "SSO가 클레임 규칙을 강화하며 현장에서는 업무가 늘었다고 반발.",
+              "kpi_conflict": "Error rate 5%→2% 개선 / 처리 속도 15% 감소",
+              "constraint": "계약 1년 남음 / 인건비 상승 압박",
+              "stakeholder_map": "SSO 리드 / OM들 / RCM / 파트너",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "공동 KPI 위원회 구성"
+                },
+                {
+                  "id": "B",
+                  "label": "현장에 자율권 확대"
+                },
+                {
+                  "id": "C",
+                  "label": "SSO 기준 완화"
+                }
+              ],
+              "first_order": "A 조율 시간 증가 / B 오류 증가 가능 / C 품질 저하",
+              "second_order": "A 거버넌스 강화 / B 편차 확대 / C 시스템 약화",
+              "identity_signal": "우리는 통제와 자율의 균형을 설계하는가?"
+            },
+            {
+              "id": "L2_05",
+              "title": "마케팅 ROI 충돌",
+              "situation": "신규 환자 유입은 증가했으나 고마진 케이스 전환율은 하락.",
+              "kpi_conflict": "New patients +20% / Implant case -10%",
+              "constraint": "마케팅 계약 6개월 남음",
+              "stakeholder_map": "마케팅팀 / 닥터 / OM / 파트너",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "타겟 광고 조정"
+                },
+                {
+                  "id": "B",
+                  "label": "광고 유지 + 내부 전환 교육"
+                },
+                {
+                  "id": "C",
+                  "label": "광고 축소"
+                }
+              ],
+              "first_order": "A 리드 품질 개선 가능 / B 내부 역량 강화 / C 유입 감소",
+              "second_order": "A 전략적 조정 문화 / B 내부 투자 문화 / C 방어적 운영",
+              "identity_signal": "우리는 외부 탓을 하는가, 내부 전환을 개선하는가?"
+            },
+            {
+              "id": "L2_06",
+              "title": "OM 성과 vs 팀 이직",
+              "situation": "성과 좋은 OM의 팀에서 이직률 상승.",
+              "kpi_conflict": "Production +15% / Staff turnover 25%",
+              "constraint": "대체 인력 채용 어려움",
+              "stakeholder_map": "OM / Staff / 파트너",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "리더십 코칭 의무화"
+                },
+                {
+                  "id": "B",
+                  "label": "성과 중심 유지"
+                },
+                {
+                  "id": "C",
+                  "label": "OM 교체"
+                }
+              ],
+              "first_order": "A 개선 가능성 / B 단기 수익 유지 / C 혼란",
+              "second_order": "A 지속 가능 리더십 / B 번아웃 문화 / C 성과 불안정",
+              "identity_signal": "우리는 결과만 보는가, 지속성을 보는가?"
+            },
+            {
+              "id": "L2_07",
+              "title": "확장 오피스 초기 적자",
+              "situation": "신규 인수 오피스가 6개월째 적자.",
+              "kpi_conflict": "EBITDA -8% / 환자 수 정체",
+              "constraint": "투자자 보고 필요",
+              "stakeholder_map": "Regional Lead / OM / 파트너",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "운영 프로세스 통합 강화"
+                },
+                {
+                  "id": "B",
+                  "label": "비용 절감 우선"
+                },
+                {
+                  "id": "C",
+                  "label": "추가 투자"
+                }
+              ],
+              "first_order": "A 구조 개선 / B 단기 숫자 개선 / C 리스크 증가",
+              "second_order": "A 장기 통합 성공 / B 성장 둔화 / C 확장 가속 혹은 실패",
+              "identity_signal": "우리는 숫자에 반응하는가, 구조를 다루는가?"
+            },
+            {
+              "id": "L2_08",
+              "title": "임플란트 케이스 집중 전략",
+              "situation": "고마진 케이스 비중 확대를 목표로 함.",
+              "kpi_conflict": "Implant 비율 12%→목표 20%",
+              "constraint": "마케팅 예산 제한",
+              "stakeholder_map": "닥터 / 마케팅 / OM",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "내부 교육 + 케이스 선택 가이드"
+                },
+                {
+                  "id": "B",
+                  "label": "할인 프로모션"
+                },
+                {
+                  "id": "C",
+                  "label": "Referral 강화"
+                }
+              ],
+              "first_order": "A 역량 강화 / B 마진 감소 / C 외부 의존",
+              "second_order": "A 전문성 강화 문화 / B 가격 중심 문화 / C 통제 약화",
+              "identity_signal": "우리는 전문성을 키우는가, 가격으로 경쟁하는가?"
+            },
+            {
+              "id": "L2_09",
+              "title": "리뷰 점수 vs 생산성 압박",
+              "situation": "생산성 목표 강화 후 리뷰 점수 소폭 하락.",
+              "kpi_conflict": "Production +10% / 리뷰 4.8→4.5",
+              "constraint": "온라인 평판 중요 지역",
+              "stakeholder_map": "닥터 / Front / 마케팅",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "속도 기준 완화"
+                },
+                {
+                  "id": "B",
+                  "label": "환자 커뮤니케이션 교육 강화"
+                },
+                {
+                  "id": "C",
+                  "label": "목표 유지"
+                }
+              ],
+              "first_order": "A 생산↓ 가능 / B 균형 시도 / C 리뷰 추가 하락 위험",
+              "second_order": "A 경험 중심 문화 / B 균형 문화 / C 결과 우선 문화 강화",
+              "identity_signal": "우리는 무엇을 최우선 KPI로 두는가?"
+            },
+            {
+              "id": "L2_10",
+              "title": "SSO 비용 재협상 시점",
+              "situation": "SSO 비용 상승 제안 도착.",
+              "kpi_conflict": "현재 비용 +15% 제안 / 오류율은 업계 평균 이하",
+              "constraint": "계약 갱신 3개월 전",
+              "stakeholder_map": "파트너 / SSO 리드 / RCM",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "재협상 시도"
+                },
+                {
+                  "id": "B",
+                  "label": "일부 기능 미국 환원"
+                },
+                {
+                  "id": "C",
+                  "label": "제안 수용"
+                }
+              ],
+              "first_order": "A 긴장 가능 / B 비용 증가 / C 마진 감소",
+              "second_order": "A 비용 통제 문화 / B 이중 구조 위험 / C 안정 vs 마진 압박",
+              "identity_signal": "우리는 비용을 통제하는가, 안정성을 선택하는가?"
+            },
+            {
+              "id": "L2_11",
+              "title": "Associate 리텐션 vs 계약 조건",
+              "situation": "성과 높은 Associate가 계약 재협상 요구.",
+              "kpi_conflict": "Production 상위 20% / 연봉 인상 요구 18%",
+              "constraint": "다른 Associate 형평성 고려 필요",
+              "stakeholder_map": "Associate / 파트너 / HR",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "성과 기반 인상"
+                },
+                {
+                  "id": "B",
+                  "label": "전원 동일 인상"
+                },
+                {
+                  "id": "C",
+                  "label": "조건 거절"
+                }
+              ],
+              "first_order": "A 유지 가능 / B 비용 상승 / C 이직 위험",
+              "second_order": "A 성과 문화 강화 / B 형평성 중심 / C 인재 유출",
+              "identity_signal": "우리는 성과를 차별화하는가?"
+            },
+            {
+              "id": "L2_12",
+              "title": "멀티 오피스 재고 통합",
+              "situation": "각 오피스 재고 관리 방식이 달라 비용 낭비 발생.",
+              "kpi_conflict": "연간 소모품 비용 +12% 증가",
+              "constraint": "중앙 창고 도입 시 초기 비용 발생",
+              "stakeholder_map": "Lead Assistant / OM / 파트너",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "중앙 관리 시스템 도입"
+                },
+                {
+                  "id": "B",
+                  "label": "현 체계 유지"
+                },
+                {
+                  "id": "C",
+                  "label": "부분 통합"
+                }
+              ],
+              "first_order": "A 비용 절감 기대 / B 낭비 지속 / C 중간 수준 개선",
+              "second_order": "A 규모의 경제 문화 / B 분산 운영 / C 혼합 모델",
+              "identity_signal": "우리는 통합으로 효율을 추구하는가?"
+            },
+            {
+              "id": "L2_13",
+              "title": "보험 네트워크 탈퇴 검토",
+              "situation": "낮은 reimbursement 네트워크 탈퇴 논의.",
+              "kpi_conflict": "환자 25% 해당 네트워크",
+              "constraint": "단기 환자 감소 가능",
+              "stakeholder_map": "파트너 / OM / 환자",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "재협상 시도"
+                },
+                {
+                  "id": "B",
+                  "label": "단계적 탈퇴"
+                },
+                {
+                  "id": "C",
+                  "label": "유지"
+                }
+              ],
+              "first_order": "A 마진 개선 가능 / B 충격 완화 / C 마진 압박 지속",
+              "second_order": "A 수익 구조 개선 / B 브랜드 전환 / C 볼륨 중심 유지",
+              "identity_signal": "우리는 볼륨인가, 마진인가?"
+            },
+            {
+              "id": "L2_14",
+              "title": "Regional KPI 공개 여부",
+              "situation": "각 오피스 KPI를 전체 회의에서 공개할지 논의.",
+              "kpi_conflict": "성과 편차 큼",
+              "constraint": "공개 시 민감도 높음",
+              "stakeholder_map": "OM / Regional Lead / 파트너",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "전면 공개"
+                },
+                {
+                  "id": "B",
+                  "label": "상위/하위만 공개"
+                },
+                {
+                  "id": "C",
+                  "label": "비공개"
+                }
+              ],
+              "first_order": "A 투명성↑ / B 부분 압박 / C 안정 유지",
+              "second_order": "A 경쟁 문화 / B 관리된 압박 / C 안전하지만 개선 둔화",
+              "identity_signal": "우리는 투명성으로 운영하는가?"
+            },
+            {
+              "id": "L2_15",
+              "title": "AI 도입 파일럿",
+              "situation": "AI 스케줄/콜 자동화 파일럿 제안.",
+              "kpi_conflict": "인건비 절감 예상 8%",
+              "constraint": "직원 불안감 존재",
+              "stakeholder_map": "OM / Staff / 파트너",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "파일럿 1개 오피스 테스트"
+                },
+                {
+                  "id": "B",
+                  "label": "전면 도입"
+                },
+                {
+                  "id": "C",
+                  "label": "보류"
+                }
+              ],
+              "first_order": "A 리스크 제한 / B 큰 변화 / C 기회 상실",
+              "second_order": "A 실험 문화 / B 충격 리스크 / C 보수적 운영",
+              "identity_signal": "우리는 실험하는 조직인가?"
+            }
+          ],
+          "items_en": [
+            {
+              "id": "L2_01",
+              "situation": "Two offices under your region show diverging performance trends. One is stable; the other has declining case acceptance and rising tension with SSO.",
+              "kpi_data": "Office A Acceptance: 63%; Office B: 41%; SSO rework tickets doubled",
+              "leadership_focus": "Regional pattern recognition and stabilization",
+              "constraint": "Limited travel time; no additional headcount this quarter",
+              "stakeholder_map": "Office Managers / Doctors / SSO / RCM / Regional Director",
+              "options": [
+                { "id": "A", "label": "Conduct a comparative workflow audit and identify 2–3 transferable practices from Office A to B." },
+                { "id": "B", "label": "Replace the OM of Office B quickly." },
+                { "id": "C", "label": "Pressure Office B to hit metrics immediately." }
+              ],
+              "first_order": { "A": "Creates clarity and targeted improvement.", "B": "Signals urgency but destabilizes team.", "C": "Increases fear and reactive behavior." },
+              "second_order": "A builds cross-office learning; B builds instability; C builds performance anxiety.",
+              "identity_signal": "A builds cross-office learning; B builds instability; C builds performance anxiety."
+            },
+            {
+              "id": "L2_02",
+              "situation": "SSO turnaround times have slowed, and multiple offices are escalating complaints to you.",
+              "kpi_data": "Claim processing time: 3 days → 7 days; Rework cases +35%",
+              "leadership_focus": "Cross-functional governance",
+              "constraint": "Time zone differences; offshore team workload high",
+              "stakeholder_map": "SSO Lead / Office Managers / RCM / Finance",
+              "options": [
+                { "id": "A", "label": "Establish a weekly metrics call with shared dashboard and clear SLA definitions." },
+                { "id": "B", "label": "Escalate aggressively to executive level immediately." },
+                { "id": "C", "label": "Allow offices to create local workarounds." }
+              ],
+              "first_order": { "A": "Creates alignment and measurable accountability.", "B": "Forces attention but increases defensiveness.", "C": "Reduces delay locally but fragments process." },
+              "second_order": "A builds governance rhythm; B builds escalation culture; C builds structural inconsistency.",
+              "identity_signal": "A builds governance rhythm; B builds escalation culture; C builds structural inconsistency."
+            },
+            {
+              "id": "L2_03",
+              "situation": "Regional production is flat despite higher patient volume.",
+              "kpi_data": "Patient volume +12%; Production +1%",
+              "leadership_focus": "Efficiency and conversion strategy",
+              "constraint": "No additional doctor FTE; marketing budget fixed",
+              "stakeholder_map": "Doctors / OMs / Treatment Coordinators / Finance",
+              "options": [
+                { "id": "A", "label": "Analyze consult-to-treatment pipeline and implement standardized conversion checkpoints." },
+                { "id": "B", "label": "Increase daily scheduling density immediately." },
+                { "id": "C", "label": "Reduce hygiene time to add doctor procedures." }
+              ],
+              "first_order": { "A": "Improves yield per patient.", "B": "Increases stress and wait times.", "C": "Disrupts hygiene stability." },
+              "second_order": "A builds operational leverage; B builds burnout; C builds internal conflict.",
+              "identity_signal": "A builds operational leverage; B builds burnout; C builds internal conflict."
+            },
+            {
+              "id": "L2_04",
+              "situation": "High-performing OM requests autonomy from regional reporting standards.",
+              "kpi_data": "Office EBITDA strong; Reporting compliance inconsistent",
+              "leadership_focus": "Autonomy vs. standardization balance",
+              "constraint": "Corporate requires unified reporting",
+              "stakeholder_map": "OM / Corporate / Regional Ops",
+              "options": [
+                { "id": "A", "label": "Maintain core reporting standards while allowing local execution flexibility." },
+                { "id": "B", "label": "Grant full autonomy without alignment." },
+                { "id": "C", "label": "Enforce strict uniformity without dialogue." }
+              ],
+              "first_order": { "A": "Maintains performance and alignment.", "B": "Creates system risk.", "C": "Reduces motivation." },
+              "second_order": "A balances freedom with governance; B fragments data integrity; C discourages initiative.",
+              "identity_signal": "A balances freedom with governance; B fragments data integrity; C discourages initiative."
+            },
+            {
+              "id": "L2_05",
+              "situation": "Doctor turnover risk increases in one office due to perceived lack of growth.",
+              "kpi_data": "Doctor engagement survey declining; Production stable",
+              "leadership_focus": "Retention and professional development",
+              "constraint": "Partnership track not immediately available",
+              "stakeholder_map": "Doctor / Partners / HR / Regional Director",
+              "options": [
+                { "id": "A", "label": "Create a structured development roadmap with defined milestones." },
+                { "id": "B", "label": "Promise future partnership informally." },
+                { "id": "C", "label": "Ignore concerns because production is stable." }
+              ],
+              "first_order": { "A": "Improves engagement and clarity.", "B": "Raises expectations without structure.", "C": "Risk of sudden departure increases." },
+              "second_order": "A builds leadership pipeline; B builds trust risk; C builds attrition instability.",
+              "identity_signal": "A builds leadership pipeline; B builds trust risk; C builds attrition instability."
+            },
+            {
+              "id": "L2_06",
+              "situation": "Regional AR is increasing despite stable production.",
+              "kpi_data": "AR Days: 48 → 67; Write-offs rising",
+              "leadership_focus": "Revenue cycle stabilization",
+              "constraint": "No additional RCM staff; insurance complexity increasing",
+              "stakeholder_map": "RCM / SSO / OMs / Finance",
+              "options": [
+                { "id": "A", "label": "Standardize AR escalation tiers and monthly AR review per office." },
+                { "id": "B", "label": "Increase collection pressure on front desk only." },
+                { "id": "C", "label": "Accept higher AR as industry trend." }
+              ],
+              "first_order": { "A": "Improves cashflow clarity.", "B": "Increases patient friction.", "C": "Cashflow strain continues." },
+              "second_order": "A builds financial discipline; B builds transactional culture; C weakens fiscal health.",
+              "identity_signal": "A builds financial discipline; B builds transactional culture; C weakens fiscal health."
+            },
+            {
+              "id": "L2_07",
+              "situation": "Regional morale varies widely between offices.",
+              "kpi_data": "Engagement survey range: 4.6 → 3.1 (5-point scale)",
+              "leadership_focus": "Culture consistency",
+              "constraint": "Limited in-person visits",
+              "stakeholder_map": "OMs / Clinical Leads / HR",
+              "options": [
+                { "id": "A", "label": "Define 3 regional culture standards and measure quarterly adherence." },
+                { "id": "B", "label": "Let each office define culture independently." },
+                { "id": "C", "label": "Focus only on production metrics." }
+              ],
+              "first_order": { "A": "Clarifies expectations.", "B": "Increases variability.", "C": "Maintains output but ignores morale." },
+              "second_order": "A builds unified identity; B fragments brand; C erodes retention.",
+              "identity_signal": "A builds unified identity; B fragments brand; C erodes retention."
+            },
+            {
+              "id": "L2_08",
+              "situation": "A compliance audit flagged documentation inconsistencies across multiple offices.",
+              "kpi_data": "Audit exceptions: 2 → 11",
+              "leadership_focus": "Risk containment",
+              "constraint": "Audit timeline fixed",
+              "stakeholder_map": "Doctors / OMs / Compliance / SSO",
+              "options": [
+                { "id": "A", "label": "Create a rapid corrective action plan with defined owner per office." },
+                { "id": "B", "label": "Downplay findings as minor." },
+                { "id": "C", "label": "Blame one office publicly." }
+              ],
+              "first_order": { "A": "Reduces regulatory exposure.", "B": "Risk persists.", "C": "Creates fear and defensiveness." },
+              "second_order": "A builds accountability; B builds complacency; C builds blame culture.",
+              "identity_signal": "A builds accountability; B builds complacency; C builds blame culture."
+            },
+            {
+              "id": "L2_09",
+              "situation": "Expansion opportunity arises for a new office, but current offices show minor instability.",
+              "kpi_data": "Regional EBITDA stable; Two offices below target margins",
+              "leadership_focus": "Growth vs. consolidation decision",
+              "constraint": "Capital limited; Partner approval required",
+              "stakeholder_map": "Partners / Finance / OMs / Doctors",
+              "options": [
+                { "id": "A", "label": "Stabilize underperforming offices before committing to expansion." },
+                { "id": "B", "label": "Pursue expansion aggressively." },
+                { "id": "C", "label": "Delay decision indefinitely." }
+              ],
+              "first_order": { "A": "Slows growth but strengthens base.", "B": "Accelerates growth but increases risk.", "C": "Misses opportunity window." },
+              "second_order": "A builds disciplined scaling; B builds volatility; C builds indecision culture.",
+              "identity_signal": "A builds disciplined scaling; B builds volatility; C builds indecision culture."
+            },
+            {
+              "id": "L2_10",
+              "situation": "Insurance payer mix shifts negatively affecting margins.",
+              "kpi_data": "Lower reimbursement payer share: +18%; Margin -6%",
+              "leadership_focus": "Strategic payer management",
+              "constraint": "Contracts locked for 12 months",
+              "stakeholder_map": "Finance / RCM / Doctors / Marketing",
+              "options": [
+                { "id": "A", "label": "Adjust scheduling mix and emphasize higher-yield procedures strategically." },
+                { "id": "B", "label": "Increase volume indiscriminately." },
+                { "id": "C", "label": "Accept margin erosion passively." }
+              ],
+              "first_order": { "A": "Protects margin within constraints.", "B": "Increases workload without margin gain.", "C": "Financial pressure increases." },
+              "second_order": "A builds strategic thinking; B builds fatigue; C weakens competitiveness.",
+              "identity_signal": "A builds strategic thinking; B builds fatigue; C weakens competitiveness."
+            },
+            {
+              "id": "L2_11",
+              "situation": "A strong OM candidate emerges from within one office.",
+              "kpi_data": "Team performance stable; Leadership gap anticipated",
+              "leadership_focus": "Succession planning",
+              "constraint": "Promotion creates temporary role gap",
+              "stakeholder_map": "OM Candidate / Regional Director / HR",
+              "options": [
+                { "id": "A", "label": "Create transitional shadow period before promotion." },
+                { "id": "B", "label": "Promote immediately without preparation." },
+                { "id": "C", "label": "Delay promotion to avoid disruption." }
+              ],
+              "first_order": { "A": "Reduces transition risk.", "B": "Creates learning shock.", "C": "Demotivates high performer." },
+              "second_order": "A builds internal pipeline; B builds instability; C builds stagnation.",
+              "identity_signal": "A builds internal pipeline; B builds instability; C builds stagnation."
+            },
+            {
+              "id": "L2_12",
+              "situation": "Regional review ratings decline in two offices despite stable production.",
+              "kpi_data": "Average rating: 4.6 → 4.1",
+              "leadership_focus": "Brand protection",
+              "constraint": "No additional marketing spend",
+              "stakeholder_map": "Front Desk / Doctors / OMs / Patients",
+              "options": [
+                { "id": "A", "label": "Audit patient journey and implement standardized service touchpoints." },
+                { "id": "B", "label": "Incentivize staff to request reviews aggressively." },
+                { "id": "C", "label": "Ignore ratings because revenue is stable." }
+              ],
+              "first_order": { "A": "Improves consistency.", "B": "Short-term bump but ethical risk.", "C": "Brand erosion continues." },
+              "second_order": "A builds reputation discipline; B builds transactional culture; C weakens market position.",
+              "identity_signal": "A builds reputation discipline; B builds transactional culture; C weakens market position."
+            },
+            {
+              "id": "L2_13",
+              "situation": "Doctors request more autonomy in clinical decision-making beyond regional guidelines.",
+              "kpi_data": "Compliance deviation reports increasing",
+              "leadership_focus": "Clinical governance balance",
+              "constraint": "Liability risk and compliance standards",
+              "stakeholder_map": "Doctors / Compliance / Partners",
+              "options": [
+                { "id": "A", "label": "Clarify non-negotiable standards while allowing clinical discretion within boundaries." },
+                { "id": "B", "label": "Remove guidelines entirely." },
+                { "id": "C", "label": "Enforce rigid compliance without discussion." }
+              ],
+              "first_order": { "A": "Maintains safety and autonomy balance.", "B": "Increases liability risk.", "C": "Reduces morale." },
+              "second_order": "A builds mature autonomy; B builds inconsistency; C builds resistance.",
+              "identity_signal": "A builds mature autonomy; B builds inconsistency; C builds resistance."
+            },
+            {
+              "id": "L2_14",
+              "situation": "Regional meeting participation is low and strategic discussions are shallow.",
+              "kpi_data": "Meeting engagement scores declining",
+              "leadership_focus": "Strategic thinking activation",
+              "constraint": "Limited meeting time",
+              "stakeholder_map": "OMs / Clinical Leads / Regional Director",
+              "options": [
+                { "id": "A", "label": "Shift agenda to include data-driven problem-solving segments." },
+                { "id": "B", "label": "Extend meeting length." },
+                { "id": "C", "label": "Keep meetings informational only." }
+              ],
+              "first_order": { "A": "Increases engagement.", "B": "Increases fatigue.", "C": "Maintains passivity." },
+              "second_order": "A builds analytical leadership; B builds meeting fatigue; C builds passive culture.",
+              "identity_signal": "A builds analytical leadership; B builds meeting fatigue; C builds passive culture."
+            },
+            {
+              "id": "L2_15",
+              "situation": "Partner group questions regional cost structure due to rising operational expenses.",
+              "kpi_data": "Operating expense ratio: +4% YoY",
+              "leadership_focus": "Financial transparency and optimization",
+              "constraint": "Some costs fixed; inflation pressure",
+              "stakeholder_map": "Partners / Finance / OMs",
+              "options": [
+                { "id": "A", "label": "Break down cost drivers and identify 2–3 controllable expense levers." },
+                { "id": "B", "label": "Defend expenses emotionally." },
+                { "id": "C", "label": "Cut costs broadly without analysis." }
+              ],
+              "first_order": { "A": "Improves credibility and targeted control.", "B": "Increases distrust.", "C": "Disrupts operations." },
+              "second_order": "A builds financial maturity; B builds conflict; C builds instability.",
+              "identity_signal": "A builds financial maturity; B builds conflict; C builds instability."
+            }
+          ]
+        },
+        {
+          "level": "L3",
+          "title": "Advanced Leader",
+          "title_ko": "리더 고급",
+          "structure": [
+            "situation",
+            "multi_constraint",
+            "stakeholder_power_map",
+            "options",
+            "first_order",
+            "second_order",
+            "identity_signal"
+          ],
+          "min_tenure_months": 120,
+          "tenure_basis": "leaderStartedAt",
+          "human_model": {
+            "stage_name": "Identity Definition",
+            "core_training_focus": "Long-horizon institutional direction",
+            "primary_shift": "Operational thinking → Identity thinking",
+            "risk_pattern": ["Reactive strategy", "Competitive imitation", "Profit-only framing"],
+            "maturity_marker": "Evaluates decisions by 3–5 year identity impact",
+            "power_posture": "Defines direction before action"
+          },
+          "items": [
+            {
+              "id": "L3_01",
+              "title": "글로벌 SSO 구조 재설계",
+              "situation": "멀티 오피스 확장으로 SSO 의존도가 70% 이상이 되었고, 속도·문화·통제 이슈가 동시에 발생.",
+              "multi_constraint": "계약 2년 잔여 / 비용 상승 압박 / 확장 계획 진행 중",
+              "stakeholder_power_map": "Managing Partner(전략) / SSO 리드(운영권) / OM들(현장 영향력) / 투자자(재무)",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "중앙 거버넌스 위원회 신설"
+                },
+                {
+                  "id": "B",
+                  "label": "일부 기능 미국 환원"
+                },
+                {
+                  "id": "C",
+                  "label": "SSO 리더십 교체"
+                },
+                {
+                  "id": "D",
+                  "label": "현 체계 유지"
+                }
+              ],
+              "first_order": "A 구조 논의 시작 / B 비용 증가 / C 단기 혼란 / D 안정 유지",
+              "second_order": "A 글로벌 통합 강화 / B 이중 구조 고착 / C 신뢰 붕괴 위험 / D 장기 통제력 약화",
+              "identity_signal": "우리는 글로벌 시스템을 키우는가, 통제권을 되찾는가?"
+            },
+            {
+              "id": "L3_02",
+              "title": "확장 속도 vs 조직 역량",
+              "situation": "향후 12개월 내 3개 오피스 추가 인수 제안.",
+              "multi_constraint": "현 EBITDA 안정적이나 리더 파이프라인 부족",
+              "stakeholder_power_map": "파트너(공격적 확장) / Regional Leads(과부하) / 투자자(ROI 기대)",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "인수 속도 유지 + 리더 육성 병행"
+                },
+                {
+                  "id": "B",
+                  "label": "인수 지연 후 내부 역량 강화"
+                },
+                {
+                  "id": "C",
+                  "label": "JV(공동투자) 방식 전환"
+                }
+              ],
+              "first_order": "A 성장 가속 / B 기회 손실 가능 / C 지분 희석",
+              "second_order": "A 리더십 분산 위험 / B 지속 가능 성장 / C 의사결정 복잡화",
+              "identity_signal": "우리는 속도를 우선하는가, 구조를 우선하는가?"
+            },
+            {
+              "id": "L3_03",
+              "title": "EBITDA vs 문화 투자",
+              "situation": "마진 개선 압박 속에서 교육·리더십 프로그램 예산 축소 논의.",
+              "multi_constraint": "EBITDA 목표 +3% 요구 / 이직률 상승 조짐",
+              "stakeholder_power_map": "투자자(수익) / HR·리더십팀(문화) / OM(현장 부담)",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "교육 예산 유지"
+                },
+                {
+                  "id": "B",
+                  "label": "일부 축소"
+                },
+                {
+                  "id": "C",
+                  "label": "전면 축소"
+                }
+              ],
+              "first_order": "A 단기 마진 압박 / B 균형 / C 단기 숫자 개선",
+              "second_order": "A 장기 안정 / B 중간 리스크 / C 이직·번아웃 증가",
+              "identity_signal": "우리는 문화를 비용으로 보는가, 자산으로 보는가?"
+            },
+            {
+              "id": "L3_04",
+              "title": "보험 네트워크 전략 전환",
+              "situation": "저마진 보험 네트워크 탈퇴 여부 최종 결정 단계.",
+              "multi_constraint": "환자 30% 영향 / 단기 매출 감소 가능",
+              "stakeholder_power_map": "파트너(마진) / OM(환자 이탈 우려) / 환자(가격 민감)",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "단계적 탈퇴"
+                },
+                {
+                  "id": "B",
+                  "label": "즉시 탈퇴"
+                },
+                {
+                  "id": "C",
+                  "label": "유지 후 내부 효율화"
+                }
+              ],
+              "first_order": "A 충격 완화 / B 마진 개선 가속 / C 마진 압박 지속",
+              "second_order": "A 브랜드 포지셔닝 재정의 / B 볼륨 급감 위험 / C 구조 개선 압박",
+              "identity_signal": "우리는 볼륨 조직인가, 프리미엄 조직인가?"
+            },
+            {
+              "id": "L3_05",
+              "title": "Regional KPI 투명성 정책",
+              "situation": "모든 오피스 KPI를 그룹 전체에 공개할지 결정.",
+              "multi_constraint": "성과 편차 2배 이상 / 일부 OM 반발",
+              "stakeholder_power_map": "Managing Partner / OM들 / 투자자",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "전면 공개"
+                },
+                {
+                  "id": "B",
+                  "label": "상·하위만 공개"
+                },
+                {
+                  "id": "C",
+                  "label": "비공개 유지"
+                }
+              ],
+              "first_order": "A 압박 증가 / B 통제된 압박 / C 안정 유지",
+              "second_order": "A 경쟁·성과 문화 / B 관리형 경쟁 / C 개선 둔화",
+              "identity_signal": "우리는 투명성을 전략으로 쓰는가?"
+            },
+            {
+              "id": "L3_06",
+              "title": "AI 자동화 전면 도입",
+              "situation": "콜·스케줄·AR 자동화 AI 시스템 전면 도입 제안.",
+              "multi_constraint": "인건비 10% 절감 예상 / 직원 불안 증가",
+              "stakeholder_power_map": "파트너(비용) / OM(운영) / Staff(직무 안정성)",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "2개 오피스 파일럿"
+                },
+                {
+                  "id": "B",
+                  "label": "전면 도입"
+                },
+                {
+                  "id": "C",
+                  "label": "보류"
+                }
+              ],
+              "first_order": "A 리스크 제한 / B 비용 절감 가속 / C 기회 지연",
+              "second_order": "A 실험 문화 / B 조직 충격 / C 보수적 이미지 강화",
+              "identity_signal": "우리는 실험하는 조직인가, 안전을 택하는가?"
+            },
+            {
+              "id": "L3_07",
+              "title": "고마진 케이스 집중 전략",
+              "situation": "Implant·Ortho 비중 확대 전략 전환 논의.",
+              "multi_constraint": "현재 고마진 비중 15% / 목표 30%",
+              "stakeholder_power_map": "닥터(임상 역량) / 마케팅 / 파트너",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "내부 교육 투자"
+                },
+                {
+                  "id": "B",
+                  "label": "외부 Specialist 영입"
+                },
+                {
+                  "id": "C",
+                  "label": "Referral 확대"
+                }
+              ],
+              "first_order": "A 역량 강화 / B 비용 증가 / C 통제력 감소",
+              "second_order": "A 전문성 브랜드 강화 / B 비용 구조 상승 / C 네트워크 의존 증가",
+              "identity_signal": "우리는 역량을 키우는가, 외부에 의존하는가?"
+            },
+            {
+              "id": "L3_08",
+              "title": "멀티 오피스 통합 vs 자율 운영",
+              "situation": "각 오피스 운영 방식이 달라 통합 필요성 제기.",
+              "multi_constraint": "비용 편차 18% 발생",
+              "stakeholder_power_map": "Regional Lead / OM / 파트너",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "중앙 표준화 강화"
+                },
+                {
+                  "id": "B",
+                  "label": "자율 운영 유지"
+                },
+                {
+                  "id": "C",
+                  "label": "핵심 KPI만 통합"
+                }
+              ],
+              "first_order": "A 효율 증가 / B 편차 지속 / C 절충안",
+              "second_order": "A 규모의 경제 강화 / B 창의성 유지 / C 복잡성 증가",
+              "identity_signal": "우리는 통합으로 가는가, 분권으로 가는가?"
+            },
+            {
+              "id": "L3_09",
+              "title": "투자자 배당 vs 재투자",
+              "situation": "배당 확대 요구 vs 내부 재투자 필요성 충돌.",
+              "multi_constraint": "현금흐름 안정 / 확장 기회 존재",
+              "stakeholder_power_map": "투자자 / 파트너 / 리더십팀",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "배당 확대"
+                },
+                {
+                  "id": "B",
+                  "label": "재투자 우선"
+                },
+                {
+                  "id": "C",
+                  "label": "일부 배당+재투자"
+                }
+              ],
+              "first_order": "A 투자자 만족 / B 성장 가속 / C 균형",
+              "second_order": "A 단기 신뢰 / B 장기 성장 / C 복합 구조",
+              "identity_signal": "우리는 단기 수익 조직인가, 성장 조직인가?"
+            },
+            {
+              "id": "L3_10",
+              "title": "리더십 파이프라인 부재",
+              "situation": "Regional·OM 후계자 부족.",
+              "multi_constraint": "확장 계획 지속 중",
+              "stakeholder_power_map": "Managing Partner / HR / OM",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "리더십 아카데미 도입"
+                },
+                {
+                  "id": "B",
+                  "label": "외부 리더 영입"
+                },
+                {
+                  "id": "C",
+                  "label": "현 체계 유지"
+                }
+              ],
+              "first_order": "A 내부 승계 강화 / B 외부 시각 도입 / C 공백 위험",
+              "second_order": "A 지속 가능 구조 / B 문화 충돌 가능 / C 성장 제약",
+              "identity_signal": "우리는 리더를 내부에서 키우는가?"
+            },
+            {
+              "id": "L3_11",
+              "title": "브랜드 통합 전략",
+              "situation": "오피스별 브랜드를 단일 브랜드로 통합할지 논의.",
+              "multi_constraint": "마케팅 비용 15% 중복",
+              "stakeholder_power_map": "마케팅팀 / OM / 환자",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "단일 브랜드 전환"
+                },
+                {
+                  "id": "B",
+                  "label": "개별 브랜드 유지"
+                },
+                {
+                  "id": "C",
+                  "label": "하이브리드"
+                }
+              ],
+              "first_order": "A 효율성↑ / B 지역 정체성 유지 / C 복잡성 증가",
+              "second_order": "A 규모 효과 / B 자율성 유지 / C 브랜드 혼선 가능",
+              "identity_signal": "우리는 하나의 브랜드인가, 연합체인가?"
+            },
+            {
+              "id": "L3_12",
+              "title": "SSO 계약 재구조화",
+              "situation": "SSO 계약 갱신 시 성과 기반 보상 체계 도입 논의.",
+              "multi_constraint": "오류율 업계 평균 이하 / 비용 상승 압박",
+              "stakeholder_power_map": "SSO 리드 / 파트너 / RCM",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "성과 KPI 연동 계약"
+                },
+                {
+                  "id": "B",
+                  "label": "고정 계약 유지"
+                },
+                {
+                  "id": "C",
+                  "label": "일부 기능 환원"
+                }
+              ],
+              "first_order": "A 인센티브 정렬 / B 안정 유지 / C 비용 상승",
+              "second_order": "A 거버넌스 강화 / B 정체 / C 복잡성 증가",
+              "identity_signal": "우리는 성과 기반 파트너십을 설계하는가?"
+            },
+            {
+              "id": "L3_13",
+              "title": "위기 상황 대응 구조",
+              "situation": "소셜 미디어 이슈로 브랜드 리스크 발생.",
+              "multi_constraint": "리뷰 급락 4.7→4.2",
+              "stakeholder_power_map": "마케팅 / OM / 파트너 / 법무",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "중앙 위기 대응 팀 가동"
+                },
+                {
+                  "id": "B",
+                  "label": "오피스별 자율 대응"
+                },
+                {
+                  "id": "C",
+                  "label": "무대응"
+                }
+              ],
+              "first_order": "A 통일 메시지 / B 편차 / C 리스크 확대",
+              "second_order": "A 브랜드 보호 / B 혼선 / C 장기 손실",
+              "identity_signal": "우리는 위기에 중앙집중으로 대응하는가?"
+            },
+            {
+              "id": "L3_14",
+              "title": "가격 전략 전환",
+              "situation": "경쟁 심화로 가격 인하 압박.",
+              "multi_constraint": "환자 문의 증가 / 마진 감소 우려",
+              "stakeholder_power_map": "파트너 / OM / 환자",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "가격 인하"
+                },
+                {
+                  "id": "B",
+                  "label": "가치 기반 커뮤니케이션 강화"
+                },
+                {
+                  "id": "C",
+                  "label": "서비스 축소"
+                }
+              ],
+              "first_order": "A 볼륨 증가 가능 / B 마진 유지 / C 경험 저하",
+              "second_order": "A 가격 경쟁 조직 / B 가치 중심 조직 / C 품질 하락 위험",
+              "identity_signal": "우리는 가격으로 경쟁하는가, 가치로 경쟁하는가?"
+            },
+            {
+              "id": "L3_15",
+              "title": "조직 정체성 선언",
+              "situation": "확장·AI·보험 전략 등 방향성이 분산되어 내부 혼란.",
+              "multi_constraint": "KPI는 안정적이나 팀 혼선 존재",
+              "stakeholder_power_map": "Managing Partner / 전 리더십",
+              "options": [
+                {
+                  "id": "A",
+                  "label": "3년 전략 로드맵 공개"
+                },
+                {
+                  "id": "B",
+                  "label": "내부 워크숍 후 단계 발표"
+                },
+                {
+                  "id": "C",
+                  "label": "현 상태 유지"
+                }
+              ],
+              "first_order": "A 방향성 명확 / B 참여도 상승 / C 혼선 지속",
+              "second_order": "A 정체성 강화 / B 내부 합의 강화 / C 방향성 약화",
+              "identity_signal": "우리는 어떤 조직이 되려고 하는가?"
+            }
+          ],
+          "items_en": [
+            {
+              "id": "L3_01",
+              "strategic_context": "The group has expanded to 17 offices across multiple states. Operational variance between offices is widening.",
+              "core_tension": "Standardization vs. local autonomy",
+              "decision_frame": "How tightly should operations be centralized?",
+              "stakeholder_map": "Partners / Regional Leaders / Office Managers / Doctors",
+              "options": [
+                { "id": "A", "label": "Implement unified SOP across all offices." },
+                { "id": "B", "label": "Allow local autonomy within broad performance targets." },
+                { "id": "C", "label": "Adopt hybrid governance: non-negotiable core + flexible layers." }
+              ],
+              "3_year_projection": { "A": "Operational consistency improves, local innovation slows.", "B": "Innovation increases, variability risk grows.", "C": "Balanced alignment with controlled flexibility." },
+              "identity_implication": "Corporate platform vs. federated professional network."
+            },
+            {
+              "id": "L3_02",
+              "strategic_context": "Insurance reimbursement compression continues industry-wide.",
+              "core_tension": "Volume-driven scale vs. margin discipline",
+              "decision_frame": "What is the primary competitive advantage?",
+              "stakeholder_map": "Finance / Doctors / RCM / Marketing",
+              "options": [
+                { "id": "A", "label": "Scale aggressively to offset margin compression." },
+                { "id": "B", "label": "Shift payer mix strategically." },
+                { "id": "C", "label": "Invest in premium positioning and reduce insurance dependence." }
+              ],
+              "3_year_projection": { "A": "Higher operational complexity.", "B": "Margin stabilized but patient mix shifts.", "C": "Brand differentiation increases but transition risk high." },
+              "identity_implication": "Commodity provider vs. differentiated institution."
+            },
+            {
+              "id": "L3_03",
+              "strategic_context": "Internal leadership pipeline is shallow beyond L1.",
+              "core_tension": "Hire external executives vs. grow internal leaders",
+              "decision_frame": "What builds long-term institutional strength?",
+              "stakeholder_map": "Partners / HR / Regional Directors",
+              "options": [
+                { "id": "A", "label": "Recruit experienced external operators." },
+                { "id": "B", "label": "Invest heavily in internal leadership academy." },
+                { "id": "C", "label": "Blend external and internal tracks." }
+              ],
+              "3_year_projection": { "A": "Professionalization increases quickly.", "B": "Stronger cultural alignment but slower ramp.", "C": "Balanced but complex integration." },
+              "identity_implication": "Professionalized DSO vs. leadership-built institution."
+            },
+            {
+              "id": "L3_04",
+              "strategic_context": "Technology investments are increasing across competitors.",
+              "core_tension": "Operational efficiency vs. cultural shock",
+              "decision_frame": "How aggressively should innovation be adopted?",
+              "stakeholder_map": "IT / Doctors / Admin / Partners",
+              "options": [
+                { "id": "A", "label": "Adopt cutting-edge tools aggressively." },
+                { "id": "B", "label": "Implement phased pilot programs." },
+                { "id": "C", "label": "Delay adoption until proven industry standard." }
+              ],
+              "3_year_projection": { "A": "Efficiency gains, disruption risk.", "B": "Measured improvement.", "C": "Stability preserved, competitive lag risk." },
+              "identity_implication": "Innovation leader vs. risk-averse operator."
+            },
+            {
+              "id": "L3_05",
+              "strategic_context": "Partner income disparity widening due to production variance.",
+              "core_tension": "Equal distribution vs. performance weighting",
+              "decision_frame": "What principle defines partnership?",
+              "stakeholder_map": "Partners / Finance",
+              "options": [
+                { "id": "A", "label": "Introduce performance-based distribution." },
+                { "id": "B", "label": "Maintain equal partner split." },
+                { "id": "C", "label": "Hybrid base + performance incentive." }
+              ],
+              "3_year_projection": { "A": "Performance sharpened, cohesion risk.", "B": "Cohesion maintained, motivation variance.", "C": "Balanced incentive alignment." },
+              "identity_implication": "Meritocracy vs. egalitarian partnership."
+            },
+            {
+              "id": "L3_06",
+              "strategic_context": "Brand identity varies significantly between regions.",
+              "core_tension": "Unified brand vs. localized branding",
+              "decision_frame": "Is brand centralized or community-adapted?",
+              "stakeholder_map": "Marketing / OMs / Patients",
+              "options": [
+                { "id": "A", "label": "Central brand enforcement." },
+                { "id": "B", "label": "Regional branding flexibility." },
+                { "id": "C", "label": "Core brand + regional overlays." }
+              ],
+              "3_year_projection": { "A": "Stronger brand recognition.", "B": "Community resonance increases.", "C": "Hybrid coherence." },
+              "identity_implication": "National institution vs. regional network."
+            },
+            {
+              "id": "L3_07",
+              "strategic_context": "Expansion pace exceeds leadership bench strength.",
+              "core_tension": "Growth speed vs. internal maturity",
+              "decision_frame": "Should growth slow temporarily?",
+              "stakeholder_map": "Partners / Finance / Regional Directors",
+              "options": [
+                { "id": "A", "label": "Pause acquisitions for leadership build." },
+                { "id": "B", "label": "Continue acquisitions aggressively." },
+                { "id": "C", "label": "Selective expansion only in stable regions." }
+              ],
+              "3_year_projection": { "A": "Cultural consolidation.", "B": "Scale achieved but strain increases.", "C": "Moderated growth trajectory." },
+              "identity_implication": "Disciplined builder vs. momentum-driven scaler."
+            },
+            {
+              "id": "L3_08",
+              "strategic_context": "Doctor retention varies significantly by region.",
+              "core_tension": "Financial incentives vs. cultural alignment",
+              "decision_frame": "What retains top clinical talent?",
+              "stakeholder_map": "Doctors / HR / Partners",
+              "options": [
+                { "id": "A", "label": "Increase compensation incentives." },
+                { "id": "B", "label": "Invest in mentorship and autonomy." },
+                { "id": "C", "label": "Create partnership track clarity." }
+              ],
+              "3_year_projection": { "A": "Short-term retention bump.", "B": "Cultural loyalty increases.", "C": "Pipeline stability grows." },
+              "identity_implication": "Transaction-based vs. mission-aligned organization."
+            },
+            {
+              "id": "L3_09",
+              "strategic_context": "Regional profitability diverges widely.",
+              "core_tension": "Cross-subsidization vs. performance accountability",
+              "decision_frame": "Should stronger offices support weaker ones?",
+              "stakeholder_map": "Regional Directors / Finance / Partners",
+              "options": [
+                { "id": "A", "label": "Cross-subsidize temporarily." },
+                { "id": "B", "label": "Hold each region accountable independently." },
+                { "id": "C", "label": "Provide limited turnaround support window." }
+              ],
+              "3_year_projection": { "A": "Solidarity maintained, incentive distortion risk.", "B": "Performance sharpened, morale risk.", "C": "Structured intervention culture." },
+              "identity_implication": "Collective safety net vs. performance meritocracy."
+            },
+            {
+              "id": "L3_10",
+              "strategic_context": "Capital reserves high; reinvestment options debated.",
+              "core_tension": "Reinvest in growth vs. increase partner distributions",
+              "decision_frame": "Short-term reward vs. long-term compounding",
+              "stakeholder_map": "Partners / Finance",
+              "options": [
+                { "id": "A", "label": "Reinvest into expansion and infrastructure." },
+                { "id": "B", "label": "Increase partner payouts." },
+                { "id": "C", "label": "Split capital between both." }
+              ],
+              "3_year_projection": { "A": "Higher valuation trajectory.", "B": "Short-term partner satisfaction.", "C": "Moderate growth." },
+              "identity_implication": "Growth engine vs. income vehicle."
+            },
+            {
+              "id": "L3_11",
+              "strategic_context": "Central office considering moving more functions to offshore SSO.",
+              "core_tension": "Cost efficiency vs. operational control",
+              "decision_frame": "How centralized should support functions be?",
+              "stakeholder_map": "SSO / Admin / Partners",
+              "options": [
+                { "id": "A", "label": "Aggressively offshore." },
+                { "id": "B", "label": "Maintain hybrid model." },
+                { "id": "C", "label": "Keep core functions local." }
+              ],
+              "3_year_projection": { "A": "Cost reduction, coordination risk.", "B": "Balanced cost/control.", "C": "Higher cost, tighter control." },
+              "identity_implication": "Global efficiency platform vs. locally controlled network."
+            },
+            {
+              "id": "L3_12",
+              "strategic_context": "Internal communication becoming increasingly formalized.",
+              "core_tension": "Structure vs. relational culture",
+              "decision_frame": "Does governance formalization strengthen or weaken culture?",
+              "stakeholder_map": "Partners / Leaders / Staff",
+              "options": [
+                { "id": "A", "label": "Formalize reporting and escalation protocols." },
+                { "id": "B", "label": "Maintain relational communication style." },
+                { "id": "C", "label": "Formalize at leadership level only." }
+              ],
+              "3_year_projection": { "A": "Clarity improves, warmth declines.", "B": "Culture warm, accountability ambiguous.", "C": "Balanced governance layer." },
+              "identity_implication": "Institutional bureaucracy vs. relational professional community."
+            },
+            {
+              "id": "L3_13",
+              "strategic_context": "Competing DSOs entering the region aggressively.",
+              "core_tension": "Defensive positioning vs. strategic differentiation",
+              "decision_frame": "How should the group respond?",
+              "stakeholder_map": "Marketing / Partners / Finance",
+              "options": [
+                { "id": "A", "label": "Match competitor expansion speed." },
+                { "id": "B", "label": "Differentiate through culture and clinical excellence." },
+                { "id": "C", "label": "Acquire selectively." }
+              ],
+              "3_year_projection": { "A": "Competitive parity.", "B": "Stronger brand identity.", "C": "Selective dominance." },
+              "identity_implication": "Reactive competitor vs. principle-driven institution."
+            },
+            {
+              "id": "L3_14",
+              "strategic_context": "Partnership entry criteria unclear across offices.",
+              "core_tension": "Strict criteria vs. flexible inclusion",
+              "decision_frame": "What defines partnership eligibility?",
+              "stakeholder_map": "Doctors / Partners / HR",
+              "options": [
+                { "id": "A", "label": "Define strict measurable criteria." },
+                { "id": "B", "label": "Allow discretionary admission." },
+                { "id": "C", "label": "Define tiered partnership levels." }
+              ],
+              "3_year_projection": { "A": "Clarity increases, access narrows.", "B": "Flexibility increases, fairness questioned.", "C": "Structured progression model." },
+              "identity_implication": "Meritocratic gatekeeping vs. relational inclusion."
+            },
+            {
+              "id": "L3_15",
+              "strategic_context": "Long-term mission being re-evaluated as organization matures.",
+              "core_tension": "Profit maximization vs. institutional legacy",
+              "decision_frame": "What is the ultimate purpose of the organization?",
+              "stakeholder_map": "Partners / Employees / Patients / Community",
+              "options": [
+                { "id": "A", "label": "Define mission around financial leadership." },
+                { "id": "B", "label": "Define mission around community and long-term legacy." },
+                { "id": "C", "label": "Adopt dual fiduciary philosophy." }
+              ],
+              "3_year_projection": { "A": "Clear financial alignment.", "B": "Stronger community resonance.", "C": "Balanced but complex governance." },
+              "identity_implication": "Shareholder-first enterprise vs. institutional legacy platform."
+            }
+          ],
+          "items_ko": [
+            {
+              "id": "L3K_01",
+              "전략적_상황": "17개 지점으로 확장되면서 지점 간 운영 편차가 커지고 있다.",
+              "핵심_긴장": "표준화 vs 지점 자율성",
+              "결정_프레임": "어디까지 중앙 통제해야 하는가?",
+              "이해관계자": "파트너 / 리전 리더 / OM / 의사",
+              "선택지": [
+                { "id": "A", "label": "전 지점 통합 SOP 강제 적용" },
+                { "id": "B", "label": "성과 기준만 두고 자율 운영 허용" },
+                { "id": "C", "label": "핵심 프로세스만 중앙 통제" }
+              ],
+              "3년_전망": { "A": "일관성 상승, 혁신 둔화", "B": "창의성 증가, 편차 확대", "C": "통제와 자율의 균형" },
+              "정체성_의미": "기업형 플랫폼 vs 연합형 네트워크"
+            },
+            {
+              "id": "L3K_02",
+              "전략적_상황": "보험 수가 압박 지속",
+              "핵심_긴장": "볼륨 확장 vs 마진 전략",
+              "결정_프레임": "우리의 경쟁 우위는 무엇인가?",
+              "이해관계자": "재무 / 마케팅 / 임상팀",
+              "선택지": [
+                { "id": "A", "label": "지점 수 확대" },
+                { "id": "B", "label": "보험 믹스 조정" },
+                { "id": "C", "label": "프리미엄 포지셔닝 강화" }
+              ],
+              "3년_전망": { "A": "규모는 커지나 복잡성 증가", "B": "마진 안정", "C": "브랜드 차별화" },
+              "정체성_의미": "범용 진료 기관 vs 차별화된 전문 기관"
+            },
+            {
+              "id": "L3K_03",
+              "전략적_상황": "리더 파이프라인 부족",
+              "핵심_긴장": "외부 영입 vs 내부 육성",
+              "결정_프레임": "장기적으로 무엇이 더 강한가?",
+              "이해관계자": "HR / 파트너 / 리전 리더",
+              "선택지": [
+                { "id": "A", "label": "외부 경영진 채용" },
+                { "id": "B", "label": "내부 리더십 아카데미 설립" },
+                { "id": "C", "label": "혼합 모델" }
+              ],
+              "3년_전망": { "A": "전문화 가속", "B": "문화 일관성 강화", "C": "통합 난이도 상승" },
+              "정체성_의미": "전문 경영형 DSO vs 리더 육성형 기관"
+            },
+            {
+              "id": "L3K_04",
+              "전략적_상황": "AI 및 자동화 투자 압박 증가",
+              "핵심_긴장": "효율성 vs 조직 충격",
+              "결정_프레임": "혁신 속도는 어느 정도인가?",
+              "이해관계자": "IT / 행정 / 파트너",
+              "선택지": [
+                { "id": "A", "label": "전면 도입" },
+                { "id": "B", "label": "파일럿 운영" },
+                { "id": "C", "label": "후발 적용" }
+              ],
+              "3년_전망": { "A": "효율 향상, 내부 저항", "B": "점진적 개선", "C": "안정 유지, 경쟁 열세 가능" },
+              "정체성_의미": "기술 선도 조직 vs 안정 지향 조직"
+            },
+            {
+              "id": "L3K_05",
+              "전략적_상황": "파트너 간 수익 격차 확대",
+              "핵심_긴장": "성과 중심 배분 vs 균등 배분",
+              "결정_프레임": "파트너십의 정의는 무엇인가?",
+              "이해관계자": "파트너 / 재무",
+              "선택지": [
+                { "id": "A", "label": "성과 기반 배분" },
+                { "id": "B", "label": "균등 배분 유지" },
+                { "id": "C", "label": "기본 배분 + 인센티브" }
+              ],
+              "3년_전망": { "A": "성과 경쟁 강화", "B": "응집력 유지", "C": "균형 모델" },
+              "정체성_의미": "성과주의 vs 동등주의"
+            },
+            {
+              "id": "L3K_06",
+              "전략적_상황": "리전별 브랜드 이미지 상이",
+              "핵심_긴장": "단일 브랜드 vs 지역 적응",
+              "결정_프레임": "브랜드 통제 범위 설정",
+              "이해관계자": "마케팅 / OM",
+              "선택지": [
+                { "id": "A", "label": "완전 통합 브랜드" },
+                { "id": "B", "label": "지역별 차별화" },
+                { "id": "C", "label": "핵심 브랜드 + 지역 커스터마이징" }
+              ],
+              "3년_전망": { "A": "브랜드 통일성 강화", "B": "지역 친밀도 상승", "C": "부분 통합" },
+              "정체성_의미": "전국 단일 기관 vs 지역 연합체"
+            },
+            {
+              "id": "L3K_07",
+              "전략적_상황": "확장 속도가 내부 역량을 초과",
+              "핵심_긴장": "성장 속도 vs 조직 성숙도",
+              "결정_프레임": "일시적 확장 중단 여부",
+              "이해관계자": "파트너 / 재무",
+              "선택지": [
+                { "id": "A", "label": "확장 일시 중단" },
+                { "id": "B", "label": "확장 지속" },
+                { "id": "C", "label": "선별적 확장" }
+              ],
+              "3년_전망": { "A": "내부 정비 강화", "B": "외형 성장 유지", "C": "관리 가능한 성장" },
+              "정체성_의미": "단단한 빌더 vs 속도 중심 스케일러"
+            },
+            {
+              "id": "L3K_08",
+              "전략적_상황": "의사 이직률 지역 편차",
+              "핵심_긴장": "금전 보상 vs 사명 기반 유대",
+              "결정_프레임": "우리는 무엇으로 의사를 붙잡는가?",
+              "이해관계자": "의사 / HR",
+              "선택지": [
+                { "id": "A", "label": "보상 강화" },
+                { "id": "B", "label": "멘토링 강화" },
+                { "id": "C", "label": "파트너십 경로 명확화" }
+              ],
+              "3년_전망": { "A": "단기 안정", "B": "문화 충성도 상승", "C": "리더 파이프라인 강화" },
+              "정체성_의미": "거래 중심 조직 vs 사명 중심 조직"
+            },
+            {
+              "id": "L3K_09",
+              "전략적_상황": "지역별 수익성 격차 확대",
+              "핵심_긴장": "교차 보조 vs 성과 독립",
+              "결정_프레임": "강한 지점이 약한 지점을 지원해야 하는가?",
+              "이해관계자": "리전 리더 / 재무",
+              "선택지": [
+                { "id": "A", "label": "일시적 교차 보조" },
+                { "id": "B", "label": "독립 책임 구조" },
+                { "id": "C", "label": "회복 기한 부여" }
+              ],
+              "3년_전망": { "A": "연대 유지", "B": "성과 책임 강화", "C": "구조적 개선 문화" },
+              "정체성_의미": "공동체 모델 vs 성과 모델"
+            },
+            {
+              "id": "L3K_10",
+              "전략적_상황": "잉여 자본 축적",
+              "핵심_긴장": "재투자 vs 배당 확대",
+              "결정_프레임": "장기 가치 vs 단기 보상",
+              "이해관계자": "파트너 / 재무",
+              "선택지": [
+                { "id": "A", "label": "확장 재투자" },
+                { "id": "B", "label": "배당 확대" },
+                { "id": "C", "label": "부분 재투자" }
+              ],
+              "3년_전망": { "A": "밸류 상승", "B": "파트너 만족 상승", "C": "중간 성장" },
+              "정체성_의미": "성장 엔진 vs 소득 배분 구조"
+            },
+            {
+              "id": "L3K_11",
+              "전략적_상황": "SSO 해외 이전 확대 논의",
+              "핵심_긴장": "비용 효율 vs 통제력",
+              "결정_프레임": "얼마나 해외화할 것인가?",
+              "이해관계자": "행정 / 파트너",
+              "선택지": [
+                { "id": "A", "label": "공격적 해외 이전" },
+                { "id": "B", "label": "하이브리드 유지" },
+                { "id": "C", "label": "핵심 기능 국내 유지" }
+              ],
+              "3년_전망": { "A": "비용 절감", "B": "균형 유지", "C": "통제 강화" },
+              "정체성_의미": "글로벌 플랫폼 vs 로컬 통제형"
+            },
+            {
+              "id": "L3K_12",
+              "전략적_상황": "보고 체계 점점 형식화",
+              "핵심_긴장": "제도화 vs 관계 중심 문화",
+              "결정_프레임": "조직은 얼마나 제도화되어야 하는가?",
+              "이해관계자": "리더 / 직원",
+              "선택지": [
+                { "id": "A", "label": "보고 체계 강화" },
+                { "id": "B", "label": "관계 중심 유지" },
+                { "id": "C", "label": "리더 레벨만 제도화" }
+              ],
+              "3년_전망": { "A": "책임 명확", "B": "문화 따뜻함 유지", "C": "부분 통제" },
+              "정체성_의미": "제도 기관 vs 공동체 조직"
+            },
+            {
+              "id": "L3K_13",
+              "전략적_상황": "경쟁 DSO 지역 진입",
+              "핵심_긴장": "방어적 대응 vs 차별화 전략",
+              "결정_프레임": "우리는 반응하는가, 정의하는가?",
+              "이해관계자": "마케팅 / 파트너",
+              "선택지": [
+                { "id": "A", "label": "확장 속도 맞춤" },
+                { "id": "B", "label": "임상·문화 차별화" },
+                { "id": "C", "label": "선별적 인수" }
+              ],
+              "3년_전망": { "A": "경쟁 균형", "B": "브랜드 강화", "C": "부분 지배" },
+              "정체성_의미": "경쟁 추종자 vs 방향 정의자"
+            },
+            {
+              "id": "L3K_14",
+              "전략적_상황": "파트너 진입 기준 불명확",
+              "핵심_긴장": "엄격한 기준 vs 유연한 접근",
+              "결정_프레임": "파트너십의 문은 얼마나 좁은가?",
+              "이해관계자": "의사 / 파트너",
+              "선택지": [
+                { "id": "A", "label": "정량 기준 강화" },
+                { "id": "B", "label": "재량 판단 허용" },
+                { "id": "C", "label": "단계적 파트너 구조" }
+              ],
+              "3년_전망": { "A": "공정성 강화", "B": "관계 강화", "C": "명확한 성장 경로" },
+              "정체성_의미": "게이트키핑 구조 vs 개방적 구조"
+            },
+            {
+              "id": "L3K_15",
+              "전략적_상황": "조직 미션 재정의 필요성 제기",
+              "핵심_긴장": "수익 극대화 vs 기관적 유산",
+              "결정_프레임": "우리의 최종 목적은 무엇인가?",
+              "이해관계자": "파트너 / 직원 / 환자",
+              "선택지": [
+                { "id": "A", "label": "재무 중심 미션" },
+                { "id": "B", "label": "지역사회·유산 중심 미션" },
+                { "id": "C", "label": "이중 책임 구조" }
+              ],
+              "3년_전망": { "A": "재무 일관성 강화", "B": "사회적 공감 확대", "C": "복합 거버넌스 구조" },
+              "정체성_의미": "주주 중심 조직 vs 기관적 유산 플랫폼"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -8,6 +8,8 @@ import { FollowUpBlock } from "./FollowUpBlock";
 import { ConsolidationBlock } from "./ConsolidationBlock";
 import { CompleteBlock } from "./CompleteBlock";
 
+import type { ReflectResult } from "./ConsolidationBlock";
+
 export type OutputPanelProps = {
   locale: string;
   step: 3 | 4 | 5 | 6 | 7;
@@ -22,6 +24,8 @@ export type OutputPanelProps = {
   followUpOptions: string[];
   hasFollowUp: boolean;
   followUpIndex: number | null;
+  /** Result from /api/arena/reflect; shown in ConsolidationBlock when present. */
+  reflectResult?: ReflectResult | null;
   onNextToReflection: () => void;
   onSubmitReflection: (index: number, reflectionText?: string) => void;
   onSubmitFollowUp: (index: number) => void;
@@ -48,6 +52,7 @@ export function OutputPanel({
   followUpOptions,
   hasFollowUp,
   followUpIndex,
+  reflectResult = null,
   onNextToReflection,
   onSubmitReflection,
   onSubmitFollowUp,
@@ -120,6 +125,7 @@ export function OutputPanel({
           microInsight={choice.microInsight}
           lastXp={lastXp}
           reflectionBonusXp={reflectionBonusXp}
+          reflectResult={reflectResult}
           onComplete={onComplete}
         />
       )}

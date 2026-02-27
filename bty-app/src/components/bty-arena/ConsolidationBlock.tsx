@@ -2,6 +2,13 @@
 
 import React from "react";
 
+export type ReflectResult = {
+  summary: string;
+  questions: string[];
+  next_action: string;
+  detected?: { tags: string[]; topTag?: string };
+};
+
 const STEP6_TITLE = { en: "Step 6 · Consolidation", ko: "Step 6 · 정리" };
 const YOU_CHOSE = { en: "You chose", ko: "선택한 항목" };
 const KEY_INSIGHT = { en: "Key insight:", ko: "핵심 통찰:" };
@@ -11,6 +18,8 @@ const PRINCIPLE = {
 };
 const COMPLETE_BTN = { en: "Complete", ko: "완료" };
 const REFLECTION_BONUS = { en: "Reflection bonus", ko: "성찰 보너스" };
+const DEEPENING_TITLE = { en: "Reflection deepening", ko: "성찰 심화" };
+const NEXT_ACTION_LABEL = { en: "Next step", ko: "다음 행동" };
 
 export type ConsolidationBlockProps = {
   locale: string;
@@ -19,6 +28,7 @@ export type ConsolidationBlockProps = {
   microInsight: string;
   lastXp: number;
   reflectionBonusXp: number;
+  reflectResult?: ReflectResult | null;
   onComplete: () => void;
 };
 
@@ -29,6 +39,7 @@ export function ConsolidationBlock({
   microInsight,
   lastXp,
   reflectionBonusXp,
+  reflectResult = null,
   onComplete,
 }: ConsolidationBlockProps) {
   const isKo = locale === "ko";
@@ -60,6 +71,25 @@ export function ConsolidationBlock({
           {isKo ? KEY_INSIGHT.ko : KEY_INSIGHT.en} {microInsight}
         </p>
         <p style={{ margin: 0 }}>{isKo ? PRINCIPLE.ko : PRINCIPLE.en}</p>
+
+        {reflectResult && (
+          <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid #eee" }}>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>{isKo ? DEEPENING_TITLE.ko : DEEPENING_TITLE.en}</div>
+            <p style={{ margin: "0 0 10px 0", fontSize: 13, opacity: 0.95 }}>{reflectResult.summary}</p>
+            {reflectResult.questions.length > 0 && (
+              <ul style={{ margin: "0 0 10px 0", paddingLeft: 20 }}>
+                {reflectResult.questions.map((q, i) => (
+                  <li key={i} style={{ marginBottom: 6, fontSize: 13 }}>{q}</li>
+                ))}
+              </ul>
+            )}
+            {reflectResult.next_action && (
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 500 }}>
+                {isKo ? NEXT_ACTION_LABEL.ko : NEXT_ACTION_LABEL.en}: {reflectResult.next_action}
+              </p>
+            )}
+          </div>
+        )}
       </div>
       <button
         onClick={onComplete}

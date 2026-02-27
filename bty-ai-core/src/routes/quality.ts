@@ -204,6 +204,34 @@ router.get("/summary", requireAdmin, async (req: Request, res: Response) => {
   }
 });
 
+/** Record a single quality event (e.g. from bty-app chat/mentor fallback or low-quality response). */
+router.post("/event", requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const body = req.body as Record<string, unknown>;
+    const role = typeof body.role === "string" ? body.role : "user";
+    const intent = typeof body.intent === "string" ? body.intent : "unknown";
+    const issues = Array.isArray(body.issues) ? (body.issues as string[]) : [];
+    const severity = body.severity === "low" || body.severity === "medium" || body.severity === "high" ? body.severity : "medium";
+    const route = body.route === "app" || body.route === "web" || body.route === "teams" ? body.route : "app";
+    const cssScore = typeof body.css_score === "number" ? body.css_score : null;
+    const modelVersion = typeof body.model_version === "string" ? body.model_version : null;
+
+    await recordQualityEvent({
+      role,
+      intent,
+      issues: issues.length > 0 ? issues : ["app_reported"],
+      severity,
+      cssScore,
+      modelVersion,
+      route,
+    });
+    res.status(201).json({ ok: true });
+  } catch (err: unknown) {
+    console.error("[quality] /event error:", err);
+    res.status(500).json({ error: "Failed to record quality event" });
+  }
+});
+
 /** Dev only: insert sample quality events for testing dashboard */
 router.post("/sample", requireAdmin, async (req: Request, res: Response) => {
   if (process.env.NODE_ENV !== "development") {

@@ -1,0 +1,270 @@
+{
+  "program": "BTY Arena",
+  "track": "legacy",
+  "level": "L4_Board",
+  "structure": [
+    "macro_context",
+    "trigger_event",
+    "board_structure",
+    "voting_weights",
+    "motion",
+    "coalition_paths",
+    "vote_math",
+    "if_pass_5yr",
+    "if_fail_5yr",
+    "institutional_shift"
+  ],
+  "human_model": {
+    "stage_name": "Stewardship",
+    "core_training_focus": "Power restraint under authority",
+    "primary_shift": "Control → Custodianship",
+    "risk_pattern": ["Power consolidation", "Short-term extraction", "Legacy neglect"],
+    "maturity_marker": "Authority increases humility",
+    "power_posture": "Carries weight quietly"
+  },
+  "items": [
+    {
+      "id": "L4_01",
+      "macro_context": "PE firm offers 55% majority acquisition at 11x EBITDA.",
+      "trigger_event": "Liquidity window may close in 12 months.",
+      "board_structure": "7 founders, 3 next-gen partners",
+      "voting_weights": {
+        "founders_total": 70,
+        "next_gen_total": 30
+      },
+      "motion": "Sell 55% majority to PE.",
+      "coalition_paths": [
+        "4 founders needed for majority",
+        "3 founders + all next-gen insufficient (65%)"
+      ],
+      "vote_math": {
+        "threshold": 51,
+        "minimum_pass_condition": "At least 4 founders vote YES"
+      },
+      "if_pass_5yr": "Rapid scaling to 40 offices, PE governance seats control strategy.",
+      "if_fail_5yr": "Independent growth to ~25 offices, slower capital expansion.",
+      "institutional_shift": "Capital-optimized platform vs. generational autonomy."
+    },
+    {
+      "id": "L4_02",
+      "macro_context": "Strategic paralysis due to equal partner voting.",
+      "trigger_event": "3 major decisions stalled in 6 months.",
+      "board_structure": "10 equal partners",
+      "voting_weights": {
+        "each_partner": 10
+      },
+      "motion": "Create CEO role with 30% operational authority override.",
+      "coalition_paths": [
+        "6 partners required for majority"
+      ],
+      "vote_math": {
+        "threshold": 51,
+        "required_yes_votes": 6
+      },
+      "if_pass_5yr": "Faster decisions, reduced consensus culture.",
+      "if_fail_5yr": "Maintained equality, continued slow pivots.",
+      "institutional_shift": "Corporate hierarchy vs. partnership collective."
+    },
+    {
+      "id": "L4_03",
+      "macro_context": "Margin compression industry-wide.",
+      "trigger_event": "EBITDA margin drops 4% YoY.",
+      "board_structure": "5 senior partners (60%), 5 junior partners (40%)",
+      "voting_weights": {
+        "senior_total": 60,
+        "junior_total": 40
+      },
+      "motion": "Reduce staff benefits to protect margin.",
+      "coalition_paths": [
+        "Senior-only bloc can pass motion"
+      ],
+      "vote_math": {
+        "threshold": 51,
+        "senior_pass_power": true
+      },
+      "if_pass_5yr": "Margin stabilizes, morale declines.",
+      "if_fail_5yr": "Margin declines further, retention remains strong.",
+      "institutional_shift": "Financial primacy vs. human capital loyalty."
+    },
+    {
+      "id": "L4_04",
+      "macro_context": "Founder retirement wave approaching.",
+      "trigger_event": "2 founders plan exit within 3 years.",
+      "board_structure": "5 founders (65%), 4 mid-career (25%), 2 emerging (10%)",
+      "voting_weights": {
+        "founders": 65,
+        "mid": 25,
+        "emerging": 10
+      },
+      "motion": "Begin 5-year voting redistribution plan.",
+      "coalition_paths": [
+        "Founders can block redistribution"
+      ],
+      "vote_math": {
+        "threshold": 51,
+        "founder_block_power": true
+      },
+      "if_pass_5yr": "Smooth generational transition.",
+      "if_fail_5yr": "Succession instability risk."
+    },
+    {
+      "id": "L4_05",
+      "macro_context": "AI adoption reduces admin labor by 30%.",
+      "trigger_event": "Vendor guarantees 18-month ROI.",
+      "board_structure": "12 board members equal vote",
+      "voting_weights": {
+        "each_member": 8.33
+      },
+      "motion": "Adopt full AI automation.",
+      "coalition_paths": [
+        "7 votes required"
+      ],
+      "vote_math": {
+        "threshold": 51,
+        "required_yes_votes": 7
+      },
+      "if_pass_5yr": "Operational efficiency leader.",
+      "if_fail_5yr": "Human-focused culture preserved."
+    },
+    {
+      "id": "L4_06",
+      "macro_context": "Opportunity to acquire 8-office competitor.",
+      "trigger_event": "Debt financing required at 7% rate.",
+      "board_structure": "Equity weighted by ownership %.",
+      "voting_weights": {
+        "largest_partner": 22,
+        "second": 18,
+        "others_combined": 60
+      },
+      "motion": "Leverage debt for acquisition.",
+      "vote_math": {
+        "threshold": 60,
+        "supermajority_required": true
+      },
+      "if_pass_5yr": "Regional dominance increases leverage risk.",
+      "if_fail_5yr": "Stable but slower expansion."
+    },
+    {
+      "id": "L4_07",
+      "macro_context": "Insurance reimbursement declining.",
+      "trigger_event": "Top payer reduces rates by 8%.",
+      "board_structure": "6 partners equal vote.",
+      "voting_weights": {
+        "each": 16.67
+      },
+      "motion": "Exit low-margin payer contracts.",
+      "vote_math": {
+        "threshold": 51,
+        "votes_required": 4
+      },
+      "if_pass_5yr": "Higher margin, lower patient volume.",
+      "if_fail_5yr": "Volume preserved, margin pressure."
+    },
+    {
+      "id": "L4_08",
+      "macro_context": "Internal cultural drift among 3 regions.",
+      "trigger_event": "Brand inconsistency noted.",
+      "board_structure": "Regional representation voting.",
+      "voting_weights": {
+        "Region_A": 40,
+        "Region_B": 35,
+        "Region_C": 25
+      },
+      "motion": "Centralize branding authority.",
+      "vote_math": {
+        "threshold": 51,
+        "A_plus_C_pass": true
+      },
+      "if_pass_5yr": "Unified brand, reduced autonomy.",
+      "if_fail_5yr": "Diverse culture, fragmented identity."
+    },
+    {
+      "id": "L4_09",
+      "macro_context": "Equity distribution debate.",
+      "trigger_event": "New partners requesting voting shares.",
+      "board_structure": "Founders hold 72% voting.",
+      "motion": "Dilute founder voting to 55%.",
+      "vote_math": {
+        "threshold": 67,
+        "supermajority_required": true
+      },
+      "if_pass_5yr": "Shared governance.",
+      "if_fail_5yr": "Power consolidation remains."
+    },
+    {
+      "id": "L4_10",
+      "macro_context": "IPO exploratory discussions.",
+      "trigger_event": "Investment bank engagement proposal.",
+      "board_structure": "Equity-based weighted voting.",
+      "motion": "Begin IPO preparation process.",
+      "vote_math": {
+        "threshold": 75,
+        "supermajority_required": true
+      },
+      "if_pass_5yr": "Public company governance transformation.",
+      "if_fail_5yr": "Remain private partnership."
+    },
+    {
+      "id": "L4_11",
+      "macro_context": "Executive compensation reform.",
+      "trigger_event": "Disparity concerns raised.",
+      "board_structure": "Equal vote structure.",
+      "motion": "Adopt performance-weighted compensation.",
+      "vote_math": {
+        "threshold": 51
+      },
+      "if_pass_5yr": "Performance culture sharpened.",
+      "if_fail_5yr": "Equality culture preserved."
+    },
+    {
+      "id": "L4_12",
+      "macro_context": "Multi-state expansion compliance risk.",
+      "trigger_event": "Legal advisory warning.",
+      "board_structure": "Founder weighted majority.",
+      "motion": "Hire Chief Compliance Officer with board authority.",
+      "vote_math": {
+        "threshold": 51
+      },
+      "if_pass_5yr": "Governance maturity increases.",
+      "if_fail_5yr": "Operational agility preserved."
+    },
+    {
+      "id": "L4_13",
+      "macro_context": "Philanthropic foundation proposal.",
+      "trigger_event": "Allocate 3% EBITDA annually to foundation.",
+      "board_structure": "Equal voting.",
+      "motion": "Establish formal foundation.",
+      "vote_math": {
+        "threshold": 60
+      },
+      "if_pass_5yr": "Legacy-driven brand identity.",
+      "if_fail_5yr": "Purely commercial identity."
+    },
+    {
+      "id": "L4_14",
+      "macro_context": "Internal dispute over strategic direction.",
+      "trigger_event": "Two blocs forming around expansion philosophy.",
+      "board_structure": "Bloc A 52%, Bloc B 48%",
+      "motion": "Adopt aggressive acquisition roadmap.",
+      "vote_math": {
+        "threshold": 51,
+        "bloc_A_can_pass": true
+      },
+      "if_pass_5yr": "Fast growth, potential fracture.",
+      "if_fail_5yr": "Slow alignment rebuild."
+    },
+    {
+      "id": "L4_15",
+      "macro_context": "Long-term mission clarity debate.",
+      "trigger_event": "Define whether mission prioritizes profitability or community impact.",
+      "board_structure": "Weighted by capital contribution.",
+      "motion": "Rewrite mission statement to include dual fiduciary responsibility.",
+      "vote_math": {
+        "threshold": 67,
+        "supermajority_required": true
+      },
+      "if_pass_5yr": "Institutional identity shift toward stakeholder capitalism.",
+      "if_fail_5yr": "Remain shareholder-primacy focused."
+    }
+  ]
+}

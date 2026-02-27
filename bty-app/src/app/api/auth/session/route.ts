@@ -6,11 +6,20 @@ import { writeSupabaseAuthCookies, expireAuthCookiesHard } from "@/lib/bty/cooki
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
+const SESSION_TIMEOUT_MS = 5000;
+
 // GET: 쿠키 기반 세션에서 user 확인 (미로그인은 200 + ok:false로 401 노이즈 제거)
 export async function GET() {
   try {
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Session timeout")), SESSION_TIMEOUT_MS)
+    );
     const supabase = await getSupabaseServer();
-    const { data, error } = await supabase.auth.getUser();
+    const result = await Promise.race([
+      supabase.auth.getUser(),
+      timeout,
+    ]);
+    const { data, error } = result as { data: { user: { id: string; email?: string | null } } | null; error: unknown };
 
     if (error || !data?.user) {
       return NextResponse.json(
@@ -26,7 +35,7 @@ export async function GET() {
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: "Session check failed", where: "GET catch" },
-      { status: 500 }
+      { status: 200 }
     );
   }
 }

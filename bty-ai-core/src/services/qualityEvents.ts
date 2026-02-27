@@ -6,7 +6,7 @@
 
 import { getDbClient } from "../config/db";
 
-export type QualityEventRoute = "web" | "teams";
+export type QualityEventRoute = "web" | "teams" | "app";
 
 export type QualityEventInput = {
   role: string;

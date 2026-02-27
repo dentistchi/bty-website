@@ -16,6 +16,7 @@ type Message = {
   suggestDojo?: boolean;
   suggestMentor?: boolean;
   mentorPath?: string;
+  usedFallback?: boolean;
 };
 
 const TYPING_TIMEOUT_10S = 10_000;
@@ -148,13 +149,18 @@ export function Chatbot() {
       let hadError = false;
       let wasAborted = false;
       try {
-        const mode = pathname.includes("/bty") ? "bty" : "today-me";
+        const mode = pathname.includes("/bty-arena")
+          ? "arena"
+          : pathname.includes("/bty")
+            ? "dojo"
+            : "dearme";
         const r = await fetchJson<{
           message?: string;
           suggestDearMe?: boolean;
           suggestDojo?: boolean;
           suggestMentor?: boolean;
           mentorPath?: string;
+          usedFallback?: boolean;
         }>("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -174,9 +180,10 @@ export function Chatbot() {
         const suggestDojo = r.ok && r.json?.suggestDojo === true;
         const suggestMentor = r.ok && r.json?.suggestMentor === true;
         const mentorPath = r.ok && r.json?.mentorPath ? String(r.json.mentorPath) : undefined;
+        const usedFallback = r.ok && r.json?.usedFallback === true;
         setChatMessages((prev) => [
           ...prev,
-          { role: "assistant", content: reply, suggestDearMe, suggestDojo, suggestMentor, mentorPath },
+          { role: "assistant", content: reply, suggestDearMe, suggestDojo, suggestMentor, mentorPath, usedFallback },
         ]);
         if (rememberChat && sid) {
           try {
@@ -287,16 +294,19 @@ export function Chatbot() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full shadow-lg",
-          themeColors.button,
-          "flex items-center justify-center transition-all hover:scale-105",
-          open && "rotate-0"
+          "fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full shadow-lg overflow-hidden",
+          "flex items-center justify-center transition-all hover:scale-105 border-2 border-white",
+          open ? themeColors.button : "bg-white"
         )}
-        aria-label={t.title}
+        aria-label={open ? "Close" : t.title}
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-        </svg>
+        {open ? (
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        ) : (
+          <GuideCharacterAvatar variant={guideVariant} size="lg" alt="" className="!w-full !h-full !rounded-full" />
+        )}
       </button>
       {open && (
         <div
@@ -371,6 +381,11 @@ export function Chatbot() {
                   >
                     {locale === "ko" ? "Dr. Chi 멘토와 깊이 대화하기 →" : "Talk with Dr. Chi Mentor →"}
                   </Link>
+                )}
+                {m.role === "assistant" && m.usedFallback && (
+                  <p className="mt-1.5 text-xs opacity-70">
+                    {locale === "ko" ? "일시적으로 기본 메시지를 보여드립니다." : "Showing a default message for now."}
+                  </p>
                 )}
               </div>
             ))}
