@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { getActiveLeague } from "./activeLeague";
 import { applySeasonalXpToCore } from "./applyCoreXp";
 
 const DAILY_CAP = 1200;
@@ -11,7 +13,7 @@ const ACTIVITY_XP: Record<ActivityType, number> = {
 };
 
 /**
- * Record Dojo/Dear Me activity XP: apply daily cap (Arena + activity), insert event, update weekly_xp, apply to Core.
+ * Record Dojo/Dear Me activity XP: apply daily cap (Arena + activity), insert event, update weekly_xp (active league), apply to Core.
  * Call after a successful mentor or chat message. No-op if not authenticated or cap would be exceeded.
  */
 export async function recordActivityXp(
@@ -53,18 +55,19 @@ export async function recordActivityXp(
 
   await supabase.rpc("ensure_arena_profile");
 
-  const { data: wxRow, error: rowErr } = await supabase
-    .from("weekly_xp")
-    .select("id, xp_total")
-    .eq("user_id", userId)
-    .is("league_id", null)
-    .maybeSingle();
+  const league = await getActiveLeague(supabase, getSupabaseAdmin());
+  const leagueId: string | null = league?.league_id ?? null;
+
+  let wxQ = supabase.from("weekly_xp").select("id, xp_total").eq("user_id", userId);
+  if (leagueId) wxQ = wxQ.eq("league_id", leagueId);
+  else wxQ = wxQ.is("league_id", null);
+  const { data: wxRow, error: rowErr } = await wxQ.maybeSingle();
   if (rowErr) return { ok: false, error: rowErr.message };
 
   if (!wxRow) {
     const { error: insWx } = await supabase.from("weekly_xp").insert({
       user_id: userId,
-      league_id: null,
+      league_id: leagueId,
       xp_total: deltaCapped,
     });
     if (insWx) return { ok: false, error: insWx.message };

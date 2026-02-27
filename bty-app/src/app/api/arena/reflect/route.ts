@@ -57,12 +57,22 @@ export async function POST(req: Request) {
       membershipRole: membershipRole as "staff" | "doctor" | "office_manager" | "regional_manager" | undefined,
       joinedAt,
     });
+    let l4Granted = false;
+    const { data: profile } = await supabase
+      .from("arena_profiles")
+      .select("l4_access")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (profile && typeof (profile as { l4_access?: boolean }).l4_access === "boolean") {
+      l4Granted = (profile as { l4_access: boolean }).l4_access;
+    }
     const { maxUnlockedLevel } = getUnlockedContentWindow({
       track,
       user: { joinedAt, leaderStartedAt: null },
       now: new Date(),
+      l4Granted,
     });
-    // Human model has S1..L4; tenure returns S1..L3. Use maxUnlockedLevel (valid in model).
+    // Human model has S1..L4; tenure returns S1..L3; L4 is admin-granted only.
     levelId = HUMAN_MODEL.levels[maxUnlockedLevel] ? maxUnlockedLevel as LevelId : "S1";
   }
 

@@ -1,0 +1,20 @@
+---
+description: Run Mac notification when task is complete
+alwaysApply: true
+---
+
+# Task complete notification (macOS)
+
+When you have **finished** the user's request (all steps done, final reply sent), you **must** run the following terminal command **once** so the user gets a sound and Mac notification:
+
+```bash
+afplay /System/Library/Sounds/Ping.aiff 2>/dev/null; osascript -e 'display notification "Cursor 작업 완료" with title "작업 완료" sound name "Ping"' 2>/dev/null
+```
+
+- **afplay**: 시스템 사운드 직접 재생 (Cursor 샌드박스에서도 소리가 나는 경우가 많음)
+- **osascript**: 알림 배너 표시 (환경에 따라 연결 오류로 안 뜰 수 있음)
+- 프로젝트 루트에서 실행. 응답에 명령어만 적지 말고 **반드시 터미널로 실행**한다.
+- 작업이 완전히 끝난 뒤 한 번만 실행. 진행 중에는 실행하지 않는다.
+- 사용자가 소리/알림 끄라고 하면 실행하지 않는다.
+
+**Cursor에서 여전히 소리가 안 나면:** 터미널(Terminal.app)을 열고 위 명령어를 직접 실행해 보세요. 정상이면 Cursor 권한 문제일 수 있습니다.

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { writeSupabaseAuthCookies } from "@/lib/bty/cookies/authCookies";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { getActiveLeague } from "@/lib/bty/arena/activeLeague";
 import {
   CODE_NAMES,
   tierFromCoreXp,
@@ -16,16 +18,8 @@ const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const cookieHeader = req.headers.get("cookie") ?? "";
-  const hasCookieHeader = cookieHeader.length > 0;
-  const cookieNames = req.cookies.getAll().map((c) => c.name);
-
   const baseHeaders = new Headers();
   baseHeaders.set("Cache-Control", "no-store");
-  baseHeaders.set("x-auth-debug-cookie-header", hasCookieHeader ? "1" : "0");
-  baseHeaders.set("x-auth-debug-cookie-len", String(cookieHeader.length));
-  baseHeaders.set("x-auth-debug-cookie-count", String(cookieNames.length));
-  baseHeaders.set("x-auth-debug-cookie-names", cookieNames.slice(0, 10).join(","));
 
   let didSetAll = false;
   const tmp = NextResponse.json({ ok: true }, { status: 200, headers: baseHeaders });
@@ -45,31 +39,25 @@ export async function GET(req: NextRequest) {
   const { data: userData } = await supabase.auth.getUser();
   const user = userData.user;
 
-  tmp.headers.set("x-auth-debug-setall", didSetAll ? "1" : "0");
-  tmp.headers.set("x-auth-debug-user", user ? "1" : "0");
-
   if (!user) {
     const body = {
       error: "UNAUTHENTICATED",
-      debug: {
-        cookieHeader: hasCookieHeader,
-        cookieLen: cookieHeader.length,
-        cookieCount: cookieNames.length,
-        cookieNames: cookieNames.slice(0, 20),
-        setAllCalled: didSetAll,
-      },
     };
     const out = NextResponse.json(body, { status: 401 });
     tmp.headers.forEach((v, k) => out.headers.set(k, v));
     return out;
   }
 
-  const { data: weeklyRows, error: weeklyErr } = await supabase
+  const league = await getActiveLeague(supabase, getSupabaseAdmin());
+  let weeklyQuery = supabase
     .from("weekly_xp")
     .select("user_id, xp_total")
-    .is("league_id", null)
     .order("xp_total", { ascending: false })
     .limit(100);
+  if (league) weeklyQuery = weeklyQuery.eq("league_id", league.league_id);
+  else weeklyQuery = weeklyQuery.is("league_id", null);
+
+  const { data: weeklyRows, error: weeklyErr } = await weeklyQuery;
 
   if (weeklyErr) {
     const out = NextResponse.json(
@@ -124,7 +112,17 @@ export async function GET(req: NextRequest) {
 
   const myXp = rows.find((r) => r.user_id === user.id)?.xp_total ?? 0;
   const out = NextResponse.json(
-    { leaderboard, nearMe, top10, myRank: myRank || null, myXp, count: leaderboard.length },
+    {
+      leaderboard,
+      nearMe,
+      top10,
+      myRank: myRank || null,
+      myXp,
+      count: leaderboard.length,
+      season: league
+        ? { league_id: league.league_id, start_at: league.start_at, end_at: league.end_at, name: league.name ?? null }
+        : null,
+    },
     { status: 200 }
   );
   tmp.headers.forEach((v, k) => out.headers.set(k, v));

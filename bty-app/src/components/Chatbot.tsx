@@ -89,24 +89,27 @@ export function Chatbot() {
   }, [open, prefsLoaded]);
 
   const isBtyPage = pathname.includes("/bty");
+  const isMentorPage = pathname.includes("/mentor");
   const isDearMePage = pathname.includes("/dear-me");
   const spaceLabel =
     locale === "ko"
       ? isDearMePage
         ? "Dear Me"
-        : isBtyPage
-          ? "Dojo · 연습"
-          : "랜딩"
+        : isMentorPage
+          ? "멘토"
+          : isBtyPage
+            ? "Dojo · 연습"
+            : "랜딩"
       : isDearMePage
         ? "Dear Me"
-        : isBtyPage
-          ? "Dojo"
-          : "Home";
-  const guideVariant: GuideAvatarVariant = pathname.includes("/dear-me")
-    ? "warm"
-    : pathname.includes("/bty-arena")
-      ? "welcome"
-      : "default";
+        : isMentorPage
+          ? "Mentor"
+          : isBtyPage
+            ? "Dojo"
+            : "Home";
+  // Phase 1-3: 플로팅·멘토 동일 노출 — Dojo/멘토/Dear Me에서 동일한 warm 비주얼
+  const guideVariant: GuideAvatarVariant =
+    pathname.includes("/bty") || pathname.includes("/dear-me") ? "warm" : "default";
   const introMessage =
     locale === "ko"
       ? isBtyPage

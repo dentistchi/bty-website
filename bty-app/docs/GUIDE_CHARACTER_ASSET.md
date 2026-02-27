@@ -47,6 +47,7 @@ import { GuideCharacterAvatar } from "@/components/GuideCharacterAvatar";
 - [x] 캐논 에셋 1종 정의: `guide-character-default.png` + 폴백 `guide-character.png`
 - [x] 챗봇에서 동일 컴포넌트·동일 경로 사용
 - [x] 멘토에서 동일 컴포넌트·동일 경로 사용 (variant `warm`)
+- [x] **플로팅·멘토 동일 노출**: Dojo/멘토/Dear Me에서 챗봇도 `variant="warm"`; `/mentor`에서 플로팅 헤더 서브타이틀 「멘토」/「Mentor」 (자세한 내용은 `docs/PHASE_1_3_GUIDE_CHARACTER_UI.md`)
 - [x] 문서화: 이 파일
 
 에셋 파일을 교체할 때는 **위 경로의 파일만 교체**하면 챗봇·멘토 전반에 반영된다.

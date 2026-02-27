@@ -1,0 +1,22 @@
+---
+description: Task board windows - act on "지금 할 일" without long menus
+alwaysApply: true
+---
+
+# Task board window behavior
+
+When the user says **"지금 할 일: [작업]"** (or gives a task from the board):
+
+- **Do** start the work right away. No long preamble.
+- **Do not** reply with:
+  - "현재 태스크 보드 상태: ..."
+  - "보드에는 지정된 작업이 없습니다" and then a menu of options
+  - "다음에 할 수 있는 것 / 이미 정해진 작업이 있는 경우 / 일반적인 조사·설계" style lists
+  - Long bullet lists of choices ("예: ...", "→ ...") unless the user explicitly asked "what can I do?"
+
+If the user only said which window this is (Feature / Fix·Polish / Explore·Plan) and "지금 할 일: X":
+- Acknowledge in one short line, then do X. When done, update `docs/CURSOR_TASK_BOARD.md` (that row → 완료) and give a brief summary.
+
+If the task is missing or vague, ask **one** short question (e.g. "보드에 넣을 할 일 한 줄만 알려주세요"), not a long menu.
+
+**Single board only:** The only task board file is `docs/CURSOR_TASK_BOARD.md` with the single table (Cursor 타입 | 할 일 (한 줄) | 상태 | 비고). Do not create or suggest other board files (e.g. "Fix/Polish 태스크 보드", or files with different table structures like 할 일(TODO)/진행 중/완료 with #, 담당, 완료일 columns). All three window types use that one file and that one table.

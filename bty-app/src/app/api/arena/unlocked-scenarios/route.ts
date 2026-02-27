@@ -1,19 +1,18 @@
 /**
  * GET /api/arena/unlocked-scenarios
  * Returns track, maxUnlockedLevel, previewLevel, and scenario levels/items the user may access.
- * Gated by tenure-only unlock; uses effective track (new joiners → staff).
+ * L4 (Partner) is admin-granted only (arena_profiles.l4_access); not unlocked by tenure.
  */
 
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
-import { getEffectiveTrack } from "@/lib/bty/arena/program";
-import { loadProgramConfig } from "@/lib/bty/arena/program";
+import { getEffectiveTrack, loadProgramConfig, loadL4Level } from "@/lib/bty/arena/program";
 import type { LevelWithTenure } from "@/lib/bty/arena/program";
 import { getUnlockedContentWindow } from "@/lib/bty/arena/unlock";
 import type { Track } from "@/lib/bty/arena/tenure";
 
 const STAFF_ORDER = ["S1", "S2", "S3"];
-const LEADER_ORDER = ["L1", "L2", "L3"];
+const LEADER_ORDER = ["L1", "L2", "L3", "L4"];
 
 export async function GET() {
   const supabase = await getSupabaseServerClient();
@@ -44,35 +43,48 @@ export async function GET() {
     joinedAt,
   }) as Track;
 
+  let l4Granted = false;
+  const { data: profile } = await supabase
+    .from("arena_profiles")
+    .select("l4_access")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (profile && typeof (profile as { l4_access?: boolean }).l4_access === "boolean") {
+    l4Granted = (profile as { l4_access: boolean }).l4_access;
+  }
+
   const { maxUnlockedLevel, previewLevel } = getUnlockedContentWindow({
     track,
     user: { joinedAt, leaderStartedAt: null },
     now: new Date(),
+    l4Granted,
   });
 
   const program = loadProgramConfig();
   const trackConfig = program.tracks.find((t) => t.track === track);
-  if (!trackConfig?.levels?.length) {
-    return NextResponse.json({
-      ok: true,
-      track,
-      maxUnlockedLevel,
-      previewLevel,
-      levels: [],
-    });
-  }
-
   const ordering = track === "staff" ? STAFF_ORDER : LEADER_ORDER;
   const maxIndex = ordering.indexOf(maxUnlockedLevel);
-  const levels = trackConfig.levels
-    .filter((lvl) => {
-      const i = ordering.indexOf(lvl.level);
-      return i >= 0 && i <= maxIndex;
-    })
-    .map((lvl) => {
-      const { items, human_model: _hm, ...rest } = lvl as LevelWithTenure;
-      return { ...rest, items };
-    });
+
+  let levels: Array<{ level: string; title: string; title_ko?: string; structure: string[]; items: unknown[] }>;
+  if (!trackConfig?.levels?.length) {
+    levels = [];
+  } else {
+    levels = trackConfig.levels
+      .filter((lvl) => {
+        const i = ordering.indexOf(lvl.level);
+        return i >= 0 && i <= maxIndex;
+      })
+      .map((lvl) => {
+        const { items, human_model: _hm, ...rest } = lvl as LevelWithTenure;
+        return { ...rest, items };
+      });
+  }
+
+  if (track === "leader" && maxUnlockedLevel === "L4") {
+    const l4Level = loadL4Level();
+    const { items, human_model: _hm, ...rest } = l4Level;
+    levels = [...levels, { ...rest, items }];
+  }
 
   return NextResponse.json({
     ok: true,

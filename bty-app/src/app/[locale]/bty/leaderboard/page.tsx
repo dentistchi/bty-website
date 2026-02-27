@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useParams } from "next/navigation";
 import BtyTopNav from "@/components/bty/BtyTopNav";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 
@@ -18,9 +19,39 @@ type LeaderboardRes = {
   myRank?: number | null;
   myXp?: number;
   count?: number;
+  season?: { league_id: string; start_at: string; end_at: string; name?: string | null } | null;
+};
+
+const LB = {
+  ko: {
+    title: "리더보드",
+    subtitle: "티어 · 코드명 · 주간 XP",
+    yourRank: "내 순위",
+    loading: "로딩 중…",
+    failed: "불러오기 실패",
+    tier: "티어",
+    weeklyXp: "주간 XP",
+    noData: "아직 데이터가 없어요. Arena를 플레이하면 주간 XP가 쌓입니다.",
+    notOnBoard: "아직 리더보드에 없어요. Arena를 플레이해서 XP를 쌓아 보세요.",
+  },
+  en: {
+    title: "Leaderboard",
+    subtitle: "Tier · Code · Weekly XP",
+    yourRank: "Your rank",
+    loading: "Loading…",
+    failed: "Failed",
+    tier: "Tier",
+    weeklyXp: "Weekly XP",
+    noData: "No data yet. Play Arena to generate weekly XP.",
+    notOnBoard: "You're not on the leaderboard yet. Play Arena to earn XP.",
+  },
 };
 
 export default function LeaderboardPage() {
+  const params = useParams();
+  const locale = typeof params?.locale === "string" && params.locale === "ko" ? "ko" : "en";
+  const t = LB[locale];
+
   const [data, setData] = React.useState<LeaderboardRes | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -46,25 +77,37 @@ export default function LeaderboardPage() {
   }, []);
 
   const rows = data?.nearMe?.length ? data.nearMe : (data?.leaderboard ?? []);
+  const myRank = data?.myRank ?? null;
 
   return (
     <div style={{ maxWidth: 860, margin: "0 auto", padding: "24px 16px" }}>
       <BtyTopNav />
       <div style={{ marginTop: 18 }}>
         <div style={{ fontSize: 14, opacity: 0.7 }}>bty</div>
-        <h1 style={{ margin: 0, fontSize: 28 }}>Leaderboard</h1>
+        <h1 style={{ margin: 0, fontSize: 28 }}>{t.title}</h1>
         <div style={{ marginTop: 6, fontSize: 14, opacity: 0.7 }}>
-          Seasonal XP · Code · Sub Name
+          {t.subtitle}
         </div>
-        {data?.myRank != null && (
-          <div style={{ marginTop: 10, fontSize: 14, fontWeight: 600 }}>
-            Your rank: #{data.myRank} · {data.myXp ?? 0} XP
+        {data?.season && (
+          <div style={{ marginTop: 8, fontSize: 13, opacity: 0.85 }}>
+            {data.season.name ?? (locale === "ko" ? "시즌" : "Season")}{" "}
+            {data.season.start_at ? new Date(data.season.start_at).toLocaleDateString(locale) : ""}
+            {" → "}
+            {data.season.end_at ? new Date(data.season.end_at).toLocaleDateString(locale) : ""}
           </div>
+        )}
+        {myRank != null && myRank > 0 && (
+          <div style={{ marginTop: 10, fontSize: 14, fontWeight: 600 }}>
+            {t.yourRank}: #{myRank} · {data?.myXp ?? 0} XP
+          </div>
+        )}
+        {!loading && !error && myRank !== null && myRank === 0 && (
+          <div style={{ marginTop: 10, fontSize: 14, opacity: 0.9 }}>{t.notOnBoard}</div>
         )}
       </div>
 
       <div style={{ marginTop: 18, padding: 18, border: "1px solid #eee", borderRadius: 14 }}>
-        {loading && <div style={{ opacity: 0.8 }}>Loading…</div>}
+        {loading && <div style={{ opacity: 0.8 }}>{t.loading}</div>}
         {error && (
           <div
             style={{
@@ -74,57 +117,61 @@ export default function LeaderboardPage() {
               background: "#fff7f7",
             }}
           >
-            <div style={{ fontWeight: 800 }}>Failed</div>
+            <div style={{ fontWeight: 800 }}>{t.failed}</div>
             <div style={{ marginTop: 6, opacity: 0.85 }}>{error}</div>
           </div>
         )}
 
         {!loading && !error && (
           <div style={{ display: "grid", gap: 10 }}>
-            {rows.map((r) => (
-              <div
-                key={r.rank}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: 14,
-                  borderRadius: 14,
-                  border: "1px solid #eee",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 10,
-                      border: "1px solid #eee",
-                      display: "grid",
-                      placeItems: "center",
-                      fontWeight: 800,
-                    }}
-                  >
-                    {r.rank}
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: 16 }}>
-                      {r.codeName} · {r.subName}
+            {rows.map((r) => {
+              const isMe = myRank != null && r.rank === myRank;
+              return (
+                <div
+                  key={r.rank}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: 14,
+                    borderRadius: 14,
+                    border: isMe ? "2px solid #5B4B8A" : "1px solid #eee",
+                    background: isMe ? "rgba(91, 75, 138, 0.08)" : undefined,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 10,
+                        border: "1px solid #eee",
+                        display: "grid",
+                        placeItems: "center",
+                        fontWeight: 800,
+                      }}
+                    >
+                      {r.rank}
                     </div>
-                    <div style={{ fontSize: 12, opacity: 0.7 }}>Seasonal XP</div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: 16 }}>
+                        {r.codeName} · {r.subName}
+                      </div>
+                      <div style={{ fontSize: 12, opacity: 0.7 }}>{t.tier}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontWeight: 900, fontSize: 18 }}>{r.xpTotal}</div>
+                    <div style={{ fontSize: 12, opacity: 0.7 }}>{t.weeklyXp}</div>
                   </div>
                 </div>
-
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontWeight: 900, fontSize: 18 }}>{r.xpTotal}</div>
-                  <div style={{ fontSize: 12, opacity: 0.7 }}>Weekly XP</div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
 
             {rows.length === 0 && (
-              <div style={{ opacity: 0.75 }}>No data yet. Play Arena to generate weekly XP.</div>
+              <div style={{ opacity: 0.75 }}>{t.noData}</div>
             )}
           </div>
         )}

@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  productionBrowserSourceMaps: true,
+  // 로컬 빠른 빌드: SKIP_SOURCE_MAPS=1 일 때 소스맵 비활성화
+  productionBrowserSourceMaps: process.env.SKIP_SOURCE_MAPS !== "1",
   async headers() {
     return [
       {

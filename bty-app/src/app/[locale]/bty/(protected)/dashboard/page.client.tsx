@@ -32,6 +32,13 @@ type WeeklyStatsRes = {
   weekStartISO?: string;
   weekMaxDailyXp?: number;
 };
+type UnlockedScenariosRes = {
+  ok?: boolean;
+  track?: string;
+  maxUnlockedLevel?: string;
+  previewLevel?: string | null;
+  levels?: Array<{ level: string; title: string; title_ko?: string; items: unknown[] }>;
+};
 
 const STREAK_KEY = "btyArenaStreak:v1";
 
@@ -79,6 +86,7 @@ export default function DashboardClient() {
   };
   const [milestoneModal, setMilestoneModal] = React.useState<MilestoneModalState | null>(null);
   const [weeklyStats, setWeeklyStats] = React.useState<WeeklyStatsRes | null>(null);
+  const [unlockedScenarios, setUnlockedScenarios] = React.useState<UnlockedScenariosRes | null>(null);
 
   async function saveSubName() {
     if (!subNameDraft.trim() || subNameDraft.length > 7) return;
@@ -114,11 +122,12 @@ export default function DashboardClient() {
           subName: "Spark",
           seasonalXpTotal: 0,
         };
-        const [c, leagueRes, todayRes, statsRes] = await Promise.all([
+        const [c, leagueRes, todayRes, statsRes, unlockedRes] = await Promise.all([
           arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => fallbackCore),
           arenaFetch<LeagueRes>("/api/arena/league/active").catch(() => null),
           arenaFetch<TodayXpRes>("/api/arena/today-xp").catch(() => ({ xpToday: 0 })),
           arenaFetch<WeeklyStatsRes>("/api/arena/weekly-stats").catch(() => null),
+          arenaFetch<UnlockedScenariosRes>("/api/arena/unlocked-scenarios").catch(() => null),
         ]);
 
         if (!alive) return;
@@ -136,6 +145,7 @@ export default function DashboardClient() {
         if (leagueRes) setLeague(leagueRes);
         setXpToday(todayRes?.xpToday ?? 0);
         if (statsRes) setWeeklyStats(statsRes);
+        if (unlockedRes?.ok) setUnlockedScenarios(unlockedRes);
       } catch (e) {
         if (!alive) return;
         setError(e instanceof Error ? e.message : "Unknown error");
@@ -213,6 +223,39 @@ export default function DashboardClient() {
                 {" → "}
                 {league.end_at ? new Date(league.end_at).toLocaleDateString() : ""}
               </div>
+            </div>
+          )}
+
+          {unlockedScenarios?.ok && (
+            <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 14 }}>
+              <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>ARENA LEVELS</div>
+              <div style={{ fontSize: 15, fontWeight: 700 }}>
+                Track: {unlockedScenarios.track ?? "—"} · Unlocked up to: {unlockedScenarios.maxUnlockedLevel ?? "—"}
+              </div>
+              {unlockedScenarios.maxUnlockedLevel === "L4" && (
+                <div style={{ marginTop: 6, padding: "8px 10px", background: "#f0f7ff", borderRadius: 8, fontSize: 13 }}>
+                  ✓ L4 (Partner) — admin-granted access. You can play Partner scenarios.
+                </div>
+              )}
+              {unlockedScenarios.levels && unlockedScenarios.levels.length > 0 && (
+                <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {unlockedScenarios.levels.map((lvl) => (
+                    <span
+                      key={lvl.level}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: 8,
+                        background: lvl.level === "L4" ? "#e8f0fe" : "#f5f5f5",
+                        fontSize: 12,
+                        fontWeight: lvl.level === "L4" ? 700 : 500,
+                      }}
+                    >
+                      {lvl.level}: {locale === "ko" && lvl.title_ko ? lvl.title_ko : lvl.title}
+                      {Array.isArray(lvl.items) && ` (${lvl.items.length})`}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

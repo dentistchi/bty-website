@@ -7,7 +7,8 @@
 import { differenceInDays, differenceInMonths } from "date-fns";
 
 export type Track = "staff" | "leader";
-export type LevelId = "S1" | "S2" | "S3" | "L1" | "L2" | "L3";
+/** S1–S3 staff; L1–L3 leader (tenure). L4 = partner only, admin-granted (not tenure-based). */
+export type LevelId = "S1" | "S2" | "S3" | "L1" | "L2" | "L3" | "L4";
 export type TenureBasis = "joinedAt" | "leaderStartedAt";
 
 export interface UserTenureProfile {
@@ -59,7 +60,11 @@ export function getTenureMonths(
   return months;
 }
 
-/** Returns the maximum unlocked level for a given track, based ONLY on tenure rules. */
+/** Tenure-ordered levels only (L4 is not tenure-based; admin-granted separately). */
+export const STAFF_LEVEL_ORDER: LevelId[] = ["S1", "S2", "S3"];
+export const LEADER_LEVEL_ORDER: LevelId[] = ["L1", "L2", "L3", "L4"];
+
+/** Returns the maximum unlocked level for a given track, based ONLY on tenure rules. L4 is never returned here. */
 export function getMaxUnlockedLevelTenure(
   track: Track,
   user: UserTenureProfile,
@@ -70,7 +75,7 @@ export function getMaxUnlockedLevelTenure(
     track = cfg.newJoinerRule.forcedTrack;
   }
 
-  const ordered: LevelId[] = track === "staff" ? ["S1", "S2", "S3"] : ["L1", "L2", "L3"];
+  const ordered: LevelId[] = track === "staff" ? STAFF_LEVEL_ORDER : ["L1", "L2", "L3"];
   let max: LevelId = ordered[0];
 
   for (const level of ordered) {
@@ -82,9 +87,9 @@ export function getMaxUnlockedLevelTenure(
   return max;
 }
 
-/** Returns next locked level for preview (e.g. "S3 unlocks in X months"). */
+/** Returns next locked level for preview (e.g. "S3 unlocks in X months"). For leader, after L3 comes L4 (admin-gated). */
 export function getNextLockedLevel(track: Track, maxUnlocked: LevelId): LevelId | null {
-  const ordered: LevelId[] = track === "staff" ? ["S1", "S2", "S3"] : ["L1", "L2", "L3"];
+  const ordered: LevelId[] = track === "staff" ? STAFF_LEVEL_ORDER : LEADER_LEVEL_ORDER;
   const i = ordered.indexOf(maxUnlocked);
   if (i < 0 || i === ordered.length - 1) return null;
   return ordered[i + 1];

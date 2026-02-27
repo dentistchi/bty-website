@@ -44,12 +44,14 @@ export async function POST(request: Request) {
 
     const mode = normalizeMode(body.mode, userContent) as ChatMode;
 
+    // Phase 1-1: 낮은 자존감 → Dear Me 안전 밸브 (우선)
     if (isLowSelfEsteemSignal(userContent)) {
       const message = getSafetyValveMessage(lang);
       return NextResponse.json({ message, suggestDearMe: true } satisfies Partial<ChatResponseBody>);
     }
 
-    if (mode === "dearme" && isDojoRecommendSignal(userContent)) {
+    // Phase 1-2: 학습/연습 필요 → Dojo(멘토·역지사지) 링크 제안 — 전역
+    if (isDojoRecommendSignal(userContent)) {
       const message = getDojoRecommendMessage(lang);
       return NextResponse.json({ message, suggestDojo: true } satisfies Partial<ChatResponseBody>);
     }

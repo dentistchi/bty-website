@@ -57,12 +57,10 @@ npm install
 
 ## 3. 최근 반영된 내용 (참고)
 
-- Arena "기타" 제출 → `POST /api/arena/free-response` 연동, 피드백·XP 표시
-- 챗/멘토 성공 시 `recordActivityXp` 호출
-- Chatbot: `usedFallback` 표시, 플로팅 버튼 = Dr. Chi 아바타
-- 멘토 페이지: GuideCharacterAvatar (헤더·대화)
-- 가이드 캐릭터 에셋 문서: `docs/GUIDE_CHARACTER_ASSET.md`
-- 로드맵: `docs/ROADMAP_NEXT_STEPS.md` (1-3, 1-4 완료 표시)
+- **리더보드**: locale(한/영), 내 순위 강조, notOnBoard 메시지, API 디버그 헤더 제거
+- **태스크 보드**: `docs/CURSOR_TASK_BOARD.md` — 상태 색상 (대기=빨강, 진행 중=녹색, 완료=파랑)
+- **작업 완료 알림**: `.cursor/rules/complete-notify.mdc` — afplay + osascript (다른 PC에서도 동일 규칙 적용)
+- Arena free-response, 챗/멘토 XP, 가이드 캐릭터 UI, Phase 1-1~1-3 문서 등
 
 ---
 

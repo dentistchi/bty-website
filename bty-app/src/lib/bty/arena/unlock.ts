@@ -8,7 +8,7 @@ import { getMaxUnlockedLevelTenure, getNextLockedLevel } from "@/lib/bty/arena/t
 import type { ArenaProgramConfig, LevelWithTenure } from "@/lib/bty/arena/program";
 import { loadProgramConfig } from "@/lib/bty/arena/program";
 
-const LEVEL_IDS: LevelId[] = ["S1", "S2", "S3", "L1", "L2", "L3"];
+const LEVEL_IDS: LevelId[] = ["S1", "S2", "S3", "L1", "L2", "L3", "L4"];
 
 function isLevelId(s: string): s is LevelId {
   return LEVEL_IDS.includes(s as LevelId);
@@ -16,7 +16,7 @@ function isLevelId(s: string): s is LevelId {
 
 /**
  * Builds TenurePolicyConfig from current arena program config.
- * Uses tracks[].levels for min_tenure_months and tenure_basis; new_joiner_rule from program.
+ * L4 has no tenure (admin-granted only); we set high min so tenure never unlocks it.
  */
 export function buildTenurePolicyConfig(program: ArenaProgramConfig): TenurePolicyConfig {
   const minTenureMonthsByLevel: Record<LevelId, number> = {
@@ -26,6 +26,7 @@ export function buildTenurePolicyConfig(program: ArenaProgramConfig): TenurePoli
     L1: 24,
     L2: 60,
     L3: 120,
+    L4: 9999, // Partner level: not unlockable by tenure; admin grants only.
   };
   const tenureBasisByLevel: Record<LevelId, "joinedAt" | "leaderStartedAt"> = {
     S1: "joinedAt",
@@ -34,6 +35,7 @@ export function buildTenurePolicyConfig(program: ArenaProgramConfig): TenurePoli
     L1: "leaderStartedAt",
     L2: "leaderStartedAt",
     L3: "leaderStartedAt",
+    L4: "leaderStartedAt",
   };
 
   for (const t of program.tracks) {
@@ -60,17 +62,23 @@ export function buildTenurePolicyConfig(program: ArenaProgramConfig): TenurePoli
 
 /**
  * Returns max unlocked level and optional next locked level (for preview) for the user's track.
+ * For leader track: if l4Granted is true, maxUnlockedLevel is L4 (partner; admin-granted only).
  */
 export function getUnlockedContentWindow(args: {
   track: Track;
   user: UserTenureProfile;
   program?: ArenaProgramConfig;
   now?: Date;
+  /** When true (and track is leader), user has admin-granted L4 (partner) access. */
+  l4Granted?: boolean;
 }): { maxUnlockedLevel: LevelId; previewLevel: LevelId | null } {
   const program = args.program ?? loadProgramConfig();
   const cfg = buildTenurePolicyConfig(program);
   const now = args.now ?? new Date();
-  const maxUnlocked = getMaxUnlockedLevelTenure(args.track, args.user, cfg, now);
+  let maxUnlocked = getMaxUnlockedLevelTenure(args.track, args.user, cfg, now);
+  if (args.track === "leader" && args.l4Granted === true) {
+    maxUnlocked = "L4";
+  }
   const preview = getNextLockedLevel(args.track, maxUnlocked);
   return { maxUnlockedLevel: maxUnlocked, previewLevel: preview };
 }

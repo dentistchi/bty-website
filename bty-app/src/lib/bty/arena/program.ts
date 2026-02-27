@@ -133,12 +133,26 @@ export function getEffectiveTrack(params: {
 }
 
 import programJson from "./arena_program.json";
+import legacyProgramJson from "./arena_legacy_program.json";
 
 /**
  * Load program config (tracks, levels, structure).
  */
 export function loadProgramConfig(): ArenaProgramConfig {
   return programJson as unknown as ArenaProgramConfig;
+}
+
+/** L4 (Partner) content: admin-granted only. Loaded from legacy program. */
+export function loadL4Level(): LevelWithTenure {
+  const raw = legacyProgramJson as { level?: string; structure?: string[]; items?: unknown[]; human_model?: ArenaHumanModel };
+  return {
+    level: "L4",
+    title: "Partner (Board)",
+    title_ko: "파트너 (보드)",
+    structure: raw.structure ?? [],
+    items: raw.items ?? [],
+    human_model: raw.human_model,
+  };
 }
 
 /**
