@@ -13,6 +13,7 @@ import {
   PrimaryActions,
   OutputPanel,
   TierMilestoneModal,
+  CardSkeleton,
   type SystemMsg,
 } from "@/components/bty-arena";
 import BtyTopNav from "@/components/bty/BtyTopNav";
@@ -232,6 +233,8 @@ export default function BtyArenaPage() {
   const [otherSubmitted, setOtherSubmitted] = React.useState(false);
   const [otherError, setOtherError] = React.useState<string | null>(null);
   const [freeResponseFeedback, setFreeResponseFeedback] = React.useState<{ praise: string; suggestion: string } | null>(null);
+  /** Set when POST /api/arena/run/complete fails (e.g. RLS); user may not appear on leaderboard. */
+  const [completeError, setCompleteError] = React.useState<string | null>(null);
 
   /** Result from POST /api/arena/reflect (summary, questions, next_action). Shown in ConsolidationBlock. */
   type ReflectResult = { summary: string; questions: string[]; next_action: string; detected?: { tags: string[]; topTag?: string } };
@@ -340,7 +343,10 @@ export default function BtyArenaPage() {
     return (
       <div style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}>
         <BtyTopNav />
-        <p style={{ marginTop: 24 }}>Loading…</p>
+        <div style={{ marginTop: 24, display: "grid", gap: 20 }}>
+          <CardSkeleton lines={3} showLabel={true} />
+          <CardSkeleton lines={2} showLabel={true} />
+        </div>
       </div>
     );
   }
@@ -349,7 +355,9 @@ export default function BtyArenaPage() {
     return (
       <div style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}>
         <BtyTopNav />
-        <p style={{ marginTop: 24 }}>Redirecting to Beginner…</p>
+        <div style={{ marginTop: 24, display: "grid", gap: 20 }}>
+          <CardSkeleton lines={2} showLabel={true} />
+        </div>
       </div>
     );
   }
@@ -359,6 +367,8 @@ export default function BtyArenaPage() {
   }
 
   const current = scenario;
+  const displayTitle = locale === "ko" && current.titleKo ? current.titleKo : current.title;
+  const displayContext = locale === "ko" && current.contextKo ? current.contextKo : current.context;
   const choice = current.choices.find((c) => c.choiceId === selectedChoiceId) ?? null;
   const followUpOptions = normalizeFollowUpOptions(choice);
   const hasFollowUp = Boolean(choice?.followUp?.enabled && followUpOptions.length);
@@ -450,7 +460,7 @@ export default function BtyArenaPage() {
         try {
           const res = await arenaFetch<{ ok?: boolean; xp?: number; feedback?: { praise: string; suggestion: string } }>(
             "/api/arena/free-response",
-            { json: { runId: rid, scenarioId: current.scenarioId, responseText: trimmed } }
+            { json: { runId: rid, scenarioId: current.scenarioId, responseText: trimmed, locale } }
           );
           if (res.ok && typeof res.xp === "number" && res.feedback) {
             const otherMsg = SYSTEM_MESSAGES.find((m) => m.id === "other_recorded") ?? SYSTEM_MESSAGES[0];
@@ -557,7 +567,7 @@ export default function BtyArenaPage() {
             json: {
               userText: trimmed,
               scenario: {
-                situation: [current.title, current.context].filter(Boolean).join(" — ").slice(0, 280),
+                situation: [displayTitle, displayContext].filter(Boolean).join(" — ").slice(0, 280),
                 userChoice: trimmed,
               },
             },
@@ -612,6 +622,7 @@ export default function BtyArenaPage() {
   }
 
   async function continueNextScenario() {
+    setCompleteError(null);
     clearState();
     const currentRunId = runId;
     let core: { coreXpTotal?: number; subName?: string; subNameRenameAvailable?: boolean } | null = null;
@@ -636,6 +647,12 @@ export default function BtyArenaPage() {
         }
       } catch (e) {
         console.warn("Arena run complete failed", e);
+        const msg = e instanceof Error ? e.message : String(e);
+        setCompleteError(
+          locale === "ko"
+            ? `저장 실패: ${msg}. 리더보드에 반영되지 않았을 수 있어요.`
+            : `Save failed: ${msg}. You may not appear on the leaderboard.`
+        );
       }
     }
 
@@ -758,22 +775,43 @@ export default function BtyArenaPage() {
     <div style={{ maxWidth: 860, margin: "0 auto", padding: "24px 16px" }}>
       <BtyTopNav />
       <div style={{ marginTop: 18 }}>
+        {step === 1 && (
+          <div className="bty-hero" style={{ paddingTop: 32, paddingBottom: 40, marginBottom: 28 }}>
+            <p className="bty-hero-title" style={{ margin: 0, fontSize: "clamp(1.75rem, 4vw, 2rem)", fontWeight: 700, letterSpacing: "0.02em", lineHeight: 1.35, color: "var(--arena-text)" }}>
+              {locale === "ko" ? "오늘도 한 걸음, Arena에서." : "One step today, in the Arena."}
+            </p>
+          </div>
+        )}
         <ArenaHeader locale={locale} step={step} phase={phase} runId={runId} onPause={pause} onReset={resetRun} showPause={false} />
-
+        {completeError && (
+          <div
+            style={{
+              marginTop: 12,
+              padding: "10px 14px",
+              borderRadius: 10,
+              background: "#fff7f7",
+              border: "1px solid #f1c0c0",
+              fontSize: 14,
+              color: "#8b2e2e",
+            }}
+          >
+            {completeError}
+          </div>
+        )}
       <div style={{ marginTop: 18, padding: 18, border: "1px solid #eee", borderRadius: 14 }}>
         {step === 1 && (
           <ScenarioIntro
             locale={locale}
-            title={current.title}
-            context={getContextForUser(current.context)}
+            title={displayTitle}
+            context={getContextForUser(displayContext)}
             onStart={onStartSimulation}
           />
         )}
 
         {step >= 2 && step !== 1 && (
           <>
-            <h2 style={{ marginTop: 0, marginBottom: 8 }}>{current.title}</h2>
-            <p style={{ marginTop: 0, lineHeight: 1.6, opacity: 0.9 }}>{getContextForUser(current.context)}</p>
+            <h2 style={{ marginTop: 0, marginBottom: 8 }}>{displayTitle}</h2>
+            <p style={{ marginTop: 0, lineHeight: 1.6, opacity: 0.9 }}>{getContextForUser(displayContext)}</p>
           </>
         )}
 

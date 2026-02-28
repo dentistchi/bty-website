@@ -6,6 +6,8 @@
 
 ## 0. 페르소나 (확정)
 
+**반영 위치**: `src/lib/bty/chat/buildChatMessages.ts` — BTY_CHAT_GLOBAL_OVERRIDE §3 톤/금지, EN mirror, Dojo/Dear Me few-shot.
+
 ### BTY Dojo
 - **정체**: BTY Dojo. 리더십 훈련 가이드.
 - **역할**: 최종 답을 주지 않고, 생각을 이끌어 줌 (guide thinking).
@@ -13,7 +15,7 @@
 - **자주 쓰는 질문 예**: "다른 관점은 무엇일까요?", "장기적으로는 어떤 영향이 있을까요?", "이 선택이 당신의 가치와 일치합니까?"
 - **금지**: 답을 바로 다 알려주기, 사용자 판단하기. (위로/안심 문구도 금지.)
 - **언어**: 사용자와 같은 언어로 응답.
-- **Few-shot**: (대화가 6메시지 이하일 때만) 시스템 프롬프트 직후 3턴 삽입 (한/영): (1) 팀원 실수 → 우선순위 질문 (2) 모르겠어요 → 단기/장기 무게 질문 (3) "그래"/"Okay" → 한 문장만 ("더 보고 싶은 게 있으면 말해 주세요", Arena 미언급).
+- **Few-shot**: (대화가 6메시지 이하일 때만) 시스템 프롬프트 직후 3턴 삽입 (한/영): (1) 안녕 → 한 줄 인사 (2) 팀원 실수 → 우선순위 질문 (3) 모르겠어요 → 단기/장기 무게 질문 (4) "그래"/"Okay" → 한 문장만 ("더 보고 싶은 게 있으면 말해 주세요", Arena 미언급). ✅ buildChatMessages CHAT_FEWSHOT_DOJO.
 - **언어**: 클라이언트 `lang` + 마지막 사용자 메시지 한글 여부로 보정 (`detectLang`).
 - **토큰**: 최근 8턴만 전달, `max_tokens: 200`.
 
@@ -60,19 +62,19 @@
 
 | 항목 | 현재 | 정할 것 |
 |------|------|----------|
-| 빈 채팅 시 소개 문구 | Dojo: "이제 다른 사람의 입장을…" / Dear Me: "지금 상태도 괜찮아요…" | 문구 최종안 확정 |
-| 공간 전환 시 안내 | 없음 | "지금은 Dojo예요. 위로보다는 선택·구조에 초점을 둡니다" 등 한 줄 안내 넣을지 |
-| 대화 초기화 버튼 | 없음 | 공간 바꿀 때 "대화 새로 시작" 버튼 넣을지 |
+| 빈 채팅 시 소개 문구 | Dojo: "이제 다른 사람의 입장을…" / Dear Me: "지금 상태도 괜찮아요…" | ✅ i18n `chat.introDojo`, `chat.introDearMe`로 최종안 확정·Chatbot에서 사용 |
+| 공간 전환 시 안내 | 없음 | ✅ 빈 채팅 시 `chat.spaceHintDojo` / `chat.spaceHintDearMe` 한 줄 표시 (Dojo/Dear Me만) |
+| 대화 초기화 버튼 | "기록 삭제" (Delete history) | 기존 유지. 공간 바꿀 때 "대화 새로 시작" 별도 버튼은 선택 사항 |
 
 ---
 
 ## 3. 디테일로 정해갈 것 (추가 가능)
 
-- [ ] **Dojo**: 짧은 인사("안녕")에 대한 기본 답 한 줄 (예: "안녕하세요. 오늘은 어떤 선택을 함께 볼까요?")
-- [ ] **Dear Me**: "그래 남 입장 좋지" 같은 말에 대한 톤 (위로 유지 vs 짧은 공감만)
-- [ ] **Arena 제안 시점**: "다음 단계로 Arena 시나리오"를 언제 넣을지 규칙 (예: 사용자가 "다음은?" / "연습하고 싶어" 등 말했을 때만)
-- [ ] **fallback**: API 실패 시 Dojo/Dear Me별 fallback 문구 최종 문장
-- [ ] **메타 질문**: "너 누구야?", "챗봇이야?" 공통 답 (Dojo vs Dear Me 구분할지)
+- [x] **Dojo**: 짧은 인사("안녕")에 대한 기본 답 한 줄 — 시스템 프롬프트 META_AND_INTRO_GUIDE + few-shot "안녕하세요" → "안녕하세요. 오늘은 어떤 선택을 함께 볼까요?"
+- [x] **Dear Me**: "그래 남 입장 좋지" 같은 말에 대한 톤 — 위로 유지 vs 짧은 공감만 → few-shot 추가: 짧은 공감 + 필요 언어화 질문 한 문장
+- [x] **Arena 제안 시점**: "다음 단계로 Arena 시나리오"를 언제 넣을지 규칙 — 시스템 프롬프트에 명시: 사용자가 "다음은?" / "연습하고 싶어" 등 말했을 때만 한 문장으로 제안
+- [x] **fallback**: API 실패 시 Dojo/Dear Me별 fallback 문구 — `getFallbackMessage(mode, lang)` 유지 (이미 ko/en 구분)
+- [x] **메타 질문**: "너 누구야?", "챗봇이야?" 공통 답 — `isMetaQuestion` + `getMetaReply(lang)` 로 고정 답변 반환 (Dojo/Dear Me 구분 없이 공통 문구)
 
 ---
 
@@ -81,8 +83,19 @@
 | 수정 대상 | 파일 |
 |-----------|------|
 | bty / today-me 시스템 프롬프트 | `src/app/api/chat/route.ts` |
+| NVC·치유 스펙·few-shot (메시지 조합) | `src/lib/bty/chat/buildChatMessages.ts` |
 | bty 위로 문구 필터 | `src/app/api/chat/route.ts` → `filterBtyResponse` |
 | 소개 문구 · 공간 라벨 | `src/components/Chatbot.tsx` |
+
+**Dear Me 치유 코칭 스펙 (단일 소스)**: **`docs/specs/healing-coaching-spec-v3.json`**, 요약·연동 **`docs/HEALING_COACHING_SPEC_V3.md`**. 시스템 프롬프트·플레이북·이벤트 정의는 v3 스펙과 동기화할 것.
+
+---
+
+## 5. 구현 테스트 검증 (완료)
+
+- **상태**: ✅ **PASS** (Cursor 2 검증)
+- **내용**: `npm run lint` 통과, `npm test` Vitest 10/10 통과 (chat 5, mentor 5). 테스트 실패 원인(cookies request scope, getSupabaseServerClient 환경) → next/headers·supabaseServer 목 추가로 해결.
+- **상세**: **`docs/NEXT_STEPS_RUNBOOK.md`** § "챗봇 구현 테스트 결과" 참고.
 
 ---
 

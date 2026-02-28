@@ -1,5 +1,23 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { POST } from "./route";
+
+// Next.js cookies() is called by getSupabaseServerClient(); mock for Vitest (no request scope).
+vi.mock("next/headers", () => ({
+  cookies: () =>
+    Promise.resolve({
+      getAll: () => [],
+    }),
+}));
+
+// Supabase client requires env in test; mock so fallback response path works.
+vi.mock("@/lib/bty/arena/supabaseServer", () => ({
+  getSupabaseServerClient: () =>
+    Promise.resolve({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: null } }),
+      },
+    }),
+}));
 
 function request(body: unknown, headers?: Record<string, string>): Request {
   return new Request("http://localhost/api/chat", {

@@ -8,6 +8,7 @@ import { AuthGate } from "@/components/AuthGate";
 import { Comeback } from "@/components/Comeback";
 import { Nav } from "@/components/Nav";
 import { ThemeBody } from "@/components/ThemeBody";
+import { LoadingFallback } from "@/components/bty-arena";
 import { MissionCard } from "@/components/journey/MissionCard";
 import { cn } from "@/lib/utils";
 import { fetchJson } from "@/lib/read-json";
@@ -258,8 +259,8 @@ export function JourneyBoard() {
     return (
       <AuthGate>
         <ThemeBody theme="dojo" />
-        <main className="min-h-screen bg-dojo-white flex items-center justify-center">
-          <p className="text-dojo-ink-soft">로딩 중…</p>
+        <main className="min-h-screen bg-dojo-white flex items-center justify-center p-6">
+          <LoadingFallback icon="📋" message="잠시만 기다려 주세요." withSkeleton />
         </main>
       </AuthGate>
     );

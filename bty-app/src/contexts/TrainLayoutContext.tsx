@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, type ReactNode } from "react";
+import { PageLoadingFallback } from "@/components/bty-arena";
 
 export type Progress = {
   startDateISO: string;
@@ -56,7 +57,7 @@ export function TrainLayoutProvider({
   );
 
   if (!progress) {
-    return <div className="min-h-screen p-6">loading...</div>;
+    return <PageLoadingFallback />;
   }
 
   return (

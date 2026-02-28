@@ -13,6 +13,8 @@ export interface LeaderboardRowProps {
   weeklyXp: number;
   /** Avatar URL (optional). When null, UserAvatar shows fallback. */
   avatarUrl?: string | null;
+  /** Weekly tier from API (e.g. Bronze, Silver, Gold, Platinum). Display only. */
+  tier?: string | null;
   /** Highlight as current user row. */
   isMe?: boolean;
 }
@@ -27,6 +29,7 @@ export function LeaderboardRow({
   subName,
   weeklyXp,
   avatarUrl,
+  tier,
   isMe = false,
 }: LeaderboardRowProps) {
   const displayName = subName ? `${codeName} · ${subName}` : codeName;
@@ -41,28 +44,28 @@ export function LeaderboardRow({
         gap: 12,
         padding: 14,
         borderRadius: 14,
-        border: isMe ? "2px solid #5B4B8A" : "1px solid #eee",
-        background: isMe ? "rgba(91, 75, 138, 0.08)" : undefined,
+        border: isMe ? "2px solid var(--arena-accent)" : "1px solid color-mix(in srgb, var(--arena-text-soft) 25%, transparent)",
+        background: isMe ? "color-mix(in srgb, var(--arena-accent) 8%, transparent)" : undefined,
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <div
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: 10,
-            border: "1px solid #eee",
-            display: "grid",
-            placeItems: "center",
-            fontWeight: 800,
-          }}
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: 10,
+          border: "1px solid color-mix(in srgb, var(--arena-text-soft) 30%, transparent)",
+          display: "grid",
+          placeItems: "center",
+          fontWeight: 800,
+        }}
         >
           {rank}
         </div>
         <UserAvatar avatarUrl={avatarUrl} initials={initials} size="sm" />
         <div>
           <div style={{ fontWeight: 800, fontSize: 16 }}>{displayName}</div>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>Code Name</div>
+          <div style={{ fontSize: 12, opacity: 0.7 }}>{tier ?? "Code Name"}</div>
         </div>
       </div>
       <div style={{ textAlign: "right" }}>

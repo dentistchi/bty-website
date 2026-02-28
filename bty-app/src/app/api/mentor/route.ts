@@ -8,6 +8,7 @@ import {
 } from "@/lib/bty/mentor/mentor_fewshot_dropin";
 import { recordActivityXp } from "@/lib/bty/arena/activityXp";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { detectEmotionalEventFromText, recordEmotionalEventServer } from "@/lib/bty/emotional-stats";
 import { recordQualityEventApp } from "@/lib/bty/quality";
 import { checkRateLimit, getClientIdentifier } from "@/lib/rate-limit";
 import { logApiError } from "@/lib/log-api-error";
@@ -151,6 +152,12 @@ export async function POST(request: Request) {
             recordActivityXp(supabase, user.id, "MENTOR_MESSAGE").catch((err) =>
               console.warn("[mentor] recordActivityXp failed", err)
             );
+            const eventId = detectEmotionalEventFromText(text);
+            if (eventId) {
+              recordEmotionalEventServer(supabase, user.id, eventId, null).catch((err) =>
+                console.warn("[mentor] recordEmotionalEvent failed", err)
+              );
+            }
           }
           return NextResponse.json({
             message: text,
@@ -174,6 +181,12 @@ export async function POST(request: Request) {
       recordActivityXp(supabase, user.id, "MENTOR_MESSAGE").catch((err) =>
         console.warn("[mentor] recordActivityXp failed", err)
       );
+      const eventId = detectEmotionalEventFromText(fallback);
+      if (eventId) {
+        recordEmotionalEventServer(supabase, user.id, eventId, null).catch((err) =>
+          console.warn("[mentor] recordEmotionalEvent failed", err)
+        );
+      }
     }
     return NextResponse.json({ message: fallback, usedFallback: true });
   } catch (e) {

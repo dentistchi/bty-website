@@ -3,11 +3,14 @@
 import React from "react";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
+import { EmptyState } from "./EmptyState";
 
 export type ArenaLevelInfo = {
   level: string;
   title?: string;
   title_ko?: string;
+  /** Locale-resolved title (ko → title_ko, en → title). Set by API when ?locale= is provided. */
+  displayTitle?: string;
   items?: unknown[];
 };
 
@@ -24,6 +27,8 @@ export interface ArenaLevelsCardProps {
   membershipPending?: boolean;
   /** Locale for i18n (en | ko) */
   locale?: string;
+  /** Optional CTA for empty "no levels" state (e.g. Link to Arena). BRIEF §2 */
+  emptyCta?: React.ReactNode;
 }
 
 const STAFF_ORDER = ["S1", "S2", "S3"];
@@ -45,6 +50,7 @@ export function ArenaLevelsCard({
   l4Access = false,
   membershipPending = false,
   locale = "en",
+  emptyCta,
 }: ArenaLevelsCardProps) {
   const t = getMessages(toLocale(locale)).arenaLevels;
   const [reduceMotion, setReduceMotion] = React.useState(false);
@@ -58,9 +64,22 @@ export function ArenaLevelsCard({
 
   if (membershipPending) {
     return (
-      <div style={{ padding: "12px 0", fontSize: 14, opacity: 0.9 }} role="status">
-        {t.membershipPending}
-      </div>
+      <EmptyState
+        icon="📋"
+        message={t.membershipPending}
+        style={{ padding: "20px 16px" }}
+      />
+    );
+  }
+
+  if ((levels?.length ?? 0) === 0) {
+    return (
+      <EmptyState
+        icon="📂"
+        message={t.noLevelsYet}
+        cta={emptyCta}
+        style={{ padding: "20px 16px" }}
+      />
     );
   }
 
@@ -87,7 +106,9 @@ export function ArenaLevelsCard({
           </>
         )}
       </div>
-
+      {(levels?.length ?? 0) > 0 && (
+        <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 8 }}>{t.levelCardHint}</div>
+      )}
       <div
         style={{
           display: "flex",
@@ -102,7 +123,10 @@ export function ArenaLevelsCard({
           const count = Array.isArray(info?.items) ? info.items.length : 0;
           const isUnlocked = maxIndex >= index;
           const isCurrent = maxUnlockedLevel === levelId;
-          const label = levelId === "L4" ? l4Label : levelId;
+          const label =
+            levelId === "L4"
+              ? l4Label
+              : (info?.displayTitle ?? info?.title_ko ?? info?.title) || levelId;
 
           return (
             <div

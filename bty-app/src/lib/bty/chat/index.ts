@@ -29,6 +29,8 @@ export {
   getDojoRecommendMessage,
   detectLang,
   filterBtyResponse,
+  isMetaQuestion,
+  getMetaReply,
   SAFETY_VALVE_MESSAGE_KO,
   SAFETY_VALVE_MESSAGE_EN,
   DOJO_RECOMMEND_MESSAGE_KO,

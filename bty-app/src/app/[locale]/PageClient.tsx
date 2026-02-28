@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState } from "react";
 import Link from "next/link";
 import { AuthGate } from "@/components/AuthGate";
 import { EmotionalBridge } from "@/components/EmotionalBridge";
@@ -18,6 +19,8 @@ type TodayMeMessages = {
   linkToBty: string;
   assessmentCta: string;
   assessmentCtaSub: string;
+  entryIntro: string;
+  startCta: string;
 };
 
 type Props = {
@@ -28,7 +31,37 @@ type Props = {
 };
 
 export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) {
+  const [hasStartedDearMe, setHasStartedDearMe] = useState(false);
+  const isDearMePath = pathname.includes("/dear-me");
+
   if (lang === "en") {
+    if (isDearMePath && !hasStartedDearMe) {
+      return (
+        <>
+          <AuthHashGate />
+          <AuthGate>
+            <ThemeBody theme="sanctuary" />
+            <main className="min-h-screen">
+              <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
+                <Nav locale="en" pathname={pathname} theme="dear" />
+                <header className="text-center mb-10">
+                  <h1 className="text-2xl sm:text-3xl font-medium text-sanctuary-text mb-2">{t.title}</h1>
+                  <p className="text-sanctuary-text-soft">{t.tagline}</p>
+                </header>
+                <p className="text-center text-sanctuary-text-soft mb-6 max-w-md mx-auto">{t.entryIntro}</p>
+                <button
+                  type="button"
+                  onClick={() => setHasStartedDearMe(true)}
+                  className="w-full rounded-2xl border border-sanctuary-peach/50 bg-sanctuary-peach/10 py-4 text-center hover:bg-sanctuary-peach/20 transition-colors font-medium text-sanctuary-text"
+                >
+                  {t.startCta}
+                </button>
+              </div>
+            </main>
+          </AuthGate>
+        </>
+      );
+    }
     return (
       <>
         <AuthHashGate />
@@ -60,6 +93,42 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
                   {t.linkToBty}
                 </Link>
               </footer>
+            </div>
+          </main>
+        </AuthGate>
+      </>
+    );
+  }
+
+  if (isDearMePath && !hasStartedDearMe) {
+    return (
+      <>
+        <AuthHashGate />
+        <AuthGate>
+          <ThemeBody theme="dear" />
+          <main className="min-h-screen">
+            <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
+              <Nav locale="ko" pathname={pathname} theme="dear" />
+              <header className="text-center mb-14 sm:mb-16 pt-4">
+                <h1 className="font-serif text-3xl sm:text-4xl md:text-[2.75rem] font-medium text-dear-charcoal tracking-tight leading-tight">
+                  Dear Me,
+                  <br />
+                  <span className="text-dear-sage">I&apos;m listening.</span>
+                </h1>
+                <p className="mt-4 text-dear-charcoal-soft text-base sm:text-lg font-sans max-w-md mx-auto">
+                  {t.tagline}
+                </p>
+              </header>
+              <p className="text-center text-dear-charcoal-soft text-base sm:text-lg mb-8 max-w-md mx-auto">
+                {t.entryIntro}
+              </p>
+              <button
+                type="button"
+                onClick={() => setHasStartedDearMe(true)}
+                className="w-full rounded-2xl border border-dear-sage/30 bg-dear-sage/5 py-4 text-center hover:bg-dear-sage/10 transition-colors font-medium text-dear-charcoal"
+              >
+                {t.startCta}
+              </button>
             </div>
           </main>
         </AuthGate>

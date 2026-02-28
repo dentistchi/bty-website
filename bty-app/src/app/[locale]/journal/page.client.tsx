@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { PageLoadingFallback } from "@/components/bty-arena";
 
 export default function JournalPage() {
   const { user, loading } = useAuth();
@@ -13,7 +14,7 @@ export default function JournalPage() {
     if (!loading && !user) router.replace("/login?next=" + encodeURIComponent("/journal"));
   }, [loading, user, router]);
 
-  if (loading) return <div className="p-6">loading...</div>;
+  if (loading) return <PageLoadingFallback />;
   if (!user) return <div className="p-6">redirecting...</div>;
 
   return (

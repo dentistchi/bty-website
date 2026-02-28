@@ -4,10 +4,17 @@ import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 const FREE_RESPONSE_XP = 25;
 const MAX_RESPONSE_LENGTH = 2000;
 
-const DEFAULT_FEEDBACK = {
+const DEFAULT_FEEDBACK_EN = {
   praise: "You took time to put your response in your own words.",
   suggestion: "Next time, try linking your idea to the scenario context.",
 };
+const DEFAULT_FEEDBACK_KO = {
+  praise: "직접 문장으로 적어 주셨네요.",
+  suggestion: "다음에는 상황 맥락과 연결해 보세요.",
+};
+function getFeedback(locale: string) {
+  return locale === "ko" ? DEFAULT_FEEDBACK_KO : DEFAULT_FEEDBACK_EN;
+}
 
 export async function POST(req: Request) {
   const supabase = await getSupabaseServerClient();
@@ -27,6 +34,8 @@ export async function POST(req: Request) {
   const scenarioId = (body as { scenarioId?: string })?.scenarioId;
   const rawText = (body as { responseText?: string })?.responseText;
   const responseText = typeof rawText === "string" ? rawText.trim() : "";
+  const locale = (body as { locale?: string })?.locale === "ko" ? "ko" : "en";
+  const feedback = getFeedback(locale);
 
   if (!runId || typeof runId !== "string") {
     return NextResponse.json({ error: "runId_required" }, { status: 400 });
@@ -63,7 +72,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "FREE_RESPONSE_ALREADY_SUBMITTED" }, { status: 409 });
   }
 
-  const feedback = DEFAULT_FEEDBACK;
   const meta = {
     responseText: responseText.slice(0, 2000),
     praise: feedback.praise,

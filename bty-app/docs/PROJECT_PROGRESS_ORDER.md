@@ -12,36 +12,32 @@
 | 0 | **Phase 0** | 랜딩·챗봇·멘토·문서 — ✅ 완료 |
 | 1 | **Arena 완성** | 버그 수정, L4·리더보드 시즌·자유 입력 등 — ✅ 완료 |
 | 2 | **Phase 1** | 챗봇 Dear Me/Dojo 밸브 + 가이드 캐릭터 통일 — ✅ 완료 |
-| 3 | **Phase 2** | Arena 자유 입력 심화 + Dojo/Dear Me XP 연동 — **← 현재** |
-| 4 | **Phase 3** | 사용자 아바타 (DB·UI) |
-| 5 | **Phase 4·기타** | 아바타와 무관한 다음 단계(코드별 테마, 엘리트 5% 등) 설계·구현 진행 |
-| 6 | **Dojo/Dear Me 콘텐츠** | Arena 안정 후 50문항·자존감 훈련 등 채우기 |
+| 3 | **Phase 2** | Arena 자유 입력 심화 + Dojo/Dear Me XP 연동 — ✅ 완료 |
+| 4 | **Phase 3** | 사용자 아바타 (DB·UI·리더보드 반영) — ✅ 거의 완료 |
+| 5 | **Phase 4** | 코드별 테마·엘리트 5% — ✅ 완료 (`docs/PHASE_4_CHECKLIST.md`) |
+| 6 | **Dojo/Dear Me 콘텐츠** | 50문항·자존감 훈련·Dear Me 진입·빈 상태 보강 등 — ✅ 완료 (`docs/DOJO_DEAR_ME_NEXT_CONTENT.md`, BACKLOG §7·§8) |
+| 7 | **다음 프로젝트** | 아래 §3 "다음에 진행할 작업" 참고. (챗봇 훈련, Dojo/Dear Me 심화, 엘리트 3차, 또는 새 백로그.) |
 
 ---
 
 ## 2. 지금 상태 (최근까지)
 
-- **Phase 0·1**: 완료 (랜딩, 챗봇 전역, Dear Me/Dojo 밸브, 가이드 캐릭터 UI, Dr. Chi 멘토).
-- **Arena**: L4·리더보드 시즌·자유 입력(free-response API + UI "기타" 제출) 연동 완료.
-- **Phase 2**: Arena 자유 입력(2-1~2-3)은 이미 반영됨. **Dojo/Dear Me XP** — 2-4 설계·2-5 구현 모두 반영됨 (스펙: `docs/DOJO_DEAR_ME_XP_SPEC.md`, 마이그레이션: `20260229_activity_xp_events.sql`, API: `/api/mentor`, `/api/chat`에서 `recordActivityXp` 호출).
+- **Phase 0·1·2**: 완료.
+- **Phase 3**: 아바타 URL·캐릭터 선택·아웃핏 테마 저장, 리더보드 아바타 반영, 대시보드 저장 피드백까지 반영. (3-2 RPM 대안 생성 플로우는 보류.)
+- **Phase 4**: 완료. 코드별 가이드 스킨 스펙·챗봇/멘토 스킨, 엘리트 5% 기획·멘토 배지 확장·Elite 전용 페이지 등 `docs/PHASE_4_CHECKLIST.md` 4-1~4-4 반영.
 
 ---
 
 ## 3. 다음에 진행할 작업 (우선순위)
 
-### Phase 2 — 지금 할 일
+### 현재: 백로그 §1~§8 완료. "다음 프로젝트" 후보
 
-| # | 작업 (한 줄) | 담당 타입 | 비고 |
-|---|----------------|----------|------|
-| 2-4 | **Dojo/Dear Me XP 설계** — 무엇을 기록할지(멘토 대화 1회, 챗 1회, 체류 시간 등), 얼마나 줄지 | Feature / Explore·Plan | ✅ 스펙: `docs/DOJO_DEAR_ME_XP_SPEC.md` (이벤트: MENTOR_MESSAGE, CHAT_MESSAGE 각 5 XP, 일일 캡 1,200) |
-| 2-5 | **Dojo/Dear Me 이벤트 기록 및 XP 반영** — 이벤트 저장 + weekly_xp 등과 연동 | Feature | ✅ 마이그레이션 `20260229_activity_xp_events.sql`, `recordActivityXp`(active league·Core), `/api/mentor`·`/api/chat` 호출 |
+- **챗봇 훈련** (로드맵 "챗봇 훈련 시기"): MVP 직전에 시스템 프롬프트·예시·필요 시 RAG 한 번 설계. 구역별(bty / today-me) 말투·역할 정리.
+- **Dojo·Dear Me 콘텐츠 심화**: 50문항 문항 세트·선택지 DB화, 연습 플로우 2종 이상, Dear Me 자존감 회복 훈련 플로우 설계. (`docs/DOJO_DEAR_ME_NEXT_CONTENT.md` §1·§2 확장)
+- **엘리트 3차**: 챔피언십, 멘토 대화 신청, 엘리트 배지 증정 등. (`docs/PHASE_4_ELITE_5_PERCENT_SPEC.md` §10 후보)
+- **새 백로그**: 위와 무관한 새 기능·새 제품·다른 레포 등. `docs/CURRENT_TASK.md` 또는 `docs/PROJECT_BACKLOG.md`에 §9 이후로 추가 후 진행.
 
-*(Phase 2-1~2-3 Arena 자유 입력 설계·API·UI는 이미 반영됨.)*
-
-### Phase 3 이후
-
-- **3**: 아바타 서비스 선정·생성 플로우·DB·대시보드/리더보드 노출.
-- **Phase 4·기타**: 아바타와 무관한 다음 단계 — 코드별 테마, 엘리트 5% 등 설계·구현 진행.
+**진행 에이전트**: 구체 지시는 `docs/CURRENT_TASK.md` 한 줄 지시 또는 위 후보 중 하나를 문장으로 적어서 지시.
 
 ---
 

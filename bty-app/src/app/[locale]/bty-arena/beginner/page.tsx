@@ -8,6 +8,7 @@ import {
 import type { BeginnerScenario } from "@/lib/bty/scenario/beginnerTypes";
 import { getMaturityFeedback } from "@/lib/bty/scenario/beginnerTypes";
 import BtyTopNav from "@/components/bty/BtyTopNav";
+import { CardSkeleton } from "@/components/bty-arena";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 
 type BeginnerStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -203,7 +204,10 @@ export default function BeginnerArenaPage() {
     return (
       <div style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}>
         <BtyTopNav />
-        <p style={{ marginTop: 24 }}>Loading...</p>
+        <div style={{ marginTop: 24, display: "grid", gap: 20 }}>
+          <CardSkeleton lines={3} showLabel={true} />
+          <CardSkeleton lines={2} showLabel={true} />
+        </div>
       </div>
     );
   }

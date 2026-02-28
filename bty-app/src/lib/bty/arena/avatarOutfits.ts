@@ -5,6 +5,7 @@
  */
 
 import type { LevelId } from "@/lib/bty/arena/tenure";
+import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
 
 export type AvatarOutfitTheme = "professional" | "fantasy";
 
@@ -171,3 +172,88 @@ export function getOutfitForLevel(
 
 /** 레벨 순서 (스태프 → 리더) */
 export const OUTFIT_LEVEL_IDS: LevelId[] = ["S1", "S2", "S3", "L1", "L2", "L3", "L4"];
+
+/** 테마별 사용 가능한 outfit id 목록 (캐릭터 고정+옷 선택용). */
+const PROFESSIONAL_OUTFIT_IDS = new Set(
+  (Object.values(PROFESSIONAL_LEVEL_MAP) as { outfitId: string }[]).map((e) => e.outfitId)
+);
+const FANTASY_OUTFIT_IDS = new Set(
+  (Object.values(FANTASY_LEVEL_MAP) as { outfitId: string }[]).map((e) => e.outfitId)
+);
+
+/** 테마별 옷 선택 옵션 (id, label). 대시보드 등에서 사용. */
+export type OutfitOption = { outfitId: string; outfitLabel: string };
+export const OUTFIT_OPTIONS_BY_THEME: Record<"professional" | "fantasy", OutfitOption[]> = {
+  professional: (Object.values(PROFESSIONAL_LEVEL_MAP) as { outfitId: string; outfitLabel: string }[]).map(
+    (e) => ({ outfitId: e.outfitId, outfitLabel: e.outfitLabel })
+  ),
+  fantasy: (Object.values(FANTASY_LEVEL_MAP) as { outfitId: string; outfitLabel: string }[]).map(
+    (e) => ({ outfitId: e.outfitId, outfitLabel: e.outfitLabel })
+  ),
+};
+
+/**
+ * 테마 + outfit id로 옷 정보 반환. (캐릭터 고정+옷 선택: 유저가 고른 옷)
+ * 해당 테마에 없는 id면 null.
+ */
+export function getOutfitById(
+  theme: AvatarOutfitTheme | null | undefined,
+  outfitId: string | null | undefined
+): OutfitResult | null {
+  if (!outfitId || typeof outfitId !== "string") return null;
+  const id = outfitId.trim();
+  const effectiveTheme = theme === "fantasy" ? "fantasy" : DEFAULT_THEME;
+  const map = effectiveTheme === "fantasy" ? FANTASY_LEVEL_MAP : PROFESSIONAL_LEVEL_MAP;
+  const set = effectiveTheme === "fantasy" ? FANTASY_OUTFIT_IDS : PROFESSIONAL_OUTFIT_IDS;
+  if (!set.has(id)) return null;
+  const entry = (Object.values(map) as { outfitId: string; outfitLabel: string; accessoryIds: string[] }[]).find(
+    (e) => e.outfitId === id
+  );
+  if (!entry) return null;
+  const accessoryLabels = entry.accessoryIds.map((aid) => ACCESSORY_CATALOG[aid] ?? aid);
+  return {
+    outfitId: entry.outfitId,
+    outfitLabel: entry.outfitLabel,
+    accessoryIds: entry.accessoryIds,
+    accessoryLabels,
+    imageUrl: `${OUTFIT_IMAGE_BASE}/outfit_${entry.outfitId}.png`,
+  };
+}
+
+/**
+ * Tier → LevelId for display-only (e.g. leaderboard avatar). Not used for unlock logic.
+ * tier 0–4→S1, 5–9→S2, 10–14→S3, 15–19→L1, 20–24→L2, 25–29→L3, 30+→L4.
+ */
+export function tierToDisplayLevelId(tier: number): LevelId {
+  const idx = Math.min(OUTFIT_LEVEL_IDS.length - 1, Math.max(0, Math.floor(tier / 5)));
+  return OUTFIT_LEVEL_IDS[idx];
+}
+
+export type ResolveDisplayAvatarOptions = {
+  customAvatarUrl: string | null;
+  avatarCharacterId: string | null;
+  avatarOutfitTheme: "professional" | "fantasy" | null;
+  levelId: LevelId;
+};
+
+/**
+ * Resolve avatar URL for display (leaderboard, dashboard).
+ * 규칙: 캐릭터를 선택하면 그 캐릭터가 아바타. 옷/테마는 그 위에 레벨별로 표시(악세사리 등).
+ */
+export function resolveDisplayAvatarUrl(options: ResolveDisplayAvatarOptions): string | null {
+  const { customAvatarUrl, avatarCharacterId, avatarOutfitTheme, levelId } = options;
+  if (customAvatarUrl && customAvatarUrl.trim()) return customAvatarUrl.trim();
+
+  const outfit = getOutfitForLevel(avatarOutfitTheme, levelId);
+
+  if (avatarOutfitTheme === "fantasy") {
+    const characterOutfitUrl = getCharacterOutfitImageUrl(avatarCharacterId);
+    if (characterOutfitUrl) return characterOutfitUrl;
+  }
+  if (avatarCharacterId) {
+    const character = getAvatarCharacter(avatarCharacterId);
+    if (character?.imageUrl) return character.imageUrl;
+  }
+  if (outfit.imageUrl) return outfit.imageUrl;
+  return null;
+}

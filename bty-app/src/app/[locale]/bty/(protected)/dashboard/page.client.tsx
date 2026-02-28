@@ -3,8 +3,8 @@
 import React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import BtyTopNav from "@/components/bty/BtyTopNav";
-import { TierMilestoneModal, ProgressCard, ProgressVisual, UserAvatar, ArenaLevelsCard } from "@/components/bty-arena";
+import { TierMilestoneModal, ProgressCard, ProgressVisual, UserAvatar, ArenaLevelsCard, CardSkeleton } from "@/components/bty-arena";
+import { EmotionalStatsPhrases } from "@/components/bty/EmotionalStatsPhrases";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 import { getMilestoneToShow } from "@/lib/bty/arena/milestone";
 import {
@@ -16,8 +16,8 @@ import {
 import { stageFromCoreXp } from "@/domain";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
-import { AVATAR_CHARACTERS } from "@/lib/bty/arena/avatarCharacters";
-import { getAccessoryImageUrl } from "@/lib/bty/arena/avatarOutfits";
+import { AVATAR_CHARACTERS, getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
+import { getAccessoryImageUrl, OUTFIT_OPTIONS_BY_THEME } from "@/lib/bty/arena/avatarOutfits";
 
 type WeeklyXpRes = { weekStartISO?: string | null; weekEndISO?: string | null; xpTotal: number; count?: number };
 type CoreXpRes = {
@@ -29,7 +29,9 @@ type CoreXpRes = {
   subNameRenameAvailable?: boolean;
   avatarUrl?: string | null;
   avatarCharacterId?: string | null;
+  avatarCharacterLocked?: boolean;
   avatarOutfitTheme?: "professional" | "fantasy" | null;
+  avatarSelectedOutfitId?: string | null;
   currentOutfit?: { outfitId: string; outfitLabel: string; accessoryIds: string[]; accessoryLabels: string[] };
 };
 type LeagueRes = { league_id: string; start_at: string; end_at: string; name?: string | null };
@@ -47,7 +49,7 @@ type UnlockedScenariosRes = {
   track?: "staff" | "leader";
   maxUnlockedLevel?: string | null;
   previewLevel?: string;
-  levels?: Array<{ level: string; title?: string; title_ko?: string; items?: unknown[] }>;
+  levels?: Array<{ level: string; title?: string; title_ko?: string; displayTitle?: string; items?: unknown[] }>;
   l4_access?: boolean;
   membershipPending?: boolean;
 };
@@ -68,6 +70,9 @@ type MembershipRequestRes = {
 };
 
 const STREAK_KEY = "btyArenaStreak:v1";
+
+/** PROJECT_BACKLOG §2: MVP에서는 true(노출), MVP 이후 false로 설정해 Arena Level 카드 숨김 */
+const SHOW_ARENA_LEVELS = process.env.NEXT_PUBLIC_SHOW_ARENA_LEVELS !== "false";
 
 function readLocalStreak(): number {
   try {
@@ -92,12 +97,10 @@ export default function DashboardClient() {
   const [error, setError] = React.useState<string | null>(null);
   const [subNameDraft, setSubNameDraft] = React.useState("");
   const [subNameSaving, setSubNameSaving] = React.useState(false);
-  const [avatarUrlDraft, setAvatarUrlDraft] = React.useState("");
-  const [avatarSaving, setAvatarSaving] = React.useState(false);
-  const [avatarUploading, setAvatarUploading] = React.useState(false);
-  const avatarFileInputRef = React.useRef<HTMLInputElement>(null);
   const [avatarCharacterSaving, setAvatarCharacterSaving] = React.useState(false);
   const [avatarOutfitThemeSaving, setAvatarOutfitThemeSaving] = React.useState(false);
+  const [avatarSelectedOutfitSaving, setAvatarSelectedOutfitSaving] = React.useState(false);
+  const [avatarPrefsSavedAt, setAvatarPrefsSavedAt] = React.useState<number | null>(null);
 
   type MilestoneModalState = {
     milestone: 25 | 50 | 75;
@@ -111,6 +114,7 @@ export default function DashboardClient() {
   const [membershipRequest, setMembershipRequest] = React.useState<MembershipRequestRes["request"]>(null);
   const [membershipSubmitMsg, setMembershipSubmitMsg] = React.useState<string | null>(null);
   const [membershipSubmitting, setMembershipSubmitting] = React.useState(false);
+  const [isElite, setIsElite] = React.useState<boolean | null>(null);
   const [membershipForm, setMembershipForm] = React.useState({
     job_function: "assistant",
     joined_at: "",
@@ -132,38 +136,21 @@ export default function DashboardClient() {
     }
   }
 
-  async function saveAvatarUrl(urlOrEmpty?: string | null) {
-    const url =
-      urlOrEmpty !== undefined
-        ? (urlOrEmpty === "" || urlOrEmpty === null ? null : String(urlOrEmpty).trim())
-        : avatarUrlDraft.trim() || null;
-    try {
-      setAvatarSaving(true);
-      await arenaFetch("/api/arena/profile", { method: "PATCH", json: { avatarUrl: url } });
-      const next = await arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => core);
-      if (next) setCore(next);
-      setAvatarUrlDraft("");
-    } catch {
-      // ignore
-    } finally {
-      setAvatarSaving(false);
-    }
-  }
-
-  function clearAvatarUrl() {
-    saveAvatarUrl(null);
-  }
-
   async function selectAvatarCharacter(characterId: string | null) {
-    setCore((c) => (c ? { ...c, avatarCharacterId: characterId } : c));
+    const nextCharacterId = characterId ?? core?.avatarCharacterId ?? null;
+    const nextAvatarUrl =
+      nextCharacterId ? getAvatarCharacter(nextCharacterId)?.imageUrl ?? null : null;
+    setCore((c) =>
+      c ? { ...c, avatarCharacterId: nextCharacterId, avatarUrl: nextAvatarUrl } : c
+    );
     setAvatarCharacterSaving(true);
     try {
       await arenaFetch("/api/arena/profile", {
         method: "PATCH",
-        json: { avatarCharacterId: characterId },
+        json: { avatarCharacterId: characterId, avatarUrl: null },
       });
-      const next = await arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => core);
-      if (next) setCore(next);
+      setAvatarPrefsSavedAt(Date.now());
+      setTimeout(() => setAvatarPrefsSavedAt(null), 2000);
     } catch {
       setCore((c) => (c ? { ...c, avatarCharacterId: core?.avatarCharacterId ?? null } : c));
     } finally {
@@ -181,10 +168,30 @@ export default function DashboardClient() {
       });
       const next = await arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => core);
       if (next) setCore(next);
+      setAvatarPrefsSavedAt(Date.now());
+      setTimeout(() => setAvatarPrefsSavedAt(null), 2000);
     } catch {
       setCore((c) => (c ? { ...c, avatarOutfitTheme: core?.avatarOutfitTheme ?? null } : c));
     } finally {
       setAvatarOutfitThemeSaving(false);
+    }
+  }
+
+  async function saveAvatarSelectedOutfit(outfitId: string | null) {
+    setAvatarSelectedOutfitSaving(true);
+    try {
+      await arenaFetch("/api/arena/profile", {
+        method: "PATCH",
+        json: { avatarSelectedOutfitId: outfitId },
+      });
+      const next = await arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => core);
+      if (next) setCore(next);
+      setAvatarPrefsSavedAt(Date.now());
+      setTimeout(() => setAvatarPrefsSavedAt(null), 2000);
+    } catch {
+      // ignore
+    } finally {
+      setAvatarSelectedOutfitSaving(false);
     }
   }
 
@@ -216,28 +223,6 @@ export default function DashboardClient() {
     }
   }
 
-  async function uploadAvatarFile(file: File) {
-    const formData = new FormData();
-    formData.set("file", file);
-    try {
-      setAvatarUploading(true);
-      const res = await fetch("/api/arena/avatar/upload", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-      const data = (await res.json()) as { avatarUrl?: string; error?: string };
-      if (!res.ok) throw new Error(data.error ?? `HTTP_${res.status}`);
-      const next = await arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => core);
-      if (next) setCore(next);
-    } catch {
-      // ignore
-    } finally {
-      setAvatarUploading(false);
-      if (avatarFileInputRef.current) avatarFileInputRef.current.value = "";
-    }
-  }
-
   React.useEffect(() => {
     let alive = true;
     setStreak(readLocalStreak());
@@ -257,16 +242,17 @@ export default function DashboardClient() {
           subName: "Spark",
           seasonalXpTotal: 0,
         };
-        const [c, leagueRes, todayRes, statsRes, unlockedRes, membershipRes] = await Promise.all([
+        const [c, leagueRes, todayRes, statsRes, unlockedRes, membershipRes, eliteRes] = await Promise.all([
           arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => fallbackCore),
           arenaFetch<LeagueRes>("/api/arena/league/active").catch(() => null),
           arenaFetch<TodayXpRes>("/api/arena/today-xp").catch(() => ({ xpToday: 0 })),
           arenaFetch<WeeklyStatsRes>("/api/arena/weekly-stats").catch(() => null),
-          arenaFetch<UnlockedScenariosRes>("/api/arena/unlocked-scenarios").catch((e) => {
+          arenaFetch<UnlockedScenariosRes>(`/api/arena/unlocked-scenarios?locale=${locale}`).catch((e) => {
             const msg = e instanceof Error ? e.message : String(e);
             return msg === "UNAUTHENTICATED" ? ({ error: "UNAUTHENTICATED" } as UnlockedScenariosRes) : null;
           }),
           arenaFetch<MembershipRequestRes>("/api/arena/membership-request").catch(() => ({ request: null })),
+          arenaFetch<{ isElite?: boolean }>("/api/me/elite").catch(() => ({ isElite: false })),
         ]);
 
         if (!alive) return;
@@ -286,6 +272,7 @@ export default function DashboardClient() {
         if (statsRes) setWeeklyStats(statsRes);
         if (unlockedRes) setUnlockedScenarios(unlockedRes);
         if (membershipRes?.request != null) setMembershipRequest(membershipRes.request);
+        setIsElite(Boolean(eliteRes?.isElite));
       } catch (e) {
         if (!alive) return;
         setError(e instanceof Error ? e.message : "Unknown error");
@@ -298,7 +285,7 @@ export default function DashboardClient() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [locale]);
 
   const coreXp = core?.coreXpTotal ?? 0;
   const stage = stageFromCoreXp(coreXp);
@@ -308,14 +295,21 @@ export default function DashboardClient() {
   const localeTyped = (locale === "ko" ? "ko" : "en") as Locale;
   const tArenaLevels = getMessages(localeTyped).arenaLevels;
   const tAvatarOutfit = getMessages(localeTyped).avatarOutfit;
+  const displayAvatarUrl =
+    core?.avatarUrl ?? getAvatarCharacter(core?.avatarCharacterId)?.imageUrl ?? null;
 
-  return (
-    <div style={{ maxWidth: 980, margin: "0 auto", padding: "24px 16px" }}>
-      <BtyTopNav />
-      <div style={{ marginTop: 18, marginBottom: 16 }}>
+  const content = (<div style={{ maxWidth: 980, margin: "0 auto", padding: "24px 16px" }}>
+      {/* DESIGN_FIRST_IMPRESSION_BRIEF §4 A: 첫 화면 = 히어로 한 문장 — 페이지 최상단에 배치 */}
+      <div className="bty-hero" style={{ paddingTop: 32, paddingBottom: 40, marginBottom: 32 }}>
+        <p className="bty-hero-title" style={{ margin: 0, fontSize: "clamp(1.75rem, 4vw, 2rem)", fontWeight: 700, letterSpacing: "0.02em", lineHeight: 1.35, color: "var(--arena-text)" }}>
+          {locale === "ko" ? "오늘도 한 걸음, Arena에서." : "One step today, in the Arena."}
+        </p>
+      </div>
+
+      <div style={{ marginBottom: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <UserAvatar
-            avatarUrl={core?.avatarUrl}
+            avatarUrl={displayAvatarUrl}
             initials={core?.codeName?.slice(0, 2)}
             alt=""
             size="lg"
@@ -328,7 +322,13 @@ export default function DashboardClient() {
         </div>
       </div>
 
-      {loading && <div style={{ padding: 14, border: "1px solid #eee", borderRadius: 12 }}>Loading…</div>}
+      {loading && (
+        <div style={{ display: "grid", gap: 28, marginTop: 28 }}>
+          {[1, 2, 3, 4].map((i) => (
+            <CardSkeleton key={i} lines={i === 1 ? 3 : 2} />
+          ))}
+        </div>
+      )}
 
       {!loading && error && (
         <div style={{ padding: 14, border: "1px solid #f2c", borderRadius: 12 }}>
@@ -338,14 +338,15 @@ export default function DashboardClient() {
       )}
 
       {!loading && !error && (
-        <div style={{ display: "grid", gap: 12 }}>
+        <div style={{ display: "grid", gap: 28 }}>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
             <Link
               href={`/${locale}/bty-arena`}
+              className="bty-btn-primary"
               style={{
                 padding: "12px 20px",
                 borderRadius: 12,
-                background: "#111",
+                background: "var(--arena-accent)",
                 color: "white",
                 textDecoration: "none",
                 fontWeight: 700,
@@ -356,11 +357,12 @@ export default function DashboardClient() {
             </Link>
             <Link
               href={`/${locale}/bty/leaderboard`}
+              className="bty-btn-outline"
               style={{
                 padding: "12px 20px",
                 borderRadius: 12,
-                border: "1px solid #111",
-                color: "#111",
+                border: "1px solid var(--arena-accent)",
+                color: "var(--arena-text)",
                 textDecoration: "none",
                 fontWeight: 600,
                 fontSize: 14,
@@ -506,29 +508,81 @@ export default function DashboardClient() {
             <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>XP earned today (UTC date).</div>
           </ProgressCard>
 
-          <ProgressCard label="ARENA LEVELS">
-            {unlockedScenarios?.error === "UNAUTHENTICATED" ? (
-              <div style={{ fontSize: 14, opacity: 0.9 }}>{tArenaLevels.loginRequired}</div>
+          {SHOW_ARENA_LEVELS && (
+            <ProgressCard label="ARENA LEVELS">
+              {unlockedScenarios?.error === "UNAUTHENTICATED" ? (
+                <div style={{ fontSize: 14, opacity: 0.9 }}>{tArenaLevels.loginRequired}</div>
+              ) : (
+                <ArenaLevelsCard
+                  track={unlockedScenarios?.track ?? "staff"}
+                  maxUnlockedLevel={unlockedScenarios?.maxUnlockedLevel ?? null}
+                  levels={unlockedScenarios?.levels ?? []}
+                  l4Access={unlockedScenarios?.l4_access === true}
+                  membershipPending={unlockedScenarios?.membershipPending === true}
+                  locale={locale}
+                  emptyCta={
+                    <Link
+                      href={`/${locale}/bty-arena`}
+                      style={{
+                        padding: "10px 18px",
+                        borderRadius: 10,
+                        background: "var(--arena-accent)",
+                        color: "#fff",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        textDecoration: "none",
+                      }}
+                    >
+                      {getMessages(localeTyped).arenaLevels.emptyCta}
+                    </Link>
+                  }
+                />
+              )}
+            </ProgressCard>
+          )}
+
+          <ProgressCard label={locale === "ko" ? "Elite 전용 콘텐츠" : "Elite-only content"}>
+            {isElite ? (
+              <div style={{ fontSize: 14, opacity: 0.9 }}>
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                  {locale === "ko" ? "상위 5%에만 열리는 콘텐츠입니다." : "Content for top 5% only."}
+                </div>
+                <Link
+                  href={`/${locale}/bty/elite`}
+                  style={{
+                    display: "inline-block",
+                    padding: "10px 16px",
+                    borderRadius: 8,
+                    background: "#111",
+                    color: "white",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                    fontSize: 14,
+                  }}
+                >
+                  {locale === "ko" ? "Elite 전용 페이지로 이동 →" : "Go to Elite page →"}
+                </Link>
+              </div>
             ) : (
-              <ArenaLevelsCard
-                track={unlockedScenarios?.track ?? "staff"}
-                maxUnlockedLevel={unlockedScenarios?.maxUnlockedLevel ?? null}
-                levels={unlockedScenarios?.levels ?? []}
-                l4Access={unlockedScenarios?.l4_access === true}
-                membershipPending={
-                  unlockedScenarios?.membershipPending === true ||
-                  (unlockedScenarios?.ok === true && (unlockedScenarios?.levels?.length ?? 0) === 0)
-                }
-                locale={locale}
-              />
+              <div style={{ fontSize: 14, opacity: 0.85 }}>
+                {locale === "ko"
+                  ? "주간 리더보드 상위 5% 달성 시 이용 가능합니다."
+                  : "Available when you reach the top 5% on the weekly leaderboard."}
+              </div>
             )}
           </ProgressCard>
+
+          <EmotionalStatsPhrases />
 
           <ProgressCard label="Code Name">
             <div style={{ fontWeight: 800, fontSize: 18 }}>
               {core?.codeName ?? "FORGE"} · {core?.subName ?? "Spark"}
             </div>
-            <div style={{ marginTop: 6, fontSize: 13, opacity: 0.75 }}>Your identity (Code · Sub Name). Shown as Code Name only on leaderboard.</div>
+            <div style={{ marginTop: 6, fontSize: 13, opacity: 0.75 }}>
+              {locale === "ko"
+                ? "대시보드에 표시되는 이름이에요. 리더보드에 올라가려면 Arena에서 시나리오를 한 번 완료해 주세요."
+                : "Your identity (Code · Sub Name). To appear on the leaderboard, complete at least one Arena scenario."}
+            </div>
             {core?.subNameRenameAvailable && (
               <div style={{ marginTop: 12 }}>
                 <input
@@ -559,29 +613,9 @@ export default function DashboardClient() {
 
           <ProgressCard label="Avatar">
             <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
-              {/* 왼쪽: 아바타 + 악세사리 아이콘 (캐릭터/테마 선택 옆에 항상 노출) */}
+              {/* 왼쪽: 선택한 캐릭터 아바타 + 악세사리 */}
               <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                <input
-                  id="avatar-file-input"
-                  ref={avatarFileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  style={{ display: "none" }}
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) uploadAvatarFile(f);
-                  }}
-                />
-                <label
-                  htmlFor="avatar-file-input"
-                  style={{
-                    cursor: avatarUploading ? "not-allowed" : "pointer",
-                    display: "block",
-                  }}
-                  title="Click to upload image"
-                >
-                  <UserAvatar avatarUrl={core?.avatarUrl} initials={core?.codeName?.slice(0, 2)} alt="" size="md" />
-                </label>
+                <UserAvatar avatarUrl={displayAvatarUrl} initials={core?.codeName?.slice(0, 2)} alt="" size="md" />
                 {core?.currentOutfit?.accessoryIds && core.currentOutfit.accessoryIds.length > 0 && (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                     <div
@@ -621,142 +655,98 @@ export default function DashboardClient() {
                   </div>
                 )}
               </div>
-              {/* 오른쪽: 업로드/URL, 캐릭터 선택, Outfit theme */}
+              {/* 오른쪽: 캐릭터 선택(잠금 전만), Outfit theme */}
               <div style={{ flex: 1, minWidth: 200 }}>
-                <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 6 }}>
-                  Click avatar or button to upload (JPEG/PNG/WebP/GIF, max 2MB), or paste an image URL below.
-                </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-                  <button
-                    type="button"
-                    onClick={() => avatarFileInputRef.current?.click()}
-                    disabled={avatarUploading}
-                    style={{
-                      padding: "8px 12px",
-                      borderRadius: 8,
-                      border: "1px solid #111",
-                      background: "#111",
-                      color: "white",
-                      cursor: avatarUploading ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    {avatarUploading ? "Uploading…" : "Upload image"}
-                  </button>
-                </div>
-                <input
-                  value={avatarUrlDraft}
-                  onChange={(e) => setAvatarUrlDraft(e.target.value)}
-                  placeholder="Or paste image URL: https://..."
-                  style={{
-                    width: "100%",
-                    maxWidth: 400,
-                    padding: "8px 10px",
-                    borderRadius: 8,
-                    border: "1px solid #ddd",
-                    marginTop: 8,
-                    marginRight: 8,
-                    fontSize: 14,
-                  }}
-                />
-                <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={() => saveAvatarUrl()}
-                    disabled={avatarSaving}
-                    style={{
-                      padding: "8px 12px",
-                      borderRadius: 8,
-                      border: "1px solid #111",
-                      background: "#111",
-                      color: "white",
-                      cursor: avatarSaving ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    {avatarSaving ? "Saving…" : "Save URL"}
-                  </button>
-                  {core?.avatarUrl && (
-                    <button
-                      type="button"
-                      onClick={clearAvatarUrl}
-                      disabled={avatarSaving}
-                      style={{
-                        padding: "8px 12px",
-                        borderRadius: 8,
-                        border: "1px solid #999",
-                        background: "transparent",
-                        cursor: avatarSaving ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                {core?.avatarUrl && (
-                  <div style={{ marginTop: 10, fontSize: 12, opacity: 0.8 }}>
-                    직접 올린 이미지 사용 중. 아래 캐릭터 선택은 부가 옵션입니다.
-                  </div>
-                )}
-                <div style={{ marginTop: 16 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>캐릭터 선택</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                    {AVATAR_CHARACTERS.map((ch) => {
-                      const selected = core?.avatarCharacterId === ch.id;
-                      return (
-                        <button
-                          key={ch.id}
-                          type="button"
-                          disabled={avatarCharacterSaving}
-                          onClick={() => selectAvatarCharacter(selected ? null : ch.id)}
-                          style={{
-                            padding: 8,
-                            borderRadius: 12,
-                            border: selected ? "2px solid #111" : "1px solid #ddd",
-                            background: selected ? "#f5f5f5" : "transparent",
-                            cursor: avatarCharacterSaving ? "not-allowed" : "pointer",
-                            opacity: avatarCharacterSaving ? 0.7 : 1,
-                          }}
-                          title={ch.label}
-                        >
-                          <div
+                {core?.avatarCharacterLocked ? (
+                  <>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>캐릭터</div>
+                    <div style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>
+                      {locale === "ko"
+                        ? "캐릭터는 한 번 저장하면 변경할 수 없습니다. 다음 Code 진화까지 유지됩니다. 아웃핏만 변경 가능합니다."
+                        : "Character is permanent after first save until next code evolution. Only outfit theme can be changed."}
+                    </div>
+                    {core?.avatarCharacterId && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        {(() => {
+                          const ch = getAvatarCharacter(core.avatarCharacterId);
+                          return ch ? (
+                            <>
+                              <div style={{ width: 40, height: 40, borderRadius: 8, overflow: "hidden", background: "#e0e0e0" }}>
+                                <img src={ch.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              </div>
+                              <span style={{ fontWeight: 600 }}>{ch.label}</span>
+                            </>
+                          ) : null;
+                        })()}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>캐릭터 선택</div>
+                    <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>
+                      {locale === "ko" ? "한 번 저장하면 변경할 수 없습니다." : "Cannot be changed after first save."}
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                      {AVATAR_CHARACTERS.map((ch) => {
+                        const selected = core?.avatarCharacterId === ch.id;
+                        return (
+                          <button
+                            key={ch.id}
+                            type="button"
+                            disabled={avatarCharacterSaving}
+                            onClick={() => selectAvatarCharacter(selected ? null : ch.id)}
                             style={{
-                              width: 48,
-                              height: 48,
-                              borderRadius: 8,
-                              background: "#e0e0e0",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontSize: 18,
-                              fontWeight: 700,
-                              position: "relative",
-                              overflow: "hidden",
+                              padding: 8,
+                              borderRadius: 12,
+                              border: selected ? "2px solid #111" : "1px solid #ddd",
+                              background: selected ? "#f5f5f5" : "transparent",
+                              cursor: avatarCharacterSaving ? "not-allowed" : "pointer",
+                              opacity: avatarCharacterSaving ? 0.7 : 1,
                             }}
+                            title={ch.label}
                           >
-                            <span style={{ position: "relative", zIndex: 0 }}>{ch.label.slice(0, 1)}</span>
-                            <img
-                              src={ch.imageUrl}
-                              alt=""
+                            <div
                               style={{
-                                position: "absolute",
-                                inset: 0,
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                                zIndex: 1,
+                                width: 48,
+                                height: 48,
+                                borderRadius: 8,
+                                background: "#e0e0e0",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: 18,
+                                fontWeight: 700,
+                                position: "relative",
+                                overflow: "hidden",
                               }}
-                              onError={(e) => {
-                                e.currentTarget.style.display = "none";
-                              }}
-                            />
-                          </div>
-                          <div style={{ marginTop: 4, fontSize: 11, fontWeight: selected ? 700 : 500 }}>
-                            {ch.label}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                            >
+                              <span style={{ position: "relative", zIndex: 0 }}>{ch.label.slice(0, 1)}</span>
+                              <img
+                                src={ch.imageUrl}
+                                alt=""
+                                style={{
+                                  position: "absolute",
+                                  inset: 0,
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                  zIndex: 1,
+                                }}
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
+                                }}
+                              />
+                            </div>
+                            <div style={{ marginTop: 4, fontSize: 11, fontWeight: selected ? 700 : 500 }}>
+                              {ch.label}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
                 <div style={{ marginTop: 16 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{tAvatarOutfit.label}</div>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -791,7 +781,46 @@ export default function DashboardClient() {
                       {tAvatarOutfit.fantasy}
                     </button>
                   </div>
+                  <div style={{ marginTop: 10 }}>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+                      {locale === "ko" ? "선택한 옷" : "Selected outfit"}
+                    </label>
+                    <select
+                      value={core?.avatarSelectedOutfitId ?? ""}
+                      onChange={(e) => saveAvatarSelectedOutfit(e.target.value || null)}
+                      disabled={avatarSelectedOutfitSaving}
+                      style={{
+                        width: "100%",
+                        maxWidth: 280,
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        border: "1px solid #ddd",
+                        fontSize: 13,
+                      }}
+                    >
+                      <option value="">
+                        {locale === "ko" ? "레벨 기본값" : "Level default"}
+                      </option>
+                      {(OUTFIT_OPTIONS_BY_THEME[core?.avatarOutfitTheme === "fantasy" ? "fantasy" : "professional"] ?? []).map(
+                        (opt) => (
+                          <option key={opt.outfitId} value={opt.outfitId}>
+                            {opt.outfitLabel}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </div>
                   <div style={{ marginTop: 8, fontSize: 12, opacity: 0.8 }}>{tAvatarOutfit.hint}</div>
+                  <div style={{ marginTop: 6, fontSize: 11, opacity: 0.75 }}>
+                    {locale === "ko"
+                      ? "Tier 25, 50, 75…마다 악세사리 선택 + 랜덤 보너스 (준비 중)"
+                      : "Accessory selection + random bonus every 25 tiers (coming soon)."}
+                  </div>
+                  {avatarPrefsSavedAt != null && (
+                    <div style={{ marginTop: 8, fontSize: 12, color: "#16a34a", fontWeight: 600 }}>
+                      저장됨
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -850,4 +879,5 @@ export default function DashboardClient() {
       )}
     </div>
   );
+  return content;
 }

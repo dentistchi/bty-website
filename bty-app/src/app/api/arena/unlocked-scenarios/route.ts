@@ -6,7 +6,7 @@
  * Leader with L1+ → staff levels S1–S3 also included (아랫단계 오픈).
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getEffectiveTrack } from "@/lib/bty/arena/program";
 import { loadProgramConfig } from "@/lib/bty/arena/program";
@@ -17,7 +17,8 @@ import type { Track } from "@/lib/bty/arena/tenure";
 const STAFF_ORDER = ["S1", "S2", "S3"];
 const LEADER_ORDER = ["L1", "L2", "L3", "L4"];
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const locale = req.nextUrl.searchParams.get("locale") === "ko" ? "ko" : "en";
   const supabase = await getSupabaseServerClient();
   const {
     data: { user },
@@ -42,9 +43,16 @@ export async function GET() {
     });
   }
 
-  const joinedAt = membershipRequest.joined_at
-    ? new Date(membershipRequest.joined_at).toISOString()
-    : new Date().toISOString();
+  // PROJECT_BACKLOG §3: joined_at 없으면 new-joiner로 오인해 staff만 노출되는 것 방지. leader_started_at 또는 과거일 사용.
+  const rawJoined = membershipRequest.joined_at
+    ? new Date(membershipRequest.joined_at)
+    : membershipRequest.leader_started_at
+      ? new Date(membershipRequest.leader_started_at)
+      : new Date(2000, 0, 1);
+  const joinedAt =
+    rawJoined.getTime() && !Number.isNaN(rawJoined.getTime())
+      ? rawJoined.toISOString()
+      : new Date(2000, 0, 1).toISOString();
   const leaderStartedAt = membershipRequest.leader_started_at
     ? new Date(membershipRequest.leader_started_at).toISOString()
     : null;
@@ -95,7 +103,8 @@ export async function GET() {
     })
     .map((lvl) => {
       const { items, human_model: _hm, ...rest } = lvl as LevelWithTenure;
-      return { ...rest, items };
+      const displayTitle = locale === "ko" && rest.title_ko ? rest.title_ko : rest.title;
+      return { ...rest, items, displayTitle };
     });
 
   let finalLevels = levels;
@@ -108,7 +117,8 @@ export async function GET() {
           .filter((lvl) => STAFF_ORDER.includes(lvl.level))
           .map((lvl) => {
             const { items, human_model: _hm, ...rest } = lvl as LevelWithTenure;
-            return { ...rest, items };
+            const displayTitle = locale === "ko" && rest.title_ko ? rest.title_ko : rest.title;
+            return { ...rest, items, displayTitle };
           });
         finalLevels = [...staffLevels, ...levels];
       }

@@ -38,6 +38,7 @@ export const NEW_JOINER_STAFF_DAYS = 30;
 
 /**
  * Normalize job_function for lookup (lowercase, trim, common aliases).
+ * PROJECT_BACKLOG §3: partner 등 leader 직군이 DB에서 대소문자/공백 차이로 누락되지 않도록.
  */
 function normalizeJobFunction(jobFunction: string | null | undefined): string {
   if (!jobFunction || typeof jobFunction !== "string") return "";
@@ -119,8 +120,8 @@ export function getMaxUnlockedLevel(params: {
 
 /**
  * Resolve effective Arena track for a user.
- * - If within new-joiner window (first 30 days): always "staff".
- * - Else: staff job_functions → "staff", leader job_functions / membership role → "leader".
+ * - If within new-joiner window (first 30 days from joinedAt): always "staff".
+ * - Else: staff job_functions → "staff", leader job_functions (partner, senior_doctor, …) → "leader". PROJECT_BACKLOG §3.
  * - Fallback: membership role (office_manager, regional_manager → leader; staff, doctor → use job_function or default staff).
  */
 export function getEffectiveTrack(params: {

@@ -60,6 +60,8 @@
 
 → **정리**: 구현 먼저 진행 → **MVP 나오기 전**에 “챗봇 훈련” 작업(프롬프트·예시·필요 시 RAG)을 한 번 넣으면 됩니다.
 
+**반영 상태**: 훈련 내용(시스템 프롬프트·구역별 예시·메타 질문 가이드)은 `src/lib/bty/chat/buildChatMessages.ts`, `chatGuards.ts`, `route.ts`에 반영됨. `docs/CHATBOT_TRAINING_CHECKLIST.md` §0·§3·§4 참고.
+
 ---
 
 ## 현재 챗 구조 (Dear Me / Dojo / Avatar)
@@ -131,12 +133,12 @@
 
 **전제**: MVP는 Arena 완성; Dojo·Dear Me는 맛보기 수준 유지 후 차차 채움.
 
-1. **Arena 완성** (버그 수정, 누락 기능, 자유 입력 등) → 한 축이 안정됨.  
-2. **Phase 1** (챗봇 밸브 + 가이드 캐릭터 통일) → 전역 체감 개선, Arena와도 잘 맞음.  
-3. **Phase 2** (Arena 자유 입력 심화 + 필요 시 Dojo/Dear Me XP) → Arena 성장 루프 강화.  
-4. **Phase 3** (사용자 아바타) → 몰입·정체성.  
-5. **Phase 4** (코드 테마·엘리트 5%) → 차별화.  
-6. **Dojo·Dear Me 콘텐츠** (50문항 분석, 자존감 회복 훈련 설계 등) → Arena가 안정된 뒤 구체 그림을 채워 넣음.
+1. **Arena 완성** (버그 수정, 누락 기능, 자유 입력 등) → 한 축이 안정됨. ✅  
+2. **Phase 1** (챗봇 밸브 + 가이드 캐릭터 통일) → 전역 체감 개선, Arena와도 잘 맞음. ✅  
+3. **Phase 2** (Arena 자유 입력 심화 + 필요 시 Dojo/Dear Me XP) → Arena 성장 루프 강화. ✅  
+4. **Phase 3** (사용자 아바타) → 몰입·정체성. ✅  
+5. **Phase 4** (코드 테마·엘리트 5%) → 차별화. ✅ 완료.  
+6. **Dojo·Dear Me 콘텐츠** (50문항 분석, 자존감 회복 훈련 설계 등) → **다음**. Arena 안정 후 구체 그림 채우기. (`docs/DOJO_DEAR_ME_NEXT_CONTENT.md`, `docs/NEXT_TASKS_2.md`)
 
 ---
 

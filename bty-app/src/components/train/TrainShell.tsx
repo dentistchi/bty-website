@@ -4,6 +4,7 @@ import * as React from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { TrainProvider, type TrainProgress } from "@/contexts/TrainContext";
 import { fetchJson } from "@/lib/read-json";
+import { PageLoadingFallback } from "@/components/bty-arena";
 
 async function getJson(url: string) {
   const r = await fetchJson<Record<string, unknown>>(url);
@@ -133,7 +134,7 @@ export default function TrainShell({ children }: { children: React.ReactNode }) 
   );
 
   // 7) 렌더 분기는 "훅 호출 이후"에만
-  if (loading || pLoading) return <div style={{ padding: 24 }}>loading...</div>;
+  if (loading || pLoading) return <PageLoadingFallback />;
   if (!user) return <div style={{ padding: 24 }}>Login required.</div>;
 
   if (!progress) {

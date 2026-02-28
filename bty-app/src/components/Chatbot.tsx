@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * 전역 플로팅 챗봇. pathname에 따라 Dojo(dearme/dojo/arena) 모드로 /api/chat 호출.
+ * CHATBOT_TRAINING_CHECKLIST §2.3: 소개·공간 안내는 i18n chat.introDojo/introDearMe, spaceHintDojo/spaceHintDearMe 사용.
+ */
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -39,6 +43,7 @@ export function Chatbot() {
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
   const [deletingChat, setDeletingChat] = useState(false);
+  const [userCodeName, setUserCodeName] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const timeout10Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
   const timeout25Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -88,6 +93,22 @@ export function Chatbot() {
     })();
   }, [open, prefsLoaded]);
 
+  // Phase 4: Code별 가이드 스킨 — bty/mentor에서 사용자 Code 로드
+  useEffect(() => {
+    if (!open || (!pathname.includes("/bty") && !pathname.includes("/mentor"))) return;
+    (async () => {
+      try {
+        const res = await fetch("/api/arena/core-xp", { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const name = data?.codeName;
+        setUserCodeName(typeof name === "string" && name.trim() ? name : null);
+      } catch {
+        setUserCodeName(null);
+      }
+    })();
+  }, [open, pathname]);
+
   const isBtyPage = pathname.includes("/bty");
   const isMentorPage = pathname.includes("/mentor");
   const isDearMePage = pathname.includes("/dear-me");
@@ -107,17 +128,11 @@ export function Chatbot() {
           : isBtyPage
             ? "Dojo"
             : "Home";
-  // Phase 1-3: 플로팅·멘토 동일 노출 — Dojo/멘토/Dear Me에서 동일한 warm 비주얼
+  // CHATBOT_TRAINING_CHECKLIST §2.3: 소개 문구·공간 안내 — i18n 사용
+  const introMessage = isBtyPage ? t.introDojo : t.introDearMe;
+  const spaceHint = isBtyPage ? t.spaceHintDojo : isDearMePage ? t.spaceHintDearMe : null;
   const guideVariant: GuideAvatarVariant =
     pathname.includes("/bty") || pathname.includes("/dear-me") ? "warm" : "default";
-  const introMessage =
-    locale === "ko"
-      ? isBtyPage
-        ? "이제 다른 사람의 입장을 생각해볼까요? 오늘의 연습을 함께해요."
-        : "지금 상태도 괜찮아요. 여기는 안전한 곳이에요."
-      : isBtyPage
-        ? "How about thinking from the other person's side? Let's practice together."
-        : "You're okay as you are. This is a safe place.";
 
   const performSend = useCallback(
     async (text: string) => {
@@ -308,7 +323,7 @@ export function Chatbot() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         ) : (
-          <GuideCharacterAvatar variant={guideVariant} size="lg" alt="" className="!w-full !h-full !rounded-full" />
+          <GuideCharacterAvatar codeName={userCodeName} variant={guideVariant} size="lg" alt="" className="!w-full !h-full !rounded-full" />
         )}
       </button>
       {open && (
@@ -321,7 +336,7 @@ export function Chatbot() {
         >
           <div className={cn("p-3 border-b", themeColors.border, "flex items-center justify-between gap-2")}>
             <div className="flex items-center gap-2 min-w-0">
-              <GuideCharacterAvatar variant={guideVariant} size="sm" className="flex-shrink-0" />
+              <GuideCharacterAvatar codeName={userCodeName} variant={guideVariant} size="sm" className="flex-shrink-0" />
               <div className="min-w-0 flex flex-col">
                 <span className={cn("text-sm font-medium truncate", themeColors.header)}>Dr. Chi</span>
                 <span className="text-xs opacity-70 truncate">{spaceLabel}</span>
@@ -340,13 +355,18 @@ export function Chatbot() {
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[120px]">
             {chatMessages.length === 0 && !typingText && !errorMsg && (
-              <p className="text-sm text-dear-charcoal-soft">{introMessage}</p>
+              <div className="space-y-1">
+                <p className={cn("text-sm", isBtyPage ? "text-dojo-ink-soft" : "text-dear-charcoal-soft")}>{introMessage}</p>
+                {spaceHint && (
+                  <p className={cn("text-xs opacity-80", isBtyPage ? "text-dojo-ink-soft" : "text-dear-charcoal-soft")}>{spaceHint}</p>
+                )}
+              </div>
             )}
             {chatMessages.map((m, i) => (
               <div key={i} className={m.role === "user" ? "ml-auto max-w-[85%]" : "max-w-[85%]"}>
                 {m.role === "assistant" && (
                   <div className="flex items-center gap-2 mb-1">
-                    <GuideCharacterAvatar variant={guideVariant} size="sm" className="flex-shrink-0" />
+                    <GuideCharacterAvatar codeName={userCodeName} variant={guideVariant} size="sm" className="flex-shrink-0" />
                     <span className="text-xs font-medium opacity-80">Dr. Chi</span>
                   </div>
                 )}
@@ -395,7 +415,7 @@ export function Chatbot() {
             {typingText && (
               <>
                 <div className="flex items-center gap-2 mb-1">
-                  <GuideCharacterAvatar variant={guideVariant} size="sm" className="flex-shrink-0" />
+                  <GuideCharacterAvatar codeName={userCodeName} variant={guideVariant} size="sm" className="flex-shrink-0" />
                   <span className="text-xs font-medium opacity-80">Dr. Chi</span>
                 </div>
                 <div className={cn("rounded-xl px-3 py-2 text-sm w-fit flex items-center gap-0.5", themeColors.typing)}>

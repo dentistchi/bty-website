@@ -42,7 +42,7 @@ export function ProgressVisual({
           style={{
             height: "100%",
             width: `${Math.min(100, Math.max(0, pct))}%`,
-            background: "#111",
+            background: "var(--arena-accent)",
           }}
         />
       </div>

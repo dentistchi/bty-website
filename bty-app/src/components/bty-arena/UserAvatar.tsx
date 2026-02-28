@@ -30,22 +30,43 @@ export function UserAvatar({
   className,
 }: UserAvatarProps) {
   const { class: sizeClass, px } = sizeMap[size];
+  const [imgFailed, setImgFailed] = React.useState(false);
+  const [src, setSrc] = React.useState(() => avatarUrl?.trim() || "");
 
-  if (avatarUrl && avatarUrl.trim()) {
+  const letter = initials && initials.length > 0 ? initials.slice(0, 2).toUpperCase() : null;
+  const DEFAULT_AVATAR = "/avatars/default-avatar.svg";
+
+  // When avatarUrl prop changes, reset to use it (and clear failed state)
+  React.useEffect(() => {
+    const next = avatarUrl?.trim() || "";
+    setSrc(next);
+    if (!next) setImgFailed(false);
+  }, [avatarUrl]);
+
+  const handleError = React.useCallback(() => {
+    if (src && src !== DEFAULT_AVATAR) {
+      setSrc(DEFAULT_AVATAR);
+      setImgFailed(false);
+    } else {
+      setImgFailed(true);
+    }
+  }, [src]);
+
+  if (src && !imgFailed) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={avatarUrl.trim()}
+        src={src}
         alt={alt}
         width={px}
         height={px}
         className={`rounded-full object-cover flex-shrink-0 ${sizeClass} ${className ?? ""}`}
         style={{ objectPosition: "center center", width: px, height: px, borderRadius: "50%" }}
+        onError={handleError}
       />
     );
   }
 
-  const letter = initials && initials.length > 0 ? initials.slice(0, 2).toUpperCase() : null;
   const fallbackStyle: React.CSSProperties = {
     width: px,
     height: px,

@@ -26,6 +26,11 @@ function sanitizeNext(raw: string | null): string {
 
 export async function POST(req: NextRequest) {
   try {
+    if (!url || !key) {
+      console.error("[auth/login] Missing env: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY");
+      return NextResponse.json({ ok: false, error: "SERVER_CONFIG" }, { status: 500 });
+    }
+
     const requestUrl = new URL(req.url);
     const nextPath = sanitizeNext(requestUrl.searchParams.get("next"));
 
@@ -57,6 +62,9 @@ export async function POST(req: NextRequest) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error || !data.session) {
+      // Server log for debugging (e.g. invalid credentials, fetch failed = wrong URL/key or network)
+      const cause = error?.cause != null ? String(error.cause) : "";
+      console.warn("[auth/login] signInWithPassword failed", { email: email.slice(0, 3) + "***", error: error?.message, cause: cause || "(none)" });
       return NextResponse.json({ ok: false, error: error?.message ?? "LOGIN_FAILED" }, { status: 401 });
     }
 
@@ -65,8 +73,11 @@ export async function POST(req: NextRequest) {
     res.headers.set("x-auth-next", nextPath);
     return res;
   } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const cause = e instanceof Error ? (e.cause instanceof Error ? e.cause.message : String(e.cause ?? "")) : "";
+    console.error("[auth/login] Error", msg, cause || "");
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : String(e), where: "/api/auth/login POST" },
+      { error: msg, where: "/api/auth/login POST" },
       { status: 500 }
     );
   }

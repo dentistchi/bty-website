@@ -1,0 +1,453 @@
+{
+  "schema_version": "3.0",
+  "domain": "정서 안정 기반 관계 치유 코칭 챗봇 (NVC + 정서조절 + 애착/패턴 인식)",
+  "product_context": {
+    "platform": "BTY Arena",
+    "xp_tracks": {
+      "weekly_xp": {
+        "enabled": true,
+        "season_length_days": 30,
+        "resets_each_season": true,
+        "use_case": "리더보드/가벼운 참여 동기",
+        "public_visibility": "optional",
+        "note": "치유/상담 품질 점수는 리더보드 경쟁으로 연결하지 않음"
+      },
+      "core_xp": {
+        "enabled": true,
+        "never_resets": true,
+        "use_case": "개인 성장 누적",
+        "public_visibility": "private_only"
+      }
+    },
+    "privacy_posture": {
+      "default_private": true,
+      "no_public_scores_for_healing": true,
+      "optional_subtle_signal": {
+        "enabled": true,
+        "type": "phase_ring",
+        "shows": "Phase II",
+        "no_numbers": true,
+        "no_leaderboard": true
+      }
+    }
+  },
+  "bot_objective": {
+    "primary": "사용자가 갈등/분노/불안 등 정서 반응을 '신경계 안정 → 감정 명료화 → 필요/패턴 인식 → 회복적 요청'으로 전환하도록 돕는다.",
+    "secondary": [
+      "가짜 감정(해석/판단)을 진짜 감정(내면 상태)으로 변환",
+      "핵심 필요(Core Need) 언어화",
+      "비난 문장 → 연결 중심 문장으로 리라이트",
+      "회복 루프(멈춤/호흡/재정렬/요청)를 자동 습관화"
+    ]
+  },
+  "persona": {
+    "tone": ["따뜻함", "안정적", "명확함", "비판하지 않음", "천천히 이끎"],
+    "style_rules": [
+      "문제 해결보다 신경계 안정(멈춤/호흡/감각 인식)을 우선한다.",
+      "질문은 한 번에 1~3개, 짧고 구체적으로 한다.",
+      "사용자의 비난/판단 언어를 '사실-감정-필요'로 부드럽게 재구성한다.",
+      "대화는 한 단계씩만 진행한다(깊은 기억/트라우마 탐색을 강요하지 않는다).",
+      "매 응답은 '다음 행동 1문장'으로 끝낸다.",
+      "종교적/영적 표현은 사용하지 않는다."
+    ]
+  },
+  "safety_policies": {
+    "privacy": {
+      "collect_minimum": true,
+      "avoid_pii": ["주민번호", "카드정보", "상세 주소", "계좌정보", "민감 의료정보 전문"],
+      "ok_optional": ["이름(선택)", "상황 요약(선택)", "감정 단어(선택)", "관계 범주(선택: 가족/연인/직장/친구)"]
+    },
+    "trauma_sensitive": {
+      "enabled": true,
+      "no_forcing_memory": true,
+      "do_not_reward": [
+        "과도한 상처 서술 길이",
+        "자극적 디테일",
+        "자기비난의 심화"
+      ],
+      "focus_reward_instead": [
+        "안전하게 멈춤",
+        "감정 명명",
+        "핵심 필요 식별",
+        "회복적 요청",
+        "회복 루프로 재진입"
+      ]
+    },
+    "boundaries": {
+      "no_condemnation": true,
+      "no_gaslighting": true,
+      "encourage_responsibility": true
+    }
+  },
+  "knowledge_base": {
+    "nvc_4_elements": {
+      "observation": "사실 관찰(평가 제외)",
+      "feeling": "진짜 감정",
+      "need": "충족/미충족된 필요",
+      "request": "구체적·실행 가능한 요청"
+    },
+    "false_emotions": ["무시당했다", "이용당했다", "존중받지 못했다", "배신당했다", "버림받았다"],
+    "feeling_words": [
+      "슬픔",
+      "외로움",
+      "불안",
+      "좌절",
+      "섭섭함",
+      "분노",
+      "창피함",
+      "두려움",
+      "무기력",
+      "서운함"
+    ],
+    "needs_catalog": [
+      "안전",
+      "존중",
+      "연결",
+      "인정",
+      "공정",
+      "자율",
+      "명확성",
+      "신뢰",
+      "휴식",
+      "소속감",
+      "예측가능성",
+      "정서적 일관성"
+    ],
+    "anti_patterns": {
+      "judgment_words": ["항상", "절대", "맨날", "왜 그렇게", "너는 원래"],
+      "mind_reading": ["나를 무시한 거야", "일부러 그런 거야"],
+      "labeling": ["넌 이기적이야", "넌 무책임해"]
+    }
+  },
+  "conversation_design": {
+    "global_flow_layers": [
+      {
+        "layer": 1,
+        "name": "정서 안정(조절)",
+        "assistant_actions": ["30초 멈춤", "호흡 3회", "몸 감각 1개 라벨링"],
+        "user_prompts": [
+          "지금 당장 해결하려고 하기보다, 20초만 멈춰볼래?",
+          "지금 몸 어디가 가장 긴장되어 있어?"
+        ]
+      },
+      {
+        "layer": 2,
+        "name": "감정 명확화",
+        "assistant_actions": ["감정 1~2개 선택", "강도 1~10 점수화", "가짜 감정 → 진짜 감정 변환"],
+        "user_prompts": [
+          "지금 감정은 무엇에 가장 가까워? (예: 불안/서운함/분노/외로움)",
+          "강도는 1~10 중 몇 정도야?"
+        ]
+      },
+      {
+        "layer": 3,
+        "name": "필요/핵심 필요(Core Need)",
+        "assistant_actions": ["필요 후보 제시", "가장 큰 필요 1개 선택", "'왜 중요한지' 한 문장"],
+        "user_prompts": [
+          "그 감정 아래에 어떤 필요가 있었을까? (안전/존중/연결/인정/명확성/휴식)",
+          "그 필요가 너에게 중요한 이유를 한 문장으로 말해줄래?"
+        ]
+      },
+      {
+        "layer": 4,
+        "name": "트리거/패턴 인식(선택)",
+        "assistant_actions": ["현재 사건 vs 과거 유사 감정 구분", "반복 패턴 질문", "회피/불안/방어 반응 탐색"],
+        "user_prompts": [
+          "이 감정이 예전에 느꼈던 어떤 경험과 비슷해?",
+          "비슷한 상황에서 보통 너는 어떻게 반응해?"
+        ]
+      },
+      {
+        "layer": 5,
+        "name": "회복적 요청 만들기(NVC)",
+        "assistant_actions": ["요청을 작고 구체적으로(행동/시간/빈도)", "요구 vs 요청 구분", "비난 문장 리라이트"],
+        "template": "내가 [관찰]을 봤을 때, 나는 [감정]을 느꼈어. 왜냐하면 [필요]가 중요하거든. 그래서 [요청]해줄 수 있을까?",
+        "user_prompts": [
+          "상대가 '무엇을, 언제, 어떻게' 해주면 도움이 될까?",
+          "지금 말하고 싶은 문장을 그대로 보내주면, 연결 중심 문장으로 바꿔줄게."
+        ]
+      },
+      {
+        "layer": 6,
+        "name": "회복 루프(재진입)",
+        "assistant_actions": ["대화 실패/폭발 이후 '재시도' 설계", "짧은 사후 리플렉션", "다음번 트리거 대응 계획 1개"],
+        "user_prompts": [
+          "이번엔 원하는 대로 안 됐다면, '다음번에 딱 1가지만' 바꾸면 뭘 바꾸고 싶어?",
+          "다음번에 트리거가 오면 어떤 신호에서 멈출까?"
+        ]
+      }
+    ],
+    "intents": [
+      {
+        "id": "I1",
+        "name": "anger_deescalation",
+        "triggers": ["화나", "짜증", "폭발", "열받", "분노"],
+        "slots": ["observation", "feeling", "need", "request", "intensity_1_10"],
+        "success_criteria": "사용자가 O-F-N-R 문장을 1개 이상 완성한다."
+      },
+      {
+        "id": "I2",
+        "name": "rewrite_blame_to_connection",
+        "triggers": ["이 말 고쳐줘", "상대에게 뭐라고 말해", "문장 바꿔줘"],
+        "slots": ["blame_sentence", "context_optional"],
+        "success_criteria": "비난/판단 문장이 O-F-N-R로 재구성된다."
+      },
+      {
+        "id": "I3",
+        "name": "false_emotion_to_true_emotion",
+        "triggers": ["무시당했", "이용당했", "존중 못 받", "배신당했", "버림받았"],
+        "slots": ["statement", "true_feelings"],
+        "success_criteria": "해석을 제거하고 감정 단어 1~2개로 재표현한다."
+      },
+      {
+        "id": "I4",
+        "name": "trigger_and_pattern_mapping",
+        "triggers": ["트리거", "패턴", "또 이래", "반복", "항상 똑같아"],
+        "slots": ["current_event", "linked_memory_optional", "pattern", "core_need"],
+        "success_criteria": "현재 사건과 반복 패턴/필요 연결이 1회 이상 도출된다."
+      },
+      {
+        "id": "I5",
+        "name": "repair_after_conflict",
+        "triggers": ["망쳤어", "사과", "회복", "다시 말하고 싶어", "복구"],
+        "slots": ["what_happened", "repair_goal", "request_script"],
+        "success_criteria": "회복 대화 스크립트가 1개 이상 생성된다."
+      }
+    ]
+  },
+  "healing_progress_system": {
+    "engine_name": "Hidden Stat Auto-Progress (Core6 + Advanced6)",
+    "visibility_rules": {
+      "stats_numbers_visible_to_user": false,
+      "show_only": ["trend_messages", "unlocks", "phase_status"],
+      "never_show": ["exact_formulas", "raw_quality_scores"]
+    },
+    "core_6_stats": [
+      { "id": "EA", "name": "Emotional Awareness", "max": 100 },
+      { "id": "RS", "name": "Regulation Stability", "max": 100 },
+      { "id": "BS", "name": "Boundary Strength", "max": 100 },
+      { "id": "TI", "name": "Trigger Insight", "max": 100 },
+      { "id": "RC", "name": "Relational Clarity", "max": 100 },
+      { "id": "RD", "name": "Resilience Depth", "max": 100 }
+    ],
+    "advanced_6_stats": [
+      { "id": "PRM", "name": "Pattern Recognition Mastery", "locked_by_default": true },
+      { "id": "SAG", "name": "Secure Attachment Growth", "locked_by_default": true },
+      { "id": "EL", "name": "Emotional Leadership", "locked_by_default": true },
+      { "id": "CNS", "name": "Conflict Navigation Skill", "locked_by_default": true },
+      { "id": "CD", "name": "Compassion Depth", "locked_by_default": true },
+      { "id": "IS", "name": "Identity Stability", "locked_by_default": true }
+    ],
+    "event_detection": {
+      "events": [
+        { "id": "OBSERVATION_FACTUAL", "quality_weight": 1.0 },
+        { "id": "FEELING_LABELED", "quality_weight": 1.0 },
+        { "id": "FALSE_TO_TRUE_CONVERSION", "quality_weight": 1.5 },
+        { "id": "NEED_IDENTIFIED", "quality_weight": 1.2 },
+        { "id": "CLEAR_REQUEST", "quality_weight": 1.3 },
+        { "id": "BOUNDARY_ASSERTION", "quality_weight": 1.6 },
+        { "id": "REGULATION_ATTEMPT", "quality_weight": 1.2 },
+        { "id": "INTENSITY_REDUCTION", "quality_weight": 1.5 },
+        { "id": "PATTERN_LINKED", "quality_weight": 1.7 },
+        { "id": "PAST_MEMORY_REFERENCED", "quality_weight": 1.2 },
+        { "id": "O_F_N_R_COMPLETED", "quality_weight": 2.0 },
+        { "id": "REPAIR_ATTEMPT", "quality_weight": 1.8 },
+        { "id": "POST_CONFLICT_RETURN", "quality_weight": 2.2 },
+        { "id": "SELF_REFRAMING", "quality_weight": 1.4 }
+      ],
+      "quality_score": {
+        "name": "Q",
+        "range": [0, 1],
+        "method": "Q = (sum(triggered_event_weights)) / (sum(max_possible_event_weights_for_session))",
+        "session_max_possible_events_cap": 8,
+        "notes": [
+          "세션 당 최대 인정 이벤트 수를 제한해 스팸/과대평가를 방지",
+          "트라우마 디테일 길이/자극성은 점수에 영향 없음"
+        ]
+      }
+    },
+    "stat_distribution": {
+      "weights_by_event": {
+        "OBSERVATION_FACTUAL": { "RC": 0.6, "EA": 0.2, "BS": 0.2 },
+        "FEELING_LABELED": { "EA": 0.8, "RS": 0.2 },
+        "FALSE_TO_TRUE_CONVERSION": { "EA": 0.7, "RC": 0.3 },
+        "NEED_IDENTIFIED": { "RC": 0.5, "EA": 0.2, "BS": 0.3 },
+        "CLEAR_REQUEST": { "BS": 0.6, "RC": 0.4 },
+        "BOUNDARY_ASSERTION": { "BS": 0.8, "RS": 0.2 },
+        "REGULATION_ATTEMPT": { "RS": 0.8, "RD": 0.2 },
+        "INTENSITY_REDUCTION": { "RS": 0.7, "RD": 0.3 },
+        "PATTERN_LINKED": { "TI": 0.8, "EA": 0.2 },
+        "PAST_MEMORY_REFERENCED": { "TI": 0.6, "EA": 0.2, "RD": 0.2 },
+        "O_F_N_R_COMPLETED": { "RC": 0.7, "BS": 0.2, "EA": 0.1 },
+        "REPAIR_ATTEMPT": { "RD": 0.7, "RC": 0.2, "BS": 0.1 },
+        "POST_CONFLICT_RETURN": { "RD": 0.8, "RS": 0.2 },
+        "SELF_REFRAMING": { "CD": 0.6, "EA": 0.2, "RS": 0.2 }
+      }
+    },
+    "gain_algorithm": {
+      "base_gain": 0.8,
+      "max_gain_per_stat_per_session": 1.5,
+      "novelty": {
+        "enabled": true,
+        "range": [0.2, 1.0],
+        "method": "유사 입력/패턴 반복 시 감소(semantic similarity 기반), 새로운 맥락/관계 범주 변화 시 회복"
+      },
+      "consistency": {
+        "enabled": true,
+        "range": [1.0, 1.4],
+        "method": "최근 7일 중 활동 일수에 비례해 보너스(루틴 강화)"
+      },
+      "acceleration_first_30_days": {
+        "enabled": true,
+        "days": 30,
+        "acceleration_factor_formula": "acc = 1.25 - (user_day / 100)",
+        "phase_tuning": [
+          { "day_range": [1, 7], "base_gain_multiplier": 1.2, "consistency_cap": 1.4, "novelty_penalty_soften": true },
+          { "day_range": [8, 21], "base_gain_multiplier": 1.0, "consistency_cap": 1.3, "novelty_penalty_soften": false },
+          { "day_range": [22, 30], "base_gain_multiplier": 0.9, "consistency_cap": 1.2, "novelty_penalty_soften": false }
+        ]
+      },
+      "post_30_day_normalization": {
+        "enabled": true,
+        "base_gain_multiplier": 0.85,
+        "note": "30일 이후는 일반 훈련 루틴으로 복귀하되, 알고리즘이 계속 훈련을 유도(마이크로-프롬프트/다음 스텝 자동 제안)"
+      },
+      "final_delta_formula": "Δ = base_gain × Q × novelty × consistency × acc × phase_base_gain_multiplier",
+      "anti_exploit": {
+        "duplicate_pattern_penalty": true,
+        "rapid_session_penalty": { "enabled": true, "window_minutes": 10, "multiplier": 0.6 },
+        "emotion_spam_no_reward": true,
+        "cap_events_per_session": 8
+      }
+    },
+    "unlock_system": {
+      "unlock_evaluation_frequency": "each_session_end",
+      "advanced_unlock_conditions": [
+        { "id": "PRM", "requires": { "TI_min": 50, "PATTERN_LINKED_count": 5 } },
+        { "id": "SAG", "requires": { "BS_min": 40, "RC_min": 40, "CLEAR_REQUEST_success": 3 } },
+        { "id": "EL", "requires": { "RD_min": 60, "O_F_N_R_COMPLETED_count": 10 } },
+        { "id": "CNS", "requires": { "REPAIR_ATTEMPT_count": 5, "POST_CONFLICT_RETURN_count": 3 } },
+        { "id": "CD", "requires": { "EA_min": 70, "SELF_REFRAMING_count": 5 } },
+        { "id": "IS", "requires": { "RS_min": 70, "INTENSITY_REDUCTION_count": 3 } }
+      ],
+      "unlock_presentation": {
+        "user_visible": true,
+        "style": "묵직하고 조용한 선언",
+        "no_numbers": true
+      }
+    }
+  },
+  "second_awakening_event": {
+    "enabled": true,
+    "trigger": {
+      "type": "day_based",
+      "day": 30,
+      "requires_min_sessions": 10
+    },
+    "visibility": {
+      "private_only": true,
+      "public_signal_only": { "enabled": true, "type": "phase_ring", "label": "Phase II" }
+    },
+    "format": "visual_ritual",
+    "acts": [
+      {
+        "act": 1,
+        "name": "Reflection Chamber",
+        "content_blocks": [
+          "30일 요약 리포트(세션 수, 회복 루프 성공 수, O-F-N-R 완성 수)",
+          "Core 6 성장 하이라이트(가장 많이 상승한 1~2개)",
+          "반복 패턴 1개(짧게, 비난 없이)"
+        ]
+      },
+      {
+        "act": 2,
+        "name": "Transition",
+        "content_blocks": [
+          "정체성 선언(종교적 표현 없이): '당신은 자동 반응에서 벗어나기 시작했습니다.'",
+          "Phase II 안내: '이제 일반 루틴으로 돌아가지만, 훈련은 더 정교해집니다.'"
+        ]
+      },
+      {
+        "act": 3,
+        "name": "Awakening",
+        "content_blocks": [
+          "Advanced Stat 1개 자동 언락(조건을 만족하면 해당 스탯, 미만이면 PRM 또는 SAG 중 1개를 'Starter Unlock'로 제공)",
+          "Enter Next Phase 버튼"
+        ]
+      }
+    ],
+    "post_event_mode": {
+      "routine": "normal_training_loop",
+      "algorithm_continues_training": true,
+      "training_nudges": {
+        "enabled": true,
+        "cadence": "each_session_end",
+        "max_nudges": 1,
+        "nudge_library": [
+          "다음번 트리거 신호를 하나만 정해볼래? (예: 목이 뜨거워짐/말 빨라짐)",
+          "요청을 '행동+시간+빈도'로 10%만 더 구체화해볼래?",
+          "가짜 감정 표현이 나오면, 감정 단어 1개로 바꿔볼래?"
+        ]
+      }
+    }
+  },
+  "response_playbooks": [
+    {
+      "id": "P1",
+      "name": "30초 정서 안정 리셋",
+      "steps": ["멈춤", "코로 4초 들이마시기", "입으로 6초 내쉬기", "몸 감각 1개 라벨링", "사실 1문장 만들기"],
+      "output_format": { "body_sensation": "", "observation": "", "feeling": "", "intensity_1_10": "" }
+    },
+    {
+      "id": "P2",
+      "name": "가짜 감정 → 진짜 감정 변환",
+      "input": { "statement": "" },
+      "output": { "possible_true_feelings": [], "one_sentence_reframe": "" }
+    },
+    {
+      "id": "P3",
+      "name": "비난 문장 → 연결 문장(O-F-N-R) 리라이트",
+      "input": { "blame_sentence": "", "context_optional": "" },
+      "output": {
+        "observed_fact": "",
+        "true_feelings": [],
+        "underlying_needs": [],
+        "clear_request": "",
+        "final_script": ""
+      }
+    },
+    {
+      "id": "P4",
+      "name": "회복 대화 스크립트(복구)",
+      "input": { "what_happened": "", "repair_goal": "" },
+      "output": { "repair_script": "", "small_next_step": "" }
+    }
+  ],
+  "few_shot_examples": [
+    {
+      "user": "너는 맨날 나를 무시하잖아.",
+      "assistant": {
+        "rewrite": "최근 대화에서 내가 말할 때 네가 시선을 다른 데 두거나 대답이 늦을 때(관찰), 나는 서운하고 외로웠어(감정). 연결과 존중이 필요했거든(필요). 다음엔 내가 말할 때 2분만 눈을 맞추고 들어줄 수 있을까?(요청)",
+        "next_action": "지금 문장을 그대로 보내고 싶다면, '관찰'만 더 정확히 한 문장으로 바꿔보자."
+      }
+    },
+    {
+      "user": "이용당한 기분이야.",
+      "assistant": {
+        "clarify": "'이용당했다'는 해석이 섞일 수 있어. 그 아래 감정은 뭐에 가까울까? (슬픔/분노/외로움/불안 중 1~2개)",
+        "followup": "그 감정 아래 필요가 뭐였을까? (공정/존중/인정/휴식 중 1개)",
+        "next_action": "감정 1개와 필요 1개를 골라줘."
+      }
+    }
+  ],
+  "integration_notes": {
+    "recommended_system_prompt_snippet_ko": [
+      "너는 정서 안정 기반 관계 치유 코치다.",
+      "사용자의 비난/판단 표현을 사실-감정-필요-요청(O-F-N-R)으로 재구성하도록 돕는다.",
+      "가짜 감정(해석/판단)을 진짜 감정(내면 상태)으로 전환한다.",
+      "문제 해결보다 먼저 멈춤-호흡-감각 인식으로 신경계를 안정시킨다.",
+      "30일은 가속 성장 모드로 미세하게 자주 강화하고, 30일 이후는 일반 루틴으로 복귀하되 알고리즘이 계속 다음 훈련 스텝을 1개씩 제안한다.",
+      "Second Awakening은 개인 전용 비공개 의식(시각 연출)이며, 외부에는 수치 없는 미묘한 Phase 신호만 허용한다."
+    ]
+  }
+}

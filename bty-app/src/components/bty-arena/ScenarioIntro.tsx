@@ -20,12 +20,14 @@ export function ScenarioIntro({ locale, title, context, onStart }: ScenarioIntro
 
       <div style={{ marginTop: 20 }}>
         <button
+          type="button"
           onClick={onStart}
+          className="bty-btn-primary"
           style={{
             padding: "14px 20px",
             borderRadius: 12,
-            border: "1px solid #111",
-            background: "#111",
+            border: "none",
+            background: "var(--arena-accent)",
             color: "white",
             fontSize: 16,
             fontWeight: 600,

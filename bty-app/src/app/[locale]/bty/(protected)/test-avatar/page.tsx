@@ -3,7 +3,6 @@
 import React from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import BtyTopNav from "@/components/bty/BtyTopNav";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 
 /**
@@ -64,8 +63,7 @@ export default function TestAvatarPage() {
 
   return (
     <div style={{ maxWidth: 640, margin: "0 auto", padding: 24 }}>
-      <BtyTopNav />
-      <h1 style={{ fontSize: 22, marginTop: 18 }}>{t.title}</h1>
+      <h1 style={{ fontSize: 22, marginTop: 0 }}>{t.title}</h1>
       <p style={{ fontSize: 13, opacity: 0.8, marginTop: 8 }}>
         PHASE_3_CHECKLIST.md 테스트 2·4·5·6
       </p>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { LoadingFallback } from "@/components/bty-arena";
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading, login, register, error, clearError } = useAuth();
@@ -31,10 +32,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="inline-block w-8 h-8 border-2 border-dear-sage/30 border-t-dear-sage rounded-full animate-spin mb-3" />
-          <p className="text-sm text-dear-charcoal-soft">로딩 중…</p>
-        </div>
+        <LoadingFallback icon="⏳" message="잠시만 기다려 주세요." />
       </div>
     );
   }

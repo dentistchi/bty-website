@@ -20,6 +20,9 @@ export type Messages = {
   integrity: {
     title: string;
     subtitle: string;
+    /** §7 2차: 단계 2 안내 문구 */
+    guideMessage: string;
+    startPractice: string;
     intro: string;
     placeholder: string;
     send: string;
@@ -27,6 +30,12 @@ export type Messages = {
     emptyHint: string;
     backToDojo: string;
     reply: string;
+    /** §7 2차: 단계 5 완료 */
+    doneTitle: string;
+    doneSub: string;
+    doneCtaComplete: string;
+    doneCtaMentor: string;
+    doneCtaDojo: string;
   };
   todayMe: {
     title: string;
@@ -34,11 +43,19 @@ export type Messages = {
     linkToBty: string;
     assessmentCta: string;
     assessmentCtaSub: string;
+    /** Dear Me 1차 플로우 진입: 소개 1~2문장 */
+    entryIntro: string;
+    /** 진입 화면 CTA 버튼 */
+    startCta: string;
   };
   bty: {
     title: string;
     tagline: string;
     linkToTodayMe: string;
+    /** Dojo 진입: 소개 1~2문장 */
+    entryIntro: string;
+    /** 진입 CTA */
+    startCta: string;
   };
   landing: {
     heroTitle: string;
@@ -92,6 +109,14 @@ export type Messages = {
     placeholder: string;
     send: string;
     thinking: string;
+    /** CHATBOT_TRAINING_CHECKLIST §2.3: 빈 채팅 시 소개 문구 (Dojo) */
+    introDojo: string;
+    /** CHATBOT_TRAINING_CHECKLIST §2.3: 빈 채팅 시 소개 문구 (Dear Me) */
+    introDearMe: string;
+    /** 공간 전환 시 한 줄 안내 (Dojo) */
+    spaceHintDojo: string;
+    /** 공간 전환 시 한 줄 안내 (Dear Me) */
+    spaceHintDearMe: string;
   };
   resilience: {
     title: string;
@@ -101,9 +126,15 @@ export type Messages = {
   };
   arenaLevels: {
     membershipPending: string;
+    /** PROJECT_BACKLOG §8: 빈 상태 — 해금된 레벨이 아직 없을 때 */
+    noLevelsYet: string;
+    /** BRIEF §2: 빈 상태 CTA 버튼 문구 */
+    emptyCta: string;
     loginRequired: string;
     track: string;
     unlockedUpTo: string;
+    /** ARENA_UI_REDESIGN_BRIEF 프롬프트 D: 레벨 카드 포근한 문구 */
+    levelCardHint: string;
     l4AdminGranted: string;
     staff: string;
     leader: string;
@@ -114,6 +145,10 @@ export type Messages = {
     professional: string;
     fantasy: string;
     hint: string;
+  };
+  /** PROJECT_BACKLOG §8: 대시보드 감정 스탯 카드 빈 상태 */
+  emotionalStats: {
+    emptyMessage: string;
   };
 };
 
@@ -137,6 +172,8 @@ const ko: Messages = {
   integrity: {
     title: "역지사지 시뮬레이터",
     subtitle: "Dr. Chi와 함께 갈등 상황을 돌려보세요.",
+    guideMessage: "상대 입장을 잠시 돌려보는 연습이에요. 겪었던 갈등을 한 줄로 적으면, Dr. Chi가 역지사지 질문으로 비춰드려요.",
+    startPractice: "연습 시작",
     intro: "겪었던 갈등을 한 줄로 적어보세요. Dr. Chi가 역지사지 질문으로 도와드릴게요.",
     placeholder: "예: 직원에게 말했는데 상대가 불쾌해했어요",
     send: "전송",
@@ -144,6 +181,11 @@ const ko: Messages = {
     emptyHint: "갈등 상황을 입력하고 전송해보세요.",
     backToDojo: "훈련장으로 돌아가기",
     reply: "만약 입장이 반대라면 어떨까요?",
+    doneTitle: "오늘의 연습 완료",
+    doneSub: "한 걸음씩 상대의 입장을 돌려보는 연습이 쌓이고 있어요.",
+    doneCtaComplete: "연습 완료하기",
+    doneCtaMentor: "멘토와 대화하기",
+    doneCtaDojo: "훈련장으로",
   },
   todayMe: {
     title: "Dear Me",
@@ -151,11 +193,15 @@ const ko: Messages = {
     linkToBty: "어제보다 나은 연습하러 가기 (bty)",
     assessmentCta: "자존감 진단 (50문항)",
     assessmentCtaSub: "자기 존중감을 짧게 점검해 보세요.",
+    entryIntro: "말 못 할 마음을 비추는 안전한 공간이에요. 조언이 아니라 그대로 비춰드려요.",
+    startCta: "시작하기",
   },
   bty: {
     title: "bty",
     tagline: "어제보다 나은 연습. Integrity & Practice.",
     linkToTodayMe: "Dear Me로 가기",
+    entryIntro: "대시보드, 멘토, 역지사지 연습. 오늘 할 훈련을 고르세요.",
+    startCta: "시작하기",
   },
   landing: {
     heroTitle: "Better Than Yesterday",
@@ -221,6 +267,10 @@ const ko: Messages = {
     placeholder: "하고 싶은 말을 적어보세요",
     send: "보내기",
     thinking: "생각 중…",
+    introDojo: "이제 다른 사람의 입장을 생각해볼까요? 오늘의 연습을 함께해요.",
+    introDearMe: "지금 상태도 괜찮아요. 여기는 안전한 곳이에요.",
+    spaceHintDojo: "지금은 Dojo예요. 위로보다는 선택·구조에 초점을 둡니다.",
+    spaceHintDearMe: "지금은 Dear Me예요. 편하게 마음을 나눠 보세요.",
   },
   resilience: {
     title: "회복 탄력성",
@@ -230,9 +280,12 @@ const ko: Messages = {
   },
   arenaLevels: {
     membershipPending: "멤버십 승인 대기 중입니다. 승인 후 레벨이 표시됩니다.",
+    noLevelsYet: "아직 기록이 없어요. 첫 시나리오를 시작해 보세요.",
+    emptyCta: "Arena에서 시나리오 시작하기",
     loginRequired: "로그인이 필요합니다.",
     track: "트랙",
     unlockedUpTo: "최대 오픈 레벨",
+    levelCardHint: "지금 여기까지 열렸어요.",
     l4AdminGranted: "관리자 부여",
     staff: "스태프",
     leader: "리더",
@@ -243,6 +296,9 @@ const ko: Messages = {
     professional: "직업군",
     fantasy: "롤플레잉",
     hint: "레벨이 올라가면 선택한 테마의 옷이 바뀝니다.",
+  },
+  emotionalStats: {
+    emptyMessage: "아직 기록이 없어요. Arena나 챗에서 대화를 진행해 보세요.",
   },
 };
 
@@ -266,6 +322,8 @@ const en: Messages = {
   integrity: {
     title: "Integrity Mirror",
     subtitle: "Reframe the situation with Dr. Chi.",
+    guideMessage: "A short practice to see the other side. Describe a conflict in one line and Dr. Chi will reflect with an integrity question.",
+    startPractice: "Start practice",
     intro: "Describe a conflict in one line. Dr. Chi will reflect with an integrity question.",
     placeholder: "e.g. I said something and the other person got upset",
     send: "Send",
@@ -273,6 +331,11 @@ const en: Messages = {
     emptyHint: "Enter a conflict and send.",
     backToDojo: "Back to Dojo",
     reply: "What if the roles were reversed?",
+    doneTitle: "Today’s practice complete",
+    doneSub: "You’re building the habit of seeing the other side, one step at a time.",
+    doneCtaComplete: "Complete practice",
+    doneCtaMentor: "Talk to mentor",
+    doneCtaDojo: "Back to Dojo",
   },
   todayMe: {
     title: "Dear Me",
@@ -280,11 +343,15 @@ const en: Messages = {
     linkToBty: "Go to bty (practice)",
     assessmentCta: "Self-Esteem Assessment (50 items)",
     assessmentCtaSub: "A short check on how you feel about yourself.",
+    entryIntro: "A safe space that reflects your feelings. No advice—just reflection.",
+    startCta: "Start",
   },
   bty: {
     title: "bty",
     tagline: "Practice. Integrity & Better Than Yesterday.",
     linkToTodayMe: "Go to Dear Me",
+    entryIntro: "Dashboard, mentor, integrity practice. Choose what to work on.",
+    startCta: "Start",
   },
   landing: {
     heroTitle: "Better Than Yesterday",
@@ -350,6 +417,10 @@ const en: Messages = {
     placeholder: "Type something…",
     send: "Send",
     thinking: "Thinking…",
+    introDojo: "How about thinking from the other person's side? Let's practice together.",
+    introDearMe: "You're okay as you are. This is a safe place.",
+    spaceHintDojo: "You're in Dojo—focus on choices and structure rather than comfort.",
+    spaceHintDearMe: "You're in Dear Me—feel free to share what's on your mind.",
   },
   resilience: {
     title: "Recovery resilience",
@@ -359,9 +430,12 @@ const en: Messages = {
   },
   arenaLevels: {
     membershipPending: "Membership approval pending. Levels will show after approval.",
+    noLevelsYet: "No records yet. Start your first scenario.",
+    emptyCta: "Start a scenario in Arena",
     loginRequired: "Sign in required.",
     track: "Track",
     unlockedUpTo: "Unlocked up to",
+    levelCardHint: "Unlocked up to here.",
     l4AdminGranted: "admin-granted",
     staff: "Staff",
     leader: "Leader",
@@ -372,6 +446,9 @@ const en: Messages = {
     professional: "Professional",
     fantasy: "Fantasy",
     hint: "Outfit changes by level within your chosen theme.",
+  },
+  emotionalStats: {
+    emptyMessage: "No records yet. Try Arena or chat to start.",
   },
 };
 

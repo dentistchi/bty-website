@@ -27,13 +27,15 @@ export function PrimaryActions({
   return (
     <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
       <button
+        type="button"
         onClick={onConfirm}
         disabled={confirmDisabled}
+        className="bty-btn-primary"
         style={{
           padding: "12px 14px",
           borderRadius: 12,
-          border: "1px solid #111",
-          background: "#111",
+          border: "none",
+          background: "var(--arena-accent)",
           color: "white",
           opacity: confirmDisabled ? 0.5 : 1,
           cursor: confirmDisabled ? "not-allowed" : "pointer",
@@ -44,13 +46,16 @@ export function PrimaryActions({
 
       {showContinue !== false && (
         <button
+          type="button"
           onClick={onContinue}
           disabled={continueDisabled}
+          className="bty-btn-outline"
           style={{
             padding: "12px 14px",
             borderRadius: 12,
-            border: "1px solid #ddd",
-            background: "white",
+            border: "1px solid var(--arena-text-soft)",
+            background: "var(--arena-card)",
+            color: "var(--arena-text)",
             opacity: continueDisabled ? 0.5 : 1,
             cursor: continueDisabled ? "not-allowed" : "pointer",
           }}

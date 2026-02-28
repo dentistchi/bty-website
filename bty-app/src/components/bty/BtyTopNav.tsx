@@ -13,7 +13,35 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-export default function BtyTopNav() {
+/** Arena 스타일: 활성 = 둥근 배경+강조색, 비활성 = 텍스트만, hover = 부드러운 배경 */
+const navStyle = {
+  wrap: {
+    display: "flex" as const,
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap" as const,
+  },
+  link: {
+    padding: "8px 14px",
+    borderRadius: 12,
+    textDecoration: "none" as const,
+    color: "var(--arena-text)",
+    background: "transparent",
+    transition: "background 0.15s ease, color 0.15s ease",
+  },
+  active: {
+    padding: "8px 14px",
+    borderRadius: 12,
+    textDecoration: "none" as const,
+    color: "white",
+    background: "var(--arena-accent)",
+    transition: "background 0.15s ease, color 0.15s ease",
+  },
+};
+
+type Props = { showLogout?: boolean };
+
+export default function BtyTopNav({ showLogout = true }: Props) {
   const pathname = usePathname() || "/";
   const locale = detectLocale(pathname);
 
@@ -25,43 +53,27 @@ export default function BtyTopNav() {
 
   const mainLabel = locale === "ko" ? "메인" : "Main";
 
-  const base: React.CSSProperties = {
-    padding: "10px 12px",
-    borderRadius: 10,
-    border: "1px solid #ddd",
-    textDecoration: "none",
-    color: "inherit",
-    background: "white",
-  };
-
-  const activeStyle: React.CSSProperties = {
-    ...base,
-    border: "1px solid #111",
-    background: "#111",
-    color: "white",
+  const link = (href: string, label: string) => {
+    const active = href === logout ? false : isActive(pathname, href);
+    return (
+      <Link
+        href={href}
+        style={active ? navStyle.active : navStyle.link}
+        className="bty-nav-link"
+        data-active={active ? "true" : undefined}
+      >
+        {label}
+      </Link>
+    );
   };
 
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <Link href={main} style={isActive(pathname, main) ? activeStyle : base}>
-          {mainLabel}
-        </Link>
-        <Link href={dash} style={isActive(pathname, dash) ? activeStyle : base}>
-          Dashboard
-        </Link>
-        <Link href={arena} style={isActive(pathname, arena) ? activeStyle : base}>
-          Arena
-        </Link>
-        <Link href={lb} style={isActive(pathname, lb) ? activeStyle : base}>
-          Leaderboard
-        </Link>
-      </div>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <Link href={logout} style={base}>
-          Logout
-        </Link>
-      </div>
-    </div>
+    <nav style={navStyle.wrap}>
+      {link(main, mainLabel)}
+      {link(dash, "Dashboard")}
+      {link(arena, "Arena")}
+      {link(lb, "Leaderboard")}
+      {showLogout && link(logout, "Logout")}
+    </nav>
   );
 }

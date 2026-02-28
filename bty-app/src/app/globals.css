@@ -16,6 +16,13 @@
   --dojo-purple-dark: #4A3D6F;
   --dojo-ink: #2D2A36;
   --dojo-ink-soft: #5C5868;
+  /* Arena — ARENA_UI_REDESIGN_BRIEF 프롬프트 C (크림·연보라·dojo-purple) */
+  --arena-bg: #F5F0E8;
+  --arena-bg-end: #E8E0F0;
+  --arena-card: #FAFAF8;
+  --arena-accent: var(--dojo-purple);
+  --arena-text: #2D2A36;
+  --arena-text-soft: #5C5868;
   /* Journey Board pastels */
   --journey-done: #E8D4E4;
   --journey-done-strong: #D4B8CF;
@@ -52,4 +59,101 @@ body[data-theme="dojo"],
 body:not([data-theme]) {
   background: var(--dojo-white);
   color: var(--dojo-ink);
+}
+
+/* Arena: 크림 → 연한 보라 그라데이션 (bty protected 영역) */
+body[data-theme="arena"],
+.bty-arena-area {
+  background: linear-gradient(180deg, var(--arena-bg) 0%, var(--arena-bg-end) 100%);
+  color: var(--arena-text);
+}
+.bty-arena-area {
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* DESIGN_FIRST_IMPRESSION_BRIEF §4 A: 히어로 블록 (폰트는 B단계에서 .bty-arena-area 폰트 상속) */
+.bty-arena-area .bty-hero-title {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Arena 타이포·여백 (프롬프트 A): 제목 강조, 본문 넉넉한 줄간격 */
+.bty-arena-area h1,
+.bty-arena-area h2 {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.bty-arena-area h1 {
+  font-weight: 800;
+}
+
+/* Arena 네비 링크: hover 시 부드러운 배경 (프롬프트 E) */
+.bty-arena-area .bty-nav-link:hover {
+  background: rgba(91, 75, 138, 0.08);
+}
+.bty-arena-area .bty-nav-link[data-active="true"]:hover {
+  background: var(--dojo-purple-dark);
+}
+
+/* §4 C + 접근성: focus-visible 시 box-shadow 링 (outline 대신, 시인성 유지) */
+.bty-arena-area .bty-nav-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--arena-accent);
+}
+
+/* Arena 영역 포커스 가능 요소 공통 포커스 링 */
+.bty-arena-area a:focus-visible,
+.bty-arena-area button:focus-visible,
+.bty-arena-area input:focus-visible,
+.bty-arena-area select:focus-visible,
+.bty-arena-area [tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--arena-accent);
+}
+
+/* §4 B: 포인트 폰트 — 제목·로고·히어로 (ArenaLayoutShell에서 --font-arena-heading 주입), 크기 1.5rem 이상은 페이지별 유지 */
+.bty-arena-area h1,
+.bty-arena-area h2,
+.bty-arena-area .bty-hero-title,
+.bty-arena-area .bty-arena-logo {
+  font-family: var(--font-arena-heading, inherit), system-ui, sans-serif;
+}
+/* §4 B: 제목 최소 크기 1.5rem (인라인으로 더 크게 준 경우 그대로 유지) */
+.bty-arena-area h1 {
+  font-size: max(1.5rem, 1em);
+}
+.bty-arena-area h2 {
+  font-size: max(1.5rem, 1em);
+}
+
+/* §4 C: 카드 호버 — 살짝 들어올림 + 그림자 강화 */
+.bty-arena-area .bty-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.bty-arena-area .bty-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* §4 C: 버튼 호버 — 밝기/스케일 */
+.bty-arena-area .bty-btn-primary {
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+.bty-arena-area .bty-btn-primary:hover {
+  filter: brightness(1.05);
+  transform: scale(1.02);
+}
+.bty-arena-area .bty-btn-outline {
+  transition: filter 0.15s ease, border-color 0.15s ease;
+}
+.bty-arena-area .bty-btn-outline:hover {
+  filter: brightness(0.98);
+  border-color: var(--arena-accent);
+}
+
+/* DESIGN_FIRST_IMPRESSION_BRIEF §2: 카드형 스켈레톤 로딩 — shimmer 애니메이션 */
+@keyframes bty-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }

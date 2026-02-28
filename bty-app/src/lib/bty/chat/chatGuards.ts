@@ -90,3 +90,24 @@ export function filterBtyResponse(text: string, lang: "ko" | "en"): string {
   const isComfort = COMFORT_PATTERNS.some((re) => re.test(t));
   return isComfort ? (lang === "ko" ? FILTER_REPLACEMENT_KO : FILTER_REPLACEMENT_EN) : t;
 }
+
+/** 메타 질문("챗봇이야?", "AI야?", "너 누구야?" 등) 감지 — PROJECT_BACKLOG §9, CHATBOT_TRAINING_CHECKLIST §3 */
+const META_QUESTION_PATTERNS = [
+  /^(너\s*누구야?|넌\s*누구야?|너는\s*누구야?|who\s*are\s*you|what\s*are\s*you)\s*[.?]?$/i,
+  /^(챗봇이야?|챗봇\s*맞아?|로봇이야?|AI야?|인공지능이야?|봇이야?|bot\?|are\s*you\s*(a\s*)?bot|are\s*you\s*ai|is\s*this\s*a\s*chatbot)\s*[.?]?$/i,
+  /^(실제\s*사람이야?|진짜\s*사람이야?|사람이야?|are\s*you\s*real|are\s*you\s*human)\s*[.?]?$/i,
+];
+
+export function isMetaQuestion(text: string): boolean {
+  const t = (text || "").trim();
+  return META_QUESTION_PATTERNS.some((re) => re.test(t));
+}
+
+const META_REPLY_KO =
+  "저는 BTY Chat이에요. 이 공간에서 생각과 감정을 단계적으로 정리하도록 돕습니다. 더 말하고 싶은 게 있으면 편하게 이어서 말해 주세요.";
+const META_REPLY_EN =
+  "I'm BTY Chat. I help you sort out your thoughts and feelings step by step here. If you'd like to continue, just say what's on your mind.";
+
+export function getMetaReply(lang: "ko" | "en"): string {
+  return lang === "ko" ? META_REPLY_KO : META_REPLY_EN;
+}

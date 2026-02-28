@@ -4,13 +4,13 @@ import { usePathname } from "next/navigation";
 import { LangSwitch } from "@/components/LangSwitch";
 
 /**
- * Fixed LangSwitch only when NOT on bty protected routes.
- * On /en/bty/mentor, /ko/bty/* etc. the bty protected layout shows LangSwitch + Logout in its own bar to avoid overlap.
+ * Fixed LangSwitch only when NOT on bty / bty-arena routes.
+ * On /en/bty/*, /ko/bty/*, /en/bty-arena/*, /ko/bty-arena/* the Arena layout shows LangSwitch + Logout in its own bar.
  */
 export function LocaleLayoutHeader() {
   const pathname = usePathname() ?? "";
-  const isBtyProtected = /^\/(en|ko)\/bty\//.test(pathname);
-  if (isBtyProtected) return null;
+  const isArenaArea = /^\/(en|ko)\/(bty\/|bty-arena)/.test(pathname);
+  if (isArenaArea) return null;
   return (
     <div className="fixed top-2 right-2 z-[9998]">
       <LangSwitch />

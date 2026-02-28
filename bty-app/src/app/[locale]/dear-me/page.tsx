@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import PageClient from "../PageClient";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
+import { PageLoadingFallback } from "@/components/bty-arena";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export default async function DearMePage({ params }: Props) {
   const pathname = `/${locale}/dear-me`;
 
   return (
-    <Suspense fallback={<div className="p-6">Loading...</div>}>
+    <Suspense fallback={<PageLoadingFallback />}>
       <PageClient locale={locale} lang={lang} pathname={pathname} t={t} />
     </Suspense>
   );

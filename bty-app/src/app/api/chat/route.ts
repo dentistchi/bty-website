@@ -1,3 +1,8 @@
+/**
+ * POST /api/chat — BTY 챗봇 API
+ * CHATBOT_TRAINING_CHECKLIST, ROADMAP_NEXT_STEPS § 챗봇 훈련 시기 반영.
+ * 메타 질문·안전 밸브·Dojo 추천 → 고정 응답, 그 외 buildChatMessagesForModel + OpenAI 호출.
+ */
 import { fetchJson } from "@/lib/read-json";
 import { NextResponse } from "next/server";
 import {
@@ -10,10 +15,13 @@ import {
   getDojoRecommendMessage,
   detectLang,
   filterBtyResponse,
+  isMetaQuestion,
+  getMetaReply,
   type ChatMode,
   type ChatResponseBody,
 } from "@/lib/bty/chat";
 import { recordActivityXp } from "@/lib/bty/arena/activityXp";
+import { detectEmotionalEventFromText, recordEmotionalEventServer } from "@/lib/bty/emotional-stats";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { recordQualityEventApp } from "@/lib/bty/quality";
 import { checkRateLimit, getClientIdentifier } from "@/lib/rate-limit";
@@ -44,6 +52,12 @@ export async function POST(request: Request) {
 
     const mode = normalizeMode(body.mode, userContent) as ChatMode;
 
+    // PROJECT_BACKLOG §9: 메타 질문 → 고정 답변 (토큰 절약·일관된 응답)
+    if (isMetaQuestion(userContent)) {
+      const message = getMetaReply(lang);
+      return NextResponse.json({ message, mode } satisfies ChatResponseBody);
+    }
+
     // Phase 1-1: 낮은 자존감 → Dear Me 안전 밸브 (우선)
     if (isLowSelfEsteemSignal(userContent)) {
       const message = getSafetyValveMessage(lang);
@@ -71,10 +85,10 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           model: "gpt-4o-mini",
           messages: messagesForModel,
-          max_tokens: 200,
+          max_tokens: 200, // CHATBOT_TRAINING_CHECKLIST §0 Dojo
         }),
       });
-      if (r.ok) {
+          if (r.ok) {
         const data = r.json;
         const rawText = data?.choices?.[0]?.message?.content?.trim();
         if (rawText) {
@@ -85,6 +99,12 @@ export async function POST(request: Request) {
             recordActivityXp(supabase, user.id, "CHAT_MESSAGE").catch((err) =>
               console.warn("[chat] recordActivityXp failed", err)
             );
+            const eventId = detectEmotionalEventFromText(text);
+            if (eventId) {
+              recordEmotionalEventServer(supabase, user.id, eventId, null).catch((err) =>
+                console.warn("[chat] recordEmotionalEvent failed", err)
+              );
+            }
           }
           return NextResponse.json({ message: text, mode } satisfies ChatResponseBody);
         }
@@ -102,6 +122,12 @@ export async function POST(request: Request) {
       recordActivityXp(supabase, user.id, "CHAT_MESSAGE").catch((err) =>
         console.warn("[chat] recordActivityXp failed", err)
       );
+      const eventId = detectEmotionalEventFromText(fallback);
+      if (eventId) {
+        recordEmotionalEventServer(supabase, user.id, eventId, null).catch((err) =>
+          console.warn("[chat] recordEmotionalEvent failed", err)
+        );
+      }
     }
     return NextResponse.json({
       message: fallback,

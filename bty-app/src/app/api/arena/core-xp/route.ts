@@ -11,7 +11,7 @@ import {
 import { getEffectiveTrack } from "@/lib/bty/arena/program";
 import { getUnlockedContentWindow } from "@/lib/bty/arena/unlock";
 import type { Track, LevelId } from "@/lib/bty/arena/tenure";
-import { getOutfitForLevel, getCharacterOutfitImageUrl } from "@/lib/bty/arena/avatarOutfits";
+import { getOutfitForLevel, getCharacterOutfitImageUrl, getOutfitById } from "@/lib/bty/arena/avatarOutfits";
 import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
 
 export async function GET(req: NextRequest) {
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 
   const { data: row, error } = await supabase
     .from("arena_profiles")
-    .select("user_id, core_xp_total, code_index, sub_name, sub_name_renamed_in_code, code_hidden, avatar_url, avatar_character_id, avatar_outfit_theme, l4_access")
+    .select("user_id, core_xp_total, code_index, sub_name, sub_name_renamed_in_code, sub_name_renamed_at_code_index, code_hidden, avatar_url, avatar_character_id, avatar_character_locked, avatar_outfit_theme, avatar_selected_outfit_id, l4_access")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -70,9 +70,13 @@ export async function GET(req: NextRequest) {
   const subNameRenameAvailable =
     row &&
     tier >= 25 &&
-    !(row as { sub_name_renamed_in_code?: boolean }).sub_name_renamed_in_code &&
     codeIndex < 6 &&
-    isTop5Percent;
+    isTop5Percent &&
+    (() => {
+      const lastAt = (row as { sub_name_renamed_at_code_index?: number | null }).sub_name_renamed_at_code_index;
+      if (lastAt == null) return !(row as { sub_name_renamed_in_code?: boolean }).sub_name_renamed_in_code;
+      return codeIndex > lastAt;
+    })();
 
   if (!row) {
     const defaultOutfit = getOutfitForLevel(null, "S1");
@@ -86,7 +90,9 @@ export async function GET(req: NextRequest) {
       subNameRenameAvailable: false,
       avatarUrl: null,
       avatarCharacterId: null,
+      avatarCharacterLocked: false,
       avatarOutfitTheme: null,
+      avatarSelectedOutfitId: null,
       currentOutfit: {
         outfitId: defaultOutfit.outfitId,
         outfitLabel: defaultOutfit.outfitLabel,
@@ -100,7 +106,9 @@ export async function GET(req: NextRequest) {
 
   const customAvatarUrl = (row as { avatar_url?: string | null }).avatar_url ?? null;
   const avatarCharacterId = (row as { avatar_character_id?: string | null }).avatar_character_id ?? null;
+  const avatarCharacterLocked = (row as { avatar_character_locked?: boolean }).avatar_character_locked === true;
   const avatarOutfitTheme = (row as { avatar_outfit_theme?: "professional" | "fantasy" | null }).avatar_outfit_theme ?? null;
+  const avatarSelectedOutfitId = (row as { avatar_selected_outfit_id?: string | null }).avatar_selected_outfit_id ?? null;
   const l4Access = (row as { l4_access?: boolean }).l4_access === true;
 
   let maxUnlockedLevel: LevelId = "S1";
@@ -131,22 +139,27 @@ export async function GET(req: NextRequest) {
     maxUnlockedLevel = window.maxUnlockedLevel;
   }
 
-  const outfit = getOutfitForLevel(avatarOutfitTheme, maxUnlockedLevel);
+  const outfitByLevel = getOutfitForLevel(avatarOutfitTheme, maxUnlockedLevel);
+  const outfit =
+    avatarSelectedOutfitId != null
+      ? getOutfitById(avatarOutfitTheme, avatarSelectedOutfitId) ?? outfitByLevel
+      : outfitByLevel;
 
   let avatarUrl: string | null = customAvatarUrl;
   if (!avatarUrl) {
+    // Fantasy: character in theme outfit (e.g. Mage in robe)
     const characterOutfitUrl =
       avatarOutfitTheme === "fantasy"
         ? getCharacterOutfitImageUrl(avatarCharacterId)
         : null;
     if (characterOutfitUrl) {
       avatarUrl = characterOutfitUrl;
-    } else if (outfit.imageUrl) {
-      avatarUrl = outfit.imageUrl;
     } else if (avatarCharacterId) {
+      // 선택한 캐릭터가 아바타: 캐릭터 이미지를 먼저 사용. 옷/악세사리는 레벨로 별도 표시.
       const character = getAvatarCharacter(avatarCharacterId);
       if (character?.imageUrl) avatarUrl = character.imageUrl;
     }
+    if (!avatarUrl && outfit.imageUrl) avatarUrl = outfit.imageUrl;
   }
 
   const out = NextResponse.json({
@@ -159,7 +172,9 @@ export async function GET(req: NextRequest) {
     subNameRenameAvailable: Boolean(subNameRenameAvailable),
     avatarUrl,
     avatarCharacterId,
+    avatarCharacterLocked,
     avatarOutfitTheme,
+    avatarSelectedOutfitId: avatarSelectedOutfitId ?? null,
     currentOutfit: {
       outfitId: outfit.outfitId,
       outfitLabel: outfit.outfitLabel,
@@ -167,6 +182,7 @@ export async function GET(req: NextRequest) {
       accessoryLabels: outfit.accessoryLabels,
     },
   });
+  out.headers.set("Cache-Control", "no-store, must-revalidate");
   copyCookiesAndDebug(base, out, req, true);
   return out;
 }

@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { LoadingFallback } from "@/components/bty-arena";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -71,7 +72,7 @@ function ResetPasswordForm() {
   if (hasSession === null) {
     return (
       <div className="min-h-[40vh] flex items-center justify-center px-4">
-        <p className="text-neutral-600">확인 중...</p>
+        <LoadingFallback icon="⏳" message="확인 중..." />
       </div>
     );
   }
@@ -159,7 +160,7 @@ export default function ResetPasswordPage() {
     <Suspense
       fallback={
         <div className="min-h-[40vh] flex items-center justify-center px-4">
-          <p className="text-neutral-600">로딩 중...</p>
+          <LoadingFallback icon="⏳" message="잠시만 기다려 주세요." />
         </div>
       }
     >

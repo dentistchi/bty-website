@@ -60,6 +60,7 @@ const MENTOR_UI = {
     deleteHistory: "기록 삭제",
     deleting: "삭제 중…",
     eliteBadge: "상위 5%",
+    eliteMentorBadge: "Elite 멘토",
     selectOtherTopic: "다른 주제 선택하기",
     endConversation: "대화 끝내기",
     placeholder: "말씀해 주세요...",
@@ -83,6 +84,7 @@ const MENTOR_UI = {
     deleteHistory: "Delete history",
     deleting: "Deleting…",
     eliteBadge: "Top 5%",
+    eliteMentorBadge: "Elite Mentor",
     selectOtherTopic: "Select another topic",
     endConversation: "End conversation",
     placeholder: "Type your message...",
@@ -128,6 +130,7 @@ export default function MentorPage() {
   const [rememberMentor, setRememberMentor] = useState(false);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [isElite, setIsElite] = useState(false);
+  const [userCodeName, setUserCodeName] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [inputKey, setInputKey] = useState(0);
   const [conversationEnded, setConversationEnded] = useState(false);
@@ -163,9 +166,10 @@ export default function MentorPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [prefsRes, eliteRes] = await Promise.all([
+        const [prefsRes, eliteRes, coreRes] = await Promise.all([
           fetch("/api/me/conversation-preferences"),
           fetch("/api/me/elite"),
+          fetch("/api/arena/core-xp", { credentials: "include" }),
         ]);
         const prefs = prefsRes.ok ? await prefsRes.json() : {};
         setRememberMentor(Boolean(prefs.rememberMentor));
@@ -173,6 +177,11 @@ export default function MentorPage() {
         if (eliteRes.ok) {
           const elite = await eliteRes.json();
           setIsElite(Boolean(elite.isElite));
+        }
+        if (coreRes.ok) {
+          const core = await coreRes.json();
+          const name = core?.codeName;
+          setUserCodeName(typeof name === "string" && name.trim() ? name : null);
         }
       } catch {
         setPrefsLoaded(true);
@@ -334,15 +343,15 @@ export default function MentorPage() {
           <Nav locale={locale as "ko" | "en"} pathname={`/${locale}/bty/mentor`} />
           <header className="text-center mb-8">
             <div className="flex flex-col items-center gap-3">
-              <GuideCharacterAvatar variant="warm" size="lg" alt="Dr. Chi" className="flex-shrink-0" />
+              <GuideCharacterAvatar codeName={userCodeName} variant="warm" size="lg" alt="Dr. Chi" className="flex-shrink-0" />
               <h1
                 className="text-2xl sm:text-3xl font-semibold text-mentor-ink"
                 style={{ fontFamily: "Georgia, serif" }}
               >
                 Dr. Chi&apos;s Mentor
               {isElite && (
-                <span className="ml-2 inline-flex items-center rounded-full bg-mentor-wood/20 px-2.5 py-0.5 text-xs font-medium text-mentor-wood border border-mentor-wood-soft/40">
-                  {t.eliteBadge}
+                <span className="ml-2 inline-flex items-center rounded-full bg-mentor-wood/20 px-2.5 py-0.5 text-xs font-medium text-mentor-wood border border-mentor-wood-soft/40" title={t.eliteBadge}>
+                  {t.eliteMentorBadge}
                 </span>
               )}
             </h1>
@@ -463,7 +472,7 @@ export default function MentorPage() {
                     )}
                   >
                     {m.role === "chi" && (
-                      <GuideCharacterAvatar variant="warm" size="sm" alt="Dr. Chi" className="flex-shrink-0 mt-0.5" />
+                      <GuideCharacterAvatar codeName={userCodeName} variant="warm" size="sm" alt="Dr. Chi" className="flex-shrink-0 mt-0.5" />
                     )}
                     <div
                       className={cn(
@@ -501,7 +510,7 @@ export default function MentorPage() {
                 ))}
                 {sending && (
                   <div className="flex gap-3 justify-start">
-                    <GuideCharacterAvatar variant="warm" size="sm" alt="Dr. Chi" className="flex-shrink-0 mt-0.5" />
+                    <GuideCharacterAvatar codeName={userCodeName} variant="warm" size="sm" alt="Dr. Chi" className="flex-shrink-0 mt-0.5" />
                     <div className="rounded-xl rounded-bl-sm px-5 py-4 bg-white/50 text-mentor-ink-soft text-sm border-l-4 border-mentor-wood-soft/30">
                       <span className="animate-pulse">{t.thinking}</span>
                     </div>
