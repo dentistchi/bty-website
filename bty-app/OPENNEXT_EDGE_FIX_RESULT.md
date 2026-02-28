@@ -50,7 +50,7 @@ OpenNext가 "app/api/admin/organizations/route cannot use the edge runtime" 로 
 아래는 **bty-app** 디렉터리에서 실행. (CI와 동일한 흐름.)
 
 ```bash
-cd /Users/hanbit/Documents/web_development/btytrainingcenter/bty-app
+cd /Users/hanbit/Dev/btytrainingcenter/bty-app
 
 # 1) 의존성 고정 (lockfile 기준)
 npm ci
@@ -86,7 +86,7 @@ npm run deploy
 아래 두 파일만 포함한 커밋으로 푸시하면 됨.
 
 ```bash
-cd /Users/hanbit/Documents/web_development/btytrainingcenter
+cd /Users/hanbit/Dev/btytrainingcenter
 
 git add bty-app/src/app/api/admin/organizations/route.ts \
         bty-app/src/app/api/admin/users/route.ts

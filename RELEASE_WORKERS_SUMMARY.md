@@ -41,7 +41,7 @@
 ### 1) 로컬에서 lockfile/node_modules 정리 (이미 재생성했으면 한 번만)
 
 ```bash
-cd /Users/hanbit/Documents/web_development/btytrainingcenter/bty-app
+cd /Users/hanbit/Dev/btytrainingcenter/bty-app
 rm -rf node_modules
 npm install
 npm ci
@@ -52,7 +52,7 @@ npm ci
 ### 2) 커밋 및 푸시
 
 ```bash
-cd /Users/hanbit/Documents/web_development/btytrainingcenter
+cd /Users/hanbit/Dev/btytrainingcenter
 
 git add bty-app/package.json bty-app/package-lock.json bty-app/wrangler.toml \
   bty-app/src/app/api/debug/route.ts bty-app/src/app/api/auth/login/route.ts \

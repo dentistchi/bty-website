@@ -9,7 +9,7 @@
 ### (1) 코드 원격 저장소에 올리기 (필수)
 
 ```bash
-cd /Users/hanbit/Documents/web_development/btytrainingcenter
+cd /Users/hanbit/Dev/btytrainingcenter
 git add -A
 git status   # 확인 후
 git commit -m "feat: Phase 1-3/1-4 가이드 캐릭터, Arena free-response, 챗/멘토 XP, 문서 정리"

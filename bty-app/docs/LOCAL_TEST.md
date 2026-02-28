@@ -6,7 +6,7 @@
 - 작업 디렉터리: **bty-app** (저장소 루트의 `bty-app` 폴더)
 
 ```bash
-cd /Users/hanbit/Documents/web_development/btytrainingcenter/bty-app
+cd /Users/hanbit/Dev/btytrainingcenter/bty-app
 # 또는 저장소 루트에서: cd bty-app
 ```
 

@@ -24,12 +24,9 @@ function isPublicPath(pathname: string) {
   if (locale) {
     if (pathname === `/${locale}` || pathname === `/${locale}/`) return true;
     if (pathname === `/${locale}/dear-me` || pathname === `/${locale}/dear-me/`) return true;
-    if (pathname.startsWith(`/${locale}/bty-arena`)) return true;
     if (pathname === `/${locale}/admin/login`) return true;
     if (pathname === `/${locale}/bty/login`) return true;
     if (pathname === `/${locale}/bty/logout`) return true;
-    if (pathname === `/${locale}/bty/forgot-password`) return true;
-    if (pathname === `/${locale}/auth/reset-password`) return true;
   }
 
   return false;
@@ -130,7 +127,9 @@ export async function middleware(req: NextRequest) {
     res.headers.set("x-mw-path", pathname);
     return res;
   } catch {
-    return res;
+    const login = new URL(`/${locale}/bty/login`, req.url);
+    login.searchParams.set("next", pathname + req.nextUrl.search);
+    return NextResponse.redirect(login, 303);
   }
 }
 

@@ -25,7 +25,7 @@ GitHub Actions에서 여전히 같은 에러가 나면, **이 변경이 포함�
 ## 2) 로컬 체크 포인트 (`npm run deploy` 통과)
 
 ```bash
-cd /Users/hanbit/Documents/web_development/btytrainingcenter/bty-app
+cd /Users/hanbit/Dev/btytrainingcenter/bty-app
 
 # (선택) 아직 있다면 제거 확인 — 아무것도 안 나와야 함
 grep -R 'export const runtime = "edge"' src/app/api || true

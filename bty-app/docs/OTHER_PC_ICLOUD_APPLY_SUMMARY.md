@@ -95,7 +95,7 @@ iCloud로 동기화된 "다른 PC에서 하던 작업"이 섞여 있을 수 있�
 3. **커밋·푸시**  
    - 검토가 끝나면:
      ```bash
-     cd /Users/hanbit/Documents/web_development/btytrainingcenter
+     cd /Users/hanbit/Dev/btytrainingcenter
      git add -A
      git status   # 삭제/수정/추가 재확인
      git commit -m "chore: 다른 PC/iCloud 작업 반영 — auth callback, Arena 도메인·UI, 규칙·문서·마이그레이션"
