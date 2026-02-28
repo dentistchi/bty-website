@@ -1,12 +1,16 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
 function ResetPasswordForm() {
   const router = useRouter();
+  const pathname = usePathname() ?? "";
+  const locale = pathname.startsWith("/ko") ? "ko" : "en";
+  const loginPath = `/${locale}/bty/login`;
+
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -20,9 +24,21 @@ function ResetPasswordForm() {
       setHasSession(false);
       return;
     }
-    client.auth.getSession().then(({ data: { session } }) => {
+    // URL 해시에서 복구 토큰이 오면 Supabase가 비동기로 세션을 세팅함. 잠시 기다린 뒤 한 번 더 확인.
+    function checkSession() {
+      client.auth.getSession().then(({ data: { session } }) => {
+        setHasSession(!!session);
+      });
+    }
+    checkSession();
+    const timer = window.setTimeout(checkSession, 800);
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
       setHasSession(!!session);
     });
+    return () => {
+      window.clearTimeout(timer);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,7 +65,7 @@ function ResetPasswordForm() {
       return;
     }
     setSuccess(true);
-    setTimeout(() => router.replace("/admin/login"), 1500);
+    setTimeout(() => router.replace(loginPath), 1500);
   };
 
   if (hasSession === null) {
@@ -67,7 +83,7 @@ function ResetPasswordForm() {
           세션이 없습니다. 비밀번호 재설정을 다시 요청해주세요.
         </p>
         <Link
-          href="/admin/login"
+          href={loginPath}
           className="mt-4 text-sm font-medium text-neutral-900 underline hover:no-underline"
         >
           로그인으로 이동

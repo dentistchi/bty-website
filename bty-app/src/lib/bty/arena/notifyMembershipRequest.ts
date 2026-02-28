@@ -1,9 +1,18 @@
 /**
  * Notify admin when a new Arena membership request is submitted (pending).
- * Placeholder: logs only. Replace with Resend/SendGrid when configured.
+ * Uses Resend when RESEND_API_KEY is set; otherwise logs only.
  */
 
-const ADMIN_EMAIL = "ddshanbit@gmail.com";
+const DEFAULT_ADMIN_EMAIL = "ddshanbit@gmail.com";
+
+function getAdminEmail(): string {
+  const env = process.env.BTY_ADMIN_EMAILS;
+  if (env && typeof env === "string") {
+    const first = env.split(",").map((e) => e.trim()).filter(Boolean)[0];
+    if (first) return first;
+  }
+  return DEFAULT_ADMIN_EMAIL;
+}
 
 export type MembershipRequestPayload = {
   userEmail: string;
@@ -24,6 +33,7 @@ export async function notifyMembershipRequestPending(payload: MembershipRequestP
     .filter(Boolean)
     .join("\n");
 
+  const adminEmail = getAdminEmail();
   if (process.env.RESEND_API_KEY) {
     try {
       const res = await fetch("https://api.resend.com/emails", {
@@ -34,20 +44,22 @@ export async function notifyMembershipRequestPending(payload: MembershipRequestP
         },
         body: JSON.stringify({
           from: process.env.RESEND_FROM ?? "Arena <onboarding@resend.dev>",
-          to: [ADMIN_EMAIL],
+          to: [adminEmail],
           subject: `[Arena] 멤버십 승인 대기: ${payload.userEmail}`,
           text: body,
         }),
       });
-      if (!res.ok) {
-        const err = await res.text();
-        console.warn("[notifyMembershipRequestPending] Resend failed:", res.status, err);
+      const resBody = await res.text();
+      if (res.ok) {
+        console.log("[notifyMembershipRequestPending] 이메일 발송 성공. 수신:", adminEmail);
+      } else {
+        console.warn("[notifyMembershipRequestPending] Resend 실패:", res.status, resBody);
       }
     } catch (e) {
-      console.warn("[notifyMembershipRequestPending] Resend error:", e);
+      console.warn("[notifyMembershipRequestPending] Resend 예외:", e);
     }
     return;
   }
 
-  console.log("[notifyMembershipRequestPending] 이메일 발송 예정 (설정 없음). 수신:", ADMIN_EMAIL, "\n", body);
+  console.log("[notifyMembershipRequestPending] 이메일 발송 예정 (RESEND_API_KEY 없음). 수신:", adminEmail, "\n", body);
 }

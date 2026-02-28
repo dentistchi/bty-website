@@ -28,6 +28,8 @@ function isPublicPath(pathname: string) {
     if (pathname === `/${locale}/admin/login`) return true;
     if (pathname === `/${locale}/bty/login`) return true;
     if (pathname === `/${locale}/bty/logout`) return true;
+    if (pathname === `/${locale}/bty/forgot-password`) return true;
+    if (pathname === `/${locale}/auth/reset-password`) return true;
   }
 
   return false;

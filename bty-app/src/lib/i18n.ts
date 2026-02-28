@@ -11,6 +11,9 @@ export type Messages = {
     submitting: string;
     cookieNotice: string;
     errorDefault: string;
+    forgotPassword: string;
+    forgotPasswordSent: string;
+    forgotPasswordError: string;
   };
   auth: { backToLogin: string; loading: string; callbackError: string };
   logout: string;
@@ -125,6 +128,9 @@ const ko: Messages = {
     submitting: "로그인 중...",
     cookieNotice: "쿠키 기반 세션으로 동작합니다. 로그인 성공 직후 새로고침/이동이 발생할 수 있습니다.",
     errorDefault: "로그인에 실패했습니다.",
+    forgotPassword: "비밀번호 찾기",
+    forgotPasswordSent: "재설정 링크를 이메일로 보냈습니다. 받은편지함(또는 스팸)을 확인해주세요.",
+    forgotPasswordError: "요청에 실패했습니다. 이메일을 확인하거나 잠시 후 다시 시도해주세요.",
   },
   auth: { backToLogin: "로그인으로 돌아가기", loading: "인증 처리 중...", callbackError: "인증 처리에 실패했습니다. 다시 시도해주세요." },
   logout: "로그아웃",
@@ -251,6 +257,9 @@ const en: Messages = {
     submitting: "Signing in…",
     cookieNotice: "Session uses cookies. The page may refresh or redirect after sign in.",
     errorDefault: "Sign in failed.",
+    forgotPassword: "Forgot password?",
+    forgotPasswordSent: "We sent a reset link to your email. Check your inbox (and spam folder).",
+    forgotPasswordError: "Request failed. Check the email address or try again later.",
   },
   auth: { backToLogin: "Back to sign in", loading: "Verifying…", callbackError: "Verification failed. Please try again." },
   logout: "Log out",

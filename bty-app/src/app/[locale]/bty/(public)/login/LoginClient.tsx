@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { getMessages } from "@/lib/i18n";
-import type { Locale } from "@/lib/i18n";
 
 async function forceCookieCommit() {
   try {
@@ -100,6 +100,16 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <span className="text-sm text-gray-500">{null}</span>
+            <Link
+              href={`/${locale}/bty/forgot-password`}
+              className="text-sm text-gray-600 underline hover:no-underline hover:text-black"
+            >
+              {t.forgotPassword}
+            </Link>
+          </div>
 
           {error ? <div className="text-sm text-red-600 mb-3">{error}</div> : null}
 
