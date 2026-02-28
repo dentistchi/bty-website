@@ -11,21 +11,26 @@ const ADMIN_EMAILS = (process.env.BTY_ADMIN_EMAILS ?? "")
   .filter(Boolean);
 const ADMIN_EMAIL_SET = new Set(ADMIN_EMAILS);
 
-export default async function AdminLayout({ children }: { children: ReactNode }) {
+type Props = { children: ReactNode; params: Promise<{ locale: string }> };
+
+export default async function AdminLayout({ children, params }: Props) {
+  const { locale } = await params;
+  const base = `/${locale}/admin`;
+
   const supabase = await getSupabaseServerReadonly();
   if (!supabase) {
-    redirect("/admin/login");
+    redirect(`${base}/login`);
   }
 
   const { data } = await supabase.auth.getUser();
   if (!data.user) {
-    redirect(`/admin/login?next=${encodeURIComponent("/admin")}`);
+    redirect(`${base}/login?next=${encodeURIComponent(base)}`);
   }
 
   if (ADMIN_EMAIL_SET.size > 0) {
     const email = (data.user.email ?? "").toLowerCase();
     if (!email || !ADMIN_EMAIL_SET.has(email)) {
-      redirect("/admin/login?next=/admin&error=forbidden");
+      redirect(`${base}/login?next=${base}&error=forbidden`);
     }
   }
 
