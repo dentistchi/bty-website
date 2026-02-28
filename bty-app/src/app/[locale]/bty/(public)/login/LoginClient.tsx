@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { getMessages } from "@/lib/i18n";
+import { getMessages, type Locale } from "@/lib/i18n";
 
 async function forceCookieCommit() {
   try {

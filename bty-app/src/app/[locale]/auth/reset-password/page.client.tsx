@@ -19,11 +19,11 @@ function ResetPasswordForm() {
   const [hasSession, setHasSession] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const client = supabase;
-    if (!client) {
+    if (supabase == null) {
       setHasSession(false);
       return;
     }
+    const client = supabase;
     // URL 해시에서 복구 토큰이 오면 Supabase가 비동기로 세션을 세팅함. 잠시 기다린 뒤 한 번 더 확인.
     function checkSession() {
       client.auth.getSession().then(({ data: { session } }) => {

@@ -83,8 +83,9 @@ export function getUnlockedContentWindow(args: {
     maxUnlocked = "L4";
   }
   const cap = args.jobFunction != null ? JOB_MAX_LEVEL_CAP[args.jobFunction.trim().toLowerCase()] : undefined;
-  if (cap && LEVEL_IDS.includes(cap)) {
-    maxUnlocked = minLevel(maxUnlocked, cap) as LevelId;
+  if (cap && isLevelId(cap)) {
+    const levelCap: LevelId = cap;
+    maxUnlocked = minLevel(maxUnlocked, levelCap) as LevelId;
   }
   const preview = getNextLockedLevel(args.track, maxUnlocked);
   return { maxUnlockedLevel: maxUnlocked, previewLevel: preview };
