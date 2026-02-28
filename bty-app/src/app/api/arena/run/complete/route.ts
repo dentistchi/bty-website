@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
-import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { getActiveLeague } from "@/lib/bty/arena/activeLeague";
 import { applySeasonalXpToCore } from "@/lib/bty/arena/applyCoreXp";
 import {
   getWeekStartUTC,
@@ -88,16 +86,12 @@ export async function POST(req: Request) {
   const todayTotal = (todayEvs ?? []).reduce((s, r) => s + (typeof r.xp === "number" ? r.xp : 0), 0);
   const deltaCapped = Math.max(0, Math.min(delta, DAILY_CAP - todayTotal));
 
-  const league = await getActiveLeague(supabase, getSupabaseAdmin());
-  const leagueId = league?.league_id ?? null;
-
-  let weeklyQ = supabase
+  const { data: row, error: rowErr } = await supabase
     .from("weekly_xp")
     .select("id, xp_total")
-    .eq("user_id", user.id);
-  if (leagueId) weeklyQ = weeklyQ.eq("league_id", leagueId);
-  else weeklyQ = weeklyQ.is("league_id", null);
-  const { data: row, error: rowErr } = await weeklyQ.maybeSingle();
+    .eq("user_id", user.id)
+    .is("league_id", null)
+    .maybeSingle();
 
   if (rowErr) return NextResponse.json({ error: rowErr.message }, { status: 500 });
 
@@ -106,7 +100,7 @@ export async function POST(req: Request) {
   if (!row) {
     const { error: insErr } = await supabase
       .from("weekly_xp")
-      .insert({ user_id: user.id, league_id: leagueId, xp_total: deltaCapped });
+      .insert({ user_id: user.id, league_id: null, xp_total: deltaCapped });
 
     if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
   } else {
@@ -152,13 +146,12 @@ export async function POST(req: Request) {
       .eq("quest_type", "reflection")
       .maybeSingle();
     if (!existingClaim) {
-      let wxQ = supabase
+      const { data: wxRow } = await supabase
         .from("weekly_xp")
         .select("id, xp_total")
-        .eq("user_id", user.id);
-      if (leagueId) wxQ = wxQ.eq("league_id", leagueId);
-      else wxQ = wxQ.is("league_id", null);
-      const { data: wxRow } = await wxQ.maybeSingle();
+        .eq("user_id", user.id)
+        .is("league_id", null)
+        .maybeSingle();
       if (wxRow) {
         const newTotal = (typeof (wxRow as { xp_total?: number }).xp_total === "number" ? (wxRow as { xp_total: number }).xp_total : 0) + REFLECTION_QUEST_BONUS_XP;
         await supabase.from("weekly_xp").update({ xp_total: newTotal }).eq("id", (wxRow as { id: string }).id);

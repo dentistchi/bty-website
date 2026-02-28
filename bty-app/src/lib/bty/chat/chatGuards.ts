@@ -3,7 +3,6 @@
  */
 
 const LOW_SELF_ESTEEM_PATTERNS = [
-  // Korean
   /못하겠어/i,
   /못하겠다/i,
   /자격\s*이?\s*없어/i,
@@ -20,18 +19,6 @@ const LOW_SELF_ESTEEM_PATTERNS = [
   /쓸모없/i,
   /가치\s*없/i,
   /의미\s*없/i,
-  // English — Phase 1-1 전역 챗봇 Dear Me 안전 밸브
-  /i\s*can'?t\s*(do|make|handle)/i,
-  /i\s*give\s*up/i,
-  /i'?m\s*(worthless|useless|no\s*good)/i,
-  /(not\s*good|no\s*worth)\s*enough/i,
-  /too\s*(hard|tired|exhausted)/i,
-  /i'?m\s*(so\s*)?tired/i,
-  /(don'?t|can'?t)\s*want\s*to\s*(go\s*on|continue)/i,
-  /no\s*point\s*(in|to)/i,
-  /what'?s\s*the\s*point/i,
-  /i\s*hate\s*myself/i,
-  /feel\s*(like\s*)?(failure|giving\s*up)/i,
 ];
 
 const DOJO_RECOMMEND_PATTERNS = [

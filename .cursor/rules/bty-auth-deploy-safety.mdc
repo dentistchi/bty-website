@@ -1,0 +1,50 @@
+---
+description: 
+alwaysApply: true
+---
+
+# BTY Auth / Deploy Safety
+
+## Must
+
+- **Treat cookies/session as production-critical.** Any change to how cookies or session are set/read can break login or SSO in production.
+- **When changing auth:** Include cookie flags reasoning:
+  - **Secure** — must be `true` in production (HTTPS only).
+  - **SameSite** — `Lax` or `Strict`; avoid `None` unless cross-site is required and Secure is set.
+  - **Path** — scope of the cookie (e.g. `/` vs `/api`).
+  - **Domain** — leave unset for current host, or set explicitly for subdomains.
+- **When changing runtime (Edge vs Node):** Explain impact (e.g. Node-only APIs, cold starts, env availability) and provide a **rollback plan** (revert deploy, feature flag, or config switch).
+- **Provide a verification checklist** covering: **local** (dev server), **preview** (Vercel/CF preview or staging), **prod** (smoke test after deploy).
+
+## Forbidden
+
+- **Do not change domain rules in auth/deploy code.** Domain/engine/XP/leaderboard rules live in `src/domain/` or engine only.
+- **Do not implement XP/leaderboard computations in API handlers.** Call engine/domain; handlers orchestrate and return results.
+
+## Required
+
+- **Minimal changes only.** Prefer the smallest diff that achieves the goal; avoid refactors or "cleanups" in the same change.
+- **End with "How to verify" steps** — concrete commands or actions for local, preview, and prod.
+
+## Example — Auth change
+
+```markdown
+Cookie flags: Secure=true (prod), SameSite=Lax, Path=/. Reasoning: session cookie must not leak to HTTP or cross-site; path / so app-wide.
+How to verify:
+- Local: npm run dev → sign in → check Application > Cookies for Secure/SameSite.
+- Preview: Deploy preview → sign in → confirm cookie on HTTPS.
+- Prod: After deploy, sign in on production URL; confirm no redirect loops or 401s.
+```
+
+## Example — Runtime change
+
+```markdown
+Impact: Moving /api/auth/callback to Edge removes Node-only APIs (e.g. fs); Supabase client is Edge-compatible. Rollback: revert to Node runtime in route config or redeploy previous build.
+How to verify:
+- Local: Run in Edge mode (if possible) and test callback URL.
+- Preview: Deploy and complete OAuth flow on preview URL.
+- Prod: Deploy during low traffic; verify callback and session; rollback if errors spike.
+```
+bty-app/src/middleware.ts
+bty-app/src/app/api/**
+bty-app/src/lib/auth/**

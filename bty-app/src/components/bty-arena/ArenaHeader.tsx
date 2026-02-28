@@ -6,6 +6,7 @@ import Link from "next/link";
 export type ArenaStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 export type ArenaPhase = "CHOOSING" | "SHOW_RESULT" | "FOLLOW_UP" | "DONE";
 
+const TITLE = { en: "Simulation", ko: "시뮬레이션" };
 const SUBTITLE = {
   en: "One round. Resumes when you return. (MVP 1)",
   ko: "한 판으로 끝. 멈춰도 이어짐. (MVP: 1 + 보완 1)",
@@ -39,7 +40,7 @@ export function ArenaHeader({
     <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
       <div>
         <div style={{ fontSize: 14, opacity: 0.7 }}>bty arena</div>
-        <h1 style={{ margin: 0, fontSize: 28 }}>Simulation</h1>
+        <h1 style={{ margin: 0, fontSize: 28 }}>{isKo ? TITLE.ko : TITLE.en}</h1>
         <div style={{ fontSize: 13, opacity: 0.7, marginTop: 2 }}>
           {isKo ? SUBTITLE.ko : SUBTITLE.en}
         </div>

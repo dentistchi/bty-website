@@ -87,10 +87,12 @@
 | 2-1 | **Arena 자유 입력** 설계 | 어떤 시나리오·어느 단계에서 텍스트 입력을 받을지 규칙 정리 | 스펙 1페이지 |
 | 2-2 | 자유 입력 API 구현 | `POST /api/arena/free-response` (시나리오+사용자 입력 → 피드백+XP) | 기존 engine + LLM 또는 규칙 |
 | 2-3 | Arena UI에 자유 입력 단계 추가 | Tier/시나리오에 따라 입력창 노출, 결과·XP 표시 | bty-arena 페이지 |
-| 2-4 | **Dojo/Dear Me XP** 설계 | 무엇을 기록할지(멘토 대화 1회, 챗 1회, 체류 시간 등), 얼마나 줄지 | 스펙 + 이벤트 정의 |
-| 2-5 | Dojo/Dear Me 이벤트 기록 및 XP 반영 | 이벤트 저장(예: arena_events 또는 별도 테이블) + weekly_xp 등과 연동 | API·DB 마이그레이션 |
+| 2-4 | **Dojo/Dear Me XP** 설계 | 무엇을 기록할지(멘토 대화 1회, 챗 1회, 체류 시간 등), 얼마나 줄지 | ✅ 스펙 + 이벤트 정의 — `docs/DOJO_DEAR_ME_XP_SPEC.md` |
+| 2-5 | Dojo/Dear Me 이벤트 기록 및 XP 반영 | 이벤트 저장(예: arena_events 또는 별도 테이블) + weekly_xp 등과 연동 | ✅ `activity_xp_events`, `recordActivityXp`, `/api/mentor`·`/api/chat` 연동 |
 
 **완료 기준**: 고단계 Arena에서 직접 타이핑 → 피드백·XP, Dojo/Dear Me 이용도 XP에 반영됨.
+
+**2-4·2-5 적용 상태**: Dojo/Dear Me XP 설계는 `DOJO_DEAR_ME_XP_SPEC.md`에 정리되어 있고, `activity_xp_events` 테이블·`recordActivityXp`·멘토/챗 API 연동이 코드에 반영됨. (다른 PC에서 완료 후 이쪽에서 로드맵 반영.)
 
 ---
 
@@ -112,7 +114,7 @@
 
 ## Phase 4: 코드별 테마·엘리트 5% (장기)
 
-**목표**: 가이드 캐릭터 코드별 의상/테마, 상위 5% 동기 부여.
+**목표**: 아바타와 무관한 다음 단계. 가이드 캐릭터 코드별 의상/테마, 상위 5% 동기 부여.
 
 | 순서 | 작업 | 산출물 | 참고 |
 |------|------|--------|------|

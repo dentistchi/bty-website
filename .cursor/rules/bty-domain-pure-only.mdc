@@ -1,0 +1,69 @@
+---
+description: 
+globs: "**/domain/**/*.ts"
+alwaysApply: false
+---
+
+# BTY Domain Rules — Pure Only
+
+This rule applies **only** to domain layer files (`src/domain/`, `bty-app/src/domain/`).
+
+## Must
+
+- **Keep all domain logic pure + deterministic.** No DB, no network, no framework APIs. Same inputs → same outputs; no side effects.
+- **Expose rules as pure functions and types/constants.** Domain exports functions for rules and types/constants for shared concepts.
+- **Encode invariants in types where possible.** Use branded types, unions, or readonly to prevent invalid states.
+
+## Forbidden
+
+- **No Supabase client, no SQL, no fetch.** No database or network access in domain.
+- **No Next.js runtime imports.** No `next/*` or other framework APIs in domain.
+- **No UI concerns.** No display strings, no components, no i18n in domain.
+
+## Required
+
+- **If rule changes, update `docs/spec` in the same PR** (or list it as a required next step).
+- **Provide edge cases as test vectors** (in code comments or a test file), even if tests live elsewhere.
+
+## Examples
+
+```typescript
+// ❌ BAD — side effects in domain
+import { createClient } from '@supabase/supabase-js';
+export function getTier(userId: string) {
+  const { data } = await supabase.from('profiles').select('core_xp').single();
+  return levelToTier(levelFromCoreXp(data.core_xp));
+}
+
+// ✅ GOOD — pure, inputs in / result out
+export function tierFromCoreXp(coreXp: number): Tier {
+  const level = levelFromCoreXp(coreXp);
+  return levelToTier(level);
+}
+```
+
+```typescript
+// ❌ BAD — UI / display in domain
+export const LEVEL_LABEL = 'Level';  // display string
+
+// ✅ GOOD — domain only exposes values and types
+export type Level = number;
+export const MIN_LEVEL = 1;
+export const MAX_LEVEL = 99;
+```
+
+```typescript
+// ✅ GOOD — invariants in types
+export type CoreXp = number & { readonly __brand: 'CoreXp' };
+export function toCoreXp(n: number): CoreXp {
+  if (n < 0 || !Number.isInteger(n)) throw new Error('Invalid CoreXp');
+  return n as CoreXp;
+}
+```
+
+## Checklist
+
+- [ ] No Supabase, SQL, fetch, or Next.js imports
+- [ ] No display strings or UI concerns
+- [ ] Rule changes: docs/spec updated or next step listed
+- [ ] Edge cases documented as test vectors

@@ -25,6 +25,10 @@ export type Scenario = {
   scenarioId: string;
   title: string;
   context: string;
+  /** Korean title (optional). When locale is ko, used instead of title. */
+  titleKo?: string;
+  /** Korean context (optional). When locale is ko, used instead of context. */
+  contextKo?: string;
   choices: ScenarioChoice[];
   coachNotes?: ScenarioCoachNotes;
   /** If set, only users with tier >= this value can get this scenario (e.g. 75 = Elite / Tier 75+). */

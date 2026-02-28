@@ -36,6 +36,10 @@ export default function AdminQualityPage() {
             <Link href="/admin/organizations" className="underline hover:text-neutral-900">조직</Link>
             {" · "}
             <Link href="/admin/debug" className="underline hover:text-neutral-900">디버깅</Link>
+            {" · "}
+            <Link href="/admin/sql-migrations" className="underline hover:text-neutral-900">SQL 복사</Link>
+            {" · "}
+            <Link href="/admin/arena-membership" className="underline hover:text-neutral-900">Arena 멤버십 승인</Link>
           </p>
         </div>
       </div>

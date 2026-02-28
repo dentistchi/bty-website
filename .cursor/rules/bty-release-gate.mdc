@@ -1,0 +1,70 @@
+---
+description: 
+alwaysApply: true
+---
+
+bty-app/**
+bty-app/supabase/**
+bty-app/src/middleware.ts
+bty-app/src/app/api/**
+[BTY RELEASE GATE — DEPLOYMENT / RESET / LEADERBOARD SAFETY]
+
+This rule is a release-quality gate. When changes touch auth, deployment, weekly reset, leaderboard, XP storage, or season boundaries, you MUST run the checks below and include the required outputs.
+
+SCOPE
+- Applies to bty-app/** and related migrations/auth files.
+- BTY Arena business rules apply ONLY inside bty-app/** unless explicitly stated.
+
+NON-NEGOTIABLE INVARIANTS
+1) Season progression MUST NOT affect leaderboard ranking.
+2) Core XP is permanent (lifetime) and must NEVER decrease due to weekly resets.
+3) Weekly XP resets at the weekly boundary and is used ONLY for weekly ranking.
+4) UI must NOT compute XP/League/Season business rules; UI renders results from API/engine.
+
+RELEASE CHECKLIST (MUST INCLUDE IN OUTPUT)
+A) Auth / Cookies / Session
+- List cookie settings: Secure, SameSite, Path, Domain.
+- Confirm logout clears cookies and session state.
+- If runtime changes (edge/node/worker), explain impact and rollback plan.
+
+B) Weekly Reset Safety
+- Define reset boundary source of truth (e.g., week_start_date or week_id).
+- Confirm weekly reset does NOT modify Core XP storage/history.
+- Provide idempotency plan: running reset twice does not corrupt totals.
+- Provide race condition plan: concurrent XP awards during reset window.
+
+C) Leaderboard Correctness
+- Confirm ranking sort uses Weekly XP only (within active weekly window).
+- Specify tie-breakers (deterministic): e.g., weekly_xp desc, updated_at asc, user_id asc.
+- Confirm season progress fields are NOT used in leaderboard ordering.
+
+D) Data / Migration Safety (if migrations touched)
+- Provide migration path(s) and summary.
+- List new/changed constraints and indexes and why.
+- State rollback approach (how to revert safely).
+- Confirm Core XP and Weekly XP storage remain clearly separated.
+
+E) API Contract Stability (if API touched)
+- List endpoints changed and expected request/response fields.
+- Confirm UI receives computed values (no rule duplication in UI).
+- Note caching behavior (if any) for leaderboard endpoints.
+
+F) Verification Steps (MANDATORY)
+Provide a short step-by-step checklist that can be executed:
+1) Local: login → earn XP → view profile + leaderboard
+2) Local: simulate weekly boundary/reset (time injected or test week_id)
+3) Preview: login persistence across refresh and navigation
+4) Production: cookie behavior + leaderboard loads + no 401 loops
+
+OUTPUT FORMAT (MANDATORY)
+1) Assumptions
+2) Release Gate Results: PASS / FAIL
+3) Findings (grouped by A–F)
+4) Required patches (file paths + minimal diffs)
+5) Next steps checklist
+
+DEFAULT SAFE ASSUMPTIONS (USE IF NOT SPECIFIED)
+- Leaderboard uses weekly window key (week_id or week_start_date).
+- Weekly XP is computed from weekly ledger or weekly totals table scoped by week_id.
+- Core XP is stored separately (core ledger or core totals table) and never reset.
+- UI only formats presentation and never computes ranking or XP rules.

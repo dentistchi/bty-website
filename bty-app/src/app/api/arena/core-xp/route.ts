@@ -8,6 +8,11 @@ import {
   resolveSubName,
   type CodeIndex,
 } from "@/lib/bty/arena/codes";
+import { getEffectiveTrack } from "@/lib/bty/arena/program";
+import { getUnlockedContentWindow } from "@/lib/bty/arena/unlock";
+import type { Track, LevelId } from "@/lib/bty/arena/tenure";
+import { getOutfitForLevel, getCharacterOutfitImageUrl } from "@/lib/bty/arena/avatarOutfits";
+import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
 
 export async function GET(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);
@@ -15,7 +20,7 @@ export async function GET(req: NextRequest) {
 
   const { data: row, error } = await supabase
     .from("arena_profiles")
-    .select("user_id, core_xp_total, code_index, sub_name, sub_name_renamed_in_code, code_hidden")
+    .select("user_id, core_xp_total, code_index, sub_name, sub_name_renamed_in_code, code_hidden, avatar_url, avatar_character_id, avatar_outfit_theme, l4_access")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -70,6 +75,7 @@ export async function GET(req: NextRequest) {
     isTop5Percent;
 
   if (!row) {
+    const defaultOutfit = getOutfitForLevel(null, "S1");
     const out = NextResponse.json({
       coreXpTotal: 0,
       tier: 0,
@@ -78,9 +84,68 @@ export async function GET(req: NextRequest) {
       seasonalXpTotal: 0,
       codeHidden: false,
       subNameRenameAvailable: false,
+      avatarUrl: null,
+      avatarCharacterId: null,
+      avatarOutfitTheme: null,
+      currentOutfit: {
+        outfitId: defaultOutfit.outfitId,
+        outfitLabel: defaultOutfit.outfitLabel,
+        accessoryIds: defaultOutfit.accessoryIds,
+        accessoryLabels: defaultOutfit.accessoryLabels,
+      },
     });
     copyCookiesAndDebug(base, out, req, true);
     return out;
+  }
+
+  const customAvatarUrl = (row as { avatar_url?: string | null }).avatar_url ?? null;
+  const avatarCharacterId = (row as { avatar_character_id?: string | null }).avatar_character_id ?? null;
+  const avatarOutfitTheme = (row as { avatar_outfit_theme?: "professional" | "fantasy" | null }).avatar_outfit_theme ?? null;
+  const l4Access = (row as { l4_access?: boolean }).l4_access === true;
+
+  let maxUnlockedLevel: LevelId = "S1";
+  const { data: membershipRequest } = await supabase
+    .from("arena_membership_requests")
+    .select("job_function, joined_at, leader_started_at, status")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (membershipRequest?.status === "approved") {
+    const joinedAt = membershipRequest.joined_at
+      ? new Date(membershipRequest.joined_at).toISOString()
+      : new Date().toISOString();
+    const leaderStartedAt = membershipRequest.leader_started_at
+      ? new Date(membershipRequest.leader_started_at).toISOString()
+      : null;
+    const track = getEffectiveTrack({
+      jobFunction: membershipRequest.job_function ?? undefined,
+      membershipRole: undefined,
+      joinedAt,
+    }) as Track;
+    const window = getUnlockedContentWindow({
+      track,
+      user: { joinedAt, leaderStartedAt },
+      now: new Date(),
+      l4Granted: l4Access,
+    });
+    maxUnlockedLevel = window.maxUnlockedLevel;
+  }
+
+  const outfit = getOutfitForLevel(avatarOutfitTheme, maxUnlockedLevel);
+
+  let avatarUrl: string | null = customAvatarUrl;
+  if (!avatarUrl) {
+    const characterOutfitUrl =
+      avatarOutfitTheme === "fantasy"
+        ? getCharacterOutfitImageUrl(avatarCharacterId)
+        : null;
+    if (characterOutfitUrl) {
+      avatarUrl = characterOutfitUrl;
+    } else if (outfit.imageUrl) {
+      avatarUrl = outfit.imageUrl;
+    } else if (avatarCharacterId) {
+      const character = getAvatarCharacter(avatarCharacterId);
+      if (character?.imageUrl) avatarUrl = character.imageUrl;
+    }
   }
 
   const out = NextResponse.json({
@@ -91,6 +156,15 @@ export async function GET(req: NextRequest) {
     seasonalXpTotal,
     codeHidden: coreXpTotal >= 700,
     subNameRenameAvailable: Boolean(subNameRenameAvailable),
+    avatarUrl,
+    avatarCharacterId,
+    avatarOutfitTheme,
+    currentOutfit: {
+      outfitId: outfit.outfitId,
+      outfitLabel: outfit.outfitLabel,
+      accessoryIds: outfit.accessoryIds,
+      accessoryLabels: outfit.accessoryLabels,
+    },
   });
   copyCookiesAndDebug(base, out, req, true);
   return out;

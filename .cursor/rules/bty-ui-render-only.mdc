@@ -1,0 +1,69 @@
+---
+description: 
+globs: bty-app/src/components/bty-arena/**/*.tsx, bty-app/src/app/**/bty/**/*.tsx
+alwaysApply: false
+---
+
+# BTY UI Rules — Render Only
+
+## Must
+
+- **UI must NOT compute XP/League/Season business rules.** Consume precomputed values from API/domain only.
+- **UI may format numbers/dates only** (e.g. `formatNumber(xp)`, `formatDate(endsAt)`). No level/tier/rank derivation.
+- **Label clearly:**
+  - **Weekly Ranking** — label as “Weekly Ranking” and show Weekly XP only for that section.
+  - **Season Progress** — separate section; do not mix with weekly or lifetime.
+  - **Lifetime Progress** — label as “Lifetime” or “Core” and show Core XP only.
+- **Code Name only** — never display real name; use code name (or anonymous) everywhere in arena UI.
+
+## Forbidden
+
+- No leaderboard sorting logic inside components (sort order comes from API).
+- No XP award logic inside components (awards happen in API/engine).
+- No “infer weekly window” or season-boundary logic in UI (windows come from API/domain).
+
+## Required
+
+### Props / API contract
+
+- Define **props and types** for all data from API. Prefer shared interfaces (e.g. `LeaderboardRow`, `ProgressSummary`).
+- Components receive only what they need; no fetching or business logic inside.
+
+```typescript
+// ✅ GOOD — explicit contract from API
+interface LeaderboardRow {
+  userId: string;
+  codeName: string;
+  rank: number;
+  coreXp: number;
+  league: string;
+}
+interface LeaderboardProps {
+  rows: LeaderboardRow[];
+  isLoading: boolean;
+  error: string | null;
+}
+```
+
+### Loading / empty / error states
+
+- Every component that shows arena data must handle:
+  - **Loading** — skeleton or spinner, no raw “undefined” flash.
+  - **Empty** — clear message (e.g. “No entries yet”) when list/section is empty.
+  - **Error** — show message and optional retry; do not render partial/broken data.
+
+```tsx
+// ✅ GOOD — explicit states
+function Leaderboard({ rows, isLoading, error }: LeaderboardProps) {
+  if (error) return <ArenaError message={error} onRetry={refetch} />;
+  if (isLoading) return <LeaderboardSkeleton />;
+  if (rows.length === 0) return <EmptyState message="No entries yet" />;
+  return (
+    <ul>
+      {rows.map((r) => (
+        <LeaderboardRow key={r.userId} codeName={r.codeName} rank={r.rank} coreXp={r.coreXp} />
+      ))}
+    </ul>
+  );
+}
+```

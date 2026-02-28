@@ -4,10 +4,15 @@
   "description": "Dear Me & BTY — 루트. Cloudflare Workers(bty-app) 단일 배포.",
   "scripts": {
     "build": "cd bty-app && npm ci && npm run build",
-    "ci:guard": "echo 'Run via GitHub Actions: CI (Context Guard)'"
+    "ci:guard": "echo 'Run via GitHub Actions: CI (Context Guard)'",
+    "test:engine": "vitest run src/engine"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.95.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vitest": "^2.1.0"
   }
 }

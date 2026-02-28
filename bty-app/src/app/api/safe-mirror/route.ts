@@ -88,7 +88,7 @@ export async function POST(request: Request) {
         );
         if (r.ok) {
           const data = r.json;
-          const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
           if (text) return NextResponse.json({ message: text });
         }
         let errData: GeminiResp | null = null;

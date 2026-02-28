@@ -386,8 +386,11 @@ export const SCENARIOS: Scenario[] = [
   {
     scenarioId: "doctor_production_pressure_030",
     title: "Doctor Feels Production Pressure",
+    titleKo: "의사가 생산 목표 압박을 느낀다",
     context:
       "Monthly production numbers are below target. You may feel anxious, driven, or fearful. The hidden risk: if fear drives decisions, care can change in ways that hurt trust. The integrity trigger is chase numbers vs protect clinical integrity. The growth opportunity is that integrity protects long-term trust.",
+    contextKo:
+      "월간 생산 실적이 목표에 미치지 못하고 있습니다. 불안하거나, 더 열심히 해야 한다는 압박, 두려움을 느낄 수 있어요. 숫자에 쫓기면 진료가 달라져 신뢰를 해칠 수 있어요. 성장 기회는, 무결성을 지키는 것이 장기적 신뢰를 지킨다는 거예요.",
     choices: [
       { choiceId: "A", label: "Increase treatment recommendations more aggressively to meet target.", intent: "Chase Numbers", xpBase: 28, difficulty: 1.5, hiddenDelta: { integrity: -2, communication: -1, insight: 0, resilience: 0, gratitude: -1 }, result: "Short-term production may rise but patients may sense pressure. Trust and case acceptance can drop long-term. Integrity is compromised.", microInsight: "Fear-driven recommendations can backfire.", followUp: { enabled: true, prompt: "How do you grow production with integrity?", options: ["Case acceptance of needed care", "Recall and retention", "Efficiency and scheduling"] } },
       { choiceId: "B", label: "Review diagnosis and treatment standards carefully; improve communication of value.", intent: "Review Standards", xpBase: 88, difficulty: 0.9, hiddenDelta: { integrity: 3, communication: 2, insight: 2, resilience: 1, gratitude: 0 }, result: "You've protected clinical integrity. You may find appropriate cases that weren't fully presented or improve how you communicate value. Long-term trust and production align. Integrity protects long-term trust.", microInsight: "Integrity protects long-term trust.", followUp: { enabled: true, prompt: "What drives production without compromising care?", options: ["Treatment planning and case presentation", "Patient education and consent", "Recall and comprehensive care"] } },

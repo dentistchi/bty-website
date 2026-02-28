@@ -96,6 +96,22 @@ export type Messages = {
     past: string;
     now: string;
   };
+  arenaLevels: {
+    membershipPending: string;
+    loginRequired: string;
+    track: string;
+    unlockedUpTo: string;
+    l4AdminGranted: string;
+    staff: string;
+    leader: string;
+    l4Partner: string;
+  };
+  avatarOutfit: {
+    label: string;
+    professional: string;
+    fantasy: string;
+    hint: string;
+  };
 };
 
 const ko: Messages = {
@@ -206,6 +222,22 @@ const ko: Messages = {
     past: "과거",
     now: "지금",
   },
+  arenaLevels: {
+    membershipPending: "멤버십 승인 대기 중입니다. 승인 후 레벨이 표시됩니다.",
+    loginRequired: "로그인이 필요합니다.",
+    track: "트랙",
+    unlockedUpTo: "최대 오픈 레벨",
+    l4AdminGranted: "관리자 부여",
+    staff: "스태프",
+    leader: "리더",
+    l4Partner: "L4 (파트너)",
+  },
+  avatarOutfit: {
+    label: "옷 테마",
+    professional: "직업군",
+    fantasy: "롤플레잉",
+    hint: "레벨이 올라가면 선택한 테마의 옷이 바뀝니다.",
+  },
 };
 
 const en: Messages = {
@@ -315,6 +347,22 @@ const en: Messages = {
     subtitle: "A wave that dips then rises again.",
     past: "Past",
     now: "Now",
+  },
+  arenaLevels: {
+    membershipPending: "Membership approval pending. Levels will show after approval.",
+    loginRequired: "Sign in required.",
+    track: "Track",
+    unlockedUpTo: "Unlocked up to",
+    l4AdminGranted: "admin-granted",
+    staff: "Staff",
+    leader: "Leader",
+    l4Partner: "L4 (Partner)",
+  },
+  avatarOutfit: {
+    label: "Outfit theme",
+    professional: "Professional",
+    fantasy: "Fantasy",
+    hint: "Outfit changes by level within your chosen theme.",
   },
 };
 

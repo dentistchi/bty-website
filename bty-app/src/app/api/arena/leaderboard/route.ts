@@ -49,15 +49,16 @@ export async function GET(req: NextRequest) {
   }
 
   const league = await getActiveLeague(supabase, getSupabaseAdmin());
-  let weeklyQuery = supabase
+  // MVP: ranking always from global pool (league_id IS NULL). run/complete and activity XP only write to league_id null.
+  // League is used for display (season name, dates) only.
+  const admin = getSupabaseAdmin();
+  const db = admin ?? supabase;
+  const { data: weeklyRows, error: weeklyErr } = await db
     .from("weekly_xp")
     .select("user_id, xp_total")
+    .is("league_id", null)
     .order("xp_total", { ascending: false })
     .limit(100);
-  if (league) weeklyQuery = weeklyQuery.eq("league_id", league.league_id);
-  else weeklyQuery = weeklyQuery.is("league_id", null);
-
-  const { data: weeklyRows, error: weeklyErr } = await weeklyQuery;
 
   if (weeklyErr) {
     const out = NextResponse.json(
@@ -73,20 +74,27 @@ export async function GET(req: NextRequest) {
 
   let profileMap = new Map<
     string,
-    { core_xp_total: number; code_index: number; sub_name: string | null }
+    { core_xp_total: number; code_index: number; sub_name: string | null; avatar_url: string | null }
   >();
   if (userIds.length > 0) {
-    const { data: profiles } = await supabase
+    const { data: profiles } = await db
       .from("arena_profiles")
-      .select("user_id, core_xp_total, code_index, sub_name")
+      .select("user_id, core_xp_total, code_index, sub_name, avatar_url")
       .in("user_id", userIds);
 
     (profiles ?? []).forEach(
-      (p: { user_id: string; core_xp_total?: number; code_index?: number; sub_name?: string | null }) => {
+      (p: {
+        user_id: string;
+        core_xp_total?: number;
+        code_index?: number;
+        sub_name?: string | null;
+        avatar_url?: string | null;
+      }) => {
         profileMap.set(p.user_id, {
           core_xp_total: Number(p.core_xp_total ?? 0),
           code_index: Math.min(6, Math.max(0, Number(p.code_index ?? 0))),
           sub_name: p.sub_name ?? null,
+          avatar_url: p.avatar_url ?? null,
         });
       }
     );
@@ -102,7 +110,8 @@ export async function GET(req: NextRequest) {
     const customSubName = prof?.sub_name ?? null;
     const codeName = CODE_NAMES[codeIndex];
     const subName = resolveSubName(codeIndex, subTierGroup, customSubName);
-    return { rank: idx + 1, codeName, subName, xpTotal };
+    const avatarUrl = prof?.avatar_url ?? null;
+    return { rank: idx + 1, codeName, subName, xpTotal, avatarUrl };
   });
 
   const myRank =

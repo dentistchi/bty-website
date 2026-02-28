@@ -1,0 +1,54 @@
+---
+description: BTY GLOBAL GUARD — Season, XP, Leaderboard, domain purity, output format. Always applied.
+alwaysApply: true
+---
+
+# BTY GLOBAL GUARD — ALWAYS
+
+## Non-negotiables
+
+1. **Season progression MUST NOT affect leaderboard ranking.** Leaderboard (weekly) rank is determined by Weekly XP only; season state must not affect rank.
+2. **Core XP is permanent (lifetime).** Weekly XP resets and is **only** for weekly ranking. Do not mix or reuse weekly XP for league/season logic.
+3. **Never duplicate XP/League/Season business logic in UI.** UI renders results only; components call domain/engine/API.
+4. **Prefer pure domain functions for business rules.** Side-effects only in API/service layers. Domain under `src/domain/` or `bty-app/src/domain/` (or engine).
+5. **Any change touching XP/Season/Leaderboard must include:** rule statement + edge cases + test plan.
+
+## Output requirements
+
+- **List assumptions first.**
+- **Provide concrete file paths and minimal diffs or function signatures.**
+- **End with Next steps checklist.**
+
+## Workflow
+
+- **Split work by layer:** Domain → Data → Engine → API/Auth → UI.
+- **When uncertain:** Stop and ask for missing requirements instead of guessing.
+
+## Examples
+
+```typescript
+// ❌ BAD — business rule in UI
+function Leaderboard() {
+  const tier = levelToTier(level);  // no — move to domain/engine
+  const rank = items.sort((a, b) => b.weeklyXp - a.weeklyXp);  // no — ranking is domain rule
+}
+
+// ✅ GOOD — UI only consumes precomputed data
+function Leaderboard({ rows }: { rows: LeaderboardRow[] }) {
+  return <ul>{rows.map(r => <LeaderboardRow key={r.userId} {...r} />)}</ul>;
+}
+```
+
+```typescript
+// ❌ BAD — domain function with side effects
+export function getLeague(userId: string) {
+  const row = await db.query('...');  // no DB in domain
+  return row.league;
+}
+
+// ✅ GOOD — pure domain
+export function leagueFromCoreXp(coreXp: number): League {
+  const level = levelFromCoreXp(coreXp);
+  return tierToLeague(levelToTier(level));
+}
+```

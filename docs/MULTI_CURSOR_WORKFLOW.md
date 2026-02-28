@@ -65,7 +65,8 @@
 ### 3-1. **규칙(Rules)으로 역할 명시**
 
 - `.cursor/rules/`에 **영역별 규칙**을 두면, 각 Cursor가 자기 구역에 맞게 행동하기 쉽다.
-- 예:
+- 이 프로젝트에는 **BTY Arena용 rule + subagent + skill**이 들어 있어서, 세 창(Feature / Fix·Polish / Explore·Plan)에서 나눠 쓰기 좋다. 자세한 매핑은 **`docs/CURSOR_SETUP_BY_TYPE.md` §5** 참고.
+- 예 (추가로 쓰고 싶을 때):
   - `arena-api.mdc`: “이 세션은 `/api/arena/*`만 수정한다. DB 변경 시 마이그레이션 파일만 추가한다.”
   - `arena-ui.mdc`: “이 세션은 `[locale]/bty/*` 페이지·컴포넌트만 수정한다. API 경로는 기존 것을 사용한다.”
 

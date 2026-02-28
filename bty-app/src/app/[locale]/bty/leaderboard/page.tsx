@@ -4,12 +4,14 @@ import React from "react";
 import { useParams } from "next/navigation";
 import BtyTopNav from "@/components/bty/BtyTopNav";
 import { arenaFetch } from "@/lib/http/arenaFetch";
+import { LeaderboardRow } from "@/components/bty-arena";
 
 type Row = {
   rank: number;
   codeName: string;
   subName: string;
   xpTotal: number;
+  avatarUrl?: string | null;
 };
 
 type LeaderboardRes = {
@@ -124,51 +126,17 @@ export default function LeaderboardPage() {
 
         {!loading && !error && (
           <div style={{ display: "grid", gap: 10 }}>
-            {rows.map((r) => {
-              const isMe = myRank != null && r.rank === myRank;
-              return (
-                <div
-                  key={r.rank}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: 12,
-                    padding: 14,
-                    borderRadius: 14,
-                    border: isMe ? "2px solid #5B4B8A" : "1px solid #eee",
-                    background: isMe ? "rgba(91, 75, 138, 0.08)" : undefined,
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div
-                      style={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: 10,
-                        border: "1px solid #eee",
-                        display: "grid",
-                        placeItems: "center",
-                        fontWeight: 800,
-                      }}
-                    >
-                      {r.rank}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 800, fontSize: 16 }}>
-                        {r.codeName} · {r.subName}
-                      </div>
-                      <div style={{ fontSize: 12, opacity: 0.7 }}>{t.tier}</div>
-                    </div>
-                  </div>
-
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontWeight: 900, fontSize: 18 }}>{r.xpTotal}</div>
-                    <div style={{ fontSize: 12, opacity: 0.7 }}>{t.weeklyXp}</div>
-                  </div>
-                </div>
-              );
-            })}
+            {rows.map((r) => (
+              <LeaderboardRow
+                key={r.rank}
+                rank={r.rank}
+                codeName={r.codeName}
+                subName={r.subName}
+                weeklyXp={r.xpTotal}
+                avatarUrl={r.avatarUrl}
+                isMe={myRank != null && r.rank === myRank}
+              />
+            ))}
 
             {rows.length === 0 && (
               <div style={{ opacity: 0.75 }}>{t.noData}</div>

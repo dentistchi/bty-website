@@ -100,3 +100,34 @@
 - [ ] 할 일이 있으면 태스크 보드 표에 한 줄씩 추가하고, 해당 Cursor에서 그 할 일을 지시한다.
 - [ ] 작업이 끝나면 태스크 보드 상태를 `완료`로 바꾸고, 다른 창은 `git pull` 후 보드를 새로고침한다.
 - [ ] 완료 시 Mac 알림은 규칙으로 자동 실행된다.
+
+---
+
+## 5. Rule / Subagent / Skill과 함께 쓰기
+
+세 Cursor 창은 **같은 프로젝트 폴더**를 열기 때문에 `.cursor/rules/`, `.cursor/agents/`, `.cursor/skills/`를 **공유**합니다. 따라서 **세 창 모두에서 동일한 rule·subagent·skill이 적용**됩니다. 창별로 “언제 무엇을 쓰면 좋은지”만 정해두면 됩니다.
+
+### 5-1. 같이 잘 작동할까?
+
+**예.**  
+- **Rules**: 항상 적용되는 것(bty-arena-global, bty-release-gate)은 세 창 공통. 파일 경로 기반 rule(domain, UI, migration)은 **해당 파일을 연/수정하는 창**에서만 활성화됩니다.  
+- **Subagents**: 채팅에서 에이전트 이름을 지정해 호출하면, 그 창에서만 실행됩니다. 창마다 역할(Feature / Fix / Explore)에 맞는 에이전트를 부르면 됩니다.  
+- **Skills**: “이 스킬로 해줘”라고 하거나, 질문이 스킬 설명과 맞을 때 사용됩니다. 창별로 **어떤 질문을 할지**만 나누면 스킬이 겹치지 않고 잘 쓰입니다.
+
+즉, **세 창이 서로 다른 파일·다른 질문을 담당**하므로 rule/agent/skill이 충돌하지 않고, 오히려 창별 역할에 맞게 나눠 쓰기 좋습니다.
+
+### 5-2. 창별로 추천하는 사용법
+
+| 창 | 이 창에서 하기 좋은 것 | 쓰기 좋은 Rule / Agent / Skill |
+|----|------------------------|--------------------------------|
+| **Feature** (코드 작성) | API·엔진·UI 구현, 마이그레이션 추가 | **자동**: bty-arena-global, bty-release-gate, bty-domain-pure-only(domain 파일), bty-ui-render-only(arena UI), bty-arena-data(migration). **호출**: `bty-engine-implementer`, `bty-arena-data-engineer`, `bty-arena-ui` (작업 영역에 맞게). |
+| **Fix/Polish** (에러 교정) | 버그 수정, 린트/타입 수정, 문서 보강, auth/미들웨어 수정 | **자동**: 위와 동일. **호출**: `bty-arena-rules`(규칙 위반 검사), `bty-auth-deploy-safety`(auth/쿠키/미들웨어 변경 시). **스킬**: diff 요약 붙여넣고 “규칙 위반 검사해줘” → **bty-arena-change-review**. |
+| **Explore/Plan** (계획·구상) | 스펙 정리, API 설계, 기능 영향 분석, 마이그레이션 검토(코드 수정 없이) | **호출**: `bty-domain-architect`(도메인 규칙 정의/변경). **스킬**: `<<< 기능 요청 내용 >>>` 붙여서 “영향 분석해줘” → **feature-request-impact-analysis**; UI 요구사항 붙여서 “API 계약 설계해줘” → **api-contract-from-ui**; 마이그레이션 SQL 붙여서 “안전성 검토해줘” → **evaluate-migration-safety**. 리팩터만 할 때 → **refactor-code-constraints**. |
+
+### 5-3. 가장 잘 쓰는 법 (요약)
+
+1. **Feature 창**: 할 일 지시할 때 “이 영역만 수정해”를 한 줄 넣고, 필요하면 “bty-engine-implementer로 구현해줘”처럼 **에이전트 이름**을 명시한다.  
+2. **Fix/Polish 창**: 수정 전/후로 변경분을 복사해 “<<< diff >>> 규칙 위반 검사해줘”라고 하면 **bty-arena-change-review** 스킬이 잘 맞는다. auth/쿠키/미들웨어 건드리면 “bty-auth-deploy-safety 기준으로 검토해줘”라고 부른다.  
+3. **Explore/Plan 창**: 코드 수정은 최소로 하고, “기능 요청 영향 분석”, “API 계약 설계”, “마이그레이션 안전성 평가”처럼 **스킬 이름을 붙여서 요청**하면 해당 스킬이 적용되기 쉽다.
+
+이렇게 쓰면 **코드 작성 / 에러 교정 / 계획·구상** 세 창이 같은 rule·agent·skill을 공유하면서도, 창마다 다른 용도로 잘 나뉘어 동작합니다.

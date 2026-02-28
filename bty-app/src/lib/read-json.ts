@@ -1,46 +1,33 @@
-export async function readJsonSafe<T>(res: Response): Promise<{ ok: boolean; data?: T; raw?: string }> {
-  const ct = res.headers.get("content-type") || "";
-  const raw = await res.text(); // json() 대신 text() — body 한 번만 소비
-
-  if (!raw) return { ok: false, raw: "" };
-
-  // JSON이 아닌데 json() 시도하면 "Unexpected end..." 나기 쉬움
-  if (!ct.includes("application/json")) {
-    return { ok: false, raw };
-  }
-
+/**
+ * fetchJson — fetch with JSON parse, returns { ok, json, raw, status }
+ * Used by SafeMirror, JourneyBoard, safe-mirror API route.
+ */
+export async function fetchJson<T = unknown>(
+  url: string,
+  init?: RequestInit
+): Promise<{ ok: boolean; json?: T; raw?: string; status?: number }> {
   try {
-    return { ok: true, data: JSON.parse(raw) as T, raw };
-  } catch {
-    return { ok: false, raw };
-  }
-}
-
-export async function fetchJson<T>(url: string, init?: RequestInit) {
-  const res = await fetch(url, {
-    ...init,
-    // 세션류는 캐시 타면 이상해질 수 있어
-    cache: "no-store",
-    credentials: "include",
-  });
-
-  const parsed = await readJsonSafe<T>(res);
-
-  if (!res.ok || !parsed.ok) {
-    // ✅ 로그인 전 세션 확인은 정상 흐름. 콘솔 에러 금지.
-    if (res.status === 401) {
-      return { ok: false as const, status: res.status, raw: parsed.raw };
-    }
-    // 그 외 에러만 콘솔에 찍기 (여기 raw를 찍으면 "서버가 뭘 내보냈는지" 잡힘)
-    console.error("[fetchJson] failed", {
-      url,
-      status: res.status,
-      statusText: res.statusText,
-      contentType: res.headers.get("content-type"),
-      raw: parsed.raw?.slice(0, 300),
+    const res = await fetch(url, {
+      ...init,
+      headers: {
+        ...init?.headers,
+      },
     });
-    return { ok: false as const, status: res.status, raw: parsed.raw };
+    const raw = await res.text();
+    let json: T | undefined;
+    try {
+      json = raw ? (JSON.parse(raw) as T) : undefined;
+    } catch {
+      json = undefined;
+    }
+    return {
+      ok: res.ok,
+      json,
+      raw: raw || undefined,
+      status: res.status,
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, raw: msg, status: 0 };
   }
-
-  return { ok: true as const, status: res.status, json: parsed.data as T };
 }
