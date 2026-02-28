@@ -15,7 +15,7 @@ import { getUnlockedContentWindow } from "@/lib/bty/arena/unlock";
 import type { Track } from "@/lib/bty/arena/tenure";
 
 const STAFF_ORDER = ["S1", "S2", "S3"];
-const LEADER_ORDER = ["L1", "L2", "L3"];
+const LEADER_ORDER = ["L1", "L2", "L3", "L4"];
 
 export async function GET() {
   const supabase = await getSupabaseServerClient();
@@ -56,12 +56,6 @@ export async function GET() {
     joinedAt,
   }) as Track;
 
-  const { maxUnlockedLevel, previewLevel } = getUnlockedContentWindow({
-    track,
-    user: { joinedAt, leaderStartedAt },
-    now: new Date(),
-  });
-
   let l4_access = false;
   const { data: profile } = await supabase
     .from("arena_profiles")
@@ -69,6 +63,14 @@ export async function GET() {
     .eq("user_id", user.id)
     .maybeSingle();
   if (profile?.l4_access === true) l4_access = true;
+
+  const { maxUnlockedLevel, previewLevel } = getUnlockedContentWindow({
+    track,
+    user: { joinedAt, leaderStartedAt },
+    now: new Date(),
+    l4Granted: l4_access,
+    jobFunction: jobFunction ?? undefined,
+  });
 
   const program = loadProgramConfig();
   const trackConfig = program.tracks.find((t) => t.track === track);

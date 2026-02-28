@@ -6,7 +6,7 @@
 import type { LevelId, TenurePolicyConfig, Track, UserTenureProfile } from "@/lib/bty/arena/tenure";
 import { getMaxUnlockedLevelTenure, getNextLockedLevel } from "@/lib/bty/arena/tenure";
 import type { ArenaProgramConfig, LevelWithTenure } from "@/lib/bty/arena/program";
-import { loadProgramConfig } from "@/lib/bty/arena/program";
+import { loadProgramConfig, JOB_MAX_LEVEL_CAP, minLevel } from "@/lib/bty/arena/program";
 
 const LEVEL_IDS: LevelId[] = ["S1", "S2", "S3", "L1", "L2", "L3", "L4"];
 
@@ -63,6 +63,7 @@ export function buildTenurePolicyConfig(program: ArenaProgramConfig): TenurePoli
 /**
  * Returns max unlocked level and optional next locked level (for preview) for the user's track.
  * For leader track: if l4Granted is true, maxUnlockedLevel is L4 (partner; admin-granted only).
+ * 직군별 캡: doctor→S3, senior_doctor→L1, partner→L4(캡 없음, L4는 l4Granted 시).
  */
 export function getUnlockedContentWindow(args: {
   track: Track;
@@ -71,6 +72,8 @@ export function getUnlockedContentWindow(args: {
   now?: Date;
   /** When true (and track is leader), user has admin-granted L4 (partner) access. */
   l4Granted?: boolean;
+  /** 직군별 최대 레벨 캡 적용용 (doctor→S3, senior_doctor→L1, partner→L4) */
+  jobFunction?: string | null;
 }): { maxUnlockedLevel: LevelId; previewLevel: LevelId | null } {
   const program = args.program ?? loadProgramConfig();
   const cfg = buildTenurePolicyConfig(program);
@@ -78,6 +81,10 @@ export function getUnlockedContentWindow(args: {
   let maxUnlocked = getMaxUnlockedLevelTenure(args.track, args.user, cfg, now);
   if (args.track === "leader" && args.l4Granted === true) {
     maxUnlocked = "L4";
+  }
+  const cap = args.jobFunction != null ? JOB_MAX_LEVEL_CAP[args.jobFunction.trim().toLowerCase()] : undefined;
+  if (cap && LEVEL_IDS.includes(cap)) {
+    maxUnlocked = minLevel(maxUnlocked, cap) as LevelId;
   }
   const preview = getNextLockedLevel(args.track, maxUnlocked);
   return { maxUnlockedLevel: maxUnlocked, previewLevel: preview };

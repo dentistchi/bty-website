@@ -112,7 +112,7 @@ export default function DashboardClient() {
   const [membershipSubmitMsg, setMembershipSubmitMsg] = React.useState<string | null>(null);
   const [membershipSubmitting, setMembershipSubmitting] = React.useState(false);
   const [membershipForm, setMembershipForm] = React.useState({
-    job_function: "staff",
+    job_function: "assistant",
     joined_at: "",
     leader_started_at: "",
   });
@@ -155,6 +155,7 @@ export default function DashboardClient() {
   }
 
   async function selectAvatarCharacter(characterId: string | null) {
+    setCore((c) => (c ? { ...c, avatarCharacterId: characterId } : c));
     setAvatarCharacterSaving(true);
     try {
       await arenaFetch("/api/arena/profile", {
@@ -164,13 +165,14 @@ export default function DashboardClient() {
       const next = await arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => core);
       if (next) setCore(next);
     } catch {
-      // ignore
+      setCore((c) => (c ? { ...c, avatarCharacterId: core?.avatarCharacterId ?? null } : c));
     } finally {
       setAvatarCharacterSaving(false);
     }
   }
 
   async function saveAvatarOutfitTheme(theme: "professional" | "fantasy" | null) {
+    setCore((c) => (c ? { ...c, avatarOutfitTheme: theme } : c));
     setAvatarOutfitThemeSaving(true);
     try {
       await arenaFetch("/api/arena/profile", {
@@ -180,7 +182,7 @@ export default function DashboardClient() {
       const next = await arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => core);
       if (next) setCore(next);
     } catch {
-      // ignore
+      setCore((c) => (c ? { ...c, avatarOutfitTheme: core?.avatarOutfitTheme ?? null } : c));
     } finally {
       setAvatarOutfitThemeSaving(false);
     }
@@ -395,21 +397,27 @@ export default function DashboardClient() {
                       onChange={(e) => setMembershipForm((f) => ({ ...f, job_function: e.target.value }))}
                       style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #ddd" }}
                     >
-                      <option value="assistant">Assistant (Staff)</option>
-                      <option value="admin">Admin (Staff)</option>
-                      <option value="junior_doctor">Junior Doctor (Staff)</option>
-                      <option value="hygienist">Hygienist (Staff)</option>
-                      <option value="doctor">Doctor (Leader)</option>
-                      <option value="office_manager">Office Manager (Leader)</option>
-                      <option value="regional_om">Regional OM (Leader)</option>
-                      <option value="director">Director (Leader)</option>
-                      <option value="dso">DSO (Leader)</option>
+                      <option value="assistant">Assistant</option>
+                      <option value="admin">Admin</option>
+                      <option value="junior_doctor">Junior Doctor</option>
+                      <option value="hygienist">Hygienist</option>
+                      <option value="doctor">Doctor</option>
+                      <option value="senior_doctor">Senior Doctor</option>
+                      <option value="partner">Partner</option>
+                      <option value="office_manager">Office Manager</option>
+                      <option value="regional_om">Regional OM</option>
+                      <option value="director">Director</option>
+                      <option value="dso">DSO</option>
                     </select>
+                    <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
+                      Senior Doctor는 보통 3년 이상 경력 시 선택합니다.
+                    </div>
                   </div>
                   <div>
                     <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>입사일</label>
                     <input
                       type="date"
+                      min="2007-01-01"
                       value={membershipForm.joined_at}
                       onChange={(e) => setMembershipForm((f) => ({ ...f, joined_at: e.target.value }))}
                       style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #ddd" }}
@@ -419,6 +427,7 @@ export default function DashboardClient() {
                     <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>리더시작일 (선택, 리더 직군인 경우)</label>
                     <input
                       type="date"
+                      min="2007-01-01"
                       value={membershipForm.leader_started_at}
                       onChange={(e) => setMembershipForm((f) => ({ ...f, leader_started_at: e.target.value }))}
                       style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #ddd" }}
@@ -549,71 +558,74 @@ export default function DashboardClient() {
           </ProgressCard>
 
           <ProgressCard label="Avatar">
-            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-              <input
-                id="avatar-file-input"
-                ref={avatarFileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                style={{ display: "none" }}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) uploadAvatarFile(f);
-                }}
-              />
-              <label
-                htmlFor="avatar-file-input"
-                style={{
-                  cursor: avatarUploading ? "not-allowed" : "pointer",
-                  display: "block",
-                  flexShrink: 0,
-                }}
-                title="Click to upload image"
-              >
-                <UserAvatar avatarUrl={core?.avatarUrl} initials={core?.codeName?.slice(0, 2)} alt="" size="md" />
-              </label>
-              {core?.currentOutfit?.accessoryIds && core.currentOutfit.accessoryIds.length > 0 && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    flexWrap: "wrap",
-                    flexShrink: 0,
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+              {/* 왼쪽: 아바타 + 악세사리 아이콘 (캐릭터/테마 선택 옆에 항상 노출) */}
+              <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                <input
+                  id="avatar-file-input"
+                  ref={avatarFileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadAvatarFile(f);
                   }}
-                  aria-label="Current level accessories"
+                />
+                <label
+                  htmlFor="avatar-file-input"
+                  style={{
+                    cursor: avatarUploading ? "not-allowed" : "pointer",
+                    display: "block",
+                  }}
+                  title="Click to upload image"
                 >
-                  {core.currentOutfit.accessoryIds.map((id, i) => (
-                    <img
-                      key={`${id}-${i}`}
-                      src={getAccessoryImageUrl(id)}
-                      alt={core.currentOutfit!.accessoryLabels[i] ?? id}
-                      title={core.currentOutfit!.accessoryLabels[i] ?? id}
+                  <UserAvatar avatarUrl={core?.avatarUrl} initials={core?.codeName?.slice(0, 2)} alt="" size="md" />
+                </label>
+                {core?.currentOutfit?.accessoryIds && core.currentOutfit.accessoryIds.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                    <div
                       style={{
-                        width: 24,
-                        height: 24,
-                        objectFit: "contain",
-                        display: "block",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        flexWrap: "wrap",
+                        justifyContent: "center",
                       }}
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
+                      aria-label="Current level accessories"
+                    >
+                      {core.currentOutfit.accessoryIds.map((id, i) => (
+                        <img
+                          key={`${id}-${i}`}
+                          src={getAccessoryImageUrl(id)}
+                          alt={core.currentOutfit!.accessoryLabels[i] ?? id}
+                          title={core.currentOutfit!.accessoryLabels[i] ?? id}
+                          style={{
+                            width: 24,
+                            height: 24,
+                            objectFit: "contain",
+                            display: "block",
+                          }}
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <span style={{ fontSize: 10, color: "#666" }}>현재 레벨 악세사리</span>
+                  </div>
+                )}
+                {core?.currentOutfit && (
+                  <div style={{ fontSize: 11, opacity: 0.9, textAlign: "center", maxWidth: 140 }}>
+                    <span style={{ fontWeight: 600 }}>현재:</span> {core.currentOutfit.outfitLabel}
+                  </div>
+                )}
+              </div>
+              {/* 오른쪽: 업로드/URL, 캐릭터 선택, Outfit theme */}
               <div style={{ flex: 1, minWidth: 200 }}>
                 <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 6 }}>
                   Click avatar or button to upload (JPEG/PNG/WebP/GIF, max 2MB), or paste an image URL below.
                 </div>
-                {core?.currentOutfit && (
-                  <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 8 }}>
-                    <span style={{ fontWeight: 600 }}>현재:</span> {core.currentOutfit.outfitLabel}
-                    {core.currentOutfit.accessoryLabels.length > 0 && (
-                      <> · {core.currentOutfit.accessoryLabels.join(", ")}</>
-                    )}
-                  </div>
-                )}
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                   <button
                     type="button"

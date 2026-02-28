@@ -7,22 +7,31 @@ import type { MembershipRole } from "@/lib/authz";
 
 export type ArenaTrack = "staff" | "leader";
 
-/** Job functions that receive the staff (일반 스텝) program. */
+/** Job functions that receive the staff (일반 스텝) program. Doctor 포함 — Doctor는 S3까지. */
 export const STAFF_JOB_FUNCTIONS: string[] = [
   "assistant",
   "admin",
   "junior_doctor",
   "hygienist",
+  "doctor",
 ];
 
-/** Job functions that receive the leader (리더 스텝) program. */
+/** Job functions that receive the leader (리더 스텝) program. Senior Doctor(L1까지), Partner(L4까지). */
 export const LEADER_JOB_FUNCTIONS: string[] = [
-  "doctor",
+  "senior_doctor",
+  "partner",
   "office_manager",
   "regional_om",
   "director",
   "dso",
 ];
+
+/** 직군별 최대 레벨 캡. tenure로 계산한 뒤 이 값으로 상한 적용. */
+export const JOB_MAX_LEVEL_CAP: Record<string, string> = {
+  doctor: "S3",
+  senior_doctor: "L1",
+  partner: "L4", // L4는 여전히 admin-granted(l4_access)일 때만 실제 오픈
+};
 
 /** New joiners get staff training for this many days, even if their role is leader. */
 export const NEW_JOINER_STAFF_DAYS = 30;
@@ -43,6 +52,16 @@ function normalizeJobFunction(jobFunction: string | null | undefined): string {
     junior_doctor: "junior_doctor",
   };
   return aliases[s] ?? s;
+}
+
+const LEVEL_ORDER: string[] = ["S1", "S2", "S3", "L1", "L2", "L3", "L4"];
+
+/** Returns the lower of two level ids (by progression order). */
+export function minLevel(a: string, b: string): string {
+  const i = LEVEL_ORDER.indexOf(a);
+  const j = LEVEL_ORDER.indexOf(b);
+  if (i < 0 || j < 0) return a;
+  return LEVEL_ORDER[Math.min(i, j)];
 }
 
 /**
@@ -123,7 +142,7 @@ export function getEffectiveTrack(params: {
     return "leader";
   }
   if (membershipRole === "doctor") {
-    return "leader";
+    return "staff";
   }
   if (membershipRole === "staff") {
     return "staff";

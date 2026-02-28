@@ -18,7 +18,7 @@ Phase 3(사용자 아바타) 다음에 할 **코드 진행**과 **에러/테스�
 | 4 | RPM 대안 검토 | 2026-01-31 RPM 종료 전에 Loom 등 대안 스펙 확인. `PHASE_3_1_AVATAR_SERVICE_SELECTION.md`에 대안·마이그레이션 경로 정리. | [x] |
 | 5 | **캐릭터 선택 (Track C)** | `avatar_character_id`, `avatarCharacters.ts`, 대시보드 캐릭터 선택 UI. `CURSOR_TWO_TRACKS_AVATAR.md`. | [x] |
 | 6 | **옷 테마·레벨 (Track D)** | `avatar_outfit_theme`, professional/fantasy, `avatarOutfits.ts`, core-xp 최종 avatarUrl 계산, 대시보드 테마 선택 UI. | [x] |
-| 7 | **에셋 매니페스트** | 캐릭터 10종(`avatarCharacters.ts`, `public/avatars/`), 옷 13종(Professional 7 + Fantasy 6, `public/avatars/outfits/`), 치과 악세서리 41개 SVG(`avatar-assets.json` `accessories.dental`, `public/avatars/accessories/`) 완료. | [x] |
+| 7 | **에셋 매니페스트** | 캐릭터 10종, 옷 13종, 치과 악세서리 41개 SVG, 게임 악세서리 35개 PNG(`public/avatars/accessories/`). `getAccessoryImageUrl`: 게임 id → .png, 그 외 → .svg. | [x] |
 
 ---
 
@@ -30,7 +30,7 @@ Phase 3(사용자 아바타) 다음에 할 **코드 진행**과 **에러/테스�
 | 옷 (Professional) | 7종 | ✅ | scrub_general, figs_scrub, doctor_gown, surgery_coat_suit, brand_suit, figs_scrub_short, shorts_tee |
 | 옷 (Fantasy) | 6종 | ✅ | apprentice, adventurer, journeyer, warrior_mage_mid, senior, senior_plus (레벨별 6단계)
 | 치과 악세서리 | 41개 | ✅ | `accessories.dental` id → SVG `public/avatars/accessories/*.svg` |
-| 게임 악세서리 | 33개 | 🔶 | `accessories.game` — 별도 제작 중 |
+| 게임 악세서리 | 35개 | ✅ | `accessories.game` id → PNG 64×64 `public/avatars/accessories/{id}.png` (플랫/실루엣, RPG 스타일) |
 
 ---
 

@@ -124,9 +124,16 @@ export function getCharacterOutfitImageUrl(
   return file ? `${OUTFIT_IMAGE_BASE}/outfit_${file}.png` : null;
 }
 
-/** 악세서리 이미지: /avatars/accessories/{id}.svg */
+/** 악세서리 이미지: 게임 35종은 .png, 나머지(치과 등)는 .svg — public/avatars/accessories/{id}.png|svg */
+const GAME_ACCESSORY_IDS = new Set([
+  "sword", "shield", "crown", "ring", "cloak", "wings", "halo", "bow", "staff", "potion", "gem", "coin", "key",
+  "pet_cat", "pet_dragon", "pet_dog", "map", "compass", "lantern", "book", "scroll", "amulet", "bracelet", "boots",
+  "helmet", "gauntlet", "dagger", "wand", "rune", "weapon", "hat", "glasses", "accessory", "quiver", "belt",
+]);
+
 export function getAccessoryImageUrl(accessoryId: string): string {
-  return `/avatars/accessories/${accessoryId}.svg`;
+  const ext = GAME_ACCESSORY_IDS.has(accessoryId) ? "png" : "svg";
+  return `/avatars/accessories/${accessoryId}.${ext}`;
 }
 
 /**

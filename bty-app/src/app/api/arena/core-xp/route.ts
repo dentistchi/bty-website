@@ -126,6 +126,7 @@ export async function GET(req: NextRequest) {
       user: { joinedAt, leaderStartedAt },
       now: new Date(),
       l4Granted: l4Access,
+      jobFunction: membershipRequest.job_function ?? undefined,
     });
     maxUnlockedLevel = window.maxUnlockedLevel;
   }
