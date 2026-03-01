@@ -13,6 +13,8 @@ export { ProgressVisual } from "./ProgressVisual";
 export type { ProgressVisualProps } from "./ProgressVisual";
 export { LeaderboardRow } from "./LeaderboardRow";
 export type { LeaderboardRowProps } from "./LeaderboardRow";
+export { ArenaRankingSidebar } from "./ArenaRankingSidebar";
+export type { ArenaRankingSidebarProps } from "./ArenaRankingSidebar";
 export { UserAvatar } from "./UserAvatar";
 export type { UserAvatarProps } from "./UserAvatar";
 export type { SystemMsg } from "./ResultBlock";

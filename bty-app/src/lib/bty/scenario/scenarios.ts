@@ -9,8 +9,11 @@ export const SCENARIOS: Scenario[] = [
   {
     scenarioId: "patient_refuses_treatment_001",
     title: "Patient Refuses Necessary Treatment Due to Cost",
+    titleKo: "환자가 비용 때문에 필요한 치료를 거절한다",
     context:
       "A patient diagnosed with advanced periodontal disease needs SRP and possible surgery. The patient declines treatment after hearing the total cost. You feel frustration and concern for their health; there is a risk of sounding pushy or dismissive of financial concerns. The leadership challenge is balancing clinical integrity with empathy: push for treatment versus slow down and explore barriers. The growth opportunity is to communicate value without pressure and preserve trust.",
+    contextKo:
+      "진행성 치주 질환으로 진단된 환자가 SRP와 필요 시 수술이 필요합니다. 환자는 총 비용을 듣고 치료를 거절합니다. 당신은 답답함과 환자 건강에 대한 걱정을 느끼고, 비용 문제를 무시하거나 압박적으로 들릴 위험이 있어요. 리더십 과제는 임상적 무결성과 공감의 균형입니다: 치료를 권유할지, 한발 물러나 장벽을 탐색할지. 성장 기회는 압박 없이 가치를 전달하고 신뢰를 유지하는 것이에요.",
     choices: [
       { choiceId: "A", label: "Emphasize consequences of no treatment and recommend they proceed.", intent: "Clinical Push", xpBase: 40, difficulty: 1.2, hiddenDelta: { integrity: 2, communication: -1, insight: 0, resilience: 1, gratitude: -1 }, result: "The patient may feel pressured and not return. Clinical integrity was stated but trust may be damaged.", microInsight: "Pushing can backfire when cost is the real barrier.", followUp: { enabled: true, prompt: "How would you follow up to preserve the relationship?", options: ["Phone call to check in and offer payment options", "Send educational material and leave door open", "Refer to a lower-cost care pathway"] } },
       { choiceId: "B", label: "Pause and ask what would need to change for treatment to feel possible.", intent: "Explore Barriers", xpBase: 85, difficulty: 0.9, hiddenDelta: { integrity: 1, communication: 3, insight: 3, resilience: 1, gratitude: 2 }, result: "The patient opens up about payment or timing concerns. You can align on next steps without pressure and preserve trust.", microInsight: "Empathy uncovers the real obstacle.", followUp: { enabled: true, prompt: "What system change would reduce this barrier next time?", options: ["Payment plan script at front desk", "Case presentation that includes cost early", "Brochure on financing options"] } },
@@ -22,8 +25,11 @@ export const SCENARIOS: Scenario[] = [
   {
     scenarioId: "front_desk_overbook_002",
     title: "Front Desk Overbooks the Schedule",
+    titleKo: "프론트에서 스케줄을 이중 예약했다",
     context:
       "The schedule is double-booked for multiple high-production procedures. You realize the day is impossible to run smoothly. You feel stress, irritation, and unsupported. The hidden risk is publicly criticizing the front desk. The leadership challenge is addressing the operational error without shaming. The decision point is whether to react immediately or regroup privately. The growth opportunity is building scheduling protocol clarity.",
+    contextKo:
+      "여러 고생산 프로시저가 이중 예약되어 있어요. 하루가 매끄럽게 돌아가기 어렵다는 걸 깨닫고, 스트레스·짜증·버림받은 느낌이 들어요. 위험은 프론트를 공개적으로 비난하는 거예요. 리더십 과제는 수치심을 주지 않고 업무 실수를 다루는 것이에요. 즉각 반응할지, 사적으로 모여 해결할지가 결정 포인트이고, 성장 기회는 스케줄링 프로토콜을 명확히 하는 거예요.",
     choices: [
       { choiceId: "A", label: "Call out the problem in front of the team and ask who did the booking.", intent: "Public Correction", xpBase: 25, difficulty: 1.5, hiddenDelta: { integrity: -1, communication: -2, insight: 0, resilience: 0, gratitude: -2 }, result: "The front desk feels shamed. Morale drops and errors may go unreported next time.", microInsight: "Public blame undermines psychological safety.", followUp: { enabled: true, prompt: "How would you repair trust with the front desk?", options: ["Private apology and clarity on expectations", "Scheduling checklist co-created with team", "Regular huddle to prevent overbooking"] } },
       { choiceId: "B", label: "Regroup privately with the front desk lead and fix the day together.", intent: "Private Regroup", xpBase: 80, difficulty: 1.0, hiddenDelta: { integrity: 2, communication: 2, insight: 2, resilience: 2, gratitude: 1 }, result: "You resolve the day without shaming anyone. The lead can own the fix and learn. Trust is preserved.", microInsight: "Private accountability builds systems, not fear.", followUp: { enabled: true, prompt: "What protocol would prevent this next time?", options: ["Block rules and max procedures per day", "Daily schedule review the night before", "Single point of responsibility for booking"] } },

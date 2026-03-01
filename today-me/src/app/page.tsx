@@ -1,9 +1,26 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import { AuthGate } from "@/components/AuthGate";
 import { SafeMirror } from "@/components/SafeMirror";
 import { SmallWinsStack } from "@/components/SmallWinsStack";
-import { SelfEsteemTest } from "@/components/SelfEsteemTest";
+import { SelfEsteemTest, type SelfEsteemLocale } from "@/components/SelfEsteemTest";
+
+const LANG_KEY = "dearme:lang";
 
 export default function TodayMePage() {
+  const [locale, setLocale] = useState<SelfEsteemLocale>("ko");
+
+  useEffect(() => {
+    const stored = typeof window !== "undefined" ? localStorage.getItem(LANG_KEY) : null;
+    if (stored === "en" || stored === "ko") setLocale(stored);
+  }, []);
+
+  const setLocaleAndStore = (next: SelfEsteemLocale) => {
+    setLocale(next);
+    if (typeof window !== "undefined") localStorage.setItem(LANG_KEY, next);
+  };
+
   return (
     <AuthGate>
     <main className="min-h-screen">
@@ -13,14 +30,31 @@ export default function TodayMePage() {
             Dear Me
           </h1>
           <p className="text-sanctuary-text-soft">
-            나는 안전하다. 잠시 쉬어가도 돼요.
+            {locale === "ko" ? "나는 안전하다. 잠시 쉬어가도 돼요." : "I am safe. It's okay to rest a while."}
           </p>
+          <div className="flex justify-center gap-2 mt-3 text-sm">
+            <button
+              type="button"
+              onClick={() => setLocaleAndStore("en")}
+              className={`px-3 py-1 rounded ${locale === "en" ? "font-medium underline bg-black/5" : "text-sanctuary-text-soft hover:text-sanctuary-text"}`}
+            >
+              EN
+            </button>
+            <span className="text-sanctuary-text-soft/60">|</span>
+            <button
+              type="button"
+              onClick={() => setLocaleAndStore("ko")}
+              className={`px-3 py-1 rounded ${locale === "ko" ? "font-medium underline bg-black/5" : "text-sanctuary-text-soft hover:text-sanctuary-text"}`}
+            >
+              KO
+            </button>
+          </div>
         </header>
 
         <div className="space-y-8">
           <SafeMirror />
           <SmallWinsStack />
-          <SelfEsteemTest />
+          <SelfEsteemTest locale={locale} />
         </div>
 
         <footer className="mt-12 pt-6 border-t border-sanctuary-peach/40 text-center text-sm text-sanctuary-text-soft space-x-4">

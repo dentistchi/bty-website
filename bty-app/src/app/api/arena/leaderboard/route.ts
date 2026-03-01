@@ -161,6 +161,15 @@ export async function GET(req: NextRequest) {
   let myRank = rows.findIndex((r) => r.user_id === user.id) + 1 || 0;
   let myXp = rows.find((r) => r.user_id === user.id)?.xp_total ?? 0;
 
+  // gapToAbove: XP difference to the person ranked directly above me (for motivation)
+  let gapToAbove: number | null = null;
+  if (myRank > 1) {
+    const personAbove = leaderboard[myRank - 2]; // 0-indexed: rank 2 → index 0
+    if (personAbove && typeof personAbove.xpTotal === "number") {
+      gapToAbove = Math.max(0, personAbove.xpTotal - myXp);
+    }
+  }
+
   // If not in top 100, fetch own weekly_xp and compute rank so UI can show "내 순위: #105" instead of "아직 리더보드에 없어요"
   if (myRank === 0) {
     const { data: myRow } = await db
@@ -177,6 +186,20 @@ export async function GET(req: NextRequest) {
         .is("league_id", null)
         .gt("xp_total", myXp);
       myRank = (rankAbove ?? 0) + 1;
+      // gapToAbove for users outside top 100: one row with next higher xp_total
+      if (myRank > 1) {
+        const { data: aboveRow } = await db
+          .from("weekly_xp")
+          .select("xp_total")
+          .is("league_id", null)
+          .gt("xp_total", myXp)
+          .order("xp_total", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (aboveRow && typeof (aboveRow as { xp_total?: number }).xp_total === "number") {
+          gapToAbove = Math.max(0, (aboveRow as { xp_total: number }).xp_total - myXp);
+        }
+      }
     }
   }
 
@@ -194,6 +217,8 @@ export async function GET(req: NextRequest) {
       champions,
       myRank: myRank > 0 ? myRank : null,
       myXp,
+      /** XP gap to the person ranked directly above me (null if rank 1 or not in top 100). For motivation. */
+      gapToAbove,
       count: leaderboard.length,
       season: league
         ? { league_id: league.league_id, start_at: league.start_at, end_at: league.end_at, name: league.name ?? null }

@@ -14,6 +14,7 @@ import {
   OutputPanel,
   TierMilestoneModal,
   CardSkeleton,
+  ArenaRankingSidebar,
   type SystemMsg,
 } from "@/components/bty-arena";
 import BtyTopNav from "@/components/bty/BtyTopNav";
@@ -772,7 +773,28 @@ export default function BtyArenaPage() {
   }
 
   return (
-    <div style={{ maxWidth: 860, margin: "0 auto", padding: "24px 16px" }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "stretch",
+        maxWidth: 1200,
+        margin: "0 auto",
+        padding: "24px 16px",
+      }}
+      className="bty-arena-page-root lg:flex-row lg:gap-6"
+    >
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minWidth: 0,
+          maxWidth: 860,
+          margin: "0 auto",
+          width: "100%",
+        }}
+      >
       <BtyTopNav />
       <div style={{ marginTop: 18 }}>
         {step === 1 && (
@@ -1030,5 +1052,13 @@ export default function BtyArenaPage() {
         />
       )}
     </div>
+    <aside
+      aria-label={locale === "ko" ? "실시간 순위" : "Live ranking"}
+      style={{ width: 280, flexShrink: 0, paddingTop: 32 }}
+      className="hidden lg:block"
+    >
+      <ArenaRankingSidebar locale={locale} />
+    </aside>
+  </div>
   );
 }
