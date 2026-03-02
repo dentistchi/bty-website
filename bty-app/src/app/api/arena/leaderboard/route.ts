@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
     }
   >();
   if (userIds.length > 0) {
-    // 반드시 admin으로 조회: RLS 시 anon이면 본인 프로필만 반환되어 다른 유저 행에 같은 아바타가 노출되는 버그 방지.
+    // 반드시 admin 또는 RLS 정책(profiles_select_leaderboard) 필요. 없으면 본인 프로필만 반환되어 타 유저는 기본 아바타만 보임.
     const profileClient = admin ?? supabase;
     const { data: profiles } = await profileClient
       .from("arena_profiles")
