@@ -95,24 +95,39 @@ export async function GET(req: NextRequest) {
     }
   >();
   if (userIds.length > 0) {
-    // 반드시 admin 또는 RLS 정책(profiles_select_leaderboard) 필요. 없으면 본인 프로필만 반환되어 타 유저는 기본 아바타만 보임.
-    const profileClient = admin ?? supabase;
-    const { data: profiles } = await profileClient
-      .from("arena_profiles")
-      .select("user_id, core_xp_total, code_index, sub_name, avatar_url, avatar_character_id, avatar_outfit_theme")
-      .in("user_id", userIds);
-
-    (profiles ?? []).forEach((p: ProfileRow) => {
-      const theme = p.avatar_outfit_theme === "fantasy" || p.avatar_outfit_theme === "professional" ? p.avatar_outfit_theme : null;
-      profileMap.set(p.user_id, {
-        core_xp_total: Number(p.core_xp_total ?? 0),
-        code_index: Math.min(6, Math.max(0, Number(p.code_index ?? 0))),
-        sub_name: p.sub_name ?? null,
-        avatar_url: p.avatar_url ?? null,
-        avatar_character_id: p.avatar_character_id ?? null,
-        avatar_outfit_theme: theme,
+    if (admin) {
+      const { data: profiles } = await admin
+        .from("arena_profiles")
+        .select("user_id, core_xp_total, code_index, sub_name, avatar_url, avatar_character_id, avatar_outfit_theme")
+        .in("user_id", userIds);
+      (profiles ?? []).forEach((p: ProfileRow) => {
+        const theme = p.avatar_outfit_theme === "fantasy" || p.avatar_outfit_theme === "professional" ? p.avatar_outfit_theme : null;
+        profileMap.set(p.user_id, {
+          core_xp_total: Number(p.core_xp_total ?? 0),
+          code_index: Math.min(6, Math.max(0, Number(p.code_index ?? 0))),
+          sub_name: p.sub_name ?? null,
+          avatar_url: p.avatar_url ?? null,
+          avatar_character_id: p.avatar_character_id ?? null,
+          avatar_outfit_theme: theme,
+        });
       });
-    });
+    } else {
+      // RLS 시 anon은 본인만 조회됨 → get_leaderboard_profiles (SECURITY DEFINER) RPC로 전체 조회
+      const { data: profiles } = await supabase.rpc("get_leaderboard_profiles", {
+        p_user_ids: userIds,
+      });
+      (profiles ?? []).forEach((p: ProfileRow) => {
+        const theme = p.avatar_outfit_theme === "fantasy" || p.avatar_outfit_theme === "professional" ? p.avatar_outfit_theme : null;
+        profileMap.set(p.user_id, {
+          core_xp_total: Number(p.core_xp_total ?? 0),
+          code_index: Math.min(6, Math.max(0, Number(p.code_index ?? 0))),
+          sub_name: p.sub_name ?? null,
+          avatar_url: p.avatar_url ?? null,
+          avatar_character_id: p.avatar_character_id ?? null,
+          avatar_outfit_theme: theme,
+        });
+      });
+    }
   }
 
   const leaderboard = rows.map((r, idx) => {
