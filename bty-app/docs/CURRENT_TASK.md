@@ -20,6 +20,11 @@
 
 *(커맨더가 여기에 요구사항을 적거나, 채팅으로 "CURRENT_TASK.md 참고해서 구현해줘" + 기능 설명을 보냅니다.)*
 
+**우선 진행 (Center 페이지)**  
+- **`docs/CENTER_PAGE_IMPROVEMENT_SPEC.md`** §9 순서대로: CTA 통합·재로그인 버그 → 챗으로 이어하기 → 5문항 순서 → EN/KO 플로우·로딩 → 회복 탄력성 그래프 → 50문항 정성 → 아늑한 방 톤.  
+- 전체 분류·다음 리스트: **`docs/COMMANDER_BACKLOG_AND_NEXT.md`**.  
+- 백로그 §10: **`docs/PROJECT_BACKLOG.md`** §10.
+
 **이번 지시 (택일 진행)**  
 - **옵션 A — 감정 스탯 v3 확장**: `docs/HEALING_COACHING_SPEC_V3.md`·`docs/specs/healing-coaching-spec-v3.json` 기준으로 coreStats에 v3 이벤트 14종·stat_distribution·헬퍼 추가 후, 30일 가속·phase_tuning을 formula와 recordEmotionalEventServer에 반영.  
 - **옵션 B — Dojo 2차 확장 (WHAT_NEXT §2-2)**: `docs/DOJO_DEAR_ME_NEXT_CONTENT.md` §1-4·§6·§4·§5 기준으로 50문항 목차·연습 플로우 2~5단계 스펙 정리 및 추가 구현. PROJECT_BACKLOG §7은 [x]; 2차 확장은 위 스펙으로 진행.

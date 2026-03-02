@@ -29,6 +29,9 @@ const TYPING_TIMEOUT_25S = 25_000;
 export function Chatbot() {
   const pathname = usePathname() ?? "";
   const locale: Locale = pathname.startsWith("/en") ? "en" : "ko";
+  /** Foundry·Arena 영역에서는 하단 봇챗 미노출 (결정 사항) */
+  if (pathname.includes("/bty")) return null;
+
   const i18n = getMessages(locale);
   const t = i18n.chat;
   const [open, setOpen] = useState(false);

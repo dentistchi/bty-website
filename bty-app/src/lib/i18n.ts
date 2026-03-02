@@ -69,10 +69,11 @@ export type Messages = {
     title: string;
     tagline: string;
     linkToCenter: string;
-    /** Foundry 진입: 소개 1~2문장 */
     entryIntro: string;
-    /** 진입 CTA */
     startCta: string;
+    arenaCta: string;
+    dashboardLabel: string;
+    leaderboardLabel: string;
   };
   landing: {
     heroTitle: string;
@@ -249,6 +250,9 @@ const ko: Messages = {
     linkToCenter: "Center로 가기",
     entryIntro: "대시보드, 멘토, 역지사지 연습. 오늘 할 훈련을 고르세요.",
     startCta: "시작하기",
+    arenaCta: "Arena 플레이",
+    dashboardLabel: "Dashboard",
+    leaderboardLabel: "Leaderboard",
   },
   landing: {
     heroTitle: "Better Than Yesterday",
@@ -429,6 +433,9 @@ const en: Messages = {
     linkToCenter: "Go to Center",
     entryIntro: "Dashboard, mentor, integrity practice. Choose what to work on.",
     startCta: "Start",
+    arenaCta: "Play Arena",
+    dashboardLabel: "Dashboard",
+    leaderboardLabel: "Leaderboard",
   },
   landing: {
     heroTitle: "Better Than Yesterday",

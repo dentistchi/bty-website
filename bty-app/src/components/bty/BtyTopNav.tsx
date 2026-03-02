@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { getMessages } from "@/lib/i18n";
 
 function detectLocale(pathname: string): "en" | "ko" {
   if (pathname.startsWith("/ko")) return "ko";
@@ -13,7 +14,7 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-/** Arena 스타일: 활성 = 둥근 배경+강조색, 비활성 = 텍스트만, hover = 부드러운 배경 */
+/** Arena 스타일: 메인(/bty)에서는 Arena 강조, 활성 = 둥근 배경+강조색 */
 const navStyle = {
   wrap: {
     display: "flex" as const,
@@ -28,6 +29,17 @@ const navStyle = {
     color: "var(--arena-text)",
     background: "transparent",
     transition: "background 0.15s ease, color 0.15s ease",
+    fontSize: "inherit",
+  },
+  linkArena: {
+    padding: "10px 16px",
+    borderRadius: 12,
+    textDecoration: "none" as const,
+    color: "var(--arena-text)",
+    background: "transparent",
+    transition: "background 0.15s ease, color 0.15s ease",
+    fontWeight: 600,
+    fontSize: "0.9375rem",
   },
   active: {
     padding: "8px 14px",
@@ -36,6 +48,17 @@ const navStyle = {
     color: "white",
     background: "var(--arena-accent)",
     transition: "background 0.15s ease, color 0.15s ease",
+    fontSize: "inherit",
+  },
+  activeArena: {
+    padding: "10px 16px",
+    borderRadius: 12,
+    textDecoration: "none" as const,
+    color: "white",
+    background: "var(--arena-accent)",
+    transition: "background 0.15s ease, color 0.15s ease",
+    fontWeight: 600,
+    fontSize: "0.9375rem",
   },
 };
 
@@ -52,13 +75,18 @@ export default function BtyTopNav({ showLogout = true }: Props) {
   const logout = `/${locale}/bty/logout?next=/${locale}/bty/login`;
 
   const mainLabel = locale === "ko" ? "메인" : "Main";
+  const isMainPage = pathname === `/${locale}/bty` || pathname === `/${locale}/bty/`;
+  const logoutLabel = getMessages(locale).logout;
 
-  const link = (href: string, label: string) => {
+  const link = (href: string, label: string, useArenaStyle = false) => {
     const active = href === logout ? false : isActive(pathname, href);
+    const style = useArenaStyle
+      ? (active ? navStyle.activeArena : navStyle.linkArena)
+      : (active ? navStyle.active : navStyle.link);
     return (
       <Link
         href={href}
-        style={active ? navStyle.active : navStyle.link}
+        style={style}
         className="bty-nav-link"
         data-active={active ? "true" : undefined}
       >
@@ -69,11 +97,11 @@ export default function BtyTopNav({ showLogout = true }: Props) {
 
   return (
     <nav style={navStyle.wrap}>
+      {link(arena, "Arena", isMainPage)}
       {link(main, mainLabel)}
       {link(dash, "Dashboard")}
-      {link(arena, "Arena")}
       {link(lb, "Leaderboard")}
-      {showLogout && link(logout, "Logout")}
+      {showLogout && link(logout, logoutLabel)}
     </nav>
   );
 }

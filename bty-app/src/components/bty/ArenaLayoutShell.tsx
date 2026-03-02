@@ -27,10 +27,12 @@ export function ArenaLayoutShell({ children }: { children: ReactNode }) {
           <span className="bty-arena-logo font-semibold text-[var(--arena-text)]" style={{ letterSpacing: "0.02em" }}>
             BTY Arena
           </span>
-          <div className="flex items-center gap-3 flex-nowrap">
+          <div className="flex items-center gap-3 flex-nowrap min-w-0">
             <BtyTopNav showLogout={false} />
-            <LangSwitch />
-            <LogoutButton />
+            <span className="flex-shrink-0 border-l border-[var(--arena-text-soft)]/30 pl-3 ml-1 flex items-center gap-3">
+              <LangSwitch />
+              <LogoutButton />
+            </span>
           </div>
         </div>
       </header>
