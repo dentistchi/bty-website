@@ -1,0 +1,101 @@
+{
+  "schema_version": "bty_scenario_v1",
+  "scenario_id": "SCN_PQ_0021",
+  "title": "Patient Questions Your Treatment Plan",
+  "summary": "A patient says another dentist told them they do not need the crown you recommended. Seek understanding before defending; protect the patient's trust.",
+  "context_type": "conflict",
+  "stage_mapping": { "primary_stage": 1, "stage_flow": [1, 2, 3, 4] },
+  "roles_supported": ["Doctor", "Staff", "Manager", "DSO", "Executive"],
+  "default_viewpoint": "Leader",
+  "supports_reset": false,
+  "tags": { "org": ["BTY"], "setting": ["dental_office"], "themes": ["trust", "second_opinion", "communication"], "sensitivity": "low" },
+  "scene": {
+    "setting": "A patient says another dentist told them they do not need the crown you recommended. You may feel defensive or insecure; the hidden risk is damaging trust. The decision point is protect ego vs protect trust.",
+    "characters": [
+      { "id": "doc", "role_type": "Doctor", "label": "You" },
+      { "id": "pt", "role_type": "External", "label": "Patient" }
+    ],
+    "beats": [
+      {
+        "beat_id": "b1",
+        "narration": "The patient has raised another opinion. The decision point is defend firmly or seek understanding first.",
+        "dialogue": [
+          { "speaker": "doc", "line": "What's most concerning to you about the recommendation? I want to hear that before I explain my reasoning." }
+        ]
+      }
+    ]
+  },
+  "choices": [
+    {
+      "choice_id": "A",
+      "label": "Explain firmly why you are correct and stand by your recommendation.",
+      "engine_signals": { "choice_type": "direct_fix_or_takeover", "risk_flags": ["speed_bias"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_PQ_0021_A",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "Same visit or follow-up: ask what concerns them most; then share findings and rationale.", "timebox_minutes": 10 }],
+        "scripts": { "leader_lines": ["What's most concerning to you? Then I'll share my findings."], "questions": ["How do you explain without sounding defensive?", "When do you offer second opinion?"], "closing_line": "Seek understanding; then share rationale; invite questions." },
+        "verification": { "method": "qr", "verifier_role": "LeaderPeer", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "B",
+      "label": "Ask what concerns them most and listen before explaining.",
+      "engine_signals": { "choice_type": "process_fix", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_PQ_0021_B",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Ask what concerns them most; listen; then explain rationale with visuals if helpful.", "timebox_minutes": 10 },
+          { "step": "Document patient concerns in plan; one habit: pause before explaining.", "timebox_minutes": 5 }
+        ],
+        "scripts": { "leader_lines": ["What's most concerning to you?", "I want to make sure I understand before I explain."], "questions": ["How do you make seek-understanding a habit?", "What script would help?"], "closing_line": "Document concerns; offer second opinion when they express doubt." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "C",
+      "label": "Dismiss the other dentist's opinion and insist on your plan.",
+      "engine_signals": { "choice_type": "withdraw", "risk_flags": ["defensiveness"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_PQ_0021_C",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "Repair: acknowledge their concern; explain your reasoning; leave room for second opinion.", "timebox_minutes": 10 }],
+        "scripts": { "leader_lines": ["I may have come across as dismissive. Here's my reasoning—and I'm happy to support a second opinion."], "questions": ["How do you acknowledge another opinion without undermining yours?", "What would restore trust?"], "closing_line": "Acknowledge then explain; offer to review or refer." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "D",
+      "label": "Offer to share X-rays or notes and suggest a second opinion if they want.",
+      "engine_signals": { "choice_type": "delegate_with_checkpoint", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_PQ_0021_D",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Offer to share records; suggest second opinion; state clear follow-up plan.", "timebox_minutes": 10 }
+        ],
+        "scripts": { "leader_lines": ["I'm happy to share X-rays or notes. Would a second opinion help?", "When do you offer second opinion?"], "questions": ["As part of informed consent?", "What's the follow-up plan?"], "closing_line": "Transparency and choice; relationship stays intact." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    }
+  ],
+  "system_prompts": { "nudge": "Understanding before defending protects trust.", "mirror_call": "Did you protect your ego or the patient's trust?" },
+  "delayed_outcome": {
+    "delay_days": 14,
+    "reentry_conditions": { "if_choice_types_in_last_14d": ["direct_fix_or_takeover", "withdraw"] },
+    "outcomes": [
+      { "outcome_id": "O1", "if": { "pattern": "repeated_direct_fix" }, "message": "The patient may feel dismissed. Trust may not deepen.", "reflection_questions": ["What would have changed with seek-understanding first?", "How do you explain without sounding defensive?"] },
+      { "outcome_id": "O2", "if": { "pattern": "delegation_micro_wins_present" }, "message": "The patient felt heard. Trust preserved or strengthened; case acceptance improved.", "reflection_questions": ["Which question opened the dialogue?", "How do you document patient concerns in the plan?"] }
+    ]
+  },
+  "metrics_hooks": { "air": { "counts_activation": true }, "mwd": { "micro_win": true }, "tsp": { "weekly_pulse_prompt": "This week I sought understanding before defending. (1-5)" } }
+}

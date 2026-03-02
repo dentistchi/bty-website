@@ -1,0 +1,102 @@
+{
+  "schema_version": "bty_scenario_v1",
+  "scenario_id": "SCN_AM_0022",
+  "title": "Assistant Makes a Mistake During Procedure",
+  "summary": "Your assistant hands you the wrong instrument during a procedure. Correct with dignity; protect standards and team confidence with a calm moment and private debrief.",
+  "context_type": "process",
+  "stage_mapping": { "primary_stage": 1, "stage_flow": [1, 2, 3, 4] },
+  "roles_supported": ["Doctor", "Staff", "Manager", "DSO", "Executive"],
+  "default_viewpoint": "Leader",
+  "supports_reset": false,
+  "tags": { "org": ["BTY"], "setting": ["dental_office"], "themes": ["dignity", "standards", "feedback"], "sensitivity": "low" },
+  "scene": {
+    "setting": "Your assistant hands you the wrong instrument during a procedure. You may feel angry or impatient; the hidden risk is damaging team confidence. The decision point is correct sharply vs protect dignity while correcting.",
+    "characters": [
+      { "id": "doc", "role_type": "Doctor", "label": "You" },
+      { "id": "asst", "role_type": "Staff", "label": "Assistant" }
+    ],
+    "beats": [
+      {
+        "beat_id": "b1",
+        "narration": "The wrong instrument was handed. The decision point is correct in the moment—how.",
+        "dialogue": [
+          { "speaker": "doc", "line": "I need the [correct instrument], please. We'll debrief after." }
+        ]
+      }
+    ]
+  },
+  "choices": [
+    {
+      "choice_id": "A",
+      "label": "Correct sharply in front of the patient.",
+      "engine_signals": { "choice_type": "direct_fix_or_takeover", "risk_flags": ["speed_bias"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_AM_0022_A",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "Private debrief after: what happened, what to do next time, no shaming.", "timebox_minutes": 10 }],
+        "scripts": { "leader_lines": ["I may have been sharp in the room. Let's debrief privately—what happened and what we do next time."], "questions": ["How do you correct without shaming?", "What does a private debrief include?"], "closing_line": "Calm in the moment; clear in the debrief." },
+        "verification": { "method": "qr", "verifier_role": "LeaderPeer", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "B",
+      "label": "Calmly request the correct instrument and discuss later in private.",
+      "engine_signals": { "choice_type": "process_fix", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_AM_0022_B",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Calm request in the moment; private debrief after: what happened, what to do next time.", "timebox_minutes": 10 },
+          { "step": "One process: checklist, setup review, or retraining if needed.", "timebox_minutes": 5 }
+        ],
+        "scripts": { "leader_lines": ["I need the [X], please. We'll talk after."], "questions": ["What happened and why?", "What would prevent recurrence?"], "closing_line": "Debrief: what happened, next time, support if needed." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "C",
+      "label": "Ignore it and fix the situation silently yourself.",
+      "engine_signals": { "choice_type": "withdraw", "risk_flags": ["avoidance"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_AM_0022_C",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "Private debrief: address the mistake with clear expectation; checklist or double-check.", "timebox_minutes": 10 }],
+        "scripts": { "leader_lines": ["Silent fix doesn't help you learn. Let's debrief—what happened and what we do next time."], "questions": ["When do we address mistakes?", "What checklist would help?"], "closing_line": "Always address in private; clear expectation; prevent recurrence." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "D",
+      "label": "Signal calmly for the correct instrument and debrief privately after.",
+      "engine_signals": { "choice_type": "delegate_with_checkpoint", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_AM_0022_D",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Calm signal in the moment; private debrief: what happened, next time, support.", "timebox_minutes": 10 },
+          { "step": "One safeguard: instrument checklist, setup review, or feedback loop without blame.", "timebox_minutes": 5 }
+        ],
+        "scripts": { "leader_lines": ["[Signal]. We'll debrief after."], "questions": ["How do we prevent repeat errors?", "What would a checklist include?"], "closing_line": "Calm in the room; clear in the debrief; one process improvement." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    }
+  ],
+  "system_prompts": { "nudge": "Leadership protects dignity while maintaining standards.", "mirror_call": "Did you correct the mistake or protect the person?" },
+  "delayed_outcome": {
+    "delay_days": 14,
+    "reentry_conditions": { "if_choice_types_in_last_14d": ["direct_fix_or_takeover", "withdraw"] },
+    "outcomes": [
+      { "outcome_id": "O1", "if": { "pattern": "repeated_direct_fix" }, "message": "Team confidence may have dropped. The assistant may feel humiliated.", "reflection_questions": ["What would have changed with calm + private debrief?", "How do you correct without shaming?"] },
+      { "outcome_id": "O2", "if": { "pattern": "delegation_micro_wins_present" }, "message": "Dignity and quality both protected. The same mistake is less likely to recur.", "reflection_questions": ["Which safeguard helped most?", "How do you build a feedback loop without blame?"] }
+    ]
+  },
+  "metrics_hooks": { "air": { "counts_activation": true }, "mwd": { "micro_win": true }, "tsp": { "weekly_pulse_prompt": "This week I corrected mistakes with dignity. (1-5)" } }
+}

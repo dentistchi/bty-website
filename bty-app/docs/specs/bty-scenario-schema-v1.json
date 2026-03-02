@@ -1,0 +1,86 @@
+{
+  "$schema": "bty_scenario_v1",
+  "schema_version": "bty_scenario_v1",
+  "scenario_id": "string",
+  "title": "string",
+  "summary": "string",
+  "context_type": "process | conflict | pressure | relationship",
+  "stage_mapping": {
+    "primary_stage": 1,
+    "stage_flow": [1, 2, 3, 4]
+  },
+  "roles_supported": ["Doctor", "Manager", "DSO", "Staff", "Executive"],
+  "default_viewpoint": "Leader | TeamMember",
+  "supports_reset": false,
+  "tags": {
+    "org": ["string"],
+    "setting": ["string"],
+    "themes": ["string"],
+    "sensitivity": ["low", "medium", "high"]
+  },
+  "scene": {
+    "setting": "string",
+    "characters": [
+      { "id": "string", "role_type": "Doctor|Staff|Manager|DSO|External", "label": "string" }
+    ],
+    "beats": [
+      {
+        "beat_id": "string",
+        "narration": "string",
+        "dialogue": [
+          { "speaker": "string", "line": "string" }
+        ]
+      }
+    ]
+  },
+  "choices": [
+    {
+      "choice_id": "string",
+      "label": "string",
+      "engine_signals": {
+        "choice_type": "direct_fix_or_takeover | reset_relationship | delegate_with_checkpoint | process_fix | withdraw | cynicism_or_lower_expectations",
+        "risk_flags": ["speed_bias", "cynicism", "avoidance"]
+      },
+      "activation_plan": {
+        "activation_template_id": "string",
+        "type": "micro_win | reset",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "string", "timebox_minutes": 5 }],
+        "scripts": {
+          "leader_lines": ["string"],
+          "questions": ["string"],
+          "closing_line": "string"
+        },
+        "verification": {
+          "method": "qr",
+          "verifier_role": "Manager | LeaderPeer | DSO | Self",
+          "remote_allowed": true
+        }
+      }
+    }
+  ],
+  "system_prompts": {
+    "nudge": "string",
+    "mirror_call": "string"
+  },
+  "delayed_outcome": {
+    "delay_days": 14,
+    "reentry_conditions": {
+      "if_choice_types_in_last_14d": ["string"]
+    },
+    "outcomes": [
+      {
+        "outcome_id": "string",
+        "if": { "pattern": "string" },
+        "message": "string",
+        "reflection_questions": ["string"]
+      }
+    ]
+  },
+  "metrics_hooks": {
+    "air": { "counts_activation": true },
+    "mwd": { "micro_win": true },
+    "tsp": { "weekly_pulse_prompt": "string" }
+  }
+}

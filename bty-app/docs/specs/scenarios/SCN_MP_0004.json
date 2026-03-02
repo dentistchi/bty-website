@@ -1,0 +1,100 @@
+{
+  "schema_version": "bty_scenario_v1",
+  "scenario_id": "SCN_MP_0004",
+  "title": "Manager Prioritizes Production Over Clinical Judgment",
+  "summary": "The manager pushes for higher daily production and suggests upselling cosmetic work. Protect clinical integrity while preserving the relationship; clarify mission versus metrics.",
+  "context_type": "pressure",
+  "stage_mapping": { "primary_stage": 1, "stage_flow": [1, 2, 3, 4] },
+  "roles_supported": ["Doctor", "Manager", "DSO", "Executive"],
+  "default_viewpoint": "Leader",
+  "supports_reset": false,
+  "tags": { "org": ["BTY"], "setting": ["dental_office"], "themes": ["integrity", "metrics", "boundaries"], "sensitivity": "low" },
+  "scene": {
+    "setting": "The manager pushes for higher daily production numbers and suggests upselling cosmetic work. You feel ethical discomfort. The leadership challenge is protecting integrity while preserving the relationship.",
+    "characters": [
+      { "id": "you", "role_type": "Doctor", "label": "You" },
+      { "id": "mgr", "role_type": "Manager", "label": "Manager" }
+    ],
+    "beats": [
+      {
+        "beat_id": "b1",
+        "narration": "The manager has just suggested upselling. The decision point is confront directly or schedule a strategy meeting.",
+        "dialogue": [
+          { "speaker": "mgr", "line": "We need to hit the number. Can you add a few cosmetic cases?" },
+          { "speaker": "you", "line": "I want to align on what appropriate production looks like—mission and metrics together." }
+        ]
+      }
+    ]
+  },
+  "choices": [
+    {
+      "choice_id": "A",
+      "label": "Refuse firmly and state that you will not recommend treatment that is not clinically indicated.",
+      "engine_signals": { "choice_type": "direct_fix_or_takeover", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_MP_004_A",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "State boundary in one sentence; propose one follow-up to align on criteria.", "timebox_minutes": 5 }],
+        "scripts": { "leader_lines": ["I won't recommend treatment that isn't clinically indicated."], "questions": ["How do we define appropriate production together?"], "closing_line": "Let's align on treatment criteria." },
+        "verification": { "method": "qr", "verifier_role": "LeaderPeer", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "B",
+      "label": "Schedule a private meeting to discuss mission, metrics, and where you draw the line.",
+      "engine_signals": { "choice_type": "process_fix", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_MP_004_B",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Schedule 1:1; discuss mission, metrics, and line.", "timebox_minutes": 20 },
+          { "step": "Propose one mission-first metric (e.g. retention, case acceptance of needed care).", "timebox_minutes": 5 }
+        ],
+        "scripts": { "leader_lines": ["I want to align on values and where I draw the line."], "questions": ["What would a mission-first production target look like?"], "closing_line": "Mission and metrics can align when we discuss openly." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "C",
+      "label": "Go along with one or two suggestions to keep the peace, but avoid overtreatment.",
+      "engine_signals": { "choice_type": "cynicism_or_lower_expectations", "risk_flags": ["cynicism"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_MP_004_C",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "Document your treatment philosophy; one clear line for next time.", "timebox_minutes": 10 }],
+        "scripts": { "leader_lines": ["I need to re-establish a clear line."], "questions": ["What would a written policy on recommendations look like?"], "closing_line": "Say no next time and explain why." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "D",
+      "label": "Avoid the manager and focus only on your own schedule.",
+      "engine_signals": { "choice_type": "withdraw", "risk_flags": ["avoidance"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_MP_004_D",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "Request one 1:1 to discuss goals; share one case where you said no.", "timebox_minutes": 15 }],
+        "scripts": { "leader_lines": ["I'd like to open the dialogue."], "questions": ["What one step would open the dialogue?"], "closing_line": "One 1:1 to discuss goals." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    }
+  ],
+  "system_prompts": { "nudge": "Mission and metrics can align when discussed openly.", "mirror_call": "Did you protect integrity or defer the conversation?" },
+  "delayed_outcome": {
+    "delay_days": 14,
+    "reentry_conditions": { "if_choice_types_in_last_14d": ["direct_fix_or_takeover", "withdraw", "cynicism_or_lower_expectations"] },
+    "outcomes": [
+      { "outcome_id": "O1", "if": { "pattern": "repeated_direct_fix" }, "message": "Your boundary is clear. The relationship may be tested; integrity is protected.", "reflection_questions": ["How do you align on appropriate production?", "What data would support the case for quality over volume?"] },
+      { "outcome_id": "O2", "if": { "pattern": "delegation_micro_wins_present" }, "message": "Metrics are reframed around appropriate care. The relationship improved.", "reflection_questions": ["What would a mission-first target look like?", "How did you draw the line without burning the bridge?"] }
+    ]
+  },
+  "metrics_hooks": { "air": { "counts_activation": true }, "mwd": { "micro_win": true }, "tsp": { "weekly_pulse_prompt": "This week I held the line on clinical integrity. (1-5)" } }
+}

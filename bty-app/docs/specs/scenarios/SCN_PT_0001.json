@@ -1,0 +1,185 @@
+{
+  "schema_version": "bty_scenario_v1",
+  "scenario_id": "SCN_PT_0001",
+  "title": "Patient Refuses Necessary Treatment Due to Cost",
+  "summary": "A patient declines SRP and possible surgery after hearing the cost. Balance clinical integrity with empathy: push for treatment versus explore barriers and preserve trust.",
+  "context_type": "relationship",
+  "stage_mapping": {
+    "primary_stage": 1,
+    "stage_flow": [1, 2, 3, 4]
+  },
+  "roles_supported": ["Doctor", "Staff", "Manager", "DSO", "Executive"],
+  "default_viewpoint": "Leader",
+  "supports_reset": false,
+  "tags": {
+    "org": ["BTY"],
+    "setting": ["dental_office"],
+    "themes": ["cost_barrier", "clinical_integrity", "empathy", "case_acceptance"],
+    "sensitivity": "low"
+  },
+  "scene": {
+    "setting": "A patient diagnosed with advanced periodontal disease needs SRP and possible surgery. They decline after hearing the total cost. You feel frustration and concern; there is a risk of sounding pushy or dismissive of financial concerns.",
+    "characters": [
+      { "id": "doc", "role_type": "Doctor", "label": "You" },
+      { "id": "pt", "role_type": "External", "label": "Patient" }
+    ],
+    "beats": [
+      {
+        "beat_id": "b1",
+        "narration": "The patient has just heard the cost and said they cannot do it. The leadership challenge is balancing clinical integrity with empathy.",
+        "dialogue": [
+          { "speaker": "pt", "line": "I can't do that. It's too much." },
+          { "speaker": "doc", "line": "I want to make sure we find a path that works for your health and your situation." }
+        ]
+      }
+    ]
+  },
+  "choices": [
+    {
+      "choice_id": "A",
+      "label": "Emphasize consequences of no treatment and recommend they proceed.",
+      "engine_signals": {
+        "choice_type": "direct_fix_or_takeover",
+        "risk_flags": ["speed_bias"]
+      },
+      "activation_plan": {
+        "activation_template_id": "ACT_PT_001_A",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "State the clinical consequences in one sentence without pressure.", "timebox_minutes": 2 },
+          { "step": "Offer one follow-up (e.g. payment options or phased plan).", "timebox_minutes": 3 }
+        ],
+        "scripts": {
+          "leader_lines": ["The reason I'm recommending this is…", "What would need to change for this to feel possible?"],
+          "questions": ["What's the main barrier—timing or amount?", "Would a payment plan or phased approach help?"],
+          "closing_line": "I'll leave the door open. Here's one next step if you want to revisit."
+        },
+        "verification": {
+          "method": "qr",
+          "verifier_role": "LeaderPeer",
+          "remote_allowed": true
+        }
+      }
+    },
+    {
+      "choice_id": "B",
+      "label": "Pause and ask what would need to change for treatment to feel possible.",
+      "engine_signals": {
+        "choice_type": "process_fix",
+        "risk_flags": []
+      },
+      "activation_plan": {
+        "activation_template_id": "ACT_PT_001_B",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Ask one open question about barriers (payment, timing, or other).", "timebox_minutes": 3 },
+          { "step": "Align on one next step without pressure.", "timebox_minutes": 2 }
+        ],
+        "scripts": {
+          "leader_lines": ["What would need to change for this to feel possible?", "I want to find a path that works for you."],
+          "questions": ["Is it the total amount or the timing?", "Would a payment plan or phased approach help?"],
+          "closing_line": "Let's document one clear next step so we don't lose the thread."
+        },
+        "verification": {
+          "method": "qr",
+          "verifier_role": "Manager",
+          "remote_allowed": true
+        }
+      }
+    },
+    {
+      "choice_id": "C",
+      "label": "Offer to phase treatment and start with the most critical part only.",
+      "engine_signals": {
+        "choice_type": "delegate_with_checkpoint",
+        "risk_flags": []
+      },
+      "activation_plan": {
+        "activation_template_id": "ACT_PT_001_C",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Propose a first phase (e.g. most critical part) and one checkpoint.", "timebox_minutes": 3 },
+          { "step": "Document the phased plan and patient agreement.", "timebox_minutes": 2 }
+        ],
+        "scripts": {
+          "leader_lines": ["We could start with the most critical part only.", "What would make a first phase feel doable?"],
+          "questions": ["Which part feels most urgent to you?", "How do you want to track the phases?"],
+          "closing_line": "We'll document phases and goals so we can revisit together."
+        },
+        "verification": {
+          "method": "qr",
+          "verifier_role": "Manager",
+          "remote_allowed": true
+        }
+      }
+    },
+    {
+      "choice_id": "D",
+      "label": "Defer and suggest they think about it; give a brochure.",
+      "engine_signals": {
+        "choice_type": "withdraw",
+        "risk_flags": ["avoidance"]
+      },
+      "activation_plan": {
+        "activation_template_id": "ACT_PT_001_D",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Leave one clear next step (e.g. brochure, recall, or limited exam).", "timebox_minutes": 2 }
+        ],
+        "scripts": {
+          "leader_lines": ["Here's some information. When you're ready, we can revisit."],
+          "questions": ["Is there one thing that would make it easier to come back?", "Would a recall or a call in a few weeks help?"],
+          "closing_line": "I'll leave one clear next step in your hands."
+        },
+        "verification": {
+          "method": "qr",
+          "verifier_role": "Manager",
+          "remote_allowed": true
+        }
+      }
+    }
+  ],
+  "system_prompts": {
+    "nudge": "Cost is often the real barrier. Pushing can backfire; exploring can uncover the path.",
+    "mirror_call": "Did you state value—or create space for the patient to find a path?"
+  },
+  "delayed_outcome": {
+    "delay_days": 14,
+    "reentry_conditions": {
+      "if_choice_types_in_last_14d": ["direct_fix_or_takeover", "withdraw"]
+    },
+    "outcomes": [
+      {
+        "outcome_id": "O1",
+        "if": { "pattern": "repeated_direct_fix" },
+        "message": "Two weeks later, the patient has not returned. Pushing may have reinforced the barrier.",
+        "reflection_questions": [
+          "What would have changed if you had explored barriers first?",
+          "How do you balance clinical urgency with the patient's readiness?"
+        ]
+      },
+      {
+        "outcome_id": "O2",
+        "if": { "pattern": "delegation_micro_wins_present" },
+        "message": "The patient agreed to a first phase or a follow-up. Trust was preserved and a path remains open.",
+        "reflection_questions": [
+          "Which single question uncovered the real obstacle?",
+          "What system change would reduce this barrier next time?"
+        ]
+      }
+    ]
+  },
+  "metrics_hooks": {
+    "air": { "counts_activation": true },
+    "mwd": { "micro_win": true },
+    "tsp": { "weekly_pulse_prompt": "This week I communicated value without pressure. (1-5)" }
+  }
+}

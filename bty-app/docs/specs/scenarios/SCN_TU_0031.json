@@ -1,0 +1,99 @@
+{
+  "schema_version": "bty_scenario_v1",
+  "scenario_id": "SCN_TU_0031",
+  "title": "Team Member Feels Unappreciated",
+  "summary": "A hygienist says they feel invisible in the office. Validate their experience and ask for specific examples; build recognition into the culture.",
+  "context_type": "relationship",
+  "stage_mapping": { "primary_stage": 1, "stage_flow": [1, 2, 3, 4] },
+  "roles_supported": ["Doctor", "Staff", "Manager", "DSO", "Executive"],
+  "default_viewpoint": "Leader",
+  "supports_reset": false,
+  "tags": { "org": ["BTY"], "setting": ["dental_office"], "themes": ["recognition", "morale", "validation"], "sensitivity": "low" },
+  "scene": {
+    "setting": "A hygienist says they feel invisible in the office. You may feel dismissive or defensive; the hidden risk is morale dropping if you dismiss the concern. The decision point is protect your perspective vs validate theirs.",
+    "characters": [
+      { "id": "lead", "role_type": "Manager", "label": "You" },
+      { "id": "hyg", "role_type": "Staff", "label": "Hygienist" }
+    ],
+    "beats": [
+      {
+        "beat_id": "b1",
+        "narration": "They've shared that they feel unappreciated. The decision point is explain away or acknowledge and ask.",
+        "dialogue": [
+          { "speaker": "lead", "line": "I hear that you feel that way. Can you give me one or two specific examples so I can do something about it?" }
+        ]
+      }
+    ]
+  },
+  "choices": [
+    {
+      "choice_id": "A",
+      "label": "Explain that everyone feels busy and it's not personal.",
+      "engine_signals": { "choice_type": "withdraw", "risk_flags": ["avoidance"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_TU_0031_A",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "Validate: 'I hear that you feel that way'; ask what would help; take it seriously.", "timebox_minutes": 10 }],
+        "scripts": { "leader_lines": ["I may have explained away. I hear you—what would help?", "How do you validate without agreeing?"], "questions": ["What would make you feel seen?", "What's one thing we could change?"], "closing_line": "Validate; ask what would help; follow up with action." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "B",
+      "label": "Acknowledge their feelings and ask for specific examples.",
+      "engine_signals": { "choice_type": "process_fix", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_TU_0031_B",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Acknowledge; ask for specific examples.", "timebox_minutes": 10 },
+          { "step": "One concrete recognition action: shout-out, include in a decision, or visibility of contribution.", "timebox_minutes": 5 }
+        ],
+        "scripts": { "leader_lines": ["I hear you. What would help you feel more seen?", "Give me one or two examples."], "questions": ["How do we build recognition into the culture?", "Regular thanks or inclusion in decisions?"], "closing_line": "Regular shout-outs or thanks; include in decisions; visibility of contribution." },
+        "verification": { "method": "qr", "verifier_role": "LeaderPeer", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "C",
+      "label": "Change the subject and move on.",
+      "engine_signals": { "choice_type": "withdraw", "risk_flags": ["avoidance"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_TU_0031_C",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "Address as soon as they bring it up: curiosity not defensiveness; follow up with one action.", "timebox_minutes": 15 }],
+        "scripts": { "leader_lines": ["I don't want to move on—I want to hear you. When must we address this?", "What would help?"], "questions": ["What would make you feel appreciated?", "What's one thing I can do this week?"], "closing_line": "Address now; curiosity; one follow-up action." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "D",
+      "label": "Promise to do better and give a generic thank-you.",
+      "engine_signals": { "choice_type": "delegate_with_checkpoint", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_TU_0031_D",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "Ask them directly what specific recognition would help; commit to one action.", "timebox_minutes": 10 }],
+        "scripts": { "leader_lines": ["Generic thanks isn't enough. What specific recognition would help?", "What would you like—public acknowledgment, involvement in a decision?"], "questions": ["What specific recognition would help?", "How do we make it visible?"], "closing_line": "One specific action; follow up in writing." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    }
+  ],
+  "system_prompts": { "nudge": "Recognition builds stability.", "mirror_call": "Did you protect your perspective or validate theirs?" },
+  "delayed_outcome": {
+    "delay_days": 14,
+    "reentry_conditions": { "if_choice_types_in_last_14d": ["withdraw"] },
+    "outcomes": [
+      { "outcome_id": "O1", "if": { "pattern": "repeated_direct_fix" }, "message": "They may feel dismissed. Morale and retention can suffer.", "reflection_questions": ["What would have changed with acknowledge-and-ask?", "When must you address feeling unappreciated?"] },
+      { "outcome_id": "O2", "if": { "pattern": "delegation_micro_wins_present" }, "message": "They felt heard. Concrete recognition improved trust and stability.", "reflection_questions": ["Which recognition action helped most?", "How do you build recognition into the culture?"] }
+    ]
+  },
+  "metrics_hooks": { "air": { "counts_activation": true }, "mwd": { "micro_win": true }, "tsp": { "weekly_pulse_prompt": "This week I validated and acted on feeling unappreciated. (1-5)" } }
+}

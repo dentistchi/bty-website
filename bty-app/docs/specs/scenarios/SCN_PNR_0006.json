@@ -1,0 +1,102 @@
+{
+  "schema_version": "bty_scenario_v1",
+  "scenario_id": "SCN_PNR_0006",
+  "title": "Patient Leaves a Negative Google Review",
+  "summary": "A patient complains online about wait time. Respond professionally without defensiveness; choose public reply versus private outreach and improve the patient flow system.",
+  "context_type": "relationship",
+  "stage_mapping": { "primary_stage": 1, "stage_flow": [1, 2, 3, 4] },
+  "roles_supported": ["Doctor", "Staff", "Manager", "DSO", "Executive"],
+  "default_viewpoint": "Leader",
+  "supports_reset": false,
+  "tags": { "org": ["BTY"], "setting": ["dental_office"], "themes": ["reputation", "feedback", "accountability"], "sensitivity": "low" },
+  "scene": {
+    "setting": "A patient complains online about wait time. The review is visible publicly. You feel reputation anxiety; the hidden risk is team morale. The decision point is public reply versus private outreach.",
+    "characters": [
+      { "id": "lead", "role_type": "Manager", "label": "You" },
+      { "id": "pt", "role_type": "External", "label": "Patient" }
+    ],
+    "beats": [
+      {
+        "beat_id": "b1",
+        "narration": "The negative review is live. The decision point is public reply versus private first.",
+        "dialogue": [
+          { "speaker": "lead", "line": "We take feedback seriously. I want to respond in a way that repairs trust and improves our system." }
+        ]
+      }
+    ]
+  },
+  "choices": [
+    {
+      "choice_id": "A",
+      "label": "Reply publicly with an apology and commitment to improve.",
+      "engine_signals": { "choice_type": "process_fix", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_PNR_006_A",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Post brief public apology and one concrete improvement.", "timebox_minutes": 5 },
+          { "step": "Identify one operational change (buffer time, check-in protocol).", "timebox_minutes": 10 }
+        ],
+        "scripts": { "leader_lines": ["We're sorry. Here's one change we're making."], "questions": ["What would prevent similar complaints?"], "closing_line": "Public accountability plus one system fix." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "B",
+      "label": "Reach out to the patient privately first, then post a brief public response.",
+      "engine_signals": { "choice_type": "delegate_with_checkpoint", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_PNR_006_B",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Contact patient privately; listen and commit to one fix.", "timebox_minutes": 15 },
+          { "step": "Post concise professional public reply.", "timebox_minutes": 5 }
+        ],
+        "scripts": { "leader_lines": ["I'd like to hear from you directly. What would make it right?"], "questions": ["How do we prevent similar issues?"], "closing_line": "Private repair first; then public accountability." },
+        "verification": { "method": "qr", "verifier_role": "LeaderPeer", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "C",
+      "label": "Do not reply publicly; address internally only.",
+      "engine_signals": { "choice_type": "withdraw", "risk_flags": ["avoidance"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_PNR_006_C",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "Internal debrief; decide one case when to reply publicly.", "timebox_minutes": 10 }],
+        "scripts": { "leader_lines": ["We'll learn internally. When do we reply publicly?"], "questions": ["What's our policy for public response?"], "closing_line": "One clear guideline for next time." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "D",
+      "label": "Reply defensively and explain why the wait happened.",
+      "engine_signals": { "choice_type": "withdraw", "risk_flags": ["defensiveness"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_PNR_006_D",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "Replace with one sentence of empathy and one commitment.", "timebox_minutes": 5 }],
+        "scripts": { "leader_lines": ["We hear you. Here's what we're doing."], "questions": ["How do we train on review response?"], "closing_line": "Empathy first; then commitment." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    }
+  ],
+  "system_prompts": { "nudge": "Private repair plus public accountability is strongest.", "mirror_call": "Did you defend or repair?" },
+  "delayed_outcome": {
+    "delay_days": 14,
+    "reentry_conditions": { "if_choice_types_in_last_14d": ["withdraw"] },
+    "outcomes": [
+      { "outcome_id": "O1", "if": { "pattern": "repeated_direct_fix" }, "message": "Another review appears. Unanswered or defensive replies may have hurt perception.", "reflection_questions": ["What would have changed with private-first outreach?", "How do you set review response standards?"] },
+      { "outcome_id": "O2", "if": { "pattern": "delegation_micro_wins_present" }, "message": "The patient felt heard. Wait-time expectations or updates are in place; reputation improved.", "reflection_questions": ["Which single move repaired trust?", "How do you prevent similar complaints?"] }
+    ]
+  },
+  "metrics_hooks": { "air": { "counts_activation": true }, "mwd": { "micro_win": true }, "tsp": { "weekly_pulse_prompt": "This week we responded to feedback without defensiveness. (1-5)" } }
+}

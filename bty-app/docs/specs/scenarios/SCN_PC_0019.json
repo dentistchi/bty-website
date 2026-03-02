@@ -1,0 +1,103 @@
+{
+  "schema_version": "bty_scenario_v1",
+  "scenario_id": "SCN_PC_0019",
+  "title": "Patient Cannot Afford Treatment but Needs Care",
+  "summary": "A single parent has an urgent dental abscess and no insurance or savings. Balance sustainability and compassion; choose payment plan, referral, or structured charity protocol.",
+  "context_type": "relationship",
+  "stage_mapping": { "primary_stage": 1, "stage_flow": [1, 2, 3, 4] },
+  "roles_supported": ["Doctor", "Staff", "Manager", "DSO", "Executive"],
+  "default_viewpoint": "Leader",
+  "supports_reset": false,
+  "tags": { "org": ["BTY"], "setting": ["dental_office"], "themes": ["charity", "sustainability", "compassion"], "sensitivity": "low" },
+  "scene": {
+    "setting": "A single parent has an urgent dental abscess and no insurance or savings. You feel moral tension; the hidden risk is financial precedent. The decision point is discount, refer, or payment plan.",
+    "characters": [
+      { "id": "doc", "role_type": "Doctor", "label": "You" },
+      { "id": "pt", "role_type": "External", "label": "Patient" }
+    ],
+    "beats": [
+      {
+        "beat_id": "b1",
+        "narration": "The need is urgent; the patient cannot pay. The decision point is how to balance care and sustainability.",
+        "dialogue": [
+          { "speaker": "doc", "line": "We're going to get you out of pain. Let's look at payment options and any assistance programs we can connect you to." }
+        ]
+      }
+    ]
+  },
+  "choices": [
+    {
+      "choice_id": "A",
+      "label": "Provide urgent care at a steep discount and absorb the cost.",
+      "engine_signals": { "choice_type": "delegate_with_checkpoint", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_PC_0019_A",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Provide care; document one charity criterion or cap for sustainability.", "timebox_minutes": 15 }
+        ],
+        "scripts": { "leader_lines": ["We're doing this today. Going forward we'll have criteria so we can sustain this."], "questions": ["How do we make charity sustainable?", "Annual budget or cap? Criteria for pro bono?"], "closing_line": "Document and track exceptions; one criterion for next time." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "B",
+      "label": "Offer a payment plan and connect them to financing or assistance programs.",
+      "engine_signals": { "choice_type": "process_fix", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_PC_0019_B",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Offer payment plan; connect to financing or assistance; provide urgent care.", "timebox_minutes": 20 },
+          { "step": "Document one charity protocol element (eligibility, cap, or referral list).", "timebox_minutes": 10 }
+        ],
+        "scripts": { "leader_lines": ["Here's a path that works for your situation and ours."], "questions": ["What would a charity protocol include?", "What community resources do we have?"], "closing_line": "Eligibility criteria; cap or quota; referral to community resources." },
+        "verification": { "method": "qr", "verifier_role": "LeaderPeer", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "C",
+      "label": "Refer to a low-cost clinic or emergency department.",
+      "engine_signals": { "choice_type": "withdraw", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_PC_0019_C",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Provide clear list of referral options; offer follow-up if they return.", "timebox_minutes": 10 }
+        ],
+        "scripts": { "leader_lines": ["Here are places that can help. We can follow up when you're ready."], "questions": ["When do we refer vs treat?", "How do we document and follow up?"], "closing_line": "Clear referral list; follow-up if they return." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "D",
+      "label": "Refuse to treat without payment and send them out.",
+      "engine_signals": { "choice_type": "withdraw", "risk_flags": ["avoidance"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_PC_0019_D",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "Adopt one written policy for financial hardship; sliding scale or charity quota.", "timebox_minutes": 15 }],
+        "scripts": { "leader_lines": ["We need a policy so we can balance mission and margin."], "questions": ["What would a financial hardship policy include?", "When do we flex?"], "closing_line": "Written policy; team alignment on when to flex." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    }
+  ],
+  "system_prompts": { "nudge": "Structure supports both patient and practice.", "mirror_call": "Did you balance care and sustainability or draw a hard line?" },
+  "delayed_outcome": {
+    "delay_days": 14,
+    "reentry_conditions": { "if_choice_types_in_last_14d": ["withdraw"] },
+    "outcomes": [
+      { "outcome_id": "O1", "if": { "pattern": "repeated_direct_fix" }, "message": "Reputation may suffer. A chance to balance care and sustainability was missed.", "reflection_questions": ["What would have changed with one payment option or referral?", "How do you balance mission and margin?"] },
+      { "outcome_id": "O2", "if": { "pattern": "delegation_micro_wins_present" }, "message": "The patient has a path. Charity protocol is clearer; sustainability and compassion aligned.", "reflection_questions": ["Which protocol element helped most?", "How do you document exceptions?"] }
+    ]
+  },
+  "metrics_hooks": { "air": { "counts_activation": true }, "mwd": { "micro_win": true }, "tsp": { "weekly_pulse_prompt": "This week I balanced sustainability and compassion. (1-5)" } }
+}

@@ -1,0 +1,231 @@
+{
+  "schema_version": "bty_scenario_v1",
+  "scenario_id": "SCN_WA_0001",
+  "title": "Handoff Breakdown: Chairside → Front Desk",
+  "summary": "Doctor resolves a patient-plan mismatch instantly, but the handoff structure remains broken.",
+  "context_type": "process",
+  "stage_mapping": {
+    "primary_stage": 1,
+    "stage_flow": [1, 2, 3, 4]
+  },
+  "roles_supported": ["Doctor", "Staff", "Manager", "DSO", "Executive"],
+  "default_viewpoint": "Leader",
+  "supports_reset": false,
+  "tags": {
+    "org": ["WA"],
+    "setting": ["dental_office"],
+    "themes": ["handoff", "miscommunication", "speed_bias", "clarity"],
+    "sensitivity": ["low"]
+  },
+  "scene": {
+    "setting": "Busy WA office. Patient expects same-day filling, but insurance coverage needs verification first.",
+    "characters": [
+      { "id": "doc", "role_type": "Doctor", "label": "Dentist" },
+      { "id": "asst", "role_type": "Staff", "label": "Assistant" },
+      { "id": "fd", "role_type": "Staff", "label": "Front Desk (Admin)" },
+      { "id": "pt", "role_type": "External", "label": "Patient" }
+    ],
+    "beats": [
+      {
+        "beat_id": "b1",
+        "narration": "Doctor explains treatment chairside. Assistant will chart and hand off to front desk.",
+        "dialogue": [
+          { "speaker": "doc", "line": "#30 MOD composite. If insurance covers it today, do it. Otherwise we schedule." },
+          { "speaker": "asst", "line": "Got it." }
+        ]
+      },
+      {
+        "beat_id": "b2",
+        "narration": "Front desk tells patient the plan as same-day filling without confirming the insurance condition.",
+        "dialogue": [
+          { "speaker": "fd", "line": "You're getting the filling today." },
+          { "speaker": "pt", "line": "Wait, I thought we were checking insurance first?" }
+        ]
+      },
+      {
+        "beat_id": "b3",
+        "narration": "The mismatch lands on the doctor. Everyone looks to you to fix it now.",
+        "dialogue": [
+          { "speaker": "doc", "line": "I literally just explained this." },
+          { "speaker": "fd", "line": "That's what I was told…" },
+          { "speaker": "asst", "line": "I thought you said we're doing it today?" }
+        ]
+      }
+    ]
+  },
+  "choices": [
+    {
+      "choice_id": "A",
+      "label": "Fix it yourself now. Move on fast.",
+      "engine_signals": {
+        "choice_type": "direct_fix_or_takeover",
+        "risk_flags": ["speed_bias"]
+      },
+      "activation_plan": {
+        "activation_template_id": "ACT_MICRO_WIN_HANDOFF_001",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "After the patient is settled, take 7–10 minutes with assistant + front desk.", "timebox_minutes": 10 },
+          { "step": "Ask two questions to locate the handoff break.", "timebox_minutes": 3 },
+          { "step": "Declare one structural rule for future chairside handoffs.", "timebox_minutes": 2 }
+        ],
+        "scripts": {
+          "leader_lines": [
+            "Hey—quick 5 minutes. Where did the handoff break?",
+            "When I say something chairside, what part is confusing or easy to mis-hear?"
+          ],
+          "questions": [
+            "What exact words did you hear from me?",
+            "At what step should we confirm before telling the patient?"
+          ],
+          "closing_line": "From now on: before sending to front, repeat back the plan in ONE sentence."
+        },
+        "verification": {
+          "method": "qr",
+          "verifier_role": "LeaderPeer",
+          "remote_allowed": true
+        }
+      }
+    },
+    {
+      "choice_id": "B",
+      "label": "Clarify with the patient, then create a confirmation step with the team.",
+      "engine_signals": {
+        "choice_type": "process_fix",
+        "risk_flags": []
+      },
+      "activation_plan": {
+        "activation_template_id": "ACT_MICRO_WIN_HANDOFF_002",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Clarify the plan with patient in one sentence (insurance condition included).", "timebox_minutes": 1 },
+          { "step": "Do a 7-minute team huddle: assistant repeats back, front repeats back.", "timebox_minutes": 7 },
+          { "step": "Write the one-sentence handoff rule in the note template.", "timebox_minutes": 2 }
+        ],
+        "scripts": {
+          "leader_lines": [
+            "Let me clarify: we do it today IF coverage is confirmed—otherwise we schedule.",
+            "Okay team—repeat back the plan in one sentence before we tell the patient."
+          ],
+          "questions": [
+            "Assistant—what's the one-sentence plan you're sending?",
+            "Front—what's the one sentence you'll tell the patient?"
+          ],
+          "closing_line": "Perfect. Same rule every time."
+        },
+        "verification": {
+          "method": "qr",
+          "verifier_role": "Manager",
+          "remote_allowed": true
+        }
+      }
+    },
+    {
+      "choice_id": "C",
+      "label": "Delegate ownership: assistant owns chart wording, front owns patient wording, you only verify.",
+      "engine_signals": {
+        "choice_type": "delegate_with_checkpoint",
+        "risk_flags": []
+      },
+      "activation_plan": {
+        "activation_template_id": "ACT_MICRO_WIN_HANDOFF_003",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Assign ownership explicitly (assistant chart line / front patient line).", "timebox_minutes": 2 },
+          { "step": "Set one checkpoint: they must repeat back before speaking to patient.", "timebox_minutes": 2 },
+          { "step": "End-of-day 2-minute check: did we use the repeat-back today?", "timebox_minutes": 2 }
+        ],
+        "scripts": {
+          "leader_lines": [
+            "Assistant owns the chart line. Front owns the patient line.",
+            "Before we tell the patient—repeat it back to me in one sentence."
+          ],
+          "questions": [
+            "What's the chart sentence?",
+            "What's the patient sentence?"
+          ],
+          "closing_line": "Tomorrow we'll do the same—repeat-back is the rule."
+        },
+        "verification": {
+          "method": "qr",
+          "verifier_role": "LeaderPeer",
+          "remote_allowed": true
+        }
+      }
+    },
+    {
+      "choice_id": "D",
+      "label": "Do nothing now; let the team figure it out.",
+      "engine_signals": {
+        "choice_type": "withdraw",
+        "risk_flags": ["avoidance"]
+      },
+      "activation_plan": {
+        "activation_template_id": "ACT_MICRO_WIN_HANDOFF_004",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Within 24 hours, do a 5-minute reset: name the issue without blame.", "timebox_minutes": 5 },
+          { "step": "Set the one-sentence repeat-back rule anyway.", "timebox_minutes": 2 }
+        ],
+        "scripts": {
+          "leader_lines": [
+            "No blame—today the handoff broke. We fix the system."
+          ],
+          "questions": [
+            "Where exactly did it break?",
+            "What's the one-sentence plan we'll repeat back?"
+          ],
+          "closing_line": "Repeat-back starts now."
+        },
+        "verification": {
+          "method": "qr",
+          "verifier_role": "Manager",
+          "remote_allowed": true
+        }
+      }
+    }
+  ],
+  "system_prompts": {
+    "nudge": "Today speed won. But the handoff structure didn't change.",
+    "mirror_call": "You fixed it fast—did the team learn the structure, or did you absorb the cost again?"
+  },
+  "delayed_outcome": {
+    "delay_days": 14,
+    "reentry_conditions": {
+      "if_choice_types_in_last_14d": ["direct_fix_or_takeover", "withdraw"]
+    },
+    "outcomes": [
+      {
+        "outcome_id": "O1",
+        "if": { "pattern": "repeated_direct_fix" },
+        "message": "Two weeks later, the same insurance condition mismatch shows up again. People still look to you to rescue it instantly.",
+        "reflection_questions": [
+          "What would have changed if repeat-back became the default?",
+          "Did speed protect the team—or train dependence?"
+        ]
+      },
+      {
+        "outcome_id": "O2",
+        "if": { "pattern": "delegation_micro_wins_present" },
+        "message": "Two weeks later, the front desk repeats the plan back before speaking. The patient hears the insurance condition clearly and tension stays low.",
+        "reflection_questions": [
+          "Which single sentence made the difference?",
+          "What part of your leadership became lighter?"
+        ]
+      }
+    ]
+  },
+  "metrics_hooks": {
+    "air": { "counts_activation": true },
+    "mwd": { "micro_win": true },
+    "tsp": { "weekly_pulse_prompt": "This week felt more stable than last week. (1-5)" }
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "schema_version": "bty_scenario_v1",
+  "scenario_id": "SCN_IC_0025",
+  "title": "Insurance Coordinator Makes Billing Error",
+  "summary": "An incorrect claim submission delays payment. Build process rather than assign blame; review together and add a safeguard.",
+  "context_type": "process",
+  "stage_mapping": { "primary_stage": 1, "stage_flow": [1, 2, 3, 4] },
+  "roles_supported": ["Doctor", "Staff", "Manager", "DSO", "Executive"],
+  "default_viewpoint": "Leader",
+  "supports_reset": false,
+  "tags": { "org": ["BTY"], "setting": ["dental_office"], "themes": ["process", "blame_free", "billing"], "sensitivity": "low" },
+  "scene": {
+    "setting": "An incorrect claim submission delays payment. You may feel frustrated or blaming; the hidden risk is blocking improvement by focusing on blame. The decision point is assign blame vs build process.",
+    "characters": [
+      { "id": "lead", "role_type": "Manager", "label": "You" },
+      { "id": "coord", "role_type": "Staff", "label": "Insurance Coordinator" }
+    ],
+    "beats": [
+      {
+        "beat_id": "b1",
+        "narration": "The error is known. The decision point is criticize or review the process together.",
+        "dialogue": [
+          { "speaker": "lead", "line": "Let's look at what happened and what we need to fix—process, not person. What safeguard would prevent this?" }
+        ]
+      }
+    ]
+  },
+  "choices": [
+    {
+      "choice_id": "A",
+      "label": "Criticize the coordinator and demand they fix it.",
+      "engine_signals": { "choice_type": "direct_fix_or_takeover", "risk_flags": ["speed_bias"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_IC_0025_A",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Shift to process: what happened, what do we need to fix; review together.", "timebox_minutes": 15 },
+          { "step": "One checklist or double-check step.", "timebox_minutes": 5 }
+        ],
+        "scripts": { "leader_lines": ["I want to fix this together. What happened and what do we need to change?", "Process review, not person."], "questions": ["How do you address errors without blame?", "What safeguard would help?"], "closing_line": "What happened; what to fix; one process step." },
+        "verification": { "method": "qr", "verifier_role": "LeaderPeer", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "B",
+      "label": "Review the billing process together and add a safeguard.",
+      "engine_signals": { "choice_type": "process_fix", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_IC_0025_B",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Review process together; fix immediate issue; add one safeguard.", "timebox_minutes": 20 },
+          { "step": "Document: pre-submission checklist, second pair of eyes for high $, or training on common errors.", "timebox_minutes": 10 }
+        ],
+        "scripts": { "leader_lines": ["Let's fix this and make sure it doesn't happen again. What would help?"], "questions": ["What safeguards would prevent recurrence?", "What training would help?"], "closing_line": "Pre-submission checklist or second pair of eyes; document for training." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "C",
+      "label": "Fix it yourself silently and move on.",
+      "engine_signals": { "choice_type": "withdraw", "risk_flags": ["avoidance"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_IC_0025_C",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Walk through the fix together; add one step to their process; document for training.", "timebox_minutes": 15 }
+        ],
+        "scripts": { "leader_lines": ["Silent fix doesn't help you or the process. Let's walk through it together."], "questions": ["How do you involve them without blame?", "What step would prevent recurrence?"], "closing_line": "Walk through fix together; add one step; document." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "D",
+      "label": "Document the error and escalate to the coordinator's manager.",
+      "engine_signals": { "choice_type": "delegate_with_checkpoint", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_IC_0025_D",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Include coordinator in solution: build together first; escalate only if pattern or severity.", "timebox_minutes": 15 }
+        ],
+        "scripts": { "leader_lines": ["I want to fix this with you first. What would prevent recurrence?", "When do we escalate vs build together?"], "questions": ["What would a safeguard look like?", "How do we include them in the solution?"], "closing_line": "Build together first; escalate if pattern; include coordinator in solution." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    }
+  ],
+  "system_prompts": { "nudge": "Systems improve when ego steps back.", "mirror_call": "Did you assign blame or build process?" },
+  "delayed_outcome": {
+    "delay_days": 14,
+    "reentry_conditions": { "if_choice_types_in_last_14d": ["direct_fix_or_takeover", "withdraw"] },
+    "outcomes": [
+      { "outcome_id": "O1", "if": { "pattern": "repeated_direct_fix" }, "message": "Morale may have dropped. Fear may lead to hiding future errors.", "reflection_questions": ["What would have changed with process review?", "How do you address errors without blame?"] },
+      { "outcome_id": "O2", "if": { "pattern": "delegation_micro_wins_present" }, "message": "The immediate issue is fixed and the system is stronger. The coordinator felt supported.", "reflection_questions": ["Which safeguard helped most?", "How do you document for training?"] }
+    ]
+  },
+  "metrics_hooks": { "air": { "counts_activation": true }, "mwd": { "micro_win": true }, "tsp": { "weekly_pulse_prompt": "This week I focused on process, not blame. (1-5)" } }
+}

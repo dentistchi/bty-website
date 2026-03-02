@@ -1,0 +1,103 @@
+{
+  "schema_version": "bty_scenario_v1",
+  "scenario_id": "SCN_AS_0005",
+  "title": "Assistant Repeatedly Makes Sterilization Errors",
+  "summary": "Sterilization logs show repeated mistakes; a pack failed a compliance check. Correct behavior without creating a culture of fear; build accountability systems.",
+  "context_type": "process",
+  "stage_mapping": { "primary_stage": 1, "stage_flow": [1, 2, 3, 4] },
+  "roles_supported": ["Doctor", "Staff", "Manager", "DSO", "Executive"],
+  "default_viewpoint": "Leader",
+  "supports_reset": false,
+  "tags": { "org": ["BTY"], "setting": ["dental_office"], "themes": ["safety", "accountability", "no_blame"], "sensitivity": "medium" },
+  "scene": {
+    "setting": "Sterilization logs show repeated mistakes; an instrument pack failed a compliance check. You feel patient safety anxiety. The leadership challenge is correcting behavior without creating a culture of fear.",
+    "characters": [
+      { "id": "lead", "role_type": "Manager", "label": "You" },
+      { "id": "asst", "role_type": "Staff", "label": "Assistant" }
+    ],
+    "beats": [
+      {
+        "beat_id": "b1",
+        "narration": "The compliance failure is known. The decision point is immediate discipline versus retraining and a double-check step.",
+        "dialogue": [
+          { "speaker": "lead", "line": "We need to fix this without shaming. What would help—retraining, a checklist, or both?" }
+        ]
+      }
+    ]
+  },
+  "choices": [
+    {
+      "choice_id": "A",
+      "label": "Issue a formal warning and require a signed acknowledgment of protocol.",
+      "engine_signals": { "choice_type": "direct_fix_or_takeover", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_AS_005_A",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Pair accountability with support: retraining plus checklist.", "timebox_minutes": 15 }
+        ],
+        "scripts": { "leader_lines": ["Protocol is non-negotiable. We add support so you can meet it."], "questions": ["What would help you succeed—checklist, peer audit, or both?"], "closing_line": "Retraining plus checklist; clear escalation for near-misses." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "B",
+      "label": "Schedule retraining and add a double-check step; no public blame.",
+      "engine_signals": { "choice_type": "process_fix", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_AS_005_B",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Schedule retraining; add double-check step; no public blame.", "timebox_minutes": 20 },
+          { "step": "Define one monitoring method (random audits or checklist sign-off).", "timebox_minutes": 5 }
+        ],
+        "scripts": { "leader_lines": ["We strengthen the process so this doesn't repeat."], "questions": ["How do we monitor compliance without micromanaging?"], "closing_line": "Systems and training reduce errors more than blame." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "C",
+      "label": "Take over sterilization yourself for a period and observe where it breaks down.",
+      "engine_signals": { "choice_type": "delegate_with_checkpoint", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_AS_005_C",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Observe workflow; identify one process change (checklist, role, or alerts).", "timebox_minutes": 30 }
+        ],
+        "scripts": { "leader_lines": ["I want to see where it breaks down so we fix the system."], "questions": ["What process change would prevent recurrence?"], "closing_line": "Simplified checklist and visual cues." },
+        "verification": { "method": "qr", "verifier_role": "LeaderPeer", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "D",
+      "label": "Mention it lightly and hope they improve.",
+      "engine_signals": { "choice_type": "withdraw", "risk_flags": ["avoidance"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_AS_005_D",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "Private, serious conversation; document one consequence for repeat failure.", "timebox_minutes": 10 }],
+        "scripts": { "leader_lines": ["This is a safety issue. We need to address it clearly."], "questions": ["How do we escalate without creating panic?"], "closing_line": "Mandatory retraining and one clear consequence." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    }
+  ],
+  "system_prompts": { "nudge": "Systems and training reduce errors more than blame.", "mirror_call": "Did you fix the person or fix the process?" },
+  "delayed_outcome": {
+    "delay_days": 14,
+    "reentry_conditions": { "if_choice_types_in_last_14d": ["direct_fix_or_takeover", "withdraw"] },
+    "outcomes": [
+      { "outcome_id": "O1", "if": { "pattern": "repeated_direct_fix" }, "message": "Compliance may improve but fear may lead to hiding future errors.", "reflection_questions": ["How do you pair accountability with support?", "What would reduce fear and increase reporting?"] },
+      { "outcome_id": "O2", "if": { "pattern": "delegation_micro_wins_present" }, "message": "The process is stronger. Accountability is clear without shaming; safety improved.", "reflection_questions": ["Which single process change made the difference?", "How do you monitor without micromanaging?"] }
+    ]
+  },
+  "metrics_hooks": { "air": { "counts_activation": true }, "mwd": { "micro_win": true }, "tsp": { "weekly_pulse_prompt": "This week we improved safety without fear. (1-5)" } }
+}

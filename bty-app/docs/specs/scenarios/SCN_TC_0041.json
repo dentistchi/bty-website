@@ -1,0 +1,102 @@
+{
+  "schema_version": "bty_scenario_v1",
+  "scenario_id": "SCN_TC_0041",
+  "title": "Team Conflict Between Staff Members",
+  "summary": "Two assistants argue over responsibilities. Facilitate resolution: mediate calmly, hear both sides, and help agree on roles—leaders create clarity in tension.",
+  "context_type": "conflict",
+  "stage_mapping": { "primary_stage": 1, "stage_flow": [1, 2, 3, 4] },
+  "roles_supported": ["Doctor", "Staff", "Manager", "DSO", "Executive"],
+  "default_viewpoint": "Leader",
+  "supports_reset": false,
+  "tags": { "org": ["BTY"], "setting": ["dental_office"], "themes": ["conflict", "roles", "mediation"], "sensitivity": "low" },
+  "scene": {
+    "setting": "Two assistants argue over responsibilities. You may feel annoyed or avoidant; the hidden risk is ignoring the conflict and culture suffering. The decision point is avoid conflict vs facilitate resolution.",
+    "characters": [
+      { "id": "lead", "role_type": "Manager", "label": "You" },
+      { "id": "a1", "role_type": "Staff", "label": "Assistant 1" },
+      { "id": "a2", "role_type": "Staff", "label": "Assistant 2" }
+    ],
+    "beats": [
+      {
+        "beat_id": "b1",
+        "narration": "The argument is known. The decision point is tell them to figure it out or mediate.",
+        "dialogue": [
+          { "speaker": "lead", "line": "I want to hear both of you. Then we'll agree on roles so this doesn't keep happening." }
+        ]
+      }
+    ]
+  },
+  "choices": [
+    {
+      "choice_id": "A",
+      "label": "Tell them to figure it out themselves.",
+      "engine_signals": { "choice_type": "withdraw", "risk_flags": ["avoidance"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_TC_0041_A",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "Step in: when it affects patients or others, or when they've tried and failed; before it becomes gossip.", "timebox_minutes": 20 }],
+        "scripts": { "leader_lines": ["Telling you to figure it out rarely does. Let me facilitate—when do we step in as mediator?", "I'm stepping in now."], "questions": ["What's the core disagreement?", "What would a clear split look like?"], "closing_line": "Hear both; agree on roles; document." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "B",
+      "label": "Mediate calmly: hear both sides and help agree on roles.",
+      "engine_signals": { "choice_type": "process_fix", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_TC_0041_B",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Mediate calmly: hear both sides; help agree on roles and expectations.", "timebox_minutes": 25 },
+          { "step": "Written role boundaries; regular check-in; escalation path.", "timebox_minutes": 10 }
+        ],
+        "scripts": { "leader_lines": ["I want to hear both of you. Then we'll agree on who does what.", "Leaders create clarity in tension."], "questions": ["How do we keep roles clear going forward?", "What's the escalation path?"], "closing_line": "Written role boundaries; regular check-in; escalation path." },
+        "verification": { "method": "qr", "verifier_role": "LeaderPeer", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "C",
+      "label": "Reassign roles immediately without full discussion.",
+      "engine_signals": { "choice_type": "direct_fix_or_takeover", "risk_flags": ["speed_bias"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_TC_0041_C",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "Involve them: let them propose split, or you set boundaries and they fill details; trial period then review.", "timebox_minutes": 20 }],
+        "scripts": { "leader_lines": ["Imposed roles can create new friction. Let's hear both of you and then agree on a split.", "How do we involve them in role clarity?"], "questions": ["What would you propose?", "What would make this stick?"], "closing_line": "They propose split or fill details; trial then review." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "D",
+      "label": "Schedule a short meeting to listen and then propose a clear split.",
+      "engine_signals": { "choice_type": "delegate_with_checkpoint", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_TC_0041_D",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Listen first; then propose clear split; brief written summary; both sign or acknowledge; review in 2 weeks.", "timebox_minutes": 25 }
+        ],
+        "scripts": { "leader_lines": ["Listening first makes the split stick. Let's meet—I'll listen, then we'll propose a clear split.", "How do we document the agreement?"], "questions": ["What did you hear from each?", "What's the clear split?"], "closing_line": "Brief written summary; both acknowledge; review in 2 weeks." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    }
+  ],
+  "system_prompts": { "nudge": "Leaders create clarity in tension.", "mirror_call": "Did you avoid conflict or facilitate resolution?" },
+  "delayed_outcome": {
+    "delay_days": 14,
+    "reentry_conditions": { "if_choice_types_in_last_14d": ["withdraw", "direct_fix_or_takeover"] },
+    "outcomes": [
+      { "outcome_id": "O1", "if": { "pattern": "repeated_direct_fix" }, "message": "Conflict may continue or go underground. Resentment can grow.", "reflection_questions": ["What would have changed with mediate-calmly?", "When do you step in as mediator?"] },
+      { "outcome_id": "O2", "if": { "pattern": "delegation_micro_wins_present" }, "message": "Both felt heard. Roles and expectations are clear; tension reduced.", "reflection_questions": ["How do you keep roles clear going forward?", "What would you do if it resurfaces?"] }
+    ]
+  },
+  "metrics_hooks": { "air": { "counts_activation": true }, "mwd": { "micro_win": true }, "tsp": { "weekly_pulse_prompt": "This week I created clarity in team tension. (1-5)" } }
+}

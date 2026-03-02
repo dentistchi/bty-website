@@ -1,0 +1,55 @@
+{
+  "schema_version": "bty_scenario_v1",
+  "scenario_id": "SCN_RESET_0001",
+  "title": "Integrity Reset: Realign and Verify",
+  "summary": "Forced realignment scenario for Stage 4. One reset activation with 48h due window and QR verification path.",
+  "context_type": "relationship",
+  "stage_mapping": { "primary_stage": 4, "stage_flow": [1, 2, 3, 4] },
+  "roles_supported": ["Doctor", "Manager", "DSO", "Executive"],
+  "default_viewpoint": "Leader",
+  "supports_reset": true,
+  "tags": { "org": ["WA"], "setting": ["dental_office"], "themes": ["integrity_reset", "realignment", "verification"], "sensitivity": "low" },
+  "scene": {
+    "setting": "You've been prompted to complete an Integrity Reset. Realign your commitments and complete the activation within 48 hours.",
+    "characters": [
+      { "id": "leader", "role_type": "Manager", "label": "You" },
+      { "id": "peer", "role_type": "Manager", "label": "Peer / Verifier" }
+    ],
+    "beats": [
+      {
+        "beat_id": "b1",
+        "narration": "The system has triggered an Integrity Reset. You have 48 hours to complete the reset activation and have it verified.",
+        "dialogue": [
+          { "speaker": "leader", "line": "I need to complete this reset and get it verified within 48 hours." }
+        ]
+      }
+    ]
+  },
+  "choices": [
+    {
+      "choice_id": "RESET",
+      "label": "Complete Integrity Reset: realign, document, and get verified within 48 hours.",
+      "engine_signals": { "choice_type": "reset_relationship", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_RESET_INTEGRITY_001",
+        "type": "reset",
+        "weight": 2,
+        "window_hours": 48,
+        "steps": [
+          { "step": "State one structural realignment (what you will do differently).", "timebox_minutes": 5 },
+          { "step": "Document the realignment in the agreed format.", "timebox_minutes": 5 },
+          { "step": "Request verification from the assigned verifier (QR or in-app).", "timebox_minutes": 2 }
+        ],
+        "scripts": {
+          "leader_lines": ["I'm realigning: [one sentence].", "I've documented it and am requesting verification."],
+          "questions": ["What is the one structural change you're committing to?", "Has the verifier confirmed?"],
+          "closing_line": "Reset completed and submitted for verification."
+        },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    }
+  ],
+  "system_prompts": { "nudge": "Complete the reset within 48 hours. Verification required.", "mirror_call": "" },
+  "delayed_outcome": { "delay_days": 14, "reentry_conditions": { "if_choice_types_in_last_14d": [] }, "outcomes": [] },
+  "metrics_hooks": { "air": { "counts_activation": true }, "mwd": { "micro_win": false }, "tsp": { "weekly_pulse_prompt": "" } }
+}
