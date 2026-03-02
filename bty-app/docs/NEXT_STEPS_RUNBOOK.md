@@ -283,7 +283,7 @@ docs/PROJECT_BACKLOG.md
   - **A) Auth/Cookies**: Path=/, SameSite=lax, Secure=true, HttpOnly=true. 로그아웃 시 Clear-Site-Data + expireAuthCookiesHard. `/api/auth/callback` runtime = nodejs.  
   - **B) Weekly Reset**: 주간 경계(앱/크론). Core XP 비수정. Idempotency·동시성 기존 설계 유지.  
   - **C) Leaderboard**: weekly_xp만 정렬(xp_total DESC), 시즌은 표시용만. (선택) tie-breaker 명시 시 재검증.  
-  - **D) Migration**: 이번 배포에서 추가/변경 마이그레이션 없음. Core/Weekly 분리 유지.  
+  - **D) Migration**: 이번 배포에서 추가/변경 마이그레이션 없음. Core/Weekly 분리 유지. **Leadership Engine(LE) 마이그레이션·롤백 절차**: `docs/ENGINE_ARCHITECTURE_DIRECTIVE_PLAN.md` §7 "Leadership Engine 테이블·마이그레이션·롤백" 참고.  
   - **E) API**: 이번 배포에서 변경한 API 없음. 리더보드 Cache-Control no-store, UI는 응답만 사용.  
   - **F) Verification Steps (배포 후 실행)**: 1) 로컬: 로그인 → Arena 시나리오 1회 완료 → 대시보드·프로필·리더보드 XP·순위·아바타 확인. 2) 로컬(가능 시): 주간 경계/리셋 시뮬레이션 후 Core XP 유지·Weekly XP만 리셋 확인. 3) Preview: 로그인 후 새로고침·다른 bty 경로 이동 시 세션 유지 확인. 4) Production: HTTPS 쿠키(Secure/SameSite), 리더보드 로드, 401 루프 없음 확인.
 - **Required patches**: 없음. (선택) 리더보드 동점 시 order(updated_at/user_id) 추가 시 스펙·테스트 재확인.
@@ -424,6 +424,12 @@ docs/DOJO_DEAR_ME_NEXT_CONTENT.md를 읽고, 2차 구현 시 검증할 체크리
 - **발견 이슈**: 없음.
 - **검증 체크리스트 (DOJO_DEAR_ME_VERIFICATION_CHECKLIST §체크리스트)**: 1~8항목 모두 ✅ (진입 문구·시작하기·i18n ko/en·레이아웃·Dear Me hasStartedDearMe 분기·locale 전달·기존 경로 회귀 없음).
 - **결과**: **PASS** — 스펙(진입·1단계·Dear Me 진입) 만족, 규칙 위반 없음. **`docs/DOJO_DEAR_ME_VERIFICATION_CHECKLIST.md`** 하단에 이번 재검증 결과가 추가되어 있음.
+
+### Leadership Engine P8 최종 검증 완료
+
+- **검증 일시**: P8 최종 검증(Cursor 4) 수행.
+- **내용**: `docs/ENGINE_ARCHITECTURE_DIRECTIVE_PLAN.md` §8 — Stage·AIR·Reset·TII·Certified·LRI가 `docs/LEADERSHIP_ENGINE_SPEC.md`와 일치하는지, bty-arena-global·bty-release-gate·bty-ui-render-only 위반 여부 확인.
+- **결과**: **PASS** — SPEC §2–§7 대로 구현 일치, 세 규칙 위반 없음. 상세는 **`docs/ENGINE_ARCHITECTURE_DIRECTIVE_PLAN.md` §8 검증 기록** 참고.
 
 ---
 

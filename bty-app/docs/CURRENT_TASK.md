@@ -20,7 +20,11 @@
 
 *(커맨더가 여기에 요구사항을 적거나, 채팅으로 "CURRENT_TASK.md 참고해서 구현해줘" + 기능 설명을 보냅니다.)*
 
-**이번 지시: 감정 스탯 v3 확장** — `docs/HEALING_COACHING_SPEC_V3.md`·`docs/specs/healing-coaching-spec-v3.json` 기준으로 coreStats에 v3 이벤트 14종·stat_distribution·헬퍼 추가 후, 30일 가속·phase_tuning을 formula와 recordEmotionalEventServer에 반영.
+**이번 지시 (택일 진행)**  
+- **옵션 A — 감정 스탯 v3 확장**: `docs/HEALING_COACHING_SPEC_V3.md`·`docs/specs/healing-coaching-spec-v3.json` 기준으로 coreStats에 v3 이벤트 14종·stat_distribution·헬퍼 추가 후, 30일 가속·phase_tuning을 formula와 recordEmotionalEventServer에 반영.  
+- **옵션 B — Dojo 2차 확장 (WHAT_NEXT §2-2)**: `docs/DOJO_DEAR_ME_NEXT_CONTENT.md` §1-4·§6·§4·§5 기준으로 50문항 목차·연습 플로우 2~5단계 스펙 정리 및 추가 구현. PROJECT_BACKLOG §7은 [x]; 2차 확장은 위 스펙으로 진행.
+
+*진행 에이전트는 위 A/B 중 지시된 쪽을 우선 진행. 지시가 없으면 CURRENT_TASK 또는 WHAT_NEXT §2-2 표의 복사용 프롬프트를 참고.*
 
 **이전 완료**: 챗봇 훈련 (PROJECT_BACKLOG §9) — ✅ 완료
 
@@ -55,6 +59,7 @@
 | [x] | **Arena UI (D)**: "ARENA_UI_REDESIGN_BRIEF 프롬프트 D 적용해줘." (문구·톤만) |
 | [x] | **Arena UI (E)**: "ARENA_UI_REDESIGN_BRIEF 프롬프트 E 적용해줘." (네비·레이아웃, 헤더 포근함) |
 | [x] | **Arena UI (A)**: "ARENA_UI_REDESIGN_BRIEF 프롬프트 A 적용해줘." (전체 감성·테마·타이포·카드 변수 통일) |
+| [x] | **Leadership Engine P8 최종 검증**: ENGINE_ARCHITECTURE_DIRECTIVE_PLAN §8 — SPEC 일치·bty-arena-global·bty-release-gate·bty-ui-render-only 점검. **통과**. |
 
 - 위 한 줄 지시를 복사해 붙여 넣거나, NEXT_TASKS_2.md §4 표에서 [ ] 항목을 복사해 지시하면 됩니다.
 

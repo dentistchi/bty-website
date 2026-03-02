@@ -3,7 +3,7 @@
  * POST /api/chat 요청/응답 및 모델 호출용 메시지 형식.
  */
 
-export type ChatMode = "dearme" | "dojo" | "arena";
+export type ChatMode = "center" | "foundry" | "arena";
 
 /** 대화 메시지 (클라이언트 → API body.messages) */
 export interface ChatConversationMessage {
@@ -22,8 +22,8 @@ export interface ChatRequestBody {
 export interface ChatResponseBody {
   message: string;
   mode?: ChatMode;
-  suggestDearMe?: boolean;
-  suggestDojo?: boolean;
+  suggestCenter?: boolean;
+  suggestFoundry?: boolean;
   suggestMentor?: boolean;
   mentorPath?: string;
   /** true when API failed and fallback message was returned */

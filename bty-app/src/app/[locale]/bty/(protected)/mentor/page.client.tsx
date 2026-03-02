@@ -10,7 +10,7 @@ import { ThemeBody } from "@/components/ThemeBody";
 import { cn } from "@/lib/utils";
 import { fetchJson } from "@/lib/read-json";
 
-const DEAR_ME_URL = process.env.NEXT_PUBLIC_DEAR_ME_URL ?? "https://dear-me.pages.dev";
+const CENTER_URL = process.env.NEXT_PUBLIC_CENTER_URL ?? (typeof window !== "undefined" ? `${window.location.origin}/center` : "");
 
 type TopicId = "clinical" | "patient" | "team" | "financial" | "selflove";
 
@@ -68,10 +68,10 @@ const MENTOR_UI = {
     conversationEnded: "대화가 끝났습니다.",
     conversationEndedSub: "오늘 대화 잘 마무리하셨어요. 필요할 때 다시 찾아오세요.",
     goOtherTopic: "다른 주제로",
-    goDojo: "훈련장으로 나가기",
+    goFoundry: "훈련장으로 나가기",
     thinking: "생각하고 있어요…",
-    dearMeLink: "Dear Me에서 마음 돌보기 →",
-    toDojo: "훈련장으로",
+    centerLink: "Center에서 마음 돌보기 →",
+    toFoundry: "훈련장으로",
     toIntegrity: "역지사지 시뮬레이터",
     goodbyeReply: "오늘 대화 잘 마무리하셨어요. 필요할 때 다시 찾아오세요.",
     seeYouNext: "다음에 또 만나요",
@@ -92,10 +92,10 @@ const MENTOR_UI = {
     conversationEnded: "Conversation ended.",
     conversationEndedSub: "You’ve wrapped up well today. Come back whenever you need.",
     goOtherTopic: "Another topic",
-    goDojo: "Back to Dojo",
+    goFoundry: "Back to Foundry",
     thinking: "Thinking…",
-    dearMeLink: "Take care of yourself on Dear Me →",
-    toDojo: "Dojo",
+    centerLink: "Take care of yourself on Center →",
+    toFoundry: "Foundry",
     toIntegrity: "Integrity simulator",
     goodbyeReply: "Thanks for the conversation today. Come back whenever you need.",
     seeYouNext: "See you next time",
@@ -332,7 +332,7 @@ export default function MentorPage() {
 
   return (
     <AuthGate>
-      <ThemeBody theme="dojo" />
+      <ThemeBody theme="foundry" />
       <main
         className="min-h-screen"
         style={{
@@ -493,7 +493,7 @@ export default function MentorPage() {
                       <p className="whitespace-pre-wrap">{m.text}</p>
                       {m.safetyValve && (
                         <a
-                          href={DEAR_ME_URL}
+                      href={CENTER_URL.startsWith("http") ? CENTER_URL : `/${pathname.split("/")[1]}/center`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className={cn(
@@ -502,7 +502,7 @@ export default function MentorPage() {
                             "hover:bg-dear-sage/30 transition-colors font-medium text-sm"
                           )}
                         >
-                          {t.dearMeLink}
+                          {t.centerLink}
                         </a>
                       )}
                     </div>
@@ -547,7 +547,7 @@ export default function MentorPage() {
                         "transition-colors"
                       )}
                     >
-                      {t.goDojo}
+                      {t.goFoundry}
                     </Link>
                   </div>
                 </div>
@@ -606,7 +606,7 @@ export default function MentorPage() {
 
           <footer className="mt-6 pt-4 border-t border-mentor-wood-soft/20 text-center text-sm text-mentor-ink-soft space-x-3">
             <Link href={`/${locale}/bty`} className="text-mentor-wood hover:underline">
-              {t.toDojo}
+              {t.toFoundry}
             </Link>
             <span>·</span>
             <Link href={`/${locale}/bty/integrity`} className="text-mentor-wood hover:underline">

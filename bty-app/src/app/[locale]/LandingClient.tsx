@@ -11,12 +11,12 @@ type LandingMessages = {
   arenaTitle: string;
   arenaDesc: string;
   arenaCta: string;
-  dojoTitle: string;
-  dojoDesc: string;
-  dojoCta: string;
-  dearMeTitle: string;
-  dearMeDesc: string;
-  dearMeCta: string;
+  foundryTitle: string;
+  foundryDesc: string;
+  foundryCta: string;
+  centerTitle: string;
+  centerDesc: string;
+  centerCta: string;
   footerHint: string;
 };
 
@@ -28,8 +28,8 @@ type Props = {
 
 export default function LandingClient({ locale, pathname, t }: Props) {
   const arenaHref = `/${locale}/bty-arena`;
-  const dojoHref = `/${locale}/bty`;
-  const dearMeHref = `/${locale}/dear-me`;
+  const foundryHref = `/${locale}/bty`;
+  const centerHref = `/${locale}/center`;
 
   return (
     <>
@@ -70,23 +70,23 @@ export default function LandingClient({ locale, pathname, t }: Props) {
               </div>
             </Link>
 
-            {/* Dojo & Dear Me — secondary row or stack */}
+            {/* Foundry & Center — secondary row or stack */}
             <div className="grid sm:grid-cols-2 gap-4">
               <Link
-                href={dojoHref}
+                href={foundryHref}
                 className="block rounded-xl border border-[#D4D0CC] bg-white/80 hover:border-[#5B4B8A]/40 hover:bg-white p-5 transition-all duration-200"
               >
-                <h3 className="text-lg font-semibold text-[#2D2A36]">{t.dojoTitle}</h3>
-                <p className="mt-1.5 text-sm text-[#5C5868] leading-relaxed">{t.dojoDesc}</p>
-                <span className="mt-3 text-sm font-medium text-[#5B4B8A]">{t.dojoCta} →</span>
+                <h3 className="text-lg font-semibold text-[#2D2A36]">{t.foundryTitle}</h3>
+                <p className="mt-1.5 text-sm text-[#5C5868] leading-relaxed">{t.foundryDesc}</p>
+                <span className="mt-3 text-sm font-medium text-[#5B4B8A]">{t.foundryCta} →</span>
               </Link>
               <Link
-                href={dearMeHref}
+                href={centerHref}
                 className="block rounded-xl border border-[#D4D0CC] bg-white/80 hover:border-[#8A9A5B]/50 hover:bg-white p-5 transition-all duration-200"
               >
-                <h3 className="text-lg font-semibold text-[#2D2A36]">{t.dearMeTitle}</h3>
-                <p className="mt-1.5 text-sm text-[#5C5868] leading-relaxed">{t.dearMeDesc}</p>
-                <span className="mt-3 text-sm font-medium text-[#8A9A5B]">{t.dearMeCta} →</span>
+                <h3 className="text-lg font-semibold text-[#2D2A36]">{t.centerTitle}</h3>
+                <p className="mt-1.5 text-sm text-[#5C5868] leading-relaxed">{t.centerDesc}</p>
+                <span className="mt-3 text-sm font-medium text-[#8A9A5B]">{t.centerCta} →</span>
               </Link>
             </div>
           </div>

@@ -40,11 +40,11 @@ describe("POST /api/chat", () => {
     expect(res.status).toBe(400);
   });
 
-  it("returns 200 with message and mode (dearme) when lang=ko", async () => {
+  it("returns 200 with message and mode (center) when lang=ko", async () => {
     const res = await POST(
       request({
         messages: [{ role: "user", content: "오늘 기분이 좋아요" }],
-        mode: "dearme",
+        mode: "center",
         lang: "ko",
       })
     );
@@ -52,21 +52,21 @@ describe("POST /api/chat", () => {
     const data = await res.json();
     expect(typeof data.message).toBe("string");
     expect(data.message.length).toBeGreaterThan(0);
-    expect(data.mode).toBe("dearme");
+    expect(data.mode).toBe("center");
   });
 
-  it("returns 200 with message and mode (dojo) when lang=en", async () => {
+  it("returns 200 with message and mode (foundry) when lang=en", async () => {
     const res = await POST(
       request({
         messages: [{ role: "user", content: "How do I give feedback?" }],
-        mode: "dojo",
+        mode: "foundry",
         lang: "en",
       })
     );
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(typeof data.message).toBe("string");
-    expect(data.mode).toBe("dojo");
+    expect(data.mode).toBe("foundry");
   });
 
   it("returns 200 with message and mode (arena) for arena mode", async () => {
@@ -80,6 +80,6 @@ describe("POST /api/chat", () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(typeof data.message).toBe("string");
-    expect(["arena", "dojo", "dearme"]).toContain(data.mode);
+    expect(["arena", "foundry", "center"]).toContain(data.mode);
   });
 });

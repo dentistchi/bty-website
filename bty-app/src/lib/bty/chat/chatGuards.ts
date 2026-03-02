@@ -1,5 +1,5 @@
 /**
- * BTY Chat — 안전 밸브 & Dojo 추천 (드롭인에서 함께 사용)
+ * BTY Chat — 안전 밸브 & Foundry 추천 (드롭인에서 함께 사용)
  */
 
 const LOW_SELF_ESTEEM_PATTERNS = [
@@ -21,7 +21,7 @@ const LOW_SELF_ESTEEM_PATTERNS = [
   /의미\s*없/i,
 ];
 
-const DOJO_RECOMMEND_PATTERNS = [
+const FOUNDRY_RECOMMEND_PATTERNS = [
   /배우고\s*싶/i,
   /어떻게\s*해야/i,
   /연습하고\s*싶/i,
@@ -39,29 +39,29 @@ const DOJO_RECOMMEND_PATTERNS = [
 ];
 
 export const SAFETY_VALVE_MESSAGE_KO =
-  "잠깐만요, 지금 많이 지쳐 보여요. 기술을 배우는 것보다 마음을 돌보는 게 먼저인 것 같네요. 우리 Dear Me로 가서 잠시 쉬고 올까요? 거기서 당신의 마음 상태를 체크해보고 오세요.";
+  "잠깐만요, 지금 많이 지쳐 보여요. 기술을 배우는 것보다 마음을 돌보는 게 먼저인 것 같네요. 우리 Center로 가서 잠시 쉬고 올까요? 거기서 당신의 마음 상태를 체크해보고 오세요.";
 export const SAFETY_VALVE_MESSAGE_EN =
-  "You seem really worn out right now. Taking care of your heart might come before anything else. How about resting for a moment in Dear Me? You can check in with how you're feeling there.";
+  "You seem really worn out right now. Taking care of your heart might come before anything else. How about resting for a moment in Center? You can check in with how you're feeling there.";
 
-export const DOJO_RECOMMEND_MESSAGE_KO =
-  "연습이나 배움이 필요하시다면 훈련장(Dojo)이 좋아요. Dr. Chi 멘토와 대화하거나 역지사지 시뮬레이터로 갈등 상황을 돌려볼 수 있어요.";
-export const DOJO_RECOMMEND_MESSAGE_EN =
-  "If you want to practice or learn, the Dojo is a good place. You can talk with Dr. Chi or try the integrity simulator to reframe conflict situations.";
+export const FOUNDRY_RECOMMEND_MESSAGE_KO =
+  "연습이나 배움이 필요하시다면 Foundry(훈련장)가 좋아요. Dr. Chi 멘토와 대화하거나 역지사지 시뮬레이터로 갈등 상황을 돌려볼 수 있어요.";
+export const FOUNDRY_RECOMMEND_MESSAGE_EN =
+  "If you want to practice or learn, the Foundry is a good place. You can talk with Dr. Chi or try the integrity simulator to reframe conflict situations.";
 
 export function isLowSelfEsteemSignal(text: string): boolean {
   return LOW_SELF_ESTEEM_PATTERNS.some((pat) => pat.test(text));
 }
 
-export function isDojoRecommendSignal(text: string): boolean {
-  return DOJO_RECOMMEND_PATTERNS.some((pat) => pat.test(text));
+export function isFoundryRecommendSignal(text: string): boolean {
+  return FOUNDRY_RECOMMEND_PATTERNS.some((pat) => pat.test(text));
 }
 
 export function getSafetyValveMessage(lang: "ko" | "en"): string {
   return lang === "ko" ? SAFETY_VALVE_MESSAGE_KO : SAFETY_VALVE_MESSAGE_EN;
 }
 
-export function getDojoRecommendMessage(lang: "ko" | "en"): string {
-  return lang === "ko" ? DOJO_RECOMMEND_MESSAGE_KO : DOJO_RECOMMEND_MESSAGE_EN;
+export function getFoundryRecommendMessage(lang: "ko" | "en"): string {
+  return lang === "ko" ? FOUNDRY_RECOMMEND_MESSAGE_KO : FOUNDRY_RECOMMEND_MESSAGE_EN;
 }
 
 /**
@@ -75,7 +75,7 @@ export function detectLang(clientLang: string | undefined, lastUserMessage: stri
   return "en";
 }
 
-/** Dojo/bty 모드에서 위로·안심 문구 감지 시 대체 문장 (훈련 톤 유지) */
+/** Foundry/bty 모드에서 위로·안심 문구 감지 시 대체 문장 (훈련 톤 유지) */
 const COMFORT_PATTERNS = [
   /괜찮아요|괜찮습니다|안심하세요|힘내세요|잘\s*될\s*거예요|you're safe|it's okay|don't worry|you'll be fine|안전한\s*곳|안전해요/i,
 ];

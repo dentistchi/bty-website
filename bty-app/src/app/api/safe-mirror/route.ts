@@ -20,7 +20,15 @@ const SYSTEM_PROMPT = `You are a counselor and the user's warmest inner self (In
 - Validate that the feeling makes sense (e.g. "그런 상황에서 그렇게 느끼는 건 당연해요." / "It makes sense to feel that way in that situation.").
 - Gently reframe when helpful (e.g. "그 상황에서 화가 났던 건, 너를 지키고 싶어서였어." / "Being angry in that situation was you wanting to protect yourself.").
 
-Keep responses to 2–4 short sentences. Use the same language as the user (Korean or English). Write as if you are writing a short reply on the same letter—warm, intimate, and non-evaluating.`;
+Keep responses to 2–4 short sentences. Write as if you are writing a short reply on the same letter—warm, intimate, and non-evaluating.`;
+
+function getSystemPromptWithLocale(locale: "en" | "ko"): string {
+  const langRule =
+    locale === "en"
+      ? "Respond only in English. All your replies must be in English.\n\n"
+      : "한국어로만 답하세요. 모든 응답은 한국어로 작성하세요.\n\n";
+  return langRule + SYSTEM_PROMPT;
+}
 
 const FALLBACK_KO =
   "그런 마음이 드는 건 당연해요. 그건 당신이 부족해서가 아니라, 그 상황을 소중히 여기기 때문이에요.";
@@ -45,7 +53,12 @@ function toGeminiContents(
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body = (await request.json()) as {
+      messages?: { role: string; content?: string }[];
+      message?: string;
+      locale?: string;
+      lang?: string;
+    };
     const messages = Array.isArray(body.messages) ? body.messages : [];
     const userContent =
       typeof body.message === "string"
@@ -56,6 +69,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Message required" }, { status: 400 });
     }
 
+    const locale: "en" | "ko" =
+      body.locale === "en" || body.lang === "en"
+        ? "en"
+        : body.locale === "ko" || body.lang === "ko"
+          ? "ko"
+          : /[\uac00-\ud7a3]/.test(userContent)
+            ? "ko"
+            : "en";
+
     const apiKey = process.env.GEMINI_API_KEY ?? null;
     if (!apiKey) {
       console.error("[safe-mirror] GEMINI_API_KEY not found.");
@@ -64,7 +86,7 @@ export async function POST(request: Request) {
     if (apiKey) {
       const contents = toGeminiContents(messages, userContent);
       const payload = {
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        systemInstruction: { parts: [{ text: getSystemPromptWithLocale(locale) }] },
         contents,
         generationConfig: { maxOutputTokens: 320, temperature: 0.8 },
       };
@@ -108,9 +130,8 @@ export async function POST(request: Request) {
       }
     }
 
-    const isKo = /[가-힣]/.test(userContent);
     return NextResponse.json({
-      message: isKo ? FALLBACK_KO : FALLBACK_EN,
+      message: locale === "ko" ? FALLBACK_KO : FALLBACK_EN,
     });
   } catch (e) {
     console.error("[safe-mirror]", e);

@@ -17,14 +17,14 @@
 | BACKLOG §4 엘리트 5% 정책 | [x] | ELITE_5_PERCENT_POLICY.md |
 | BACKLOG §5 엘리트 특혜 선정 | [x] | 해금 콘텐츠·멘토 배지 등 |
 | BACKLOG §6 언어 선택 시나리오·안내·대답 | [x] | NEXT_TASKS_2 §1-5 |
-| BACKLOG §7 Dojo 50문항·연습 플로우 1종 (2차) | [x] | DOJO_DEAR_ME_NEXT_CONTENT §5 체크리스트 |
+| BACKLOG §7 Foundry 50문항·연습 플로우 1종 (2차) | [x] | FOUNDRY_CENTER_NEXT_CONTENT §5 체크리스트 |
 | BACKLOG §8 빈 상태·로딩 (BRIEF §2) | [x] | PageLoadingFallback 14곳 + 인라인 7곳, EmptyState 통일 |
 | BACKLOG §9 챗봇 훈련 | [x] | NVC·치유 스펙, 메타/인사, few-shot, Lint·Vitest 10/10 PASS |
 
-### 1-2. Dojo·Dear Me 2차 (옵션 A)
+### 1-2. Foundry·Center 2차 (옵션 A)
 
-- **진입·Dear Me 1차 플로우**: 구현 완료, 검증·재검증 **PASS**.
-- **2차 전체 검증용 체크리스트**: `docs/DOJO_DEAR_ME_2ND_VERIFICATION.md` (항목 1~10). 1차·재검증 기록은 `docs/DOJO_DEAR_ME_VERIFICATION_CHECKLIST.md`.
+- **진입·Center 1차 플로우**: 구현 완료, 검증·재검증 **PASS**.
+- **2차 전체 검증용 체크리스트**: `docs/FOUNDRY_CENTER_2ND_VERIFICATION.md` (항목 1~10). 1차·재검증 기록은 `docs/FOUNDRY_CENTER_VERIFICATION_CHECKLIST.md`.
 
 ### 1-3. 감정 스탯 (Core Stats / Events / Advanced Stats)
 
@@ -47,6 +47,12 @@
 - **요약**: A~E 항목 규칙 위반 없음. 배포 후에는 Verification Steps 1~4만 실행하면 됨.
 - **배포 후 할 일**: 로컬 1–2 → Preview 3 → Production 4 실행. 상세는 `docs/NEXT_STEPS_RUNBOOK.md` §6-5.
 
+### 1-7. Leadership Engine P8 최종 검증
+
+- **결과**: **PASS** (Cursor 4 검증 완료).
+- **내용**: `docs/LEADERSHIP_ENGINE_SPEC.md`와 Stage·AIR·Reset·TII·Certified·LRI 구현 일치 확인, bty-arena-global·bty-release-gate·bty-ui-render-only 위반 없음 확인.
+- **기록**: `docs/ENGINE_ARCHITECTURE_DIRECTIVE_PLAN.md` §8 검증 기록에 일시·Phase P8·결과·비고 반영.
+
 ---
 
 ## 2. 다음에 할 일 (선택지)
@@ -60,16 +66,23 @@
 
 ### 2-2. 구현·확장 (Cursor 1)
 
+**택일 지시 (CURRENT_TASK 연동)**  
+커맨더가 진행 에이전트에게 지시할 때:  
+- **「감정 스탯 v3 확장 진행해줘」** → 옵션 A (HEALING_COACHING_SPEC_V3·healing-coaching-spec-v3.json 기준).  
+- **「Foundry 2차 확장 진행해줘」** / **「WHAT_NEXT §2-2 진행해줘」** → 옵션 B (FOUNDRY_CENTER_NEXT_CONTENT §1-4·§6·§4·§5 기준).  
+상세는 `docs/CURRENT_TASK.md` "이번에 구현할 기능" 택일 진행 참고.
+
 | 할 일 | 복사용 프롬프트 |
 |--------|------------------|
-| Dojo 2차 확장 (50문항·연습 플로우 2~5단계) | `PROJECT_BACKLOG §7: Dojo 50문항 목차 또는 연습 플로우 1종 스펙 정리·진입/1단계 구현해줘. docs/DOJO_DEAR_ME_NEXT_CONTENT.md 참고.` (이미 §7 [x]. 2차 확장은 §1-4·§6 스펙으로 추가 구현.) |
+| Foundry 2차 확장 (50문항·연습 플로우 2~5단계) | `PROJECT_BACKLOG §7: Foundry 50문항 목차 또는 연습 플로우 1종 스펙 정리·진입/1단계 구현해줘. docs/FOUNDRY_CENTER_NEXT_CONTENT.md 참고.` (이미 §7 [x]. 2차 확장은 §1-4·§6 스펙으로 추가 구현.) |
 | 감정 스탯 v3 확장 | `docs/HEALING_COACHING_SPEC_V3.md`, docs/specs/healing-coaching-spec-v3.json 읽고, 이벤트 15종·stat_distribution·30일 가속 등 v3 스펙 반영해줘. (Phase A1–F1은 완료됨.)` |
+| 챗봇·Safe Mirror·Integrity 로케일 통일 | `docs/CHAT_MIRROR_LOCALE_FIX.md 읽고, 체크리스트 순서대로 챗봇/멘토/Safe Mirror API에 locale 전달 및 응답 언어 고정(시스템 프롬프트·고정 문구 ko/en 분기) 반영해줘.` |
 
 ### 2-3. 검증 (Cursor 2)
 
 | 할 일 | 복사용 프롬프트 |
 |--------|------------------|
-| Dojo·Dear Me 2차 구현 검증 | `docs/DOJO_DEAR_ME_2ND_VERIFICATION.md 체크리스트(항목 1~10) 순서대로 확인해줘. DOJO_DEAR_ME_NEXT_CONTENT.md §4·§5·§6·§2-2·§1-4·§6 스펙 기준. 결과를 PASS/FAIL + 불충족 항목으로 보고하고, 해당 문서 하단 검증 결과 템플릿에 검증 일시·결과·비고 적어줘.` |
+| Foundry·Center 2차 구현 검증 | `docs/FOUNDRY_CENTER_2ND_VERIFICATION.md 체크리스트(항목 1~10) 순서대로 확인해줘. FOUNDRY_CENTER_NEXT_CONTENT.md §4·§5·§6·§2-2·§1-4·§6 스펙 기준. 결과를 PASS/FAIL + 불충족 항목으로 보고하고, 해당 문서 하단 검증 결과 템플릿에 검증 일시·결과·비고 적어줘.` |
 | 아바타·코드네임 검증 (선택) | `docs/ARENA_CODENAME_AVATAR_PLAN.md 읽고, Cursor 4가 반영한 리더보드 아바타·코드네임 코드별 1회·캐릭터+옷 1단계가 스펙과 규칙을 만족하는지 검증해줘. 결과를 PASS/FAIL + 이슈 목록으로 보고해줘.` |
 
 ### 2-4. 다음 할 일 정하기 (한 줄 적기)
@@ -79,7 +92,7 @@
 ```
 docs/CURRENT_TASK.md, docs/PROJECT_PROGRESS_ORDER.md, docs/PROJECT_BACKLOG.md를 읽어줘.
 
-다음에 할 작업을 한 줄로 정해서 docs/CURRENT_TASK.md "이번에 구현할 기능" 칸에 적어줘. 백로그 §1~§9는 완료된 상태니까, PROJECT_PROGRESS_ORDER §3(Dojo·Dear Me 2차 확장)이나 감정 스탯 v3, 새 백로그 항목 중에서 골라서 적으면 돼.
+다음에 할 작업을 한 줄로 정해서 docs/CURRENT_TASK.md "이번에 구현할 기능" 칸에 적어줘. 백로그 §1~§9는 완료된 상태니까, PROJECT_PROGRESS_ORDER §3(Foundry·Center 2차 확장)이나 감정 스탯 v3, 새 백로그 항목 중에서 골라서 적으면 돼.
 ```
 
 ---
@@ -91,9 +104,12 @@ docs/CURRENT_TASK.md, docs/PROJECT_PROGRESS_ORDER.md, docs/PROJECT_BACKLOG.md를
 | 누가 뭘 하는지·누구에게 뭘 지시할지 | `docs/COMMANDER_CURSORS_REF.md` |
 | 현재 상태·Cursor 4 할 일·복사용 프롬프트 표 | `docs/NEXT_STEPS_RUNBOOK.md` §6 |
 | 이번에 구현할 기능(비어 있으면 여기 적기) | `docs/CURRENT_TASK.md` |
-| Dojo·Dear Me 2차 검증 체크리스트 | `docs/DOJO_DEAR_ME_2ND_VERIFICATION.md` |
+| Foundry·Center 2차 검증 체크리스트 | `docs/FOUNDRY_CENTER_2ND_VERIFICATION.md` |
 | Arena 코드네임·아바타 계획 | `docs/ARENA_CODENAME_AVATAR_PLAN.md` |
 | 감정 스탯 v3 스펙 | `docs/HEALING_COACHING_SPEC_V3.md`, `docs/specs/healing-coaching-spec-v3.json` |
+| **챗봇·Safe Mirror·Integrity 로케일 통일** | `docs/CHAT_MIRROR_LOCALE_FIX.md` — 영어(/en)일 때 AI 응답·고정 문구 영어로 나오게 수정 체크리스트 |
+| **Leadership Distortion Engine (Stage/AIR/TII)** | `docs/ENGINE_ARCHITECTURE_DIRECTIVE_PLAN.md` — 4 Stage·AIR·Reset·TII·Certified/LRI 계획·P0~P8 복사용 프롬프트 |
+| **엔진 로직·규칙·스키마 (단일 명세)** | `docs/LEADERSHIP_ENGINE_SPEC.md` — 모든 Cursor 공통 기준. Stage 전이·AIR·Reset·TII·Certified/LRI·Mirror·스키마 |
 
 ---
 

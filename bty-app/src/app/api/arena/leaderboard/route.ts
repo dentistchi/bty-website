@@ -138,23 +138,15 @@ export async function GET(req: NextRequest) {
           levelId,
         }) ?? prof.avatar_url ?? null;
     }
-    // Use proxy URL for our Storage avatars so leaderboard works cross-origin (no CORS on Storage).
-    // Match any Supabase storage avatar URL (env may have trailing slash; stored URL format can vary).
+    // Use proxy URL for Storage avatars only; character/outfit paths use resolved URL so Mage etc. show on leaderboard.
     const isSupabaseStorageAvatar =
       resolved &&
       typeof resolved === "string" &&
       resolved.includes("supabase.co") &&
       resolved.includes("/storage/v1/object/public/avatars/");
-    // Relative paths: use default only for /avatars/outfits/... (often missing). Keep /avatars/*.png (character images).
-    const isOutfitPath =
-      resolved && typeof resolved === "string" && resolved.startsWith("/avatars/outfits/");
-    const useDefaultForRelative =
-      resolved && typeof resolved === "string" && resolved.startsWith("/") && isOutfitPath;
     const avatarUrl = isSupabaseStorageAvatar
       ? `/api/arena/avatar?userId=${r.user_id}`
-      : useDefaultForRelative
-        ? "/avatars/default-avatar.svg"
-        : resolved ?? "/avatars/default-avatar.svg";
+      : resolved ?? "/avatars/default-avatar.svg";
     return { rank: idx + 1, codeName, subName, xpTotal, avatarUrl, tier: calculateTier(xpTotal) };
   });
 

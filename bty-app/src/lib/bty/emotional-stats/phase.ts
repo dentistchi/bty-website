@@ -4,6 +4,13 @@
  * Pure functions only.
  */
 
+/** v3 acceleration_factor_formula: acc = 1.25 - (user_day / 100). Applied only for first 30 days; after 30 returns 1. */
+export function getAccelerationFactor(userDay: number): number {
+  if (userDay <= 0 || userDay > 30) return 1;
+  const acc = 1.25 - userDay / 100;
+  return Math.max(0.5, Math.min(1.25, acc));
+}
+
 /** Day 1–7: 1.2, 8–21: 1, 22–30: 0.9; after 30: post_30_day_normalization 0.85. */
 export function getPhaseMultiplier(userDay: number): number {
   if (userDay <= 0) return 1;

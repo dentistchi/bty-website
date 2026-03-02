@@ -49,8 +49,10 @@ docs/AGENTS_SHARED_README.md, docs/NEXT_STEPS_RUNBOOK.md 읽고, 아래 지시 �
 | 5 | `docs/PROJECT_PROGRESS_ORDER.md` | 다음 권장 작업(Dojo·Dear Me 2차 등) 확인할 때. |
 | **6** | **`docs/ARENA_CODENAME_AVATAR_PLAN.md`** | **Cursor 4** 작업 범위: 리더보드 아바타·코드네임·캐릭터+옷 계획 확인할 때. |
 | **7** | **`docs/WHAT_NEXT.md`** | **지금까지 마무리된 것 + 다음에 할 일** 한눈에 볼 때. |
+| **8** | **`docs/ENGINE_ARCHITECTURE_DIRECTIVE_PLAN.md`** | **Leadership Distortion Engine** (Stage/AIR/TII/Certified/LRI) 단계별 계획·복사용 프롬프트. 여러 Cursor에 P0~P8 지시할 때 사용. **→ 아래를 해당 Cursor에 붙여 넣기 전에 `docs/AGENTS_SHARED_README.md`, `docs/ENGINE_ARCHITECTURE_DIRECTIVE_PLAN.md` 를 열어 두라고 안내한다.** |
 
 - **매번 명령 내릴 때:** **NEXT_STEPS_RUNBOOK** 열고 → 해당 프롬프트 복사 → 대상 Cursor에 붙여 넣기.
+- **ENGINE_ARCHITECTURE_DIRECTIVE_PLAN.md** 의 복사용 프롬프트(P0~P8)를 Cursor에 붙여 넣을 때는, **먼저** 해당 Cursor에 `docs/AGENTS_SHARED_README.md` 와 `docs/ENGINE_ARCHITECTURE_DIRECTIVE_PLAN.md` 를 열어 두라고 안내한 뒤 붙여 넣기.
 
 ---
 

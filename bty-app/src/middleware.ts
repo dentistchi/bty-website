@@ -23,7 +23,7 @@ function isPublicPath(pathname: string) {
   const locale = getLocale(pathname);
   if (locale) {
     if (pathname === `/${locale}` || pathname === `/${locale}/`) return true;
-    if (pathname === `/${locale}/dear-me` || pathname === `/${locale}/dear-me/`) return true;
+    if (pathname === `/${locale}/center` || pathname === `/${locale}/center/`) return true;
     if (pathname === `/${locale}/admin/login`) return true;
     if (pathname === `/${locale}/bty/login`) return true;
     if (pathname === `/${locale}/bty/logout`) return true;
@@ -40,6 +40,10 @@ export async function middleware(req: NextRequest) {
   }
 
   const locale = getLocale(pathname);
+  if (locale && (pathname === `/${locale}/dear-me` || pathname === `/${locale}/dear-me/`)) {
+    return NextResponse.redirect(new URL(`/${locale}/center`, req.url), 308);
+  }
+
   if (!locale) {
     if (
       pathname.startsWith("/bty") ||

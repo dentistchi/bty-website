@@ -141,6 +141,15 @@ subTierGroup = floor((tier % 100) / 25)   // 0, 1, 2, 3
 
 ## 5. Sub Name 리네임 규칙 (정체성 보상)
 
+### 제품 규칙 (정식 문구)
+
+> **코드네임은 코드가 바뀌고 25 tier가 되면, 그 코드에서 1회만 설정할 수 있다.**
+
+- **코드가 바뀌고**: `code_index = floor(tier / 100)`가 이전보다 커진 상태(새 Code 진입).
+- **25 tier**: 해당 Code 내에서 Core XP 기준 **tier ≥ 25**.
+- **그 코드에서 1회**: 같은 Code 구간에서는 서브네임 변경 기회 **1회**. Code가 올라가면 새 Code에서 tier 25 도달 시 다시 1회 부여.
+- **구현 근거**: `arena_profiles.sub_name_renamed_at_code_index`(해당 코드 인덱스에서 이미 변경했으면 그 값 저장). 변경 허용 조건: `tier >= 25`, `code_index > sub_name_renamed_at_code_index`(또는 NULL). 상세는 `docs/ARENA_CODENAME_AVATAR_PLAN.md` §2·§6 참고.
+
 ### 왜 “고심하게” 만드는가
 
 Sub Name은 **숫자 보상이 아니라, 자신을 어떻게 나타낼지 정하는 보상**입니다.

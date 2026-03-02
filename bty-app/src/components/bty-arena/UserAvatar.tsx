@@ -80,7 +80,7 @@ export function UserAvatar({
   };
   return (
     <span
-      className={`inline-flex items-center justify-center rounded-full flex-shrink-0 bg-dojo-purple/15 text-dojo-purple font-semibold ${sizeClass} ${className ?? ""}`}
+      className={`inline-flex items-center justify-center rounded-full flex-shrink-0 bg-foundry-purple/15 text-foundry-purple font-semibold ${sizeClass} ${className ?? ""}`}
       style={fallbackStyle}
       aria-hidden
     >

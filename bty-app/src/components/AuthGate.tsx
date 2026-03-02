@@ -40,12 +40,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="w-full max-w-sm rounded-2xl border border-dojo-purple-muted bg-dojo-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-dojo-purple-dark">
+        <div className="w-full max-w-sm rounded-2xl border border-foundry-purple-muted bg-foundry-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-foundry-purple-dark">
             {isRegister ? "회원가입" : "로그인"}
           </h2>
-          <p className="text-sm text-dojo-ink-soft mt-1">
-            Dear Me와 bty는 하나의 계정으로 이용해요.
+          <p className="text-sm text-foundry-ink-soft mt-1">
+            Center와 bty는 하나의 계정으로 이용해요.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-4 space-y-3">
@@ -56,8 +56,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
               placeholder="이메일"
               required
               className={cn(
-                "w-full rounded-xl border border-dojo-purple-muted px-4 py-3",
-                "focus:outline-none focus:ring-2 focus:ring-dojo-purple/30"
+                "w-full rounded-xl border border-foundry-purple-muted px-4 py-3",
+                "focus:outline-none focus:ring-2 focus:ring-foundry-purple/30"
               )}
             />
 
@@ -69,8 +69,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
               required
               minLength={6}
               className={cn(
-                "w-full rounded-xl border border-dojo-purple-muted px-4 py-3",
-                "focus:outline-none focus:ring-2 focus:ring-dojo-purple/30"
+                "w-full rounded-xl border border-foundry-purple-muted px-4 py-3",
+                "focus:outline-none focus:ring-2 focus:ring-foundry-purple/30"
               )}
             />
 
@@ -84,7 +84,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
               type="submit"
               className={cn(
                 "w-full py-3 rounded-xl font-medium",
-                "bg-dojo-purple text-dojo-white hover:bg-dojo-purple-dark"
+                "bg-foundry-purple text-foundry-white hover:bg-foundry-purple-dark"
               )}
             >
               {isRegister ? "회원가입" : "로그인"}
@@ -93,7 +93,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={() => setIsRegister((v) => !v)}
-              className="w-full text-sm text-dojo-ink-soft underline underline-offset-2"
+              className="w-full text-sm text-foundry-ink-soft underline underline-offset-2"
             >
               {isRegister ? "이미 계정이 있어요 (로그인)" : "계정이 없어요 (회원가입)"}
             </button>

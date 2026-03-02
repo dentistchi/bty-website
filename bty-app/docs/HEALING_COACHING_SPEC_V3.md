@@ -73,10 +73,10 @@
 - **advanced_6_stats**: PRM, SAG, EL, CNS, CD, IS (locked_by_default).
 - **event_detection**: 14종 이벤트 + quality_weight. Q = sum(weights)/max_possible, session_max_possible_events_cap = 8. 구현: `src/lib/bty/emotional-stats/coreStats.ts` (EVENT_IDS, EVENTS, getQualityWeight, getSessionMaxPossibleWeight, SESSION_MAX_POSSIBLE_EVENTS_CAP).
 - **stat_distribution**: 이벤트별 Core 스탯 가중치(weights_by_event) — JSON 참조. 구현: `coreStats.STAT_DISTRIBUTION`, `formula.computeSessionGains`에서 사용.
-- **gain_algorithm**: base_gain 0.8, max_gain_per_stat_per_session 1.5, novelty [0.2,1.0], consistency [1.0,1.4], 30일 가속(phase_tuning), 30일 후 정규화, anti_exploit(duplicate_pattern_penalty, rapid_session_penalty 10분, emotion_spam_no_reward, cap_events_per_session 8). 구현: `phase.ts`(getPhaseMultiplier, getConsistencyCap), `formula.ts`(userDay 반영), `recordEmotionalEventServer.ts`(userDay 계산·전달), `antiExploit.ts`(shouldApplyReward, rapid 10분 내 보상 없음, computeConsistency 상한 1.4).
+- **gain_algorithm**: base_gain 0.8, max_gain_per_stat_per_session 1.5, novelty [0.2,1.0], consistency [1.0,1.4], **30일 가속 계수(acc)** `acc = 1.25 - (user_day/100)` (1≤userDay≤30, 클램프 [0.5, 1.25]; 그 외 1), phase_tuning(base_gain_multiplier), 30일 후 정규화, anti_exploit(duplicate_pattern_penalty, rapid_session_penalty 10분, emotion_spam_no_reward, cap_events_per_session 8). 구현: `phase.ts`(getAccelerationFactor, getPhaseMultiplier, getConsistencyCap), `formula.ts`(computeStatDelta에서 acc·phaseMult 반영, userDay 전달), `recordEmotionalEventServer.ts`(userDay 계산·전달), `antiExploit.ts`(shouldApplyReward, rapid 10분 내 보상 없음, computeConsistency 상한 1.4). **acc 반영 완료** (final_delta = base_gain × Q × novelty × consistency × acc × phase_base_gain_multiplier).
 - **unlock_system**: 세션 종료 시 평가. advanced_unlock_conditions(PRM, SAG, EL, CNS, CD, IS). unlock_presentation: 묵직·조용한 선언, no_numbers.
 
-**연동**: `docs/SYSTEM_UPGRADE_PLAN_EMOTIONAL_STATS.md` — Phase A~F. v3 스펙의 이벤트 14종·stat_distribution·30일 가속·rapid_session_penalty는 `src/lib/bty/emotional-stats`(coreStats, formula, phase, recordEmotionalEventServer, detectEvent)에 반영됨.
+**연동**: `docs/SYSTEM_UPGRADE_PLAN_EMOTIONAL_STATS.md` — Phase A~F. v3 스펙의 이벤트 14종·stat_distribution·**30일 가속 계수(acc)**·phase_tuning·rapid_session_penalty는 `src/lib/bty/emotional-stats`(coreStats, formula, phase, recordEmotionalEventServer, detectEvent)에 반영됨. **acc 반영 완료** (phase.getAccelerationFactor, formula.computeStatDelta).
 
 ---
 
@@ -127,6 +127,7 @@
 | 진행 | Core6+Advanced6 도메인/DB/API | SYSTEM_UPGRADE_PLAN_EMOTIONAL_STATS | ✅ (Phase A1–F1) |
 | 진행 | 이벤트 14종 + stat_distribution | healing_progress_system | ✅ (coreStats EVENT_IDS/EVENTS/STAT_DISTRIBUTION, formula, detectEvent 14종) |
 | 진행 | 30일 가속·rapid_session_penalty | gain_algorithm | ✅ (phase.ts, formula.ts userDay, recordEmotionalEventServer userDay, antiExploit 10분·consistency 1.4) |
+| 진행 | **30일 가속 계수(acc) 반영** | acceleration_factor_formula | ✅ (phase.getAccelerationFactor: 1≤userDay≤30 → acc=1.25−userDay/100 클램프 [0.5,1.25]; formula.computeStatDelta에서 acc 곱산 적용. final_delta = base_gain×Q×novelty×consistency×acc×phase_multiplier) |
 | 진행 | Second Awakening UI/API | second_awakening_event | ✅ (GET/POST API, /bty/healing/awakening, user_healing_milestones) |
 | 진행 | Phase II 링(no numbers) | privacy_posture, visibility | ✅ (display API phase, PhaseIIRing, EmotionalStatsPhrases) |
 

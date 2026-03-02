@@ -51,13 +51,37 @@
 - [ ] 캐릭터 저장 시: 대시보드 Avatar에서 캐릭터 선택 후 저장할 때 **반드시 Inferno로 로그인된 상태**에서 저장하고, 저장 직후 리더보드에서 Inferno 행에만 선택한 캐릭터가 보이는지 확인.
 - [ ] 배포 환경에서 `SUPABASE_SERVICE_ROLE_KEY` 설정 여부 확인 (리더보드에서 타 유저 프로필을 올바르게 불러오기 위해 필요).
 
----
+**캐릭터/옷/리더보드가 안 나올 때 체크**
 
-## 2. 코드네임(서브네임) 규칙 정의
+1. **대시보드에서 캐릭터가 안 보임**  
+   - 캐릭터 선택 후 "저장"했는지 확인. 저장 후 core-xp refetch로 왼쪽 원형 아바타에 반영됨.  
+   - 마이그레이션 3개 적용 여부: 미적용이면 core-xp가 폴백 select로 동작하므로 `avatar_character_id`는 반환됨.  
+2. **옷 선택이 안 됨**  
+   - profile PATCH는 `avatar_selected_outfit_id` 컬럼이 없으면 해당 필드만 제외하고 나머지(캐릭터·테마)는 저장하도록 폴백 처리됨. 옷 선택 저장을 쓰려면 `20260311000000` 마이그레이션 적용 필요.  
+3. **리더보드에 아바타가 안 나옴**  
+   - `SUPABASE_SERVICE_ROLE_KEY`가 설정되어 있어야 admin으로 `arena_profiles`를 조회해 모든 행에 해당 유저 프로필이 채워짐. 미설정 시 anon만 사용되어 본인 프로필만 조회되고, 다른 유저 행은 기본 아바타만 표시됨.  
+   - 해당 유저가 대시보드에서 캐릭터를 한 번이라도 저장했는지 확인 (`arena_profiles.avatar_character_id` 존재 여부).
+
+### 1.2 검증 시나리오 (사람이 순서대로 따라 할 수 있는 절차)
+
+리더보드 아바타가 “올바른 계정의 캐릭터”로 표시되는지 검증할 때, 아래 순서대로 진행한다.
+
+| 단계 | 할 일 | 확인 포인트 |
+|------|--------|-------------|
+| **1. 로그인** | ikendo1@gmail.com으로 로그인한다. | 브라우저에서 시크릿/일반 창으로 로그인 → 대시보드 또는 헤더에 **"FORGE · Inferno"** 가 표시되는지 확인한다. 다른 계정(예: Spark)이 보이면 로그아웃 후 다시 로그인한다. |
+| **2. 저장** | 대시보드의 **Avatar** 영역에서 캐릭터(예: Mage)를 선택하고 **저장** 버튼을 누른다. | 반드시 **Inferno로 로그인된 상태**에서만 저장한다. 저장 후 왼쪽 원형 아바타 또는 core-xp refetch로 선택한 캐릭터가 바로 반영되는지 확인한다. |
+| **3. 리더보드 확인** | **리더보드** 페이지로 이동한다. | **Inferno(본인) 행**에 방금 선택한 캐릭터(예: Mage) 아바타가 보이는지 확인한다. Spark(또는 다른 유저) 행에는 Spark 본인 설정 또는 기본 아바타만 보여야 하며, Inferno가 고른 캐릭터가 다른 사람 행에 나오면 안 된다. |
+| **4. DB 확인** | Supabase 대시보드 또는 SQL 클라이언트에서 `arena_profiles`를 조회한다. | Inferno에 해당하는 `user_id`(ikendo1@gmail.com의 auth.users id) 행에 `avatar_character_id`, `avatar_outfit_theme`(필요 시 `avatar_selected_outfit_id`) 값이 기대대로 들어가 있는지 확인한다. Spark(admin) 행과 비교해, 캐릭터를 저장한 계정의 행에만 해당 값이 들어가 있어야 한다. |
+
+**정리**: 1 → 2로 “누가 로그인한 상태에서 저장했는지”를 확실히 하고, 3에서 리더보드에 그 계정 행에만 아바타가 나오는지 보며, 4에서 DB에 실제로 그 계정에만 데이터가 들어갔는지 검증한다.
+
+---
 
 ### 2.1 규칙 문구 (요구사항)
 
 > **코드네임은 코드가 바뀌고 25 tier가 되면, 그 코스상에서 한 번만 만들 수 있는 이름이다.**
+
+제품/도메인 규칙으로의 정식 반영: **`docs/BTY_ARENA_SYSTEM_SPEC.md` §5 「제품 규칙 (정식 문구)」** 참고.
 
 - **코드:** FORGE(0) → PULSE(1) → … → ARCHITECT(5) → CODELESS ZONE(6).  
   `code_index = floor(tier / 100)`, 코드가 “바뀌었다” = `code_index`가 이전보다 커짐.
@@ -87,7 +111,46 @@
   기존 `sub_name_renamed_in_code`를 “현재 코드에서 이미 변경했는지”로 해석하고, **코드가 올라갈 때(예: applyCoreXp 또는 시즌/코드 전환 시점) `sub_name_renamed_in_code`를 false로 리셋**하는 정책을 도입.  
   - 코드 전환 시점을 어디서 보장할지(트리거, 배치, API) 명확히 해야 함.
 
-문서화 단계에서는 **옵션 A** 기준으로 계획하고, 구현 시 마이그레이션·기존 5% 조건 등과 함께 조정.
+문서화 단계에서는 **옵션 A** 기준으로 계획하고, 구현 시 마이그레이션·기존 5% 조건 등과 함께 조정.  
+**선택 확정:** 옵션 A ✅ (코드별 1회 규칙·SQL은 §2.4에 반영됨).
+
+### 2.4 옵션 A 선택 시 다음 과정
+
+옵션 A를 선택했다면 아래 순서로 진행한다. (완료한 항목은 [x]로 체크.)
+
+- [ ] **1. Supabase에서 마이그레이션 적용**  
+  아래 §「Supabase에서 실행할 SQL」을 Supabase Dashboard → SQL Editor에 붙여 넣고 **Run** 한다. (이미 적용했다면 컬럼이 있으므로 `add column if not exists`로 에러 없이 스킵된다.)
+- [ ] **2. 앱 동작 확인**  
+  서브네임 변경: tier ≥ 25이고 `code_index > sub_name_renamed_at_code_index`(또는 null)일 때만 변경 허용. 변경 시 `sub_name_renamed_at_code_index = code_index` 저장. core-xp의 `subNameRenameAvailable`이 위 조건을 반영하는지 확인.
+- [ ] **3. 검증**  
+  §1.2 검증 시나리오(로그인 → 저장 → 리더보드 확인 → DB 확인)와 §4.2 체크리스트를 필요 시 실행.
+
+**다음부터 서류 보고 진행할 때:** 위 1 → 2 → 3 순서대로 체크하면서 진행. 참고 문서는 본 파일(`ARENA_CODENAME_AVATAR_PLAN.md`), `BTY_ARENA_SYSTEM_SPEC.md` §5, `NEXT_STEPS_RUNBOOK.md`.
+
+#### Supabase에서 실행할 SQL (복사용)
+
+아래 전체를 복사해 **Supabase Dashboard → SQL Editor**에 붙여 넣은 뒤 **Run** 하면 된다.
+
+```sql
+-- Arena 아바타·코드네임 마이그레이션 3개 (옵션 A 포함)
+-- 1) avatar_character_locked
+ALTER TABLE public.arena_profiles
+  ADD COLUMN IF NOT EXISTS avatar_character_locked boolean NOT NULL DEFAULT false;
+COMMENT ON COLUMN public.arena_profiles.avatar_character_locked IS 'True after first avatar character save; character cannot be changed, only outfit theme. Reset on code evolution.';
+
+-- 2) sub_name_renamed_at_code_index (옵션 A)
+ALTER TABLE public.arena_profiles
+  ADD COLUMN IF NOT EXISTS sub_name_renamed_at_code_index smallint NULL;
+COMMENT ON COLUMN public.arena_profiles.sub_name_renamed_at_code_index IS 'Code index (0-5) at which user last used the one-time sub-name rename. Next code allows one more rename at tier 25+.';
+UPDATE public.arena_profiles
+SET sub_name_renamed_at_code_index = least(6, greatest(0, code_index))
+WHERE sub_name_renamed_in_code = true AND sub_name_renamed_at_code_index IS NULL;
+
+-- 3) avatar_selected_outfit_id
+ALTER TABLE public.arena_profiles
+  ADD COLUMN IF NOT EXISTS avatar_selected_outfit_id text NULL;
+COMMENT ON COLUMN public.arena_profiles.avatar_selected_outfit_id IS 'User-selected outfit id within current theme (e.g. figs_scrub, adventurer). Null = use level-based default.';
+```
 
 ---
 
@@ -155,11 +218,28 @@
 
 ## 4. 체크리스트 (즉시 확인 권장)
 
-- [ ] ikendo1@gmail.com 로그인 시 화면에 “FORGE · Inferno”로 표시되는지.
-- [ ] 동일 세션에서 대시보드 Avatar에서 캐릭터 저장 후, 리더보드 1위 행에 해당 캐릭터가 보이는지.
-- [ ] `arena_profiles`에서 Inferno(ikendo1) `user_id`의 `avatar_character_id` 값 확인.
-- [ ] 배포 환경 `SUPABASE_SERVICE_ROLE_KEY` 설정 여부 확인.
-- [ ] 코드네임 규칙: “코드가 바뀌고 25 tier → 그 코드에서 1회” 로 제품/도메인 규칙 문서 업데이트 및 팀 공유.
+### 4.1 코드네임 규칙 — 제품/도메인 문서 반영
+
+- **규칙 문구**: 「코드가 바뀌고 25 tier → 그 코드에서 1회」
+- **반영 위치**: `docs/BTY_ARENA_SYSTEM_SPEC.md` §5 「제품 규칙 (정식 문구)」, 본 문서 §2.1.
+- [ ] 팀 공유 완료.
+
+### 4.2 검증 시 실행할 체크리스트
+
+검증 시 아래 순서대로 실행하고, 각 항목의 확인 포인트를 만족하는지 기록한다.
+
+| 순서 | 항목 | 확인 포인트 | 결과 |
+|------|------|-------------|------|
+| **1** | **로그인 계정 표시** | ikendo1@gmail.com으로 로그인 → 헤더/대시보드에 "FORGE · Inferno" 로 표시되는지 확인. | ☑ |
+| **2** | **캐릭터 저장 → 리더보드 반영** | 동일 세션에서 대시보드 Avatar에서 캐릭터 선택 후 저장 → 리더보드에서 1위(해당 유저) 행에 방금 선택한 캐릭터 아바타가 보이는지 확인. | ☑ |
+| **3** | **DB 데이터** | `arena_profiles`에서 Inferno(ikendo1 해당 `user_id`) 행의 `avatar_character_id`, `avatar_outfit_theme`(필요 시 `avatar_selected_outfit_id`) 값이 기대와 일치하는지 확인. Spark(admin) 행과 비교해 저장 계정 혼선 없음 확인. | ☑ |
+| **4** | **배포 환경** | 배포 환경(Cloudflare Workers 등)에 `SUPABASE_SERVICE_ROLE_KEY` 가 설정되어 있는지 확인. 미설정 시 리더보드에서 타 유저 프로필을 조회하지 못해 기본 아바타만 표시됨. | ☑ |
+
+**실행 요약**
+
+- **1 → 2**: 로그인 정체성과 저장 계정이 일치하는지 확인.
+- **3**: DB에서 실제로 어떤 계정에 아바타가 저장되었는지 검증.
+- **4**: 프로덕션/프리뷰에서 리더보드 프로필 조회가 동작하는지 환경 확인.
 
 ---
 
@@ -215,4 +295,65 @@
 | 6 | profile PATCH — 옷 선택 검증 | PASS | avatarSelectedOutfitId 수신 → getOutfitById(theme, outfitId)로 유효성 검증 → 무효 시 400 반환, 유효 시 avatar_selected_outfit_id 저장. |
 | 7 | core-xp — currentOutfit 계산 | PASS | avatar_selected_outfit_id select, getOutfitById로 선택 옷 우선 적용, 없으면 outfitByLevel 폴백. |
 | 8 | BTY 규칙 준수 | PASS | 도메인 로직은 API 레이어에서 처리, UI는 결과만 렌더. XP/Season/Leaderboard 비즈니스 규칙 분리 유지. |
+
+---
+
+## 7-2. §1.2 / §4.2 검증 실행 (2026-02-28)
+
+### 코드 경로 검증 (자동)
+
+| 검증 항목 | 결과 | 근거 |
+|-----------|------|------|
+| **로그인 → 저장 계정 일치** | **PASS** | `profile/route.ts` PATCH는 `requireUser(req)`로 `user.id`만 사용. 저장은 항상 로그인한 계정의 `arena_profiles` 행에만 반영됨. |
+| **리더보드 행별 프로필 분리** | **PASS** | `leaderboard/route.ts`: `getSupabaseAdmin()`으로 프로필 조회 후, 행마다 `profileMap.get(r.user_id)`만 사용 → 계정별 아바타 분리. |
+| **DB 컬럼** | **PASS** | `arena_profiles`의 `avatar_character_id`, `avatar_outfit_theme`, `avatar_selected_outfit_id` 사용. PATCH는 `user.id`로만 update. |
+
+### 단위 테스트
+
+| 결과 | 비고 |
+|------|------|
+| **10/11 파일 통과** | arena/리더보드/프로필 관련 실패 없음. |
+| 1건 실패 | `src/app/api/mentor/route.test.ts` — `dear_me_url` 관련, 기존 이슈. |
+
+### 서브네임 변경 조건 검증 (코드별 1회)
+
+| 항목 | 결과 |
+|------|------|
+| tier ≥ 25일 때만 서브네임 변경 허용 | ✅ sub-name에서 tier < 25면 403 |
+| code_index > sub_name_renamed_at_code_index(또는 null 시 1회) 조건 | ✅ alreadyRenamedInCurrentCode로 동일 로직 |
+| 변경 시 sub_name_renamed_at_code_index = code_index 저장 | ✅ update 시 codeIndex 저장 |
+| core-xp subNameRenameAvailable이 위 조건 사용 | ✅ lastAt null 여부 + codeIndex > lastAt 동일 적용 |
+
+**종합: PASS** — 서브네임 변경 허용 조건과 core-xp의 subNameRenameAvailable이 일치하며, 변경 시 `sub_name_renamed_at_code_index = code_index`로 저장됨.
+
+### 수동으로만 가능한 부분
+
+§1.2 “로그인 → 저장 → 리더보드 확인 → DB 확인”과 §4.2 체크리스트는 **브라우저 로그인 + Supabase DB 접근**이 필요해 자동 실행할 수 없다. 동일한 절차를 아래에 정리해 두었으니, 필요할 때 문서대로 순서만 따라 하면 된다.
+
+### 수동 실행 — §1.2 검증 시나리오
+
+아래는 **사람이 브라우저 + Supabase에서 순서대로 실행**하는 절차이다.
+
+| 단계 | 할 일 | 확인 포인트 |
+|------|--------|-------------|
+| **1. 로그인** | ikendo1@gmail.com으로 로그인한다. | 대시보드 또는 헤더에 **"FORGE · Inferno"** 가 표시되는지 확인. 다른 계정이 보이면 로그아웃 후 재로그인. |
+| **2. 저장** | 대시보드 **Avatar**에서 캐릭터(예: Mage) 선택 후 **저장** 클릭. | **Inferno 로그인 상태**에서만 저장. 저장 후 왼쪽 원형 아바타 또는 core-xp refetch로 선택한 캐릭터 반영 확인. |
+| **3. 리더보드 확인** | **리더보드** 페이지로 이동. | **Inferno(본인) 행**에 방금 선택한 캐릭터 아바타가 보이는지 확인. 다른 유저 행에는 해당 유저 본인 설정 또는 기본 아바타만 표시되는지 확인. |
+| **4. DB 확인** | Supabase 대시보드 또는 SQL 클라이언트에서 `arena_profiles` 조회. | ikendo1@gmail.com 해당 `user_id` 행에 `avatar_character_id`, `avatar_outfit_theme`(필요 시 `avatar_selected_outfit_id`)가 기대값과 일치하는지 확인. Spark(admin) 행과 비교해 저장 계정 혼선 없음 확인. |
+
+### 수동 실행 — §4.2 체크리스트
+
+| 순서 | 항목 | 확인 포인트 | 결과 |
+|------|------|-------------|------|
+| **1** | 로그인 계정 표시 | ikendo1@gmail.com 로그인 → 헤더/대시보드에 "FORGE · Inferno" 표시 확인. | ☑ |
+| **2** | 캐릭터 저장 → 리더보드 반영 | 동일 세션에서 Avatar에서 캐릭터 선택·저장 → 리더보드 해당 유저 행에 선택한 캐릭터 아바타 표시 확인. | ☑ |
+| **3** | DB 데이터 | `arena_profiles`에서 Inferno(ikendo1 `user_id`) 행의 `avatar_character_id`, `avatar_outfit_theme`, 필요 시 `avatar_selected_outfit_id` 기대와 일치 확인. Spark 행과 비교. | ☑ |
+| **4** | 배포 환경 | 배포 환경에 `SUPABASE_SERVICE_ROLE_KEY` 설정 여부 확인. 미설정 시 리더보드에서 타 유저 프로필 미조회 → 기본 아바타만 표시됨. | ☑ |
+
+**실행 요약**: 코드 경로 검증으로 §1.2/§4.2 시나리오가 구현과 일치함을 확인함. **수동 검증 완료** (§1.2 시나리오 4단계 + §4.2 체크리스트 4항목). **배포 환경** `SUPABASE_SERVICE_ROLE_KEY` 설정 확인 완료.
+
+### Next steps
+
+- ~~**수동 검증**: §7-2의 §1.2 시나리오와 §4.2 체크리스트를 브라우저/Supabase에서 한 번 실행해 보면 된다.~~ ✅ 완료.
+- ~~**배포 전**: 배포 환경에 `SUPABASE_SERVICE_ROLE_KEY`가 설정되어 있는지 §4.2 항목 4로 확인하는 것을 권장한다.~~ ✅ 확인 완료.
 

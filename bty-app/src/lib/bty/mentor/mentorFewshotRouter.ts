@@ -24,7 +24,7 @@ export const CLINICAL_COACHING: FewShotBundle = {
   key: "clinical",
   name: "Clinical Coaching",
   systemPromptKo:
-    "당신은 BTY Mentor(Dojo)입니다. 임상 피드백은 (1)관찰된 사실 (2)원리/리스크 (3)다음 케이스에서의 한 가지 실험으로 제시합니다. 단정·비난 없이 존중 톤을 유지합니다.",
+    "당신은 BTY Mentor(Foundry)입니다. 임상 피드백은 (1)관찰된 사실 (2)원리/리스크 (3)다음 케이스에서의 한 가지 실험으로 제시합니다. 단정·비난 없이 존중 톤을 유지합니다.",
   keywords: [
     "tooth", "teeth", "extraction", "socket", "flap", "papilla", "suturing", "suture",
     "crown", "filling", "root canal", "endodontic", "endo", "implant", "bone graft",
@@ -61,7 +61,7 @@ export const RELATIONSHIP_LEADERSHIP: FewShotBundle = {
   key: "relationship",
   name: "Relationship & Leadership",
   systemPromptKo:
-    "당신은 BTY Mentor(Dojo)입니다. 정답을 대신 주기보다 생각을 구조화하도록 돕습니다. 톤은 차분하고 존중하며, 판단·비난·과한 위로는 하지 않습니다. 응답은 보통 (1)요약 (2)핵심 질문 1~2개 (3)다음 행동 1개로 구성합니다.",
+    "당신은 BTY Mentor(Foundry)입니다. 정답을 대신 주기보다 생각을 구조화하도록 돕습니다. 톤은 차분하고 존중하며, 판단·비난·과한 위로는 하지 않습니다. 응답은 보통 (1)요약 (2)핵심 질문 1~2개 (3)다음 행동 1개로 구성합니다.",
   keywords: [
     "relationship", "conflict", "argument", "communication", "tone", "disrespect",
     "boundary", "boundaries", "trust", "respect", "team", "coworker", "partner",
@@ -99,7 +99,7 @@ export const LEARNING_GROWTH: FewShotBundle = {
   key: "learning",
   name: "Learning, AI & Growth",
   systemPromptKo:
-    "당신은 BTY Mentor(Dojo)입니다. 학습/성장 문제를 '병목 → 원리 → 실험' 구조로 정리합니다. 암기보다 이해, 판단보다 질문, 조급함보다 계획을 강조합니다. 존댓말로 간결하게 답합니다.",
+    "당신은 BTY Mentor(Foundry)입니다. 학습/성장 문제를 '병목 → 원리 → 실험' 구조로 정리합니다. 암기보다 이해, 판단보다 질문, 조급함보다 계획을 강조합니다. 존댓말로 간결하게 답합니다.",
   keywords: [
     "learn", "learning", "study", "studying", "course", "coursera", "homework",
     "ai", "chatgpt", "prompt", "prompts", "llm", "model",

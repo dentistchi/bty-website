@@ -1,7 +1,7 @@
 /**
  * POST /api/chat — BTY 챗봇 API
  * CHATBOT_TRAINING_CHECKLIST, ROADMAP_NEXT_STEPS § 챗봇 훈련 시기 반영.
- * 메타 질문·안전 밸브·Dojo 추천 → 고정 응답, 그 외 buildChatMessagesForModel + OpenAI 호출.
+ * 메타 질문·안전 밸브·Foundry 추천 → 고정 응답, 그 외 buildChatMessagesForModel + OpenAI 호출.
  */
 import { fetchJson } from "@/lib/read-json";
 import { NextResponse } from "next/server";
@@ -10,9 +10,9 @@ import {
   normalizeMode,
   getFallbackMessage,
   isLowSelfEsteemSignal,
-  isDojoRecommendSignal,
+  isFoundryRecommendSignal,
   getSafetyValveMessage,
-  getDojoRecommendMessage,
+  getFoundryRecommendMessage,
   detectLang,
   filterBtyResponse,
   isMetaQuestion,
@@ -58,16 +58,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ message, mode } satisfies ChatResponseBody);
     }
 
-    // Phase 1-1: 낮은 자존감 → Dear Me 안전 밸브 (우선)
+    // Phase 1-1: 낮은 자존감 → Center 안전 밸브 (우선)
     if (isLowSelfEsteemSignal(userContent)) {
       const message = getSafetyValveMessage(lang);
-      return NextResponse.json({ message, suggestDearMe: true } satisfies Partial<ChatResponseBody>);
+      return NextResponse.json({ message, suggestCenter: true } satisfies Partial<ChatResponseBody>);
     }
 
-    // Phase 1-2: 학습/연습 필요 → Dojo(멘토·역지사지) 링크 제안 — 전역
-    if (isDojoRecommendSignal(userContent)) {
-      const message = getDojoRecommendMessage(lang);
-      return NextResponse.json({ message, suggestDojo: true } satisfies Partial<ChatResponseBody>);
+    // Phase 1-2: 학습/연습 필요 → Foundry(멘토·역지사지) 링크 제안 — 전역
+    if (isFoundryRecommendSignal(userContent)) {
+      const message = getFoundryRecommendMessage(lang);
+      return NextResponse.json({ message, suggestFoundry: true } satisfies Partial<ChatResponseBody>);
     }
 
     const messagesForModel = buildChatMessagesForModel(messages, mode, lang);
@@ -85,14 +85,14 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           model: "gpt-4o-mini",
           messages: messagesForModel,
-          max_tokens: 200, // CHATBOT_TRAINING_CHECKLIST §0 Dojo
+          max_tokens: 200, // CHATBOT_TRAINING_CHECKLIST §0 Foundry
         }),
       });
           if (r.ok) {
         const data = r.json;
         const rawText = data?.choices?.[0]?.message?.content?.trim();
         if (rawText) {
-          const text = mode === "dojo" ? filterBtyResponse(rawText, lang) : rawText;
+          const text = mode === "foundry" ? filterBtyResponse(rawText, lang) : rawText;
           const supabase = await getSupabaseServerClient();
           const { data: { user } } = await supabase.auth.getUser();
           if (user?.id) {

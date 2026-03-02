@@ -46,18 +46,18 @@ function JournalLayout({
         role="region"
         aria-labelledby="practice-journal-heading"
         className={cn(
-          "rounded-2xl border border-dojo-purple-muted bg-dojo-white",
+          "rounded-2xl border border-foundry-purple-muted bg-foundry-white",
           "shadow-sm overflow-hidden"
         )}
       >
-        <div className="p-6 sm:p-8 border-b border-dojo-purple-muted bg-dojo-purple/5">
+        <div className="p-6 sm:p-8 border-b border-foundry-purple-muted bg-foundry-purple/5">
           <h2
             id="practice-journal-heading"
-            className="text-xl font-semibold text-dojo-purple-dark"
+            className="text-xl font-semibold text-foundry-purple-dark"
           >
             오늘의 연습
           </h2>
-          <p className="text-sm text-dojo-ink-soft mt-1">
+          <p className="text-sm text-foundry-ink-soft mt-1">
             완료가 아니라 오늘의 연습을 기록합니다. 실패한 날도 기록할 수 있어요.
           </p>
         </div>
@@ -65,7 +65,7 @@ function JournalLayout({
         <div className="p-6 sm:p-8 space-y-6">
           {!recorded ? (
             <>
-              <p className="text-sm text-dojo-ink mb-3">
+              <p className="text-sm text-foundry-ink mb-3">
                 오늘 어떤 연습이었는지 골라주세요.
               </p>
               <div className="flex gap-3">
@@ -74,8 +74,8 @@ function JournalLayout({
                   onClick={() => onRecord("success")}
                   className={cn(
                     "flex-1 rounded-xl py-4 px-4 text-center font-medium",
-                    "border-2 border-dojo-purple-muted bg-dojo-purple-muted/30 text-dojo-ink",
-                    "hover:bg-dojo-purple-muted/50 transition-colors"
+                    "border-2 border-foundry-purple-muted bg-foundry-purple-muted/30 text-foundry-ink",
+                    "hover:bg-foundry-purple-muted/50 transition-colors"
                   )}
                 >
                   성공
@@ -85,8 +85,8 @@ function JournalLayout({
                   onClick={() => onRecord("failure")}
                   className={cn(
                     "flex-1 rounded-xl py-4 px-4 text-center font-medium",
-                    "border-2 border-dojo-purple/40 bg-dojo-white text-dojo-ink",
-                    "hover:bg-dojo-purple/5 hover:border-dojo-purple/60 transition-colors"
+                    "border-2 border-foundry-purple/40 bg-foundry-white text-foundry-ink",
+                    "hover:bg-foundry-purple/5 hover:border-foundry-purple/60 transition-colors"
                   )}
                 >
                   실패했지만 기록함
@@ -98,13 +98,13 @@ function JournalLayout({
               className={cn(
                 "rounded-xl p-5 border",
                 recorded === "failure"
-                  ? "border-dojo-purple/30 bg-dojo-purple/5"
-                  : "border-dojo-purple-muted bg-dojo-purple-muted/20"
+                  ? "border-foundry-purple/30 bg-foundry-purple/5"
+                  : "border-foundry-purple-muted bg-foundry-purple-muted/20"
               )}
             >
               {recorded === "failure" && (
                 <p
-                  className="text-lg font-semibold text-dojo-purple-dark mb-3"
+                  className="text-lg font-semibold text-foundry-purple-dark mb-3"
                   aria-label="오늘의 bty 성공"
                 >
                   {FAILURE_HEADLINE}
@@ -112,19 +112,19 @@ function JournalLayout({
               )}
               <p
                 className={cn(
-                  "text-dojo-ink leading-relaxed",
+                  "text-foundry-ink leading-relaxed",
                   recorded === "failure" && "font-medium"
                 )}
               >
                 {message}
               </p>
-              <p className="mt-3 text-xs text-dojo-ink-soft">
+              <p className="mt-3 text-xs text-foundry-ink-soft">
                 이 기록 자체가 오늘의 연습이에요.
               </p>
               <button
                 type="button"
                 onClick={onReset}
-                className="mt-4 text-sm text-dojo-purple hover:underline"
+                className="mt-4 text-sm text-foundry-purple hover:underline"
               >
                 오늘의 연습 다시 기록하기
               </button>
@@ -139,7 +139,7 @@ function JournalLayout({
         title="오늘의 bty 성공"
       >
         <div className="p-6 sm:p-8">
-          <p className="text-dojo-ink leading-relaxed text-center">
+          <p className="text-foundry-ink leading-relaxed text-center">
             {FAILURE_MODAL_MESSAGE}
           </p>
           <button
@@ -147,7 +147,7 @@ function JournalLayout({
             onClick={onCloseFailureModal}
             className={cn(
               "mt-6 w-full rounded-xl py-3 font-medium",
-              "bg-dojo-purple text-dojo-white hover:bg-dojo-purple-dark",
+              "bg-foundry-purple text-foundry-white hover:bg-foundry-purple-dark",
               "transition-colors"
             )}
           >

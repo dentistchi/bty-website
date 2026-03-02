@@ -1,7 +1,7 @@
 export type Locale = "ko" | "en";
 
 export type Messages = {
-  nav: { todayMe: string; bty: string; arena: string; en: string; ko: string };
+  nav: { center: string; bty: string; arena: string; en: string; ko: string };
   login: {
     title: string;
     afterLoginGoTo: string;
@@ -28,31 +28,48 @@ export type Messages = {
     send: string;
     thinking: string;
     emptyHint: string;
-    backToDojo: string;
+    backToFoundry: string;
     reply: string;
     /** §7 2차: 단계 5 완료 */
     doneTitle: string;
     doneSub: string;
     doneCtaComplete: string;
     doneCtaMentor: string;
-    doneCtaDojo: string;
+    doneCtaFoundry: string;
   };
-  todayMe: {
+  center: {
     title: string;
     tagline: string;
     linkToBty: string;
     assessmentCta: string;
     assessmentCtaSub: string;
-    /** Dear Me 1차 플로우 진입: 소개 1~2문장 */
     entryIntro: string;
-    /** 진입 화면 CTA 버튼 */
     startCta: string;
+    /** 2단계: 오늘의 나 */
+    todayStepTitle: string;
+    todayMoodLabel: string;
+    todayEnergyLabel: string;
+    todayOneWordLabel: string;
+    todayNext: string;
+    todaySkip: string;
+    /** 3단계: 편지 쓰기 */
+    letterStepTitle: string;
+    letterPrompt: string;
+    letterPlaceholder: string;
+    submitLetter: string;
+    sendingLetter: string;
+    /** 4단계: 답장 */
+    replyStepTitle: string;
+    /** 5단계: 완료 */
+    completedTitle: string;
+    completedSub: string;
+    continueToChat: string;
   };
   bty: {
     title: string;
     tagline: string;
-    linkToTodayMe: string;
-    /** Dojo 진입: 소개 1~2문장 */
+    linkToCenter: string;
+    /** Foundry 진입: 소개 1~2문장 */
     entryIntro: string;
     /** 진입 CTA */
     startCta: string;
@@ -64,12 +81,12 @@ export type Messages = {
     arenaTitle: string;
     arenaDesc: string;
     arenaCta: string;
-    dojoTitle: string;
-    dojoDesc: string;
-    dojoCta: string;
-    dearMeTitle: string;
-    dearMeDesc: string;
-    dearMeCta: string;
+    foundryTitle: string;
+    foundryDesc: string;
+    foundryCta: string;
+    centerTitle: string;
+    centerDesc: string;
+    centerCta: string;
     footerHint: string;
   };
   safeMirror: {
@@ -109,14 +126,14 @@ export type Messages = {
     placeholder: string;
     send: string;
     thinking: string;
-    /** CHATBOT_TRAINING_CHECKLIST §2.3: 빈 채팅 시 소개 문구 (Dojo) */
-    introDojo: string;
-    /** CHATBOT_TRAINING_CHECKLIST §2.3: 빈 채팅 시 소개 문구 (Dear Me) */
-    introDearMe: string;
-    /** 공간 전환 시 한 줄 안내 (Dojo) */
-    spaceHintDojo: string;
-    /** 공간 전환 시 한 줄 안내 (Dear Me) */
-    spaceHintDearMe: string;
+    /** CHATBOT_TRAINING_CHECKLIST §2.3: 빈 채팅 시 소개 문구 (Foundry) */
+    introFoundry: string;
+    /** CHATBOT_TRAINING_CHECKLIST §2.3: 빈 채팅 시 소개 문구 (Center) */
+    introCenter: string;
+    /** 공간 전환 시 한 줄 안내 (Foundry) */
+    spaceHintFoundry: string;
+    /** 공간 전환 시 한 줄 안내 (Center) */
+    spaceHintCenter: string;
   };
   resilience: {
     title: string;
@@ -146,6 +163,21 @@ export type Messages = {
     fantasy: string;
     hint: string;
   };
+  arenaMembership: {
+    label: string;
+    approved: string;
+    pending: string;
+    hint: string;
+    jobFunction: string;
+    joinedAt: string;
+    leaderStartedAt: string;
+    submit: string;
+    submitting: string;
+    submitError: string;
+    submitSuccess: string;
+    seniorDoctorHint: string;
+    validationRequired: string;
+  };
   /** PROJECT_BACKLOG §8: 대시보드 감정 스탯 카드 빈 상태 */
   emotionalStats: {
     emptyMessage: string;
@@ -153,7 +185,7 @@ export type Messages = {
 };
 
 const ko: Messages = {
-  nav: { todayMe: "Dear Me", bty: "훈련장", arena: "Arena", en: "English", ko: "한국어" },
+  nav: { center: "Center", bty: "Foundry", arena: "Arena", en: "English", ko: "한국어" },
   login: {
     title: "bty 로그인",
     afterLoginGoTo: "로그인 후",
@@ -179,27 +211,42 @@ const ko: Messages = {
     send: "전송",
     thinking: "Dr. Chi가 생각 중…",
     emptyHint: "갈등 상황을 입력하고 전송해보세요.",
-    backToDojo: "훈련장으로 돌아가기",
+    backToFoundry: "Foundry로 돌아가기",
     reply: "만약 입장이 반대라면 어떨까요?",
     doneTitle: "오늘의 연습 완료",
     doneSub: "한 걸음씩 상대의 입장을 돌려보는 연습이 쌓이고 있어요.",
     doneCtaComplete: "연습 완료하기",
     doneCtaMentor: "멘토와 대화하기",
-    doneCtaDojo: "훈련장으로",
+    doneCtaFoundry: "Foundry로",
   },
-  todayMe: {
-    title: "Dear Me",
+  center: {
+    title: "Center",
     tagline: "나는 안전하다. 잠시 쉬어가도 돼요.",
     linkToBty: "어제보다 나은 연습하러 가기 (bty)",
     assessmentCta: "자존감 진단 (50문항)",
     assessmentCtaSub: "자기 존중감을 짧게 점검해 보세요.",
     entryIntro: "말 못 할 마음을 비추는 안전한 공간이에요. 조언이 아니라 그대로 비춰드려요.",
     startCta: "시작하기",
+    todayStepTitle: "오늘의 나",
+    todayMoodLabel: "지금 기분은 어때요?",
+    todayEnergyLabel: "에너지 수준 (1=많이 지침, 5=괜찮음)",
+    todayOneWordLabel: "한 단어로 오늘을 표현하면?",
+    todayNext: "다음",
+    todaySkip: "건너뛰기",
+    letterStepTitle: "나에게 쓰는 편지",
+    letterPrompt: "지금 마음에 있는 말을 편하게 적어보세요. 여기선 조언이 아니라 그대로 비춰드릴게요.",
+    letterPlaceholder: "오늘 누구에게도 말 못했던 마음이 있나요?",
+    submitLetter: "보내기",
+    sendingLetter: "글을 읽고 있어요…",
+    replyStepTitle: "답장",
+    completedTitle: "오늘의 편지 완료",
+    completedSub: "마음을 나눠줘서 고마워요. 더 말하고 싶으면 챗에서 이어서 나눠 보세요.",
+    continueToChat: "챗으로 이어하기",
   },
   bty: {
     title: "bty",
     tagline: "어제보다 나은 연습. Integrity & Practice.",
-    linkToTodayMe: "Dear Me로 가기",
+    linkToCenter: "Center로 가기",
     entryIntro: "대시보드, 멘토, 역지사지 연습. 오늘 할 훈련을 고르세요.",
     startCta: "시작하기",
   },
@@ -210,12 +257,12 @@ const ko: Messages = {
     arenaTitle: "Arena",
     arenaDesc: "시나리오를 플레이하면서 선택과 성장을 쌓아요. XP, 주간 퀘스트, 리더보드.",
     arenaCta: "플레이하기",
-    dojoTitle: "훈련장",
-    dojoDesc: "대시보드, 멘토, 역지사지 연습. 오늘 할 연습을 고르세요.",
-    dojoCta: "훈련장 가기",
-    dearMeTitle: "Dear Me",
-    dearMeDesc: "말 못 할 마음을 비추는 안전한 공간. 조언이 아니라 그대로 비춰드려요.",
-    dearMeCta: "쉬러 가기",
+    foundryTitle: "Foundry",
+    foundryDesc: "대시보드, 멘토, 역지사지 연습. 오늘 할 연습을 고르세요.",
+    foundryCta: "Foundry 가기",
+    centerTitle: "Center",
+    centerDesc: "말 못 할 마음을 비추는 안전한 공간. 조언이 아니라 그대로 비춰드려요.",
+    centerCta: "쉬러 가기",
     footerHint: "위에서 가고 싶은 곳을 골라주세요.",
   },
   safeMirror: {
@@ -267,10 +314,10 @@ const ko: Messages = {
     placeholder: "하고 싶은 말을 적어보세요",
     send: "보내기",
     thinking: "생각 중…",
-    introDojo: "이제 다른 사람의 입장을 생각해볼까요? 오늘의 연습을 함께해요.",
-    introDearMe: "지금 상태도 괜찮아요. 여기는 안전한 곳이에요.",
-    spaceHintDojo: "지금은 Dojo예요. 위로보다는 선택·구조에 초점을 둡니다.",
-    spaceHintDearMe: "지금은 Dear Me예요. 편하게 마음을 나눠 보세요.",
+    introFoundry: "이제 다른 사람의 입장을 생각해볼까요? 오늘의 연습을 함께해요.",
+    introCenter: "지금 상태도 괜찮아요. 여기는 안전한 곳이에요.",
+    spaceHintFoundry: "지금은 Foundry예요. 위로보다는 선택·구조에 초점을 둡니다.",
+    spaceHintCenter: "지금은 Center예요. 편하게 마음을 나눠 보세요.",
   },
   resilience: {
     title: "회복 탄력성",
@@ -297,13 +344,28 @@ const ko: Messages = {
     fantasy: "롤플레잉",
     hint: "레벨이 올라가면 선택한 테마의 옷이 바뀝니다.",
   },
+  arenaMembership: {
+    label: "Arena 가입",
+    approved: "승인됨",
+    pending: "승인 대기 중입니다. Admin 승인 후 레벨이 표시됩니다.",
+    hint: "직군·입사일·리더시작일을 입력하면 Admin 승인 후 Arena 레벨이 열립니다.",
+    jobFunction: "직군",
+    joinedAt: "입사일",
+    leaderStartedAt: "리더시작일 (선택, 리더 직군인 경우)",
+    submit: "제출",
+    submitting: "제출 중…",
+    submitError: "제출에 실패했습니다.",
+    submitSuccess: "승인 대기 중입니다. Admin 승인 후 레벨이 열립니다.",
+    seniorDoctorHint: "Senior Doctor는 보통 3년 이상 경력 시 선택합니다.",
+    validationRequired: "직군과 입사일을 입력해 주세요.",
+  },
   emotionalStats: {
     emptyMessage: "아직 기록이 없어요. Arena나 챗에서 대화를 진행해 보세요.",
   },
 };
 
 const en: Messages = {
-  nav: { todayMe: "Dear Me", bty: "Dojo", arena: "Arena", en: "English", ko: "한국어" },
+  nav: { center: "Center", bty: "Foundry", arena: "Arena", en: "English", ko: "한국어" },
   login: {
     title: "bty Sign in",
     afterLoginGoTo: "After sign in you will go to",
@@ -329,27 +391,42 @@ const en: Messages = {
     send: "Send",
     thinking: "Dr. Chi is thinking…",
     emptyHint: "Enter a conflict and send.",
-    backToDojo: "Back to Dojo",
+    backToFoundry: "Back to Foundry",
     reply: "What if the roles were reversed?",
     doneTitle: "Today’s practice complete",
     doneSub: "You’re building the habit of seeing the other side, one step at a time.",
     doneCtaComplete: "Complete practice",
     doneCtaMentor: "Talk to mentor",
-    doneCtaDojo: "Back to Dojo",
+    doneCtaFoundry: "Back to Foundry",
   },
-  todayMe: {
-    title: "Dear Me",
+  center: {
+    title: "Center",
     tagline: "You are safe. It’s okay to rest here.",
     linkToBty: "Go to bty (practice)",
     assessmentCta: "Self-Esteem Assessment (50 items)",
     assessmentCtaSub: "A short check on how you feel about yourself.",
     entryIntro: "A safe space that reflects your feelings. No advice—just reflection.",
     startCta: "Start",
+    todayStepTitle: "Today's you",
+    todayMoodLabel: "How do you feel right now?",
+    todayEnergyLabel: "Energy level (1=very low, 5=okay)",
+    todayOneWordLabel: "One word for today?",
+    todayNext: "Next",
+    todaySkip: "Skip",
+    letterStepTitle: "A letter to yourself",
+    letterPrompt: "Write what's on your mind. Here we reflect, not advise.",
+    letterPlaceholder: "Was there something you couldn't tell anyone today?",
+    submitLetter: "Send",
+    sendingLetter: "Reading your words…",
+    replyStepTitle: "Reply",
+    completedTitle: "Today's letter complete",
+    completedSub: "Thanks for sharing. You can continue in Chat if you'd like.",
+    continueToChat: "Continue in Chat",
   },
   bty: {
     title: "bty",
     tagline: "Practice. Integrity & Better Than Yesterday.",
-    linkToTodayMe: "Go to Dear Me",
+    linkToCenter: "Go to Center",
     entryIntro: "Dashboard, mentor, integrity practice. Choose what to work on.",
     startCta: "Start",
   },
@@ -360,12 +437,12 @@ const en: Messages = {
     arenaTitle: "Arena",
     arenaDesc: "Play scenarios, make choices, grow. XP, weekly quests, leaderboard.",
     arenaCta: "Play",
-    dojoTitle: "Dojo",
-    dojoDesc: "Dashboard, mentor, integrity practice. Choose what to work on.",
-    dojoCta: "Go to Dojo",
-    dearMeTitle: "Dear Me",
-    dearMeDesc: "A safe space that reflects your feelings. No advice—just reflection.",
-    dearMeCta: "Rest here",
+    foundryTitle: "Foundry",
+    foundryDesc: "Dashboard, mentor, integrity practice. Choose what to work on.",
+    foundryCta: "Go to Foundry",
+    centerTitle: "Center",
+    centerDesc: "A safe space that reflects your feelings. No advice—just reflection.",
+    centerCta: "Rest here",
     footerHint: "Choose a path above.",
   },
   safeMirror: {
@@ -417,10 +494,10 @@ const en: Messages = {
     placeholder: "Type something…",
     send: "Send",
     thinking: "Thinking…",
-    introDojo: "How about thinking from the other person's side? Let's practice together.",
-    introDearMe: "You're okay as you are. This is a safe place.",
-    spaceHintDojo: "You're in Dojo—focus on choices and structure rather than comfort.",
-    spaceHintDearMe: "You're in Dear Me—feel free to share what's on your mind.",
+    introFoundry: "How about thinking from the other person's side? Let's practice together.",
+    introCenter: "You're okay as you are. This is a safe place.",
+    spaceHintFoundry: "You're in Foundry—focus on choices and structure rather than comfort.",
+    spaceHintCenter: "You're in Center—feel free to share what's on your mind.",
   },
   resilience: {
     title: "Recovery resilience",
@@ -446,6 +523,21 @@ const en: Messages = {
     professional: "Professional",
     fantasy: "Fantasy",
     hint: "Outfit changes by level within your chosen theme.",
+  },
+  arenaMembership: {
+    label: "Arena membership",
+    approved: "Approved",
+    pending: "Pending approval. Levels will show after admin approval.",
+    hint: "Enter job function and join date. Admin approval unlocks Arena levels.",
+    jobFunction: "Job function",
+    joinedAt: "Join date",
+    leaderStartedAt: "Leader start date (optional, for leader roles)",
+    submit: "Submit",
+    submitting: "Submitting…",
+    submitError: "Submission failed.",
+    submitSuccess: "Pending approval. Levels will show after admin approval.",
+    seniorDoctorHint: "Senior Doctor is typically 3+ years of experience.",
+    validationRequired: "Please enter job function and join date.",
   },
   emotionalStats: {
     emptyMessage: "No records yet. Try Arena or chat to start.",

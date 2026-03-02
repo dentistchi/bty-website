@@ -13,7 +13,7 @@ const ACTIVITY_XP: Record<ActivityType, number> = {
 };
 
 /**
- * Record Dojo/Dear Me activity XP: apply daily cap (Arena + activity), insert event, update weekly_xp (active league), apply to Core.
+ * Record Foundry/Center activity XP: apply daily cap (Arena + activity), insert event, update weekly_xp (active league), apply to Core.
  * Call after a successful mentor or chat message. No-op if not authenticated or cap would be exceeded.
  */
 export async function recordActivityXp(

@@ -73,6 +73,15 @@ const config: Config = {
           ink: "#2D2A36",
           "ink-soft": "#5C5868",
         },
+        foundry: {
+          white: "#FFFFFF",
+          purple: "#5B4B8A",
+          "purple-light": "#7B6BA8",
+          "purple-dark": "#4A3D6F",
+          "purple-muted": "#E8E4F2",
+          ink: "#2D2A36",
+          "ink-soft": "#5C5868",
+        },
         sanctuary: {
           cream: "#FDF8F3",
           blush: "#F5E6E0",

@@ -106,24 +106,25 @@ export async function PATCH(req: NextRequest) {
   if (rawTheme !== undefined) updates.avatar_outfit_theme = avatarOutfitTheme;
 
   const rawOutfitId = body.avatarSelectedOutfitId;
+  let outfitIdToSet: string | null | undefined = undefined;
   if (rawOutfitId !== undefined) {
-    const outfitId =
+    outfitIdToSet =
       rawOutfitId === null || rawOutfitId === ""
         ? null
         : typeof rawOutfitId === "string"
           ? rawOutfitId.trim() || null
           : null;
-    if (outfitId !== null) {
+    if (outfitIdToSet !== null) {
       const { getOutfitById } = await import("@/lib/bty/arena/avatarOutfits");
       const themeForValidation = avatarOutfitTheme ?? "professional";
-      const valid = getOutfitById(themeForValidation, outfitId);
+      const valid = getOutfitById(themeForValidation, outfitIdToSet);
       if (!valid) {
         const out = NextResponse.json({ error: "INVALID_AVATAR_OUTFIT_ID" }, { status: 400 });
         copyCookiesAndDebug(base, out, req, true);
         return out;
       }
     }
-    updates.avatar_selected_outfit_id = outfitId;
+    updates.avatar_selected_outfit_id = outfitIdToSet;
   }
 
   const { error: updateError } = await supabase
@@ -132,6 +133,30 @@ export async function PATCH(req: NextRequest) {
     .eq("user_id", user.id);
 
   if (updateError) {
+    const isMissingColumn =
+      typeof updateError.message === "string" &&
+      (updateError.message.includes("does not exist") || updateError.message.includes("column"));
+    if (isMissingColumn && outfitIdToSet !== undefined) {
+      const fallbackUpdates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (avatarUrl !== undefined) fallbackUpdates.avatar_url = avatarUrl;
+      if (rawCharId !== undefined) {
+        fallbackUpdates.avatar_character_id = avatarCharacterId;
+        if (avatarCharacterId !== null) fallbackUpdates.avatar_character_locked = true;
+      }
+      if (rawTheme !== undefined) fallbackUpdates.avatar_outfit_theme = avatarOutfitTheme;
+      const { error: fallbackErr } = await supabase
+        .from("arena_profiles")
+        .update(fallbackUpdates)
+        .eq("user_id", user.id);
+      if (fallbackErr) {
+        const out = NextResponse.json({ error: fallbackErr.message }, { status: 500 });
+        copyCookiesAndDebug(base, out, req, true);
+        return out;
+      }
+      const out = NextResponse.json({ ok: true });
+      copyCookiesAndDebug(base, out, req, true);
+      return out;
+    }
     const out = NextResponse.json({ error: updateError.message }, { status: 500 });
     copyCookiesAndDebug(base, out, req, true);
     return out;

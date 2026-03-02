@@ -41,7 +41,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
       />
       <div
         className={cn(
-          "relative w-full max-w-md rounded-2xl border border-dojo-purple-muted bg-dojo-white shadow-xl",
+          "relative w-full max-w-md rounded-2xl border border-foundry-purple-muted bg-foundry-white shadow-xl",
           "transition-all duration-200",
           className
         )}

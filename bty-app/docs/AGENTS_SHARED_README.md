@@ -2,6 +2,9 @@
 
 이 파일을 **반드시 읽고** 작업하세요. 커맨더·진행 에이전트·에러 체크 에이전트가 공통으로 참고하는 문서입니다.
 
+> **ENGINE_ARCHITECTURE_DIRECTIVE_PLAN 사용 시**  
+> `docs/ENGINE_ARCHITECTURE_DIRECTIVE_PLAN.md` §4·§5 프롬프트를 해당 Cursor에 붙여 넣기 **전에** 이 파일(`docs/AGENTS_SHARED_README.md`)과 `docs/ENGINE_ARCHITECTURE_DIRECTIVE_PLAN.md` 를 열어 두라고 안내한다.
+
 - **서커(커맨더)**: 계획서만 업데이트. 진행/검증 구분은 **`docs/PLAN_WORKFLOW.md`** 참고.
 
 - **자율 진행**: 본인이 할 수 있는 것은 사용자에게 묻지 말고, 판단 가능한 범위에서 **자체 진행**한다. 불가능하거나 결정이 필요한 경우만 질문한다.

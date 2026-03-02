@@ -1,5 +1,5 @@
 /**
- * Shared auth client for bty and Dear Me. Same API base = one account.
+ * Shared auth client for bty and Center. Same API base = one account.
  */
 
 import { fetchJson } from "@/lib/read-json";

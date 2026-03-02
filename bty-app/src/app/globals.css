@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  /* Dear Me — 자존감 회복실 */
+  /* Center — 자존감 회복실 */
   --dear-bg: #FDFCF8;
   --dear-bg-paper: #FAF9F5;
   --dear-charcoal: #333333;
@@ -16,11 +16,18 @@
   --dojo-purple-dark: #4A3D6F;
   --dojo-ink: #2D2A36;
   --dojo-ink-soft: #5C5868;
-  /* Arena — ARENA_UI_REDESIGN_BRIEF 프롬프트 C (크림·연보라·dojo-purple) */
+  /* Foundry (구 Dojo) — 리더십 훈련 영역 */
+  --foundry-white: #FFFFFF;
+  --foundry-purple: #5B4B8A;
+  --foundry-purple-light: #7B6BA8;
+  --foundry-purple-dark: #4A3D6F;
+  --foundry-ink: #2D2A36;
+  --foundry-ink-soft: #5C5868;
+  /* Arena — ARENA_UI_REDESIGN_BRIEF 프롬프트 C (크림·연보라·foundry-purple) */
   --arena-bg: #F5F0E8;
   --arena-bg-end: #E8E0F0;
   --arena-card: #FAFAF8;
-  --arena-accent: var(--dojo-purple);
+  --arena-accent: var(--foundry-purple);
   --arena-text: #2D2A36;
   --arena-text-soft: #5C5868;
   /* Journey Board pastels */
@@ -41,7 +48,7 @@ body {
   min-height: 100vh;
 }
 
-/* Dear Me: 조용한 다락방, 나에게 쓰는 편지 */
+/* Center: 조용한 다락방, 나에게 쓰는 편지 */
 body[data-theme="dear"] {
   background-color: var(--dear-bg);
   color: var(--dear-charcoal);
@@ -55,10 +62,10 @@ body[data-theme="sanctuary"] {
   color: var(--sanctuary-text);
 }
 
-body[data-theme="dojo"],
+body[data-theme="foundry"],
 body:not([data-theme]) {
-  background: var(--dojo-white);
-  color: var(--dojo-ink);
+  background: var(--foundry-white);
+  color: var(--foundry-ink);
 }
 
 /* Arena: 크림 → 연한 보라 그라데이션 (bty protected 영역) */
@@ -93,7 +100,7 @@ body[data-theme="arena"],
   background: rgba(91, 75, 138, 0.08);
 }
 .bty-arena-area .bty-nav-link[data-active="true"]:hover {
-  background: var(--dojo-purple-dark);
+  background: var(--foundry-purple-dark);
 }
 
 /* §4 C + 접근성: focus-visible 시 box-shadow 링 (outline 대신, 시인성 유지) */

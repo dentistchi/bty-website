@@ -18,14 +18,38 @@ export async function GET(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);
   if (!user) return unauthenticated(req, base);
 
-  const { data: row, error } = await supabase
+  const fullSelect =
+    "user_id, core_xp_total, code_index, sub_name, sub_name_renamed_in_code, sub_name_renamed_at_code_index, code_hidden, avatar_url, avatar_character_id, avatar_character_locked, avatar_outfit_theme, avatar_selected_outfit_id, l4_access";
+  let row: Record<string, unknown> | null = null;
+  let selectError: { message: string } | null = null;
+
+  const { data: fullRow, error } = await supabase
     .from("arena_profiles")
-    .select("user_id, core_xp_total, code_index, sub_name, sub_name_renamed_in_code, sub_name_renamed_at_code_index, code_hidden, avatar_url, avatar_character_id, avatar_character_locked, avatar_outfit_theme, avatar_selected_outfit_id, l4_access")
+    .select(fullSelect)
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (error) {
-    const out = NextResponse.json({ error: "DB_ERROR", detail: error.message }, { status: 500 });
+    selectError = error;
+    const isMissingColumn =
+      typeof error.message === "string" &&
+      (error.message.includes("does not exist") || error.message.includes("column"));
+    if (isMissingColumn) {
+      const minimalSelect =
+        "user_id, core_xp_total, code_index, sub_name, sub_name_renamed_in_code, code_hidden, avatar_url, avatar_character_id, avatar_outfit_theme, l4_access";
+      const { data: minRow, error: minErr } = await supabase
+        .from("arena_profiles")
+        .select(minimalSelect)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!minErr && minRow) row = minRow as Record<string, unknown>;
+    }
+  } else {
+    row = fullRow as Record<string, unknown> | null;
+  }
+
+  if (selectError && !row) {
+    const out = NextResponse.json({ error: "DB_ERROR", detail: selectError.message }, { status: 500 });
     copyCookiesAndDebug(base, out, req, true);
     return out;
   }

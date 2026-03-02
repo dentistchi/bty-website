@@ -69,6 +69,29 @@ type MembershipRequestRes = {
   } | null;
 };
 
+type LeadershipEngineStateRes = {
+  currentStage: 1 | 2 | 3 | 4;
+  stageName: string;
+  forcedResetTriggeredAt: string | null;
+  resetDueAt: string | null;
+};
+
+type AIRResultRes = { air: number; missedWindows: number; integritySlip: boolean };
+type AIRSnapshotRes = { air_7d: AIRResultRes; air_14d: AIRResultRes; air_90d: AIRResultRes };
+
+type TIIRes = {
+  tii: number | null;
+  avg_air: number | null;
+  avg_mwd: number | null;
+  tsp: number | null;
+};
+
+type CertifiedRes = {
+  current: boolean;
+  reasons_met: string[];
+  reasons_missing: string[];
+};
+
 const STREAK_KEY = "btyArenaStreak:v1";
 
 /** PROJECT_BACKLOG §2: MVP에서는 true(노출), MVP 이후 false로 설정해 Arena Level 카드 숨김 */
@@ -115,6 +138,10 @@ export default function DashboardClient() {
   const [membershipSubmitMsg, setMembershipSubmitMsg] = React.useState<string | null>(null);
   const [membershipSubmitting, setMembershipSubmitting] = React.useState(false);
   const [isElite, setIsElite] = React.useState<boolean | null>(null);
+  const [leState, setLeState] = React.useState<LeadershipEngineStateRes | null>(null);
+  const [leAir, setLeAir] = React.useState<AIRSnapshotRes | null>(null);
+  const [leTii, setLeTii] = React.useState<TIIRes | null>(null);
+  const [leCertified, setLeCertified] = React.useState<CertifiedRes | null>(null);
   const [membershipForm, setMembershipForm] = React.useState({
     job_function: "assistant",
     joined_at: "",
@@ -149,6 +176,8 @@ export default function DashboardClient() {
         method: "PATCH",
         json: { avatarCharacterId: characterId, avatarUrl: null },
       });
+      const next = await arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => core);
+      if (next) setCore(next);
       setAvatarPrefsSavedAt(Date.now());
       setTimeout(() => setAvatarPrefsSavedAt(null), 2000);
     } catch {
@@ -196,10 +225,12 @@ export default function DashboardClient() {
   }
 
   async function submitMembershipRequest() {
+    const loc = (params?.locale === "ko" ? "ko" : "en") as Locale;
+    const t = getMessages(loc).arenaMembership;
     const jf = membershipForm.job_function.trim();
     const joined = membershipForm.joined_at.trim().slice(0, 10);
     if (!jf || !joined) {
-      setMembershipSubmitMsg("직군과 입사일을 입력해 주세요.");
+      setMembershipSubmitMsg(t.validationRequired);
       return;
     }
     setMembershipSubmitMsg(null);
@@ -213,11 +244,11 @@ export default function DashboardClient() {
           leader_started_at: membershipForm.leader_started_at.trim().slice(0, 10) || null,
         },
       });
-      setMembershipSubmitMsg("승인 대기 중입니다. Admin 승인 후 레벨이 열립니다.");
+      setMembershipSubmitMsg(t.submitSuccess);
       const res = await arenaFetch<MembershipRequestRes>("/api/arena/membership-request").catch(() => ({ request: null }));
       if (res?.request) setMembershipRequest(res.request);
     } catch (e) {
-      setMembershipSubmitMsg(e instanceof Error ? e.message : "제출에 실패했습니다.");
+      setMembershipSubmitMsg(e instanceof Error ? e.message : t.submitError);
     } finally {
       setMembershipSubmitting(false);
     }
@@ -242,7 +273,7 @@ export default function DashboardClient() {
           subName: "Spark",
           seasonalXpTotal: 0,
         };
-        const [c, leagueRes, todayRes, statsRes, unlockedRes, membershipRes, eliteRes] = await Promise.all([
+        const [c, leagueRes, todayRes, statsRes, unlockedRes, membershipRes, eliteRes, leStateRes, leAirRes, leTiiRes, leCertifiedRes] = await Promise.all([
           arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => fallbackCore),
           arenaFetch<LeagueRes>("/api/arena/league/active").catch(() => null),
           arenaFetch<TodayXpRes>("/api/arena/today-xp").catch(() => ({ xpToday: 0 })),
@@ -253,6 +284,10 @@ export default function DashboardClient() {
           }),
           arenaFetch<MembershipRequestRes>("/api/arena/membership-request").catch(() => ({ request: null })),
           arenaFetch<{ isElite?: boolean }>("/api/me/elite").catch(() => ({ isElite: false })),
+          arenaFetch<LeadershipEngineStateRes>("/api/arena/leadership-engine/state").catch(() => null),
+          arenaFetch<AIRSnapshotRes>("/api/arena/leadership-engine/air").catch(() => null),
+          arenaFetch<TIIRes>("/api/arena/leadership-engine/tii").catch(() => null),
+          arenaFetch<CertifiedRes>("/api/arena/leadership-engine/certified").catch(() => null),
         ]);
 
         if (!alive) return;
@@ -273,6 +308,10 @@ export default function DashboardClient() {
         if (unlockedRes) setUnlockedScenarios(unlockedRes);
         if (membershipRes?.request != null) setMembershipRequest(membershipRes.request);
         setIsElite(Boolean(eliteRes?.isElite));
+        if (leStateRes) setLeState(leStateRes);
+        if (leAirRes) setLeAir(leAirRes);
+        if (leTiiRes) setLeTii(leTiiRes);
+        if (leCertifiedRes) setLeCertified(leCertifiedRes);
       } catch (e) {
         if (!alive) return;
         setError(e instanceof Error ? e.message : "Unknown error");
@@ -295,6 +334,7 @@ export default function DashboardClient() {
   const localeTyped = (locale === "ko" ? "ko" : "en") as Locale;
   const tArenaLevels = getMessages(localeTyped).arenaLevels;
   const tAvatarOutfit = getMessages(localeTyped).avatarOutfit;
+  const tArenaMembership = getMessages(localeTyped).arenaMembership;
   const displayAvatarUrl =
     core?.avatarUrl ?? getAvatarCharacter(core?.avatarCharacterId)?.imageUrl ?? null;
 
@@ -372,28 +412,23 @@ export default function DashboardClient() {
             </Link>
           </div>
 
-          <ProgressCard label="Arena 가입">
+          <ProgressCard label={tArenaMembership.label}>
             {membershipRequest?.status === "approved" ? (
               <div style={{ fontSize: 14, opacity: 0.9 }}>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>승인됨</div>
-                <div>직군: {membershipRequest.job_function}</div>
-                <div>입사일: {membershipRequest.joined_at}</div>
-                {membershipRequest.leader_started_at && (
-                  <div>리더시작일: {membershipRequest.leader_started_at}</div>
-                )}
+                <div style={{ fontWeight: 700 }}>{tArenaMembership.approved}</div>
               </div>
             ) : membershipRequest?.status === "pending" ? (
               <div style={{ fontSize: 14, opacity: 0.9 }}>
-                승인 대기 중입니다. Admin 승인 후 레벨이 표시됩니다.
+                {tArenaMembership.pending}
               </div>
             ) : (
               <div>
                 <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 10 }}>
-                  직군·입사일·리더시작일을 입력하면 Admin 승인 후 Arena 레벨이 열립니다.
+                  {tArenaMembership.hint}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 360 }}>
                   <div>
-                    <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>직군</label>
+                    <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>{tArenaMembership.jobFunction}</label>
                     <select
                       value={membershipForm.job_function}
                       onChange={(e) => setMembershipForm((f) => ({ ...f, job_function: e.target.value }))}
@@ -412,11 +447,11 @@ export default function DashboardClient() {
                       <option value="dso">DSO</option>
                     </select>
                     <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
-                      Senior Doctor는 보통 3년 이상 경력 시 선택합니다.
+                      {tArenaMembership.seniorDoctorHint}
                     </div>
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>입사일</label>
+                    <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>{tArenaMembership.joinedAt}</label>
                     <input
                       type="date"
                       min="2007-01-01"
@@ -426,7 +461,7 @@ export default function DashboardClient() {
                     />
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>리더시작일 (선택, 리더 직군인 경우)</label>
+                    <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>{tArenaMembership.leaderStartedAt}</label>
                     <input
                       type="date"
                       min="2007-01-01"
@@ -436,7 +471,7 @@ export default function DashboardClient() {
                     />
                   </div>
                   {membershipSubmitMsg && (
-                    <div style={{ fontSize: 13, color: membershipSubmitMsg.includes("대기") ? "#0a0" : "#c00" }}>
+                    <div style={{ fontSize: 13, color: membershipSubmitMsg === tArenaMembership.submitSuccess ? "#0a0" : "#c00" }}>
                       {membershipSubmitMsg}
                     </div>
                   )}
@@ -454,7 +489,7 @@ export default function DashboardClient() {
                       cursor: membershipSubmitting ? "not-allowed" : "pointer",
                     }}
                   >
-                    {membershipSubmitting ? "제출 중…" : "제출"}
+                    {membershipSubmitting ? tArenaMembership.submitting : tArenaMembership.submit}
                   </button>
                 </div>
               </div>
@@ -506,6 +541,61 @@ export default function DashboardClient() {
           <ProgressCard label="Points Today">
             <div style={{ fontSize: 28, fontWeight: 800 }}>{xpToday}</div>
             <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>XP earned today (UTC date).</div>
+          </ProgressCard>
+
+          <ProgressCard label={locale === "ko" ? "Leadership Engine" : "Leadership Engine"}>
+            {leState == null && leAir == null && leTii == null && leCertified == null ? (
+              <div style={{ fontSize: 14, opacity: 0.8 }}>
+                {locale === "ko" ? "상태를 불러오는 중…" : "Loading…"}
+              </div>
+            ) : (
+              <>
+                {leState != null && (
+                  <>
+                    <div style={{ fontSize: 15, fontWeight: 700 }}>{leState.stageName}</div>
+                    <div style={{ marginTop: 6, fontSize: 13, opacity: 0.85 }}>
+                      {locale === "ko" ? "Stage" : "Stage"} {leState.currentStage}
+                    </div>
+                    {leState.resetDueAt != null && (
+                      <div style={{ marginTop: 10, fontSize: 13, opacity: 0.9 }}>
+                        {locale === "ko" ? "Reset 완료 기한" : "Reset due"}:{" "}
+                        {new Date(leState.resetDueAt).toLocaleString(locale === "ko" ? "ko-KR" : "en-US", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+                {leAir != null && (
+                  <div style={{ marginTop: 12, fontSize: 13, opacity: 0.9 }}>
+                    <span style={{ fontWeight: 600 }}>AIR</span> 7d: {(leAir.air_7d.air * 100).toFixed(0)}%
+                    {leAir.air_7d.integritySlip && (
+                      <span style={{ marginLeft: 8, color: "var(--arena-accent)" }}>
+                        {locale === "ko" ? "·integrity slip" : "·integrity slip"}
+                      </span>
+                    )}
+                    {" · "}
+                    14d: {(leAir.air_14d.air * 100).toFixed(0)}% · 90d: {(leAir.air_90d.air * 100).toFixed(0)}%
+                  </div>
+                )}
+                {leTii != null && leTii.tii != null && (
+                  <div style={{ marginTop: 8, fontSize: 13, opacity: 0.9 }}>
+                    <span style={{ fontWeight: 600 }}>{locale === "ko" ? "팀 TII" : "Team TII"}</span>: {(Number(leTii.tii) * 100).toFixed(1)}%
+                  </div>
+                )}
+                {leCertified != null && (
+                  <div style={{ marginTop: 8, fontSize: 13, opacity: 0.9 }}>
+                    <span style={{ fontWeight: 600 }}>Certified</span>: {leCertified.current ? (locale === "ko" ? "예" : "Yes") : (locale === "ko" ? "아니오" : "No")}
+                    {leCertified.reasons_missing.length > 0 && (
+                      <span style={{ marginLeft: 6, fontSize: 12, opacity: 0.8 }}>
+                        ({leCertified.reasons_missing.join(", ")})
+                      </span>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </ProgressCard>
 
           {SHOW_ARENA_LEVELS && (

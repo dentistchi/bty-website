@@ -183,6 +183,7 @@ export function SafeMirror({
         body: JSON.stringify({
           message: trimmed,
           messages: history.map((m) => ({ role: m.role, content: m.content })),
+          locale,
         }),
       });
 

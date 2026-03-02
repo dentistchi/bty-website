@@ -29,7 +29,7 @@ export function DiaryHeader() {
     <header className="flex items-center justify-between">
       <div />
       <div className="flex items-center gap-4">
-        <span className="text-sm text-dojo-ink-soft" suppressHydrationWarning>
+        <span className="text-sm text-foundry-ink-soft" suppressHydrationWarning>
           {dateString}
         </span>
       </div>

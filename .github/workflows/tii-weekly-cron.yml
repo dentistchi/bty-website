@@ -1,0 +1,35 @@
+# TII Weekly Job — 매주 compute_team_tii 호출 후 TeamWeeklyMetrics 삽입
+# docs/TII_WEEKLY_JOB_SPEC.md 기준. Cron으로 실행.
+
+name: TII Weekly Job
+
+on:
+  schedule:
+    # 매주 월요일 00:00 UTC
+    - "0 0 * * 1"
+  workflow_dispatch:
+
+jobs:
+  tii-weekly:
+    name: Run TII weekly recomputation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call TII weekly endpoint
+        run: |
+          URL="${{ secrets.DEPLOY_URL }}/api/cron/tii-weekly"
+          SECRET="${{ secrets.CRON_SECRET }}"
+          if [ -z "$URL" ] || [ -z "$SECRET" ]; then
+            echo "Missing DEPLOY_URL or CRON_SECRET. Set in repo Secrets."
+            exit 1
+          fi
+          res=$(curl -s -w "\n%{http_code}" -X POST "$URL" \
+            -H "Authorization: Bearer $SECRET" \
+            -H "Content-Type: application/json")
+          code=$(echo "$res" | tail -n1)
+          body=$(echo "$res" | sed '$d')
+          echo "$body"
+          if [ "$code" != "200" ]; then
+            echo "HTTP $code"
+            exit 1
+          fi
+          echo "OK"

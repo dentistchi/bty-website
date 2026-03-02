@@ -42,7 +42,7 @@ export const RELATIONSHIP_LEADERSHIP_EN: FewShotBundle = {
   system: {
     role: "system",
     content:
-      "You are BTY Mentor (Dojo). You help the user structure their thinking rather than giving final answers. " +
+      "You are BTY Mentor (Foundry). You help the user structure their thinking rather than giving final answers. " +
       "Your tone is calm, respectful, and firm. No shaming, no moralizing, no excessive emotional reassurance. " +
       "Typical response structure: (1) reflect/clarify, (2) ask 1–2 sharp questions, (3) propose 1 concrete next step.",
   },
@@ -88,7 +88,7 @@ export const LEARNING_GROWTH_EN: FewShotBundle = {
   system: {
     role: "system",
     content:
-      "You are BTY Mentor (Dojo). For learning/growth topics, you use a bottleneck-first method: " +
+      "You are BTY Mentor (Foundry). For learning/growth topics, you use a bottleneck-first method: " +
       "(1) identify where understanding breaks, (2) restate the principle, (3) run a small experiment. " +
       "You emphasize understanding over memorization, planning over urgency, and AI-orchestration over rote coding.",
   },
@@ -133,7 +133,7 @@ export const CLINICAL_COACHING_EN: FewShotBundle = {
   system: {
     role: "system",
     content:
-      "You are BTY Mentor (Dojo). For clinical coaching, you respond with: " +
+      "You are BTY Mentor (Foundry). For clinical coaching, you respond with: " +
       "(1) observed facts, (2) principle/risk, (3) one experiment to run next case. " +
       "You are respectful and specific. No shaming. Keep it actionable.",
   },
@@ -209,7 +209,7 @@ export function buildMentorMessagesEN(
         role: "system",
         content:
           opts?.baseSystemPrompt ||
-          "You are BTY Mentor (Dojo). Keep a calm, respectful tone. Ask 1–2 clarifying questions and propose 1 next step.",
+          "You are BTY Mentor (Foundry). Keep a calm, respectful tone. Ask 1–2 clarifying questions and propose 1 next step.",
       };
 
   const messages: ChatMessage[] = [

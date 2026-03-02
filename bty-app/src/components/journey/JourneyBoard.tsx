@@ -258,8 +258,8 @@ export function JourneyBoard() {
   if (loading) {
     return (
       <AuthGate>
-        <ThemeBody theme="dojo" />
-        <main className="min-h-screen bg-dojo-white flex items-center justify-center p-6">
+        <ThemeBody theme="foundry" />
+        <main className="min-h-screen bg-foundry-white flex items-center justify-center p-6">
           <LoadingFallback icon="📋" message="잠시만 기다려 주세요." withSkeleton />
         </main>
       </AuthGate>
@@ -268,37 +268,37 @@ export function JourneyBoard() {
 
   return (
     <AuthGate>
-      <ThemeBody theme="dojo" />
-      <main className="min-h-screen bg-dojo-white">
+      <ThemeBody theme="foundry" />
+      <main className="min-h-screen bg-foundry-white">
         <Comeback />
         <div className="max-w-2xl mx-auto px-4 py-6 sm:py-10">
           <Nav locale={locale} pathname={pathname} />
           <header className="text-center mb-10">
-            <h1 className="text-2xl sm:text-3xl font-semibold text-dojo-purple-dark">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-foundry-purple-dark">
               나의 여정 (My Journey)
             </h1>
-            <p className="text-dojo-ink-soft mt-1">
+            <p className="text-foundry-ink-soft mt-1">
               28일. 어제보다 나은 오늘을 위한 연습.
             </p>
             {(profile?.bounce_back_count ?? 0) > 0 && (
-              <p className="mt-3 text-sm text-dojo-purple font-medium">
+              <p className="mt-3 text-sm text-foundry-purple font-medium">
                 돌아온 횟수: {profile?.bounce_back_count}회
               </p>
             )}
           </header>
 
           {seasonComplete && (
-            <div className="mb-8 rounded-2xl border border-dojo-purple/40 bg-journey-done p-6 sm:p-8 text-center">
-              <h2 className="text-xl font-semibold text-dojo-purple-dark mb-2">
+            <div className="mb-8 rounded-2xl border border-foundry-purple/40 bg-journey-done p-6 sm:p-8 text-center">
+              <h2 className="text-xl font-semibold text-foundry-purple-dark mb-2">
                 첫 번째 시즌을 마치고, 더 깊은 연습으로 들어갑니다
               </h2>
-              <p className="text-dojo-ink-soft text-sm mb-4">
+              <p className="text-foundry-ink-soft text-sm mb-4">
                 수료가 아니라 이제 시즌 2로 넘어갈 차례예요.
               </p>
               <button
                 type="button"
                 onClick={handleStartSeason2}
-                className="rounded-xl px-6 py-3 font-medium bg-dojo-purple text-white hover:bg-dojo-purple-dark transition-colors"
+                className="rounded-xl px-6 py-3 font-medium bg-foundry-purple text-white hover:bg-foundry-purple-dark transition-colors"
               >
                 시즌 2 시작하기
               </button>
@@ -335,35 +335,35 @@ export function JourneyBoard() {
                     isLocked && "cursor-not-allowed opacity-75",
                     isToday &&
                       !isTodayLocked &&
-                      "border-dojo-purple bg-journey-today text-dojo-purple-dark shadow-md",
+                      "border-foundry-purple bg-journey-today text-foundry-purple-dark shadow-md",
                     isTodayWaiting24h &&
-                      "border-dojo-purple-muted bg-journey-locked text-dojo-ink-soft",
+                      "border-foundry-purple-muted bg-journey-locked text-foundry-ink-soft",
                     isPast &&
                       isCompleted &&
-                      "border-journey-done-strong bg-journey-done text-dojo-purple-dark",
+                      "border-journey-done-strong bg-journey-done text-foundry-purple-dark",
                     isPast &&
                       !isCompleted &&
-                      "border-dojo-purple-muted bg-dojo-purple-muted/30 text-dojo-ink-soft",
-                    isFuture && "border-dojo-purple-muted bg-journey-locked text-dojo-ink-soft"
+                      "border-foundry-purple-muted bg-foundry-purple-muted/30 text-foundry-ink-soft",
+                    isFuture && "border-foundry-purple-muted bg-journey-locked text-foundry-ink-soft"
                   )}
                   whileHover={isClickable ? { scale: 1.02 } : undefined}
                   whileTap={isClickable ? { scale: 0.98 } : undefined}
                   initial={false}
                 >
-                  <span className="text-xs text-dojo-ink-soft">Day</span>
+                  <span className="text-xs text-foundry-ink-soft">Day</span>
                   <span className="font-semibold">{day}</span>
                   {isTodayWaiting24h && (
-                    <span className="text-[9px] mt-1 text-dojo-ink-soft/90 leading-tight text-center px-0.5 truncate max-w-full">
+                    <span className="text-[9px] mt-1 text-foundry-ink-soft/90 leading-tight text-center px-0.5 truncate max-w-full">
                       {countdown ? countdown.replace(/\s*초$/, "") : "🔒"}
                     </span>
                   )}
                   {isFuture && (
-                    <span className="text-[10px] mt-0.5 text-dojo-ink-soft/80 leading-tight">
+                    <span className="text-[10px] mt-0.5 text-foundry-ink-soft/80 leading-tight">
                       🔒
                     </span>
                   )}
                   {isTodayWaiting24h && !countdown && (
-                    <span className="text-[10px] mt-0.5 text-dojo-ink-soft/80 leading-tight">
+                    <span className="text-[10px] mt-0.5 text-foundry-ink-soft/80 leading-tight">
                       🔒
                     </span>
                   )}
@@ -373,18 +373,18 @@ export function JourneyBoard() {
           </div>
 
           {isTodayLocked && countdown && (
-            <div className="mt-6 rounded-xl border border-dojo-purple-muted bg-dojo-purple-muted/20 px-4 py-3 text-center">
-              <p className="text-sm text-dojo-ink-soft">
-                다음 훈련까지 남은 시간: <strong className="text-dojo-purple-dark">{countdown}</strong>
+            <div className="mt-6 rounded-xl border border-foundry-purple-muted bg-foundry-purple-muted/20 px-4 py-3 text-center">
+              <p className="text-sm text-foundry-ink-soft">
+                다음 훈련까지 남은 시간: <strong className="text-foundry-purple-dark">{countdown}</strong>
               </p>
-              <p className="text-xs text-dojo-ink-soft/80 mt-1">
+              <p className="text-xs text-foundry-ink-soft/80 mt-1">
                 기다림도 훈련이에요.
               </p>
             </div>
           )}
 
           {currentDay <= 28 && !seasonComplete && !isTodayLocked && (
-            <p className="mt-6 text-center text-sm text-dojo-ink-soft">
+            <p className="mt-6 text-center text-sm text-foundry-ink-soft">
               {profile?.current_day === 1
                 ? "Day 1을 눌러 오늘의 미션을 시작하세요."
                 : `Day ${currentDay}을 눌러 오늘의 미션을 진행하세요.`}
@@ -392,26 +392,26 @@ export function JourneyBoard() {
           )}
 
           {/* Future lock + failure-is-ok message */}
-          <div className="mt-8 rounded-2xl border border-dojo-purple-muted bg-dojo-purple-muted/20 p-6 text-center space-y-2">
-            <p className="text-dojo-ink-soft text-sm">
+          <div className="mt-8 rounded-2xl border border-foundry-purple-muted bg-foundry-purple-muted/20 p-6 text-center space-y-2">
+            <p className="text-foundry-ink-soft text-sm">
               내일의 나를 위해 남겨두세요. 순서대로 하나씩 걸어가요.
             </p>
-            <p className="text-dojo-ink-soft/80 text-xs">
+            <p className="text-foundry-ink-soft/80 text-xs">
               지나간 날을 건너뛰어도 괜찮아요. 돌아온 것이 중요해요.
             </p>
           </div>
 
-          <footer className="mt-12 pt-6 border-t border-dojo-purple-muted text-center text-sm text-dojo-ink-soft space-x-4">
-            <Link href="/bty/mentor" className="text-dojo-purple hover:underline">
+          <footer className="mt-12 pt-6 border-t border-foundry-purple-muted text-center text-sm text-foundry-ink-soft space-x-4">
+            <Link href="/bty/mentor" className="text-foundry-purple hover:underline">
               Dr. Chi Mentor
             </Link>
             <span>·</span>
-            <Link href="/bty/integrity" className="text-dojo-purple hover:underline">
+            <Link href="/bty/integrity" className="text-foundry-purple hover:underline">
               역지사지 시뮬레이터
             </Link>
             <span>·</span>
-            <Link href={`/${locale}/dear-me`} className="text-dojo-purple hover:underline">
-              Dear Me로 가기
+            <Link href={`/${locale}/center`} className="text-foundry-purple hover:underline">
+              Center로 가기
             </Link>
           </footer>
         </div>
@@ -420,7 +420,7 @@ export function JourneyBoard() {
         {toast && (
           <div
             role="alert"
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-md px-5 py-4 rounded-xl bg-dojo-purple-dark text-white text-sm shadow-lg animate-fadeIn"
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-md px-5 py-4 rounded-xl bg-foundry-purple-dark text-white text-sm shadow-lg animate-fadeIn"
           >
             {toast}
           </div>

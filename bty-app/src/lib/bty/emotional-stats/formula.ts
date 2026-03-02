@@ -12,7 +12,7 @@ import {
   type CoreStatId,
   STAT_DISTRIBUTION,
 } from "./coreStats";
-import { getPhaseMultiplier, getConsistencyCap } from "./phase";
+import { getPhaseMultiplier, getConsistencyCap, getAccelerationFactor } from "./phase";
 
 /** Base gain per spec. */
 export const BASE_GAIN = 0.8;
@@ -33,9 +33,10 @@ export function computeSessionQualityQ(eventIdsInSession: EmotionalEventId[]): n
 }
 
 /**
- * Delta for one stat: base_gain * Q * novelty * consistency [* phase_multiplier].
+ * Delta for one stat: base_gain * Q * novelty * consistency * acc * phase_multiplier (v3).
  * Clamp per stat per session by clampDelta.
- * When userDay is provided, consistency is capped by phase (v3 consistency_cap) and result is multiplied by phase multiplier.
+ * When userDay is provided, consistency is capped by phase (v3 consistency_cap), and result is multiplied by
+ * acceleration factor (acc = 1.25 - user_day/100 for day 1–30) and phase_base_gain_multiplier.
  */
 export function computeStatDelta(
   Q: number,
@@ -50,7 +51,8 @@ export function computeStatDelta(
       ? Math.max(1, Math.min(getConsistencyCap(userDay), consistency))
       : Math.max(1, Math.min(1.4, consistency));
   const phaseMult = userDay !== undefined ? getPhaseMultiplier(userDay) : 1;
-  return baseGain * Q * nov * cons * phaseMult;
+  const acc = userDay !== undefined ? getAccelerationFactor(userDay) : 1;
+  return baseGain * Q * nov * cons * acc * phaseMult;
 }
 
 /**

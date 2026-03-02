@@ -93,13 +93,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     pathname?.includes("/bty/login") ||
     pathname?.includes("/admin/login");
 
-  // ✅ 랜딩·Arena·Dear Me는 먼저 화면 띄우고 세션은 백그라운드에서 조회 (로딩에 막히지 않음)
+  // ✅ 랜딩·Arena·Center는 먼저 화면 띄우고 세션은 백그라운드에서 조회 (로딩에 막히지 않음)
   const isPublicFirstPaint =
     pathname === "/en" ||
     pathname === "/en/" ||
     pathname === "/ko" ||
     pathname === "/ko/" ||
-    pathname?.includes("/dear-me") ||
+    pathname?.includes("/center") ||
     pathname?.includes("/bty-arena");
 
   const [user, setUser] = useState<AuthUser>(null);

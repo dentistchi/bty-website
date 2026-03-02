@@ -10,7 +10,7 @@ export const GUIDE_AVATAR_VARIANTS = {
   default: "/images/guide-character-default.png",
   /** 환영/격려: 윙크·손짓 등 밝은 인사 */
   welcome: "/images/guide-character-welcome.png",
-  /** 따뜻함: 넓은 미소, Dear Me·멘토 등 */
+  /** 따뜻함: 넓은 미소, Center·멘토 등 */
   warm: "/images/guide-character-warm.png",
 } as const;
 
@@ -72,7 +72,7 @@ export function GuideCharacterAvatar({
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center rounded-full flex-shrink-0 bg-dojo-purple/15 text-dojo-purple",
+        "inline-flex items-center justify-center rounded-full flex-shrink-0 bg-foundry-purple/15 text-foundry-purple",
         sizeClass,
         className
       )}

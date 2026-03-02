@@ -52,7 +52,7 @@ export function ResilienceGraph({
   const isDear = theme === "dear";
   const isSanctuary = theme === "sanctuary";
   const stroke = isDear ? "#8A9A5B" : isSanctuary ? "var(--sanctuary-flower)" : "#5B4B8A";
-  const labelColor = isDear ? "text-dear-charcoal-soft" : isSanctuary ? "text-sanctuary-text-soft" : "text-dojo-ink-soft";
+  const labelColor = isDear ? "text-dear-charcoal-soft" : isSanctuary ? "text-sanctuary-text-soft" : "text-foundry-ink-soft";
 
   const [tick, setTick] = useState(0);
   useEffect(() => {
@@ -78,13 +78,13 @@ export function ResilienceGraph({
             ? "bg-transparent border-transparent"
             : isSanctuary
               ? "bg-sanctuary-sky/30 border-sanctuary-sage/40"
-              : "bg-dojo-purple-muted/20 border-dojo-purple-muted"
+              : "bg-foundry-purple-muted/20 border-foundry-purple-muted"
         )}
       >
         <h3
           className={cn(
             "text-lg font-medium mb-1",
-            isDear ? "font-serif text-dear-charcoal" : isSanctuary ? "text-sanctuary-text" : "text-dojo-purple-dark"
+            isDear ? "font-serif text-dear-charcoal" : isSanctuary ? "text-sanctuary-text" : "text-foundry-purple-dark"
           )}
         >
           {t.title}

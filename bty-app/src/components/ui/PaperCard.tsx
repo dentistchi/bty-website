@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 
 /**
- * 종이 질감 느낌의 카드 — Dear Me 톤 (둥근 모서리, 부드러운 그림자)
+ * 종이 질감 느낌의 카드 — Center 톤 (둥근 모서리, 부드러운 그림자)
  */
 export function PaperCard({
   children,

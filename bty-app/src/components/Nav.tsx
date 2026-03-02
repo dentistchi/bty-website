@@ -5,12 +5,12 @@ import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-type NavTheme = "dear" | "dojo";
+type NavTheme = "dear" | "foundry";
 
 export function Nav({
   locale,
   pathname,
-  theme = "dojo",
+  theme = "foundry",
 }: {
   locale: Locale;
   pathname: string;
@@ -20,19 +20,19 @@ export function Nav({
   const isEn = pathname.startsWith("/en");
   const isBty = pathname.includes("/bty") && !pathname.includes("/bty-arena");
   const isArena = pathname.includes("/bty-arena");
-  const isDearMe = pathname.includes("/dear-me");
+  const isCenter = pathname.includes("/center");
   const isDear = theme === "dear";
-  const muted = isDear ? "text-dear-charcoal-soft" : "text-dojo-ink-soft";
-  const mutedDivider = isDear ? "text-dear-charcoal-soft/60" : "text-dojo-ink-soft/60";
+  const muted = isDear ? "text-dear-charcoal-soft" : "text-foundry-ink-soft";
+  const mutedDivider = isDear ? "text-dear-charcoal-soft/60" : "text-foundry-ink-soft/60";
   const rest = pathname.slice(isEn ? 3 : 3) || "/";
   const toggleHref = isEn ? `/ko${rest}` : `/en${rest}`;
   return (
     <nav className="flex items-center justify-center gap-4 py-3 text-sm flex-wrap">
       <Link
-        href={isEn ? "/en/dear-me" : "/ko/dear-me"}
-        className={isDearMe ? "font-medium underline" : cn(muted, "hover:underline")}
+        href={isEn ? "/en/center" : "/ko/center"}
+        className={isCenter ? "font-medium underline" : cn(muted, "hover:underline")}
       >
-        {t.todayMe}
+        {t.center}
       </Link>
       <Link
         href={isEn ? "/en/bty" : "/ko/bty"}

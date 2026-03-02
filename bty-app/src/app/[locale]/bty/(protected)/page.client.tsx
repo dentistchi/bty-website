@@ -9,14 +9,14 @@ import { EmotionalStatsPhrases } from "@/components/bty/EmotionalStatsPhrases";
 type BtyMessages = {
   title: string;
   tagline: string;
-  linkToTodayMe: string;
+  linkToCenter: string;
   entryIntro: string;
   startCta: string;
 };
 
 type Props = { locale: string; t: BtyMessages };
 
-/** PROJECT_BACKLOG §7: Dojo 진입 — 소개 + 시작하기, 클릭 시 1단계(멘토)로 이동 */
+/** PROJECT_BACKLOG §7: Foundry 진입 — 소개 + 시작하기, 클릭 시 1단계(멘토)로 이동 */
 export default function BtyIndexPage({ locale, t }: Props) {
   const router = useRouter();
   return (

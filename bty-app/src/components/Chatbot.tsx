@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * 전역 플로팅 챗봇. pathname에 따라 Dojo(dearme/dojo/arena) 모드로 /api/chat 호출.
- * CHATBOT_TRAINING_CHECKLIST §2.3: 소개·공간 안내는 i18n chat.introDojo/introDearMe, spaceHintDojo/spaceHintDearMe 사용.
+ * 전역 플로팅 챗봇. pathname에 따라 Center/Foundry/Arena 모드로 /api/chat 호출.
+ * CHATBOT_TRAINING_CHECKLIST §2.3: 소개·공간 안내는 i18n chat.introFoundry/introCenter, spaceHintFoundry/spaceHintCenter 사용.
  */
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -16,8 +16,8 @@ import { GuideCharacterAvatar, type GuideAvatarVariant } from "@/components/Guid
 type Message = {
   role: "user" | "assistant";
   content: string;
-  suggestDearMe?: boolean;
-  suggestDojo?: boolean;
+  suggestCenter?: boolean;
+  suggestFoundry?: boolean;
   suggestMentor?: boolean;
   mentorPath?: string;
   usedFallback?: boolean;
@@ -111,28 +111,28 @@ export function Chatbot() {
 
   const isBtyPage = pathname.includes("/bty");
   const isMentorPage = pathname.includes("/mentor");
-  const isDearMePage = pathname.includes("/dear-me");
+  const isCenterPage = pathname.includes("/center");
   const spaceLabel =
     locale === "ko"
-      ? isDearMePage
-        ? "Dear Me"
+      ? isCenterPage
+        ? "Center"
         : isMentorPage
           ? "멘토"
           : isBtyPage
-            ? "Dojo · 연습"
+            ? "Foundry · 연습"
             : "랜딩"
-      : isDearMePage
-        ? "Dear Me"
+      : isCenterPage
+        ? "Center"
         : isMentorPage
           ? "Mentor"
           : isBtyPage
-            ? "Dojo"
+            ? "Foundry"
             : "Home";
   // CHATBOT_TRAINING_CHECKLIST §2.3: 소개 문구·공간 안내 — i18n 사용
-  const introMessage = isBtyPage ? t.introDojo : t.introDearMe;
-  const spaceHint = isBtyPage ? t.spaceHintDojo : isDearMePage ? t.spaceHintDearMe : null;
+  const introMessage = isBtyPage ? t.introFoundry : t.introCenter;
+  const spaceHint = isBtyPage ? t.spaceHintFoundry : isCenterPage ? t.spaceHintCenter : null;
   const guideVariant: GuideAvatarVariant =
-    pathname.includes("/bty") || pathname.includes("/dear-me") ? "warm" : "default";
+    pathname.includes("/bty") || pathname.includes("/center") ? "warm" : "default";
 
   const performSend = useCallback(
     async (text: string) => {
@@ -170,12 +170,12 @@ export function Chatbot() {
         const mode = pathname.includes("/bty-arena")
           ? "arena"
           : pathname.includes("/bty")
-            ? "dojo"
-            : "dearme";
+            ? "foundry"
+            : "center";
         const r = await fetchJson<{
           message?: string;
-          suggestDearMe?: boolean;
-          suggestDojo?: boolean;
+          suggestCenter?: boolean;
+          suggestFoundry?: boolean;
           suggestMentor?: boolean;
           mentorPath?: string;
           usedFallback?: boolean;
@@ -194,14 +194,14 @@ export function Chatbot() {
           (locale === "ko"
             ? "말해줘서 고마워요. 여기선 뭐든 괜찮아요."
             : "Thanks for sharing. You're okay as you are.");
-        const suggestDearMe = r.ok && r.json?.suggestDearMe === true;
-        const suggestDojo = r.ok && r.json?.suggestDojo === true;
+        const suggestCenter = r.ok && r.json?.suggestCenter === true;
+        const suggestFoundry = r.ok && r.json?.suggestFoundry === true;
         const suggestMentor = r.ok && r.json?.suggestMentor === true;
         const mentorPath = r.ok && r.json?.mentorPath ? String(r.json.mentorPath) : undefined;
         const usedFallback = r.ok && r.json?.usedFallback === true;
         setChatMessages((prev) => [
           ...prev,
-          { role: "assistant", content: reply, suggestDearMe, suggestDojo, suggestMentor, mentorPath, usedFallback },
+          { role: "assistant", content: reply, suggestCenter, suggestFoundry, suggestMentor, mentorPath, usedFallback },
         ]);
         if (rememberChat && sid) {
           try {
@@ -282,16 +282,16 @@ export function Chatbot() {
 
   const themeColors = isBtyPage
     ? {
-        button: "bg-dojo-purple hover:bg-dojo-purple-dark text-white",
-        border: "border-dojo-purple-muted",
-        header: "text-dojo-purple-dark",
-        close: "text-dojo-ink-soft hover:text-dojo-ink",
-        userMsg: "bg-dojo-purple text-dojo-white",
-        botMsg: "bg-dojo-purple-muted/50 text-dojo-ink",
-        typing: "bg-dojo-purple-muted/50 text-dojo-ink-soft",
-        input: "border-dojo-purple-muted focus:ring-dojo-purple/30",
-        submit: "bg-dojo-purple text-dojo-white hover:bg-dojo-purple-dark",
-        retry: "text-dojo-purple",
+        button: "bg-foundry-purple hover:bg-foundry-purple-dark text-white",
+        border: "border-foundry-purple-muted",
+        header: "text-foundry-purple-dark",
+        close: "text-foundry-ink-soft hover:text-foundry-ink",
+        userMsg: "bg-foundry-purple text-foundry-white",
+        botMsg: "bg-foundry-purple-muted/50 text-foundry-ink",
+        typing: "bg-foundry-purple-muted/50 text-foundry-ink-soft",
+        input: "border-foundry-purple-muted focus:ring-foundry-purple/30",
+        submit: "bg-foundry-purple text-foundry-white hover:bg-foundry-purple-dark",
+        retry: "text-foundry-purple",
       }
     : {
         button: "bg-dear-sage hover:bg-dear-sage-soft text-white",
@@ -356,9 +356,9 @@ export function Chatbot() {
           <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[120px]">
             {chatMessages.length === 0 && !typingText && !errorMsg && (
               <div className="space-y-1">
-                <p className={cn("text-sm", isBtyPage ? "text-dojo-ink-soft" : "text-dear-charcoal-soft")}>{introMessage}</p>
+                <p className={cn("text-sm", isBtyPage ? "text-foundry-ink-soft" : "text-dear-charcoal-soft")}>{introMessage}</p>
                 {spaceHint && (
-                  <p className={cn("text-xs opacity-80", isBtyPage ? "text-dojo-ink-soft" : "text-dear-charcoal-soft")}>{spaceHint}</p>
+                  <p className={cn("text-xs opacity-80", isBtyPage ? "text-foundry-ink-soft" : "text-dear-charcoal-soft")}>{spaceHint}</p>
                 )}
               </div>
             )}
@@ -378,29 +378,29 @@ export function Chatbot() {
                 >
                   {m.content}
                 </div>
-                {m.role === "assistant" && m.suggestDearMe && (
+                {m.role === "assistant" && m.suggestCenter && (
                   <Link
-                    href={locale === "en" ? "/en/dear-me" : "/ko/dear-me"}
+                    href={locale === "en" ? "/en/center" : "/ko/center"}
                     className="mt-1.5 inline-block text-sm font-medium underline hover:no-underline"
-                    style={isBtyPage ? { color: "var(--dojo-purple)" } : { color: "var(--dear-sage)" }}
+                    style={isBtyPage ? { color: "var(--foundry-purple)" } : { color: "var(--dear-sage)" }}
                   >
-                    {locale === "ko" ? "Dear Me로 가기 →" : "Go to Dear Me →"}
+                    {locale === "ko" ? "Center로 가기 →" : "Go to Center →"}
                   </Link>
                 )}
-                {m.role === "assistant" && m.suggestDojo && !m.suggestMentor && (
+                {m.role === "assistant" && m.suggestFoundry && !m.suggestMentor && (
                   <Link
                     href={locale === "en" ? "/en/bty" : "/ko/bty"}
                     className="mt-1.5 inline-block text-sm font-medium underline hover:no-underline"
-                    style={isBtyPage ? { color: "var(--dojo-purple)" } : { color: "var(--dear-sage)" }}
+                    style={isBtyPage ? { color: "var(--foundry-purple)" } : { color: "var(--dear-sage)" }}
                   >
-                    {locale === "ko" ? "훈련장(Dojo)으로 가기 →" : "Go to Dojo →"}
+                    {locale === "ko" ? "Foundry로 가기 →" : "Go to Foundry →"}
                   </Link>
                 )}
                 {m.role === "assistant" && m.suggestMentor && m.mentorPath && (
                   <Link
                     href={m.mentorPath}
                     className="mt-1.5 inline-block text-sm font-medium underline hover:no-underline"
-                    style={isBtyPage ? { color: "var(--dojo-purple)" } : { color: "var(--dear-sage)" }}
+                    style={isBtyPage ? { color: "var(--foundry-purple)" } : { color: "var(--dear-sage)" }}
                   >
                     {locale === "ko" ? "Dr. Chi 멘토와 깊이 대화하기 →" : "Talk with Dr. Chi Mentor →"}
                   </Link>

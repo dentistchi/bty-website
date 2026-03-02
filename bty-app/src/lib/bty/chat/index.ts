@@ -24,15 +24,15 @@ export {
 
 export {
   isLowSelfEsteemSignal,
-  isDojoRecommendSignal,
+  isFoundryRecommendSignal,
   getSafetyValveMessage,
-  getDojoRecommendMessage,
+  getFoundryRecommendMessage,
   detectLang,
   filterBtyResponse,
   isMetaQuestion,
   getMetaReply,
   SAFETY_VALVE_MESSAGE_KO,
   SAFETY_VALVE_MESSAGE_EN,
-  DOJO_RECOMMEND_MESSAGE_KO,
-  DOJO_RECOMMEND_MESSAGE_EN,
+  FOUNDRY_RECOMMEND_MESSAGE_KO,
+  FOUNDRY_RECOMMEND_MESSAGE_EN,
 } from "./chatGuards";

@@ -239,6 +239,7 @@ export type ResolveDisplayAvatarOptions = {
 /**
  * Resolve avatar URL for display (leaderboard, dashboard).
  * 규칙: 캐릭터를 선택하면 그 캐릭터가 아바타. 옷/테마는 그 위에 레벨별로 표시(악세사리 등).
+ * Fantasy+캐릭터: 캐릭터 베이스 이미지를 우선 사용(아바타가 항상 보이도록); outfit 이미지는 없을 수 있음.
  */
 export function resolveDisplayAvatarUrl(options: ResolveDisplayAvatarOptions): string | null {
   const { customAvatarUrl, avatarCharacterId, avatarOutfitTheme, levelId } = options;
@@ -246,13 +247,13 @@ export function resolveDisplayAvatarUrl(options: ResolveDisplayAvatarOptions): s
 
   const outfit = getOutfitForLevel(avatarOutfitTheme, levelId);
 
-  if (avatarOutfitTheme === "fantasy") {
-    const characterOutfitUrl = getCharacterOutfitImageUrl(avatarCharacterId);
-    if (characterOutfitUrl) return characterOutfitUrl;
-  }
   if (avatarCharacterId) {
     const character = getAvatarCharacter(avatarCharacterId);
     if (character?.imageUrl) return character.imageUrl;
+  }
+  if (avatarOutfitTheme === "fantasy") {
+    const characterOutfitUrl = getCharacterOutfitImageUrl(avatarCharacterId);
+    if (characterOutfitUrl) return characterOutfitUrl;
   }
   if (outfit.imageUrl) return outfit.imageUrl;
   return null;
