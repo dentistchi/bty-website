@@ -1,11 +1,13 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: ["class"],
   content: [
     "./src/app/**/*.{js,ts,jsx,tsx}",
     "./src/components/**/*.{js,ts,jsx,tsx}",
     "./src/pages/**/*.{js,ts,jsx,tsx}",
     "./src/contexts/**/*.{js,ts,jsx,tsx}",
+    "./stories/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
@@ -39,6 +41,41 @@ const config: Config = {
         "maturity-popup": "maturity-popup 3s ease-out forwards",
       },
       colors: {
+        /* Button / UI 톤 (CSS 변수 참조) */
+        arena: {
+          primary: "var(--arena-primary)",
+          accent: "var(--arena-accent)",
+          bg: "var(--arena-bg)",
+          "text-primary": "var(--arena-text-primary)",
+          "text-secondary": "var(--arena-text-secondary)",
+        },
+        foundry: {
+          white: "#FFFFFF",
+          purple: "#5B4B8A",
+          "purple-light": "#7B6BA8",
+          "purple-dark": "#4A3D6F",
+          "purple-muted": "#E8E4F2",
+          ink: "#2D2A36",
+          "ink-soft": "#5C5868",
+          primary: "var(--foundry-primary)",
+          accent: "var(--foundry-accent)",
+          bg: "var(--foundry-bg)",
+          "text-primary": "var(--foundry-text-primary)",
+          "text-secondary": "var(--foundry-text-secondary)",
+        },
+        center: {
+          primary: "var(--center-primary)",
+          accent: "var(--center-accent)",
+          bg: "var(--center-bg)",
+          "text-primary": "var(--center-text-primary)",
+          "text-secondary": "var(--center-text-secondary)",
+        },
+        neutral: {
+          textBase: "var(--text-base)",
+          textLight: "var(--text-light)",
+          bgBase: "var(--bg-base)",
+          borderBase: "var(--border-base)",
+        },
         dear: {
           bg: "#FDFCF8",
           "bg-paper": "#FAF9F5",
@@ -65,15 +102,6 @@ const config: Config = {
           locked: "#E8E4F2",
         },
         dojo: {
-          white: "#FFFFFF",
-          purple: "#5B4B8A",
-          "purple-light": "#7B6BA8",
-          "purple-dark": "#4A3D6F",
-          "purple-muted": "#E8E4F2",
-          ink: "#2D2A36",
-          "ink-soft": "#5C5868",
-        },
-        foundry: {
           white: "#FFFFFF",
           purple: "#5B4B8A",
           "purple-light": "#7B6BA8",

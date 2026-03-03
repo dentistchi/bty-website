@@ -28,8 +28,24 @@
   --arena-bg-end: #E8E0F0;
   --arena-card: #FAFAF8;
   --arena-accent: var(--foundry-purple);
+  --arena-primary: var(--arena-accent);
   --arena-text: #2D2A36;
   --arena-text-soft: #5C5868;
+  /* neutral (공통 테두리/배경) */
+  --neutral-borderBase: #E5E5E5;
+  --neutral-bgBase: #FAFAFA;
+  --neutral-textBase: #1A1A1A;
+  --neutral-textLight: #737373;
+  /* center (Center 톤) */
+  --center-primary: var(--dojo-purple);
+  --center-accent: var(--dojo-purple);
+  --center-bg: var(--dear-bg);
+  --center-text-primary: var(--dear-charcoal);
+  /* foundry primary/accent for Button */
+  --foundry-primary: var(--foundry-purple);
+  --foundry-accent: var(--foundry-purple);
+  --foundry-bg: var(--foundry-white);
+  --foundry-text-primary: var(--foundry-ink);
   /* Journey Board pastels */
   --journey-done: #E8D4E4;
   --journey-done-strong: #D4B8CF;
@@ -42,6 +58,50 @@
   --sanctuary-text: #5C5348;
   --sanctuary-text-soft: #8A8176;
   --sanctuary-flower: #E8B4B8;
+}
+
+/* BTY Arena Design Token (방식 A 수동) — tailwind 토큰 클래스용. .dark는 class 전략 시 사용 */
+:root {
+  --arena-primary: #0C2D48;
+  --arena-accent: #1E90FF;
+  --arena-bg: #F7FAFC;
+  --arena-text-primary: #1A202C;
+  --arena-text-secondary: #4A5568;
+  --foundry-primary: #2D3748;
+  --foundry-accent: #4C51BF;
+  --foundry-bg: #FFFFFF;
+  --foundry-text-primary: #2A2E37;
+  --foundry-text-secondary: #718096;
+  --center-primary: #4A5568;
+  --center-accent: #F6AD55;
+  --center-bg: #FFF8F0;
+  --center-text-primary: #2D3748;
+  --center-text-secondary: #718096;
+  --text-base: #2D3748;
+  --text-light: #718096;
+  --bg-base: #FFFFFF;
+  --border-base: #E2E8F0;
+}
+.dark {
+  --arena-primary: #A3CEF1;
+  --arena-accent: #5AB9EA;
+  --arena-bg: #0F172A;
+  --arena-text-primary: #E2E8F0;
+  --arena-text-secondary: #A0AEC0;
+  --foundry-primary: #CBD5E0;
+  --foundry-accent: #A3A0FB;
+  --foundry-bg: #1A202C;
+  --foundry-text-primary: #E2E8F0;
+  --foundry-text-secondary: #A0AEC0;
+  --center-primary: #CBD5E0;
+  --center-accent: #F6AD55;
+  --center-bg: #2D3748;
+  --center-text-primary: #EDF2F7;
+  --center-text-secondary: #A0AEC0;
+  --text-base: #EDF2F7;
+  --text-light: #A0AEC0;
+  --bg-base: #1A202C;
+  --border-base: #4A5568;
 }
 
 body {

@@ -15,6 +15,8 @@
     "extract:questions": "node scripts/extract-questions.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
     "db:push": "supabase db push",
     "storage:cors": "bash scripts/storage-cors.sh"
   },
@@ -35,6 +37,10 @@
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "^1.16.5",
+    "@storybook/addon-a11y": "^8.4.0",
+    "@storybook/addon-essentials": "^8.4.0",
+    "@storybook/addon-links": "^8.4.0",
+    "@storybook/nextjs": "^8.4.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
@@ -42,13 +48,19 @@
     "eslint": "^9.0.0",
     "eslint-config-next": "15.5.7",
     "postcss": "^8.4.47",
+    "storybook": "^8.6.17",
     "supabase": "^2.76.15",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.0.0",
     "vitest": "^2.1.0",
+    "webpack": "5.101.2",
     "wrangler": "^4.64.0"
   },
   "engines": {
     "node": "20.x"
+  },
+  "overrides": {
+    "ajv": "^8.12.0",
+    "webpack": "5.101.2"
   }
 }
