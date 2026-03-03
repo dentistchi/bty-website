@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { LocaleLayoutHeader } from "@/components/LocaleLayoutHeader";
+import { Chatbot } from "@/components/Chatbot";
 
 type Props = { children: ReactNode; params: Promise<{ locale: string }> };
 
@@ -17,6 +18,8 @@ export default async function LocaleLayout({ children, params }: Props) {
     <>
       <LocaleLayoutHeader />
       {children}
+      {/* §6 CENTER_PAGE_IMPROVEMENT_SPEC: "챗으로 이어하기" 클릭 시 open-chatbot 이벤트로 챗 패널 열기 */}
+      <Chatbot />
     </>
   );
 }

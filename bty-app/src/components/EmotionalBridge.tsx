@@ -9,12 +9,8 @@ import {
 
 const BRIDGE_CHECK_EVENT = "dear-bridge-check";
 
-function getBtyPath(locale: "ko" | "en"): string {
-  return locale === "en" ? "/en/bty" : "/bty";
-}
-
 /**
- * The Bridge — 회복이 어느 정도 되었을 때만 bty(성장)로 가는 버튼 표시
+ * The Bridge — 회복이 어느 정도 되었을 때만 "문 열고 나가기" 문구 표시 (CTA는 페이지 하단 단일 버튼으로 통합)
  * 조건: 자존감 테스트 결과 mid 이상, 또는 Safe Mirror에서 AI 답장을 받은 경우
  */
 function useBridgeVisible(): boolean {
@@ -38,6 +34,7 @@ function useBridgeVisible(): boolean {
   return visible;
 }
 
+/** CENTER_PAGE_IMPROVEMENT_SPEC §5: CTA는 하단 단일 링크로 통합. 여기서는 문구만 표시. */
 export function EmotionalBridge({
   theme = "sanctuary",
   locale = "ko",
@@ -47,9 +44,11 @@ export function EmotionalBridge({
 }) {
   const visible = useBridgeVisible();
   const isDear = theme === "dear";
-  const btyPath = getBtyPath(locale);
 
   if (!visible) return null;
+
+  const heading = locale === "ko" ? "이제 문을 열고 밖으로 나가볼까요?" : "Ready to step out?";
+  const sub = locale === "ko" ? "(연습하러 가기)" : "(Go to practice)";
 
   return (
     <section
@@ -66,28 +65,16 @@ export function EmotionalBridge({
           isDear ? "font-serif text-dear-charcoal" : "text-sanctuary-text"
         )}
       >
-        이제 문을 열고 밖으로 나가볼까요?
+        {heading}
       </h2>
       <p
         className={cn(
-          "text-sm mt-1 mb-4",
+          "text-sm mt-1",
           isDear ? "text-dear-charcoal-soft" : "text-sanctuary-text-soft"
         )}
       >
-        (Go to bty practice)
+        {sub}
       </p>
-      <a
-        href={btyPath}
-        className={cn(
-          "inline-block rounded-xl px-6 py-3 font-medium text-sm transition-colors",
-          "animate-bridge-glow",
-          isDear
-            ? "bg-dear-sage text-white hover:bg-dear-sage-soft border border-dear-sage"
-            : "bg-sanctuary-sage/80 text-sanctuary-text hover:bg-sanctuary-sage border border-sanctuary-sage/60"
-        )}
-      >
-        이제 문을 열고 밖으로 나가볼까요? (Go to bty practice)
-      </a>
     </section>
   );
 }

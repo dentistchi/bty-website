@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Noto_Serif_KR } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { Chatbot } from "@/components/Chatbot";
 import { SetLocale } from "@/components/SetLocale";
 import "./globals.css";
 
@@ -26,7 +25,6 @@ export default function RootLayout({
         <AuthProvider>
           <SetLocale />
           {children}
-          <Chatbot />
         </AuthProvider>
       </body>
     </html>

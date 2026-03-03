@@ -63,6 +63,9 @@ export function OutputPanel({
   const sysLabel = locale === "ko" ? SYSTEM_OUTPUT_LABEL.ko : SYSTEM_OUTPUT_LABEL.en;
   const skipLabel = locale === "ko" ? SKIP_FOLLOW_UP_LABEL.ko : SKIP_FOLLOW_UP_LABEL.en;
   const followUpSelected = locale === "ko" ? FOLLOW_UP_SELECTED_LABEL.ko : FOLLOW_UP_SELECTED_LABEL.en;
+  const isKo = locale === "ko";
+  const displayResult = isKo && choice.resultKo ? choice.resultKo : choice.result;
+  const displayMicroInsight = isKo && choice.microInsightKo ? choice.microInsightKo : choice.microInsight;
 
   return (
     <div style={{ marginTop: 18, borderTop: "1px solid #eee", paddingTop: 16 }}>
@@ -73,8 +76,8 @@ export function OutputPanel({
           locale={locale}
           systemMessage={systemMessage}
           lastXp={lastXp}
-          microInsight={choice.microInsight}
-          result={choice.result}
+          microInsight={displayMicroInsight}
+          result={displayResult}
           onNext={onNextToReflection}
         />
       )}
@@ -122,7 +125,7 @@ export function OutputPanel({
           locale={locale}
           choiceId={choice.choiceId}
           intent={choice.intent}
-          microInsight={choice.microInsight}
+          microInsight={displayMicroInsight}
           lastXp={lastXp}
           reflectionBonusXp={reflectionBonusXp}
           reflectResult={reflectResult}

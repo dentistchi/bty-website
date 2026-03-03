@@ -69,6 +69,12 @@ export function Chatbot() {
   }, [chatMessages, typingText, errorMsg]);
 
   useEffect(() => {
+    const openChat = () => setOpen(true);
+    window.addEventListener("open-chatbot", openChat);
+    return () => window.removeEventListener("open-chatbot", openChat);
+  }, []);
+
+  useEffect(() => {
     if (!open) return;
     (async () => {
       if (prefsLoaded) return;

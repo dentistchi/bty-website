@@ -11,8 +11,10 @@ export interface LeaderboardRowProps {
   subName?: string | null;
   /** Weekly XP value (rendered as-is from API). */
   weeklyXp: number;
-  /** Avatar URL (optional). When null, UserAvatar shows fallback. */
+  /** Avatar URL (optional). When null, UserAvatar shows fallback. Used when avatarLayers is not provided. */
   avatarUrl?: string | null;
+  /** Character + outfit layers for stacked avatar display (§3). When set, UserAvatar uses layer composition. */
+  avatarLayers?: { characterImageUrl: string | null; outfitImageUrl: string | null } | null;
   /** Weekly tier from API (e.g. Bronze, Silver, Gold, Platinum). Display only. */
   tier?: string | null;
   /** Highlight as current user row. */
@@ -29,6 +31,7 @@ export function LeaderboardRow({
   subName,
   weeklyXp,
   avatarUrl,
+  avatarLayers,
   tier,
   isMe = false,
 }: LeaderboardRowProps) {
@@ -62,7 +65,7 @@ export function LeaderboardRow({
         >
           {rank}
         </div>
-        <UserAvatar avatarUrl={avatarUrl} initials={initials} size="sm" />
+        <UserAvatar avatarUrl={avatarUrl} avatarLayers={avatarLayers} initials={initials} size="sm" />
         <div>
           <div style={{ fontWeight: 800, fontSize: 16 }}>{displayName}</div>
           <div style={{ fontSize: 12, opacity: 0.7 }}>{tier ?? "Code Name"}</div>

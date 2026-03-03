@@ -11,7 +11,7 @@ import {
 import { getEffectiveTrack } from "@/lib/bty/arena/program";
 import { getUnlockedContentWindow } from "@/lib/bty/arena/unlock";
 import type { Track, LevelId } from "@/lib/bty/arena/tenure";
-import { getOutfitForLevel, getCharacterOutfitImageUrl, getOutfitById } from "@/lib/bty/arena/avatarOutfits";
+import { getOutfitForLevel, getCharacterOutfitImageUrl, getOutfitById, tierToDisplayLevelId, resolveDisplayAvatarLayers } from "@/lib/bty/arena/avatarOutfits";
 import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
 
 export async function GET(req: NextRequest) {
@@ -117,6 +117,8 @@ export async function GET(req: NextRequest) {
       avatarCharacterLocked: false,
       avatarOutfitTheme: null,
       avatarSelectedOutfitId: null,
+      avatarCharacterImageUrl: null,
+      avatarOutfitImageUrl: null,
       currentOutfit: {
         outfitId: defaultOutfit.outfitId,
         outfitLabel: defaultOutfit.outfitLabel,
@@ -186,6 +188,15 @@ export async function GET(req: NextRequest) {
     if (!avatarUrl && outfit.imageUrl) avatarUrl = outfit.imageUrl;
   }
 
+  const levelId = tierToDisplayLevelId(tier);
+  const avatarLayers = resolveDisplayAvatarLayers({
+    customAvatarUrl,
+    avatarCharacterId,
+    avatarOutfitTheme,
+    levelId,
+    avatarSelectedOutfitId,
+  });
+
   const out = NextResponse.json({
     coreXpTotal,
     tier,
@@ -199,6 +210,8 @@ export async function GET(req: NextRequest) {
     avatarCharacterLocked,
     avatarOutfitTheme,
     avatarSelectedOutfitId: avatarSelectedOutfitId ?? null,
+    avatarCharacterImageUrl: avatarLayers.characterImageUrl,
+    avatarOutfitImageUrl: avatarLayers.outfitImageUrl,
     currentOutfit: {
       outfitId: outfit.outfitId,
       outfitLabel: outfit.outfitLabel,

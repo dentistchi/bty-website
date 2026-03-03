@@ -4,17 +4,20 @@ import React from "react";
 import type { ScenarioChoice } from "@/lib/bty/scenario/types";
 
 export type ChoiceListProps = {
+  locale: string;
   choices: ScenarioChoice[];
   selectedChoiceId: string | null;
   onSelect: (choiceId: string) => void;
 };
 
-export function ChoiceList({ choices, selectedChoiceId, onSelect }: ChoiceListProps) {
+export function ChoiceList({ locale, choices, selectedChoiceId, onSelect }: ChoiceListProps) {
+  const isKo = locale === "ko";
   return (
     <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
       {choices.map((c) => {
         const active = selectedChoiceId === c.choiceId;
         const disabled = false;
+        const displayLabel = isKo && c.labelKo ? c.labelKo : c.label;
         return (
           <button
             key={c.choiceId}
@@ -31,9 +34,9 @@ export function ChoiceList({ choices, selectedChoiceId, onSelect }: ChoiceListPr
             }}
           >
             <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
-              Choice {c.choiceId} · {c.intent}
+              {isKo ? "선택" : "Choice"} {c.choiceId} · {c.intent}
             </div>
-            <div style={{ fontSize: 15 }}>{c.label}</div>
+            <div style={{ fontSize: 15 }}>{displayLabel}</div>
           </button>
         );
       })}

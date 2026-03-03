@@ -137,6 +137,16 @@ subTierGroup = floor((tier % 100) / 25)   // 0, 1, 2, 3
 
 리더보드 행 예: `#12   NOVA · Brilliance   12,420 XP` (Tier는 표시하지 않음)
 
+### 스코프별 API·노출 수치
+
+- **API** `GET /api/arena/leaderboard` 쿼리 파라미터:
+  - `scope`: `overall` | `role` | `office` (기본 `overall`)
+  - `overall`: 전역 풀(기존 동작). `weekly_xp`(league_id null) 전체 기준 랭킹.
+  - `role`: **내 역할**과 동일한 사용자만. `memberships`(org_id, region_id, role)로 동일 (org, region, role) 집합 필터.
+  - `office`: **내 지점**과 동일한 사용자만. `office_assignments`에서 내 primary/대표 지점과 동일한 `office_id` 사용자만.
+- **스코프별 노출 수치**: 모든 스코프에서 **동일**. 행당 공개 필드만 노출(순위, Seasonal XP, Core XP, Code·Sub Name). 지점·역할은 행별로 노출하지 않음(비공개). 뷰 전환 시 **풀(대상 집단)**만 바뀌고 컬럼 구성은 동일.
+- **scopeLabel**: 응답에 포함. UI에서 "전체" / "역할: Doctor" / "지점: OO점" 등 표시용. 역할·지점 이름은 API에서 조회해 반환 가능.
+
 ---
 
 ## 5. Sub Name 리네임 규칙 (정체성 보상)

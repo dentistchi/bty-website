@@ -3,8 +3,10 @@
 import React from "react";
 
 export interface UserAvatarProps {
-  /** Avatar image URL (e.g. Ready Player Me 2D). When null, fallback is shown. */
+  /** Avatar image URL (e.g. Ready Player Me 2D). When null, fallback is shown. Ignored when avatarLayers is provided. */
   avatarUrl: string | null | undefined;
+  /** Layer composition (§3): character base + outfit overlay. When set, overrides avatarUrl and renders stacked images. */
+  avatarLayers?: { characterImageUrl: string | null; outfitImageUrl: string | null } | null;
   /** Optional initials for fallback when no avatar (e.g. "DR" for Code Name). */
   initials?: string | null;
   alt?: string;
@@ -20,10 +22,11 @@ const sizeMap = {
 
 /**
  * User avatar for dashboard, profile, leaderboard.
- * Renders image from URL or fallback (initials or icon). No business logic.
+ * When avatarLayers is provided, renders character base + outfit overlay (stacked). Otherwise image from avatarUrl or fallback.
  */
 export function UserAvatar({
   avatarUrl,
+  avatarLayers,
   initials,
   alt = "Avatar",
   size = "md",
@@ -32,6 +35,8 @@ export function UserAvatar({
   const { class: sizeClass, px } = sizeMap[size];
   const [imgFailed, setImgFailed] = React.useState(false);
   const [src, setSrc] = React.useState(() => avatarUrl?.trim() || "");
+  const [layerCharFailed, setLayerCharFailed] = React.useState(false);
+  const [layerOutfitFailed, setLayerOutfitFailed] = React.useState(false);
 
   const letter = initials && initials.length > 0 ? initials.slice(0, 2).toUpperCase() : null;
   const DEFAULT_AVATAR = "/avatars/default-avatar.svg";
@@ -51,6 +56,61 @@ export function UserAvatar({
       setImgFailed(true);
     }
   }, [src]);
+
+  // Layer mode: character + optional outfit stacked (§3 ARENA_CODENAME_AVATAR_PLAN)
+  const useLayers =
+    avatarLayers &&
+    avatarLayers.characterImageUrl &&
+    avatarLayers.characterImageUrl.trim() &&
+    !layerCharFailed;
+  const outfitUrl =
+    useLayers && avatarLayers.outfitImageUrl && avatarLayers.outfitImageUrl.trim() && !layerOutfitFailed
+      ? avatarLayers.outfitImageUrl
+      : null;
+
+  if (useLayers) {
+    const containerStyle: React.CSSProperties = {
+      width: px,
+      height: px,
+      minWidth: px,
+      minHeight: px,
+      borderRadius: "50%",
+      overflow: "hidden",
+      position: "relative",
+      flexShrink: 0,
+    };
+    const layerStyle: React.CSSProperties = {
+      position: "absolute",
+      inset: 0,
+      width: "100%",
+      height: "100%",
+      objectFit: "cover",
+      objectPosition: "center center",
+    };
+    return (
+      <span
+        className={`inline-block rounded-full flex-shrink-0 ${sizeClass} ${className ?? ""}`}
+        style={containerStyle}
+        role="img"
+        aria-label={alt}
+      >
+        <img
+          src={avatarLayers.characterImageUrl!}
+          alt=""
+          style={{ ...layerStyle, zIndex: 0 }}
+          onError={() => setLayerCharFailed(true)}
+        />
+        {outfitUrl && (
+          <img
+            src={outfitUrl}
+            alt=""
+            style={{ ...layerStyle, zIndex: 1 }}
+            onError={() => setLayerOutfitFailed(true)}
+          />
+        )}
+      </span>
+    );
+  }
 
   if (src && !imgFailed) {
     return (

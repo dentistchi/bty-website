@@ -13,8 +13,11 @@ type Row = {
   subName: string;
   xpTotal: number;
   avatarUrl?: string | null;
+  avatarLayers?: { characterImageUrl: string | null; outfitImageUrl: string | null } | null;
   tier?: string;
 };
+
+type LeaderboardScope = "overall" | "role" | "office";
 
 type LeaderboardRes = {
   leaderboard?: Row[];
@@ -24,6 +27,9 @@ type LeaderboardRes = {
   myRank?: number | null;
   myXp?: number;
   count?: number;
+  scope?: LeaderboardScope;
+  scopeLabel?: string | null;
+  scopeUnavailable?: boolean;
   season?: { league_id: string; start_at: string; end_at: string; name?: string | null } | null;
 };
 
@@ -46,6 +52,12 @@ const LB = {
     championsTitle: "이번 주 챔피언",
     champion: "Champion",
     runnerUp: "Runner-up",
+    tabOverall: "전체",
+    tabRole: "역할",
+    tabOffice: "지점",
+    scopeRole: "역할",
+    scopeOffice: "지점",
+    scopeUnavailable: "역할·지점 정보가 없어 이 뷰를 사용할 수 없어요.",
   },
   en: {
     title: "Leaderboard",
@@ -65,6 +77,12 @@ const LB = {
     championsTitle: "This week's champions",
     champion: "Champion",
     runnerUp: "Runner-up",
+    tabOverall: "Overall",
+    tabRole: "Role",
+    tabOffice: "Office",
+    scopeRole: "Role",
+    scopeOffice: "Office",
+    scopeUnavailable: "No role or office context for this view.",
   },
 };
 
@@ -73,6 +91,7 @@ export default function LeaderboardPage() {
   const locale = typeof params?.locale === "string" && params.locale === "ko" ? "ko" : "en";
   const t = LB[locale];
 
+  const [scope, setScope] = React.useState<LeaderboardScope>("overall");
   const [data, setData] = React.useState<LeaderboardRes | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -85,7 +104,11 @@ export default function LeaderboardPage() {
       try {
         setLoading(true);
         setError(null);
-        const json = await arenaFetch<LeaderboardRes>("/api/arena/leaderboard");
+        const url =
+          scope === "overall"
+            ? "/api/arena/leaderboard"
+            : `/api/arena/leaderboard?scope=${encodeURIComponent(scope)}`;
+        const json = await arenaFetch<LeaderboardRes>(url);
         if (!cancelled) setData(json);
       } catch (e: unknown) {
         if (!cancelled) setError(e instanceof Error ? e.message : "FAILED_TO_LOAD");
@@ -97,7 +120,7 @@ export default function LeaderboardPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [scope]);
 
   const rows = data?.nearMe?.length ? data.nearMe : (data?.leaderboard ?? []);
   const myRank = data?.myRank ?? null;
@@ -121,6 +144,49 @@ export default function LeaderboardPage() {
         <div style={{ marginTop: 6, fontSize: 14, opacity: 0.7 }}>
           {t.subtitle}
         </div>
+        {/* Scope tabs: Overall | Role | Office (BTY_ARENA_SYSTEM_SPEC §4) */}
+        <div
+          style={{
+            marginTop: 14,
+            display: "flex",
+            gap: 4,
+            flexWrap: "wrap",
+          }}
+        >
+          {(["overall", "role", "office"] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setScope(s)}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 10,
+                border: scope === s ? "2px solid var(--arena-accent, #6366f1)" : "1px solid #e0e0e0",
+                background: scope === s ? "color-mix(in srgb, var(--arena-accent, #6366f1) 12%, transparent)" : "transparent",
+                fontSize: 14,
+                fontWeight: scope === s ? 600 : 500,
+                cursor: "pointer",
+              }}
+            >
+              {s === "overall" ? t.tabOverall : s === "role" ? t.tabRole : t.tabOffice}
+            </button>
+          ))}
+        </div>
+        {data?.scope === "role" && data?.scopeLabel && (
+          <div style={{ marginTop: 8, fontSize: 13, opacity: 0.85 }}>
+            {t.scopeRole}: {data.scopeLabel}
+          </div>
+        )}
+        {data?.scope === "office" && data?.scopeLabel && (
+          <div style={{ marginTop: 8, fontSize: 13, opacity: 0.85 }}>
+            {t.scopeOffice}: {data.scopeLabel}
+          </div>
+        )}
+        {data?.scopeUnavailable && (
+          <div style={{ marginTop: 8, padding: "10px 14px", background: "#fff8e6", borderRadius: 10, fontSize: 13 }}>
+            {t.scopeUnavailable}
+          </div>
+        )}
         {data?.season && (
           <div style={{ marginTop: 8, fontSize: 13, opacity: 0.85 }}>
             {data.season.name ?? (locale === "ko" ? "시즌" : "Season")}{" "}
@@ -190,6 +256,7 @@ export default function LeaderboardPage() {
                   </span>
                   <UserAvatar
                     avatarUrl={c.avatarUrl}
+                    avatarLayers={c.avatarLayers}
                     initials={c.codeName.slice(0, 2).toUpperCase()}
                     size="sm"
                   />
@@ -240,6 +307,7 @@ export default function LeaderboardPage() {
                 subName={r.subName}
                 weeklyXp={r.xpTotal}
                 avatarUrl={r.avatarUrl}
+                avatarLayers={r.avatarLayers}
                 tier={r.tier}
                 isMe={myRank != null && r.rank === myRank}
               />

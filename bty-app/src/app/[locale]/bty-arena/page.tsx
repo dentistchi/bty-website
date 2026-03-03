@@ -371,8 +371,16 @@ export default function BtyArenaPage() {
   const displayTitle = locale === "ko" && current.titleKo ? current.titleKo : current.title;
   const displayContext = locale === "ko" && current.contextKo ? current.contextKo : current.context;
   const choice = current.choices.find((c) => c.choiceId === selectedChoiceId) ?? null;
-  const followUpOptions = normalizeFollowUpOptions(choice);
+  const followUpOptionsEn = normalizeFollowUpOptions(choice);
+  const followUpOptions =
+    locale === "ko" && choice?.followUp?.optionsKo?.length
+      ? choice.followUp.optionsKo
+      : followUpOptionsEn;
   const hasFollowUp = Boolean(choice?.followUp?.enabled && followUpOptions.length);
+  const followUpPrompt =
+    locale === "ko" && choice?.followUp?.promptKo
+      ? choice.followUp.promptKo
+      : choice?.followUp?.prompt ?? "";
 
   function persist(next: Partial<SavedArenaState>) {
     saveState({
@@ -840,6 +848,7 @@ export default function BtyArenaPage() {
         {step === 2 && (
           <>
             <ChoiceList
+              locale={locale}
               choices={current.choices}
               selectedChoiceId={selectedChoiceId === OTHER_CHOICE_ID ? null : selectedChoiceId}
               onSelect={(id) => {
@@ -928,7 +937,7 @@ export default function BtyArenaPage() {
             reflectionBonusXp={reflectionBonusXp}
             reflectionPrompt={getReflectionPrompt(locale)}
             reflectionOptions={[]}
-            followUpPrompt={choice.followUp?.prompt ?? ""}
+            followUpPrompt={followUpPrompt}
             followUpOptions={followUpOptions}
             hasFollowUp={hasFollowUp}
             followUpIndex={followUpIndex}

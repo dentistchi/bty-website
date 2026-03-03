@@ -3,16 +3,26 @@ export type HiddenStatKey = "integrity" | "communication" | "insight" | "resilie
 export type ScenarioChoice = {
   choiceId: "A" | "B" | "C" | "D";
   label: string;
+  /** Korean choice label. When locale is ko, used instead of label. */
+  labelKo?: string;
   intent: string;
   xpBase: number;
   difficulty: number; // >1 harder, <1 easier
   hiddenDelta: Partial<Record<HiddenStatKey, number>>;
   result: string;
+  /** Korean result text. When locale is ko, used instead of result. */
+  resultKo?: string;
   microInsight: string;
+  /** Korean microInsight. When locale is ko, used instead of microInsight. */
+  microInsightKo?: string;
   followUp?: {
     enabled: boolean;
     prompt?: string;
+    /** Korean follow-up prompt. */
+    promptKo?: string;
     options?: string[];
+    /** Korean follow-up option texts (same order as options). */
+    optionsKo?: string[];
   };
 };
 

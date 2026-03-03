@@ -97,7 +97,7 @@ export function SelfEsteemTest({
   const score = answers.reduce((a, b) => a + b, 0);
   const maxScore = t.questions.length * 5;
   const storyLabel =
-    t.storyLabels?.[step] ?? `${step + 1}번째 이야기`;
+    t.storyLabels?.[step] ?? (locale === "ko" ? `${step + 1}번째 이야기` : `Story ${step + 1}`);
 
   return (
     <section

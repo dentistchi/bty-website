@@ -234,18 +234,80 @@ export type ResolveDisplayAvatarOptions = {
   avatarCharacterId: string | null;
   avatarOutfitTheme: "professional" | "fantasy" | null;
   levelId: LevelId;
+  /** When set, use this outfit instead of level-based default. */
+  avatarSelectedOutfitId?: string | null;
+};
+
+export type AvatarLayers = {
+  /** Layer 1: character base (face+body). When customAvatarUrl is set, this is the only layer. */
+  characterImageUrl: string | null;
+  /** Layer 2: outfit overlay. Null = no outfit layer (show only character or custom). */
+  outfitImageUrl: string | null;
 };
 
 /**
+ * Resolve avatar as two layers for frontend composition (§3.3 B).
+ * Returns character base URL and outfit URL so UI can stack them (character under, outfit on top).
+ */
+export function resolveDisplayAvatarLayers(
+  options: ResolveDisplayAvatarOptions
+): AvatarLayers {
+  const {
+    customAvatarUrl,
+    avatarCharacterId,
+    avatarOutfitTheme,
+    levelId,
+    avatarSelectedOutfitId,
+  } = options;
+
+  if (customAvatarUrl && customAvatarUrl.trim()) {
+    return { characterImageUrl: customAvatarUrl.trim(), outfitImageUrl: null };
+  }
+
+  const outfit =
+    avatarSelectedOutfitId != null
+      ? getOutfitById(avatarOutfitTheme, avatarSelectedOutfitId)
+      : null;
+  const outfitByLevel = getOutfitForLevel(avatarOutfitTheme, levelId);
+  const effectiveOutfit = outfit ?? outfitByLevel;
+
+  let characterImageUrl: string | null = null;
+  if (avatarCharacterId) {
+    const character = getAvatarCharacter(avatarCharacterId);
+    if (character?.imageUrl) characterImageUrl = character.imageUrl;
+  }
+  // When no character, fantasy theme may use character-outfit combo as single image (legacy)
+  if (!characterImageUrl && avatarOutfitTheme === "fantasy") {
+    const characterOutfitUrl = getCharacterOutfitImageUrl(avatarCharacterId);
+    if (characterOutfitUrl) {
+      return { characterImageUrl: characterOutfitUrl, outfitImageUrl: null };
+    }
+  }
+  if (!characterImageUrl && effectiveOutfit.imageUrl) {
+    characterImageUrl = effectiveOutfit.imageUrl;
+    return { characterImageUrl, outfitImageUrl: null };
+  }
+  return {
+    characterImageUrl,
+    outfitImageUrl: characterImageUrl && effectiveOutfit.imageUrl ? effectiveOutfit.imageUrl : null,
+  };
+}
+
+/**
  * Resolve avatar URL for display (leaderboard, dashboard).
- * 규칙: 캐릭터를 선택하면 그 캐릭터가 아바타. 옷/테마는 그 위에 레벨별로 표시(악세사리 등).
- * Fantasy+캐릭터: 캐릭터 베이스 이미지를 우선 사용(아바타가 항상 보이도록); outfit 이미지는 없을 수 있음.
+ * When avatarSelectedOutfitId is provided, outfit is resolved from it; otherwise level-based.
+ * For layer composition use resolveDisplayAvatarLayers instead.
  */
 export function resolveDisplayAvatarUrl(options: ResolveDisplayAvatarOptions): string | null {
-  const { customAvatarUrl, avatarCharacterId, avatarOutfitTheme, levelId } = options;
+  const { customAvatarUrl, avatarCharacterId, avatarOutfitTheme, levelId, avatarSelectedOutfitId } = options;
   if (customAvatarUrl && customAvatarUrl.trim()) return customAvatarUrl.trim();
 
-  const outfit = getOutfitForLevel(avatarOutfitTheme, levelId);
+  const outfit =
+    avatarSelectedOutfitId != null
+      ? getOutfitById(avatarOutfitTheme, avatarSelectedOutfitId)
+      : null;
+  const outfitByLevel = getOutfitForLevel(avatarOutfitTheme, levelId);
+  const effectiveOutfit = outfit ?? outfitByLevel;
 
   if (avatarCharacterId) {
     const character = getAvatarCharacter(avatarCharacterId);
@@ -255,6 +317,6 @@ export function resolveDisplayAvatarUrl(options: ResolveDisplayAvatarOptions): s
     const characterOutfitUrl = getCharacterOutfitImageUrl(avatarCharacterId);
     if (characterOutfitUrl) return characterOutfitUrl;
   }
-  if (outfit.imageUrl) return outfit.imageUrl;
+  if (effectiveOutfit.imageUrl) return effectiveOutfit.imageUrl;
   return null;
 }

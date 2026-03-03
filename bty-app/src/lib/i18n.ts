@@ -38,11 +38,18 @@ export type Messages = {
     doneCtaFoundry: string;
   };
   center: {
+    /** §2: 전환 중 로딩/대기 문구 (locale에 맞게) */
+    loading: string;
     title: string;
+    /** §1·§8: 아늑한 방 헤더 (locale별) */
+    heroTitleMain?: string;
+    heroTitleAccent?: string;
     tagline: string;
     linkToBty: string;
     assessmentCta: string;
     assessmentCtaSub: string;
+    /** §3: 5문항 아래 안내 — "더 자세한 테스트를 원하시면 클릭하세요" + 50문항 링크 */
+    assessmentDetailHint: string;
     entryIntro: string;
     startCta: string;
     /** 2단계: 오늘의 나 */
@@ -139,6 +146,8 @@ export type Messages = {
   resilience: {
     title: string;
     subtitle: string;
+    /** §4·§8: 일별 궤적 있을 때 그래프 부제 (locale별) */
+    dailyTrajectorySubtitle: string;
     past: string;
     now: string;
   };
@@ -221,12 +230,16 @@ const ko: Messages = {
     doneCtaFoundry: "Foundry로",
   },
   center: {
+    loading: "잠시만 기다려 주세요.",
     title: "Center",
-    tagline: "나는 안전하다. 잠시 쉬어가도 돼요.",
+    heroTitleMain: "센터,",
+    heroTitleAccent: "듣고 있어요.",
+    tagline: "아늑한 방에서 쉬어가요. 나는 안전해요.",
     linkToBty: "어제보다 나은 연습하러 가기 (bty)",
     assessmentCta: "자존감 진단 (50문항)",
     assessmentCtaSub: "자기 존중감을 짧게 점검해 보세요.",
-    entryIntro: "말 못 할 마음을 비추는 안전한 공간이에요. 조언이 아니라 그대로 비춰드려요.",
+    assessmentDetailHint: "더 자세한 테스트를 원하시면 클릭하세요.",
+    entryIntro: "말 못 할 마음을 비추는 안전한 공간이에요. 조언이 아니라 그대로 비춰드려요. 치유받는 방이에요.",
     startCta: "시작하기",
     todayStepTitle: "오늘의 나",
     todayMoodLabel: "지금 기분은 어때요?",
@@ -326,6 +339,7 @@ const ko: Messages = {
   resilience: {
     title: "회복 탄력성",
     subtitle: "떨어졌다가 다시 올라가는, 파도 같은 흐름이에요.",
+    dailyTrajectorySubtitle: "매일의 5문항/활동에 따른 궤적이에요. 날짜별로 쌓인 회복의 흐름이에요.",
     past: "과거",
     now: "지금",
   },
@@ -404,12 +418,16 @@ const en: Messages = {
     doneCtaFoundry: "Back to Foundry",
   },
   center: {
+    loading: "Please wait…",
     title: "Center",
-    tagline: "You are safe. It’s okay to rest here.",
+    heroTitleMain: "Center,",
+    heroTitleAccent: "I'm listening.",
+    tagline: "A cozy room to rest and heal. You're safe here.",
     linkToBty: "Go to bty (practice)",
     assessmentCta: "Self-Esteem Assessment (50 items)",
     assessmentCtaSub: "A short check on how you feel about yourself.",
-    entryIntro: "A safe space that reflects your feelings. No advice—just reflection.",
+    assessmentDetailHint: "Click here for a more detailed test.",
+    entryIntro: "A safe space that reflects your feelings. No advice—just reflection. A place to rest and heal.",
     startCta: "Start",
     todayStepTitle: "Today's you",
     todayMoodLabel: "How do you feel right now?",
@@ -509,6 +527,7 @@ const en: Messages = {
   resilience: {
     title: "Recovery resilience",
     subtitle: "A wave that dips then rises again.",
+    dailyTrajectorySubtitle: "Daily trajectory from your 5-item check-ins. Your recovery over time.",
     past: "Past",
     now: "Now",
   },

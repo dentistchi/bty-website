@@ -10,6 +10,7 @@ type Row = {
   subName?: string | null;
   xpTotal: number;
   avatarUrl?: string | null;
+  avatarLayers?: { characterImageUrl: string | null; outfitImageUrl: string | null } | null;
   tier?: string | null;
 };
 
@@ -165,6 +166,7 @@ export function ArenaRankingSidebar({ locale }: ArenaRankingSidebarProps) {
                 subName={r.subName}
                 weeklyXp={r.xpTotal}
                 avatarUrl={r.avatarUrl}
+                avatarLayers={r.avatarLayers}
                 tier={r.tier}
                 isMe={myRank != null && r.rank === myRank}
               />

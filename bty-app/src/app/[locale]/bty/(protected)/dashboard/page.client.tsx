@@ -32,6 +32,8 @@ type CoreXpRes = {
   avatarCharacterLocked?: boolean;
   avatarOutfitTheme?: "professional" | "fantasy" | null;
   avatarSelectedOutfitId?: string | null;
+  avatarCharacterImageUrl?: string | null;
+  avatarOutfitImageUrl?: string | null;
   currentOutfit?: { outfitId: string; outfitLabel: string; accessoryIds: string[]; accessoryLabels: string[] };
 };
 type LeagueRes = { league_id: string; start_at: string; end_at: string; name?: string | null };
@@ -337,6 +339,10 @@ export default function DashboardClient() {
   const tArenaMembership = getMessages(localeTyped).arenaMembership;
   const displayAvatarUrl =
     core?.avatarUrl ?? getAvatarCharacter(core?.avatarCharacterId)?.imageUrl ?? null;
+  const avatarLayers =
+    core?.avatarCharacterImageUrl != null || core?.avatarOutfitImageUrl != null
+      ? { characterImageUrl: core?.avatarCharacterImageUrl ?? null, outfitImageUrl: core?.avatarOutfitImageUrl ?? null }
+      : undefined;
 
   const content = (<div style={{ maxWidth: 980, margin: "0 auto", padding: "24px 16px" }}>
       {/* DESIGN_FIRST_IMPRESSION_BRIEF §4 A: 첫 화면 = 히어로 한 문장 — 페이지 최상단에 배치 */}
@@ -350,6 +356,7 @@ export default function DashboardClient() {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <UserAvatar
             avatarUrl={displayAvatarUrl}
+            avatarLayers={avatarLayers}
             initials={core?.codeName?.slice(0, 2)}
             alt=""
             size="lg"
@@ -665,8 +672,48 @@ export default function DashboardClient() {
           <EmotionalStatsPhrases />
 
           <ProgressCard label="Code Name">
-            <div style={{ fontWeight: 800, fontSize: 18 }}>
-              {core?.codeName ?? "FORGE"} · {core?.subName ?? "Spark"}
+            <div
+              className="relative inline-block"
+              title={
+                locale === "ko"
+                  ? "Code: 7단계(FORGE→…→CODELESS ZONE). 1 Code=100 Tier. Sub Name: Tier 25+·상위 5%일 때 코드당 1회 설정(7자)."
+                  : "Code: 7 stages (FORGE→…→CODELESS ZONE). 1 Code=100 Tier. Sub Name: At Tier 25+ and top 5% weekly, one custom name per Code (7 chars)."
+              }
+            >
+              <div
+                className="peer cursor-help font-extrabold text-lg outline-none rounded"
+                style={{ fontWeight: 800, fontSize: 18 }}
+                tabIndex={0}
+              >
+                {core?.codeName ?? "FORGE"} · {core?.subName ?? "Spark"}
+              </div>
+              <div
+                role="tooltip"
+                className="absolute left-0 bottom-full z-10 mb-2 hidden w-72 max-w-[calc(100vw-2rem)] rounded-lg border border-[var(--arena-text-soft)]/30 bg-[var(--arena-bg)] px-3 py-2.5 text-left text-sm shadow-lg peer-hover:block peer-focus-visible:block"
+                style={{ color: "var(--arena-text)" }}
+              >
+                {locale === "ko" ? (
+                  <>
+                    <p className="font-semibold mb-1">Code · Tier · Sub Name</p>
+                    <p className="mb-1.5">
+                      <strong>Code</strong>: 7단계 (FORGE → PULSE → … → CODELESS ZONE). 1 Code = 100 Tier. Tier = Core XP ÷ 10.
+                    </p>
+                    <p>
+                      <strong>Sub Name</strong>: 각 Code마다 Tier 구간별 기본 이름. Tier 25 이상 + 주간 리더보드 상위 5%일 때, 그 Code에서 <strong>1회만</strong> 직접 설정 가능(7자). CODELESS ZONE은 언제든 설정.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold mb-1">Code · Tier · Sub Name</p>
+                    <p className="mb-1.5">
+                      <strong>Code</strong>: 7 stages (FORGE → PULSE → … → CODELESS ZONE). 1 Code = 100 Tier. Tier = Core XP ÷ 10.
+                    </p>
+                    <p>
+                      <strong>Sub Name</strong>: Each Code has default names by tier band. At Tier 25+ and top 5% weekly, you get <strong>one custom name per Code</strong> (7 chars). CODELESS ZONE: set anytime.
+                    </p>
+                  </>
+                )}
+              </div>
             </div>
             <div style={{ marginTop: 6, fontSize: 13, opacity: 0.75 }}>
               {locale === "ko"
@@ -705,7 +752,7 @@ export default function DashboardClient() {
             <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
               {/* 왼쪽: 선택한 캐릭터 아바타 + 악세사리 */}
               <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                <UserAvatar avatarUrl={displayAvatarUrl} initials={core?.codeName?.slice(0, 2)} alt="" size="md" />
+                <UserAvatar avatarUrl={displayAvatarUrl} avatarLayers={avatarLayers} initials={core?.codeName?.slice(0, 2)} alt="" size="md" />
                 {core?.currentOutfit?.accessoryIds && core.currentOutfit.accessoryIds.length > 0 && (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                     <div

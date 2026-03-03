@@ -5,7 +5,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { LoadingFallback } from "@/components/bty-arena";
 
-export function AuthGate({ children }: { children: React.ReactNode }) {
+/** CENTER_PAGE_IMPROVEMENT_SPEC §2: loadingMessage 있으면 locale에 맞는 로딩 문구 사용 */
+export function AuthGate({
+  children,
+  loadingMessage,
+}: {
+  children: React.ReactNode;
+  /** Optional: e.g. t.center.loading for locale-aware "Please wait…" / "잠시만 기다려 주세요." */
+  loadingMessage?: string;
+}) {
   const { user, loading, login, register, error, clearError } = useAuth();
 
   const [isRegister, setIsRegister] = useState(false);
@@ -32,7 +40,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <LoadingFallback icon="⏳" message="잠시만 기다려 주세요." />
+        <LoadingFallback icon="⏳" message={loadingMessage ?? "잠시만 기다려 주세요."} />
       </div>
     );
   }
