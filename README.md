@@ -369,4 +369,18 @@ This is an educational platform created for dental professionals. All content is
 - Context: `bty-app/docs/CONTEXT.md`
 - Env: `bty-app/docs/ENVIRONMENT.md`
 
+---
+
+## 현재 레포 구조 (앱 프로젝트)
+
+이 저장소에는 **웹 앱** 프로젝트가 포함되어 있습니다.
+
+| 폴더 | 설명 |
+|------|------|
+| **today-me/** | **Dear Me (안식처)** — 회복·심리적 안전 공간. Safe Mirror, 작은 승리, 자존감 알아보기, 28일 여정. Next.js 14. 문서: [today-me/README.md](today-me/README.md) |
+| **bty-app/** | **BTY Arena & 훈련장** — 시나리오 연습, 주간 리더보드, 대시보드, 캐릭터/덴탈 의상. Next.js 15, Cloudflare Pages 배포. 문서: [bty-app/README.md](bty-app/README.md) |
+
+- **하나의 계정**: Dear Me에서 로그인/가입하면 bty 앱에서도 동일 계정 사용.
+- **실행**: 각 앱은 해당 폴더에서 `npm install` 후 `npm run dev` 로 로컬 실행.
+
 # MBTI
