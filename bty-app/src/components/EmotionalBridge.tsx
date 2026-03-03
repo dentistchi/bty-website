@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import {
-  getSelfEsteemResult,
-  getSafeMirrorPositive,
-} from "@/lib/utils";
+import { getSelfEsteemResult, getSafeMirrorPositive } from "@/lib/utils";
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
 const BRIDGE_CHECK_EVENT = "dear-bridge-check";
 
@@ -34,21 +33,19 @@ function useBridgeVisible(): boolean {
   return visible;
 }
 
-/** CENTER_PAGE_IMPROVEMENT_SPEC §5: CTA는 하단 단일 링크로 통합. 여기서는 문구만 표시. */
+/** CENTER_PAGE_IMPROVEMENT_SPEC §5·§8: CTA 문구는 i18n center.bridgeHeading/bridgeSub. */
 export function EmotionalBridge({
   theme = "sanctuary",
   locale = "ko",
 }: {
   theme?: "dear" | "sanctuary";
-  locale?: "ko" | "en";
+  locale?: Locale;
 }) {
   const visible = useBridgeVisible();
   const isDear = theme === "dear";
+  const t = getMessages(locale).center;
 
   if (!visible) return null;
-
-  const heading = locale === "ko" ? "이제 문을 열고 밖으로 나가볼까요?" : "Ready to step out?";
-  const sub = locale === "ko" ? "(연습하러 가기)" : "(Go to practice)";
 
   return (
     <section
@@ -65,7 +62,7 @@ export function EmotionalBridge({
           isDear ? "font-serif text-dear-charcoal" : "text-sanctuary-text"
         )}
       >
-        {heading}
+        {t.bridgeHeading}
       </h2>
       <p
         className={cn(
@@ -73,7 +70,7 @@ export function EmotionalBridge({
           isDear ? "text-dear-charcoal-soft" : "text-sanctuary-text-soft"
         )}
       >
-        {sub}
+        {t.bridgeSub}
       </p>
     </section>
   );

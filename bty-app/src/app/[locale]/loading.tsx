@@ -1,14 +1,6 @@
-import { LoadingFallback } from "@/components/bty-arena";
+import { LocaleAwareRouteLoading } from "@/components/LocaleAwareRouteLoading";
 
+/** §2: 전환 중 로딩 문구는 locale에 맞게 (LocaleAwareRouteLoading이 pathname으로 ko/en 구분) */
 export default function LocaleLoading() {
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8F4F0] p-6">
-      <LoadingFallback
-        icon="⏳"
-        message="잠시만 기다려 주세요."
-        withSkeleton
-      />
-      <p className="text-xs mt-4 text-[#6B6560] opacity-80">첫 로딩은 1–2분 걸릴 수 있어요</p>
-    </div>
-  );
+  return <LocaleAwareRouteLoading />;
 }

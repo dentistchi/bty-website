@@ -1,3 +1,11 @@
+/**
+ * GET /api/arena/leaderboard
+ * BTY_ARENA_SYSTEM_SPEC §4: scope=overall|role|office.
+ * - overall: 전역 weekly_xp(league_id null) 기준.
+ * - role: 동일 (org_id, region_id, role) 사용자만. scopeLabel 예: "Doctor", "Manager".
+ * - office: 동일 office_id(내 대표 지점) 사용자만. scopeLabel = 지점명.
+ * 스코프별 노출 수치: 동일. 행당 순위, Seasonal XP(weekly), Code·Sub Name, 아바타만. 지점·역할은 행별 미노출.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { writeSupabaseAuthCookies } from "@/lib/bty/cookies/authCookies";
@@ -53,7 +61,9 @@ async function getScopeFilter(
           ? "Manager"
           : first.role === "staff"
             ? "Staff"
-            : first.role;
+            : first.role === "dso"
+              ? "DSO"
+              : first.role;
     return { userIds, scopeLabel: roleLabel };
   }
 

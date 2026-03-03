@@ -92,4 +92,49 @@
 
 ---
 
-*작성: bty-release-gate.mdc OUTPUT FORMAT 준수.*
+## Center 프로젝트 (CENTER_PAGE_IMPROVEMENT_SPEC §5·§9)
+
+**범위**: Center 페이지 개선. Auth/경로에 직접 관여하는 변경은 **§5 CTA 통합 + 재로그인 버그**만 해당.  
+**대조 기준**: `.cursor/rules/bty-release-gate.mdc`, `.cursor/rules/bty-auth-deploy-safety.mdc`, 본 문서.
+
+### 1) Assumptions
+
+- Center §5: CTA 1개로 통합, 클릭 시 **재로그인 요구하지 않음** (인증된 사용자는 `/bty` 또는 보호된 경로로 직행).
+- 쿠키 **설정** 코드는 변경하지 않음. 미들웨어에서 **경로/리다이렉트**만 수정 (인증 시 `/bty/login` 대신 `/bty` 직행).
+- B~E(Weekly Reset, Leaderboard, Migration, API 계약): Center 작업에서 **미접촉** → N/A.
+
+### 2) Center Gate (A · Auth Safety · F) 결과: **FAIL**
+
+- **A) Auth/Cookies**: 쿠키 설정 변경 없음. 미들웨어·auth 모듈에서 쿠키 설정 코드 미수정 → **PASS**.
+- **Auth Safety**: 인증 user + `/bty/login` 접근 시 `/${locale}/bty` 리다이렉트 **미구현** → **FAIL**.
+- **F) Verification Steps**: 문서화됨. 실행은 C3 적용 후 수행.
+
+### 3) 위반 목록 (Center Gate)
+
+| # | 구분 | 위반 내용 | 파일/위치 |
+|---|------|-----------|-----------|
+| 1 | Auth Safety | 인증된 사용자가 `/${locale}/bty/login` 요청 시 `/${locale}/bty`로 302 리다이렉트하는 로직이 없음. 현재 `isPublicPath`에 `/bty/login`이 포함되어 인증 여부 무관 로그인 페이지 노출 → 로그인 상태에서 Center CTA로 `/bty/login` 이동 시 재로그인 화면이 뜸. | `src/middleware.ts` — `isPublicPath` 통과 후, `getUser()` 성공 시 pathname이 `/${locale}/bty/login`이면 `/${locale}/bty`로 리다이렉트하는 분기 없음. |
+
+### 4) Findings (Center 해당 항목만)
+
+| 구분 | 결과 |
+|------|------|
+| **A** | 쿠키 설정 변경 없음. 기존 A 유지. **PASS.** |
+| **Auth Safety** | CTA·재로그인: 미들웨어에 "인증 user + /bty/login → /bty 리다이렉트" **미적용**. **How to verify**: 로컬 로그인 → Center CTA 클릭 → `/bty` 직행·재로그인 없음. (C3 완료 후 확인.) |
+| **B~E** | 해당 없음 (Center는 XP/시즌/리더보드/마이그레이션 미접촉). |
+| **F** | 1) 로컬: 로그인 → Center CTA 클릭 → /bty 직행·재로그인 없음. 2) Preview: 로그인 유지. 3) Prod: 쿠키·401 없음. (C3 적용 후 실행.) |
+
+### 5) Required patches (Center)
+
+- **C3 적용 필요**: `src/middleware.ts`에서 인증된 user가 `/${locale}/bty/login` 요청 시 `/${locale}/bty`로 302 리다이렉트 추가. 쿠키 설정 변경 금지.
+- 적용 후 본 섹션 재검사 → Center Gate **PASS** 전환 및 위반 목록 비우기.
+
+### 6) Next steps (Center)
+
+- [ ] C3 Domain/API: §5 미들웨어 인증 시 `/bty/login` → `/${locale}/bty` 리다이렉트 적용.
+- [ ] C4 UI: CTA 1개 통합 (`/${locale}/bty`).
+- [ ] C3 적용 후 Auth Safety Verification 실행 → C5 원클릭 검증.
+
+---
+
+*작성: bty-release-gate.mdc OUTPUT FORMAT 준수. Center: bty-auth-deploy-safety.mdc 반영. C2 체크리스트 대조 반영 (Center Gate A·Auth Safety·F 결과 및 위반 목록).*

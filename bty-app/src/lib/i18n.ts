@@ -1,6 +1,8 @@
 export type Locale = "ko" | "en";
 
 export type Messages = {
+  /** §2: 전환 중 로딩 문구 (locale별) */
+  loading: { message: string; hint: string };
   nav: { center: string; bty: string; arena: string; en: string; ko: string };
   login: {
     title: string;
@@ -45,6 +47,8 @@ export type Messages = {
     heroTitleMain?: string;
     heroTitleAccent?: string;
     tagline: string;
+    /** §5: 단일 CTA 라벨 (문 열고 나가기 / 연습하러 가기 통합) */
+    ctaToFoundry: string;
     linkToBty: string;
     assessmentCta: string;
     assessmentCtaSub: string;
@@ -57,8 +61,14 @@ export type Messages = {
     todayMoodLabel: string;
     todayEnergyLabel: string;
     todayOneWordLabel: string;
+    /** §8: locale별 placeholder (기분/한 단어 입력) */
+    todayMoodPlaceholder: string;
+    todayOneWordPlaceholder: string;
     todayNext: string;
     todaySkip: string;
+    /** §1·§5: EmotionalBridge 문구 (문 열고 나가기) */
+    bridgeHeading: string;
+    bridgeSub: string;
     /** 3단계: 편지 쓰기 */
     letterStepTitle: string;
     letterPrompt: string;
@@ -103,6 +113,8 @@ export type Messages = {
     placeholder: string;
     submit: string;
     submitting: string;
+    /** §8: API 실패 시 표시할 답장 대체 문구 (locale별) */
+    fallbackReply: string;
   };
   smallWins: {
     title: string;
@@ -195,6 +207,7 @@ export type Messages = {
 };
 
 const ko: Messages = {
+  loading: { message: "잠시만 기다려 주세요.", hint: "첫 로딩은 1–2분 걸릴 수 있어요." },
   nav: { center: "Center", bty: "Foundry", arena: "Arena", en: "English", ko: "한국어" },
   login: {
     title: "bty 로그인",
@@ -235,6 +248,7 @@ const ko: Messages = {
     heroTitleMain: "센터,",
     heroTitleAccent: "듣고 있어요.",
     tagline: "아늑한 방에서 쉬어가요. 나는 안전해요.",
+    ctaToFoundry: "문 열고 연습하러 가기",
     linkToBty: "어제보다 나은 연습하러 가기 (bty)",
     assessmentCta: "자존감 진단 (50문항)",
     assessmentCtaSub: "자기 존중감을 짧게 점검해 보세요.",
@@ -245,8 +259,12 @@ const ko: Messages = {
     todayMoodLabel: "지금 기분은 어때요?",
     todayEnergyLabel: "에너지 수준 (1=많이 지침, 5=괜찮음)",
     todayOneWordLabel: "한 단어로 오늘을 표현하면?",
+    todayMoodPlaceholder: "예: 평온해요, 조금 불안해요",
+    todayOneWordPlaceholder: "예: 고맙다, 지쳤다",
     todayNext: "다음",
     todaySkip: "건너뛰기",
+    bridgeHeading: "이제 문을 열고 밖으로 나가볼까요?",
+    bridgeSub: "(연습하러 가기)",
     letterStepTitle: "나에게 쓰는 편지",
     letterPrompt: "지금 마음에 있는 말을 편하게 적어보세요. 여기선 조언이 아니라 그대로 비춰드릴게요.",
     letterPlaceholder: "오늘 누구에게도 말 못했던 마음이 있나요?",
@@ -288,6 +306,7 @@ const ko: Messages = {
     placeholder: "오늘 누구에게도 말 못했던 마음이 있나요?",
     submit: "적기",
     submitting: "글을 읽고 있어요…",
+    fallbackReply: "지금은 답장을 적기 어려워요. 그 마음이 들었다는 것만으로도 충분해요.",
   },
   smallWins: {
     title: "작은 승리",
@@ -383,6 +402,7 @@ const ko: Messages = {
 };
 
 const en: Messages = {
+  loading: { message: "Please wait…", hint: "First load may take 1–2 minutes." },
   nav: { center: "Center", bty: "Foundry", arena: "Arena", en: "English", ko: "한국어" },
   login: {
     title: "bty Sign in",
@@ -423,6 +443,7 @@ const en: Messages = {
     heroTitleMain: "Center,",
     heroTitleAccent: "I'm listening.",
     tagline: "A cozy room to rest and heal. You're safe here.",
+    ctaToFoundry: "Go to Foundry (practice)",
     linkToBty: "Go to bty (practice)",
     assessmentCta: "Self-Esteem Assessment (50 items)",
     assessmentCtaSub: "A short check on how you feel about yourself.",
@@ -433,8 +454,12 @@ const en: Messages = {
     todayMoodLabel: "How do you feel right now?",
     todayEnergyLabel: "Energy level (1=very low, 5=okay)",
     todayOneWordLabel: "One word for today?",
+    todayMoodPlaceholder: "e.g. calm, a bit anxious",
+    todayOneWordPlaceholder: "e.g. grateful, tired",
     todayNext: "Next",
     todaySkip: "Skip",
+    bridgeHeading: "Ready to step out?",
+    bridgeSub: "(Go to practice)",
     letterStepTitle: "A letter to yourself",
     letterPrompt: "Write what's on your mind. Here we reflect, not advise.",
     letterPlaceholder: "Was there something you couldn't tell anyone today?",
@@ -476,6 +501,7 @@ const en: Messages = {
     placeholder: "Was there something you couldn't tell anyone today?",
     submit: "Write",
     submitting: "Reading your words…",
+    fallbackReply: "I can't write back right now. It's enough that you wrote it down.",
   },
   smallWins: {
     title: "Small Wins",

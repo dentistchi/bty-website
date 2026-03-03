@@ -17,38 +17,37 @@ export function Nav({
   theme?: NavTheme;
 }) {
   const t = getMessages(locale).nav;
-  const isEn = pathname.startsWith("/en");
   const isBty = pathname.includes("/bty") && !pathname.includes("/bty-arena");
   const isArena = pathname.includes("/bty-arena");
   const isCenter = pathname.includes("/center");
   const isDear = theme === "dear";
   const muted = isDear ? "text-dear-charcoal-soft" : "text-foundry-ink-soft";
   const mutedDivider = isDear ? "text-dear-charcoal-soft/60" : "text-foundry-ink-soft/60";
-  const rest = pathname.slice(isEn ? 3 : 3) || "/";
-  const toggleHref = isEn ? `/ko${rest}` : `/en${rest}`;
+  const rest = pathname.slice(pathname.startsWith("/en") ? 3 : 3) || "/";
+  const toggleHref = pathname.startsWith("/en") ? `/ko${rest}` : `/en${rest}`;
   return (
     <nav className="flex items-center justify-center gap-4 py-3 text-sm flex-wrap">
       <Link
-        href={isEn ? "/en/center" : "/ko/center"}
+        href={`/${locale}/center`}
         className={isCenter ? "font-medium underline" : cn(muted, "hover:underline")}
       >
         {t.center}
       </Link>
       <Link
-        href={isEn ? "/en/bty" : "/ko/bty"}
+        href={`/${locale}/bty`}
         className={isBty ? "font-medium underline" : cn(muted, "hover:underline")}
       >
         {t.bty}
       </Link>
       <Link
-        href={isEn ? "/en/bty-arena" : "/ko/bty-arena"}
+        href={`/${locale}/bty-arena`}
         className={isArena ? "font-medium underline" : cn(muted, "hover:underline")}
       >
         {t.arena}
       </Link>
       <span className={mutedDivider}>|</span>
       <Link href={toggleHref} className={cn(muted, "hover:underline")}>
-        {isEn ? t.ko : t.en}
+        {locale === "en" ? t.ko : t.en}
       </Link>
     </nav>
   );

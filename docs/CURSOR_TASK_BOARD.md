@@ -21,6 +21,8 @@
 
 | Cursor 타입 | 할 일 (한 줄) | 상태 | 비고 |
 |-------------|----------------|------|------|
+| Gatekeeper / Error-check | 규칙 준수 검사 + Gate 리포트 (bty-release-gate, bty-auth-deploy-safety, bty-ui-render-only) | <span style="color:blue">완료</span> | 2026-03-03. PASS. GATE_REPORT_LATEST.md, CURRENT_TASK.md 갱신. |
+| UI Worker (Cursor 4) | 대시보드 bty-ui-render-only: 도메인 제거·API 계약 렌더만 | <span style="color:blue">완료</span> | 결정 요청: core-xp API에 stage/progressPct/nextCodeName/xpToNext/codeLore/milestoneToCelebrate/previousSubName 반환 필요. 미반환 시 진행바·로어·마일스톤 모달 비노출. 리더보드: API 계약 주석·에러 재시도 추가. |
 | Feature / Explore·Plan | Phase 2-4: Dojo/Dear Me XP 설계 — 무엇을 기록할지(멘토 대화·챗·체류 시간 등), 얼마나 줄지 (스펙+이벤트 정의) | <span style="color:blue">완료</span> | DOJO_DEAR_ME_XP_SPEC 보강: 이벤트 정의·XP·추후 체류시간 |
 | Feature | Phase 2-5: Dojo/Dear Me 이벤트 기록 및 XP 반영 — 이벤트 저장 + weekly_xp 연동 (API·DB) | <span style="color:blue">완료</span> | 20260229_activity_xp_events.sql, recordActivityXp→active league |
 | Feature | Phase 1-1: 전역 챗봇 Dear Me 안전 밸브 — /api/chat에서 낮은 자존감 패턴 감지 시 Dear Me 링크 메시지 | <span style="color:blue">완료</span> | 기존 구현 확인, 영어 패턴 추가, docs/PHASE_1_1_DEAR_ME_SAFETY_VALVE.md |

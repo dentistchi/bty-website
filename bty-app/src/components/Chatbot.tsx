@@ -3,6 +3,7 @@
 /**
  * 전역 플로팅 챗봇. pathname에 따라 Center/Foundry/Arena 모드로 /api/chat 호출.
  * CHATBOT_TRAINING_CHECKLIST §2.3: 소개·공간 안내는 i18n chat.introFoundry/introCenter, spaceHintFoundry/spaceHintCenter 사용.
+ * COMMANDER_BACKLOG_AND_NEXT §2: 전역 플로팅 버튼 비노출(오른쪽 아래). 패널은 open-chatbot 이벤트로만 열림(예: Center "챗으로 이어하기").
  */
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -29,8 +30,9 @@ const TYPING_TIMEOUT_25S = 25_000;
 export function Chatbot() {
   const pathname = usePathname() ?? "";
   const locale: Locale = pathname.startsWith("/en") ? "en" : "ko";
-  /** Foundry·Arena 영역에서는 하단 봇챗 미노출 (결정 사항) */
-  if (pathname.includes("/bty")) return null;
+  /** Foundry·Arena: 플로팅 미노출. §2: 전역에서도 플로팅 버튼은 숨기고, 패널만 open-chatbot 이벤트로 노출 */
+  const isBtyPath = pathname.includes("/bty");
+  if (isBtyPath) return null;
 
   const i18n = getMessages(locale);
   const t = i18n.chat;
@@ -73,6 +75,14 @@ export function Chatbot() {
     window.addEventListener("open-chatbot", openChat);
     return () => window.removeEventListener("open-chatbot", openChat);
   }, []);
+
+  // §6 CENTER_PAGE_IMPROVEMENT_SPEC: /center#open-chat 진입 시 챗 패널 열기
+  useEffect(() => {
+    if (!pathname.includes("/center") || typeof window === "undefined") return;
+    if (window.location.hash !== "#open-chat") return;
+    setOpen(true);
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  }, [pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -315,26 +325,9 @@ export function Chatbot() {
         retry: "text-dear-sage",
       };
 
+  // §2: 플로팅 버튼(오른쪽 아래) 전역 비노출. 패널은 open-chatbot 이벤트로만 열림.
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className={cn(
-          "fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full shadow-lg overflow-hidden",
-          "flex items-center justify-center transition-all hover:scale-105 border-2 border-white",
-          open ? themeColors.button : "bg-white"
-        )}
-        aria-label={open ? "Close" : t.title}
-      >
-        {open ? (
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        ) : (
-          <GuideCharacterAvatar codeName={userCodeName} variant={guideVariant} size="lg" alt="" className="!w-full !h-full !rounded-full" />
-        )}
-      </button>
       {open && (
         <div
           className={cn(
@@ -389,7 +382,7 @@ export function Chatbot() {
                 </div>
                 {m.role === "assistant" && m.suggestCenter && (
                   <Link
-                    href={locale === "en" ? "/en/center" : "/ko/center"}
+                    href={`/${locale}/center`}
                     className="mt-1.5 inline-block text-sm font-medium underline hover:no-underline"
                     style={isBtyPage ? { color: "var(--foundry-purple)" } : { color: "var(--dear-sage)" }}
                   >
@@ -398,7 +391,7 @@ export function Chatbot() {
                 )}
                 {m.role === "assistant" && m.suggestFoundry && !m.suggestMentor && (
                   <Link
-                    href={locale === "en" ? "/en/bty" : "/ko/bty"}
+                    href={`/${locale}/bty`}
                     className="mt-1.5 inline-block text-sm font-medium underline hover:no-underline"
                     style={isBtyPage ? { color: "var(--foundry-purple)" } : { color: "var(--dear-sage)" }}
                   >

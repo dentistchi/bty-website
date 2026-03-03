@@ -13,7 +13,7 @@ import { arenaFetch } from "@/lib/http/arenaFetch";
 
 type BeginnerStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
-const stepLabels: Record<BeginnerStep, string> = {
+const stepLabelsEn: Record<BeginnerStep, string> = {
   1: "Situation",
   2: "Emotion",
   3: "Risk",
@@ -22,6 +22,20 @@ const stepLabels: Record<BeginnerStep, string> = {
   6: "Growth",
   7: "Reflection",
 };
+
+const stepLabelsKo: Record<BeginnerStep, string> = {
+  1: "상황",
+  2: "감정",
+  3: "위험",
+  4: "가치",
+  5: "결정",
+  6: "성장",
+  7: "성찰",
+};
+
+function getStepLabel(step: BeginnerStep, locale: string): string {
+  return locale === "ko" ? stepLabelsKo[step] : stepLabelsEn[step];
+}
 
 function OptionButton({
   label,
@@ -73,8 +87,42 @@ function PrimaryButton({ label, onClick, disabled }: { label: string; onClick: (
   );
 }
 
+const UI_KO = {
+  stepOf: "단계",
+  startReflection: "성찰 시작",
+  next: "다음",
+  complete: "완료",
+  yourResult: "결과",
+  score: "점수",
+  tryAnother: "다른 시나리오 해보기",
+  whatEmotion: "지금 가장 가까운 감정은?",
+  whatWouldYouDo: "어떻게 하시겠어요?",
+  reflectionPrompt: "한 문장으로: 이 판에서 가져갈 것은?",
+  reflectionPlaceholder: "예: 반응하기 전에 잠깐 멈추겠다.",
+  failedToStart: "시작에 실패했습니다",
+  failedToComplete: "완료에 실패했습니다",
+};
+
+const UI_EN = {
+  stepOf: "Step",
+  startReflection: "Start reflection",
+  next: "Next",
+  complete: "Complete",
+  yourResult: "Your result",
+  score: "Score",
+  tryAnother: "Try another scenario",
+  whatEmotion: "What emotion is closest right now?",
+  whatWouldYouDo: "What would you do?",
+  reflectionPrompt: "In one sentence: what will you take from this?",
+  reflectionPlaceholder: "e.g. I'll pause before reacting.",
+  failedToStart: "Failed to start",
+  failedToComplete: "Failed to complete",
+};
+
 export default function BeginnerArenaPage() {
   const params = useParams();
+  const locale = typeof params?.locale === "string" ? params.locale : "en";
+  const ui = locale === "ko" ? UI_KO : UI_EN;
   const [scenario, setScenario] = React.useState<BeginnerScenario | null>(null);
   const [runId, setRunId] = React.useState<string | null>(null);
   const [step, setStep] = React.useState<BeginnerStep>(1);
@@ -109,11 +157,11 @@ export default function BeginnerArenaPage() {
       setRunId(res.run.run_id);
       setStep(2);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to start");
+      setError(e instanceof Error ? e.message : ui.failedToStart);
     } finally {
       setLoading(false);
     }
-  }, [scenario]);
+  }, [scenario, locale]);
 
   const sendEvent = React.useCallback(
     async (stepNum: 2 | 3 | 4 | 5, payload: Record<string, number>) => {
@@ -182,7 +230,7 @@ export default function BeginnerArenaPage() {
           message: res.message,
         });
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to complete");
+        setError(e instanceof Error ? e.message : ui.failedToComplete);
       } finally {
         setLoading(false);
       }
@@ -213,19 +261,19 @@ export default function BeginnerArenaPage() {
   }
 
   if (completed) {
-    const feedback = getMaturityFeedback(completed.score);
+    const feedback = getMaturityFeedback(completed.score, locale);
     return (
       <div style={{ maxWidth: 560, margin: "0 auto", padding: "24px 16px" }}>
         <BtyTopNav />
         <div style={{ marginTop: 24, padding: 24, border: "1px solid #eee", borderRadius: 14 }}>
-          <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 8 }}>Your result</div>
+          <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 8 }}>{ui.yourResult}</div>
           <h2 style={{ margin: "0 0 8px", fontSize: 22 }}>{feedback.label}</h2>
           <p style={{ margin: "0 0 16px", lineHeight: 1.5 }}>{feedback.message}</p>
           <p style={{ margin: 0, fontSize: 14, opacity: 0.8 }}>
-            Score: {completed.score} / 20
+            {ui.score}: {completed.score} / 20
           </p>
           <PrimaryButton
-            label="Try another scenario"
+            label={ui.tryAnother}
             onClick={() => {
               setCompleted(null);
               setScenario(pickRandomBeginnerScenario());
@@ -243,27 +291,38 @@ export default function BeginnerArenaPage() {
     );
   }
 
+  const isKo = locale === "ko";
+  const displayTitle = isKo && scenario.titleKo ? scenario.titleKo : scenario.title;
+  const displayContext = isKo && scenario.contextKo ? scenario.contextKo : scenario.context;
+  const emotionOpts = isKo && scenario.emotionOptionsKo ? scenario.emotionOptionsKo : scenario.emotionOptions;
+  const riskQ = isKo && scenario.hiddenRiskQuestionKo ? scenario.hiddenRiskQuestionKo : scenario.hiddenRiskQuestion;
+  const riskOpts = isKo && scenario.riskOptionsKo ? scenario.riskOptionsKo : scenario.riskOptions;
+  const integrityTrig = isKo && scenario.integrityTriggerKo ? scenario.integrityTriggerKo : scenario.integrityTrigger;
+  const integrityOpts = isKo && scenario.integrityOptionsKo ? scenario.integrityOptionsKo : scenario.integrityOptions;
+  const decisionOpts = isKo && scenario.decisionOptionsKo ? scenario.decisionOptionsKo : scenario.decisionOptions;
+  const growthText = isKo && scenario.growthKo ? scenario.growthKo : scenario.growth;
+
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", padding: "24px 16px" }}>
       <BtyTopNav />
       <div style={{ marginBottom: 8, fontSize: 14, opacity: 0.7 }}>
-        Beginner · Step {step} of 7: {stepLabels[step]}
+        {locale === "ko" ? "입문" : "Beginner"} · {ui.stepOf} {step} / 7: {getStepLabel(step, locale)}
       </div>
       <div style={{ padding: 20, border: "1px solid #eee", borderRadius: 14 }}>
         {step === 1 && (
           <>
-            <h2 style={{ margin: "0 0 12px", fontSize: 20 }}>{scenario.title}</h2>
-            <p style={{ margin: 0, lineHeight: 1.6, opacity: 0.9 }}>{scenario.context}</p>
+            <h2 style={{ margin: "0 0 12px", fontSize: 20 }}>{displayTitle}</h2>
+            <p style={{ margin: 0, lineHeight: 1.6, opacity: 0.9 }}>{displayContext}</p>
             <div style={{ marginTop: 20 }}>
-              <PrimaryButton label="Start reflection" onClick={goNext} disabled={loading} />
+              <PrimaryButton label={ui.startReflection} onClick={goNext} disabled={loading} />
             </div>
           </>
         )}
 
         {step === 2 && (
           <>
-            <p style={{ margin: "0 0 16px", fontSize: 16 }}>What emotion is closest right now?</p>
-            {scenario.emotionOptions.map((opt, i) => (
+            <p style={{ margin: "0 0 16px", fontSize: 16 }}>{ui.whatEmotion}</p>
+            {emotionOpts.map((opt, i) => (
               <OptionButton
                 key={i}
                 label={opt}
@@ -272,7 +331,7 @@ export default function BeginnerArenaPage() {
               />
             ))}
             <PrimaryButton
-              label="Next"
+              label={ui.next}
               onClick={goNext}
               disabled={emotionIndex === null || loading}
             />
@@ -281,8 +340,8 @@ export default function BeginnerArenaPage() {
 
         {step === 3 && (
           <>
-            <p style={{ margin: "0 0 16px", fontSize: 16 }}>{scenario.hiddenRiskQuestion}</p>
-            {scenario.riskOptions.map((opt, i) => (
+            <p style={{ margin: "0 0 16px", fontSize: 16 }}>{riskQ}</p>
+            {riskOpts.map((opt, i) => (
               <OptionButton
                 key={i}
                 label={opt}
@@ -290,14 +349,14 @@ export default function BeginnerArenaPage() {
                 onClick={() => setRiskIndex(i)}
               />
             ))}
-            <PrimaryButton label="Next" onClick={goNext} disabled={riskIndex === null || loading} />
+            <PrimaryButton label={ui.next} onClick={goNext} disabled={riskIndex === null || loading} />
           </>
         )}
 
         {step === 4 && (
           <>
-            <p style={{ margin: "0 0 16px", fontSize: 16 }}>{scenario.integrityTrigger}</p>
-            {scenario.integrityOptions.map((opt, i) => (
+            <p style={{ margin: "0 0 16px", fontSize: 16 }}>{integrityTrig}</p>
+            {integrityOpts.map((opt, i) => (
               <OptionButton
                 key={i}
                 label={opt}
@@ -306,7 +365,7 @@ export default function BeginnerArenaPage() {
               />
             ))}
             <PrimaryButton
-              label="Next"
+              label={ui.next}
               onClick={goNext}
               disabled={integrityIndex === null || loading}
             />
@@ -315,8 +374,8 @@ export default function BeginnerArenaPage() {
 
         {step === 5 && (
           <>
-            <p style={{ margin: "0 0 16px", fontSize: 16 }}>What would you do?</p>
-            {scenario.decisionOptions.map((opt, i) => (
+            <p style={{ margin: "0 0 16px", fontSize: 16 }}>{ui.whatWouldYouDo}</p>
+            {decisionOpts.map((opt, i) => (
               <OptionButton
                 key={opt.id}
                 label={opt.label}
@@ -325,7 +384,7 @@ export default function BeginnerArenaPage() {
               />
             ))}
             <PrimaryButton
-              label="Next"
+              label={ui.next}
               onClick={goNext}
               disabled={decisionIndex === null || loading}
             />
@@ -335,22 +394,22 @@ export default function BeginnerArenaPage() {
         {step === 6 && (
           <>
             <p style={{ margin: "0 0 16px", fontSize: 16, fontStyle: "italic" }}>
-              {scenario.growth}
+              {growthText}
             </p>
-            <PrimaryButton label="Next" onClick={goNext} disabled={loading} />
+            <PrimaryButton label={ui.next} onClick={goNext} disabled={loading} />
           </>
         )}
 
         {step === 7 && (
           <>
             <p style={{ margin: "0 0 16px", fontSize: 16 }}>
-              In one sentence: what will you take from this?
+              {ui.reflectionPrompt}
             </p>
             <input
               type="text"
               value={reflectionText}
               onChange={(e) => setReflectionText(e.target.value)}
-              placeholder="e.g. I'll pause before reacting."
+              placeholder={ui.reflectionPlaceholder}
               maxLength={120}
               style={{
                 width: "100%",
@@ -361,7 +420,7 @@ export default function BeginnerArenaPage() {
                 boxSizing: "border-box",
               }}
             />
-            <PrimaryButton label="Complete" onClick={goNext} disabled={loading} />
+            <PrimaryButton label={ui.complete} onClick={goNext} disabled={loading} />
           </>
         )}
 

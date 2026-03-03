@@ -84,8 +84,11 @@ export default function AssessmentClient({
         />
       </div>
 
-      {/* Single question card */}
-      <div className="rounded-2xl border border-[var(--arena-text-soft)]/20 bg-white p-6 sm:p-8 shadow-sm">
+      {/* §7: 한 문항씩 노출 — 질문 하나하나 정성 플로우 */}
+      <section
+        className="rounded-2xl border border-[var(--arena-text-soft)]/20 bg-white p-6 sm:p-8 shadow-sm"
+        aria-label={isEn ? `Question ${currentIndex + 1} of ${total}` : `문항 ${currentIndex + 1} / ${total}`}
+      >
         <p className="text-sm text-[var(--arena-text-soft)] mb-2">
           {isEn ? `Question ${currentIndex + 1}` : `문항 ${currentIndex + 1}`}
         </p>
@@ -109,7 +112,7 @@ export default function AssessmentClient({
             </button>
           ))}
         </div>
-      </div>
+      </section>
 
       {/* Navigation */}
       <div className="mt-8 flex items-center justify-between gap-4">

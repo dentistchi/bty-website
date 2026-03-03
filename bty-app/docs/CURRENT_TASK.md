@@ -3,6 +3,8 @@
 **진행 에이전트**: 이 파일 또는 커맨더 메시지에 적힌 **기능(요구사항)** 을 구현하세요.  
 지시가 없으면 이 파일의 내용을 확인하고, 아래 형식으로 적힌 항목을 도메인 → API → UI 순으로 진행하세요.
 
+**오늘 4커서 병렬 작업 목록**: **`docs/CURSORS_PARALLEL_TASK_LIST.md`** — Cursor 1·2·3·4별 할 일·복사용 프롬프트·완료 시 문서 업데이트 규칙이 정리되어 있음. 커맨더가 해당 문서에서 프롬프트를 복사해 각 Cursor에 붙이면 병렬 진행 가능.
+
 ---
 
 ## 형식 예시
@@ -18,6 +20,10 @@
 
 ## 이번에 구현할 기능
 
+**이번 작업 (One-liner)**: First Task = 미들웨어 인증 시 /bty/login → /bty 리다이렉트(Center 재로그인 버그). 이후 C2 Gate → C3/C4 → C5 원클릭 검증.
+
+**DoD**: [ ] lint 통과 [ ] test 통과 [ ] build 통과 [ ] (옵션) workers verify [ ] `./scripts/orchestrate.sh` 또는 `./scripts/ci-gate.sh` 실행.
+
 *(커맨더가 여기에 요구사항을 적거나, 채팅으로 "CURRENT_TASK.md 참고해서 구현해줘" + 기능 설명을 보냅니다.)*
 
 **우선 진행 (Center 페이지)**  
@@ -32,6 +38,8 @@
 *진행 에이전트는 위 A/B 중 지시된 쪽을 우선 진행. 지시가 없으면 CURRENT_TASK 또는 WHAT_NEXT §2-2 표의 복사용 프롬프트를 참고.*
 
 **이전 완료**: 챗봇 훈련 (PROJECT_BACKLOG §9) — ✅ 완료
+
+- **Cursor 4 UI Worker (bty-ui-render-only)**: 대시보드에서 도메인/티어 계산 제거, CoreXpRes 옵션 필드(stage, progressPct, nextCodeName, xpToNext, codeLore, milestoneToCelebrate, previousSubName)로 API 계약만 사용. 리더보드: API 계약 주석·에러 시 재시도 버튼 추가. **결정 요청**: core-xp API가 위 display 필드를 반환하도록 백엔드 확장 필요(미반환 시 진행 바·로어·마일스톤 모달 비노출).
 
 - **할 일**: `docs/ROADMAP_NEXT_STEPS.md` § 챗봇 훈련 시기, `docs/CHATBOT_TRAINING_CHECKLIST.md` 참고해서 시스템 프롬프트 보강(역할·말투·금지), 구역별(bty / today-me) 예시 대화, 메타 질문 답변 가이드. 필요 시 RAG. `src/app/api/chat/route.ts`, `src/components/Chatbot.tsx` 수정. CHATBOT_TRAINING_CHECKLIST §3 [ ] 항목 정리·반영.
 - **반영 요약**: `src/lib/bty/chat/buildChatMessages.ts`(NVC·치유 스펙, 메타/인사/BTY·Dear Me 소개, few-shot), `chatGuards.ts`(isMetaQuestion, getMetaReply), `route.ts`(메타 질문 시 고정 답변), `Chatbot.tsx`(소개·공간 안내 i18n), `i18n.ts`(chat.introDojo/introDearMe/spaceHintDojo/spaceHintDearMe). §3 항목 전부 [x].
@@ -88,3 +96,12 @@
 
 **Dojo·Dear Me 2차 (진행)**  
 | [x] | **Dear Me 1차 플로우 진입 화면**: `docs/DOJO_DEAR_ME_NEXT_CONTENT.md` §2-2 단계 1 — 소개 1~2문장 + "시작하기" 버튼, 클릭 시 본문 노출. (i18n `entryIntro`/`startCta`, PageClient 진입 분기.) |
+
+**Integrator 검증 (2026-03-03)**  
+- **로컬**: `npm run lint` FAIL (ESLint defaultMeta/ajv), `npm run test` FAIL (mentor route `dear_me_url` 1건), `npm run build` PASS (PageClient.tsx EOF 누락 수정 반영).  
+- **Workers 검증**: `scripts/verify-workers-dev.sh` exit 0/1 자동 판정으로 개선 완료. BASE/LOGIN_BODY placeholder 시 즉시 exit 1, 단계별 HTTP 검증·실패 시 단계명+코드+응답 스니펫 출력.  
+- **notify-done**: 전체 PASS 아님으로 미실행.
+
+**Gatekeeper 검사 (2026-03-03)**  
+- **규칙 준수**: bty-release-gate, bty-auth-deploy-safety, bty-ui-render-only 기준으로 변경분·관련 경로 검사. **Release Gate Results: PASS.**  
+- **상세**: `docs/GATE_REPORT_LATEST.md` — Auth/리셋/리더보드/API/검증 단계 정리. UI에서 tierFromCoreXp/codeIndexFromTier 사용 시 FAIL로 처리하도록 명시.

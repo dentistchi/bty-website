@@ -27,7 +27,7 @@ export type ArenaHandler = (req: Request) => Promise<Response>;
  */
 export function withArenaReflection(original: ArenaHandler): ArenaHandler {
   return async (req: Request) => {
-    let body: { levelId?: string; userText?: string; scenario?: unknown } = {};
+    let body: { levelId?: string; userText?: string; locale?: string; scenario?: unknown } = {};
     try {
       body = await req.clone().json();
     } catch {
@@ -52,7 +52,8 @@ export function withArenaReflection(original: ArenaHandler): ArenaHandler {
 
     if (!levelId || !userText || !HUMAN_MODEL.levels[levelId]) return res;
 
-    const reflection = buildReflection(levelId, userText, HUMAN_MODEL, scenario as ScenarioContext | undefined);
+    const locale = body.locale === "ko" ? "ko" : undefined;
+    const reflection = buildReflection(levelId, userText, HUMAN_MODEL, scenario as ScenarioContext | undefined, locale);
     const safeReflection = {
       summary: reflection.summary,
       questions: reflection.questions,

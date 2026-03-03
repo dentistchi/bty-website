@@ -4,12 +4,13 @@ import { useMemo, useState, useEffect } from "react";
 import { getMessages } from "@/lib/i18n";
 import { cn, getSelfEsteemHistory, type SelfEsteemHistoryEntry, type SelfEsteemLevel } from "@/lib/utils";
 import type { Locale } from "@/lib/i18n";
+import type { ResilienceDayEntry } from "@/app/api/center/resilience/route";
 
 /**
  * 회복 탄력성 그래프 (§4 CENTER_PAGE_IMPROVEMENT_SPEC)
- * - 자존감 테스트(5문항) 결과를 날짜별로 누적해 일별 궤적로 표시.
- * - X축: 실제 날짜 범위(첫 기록일 … 최근 기록일). 일별/기간별 트렉이 시간 간격에 맞게 표시됨.
- * - 궤적선으로 점을 연결해 "매일의 5문항/활동" 흐름을 시각화. high=위, mid=중간, low=아래.
+ * - 매일의 5문항(자존감) + Center 편지(활동)를 날짜별로 합쳐 일별 궤적로 표시.
+ * - X축: 실제 날짜 범위(첫 기록일 … 최근 기록일). "과거/지금" 2점이 아닌 일별/기간별 트렉.
+ * - 데이터: localStorage 5문항 이력 + GET /api/center/resilience(편지 energy 기반). 같은 날은 5문항 우선.
  */
 
 type Theme = "dear" | "sanctuary" | "dojo";
@@ -32,8 +33,10 @@ function parseDate(dateStr: string): number {
   return new Date(dateStr + "T12:00:00").getTime();
 }
 
+type DailyEntry = { date: string; level: SelfEsteemLevel };
+
 /** X축을 실제 날짜 범위로 배치. 같은 날만 있으면 인덱스로 균등 배치. */
-function getDots(entries: SelfEsteemHistoryEntry[]): { x: number; y: number; level: SelfEsteemLevel }[] {
+function getDots(entries: DailyEntry[]): { x: number; y: number; level: SelfEsteemLevel }[] {
   if (entries.length === 0) return [];
   if (entries.length === 1) {
     const e = entries[0];
@@ -101,18 +104,39 @@ export function ResilienceGraph({
   const labelColor = isDear ? "text-dear-charcoal-soft" : isSanctuary ? "text-sanctuary-text-soft" : "text-foundry-ink-soft";
 
   const [tick, setTick] = useState(0);
+  const [letterEntries, setLetterEntries] = useState<ResilienceDayEntry[]>([]);
+
   useEffect(() => {
     const handler = () => setTick((k) => k + 1);
     window.addEventListener("dear-self-esteem-updated", handler);
     return () => window.removeEventListener("dear-self-esteem-updated", handler);
   }, []);
+
+  useEffect(() => {
+    fetch("/api/center/resilience", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { entries: [] }))
+      .then((data: { entries?: ResilienceDayEntry[] }) => setLetterEntries(data.entries ?? []))
+      .catch(() => setLetterEntries([]));
+  }, []);
+
   const history = getSelfEsteemHistory();
-  const historyDots = useMemo(() => getDots(history), [history]);
+  const merged: DailyEntry[] = useMemo(() => {
+    const byDate = new Map<string, DailyEntry>();
+    for (const e of letterEntries) {
+      byDate.set(e.date, { date: e.date, level: e.level });
+    }
+    for (const e of history) {
+      byDate.set(e.date, { date: e.date, level: e.level });
+    }
+    return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+  }, [history, letterEntries, tick]);
+
+  const historyDots = useMemo(() => getDots(merged), [merged]);
   const trajectoryPath = useMemo(() => buildTrajectoryPath(historyDots), [historyDots]);
   const trajectoryFillPath = useMemo(() => buildTrajectoryFillPath(historyDots), [historyDots]);
 
-  const axisStartLabel = history.length >= 2 ? formatAxisDate(history[0].date, locale) : t.past;
-  const axisEndLabel = history.length >= 2 ? formatAxisDate(history[history.length - 1].date, locale) : t.now;
+  const axisStartLabel = merged.length >= 1 ? formatAxisDate(merged[0].date, locale) : "";
+  const axisEndLabel = merged.length >= 1 ? formatAxisDate(merged[merged.length - 1].date, locale) : "";
 
   return (
     <div
@@ -141,7 +165,7 @@ export function ResilienceGraph({
           {t.title}
         </h3>
         <p className={cn("text-sm mb-4", labelColor)}>
-          {history.length > 0 ? t.dailyTrajectorySubtitle : t.subtitle}
+          {merged.length > 0 ? t.dailyTrajectorySubtitle : t.subtitle}
         </p>
         <div className="w-full aspect-[2/1] min-h-[120px] flex items-end">
           <svg
@@ -151,13 +175,13 @@ export function ResilienceGraph({
             style={{ overflow: "visible" }}
           >
             <defs>
-              <linearGradient id="resilience-fill" x1="0" y1="1" x2="0" y2="0">
+              <linearGradient id={`resilience-fill-${theme}`} x1="0" y1="1" x2="0" y2="0">
                 <stop offset="0%" stopColor={stroke} stopOpacity="0" />
                 <stop offset="100%" stopColor={stroke} stopOpacity="0.25" />
               </linearGradient>
             </defs>
             {trajectoryFillPath && (
-              <path d={trajectoryFillPath} fill="url(#resilience-fill)" />
+              <path d={trajectoryFillPath} fill={`url(#resilience-fill-${theme})`} />
             )}
             {trajectoryPath && (
               <path
@@ -182,10 +206,12 @@ export function ResilienceGraph({
             ))}
           </svg>
         </div>
-        <div className={cn("flex justify-between mt-2 text-xs", labelColor)}>
-          <span>{axisStartLabel}</span>
-          <span>{axisEndLabel}</span>
-        </div>
+        {(axisStartLabel || axisEndLabel) ? (
+          <div className={cn("flex justify-between mt-2 text-xs", labelColor)}>
+            <span>{axisStartLabel}</span>
+            <span>{axisEndLabel}</span>
+          </div>
+        ) : null}
       </div>
     </div>
   );

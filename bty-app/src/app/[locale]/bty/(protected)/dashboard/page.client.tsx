@@ -3,17 +3,9 @@
 import React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { TierMilestoneModal, ProgressCard, ProgressVisual, UserAvatar, ArenaLevelsCard, CardSkeleton } from "@/components/bty-arena";
+import { TierMilestoneModal, ProgressCard, ProgressVisual, UserAvatar, AvatarComposite, ArenaLevelsCard, CardSkeleton } from "@/components/bty-arena";
 import { EmotionalStatsPhrases } from "@/components/bty/EmotionalStatsPhrases";
 import { arenaFetch } from "@/lib/http/arenaFetch";
-import { getMilestoneToShow } from "@/lib/bty/arena/milestone";
-import {
-  progressToNextTier,
-  CODE_LORE,
-  codeIndexFromTier,
-  tierFromCoreXp,
-} from "@/lib/bty/arena/codes";
-import { stageFromCoreXp } from "@/domain";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { AVATAR_CHARACTERS, getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
@@ -27,6 +19,14 @@ type CoreXpRes = {
   seasonalXpTotal: number;
   codeHidden?: boolean;
   subNameRenameAvailable?: boolean;
+  /** Display-only from API (bty-ui-render-only: no derivation in UI). */
+  stage?: number;
+  progressPct?: number;
+  nextCodeName?: string;
+  xpToNext?: number;
+  codeLore?: string;
+  milestoneToCelebrate?: 25 | 50 | 75;
+  previousSubName?: string;
   avatarUrl?: string | null;
   avatarCharacterId?: string | null;
   avatarCharacterLocked?: boolean;
@@ -295,11 +295,10 @@ export default function DashboardClient() {
         if (!alive) return;
         setWeekly(w);
         setCore(c);
-        const toShow = getMilestoneToShow(c.coreXpTotal);
-        if (toShow) {
+        if (c?.milestoneToCelebrate != null) {
           setMilestoneModal({
-            milestone: toShow.milestone,
-            previousSubName: toShow.previousSubName,
+            milestone: c.milestoneToCelebrate,
+            previousSubName: c.previousSubName ?? undefined,
             subName: c.subName ?? "Spark",
             subNameRenameAvailable: Boolean(c.subNameRenameAvailable),
           });
@@ -328,11 +327,6 @@ export default function DashboardClient() {
     };
   }, [locale]);
 
-  const coreXp = core?.coreXpTotal ?? 0;
-  const stage = stageFromCoreXp(coreXp);
-  const { progressPct, nextCodeName, xpToNext } = progressToNextTier(coreXp);
-  const codeIndex = codeIndexFromTier(tierFromCoreXp(coreXp));
-  const lore = CODE_LORE[codeIndex];
   const localeTyped = (locale === "ko" ? "ko" : "en") as Locale;
   const tArenaLevels = getMessages(localeTyped).arenaLevels;
   const tAvatarOutfit = getMessages(localeTyped).avatarOutfit;
@@ -354,13 +348,22 @@ export default function DashboardClient() {
 
       <div style={{ marginBottom: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <UserAvatar
-            avatarUrl={displayAvatarUrl}
-            avatarLayers={avatarLayers}
-            initials={core?.codeName?.slice(0, 2)}
-            alt=""
-            size="lg"
-          />
+          {avatarLayers?.characterImageUrl ? (
+            <AvatarComposite
+              size={56}
+              characterUrl={avatarLayers.characterImageUrl}
+              outfitUrl={avatarLayers.outfitImageUrl ?? undefined}
+              accessoryUrls={[]}
+              alt=""
+            />
+          ) : (
+            <UserAvatar
+              avatarUrl={displayAvatarUrl}
+              initials={core?.codeName?.slice(0, 2)}
+              alt=""
+              size="lg"
+            />
+          )}
           <div>
             <div style={{ fontSize: 14, opacity: 0.7 }}>bty</div>
             <h1 style={{ margin: 0, fontSize: 28 }}>Dashboard</h1>
@@ -533,14 +536,22 @@ export default function DashboardClient() {
             <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>Permanent. Drives Code Name.</div>
             {typeof core?.coreXpTotal === "number" && (
               <>
-                <ProgressVisual
-                  stage={stage}
-                  progressPct={progressPct}
-                  nextMilestoneLabel={
-                    nextCodeName ? `${xpToNext} XP to ${nextCodeName}` : `${xpToNext} XP to next phase`
-                  }
-                />
-                {lore && <div style={{ marginTop: 4, fontSize: 12, fontStyle: "italic", opacity: 0.75 }}>{lore}</div>}
+                {core?.stage != null && core?.progressPct != null && (
+                  <>
+                    <ProgressVisual
+                      stage={core.stage}
+                      progressPct={core.progressPct}
+                      nextMilestoneLabel={
+                        core.nextCodeName != null && core.xpToNext != null
+                          ? `${core.xpToNext} XP to ${core.nextCodeName}`
+                          : core.xpToNext != null
+                            ? `${core.xpToNext} XP to next phase`
+                            : undefined
+                      }
+                    />
+                    {core.codeLore && <div style={{ marginTop: 4, fontSize: 12, fontStyle: "italic", opacity: 0.75 }}>{core.codeLore}</div>}
+                  </>
+                )}
               </>
             )}
           </ProgressCard>
@@ -672,8 +683,9 @@ export default function DashboardClient() {
           <EmotionalStatsPhrases />
 
           <ProgressCard label="Code Name">
+            {/* COMMANDER_BACKLOG_AND_NEXT §5: 툴팁 = BTY_ARENA_SYSTEM_SPEC·ARENA_CODENAME_AVATAR_PLAN Code/Tier/Sub Name 규칙 요약 */}
             <div
-              className="relative inline-block"
+              className="group relative inline-block cursor-help"
               title={
                 locale === "ko"
                   ? "Code: 7단계(FORGE→…→CODELESS ZONE). 1 Code=100 Tier. Sub Name: Tier 25+·상위 5%일 때 코드당 1회 설정(7자)."
@@ -681,7 +693,7 @@ export default function DashboardClient() {
               }
             >
               <div
-                className="peer cursor-help font-extrabold text-lg outline-none rounded"
+                className="font-extrabold text-lg outline-none rounded focus:outline focus:outline-2 focus:outline-offset-1 focus:outline-[var(--arena-accent)]"
                 style={{ fontWeight: 800, fontSize: 18 }}
                 tabIndex={0}
               >
@@ -689,28 +701,30 @@ export default function DashboardClient() {
               </div>
               <div
                 role="tooltip"
-                className="absolute left-0 bottom-full z-10 mb-2 hidden w-72 max-w-[calc(100vw-2rem)] rounded-lg border border-[var(--arena-text-soft)]/30 bg-[var(--arena-bg)] px-3 py-2.5 text-left text-sm shadow-lg peer-hover:block peer-focus-visible:block"
+                className="absolute left-0 bottom-full z-10 mb-2 hidden w-80 max-w-[calc(100vw-2rem)] rounded-lg border border-[var(--arena-text-soft)]/30 bg-[var(--arena-bg)] px-3 py-2.5 text-left text-sm shadow-lg group-hover:block group-focus-within:block"
                 style={{ color: "var(--arena-text)" }}
               >
                 {locale === "ko" ? (
                   <>
-                    <p className="font-semibold mb-1">Code · Tier · Sub Name</p>
+                    <p className="font-semibold mb-1.5">Code · Tier · Sub Name 규칙 요약</p>
                     <p className="mb-1.5">
-                      <strong>Code</strong>: 7단계 (FORGE → PULSE → … → CODELESS ZONE). 1 Code = 100 Tier. Tier = Core XP ÷ 10.
+                      <strong>Code</strong>: 7단계 (FORGE → PULSE → FRAME → ASCEND → NOVA → ARCHITECT → CODELESS ZONE). 1 Code = 100 Tier. Tier = Core XP ÷ 10 (숫자는 비공개, 25/50/75 도달 시 축하로만 인지).
                     </p>
-                    <p>
-                      <strong>Sub Name</strong>: 각 Code마다 Tier 구간별 기본 이름. Tier 25 이상 + 주간 리더보드 상위 5%일 때, 그 Code에서 <strong>1회만</strong> 직접 설정 가능(7자). CODELESS ZONE은 언제든 설정.
+                    <p className="mb-1.5">
+                      <strong>Sub Name</strong>: 각 Code마다 Tier 4구간(0–24, 25–49, 50–74, 75–99)별 기본 이름. <strong>코드가 바뀌고</strong> 그 새 Code에서 <strong>Tier 25 이상</strong> + <strong>주간 리더보드 상위 5%</strong>일 때, 그 Code에서 <strong>1회만</strong> 직접 설정(최대 7자). CODELESS ZONE은 고정 이름 없이 언제든 설정.
                     </p>
+                    <p className="text-xs opacity-85">BTY_ARENA_SYSTEM_SPEC · ARENA_CODENAME_AVATAR_PLAN</p>
                   </>
                 ) : (
                   <>
-                    <p className="font-semibold mb-1">Code · Tier · Sub Name</p>
+                    <p className="font-semibold mb-1.5">Code · Tier · Sub Name — rules summary</p>
                     <p className="mb-1.5">
-                      <strong>Code</strong>: 7 stages (FORGE → PULSE → … → CODELESS ZONE). 1 Code = 100 Tier. Tier = Core XP ÷ 10.
+                      <strong>Code</strong>: 7 stages (FORGE → PULSE → FRAME → ASCEND → NOVA → ARCHITECT → CODELESS ZONE). 1 Code = 100 Tier. Tier = Core XP ÷ 10 (number hidden; you notice tier rise only at 25/50/75 celebrations).
                     </p>
-                    <p>
-                      <strong>Sub Name</strong>: Each Code has default names by tier band. At Tier 25+ and top 5% weekly, you get <strong>one custom name per Code</strong> (7 chars). CODELESS ZONE: set anytime.
+                    <p className="mb-1.5">
+                      <strong>Sub Name</strong>: Each Code has 4 tier bands (0–24, 25–49, 50–74, 75–99) with default names. When <strong>you enter a new Code</strong> and reach <strong>Tier 25+</strong> there, plus <strong>top 5% on the weekly leaderboard</strong>, you get <strong>one custom name per Code</strong> (max 7 chars). CODELESS ZONE: no fixed names; set anytime.
                     </p>
+                    <p className="text-xs opacity-85">BTY_ARENA_SYSTEM_SPEC · ARENA_CODENAME_AVATAR_PLAN</p>
                   </>
                 )}
               </div>
@@ -752,7 +766,17 @@ export default function DashboardClient() {
             <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
               {/* 왼쪽: 선택한 캐릭터 아바타 + 악세사리 */}
               <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                <UserAvatar avatarUrl={displayAvatarUrl} avatarLayers={avatarLayers} initials={core?.codeName?.slice(0, 2)} alt="" size="md" />
+                {avatarLayers?.characterImageUrl ? (
+                  <AvatarComposite
+                    size={40}
+                    characterUrl={avatarLayers.characterImageUrl}
+                    outfitUrl={avatarLayers.outfitImageUrl ?? undefined}
+                    accessoryUrls={[]}
+                    alt=""
+                  />
+                ) : (
+                  <UserAvatar avatarUrl={displayAvatarUrl} initials={core?.codeName?.slice(0, 2)} alt="" size="md" />
+                )}
                 {core?.currentOutfit?.accessoryIds && core.currentOutfit.accessoryIds.length > 0 && (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                     <div

@@ -74,6 +74,50 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+  // Authenticated user requesting login page → 302 to /bty (no cookie config change)
+  if (locale && pathname === `/${locale}/bty/login` && hasSupabase) {
+    try {
+      const resLogin = NextResponse.next();
+      const supabase = createServerClient(url!, key!, {
+        cookies: {
+          getAll() {
+            return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
+          },
+          setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
+            for (const { name, value, options } of cookies) {
+              const o = (options ?? {}) as Record<string, unknown>;
+              const maxAge = typeof o.maxAge === "number" ? o.maxAge : undefined;
+              const expiresRaw = o.expires;
+              const expires =
+                expiresRaw instanceof Date
+                  ? expiresRaw
+                  : typeof expiresRaw === "string"
+                    ? new Date(expiresRaw)
+                    : undefined;
+              resLogin.cookies.set(name, value, {
+                path: "/",
+                sameSite: "lax",
+                secure: true,
+                httpOnly: true,
+                ...(typeof maxAge === "number" ? { maxAge } : {}),
+                ...(expires && !Number.isNaN(expires.getTime()) ? { expires } : {}),
+              });
+            }
+            resLogin.headers.set("x-cookie-writer", "middleware");
+            resLogin.headers.set("x-auth-set-cookie-count", String(cookies.length));
+          },
+        },
+      });
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        return NextResponse.redirect(new URL(`/${locale}/bty`, req.url), 302);
+      }
+      return resLogin;
+    } catch {
+      // fall through to normal public path handling
+    }
+  }
+
   if (isPublicPath(pathname)) return NextResponse.next();
 
   const res = NextResponse.next();

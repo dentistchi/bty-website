@@ -200,9 +200,27 @@ function pickN(arr: string[], n: number): string[] {
   return rotated.slice(0, Math.min(n, rotated.length));
 }
 
-function buildNextAction(levelId: LevelId, detectedTop?: PatternTag): string {
-  // 24–72h action, aligned to level
+const NEXT_ACTION_KO: Record<LevelId, string> = {
+  S1: "24시간 이내: 실제 대화 한 번에서 30초 멈춤 스크립트를 써 보세요 (숨 쉬기, 감정 이름 짓기, 사실 한 문장, 질문 하나).",
+  S2: "72시간 이내: 목표 → 관찰 → 영향 → 요청 구조로 1:1 대화 한 번 잡아 보세요 (존중하고 구체적으로).",
+  S3: "72시간 이내: 반복되는 패턴 하나를 찾고, 재발 방지를 위한 프로세스 조정 하나를 하세요 (핸드오프 체크리스트, 역할 명확화, 간단한 SOP 등).",
+  L1: "72시간 이내: 팀 규범 하나를 한 문장으로 정리하고(차분한 톤, 사적 보정, 공개 격려) 다음 상호작용에서 보여 주세요.",
+  L2: "72시간 이내: 역할·인센티브·핸드오프·거버넌스 리듬 중 하나를 바꿔서, 옳은 행동이 가장 쉬운 행동이 되게 하세요.",
+  L3: "72시간 이내: 이 상황에 대한 원칙 문장 하나를 적고(타협 불가 + 유연성), 리더들에게 압박이 아닌 방향으로 공유하세요.",
+  L4: "72시간 이내: 1페이지 결정 메모(트레이드오프, 리스크, 5년 영향)를 쓰고, 최종 결정 전 72시간 쿨링 기간을 두세요.",
+};
+
+function buildNextAction(levelId: LevelId, detectedTop?: PatternTag, locale?: string): string {
   const top = detectedTop;
+  const isKo = locale === "ko";
+
+  if (isKo) {
+    const base = NEXT_ACTION_KO[levelId];
+    if (levelId === "L4" && (top === "control" || top === "ego_threat" || top === "rushed")) {
+      return "72시간 이내: 1페이지 결정 메모(트레이드오프, 리스크, 5년 영향)를 쓰고, 최종 확정 전 72시간 쿨링 기간을 두세요.";
+    }
+    return base;
+  }
 
   switch (levelId) {
     case "S1":
@@ -218,7 +236,6 @@ function buildNextAction(levelId: LevelId, detectedTop?: PatternTag): string {
     case "L3":
       return "Within 72 hours: write one principle sentence for this situation (non-negotiable + flexibility). Share it with leaders as direction, not pressure.";
     case "L4":
-      // If control/ego threat shows up, nudge toward written memo and cooling period
       if (top === "control" || top === "ego_threat" || top === "rushed") {
         return "Within 72 hours: write a 1-page decision memo (trade-offs, risks, 5-year impact) and apply a 72-hour cooling period before final commitment.";
       }
@@ -226,20 +243,28 @@ function buildNextAction(levelId: LevelId, detectedTop?: PatternTag): string {
   }
 }
 
-function buildSummary(userText: string, scenario?: ScenarioContext): string {
+function buildSummary(userText: string, scenario?: ScenarioContext, locale?: string): string {
   const situation = scenario?.situation ? scenario.situation.trim() : "";
-  const choice = scenario?.userChoice ? `Your stated direction/choice: ${scenario.userChoice.trim()}. ` : "";
+  const choice = scenario?.userChoice ? scenario.userChoice.trim() : "";
   const user = (userText || "").trim();
+  const isKo = locale === "ko";
 
-  // Keep calm, factual, no judgment
+  if (isKo) {
+    const s1 = situation
+      ? `상황 기록: ${situation.slice(0, 220)}${situation.length > 220 ? "…" : ""}. `
+      : "상황이 기록되었습니다. ";
+    const s2 = user ? `적어 주신 내용: ${user.slice(0, 220)}${user.length > 220 ? "…" : ""}. ` : "";
+    const s3 = choice ? `선택하신 방향: ${choice}. ` : "";
+    return (s1 + s2 + s3).trim();
+  }
+
   const s1 = situation
     ? `Situation noted: ${situation.slice(0, 220)}${situation.length > 220 ? "..." : ""}. `
     : "Situation noted. ";
   const s2 = user
     ? `You described: ${user.slice(0, 220)}${user.length > 220 ? "..." : ""}. `
     : "";
-  const s3 = choice;
-
+  const s3 = choice ? `Your stated direction/choice: ${choice}. ` : "";
   return (s1 + s2 + s3).trim();
 }
 
@@ -247,7 +272,8 @@ export function buildReflection(
   levelId: LevelId,
   userText: string,
   model: HumanModelConfig,
-  scenario?: ScenarioContext
+  scenario?: ScenarioContext,
+  locale?: string
 ): ReflectionOutput {
   const detected = detectPatterns(userText);
   const level = model.levels[levelId];
@@ -279,8 +305,8 @@ export function buildReflection(
   }
 
   const questions = targeted.length ? [...baselineQs, ...targeted] : pickN(level.reflection_bank.baseline, 3);
-  const summary = buildSummary(userText, scenario);
-  const next_action = buildNextAction(levelId, detected.topTag);
+  const summary = buildSummary(userText, scenario, locale);
+  const next_action = buildNextAction(levelId, detected.topTag, locale);
 
   return { summary, questions, next_action, detected };
 }

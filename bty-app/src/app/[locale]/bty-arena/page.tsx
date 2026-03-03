@@ -575,6 +575,7 @@ export default function BtyArenaPage() {
           {
             json: {
               userText: trimmed,
+              locale: locale ?? undefined,
               scenario: {
                 situation: [displayTitle, displayContext].filter(Boolean).join(" — ").slice(0, 280),
                 userChoice: trimmed,
@@ -709,6 +710,7 @@ export default function BtyArenaPage() {
     setSystemMessage({
       id: "arch_init",
       en: "Session preserved. You can resume anytime.",
+      ko: "세션이 저장됐어요. 언제든 이어할 수 있어요.",
     });
   }
 

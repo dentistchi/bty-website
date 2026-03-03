@@ -2,6 +2,7 @@
 
 import React from "react";
 import { UserAvatar } from "./UserAvatar";
+import { AvatarComposite } from "./AvatarComposite";
 
 export interface LeaderboardRowProps {
   rank: number;
@@ -65,7 +66,17 @@ export function LeaderboardRow({
         >
           {rank}
         </div>
-        <UserAvatar avatarUrl={avatarUrl} avatarLayers={avatarLayers} initials={initials} size="sm" />
+        {avatarLayers?.characterImageUrl ? (
+          <AvatarComposite
+            size={34}
+            characterUrl={avatarLayers.characterImageUrl}
+            outfitUrl={avatarLayers.outfitImageUrl ?? undefined}
+            accessoryUrls={[]}
+            alt={displayName}
+          />
+        ) : (
+          <UserAvatar avatarUrl={avatarUrl} initials={initials} size="sm" />
+        )}
         <div>
           <div style={{ fontWeight: 800, fontSize: 16 }}>{displayName}</div>
           <div style={{ fontSize: 12, opacity: 0.7 }}>{tier ?? "Code Name"}</div>

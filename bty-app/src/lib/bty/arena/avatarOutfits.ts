@@ -181,6 +181,38 @@ const FANTASY_OUTFIT_IDS = new Set(
   (Object.values(FANTASY_LEVEL_MAP) as { outfitId: string }[]).map((e) => e.outfitId)
 );
 
+/** AVATAR_LAYER_SPEC §3.2: UI용 허용 옷 한 건 (key = theme_outfit_outfitId) */
+export type AllowedOutfitEntry = { key: string; name: string; rarity?: "common" | "rare" | "epic" };
+
+/**
+ * levelId 기준으로 열린 옷만 반환 (해당 레벨 이하에서 언락된 outfit id 수집).
+ * key = `${theme}_outfit_${outfitId}`.
+ */
+export function getAllowedOutfitsForLevel(
+  theme: AvatarOutfitTheme,
+  levelId: LevelId
+): AllowedOutfitEntry[] {
+  const map = theme === "fantasy" ? FANTASY_LEVEL_MAP : PROFESSIONAL_LEVEL_MAP;
+  const levelIndex = OUTFIT_LEVEL_IDS.indexOf(levelId);
+  const upTo = levelIndex < 0 ? 0 : levelIndex + 1;
+  const seen = new Set<string>();
+  const out: AllowedOutfitEntry[] = [];
+  for (let i = 0; i < upTo; i++) {
+    const lid = OUTFIT_LEVEL_IDS[i];
+    const entry = map[lid];
+    if (entry && !seen.has(entry.outfitId)) {
+      seen.add(entry.outfitId);
+      out.push({ key: `${theme}_outfit_${entry.outfitId}`, name: entry.outfitLabel });
+    }
+  }
+  return out;
+}
+
+/** tier 기반 악세사리 슬롯 수 (예: tier 25마다 1슬롯). */
+export function accessorySlotsFromTier(tier: number): number {
+  return Math.max(0, Math.floor(tier / 25));
+}
+
 /** 테마별 옷 선택 옵션 (id, label). 대시보드 등에서 사용. */
 export type OutfitOption = { outfitId: string; outfitLabel: string };
 export const OUTFIT_OPTIONS_BY_THEME: Record<"professional" | "fantasy", OutfitOption[]> = {

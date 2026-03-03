@@ -7,6 +7,7 @@ import BtyTopNav from "@/components/bty/BtyTopNav";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 import { LeaderboardRow, UserAvatar, LeaderboardListSkeleton, EmptyState } from "@/components/bty-arena";
 
+/** API contract: GET /api/arena/leaderboard returns LeaderboardRes. UI renders only — no ranking/tier computation here. */
 type Row = {
   rank: number;
   codeName: string;
@@ -172,16 +173,15 @@ export default function LeaderboardPage() {
             </button>
           ))}
         </div>
-        {data?.scope === "role" && data?.scopeLabel && (
-          <div style={{ marginTop: 8, fontSize: 13, opacity: 0.85 }}>
-            {t.scopeRole}: {data.scopeLabel}
-          </div>
-        )}
-        {data?.scope === "office" && data?.scopeLabel && (
-          <div style={{ marginTop: 8, fontSize: 13, opacity: 0.85 }}>
-            {t.scopeOffice}: {data.scopeLabel}
-          </div>
-        )}
+        {/* §4: 스코프 라벨 한 줄 — 전체 / 역할: Doctor / 지점: OO점 */}
+        <div style={{ marginTop: 8, fontSize: 13, opacity: 0.85 }}>
+          {scope === "overall"
+            ? t.tabOverall
+            : scope === "role"
+              ? data?.scopeLabel ? `${t.scopeRole}: ${data.scopeLabel}` : t.scopeRole
+              : data?.scopeLabel ? `${t.scopeOffice}: ${data.scopeLabel}` : t.scopeOffice
+          }
+        </div>
         {data?.scopeUnavailable && (
           <div style={{ marginTop: 8, padding: "10px 14px", background: "#fff8e6", borderRadius: 10, fontSize: 13 }}>
             {t.scopeUnavailable}
@@ -294,6 +294,32 @@ export default function LeaderboardPage() {
           >
             <div style={{ fontWeight: 800 }}>{t.failed}</div>
             <div style={{ marginTop: 6, opacity: 0.85 }}>{error}</div>
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setLoading(true);
+                const url =
+                  scope === "overall"
+                    ? "/api/arena/leaderboard"
+                    : `/api/arena/leaderboard?scope=${encodeURIComponent(scope)}`;
+                arenaFetch<LeaderboardRes>(url)
+                  .then((json) => setData(json))
+                  .catch((e: unknown) => setError(e instanceof Error ? e.message : "FAILED_TO_LOAD"))
+                  .finally(() => setLoading(false));
+              }}
+              style={{
+                marginTop: 10,
+                padding: "8px 14px",
+                borderRadius: 8,
+                border: "1px solid #c0a0a0",
+                background: "#fff",
+                fontSize: 14,
+                cursor: "pointer",
+              }}
+            >
+              {locale === "ko" ? "다시 시도" : "Retry"}
+            </button>
           </div>
         )}
 

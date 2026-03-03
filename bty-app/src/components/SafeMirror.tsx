@@ -205,11 +205,7 @@ export function SafeMirror({
         if (typeof window !== "undefined") window.dispatchEvent(new Event(BRIDGE_CHECK_EVENT));
       }
     } catch {
-      const fallback =
-        locale === "ko"
-          ? "지금은 답장을 적기 어려워요. 그 마음이 들었다는 것만으로도 충분해요."
-          : "I can't write back right now. It's enough that you wrote it down.";
-      setEntries((prev) => [...prev, { role: "assistant", content: fallback }]);
+      setEntries((prev) => [...prev, { role: "assistant", content: t.fallbackReply }]);
       setSafeMirrorPositive();
       onPositive?.();
       if (typeof window !== "undefined") window.dispatchEvent(new Event(BRIDGE_CHECK_EVENT));

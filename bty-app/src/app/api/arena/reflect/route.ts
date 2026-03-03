@@ -21,12 +21,14 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
 
-  let body: { levelId?: string; userText?: string; scenario?: unknown };
+  let body: { levelId?: string; userText?: string; locale?: string; scenario?: unknown };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
+
+  const locale = body.locale === "ko" ? "ko" : "en";
 
   const userText = String(body.userText ?? "").trim();
   if (!userText) {
@@ -90,7 +92,7 @@ export async function POST(req: Request) {
   }
 
   const scenario = body.scenario ?? undefined;
-  const result = buildReflection(levelId, userText, HUMAN_MODEL, scenario);
+  const result = buildReflection(levelId, userText, HUMAN_MODEL, scenario, locale);
 
   return NextResponse.json({
     ok: true,

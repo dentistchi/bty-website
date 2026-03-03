@@ -20,6 +20,8 @@ type CenterMessages = {
   heroTitleMain?: string;
   heroTitleAccent?: string;
   tagline: string;
+  /** §5: 단일 CTA — 클릭 시 /${locale}/bty 로 직행 (재로그인 유도 금지) */
+  ctaToFoundry: string;
   linkToBty: string;
   assessmentCta: string;
   assessmentCtaSub: string;
@@ -31,6 +33,8 @@ type CenterMessages = {
   todayMoodLabel: string;
   todayEnergyLabel: string;
   todayOneWordLabel: string;
+  todayMoodPlaceholder: string;
+  todayOneWordPlaceholder: string;
   todayNext: string;
   todaySkip: string;
   letterStepTitle: string;
@@ -117,7 +121,7 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
                         type="text"
                         value={todayMood}
                         onChange={(e) => setTodayMood(e.target.value)}
-                        placeholder="e.g. calm, a bit anxious"
+                        placeholder={t.todayMoodPlaceholder}
                         className="w-full rounded-xl border border-sanctuary-peach/50 bg-white/80 px-4 py-3 text-sanctuary-text placeholder:text-sanctuary-text-soft/60"
                       />
                     </div>
@@ -146,7 +150,7 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
                         type="text"
                         value={todayOneWord}
                         onChange={(e) => setTodayOneWord(e.target.value)}
-                        placeholder="e.g. grateful, tired"
+                        placeholder={t.todayOneWordPlaceholder}
                         className="w-full rounded-xl border border-sanctuary-peach/50 bg-white/80 px-4 py-3 text-sanctuary-text placeholder:text-sanctuary-text-soft/60"
                       />
                     </div>
@@ -248,9 +252,10 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
                 <div className="space-y-6">
                   <h2 className="text-xl font-medium text-sanctuary-text">{t.completedTitle}</h2>
                   <p className="text-sanctuary-text-soft">{t.completedSub}</p>
-                  <button
-                    type="button"
-                    onClick={() => {
+                  <Link
+                    href={`/${locale}/center#open-chat`}
+                    onClick={(e) => {
+                      e.preventDefault();
                       if (typeof window !== "undefined") {
                         window.dispatchEvent(new CustomEvent("open-chatbot"));
                       }
@@ -258,7 +263,7 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
                     className="block w-full rounded-2xl border border-sanctuary-peach/50 bg-sanctuary-peach/10 py-4 text-center hover:bg-sanctuary-peach/20 transition-colors font-medium text-sanctuary-text"
                   >
                     {t.continueToChat}
-                  </button>
+                  </Link>
                 </div>
               </div>
             </main>
@@ -291,8 +296,9 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
                 <Link
                   href={`/${locale}/bty`}
                   className="inline-block rounded-xl px-6 py-3 font-medium text-sanctuary-text bg-sanctuary-peach/20 border border-sanctuary-peach/50 hover:bg-sanctuary-peach/30 transition-colors"
+                  prefetch={true}
                 >
-                  {t.linkToBty}
+                  {t.ctaToFoundry}
                 </Link>
               </footer>
             </div>
@@ -342,8 +348,9 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
                 <Link
                   href={`/${locale}/bty`}
                   className="inline-block rounded-xl px-6 py-3 font-medium text-sanctuary-text bg-sanctuary-peach/20 border border-sanctuary-peach/50 hover:bg-sanctuary-peach/30 transition-colors"
+                  prefetch={true}
                 >
-                  {t.linkToBty}
+                  {t.ctaToFoundry}
                 </Link>
               </footer>
             </div>
@@ -412,7 +419,7 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
                     type="text"
                     value={todayMood}
                     onChange={(e) => setTodayMood(e.target.value)}
-                    placeholder={lang === "ko" ? "예: 평온해요, 조금 불안해요" : "e.g. calm, a bit anxious"}
+                    placeholder={t.todayMoodPlaceholder}
                     className="w-full rounded-xl border border-dear-sage/30 bg-white/80 px-4 py-3 text-dear-charcoal placeholder:text-dear-charcoal-soft/60"
                   />
                 </div>
@@ -441,7 +448,7 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
                     type="text"
                     value={todayOneWord}
                     onChange={(e) => setTodayOneWord(e.target.value)}
-                    placeholder={lang === "ko" ? "예: 고맙다, 지쳤다" : "e.g. grateful, tired"}
+                    placeholder={t.todayOneWordPlaceholder}
                     className="w-full rounded-xl border border-dear-sage/30 bg-white/80 px-4 py-3 text-dear-charcoal placeholder:text-dear-charcoal-soft/60"
                   />
                 </div>
@@ -526,9 +533,10 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
               <div className="space-y-6">
                 <h2 className="text-xl font-medium text-dear-charcoal">{t.completedTitle}</h2>
                 <p className="text-dear-charcoal-soft">{t.completedSub}</p>
-                <button
-                  type="button"
-                  onClick={() => {
+                <Link
+                  href={`/${locale}/center#open-chat`}
+                  onClick={(e) => {
+                    e.preventDefault();
                     if (typeof window !== "undefined") {
                       window.dispatchEvent(new CustomEvent("open-chatbot"));
                     }
@@ -536,7 +544,7 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
                   className="block w-full rounded-2xl border border-dear-sage/30 bg-dear-sage/5 py-4 text-center hover:bg-dear-sage/10 transition-colors font-medium text-dear-charcoal"
                 >
                   {t.continueToChat}
-                </button>
+                </Link>
               </div>
             )}
           </div>
@@ -589,8 +597,9 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
               <Link
                 href={`/${locale}/bty`}
                 className="inline-block rounded-xl px-6 py-3 font-medium text-dear-charcoal bg-dear-sage/10 border border-dear-sage/30 hover:bg-dear-sage/20 transition-colors"
+                prefetch={true}
               >
-                {t.linkToBty}
+                {t.ctaToFoundry}
               </Link>
             </footer>
           </div>
@@ -652,7 +661,14 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
               <Link
                 href={`/${locale}/bty`}
                 className="inline-block rounded-xl px-6 py-3 font-medium text-dear-charcoal bg-dear-sage/10 border border-dear-sage/30 hover:bg-dear-sage/20 transition-colors"
+                prefetch={true}
               >
-                {t.linkToBty}
+                {t.ctaToFoundry}
               </Link>
             </footer>
+          </div>
+        </main>
+      </AuthGate>
+    </>
+  );
+}

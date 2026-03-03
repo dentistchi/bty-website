@@ -138,6 +138,7 @@ export async function POST(request: Request) {
         message: getSafetyValveMessage(lang),
         safety_valve: true,
         center_url: CENTER_URL,
+        dear_me_url: CENTER_URL,
       });
     }
 
@@ -176,7 +177,7 @@ export async function POST(request: Request) {
           }
           return NextResponse.json({
             message: text,
-            ...(triggeredValve && { safety_valve: true, center_url: CENTER_URL }),
+            ...(triggeredValve && { safety_valve: true, center_url: CENTER_URL, dear_me_url: CENTER_URL }),
           });
         }
         recordQualityEventApp({ route: "mentor", reason: "empty_response", lang });

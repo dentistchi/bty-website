@@ -78,7 +78,7 @@ export default function IntegrityMirrorPage() {
             </div>
             <footer className="pt-6 border-t border-foundry-purple-muted text-center text-sm">
               <Link
-                href={locale === "ko" ? "/ko/bty" : "/en/bty"}
+                href={`/${locale}/bty`}
                 className="text-foundry-purple hover:underline"
               >
                 {t.backToFoundry}
@@ -106,7 +106,7 @@ export default function IntegrityMirrorPage() {
               </p>
               <div className="flex flex-wrap justify-center gap-3">
                 <Link
-                  href={locale === "ko" ? "/ko/bty/mentor" : "/en/bty/mentor"}
+                  href={`/${locale}/bty/mentor`}
                   className={cn(
                     "rounded-xl px-6 py-3 font-medium text-white",
                     "bg-foundry-purple hover:bg-foundry-purple-dark transition-colors"
@@ -115,7 +115,7 @@ export default function IntegrityMirrorPage() {
                   {t.doneCtaMentor}
                 </Link>
                 <Link
-                  href={locale === "ko" ? "/ko/bty" : "/en/bty"}
+                  href={`/${locale}/bty`}
                   className={cn(
                     "rounded-xl px-6 py-3 font-medium",
                     "border border-foundry-purple-muted text-foundry-purple",
@@ -245,7 +245,7 @@ export default function IntegrityMirrorPage() {
 
           <footer className="mt-6 pt-4 border-t border-foundry-purple-muted text-center text-sm">
             <Link
-              href={locale === "ko" ? "/ko/bty" : "/en/bty"}
+              href={`/${locale}/bty`}
               className="text-foundry-purple hover:underline"
             >
               {t.backToFoundry}
