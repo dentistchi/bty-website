@@ -2,14 +2,16 @@
 
 **단일 진실**: `docs/CURRENT_TASK.md` 1줄 + `docs/CURSOR_TASK_BOARD.md` 표. First Task 완료 전 다음 Task 시작 불가.
 
+**이전 런**: CI GATE PASSED ✅ (미들웨어·CTA href·lint/test/build 통과).
+
 ---
 
-## First Task (1개)
+## First Task (1개) — 현재
 
-미들웨어: 인증된 사용자 `/bty/login` 접근 시 `/${locale}/bty`로 리다이렉트.
+§2 영어/한국어 진입 플로우 + 로딩 문구: 영어 진입도 "질문 먼저 → 답 → Center 메인". 전환 중 로딩/대기 문구 locale에 맞게(i18n center.loading).
 
-- Priority Rule 1: `src/middleware.ts` = bty-auth-deploy-safety 적용 → 1순위.
-- 현재: `/bty/login`이 public이라 인증 user도 접근 가능 → CTA가 login 링크면 재로그인 유도. user 존재 시 login → /bty 리다이렉트 필요.
+- §9 순서: §3 완료 후 §2. UI·i18n(4순위).
+- §2: Center 진입 경로 locale별 동일 "질문 먼저" 플로우, 로딩/대기 문구 i18n.
 
 ---
 
@@ -35,10 +37,10 @@ C1 → (C2 | C3) → C4(C3 Exit 후) → C5(C2·C3·C4 Exit 후).
 
 | 커서 | Exit Criteria |
 |------|---------------|
-| C1 | [ ] 목표 1줄 [ ] 보드 Start/Exit [ ] EXECUTION_PLAN |
-| C2 | [ ] A·Auth Safety·F 체크 [ ] BTY_RELEASE_GATE_CHECK.md 반영 |
-| C3 | [ ] 인증 user + /bty/login → /bty 리다이렉트 [ ] npm test 통과 |
-| C4 | [ ] CTA href=/${locale}/bty [ ] npm run lint 통과 |
+| C1 | [ ] 목표 1줄(§2) [ ] 보드 Start/Exit [ ] EXECUTION_PLAN |
+| C2 | [ ] §2 변경분 Gate 해당 시 체크 [ ] BTY_RELEASE_GATE_CHECK.md 반영 |
+| C3 | [ ] 진입/라우트 변경 시 npm test 통과 |
+| C4 | [ ] EN/KO 동일 "질문 먼저" 플로우 [ ] 로딩 문구 locale 분기 [ ] npm run lint 통과 |
 | C5 | [ ] lint [ ] test [ ] build 통과 |
 
 ---

@@ -121,6 +121,7 @@ export default function AssessmentClient({
           onClick={goPrev}
           disabled={currentIndex === 0}
           className="rounded-xl px-5 py-2.5 border border-[var(--arena-text-soft)]/40 text-[var(--arena-text)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--arena-text-soft)]/5 transition-colors"
+          aria-label={isEn ? "Previous question" : "이전 문항"}
         >
           {prevLabel}
         </button>
@@ -129,6 +130,7 @@ export default function AssessmentClient({
           onClick={goNext}
           disabled={!canGoNext}
           className="rounded-xl px-5 py-2.5 font-medium bg-[var(--arena-accent)] text-white disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+          aria-label={isLast ? (isEn ? "See result" : "결과 보기") : isEn ? "Next question" : "다음 문항"}
         >
           {isLast ? seeResultLabel : nextLabel}
         </button>

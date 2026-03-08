@@ -2,16 +2,17 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { getMessages } from "@/lib/i18n";
-import { cn, getSelfEsteemHistory, type SelfEsteemHistoryEntry, type SelfEsteemLevel } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { Locale } from "@/lib/i18n";
-import type { ResilienceDayEntry } from "@/app/api/center/resilience/route";
+import type { ResilienceDayEntry, ResilienceDailyLevel } from "@/app/api/center/resilience/route";
 
 /**
- * 회복 탄력성 그래프 (§4 CENTER_PAGE_IMPROVEMENT_SPEC)
- * - 매일의 5문항(자존감) + Center 편지(활동)를 날짜별로 합쳐 일별 궤적로 표시.
- * - X축: 실제 날짜 범위(첫 기록일 … 최근 기록일). "과거/지금" 2점이 아닌 일별/기간별 트렉.
- * - 데이터: localStorage 5문항 이력 + GET /api/center/resilience(편지 energy 기반). 같은 날은 5문항 우선.
+ * §4 CENTER_PAGE_IMPROVEMENT_SPEC — 일별 트렉 시각화, render-only.
+ * API 계약: GET /api/center/resilience → { entries: ResilienceDayEntry[] }.
+ * UI는 응답의 entries만 사용하며, 날짜·level 계산/병합 없음.
  */
+
+export type ResilienceGraphApiResponse = { entries?: ResilienceDayEntry[] };
 
 type Theme = "dear" | "sanctuary" | "dojo";
 
@@ -23,7 +24,7 @@ function formatAxisDate(dateStr: string, locale: Locale): string {
     : d.toLocaleDateString(locale, { month: "short", day: "numeric" });
 }
 
-function levelToY(level: SelfEsteemLevel): number {
+function levelToY(level: ResilienceDailyLevel): number {
   if (level === "high") return 18;
   if (level === "mid") return 40;
   return 55;
@@ -33,10 +34,8 @@ function parseDate(dateStr: string): number {
   return new Date(dateStr + "T12:00:00").getTime();
 }
 
-type DailyEntry = { date: string; level: SelfEsteemLevel };
-
 /** X축을 실제 날짜 범위로 배치. 같은 날만 있으면 인덱스로 균등 배치. */
-function getDots(entries: DailyEntry[]): { x: number; y: number; level: SelfEsteemLevel }[] {
+function getDots(entries: ResilienceDayEntry[]): { x: number; y: number; level: ResilienceDailyLevel }[] {
   if (entries.length === 0) return [];
   if (entries.length === 1) {
     const e = entries[0];
@@ -82,7 +81,7 @@ function buildTrajectoryFillPath(dots: { x: number; y: number }[]): string | nul
   return d;
 }
 
-const levelColor: Record<SelfEsteemLevel, string> = {
+const levelColor: Record<ResilienceDailyLevel, string> = {
   high: "#6B8E5B",
   mid: "#8A9A5B",
   low: "#9AAA7B",
@@ -103,45 +102,48 @@ export function ResilienceGraph({
   const stroke = isDear ? "#8A9A5B" : isSanctuary ? "var(--sanctuary-flower)" : "#5B4B8A";
   const labelColor = isDear ? "text-dear-charcoal-soft" : isSanctuary ? "text-sanctuary-text-soft" : "text-foundry-ink-soft";
 
-  const [tick, setTick] = useState(0);
-  const [letterEntries, setLetterEntries] = useState<ResilienceDayEntry[]>([]);
+  const [entries, setEntries] = useState<ResilienceDayEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const handler = () => setTick((k) => k + 1);
-    window.addEventListener("dear-self-esteem-updated", handler);
-    return () => window.removeEventListener("dear-self-esteem-updated", handler);
-  }, []);
-
-  useEffect(() => {
+    let cancelled = false;
     fetch("/api/center/resilience", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : { entries: [] }))
-      .then((data: { entries?: ResilienceDayEntry[] }) => setLetterEntries(data.entries ?? []))
-      .catch(() => setLetterEntries([]));
+      .then((data: ResilienceGraphApiResponse) => {
+        if (!cancelled) setEntries(data.entries ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setEntries([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const history = getSelfEsteemHistory();
-  const merged: DailyEntry[] = useMemo(() => {
-    const byDate = new Map<string, DailyEntry>();
-    for (const e of letterEntries) {
-      byDate.set(e.date, { date: e.date, level: e.level });
-    }
-    for (const e of history) {
-      byDate.set(e.date, { date: e.date, level: e.level });
-    }
-    return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
-  }, [history, letterEntries, tick]);
-
-  const historyDots = useMemo(() => getDots(merged), [merged]);
+  const sortedEntries = useMemo(
+    () => [...entries].sort((a, b) => a.date.localeCompare(b.date)),
+    [entries]
+  );
+  const historyDots = useMemo(() => getDots(sortedEntries), [sortedEntries]);
   const trajectoryPath = useMemo(() => buildTrajectoryPath(historyDots), [historyDots]);
   const trajectoryFillPath = useMemo(() => buildTrajectoryFillPath(historyDots), [historyDots]);
 
-  const axisStartLabel = merged.length >= 1 ? formatAxisDate(merged[0].date, locale) : "";
-  const axisEndLabel = merged.length >= 1 ? formatAxisDate(merged[merged.length - 1].date, locale) : "";
+  const axisStartLabel = sortedEntries.length >= 1 ? formatAxisDate(sortedEntries[0].date, locale) : "";
+  const axisEndLabel = sortedEntries.length >= 1 ? formatAxisDate(sortedEntries[sortedEntries.length - 1].date, locale) : "";
 
   return (
     <div
       role="img"
-      aria-label={`${t.title}: ${t.subtitle}`}
+      aria-label={
+        loading
+          ? `${t.title}: ${t.subtitle}`
+          : sortedEntries.length > 0
+            ? `${t.title}: ${t.dailyTrajectorySubtitle}`
+            : `${t.title}: ${t.emptyMessage}`
+      }
       className={cn("overflow-hidden", !isDear && "rounded-2xl", className)}
     >
       <div
@@ -165,9 +167,45 @@ export function ResilienceGraph({
           {t.title}
         </h3>
         <p className={cn("text-sm mb-4", labelColor)}>
-          {merged.length > 0 ? t.dailyTrajectorySubtitle : t.subtitle}
+          {loading ? t.subtitle : sortedEntries.length > 0 ? t.dailyTrajectorySubtitle : t.subtitle}
         </p>
-        <div className="w-full aspect-[2/1] min-h-[120px] flex items-end">
+        <div className="w-full aspect-[2/1] min-h-[120px] flex items-end" aria-busy={loading}>
+          {loading ? (
+            <div
+              className="w-full h-full flex flex-col gap-3 justify-end"
+              role="status"
+              aria-label={t.subtitle}
+              aria-live="polite"
+            >
+              {/* Skeleton: graph-area shape with trajectory suggestion */}
+              <div
+                className="w-full flex-1 min-h-[80px] rounded-lg flex items-end justify-around gap-1 px-2 pb-2 animate-pulse"
+                style={{
+                  background:
+                    "linear-gradient(90deg, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.06) 100%)",
+                  backgroundSize: "200% 100%",
+                }}
+                aria-hidden="true"
+              >
+                {[40, 55, 35, 48, 25].map((h, i) => (
+                  <div
+                    key={i}
+                    className="flex-1 max-w-[14%] rounded-full bg-black/10"
+                    style={{ height: `${h}%`, minHeight: 12 }}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : sortedEntries.length === 0 ? (
+            <div
+              className={cn("w-full min-h-[120px] flex items-center justify-center py-6", labelColor)}
+              role="status"
+              aria-live="polite"
+              aria-label={t.emptyMessage}
+            >
+              <p className="text-sm text-center px-4">{t.emptyMessage}</p>
+            </div>
+          ) : (
           <svg
             viewBox="0 0 100 60"
             preserveAspectRatio="none"
@@ -205,6 +243,7 @@ export function ResilienceGraph({
               />
             ))}
           </svg>
+          )}
         </div>
         {(axisStartLabel || axisEndLabel) ? (
           <div className={cn("flex justify-between mt-2 text-xs", labelColor)}>

@@ -6,8 +6,9 @@ const META_PHRASES =
   /(?:hidden risk|integrity trigger|growth opportunity|leadership challenge|decision point)/i;
 
 /**
- * Strip all design/system-only language from context. User sees only situation + emotion;
+ * Strip design/system-only language from context (EN). User sees only situation + emotion;
  * no "calculation system" (hidden risk, integrity trigger, growth opportunity, etc.).
+ * When locale is ko, use contextKo as-is (no meta phrases); this strip applies to EN context only.
  */
 export function getContextForUser(context: string): string {
   let text = context.trim();
@@ -33,6 +34,7 @@ export function getRandomScenario(excludeIds: string[] = []): Scenario {
 
 /**
  * XP: xpEarned = round(xpBase * difficulty). Higher difficulty => higher reward.
+ * When payload.locale === "ko", returns Korean result/microInsight/followUp when available.
  */
 export function computeResult(payload: ScenarioSubmitPayload): ScenarioSubmitResult {
   const scenario = getScenarioById(payload.scenarioId);
@@ -42,6 +44,20 @@ export function computeResult(payload: ScenarioSubmitPayload): ScenarioSubmitRes
   if (!choice) throw new Error("Choice not found");
 
   const xpEarned = Math.max(0, Math.round(choice.xpBase * choice.difficulty));
+  const isKo = payload.locale === "ko";
+
+  const result = isKo && choice.resultKo ? choice.resultKo : choice.result;
+  const microInsight = isKo && choice.microInsightKo ? choice.microInsightKo : choice.microInsight;
+  const followUp = choice.followUp
+    ? {
+        ...choice.followUp,
+        prompt: isKo && choice.followUp.promptKo ? choice.followUp.promptKo : choice.followUp.prompt,
+        options:
+          isKo && choice.followUp.optionsKo?.length
+            ? choice.followUp.optionsKo
+            : choice.followUp.options ?? [],
+      }
+    : undefined;
 
   return {
     ok: true,
@@ -49,8 +65,8 @@ export function computeResult(payload: ScenarioSubmitPayload): ScenarioSubmitRes
     choiceId: choice.choiceId,
     xpEarned,
     hiddenDelta: choice.hiddenDelta,
-    microInsight: choice.microInsight,
-    result: choice.result,
-    followUp: choice.followUp,
+    microInsight,
+    result,
+    followUp,
   };
 }

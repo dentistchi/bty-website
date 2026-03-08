@@ -6,18 +6,23 @@ import { usePathname } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
 import { Nav } from "@/components/Nav";
 import { ThemeBody } from "@/components/ThemeBody";
+import { CardSkeleton, EmptyState } from "@/components/bty-arena";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
+import { fetchJson } from "@/lib/read-json";
 import { cn } from "@/lib/utils";
 
 /**
- * 역지사지 시뮬레이터 (Integrity Mirror)
- * PROJECT_BACKLOG §7 2차 확장: 연습 플로우 2~5단계 (안내 → 시나리오 → 피드백 → 완료).
- * 단계: guide(안내) → scenario(시나리오·피드백) → done(완료).
+ * 역지사지 시뮬레이터 (Dojo 2차 연습 플로우 2~5단계)
+ * Render-only: 안내/시나리오/완료 문구는 i18n, Dr. Chi 피드백은 API(/api/mentor) 응답만 표시.
+ * 단계: guide(2.안내) → scenario(3.시나리오 + 4.피드백) → done(5.완료).
  */
 
 type Step = "guide" | "scenario" | "done";
 type Message = { role: "user" | "chi"; text: string };
+
+/** API 계약: POST /api/mentor → { message?: string; safety_valve?: boolean } */
+type MentorRes = { message?: string; safety_valve?: boolean };
 
 export default function IntegrityMirrorPage() {
   const pathname = usePathname() ?? "";
@@ -34,16 +39,34 @@ export default function IntegrityMirrorPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const send = () => {
+  const send = async () => {
     const text = input.trim();
     if (!text || sending) return;
     setInput("");
     setSending(true);
     setMessages((prev) => [...prev, { role: "user", text }]);
-    setTimeout(() => {
-      setMessages((prev) => [...prev, { role: "chi", text: t.reply }]);
+    try {
+      const history = [...messages, { role: "user" as const, text }];
+      const r = await fetchJson<MentorRes>("/api/mentor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: text,
+          messages: history.map((m) => ({ role: m.role, content: m.text })),
+          lang: locale,
+          topic: "patient",
+        }),
+      });
+      const reply =
+        typeof r.json?.message === "string" && r.json.message.trim() !== ""
+          ? r.json.message.trim()
+          : t.replyFallback;
+      setMessages((prev) => [...prev, { role: "chi", text: reply }]);
+    } catch {
+      setMessages((prev) => [...prev, { role: "chi", text: t.apiError }]);
+    } finally {
       setSending(false);
-    }, 600);
+    }
   };
 
   const hasFeedback = messages.some((m) => m.role === "chi");
@@ -62,6 +85,11 @@ export default function IntegrityMirrorPage() {
               <p className="text-foundry-ink-soft mt-1 text-sm">{t.subtitle}</p>
             </header>
             <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
+              {t.stepLabelGuide && (
+                <p className="text-sm font-medium text-foundry-purple-dark/80 mb-3" aria-hidden="true">
+                  {t.stepLabelGuide}
+                </p>
+              )}
               <p className="text-foundry-ink leading-relaxed mb-8 max-w-md">
                 {t.guideMessage}
               </p>
@@ -70,7 +98,8 @@ export default function IntegrityMirrorPage() {
                 onClick={() => setStep("scenario")}
                 className={cn(
                   "rounded-xl px-8 py-4 font-semibold text-white",
-                  "bg-foundry-purple hover:bg-foundry-purple-dark transition-colors"
+                  "bg-foundry-purple hover:bg-foundry-purple-dark transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-foundry-purple"
                 )}
               >
                 {t.startPractice}
@@ -115,6 +144,16 @@ export default function IntegrityMirrorPage() {
                   {t.doneCtaMentor}
                 </Link>
                 <Link
+                  href={`/${locale}/assessment`}
+                  className={cn(
+                    "rounded-xl px-6 py-3 font-medium",
+                    "border border-foundry-purple-muted text-foundry-purple",
+                    "hover:bg-foundry-purple/10 transition-colors"
+                  )}
+                >
+                  {t.doneCtaAssessment}
+                </Link>
+                <Link
                   href={`/${locale}/bty`}
                   className={cn(
                     "rounded-xl px-6 py-3 font-medium",
@@ -157,9 +196,11 @@ export default function IntegrityMirrorPage() {
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[200px]">
               {messages.length === 0 && (
-                <div className="text-center py-8 text-foundry-ink-soft text-sm">
-                  {t.emptyHint}
-                </div>
+                <EmptyState
+                  icon="💬"
+                  message={t.emptyHint}
+                  style={{ padding: "24px 16px" }}
+                />
               )}
               {messages.map((m, i) => (
                 <div
@@ -187,9 +228,12 @@ export default function IntegrityMirrorPage() {
                 </div>
               ))}
               {sending && (
-                <div className="flex justify-start">
-                  <div className="rounded-2xl rounded-bl-md px-4 py-3 bg-foundry-purple-muted/30 text-foundry-ink-soft text-sm">
+                <div className="space-y-2">
+                  <p className="text-sm text-foundry-ink-soft" aria-live="polite">
                     {t.thinking}
+                  </p>
+                  <div className="flex justify-start">
+                    <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 20px", maxWidth: 200 }} />
                   </div>
                 </div>
               )}

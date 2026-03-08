@@ -17,6 +17,8 @@ import {
   filterBtyResponse,
   isMetaQuestion,
   getMetaReply,
+  getIntroQuestionKind,
+  getIntroReply,
   type ChatMode,
   type ChatResponseBody,
 } from "@/lib/bty/chat";
@@ -52,9 +54,16 @@ export async function POST(request: Request) {
 
     const mode = normalizeMode(body.mode, userContent) as ChatMode;
 
-    // PROJECT_BACKLOG §9: 메타 질문 → 고정 답변 (토큰 절약·일관된 응답)
+    // PROJECT_BACKLOG §9, CHATBOT_TRAINING_CHECKLIST §3: 메타 질문 → 고정 답변
     if (isMetaQuestion(userContent)) {
       const message = getMetaReply(lang);
+      return NextResponse.json({ message, mode } satisfies ChatResponseBody);
+    }
+
+    // CHATBOT_TRAINING_CHECKLIST §4·ROADMAP: BTY·Foundry·Center 소개 질문 → 고정 답변 (토큰 절약)
+    const introKind = getIntroQuestionKind(userContent);
+    if (introKind) {
+      const message = getIntroReply(introKind, lang);
       return NextResponse.json({ message, mode } satisfies ChatResponseBody);
     }
 
@@ -76,19 +85,32 @@ export async function POST(request: Request) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (apiKey) {
       type OpenAIChatResp = { choices?: { message?: { content?: string } }[] };
-      const r = await fetchJson<OpenAIChatResp>("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: messagesForModel,
-          max_tokens: 200, // CHATBOT_TRAINING_CHECKLIST §0 Foundry
-        }),
-      });
-          if (r.ok) {
+      const openAiTimeoutMs = 30_000; // COMMANDER_BACKLOG_AND_NEXT §2: 장시간 대기 시 fallback으로 이탈
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), openAiTimeoutMs);
+      let r: { ok: boolean; json?: OpenAIChatResp };
+      try {
+        r = await fetchJson<OpenAIChatResp>("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: messagesForModel,
+            max_tokens: 200, // CHATBOT_TRAINING_CHECKLIST §0 Foundry
+          }),
+          signal: controller.signal,
+        });
+      } catch (err) {
+        const isAbort = err instanceof Error && err.name === "AbortError";
+        r = { ok: false };
+        if (isAbort) recordQualityEventApp({ route: "chat", reason: "timeout", mode, lang });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+      if (r.ok) {
         const data = r.json;
         const rawText = data?.choices?.[0]?.message?.content?.trim();
         if (rawText) {

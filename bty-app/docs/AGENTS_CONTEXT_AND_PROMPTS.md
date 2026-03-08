@@ -11,7 +11,7 @@
 | 1 | `bty-app/docs/AGENTS_SHARED_README.md` | 공통 규칙·도메인/API/UI 경로 |
 | 2 | `bty-app/docs/AGENTS_ROLES.md` | 진행 vs 검증 vs 서커 역할 |
 | 3 | `bty-app/docs/PLAN_WORKFLOW.md` | 진행/검증 구분 방식 |
-| 4 | `bty-app/docs/CURRENT_TASK.md` | 현재 할 일·한 줄 지시 |
+| 4 | `docs/CURRENT_TASK.md` | 현재 할 일·한 줄 지시 |
 | 5 | `bty-app/docs/AGENTS_TURN_BY_TURN.md` | 단계별 진행↔검증 프롬프트 |
 | 6 | `bty-app/docs/NEXT_TASKS_2.md` | 2차 작업·상세 프롬프트 블록 |
 | 7 | `bty-app/docs/PROJECT_BACKLOG.md` | 백로그·미완료 항목 |
@@ -20,7 +20,7 @@
 | 10 | `bty-app/.cursor/rules/bty-ui-render-only.mdc` | UI는 렌더만 |
 
 **한 줄 안내 (복사용)**  
-→ 「`bty-app/docs/AGENTS_SHARED_README.md`, `bty-app/docs/AGENTS_ROLES.md`, `bty-app/docs/CURRENT_TASK.md` 읽고 진행해줘.」
+→ 「`bty-app/docs/AGENTS_SHARED_README.md`, `bty-app/docs/AGENTS_ROLES.md`, `docs/CURRENT_TASK.md` 읽고 진행해줘.」
 
 **파일 경로만 복사 (워크스페이스가 bty-app이면 `bty-app/` 생략 가능)**
 

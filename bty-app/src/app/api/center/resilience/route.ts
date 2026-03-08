@@ -1,28 +1,21 @@
 /**
- * GET /api/center/resilience — Center 일별 회복 탄력성 트렉 (§4 CENTER_PAGE_IMPROVEMENT_SPEC).
- * center_letters를 날짜별로 집계해, energy(1–5) 또는 mood로 high/mid/low 수준을 반환.
- * ResilienceGraph에서 5문항 자존감 기록과 병합해 일별 궤적을 그린다.
+ * GET /api/center/resilience — Center 일별/기간별 회복 탄력성 트렉 (§4 CENTER_PAGE_IMPROVEMENT_SPEC).
+ * 도메인(aggregateLetterRowsToDailyEntries)만 호출. 쿠키/리다이렉트 변경 없음.
+ * Query: period=7|30 (optional) — 최근 N일만 반환.
+ *
+ * 응답 계약: 200 → { entries: ResilienceDayEntry[] } (각 항목: date YYYY-MM-DD, level "high"|"mid"|"low", source "letter"). 401/500 → { error: string }.
  */
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import {
+  aggregateLetterRowsToDailyEntries,
+  type LetterRow,
+  type ResilienceDayEntry,
+} from "@/domain/center/resilience";
 
-export type ResilienceDailyLevel = "high" | "mid" | "low";
+export type { ResilienceDailyLevel, ResilienceDayEntry } from "@/domain/center/resilience";
 
-export type ResilienceDayEntry = {
-  date: string; // YYYY-MM-DD
-  level: ResilienceDailyLevel;
-  source: "letter";
-};
-
-/** energy 1–5 → low / mid / high. 없으면 mid. */
-function energyToLevel(energy: number | null): ResilienceDailyLevel {
-  if (energy == null) return "mid";
-  if (energy <= 2) return "low";
-  if (energy >= 4) return "high";
-  return "mid";
-}
-
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const supabase = await getSupabaseServerClient();
     const {
@@ -42,25 +35,13 @@ export async function GET() {
       return NextResponse.json({ entries: [] });
     }
 
-    const byDate = new Map<string, { energy: number | null }>();
-    for (const r of rows) {
-      const date = (r.created_at as string).slice(0, 10);
-      const existing = byDate.get(date);
-      const energy = r.energy != null ? Number(r.energy) : null;
-      if (!existing) {
-        byDate.set(date, { energy });
-      } else {
-        byDate.set(date, { energy: existing.energy ?? energy });
-      }
-    }
+    const periodParam = req.nextUrl.searchParams.get("period");
+    const raw = periodParam != null ? parseInt(periodParam, 10) : NaN;
+    const periodDays = Number.isFinite(raw) && raw >= 1 ? Math.min(365, raw) : undefined;
 
-    const entries: ResilienceDayEntry[] = Array.from(byDate.entries())
-      .map(([date, { energy }]) => ({
-        date,
-        level: energyToLevel(energy),
-        source: "letter" as const,
-      }))
-      .sort((a, b) => a.date.localeCompare(b.date));
+    const entries: ResilienceDayEntry[] = aggregateLetterRowsToDailyEntries(rows as LetterRow[], {
+      periodDays,
+    });
 
     return NextResponse.json({ entries });
   } catch (e) {

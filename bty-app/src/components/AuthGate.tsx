@@ -39,8 +39,12 @@ export function AuthGate({
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <LoadingFallback icon="⏳" message={loadingMessage ?? "잠시만 기다려 주세요."} />
+      <div
+        className="min-h-screen flex items-center justify-center p-4"
+        aria-busy="true"
+        aria-label={loadingMessage ?? "잠시만 기다려 주세요."}
+      >
+        <LoadingFallback icon="⏳" message={loadingMessage ?? "잠시만 기다려 주세요."} withSkeleton />
       </div>
     );
   }
@@ -90,6 +94,7 @@ export function AuthGate({
 
             <button
               type="submit"
+              aria-label={isRegister ? "회원가입 제출" : "로그인 제출"}
               className={cn(
                 "w-full py-3 rounded-xl font-medium",
                 "bg-foundry-purple text-foundry-white hover:bg-foundry-purple-dark"

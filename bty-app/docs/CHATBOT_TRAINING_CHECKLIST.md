@@ -82,10 +82,13 @@
 
 | 수정 대상 | 파일 |
 |-----------|------|
-| bty / today-me 시스템 프롬프트 | `src/app/api/chat/route.ts` |
+| bty / today-me 시스템 프롬프트 | `src/lib/bty/chat/buildChatMessages.ts` (META_AND_INTRO_GUIDE·BTY_CHAT_GLOBAL_OVERRIDE) |
+| 메타·소개 질문 고정 답변 | `src/lib/bty/chat/chatGuards.ts` (isMetaQuestion, getMetaReply, getIntroQuestionKind, getIntroReply) · `src/app/api/chat/route.ts`에서 호출 |
 | NVC·치유 스펙·few-shot (메시지 조합) | `src/lib/bty/chat/buildChatMessages.ts` |
 | bty 위로 문구 필터 | `src/app/api/chat/route.ts` → `filterBtyResponse` |
 | 소개 문구 · 공간 라벨 | `src/components/Chatbot.tsx` |
+
+**ROADMAP_NEXT_STEPS·체크리스트 보강 반영**: 시스템 프롬프트(메타·소개 1~2문장만 답하라 공통 규칙), 메타 패턴 추가(챗봇 되나, 이거 AI야 등), BTY·Foundry·Center 소개 질문 → 고정 답변(route에서 OpenAI 호출 없이 반환). chatGuards.test.ts·route.test.ts 추가. npm test 208 통과 (chatGuards 9, chat route 6 포함).
 
 **Dear Me 치유 코칭 스펙 (단일 소스)**: **`docs/specs/healing-coaching-spec-v3.json`**, 요약·연동 **`docs/HEALING_COACHING_SPEC_V3.md`**. 시스템 프롬프트·플레이북·이벤트 정의는 v3 스펙과 동기화할 것.
 

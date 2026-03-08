@@ -60,7 +60,7 @@
 
 → **정리**: 구현 먼저 진행 → **MVP 나오기 전**에 “챗봇 훈련” 작업(프롬프트·예시·필요 시 RAG)을 한 번 넣으면 됩니다.
 
-**반영 상태**: 훈련 내용(시스템 프롬프트·구역별 예시·메타 질문 가이드)은 `src/lib/bty/chat/buildChatMessages.ts`, `chatGuards.ts`, `route.ts`에 반영됨. `docs/CHATBOT_TRAINING_CHECKLIST.md` §0·§3·§4 참고.
+**반영 상태**: 훈련 내용(시스템 프롬프트·구역별 예시·메타 질문 가이드)은 `src/lib/bty/chat/buildChatMessages.ts`, `chatGuards.ts`, `route.ts`에 반영됨. `docs/CHATBOT_TRAINING_CHECKLIST.md` §0·§3·§4 참고. **보강**: 메타 패턴 확장(챗봇 되나, 이거 AI야 등), BTY·Foundry·Center 소개 질문 고정 답변(getIntroQuestionKind, getIntroReply)·route에서 선반환, 시스템 프롬프트에 "메타·소개 질문 1~2문장만" 명시. RAG는 소개 고정 답변으로 대체.
 
 ---
 

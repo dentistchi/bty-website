@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchJson } from "@/lib/read-json";
+import { LoadingFallback } from "@/components/bty-arena";
 
 type OrganizationRow = {
   id: string;
@@ -47,7 +48,7 @@ export default function AdminOrganizationsPage() {
     return (
       <div className="p-6">
         <h1 className="text-xl font-semibold">Organizations</h1>
-        <p className="mt-3 text-sm text-gray-500">불러오는 중...</p>
+        <LoadingFallback icon="📋" message="불러오는 중…" withSkeleton />
       </div>
     );
   }

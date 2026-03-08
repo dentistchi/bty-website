@@ -1,0 +1,14 @@
+{
+  "folders": [
+    {
+      "path": "../bty-app"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/.next": true,
+      "**/node_modules": true,
+      "**/dist": true
+    }
+  }
+}

@@ -309,6 +309,11 @@ export default function BeginnerArenaPage() {
         {locale === "ko" ? "입문" : "Beginner"} · {ui.stepOf} {step} / 7: {getStepLabel(step, locale)}
       </div>
       <div style={{ padding: 20, border: "1px solid #eee", borderRadius: 14 }}>
+        {loading && (
+          <div style={{ marginBottom: 16 }} aria-busy="true" aria-label={locale === "ko" ? "진행 중…" : "Loading…"}>
+            <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
+          </div>
+        )}
         {step === 1 && (
           <>
             <h2 style={{ margin: "0 0 12px", fontSize: 20 }}>{displayTitle}</h2>
@@ -422,6 +427,12 @@ export default function BeginnerArenaPage() {
             />
             <PrimaryButton label={ui.complete} onClick={goNext} disabled={loading} />
           </>
+        )}
+
+        {loading && (
+          <div style={{ marginTop: 12 }}>
+            <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
+          </div>
         )}
 
         {error && (

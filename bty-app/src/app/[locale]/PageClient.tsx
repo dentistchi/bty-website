@@ -587,7 +587,7 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
                 <SmallWinsStack locale="ko" theme="dear" />
               </PaperCard>
               <PaperCard>
-                <ResilienceGraph theme="dear" />
+                <ResilienceGraph theme="dear" locale={lang} />
               </PaperCard>
               <PaperCard>
                 <EmotionalBridge theme="dear" locale="ko" />
@@ -651,7 +651,7 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
                 <SmallWinsStack locale="ko" theme="dear" />
               </PaperCard>
               <PaperCard>
-                <ResilienceGraph theme="dear" />
+                <ResilienceGraph theme="dear" locale={lang} />
               </PaperCard>
               <PaperCard>
                 <EmotionalBridge theme="dear" locale="ko" />

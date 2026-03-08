@@ -10,6 +10,9 @@ export function AdminHeader() {
         <Link href="/admin/arena-membership" className="text-sm font-medium text-neutral-700 hover:text-neutral-900">
           Arena 승인
         </Link>
+        <Link href="/admin/mentor-requests" className="text-sm font-medium text-neutral-700 hover:text-neutral-900">
+          멘토 신청 승인
+        </Link>
         <Link href="/admin/users" className="text-sm font-medium text-neutral-700 hover:text-neutral-900">
           사용자 관리
         </Link>

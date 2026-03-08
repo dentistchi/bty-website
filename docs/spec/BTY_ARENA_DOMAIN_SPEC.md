@@ -47,6 +47,7 @@ This spec is the **authoritative reference** for domain rules. Implementation (A
 ## 4. League Leaderboard Rules
 
 - **Ranking metric:** Weekly XP only (for the active league/window).
+- **Tie-break order (deterministic):** When Weekly XP is equal, order by `updated_at` **asc** (earlier first), then `user_id` **asc**. Single source: `src/domain/rules/leaderboardTieBreak.ts` — `LEADERBOARD_TIE_BREAK_ORDER`, `compareWeeklyXpTieBreak(a, b)`.
 - **Display:** Code Name and Sub Name only. **No real names.** No tier number, no raw Core XP in ranking.
 - **Separation:** Leaderboard ranking must **not** be affected by:
   - Season progression (Season 1 / 2 / 3),
@@ -60,5 +61,5 @@ This spec is the **authoritative reference** for domain rules. Implementation (A
 ## 5. References
 
 - **Types & constants:** `/src/domain/types.ts`, `/src/domain/constants.ts`
-- **Pure rules:** `/src/domain/rules/*.ts`
+- **Pure rules:** `/src/domain/rules/*.ts` — leaderboard tie-break: `leaderboardTieBreak.ts` (compareWeeklyXpTieBreak).
 - **Legacy app docs:** `bty-app/docs/BTY_ARENA_SYSTEM_SPEC.md`, `BTY_ARENA_SEASON_SPEC.md`, `XP_SYSTEM_WEEKLY_SEASONAL_CORE.md`

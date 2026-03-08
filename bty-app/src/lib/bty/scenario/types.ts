@@ -43,11 +43,15 @@ export type Scenario = {
   coachNotes?: ScenarioCoachNotes;
   /** If set, only users with tier >= this value can get this scenario (e.g. 75 = Elite / Tier 75+). */
   minTier?: number;
+  /** If true, only Elite (top 5% weekly) users can access. ELITE_4TH_SPECIAL_OR_UNLOCK_1PAGE §3. */
+  elite_only?: boolean;
 };
 
 export type ScenarioSubmitPayload = {
   scenarioId: string;
   choiceId: "A" | "B" | "C" | "D";
+  /** When "ko", result/microInsight/followUp in response use Ko fields. */
+  locale?: "ko" | "en";
   // MVP: 유저 식별/저장 없이 결과만 리턴. 나중에 세션 유저 붙임.
 };
 

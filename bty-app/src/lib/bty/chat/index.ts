@@ -31,8 +31,11 @@ export {
   filterBtyResponse,
   isMetaQuestion,
   getMetaReply,
+  getIntroQuestionKind,
+  getIntroReply,
   SAFETY_VALVE_MESSAGE_KO,
   SAFETY_VALVE_MESSAGE_EN,
   FOUNDRY_RECOMMEND_MESSAGE_KO,
   FOUNDRY_RECOMMEND_MESSAGE_EN,
 } from "./chatGuards";
+export type { IntroQuestionKind } from "./chatGuards";

@@ -12,6 +12,7 @@ import { AVATAR_CHARACTERS, getAvatarCharacter } from "@/lib/bty/arena/avatarCha
 import { getAccessoryImageUrl, OUTFIT_OPTIONS_BY_THEME } from "@/lib/bty/arena/avatarOutfits";
 
 type WeeklyXpRes = { weekStartISO?: string | null; weekEndISO?: string | null; xpTotal: number; count?: number };
+/** Core XP API response. Dashboard uses only display fields for progress/milestone; no tier/code computation in UI. */
 type CoreXpRes = {
   coreXpTotal: number;
   codeName: string;
@@ -19,7 +20,7 @@ type CoreXpRes = {
   seasonalXpTotal: number;
   codeHidden?: boolean;
   subNameRenameAvailable?: boolean;
-  /** Display-only from API (bty-ui-render-only: no derivation in UI). */
+  /** Display fields from API only (bty-ui-render-only: stage, progressPct, nextCodeName, xpToNext, codeLore, milestoneToCelebrate, previousSubName). */
   stage?: number;
   progressPct?: number;
   nextCodeName?: string;
@@ -140,6 +141,7 @@ export default function DashboardClient() {
   const [membershipSubmitMsg, setMembershipSubmitMsg] = React.useState<string | null>(null);
   const [membershipSubmitting, setMembershipSubmitting] = React.useState(false);
   const [isElite, setIsElite] = React.useState<boolean | null>(null);
+  const [eliteBadges, setEliteBadges] = React.useState<Array<{ kind: string; labelKey: string }>>([]);
   const [leState, setLeState] = React.useState<LeadershipEngineStateRes | null>(null);
   const [leAir, setLeAir] = React.useState<AIRSnapshotRes | null>(null);
   const [leTii, setLeTii] = React.useState<TIIRes | null>(null);
@@ -285,7 +287,7 @@ export default function DashboardClient() {
             return msg === "UNAUTHENTICATED" ? ({ error: "UNAUTHENTICATED" } as UnlockedScenariosRes) : null;
           }),
           arenaFetch<MembershipRequestRes>("/api/arena/membership-request").catch(() => ({ request: null })),
-          arenaFetch<{ isElite?: boolean }>("/api/me/elite").catch(() => ({ isElite: false })),
+          arenaFetch<{ isElite?: boolean; badges?: Array<{ kind: string; labelKey: string }> }>("/api/me/elite").catch(() => ({ isElite: false, badges: [] as Array<{ kind: string; labelKey: string }> })),
           arenaFetch<LeadershipEngineStateRes>("/api/arena/leadership-engine/state").catch(() => null),
           arenaFetch<AIRSnapshotRes>("/api/arena/leadership-engine/air").catch(() => null),
           arenaFetch<TIIRes>("/api/arena/leadership-engine/tii").catch(() => null),
@@ -309,6 +311,7 @@ export default function DashboardClient() {
         if (unlockedRes) setUnlockedScenarios(unlockedRes);
         if (membershipRes?.request != null) setMembershipRequest(membershipRes.request);
         setIsElite(Boolean(eliteRes?.isElite));
+        setEliteBadges(eliteRes?.badges ?? []);
         if (leStateRes) setLeState(leStateRes);
         if (leAirRes) setLeAir(leAirRes);
         if (leTiiRes) setLeTii(leTiiRes);
@@ -331,12 +334,16 @@ export default function DashboardClient() {
   const tArenaLevels = getMessages(localeTyped).arenaLevels;
   const tAvatarOutfit = getMessages(localeTyped).avatarOutfit;
   const tArenaMembership = getMessages(localeTyped).arenaMembership;
+  const tElitePage = getMessages(localeTyped).elitePage;
   const displayAvatarUrl =
     core?.avatarUrl ?? getAvatarCharacter(core?.avatarCharacterId)?.imageUrl ?? null;
   const avatarLayers =
     core?.avatarCharacterImageUrl != null || core?.avatarOutfitImageUrl != null
       ? { characterImageUrl: core?.avatarCharacterImageUrl ?? null, outfitImageUrl: core?.avatarOutfitImageUrl ?? null }
       : undefined;
+  /** §6·§7 render-only: API currentOutfit.accessoryIds → domain getAccessoryImageUrl → AvatarComposite accessoryUrls */
+  const avatarAccessoryUrls =
+    core?.currentOutfit?.accessoryIds?.map((id) => getAccessoryImageUrl(id)) ?? [];
 
   const content = (<div style={{ maxWidth: 980, margin: "0 auto", padding: "24px 16px" }}>
       {/* DESIGN_FIRST_IMPRESSION_BRIEF §4 A: 첫 화면 = 히어로 한 문장 — 페이지 최상단에 배치 */}
@@ -353,7 +360,7 @@ export default function DashboardClient() {
               size={56}
               characterUrl={avatarLayers.characterImageUrl}
               outfitUrl={avatarLayers.outfitImageUrl ?? undefined}
-              accessoryUrls={[]}
+              accessoryUrls={avatarAccessoryUrls}
               alt=""
             />
           ) : (
@@ -420,7 +427,108 @@ export default function DashboardClient() {
             >
               View Weekly Ranking
             </Link>
+            <Link
+              href={`/${locale}/bty/profile`}
+              className="bty-btn-outline"
+              style={{
+                padding: "12px 20px",
+                borderRadius: 12,
+                border: "1px solid var(--arena-accent)",
+                color: "var(--arena-text)",
+                textDecoration: "none",
+                fontWeight: 600,
+                fontSize: 14,
+              }}
+            >
+              {locale === "ko" ? "프로필" : "Profile"}
+            </Link>
+            <Link
+              href={`/${locale}/bty/elite`}
+              className="bty-btn-outline"
+              style={{
+                padding: "12px 20px",
+                borderRadius: 12,
+                border: "1px solid var(--arena-accent)",
+                color: "var(--arena-text)",
+                textDecoration: "none",
+                fontWeight: 600,
+                fontSize: 14,
+              }}
+            >
+              {locale === "ko" ? "엘리트" : "Elite"}
+            </Link>
+            <Link
+              href={`/${locale}/bty/integrity`}
+              className="bty-btn-outline"
+              style={{
+                padding: "12px 20px",
+                borderRadius: 12,
+                border: "1px solid var(--arena-accent)",
+                color: "var(--arena-text)",
+                textDecoration: "none",
+                fontWeight: 600,
+                fontSize: 14,
+              }}
+            >
+              {locale === "ko" ? "역지사지 연습" : "Integrity mirror"}
+            </Link>
+            <Link
+              href={`/${locale}/assessment`}
+              className="bty-btn-outline"
+              style={{
+                padding: "12px 20px",
+                borderRadius: 12,
+                border: "1px solid var(--arena-accent)",
+                color: "var(--arena-text)",
+                textDecoration: "none",
+                fontWeight: 600,
+                fontSize: 14,
+              }}
+            >
+              {locale === "ko" ? "Dear Me 자존감 (50문항)" : "Dear Me self-esteem (50)"}
+            </Link>
           </div>
+
+          {/* Dojo 연습 플로우 2종 연동: 역지사지·Dear Me 자존감. render-only 링크. */}
+          <ProgressCard label={locale === "ko" ? "Dojo 연습" : "Dojo practice"}>
+            <p style={{ fontSize: 13, opacity: 0.9, marginBottom: 12 }}>
+              {locale === "ko"
+                ? "역지사지 시뮬레이터와 자존감 50문항 진단을 연습할 수 있어요."
+                : "Practice the integrity mirror and the 50-item self-esteem assessment."}
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              <Link
+                href={`/${locale}/bty/integrity`}
+                style={{
+                  display: "inline-block",
+                  padding: "10px 16px",
+                  borderRadius: 8,
+                  background: "var(--arena-accent)",
+                  color: "white",
+                  textDecoration: "none",
+                  fontWeight: 600,
+                  fontSize: 14,
+                }}
+              >
+                {locale === "ko" ? "역지사지 연습 →" : "Integrity mirror →"}
+              </Link>
+              <Link
+                href={`/${locale}/assessment`}
+                style={{
+                  display: "inline-block",
+                  padding: "10px 16px",
+                  borderRadius: 8,
+                  border: "1px solid var(--arena-accent)",
+                  color: "var(--arena-text)",
+                  textDecoration: "none",
+                  fontWeight: 600,
+                  fontSize: 14,
+                }}
+              >
+                {locale === "ko" ? "Dear Me 자존감 (50문항) →" : "Dear Me self-esteem (50) →"}
+              </Link>
+            </div>
+          </ProgressCard>
 
           <ProgressCard label={tArenaMembership.label}>
             {membershipRequest?.status === "approved" ? (
@@ -501,6 +609,11 @@ export default function DashboardClient() {
                   >
                     {membershipSubmitting ? tArenaMembership.submitting : tArenaMembership.submit}
                   </button>
+                  {membershipSubmitting && (
+                    <div style={{ marginTop: 12 }}>
+                      <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -534,23 +647,21 @@ export default function DashboardClient() {
           <ProgressCard label="Lifetime Progress (Core XP)">
             <div style={{ fontSize: 28, fontWeight: 800 }}>{core?.coreXpTotal ?? 0}</div>
             <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>Permanent. Drives Code Name.</div>
-            {typeof core?.coreXpTotal === "number" && (
+            {core?.stage != null && core?.progressPct != null && (
               <>
-                {core?.stage != null && core?.progressPct != null && (
-                  <>
-                    <ProgressVisual
-                      stage={core.stage}
-                      progressPct={core.progressPct}
-                      nextMilestoneLabel={
-                        core.nextCodeName != null && core.xpToNext != null
-                          ? `${core.xpToNext} XP to ${core.nextCodeName}`
-                          : core.xpToNext != null
-                            ? `${core.xpToNext} XP to next phase`
-                            : undefined
-                      }
-                    />
-                    {core.codeLore && <div style={{ marginTop: 4, fontSize: 12, fontStyle: "italic", opacity: 0.75 }}>{core.codeLore}</div>}
-                  </>
+                <ProgressVisual
+                  stage={core.stage}
+                  progressPct={core.progressPct}
+                  nextMilestoneLabel={
+                    core.nextCodeName != null && core.xpToNext != null
+                      ? `${core.xpToNext} XP to ${core.nextCodeName}`
+                      : core.xpToNext != null
+                        ? `${core.xpToNext} XP to next phase`
+                        : undefined
+                  }
+                />
+                {core.codeLore != null && core.codeLore !== "" && (
+                  <div style={{ marginTop: 4, fontSize: 12, fontStyle: "italic", opacity: 0.75 }}>{core.codeLore}</div>
                 )}
               </>
             )}
@@ -563,9 +674,7 @@ export default function DashboardClient() {
 
           <ProgressCard label={locale === "ko" ? "Leadership Engine" : "Leadership Engine"}>
             {leState == null && leAir == null && leTii == null && leCertified == null ? (
-              <div style={{ fontSize: 14, opacity: 0.8 }}>
-                {locale === "ko" ? "상태를 불러오는 중…" : "Loading…"}
-              </div>
+              <CardSkeleton showLabel={false} lines={3} />
             ) : (
               <>
                 {leState != null && (
@@ -649,12 +758,40 @@ export default function DashboardClient() {
             </ProgressCard>
           )}
 
+          {/* PHASE_4_ELITE_5_PERCENT_SPEC §9·ELITE_4TH 해금 확장: Elite 5% 해금 조건·노출. isElite from GET /api/me/elite only; no XP/rank computation in UI. */}
           <ProgressCard label={locale === "ko" ? "Elite 전용 콘텐츠" : "Elite-only content"}>
+            <div style={{ fontSize: 13, opacity: 0.85, marginBottom: isElite && eliteBadges.length > 0 ? 12 : 8 }}>
+              <strong>{tElitePage.unlockConditionTitle}:</strong>{" "}
+              {isElite ? tElitePage.unlockConditionMet : tElitePage.unlockConditionLocked}
+            </div>
             {isElite ? (
               <div style={{ fontSize: 14, opacity: 0.9 }}>
                 <div style={{ fontWeight: 600, marginBottom: 8 }}>
                   {locale === "ko" ? "상위 5%에만 열리는 콘텐츠입니다." : "Content for top 5% only."}
                 </div>
+                {eliteBadges.length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, opacity: 0.9 }}>
+                      {locale === "ko" ? "증정 배지" : "Badges"}
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {eliteBadges.map((b) => (
+                        <span
+                          key={b.kind}
+                          style={{
+                            padding: "4px 10px",
+                            borderRadius: 6,
+                            background: "rgba(0,0,0,0.06)",
+                            fontSize: 12,
+                            fontWeight: 500,
+                          }}
+                        >
+                          {tElitePage.badgeLabels?.[b.labelKey] ?? b.labelKey}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <Link
                   href={`/${locale}/bty/elite`}
                   style={{
@@ -673,9 +810,7 @@ export default function DashboardClient() {
               </div>
             ) : (
               <div style={{ fontSize: 14, opacity: 0.85 }}>
-                {locale === "ko"
-                  ? "주간 리더보드 상위 5% 달성 시 이용 가능합니다."
-                  : "Available when you reach the top 5% on the weekly leaderboard."}
+                <strong>{tElitePage.unlockExposureTitle}:</strong> {tElitePage.unlockExposureLocked}
               </div>
             )}
           </ProgressCard>
@@ -683,23 +818,21 @@ export default function DashboardClient() {
           <EmotionalStatsPhrases />
 
           <ProgressCard label="Code Name">
-            {/* COMMANDER_BACKLOG_AND_NEXT §5: 툴팁 = BTY_ARENA_SYSTEM_SPEC·ARENA_CODENAME_AVATAR_PLAN Code/Tier/Sub Name 규칙 요약 */}
+            {/* COMMANDER_BACKLOG §5: 마우스 오버 시 단계·수준 설명 툴팁. 문구 = BTY_ARENA_SYSTEM_SPEC·ARENA_CODENAME_AVATAR_PLAN Code/Tier/Sub Name 규칙 요약 */}
             <div
               className="group relative inline-block cursor-help"
-              title={
-                locale === "ko"
-                  ? "Code: 7단계(FORGE→…→CODELESS ZONE). 1 Code=100 Tier. Sub Name: Tier 25+·상위 5%일 때 코드당 1회 설정(7자)."
-                  : "Code: 7 stages (FORGE→…→CODELESS ZONE). 1 Code=100 Tier. Sub Name: At Tier 25+ and top 5% weekly, one custom name per Code (7 chars)."
-              }
+              title={locale === "ko" ? "Code·Tier·Sub Name 규칙 요약 (마우스 오버 시 자세히)" : "Code · Tier · Sub Name rules summary (hover for details)"}
             >
               <div
                 className="font-extrabold text-lg outline-none rounded focus:outline focus:outline-2 focus:outline-offset-1 focus:outline-[var(--arena-accent)]"
                 style={{ fontWeight: 800, fontSize: 18 }}
                 tabIndex={0}
+                aria-describedby="dashboard-codename-tooltip"
               >
                 {core?.codeName ?? "FORGE"} · {core?.subName ?? "Spark"}
               </div>
               <div
+                id="dashboard-codename-tooltip"
                 role="tooltip"
                 className="absolute left-0 bottom-full z-10 mb-2 hidden w-80 max-w-[calc(100vw-2rem)] rounded-lg border border-[var(--arena-text-soft)]/30 bg-[var(--arena-bg)] px-3 py-2.5 text-left text-sm shadow-lg group-hover:block group-focus-within:block"
                 style={{ color: "var(--arena-text)" }}
@@ -708,10 +841,10 @@ export default function DashboardClient() {
                   <>
                     <p className="font-semibold mb-1.5">Code · Tier · Sub Name 규칙 요약</p>
                     <p className="mb-1.5">
-                      <strong>Code</strong>: 7단계 (FORGE → PULSE → FRAME → ASCEND → NOVA → ARCHITECT → CODELESS ZONE). 1 Code = 100 Tier. Tier = Core XP ÷ 10 (숫자는 비공개, 25/50/75 도달 시 축하로만 인지).
+                      <strong>Code</strong>: 7단계 (FORGE → PULSE → FRAME → ASCEND → NOVA → ARCHITECT → CODELESS ZONE). 1 Code = 100 Tier. Tier = Core XP ÷ 10 (숫자 비공개, 25/50/75 도달 시 축하로만 인지). BTY_ARENA_SYSTEM_SPEC §1.
                     </p>
                     <p className="mb-1.5">
-                      <strong>Sub Name</strong>: 각 Code마다 Tier 4구간(0–24, 25–49, 50–74, 75–99)별 기본 이름. <strong>코드가 바뀌고</strong> 그 새 Code에서 <strong>Tier 25 이상</strong> + <strong>주간 리더보드 상위 5%</strong>일 때, 그 Code에서 <strong>1회만</strong> 직접 설정(최대 7자). CODELESS ZONE은 고정 이름 없이 언제든 설정.
+                      <strong>Sub Name</strong>: 각 Code마다 Tier 4구간(0–24, 25–49, 50–74, 75–99)별 기본 이름. 제품 규칙: 「코드가 바뀌고 25 tier가 되면, 그 코드에서 1회만 설정할 수 있다」 (최대 7자). 리네임 기회는 Tier 25+·코드당 미사용 시; 일부 구현에서는 주간 리더보드 상위 5%(Elite)일 때 부여. CODELESS ZONE은 고정 이름 없이 언제든 설정. ARENA_CODENAME_AVATAR_PLAN §2.
                     </p>
                     <p className="text-xs opacity-85">BTY_ARENA_SYSTEM_SPEC · ARENA_CODENAME_AVATAR_PLAN</p>
                   </>
@@ -719,10 +852,10 @@ export default function DashboardClient() {
                   <>
                     <p className="font-semibold mb-1.5">Code · Tier · Sub Name — rules summary</p>
                     <p className="mb-1.5">
-                      <strong>Code</strong>: 7 stages (FORGE → PULSE → FRAME → ASCEND → NOVA → ARCHITECT → CODELESS ZONE). 1 Code = 100 Tier. Tier = Core XP ÷ 10 (number hidden; you notice tier rise only at 25/50/75 celebrations).
+                      <strong>Code</strong>: 7 stages (FORGE → PULSE → FRAME → ASCEND → NOVA → ARCHITECT → CODELESS ZONE). 1 Code = 100 Tier. Tier = Core XP ÷ 10 (number hidden; tier rise only at 25/50/75 celebrations). BTY_ARENA_SYSTEM_SPEC §1.
                     </p>
                     <p className="mb-1.5">
-                      <strong>Sub Name</strong>: Each Code has 4 tier bands (0–24, 25–49, 50–74, 75–99) with default names. When <strong>you enter a new Code</strong> and reach <strong>Tier 25+</strong> there, plus <strong>top 5% on the weekly leaderboard</strong>, you get <strong>one custom name per Code</strong> (max 7 chars). CODELESS ZONE: no fixed names; set anytime.
+                      <strong>Sub Name</strong>: Each Code has 4 tier bands (0–24, 25–49, 50–74, 75–99) with default names. Rule: “When your Code changes and you reach Tier 25, you may set a custom name once per Code” (max 7 chars). Rename opportunity when Tier 25+ and not yet used in that Code; some implementations grant it at top 5% weekly leaderboard (Elite). CODELESS ZONE: set anytime. ARENA_CODENAME_AVATAR_PLAN §2.
                     </p>
                     <p className="text-xs opacity-85">BTY_ARENA_SYSTEM_SPEC · ARENA_CODENAME_AVATAR_PLAN</p>
                   </>
@@ -758,6 +891,11 @@ export default function DashboardClient() {
                 >
                   {subNameSaving ? "Saving…" : "Save"}
                 </button>
+                {subNameSaving && (
+                  <div style={{ marginTop: 12 }}>
+                    <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
+                  </div>
+                )}
               </div>
             )}
           </ProgressCard>
@@ -771,7 +909,7 @@ export default function DashboardClient() {
                     size={40}
                     characterUrl={avatarLayers.characterImageUrl}
                     outfitUrl={avatarLayers.outfitImageUrl ?? undefined}
-                    accessoryUrls={[]}
+                    accessoryUrls={avatarAccessoryUrls}
                     alt=""
                   />
                 ) : (

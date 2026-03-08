@@ -1,0 +1,28 @@
+# Add directories or file patterns to ignorenode_modules
+node_modules
+.next
+.open-next
+dist
+build
+coverage
+.turbo
+.vercel
+.cache
+logs
+*.log
+.env
+.env.*
+wrangler-state
+.supabase
+
+# generated / temporary
+tmp
+temp
+*.tmp
+
+# test outputs
+playwright-report
+test-results
+
+# local editor/system noise
+.DS_Store

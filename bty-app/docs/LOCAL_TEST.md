@@ -81,6 +81,22 @@ npm run dev
 
 ---
 
+## Center 회복 탄력성 그래프 (일별 트렉 확인)
+
+**목적**: §4 회복 탄력성 그래프가 "일별 트렉"으로 표시되는지 로컬에서 한 번 확인.
+
+| 단계 | 확인 내용 |
+|------|-----------|
+| 1 | `npm run dev` 실행 후 **http://localhost:3000/ko/center** 또는 **http://localhost:3000/en/center** 접속. (로그인 필요 시 먼저 로그인.) |
+| 2 | Center 본문을 아래로 스크롤해 **회복 탄력성** 섹션까지 이동. |
+| 3 | **데이터 없음**: "아직 궤적이 없어요" 등 빈 상태 문구만 보이면 정상. |
+| 4 | **데이터 있음**: `center_letters`에 energy·created_at이 있으면 그래프에 **날짜축 + high/mid/low 점이 이어진 일별 궤적**으로 표시되는지 확인. (과거/지금 2점만이 아님.) |
+| 5 | (선택) DevTools Network에서 `GET /api/center/resilience` 응답에 `entries: [{ date, level, source }]` 형태가 오는지 확인. |
+
+**PASS**: 일별 트렉(또는 빈 상태)으로 보이면 §4 검증 통과.
+
+---
+
 ## 트러블슈팅
 
 ### 첫 로딩이 1~2분 걸림

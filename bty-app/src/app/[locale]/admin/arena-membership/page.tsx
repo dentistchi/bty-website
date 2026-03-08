@@ -1,7 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
+import { EmptyState, LoadingFallback, CardSkeleton } from "@/components/bty-arena";
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
 type RequestRow = {
   id: number;
@@ -17,6 +21,9 @@ type RequestRow = {
 type ListResp = { requests: RequestRow[]; error?: string };
 
 export default function AdminArenaMembershipPage() {
+  const params = useParams();
+  const locale = (typeof params?.locale === "string" ? params.locale : "en") as Locale;
+  const loadingMessage = getMessages(locale).loading.message;
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,12 +91,24 @@ export default function AdminArenaMembershipPage() {
       </div>
 
       <div className="rounded border border-neutral-200 bg-white p-6 shadow-sm">
-        {loading && <p className="text-sm text-neutral-600">목록 불러오는 중…</p>}
+        {loading && (
+          <LoadingFallback
+            icon="📋"
+            message={loadingMessage}
+            withSkeleton
+            style={{ padding: "32px 20px" }}
+          />
+        )}
         {error && (
           <p className="mb-4 text-sm text-red-600">{error}</p>
         )}
+        {/* DESIGN_FIRST_IMPRESSION_BRIEF §2·PROJECT_BACKLOG §8: 데이터 없을 때 일러·아이콘 + 한 줄 문구 */}
         {!loading && requests.length === 0 && !error && (
-          <p className="text-sm text-neutral-600">대기 중인 요청이 없습니다.</p>
+          <EmptyState
+            icon="📋"
+            message="대기 중인 요청이 없습니다."
+            style={{ padding: "32px 20px" }}
+          />
         )}
         {!loading && requests.length > 0 && (
           <div className="overflow-x-auto">
@@ -107,24 +126,33 @@ export default function AdminArenaMembershipPage() {
               </thead>
               <tbody>
                 {requests.map((row) => (
-                  <tr key={row.id} className="border-b border-neutral-100">
-                    <td className="py-2 pr-4">{row.id}</td>
-                    <td className="py-2 pr-4 font-mono text-xs">{row.user_id}</td>
-                    <td className="py-2 pr-4">{row.job_function}</td>
-                    <td className="py-2 pr-4">{row.joined_at}</td>
-                    <td className="py-2 pr-4">{row.leader_started_at ?? "—"}</td>
-                    <td className="py-2 pr-4">{row.created_at.slice(0, 10)}</td>
-                    <td className="py-2">
-                      <button
-                        type="button"
-                        disabled={approvingId === row.id}
-                        onClick={() => approve(row.id)}
-                        className="rounded bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50 hover:bg-neutral-700"
-                      >
-                        {approvingId === row.id ? "처리 중…" : "승인"}
-                      </button>
-                    </td>
-                  </tr>
+                  <Fragment key={row.id}>
+                    <tr className="border-b border-neutral-100">
+                      <td className="py-2 pr-4">{row.id}</td>
+                      <td className="py-2 pr-4 font-mono text-xs">{row.user_id}</td>
+                      <td className="py-2 pr-4">{row.job_function}</td>
+                      <td className="py-2 pr-4">{row.joined_at}</td>
+                      <td className="py-2 pr-4">{row.leader_started_at ?? "—"}</td>
+                      <td className="py-2 pr-4">{row.created_at.slice(0, 10)}</td>
+                      <td className="py-2">
+                        <button
+                          type="button"
+                          disabled={approvingId === row.id}
+                          onClick={() => approve(row.id)}
+                          className="rounded bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50 hover:bg-neutral-700"
+                        >
+                          {approvingId === row.id ? "처리 중…" : "승인"}
+                        </button>
+                      </td>
+                    </tr>
+                    {approvingId === row.id && (
+                      <tr>
+                        <td colSpan={7} className="py-2">
+                          <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px", maxWidth: 320 }} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

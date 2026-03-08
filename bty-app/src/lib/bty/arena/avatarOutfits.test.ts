@@ -8,6 +8,7 @@ import {
   getAllowedOutfitsForLevel,
   getOutfitById,
   accessorySlotsFromTier,
+  profileToAvatarCompositeKeys,
 } from "./avatarOutfits";
 
 // ---------------------------------------------------------------------------
@@ -193,5 +194,46 @@ describe("accessory slots validation rule", () => {
     expect(slots).toBe(2);
     expect(["a", "b"].length <= slots).toBe(true);
     expect(["a", "b", "c"].length <= slots).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// profileToAvatarCompositeKeys (AVATAR_LAYER_SPEC §4)
+// ---------------------------------------------------------------------------
+
+describe("profileToAvatarCompositeKeys", () => {
+  it("returns characterKey, theme, outfitKey, accessoryKeys", () => {
+    const keys = profileToAvatarCompositeKeys({
+      avatarCharacterId: "hero_01",
+      avatarOutfitTheme: "professional",
+      avatarSelectedOutfitId: "figs_scrub",
+      avatarAccessoryIds: ["acc_handpiece"],
+    });
+    expect(keys.characterKey).toBe("hero_01");
+    expect(keys.theme).toBe("professional");
+    expect(keys.outfitKey).toBe("professional_outfit_figs_scrub");
+    expect(keys.accessoryKeys).toEqual(["acc_handpiece"]);
+  });
+
+  it("returns null outfitKey when outfitId is null", () => {
+    const keys = profileToAvatarCompositeKeys({
+      avatarCharacterId: "mage_02",
+      avatarOutfitTheme: "fantasy",
+      avatarSelectedOutfitId: null,
+      avatarAccessoryIds: [],
+    });
+    expect(keys.outfitKey).toBeNull();
+    expect(keys.theme).toBe("fantasy");
+    expect(keys.accessoryKeys).toEqual([]);
+  });
+
+  it("defaults characterKey to hero_01 when empty", () => {
+    const keys = profileToAvatarCompositeKeys({
+      avatarCharacterId: "",
+      avatarOutfitTheme: "professional",
+      avatarSelectedOutfitId: null,
+      avatarAccessoryIds: [],
+    });
+    expect(keys.characterKey).toBe("hero_01");
   });
 });

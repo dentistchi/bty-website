@@ -2,8 +2,12 @@
 
 /**
  * 전역 플로팅 챗봇. pathname에 따라 Center/Foundry/Arena 모드로 /api/chat 호출.
- * CHATBOT_TRAINING_CHECKLIST §2.3: 소개·공간 안내는 i18n chat.introFoundry/introCenter, spaceHintFoundry/spaceHintCenter 사용.
- * COMMANDER_BACKLOG_AND_NEXT §2: 전역 플로팅 버튼 비노출(오른쪽 아래). 패널은 open-chatbot 이벤트로만 열림(예: Center "챗으로 이어하기").
+ * CHATBOT_TRAINING_CHECKLIST §2.3: 소개·공간 안내·예시 문구는 i18n chat.* 사용.
+ * - introFoundry / introCenter: 빈 채팅 시 소개 문구.
+ * - spaceHintFoundry / spaceHintCenter: 공간별 한 줄 안내.
+ * - exampleLabel, examplePhrasesFoundry, examplePhrasesCenter: 클릭 가능한 예시 문구 칩.
+ * COMMANDER_BACKLOG_AND_NEXT §2: 전역 플로팅 버튼 비노출. 패널은 open-chatbot 이벤트로만 열림.
+ * 연결 끊김 시: errorMsg(chat.connectionError) + showRetry 시 t.retry 버튼.
  */
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -12,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { getMessages } from "@/lib/i18n";
 import { fetchJson } from "@/lib/read-json";
 import type { Locale } from "@/lib/i18n";
+import { CardSkeleton } from "@/components/bty-arena";
 import { GuideCharacterAvatar, type GuideAvatarVariant } from "@/components/GuideCharacterAvatar";
 
 type Message = {
@@ -30,10 +35,8 @@ const TYPING_TIMEOUT_25S = 25_000;
 export function Chatbot() {
   const pathname = usePathname() ?? "";
   const locale: Locale = pathname.startsWith("/en") ? "en" : "ko";
-  /** Foundry·Arena: 플로팅 미노출. §2: 전역에서도 플로팅 버튼은 숨기고, 패널만 open-chatbot 이벤트로 노출 */
-  const isBtyPath = pathname.includes("/bty");
-  if (isBtyPath) return null;
-
+  /** Foundry(bty)·mentor: 테마/라벨용. 전역 비노출 후 Center·Foundry 등 필요한 경로에만 마운트되므로 early return 제거. */
+  const isBtyPage = pathname.includes("/bty");
   const i18n = getMessages(locale);
   const t = i18n.chat;
   const [open, setOpen] = useState(false);
@@ -128,9 +131,9 @@ export function Chatbot() {
     })();
   }, [open, pathname]);
 
-  const isBtyPage = pathname.includes("/bty");
   const isMentorPage = pathname.includes("/mentor");
   const isCenterPage = pathname.includes("/center");
+  const isArenaPage = pathname.includes("/bty-arena");
   const spaceLabel =
     locale === "ko"
       ? isCenterPage
@@ -147,9 +150,10 @@ export function Chatbot() {
           : isBtyPage
             ? "Foundry"
             : "Home";
-  // CHATBOT_TRAINING_CHECKLIST §2.3: 소개 문구·공간 안내 — i18n 사용
-  const introMessage = isBtyPage ? t.introFoundry : t.introCenter;
-  const spaceHint = isBtyPage ? t.spaceHintFoundry : isCenterPage ? t.spaceHintCenter : null;
+  // CHATBOT_TRAINING_CHECKLIST §2.3: 소개 문구·공간 안내 — i18n 사용. 구역별 few-shot: center/foundry/arena.
+  const introMessage = isArenaPage ? t.introArena : isBtyPage ? t.introFoundry : t.introCenter;
+  const spaceHint = isArenaPage ? t.spaceHintArena : isBtyPage ? t.spaceHintFoundry : isCenterPage ? t.spaceHintCenter : null;
+  const examplePhrases = isArenaPage ? t.examplePhrasesArena : isBtyPage ? t.examplePhrasesFoundry : t.examplePhrasesCenter;
   const guideVariant: GuideAvatarVariant =
     pathname.includes("/bty") || pathname.includes("/center") ? "warm" : "default";
 
@@ -180,6 +184,7 @@ export function Chatbot() {
       }, TYPING_TIMEOUT_10S);
 
       timeout25Ref.current = setTimeout(() => {
+        setErrorMsg(t.connectionError);
         setShowRetry(true);
       }, TYPING_TIMEOUT_25S);
 
@@ -242,7 +247,7 @@ export function Chatbot() {
         wasAborted = err instanceof Error && err.name === "AbortError";
         if (!wasAborted) {
           hadError = true;
-          setErrorMsg(locale === "ko" ? "잠시 문제가 생겼어요. 다시 시도해 주세요." : "Something went wrong. Please try again.");
+          setErrorMsg(t.connectionError);
           setShowRetry(true);
         }
       } finally {
@@ -251,7 +256,10 @@ export function Chatbot() {
         if (!wasAborted) {
           setIsTyping(false);
           setTypingText(null);
-          if (!hadError) setShowRetry(false);
+          if (!hadError) {
+            setShowRetry(false);
+            setErrorMsg(null);
+          }
         }
       }
     },
@@ -357,11 +365,35 @@ export function Chatbot() {
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[120px]">
             {chatMessages.length === 0 && !typingText && !errorMsg && (
-              <div className="space-y-1">
-                <p className={cn("text-sm", isBtyPage ? "text-foundry-ink-soft" : "text-dear-charcoal-soft")}>{introMessage}</p>
+              <div className="space-y-2">
+                <p className={cn("text-sm", isBtyPage || isArenaPage ? "text-foundry-ink-soft" : "text-dear-charcoal-soft")}>{introMessage}</p>
                 {spaceHint && (
-                  <p className={cn("text-xs opacity-80", isBtyPage ? "text-foundry-ink-soft" : "text-dear-charcoal-soft")}>{spaceHint}</p>
+                  <p className={cn("text-xs opacity-80", isBtyPage || isArenaPage ? "text-foundry-ink-soft" : "text-dear-charcoal-soft")}>{spaceHint}</p>
                 )}
+                {(examplePhrases?.length) ? (
+                  <div className="pt-1">
+                    <p className={cn("text-xs opacity-70 mb-1.5", isBtyPage || isArenaPage ? "text-foundry-ink-soft" : "text-dear-charcoal-soft")}>
+                      {t.exampleLabel}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {examplePhrases.map((phrase, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => performSend(phrase)}
+                          className={cn(
+                            "text-left text-xs px-2.5 py-1.5 rounded-lg border transition-colors",
+                            isBtyPage || isArenaPage
+                              ? "border-foundry-purple-muted/60 text-foundry-ink hover:bg-foundry-purple-muted/20"
+                              : "border-dear-sage/30 text-dear-charcoal hover:bg-dear-sage/10"
+                          )}
+                        >
+                          {phrase}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             )}
             {chatMessages.map((m, i) => (
@@ -430,19 +462,20 @@ export function Chatbot() {
                 </div>
               </>
             )}
-            {errorMsg && (
-              <div className="rounded-xl px-3 py-2 text-sm bg-red-50 text-red-700 max-w-[85%] border border-red-100">
-                {errorMsg}
+            {/* COMMANDER_BACKLOG_AND_NEXT §2: 실패·타임아웃 시 안내 문구 + 재시도 버튼 */}
+            {(errorMsg || showRetry) && (
+              <div className="rounded-xl px-3 py-3 text-sm bg-red-50 text-red-700 max-w-[85%] border border-red-100 space-y-2">
+                {errorMsg && <p className="m-0">{errorMsg}</p>}
+                {showRetry && (
+                  <button
+                    type="button"
+                    onClick={retry}
+                    className={cn("font-medium hover:underline", themeColors.retry)}
+                  >
+                    {t.retry}
+                  </button>
+                )}
               </div>
-            )}
-            {showRetry && (
-              <button
-                type="button"
-                onClick={retry}
-                className={cn("text-sm font-medium hover:underline", themeColors.retry)}
-              >
-                {locale === "ko" ? "다시 시도" : "Retry"}
-              </button>
             )}
             <div ref={bottomRef} />
           </div>
@@ -476,6 +509,15 @@ export function Chatbot() {
               {t.send}
             </button>
           </form>
+          {isTyping && (
+            <div
+              className="px-3 pb-3"
+              aria-busy="true"
+              aria-label={locale === "ko" ? "답변 생성 중" : "Generating reply"}
+            >
+              <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
+            </div>
+          )}
           {prefsLoaded && (
             <div className={cn("px-3 pb-3 pt-1 border-t", themeColors.border, "flex flex-wrap items-center gap-2 text-xs")}>
               <label className="flex items-center gap-1.5 cursor-pointer opacity-80">
@@ -485,7 +527,7 @@ export function Chatbot() {
                   onChange={toggleRememberChat}
                   className="rounded border-current opacity-70"
                 />
-                <span>{locale === "ko" ? "대화 기억하기" : "Remember conversation"}</span>
+                <span>{t.rememberConversation}</span>
               </label>
               <span className="opacity-50">·</span>
               <button
@@ -494,8 +536,17 @@ export function Chatbot() {
                 disabled={deletingChat}
                 className={cn("hover:underline disabled:opacity-50", themeColors.retry)}
               >
-                {locale === "ko" ? "기록 삭제" : "Delete history"}
+                {t.deleteHistory}
               </button>
+            </div>
+          )}
+          {deletingChat && (
+            <div
+              className="px-3 pb-3"
+              aria-busy="true"
+              aria-label={locale === "ko" ? "대화 기록 삭제 중" : "Deleting chat history"}
+            >
+              <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
             </div>
           )}
         </div>

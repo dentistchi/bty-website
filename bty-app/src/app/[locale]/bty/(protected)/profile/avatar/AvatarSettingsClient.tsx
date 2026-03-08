@@ -5,8 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAvatar } from "@/hooks/useAvatar";
 import { resolveAvatarUrls } from "@/lib/bty/arena/avatarAssets";
-import { AvatarComposite } from "@/components/bty-arena/AvatarComposite";
-import { OutfitCard } from "@/components/bty-arena/OutfitCard";
+import { AvatarComposite, CardSkeleton, OutfitCard, LoadingFallback } from "@/components/bty-arena";
 import { getMessages } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -62,9 +61,10 @@ export default function AvatarSettingsClient() {
     : null;
 
   if (loading) {
+    const tLoading = getMessages(locale === "ko" ? "ko" : "en").loading;
     return (
       <div className="p-6 max-w-2xl mx-auto">
-        <p className="text-sm text-gray-500">Loading…</p>
+        <LoadingFallback icon="⏳" message={tLoading.message} withSkeleton style={{ paddingTop: 24 }} />
       </div>
     );
   }
@@ -191,6 +191,11 @@ export default function AvatarSettingsClient() {
           >
             {saving ? "Saving…" : "Save"}
           </button>
+          {saving && (
+            <div className="mt-3">
+              <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
+            </div>
+          )}
         </div>
       )}
     </div>

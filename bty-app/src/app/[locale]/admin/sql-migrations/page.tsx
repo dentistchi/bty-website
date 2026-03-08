@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { LoadingFallback } from "@/components/bty-arena";
 
 type ListResp = { files: string[]; error?: string };
 type ContentResp = { file: string; content: string; error?: string };
@@ -98,7 +99,9 @@ export default function AdminSqlMigrationsPage() {
         </Link>
       </div>
 
-      {loading && <p className="text-sm text-neutral-600">목록 불러오는 중…</p>}
+      {loading && (
+        <LoadingFallback icon="📋" message="목록 불러오는 중…" withSkeleton />
+      )}
       {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 
       {!loading && files.length > 0 && (
@@ -118,7 +121,14 @@ export default function AdminSqlMigrationsPage() {
             </select>
           </div>
 
-          {contentLoading && <p className="text-sm text-neutral-600">내용 불러오는 중…</p>}
+          {contentLoading && (
+            <LoadingFallback
+              icon="📄"
+              message="내용 불러오는 중…"
+              withSkeleton
+              style={{ padding: "24px 16px" }}
+            />
+          )}
 
           {!contentLoading && content && (
             <div className="rounded border border-neutral-200 bg-white shadow-sm">
@@ -127,6 +137,7 @@ export default function AdminSqlMigrationsPage() {
                 <button
                   type="button"
                   onClick={copyToClipboard}
+                  aria-label={copyDone ? "복사됨" : "선택한 파일 내용을 클립보드에 복사"}
                   className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700"
                 >
                   {copyDone ? "복사됨" : "복사"}

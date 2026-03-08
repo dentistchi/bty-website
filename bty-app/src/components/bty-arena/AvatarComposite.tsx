@@ -4,8 +4,9 @@ import React from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * AVATAR_LAYER_SPEC §5: CSS 레이어 합성 아바타.
- * base(character) → outfit → accessories, position absolute, objectFit contain, loading="lazy".
+ * AVATAR_LAYER_SPEC §5, §6·§7: 레이어 합성 아바타 (옷 입힌 캐릭터).
+ * Render-only: API/도메인에서 계산된 URL만 표시. characterUrl, outfitUrl, accessoryUrls는 모두 API 또는 resolveAvatarUrls(키) 결과로 전달.
+ * 레이어 순서: base(character) zIndex 1 → outfit 2 → accessories 3,4,… position absolute, objectFit contain, loading="lazy".
  */
 
 export interface AvatarCompositeProps {

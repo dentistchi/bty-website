@@ -82,7 +82,8 @@ This document is the **authoritative specification** for BTY Arena domain rules.
 
 ### 4.1 Ranking
 
-- **Leaderboard rank** = sort by **Weekly XP** (current league/window) **descending**. No other factor (Core XP, Tier, Code, Stage, real name) may influence order.
+- **Leaderboard rank** = sort by **Weekly XP** (current league/window) **descending**. Tie-break (deterministic): **updated_at ascending**, then **user_id ascending**. Implementation: `src/domain/rules/leaderboardTieBreak.ts` — `compareWeeklyXpTieBreak(a, b)`.
+- No other factor (Core XP, Tier, Code, Stage, real name) may influence order.
 
 ### 4.2 Display (Code Name only)
 
@@ -124,7 +125,7 @@ This document is the **authoritative specification** for BTY Arena domain rules.
 | Seasonal → Core (default) | 60 : 1 |
 | Season carryover | 10% (of Weekly XP at reset) |
 | MVP season length | 30 days |
-| Leaderboard rank by | Weekly XP only |
+| Leaderboard rank by | Weekly XP only (desc); tie-break: updated_at asc, user_id asc |
 | Display identity | Code Name + Sub Name only (no real name) |
 
 ---

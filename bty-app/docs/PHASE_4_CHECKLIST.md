@@ -29,8 +29,22 @@ Phase 3(사용자 아바타) 거의 마무리 후 **Phase 4**로 전환합니다
 
 | # | 과정 | 확인 방법 | 체크 |
 |---|------|-----------|------|
-| 1 | 코드별 스킨 노출 | 로그인 사용자 Code 변경 시 챗봇/멘토 이미지가 바뀌는지 확인 | [ ] |
-| 2 | 엘리트 5% 기능 | 구현한 1~2개 기능이 상위 5% 조건에서만 노출/동작하는지 확인 | [ ] |
+| 1 | 코드별 스킨 노출 | 로그인 사용자 Code 변경 시 챗봇/멘토 이미지가 바뀌는지 확인 | [x] |
+| 2 | 엘리트 5% 기능 | 구현한 1~2개 기능이 상위 5% 조건에서만 노출/동작하는지 확인 | [x] |
+
+**§2-2 검증 결과 (엘리트 5% 기능 노출/동작)**  
+- **판정 소스**: `GET /api/me/elite` → `getIsEliteTop5(supabase, user.id)` (주간 XP 상위 5%)만 사용. UI는 `isElite` 값을 API 응답으로만 사용.  
+- **해금 콘텐츠(1차)**: 대시보드 — `isElite`일 때만 Elite 전용 카드에서 `/[locale]/bty/elite` 링크 노출, 비Elite는 "주간 리더보드 상위 5% 달성 시 이용 가능" 문구만. Elite 전용 페이지 — `GET /api/me/elite`로 확인, Elite일 때만 전용 콘텐츠·멘토 신청 카드, 비Elite 직접 진입 시 "상위 5% 달성 시 이용 가능"만 노출.  
+- **멘토 배지(2차)**: 멘토 페이지에서 `isElite`일 때만 "Elite 멘토" 배지 표시 (`{isElite && (...)}`).  
+- **멘토 대화 신청(3차)**: POST `/api/me/mentor-request`에서 `canRequestMentorSession(isElite, ...)` 호출, 비Elite 시 403 ELITE_ONLY. UI는 Elite 페이지에서만 신청 카드 노출(isElite 분기).  
+- **챔피언십**: 리더보드 상단 챔피언 영역은 전체 사용자에게 상위 1~3명 표시(노출 제한 아님).  
+- **결론**: 상위 5% 판정은 API·도메인만 사용, UI는 노출/동작 모두 `isElite`(API 응답) 기준. 버그 없음.
+
+**§2-1 검증 결과 (코드별 스킨 노출)**  
+- **챗봇**: `Chatbot.tsx` — bty/mentor 경로에서 패널 오픈 시 `GET /api/arena/core-xp`로 `codeName` 로드 → `GuideCharacterAvatar`에 `codeName` 전달. Code 변경 후 챗을 다시 열면 새 `codeName`으로 요청·이미지 갱신.  
+- **멘토**: `mentor/page.client.tsx` — 마운트 시 `GET /api/arena/core-xp`에서 `core?.codeName` → `userCodeName` → `GuideCharacterAvatar`에 전달. Code 변경 후 멘토 페이지 재진입 시 초기 로드에서 새 Code 반영.  
+- **스킨 표시**: `GuideCharacterAvatar.tsx` — `getGuideAvatarUrlForCode(codeName)` → `/images/guide-character/code-{slug}.png` 시도, 로드 실패 시 `variant` 폴백. `codeName` 변경 시 `useEffect`로 `codeSkinFailed` 초기화 후 새 URL 시도.  
+- **결론**: Code 변경 후 해당 페이지 재진입 또는 챗(패널) 재오픈 시 챗봇/멘토 이미지가 새 Code 기준으로 갱신됨. 버그 없음.
 
 ---
 

@@ -5,6 +5,7 @@
  */
 
 import type { LevelId } from "@/lib/bty/arena/tenure";
+import type { AvatarCompositeKeys } from "@/types/arena";
 import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
 
 export type AvatarOutfitTheme = "professional" | "fantasy";
@@ -351,4 +352,28 @@ export function resolveDisplayAvatarUrl(options: ResolveDisplayAvatarOptions): s
   }
   if (effectiveOutfit.imageUrl) return effectiveOutfit.imageUrl;
   return null;
+}
+
+/** AVATAR_LAYER_SPEC §4: 프로필 필드 → 아바타 복합 키 (리더보드/API 응답용). 순수 함수. */
+export type ProfileAvatarFields = {
+  avatarCharacterId: string | null;
+  avatarOutfitTheme: "professional" | "fantasy" | null;
+  avatarSelectedOutfitId: string | null;
+  avatarAccessoryIds: string[];
+};
+
+function toOutfitKey(theme: "professional" | "fantasy", outfitId: string | null): string | null {
+  if (!outfitId || !outfitId.trim()) return null;
+  return `${theme}_outfit_${outfitId.trim()}`;
+}
+
+export function profileToAvatarCompositeKeys(fields: ProfileAvatarFields): AvatarCompositeKeys {
+  const theme: "professional" | "fantasy" =
+    fields.avatarOutfitTheme === "fantasy" ? "fantasy" : "professional";
+  const characterKey = (fields.avatarCharacterId ?? "").trim() || "hero_01";
+  const outfitKey = toOutfitKey(theme, fields.avatarSelectedOutfitId);
+  const accessoryKeys = Array.isArray(fields.avatarAccessoryIds)
+    ? fields.avatarAccessoryIds.filter((x): x is string => typeof x === "string")
+    : [];
+  return { characterKey, theme, outfitKey, accessoryKeys };
 }

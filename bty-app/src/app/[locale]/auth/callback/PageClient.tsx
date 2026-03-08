@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
+import { LoadingFallback } from "@/components/bty-arena";
 
 function parseHashParams(hash: string): Record<string, string> {
   const params: Record<string, string> = {};
@@ -96,7 +97,7 @@ function AuthCallbackForm() {
   if (status === "loading") {
     return (
       <div className="min-h-[40vh] flex items-center justify-center px-4">
-        <p className="text-neutral-600">{t.loading}</p>
+        <LoadingFallback icon="⏳" message={t.loading} withSkeleton />
       </div>
     );
   }
@@ -105,7 +106,7 @@ function AuthCallbackForm() {
     <div className="min-h-[40vh] flex flex-col items-center justify-center px-4">
       <p className="text-red-600 text-center">{message}</p>
       <Link
-        href={locale === "ko" ? "/ko/bty/login" : "/en/bty/login"}
+        href={`/${locale}/bty/login`}
         className="mt-4 text-sm text-neutral-600 hover:text-neutral-900 underline"
       >
         {t.backToLogin}
@@ -119,7 +120,7 @@ export default function AuthCallbackPage() {
     <Suspense
       fallback={
         <div className="min-h-[40vh] flex items-center justify-center px-4">
-          <p className="text-neutral-600">Verifying…</p>
+          <LoadingFallback icon="⏳" message="Verifying…" withSkeleton />
         </div>
       }
     >

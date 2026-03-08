@@ -82,4 +82,28 @@ describe("POST /api/chat", () => {
     expect(typeof data.message).toBe("string");
     expect(["arena", "foundry", "center"]).toContain(data.mode);
   });
+
+  it("returns 200 with fixed intro reply for BTY/Center intro question (CHATBOT_TRAINING_CHECKLIST)", async () => {
+    const res = await POST(
+      request({
+        messages: [{ role: "user", content: "BTY가 뭐야?" }],
+        mode: "foundry",
+        lang: "ko",
+      })
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.message).toBe("string");
+    expect(data.message).toContain("리더십");
+    const resEn = await POST(
+      request({
+        messages: [{ role: "user", content: "What is Center?" }],
+        mode: "center",
+        lang: "en",
+      })
+    );
+    expect(resEn.status).toBe(200);
+    const dataEn = await resEn.json();
+    expect(dataEn.message).toContain("safe");
+  });
 });

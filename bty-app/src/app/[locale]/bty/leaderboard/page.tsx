@@ -7,7 +7,12 @@ import BtyTopNav from "@/components/bty/BtyTopNav";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 import { LeaderboardRow, UserAvatar, LeaderboardListSkeleton, EmptyState } from "@/components/bty-arena";
 
-/** API contract: GET /api/arena/leaderboard returns LeaderboardRes. UI renders only — no ranking/tier computation here. */
+/**
+ * BTY_ARENA_SYSTEM_SPEC §4: 리더보드 팀(역할/지점) 뷰 전환.
+ * API contract: GET /api/arena/leaderboard?scope=overall|role|office returns LeaderboardRes.
+ * Render-only: scope는 요청 파라미터로만 사용. scopeLabel, scopeUnavailable, leaderboard/nearMe/champions, myRank, myXp 등 표시 값은 모두 API 응답만 사용.
+ * 순서: API 반환 순서만 사용. 타이 브레이커는 서버에서 적용되며, UI에서 정렬·재정렬하지 않음.
+ */
 type Row = {
   rank: number;
   codeName: string;
@@ -31,6 +36,9 @@ type LeaderboardRes = {
   scope?: LeaderboardScope;
   scopeLabel?: string | null;
   scopeUnavailable?: boolean;
+  /** 이번 주 리셋 일시(주간 종료). API 응답만 사용, UI에서 계산 금지. */
+  week_end?: string | null;
+  reset_at?: string | null;
   season?: { league_id: string; start_at: string; end_at: string; name?: string | null } | null;
 };
 
@@ -44,7 +52,7 @@ const LB = {
     failed: "불러오기 실패",
     tier: "티어",
     weeklyXp: "주간 XP",
-    noData: "아직 기록이 없어요. 첫 시나리오를 시작해 보세요.",
+    noData: "아직 주간 XP 기록이 없어요. Arena에서 첫 시나리오를 시작해 보세요.",
     noDataCta: "Arena에서 시나리오 시작하기",
     notOnBoard: "아직 리더보드에 없어요. Arena에서 시나리오를 끝까지 플레이한 뒤 「다음 시나리오」 버튼을 눌러 주세요.",
     notOnBoardHint: "캐릭터(코드명) 저장만으로는 리더보드에 올라가지 않아요.",
@@ -59,6 +67,8 @@ const LB = {
     scopeRole: "역할",
     scopeOffice: "지점",
     scopeUnavailable: "역할·지점 정보가 없어 이 뷰를 사용할 수 없어요.",
+    weekResetLabel: "이번 주 리셋 일시",
+    retryAriaLabel: "리더보드 다시 불러오기",
   },
   en: {
     title: "Leaderboard",
@@ -84,6 +94,8 @@ const LB = {
     scopeRole: "Role",
     scopeOffice: "Office",
     scopeUnavailable: "No role or office context for this view.",
+    weekResetLabel: "Weekly reset",
+    retryAriaLabel: "Reload leaderboard",
   },
 };
 
@@ -123,6 +135,7 @@ export default function LeaderboardPage() {
     };
   }, [scope]);
 
+  /** API 반환 순서만 사용. 타이 브레이커 적용 시에도 UI에서 정렬하지 않음. */
   const rows = data?.nearMe?.length ? data.nearMe : (data?.leaderboard ?? []);
   const myRank = data?.myRank ?? null;
 
@@ -145,6 +158,18 @@ export default function LeaderboardPage() {
         <div style={{ marginTop: 6, fontSize: 14, opacity: 0.7 }}>
           {t.subtitle}
         </div>
+        {/* API 응답의 주간 경계 값만 표시(UI에서 계산 금지) */}
+        {data?.reset_at != null && (
+          <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>
+            {t.weekResetLabel}:{" "}
+            {new Date(data.reset_at).toLocaleString(locale === "ko" ? "ko-KR" : "en-US", {
+              dateStyle: "medium",
+              timeStyle: "short",
+              timeZone: "UTC",
+            })}
+            {locale === "ko" ? " (UTC)" : " UTC"}
+          </div>
+        )}
         {/* Scope tabs: Overall | Role | Office (BTY_ARENA_SYSTEM_SPEC §4) */}
         <div
           style={{
@@ -159,6 +184,16 @@ export default function LeaderboardPage() {
               key={s}
               type="button"
               onClick={() => setScope(s)}
+              aria-label={
+                s === "overall"
+                  ? (locale === "ko" ? "리더보드 전체 보기" : "View leaderboard overall")
+                  : s === "role"
+                    ? (locale === "ko" ? "리더보드 역할별 보기" : "View leaderboard by role")
+                    : locale === "ko"
+                      ? "리더보드 지점별 보기"
+                      : "View leaderboard by office"
+              }
+              aria-pressed={scope === s}
               style={{
                 padding: "8px 14px",
                 borderRadius: 10,
@@ -182,9 +217,14 @@ export default function LeaderboardPage() {
               : data?.scopeLabel ? `${t.scopeOffice}: ${data.scopeLabel}` : t.scopeOffice
           }
         </div>
+        {/* DESIGN_FIRST_IMPRESSION_BRIEF §2·PROJECT_BACKLOG §8: 데이터 없을 때 일러·아이콘 + 한 줄 문구 */}
         {data?.scopeUnavailable && (
-          <div style={{ marginTop: 8, padding: "10px 14px", background: "#fff8e6", borderRadius: 10, fontSize: 13 }}>
-            {t.scopeUnavailable}
+          <div style={{ marginTop: 12 }}>
+            <EmptyState
+              icon="👁"
+              message={t.scopeUnavailable}
+              style={{ padding: "20px 16px", background: "color-mix(in srgb, var(--arena-accent, #6366f1) 6%, transparent)", borderRadius: 12 }}
+            />
           </div>
         )}
         {data?.season && (
@@ -282,7 +322,14 @@ export default function LeaderboardPage() {
           background: "var(--arena-card)",
         }}
       >
-        {loading && <LeaderboardListSkeleton rows={8} variant="inner" />}
+        {loading && (
+          <div
+            aria-busy="true"
+            aria-label={locale === "ko" ? "리더보드 불러오는 중" : "Loading leaderboard"}
+          >
+            <LeaderboardListSkeleton rows={8} variant="inner" />
+          </div>
+        )}
         {error && (
           <div
             style={{
@@ -308,6 +355,7 @@ export default function LeaderboardPage() {
                   .catch((e: unknown) => setError(e instanceof Error ? e.message : "FAILED_TO_LOAD"))
                   .finally(() => setLoading(false));
               }}
+              aria-label={t.retryAriaLabel}
               style={{
                 marginTop: 10,
                 padding: "8px 14px",
@@ -324,10 +372,10 @@ export default function LeaderboardPage() {
         )}
 
         {!loading && !error && (
-          <div style={{ display: "grid", gap: 10 }}>
+          <div role="list" style={{ display: "grid", gap: 10 }}>
             {rows.map((r) => (
               <LeaderboardRow
-                key={r.rank}
+                key={`${r.rank}-${r.codeName}`}
                 rank={r.rank}
                 codeName={r.codeName}
                 subName={r.subName}
@@ -336,9 +384,11 @@ export default function LeaderboardPage() {
                 avatarLayers={r.avatarLayers}
                 tier={r.tier}
                 isMe={myRank != null && r.rank === myRank}
+                locale={locale}
               />
             ))}
 
+            {/* DESIGN_FIRST_IMPRESSION_BRIEF §2·PROJECT_BACKLOG §8: 빈 목록 시 일러·아이콘 + 한 줄 문구 + CTA */}
             {rows.length === 0 && (
               <EmptyState
                 icon="🏆"

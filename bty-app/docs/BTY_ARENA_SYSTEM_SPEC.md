@@ -117,6 +117,7 @@ subTierGroup = floor((tier % 100) / 25)   // 0, 1, 2, 3
 - **기본 뷰**: 내 주변 ±5명 (Near Me)
 - **경쟁 단위**: 시즌(3개월). 시즌마다 10% carryover 후 리셋
 - **경쟁 지표**: **Seasonal XP만**. Core XP는 공개, Tier는 비공개(축하로만 상승 인지).
+- **동점 시 순위 (tie-break)**: Weekly XP가 같으면 **updated_at 오름차순**(먼저 갱신된 쪽이 앞), 그 다음 **user_id 오름차순**. 단일 소스: `src/domain/rules/leaderboardTieBreak.ts` — `compareWeeklyXpTieBreak(a, b)`.
 - **보상**: 금전보다 상징·경험(배지, 스페셜 세션, 라운드테이블 등)
 
 ### 3가지 뷰

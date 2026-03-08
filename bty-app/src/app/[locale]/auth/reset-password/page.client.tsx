@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { LoadingFallback } from "@/components/bty-arena";
+import { LoadingFallback, CardSkeleton } from "@/components/bty-arena";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -149,6 +149,11 @@ function ResetPasswordForm() {
           >
             {loading ? "변경 중..." : "비밀번호 변경"}
           </button>
+          {loading && (
+            <div className="mt-3">
+              <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
+            </div>
+          )}
         </form>
       </div>
     </div>

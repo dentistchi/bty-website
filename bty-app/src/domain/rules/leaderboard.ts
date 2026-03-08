@@ -24,3 +24,29 @@ export function eliteCutoffRank(totalEntries: number): number {
 export function isElite(rank: number, totalEntries: number): boolean {
   return rank <= eliteCutoffRank(totalEntries);
 }
+
+/**
+ * 1-based weekly rank from count of users with strictly higher weekly XP.
+ * totalCount = number of ranked users (e.g. count of weekly_xp with league_id null).
+ * countAbove = count of users with xp_total > myXp. Rank = countAbove + 1.
+ * When totalCount is 0, returns 0 (no ranking).
+ */
+export function rankFromCountAbove(totalCount: number, countAbove: number): number {
+  if (totalCount <= 0) return 0;
+  return (countAbove ?? 0) + 1;
+}
+
+/**
+ * Weekly rank display values from DB counts. Pure: no DB; caller supplies totalCount and countAbove.
+ * Use for core-xp and sub-name routes so ranking/top-5% logic lives in domain only.
+ * When totalCount is 0 (no ranking), returns rank 0 and isTop5Percent false.
+ */
+export function weeklyRankFromCounts(totalCount: number, countAbove: number): {
+  rank: number;
+  isTop5Percent: boolean;
+} {
+  if (totalCount <= 0) return { rank: 0, isTop5Percent: false };
+  const rank = rankFromCountAbove(totalCount, countAbove);
+  const isTop5Percent = isElite(rank, totalCount);
+  return { rank, isTop5Percent };
+}

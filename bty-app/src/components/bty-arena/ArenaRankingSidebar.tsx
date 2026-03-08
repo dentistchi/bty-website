@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { arenaFetch } from "@/lib/http/arenaFetch";
-import { LeaderboardRow, LeaderboardListSkeleton } from "@/components/bty-arena";
+import { LeaderboardRow, LeaderboardListSkeleton, EmptyState } from "@/components/bty-arena";
 
 type Row = {
   rank: number;
@@ -35,6 +35,8 @@ const LABELS = {
     xpToGo: "XP 더하면 추월",
     loading: "로딩 중…",
     failed: "불러오기 실패",
+    retry: "다시 시도",
+    empty: "아직 순위가 없어요. 시나리오를 완료하면 여기 나타나요.",
   },
   en: {
     title: "Live ranking",
@@ -44,6 +46,8 @@ const LABELS = {
     xpToGo: "XP to overtake",
     loading: "Loading…",
     failed: "Failed to load",
+    retry: "Retry",
+    empty: "No rankings yet. Finish a scenario to appear here.",
   },
 };
 
@@ -62,10 +66,11 @@ export function ArenaRankingSidebar({ locale }: ArenaRankingSidebarProps) {
 
   const fetchLeaderboard = useCallback(async () => {
     try {
+      setError(null);
       const json = await arenaFetch<LeaderboardRes>("/api/arena/leaderboard");
       setData(json);
-      setError(null);
     } catch (e: unknown) {
+      setData(null);
       setError(e instanceof Error ? e.message : "FAILED_TO_LOAD");
     } finally {
       setLoading(false);
@@ -146,32 +151,67 @@ export function ArenaRankingSidebar({ locale }: ArenaRankingSidebarProps) {
         {loading && <LeaderboardListSkeleton rows={5} variant="inner" />}
         {error && (
           <div
+            role="alert"
+            aria-live="polite"
             style={{
               padding: 12,
               fontSize: 12,
               color: "#8b2e2e",
               background: "#fff7f7",
+              border: "1px solid #f1c0c0",
+              borderRadius: 8,
             }}
           >
-            {t.failed}
+            <div>{t.failed}</div>
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setLoading(true);
+                fetchLeaderboard();
+              }}
+              aria-label={locale === "ko" ? "실시간 순위 다시 불러오기" : "Reload live ranking"}
+              style={{
+                marginTop: 8,
+                padding: "6px 12px",
+                borderRadius: 6,
+                border: "1px solid #c0a0a0",
+                background: "#fff",
+                fontSize: 12,
+                cursor: "pointer",
+              }}
+            >
+              {t.retry}
+            </button>
           </div>
         )}
         {!loading && !error && (
-          <div style={{ display: "grid", gap: 6, padding: 10 }}>
-            {rows.slice(0, 8).map((r) => (
-              <LeaderboardRow
-                key={`${r.rank}-${r.codeName}`}
-                rank={r.rank}
-                codeName={r.codeName}
-                subName={r.subName}
-                weeklyXp={r.xpTotal}
-                avatarUrl={r.avatarUrl}
-                avatarLayers={r.avatarLayers}
-                tier={r.tier}
-                isMe={myRank != null && r.rank === myRank}
+          <>
+            {rows.length === 0 ? (
+              <EmptyState
+                icon="📊"
+                message={t.empty}
+                style={{ padding: "20px 12px", fontSize: 13 }}
               />
-            ))}
-          </div>
+            ) : (
+              <div role="list" style={{ display: "grid", gap: 6, padding: 10 }}>
+                {rows.slice(0, 8).map((r) => (
+                  <LeaderboardRow
+                    key={`${r.rank}-${r.codeName}`}
+                    rank={r.rank}
+                    codeName={r.codeName}
+                    subName={r.subName}
+                    weeklyXp={r.xpTotal}
+                    avatarUrl={r.avatarUrl}
+                    avatarLayers={r.avatarLayers}
+                    tier={r.tier}
+                    isMe={myRank != null && r.rank === myRank}
+                    locale={locale}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

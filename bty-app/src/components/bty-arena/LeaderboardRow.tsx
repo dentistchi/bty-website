@@ -20,6 +20,8 @@ export interface LeaderboardRowProps {
   tier?: string | null;
   /** Highlight as current user row. */
   isMe?: boolean;
+  /** Optional locale for number formatting (e.g. "en", "ko"). */
+  locale?: string;
 }
 
 /**
@@ -35,12 +37,20 @@ export function LeaderboardRow({
   avatarLayers,
   tier,
   isMe = false,
+  locale,
 }: LeaderboardRowProps) {
   const displayName = subName ? `${codeName} · ${subName}` : codeName;
   const initials = codeName.slice(0, 2).toUpperCase();
+  const formattedXp =
+    typeof locale === "string"
+      ? weeklyXp.toLocaleString(locale === "ko" ? "ko-KR" : "en-US")
+      : weeklyXp.toLocaleString();
 
+  const rowAriaLabel = `Rank ${rank}, ${displayName}, ${formattedXp} Weekly XP${isMe ? ", You" : ""}`;
   return (
     <div
+      role="listitem"
+      aria-label={rowAriaLabel}
       style={{
         display: "flex",
         justifyContent: "space-between",
@@ -83,7 +93,7 @@ export function LeaderboardRow({
         </div>
       </div>
       <div style={{ textAlign: "right" }}>
-        <div style={{ fontWeight: 900, fontSize: 18 }}>{weeklyXp}</div>
+        <div style={{ fontWeight: 900, fontSize: 18 }}>{formattedXp}</div>
         <div style={{ fontSize: 12, opacity: 0.7 }}>Weekly XP</div>
       </div>
     </div>

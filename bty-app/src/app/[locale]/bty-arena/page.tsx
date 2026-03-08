@@ -20,6 +20,8 @@ import {
 import BtyTopNav from "@/components/bty/BtyTopNav";
 import { getMilestoneToShow } from "@/lib/bty/arena/milestone";
 import { arenaFetch } from "@/lib/http/arenaFetch";
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
 // ---------- types for local UI state ----------
 type ArenaPhase = "CHOOSING" | "SHOW_RESULT" | "FOLLOW_UP" | "DONE";
@@ -117,14 +119,6 @@ function stepFromPhase(phase: ArenaPhase): ArenaStep {
 
 const OTHER_CHOICE_ID = "__OTHER__";
 
-/** One-sentence takeaway per play: supports repeated learning (one clear takeaway per scenario). */
-const REFLECTION_PROMPT_EN = "In one sentence: what will you take from this scenario?";
-const REFLECTION_PROMPT_KO = "한 문장으로: 이 판에서 가져갈 것은?";
-
-function getReflectionPrompt(locale: string): string {
-  return locale === "ko" ? REFLECTION_PROMPT_KO : REFLECTION_PROMPT_EN;
-}
-
 const SYSTEM_MESSAGES: SystemMsg[] = [
   { id: "arch_init", en: "Architecture initialized. The framework is stable.", ko: "아키텍처 초기화됨. 프레임워크가 안정화되었습니다." },
   { id: "telemetry", en: "Leadership telemetry active. Your choices refine the arena.", ko: "리더십 원격 측정 활성. 선택이 아레나를 다듬습니다." },
@@ -190,7 +184,8 @@ async function postArenaEvent(payload: Record<string, unknown>): Promise<void> {
 export default function BtyArenaPage() {
   const params = useParams();
   const router = useRouter();
-  const locale = typeof params?.locale === "string" ? params.locale : "en";
+  const locale: Locale = typeof params?.locale === "string" && (params.locale === "ko" || params.locale === "en") ? params.locale : "en";
+  const t = getMessages(locale).arenaRun;
 
   const [levelChecked, setLevelChecked] = React.useState(false);
   const [coreXpTotal, setCoreXpTotal] = React.useState<number | null>(null);
@@ -236,6 +231,14 @@ export default function BtyArenaPage() {
   const [freeResponseFeedback, setFreeResponseFeedback] = React.useState<{ praise: string; suggestion: string } | null>(null);
   /** Set when POST /api/arena/run/complete fails (e.g. RLS); user may not appear on leaderboard. */
   const [completeError, setCompleteError] = React.useState<string | null>(null);
+  /** 시나리오 완료(결과 전환) 시 토스트 메시지 */
+  const [toast, setToast] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(id);
+  }, [toast]);
 
   /** Result from POST /api/arena/reflect (summary, questions, next_action). Shown in ConsolidationBlock. */
   type ReflectResult = { summary: string; questions: string[]; next_action: string; detected?: { tags: string[]; topTag?: string } };
@@ -452,6 +455,7 @@ export default function BtyArenaPage() {
     setPhase("SHOW_RESULT");
     setStep(3);
     persist({ phase: "SHOW_RESULT", step: 3, lastXp: xp, lastSystemMessage: msg.id });
+    setToast(t.scenarioCompletedToast);
   }
 
   async function submitOther() {
@@ -462,7 +466,7 @@ export default function BtyArenaPage() {
       if (trimmed.length > 0) {
         const rid = await ensureRunId();
         if (!rid) {
-          setOtherError(locale === "ko" ? "런을 시작할 수 없습니다." : "Could not start run.");
+          setOtherError(t.errorStartRun);
           setOtherSubmitting(false);
           return;
         }
@@ -489,6 +493,7 @@ export default function BtyArenaPage() {
               otherSubmitted: true,
               freeResponseFeedback: res.feedback,
             });
+            setToast(t.scenarioCompletedToast);
             setOtherOpen(false);
             setOtherText("");
             setOtherSubmitting(false);
@@ -497,11 +502,11 @@ export default function BtyArenaPage() {
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           if (msg === "UNAUTHENTICATED" || msg.includes("401")) {
-            setOtherError(locale === "ko" ? "로그인이 필요합니다." : "Please sign in.");
+            setOtherError(t.errorSignIn);
           } else if (msg === "FREE_RESPONSE_ALREADY_SUBMITTED" || msg === "RUN_NOT_FOUND") {
-            setOtherError(locale === "ko" ? "이미 제출되었거나 세션이 만료되었습니다." : "Already submitted or session expired.");
+            setOtherError(t.errorAlreadySubmitted);
           } else {
-            setOtherError(locale === "ko" ? "제출에 실패했습니다. 다시 시도해 주세요." : "Submission failed. Please try again.");
+            setOtherError(t.errorSubmitFailed);
           }
           setOtherSubmitting(false);
           return;
@@ -526,6 +531,7 @@ export default function BtyArenaPage() {
       setStep(3);
       setSelectedChoiceId(OTHER_CHOICE_ID);
       persist({ phase: "SHOW_RESULT", step: 3, lastXp: 0, lastSystemMessage: "other_recorded", selectedChoiceId: OTHER_CHOICE_ID, otherSubmitted: true });
+      setToast(t.scenarioCompletedToast);
     } finally {
       setOtherSubmitting(false);
     }
@@ -658,11 +664,7 @@ export default function BtyArenaPage() {
       } catch (e) {
         console.warn("Arena run complete failed", e);
         const msg = e instanceof Error ? e.message : String(e);
-        setCompleteError(
-          locale === "ko"
-            ? `저장 실패: ${msg}. 리더보드에 반영되지 않았을 수 있어요.`
-            : `Save failed: ${msg}. You may not appear on the leaderboard.`
-        );
+        setCompleteError(t.completeErrorPrefix + msg + t.completeErrorSuffix);
       }
     }
 
@@ -810,7 +812,7 @@ export default function BtyArenaPage() {
         {step === 1 && (
           <div className="bty-hero" style={{ paddingTop: 32, paddingBottom: 40, marginBottom: 28 }}>
             <p className="bty-hero-title" style={{ margin: 0, fontSize: "clamp(1.75rem, 4vw, 2rem)", fontWeight: 700, letterSpacing: "0.02em", lineHeight: 1.35, color: "var(--arena-text)" }}>
-              {locale === "ko" ? "오늘도 한 걸음, Arena에서." : "One step today, in the Arena."}
+              {t.heroTitle}
             </p>
           </div>
         )}
@@ -875,7 +877,7 @@ export default function BtyArenaPage() {
                   fontSize: 14,
                 }}
               >
-                {locale === "ko" ? "기타 (직접 입력)" : "Other (Write your own)"}
+                {t.otherLabel}
               </button>
             </div>
           </>
@@ -905,7 +907,7 @@ export default function BtyArenaPage() {
             ) : (
               <>
                 <p style={{ margin: "0 0 8px", fontWeight: 600 }}>
-                  {locale === "ko" && systemMessage?.ko ? systemMessage.ko : systemMessage?.en ?? (locale === "ko" ? "기타 기록됨." : "Other recorded.")}
+                  {locale === "ko" && systemMessage?.ko ? systemMessage.ko : systemMessage?.en ?? t.otherRecorded}
                 </p>
                 <p style={{ margin: 0, fontSize: 14, opacity: 0.8 }}>XP +{lastXp}</p>
               </>
@@ -924,7 +926,7 @@ export default function BtyArenaPage() {
                 fontSize: 14,
               }}
             >
-              {locale === "ko" ? "다음 시나리오" : "Next scenario"}
+              {t.nextScenario}
             </button>
           </div>
         )}
@@ -937,7 +939,7 @@ export default function BtyArenaPage() {
             systemMessage={systemMessage}
             lastXp={lastXp}
             reflectionBonusXp={reflectionBonusXp}
-            reflectionPrompt={getReflectionPrompt(locale)}
+            reflectionPrompt={t.reflectionPrompt}
             reflectionOptions={[]}
             followUpPrompt={followUpPrompt}
             followUpOptions={followUpOptions}
@@ -981,7 +983,7 @@ export default function BtyArenaPage() {
           />
           <div
             role="dialog"
-            aria-label={locale === "ko" ? "기타 (직접 입력)" : "Other (Write your own)"}
+            aria-label={t.otherLabel}
             style={{
               position: "relative",
               width: "min(640px, 92vw)",
@@ -993,12 +995,12 @@ export default function BtyArenaPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ fontWeight: 800, marginBottom: 8 }}>
-              {locale === "ko" ? "기타 (직접 입력)" : "Other (Write your own)"}
+              {t.otherLabel}
             </div>
             <textarea
               value={otherText}
               onChange={(e) => setOtherText(e.target.value)}
-              placeholder={locale === "ko" ? "직접 입력해 주세요..." : "Write your own..."}
+              placeholder={t.otherPlaceholder}
               rows={3}
               style={{ width: "100%", padding: 10, borderRadius: 8, resize: "vertical", boxSizing: "border-box" }}
             />
@@ -1022,7 +1024,7 @@ export default function BtyArenaPage() {
                   fontSize: 14,
                 }}
               >
-                {locale === "ko" ? "취소" : "Cancel"}
+                {t.cancel}
               </button>
               <button
                 type="button"
@@ -1039,7 +1041,7 @@ export default function BtyArenaPage() {
                   opacity: otherSubmitting ? 0.6 : 1,
                 }}
               >
-                {locale === "ko" ? "제출" : "Submit"}
+                {t.submit}
               </button>
             </div>
           </div>
@@ -1064,12 +1066,36 @@ export default function BtyArenaPage() {
       )}
     </div>
     <aside
-      aria-label={locale === "ko" ? "실시간 순위" : "Live ranking"}
+      aria-label={t.liveRanking}
       style={{ width: 280, flexShrink: 0, paddingTop: 32 }}
       className="hidden lg:block"
     >
       <ArenaRankingSidebar locale={locale} />
     </aside>
+
+    {/* 시나리오 완료(결과 전환) 시 토스트 */}
+    {toast && (
+      <div
+        role="alert"
+        style={{
+          position: "fixed",
+          bottom: 24,
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 50,
+          maxWidth: "min(90vw, 360px)",
+          padding: "12px 20px",
+          borderRadius: 12,
+          background: "var(--arena-accent, #6366f1)",
+          color: "#fff",
+          fontSize: 14,
+          fontWeight: 500,
+          boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+        }}
+      >
+        {toast}
+      </div>
+    )}
   </div>
   );
 }

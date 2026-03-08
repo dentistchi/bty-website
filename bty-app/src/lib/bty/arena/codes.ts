@@ -87,6 +87,54 @@ export function resolveSubName(
 }
 
 /**
+ * All display fields for core-xp API (progress bar, code lore, milestone modal).
+ * Domain-only; route calls this and returns the result.
+ */
+export type CoreXpDisplay = {
+  stage: number;
+  progressPct: number;
+  nextCodeName: string | null;
+  xpToNext: number;
+  codeLore: string;
+  milestoneToCelebrate: 25 | 50 | 75 | null;
+  previousSubName: string | null;
+};
+
+export function computeCoreXpDisplay(coreXpTotal: number): CoreXpDisplay {
+  const tier = tierFromCoreXp(coreXpTotal);
+  const progress = progressToNextTier(coreXpTotal);
+  const codeIndex = codeIndexFromTier(tier);
+  const stage = Math.min(7, Math.floor(tier / 100) + 1);
+  const codeLore = CODE_LORE[codeIndex];
+  let milestoneToCelebrate: 25 | 50 | 75 | null = null;
+  let previousSubName: string | null = null;
+  if (tier >= 75) {
+    milestoneToCelebrate = 75;
+    const prevTier = 74;
+    const names = SUB_NAMES[codeIndexFromTier(prevTier)];
+    const grp = subTierGroupFromTier(prevTier);
+    previousSubName = names ? names[grp] : "—";
+  } else if (tier >= 50) {
+    milestoneToCelebrate = 50;
+    const prevTier = 49;
+    const names = SUB_NAMES[codeIndexFromTier(prevTier)];
+    const grp = subTierGroupFromTier(prevTier);
+    previousSubName = names ? names[grp] : "—";
+  } else if (tier >= 25) {
+    milestoneToCelebrate = 25;
+  }
+  return {
+    stage,
+    progressPct: progress.progressPct,
+    nextCodeName: progress.nextCodeName ?? null,
+    xpToNext: progress.xpToNext,
+    codeLore,
+    milestoneToCelebrate,
+    previousSubName,
+  };
+}
+
+/**
  * Seasonal XP → Core XP conversion (hidden from user).
  * Core < 200: 45 seasonal = 1 core (Beginner boost). Else 60:1.
  */

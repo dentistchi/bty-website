@@ -5,6 +5,25 @@
  * - role: 동일 (org_id, region_id, role) 사용자만. scopeLabel 예: "Doctor", "Manager".
  * - office: 동일 office_id(내 대표 지점) 사용자만. scopeLabel = 지점명.
  * 스코프별 노출 수치: 동일. 행당 순위, Seasonal XP(weekly), Code·Sub Name, 아바타만. 지점·역할은 행별 미노출.
+ *
+ * --- API 계약 (Leaderboard status endpoint) ---
+ * 요청:
+ *   - Method: GET
+ *   - Path: /api/arena/leaderboard
+ *   - Query: scope? = "overall" | "role" | "office" (invalid/missing → overall, parseLeaderboardScope)
+ *   - Auth: 세션 쿠키 필수 (Supabase getUser)
+ * 응답:
+ *   - 200: { leaderboard, nearMe, top10, champions, myRank, myXp, gapToAbove, count, scope, scopeLabel, scopeUnavailable, week_end, reset_at, season }
+ *   - 401: { error: "UNAUTHENTICATED" }
+ *   - 500: { error: "WEEKLY_XP_QUERY_FAILED", detail: string }
+ * --- scope(role/office) 쿼리·응답 계약 ---
+ * 쿼리: scope=role | scope=office (대소문자 구분, parseLeaderboardScope; 그 외 → overall)
+ * 응답 200:
+ *   - scope: 요청한 값 그대로 "overall" | "role" | "office"
+ *   - scopeLabel: scope=overall이면 null. scope=role이면 roleToScopeLabel(role)(예: "Doctor","Manager"). scope=office이면 해당 지점명(offices.name). 미취득 시 null.
+ *   - scopeUnavailable: scope가 role|office인데 멤버십/지점 정보 없어 풀 비어 있으면 true (leaderboard=[], count=0 등)
+ * 도메인: parseLeaderboardScope(쿼리 파싱), roleToScopeLabel(role→표시 라벨). getScopeFilter는 DB 조회+roleToScopeLabel 호출만.
+ * 도메인 호출만: parseLeaderboardScope, roleToScopeLabel, getLeaderboardWeekBoundary, tierFromCoreXp, resolveSubName, tierToDisplayLevelId, resolveDisplayAvatarUrl, profileToAvatarCompositeKeys, calculateTier, rankFromCountAbove. Handler는 검증·DB 조회·도메인 호출·응답만.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
@@ -19,8 +38,11 @@ import {
   resolveSubName,
   type CodeIndex,
 } from "@/lib/bty/arena/codes";
-import { tierToDisplayLevelId, resolveDisplayAvatarUrl, resolveDisplayAvatarLayers } from "@/lib/bty/arena/avatarOutfits";
+import { tierToDisplayLevelId, resolveDisplayAvatarUrl, resolveDisplayAvatarLayers, profileToAvatarCompositeKeys } from "@/lib/bty/arena/avatarOutfits";
+import { parseLeaderboardScope, roleToScopeLabel } from "@/lib/bty/arena/leaderboardScope";
+import { getLeaderboardWeekBoundary } from "@/lib/bty/arena/leaderboardWeekBoundary";
 import { calculateTier } from "@/lib/bty/arena/domain";
+import { rankFromCountAbove } from "@/domain/rules/leaderboard";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -54,17 +76,8 @@ async function getScopeFilter(
       .eq("role", first.role)
       .eq("status", "active");
     const userIds = (peerRows ?? []).map((r: { user_id: string }) => r.user_id).filter(Boolean);
-    const roleLabel =
-      first.role === "doctor"
-        ? "Doctor"
-        : first.role === "office_manager" || first.role === "regional_manager"
-          ? "Manager"
-          : first.role === "staff"
-            ? "Staff"
-            : first.role === "dso"
-              ? "DSO"
-              : first.role;
-    return { userIds, scopeLabel: roleLabel };
+    const scopeLabel = roleToScopeLabel(first.role);
+    return { userIds, scopeLabel };
   }
 
   // scope === "office"
@@ -119,9 +132,7 @@ export async function GET(req: NextRequest) {
     return out;
   }
 
-  const scopeParam = req.nextUrl.searchParams.get("scope");
-  const scope: "overall" | "role" | "office" =
-    scopeParam === "role" || scopeParam === "office" ? scopeParam : "overall";
+  const scope = parseLeaderboardScope(req.nextUrl.searchParams.get("scope"));
 
   const league = await getActiveLeague(supabase, getSupabaseAdmin());
   const admin = getSupabaseAdmin();
@@ -134,18 +145,21 @@ export async function GET(req: NextRequest) {
   const filterUserIds = scopeFilter?.userIds ?? null;
   const scopeLabel = scopeFilter?.scopeLabel ?? null;
 
-  let weeklyRows: { user_id: string; xp_total?: number }[] | null = null;
+  let weeklyRows: { user_id: string; xp_total?: number; updated_at?: string | null }[] | null = null;
   let weeklyErr: { message: string } | null = null;
 
   if (filterUserIds !== null && filterUserIds.length === 0) {
     weeklyRows = [];
     weeklyErr = null;
   } else {
+    // 동점 시 결정적 정렬: xp_total desc, updated_at asc, user_id asc (leaderboardTieBreak)
     let weeklyQuery = db
       .from("weekly_xp")
-      .select("user_id, xp_total")
+      .select("user_id, xp_total, updated_at")
       .is("league_id", null)
       .order("xp_total", { ascending: false })
+      .order("updated_at", { ascending: true })
+      .order("user_id", { ascending: true })
       .limit(100);
     if (filterUserIds != null && filterUserIds.length > 0) {
       weeklyQuery = weeklyQuery.in("user_id", filterUserIds);
@@ -164,7 +178,7 @@ export async function GET(req: NextRequest) {
     return out;
   }
 
-  const rows = (weeklyRows ?? []).filter((r) => !!r.user_id) as { user_id: string; xp_total?: number }[];
+  const rows = (weeklyRows ?? []).filter((r) => !!r.user_id) as { user_id: string; xp_total?: number; updated_at?: string | null }[];
   const userIds = rows.map((r) => r.user_id);
 
   type ProfileRow = {
@@ -176,6 +190,7 @@ export async function GET(req: NextRequest) {
     avatar_character_id?: string | null;
     avatar_outfit_theme?: "professional" | "fantasy" | null;
     avatar_selected_outfit_id?: string | null;
+    avatar_accessory_ids?: string[] | null;
   };
   let profileMap = new Map<
     string,
@@ -187,16 +202,27 @@ export async function GET(req: NextRequest) {
       avatar_character_id: string | null;
       avatar_outfit_theme: "professional" | "fantasy" | null;
       avatar_selected_outfit_id: string | null;
+      avatar_accessory_ids: string[];
     }
   >();
+  const profileSelect = "user_id, core_xp_total, code_index, sub_name, avatar_url, avatar_character_id, avatar_outfit_theme, avatar_selected_outfit_id, avatar_accessory_ids";
+  const profileSelectLegacy = "user_id, core_xp_total, code_index, sub_name, avatar_url, avatar_character_id, avatar_outfit_theme, avatar_selected_outfit_id";
   if (userIds.length > 0) {
     if (admin) {
-      const { data: profiles } = await admin
+      let profiles: ProfileRow[] | null = null;
+      const { data, error: selErr } = await admin
         .from("arena_profiles")
-        .select("user_id, core_xp_total, code_index, sub_name, avatar_url, avatar_character_id, avatar_outfit_theme, avatar_selected_outfit_id")
+        .select(profileSelect)
         .in("user_id", userIds);
+      if (selErr && typeof selErr.message === "string" && (selErr.message.includes("does not exist") || selErr.message.includes("column"))) {
+        const { data: legacy } = await admin.from("arena_profiles").select(profileSelectLegacy).in("user_id", userIds);
+        profiles = (legacy ?? []).map((p: ProfileRow) => ({ ...p, avatar_accessory_ids: [] }));
+      } else {
+        profiles = data;
+      }
       (profiles ?? []).forEach((p: ProfileRow) => {
         const theme = p.avatar_outfit_theme === "fantasy" || p.avatar_outfit_theme === "professional" ? p.avatar_outfit_theme : null;
+        const accessoryIds = Array.isArray(p.avatar_accessory_ids) ? p.avatar_accessory_ids.filter((x): x is string => typeof x === "string") : [];
         profileMap.set(p.user_id, {
           core_xp_total: Number(p.core_xp_total ?? 0),
           code_index: Math.min(6, Math.max(0, Number(p.code_index ?? 0))),
@@ -205,15 +231,16 @@ export async function GET(req: NextRequest) {
           avatar_character_id: p.avatar_character_id ?? null,
           avatar_outfit_theme: theme,
           avatar_selected_outfit_id: p.avatar_selected_outfit_id ?? null,
+          avatar_accessory_ids: accessoryIds,
         });
       });
     } else {
-      // RLS 시 anon은 본인만 조회됨 → get_leaderboard_profiles (SECURITY DEFINER) RPC로 전체 조회
       const { data: profiles } = await supabase.rpc("get_leaderboard_profiles", {
         p_user_ids: userIds,
       });
       (profiles ?? []).forEach((p: ProfileRow) => {
         const theme = p.avatar_outfit_theme === "fantasy" || p.avatar_outfit_theme === "professional" ? p.avatar_outfit_theme : null;
+        const accessoryIds = Array.isArray(p.avatar_accessory_ids) ? p.avatar_accessory_ids.filter((x): x is string => typeof x === "string") : [];
         profileMap.set(p.user_id, {
           core_xp_total: Number(p.core_xp_total ?? 0),
           code_index: Math.min(6, Math.max(0, Number(p.code_index ?? 0))),
@@ -222,6 +249,7 @@ export async function GET(req: NextRequest) {
           avatar_character_id: p.avatar_character_id ?? null,
           avatar_outfit_theme: theme,
           avatar_selected_outfit_id: p.avatar_selected_outfit_id ?? null,
+          avatar_accessory_ids: accessoryIds,
         });
       });
     }
@@ -262,7 +290,15 @@ export async function GET(req: NextRequest) {
     const avatarUrl = isSupabaseStorageAvatar
       ? `/api/arena/avatar?userId=${r.user_id}`
       : resolved ?? "/avatars/default-avatar.svg";
-    return { rank: idx + 1, codeName, subName, xpTotal, avatarUrl, avatarLayers, tier: calculateTier(xpTotal) };
+    const avatarKeys = prof
+      ? profileToAvatarCompositeKeys({
+          avatarCharacterId: prof.avatar_character_id,
+          avatarOutfitTheme: prof.avatar_outfit_theme,
+          avatarSelectedOutfitId: prof.avatar_selected_outfit_id,
+          avatarAccessoryIds: prof.avatar_accessory_ids ?? [],
+        })
+      : { characterKey: "hero_01", theme: "professional" as const, outfitKey: null, accessoryKeys: [] };
+    return { rank: idx + 1, codeName, subName, xpTotal, avatarUrl, avatarLayers, avatar: avatarKeys, tier: calculateTier(xpTotal) };
   });
 
   let myRank = rows.findIndex((r) => r.user_id === user.id) + 1 || 0;
@@ -277,7 +313,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // If not in top 100 (or not in scoped list), fetch own weekly_xp and compute rank within same scope
+  // If not in top 100 (or not in scoped list), fetch own weekly_xp and compute rank within same scope (domain only)
   if (myRank === 0) {
     let rankQuery = db
       .from("weekly_xp")
@@ -296,7 +332,16 @@ export async function GET(req: NextRequest) {
         countQuery = countQuery.in("user_id", filterUserIds);
       }
       const { count: rankAbove } = await countQuery;
-      myRank = (rankAbove ?? 0) + 1;
+      // Total count in scope (same filters, no xp_total filter) for domain rank
+      let totalCountQuery = db
+        .from("weekly_xp")
+        .select("user_id", { count: "exact", head: true })
+        .is("league_id", null);
+      if (filterUserIds != null && filterUserIds.length > 0) {
+        totalCountQuery = totalCountQuery.in("user_id", filterUserIds);
+      }
+      const { count: totalCount } = await totalCountQuery;
+      myRank = rankFromCountAbove(totalCount ?? 0, rankAbove ?? 0);
       if (myRank > 1) {
         let aboveQuery = db
           .from("weekly_xp")
@@ -322,6 +367,8 @@ export async function GET(req: NextRequest) {
   // 챔피언십: 주간 상위 1~3명 (1위 Champion, 2~3위 Runner-up) — PHASE_4_ELITE_5_PERCENT_SPEC §4-4, NEXT_TASKS_2 §1-4
   const champions = leaderboard.slice(0, 3);
 
+  const weekBoundary = getLeaderboardWeekBoundary();
+
   const out = NextResponse.json(
     {
       leaderboard,
@@ -339,6 +386,9 @@ export async function GET(req: NextRequest) {
       /** True when scope=role|office was requested but no membership/office context (empty pool). */
       scopeUnavailable:
         scope !== "overall" && filterUserIds !== null && filterUserIds.length === 0,
+      /** 주간 경계: 현재 주 종료 시각(week_end), 다음 리셋 시각(reset_at). Monday 00:00 UTC 기준. */
+      week_end: weekBoundary.week_end,
+      reset_at: weekBoundary.reset_at,
       season: league
         ? { league_id: league.league_id, start_at: league.start_at, end_at: league.end_at, name: league.name ?? null }
         : null,

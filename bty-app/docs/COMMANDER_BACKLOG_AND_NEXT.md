@@ -63,11 +63,16 @@
 - Center·Foundry에는 이미 **챗 기능**이 있으므로, 별도 플로팅 창 없이 해당 영역 내 챗으로 충분.
 
 **현재**
-- `Chatbot.tsx`: `pathname.includes("/bty")` 일 때 플로팅 미렌더 (Foundry·Arena 구간에서 이미 숨김).
-- **추가 조치**: Center(`/center`) 포함 **전역에서 플로팅 챗봇 비노출**으로 확장할지 결정 후, 조건을 `pathname.includes("/bty") || pathname.includes("/center")` 등으로 확장하거나, 아예 컴포넌트를 레이아웃에서 제거.
+- **§2 반영 완료**: `/center` 포함 전역 플로팅 챗봇 비노출. `src/app/[locale]/center/page.tsx`에서 `<Chatbot />` 제거(마운트 안 함). Foundry(bty)는 `bty/layout.tsx`에서만 Chatbot 마운트.
 
 **기록**
 - "챗봇은 또다시 연결이 끊겼어" — 연결 끊김 이슈는 별도로 재현·점검 필요. 문서에만 기록.
+
+**§2 연결 끊김 재현 시나리오·원인 추정** (정리)
+- **재현 시나리오**: (1) 메시지 전송 후 응답이 오래 오지 않음 → 사용자가 "끊긴 것 같다"고 인지. (2) 탭 전환·백그라운드 후 재개 시 이전 요청이 취소되거나 타임아웃. (3) 네트워크 순단 시 fetch 실패 → 클라이언트에 "다시 시도해 주세요" 표시.
+- **원인 추정**: (1) **서버·OpenAI 지연**: `POST /api/chat`이 OpenAI 호출 시 타임아웃 없이 대기 → 응답 지연 시 사용자는 연결 끊김으로 느낄 수 있음. (2) **클라이언트**: `Chatbot.tsx`는 `fetchJson` + `AbortController`(전송 취소용), 실패 시 재시도 버튼 노출. (3) **스트리밍 미사용**: 현재 chat route는 비스트리밍(한 번에 JSON 응답). 재연결 로직은 클라이언트 재시도뿐.
+- **점검 결과**: chat route에는 스트리밍·재연결 로직 없음. OpenAI 호출에 **요청 타임아웃**을 두면 장시간 대기 시 fallback 응답으로 빠져 나와 "끊김" 체감을 줄일 수 있음.
+- **구현 반영**: `POST /api/chat` route에서 OpenAI 호출 시 **30초 타임아웃** 적용 (`AbortController` + `setTimeout`). 타임아웃 시 fallback 응답 반환, `recordQualityEventApp` reason `timeout` 기록. `src/lib/bty/quality.ts`에 `QualityEventReason` `timeout` 추가. npm test 195 통과.
 
 ---
 
@@ -116,7 +121,7 @@
 - **아이디어**: 마우스를 올리면 **팝업(툴팁/팝오버)** 로 단계·수준 설명 노출.
 
 **조치**
-- 대시보드 코드네임 표시 영역에 **설명 툴팁/팝오버** 추가 검토. 문구는 BTY_ARENA_SYSTEM_SPEC·ARENA_CODENAME_AVATAR_PLAN의 Code/Tier/Sub Name 규칙 요약으로 작성.
+- **§5 반영 완료**: 대시보드 코드네임 표시 영역에 마우스 오버 시 단계·수준 설명 툴팁(팝오버) 적용. 문구는 BTY_ARENA_SYSTEM_SPEC §1·§5, ARENA_CODENAME_AVATAR_PLAN §2의 Code/Tier/Sub Name 규칙 요약. `dashboard/page.client.tsx` ProgressCard "Code Name" 내 `role="tooltip"`, `aria-describedby` 연동.
 
 ---
 

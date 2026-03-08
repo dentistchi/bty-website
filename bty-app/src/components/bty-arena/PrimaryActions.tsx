@@ -1,12 +1,11 @@
 "use client";
 
 import React from "react";
-
-const CONFIRM_LABEL = { en: "Confirm", ko: "확인" };
-const NEXT_SCENARIO_LABEL = { en: "Next scenario", ko: "다음 시나리오" };
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
 export type PrimaryActionsProps = {
-  locale: string;
+  locale: Locale | string;
   confirmDisabled: boolean;
   continueDisabled: boolean;
   onConfirm: () => Promise<void> | void;
@@ -23,7 +22,8 @@ export function PrimaryActions({
   onContinue,
   showContinue = true,
 }: PrimaryActionsProps) {
-  const isKo = locale === "ko";
+  const lang: Locale = locale === "ko" || locale === "en" ? locale : "en";
+  const t = getMessages(lang).arenaRun;
   return (
     <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
       <button
@@ -31,6 +31,7 @@ export function PrimaryActions({
         onClick={onConfirm}
         disabled={confirmDisabled}
         className="bty-btn-primary"
+        aria-label={t.confirm}
         style={{
           padding: "12px 14px",
           borderRadius: 12,
@@ -41,7 +42,7 @@ export function PrimaryActions({
           cursor: confirmDisabled ? "not-allowed" : "pointer",
         }}
       >
-        {isKo ? CONFIRM_LABEL.ko : CONFIRM_LABEL.en}
+        {t.confirm}
       </button>
 
       {showContinue !== false && (
@@ -50,6 +51,7 @@ export function PrimaryActions({
           onClick={onContinue}
           disabled={continueDisabled}
           className="bty-btn-outline"
+          aria-label={t.nextScenario}
           style={{
             padding: "12px 14px",
             borderRadius: 12,
@@ -60,7 +62,7 @@ export function PrimaryActions({
             cursor: continueDisabled ? "not-allowed" : "pointer",
           }}
         >
-          {isKo ? NEXT_SCENARIO_LABEL.ko : NEXT_SCENARIO_LABEL.en}
+          {t.nextScenario}
         </button>
       )}
     </div>

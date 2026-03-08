@@ -2,16 +2,20 @@
 
 import React from "react";
 import type { ScenarioChoice } from "@/lib/bty/scenario/types";
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
 export type ChoiceListProps = {
-  locale: string;
+  locale: Locale | string;
   choices: ScenarioChoice[];
   selectedChoiceId: string | null;
   onSelect: (choiceId: string) => void;
 };
 
 export function ChoiceList({ locale, choices, selectedChoiceId, onSelect }: ChoiceListProps) {
-  const isKo = locale === "ko";
+  const lang: Locale = locale === "ko" || locale === "en" ? locale : "en";
+  const t = getMessages(lang).arenaRun;
+  const isKo = lang === "ko";
   return (
     <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
       {choices.map((c) => {
@@ -34,7 +38,7 @@ export function ChoiceList({ locale, choices, selectedChoiceId, onSelect }: Choi
             }}
           >
             <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
-              {isKo ? "선택" : "Choice"} {c.choiceId} · {c.intent}
+              {t.choiceLabel} {c.choiceId} · {c.intent}
             </div>
             <div style={{ fontSize: 15 }}>{displayLabel}</div>
           </button>

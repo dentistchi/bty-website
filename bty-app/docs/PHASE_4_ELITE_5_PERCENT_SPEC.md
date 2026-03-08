@@ -127,7 +127,7 @@
 
 ## 9. 4-4 구현 완료 요약
 
-구현한 내용만 정리. Elite 판정은 기존 **GET /api/me/elite**·**getIsEliteTop5**(주간 XP 상위 5%)만 사용. UI는 `isElite` 값만 사용하며, XP/랭킹 계산은 하지 않음.
+구현한 내용만 정리. Elite 판정은 기존 **GET /api/me/elite**·**getIsEliteTop5**(주간 XP 상위 5%)만 사용. UI는 `isElite` 값만 사용하며, XP/랭킹 계산은 하지 않음. *(render-only 점검: dashboard Elite 카드, elite/page.client.tsx, mentor Elite 멘토 배지에 주석 반영·확인.)*
 
 ### 1. 멘토 배지 확장 (우선순위 2)
 
@@ -168,8 +168,8 @@
 |------|------|------------|------|
 | **1차** | 해금 콘텐츠 | Elite만 접근 가능한 전용 페이지(`/bty/elite`) + 대시보드 카드 노출, 비Elite는 "상위 5% 달성 시 이용 가능" 문구. | [x] 완료 |
 | **2차** | 멘토 배지·노출 확장 | 멘토 페이지에서 Elite일 때 "Elite 멘토" 문구·툴팁으로 상위 5% 뱃지 확장. | [x] 완료 |
-| **3차 후보** | 엘리트 배지 증정 | 주간 5% 달성 시 배지 수여·기존 "상위 5%" 뱃지를 시즌/주간 구분 또는 아이콘 확장. | [ ] |
-| **3차 후보** | 멘토 대화 신청 | Elite가 Dr. Chi(또는 지정 멘토)와 1:1 세션 신청 권한, 신청 큐·승인 플로우 API·UI. | [ ] |
+| **3차 후보** | 엘리트 배지 증정 | 주간 5% 달성 시 배지 수여·기존 "상위 5%" 뱃지를 시즌/주간 구분 또는 아이콘 확장. | [x] 도메인·API 1건 완료 (eliteBadge.getEliteBadgeGrants, GET /api/me/elite에 badges 반환). |
+| **3차 후보** | 멘토 대화 신청 | Elite가 Dr. Chi(또는 지정 멘토)와 1:1 세션 신청 권한, 신청 큐·승인 플로우 API·UI. | [x] 도메인·API 완료 (mentorRequest 도메인, elite_mentor_requests 테이블, GET/POST /api/me/mentor-request, GET/PATCH /api/arena/mentor-requests). UI는 별도. |
 | **엘리트 2차** | 챔피언십 | 주간 상위 1~3명 선정·공개. 리더보드 API `champions` + 리더보드 페이지 상단 "이번 주 챔피언" 영역. | [x] 완료 |
 
 **선정 요약**: 1~2차는 해금 콘텐츠·멘토 배지 확장으로 확정·구현 완료. 엘리트 2차로 챔피언십(주간 1~3명) 구현 완료. 3차는 엘리트 배지 증정·멘토 대화 신청 중 우선순위 정해 별도 이슈로 진행.

@@ -3,6 +3,7 @@
 import React from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { CardSkeleton } from "@/components/bty-arena";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 
 /**
@@ -14,8 +15,10 @@ export default function TestAvatarPage() {
   const locale = typeof params?.locale === "string" && params.locale === "ko" ? "ko" : "en";
   const [result, setResult] = React.useState<string>("");
   const [urlInput, setUrlInput] = React.useState("https://picsum.photos/100");
+  const [patching, setPatching] = React.useState(false);
 
   const runPATCH = async (avatarUrl: string | null) => {
+    setPatching(true);
     try {
       const body = avatarUrl === null ? { avatarUrl: null } : { avatarUrl };
       const res = await fetch("/api/arena/profile", {
@@ -28,6 +31,8 @@ export default function TestAvatarPage() {
       setResult(`PATCH ${res.status}: ${JSON.stringify(json)}`);
     } catch (e) {
       setResult(`Error: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setPatching(false);
     }
   };
 
@@ -95,10 +100,16 @@ export default function TestAvatarPage() {
             />
             <button
               onClick={() => runPATCH(urlInput.trim() || null)}
+              disabled={patching}
               style={{ padding: "8px 16px", background: "#5B4B8A", color: "white", border: "none", borderRadius: 8 }}
             >
               {t.save}
             </button>
+            {patching && (
+              <div style={{ marginTop: 12 }}>
+                <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
+              </div>
+            )}
           </div>
         </section>
 

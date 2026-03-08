@@ -91,11 +91,12 @@ export function filterBtyResponse(text: string, lang: "ko" | "en"): string {
   return isComfort ? (lang === "ko" ? FILTER_REPLACEMENT_KO : FILTER_REPLACEMENT_EN) : t;
 }
 
-/** 메타 질문("챗봇이야?", "AI야?", "너 누구야?" 등) 감지 — PROJECT_BACKLOG §9, CHATBOT_TRAINING_CHECKLIST §3 */
+/** 메타 질문("챗봇이야?", "AI야?", "너 누구야?" 등) 감지 — PROJECT_BACKLOG §9, CHATBOT_TRAINING_CHECKLIST §3, ROADMAP_NEXT_STEPS 보강 */
 const META_QUESTION_PATTERNS = [
   /^(너\s*누구야?|넌\s*누구야?|너는\s*누구야?|who\s*are\s*you|what\s*are\s*you)\s*[.?]?$/i,
-  /^(챗봇이야?|챗봇\s*맞아?|로봇이야?|AI야?|인공지능이야?|봇이야?|bot\?|are\s*you\s*(a\s*)?bot|are\s*you\s*ai|is\s*this\s*a\s*chatbot)\s*[.?]?$/i,
+  /^(챗봇이야?|챗봇\s*맞아?|로봇이야?|AI야?|인공지능이야?|봇이야?|너\s*봇이야?|이거\s*AI야?|bot\?|are\s*you\s*(a\s*)?bot|are\s*you\s*ai|is\s*this\s*a\s*chatbot|is\s*this\s*ai)\s*[.?]?$/i,
   /^(실제\s*사람이야?|진짜\s*사람이야?|사람이야?|are\s*you\s*real|are\s*you\s*human)\s*[.?]?$/i,
+  /^(챗봇\s*되나\??|챗봇이\s*되나\??)\s*[.?]?$/i,
 ];
 
 export function isMetaQuestion(text: string): boolean {
@@ -110,4 +111,40 @@ const META_REPLY_EN =
 
 export function getMetaReply(lang: "ko" | "en"): string {
   return lang === "ko" ? META_REPLY_KO : META_REPLY_EN;
+}
+
+/** BTY·Foundry·Center 소개 질문 감지 — 고정 답변으로 토큰 절약·일관 응답 (CHATBOT_TRAINING_CHECKLIST §4, 필요 시 RAG 대체) */
+export type IntroQuestionKind = "bty" | "foundry" | "center" | null;
+
+const INTRO_PATTERNS: { kind: IntroQuestionKind; pattern: RegExp }[] = [
+  { kind: "bty", pattern: /(BTY가\s*뭐야?|BTY\s*뭐야?|비티와이\s*뭐야?|what\s*is\s*bty|what\s*bty)\s*[.?]?$/i },
+  { kind: "foundry", pattern: /(Foundry가\s*뭐야?|Foundry\s*뭐야?|훈련장\s*뭐야?|what\s*is\s*foundry|what\s*foundry)\s*[.?]?$/i },
+  { kind: "center", pattern: /(Center가\s*뭐야?|Center\s*뭐야?|센터\s*뭐야?|what\s*is\s*center|what\s*center)\s*[.?]?$/i },
+];
+
+export function getIntroQuestionKind(text: string): IntroQuestionKind {
+  const t = (text || "").trim();
+  for (const { kind, pattern } of INTRO_PATTERNS) {
+    if (pattern.test(t)) return kind;
+  }
+  return null;
+}
+
+const INTRO_REPLIES: Record<NonNullable<IntroQuestionKind>, { ko: string; en: string }> = {
+  bty: {
+    ko: "BTY는 리더십·소통 훈련 공간이에요. Dr. Chi 멘토와 대화하거나 역지사지 연습을 할 수 있어요.",
+    en: "BTY is a space for leadership and communication practice. You can talk with Dr. Chi or do integrity practice.",
+  },
+  foundry: {
+    ko: "Foundry(훈련장)는 리더십·소통 훈련 공간이에요. Dr. Chi 멘토와 대화하거나 역지사지 연습을 할 수 있어요.",
+    en: "The Foundry is a space for leadership and communication practice. You can talk with Dr. Chi or do integrity practice.",
+  },
+  center: {
+    ko: "Center는 판단 없이 마음을 돌보는 안전한 공간이에요.",
+    en: "Center is a safe space to tend to your feelings without judgment.",
+  },
+};
+
+export function getIntroReply(kind: NonNullable<IntroQuestionKind>, lang: "ko" | "en"): string {
+  return lang === "ko" ? INTRO_REPLIES[kind].ko : INTRO_REPLIES[kind].en;
 }

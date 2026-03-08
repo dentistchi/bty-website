@@ -2,35 +2,41 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { EmptyState } from "@/components/bty-arena";
+import { EmptyState, CardSkeleton } from "@/components/bty-arena";
+import { PhaseIIRing } from "@/components/bty/PhaseIIRing";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
 /**
- * Fetches GET /api/emotional-stats/display and renders phrases only (no numbers).
- * SYSTEM_UPGRADE_PLAN_EMOTIONAL_STATS Phase F — UI는 문구만 표시.
- * PROJECT_BACKLOG §8: 빈 상태 시 일러/아이콘 + 한 줄 문구.
+ * 감정 스탯 v3 표시 UI — render-only.
+ * GET /api/emotional-stats/display 응답(phrases, phase)만 표시. API/도메인에서 계산된 값만 사용.
+ * HEALING_COACHING_SPEC_V3 §9: Phase II일 때 PhaseIIRing(no numbers), 문구만.
  */
 
-type DisplayRes = { phrases?: string[] };
+export type EmotionalStatsDisplayRes = { phrases?: string[]; phase?: "II" | null };
 
 export function EmotionalStatsPhrases() {
-  const [phrases, setPhrases] = useState<string[]>([]);
+  const [data, setData] = useState<EmotionalStatsDisplayRes | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const params = useParams();
   const locale = (typeof params?.locale === "string" && params.locale === "ko" ? "ko" : "en") as Locale;
   const t = getMessages(locale).emotionalStats;
 
   useEffect(() => {
     let cancelled = false;
+    setError(false);
     fetch("/api/emotional-stats/display", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: DisplayRes | null) => {
+      .then((res: EmotionalStatsDisplayRes | null) => {
         if (cancelled) return;
-        setPhrases(Array.isArray(data?.phrases) ? data.phrases : []);
+        setData(res ?? { phrases: [], phase: null });
       })
       .catch(() => {
-        if (!cancelled) setPhrases([]);
+        if (!cancelled) {
+          setData(null);
+          setError(true);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -40,29 +46,36 @@ export function EmotionalStatsPhrases() {
     };
   }, []);
 
-  if (loading) return null;
-
-  if (phrases.length === 0) {
-    return (
-      <div className="rounded-xl border border-[var(--arena-text-soft)]/20 bg-[var(--arena-bg-soft)]/50 p-4">
-        <p className="text-sm font-medium text-[var(--arena-text-soft)] mb-2">
-          {locale === "ko" ? "오늘의 성장" : "Today&apos;s growth"}
-        </p>
-        <EmptyState icon="🌱" message={t.emptyMessage} style={{ padding: "20px 16px" }} />
-      </div>
-    );
+  if (loading) {
+    return <CardSkeleton lines={2} showLabel={true} />;
   }
+
+  const phrases = Array.isArray(data?.phrases) ? data.phrases : [];
+  const phase = data?.phase ?? null;
 
   return (
     <div className="rounded-xl border border-[var(--arena-text-soft)]/20 bg-[var(--arena-bg-soft)]/50 p-4">
-      <p className="text-sm font-medium text-[var(--arena-text-soft)] mb-2">
-        {locale === "ko" ? "오늘의 성장" : "Today's growth"}
-      </p>
-      <ul className="space-y-1 text-sm text-[var(--arena-text)]">
-        {phrases.map((p, i) => (
-          <li key={i}>{p}</li>
-        ))}
-      </ul>
+      <div className="flex items-center gap-2 mb-2">
+        <p className="text-sm font-medium text-[var(--arena-text-soft)]">
+          {t.sectionTitle}
+        </p>
+        {phase === "II" && <PhaseIIRing />}
+      </div>
+      {error && (
+        <p className="text-xs text-[var(--arena-text-soft)] opacity-80">
+          {locale === "ko" ? "표시를 불러오지 못했어요." : "Could not load display."}
+        </p>
+      )}
+      {!error && phrases.length === 0 && (
+        <EmptyState icon="🌱" message={t.emptyMessage} style={{ padding: "20px 16px" }} />
+      )}
+      {!error && phrases.length > 0 && (
+        <ul className="space-y-1 text-sm text-[var(--arena-text)]">
+          {phrases.map((p, i) => (
+            <li key={i}>{p}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

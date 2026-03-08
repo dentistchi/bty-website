@@ -13,6 +13,7 @@ import { loadProgramConfig } from "@/lib/bty/arena/program";
 import type { LevelWithTenure } from "@/lib/bty/arena/program";
 import { getUnlockedContentWindow } from "@/lib/bty/arena/unlock";
 import type { Track } from "@/lib/bty/arena/tenure";
+import { getIsEliteTop5 } from "@/lib/bty/arena/eliteStatus";
 
 const STAFF_ORDER = ["S1", "S2", "S3"];
 const LEADER_ORDER = ["L1", "L2", "L3", "L4"];
@@ -32,6 +33,7 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   if (!membershipRequest || membershipRequest.status !== "approved") {
+    const isElite = await getIsEliteTop5(supabase, user.id);
     return NextResponse.json({
       ok: true,
       membershipPending: true,
@@ -40,6 +42,7 @@ export async function GET(req: NextRequest) {
       previewLevel: null,
       levels: [],
       l4_access: false,
+      isElite,
     });
   }
 
@@ -83,6 +86,7 @@ export async function GET(req: NextRequest) {
   const program = loadProgramConfig();
   const trackConfig = program.tracks.find((t) => t.track === track);
   if (!trackConfig?.levels?.length) {
+    const isElite = await getIsEliteTop5(supabase, user.id);
     return NextResponse.json({
       ok: true,
       membershipPending: false,
@@ -91,11 +95,13 @@ export async function GET(req: NextRequest) {
       previewLevel,
       levels: [],
       l4_access,
+      isElite,
     });
   }
 
   const ordering = track === "staff" ? STAFF_ORDER : LEADER_ORDER;
   const maxIndex = ordering.indexOf(maxUnlockedLevel);
+  const isElite = await getIsEliteTop5(supabase, user.id);
   const levels = trackConfig.levels
     .filter((lvl) => {
       const i = ordering.indexOf(lvl.level);
@@ -104,7 +110,11 @@ export async function GET(req: NextRequest) {
     .map((lvl) => {
       const { items, human_model: _hm, ...rest } = lvl as LevelWithTenure;
       const displayTitle = locale === "ko" && rest.title_ko ? rest.title_ko : rest.title;
-      return { ...rest, items, displayTitle };
+      const itemsWithEliteOnly = (items ?? []).map((it: unknown) => ({
+        ...(typeof it === "object" && it !== null ? it : {}),
+        elite_only: Boolean((it as { elite_only?: boolean })?.elite_only),
+      }));
+      return { ...rest, items: itemsWithEliteOnly, displayTitle };
     });
 
   let finalLevels = levels;
@@ -118,7 +128,11 @@ export async function GET(req: NextRequest) {
           .map((lvl) => {
             const { items, human_model: _hm, ...rest } = lvl as LevelWithTenure;
             const displayTitle = locale === "ko" && rest.title_ko ? rest.title_ko : rest.title;
-            return { ...rest, items, displayTitle };
+            const itemsWithEliteOnly = (items ?? []).map((it: unknown) => ({
+              ...(typeof it === "object" && it !== null ? it : {}),
+              elite_only: Boolean((it as { elite_only?: boolean })?.elite_only),
+            }));
+            return { ...rest, items: itemsWithEliteOnly, displayTitle };
           });
         finalLevels = [...staffLevels, ...levels];
       }
@@ -133,5 +147,6 @@ export async function GET(req: NextRequest) {
     previewLevel,
     levels: finalLevels,
     l4_access,
+    isElite,
   });
 }

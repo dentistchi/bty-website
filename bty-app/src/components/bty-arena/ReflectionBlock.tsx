@@ -1,38 +1,38 @@
 "use client";
 
 import React from "react";
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
 export type ReflectionBlockProps = {
   title?: string;
   /** When set, show single takeaway prompt + optional input + Next. Meaningful input can grant bonus XP. */
   reflectionPrompt?: string;
   options: string[];
-  locale?: string;
+  locale?: Locale | string;
   /** index and optional reflection text (for bonus XP when meaningful). */
   onSubmit: (index: number, reflectionText?: string) => void;
 };
 
-const NEXT_LABEL = { en: "Next", ko: "다음" };
-const OPTIONAL_LABEL = { en: "Optional", ko: "옵션" };
-const PLACEHOLDER_EN = "e.g. I'll pause before reacting next time.";
-const PLACEHOLDER_KO = "예: 다음엔 반응하기 전에 한 번 멈춰 보겠다.";
-
 export function ReflectionBlock({
-  title = "Reflection",
+  title,
   reflectionPrompt,
   options,
   locale = "en",
   onSubmit,
 }: ReflectionBlockProps) {
   const [inputValue, setInputValue] = React.useState("");
-  const nextLabel = locale === "ko" ? NEXT_LABEL.ko : NEXT_LABEL.en;
-  const optionalLabel = locale === "ko" ? OPTIONAL_LABEL.ko : OPTIONAL_LABEL.en;
-  const placeholder = locale === "ko" ? PLACEHOLDER_KO : PLACEHOLDER_EN;
+  const lang: Locale = locale === "ko" || locale === "en" ? locale : "en";
+  const t = getMessages(lang).arenaRun;
+  const displayTitle = title ?? t.reflectionTitle;
+  const nextLabel = t.reflectionNext;
+  const optionalLabel = t.reflectionOptional;
+  const placeholder = t.reflectionPlaceholder;
 
   if (reflectionPrompt) {
     return (
       <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>{title}</div>
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>{displayTitle}</div>
         <p style={{ margin: "0 0 12px", lineHeight: 1.5, opacity: 0.9 }}>{reflectionPrompt}</p>
         <div style={{ marginBottom: 12 }}>
           <label style={{ display: "block", fontSize: 12, opacity: 0.8, marginBottom: 4 }}>
@@ -73,7 +73,7 @@ export function ReflectionBlock({
 
   return (
     <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
-      <div style={{ fontWeight: 700, marginBottom: 8 }}>{title}</div>
+      <div style={{ fontWeight: 700, marginBottom: 8 }}>{displayTitle}</div>
       <div style={{ display: "grid", gap: 10 }}>
         {options.map((opt, idx) => (
           <button

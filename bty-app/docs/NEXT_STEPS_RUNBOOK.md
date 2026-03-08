@@ -17,7 +17,7 @@
 | 1 | `bty-app/docs/AGENTS_SHARED_README.md` | 공통 규칙·도메인/API/UI 경로 |
 | 2 | `bty-app/docs/AGENTS_ROLES.md` | 진행 vs 검증 vs 서커 역할 |
 | 3 | `bty-app/docs/PLAN_WORKFLOW.md` | 진행/검증 구분 방식 |
-| 4 | `bty-app/docs/CURRENT_TASK.md` | 현재 할 일·한 줄 지시 |
+| 4 | `docs/CURRENT_TASK.md` | 현재 할 일·한 줄 지시 |
 | 5 | `bty-app/docs/AGENTS_TURN_BY_TURN.md` | 단계별 진행↔검증 프롬프트 |
 | 6 | `bty-app/docs/NEXT_TASKS_2.md` | 2차 작업·상세 프롬프트 블록 |
 | 7 | `bty-app/docs/PROJECT_BACKLOG.md` | 백로그·미완료 항목 |
@@ -26,7 +26,7 @@
 | 10 | `bty-app/.cursor/rules/bty-ui-render-only.mdc` | UI는 렌더만 |
 
 **한 줄 안내 (복사용)**  
-→ 「`bty-app/docs/AGENTS_SHARED_README.md`, `bty-app/docs/AGENTS_ROLES.md`, `bty-app/docs/CURRENT_TASK.md` 읽고 진행해줘.」
+→ 「`bty-app/docs/AGENTS_SHARED_README.md`, `bty-app/docs/AGENTS_ROLES.md`, `docs/CURRENT_TASK.md` 읽고 진행해줘.」
 
 ---
 
@@ -296,7 +296,7 @@ PROJECT_BACKLOG §6(언어 선택 시나리오·안내·대답 통일)은 NEXT_T
 ### 열어둘 파일
 
 - **워크스페이스 루트가 `bty-app`이면** Cmd+P에서 **`docs/CURRENT_TASK`** 또는 **`CURRENT_TASK`** 만 입력해 열면 됩니다. (`bty-app/` 접두어 없이.)
-- **워크스페이스 루트가 `btytrainingcenter`이면** `bty-app/docs/CURRENT_TASK.md` 로 검색.
+- **워크스페이스 루트가 `btytrainingcenter`이면** `docs/CURRENT_TASK.md` (repo root) 로 검색.
 
 | 순서 | 파일 (bty-app 기준) | 용도 |
 |------|---------------------|------|

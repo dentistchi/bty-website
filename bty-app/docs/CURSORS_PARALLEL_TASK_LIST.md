@@ -70,12 +70,13 @@
 
 ## ⚠️ 완료 시 반드시 할 일 (모든 Cursor 공통)
 
-**자기 담당 항목을 끝내면 이 문서를 아래 규칙대로 업데이트해 주세요.**
+**매번 작업 완료하면 서류에 업데이트**한다. 자기 담당 항목을 끝내면 이 문서를 아래 규칙대로 업데이트해 주세요. 결과는 항상 공통 서류에 반영한다.
 
 1. **이 문서** `docs/CURSORS_PARALLEL_TASK_LIST.md` 에서 해당 작업 행의 **상태**를 `[ ]` → `[x]` 로 바꾼다.
 2. **완료 일시**와 **변경한 파일 요약(한 줄)** 을 해당 행 옆 또는 하단 "완료 로그" 표에 추가한다.
 3. 해당 작업이 정의된 **원본 문서**(예: `CENTER_PAGE_IMPROVEMENT_SPEC.md`, `AVATAR_LAYER_SPEC.md`)에 완료 여부·완료 이력을 명시한다.  
    (예: `- §5 CTA 통합: 완료 (2026-03-03, Center page.client.tsx·링크 통합)`)
+4. **Gate/체크리스트 결과**가 있으면 **공통 서류**에 반영: `docs/BTY_RELEASE_GATE_CHECK.md`(PASS/FAIL·위반 목록), `docs/CURSOR_TASK_BOARD.md`(해당 역할 Exit·결과 요약), `docs/CURRENT_TASK.md`(완료 [x]).
 
 이렇게 하면 커맨더와 다른 Cursor가 진행 상황을 한눈에 파악할 수 있습니다.
 
@@ -141,7 +142,7 @@
 | 순서 | 라운드 | 상태 | 작업 | 복사용 프롬프트 |
 |------|--------|------|------|------------------|
 | 1 | 1 | [ ] | Center §6 "챗으로 이어하기" 동작 | `docs/CENTER_PAGE_IMPROVEMENT_SPEC.md` §6 반영해줘. Center 페이지의 "챗으로 이어하기" 버튼이 클릭 시 Center 챗(또는 /center 챗 뷰)으로 이동하거나 챗 UI가 열리도록 수정해줘. 버튼의 href/onClick과 라우팅·상태 확인. |
-| 2 | 2 | [ ] | Center §4 회복 탄력성 그래프 | `docs/CENTER_PAGE_IMPROVEMENT_SPEC.md` §4 반영해줘. ResilienceGraph를 "과거/지금" 2점이 아니라 매일의 5문항/활동에 맞는 일별(또는 기간별) 트렉으로 바꿔줘. 관련 API·데이터 소스와 시각화가 매일 질문 궤적을 반영하도록 수정. |
+| 2 | 2 | [x] | Center §4 회복 탄력성 그래프 | `docs/CENTER_PAGE_IMPROVEMENT_SPEC.md` §4 반영해줘. ResilienceGraph를 "과거/지금" 2점이 아니라 매일의 5문항/활동에 맞는 일별(또는 기간별) 트렉으로 바꿔줘. 관련 API·데이터 소스와 시각화가 매일 질문 궤적을 반영하도록 수정. (완료: 도메인·API·UI, entries 계약, localStorage 제거. lint 0, test 140.) |
 | 3 | 3 | [ ] | Center §1 + §8 톤·비주얼 + 영어 일관 | `docs/CENTER_PAGE_IMPROVEMENT_SPEC.md` §1·§8 반영해줘. Center 페이지를 "아늑하고 치유받는 방" 톤으로 비주얼·카피 정리하고, locale=en 일 때 로딩·버튼·안내·그래프 라벨 등 모든 문구가 영어로 나오도록 i18n·컴포넌트 점검·수정해줘. |
 | 4 | — | [ ] | (선택) 아바타 프론트 — avatarAssets + AvatarComposite + UX | `docs/AVATAR_LAYER_SPEC.md` §6·§7 "Cursor 3 — avatarAssets + AvatarComposite + 프로필/아바타 UX" 블록 전체를 읽고 그대로 구현해줘. avatarAssets.ts, AvatarComposite, useAvatar, OutfitCard, 아바타 설정 페이지, 리더보드/대시보드 thumb+lazy. 완료 후 해당 문서 하단 완료 이력에 §와 변경 파일 요약 추가해줘. |
 | 5 | — | [ ] | (선택) 리더보드 팀/역할/지점 뷰 | `docs/BTY_ARENA_SYSTEM_SPEC.md` §4 참고해서, 리더보드에 팀(역할/지점)별 뷰를 단계적으로 추가해줘. 팀별로 특정 수치만 노출하도록 API·UI 설계. 현재는 전역 weekly_xp 기준 nearMe만 있으니, scope=role\|office 파라미터와 해당 스코프별 노출 수치 정의부터. |
@@ -180,6 +181,16 @@
 
 | 일시 | Cursor | 작업 | 변경 파일 요약 |
 |------|--------|------|----------------|
+| 2026-03-03 | — | 인증 user + /bty/login → /bty 302 리다이렉트 | `src/middleware.ts`: 로그인 경로에서 getUser 후 user 있으면 302 → `/${locale}/bty`. 쿠키 설정 변경 없음. npm test 132 통과. |
+| 2026-03-03 | — | Center §4 회복 탄력성 일별/기간별 트렉 | `src/domain/center/resilience.ts` + test, `src/app/api/center/resilience/route.ts` 도메인 호출·period 쿼리. 쿠키/리다이렉트 변경 없음. npm test 140 통과. |
+| 2026-03-03 | — | Center §4 ResilienceGraph UI·API 계약 통일 | 데이터 소스: GET /api/center/resilience만. entries(date, level, source) 계약. getSelfEsteemHistory·localStorage 병합 전부 제거. ResilienceGraphApiResponse·ResilienceDayEntry 타입만 사용. 로딩/빈/데이터 상태·fetch 취소. lint Exit 0. |
+| 2026-03-03 | — | coreStats v3 (14종·stat_distribution·30일 가속·phase_tuning) | coreStats.ts SELF_REFRAMING RD:0.6 EA:0.2 RS:0.2. formula·recordEmotionalEventServer 기존 사용. phase.test.ts·formula.test.ts 추가. npm test 171 통과. |
+| 2026-03-03 | — | DOJO_DEAR_ME_NEXT_CONTENT §7 (50문항 목차·플로우 2~5) | DOJO_DEAR_ME_NEXT_CONTENT.md §7 추가. src/domain/dojo/flow.ts·flow.test.ts. 진입·제출·결과 순수 함수만. npm test 180 통과. |
+| 2026-03-03 | — | CENTER §9 순서 §5~§8 API·도메인 점검 | CENTER_PAGE_IMPROVEMENT_SPEC §9-1 표. domain/center/paths.ts·paths.test.ts. PageClient getCenterCtaHref·CENTER_CHAT_OPEN_EVENT 사용. npm test 183 통과. |
+| 2026-03-03 | — | §9 점검 완료 (C3·C4) | C3: paths.ts·paths.test.ts, §9-1 표. C4: PageClient ResilienceGraph locale={locale} 2곳 보완. CENTER_PAGE_IMPROVEMENT_SPEC §9-1 상태·비고 갱신. npm run lint Exit 0. |
+| 2026-03-03 | — | AVATAR_LAYER_SPEC §6·§7 리더보드 확장 | profileToAvatarCompositeKeys, 리더보드 avatar 키, RPC avatar_accessory_ids, 마이그레이션 20260402. npm test 186 통과. |
+| 2026-03-03 | — | BTY_ARENA_SYSTEM_SPEC §4 scope=role\|office 도메인/API | leaderboardScope.ts: parseLeaderboardScope, roleToScopeLabel, LEADERBOARD_EXPOSED_FIELDS. API는 도메인 호출만. weekly_xp·nearMe 유지. leaderboardScope.test.ts 9케이스. npm test 195 통과. |
+| 2026-03-03 | C3 | PHASE_4 §10 3차·PROJECT_BACKLOG §5 Elite 멘토 1:1 신청·큐·승인 | mentorRequest.ts 도메인, elite_mentor_requests 마이그레이션, GET/POST /api/me/mentor-request, GET/PATCH /api/arena/mentor-requests. mentorRequest.test.ts·route.test.ts. npm test 222 통과. |
 | — | — | — | — |
 
 *(각 Cursor는 자기 담당 항목 완료 시 위 표에 한 줄 추가하고, 본문 해당 행 상태를 [x]로 바꿔 주세요.)*

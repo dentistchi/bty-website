@@ -22,6 +22,7 @@ const EVENT_PATTERNS: { id: EmotionalEventId; patterns: RegExp[] }[] = [
   { id: "SELF_REFRAMING", patterns: [/스스로\s*다시\s*보기|리프레임|refram/i] },
   { id: "BOUNDARY_ASSERTION", patterns: [/경계\s*설정|boundary|선을\s*그/i] },
   { id: "OBSERVATION_FACTUAL", patterns: [/사실\s*관찰|평가\s*없이|observation\s*without/i] },
+  { id: "EMPATHY_EXPRESSED", patterns: [/공감\s*(표현|했|해|한다)|공감해\s*주|empath(y|etic)|expressed\s*empathy/i] },
 ];
 
 /**

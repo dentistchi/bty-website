@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
 import { Nav } from "@/components/Nav";
 import { ThemeBody } from "@/components/ThemeBody";
+import { CardSkeleton, LoadingFallback } from "@/components/bty-arena";
+import { getMessages } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 type SecondAwakeningRitual = {
@@ -73,13 +75,12 @@ export default function SecondAwakeningPageClient() {
   };
 
   if (loading || !data) {
+    const tLoading = getMessages(locale === "ko" ? "ko" : "en").loading;
     return (
       <AuthGate>
         <ThemeBody theme="foundry" />
         <main className="min-h-screen bg-foundry-white flex items-center justify-center">
-          <p className="text-foundry-ink-soft">
-            {locale === "ko" ? "불러오는 중…" : "Loading…"}
-          </p>
+          <LoadingFallback icon="⏳" message={tLoading.message} withSkeleton />
         </main>
       </AuthGate>
     );
@@ -221,6 +222,11 @@ export default function SecondAwakeningPageClient() {
                   ? (locale === "ko" ? "처리 중…" : "Processing…")
                   : (locale === "ko" ? "Enter Next Phase" : "Enter Next Phase")}
               </button>
+              {submitting && (
+                <div className="mt-3">
+                  <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
+                </div>
+              )}
             </section>
           </div>
 

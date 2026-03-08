@@ -14,6 +14,7 @@ This rule is a release-quality gate. When changes touch auth, deployment, weekly
 SCOPE
 - Applies to bty-app/** and related migrations/auth files.
 - BTY Arena business rules apply ONLY inside bty-app/** unless explicitly stated.
+- **Operating docs single source**: 보드·CURRENT_TASK·Release Gate·backlog·architecture·plans·specs·execution 은 **repo root docs/** 단일 진실. bty-app/docs/는 앱 내부 기술 문서 전용.
 
 NON-NEGOTIABLE INVARIANTS
 1) Season progression MUST NOT affect leaderboard ranking.
@@ -62,6 +63,7 @@ OUTPUT FORMAT (MANDATORY)
 3) Findings (grouped by A–F)
 4) Required patches (file paths + minimal diffs)
 5) Next steps checklist
+6) Reflect results in common docs: **매번** write to **docs/BTY_RELEASE_GATE_CHECK.md** (and **docs/CURSOR_TASK_BOARD.md** Exit/status as applicable). 경로는 **repo root 기준**. Do not leave gate outcome only in chat. 작업 완료 시 해당 턴에서 즉시 서류 갱신.
 
 DEFAULT SAFE ASSUMPTIONS (USE IF NOT SPECIFIED)
 - Leaderboard uses weekly window key (week_id or week_start_date).

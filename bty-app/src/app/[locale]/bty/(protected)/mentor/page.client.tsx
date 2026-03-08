@@ -4,9 +4,11 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
+import { EmotionalStatsPhrases } from "@/components/bty/EmotionalStatsPhrases";
 import { GuideCharacterAvatar } from "@/components/GuideCharacterAvatar";
 import { Nav } from "@/components/Nav";
 import { ThemeBody } from "@/components/ThemeBody";
+import { CardSkeleton, LoadingFallback } from "@/components/bty-arena";
 import { cn } from "@/lib/utils";
 import { fetchJson } from "@/lib/read-json";
 
@@ -76,6 +78,8 @@ const MENTOR_UI = {
     goodbyeReply: "오늘 대화 잘 마무리하셨어요. 필요할 때 다시 찾아오세요.",
     seeYouNext: "다음에 또 만나요",
     goToMain: "메인으로",
+    /** Elite 1:1 멘토 대화 신청 플로우 진입 (Elite만 노출) */
+    eliteRequestCta: "1:1 대화 신청 (Elite)",
   },
   en: {
     slogan: "Let’s talk over a cup of tea in the study.",
@@ -100,6 +104,8 @@ const MENTOR_UI = {
     goodbyeReply: "Thanks for the conversation today. Come back whenever you need.",
     seeYouNext: "See you next time",
     goToMain: "Go to Main",
+    /** Elite 1:1 mentor session request flow (shown only for Elite) */
+    eliteRequestCta: "Request 1:1 session (Elite)",
   },
 } as const;
 
@@ -330,6 +336,30 @@ export default function MentorPage() {
     }
   };
 
+  if (!prefsLoaded) {
+    return (
+      <AuthGate>
+        <ThemeBody theme="foundry" />
+        <main
+          className="min-h-screen"
+          style={{
+            background: "linear-gradient(180deg, #F5F0E8 0%, #EDE6DB 50%, #E8DFD2 100%)",
+          }}
+        >
+          <div className="max-w-2xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
+            <Nav locale={locale as "ko" | "en"} pathname={`/${locale}/bty/mentor`} />
+            <LoadingFallback
+              icon="⏳"
+              message={isEn ? "Loading…" : "불러오는 중…"}
+              withSkeleton
+              style={{ flex: 1, paddingTop: 48 }}
+            />
+          </div>
+        </main>
+      </AuthGate>
+    );
+  }
+
   return (
     <AuthGate>
       <ThemeBody theme="foundry" />
@@ -349,6 +379,7 @@ export default function MentorPage() {
                 style={{ fontFamily: "Georgia, serif" }}
               >
                 Dr. Chi&apos;s Mentor
+              {/* PHASE_4_ELITE_5_PERCENT_SPEC §9: Elite 멘토 배지 — render-only. isElite from GET /api/me/elite only. */}
               {isElite && (
                 <span className="ml-2 inline-flex items-center rounded-full bg-mentor-wood/20 px-2.5 py-0.5 text-xs font-medium text-mentor-wood border border-mentor-wood-soft/40" title={t.eliteBadge}>
                   {t.eliteMentorBadge}
@@ -378,6 +409,15 @@ export default function MentorPage() {
                 >
                   {deleting ? t.deleting : t.deleteHistory}
                 </button>
+              </div>
+            )}
+            {deleting && (
+              <div
+                className="mt-3"
+                aria-busy="true"
+                aria-label={isEn ? "Deleting conversation history" : "대화 기록 삭제 중"}
+              >
+                <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
               </div>
             )}
           </header>
@@ -423,6 +463,21 @@ export default function MentorPage() {
                 >
                   {t.goToMain}
                 </Link>
+                {isElite && (
+                  <>
+                    <span className="mx-3 text-mentor-ink-soft">·</span>
+                    <Link
+                      href={`/${locale}/bty/elite`}
+                      className={cn(
+                        "inline-flex items-center rounded-xl px-5 py-3 text-sm font-medium",
+                        "bg-mentor-wood/10 text-mentor-wood border border-mentor-wood-soft/40",
+                        "hover:bg-mentor-wood/20 transition-colors"
+                      )}
+                    >
+                      {t.eliteRequestCta}
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           ) : (
@@ -509,11 +564,9 @@ export default function MentorPage() {
                   </div>
                 ))}
                 {sending && (
-                  <div className="flex gap-3 justify-start">
+                  <div className="flex gap-3 justify-start items-start">
                     <GuideCharacterAvatar codeName={userCodeName} variant="warm" size="sm" alt="Dr. Chi" className="flex-shrink-0 mt-0.5" />
-                    <div className="rounded-xl rounded-bl-sm px-5 py-4 bg-white/50 text-mentor-ink-soft text-sm border-l-4 border-mentor-wood-soft/30">
-                      <span className="animate-pulse">{t.thinking}</span>
-                    </div>
+                    <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 20px", maxWidth: 220 }} />
                   </div>
                 )}
                 <div ref={bottomRef} />
@@ -604,7 +657,10 @@ export default function MentorPage() {
             </div>
           )}
 
-          <footer className="mt-6 pt-4 border-t border-mentor-wood-soft/20 text-center text-sm text-mentor-ink-soft space-x-3">
+          <div className="mt-6 pt-4 border-t border-mentor-wood-soft/20">
+            <EmotionalStatsPhrases />
+          </div>
+          <footer className="mt-4 text-center text-sm text-mentor-ink-soft space-x-3">
             <Link href={`/${locale}/bty`} className="text-mentor-wood hover:underline">
               {t.toFoundry}
             </Link>

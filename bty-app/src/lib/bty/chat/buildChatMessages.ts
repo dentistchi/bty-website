@@ -1,7 +1,10 @@
 /**
  * BTY Chat — 메시지 조합 (완전 드롭인)
- * 모델 호출용 messages 배열을 만듦: [system, ...fewShot, ...conversationHistory]
- * PROJECT_BACKLOG §9, CHATBOT_TRAINING_CHECKLIST §0·§3, ROADMAP_NEXT_STEPS § 챗봇 훈련 시기.
+ * 모델 호출용 messages 배열: [system, ...fewShot, ...conversationHistory]
+ * PROJECT_BACKLOG §9, CHATBOT_TRAINING_CHECKLIST §0·§3, CHATBOT_TRAINING_RAG_AND_ZONES_IMPLEMENT_1PAGE.
+ *
+ * RAG 1차(MVP): 모드별 고정 스펙 조합. RAG 2차: 프리셋 매핑(모드→스펙 문단) 구조. getRagSpecForMode(mode)로 주입. 키워드 기반 검색은 추후 확장.
+ * Few-shot: 구역별 CHAT_FEWSHOT_CENTER|FOUNDRY|ARENA. CHATBOT_TRAINING_RAG_2ND_AND_ZONES_1PAGE §2 반영.
  */
 
 import type { ChatMode, OpenAIChatMessage } from "./types";
@@ -50,6 +53,8 @@ const HEALING_COACHING_SPEC = `
 
 /** 메타 질문·인사·BTY/Foundry·Center 소개 가이드 (CHATBOT_TRAINING_CHECKLIST §3 반영) */
 const META_AND_INTRO_GUIDE = `
+[공통] 메타 질문("챗봇이야?", "AI야?")·소개 질문("BTY가 뭐야?")에는 지정된 1~2문장만 답하고 본론으로 돌아간다. 길게 설명하지 않는다.
+
 [메타 질문] "챗봇이야?", "AI야?", "너 누구야?" 등에는 모드를 유지한 채 짧게만 답한다:
 - 공통: "저는 BTY Chat이에요. 이 공간에서 생각과 감정을 단계적으로 정리하도록 돕습니다." / "I'm BTY Chat. I help you sort out your thoughts and feelings step by step here."
 - 추가 설명은 하지 말고 바로 본래 대화로 돌아간다.
@@ -64,6 +69,61 @@ const META_AND_INTRO_GUIDE = `
 
 [Arena 제안 시점] "다음으로 Arena 시나리오 해볼까요?" 같은 제안은 사용자가 "다음은?", "연습하고 싶어", "시나리오 해보고 싶어" 등 다음 단계·연습 의사를 보였을 때만 한 문장으로 넣는다. 짧은 동의("그래", "Okay")에는 Arena를 언급하지 말고 "더 보고 싶은 게 있으면 말해 주세요" 등 한 문장만 한다.
 `;
+
+/** RAG 2차: 문단 메타데이터(모드·태그). CHATBOT_TRAINING_RAG_2ND_AND_ZONES_1PAGE §1 */
+export interface RagParagraphMeta {
+  id: string;
+  content: string;
+  modes: ChatMode[];
+  tags?: string[];
+}
+
+/** 스펙 문단 단위 + 모드·태그 메타데이터 */
+const RAG_PARAGRAPHS: RagParagraphMeta[] = [
+  { id: "nvc", content: NVC_COACHING_SPEC, modes: ["foundry", "center"], tags: ["NVC4요소", "감정명확화"] },
+  { id: "healing", content: HEALING_COACHING_SPEC, modes: ["center"], tags: ["감정명확화", "트리거"] },
+  { id: "meta", content: META_AND_INTRO_GUIDE, modes: ["center", "foundry", "arena"], tags: ["메타질문"] },
+];
+
+/** 프리셋 매핑: 모드 → 문단 ID 배열(정적). 주입 순서 보장. */
+export const RAG_PRESET_BY_MODE: Record<ChatMode, string[]> = {
+  center: ["nvc", "healing", "meta"],
+  foundry: ["nvc", "meta"],
+  arena: ["nvc", "meta"],
+};
+
+const RAG_MAX_CHARS = 3200;
+
+/** RAG 2차: 사용자 발화 의도/키워드로 문단 ID 정렬(일치하는 태그 있으면 우선). 주입 연동 1건. */
+function orderIdsByIntent(ids: string[], userContent: string): string[] {
+  if (!userContent?.trim()) return ids;
+  const content = userContent.trim().toLowerCase();
+  const scored = ids.map((id) => {
+    const p = RAG_PARAGRAPHS.find((x) => x.id === id);
+    const tags = p?.tags ?? [];
+    const matchCount = tags.filter((t) => content.includes(t.toLowerCase())).length;
+    return { id, matchCount };
+  });
+  scored.sort((a, b) => b.matchCount - a.matchCount);
+  return scored.map((x) => x.id);
+}
+
+/** 모드별 프리셋으로 스펙 문단만 concat, 길이 상한 적용. userContent 있으면 의도/키워드로 주입 순서 조정. */
+function getRagSpecForMode(mode: ChatMode, maxChars: number = RAG_MAX_CHARS, userContent?: string): string {
+  let ids = RAG_PRESET_BY_MODE[mode];
+  if (!ids?.length) return "";
+  if (userContent) ids = orderIdsByIntent(ids, userContent);
+  const byId = new Map(RAG_PARAGRAPHS.map((p) => [p.id, p.content]));
+  let out = "";
+  for (const id of ids) {
+    const content = byId.get(id);
+    if (!content) continue;
+    const next = out ? `${out}\n${content}` : content;
+    if (next.length > maxChars) break;
+    out = next;
+  }
+  return out;
+}
 
 const BTY_CHAT_GLOBAL_OVERRIDE = `[BTY CHAT — GLOBAL OVERRIDE (DO NOT REMOVE)]
 이 프롬프트는 기존 시스템 프롬프트를 '대체'하지 않고, 상단에서 우선 적용되는 공용 규칙입니다.
@@ -146,6 +206,40 @@ const CHAT_FEWSHOT_FOUNDRY: OpenAIChatMessage[] = [
     role: "assistant",
     content: "더 보고 싶은 게 있으면 말해 주세요.",
   },
+  // CHATBOT_TRAINING_RAG_AND_ZONES_IMPLEMENT_1PAGE §2 foundry: "다른 관점은?", "가치와 일치해?"
+  { role: "user", content: "[mode:foundry] 상사가 제 아이디어를 무시했어요." },
+  {
+    role: "assistant",
+    content:
+      "그럴 때 기분이 상하기 마련이에요. 질문을 하나 할게요: 상사 입장에서는 어떤 제약이나 우선순위가 있었을까요? 다른 관점은 무엇일까요? 그리고 이 아이디어가 당신이 중요하게 여기는 가치와 얼마나 일치하나요? 다음 행동으로는, 한 문장으로 '내가 정말 말하고 싶었던 핵심'을 적어보세요.",
+  },
+  { role: "user", content: "[mode:foundry] 결정을 미루고 싶어요." },
+  {
+    role: "assistant",
+    content:
+      "미루는 선택도 하나의 선택이에요. 질문: 이 결정이 당신의 가치와 일치할 때와 불일치할 때를 구분해 보면 어떤가요? 다른 관점에서 보면 지금 결정하지 않음으로 인해 잃는 것은 무엇인가요? 다음 행동: 5분만 '결정 미룸의 비용 1개'와 '미룸으로 얻는 것 1개'를 적어보세요.",
+  },
+  // CHATBOT_TRAINING_RAG_2ND_AND_ZONES_1PAGE §2 foundry 2차: "장기적으로 어떤 영향이 있을까요?", "이 선택이 당신에게 어떤 의미가 있나요?"
+  { role: "user", content: "[mode:foundry] 지금 당장 승진 지원을 할까 말까 고민이에요." },
+  {
+    role: "assistant",
+    content:
+      "지금 선택은 '지금 도전'과 '조금 더 준비' 사이의 균형으로 보입니다. 질문 두 가지: (1) 장기적으로 어떤 영향이 있을까요—1년 후에는 어떻게 보이길 바라시나요? (2) 이 선택이 당신에게 어떤 의미가 있나요—승진 자체가 목표인가요, 아니면 인정·성장이 더 큰가요? 다음 행동: 두 선택 각각에 대해 '1년 후 시나리오 한 줄'을 적어보세요.",
+  },
+  // CHATBOT_TRAINING_RAG_AND_ZONES 확장 1건: foundry 2차 1턴 — 팀 의견 불일치·다른 관점/가치
+  { role: "user", content: "[mode:foundry] 팀 회의에서 제 의견이 통하지 않았어요." },
+  {
+    role: "assistant",
+    content:
+      "의견이 받아들여지지 않을 때 기분이 상하기 마련이에요. 질문을 드릴게요: 상대방 입장에서는 어떤 근거나 제약이 있었을까요? 다른 관점은 무엇일까요? 그리고 이 논의가 팀에서 중요하게 여기는 가치와 얼마나 맞닿아 있나요? 다음 행동: '내가 정말 전달하고 싶었던 핵심 한 줄'과 '상대가 우려하는 점 한 줄'을 적어보세요.",
+  },
+  // 구역별 few-shot 1건 추가: foundry — 피드백·역지사지·다음 행동
+  { role: "user", content: "[mode:foundry] 피드백을 주려는데 상대가 방어적으로 나와요." },
+  {
+    role: "assistant",
+    content:
+      "피드백이 받아들여지지 않을 때 답답하기 마련이에요. 질문을 드릴게요: 상대가 방어적인 순간은 '내가 말한 내용' 때문인가요, '말한 타이밍이나 방식' 때문일까요? 다른 관점에서 보면, 상대가 지키려는 것이 무엇일 수 있을까요? 다음 행동: 피드백을 한 문장으로만 정리한 뒤, '언제·어디서 말할지'를 정해보세요.",
+  },
 ];
 
 const CHAT_FEWSHOT_ARENA: OpenAIChatMessage[] = [
@@ -163,6 +257,40 @@ const CHAT_FEWSHOT_ARENA: OpenAIChatMessage[] = [
     role: "assistant",
     content:
       "이 상황은 '권위 유지'와 '심리적 안전감' 사이의 균형 문제입니다. 질문: 반박의 내용이 사실/오해/태도 중 어디에 해당합니까? 다음 행동: 회의에서는 사실 확인 1문장으로 멈추고, 회의 후 1:1에서 '기준(행동)·영향·대안' 순서로 재정렬해 재발 확률을 낮추세요.",
+  },
+  // CHATBOT_TRAINING_RAG_AND_ZONES_IMPLEMENT_1PAGE §2 arena: 시나리오·결정·트레이드오프, 관찰형·결과 중심
+  { role: "user", content: "[mode:arena] 신규 프로젝트에 A팀을 넣을까 B팀을 넣을까요?" },
+  {
+    role: "assistant",
+    content:
+      "선택은 '역량 맞춤(A팀)'과 '부하 분산(B팀)' 사이의 트레이드오프입니다. 질문: (1) 프로젝트 마감과 품질 기준이 명확한가요? (2) 두 팀의 현재 가동률은 어떻게 되나요? 다음 행동: 두 시나리오별로 2주·4주 시점의 산출물과 리스크를 한 줄씩 적어 의사결정 근거를 고정하세요.",
+  },
+  { role: "user", content: "[mode:arena] 우선순위를 정해야 하는데 전부 급해요." },
+  {
+    role: "assistant",
+    content:
+      "모두 급한 상태에서는 '기한·의존성·영향도'로 구분하는 게 필요합니다. 질문: (1) 어떤 일이 다른 일의 전제인가요? (2) 미룸 비용이 가장 큰 항목은 무엇인가요? 다음 행동: 3개 이내로 줄여 '기한·누가 기다리는지·미룸 시 결과'를 한 줄씩 적어보세요.",
+  },
+  // CHATBOT_TRAINING_RAG_2ND_AND_ZONES_1PAGE §2 arena 2차: 시나리오 결과 해석·다음 행동 한 문장 유도
+  { role: "user", content: "[mode:arena] 시나리오 끝났어요. 결과가 마음에 안 들어요." },
+  {
+    role: "assistant",
+    content:
+      "결과를 먼저 정리하면, 선택한 방향과 실제로 나온 결과 사이에 갭이 있는 상태로 보입니다. 질문: 그 갭이 '정보 부족' 때문인가요, '우선순위 차이' 때문인가요? 다음 행동: 이 결과를 바탕으로 '다음에 같은 유형이 오면 할 행동 한 문장'을 적어보세요.",
+  },
+  // CHATBOT_TRAINING_RAG_AND_ZONES 확장 1건: arena 2차 1턴 — 제안 2택·트레이드오프·다음 행동
+  { role: "user", content: "[mode:arena] 두 가지 제안 중 하나만 골라야 해요. 둘 다 매력적이에요." },
+  {
+    role: "assistant",
+    content:
+      "선택은 두 제안의 '기대 효과'와 '포기 비용' 사이의 트레이드오프입니다. 질문: (1) 3개월 후에 각 선택의 결과가 어떻게 다르게 보이길 바라시나요? (2) 미룸 비용이 더 큰 쪽은 어느 쪽인가요? 다음 행동: 두 제안 각각에 대해 '선택 시 얻는 것 한 줄·포기하는 것 한 줄'을 적어 의사결정 근거를 고정하세요.",
+  },
+  // 구역별 few-shot 1건 추가: arena — 리소스 한계·한 팀만 지원·기준·다음 행동
+  { role: "user", content: "[mode:arena] 리소스 한계 때문에 두 팀 중 한 팀만 지원할 수 있어요." },
+  {
+    role: "assistant",
+    content:
+      "선택은 '지원 기준'과 '기회 비용'의 문제입니다. 질문: (1) 지원 결정의 기준(성과·전략적 우선순위·기한)이 명확한가요? (2) 미지원 시 손실이 더 큰 쪽은 어느 팀인가요? 다음 행동: 두 팀에 대해 '지원 시 기대 효과 한 줄·미지원 시 리스크 한 줄'을 적어 의사결정 근거를 고정하세요.",
   },
 ];
 
@@ -191,6 +319,46 @@ const CHAT_FEWSHOT_CENTER: OpenAIChatMessage[] = [
     content:
       "지금 몸이 많이 긴장된 상태로 들려요. 먼저 몸을 조금 내려놓을까요? 어깨를 내리고, 코로 숨을 들이마신 뒤 입으로 천천히 내쉬는 걸 3번만 해보세요. 그다음에, 몸 어디가 가장 떨리거나 뻣뻣한지 한 곳만 말해주실 수 있을까요?",
   },
+  // CHATBOT_TRAINING_RAG_AND_ZONES_IMPLEMENT_1PAGE §2 center: Dear Me·자존감 회복 톤 ("안전해요", "그대로 괜찮아요")
+  { role: "user", content: "[mode:center] 나 같은 사람은 그냥 있어도 되는 걸까요?" },
+  {
+    role: "assistant",
+    content:
+      "그대로 괜찮아요. 여기는 안전해요. 지금 느끼는 것도 자연스러워요. 질문 하나만 할게요: 오늘 몸이 가장 편했던 순간 한 가지만 떠올려 보실 수 있을까요? 다음 행동으로는, 그 순간을 한 문장으로 적어보세요.",
+  },
+  { role: "user", content: "[mode:center] 아무것도 안 하고 싶어요." },
+  {
+    role: "assistant",
+    content:
+      "지금은 쉬어도 괜찮아요. 안전해요. 그대로 있어도 돼요. 조금 있다가 한 가지만 해보면 어떨까요—물 한 모금 마시기 같은 거요.",
+  },
+  // CHATBOT_TRAINING_RAG_2ND_AND_ZONES_1PAGE §2 center 2차: "지금 느끼는 건 자연스러워요", "한 번에 하나만 보면 돼요"
+  { role: "user", content: "[mode:center] 너무 많은 게 동시에 떠올라요." },
+  {
+    role: "assistant",
+    content:
+      "지금 느끼는 건 자연스러워요. 한 번에 하나만 보면 돼요. 질문 하나만 할게요: 그중에서 지금 가장 몸에 느껴지는 감각이나 감정 하나만 골라보실 수 있을까요? 다음 행동으로는, 그 한 가지만 한 문장으로 적어보세요.",
+  },
+  { role: "user", content: "[mode:center] 뭘 먼저 해야 할지 모르겠어요." },
+  {
+    role: "assistant",
+    content:
+      "한 번에 하나만 보면 돼요. 지금 상태도 괜찮아요. 질문: 오늘 하루 중에서 '이것만 하면 됐다'고 느낄 수 있는 작은 것 하나는 무엇인가요? 다음 행동: 그 한 가지를 5분 안에 끝낼 수 있는 크기로 나눠보세요.",
+  },
+  // CHATBOT_TRAINING_RAG_AND_ZONES 확장 1건: center 2차 1턴 — 오늘 하루 힘듦·안전·한 걸음
+  { role: "user", content: "[mode:center] 오늘 하루가 너무 힘들었어요." },
+  {
+    role: "assistant",
+    content:
+      "지금 느끼는 건 자연스러워요. 여기는 안전해요. 질문 하나만 할게요: 오늘 하루 중에서 조금이라도 버텨낸 순간 한 가지만 떠올려 보실 수 있을까요? 다음 행동: 그 한 순간을 한 문장으로 적어보세요.",
+  },
+  // 구역별 few-shot 1건 추가: center — 불안·수용·다음 행동
+  { role: "user", content: "[mode:center] 불안해서 잠을 잘 수가 없어요." },
+  {
+    role: "assistant",
+    content:
+      "불안할 때 잠이 안 오는 건 자연스러운 반응이에요. 여기는 안전해요. 질문 하나만 할게요: 지금 몸에서 불안이 가장 크게 느껴지는 곳이 어디인가요? 다음 행동: 그곳에 손을 살짝 대고 숨을 3번만 천천히 내쉬어 보세요.",
+  },
 ];
 
 function getFewShotForMode(mode: ChatMode): OpenAIChatMessage[] {
@@ -199,17 +367,24 @@ function getFewShotForMode(mode: ChatMode): OpenAIChatMessage[] {
   return CHAT_FEWSHOT_CENTER;
 }
 
-function buildSystemPrompt(mode: ChatMode, lang: string): string {
+function buildSystemPrompt(mode: ChatMode, lang: string, userContent?: string): string {
   const languageFirst =
     lang === "en"
       ? "Respond only in English. All your replies must be in English.\n\n"
       : "한국어로만 답하세요. 모든 응답은 한국어로 작성하세요.\n\n";
   const active = `Current mode: ${mode}. Apply the rules above.`;
   const langRule = lang === "ko" ? "Respond in Korean." : "Respond in English.";
-  const nvcBlock = mode === "foundry" || mode === "center" ? NVC_COACHING_SPEC : "";
-  const healingBlock = mode === "center" ? HEALING_COACHING_SPEC : "";
-  const metaBlock = META_AND_INTRO_GUIDE;
-  return `${languageFirst}${BTY_CHAT_GLOBAL_OVERRIDE}\n\n${active}\n${langRule}${nvcBlock}${healingBlock}\n${metaBlock}`;
+  const ragSpec = getRagSpecForMode(mode, RAG_MAX_CHARS, userContent);
+  const specBlock =
+    ragSpec ||
+    [
+      (mode === "foundry" || mode === "center" ? NVC_COACHING_SPEC : ""),
+      mode === "center" ? HEALING_COACHING_SPEC : "",
+      META_AND_INTRO_GUIDE,
+    ]
+      .filter(Boolean)
+      .join("\n");
+  return `${languageFirst}${BTY_CHAT_GLOBAL_OVERRIDE}\n\n${active}\n${langRule}\n${specBlock}`;
 }
 
 function inferModeFromIntent(userContent: string): ChatMode {
@@ -240,7 +415,12 @@ export function buildChatMessagesForModel(
   mode: ChatMode,
   lang: string
 ): OpenAIChatMessage[] {
-  const systemContent = buildSystemPrompt(mode, lang);
+  const lastUserContent = conversationMessages
+    .filter((m) => m.role === "user")
+    .map((m) => String(m.content ?? "").trim())
+    .filter(Boolean)
+    .pop();
+  const systemContent = buildSystemPrompt(mode, lang, lastUserContent);
   const useFewShot = conversationMessages.length <= 6;
   const fewShot = useFewShot ? getFewShotForMode(mode) : [];
   const history = conversationMessages

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { weeklyRankFromCounts } from "@/domain/rules/leaderboard";
 import { tierFromCoreXp, codeIndexFromTier } from "@/lib/bty/arena/codes";
 
 const MAX_SUB_NAME_LENGTH = 7;
@@ -83,8 +84,7 @@ export async function POST(req: NextRequest) {
   const { count: totalCount } = await supabase.from("weekly_xp").select("user_id", { count: "exact", head: true }).is("league_id", null);
   const { count: rankAbove } = await supabase.from("weekly_xp").select("user_id", { count: "exact", head: true }).is("league_id", null).gt("xp_total", myXp);
   const total = totalCount ?? 0;
-  const rank = total > 0 ? (rankAbove ?? 0) + 1 : 0;
-  const isTop5Percent = total > 0 && rank > 0 && rank <= Math.ceil(0.05 * total);
+  const { isTop5Percent } = weeklyRankFromCounts(total, rankAbove ?? 0);
   if (!isTop5Percent) {
     const out = NextResponse.json({ error: "ELITE_TOP_5_PERCENT_REQUIRED" }, { status: 403 });
     copyCookiesAndDebug(base, out, req, true);

@@ -1,0 +1,105 @@
+[AUTH] 로그인·세션 문서 1줄 점검 (BTY_RELEASE_GATE_CHECK 반영)
+[DOMAIN] 단위 테스트 1개 추가 (미커버 1모듈, 비즈니스/XP 미변경)
+[UI] 로딩/스켈레톤 1곳 보강
+[DOCS] 문서 점검 2~3건 (백로그 + Release Gate)
+[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영
+[API] Dojo 50문항 DB·API (문항·선택지 저장·조회)
+[UI] Dojo 연습 플로우 2종 (역지사지·Dear Me 자존감) UI 연동
+[UI] 로딩/스켈레톤 1곳 보강
+[UI] 로딩/스켈레톤 1곳 보강
+[UI] 로딩/스켈레톤 1곳 보강
+[UI] 로딩/스켈레톤 1곳 보강
+[API] 챗봇 RAG 1차·구역별 few-shot 연동
+[DOMAIN] 감정 스탯 v3 15번째 이벤트·stat_distribution 연동
+[DOCS] 다음 배치 선정: NEXT_PROJECT_RECOMMENDED·로드맵 기준 다음 작업을 NEXT_BACKLOG_AUTO4.md에 갱신 후 보드 반영
+[AUTH] 로그인·세션 문서 1줄 점검 (BTY_RELEASE_GATE_CHECK 반영)
+[DOMAIN] 단위 테스트 1개 추가 (미커버 1모듈, 비즈니스/XP 미변경)
+[UI] 로딩/스켈레톤 1곳 보강
+[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영
+[DOCS] 문서 점검 2~3건 (백로그 + Release Gate)
+[AUTH] 로그인·세션 문서 1줄 점검 (BTY_RELEASE_GATE_CHECK 반영)
+[DOMAIN] 단위 테스트 1개 추가 (미커버 1모듈, 비즈니스/XP 미변경)
+[UI] 로딩/스켈레톤 1곳 보강
+[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영
+[DOCS] 엘리트 4차 해금 확장 구현 스펙 1페이지 (elite_only·API·UI)
+[API] 엘리트 4차 해금 확장 — elite_only·해금 조건 API
+[UI] 엘리트 4차 해금 확장 UI — 해금 조건·노출
+[DOCS] Dojo·Dear Me 50문항 DB화·연습 플로우 구현 설계 1페이지
+[DOCS] 챗봇 훈련 RAG·구역별 예시 구현 설계 1페이지
+[DOCS] 감정 스탯 v3 이벤트 15종·stat_distribution 구현 설계 1페이지
+[DOCS] 다음 배치 선정: NEXT_PROJECT_RECOMMENDED·로드맵 기준 다음 작업을 NEXT_BACKLOG_AUTO4.md에 갱신 후 보드 반영
+[DOCS] 엘리트 4차 구현 옵션 선정 1줄 (특별 프로젝트 vs 해금 확장)
+[DOCS] 다음 배치 선정: NEXT_PROJECT_RECOMMENDED·로드맵 기준 다음 작업을 NEXT_BACKLOG_AUTO4.md에 갱신 후 보드 반영
+[DOCS] 엘리트 4차 특별 프로젝트(또는 해금 확장) 스펙 1페이지
+[VERIFY] 엘리트 4차·다음 단계 체크리스트 1회 실행 후 서류 반영
+[DOCS] 다음 배치 선정: NEXT_PROJECT_RECOMMENDED·로드맵 기준 다음 작업을 NEXT_BACKLOG_AUTO4.md에 갱신 후 보드 반영
+[DOCS] 엘리트 4차 또는 다음 단계 스펙·체크리스트 1페이지
+[UI] 접근성 1건 (aria-label·포커스 1곳)
+[DOCS] 다음 배치 선정: NEXT_PROJECT_RECOMMENDED·로드맵 기준 다음 작업을 NEXT_BACKLOG_AUTO4.md에 갱신 후 보드 반영
+[DOMAIN] 단위 테스트 1개 추가 (미커버 1모듈, 비즈니스/XP 미변경)
+[UI] 로딩/스켈레톤 1곳 보강
+[UI] 로딩/스켈레톤 1곳 보강
+[DOMAIN] 단위 테스트 1개 추가 (미커버 1모듈, 비즈니스/XP 미변경)
+[DOMAIN] 단위 테스트 1개 추가 (미커버 1모듈, 비즈니스/XP 미변경)
+[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영
+[UI] 로딩/스켈레톤 1곳 보강
+[DOCS] 감정 스탯 v3 확장 — 이벤트 15종·stat_distribution 설계 1페이지
+[DOCS] 다음 배치 선정: NEXT_PROJECT_RECOMMENDED·로드맵 기준 다음 작업을 NEXT_BACKLOG_AUTO4.md에 갱신 후 보드 반영
+[DOCS] 다음 배치 선정: NEXT_PROJECT_RECOMMENDED·로드맵 기준 다음 작업을 NEXT_BACKLOG_AUTO4.md에 갱신 후 보드 반영
+[DOCS] 다음 배치 선정: NEXT_PROJECT_RECOMMENDED·로드맵 기준 다음 작업을 NEXT_BACKLOG_AUTO4.md에 갱신 후 보드 반영
+[DOCS] Dojo·Dear Me 콘텐츠 심화 — 50문항·연습 플로우 2종 설계 1페이지
+[DOCS] 챗봇 훈련 심화 — RAG·구역별 예시 확장 설계 1페이지
+[AUTH] 로그인·세션 문서 1줄 점검 (BTY_RELEASE_GATE_CHECK 반영)
+[DOMAIN] 단위 테스트 1개 추가 (미커버 1모듈, 비즈니스/XP 미변경)
+[UI] 로딩/스켈레톤 1곳 보강
+[DOCS] 문서 점검 2~3건 (백로그 + Release Gate)
+[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영
+[DOCS] 엘리트 3차 스펙·검증 체크리스트 1페이지 정리 (PHASE_4_ELITE_5_PERCENT_SPEC §10 기준)
+[UI] 엘리트 배지 증정 표시 — GET /api/me/elite badges 반영, Elite 페이지·대시보드 배지 노출
+[UI] 엘리트 멘토 대화 신청 플로우 — /api/me/mentor-request·/api/arena/mentor-requests 연동, Elite 전용 신청·목록 화면
+[AUTH] 로그인·세션 문서 1줄 점검 (BTY_RELEASE_GATE_CHECK 반영)
+[VERIFY] 엘리트 3차 체크리스트 1회 실행 후 서류 반영
+단위 테스트 1개 추가 (미커버 1모듈, 비즈니스/XP 미변경)
+[AUTH] 쿠키 Secure 시 로컬 HTTP 동작 정리·문서 1줄
+[API] 챗봇 시스템 프롬프트·역할 말투 문서화 1건
+[UI] Dojo 연습 화면 빈 상태·로딩 문구 1곳 보강
+[VERIFY] Dojo·Dear Me 2차 검증 체크리스트 1회 실행 후 서류 반영
+[AUTH] admin 세션 타임아웃·재로그인 시 리다이렉트 점검
+[API] leaderboard scope(role/office) 쿼리·응답 계약 점검
+[UI] 리더보드 Near Me 뷰 로딩/빈 상태 문구 점검
+[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영
+[UI] admin/users loading skeleton 보강
+[UI] admin/users loading skeleton 보강
+[API] leaderboard status endpoint 계약 점검
+[DOMAIN] weekly xp tie-break 규칙 보완
+[AUTH] login redirect loop 점검
+[DOCS] arena spec 업데이트
+[UI] Arena leaderboard empty state 문구 점검
+로딩/스켈레톤 1곳 보강 (admin/users 목록)
+로딩/스켈레톤 1곳 보강
+접근성 1건 (aria-label·포커스/스킵 1곳)
+단위 테스트 1개 추가 (비즈니스/XP 로직 미변경)
+로딩/스켈레톤 2곳 보강
+문서 점검 2~3건 (백로그 + Release Gate)
+단위 테스트 2개 추가 (비즈니스/XP 로직 미변경)
+COMMANDER_BACKLOG §5: 대시보드 코드네임 툴팁(단계·수준 설명)
+AVATAR_LAYER_SPEC §6·§7: AvatarComposite 레이어·옷 입힌 캐릭터 render-only
+COMMANDER_BACKLOG §2: 전역 플로팅 챗봇 /center 비노출
+CENTER_PAGE_IMPROVEMENT_SPEC §9 점검 + render-only 보완
+Dojo 2차 UI: 진입·연습 2~5단계 화면 (render-only)
+감정 스탯 v3 표시 UI (render-only)
+§2 EN/KO 진입 플로우·로딩 locale (CENTER_PAGE_IMPROVEMENT_SPEC)
+§3 Center 본문 순서: 5문항 → 안내+50문항 링크 (render-only)
+§4 ResilienceGraph 일별 트렉 API 계약·render-only
+Center CTA \`/${locale}/bty\` 통일 + SPEC §5·§6·§3·§2·§4·§7·§1·§8 render-only
+규칙 준수 검사 + Gate 리포트 (bty-release-gate, bty-auth-deploy-safety, bty-ui-render-only)
+대시보드 bty-ui-render-only: 도메인 제거·API 계약 렌더만
+Phase 2-4: Dojo/Dear Me XP 설계 — 무엇을 기록할지(멘토 대화·챗·체류 시간 등), 얼마나 줄지 (스펙+이벤트 정의)
+Phase 2-5: Dojo/Dear Me 이벤트 기록 및 XP 반영 — 이벤트 저장 + weekly_xp 연동 (API·DB)
+Phase 1-1: 전역 챗봇 Dear Me 안전 밸브 — /api/chat에서 낮은 자존감 패턴 감지 시 Dear Me 링크 메시지
+Phase 1-2: 전역 챗봇 Dojo 추천 — 학습/연습 필요 시 Dojo(멘토·역지사지) 링크 제안
+Phase 1-3: 가이드 캐릭터 비주얼·챗봇 UI — Dr. Chi(또는 mascot) 플로팅·멘토 동일 노출
+기타 Arena 버그/누락 기능 수정 또는 리더보드 UI 다듬기
+Leaderboard 시즌 API 연동 — active league 기준 정렬·연동
+Arena L4 시나리오 노출·UI 검증 — admin l4_access 부여 후 클라이언트에서 L4만 보이는지 확인
+로컬 테스트 문서 보완 — bty-app/docs/LOCAL_TEST.md 최신화

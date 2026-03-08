@@ -2,8 +2,12 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
+import { LoadingFallback, CardSkeleton } from "@/components/bty-arena";
 import { fetchJson } from "@/lib/read-json";
 import { safeParse } from "@/lib/safeParse";
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
 type User = {
   id: string;
@@ -14,6 +18,10 @@ type User = {
 type UsersResp = { users?: User[]; error?: string };
 
 export default function UsersPage() {
+  const params = useParams();
+  const locale = (typeof params?.locale === "string" ? params.locale : "en") as Locale;
+  const loadingMessage = getMessages(locale).loading.message;
+
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -188,11 +196,21 @@ export default function UsersPage() {
               {creating ? "생성 중..." : "생성"}
             </button>
           </div>
+          {creating && (
+            <div className="mt-3">
+              <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
+            </div>
+          )}
         </form>
       )}
 
       {loading ? (
-        <div className="text-center py-8 text-neutral-600">로딩 중...</div>
+        <LoadingFallback
+          icon="👥"
+          message={loadingMessage}
+          withSkeleton
+          style={{ padding: "32px 20px" }}
+        />
       ) : users.length === 0 ? (
         <div className="rounded border border-neutral-200 bg-white p-8 text-center text-neutral-600">
           등록된 사용자가 없습니다.

@@ -7,11 +7,12 @@ import { ReflectionBlock } from "./ReflectionBlock";
 import { FollowUpBlock } from "./FollowUpBlock";
 import { ConsolidationBlock } from "./ConsolidationBlock";
 import { CompleteBlock } from "./CompleteBlock";
-
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 import type { ReflectResult } from "./ConsolidationBlock";
 
 export type OutputPanelProps = {
-  locale: string;
+  locale: Locale | string;
   step: 3 | 4 | 5 | 6 | 7;
   choice: ScenarioChoice;
   systemMessage: SystemMsg | null;
@@ -34,11 +35,6 @@ export type OutputPanelProps = {
   onContinue: () => void;
 };
 
-const SYSTEM_OUTPUT_LABEL = { en: "SYSTEM OUTPUT", ko: "시스템 출력" };
-const REFLECTION_TITLE = { en: "Reflection", ko: "성찰" };
-const SKIP_FOLLOW_UP_LABEL = { en: "Skip follow-up · Next scenario", ko: "따라하기 건너뛰기 · 다음 시나리오" };
-const FOLLOW_UP_SELECTED_LABEL = { en: "FOLLOW-UP SELECTED", ko: "선택한 따라하기" };
-
 export function OutputPanel({
   locale,
   step,
@@ -60,10 +56,12 @@ export function OutputPanel({
   onComplete,
   onContinue,
 }: OutputPanelProps) {
-  const sysLabel = locale === "ko" ? SYSTEM_OUTPUT_LABEL.ko : SYSTEM_OUTPUT_LABEL.en;
-  const skipLabel = locale === "ko" ? SKIP_FOLLOW_UP_LABEL.ko : SKIP_FOLLOW_UP_LABEL.en;
-  const followUpSelected = locale === "ko" ? FOLLOW_UP_SELECTED_LABEL.ko : FOLLOW_UP_SELECTED_LABEL.en;
-  const isKo = locale === "ko";
+  const lang: Locale = locale === "ko" || locale === "en" ? locale : "en";
+  const t = getMessages(lang).arenaRun;
+  const sysLabel = t.systemOutput;
+  const skipLabel = t.skipFollowUp;
+  const followUpSelected = t.followUpSelected;
+  const isKo = lang === "ko";
   const displayResult = isKo && choice.resultKo ? choice.resultKo : choice.result;
   const displayMicroInsight = isKo && choice.microInsightKo ? choice.microInsightKo : choice.microInsight;
 
@@ -84,7 +82,7 @@ export function OutputPanel({
 
       {step === 4 && (
         <ReflectionBlock
-          title={locale === "ko" ? REFLECTION_TITLE.ko : REFLECTION_TITLE.en}
+          title={t.reflectionTitle}
           reflectionPrompt={reflectionPrompt}
           options={reflectionOptions}
           locale={locale}

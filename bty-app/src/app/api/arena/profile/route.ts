@@ -38,6 +38,7 @@ export async function PATCH(req: NextRequest) {
     avatarCharacterId?: string | null;
     avatarOutfitTheme?: "professional" | "fantasy" | null;
     avatarSelectedOutfitId?: string | null;
+    display_name?: string | null;
   };
   try {
     body = await req.json();
@@ -125,6 +126,17 @@ export async function PATCH(req: NextRequest) {
       }
     }
     updates.avatar_selected_outfit_id = outfitIdToSet;
+  }
+
+  if (body.display_name !== undefined) {
+    const { validateDisplayName } = await import("@/lib/bty/arena/profileDisplayName");
+    const result = validateDisplayName(body.display_name);
+    if (!result.valid) {
+      const out = NextResponse.json({ error: result.error ?? "INVALID_DISPLAY_NAME" }, { status: 400 });
+      copyCookiesAndDebug(base, out, req, true);
+      return out;
+    }
+    updates.display_name = result.sanitized;
   }
 
   const { error: updateError } = await supabase

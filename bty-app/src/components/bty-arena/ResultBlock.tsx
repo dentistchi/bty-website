@@ -1,11 +1,13 @@
 "use client";
 
 import React from "react";
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
 export type SystemMsg = { id: string; en: string; ko?: string };
 
 export type ResultBlockProps = {
-  locale: string;
+  locale: Locale | string;
   systemMessage: SystemMsg | null;
   lastXp: number;
   microInsight: string;
@@ -14,8 +16,10 @@ export type ResultBlockProps = {
 };
 
 export function ResultBlock({ locale, systemMessage, lastXp, microInsight, result, onNext }: ResultBlockProps) {
+  const lang: Locale = locale === "ko" || locale === "en" ? locale : "en";
+  const t = getMessages(lang).arenaRun;
   const systemText =
-    systemMessage && (locale === "ko" && systemMessage.ko ? systemMessage.ko : systemMessage.en);
+    systemMessage && (lang === "ko" && systemMessage.ko ? systemMessage.ko : systemMessage.en);
 
   return (
     <>
@@ -31,7 +35,9 @@ export function ResultBlock({ locale, systemMessage, lastXp, microInsight, resul
 
       <div style={{ marginTop: 14 }}>
         <button
+          type="button"
           onClick={onNext}
+          aria-label={t.reflectionNext}
           style={{
             padding: "12px 14px",
             borderRadius: 12,
@@ -40,7 +46,7 @@ export function ResultBlock({ locale, systemMessage, lastXp, microInsight, resul
             cursor: "pointer",
           }}
         >
-          {locale === "ko" ? "다음" : "Next"}
+          {t.reflectionNext}
         </button>
       </div>
     </>

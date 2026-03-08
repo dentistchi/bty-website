@@ -1,18 +1,19 @@
 "use client";
 
 import React from "react";
-
-const START_BTN = { en: "Start Simulation", ko: "시뮬레이션 시작" };
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
 export type ScenarioIntroProps = {
-  locale: string;
+  locale: Locale | string;
   title: string;
   context: string;
   onStart: () => void;
 };
 
 export function ScenarioIntro({ locale, title, context, onStart }: ScenarioIntroProps) {
-  const startLabel = locale === "ko" ? START_BTN.ko : START_BTN.en;
+  const lang: Locale = locale === "ko" || locale === "en" ? locale : "en";
+  const startLabel = getMessages(lang).arenaRun.startSimulation;
   return (
     <>
       <h2 style={{ marginTop: 0, marginBottom: 8 }}>{title}</h2>
@@ -23,6 +24,7 @@ export function ScenarioIntro({ locale, title, context, onStart }: ScenarioIntro
           type="button"
           onClick={onStart}
           className="bty-btn-primary"
+          aria-label={startLabel}
           style={{
             padding: "14px 20px",
             borderRadius: 12,

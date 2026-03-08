@@ -10,6 +10,7 @@ export type QualityEventReason =
   | "fallback"
   | "empty_response"
   | "error"
+  | "timeout"
   | "low_quality";
 
 export type RecordQualityPayload = {
@@ -20,17 +21,20 @@ export type RecordQualityPayload = {
   lang?: string;
 };
 
-function severityForReason(reason: QualityEventReason): "low" | "medium" | "high" {
+/** Exported for unit tests; pure mapping from reason to severity. */
+export function severityForReason(reason: QualityEventReason): "low" | "medium" | "high" {
   if (reason === "error") return "high";
-  if (reason === "fallback" || reason === "empty_response") return "medium";
+  if (reason === "fallback" || reason === "empty_response" || reason === "timeout") return "medium";
   return "low";
 }
 
-function issueForReason(reason: QualityEventReason, route: "chat" | "mentor"): string {
+/** Exported for unit tests; pure mapping from reason + route to issue string. */
+export function issueForReason(reason: QualityEventReason, route: "chat" | "mentor"): string {
   const prefix = route === "chat" ? "chat" : "mentor";
   if (reason === "fallback") return `${prefix}_fallback: OpenAI unreachable or no key`;
   if (reason === "empty_response") return `${prefix}_empty: model returned no content`;
   if (reason === "error") return `${prefix}_error: exception in handler`;
+  if (reason === "timeout") return `${prefix}_timeout: OpenAI request aborted after timeout`;
   return `${prefix}_low_quality`;
 }
 

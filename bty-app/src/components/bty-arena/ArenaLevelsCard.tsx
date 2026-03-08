@@ -72,6 +72,7 @@ export function ArenaLevelsCard({
     );
   }
 
+  /* DESIGN_FIRST_IMPRESSION_BRIEF §2·PROJECT_BACKLOG §8: 데이터 없을 때 일러·아이콘 + 한 줄 문구 */
   if ((levels?.length ?? 0) === 0) {
     return (
       <EmptyState

@@ -32,9 +32,11 @@
 
 ### 현재: 백로그 §1~§8 완료. "다음 프로젝트" 후보
 
+- **다음 프로젝트 추천**: **`docs/NEXT_PROJECT_RECOMMENDED.md`** — **엘리트 3차**(배지 증정·멘토 대화 신청 UI 마무리). 보드 대기 4건 반영됨. 검증 시 Auto 4가 First Task = [DOCS] 엘리트 3차 스펙·체크리스트 추천.
+- **Auto 4 다음 작업 (다른 Cursor 참고)**: **`docs/NEXT_PHASE_AUTO4.md`** — C2·C3·C4·C5용 대기 작업 정리. 보드(`CURSOR_TASK_BOARD.md`)에 반영되어 있으면 검증 시 Auto 4가 추천. 완료 시 보드·CURRENT_TASK 갱신.
 - **챗봇 훈련** (로드맵 "챗봇 훈련 시기"): MVP 직전에 시스템 프롬프트·예시·필요 시 RAG 한 번 설계. 구역별(bty / today-me) 말투·역할 정리.
 - **Dojo·Dear Me 콘텐츠 심화**: 50문항 문항 세트·선택지 DB화, 연습 플로우 2종 이상, Dear Me 자존감 회복 훈련 플로우 설계. (`docs/DOJO_DEAR_ME_NEXT_CONTENT.md` §1·§2 확장)
-- **엘리트 3차**: 챔피언십, 멘토 대화 신청, 엘리트 배지 증정 등. (`docs/PHASE_4_ELITE_5_PERCENT_SPEC.md` §10 후보)
+- **엘리트 3차**: 챔피언십, 멘토 대화 신청, 엘리트 배지 증정 등. (`docs/PHASE_4_ELITE_5_PERCENT_SPEC.md` §10 후보) — **현재 추천·보드 반영됨.**
 - **새 백로그**: 위와 무관한 새 기능·새 제품·다른 레포 등. `docs/CURRENT_TASK.md` 또는 `docs/PROJECT_BACKLOG.md`에 §9 이후로 추가 후 진행.
 
 **진행 에이전트**: 구체 지시는 `docs/CURRENT_TASK.md` 한 줄 지시 또는 위 후보 중 하나를 문장으로 적어서 지시.

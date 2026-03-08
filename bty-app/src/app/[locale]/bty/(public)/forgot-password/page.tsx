@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { CardSkeleton } from "@/components/bty-arena";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { getSupabase } from "@/lib/supabase";
@@ -88,6 +89,11 @@ export default function ForgotPasswordClient() {
           >
             {loading ? (locale === "ko" ? "전송 중…" : "Sending…") : locale === "ko" ? "재설정 링크 받기" : "Send reset link"}
           </button>
+          {loading && (
+            <div className="mt-3">
+              <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
+            </div>
+          )}
         </form>
 
         <Link

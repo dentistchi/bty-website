@@ -4,7 +4,7 @@
  * Arena XP · Weekly XP · leaderboard are separate; this system is for internal growth tracking only.
  */
 
-// --- Event IDs (v3: 14 events) ---
+// --- Event IDs (v3: 15 events) ---
 export const EVENT_IDS = [
   "OBSERVATION_FACTUAL",
   "FEELING_LABELED",
@@ -20,6 +20,7 @@ export const EVENT_IDS = [
   "REPAIR_ATTEMPT",
   "POST_CONFLICT_RETURN",
   "SELF_REFRAMING",
+  "EMPATHY_EXPRESSED",
 ] as const;
 
 export type EventId = (typeof EVENT_IDS)[number];
@@ -41,11 +42,11 @@ export interface CoreStatDef {
  * Core stats definition: id, name, and which events contribute to this stat.
  */
 export const CORE_STATS: readonly CoreStatDef[] = [
-  { id: "EA", name: "Emotional Awareness", source_events: ["FEELING_LABELED", "FALSE_TO_TRUE_CONVERSION", "OBSERVATION_FACTUAL", "NEED_IDENTIFIED", "PATTERN_LINKED", "PAST_MEMORY_REFERENCED", "SELF_REFRAMING"] },
+  { id: "EA", name: "Emotional Awareness", source_events: ["FEELING_LABELED", "FALSE_TO_TRUE_CONVERSION", "OBSERVATION_FACTUAL", "NEED_IDENTIFIED", "PATTERN_LINKED", "PAST_MEMORY_REFERENCED", "SELF_REFRAMING", "EMPATHY_EXPRESSED"] },
   { id: "RS", name: "Regulation Stability", source_events: ["REGULATION_ATTEMPT", "INTENSITY_REDUCTION", "FEELING_LABELED", "BOUNDARY_ASSERTION", "POST_CONFLICT_RETURN", "SELF_REFRAMING"] },
   { id: "BS", name: "Boundary Strength", source_events: ["CLEAR_REQUEST", "BOUNDARY_ASSERTION", "OBSERVATION_FACTUAL", "NEED_IDENTIFIED", "O_F_N_R_COMPLETED", "REPAIR_ATTEMPT"] },
   { id: "TI", name: "Trigger Insight", source_events: ["PATTERN_LINKED", "PAST_MEMORY_REFERENCED", "OBSERVATION_FACTUAL"] },
-  { id: "RC", name: "Relational Clarity", source_events: ["O_F_N_R_COMPLETED", "OBSERVATION_FACTUAL", "FALSE_TO_TRUE_CONVERSION", "NEED_IDENTIFIED", "CLEAR_REQUEST", "REPAIR_ATTEMPT"] },
+  { id: "RC", name: "Relational Clarity", source_events: ["O_F_N_R_COMPLETED", "OBSERVATION_FACTUAL", "FALSE_TO_TRUE_CONVERSION", "NEED_IDENTIFIED", "CLEAR_REQUEST", "REPAIR_ATTEMPT", "EMPATHY_EXPRESSED"] },
   { id: "RD", name: "Resilience Depth", source_events: ["REPAIR_ATTEMPT", "POST_CONFLICT_RETURN", "REGULATION_ATTEMPT", "INTENSITY_REDUCTION", "PAST_MEMORY_REFERENCED"] },
 ] as const;
 
@@ -70,6 +71,7 @@ export const EVENTS: readonly EventDef[] = [
   { id: "REPAIR_ATTEMPT", quality_weight: 1.8 },
   { id: "POST_CONFLICT_RETURN", quality_weight: 2.2 },
   { id: "SELF_REFRAMING", quality_weight: 1.4 },
+  { id: "EMPATHY_EXPRESSED", quality_weight: 1.3 },
 ] as const;
 
 // --- Map event_id -> quality_weight (for formula.ts) ---
@@ -92,7 +94,7 @@ export function getSessionMaxPossibleWeight(): number {
     .reduce((s, e) => s + e.quality_weight, 0);
 }
 
-/** v3 stat_distribution: event -> { CoreStatId: weight }. SELF_REFRAMING: CD mapped to EA+RS for Core-only. */
+/** v3 stat_distribution: event -> { CoreStatId: weight }. SELF_REFRAMING: CD(advanced) mapped to RD for core-only. */
 export const STAT_DISTRIBUTION: Readonly<Record<EventId, Partial<Record<CoreStatId, number>>>> = {
   OBSERVATION_FACTUAL: { RC: 0.6, EA: 0.2, BS: 0.2 },
   FEELING_LABELED: { EA: 0.8, RS: 0.2 },
@@ -107,7 +109,8 @@ export const STAT_DISTRIBUTION: Readonly<Record<EventId, Partial<Record<CoreStat
   O_F_N_R_COMPLETED: { RC: 0.7, BS: 0.2, EA: 0.1 },
   REPAIR_ATTEMPT: { RD: 0.7, RC: 0.2, BS: 0.1 },
   POST_CONFLICT_RETURN: { RD: 0.8, RS: 0.2 },
-  SELF_REFRAMING: { EA: 0.8, RS: 0.2 }, // v3 CD -> Core: EA+RS
+  SELF_REFRAMING: { RD: 0.6, EA: 0.2, RS: 0.2 }, // v3 spec: CD(advanced) mapped to RD for core-only
+  EMPATHY_EXPRESSED: { EA: 0.5, RC: 0.5 }, // v3 15th event: 공감 표현 → Emotional Awareness, Relational Clarity
 };
 
 // --- Map event_id -> core_stat_ids that receive this event (source_events reverse mapping) ---

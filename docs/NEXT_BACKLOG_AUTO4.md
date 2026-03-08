@@ -1,0 +1,38 @@
+# 다음 배치 (Auto 4 — 기본 5건 완료 시 보드에 추가할 후보)
+
+**목적**: 대기 작업이 없을 때 `scripts/next-project-fill-board.sh`가 여기서 다음 작업을 읽어 보드에 추가한다.  
+**기준**: `docs/NEXT_PROJECT_RECOMMENDED.md` §1·§2.  
+**갱신일**: 2026-03-06 — [DOCS] 다음 배치 선정. NEXT_PROJECT_RECOMMENDED §1(엘리트 3차)·§2 대안 기준으로 **다음 배치** 전환. 보드에 엘리트 3차·로딩/스켈레톤 등 대기 추가.
+
+---
+
+## 작업 행 형식
+
+아래 목록은 한 줄이 하나의 보드 행 후보다. 형식: `타입|할 일 한 줄(태그 포함)|비고`
+
+- **타입**: `Fix/Polish` 또는 `Feature`
+- **할 일**: `[AUTH]`, `[API]`, `[DOMAIN]`, `[UI]`, `[DOCS]`, `[VERIFY]` 중 하나 포함.
+- 스크립트는 이미 보드에 **완료** 또는 **대기**로 있는 할 일과 동일한 텍스트는 추가하지 않는다.
+- **문서·AUTH N차 점검**: 반복 추가하지 않음. 배포 전 1회 [VERIFY] Release Gate·문서 점검 수행.
+
+---
+
+## 다음 배치 목록 (위에서부터 우선) — 엘리트 3차·대안
+
+```
+Fix/Polish|[DOCS] 엘리트 3차 스펙·검증 체크리스트 1페이지 정리|추천 §1. C1.
+Fix/Polish|[VERIFY] 엘리트 3차 체크리스트 1회 실행 후 서류 반영|추천 §1. C5.
+Fix/Polish|[UI] 로딩/스켈레톤 1곳 보강 (3차)|대안 D. C4.
+Fix/Polish|[DOCS] Dojo·Dear Me 콘텐츠 다음 단계 설계 1건 (50문항 DB화 등)|대안 A. C1.
+Fix/Polish|[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영 (배포 전 점검)|배포 전 1회. C5.
+```
+
+---
+
+## 갱신 방법
+
+- **대기 0건**이면 `next-project-fill-board.sh`가 이 파일의 **다음 배치 목록**에서 아직 보드에 없는 할 일을 읽어 보드에 추가한다. (목록이 "구현 배치"면 N차 자동 증가 없음.)
+- **기본 5건 + 이 배치까지 모두 완료**되면: 이 파일 § "다음 배치 목록"을 로드맵·NEXT_PROJECT_RECOMMENDED §2 대안 기준으로 수정해 새 후보를 추가할 수 있다.
+- 또는 **[DOCS] 다음 배치 선정** 작업으로 이 파일을 수동 갱신한 뒤 보드에 반영한다.
+
+*참고: `docs/NEXT_PROJECT_RECOMMENDED.md`, `docs/NEXT_PHASE_AUTO4.md`, `scripts/next-project-fill-board.sh`*

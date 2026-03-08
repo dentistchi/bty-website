@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import Link from "next/link";
 import { fetchJson } from "@/lib/read-json";
 import { safeParse } from "@/lib/safeParse";
+import { LoadingFallback, CardSkeleton } from "@/components/bty-arena";
 
 type DebugResp = { ok: boolean; error?: string; where?: string };
 
@@ -277,6 +278,11 @@ export default function DebugPage() {
             >
               {submitting ? "등록 중..." : "제보 올리기"}
             </button>
+            {submitting && (
+              <div aria-busy="true" aria-label="제보 등록 중">
+                <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px", marginTop: 12 }} />
+              </div>
+            )}
             {submitMsg && (
               <p className="text-sm text-neutral-600">{submitMsg}</p>
             )}
@@ -310,60 +316,71 @@ export default function DebugPage() {
             </button>
           </div>
           {loadingReports ? (
-            <p className="text-sm text-neutral-500">로딩 중...</p>
+            <LoadingFallback
+              icon="📋"
+              message="제보 목록 불러오는 중…"
+              withSkeleton
+              style={{ padding: "32px 20px" }}
+            />
           ) : reports.length === 0 ? (
             <p className="text-sm text-neutral-500">제보가 없습니다.</p>
           ) : (
             <ul className="space-y-3">
               {reports.map((r) => (
-                <li
-                  key={r.id}
-                  className={`rounded border p-4 ${r.status === "resolved" ? "border-neutral-100 bg-neutral-50" : "border-neutral-200 bg-white"}`}
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <span className="font-medium text-neutral-900">{r.title}</span>
-                      {r.route && (
-                        <span className="ml-2 rounded bg-neutral-200 px-1.5 py-0.5 text-xs text-neutral-600">
-                          {r.route}
-                        </span>
-                      )}
-                      {r.status === "resolved" && (
-                        <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-800">
-                          해결됨
-                        </span>
-                      )}
+                <Fragment key={r.id}>
+                  <li
+                    className={`rounded border p-4 ${r.status === "resolved" ? "border-neutral-100 bg-neutral-50" : "border-neutral-200 bg-white"}`}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <span className="font-medium text-neutral-900">{r.title}</span>
+                        {r.route && (
+                          <span className="ml-2 rounded bg-neutral-200 px-1.5 py-0.5 text-xs text-neutral-600">
+                            {r.route}
+                          </span>
+                        )}
+                        {r.status === "resolved" && (
+                          <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-800">
+                            해결됨
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-neutral-500">
+                        {new Date(r.created_at).toLocaleString("ko-KR")}
+                      </span>
                     </div>
-                    <span className="text-xs text-neutral-500">
-                      {new Date(r.created_at).toLocaleString("ko-KR")}
-                    </span>
-                  </div>
-                  {r.description && (
-                    <p className="mt-1 text-sm text-neutral-600">{r.description}</p>
+                    {r.description && (
+                      <p className="mt-1 text-sm text-neutral-600">{r.description}</p>
+                    )}
+                    {r.status === "resolved" && r.resolution_note && (
+                      <p className="mt-2 text-sm text-emerald-700">교정 메모: {r.resolution_note}</p>
+                    )}
+                    {r.status === "open" && (
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <input
+                          type="text"
+                          value={resolutionNote[r.id] ?? ""}
+                          onChange={(e) => setResolutionNote((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                          placeholder="교정 메모 (선택)"
+                          className="rounded border border-neutral-300 px-2 py-1 text-sm w-48"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => resolveReport(r.id)}
+                          disabled={resolvingId === r.id}
+                          className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                        >
+                          {resolvingId === r.id ? "처리 중..." : "교정 완료"}
+                        </button>
+                      </div>
+                    )}
+                  </li>
+                  {resolvingId === r.id && (
+                    <li aria-busy="true" aria-label="처리 중">
+                      <CardSkeleton showLabel={false} lines={2} style={{ padding: "16px 20px" }} />
+                    </li>
                   )}
-                  {r.status === "resolved" && r.resolution_note && (
-                    <p className="mt-2 text-sm text-emerald-700">교정 메모: {r.resolution_note}</p>
-                  )}
-                  {r.status === "open" && (
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <input
-                        type="text"
-                        value={resolutionNote[r.id] ?? ""}
-                        onChange={(e) => setResolutionNote((prev) => ({ ...prev, [r.id]: e.target.value }))}
-                        placeholder="교정 메모 (선택)"
-                        className="rounded border border-neutral-300 px-2 py-1 text-sm w-48"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => resolveReport(r.id)}
-                        disabled={resolvingId === r.id}
-                        className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-                      >
-                        {resolvingId === r.id ? "처리 중..." : "교정 완료"}
-                      </button>
-                    </div>
-                  )}
-                </li>
+                </Fragment>
               ))}
             </ul>
           )}
@@ -383,6 +400,11 @@ export default function DebugPage() {
           >
             {patchDeploying ? "실행 중..." : "패치 생성 및 배포"}
           </button>
+          {patchDeploying && (
+            <div className="mt-3" aria-busy="true" aria-label="패치 배포 실행 중">
+              <CardSkeleton showLabel={false} lines={2} style={{ padding: "16px 20px" }} />
+            </div>
+          )}
           {patchResult && (
             <div className="mt-3 rounded bg-neutral-50 p-3 text-sm">
               <p className={patchResult.ok ? "text-emerald-700 font-medium" : "text-amber-700"}>
@@ -432,6 +454,11 @@ export default function DebugPage() {
             >
               {testing ? "테스트 중..." : "로그인 테스트"}
             </button>
+            {testing && (
+              <div className="mt-3" aria-busy="true" aria-label="로그인 테스트 중">
+                <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
+              </div>
+            )}
             {testResult && (
               <div className="mt-3 rounded bg-neutral-50 p-3">
                 <pre className="whitespace-pre-wrap text-xs text-neutral-800">{testResult}</pre>

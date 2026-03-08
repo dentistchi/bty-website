@@ -6,7 +6,7 @@ import { AvatarComposite } from "./AvatarComposite";
 import { cn } from "@/lib/utils";
 
 /**
- * AVATAR_LAYER_SPEC §5.3: allowed.outfits 카드 한 장. 클릭 시 선택, AvatarComposite 미리보기.
+ * AVATAR_LAYER_SPEC §5.3, §6·§7: allowed.outfits 카드. Render-only: characterKey/outfitKey/accessoryKeys → resolveAvatarUrls(domain) → AvatarComposite에 URL만 전달.
  */
 
 export interface OutfitCardProps {
@@ -35,10 +35,12 @@ export function OutfitCard({
     useThumb: true,
   });
 
+  const label = name ?? outfitKey;
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-label={selected ? `Selected outfit: ${label}` : `Select outfit: ${label}`}
       className={cn(
         "rounded-xl border p-3 text-left transition flex items-center gap-3 w-full",
         selected
