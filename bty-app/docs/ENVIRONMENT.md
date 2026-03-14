@@ -41,3 +41,4 @@
   - `npm run build` 또는 check-env 단계에서 실패 가능
 - 로그인 관련 이슈:
   - 먼저 `/api/auth/session`에서 request cookie 유무 / status / body 확인
+  - 상세: `docs/CONTEXT.md` §3 Supabase Auth 및 §4 작업 규칙

@@ -24,7 +24,7 @@
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-> 확인 근거: `.github/workflows/deploy-workers.yml`
+> 확인 근거: **repo root** `.github/workflows/deploy-workers.yml`
 
 ### Output
 - OpenNext output: `.open-next/`
@@ -53,7 +53,7 @@
 - Secure: `true`
 - SameSite: `Lax`
 - HttpOnly: `true` (세션 쿠키는 JS 접근 금지)
-- Domain: 배포 도메인(프로덕션: `bty-website.ywamer2022.workers.dev`)
+- Domain: **미설정(host-only)** — 코드(`src/lib/bty/cookies/authCookies.ts`, middleware)에서 domain을 설정하지 않음. 배포 도메인(예: 프로덕션 `bty-website.ywamer2022.workers.dev`)은 쿠키 Domain 속성이 아니라 요청이 오는 호스트로만 사용됨.
 - Path: **기본 `/` 권장**
   - (주의) `/api`로만 설정하면 페이지 요청에서 쿠키가 안 보일 수 있어 혼선이 생김.
   - 로그아웃 시에는 과거에 설정된 Path/Domain 변형까지 모두 지우도록 "복수 경로 삭제"가 필요할 수 있음.
