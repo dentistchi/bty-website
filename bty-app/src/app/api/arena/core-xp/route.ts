@@ -1,5 +1,16 @@
+/**
+ * GET /api/arena/core-xp
+ *
+ * Returns core XP, tier, code/sub name, avatar, and display fields.
+ * Gate 1: useArenaSession and page MUST use response.tier only; do not
+ * compute tier from coreXpTotal in the UI.
+ * Gate 2: use response.requiresBeginnerPath for beginner redirect; do not
+ * compare coreXpTotal to 200 (use domain BEGINNER_CORE_XP_THRESHOLD in API only).
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { BEGINNER_CORE_XP_THRESHOLD } from "@/domain/constants";
+import type { CoreXpGetResponse } from "@/lib/bty/arena/coreXpApi";
 import {
   CODE_NAMES,
   tierFromCoreXp,
@@ -107,6 +118,7 @@ export async function GET(req: NextRequest) {
     const out = NextResponse.json({
       coreXpTotal: 0,
       tier: 0,
+      requiresBeginnerPath: true,
       codeName: CODE_NAMES[0],
       subName: "Spark",
       seasonalXpTotal: 0,
@@ -125,7 +137,7 @@ export async function GET(req: NextRequest) {
         accessoryIds: defaultOutfit.accessoryIds,
         accessoryLabels: defaultOutfit.accessoryLabels,
       },
-    });
+    } satisfies CoreXpGetResponse);
     copyCookiesAndDebug(base, out, req, true);
     return out;
   }
@@ -200,6 +212,7 @@ export async function GET(req: NextRequest) {
   const out = NextResponse.json({
     coreXpTotal,
     tier,
+    requiresBeginnerPath: coreXpTotal < BEGINNER_CORE_XP_THRESHOLD,
     codeName,
     subName,
     seasonalXpTotal,
@@ -218,7 +231,7 @@ export async function GET(req: NextRequest) {
       accessoryIds: outfit.accessoryIds,
       accessoryLabels: outfit.accessoryLabels,
     },
-  });
+  } satisfies CoreXpGetResponse);
   out.headers.set("Cache-Control", "no-store, must-revalidate");
   copyCookiesAndDebug(base, out, req, true);
   return out;

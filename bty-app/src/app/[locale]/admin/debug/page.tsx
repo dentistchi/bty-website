@@ -275,6 +275,7 @@ export default function DebugPage() {
               onClick={submitReport}
               disabled={submitting}
               className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+              aria-label={submitting ? "등록 중..." : "제보 올리기"}
             >
               {submitting ? "등록 중..." : "제보 올리기"}
             </button>
@@ -297,6 +298,7 @@ export default function DebugPage() {
               type="button"
               onClick={() => setReportFilter("")}
               className={`rounded px-3 py-1.5 text-sm ${reportFilter === "" ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"}`}
+              aria-label="제보 목록 전체 보기"
             >
               전체
             </button>
@@ -304,6 +306,7 @@ export default function DebugPage() {
               type="button"
               onClick={() => setReportFilter("open")}
               className={`rounded px-3 py-1.5 text-sm ${reportFilter === "open" ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"}`}
+              aria-label="미해결 제보만 보기"
             >
               미해결
             </button>
@@ -311,6 +314,7 @@ export default function DebugPage() {
               type="button"
               onClick={() => setReportFilter("resolved")}
               className={`rounded px-3 py-1.5 text-sm ${reportFilter === "resolved" ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"}`}
+              aria-label="해결된 제보만 보기"
             >
               해결됨
             </button>
@@ -369,6 +373,7 @@ export default function DebugPage() {
                           onClick={() => resolveReport(r.id)}
                           disabled={resolvingId === r.id}
                           className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                          aria-label={resolvingId === r.id ? "처리 중..." : "교정 완료"}
                         >
                           {resolvingId === r.id ? "처리 중..." : "교정 완료"}
                         </button>
@@ -397,6 +402,7 @@ export default function DebugPage() {
             onClick={runPatchDeploy}
             disabled={patchDeploying}
             className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+            aria-label={patchDeploying ? "실행 중..." : "패치 생성 및 배포"}
           >
             {patchDeploying ? "실행 중..." : "패치 생성 및 배포"}
           </button>
@@ -451,6 +457,7 @@ export default function DebugPage() {
               onClick={testLogin}
               disabled={testing}
               className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+              aria-label={testing ? "테스트 중..." : "로그인 테스트"}
             >
               {testing ? "테스트 중..." : "로그인 테스트"}
             </button>
@@ -473,6 +480,7 @@ export default function DebugPage() {
             type="button"
             onClick={() => checkSession()}
             className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+            aria-label="현재 세션 확인"
           >
             현재 세션 확인
           </button>

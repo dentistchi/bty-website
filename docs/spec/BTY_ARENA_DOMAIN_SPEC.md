@@ -60,6 +60,7 @@ This spec is the **authoritative reference** for domain rules. Implementation (A
 
 ## 5. References
 
+- **시스템 경계 (루트 docs)**: `docs/architecture/DOMAIN_LAYER_TARGET_MAP.md`, `docs/architecture/IMPORT_BOUNDARY.md`, `.cursor/rules/bty-system-boundary.mdc` — Arena 경로: `src/domain/arena`, `src/lib/bty/arena`, `src/app/[locale]/bty-arena`.
 - **Types & constants:** `/src/domain/types.ts`, `/src/domain/constants.ts`
 - **Pure rules:** `/src/domain/rules/*.ts` — leaderboard tie-break: `leaderboardTieBreak.ts` (compareWeeklyXpTieBreak).
 - **Legacy app docs:** `bty-app/docs/BTY_ARENA_SYSTEM_SPEC.md`, `BTY_ARENA_SEASON_SPEC.md`, `XP_SYSTEM_WEEKLY_SEASONAL_CORE.md`

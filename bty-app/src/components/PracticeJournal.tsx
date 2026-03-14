@@ -77,6 +77,7 @@ function JournalLayout({
                     "border-2 border-foundry-purple-muted bg-foundry-purple-muted/30 text-foundry-ink",
                     "hover:bg-foundry-purple-muted/50 transition-colors"
                   )}
+                  aria-label="성공"
                 >
                   성공
                 </button>
@@ -88,6 +89,7 @@ function JournalLayout({
                     "border-2 border-foundry-purple/40 bg-foundry-white text-foundry-ink",
                     "hover:bg-foundry-purple/5 hover:border-foundry-purple/60 transition-colors"
                   )}
+                  aria-label="실패했지만 기록함"
                 >
                   실패했지만 기록함
                 </button>
@@ -125,6 +127,7 @@ function JournalLayout({
                 type="button"
                 onClick={onReset}
                 className="mt-4 text-sm text-foundry-purple hover:underline"
+                aria-label="오늘의 연습 다시 기록하기"
               >
                 오늘의 연습 다시 기록하기
               </button>
@@ -150,6 +153,7 @@ function JournalLayout({
               "bg-foundry-purple text-foundry-white hover:bg-foundry-purple-dark",
               "transition-colors"
             )}
+            aria-label="확인"
           >
             확인
           </button>

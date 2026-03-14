@@ -5,7 +5,12 @@ import { LoadingFallback } from "@/components/bty-arena";
  */
 export default function DashboardLoading() {
   return (
-    <div className="p-6" style={{ maxWidth: 980, margin: "0 auto" }}>
+    <div
+      className="p-6"
+      style={{ maxWidth: 980, margin: "0 auto" }}
+      aria-busy="true"
+      aria-label="Loading…"
+    >
       <LoadingFallback
         icon="📋"
         message="잠시만 기다려 주세요."

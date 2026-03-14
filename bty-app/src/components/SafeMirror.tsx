@@ -144,6 +144,7 @@ function SafeMirrorLayout({
               ? "bg-dear-sage text-white hover:bg-dear-sage-soft"
               : "bg-sanctuary-sage/80 text-sanctuary-text hover:bg-sanctuary-sage"
           )}
+          aria-label={isLoading ? t.submitting : t.submit}
         >
           {isLoading ? t.submitting : t.submit}
         </button>

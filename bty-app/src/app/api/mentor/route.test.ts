@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "./route";
 
 // Next.js cookies() is called by getSupabaseServerClient(); mock for Vitest (no request scope).
@@ -9,7 +9,7 @@ vi.mock("next/headers", () => ({
     }),
 }));
 
-// Supabase client requires env in test; mock so fallback response path works.
+// Supabase client: mock so fallback/OpenAI path works without real DB.
 vi.mock("@/lib/bty/arena/supabaseServer", () => ({
   getSupabaseServerClient: () =>
     Promise.resolve({
@@ -17,6 +17,26 @@ vi.mock("@/lib/bty/arena/supabaseServer", () => ({
         getUser: () => Promise.resolve({ data: { user: null } }),
       },
     }),
+}));
+
+const mockCheckRateLimit = vi.fn(() => ({ allowed: true, retryAfterSeconds: 60 }));
+vi.mock("@/lib/rate-limit", () => ({
+  getClientIdentifier: () => "test-client",
+  checkRateLimit: (_id: string, _limit: number) => mockCheckRateLimit(),
+}));
+
+// Emotional/quality/activity: no-op in tests.
+vi.mock("@/lib/bty/arena/activityXp", () => ({ recordActivityXp: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("@/lib/bty/emotional-stats", () => ({
+  detectEmotionalEventFromText: () => null,
+  recordEmotionalEventServer: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock("@/lib/bty/quality", () => ({ recordQualityEventApp: vi.fn() }));
+vi.mock("@/lib/log-api-error", () => ({ logApiError: vi.fn() }));
+
+const mockFetchJson = vi.fn();
+vi.mock("@/lib/read-json", () => ({
+  fetchJson: (url: string, init?: RequestInit) => mockFetchJson(url, init),
 }));
 
 function request(body: unknown, headers?: Record<string, string>): Request {
@@ -28,6 +48,10 @@ function request(body: unknown, headers?: Record<string, string>): Request {
 }
 
 describe("POST /api/mentor", () => {
+  beforeEach(() => {
+    mockCheckRateLimit.mockReturnValue({ allowed: true, retryAfterSeconds: 60 });
+  });
+
   it("returns 400 when message is missing", async () => {
     const res = await POST(request({}));
     expect(res.status).toBe(400);
@@ -38,6 +62,27 @@ describe("POST /api/mentor", () => {
   it("returns 400 when messages is empty and no message field", async () => {
     const res = await POST(request({ messages: [] }));
     expect(res.status).toBe(400);
+  });
+
+  it("returns 500 when body is not valid JSON", async () => {
+    const req = new Request("http://localhost/api/mentor", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "not json {",
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(500);
+    const data = await res.json();
+    expect(data.error).toBeDefined();
+  });
+
+  it("returns 429 when rate limit disallows", async () => {
+    mockCheckRateLimit.mockReturnValueOnce({ allowed: false, retryAfterSeconds: 30 });
+    const res = await POST(request({ message: "Hello", lang: "en" }));
+    expect(res.status).toBe(429);
+    const data = await res.json();
+    expect(data.error).toMatch(/many requests|Too many/i);
+    expect(res.headers.get("Retry-After")).toBe("30");
   });
 
   it("returns 200 with message when lang=ko", async () => {
@@ -77,5 +122,92 @@ describe("POST /api/mentor", () => {
     expect(typeof data.message).toBe("string");
     expect(data.safety_valve).toBe(true);
     expect(data.dear_me_url).toBeDefined();
+  });
+
+  describe("request/response mocking", () => {
+    const MOCKED_REPLY = "Mocked mentor reply for tests.";
+
+    beforeEach(() => {
+      mockFetchJson.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: {
+          choices: [{ message: { content: MOCKED_REPLY } }],
+        },
+      });
+    });
+
+    it("POST with message + OPENAI_API_KEY uses mocked fetchJson and returns mocked message", async () => {
+      const orig = process.env.OPENAI_API_KEY;
+      process.env.OPENAI_API_KEY = "test-key";
+      try {
+        const req = request({ message: "What is leadership?", lang: "en" });
+        const res = await POST(req);
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.message).toBe(MOCKED_REPLY);
+        expect(mockFetchJson).toHaveBeenCalled();
+        const [url] = mockFetchJson.mock.calls[0] ?? [];
+        expect(url).toContain("openai.com");
+      } finally {
+        if (orig !== undefined) process.env.OPENAI_API_KEY = orig;
+        else delete process.env.OPENAI_API_KEY;
+      }
+    });
+
+    it("request body with messages[] and lang=ko yields 200 and JSON with message", async () => {
+      const req = request({
+        messages: [{ role: "user", content: "테스트 메시지" }],
+        lang: "ko",
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toMatch(/application\/json/);
+      const data = await res.json();
+      expect(data).toMatchObject({ message: expect.any(String) });
+      expect(data.message.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("returns 500 when request.json() throws", async () => {
+    const req = new Request("http://localhost/api/mentor", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    vi.spyOn(req, "json").mockRejectedValueOnce(new Error("parse error"));
+    const res = await POST(req);
+    expect(res.status).toBe(500);
+    const data = await res.json();
+    expect(data.error).toBeDefined();
+  });
+
+  describe("error and edge cases", () => {
+    it("returns 400 when message is empty string", async () => {
+      const res = await POST(request({ message: "", lang: "en" }));
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toBe("Message required");
+    });
+
+    it("returns 200 with usedFallback when OPENAI returns not ok", async () => {
+      const orig = process.env.OPENAI_API_KEY;
+      process.env.OPENAI_API_KEY = "test-key";
+      mockFetchJson.mockResolvedValueOnce({ ok: false, status: 500, json: null });
+      try {
+        const res = await POST(
+          request({ message: "Normal question", lang: "en" })
+        );
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.message).toBeDefined();
+        expect(typeof data.message).toBe("string");
+        expect(data.message.length).toBeGreaterThan(0);
+        expect(data.usedFallback).toBe(true);
+      } finally {
+        if (orig !== undefined) process.env.OPENAI_API_KEY = orig;
+        else delete process.env.OPENAI_API_KEY;
+      }
+    });
   });
 });

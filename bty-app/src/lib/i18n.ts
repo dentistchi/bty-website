@@ -31,7 +31,10 @@ export type Messages = {
     placeholder: string;
     send: string;
     thinking: string;
+    /** 빈 대화 영역 안내 (메시지 없을 때 EmptyState 메인 문구, render-only) */
     emptyHint: string;
+    /** Optional hint under empty state message */
+    emptyStateHint?: string;
     backToFoundry: string;
     reply: string;
     /** §7 2차: 단계 5 완료 */
@@ -44,8 +47,20 @@ export type Messages = {
     doneCtaAssessment: string;
     /** API 실패(네트워크 등) 시 표시 (render-only) */
     apiError: string;
+    /** Error section title (e.g. for role=alert) */
+    errorTitle?: string;
     /** API가 빈 응답일 때 표시 (render-only) */
     replyFallback: string;
+    /** aria-label: 연습 시작 버튼 */
+    ariaStartPractice?: string;
+    /** aria-label: 연습 완료 버튼 */
+    ariaCompletePractice?: string;
+    /** aria-label: 갈등 입력 필드 */
+    ariaInputLabel?: string;
+    /** aria-label: Dr. Chi 응답 대기 (로딩 스켈레톤) */
+    ariaWaitingChi?: string;
+    /** 멘토 이름 라벨 (응답 버블 상단) */
+    mentorName?: string;
   };
   center: {
     /** §2: 전환 중 로딩/대기 문구 (locale에 맞게) */
@@ -89,6 +104,13 @@ export type Messages = {
     completedTitle: string;
     completedSub: string;
     continueToChat: string;
+    /** 편지 이력 */
+    letterHistoryTitle: string;
+    letterHistoryEmpty: string;
+    letterHistoryError: string;
+    letterHistoryLoading: string;
+    letterHistoryReplied: string;
+    letterHistoryNoReply: string;
   };
   bty: {
     title: string;
@@ -337,6 +359,9 @@ export type Messages = {
     choiceLabel: string;
     /** 시나리오 완료(결과 전환) 시 토스트 문구 */
     scenarioCompletedToast: string;
+    /** 시나리오를 찾을 수 없을 때(빈 상태) 메시지·힌트 */
+    scenarioNotFound: string;
+    scenarioNotFoundHint: string;
   };
   /** PROJECT_BACKLOG §8: 대시보드 감정 스탯 카드 빈 상태 */
   emotionalStats: {
@@ -390,6 +415,7 @@ const ko: Messages = {
     send: "전송",
     thinking: "Dr. Chi가 생각 중…",
     emptyHint: "갈등 상황을 입력하고 전송해보세요.",
+    emptyStateHint: "첫 메시지를 보내보세요.",
     backToFoundry: "Foundry로 돌아가기",
     reply: "만약 입장이 반대라면 어떨까요?",
     doneTitle: "오늘의 연습 완료",
@@ -399,7 +425,13 @@ const ko: Messages = {
     doneCtaFoundry: "Foundry로",
     doneCtaAssessment: "50문항 진단",
     apiError: "연결이 불안정해요. 다시 시도해주세요.",
+    errorTitle: "오류",
     replyFallback: "조금 더 말해주실래요?",
+    ariaStartPractice: "연습 시작하기",
+    ariaCompletePractice: "연습 마치기",
+    ariaInputLabel: "갈등 상황을 입력하세요",
+    ariaWaitingChi: "Dr. Chi 응답 대기 중…",
+    mentorName: "Dr. Chi",
   },
   center: {
     loading: "잠시만 기다려 주세요.",
@@ -433,6 +465,12 @@ const ko: Messages = {
     completedTitle: "오늘의 편지 완료",
     completedSub: "마음을 나눠줘서 고마워요. 더 말하고 싶으면 챗에서 이어서 나눠 보세요.",
     continueToChat: "챗으로 이어하기",
+    letterHistoryTitle: "보낸 편지 이력",
+    letterHistoryEmpty: "아직 보낸 편지가 없어요.",
+    letterHistoryError: "편지 이력을 불러올 수 없어요.",
+    letterHistoryLoading: "편지 이력을 불러오는 중…",
+    letterHistoryReplied: "답장 있음",
+    letterHistoryNoReply: "답장 없음",
   },
   bty: {
     title: "bty",
@@ -689,6 +727,8 @@ const ko: Messages = {
     step7Body: "저장되었습니다. 아래 버튼으로 다음 시나리오로 이동합니다.",
     choiceLabel: "선택",
     scenarioCompletedToast: "시나리오를 완료했어요",
+    scenarioNotFound: "시나리오를 찾을 수 없습니다.",
+    scenarioNotFoundHint: "다른 시나리오를 선택하거나 새로고침해 보세요.",
   },
   emotionalStats: {
     emptyMessage: "아직 기록이 없어요. Arena나 챗에서 대화를 진행해 보세요.",
@@ -738,6 +778,7 @@ const en: Messages = {
     send: "Send",
     thinking: "Dr. Chi is thinking…",
     emptyHint: "Enter a conflict and send.",
+    emptyStateHint: "Send your first message.",
     backToFoundry: "Back to Foundry",
     reply: "What if the roles were reversed?",
     doneTitle: "Today’s practice complete",
@@ -747,7 +788,13 @@ const en: Messages = {
     doneCtaFoundry: "Back to Foundry",
     doneCtaAssessment: "50-item assessment",
     apiError: "Connection issue. Please try again.",
+    errorTitle: "Error",
     replyFallback: "Could you say a bit more?",
+    ariaStartPractice: "Start practice",
+    ariaCompletePractice: "Complete practice",
+    ariaInputLabel: "Describe a conflict situation",
+    ariaWaitingChi: "Waiting for Dr. Chi…",
+    mentorName: "Dr. Chi",
   },
   center: {
     loading: "Please wait…",
@@ -781,6 +828,12 @@ const en: Messages = {
     completedTitle: "Today's letter complete",
     completedSub: "Thanks for sharing. You can continue in Chat if you'd like.",
     continueToChat: "Continue in Chat",
+    letterHistoryTitle: "Letter history",
+    letterHistoryEmpty: "No letters yet.",
+    letterHistoryError: "Failed to load letter history.",
+    letterHistoryLoading: "Loading letter history…",
+    letterHistoryReplied: "Replied",
+    letterHistoryNoReply: "No reply",
   },
   bty: {
     title: "bty",
@@ -1037,6 +1090,8 @@ const en: Messages = {
     step7Body: "Saved. Use the button below to go to the next scenario.",
     choiceLabel: "Choice",
     scenarioCompletedToast: "Scenario completed",
+    scenarioNotFound: "Scenario not found.",
+    scenarioNotFoundHint: "Try another scenario or refresh.",
   },
   emotionalStats: {
     emptyMessage: "No records yet. Try Arena or chat to start.",

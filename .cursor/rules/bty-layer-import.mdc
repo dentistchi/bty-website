@@ -1,0 +1,42 @@
+---
+description: BTY 계층·import 검사 규칙 (C2 Gatekeeper). domain/lib/app 의존 방향 준수.
+globs: bty-app/src/domain/**/*.ts, bty-app/src/lib/bty/**/*.ts, bty-app/src/app/**/*.ts, bty-app/src/components/**/*.tsx
+alwaysApply: true
+---
+
+# BTY Layer & Import Rules (C2 Gatekeeper)
+
+계층별 import 의존 방향과 역할을 지킨다.  
+*참조: `docs/architecture/DOMAIN_LAYER_TARGET_MAP.md`*
+
+## 검사 규칙 (4항)
+
+1. **`src/domain` 은 `src/lib` 또는 `src/app` 을 import 할 수 없다.**  
+   Domain은 순수 규칙·타입·value object·repository interface만; 외부 기술/프레임워크 의존 금지.
+
+2. **`src/lib/bty` 는 `src/app` 을 import 할 수 없다.**  
+   Service/조립 계층은 domain만 참조하고, app·components 쪽을 참조하지 않는다.
+
+3. **`src/app/api` 는 domain 규칙을 직접 구현할 수 없다.**  
+   API handler는 request → validation → **service 호출** → response만. 비즈니스 로직은 domain/lib에 두고 호출.
+
+4. **UI는 domain 규칙을 직접 구현할 수 없다.**  
+   `src/app`, `src/components` 는 전달받은 데이터를 렌더만 하고, XP/리더보드/시즌 등 규칙 계산·정렬·상태 전이를 하지 않는다.
+
+## 허용 의존 방향
+
+```text
+UI (app, components)  →  API (app/api)  →  Service (lib/bty)  →  Domain (domain)
+```
+
+## 위반 시
+
+- 새로 추가하는 import가 위 4항을 어기면 수정 제안.
+- 리팩터 시 기존 위반을 정리할 때 이 규칙을 적용.
+
+## 체크리스트
+
+- [ ] domain 파일에 `from '…/lib/…'` 또는 `from '…/app/…'` 없음
+- [ ] lib/bty 파일에 `from '…/app/…'` 없음
+- [ ] app/api handler 안에 비즈니스 규칙 구현 없음 (service/domain 호출만)
+- [ ] UI에 XP/리더보드/시즌 규칙 계산·정렬 없음

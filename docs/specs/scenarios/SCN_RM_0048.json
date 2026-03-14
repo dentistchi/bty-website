@@ -1,0 +1,103 @@
+{
+  "schema_version": "bty_scenario_v1",
+  "scenario_id": "SCN_RM_0048",
+  "title": "Remote Management: Motivating a Disengaged Virtual Team",
+  "summary": "Your remote team's energy is dropping—cameras off, short replies, missed deadlines. Re-engage without micromanaging: connection before correction.",
+  "context_type": "relationship",
+  "stage_mapping": { "primary_stage": 2, "stage_flow": [1, 2, 3, 4] },
+  "roles_supported": ["Doctor", "Staff", "Manager", "DSO", "Executive"],
+  "default_viewpoint": "Leader",
+  "supports_reset": false,
+  "tags": { "org": ["BTY"], "setting": ["remote_office"], "themes": ["remote_leadership", "motivation", "engagement", "trust"], "sensitivity": "low" },
+  "scene": {
+    "setting": "Your team has been remote for months. Cameras are off, replies are one-word, and two deadlines were missed last week. You suspect disengagement but aren't sure if it's burnout, isolation, or something else. A virtual team call is starting in five minutes.",
+    "characters": [
+      { "id": "lead", "role_type": "Manager", "label": "You" },
+      { "id": "team", "role_type": "Staff", "label": "Remote Team (3 members)" }
+    ],
+    "beats": [
+      {
+        "beat_id": "b1",
+        "narration": "The call starts. Two cameras are off. One person joins late. The energy is flat. The leadership challenge is re-engaging without surveillance or guilt.",
+        "dialogue": [
+          { "speaker": "lead", "line": "Before we dive in—how is everyone doing? Not the project, you personally." }
+        ]
+      }
+    ]
+  },
+  "choices": [
+    {
+      "choice_id": "A",
+      "label": "Require cameras on and set stricter daily check-ins.",
+      "engine_signals": { "choice_type": "direct_fix_or_takeover", "risk_flags": ["speed_bias", "control_bias"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_RM_0048_A",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "Before adding rules, schedule one 15-min 1:1 with each person to ask: 'What's working? What's not?'", "timebox_minutes": 15 }],
+        "scripts": { "leader_lines": ["Control feels productive but erodes trust.", "What would I want from my leader right now?"], "questions": ["What's one thing that would make your day easier?", "What's draining your energy?"], "closing_line": "One 1:1 per person this week; listen before legislating." },
+        "verification": { "method": "qr", "verifier_role": "LeaderPeer", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "B",
+      "label": "Start the call with a genuine check-in: 'How are you doing—personally?'",
+      "engine_signals": { "choice_type": "process_fix", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_RM_0048_B",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Open with a personal check-in; share your own state first to model vulnerability.", "timebox_minutes": 5 },
+          { "step": "Ask each person one thing: 'What's one thing that would help you this week?'", "timebox_minutes": 10 }
+        ],
+        "scripts": { "leader_lines": ["I'll go first—here's how I'm doing.", "Connection before correction."], "questions": ["What's one thing that would help you this week?", "What's draining your energy right now?"], "closing_line": "Model vulnerability; ask what helps; follow through on one thing." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "C",
+      "label": "Schedule individual 1:1s to understand each person's situation.",
+      "engine_signals": { "choice_type": "delegate_with_checkpoint", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_RM_0048_C",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 48,
+        "steps": [
+          { "step": "Schedule 15-min 1:1 with each team member within 48 hours.", "timebox_minutes": 5 },
+          { "step": "In each 1:1: 'What's working? What's not? What would help?'", "timebox_minutes": 15 },
+          { "step": "Compile themes and share back with the team (anonymized); pick one change to try for two weeks.", "timebox_minutes": 10 }
+        ],
+        "scripts": { "leader_lines": ["I want to understand before I fix anything.", "Your experience matters more than my assumptions."], "questions": ["What's working about remote?", "What's one thing you'd change?", "Do you feel connected to the team?"], "closing_line": "1:1s this week; compile themes; one change for two weeks." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "D",
+      "label": "Send an email reminding the team about expectations and deadlines.",
+      "engine_signals": { "choice_type": "withdraw", "risk_flags": ["avoidance"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_RM_0048_D",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "Before sending the email, call one person and ask how they're doing. Start with connection.", "timebox_minutes": 10 }],
+        "scripts": { "leader_lines": ["Emails about expectations don't fix disengagement.", "What if the problem isn't laziness but isolation?"], "questions": ["When did I last have a real conversation with a team member?", "What am I avoiding by sending an email instead of calling?"], "closing_line": "Call one person first; connection before correction." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    }
+  ],
+  "system_prompts": { "nudge": "Disengagement is often a signal, not a choice. Listen before you legislate.", "mirror_call": "Did you connect—or control?" },
+  "delayed_outcome": {
+    "delay_days": 14,
+    "reentry_conditions": { "if_choice_types_in_last_14d": ["withdraw", "direct_fix_or_takeover"] },
+    "outcomes": [
+      { "outcome_id": "O1", "if": { "pattern": "repeated_direct_fix" }, "message": "The team complied but engagement dropped further. One person is quietly job-searching.", "reflection_questions": ["What would have changed if you'd listened first?", "How do you build trust you can't see?"] },
+      { "outcome_id": "O2", "if": { "pattern": "delegation_micro_wins_present" }, "message": "The team felt heard. Energy improved. One person shared a personal struggle they'd been hiding. Trust grew.", "reflection_questions": ["What surprised you in the 1:1s?", "How do you sustain connection over distance?"] }
+    ]
+  },
+  "metrics_hooks": { "air": { "counts_activation": true }, "mwd": { "micro_win": true }, "tsp": { "weekly_pulse_prompt": "This week I connected with a remote team member beyond task updates. (1-5)" } }
+}

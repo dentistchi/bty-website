@@ -140,6 +140,7 @@ export default function AdminArenaMembershipPage() {
                           disabled={approvingId === row.id}
                           onClick={() => approve(row.id)}
                           className="rounded bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50 hover:bg-neutral-700"
+                          aria-label={approvingId === row.id ? "처리 중…" : "멤버십 승인"}
                         >
                           {approvingId === row.id ? "처리 중…" : "승인"}
                         </button>

@@ -85,6 +85,7 @@ export default function ForgotPasswordClient() {
           <button
             type="submit"
             disabled={loading}
+            aria-label={loading ? (locale === "ko" ? "전송 중" : "Sending") : (locale === "ko" ? "재설정 링크 받기" : "Send reset link")}
             className="w-full rounded-lg px-4 py-2 bg-black text-white disabled:opacity-60"
           >
             {loading ? (locale === "ko" ? "전송 중…" : "Sending…") : locale === "ko" ? "재설정 링크 받기" : "Send reset link"}

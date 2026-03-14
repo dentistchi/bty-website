@@ -96,6 +96,7 @@ export function Comeback() {
             "bg-dojo-purple text-dojo-white hover:bg-dojo-purple-dark",
             "transition-colors"
           )}
+          aria-label="확인"
         >
           확인
         </button>

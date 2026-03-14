@@ -20,6 +20,7 @@ export default function AssessmentClient({
   const router = useRouter();
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
   const total = questions.length;
   const isEn = locale === "en";
   const likertLabels = isEn ? LIKERT_EN : LIKERT_KO;
@@ -39,11 +40,28 @@ export default function AssessmentClient({
     if (currentIndex > 0) setCurrentIndex((i) => i - 1);
   }
 
-  function goNext() {
-    if (!canGoNext) return;
+  async function goNext() {
+    if (!canGoNext || submitting) return;
     if (isLast) {
       const finalAnswers = { ...answers, [currentQuestion.id]: currentAnswer };
       sessionStorage.setItem("assessment.answers.v1", JSON.stringify(finalAnswers));
+
+      setSubmitting(true);
+      try {
+        const res = await fetch("/api/assessment/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ answers: finalAnswers }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          sessionStorage.setItem("assessment.result.v1", JSON.stringify(data));
+        }
+      } catch {
+        // API 실패 시 sessionStorage fallback (기존 로직으로 결과 계산)
+      } finally {
+        setSubmitting(false);
+      }
       router.push("./result");
       return;
     }
@@ -77,6 +95,7 @@ export default function AssessmentClient({
         aria-valuenow={currentIndex + 1}
         aria-valuemin={1}
         aria-valuemax={total}
+        aria-label={isEn ? `Progress: ${currentIndex + 1} of ${total}` : `진행: ${currentIndex + 1} / ${total}`}
       >
         <div
           className="h-full bg-[var(--arena-accent)] transition-all duration-300"
@@ -92,16 +111,22 @@ export default function AssessmentClient({
         <p className="text-sm text-[var(--arena-text-soft)] mb-2">
           {isEn ? `Question ${currentIndex + 1}` : `문항 ${currentIndex + 1}`}
         </p>
-        <p className="text-lg sm:text-xl font-medium text-[var(--arena-text)] mb-6 leading-snug">
+        <p id="assessment-question-text" className="text-lg sm:text-xl font-medium text-[var(--arena-text)] mb-6 leading-snug">
           {currentQuestion.text}
         </p>
         <p className="text-sm text-[var(--arena-text-soft)] mb-4">{hintLabel}</p>
-        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+        <div
+          className="grid grid-cols-1 sm:grid-cols-5 gap-2"
+          role="group"
+          aria-label={isEn ? "Response options" : "선택지"}
+          aria-describedby="assessment-question-text"
+        >
           {[1, 2, 3, 4, 5].map((v) => (
             <button
               key={v}
               type="button"
               onClick={() => setAnswer(currentQuestion.id, v)}
+              aria-label={likertLabels[v - 1]}
               className={`rounded-xl px-3 py-3 sm:py-4 text-sm font-medium border-2 transition-colors ${
                 currentAnswer === v
                   ? "border-[var(--arena-accent)] bg-[var(--arena-accent)]/10 text-[var(--arena-text)]"
@@ -128,11 +153,11 @@ export default function AssessmentClient({
         <button
           type="button"
           onClick={goNext}
-          disabled={!canGoNext}
+          disabled={!canGoNext || submitting}
           className="rounded-xl px-5 py-2.5 font-medium bg-[var(--arena-accent)] text-white disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
           aria-label={isLast ? (isEn ? "See result" : "결과 보기") : isEn ? "Next question" : "다음 문항"}
         >
-          {isLast ? seeResultLabel : nextLabel}
+          {submitting ? (isEn ? "Submitting…" : "제출 중…") : isLast ? seeResultLabel : nextLabel}
         </button>
       </div>
 

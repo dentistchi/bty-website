@@ -27,5 +27,10 @@ describe("domain/rules/season", () => {
       expect(carryoverWeeklyXp(99)).toBe(9);
       expect(carryoverWeeklyXp(1000)).toBe(100);
     });
+
+    it("floors fractional weeklyXpTotal", () => {
+      expect(carryoverWeeklyXp(15.9)).toBe(1);
+      expect(carryoverWeeklyXp(100.4)).toBe(10);
+    });
   });
 });

@@ -2,7 +2,28 @@
 
 **목적**: 대기 작업이 없을 때 `scripts/next-project-fill-board.sh`가 여기서 다음 작업을 읽어 보드에 추가한다.  
 **기준**: `docs/NEXT_PROJECT_RECOMMENDED.md` §1·§2.  
-**갱신일**: 2026-03-06 — [DOCS] 다음 배치 선정. NEXT_PROJECT_RECOMMENDED §1(엘리트 3차)·§2 대안 기준으로 **다음 배치** 전환. 보드에 엘리트 3차·로딩/스켈레톤 등 대기 추가.
+**갱신일**: 2026-03-11 — splint 10. SPRINT 42 전량 완료·SPRINT 43 생성. 다음 배치 목록 = NEXT_PHASE 대기 5건과 동일. MODE FOUNDRY.
+
+---
+
+## MASTER PLAN 연결
+
+C1이 작업을 자동으로 채우는 **흐름**은 다음과 같다.
+
+```text
+MASTER_PLAN  →  NEXT_BACKLOG_AUTO4  →  CURSOR_TASK_BOARD
+```
+
+1. **MASTER_PLAN** — Feature → Phase → Task 정의.  
+   - Arena: `docs/plans/ARENA_MASTER_PLAN.md`  
+   - (추후 Center/Foundry MASTER_PLAN 추가 시 동일 방식)
+2. **NEXT_BACKLOG_AUTO4** — 이 문서. MASTER_PLAN에서 **미완료 Task**를 가져와 "다음 배치 목록"에 반영한다.
+3. **CURSOR_TASK_BOARD** — 백로그(이 문서)의 목록을 **대기**로 채운다. (`next-project-fill-board.sh` 또는 C1이 동일 규칙 적용)
+
+**C1 동작**
+- MODE가 **ARENA**일 때: `ARENA_MASTER_PLAN`의 FEATURE → PHASE 순서대로 미완료 TASK를 확인하고, 이 문서(다음 배치 목록)에 추가한 뒤 보드에 반영한다.
+- 완료된 TASK는 건너뛴다. PHASE 순서: Domain → API → UI.
+- TASK 태그([DOMAIN], [API], [UI] 등)에 따라 owner(C2/C3/C4)를 결정한다.
 
 ---
 
@@ -17,15 +38,17 @@
 
 ---
 
-## 다음 배치 목록 (위에서부터 우선) — 엘리트 3차·대안
+## 다음 배치 목록 (위에서부터 우선) — FOUNDRY MODE (SPRINT 43)
 
 ```
-Fix/Polish|[DOCS] 엘리트 3차 스펙·검증 체크리스트 1페이지 정리|추천 §1. C1.
-Fix/Polish|[VERIFY] 엘리트 3차 체크리스트 1회 실행 후 서류 반영|추천 §1. C5.
-Fix/Polish|[UI] 로딩/스켈레톤 1곳 보강 (3차)|대안 D. C4.
-Fix/Polish|[DOCS] Dojo·Dear Me 콘텐츠 다음 단계 설계 1건 (50문항 DB화 등)|대안 A. C1.
-Fix/Polish|[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영 (배포 전 점검)|배포 전 1회. C5.
+Fix/Polish|[VERIFY] Release Gate A~F — Foundry 43차|C5.
+Fix/Polish|[DOCS] 문서 점검 115·116·117차 — NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드·BTY_RELEASE_GATE_CHECK 2~3건 점검·갱신|C1.
+Feature|[UI] Center/Foundry 추가 접근성 1곳 — dear-me·assessment·center·dojo·integrity·mentor·elite aria-label·aria-describedby|C4.
+Fix/Polish|[DOCS] 다음 배치 선정 — NEXT_BACKLOG_AUTO4·NEXT_PHASE_AUTO4 수동 갱신|C1. 필요 시.
+Feature|[DOCS] Arena·Center·Foundry 대기 목록 동기화 — NEXT_PHASE·NEXT_BACKLOG·보드 대기 행 일치|C1.
 ```
+
+*(참고: SPRINT 43 진행. 대기 5건 = Release Gate 43차·문서 115·116·117차·접근성·다음 배치·대기 동기화. MODE FOUNDRY.)*
 
 ---
 
@@ -35,4 +58,4 @@ Fix/Polish|[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영 (
 - **기본 5건 + 이 배치까지 모두 완료**되면: 이 파일 § "다음 배치 목록"을 로드맵·NEXT_PROJECT_RECOMMENDED §2 대안 기준으로 수정해 새 후보를 추가할 수 있다.
 - 또는 **[DOCS] 다음 배치 선정** 작업으로 이 파일을 수동 갱신한 뒤 보드에 반영한다.
 
-*참고: `docs/NEXT_PROJECT_RECOMMENDED.md`, `docs/NEXT_PHASE_AUTO4.md`, `scripts/next-project-fill-board.sh`*
+*참고: `docs/NEXT_PROJECT_RECOMMENDED.md`, `docs/NEXT_PHASE_AUTO4.md`, `docs/plans/ARENA_MASTER_PLAN.md`, `scripts/next-project-fill-board.sh`*

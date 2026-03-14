@@ -76,4 +76,19 @@ describe("domain/rules/leaderboardTieBreak", () => {
     expect(compareWeeklyXpTieBreak(a, b)).toBeLessThan(0);
     expect(compareWeeklyXpTieBreak(b, a)).toBeGreaterThan(0);
   });
+
+  it("when weeklyXp is 0 for both, orders by updatedAt asc then userId asc", () => {
+    const a: WeeklyXpRowForTieBreak = {
+      weeklyXp: 0,
+      updatedAt: "2025-03-02T00:00:00Z",
+      userId: "u2",
+    };
+    const b: WeeklyXpRowForTieBreak = {
+      weeklyXp: 0,
+      updatedAt: "2025-03-01T00:00:00Z",
+      userId: "u1",
+    };
+    expect(compareWeeklyXpTieBreak(a, b)).toBeGreaterThan(0);
+    expect(compareWeeklyXpTieBreak(b, a)).toBeLessThan(0);
+  });
 });

@@ -1,0 +1,31 @@
+---
+description: BTY API Thin Handler Rule. src/app/api는 얇은 진입점만 유지.
+globs: "**/app/api/**/*.ts"
+alwaysApply: false
+---
+
+# API Thin Handler Rule
+
+`src/app/api` 는 **얇은 진입점**으로 유지한다.
+
+## 역할
+
+1. request parsing
+2. validation
+3. service 호출
+4. response 반환
+
+API handler **내부에서 비즈니스 규칙을 직접 구현하지 않는다.**
+
+## 금지
+
+- XP 계산
+- leaderboard 규칙
+- 상태 전이 정책
+- 복잡한 데이터 조합
+
+## 허용
+
+- API → `src/lib/bty` services 호출
+
+*참조: `docs/architecture/DOMAIN_LAYER_TARGET_MAP.md`*

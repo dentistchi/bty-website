@@ -3,7 +3,35 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getActiveLeague } from "./activeLeague";
 import { applySeasonalXpToCore } from "./applyCoreXp";
 
-const DAILY_CAP = 1200;
+/** Arena daily XP cap (run complete + activity). Single source for run/complete route and recordActivityXp. */
+export const ARENA_DAILY_XP_CAP = 1200;
+
+/**
+ * Returns the sum of arena_events xp for the given user since start of today (UTC).
+ * Used by run/complete and recordActivityXp for daily cap.
+ */
+export async function getArenaTodayTotal(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<number> {
+  const now = new Date();
+  const startOfDayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const startOfDayISO = startOfDayUTC.toISOString();
+  const { data: evs } = await supabase
+    .from("arena_events")
+    .select("xp")
+    .eq("user_id", userId)
+    .gte("created_at", startOfDayISO);
+  return (evs ?? []).reduce((s, r) => s + (typeof r.xp === "number" ? r.xp : 0), 0);
+}
+
+/**
+ * Cap a run/activity delta by the arena daily cap. Pure.
+ * Second arg: total XP already counted toward the cap (arena-only for run/complete; arena+activity for recordActivityXp).
+ */
+export function capArenaDailyDelta(delta: number, todayTotalTowardCap: number): number {
+  return Math.max(0, Math.min(delta, ARENA_DAILY_XP_CAP - todayTotalTowardCap));
+}
 
 export type ActivityType = "MENTOR_MESSAGE" | "CHAT_MESSAGE";
 
@@ -28,13 +56,7 @@ export async function recordActivityXp(
   const startOfDayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const startOfDayISO = startOfDayUTC.toISOString();
 
-  const { data: arenaEvs } = await supabase
-    .from("arena_events")
-    .select("xp")
-    .eq("user_id", userId)
-    .gte("created_at", startOfDayISO);
-  const arenaToday = (arenaEvs ?? []).reduce((s, r) => s + (typeof r.xp === "number" ? r.xp : 0), 0);
-
+  const arenaToday = await getArenaTodayTotal(supabase, userId);
   const { data: activityEvs } = await supabase
     .from("activity_xp_events")
     .select("xp")
@@ -43,7 +65,7 @@ export async function recordActivityXp(
   const activityToday = (activityEvs ?? []).reduce((s, r) => s + (typeof r.xp === "number" ? r.xp : 0), 0);
 
   const todayTotal = arenaToday + activityToday;
-  const deltaCapped = Math.max(0, Math.min(xp, DAILY_CAP - todayTotal));
+  const deltaCapped = capArenaDailyDelta(xp, todayTotal);
   if (deltaCapped <= 0) return { ok: true, xp: 0 };
 
   const { error: insErr } = await supabase.from("activity_xp_events").insert({

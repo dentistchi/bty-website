@@ -33,6 +33,8 @@ export function EmptyState({ icon, message, cta, hint, className, style }: Empty
         textAlign: "center",
         ...style,
       }}
+      role="region"
+      aria-label={message}
     >
       {icon && (
         <span

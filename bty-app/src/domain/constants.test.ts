@@ -40,6 +40,12 @@ describe("domain/constants", () => {
       expect(row).toHaveLength(4);
       expect(row).toEqual(["Spark", "Ember", "Flame", "Inferno"]);
     });
+    it("code 1 has 4 sub names", () => {
+      const row = SUB_NAMES[1];
+      expect(row).toBeDefined();
+      expect(row).toHaveLength(4);
+      expect(row![0]).toBe("Echo");
+    });
   });
 
   describe("XP & Tier constants", () => {

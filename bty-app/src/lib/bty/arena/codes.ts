@@ -1,34 +1,35 @@
 /**
- * BTY Arena Code and Sub Name constants (BTY_ARENA_SYSTEM_SPEC).
- * tier = floor(coreXP / 10), codeIndex = floor(tier / 100), subTierGroup = floor((tier % 100) / 25).
+ * BTY Arena Code and Sub Name — service layer.
+ * Domain rules (tier, code, sub name, XP conversion) are delegated to @/domain/rules.
+ * This module re-exports them for backward compatibility and adds display helpers.
  */
 
-export const CODE_NAMES = [
-  "FORGE",
-  "PULSE",
-  "FRAME",
-  "ASCEND",
-  "NOVA",
-  "ARCHITECT",
-  "CODELESS ZONE",
-] as const;
+import {
+  CODE_NAMES,
+  SUB_NAMES,
+  CORE_XP_PER_TIER,
+  TIERS_PER_CODE,
+} from "@/domain/constants";
+import type { CodeIndex } from "@/domain/constants";
+import {
+  tierFromCoreXp,
+  codeIndexFromTier,
+  subTierGroupFromTier,
+  resolveSubName,
+  defaultSubName,
+  seasonalToCoreConversion,
+} from "@/domain/rules";
 
-export type CodeIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6;
-
-/** Default sub names per code, by subTierGroup 0-3. Code 6 (CODELESS ZONE) has no defaults. */
-export const SUB_NAMES: Record<CodeIndex, readonly [string, string, string, string] | null> = {
-  0: ["Spark", "Ember", "Flame", "Inferno"],
-  1: ["Echo", "Rhythm", "Resonance", "Surge"],
-  2: ["Outline", "Structure", "Framework", "Foundation"],
-  3: ["Lift", "Rise", "Elevation", "Summit"],
-  4: ["Glimmer", "Radiance", "Brilliance", "Supernova"],
-  5: ["Draft", "Design", "Blueprint", "Grand Architect"],
-  6: null, // CODELESS ZONE: user-defined only
+export {
+  CODE_NAMES,
+  SUB_NAMES,
+  tierFromCoreXp,
+  codeIndexFromTier,
+  subTierGroupFromTier,
+  resolveSubName,
+  seasonalToCoreConversion,
 };
-
-export function tierFromCoreXp(coreXp: number): number {
-  return Math.max(0, Math.floor(coreXp / 10));
-}
+export type { CodeIndex };
 
 /** One-line lore per code (for progress UI). */
 export const CODE_LORE: Record<CodeIndex, string> = {
@@ -42,7 +43,7 @@ export const CODE_LORE: Record<CodeIndex, string> = {
 };
 
 /**
- * Progress to next tier (next tier = +10 Core XP). Tier is not shown to user.
+ * Progress to next tier (next tier = +CORE_XP_PER_TIER Core XP). Tier is not shown to user.
  * Returns xpToNext (0–10), progress 0–1 within current tier, and optional next code name at 100-tier boundary.
  */
 export function progressToNextTier(coreXpTotal: number): {
@@ -51,39 +52,20 @@ export function progressToNextTier(coreXpTotal: number): {
   nextCodeName?: string;
 } {
   const tier = tierFromCoreXp(coreXpTotal);
-  const nextTierAt = (tier + 1) * 10;
+  const nextTierAt = (tier + 1) * CORE_XP_PER_TIER;
   const xpToNext = Math.max(0, nextTierAt - coreXpTotal);
-  const segmentStart = tier * 10;
+  const segmentStart = tier * CORE_XP_PER_TIER;
   const segmentEnd = nextTierAt;
-  const progressPct = segmentEnd > segmentStart ? (coreXpTotal - segmentStart) / (segmentEnd - segmentStart) : 1;
-  const isNextCode = (tier + 1) % 100 === 0;
-  const nextCodeName = isNextCode && tier + 1 <= 700 ? CODE_NAMES[Math.floor((tier + 1) / 100) as CodeIndex] : undefined;
+  const progressPct =
+    segmentEnd > segmentStart
+      ? (coreXpTotal - segmentStart) / (segmentEnd - segmentStart)
+      : 1;
+  const isNextCode = (tier + 1) % TIERS_PER_CODE === 0;
+  const nextCodeName =
+    isNextCode && tier + 1 <= 700
+      ? CODE_NAMES[Math.floor((tier + 1) / TIERS_PER_CODE) as CodeIndex]
+      : undefined;
   return { xpToNext, progressPct, nextCodeName };
-}
-
-export function codeIndexFromTier(tier: number): CodeIndex {
-  const idx = Math.floor(tier / 100);
-  return Math.min(6, Math.max(0, idx)) as CodeIndex;
-}
-
-export function subTierGroupFromTier(tier: number): 0 | 1 | 2 | 3 {
-  const g = Math.floor((tier % 100) / 25);
-  return Math.min(3, Math.max(0, g)) as 0 | 1 | 2 | 3;
-}
-
-/**
- * Resolve display sub name: custom (profile.sub_name) or default from code/subTierGroup.
- * CODELESS ZONE (codeIndex 6): always use custom or fallback to "—".
- */
-export function resolveSubName(
-  codeIndex: CodeIndex,
-  subTierGroup: 0 | 1 | 2 | 3,
-  customSubName: string | null
-): string {
-  if (customSubName != null && customSubName.trim() !== "") return customSubName.trim();
-  const defaults = SUB_NAMES[codeIndex];
-  if (defaults) return defaults[subTierGroup];
-  return "—";
 }
 
 /**
@@ -104,22 +86,18 @@ export function computeCoreXpDisplay(coreXpTotal: number): CoreXpDisplay {
   const tier = tierFromCoreXp(coreXpTotal);
   const progress = progressToNextTier(coreXpTotal);
   const codeIndex = codeIndexFromTier(tier);
-  const stage = Math.min(7, Math.floor(tier / 100) + 1);
+  const stage = codeIndex + 1;
   const codeLore = CODE_LORE[codeIndex];
   let milestoneToCelebrate: 25 | 50 | 75 | null = null;
   let previousSubName: string | null = null;
   if (tier >= 75) {
     milestoneToCelebrate = 75;
-    const prevTier = 74;
-    const names = SUB_NAMES[codeIndexFromTier(prevTier)];
-    const grp = subTierGroupFromTier(prevTier);
-    previousSubName = names ? names[grp] : "—";
+    previousSubName =
+      defaultSubName(codeIndexFromTier(74), subTierGroupFromTier(74)) ?? "—";
   } else if (tier >= 50) {
     milestoneToCelebrate = 50;
-    const prevTier = 49;
-    const names = SUB_NAMES[codeIndexFromTier(prevTier)];
-    const grp = subTierGroupFromTier(prevTier);
-    previousSubName = names ? names[grp] : "—";
+    previousSubName =
+      defaultSubName(codeIndexFromTier(49), subTierGroupFromTier(49)) ?? "—";
   } else if (tier >= 25) {
     milestoneToCelebrate = 25;
   }
@@ -132,19 +110,4 @@ export function computeCoreXpDisplay(coreXpTotal: number): CoreXpDisplay {
     milestoneToCelebrate,
     previousSubName,
   };
-}
-
-/**
- * Seasonal XP → Core XP conversion (hidden from user).
- * Core < 200: 45 seasonal = 1 core (Beginner boost). Else 60:1.
- */
-export function seasonalToCoreConversion(
-  seasonalEarned: number,
-  currentCoreXp: number
-): { rate: number; coreGain: number; fractionalBuffer: number } {
-  const rate = currentCoreXp < 200 ? 45 : 60;
-  const exact = seasonalEarned / rate;
-  const coreGain = Math.floor(exact);
-  const fractionalBuffer = exact - coreGain;
-  return { rate, coreGain, fractionalBuffer };
 }

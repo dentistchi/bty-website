@@ -1,0 +1,1 @@
+../../../docs/agent-runtime/AUTO4_PROMPTS.md

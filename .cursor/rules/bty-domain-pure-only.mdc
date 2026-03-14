@@ -1,29 +1,47 @@
 ---
-description: 
+description: BTY Domain Purity Rule. src/domain은 순수 비즈니스 규칙만 포함.
 globs: "**/domain/**/*.ts"
 alwaysApply: false
 ---
 
-# BTY Domain Rules — Pure Only
+# Domain Purity Rule
 
-This rule applies **only** to domain layer files (`src/domain/`, `bty-app/src/domain/`).
+`src/domain` 은 **순수 비즈니스 규칙만** 포함한다.
 
-## Must
+## 허용
 
-- **Keep all domain logic pure + deterministic.** No DB, no network, no framework APIs. Same inputs → same outputs; no side effects.
-- **Expose rules as pure functions and types/constants.** Domain exports functions for rules and types/constants for shared concepts.
-- **Encode invariants in types where possible.** Use branded types, unions, or readonly to prevent invalid states.
+- 계산
+- 정책
+- 상태 전이
+- 순수 타입
+- value object
+- domain error
 
-## Forbidden
+## 금지
 
-- **No Supabase client, no SQL, no fetch.** No database or network access in domain.
-- **No Next.js runtime imports.** No `next/*` or other framework APIs in domain.
-- **No UI concerns.** No display strings, no components, no i18n in domain.
+- database query
+- supabase client
+- fetch
+- request / response object
+- cookies
+- next.js 의존 코드
+- UI formatting
 
-## Required
+---
 
-- **If rule changes, update `docs/spec` in the same PR** (or list it as a required next step).
-- **Provide edge cases as test vectors** (in code comments or a test file), even if tests live elsewhere.
+## import 규칙
+
+### 허용
+
+- `src/domain` → `src/domain`
+
+### 금지
+
+- `src/domain` → `src/lib`
+- `src/domain` → `src/app`
+- `src/domain` → external service
+
+---
 
 ## Examples
 
@@ -53,7 +71,7 @@ export const MAX_LEVEL = 99;
 ```
 
 ```typescript
-// ✅ GOOD — invariants in types
+// ✅ GOOD — invariants in types (value object)
 export type CoreXp = number & { readonly __brand: 'CoreXp' };
 export function toCoreXp(n: number): CoreXp {
   if (n < 0 || !Number.isInteger(n)) throw new Error('Invalid CoreXp');
@@ -63,7 +81,7 @@ export function toCoreXp(n: number): CoreXp {
 
 ## Checklist
 
-- [ ] No Supabase, SQL, fetch, or Next.js imports
-- [ ] No display strings or UI concerns
+- [ ] No Supabase, SQL, fetch, request/response, cookies, or Next.js imports
+- [ ] No UI formatting or display strings
+- [ ] Imports only from `src/domain` (no `src/lib`, `src/app`, or external service)
 - [ ] Rule changes: docs/spec updated or next step listed
-- [ ] Edge cases documented as test vectors

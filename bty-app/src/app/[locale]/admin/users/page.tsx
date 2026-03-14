@@ -153,6 +153,7 @@ export default function UsersPage() {
           type="button"
           onClick={() => setShowCreateForm(!showCreateForm)}
           className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+          aria-label={showCreateForm ? "취소" : "새 사용자 생성"}
         >
           {showCreateForm ? "취소" : "+ 새 사용자 생성"}
         </button>
@@ -192,6 +193,7 @@ export default function UsersPage() {
               type="submit"
               disabled={creating}
               className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+              aria-label={creating ? "생성 중..." : "새 사용자 생성"}
             >
               {creating ? "생성 중..." : "생성"}
             </button>
@@ -273,6 +275,7 @@ export default function UsersPage() {
                           type="button"
                           onClick={() => setEditingUserId(user.id)}
                           className="text-xs text-neutral-600 hover:text-neutral-900 underline"
+                          aria-label="비밀번호 변경"
                         >
                           비밀번호 변경
                         </button>

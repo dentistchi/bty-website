@@ -19,4 +19,7 @@ describe("Center paths", () => {
     expect(getCenterCtaHref("ko")).toBe("/ko/bty");
     expect(getCenterCtaHref("en")).toBe("/en/bty");
   });
+  it("getCenterCtaHref with empty locale returns //bty", () => {
+    expect(getCenterCtaHref("")).toBe("//bty");
+  });
 });

@@ -13,12 +13,14 @@ export default function ForbiddenPage() {
         <Link
           href="/"
           className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+          aria-label="홈으로"
         >
           홈으로
         </Link>
         <Link
           href="/admin/login"
           className="rounded border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+          aria-label="관리자 로그인"
         >
           관리자 로그인
         </Link>

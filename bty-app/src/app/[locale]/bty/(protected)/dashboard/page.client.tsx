@@ -345,7 +345,12 @@ export default function DashboardClient() {
   const avatarAccessoryUrls =
     core?.currentOutfit?.accessoryIds?.map((id) => getAccessoryImageUrl(id)) ?? [];
 
-  const content = (<div style={{ maxWidth: 980, margin: "0 auto", padding: "24px 16px" }}>
+  const content = (
+    <div
+      style={{ maxWidth: 980, margin: "0 auto", padding: "24px 16px" }}
+      role="region"
+      aria-labelledby="dashboard-heading"
+    >
       {/* DESIGN_FIRST_IMPRESSION_BRIEF §4 A: 첫 화면 = 히어로 한 문장 — 페이지 최상단에 배치 */}
       <div className="bty-hero" style={{ paddingTop: 32, paddingBottom: 40, marginBottom: 32 }}>
         <p className="bty-hero-title" style={{ margin: 0, fontSize: "clamp(1.75rem, 4vw, 2rem)", fontWeight: 700, letterSpacing: "0.02em", lineHeight: 1.35, color: "var(--arena-text)" }}>
@@ -373,7 +378,7 @@ export default function DashboardClient() {
           )}
           <div>
             <div style={{ fontSize: 14, opacity: 0.7 }}>bty</div>
-            <h1 style={{ margin: 0, fontSize: 28 }}>Dashboard</h1>
+            <h1 id="dashboard-heading" style={{ margin: 0, fontSize: 28 }}>Dashboard</h1>
             <div style={{ marginTop: 6, fontSize: 14, opacity: 0.7 }}>Your arena progress at a glance.</div>
           </div>
         </div>
@@ -409,6 +414,7 @@ export default function DashboardClient() {
                 fontWeight: 700,
                 fontSize: 14,
               }}
+              aria-label={locale === "ko" ? "아레나로 가기" : "Go to Arena"}
             >
               Go to Arena
             </Link>
@@ -424,6 +430,7 @@ export default function DashboardClient() {
                 fontWeight: 600,
                 fontSize: 14,
               }}
+              aria-label={locale === "ko" ? "주간 랭킹 보기" : "View weekly ranking"}
             >
               View Weekly Ranking
             </Link>
@@ -439,6 +446,7 @@ export default function DashboardClient() {
                 fontWeight: 600,
                 fontSize: 14,
               }}
+              aria-label={locale === "ko" ? "프로필 보기" : "View profile"}
             >
               {locale === "ko" ? "프로필" : "Profile"}
             </Link>
@@ -454,6 +462,7 @@ export default function DashboardClient() {
                 fontWeight: 600,
                 fontSize: 14,
               }}
+              aria-label={locale === "ko" ? "엘리트 페이지로" : "Go to Elite page"}
             >
               {locale === "ko" ? "엘리트" : "Elite"}
             </Link>
@@ -469,6 +478,7 @@ export default function DashboardClient() {
                 fontWeight: 600,
                 fontSize: 14,
               }}
+              aria-label={locale === "ko" ? "역지사지 연습으로" : "Go to Integrity mirror"}
             >
               {locale === "ko" ? "역지사지 연습" : "Integrity mirror"}
             </Link>
@@ -484,6 +494,7 @@ export default function DashboardClient() {
                 fontWeight: 600,
                 fontSize: 14,
               }}
+              aria-label={locale === "ko" ? "자존감 50문항 진단으로" : "Go to 50-item self-esteem assessment"}
             >
               {locale === "ko" ? "Dear Me 자존감 (50문항)" : "Dear Me self-esteem (50)"}
             </Link>
@@ -509,6 +520,7 @@ export default function DashboardClient() {
                   fontWeight: 600,
                   fontSize: 14,
                 }}
+                aria-label={locale === "ko" ? "역지사지 연습으로" : "Go to Integrity mirror"}
               >
                 {locale === "ko" ? "역지사지 연습 →" : "Integrity mirror →"}
               </Link>
@@ -597,6 +609,7 @@ export default function DashboardClient() {
                     type="button"
                     onClick={submitMembershipRequest}
                     disabled={membershipSubmitting}
+                    aria-label={membershipSubmitting ? tArenaMembership.submitting : tArenaMembership.submit}
                     style={{
                       padding: "10px 16px",
                       borderRadius: 8,
@@ -880,6 +893,7 @@ export default function DashboardClient() {
                   type="button"
                   onClick={saveSubName}
                   disabled={subNameSaving || subNameDraft.trim().length === 0}
+                  aria-label={subNameSaving ? "Saving…" : "Save sub name"}
                   style={{
                     padding: "8px 12px",
                     borderRadius: 8,
@@ -1004,6 +1018,7 @@ export default function DashboardClient() {
                               opacity: avatarCharacterSaving ? 0.7 : 1,
                             }}
                             title={ch.label}
+                            aria-label={locale === "ko" ? (selected ? `${ch.label}, 선택됨` : ch.label) : selected ? `${ch.label}, selected` : ch.label}
                           >
                             <div
                               style={{
@@ -1053,6 +1068,7 @@ export default function DashboardClient() {
                       type="button"
                       disabled={avatarOutfitThemeSaving}
                       onClick={() => saveAvatarOutfitTheme("professional")}
+                      aria-label={tAvatarOutfit.professional}
                       style={{
                         padding: "8px 14px",
                         borderRadius: 8,
@@ -1068,6 +1084,7 @@ export default function DashboardClient() {
                       type="button"
                       disabled={avatarOutfitThemeSaving}
                       onClick={() => saveAvatarOutfitTheme("fantasy")}
+                      aria-label={tAvatarOutfit.fantasy}
                       style={{
                         padding: "8px 14px",
                         borderRadius: 8,

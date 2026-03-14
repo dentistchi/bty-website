@@ -299,6 +299,7 @@ export function JourneyBoard() {
                 type="button"
                 onClick={handleStartSeason2}
                 className="rounded-xl px-6 py-3 font-medium bg-foundry-purple text-white hover:bg-foundry-purple-dark transition-colors"
+                aria-label={locale === "ko" ? "시즌 2 시작하기" : "Start season 2"}
               >
                 시즌 2 시작하기
               </button>
@@ -330,6 +331,27 @@ export function JourneyBoard() {
                     setOpenDay(day);
                   }}
                   disabled={isFuture}
+                  aria-label={
+                    locale === "ko"
+                      ? isFuture
+                        ? `Day ${day}, 잠금`
+                        : isTodayWaiting24h
+                          ? `Day ${day}, 대기 중`
+                          : isPast && isCompleted
+                            ? `Day ${day}, 완료`
+                            : isToday
+                              ? `Day ${day}, 오늘`
+                              : `Day ${day}`
+                      : isFuture
+                        ? `Day ${day}, locked`
+                        : isTodayWaiting24h
+                          ? `Day ${day}, waiting`
+                          : isPast && isCompleted
+                            ? `Day ${day}, completed`
+                            : isToday
+                              ? `Day ${day}, today`
+                              : `Day ${day}`
+                  }
                   className={cn(
                     "aspect-square rounded-xl border-2 flex flex-col items-center justify-center text-sm font-medium transition-all duration-300",
                     isLocked && "cursor-not-allowed opacity-75",
@@ -402,15 +424,15 @@ export function JourneyBoard() {
           </div>
 
           <footer className="mt-12 pt-6 border-t border-foundry-purple-muted text-center text-sm text-foundry-ink-soft space-x-4">
-            <Link href="/bty/mentor" className="text-foundry-purple hover:underline">
+            <Link href="/bty/mentor" className="text-foundry-purple hover:underline" aria-label={locale === "ko" ? "Dr. Chi 멘토로 가기" : "Go to Dr. Chi Mentor"}>
               Dr. Chi Mentor
             </Link>
             <span>·</span>
-            <Link href="/bty/integrity" className="text-foundry-purple hover:underline">
+            <Link href="/bty/integrity" className="text-foundry-purple hover:underline" aria-label={locale === "ko" ? "역지사지 시뮬레이터로 가기" : "Go to Integrity simulator"}>
               역지사지 시뮬레이터
             </Link>
             <span>·</span>
-            <Link href={`/${locale}/center`} className="text-foundry-purple hover:underline">
+            <Link href={`/${locale}/center`} className="text-foundry-purple hover:underline" aria-label={locale === "ko" ? "Center로 가기" : "Go to Center"}>
               Center로 가기
             </Link>
           </footer>

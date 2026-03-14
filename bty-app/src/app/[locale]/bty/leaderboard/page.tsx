@@ -327,6 +327,22 @@ export default function LeaderboardPage() {
             aria-busy="true"
             aria-label={locale === "ko" ? "리더보드 불러오는 중" : "Loading leaderboard"}
           >
+            <p
+              style={{
+                margin: 0,
+                padding: "12px 0 8px",
+                fontSize: 13,
+                color: "var(--arena-text-soft)",
+                opacity: 0.9,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+              aria-live="polite"
+            >
+              <span aria-hidden style={{ fontSize: 18 }}>🏆</span>
+              {t.loading}
+            </p>
             <LeaderboardListSkeleton rows={8} variant="inner" />
           </div>
         )}

@@ -387,6 +387,7 @@ export function Chatbot() {
                               ? "border-foundry-purple-muted/60 text-foundry-ink hover:bg-foundry-purple-muted/20"
                               : "border-dear-sage/30 text-dear-charcoal hover:bg-dear-sage/10"
                           )}
+                          aria-label={phrase}
                         >
                           {phrase}
                         </button>
@@ -417,6 +418,7 @@ export function Chatbot() {
                     href={`/${locale}/center`}
                     className="mt-1.5 inline-block text-sm font-medium underline hover:no-underline"
                     style={isBtyPage ? { color: "var(--foundry-purple)" } : { color: "var(--dear-sage)" }}
+                    aria-label={locale === "ko" ? "Center로 이동" : "Go to Center"}
                   >
                     {locale === "ko" ? "Center로 가기 →" : "Go to Center →"}
                   </Link>
@@ -426,6 +428,7 @@ export function Chatbot() {
                     href={`/${locale}/bty`}
                     className="mt-1.5 inline-block text-sm font-medium underline hover:no-underline"
                     style={isBtyPage ? { color: "var(--foundry-purple)" } : { color: "var(--dear-sage)" }}
+                    aria-label={locale === "ko" ? "훈련장(Foundry)으로 이동" : "Go to Foundry"}
                   >
                     {locale === "ko" ? "Foundry로 가기 →" : "Go to Foundry →"}
                   </Link>
@@ -435,6 +438,7 @@ export function Chatbot() {
                     href={m.mentorPath}
                     className="mt-1.5 inline-block text-sm font-medium underline hover:no-underline"
                     style={isBtyPage ? { color: "var(--foundry-purple)" } : { color: "var(--dear-sage)" }}
+                    aria-label={locale === "ko" ? "Dr. Chi 멘토 페이지로 이동" : "Go to Dr. Chi Mentor"}
                   >
                     {locale === "ko" ? "Dr. Chi 멘토와 깊이 대화하기 →" : "Talk with Dr. Chi Mentor →"}
                   </Link>
@@ -471,6 +475,7 @@ export function Chatbot() {
                     type="button"
                     onClick={retry}
                     className={cn("font-medium hover:underline", themeColors.retry)}
+                    aria-label={t.retry}
                   >
                     {t.retry}
                   </button>
@@ -505,6 +510,7 @@ export function Chatbot() {
                 themeColors.submit,
                 "disabled:opacity-50 disabled:cursor-not-allowed"
               )}
+              aria-label={t.send}
             >
               {t.send}
             </button>
@@ -535,6 +541,7 @@ export function Chatbot() {
                 onClick={deleteChatHistory}
                 disabled={deletingChat}
                 className={cn("hover:underline disabled:opacity-50", themeColors.retry)}
+                aria-label={t.deleteHistory}
               >
                 {t.deleteHistory}
               </button>

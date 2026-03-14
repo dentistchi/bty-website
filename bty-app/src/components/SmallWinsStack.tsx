@@ -88,6 +88,7 @@ export function SmallWinsStack({
                 ? "bg-dear-bg border border-dear-charcoal/10 text-dear-charcoal hover:bg-dear-sage/15 hover:border-dear-sage/30"
                 : "bg-white/80 border border-sanctuary-sage/40 text-sanctuary-text hover:bg-sanctuary-sage/30 hover:border-sanctuary-sage/60"
             )}
+            aria-label={label}
           >
             {label}
           </button>
@@ -115,6 +116,7 @@ export function SmallWinsStack({
               ? "bg-dear-sage text-white hover:bg-dear-sage-soft"
               : "bg-sanctuary-sage/80 text-sanctuary-text hover:bg-sanctuary-sage"
           )}
+          aria-label={t.add}
         >
           {t.add}
         </button>

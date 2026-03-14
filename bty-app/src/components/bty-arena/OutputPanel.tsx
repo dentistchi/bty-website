@@ -27,12 +27,18 @@ export type OutputPanelProps = {
   followUpIndex: number | null;
   /** Result from /api/arena/reflect; shown in ConsolidationBlock when present. */
   reflectResult?: ReflectResult | null;
+  /** When true, ReflectionBlock shows loading skeleton (reflection submit in flight). */
+  reflectionSubmitting?: boolean;
   onNextToReflection: () => void;
   onSubmitReflection: (index: number, reflectionText?: string) => void;
   onSubmitFollowUp: (index: number) => void;
   onSkipFollowUp: () => void;
+  /** When true, FollowUpBlock shows loading skeleton (follow-up submit in flight). */
+  followUpSubmitting?: boolean;
   onComplete: () => void;
   onContinue: () => void;
+  /** When true, CompleteBlock shows loading skeleton (next scenario in flight). */
+  continueLoading?: boolean;
 };
 
 export function OutputPanel({
@@ -49,12 +55,15 @@ export function OutputPanel({
   hasFollowUp,
   followUpIndex,
   reflectResult = null,
+  reflectionSubmitting = false,
   onNextToReflection,
   onSubmitReflection,
   onSubmitFollowUp,
   onSkipFollowUp,
+  followUpSubmitting = false,
   onComplete,
   onContinue,
+  continueLoading = false,
 }: OutputPanelProps) {
   const lang: Locale = locale === "ko" || locale === "en" ? locale : "en";
   const t = getMessages(lang).arenaRun;
@@ -87,6 +96,7 @@ export function OutputPanel({
           options={reflectionOptions}
           locale={locale}
           onSubmit={onSubmitReflection}
+          submitting={reflectionSubmitting}
         />
       )}
 
@@ -97,13 +107,17 @@ export function OutputPanel({
           options={followUpOptions}
           onSubmit={onSubmitFollowUp}
           onSkip={onSkipFollowUp}
+          loading={followUpSubmitting}
+          loadingAriaLabel={lang === "ko" ? "따라하기 제출 중…" : "Submitting follow-up…"}
         />
       )}
 
       {step === 5 && !hasFollowUp && (
         <div style={{ marginTop: 14 }}>
           <button
+            type="button"
             onClick={onSkipFollowUp}
+            aria-label={skipLabel}
             style={{
               padding: "12px 16px",
               borderRadius: 12,
@@ -139,6 +153,7 @@ export function OutputPanel({
           }
           followUpSelectedSectionLabel={followUpSelected}
           onContinue={onContinue}
+          loading={continueLoading}
         />
       )}
     </div>

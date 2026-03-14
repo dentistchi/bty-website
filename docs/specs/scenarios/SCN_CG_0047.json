@@ -1,0 +1,106 @@
+{
+  "schema_version": "bty_scenario_v1",
+  "scenario_id": "SCN_CG_0047",
+  "title": "Cross-Generational Conflict: Bridging MZ and Senior Team Members",
+  "summary": "A younger team member's informal communication style clashes with a senior colleague's expectations. Bridge the gap without taking sides—generational tension is a leadership test, not a personality problem.",
+  "context_type": "relationship",
+  "stage_mapping": { "primary_stage": 2, "stage_flow": [1, 2, 3, 4] },
+  "roles_supported": ["Doctor", "Staff", "Manager", "DSO", "Executive"],
+  "default_viewpoint": "Leader",
+  "supports_reset": false,
+  "tags": { "org": ["BTY"], "setting": ["dental_office"], "themes": ["generational_conflict", "communication", "inclusion", "team_dynamics"], "sensitivity": "low" },
+  "scene": {
+    "setting": "A senior hygienist complains that a new-grad assistant is 'disrespectful'—using casual language, checking their phone, and not following unwritten norms. The assistant feels micromanaged and unwelcome. You need to address the friction before it splits the team.",
+    "characters": [
+      { "id": "lead", "role_type": "Manager", "label": "You" },
+      { "id": "senior", "role_type": "Staff", "label": "Senior Hygienist" },
+      { "id": "junior", "role_type": "Staff", "label": "New-Grad Assistant" }
+    ],
+    "beats": [
+      {
+        "beat_id": "b1",
+        "narration": "The senior hygienist pulls you aside. They are frustrated. The new-grad assistant feels excluded. The leadership challenge is bridging different expectations without dismissing either person.",
+        "dialogue": [
+          { "speaker": "senior", "line": "They don't take anything seriously. No greeting in the morning, phone out during huddle. It's disrespectful." },
+          { "speaker": "lead", "line": "I hear you. Let me talk to both of you and figure out what's going on." }
+        ]
+      }
+    ]
+  },
+  "choices": [
+    {
+      "choice_id": "A",
+      "label": "Side with the senior member and correct the assistant's behavior.",
+      "engine_signals": { "choice_type": "direct_fix_or_takeover", "risk_flags": ["speed_bias"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_CG_0047_A",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "Before correcting, ask the assistant about their experience; learn their perspective first.", "timebox_minutes": 10 }],
+        "scripts": { "leader_lines": ["I want to understand your experience before I draw conclusions.", "Norms should be explicit, not assumed."], "questions": ["What does a good morning look like for you?", "Have you felt welcomed here?"], "closing_line": "Let's make expectations explicit so everyone can succeed." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "B",
+      "label": "Have separate conversations with each person to understand both sides.",
+      "engine_signals": { "choice_type": "process_fix", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_CG_0047_B",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [
+          { "step": "Listen to the senior's concerns without agreeing or dismissing.", "timebox_minutes": 10 },
+          { "step": "Listen to the assistant's experience; ask what onboarding felt like.", "timebox_minutes": 10 },
+          { "step": "Identify two shared values or norms both can agree on.", "timebox_minutes": 5 }
+        ],
+        "scripts": { "leader_lines": ["Help me understand what respect looks like to you.", "What would make this team feel safe for both of you?"], "questions": ["What's one thing you wish the other person understood?", "What norm would help everyone feel included?"], "closing_line": "Two shared norms; explicit expectations; revisit in one week." },
+        "verification": { "method": "qr", "verifier_role": "LeaderPeer", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "C",
+      "label": "Facilitate a team huddle to co-create shared communication norms.",
+      "engine_signals": { "choice_type": "delegate_with_checkpoint", "risk_flags": [] },
+      "activation_plan": {
+        "activation_template_id": "ACT_CG_0047_C",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 48,
+        "steps": [
+          { "step": "Frame the huddle: 'We're co-creating norms, not correcting anyone.'", "timebox_minutes": 5 },
+          { "step": "Each person shares one norm they value; group picks three to try for two weeks.", "timebox_minutes": 15 },
+          { "step": "Schedule a two-week check-in to review how the norms are working.", "timebox_minutes": 3 }
+        ],
+        "scripts": { "leader_lines": ["We're building norms together—not pointing fingers.", "Every generation brings something valuable."], "questions": ["What's one norm you'd want on any team?", "What does 'respect' look like in action here?"], "closing_line": "Three norms; two-week trial; check-in together." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    },
+    {
+      "choice_id": "D",
+      "label": "Ignore it and hope they work it out themselves.",
+      "engine_signals": { "choice_type": "withdraw", "risk_flags": ["avoidance"] },
+      "activation_plan": {
+        "activation_template_id": "ACT_CG_0047_D",
+        "type": "micro_win",
+        "weight": 1.0,
+        "window_hours": 24,
+        "steps": [{ "step": "Check in with both people within 48 hours; unaddressed tension escalates.", "timebox_minutes": 10 }],
+        "scripts": { "leader_lines": ["Hoping it resolves is a choice—and usually the wrong one.", "Small friction becomes big turnover."], "questions": ["What happens if this festers another month?", "What's the cost of losing either person?"], "closing_line": "Check in within 48 hours; name the tension; start building norms." },
+        "verification": { "method": "qr", "verifier_role": "Manager", "remote_allowed": true }
+      }
+    }
+  ],
+  "system_prompts": { "nudge": "Generational tension is a leadership test, not a personality problem.", "mirror_call": "Did you bridge—or pick a side?" },
+  "delayed_outcome": {
+    "delay_days": 14,
+    "reentry_conditions": { "if_choice_types_in_last_14d": ["withdraw", "direct_fix_or_takeover"] },
+    "outcomes": [
+      { "outcome_id": "O1", "if": { "pattern": "repeated_direct_fix" }, "message": "The assistant feels singled out and is considering leaving. The senior feels validated but the team is divided.", "reflection_questions": ["Did you hear both sides before acting?", "What would co-created norms have changed?"] },
+      { "outcome_id": "O2", "if": { "pattern": "delegation_micro_wins_present" }, "message": "Both feel heard. The team has shared norms and the friction is manageable. Trust grew.", "reflection_questions": ["Which shared value surprised you?", "How do you maintain inclusion as the team evolves?"] }
+    ]
+  },
+  "metrics_hooks": { "air": { "counts_activation": true }, "mwd": { "micro_win": true }, "tsp": { "weekly_pulse_prompt": "This week I bridged a generational or style difference on my team. (1-5)" } }
+}

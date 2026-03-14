@@ -93,8 +93,10 @@ export default function TrainDayPage() {
 
         <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
           <button
+            type="button"
             onClick={onClickComplete}
             disabled={!isUnlocked || isCompleted}
+            aria-label={isCompleted ? "Completed" : "Mark today as complete"}
             style={{
               padding: "10px 14px",
               borderRadius: 10,
@@ -107,13 +109,17 @@ export default function TrainDayPage() {
           </button>
 
           <button
+            type="button"
             onClick={() => setShowCompletionSummary(false)}
+            aria-label="Coach chat"
             style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #ddd" }}
           >
             Coach chat
           </button>
           <button
+            type="button"
             onClick={() => setShowCompletionSummary(true)}
+            aria-label="Completion summary"
             style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #ddd" }}
           >
             Completion summary
@@ -129,7 +135,10 @@ export default function TrainDayPage() {
       <aside style={{ borderLeft: "1px solid #eee", padding: 16, overflow: "auto" }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <button
+            type="button"
             onClick={() => setShowCompletionSummary(false)}
+            aria-label="Coach chat"
+            aria-pressed={!showCompletionSummary}
             style={{
               padding: "8px 12px",
               borderRadius: 999,
@@ -141,7 +150,10 @@ export default function TrainDayPage() {
             Coach chat
           </button>
           <button
+            type="button"
             onClick={() => setShowCompletionSummary(true)}
+            aria-label="Completion summary"
+            aria-pressed={showCompletionSummary}
             style={{
               padding: "8px 12px",
               borderRadius: 999,

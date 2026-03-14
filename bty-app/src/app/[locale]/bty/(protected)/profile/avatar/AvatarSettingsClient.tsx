@@ -73,7 +73,7 @@ export default function AvatarSettingsClient() {
     return (
       <div className="p-6 max-w-2xl mx-auto">
         <p className="text-sm text-red-600">Failed to load avatar settings.</p>
-        <Link href={`/${locale}/bty`} className="text-sm underline mt-2 inline-block">
+        <Link href={`/${locale}/bty`} className="text-sm underline mt-2 inline-block" aria-label={locale === "ko" ? "훈련장으로 돌아가기" : "Back to Foundry"}>
           Back to Foundry
         </Link>
       </div>
@@ -87,6 +87,7 @@ export default function AvatarSettingsClient() {
         <Link
           href={`/${locale}/bty/dashboard`}
           className="text-sm text-foundry-purple hover:underline"
+          aria-label={locale === "ko" ? "대시보드로 가기" : "Go to Dashboard"}
         >
           Dashboard
         </Link>
@@ -135,6 +136,7 @@ export default function AvatarSettingsClient() {
           <button
             type="button"
             onClick={() => setDraftTheme("professional")}
+            aria-label={t?.professional ?? "Professional"}
             className={cn(
               "px-4 py-2 rounded-lg border font-medium transition",
               draftTheme === "professional"
@@ -147,6 +149,7 @@ export default function AvatarSettingsClient() {
           <button
             type="button"
             onClick={() => setDraftTheme("fantasy")}
+            aria-label={t?.fantasy ?? "Fantasy"}
             className={cn(
               "px-4 py-2 rounded-lg border font-medium transition",
               draftTheme === "fantasy"
@@ -187,6 +190,7 @@ export default function AvatarSettingsClient() {
             type="button"
             onClick={handleSave}
             disabled={saving}
+            aria-label={saving ? (locale === "ko" ? "저장 중" : "Saving") : (locale === "ko" ? "저장" : "Save")}
             className="px-6 py-2 rounded-xl bg-foundry-purple text-white font-medium hover:bg-foundry-purple/90 disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save"}

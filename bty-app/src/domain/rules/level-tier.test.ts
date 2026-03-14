@@ -17,6 +17,10 @@ describe("domain/rules/level-tier", () => {
       expect(tierFromCoreXp(250)).toBe(25);
       expect(tierFromCoreXp(999)).toBe(99);
     });
+    it("clamps negative coreXp to tier 0", () => {
+      expect(tierFromCoreXp(-1)).toBe(0);
+      expect(tierFromCoreXp(-100)).toBe(0);
+    });
   });
 
   describe("codeIndexFromTier", () => {

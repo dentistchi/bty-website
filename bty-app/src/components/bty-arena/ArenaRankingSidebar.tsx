@@ -36,6 +36,7 @@ const LABELS = {
     loading: "로딩 중…",
     failed: "불러오기 실패",
     retry: "다시 시도",
+    retryAriaLabel: "실시간 순위 다시 불러오기",
     empty: "아직 순위가 없어요. 시나리오를 완료하면 여기 나타나요.",
   },
   en: {
@@ -47,6 +48,7 @@ const LABELS = {
     loading: "Loading…",
     failed: "Failed to load",
     retry: "Retry",
+    retryAriaLabel: "Reload live ranking",
     empty: "No rankings yet. Finish a scenario to appear here.",
   },
 };
@@ -91,6 +93,8 @@ export function ArenaRankingSidebar({ locale }: ArenaRankingSidebarProps) {
 
   return (
     <div
+      role="region"
+      aria-labelledby="arena-ranking-sidebar-title"
       style={{
         width: "100%",
         maxWidth: 280,
@@ -99,6 +103,7 @@ export function ArenaRankingSidebar({ locale }: ArenaRankingSidebarProps) {
       }}
     >
       <h3
+        id="arena-ranking-sidebar-title"
         style={{
           margin: "0 0 12px",
           fontSize: 15,
@@ -148,7 +153,23 @@ export function ArenaRankingSidebar({ locale }: ArenaRankingSidebarProps) {
           overflow: "hidden",
         }}
       >
-        {loading && <LeaderboardListSkeleton rows={5} variant="inner" />}
+        {loading && (
+          <div aria-busy="true" aria-label={t.loading}>
+            <p
+              style={{
+                margin: 0,
+                padding: "12px 10px 8px",
+                fontSize: 13,
+                color: "var(--arena-text-soft)",
+                opacity: 0.9,
+              }}
+              aria-live="polite"
+            >
+              {t.loading}
+            </p>
+            <LeaderboardListSkeleton rows={5} variant="inner" />
+          </div>
+        )}
         {error && (
           <div
             role="alert"
@@ -170,7 +191,7 @@ export function ArenaRankingSidebar({ locale }: ArenaRankingSidebarProps) {
                 setLoading(true);
                 fetchLeaderboard();
               }}
-              aria-label={locale === "ko" ? "실시간 순위 다시 불러오기" : "Reload live ranking"}
+              aria-label={t.retryAriaLabel}
               style={{
                 marginTop: 8,
                 padding: "6px 12px",

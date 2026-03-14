@@ -11,10 +11,10 @@ export default function LocaleNotFound({ params }: { params?: Props }) {
       <h1 className="text-2xl font-semibold mb-2">404</h1>
       <p className="text-gray-600 mb-6">{isKo ? "페이지를 찾을 수 없습니다." : "Page not found."}</p>
       <div className="flex gap-4">
-        <Link href={`/${locale}`} className="text-blue-600 underline">
+        <Link href={`/${locale}`} className="text-blue-600 underline" aria-label={isKo ? "홈" : "Home"}>
           {isKo ? "홈" : "Home"}
         </Link>
-        <Link href={`/${locale}/bty/dashboard`} className="text-blue-600 underline">
+        <Link href={`/${locale}/bty/dashboard`} className="text-blue-600 underline" aria-label="Dashboard">
           Dashboard
         </Link>
         <Link href={`/${locale}/bty/leaderboard`} className="text-blue-600 underline">

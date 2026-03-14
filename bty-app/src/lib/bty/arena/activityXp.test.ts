@@ -3,7 +3,7 @@
  * Uses mocked Supabase; no business/XP logic change.
  */
 import { describe, it, expect } from "vitest";
-import { recordActivityXp, type ActivityType } from "./activityXp";
+import { recordActivityXp, capArenaDailyDelta, ARENA_DAILY_XP_CAP, type ActivityType } from "./activityXp";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 function mockSupabase(opts: {
@@ -76,6 +76,14 @@ describe("activityXp", () => {
       });
       const result = await recordActivityXp(supabase, "user-1", "MENTOR_MESSAGE");
       expect(result).toEqual({ ok: false, error: "insert_failed" });
+    });
+  });
+
+  describe("capArenaDailyDelta", () => {
+    it("caps delta to remaining room below daily cap", () => {
+      expect(capArenaDailyDelta(100, ARENA_DAILY_XP_CAP - 50)).toBe(50);
+      expect(capArenaDailyDelta(500, 0)).toBe(500);
+      expect(capArenaDailyDelta(1000, ARENA_DAILY_XP_CAP)).toBe(0);
     });
   });
 });

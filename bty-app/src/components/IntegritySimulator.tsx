@@ -84,6 +84,7 @@ function SimulatorLayout({
                 "disabled:opacity-50 disabled:cursor-not-allowed",
                 "transition-colors"
               )}
+              aria-label="다음"
             >
               다음
             </button>
@@ -110,6 +111,7 @@ function SimulatorLayout({
                 "bg-dojo-purple text-dojo-white hover:bg-dojo-purple-dark",
                 "transition-colors"
               )}
+              aria-label="다음"
             >
               다음
             </button>
@@ -128,6 +130,7 @@ function SimulatorLayout({
                   "bg-dojo-purple text-dojo-white hover:bg-dojo-purple-dark",
                   "transition-colors"
                 )}
+                aria-label="생각해보기"
               >
                 생각해보기
               </button>
@@ -149,6 +152,7 @@ function SimulatorLayout({
               className={cn(
                 "text-sm text-dojo-purple hover:underline"
               )}
+              aria-label="처음부터 다시하기"
             >
               처음부터 다시하기
             </button>

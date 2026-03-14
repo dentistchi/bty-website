@@ -3,7 +3,7 @@ import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 
 export const runtime = "nodejs";
 
-/** GET: 마지막 세션 + 메시지 (channel=chat | mentor) */
+/** GET: list=sessions → 세션 목록(이력). 없으면 마지막 세션 + 메시지 (channel=chat | mentor) */
 export async function GET(req: NextRequest) {
   const supabase = await getSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -12,6 +12,26 @@ export async function GET(req: NextRequest) {
   const channel = req.nextUrl.searchParams.get("channel");
   if (channel !== "chat" && channel !== "mentor") {
     return NextResponse.json({ error: "channel must be chat or mentor" }, { status: 400 });
+  }
+
+  const listSessions = req.nextUrl.searchParams.get("list") === "sessions";
+
+  if (listSessions) {
+    const { data: sessions, error: listErr } = await supabase
+      .from("conversation_sessions")
+      .select("id, topic, created_at")
+      .eq("user_id", user.id)
+      .eq("channel", channel)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    if (listErr) return NextResponse.json({ error: listErr.message }, { status: 500 });
+    return NextResponse.json({
+      sessions: (sessions ?? []).map((s) => ({
+        id: s.id,
+        topic: s.topic ?? undefined,
+        createdAt: s.created_at,
+      })),
+    });
   }
 
   const { data: session, error: sessionErr } = await supabase

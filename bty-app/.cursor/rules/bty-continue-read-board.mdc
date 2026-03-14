@@ -1,0 +1,15 @@
+---
+description: CONTINUE 시 태스크 보드 — 상위 docs/CURSOR_TASK_BOARD.md "이번 런" 표가 단일 큐 (bty-app 워크스페이스용)
+alwaysApply: true
+---
+
+# CONTINUE 시 할 일 확인 (bty-app 워크스페이스)
+
+이 폴더가 **bty-app**일 때, **CONTINUE** / 작업 큐 확인 시:
+
+- **할 일 단일 진실** = **상위 폴더의 docs** → **`../docs/CURSOR_TASK_BOARD.md`**
+- 그 파일에서 **"이번 런"** 섹션의 **SPRINT N** 표(TASK 1~10)를 읽는다.
+- **현재 배치 = SPRINT 40.** 표에서 자기 OWNER(C1~C5) 행 중 **[ ]** 인 TASK가 할 일. 별도 "C2 TASK QUEUE" 파일 없음.
+- 복사용 문장: **../docs/agent-runtime/AUTO4_PROMPTS.md** 해당 블록.
+
+이 디렉터리(bty-app/docs/)의 AI_TASK_BOARD.md는 요약만. 할 일 목록은 **반드시 ../docs/CURSOR_TASK_BOARD.md** 에서 확인.

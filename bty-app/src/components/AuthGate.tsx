@@ -107,6 +107,7 @@ export function AuthGate({
               type="button"
               onClick={() => setIsRegister((v) => !v)}
               className="w-full text-sm text-foundry-ink-soft underline underline-offset-2"
+              aria-label={isRegister ? "이미 계정이 있어요 (로그인)" : "계정이 없어요 (회원가입)"}
             >
               {isRegister ? "이미 계정이 있어요 (로그인)" : "계정이 없어요 (회원가입)"}
             </button>

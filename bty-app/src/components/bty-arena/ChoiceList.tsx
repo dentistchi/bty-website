@@ -17,7 +17,11 @@ export function ChoiceList({ locale, choices, selectedChoiceId, onSelect }: Choi
   const t = getMessages(lang).arenaRun;
   const isKo = lang === "ko";
   return (
-    <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
+    <div
+      style={{ marginTop: 16, display: "grid", gap: 10 }}
+      role="group"
+      aria-label={isKo ? "시나리오 선택" : "Scenario choices"}
+    >
       {choices.map((c) => {
         const active = selectedChoiceId === c.choiceId;
         const disabled = false;
@@ -25,8 +29,10 @@ export function ChoiceList({ locale, choices, selectedChoiceId, onSelect }: Choi
         return (
           <button
             key={c.choiceId}
+            type="button"
             disabled={disabled}
             onClick={() => onSelect(c.choiceId)}
+            aria-label={displayLabel}
             style={{
               textAlign: "left",
               padding: 14,

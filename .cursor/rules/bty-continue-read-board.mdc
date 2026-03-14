@@ -1,0 +1,20 @@
+---
+description: CONTINUE 시 태스크 보드 경로 — repo root docs/CURSOR_TASK_BOARD.md "이번 런" 표만 단일 큐
+alwaysApply: true
+---
+
+# CONTINUE 시 할 일 확인 (태스크 보드 경로)
+
+**CONTINUE** 또는 **작업 큐 확인** 요청을 받으면:
+
+1. **할 일의 단일 진실** = **docs/CURSOR_TASK_BOARD.md** 의 **"이번 런"** 섹션에 있는 TASK 1~10 표.
+2. **파일 경로**  
+   - 워크스페이스 루트가 **btytrainingcenter**(상위 폴더)이면: `docs/CURSOR_TASK_BOARD.md`  
+   - 워크스페이스 루트가 **bty-app**이면: **`../docs/CURSOR_TASK_BOARD.md`** (상위의 docs)
+3. **"이번 런"** 제목이 **SPRINT N** — 그 표가 현재 배치. 표에서 자기 OWNER(C1, C2, C3, C4, C5) 행만 보고 **[ ]** 인 TASK가 있으면 그게 할 일.
+4. **별도 "C2 TASK QUEUE" / "C4 queue" 파일은 없음.** 큐 = 위 보드의 "이번 런" 표.  
+5. **bty-app/docs/AI_TASK_BOARD.md** 는 요약·상태만. 할 일 목록은 **반드시** 위 보드 파일에서 확인.
+
+현재 배치: **SPRINT 40**. First Task = TASK 1 (C5 Release Gate 40차). TASK 1이 [x]가 될 때까지 C1·C3·C4는 해당 [ ] TASK 대기.
+
+*참조: docs/agent-runtime/SPLINT_10_PROCEDURE.md § "C2–C6 CONTINUE 절차", docs/agent-runtime/AUTO4_PROMPTS.md*

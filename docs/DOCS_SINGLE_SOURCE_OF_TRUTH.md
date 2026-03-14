@@ -49,6 +49,10 @@
 
 **동일한 목적의 문서를 두 위치에 중복 유지하지 않는다.**
 
+**매번 작업 완료 시 서류 반영:** 태스크·검증·문서 점검이 완료될 때마다 루트 `docs/`의 다음 서류에 **반드시** 추가·갱신한다.  
+→ **CURSOR_TASK_BOARD.md** (TASK [x] 완료, 이전 런 완료 한 줄) · **CURRENT_TASK.md** ([x] 완료, 상단 완료 한 줄) · **BTY_RELEASE_GATE_CHECK.md** (Release Gate/VERIFY 시 §2·[VERIFY]·최근 완료) · **ELITE_3RD_SPEC_AND_CHECKLIST.md** (엘리트 3차 검증 시 §3) · **NEXT_PHASE_AUTO4 / NEXT_BACKLOG_AUTO4** (문서 점검 시).  
+상세: `docs/CURSOR_TASK_BOARD.md` § "매번 작업 완료 시 서류 반영", `docs/BTY_DEV_OPERATING_MANUAL.md` §6.
+
 ---
 
 ## C1 / 에이전트

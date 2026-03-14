@@ -18,6 +18,9 @@ describe("energyToLevel", () => {
     expect(energyToLevel(4)).toBe("high");
     expect(energyToLevel(5)).toBe("high");
   });
+  it("returns mid for fractional 3.x (between 2 and 4)", () => {
+    expect(energyToLevel(3.5)).toBe("mid");
+  });
 });
 
 describe("aggregateLetterRowsToDailyEntries", () => {

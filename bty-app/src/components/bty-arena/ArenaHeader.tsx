@@ -43,6 +43,7 @@ export function ArenaHeader({
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <Link
           href={`/${lang}/bty`}
+          aria-label={t.mainLabel}
           style={{
             padding: "10px 12px",
             borderRadius: 10,

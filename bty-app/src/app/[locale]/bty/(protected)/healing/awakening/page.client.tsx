@@ -212,6 +212,7 @@ export default function SecondAwakeningPageClient() {
                 type="button"
                 onClick={handleEnterNextPhase}
                 disabled={submitting}
+                aria-label={submitting ? (locale === "ko" ? "처리 중" : "Processing") : (locale === "ko" ? "다음 단계로" : "Enter next phase")}
                 className={cn(
                   "rounded-xl px-6 py-3 font-medium text-white",
                   "bg-foundry-purple hover:bg-foundry-purple-dark transition-colors",

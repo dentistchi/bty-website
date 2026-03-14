@@ -10,7 +10,7 @@ export default function TrainStartPage() {
         왼쪽에서 Day를 선택하면 레슨이 보이고, 오른쪽에서 코치와 대화할 수 있어요.
       </p>
       <div className="rounded-lg border p-4">
-        <Link className="underline" href="/train/day/1">
+        <Link className="underline" href="/train/day/1" aria-label="Day 1부터 시작하기">
           Day 1부터 시작하기
         </Link>
       </div>

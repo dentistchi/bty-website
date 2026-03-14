@@ -1,11 +1,11 @@
 /**
- * POST /api/dojo/submit — Dojo 50문항 제출·영역별 점수·Dr. Chi 코멘트.
- * DOJO_50_SUBMIT_RESULT_API_1PAGE. 도메인: validateDojo50Submit, computeDojo50Result만 사용.
+ * POST /api/dojo/submit — Dojo 50문항 제출 (thin handler).
+ * Auth → body parse → dojoSubmitService.submitDojo50 → response.
  */
 
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
-import { validateDojo50Submit, computeDojo50Result } from "@/domain/dojo/flow";
+import { submitDojo50 } from "@/lib/bty/foundry/dojoSubmitService";
 import { getMessages } from "@/lib/i18n";
 
 export const runtime = "nodejs";
@@ -19,7 +19,6 @@ function getLocaleFromRequest(request: Request): Locale {
   return "en";
 }
 
-/** summaryKey별 Dr. Chi 코멘트 템플릿 (i18n). */
 function getMentorComment(summaryKey: string, locale: Locale): string {
   const messages = getMessages(locale);
   const d = messages.dojoResult;
@@ -48,16 +47,17 @@ export async function POST(request: Request) {
     if (typeof v === "number" && v >= 1 && v <= 5) answers[q] = v;
   }
 
-  const validation = validateDojo50Submit(answers);
-  if (!validation.ok) {
-    return NextResponse.json({ error: validation.error }, { status: 400 });
+  const result = await submitDojo50(supabase, user.id, answers);
+
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: 400 });
   }
 
-  const result = computeDojo50Result(answers);
   const locale = getLocaleFromRequest(request);
   const mentorComment = getMentorComment(result.summaryKey, locale);
 
   return NextResponse.json({
+    submissionId: result.submissionId,
     scores: result.scores,
     summaryKey: result.summaryKey,
     mentorComment: mentorComment || undefined,

@@ -28,7 +28,7 @@ export default function JournalPage() {
         <div className="rounded-lg border p-4 space-y-3">
           <div className="font-medium">오늘 누구에게도 말 못했던 마음은?</div>
           <textarea className="w-full border rounded p-2 min-h-[120px]" placeholder="여기에 적어줘." />
-          <button className="px-3 py-2 border rounded">저장</button>
+          <button type="button" className="px-3 py-2 border rounded" aria-label="저장">저장</button>
         </div>
       </div>
 
@@ -46,7 +46,7 @@ export default function JournalPage() {
           <div className="absolute right-0 bottom-0 top-0 w-[90%] max-w-md bg-white" onClick={(e) => e.stopPropagation()}>
             <div className="h-12 border-b px-4 flex items-center justify-between">
               <div className="font-semibold">코치 챗</div>
-              <button className="text-sm underline" onClick={() => setChatOpen(false)}>닫기</button>
+              <button type="button" className="text-sm underline" onClick={() => setChatOpen(false)} aria-label="닫기">닫기</button>
             </div>
             <div className="p-4 text-sm">
               (저널용 챗 UI)

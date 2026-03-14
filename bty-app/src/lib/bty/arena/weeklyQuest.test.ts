@@ -27,6 +27,11 @@ describe("weeklyQuest", () => {
       const result = getWeekStartUTC(d);
       expect(/^\d{4}-\d{2}-\d{2}$/.test(result)).toBe(true);
     });
+
+    it("returns Monday of same week when given Saturday", () => {
+      const saturday = new Date("2025-03-08T18:00:00.000Z");
+      expect(getWeekStartUTC(saturday)).toBe("2025-03-03");
+    });
   });
 
   describe("constants", () => {

@@ -31,18 +31,21 @@ export function Nav({
       <Link
         href={`/${locale}/center`}
         className={isCenter ? "font-medium underline" : cn(muted, "hover:underline")}
+        aria-label={locale === "ko" ? "Center로 이동" : "Go to Center"}
       >
         {t.center}
       </Link>
       <Link
         href={`/${locale}/bty`}
         className={isBty ? "font-medium underline" : cn(muted, "hover:underline")}
+        aria-label={locale === "ko" ? "훈련장(Foundry)으로 이동" : "Go to Foundry"}
       >
         {t.bty}
       </Link>
       <Link
         href={`/${locale}/bty-arena`}
         className={isArena ? "font-medium underline" : cn(muted, "hover:underline")}
+        aria-label={locale === "ko" ? "아레나로 이동" : "Go to Arena"}
       >
         {t.arena}
       </Link>

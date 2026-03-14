@@ -154,6 +154,7 @@ export function SelfEsteemTest({
                     ? "bg-dear-bg border border-dear-charcoal/12 text-dear-charcoal hover:bg-dear-sage/15 hover:border-dear-sage/30"
                     : "bg-white/80 border border-sanctuary-lavender/50 text-sanctuary-text hover:bg-sanctuary-lavender/30"
                 )}
+                aria-label={c.label}
               >
                 {c.label}
               </button>
@@ -209,6 +210,7 @@ export function SelfEsteemTest({
                 ? "text-dear-charcoal-soft hover:text-dear-charcoal"
                 : "text-sanctuary-text-soft hover:text-sanctuary-text"
             )}
+            aria-label={t.again}
           >
             {t.again}
           </button>

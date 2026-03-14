@@ -1,0 +1,1 @@
+../../docs/CURSOR_TASK_BOARD.md

@@ -99,7 +99,7 @@ export default function ProfileClient() {
       <div className="p-6 max-w-2xl mx-auto">
         <BtyTopNav />
         <p className="text-sm text-red-600 mt-4">{t.errorLoad}</p>
-        <Link href={`/${locale}/bty/dashboard`} className="text-sm underline mt-2 inline-block">
+        <Link href={`/${locale}/bty/dashboard`} className="text-sm underline mt-2 inline-block" aria-label={t.backToDashboard}>
           {t.backToDashboard}
         </Link>
       </div>
@@ -114,6 +114,7 @@ export default function ProfileClient() {
         <Link
           href={`/${locale}/bty/dashboard`}
           className="text-sm text-foundry-purple hover:underline"
+          aria-label={t.backToDashboard}
         >
           {t.backToDashboard}
         </Link>
@@ -159,7 +160,7 @@ export default function ProfileClient() {
       </section>
 
       <p className="text-sm text-gray-500">
-        <Link href={`/${locale}/bty/profile/avatar`} className="text-foundry-purple hover:underline">
+        <Link href={`/${locale}/bty/profile/avatar`} className="text-foundry-purple hover:underline" aria-label={t.avatarSettingsLink}>
           {t.avatarSettingsLink}
         </Link>
       </p>

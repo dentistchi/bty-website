@@ -118,6 +118,7 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
             className="w-full rounded-lg px-4 py-2 bg-black text-white disabled:opacity-60"
             disabled={!canSubmit}
             type="submit"
+            aria-label={isLoading ? t.submitting : t.submit}
           >
             {isLoading ? t.submitting : t.submit}
           </button>

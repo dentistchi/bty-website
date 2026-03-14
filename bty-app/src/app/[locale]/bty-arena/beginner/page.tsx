@@ -46,6 +46,7 @@ function OptionButton({
     <button
       type="button"
       onClick={onClick}
+      aria-label={label}
       style={{
         display: "block",
         width: "100%",
@@ -70,6 +71,7 @@ function PrimaryButton({ label, onClick, disabled }: { label: string; onClick: (
       type="button"
       onClick={onClick}
       disabled={disabled}
+      aria-label={label}
       style={{
         padding: "14px 24px",
         borderRadius: 12,
@@ -179,23 +181,23 @@ export default function BeginnerArenaPage() {
       return;
     }
     if (step === 2 && emotionIndex !== null) {
-      await sendEvent(2, { emotionIndex });
-      setStep(3);
+      setLoading(true);
+      try { await sendEvent(2, { emotionIndex }); setStep(3); } finally { setLoading(false); }
       return;
     }
     if (step === 3 && riskIndex !== null) {
-      await sendEvent(3, { riskIndex });
-      setStep(4);
+      setLoading(true);
+      try { await sendEvent(3, { riskIndex }); setStep(4); } finally { setLoading(false); }
       return;
     }
     if (step === 4 && integrityIndex !== null) {
-      await sendEvent(4, { integrityIndex });
-      setStep(5);
+      setLoading(true);
+      try { await sendEvent(4, { integrityIndex }); setStep(5); } finally { setLoading(false); }
       return;
     }
     if (step === 5 && decisionIndex !== null) {
-      await sendEvent(5, { decisionIndex });
-      setStep(6);
+      setLoading(true);
+      try { await sendEvent(5, { decisionIndex }); setStep(6); } finally { setLoading(false); }
       return;
     }
     if (step === 6) {
@@ -430,7 +432,7 @@ export default function BeginnerArenaPage() {
         )}
 
         {loading && (
-          <div style={{ marginTop: 12 }}>
+          <div style={{ marginTop: 12 }} aria-busy="true" aria-label={locale === "ko" ? "완료 처리 중…" : "Completing…"}>
             <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
           </div>
         )}

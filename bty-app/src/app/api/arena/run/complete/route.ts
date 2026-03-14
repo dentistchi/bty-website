@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { applySeasonalXpToCore } from "@/lib/bty/arena/applyCoreXp";
+import { getArenaTodayTotal, capArenaDailyDelta } from "@/lib/bty/arena/activityXp";
 import {
   getWeekStartUTC,
   REFLECTION_QUEST_TARGET,
   REFLECTION_QUEST_BONUS_XP,
 } from "@/lib/bty/arena/weeklyQuest";
 
+/**
+ * Gate 3: Daily cap and capping logic live in lib (activityXp). This route uses
+ * getArenaTodayTotal + capArenaDailyDelta only; no inline ARENA_DAILY_XP_CAP or cap math.
+ */
 export async function POST(req: Request) {
   const supabase = await getSupabaseServerClient();
   const {
@@ -74,17 +79,8 @@ export async function POST(req: Request) {
 
   const delta = (evs ?? []).reduce((sum, row) => sum + (typeof row.xp === "number" ? row.xp : 0), 0);
 
-  const DAILY_CAP = 1200;
-  const now = new Date();
-  const startOfDayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const startOfDayISO = startOfDayUTC.toISOString();
-  const { data: todayEvs } = await supabase
-    .from("arena_events")
-    .select("xp")
-    .eq("user_id", user.id)
-    .gte("created_at", startOfDayISO);
-  const todayTotal = (todayEvs ?? []).reduce((s, r) => s + (typeof r.xp === "number" ? r.xp : 0), 0);
-  const deltaCapped = Math.max(0, Math.min(delta, DAILY_CAP - todayTotal));
+  const todayArenaTotal = await getArenaTodayTotal(supabase, user.id);
+  const deltaCapped = capArenaDailyDelta(delta, todayArenaTotal);
 
   const { data: row, error: rowErr } = await supabase
     .from("weekly_xp")

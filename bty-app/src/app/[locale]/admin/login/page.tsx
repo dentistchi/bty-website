@@ -60,6 +60,7 @@ export default function AdminLoginPage() {
             disabled={busy}
             type="submit"
             className="w-full rounded bg-neutral-800 py-2 text-sm font-medium text-white disabled:opacity-50"
+            aria-label={busy ? "Signing in..." : "Admin login"}
           >
             {busy ? "Signing in..." : "Login"}
           </button>

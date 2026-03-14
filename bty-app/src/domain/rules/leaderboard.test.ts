@@ -24,6 +24,12 @@ describe("domain/rules/leaderboard", () => {
     it("returns empty array when given empty", () => {
       expect(rankByWeeklyXpOnly([])).toEqual([]);
     });
+
+    it("assigns rank 1 to single entry", () => {
+      const result = rankByWeeklyXpOnly([{ id: "only", weeklyXp: 50 }]);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({ id: "only", weeklyXp: 50, rank: 1 });
+    });
   });
 
   describe("eliteCutoffRank", () => {

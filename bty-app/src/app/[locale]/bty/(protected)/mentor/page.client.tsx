@@ -11,6 +11,7 @@ import { ThemeBody } from "@/components/ThemeBody";
 import { CardSkeleton, LoadingFallback } from "@/components/bty-arena";
 import { cn } from "@/lib/utils";
 import { fetchJson } from "@/lib/read-json";
+import MentorConversationHistory from "./MentorConversationHistory";
 
 const CENTER_URL = process.env.NEXT_PUBLIC_CENTER_URL ?? (typeof window !== "undefined" ? `${window.location.origin}/center` : "");
 
@@ -348,12 +349,18 @@ export default function MentorPage() {
         >
           <div className="max-w-2xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
             <Nav locale={locale as "ko" | "en"} pathname={`/${locale}/bty/mentor`} />
-            <LoadingFallback
-              icon="⏳"
-              message={isEn ? "Loading…" : "불러오는 중…"}
-              withSkeleton
+            <div
               style={{ flex: 1, paddingTop: 48 }}
-            />
+              aria-busy="true"
+              aria-label={isEn ? "Loading…" : "불러오는 중…"}
+            >
+              <LoadingFallback
+                icon="⏳"
+                message={isEn ? "Loading…" : "불러오는 중…"}
+                withSkeleton
+                style={{ flex: 1, paddingTop: 48 }}
+              />
+            </div>
           </div>
         </main>
       </AuthGate>
@@ -406,6 +413,7 @@ export default function MentorPage() {
                   onClick={deleteHistory}
                   disabled={deleting}
                   className="text-mentor-ink-soft hover:text-mentor-wood hover:underline disabled:opacity-50"
+                  aria-label={t.deleteHistory}
                 >
                   {deleting ? t.deleting : t.deleteHistory}
                 </button>
@@ -423,16 +431,17 @@ export default function MentorPage() {
           </header>
 
           {!topic ? (
-            <div className="flex-1">
-              <p className="text-center text-mentor-ink-soft text-sm mb-6">
+            <div className="flex-1" role="region" aria-labelledby="mentor-topic-heading">
+              <p id="mentor-topic-heading" className="text-center text-mentor-ink-soft text-sm mb-6">
                 {t.topicPrompt}
               </p>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2" role="group" aria-label={isEn ? "Choose a topic" : "주제 선택"}>
                 {TOPICS.map((x) => (
                   <button
                     key={x.id}
                     type="button"
                     onClick={() => startTopic(x.id)}
+                    aria-label={`${x.label}, ${x.subtitle}`}
                     className={cn(
                       "rounded-2xl border border-mentor-wood-soft/30 p-5 sm:p-6 text-left",
                       "bg-mentor-paper/80 hover:bg-mentor-paper",
@@ -460,6 +469,7 @@ export default function MentorPage() {
                     "bg-mentor-wood/10 text-mentor-wood border border-mentor-wood-soft/40",
                     "hover:bg-mentor-wood/20 transition-colors"
                   )}
+                  aria-label={t.goToMain}
                 >
                   {t.goToMain}
                 </Link>
@@ -473,6 +483,7 @@ export default function MentorPage() {
                         "bg-mentor-wood/10 text-mentor-wood border border-mentor-wood-soft/40",
                         "hover:bg-mentor-wood/20 transition-colors"
                       )}
+                      aria-label={t.eliteRequestCta}
                     >
                       {t.eliteRequestCta}
                     </Link>
@@ -487,7 +498,7 @@ export default function MentorPage() {
                 "bg-mentor-paper/90 shadow-lg overflow-hidden flex flex-col"
               )}
             >
-              <div className="p-4 border-b border-mentor-wood-soft/20 bg-white/30">
+              <div className="p-4 border-b border-mentor-wood-soft/20 bg-white/30" role="region" aria-label={isEn ? "Conversation header" : "대화 헤더"}>
                 <p className="text-sm text-mentor-ink-soft">
                   {TOPICS.find((x) => x.id === topic)?.label} · {TOPICS.find((x) => x.id === topic)?.subtitle}
                 </p>
@@ -502,6 +513,7 @@ export default function MentorPage() {
                       setSessionId(null);
                     }}
                     className="text-xs text-mentor-wood hover:underline"
+                    aria-label={t.selectOtherTopic}
                   >
                     {t.selectOtherTopic}
                   </button>
@@ -510,6 +522,7 @@ export default function MentorPage() {
                       type="button"
                       onClick={endConversation}
                       className="text-xs text-mentor-ink-soft hover:text-mentor-wood hover:underline"
+                      aria-label={t.endConversation}
                     >
                       {t.endConversation}
                     </button>
@@ -556,6 +569,7 @@ export default function MentorPage() {
                             "bg-dear-sage/20 text-dear-charcoal border border-dear-sage/40",
                             "hover:bg-dear-sage/30 transition-colors font-medium text-sm"
                           )}
+                          aria-label={t.centerLink}
                         >
                           {t.centerLink}
                         </a>
@@ -573,8 +587,8 @@ export default function MentorPage() {
               </div>
 
               {conversationEnded ? (
-                <div className="p-6 border-t border-mentor-wood-soft/20 bg-mentor-paper/50 text-center">
-                  <p className="text-mentor-ink font-medium mb-4" style={{ fontFamily: "Georgia, serif" }}>
+                <div className="p-6 border-t border-mentor-wood-soft/20 bg-mentor-paper/50 text-center" role="region" aria-labelledby="mentor-conversation-ended-heading">
+                  <p id="mentor-conversation-ended-heading" className="text-mentor-ink font-medium mb-4" style={{ fontFamily: "Georgia, serif" }}>
                     {t.conversationEnded}
                   </p>
                   <p className="text-sm text-mentor-ink-soft mb-5">
@@ -589,6 +603,7 @@ export default function MentorPage() {
                         "bg-mentor-wood/10 text-mentor-wood border border-mentor-wood-soft/40",
                         "hover:bg-mentor-wood/20 transition-colors"
                       )}
+                      aria-label={t.goOtherTopic}
                     >
                       {t.goOtherTopic}
                     </button>
@@ -599,13 +614,14 @@ export default function MentorPage() {
                         "bg-mentor-wood text-white hover:bg-mentor-wood-soft",
                         "transition-colors"
                       )}
+                      aria-label={t.goFoundry}
                     >
                       {t.goFoundry}
                     </Link>
                   </div>
                 </div>
               ) : (
-                <div className="p-4 border-t border-mentor-wood-soft/20 bg-white/30">
+                <div className="p-4 border-t border-mentor-wood-soft/20 bg-white/30" role="group" aria-label={isEn ? "Message input" : "메시지 입력"}>
                   <div className="flex gap-2">
                     <input
                       key={`mentor-input-${inputKey}`}
@@ -620,6 +636,7 @@ export default function MentorPage() {
                         }
                       }}
                       placeholder={t.placeholder}
+                      aria-label={t.placeholder}
                       className={cn(
                         "flex-1 rounded-xl px-4 py-3 text-sm",
                         "border border-mentor-wood-soft/30 bg-white",
@@ -637,6 +654,7 @@ export default function MentorPage() {
                         "disabled:opacity-50 disabled:cursor-not-allowed",
                         "transition-colors"
                       )}
+                      aria-label={t.send}
                     >
                       {t.send}
                     </button>
@@ -648,6 +666,7 @@ export default function MentorPage() {
                       type="button"
                       onClick={goToTopicSelection}
                       className="text-mentor-wood hover:underline font-medium"
+                      aria-label={t.endConversation}
                     >
                       {t.endConversation}
                     </button>
@@ -657,15 +676,19 @@ export default function MentorPage() {
             </div>
           )}
 
+          <MentorConversationHistory
+            locale={locale as "ko" | "en"}
+            topicLabels={Object.fromEntries(TOPICS.map((x) => [x.id, x.label]))}
+          />
           <div className="mt-6 pt-4 border-t border-mentor-wood-soft/20">
             <EmotionalStatsPhrases />
           </div>
           <footer className="mt-4 text-center text-sm text-mentor-ink-soft space-x-3">
-            <Link href={`/${locale}/bty`} className="text-mentor-wood hover:underline">
+            <Link href={`/${locale}/bty`} className="text-mentor-wood hover:underline" aria-label={isEn ? "Go to Foundry" : "훈련장으로 가기"}>
               {t.toFoundry}
             </Link>
             <span>·</span>
-            <Link href={`/${locale}/bty/integrity`} className="text-mentor-wood hover:underline">
+            <Link href={`/${locale}/bty/integrity`} className="text-mentor-wood hover:underline" aria-label={isEn ? "Go to Integrity simulator" : "역지사지 시뮬레이터로 가기"}>
               {t.toIntegrity}
             </Link>
           </footer>

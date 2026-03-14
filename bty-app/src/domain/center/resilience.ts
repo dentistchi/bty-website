@@ -15,7 +15,7 @@ export type ResilienceDayEntry = {
 export type LetterRow = { energy: number | null; created_at: string };
 
 /** energy 1–5 → low / mid / high. 없으면 mid. */
-export function energyToLevel(energy: number | null): ResilienceDailyLevel {
+export function energyToLevel(energy: number | null | undefined): ResilienceDailyLevel {
   if (energy == null) return "mid";
   if (energy <= 2) return "low";
   if (energy >= 4) return "high";

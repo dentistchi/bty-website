@@ -4,6 +4,8 @@
  * API·UI는 이 도메인 호출 결과만 사용.
  */
 
+import type { IntegritySubmitPayload } from "./integrity";
+
 /** Dojo 50문항 5영역 (목차 수준). */
 export const DOJO_50_AREAS = [
   "perspective_taking",   // 역지사지
@@ -34,7 +36,7 @@ export function validateDojo50Submit(answers: Dojo50Answers): { ok: boolean; err
   if (ids.length !== 50) return { ok: false, error: "answers_count" };
   for (let q = 1; q <= 50; q++) {
     const v = answers[q];
-    if (typeof v !== "number" || v < 1 || v > 5) return { ok: false, error: "invalid_range" };
+    if (typeof v !== "number" || !Number.isInteger(v) || v < 1 || v > 5) return { ok: false, error: "invalid_range" };
   }
   return { ok: true };
 }
@@ -65,10 +67,7 @@ export function computeDojo50Result(answers: Dojo50Answers): Dojo50Result {
 }
 
 /** 역지사지 제출: 시나리오 입력(텍스트 또는 선택 ID) 필수. */
-export function validateIntegritySubmit(payload: {
-  text?: string | null;
-  choiceId?: string | null;
-}): { ok: boolean; error?: string } {
+export function validateIntegritySubmit(payload: IntegritySubmitPayload): { ok: boolean; error?: string } {
   const hasText = typeof payload.text === "string" && payload.text.trim().length > 0;
   const hasChoice = typeof payload.choiceId === "string" && payload.choiceId.length > 0;
   if (hasText || hasChoice) return { ok: true };

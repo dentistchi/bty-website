@@ -1,22 +1,66 @@
 /**
- * Tier 25/50/75 celebration: detect when user crosses a milestone and persist "already shown".
- * Used by Arena and Dashboard to show TierMilestoneModal once per milestone.
+ * Tier 25/50/75 celebration — pure domain logic.
+ * Pure function: getPendingMilestone(currentTier, lastCelebratedMilestone).
+ * Side-effect wrapper: getMilestoneToShow (backward compat, uses localStorage).
+ * Preferred in React: useMilestoneTracker hook (src/hooks/useMilestoneTracker.ts).
  */
 
 import {
   codeIndexFromTier,
   subTierGroupFromTier,
-  SUB_NAMES,
   tierFromCoreXp,
 } from "@/lib/bty/arena/codes";
-import type { TierMilestone } from "@/components/bty-arena/TierMilestoneModal";
+import { defaultSubName } from "@/domain/rules";
 
-const STORAGE_KEY = "btyArenaLastCelebratedMilestone";
+/** Tier celebration milestones. Shared by lib and UI. */
+export type TierMilestone = 25 | 50 | 75;
+
+export type MilestoneToShow = {
+  milestone: TierMilestone;
+  previousSubName?: string;
+};
+
+export const MILESTONE_STORAGE_KEY = "btyArenaLastCelebratedMilestone";
+
+// ---------------------------------------------------------------------------
+// Pure function — no side effects
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the highest pending milestone to celebrate, or null.
+ * Pure: caller supplies currentTier and lastCelebratedMilestone.
+ */
+export function getPendingMilestone(
+  currentTier: number,
+  lastCelebratedMilestone: number,
+): MilestoneToShow | null {
+  if (currentTier >= 75 && lastCelebratedMilestone < 75) {
+    const codeIndex = codeIndexFromTier(currentTier);
+    const previousSubName =
+      defaultSubName(codeIndex, subTierGroupFromTier(74)) ?? "—";
+    return { milestone: 75, previousSubName };
+  }
+  if (currentTier >= 50 && lastCelebratedMilestone < 50) {
+    const codeIndex = codeIndexFromTier(currentTier);
+    const previousSubName =
+      defaultSubName(codeIndex, subTierGroupFromTier(49)) ?? "—";
+    return { milestone: 50, previousSubName };
+  }
+  if (currentTier >= 25 && lastCelebratedMilestone < 25) {
+    return { milestone: 25 };
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Backward-compat wrapper (localStorage side effect)
+// Prefer useMilestoneTracker hook in React components.
+// ---------------------------------------------------------------------------
 
 function getLastCelebrated(): number {
   if (typeof window === "undefined") return 0;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(MILESTONE_STORAGE_KEY);
     const n = parseInt(raw ?? "0", 10);
     return Number.isFinite(n) ? Math.max(0, n) : 0;
   } catch {
@@ -27,44 +71,20 @@ function getLastCelebrated(): number {
 function setLastCelebrated(milestone: TierMilestone): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEY, String(milestone));
+    localStorage.setItem(MILESTONE_STORAGE_KEY, String(milestone));
   } catch {
     // ignore
   }
 }
 
-export type MilestoneToShow = {
-  milestone: TierMilestone;
-  previousSubName?: string;
-};
-
 /**
- * Returns the next milestone to celebrate (25, 50, or 75) if the user just crossed it.
- * Updates localStorage so we only show each milestone once.
+ * Returns the next milestone to celebrate if the user just crossed it.
+ * Reads/writes localStorage. For React, prefer useMilestoneTracker hook.
  */
 export function getMilestoneToShow(newCoreXpTotal: number): MilestoneToShow | null {
-  const newTier = tierFromCoreXp(newCoreXpTotal);
+  const tier = tierFromCoreXp(newCoreXpTotal);
   const last = getLastCelebrated();
-
-  if (newTier >= 75 && last < 75) {
-    setLastCelebrated(75);
-    const codeIndex = codeIndexFromTier(newTier);
-    const prevGroup = subTierGroupFromTier(74);
-    const names = SUB_NAMES[codeIndex];
-    const previousSubName = names ? names[prevGroup] : "—";
-    return { milestone: 75, previousSubName };
-  }
-  if (newTier >= 50 && last < 50) {
-    setLastCelebrated(50);
-    const codeIndex = codeIndexFromTier(newTier);
-    const prevGroup = subTierGroupFromTier(49);
-    const names = SUB_NAMES[codeIndex];
-    const previousSubName = names ? names[prevGroup] : "—";
-    return { milestone: 50, previousSubName };
-  }
-  if (newTier >= 25 && last < 25) {
-    setLastCelebrated(25);
-    return { milestone: 25 };
-  }
-  return null;
+  const result = getPendingMilestone(tier, last);
+  if (result) setLastCelebrated(result.milestone);
+  return result;
 }

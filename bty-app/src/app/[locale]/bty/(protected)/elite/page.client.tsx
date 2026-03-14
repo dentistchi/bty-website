@@ -86,9 +86,9 @@ export default function ElitePageClient() {
   }
 
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", padding: "24px 16px" }}>
+    <div style={{ maxWidth: 640, margin: "0 auto", padding: "24px 16px" }} role="main" aria-labelledby="elite-page-heading">
       <div style={{ marginTop: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 16 }}>
+        <h1 id="elite-page-heading" style={{ fontSize: 24, fontWeight: 700, marginBottom: 16 }}>
           {locale === "ko" ? "Elite 전용" : "Elite only"}
         </h1>
         {isElite ? (
@@ -272,6 +272,7 @@ export default function ElitePageClient() {
                             <Link
                               href={`/${locale}/bty/mentor`}
                               style={{ fontSize: 13, fontWeight: 600, color: "#111" }}
+                              aria-label={t.approvedCta}
                             >
                               {t.approvedCta}
                             </Link>
@@ -301,7 +302,7 @@ export default function ElitePageClient() {
             )}
             <ul style={{ listStyle: "disc", paddingLeft: 24, marginBottom: 20 }}>
               <li style={{ marginBottom: 8 }}>
-                <Link href={`/${locale}/bty/mentor`} style={{ color: "#1a1a1a", fontWeight: 600 }}>
+                <Link href={`/${locale}/bty/mentor`} style={{ color: "#1a1a1a", fontWeight: 600 }} aria-label={locale === "ko" ? "Dr. Chi 멘토와 심화 대화" : "Deep conversation with Dr. Chi Mentor"}>
                   {locale === "ko" ? "Dr. Chi 멘토와 심화 대화" : "Deep conversation with Dr. Chi Mentor"}
                 </Link>
               </li>
@@ -318,6 +319,7 @@ export default function ElitePageClient() {
                 fontWeight: 600,
                 fontSize: 14,
               }}
+              aria-label={locale === "ko" ? "대시보드로" : "Back to dashboard"}
             >
               {locale === "ko" ? "← 대시보드로" : "← Back to dashboard"}
             </Link>
@@ -353,6 +355,7 @@ export default function ElitePageClient() {
                   fontWeight: 600,
                   fontSize: 14,
                 }}
+                aria-label={locale === "ko" ? "리더보드 보기" : "View leaderboard"}
               >
                 {locale === "ko" ? "리더보드 보기" : "View leaderboard"}
               </Link>
@@ -368,6 +371,7 @@ export default function ElitePageClient() {
                   fontWeight: 600,
                   fontSize: 14,
                 }}
+                aria-label={locale === "ko" ? "대시보드로" : "To dashboard"}
               >
                 {locale === "ko" ? "대시보드로" : "To dashboard"}
               </Link>

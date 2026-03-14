@@ -86,6 +86,7 @@ export default function ResultClient({ locale }: { locale: string }) {
         <Link
           href="../assessment"
           className="inline-block rounded-xl px-5 py-2.5 font-medium bg-[var(--arena-accent)] text-white hover:opacity-90"
+          aria-label={t.backToAssessment}
         >
           {t.backToAssessment}
         </Link>
@@ -101,6 +102,7 @@ export default function ResultClient({ locale }: { locale: string }) {
         <Link
           href="../assessment"
           className="inline-block rounded-xl px-5 py-2.5 border border-[var(--arena-text-soft)]/40 text-[var(--arena-text)]"
+          aria-label={t.backToAssessment}
         >
           {t.backToAssessment}
         </Link>
@@ -167,6 +169,7 @@ export default function ResultClient({ locale }: { locale: string }) {
       <Link
         href="../assessment"
         className="inline-block rounded-xl px-5 py-2.5 border border-[var(--arena-text-soft)]/40 text-[var(--arena-text)] hover:bg-[var(--arena-text-soft)]/5"
+        aria-label={t.backToAssessment}
       >
         {t.backToAssessment}
       </Link>

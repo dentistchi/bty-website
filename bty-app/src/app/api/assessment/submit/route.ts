@@ -1,0 +1,91 @@
+/**
+ * POST /api/assessment/submit — 자존감 진단 50문항 제출·점수·패턴·저장.
+ * Thin handler: auth → body parse → service → response.
+ *
+ * @contract
+ * POST /api/assessment/submit
+ *   Auth: required (session)
+ *   Body: { answers?: Record<string, number> } (50 keys 1..50, values 1..5)
+ *   200: AssessmentSubmitPostResponse
+ *   400 | 401 | 500: AssessmentSubmitErrorResponse
+ */
+import { NextResponse } from "next/server";
+import { getLetterAuth, submitAssessment } from "@/lib/bty/center";
+import { logApiError } from "@/lib/log-api-error";
+import questionsKo from "@/content/assessment/questions.ko.json";
+
+export const runtime = "nodejs";
+
+const questions = questionsKo as { id: number; dimension: string; text: string; reverse: boolean }[];
+
+/** POST 200: 제출 결과 (submissionId는 insert 실패 시 null) */
+export type AssessmentSubmitPostResponse = {
+  submissionId: string | null;
+  scores: Record<string, number>;
+  pattern: string;
+  recommendedTrack: string;
+};
+
+/** POST 400/401/500: 에러 본문 */
+export type AssessmentSubmitErrorResponse = {
+  error: string;
+  detail?: string;
+};
+
+/**
+ * POST: Assessment 50문항 제출 → 검증·채점·패턴·저장.
+ * @returns 200 AssessmentSubmitPostResponse | 400 | 401 | 500 AssessmentSubmitErrorResponse
+ */
+export async function POST(request: Request): Promise<
+  NextResponse<AssessmentSubmitPostResponse | AssessmentSubmitErrorResponse>
+> {
+  try {
+    const auth = await getLetterAuth();
+    if (!auth) {
+      return NextResponse.json(
+        { error: "UNAUTHENTICATED" } satisfies AssessmentSubmitErrorResponse,
+        { status: 401 }
+      );
+    }
+
+    let body: { answers?: Record<string, number> };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "invalid_body" } satisfies AssessmentSubmitErrorResponse,
+        { status: 400 }
+      );
+    }
+
+    const result = await submitAssessment(auth.supabase, {
+      userId: auth.userId,
+      answers: body.answers ?? {},
+      questions,
+    });
+
+    if (!result.ok) {
+      return NextResponse.json(
+        {
+          error: result.error,
+          ...(result.detail ? { detail: result.detail } : {}),
+        } satisfies AssessmentSubmitErrorResponse,
+        { status: 400 }
+      );
+    }
+
+    const postBody: AssessmentSubmitPostResponse = {
+      submissionId: result.submissionId,
+      scores: result.scores,
+      pattern: result.pattern,
+      recommendedTrack: result.track,
+    };
+    return NextResponse.json(postBody);
+  } catch (e) {
+    logApiError("assessment/submit", 500, e);
+    return NextResponse.json(
+      { error: "Something went wrong" } satisfies AssessmentSubmitErrorResponse,
+      { status: 500 }
+    );
+  }
+}

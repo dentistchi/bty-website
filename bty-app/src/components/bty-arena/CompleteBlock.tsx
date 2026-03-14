@@ -3,12 +3,15 @@
 import React from "react";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
+import { CardSkeleton } from "./CardSkeleton";
 
 export type CompleteBlockProps = {
   locale: Locale | string;
   followUpSelectedLabel?: string | null;
   followUpSelectedSectionLabel?: string;
   onContinue: () => void;
+  /** When true, show loading skeleton below the button (next scenario in flight). */
+  loading?: boolean;
 };
 
 export function CompleteBlock({
@@ -16,10 +19,12 @@ export function CompleteBlock({
   followUpSelectedLabel,
   followUpSelectedSectionLabel,
   onContinue,
+  loading = false,
 }: CompleteBlockProps) {
   const lang: Locale = locale === "ko" || locale === "en" ? locale : "en";
   const t = getMessages(lang).arenaRun;
   const sectionLabel = followUpSelectedSectionLabel ?? t.followUpSelected;
+  const loadingAriaLabel = lang === "ko" ? "다음 시나리오 불러오는 중…" : "Loading next scenario…";
 
   return (
     <>
@@ -48,6 +53,9 @@ export function CompleteBlock({
       <div style={{ marginTop: 20 }}>
         <button
           onClick={onContinue}
+          disabled={loading}
+          aria-busy={loading}
+          aria-label={t.nextScenario}
           style={{
             padding: "14px 20px",
             borderRadius: 12,
@@ -56,14 +64,20 @@ export function CompleteBlock({
             color: "white",
             fontSize: 16,
             fontWeight: 600,
-            cursor: "pointer",
+            cursor: loading ? "not-allowed" : "pointer",
             width: "100%",
             maxWidth: 320,
+            opacity: loading ? 0.6 : 1,
           }}
         >
           {t.nextScenario}
         </button>
       </div>
+      {loading && (
+        <div style={{ marginTop: 10 }} aria-busy="true" aria-label={loadingAriaLabel}>
+          <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
+        </div>
+      )}
     </>
   );
 }

@@ -68,4 +68,15 @@ describe("getNextStage", () => {
       expect(getNextStage(STAGE_4, ctx)).toBeNull();
     }
   });
+
+  it("full cycle 1→2→3→4→1 with valid contexts in order", () => {
+    const ctx1: StageTransitionContext = "repeat_1_without_delegation";
+    const ctx2: StageTransitionContext = "repeat_2_without_corrective_activation";
+    const ctx3: StageTransitionContext = "air_below_threshold";
+    const ctx4: StageTransitionContext = "stage_4_completion";
+    expect(getNextStage(STAGE_1, ctx1)).toBe(STAGE_2);
+    expect(getNextStage(STAGE_2, ctx2)).toBe(STAGE_3);
+    expect(getNextStage(STAGE_3, ctx3)).toBe(STAGE_4);
+    expect(getNextStage(STAGE_4, ctx4)).toBe(STAGE_1);
+  });
 });

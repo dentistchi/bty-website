@@ -8,7 +8,9 @@
     "files.exclude": {
       "**/.next": true,
       "**/node_modules": true,
-      "**/dist": true
+      "**/dist": true,
+      "**/build": true,
+      "**/coverage": true
     }
   }
 }

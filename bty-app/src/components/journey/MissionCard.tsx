@@ -117,6 +117,7 @@ export function MissionCard({
                   <Dialog.Close
                     className="mt-4 px-6 py-2 rounded-xl bg-foundry-purple text-white font-medium hover:bg-foundry-purple-dark transition-colors"
                     onClick={() => onOpenChange(false)}
+                    aria-label="확인"
                   >
                     확인
                   </Dialog.Close>
@@ -224,6 +225,7 @@ export function MissionCard({
                         ? "bg-foundry-purple text-white hover:bg-foundry-purple-dark"
                         : "bg-foundry-purple-muted/50 text-foundry-ink-soft cursor-not-allowed"
                     )}
+                    aria-label={isSubmitting ? "저장 중…" : "오늘의 미션 완료하고 기록하기"}
                   >
                     {isSubmitting
                       ? "저장 중…"

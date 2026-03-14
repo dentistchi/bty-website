@@ -1,28 +1,63 @@
-# Add directories or file patterns to ignorenode_modules
-node_modules
-.next
-.open-next
-dist
-build
-coverage
-.turbo
-.vercel
-.cache
-logs
+# dependency
+node_modules/
+
+# build outputs
+.next/
+dist/
+build/
+out/
+
+# logs
 *.log
+logs/
+
+# environment
 .env
-.env.*
-wrangler-state
-.supabase
+.env.local
+.env.*.local
 
-# generated / temporary
-tmp
-temp
-*.tmp
-
-# test outputs
-playwright-report
-test-results
-
-# local editor/system noise
+# OS files
 .DS_Store
+Thumbs.db
+
+# git
+.git/
+.gitignore
+
+# editor
+.vscode/
+.idea/
+
+# coverage
+coverage/
+
+# package manager
+.pnpm-store/
+.npm/
+.yarn/
+
+# large assets
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.mp4
+*.mov
+
+# Supabase local
+supabase/.temp
+supabase/.cache
+
+# Workers build
+.wrangler/
+
+# test artifacts
+playwright-report/
+test-results/
+
+# generated files
+*.lock
+package-lock.json
+
+# optional docs to skip (if too large)
+docs/archive/

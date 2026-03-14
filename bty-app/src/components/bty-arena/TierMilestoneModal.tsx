@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { CardSkeleton } from "./CardSkeleton";
 
 export type TierMilestone = 25 | 50 | 75;
 
@@ -95,6 +96,7 @@ export function TierMilestoneModal({
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value.slice(0, 7))}
               placeholder="Sub name (7 chars)"
+              aria-label="Sub name (max 7 characters)"
               maxLength={7}
               style={{
                 width: "100%",
@@ -108,6 +110,7 @@ export function TierMilestoneModal({
               <button
                 type="button"
                 onClick={onClose}
+                aria-label="Skip"
                 style={{
                   padding: "10px 16px",
                   borderRadius: 10,
@@ -122,6 +125,7 @@ export function TierMilestoneModal({
                 type="button"
                 onClick={handleSaveRename}
                 disabled={saving || !renameValue.trim()}
+                aria-label={saving ? "Saving…" : "Save"}
                 style={{
                   padding: "10px 16px",
                   borderRadius: 10,
@@ -134,6 +138,11 @@ export function TierMilestoneModal({
                 {saving ? "Saving…" : "Save"}
               </button>
             </div>
+            {saving && (
+              <div style={{ marginTop: 10 }} aria-busy="true" aria-label="Saving…">
+                <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
+              </div>
+            )}
           </div>
         )}
 
@@ -142,6 +151,7 @@ export function TierMilestoneModal({
             <button
               type="button"
               onClick={onClose}
+              aria-label="Continue"
               style={{
                 width: "100%",
                 padding: "12px 16px",

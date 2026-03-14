@@ -5,17 +5,14 @@
  * @contract
  * GET /api/me/mentor-request
  *   Auth: required (session)
- *   200: { request: null } | { request: { id, status, message?, mentorId, createdAt, updatedAt, respondedAt?, respondedBy? } }
- *   401: { error: "UNAUTHENTICATED" }
+ *   200: MentorRequestGetResponse
+ *   401: MentorRequestErrorResponse
  *
  * POST /api/me/mentor-request
  *   Auth: required (session). Elite만; pending 중복 불가.
- *   Body: { message?: string } (optional, max 500 chars per domain MENTOR_REQUEST_MESSAGE_MAX_LENGTH)
- *   201: { id, status: "pending", createdAt }
- *   400: { error: "message_too_long" } (validateMentorRequestPayload)
- *   401: { error: "UNAUTHENTICATED" }
- *   403: { error: "ELITE_ONLY" | "PENDING_EXISTS" }
- *   500: { error: "CREATE_FAILED" }
+ *   Body: { message?: string } (optional, max 500 chars per MENTOR_REQUEST_MESSAGE_MAX_LENGTH)
+ *   201: MentorRequestPostResponse
+ *   400 | 401 | 403 | 500: MentorRequestErrorResponse
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -30,6 +27,35 @@ import {
 
 export const runtime = "nodejs";
 
+/** Single mentor request item (GET 200 when request exists). */
+export type MentorRequestItem = {
+  id: string;
+  status: MentorRequestStatus;
+  message?: string;
+  mentorId: string;
+  createdAt: string;
+  updatedAt: string;
+  respondedAt?: string;
+  respondedBy?: string;
+};
+
+/** GET 200: { request: null } | { request: MentorRequestItem } */
+export type MentorRequestGetResponse =
+  | { request: null }
+  | { request: MentorRequestItem };
+
+/** POST 201: created request summary */
+export type MentorRequestPostResponse = {
+  id: string;
+  status: "pending";
+  createdAt: string;
+};
+
+/** Error body for 400/401/403/500 */
+export type MentorRequestErrorResponse = {
+  error: "UNAUTHENTICATED" | "message_too_long" | "ELITE_ONLY" | "PENDING_EXISTS" | "CREATE_FAILED";
+};
+
 type MentorRequestRow = {
   id: string;
   user_id: string;
@@ -42,11 +68,21 @@ type MentorRequestRow = {
   responded_by: string | null;
 };
 
-/** GET: 내 멘토 신청 1건 (최신 또는 pending 우선) */
-export async function GET() {
+/**
+ * GET: 내 멘토 신청 1건 (최신 또는 pending 우선).
+ * @returns 200 MentorRequestGetResponse | 401 MentorRequestErrorResponse
+ */
+export async function GET(): Promise<
+  NextResponse<MentorRequestGetResponse | MentorRequestErrorResponse>
+> {
   const supabase = await getSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+  if (!user) {
+    return NextResponse.json(
+      { error: "UNAUTHENTICATED" } satisfies MentorRequestErrorResponse,
+      { status: 401 }
+    );
+  }
 
   const { data: rows } = await supabase
     .from("elite_mentor_requests")
@@ -57,9 +93,9 @@ export async function GET() {
 
   const row = rows?.[0] as MentorRequestRow | undefined;
   if (!row) {
-    return NextResponse.json({ request: null });
+    return NextResponse.json({ request: null } satisfies MentorRequestGetResponse);
   }
-  return NextResponse.json({
+  const body: MentorRequestGetResponse = {
     request: {
       id: row.id,
       status: row.status as MentorRequestStatus,
@@ -70,14 +106,27 @@ export async function GET() {
       respondedAt: row.responded_at ?? undefined,
       respondedBy: row.responded_by ?? undefined,
     },
-  });
+  };
+  return NextResponse.json(body);
 }
 
-/** POST: 멘토 1:1 신청 (Elite만, pending 중복 불가) */
-export async function POST(request: NextRequest) {
+/**
+ * POST: 멘토 1:1 신청 (Elite만, pending 중복 불가).
+ * @returns 201 MentorRequestPostResponse | 400|401|403|500 MentorRequestErrorResponse
+ */
+export async function POST(
+  request: NextRequest
+): Promise<
+  NextResponse<MentorRequestPostResponse | MentorRequestErrorResponse>
+> {
   const supabase = await getSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+  if (!user) {
+    return NextResponse.json(
+      { error: "UNAUTHENTICATED" } satisfies MentorRequestErrorResponse,
+      { status: 401 }
+    );
+  }
 
   const isElite = await getIsEliteTop5(supabase, user.id);
   const { data: existing } = await supabase
@@ -91,7 +140,7 @@ export async function POST(request: NextRequest) {
   const existingStatus = (existing?.status as MentorRequestStatus) ?? null;
   if (!canRequestMentorSession(isElite, existingStatus)) {
     return NextResponse.json(
-      { error: isElite ? "PENDING_EXISTS" : "ELITE_ONLY" },
+      { error: isElite ? "PENDING_EXISTS" : "ELITE_ONLY" } satisfies MentorRequestErrorResponse,
       { status: 403 }
     );
   }
@@ -104,7 +153,11 @@ export async function POST(request: NextRequest) {
   }
   const validation = validateMentorRequestPayload(body.message);
   if (!validation.valid) {
-    return NextResponse.json({ error: validation.error }, { status: 400 });
+    const err = validation.error! as MentorRequestErrorResponse["error"];
+    return NextResponse.json(
+      { error: err } satisfies MentorRequestErrorResponse,
+      { status: 400 }
+    );
   }
 
   const message = body.message?.trim() || null;
@@ -119,9 +172,16 @@ export async function POST(request: NextRequest) {
     .select("id, status, created_at")
     .single();
 
-  if (error) return NextResponse.json({ error: "CREATE_FAILED" }, { status: 500 });
-  return NextResponse.json(
-    { id: (inserted as { id: string }).id, status: "pending", createdAt: (inserted as { created_at: string }).created_at },
-    { status: 201 }
-  );
+  if (error) {
+    return NextResponse.json(
+      { error: "CREATE_FAILED" } satisfies MentorRequestErrorResponse,
+      { status: 500 }
+    );
+  }
+  const postBody: MentorRequestPostResponse = {
+    id: (inserted as { id: string }).id,
+    status: "pending",
+    createdAt: (inserted as { created_at: string }).created_at,
+  };
+  return NextResponse.json(postBody, { status: 201 });
 }

@@ -6,21 +6,24 @@
 
 ---
 
-## 현재 대기 작업 (보드와 동일)
+## 현재 대기 작업 (보드와 동일) — MODE FOUNDRY (SPRINT 43)
 
 | 순서 | 할 일 (한 줄) | 보드 반영 |
 |------|----------------|-----------|
-| **1** | **문서 점검 2~3건** — 백로그 + Release Gate 2~3건 점검·갱신. | docs·bty-app 보드 First Task |
-| 2 | 단위 테스트 1개 추가 (미커버 1모듈) | docs 보드 대기 |
-| 3 | 로딩/스켈레톤 1곳 보강 | docs 보드 대기 |
+| **1** | **[VERIFY] Release Gate A~F — Foundry 43차** — bty-release-gate.mdc A~F. Lint·Test·Build. | docs 보드 SPRINT 43 TASK 1 |
+| 2 | **[DOCS] 문서 점검 115·116·117차** — NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드·BTY_RELEASE_GATE_CHECK 2~3건 점검·갱신. | docs 보드 SPRINT 43 |
+| 3 | **[UI] Center/Foundry 추가 접근성 1곳** — dear-me·assessment·center·dojo·integrity·mentor·elite 중 미적용 1곳 aria-label·aria-describedby. | docs 보드 SPRINT 43 |
+| 4 | **[DOCS] 다음 배치 선정** — NEXT_BACKLOG_AUTO4·NEXT_PHASE_AUTO4 수동 갱신(필요 시). | docs 보드 SPRINT 43 |
+| 5 | **[DOCS] Arena·Center·Foundry 대기 목록 동기화** — NEXT_PHASE·NEXT_BACKLOG·보드 대기 행 일치. | docs 보드 SPRINT 43 |
 
 ---
 
 ## 다음 후보 (AUTO 시 2~3개 묶기용)
 
-- 문서 점검 2~3건 (백로그 + Release Gate)
-- 로딩/스켈레톤 1곳 보강
-- 접근성 1건 (aria-label·포커스/스킵 1곳)
+- [VERIFY] Release Gate 44차 *(다음 스프린트 1번)*
+- [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리
+- [DOMAIN] Center/Foundry 미커버 경계 테스트 1건
+- [TEST] Center/Foundry route 테스트 1건
 
 *Auth·XP·리더보드 등 위험 구간은 1개만 First Task로 둔다.*
 
@@ -33,4 +36,4 @@
 
 ---
 
-*최종 갱신: 2026-03-08 — C1 auto 8차. 로딩/스켈레톤 1곳 wrap. First Task = 문서 점검 2~3건. 대기 3건.*
+*최종 갱신: 2026-03-11 — splint 10. SPRINT 42 전량 완료·SPRINT 43 생성. 대기 5건 = 43차·115·116·117차·접근성·다음 배치·대기 동기화. MODE FOUNDRY.*
