@@ -199,4 +199,16 @@ describe("POST /api/center/letter", () => {
     expect(input.energy).toBeUndefined();
     expect(input.oneWord).toBeUndefined();
   });
+
+  it("returns 200 when body has energy 0 (falsy but valid)", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitCenterLetter.mockResolvedValue({ ok: true, reply: "ok" });
+
+    const res = await POST(makeRequest({ body: "Hi", energy: 0 }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.saved).toBe(true);
+    const [, input] = mockSubmitCenterLetter.mock.calls[0];
+    expect(input.energy).toBe(0);
+  });
 });

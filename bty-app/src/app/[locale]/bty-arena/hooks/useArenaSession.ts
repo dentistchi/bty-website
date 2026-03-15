@@ -12,6 +12,7 @@ import type { CoreXpGetResponse } from "@/lib/bty/arena/coreXpApi";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
+import { difficultyFromScenarioChoices } from "@/lib/bty/arena/arenaLabXp";
 
 // ── exported types ──────────────────────────────────────────────
 export type ArenaPhase = "CHOOSING" | "SHOW_RESULT" | "FOLLOW_UP" | "DONE";
@@ -147,12 +148,52 @@ function updateStreak(): { streak: number; message?: SystemMsg } {
   }
 }
 
-async function createRun(scenarioId: string, locale: string | undefined): Promise<string | null> {
+/** Default Arena timer limit in seconds; 0 = no timer. */
+const ARENA_TIME_LIMIT_SECONDS = 300;
+
+export type CreateRunOptions = {
+  scenario?: Scenario;
+  timeLimitSeconds?: number;
+};
+
+export type CreateRunResult = {
+  run_id: string;
+  started_at: string;
+  timeLimitSeconds?: number;
+};
+
+async function createRun(
+  scenarioId: string,
+  locale: string | undefined,
+  options?: CreateRunOptions
+): Promise<CreateRunResult | null> {
   try {
-    const data = await arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", {
-      json: { scenarioId, locale: locale ?? null },
+    const difficulty = options?.scenario
+      ? difficultyFromScenarioChoices(options.scenario.choices)
+      : undefined;
+    const timeLimitSeconds = options?.timeLimitSeconds ?? ARENA_TIME_LIMIT_SECONDS;
+    const meta =
+      timeLimitSeconds > 0
+        ? { time_limit: timeLimitSeconds }
+        : undefined;
+    const data = await arenaFetch<{
+      run?: { run_id: string; started_at?: string };
+    }>("/api/arena/run", {
+      json: {
+        scenarioId,
+        locale: locale ?? null,
+        ...(difficulty != null && { difficulty }),
+        ...(meta != null && { meta }),
+      },
     });
-    return data.run?.run_id ?? null;
+    const run = data.run;
+    if (!run?.run_id) return null;
+    const started_at = typeof run.started_at === "string" ? run.started_at : new Date().toISOString();
+    return {
+      run_id: run.run_id,
+      started_at,
+      ...(timeLimitSeconds > 0 && { timeLimitSeconds }),
+    };
   } catch (e) {
     console.warn("Arena createRun failed", e);
     return null;
@@ -241,6 +282,12 @@ export function useArenaSession() {
   const [reflectionSubmitting, setReflectionSubmitting] = React.useState(false);
   const [milestoneModal, setMilestoneModal] = React.useState<MilestoneModalState | null>(null);
   const [resetRunLoading, setResetRunLoading] = React.useState(false);
+
+  const runMetaRef = React.useRef<{
+    runId: string;
+    startedAt: string;
+    timeLimitSeconds: number;
+  } | null>(null);
 
   // Toast auto-dismiss
   React.useEffect(() => {
@@ -355,9 +402,22 @@ export function useArenaSession() {
   async function ensureRunId(): Promise<string | null> {
     if (runId) return runId;
     if (!current) return null;
-    const id = await createRun(current.scenarioId, locale ?? undefined);
-    if (id) { setRunId(id); persist({ runId: id }); return id; }
-    return null;
+    const result = await createRun(current.scenarioId, locale ?? undefined, {
+      scenario: current,
+      timeLimitSeconds: ARENA_TIME_LIMIT_SECONDS,
+    });
+    if (!result) return null;
+    setRunId(result.run_id);
+    runMetaRef.current =
+      result.timeLimitSeconds != null && result.timeLimitSeconds > 0
+        ? {
+            runId: result.run_id,
+            startedAt: result.started_at,
+            timeLimitSeconds: result.timeLimitSeconds,
+          }
+        : null;
+    persist({ runId: result.run_id });
+    return result.run_id;
   }
 
   // ── reset helpers (shared by resetRun & continueNextScenario) ──
@@ -370,6 +430,7 @@ export function useArenaSession() {
     setFollowUpIndex(null);
     setLastXp(0);
     setRunId(null);
+    runMetaRef.current = null;
     setOtherOpen(false);
     setOtherText("");
     setOtherSubmitting(false);
@@ -582,7 +643,22 @@ export function useArenaSession() {
     try {
       if (currentRunId) {
         try {
-          await arenaFetch("/api/arena/run/complete", { json: { runId: currentRunId } });
+          const meta = runMetaRef.current?.runId === currentRunId ? runMetaRef.current : null;
+          const timeRemaining =
+            meta != null
+              ? Math.max(
+                  0,
+                  meta.timeLimitSeconds -
+                    (Date.now() / 1000 - new Date(meta.startedAt).getTime() / 1000)
+                )
+              : undefined;
+          await arenaFetch("/api/arena/run/complete", {
+            json: {
+              runId: currentRunId,
+              ...(typeof timeRemaining === "number" && { time_remaining: Math.round(timeRemaining) }),
+            },
+          });
+          runMetaRef.current = null;
           core = await arenaFetch<CoreXpGetResponse>("/api/arena/core-xp").catch(() => null);
           if (core && typeof core.coreXpTotal === "number") {
             // Milestone uses lib (tier computed in lib); UI does not derive tier from coreXpTotal.
@@ -616,11 +692,29 @@ export function useArenaSession() {
       setStep(1);
       resetAllLocal();
 
-      arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", { json: { scenarioId: next.scenarioId, locale } })
-        .then((data) => {
-          if (data.run?.run_id) {
-            setRunId(data.run.run_id);
-            saveState({ version: 1, scenarioId: next.scenarioId, phase: "CHOOSING", step: 1, runId: data.run.run_id, updatedAtISO: safeNowISO() });
+      createRun(next.scenarioId, locale ?? undefined, {
+        scenario: next,
+        timeLimitSeconds: ARENA_TIME_LIMIT_SECONDS,
+      })
+        .then((result) => {
+          if (result) {
+            setRunId(result.run_id);
+            runMetaRef.current =
+              result.timeLimitSeconds != null && result.timeLimitSeconds > 0
+                ? {
+                    runId: result.run_id,
+                    startedAt: result.started_at,
+                    timeLimitSeconds: result.timeLimitSeconds,
+                  }
+                : null;
+            saveState({
+              version: 1,
+              scenarioId: next.scenarioId,
+              phase: "CHOOSING",
+              step: 1,
+              runId: result.run_id,
+              updatedAtISO: safeNowISO(),
+            });
           }
         })
         .catch((e) => console.warn("Arena run create (continue) failed", e));
@@ -650,11 +744,29 @@ export function useArenaSession() {
     resetAllLocal();
     setSystemMessage(SYSTEM_MESSAGES.find((m) => m.id === "arch_init") ?? null);
 
-    arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", { json: { scenarioId: next.scenarioId, locale } })
-      .then((data) => {
-        if (data.run?.run_id) {
-          setRunId(data.run.run_id);
-          saveState({ version: 1, scenarioId: next.scenarioId, phase: "CHOOSING", step: 1, runId: data.run.run_id, updatedAtISO: safeNowISO() });
+    createRun(next.scenarioId, locale ?? undefined, {
+      scenario: next,
+      timeLimitSeconds: ARENA_TIME_LIMIT_SECONDS,
+    })
+      .then((result) => {
+        if (result) {
+          setRunId(result.run_id);
+          runMetaRef.current =
+            result.timeLimitSeconds != null && result.timeLimitSeconds > 0
+              ? {
+                  runId: result.run_id,
+                  startedAt: result.started_at,
+                  timeLimitSeconds: result.timeLimitSeconds,
+                }
+              : null;
+          saveState({
+            version: 1,
+            scenarioId: next.scenarioId,
+            phase: "CHOOSING",
+            step: 1,
+            runId: result.run_id,
+            updatedAtISO: safeNowISO(),
+          });
         }
       })
       .catch((e) => console.warn("Arena run create (reset) failed", e))

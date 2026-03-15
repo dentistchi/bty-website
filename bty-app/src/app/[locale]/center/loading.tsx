@@ -1,17 +1,10 @@
-import { LoadingFallback } from "@/components/bty-arena";
+import { LocaleAwareRouteLoading } from "@/components/LocaleAwareRouteLoading";
 
+/** §9 locale 기반 로딩 문구 */
 export default function CenterLoading() {
   return (
-    <div
-      style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}
-      aria-busy="true"
-      aria-label="Loading…"
-    >
-      <LoadingFallback
-        icon="🏠"
-        message="잠시만 기다려 주세요."
-        withSkeleton
-      />
+    <div style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}>
+      <LocaleAwareRouteLoading icon="🏠" withSkeleton showHint={false} />
     </div>
   );
 }

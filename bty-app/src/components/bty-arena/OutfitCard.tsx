@@ -14,6 +14,8 @@ export interface OutfitCardProps {
   outfitKey: string;
   accessoryKeys: string[];
   name?: string;
+  /** §2: locale 기반 라벨 (예: "Preview" / "미리보기") */
+  previewLabel?: string;
   selected?: boolean;
   onClick?: () => void;
   className?: string;
@@ -24,6 +26,7 @@ export function OutfitCard({
   outfitKey,
   accessoryKeys,
   name,
+  previewLabel,
   selected = false,
   onClick,
   className,
@@ -58,7 +61,7 @@ export function OutfitCard({
       />
       <div className="min-w-0 flex-1">
         <div className="text-sm font-medium truncate">{name ?? outfitKey}</div>
-        <div className="text-xs opacity-60">Preview</div>
+        <div className="text-xs opacity-60">{previewLabel ?? "Preview"}</div>
       </div>
     </button>
   );

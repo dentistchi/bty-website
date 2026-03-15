@@ -11,6 +11,7 @@ import { ThemeBody } from "@/components/ThemeBody";
 import { LoadingFallback } from "@/components/bty-arena";
 import { MissionCard } from "@/components/journey/MissionCard";
 import { cn } from "@/lib/utils";
+import { getMessages } from "@/lib/i18n";
 import { fetchJson } from "@/lib/read-json";
 import { useAuth } from "@/contexts/AuthContext";
 import { JOURNEY_DAYS, type DayContent } from "@/lib/journey-content";
@@ -256,11 +257,12 @@ export function JourneyBoard() {
   }, [toast]);
 
   if (loading) {
+    const tLoading = getMessages(locale === "ko" ? "ko" : "en").loading;
     return (
       <AuthGate>
         <ThemeBody theme="foundry" />
         <main className="min-h-screen bg-foundry-white flex items-center justify-center p-6">
-          <LoadingFallback icon="📋" message="잠시만 기다려 주세요." withSkeleton />
+          <LoadingFallback icon="📋" message={tLoading.message} withSkeleton />
         </main>
       </AuthGate>
     );

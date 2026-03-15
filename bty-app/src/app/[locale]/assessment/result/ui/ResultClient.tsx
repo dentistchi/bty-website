@@ -282,7 +282,7 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
         />
 
         {prevScores && (
-          <div className="mt-5">
+          <div className="mt-5" role="group" aria-label={isEn ? "Change from previous" : "이전 대비 변화"}>
             <h3 className="text-sm font-medium text-gray-600 mb-2">
               {isEn ? "Change from previous" : "이전 대비 변화"}
             </h3>
@@ -308,10 +308,14 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
         )}
       </section>
 
-      <div className="mt-6 border rounded-2xl p-5 bg-white">
+      <div
+        className="mt-6 border rounded-2xl p-5 bg-white"
+        role="region"
+        aria-label={isEn ? "Recommended track" : "권장 트랙"}
+      >
         <div className="text-sm text-gray-500 mb-1">{isEn ? "Recommended track" : "권장 트랙"}</div>
         <div className="text-xl font-semibold mb-2">{pattern.track}</div>
-        <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
+        <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1" aria-label={isEn ? "Reasons" : "이유"}>
           {pattern.reasons.map((r, i) => <li key={i}>{r}</li>)}
         </ul>
       </div>
@@ -361,7 +365,7 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
         )}
 
         {!historyLoading && !historyError && history.length > 0 && (
-          <ul className="space-y-3" role="list">
+          <ul className="space-y-3" role="list" aria-label={isEn ? "Previous assessment results" : "이전 진단 결과 목록"}>
             {history.map((item) => {
               const date = new Date(item.created_at);
               const dateStr = date.toLocaleDateString(isEn ? "en-US" : "ko-KR", {

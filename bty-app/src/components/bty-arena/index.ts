@@ -43,3 +43,4 @@ export { ArenaToast } from "./ArenaToast";
 export type { ArenaToastProps } from "./ArenaToast";
 export { ArenaRunHistory } from "./ArenaRunHistory";
 export type { ArenaRunHistoryProps } from "./ArenaRunHistory";
+export { LabUsageStrip } from "./LabUsageStrip";

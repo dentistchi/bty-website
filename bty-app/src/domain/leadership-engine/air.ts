@@ -47,6 +47,25 @@ export interface AIRResult {
   integritySlip: boolean;
 }
 
+/** API 노출용 AIR 밴드. */
+export type AIRBand = "low" | "mid" | "high";
+
+/** AIR 값(0–1) → 밴드. 순수 함수. */
+export function airToBand(air: number): AIRBand {
+  if (air < 0.4) return "low";
+  if (air < 0.7) return "mid";
+  return "high";
+}
+
+/** API 노출용 AIR 응답 타입. */
+export interface AIRApiResponse {
+  band: AIRBand;
+  air_7d: number;
+  air_14d: number;
+  air_90d: number;
+  integrity_slip: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

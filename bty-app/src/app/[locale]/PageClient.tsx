@@ -387,9 +387,9 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
                 </PaperCard>
                 <p className="text-center text-sanctuary-text-soft text-sm">
                   {t.assessmentDetailHint}{" "}
-                  <Link href={`/${locale}/assessment`} className="underline hover:text-sanctuary-text font-medium" aria-label="Take 50-question assessment">
-                    {t.assessmentCta}
-                  </Link>
+<Link href={`/${locale}/assessment`} className="underline hover:text-sanctuary-text font-medium" aria-label="Take 50-question assessment">
+                  {t.assessmentCta}
+                </Link>
                 </p>
                 <Link
                   href={`/${locale}/assessment`}

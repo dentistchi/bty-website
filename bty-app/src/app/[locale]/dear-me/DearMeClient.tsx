@@ -197,7 +197,7 @@ export default function DearMeClient({ locale }: { locale: string }) {
             )}
 
             {!historyLoading && !historyError && history.length > 0 && (
-              <ul className="space-y-3" role="list">
+              <ul className="space-y-3" role="list" aria-label={t.letterHistoryTitle}>
                 {history.map((item) => {
                   const date = new Date(item.created_at);
                   const dateStr = date.toLocaleDateString(lang === "ko" ? "ko-KR" : "en-US", {

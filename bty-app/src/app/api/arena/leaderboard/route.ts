@@ -10,7 +10,7 @@
  *   - Auth: 세션 쿠키 필수 (Supabase getUser)
  * 응답:
  *   - 200: { leaderboard, nearMe, top10, champions, myRank, myXp, gapToAbove, count, scope, scopeLabel, scopeUnavailable, week_end, reset_at, season }
- *   - 401: { error: "UNAUTHENTICATED" }
+ *   - 401: { error: "UNAUTHENTICATED", message: "Sign in to see leaderboard" }
  *   - 500: { error: "WEEKLY_XP_QUERY_FAILED", detail: string }
  *
  * Thin handler: auth → service calls → response.
@@ -58,7 +58,10 @@ export async function GET(req: NextRequest) {
   const user = userData.user;
 
   if (!user) {
-    const out = NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+    const out = NextResponse.json(
+      { error: "UNAUTHENTICATED", message: "Sign in to see leaderboard" },
+      { status: 401 },
+    );
     tmp.headers.forEach((v, k) => out.headers.set(k, v));
     return out;
   }

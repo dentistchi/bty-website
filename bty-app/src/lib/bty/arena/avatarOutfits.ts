@@ -2,6 +2,11 @@
  * Track D: Outfit theme (professional / fantasy) and level → outfit + accessories.
  * Professional = 치과 중심: Figs 스크럽, 핸드피스, 치과거울, explorer, X-ray portable, apron, 장갑, 마스크, loupes, 고글 등.
  * 캐릭터는 동일한 옷/악세사리 세트를 착용 가능(나중에 캐릭터별로 옷 바꿈).
+ *
+ * §1·§3: 옷 데이터·URL은 avatarOutfits (getOutfitForLevel, getOutfitById, resolveDisplayAvatarLayers)와
+ * avatarAssets (outfitAssetMap, resolveAvatarUrls)를 통해 Preview/썸네일에 전달됨.
+ * 키 형식: theme_outfit_outfitId (예: professional_outfit_scrub_general). 이미지: /avatars/outfits/outfit_{outfitId}.png.
+ * PNG 미배포 시 URL은 유효하나 404; 합성·표시는 UI(AvatarComposite/OutfitCard) 책임.
  */
 
 import type { LevelId } from "@/lib/bty/arena/tenure";
@@ -103,6 +108,13 @@ const FANTASY_LEVEL_MAP: Record<
 };
 
 const DEFAULT_THEME: AvatarOutfitTheme = "professional";
+
+/**
+ * §3 Fantasy 테마: true면 옷 선택 UI 노출, false면 UI에서 "준비 중" 안내.
+ * 기획 결정 반영: Fantasy outfit id·URL 데이터는 존재하나 PNG 자산 미배포 시 false 권장.
+ * 자산 추가 후 true로 변경 시 Preview/썸네일에 동일 URL 규칙(/avatars/outfits/outfit_{outfitId}.png) 적용.
+ */
+export const FANTASY_THEME_UI_READY = false;
 
 /** 옷 이미지: /avatars/outfits/outfit_{outfitId}.png (저장 위치: bty-app/public/avatars/outfits/) */
 const OUTFIT_IMAGE_BASE = "/avatars/outfits";

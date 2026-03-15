@@ -10,3 +10,6 @@ export * from "./rules";
 export * from "./leadership-engine";
 export * from "./dojo/flow";
 export * from "./dojo/questions";
+export * from "./dashboard";
+export * from "./healing";
+export * from "./roadmap";

@@ -4,9 +4,72 @@ Summary of gate/integration runs (C7). Major sprint state changes. C1 REFRESH re
 
 ---
 
+## 2026-03-14
+
+- **REFRESH (C1)**: SPRINT 179 남은 [ ] 모두 BLOCKER(C2 배포 시 1회만) → 회전 완료. SPRINT 180 생성. C2 항목 2건 이관(맨 위 [ ]). C3·C4·C5·C6 다음 백로그 대기(C1 채움). Mode FOUNDRY.
+- **REFRESH (C1)**: SPRINT 178 남은 [ ] 모두 BLOCKER(C2 배포 시 1회만) → 회전 완료. SPRINT 179 생성. C2 항목 2건 이관(맨 위 [ ]). C3·C4·C5·C6 다음 백로그 대기(C1 채움). Mode FOUNDRY.
+- **REFRESH (C1)**: SPRINT 178. C2(2) [ ] BLOCKER·C4(2)·C5(1) [ ] 남음. C3·C6 [x]. Plan 유지.
+- **REFRESH (C1)**: SPRINT 177 남은 [ ] 모두 BLOCKER(C2 배포 시 1회만) → 회전 완료. SPRINT 178 생성. C2 항목 2건 이관(맨 위 [ ]). C3·C4·C5·C6 다음 백로그 대기(C1 채움). Mode FOUNDRY.
+- **REFRESH (C1)**: SPRINT 177. C2(2) [ ] BLOCKER·C6(1) [ ] 선택. C3·C4·C5 [x]. Plan 유지.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 177. C2(2) [ ] BLOCKER(배포 시 1회만)·C6(1) [ ] 남음(선택). C3·C4·C5 [x]. Plan 유지.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 177. C2(2) [ ] BLOCKER(배포 시 1회만)·C4(1)·C6(1) [ ] 남음(선택). C3·C5 [x]. C6 대시보드 추천 테스트 [x]. Plan 유지.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 176 전량 [x] → 다음 스프린트 생성. SPRINT 177 생성. Sprint ID 177, Objective(Healing/Awakening 콘텐츠·로드맵·배포 전 점검). C2(2)·C3(2~3)·C4(2~3)·C5(3~4)·C6(2~3) [ ] 초기화. Mode FOUNDRY.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 176. C5(3) [ ] 남음 (LE Stage 페이지/위젯·Elite UI·Healing+Awakening 페이지). C2·C3·C4·C6 [x]. Plan 유지.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 176. C5(4)·C6(3) [ ] 남음 (대시보드 AIR/LE 위젯·LE Stage·Elite·Healing+Awakening UI; LE Stage·대시보드·Healing API route 테스트). C2·C3·C4 [x]. C6 BLOCKER 해제 — C4 구현 완료로 테스트 추가 가능. Plan 유지.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **플랜 전환 (C1)**: 구현 전용 모드로 전환. 검증(Gate·접근성·엘리트 3차·route 테스트)은 **배포 전 1회만**. SPRINT 176 생성 — Q3·Q4 구현 태스크만 (LE Stage·AIR API·대시보드·Elite·Healing/Awakening). C2 None this phase, C3/C4/C5/C6 구현 작업만.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 174 전량 [x] → 다음 스프린트 자동 추가. SPRINT 175 생성. Sprint ID 175, Objective(Release Gate 175차·문서 511·512·513차·접근성·미커버·route·엘리트 3차). C2(3)·C3(1)·C4 None·C5(3)·C6(1) [ ] 초기화. Mode FOUNDRY.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 173 전량 [x] → 다음 스프린트 자동 추가. SPRINT 174 생성. Sprint ID 174, Objective(Release Gate 174차·문서 508·509·510차·접근성·미커버·route·엘리트 3차). C2(3)·C3(1)·C4 None·C5(3)·C6(1) [ ] 초기화. Mode FOUNDRY.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 172 전량 [x] → 다음 스프린트 자동 추가. SPRINT 173 생성. Sprint ID 173, Objective(Release Gate 173차·문서 505·506·507차·접근성·미커버·route·엘리트 3차). C2(3)·C3(1)·C4 None·C5(3)·C6(1) [ ] 초기화. Mode FOUNDRY.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 171 전량 [x] → 다음 스프린트 자동 추가. SPRINT 172 생성. Sprint ID 172, Objective(Release Gate 172차·문서 502·503·504차·접근성·미커버·route·엘리트 3차). C2(3)·C3(1)·C4 None·C5(3)·C6(1) [ ] 초기화. Mode FOUNDRY.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 170 전량 [x] → 다음 스프린트 자동 추가. SPRINT 171 생성. Sprint ID 171, Objective(Release Gate 171차·문서 499·500·501차·접근성·미커버·route·엘리트 3차). C2(3)·C3(1)·C4 None·C5(3)·C6(1) [ ] 초기화. Mode FOUNDRY.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 169 전량 [x] → 다음 스프린트 자동 추가. SPRINT 170 생성. Sprint ID 170, Objective(Release Gate 170차·문서 496·497·498차·접근성·미커버·route·엘리트 3차). C2(3)·C3(1)·C4 None·C5(3)·C6(1) [ ] 초기화. Mode FOUNDRY.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 168 전량 [x] → 다음 스프린트 자동 추가. SPRINT 169 생성. Sprint ID 169, Objective(Release Gate 169차·문서 493·494·495차·접근성·미커버·route·엘리트 3차). C2(3)·C3(1)·C4 None·C5(3)·C6(1) [ ] 초기화. Mode FOUNDRY.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 168. C6(1) [ ] 남음 (Center/Foundry route 테스트 1건). C2·C3·C5 [x]. §4·§5 완료. Plan 유지.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 167 남은 [ ] 모두 BLOCKER(§4·§5) → 회전 완료. SPRINT 168 생성. §4·§5 C5 맨 아래 [ ]로 이관. C2(3)·C3(1)·C4 None·C5(4)·C6(1) [ ] 초기화. 진행 가능 작업은 C5 상단(VERIFY 168차·엘리트·접근성).
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 166 남은 [ ] 모두 BLOCKER(§4·§5) → 회전 완료. SPRINT 167 생성. §4·§5 C5 맨 아래 [ ]로 이관. C2(3)·C3(1)·C4 None·C5(4)·C6(1) [ ] 초기화. 진행 가능 작업은 C5 상단(VERIFY 167차·엘리트·접근성).
+- **REFRESH (C1)**: SPRINT 166. C2(3) [ ] 남음 (render-only·Gate 166차·BTY_RELEASE_GATE_CHECK). C3·C5(진행가능 3개)·C6 [x]. C5(1) [ ] §4·§5 BLOCKER. Plan 유지.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 166. C2(3)·C3(1)·C5(4)·C6(1) [ ] 남음. C4 None. C5(1) [ ] §4·§5 BLOCKER. Plan 유지.
+- **REFRESH (C1)**: SPRINT 165 남은 [ ] 모두 BLOCKER(§4·§5) → 회전 완료. SPRINT 166 생성. §4·§5 C5 맨 아래 [ ]로 이관. C2(3)·C3(1)·C4 None·C5(4)·C6(1) [ ] 초기화. 진행 가능 작업은 C5 상단(VERIFY 166차·엘리트·접근성).
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 164 남은 [ ] 모두 BLOCKER(§4·§5) → 회전 완료. SPRINT 165 생성. §4·§5 C5 맨 아래 [ ]로 이관. C2(3)·C3(1)·C4 None·C5(4)·C6(1) [ ] 초기화. 진행 가능 작업은 C5 상단(VERIFY 165차·엘리트·접근성).
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 163 남은 [ ] 모두 BLOCKER(§4·§5) → 회전 완료. SPRINT 164 생성. §4·§5 C5 맨 아래 [ ]로 이관. C2(3)·C3(1)·C4 None·C5(4)·C6(1) [ ] 초기화. 진행 가능 작업은 C5 상단(VERIFY 164차·엘리트·접근성).
+- **REFRESH (C1)**: SPRINT 163. C3(1) [ ] 남음 (Center/Foundry 미커버 경계 테스트 1건). C2·C5(진행가능 3개)·C6 [x]. C5(1) [ ] §4·§5 BLOCKER. Plan 유지.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS. (re-run.)
+- **REFRESH (C1)**: SPRINT 162 남은 [ ] 모두 BLOCKER(§4·§5) → 회전 완료. SPRINT 163 생성. §4·§5 C5 맨 아래 [ ]로 이관. C2(3)·C3(1)·C4 None·C5(4)·C6(1) [ ] 초기화. 진행 가능 작업은 C5 상단(VERIFY 163차·엘리트·접근성).
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 162. C2(3) [ ] 남음 (render-only·Gate 162차·BTY_RELEASE_GATE_CHECK). C3·C5(진행가능 3개)·C6 [x]. C5(1) [ ] §4·§5 BLOCKER. C7 GATE PASS. Plan 유지.
+- **REFRESH (C1)**: SPRINT 161 남은 [ ] 모두 BLOCKER(§4·§5) → 회전 완료. SPRINT 162 생성. §4·§5 C5 맨 아래 [ ]로 이관. C2(3)·C3(1)·C4 None·C5(4)·C6(1) [ ] 초기화. 진행 가능 작업은 C5 상단(VERIFY 162차·엘리트·접근성).
+- **REFRESH (C1)**: SPRINT 161. C5(1) [ ] 남음 (§4·§5 BLOCKER). C2·C3·C4·C6 [x]. Plan 유지.
+- **REFRESH (C1)**: SPRINT 161. C5(1) [ ] 남음 (Arena §4·§5 Past scenarios UX·IA 결정 대기 후 UI 반영). C2·C3·C4·C6 [x]. BLOCKERS §4·§5. Plan 유지.
+- **GATE (C7)**: self-healing-ci.sh run. Lint FAIL (TS2552 LoadingFallback in auth/callback/PageClient.tsx, auth/reset-password/page.client.tsx). Test/Build not run. Overall FAIL. Owner C6. (2nd run same day.)
+
+---
+
 ## 2026-03-13
 
+- **GATE (C7)**: self-healing-ci.sh run. Lint FAIL (TS2552 LoadingFallback in auth/callback/PageClient.tsx, auth/reset-password/page.client.tsx). Test/Build not run. Overall FAIL. Owner C6.
 - **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 161. C5(1) [ ] 남음 (Arena §4·§5 Past scenarios UX·IA 결정 대기 후 UI 반영). C2·C3·C4·C6 [x]. BLOCKERS §4·§5 UX/IA. C7 PASS. Mode FOUNDRY. Plan 유지.
+- **REFRESH (C1)**: SPRINT 161. C5(1)·C6(1) [ ] 남음 (Arena §4·§5 Past scenarios UX·IA 결정 대기; §6·§7·§8 API 401·에러 테스트). C2·C3·C4 [x]. BLOCKERS §4·§5 UX/IA. C7 PASS. Mode FOUNDRY. Plan 유지.
+- **REFRESH (C1)**: SPRINT 161. C3(2)·C5(4)·C6(1) [ ] 남음 (Arena 피드백 §1·§2·§3·§4·§5·§6·§7·§8·§9·DOMAIN 미커버·route 테스트). C2·C4 [x]. BLOCKERS None. C7 PASS. Mode FOUNDRY. Plan 유지.
 - **REFRESH (C1)**: SPRINT 160 전량 [x] → 다음 스프린트 자동 추가. SPRINT 161 생성. Sprint ID 161, Objective(Release Gate 161차·문서 469·470·471차·접근성·미커버·route·엘리트 3차). C2(3)·C3(1)·C4 None·C5(3)·C6(1) [ ] 작업 추가. Mode FOUNDRY.
 - **REFRESH (C1)**: SPRINT 160. C3(1) [ ] 남음 (Center/Foundry 미커버 경계 테스트 1건). C2·C5·C6 [x], C4 None. BLOCKERS None. C7 PASS. Mode FOUNDRY. Plan 유지.
 - **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
@@ -101,7 +164,7 @@ Summary of gate/integration runs (C7). Major sprint state changes. C1 REFRESH re
 
 ## Latest
 
-- **Date**: 2026-03-13
+- **Date**: 2026-03-14
 - **Command**: GATE (`./scripts/self-healing-ci.sh`)
 - **Lint**: PASS
 - **Test**: PASS
@@ -109,4 +172,4 @@ Summary of gate/integration runs (C7). Major sprint state changes. C1 REFRESH re
 - **Overall**: PASS
 - **Owner if fail**: —
 
-(Recorded 2026-03-13, sixty-sixth GATE run.)
+(Recorded 2026-03-14.)

@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
-import { applySeasonalXpToCore } from "@/lib/bty/arena/applyCoreXp";
+import { applyDirectCoreXp, applySeasonalXpToCore } from "@/lib/bty/arena/applyCoreXp";
 import { getArenaTodayTotal, capArenaDailyDelta } from "@/lib/bty/arena/activityXp";
+import {
+  getDifficultyBase,
+  computeArenaCoreXp,
+  computeArenaWeeklyXp,
+  streakFactorFromDays,
+  inferDifficultyFromEventSum,
+  parseStoredDifficulty,
+  timeFactorFromRemaining,
+} from "@/lib/bty/arena/arenaLabXp";
 import {
   getWeekStartUTC,
   REFLECTION_QUEST_TARGET,
@@ -27,13 +36,14 @@ export async function POST(req: Request) {
   }
 
   const runId = (body as { runId?: string })?.runId;
+  const bodyTimeRemaining = (body as { time_remaining?: unknown }).time_remaining;
   if (!runId || typeof runId !== "string") {
     return NextResponse.json({ error: "MISSING_RUN_ID" }, { status: 400 });
   }
 
   const { data: existing, error: selErr } = await supabase
     .from("arena_runs")
-    .select("run_id, status, scenario_id")
+    .select("run_id, status, scenario_id, difficulty, meta")
     .eq("run_id", runId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -42,6 +52,8 @@ export async function POST(req: Request) {
   if (!existing) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
   const scenarioId = (existing as { scenario_id?: string }).scenario_id ?? "";
+  const runDifficulty = parseStoredDifficulty((existing as { difficulty?: unknown }).difficulty);
+  const runMeta = (existing as { meta?: { time_remaining?: number; time_limit?: number } | null }).meta;
 
   if (existing.status !== "DONE") {
     const nowIso = new Date().toISOString();
@@ -77,10 +89,39 @@ export async function POST(req: Request) {
 
   if (evErr) return NextResponse.json({ error: evErr.message }, { status: 500 });
 
-  const delta = (evs ?? []).reduce((sum, row) => sum + (typeof row.xp === "number" ? row.xp : 0), 0);
+  const eventSum = (evs ?? []).reduce((sum, row) => sum + (typeof row.xp === "number" ? row.xp : 0), 0);
+
+  const { data: profileRow } = await supabase
+    .from("arena_profiles")
+    .select("streak")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const streakDays = Math.max(0, Number((profileRow as { streak?: number } | null)?.streak ?? 0));
+
+  const difficulty = runDifficulty ?? inferDifficultyFromEventSum(eventSum);
+  const xpBase = getDifficultyBase(difficulty);
+  const timeLimit = runMeta?.time_limit;
+  const timeRemaining =
+    typeof bodyTimeRemaining === "number" && Number.isFinite(bodyTimeRemaining)
+      ? bodyTimeRemaining
+      : runMeta?.time_remaining;
+  const timeFactor =
+    typeof timeRemaining === "number" && typeof timeLimit === "number" && timeLimit > 0
+      ? timeFactorFromRemaining(timeRemaining, timeLimit)
+      : 0;
+
+  const arenaInput = {
+    difficulty,
+    xpPrimary: xpBase,
+    xpReinforce: 0,
+    timeFactor: timeFactor > 0 ? timeFactor : undefined,
+    streakFactor: streakFactorFromDays(streakDays),
+  };
+  const arenaCoreXp = computeArenaCoreXp(arenaInput);
+  const arenaWeeklyXp = computeArenaWeeklyXp(arenaInput);
 
   const todayArenaTotal = await getArenaTodayTotal(supabase, user.id);
-  const deltaCapped = capArenaDailyDelta(delta, todayArenaTotal);
+  const deltaCapped = capArenaDailyDelta(arenaWeeklyXp, todayArenaTotal);
 
   const { data: row, error: rowErr } = await supabase
     .from("weekly_xp")
@@ -109,8 +150,8 @@ export async function POST(req: Request) {
     if (uErr) return NextResponse.json({ error: uErr.message }, { status: 500 });
   }
 
-  // Seasonal → Core conversion (45:1 Beginner, 60:1 else). Tier/code/sub_name updated in applySeasonalXpToCore.
-  const coreResult = await applySeasonalXpToCore(supabase, user.id, deltaCapped);
+  // Arena: Core from new formula (direct); Weekly already applied above as deltaCapped.
+  const coreResult = await applyDirectCoreXp(supabase, user.id, arenaCoreXp);
   if ("error" in coreResult) return NextResponse.json({ error: coreResult.error }, { status: 500 });
 
   const { error: markErr } = await supabase.from("arena_events").insert({
@@ -161,5 +202,12 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, runId, status: "DONE", deltaApplied: deltaCapped });
+  return NextResponse.json({
+    ok: true,
+    runId,
+    status: "DONE",
+    deltaApplied: deltaCapped,
+    coreXp: arenaCoreXp,
+    weeklyXp: deltaCapped,
+  });
 }

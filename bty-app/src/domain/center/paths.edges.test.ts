@@ -69,4 +69,12 @@ describe("Center paths (edges)", () => {
     expect(getCenterCtaHref("ko-한글")).toBe("/ko-한글/bty");
     expect(getCenterCtaHref("zh-中文")).toContain(CENTER_CTA_PATH);
   });
+
+  it("getCenterCtaHref with locale having leading/trailing spaces does not trim (path includes spaces)", () => {
+    expect(getCenterCtaHref(" en ")).toBe("/ en /bty");
+  });
+
+  it("getCenterCtaHref with undefined coerced to string yields path segment 'undefined'", () => {
+    expect(getCenterCtaHref(undefined as unknown as string)).toBe("/undefined/bty");
+  });
 });

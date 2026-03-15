@@ -107,7 +107,7 @@ export default function ElitePageClient() {
             {badges && badges.length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>{locale === "ko" ? "증정 배지" : "Badges"}</h2>
-                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                <ul role="list" aria-label={locale === "ko" ? "증정 배지 목록" : "Badges list"} style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {badges.map((b) => (
                     <li key={b.kind} style={{ padding: "6px 12px", borderRadius: 8, background: "rgba(0,0,0,0.06)", fontSize: 13, fontWeight: 500 }}>
                       {tElite.badgeLabels?.[b.labelKey] ?? b.labelKey}
@@ -147,6 +147,7 @@ export default function ElitePageClient() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder={t.messagePlaceholder}
+                    aria-label={t.messageLabel}
                     aria-describedby={error ? "mentor-request-error" : undefined}
                     rows={2}
                     style={{
@@ -287,6 +288,8 @@ export default function ElitePageClient() {
             {/* PHASE_4_ELITE_5_PERCENT_SPEC §7: 서클(Circle) 모임 카드 — isElite 분기 내, render-only. 일정 문구 또는 "준비 중" 플레이스홀더. */}
             {isElite && (
               <div
+                role="region"
+                aria-label={tElite.circleCardTitle}
                 style={{
                   marginBottom: 20,
                   padding: 16,

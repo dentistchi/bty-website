@@ -52,3 +52,14 @@ export function getNextStage(
       return null;
   }
 }
+
+/** 스테이지(1–4) → 진행률 0–100. 순수 함수. */
+export function stageProgressPercent(stage: Stage): number {
+  const pct: Record<Stage, number> = {
+    1: 25,
+    2: 50,
+    3: 75,
+    4: 100,
+  };
+  return pct[stage] ?? 0;
+}

@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
-import { LoadingFallback } from "@/components/bty-arena";
+import { LoadingFallback, PageLoadingFallback } from "@/components/bty-arena";
 
 function parseHashParams(hash: string): Record<string, string> {
   const params: Record<string, string> = {};
@@ -120,7 +120,7 @@ export default function AuthCallbackPage() {
     <Suspense
       fallback={
         <div className="min-h-[40vh] flex items-center justify-center px-4">
-          <LoadingFallback icon="⏳" message="Verifying…" withSkeleton />
+          <PageLoadingFallback />
         </div>
       }
     >

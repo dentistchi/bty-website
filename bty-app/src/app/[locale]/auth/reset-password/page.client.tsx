@@ -4,12 +4,15 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { LoadingFallback, CardSkeleton } from "@/components/bty-arena";
+import { LoadingFallback, PageLoadingFallback, CardSkeleton } from "@/components/bty-arena";
+
+import { getMessages } from "@/lib/i18n";
 
 function ResetPasswordForm() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
   const locale = pathname.startsWith("/ko") ? "ko" : "en";
+  const t = getMessages(locale).loading;
   const loginPath = `/${locale}/bty/login`;
 
   const [password, setPassword] = useState("");
@@ -72,7 +75,7 @@ function ResetPasswordForm() {
   if (hasSession === null) {
     return (
       <div className="min-h-[40vh] flex items-center justify-center px-4">
-        <LoadingFallback icon="⏳" message="확인 중..." />
+        <LoadingFallback icon="⏳" message={t.message} />
       </div>
     );
   }
@@ -99,7 +102,7 @@ function ResetPasswordForm() {
         <p className="text-neutral-700 text-center">
           비밀번호가 변경되었습니다. 다시 로그인해주세요.
         </p>
-        <p className="mt-2 text-sm text-neutral-500">잠시 후 로그인 페이지로 이동합니다.</p>
+        <p className="mt-2 text-sm text-neutral-500">{locale === "ko" ? "잠시 후 로그인 페이지로 이동합니다." : "Redirecting to sign in shortly."}</p>
       </div>
     );
   }
@@ -166,7 +169,7 @@ export default function ResetPasswordPage() {
     <Suspense
       fallback={
         <div className="min-h-[40vh] flex items-center justify-center px-4">
-          <LoadingFallback icon="⏳" message="잠시만 기다려 주세요." />
+          <PageLoadingFallback />
         </div>
       }
     >

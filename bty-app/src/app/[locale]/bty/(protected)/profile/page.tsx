@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import ProfileClient from "./ProfileClient";
-import { LoadingFallback } from "@/components/bty-arena";
+import { PageLoadingFallback } from "@/components/bty-arena";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,7 @@ export default function ProfilePage() {
     <Suspense
       fallback={
         <div className="p-6 max-w-2xl mx-auto">
-          <LoadingFallback icon="⏳" message="Loading…" withSkeleton />
+          <PageLoadingFallback />
         </div>
       }
     >

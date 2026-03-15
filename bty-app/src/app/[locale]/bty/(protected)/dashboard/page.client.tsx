@@ -9,7 +9,7 @@ import { arenaFetch } from "@/lib/http/arenaFetch";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { AVATAR_CHARACTERS, getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
-import { getAccessoryImageUrl, OUTFIT_OPTIONS_BY_THEME } from "@/lib/bty/arena/avatarOutfits";
+import { getAccessoryImageUrl, OUTFIT_OPTIONS_BY_THEME, FANTASY_THEME_UI_READY } from "@/lib/bty/arena/avatarOutfits";
 
 type WeeklyXpRes = { weekStartISO?: string | null; weekEndISO?: string | null; xpTotal: number; count?: number };
 /** Core XP API response. Dashboard uses only display fields for progress/milestone; no tier/code computation in UI. */
@@ -95,6 +95,23 @@ type CertifiedRes = {
   reasons_missing: string[];
 };
 
+/** GET /api/arena/leadership-engine/stage-summary. Arena 결과·행동 패턴은 API가 채우면 표시. */
+type StageSummaryRes = {
+  currentStage: 1 | 2 | 3 | 4;
+  stageName: string;
+  progressPercent: number;
+  forcedResetTriggeredAt: string | null;
+  resetDueAt: string | null;
+  arenaSummary: string | Record<string, unknown> | null;
+  behaviorPattern: string | Record<string, unknown> | null;
+};
+
+/** GET /api/arena/dashboard/summary. 추천 위젯용 — API 응답 표시만. */
+type DashboardSummaryRes = {
+  progress?: { currentStage?: number; stageName?: string; progressPercent?: number };
+  recommendation?: { nextAction?: string | null; source?: string | null; priority?: number | null };
+};
+
 const STREAK_KEY = "btyArenaStreak:v1";
 
 /** PROJECT_BACKLOG §2: MVP에서는 true(노출), MVP 이후 false로 설정해 Arena Level 카드 숨김 */
@@ -146,6 +163,8 @@ export default function DashboardClient() {
   const [leAir, setLeAir] = React.useState<AIRSnapshotRes | null>(null);
   const [leTii, setLeTii] = React.useState<TIIRes | null>(null);
   const [leCertified, setLeCertified] = React.useState<CertifiedRes | null>(null);
+  const [leStageSummary, setLeStageSummary] = React.useState<StageSummaryRes | null>(null);
+  const [dashboardSummary, setDashboardSummary] = React.useState<DashboardSummaryRes | null>(null);
   const [membershipForm, setMembershipForm] = React.useState({
     job_function: "assistant",
     joined_at: "",
@@ -277,7 +296,7 @@ export default function DashboardClient() {
           subName: "Spark",
           seasonalXpTotal: 0,
         };
-        const [c, leagueRes, todayRes, statsRes, unlockedRes, membershipRes, eliteRes, leStateRes, leAirRes, leTiiRes, leCertifiedRes] = await Promise.all([
+        const [c, leagueRes, todayRes, statsRes, unlockedRes, membershipRes, eliteRes, leStateRes, leAirRes, leTiiRes, leCertifiedRes, stageSummaryRes, dashboardSummaryRes] = await Promise.all([
           arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => fallbackCore),
           arenaFetch<LeagueRes>("/api/arena/league/active").catch(() => null),
           arenaFetch<TodayXpRes>("/api/arena/today-xp").catch(() => ({ xpToday: 0 })),
@@ -292,6 +311,8 @@ export default function DashboardClient() {
           arenaFetch<AIRSnapshotRes>("/api/arena/leadership-engine/air").catch(() => null),
           arenaFetch<TIIRes>("/api/arena/leadership-engine/tii").catch(() => null),
           arenaFetch<CertifiedRes>("/api/arena/leadership-engine/certified").catch(() => null),
+          arenaFetch<StageSummaryRes>("/api/arena/leadership-engine/stage-summary").catch(() => null),
+          arenaFetch<DashboardSummaryRes>("/api/arena/dashboard/summary").catch(() => null),
         ]);
 
         if (!alive) return;
@@ -316,6 +337,8 @@ export default function DashboardClient() {
         if (leAirRes) setLeAir(leAirRes);
         if (leTiiRes) setLeTii(leTiiRes);
         if (leCertifiedRes) setLeCertified(leCertifiedRes);
+        if (stageSummaryRes) setLeStageSummary(stageSummaryRes);
+        if (dashboardSummaryRes) setDashboardSummary(dashboardSummaryRes);
       } catch (e) {
         if (!alive) return;
         setError(e instanceof Error ? e.message : "Unknown error");
@@ -335,6 +358,7 @@ export default function DashboardClient() {
   const tAvatarOutfit = getMessages(localeTyped).avatarOutfit;
   const tArenaMembership = getMessages(localeTyped).arenaMembership;
   const tElitePage = getMessages(localeTyped).elitePage;
+  const tLanding = getMessages(localeTyped).landing;
   const displayAvatarUrl =
     core?.avatarUrl ?? getAvatarCharacter(core?.avatarCharacterId)?.imageUrl ?? null;
   const avatarLayers =
@@ -401,6 +425,139 @@ export default function DashboardClient() {
 
       {!loading && !error && (
         <div style={{ display: "grid", gap: 28 }}>
+          {/* Arena / Foundry / Center 통합 진입점 — 기존 dashboard 보강 */}
+          <ProgressCard label={[tLanding.arenaTitle, tLanding.foundryTitle, tLanding.centerTitle].join(" · ")}>
+            <p style={{ fontSize: 13, opacity: 0.9, marginBottom: 16 }}>
+              {locale === "ko" ? "Arena(플레이)·Foundry(대시·멘토·연습)·Center(나에게 쓰는 편지)로 바로 이동할 수 있어요." : "Jump to Arena (play), Foundry (dashboard, mentor, practice), or Center (letter to yourself)."}
+            </p>
+            <nav aria-label={locale === "ko" ? "Arena, Foundry, Center 빠른 이동" : "Quick access: Arena, Foundry, Center"} style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "flex-start" }}>
+              <div style={{ minWidth: 120 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, opacity: 0.9 }}>{tLanding.arenaTitle}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  <Link href={`/${locale}/bty-arena`} className="bty-btn-primary" style={{ padding: "10px 16px", borderRadius: 10, background: "var(--arena-accent)", color: "white", textDecoration: "none", fontWeight: 600, fontSize: 13 }} aria-label={locale === "ko" ? "아레나로 가기" : "Go to Arena"}>
+                    {tLanding.arenaCta}
+                  </Link>
+                  <Link href={`/${locale}/bty/leaderboard`} className="bty-btn-outline" style={{ padding: "10px 16px", borderRadius: 10, border: "1px solid var(--arena-accent)", color: "var(--arena-text)", textDecoration: "none", fontWeight: 600, fontSize: 13 }} aria-label={locale === "ko" ? "주간 랭킹 보기" : "View weekly ranking"}>
+                    {locale === "ko" ? "주간 랭킹" : "Weekly ranking"}
+                  </Link>
+                </div>
+              </div>
+              <div style={{ minWidth: 120 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, opacity: 0.9 }}>{tLanding.foundryTitle}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  <Link href={`/${locale}/bty/profile`} style={{ padding: "10px 16px", borderRadius: 10, border: "1px solid var(--arena-accent)", color: "var(--arena-text)", textDecoration: "none", fontWeight: 600, fontSize: 13 }} aria-label={locale === "ko" ? "프로필 보기" : "View profile"}>
+                    {locale === "ko" ? "프로필" : "Profile"}
+                  </Link>
+                  <Link href={`/${locale}/bty/elite`} style={{ padding: "10px 16px", borderRadius: 10, border: "1px solid var(--arena-accent)", color: "var(--arena-text)", textDecoration: "none", fontWeight: 600, fontSize: 13 }} aria-label={locale === "ko" ? "엘리트 페이지로" : "Go to Elite page"}>
+                    {locale === "ko" ? "엘리트" : "Elite"}
+                  </Link>
+                  <Link href={`/${locale}/bty/integrity`} style={{ padding: "10px 16px", borderRadius: 10, border: "1px solid var(--arena-accent)", color: "var(--arena-text)", textDecoration: "none", fontWeight: 600, fontSize: 13 }} aria-label={locale === "ko" ? "역지사지 연습으로" : "Go to Integrity mirror"}>
+                    {locale === "ko" ? "역지사지 연습" : "Integrity"}
+                  </Link>
+                  <Link href={`/${locale}/bty/dojo`} style={{ padding: "10px 16px", borderRadius: 10, border: "1px solid var(--arena-accent)", color: "var(--arena-text)", textDecoration: "none", fontWeight: 600, fontSize: 13 }} aria-label={locale === "ko" ? "Dojo 연습으로" : "Go to Dojo"}>
+                    {locale === "ko" ? "Dojo" : "Dojo"}
+                  </Link>
+                </div>
+              </div>
+              <div style={{ minWidth: 120 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, opacity: 0.9 }}>{tLanding.centerTitle}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  <Link href={`/${locale}/center`} style={{ padding: "10px 16px", borderRadius: 10, border: "1px solid var(--arena-accent)", color: "var(--arena-text)", textDecoration: "none", fontWeight: 600, fontSize: 13 }} aria-label={locale === "ko" ? "나에게 쓰는 편지로" : "Letter to yourself"}>
+                    {tLanding.centerCta}
+                  </Link>
+                  <Link href={`/${locale}/assessment`} style={{ padding: "10px 16px", borderRadius: 10, border: "1px solid var(--arena-accent)", color: "var(--arena-text)", textDecoration: "none", fontWeight: 600, fontSize: 13 }} aria-label={locale === "ko" ? "자존감 50문항 진단으로" : "50-item self-esteem assessment"}>
+                    {locale === "ko" ? "자존감 50문항" : "Self-esteem (50)"}
+                  </Link>
+                </div>
+              </div>
+            </nav>
+          </ProgressCard>
+
+          {/* [Q3] 추천 위젯 — GET /api/arena/dashboard/summary recommendation 표시만 */}
+          {(dashboardSummary?.recommendation?.nextAction != null || dashboardSummary?.recommendation != null) && (
+            <ProgressCard label={locale === "ko" ? "추천" : "Recommendation"}>
+              <div role="region" aria-label={locale === "ko" ? "대시보드 추천" : "Dashboard recommendation"}>
+                {dashboardSummary?.recommendation?.nextAction != null && (
+                  <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>
+                    {dashboardSummary.recommendation.nextAction}
+                  </p>
+                )}
+                {dashboardSummary?.recommendation?.source === "arena" && (
+                  <Link
+                    href={`/${locale}/bty-arena`}
+                    style={{
+                      display: "inline-block",
+                      padding: "10px 16px",
+                      borderRadius: 10,
+                      background: "var(--arena-accent)",
+                      color: "white",
+                      textDecoration: "none",
+                      fontWeight: 600,
+                      fontSize: 13,
+                    }}
+                    aria-label={locale === "ko" ? "아레나로 가기" : "Go to Arena"}
+                  >
+                    {locale === "ko" ? "Arena로 이동 →" : "Go to Arena →"}
+                  </Link>
+                )}
+                {dashboardSummary?.recommendation?.source === "foundry" && (
+                  <Link
+                    href={`/${locale}/bty/dashboard`}
+                    style={{
+                      display: "inline-block",
+                      padding: "10px 16px",
+                      borderRadius: 10,
+                      border: "1px solid var(--arena-accent)",
+                      color: "var(--arena-text)",
+                      textDecoration: "none",
+                      fontWeight: 600,
+                      fontSize: 13,
+                    }}
+                    aria-label={locale === "ko" ? "Foundry 대시보드" : "Foundry dashboard"}
+                  >
+                    {locale === "ko" ? "Foundry →" : "Foundry →"}
+                  </Link>
+                )}
+                {dashboardSummary?.recommendation?.source === "center" && (
+                  <Link
+                    href={`/${locale}/center`}
+                    style={{
+                      display: "inline-block",
+                      padding: "10px 16px",
+                      borderRadius: 10,
+                      border: "1px solid var(--arena-accent)",
+                      color: "var(--arena-text)",
+                      textDecoration: "none",
+                      fontWeight: 600,
+                      fontSize: 13,
+                    }}
+                    aria-label={locale === "ko" ? "Center로" : "Go to Center"}
+                  >
+                    {locale === "ko" ? "Center →" : "Center →"}
+                  </Link>
+                )}
+                {dashboardSummary?.recommendation?.nextAction != null && !dashboardSummary?.recommendation?.source && (
+                  <Link
+                    href={`/${locale}/bty-arena`}
+                    style={{
+                      display: "inline-block",
+                      padding: "10px 16px",
+                      borderRadius: 10,
+                      background: "var(--arena-accent)",
+                      color: "white",
+                      textDecoration: "none",
+                      fontWeight: 600,
+                      fontSize: 13,
+                    }}
+                    aria-label={locale === "ko" ? "아레나로 가기" : "Go to Arena"}
+                  >
+                    {locale === "ko" ? "Arena로 이동 →" : "Go to Arena →"}
+                  </Link>
+                )}
+              </div>
+            </ProgressCard>
+          )}
+
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
             <Link
               href={`/${locale}/bty-arena`}
@@ -483,6 +640,22 @@ export default function DashboardClient() {
               {locale === "ko" ? "역지사지 연습" : "Integrity mirror"}
             </Link>
             <Link
+              href={`/${locale}/center`}
+              className="bty-btn-outline"
+              style={{
+                padding: "12px 20px",
+                borderRadius: 12,
+                border: "1px solid var(--arena-accent)",
+                color: "var(--arena-text)",
+                textDecoration: "none",
+                fontWeight: 600,
+                fontSize: 14,
+              }}
+              aria-label={locale === "ko" ? "나에게 쓰는 편지로" : "Letter to yourself (Center)"}
+            >
+              {locale === "ko" ? "나에게 쓰는 편지" : "Letter to yourself"}
+            </Link>
+            <Link
               href={`/${locale}/assessment`}
               className="bty-btn-outline"
               style={{
@@ -536,6 +709,7 @@ export default function DashboardClient() {
                   fontWeight: 600,
                   fontSize: 14,
                 }}
+                aria-label={locale === "ko" ? "Dear Me 자존감 50문항 진단으로" : "Go to Dear Me 50-item self-esteem assessment"}
               >
                 {locale === "ko" ? "Dear Me 자존감 (50문항) →" : "Dear Me self-esteem (50) →"}
               </Link>
@@ -681,8 +855,75 @@ export default function DashboardClient() {
           </ProgressCard>
 
           <ProgressCard label="Points Today">
-            <div style={{ fontSize: 28, fontWeight: 800 }}>{xpToday}</div>
-            <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>XP earned today (UTC date).</div>
+            <div role="region" aria-label={locale === "ko" ? "오늘 획득 XP" : "XP earned today"} style={{ display: "block" }}>
+              <div style={{ fontSize: 28, fontWeight: 800 }}>{xpToday}</div>
+              <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>XP earned today (UTC date).</div>
+            </div>
+          </ProgressCard>
+
+          {/* [Q3] AIR 위젯 — API 응답 표시만, 규칙 계산 없음 */}
+          <ProgressCard label="AIR">
+            {leAir == null ? (
+              <CardSkeleton showLabel={false} lines={1} />
+            ) : (
+              <div role="region" aria-label={locale === "ko" ? "AIR 지표: 7일·14일·90일" : "AIR: 7d, 14d, 90d"} style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, fontSize: 14 }}>
+                <div style={{ textAlign: "center", padding: "12px 8px", border: "1px solid var(--arena-text-soft, #e5e7eb)", borderRadius: 10 }}>
+                  <div style={{ fontWeight: 700, fontSize: 20 }}>{(leAir.air_7d.air * 100).toFixed(0)}%</div>
+                  <div style={{ marginTop: 4, opacity: 0.8 }}>7d</div>
+                  {leAir.air_7d.integritySlip && <div style={{ marginTop: 4, fontSize: 11, color: "var(--arena-accent)" }}>{locale === "ko" ? "integrity slip" : "integrity slip"}</div>}
+                </div>
+                <div style={{ textAlign: "center", padding: "12px 8px", border: "1px solid var(--arena-text-soft, #e5e7eb)", borderRadius: 10 }}>
+                  <div style={{ fontWeight: 700, fontSize: 20 }}>{(leAir.air_14d.air * 100).toFixed(0)}%</div>
+                  <div style={{ marginTop: 4, opacity: 0.8 }}>14d</div>
+                  {leAir.air_14d.integritySlip && <div style={{ marginTop: 4, fontSize: 11, color: "var(--arena-accent)" }}>{locale === "ko" ? "integrity slip" : "integrity slip"}</div>}
+                </div>
+                <div style={{ textAlign: "center", padding: "12px 8px", border: "1px solid var(--arena-text-soft, #e5e7eb)", borderRadius: 10 }}>
+                  <div style={{ fontWeight: 700, fontSize: 20 }}>{(leAir.air_90d.air * 100).toFixed(0)}%</div>
+                  <div style={{ marginTop: 4, opacity: 0.8 }}>90d</div>
+                  {leAir.air_90d.integritySlip && <div style={{ marginTop: 4, fontSize: 11, color: "var(--arena-accent)" }}>{locale === "ko" ? "integrity slip" : "integrity slip"}</div>}
+                </div>
+              </div>
+            )}
+          </ProgressCard>
+
+          {/* [Q3] LE Stage 위젯 — GET stage-summary API 연동, Arena 결과·행동 패턴 노출 (API가 채우면 표시) */}
+          <ProgressCard label={locale === "ko" ? "LE Stage" : "LE Stage"}>
+            {leStageSummary == null ? (
+              <CardSkeleton showLabel={false} lines={2} />
+            ) : (
+              <div role="region" aria-label={locale === "ko" ? "리더십 엔진 스테이지 요약" : "Leadership Engine stage summary"}>
+                <div style={{ fontSize: 15, fontWeight: 700 }}>{leStageSummary.stageName}</div>
+                <div style={{ marginTop: 6, fontSize: 13, opacity: 0.9 }}>
+                  {locale === "ko" ? "Stage" : "Stage"} {leStageSummary.currentStage} · {leStageSummary.progressPercent}%
+                </div>
+                {leStageSummary.resetDueAt != null && (
+                  <div style={{ marginTop: 8, fontSize: 12, opacity: 0.8 }}>
+                    {locale === "ko" ? "Reset 완료 기한" : "Reset due"}:{" "}
+                    {new Date(leStageSummary.resetDueAt).toLocaleString(locale === "ko" ? "ko-KR" : "en-US", { dateStyle: "short", timeStyle: "short" })}
+                  </div>
+                )}
+                {leStageSummary.arenaSummary != null && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--arena-text-soft, #e5e7eb)" }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{locale === "ko" ? "Arena 결과 요약" : "Arena summary"}</div>
+                    <div style={{ fontSize: 13, opacity: 0.9 }}>
+                      {typeof leStageSummary.arenaSummary === "string"
+                        ? leStageSummary.arenaSummary
+                        : JSON.stringify(leStageSummary.arenaSummary)}
+                    </div>
+                  </div>
+                )}
+                {leStageSummary.behaviorPattern != null && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--arena-text-soft, #e5e7eb)" }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{locale === "ko" ? "행동 패턴" : "Behavior pattern"}</div>
+                    <div style={{ fontSize: 13, opacity: 0.9 }}>
+                      {typeof leStageSummary.behaviorPattern === "string"
+                        ? leStageSummary.behaviorPattern
+                        : JSON.stringify(leStageSummary.behaviorPattern)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </ProgressCard>
 
           <ProgressCard label={locale === "ko" ? "Leadership Engine" : "Leadership Engine"}>
@@ -762,6 +1003,7 @@ export default function DashboardClient() {
                         fontWeight: 600,
                         textDecoration: "none",
                       }}
+                      aria-label={locale === "ko" ? "Arena에서 시나리오 시작하기" : "Start a scenario in Arena"}
                     >
                       {getMessages(localeTyped).arenaLevels.emptyCta}
                     </Link>
@@ -770,6 +1012,19 @@ export default function DashboardClient() {
               )}
             </ProgressCard>
           )}
+
+          <ProgressCard label={locale === "ko" ? "Leadership Lab" : "Leadership Lab"}>
+            <p style={{ margin: 0, fontSize: 14, opacity: 0.9 }}>
+              {locale === "ko" ? "오늘 하루 3회까지 시나리오 완료 시 Core XP 지급. 남은 횟수 확인 →" : "Up to 3 scenario completions per day for Core XP. Check remaining →"}
+            </p>
+            <Link
+              href={`/${locale}/bty-arena/lab`}
+              style={{ display: "inline-block", marginTop: 8, fontSize: 14, fontWeight: 600, color: "var(--arena-accent)", textDecoration: "none" }}
+              aria-label={locale === "ko" ? "Leadership Lab 페이지로" : "Go to Leadership Lab"}
+            >
+              {locale === "ko" ? "Lab 페이지로 이동" : "Go to Lab"}
+            </Link>
+          </ProgressCard>
 
           {/* PHASE_4_ELITE_5_PERCENT_SPEC §9·ELITE_4TH 해금 확장: Elite 5% 해금 조건·노출. isElite from GET /api/me/elite only; no XP/rank computation in UI. */}
           <ProgressCard label={locale === "ko" ? "Elite 전용 콘텐츠" : "Elite-only content"}>
@@ -817,6 +1072,7 @@ export default function DashboardClient() {
                     fontWeight: 600,
                     fontSize: 14,
                   }}
+                  aria-label={locale === "ko" ? "Elite 전용 페이지로 이동" : "Go to Elite page"}
                 >
                   {locale === "ko" ? "Elite 전용 페이지로 이동 →" : "Go to Elite page →"}
                 </Link>
@@ -1098,33 +1354,42 @@ export default function DashboardClient() {
                     </button>
                   </div>
                   <div style={{ marginTop: 10 }}>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
-                      {locale === "ko" ? "선택한 옷" : "Selected outfit"}
-                    </label>
-                    <select
-                      value={core?.avatarSelectedOutfitId ?? ""}
-                      onChange={(e) => saveAvatarSelectedOutfit(e.target.value || null)}
-                      disabled={avatarSelectedOutfitSaving}
-                      style={{
-                        width: "100%",
-                        maxWidth: 280,
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        border: "1px solid #ddd",
-                        fontSize: 13,
-                      }}
-                    >
-                      <option value="">
-                        {locale === "ko" ? "레벨 기본값" : "Level default"}
-                      </option>
-                      {(OUTFIT_OPTIONS_BY_THEME[core?.avatarOutfitTheme === "fantasy" ? "fantasy" : "professional"] ?? []).map(
-                        (opt) => (
-                          <option key={opt.outfitId} value={opt.outfitId}>
-                            {opt.outfitLabel}
+                    {core?.avatarOutfitTheme === "fantasy" && !FANTASY_THEME_UI_READY ? (
+                      <div style={{ fontSize: 12, color: "#666" }}>
+                        {locale === "ko" ? "Fantasy 옷 선택은 준비 중입니다." : "Fantasy outfit selection is coming soon."}
+                      </div>
+                    ) : (
+                      <>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+                          {locale === "ko" ? "선택한 옷" : "Selected outfit"}
+                        </label>
+                        <select
+                          value={core?.avatarSelectedOutfitId ?? ""}
+                          onChange={(e) => saveAvatarSelectedOutfit(e.target.value || null)}
+                          disabled={avatarSelectedOutfitSaving}
+                          aria-label={locale === "ko" ? "선택한 옷" : "Selected outfit"}
+                          style={{
+                            width: "100%",
+                            maxWidth: 280,
+                            padding: "8px 10px",
+                            borderRadius: 8,
+                            border: "1px solid #ddd",
+                            fontSize: 13,
+                          }}
+                        >
+                          <option value="">
+                            {locale === "ko" ? "레벨 기본값" : "Level default"}
                           </option>
-                        )
-                      )}
-                    </select>
+                          {(OUTFIT_OPTIONS_BY_THEME[core?.avatarOutfitTheme === "fantasy" ? "fantasy" : "professional"] ?? []).map(
+                            (opt) => (
+                              <option key={opt.outfitId} value={opt.outfitId}>
+                                {opt.outfitLabel}
+                              </option>
+                            )
+                          )}
+                        </select>
+                      </>
+                    )}
                   </div>
                   <div style={{ marginTop: 8, fontSize: 12, opacity: 0.8 }}>{tAvatarOutfit.hint}</div>
                   <div style={{ marginTop: 6, fontSize: 11, opacity: 0.75 }}>

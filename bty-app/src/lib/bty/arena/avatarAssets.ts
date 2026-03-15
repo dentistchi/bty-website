@@ -1,6 +1,9 @@
 /**
  * AVATAR_LAYER_SPEC §2.2: 키 → URL 매핑 및 resolveAvatarUrls.
  * characterAssetMap, outfitAssetMap, accessoryAssetMap + resolveAvatarUrls({ characterKey, outfitKey?, accessoryKeys?, useThumb? }).
+ *
+ * §1·§3 Preview/썸네일: outfitKey는 avatarOutfits와 동일 규칙(theme_outfit_outfitId). outfitAssetMap에 있으면
+ * layer/thumb URL 반환 → OutfitCard/AvatarComposite에 outfitUrl 전달. Professional 7종·Fantasy 7종 동일 URL 규칙.
  */
 
 import { AVATAR_CHARACTERS } from "@/lib/bty/arena/avatarCharacters";

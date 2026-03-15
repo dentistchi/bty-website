@@ -24,6 +24,12 @@ describe("center/letter (edges)", () => {
       expect(r.error).toBe("body_empty");
     });
 
+    it("rejects carriage-return-only input (trim treats CR as whitespace)", () => {
+      const r = validateLetterBody("\r\r");
+      expect(r.ok).toBe(false);
+      expect(r.error).toBe("body_empty");
+    });
+
     it("rejects undefined input", () => {
       const r = validateLetterBody(undefined as unknown as string);
       expect(r.ok).toBe(false);

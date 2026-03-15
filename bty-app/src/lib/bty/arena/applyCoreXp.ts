@@ -86,3 +86,69 @@ export async function applySeasonalXpToCore(
   if (e1) return { error: e1.message };
   return { coreGain: totalCoreGain, newCoreTotal };
 }
+
+/**
+ * Apply direct Core XP (e.g. Lab). No weekly XP, no seasonal conversion.
+ * Per docs/spec/ARENA_LAB_XP_SPEC.md — Lab grants Core XP only.
+ */
+export async function applyDirectCoreXp(
+  supabase: SupabaseClient,
+  userId: string,
+  coreGain: number
+): Promise<{ newCoreTotal: number } | { error: string }> {
+  if (coreGain <= 0) return { newCoreTotal: 0 };
+
+  const { data: prof, error: e0 } = await supabase
+    .from("arena_profiles")
+    .select("core_xp_total, sub_name, sub_name_renamed_in_code")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (e0) return { error: e0.message };
+
+  if (!prof) {
+    const { error: insErr } = await supabase.from("arena_profiles").insert({
+      user_id: userId,
+      core_xp_total: coreGain,
+      core_xp_buffer: 0,
+      tier: 0,
+      code_index: 0,
+      sub_name: "Spark",
+      sub_name_renamed_in_code: false,
+      stage: 1,
+      code_hidden: false,
+    });
+    if (insErr) return { error: insErr.message };
+    return { newCoreTotal: coreGain };
+  }
+
+  const currentCore = Math.max(0, Number((prof as ProfileRow)?.core_xp_total ?? 0));
+  const newCoreTotal = currentCore + Math.floor(coreGain);
+  const renamedInCode = Boolean((prof as ProfileRow)?.sub_name_renamed_in_code);
+  const existingSubName = (prof as ProfileRow)?.sub_name ?? null;
+
+  const tier = tierFromCoreXp(newCoreTotal);
+  const codeIndex = codeIndexFromTier(tier) as CodeIndex;
+  const subTierGroup = subTierGroupFromTier(tier);
+  const defaults = SUB_NAMES[codeIndex];
+  const newSubName =
+    renamedInCode || defaults == null ? existingSubName : defaults[subTierGroup];
+
+  const update: Record<string, unknown> = {
+    core_xp_total: newCoreTotal,
+    tier,
+    code_index: codeIndex,
+    stage: Math.min(7, Math.floor(newCoreTotal / 100) + 1),
+    code_hidden: newCoreTotal >= 700,
+    updated_at: new Date().toISOString(),
+  };
+  if (defaults != null && !renamedInCode && newSubName != null) update.sub_name = newSubName;
+
+  const { error: e1 } = await supabase
+    .from("arena_profiles")
+    .update(update)
+    .eq("user_id", userId);
+
+  if (e1) return { error: e1.message };
+  return { newCoreTotal };
+}

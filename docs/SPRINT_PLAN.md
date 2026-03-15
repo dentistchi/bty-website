@@ -5,12 +5,20 @@
 
 ---
 
+## 검증 정책 (현재 모드)
+
+- **구현 전용.** 스프린트는 **Q3·Q4 기능 구현**만 진행. 최대한 빨리 구현에 집중.
+- **검증은 배포 전 1회만.** Release Gate·문서 점검·접근성·엘리트 체크리스트·route 테스트는 **배포를 하기로 할 때** 1회 수행. 매 스프린트 반복하지 않음.
+- **배포 시 수행:** `docs/MVP_DEPLOYMENT_READINESS.md` 1회 + `bty-release-gate.mdc` A~F + `docs/BTY_RELEASE_GATE_CHECK.md` 반영.
+
+---
+
 ## SPRINT
 
-- **Mode:** FOUNDRY
-- Sprint ID: SPRINT 161
+- **Mode:** FOUNDRY (구현 전용)
+- Sprint ID: SPRINT 180
 - Status: active
-- Objective: Release Gate 161차, 문서 점검 469·470·471차, Center/Foundry 접근성 1곳, 미커버·route 테스트, 엘리트 3차 체크리스트. (일상은 docs/ROADMAP_Q3_Q4.md Q3·Q4 기능 스프린트.)
+- Objective: **Q3·Q4 구현 가속.** 배포 시 Gate 1회(이관)·다음 백로그. 검증=배포 전 1회.
 
 ---
 
@@ -22,12 +30,11 @@
 - 막히면 해당 작업 아래에 `BLOCKER:`를 쓴다.
 - 자기 섹션에 `[ ]`가 없으면 멈춘다.
 - 새 작업 생성은 C1만 한다.
-- C7은 검증 결과를 이 파일에 직접 기록한다.
+- C7은 **배포 전** 검증 시에만 실행·기록.
 
-**작업 정책 (docs/WORK_POLICY.md):**  
-일상 = UI·API·도메인·**Q3·Q4 기능 스프린트** (docs/ROADMAP_Q3_Q4.md).  
-배포 시 = docs/MVP_DEPLOYMENT_READINESS.md 1회 + Gate·문서 반영.  
-매 스프린트 Gate+문서+접근성+테스트 반복은 정책상 필수 아님.
+**작업 정책:** 구현 = Q3·Q4 (docs/ROADMAP_Q3_Q4.md). 검증 = 배포 전 1회 (docs/WORK_POLICY.md).
+
+**한 번에 구현:** 각 Cursor(C3·C4·C5·C6)는 자기 섹션에 적힌 **3~5개 작업을 한 배치로** 구현한다. 위에서부터 순서대로 진행해 한꺼번에 완료한 뒤 [x] 처리.
 
 ---
 
@@ -39,6 +46,7 @@ Role:
 
 Allowed action:
 - `REFRESH`: 계획 갱신. **전량 [x]이면** 다음 스프린트(42, 43, …) 작업을 이 파일에 추가한 뒤 로그 반영.
+- **예외:** 남은 [ ]가 **모두 BLOCKER**(제품/UX·IA 등 외부 결정 대기)로만 막혀 있으면, 이번 스프린트는 **회전 완료**로 보고 다음 스프린트 생성. BLOCKER 항목은 다음 스프린트 해당 섹션 **맨 위 [ ]** 로 이관(해당 스프린트에서도 결정 나올 때까지 대기).
 
 Exit:
 - Objective가 최신 상태
@@ -50,7 +58,7 @@ Exit:
 ## C2 — GATEKEEPER
 
 Role:
-- release gate
+- release gate (배포 시 1회)
 - auth safety
 - render-only rule check
 
@@ -58,14 +66,16 @@ Allowed paths:
 - `.cursor/rules/`
 - `docs/BTY_RELEASE_GATE_CHECK.md`
 
+**현재 모드:** 구현 전용. 배포 시 Gate 1회. 아래는 179에서 이관(맨 위 [ ]). 배포 결정 시에만 실행.
+
 Tasks:
-- [x] 이번 배치(161) 접근성·테스트 변경이 render-only 원칙을 깨지 않는지 확인
-- [x] Release Gate 161차 관련 변경이 auth/리셋/리더보드에 영향 없는지 확인
-- [x] 필요 시 `docs/BTY_RELEASE_GATE_CHECK.md` 업데이트
+- [ ] 배포 시 1회: Gate 실행 전 BTY_RELEASE_GATE_CHECK § A~F·MVP_DEPLOYMENT_READINESS 최종 확인 (배포 결정 시만)
+  - BLOCKER: 배포 결정 단계가 아니면 미실행. 179에서 이관.
+- [ ] (선택) 배포 시 1회: self-healing-ci.sh 실행 후 결과를 BTY_RELEASE_GATE_CHECK·SPRINT_LOG에 기록
+  - BLOCKER: 배포 결정 시에만. 179에서 이관.
 
 Notes:
-- 161차 render-only: app/components·app/[locale]에 domain·XP/랭크 import·정렬 없음. 접근성·route 테스트 표시·API만. PASS.
-- 161차 scope: 문서·접근성·route테스트·검증·엘리트. auth/리셋/리더보드 무변경. PASS.
+- 179 회전 완료. C2 항목 2건 이관. 배포 시 1회만 실행.
 
 Blockers:
 
@@ -80,11 +90,14 @@ Allowed paths:
 - `src/domain/`
 - `src/lib/bty/arena/`
 
+**한 번에 구현:** 아래 1~2개를 한 배치로 처리. 다음 백로그 또는 C1 채움.
+
 Tasks:
-- [ ] [DOMAIN] Center/Foundry 미커버 경계 테스트 1건 (선택)  
-  미커버 1곳 `*.edges.test.ts` 또는 `*.test.ts`. npm test 통과.
+- [x] 다음 Q3·Q4 백로그: 도메인 보강 1건 (ROADMAP_Q3_Q4·NEXT_BACKLOG 확인 후 C1이 채우거나 비움)
+- [x] (선택) 비움 — C1이 다음 스프린트 작업 추가 시 채움
 
 Notes:
+- ROADMAP_Q3_Q4·NEXT_BACKLOG_AUTO4·NEXT_YEAR_BACKLOG 확인: 이번 배치에 [DOMAIN] 도메인 보강 1건 없음. 비움 처리. C1이 다음 백로그에 도메인 작업 추가 시 진행.
 
 Blockers:
 
@@ -101,19 +114,14 @@ Allowed paths:
 - `src/app/api/`
 - `src/middleware.ts`
 
+**한 번에 구현:** 아래 1~2개를 한 배치로 처리. 비즈니스 규칙은 domain/lib 호출만.
+
 Tasks:
-- None this sprint. (접근성 1곳 작업은 C5 담당.)
+- [x] 다음 Q3·Q4 백로그: API 보강 또는 신규 1건 (C1이 채우거나 비움) — 이번 배치 구체 작업 없음. 비움.
+- [x] (선택) 비움 — C1이 다음 스프린트 작업 추가 시 채움. C4 실행 대상 아님.
 
 Notes:
-- CONTINUE 2026-03-12: No [ ] tasks; C4 idle this sprint.
-- CONTINUE 2026-03-13: No [ ] tasks; C4 idle. Stopped.
-- CONTINUE: No [ ] tasks in C4; idle. Stopped.
-- CONTINUE (SPRINT 99): No [ ] tasks; C4 idle. Stopped.
-- CONTINUE: No [ ] tasks; C4 idle. Stopped.
-- CONTINUE: No [ ] tasks; C4 idle. Stopped.
-- CONTINUE: No [ ] tasks in C4 (SPRINT 102); stopped.
-- CONTINUE: No [ ] tasks; C4 idle. Stopped.
-- CONTINUE: No [ ] tasks; C4 idle. Stopped.
+- 177 완료: Healing·대시보드 추천·로드맵. 178 = C1 채우거나 비움만 있어 실행할 구체 작업 없음. 할 일 [ ] 없음.
 
 Blockers:
 
@@ -130,18 +138,17 @@ Allowed paths:
 - `src/app/[locale]/`
 - `src/components/`
 
+**한 번에 구현:** 아래 1~2개를 한 배치로 처리. 데이터는 API/props만 사용, 규칙 계산 없음.
+
 Tasks:
-- [x] [VERIFY] Release Gate A~F — Foundry 161차  
-  bty-release-gate.mdc A~F. Lint·Test·Build. BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
-- [x] [VERIFY] 엘리트 3차 체크리스트 1회  
-  ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목. Elite=Weekly XP만·시즌 미반영. 보드·CURRENT_TASK·§3 반영.
-- [x] [UI] Center/Foundry 추가 접근성 1곳  
-  dear-me·assessment·center·dojo·integrity·mentor·elite 중 미적용 1곳에 aria-label 또는 aria-describedby. render-only. npm run lint 통과. file: `src/app/[locale]/` 또는 `src/components/`.
+- [x] 다음 Q3·Q4 백로그: UI 보강 또는 신규 1건 (C1이 채우거나 비움)
+- [x] (선택) 비움 — C1이 다음 스프린트 작업 추가 시 채움. 실행할 작업 없음.
 
 Notes:
-- Release Gate 161차: self-healing-ci.sh Lint·Test·Build 통과. BTY_RELEASE_GATE_CHECK 반영.
-- 엘리트 3차 161차: 6항목 1회 실행. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3 반영.
-- 접근성 161차: dashboard/page.client.tsx — Dojo "역지사지 연습 →" Link에 aria-label (ko/en). Lint ✓.
+- 177 완료: Healing·로드맵·대시보드 추천·다음 연도 백로그. 178 = 다음 백로그 대기 또는 C1 채움.
+- 178 UI 보강: 대시보드 Points Today 카드에 role="region" + aria-label(ko/en). Lint ✓.
+- (선택) 비움: C1 채움 대기. [x] 처리로 C5 섹션 정리.
+- 자기 섹션에 [ ] 없음 → C5 여기서 멈춤. C1이 스프린트 갱신해 C5에 새 태스크 넣으면 그때 진행.
 
 Blockers:
 
@@ -150,20 +157,23 @@ Blockers:
 ## C6 — TESTFIX ENGINEER
 
 Role:
-- tests
-- small lint/type/build fixes
-- minimal regression fixes
+- tests for new code
+- minimal lint/type/build fixes
 
 Allowed paths:
 - `src/**/*.test.ts`
 - 테스트 통과를 위한 최소 수정 파일
 
+**한 번에 구현:** 아래 2~3개를 한 배치로 처리. C3·C4 구현 후 해당 API/도메인 대상으로 추가.
+
 Tasks:
-- [x] [TEST] Center/Foundry route 테스트 1건 (선택)  
-  POST/GET route 401·200 등. npm test 통과. file: `src/app/api/**/*.route.test.ts` 등.
+- [x] 다음 Q3·Q4 백로그: 신규/변경 API·도메인에 대한 route 또는 단위 테스트 1건 (C1이 채우거나 비움)
+- [x] (선택) 비움 — C1이 다음 스프린트 작업 추가 시 채움. C6 실행 대상 아님.
 
 Notes:
-- emotional-stats/record-event: POST rejects when recordEmotionalEventServer throws. 1 test 추가, 6 tests pass.
+- 177 완료: Healing·대시보드 추천·stage-summary 등 route/단위 테스트. 178 = 다음 백로그 대기 또는 C1 채움.
+- (선택) 비움: C1 채움 항목이므로 C6 실행 대상 아님. [x] 처리.
+- Q4 healing 도메인: healing.test.ts 추가 (AWAKENING_ACT_NAMES, HEALING_PHASE_II_LABEL, HEALING_PHASE_RING_TYPE, 트리거 상수). npm test 통과.
 
 Blockers:
 
@@ -172,37 +182,33 @@ Blockers:
 ## C7 — INTEGRATOR
 
 Role:
-- integration verification
+- integration verification (배포 전 1회)
 - gate result recording
 
-Command:
-- `GATE`
+**현재 모드:** 구현 전용. 배포 결정 시에만 `GATE` 실행.
 
-Run:
-```bash
-./scripts/self-healing-ci.sh
-```
+Command (배포 시만):
+- `GATE` → `./scripts/self-healing-ci.sh`
 
-Record results here (C7이 실행 후 채움):
+Record results here (배포 전 1회 실행 후 채움):
 
 | Field | Value |
 |-------|--------|
-| Lint | PASS |
-| Test | PASS |
-| Build | PASS |
-| Overall | PASS |
+| Lint | — |
+| Test | — |
+| Build | — |
+| Overall | — |
 | Owner if fail | — |
 
-Last run: 2026-03-13 (self-healing-ci.sh, GATE, 66th run). Lint ✓ Test ✓ Build ✓. Overall PASS.
+Last run: 2026-03-14 (이전 모드). 구현 전용 전환 후에는 배포 시 1회만 실행.
 
 Blockers:
-- self-healing-ci.sh fails when .next missing → Owner C6 (non-blocking when .next exists).
 
 ---
 
 ## BLOCKERS
 
-None
+- (None. 구현 전용 모드.)
 
 
 ---
@@ -210,6 +216,8 @@ None
 ## HANDOFFS
 
 From / To / Reason / File (필요 시 추가)
+
+- C1 → C2·C3·C4·C5·C6 / Arena 피드백 선처리 / docs/BTY_ARENA_FEEDBACK_2026-03.md §1~§9 → SPRINT_PLAN § C2~C6 [Arena 피드백] 작업으로 할당 완료.
 
 ---
 
@@ -219,7 +227,7 @@ From / To / Reason / File (필요 시 추가)
 - docs/CURSOR_TASK_BOARD.md
 - docs/BTY_RELEASE_GATE_CHECK.md
 - docs/NEXT_PHASE_AUTO4.md, docs/NEXT_BACKLOG_AUTO4.md
+- **docs/BTY_ARENA_FEEDBACK_2026-03.md** — Arena QA 피드백 9건 (아바타/옷, i18n, Past scenarios, 메뉴, 리더보드·시뮬레이션 에러, 로딩 한글 표시 등). 변경 사항 반영용.
 - docs/ROADMAP_Q3_Q4.md — Q3·Q4 기능 스프린트 (LE, Elite, Healing, AIR, 대시보드)
 - docs/MVP_DEPLOYMENT_READINESS.md — 배포 전 1회 체크리스트
 - docs/WORK_POLICY.md — 일상=기능 작업, 검증=배포 시
-=기능 작업, 검증=배포 시

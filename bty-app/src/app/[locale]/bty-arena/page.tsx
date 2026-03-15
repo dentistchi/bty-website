@@ -15,23 +15,26 @@ import {
   ArenaOtherModal,
   ArenaToast,
   ArenaRunHistory,
+  LabUsageStrip,
 } from "@/components/bty-arena";
 import BtyTopNav from "@/components/bty/BtyTopNav";
+import { getMessages } from "@/lib/i18n";
 import { useArenaSession, OTHER_CHOICE_ID } from "./hooks/useArenaSession";
 
 export default function BtyArenaPage() {
   const s = useArenaSession();
   const { locale, t } = s;
+  const tLoading = getMessages(locale === "ko" ? "ko" : "en").loading;
 
   // ── gate: level check loading ─────────────────────────────
   if (!s.levelChecked) {
     return (
       <div style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}>
         <BtyTopNav />
-        <div style={{ marginTop: 24 }} aria-busy="true" aria-label={locale === "ko" ? "준비 중…" : "Loading…"}>
+        <div style={{ marginTop: 24 }} aria-busy="true" aria-label={tLoading.message}>
           <LoadingFallback
             icon="📋"
-            message={locale === "ko" ? "잠시만 기다려 주세요." : "Just a moment…"}
+            message={tLoading.message}
             withSkeleton
           />
         </div>
@@ -79,6 +82,7 @@ export default function BtyArenaPage() {
         }}
       >
       <BtyTopNav />
+      <LabUsageStrip locale={locale} />
       <div style={{ marginTop: 18 }}>
         {s.step === 1 && (
           <div className="bty-hero" style={{ paddingTop: 32, paddingBottom: 40, marginBottom: 28 }}>

@@ -12,6 +12,7 @@ vi.mock("@/lib/bty/arena/supabaseServer", () => ({
 
 vi.mock("@/lib/bty/arena/applyCoreXp", () => ({
   applySeasonalXpToCore: vi.fn(),
+  applyDirectCoreXp: vi.fn(),
 }));
 
 vi.mock("@/lib/bty/arena/weeklyQuest", () => ({
@@ -23,7 +24,7 @@ vi.mock("@/lib/bty/arena/weeklyQuest", () => ({
 const { getSupabaseServerClient } = await import(
   "@/lib/bty/arena/supabaseServer"
 );
-const { applySeasonalXpToCore } = await import(
+const { applyDirectCoreXp } = await import(
   "@/lib/bty/arena/applyCoreXp"
 );
 
@@ -101,6 +102,13 @@ function mockSupabase(user: { id: string } | null) {
         return chainable({ data: null, error: null });
       }
 
+      if (table === "arena_profiles") {
+        return chainable({
+          data: { streak: 0 },
+          error: null,
+        });
+      }
+
       if (table === "weekly_xp") {
         if (n === 1) {
           return chainable({
@@ -155,8 +163,7 @@ describe("POST /api/arena/run/complete", () => {
 
   it("returns 200 with correct response structure on success", async () => {
     mockSupabase({ id: "u1" });
-    vi.mocked(applySeasonalXpToCore).mockResolvedValue({
-      coreGain: 1,
+    vi.mocked(applyDirectCoreXp).mockResolvedValue({
       newCoreTotal: 201,
     });
 
@@ -169,23 +176,23 @@ describe("POST /api/arena/run/complete", () => {
     expect(data.status).toBe("DONE");
     expect(typeof data.deltaApplied).toBe("number");
     expect(data.deltaApplied).toBeGreaterThanOrEqual(0);
+    expect(typeof data.coreXp).toBe("number");
+    expect(typeof data.weeklyXp).toBe("number");
   });
 
-  it("calls applySeasonalXpToCore with capped delta", async () => {
+  it("calls applyDirectCoreXp with arena core XP", async () => {
     mockSupabase({ id: "u1" });
-    vi.mocked(applySeasonalXpToCore).mockResolvedValue({
-      coreGain: 1,
+    vi.mocked(applyDirectCoreXp).mockResolvedValue({
       newCoreTotal: 201,
     });
 
     await POST(makeRequest({ runId: "run-1" }));
 
-    expect(applySeasonalXpToCore).toHaveBeenCalledOnce();
-    const [, userId, delta] = vi.mocked(applySeasonalXpToCore).mock.calls[0];
+    expect(applyDirectCoreXp).toHaveBeenCalledOnce();
+    const [, userId, coreXp] = vi.mocked(applyDirectCoreXp).mock.calls[0];
     expect(userId).toBe("u1");
-    expect(typeof delta).toBe("number");
-    expect(delta).toBeGreaterThanOrEqual(0);
-    expect(delta).toBeLessThanOrEqual(ARENA_DAILY_XP_CAP);
+    expect(typeof coreXp).toBe("number");
+    expect(coreXp).toBeGreaterThanOrEqual(0);
   });
 
   it("returns 200 with idempotent flag when run already applied", async () => {
@@ -228,7 +235,7 @@ describe("POST /api/arena/run/complete", () => {
     const data = await res.json();
     expect(data.ok).toBe(true);
     expect(data.idempotent).toBe(true);
-    expect(applySeasonalXpToCore).not.toHaveBeenCalled();
+    expect(applyDirectCoreXp).not.toHaveBeenCalled();
   });
 
   it("returns 404 when run does not exist", async () => {

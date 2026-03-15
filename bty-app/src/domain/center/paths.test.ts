@@ -1,5 +1,6 @@
 /**
- * Center paths domain (§5·§6).
+ * Center paths 도메인 단위 테스트.
+ * 경계/엣지는 paths.edges.test.ts에서 처리.
  */
 import { describe, it, expect } from "vitest";
 import {
@@ -12,14 +13,13 @@ describe("Center paths", () => {
   it("CENTER_CTA_PATH is /bty", () => {
     expect(CENTER_CTA_PATH).toBe("/bty");
   });
+
   it("CENTER_CHAT_OPEN_EVENT is open-chatbot", () => {
     expect(CENTER_CHAT_OPEN_EVENT).toBe("open-chatbot");
   });
-  it("getCenterCtaHref returns /locale/bty", () => {
+
+  it("getCenterCtaHref returns /{locale}/bty for ko and en", () => {
     expect(getCenterCtaHref("ko")).toBe("/ko/bty");
     expect(getCenterCtaHref("en")).toBe("/en/bty");
-  });
-  it("getCenterCtaHref with empty locale returns //bty", () => {
-    expect(getCenterCtaHref("")).toBe("//bty");
   });
 });

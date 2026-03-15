@@ -51,10 +51,18 @@ export default function AvatarSettingsClient() {
     o.key.startsWith(`${draftTheme}_`)
   );
 
+  /** §1: Full outfit key (theme_outfit_outfitId) for resolveAvatarUrls so Preview/thumbnail get correct outfitUrl. */
+  const previewOutfitKey =
+    draftOutfitKey && draftOutfitKey.includes("_outfit_")
+      ? draftOutfitKey
+      : draftOutfitKey && draftTheme
+        ? `${draftTheme}_outfit_${draftOutfitKey}`
+        : draftOutfitKey ?? undefined;
+
   const previewUrls = avatar
     ? resolveAvatarUrls({
         characterKey: avatar.characterKey,
-        outfitKey: draftOutfitKey ?? undefined,
+        outfitKey: previewOutfitKey,
         accessoryKeys: avatar.accessoryKeys,
         useThumb: false,
       })
@@ -72,9 +80,9 @@ export default function AvatarSettingsClient() {
   if (!data) {
     return (
       <div className="p-6 max-w-2xl mx-auto">
-        <p className="text-sm text-red-600">Failed to load avatar settings.</p>
-        <Link href={`/${locale}/bty`} className="text-sm underline mt-2 inline-block" aria-label={locale === "ko" ? "훈련장으로 돌아가기" : "Back to Foundry"}>
-          Back to Foundry
+        <p className="text-sm text-red-600">{t.errorLoad}</p>
+        <Link href={`/${locale}/bty`} className="text-sm underline mt-2 inline-block" aria-label={t.backToFoundryAria}>
+          {t.backToFoundry}
         </Link>
       </div>
     );
@@ -83,19 +91,18 @@ export default function AvatarSettingsClient() {
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Avatar</h1>
+        <h1 className="text-2xl font-bold">{t.pageTitle}</h1>
         <Link
           href={`/${locale}/bty/dashboard`}
           className="text-sm text-foundry-purple hover:underline"
-          aria-label={locale === "ko" ? "대시보드로 가기" : "Go to Dashboard"}
+          aria-label={t.goToDashboardAria}
         >
-          Dashboard
+          {t.goToDashboard}
         </Link>
       </div>
 
-      {/* 미리보기 */}
       <section>
-        <h2 className="text-lg font-semibold mb-3">Preview</h2>
+        <h2 className="text-lg font-semibold mb-3">{t.preview}</h2>
         <div className="flex justify-center p-6 rounded-2xl border border-gray-200 bg-gray-50/50">
           {previewUrls && (
             <AvatarComposite
@@ -103,35 +110,29 @@ export default function AvatarSettingsClient() {
               characterUrl={previewUrls.characterUrl}
               outfitUrl={previewUrls.outfitUrl}
               accessoryUrls={previewUrls.accessoryUrls}
-              alt="Avatar preview"
+              alt={t.previewAria}
             />
           )}
         </div>
       </section>
 
-      {/* 캐릭터 변경 (잠김 시 비활성) */}
       <section>
-        <h2 className="text-lg font-semibold mb-3">Character</h2>
+        <h2 className="text-lg font-semibold mb-3">{t.character}</h2>
         {avatar?.characterLocked ? (
-          <p className="text-sm text-gray-500">
-            캐릭터 변경(잠김) — 다음 Code 진화 전까지 고정됩니다.
-          </p>
+          <p className="text-sm text-gray-500">{t.characterLocked}</p>
         ) : (
-          <p className="text-sm text-gray-600">
-            캐릭터 변경은 대시보드에서 할 수 있어요.
-          </p>
+          <p className="text-sm text-gray-600">{t.characterChangeHint}</p>
         )}
         <Link
           href={`/${locale}/bty/dashboard`}
           className="inline-block mt-2 text-sm font-medium text-foundry-purple hover:underline"
         >
-          Go to Dashboard
+          {t.goToDashboard}
         </Link>
       </section>
 
-      {/* Theme 토글 */}
       <section>
-        <h2 className="text-lg font-semibold mb-3">{t?.label ?? "Theme"}</h2>
+        <h2 className="text-lg font-semibold mb-3">{t.label}</h2>
         <div className="flex gap-2">
           <button
             type="button"
@@ -162,9 +163,8 @@ export default function AvatarSettingsClient() {
         </div>
       </section>
 
-      {/* Outfit Gallery */}
       <section>
-        <h2 className="text-lg font-semibold mb-3">Outfit</h2>
+        <h2 className="text-lg font-semibold mb-3">{t.outfit}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {outfitsForTheme.map((o) => (
             <OutfitCard
@@ -172,28 +172,28 @@ export default function AvatarSettingsClient() {
               characterKey={avatar!.characterKey}
               outfitKey={o.key}
               accessoryKeys={avatar!.accessoryKeys}
-              name={o.name}
+              name={t.outfitLabels?.[o.key] ?? o.key}
+              previewLabel={t.preview}
               selected={draftOutfitKey === o.key}
               onClick={() => setDraftOutfitKey(o.key)}
             />
           ))}
         </div>
         {outfitsForTheme.length === 0 && (
-          <p className="text-sm text-gray-500">No outfits available for this theme.</p>
+          <p className="text-sm text-gray-500">{t.noOutfits}</p>
         )}
       </section>
 
-      {/* 저장 */}
       {dirty && (
         <div className="flex justify-end">
           <button
             type="button"
             onClick={handleSave}
             disabled={saving}
-            aria-label={saving ? (locale === "ko" ? "저장 중" : "Saving") : (locale === "ko" ? "저장" : "Save")}
+            aria-label={saving ? t.saveAria : t.saveAria}
             className="px-6 py-2 rounded-xl bg-foundry-purple text-white font-medium hover:bg-foundry-purple/90 disabled:opacity-50"
           >
-            {saving ? "Saving…" : "Save"}
+            {saving ? t.saving : t.save}
           </button>
           {saving && (
             <div className="mt-3">

@@ -1,20 +1,12 @@
-import { LoadingFallback } from "@/components/bty-arena";
+import { LocaleAwareRouteLoading } from "@/components/LocaleAwareRouteLoading";
 
 /**
- * Arena route loading: 아이콘 + 한 줄 문구 + 카드 스켈레톤 (DESIGN_FIRST_IMPRESSION_BRIEF §2).
+ * Arena route loading: §9 locale 기반 로딩 문구 (pathname으로 ko/en 추론).
  */
 export default function BtyArenaLoading() {
   return (
-    <div
-      style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}
-      aria-busy="true"
-      aria-label="Loading…"
-    >
-      <LoadingFallback
-        icon="📋"
-        message="잠시만 기다려 주세요."
-        withSkeleton
-      />
+    <div style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}>
+      <LocaleAwareRouteLoading icon="📋" withSkeleton showHint={false} />
     </div>
   );
 }

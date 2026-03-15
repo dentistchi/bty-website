@@ -36,6 +36,17 @@ describe("domain/foundry re-export hub (edges)", () => {
     });
   });
 
+  describe("leadership-engine re-export constants (boundary)", () => {
+    it("LRI_READINESS_THRESHOLD and CERTIFIED_AIR_14D_MIN are re-exported with expected values", () => {
+      expect(foundry.LRI_READINESS_THRESHOLD).toBe(0.8);
+      expect(foundry.CERTIFIED_AIR_14D_MIN).toBe(0.8);
+    });
+    it("FORCED_RESET_STAGE3_COUNT_THRESHOLD and FORCED_RESET_DELAY_HOURS are re-exported", () => {
+      expect(foundry.FORCED_RESET_STAGE3_COUNT_THRESHOLD).toBe(2);
+      expect(foundry.FORCED_RESET_DELAY_HOURS).toBe(48);
+    });
+  });
+
   describe("validateIntegritySubmit edges", () => {
     it("whitespace-only text returns missing_input", () => {
       expect(foundry.validateIntegritySubmit({ text: "   ", choiceId: undefined })).toEqual({

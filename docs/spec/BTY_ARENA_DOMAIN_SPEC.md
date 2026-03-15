@@ -58,9 +58,23 @@ This spec is the **authoritative reference** for domain rules. Implementation (A
 
 ---
 
-## 5. References
+## 5. Arena vs Leadership Lab (모드)
+
+| 모드 | 목적 | Core XP | Weekly XP | 제한 |
+|------|------|---------|-----------|------|
+| **Arena** | 실전·경쟁·리더보드 | 지급 | 지급 | — |
+| **Lab** (Leadership Lab) | 훈련·학습 | 지급 | 0 | 하루 3회 (제출 성공 시 차감) |
+
+- **XP 계산·Lab 제한·수식:** `docs/spec/ARENA_LAB_XP_SPEC.md`를 단일 기준으로 한다. 구현은 해당 스펙을 따른다.
+- **구현 상태:** Arena run/complete(새 XP 공식·난이도·타이머), Lab complete/usage, Lab UI, run 생성 시 difficulty·meta 저장 등은 `docs/spec/ARENA_LAB_XP_RECONCILIATION.md` §7에 정리되어 있다.
+
+---
+
+## 6. References
 
 - **시스템 경계 (루트 docs)**: `docs/architecture/DOMAIN_LAYER_TARGET_MAP.md`, `docs/architecture/IMPORT_BOUNDARY.md`, `.cursor/rules/bty-system-boundary.mdc` — Arena 경로: `src/domain/arena`, `src/lib/bty/arena`, `src/app/[locale]/bty-arena`.
 - **Types & constants:** `/src/domain/types.ts`, `/src/domain/constants.ts`
 - **Pure rules:** `/src/domain/rules/*.ts` — leaderboard tie-break: `leaderboardTieBreak.ts` (compareWeeklyXpTieBreak).
+- **Arena/Lab XP·제한:** `docs/spec/ARENA_LAB_XP_SPEC.md`
+- **구현 정리·완료 항목:** `docs/spec/ARENA_LAB_XP_RECONCILIATION.md` (§7 기준 스펙 및 구현 순서)
 - **Legacy app docs:** `bty-app/docs/BTY_ARENA_SYSTEM_SPEC.md`, `BTY_ARENA_SEASON_SPEC.md`, `XP_SYSTEM_WEEKLY_SEASONAL_CORE.md`

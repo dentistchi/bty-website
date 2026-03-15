@@ -107,7 +107,7 @@ export default function MentorConversationHistory({
   return (
     <section aria-label={t.title} className="mt-8 pt-6 border-t border-mentor-wood-soft/20">
       <h2 className="text-sm font-medium text-mentor-ink-soft mb-3">{t.title}</h2>
-      <ul className="space-y-2 list-none p-0 m-0">
+      <ul className="space-y-2 list-none p-0 m-0" aria-label={t.title} role="list">
         {sessions.map((s) => {
           const dateStr =
             s.createdAt &&

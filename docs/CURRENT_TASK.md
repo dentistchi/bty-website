@@ -3,7 +3,119 @@
 **진행 에이전트**: 이 파일 또는 커맨더 메시지에 적힌 **기능(요구사항)** 을 구현하세요.  
 지시가 없으면 이 파일의 내용을 확인하고, 아래 형식으로 적힌 항목을 도메인 → API → UI 순으로 진행하세요.
 
-**다음 배치 (2026-03-11 splint 10)**: 이번 런 = **SPRINT 43**. 할 일 = **docs/CURSOR_TASK_BOARD.md** "이번 런" 표에서 자기 OWNER(C1~C5) 행 중 **[ ]** 인 TASK. 복사용 문장 = **docs/agent-runtime/AUTO4_PROMPTS.md** 해당 블록. **First Task** = TASK 1 (C5 Release Gate 43차).
+**다음 배치**: 이번 런 = **SPRINT 180 (구현 전용)**. **C2** 2개 [ ] BLOCKER 이관(배포 시 1회만). C3·C4·C5·C6 다음 백로그 대기(C1이 채우면 진행). 3~5개 한 번에 구현 → 한 배치로 [x]. 검증=배포 전 1회만.
+
+**플랜 전환 (구현 전용)**: [x] **완료.** 검증=배포 전 1회만. SPRINT 176 = Q3·Q4 구현 태스크만. SPRINT_PLAN·SPRINT_LOG·CURRENT_TASK 반영.
+
+**Arena §4·§5 BLOCKER 해제**: [x] **완료.** §4 Past scenarios 기본 노출+접기 결정·구현(ArenaRunHistory 토글·i18n). §5 메뉴 IA 현재 플랫 유지 결정. SPRINT_PLAN C5 [x]·Blockers 제거, BTY_ARENA_FEEDBACK_2026-03 §4·§5 조치 [x] 반영.
+
+**Arena/Lab XP 서류 구조 정리**: [x] **완료.** RECONCILIATION §7 = 구현 상태 단일 정리, ARENA_LAB_XP_SPEC = 수식·규칙 기준 + 구현 위치, BTY_ARENA_DOMAIN_SPEC = 도메인 원칙 + 위 두 문서 참조. CURSOR_TASK_BOARD·DOCS_SINGLE_SOURCE_OF_TRUTH·CURRENT_TASK 반영.
+
+**[다음 Q3·Q4 백로그 UI 보강 1건 (C5, docs/SPRINT_PLAN.md)]**: [x] **완료.** 대시보드 Points Today 카드 role="region" + aria-label(ko/en). Lint ✓.
+
+**[(선택) 다음 연도 백로그 (C5, docs/SPRINT_PLAN.md)]**: [x] **완료.** docs/NEXT_YEAR_BACKLOG.md 1페이지 요약·내부 문서 링크. ROADMAP_INTERNAL 참조 추가.
+
+**[Q3] 대시보드 추천 위젯 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** GET /api/arena/dashboard/summary 연동, 추천 ProgressCard(nextAction + arena/foundry/center 링크). Lint ✓.
+
+**[Q4] 로드맵 2페이지 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** docs/ROADMAP_PUBLIC.md(공개용), docs/ROADMAP_INTERNAL.md(내부용) 추가.
+
+**[Q4] Healing/Awakening 페이지 콘텐츠·플로우 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** i18n healing(ko/en) 추가, Healing 인덱스 getMessages().healing·GET /api/bty/healing 연동(phase 표시). Lint ✓.
+
+**[Q4] Healing + Awakening 라우트·페이지 골격 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** /bty/healing page.tsx + page.client.tsx 골격 추가, Awakening 링크·대시보드 링크. /bty/healing/awakening 기존 유지. Lint ✓.
+
+**[Q3] Elite 멘토 승인/거절 UI 또는 Elite 화면·접근성 1곳 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** Elite 서클 모임 카드에 role="region" + aria-label(tElite.circleCardTitle). Lint ✓.
+
+**[Q3] LE Stage Arena 결과·행동 패턴 노출 위젯 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** GET /api/arena/leadership-engine/stage-summary 연동, LE Stage ProgressCard(stageName, progressPercent, resetDueAt, arenaSummary/behaviorPattern). Lint ✓.
+
+**[Q3] 대시보드 AIR 또는 LE 진도 위젯 1개 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** AIR 위젯 ProgressCard(7d/14d/90d %, integritySlip). 기존 leAir API 응답 표시만. Lint ✓.
+
+**[Q3] 대시보드 Arena/Foundry/Center 통합 진입점·카드/링크 정리 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** 통합 진입점 ProgressCard(Arena·Foundry·Center nav) 추가, Center(나에게 쓰는 편지) 링크 추가. render-only. Lint ✓.
+
+**[VERIFY] Release Gate A~F — Foundry 175차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+
+**[VERIFY] 엘리트 3차 체크리스트 1회 (175차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+
+**[UI] Center/Foundry 추가 접근성 1곳 (175차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. elite 배지 목록 `<ul>`에 role="list" + aria-label (ko/en). Lint ✓.
+
+**[VERIFY] Release Gate A~F — Foundry 174차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+
+**[VERIFY] 엘리트 3차 체크리스트 1회 (174차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+
+**[UI] Center/Foundry 추가 접근성 1곳 (174차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. integrity 완료 단계 다음 단계 링크 그룹 role="group" aria-label (integrity/page.client.tsx). Lint ✓.
+
+**[VERIFY] Release Gate A~F — Foundry 173차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+
+**[VERIFY] 엘리트 3차 체크리스트 1회 (173차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+
+**[UI] Center/Foundry 추가 접근성 1곳 (173차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. assessment result 이전 대비 변화 role="group" aria-label (ResultClient.tsx). Lint ✓.
+
+**[VERIFY] Release Gate A~F — Foundry 172차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+
+**[VERIFY] 엘리트 3차 체크리스트 1회 (172차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+
+**[UI] Center/Foundry 추가 접근성 1곳 (172차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. assessment result 권장 트랙 region·이유 ul aria-label (ResultClient.tsx). Lint ✓.
+
+**[VERIFY] Release Gate A~F — Foundry 171차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+
+**[VERIFY] 엘리트 3차 체크리스트 1회 (171차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+
+**[UI] Center/Foundry 추가 접근성 1곳 (171차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. dojo history 과거 진단 이력 목록 ul aria-label (DojoHistoryClient.tsx). Lint ✓.
+
+**[VERIFY] Release Gate A~F — Foundry 170차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+
+**[VERIFY] 엘리트 3차 체크리스트 1회 (170차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+
+**[UI] Center/Foundry 추가 접근성 1곳 (170차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. mentor 대화 이력 목록 ul aria-label·role=list (MentorConversationHistory.tsx). Lint ✓.
+
+**[VERIFY] Release Gate A~F — Foundry 169차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+
+**[VERIFY] 엘리트 3차 체크리스트 1회 (169차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+
+**[UI] Center/Foundry 추가 접근성 1곳 (169차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. dear-me 편지 이력 목록 ul aria-label (DearMeClient.tsx). Lint ✓.
+
+**[VERIFY] Release Gate A~F — Foundry 168차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+
+**[VERIFY] 엘리트 3차 체크리스트 1회 (168차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+
+**[UI] Center/Foundry 추가 접근성 1곳 (168차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. assessment result 이전 진단 이력 목록 ul aria-label (ResultClient.tsx). Lint ✓.
+
+**[VERIFY] Release Gate A~F — Foundry 167차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+
+**[VERIFY] 엘리트 3차 체크리스트 1회 (167차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+
+**[UI] Center/Foundry 추가 접근성 1곳 (167차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Integrity 시나리오 대화 영역 role="region" aria-label (integrity/page.client.tsx). Lint ✓.
+
+**[VERIFY] Release Gate A~F — Foundry 166차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+
+**[VERIFY] 엘리트 3차 체크리스트 1회 (166차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+
+**[UI] Center/Foundry 추가 접근성 1곳 (166차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Elite 멘토 신청 메시지 textarea aria-label (elite/page.client.tsx). Lint ✓.
+
+**[UI] §1·§2·§9·§4·§5 (아바타·i18n·로딩·Past scenarios)**: [x] **완료.** §1 AvatarComposite outfit/accessory onError로 404 시 레이어 숨김. §2 Avatar/Profile 문자열 getMessages(locale).avatarOutfit·outfitLabels로 분리, EN 한글 제거. §9 loading.tsx·Suspense fallback 한글 제거 → LocaleAwareRouteLoading·PageLoadingFallback(pathname→locale). §4 Past scenarios 기본 노출+접기 버튼, arenaRun i18n. §5 메뉴(네비게이션): IA 검토 후 그룹핑·계층 정리 예정(현재 BtyTopNav 플랫 유지). Lint ✓.
+
+**[VERIFY] Release Gate A~F — Foundry 165차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+
+**[VERIFY] 엘리트 3차 체크리스트 1회 (165차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+
+**[UI] Center/Foundry 추가 접근성 1곳 (165차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. dashboard 아바타 설정 "선택한 옷" select에 aria-label (ko/en). Lint ✓.
+
+**[VERIFY] Release Gate A~F — Foundry 164차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+
+**[VERIFY] 엘리트 3차 체크리스트 1회 (164차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+
+**[UI] Center/Foundry 추가 접근성 1곳 (164차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. dashboard Arena Level 카드 emptyCta Link에 aria-label (ko/en). Lint ✓.
+
+**[VERIFY] Release Gate A~F — Foundry 163차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+
+**[VERIFY] 엘리트 3차 체크리스트 1회 (163차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+
+**[UI] Center/Foundry 추가 접근성 1곳 (163차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. dashboard Elite 카드 "Elite 전용 페이지로 이동 →" Link에 aria-label (ko/en). Lint ✓.
+
+**[VERIFY] Release Gate A~F — Foundry 162차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓ (auth LoadingFallback import 수정). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+
+**[VERIFY] 엘리트 3차 체크리스트 1회 (162차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+
+**[UI] Center/Foundry 추가 접근성 1곳 (162차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. dashboard Dojo 카드 "Dear Me 자존감 (50문항) →" Link에 aria-label (ko/en). Lint ✓.
 
 **[VERIFY] Release Gate A~F — Foundry 161차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK 반영.
 

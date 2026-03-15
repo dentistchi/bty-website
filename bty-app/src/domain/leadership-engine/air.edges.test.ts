@@ -6,6 +6,7 @@ import { describe, it, expect } from "vitest";
 import {
   computeAIR,
   computeAIRSnapshot,
+  airToBand,
   WEIGHT_MICRO_WIN,
   WEIGHT_RESET,
   CONSECUTIVE_MISS_THRESHOLD,
@@ -105,5 +106,21 @@ describe("air (edges)", () => {
     const snapshot = computeAIRSnapshot(activations, NOW);
     expect(snapshot.air_7d.air).toBeGreaterThan(0);
     expect(snapshot.air_7d.integritySlip).toBe(false);
+  });
+
+  describe("airToBand", () => {
+    it("returns low for air < 0.4", () => {
+      expect(airToBand(0)).toBe("low");
+      expect(airToBand(0.39)).toBe("low");
+    });
+    it("returns mid for 0.4 <= air < 0.7", () => {
+      expect(airToBand(0.4)).toBe("mid");
+      expect(airToBand(0.5)).toBe("mid");
+      expect(airToBand(0.69)).toBe("mid");
+    });
+    it("returns high for air >= 0.7", () => {
+      expect(airToBand(0.7)).toBe("high");
+      expect(airToBand(1)).toBe("high");
+    });
   });
 });

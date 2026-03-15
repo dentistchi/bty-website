@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   getNextStage,
+  stageProgressPercent,
   STAGE_1,
   STAGE_2,
   STAGE_3,
@@ -78,5 +79,19 @@ describe("getNextStage", () => {
     expect(getNextStage(STAGE_2, ctx2)).toBe(STAGE_3);
     expect(getNextStage(STAGE_3, ctx3)).toBe(STAGE_4);
     expect(getNextStage(STAGE_4, ctx4)).toBe(STAGE_1);
+  });
+});
+
+describe("stageProgressPercent", () => {
+  it("returns 25 for stage 1, 50 for 2, 75 for 3, 100 for 4", () => {
+    expect(stageProgressPercent(STAGE_1)).toBe(25);
+    expect(stageProgressPercent(STAGE_2)).toBe(50);
+    expect(stageProgressPercent(STAGE_3)).toBe(75);
+    expect(stageProgressPercent(STAGE_4)).toBe(100);
+  });
+
+  it("returns 0 for invalid stage", () => {
+    expect(stageProgressPercent(0 as typeof STAGE_1)).toBe(0);
+    expect(stageProgressPercent(5 as typeof STAGE_1)).toBe(0);
   });
 });

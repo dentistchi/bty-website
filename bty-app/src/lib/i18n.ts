@@ -234,6 +234,25 @@ export type Messages = {
     professional: string;
     fantasy: string;
     hint: string;
+    /** §2: 아바타 설정 페이지 전용 */
+    pageTitle: string;
+    backToFoundry: string;
+    backToFoundryAria: string;
+    goToDashboard: string;
+    goToDashboardAria: string;
+    preview: string;
+    previewAria: string;
+    character: string;
+    characterLocked: string;
+    characterChangeHint: string;
+    outfit: string;
+    noOutfits: string;
+    save: string;
+    saving: string;
+    saveAria: string;
+    errorLoad: string;
+    /** outfitKey → 표시 라벨 (en/ko) */
+    outfitLabels: Record<string, string>;
   };
   arenaMembership: {
     label: string;
@@ -300,6 +319,16 @@ export type Messages = {
     rejecting: string;
     error: string;
   };
+  /** Healing 인덱스·Awakening 진입. Q4. */
+  healing: {
+    title: string;
+    intro: string;
+    awakeningCta: string;
+    dashboardCta: string;
+    navLabel: string;
+    ariaAwakening: string;
+    ariaDashboard: string;
+  };
   /** Dojo 50문항 결과 화면. 영역별 점수·Dr. Chi 코멘트 표시(render-only). */
   dojoResult: {
     title: string;
@@ -362,6 +391,18 @@ export type Messages = {
     /** 시나리오를 찾을 수 없을 때(빈 상태) 메시지·힌트 */
     scenarioNotFound: string;
     scenarioNotFoundHint: string;
+    /** §4 Past scenarios: 제목·접기/펼치기·빈 상태·에러·재시도 */
+    pastScenariosHeading: string;
+    pastScenariosCollapse: string;
+    pastScenariosExpand: string;
+    loadingHistory: string;
+    couldNotLoadHistory: string;
+    retryLoadHistory: string;
+    retry: string;
+    noCompletedScenarios: string;
+    startFirstScenario: string;
+    completed: string;
+    inProgress: string;
   };
   /** PROJECT_BACKLOG §8: 대시보드 감정 스탯 카드 빈 상태 */
   emotionalStats: {
@@ -601,6 +642,38 @@ const ko: Messages = {
     professional: "직업군",
     fantasy: "롤플레잉",
     hint: "레벨이 올라가면 선택한 테마의 옷이 바뀝니다.",
+    pageTitle: "아바타",
+    backToFoundry: "훈련장으로 돌아가기",
+    backToFoundryAria: "훈련장으로 돌아가기",
+    goToDashboard: "대시보드로 가기",
+    goToDashboardAria: "대시보드로 가기",
+    preview: "미리보기",
+    previewAria: "아바타 미리보기",
+    character: "캐릭터",
+    characterLocked: "캐릭터 변경(잠김) — 다음 Code 진화 전까지 고정됩니다.",
+    characterChangeHint: "캐릭터 변경은 대시보드에서 할 수 있어요.",
+    outfit: "옷",
+    noOutfits: "이 테마에서 선택 가능한 옷이 없습니다.",
+    save: "저장",
+    saving: "저장 중",
+    saveAria: "저장",
+    errorLoad: "아바타 설정을 불러오지 못했습니다.",
+    outfitLabels: {
+      professional_outfit_scrub_general: "일반 스크럽",
+      professional_outfit_figs_scrub: "Figs 스크럽",
+      professional_outfit_doctor_gown: "의사 가운",
+      professional_outfit_surgery_coat_suit: "수술 코트 + 정장",
+      professional_outfit_brand_suit: "브랜드 정장",
+      professional_outfit_figs_scrub_short: "반팔 Figs 스크럽",
+      professional_outfit_shorts_tee: "반바지, 반팔티",
+      fantasy_outfit_apprentice: "견습",
+      fantasy_outfit_adventurer: "모험가",
+      fantasy_outfit_journeyer: "여행자",
+      fantasy_outfit_warrior_mage_mid: "전사/마법/상인 중급",
+      fantasy_outfit_senior: "시니어",
+      fantasy_outfit_senior_plus: "시니어+",
+      fantasy_outfit_master: "마스터",
+    },
   },
   arenaMembership: {
     label: "Arena 가입",
@@ -660,6 +733,15 @@ const ko: Messages = {
     approving: "승인 중…",
     rejecting: "거절 중…",
     error: "처리 실패",
+  },
+  healing: {
+    title: "Healing",
+    intro: "Healing과 Awakening 경로의 진입점입니다. Awakening에서 2차 각성 리듀얼을 진행할 수 있어요.",
+    awakeningCta: "Awakening →",
+    dashboardCta: "← 대시보드",
+    navLabel: "Healing 메뉴",
+    ariaAwakening: "Awakening으로",
+    ariaDashboard: "대시보드로",
   },
   dojoResult: {
     title: "Today-Me 50문항 결과",
@@ -729,6 +811,17 @@ const ko: Messages = {
     scenarioCompletedToast: "시나리오를 완료했어요",
     scenarioNotFound: "시나리오를 찾을 수 없습니다.",
     scenarioNotFoundHint: "다른 시나리오를 선택하거나 새로고침해 보세요.",
+    pastScenariosHeading: "지난 시나리오",
+    pastScenariosCollapse: "접기",
+    pastScenariosExpand: "펼치기",
+    loadingHistory: "이력 불러오는 중…",
+    couldNotLoadHistory: "이력을 불러오지 못했어요.",
+    retryLoadHistory: "이력 다시 불러오기",
+    retry: "다시 시도",
+    noCompletedScenarios: "아직 완료한 시나리오가 없어요.",
+    startFirstScenario: "첫 시나리오를 시작해 보세요!",
+    completed: "완료",
+    inProgress: "진행 중",
   },
   emotionalStats: {
     emptyMessage: "아직 기록이 없어요. Arena나 챗에서 대화를 진행해 보세요.",
@@ -964,6 +1057,38 @@ const en: Messages = {
     professional: "Professional",
     fantasy: "Fantasy",
     hint: "Outfit changes by level within your chosen theme.",
+    pageTitle: "Avatar",
+    backToFoundry: "Back to Foundry",
+    backToFoundryAria: "Back to Foundry",
+    goToDashboard: "Go to Dashboard",
+    goToDashboardAria: "Go to Dashboard",
+    preview: "Preview",
+    previewAria: "Avatar preview",
+    character: "Character",
+    characterLocked: "Character is locked until the next Code evolution.",
+    characterChangeHint: "You can change your character on the dashboard.",
+    outfit: "Outfit",
+    noOutfits: "No outfits available for this theme.",
+    save: "Save",
+    saving: "Saving",
+    saveAria: "Save",
+    errorLoad: "Failed to load avatar settings.",
+    outfitLabels: {
+      professional_outfit_scrub_general: "General scrub",
+      professional_outfit_figs_scrub: "Figs scrub",
+      professional_outfit_doctor_gown: "Doctor gown",
+      professional_outfit_surgery_coat_suit: "Surgery coat + suit",
+      professional_outfit_brand_suit: "Brand suit",
+      professional_outfit_figs_scrub_short: "Short-sleeve Figs scrub",
+      professional_outfit_shorts_tee: "Shorts & tee",
+      fantasy_outfit_apprentice: "Apprentice",
+      fantasy_outfit_adventurer: "Adventurer",
+      fantasy_outfit_journeyer: "Journeyer",
+      fantasy_outfit_warrior_mage_mid: "Warrior/Mage/Merchant mid",
+      fantasy_outfit_senior: "Senior",
+      fantasy_outfit_senior_plus: "Senior+",
+      fantasy_outfit_master: "Master",
+    },
   },
   arenaMembership: {
     label: "Arena membership",
@@ -1023,6 +1148,15 @@ const en: Messages = {
     approving: "Approving…",
     rejecting: "Rejecting…",
     error: "Action failed",
+  },
+  healing: {
+    title: "Healing",
+    intro: "Entry point for Healing and Awakening. Continue to Awakening for the Second Awakening ritual.",
+    awakeningCta: "Awakening →",
+    dashboardCta: "← Dashboard",
+    navLabel: "Healing menu",
+    ariaAwakening: "Go to Awakening",
+    ariaDashboard: "Back to dashboard",
   },
   dojoResult: {
     title: "Today-Me 50-Item Result",
@@ -1092,6 +1226,17 @@ const en: Messages = {
     scenarioCompletedToast: "Scenario completed",
     scenarioNotFound: "Scenario not found.",
     scenarioNotFoundHint: "Try another scenario or refresh.",
+    pastScenariosHeading: "Past scenarios",
+    pastScenariosCollapse: "Collapse",
+    pastScenariosExpand: "Expand",
+    loadingHistory: "Loading history…",
+    couldNotLoadHistory: "Could not load history.",
+    retryLoadHistory: "Retry load history",
+    retry: "Retry",
+    noCompletedScenarios: "No completed scenarios yet.",
+    startFirstScenario: "Start your first scenario!",
+    completed: "Completed",
+    inProgress: "In progress",
   },
   emotionalStats: {
     emptyMessage: "No records yet. Try Arena or chat to start.",

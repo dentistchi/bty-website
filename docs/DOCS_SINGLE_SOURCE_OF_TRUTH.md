@@ -39,6 +39,18 @@
 
 ---
 
+## Arena / Lab XP 스펙 문서 구조 (docs/spec)
+
+| 문서 | 역할 |
+|------|------|
+| **BTY_ARENA_DOMAIN_SPEC.md** | 도메인 원칙(Core/Weekly, 시즌, 리더보드, Arena vs Lab). XP·Lab 수식·구현 상태는 아래 두 문서 참조. |
+| **ARENA_LAB_XP_SPEC.md** | XP 계산·Lab 제한·모드 규칙의 **단일 기준**. 수식·규칙 + 구현 위치(§9). 상세 구현 상태는 RECONCILIATION §7 참조. |
+| **ARENA_LAB_XP_RECONCILIATION.md** §7 | **지금까지 구현된 것**의 단일 정리. §7.1 구현 완료 항목(1~10번), §7.2 미완·선택. |
+
+구현 상태를 확인할 때는 RECONCILIATION §7을 본다. 수식·규칙을 적용할 때는 ARENA_LAB_XP_SPEC을 따른다.
+
+---
+
 ## 배치 원칙
 
 | 목적 | 위치 |

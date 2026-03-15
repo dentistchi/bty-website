@@ -44,6 +44,17 @@ describe("GET /api/center/resilience", () => {
     expect(mockGetResilienceEntries).not.toHaveBeenCalled();
   });
 
+  it("does not call parsePeriodDays or getResilienceEntries when unauthenticated", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: null } }) },
+    });
+
+    await GET(makeRequest("30"));
+
+    expect(mockParsePeriodDays).not.toHaveBeenCalled();
+    expect(mockGetResilienceEntries).not.toHaveBeenCalled();
+  });
+
   it("returns 500 when service returns error", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({
       auth: {

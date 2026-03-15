@@ -4,6 +4,7 @@
  */
 
 export * from "./stages";
+export * from "./le-stage";
 export * from "./air";
 export * from "./tii";
 export * from "./forced-reset";

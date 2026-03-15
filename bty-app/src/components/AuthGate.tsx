@@ -1,19 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { getMessages } from "@/lib/i18n";
 import { LoadingFallback } from "@/components/bty-arena";
 
-/** CENTER_PAGE_IMPROVEMENT_SPEC §2: loadingMessage 있으면 locale에 맞는 로딩 문구 사용 */
+/** §9: loadingMessage 없으면 pathname으로 locale 추론 후 getMessages(locale).loading.message 사용. */
 export function AuthGate({
   children,
   loadingMessage,
 }: {
   children: React.ReactNode;
-  /** Optional: e.g. t.center.loading for locale-aware "Please wait…" / "잠시만 기다려 주세요." */
+  /** Optional: e.g. t.loading.message for locale-aware "Please wait…" / "잠시만 기다려 주세요." */
   loadingMessage?: string;
 }) {
+  const pathname = usePathname() ?? "";
+  const locale = pathname.startsWith("/ko") ? "ko" : "en";
+  const fallbackMessage = getMessages(locale).loading.message;
   const { user, loading, login, register, error, clearError } = useAuth();
 
   const [isRegister, setIsRegister] = useState(false);
@@ -38,13 +43,14 @@ export function AuthGate({
   };
 
   if (loading) {
+    const msg = loadingMessage ?? fallbackMessage;
     return (
       <div
         className="min-h-screen flex items-center justify-center p-4"
         aria-busy="true"
-        aria-label={loadingMessage ?? "잠시만 기다려 주세요."}
+        aria-label={msg}
       >
-        <LoadingFallback icon="⏳" message={loadingMessage ?? "잠시만 기다려 주세요."} withSkeleton />
+        <LoadingFallback icon="⏳" message={msg} withSkeleton />
       </div>
     );
   }

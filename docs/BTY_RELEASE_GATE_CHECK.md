@@ -6,6 +6,117 @@
 **정책**: 문서·백로그·Release Gate 점검은 **배포 전 1회** 수행. 일상 작업은 웹 개발(UI·API·도메인) 집중.  
 **배포 준비:** `docs/MVP_DEPLOYMENT_READINESS.md` (배포 시 1회 체크리스트). **일상 vs 배포:** `docs/WORK_POLICY.md`.
 
+**리더보드 API 인증 요구사항 (Leaderboard API auth)** — 출처: docs/BTY_ARENA_FEEDBACK_2026-03.md §8.  
+- **인증**: 리더보드 API(및 관련 Live ranking / Past scenarios API)는 **인증된 사용자만** 허용.  
+- **미인증 시 처리**: 세션/쿠키 없거나 유효하지 않으면 **401 Unauthorized** 반환 또는 로그인 유도. UI에서는 "Sign in to see leaderboard" 등 명시적 문구 표시.  
+- 클라이언트가 요청 시 쿠키/세션을 올바르게 전달하는지, 미들웨어가 보호 구간에서 세션을 검사하는지 확인.
+
+---
+
+### 배포 전 체크리스트 요약 (A~F 1페이지, 배포 시 빠른 점검용)
+
+| 항목 | 확인 포인트 |
+|------|-------------|
+| **A) Auth/Cookies/Session** | Secure, SameSite, Path, Domain 설정·로그아웃 시 쿠키/세션 제거·런타임 변경 시 영향·롤백 계획 |
+| **B) Weekly Reset Safety** | 리셋 기준(week_id 등)·Core XP 미수정·이중 실행 시 안전·리셋 창 동시 XP 처리 |
+| **C) Leaderboard Correctness** | 정렬=Weekly XP만·타이 브레이커(weekly_xp desc, updated_at, user_id)·시즌 필드 미사용 |
+| **D) Data/Migration** | 마이그레이션 경로·제약/인덱스·롤백 방법·Core/Weekly 저장 분리 유지 |
+| **E) API Contract** | 변경 엔드포인트·요청/응답 필드·UI는 계산값만 수신·리더보드 캐시 동작 |
+| **F) Verification** | 1) 로컬 로그인→XP→프로필/리더보드 2) 주간 경계/리셋 시뮬 3) 프리뷰 로그인 유지 4) 프로덕션 쿠키·리더보드·401 루프 없음 |
+
+**render-only 체크 포인트** (app/[locale], components)  
+- [ ] `@/domain` 또는 `**/domain/` import 없음  
+- [ ] XP/리그/시즌 규칙 계산 없음 (levelFromCoreXp, leagueFromCoreXp, tierFromCoreXp 등 호출 없음)  
+- [ ] 리더보드 정렬 로직 없음 (API에서 받은 순서만 표시)  
+- [ ] weeklyXp/coreXpTotal 등은 **표시용 prop만** (API 전달값 렌더만)
+
+**auth/session 점검 포인트**  
+- **쿠키**: Secure(prod), SameSite(Lax/Strict), Path, Domain 확인  
+- **리다이렉트**: 미인증 시 로그인/콜백 경로·루프 없음  
+- **401 처리**: API 미인증 시 401·메시지("Sign in to see leaderboard" 등)·UI 로그인 유도
+
+**리더보드·XP 안전 점검 포인트**  
+- **Core/Weekly 분리**: Core XP 영구·리셋 없음. Weekly XP만 주간 리셋·주간 랭킹용.  
+- **시즌 미반영**: 리더보드 랭킹에 시즌 진행도 사용 금지. 정렬=Weekly XP만.
+
+**배포 시 실행 순서**: MVP_DEPLOYMENT_READINESS(1회) → Gate(self-healing-ci 등) → 본 문서·보드·CURRENT_TASK 반영.
+
+**최근 완료 (2026-03-14)**: [VERIFY] Release Gate A~F — Foundry 175차 (C5, docs/SPRINT_PLAN.md). A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+
+**최근 완료 (2026-03-14)**: [C2 Gatekeeper] SPRINT 175 (docs/SPRINT_PLAN.md). (1) 배치 175 접근성·테스트 render-only 확인 — app/[locale]·components에 domain import 없음. PASS. (2) 175차 변경 auth/리셋/리더보드 영향 없음 — 문서·접근성·route테스트·엘리트·이관만. PASS. (3) 본 문서 갱신.
+
+**최근 완료 (2026-03-14)**: [UI] Center/Foundry 접근성 1곳 (174차, C5). integrity 완료 단계 다음 단계 링크 그룹 role="group" aria-label. render-only. Lint ✓.
+
+**최근 완료 (2026-03-14)**: [VERIFY] Release Gate A~F — Foundry 174차 (C5, docs/SPRINT_PLAN.md). A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+
+**최근 완료 (2026-03-14)**: [C2 Gatekeeper] SPRINT 174 (docs/SPRINT_PLAN.md). (1) 배치 174 접근성·테스트 render-only 확인 — app/[locale]·components에 domain import 없음. PASS. (2) 174차 변경 auth/리셋/리더보드 영향 없음 — 문서·접근성·route테스트·엘리트·이관만. PASS. (3) 본 문서 갱신.
+
+**최근 완료 (2026-03-14)**: [UI] Center/Foundry 접근성 1곳 (173차, C5). assessment result 이전 대비 변화 role="group" aria-label. render-only. Lint ✓.
+
+**최근 완료 (2026-03-14)**: [VERIFY] Release Gate A~F — Foundry 173차 (C5, docs/SPRINT_PLAN.md). A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+
+**최근 완료 (2026-03-14)**: [C2 Gatekeeper] SPRINT 173 (docs/SPRINT_PLAN.md). (1) 배치 173 접근성·테스트 render-only 확인 — app/[locale]·components에 domain import 없음. PASS. (2) 173차 변경 auth/리셋/리더보드 영향 없음 — 문서·접근성·route테스트·엘리트·이관만. PASS. (3) 본 문서 갱신.
+
+**최근 완료 (2026-03-14)**: [UI] Center/Foundry 접근성 1곳 (172차, C5). assessment result 권장 트랙·이유 목록 aria-label. render-only. Lint ✓.
+
+**최근 완료 (2026-03-14)**: [VERIFY] Release Gate A~F — Foundry 172차 (C5, docs/SPRINT_PLAN.md). A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+
+**최근 완료 (2026-03-14)**: [C2 Gatekeeper] SPRINT 172 (docs/SPRINT_PLAN.md). (1) 배치 172 접근성·테스트 render-only 확인 — app/[locale]·components에 domain import 없음. PASS. (2) 172차 변경 auth/리셋/리더보드 영향 없음 — 문서·접근성·route테스트·엘리트·이관만. PASS. (3) 본 문서 갱신.
+
+**최근 완료 (2026-03-14)**: [UI] Center/Foundry 접근성 1곳 (171차, C5). dojo history 과거 진단 이력 목록 aria-label. render-only. Lint ✓.
+
+**최근 완료 (2026-03-14)**: [VERIFY] Release Gate A~F — Foundry 171차 (C5, docs/SPRINT_PLAN.md). A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+
+**최근 완료 (2026-03-14)**: [C2 Gatekeeper] SPRINT 171 (docs/SPRINT_PLAN.md). (1) 배치 171 접근성·테스트 render-only 확인 — app/[locale]·components에 domain import 없음. PASS. (2) 171차 변경 auth/리셋/리더보드 영향 없음 — 문서·접근성·route테스트·엘리트·이관만. PASS. (3) 본 문서 갱신.
+
+**최근 완료 (2026-03-14)**: [UI] Center/Foundry 접근성 1곳 (170차, C5). mentor 대화 이력 목록 aria-label·role=list. render-only. Lint ✓.
+
+**최근 완료 (2026-03-14)**: [VERIFY] Release Gate A~F — Foundry 170차 (C5, docs/SPRINT_PLAN.md). A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+
+**최근 완료 (2026-03-14)**: [C2 Gatekeeper] SPRINT 170 (docs/SPRINT_PLAN.md). (1) 배치 170 접근성·테스트 render-only 확인 — app/[locale]·components에 domain import 없음. PASS. (2) 170차 변경 auth/리셋/리더보드 영향 없음 — 문서·접근성·route테스트·엘리트·이관만. PASS. (3) 본 문서 갱신.
+
+**최근 완료 (2026-03-14)**: [UI] Center/Foundry 접근성 1곳 (169차, C5). dear-me 편지 이력 목록 aria-label. render-only. Lint ✓.
+
+**최근 완료 (2026-03-14)**: [VERIFY] Release Gate A~F — Foundry 169차 (C5, docs/SPRINT_PLAN.md). A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+
+**최근 완료 (2026-03-14)**: [C2 Gatekeeper] SPRINT 169 (docs/SPRINT_PLAN.md). (1) 배치 169 접근성·테스트 render-only 확인 — app/[locale]·components에 domain import 없음. PASS. (2) 169차 변경 auth/리셋/리더보드 영향 없음 — 문서·접근성·route테스트·엘리트·이관만. PASS. (3) 본 문서 갱신.
+
+**최근 완료 (2026-03-14)**: [UI] Center/Foundry 접근성 1곳 (168차, C5). assessment result 이전 진단 이력 목록 aria-label. render-only. Lint ✓.
+
+**최근 완료 (2026-03-14)**: [VERIFY] Release Gate A~F — Foundry 168차 (C5, docs/SPRINT_PLAN.md). A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+
+**최근 완료 (2026-03-14)**: [C2 Gatekeeper] SPRINT 168 (docs/SPRINT_PLAN.md). (1) 배치 168 접근성·테스트 render-only 확인 — app/[locale]·components에 domain import 없음. PASS. (2) 168차 변경 auth/리셋/리더보드 영향 없음 — 문서·접근성·route테스트·엘리트·이관만. PASS. (3) 본 문서 갱신.
+
+**최근 완료 (2026-03-14)**: [UI] Center/Foundry 접근성 1곳 (167차, C5). Integrity 시나리오 대화 영역 role="region" aria-label. render-only. Lint ✓.
+
+**최근 완료 (2026-03-14)**: [VERIFY] Release Gate A~F — Foundry 167차 (C5, docs/SPRINT_PLAN.md). A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+
+**최근 완료 (2026-03-14)**: [C2 Gatekeeper] SPRINT 167 (docs/SPRINT_PLAN.md). (1) 배치 167 접근성·테스트 render-only 확인 — app/[locale]·components에 domain import 없음. PASS. (2) 167차 변경 auth/리셋/리더보드 영향 없음 — 문서·접근성·route테스트·엘리트·이관만. PASS. (3) 본 문서 갱신.
+
+**최근 완료 (2026-03-14)**: [C2 Gatekeeper] SPRINT 166 (docs/SPRINT_PLAN.md). (1) 배치 166 접근성·테스트 render-only 확인 — app/[locale]·components에 domain import 없음. PASS. (2) 166차 변경 auth/리셋/리더보드 영향 없음 — 문서·접근성·route테스트·엘리트·이관만. PASS. (3) 본 문서 갱신.
+
+**최근 완료 (2026-03-14)**: [UI] Center/Foundry 접근성 1곳 (166차, C5). Elite 멘토 신청 메시지 textarea aria-label. render-only. Lint ✓.
+
+**최근 완료 (2026-03-14)**: [VERIFY] Release Gate A~F — Foundry 166차 (C5, docs/SPRINT_PLAN.md). A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+
+**최근 완료 (2026-03-14)**: [C2 Gatekeeper] SPRINT 165 (docs/SPRINT_PLAN.md). (1) 배치 165 접근성·테스트 render-only 확인 — app/[locale]·components에 domain import 없음. PASS. (2) 165차 변경 auth/리셋/리더보드 영향 없음 — 문서·접근성·route테스트·엘리트·이관만. PASS. (3) 본 문서 갱신.
+
+**최근 완료 (2026-03-14)**: [C2 Gatekeeper] SPRINT 164 (docs/SPRINT_PLAN.md). (1) 배치 164 접근성·테스트 render-only 확인 — app/[locale]·components에 domain import 없음. PASS. (2) 164차 변경 auth/리셋/리더보드 영향 없음 — 문서·접근성·route테스트·엘리트·이관만. PASS. (3) 본 문서 갱신.
+
+**최근 완료 (2026-03-14)**: [C2 Gatekeeper] SPRINT 163 (docs/SPRINT_PLAN.md). (1) 배치 163 접근성·테스트 render-only 확인 — app/[locale]·components에 domain import 없음. PASS. (2) 163차 변경 auth/리셋/리더보드 영향 없음 — 문서·접근성·route테스트·엘리트·이관만. PASS. (3) 본 문서 갱신.
+
+**최근 완료 (2026-03-14)**: [C2 Gatekeeper] SPRINT 162 (docs/SPRINT_PLAN.md). (1) 배치 162 접근성·테스트 render-only 확인 — app/components·app/[locale]에 domain import 없음, XP/랭크 표시만. PASS. (2) 162차 변경 auth/리셋/리더보드 영향 없음 — 문서·접근성·route/미커버 테스트·엘리트·이관만. PASS. (3) 본 문서 갱신.
+
+**최근 완료 (2026-03-14)**: [VERIFY] Release Gate A~F — Foundry 165차 (C5, docs/SPRINT_PLAN.md). A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+
+**최근 완료 (2026-03-14)**: [VERIFY] Release Gate A~F — Foundry 164차 (C5, docs/SPRINT_PLAN.md). A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+
+**최근 완료 (2026-03-14)**: [VERIFY] Release Gate A~F — Foundry 163차 (C5, docs/SPRINT_PLAN.md). A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+
+**최근 완료 (2026-03-14)**: [VERIFY] Release Gate A~F — Foundry 162차 (C5, docs/SPRINT_PLAN.md). A~E N/A · F) Lint ✓ Test ✓ Build ✓ (auth/callback·auth/reset-password LoadingFallback import 수정). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+
+**최근 완료 (2026-03-14)**: [C2 Gatekeeper] SPRINT 161 [Arena 피드백 §8] 리더보드 API 인증 요구사항 본 문서에 반영 — 인증된 사용자만 허용·미인증 시 401/로그인 유도·"Sign in to see leaderboard" 명시.
+
 **최근 완료 (2026-03-13)**: [C2 Gatekeeper] SPRINT 161 (docs/SPRINT_PLAN.md). (1) 배치 161 접근성·테스트 render-only 확인 — app/components·app/[locale]에 domain·XP/랭크 import·정렬 없음. PASS. (2) 161차 변경 auth/리셋/리더보드 영향 없음 — 문서·접근성·route테스트·엘리트만. PASS. (3) 본 문서 갱신.
 
 **최근 완료 (2026-03-13)**: [C2 Gatekeeper] SPRINT 160 (docs/SPRINT_PLAN.md). (1) 배치 160 접근성·테스트 render-only 확인 — app/components·app/[locale]에 domain·XP/랭크 import·정렬 없음. PASS. (2) 160차 변경 auth/리셋/리더보드 영향 없음 — 문서·접근성·route테스트·엘리트만. PASS. (3) 본 문서 갱신.

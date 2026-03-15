@@ -149,7 +149,7 @@ export default function IntegrityMirrorPage() {
               <p className="text-foundry-ink-soft text-sm mb-8 max-w-sm">
                 {t.doneSub}
               </p>
-              <div className="flex flex-wrap justify-center gap-3">
+              <div className="flex flex-wrap justify-center gap-3" role="group" aria-label={locale === "ko" ? "다음 단계 선택" : "Next steps"}>
                 <Link
                   href={`/${locale}/bty/mentor`}
                   className={cn(
@@ -215,7 +215,11 @@ export default function IntegrityMirrorPage() {
               <p id="integrity-hint" className="text-sm text-foundry-ink-soft">{t.intro}</p>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[200px]">
+            <div
+              className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[200px]"
+              role="region"
+              aria-label={locale === "ko" ? "역지사지 대화 내용" : "Integrity conversation"}
+            >
               {messages.length === 0 && (
                 <EmptyState
                   icon="💬"

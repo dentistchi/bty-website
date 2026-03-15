@@ -118,7 +118,7 @@ export default function DojoHistoryClient({ locale = "ko" }: { locale?: string }
   return (
     <div className="max-w-xl mx-auto px-6 py-10" role="main" aria-labelledby="dojo-history-heading">
       <h1 id="dojo-history-heading" className="text-2xl font-semibold mb-4">{title}</h1>
-      <ul className="list-none p-0 m-0 space-y-3" role="list">
+      <ul className="list-none p-0 m-0 space-y-3" role="list" aria-label={title}>
         {submissions.map((row) => {
           const label = summaryLabels[row.summary_key] ?? row.summary_key;
           const avg =

@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireUser, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 
 export async function GET(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);
-  if (!user) return unauthenticated(req, base);
+  if (!user) {
+    const out = NextResponse.json(
+      { error: "UNAUTHENTICATED", message: "Sign in to see past scenarios" },
+      { status: 401 },
+    );
+    copyCookiesAndDebug(base, out, req, false);
+    return out;
+  }
 
   const url = new URL(req.url);
   const limitRaw = url.searchParams.get("limit");

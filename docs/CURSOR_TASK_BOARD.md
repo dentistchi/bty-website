@@ -2,7 +2,7 @@
 
 **단일 진실**: 이 표 + `docs/CURRENT_TASK.md` 1줄. First Task 완료 전 다음 Task 시작 불가(Start Trigger 잠금). **진행 에이전트(C2–C6)**: 할 일 = 이번 런 표에서 자기 OWNER 행 중 **[ ]** 인 TASK. 복사용 문장 = `docs/agent-runtime/AUTO4_PROMPTS.md`. (별도 "C2/C3 TASK QUEUE" 파일 없음.) **대기 작업**은 `docs/NEXT_PHASE_AUTO4.md`와 **docs/CURSOR_TASK_BOARD.md**(루트)와 동일한 기준으로 유지한다. 대기 후보는 **MASTER_PLAN → docs/NEXT_BACKLOG_AUTO4**에서 채운다. **다음 프로젝트 추천**: `docs/NEXT_PROJECT_RECOMMENDED.md` (엘리트 3차). **splint 10**: 방금 끝난 작업 검증 → 다음 10개 작업 선정 → C1–C5 프롬프트 생성. 절차는 `docs/agent-runtime/SPLINT_10_PROCEDURE.md`.  
 **우선순위 규칙**: 1) Auth/Redirect/Session 2) API Contract 3) Domain/Engine 4) UI 5) 문서.  
-**Arena 문서 참조 (루트 docs)**: 시스템 경계·경로 — `docs/architecture/DOMAIN_LAYER_TARGET_MAP.md`, `docs/architecture/IMPORT_BOUNDARY.md`. Arena 도메인 규칙 — `docs/spec/BTY_ARENA_DOMAIN_SPEC.md`.
+**Arena 문서 참조 (루트 docs)**: 시스템 경계·경로 — `docs/architecture/DOMAIN_LAYER_TARGET_MAP.md`, `docs/architecture/IMPORT_BOUNDARY.md`. Arena 도메인·스펙 — `docs/spec/BTY_ARENA_DOMAIN_SPEC.md`(도메인 원칙 + 하위 스펙 참조). XP·Lab 규칙·수식 — `docs/spec/ARENA_LAB_XP_SPEC.md`(단일 기준 + 구현 위치). **지금까지 구현된 것** 단일 정리 — `docs/spec/ARENA_LAB_XP_RECONCILIATION.md` §7.
 
 **매번 작업 완료 시 서류 반영**: 작업이 완료되면 **반드시** 아래 서류에 **작업 완료**로 갱신한다.  
 - **CURSOR_TASK_BOARD.md**: 해당 스프린트 표에서 TASK [x] 완료 표시, 이전 런에 완료 항목 한 줄 추가(작업명·날짜·결과 요약).  
@@ -15,6 +15,46 @@
 
 ## 이번 런: SPRINT 43 (FOUNDRY) — 2026-03-11
 
+- **[다음 Q3·Q4 백로그 UI 보강 1건 (2026-03-14)]**: C5. 대시보드 Points Today 카드 role="region" aria-label. Lint ✓. 완료.
+- **[(선택) 다음 연도 백로그 (2026-03-14)]**: C5. docs/NEXT_YEAR_BACKLOG.md 1페이지 요약·내부 링크. 완료.
+- **[Q3] 대시보드 추천 위젯 (2026-03-14)**: C5. GET dashboard/summary 연동, 추천 카드(nextAction·source 링크). Lint ✓. 완료.
+- **[Q4] 로드맵 2페이지 (2026-03-14)**: C5. docs/ROADMAP_PUBLIC.md, docs/ROADMAP_INTERNAL.md 추가. 완료.
+- **[Q4] Healing/Awakening 페이지 콘텐츠·플로우 (2026-03-14)**: C5. i18n healing 추가, Healing 페이지 API 연동·phase 표시. Lint ✓. 완료.
+- **[Q4] Healing + Awakening 라우트·페이지 골격 (2026-03-14)**: C5. /bty/healing 인덱스 추가. awakening 기존 유지. Lint ✓. 완료.
+- **[Q3] Elite 멘토 승인/거절 UI 또는 접근성 1곳 (2026-03-14)**: C5. Elite 서클 카드 role="region" aria-label. Lint ✓. 완료.
+- **[Q3] LE Stage Arena 결과·행동 패턴 위젯 (2026-03-14)**: C5. GET stage-summary 연동, LE Stage 카드. Lint ✓. 완료.
+- **[Q3] 대시보드 AIR 위젯 1개 (2026-03-14)**: C5. AIR 카드(7d/14d/90d %, integritySlip). API 응답 표시만. Lint ✓. 완료.
+- **[Q3] 대시보드 Arena/Foundry/Center 통합 진입점 (2026-03-14)**: C5. ProgressCard + nav 카드 추가, Center 링크 추가. Lint ✓. 완료.
+- **[VERIFY] Release Gate 175차 (2026-03-14)**: C5. A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** 완료.
+- **[VERIFY] 엘리트 3차 체크리스트 1회 (175차, 2026-03-14)**: C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3 반영. 완료.
+- **[UI] Center/Foundry 추가 접근성 1곳 (175차, 2026-03-14)**: C5. elite 배지 목록 `<ul>` role="list" + aria-label. 완료.
+- **[VERIFY] Release Gate 174차 (2026-03-14)**: C5. A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** 완료.
+- **[VERIFY] 엘리트 3차 체크리스트 1회 (174차, 2026-03-14)**: C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3 반영. 완료.
+- **[UI] Center/Foundry 추가 접근성 1곳 (174차, 2026-03-14)**: C5. integrity 완료 단계 다음 단계 링크 그룹 aria-label. Lint ✓. 완료.
+- **[VERIFY] Release Gate 173차 (2026-03-14)**: C5. A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** 완료.
+- **[VERIFY] 엘리트 3차 체크리스트 1회 (173차, 2026-03-14)**: C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3 반영. 완료.
+- **[UI] Center/Foundry 추가 접근성 1곳 (173차, 2026-03-14)**: C5. assessment result 이전 대비 변화 role="group" aria-label. Lint ✓. 완료.
+- **[VERIFY] Release Gate 172차 (2026-03-14)**: C5. A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** 완료.
+- **[VERIFY] 엘리트 3차 체크리스트 1회 (172차, 2026-03-14)**: C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3 반영. 완료.
+- **[UI] Center/Foundry 추가 접근성 1곳 (172차, 2026-03-14)**: C5. assessment result 권장 트랙·이유 목록 aria-label. Lint ✓. 완료.
+- **[VERIFY] Release Gate 171차 (2026-03-14)**: C5. A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** 완료.
+- **[VERIFY] 엘리트 3차 체크리스트 1회 (171차, 2026-03-14)**: C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3 반영. 완료.
+- **[UI] Center/Foundry 추가 접근성 1곳 (171차, 2026-03-14)**: C5. dojo history 과거 진단 이력 목록 aria-label. Lint ✓. 완료.
+- **[VERIFY] Release Gate 170차 (2026-03-14)**: C5. A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** 완료.
+- **[VERIFY] 엘리트 3차 체크리스트 1회 (170차, 2026-03-14)**: C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3 반영. 완료.
+- **[UI] Center/Foundry 추가 접근성 1곳 (170차, 2026-03-14)**: C5. mentor 대화 이력 목록 aria-label·role=list. Lint ✓. 완료.
+- **[VERIFY] Release Gate 169차 (2026-03-14)**: C5. A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** 완료.
+- **[VERIFY] 엘리트 3차 체크리스트 1회 (169차, 2026-03-14)**: C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3 반영. 완료.
+- **[UI] Center/Foundry 추가 접근성 1곳 (169차, 2026-03-14)**: C5. dear-me 편지 이력 목록 aria-label. Lint ✓. 완료.
+- **[VERIFY] Release Gate 168차 (2026-03-14)**: C5. A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** 완료.
+- **[VERIFY] 엘리트 3차 체크리스트 1회 (168차, 2026-03-14)**: C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3 반영. 완료.
+- **[UI] Center/Foundry 추가 접근성 1곳 (168차, 2026-03-14)**: C5. assessment result 이전 진단 이력 목록 aria-label. Lint ✓. 완료.
+- **[VERIFY] Release Gate 167차 (2026-03-14)**: C5. A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** 완료.
+- **[VERIFY] 엘리트 3차 체크리스트 1회 (167차, 2026-03-14)**: C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3 반영. 완료.
+- **[UI] Center/Foundry 추가 접근성 1곳 (167차, 2026-03-14)**: C5. Integrity 시나리오 대화 영역 role="region" aria-label. Lint ✓. 완료.
+- **[VERIFY] Release Gate 166차 (2026-03-14)**: C5. A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** 완료.
+- **[VERIFY] 엘리트 3차 체크리스트 1회 (166차, 2026-03-14)**: C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3 반영. 완료.
+- **[UI] Center/Foundry 추가 접근성 1곳 (166차, 2026-03-14)**: C5. Elite 멘토 신청 메시지 textarea aria-label. Lint ✓. 완료.
 - **[VERIFY] Release Gate 159차 (2026-03-13)**: C5. A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** 완료.
 - **[VERIFY] 엘리트 3차 체크리스트 1회 (159차, 2026-03-13)**: C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3 반영. 완료.
 - **[UI] Center/Foundry 추가 접근성 1곳 (159차, 2026-03-13)**: C5. 404 not-found 대시보드 링크 aria-label. Lint ✓. 완료.

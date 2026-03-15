@@ -179,4 +179,12 @@ describe("aggregateLetterRowsToDailyEntries (edges)", () => {
     expect(entries).toHaveLength(2);
     expect(entries.map((e) => e.date)).toEqual(["2026-03-01", "2026-03-05"]);
   });
+
+  it("created_at date-only string (YYYY-MM-DD) yields same date (slice 0..10 boundary)", () => {
+    const rows: LetterRow[] = [{ energy: 3, created_at: "2026-03-15" }];
+    const entries = aggregateLetterRowsToDailyEntries(rows);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].date).toBe("2026-03-15");
+    expect(entries[0].level).toBe("mid");
+  });
 });

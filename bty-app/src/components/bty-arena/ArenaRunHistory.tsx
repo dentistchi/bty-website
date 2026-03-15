@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import type { Locale } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 import { SCENARIOS } from "@/lib/bty/scenario/scenarios";
 import { CardSkeleton } from "./CardSkeleton";
@@ -23,8 +24,15 @@ export type ArenaRunHistoryProps = {
   locale: Locale | string;
 };
 
-const HEADING: React.CSSProperties = {
+const HEADING_ROW: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
   margin: "0 0 12px",
+};
+const HEADING: React.CSSProperties = {
+  margin: 0,
   fontSize: 16,
   fontWeight: 600,
   color: "var(--arena-text)",
@@ -35,6 +43,10 @@ export function ArenaRunHistory({ locale }: ArenaRunHistoryProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  /** §4 기본 노출, 접기 가능 */
+  const [collapsed, setCollapsed] = useState(false);
+  const lang = locale === "ko" ? "ko" : "en";
+  const t = getMessages(lang).arenaRun;
   const isKo = locale === "ko";
 
   useEffect(() => {
@@ -68,18 +80,39 @@ export function ArenaRunHistory({ locale }: ArenaRunHistoryProps) {
   }
 
   function statusLabel(status: string): string {
-    if (status === "DONE" || status === "completed") return isKo ? "완료" : "Completed";
-    if (status === "in_progress") return isKo ? "진행 중" : "In progress";
+    if (status === "DONE" || status === "completed") return t.completed;
+    if (status === "in_progress") return t.inProgress;
     return status;
   }
 
-  const heading = isKo ? "지난 시나리오" : "Past scenarios";
+  const toggleButton = (
+    <button
+      type="button"
+      onClick={() => setCollapsed((c) => !c)}
+      aria-expanded={!collapsed}
+      aria-label={collapsed ? t.pastScenariosExpand : t.pastScenariosCollapse}
+      style={{
+        padding: "4px 10px",
+        fontSize: 12,
+        color: "var(--arena-text-soft)",
+        background: "transparent",
+        border: "1px solid #ddd",
+        borderRadius: 8,
+        cursor: "pointer",
+      }}
+    >
+      {collapsed ? t.pastScenariosExpand : t.pastScenariosCollapse}
+    </button>
+  );
 
   if (loading) {
     return (
       <section style={{ marginTop: 28 }} aria-labelledby="arena-run-history-heading">
-        <h3 id="arena-run-history-heading" style={HEADING}>{heading}</h3>
-        <div aria-busy="true" aria-label={isKo ? "이력 불러오는 중…" : "Loading history…"}>
+        <div style={HEADING_ROW}>
+          <h3 id="arena-run-history-heading" style={HEADING}>{t.pastScenariosHeading}</h3>
+          {toggleButton}
+        </div>
+        <div aria-busy="true" aria-label={t.loadingHistory}>
           <p
             style={{
               margin: 0,
@@ -94,7 +127,7 @@ export function ArenaRunHistory({ locale }: ArenaRunHistoryProps) {
             aria-live="polite"
           >
             <span aria-hidden style={{ fontSize: 18 }}>📋</span>
-            {isKo ? "이력 불러오는 중…" : "Loading history…"}
+            {t.loadingHistory}
           </p>
           <CardSkeleton showLabel={false} lines={2} style={{ padding: "16px 20px" }} />
           <div style={{ marginTop: 8 }}>
@@ -108,11 +141,12 @@ export function ArenaRunHistory({ locale }: ArenaRunHistoryProps) {
   if (error) {
     return (
       <section style={{ marginTop: 28 }} aria-labelledby="arena-run-history-heading">
-        <h3 id="arena-run-history-heading" style={HEADING}>{heading}</h3>
+        <div style={HEADING_ROW}>
+          <h3 id="arena-run-history-heading" style={HEADING}>{t.pastScenariosHeading}</h3>
+          {toggleButton}
+        </div>
         <div role="alert" style={{ padding: "12px 16px", border: "1px solid #f1c0c0", borderRadius: 12, background: "#fff7f7" }}>
-          <p style={{ margin: 0, fontSize: 14, color: "#8b2e2e" }}>
-            {isKo ? "이력을 불러오지 못했어요." : "Could not load history."}
-          </p>
+          <p style={{ margin: 0, fontSize: 14, color: "#8b2e2e" }}>{t.couldNotLoadHistory}</p>
           <button
             type="button"
             onClick={() => {
@@ -120,7 +154,7 @@ export function ArenaRunHistory({ locale }: ArenaRunHistoryProps) {
               setLoading(true);
               setRetryCount((c) => c + 1);
             }}
-            aria-label={isKo ? "이력 다시 불러오기" : "Retry load history"}
+            aria-label={t.retryLoadHistory}
             style={{
               marginTop: 10,
               padding: "8px 14px",
@@ -131,7 +165,7 @@ export function ArenaRunHistory({ locale }: ArenaRunHistoryProps) {
               cursor: "pointer",
             }}
           >
-            {isKo ? "다시 시도" : "Retry"}
+            {t.retry}
           </button>
         </div>
       </section>
@@ -141,13 +175,12 @@ export function ArenaRunHistory({ locale }: ArenaRunHistoryProps) {
   if (runs.length === 0) {
     return (
       <section style={{ marginTop: 28 }} aria-labelledby="arena-run-history-heading">
-        <h3 id="arena-run-history-heading" style={HEADING}>{heading}</h3>
+        <div style={HEADING_ROW}>
+          <h3 id="arena-run-history-heading" style={HEADING}>{t.pastScenariosHeading}</h3>
+          {toggleButton}
+        </div>
         <div style={{ border: "1px solid #eee", borderRadius: 14, background: "var(--arena-card)" }}>
-          <EmptyState
-            icon="📋"
-            message={isKo ? "아직 완료한 시나리오가 없어요." : "No completed scenarios yet."}
-            hint={isKo ? "첫 시나리오를 시작해 보세요!" : "Start your first scenario!"}
-          />
+          <EmptyState icon="📋" message={t.noCompletedScenarios} hint={t.startFirstScenario} />
         </div>
       </section>
     );
@@ -155,7 +188,11 @@ export function ArenaRunHistory({ locale }: ArenaRunHistoryProps) {
 
   return (
     <section style={{ marginTop: 28 }} aria-labelledby="arena-run-history-heading">
-      <h3 id="arena-run-history-heading" style={HEADING}>{heading}</h3>
+      <div style={HEADING_ROW}>
+        <h3 id="arena-run-history-heading" style={HEADING}>{t.pastScenariosHeading}</h3>
+        {toggleButton}
+      </div>
+      {!collapsed && (
       <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
         {runs.map((run) => (
           <li
@@ -195,6 +232,7 @@ export function ArenaRunHistory({ locale }: ArenaRunHistoryProps) {
           </li>
         ))}
       </ul>
+      )}
     </section>
   );
 }

@@ -34,6 +34,22 @@ describe("GET /api/arena/leadership-engine/air", () => {
     expect(data.error).toBe("UNAUTHENTICATED");
   });
 
+  it("returns 200 with content-type application/json", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {
+        from: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: [] }),
+      },
+      base: {},
+    });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
+
   it("returns 200 with zeroed air_7d, air_14d, air_90d when no activations", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },

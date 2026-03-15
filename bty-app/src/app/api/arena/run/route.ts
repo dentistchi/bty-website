@@ -11,13 +11,23 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const scenarioId = String(body?.scenarioId ?? "");
   const locale = body?.locale ? String(body.locale) : null;
+  const difficulty = body?.difficulty != null ? String(body.difficulty) : null;
+  const meta = body?.meta != null && typeof body.meta === "object" ? body.meta : null;
   if (!scenarioId) return NextResponse.json({ error: "scenarioId_required" }, { status: 400 });
 
   await supabase.rpc("ensure_arena_profile");
 
+  const insertRow: Record<string, unknown> = {
+    user_id: user.id,
+    scenario_id: scenarioId,
+    locale,
+  };
+  if (difficulty !== null && difficulty !== "") insertRow.difficulty = difficulty;
+  if (meta !== null) insertRow.meta = meta;
+
   const { data, error } = await supabase
     .from("arena_runs")
-    .insert({ user_id: user.id, scenario_id: scenarioId, locale })
+    .insert(insertRow)
     .select("run_id, scenario_id, started_at, status")
     .single();
 
