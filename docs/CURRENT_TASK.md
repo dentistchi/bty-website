@@ -3,6 +3,8 @@
 **진행 에이전트**: 이 파일 또는 커맨더 메시지에 적힌 **기능(요구사항)** 을 구현하세요.  
 지시가 없으면 이 파일의 내용을 확인하고, 아래 형식으로 적힌 항목을 도메인 → API → UI 순으로 진행하세요.
 
+**[배포] chore: 배포 push 완료**: e6fc417 (28 files, +379/-94) → origin/main. 정상 완료.
+
 **다음 배치**: 이번 런 = **SPRINT 183 (구현 전용)**. **C2** 2개 [ ] BLOCKER 이관(배포 시 1회만). **C3·C4·C5·C6** 각 1~2개 [ ] 다음 백로그 대기(C1이 채우면 진행). 3~5개 한 번에 구현 → 한 배치로 [x]. 검증=배포 전 1회만.
 
 **[SPRINT 182] C4 API Engineer 5건 (2026-03-14)**: [x] **완료.** LE stage-summary 응답 스키마(StageSummaryResponse·도메인 타입), dashboard/summary source 쿼리 필터·DashboardSummaryResponse, Healing/Awakening bty/errors.ts 에러 형식 통일, requireUser 점검 1건, docs/spec/ARENA_DOMAIN_SPEC.md API 목록 갱신. 테스트 통과.

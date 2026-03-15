@@ -44,6 +44,8 @@
 
 **배포 시 실행 순서**: MVP_DEPLOYMENT_READINESS(1회) → Gate(self-healing-ci 등) → 본 문서·보드·CURRENT_TASK 반영.
 
+**최근 완료 (배포 push)**: e6fc417 — chore: 배포 (28 files, +379/-94). c828ca5..e6fc417 → origin/main (github.com:dentistchi/bty-website.git). **배포 정상 완료.**
+
 **최근 완료 (배포 시 1회, C2)**: 배포 전 최종 확인 — BTY_RELEASE_GATE_CHECK § A~F·MVP_DEPLOYMENT_READINESS 확인 완료. self-healing-ci.sh 실행: Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** 본 문서·SPRINT_LOG 반영.
 
 **최근 완료 (2026-03-14)**: [VERIFY] Release Gate A~F — Foundry 175차 (C5, docs/SPRINT_PLAN.md). A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.

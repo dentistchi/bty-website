@@ -6,6 +6,7 @@ Summary of gate/integration runs (C7). Major sprint state changes. C1 REFRESH re
 
 ## 2026-03-14
 
+- **배포 push**: e6fc417 chore: 배포 (28 files, +379/-94). c828ca5..e6fc417 → origin/main (dentistchi/bty-website). 정상 완료.
 - **REFRESH (C1)**: SPRINT 182 남은 [ ] 모두 BLOCKER(C2 배포 시 1회만) → 회전 완료. SPRINT 183 생성. C2 항목 2건 이관(맨 위 [ ]). C3·C4·C5·C6 다음 백로그 대기(C1 채움). Mode FOUNDRY.
 - **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
 - **REFRESH (C1)**: C1이 다음 작업 채움. SPRINT 182 생성. 각 Cursor 3~5개 작업 할당. C2(5)·C3(5)·C4(5)·C5(5)·C6(5) [ ] 초기화. Objective: LE·대시보드·Elite·Healing·접근성·테스트. Mode FOUNDRY.
