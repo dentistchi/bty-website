@@ -51,4 +51,19 @@ describe("GET /api/bty/awakening", () => {
       3: "Awakening",
     });
   });
+
+  it("returns 200 with content-type application/json and body shape (ok, acts)", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u2" },
+      supabase: {},
+      base: {},
+    });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+    const data = await res.json();
+    expect(typeof data.ok).toBe("boolean");
+    expect(data.acts).toBeDefined();
+    expect(typeof data.acts).toBe("object");
+  });
 });

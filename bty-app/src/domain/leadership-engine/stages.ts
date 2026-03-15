@@ -22,6 +22,23 @@ export const STAGE_NAMES: Readonly<Record<Stage, string>> = {
   4: "Integrity Reset (Forced Realignment)",
 } as const;
 
+// --- Progress boundary (0–100, per stage; single source for stage-summary) ---
+
+export const PROGRESS_PERCENT_MIN = 0 as const;
+export const PROGRESS_PERCENT_MAX = 100 as const;
+
+export const PROGRESS_PERCENT_STAGE_1 = 25 as const;
+export const PROGRESS_PERCENT_STAGE_2 = 50 as const;
+export const PROGRESS_PERCENT_STAGE_3 = 75 as const;
+export const PROGRESS_PERCENT_STAGE_4 = 100 as const;
+
+export const STAGE_PROGRESS_PERCENT: Readonly<Record<Stage, number>> = {
+  [STAGE_1]: PROGRESS_PERCENT_STAGE_1,
+  [STAGE_2]: PROGRESS_PERCENT_STAGE_2,
+  [STAGE_3]: PROGRESS_PERCENT_STAGE_3,
+  [STAGE_4]: PROGRESS_PERCENT_STAGE_4,
+} as const;
+
 // --- Transition context (deterministic, data-driven) ---
 
 export type StageTransitionContext =
@@ -53,13 +70,7 @@ export function getNextStage(
   }
 }
 
-/** 스테이지(1–4) → 진행률 0–100. 순수 함수. */
+/** 스테이지(1–4) → 진행률 0–100. 순수 함수. STAGE_PROGRESS_PERCENT 단일 소스. */
 export function stageProgressPercent(stage: Stage): number {
-  const pct: Record<Stage, number> = {
-    1: 25,
-    2: 50,
-    3: 75,
-    4: 100,
-  };
-  return pct[stage] ?? 0;
+  return STAGE_PROGRESS_PERCENT[stage] ?? PROGRESS_PERCENT_MIN;
 }

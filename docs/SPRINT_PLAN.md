@@ -16,7 +16,7 @@
 ## SPRINT
 
 - **Mode:** FOUNDRY (구현 전용)
-- Sprint ID: SPRINT 180
+- Sprint ID: SPRINT 183
 - Status: active
 - Objective: **Q3·Q4 구현 가속.** 배포 시 Gate 1회(이관)·다음 백로그. 검증=배포 전 1회.
 
@@ -66,16 +66,16 @@ Allowed paths:
 - `.cursor/rules/`
 - `docs/BTY_RELEASE_GATE_CHECK.md`
 
-**현재 모드:** 구현 전용. 배포 시 Gate 1회. 아래는 179에서 이관(맨 위 [ ]). 배포 결정 시에만 실행.
+**현재 모드:** 구현 전용. 배포 시 Gate 1회. 아래는 182에서 이관(맨 위 [ ]). 배포 결정 시에만 실행.
 
 Tasks:
 - [ ] 배포 시 1회: Gate 실행 전 BTY_RELEASE_GATE_CHECK § A~F·MVP_DEPLOYMENT_READINESS 최종 확인 (배포 결정 시만)
-  - BLOCKER: 배포 결정 단계가 아니면 미실행. 179에서 이관.
+  - BLOCKER: 배포 결정 단계가 아니면 미실행. 182에서 이관.
 - [ ] (선택) 배포 시 1회: self-healing-ci.sh 실행 후 결과를 BTY_RELEASE_GATE_CHECK·SPRINT_LOG에 기록
-  - BLOCKER: 배포 결정 시에만. 179에서 이관.
+  - BLOCKER: 배포 결정 시에만. 182에서 이관.
 
 Notes:
-- 179 회전 완료. C2 항목 2건 이관. 배포 시 1회만 실행.
+- 182 회전 완료. C2 항목 2건 이관. C3·C4·C5·C6 전부 [x]. 배포 시 1회만 실행.
 
 Blockers:
 
@@ -93,11 +93,11 @@ Allowed paths:
 **한 번에 구현:** 아래 1~2개를 한 배치로 처리. 다음 백로그 또는 C1 채움.
 
 Tasks:
-- [x] 다음 Q3·Q4 백로그: 도메인 보강 1건 (ROADMAP_Q3_Q4·NEXT_BACKLOG 확인 후 C1이 채우거나 비움)
-- [x] (선택) 비움 — C1이 다음 스프린트 작업 추가 시 채움
+- [ ] 다음 Q3·Q4 백로그: 도메인 보강 1건 (ROADMAP_Q3_Q4·NEXT_BACKLOG 확인 후 C1이 채우거나 비움)
+- [ ] (선택) 비움 — C1이 다음 스프린트 작업 추가 시 채움
 
 Notes:
-- ROADMAP_Q3_Q4·NEXT_BACKLOG_AUTO4·NEXT_YEAR_BACKLOG 확인: 이번 배치에 [DOMAIN] 도메인 보강 1건 없음. 비움 처리. C1이 다음 백로그에 도메인 작업 추가 시 진행.
+- 182 완료: LE Stage·AIR·대시보드·콘텐츠 확장·domain index. 183 = 다음 백로그 대기 또는 C1 채움.
 
 Blockers:
 
@@ -117,11 +117,11 @@ Allowed paths:
 **한 번에 구현:** 아래 1~2개를 한 배치로 처리. 비즈니스 규칙은 domain/lib 호출만.
 
 Tasks:
-- [x] 다음 Q3·Q4 백로그: API 보강 또는 신규 1건 (C1이 채우거나 비움) — 이번 배치 구체 작업 없음. 비움.
-- [x] (선택) 비움 — C1이 다음 스프린트 작업 추가 시 채움. C4 실행 대상 아님.
+- [ ] 다음 Q3·Q4 백로그: API 보강 또는 신규 1건 (C1이 채우거나 비움)
+- [ ] (선택) 비움 — C1이 다음 스프린트 작업 추가 시 채움
 
 Notes:
-- 177 완료: Healing·대시보드 추천·로드맵. 178 = C1 채우거나 비움만 있어 실행할 구체 작업 없음. 할 일 [ ] 없음.
+- 182 완료: stage-summary·dashboard·Healing API·권한 점검·route 목록. 183 = 다음 백로그 대기 또는 C1 채움.
 
 Blockers:
 
@@ -141,14 +141,11 @@ Allowed paths:
 **한 번에 구현:** 아래 1~2개를 한 배치로 처리. 데이터는 API/props만 사용, 규칙 계산 없음.
 
 Tasks:
-- [x] 다음 Q3·Q4 백로그: UI 보강 또는 신규 1건 (C1이 채우거나 비움)
-- [x] (선택) 비움 — C1이 다음 스프린트 작업 추가 시 채움. 실행할 작업 없음.
+- [ ] 다음 Q3·Q4 백로그: UI 보강 또는 신규 1건 (C1이 채우거나 비움)
+- [ ] (선택) 비움 — C1이 다음 스프린트 작업 추가 시 채움
 
 Notes:
-- 177 완료: Healing·로드맵·대시보드 추천·다음 연도 백로그. 178 = 다음 백로그 대기 또는 C1 채움.
-- 178 UI 보강: 대시보드 Points Today 카드에 role="region" + aria-label(ko/en). Lint ✓.
-- (선택) 비움: C1 채움 대기. [x] 처리로 C5 섹션 정리.
-- 자기 섹션에 [ ] 없음 → C5 여기서 멈춤. C1이 스프린트 갱신해 C5에 새 태스크 넣으면 그때 진행.
+- 182 완료: 대시보드 위젯·Elite 접근성·Healing 로딩·Center 접근성·i18n. 183 = 다음 백로그 대기 또는 C1 채움.
 
 Blockers:
 
@@ -164,16 +161,14 @@ Allowed paths:
 - `src/**/*.test.ts`
 - 테스트 통과를 위한 최소 수정 파일
 
-**한 번에 구현:** 아래 2~3개를 한 배치로 처리. C3·C4 구현 후 해당 API/도메인 대상으로 추가.
+**한 번에 구현:** 아래 1~2개를 한 배치로 처리. C3·C4 구현 후 해당 API/도메인 대상으로 추가.
 
 Tasks:
-- [x] 다음 Q3·Q4 백로그: 신규/변경 API·도메인에 대한 route 또는 단위 테스트 1건 (C1이 채우거나 비움)
-- [x] (선택) 비움 — C1이 다음 스프린트 작업 추가 시 채움. C6 실행 대상 아님.
+- [ ] 다음 Q3·Q4 백로그: 신규/변경 API·도메인에 대한 route 또는 단위 테스트 1건 (C1이 채우거나 비움)
+- [ ] (선택) 비움 — C1이 다음 스프린트 작업 추가 시 채움
 
 Notes:
-- 177 완료: Healing·대시보드 추천·stage-summary 등 route/단위 테스트. 178 = 다음 백로그 대기 또는 C1 채움.
-- (선택) 비움: C1 채움 항목이므로 C6 실행 대상 아님. [x] 처리.
-- Q4 healing 도메인: healing.test.ts 추가 (AWAKENING_ACT_NAMES, HEALING_PHASE_II_LABEL, HEALING_PHASE_RING_TYPE, 트리거 상수). npm test 통과.
+- 182 완료: stage-summary·dashboard·Healing route 테스트·도메인 단위·build. 183 = 다음 백로그 대기 또는 C1 채움.
 
 Blockers:
 
@@ -194,13 +189,13 @@ Record results here (배포 전 1회 실행 후 채움):
 
 | Field | Value |
 |-------|--------|
-| Lint | — |
-| Test | — |
-| Build | — |
-| Overall | — |
+| Lint | PASS |
+| Test | PASS |
+| Build | PASS |
+| Overall | PASS |
 | Owner if fail | — |
 
-Last run: 2026-03-14 (이전 모드). 구현 전용 전환 후에는 배포 시 1회만 실행.
+Last run: 2026-03-14. GATE via ./scripts/self-healing-ci.sh. 구현 전용 전환 후에는 배포 시 1회만 실행.
 
 Blockers:
 

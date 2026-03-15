@@ -15,6 +15,7 @@
 
 ## 이번 런: SPRINT 43 (FOUNDRY) — 2026-03-11
 
+- **[C5 SPRINT 182 5건 (2026-03-14)]**: AIR 에러 UI·Elite 접근성·Healing 로딩·dear-me 접근성·healing i18n loading. Lint ✓. 완료.
 - **[다음 Q3·Q4 백로그 UI 보강 1건 (2026-03-14)]**: C5. 대시보드 Points Today 카드 role="region" aria-label. Lint ✓. 완료.
 - **[(선택) 다음 연도 백로그 (2026-03-14)]**: C5. docs/NEXT_YEAR_BACKLOG.md 1페이지 요약·내부 링크. 완료.
 - **[Q3] 대시보드 추천 위젯 (2026-03-14)**: C5. GET dashboard/summary 연동, 추천 카드(nextAction·source 링크). Lint ✓. 완료.

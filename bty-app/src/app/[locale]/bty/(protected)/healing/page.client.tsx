@@ -17,13 +17,21 @@ export default function HealingPageClient({ locale }: Props) {
   const lang = (locale === "ko" ? "ko" : "en") as Locale;
   const t = getMessages(lang).healing;
   const [phase, setPhase] = React.useState<string | null>(null);
+  const [healingLoading, setHealingLoading] = React.useState(true);
 
   React.useEffect(() => {
     let alive = true;
+    setHealingLoading(true);
     fetch("/api/bty/healing", { credentials: "include" })
       .then((r) => r.json().catch(() => ({})))
       .then((data: HealingApiRes) => {
-        if (alive && data?.phase != null) setPhase(data.phase);
+        if (alive) {
+          setPhase(data?.phase ?? null);
+          setHealingLoading(false);
+        }
+      })
+      .catch(() => {
+        if (alive) setHealingLoading(false);
       });
     return () => {
       alive = false;
@@ -42,7 +50,12 @@ export default function HealingPageClient({ locale }: Props) {
       <p style={{ fontSize: 15, lineHeight: 1.6, marginBottom: 24 }}>
         {t.intro}
       </p>
-      {phase != null && (
+      {healingLoading && (
+        <p style={{ fontSize: 13, opacity: 0.7, marginBottom: 16 }} role="status" aria-live="polite">
+          {t.loading}
+        </p>
+      )}
+      {!healingLoading && phase != null && (
         <p style={{ fontSize: 13, opacity: 0.85, marginBottom: 16 }} role="status">
           {phase}
         </p>

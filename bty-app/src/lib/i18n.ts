@@ -328,6 +328,7 @@ export type Messages = {
     navLabel: string;
     ariaAwakening: string;
     ariaDashboard: string;
+    loading: string;
   };
   /** Dojo 50문항 결과 화면. 영역별 점수·Dr. Chi 코멘트 표시(render-only). */
   dojoResult: {
@@ -742,6 +743,7 @@ const ko: Messages = {
     navLabel: "Healing 메뉴",
     ariaAwakening: "Awakening으로",
     ariaDashboard: "대시보드로",
+    loading: "불러오는 중…",
   },
   dojoResult: {
     title: "Today-Me 50문항 결과",
@@ -1157,6 +1159,7 @@ const en: Messages = {
     navLabel: "Healing menu",
     ariaAwakening: "Go to Awakening",
     ariaDashboard: "Back to dashboard",
+    loading: "Loading…",
   },
   dojoResult: {
     title: "Today-Me 50-Item Result",

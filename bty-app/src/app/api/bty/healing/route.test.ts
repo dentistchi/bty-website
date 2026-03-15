@@ -48,4 +48,20 @@ describe("GET /api/bty/healing", () => {
     expect(data.phase).toBe("Phase II");
     expect(data.content).toEqual({ ringType: "phase_ring" });
   });
+
+  it("returns 200 with content-type application/json and body shape (ok, phase, content)", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u2" },
+      supabase: {},
+      base: {},
+    });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+    const data = await res.json();
+    expect(typeof data.ok).toBe("boolean");
+    expect(typeof data.phase).toBe("string");
+    expect(data.content).toBeDefined();
+    expect(typeof data.content).toBe("object");
+  });
 });

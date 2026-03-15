@@ -9,6 +9,9 @@ import type { CodeIndex } from "./constants";
 /** ISO date only (YYYY-MM-DD). */
 export type ISODateString = string;
 
+/** Arena 시나리오·Dojo 연동용 공통 콘텐츠 식별자. 시나리오/연습 ID 동일 네임스페이스. */
+export type ContentScenarioId = string;
+
 /** Tier is internal; derived as floor(coreXp / 10). Not exposed. */
 export type Tier = number;
 

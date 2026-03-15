@@ -61,9 +61,50 @@ describe("GET /api/arena/leadership-engine/stage-summary", () => {
     expect(data.currentStage).toBe(2);
     expect(data.stageName).toBe("Expectation Collapse (Cynicism Drift)");
     expect(data.progressPercent).toBe(50);
+    expect(data.forcedResetTriggeredAt).toBeNull();
+    expect(data.resetDueAt).toBeNull();
     expect(data.arenaSummary).toBeNull();
     expect(data.behaviorPattern).toBeNull();
     expect(mockEnsureLeadershipEngineState).toHaveBeenCalledWith({}, "u1");
     expect(mockGetLeadershipEngineState).toHaveBeenCalledWith({}, "u1");
+  });
+
+  it("returns 200 with response shape matching LEStageSummary (currentStage, stageName, progressPercent, resetDueAt, forcedResetTriggeredAt, arenaSummary, behaviorPattern)", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u2" },
+      supabase: {},
+      base: {},
+    });
+    mockGetLeadershipEngineState.mockResolvedValue({
+      currentStage: 1,
+      stageName: "Over-Intervention (Speed Bias)",
+      forcedResetTriggeredAt: "2026-03-01T00:00:00Z",
+      resetDueAt: "2026-03-15T00:00:00Z",
+    });
+
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+    const data = await res.json();
+
+    expect(data).toHaveProperty("currentStage");
+    expect(data).toHaveProperty("stageName");
+    expect(data).toHaveProperty("progressPercent");
+    expect(data).toHaveProperty("forcedResetTriggeredAt");
+    expect(data).toHaveProperty("resetDueAt");
+    expect(data).toHaveProperty("arenaSummary");
+    expect(data).toHaveProperty("behaviorPattern");
+
+    expect(typeof data.currentStage).toBe("number");
+    expect(typeof data.stageName).toBe("string");
+    expect(typeof data.progressPercent).toBe("number");
+    expect(data.currentStage).toBeGreaterThanOrEqual(1);
+    expect(data.currentStage).toBeLessThanOrEqual(4);
+    expect(data.progressPercent).toBeGreaterThanOrEqual(0);
+    expect(data.progressPercent).toBeLessThanOrEqual(100);
+    expect(data.forcedResetTriggeredAt === null || typeof data.forcedResetTriggeredAt === "string").toBe(true);
+    expect(data.resetDueAt === null || typeof data.resetDueAt === "string").toBe(true);
+    expect(data.arenaSummary === null || typeof data.arenaSummary === "object").toBe(true);
+    expect(data.behaviorPattern === null || typeof data.behaviorPattern === "object").toBe(true);
   });
 });

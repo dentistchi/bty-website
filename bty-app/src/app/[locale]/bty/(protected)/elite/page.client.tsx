@@ -345,7 +345,7 @@ export default function ElitePageClient() {
                 ? "Arena에서 시나리오를 완료하고 주간 XP를 쌓아 상위 5%에 도전해 보세요."
                 : "Complete scenarios in Arena and earn weekly XP to reach the top 5%."}
             </p>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div role="group" aria-label={locale === "ko" ? "다음 액션: 리더보드 또는 대시보드" : "Next: leaderboard or dashboard"} style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <Link
                 href={`/${locale}/bty/leaderboard`}
                 style={{

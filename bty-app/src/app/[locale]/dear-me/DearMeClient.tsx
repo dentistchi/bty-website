@@ -141,11 +141,11 @@ export default function DearMeClient({ locale }: { locale: string }) {
                 {t.replyStepTitle}
               </h2>
               {/* Dear Me 완료 화면 보강: 오늘의 편지 완료 문구 (Center completedTitle/Sub 재사용) */}
-              <div className="rounded-2xl border border-dear-sage/20 bg-dear-sage/5 px-4 py-3 text-center">
+              <div role="region" aria-label={lang === "ko" ? "오늘의 편지 완료 안내" : "Today's letter completed"} className="rounded-2xl border border-dear-sage/20 bg-dear-sage/5 px-4 py-3 text-center">
                 <p className="font-medium text-dear-charcoal">{t.completedTitle}</p>
                 <p className="mt-1 text-sm text-dear-charcoal-soft">{t.completedSub}</p>
               </div>
-              <div className="rounded-2xl border border-dear-sage/30 bg-dear-sage/5 p-5 text-dear-charcoal whitespace-pre-wrap">
+              <div role="region" aria-label={lang === "ko" ? "답장 내용" : "Reply content"} className="rounded-2xl border border-dear-sage/30 bg-dear-sage/5 p-5 text-dear-charcoal whitespace-pre-wrap">
                 {replyDisplay}
               </div>
               <div className="flex flex-col sm:flex-row gap-3">

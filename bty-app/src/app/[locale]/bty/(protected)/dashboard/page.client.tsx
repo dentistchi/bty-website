@@ -864,7 +864,9 @@ export default function DashboardClient() {
           {/* [Q3] AIR 위젯 — API 응답 표시만, 규칙 계산 없음 */}
           <ProgressCard label="AIR">
             {leAir == null ? (
-              <CardSkeleton showLabel={false} lines={1} />
+              <p style={{ fontSize: 13, color: "var(--arena-text)", opacity: 0.8 }} role="status">
+                {locale === "ko" ? "AIR 지표를 불러올 수 없습니다." : "Unable to load AIR."}
+              </p>
             ) : (
               <div role="region" aria-label={locale === "ko" ? "AIR 지표: 7일·14일·90일" : "AIR: 7d, 14d, 90d"} style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, fontSize: 14 }}>
                 <div style={{ textAlign: "center", padding: "12px 8px", border: "1px solid var(--arena-text-soft, #e5e7eb)", borderRadius: 10 }}>

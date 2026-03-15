@@ -26,11 +26,15 @@ export interface BehaviorPatternSummary {
   nextStage: Stage | null;
 }
 
-/** LE Stage 한 줄 요약 — API 응답·위젯용. */
+/** LE Stage 한 줄 요약 — API 응답·위젯용. GET stage-summary 응답 스키마 단일 소스. */
 export interface LEStageSummary {
   currentStage: Stage;
   stageName: string;
   progressPercent: number;
-  arenaSummary?: ArenaResultSummary;
-  behaviorPattern?: BehaviorPatternSummary;
+  /** 리셋 예정 시각 (ISO string). null이면 미설정. */
+  resetDueAt?: string | null;
+  /** 강제 리셋 발생 시각 (ISO string). null이면 미발생. */
+  forcedResetTriggeredAt?: string | null;
+  arenaSummary?: ArenaResultSummary | null;
+  behaviorPattern?: BehaviorPatternSummary | null;
 }

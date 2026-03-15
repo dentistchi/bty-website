@@ -28,18 +28,23 @@
 - [ ] `@/domain` 또는 `**/domain/` import 없음  
 - [ ] XP/리그/시즌 규칙 계산 없음 (levelFromCoreXp, leagueFromCoreXp, tierFromCoreXp 등 호출 없음)  
 - [ ] 리더보드 정렬 로직 없음 (API에서 받은 순서만 표시)  
-- [ ] weeklyXp/coreXpTotal 등은 **표시용 prop만** (API 전달값 렌더만)
+- [ ] weeklyXp/coreXpTotal 등은 **표시용 prop만** (API 전달값 렌더만)  
+- **샘플 점검 (C2)**: app/[locale]·components domain import 없음. PASS.
 
 **auth/session 점검 포인트**  
 - **쿠키**: Secure(prod), SameSite(Lax/Strict), Path, Domain 확인  
 - **리다이렉트**: 미인증 시 로그인/콜백 경로·루프 없음  
-- **401 처리**: API 미인증 시 401·메시지("Sign in to see leaderboard" 등)·UI 로그인 유도
+- **401 처리**: API 미인증 시 401·메시지("Sign in to see leaderboard" 등)·UI 로그인 유도  
+- **확인 (C2)**: 쿠키·401·리다이렉트 요약 본 문서에 있음. 보강 불필요.
 
 **리더보드·XP 안전 점검 포인트**  
 - **Core/Weekly 분리**: Core XP 영구·리셋 없음. Weekly XP만 주간 리셋·주간 랭킹용.  
-- **시즌 미반영**: 리더보드 랭킹에 시즌 진행도 사용 금지. 정렬=Weekly XP만.
+- **시즌 미반영**: 리더보드 랭킹에 시즌 진행도 사용 금지. 정렬=Weekly XP만.  
+- **확인 (C2)**: Core/Weekly·시즌 미반영 요약 본 문서에 있음. 보강 불필요.
 
 **배포 시 실행 순서**: MVP_DEPLOYMENT_READINESS(1회) → Gate(self-healing-ci 등) → 본 문서·보드·CURRENT_TASK 반영.
+
+**최근 완료 (배포 시 1회, C2)**: 배포 전 최종 확인 — BTY_RELEASE_GATE_CHECK § A~F·MVP_DEPLOYMENT_READINESS 확인 완료. self-healing-ci.sh 실행: Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** 본 문서·SPRINT_LOG 반영.
 
 **최근 완료 (2026-03-14)**: [VERIFY] Release Gate A~F — Foundry 175차 (C5, docs/SPRINT_PLAN.md). A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
 

@@ -229,9 +229,23 @@ lib/bty/arena/domain.ts ──────── domain/rules import + re-export
 | GET | `/api/arena/leadership-engine/air` | AIR 값 |
 | GET | `/api/arena/leadership-engine/tii` | TII 값 |
 | GET | `/api/arena/leadership-engine/certified` | Certified 상태 |
+| GET | `/api/arena/leadership-engine/stage-summary` | LE Stage + Arena·행동 패턴 요약 (progressPercent, arenaSummary, behaviorPattern) |
 | POST | `/api/arena/leadership-engine/transition` | Stage 전이 실행 |
 
-### 4-11. Combined
+### 4-11. Dashboard
+
+| Method | Endpoint | 역할 |
+|---|---|---|
+| GET | `/api/arena/dashboard/summary` | 진도·추천 요약 (progress, recommendation; 쿼리 source=arena\|foundry\|center) |
+
+### 4-12. BTY (Healing / Awakening)
+
+| Method | Endpoint | 역할 |
+|---|---|---|
+| GET | `/api/bty/healing` | Q4 Healing phase·콘텐츠 (ok, phase, content.ringType) |
+| GET | `/api/bty/awakening` | Q4 Awakening 액트 이름 (ok, acts). 에러: 401 UNAUTHENTICATED, 500 INTERNAL_ERROR |
+
+### 4-13. Combined
 
 | Method | Endpoint | 역할 |
 |---|---|---|

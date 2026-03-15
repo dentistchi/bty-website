@@ -91,4 +91,28 @@ describe("GET /api/arena/dashboard/summary", () => {
     expect(data.recommendation).toHaveProperty("priority");
     expect(typeof data.recommendation.priority).toBe("number");
   });
+
+  it("returns 200 with recommendation fields matching RecommendationSummary (nextAction string, source in arena|foundry|center|null, priority number)", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u2" },
+      supabase: {},
+      base: {},
+    });
+    mockGetLeadershipEngineState.mockResolvedValue({
+      currentStage: 3,
+      stageName: "Leadership Withdrawal (Responsibility Avoidance)",
+      forcedResetTriggeredAt: null,
+      resetDueAt: null,
+    });
+
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    const rec = data.recommendation;
+    expect(rec).toBeDefined();
+    expect(typeof rec.nextAction).toBe("string");
+    expect(rec.nextAction).toBeTruthy();
+    expect(["arena", "foundry", "center", null]).toContain(rec.source);
+    expect(typeof rec.priority).toBe("number");
+  });
 });

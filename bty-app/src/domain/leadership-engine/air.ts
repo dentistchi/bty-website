@@ -24,8 +24,27 @@ export const WEIGHT_RESET = 2.0 as const;
 export const MISSED_WINDOW_PENALTY = 0.10 as const;
 export const CONSECUTIVE_MISS_THRESHOLD = 3 as const;
 
+/** AIR 값 범위 (clamp·밴드 판단용). */
+export const AIR_MIN = 0 as const;
+export const AIR_MAX = 1 as const;
+
+/** 밴드 경계: low &lt; LOW_MID &lt; mid &lt; MID_HIGH &lt; high. 단일 소스. */
+export const AIR_BAND_LOW_MID = 0.4 as const;
+export const AIR_BAND_MID_HIGH = 0.7 as const;
+
 export type ActivationType = "micro_win" | "reset";
 export type AIRPeriod = "7d" | "14d" | "90d";
+
+/** 기간(일) — rolling window 단일 소스. */
+export const AIR_PERIOD_DAYS_7D = 7 as const;
+export const AIR_PERIOD_DAYS_14D = 14 as const;
+export const AIR_PERIOD_DAYS_90D = 90 as const;
+
+export const AIR_PERIOD_DAYS: Readonly<Record<AIRPeriod, number>> = {
+  "7d": AIR_PERIOD_DAYS_7D,
+  "14d": AIR_PERIOD_DAYS_14D,
+  "90d": AIR_PERIOD_DAYS_90D,
+} as const;
 
 // ---------------------------------------------------------------------------
 // Data model — matches LEADERSHIP_ENGINE_SPEC §9 Activation schema
@@ -50,10 +69,10 @@ export interface AIRResult {
 /** API 노출용 AIR 밴드. */
 export type AIRBand = "low" | "mid" | "high";
 
-/** AIR 값(0–1) → 밴드. 순수 함수. */
+/** AIR 값(0–1) → 밴드. 순수 함수. AIR_BAND_* 단일 소스. */
 export function airToBand(air: number): AIRBand {
-  if (air < 0.4) return "low";
-  if (air < 0.7) return "mid";
+  if (air < AIR_BAND_LOW_MID) return "low";
+  if (air < AIR_BAND_MID_HIGH) return "mid";
   return "high";
 }
 
@@ -82,13 +101,11 @@ function isMissed(a: ActivationRecord, asOf: Date): boolean {
   return a.completed_at === null && a.due_at <= asOf;
 }
 
+const MS_PER_DAY = 86_400_000;
+
 function windowStart(period: AIRPeriod, asOf: Date): Date {
-  const ms: Record<AIRPeriod, number> = {
-    "7d": 7 * 86_400_000,
-    "14d": 14 * 86_400_000,
-    "90d": 90 * 86_400_000,
-  };
-  return new Date(asOf.getTime() - ms[period]);
+  const days = AIR_PERIOD_DAYS[period];
+  return new Date(asOf.getTime() - days * MS_PER_DAY);
 }
 
 // ---------------------------------------------------------------------------
@@ -131,7 +148,7 @@ export function computeAIR(
 
   const rawAir = weightedChosen > 0 ? weightedCompleted / weightedChosen : 0;
   const penalised = rawAir - missedWindows * MISSED_WINDOW_PENALTY;
-  const air = Math.max(0, Math.min(1, penalised));
+  const air = Math.max(AIR_MIN, Math.min(AIR_MAX, penalised));
 
   const integritySlip = detectIntegritySlip(inWindow, asOf);
 

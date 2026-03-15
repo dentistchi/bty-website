@@ -3,13 +3,19 @@
 **진행 에이전트**: 이 파일 또는 커맨더 메시지에 적힌 **기능(요구사항)** 을 구현하세요.  
 지시가 없으면 이 파일의 내용을 확인하고, 아래 형식으로 적힌 항목을 도메인 → API → UI 순으로 진행하세요.
 
-**다음 배치**: 이번 런 = **SPRINT 180 (구현 전용)**. **C2** 2개 [ ] BLOCKER 이관(배포 시 1회만). C3·C4·C5·C6 다음 백로그 대기(C1이 채우면 진행). 3~5개 한 번에 구현 → 한 배치로 [x]. 검증=배포 전 1회만.
+**다음 배치**: 이번 런 = **SPRINT 183 (구현 전용)**. **C2** 2개 [ ] BLOCKER 이관(배포 시 1회만). **C3·C4·C5·C6** 각 1~2개 [ ] 다음 백로그 대기(C1이 채우면 진행). 3~5개 한 번에 구현 → 한 배치로 [x]. 검증=배포 전 1회만.
+
+**[SPRINT 182] C4 API Engineer 5건 (2026-03-14)**: [x] **완료.** LE stage-summary 응답 스키마(StageSummaryResponse·도메인 타입), dashboard/summary source 쿼리 필터·DashboardSummaryResponse, Healing/Awakening bty/errors.ts 에러 형식 통일, requireUser 점검 1건, docs/spec/ARENA_DOMAIN_SPEC.md API 목록 갱신. 테스트 통과.
+
+**[SPRINT 182] C3 Domain Engineer 5건 (2026-03-14)**: [x] **완료.** LE Stage(stage-summary 타입·진행도 경계 상수), AIR(밴드·기간 상수), 대시보드(RECOMMENDATION_SOURCE_PRIORITY), ContentScenarioId, domain index export 확인. 도메인만, 테스트 통과.
 
 **플랜 전환 (구현 전용)**: [x] **완료.** 검증=배포 전 1회만. SPRINT 176 = Q3·Q4 구현 태스크만. SPRINT_PLAN·SPRINT_LOG·CURRENT_TASK 반영.
 
 **Arena §4·§5 BLOCKER 해제**: [x] **완료.** §4 Past scenarios 기본 노출+접기 결정·구현(ArenaRunHistory 토글·i18n). §5 메뉴 IA 현재 플랫 유지 결정. SPRINT_PLAN C5 [x]·Blockers 제거, BTY_ARENA_FEEDBACK_2026-03 §4·§5 조치 [x] 반영.
 
 **Arena/Lab XP 서류 구조 정리**: [x] **완료.** RECONCILIATION §7 = 구현 상태 단일 정리, ARENA_LAB_XP_SPEC = 수식·규칙 기준 + 구현 위치, BTY_ARENA_DOMAIN_SPEC = 도메인 원칙 + 위 두 문서 참조. CURSOR_TASK_BOARD·DOCS_SINGLE_SOURCE_OF_TRUTH·CURRENT_TASK 반영.
+
+**[C5 SPRINT 182 5건 (docs/SPRINT_PLAN.md)]**: [x] **완료.** AIR 위젯 에러 문구, Elite 비Elite CTA role=group+aria-label, Healing 로딩·t.loading, dear-me 완료/답장 region+aria-label, healing.loading i18n. Lint ✓.
 
 **[다음 Q3·Q4 백로그 UI 보강 1건 (C5, docs/SPRINT_PLAN.md)]**: [x] **완료.** 대시보드 Points Today 카드 role="region" + aria-label(ko/en). Lint ✓.
 
