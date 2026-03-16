@@ -1,6 +1,6 @@
 /**
  * Leadership Engine — AIR (Action Integrity Rate).
- * Single source: docs/LEADERSHIP_ENGINE_SPEC.md §4.
+ * Single source: docs/LEADERSHIP_ENGINE_SPEC.md §4. 참조: docs/ROADMAP_Q3_Q4 (AIR API 노출).
  *
  * Weighted AIR = sum(weight of completed+verified) / sum(weight of chosen)
  *   - micro_win weight = 1.0
@@ -16,7 +16,7 @@
  */
 
 // ---------------------------------------------------------------------------
-// Constants
+// Constants — 밴드·기간 단일 소스 (API·대시보드 소비)
 // ---------------------------------------------------------------------------
 
 export const WEIGHT_MICRO_WIN = 1.0 as const;
@@ -28,12 +28,18 @@ export const CONSECUTIVE_MISS_THRESHOLD = 3 as const;
 export const AIR_MIN = 0 as const;
 export const AIR_MAX = 1 as const;
 
-/** 밴드 경계: low &lt; LOW_MID &lt; mid &lt; MID_HIGH &lt; high. 단일 소스. */
+/** 밴드 경계: low < LOW_MID < mid < MID_HIGH < high. 단일 소스. */
 export const AIR_BAND_LOW_MID = 0.4 as const;
 export const AIR_BAND_MID_HIGH = 0.7 as const;
 
 export type ActivationType = "micro_win" | "reset";
 export type AIRPeriod = "7d" | "14d" | "90d";
+
+/** API 노출용 AIR 밴드. */
+export type AIRBand = "low" | "mid" | "high";
+
+/** 밴드 id 목록 (API·UI 순회용). */
+export const AIR_BAND_IDS: readonly AIRBand[] = ["low", "mid", "high"];
 
 /** 기간(일) — rolling window 단일 소스. */
 export const AIR_PERIOD_DAYS_7D = 7 as const;
@@ -45,6 +51,9 @@ export const AIR_PERIOD_DAYS: Readonly<Record<AIRPeriod, number>> = {
   "14d": AIR_PERIOD_DAYS_14D,
   "90d": AIR_PERIOD_DAYS_90D,
 } as const;
+
+/** 기간 id 목록 (API·순회용). */
+export const AIR_PERIOD_IDS: readonly AIRPeriod[] = ["7d", "14d", "90d"];
 
 // ---------------------------------------------------------------------------
 // Data model — matches LEADERSHIP_ENGINE_SPEC §9 Activation schema
@@ -66,9 +75,6 @@ export interface AIRResult {
   integritySlip: boolean;
 }
 
-/** API 노출용 AIR 밴드. */
-export type AIRBand = "low" | "mid" | "high";
-
 /** AIR 값(0–1) → 밴드. 순수 함수. AIR_BAND_* 단일 소스. */
 export function airToBand(air: number): AIRBand {
   if (air < AIR_BAND_LOW_MID) return "low";
@@ -82,6 +88,16 @@ export interface AIRApiResponse {
   air_7d: number;
   air_14d: number;
   air_90d: number;
+  integrity_slip: boolean;
+}
+
+/** 활성화 데이터 없을 때 API 기본 밴드. */
+export const AIR_DEFAULT_BAND: AIRBand = "mid";
+
+/** 대시보드 위젯용 AIR 요약 (band + 7d + slip). API·대시보드 연동. */
+export interface AIRDashboardSummary {
+  band: AIRBand;
+  air_7d: number;
   integrity_slip: boolean;
 }
 

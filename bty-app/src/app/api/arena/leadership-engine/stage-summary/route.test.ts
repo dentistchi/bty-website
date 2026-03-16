@@ -106,5 +106,74 @@ describe("GET /api/arena/leadership-engine/stage-summary", () => {
     expect(data.resetDueAt === null || typeof data.resetDueAt === "string").toBe(true);
     expect(data.arenaSummary === null || typeof data.arenaSummary === "object").toBe(true);
     expect(data.behaviorPattern === null || typeof data.behaviorPattern === "object").toBe(true);
+
+    const expectedKeys = [
+      "currentStage",
+      "stageName",
+      "progressPercent",
+      "forcedResetTriggeredAt",
+      "resetDueAt",
+      "arenaSummary",
+      "behaviorPattern",
+    ];
+    expect(Object.keys(data).sort()).toEqual(expectedKeys.sort());
+  });
+
+  const STAGE_PROGRESS: Array<{ stage: 1 | 2 | 3 | 4; percent: number }> = [
+    { stage: 1, percent: 25 },
+    { stage: 2, percent: 50 },
+    { stage: 3, percent: 75 },
+    { stage: 4, percent: 100 },
+  ];
+
+  it.each(STAGE_PROGRESS)(
+    "returns 200 with progressPercent $percent for stage $stage",
+    async ({ stage, percent }) => {
+      mockRequireUser.mockResolvedValue({
+        user: { id: "u1" },
+        supabase: {},
+        base: {},
+      });
+      mockGetLeadershipEngineState.mockResolvedValue({
+        currentStage: stage,
+        stageName: `Stage ${stage}`,
+        forcedResetTriggeredAt: null,
+        resetDueAt: null,
+      });
+
+      const res = await GET(makeRequest());
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.currentStage).toBe(stage);
+      expect(data.progressPercent).toBe(percent);
+    }
+  );
+
+  it("returns 200 with exactly StageSummaryResponse keys (no extra fields)", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {},
+      base: {},
+    });
+    mockGetLeadershipEngineState.mockResolvedValue({
+      currentStage: 1,
+      stageName: "Over-Intervention (Speed Bias)",
+      forcedResetTriggeredAt: null,
+      resetDueAt: null,
+    });
+
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    const expectedKeys = [
+      "currentStage",
+      "stageName",
+      "progressPercent",
+      "forcedResetTriggeredAt",
+      "resetDueAt",
+      "arenaSummary",
+      "behaviorPattern",
+    ].sort();
+    expect(Object.keys(data).sort()).toEqual(expectedKeys);
   });
 });

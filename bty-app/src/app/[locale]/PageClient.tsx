@@ -518,7 +518,7 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
       <AuthHashGate />
       <AuthGate loadingMessage={t.loading}>
         <ThemeBody theme="dear" />
-        <main className="min-h-screen">
+        <main className="min-h-screen" aria-label={lang === "ko" ? "Center 나에게 쓰는 편지" : "Center letter to yourself"}>
           <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
             <Nav locale="ko" pathname={pathname} theme="dear" />
             <header className="text-center mb-10 pt-4">

@@ -38,6 +38,7 @@ export async function PATCH(req: NextRequest) {
     avatarCharacterId?: string | null;
     avatarOutfitTheme?: "professional" | "fantasy" | null;
     avatarSelectedOutfitId?: string | null;
+    avatarAccessoryIds?: string[] | null;
     display_name?: string | null;
   };
   try {
@@ -128,6 +129,29 @@ export async function PATCH(req: NextRequest) {
     updates.avatar_selected_outfit_id = outfitIdToSet;
   }
 
+  const rawAccessoryIds = body.avatarAccessoryIds;
+  if (rawAccessoryIds !== undefined) {
+    const accessoryIds = Array.isArray(rawAccessoryIds)
+      ? (rawAccessoryIds as unknown[]).filter((x): x is string => typeof x === "string")
+      : [];
+    const { tierFromCoreXp } = await import("@/lib/bty/arena/codes");
+    const { accessorySlotsFromTier } = await import("@/lib/bty/arena/avatarOutfits");
+    const { data: profileRow } = await supabase
+      .from("arena_profiles")
+      .select("core_xp_total")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const coreXp = (profileRow as { core_xp_total?: number } | null)?.core_xp_total ?? 0;
+    const maxSlots = accessorySlotsFromTier(tierFromCoreXp(coreXp));
+    if (accessoryIds.length > maxSlots) {
+      const out = NextResponse.json({ error: "ACCESSORY_SLOTS_EXCEEDED" }, { status: 400 });
+      copyCookiesAndDebug(base, out, req, true);
+      return out;
+    }
+    updates.avatar_accessory_ids = accessoryIds;
+    updates.avatar_accessories_updated_at = new Date().toISOString();
+  }
+
   if (body.display_name !== undefined) {
     const { validateDisplayName } = await import("@/lib/bty/arena/profileDisplayName");
     const result = validateDisplayName(body.display_name);
@@ -148,7 +172,7 @@ export async function PATCH(req: NextRequest) {
     const isMissingColumn =
       typeof updateError.message === "string" &&
       (updateError.message.includes("does not exist") || updateError.message.includes("column"));
-    if (isMissingColumn && outfitIdToSet !== undefined) {
+    if (isMissingColumn && (outfitIdToSet !== undefined || rawAccessoryIds !== undefined)) {
       const fallbackUpdates: Record<string, unknown> = { updated_at: new Date().toISOString() };
       if (avatarUrl !== undefined) fallbackUpdates.avatar_url = avatarUrl;
       if (rawCharId !== undefined) {

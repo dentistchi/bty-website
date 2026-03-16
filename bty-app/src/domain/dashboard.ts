@@ -4,6 +4,9 @@
  * Ref: docs/ROADMAP_Q3_Q4.md 대시보드.
  */
 
+/** 영역별 진도 미제공 시 표시할 기본값 (0). */
+export const PROGRESS_PERCENT_DEFAULT = 0 as const;
+
 /** 영역별 진도 요약 (0–100 또는 null). */
 export interface ProgressSummary {
   arenaProgress?: number | null;
@@ -20,6 +23,13 @@ export const RECOMMENDATION_SOURCE_PRIORITY: Readonly<Record<NonNullable<Recomme
   foundry: 20,
   center: 10,
 } as const;
+
+/** 소스 정렬 순서 (RECOMMENDATION_SOURCE_PRIORITY 기준). API·정렬 루프용. */
+export const RECOMMENDATION_SOURCE_ORDER: readonly NonNullable<RecommendationSource>[] = [
+  "arena",
+  "foundry",
+  "center",
+] as const;
 
 /** 추천 트랙·다음 행동 요약. */
 export interface RecommendationSummary {

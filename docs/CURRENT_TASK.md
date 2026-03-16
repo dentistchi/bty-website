@@ -3,9 +3,47 @@
 **진행 에이전트**: 이 파일 또는 커맨더 메시지에 적힌 **기능(요구사항)** 을 구현하세요.  
 지시가 없으면 이 파일의 내용을 확인하고, 아래 형식으로 적힌 항목을 도메인 → API → UI 순으로 진행하세요.
 
+**[SPRINT 190] C3 Domain Engineer 5건**: [x] **완료.** LE Stage·AIR·대시보드 검토 유지, RECOMMENDATION_SOURCE_ORDER·HEALING_PHASE_I_LABEL 추가, domain index에 foundry export 추가. npm test 583 통과.
+
+**[DOCS] 다음 배치 선정 (SPRINT 43 TASK 5, 선택)**: [x] **완료.** 이번 스프린트 추가 배치 선정 불필요. NEXT_PHASE·NEXT_BACKLOG·보드 대기 4건 이미 동기화됨. 보드·CURRENT_TASK 반영. 코드 없음.
+
+**[DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 (SPRINT 43 TASK 7)**: [x] **완료.** § "다음 작업 (반복 제외)" SPRINT 43 기준으로 갱신. 진행 현황 8/10 완료·잔여 TASK 5(선택)·다음 후보·갱신일 반영. 코드 없음.
+
+**[DOCS] Arena·Center·Foundry 대기 목록 동기화 (SPRINT 43 TASK 10)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 대기 4건 일치 확인. 갱신일 반영. 코드 없음.
+
+**[DOCS] 문서 점검 115·116·117차 (SPRINT 43 TASK 3)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 대기 5건 일치 확인. BTY_RELEASE_GATE_CHECK 최근 완료 1건 추가. 코드 없음.
+
+**[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 (SPRINT 43 TASK 2)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4 현재 대기 5건 = 문서 115·116·117차·다음 배치 선정·보드 § 정리·대기 동기화·Release Gate 44차. 보드 "대기 5건" 동기화. 43차·접근성·TASK 8·9 완료 반영.
+
+**[TEST] Center/Foundry route 테스트 1건 (SPRINT 43 TASK 9)**: [x] **완료.** GET /api/bty/healing — copyCookiesAndDebug throw 시 500·INTERNAL_ERROR·detail 검증 추가. Lint ✓ npm test ✓.
+
+**[UI] Center/Foundry 추가 접근성 1곳 (SPRINT 43 TASK 4)**: [x] **완료.** PageClient.tsx Center 플로우(나에게 쓰는 편지 단계) `<main>`에 aria-label 추가(ko: "Center 나에게 쓰는 편지", en: "Center letter to yourself"). render-only. Lint ✓.
+
 **[배포] chore: 배포 push 완료**: e6fc417 (28 files, +379/-94) → origin/main. 정상 완료.
 
-**다음 배치**: 이번 런 = **SPRINT 183 (구현 전용)**. **C2** 2개 [ ] BLOCKER 이관(배포 시 1회만). **C3·C4·C5·C6** 각 1~2개 [ ] 다음 백로그 대기(C1이 채우면 진행). 3~5개 한 번에 구현 → 한 배치로 [x]. 검증=배포 전 1회만.
+**[VERIFY] Release Gate A~F — Foundry 44차 (SPRINT 44 TASK 1)**: [x] **완료.** C5. A~E N/A · F) Lint ✓ Test 1584/207 ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+
+**[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 (SPRINT 44 TASK 2)**: [x] **완료.** SPRINT 43 완료·Release Gate 44차 완료 반영. NEXT_PHASE·NEXT_BACKLOG·보드 대기 6건 동기화. 코드 없음.
+
+**[DOCS] 문서 점검 118·119·120차 (SPRINT 44 TASK 3)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드·BTY_RELEASE_GATE_CHECK 점검·갱신. 삼문서·보드 대기 6건 일치. 코드 없음.
+
+**[UI] Center/Foundry 추가 접근성 1곳 (SPRINT 44 TASK 4)**: [x] **완료.** integrity 페이지 `<main>` 3곳에 aria-label(ko/en) 추가. render-only. Lint ✓.
+
+**[DOCS] 다음 배치 선정 (SPRINT 44 TASK 5, 선택)**: [x] **완료.** 추가 배치 불필요·NEXT_PHASE·NEXT_BACKLOG·보드 동기화 유지. 코드 없음.
+
+**[VERIFY] 엘리트 3차 체크리스트 1회 (SPRINT 44 TASK 6)**: [x] **완료.** 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** ELITE_3RD_SPEC_AND_CHECKLIST §3·보드 반영.
+
+**[DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 (SPRINT 44 TASK 7)**: [x] **완료.** § "다음 작업 (반복 제외)" SPRINT 44 기준·8/10 완료·잔여 TASK 8·9(선택)·갱신일 반영. 코드 없음.
+
+**[DOCS] Arena·Center·Foundry 대기 목록 동기화 (SPRINT 44 TASK 10)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG·보드 대기 6건 일치 확인. 코드 없음.
+
+**다음 배치**: 이번 런 = **SPRINT 45**. First Task = TASK 1 [VERIFY] Release Gate A~F — Foundry 45차. 할 일 = **docs/CURSOR_TASK_BOARD.md** "이번 런" 표 TASK 1~10 중 **[ ]** 인 항목.
+
+**C1 splint 10 (2026-03-11)**: [x] **완료.** SPRINT 44 8/10 완료(TASK 8·9 선택 미실행) → SPRINT 45 생성. 보드 "이번 런" = SPRINT 45 (TASK 1~10 [ ]). NEXT_PHASE·NEXT_BACKLOG 대기 6건 갱신. CURRENT_TASK 반영.
+
+**다음 배치 (SPRINT_PLAN)**: 이번 런 = **SPRINT 190** (구현 전용). **C2** 5건 [ ] (배포 시 2건 BLOCKER + 문서 점검 3건). **C3** 5건 [ ] (LE Stage·AIR·대시보드·Healing·domain index). **C4** 5건 [ ] (stage-summary·dashboard·Elite·Healing API·문서). **C5** 5건 [ ] (대시보드 위젯·Elite 접근성·Healing·Center 접근성·i18n). **C6** 5건 [ ] (route 테스트·도메인 테스트·build 통과). 각 5건 한 번에 구현 → [x]. docs/SPRINT_PLAN.md 참고. 검증=배포 전 1회만.
+
+**다음 배치 (이전)**: **SPRINT 185** 완료. 캐릭터·옷·악세사리 연동 C3·C4·C5·C6 전부 [x]. 186 전환됨.
 
 **[SPRINT 182] C4 API Engineer 5건 (2026-03-14)**: [x] **완료.** LE stage-summary 응답 스키마(StageSummaryResponse·도메인 타입), dashboard/summary source 쿼리 필터·DashboardSummaryResponse, Healing/Awakening bty/errors.ts 에러 형식 통일, requireUser 점검 1건, docs/spec/ARENA_DOMAIN_SPEC.md API 목록 갱신. 테스트 통과.
 

@@ -121,6 +121,13 @@ export type Messages = {
     arenaCta: string;
     dashboardLabel: string;
     leaderboardLabel: string;
+    /** 대시보드 LE Stage·AIR 위젯 카드 라벨 */
+    leStageLabel: string;
+    airLabel: string;
+    /** 대시보드 추천 위젯 카드 라벨 */
+    recommendationLabel: string;
+    /** AIR 위젯: 로드 실패 시 문구 */
+    airUnavailable: string;
   };
   landing: {
     heroTitle: string;
@@ -135,6 +142,8 @@ export type Messages = {
     centerTitle: string;
     centerDesc: string;
     centerCta: string;
+    /** 대시보드 상단 카드 내 "Today's growth" 섹션으로 가는 링크 문구 */
+    todayGrowthLink: string;
     footerHint: string;
   };
   safeMirror: {
@@ -310,6 +319,8 @@ export type Messages = {
     title: string;
     description: string;
     empty: string;
+    loading: string;
+    actions: string;
     userId: string;
     createdAt: string;
     message: string;
@@ -318,6 +329,16 @@ export type Messages = {
     approving: string;
     rejecting: string;
     error: string;
+  };
+  /** Dental RPG 장비 카드 UI. 레어리티 1–5 표시. */
+  dentalRpg: {
+    empty: string;
+    listAria: string;
+    rarity1: string;
+    rarity2: string;
+    rarity3: string;
+    rarity4: string;
+    rarity5: string;
   };
   /** Healing 인덱스·Awakening 진입. Q4. */
   healing: {
@@ -329,6 +350,8 @@ export type Messages = {
     ariaAwakening: string;
     ariaDashboard: string;
     loading: string;
+    /** Phase 없을 때 빈 상태 문구. */
+    emptyPhase: string;
   };
   /** Dojo 50문항 결과 화면. 영역별 점수·Dr. Chi 코멘트 표시(render-only). */
   dojoResult: {
@@ -405,11 +428,12 @@ export type Messages = {
     completed: string;
     inProgress: string;
   };
-  /** PROJECT_BACKLOG §8: 대시보드 감정 스탯 카드 빈 상태 */
+  /** PROJECT_BACKLOG §8: 대시보드 감정 스탯 카드 빈 상태·에러 */
   emotionalStats: {
     emptyMessage: string;
     /** §2 v3: 섹션 제목 (오늘의 성장 / Today's growth) */
     sectionTitle: string;
+    errorLoad: string;
   };
   /** 프로필 페이지: 표시용 필드(display_name) 표시·편집. API 응답/제출만 사용. */
   profile: {
@@ -523,6 +547,10 @@ const ko: Messages = {
     arenaCta: "Arena 플레이",
     dashboardLabel: "Dashboard",
     leaderboardLabel: "Leaderboard",
+    leStageLabel: "LE Stage",
+    airLabel: "AIR",
+    recommendationLabel: "추천",
+    airUnavailable: "AIR 지표를 불러올 수 없습니다.",
   },
   landing: {
     heroTitle: "Better Than Yesterday",
@@ -537,6 +565,7 @@ const ko: Messages = {
     centerTitle: "Center",
     centerDesc: "말 못 할 마음을 비추는 안전한 공간. 조언이 아니라 그대로 비춰드려요.",
     centerCta: "쉬러 가기",
+    todayGrowthLink: "오늘의 성장",
     footerHint: "위에서 가고 싶은 곳을 골라주세요.",
   },
   safeMirror: {
@@ -726,6 +755,8 @@ const ko: Messages = {
     title: "멘토 대화 신청 승인",
     description: "Elite 멘토(1:1) 신청 큐. 승인/거절 처리합니다.",
     empty: "대기 중인 신청이 없습니다.",
+    loading: "목록 불러오는 중…",
+    actions: "동작",
     userId: "유저 ID",
     createdAt: "신청 일시",
     message: "메시지",
@@ -734,6 +765,15 @@ const ko: Messages = {
     approving: "승인 중…",
     rejecting: "거절 중…",
     error: "처리 실패",
+  },
+  dentalRpg: {
+    empty: "장비가 없습니다.",
+    listAria: "장비 목록",
+    rarity1: "일반",
+    rarity2: "고급",
+    rarity3: "희귀",
+    rarity4: "에픽",
+    rarity5: "전설",
   },
   healing: {
     title: "Healing",
@@ -744,6 +784,7 @@ const ko: Messages = {
     ariaAwakening: "Awakening으로",
     ariaDashboard: "대시보드로",
     loading: "불러오는 중…",
+    emptyPhase: "진도 단계 정보를 불러올 수 없습니다. Awakening으로 이동해 보세요.",
   },
   dojoResult: {
     title: "Today-Me 50문항 결과",
@@ -828,6 +869,7 @@ const ko: Messages = {
   emotionalStats: {
     emptyMessage: "아직 기록이 없어요. Arena나 챗에서 대화를 진행해 보세요.",
     sectionTitle: "오늘의 성장",
+    errorLoad: "표시를 불러오지 못했어요.",
   },
   profile: {
     title: "프로필",
@@ -939,6 +981,10 @@ const en: Messages = {
     arenaCta: "Play Arena",
     dashboardLabel: "Dashboard",
     leaderboardLabel: "Leaderboard",
+    leStageLabel: "LE Stage",
+    airLabel: "AIR",
+    recommendationLabel: "Recommendation",
+    airUnavailable: "Unable to load AIR.",
   },
   landing: {
     heroTitle: "Better Than Yesterday",
@@ -953,6 +999,7 @@ const en: Messages = {
     centerTitle: "Center",
     centerDesc: "A safe space that reflects your feelings. No advice—just reflection.",
     centerCta: "Rest here",
+    todayGrowthLink: "Today's growth",
     footerHint: "Choose a path above.",
   },
   safeMirror: {
@@ -1142,6 +1189,8 @@ const en: Messages = {
     title: "Mentor session request approval",
     description: "Elite mentor (1:1) request queue. Approve or reject.",
     empty: "No pending requests.",
+    loading: "Loading…",
+    actions: "Actions",
     userId: "User ID",
     createdAt: "Requested at",
     message: "Message",
@@ -1150,6 +1199,15 @@ const en: Messages = {
     approving: "Approving…",
     rejecting: "Rejecting…",
     error: "Action failed",
+  },
+  dentalRpg: {
+    empty: "No equipment.",
+    listAria: "Equipment list",
+    rarity1: "Common",
+    rarity2: "Uncommon",
+    rarity3: "Rare",
+    rarity4: "Epic",
+    rarity5: "Legendary",
   },
   healing: {
     title: "Healing",
@@ -1160,6 +1218,7 @@ const en: Messages = {
     ariaAwakening: "Go to Awakening",
     ariaDashboard: "Back to dashboard",
     loading: "Loading…",
+    emptyPhase: "Phase information is unavailable. Try going to Awakening.",
   },
   dojoResult: {
     title: "Today-Me 50-Item Result",
@@ -1244,6 +1303,7 @@ const en: Messages = {
   emotionalStats: {
     emptyMessage: "No records yet. Try Arena or chat to start.",
     sectionTitle: "Today's growth",
+    errorLoad: "Could not load display.",
   },
   profile: {
     title: "Profile",

@@ -2,8 +2,8 @@
  * AVATAR_LAYER_SPEC §2.2: 키 → URL 매핑 및 resolveAvatarUrls.
  * characterAssetMap, outfitAssetMap, accessoryAssetMap + resolveAvatarUrls({ characterKey, outfitKey?, accessoryKeys?, useThumb? }).
  *
- * §1·§3 Preview/썸네일: outfitKey는 avatarOutfits와 동일 규칙(theme_outfit_outfitId). outfitAssetMap에 있으면
- * layer/thumb URL 반환 → OutfitCard/AvatarComposite에 outfitUrl 전달. Professional 7종·Fantasy 7종 동일 URL 규칙.
+ * §1·§3 avatar-assets.json 연동: outfit/accessory ID 목록은 avatar-assets.data(→ public/avatars/avatar-assets.json)와 동기화.
+ * URL 규칙: 캐릭터 /avatars/characters/{id}.png, 옷 /avatars/outfits/outfit_{outfitId}.png, 악세사리 /avatars/accessories/{id}.svg|.png.
  */
 
 import { AVATAR_CHARACTERS } from "@/lib/bty/arena/avatarCharacters";
@@ -11,6 +11,13 @@ import {
   getAccessoryImageUrl,
   type AvatarOutfitTheme,
 } from "@/lib/bty/arena/avatarOutfits";
+import {
+  OUTFITS_PROFESSIONAL,
+  OUTFITS_FANTASY,
+  ACCESSORY_IDS_ALL,
+} from "@/lib/bty/arena/avatar-assets.data";
+
+/** 옷 이미지 베이스. 규칙: /avatars/outfits/outfit_{outfitId}.png */
 const OUTFIT_IMAGE_BASE = "/avatars/outfits";
 
 /** 캐릭터 키 → base URL, thumb(선택). thumb 없으면 base 사용. */
@@ -31,33 +38,14 @@ export type OutfitAssetEntry = {
   theme: AvatarOutfitTheme;
 };
 
-const PROFESSIONAL_OUTFIT_IDS = [
-  "scrub_general",
-  "figs_scrub",
-  "doctor_gown",
-  "surgery_coat_suit",
-  "brand_suit",
-  "figs_scrub_short",
-  "shorts_tee",
-] as const;
-const FANTASY_OUTFIT_IDS = [
-  "apprentice",
-  "adventurer",
-  "journeyer",
-  "warrior_mage_mid",
-  "senior",
-  "senior_plus",
-  "master",
-] as const;
-
 function buildOutfitAssetMap(): Record<string, OutfitAssetEntry> {
   const map: Record<string, OutfitAssetEntry> = {};
-  for (const id of PROFESSIONAL_OUTFIT_IDS) {
+  for (const id of OUTFITS_PROFESSIONAL) {
     const key = `professional_outfit_${id}`;
     const url = `${OUTFIT_IMAGE_BASE}/outfit_${id}.png`;
     map[key] = { layer: url, thumb: url, theme: "professional" };
   }
-  for (const id of FANTASY_OUTFIT_IDS) {
+  for (const id of OUTFITS_FANTASY) {
     const key = `fantasy_outfit_${id}`;
     const url = `${OUTFIT_IMAGE_BASE}/outfit_${id}.png`;
     map[key] = { layer: url, thumb: url, theme: "fantasy" };
@@ -68,30 +56,12 @@ function buildOutfitAssetMap(): Record<string, OutfitAssetEntry> {
 export const outfitAssetMap: Record<string, OutfitAssetEntry> =
   buildOutfitAssetMap();
 
-/** 악세사리 키 → layer URL, thumb(선택). */
+/** 악세사리 키 → layer URL, thumb(선택). avatar-assets.json dental+game 전체. */
 export type AccessoryAssetEntry = { layer: string; thumb?: string };
-
-const ACCESSORY_IDS = [
-  "handpiece",
-  "dental_mirror",
-  "dental_mirror_premium",
-  "explorer",
-  "xray_portable",
-  "apron",
-  "surgical_gloves",
-  "mask",
-  "loupes",
-  "goggles",
-  "goggles_premium",
-  "weapon",
-  "hat",
-  "glasses",
-  "accessory",
-];
 
 export const accessoryAssetMap: Record<string, AccessoryAssetEntry> =
   Object.fromEntries(
-    ACCESSORY_IDS.map((id) => {
+    ACCESSORY_IDS_ALL.map((id) => {
       const url = getAccessoryImageUrl(id);
       return [id, { layer: url, thumb: url }];
     })

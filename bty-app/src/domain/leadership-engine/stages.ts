@@ -15,6 +15,10 @@ export type Stage = 1 | 2 | 3 | 4;
 
 export const STAGES: readonly Stage[] = [STAGE_1, STAGE_2, STAGE_3, STAGE_4] as const;
 
+/** LE Stage 경계 (API·진행도 검증용). stage ∈ [LE_STAGE_MIN, LE_STAGE_MAX]. */
+export const LE_STAGE_MIN = STAGE_1;
+export const LE_STAGE_MAX = STAGE_4;
+
 export const STAGE_NAMES: Readonly<Record<Stage, string>> = {
   1: "Over-Intervention (Speed Bias)",
   2: "Expectation Collapse (Cynicism Drift)",

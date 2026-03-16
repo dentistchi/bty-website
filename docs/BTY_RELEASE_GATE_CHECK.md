@@ -30,23 +30,36 @@
 - [ ] 리더보드 정렬 로직 없음 (API에서 받은 순서만 표시)  
 - [ ] weeklyXp/coreXpTotal 등은 **표시용 prop만** (API 전달값 렌더만)  
 - **샘플 점검 (C2)**: app/[locale]·components domain import 없음. PASS.
+- **190 샘플 점검 (C2)**: app/[locale]·components domain import 없음. PASS.
 
 **auth/session 점검 포인트**  
 - **쿠키**: Secure(prod), SameSite(Lax/Strict), Path, Domain 확인  
 - **리다이렉트**: 미인증 시 로그인/콜백 경로·루프 없음  
 - **401 처리**: API 미인증 시 401·메시지("Sign in to see leaderboard" 등)·UI 로그인 유도  
 - **확인 (C2)**: 쿠키·401·리다이렉트 요약 본 문서에 있음. 보강 불필요.
+- **190 확인 (C2)**: 쿠키·401 요약 확인. 보강 불필요.
 
 **리더보드·XP 안전 점검 포인트**  
 - **Core/Weekly 분리**: Core XP 영구·리셋 없음. Weekly XP만 주간 리셋·주간 랭킹용.  
 - **시즌 미반영**: 리더보드 랭킹에 시즌 진행도 사용 금지. 정렬=Weekly XP만.  
 - **확인 (C2)**: Core/Weekly·시즌 미반영 요약 본 문서에 있음. 보강 불필요.
+- **190 확인 (C2)**: Core/Weekly·시즌 미반영 요약 확인. 보강 불필요.
 
 **배포 시 실행 순서**: MVP_DEPLOYMENT_READINESS(1회) → Gate(self-healing-ci 등) → 본 문서·보드·CURRENT_TASK 반영.
+
+**최근 완료 (2026-03-11)**: [VERIFY] 엘리트 3차 체크리스트 1회 (SPRINT 44 TASK 6, C5). 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** ELITE_3RD_SPEC_AND_CHECKLIST §3·보드·CURRENT_TASK 반영.
+
+**최근 완료 (2026-03-11)**: [UI] Center/Foundry 접근성 1곳 (SPRINT 44 TASK 4, C4). integrity 페이지 `<main>` 3곳 aria-label(ko: "역지사지 시뮬레이터", en: "Integrity simulator"). render-only. Lint ✓.
+
+**최근 완료 (2026-03-11)**: [DOCS] 문서 점검 118·119·120차 (SPRINT 44 TASK 3, C1). NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드·BTY_RELEASE_GATE_CHECK 2~3건 점검·갱신. 삼문서·보드 대기 6건 일치 확인. 코드 없음.
+
+**최근 완료 (2026-03-11)**: [VERIFY] Release Gate A~F — Foundry 44차 (C5, SPRINT 44 TASK 1). A~E N/A · F) Lint ✓ Test 1584/207 ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
 
 **최근 완료 (배포 push)**: e6fc417 — chore: 배포 (28 files, +379/-94). c828ca5..e6fc417 → origin/main (github.com:dentistchi/bty-website.git). **배포 정상 완료.**
 
 **최근 완료 (배포 시 1회, C2)**: 배포 전 최종 확인 — BTY_RELEASE_GATE_CHECK § A~F·MVP_DEPLOYMENT_READINESS 확인 완료. self-healing-ci.sh 실행: Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** 본 문서·SPRINT_LOG 반영.
+
+**최근 완료 (2026-03-11)**: [DOCS] 문서 점검 115·116·117차 (SPRINT 43 TASK 3, C1). NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 대기 5건 일치 확인. 본 문서 갱신. 코드 없음.
 
 **최근 완료 (2026-03-14)**: [VERIFY] Release Gate A~F — Foundry 175차 (C5, docs/SPRINT_PLAN.md). A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
 

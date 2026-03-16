@@ -5,6 +5,10 @@
  */
 
 import type { Stage } from "./stages";
+import { PROGRESS_PERCENT_MAX, LE_STAGE_MAX } from "./stages";
+
+/** 진행도 0–100 내 스테이지당 기본 스텝 (25%). API·위젯 진행도 표시용. */
+export const LE_STAGE_PROGRESS_STEP = PROGRESS_PERCENT_MAX / LE_STAGE_MAX;
 
 /** Arena 런/시나리오 결과 요약 — API·대시보드 노출용. */
 export interface ArenaResultSummary {

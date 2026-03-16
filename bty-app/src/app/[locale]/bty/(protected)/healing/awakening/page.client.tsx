@@ -92,7 +92,7 @@ export default function SecondAwakeningPageClient() {
     return (
       <AuthGate>
         <ThemeBody theme="foundry" />
-        <main className="min-h-screen bg-foundry-white">
+        <main className="min-h-screen bg-foundry-white" aria-label={locale === "ko" ? "2차 각성 완료" : "Second Awakening completed"}>
           <div className="max-w-xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
             <Nav locale={locale} pathname={pathname} />
             <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
@@ -110,6 +110,7 @@ export default function SecondAwakeningPageClient() {
                   "rounded-xl px-6 py-3 font-medium text-white",
                   "bg-foundry-purple hover:bg-foundry-purple-dark transition-colors"
                 )}
+                aria-label={locale === "ko" ? "Foundry로 이동" : "Go to Foundry"}
               >
                 {locale === "ko" ? "Foundry로" : "To Foundry"}
               </Link>
@@ -124,7 +125,7 @@ export default function SecondAwakeningPageClient() {
     return (
       <AuthGate>
         <ThemeBody theme="foundry" />
-        <main className="min-h-screen bg-foundry-white">
+        <main className="min-h-screen bg-foundry-white" aria-label={locale === "ko" ? "2차 각성 해금 조건" : "Second Awakening eligibility"}>
           <div className="max-w-xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
             <Nav locale={locale} pathname={pathname} />
             <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
@@ -148,6 +149,7 @@ export default function SecondAwakeningPageClient() {
                   "border border-foundry-purple-muted text-foundry-purple",
                   "hover:bg-foundry-purple/10 transition-colors"
                 )}
+                aria-label={locale === "ko" ? "Foundry로 이동" : "Go to Foundry"}
               >
                 {locale === "ko" ? "Foundry로" : "To Foundry"}
               </Link>
@@ -162,7 +164,7 @@ export default function SecondAwakeningPageClient() {
   return (
     <AuthGate>
       <ThemeBody theme="foundry" />
-      <main className="min-h-screen bg-foundry-white">
+      <main className="min-h-screen bg-foundry-white" aria-label={locale === "ko" ? "2차 각성 의식" : "Second Awakening ritual"}>
         <div className="max-w-xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
           <Nav locale={locale} pathname={pathname} />
           <header className="text-center mb-8">

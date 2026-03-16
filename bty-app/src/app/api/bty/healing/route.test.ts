@@ -6,13 +6,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "./route";
 
 const mockRequireUser = vi.fn();
+const mockCopyCookiesAndDebug = vi.fn();
 
 vi.mock("@/lib/supabase/route-client", () => ({
   requireUser: (...args: unknown[]) => mockRequireUser(...args),
   unauthenticated: vi.fn((_req: unknown, _base: unknown) =>
     new Response(JSON.stringify({ error: "UNAUTHENTICATED" }), { status: 401 })
   ),
-  copyCookiesAndDebug: vi.fn(),
+  copyCookiesAndDebug: (...args: unknown[]) => mockCopyCookiesAndDebug(...args),
 }));
 
 function makeRequest(): NextRequest {
@@ -63,5 +64,34 @@ describe("GET /api/bty/healing", () => {
     expect(typeof data.phase).toBe("string");
     expect(data.content).toBeDefined();
     expect(typeof data.content).toBe("object");
+  });
+
+  it("returns 200 with exactly ok, phase, content keys (no extra fields)", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {},
+      base: {},
+    });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Object.keys(data).sort()).toEqual(["content", "ok", "phase"].sort());
+  });
+
+  it("returns 500 when copyCookiesAndDebug throws", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {},
+      base: {},
+    });
+    mockCopyCookiesAndDebug.mockImplementation(() => {
+      throw new Error("cookie copy failed");
+    });
+
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(500);
+    const data = await res.json();
+    expect(data.error).toBe("INTERNAL_ERROR");
+    expect(data.detail).toBe("cookie copy failed");
   });
 });

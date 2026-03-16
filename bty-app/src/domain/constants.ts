@@ -38,6 +38,11 @@ export const LEAGUE_WINDOW_DAYS = 30;
 
 /** At league end: fraction of Weekly XP carried to next window (0–1). */
 export const LEAGUE_CARRYOVER_FRACTION = 0.1;
+
+/** Progression level 1–700: Stage 1–6 each have 100 levels, Stage 7 (Codeless Zone) has 100 levels. level = tier + 1, max 700. */
+export const PROGRESSION_LEVEL_MAX = 700;
+/** Legend character unlocks at progression level 700 = tier 699 (not Core XP 700). */
+export const LEGEND_UNLOCK_TIER = 699;
 /** @deprecated Use LEAGUE_CARRYOVER_FRACTION */
 export const SEASON_CARRYOVER_FRACTION = LEAGUE_CARRYOVER_FRACTION;
 

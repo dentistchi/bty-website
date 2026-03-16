@@ -211,6 +211,16 @@ C5 Integrator
 - C2_GATEKEEPER_TASK.md
 - PROJECT_MEMORY.md
 
+**비전·목표** `docs/`
+
+- **INTEGRITY_ENGINE_VISION_SOURCE.md** — 큰 그림 소스: *The_Integrity_Engine.pptx*; **이 프레젠테이션을 구현하는 것이 목표**. Brief·명세·계획 문서 연결.
+
+**명세·브리프** `docs/spec/`
+
+- **BTY_DETERMINISTIC_LEADERSHIP_ENGINE_BRIEF.md** — Deterministic Leadership Engine 경영진용 브리프 (Why, 4 States, AIR, Reset, TII, Mirror, Certified, Arena/Foundry/Center, 구현 계획 요약)
+- 기술 명세·로직 단일 소스: `bty-app/docs/LEADERSHIP_ENGINE_SPEC.md`  
+- Phase·구현 계획: `bty-app/docs/ENGINE_ARCHITECTURE_DIRECTIVE_PLAN.md`
+
 ---
 
 ## 개발 루프

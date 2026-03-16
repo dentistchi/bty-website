@@ -65,9 +65,9 @@ describe("GET /api/arena/leadership-engine/air", () => {
     const res = await GET(makeRequest());
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data.air_7d).toEqual({ air: 0, missedWindows: 0, integritySlip: false });
-    expect(data.air_14d).toEqual({ air: 0, missedWindows: 0, integritySlip: false });
-    expect(data.air_90d).toEqual({ air: 0, missedWindows: 0, integritySlip: false });
+    expect(data.air_7d).toEqual({ air: 0, missedWindows: 0, integritySlip: false, band: "low" });
+    expect(data.air_14d).toEqual({ air: 0, missedWindows: 0, integritySlip: false, band: "low" });
+    expect(data.air_90d).toEqual({ air: 0, missedWindows: 0, integritySlip: false, band: "low" });
   });
 
   it("returns 200 with air snapshot when activations exist", async () => {
@@ -116,5 +116,8 @@ describe("GET /api/arena/leadership-engine/air", () => {
     expect(data.air_14d).toBeDefined();
     expect(data.air_90d).toBeDefined();
     expect(typeof data.air_7d.air).toBe("number");
+    expect(["low", "mid", "high"]).toContain(data.air_7d.band);
+    expect(["low", "mid", "high"]).toContain(data.air_14d.band);
+    expect(["low", "mid", "high"]).toContain(data.air_90d.band);
   });
 });

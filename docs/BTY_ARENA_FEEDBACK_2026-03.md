@@ -20,15 +20,15 @@ QA/사용자 테스트에서 수집된 이슈와 의견. **변경 사항 서류*
 - 코드·README는 `/avatars/outfits/outfit_{outfitId}.png` 규칙을 전제로 함.  
 - **C5 제안대로** `public/avatars/outfits/outfit_scrub_general.png` 등 자산 추가가 필요함.
 
-**설계 제안: 체형 타입 3종 + 옷 매칭**  
+**설계: 체형 타입 4종 + 옷 매칭**  
 - 캐릭터마다 자세·몸형이 다르면, **옷 1장을 모든 캐릭터에 공통으로 덮어씌우는 건 어색함.**  
 - 제안: **(1) 모든 캐릭터를 비슷한 몸형으로 통일**하거나, **(2) 몸형을 3가지 타입(A/B/C)으로만 나누고, 옷도 타입별로 3벌 제작** 후 매칭.  
 - (2)일 때: 캐릭터에 `bodyType: "A" | "B" | "C"` 부여, 옷 에셋은 `outfit_scrub_general_A.png` / `_B.png` / `_C.png` 또는 `outfits/typeA/outfit_scrub_general.png` 등 **타입별 파일**로 두고, 해석 시 `characterKey → bodyType → 해당 타입 outfit URL` 사용.  
 - 그러면 “옷이 오버레이돼서 보이는” 수준에서도, 같은 타입 내에서는 포즈·실루엣이 맞아서 자연스럽게 보일 수 있음.
 
 **조치**
-- [ ] 옷 PNG 자산 추가: Professional 7종 (scrub_general, figs_scrub, doctor_gown, surgery_coat_suit, brand_suit, figs_scrub_short, shorts_tee) — 체형 타입 도입 시 타입별 3벌 또는 통일 실루엣 1벌.
-- [ ] (선택) 체형 타입 3종 설계: 캐릭터별 bodyType 부여, outfit URL 해석 시 타입 반영 (avatarCharacters + avatarAssets/avatarOutfits 수정).
+- [ ] 옷 PNG 자산 추가: Professional 7종 — 체형 4종 도입 시 타입별 4벌 또는 통일 실루엣 1벌.
+- [ ] (진행 중) 체형 타입 4종: 캐릭터별 bodyType 부여, outfit URL 해석 시 타입 반영 (avatarCharacters + avatarAssets/avatarOutfits 수정). 옷 4종 몸형별 제작 중.
 - [ ] 옷 레이어가 Preview/썸네일에 실제로 합성되는지 확인 및 수정.
 - [ ] API/이미지 URL이 outfit별로 올바르게 전달·표시되는지 검증.
 

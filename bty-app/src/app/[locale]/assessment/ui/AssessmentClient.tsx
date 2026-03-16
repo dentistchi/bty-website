@@ -77,7 +77,7 @@ export default function AssessmentClient({
     : "맞는 말에 가깝다고 느끼는 칸을 골라 주세요. 정답은 없어요.";
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12" role="main" aria-label={isEn ? "Self-esteem 50-item assessment" : "자존감 50문항 자가 진단"}>
       {/* Progress */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl sm:text-2xl font-semibold text-[var(--arena-text)]">

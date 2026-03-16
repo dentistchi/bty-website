@@ -314,6 +314,8 @@ export default function LeaderboardPage() {
       )}
 
       <div
+        role="region"
+        aria-label={locale === "ko" ? "리더보드 목록" : "Leaderboard list"}
         style={{
           marginTop: 18,
           padding: 18,

@@ -140,7 +140,7 @@ export default function DojoResultClient({ locale = "ko" }: { locale?: string })
 
   if (!result) {
     return (
-      <div className="max-w-xl mx-auto px-6 py-10">
+      <div className="max-w-xl mx-auto px-6 py-10" role="region" aria-label={isEn ? "No result" : "결과 없음"}>
         <h1 className="text-2xl font-semibold mb-2">{t.noResult}</h1>
         <p className="text-sm text-gray-600 mb-6">{t.noResultHint}</p>
         <Link

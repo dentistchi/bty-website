@@ -1,16 +1,16 @@
 /**
  * Elite 멘토 신청 승인/거절 (admin only). PHASE_4_ELITE_5_PERCENT_SPEC §10 3차.
- * PATCH: body { status: "approved" | "rejected" }. 도메인 canTransitionStatus 검증.
+ * PATCH: body { status: "approved" | "rejected" }. lib/bty/arena/mentorRequest canTransitionStatus 검증.
  *
  * @contract
  * PATCH /api/arena/mentor-requests/[id]
  *   Auth: admin only (requireAdminEmail)
  *   Body: { status: "approved" | "rejected" }
- *   200: { ok: true, id, status, respondedAt }
+ *   200: { ok: true, id: string, status: string, respondedAt: string }
  *   400: { error: "MISSING_ID" | "INVALID_BODY" | "INVALID_STATUS" | "INVALID_TRANSITION" }
  *   401/403: { error } (auth failure)
  *   404: { error: "NOT_FOUND" }
- *   500: { error: message } (update failed)
+ *   500: { error: string } (update failed)
  *   503: { error: "ADMIN_UNAVAILABLE" }
  */
 

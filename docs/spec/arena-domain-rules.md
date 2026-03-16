@@ -32,7 +32,7 @@ This document is the **authoritative specification** for BTY Arena domain rules.
 - **Code index** = `floor(tier / 100)`, clamped to 0..6.
 - **7 Codes** (in order): FORGE, PULSE, FRAME, ASCEND, NOVA, ARCHITECT, CODELESS ZONE.
 - **1 Code** = 100 tiers = 1,000 Core XP.
-- **CODELESS ZONE** (code index 6): Core XP ≥ 700. Code name may be hidden or user-defined per product rules.
+- **CODELESS ZONE** (code index 6): tier 600+ (Core XP 6,000+). Code name may be hidden or user-defined per product rules. **Legend character unlock** is at **progression level 700** (tier 699), not Core XP 700 — see `ARENA_PROGRESSION_AND_LEGEND_SPEC.md`.
 
 ### 2.3 Sub Tier (Sub Name)
 

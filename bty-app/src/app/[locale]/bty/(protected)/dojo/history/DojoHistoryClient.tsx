@@ -132,6 +132,7 @@ export default function DojoHistoryClient({ locale = "ko" }: { locale?: string }
             <li
               key={row.id}
               className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+              aria-label={isEn ? `Result ${fmtDate(row.created_at)}, ${label}` : `결과 ${fmtDate(row.created_at)}, ${label}`}
             >
               <div className="flex justify-between items-baseline gap-2">
                 <span className="text-sm font-medium text-gray-700">{label}</span>

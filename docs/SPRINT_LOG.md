@@ -4,8 +4,25 @@ Summary of gate/integration runs (C7). Major sprint state changes. C1 REFRESH re
 
 ---
 
+## 2026-03-16
+
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: 189 전 항목 [x] 처리·다음 작업 진행. SPRINT 190 생성. C2(5)·C3(5)·C4(5)·C5(5)·C6(5) [ ] 구체 작업 할당. Objective: LE·대시보드·Elite·Healing·접근성·테스트. Mode FOUNDRY.
+- **REFRESH (C1)**: SPRINT 189. C2(2)·C3(2)·C4(2) [ ] BLOCKER 또는 선택 비움. C5·C6 [x]. Plan 유지.
+- **REFRESH (C1)**: SPRINT 189. C2(2) [ ] BLOCKER(배포 시 1회만)·C3(2)·C4(2)·C5(2)·C6(2) [ ] 남음(다음 백로그·선택 비움). Plan 유지.
+- **REFRESH (C1)**: SPRINT 188 남은 [ ] 모두 BLOCKER(C2 배포 시 1회만) → 회전 완료. SPRINT 189 생성. C2 항목 2건 이관(맨 위 [ ]). C3·C4·C5·C6 다음 백로그 대기(C1 채움). Mode FOUNDRY.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+
+---
+
 ## 2026-03-14
 
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **GATE (C7)**: self-healing-ci.sh run. Lint FAIL (TS2554 avatar-assets/route.test.ts: Expected 0 arguments, but got 1). Test/Build not run. Overall FAIL. Owner C6.
+- **REFRESH (C1)**: SPRINT 183. C2(2) [ ] BLOCKER(배포 시 1회만)·C3(2)·C4(2)·C5(2)·C6(2) [ ] 남음(다음 백로그·선택 비움). Plan 유지.
 - **배포 push**: e6fc417 chore: 배포 (28 files, +379/-94). c828ca5..e6fc417 → origin/main (dentistchi/bty-website). 정상 완료.
 - **REFRESH (C1)**: SPRINT 182 남은 [ ] 모두 BLOCKER(C2 배포 시 1회만) → 회전 완료. SPRINT 183 생성. C2 항목 2건 이관(맨 위 [ ]). C3·C4·C5·C6 다음 백로그 대기(C1 채움). Mode FOUNDRY.
 - **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
@@ -170,7 +187,7 @@ Summary of gate/integration runs (C7). Major sprint state changes. C1 REFRESH re
 
 ## Latest
 
-- **Date**: 2026-03-14
+- **Date**: 2026-03-16
 - **Command**: GATE (`./scripts/self-healing-ci.sh`)
 - **Lint**: PASS
 - **Test**: PASS
@@ -178,4 +195,4 @@ Summary of gate/integration runs (C7). Major sprint state changes. C1 REFRESH re
 - **Overall**: PASS
 - **Owner if fail**: —
 
-(Recorded 2026-03-14.)
+(Recorded 2026-03-16.)

@@ -20,7 +20,8 @@ export const AWAKENING_ACT_NAMES: Readonly<Record<AwakeningActId, string>> = {
   3: "Awakening",
 } as const;
 
-/** Phase II 공개 라벨 (스펙과 동일). */
+/** Phase I·II 공개 라벨 (스펙·콘텐츠 연동용). */
+export const HEALING_PHASE_I_LABEL: HealingPhaseLabel = "Phase I";
 export const HEALING_PHASE_II_LABEL: HealingPhaseLabel = "Phase II";
 
 /** Second Awakening 트리거 (day-based). 콘텐츠 연동·API 응답용. */

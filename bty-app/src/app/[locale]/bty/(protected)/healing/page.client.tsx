@@ -42,6 +42,7 @@ export default function HealingPageClient({ locale }: Props) {
     <div
       style={{ maxWidth: 640, margin: "0 auto", padding: "24px 16px" }}
       role="main"
+      aria-label={lang === "ko" ? "Healing 메뉴" : "Healing menu"}
       aria-labelledby="healing-heading"
     >
       <h1 id="healing-heading" style={{ fontSize: 24, fontWeight: 700, marginBottom: 16 }}>
@@ -51,13 +52,20 @@ export default function HealingPageClient({ locale }: Props) {
         {t.intro}
       </p>
       {healingLoading && (
-        <p style={{ fontSize: 13, opacity: 0.7, marginBottom: 16 }} role="status" aria-live="polite">
-          {t.loading}
-        </p>
+        <div role="region" aria-label={lang === "ko" ? "Healing 상태" : "Healing status"} aria-busy="true" aria-live="polite" style={{ marginBottom: 16 }}>
+          <p style={{ fontSize: 13, opacity: 0.7 }} role="status">
+            {t.loading}
+          </p>
+        </div>
       )}
       {!healingLoading && phase != null && (
         <p style={{ fontSize: 13, opacity: 0.85, marginBottom: 16 }} role="status">
           {phase}
+        </p>
+      )}
+      {!healingLoading && phase == null && (
+        <p style={{ fontSize: 13, opacity: 0.75, marginBottom: 16 }} role="status">
+          {t.emptyPhase}
         </p>
       )}
       <nav aria-label={t.navLabel} style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>

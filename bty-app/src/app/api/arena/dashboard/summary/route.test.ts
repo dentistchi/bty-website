@@ -21,8 +21,8 @@ vi.mock("@/lib/bty/leadership-engine/state-service", () => ({
   ensureLeadershipEngineState: (...args: unknown[]) => mockEnsureLeadershipEngineState(...args),
 }));
 
-function makeRequest(): NextRequest {
-  return new NextRequest("http://localhost/api/arena/dashboard/summary");
+function makeRequest(url = "http://localhost/api/arena/dashboard/summary"): NextRequest {
+  return new NextRequest(url);
 }
 
 describe("GET /api/arena/dashboard/summary", () => {
@@ -42,10 +42,16 @@ describe("GET /api/arena/dashboard/summary", () => {
     expect(mockGetLeadershipEngineState).not.toHaveBeenCalled();
   });
 
-  it("returns 200 with progress and recommendation", async () => {
+  it("returns 200 with progress, recommendation, and todayGrowth", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
-      supabase: {},
+      supabase: {
+        from: () => ({
+          select: () => ({
+            eq: () => ({ gte: () => Promise.resolve({ data: [] }) }),
+          }),
+        }),
+      },
       base: {},
     });
     mockGetLeadershipEngineState.mockResolvedValue({
@@ -58,6 +64,7 @@ describe("GET /api/arena/dashboard/summary", () => {
     const res = await GET(makeRequest());
     expect(res.status).toBe(200);
     const data = await res.json();
+    expect(Object.keys(data).sort()).toEqual(["progress", "recommendation", "todayGrowth"].sort());
     expect(data.progress).toBeDefined();
     expect(data.progress.currentStage).toBe(1);
     expect(data.progress.stageName).toBe("Over-Intervention (Speed Bias)");
@@ -65,14 +72,21 @@ describe("GET /api/arena/dashboard/summary", () => {
     expect(data.recommendation).toEqual({
       nextAction: "Continue Arena",
       source: "arena",
-      priority: 1,
+      priority: 30,
     });
+    expect(data.todayGrowth).toEqual({ xpToday: 0 });
   });
 
   it("returns 200 with content-type application/json and recommendation shape", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
-      supabase: {},
+      supabase: {
+        from: () => ({
+          select: () => ({
+            eq: () => ({ gte: () => Promise.resolve({ data: [] }) }),
+          }),
+        }),
+      },
       base: {},
     });
     mockGetLeadershipEngineState.mockResolvedValue({
@@ -95,7 +109,13 @@ describe("GET /api/arena/dashboard/summary", () => {
   it("returns 200 with recommendation fields matching RecommendationSummary (nextAction string, source in arena|foundry|center|null, priority number)", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u2" },
-      supabase: {},
+      supabase: {
+        from: () => ({
+          select: () => ({
+            eq: () => ({ gte: () => Promise.resolve({ data: [] }) }),
+          }),
+        }),
+      },
       base: {},
     });
     mockGetLeadershipEngineState.mockResolvedValue({
@@ -114,5 +134,111 @@ describe("GET /api/arena/dashboard/summary", () => {
     expect(rec.nextAction).toBeTruthy();
     expect(["arena", "foundry", "center", null]).toContain(rec.source);
     expect(typeof rec.priority).toBe("number");
+  });
+
+  it("returns 200 with recommendation source matching RECOMMENDATION_SOURCE_PRIORITY (arena 30, foundry 20, center 10)", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {
+        from: () => ({
+          select: () => ({
+            eq: () => ({ gte: () => Promise.resolve({ data: [] }) }),
+          }),
+        }),
+      },
+      base: {},
+    });
+    mockGetLeadershipEngineState.mockResolvedValue({
+      currentStage: 1,
+      stageName: "Over-Intervention (Speed Bias)",
+      forcedResetTriggeredAt: null,
+      resetDueAt: null,
+    });
+
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.recommendation).not.toBeNull();
+    expect(data.recommendation.source).toBe("arena");
+    expect(data.recommendation.priority).toBe(30);
+  });
+
+  it("returns 200 with recommendation unchanged when query source is invalid (ignored)", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {
+        from: () => ({
+          select: () => ({
+            eq: () => ({ gte: () => Promise.resolve({ data: [] }) }),
+          }),
+        }),
+      },
+      base: {},
+    });
+    mockGetLeadershipEngineState.mockResolvedValue({
+      currentStage: 1,
+      stageName: "Over-Intervention (Speed Bias)",
+      forcedResetTriggeredAt: null,
+      resetDueAt: null,
+    });
+
+    const res = await GET(makeRequest("http://localhost/api/arena/dashboard/summary?source=invalid"));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.recommendation).not.toBeNull();
+    expect(data.recommendation.source).toBe("arena");
+  });
+
+  it("returns 200 with recommendation null when query source does not match (source=foundry)", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {
+        from: () => ({
+          select: () => ({
+            eq: () => ({ gte: () => Promise.resolve({ data: [] }) }),
+          }),
+        }),
+      },
+      base: {},
+    });
+    mockGetLeadershipEngineState.mockResolvedValue({
+      currentStage: 1,
+      stageName: "Over-Intervention (Speed Bias)",
+      forcedResetTriggeredAt: null,
+      resetDueAt: null,
+    });
+
+    const res = await GET(makeRequest("http://localhost/api/arena/dashboard/summary?source=foundry"));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.recommendation).toBeNull();
+    expect(data.progress).toBeDefined();
+    expect(data.todayGrowth).toEqual({ xpToday: 0 });
+  });
+
+  it("returns 200 with recommendation when query source=arena", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {
+        from: () => ({
+          select: () => ({
+            eq: () => ({ gte: () => Promise.resolve({ data: [] }) }),
+          }),
+        }),
+      },
+      base: {},
+    });
+    mockGetLeadershipEngineState.mockResolvedValue({
+      currentStage: 1,
+      stageName: "Over-Intervention (Speed Bias)",
+      forcedResetTriggeredAt: null,
+      resetDueAt: null,
+    });
+
+    const res = await GET(makeRequest("http://localhost/api/arena/dashboard/summary?source=arena"));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.recommendation).not.toBeNull();
+    expect(data.recommendation.source).toBe("arena");
   });
 });

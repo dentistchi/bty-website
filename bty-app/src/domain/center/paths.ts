@@ -10,6 +10,9 @@ export const CENTER_CTA_PATH = "/bty";
 /** §6: "챗으로 이어하기" 클릭 시 챗 패널을 여는 커스텀 이벤트 이름. */
 export const CENTER_CHAT_OPEN_EVENT = "open-chatbot";
 
+/** Center CTA 등에서 locale 미제공 시 사용할 기본 locale. */
+export const CENTER_DEFAULT_LOCALE = "ko";
+
 /** locale이 주어졌을 때 Center CTA 전체 경로. */
 export function getCenterCtaHref(locale: string): string {
   return `/${locale}${CENTER_CTA_PATH}`;

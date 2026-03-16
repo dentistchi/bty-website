@@ -218,6 +218,7 @@ describe("PATCH /api/arena/mentor-requests/[id]", () => {
     expect(data.id).toBe("req-1");
     expect(data.status).toBe("approved");
     expect(data.respondedAt).toBe("2026-03-14T12:00:00Z");
+    expect(Object.keys(data).sort()).toEqual(["id", "ok", "respondedAt", "status"].sort());
   });
 
   it("returns 200 on reject success", async () => {
@@ -246,6 +247,7 @@ describe("PATCH /api/arena/mentor-requests/[id]", () => {
     const data = await res.json();
     expect(data.ok).toBe(true);
     expect(data.status).toBe("rejected");
+    expect(Object.keys(data).sort()).toEqual(["id", "ok", "respondedAt", "status"].sort());
   });
 
   it("returns 500 when update fails", async () => {

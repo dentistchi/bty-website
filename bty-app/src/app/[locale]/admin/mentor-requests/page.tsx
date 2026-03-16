@@ -100,7 +100,7 @@ export default function AdminMentorRequestsPage() {
         {loading && (
           <LoadingFallback
             icon="✉️"
-            message={locale === "ko" ? "목록 불러오는 중…" : "Loading…"}
+            message={t.loading}
             withSkeleton
             style={{ padding: "32px 20px" }}
           />
@@ -118,7 +118,7 @@ export default function AdminMentorRequestsPage() {
                   <th className="pb-2 pr-4 font-medium">{t.userId}</th>
                   <th className="pb-2 pr-4 font-medium">{t.createdAt}</th>
                   <th className="pb-2 pr-4 font-medium">{t.message}</th>
-                  <th className="pb-2 font-medium">{locale === "ko" ? "동작" : "Actions"}</th>
+                  <th className="pb-2 font-medium">{t.actions}</th>
                 </tr>
               </thead>
               <tbody>

@@ -83,7 +83,7 @@ export default function IntegrityMirrorPage() {
     return (
       <AuthGate>
         <ThemeBody theme="foundry" />
-        <main className="min-h-screen bg-foundry-white">
+        <main className="min-h-screen bg-foundry-white" aria-label={locale === "ko" ? "역지사지 시뮬레이터" : "Integrity simulator"}>
           <div className="max-w-xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
             <Nav locale={locale} pathname={`/${locale}/bty/integrity`} />
             <header className="text-center mb-8">
@@ -133,7 +133,7 @@ export default function IntegrityMirrorPage() {
     return (
       <AuthGate>
         <ThemeBody theme="foundry" />
-        <main className="min-h-screen bg-foundry-white">
+        <main className="min-h-screen bg-foundry-white" aria-label={locale === "ko" ? "역지사지 시뮬레이터" : "Integrity simulator"}>
           <div className="max-w-xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
             <Nav locale={locale} pathname={`/${locale}/bty/integrity`} />
             <div
@@ -193,7 +193,7 @@ export default function IntegrityMirrorPage() {
   return (
     <AuthGate>
       <ThemeBody theme="foundry" />
-      <main className="min-h-screen bg-foundry-white">
+      <main className="min-h-screen bg-foundry-white" aria-label={locale === "ko" ? "역지사지 시뮬레이터" : "Integrity simulator"}>
         <div className="max-w-xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
           <Nav locale={locale} pathname={`/${locale}/bty/integrity`} />
           <header className="text-center mb-6">
@@ -266,7 +266,7 @@ export default function IntegrityMirrorPage() {
               <div ref={bottomRef} />
             </div>
 
-            <div className="p-4 border-t border-foundry-purple-muted space-y-3">
+            <div className="p-4 border-t border-foundry-purple-muted space-y-3" role="group" aria-label={locale === "ko" ? "메시지 입력" : "Message input"}>
               {lastError && t.errorTitle && (
                 <div
                   role="alert"

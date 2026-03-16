@@ -5,13 +5,14 @@
  *
  * §1·§3: 옷 데이터·URL은 avatarOutfits (getOutfitForLevel, getOutfitById, resolveDisplayAvatarLayers)와
  * avatarAssets (outfitAssetMap, resolveAvatarUrls)를 통해 Preview/썸네일에 전달됨.
- * 키 형식: theme_outfit_outfitId (예: professional_outfit_scrub_general). 이미지: /avatars/outfits/outfit_{outfitId}.png.
+ * 키 형식: theme_outfit_outfitId. 옷 이미지: /avatars/outfits/outfit_{outfitId}.png. 악세사리: /avatars/accessories/{id}.svg|.png (game→png).
  * PNG 미배포 시 URL은 유효하나 404; 합성·표시는 UI(AvatarComposite/OutfitCard) 책임.
  */
 
 import type { LevelId } from "@/lib/bty/arena/tenure";
 import type { AvatarCompositeKeys } from "@/types/arena";
-import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
+import { getAvatarCharacter, type BodyType } from "@/lib/bty/arena/avatarCharacters";
+import { GAME_ACCESSORY_IDS, ACCESSORY_IDS_ALL } from "@/lib/bty/arena/avatar-assets.data";
 
 export type AvatarOutfitTheme = "professional" | "fantasy";
 
@@ -26,9 +27,8 @@ export type OutfitResult = {
   imageUrl: string | null;
 };
 
-/** 악세사리 카탈로그: id → 표시명 (치과·일반·판타지) */
-export const ACCESSORY_CATALOG: Record<string, string> = {
-  // Professional / 치과
+/** 악세사리 카탈로그: id → 표시명. avatar-assets.json dental+game 전체 ID 포함, 누락 시 id 사용. */
+const ACCESSORY_LABELS: Record<string, string> = {
   handpiece: "핸드피스",
   dental_mirror: "치과거울",
   dental_mirror_premium: "치과거울(고급)",
@@ -40,11 +40,16 @@ export const ACCESSORY_CATALOG: Record<string, string> = {
   loupes: "Loupes",
   goggles: "고글",
   goggles_premium: "고글(고급)",
-  // Fantasy / 소소한 악세사리
   weapon: "무기",
   hat: "모자",
   glasses: "안경",
   accessory: "악세사리",
+};
+export const ACCESSORY_CATALOG: Record<string, string> = {
+  ...ACCESSORY_LABELS,
+  ...Object.fromEntries(
+    ACCESSORY_IDS_ALL.filter((id) => !(id in ACCESSORY_LABELS)).map((id) => [id, id])
+  ),
 };
 
 /** Professional: S1 일반 스크럽 → L4 반바지/반팔티 (요청 매핑) */
@@ -119,6 +124,15 @@ export const FANTASY_THEME_UI_READY = false;
 /** 옷 이미지: /avatars/outfits/outfit_{outfitId}.png (저장 위치: bty-app/public/avatars/outfits/) */
 const OUTFIT_IMAGE_BASE = "/avatars/outfits";
 
+/** §4.2 bodyType별 옷 URL: outfit_{outfitId}_{bodyType}.png. bodyType 없으면 outfit_{outfitId}.png. 에셋 없어도 규칙만. */
+export function getOutfitImageUrlForBodyType(
+  outfitId: string,
+  bodyType?: BodyType | null
+): string {
+  const base = `${OUTFIT_IMAGE_BASE}/outfit_${outfitId}`;
+  return bodyType ? `${base}_${bodyType}.png` : `${base}.png`;
+}
+
 /** 캐릭터별 게임 스타일 옷 파일명 (fantasy 테마일 때 선택된 캐릭터에 따라 사용). 6종만 존재. */
 const CHARACTER_OUTFIT_FILE: Record<string, string> = {
   hero_01: "hero_armor",
@@ -138,13 +152,7 @@ export function getCharacterOutfitImageUrl(
   return file ? `${OUTFIT_IMAGE_BASE}/outfit_${file}.png` : null;
 }
 
-/** 악세서리 이미지: 게임 35종은 .png, 나머지(치과 등)는 .svg — public/avatars/accessories/{id}.png|svg */
-const GAME_ACCESSORY_IDS = new Set([
-  "sword", "shield", "crown", "ring", "cloak", "wings", "halo", "bow", "staff", "potion", "gem", "coin", "key",
-  "pet_cat", "pet_dragon", "pet_dog", "map", "compass", "lantern", "book", "scroll", "amulet", "bracelet", "boots",
-  "helmet", "gauntlet", "dagger", "wand", "rune", "weapon", "hat", "glasses", "accessory", "quiver", "belt",
-]);
-
+/** 악세서리 이미지: avatar-assets.json game은 .png, dental은 .svg. 규칙: /avatars/accessories/{id}.svg|.png */
 export function getAccessoryImageUrl(accessoryId: string): string {
   const ext = GAME_ACCESSORY_IDS.has(accessoryId) ? "png" : "svg";
   return `/avatars/accessories/${accessoryId}.${ext}`;
@@ -226,7 +234,7 @@ export function accessorySlotsFromTier(tier: number): number {
   return Math.max(0, Math.floor(tier / 25));
 }
 
-/** 테마별 옷 선택 옵션 (id, label). 대시보드 등에서 사용. */
+/** 테마별 옷 선택 옵션 (id, label). 대시보드 등에서 사용. Fantasy 7종·Professional 7종. */
 export type OutfitOption = { outfitId: string; outfitLabel: string };
 export const OUTFIT_OPTIONS_BY_THEME: Record<"professional" | "fantasy", OutfitOption[]> = {
   professional: (Object.values(PROFESSIONAL_LEVEL_MAP) as { outfitId: string; outfitLabel: string }[]).map(
@@ -236,6 +244,11 @@ export const OUTFIT_OPTIONS_BY_THEME: Record<"professional" | "fantasy", OutfitO
     (e) => ({ outfitId: e.outfitId, outfitLabel: e.outfitLabel })
   ),
 };
+
+/** 테마별 옷 목록 반환. Fantasy 7종·Professional 7종 노출. */
+export function getOutfitsForTheme(theme: AvatarOutfitTheme): OutfitOption[] {
+  return OUTFIT_OPTIONS_BY_THEME[theme] ?? [];
+}
 
 /**
  * 테마 + outfit id로 옷 정보 반환. (캐릭터 고정+옷 선택: 유저가 고른 옷)

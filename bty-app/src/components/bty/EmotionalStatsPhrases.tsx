@@ -63,7 +63,7 @@ export function EmotionalStatsPhrases() {
       </div>
       {error && (
         <p className="text-xs text-[var(--arena-text-soft)] opacity-80">
-          {locale === "ko" ? "표시를 불러오지 못했어요." : "Could not load display."}
+          {t.errorLoad}
         </p>
       )}
       {!error && phrases.length === 0 && (

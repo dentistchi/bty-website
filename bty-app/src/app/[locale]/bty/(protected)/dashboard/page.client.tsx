@@ -8,7 +8,7 @@ import { EmotionalStatsPhrases } from "@/components/bty/EmotionalStatsPhrases";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
-import { AVATAR_CHARACTERS, getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
+import { getVisibleAvatarCharacters, getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
 import { getAccessoryImageUrl, OUTFIT_OPTIONS_BY_THEME, FANTASY_THEME_UI_READY } from "@/lib/bty/arena/avatarOutfits";
 
 type WeeklyXpRes = { weekStartISO?: string | null; weekEndISO?: string | null; xpTotal: number; count?: number };
@@ -359,6 +359,7 @@ export default function DashboardClient() {
   const tArenaMembership = getMessages(localeTyped).arenaMembership;
   const tElitePage = getMessages(localeTyped).elitePage;
   const tLanding = getMessages(localeTyped).landing;
+  const tBty = getMessages(localeTyped).bty;
   const displayAvatarUrl =
     core?.avatarUrl ?? getAvatarCharacter(core?.avatarCharacterId)?.imageUrl ?? null;
   const avatarLayers =
@@ -470,12 +471,17 @@ export default function DashboardClient() {
                   </Link>
                 </div>
               </div>
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+                <Link href="#today-growth" style={{ fontSize: 13, fontWeight: 600, color: "var(--arena-accent)", textDecoration: "none" }} aria-label={locale === "ko" ? "오늘의 성장 섹션으로" : "Go to Today's growth section"}>
+                  {tLanding.todayGrowthLink} →
+                </Link>
+              </div>
             </nav>
           </ProgressCard>
 
           {/* [Q3] 추천 위젯 — GET /api/arena/dashboard/summary recommendation 표시만 */}
           {(dashboardSummary?.recommendation?.nextAction != null || dashboardSummary?.recommendation != null) && (
-            <ProgressCard label={locale === "ko" ? "추천" : "Recommendation"}>
+            <ProgressCard label={tBty.recommendationLabel}>
               <div role="region" aria-label={locale === "ko" ? "대시보드 추천" : "Dashboard recommendation"}>
                 {dashboardSummary?.recommendation?.nextAction != null && (
                   <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>
@@ -862,10 +868,10 @@ export default function DashboardClient() {
           </ProgressCard>
 
           {/* [Q3] AIR 위젯 — API 응답 표시만, 규칙 계산 없음 */}
-          <ProgressCard label="AIR">
+          <ProgressCard label={tBty.airLabel}>
             {leAir == null ? (
               <p style={{ fontSize: 13, color: "var(--arena-text)", opacity: 0.8 }} role="status">
-                {locale === "ko" ? "AIR 지표를 불러올 수 없습니다." : "Unable to load AIR."}
+                {tBty.airUnavailable}
               </p>
             ) : (
               <div role="region" aria-label={locale === "ko" ? "AIR 지표: 7일·14일·90일" : "AIR: 7d, 14d, 90d"} style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, fontSize: 14 }}>
@@ -889,9 +895,16 @@ export default function DashboardClient() {
           </ProgressCard>
 
           {/* [Q3] LE Stage 위젯 — GET stage-summary API 연동, Arena 결과·행동 패턴 노출 (API가 채우면 표시) */}
-          <ProgressCard label={locale === "ko" ? "LE Stage" : "LE Stage"}>
+          <ProgressCard label={tBty.leStageLabel}>
             {leStageSummary == null ? (
-              <CardSkeleton showLabel={false} lines={2} />
+              <div
+                role="region"
+                aria-label={locale === "ko" ? "리더십 엔진 스테이지 요약" : "Leadership Engine stage summary"}
+                aria-busy="true"
+                aria-live="polite"
+              >
+                <CardSkeleton showLabel={false} lines={2} />
+              </div>
             ) : (
               <div role="region" aria-label={locale === "ko" ? "리더십 엔진 스테이지 요약" : "Leadership Engine stage summary"}>
                 <div style={{ fontSize: 15, fontWeight: 700 }}>{leStageSummary.stageName}</div>
@@ -1086,7 +1099,9 @@ export default function DashboardClient() {
             )}
           </ProgressCard>
 
-          <EmotionalStatsPhrases />
+          <section id="today-growth" aria-label={locale === "ko" ? "오늘의 성장" : "Today's growth"}>
+            <EmotionalStatsPhrases />
+          </section>
 
           <ProgressCard label="Code Name">
             {/* COMMANDER_BACKLOG §5: 마우스 오버 시 단계·수준 설명 툴팁. 문구 = BTY_ARENA_SYSTEM_SPEC·ARENA_CODENAME_AVATAR_PLAN Code/Tier/Sub Name 규칙 요약 */}
@@ -1259,7 +1274,7 @@ export default function DashboardClient() {
                       {locale === "ko" ? "한 번 저장하면 변경할 수 없습니다." : "Cannot be changed after first save."}
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                      {AVATAR_CHARACTERS.map((ch) => {
+                      {getVisibleAvatarCharacters(core?.coreXpTotal ?? 0).map((ch) => {
                         const selected = core?.avatarCharacterId === ch.id;
                         return (
                           <button

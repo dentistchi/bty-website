@@ -28,13 +28,18 @@ export function AvatarComposite({
   alt = "Avatar",
   className,
 }: AvatarCompositeProps) {
+  const [characterFailed, setCharacterFailed] = useState(false);
   const [outfitFailed, setOutfitFailed] = useState(false);
   const [failedAccessories, setFailedAccessories] = useState<Set<number>>(new Set());
+  const onCharacterError = useCallback(() => setCharacterFailed(true), []);
   const onOutfitError = useCallback(() => setOutfitFailed(true), []);
   const onAccessoryError = useCallback((i: number) => {
     setFailedAccessories((prev) => new Set(prev).add(i));
   }, []);
 
+  useEffect(() => {
+    setCharacterFailed(false);
+  }, [characterUrl]);
   useEffect(() => {
     setOutfitFailed(false);
   }, [outfitUrl]);
@@ -83,12 +88,15 @@ export function AvatarComposite({
       role="img"
       aria-label={alt}
     >
-      <img
-        src={characterUrl}
-        alt=""
-        style={{ ...layerStyle, zIndex: 1 }}
-        loading="lazy"
-      />
+      {!characterFailed && (
+        <img
+          src={characterUrl}
+          alt=""
+          style={{ ...layerStyle, zIndex: 1 }}
+          loading="lazy"
+          onError={onCharacterError}
+        />
+      )}
       {outfitUrl && !outfitFailed && (
         <img
           src={outfitUrl}

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
-import { computeAIRSnapshot } from "@/domain/leadership-engine/air";
+import { computeAIRSnapshot, airToBand } from "@/domain/leadership-engine/air";
 import type { ActivationRecord } from "@/domain/leadership-engine/air";
 
 /**
  * GET /api/arena/leadership-engine/air
- * Returns AIR for 7d, 14d, 90d from activation + verification logs. UI displays only.
+ * Returns AIR 점수·밴드 for 7d, 14d, 90d from activation + verification logs. Auth required. UI displays only.
  */
 export async function GET(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);
@@ -19,9 +19,9 @@ export async function GET(req: NextRequest) {
 
   if (!rows?.length) {
     const empty = {
-      air_7d: { air: 0, missedWindows: 0, integritySlip: false },
-      air_14d: { air: 0, missedWindows: 0, integritySlip: false },
-      air_90d: { air: 0, missedWindows: 0, integritySlip: false },
+      air_7d: { air: 0, missedWindows: 0, integritySlip: false, band: "low" as const },
+      air_14d: { air: 0, missedWindows: 0, integritySlip: false, band: "low" as const },
+      air_90d: { air: 0, missedWindows: 0, integritySlip: false, band: "low" as const },
     };
     const res = NextResponse.json(empty);
     copyCookiesAndDebug(base, res, req, true);
@@ -55,9 +55,9 @@ export async function GET(req: NextRequest) {
 
   const snapshot = computeAIRSnapshot(activations);
   const res = NextResponse.json({
-    air_7d: snapshot.air_7d,
-    air_14d: snapshot.air_14d,
-    air_90d: snapshot.air_90d,
+    air_7d: { ...snapshot.air_7d, band: airToBand(snapshot.air_7d.air) },
+    air_14d: { ...snapshot.air_14d, band: airToBand(snapshot.air_14d.air) },
+    air_90d: { ...snapshot.air_90d, band: airToBand(snapshot.air_90d.air) },
   });
   copyCookiesAndDebug(base, res, req, true);
   return res;

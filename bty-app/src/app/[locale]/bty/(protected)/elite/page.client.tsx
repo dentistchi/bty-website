@@ -303,7 +303,7 @@ export default function ElitePageClient() {
                 <p style={{ fontSize: 13, opacity: 0.75 }}>{tElite.circleCardPlaceholder}</p>
               </div>
             )}
-            <ul style={{ listStyle: "disc", paddingLeft: 24, marginBottom: 20 }}>
+            <ul role="list" aria-label={locale === "ko" ? "Elite 멘토·심화 대화 링크" : "Elite mentor and deep conversation links"} style={{ listStyle: "disc", paddingLeft: 24, marginBottom: 20 }}>
               <li style={{ marginBottom: 8 }}>
                 <Link href={`/${locale}/bty/mentor`} style={{ color: "#1a1a1a", fontWeight: 600 }} aria-label={locale === "ko" ? "Dr. Chi 멘토와 심화 대화" : "Deep conversation with Dr. Chi Mentor"}>
                   {locale === "ko" ? "Dr. Chi 멘토와 심화 대화" : "Deep conversation with Dr. Chi Mentor"}
@@ -328,7 +328,7 @@ export default function ElitePageClient() {
             </Link>
           </div>
         ) : (
-          <div style={{ fontSize: 15, lineHeight: 1.6 }}>
+          <div role="region" aria-label={locale === "ko" ? "Elite 해금 안내" : "Elite unlock info"} style={{ fontSize: 15, lineHeight: 1.6 }}>
             <p style={{ marginBottom: 16, opacity: 0.9 }}>
               {locale === "ko"
                 ? "이 페이지는 주간 리더보드 상위 5%에 있을 때만 이용할 수 있습니다."

@@ -7,6 +7,9 @@ import {
   WEIGHT_MICRO_WIN,
   WEIGHT_RESET,
   MISSED_WINDOW_PENALTY,
+  AIR_MIN,
+  AIR_MAX,
+  AIR_BAND_IDS,
   type ActivationRecord,
   type AIRLedger,
 } from "./air";
@@ -320,5 +323,18 @@ describe("hasThreeConsecutiveNonExecutionWarning (legacy)", () => {
   it("returns true for count >= 3", () => {
     const ledger: AIRLedger = { chosenActivations: 5, executedActivations: 1, integrityResetActivations: 0, missedWindows: 4, consecutiveNonExecutionCount: 3 };
     expect(hasThreeConsecutiveNonExecutionWarning(ledger)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 8. AIR domain constants (LE·AIR 도메인 검증 1건)
+// ---------------------------------------------------------------------------
+
+describe("AIR domain constants", () => {
+  it("AIR_MIN is 0, AIR_MAX is 1, AIR_BAND_IDS is [low, mid, high]", () => {
+    expect(AIR_MIN).toBe(0);
+    expect(AIR_MAX).toBe(1);
+    expect(AIR_BAND_IDS).toEqual(["low", "mid", "high"]);
+    expect(AIR_BAND_IDS).toHaveLength(3);
   });
 });

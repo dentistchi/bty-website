@@ -93,22 +93,27 @@ describe("getOutfitById", () => {
     "master",
   ];
 
-  it("returns outfit result for valid professional outfit id", () => {
+  it("returns outfit result for valid professional outfit id with URL /avatars/outfits/outfit_{id}.png", () => {
+    const outfitUrlPattern = /^\/avatars\/outfits\/outfit_.+\.png$/;
     for (const id of professionalOutfits) {
       const result = getOutfitById("professional", id);
       expect(result).not.toBeNull();
       expect(result!.outfitId).toBe(id);
       expect(result!.outfitLabel).toBeTruthy();
       expect(Array.isArray(result!.accessoryIds)).toBe(true);
-      expect(result!.imageUrl).toContain("/avatars/outfits/");
+      expect(result!.imageUrl).toMatch(outfitUrlPattern);
+      expect(result!.imageUrl).toBe(`/avatars/outfits/outfit_${id}.png`);
     }
   });
 
-  it("returns outfit result for valid fantasy outfit id", () => {
+  it("returns outfit result for valid fantasy outfit id with URL /avatars/outfits/outfit_{id}.png", () => {
+    const outfitUrlPattern = /^\/avatars\/outfits\/outfit_.+\.png$/;
     for (const id of fantasyOutfits) {
       const result = getOutfitById("fantasy", id);
       expect(result).not.toBeNull();
       expect(result!.outfitId).toBe(id);
+      expect(result!.imageUrl).toMatch(outfitUrlPattern);
+      expect(result!.imageUrl).toBe(`/avatars/outfits/outfit_${id}.png`);
     }
   });
 

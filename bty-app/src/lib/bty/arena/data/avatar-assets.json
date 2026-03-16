@@ -1,0 +1,30 @@
+{
+  "accessories": {
+    "dental": [
+      "mask", "goggles", "goggles_premium", "scrub_cap", "headlight", "dental_mirror", "dental_mirror_premium",
+      "explorer", "loupes", "face_shield", "handpiece", "apron", "surgical_gloves",
+      "xray_portable", "suction_tip", "curing_light", "scaler", "retractor", "saliva_ejector",
+      "syringe", "impression_tray", "probe", "excavator", "burnisher", "carver",
+      "matrix_band", "hve_tip", "n95", "name_badge", "sleeve", "stethoscope",
+      "bite_block", "cotton_holder", "polisher", "finisher", "air_water_syringe",
+      "wedge", "bib", "safety_glasses", "articulating_paper", "magnifier"
+    ],
+    "game": [
+      "sword", "shield", "crown", "ring", "cloak", "wings", "halo", "bow", "staff",
+      "potion", "gem", "coin", "key", "pet_cat", "pet_dragon", "pet_dog", "map",
+      "compass", "lantern", "book", "scroll", "amulet", "bracelet", "boots", "helmet",
+      "gauntlet", "dagger", "wand", "rune", "weapon", "hat", "glasses", "accessory",
+      "quiver", "belt"
+    ]
+  },
+  "outfits": {
+    "professional": [
+      "scrub_general", "figs_scrub", "doctor_gown", "surgery_coat_suit",
+      "brand_suit", "figs_scrub_short", "shorts_tee"
+    ],
+    "fantasy": [
+      "apprentice", "adventurer", "journeyer", "warrior_mage_mid",
+      "senior", "senior_plus", "master"
+    ]
+  }
+}

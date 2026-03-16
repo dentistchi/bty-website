@@ -2,7 +2,7 @@
 
 **목적**: 대기 작업이 없을 때 `scripts/next-project-fill-board.sh`가 여기서 다음 작업을 읽어 보드에 추가한다.  
 **기준**: `docs/NEXT_PROJECT_RECOMMENDED.md` §1·§2.  
-**갱신일**: 2026-03-11 — splint 10. SPRINT 42 전량 완료·SPRINT 43 생성. 다음 배치 목록 = NEXT_PHASE 대기 5건과 동일. MODE FOUNDRY.
+**갱신일**: 2026-03-11 — splint 10. SPRINT 45 생성. 다음 배치 목록 = NEXT_PHASE·보드 대기 6건과 동일. MODE FOUNDRY.
 
 ---
 
@@ -38,17 +38,18 @@ MASTER_PLAN  →  NEXT_BACKLOG_AUTO4  →  CURSOR_TASK_BOARD
 
 ---
 
-## 다음 배치 목록 (위에서부터 우선) — FOUNDRY MODE (SPRINT 43)
+## 다음 배치 목록 (위에서부터 우선) — FOUNDRY MODE (SPRINT 45)
 
 ```
-Fix/Polish|[VERIFY] Release Gate A~F — Foundry 43차|C5.
-Fix/Polish|[DOCS] 문서 점검 115·116·117차 — NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드·BTY_RELEASE_GATE_CHECK 2~3건 점검·갱신|C1.
+Fix/Polish|[VERIFY] Release Gate A~F — Foundry 45차|C5.
+Fix/Polish|[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 — SPRINT 44 완료 반영|C1.
+Fix/Polish|[DOCS] 문서 점검 121·122·123차 — NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드·BTY_RELEASE_GATE_CHECK 2~3건 점검·갱신|C1.
 Feature|[UI] Center/Foundry 추가 접근성 1곳 — dear-me·assessment·center·dojo·integrity·mentor·elite aria-label·aria-describedby|C4.
 Fix/Polish|[DOCS] 다음 배치 선정 — NEXT_BACKLOG_AUTO4·NEXT_PHASE_AUTO4 수동 갱신|C1. 필요 시.
 Feature|[DOCS] Arena·Center·Foundry 대기 목록 동기화 — NEXT_PHASE·NEXT_BACKLOG·보드 대기 행 일치|C1.
 ```
 
-*(참고: SPRINT 43 진행. 대기 5건 = Release Gate 43차·문서 115·116·117차·접근성·다음 배치·대기 동기화. MODE FOUNDRY.)*
+*(참고: splint 10. SPRINT 45 생성. 대기 6건 = 보드와 동일. MODE FOUNDRY.)*
 
 ---
 

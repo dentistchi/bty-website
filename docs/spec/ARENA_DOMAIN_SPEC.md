@@ -182,6 +182,8 @@ lib/bty/arena/domain.ts ──────── domain/rules import + re-export
 | GET | `/api/arena/leaderboard` | 리더보드 (scope=overall/role/office) |
 | GET | `/api/arena/leaderboard/status` | 내 리더보드 상태 |
 
+**리더보드 프로필 아바타:** 응답 각 행(LeaderboardRow)에 `avatarUrl`, `avatarLayers`(characterImageUrl, outfitImageUrl), `avatar`(characterKey, theme, outfitKey, accessoryKeys) 포함. 캐릭터+옷+악세사리 ID 및 합성용 URL 규칙은 avatarOutfits/leaderboardService 참조.
+
 ### 4-5. Profile & Identity
 
 | Method | Endpoint | 역할 |
@@ -194,9 +196,12 @@ lib/bty/arena/domain.ts ──────── domain/rules import + re-export
 
 | Method | Endpoint | 역할 |
 |---|---|---|
+| GET | `/api/arena/avatar-assets` | 아바타 에셋 목록(캐릭터/옷/악세사리 ID) — `avatar-assets.json` 동기 데이터 |
 | GET/PATCH | `/api/arena/avatar` | 아바타 설정 |
 | POST | `/api/arena/avatar/upload` | 아바타 이미지 업로드 |
 | GET/PATCH | `/api/arena/profile/avatar` | 프로필 아바타 |
+
+**프로필·아바타 필드 검증:** `arena_profiles` 및 위 API가 `avatar_character_id`(character_id), `avatar_outfit_theme`(outfit_theme), `avatar_selected_outfit_id`(outfit_id), `avatar_accessory_ids`(accessory_ids) 저장·반환. GET `/api/arena/profile` → `profile` 전체 행; GET `/api/arena/profile/avatar` → `avatar.characterKey`/`theme`/`outfitKey`/`accessoryKeys`. PATCH 양쪽 모두 해당 필드 수정 지원. 스키마 일치 확인됨.
 
 ### 4-7. Scenario & Reflection
 
@@ -226,7 +231,7 @@ lib/bty/arena/domain.ts ──────── domain/rules import + re-export
 | Method | Endpoint | 역할 |
 |---|---|---|
 | GET | `/api/arena/leadership-engine/state` | LE 현재 상태 |
-| GET | `/api/arena/leadership-engine/air` | AIR 값 |
+| GET | `/api/arena/leadership-engine/air` | AIR 점수·밴드 (air_7d/14d/90d: air, missedWindows, integritySlip, band low\|mid\|high) |
 | GET | `/api/arena/leadership-engine/tii` | TII 값 |
 | GET | `/api/arena/leadership-engine/certified` | Certified 상태 |
 | GET | `/api/arena/leadership-engine/stage-summary` | LE Stage + Arena·행동 패턴 요약 (progressPercent, arenaSummary, behaviorPattern) |
@@ -236,14 +241,14 @@ lib/bty/arena/domain.ts ──────── domain/rules import + re-export
 
 | Method | Endpoint | 역할 |
 |---|---|---|
-| GET | `/api/arena/dashboard/summary` | 진도·추천 요약 (progress, recommendation; 쿼리 source=arena\|foundry\|center) |
+| GET | `/api/arena/dashboard/summary` | 진도·추천·오늘 성장 요약 (progress, recommendation, todayGrowth.xpToday; 쿼리 source=arena\|foundry\|center) |
 
 ### 4-12. BTY (Healing / Awakening)
 
 | Method | Endpoint | 역할 |
 |---|---|---|
 | GET | `/api/bty/healing` | Q4 Healing phase·콘텐츠 (ok, phase, content.ringType) |
-| GET | `/api/bty/awakening` | Q4 Awakening 액트 이름 (ok, acts). 에러: 401 UNAUTHENTICATED, 500 INTERNAL_ERROR |
+| GET | `/api/bty/awakening` | Q4 Awakening 액트 이름·트리거 (ok, acts, trigger.day_based). 에러: 401 UNAUTHENTICATED, 500 INTERNAL_ERROR |
 
 ### 4-13. Combined
 
