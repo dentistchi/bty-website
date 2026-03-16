@@ -1,6 +1,6 @@
 /**
  * Center 회복 탄력성 — 일별/기간별 트렉 도메인 (§4 CENTER_PAGE_IMPROVEMENT_SPEC).
- * 순수 함수만: energy → level, letter 행 집계 → 일별 엔트리.
+ * 순수 함수만. 경계: energy 1–5 → low/mid/high (energyToLevel). periodDays 옵션으로 기간 제한.
  */
 
 export type ResilienceDailyLevel = "high" | "mid" | "low";

@@ -1,12 +1,6 @@
 /**
  * GET /api/assessment/submissions — 로그인 사용자의 Assessment 50문항 제출 이력 조회.
- * Thin handler: auth → service → response.
- *
- * @contract
- * GET /api/assessment/submissions
- *   Auth: required (session)
- *   200: AssessmentSubmissionsGetResponse
- *   401 | 500: AssessmentSubmissionsErrorResponse
+ * Response (200): { submissions: array }. Error: 401 | 500 { error: string }.
  */
 import { NextResponse } from "next/server";
 import { getLetterAuth, getAssessmentHistory } from "@/lib/bty/center";

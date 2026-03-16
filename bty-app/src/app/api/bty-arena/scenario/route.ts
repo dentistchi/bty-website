@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { getRandomScenario, getScenarioById } from "@/lib/bty/scenario/engine";
 
-// ✅ 안전: 프리렌더 회피 (OpenNext/Cloudflare에서도 안정)
 export const dynamic = "force-dynamic";
 
+/**
+ * GET /api/bty-arena/scenario — 시나리오 조회 (id 있으면 해당, 없으면 랜덤). Query: id?, exclude (csv).
+ * Response (200): { ok: true, scenario }. Error: 404 { ok: false, error: "Scenario not found" }.
+ */
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const id = url.searchParams.get("id");

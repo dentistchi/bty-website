@@ -18,8 +18,11 @@ import {
 } from "@/lib/bty/arena/weeklyQuest";
 
 /**
- * Gate 3: Daily cap and capping logic live in lib (activityXp). This route uses
- * getArenaTodayTotal + capArenaDailyDelta only; no inline ARENA_DAILY_XP_CAP or cap math.
+ * POST /api/arena/run/complete
+ * Body: { runId: string, time_remaining?: number }. Marks run DONE and applies XP (once per run).
+ * Response (200): { ok: true, runId, status: "DONE", deltaApplied?, coreXp?, weeklyXp? } or { ok, runId, status, idempotent: true }.
+ * Errors: 401 UNAUTHENTICATED, 400 MISSING_RUN_ID/INVALID_JSON, 404 NOT_FOUND, 500.
+ * Gate 3: Daily cap in lib (activityXp); route uses getArenaTodayTotal + capArenaDailyDelta only.
  */
 export async function POST(req: Request) {
   const supabase = await getSupabaseServerClient();

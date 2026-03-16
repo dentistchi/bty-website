@@ -101,7 +101,7 @@ export default function DearMeClient({ locale }: { locale: string }) {
           </header>
 
           {!replyDisplay ? (
-            <section className="space-y-6" aria-labelledby="letter-heading">
+            <section className="space-y-6" role="region" aria-labelledby="letter-heading" aria-label={t.letterStepTitle}>
               <h2 id="letter-heading" className="text-lg font-medium text-dear-charcoal sr-only">
                 {t.letterStepTitle}
               </h2>

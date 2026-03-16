@@ -352,6 +352,12 @@ export type Messages = {
     loading: string;
     /** Phase 없을 때 빈 상태 문구. */
     emptyPhase: string;
+    /** API 실패 시 에러 문구. */
+    loadError: string;
+  };
+  /** 28일 훈련(Train) 사이드바·진도. */
+  train: {
+    title: string;
   };
   /** Dojo 50문항 결과 화면. 영역별 점수·Dr. Chi 코멘트 표시(render-only). */
   dojoResult: {
@@ -367,6 +373,8 @@ export type Messages = {
     backToAssessment: string;
     apiError: string;
     dimensionLabels: Record<string, string>;
+    /** 결과 페이지 다음 액션 그룹 라벨 (접근성). */
+    nextActionsLabel: string;
   };
   /** Arena 런 페이지·컴포넌트 문구. locale=ko 시 한국어만 표시(render-only). */
   arenaRun: {
@@ -785,7 +793,9 @@ const ko: Messages = {
     ariaDashboard: "대시보드로",
     loading: "불러오는 중…",
     emptyPhase: "진도 단계 정보를 불러올 수 없습니다. Awakening으로 이동해 보세요.",
+    loadError: "진도 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
   },
+  train: { title: "28일 훈련" },
   dojoResult: {
     title: "Today-Me 50문항 결과",
     areaScoresTitle: "영역별 점수",
@@ -809,6 +819,7 @@ const ko: Messages = {
       conflict: "갈등·협상",
       teamwork: "팀·협업",
     },
+    nextActionsLabel: "다음 액션",
   },
   arenaRun: {
     reflectionPrompt: "한 문장으로: 이 판에서 가져갈 것은?",
@@ -1219,7 +1230,9 @@ const en: Messages = {
     ariaDashboard: "Back to dashboard",
     loading: "Loading…",
     emptyPhase: "Phase information is unavailable. Try going to Awakening.",
+    loadError: "Could not load progress. Please try again later.",
   },
+  train: { title: "28-Day Training" },
   dojoResult: {
     title: "Today-Me 50-Item Result",
     areaScoresTitle: "Scores by area",
@@ -1243,6 +1256,7 @@ const en: Messages = {
       conflict: "Conflict & negotiation",
       teamwork: "Team & collaboration",
     },
+    nextActionsLabel: "Next actions",
   },
   arenaRun: {
     reflectionPrompt: "In one sentence: what will you take from this scenario?",

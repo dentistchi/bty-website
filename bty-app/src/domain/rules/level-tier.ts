@@ -1,6 +1,7 @@
 /**
  * Level / Tier / Stage mapping from Core XP.
  * Tier is internal (not exposed). Code and Sub Name drive leaderboard identity.
+ * 경계 상수: constants (CORE_XP_PER_TIER, TIERS_PER_CODE, CODE_NAMES, SUB_NAMES) 단일 소스.
  * See docs/spec/arena-domain-rules.md.
  */
 

@@ -51,9 +51,10 @@ export interface LeaderboardEntry {
   [k: string]: unknown;
 }
 
-// --- Constants ---------------------------------------------------------------
+// --- Constants (주간 레벨 경계·week_id는 API/서비스에서 관리) ---
 
-const WEEKLY_LEVEL_STEP = 100;
+/** 1 레벨당 XP. level = floor(xpTotal / WEEKLY_LEVEL_STEP) + 1. Tier 경계 0/100/200/300. */
+export const WEEKLY_LEVEL_STEP = 100;
 
 // --- awardXp -----------------------------------------------------------------
 

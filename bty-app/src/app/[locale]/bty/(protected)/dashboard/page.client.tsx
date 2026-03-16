@@ -870,9 +870,11 @@ export default function DashboardClient() {
           {/* [Q3] AIR 위젯 — API 응답 표시만, 규칙 계산 없음 */}
           <ProgressCard label={tBty.airLabel}>
             {leAir == null ? (
-              <p style={{ fontSize: 13, color: "var(--arena-text)", opacity: 0.8 }} role="status">
-                {tBty.airUnavailable}
-              </p>
+              <div role="region" aria-label={locale === "ko" ? "AIR 지표" : "AIR metrics"} style={{ display: "block" }}>
+                <p style={{ fontSize: 13, color: "var(--arena-text)", opacity: 0.8 }} role="status">
+                  {tBty.airUnavailable}
+                </p>
+              </div>
             ) : (
               <div role="region" aria-label={locale === "ko" ? "AIR 지표: 7일·14일·90일" : "AIR: 7d, 14d, 90d"} style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, fontSize: 14 }}>
                 <div style={{ textAlign: "center", padding: "12px 8px", border: "1px solid var(--arena-text-soft, #e5e7eb)", borderRadius: 10 }}>
@@ -943,9 +945,11 @@ export default function DashboardClient() {
 
           <ProgressCard label={locale === "ko" ? "Leadership Engine" : "Leadership Engine"}>
             {leState == null && leAir == null && leTii == null && leCertified == null ? (
-              <CardSkeleton showLabel={false} lines={3} />
+              <div role="region" aria-label={locale === "ko" ? "리더십 엔진 상태" : "Leadership Engine state"} aria-busy="true">
+                <CardSkeleton showLabel={false} lines={3} />
+              </div>
             ) : (
-              <>
+              <div role="region" aria-label={locale === "ko" ? "리더십 엔진 상태·TII·인증" : "Leadership Engine state, TII and Certified"}>
                 {leState != null && (
                   <>
                     <div style={{ fontSize: 15, fontWeight: 700 }}>{leState.stageName}</div>
@@ -990,7 +994,7 @@ export default function DashboardClient() {
                     )}
                   </div>
                 )}
-              </>
+              </div>
             )}
           </ProgressCard>
 
@@ -1425,7 +1429,7 @@ export default function DashboardClient() {
           </ProgressCard>
 
           <ProgressCard label="Streak">
-            <div style={{ fontSize: 28, fontWeight: 800 }}>{streak}</div>
+            <div role="region" aria-label={locale === "ko" ? "연속 일수" : "Streak days"} style={{ fontSize: 28, fontWeight: 800 }}>{streak}</div>
           </ProgressCard>
 
           {weeklyStats && (

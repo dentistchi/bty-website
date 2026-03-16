@@ -1,6 +1,7 @@
 /**
  * Season lifecycle rules: window boundaries, carryover.
  * See docs/spec/arena-domain-rules.md.
+ * 경계: SeasonWindow (types), carryover = constants.SEASON_CARRYOVER_FRACTION. 시즌 ID = SeasonWindow.id (API/DB 제공).
  */
 
 import type { ISODateString } from "../types";

@@ -1,8 +1,12 @@
 /**
- * domain/dashboard — RECOMMENDATION_SOURCE_PRIORITY·PROGRESS_PERCENT_DEFAULT 단위 테스트 (C3 대시보드·Q3/Q4).
+ * domain/dashboard — RECOMMENDATION_SOURCE_PRIORITY·RECOMMENDATION_SOURCE_ORDER·PROGRESS_PERCENT_DEFAULT 단위 테스트 (C3 대시보드·Q3/Q4).
  */
 import { describe, it, expect } from "vitest";
-import { RECOMMENDATION_SOURCE_PRIORITY, PROGRESS_PERCENT_DEFAULT } from "./dashboard";
+import {
+  RECOMMENDATION_SOURCE_PRIORITY,
+  RECOMMENDATION_SOURCE_ORDER,
+  PROGRESS_PERCENT_DEFAULT,
+} from "./dashboard";
 
 describe("PROGRESS_PERCENT_DEFAULT", () => {
   it("is 0 for missing progress display", () => {
@@ -17,5 +21,16 @@ describe("RECOMMENDATION_SOURCE_PRIORITY", () => {
     expect(RECOMMENDATION_SOURCE_PRIORITY.center).toBe(10);
     expect(RECOMMENDATION_SOURCE_PRIORITY.arena).toBeGreaterThan(RECOMMENDATION_SOURCE_PRIORITY.foundry);
     expect(RECOMMENDATION_SOURCE_PRIORITY.foundry).toBeGreaterThan(RECOMMENDATION_SOURCE_PRIORITY.center);
+  });
+});
+
+describe("RECOMMENDATION_SOURCE_ORDER", () => {
+  it("orders sources by RECOMMENDATION_SOURCE_PRIORITY (arena, foundry, center)", () => {
+    expect(RECOMMENDATION_SOURCE_ORDER).toEqual(["arena", "foundry", "center"]);
+    const order = [...RECOMMENDATION_SOURCE_ORDER];
+    const priorities = order.map((s) => RECOMMENDATION_SOURCE_PRIORITY[s]);
+    for (let i = 1; i < priorities.length; i++) {
+      expect(priorities[i]).toBeLessThanOrEqual(priorities[i - 1]);
+    }
   });
 });

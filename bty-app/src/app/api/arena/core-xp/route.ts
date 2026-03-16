@@ -1,11 +1,12 @@
 /**
  * GET /api/arena/core-xp
- *
  * Returns core XP, tier, code/sub name, avatar, and display fields.
- * Gate 1: useArenaSession and page MUST use response.tier only; do not
- * compute tier from coreXpTotal in the UI.
- * Gate 2: use response.requiresBeginnerPath for beginner redirect; do not
- * compare coreXpTotal to 200 (use domain BEGINNER_CORE_XP_THRESHOLD in API only).
+ *
+ * Response (200): CoreXpGetResponse (coreXpTotal, tier, requiresBeginnerPath, codeName, subName, seasonalXpTotal, codeHidden, subNameRenameAvailable, avatar*, currentOutfit, …).
+ * Error: 401 { error: "UNAUTHENTICATED" }, 500 { error: "DB_ERROR", detail?: string }.
+ *
+ * Gate 1: UI MUST use response.tier only; do not compute tier from coreXpTotal.
+ * Gate 2: use response.requiresBeginnerPath for beginner redirect; do not compare coreXpTotal to 200 (use domain BEGINNER_CORE_XP_THRESHOLD in API only).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";

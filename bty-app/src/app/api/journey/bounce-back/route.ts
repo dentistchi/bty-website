@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { getAuthUserFromRequest } from "@/lib/auth-server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
+/**
+ * POST /api/journey/bounce-back
+ * Increments bounce_back_count for the authenticated user.
+ *
+ * Response (200): { bounce_back_count: number }
+ * Errors: 401 { error: "Unauthorized" }, 503 { error: "Database not configured" }, 500 { error: string }
+ */
 export async function POST(request: Request) {
   const user = await getAuthUserFromRequest(request);
   if (!user) {

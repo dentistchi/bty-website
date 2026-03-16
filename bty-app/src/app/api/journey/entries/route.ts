@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { getAuthUserFromRequest } from "@/lib/auth-server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
+/**
+ * GET /api/journey/entries
+ * Query: day (optional, 1–28) — single day entry. Omit for all entries (array).
+ * Response (200): single object | null (when ?day=N), or array (when no day).
+ * Errors: 401 { error: "Unauthorized" }, 400 { error: "Invalid day" }, 503, 500.
+ */
 export async function GET(request: Request) {
   const user = await getAuthUserFromRequest(request);
   if (!user) {
@@ -50,6 +56,11 @@ export async function GET(request: Request) {
   return NextResponse.json(data || []);
 }
 
+/**
+ * POST /api/journey/entries
+ * Body: { day?: number, completed?: boolean, mission_checks?: number[], reflection_text?: string }
+ * Response (200): upserted row. Errors: 401, 503, 500.
+ */
 export async function POST(request: Request) {
   const user = await getAuthUserFromRequest(request);
   if (!user) {

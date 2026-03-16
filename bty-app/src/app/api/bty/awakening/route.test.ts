@@ -35,6 +35,15 @@ describe("GET /api/bty/awakening", () => {
     expect(data.error).toBe("UNAUTHENTICATED");
   });
 
+  it("returns 401 with JSON body containing only error key", async () => {
+    mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: {} });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+    expect(data.error).toBe("UNAUTHENTICATED");
+  });
+
   it("returns 200 with acts and trigger when authenticated", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },

@@ -259,6 +259,8 @@ export default function LeaderboardPage() {
 
       {!loading && !error && (data?.champions?.length ?? 0) > 0 && (
         <div
+          role="region"
+          aria-label={locale === "ko" ? "이번 주 챔피언" : "This week's champions"}
           style={{
             marginTop: 20,
             padding: "16px 20px",

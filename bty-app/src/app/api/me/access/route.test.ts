@@ -39,6 +39,16 @@ describe("GET /api/me/access", () => {
     expect(mockGetSupabaseAdmin).not.toHaveBeenCalled();
   });
 
+  it("returns 401 with JSON body containing only error key", async () => {
+    mockGetSupabaseServer.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: null }, error: null }) },
+    });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
   it("returns 503 when admin client is not configured", async () => {
     mockGetSupabaseServer.mockResolvedValue({
       auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1", email: "u@x.com" } }, error: null }) },

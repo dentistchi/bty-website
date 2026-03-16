@@ -1,7 +1,27 @@
 # 현재 작업 (진행 에이전트용)
 
-**진행 에이전트**: 이 파일 또는 커맨더 메시지에 적힌 **기능(요구사항)** 을 구현하세요.  
+**진행 에이전트**: 이 파일 또는 커맨더 메시지에 적힌 **기능(요구사항)** 을 구현하세요.
+
+**다음 배치 (SPRINT_PLAN)**: 이번 런 = **SPRINT 194 (구현 전용)**. C2(2) [ ] BLOCKER(배포 시 1회만)·C3(5) [x]·C4(5)·C5(5)·C6(5) [ ] 구체 작업. **C5 중단**: 실행 가능 [ ] 없음(1건 BLOCKER만). 다음 진행 = C1 회전으로 새 C5 작업 추가 또는 Journey·bounce-back BLOCKER 해제 후. docs/SPRINT_PLAN.md 참고. 검증=배포 전 1회만.
+
+**[C3] SPRINT 194 5건 (xp·season·dojo·assessment·domain barrel)**: [x] **완료.** xp·season·dojo·assessment JSDoc·주석, arena·center·foundry re-export 일치 확인. npm test 통과.
+
+**[REFRESH (C1)] SPRINT 193 → 194**: [x] **완료.** 193 남은 [ ] 모두 BLOCKER → 회전 완료. 194 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[C3] SPRINT 193 5건 (leaderboard·level-tier·stage·center·domain index)**: [x] **완료.** 정렬/타이브레이크·경계 상수·StageState·letter/resilience 유효성 JSDoc·주석, leadership-engine·rules export 확인. npm test 233 통과.
+
+**[REFRESH (C1)] SPRINT 192 → 193**: [x] **완료.** 192 남은 [ ] 모두 BLOCKER → 회전 완료. 193 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[C3] SPRINT 192 5건 (LE transition·weeklyXp·season·Healing·domain types)**: [x] **완료.** forced-reset·weeklyXp WEEKLY_LEVEL_STEP·season·healing 주석·domain barrel 확인. npm test 통과.
+
+**[REFRESH (C1)] SPRINT 191 → 192**: [x] **완료.** 191 전량 [x]. 192 생성. C2 2건 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[배포] 191 배포 완료**: [x] **완료.** C2 Gate § A~F·MVP 최종 확인·self-healing-ci 실행·BTY_RELEASE_GATE_CHECK·SPRINT_LOG 반영.  
 지시가 없으면 이 파일의 내용을 확인하고, 아래 형식으로 적힌 항목을 도메인 → API → UI 순으로 진행하세요.
+
+**[C3] LE Stage 검토 (SPRINT 191 TASK 1)**: [x] **완료.** stages.ts 진행도·스테이지 경계 상수(LE_STAGE_MIN/MAX·PROGRESS_PERCENT·STAGE_PROGRESS_PERCENT) 단일 소스 확인. 변경 없음.
+
+**[C3] SPRINT 191 TASK 2~5 (AIR·대시보드·Healing·domain barrel)**: [x] **완료.** air.ts·dashboard.ts·healing.ts·domain index 검토·확인. 단일 소스 유지. npm test 586 통과.
 
 **[SPRINT 190] C3 Domain Engineer 5건**: [x] **완료.** LE Stage·AIR·대시보드 검토 유지, RECOMMENDATION_SOURCE_ORDER·HEALING_PHASE_I_LABEL 추가, domain index에 foundry export 추가. npm test 583 통과.
 
@@ -41,7 +61,7 @@
 
 **C1 splint 10 (2026-03-11)**: [x] **완료.** SPRINT 44 8/10 완료(TASK 8·9 선택 미실행) → SPRINT 45 생성. 보드 "이번 런" = SPRINT 45 (TASK 1~10 [ ]). NEXT_PHASE·NEXT_BACKLOG 대기 6건 갱신. CURRENT_TASK 반영.
 
-**다음 배치 (SPRINT_PLAN)**: 이번 런 = **SPRINT 190** (구현 전용). **C2** 5건 [ ] (배포 시 2건 BLOCKER + 문서 점검 3건). **C3** 5건 [ ] (LE Stage·AIR·대시보드·Healing·domain index). **C4** 5건 [ ] (stage-summary·dashboard·Elite·Healing API·문서). **C5** 5건 [ ] (대시보드 위젯·Elite 접근성·Healing·Center 접근성·i18n). **C6** 5건 [ ] (route 테스트·도메인 테스트·build 통과). 각 5건 한 번에 구현 → [x]. docs/SPRINT_PLAN.md 참고. 검증=배포 전 1회만.
+**다음 배치 (SPRINT_PLAN)**: 이번 런 = **SPRINT 191** (구현 전용). **C2** 2건 [ ] BLOCKER 이관(배포 시 1회만). **C3·C4·C5·C6** 각 1~2건 [ ] 다음 백로그 대기(C1이 채우면 진행). docs/SPRINT_PLAN.md 참고. 검증=배포 전 1회만.
 
 **다음 배치 (이전)**: **SPRINT 185** 완료. 캐릭터·옷·악세사리 연동 C3·C4·C5·C6 전부 [x]. 186 전환됨.
 

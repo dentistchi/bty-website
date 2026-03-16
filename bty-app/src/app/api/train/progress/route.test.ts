@@ -34,4 +34,20 @@ describe("GET /api/train/progress", () => {
     expect(data).toHaveProperty("completedDays");
     expect(data).toHaveProperty("todayUnlockedDay");
   });
+
+  it("returns 200 with expected response keys", async () => {
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    const expectedKeys = [
+      "completedDays",
+      "hasSession",
+      "lastCompletedDay",
+      "ok",
+      "startDateISO",
+      "todayUnlockedDay",
+      "unlockedMaxDay",
+    ].sort();
+    expect(Object.keys(data).sort()).toEqual(expectedKeys);
+  });
 });

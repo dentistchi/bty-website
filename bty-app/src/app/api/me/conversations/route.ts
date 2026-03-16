@@ -3,7 +3,12 @@ import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 
 export const runtime = "nodejs";
 
-/** GET: list=sessions → 세션 목록(이력). 없으면 마지막 세션 + 메시지 (channel=chat | mentor) */
+/**
+ * GET /api/me/conversations
+ * Query: channel=chat|mentor (required), list=sessions (optional).
+ * list=sessions → 200 { sessions: { id, topic, createdAt }[] }. Else 200 { sessionId, topic?, messages, createdAt } or { sessionId: null, messages: [], createdAt: null }.
+ * Errors: 401 { error: "UNAUTHENTICATED" }, 400 channel invalid, 500.
+ */
 export async function GET(req: NextRequest) {
   const supabase = await getSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();

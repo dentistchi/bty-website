@@ -1,6 +1,6 @@
 /**
  * POST /api/center/letter — Center "나에게 쓰는 편지" 저장 + 답장 생성.
- * Thin handler: auth → service call → response.
+ * Response (200): service result. Errors: 401 { error: "Unauthorized" }, 400 body_empty, 500.
  */
 import { NextResponse } from "next/server";
 import { getLetterAuth, submitCenterLetter } from "@/lib/bty/center";

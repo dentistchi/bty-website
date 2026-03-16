@@ -249,7 +249,7 @@ export default function DojoClient({ locale = "ko" }: { locale?: string }) {
         </div>
       </section>
 
-      <div className="mt-8 flex items-center justify-between gap-4">
+      <div className="mt-8 flex items-center justify-between gap-4" role="group" aria-label={isEn ? "Previous and next question" : "이전·다음 문항"}>
         <button
           type="button"
           onClick={goPrev}

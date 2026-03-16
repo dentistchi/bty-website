@@ -116,12 +116,12 @@ export default function BtyArenaPage() {
           </div>
         )}
         {s.completeError && (
-          <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 10, background: "#fff7f7", border: "1px solid #f1c0c0", fontSize: 14, color: "#8b2e2e" }}>
+          <div role="alert" style={{ marginTop: 12, padding: "10px 14px", borderRadius: 10, background: "#fff7f7", border: "1px solid #f1c0c0", fontSize: 14, color: "#8b2e2e" }}>
             {s.completeError}
           </div>
         )}
 
-      <div style={{ marginTop: 18, padding: 18, border: "1px solid #eee", borderRadius: 14 }}>
+      <div role="region" aria-label={locale === "ko" ? "시나리오 진행·완료" : "Scenario progress and result"} style={{ marginTop: 18, padding: 18, border: "1px solid #eee", borderRadius: 14 }}>
         {s.step === 1 && (
           <ArenaStepIntro
             locale={locale}

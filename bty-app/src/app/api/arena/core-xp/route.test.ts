@@ -34,6 +34,14 @@ describe("GET /api/arena/core-xp", () => {
     expect(data.error).toBe("UNAUTHENTICATED");
   });
 
+  it("returns 401 with JSON body containing only error key", async () => {
+    mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: {} });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
   it("returns 200 with default payload when authenticated and no profile row", async () => {
     const countResult = { count: 0, error: null };
     const countThenable = Object.assign(Promise.resolve(countResult), {
@@ -72,5 +80,24 @@ describe("GET /api/arena/core-xp", () => {
     expect(data.requiresBeginnerPath).toBe(true);
     expect(data.codeName).toBe("FORGE");
     expect(data.subName).toBe("Spark");
+    const expectedKeys = [
+      "avatarCharacterId",
+      "avatarCharacterImageUrl",
+      "avatarCharacterLocked",
+      "avatarOutfitImageUrl",
+      "avatarOutfitTheme",
+      "avatarSelectedOutfitId",
+      "avatarUrl",
+      "codeHidden",
+      "codeName",
+      "coreXpTotal",
+      "currentOutfit",
+      "requiresBeginnerPath",
+      "seasonalXpTotal",
+      "subName",
+      "subNameRenameAvailable",
+      "tier",
+    ].sort();
+    expect(Object.keys(data).sort()).toEqual(expectedKeys);
   });
 });

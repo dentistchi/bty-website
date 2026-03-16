@@ -14,6 +14,7 @@
  * Pure domain only; no UI, API, or DB.
  */
 
+/** Stage 4 forced transition — 단일 소스. TII·certified 경계는 각각 tii.ts·certified.ts. */
 export const FORCED_RESET_STAGE3_COUNT_THRESHOLD = 2 as const;
 export const FORCED_RESET_AIR_7D_THRESHOLD = 0.7 as const;
 export const FORCED_RESET_NO_QR_DAYS_THRESHOLD = 7 as const;

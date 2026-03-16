@@ -399,7 +399,7 @@ export default function MentorPage() {
               {t.slogan}
             </p>
             {prefsLoaded && (
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm">
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm" role="group" aria-label={isEn ? "Conversation settings" : "대화 설정"}>
                 <label className="flex items-center gap-2 text-mentor-ink-soft cursor-pointer">
                   <input
                     type="checkbox"
@@ -531,7 +531,7 @@ export default function MentorPage() {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 min-h-[280px]">
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 min-h-[280px]" role="region" aria-label={isEn ? "Conversation messages" : "대화 내용"}>
                 {messages.map((m, i) => (
                   <div
                     key={i}

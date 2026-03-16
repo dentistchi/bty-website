@@ -79,18 +79,19 @@ export default function AssessmentClient({
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12" role="main" aria-label={isEn ? "Self-esteem 50-item assessment" : "자존감 50문항 자가 진단"}>
       {/* Progress */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl sm:text-2xl font-semibold text-[var(--arena-text)]">
-          {isEn ? "Self-Esteem Assessment (50)" : "Today-Me 자가 진단 (50문항)"}
-        </h1>
-        <span className="text-sm text-[var(--arena-text-soft)]" aria-live="polite">
-          {progressLabel} {currentIndex + 1} / {total}
-        </span>
-      </div>
+      <div className="mb-8" role="region" aria-label={isEn ? "Assessment progress" : "진단 진행"}>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-xl sm:text-2xl font-semibold text-[var(--arena-text)]">
+            {isEn ? "Self-Esteem Assessment (50)" : "Today-Me 자가 진단 (50문항)"}
+          </h1>
+          <span className="text-sm text-[var(--arena-text-soft)]" aria-live="polite">
+            {progressLabel} {currentIndex + 1} / {total}
+          </span>
+        </div>
 
-      {/* Progress bar */}
-      <div
-        className="h-1.5 bg-[var(--arena-text-soft)]/20 rounded-full overflow-hidden mb-8"
+        {/* Progress bar */}
+        <div
+          className="h-1.5 bg-[var(--arena-text-soft)]/20 rounded-full overflow-hidden mb-8"
         role="progressbar"
         aria-valuenow={currentIndex + 1}
         aria-valuemin={1}
@@ -101,6 +102,7 @@ export default function AssessmentClient({
           className="h-full bg-[var(--arena-accent)] transition-all duration-300"
           style={{ width: `${((currentIndex + 1) / total) * 100}%` }}
         />
+      </div>
       </div>
 
       {/* §7: 한 문항씩 노출 — 질문 하나하나 정성 플로우 */}

@@ -60,6 +60,14 @@ describe("GET /api/arena/leaderboard", () => {
     expect(data.message).toBe("Sign in to see leaderboard");
   });
 
+  it("returns 401 with JSON body containing only error and message keys", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: null } });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(Object.keys(data).sort()).toEqual(["error", "message"].sort());
+  });
+
   it("returns 500 when fetchWeeklyXpRows fails", async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } } });
     mockFetchWeeklyXpRows.mockResolvedValue({
@@ -72,5 +80,31 @@ describe("GET /api/arena/leaderboard", () => {
     const data = await res.json();
     expect(data.error).toBe("WEEKLY_XP_QUERY_FAILED");
     expect(data.detail).toBeDefined();
+  });
+
+  it("returns 200 with expected response keys when successful", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } } });
+    mockFetchWeeklyXpRows.mockResolvedValue({ rows: [], error: null });
+
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    const expectedKeys = [
+      "champions",
+      "count",
+      "gapToAbove",
+      "leaderboard",
+      "myRank",
+      "myXp",
+      "nearMe",
+      "reset_at",
+      "scope",
+      "scopeLabel",
+      "scopeUnavailable",
+      "season",
+      "top10",
+      "week_end",
+    ].sort();
+    expect(Object.keys(data).sort()).toEqual(expectedKeys);
   });
 });

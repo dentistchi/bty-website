@@ -1,3 +1,7 @@
+/**
+ * Middleware: locale normalization, logout cookie clear, protected page redirects.
+ * API (/api/*): not auth-checked here; protected routes return 401 { error: "UNAUTHENTICATED" } via requireUser.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { expireAuthCookiesHard, reassertAuthCookiesPathRoot } from "@/lib/bty/cookies/authCookies";

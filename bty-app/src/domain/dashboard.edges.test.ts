@@ -5,6 +5,7 @@
 import { describe, it, expect } from "vitest";
 import {
   PROGRESS_PERCENT_DEFAULT,
+  RECOMMENDATION_SOURCE_ORDER,
   RECOMMENDATION_SOURCE_PRIORITY,
 } from "./dashboard";
 
@@ -21,5 +22,13 @@ describe("domain/dashboard (edges)", () => {
   it("exports PROGRESS_PERCENT_DEFAULT as number", () => {
     expect(typeof PROGRESS_PERCENT_DEFAULT).toBe("number");
     expect(PROGRESS_PERCENT_DEFAULT).toBe(0);
+  });
+
+  it("exports RECOMMENDATION_SOURCE_ORDER as readonly array of three sources", () => {
+    expect(Array.isArray(RECOMMENDATION_SOURCE_ORDER)).toBe(true);
+    expect(RECOMMENDATION_SOURCE_ORDER).toHaveLength(3);
+    expect(RECOMMENDATION_SOURCE_ORDER).toContain("arena");
+    expect(RECOMMENDATION_SOURCE_ORDER).toContain("foundry");
+    expect(RECOMMENDATION_SOURCE_ORDER).toContain("center");
   });
 });

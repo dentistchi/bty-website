@@ -45,17 +45,22 @@ export default function SecondAwakeningPageClient() {
   const router = useRouter();
   const [data, setData] = useState<SecondAwakeningRes | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    setError(null);
     fetch("/api/emotional-stats/second-awakening")
       .then((r) => r.json())
       .then((d: SecondAwakeningRes) => {
         setData(d);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
-  }, []);
+      .catch(() => {
+        setError(locale === "ko" ? "2차 각성 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요." : "Could not load Second Awakening. Please try again later.");
+        setLoading(false);
+      });
+  }, [locale]);
 
   const handleEnterNextPhase = () => {
     if (!data?.eligible || data.completed || submitting) return;
@@ -74,7 +79,33 @@ export default function SecondAwakeningPageClient() {
       .catch(() => setSubmitting(false));
   };
 
-  if (loading || !data) {
+  if (loading && !error) {
+    const tLoading = getMessages(locale === "ko" ? "ko" : "en").loading;
+    return (
+      <AuthGate>
+        <ThemeBody theme="foundry" />
+        <main className="min-h-screen bg-foundry-white flex items-center justify-center" aria-busy="true" aria-label={locale === "ko" ? "2차 각성 불러오는 중" : "Loading Second Awakening"}>
+          <LoadingFallback icon="⏳" message={tLoading.message} withSkeleton />
+        </main>
+      </AuthGate>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <AuthGate>
+        <ThemeBody theme="foundry" />
+        <main className="min-h-screen bg-foundry-white flex flex-col items-center justify-center px-4" aria-label={locale === "ko" ? "2차 각성 오류" : "Second Awakening error"}>
+          <p className="text-foundry-ink-soft text-center mb-4" role="alert">{error}</p>
+          <Link href={locale === "ko" ? "/ko/bty/healing" : "/en/bty/healing"} className="rounded-xl px-6 py-3 font-medium border border-foundry-purple-muted text-foundry-purple hover:bg-foundry-purple/10 transition-colors" aria-label={locale === "ko" ? "Healing으로 돌아가기" : "Back to Healing"}>
+            {locale === "ko" ? "Healing으로" : "Back to Healing"}
+          </Link>
+        </main>
+      </AuthGate>
+    );
+  }
+
+  if (!data) {
     const tLoading = getMessages(locale === "ko" ? "ko" : "en").loading;
     return (
       <AuthGate>

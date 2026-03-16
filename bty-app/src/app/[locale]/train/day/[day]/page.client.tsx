@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useParams } from "next/navigation";
 import { useTrain } from "@/contexts/TrainContext";
+import { getMessages } from "@/lib/i18n";
 
 import TRAIN_EN from "@/content/train-28days.en.json";
 
@@ -12,7 +13,9 @@ function clampDay(n: number) {
 }
 
 export default function TrainDayPage() {
-  const params = useParams<{ day: string }>();
+  const params = useParams<{ locale?: string; day: string }>();
+  const locale = (params?.locale === "ko" ? "ko" : "en") as "ko" | "en";
+  const t = getMessages(locale).train;
   const day = clampDay(Number(params.day));
 
   const {
@@ -41,7 +44,7 @@ export default function TrainDayPage() {
     <div style={{ display: "grid", gridTemplateColumns: "360px 1fr 420px", height: "100vh" }}>
       {/* LEFT: Sidebar */}
       <aside style={{ borderRight: "1px solid #eee", padding: 16, overflow: "auto" }}>
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>28-Day Training</div>
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>{t.title}</div>
         <div style={{ opacity: 0.7, marginBottom: 16 }}>
           Unlocked today: Day {progress?.todayUnlockedDay ?? 1}
         </div>
@@ -132,7 +135,7 @@ export default function TrainDayPage() {
       </main>
 
       {/* RIGHT: Chat / Completion Summary */}
-      <aside style={{ borderLeft: "1px solid #eee", padding: 16, overflow: "auto" }}>
+      <aside role="region" aria-label="Completion summary and coach chat" style={{ borderLeft: "1px solid #eee", padding: 16, overflow: "auto" }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <button
             type="button"

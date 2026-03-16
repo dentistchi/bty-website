@@ -1,6 +1,7 @@
 /**
  * XP rules: Seasonal → Core conversion.
  * Core XP is permanent; conversion rates from docs/spec/arena-domain-rules.md.
+ * coreXp·레벨 경계: constants (BEGINNER threshold, 45/60 rates); tier/level = level-tier (tierFromCoreXp, CORE_XP_PER_TIER).
  */
 
 import type { SeasonalToCoreResult } from "../types";

@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 
+/**
+ * GET /api/arena/runs
+ * Query: limit (optional, 1–50, default 10).
+ * Response (200): { runs: { run_id, scenario_id, locale, started_at, status }[] }.
+ * Error: 401 { error: "UNAUTHENTICATED", message }, 500 { error: "DB_ERROR", detail }.
+ */
 export async function GET(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);
   if (!user) {

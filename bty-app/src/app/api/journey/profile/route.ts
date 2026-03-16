@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { getAuthUserFromRequest } from "@/lib/auth-server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
+/**
+ * GET /api/journey/profile — bty_profiles 현재 사용자 (current_day, season, bounce_back_count 등).
+ * Response (200): { current_day, started_at, season, bounce_back_count, last_completed_at?, updated_at?, is_new? }. Error: 401, 503, 500.
+ */
 export async function GET(request: Request) {
   const user = await getAuthUserFromRequest(request);
   if (!user) {

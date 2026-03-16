@@ -4,6 +4,7 @@
  */
 import { describe, it, expect } from "vitest";
 import {
+  LETTER_BODY_MAX_LENGTH,
   validateLetterBody,
   type LetterSubmission,
   type LetterWithReply,
@@ -11,6 +12,10 @@ import {
 } from "./letter";
 
 describe("center/letter (edges)", () => {
+  it("exports LETTER_BODY_MAX_LENGTH as 10000", () => {
+    expect(LETTER_BODY_MAX_LENGTH).toBe(10_000);
+  });
+
   describe("validateLetterBody boundaries", () => {
     it("rejects tab-only input", () => {
       const r = validateLetterBody("\t\t\t");

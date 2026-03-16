@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { getSecondAwakening } from "@/lib/bty/emotional-stats/secondAwakening";
 
-/** GET: Second Awakening eligibility and ritual payload (private_only). */
+/**
+ * GET /api/emotional-stats/second-awakening
+ * Second Awakening eligibility and ritual payload (private_only).
+ * Response (200): service result (eligible, completed, ...). Error: 401 { error: "UNAUTHENTICATED" }, 500 { error, eligible, completed }.
+ */
 export async function GET(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);
   if (!user) return unauthenticated(req, base);

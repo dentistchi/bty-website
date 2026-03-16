@@ -129,6 +129,33 @@ describe("POST /api/journey/bounce-back", () => {
     expect(data.bounce_back_count).toBe(3);
   });
 
+  it("returns 200 with exactly bounce_back_count key", async () => {
+    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    const mockFrom = vi.fn().mockImplementation(() => ({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { bounce_back_count: 0, current_day: 1, season: 1 },
+          }),
+        }),
+      }),
+      upsert: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { bounce_back_count: 1 },
+            error: null,
+          }),
+        }),
+      }),
+    }));
+    mockGetSupabaseAdmin.mockReturnValue({ from: mockFrom });
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["bounce_back_count"]);
+  });
+
   it("returns 200 with content-type application/json on success", async () => {
     mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
     const mockFrom = vi.fn().mockImplementation(() => ({

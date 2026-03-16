@@ -44,6 +44,14 @@ describe("GET /api/arena/leadership-engine/tii", () => {
     expect(mockGetActiveLeague).not.toHaveBeenCalled();
   });
 
+  it("returns 401 with JSON body containing only error key", async () => {
+    mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: {} });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
   it("returns 200 with tii null when no league", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
@@ -55,6 +63,7 @@ describe("GET /api/arena/leadership-engine/tii", () => {
     const res = await GET(makeRequest());
     expect(res.status).toBe(200);
     const data = await res.json();
+    expect(Object.keys(data).sort()).toEqual(["avg_air", "avg_mwd", "tii", "tsp"].sort());
     expect(data.tii).toBeNull();
     expect(data.avg_air).toBeNull();
     expect(data.avg_mwd).toBeNull();
@@ -92,5 +101,19 @@ describe("GET /api/arena/leadership-engine/tii", () => {
     expect(data.avg_air).toBe(0.8);
     expect(data.avg_mwd).toBe(0.25);
     expect(data.tsp).toBe(4);
+  });
+
+  it("returns 200 with exactly tii, avg_air, avg_mwd, tsp keys", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {},
+      base: {},
+    });
+    mockGetActiveLeague.mockResolvedValue(null);
+
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Object.keys(data).sort()).toEqual(["avg_air", "avg_mwd", "tii", "tsp"].sort());
   });
 });

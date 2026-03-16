@@ -7,11 +7,10 @@ import type { EliteBadgeGrant } from "@/lib/bty/arena/eliteBadge";
 export const runtime = "nodejs";
 
 /**
- * @contract
  * GET /api/me/elite
- *   Auth: required (session)
- *   200: EliteGetResponse { isElite, badges, eliteContentUnlocked }
- *   401: { error: "UNAUTHENTICATED" }
+ * @contract Auth: required (session). Query: none.
+ * Response (200): EliteGetResponse { isElite, badges, eliteContentUnlocked }.
+ * Error: 401 { error: "UNAUTHENTICATED" }.
  */
 export type EliteGetResponse = {
   isElite: boolean;

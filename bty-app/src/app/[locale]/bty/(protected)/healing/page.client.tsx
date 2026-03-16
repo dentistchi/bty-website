@@ -18,10 +18,12 @@ export default function HealingPageClient({ locale }: Props) {
   const t = getMessages(lang).healing;
   const [phase, setPhase] = React.useState<string | null>(null);
   const [healingLoading, setHealingLoading] = React.useState(true);
+  const [healingError, setHealingError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let alive = true;
     setHealingLoading(true);
+    setHealingError(null);
     fetch("/api/bty/healing", { credentials: "include" })
       .then((r) => r.json().catch(() => ({})))
       .then((data: HealingApiRes) => {
@@ -31,12 +33,15 @@ export default function HealingPageClient({ locale }: Props) {
         }
       })
       .catch(() => {
-        if (alive) setHealingLoading(false);
+        if (alive) {
+          setHealingError(t.loadError);
+          setHealingLoading(false);
+        }
       });
     return () => {
       alive = false;
     };
-  }, []);
+  }, [lang]);
 
   return (
     <div
@@ -63,7 +68,12 @@ export default function HealingPageClient({ locale }: Props) {
           {phase}
         </p>
       )}
-      {!healingLoading && phase == null && (
+      {healingError && (
+        <p style={{ fontSize: 13, color: "#b91c1c", marginBottom: 16 }} role="alert">
+          {healingError}
+        </p>
+      )}
+      {!healingLoading && !healingError && phase == null && (
         <p style={{ fontSize: 13, opacity: 0.75, marginBottom: 16 }} role="status">
           {t.emptyPhase}
         </p>

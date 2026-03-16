@@ -1,6 +1,6 @@
 /**
  * Center letter 도메인 — 순수 타입·검증 함수.
- * DB/fetch 금지. UI/API는 이 모듈의 타입과 검증만 사용.
+ * DB/fetch 금지. 경계·유효성: LETTER_BODY_MAX_LENGTH, validateLetterBody 단일 소스.
  */
 
 export type LetterLocale = "ko" | "en";

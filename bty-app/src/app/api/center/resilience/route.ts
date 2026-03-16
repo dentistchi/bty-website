@@ -1,6 +1,6 @@
 /**
  * GET /api/center/resilience — Center 일별/기간별 회복 탄력성 트렉.
- * Thin handler: auth + query parse → service → response.
+ * Query: period (optional). Response (200): { entries: ResilienceDayEntry[] }. Error: 401 { error: "Unauthorized" }, 500.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";

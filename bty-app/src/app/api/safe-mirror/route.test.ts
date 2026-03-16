@@ -41,6 +41,13 @@ describe("POST /api/safe-mirror", () => {
     expect(data.message.length).toBeGreaterThan(0);
   });
 
+  it("returns 200 with exactly message key", async () => {
+    const res = await POST(makeRequest({ message: "ok" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["message"]);
+  });
+
   it("returns 200 with Korean fallback when lang=ko and no API key", async () => {
     const res = await POST(makeRequest({ message: "힘들어요", lang: "ko" }));
     expect(res.status).toBe(200);

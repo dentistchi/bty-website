@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 
+/**
+ * GET /api/arena/profile — 현재 사용자 arena_profiles 행 + avatarCharacterId.
+ * Response (200): { profile: object, avatarCharacterId: string | null }. Error: 401 UNAUTHENTICATED, 500.
+ */
 export async function GET(req: NextRequest) {
   const { user, supabase: routeSupabase, base } = await requireUser(req);
   if (!user) return unauthenticated(req, base);

@@ -4,6 +4,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+/**
+ * POST /api/train/complete
+ * Body: { day: number } (1–28). Marks day complete (stub: no DB yet).
+ * Response (200): { ok: true }. Error: 400 { ok: false, error: "invalid day" }.
+ */
 function noStore(res: NextResponse) {
   res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
   res.headers.append("Vary", "Cookie");

@@ -232,7 +232,8 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
   }
 
   const { scores, pattern } = computed;
-  const dimLabels = getMessages((isEn ? "en" : "ko") as Locale).dojoResult.dimensionLabels;
+  const dojoT = getMessages((isEn ? "en" : "ko") as Locale).dojoResult;
+  const dimLabels = dojoT.dimensionLabels;
   const prevScores =
     !historyLoading && history.length >= 2 && history[1]?.scores_json
       ? history[1].scores_json
@@ -320,7 +321,7 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
         </ul>
       </div>
 
-      <div className="mt-8 flex gap-3">
+      <div className="mt-8 flex gap-3" role="group" aria-label={dojoT.nextActionsLabel}>
         {/* 28일 프로그램 시작 버튼: 지금 existing route에 맞춰서 바꿔주면 됨 */}
         <Link
           href="/train/day/1"

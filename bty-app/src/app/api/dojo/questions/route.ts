@@ -1,11 +1,6 @@
 /**
  * GET /api/dojo/questions — Dojo 50문항·선택지 조회.
- * DOJO_DEAR_ME_50_DB_AND_FLOWS_IMPLEMENT_1PAGE §1. 도메인 mapDojoQuestionRow만 사용.
- *
- * @contract
- * GET /api/dojo/questions
- *   200: DojoQuestionsGetResponse
- *   500: DojoQuestionsErrorResponse
+ * Response (200): { questions, choiceValues }. Error: 500 { error: string }.
  */
 
 import { NextResponse } from "next/server";

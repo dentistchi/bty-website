@@ -6,6 +6,14 @@ Summary of gate/integration runs (C7). Major sprint state changes. C1 REFRESH re
 
 ## 2026-03-16
 
+- **REFRESH (C1)**: SPRINT 193 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 194 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 192 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 193 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 191 전량 [x] (C2·C3·C4·C5·C6). 다음 스프린트 생성. SPRINT 192. C2 항목 2건 이관(배포 시 1회). C3·C4·C5·C6 각 5건 [ ] 할당. Objective: Q3·Q4 연속(LE transition·weekly·season·healing edges·API·UI·테스트).
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **배포 (C2)**: 191 배포 시 1회. Gate § A~F·MVP 최종 확인·self-healing-ci 실행 완료. Lint ✓ Test ✓ Build ✓. PASS. BTY_RELEASE_GATE_CHECK·SPRINT_LOG 반영.
+- **REFRESH (C1)**: SPRINT 190 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C4 API 문서 docs 소관) → 회전 완료. SPRINT 191 생성. C2 항목 2건 이관(맨 위 [ ]). C3·C4·C5·C6 다음 백로그 대기(C1 채움). Mode FOUNDRY.
 - **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
 - **REFRESH (C1)**: 189 전 항목 [x] 처리·다음 작업 진행. SPRINT 190 생성. C2(5)·C3(5)·C4(5)·C5(5)·C6(5) [ ] 구체 작업 할당. Objective: LE·대시보드·Elite·Healing·접근성·테스트. Mode FOUNDRY.
 - **REFRESH (C1)**: SPRINT 189. C2(2)·C3(2)·C4(2) [ ] BLOCKER 또는 선택 비움. C5·C6 [x]. Plan 유지.

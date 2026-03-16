@@ -3,7 +3,7 @@
  *
  * codeIndexFromTier, subTierGroupFromTier, codeNameFromIndex, resolveSubName
  * are canonical in level-tier.ts — imported here for internal use only.
- * Unique to this module: stageNumberFromCoreXp, defaultSubName, stageStateFromCoreXp.
+ * Unique: stageNumberFromCoreXp (floor(coreXp/100)+1, cap 7), stageStateFromCoreXp → types.StageState.
  */
 
 import { SUB_NAMES } from "../constants";

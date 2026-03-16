@@ -216,6 +216,31 @@ describe("GET /api/arena/dashboard/summary", () => {
     expect(data.todayGrowth).toEqual({ xpToday: 0 });
   });
 
+  it("returns 200 with recommendation object containing only nextAction, source, priority keys", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {
+        from: () => ({
+          select: () => ({
+            eq: () => ({ gte: () => Promise.resolve({ data: [] }) }),
+          }),
+        }),
+      },
+      base: {},
+    });
+    mockGetLeadershipEngineState.mockResolvedValue({
+      currentStage: 1,
+      stageName: "Over-Intervention (Speed Bias)",
+      forcedResetTriggeredAt: null,
+      resetDueAt: null,
+    });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const rec = (await res.json()).recommendation;
+    expect(rec).not.toBeNull();
+    expect(Object.keys(rec).sort()).toEqual(["nextAction", "priority", "source"].sort());
+  });
+
   it("returns 200 with recommendation when query source=arena", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },

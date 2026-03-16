@@ -4,7 +4,12 @@ import { ADVANCED_STATS, CORE_STATS, type CoreStatId } from "@/lib/bty/emotional
 import { getUnlockedAdvancedStats } from "@/lib/bty/emotional-stats/unlock";
 import type { UserCoreValues } from "@/lib/bty/emotional-stats/unlock";
 
-/** Build display phrases only (no numbers). Includes phase_status for Phase II ring (visibility: no numbers). */
+/**
+ * GET /api/emotional-stats/display
+ * Returns display phrases and phase_status (no raw numbers). Phase II when second_awakening completed.
+ * Response (200): { phrases: string[], phase_status: object | null, ... }
+ * Error: 401 { error: "UNAUTHENTICATED" }
+ */
 export async function GET(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);
   if (!user) return unauthenticated(req, base);

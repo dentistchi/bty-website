@@ -10,6 +10,11 @@ function noStore(res: NextResponse) {
   return res;
 }
 
+/**
+ * GET /api/train/progress
+ * Returns progress pack: startDateISO, lastCompletedDay, completedDays, todayUnlockedDay, unlockedMaxDay.
+ * Response (200): { ok, hasSession, startDateISO, lastCompletedDay, completedDays, todayUnlockedDay, unlockedMaxDay }.
+ */
 export async function GET() {
   // ✅ 임시: startDateISO를 "오늘"로 (Day 1이 오늘이 되게)
   const today = new Date();

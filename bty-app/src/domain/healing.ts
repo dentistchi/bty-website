@@ -2,6 +2,7 @@
  * Healing / Awakening — phase·상태 타입·상수.
  * Pure types and constants only. No UI, API, or DB.
  * Ref: docs/specs/healing-coaching-spec-v3.json, docs/ROADMAP_Q3_Q4.md Q4.
+ * Phase 전이(Phase I → II) 경계·경우는 API/서비스에서 판단; 도메인은 라벨·트리거 상수만.
  */
 
 /** Healing 공개 신호용 phase 라벨. */

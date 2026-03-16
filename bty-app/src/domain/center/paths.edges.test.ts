@@ -10,6 +10,13 @@ import {
 } from "./paths";
 
 describe("Center paths (edges)", () => {
+  it("exports CENTER_CTA_PATH and CENTER_CHAT_OPEN_EVENT as non-empty strings", () => {
+    expect(typeof CENTER_CTA_PATH).toBe("string");
+    expect(CENTER_CTA_PATH.length).toBeGreaterThan(0);
+    expect(typeof CENTER_CHAT_OPEN_EVENT).toBe("string");
+    expect(CENTER_CHAT_OPEN_EVENT.length).toBeGreaterThan(0);
+  });
+
   it("getCenterCtaHref with locale containing hyphen", () => {
     expect(getCenterCtaHref("en-US")).toBe("/en-US/bty");
   });

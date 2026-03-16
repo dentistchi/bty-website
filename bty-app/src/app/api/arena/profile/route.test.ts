@@ -42,6 +42,14 @@ describe("GET /api/arena/profile", () => {
     expect(data.error).toBe("UNAUTHENTICATED");
   });
 
+  it("returns 401 with JSON body containing only error key", async () => {
+    mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: {} });
+    const res = await GET(makeGetRequest());
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
   it("returns 200 with profile when authenticated and profile exists", async () => {
     const mockRpc = vi.fn().mockResolvedValue({ error: null });
     const mockSingle = vi.fn().mockResolvedValue({
@@ -67,6 +75,31 @@ describe("GET /api/arena/profile", () => {
     const data = await res.json();
     expect(data.profile).toBeDefined();
     expect(data.avatarCharacterId).toBeNull();
+  });
+
+  it("returns 200 with exactly profile and avatarCharacterId keys", async () => {
+    const mockSingle = vi.fn().mockResolvedValue({
+      data: { user_id: "u1", display_name: "Test", avatar_character_id: null },
+      error: null,
+    });
+    const supabase = {
+      rpc: vi.fn().mockResolvedValue({ error: null }),
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({ single: mockSingle }),
+        }),
+      }),
+    };
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase,
+      base: {},
+    });
+
+    const res = await GET(makeGetRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Object.keys(data).sort()).toEqual(["avatarCharacterId", "profile"].sort());
   });
 });
 

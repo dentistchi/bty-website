@@ -6,6 +6,7 @@ import {
   AWAKENING_ACT_NAMES,
   AWAKENING_TRIGGER_DAY,
   AWAKENING_TRIGGER_MIN_SESSIONS,
+  HEALING_PHASE_I_LABEL,
   HEALING_PHASE_II_LABEL,
   HEALING_PHASE_RING_TYPE,
 } from "./healing";
@@ -17,7 +18,8 @@ describe("healing domain", () => {
     expect(AWAKENING_ACT_NAMES[3]).toBe("Awakening");
   });
 
-  it("HEALING_PHASE_II_LABEL is Phase II", () => {
+  it("HEALING_PHASE_I_LABEL and HEALING_PHASE_II_LABEL are Phase I and Phase II", () => {
+    expect(HEALING_PHASE_I_LABEL).toBe("Phase I");
     expect(HEALING_PHASE_II_LABEL).toBe("Phase II");
   });
 

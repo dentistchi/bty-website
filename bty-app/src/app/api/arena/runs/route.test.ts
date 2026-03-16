@@ -61,4 +61,29 @@ describe("GET /api/arena/runs", () => {
     expect(data.error).toBe("DB_ERROR");
     expect(data.detail).toBeDefined();
   });
+
+  it("returns 200 with runs array when authenticated", async () => {
+    const supabase = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            order: () => ({
+              limit: () => Promise.resolve({ data: [], error: null }),
+            }),
+          }),
+        }),
+      }),
+    };
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase,
+      base: {},
+    });
+
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveProperty("runs");
+    expect(Array.isArray(data.runs)).toBe(true);
+  });
 });

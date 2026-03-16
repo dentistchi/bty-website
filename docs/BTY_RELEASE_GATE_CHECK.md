@@ -47,6 +47,8 @@
 
 **배포 시 실행 순서**: MVP_DEPLOYMENT_READINESS(1회) → Gate(self-healing-ci 등) → 본 문서·보드·CURRENT_TASK 반영.
 
+**최근 완료 (배포 191)**: 191 배포 시 1회. Gate § A~F·MVP 최종 확인·self-healing-ci 실행 완료. **RESULT: PASS.** 본 문서·SPRINT_LOG 반영.
+
 **최근 완료 (2026-03-11)**: [VERIFY] 엘리트 3차 체크리스트 1회 (SPRINT 44 TASK 6, C5). 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** ELITE_3RD_SPEC_AND_CHECKLIST §3·보드·CURRENT_TASK 반영.
 
 **최근 완료 (2026-03-11)**: [UI] Center/Foundry 접근성 1곳 (SPRINT 44 TASK 4, C4). integrity 페이지 `<main>` 3곳 aria-label(ko: "역지사지 시뮬레이터", en: "Integrity simulator"). render-only. Lint ✓.

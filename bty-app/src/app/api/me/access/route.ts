@@ -5,6 +5,10 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
 
+/**
+ * GET /api/me/access — 현재 사용자 + 활성 멤버십 목록.
+ * Response (200): { user: { id, email }, memberships: array }. Error: 401 { error: "Unauthorized" }, 503 { error: "Server not configured" }.
+ */
 export async function GET(req: NextRequest) {
   const supabase = await getSupabaseServer();
 

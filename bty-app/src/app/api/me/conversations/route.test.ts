@@ -37,6 +37,16 @@ describe("GET /api/me/conversations", () => {
     expect(data.error).toBe("UNAUTHENTICATED");
   });
 
+  it("returns 401 with JSON body containing only error key", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: null } }) },
+    });
+    const res = await GET(makeRequest({ channel: "mentor", list: "sessions" }));
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
   it("returns 400 when channel is invalid", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({
       auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },

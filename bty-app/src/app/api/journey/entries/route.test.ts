@@ -38,6 +38,15 @@ describe("GET /api/journey/entries", () => {
     expect(data.error).toBe("Database not configured");
   });
 
+  it("returns 503 with JSON body containing only error key", async () => {
+    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    mockGetSupabaseAdmin.mockReturnValue(null);
+    const res = await GET(new Request("http://localhost/api/journey/entries", { method: "GET" }));
+    expect(res.status).toBe(503);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
   it("returns 200 with empty array when no rows", async () => {
     mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
     const mockOrder = vi.fn().mockResolvedValue({ data: [], error: null });

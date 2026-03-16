@@ -16,9 +16,9 @@
 ## SPRINT
 
 - **Mode:** FOUNDRY (구현 전용)
-- Sprint ID: SPRINT 190
+- Sprint ID: SPRINT 195
 - Status: active
-- Objective: **Q3·Q4 로드맵 연속.** 각 Cursor 5건. LE·대시보드·Elite·Healing·접근성·테스트. 검증=배포 전 1회.
+- Objective: **Q3·Q4 로드맵 연속.** 194 회전 완료(남은 [ ] 모두 BLOCKER). C2·C5 BLOCKER 이관·C3~C6 각 5건. C5 실행 가능 4건 추가. 검증=배포 전 1회.
 
 ---
 
@@ -66,20 +66,16 @@ Allowed paths:
 - `.cursor/rules/`
 - `docs/BTY_RELEASE_GATE_CHECK.md`
 
-**현재 모드:** 구현 전용. 배포 시 Gate 1회. 아래 5건 한 번에 처리. 189 회전 완료 후 190에서 배포 시 2건(맨 위) + 문서 점검 3건.
+**현재 모드:** 구현 전용. 배포 시 Gate 1회. 아래는 194에서 이관(맨 위 [ ]). 배포 결정 시에만 실행.
 
 Tasks:
 - [ ] 배포 시 1회: Gate 실행 전 BTY_RELEASE_GATE_CHECK § A~F·MVP_DEPLOYMENT_READINESS 최종 확인 (배포 결정 시만)
-  - BLOCKER: 배포 결정 단계가 아니면 미실행. 189에서 이관.
+  - BLOCKER: 배포 결정 단계가 아니면 미실행. 194에서 이관.
 - [ ] (선택) 배포 시 1회: self-healing-ci.sh 실행 후 결과를 BTY_RELEASE_GATE_CHECK·SPRINT_LOG에 기록
-  - BLOCKER: 배포 결정 시에만. 189에서 이관.
-- [x] render-only 체크리스트: app/[locale]·components 1곳 샘플 점검 후 BTY_RELEASE_GATE_CHECK 반영
-- [x] auth/session 점검 포인트: 쿠키·401 요약 확인·보강
-- [x] 리더보드·XP 안전 점검 포인트: Core/Weekly·시즌 미반영 요약 확인·보강
+  - BLOCKER: 배포 결정 시에만. 194에서 이관.
 
 Notes:
-- 189 전 항목 [x] 처리. 190 = C2 배포 시 2건 이관 + 문서 점검 3건.
-- 190 문서 점검 3건: render-only 샘플(domain import 없음)·auth/session·리더보드·XP 요약 확인. 본 문서 반영.
+- 194 회전 완료. C2 항목 2건 195로 이관. 배포 시 1회만 실행.
 
 Blockers:
 
@@ -97,15 +93,14 @@ Allowed paths:
 **한 번에 구현:** 아래 5건을 한 배치로 처리. ROADMAP_Q3_Q4 기준. domain/lib만.
 
 Tasks:
-- [x] [Q3] LE Stage: 진행도·행동 패턴 타입/상수 1건 검토·보강 (stages.ts·le-stage.ts)
-- [x] [Q3] AIR·대시보드: AIR 밴드·대시보드 요약 타입 1건 검토·보강 (air.ts·dashboard.ts)
-- [x] [Q3] 대시보드 추천: RecommendationSummary 소스별 우선순위 상수 확인·보강
-- [x] [Q4] Healing/Awakening: phase·콘텐츠 연동용 상수/타입 1건 확인 (healing.ts)
-- [x] [DOCS] domain index: arena/center/foundry export 1회 확인·미export 추가
+- [ ] [Q3] rules/level-tier: tier·code·subTier 경계 1건 검토 (level-tier.ts)
+- [ ] [Q3] rules/xp: XP 수식·레벨당 XP 1건 확인 (xp.ts)
+- [ ] [Q3] leadership-engine/stages: 전이·진행률 매핑 1건 검토 (stages.ts)
+- [ ] [Q4] center/letter: 본문 길이·유효성 상수 1건 확인 (letter.ts)
+- [ ] [DOCS] domain index: dashboard·healing·assessment export 1건 확인
 
 Notes:
-- 189 회전 완료. 190 = ROADMAP_Q3_Q4 구체 작업 5건. 도메인만, 부수효과 없음.
-- 190 완료: LE·AIR·대시보드 기존 상수 검토 유지. dashboard RECOMMENDATION_SOURCE_ORDER 추가, healing HEALING_PHASE_I_LABEL 추가, domain index에 foundry export 추가. npm test 583 통과.
+- 195 = 194 회전 완료 후 다음 5건. 도메인만.
 
 Blockers:
 
@@ -125,19 +120,15 @@ Allowed paths:
 **한 번에 구현:** 아래 5건을 한 배치로 처리. 비즈니스 규칙은 domain/lib 호출만.
 
 Tasks:
-- [x] [Q3] LE Stage: GET /api/arena/leadership-engine/stage-summary 응답 스키마·필드 검증·보강
-- [x] [Q3] 대시보드: GET /api/arena/dashboard/summary recommendation 필드·쿼리 검증
-- [x] [Q3] Elite: PATCH /api/arena/mentor-requests/[id] 동작·문서 확인
-- [x] [Q4] Healing/Awakening: GET /api/bty/healing·awakening 에러 응답·문서 확인
-- [ ] [API] API 문서: ARENA_DOMAIN_SPEC 또는 route 목록 신규·변경 반영
-  - BLOCKER: API 문서는 docs/spec/ 소관. C4 허용 경로는 src/app/api·middleware만. C1 또는 문서 담당이 docs 반영 시 해제.
+- [x] [Q3] arena/run·profile: 완료·프로필 응답 필드 1건 검증
+- [x] [Q3] safe-mirror·train: 응답·에러 코드 1건 확인
+- [x] [Q3] me/access·region: 200·401 응답 형식 1건 확인
+- [x] [Q4] journey/entries·profile: 쿼리·응답 1건 확인
+- [x] [API] bty-arena·assessment route JSDoc·에러 코드 1건 점검
 
 Notes:
-- 189 회전 완료. 190 = ROADMAP_Q3_Q4 구체 API 5건. 얇은 핸들러, domain/lib 호출만.
-- stage-summary: JSDoc LEStageSummary 참조 추가, 테스트에 응답 키 7개 정합성 검사 추가.
-- dashboard/summary: recommendation priority를 RECOMMENDATION_SOURCE_PRIORITY 사용, 쿼리 source 검증 테스트·응답 키 검사 추가.
-- mentor-requests/[id]: @contract 타입 명시, 200 응답 키(ok,id,status,respondedAt) 테스트 고정.
-- healing/awakening: 에러 응답 401/500 JSDoc 정리, awakening에 500 INTERNAL_ERROR 테스트 추가.
+- 194 = 193 회전 완료 후 다음 API 5건. 얇은 핸들러.
+- 5건 완료: arena runs·profile·run/complete JSDoc·200키, safe-mirror·train JSDoc, me/access·region 200·401, journey/profile JSDoc, bty-arena scenario·submit·assessment/submissions JSDoc.
 
 Blockers:
 
@@ -157,21 +148,23 @@ Allowed paths:
 **한 번에 구현:** 아래 5건을 한 배치로 처리. 데이터는 API/props만, 규칙 계산 없음.
 
 Tasks:
-- [x] [Q3] 대시보드: LE Stage 또는 AIR 위젯 로딩/에러 UI 1곳 정리
-- [x] [Q3] Elite: Elite 화면 접근성 1곳 (aria-label·role)
-- [x] [Q4] Healing/Awakening: 로딩·빈 상태 표시 1곳
-- [x] [UI] Center/Foundry: dear-me·assessment·dojo·integrity·mentor 접근성 1곳 (aria-label 등)
-- [x] [UI] i18n: healing·dashboard·대시보드 블록 누락 키 1곳 확인·보강
+- [ ] [Q3] Journey·bounce-back: 목록·상세 접근성 1곳
+  - BLOCKER: 경로/컴포넌트 없음. C1 확인 후 진행. 193에서 이관.
+- [x] [Q3] Arena run·완료: 시나리오 완료·결과 블록 접근성 1곳 (aria-label·role)
+- [x] [Q3] Mentor·Elite: 대화·승인 UI 접근성 1곳
+- [x] [Q4] Assessment 결과·진행: 결과·진행 블록 접근성 1곳
+- [x] [UI] i18n: Mentor·assessment 블록 키 1곳 확인
 
 Notes:
-- 189 회전 완료. 190 = ROADMAP_Q3_Q4 구체 UI 5건. render-only.
-- 190(1): LE Stage 위젯 로딩 시 role=region, aria-label, aria-busy, aria-live 추가. Lint ✓.
-- 190(2): Elite 멘토 링크 ul에 role=list, aria-label(ko/en). Lint ✓.
-- 190(3): Healing 인덱스 로딩 region+aria-busy, 빈 상태(phase 없음) 문구 추가. Lint ✓.
-- 190(4): Integrity 시나리오 입력 영역 role=group, aria-label(ko/en). Lint ✓.
-- 190(5): i18n healing 블록에 emptyPhase(ko/en) 추가, Healing 페이지에서 사용. Lint ✓.
+- 194 = 193 회전 완료. C5 BLOCKER 1건 이관(맨 위). 나머지 4건 신규.
+- 194(2)~(5) 완료. 실행 가능한 미완료 TASK 없음. 미체크 1건 = Journey·bounce-back → BLOCKER(경로/컴포넌트 없음). 규칙에 따라 **C5 중단.** 다음 진행 = C1이 스프린트 회전해 새 C5 작업을 넣거나, Journey·bounce-back BLOCKER 해제 후.
+- 194(2): Arena run 메인 카드 role=region, aria-label(ko/en). completeError에 role=alert. Lint ✓.
+- 194(3): 멘토 대화 메시지 영역 role=region, aria-label(ko/en). Lint ✓.
+- 194(4): Assessment 결과 페이지 다음 액션 링크 영역 role=group, aria-label(ko/en). Lint ✓.
+- 194(5): i18n dojoResult.nextActionsLabel(ko/en) 추가, Assessment 결과에서 사용. Lint ✓.
 
 Blockers:
+- TASK 1: Journey·bounce-back UI 미구현. 193에서 이관. 실행하지 않음. C5는 여기서 중단.
 
 ---
 
@@ -188,15 +181,15 @@ Allowed paths:
 **한 번에 구현:** 아래 5건을 한 배치로 처리. C3·C4 구현 후 해당 API/도메인 대상으로 추가.
 
 Tasks:
-- [x] [Q3] stage-summary route 테스트: 401·200·응답 shape 보강
-- [x] [Q3] dashboard/summary route 테스트: recommendation 필드 검증 보강
-- [x] [Q4] Healing/Awakening route 테스트: 401·200·응답 검증
+- [x] [Q3] arena/run·profile route 테스트: 401·200·키 검증 1건 보강
+- [x] [Q3] safe-mirror·me/access route 테스트: 200·401 검증 1건 보강
+- [x] [Q4] journey·train route 테스트: 200·에러 케이스 1건 보강
 - [x] [TEST] C3 수정 도메인 단위 또는 edges 테스트 1건
 - [x] [TEST] npm run build·npm test 통과 유지
 
 Notes:
-- 189 회전 완료. 190 = ROADMAP_Q3_Q4 구체 테스트 5건.
-- 190 완료: stage-summary progressPercent·키 검증, dashboard/summary recommendation·source 쿼리, healing/awakening 200 키 검증, dashboard.edges.test.ts 추가, build·test 210파일 1610통과.
+- 194 = 193 회전 완료 후 다음 테스트 5건.
+- 194 완료: arena/run route.test.ts 신규(401·400·200·키), profile 401·200 키, safe-mirror 200 키·me/access 401, journey/entries 503·train/eligibility 200 키, center/paths.edges 상수, build·test 211파일 1644통과.
 
 Blockers:
 

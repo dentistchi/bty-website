@@ -1,6 +1,6 @@
 /**
  * Center assessment 도메인 — 순수 타입·검증 함수.
- * DB/fetch 금지. 기존 scoreAnswers·detectPattern은 src/lib/assessment/score.ts에 유지.
+ * DB/fetch 금지. 경로 = center/paths (CENTER_CTA_PATH 등). 진행 규칙 = questionCount·1–5 validateAssessmentAnswers.
  */
 
 export type AssessmentSubmission = {

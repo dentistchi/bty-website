@@ -1,6 +1,6 @@
 /**
  * POST /api/dear-me/letter — Dear Me 편지 제출·답장 반환.
- * Thin handler: auth → validation → service call → response.
+ * Response (200): service result. Errors: 401 { error: "Unauthorized" }, 400 missing_text, 500.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getLetterAuth, submitLetter } from "@/lib/bty/center";

@@ -41,6 +41,14 @@ describe("POST /api/center/letter", () => {
     expect(mockSubmitCenterLetter).not.toHaveBeenCalled();
   });
 
+  it("returns 401 with JSON body containing only error key", async () => {
+    mockGetLetterAuth.mockResolvedValue(null);
+    const res = await POST(makeRequest({ body: "Hello" }));
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
   it("returns 500 when body is invalid JSON", async () => {
     mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
     const req = new Request("http://localhost/api/center/letter", {

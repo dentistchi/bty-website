@@ -4,6 +4,10 @@ import { getSupabaseServer } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
 
+/**
+ * GET /api/me/region — orgId·regionId에 대한 멤버십 허용 여부.
+ * Query: orgId, regionId (required). Response 200/403: { ok, allowed, userId, email, orgId, regionId, membership? }. Error: 400 missing params, 401 no session, 500.
+ */
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const orgId = url.searchParams.get("orgId");

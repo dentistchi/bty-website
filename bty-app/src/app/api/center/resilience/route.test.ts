@@ -44,6 +44,16 @@ describe("GET /api/center/resilience", () => {
     expect(mockGetResilienceEntries).not.toHaveBeenCalled();
   });
 
+  it("returns 401 with JSON body containing only error key", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: null } }) },
+    });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
   it("does not call parsePeriodDays or getResilienceEntries when unauthenticated", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({
       auth: { getUser: () => Promise.resolve({ data: { user: null } }) },

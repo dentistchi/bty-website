@@ -2,6 +2,7 @@
  * Leaderboard rules: ranking and elite.
  * Rule: Season progression (Core XP, Tier, Code) MUST NOT affect leaderboard rank.
  * Rank is by Weekly XP only. Identity (code name, sub name) is from Core.
+ * 정렬: rankByWeeklyXpOnly. 타이브레이크: leaderboardTieBreak.compareWeeklyXpTieBreak·LEADERBOARD_TIE_BREAK_ORDER.
  * See docs/spec/arena-domain-rules.md.
  */
 

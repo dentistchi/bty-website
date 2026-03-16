@@ -30,6 +30,18 @@ describe("GET /api/dojo/questions", () => {
     expect(data.error).toBe("db_error");
   });
 
+  it("returns 200 with exactly questions and choiceValues keys", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({ data: [], error: null }),
+    });
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Object.keys(data).sort()).toEqual(["choiceValues", "questions"].sort());
+  });
+
   it("returns 200 with questions and choiceValues on success", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({
       from: vi.fn().mockReturnThis(),
