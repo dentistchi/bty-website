@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   rankByWeeklyXpOnly,
+  rankByWeeklyXpWithTieBreak,
   eliteCutoffRank,
   isElite,
   rankFromCountAbove,
@@ -29,6 +30,23 @@ describe("domain/rules/leaderboard", () => {
       const result = rankByWeeklyXpOnly([{ id: "only", weeklyXp: 50 }]);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({ id: "only", weeklyXp: 50, rank: 1 });
+    });
+  });
+
+  describe("rankByWeeklyXpWithTieBreak", () => {
+    it("breaks ties by updatedAt asc then userId asc", () => {
+      const rows = [
+        { weeklyXp: 100, updatedAt: "2026-01-02T00:00:00Z", userId: "b" },
+        { weeklyXp: 100, updatedAt: "2026-01-01T00:00:00Z", userId: "a" },
+        { weeklyXp: 100, updatedAt: "2026-01-01T00:00:00Z", userId: "z" },
+        { weeklyXp: 200, updatedAt: null, userId: "x" },
+      ];
+      const r = rankByWeeklyXpWithTieBreak(rows);
+      expect(r[0].weeklyXp).toBe(200);
+      expect(r[1].userId).toBe("a");
+      expect(r[2].userId).toBe("z");
+      expect(r[3].userId).toBe("b");
+      expect(r.map((x) => x.rank)).toEqual([1, 2, 3, 4]);
     });
   });
 

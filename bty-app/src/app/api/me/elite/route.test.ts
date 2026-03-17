@@ -34,6 +34,13 @@ describe("GET /api/me/elite", () => {
     expect(mockGetIsEliteTop5).not.toHaveBeenCalled();
   });
 
+  it("returns 401 with error as string", async () => {
+    const res = await GET();
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(typeof data.error).toBe("string");
+  });
+
   it("returns 200 with isElite, badges, eliteContentUnlocked when authenticated", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({
       auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
@@ -85,6 +92,19 @@ describe("GET /api/me/elite", () => {
     expect(data.isElite).toBe(false);
     expect(data.badges).toEqual([]);
     expect(data.eliteContentUnlocked).toBe(false);
+  });
+
+  it("returns 200 with eliteContentUnlocked as boolean", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+    });
+    mockGetIsEliteTop5.mockResolvedValue(false);
+    mockGetEliteBadgeGrants.mockReturnValue([]);
+
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.eliteContentUnlocked).toBe("boolean");
   });
 
   it("returns 200 with content-type application/json on success", async () => {

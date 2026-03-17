@@ -8,6 +8,8 @@ import {
 /**
  * GET /api/arena/leadership-engine/state
  * Returns current Stage for the authenticated user. UI displays only; no computation in UI.
+ * Response 200: { currentStage, stageName, forcedResetTriggeredAt, resetDueAt }.
+ * Response 401: { error: "UNAUTHENTICATED" }. Response 500: on state/DB failure (error body TBD).
  */
 export async function GET(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);

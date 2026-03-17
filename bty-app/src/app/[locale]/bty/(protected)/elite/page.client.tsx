@@ -92,7 +92,7 @@ export default function ElitePageClient() {
           {locale === "ko" ? "Elite 전용" : "Elite only"}
         </h1>
         {isElite ? (
-          <div style={{ fontSize: 15, lineHeight: 1.6 }}>
+          <div role="region" aria-label={locale === "ko" ? "Elite 전용 콘텐츠" : "Elite-only content"} style={{ fontSize: 15, lineHeight: 1.6 }}>
             <p style={{ marginBottom: 16 }}>
               {locale === "ko"
                 ? "주간 리더보드 상위 5%에 진입하셨습니다. 여기서는 Elite 전용 콘텐츠를 이용할 수 있습니다."
@@ -105,7 +105,7 @@ export default function ElitePageClient() {
               <p style={{ fontSize: 13 }}><strong>{tElite.unlockExposureTitle}:</strong> {tElite.unlockExposureMet}</p>
             </section>
             {badges && badges.length > 0 && (
-              <div style={{ marginBottom: 20 }}>
+              <div role="region" aria-label={locale === "ko" ? "증정 배지" : "Badges"} style={{ marginBottom: 20 }}>
                 <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>{locale === "ko" ? "증정 배지" : "Badges"}</h2>
                 <ul role="list" aria-label={locale === "ko" ? "증정 배지 목록" : "Badges list"} style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {badges.map((b) => (
@@ -118,6 +118,8 @@ export default function ElitePageClient() {
             )}
             {/* 멘토 대화 신청 카드 — render-only: request 상태·에러는 API 응답만 표시 */}
             <section
+              role="group"
+              aria-label={locale === "ko" ? "멘토 대화 신청" : "Mentor session request"}
               aria-labelledby="mentor-request-heading"
               style={{
                 marginBottom: 20,
@@ -237,6 +239,8 @@ export default function ElitePageClient() {
             {/* 목록 화면: 내 신청 목록 (render-only, API request 1건 표시) */}
             <section
               aria-labelledby="mentor-request-list-heading"
+              role="group"
+              aria-label={locale === "ko" ? "멘토 요청 상태" : "Mentor request status"}
               style={{
                 marginBottom: 20,
                 padding: 16,
@@ -247,15 +251,15 @@ export default function ElitePageClient() {
             >
               <h2 id="mentor-request-list-heading" style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>{t.listTitle}</h2>
               {!request ? (
-                <p style={{ fontSize: 14, color: "#6b7280" }}>{t.listEmpty}</p>
+                <p style={{ fontSize: 14, color: "#6b7280" }} role="status" aria-label={t.listEmpty}>{t.listEmpty}</p>
               ) : (
                 <div role="region" aria-label={t.listTitle}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }} aria-label={t.listTitle}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
-                        <th style={{ textAlign: "left", padding: "8px 12px 8px 0", fontWeight: 600 }}>{t.colDate}</th>
-                        <th style={{ textAlign: "left", padding: "8px 12px 8px 0", fontWeight: 600 }}>{t.colStatus}</th>
-                        <th style={{ textAlign: "left", padding: 8 }} />
+                        <th scope="col" style={{ textAlign: "left", padding: "8px 12px 8px 0", fontWeight: 600 }}>{t.colDate}</th>
+                        <th scope="col" style={{ textAlign: "left", padding: "8px 12px 8px 0", fontWeight: 600 }}>{t.colStatus}</th>
+                        <th scope="col" style={{ textAlign: "left", padding: 8 }} />
                       </tr>
                     </thead>
                     <tbody>
@@ -303,7 +307,7 @@ export default function ElitePageClient() {
                 <p style={{ fontSize: 13, opacity: 0.75 }}>{tElite.circleCardPlaceholder}</p>
               </div>
             )}
-            <ul role="list" aria-label={locale === "ko" ? "Elite 멘토·심화 대화 링크" : "Elite mentor and deep conversation links"} style={{ listStyle: "disc", paddingLeft: 24, marginBottom: 20 }}>
+            <ul role="list" aria-label={tElite.mentorDeepLinksListAria} style={{ listStyle: "disc", paddingLeft: 24, marginBottom: 20 }}>
               <li style={{ marginBottom: 8 }}>
                 <Link href={`/${locale}/bty/mentor`} style={{ color: "#1a1a1a", fontWeight: 600 }} aria-label={locale === "ko" ? "Dr. Chi 멘토와 심화 대화" : "Deep conversation with Dr. Chi Mentor"}>
                   {locale === "ko" ? "Dr. Chi 멘토와 심화 대화" : "Deep conversation with Dr. Chi Mentor"}

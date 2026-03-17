@@ -41,6 +41,14 @@ describe("POST /api/center/letter", () => {
     expect(mockSubmitCenterLetter).not.toHaveBeenCalled();
   });
 
+  it("returns 401 with error as string", async () => {
+    mockGetLetterAuth.mockResolvedValue(null);
+    const res = await POST(makeRequest({ body: "Hi" }));
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(typeof data.error).toBe("string");
+  });
+
   it("returns 401 with JSON body containing only error key", async () => {
     mockGetLetterAuth.mockResolvedValue(null);
     const res = await POST(makeRequest({ body: "Hello" }));
@@ -61,6 +69,24 @@ describe("POST /api/center/letter", () => {
     const data = await res.json();
     expect(data.error).toBe("Something went wrong");
     expect(mockSubmitCenterLetter).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 with error as string when service returns body_empty", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitCenterLetter.mockResolvedValue({ ok: false, error: "body_empty" });
+    const res = await POST(makeRequest({ body: "" }));
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(typeof data.error).toBe("string");
+  });
+
+  it("returns 400 with error key present when body_empty", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitCenterLetter.mockResolvedValue({ ok: false, error: "body_empty" });
+    const res = await POST(makeRequest({ body: "" }));
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data).toHaveProperty("error");
   });
 
   it("returns 400 when service returns body_empty", async () => {
@@ -93,6 +119,54 @@ describe("POST /api/center/letter", () => {
     expect(res.status).toBe(500);
     const data = await res.json();
     expect(data.error).toBe("db_error");
+  });
+
+  it("returns 500 with JSON body containing only error key", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitCenterLetter.mockResolvedValue({ ok: false, error: "db_error" });
+    const res = await POST(makeRequest({ body: "x" }));
+    expect(res.status).toBe(500);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
+  it("returns 200 with saved as boolean", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitCenterLetter.mockResolvedValue({ ok: true, reply: "OK" });
+    const res = await POST(makeRequest({ body: "Hi" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.saved).toBe("boolean");
+    expect(data.saved).toBe(true);
+  });
+
+  it("returns 200 with reply key present", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitCenterLetter.mockResolvedValue({ ok: true, reply: "OK" });
+    const res = await POST(makeRequest({ body: "Hi" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveProperty("reply");
+    expect(typeof data.reply).toBe("string");
+  });
+
+  it("returns 200 with reply as string", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitCenterLetter.mockResolvedValue({ ok: true, reply: "Thanks." });
+    const res = await POST(makeRequest({ body: "Hi" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.reply).toBe("string");
+  });
+
+  it("returns 200 with exactly saved and reply keys", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitCenterLetter.mockResolvedValue({ ok: true, reply: "ok" });
+
+    const res = await POST(makeRequest({ body: "Hi" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Object.keys(data).sort()).toEqual(["reply", "saved"].sort());
   });
 
   it("returns 200 with saved and reply on success", async () => {

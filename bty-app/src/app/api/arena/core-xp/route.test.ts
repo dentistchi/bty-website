@@ -42,6 +42,72 @@ describe("GET /api/arena/core-xp", () => {
     expect(Object.keys(data)).toEqual(["error"]);
   });
 
+  it("returns 401 with error as string", async () => {
+    mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: {} });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(typeof data.error).toBe("string");
+  });
+
+  it("returns 200 with content-type application/json", async () => {
+    const countResult = { count: 0, error: null };
+    const countThenable = Object.assign(Promise.resolve(countResult), {
+      gt: () => Promise.resolve(countResult),
+    });
+    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+    const supabase = {
+      from: vi.fn().mockImplementation((table: string) => {
+        const select = vi.fn().mockImplementation((_sel: string | unknown, opts?: { count?: string; head?: boolean }) => {
+          if (opts?.count === "exact" && opts?.head === true) {
+            return { is: () => countThenable };
+          }
+          return {
+            eq: vi.fn().mockReturnValue({
+              is: vi.fn().mockReturnValue({ maybeSingle }),
+              maybeSingle: table === "arena_profiles" ? maybeSingle : undefined,
+            }),
+          };
+        });
+        return { select };
+      }),
+    };
+    mockRequireUser.mockResolvedValue({ user: { id: "u1" }, supabase, base: {} });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
+
+  it("returns 200 with codeName as string", async () => {
+    const countResult = { count: 0, error: null };
+    const countThenable = Object.assign(Promise.resolve(countResult), {
+      gt: () => Promise.resolve(countResult),
+    });
+    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+    const supabase = {
+      from: vi.fn().mockImplementation((table: string) => {
+        const select = vi.fn().mockImplementation((_sel: string | unknown, opts?: { count?: string; head?: boolean }) => {
+          if (opts?.count === "exact" && opts?.head === true) {
+            return { is: () => countThenable };
+          }
+          return {
+            eq: vi.fn().mockReturnValue({
+              is: vi.fn().mockReturnValue({ maybeSingle }),
+              maybeSingle: table === "arena_profiles" ? maybeSingle : undefined,
+            }),
+          };
+        });
+        return { select };
+      }),
+    };
+    mockRequireUser.mockResolvedValue({ user: { id: "u1" }, supabase, base: {} });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.codeName).toBe("string");
+    expect(data.codeName.length).toBeGreaterThan(0);
+  });
+
   it("returns 200 with default payload when authenticated and no profile row", async () => {
     const countResult = { count: 0, error: null };
     const countThenable = Object.assign(Promise.resolve(countResult), {
@@ -80,6 +146,7 @@ describe("GET /api/arena/core-xp", () => {
     expect(data.requiresBeginnerPath).toBe(true);
     expect(data.codeName).toBe("FORGE");
     expect(data.subName).toBe("Spark");
+    expect(String(res.headers.get("Cache-Control") ?? "")).toMatch(/no-store/);
     const expectedKeys = [
       "avatarCharacterId",
       "avatarCharacterImageUrl",
@@ -99,5 +166,181 @@ describe("GET /api/arena/core-xp", () => {
       "tier",
     ].sort();
     expect(Object.keys(data).sort()).toEqual(expectedKeys);
+  });
+
+  it("returns 200 with subName as string", async () => {
+    const countResult = { count: 0, error: null };
+    const countThenable = Object.assign(Promise.resolve(countResult), {
+      gt: () => Promise.resolve(countResult),
+    });
+    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+    const supabase = {
+      from: vi.fn().mockImplementation((table: string) => {
+        const select = vi.fn().mockImplementation((_sel: string | unknown, opts?: { count?: string; head?: boolean }) => {
+          if (opts?.count === "exact" && opts?.head === true) {
+            return { is: () => countThenable };
+          }
+          return {
+            eq: vi.fn().mockReturnValue({
+              is: vi.fn().mockReturnValue({ maybeSingle }),
+              maybeSingle: table === "arena_profiles" ? maybeSingle : undefined,
+            }),
+          };
+        });
+        return { select };
+      }),
+    };
+    mockRequireUser.mockResolvedValue({ user: { id: "u1" }, supabase, base: {} });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.subName).toBe("string");
+  });
+
+  it("returns 200 with coreXpTotal and tier as numbers", async () => {
+    const countResult = { count: 0, error: null };
+    const countThenable = Object.assign(Promise.resolve(countResult), {
+      gt: () => Promise.resolve(countResult),
+    });
+    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+    const supabase = {
+      from: vi.fn().mockImplementation((table: string) => {
+        const select = vi.fn().mockImplementation((_sel: string | unknown, opts?: { count?: string; head?: boolean }) => {
+          if (opts?.count === "exact" && opts?.head === true) {
+            return { is: () => countThenable };
+          }
+          return {
+            eq: vi.fn().mockReturnValue({
+              is: vi.fn().mockReturnValue({ maybeSingle }),
+              maybeSingle: table === "arena_profiles" ? maybeSingle : undefined,
+            }),
+          };
+        });
+        return { select };
+      }),
+    };
+    mockRequireUser.mockResolvedValue({ user: { id: "u1" }, supabase, base: {} });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.coreXpTotal).toBe("number");
+    expect(typeof data.tier).toBe("number");
+  });
+
+  it("returns 200 with tier non-negative", async () => {
+    const countResult = { count: 0, error: null };
+    const countThenable = Object.assign(Promise.resolve(countResult), {
+      gt: () => Promise.resolve(countResult),
+    });
+    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+    const supabase = {
+      from: vi.fn().mockImplementation((table: string) => {
+        const select = vi.fn().mockImplementation((_sel: string | unknown, opts?: { count?: string; head?: boolean }) => {
+          if (opts?.count === "exact" && opts?.head === true) {
+            return { is: () => countThenable };
+          }
+          return {
+            eq: vi.fn().mockReturnValue({
+              is: vi.fn().mockReturnValue({ maybeSingle }),
+              maybeSingle: table === "arena_profiles" ? maybeSingle : undefined,
+            }),
+          };
+        });
+        return { select };
+      }),
+    };
+    mockRequireUser.mockResolvedValue({ user: { id: "u1" }, supabase, base: {} });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.tier).toBe("number");
+    expect(data.tier).toBeGreaterThanOrEqual(0);
+  });
+
+  it("returns 200 with seasonalXpTotal as number", async () => {
+    const countResult = { count: 0, error: null };
+    const countThenable = Object.assign(Promise.resolve(countResult), {
+      gt: () => Promise.resolve(countResult),
+    });
+    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+    const supabase = {
+      from: vi.fn().mockImplementation((table: string) => {
+        const select = vi.fn().mockImplementation((_sel: string | unknown, opts?: { count?: string; head?: boolean }) => {
+          if (opts?.count === "exact" && opts?.head === true) {
+            return { is: () => countThenable };
+          }
+          return {
+            eq: vi.fn().mockReturnValue({
+              is: vi.fn().mockReturnValue({ maybeSingle }),
+              maybeSingle: table === "arena_profiles" ? maybeSingle : undefined,
+            }),
+          };
+        });
+        return { select };
+      }),
+    };
+    mockRequireUser.mockResolvedValue({ user: { id: "u1" }, supabase, base: {} });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.seasonalXpTotal).toBe("number");
+  });
+
+  it("returns 200 with codeHidden as boolean", async () => {
+    const countResult = { count: 0, error: null };
+    const countThenable = Object.assign(Promise.resolve(countResult), {
+      gt: () => Promise.resolve(countResult),
+    });
+    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+    const supabase = {
+      from: vi.fn().mockImplementation((table: string) => {
+        const select = vi.fn().mockImplementation((_sel: string | unknown, opts?: { count?: string; head?: boolean }) => {
+          if (opts?.count === "exact" && opts?.head === true) {
+            return { is: () => countThenable };
+          }
+          return {
+            eq: vi.fn().mockReturnValue({
+              is: vi.fn().mockReturnValue({ maybeSingle }),
+              maybeSingle: table === "arena_profiles" ? maybeSingle : undefined,
+            }),
+          };
+        });
+        return { select };
+      }),
+    };
+    mockRequireUser.mockResolvedValue({ user: { id: "u1" }, supabase, base: {} });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.codeHidden).toBe("boolean");
+  });
+
+  it("returns 200 with requiresBeginnerPath as boolean", async () => {
+    const countResult = { count: 0, error: null };
+    const countThenable = Object.assign(Promise.resolve(countResult), {
+      gt: () => Promise.resolve(countResult),
+    });
+    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+    const supabase = {
+      from: vi.fn().mockImplementation((table: string) => {
+        const select = vi.fn().mockImplementation((_sel: string | unknown, opts?: { count?: string; head?: boolean }) => {
+          if (opts?.count === "exact" && opts?.head === true) {
+            return { is: () => countThenable };
+          }
+          return {
+            eq: vi.fn().mockReturnValue({
+              is: vi.fn().mockReturnValue({ maybeSingle }),
+              maybeSingle: table === "arena_profiles" ? maybeSingle : undefined,
+            }),
+          };
+        });
+        return { select };
+      }),
+    };
+    mockRequireUser.mockResolvedValue({ user: { id: "u1" }, supabase, base: {} });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.requiresBeginnerPath).toBe("boolean");
   });
 });

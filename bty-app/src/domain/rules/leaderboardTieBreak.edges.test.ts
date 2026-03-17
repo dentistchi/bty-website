@@ -15,6 +15,11 @@ describe("domain/rules/leaderboardTieBreak (edges)", () => {
     expect(LEADERBOARD_TIE_BREAK_ORDER).toContain("user_id asc");
   });
 
+  it("LEADERBOARD_TIE_BREAK_ORDER is non-empty string", () => {
+    expect(typeof LEADERBOARD_TIE_BREAK_ORDER).toBe("string");
+    expect(LEADERBOARD_TIE_BREAK_ORDER.length).toBeGreaterThan(0);
+  });
+
   it("compareWeeklyXpTieBreak when userId is empty string", () => {
     const a: WeeklyXpRowForTieBreak = { weeklyXp: 100, updatedAt: "2025-01-01Z", userId: "" };
     const b: WeeklyXpRowForTieBreak = { weeklyXp: 100, updatedAt: "2025-01-01Z", userId: "u1" };

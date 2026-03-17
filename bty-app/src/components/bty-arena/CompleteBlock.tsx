@@ -26,6 +26,7 @@ export function CompleteBlock({
   const sectionLabel = followUpSelectedSectionLabel ?? t.followUpSelected;
   const loadingAriaLabel = lang === "ko" ? "다음 시나리오 불러오는 중…" : "Loading next scenario…";
 
+  const regionLabel = lang === "ko" ? "시나리오 완료 및 다음" : "Scenario complete and next";
   return (
     <>
       <div
@@ -36,6 +37,8 @@ export function CompleteBlock({
           borderRadius: 14,
           background: "rgba(0,0,0,0.02)",
         }}
+        role="region"
+        aria-label={regionLabel}
       >
         <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.step7Title}</div>
         <div style={{ fontSize: 14, lineHeight: 1.5, opacity: 0.9 }}>
@@ -50,7 +53,7 @@ export function CompleteBlock({
         </div>
       )}
 
-      <div style={{ marginTop: 20 }}>
+      <div style={{ marginTop: 20 }} role="group" aria-label={lang === "ko" ? "다음 시나리오로" : "Continue to next scenario"}>
         <button
           onClick={onContinue}
           disabled={loading}

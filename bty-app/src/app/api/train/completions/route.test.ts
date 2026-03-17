@@ -61,6 +61,16 @@ describe("POST /api/train/completions", () => {
     expect(data.error).toBe("Server not configured");
   });
 
+  it("returns 200 with exactly ok key", async () => {
+    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+
+    const res = await POST(makeRequest({ day: 1 }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["ok"]);
+    expect(data.ok).toBe(true);
+  });
+
   it("returns 200 with ok true when authenticated and day valid", async () => {
     mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CardSkeleton } from "@/components/bty-arena";
+import { getMessages } from "@/lib/i18n";
 
 type DojoApiResult = {
   submissionId?: string | null;
@@ -62,6 +63,7 @@ export default function DojoResultClient({ locale = "ko" }: { locale?: string })
   const isEn = locale === "en";
   const dimLabels = isEn ? DIMENSION_LABELS_EN : DIMENSION_LABELS_KO;
   const t = isEn ? MSG.en : MSG.ko;
+  const dojoT = getMessages(locale === "ko" ? "ko" : "en").dojoResult;
 
   const [result, setResult] = useState<DojoApiResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -188,7 +190,8 @@ export default function DojoResultClient({ locale = "ko" }: { locale?: string })
         </span>
       )}
 
-      <section className="space-y-4" aria-label={isEn ? "Score chart" : "점수 차트"}>
+      <section className="space-y-6" aria-label={dojoT.resultScoresInsightRegionAria}>
+      <div className="space-y-4" role="group" aria-label={isEn ? "Score chart" : "점수 차트"}>
         {scoreEntries.map(([key, value]) => (
           <div key={key} className="flex items-center gap-3">
             <div className="w-24 sm:w-32 text-sm text-gray-600 text-right shrink-0 truncate">
@@ -203,10 +206,10 @@ export default function DojoResultClient({ locale = "ko" }: { locale?: string })
             <div className="w-10 text-right text-sm font-semibold tabular-nums">{value}</div>
           </div>
         ))}
-      </section>
+      </div>
 
       {mentorComment && (
-        <section className={`mt-8 rounded-2xl border p-5 ${sm.bg} ${sm.border}`} aria-label="Dr. Chi">
+        <div className={`rounded-2xl border p-5 ${sm.bg} ${sm.border}`} role="region" aria-label={isEn ? "Dr. Chi comment" : "Dr. Chi 코멘트"}>
           <div className="flex items-start gap-3">
             <span className="text-2xl shrink-0" aria-hidden="true">🧑‍⚕️</span>
             <div className="min-w-0">
@@ -218,10 +221,11 @@ export default function DojoResultClient({ locale = "ko" }: { locale?: string })
               </p>
             </div>
           </div>
-        </section>
+        </div>
       )}
+      </section>
 
-      <div className="mt-8 flex flex-wrap gap-3">
+      <div className="mt-8 flex flex-wrap gap-3" role="group" aria-label={dojoT.resultActionsLabel}>
         <Link href="../dojo" className="px-5 py-2 rounded-lg border text-sm hover:bg-gray-50 transition-colors" aria-label={isEn ? "Retake assessment" : "다시 진단하기"}>
           {isEn ? "Retake" : "다시 진단하기"}
         </Link>

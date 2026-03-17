@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { isDateWithinSeason, carryoverWeeklyXp } from "./season";
+import { SEASON_CARRYOVER_FRACTION } from "../constants";
 
 describe("domain/rules/season", () => {
   describe("isDateWithinSeason", () => {
@@ -26,6 +27,11 @@ describe("domain/rules/season", () => {
       expect(carryoverWeeklyXp(100)).toBe(10);
       expect(carryoverWeeklyXp(99)).toBe(9);
       expect(carryoverWeeklyXp(1000)).toBe(100);
+    });
+
+    it("uses SEASON_CARRYOVER_FRACTION from constants (C3 도메인)", () => {
+      expect(SEASON_CARRYOVER_FRACTION).toBe(0.1);
+      expect(carryoverWeeklyXp(100)).toBe(Math.floor(100 * SEASON_CARRYOVER_FRACTION));
     });
 
     it("floors fractional weeklyXpTotal", () => {

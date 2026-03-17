@@ -58,6 +58,25 @@ describe("POST /api/arena/run", () => {
     expect(data.error).toBe("scenarioId_required");
   });
 
+  it("returns 200 with content-type application/json", async () => {
+    const mockSingle = vi.fn().mockResolvedValue({
+      data: { run_id: "r1", scenario_id: "s1", started_at: "2026-03-01T00:00:00Z", status: "started" },
+      error: null,
+    });
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+      rpc: vi.fn().mockResolvedValue({ error: null }),
+      from: vi.fn().mockReturnValue({
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({ single: mockSingle }),
+        }),
+      }),
+    });
+    const res = await POST(makeRequest({ scenarioId: "s1" }));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
+
   it("returns 200 with run object when authenticated and scenarioId provided", async () => {
     const mockSingle = vi.fn().mockResolvedValue({
       data: { run_id: "r1", scenario_id: "s1", started_at: "2026-03-01T00:00:00Z", status: "started" },

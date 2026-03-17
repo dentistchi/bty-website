@@ -42,6 +42,15 @@ describe("domain/rules/season (edges)", () => {
     expect(isDateWithinSeason("2026-01-01", window)).toBe(false);
   });
 
+  it("carryoverWeeklyXp returns number", () => {
+    expect(typeof carryoverWeeklyXp(50)).toBe("number");
+  });
+
+  it("carryoverWeeklyXp returns integer for large weeklyXpTotal", () => {
+    expect(Number.isInteger(carryoverWeeklyXp(9999))).toBe(true);
+    expect(carryoverWeeklyXp(9999)).toBe(999);
+  });
+
   it("isDateWithinSeason returns true for first and last day of multi-day window", () => {
     const window: SeasonWindow = { id: "multi", startDate: "2026-01-01", endDate: "2026-01-31" };
     expect(isDateWithinSeason("2026-01-01", window)).toBe(true);

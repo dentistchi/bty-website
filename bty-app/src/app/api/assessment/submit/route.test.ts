@@ -42,6 +42,14 @@ describe("POST /api/assessment/submit", () => {
     expect(mockSubmitAssessment).not.toHaveBeenCalled();
   });
 
+  it("returns 401 with JSON body containing only error key", async () => {
+    mockGetLetterAuth.mockResolvedValue(null);
+    const res = await POST(makeRequest({ answers: validAnswers() }));
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
   it("returns 400 when body is not valid JSON", async () => {
     mockGetLetterAuth.mockResolvedValue({
       supabase: {},
@@ -58,6 +66,19 @@ describe("POST /api/assessment/submit", () => {
     const data = await res.json();
     expect(data.error).toBe("invalid_body");
     expect(mockSubmitAssessment).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 with only error key when body is not valid JSON", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    const req = new Request("http://localhost/api/assessment/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "not json {",
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
   });
 
   it("returns 400 when service returns validation error", async () => {
@@ -77,6 +98,15 @@ describe("POST /api/assessment/submit", () => {
     expect(mockSubmitAssessment).toHaveBeenCalledOnce();
   });
 
+  it("returns 400 with only error key when no detail", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitAssessment.mockResolvedValue({ ok: false, error: "answers_invalid" });
+    const res = await POST(makeRequest({ answers: { 1: 3 } }));
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
   it("returns 400 with detail when service returns error and detail", async () => {
     mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
     mockSubmitAssessment.mockResolvedValue({
@@ -90,6 +120,24 @@ describe("POST /api/assessment/submit", () => {
     const data = await res.json();
     expect(data.error).toBe("answers_invalid");
     expect(data.detail).toBe("Missing keys: 2,3,...,50");
+  });
+
+  it("returns 200 with exactly submissionId, scores, pattern, recommendedTrack keys", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitAssessment.mockResolvedValue({
+      ok: true,
+      submissionId: "sub-1",
+      scores: { core: 20, compassion: 20, stability: 20, growth: 20, social: 20 },
+      pattern: "balanced",
+      track: "default",
+    });
+
+    const res = await POST(makeRequest({ answers: validAnswers() }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Object.keys(data).sort()).toEqual(
+      ["pattern", "recommendedTrack", "scores", "submissionId"].sort()
+    );
   });
 
   it("returns 200 with submissionId, scores, pattern, recommendedTrack on success", async () => {

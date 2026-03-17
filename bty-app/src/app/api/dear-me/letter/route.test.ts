@@ -40,6 +40,22 @@ describe("POST /api/dear-me/letter", () => {
     expect(mockSubmitLetter).not.toHaveBeenCalled();
   });
 
+  it("returns 401 with error as string", async () => {
+    mockGetLetterAuth.mockResolvedValue(null);
+    const res = await POST(makeRequest({ letterText: "Hi", lang: "en" }));
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(typeof data.error).toBe("string");
+  });
+
+  it("returns 401 with JSON body containing only error key", async () => {
+    mockGetLetterAuth.mockResolvedValue(null);
+    const res = await POST(makeRequest({ letterText: "Hi" }));
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
   it("returns 400 when body is not valid JSON", async () => {
     mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
 
@@ -66,6 +82,29 @@ describe("POST /api/dear-me/letter", () => {
     expect(mockSubmitLetter).toHaveBeenCalledOnce();
   });
 
+  it("returns 400 with JSON body containing only error key", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitLetter.mockResolvedValue({ ok: false, error: "text_too_long" });
+    const res = await POST(makeRequest({ letterText: "x" }));
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
+  it("returns 200 with letterId as string", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitLetter.mockResolvedValue({
+      ok: true,
+      letterId: "letter-1",
+      reply: "Thanks.",
+    });
+    const res = await POST(makeRequest({ letterText: "Hi" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.letterId).toBe("string");
+    expect(data.letterId.length).toBeGreaterThan(0);
+  });
+
   it("returns 200 with letterId and replyMessage on success", async () => {
     mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
     mockSubmitLetter.mockResolvedValue({
@@ -80,6 +119,32 @@ describe("POST /api/dear-me/letter", () => {
     expect(data.letterId).toBe("letter-123");
     expect(data.replyMessage).toBe("Thank you for writing.");
     expect(mockSubmitLetter).toHaveBeenCalledOnce();
+  });
+
+  it("returns 200 with replyMessage as string", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitLetter.mockResolvedValue({
+      ok: true,
+      letterId: "l1",
+      reply: "Got it.",
+    });
+    const res = await POST(makeRequest({ letterText: "Hi" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.replyMessage).toBe("string");
+  });
+
+  it("returns 200 with exactly letterId and replyMessage keys", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitLetter.mockResolvedValue({
+      ok: true,
+      letterId: "l1",
+      reply: "OK",
+    });
+    const res = await POST(makeRequest({ letterText: "Hi" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Object.keys(data).sort()).toEqual(["letterId", "replyMessage"].sort());
   });
 
   it("returns 200 with content-type application/json on success", async () => {
@@ -155,6 +220,15 @@ describe("POST /api/dear-me/letter", () => {
     expect(res.status).toBe(500);
     const data = await res.json();
     expect(data.error).toBe("Something went wrong");
+  });
+
+  it("returns 500 with error as string when submitLetter throws", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitLetter.mockRejectedValue(new Error("service error"));
+    const res = await POST(makeRequest({ letterText: "Hi" }));
+    expect(res.status).toBe(500);
+    const data = await res.json();
+    expect(typeof data.error).toBe("string");
   });
 
   it("returns 500 when getLetterAuth throws", async () => {

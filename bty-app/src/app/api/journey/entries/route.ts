@@ -5,8 +5,8 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 /**
  * GET /api/journey/entries
  * Query: day (optional, 1–28) — single day entry. Omit for all entries (array).
- * Response (200): single object | null (when ?day=N), or array (when no day).
- * Errors: 401 { error: "Unauthorized" }, 400 { error: "Invalid day" }, 503, 500.
+ * Response 200: single object | null (when ?day=N), or array (when no day).
+ * Errors: 401 { error: "Unauthorized" }, 400 { error: "Invalid day" }, 503 { error: "Database not configured" }, 500 { error: string }.
  */
 export async function GET(request: Request) {
   const user = await getAuthUserFromRequest(request);

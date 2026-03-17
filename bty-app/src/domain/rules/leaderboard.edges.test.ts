@@ -17,7 +17,7 @@ describe("domain/rules/leaderboard (edges)", () => {
     expect(result).toEqual([]);
   });
 
-  it("rankByWeeklyXpOnly preserves tie order (same weeklyXp)", () => {
+  it("rankByWeeklyXpOnly: same weeklyXp keeps stable order (not tiebreak rule)", () => {
     const entries = [
       { id: "a", weeklyXp: 100 },
       { id: "b", weeklyXp: 100 },
@@ -53,5 +53,9 @@ describe("domain/rules/leaderboard (edges)", () => {
     const r = weeklyRankFromCounts(0, 0);
     expect(r.rank).toBe(0);
     expect(r.isTop5Percent).toBe(false);
+  });
+
+  it("eliteCutoffRank(0) returns 1", () => {
+    expect(eliteCutoffRank(0)).toBe(1);
   });
 });

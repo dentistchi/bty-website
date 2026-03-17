@@ -68,6 +68,25 @@ describe("GET /api/train/eligibility", () => {
     expect(data.next).toBe("/train/day/3");
   });
 
+  it("returns 200 with next starting with /train/", async () => {
+    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    mockGetUnlockedDayCount.mockReturnValue(2);
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+    expect(data.next).toMatch(/^\/train\//);
+  });
+
+  it("returns 200 with ok as boolean", async () => {
+    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    mockGetUnlockedDayCount.mockReturnValue(1);
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.ok).toBe("boolean");
+  });
+
   it("returns 200 with exactly ok and next keys", async () => {
     mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
     mockGetUnlockedDayCount.mockReturnValue(1);

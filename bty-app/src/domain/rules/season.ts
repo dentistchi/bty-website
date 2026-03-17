@@ -1,7 +1,11 @@
 /**
  * Season lifecycle rules: window boundaries, carryover.
  * See docs/spec/arena-domain-rules.md.
- * 경계: SeasonWindow (types), carryover = constants.SEASON_CARRYOVER_FRACTION. 시즌 ID = SeasonWindow.id (API/DB 제공).
+ *
+ * **Season boundary** = `SeasonWindow.startDate`–`endDate` (ISODate, inclusive). Independent of **weekly**
+ * leaderboard windows (`week_id`); weekly rank reset must not be inferred from season dates alone.
+ * Carryover at season rollover = `carryoverWeeklyXp` × `SEASON_CARRYOVER_FRACTION`. Season id = `SeasonWindow.id` (API/DB).
+ * @see weeklyXp — weekly rank window (`week_id`) is separate; do not derive from season dates.
  */
 
 import type { ISODateString } from "../types";

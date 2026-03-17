@@ -6,6 +6,8 @@ import type { ActivationRecord } from "@/domain/leadership-engine/air";
 /**
  * GET /api/arena/leadership-engine/air
  * Returns AIR 점수·밴드 for 7d, 14d, 90d from activation + verification logs. Auth required. UI displays only.
+ * Response (200): { air_7d, air_14d, air_90d } (each: air, missedWindows, integritySlip, band low|mid|high). No rows → 200 with zeros and band low.
+ * Errors: 401 { error: "UNAUTHENTICATED" }; unhandled DB errors → 500.
  */
 export async function GET(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);

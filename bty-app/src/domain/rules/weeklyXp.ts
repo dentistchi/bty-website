@@ -1,11 +1,16 @@
 /**
  * Weekly XP competition rules (pure).
- * Level, tier, awardXp, season reset, leaderboard sort for weekly ranking.
+ * Level, tier, awardXp, leaderboard sort for weekly ranking.
  *
  * Invariants:
  * - Core XP is permanent, never reset.
- * - Weekly XP resets at season boundary; used for weekly ranking only.
+ * - **Weekly** XP for leaderboard resets at the **weekly** boundary (`week_id` / storage); not derived from season calendar alone.
  * - Leaderboard ranked by weekly XP only; season progression does not affect rank.
+ *
+ * **Season** calendar = `rules/season` (SeasonWindow, carryover). **Within-week level/tier** = `WEEKLY_LEVEL_STEP` (100).
+ * @see season — season window (startDate–endDate) is independent of weekly leaderboard reset.
+ * `seasonReset` is a pure helper for **season-transition** flows that zero the weekly competition counter without touching core;
+ * orchestration decides when to call it; it does not replace per-week ledger resets.
  */
 
 import { seasonalToCoreConversion } from "./xp";
@@ -56,6 +61,11 @@ export interface LeaderboardEntry {
 /** 1 레벨당 XP. level = floor(xpTotal / WEEKLY_LEVEL_STEP) + 1. Tier 경계 0/100/200/300. */
 export const WEEKLY_LEVEL_STEP = 100;
 
+/** Weekly tier lower bounds (inclusive). Bronze 0–99, Silver 100–199, Gold 200–299, Platinum 300+. */
+export const WEEKLY_TIER_SILVER_MIN = WEEKLY_LEVEL_STEP;
+export const WEEKLY_TIER_GOLD_MIN = 2 * WEEKLY_LEVEL_STEP;
+export const WEEKLY_TIER_PLATINUM_MIN = 3 * WEEKLY_LEVEL_STEP;
+
 // --- awardXp -----------------------------------------------------------------
 
 /**
@@ -90,9 +100,9 @@ export function calculateLevel(weeklyXpTotal: number): number {
 /** Competition tier name from weekly XP. 0–99 Bronze, 100–199 Silver, 200–299 Gold, 300+ Platinum. */
 export function calculateTier(weeklyXpTotal: number): WeeklyTierName {
   const safe = Math.max(0, Math.floor(weeklyXpTotal));
-  if (safe >= 300) return "Platinum";
-  if (safe >= 200) return "Gold";
-  if (safe >= 100) return "Silver";
+  if (safe >= WEEKLY_TIER_PLATINUM_MIN) return "Platinum";
+  if (safe >= WEEKLY_TIER_GOLD_MIN) return "Gold";
+  if (safe >= WEEKLY_TIER_SILVER_MIN) return "Silver";
   return "Bronze";
 }
 
@@ -110,7 +120,10 @@ export function calculateLevelTierProgress(weeklyXpTotal: number): LevelTierProg
 
 // --- seasonReset -------------------------------------------------------------
 
-/** Season reset: weekly XP goes to 0; core XP unchanged. Returns new state only. */
+/**
+ * Season-transition helper: weekly XP → 0; core XP unchanged. Pure state mapping only.
+ * Weekly rank windows remain service-owned (`week_id`); do not conflate with this call.
+ */
 export function seasonReset(input: SeasonResetInput): SeasonResetResult {
   return {
     coreXp: Math.max(0, Math.floor(input.coreXp)),
@@ -124,8 +137,8 @@ export function seasonReset(input: SeasonResetInput): SeasonResetResult {
  * Sort leaderboard by weekly XP descending. No season/league in sort key.
  * Returns new array; does not mutate.
  *
- * Uses `xpTotal` field (service convention). For domain-level ranking with
- * `weeklyXp` field and 1-based rank, use `rankByWeeklyXpOnly` from ./leaderboard.
+ * Uses `xpTotal` field (service convention). For ranking with tiebreak use
+ * `rankByWeeklyXpWithTieBreak` from ./leaderboard (when updatedAt·userId exist).
  */
 export function leaderboardSort<T extends LeaderboardEntry>(entries: T[]): T[] {
   return [...entries].sort((a, b) => (b.xpTotal ?? 0) - (a.xpTotal ?? 0));

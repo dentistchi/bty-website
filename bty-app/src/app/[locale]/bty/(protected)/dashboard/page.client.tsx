@@ -403,8 +403,8 @@ export default function DashboardClient() {
           )}
           <div>
             <div style={{ fontSize: 14, opacity: 0.7 }}>bty</div>
-            <h1 id="dashboard-heading" style={{ margin: 0, fontSize: 28 }}>Dashboard</h1>
-            <div style={{ marginTop: 6, fontSize: 14, opacity: 0.7 }}>Your arena progress at a glance.</div>
+            <h1 id="dashboard-heading" style={{ margin: 0, fontSize: 28 }}>{tBty.dashboardPageTitle}</h1>
+            <div style={{ marginTop: 6, fontSize: 14, opacity: 0.7 }}>{tBty.dashboardHeroSubtitle}</div>
           </div>
         </div>
       </div>
@@ -428,6 +428,7 @@ export default function DashboardClient() {
         <div style={{ display: "grid", gap: 28 }}>
           {/* Arena / Foundry / Center 통합 진입점 — 기존 dashboard 보강 */}
           <ProgressCard label={[tLanding.arenaTitle, tLanding.foundryTitle, tLanding.centerTitle].join(" · ")}>
+            <div role="region" aria-label={locale === "ko" ? "Arena·Foundry·Center 진입점" : "Arena, Foundry, Center entry points"}>
             <p style={{ fontSize: 13, opacity: 0.9, marginBottom: 16 }}>
               {locale === "ko" ? "Arena(플레이)·Foundry(대시·멘토·연습)·Center(나에게 쓰는 편지)로 바로 이동할 수 있어요." : "Jump to Arena (play), Foundry (dashboard, mentor, practice), or Center (letter to yourself)."}
             </p>
@@ -477,6 +478,7 @@ export default function DashboardClient() {
                 </Link>
               </div>
             </nav>
+            </div>
           </ProgressCard>
 
           {/* [Q3] 추천 위젯 — GET /api/arena/dashboard/summary recommendation 표시만 */}
@@ -564,7 +566,11 @@ export default function DashboardClient() {
             </ProgressCard>
           )}
 
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
+          <div
+            role="region"
+            aria-label={locale === "ko" ? "대시보드 바로가기: 아레나, 랭킹, 프로필, 엘리트, 역지사지" : "Dashboard shortcuts: Arena, ranking, profile, Elite, Integrity"}
+            style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}
+          >
             <Link
               href={`/${locale}/bty-arena`}
               className="bty-btn-primary"
@@ -577,9 +583,9 @@ export default function DashboardClient() {
                 fontWeight: 700,
                 fontSize: 14,
               }}
-              aria-label={locale === "ko" ? "아레나로 가기" : "Go to Arena"}
+              aria-label={tBty.dashboardShortcutGoArena}
             >
-              Go to Arena
+              {tBty.dashboardShortcutGoArena}
             </Link>
             <Link
               href={`/${locale}/bty/leaderboard`}
@@ -593,9 +599,9 @@ export default function DashboardClient() {
                 fontWeight: 600,
                 fontSize: 14,
               }}
-              aria-label={locale === "ko" ? "주간 랭킹 보기" : "View weekly ranking"}
+              aria-label={tBty.dashboardShortcutWeeklyRanking}
             >
-              View Weekly Ranking
+              {tBty.dashboardShortcutWeeklyRanking}
             </Link>
             <Link
               href={`/${locale}/bty/profile`}
@@ -680,7 +686,8 @@ export default function DashboardClient() {
           </div>
 
           {/* Dojo 연습 플로우 2종 연동: 역지사지·Dear Me 자존감. render-only 링크. */}
-          <ProgressCard label={locale === "ko" ? "Dojo 연습" : "Dojo practice"}>
+          <ProgressCard label={tBty.dojoPracticeLabel}>
+            <div role="region" aria-label={tBty.dojoPracticeLinksRegion}>
             <p style={{ fontSize: 13, opacity: 0.9, marginBottom: 12 }}>
               {locale === "ko"
                 ? "역지사지 시뮬레이터와 자존감 50문항 진단을 연습할 수 있어요."
@@ -719,6 +726,7 @@ export default function DashboardClient() {
               >
                 {locale === "ko" ? "Dear Me 자존감 (50문항) →" : "Dear Me self-esteem (50) →"}
               </Link>
+            </div>
             </div>
           </ProgressCard>
 
@@ -814,6 +822,7 @@ export default function DashboardClient() {
 
           {(league || core?.seasonalXpTotal != null || weekly?.xpTotal != null || weekly?.count != null) && (
             <ProgressCard label="Season Progress">
+              <div role="region" aria-label={locale === "ko" ? "시즌 진행" : "Season progress"}>
               {league && (
                 <>
                   <div style={{ fontSize: 15, fontWeight: 700 }}>{league.name ?? "Arena"}</div>
@@ -824,6 +833,7 @@ export default function DashboardClient() {
                   </div>
                 </>
               )}
+              <div role="group" aria-label={tBty.weeklySeasonActivityAria}>
               <div style={{ fontSize: 28, fontWeight: 800, marginTop: league ? 10 : 0 }}>
                 {core?.seasonalXpTotal ?? weekly?.xpTotal ?? 0}
               </div>
@@ -834,10 +844,13 @@ export default function DashboardClient() {
                   {String(weekly.weekStartISO).slice(0, 10)} → {String(weekly.weekEndISO).slice(0, 10)}
                 </div>
               )}
+              </div>
+              </div>
             </ProgressCard>
           )}
 
-          <ProgressCard label="Lifetime Progress (Core XP)">
+          <ProgressCard label={tBty.lifetimeProgressLabel}>
+            <div role="region" aria-label={tBty.lifetimeProgressLabel} style={{ display: "block" }}>
             <div style={{ fontSize: 28, fontWeight: 800 }}>{core?.coreXpTotal ?? 0}</div>
             <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>Permanent. Drives Code Name.</div>
             {core?.stage != null && core?.progressPct != null && (
@@ -858,15 +871,18 @@ export default function DashboardClient() {
                 )}
               </>
             )}
+            </div>
           </ProgressCard>
 
-          <ProgressCard label="Points Today">
-            <div role="region" aria-label={locale === "ko" ? "오늘 획득 XP" : "XP earned today"} style={{ display: "block" }}>
+          <ProgressCard label={tBty.pointsTodayLabel}>
+            <div role="region" aria-label={tBty.pointsTodayLabel} style={{ display: "block" }}>
               <div style={{ fontSize: 28, fontWeight: 800 }}>{xpToday}</div>
               <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>XP earned today (UTC date).</div>
             </div>
           </ProgressCard>
 
+          {/* [Q3] LE·AIR 요약 랜드마크 — TASK: 접근성 1곳 */}
+          <section aria-label={tBty.leAirSummarySectionAria} style={{ display: "contents" }}>
           {/* [Q3] AIR 위젯 — API 응답 표시만, 규칙 계산 없음 */}
           <ProgressCard label={tBty.airLabel}>
             {leAir == null ? (
@@ -877,17 +893,17 @@ export default function DashboardClient() {
               </div>
             ) : (
               <div role="region" aria-label={locale === "ko" ? "AIR 지표: 7일·14일·90일" : "AIR: 7d, 14d, 90d"} style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, fontSize: 14 }}>
-                <div style={{ textAlign: "center", padding: "12px 8px", border: "1px solid var(--arena-text-soft, #e5e7eb)", borderRadius: 10 }}>
+                <div role="group" aria-label={locale === "ko" ? "AIR 7일" : "AIR 7d"} style={{ textAlign: "center", padding: "12px 8px", border: "1px solid var(--arena-text-soft, #e5e7eb)", borderRadius: 10 }}>
                   <div style={{ fontWeight: 700, fontSize: 20 }}>{(leAir.air_7d.air * 100).toFixed(0)}%</div>
                   <div style={{ marginTop: 4, opacity: 0.8 }}>7d</div>
                   {leAir.air_7d.integritySlip && <div style={{ marginTop: 4, fontSize: 11, color: "var(--arena-accent)" }}>{locale === "ko" ? "integrity slip" : "integrity slip"}</div>}
                 </div>
-                <div style={{ textAlign: "center", padding: "12px 8px", border: "1px solid var(--arena-text-soft, #e5e7eb)", borderRadius: 10 }}>
+                <div role="group" aria-label={locale === "ko" ? "AIR 14일" : "AIR 14d"} style={{ textAlign: "center", padding: "12px 8px", border: "1px solid var(--arena-text-soft, #e5e7eb)", borderRadius: 10 }}>
                   <div style={{ fontWeight: 700, fontSize: 20 }}>{(leAir.air_14d.air * 100).toFixed(0)}%</div>
                   <div style={{ marginTop: 4, opacity: 0.8 }}>14d</div>
                   {leAir.air_14d.integritySlip && <div style={{ marginTop: 4, fontSize: 11, color: "var(--arena-accent)" }}>{locale === "ko" ? "integrity slip" : "integrity slip"}</div>}
                 </div>
-                <div style={{ textAlign: "center", padding: "12px 8px", border: "1px solid var(--arena-text-soft, #e5e7eb)", borderRadius: 10 }}>
+                <div role="group" aria-label={locale === "ko" ? "AIR 90일" : "AIR 90d"} style={{ textAlign: "center", padding: "12px 8px", border: "1px solid var(--arena-text-soft, #e5e7eb)", borderRadius: 10 }}>
                   <div style={{ fontWeight: 700, fontSize: 20 }}>{(leAir.air_90d.air * 100).toFixed(0)}%</div>
                   <div style={{ marginTop: 4, opacity: 0.8 }}>90d</div>
                   {leAir.air_90d.integritySlip && <div style={{ marginTop: 4, fontSize: 11, color: "var(--arena-accent)" }}>{locale === "ko" ? "integrity slip" : "integrity slip"}</div>}
@@ -920,7 +936,7 @@ export default function DashboardClient() {
                   </div>
                 )}
                 {leStageSummary.arenaSummary != null && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--arena-text-soft, #e5e7eb)" }}>
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--arena-text-soft, #e5e7eb)" }} role="group" aria-label={locale === "ko" ? "Arena 결과 요약" : "Arena summary"}>
                     <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{locale === "ko" ? "Arena 결과 요약" : "Arena summary"}</div>
                     <div style={{ fontSize: 13, opacity: 0.9 }}>
                       {typeof leStageSummary.arenaSummary === "string"
@@ -930,7 +946,7 @@ export default function DashboardClient() {
                   </div>
                 )}
                 {leStageSummary.behaviorPattern != null && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--arena-text-soft, #e5e7eb)" }}>
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--arena-text-soft, #e5e7eb)" }} role="group" aria-label={locale === "ko" ? "행동 패턴" : "Behavior pattern"}>
                     <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{locale === "ko" ? "행동 패턴" : "Behavior pattern"}</div>
                     <div style={{ fontSize: 13, opacity: 0.9 }}>
                       {typeof leStageSummary.behaviorPattern === "string"
@@ -942,6 +958,7 @@ export default function DashboardClient() {
               </div>
             )}
           </ProgressCard>
+          </section>
 
           <ProgressCard label={locale === "ko" ? "Leadership Engine" : "Leadership Engine"}>
             {leState == null && leAir == null && leTii == null && leCertified == null ? (
@@ -967,6 +984,8 @@ export default function DashboardClient() {
                     )}
                   </>
                 )}
+                {(leAir != null || (leTii != null && leTii.tii != null) || leCertified != null) && (
+                <div role="group" aria-label={tBty.leEngineTiiCertifiedBandAria}>
                 {leAir != null && (
                   <div style={{ marginTop: 12, fontSize: 13, opacity: 0.9 }}>
                     <span style={{ fontWeight: 600 }}>AIR</span> 7d: {(leAir.air_7d.air * 100).toFixed(0)}%
@@ -993,6 +1012,8 @@ export default function DashboardClient() {
                       </span>
                     )}
                   </div>
+                )}
+                </div>
                 )}
               </div>
             )}
@@ -1428,13 +1449,13 @@ export default function DashboardClient() {
             </div>
           </ProgressCard>
 
-          <ProgressCard label="Streak">
-            <div role="region" aria-label={locale === "ko" ? "연속 일수" : "Streak days"} style={{ fontSize: 28, fontWeight: 800 }}>{streak}</div>
+          <ProgressCard label={tBty.streakLabel}>
+            <div role="region" aria-label={tBty.streakLabel} style={{ fontSize: 28, fontWeight: 800 }}>{streak}</div>
           </ProgressCard>
 
           {weeklyStats && (
             <ProgressCard label="Weekly Reflection">
-              <div style={{ fontSize: 18, fontWeight: 700 }}>
+              <div role="region" aria-label={tBty.weeklyReflectionRegion} style={{ fontSize: 18, fontWeight: 700 }}>
                 {weeklyStats.reflectionCount} / {weeklyStats.reflectionTarget} reflections this week
               </div>
               <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>
@@ -1447,7 +1468,7 @@ export default function DashboardClient() {
 
           {weeklyStats && (
             <ProgressCard label="Personal Record">
-            <div style={{ fontSize: 14, display: "flex", gap: 16, flexWrap: "wrap" }}>
+            <div role="region" aria-label={tBty.personalRecordRegion} style={{ fontSize: 14, display: "flex", gap: 16, flexWrap: "wrap" }}>
               <span>
                 <b>Best day this week</b> {typeof weeklyStats?.weekMaxDailyXp === "number" ? `${weeklyStats.weekMaxDailyXp} XP` : "—"}
               </span>

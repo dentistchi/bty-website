@@ -3,10 +3,10 @@
  *
  * codeIndexFromTier, subTierGroupFromTier, codeNameFromIndex, resolveSubName
  * are canonical in level-tier.ts — imported here for internal use only.
- * Unique: stageNumberFromCoreXp (floor(coreXp/100)+1, cap 7), stageStateFromCoreXp → types.StageState.
+ * Unique: stageNumberFromCoreXp (floor(coreXp/100)+1, cap 7), stageStateFromCoreXp → types.StageState. tier 경계 = level-tier (tierFromCoreXp·CORE_XP_PER_TIER).
  */
 
-import { SUB_NAMES } from "../constants";
+import { SUB_NAMES, STAGE_NUMBER_MAX, CORE_XP_PER_STAGE_STEP } from "../constants";
 import type { CodeIndex, StageState, SubTierGroup } from "../types";
 import {
   tierFromCoreXp,
@@ -16,10 +16,10 @@ import {
   resolveSubName,
 } from "./level-tier";
 
-/** Stage number 1–7 from Core XP (floor(coreXp/100) + 1, capped at 7). */
+/** Stage number 1–7 from Core XP (floor(coreXp/CORE_XP_PER_STAGE_STEP) + 1, capped at STAGE_NUMBER_MAX). */
 export function stageNumberFromCoreXp(coreXp: number): number {
   const safe = Math.max(0, Math.floor(coreXp));
-  return Math.min(7, Math.floor(safe / 100) + 1);
+  return Math.min(STAGE_NUMBER_MAX, Math.floor(safe / CORE_XP_PER_STAGE_STEP) + 1);
 }
 
 /** Default sub name for code and sub-tier; null for CODELESS ZONE. */

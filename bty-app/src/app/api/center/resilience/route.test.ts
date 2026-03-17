@@ -44,6 +44,16 @@ describe("GET /api/center/resilience", () => {
     expect(mockGetResilienceEntries).not.toHaveBeenCalled();
   });
 
+  it("returns 401 with error as string", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: null } }) },
+    });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(typeof data.error).toBe("string");
+  });
+
   it("returns 401 with JSON body containing only error key", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({
       auth: { getUser: () => Promise.resolve({ data: { user: null } }) },
@@ -79,6 +89,64 @@ describe("GET /api/center/resilience", () => {
     const data = await res.json();
     expect(data.error).toBe("db_error");
     expect(mockGetResilienceEntries).toHaveBeenCalledOnce();
+  });
+
+  it("returns 500 with JSON body containing only error key", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    mockGetResilienceEntries.mockResolvedValue({ ok: false, error: "db_error" });
+    const res = await GET(makeRequest("7"));
+    expect(res.status).toBe(500);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
+  it("returns 200 with entries array length >= 0", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    mockGetResilienceEntries.mockResolvedValue({ ok: true, entries: [] });
+    const res = await GET(makeRequest("7"));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data.entries)).toBe(true);
+    expect(data.entries.length).toBeGreaterThanOrEqual(0);
+  });
+
+  it("returns 200 with entries as array", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    mockGetResilienceEntries.mockResolvedValue({ ok: true, entries: [] });
+    const res = await GET(makeRequest("7"));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data.entries)).toBe(true);
+  });
+
+  it("returns 200 with exactly entries key", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    mockGetResilienceEntries.mockResolvedValue({ ok: true, entries: [] });
+
+    const res = await GET(makeRequest("7"));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["entries"]);
   });
 
   it("returns 200 with empty entries when no history", async () => {
@@ -212,6 +280,22 @@ describe("GET /api/center/resilience", () => {
     expect(res.status).toBe(500);
     const data = await res.json();
     expect(data.error).toBe("Something went wrong");
+  });
+
+  it("returns 500 with error as string when service throws", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    mockParsePeriodDays.mockReturnValue(7);
+    mockGetResilienceEntries.mockRejectedValue(new Error("db error"));
+
+    const res = await GET(makeRequest("7"));
+    expect(res.status).toBe(500);
+    const data = await res.json();
+    expect(typeof data.error).toBe("string");
   });
 
   it("returns 500 when getSupabaseServerClient rejects", async () => {

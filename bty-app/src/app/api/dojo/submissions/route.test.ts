@@ -45,6 +45,14 @@ describe("GET /api/dojo/submissions", () => {
     expect(data.error).toBe("UNAUTHENTICATED");
   });
 
+  it("returns 401 with JSON body containing only error key", async () => {
+    mockSupabase(null, { data: [], error: null });
+    const res = await GET();
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
   it("returns 500 when select fails", async () => {
     mockSupabase({ id: "u1" }, {
       data: null,
@@ -55,6 +63,15 @@ describe("GET /api/dojo/submissions", () => {
     expect(res.status).toBe(500);
     const data = await res.json();
     expect(data.error).toBe("Database connection failed");
+  });
+
+  it("returns 200 with submissions array key", async () => {
+    mockSupabase({ id: "u1" }, { data: [], error: null });
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data.submissions)).toBe(true);
+    expect(Object.keys(data)).toEqual(["submissions"]);
   });
 
   it("returns 200 with empty submissions when user has none", async () => {

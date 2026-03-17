@@ -12,6 +12,16 @@ import {
 } from "./level-tier";
 
 describe("domain/rules/level-tier (edges)", () => {
+  it("tierFromCoreXp returns 0 for 0 core XP", () => {
+    expect(tierFromCoreXp(0)).toBe(0);
+  });
+
+  it("tierFromCoreXp returns non-negative number", () => {
+    expect(tierFromCoreXp(0)).toBeGreaterThanOrEqual(0);
+    expect(tierFromCoreXp(100)).toBeGreaterThanOrEqual(0);
+    expect(tierFromCoreXp(500)).toBeGreaterThanOrEqual(0);
+  });
+
   it("codeIndexFromTier clamps tier 700+ to code index 6", () => {
     expect(codeIndexFromTier(700)).toBe(6);
     expect(codeIndexFromTier(701)).toBe(6);
@@ -53,5 +63,10 @@ describe("domain/rules/level-tier (edges)", () => {
   it("tierFromCoreXp with negative coreXp returns 0", () => {
     expect(tierFromCoreXp(-1)).toBe(0);
     expect(tierFromCoreXp(-100)).toBe(0);
+  });
+
+  it("resolveSubName with valid custom returns that string", () => {
+    expect(resolveSubName(0, 0, "Custom")).toBe("Custom");
+    expect(resolveSubName(6, 1, "Legend")).toBe("Legend");
   });
 });

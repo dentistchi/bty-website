@@ -3,7 +3,8 @@
  * 대시보드용 진도·추천·오늘 성장 요약. 도메인 타입·서비스 호출만; recommendation 실데이터 연동(기본값).
  *
  * Query (optional): source=arena|foundry|center — filter recommendation by source.
- * Response (200): progress, recommendation, todayGrowth (xpToday from arena_events since start of today UTC).
+ * Response 200: progress, recommendation, todayGrowth (xpToday from arena_events since start of today UTC). See DashboardSummaryResponse.
+ * Response 401: { error: "UNAUTHENTICATED" }. LE/DB failures may surface as 500 (no explicit JSON envelope in route).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";

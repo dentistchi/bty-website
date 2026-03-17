@@ -51,6 +51,12 @@ describe("domain/rules/weeklyXp (edges)", () => {
     expect(r.weeklyXp).toBe(0);
   });
 
+  it("seasonReset returns object with coreXp and weeklyXp keys", () => {
+    const r = seasonReset({ coreXp: 0, weeklyXp: 50 });
+    expect(r).toHaveProperty("coreXp");
+    expect(r).toHaveProperty("weeklyXp");
+  });
+
   it("leaderboardSort single entry returns copy", () => {
     const entries: LeaderboardEntry[] = [{ userId: "a", xpTotal: 10 }];
     const sorted = leaderboardSort(entries);
@@ -63,5 +69,22 @@ describe("domain/rules/weeklyXp (edges)", () => {
     const sorted = leaderboardSort([]);
     expect(sorted).toEqual([]);
     expect(sorted).not.toBe([]);
+  });
+
+  it("leaderboardSort ranks by weekly xpTotal desc only (multi-entry)", () => {
+    const entries: LeaderboardEntry[] = [
+      { userId: "c", xpTotal: 50 },
+      { userId: "a", xpTotal: 200 },
+      { userId: "b", xpTotal: 100 },
+    ];
+    const sorted = leaderboardSort(entries);
+    expect(sorted.map((e) => e.userId)).toEqual(["a", "b", "c"]);
+    expect(sorted[0].xpTotal).toBe(200);
+  });
+
+  it("seasonReset return has coreXp and weeklyXp keys", () => {
+    const r = seasonReset({ coreXp: 50, weeklyXp: 10 });
+    expect(r).toHaveProperty("coreXp");
+    expect(r).toHaveProperty("weeklyXp");
   });
 });

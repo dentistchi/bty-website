@@ -50,34 +50,38 @@ export default function HealingPageClient({ locale }: Props) {
       aria-label={lang === "ko" ? "Healing 메뉴" : "Healing menu"}
       aria-labelledby="healing-heading"
     >
-      <h1 id="healing-heading" style={{ fontSize: 24, fontWeight: 700, marginBottom: 16 }}>
-        {t.title}
-      </h1>
-      <p style={{ fontSize: 15, lineHeight: 1.6, marginBottom: 24 }}>
-        {t.intro}
-      </p>
+      <section role="region" aria-labelledby="healing-heading" aria-label={lang === "ko" ? "Healing 소개" : "Healing intro"}>
+        <h1 id="healing-heading" style={{ fontSize: 24, fontWeight: 700, marginBottom: 16 }}>
+          {t.title}
+        </h1>
+        <p style={{ fontSize: 15, lineHeight: 1.6, marginBottom: 24 }}>
+          {t.intro}
+        </p>
+      </section>
+      <section aria-label={t.phaseProgressRegionAria} style={{ marginBottom: 16 }}>
       {healingLoading && (
-        <div role="region" aria-label={lang === "ko" ? "Healing 상태" : "Healing status"} aria-busy="true" aria-live="polite" style={{ marginBottom: 16 }}>
+        <div role="region" aria-busy="true" aria-live="polite" style={{ marginBottom: 8 }}>
           <p style={{ fontSize: 13, opacity: 0.7 }} role="status">
             {t.loading}
           </p>
         </div>
       )}
       {!healingLoading && phase != null && (
-        <p style={{ fontSize: 13, opacity: 0.85, marginBottom: 16 }} role="status">
+        <p style={{ fontSize: 13, opacity: 0.85, marginBottom: 0 }} role="status">
           {phase}
         </p>
       )}
       {healingError && (
-        <p style={{ fontSize: 13, color: "#b91c1c", marginBottom: 16 }} role="alert">
+        <p style={{ fontSize: 13, color: "#b91c1c", marginBottom: 0 }} role="alert">
           {healingError}
         </p>
       )}
       {!healingLoading && !healingError && phase == null && (
-        <p style={{ fontSize: 13, opacity: 0.75, marginBottom: 16 }} role="status">
+        <p style={{ fontSize: 13, opacity: 0.75, marginBottom: 0 }} role="status">
           {t.emptyPhase}
         </p>
       )}
+      </section>
       <nav aria-label={t.navLabel} style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
         <Link
           href={`/${locale}/bty/healing/awakening`}

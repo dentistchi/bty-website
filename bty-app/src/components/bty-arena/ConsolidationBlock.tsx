@@ -35,6 +35,7 @@ export function ConsolidationBlock({
   const lang: Locale = locale === "ko" || locale === "en" ? locale : "en";
   const t = getMessages(lang).arenaRun;
   const totalXp = lastXp + reflectionBonusXp;
+  const regionLabel = lang === "ko" ? "반영 요약 및 다음" : "Reflection summary and next";
   return (
     <div
       style={{
@@ -44,6 +45,8 @@ export function ConsolidationBlock({
         borderRadius: 14,
         background: "rgba(0,0,0,0.02)",
       }}
+      role="region"
+      aria-label={regionLabel}
     >
       <div style={{ fontWeight: 700, marginBottom: 8 }}>{t.step6Title}</div>
       <div style={{ fontSize: 14, lineHeight: 1.6, opacity: 0.9, marginBottom: 12 }}>

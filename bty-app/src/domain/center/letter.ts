@@ -1,6 +1,7 @@
 /**
  * Center letter 도메인 — 순수 타입·검증 함수.
- * DB/fetch 금지. 경계·유효성: LETTER_BODY_MAX_LENGTH, validateLetterBody 단일 소스.
+ * DB/fetch 금지. 본문: trim 후 1자 이상, 길이 ≤ `LETTER_BODY_MAX_LENGTH` (10000).
+ * @see resilience — `LetterRow`·`aggregateLetterRowsToDailyEntries` for energy 트렉.
  */
 
 export type LetterLocale = "ko" | "en";

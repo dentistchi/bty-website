@@ -8,9 +8,7 @@ import type { ActivationRecord } from "@/domain/leadership-engine/air";
 /**
  * GET /api/arena/leadership-engine/certified
  * Returns Certified status (Leader only). Inputs from AIR + stubbed MWD/reset/slip when not yet in DB.
- *
- * Response (200): { current: boolean, reasons_met: string[], reasons_missing: string[] }
- * Error: 401 { error: "UNAUTHENTICATED" }
+ * Response (200): { current, reasons_met, reasons_missing }. Errors: 401 { error: "UNAUTHENTICATED" }; 500 on DB failure (TBD).
  */
 export async function GET(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);

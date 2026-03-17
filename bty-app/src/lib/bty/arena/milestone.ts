@@ -5,6 +5,7 @@
  * Preferred in React: useMilestoneTracker hook (src/hooks/useMilestoneTracker.ts).
  */
 
+import { TIER_MILESTONES, type TierMilestoneValue } from "@/domain/constants";
 import {
   codeIndexFromTier,
   subTierGroupFromTier,
@@ -12,8 +13,8 @@ import {
 } from "@/lib/bty/arena/codes";
 import { defaultSubName } from "@/domain/rules";
 
-/** Tier celebration milestones. Shared by lib and UI. */
-export type TierMilestone = 25 | 50 | 75;
+/** Tier celebration milestones. Shared by lib and UI. Domain 단일 소스: TIER_MILESTONES. */
+export type TierMilestone = TierMilestoneValue;
 
 export type MilestoneToShow = {
   milestone: TierMilestone;

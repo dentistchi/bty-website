@@ -11,10 +11,30 @@ import { cn } from "@/lib/utils";
  * Preview/썸네일: characterUrl + outfitUrl + accessoryUrls 전달 시 옷 레이어가 합성·표시됨(zIndex 2).
  */
 
+/** 0–3: 같은 옷 이미지에 CSS hue-rotate로 4가지 톤 적용. 에셋 추가 없이 다양성 확보용. */
+export type OutfitColorVariant = 0 | 1 | 2 | 3;
+
+/** UI 라벨: 0=default, 1=navy, 2=burgundy, 3=teal */
+export const OUTFIT_COLOR_VARIANT_LABELS: Record<OutfitColorVariant, string> = {
+  0: "Default",
+  1: "Navy",
+  2: "Burgundy",
+  3: "Teal",
+};
+
+const HUEROTATE_DEG: Record<OutfitColorVariant, number> = {
+  0: 0,
+  1: 90,
+  2: 180,
+  3: 270,
+};
+
 export interface AvatarCompositeProps {
   size: number;
   characterUrl: string | null;
   outfitUrl?: string | null;
+  /** 옷 레이어에만 적용. 4가지 톤(에셋 추가 없음). */
+  outfitColorVariant?: OutfitColorVariant;
   accessoryUrls?: string[];
   alt?: string;
   className?: string;
@@ -24,6 +44,7 @@ export function AvatarComposite({
   size,
   characterUrl,
   outfitUrl,
+  outfitColorVariant = 0,
   accessoryUrls = [],
   alt = "Avatar",
   className,
@@ -101,7 +122,14 @@ export function AvatarComposite({
         <img
           src={outfitUrl}
           alt=""
-          style={{ ...layerStyle, zIndex: 2 }}
+          style={{
+            ...layerStyle,
+            zIndex: 2,
+            filter:
+              outfitColorVariant !== 0
+                ? `hue-rotate(${HUEROTATE_DEG[outfitColorVariant]}deg)`
+                : undefined,
+          }}
           loading="lazy"
           onError={onOutfitError}
         />

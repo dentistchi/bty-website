@@ -24,6 +24,8 @@ export interface CardSkeletonProps {
   showLabel?: boolean;
   /** Number of content lines. Default 2. */
   lines?: number;
+  /** Optional aria-label for loading state (default: "Loading…"). */
+  ariaLabel?: string;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -34,6 +36,7 @@ export interface CardSkeletonProps {
 export function CardSkeleton({
   showLabel = true,
   lines = 2,
+  ariaLabel = "Loading…",
   className = "",
   style,
 }: CardSkeletonProps) {
@@ -41,6 +44,9 @@ export function CardSkeleton({
     <div
       className={`bty-card-skeleton ${className}`.trim()}
       style={{ ...ARENA_CARD_STYLE, ...style }}
+      role="status"
+      aria-busy="true"
+      aria-label={ariaLabel}
     >
       {showLabel && (
         <div

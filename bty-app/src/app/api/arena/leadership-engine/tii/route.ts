@@ -6,9 +6,7 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 /**
  * GET /api/arena/leadership-engine/tii
  * Returns team TII for the user's active league (team_id = league_id). Team score only; individual AIR not exposed.
- *
- * Response (200): { tii: number | null, avg_air: number | null, avg_mwd: number | null, tsp: number | null }
- * Error: 401 { error: "UNAUTHENTICATED" }
+ * Response (200): { tii, avg_air, avg_mwd, tsp } (number | null). Errors: 401 { error: "UNAUTHENTICATED" }; 500 on DB failure (TBD).
  */
 export async function GET(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);

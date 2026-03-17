@@ -74,8 +74,9 @@ export function OutputPanel({
   const displayResult = isKo && choice.resultKo ? choice.resultKo : choice.result;
   const displayMicroInsight = isKo && choice.microInsightKo ? choice.microInsightKo : choice.microInsight;
 
+  const panelLabel = isKo ? "시나리오 결과 패널" : "Scenario result panel";
   return (
-    <div style={{ marginTop: 18, borderTop: "1px solid #eee", paddingTop: 16 }}>
+    <div style={{ marginTop: 18, borderTop: "1px solid #eee", paddingTop: 16 }} role="region" aria-label={panelLabel}>
       <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>{sysLabel}</div>
 
       {step === 3 && (

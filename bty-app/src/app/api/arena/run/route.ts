@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 
+/**
+ * POST /api/arena/run — 시나리오 런 시작.
+ * Body: { scenarioId: string, locale?: string, difficulty?: string, meta?: object }.
+ * Response 200: { run: { run_id, scenario_id, started_at, status } }.
+ * Errors: 401 { error: "UNAUTHENTICATED" }, 400 { error: "scenarioId_required" }, 500 { error: string }.
+ */
 export async function POST(req: Request) {
   const supabase = await getSupabaseServerClient();
   const {

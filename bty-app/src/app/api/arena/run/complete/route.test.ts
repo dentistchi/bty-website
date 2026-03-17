@@ -143,6 +143,22 @@ describe("POST /api/arena/run/complete", () => {
     expect(data.error).toBe("UNAUTHENTICATED");
   });
 
+  it("returns 401 with JSON body containing only error key", async () => {
+    mockSupabase(null);
+    const res = await POST(makeRequest({ runId: "run-1" }));
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
+  it("returns 400 with error as string when runId missing", async () => {
+    mockSupabase({ id: "u1" });
+    const res = await POST(makeRequest({}));
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(typeof data.error).toBe("string");
+  });
+
   it("returns 400 when runId is missing", async () => {
     mockSupabase({ id: "u1" });
 
@@ -152,6 +168,14 @@ describe("POST /api/arena/run/complete", () => {
     expect(data.error).toBe("MISSING_RUN_ID");
   });
 
+  it("returns 400 with JSON body containing only error key", async () => {
+    mockSupabase({ id: "u1" });
+    const res = await POST(makeRequest({}));
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
   it("returns 400 when runId is not a string", async () => {
     mockSupabase({ id: "u1" });
 
@@ -159,6 +183,60 @@ describe("POST /api/arena/run/complete", () => {
     expect(res.status).toBe(400);
     const data = await res.json();
     expect(data.error).toBe("MISSING_RUN_ID");
+  });
+
+  it("returns 200 with deltaApplied >= 0", async () => {
+    mockSupabase({ id: "u1" });
+    vi.mocked(applyDirectCoreXp).mockResolvedValue({ newCoreTotal: 201 });
+    const res = await POST(makeRequest({ runId: "run-1" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.deltaApplied).toBe("number");
+    expect(data.deltaApplied).toBeGreaterThanOrEqual(0);
+  });
+
+  it("returns 200 with content-type application/json", async () => {
+    mockSupabase({ id: "u1" });
+    vi.mocked(applyDirectCoreXp).mockResolvedValue({ newCoreTotal: 201 });
+    const res = await POST(makeRequest({ runId: "run-1" }));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
+
+  it("returns 200 with weeklyXp as number", async () => {
+    mockSupabase({ id: "u1" });
+    vi.mocked(applyDirectCoreXp).mockResolvedValue({ newCoreTotal: 201 });
+    const res = await POST(makeRequest({ runId: "run-1" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.weeklyXp).toBe("number");
+  });
+
+  it("returns 200 with weeklyXp >= 0", async () => {
+    mockSupabase({ id: "u1" });
+    vi.mocked(applyDirectCoreXp).mockResolvedValue({ newCoreTotal: 201 });
+    const res = await POST(makeRequest({ runId: "run-1" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.weeklyXp).toBeGreaterThanOrEqual(0);
+  });
+
+  it("returns 200 with ok true on success", async () => {
+    mockSupabase({ id: "u1" });
+    vi.mocked(applyDirectCoreXp).mockResolvedValue({ newCoreTotal: 201 });
+    const res = await POST(makeRequest({ runId: "run-1" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+  });
+
+  it("returns 200 with deltaApplied as number", async () => {
+    mockSupabase({ id: "u1" });
+    vi.mocked(applyDirectCoreXp).mockResolvedValue({ newCoreTotal: 201 });
+    const res = await POST(makeRequest({ runId: "run-1" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.deltaApplied).toBe("number");
   });
 
   it("returns 200 with correct response structure on success", async () => {
@@ -178,6 +256,46 @@ describe("POST /api/arena/run/complete", () => {
     expect(data.deltaApplied).toBeGreaterThanOrEqual(0);
     expect(typeof data.coreXp).toBe("number");
     expect(typeof data.weeklyXp).toBe("number");
+  });
+
+  it("returns 200 with runId as string", async () => {
+    mockSupabase({ id: "u1" });
+    vi.mocked(applyDirectCoreXp).mockResolvedValue({ newCoreTotal: 201 });
+    const res = await POST(makeRequest({ runId: "run-1" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.runId).toBe("string");
+    expect(data.runId).toBe("run-1");
+  });
+
+  it("returns 200 with status DONE on success", async () => {
+    mockSupabase({ id: "u1" });
+    vi.mocked(applyDirectCoreXp).mockResolvedValue({ newCoreTotal: 201 });
+    const res = await POST(makeRequest({ runId: "run-1" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.status).toBe("DONE");
+  });
+
+  it("returns 200 with coreXp as number >= 0", async () => {
+    mockSupabase({ id: "u1" });
+    vi.mocked(applyDirectCoreXp).mockResolvedValue({ newCoreTotal: 201 });
+    const res = await POST(makeRequest({ runId: "run-1" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.coreXp).toBe("number");
+    expect(data.coreXp).toBeGreaterThanOrEqual(0);
+  });
+
+  it("returns 200 with expected response keys (ok, runId, status, deltaApplied, coreXp, weeklyXp)", async () => {
+    mockSupabase({ id: "u1" });
+    vi.mocked(applyDirectCoreXp).mockResolvedValue({ newCoreTotal: 201 });
+
+    const res = await POST(makeRequest({ runId: "run-1" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    const expectedKeys = ["coreXp", "deltaApplied", "ok", "runId", "status", "weeklyXp"].sort();
+    expect(Object.keys(data).sort()).toEqual(expectedKeys);
   });
 
   it("calls applyDirectCoreXp with arena core XP", async () => {
@@ -256,5 +374,24 @@ describe("POST /api/arena/run/complete", () => {
     expect(res.status).toBe(404);
     const data = await res.json();
     expect(data.error).toBe("NOT_FOUND");
+  });
+
+  it("returns 404 with JSON body containing only error key", async () => {
+    const sb = {
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+      rpc: () => Promise.resolve({ error: null }),
+      from: () =>
+        chainable({ data: null, error: null }),
+    };
+    (getSupabaseServerClient as ReturnType<typeof vi.fn>).mockResolvedValue(
+      sb,
+    );
+    const res = await POST(makeRequest({ runId: "missing" }));
+    expect(res.status).toBe(404);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
   });
 });

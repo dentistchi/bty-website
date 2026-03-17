@@ -11,6 +11,7 @@ import { ThemeBody } from "@/components/ThemeBody";
 import { CardSkeleton, LoadingFallback } from "@/components/bty-arena";
 import { cn } from "@/lib/utils";
 import { fetchJson } from "@/lib/read-json";
+import { getMessages } from "@/lib/i18n";
 import MentorConversationHistory from "./MentorConversationHistory";
 
 const CENTER_URL = process.env.NEXT_PUBLIC_CENTER_URL ?? (typeof window !== "undefined" ? `${window.location.origin}/center` : "");
@@ -127,6 +128,7 @@ export default function MentorPage() {
   const locale = pathname.startsWith("/ko") ? "ko" : "en";
   const isEn = locale === "en";
   const t = MENTOR_UI[locale];
+  const tMentorPage = getMessages(locale).mentorPage;
   const TOPICS = isEn ? TOPICS_EN : TOPICS_KO;
 
   const [topic, setTopic] = useState<TopicId | null>(null);
@@ -325,7 +327,7 @@ export default function MentorPage() {
   };
 
   const deleteHistory = async () => {
-    if (!confirm(isEn ? "Delete all saved mentor conversation?" : "저장된 멘토 대화 기록을 모두 삭제할까요?")) return;
+    if (!confirm(tMentorPage.deleteAllHistoryConfirm)) return;
     setDeleting(true);
     try {
       await fetch("/api/me/conversations?channel=mentor", { method: "DELETE" });
@@ -375,7 +377,7 @@ export default function MentorPage() {
         style={{
           background: "linear-gradient(180deg, #F5F0E8 0%, #EDE6DB 50%, #E8DFD2 100%)",
         }}
-        aria-label={isEn ? "Dr. Chi Mentor conversation" : "Dr. Chi 멘토 대화"}
+        aria-label={tMentorPage.pageMainLandmarkAria}
       >
         <div className="max-w-2xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
           <Nav locale={locale as "ko" | "en"} pathname={`/${locale}/bty/mentor`} />
@@ -535,6 +537,8 @@ export default function MentorPage() {
                 {messages.map((m, i) => (
                   <div
                     key={i}
+                    role="article"
+                    aria-label={m.role === "user" ? (isEn ? "Your message" : "내 메시지") : (isEn ? "Dr. Chi reply" : "Dr. Chi 답장")}
                     className={cn(
                       "flex gap-3",
                       m.role === "user" ? "justify-end" : "justify-start"

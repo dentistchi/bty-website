@@ -232,7 +232,9 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
   }
 
   const { scores, pattern } = computed;
-  const dojoT = getMessages((isEn ? "en" : "ko") as Locale).dojoResult;
+  const loc = (isEn ? "en" : "ko") as Locale;
+  const dojoT = getMessages(loc).dojoResult;
+  const tAR = getMessages(loc).assessmentResult;
   const dimLabels = dojoT.dimensionLabels;
   const prevScores =
     !historyLoading && history.length >= 2 && history[1]?.scores_json
@@ -248,12 +250,13 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
       <h1 id="assessment-result-heading" className="text-2xl font-semibold mb-2">
         {isEn ? "Result summary" : "결과 요약"}
       </h1>
-      <p className="text-sm text-gray-600 mb-6">
+      <p className="text-sm text-gray-600 mb-6" role="note" aria-label={isEn ? "Result note" : "결과 안내"}>
         {isEn
           ? 'Scores are not a "grade" — they show your current energy map.'
           : "점수는 \"평가\"가 아니라 현재 에너지 지도를 보여주는 지표입니다."}
       </p>
 
+      <section className="space-y-6" aria-label={tAR.mainContentRegionAria}>
       <div
         className="grid sm:grid-cols-2 gap-4"
         role="group"
@@ -320,22 +323,30 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
           {pattern.reasons.map((r, i) => <li key={i}>{r}</li>)}
         </ul>
       </div>
+      </section>
 
-      <div className="mt-8 flex gap-3" role="group" aria-label={dojoT.nextActionsLabel}>
-        {/* 28일 프로그램 시작 버튼: 지금 existing route에 맞춰서 바꿔주면 됨 */}
+      <h2 id="assessment-result-cta-heading" className="sr-only">
+        {tAR.ctaSrOnlyHeading}
+      </h2>
+      <div
+        className="mt-8 flex flex-wrap gap-3"
+        role="group"
+        aria-labelledby="assessment-result-cta-heading"
+        aria-label={tAR.nextStepsCtaGroupAria}
+      >
         <Link
-          href="/train/day/1"
+          href={`/${loc}/train/day/1`}
           className="px-5 py-2 rounded-lg bg-black text-white"
-          aria-label={isEn ? "Start 28-day program" : "28일 프로그램 시작"}
+          aria-label={tAR.start28ProgramCta}
         >
-          28일 프로그램 시작
+          {tAR.start28ProgramCta}
         </Link>
         <Link
           href="../assessment"
           className="px-5 py-2 rounded-lg border"
-          aria-label={isEn ? "Retake assessment" : "다시 검사하기"}
+          aria-label={tAR.retakeCta}
         >
-          다시 검사하기
+          {tAR.retakeCta}
         </Link>
       </div>
 
@@ -373,7 +384,7 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
                 year: "numeric", month: "short", day: "numeric",
               });
               return (
-                <li key={item.id} className="border rounded-xl p-4 bg-white">
+                <li key={item.id} className="border rounded-xl p-4 bg-white" aria-label={isEn ? `Assessment ${dateStr}${item.recommended_track ? `, ${item.recommended_track}` : ""}` : `진단 ${dateStr}${item.recommended_track ? `, ${item.recommended_track}` : ""}`}>
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <time className="text-xs text-gray-500" dateTime={item.created_at}>
                       {dateStr}

@@ -1,8 +1,7 @@
 /**
  * GET /api/dojo/submissions — 로그인 사용자의 Dojo 50문항 제출 이력 조회.
  * RLS가 user_id 필터링을 보장하므로 .eq("user_id", user.id) 적용.
- *
- * 응답: 200 DojoSubmissionsResponse | 401/500 DojoSubmissionsErrorResponse
+ * Response 200: DojoSubmissionsResponse. Errors: 401 { error: "UNAUTHENTICATED" }; 500 { error: string }.
  */
 
 import { NextResponse } from "next/server";

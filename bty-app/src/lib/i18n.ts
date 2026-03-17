@@ -61,10 +61,18 @@ export type Messages = {
     ariaWaitingChi?: string;
     /** 멘토 이름 라벨 (응답 버블 상단) */
     mentorName?: string;
+    conversationSimulatorAria: string;
+    messageComposerAria: string;
   };
   center: {
     /** §2: 전환 중 로딩/대기 문구 (locale에 맞게) */
     loading: string;
+    /** Dear Me 페이지 메인 랜드마크 접근성 라벨 */
+    mainAriaLabel: string;
+    /** Dear Me 페이지 상단 헤더(제목·안내) 영역 라벨 */
+    headerLabel: string;
+    /** Dear Me 페이지 본문 영역 라벨 */
+    contentLabel: string;
     title: string;
     /** §1·§8: 아늑한 방 헤더 (locale별) */
     heroTitleMain?: string;
@@ -94,23 +102,33 @@ export type Messages = {
     bridgeSub: string;
     /** 3단계: 편지 쓰기 */
     letterStepTitle: string;
+    /** 편지 입력·제출 그룹 접근성 라벨 */
+    letterFormLabel: string;
     letterPrompt: string;
     letterPlaceholder: string;
     submitLetter: string;
     sendingLetter: string;
     /** 4단계: 답장 */
     replyStepTitle: string;
+    /** 답장 영역(완료 안내+답장 내용) 그룹 접근성 라벨 */
+    replySummaryLabel: string;
     /** 5단계: 완료 */
     completedTitle: string;
     completedSub: string;
     continueToChat: string;
     /** 편지 이력 */
     letterHistoryTitle: string;
+    /** 이력 목록(ul) 전용 접근성 라벨 */
+    letterHistoryListAria: string;
     letterHistoryEmpty: string;
     letterHistoryError: string;
     letterHistoryLoading: string;
     letterHistoryReplied: string;
     letterHistoryNoReply: string;
+    /** 답장 화면 하단 액션 그룹 접근성 라벨 (다시 쓰기·Center로) */
+    replyActionsLabel: string;
+    /** Dear Me 페이지 푸터(Center 링크) 영역 라벨 */
+    footerLabel: string;
   };
   bty: {
     title: string;
@@ -128,6 +146,49 @@ export type Messages = {
     recommendationLabel: string;
     /** AIR 위젯: 로드 실패 시 문구 */
     airUnavailable: string;
+    /** 대시보드 주간 성찰 위젯 영역 aria-label */
+    weeklyReflectionRegion: string;
+    /** 대시보드 Personal Record 위젯 영역 aria-label */
+    personalRecordRegion: string;
+    /** 대시보드 Streak 카드 라벨 */
+    streakLabel: string;
+    /** 대시보드 Points Today 카드 라벨 */
+    pointsTodayLabel: string;
+    /** 대시보드 Lifetime Progress 카드 라벨 */
+    lifetimeProgressLabel: string;
+    /** 대시보드 Dojo 연습 카드 라벨 */
+    dojoPracticeLabel: string;
+    /** Dojo 연습 링크 영역 aria-label */
+    dojoPracticeLinksRegion: string;
+    /** 리더보드 주간 리셋 일시 영역 aria-label */
+    leaderboardWeekResetRegion: string;
+    /** LE Stage·AIR 카드 묶음 랜드마크 (접근성) */
+    leAirSummarySectionAria: string;
+    /** 대시보드 상단 바로가기: Arena */
+    dashboardShortcutGoArena: string;
+    /** 대시보드 상단 바로가기: 주간 랭킹 */
+    dashboardShortcutWeeklyRanking: string;
+    /** 리더보드 카드·목록 묶음 랜드마크 */
+    leaderboardMainRegionAria: string;
+    /** 대시보드 히어로 부제 (한눈에 보기) */
+    dashboardHeroSubtitle: string;
+    /** LE 카드 내 TII·인증 요약 밴드 */
+    leEngineTiiCertifiedBandAria: string;
+    /** 시즌 카드: 주간 XP·이벤트·주간 구간 묶음 */
+    weeklySeasonActivityAria: string;
+    /** 대시보드 페이지 h1 */
+    dashboardPageTitle: string;
+  };
+  /** 자존감 50문항 결과 화면 (Center assessment). */
+  assessmentResult: {
+    /** 본문(점수·레이더·권장 트랙) 영역 aria-label */
+    mainContentRegionAria: string;
+    /** 하단 다음 단계 CTA 그룹 aria-label */
+    nextStepsCtaGroupAria: string;
+    start28ProgramCta: string;
+    retakeCta: string;
+    /** CTA 그룹용 스크린리더 전용 제목 */
+    ctaSrOnlyHeading: string;
   };
   landing: {
     heroTitle: string;
@@ -313,6 +374,8 @@ export type Messages = {
     unlockExposureTitle: string;
     unlockExposureMet: string;
     unlockExposureLocked: string;
+    /** Elite 멘토·심화 대화 링크 목록 접근성 */
+    mentorDeepLinksListAria: string;
   };
   /** Admin: 멘토 신청 큐·승인 UI. API 응답만 표시(render-only). */
   mentorRequestAdmin: {
@@ -329,6 +392,12 @@ export type Messages = {
     approving: string;
     rejecting: string;
     error: string;
+  };
+  /** Foundry 멘토 허브(1:1 대화). */
+  mentorPage: {
+    deleteAllHistoryConfirm: string;
+    /** 멘토 허브 메인 랜드마크 */
+    pageMainLandmarkAria: string;
   };
   /** Dental RPG 장비 카드 UI. 레어리티 1–5 표시. */
   dentalRpg: {
@@ -354,10 +423,37 @@ export type Messages = {
     emptyPhase: string;
     /** API 실패 시 에러 문구. */
     loadError: string;
+    /** 2차 각성 페이지 로딩 시 메인 랜드마크 라벨. */
+    awakeningLoadingLabel: string;
+    /** Healing 인덱스: 단계·로딩·에러 영역 접근성 */
+    phaseProgressRegionAria: string;
+    /** 2차 각성: 1~3막 의식 콘텐츠 묶음 */
+    awakeningRitualActsRegionAria: string;
   };
   /** 28일 훈련(Train) 사이드바·진도. */
   train: {
     title: string;
+    /** 완료 버튼·코치/요약 전환 그룹 접근성 라벨 */
+    completeGroupLabel: string;
+    /** 오른쪽 패널 완료 요약 영역 접근성 라벨 */
+    completionSummaryLabel: string;
+    /** 오른쪽 패널 코치 대화 영역 접근성 라벨 */
+    coachChatLabel: string;
+    /** 완료 요약 내 보강 질문 블록 접근성 라벨 */
+    reinforcementLabel: string;
+    /** 왼쪽 사이드바 일자 목록 네비게이션 라벨 */
+    dayListLabel: string;
+    /** 가운데 레슨 본문 영역 라벨 */
+    lessonLabel: string;
+    /** 잠긴 레슨 안내(status) 라벨 */
+    lockedLabel: string;
+    /** 오른쪽 패널(완료 요약·코치 대화) 영역 라벨 */
+    sidebarPanelLabel: string;
+    /** 28일 훈련(journey) 시작 페이지 제목·안내 */
+    journeyStartTitle: string;
+    journeyStartIntro: string;
+    journeyStartDay1Link: string;
+    journeyStartDay1Aria: string;
   };
   /** Dojo 50문항 결과 화면. 영역별 점수·Dr. Chi 코멘트 표시(render-only). */
   dojoResult: {
@@ -375,6 +471,14 @@ export type Messages = {
     dimensionLabels: Record<string, string>;
     /** 결과 페이지 다음 액션 그룹 라벨 (접근성). */
     nextActionsLabel: string;
+    /** Dojo 결과 페이지 하단 액션 그룹 라벨 (다시 진단·과거 보기). */
+    resultActionsLabel: string;
+    /** 50문항 현재 문항·선택지 카드 영역 */
+    questionStepSectionAria: string;
+    /** 결과: 점수 막대·코멘트 묶음 */
+    resultScoresInsightRegionAria: string;
+    /** Dojo 50문항 페이지 메인 랜드마크 */
+    dojoPageMainAria: string;
   };
   /** Arena 런 페이지·컴포넌트 문구. locale=ko 시 한국어만 표시(render-only). */
   arenaRun: {
@@ -408,6 +512,10 @@ export type Messages = {
     skipFollowUp: string;
     followUpSelected: string;
     step6Title: string;
+    /** Arena 런 메인 랜드마크 */
+    mainPlayLandmarkAria: string;
+    preparingNewScenarioAria: string;
+    scenarioProgressPanelAria: string;
     youChose: string;
     keyInsight: string;
     principle: string;
@@ -506,9 +614,14 @@ const ko: Messages = {
     ariaInputLabel: "갈등 상황을 입력하세요",
     ariaWaitingChi: "Dr. Chi 응답 대기 중…",
     mentorName: "Dr. Chi",
+    conversationSimulatorAria: "역지사지 대화 내용",
+    messageComposerAria: "메시지 입력·전송",
   },
   center: {
     loading: "잠시만 기다려 주세요.",
+    mainAriaLabel: "나에게 쓰는 편지",
+    headerLabel: "Dear Me 제목 및 안내",
+    contentLabel: "Dear Me 본문",
     title: "Center",
     heroTitleMain: "센터,",
     heroTitleAccent: "듣고 있어요.",
@@ -531,20 +644,25 @@ const ko: Messages = {
     bridgeHeading: "이제 문을 열고 밖으로 나가볼까요?",
     bridgeSub: "(연습하러 가기)",
     letterStepTitle: "나에게 쓰는 편지",
+    letterFormLabel: "편지 입력 및 보내기",
     letterPrompt: "지금 마음에 있는 말을 편하게 적어보세요. 여기선 조언이 아니라 그대로 비춰드릴게요.",
     letterPlaceholder: "오늘 누구에게도 말 못했던 마음이 있나요?",
     submitLetter: "보내기",
     sendingLetter: "글을 읽고 있어요…",
     replyStepTitle: "답장",
+    replySummaryLabel: "답장 요약",
     completedTitle: "오늘의 편지 완료",
     completedSub: "마음을 나눠줘서 고마워요. 더 말하고 싶으면 챗에서 이어서 나눠 보세요.",
     continueToChat: "챗으로 이어하기",
     letterHistoryTitle: "보낸 편지 이력",
+    letterHistoryListAria: "보낸 편지 날짜별 목록",
     letterHistoryEmpty: "아직 보낸 편지가 없어요.",
     letterHistoryError: "편지 이력을 불러올 수 없어요.",
     letterHistoryLoading: "편지 이력을 불러오는 중…",
     letterHistoryReplied: "답장 있음",
     letterHistoryNoReply: "답장 없음",
+    replyActionsLabel: "답장 후 액션",
+    footerLabel: "Center로 돌아가기",
   },
   bty: {
     title: "bty",
@@ -559,6 +677,29 @@ const ko: Messages = {
     airLabel: "AIR",
     recommendationLabel: "추천",
     airUnavailable: "AIR 지표를 불러올 수 없습니다.",
+    weeklyReflectionRegion: "주간 성찰 진행",
+    personalRecordRegion: "이번 주 개인 기록",
+    streakLabel: "연속 일수",
+    pointsTodayLabel: "오늘 획득 XP",
+    lifetimeProgressLabel: "평생 진행 (Core XP)",
+    dojoPracticeLabel: "Dojo 연습",
+    dojoPracticeLinksRegion: "Dojo 연습 링크",
+    leaderboardWeekResetRegion: "이번 주 리셋 일시",
+    leAirSummarySectionAria: "리더십 엔진·AIR 요약 위젯",
+    dashboardShortcutGoArena: "Arena로 가기",
+    dashboardShortcutWeeklyRanking: "주간 랭킹 보기",
+    leaderboardMainRegionAria: "리더보드 카드·순위 목록",
+    dashboardHeroSubtitle: "Arena 진행을 한눈에 볼 수 있어요.",
+    leEngineTiiCertifiedBandAria: "팀 TII·AIR 요약·인증 상태",
+    weeklySeasonActivityAria: "시즌·주간 XP 및 이벤트 수",
+    dashboardPageTitle: "대시보드",
+  },
+  assessmentResult: {
+    mainContentRegionAria: "진단 결과 요약: 영역별 점수·권장 트랙",
+    nextStepsCtaGroupAria: "진단 후 다음 단계",
+    start28ProgramCta: "28일 프로그램 시작",
+    retakeCta: "다시 검사하기",
+    ctaSrOnlyHeading: "진단 후 다음 단계",
   },
   landing: {
     heroTitle: "Better Than Yesterday",
@@ -758,6 +899,7 @@ const ko: Messages = {
     unlockExposureTitle: "노출",
     unlockExposureMet: "Elite 전용 콘텐츠(멘토 대화 신청, 서클 모임, 배지 등)를 이용할 수 있습니다.",
     unlockExposureLocked: "상위 5% 달성 시 Elite 전용 페이지·콘텐츠 이용 가능.",
+    mentorDeepLinksListAria: "Elite 멘토·심화 대화 링크",
   },
   mentorRequestAdmin: {
     title: "멘토 대화 신청 승인",
@@ -773,6 +915,10 @@ const ko: Messages = {
     approving: "승인 중…",
     rejecting: "거절 중…",
     error: "처리 실패",
+  },
+  mentorPage: {
+    deleteAllHistoryConfirm: "저장된 멘토 대화 기록을 모두 삭제할까요?",
+    pageMainLandmarkAria: "Dr. Chi 멘토 대화",
   },
   dentalRpg: {
     empty: "장비가 없습니다.",
@@ -794,8 +940,25 @@ const ko: Messages = {
     loading: "불러오는 중…",
     emptyPhase: "진도 단계 정보를 불러올 수 없습니다. Awakening으로 이동해 보세요.",
     loadError: "진도 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
+    awakeningLoadingLabel: "2차 각성 불러오는 중",
+    phaseProgressRegionAria: "Healing 단계·진행 상태",
+    awakeningRitualActsRegionAria: "2차 각성 의식 1~3막",
   },
-  train: { title: "28일 훈련" },
+  train: {
+    title: "28일 훈련",
+    completeGroupLabel: "완료 처리 및 코치·요약 전환",
+    completionSummaryLabel: "완료 요약",
+    coachChatLabel: "코치 대화",
+    reinforcementLabel: "보강 질문",
+    dayListLabel: "일자 목록",
+    lessonLabel: "오늘의 레슨",
+    lockedLabel: "잠긴 레슨 안내",
+    sidebarPanelLabel: "완료 요약 및 코치 대화",
+    journeyStartTitle: "28일 훈련 시작",
+    journeyStartIntro: "왼쪽에서 Day를 선택하면 레슨이 보이고, 오른쪽에서 코치와 대화할 수 있어요.",
+    journeyStartDay1Link: "Day 1부터 시작하기",
+    journeyStartDay1Aria: "Day 1부터 시작하기",
+  },
   dojoResult: {
     title: "Today-Me 50문항 결과",
     areaScoresTitle: "영역별 점수",
@@ -820,6 +983,10 @@ const ko: Messages = {
       teamwork: "팀·협업",
     },
     nextActionsLabel: "다음 액션",
+    resultActionsLabel: "결과 후 액션",
+    questionStepSectionAria: "현재 문항 및 응답 선택",
+    resultScoresInsightRegionAria: "영역별 점수 및 코멘트",
+    dojoPageMainAria: "Dojo 역량 진단 50문항",
   },
   arenaRun: {
     reflectionPrompt: "한 문장으로: 이 판에서 가져갈 것은?",
@@ -852,6 +1019,9 @@ const ko: Messages = {
     skipFollowUp: "따라하기 건너뛰기 · 다음 시나리오",
     followUpSelected: "선택한 따라하기",
     step6Title: "Step 6 · 정리",
+    mainPlayLandmarkAria: "Arena 시나리오 플레이",
+    preparingNewScenarioAria: "새 시나리오 준비 중",
+    scenarioProgressPanelAria: "시나리오 진행·완료",
     youChose: "선택한 항목",
     keyInsight: "핵심 통찰:",
     principle: "원칙: \"사람을 먼저 안정시키고, 그다음 시스템을 고칩니다.\"",
@@ -943,9 +1113,14 @@ const en: Messages = {
     ariaInputLabel: "Describe a conflict situation",
     ariaWaitingChi: "Waiting for Dr. Chi…",
     mentorName: "Dr. Chi",
+    conversationSimulatorAria: "Integrity conversation",
+    messageComposerAria: "Message input and send",
   },
   center: {
     loading: "Please wait…",
+    mainAriaLabel: "Letter to yourself",
+    headerLabel: "Dear Me title and intro",
+    contentLabel: "Dear Me content",
     title: "Center",
     heroTitleMain: "Center,",
     heroTitleAccent: "I'm listening.",
@@ -968,20 +1143,25 @@ const en: Messages = {
     bridgeHeading: "Ready to step out?",
     bridgeSub: "(Go to practice)",
     letterStepTitle: "A letter to yourself",
+    letterFormLabel: "Letter input and send",
     letterPrompt: "Write what's on your mind. Here we reflect, not advise.",
     letterPlaceholder: "Was there something you couldn't tell anyone today?",
     submitLetter: "Send",
     sendingLetter: "Reading your words…",
     replyStepTitle: "Reply",
+    replySummaryLabel: "Reply summary",
     completedTitle: "Today's letter complete",
     completedSub: "Thanks for sharing. You can continue in Chat if you'd like.",
     continueToChat: "Continue in Chat",
     letterHistoryTitle: "Letter history",
+    letterHistoryListAria: "List of sent letters by date",
     letterHistoryEmpty: "No letters yet.",
     letterHistoryError: "Failed to load letter history.",
     letterHistoryLoading: "Loading letter history…",
     letterHistoryReplied: "Replied",
     letterHistoryNoReply: "No reply",
+    replyActionsLabel: "Actions after reply",
+    footerLabel: "Back to Center",
   },
   bty: {
     title: "bty",
@@ -996,6 +1176,29 @@ const en: Messages = {
     airLabel: "AIR",
     recommendationLabel: "Recommendation",
     airUnavailable: "Unable to load AIR.",
+    weeklyReflectionRegion: "Weekly reflection progress",
+    personalRecordRegion: "Personal record this week",
+    streakLabel: "Streak",
+    pointsTodayLabel: "Points Today",
+    lifetimeProgressLabel: "Lifetime Progress (Core XP)",
+    dojoPracticeLabel: "Dojo practice",
+    dojoPracticeLinksRegion: "Dojo practice links",
+    leaderboardWeekResetRegion: "Weekly reset time",
+    leAirSummarySectionAria: "Leadership Engine and AIR summary widgets",
+    dashboardShortcutGoArena: "Go to Arena",
+    dashboardShortcutWeeklyRanking: "View weekly ranking",
+    leaderboardMainRegionAria: "Leaderboard cards and ranking list",
+    dashboardHeroSubtitle: "Your arena progress at a glance.",
+    leEngineTiiCertifiedBandAria: "Team TII, AIR summary, and certification",
+    weeklySeasonActivityAria: "Season and weekly XP, event count",
+    dashboardPageTitle: "Dashboard",
+  },
+  assessmentResult: {
+    mainContentRegionAria: "Assessment result: scores and recommended track",
+    nextStepsCtaGroupAria: "Next steps after assessment",
+    start28ProgramCta: "Start 28-day program",
+    retakeCta: "Retake assessment",
+    ctaSrOnlyHeading: "Next steps after assessment",
   },
   landing: {
     heroTitle: "Better Than Yesterday",
@@ -1195,6 +1398,7 @@ const en: Messages = {
     unlockExposureTitle: "What's available",
     unlockExposureMet: "You can access Elite-only content (mentor session request, circle meetup, badges, etc.).",
     unlockExposureLocked: "Elite page and content available when you reach top 5%.",
+    mentorDeepLinksListAria: "Elite mentor and deep conversation links",
   },
   mentorRequestAdmin: {
     title: "Mentor session request approval",
@@ -1210,6 +1414,10 @@ const en: Messages = {
     approving: "Approving…",
     rejecting: "Rejecting…",
     error: "Action failed",
+  },
+  mentorPage: {
+    deleteAllHistoryConfirm: "Delete all saved mentor conversation?",
+    pageMainLandmarkAria: "Dr. Chi mentor conversation",
   },
   dentalRpg: {
     empty: "No equipment.",
@@ -1231,8 +1439,25 @@ const en: Messages = {
     loading: "Loading…",
     emptyPhase: "Phase information is unavailable. Try going to Awakening.",
     loadError: "Could not load progress. Please try again later.",
+    awakeningLoadingLabel: "Loading Second Awakening",
+    phaseProgressRegionAria: "Healing phase and progress",
+    awakeningRitualActsRegionAria: "Second Awakening ritual acts 1–3",
   },
-  train: { title: "28-Day Training" },
+  train: {
+    title: "28-Day Training",
+    completeGroupLabel: "Complete and coach or summary toggle",
+    completionSummaryLabel: "Completion summary",
+    coachChatLabel: "Coach chat",
+    reinforcementLabel: "Reinforcement questions",
+    dayListLabel: "Day list",
+    lessonLabel: "Today's lesson",
+    lockedLabel: "Locked lesson notice",
+    sidebarPanelLabel: "Completion summary and coach chat",
+    journeyStartTitle: "Start 28-day training",
+    journeyStartIntro: "Pick a day on the left for the lesson; chat with the coach on the right.",
+    journeyStartDay1Link: "Start from Day 1",
+    journeyStartDay1Aria: "Start from Day 1",
+  },
   dojoResult: {
     title: "Today-Me 50-Item Result",
     areaScoresTitle: "Scores by area",
@@ -1257,6 +1482,10 @@ const en: Messages = {
       teamwork: "Team & collaboration",
     },
     nextActionsLabel: "Next actions",
+    resultActionsLabel: "Result actions",
+    questionStepSectionAria: "Current question and response options",
+    resultScoresInsightRegionAria: "Scores by area and comment",
+    dojoPageMainAria: "Dojo 50-item assessment",
   },
   arenaRun: {
     reflectionPrompt: "In one sentence: what will you take from this scenario?",
@@ -1289,6 +1518,9 @@ const en: Messages = {
     skipFollowUp: "Skip follow-up · Next scenario",
     followUpSelected: "FOLLOW-UP SELECTED",
     step6Title: "Step 6 · Consolidation",
+    mainPlayLandmarkAria: "Arena scenario play",
+    preparingNewScenarioAria: "Preparing new scenario",
+    scenarioProgressPanelAria: "Scenario progress and result",
     youChose: "You chose",
     keyInsight: "Key insight:",
     principle: "Principle: \"Stabilize people first, then fix the system.\"",

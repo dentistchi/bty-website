@@ -26,5 +26,11 @@ describe("stages (edges)", () => {
       expect(stageProgressPercent(3)).toBe(75);
       expect(stageProgressPercent(4)).toBe(100);
     });
+
+    it("returns number in 0–100 range", () => {
+      expect(stageProgressPercent(1)).toBeGreaterThanOrEqual(0);
+      expect(stageProgressPercent(4)).toBeLessThanOrEqual(100);
+      expect(Number.isInteger(stageProgressPercent(2))).toBe(true);
+    });
   });
 });

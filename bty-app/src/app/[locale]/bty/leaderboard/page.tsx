@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import BtyTopNav from "@/components/bty/BtyTopNav";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 import { LeaderboardRow, UserAvatar, LeaderboardListSkeleton, EmptyState } from "@/components/bty-arena";
+import { getMessages } from "@/lib/i18n";
 
 /**
  * BTY_ARENA_SYSTEM_SPEC §4: 리더보드 팀(역할/지점) 뷰 전환.
@@ -103,6 +104,7 @@ export default function LeaderboardPage() {
   const params = useParams();
   const locale = typeof params?.locale === "string" && params.locale === "ko" ? "ko" : "en";
   const t = LB[locale];
+  const tBty = getMessages(locale).bty;
 
   const [scope, setScope] = React.useState<LeaderboardScope>("overall");
   const [data, setData] = React.useState<LeaderboardRes | null>(null);
@@ -151,7 +153,7 @@ export default function LeaderboardPage() {
   return (
     <div style={{ maxWidth: 860, margin: "0 auto", padding: "24px 16px" }}>
       <BtyTopNav />
-      <div style={{ marginTop: 18 }}>
+      <div style={{ marginTop: 18 }} role="region" aria-label={tBty.leaderboardMainRegionAria}>
         <div style={{ fontSize: 14, opacity: 0.7 }}>bty</div>
         <h1 style={{ margin: 0, fontSize: 28 }}>{t.title}</h1>
         <p style={{ margin: "6px 0 0", fontSize: 15, opacity: 0.85 }}>{t.slogan}</p>
@@ -160,7 +162,7 @@ export default function LeaderboardPage() {
         </div>
         {/* API 응답의 주간 경계 값만 표시(UI에서 계산 금지) */}
         {data?.reset_at != null && (
-          <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>
+          <div role="region" aria-label={tBty.leaderboardWeekResetRegion} style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>
             {t.weekResetLabel}:{" "}
             {new Date(data.reset_at).toLocaleString(locale === "ko" ? "ko-KR" : "en-US", {
               dateStyle: "medium",
@@ -178,6 +180,8 @@ export default function LeaderboardPage() {
             gap: 4,
             flexWrap: "wrap",
           }}
+          role="group"
+          aria-label={locale === "ko" ? "리더보드 뷰 전환" : "Leaderboard view scope"}
         >
           {(["overall", "role", "office"] as const).map((s) => (
             <button
@@ -236,7 +240,7 @@ export default function LeaderboardPage() {
           </div>
         )}
         {myRank != null && myRank > 0 && (
-          <div style={{ marginTop: 10, fontSize: 14, fontWeight: 600 }}>
+          <div style={{ marginTop: 10, fontSize: 14, fontWeight: 600 }} role="group" aria-label={locale === "ko" ? "내 순위 및 주간 XP" : "Your rank and weekly XP"}>
             {t.yourRank}: #{myRank} · {data?.myXp ?? 0} XP
           </div>
         )}
@@ -270,13 +274,15 @@ export default function LeaderboardPage() {
           }}
         >
           <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 10 }}>{t.championsTitle}</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+          <div role="list" aria-label={locale === "ko" ? "챔피언·러너업 목록" : "Champions and runners-up list"} style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
             {(data?.champions ?? []).map((c, i) => {
               const label = i === 0 ? t.champion : t.runnerUp;
               const name = c.subName ? `${c.codeName} · ${c.subName}` : c.codeName;
               return (
                 <div
                   key={c.rank}
+                  role="listitem"
+                  aria-label={locale === "ko" ? `${label}: ${name}` : `${label}: ${name}`}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -352,6 +358,7 @@ export default function LeaderboardPage() {
         )}
         {error && (
           <div
+            role="alert"
             style={{
               padding: 12,
               border: "1px solid #f1c0c0",
@@ -392,7 +399,7 @@ export default function LeaderboardPage() {
         )}
 
         {!loading && !error && (
-          <div role="list" style={{ display: "grid", gap: 10 }}>
+          <div role="list" aria-label={locale === "ko" ? "주간 순위 목록" : "Weekly ranking list"} style={{ display: "grid", gap: 10 }}>
             {rows.map((r) => (
               <LeaderboardRow
                 key={`${r.rank}-${r.codeName}`}

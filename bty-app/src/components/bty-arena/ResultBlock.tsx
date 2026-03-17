@@ -21,8 +21,9 @@ export function ResultBlock({ locale, systemMessage, lastXp, microInsight, resul
   const systemText =
     systemMessage && (lang === "ko" && systemMessage.ko ? systemMessage.ko : systemMessage.en);
 
+  const resultLabel = lang === "ko" ? "시나리오 결과" : "Scenario result";
   return (
-    <>
+    <div role="region" aria-label={resultLabel}>
       {systemText && (
         <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 12, marginBottom: 10 }}>
           <div style={{ fontWeight: 700 }}>{systemText}</div>
@@ -49,6 +50,6 @@ export function ResultBlock({ locale, systemMessage, lastXp, microInsight, resul
           {t.reflectionNext}
         </button>
       </div>
-    </>
+    </div>
   );
 }

@@ -2,7 +2,8 @@
  * Healing / Awakening — phase·상태 타입·상수.
  * Pure types and constants only. No UI, API, or DB.
  * Ref: docs/specs/healing-coaching-spec-v3.json, docs/ROADMAP_Q3_Q4.md Q4.
- * Phase 전이(Phase I → II) 경계·경우는 API/서비스에서 판단; 도메인은 라벨·트리거 상수만.
+ * Phase 전이·Awakening 액트(1–3)는 Dojo 50(`dojo/flow`: 50문항·summaryKey high/mid/low)과 **별도 네임스페이스**.
+ * Phase 전이 경계는 API/서비스; 도메인은 라벨·트리거 상수만.
  */
 
 /** Healing 공개 신호용 phase 라벨. */

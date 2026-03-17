@@ -18,6 +18,10 @@ describe("healing domain", () => {
     expect(AWAKENING_ACT_NAMES[3]).toBe("Awakening");
   });
 
+  it("AWAKENING_ACT_NAMES has exactly three keys (1, 2, 3)", () => {
+    expect(Object.keys(AWAKENING_ACT_NAMES)).toEqual(["1", "2", "3"]);
+  });
+
   it("HEALING_PHASE_I_LABEL and HEALING_PHASE_II_LABEL are Phase I and Phase II", () => {
     expect(HEALING_PHASE_I_LABEL).toBe("Phase I");
     expect(HEALING_PHASE_II_LABEL).toBe("Phase II");
@@ -30,5 +34,10 @@ describe("healing domain", () => {
   it("AWAKENING_TRIGGER_DAY and AWAKENING_TRIGGER_MIN_SESSIONS match spec defaults", () => {
     expect(AWAKENING_TRIGGER_DAY).toBe(30);
     expect(AWAKENING_TRIGGER_MIN_SESSIONS).toBe(10);
+  });
+
+  it("AWAKENING_TRIGGER_DAY and AWAKENING_TRIGGER_MIN_SESSIONS are numbers", () => {
+    expect(typeof AWAKENING_TRIGGER_DAY).toBe("number");
+    expect(typeof AWAKENING_TRIGGER_MIN_SESSIONS).toBe("number");
   });
 });

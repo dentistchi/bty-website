@@ -2,6 +2,7 @@
  * GET /api/bty/healing
  * Q4 Healing API — phase·콘텐츠 연동. 도메인 상수만 노출; 사용자별 phase는 추후 서비스 연동.
  *
+ * Response (200): { ok: true, phase, content: { ringType } }.
  * Error responses:
  * - 401: { error: "UNAUTHENTICATED" } (route-client)
  * - 500: { error: "INTERNAL_ERROR", detail?: string } (btyErrorResponse)

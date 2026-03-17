@@ -14,8 +14,10 @@ import { checkRateLimit, getClientIdentifier } from "@/lib/rate-limit";
 import { logApiError } from "@/lib/log-api-error";
 
 /**
- * Mentor (Foundry) — EN+KO dual few-shot bundles + weighted regex router.
- * Emotional safety valve: low self-esteem signals → Center redirect.
+ * POST /api/mentor — Mentor (Foundry) Dr. Chi few-shot + OpenAI.
+ * Body: { message?, messages?, locale? }. Emotional safety valve → 200 { message, safety_valve?, center_url?, dear_me_url? }.
+ * Response (200): { message }; optional safety_valve, usedFallback, center_url.
+ * Errors: 400 { error: "Message required" }; 429 { error, retryAfterSeconds }; 500 { error: "Something went wrong" }.
  */
 
 const CENTER_URL = process.env.NEXT_PUBLIC_CENTER_URL ?? "https://center.pages.dev";

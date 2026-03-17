@@ -116,7 +116,7 @@ export default function AssessmentClient({
         <p id="assessment-question-text" className="text-lg sm:text-xl font-medium text-[var(--arena-text)] mb-6 leading-snug">
           {currentQuestion.text}
         </p>
-        <p className="text-sm text-[var(--arena-text-soft)] mb-4">{hintLabel}</p>
+        <p role="region" aria-label={isEn ? "How to answer" : "응답 방법"} className="text-sm text-[var(--arena-text-soft)] mb-4">{hintLabel}</p>
         <div
           className="grid grid-cols-1 sm:grid-cols-5 gap-2"
           role="group"
@@ -142,7 +142,7 @@ export default function AssessmentClient({
       </section>
 
       {/* Navigation */}
-      <div className="mt-8 flex items-center justify-between gap-4">
+      <div className="mt-8 flex items-center justify-between gap-4" role="group" aria-label={isEn ? "Question navigation" : "문항 이동"}>
         <button
           type="button"
           onClick={goPrev}
@@ -162,8 +162,11 @@ export default function AssessmentClient({
           {submitting ? (isEn ? "Submitting…" : "제출 중…") : isLast ? seeResultLabel : nextLabel}
         </button>
       </div>
+      {submitting && (
+        <p className="mt-3 text-xs text-center text-[var(--arena-text-soft)]" role="status" aria-live="polite" aria-label={isEn ? "Submitting assessment" : "진단 제출 중"}>{isEn ? "Submitting…" : "제출 중…"}</p>
+      )}
 
-      <p className="mt-6 text-xs text-center text-[var(--arena-text-soft)]">
+      <p className="mt-6 text-xs text-center text-[var(--arena-text-soft)]" role="note" aria-label={isEn ? "Assessment note" : "진단 안내"}>
         {isEn
           ? "This is not a grade. It's an energy map."
           : "이건 성적표가 아니라 에너지 지도예요."}

@@ -28,6 +28,21 @@ describe("GET /api/journey/entries", () => {
     expect(mockGetSupabaseAdmin).not.toHaveBeenCalled();
   });
 
+  it("returns 401 with error as string (GET)", async () => {
+    const res = await GET(new Request("http://localhost/api/journey/entries", { method: "GET" }));
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(typeof data.error).toBe("string");
+  });
+
+  it("returns 401 with JSON body containing only error key", async () => {
+    mockGetAuthUserFromRequest.mockResolvedValue(null);
+    const res = await GET(new Request("http://localhost/api/journey/entries", { method: "GET" }));
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
   it("returns 503 when admin client not configured", async () => {
     mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
     mockGetSupabaseAdmin.mockReturnValue(null);
@@ -47,6 +62,18 @@ describe("GET /api/journey/entries", () => {
     expect(Object.keys(data)).toEqual(["error"]);
   });
 
+  it("returns 200 with response as array", async () => {
+    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    const mockOrder = vi.fn().mockResolvedValue({ data: [], error: null });
+    const mockEq = vi.fn().mockReturnValue({ order: mockOrder });
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+    mockGetSupabaseAdmin.mockReturnValue({ from: vi.fn().mockReturnValue({ select: mockSelect }) });
+    const res = await GET(new Request("http://localhost/api/journey/entries", { method: "GET" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data)).toBe(true);
+  });
+
   it("returns 200 with empty array when no rows", async () => {
     mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
     const mockOrder = vi.fn().mockResolvedValue({ data: [], error: null });
@@ -58,6 +85,17 @@ describe("GET /api/journey/entries", () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data).toEqual([]);
+  });
+
+  it("returns 400 with JSON body containing only error key when day invalid", async () => {
+    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    mockGetSupabaseAdmin.mockReturnValue({ from: vi.fn() });
+    const res = await GET(
+      new Request("http://localhost/api/journey/entries?day=0", { method: "GET" })
+    );
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
   });
 
   it("returns 400 when day param invalid", async () => {

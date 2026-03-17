@@ -66,6 +66,16 @@ describe("POST /api/dojo/submit", () => {
     expect(mockSubmitDojo50).not.toHaveBeenCalled();
   });
 
+  it("returns 401 with JSON body containing only error key", async () => {
+    vi.mocked(getSupabaseServerClient).mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: null } }) },
+    } as never);
+    const res = await POST(makeRequest({ answers: validAnswers() }));
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
   it("returns 400 when body is not valid JSON", async () => {
     vi.mocked(getSupabaseServerClient).mockResolvedValue({
       auth: {
@@ -103,6 +113,139 @@ describe("POST /api/dojo/submit", () => {
     const data = await res.json();
     expect(data.error).toBe("answers_count");
     expect(mockSubmitDojo50).toHaveBeenCalledOnce();
+  });
+
+  it("returns 400 with error as string when validation error", async () => {
+    vi.mocked(getSupabaseServerClient).mockResolvedValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    } as never);
+    mockSubmitDojo50.mockResolvedValue({ ok: false, error: "answers_count" });
+    const res = await POST(makeRequest({ answers: { 1: 3 } }));
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(typeof data.error).toBe("string");
+  });
+
+  it("returns 400 with JSON body containing only error key when validation error", async () => {
+    vi.mocked(getSupabaseServerClient).mockResolvedValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    } as never);
+    mockSubmitDojo50.mockResolvedValue({ ok: false, error: "answers_count" });
+    const res = await POST(makeRequest({ answers: { 1: 3 } }));
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
+  it("returns 200 with submissionId as string", async () => {
+    vi.mocked(getSupabaseServerClient).mockResolvedValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    } as never);
+    mockSubmitDojo50.mockResolvedValue({
+      ok: true,
+      submissionId: "sub-abc",
+      scores: {
+        perspective_taking: 30,
+        communication: 30,
+        leadership: 30,
+        conflict: 30,
+        teamwork: 30,
+      },
+      summaryKey: "mid",
+    });
+    const res = await POST(makeRequest({ answers: validAnswers() }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.submissionId).toBe("string");
+    expect(data.submissionId).toBe("sub-abc");
+  });
+
+  it("returns 200 with mentorComment as string", async () => {
+    vi.mocked(getSupabaseServerClient).mockResolvedValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    } as never);
+    mockSubmitDojo50.mockResolvedValue({
+      ok: true,
+      submissionId: "sub-1",
+      scores: {
+        perspective_taking: 30,
+        communication: 30,
+        leadership: 30,
+        conflict: 30,
+        teamwork: 30,
+      },
+      summaryKey: "mid",
+    });
+    const res = await POST(makeRequest({ answers: validAnswers() }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.mentorComment).toBe("string");
+  });
+
+  it("returns 200 with scores as object", async () => {
+    vi.mocked(getSupabaseServerClient).mockResolvedValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    } as never);
+    mockSubmitDojo50.mockResolvedValue({
+      ok: true,
+      submissionId: "sub-1",
+      scores: {
+        perspective_taking: 30,
+        communication: 30,
+        leadership: 30,
+        conflict: 30,
+        teamwork: 30,
+      },
+      summaryKey: "mid",
+    });
+    const res = await POST(makeRequest({ answers: validAnswers() }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.scores).toBe("object");
+    expect(data.scores).not.toBeNull();
+  });
+
+  it("returns 200 with expected response keys (submissionId, summaryKey, scores, mentorComment)", async () => {
+    vi.mocked(getSupabaseServerClient).mockResolvedValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    } as never);
+    mockSubmitDojo50.mockResolvedValue({
+      ok: true,
+      submissionId: "sub-1",
+      scores: {
+        perspective_taking: 30,
+        communication: 30,
+        leadership: 30,
+        conflict: 30,
+        teamwork: 30,
+      },
+      summaryKey: "mid",
+    });
+
+    const res = await POST(makeRequest({ answers: validAnswers() }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Object.keys(data).sort()).toEqual(
+      ["mentorComment", "scores", "submissionId", "summaryKey"].sort()
+    );
   });
 
   it("returns 200 with correct response structure on success", async () => {

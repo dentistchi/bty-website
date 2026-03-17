@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
   });
 }
 
-/** POST: 세션 확보 + 메시지 1개 저장 (대화 기억하기 켜져 있을 때만 호출) */
+/** POST /api/me/conversations — 세션 확보 + 메시지 1개 저장. Body: channel, sessionId, topic?, role, content. 200 { ok: true }. 401, 400, 500. */
 export async function POST(req: Request) {
   const supabase = await getSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();

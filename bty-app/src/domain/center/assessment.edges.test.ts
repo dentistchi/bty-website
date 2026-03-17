@@ -69,6 +69,12 @@ describe("validateAssessmentAnswers (edges)", () => {
     expect(r.ok).toBe(true);
   });
 
+  it("valid result has ok true and no error key", () => {
+    const r = validateAssessmentAnswers({ 1: 3 }, 1);
+    expect(r.ok).toBe(true);
+    expect(Object.keys(r)).toEqual(["ok"]);
+  });
+
   it("questionCount 1 with two answers returns count mismatch", () => {
     const r = validateAssessmentAnswers({ 1: 3, 2: 4 }, 1);
     expect(r.ok).toBe(false);

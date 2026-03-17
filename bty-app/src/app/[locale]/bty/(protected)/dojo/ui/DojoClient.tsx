@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CardSkeleton, EmptyState } from "@/components/bty-arena";
+import { getMessages } from "@/lib/i18n";
 
 type DojoQuestion = {
   id: number;
@@ -20,6 +21,7 @@ export default function DojoClient({ locale = "ko" }: { locale?: string }) {
   const router = useRouter();
   const isEn = locale === "en";
   const likertLabels = isEn ? LIKERT_EN : LIKERT_KO;
+  const tDojo = getMessages(isEn ? "en" : "ko").dojoResult;
 
   const [questions, setQuestions] = useState<DojoQuestion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,7 +143,7 @@ export default function DojoClient({ locale = "ko" }: { locale?: string }) {
 
   if (total === 0) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-12">
+      <div className="max-w-2xl mx-auto px-4 py-12" role="region" aria-label={isEn ? "No questions" : "문항 없음"}>
         <EmptyState
           icon="📋"
           message={isEn ? "No questions found." : "문항이 없습니다."}
@@ -162,7 +164,7 @@ export default function DojoClient({ locale = "ko" }: { locale?: string }) {
   const skipToQuestionLabel = isEn ? "Skip to current question" : "현재 문항으로 건너뛰기";
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12" role="main" aria-label={tDojo.dojoPageMainAria}>
       {/* Screen reader: announce step when it changes */}
       <div aria-live="polite" aria-atomic="true" className="sr-only" key={currentIndex}>
         {stepLabel}
@@ -212,7 +214,7 @@ export default function DojoClient({ locale = "ko" }: { locale?: string }) {
         tabIndex={-1}
         className="rounded-2xl border border-[var(--arena-text-soft)]/20 bg-white p-6 sm:p-8 shadow-sm"
         aria-current="step"
-        aria-label={stepLabel}
+        aria-label={tDojo.questionStepSectionAria}
       >
         <p className="text-sm text-[var(--arena-text-soft)] mb-2">
           {isEn ? `Question ${currentIndex + 1}` : `문항 ${currentIndex + 1}`}
@@ -279,11 +281,13 @@ export default function DojoClient({ locale = "ko" }: { locale?: string }) {
         </div>
       )}
 
-      <p className="mt-4 text-xs text-center text-[var(--arena-text-soft)]">
-        {isEn
-          ? `Answered: ${answeredCount} / ${total}`
-          : `응답 완료: ${answeredCount} / ${total}`}
-      </p>
+      <div role="status" aria-live="polite" aria-label={isEn ? "Assessment progress summary" : "진단 진행 요약"} className="mt-4">
+        <p className="text-xs text-center text-[var(--arena-text-soft)]">
+          {isEn
+            ? `Answered: ${answeredCount} / ${total}`
+            : `응답 완료: ${answeredCount} / ${total}`}
+        </p>
+      </div>
     </div>
   );
 }

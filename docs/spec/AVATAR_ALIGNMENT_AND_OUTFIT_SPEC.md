@@ -17,7 +17,7 @@
 | 구분 | 경로 | 비고 |
 |------|------|------|
 | **캐릭터 이미지** | `bty-app/public/avatars/characters/` | `hero_01.png` … `character_12.png`, `legend.png` (13개). 정렬 스크립트 출력을 여기로 복사. |
-| **옷 이미지** | `bty-app/public/avatars/outfits/` | `outfit_{outfitId}.png`. 정렬 스크립트로 동일 캔버스/앵커 맞춘 뒤 배치. |
+| **옷 이미지** | `bty-app/public/avatars/outfits/` | `outfit_{outfitId}.png`. 정렬 스크립트로 동일 캔버스/앵커 맞춘 뒤 배치. **색상**: CSS hue-rotate 4톤만 사용 (`AvatarComposite` `outfitColorVariant` 0–3). `public/avatars/outfits/README.md` §옷 색상 다양화. |
 | **악세서리** | `bty-app/public/avatars/accessories/` | `{id}.svg` (치과 41종). `avatar-assets.json` 의 `accessories.dental` 과 1:1. |
 | **정렬 스크립트** | (프로젝트 외부 또는 `scripts/` 등) | Python PIL 기반. 입력: raw 이미지 → 출력: 1024×1024, 앵커·bbox 메타. |
 

@@ -1,6 +1,7 @@
 /**
- * GET /api/assessment/submissions — 로그인 사용자의 Assessment 50문항 제출 이력 조회.
- * Response (200): { submissions: array }. Error: 401 | 500 { error: string }.
+ * GET /api/assessment/submissions — Center Assessment 제출 이력 (진로 path = track 필드).
+ * Response (200): { submissions: { id, scores, pattern, track, createdAt }[] }. track = 저장된 recommendedTrack.
+ * Errors: 401 { error: "UNAUTHENTICATED" }; 500 { error: string }.
  */
 import { NextResponse } from "next/server";
 import { getLetterAuth, getAssessmentHistory } from "@/lib/bty/center";

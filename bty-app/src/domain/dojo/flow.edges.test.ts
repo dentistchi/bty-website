@@ -147,6 +147,12 @@ describe("computeDojo50Result edges", () => {
   });
 });
 
+describe("DOJO_50_AREAS edges", () => {
+  it("has exactly 5 area identifiers", () => {
+    expect(DOJO_50_AREAS).toHaveLength(5);
+  });
+});
+
 describe("validateIntegritySubmit edges", () => {
   it("fails when text is whitespace only", () => {
     expect(validateIntegritySubmit({ text: "   " })).toEqual({ ok: false, error: "missing_input" });

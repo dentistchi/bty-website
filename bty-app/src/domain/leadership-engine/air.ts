@@ -32,6 +32,12 @@ export const AIR_MAX = 1 as const;
 export const AIR_BAND_LOW_MID = 0.4 as const;
 export const AIR_BAND_MID_HIGH = 0.7 as const;
 
+/**
+ * Stage 3→4 transition (`stages.air_below_threshold`): AIR strictly below this is “below threshold”
+ * (same boundary as low vs mid band). Service should pass `air_below_threshold` when e.g. `airToBand` is `low`.
+ */
+export const AIR_THRESHOLD_STAGE_ESCALATION = AIR_BAND_LOW_MID;
+
 export type ActivationType = "micro_win" | "reset";
 export type AIRPeriod = "7d" | "14d" | "90d";
 
@@ -82,7 +88,7 @@ export function airToBand(air: number): AIRBand {
   return "high";
 }
 
-/** API 노출용 AIR 응답 타입. */
+/** API 노출용 AIR 응답 타입. GET /api/arena/leadership-engine/air 응답 스키마 단일 소스. */
 export interface AIRApiResponse {
   band: AIRBand;
   air_7d: number;

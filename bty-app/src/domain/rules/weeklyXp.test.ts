@@ -6,6 +6,10 @@ import {
   calculateLevelTierProgress,
   seasonReset,
   leaderboardSort,
+  WEEKLY_LEVEL_STEP,
+  WEEKLY_TIER_SILVER_MIN,
+  WEEKLY_TIER_GOLD_MIN,
+  WEEKLY_TIER_PLATINUM_MIN,
   type LeaderboardEntry,
 } from "./weeklyXp";
 
@@ -143,6 +147,15 @@ describe("domain/rules/weeklyXp", () => {
       const sorted = leaderboardSort(entries);
       expect(sorted[0].userId).toBe("a");
       expect(sorted[1].userId).toBe("b");
+    });
+  });
+
+  describe("weekly tier constants (C3 rules 도메인)", () => {
+    it("WEEKLY_LEVEL_STEP is 100 and tier mins are multiples", () => {
+      expect(WEEKLY_LEVEL_STEP).toBe(100);
+      expect(WEEKLY_TIER_SILVER_MIN).toBe(100);
+      expect(WEEKLY_TIER_GOLD_MIN).toBe(200);
+      expect(WEEKLY_TIER_PLATINUM_MIN).toBe(300);
     });
   });
 });

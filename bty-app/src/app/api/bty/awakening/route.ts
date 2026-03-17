@@ -1,7 +1,7 @@
 /**
  * GET /api/bty/awakening
  * Q4 Awakening API — phase·콘텐츠(액트 이름)·트리거 도메인 연동.
- * Response: ok, acts, trigger (day_based unlock 조건).
+ * Response (200): { ok: true, acts: string[], trigger: { type: "day_based", day, requires_min_sessions } }.
  *
  * Error responses:
  * - 401: { error: "UNAUTHENTICATED" } (route-client)

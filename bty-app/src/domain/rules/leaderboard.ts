@@ -2,17 +2,34 @@
  * Leaderboard rules: ranking and elite.
  * Rule: Season progression (Core XP, Tier, Code) MUST NOT affect leaderboard rank.
  * Rank is by Weekly XP only. Identity (code name, sub name) is from Core.
- * 정렬: rankByWeeklyXpOnly. 타이브레이크: leaderboardTieBreak.compareWeeklyXpTieBreak·LEADERBOARD_TIE_BREAK_ORDER.
+ * 타이브레이크 단일 소스: leaderboardTieBreak (`LEADERBOARD_TIE_BREAK_ORDER`). 상수: ELITE_TOP_FRACTION.
+ * @see level-tier — Core tier/code/sub for row **identity** only, never for sort key.
+ * @see xp — seasonal→Core conversion; rank remains weekly XP + tiebreak only.
  * See docs/spec/arena-domain-rules.md.
  */
 
 import { ELITE_TOP_FRACTION } from "../constants";
+import {
+  compareWeeklyXpTieBreak,
+  type WeeklyXpRowForTieBreak,
+} from "./leaderboardTieBreak";
 
-/** Sort entries by weeklyXp descending for leaderboard order. Rank = 1-based index after sort. */
+/**
+ * Sort by weeklyXp descending only. Ties: stable sort order (not domain tiebreak).
+ * For production leaderboard ordering use `rankByWeeklyXpWithTieBreak` when `updatedAt`·`userId` are available.
+ */
 export function rankByWeeklyXpOnly<T extends { weeklyXp: number }>(
   entries: T[]
 ): (T & { rank: number })[] {
   const sorted = [...entries].sort((a, b) => b.weeklyXp - a.weeklyXp);
+  return sorted.map((e, i) => ({ ...e, rank: i + 1 }));
+}
+
+/** Deterministic rank: weeklyXp desc → updatedAt asc → userId asc. Single source with DB ordering. */
+export function rankByWeeklyXpWithTieBreak<T extends WeeklyXpRowForTieBreak>(
+  entries: T[]
+): (T & { rank: number })[] {
+  const sorted = [...entries].sort(compareWeeklyXpTieBreak);
   return sorted.map((e, i) => ({ ...e, rank: i + 1 }));
 }
 

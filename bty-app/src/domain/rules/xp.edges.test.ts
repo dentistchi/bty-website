@@ -6,6 +6,11 @@ import { describe, it, expect } from "vitest";
 import { seasonalToCoreConversion } from "./xp";
 
 describe("domain/rules/xp (edges)", () => {
+  it("seasonalToCoreConversion returns rate, coreGain, fractionalBuffer", () => {
+    const r = seasonalToCoreConversion(10, 0);
+    expect(Object.keys(r).sort()).toEqual(["coreGain", "fractionalBuffer", "rate"].sort());
+  });
+
   it("seasonalEarned 0 yields coreGain 0 and fractionalBuffer 0", () => {
     const r = seasonalToCoreConversion(0, 100);
     expect(r.coreGain).toBe(0);
@@ -17,5 +22,16 @@ describe("domain/rules/xp (edges)", () => {
     const r = seasonalToCoreConversion(60, 200);
     expect(r.rate).toBe(60);
     expect(r.coreGain).toBe(1);
+  });
+
+  it("rate is positive and coreGain is non-negative", () => {
+    const r = seasonalToCoreConversion(100, 0);
+    expect(r.rate).toBeGreaterThan(0);
+    expect(r.coreGain).toBeGreaterThanOrEqual(0);
+  });
+
+  it("fractionalBuffer is number", () => {
+    const r = seasonalToCoreConversion(10, 0);
+    expect(typeof r.fractionalBuffer).toBe("number");
   });
 });

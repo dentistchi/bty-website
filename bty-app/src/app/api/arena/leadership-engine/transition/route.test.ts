@@ -43,6 +43,14 @@ describe("POST /api/arena/leadership-engine/transition", () => {
     expect(mockApplyStageTransition).not.toHaveBeenCalled();
   });
 
+  it("returns 401 with error as string", async () => {
+    mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: {} });
+    const res = await POST(makePostRequest({ context: "stage_4_completion" }));
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(typeof data.error).toBe("string");
+  });
+
   it("returns 400 when body is not valid JSON", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },

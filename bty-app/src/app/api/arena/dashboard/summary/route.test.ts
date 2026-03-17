@@ -42,6 +42,15 @@ describe("GET /api/arena/dashboard/summary", () => {
     expect(mockGetLeadershipEngineState).not.toHaveBeenCalled();
   });
 
+  it("returns 401 with JSON body containing only error key", async () => {
+    mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: {} });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+    expect(data.error).toBe("UNAUTHENTICATED");
+  });
+
   it("returns 200 with progress, recommendation, and todayGrowth", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },

@@ -3,7 +3,8 @@ import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabas
 
 /**
  * GET /api/arena/profile — 현재 사용자 arena_profiles 행 + avatarCharacterId.
- * Response (200): { profile: object, avatarCharacterId: string | null }. Error: 401 UNAUTHENTICATED, 500.
+ * Response 200: { profile: object, avatarCharacterId: string | null }.
+ * Errors: 401 { error: "UNAUTHENTICATED" }, 500 { error: string } (DB/RPC ensure_arena_profile or select).
  */
 export async function GET(req: NextRequest) {
   const { user, supabase: routeSupabase, base } = await requireUser(req);
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
   return res;
 }
 
-/** Update current user's avatar URL and/or avatar character id. Uses request cookies (same as core-xp) for consistency. */
+/** PATCH /api/arena/profile — 아바타·display_name 등 갱신. Body: avatarUrl?, avatarCharacterId?, … Response (200): profile row. Errors: 401 { error: "UNAUTHENTICATED" }; 400 { error: "INVALID_JSON" }; 500 { error: string }. */
 export async function PATCH(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);
   if (!user) return unauthenticated(req, base);

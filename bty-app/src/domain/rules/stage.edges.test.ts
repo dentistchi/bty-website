@@ -10,6 +10,12 @@ import {
 } from "./stage";
 
 describe("domain/rules/stage (edges)", () => {
+  it("stageNumberFromCoreXp returns integer", () => {
+    expect(Number.isInteger(stageNumberFromCoreXp(0))).toBe(true);
+    expect(Number.isInteger(stageNumberFromCoreXp(100))).toBe(true);
+    expect(Number.isInteger(stageNumberFromCoreXp(500))).toBe(true);
+  });
+
   it("stageNumberFromCoreXp returns 1 for 0 and 99 (boundary before stage 2)", () => {
     expect(stageNumberFromCoreXp(0)).toBe(1);
     expect(stageNumberFromCoreXp(99)).toBe(1);

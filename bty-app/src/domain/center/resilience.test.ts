@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   energyToLevel,
   aggregateLetterRowsToDailyEntries,
+  RESILIENCE_LEVEL_IDS,
   type LetterRow,
 } from "./resilience";
 
@@ -61,5 +62,12 @@ describe("aggregateLetterRowsToDailyEntries", () => {
     const rows: LetterRow[] = [{ energy: 3, created_at: "2026-03-01T00:00:00Z" }];
     expect(aggregateLetterRowsToDailyEntries(rows, { periodDays: 0 })).toHaveLength(1);
     expect(aggregateLetterRowsToDailyEntries(rows, { periodDays: -1 })).toHaveLength(1);
+  });
+});
+
+describe("RESILIENCE_LEVEL_IDS (C3 center 도메인)", () => {
+  it("is [low, mid, high] for API·순회", () => {
+    expect(RESILIENCE_LEVEL_IDS).toEqual(["low", "mid", "high"]);
+    expect(RESILIENCE_LEVEL_IDS).toHaveLength(3);
   });
 });

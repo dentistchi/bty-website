@@ -1,9 +1,9 @@
 /**
  * GET /api/arena/avatar-assets
  *
- * Returns avatar-assets catalog: character/outfit/accessory ID lists.
- * Source: same as lib (avatar-assets.data ↔ public/avatars/avatar-assets.json).
- * No auth required so clients can load catalog for UI before or after login.
+ * Returns avatar-assets catalog: character/outfit/accessory ID lists (JSON 본문 그대로).
+ * Source: lib/bty/arena/data/avatar-assets.json ↔ public/avatars/avatar-assets.json.
+ * Auth: none. Cache-Control: public, max-age=300.
  */
 import { NextResponse } from "next/server";
 import data from "@/lib/bty/arena/data/avatar-assets.json";

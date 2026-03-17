@@ -1,17 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useParams } from "next/navigation";
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
 export default function TrainStartPage() {
+  const params = useParams();
+  const loc = (params?.locale === "en" ? "en" : "ko") as Locale;
+  const t = getMessages(loc).train;
+
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-semibold">28일 훈련 시작</h1>
-      <p className="opacity-80">
-        왼쪽에서 Day를 선택하면 레슨이 보이고, 오른쪽에서 코치와 대화할 수 있어요.
-      </p>
+      <h1 className="text-2xl font-semibold">{t.journeyStartTitle}</h1>
+      <p className="opacity-80">{t.journeyStartIntro}</p>
       <div className="rounded-lg border p-4">
-        <Link className="underline" href="/train/day/1" aria-label="Day 1부터 시작하기">
-          Day 1부터 시작하기
+        <Link className="underline" href={`/${loc}/train/day/1`} aria-label={t.journeyStartDay1Aria}>
+          {t.journeyStartDay1Link}
         </Link>
       </div>
     </div>

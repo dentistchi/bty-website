@@ -43,7 +43,7 @@ export default function TrainDayPage() {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "360px 1fr 420px", height: "100vh" }}>
       {/* LEFT: Sidebar */}
-      <aside style={{ borderRight: "1px solid #eee", padding: 16, overflow: "auto" }}>
+      <aside style={{ borderRight: "1px solid #eee", padding: 16, overflow: "auto" }} role="navigation" aria-label={t.dayListLabel}>
         <div style={{ fontWeight: 700, marginBottom: 8 }}>{t.title}</div>
         <div style={{ opacity: 0.7, marginBottom: 16 }}>
           Unlocked today: Day {progress?.todayUnlockedDay ?? 1}
@@ -83,23 +83,23 @@ export default function TrainDayPage() {
       </aside>
 
       {/* CENTER: Lesson */}
-      <main style={{ padding: 24, overflow: "auto" }}>
+      <main style={{ padding: 24, overflow: "auto" }} role="region" aria-label={t.lessonLabel}>
         <div style={{ opacity: 0.6, marginBottom: 6 }}>{lesson?.date ?? ""}</div>
         <h1 style={{ margin: 0, marginBottom: 8 }}>Day {day}</h1>
         <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 18 }}>{lesson?.title ?? ""}</div>
 
         {!isUnlocked && (
-          <div style={{ padding: 14, border: "1px solid #eee", borderRadius: 12, marginBottom: 18 }}>
+          <div style={{ padding: 14, border: "1px solid #eee", borderRadius: 12, marginBottom: 18 }} role="status" aria-label={t.lockedLabel}>
             Locked until tomorrow 5am (and previous day completion).
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 10, marginBottom: 16 }} role="group" aria-label={t.completeGroupLabel}>
           <button
             type="button"
             onClick={onClickComplete}
             disabled={!isUnlocked || isCompleted}
-            aria-label={isCompleted ? "Completed" : "Mark today as complete"}
+            aria-label={isCompleted ? (locale === "ko" ? "완료됨" : "Completed") : (locale === "ko" ? "오늘 완료로 표시" : "Mark today as complete")}
             style={{
               padding: "10px 14px",
               borderRadius: 10,
@@ -108,24 +108,24 @@ export default function TrainDayPage() {
               cursor: !isUnlocked || isCompleted ? "not-allowed" : "pointer",
             }}
           >
-            {isCompleted ? "Completed" : "Mark today as complete"}
+            {isCompleted ? (locale === "ko" ? "완료됨" : "Completed") : (locale === "ko" ? "오늘 완료로 표시" : "Mark today as complete")}
           </button>
 
           <button
             type="button"
             onClick={() => setShowCompletionSummary(false)}
-            aria-label="Coach chat"
+            aria-label={t.coachChatLabel}
             style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #ddd" }}
           >
-            Coach chat
+            {locale === "ko" ? "코치 대화" : "Coach chat"}
           </button>
           <button
             type="button"
             onClick={() => setShowCompletionSummary(true)}
-            aria-label="Completion summary"
+            aria-label={t.completionSummaryLabel}
             style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #ddd" }}
           >
-            Completion summary
+            {locale === "ko" ? "완료 요약" : "Completion summary"}
           </button>
         </div>
 
@@ -135,12 +135,12 @@ export default function TrainDayPage() {
       </main>
 
       {/* RIGHT: Chat / Completion Summary */}
-      <aside role="region" aria-label="Completion summary and coach chat" style={{ borderLeft: "1px solid #eee", padding: 16, overflow: "auto" }}>
+      <aside role="region" aria-label={t.sidebarPanelLabel} style={{ borderLeft: "1px solid #eee", padding: 16, overflow: "auto" }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <button
             type="button"
             onClick={() => setShowCompletionSummary(false)}
-            aria-label="Coach chat"
+            aria-label={t.coachChatLabel}
             aria-pressed={!showCompletionSummary}
             style={{
               padding: "8px 12px",
@@ -150,12 +150,12 @@ export default function TrainDayPage() {
               color: showCompletionSummary ? "black" : "white",
             }}
           >
-            Coach chat
+            {locale === "ko" ? "코치 대화" : "Coach chat"}
           </button>
           <button
             type="button"
             onClick={() => setShowCompletionSummary(true)}
-            aria-label="Completion summary"
+            aria-label={t.completionSummaryLabel}
             aria-pressed={showCompletionSummary}
             style={{
               padding: "8px 12px",
@@ -165,12 +165,12 @@ export default function TrainDayPage() {
               color: showCompletionSummary ? "white" : "black",
             }}
           >
-            Completion summary
+            {locale === "ko" ? "완료 요약" : "Completion summary"}
           </button>
         </div>
 
         {!showCompletionSummary ? (
-          <div>
+          <div role="region" aria-label={t.coachChatLabel}>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>Coach chat</div>
             <div style={{ opacity: 0.7, marginBottom: 12 }}>
               (placeholder) Later: inject lesson context + store conversation.
@@ -180,10 +180,10 @@ export default function TrainDayPage() {
             </div>
           </div>
         ) : (
-          <div>
+          <div role="region" aria-label={t.completionSummaryLabel}>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>Completion summary</div>
             {!completionSummary ? (
-              <div style={{ opacity: 0.7 }}>
+              <div style={{ opacity: 0.7 }} role="status" aria-label={locale === "ko" ? "완료 요약 없음" : "No completion summary yet"}>
                 No summary yet. Click &quot;Mark today as complete&quot; (or we can generate on demand).
               </div>
             ) : (
@@ -197,7 +197,7 @@ export default function TrainDayPage() {
                   </ul>
                 </div>
 
-                <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 12 }}>
+                <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 12 }} role="group" aria-label={t.reinforcementLabel}>
                   <div style={{ fontWeight: 700, marginBottom: 8 }}>Reinforcement questions (3)</div>
                   <ol style={{ margin: 0, paddingLeft: 18 }}>
                     {completionSummary.questions.map((q, i) => (

@@ -47,6 +47,20 @@
 
 **배포 시 실행 순서**: MVP_DEPLOYMENT_READINESS(1회) → Gate(self-healing-ci 등) → 본 문서·보드·CURRENT_TASK 반영.
 
+**최근 완료 (2026-03-12)**: [UI] Center/Foundry 접근성 1곳 (SPRINT 46 TASK 4, C4). 대시보드 바로가기 링크 그룹 role=region·aria-label. render-only.
+
+**최근 완료 (2026-03-12)**: [DOCS] 문서 점검 124·125·126차 (SPRINT 46 TASK 3, C1). NEXT_PHASE·NEXT_BACKLOG·보드·BTY_RELEASE_GATE_CHECK 2~3건 점검·갱신. 삼문서 대기 6건 일치. 코드 없음.
+
+**최근 완료 (2026-03-12)**: [VERIFY] Release Gate A~F — Foundry 46차 (C5, SPRINT 46 TASK 1). A~E N/A · F) Lint ✓ Test 1819 ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+
+**최근 완료 (2026-03-12)**: [UI] Center/Foundry 접근성 1곳 (SPRINT 45 TASK 4, C4). PageClient Center main 4곳 aria-label. render-only.
+
+**최근 완료 (2026-03-12)**: [DOCS] 문서 점검 121·122·123차 (SPRINT 45 TASK 3, C1). NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드·BTY_RELEASE_GATE_CHECK 2~3건 점검·갱신. 삼문서·보드 대기 6건 일치 확인. 코드 없음.
+
+**최근 완료 (2026-03-16)**: [VERIFY] Release Gate A~F — Foundry 45차 (C5, SPRINT 45 TASK 1). A~E N/A · F) Lint ✓ Test 1728 ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+
+**최근 완료 (배포 195)**: 195 배포 시 1회. Gate § A~F·MVP 최종 확인·self-healing-ci 실행 완료. **RESULT: PASS.** 본 문서·SPRINT_LOG 반영.
+
 **최근 완료 (배포 191)**: 191 배포 시 1회. Gate § A~F·MVP 최종 확인·self-healing-ci 실행 완료. **RESULT: PASS.** 본 문서·SPRINT_LOG 반영.
 
 **최근 완료 (2026-03-11)**: [VERIFY] 엘리트 3차 체크리스트 1회 (SPRINT 44 TASK 6, C5). 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** ELITE_3RD_SPEC_AND_CHECKLIST §3·보드·CURRENT_TASK 반영.

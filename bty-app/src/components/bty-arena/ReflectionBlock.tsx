@@ -43,7 +43,7 @@ export function ReflectionBlock({
 
   if (reflectionPrompt) {
     return (
-      <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
+      <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }} role="region" aria-label={lang === "ko" ? "한 문장 반영" : "One-sentence reflection"}>
         <div style={{ fontWeight: 700, marginBottom: 8 }}>{displayTitle}</div>
         <p style={{ margin: "0 0 12px", lineHeight: 1.5, opacity: 0.9 }}>{reflectionPrompt}</p>
         <div style={{ marginBottom: 12 }}>

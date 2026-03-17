@@ -196,7 +196,7 @@ export default function IntegrityMirrorPage() {
       <main className="min-h-screen bg-foundry-white" aria-label={locale === "ko" ? "역지사지 시뮬레이터" : "Integrity simulator"}>
         <div className="max-w-xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
           <Nav locale={locale} pathname={`/${locale}/bty/integrity`} />
-          <header className="text-center mb-6">
+          <header className="text-center mb-6" role="region" aria-label={locale === "ko" ? "역지사지 제목" : "Integrity title"}>
             <h1 className="text-2xl sm:text-3xl font-semibold text-foundry-purple-dark">
               {t.title}
             </h1>
@@ -211,14 +211,14 @@ export default function IntegrityMirrorPage() {
               "shadow-sm overflow-hidden flex flex-col outline-none"
             )}
           >
-            <div className="p-4 border-b border-foundry-purple-muted bg-foundry-purple/5">
+            <div className="p-4 border-b border-foundry-purple-muted bg-foundry-purple/5" role="region" aria-labelledby="integrity-hint" aria-label={locale === "ko" ? "역지사지 안내" : "Integrity intro"}>
               <p id="integrity-hint" className="text-sm text-foundry-ink-soft">{t.intro}</p>
             </div>
 
             <div
               className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[200px]"
               role="region"
-              aria-label={locale === "ko" ? "역지사지 대화 내용" : "Integrity conversation"}
+              aria-label={t.conversationSimulatorAria}
             >
               {messages.length === 0 && (
                 <EmptyState
@@ -266,7 +266,7 @@ export default function IntegrityMirrorPage() {
               <div ref={bottomRef} />
             </div>
 
-            <div className="p-4 border-t border-foundry-purple-muted space-y-3" role="group" aria-label={locale === "ko" ? "메시지 입력" : "Message input"}>
+            <div className="p-4 border-t border-foundry-purple-muted space-y-3" role="group" aria-label={t.messageComposerAria}>
               {lastError && t.errorTitle && (
                 <div
                   role="alert"

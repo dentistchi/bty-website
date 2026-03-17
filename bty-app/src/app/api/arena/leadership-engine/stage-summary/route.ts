@@ -2,14 +2,8 @@
  * GET /api/arena/leadership-engine/stage-summary
  * LE Stage + Arena 결과·행동 패턴 요약. 도메인/서비스 호출만; UI는 렌더만.
  *
- * Response schema (200): StageSummaryResponse — 필드 7개 고정.
- * - currentStage: Stage (1|2|3|4)
- * - stageName: string
- * - progressPercent: number (0–100)
- * - forcedResetTriggeredAt: string | null (ISO date)
- * - resetDueAt: string | null (ISO date)
- * - arenaSummary: ArenaResultSummary | null
- * - behaviorPattern: BehaviorPatternSummary | null
+ * Response 200: StageSummaryResponse (currentStage, stageName, progressPercent, forcedResetTriggeredAt, resetDueAt, arenaSummary, behaviorPattern). See export type StageSummaryResponse.
+ * Response 401: { error: "UNAUTHENTICATED" }. Response 500: LE state/RPC failure (Next error page or { message } per runtime).
  *
  * @see domain/leadership-engine/le-stage.ts LEStageSummary (단일 스키마 소스)
  */

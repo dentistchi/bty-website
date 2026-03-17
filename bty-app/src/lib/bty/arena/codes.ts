@@ -69,8 +69,8 @@ export function progressToNextTier(coreXpTotal: number): {
 }
 
 /**
- * All display fields for core-xp API (progress bar, code lore, milestone modal).
- * Domain-only; route calls this and returns the result.
+ * Run·profile 진도·milestone 표시 타입. core-xp API 응답 단일 소스.
+ * milestone 값 경계: @/domain/constants TIER_MILESTONES (25, 50, 75).
  */
 export type CoreXpDisplay = {
   stage: number;

@@ -6,6 +6,7 @@
 import { describe, it, expect } from "vitest";
 import {
   validateLetterBody,
+  LETTER_BODY_MAX_LENGTH,
   type LetterSubmission,
   type LetterWithReply,
 } from "./letter";
@@ -42,6 +43,13 @@ describe("center/letter", () => {
       const r = validateLetterBody("오늘 하루 고생했어요.");
       expect(r.ok).toBe(true);
       expect(r.error).toBeUndefined();
+    });
+
+    it("uses LETTER_BODY_MAX_LENGTH as single source for max length", () => {
+      expect(LETTER_BODY_MAX_LENGTH).toBe(10_000);
+      const atLimit = "x".repeat(LETTER_BODY_MAX_LENGTH);
+      expect(validateLetterBody(atLimit).ok).toBe(true);
+      expect(validateLetterBody("x".repeat(LETTER_BODY_MAX_LENGTH + 1)).ok).toBe(false);
     });
 
     it("rejects non-string input", () => {

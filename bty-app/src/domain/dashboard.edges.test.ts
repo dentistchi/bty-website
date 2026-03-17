@@ -31,4 +31,29 @@ describe("domain/dashboard (edges)", () => {
     expect(RECOMMENDATION_SOURCE_ORDER).toContain("foundry");
     expect(RECOMMENDATION_SOURCE_ORDER).toContain("center");
   });
+
+  it("RECOMMENDATION_SOURCE_ORDER has exact order arena, foundry, center", () => {
+    expect([...RECOMMENDATION_SOURCE_ORDER]).toEqual(["arena", "foundry", "center"]);
+  });
+
+  it("RECOMMENDATION_SOURCE_PRIORITY values are numbers", () => {
+    expect(typeof RECOMMENDATION_SOURCE_PRIORITY.arena).toBe("number");
+    expect(typeof RECOMMENDATION_SOURCE_PRIORITY.foundry).toBe("number");
+    expect(typeof RECOMMENDATION_SOURCE_PRIORITY.center).toBe("number");
+  });
+
+  it("RECOMMENDATION_SOURCE_PRIORITY values are distinct", () => {
+    const vals = [
+      RECOMMENDATION_SOURCE_PRIORITY.arena,
+      RECOMMENDATION_SOURCE_PRIORITY.foundry,
+      RECOMMENDATION_SOURCE_PRIORITY.center,
+    ];
+    expect(new Set(vals).size).toBe(3);
+  });
+
+  it("RECOMMENDATION_SOURCE_PRIORITY values are non-negative", () => {
+    expect(RECOMMENDATION_SOURCE_PRIORITY.arena).toBeGreaterThanOrEqual(0);
+    expect(RECOMMENDATION_SOURCE_PRIORITY.foundry).toBeGreaterThanOrEqual(0);
+    expect(RECOMMENDATION_SOURCE_PRIORITY.center).toBeGreaterThanOrEqual(0);
+  });
 });

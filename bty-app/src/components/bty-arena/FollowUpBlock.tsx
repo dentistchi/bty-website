@@ -19,9 +19,9 @@ export type FollowUpBlockProps = {
 export function FollowUpBlock({ skipLabel, prompt, options, onSubmit, onSkip, loading = false, loadingAriaLabel = "Submitting follow-up…" }: FollowUpBlockProps) {
   return (
     <>
-      <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
+      <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }} role="region" aria-label="Follow-up choices">
         <div style={{ fontWeight: 700, marginBottom: 8 }}>{prompt}</div>
-        <div style={{ display: "grid", gap: 10 }}>
+        <div style={{ display: "grid", gap: 10 }} role="group" aria-label="Follow-up options">
           {options.map((opt, idx) => (
             <button
               key={idx}

@@ -98,14 +98,16 @@ export default function AdminMentorRequestsPage() {
 
       <div className="rounded border border-neutral-200 bg-white p-6 shadow-sm">
         {loading && (
-          <LoadingFallback
-            icon="✉️"
-            message={t.loading}
-            withSkeleton
-            style={{ padding: "32px 20px" }}
-          />
+          <div role="status" aria-busy="true" aria-label={t.loading}>
+            <LoadingFallback
+              icon="✉️"
+              message={t.loading}
+              withSkeleton
+              style={{ padding: "32px 20px" }}
+            />
+          </div>
         )}
-        {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+        {error && <p className="mb-4 text-sm text-red-600" role="alert">{error}</p>}
         {/* DESIGN_FIRST_IMPRESSION_BRIEF §2: 데이터 없을 때 일러·아이콘 + 한 줄 문구 */}
         {!loading && queue.length === 0 && !error && (
           <EmptyState icon="✉️" message={t.empty} style={{ padding: "32px 20px" }} />
@@ -115,10 +117,10 @@ export default function AdminMentorRequestsPage() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-neutral-200">
-                  <th className="pb-2 pr-4 font-medium">{t.userId}</th>
-                  <th className="pb-2 pr-4 font-medium">{t.createdAt}</th>
-                  <th className="pb-2 pr-4 font-medium">{t.message}</th>
-                  <th className="pb-2 font-medium">{t.actions}</th>
+                  <th scope="col" className="pb-2 pr-4 font-medium">{t.userId}</th>
+                  <th scope="col" className="pb-2 pr-4 font-medium">{t.createdAt}</th>
+                  <th scope="col" className="pb-2 pr-4 font-medium">{t.message}</th>
+                  <th scope="col" className="pb-2 font-medium">{t.actions}</th>
                 </tr>
               </thead>
               <tbody>
@@ -129,7 +131,7 @@ export default function AdminMentorRequestsPage() {
                       <td className="py-2 pr-4">{row.createdAt.slice(0, 19).replace("T", " ")}</td>
                       <td className="py-2 pr-4 max-w-[200px] truncate">{row.message ?? "—"}</td>
                       <td className="py-2">
-                        <div className="flex gap-2">
+                        <div className="flex gap-2" role="group" aria-label={locale === "ko" ? "승인·거절" : "Approve or reject"}>
                           <button
                             type="button"
                             disabled={actingId === row.id}

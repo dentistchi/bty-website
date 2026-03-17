@@ -88,10 +88,10 @@ export default function DearMeClient({ locale }: { locale: string }) {
   return (
     <AuthGate loadingMessage={t.loading}>
       <ThemeBody theme="dear" />
-      <main className="min-h-screen" aria-label={lang === "ko" ? "나에게 쓰는 편지" : "Letter to yourself"}>
-        <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
+      <main className="min-h-screen" aria-label={t.mainAriaLabel}>
+        <div className="max-w-xl mx-auto px-4 py-6 sm:py-10" role="region" aria-label={t.contentLabel}>
           <Nav locale={lang} pathname={pathname} theme="dear" />
-          <header className="text-center mb-10 pt-4">
+          <header className="text-center mb-10 pt-4" role="region" aria-label={t.headerLabel}>
             <h1 className="font-serif text-2xl sm:text-3xl font-medium text-dear-charcoal">
               {lang === "ko" ? "Dear Me — 나에게 쓰는 편지" : "Dear Me — Letter to yourself"}
             </h1>
@@ -105,6 +105,7 @@ export default function DearMeClient({ locale }: { locale: string }) {
               <h2 id="letter-heading" className="text-lg font-medium text-dear-charcoal sr-only">
                 {t.letterStepTitle}
               </h2>
+              <div className="space-y-4" role="group" aria-label={t.letterFormLabel}>
               <textarea
                 value={letterBody}
                 onChange={(e) => setLetterBody(e.target.value)}
@@ -134,12 +135,14 @@ export default function DearMeClient({ locale }: { locale: string }) {
                   <CardSkeleton showLabel={false} lines={2} style={{ padding: "16px 20px" }} />
                 </div>
               )}
+              </div>
             </section>
           ) : (
-            <section ref={replySectionRef} tabIndex={-1} className="space-y-6 outline-none" aria-labelledby="reply-heading">
+            <section ref={replySectionRef} tabIndex={-1} className="space-y-6 outline-none" role="region" aria-label={t.replyStepTitle} aria-labelledby="reply-heading">
               <h2 id="reply-heading" className="text-lg font-medium text-dear-charcoal">
                 {t.replyStepTitle}
               </h2>
+              <div role="group" aria-label={t.replySummaryLabel}>
               {/* Dear Me 완료 화면 보강: 오늘의 편지 완료 문구 (Center completedTitle/Sub 재사용) */}
               <div role="region" aria-label={lang === "ko" ? "오늘의 편지 완료 안내" : "Today's letter completed"} className="rounded-2xl border border-dear-sage/20 bg-dear-sage/5 px-4 py-3 text-center">
                 <p className="font-medium text-dear-charcoal">{t.completedTitle}</p>
@@ -148,7 +151,8 @@ export default function DearMeClient({ locale }: { locale: string }) {
               <div role="region" aria-label={lang === "ko" ? "답장 내용" : "Reply content"} className="rounded-2xl border border-dear-sage/30 bg-dear-sage/5 p-5 text-dear-charcoal whitespace-pre-wrap">
                 {replyDisplay}
               </div>
-              <div className="flex flex-col sm:flex-row gap-3">
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3" role="group" aria-label={t.replyActionsLabel}>
                 <button
                   type="button"
                   onClick={() => {
@@ -173,7 +177,7 @@ export default function DearMeClient({ locale }: { locale: string }) {
           )}
 
           {/* ── 편지 이력 ── */}
-          <section className="mt-14" aria-labelledby="letter-history-heading">
+          <section className="mt-14" role="region" aria-labelledby="letter-history-heading" aria-label={t.letterHistoryTitle}>
             <h2 id="letter-history-heading" className="text-lg font-medium text-dear-charcoal mb-4">
               {t.letterHistoryTitle}
             </h2>
@@ -189,15 +193,17 @@ export default function DearMeClient({ locale }: { locale: string }) {
             )}
 
             {!historyLoading && !historyError && history.length === 0 && (
-              <EmptyState
-                icon="✉️"
-                message={t.letterHistoryEmpty}
-                style={{ padding: "24px 16px", color: "var(--dear-charcoal, #3d3d3d)" }}
-              />
+              <div role="region" aria-label={t.letterHistoryTitle}>
+                <EmptyState
+                  icon="✉️"
+                  message={t.letterHistoryEmpty}
+                  style={{ padding: "24px 16px", color: "var(--dear-charcoal, #3d3d3d)" }}
+                />
+              </div>
             )}
 
             {!historyLoading && !historyError && history.length > 0 && (
-              <ul className="space-y-3" role="list" aria-label={t.letterHistoryTitle}>
+              <ul className="space-y-3" role="list" aria-label={t.letterHistoryListAria}>
                 {history.map((item) => {
                   const date = new Date(item.created_at);
                   const dateStr = date.toLocaleDateString(lang === "ko" ? "ko-KR" : "en-US", {
@@ -263,7 +269,7 @@ export default function DearMeClient({ locale }: { locale: string }) {
             )}
           </section>
 
-          <footer className="mt-12 pt-6 border-t border-dear-charcoal/10 text-center text-sm text-dear-charcoal-soft">
+          <footer className="mt-12 pt-6 border-t border-dear-charcoal/10 text-center text-sm text-dear-charcoal-soft" role="contentinfo" aria-label={t.footerLabel}>
             <Link
               href={`/${locale}/center`}
               className="inline-block rounded-xl px-6 py-3 font-medium text-dear-charcoal bg-dear-sage/10 border border-dear-sage/30 hover:bg-dear-sage/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-dear-sage"

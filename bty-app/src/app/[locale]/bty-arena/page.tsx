@@ -76,6 +76,8 @@ export default function BtyArenaPage() {
       className="bty-arena-page-root lg:flex-row lg:gap-6"
     >
       <div
+        role="main"
+        aria-label={t.mainPlayLandmarkAria}
         style={{
           display: "flex", flexDirection: "column", flex: 1,
           minWidth: 0, maxWidth: 860, margin: "0 auto", width: "100%",
@@ -95,7 +97,7 @@ export default function BtyArenaPage() {
         <ArenaHeader locale={locale} step={s.step} phase={s.phase} runId={s.runId} onPause={s.pause} onReset={s.resetRun} showPause={false} />
 
         {s.resetRunLoading && (
-          <div style={{ marginTop: 10 }} aria-busy="true" aria-label={locale === "ko" ? "새 시나리오 준비 중…" : "Preparing new scenario…"}>
+          <div style={{ marginTop: 10 }} aria-busy="true" aria-label={t.preparingNewScenarioAria}>
             <p
               style={{
                 margin: 0,
@@ -110,7 +112,7 @@ export default function BtyArenaPage() {
               aria-live="polite"
             >
               <span aria-hidden style={{ fontSize: 16 }}>🔄</span>
-              {locale === "ko" ? "새 시나리오 준비 중…" : "Preparing new scenario…"}
+              {t.preparingNewScenarioAria}…
             </p>
             <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
           </div>
@@ -121,7 +123,7 @@ export default function BtyArenaPage() {
           </div>
         )}
 
-      <div role="region" aria-label={locale === "ko" ? "시나리오 진행·완료" : "Scenario progress and result"} style={{ marginTop: 18, padding: 18, border: "1px solid #eee", borderRadius: 14 }}>
+      <div role="region" aria-label={t.scenarioProgressPanelAria} style={{ marginTop: 18, padding: 18, border: "1px solid #eee", borderRadius: 14 }}>
         {s.step === 1 && (
           <ArenaStepIntro
             locale={locale}

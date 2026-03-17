@@ -1,6 +1,6 @@
 /**
  * GET /api/dear-me/letters — 로그인 사용자의 Dear Me 편지 이력 조회.
- * Thin handler: auth → service call → response.
+ * Response (200): { letters: array }. Errors: 401 { error: "UNAUTHENTICATED" }; 500 { error: string }.
  */
 import { NextResponse } from "next/server";
 import { getLetterAuth, getLetterHistory } from "@/lib/bty/center";

@@ -3,7 +3,8 @@
  * Returns core XP, tier, code/sub name, avatar, and display fields.
  *
  * Response (200): CoreXpGetResponse (coreXpTotal, tier, requiresBeginnerPath, codeName, subName, seasonalXpTotal, codeHidden, subNameRenameAvailable, avatar*, currentOutfit, …).
- * Error: 401 { error: "UNAUTHENTICATED" }, 500 { error: "DB_ERROR", detail?: string }.
+ * Errors: 401 { error: "UNAUTHENTICATED" }, 500 { error: "DB_ERROR", detail?: string } (profile select/RPC).
+ * Cache: no-store, must-revalidate (user-specific).
  *
  * Gate 1: UI MUST use response.tier only; do not compute tier from coreXpTotal.
  * Gate 2: use response.requiresBeginnerPath for beginner redirect; do not compare coreXpTotal to 200 (use domain BEGINNER_CORE_XP_THRESHOLD in API only).
@@ -139,6 +140,7 @@ export async function GET(req: NextRequest) {
         accessoryLabels: defaultOutfit.accessoryLabels,
       },
     } satisfies CoreXpGetResponse);
+    out.headers.set("Cache-Control", "no-store, must-revalidate");
     copyCookiesAndDebug(base, out, req, true);
     return out;
   }

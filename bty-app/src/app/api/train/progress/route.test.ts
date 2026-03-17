@@ -50,4 +50,33 @@ describe("GET /api/train/progress", () => {
     ].sort();
     expect(Object.keys(data).sort()).toEqual(expectedKeys);
   });
+
+  it("returns 200 with hasSession as boolean", async () => {
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.hasSession).toBe("boolean");
+  });
+
+  it("returns 200 with startDateISO as string", async () => {
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.startDateISO).toBe("string");
+    expect(data.startDateISO.length).toBeGreaterThan(0);
+  });
+
+  it("returns 200 with completedDays as array", async () => {
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data.completedDays)).toBe(true);
+  });
+
+  it("returns 200 with todayUnlockedDay as number", async () => {
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.todayUnlockedDay).toBe("number");
+  });
 });

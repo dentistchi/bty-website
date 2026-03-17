@@ -19,4 +19,18 @@ describe("domain/constants (edges)", () => {
     expect(LEAGUE_CARRYOVER_FRACTION).toBeGreaterThan(0);
     expect(LEAGUE_CARRYOVER_FRACTION).toBeLessThanOrEqual(1);
   });
+
+  it("CORE_XP_PER_TIER and TIERS_PER_CODE are positive", () => {
+    expect(CORE_XP_PER_TIER).toBeGreaterThan(0);
+    expect(TIERS_PER_CODE).toBeGreaterThan(0);
+  });
+
+  it("CORE_XP_PER_CODE is positive", () => {
+    expect(CORE_XP_PER_CODE).toBeGreaterThan(0);
+  });
+
+  it("CORE_XP_PER_TIER and TIERS_PER_CODE are finite", () => {
+    expect(Number.isFinite(CORE_XP_PER_TIER)).toBe(true);
+    expect(Number.isFinite(TIERS_PER_CODE)).toBe(true);
+  });
 });

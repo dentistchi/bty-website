@@ -1,7 +1,8 @@
 /**
  * Level / Tier / Stage mapping from Core XP.
- * Tier is internal (not exposed). Code and Sub Name drive leaderboard identity.
+ * Tier is internal (not exposed). Code and Sub Name drive **identity** on leaderboard rows, not **rank** (rank = weekly XP + tiebreak).
  * 경계 상수: constants (CORE_XP_PER_TIER, TIERS_PER_CODE, CODE_NAMES, SUB_NAMES) 단일 소스.
+ * tier = floor(coreXp/10), code = floor(tier/100) 0..6, subTier = floor((tier%100)/25) 0..3.
  * See docs/spec/arena-domain-rules.md.
  */
 
@@ -10,6 +11,9 @@ import {
   SUB_NAMES,
   CORE_XP_PER_TIER,
   TIERS_PER_CODE,
+  TIERS_PER_SUB_GROUP,
+  STAGE_NUMBER_MAX,
+  CORE_XP_PER_STAGE_STEP,
   type CodeIndex,
 } from "../constants";
 import type { SubTierGroup } from "../types";
@@ -27,7 +31,7 @@ export function codeIndexFromTier(tier: number): CodeIndex {
 
 /** Sub tier group 0..3 within current code. */
 export function subTierGroupFromTier(tier: number): SubTierGroup {
-  const g = Math.floor((tier % TIERS_PER_CODE) / 25);
+  const g = Math.floor((tier % TIERS_PER_CODE) / TIERS_PER_SUB_GROUP);
   return Math.min(3, Math.max(0, g)) as SubTierGroup;
 }
 
@@ -52,7 +56,8 @@ export function codeNameFromIndex(codeIndex: CodeIndex): string {
   return CODE_NAMES[codeIndex];
 }
 
-/** Stage number 1..7 from core XP (for display). 700+ may be treated as 7 or "beyond". */
+/** Stage number 1..7 from core XP (for display). CORE_XP_PER_STAGE_STEP 단일 소스. */
 export function stageFromCoreXp(coreXp: number): number {
-  return Math.min(7, Math.floor(coreXp / 100) + 1);
+  const safe = Math.max(0, Math.floor(coreXp));
+  return Math.min(STAGE_NUMBER_MAX, Math.floor(safe / CORE_XP_PER_STAGE_STEP) + 1);
 }

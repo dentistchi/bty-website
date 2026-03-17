@@ -10,7 +10,7 @@ export const runtime = "nodejs";
  * GET /api/me/elite
  * @contract Auth: required (session). Query: none.
  * Response (200): EliteGetResponse { isElite, badges, eliteContentUnlocked }.
- * Error: 401 { error: "UNAUTHENTICATED" }.
+ * Errors: 401 { error: "UNAUTHENTICATED" }; 500 possible if Supabase/session or elite lookup throws (unhandled).
  */
 export type EliteGetResponse = {
   isElite: boolean;

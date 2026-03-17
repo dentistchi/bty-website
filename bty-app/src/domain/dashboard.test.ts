@@ -33,4 +33,17 @@ describe("RECOMMENDATION_SOURCE_ORDER", () => {
       expect(priorities[i]).toBeLessThanOrEqual(priorities[i - 1]);
     }
   });
+
+  it("has length 3 and no duplicates", () => {
+    expect(RECOMMENDATION_SOURCE_ORDER).toHaveLength(3);
+    const set = new Set(RECOMMENDATION_SOURCE_ORDER);
+    expect(set.size).toBe(3);
+  });
+
+  it("each source in ORDER has a numeric priority in RECOMMENDATION_SOURCE_PRIORITY", () => {
+    for (const source of RECOMMENDATION_SOURCE_ORDER) {
+      expect(RECOMMENDATION_SOURCE_PRIORITY).toHaveProperty(source);
+      expect(typeof RECOMMENDATION_SOURCE_PRIORITY[source]).toBe("number");
+    }
+  });
 });

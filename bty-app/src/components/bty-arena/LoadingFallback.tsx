@@ -37,6 +37,9 @@ export function LoadingFallback({
         minHeight: withSkeleton ? undefined : 120,
         ...style,
       }}
+      role="status"
+      aria-live="polite"
+      aria-label={message}
     >
       <span
         style={{

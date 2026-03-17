@@ -17,6 +17,8 @@ import AuthHashGate from "../_components/AuthHashGate";
 type CenterMessages = {
   loading: string;
   title: string;
+  /** 메인 랜드마크 접근성 라벨 (Center 페이지) */
+  mainAriaLabel: string;
   /** §1·§8: 아늑한 방 톤 / locale별 헤더. 없으면 "Center, I'm listening." */
   heroTitleMain?: string;
   heroTitleAccent?: string;
@@ -172,7 +174,7 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
           <AuthHashGate />
           <AuthGate loadingMessage={t.loading}>
             <ThemeBody theme="sanctuary" />
-            <main className="min-h-screen">
+            <main className="min-h-screen" aria-label={t.mainAriaLabel}>
               <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
                 <Nav locale="en" pathname={pathname} theme="dear" />
                 <header className="text-center mb-10">
@@ -205,7 +207,7 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
           <AuthHashGate />
           <AuthGate loadingMessage={t.loading}>
             <ThemeBody theme="sanctuary" />
-            <main className="min-h-screen">
+            <main className="min-h-screen" aria-label={t.mainAriaLabel}>
               <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
                 <Nav locale="en" pathname={pathname} theme="dear" />
                 <header className="text-center mb-10 pt-4">
@@ -350,7 +352,7 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
           <AuthHashGate />
           <AuthGate loadingMessage={t.loading}>
             <ThemeBody theme="sanctuary" />
-            <main className="min-h-screen">
+            <main className="min-h-screen" aria-label={t.mainAriaLabel}>
               <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
                 <Nav locale="en" pathname={pathname} theme="dear" />
                 <header className="text-center mb-10 pt-4">
@@ -424,7 +426,7 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
         <AuthHashGate />
         <AuthGate loadingMessage={t.loading}>
           <ThemeBody theme="sanctuary" />
-          <main className="min-h-screen">
+          <main className="min-h-screen" aria-label={t.mainAriaLabel}>
             <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
               <Nav locale="en" pathname={pathname} theme="dear" />
               <header className="text-center mb-10">
@@ -481,7 +483,7 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
         <AuthHashGate />
         <AuthGate loadingMessage={t.loading}>
           <ThemeBody theme="dear" />
-          <main className="min-h-screen">
+          <main className="min-h-screen" aria-label={t.mainAriaLabel}>
             <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
               <Nav locale="ko" pathname={pathname} theme="dear" />
               <header className="text-center mb-14 sm:mb-16 pt-4">
@@ -742,7 +744,7 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
       <AuthHashGate />
       <AuthGate loadingMessage={t.loading}>
         <ThemeBody theme="dear" />
-        <main className="min-h-screen">
+        <main className="min-h-screen" aria-label={t.mainAriaLabel}>
           <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
             <Nav locale="ko" pathname={pathname} theme="dear" />
             <header className="text-center mb-14 sm:mb-16 pt-4">

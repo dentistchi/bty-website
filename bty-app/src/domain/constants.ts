@@ -13,6 +13,9 @@ export const CORE_XP_PER_TIER = 10;
 /** 1 Code = this many Tiers. */
 export const TIERS_PER_CODE = 100;
 
+/** Tiers per sub-tier group (0..3). SubTierGroup = floor((tier % TIERS_PER_CODE) / TIERS_PER_SUB_GROUP). */
+export const TIERS_PER_SUB_GROUP = TIERS_PER_CODE / 4;
+
 /** Core XP per full Code (100 * 10). */
 export const CORE_XP_PER_CODE = TIERS_PER_CODE * CORE_XP_PER_TIER;
 
@@ -43,6 +46,16 @@ export const LEAGUE_CARRYOVER_FRACTION = 0.1;
 export const PROGRESSION_LEVEL_MAX = 700;
 /** Legend character unlocks at progression level 700 = tier 699 (not Core XP 700). */
 export const LEGEND_UNLOCK_TIER = 699;
+
+/** Tier celebration milestones (25, 50, 75). Run·profile·milestone 단일 소스. */
+export const TIER_MILESTONES = [25, 50, 75] as const;
+export type TierMilestoneValue = (typeof TIER_MILESTONES)[number];
+
+/** Display stage number 경계: 1–7. stageNumberFromCoreXp = floor(coreXp / CORE_XP_PER_STAGE_STEP) + 1, capped. */
+export const STAGE_NUMBER_MIN = 1 as const;
+export const STAGE_NUMBER_MAX = 7 as const;
+/** Core XP per display stage step (stage 1→2 = 100 Core XP). */
+export const CORE_XP_PER_STAGE_STEP = 100 as const;
 /** @deprecated Use LEAGUE_CARRYOVER_FRACTION */
 export const SEASON_CARRYOVER_FRACTION = LEAGUE_CARRYOVER_FRACTION;
 

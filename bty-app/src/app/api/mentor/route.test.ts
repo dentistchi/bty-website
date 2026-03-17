@@ -59,6 +59,13 @@ describe("POST /api/mentor", () => {
     expect(data.error).toBeDefined();
   });
 
+  it("returns 400 with JSON body containing only error key when message missing", async () => {
+    const res = await POST(request({}));
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
   it("returns 400 when messages is empty and no message field", async () => {
     const res = await POST(request({ messages: [] }));
     expect(res.status).toBe(400);
@@ -76,6 +83,27 @@ describe("POST /api/mentor", () => {
     expect(data.error).toBeDefined();
   });
 
+  it("returns 500 with JSON body containing only error key when body not valid JSON", async () => {
+    const req = new Request("http://localhost/api/mentor", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "not json {",
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(500);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
+  it("returns 429 with error key when rate limited", async () => {
+    mockCheckRateLimit.mockReturnValueOnce({ allowed: false, retryAfterSeconds: 30 });
+    const res = await POST(request({ message: "Hi", lang: "en" }));
+    expect(res.status).toBe(429);
+    const data = await res.json();
+    expect(data).toHaveProperty("error");
+    expect(typeof data.error).toBe("string");
+  });
+
   it("returns 429 when rate limit disallows", async () => {
     mockCheckRateLimit.mockReturnValueOnce({ allowed: false, retryAfterSeconds: 30 });
     const res = await POST(request({ message: "Hello", lang: "en" }));
@@ -83,6 +111,28 @@ describe("POST /api/mentor", () => {
     const data = await res.json();
     expect(data.error).toMatch(/many requests|Too many/i);
     expect(res.headers.get("Retry-After")).toBe("30");
+  });
+
+  it("returns 429 with error and retryAfterSeconds keys", async () => {
+    mockCheckRateLimit.mockReturnValueOnce({ allowed: false, retryAfterSeconds: 60 });
+    const res = await POST(request({ message: "Hi", lang: "en" }));
+    expect(res.status).toBe(429);
+    const data = await res.json();
+    expect(data).toHaveProperty("error");
+    expect(data).toHaveProperty("retryAfterSeconds");
+    expect(typeof data.retryAfterSeconds).toBe("number");
+  });
+
+  it("returns 200 with message as string on success", async () => {
+    const res = await POST(
+      request({
+        message: "What is leadership?",
+        lang: "en",
+      })
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.message).toBe("string");
   });
 
   it("returns 200 with message when lang=ko", async () => {
@@ -96,6 +146,19 @@ describe("POST /api/mentor", () => {
     const data = await res.json();
     expect(typeof data.message).toBe("string");
     expect(data.message.length).toBeGreaterThan(0);
+  });
+
+  it("returns 200 with message key present", async () => {
+    const res = await POST(
+      request({
+        message: "How do I give feedback?",
+        lang: "en",
+      })
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveProperty("message");
+    expect(typeof data.message).toBe("string");
   });
 
   it("returns 200 with message when lang=en", async () => {
@@ -180,6 +243,19 @@ describe("POST /api/mentor", () => {
     expect(res.status).toBe(500);
     const data = await res.json();
     expect(data.error).toBeDefined();
+  });
+
+  it("returns 500 with only error key when request.json() throws", async () => {
+    const req = new Request("http://localhost/api/mentor", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    vi.spyOn(req, "json").mockRejectedValueOnce(new Error("parse error"));
+    const res = await POST(req);
+    expect(res.status).toBe(500);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
   });
 
   describe("error and edge cases", () => {

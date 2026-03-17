@@ -42,6 +42,14 @@ describe("GET /api/arena/leadership-engine/state", () => {
     expect(mockGetLeadershipEngineState).not.toHaveBeenCalled();
   });
 
+  it("returns 401 with error as string", async () => {
+    mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: {} });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(typeof data.error).toBe("string");
+  });
+
   it("returns 200 with currentStage and stageName when authenticated", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
@@ -64,5 +72,24 @@ describe("GET /api/arena/leadership-engine/state", () => {
     expect(data.resetDueAt).toBeNull();
     expect(mockEnsureLeadershipEngineState).toHaveBeenCalledWith({}, "u1");
     expect(mockGetLeadershipEngineState).toHaveBeenCalledWith({}, "u1");
+  });
+
+  it("returns 200 with resetDueAt null or string", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {},
+      base: {},
+    });
+    mockGetLeadershipEngineState.mockResolvedValue({
+      currentStage: 1,
+      stageName: "Stage 1",
+      forcedResetTriggeredAt: null,
+      resetDueAt: "2026-04-01T00:00:00Z",
+    });
+
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.resetDueAt === null || typeof data.resetDueAt === "string").toBe(true);
   });
 });

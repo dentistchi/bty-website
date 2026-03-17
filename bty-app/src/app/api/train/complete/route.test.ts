@@ -21,6 +21,13 @@ describe("POST /api/train/complete", () => {
     expect(data.error).toBe("invalid day");
   });
 
+  it("returns 400 with ok and error keys when day missing", async () => {
+    const res = await POST(makeRequest({}));
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(Object.keys(data).sort()).toEqual(["error", "ok"].sort());
+  });
+
   it("returns 400 when day is not a number", async () => {
     const res = await POST(makeRequest({ day: "abc" }));
     expect(res.status).toBe(400);
@@ -45,6 +52,21 @@ describe("POST /api/train/complete", () => {
     const res = await POST(makeRequest({ day: 1 }));
     expect(res.status).toBe(200);
     const data = await res.json();
+    expect(data.ok).toBe(true);
+  });
+
+  it("returns 200 with exactly ok key", async () => {
+    const res = await POST(makeRequest({ day: 1 }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["ok"]);
+  });
+
+  it("returns 200 with ok as boolean", async () => {
+    const res = await POST(makeRequest({ day: 1 }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.ok).toBe("boolean");
     expect(data.ok).toBe(true);
   });
 

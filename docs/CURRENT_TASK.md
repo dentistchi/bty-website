@@ -2,7 +2,193 @@
 
 **진행 에이전트**: 이 파일 또는 커맨더 메시지에 적힌 **기능(요구사항)** 을 구현하세요.
 
-**다음 배치 (SPRINT_PLAN)**: 이번 런 = **SPRINT 194 (구현 전용)**. C2(2) [ ] BLOCKER(배포 시 1회만)·C3(5) [x]·C4(5)·C5(5)·C6(5) [ ] 구체 작업. **C5 중단**: 실행 가능 [ ] 없음(1건 BLOCKER만). 다음 진행 = C1 회전으로 새 C5 작업 추가 또는 Journey·bounce-back BLOCKER 해제 후. docs/SPRINT_PLAN.md 참고. 검증=배포 전 1회만.
+**[C4] SPRINT 234 API 5건 (SPRINT_PLAN)**: [x] **완료.** healing·awakening·dojo·avatar-assets·mentor·assessment JSDoc 재확인·ARENA_DOMAIN_SPEC 234.
+
+**[C4] SPRINT 233 API 5건 (SPRINT_PLAN)**: [x] **완료.** run/complete·profile·core-xp·leaderboard·LE·journey·me/elite·dashboard·center·dear-me JSDoc·에러 재확인·ARENA_DOMAIN_SPEC 233.
+
+**[C4] SPRINT 232 API 5건 (SPRINT_PLAN)**: [x] **완료.** healing·awakening·dojo·avatar-assets·mentor·assessment(path)·ARENA §4-12b JSDoc.
+
+**[C4] SPRINT 231 API 5건 (SPRINT_PLAN)**: [x] **완료.** JSDoc·에러 문구 정합성(run/complete 멱등·leaderboard 주간순위·LE stage-summary·air·journey/profile·me/elite·dashboard·center·dear-me)·ARENA_DOMAIN_SPEC §4-11b·231 메모.
+
+**[C5] SPRINT 230 UI 접근성·i18n 4건 (BLOCKER 제외)**: [x] **완료.** 리더보드 주간 리셋 region·i18n, Elite 배지 region, Dojo 결과 Dr. Chi region, i18n leaderboardWeekResetRegion.
+
+**[C5] SPRINT 229 UI 접근성·i18n 4건 (BLOCKER 제외)**: [x] **완료.** 대시보드 Dojo 카드 region+aria-label, 멘토 메시지 article+aria-label, assessment 힌트 region, i18n dojoPracticeLabel/dojoPracticeLinksRegion.
+
+**[C4] SPRINT 230 API 5건 (arena run/complete·profile·core-xp·leaderboard·leadership-engine·journey·me/elite·dashboard·center·dear-me·ARENA_DOMAIN_SPEC)**: [x] **완료.** JSDoc 확인·leadership-engine/certified 401·500 명시·§4 230 반영.
+
+**[C4] SPRINT 229 API 5건 (arena profile·run·leaderboard·core-xp·leadership-engine·me/elite·journey·dashboard·bounce-back·dojo·assessment·center·ARENA_DOMAIN_SPEC)**: [x] **완료.** JSDoc 확인·leadership-engine/tii 401·500 명시·§4 229 반영.
+
+**[C4] SPRINT 228 API 5건 (arena run/complete·profile·core-xp·leaderboard·leadership-engine·journey·me/elite·dashboard·center·dear-me·ARENA_DOMAIN_SPEC)**: [x] **완료.** JSDoc 확인·leadership-engine/air 401·500 명시·§4 228 반영.
+
+**[C4] SPRINT 227 API 5건 (arena/profile·run·leaderboard·core-xp·leadership-engine·me/elite·journey·dashboard·bounce-back·dojo·assessment·center·ARENA_DOMAIN_SPEC)**: [x] **완료.** JSDoc 에러/응답 명시·ARENA_DOMAIN_SPEC §4 227 반영.
+
+**[C4] SPRINT 226 API 5건 (run/complete·stage-summary·journey·me/elite·dashboard·center/letter·resilience·dear-me·ARENA_DOMAIN_SPEC)**: [x] **완료.** JSDoc 에러/응답 명시·ARENA_DOMAIN_SPEC 갱신일·§4 API 목록 정합성 메모.
+
+**[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 (SPRINT 46 TASK 2, C1)**: [x] **완료.** SPRINT 46 TASK 1 완료 반영·갱신일 동기화.
+
+**[DOCS] 문서 점검 124·125·126차 (SPRINT 46 TASK 3, C1)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG·보드·BTY_RELEASE_GATE_CHECK 점검·갱신.
+
+**[UI] Center/Foundry 추가 접근성 1곳 (SPRINT 46 TASK 4, C4)**: [x] **완료.** 대시보드 바로가기 링크 그룹 role=region·aria-label. render-only.
+
+**[VERIFY] Release Gate 46차 (SPRINT 46 TASK 1, C5)**: [x] **완료.** A~E N/A · F) Lint ✓ Test 1819 ✓ Build ✓. RESULT: PASS. BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+
+**C1 splint 10 (2026-03-12)**: SPRINT 45 전량 10/10 완료 → SPRINT 46 생성. First Task = Release Gate 46차. 보드·NEXT_PHASE·NEXT_BACKLOG·AUTO4_PROMPTS 갱신.
+
+**[DOCS] 다음 배치 선정 (SPRINT 45 TASK 5, C1, 선택)**: [x] **완료.** 추가 배치 불필요·동기화 유지.
+
+**[DOMAIN] Center/Foundry 미커버 경계 테스트 1건 (SPRINT 45 TASK 8, C3, 선택)**: [x] **완료.** domain/center/resilience.edges.test.ts RESILIENCE_LEVEL_IDS. npm test 통과.
+
+**[TEST] Center/Foundry route 테스트 1건 (SPRINT 45 TASK 9, C3, 선택)**: [x] **완료.** GET /api/dear-me/letters 401 error as string. npm test 통과.
+
+**[DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 (SPRINT 45 TASK 7, C1)**: [x] **완료.** § 다음 작업(반복 제외) 진행 현황·갱신일 2026-03-12 반영.
+
+**[DOCS] Arena·Center·Foundry 대기 목록 동기화 (SPRINT 45 TASK 10, C1)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG·보드 대기 6건 일치 확인.
+
+**[UI] Center/Foundry 추가 접근성 1곳 (SPRINT 45 TASK 4, C4)**: [x] **완료.** PageClient Center main 4곳 aria-label={t.mainAriaLabel}. render-only.
+
+**[DOCS] 문서 점검 121·122·123차 (SPRINT 45 TASK 3, C1)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드·BTY_RELEASE_GATE_CHECK 2~3건 점검·갱신. 코드 없음.
+
+**[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 (SPRINT 45 TASK 2, C1)**: [x] **완료.** SPRINT 44 완료 반영·대기 6건 동기화. NEXT_PHASE·NEXT_BACKLOG·보드 갱신일 반영.
+
+**[VERIFY] 엘리트 3차 체크리스트 45차 (SPRINT 45 TASK 6, C5)**: [x] **완료.** 6항목 1회. Elite=Weekly XP만·시즌 미반영. RESULT: PASS. ELITE_3RD_SPEC §3·보드·CURRENT_TASK 반영.
+
+**[VERIFY] Release Gate 45차 (SPRINT 45 TASK 1, C5)**: [x] **완료.** A~E N/A · F) Lint ✓ Test 1728 ✓ Build ✓. RESULT: PASS. BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+
+**[배포] 195 배포 완료**: [x] **완료.** C2 Gate § A~F·MVP 최종 확인·self-healing-ci 실행·BTY_RELEASE_GATE_CHECK·SPRINT_LOG 반영.
+
+**[C4] SPRINT 223 API 5건 (leadership-engine·me/elite·mentor-request·journey·center·dojo·assessment·bty-arena)**: [x] **완료.** JSDoc·응답·에러 검증.
+
+**[C4] SPRINT 222 API 5건 (leaderboard·core-xp·run/complete·profile·emotional-stats·journey·dear-me·mentor·me/access)**: [x] **완료.** JSDoc·응답·에러 검증.
+
+**[C4] SPRINT 221 API 5건 (leadership-engine/state·air·transition·me/elite·mentor-request·journey·center·dojo·assessment·bty-arena)**: [x] **완료.** JSDoc·응답·에러 검증. transition JSDoc 추가.
+
+**[C4] SPRINT 220 API 5건 (leaderboard·core-xp·run/complete·profile·emotional-stats·journey·dear-me·mentor·me/access)**: [x] **완료.** JSDoc·응답·에러 검증.
+
+**[C4] SPRINT 219 API 5건 (leadership-engine/state·air·me/elite·mentor-request·journey·center·dojo·assessment)**: [x] **완료.** JSDoc·응답·에러 검증. state·air JSDoc 추가.
+
+**[C4] SPRINT 218 API 5건 (profile·run/complete·emotional-stats·journey·train·safe-mirror·me/access·bty-arena·assessment)**: [x] **완료.** JSDoc·응답·에러 검증.
+
+**[C4] SPRINT 217 API 5건 (leaderboard·core-xp·center/letter·resilience·dear-me·dojo·mentor·me/elite·assessment)**: [x] **완료.** JSDoc·응답·에러 검증.
+
+**[C4] SPRINT 216 API 5건 (profile·run/complete·emotional-stats·journey·train·safe-mirror·me/access·bty-arena·assessment)**: [x] **완료.** JSDoc·응답·에러 검증.
+
+**[C4] SPRINT 215 API 5건 (leaderboard·core-xp·center/letter·resilience·dear-me·dojo·mentor·me/elite·assessment)**: [x] **완료.** JSDoc·응답·에러 검증.
+
+**[C4] SPRINT 213 API 5건 (leaderboard·core-xp·center/letter·resilience·dear-me·dojo·mentor·me/elite·assessment)**: [x] **완료.** JSDoc·응답·에러 검증.
+
+**[C4] SPRINT 212 API 5건 (profile·run/complete·emotional-stats·journey·train·safe-mirror·me/access·bty-arena·assessment)**: [x] **완료.** JSDoc·응답·에러 검증.
+
+**[C4] SPRINT 211 API 5건 (leaderboard·core-xp·center/letter·resilience·dear-me·dojo·mentor·me/elite·assessment)**: [x] **완료.** JSDoc·응답·에러 검증.
+
+**[C4] SPRINT 210 API 5건 (profile·run/complete·emotional-stats·journey·train·safe-mirror·me/access·bty-arena·assessment)**: [x] **완료.** JSDoc·응답·에러 검증.
+
+**다음 배치 (SPRINT_PLAN)**: 이번 런 = **SPRINT 230** (Q3·Q4 로드맵 연속). C3·C4·C5·C6 각 5건 [ ]. C5(1) BLOCKER 이관(Journey·bounce-back). C2(2) BLOCKER. docs/SPRINT_PLAN.md 참고. REFRESH 시 C1이 전량 [x] 또는 BLOCKER만 확인 후 231 전환. 검증=배포 전 1회만.
+
+**[REFRESH (C1)] SPRINT 222 → 223**: [x] **완료.** 222 남은 [ ] 모두 BLOCKER → 회전 완료. SPRINT 223 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당. SPRINT_LOG·다음 배치 반영.
+
+**[REFRESH (C1)] SPRINT 221 → 222**: [x] **완료.** 221 남은 [ ] 모두 BLOCKER → 회전 완료. SPRINT 222 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당. SPRINT_LOG·다음 배치 반영.
+
+**[REFRESH (C1)] SPRINT 219 → 220**: [x] **완료.** 219 남은 [ ] 모두 BLOCKER → 회전 완료. SPRINT 220 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당. C7 Lint → C5 TASK 2. SPRINT_LOG·다음 배치 반영.
+
+**[REFRESH (C1)] SPRINT 217 → 218**: [x] **완료.** 217 남은 [ ] 모두 BLOCKER → 회전 완료. 218 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[REFRESH (C1)] SPRINT 216 → 217**: [x] **완료.** 216 남은 [ ] 모두 BLOCKER → 회전 완료. 217 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[REFRESH (C1)] SPRINT 215 → 216**: [x] **완료.** 215 남은 [ ] 모두 BLOCKER → 회전 완료. 216 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[REFRESH (C1)] SPRINT 214 → 215**: [x] **완료.** 214 남은 [ ] 모두 BLOCKER → 회전 완료. 215 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[REFRESH (C1)] SPRINT 213 → 214**: [x] **완료.** 213 남은 [ ] 모두 BLOCKER → 회전 완료. 214 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[REFRESH (C1)] SPRINT 212 → 213**: [x] **완료.** 212 남은 [ ] 모두 BLOCKER → 회전 완료. 213 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[REFRESH (C1)] SPRINT 211 → 212**: [x] **완료.** 211 남은 [ ] 모두 BLOCKER → 회전 완료. 212 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[REFRESH (C1)] SPRINT 210 → 211**: [x] **완료.** 210 남은 [ ] 모두 BLOCKER → 회전 완료. 211 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[C3] SPRINT 211 5건 (level-tier·leaderboard·xp·letter·resilience·stage·forced-reset·paths·assessment·domain barrel)**: [x] **완료.** 타이브레이크·XP 경계·기간·유효성·stageNumber·TII·경로·진행 규칙 검토·확인, arena·center·foundry export 확인. 변경 없음.
+
+**[C3] SPRINT 212 5건 (season·weeklyXp·dashboard·stages·air·paths·assessment·domain barrel)**: [x] **완료.** 시즌·주간 경계·ProgressSummary·RecommendationSource·STAGE_PROGRESS·AIR 밴드·경로·진행 규칙 검토·확인, leadership-engine·foundry export 확인. 변경 없음.
+
+**[C3] SPRINT 213 5건 (level-tier·leaderboard·xp·letter·resilience·stage·forced-reset·paths·assessment·domain barrel)**: [x] **완료.** 타이브레이크·XP 경계·기간·유효성·stageNumber·TII·경로·진행 규칙 검토·확인, arena·center·foundry export 확인. 변경 없음.
+
+**[C3] SPRINT 214 5건 (season·weeklyXp·dashboard·stages·air·paths·assessment·domain barrel)**: [x] **완료.** 시즌·주간 경계·ProgressSummary·RecommendationSource·STAGE_PROGRESS·AIR 밴드·경로·진행 규칙 검토·확인, leadership-engine·foundry export 확인. 변경 없음.
+
+**[C3] SPRINT 215 5건 (level-tier·leaderboard·xp·letter·resilience·stage·forced-reset·paths·assessment·domain barrel)**: [x] **완료.** 타이브레이크·XP 경계·기간·유효성·stageNumber·TII·경로·진행 규칙 검토·확인, arena·center·foundry export 확인. 변경 없음.
+
+**[C3] SPRINT 216 5건 (season·weeklyXp·dashboard·stages·air·paths·assessment·domain barrel)**: [x] **완료.** 시즌·주간 경계·ProgressSummary·RecommendationSource·STAGE_PROGRESS·AIR 밴드·경로·진행 규칙 검토·확인, leadership-engine·foundry export 확인. 변경 없음.
+
+**[C3] SPRINT 217 5건 (level-tier·leaderboard·xp·letter·resilience·stage·forced-reset·paths·assessment·domain barrel)**: [x] **완료.** 타이브레이크·XP 경계·기간·유효성·stageNumber·TII·경로·진행 규칙 검토·확인, arena·center·foundry export 확인. 변경 없음.
+
+**[C3] SPRINT 218 5건 (season·weeklyXp·dashboard·stages·air·paths·assessment·domain barrel)**: [x] **완료.** 시즌·주간 경계·ProgressSummary·RecommendationSource·STAGE_PROGRESS·AIR 밴드·경로·진행 규칙 검토·확인, leadership-engine·foundry export 확인. 변경 없음.
+
+**[C3] SPRINT 219 5건 (LE Stage·state 전이·AIR 밴드·점수·dashboard 위젯·진입점 타입·letter·resilience 엣지·arena·center export)**: [x] **완료.** stages getNextStage·StageTransitionContext, air airToBand·computeAIR, dashboard ProgressSummary·RecommendationSummary, letter·resilience 엣지, arena·center export 검토·확인. 변경 없음.
+
+**[C3] SPRINT 220 5건 (level-tier·xp·certified·tii 엣지·dashboard RecommendationSource·진입점·assessment 경로·진행·foundry·rules export)**: [x] **완료.** 레벨·티어·XP 규칙, certified·tii 엣지, RecommendationSource·진입점, assessment 경로·진행 규칙, foundry·rules export 검토·확인. 변경 없음.
+
+**[C3] SPRINT 221 5건 (season·weeklyXp·transition·air 엣지·ProgressSummary·위젯·letter·resilience·paths·center·leadership-engine export)**: [x] **완료.** 시즌·주간 경계, transition·air 엣지, ProgressSummary·위젯, letter·resilience·paths, center·leadership-engine export 검토·확인. 변경 없음.
+
+**[C3] SPRINT 222 5건 (level-tier·xp·certified·tii 엣지·RecommendationSource·진입점·assessment 경로·진행·foundry·rules export)**: [x] **완료.** 레벨·티어·XP 규칙, certified·tii 엣지, RecommendationSource·진입점, assessment 경로·진행, foundry·rules export 검토·확인. 변경 없음.
+
+**[C3] SPRINT 223 5건 (season·weeklyXp·transition·air 엣지·ProgressSummary·위젯·letter·resilience·paths·center·leadership-engine export)**: [x] **완료.** 시즌·주간 경계, transition·air 엣지, ProgressSummary·위젯, letter·resilience·paths, center·leadership-engine export 검토·확인. 변경 없음.
+
+**[REFRESH (C1)] SPRINT 209 → 210**: [x] **완료.** 209 남은 [ ] 모두 BLOCKER → 회전 완료. 210 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[C4] SPRINT 209 API 5건 (leaderboard·core-xp·center·dear-me·dojo·mentor·me/elite·assessment)**: [x] **완료.** JSDoc·응답·에러 검증. mentor/route.ts 응답·에러 JSDoc 추가.
+
+**[C3] SPRINT 207 5건 (level-tier·leaderboard·xp·letter·resilience·stage·forced-reset·paths·assessment·domain barrel)**: [x] **완료.** 타이브레이크·XP 경계·기간·유효성·stageNumber·TII·경로·진행 규칙 검토·확인, arena·center·foundry export 확인. 변경 없음.
+
+**[C3] SPRINT 208 5건 (season·weeklyXp·dashboard·stages·air·paths·assessment·domain barrel)**: [x] **완료.** 시즌·주간 경계·ProgressSummary·RecommendationSource·STAGE_PROGRESS·AIR 밴드·경로·진행 규칙 검토·확인, leadership-engine·foundry export 확인. 변경 없음.
+
+**[C3] SPRINT 210 5건 (season·weeklyXp·dashboard·stages·air·paths·assessment·domain barrel)**: [x] **완료.** 시즌·주간 경계·ProgressSummary·RecommendationSource·STAGE_PROGRESS·AIR 밴드·경로·진행 규칙 검토·확인, leadership-engine·foundry export 확인. 변경 없음.
+
+**[C3] SPRINT 206 5건 (season·weeklyXp·dashboard·stages·air·paths·assessment·domain barrel)**: [x] **완료.** 시즌·주간 경계·ProgressSummary·STAGE_PROGRESS·AIR 밴드·경로·진행 규칙 검토·확인, leadership-engine·foundry export 확인. 변경 없음.
+
+**[REFRESH (C1)] SPRINT 205 → 206**: [x] **완료.** 205 남은 [ ] 모두 BLOCKER → 회전 완료. 206 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[C3] SPRINT 205 5건 (level-tier·leaderboard·xp·letter·resilience·stage·forced-reset·paths·assessment·domain barrel)**: [x] **완료.** 타이브레이크·XP 경계·기간·유효성·stageNumber·TII·경로·진행 규칙 검토·확인, arena·center·foundry export 확인. 변경 없음.
+
+**[REFRESH (C1)] SPRINT 204 → 205**: [x] **완료.** 204 남은 [ ] 모두 BLOCKER → 회전 완료. 205 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[C3] SPRINT 204 5건 (season·weeklyXp·dashboard·stages·air·paths·assessment·domain barrel)**: [x] **완료.** 시즌·주간 경계·ProgressSummary·STAGE_PROGRESS·AIR 밴드·경로·진행 규칙 검토·확인, leadership-engine·foundry export 확인. 변경 없음.
+
+**[REFRESH (C1)] SPRINT 203 → 204**: [x] **완료.** 203 남은 [ ] 모두 BLOCKER → 회전 완료. 204 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[C3] SPRINT 203 5건 (stage·level-tier·leaderboard·xp·letter·resilience·forced-reset·domain barrel)**: [x] **완료.** stageNumber·tier·타이브레이크·XP 수식·경계·유효성·TII·certified 검토·확인, arena·rules·center export 확인. 변경 없음.
+
+**[REFRESH (C1)] SPRINT 202 → 203**: [x] **완료.** 202 남은 [ ] 모두 BLOCKER → 회전 완료. 203 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[C3] SPRINT 202 5건 (season·weeklyXp·dashboard·air·assessment·domain barrel)**: [x] **완료.** 시즌·주간 경계·ProgressSummary·RecommendationSource·AIR 밴드·기간·경로·진행 규칙 검토·확인, leadership-engine·foundry export 확인. 변경 없음.
+
+**[REFRESH (C1)] SPRINT 201 → 202**: [x] **완료.** 201 남은 [ ] 모두 BLOCKER → 회전 완료. 202 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[C3] SPRINT 201 5건 (leaderboard·xp·letter·resilience·forced-reset·paths·domain barrel)**: [x] **완료.** 타이브레이크·XP 수식·경계·유효성·TII·certified·경로·상수 검토·확인, rules·center export 확인. 변경 없음.
+
+**[REFRESH (C1)] SPRINT 200 → 201**: [x] **완료.** 200 남은 [ ] 모두 BLOCKER → 회전 완료. 201 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[C3] SPRINT 200 5건 (stage·level-tier·dashboard·stages·assessment·domain barrel)**: [x] **완료.** stageNumber·tier 경계·ProgressSummary·RecommendationSource·STAGE_PROGRESS_PERCENT·전이·경로·진행 규칙 검토·확인, arena·foundry export 확인. 변경 없음.
+
+**[REFRESH (C1)] SPRINT 199 → 200**: [x] **완료.** 199 남은 [ ] 모두 BLOCKER → 회전 완료. 200 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[C3] SPRINT 199 5건 (season·weeklyXp·paths·air·letter·domain barrel)**: [x] **완료.** 시즌·주간 경계(weeklyXp 교차참조)·경로·AIR 밴드·기간·letter 유효성 검토·확인, leadership-engine·center export 확인. npm test 39 통과.
+
+**[REFRESH (C1)] SPRINT 198 → 199**: [x] **완료.** 198 남은 [ ] 모두 BLOCKER → 회전 완료. 199 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[C3] SPRINT 198 5건 (leaderboard·xp·assessment·forced-reset·resilience·domain barrel)**: [x] **완료.** 타이브레이크·XP 수식·경로·진행 규칙·TII·certified 경계·resilience 진도·경계 검토·확인, arena·rules export 확인. npm test 통과.
+
+**[REFRESH (C1)] SPRINT 197 → 198**: [x] **완료.** 197 남은 [ ] 모두 BLOCKER → 회전 완료. 198 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[C3] SPRINT 197 5건 (stage·level-tier·dashboard·stages·letter·domain barrel)**: [x] **완료.** stageNumber·tier 경계·ProgressSummary·RecommendationSource·STAGE_PROGRESS_PERCENT·letter 유효성 검토·확인, center·foundry export 확인. npm test 86 통과.
+
+**[REFRESH (C1)] SPRINT 196 → 197**: [x] **완료.** 196 남은 [ ] 모두 BLOCKER → 회전 완료. 197 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[C3] SPRINT 196 5건 (leaderboard·paths·air·resilience·domain barrel)**: [x] **완료.** 타이브레이크·정렬·경로·AIR 밴드·기간·resilience 진도·경계 주석, rules·leadership-engine export 확인. npm test 125 통과.
+
+**[REFRESH (C1)] SPRINT 195 → 196**: [x] **완료.** 195 남은 [ ] C5 BLOCKER 1건만 → 회전 완료. 196 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+
+**[C3] SPRINT 195 5건 (level-tier·xp·stages·letter·domain index)**: [x] **완료.** tier/code/subTier·XP 수식·전이·진행률·letter 본문 경계 JSDoc·주석, dashboard·healing·assessment export 확인. npm test 73 통과.
+
+**[REFRESH (C1)] SPRINT 194 → 195**: [x] **완료.** 194 남은 [ ] 모두 BLOCKER → 회전 완료. 195 생성. C2·C5 BLOCKER 이관·C5 실행 가능 4건 추가·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
 
 **[C3] SPRINT 194 5건 (xp·season·dojo·assessment·domain barrel)**: [x] **완료.** xp·season·dojo·assessment JSDoc·주석, arena·center·foundry re-export 일치 확인. npm test 통과.
 

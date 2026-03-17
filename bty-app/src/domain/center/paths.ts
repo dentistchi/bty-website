@@ -1,6 +1,7 @@
 /**
  * Center 경로·이벤트 상수 (§5·§6 CENTER_PAGE_IMPROVEMENT_SPEC).
- * 비즈니스 규칙: CTA 목적지 = /bty(보호된 경로), 챗 열기 = open-chatbot 이벤트.
+ * 비즈니스 규칙: CTA 목적지 = /bty(보호된 경로), 챗 열기 = open-chatbot 이벤트. 경로·상수 단일 소스.
+ * Assessment 완료 후 CTA·이탈 = `getCenterCtaHref` + `center/assessment` 검증 흐름과 함께 사용.
  * UI/API는 이 도메인 값만 사용.
  */
 

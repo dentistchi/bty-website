@@ -20,8 +20,9 @@ import {
 /**
  * POST /api/arena/run/complete
  * Body: { runId: string, time_remaining?: number }. Marks run DONE and applies XP (once per run).
- * Response (200): { ok: true, runId, status: "DONE", deltaApplied?, coreXp?, weeklyXp? } or { ok, runId, status, idempotent: true }.
- * Errors: 401 UNAUTHENTICATED, 400 MISSING_RUN_ID/INVALID_JSON, 404 NOT_FOUND, 500.
+ * Response 200: { ok, runId, status: "DONE", deltaApplied?, coreXp?, weeklyXp? } or { ok, runId, status, idempotent: true }.
+ * Errors: 401 { error: "UNAUTHENTICATED" }, 400 { error: "MISSING_RUN_ID" | "INVALID_JSON" }, 404 { error: "NOT_FOUND" }, 500 { error: string }.
+ * Idempotent: repeat POST after XP applied returns 200 with idempotent: true (no double weekly/core grant).
  * Gate 3: Daily cap in lib (activityXp); route uses getArenaTodayTotal + capArenaDailyDelta only.
  */
 export async function POST(req: Request) {

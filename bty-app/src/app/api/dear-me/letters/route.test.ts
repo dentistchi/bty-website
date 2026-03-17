@@ -27,6 +27,31 @@ describe("GET /api/dear-me/letters", () => {
     expect(mockGetLetterHistory).not.toHaveBeenCalled();
   });
 
+  it("returns 401 with JSON body containing only error key", async () => {
+    mockGetLetterAuth.mockResolvedValue(null);
+    const res = await GET();
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
+  it("returns 401 with error as string", async () => {
+    mockGetLetterAuth.mockResolvedValue(null);
+    const res = await GET();
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(typeof data.error).toBe("string");
+  });
+
+  it("returns 500 with JSON body containing only error key when service errors", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockGetLetterHistory.mockResolvedValue({ ok: false, error: "db_error" });
+    const res = await GET();
+    expect(res.status).toBe(500);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
   it("returns 500 when service returns error", async () => {
     mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
     mockGetLetterHistory.mockResolvedValue({ ok: false, error: "db_error" });
@@ -36,6 +61,34 @@ describe("GET /api/dear-me/letters", () => {
     const data = await res.json();
     expect(data.error).toBe("db_error");
     expect(mockGetLetterHistory).toHaveBeenCalledOnce();
+  });
+
+  it("returns 500 with error as string when service errors", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockGetLetterHistory.mockResolvedValue({ ok: false, error: "fetch_failed" });
+    const res = await GET();
+    expect(res.status).toBe(500);
+    const data = await res.json();
+    expect(typeof data.error).toBe("string");
+  });
+
+  it("returns 200 with exactly letters key", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockGetLetterHistory.mockResolvedValue({ ok: true, letters: [] });
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["letters"]);
+  });
+
+  it("returns 200 with letters array length >= 0", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockGetLetterHistory.mockResolvedValue({ ok: true, letters: [] });
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data.letters)).toBe(true);
+    expect(data.letters.length).toBeGreaterThanOrEqual(0);
   });
 
   it("returns 200 with letters array on success", async () => {

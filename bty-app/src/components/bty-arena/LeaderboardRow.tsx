@@ -46,7 +46,13 @@ export function LeaderboardRow({
       ? weeklyXp.toLocaleString(locale === "ko" ? "ko-KR" : "en-US")
       : weeklyXp.toLocaleString();
 
-  const rowAriaLabel = `Rank ${rank}, ${displayName}, ${formattedXp} Weekly XP${isMe ? ", You" : ""}`;
+  const isKo = locale === "ko";
+  const tierBit =
+    tier && tier !== "Code Name" ? (isKo ? `, 티어 ${tier}` : `, tier ${tier}`) : "";
+  const rowAriaLabel = isKo
+    ? `순위 ${rank}, ${displayName}${tierBit}, 주간 XP ${formattedXp}${isMe ? ", 나" : ""}`
+    : `Rank ${rank}, ${displayName}${tierBit}, ${formattedXp} Weekly XP${isMe ? ", You" : ""}`;
+  const statsGroupAria = isKo ? "주간 XP 및 티어" : "Weekly XP and tier";
   return (
     <div
       role="listitem"
@@ -92,9 +98,9 @@ export function LeaderboardRow({
           <div style={{ fontSize: 12, opacity: 0.7 }}>{tier ?? "Code Name"}</div>
         </div>
       </div>
-      <div style={{ textAlign: "right" }}>
+      <div role="group" aria-label={statsGroupAria} style={{ textAlign: "right" }}>
         <div style={{ fontWeight: 900, fontSize: 18 }}>{formattedXp}</div>
-        <div style={{ fontSize: 12, opacity: 0.7 }}>Weekly XP</div>
+        <div style={{ fontSize: 12, opacity: 0.7 }}>{isKo ? "주간 XP" : "Weekly XP"}</div>
       </div>
     </div>
   );

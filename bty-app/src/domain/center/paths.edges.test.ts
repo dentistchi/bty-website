@@ -50,6 +50,11 @@ describe("Center paths (edges)", () => {
     expect(getCenterCtaHref("2")).toBe("/2/bty");
   });
 
+  it("getCenterCtaHref result starts with slash", () => {
+    expect(getCenterCtaHref("en").startsWith("/")).toBe(true);
+    expect(getCenterCtaHref("ko").startsWith("/")).toBe(true);
+  });
+
   it("constants are stable for re-export usage", () => {
     expect(CENTER_CTA_PATH).toBe("/bty");
     expect(CENTER_CHAT_OPEN_EVENT).toBe("open-chatbot");

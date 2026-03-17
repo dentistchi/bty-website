@@ -1,7 +1,9 @@
 /**
  * XP rules: Seasonal → Core conversion.
  * Core XP is permanent; conversion rates from docs/spec/arena-domain-rules.md.
- * coreXp·레벨 경계: constants (BEGINNER threshold, 45/60 rates); tier/level = level-tier (tierFromCoreXp, CORE_XP_PER_TIER).
+ * **Beginner boundary:** `currentCoreXp < BEGINNER_CORE_THRESHOLD` (200) → 45:1; aligns with `weeklyXp.awardXp` core&lt;200 rule.
+ * Tier/stage display = level-tier (`tierFromCoreXp`, `stageFromCoreXp`); leaderboard rank = weekly XP only + `leaderboardTieBreak`.
+ * @see leaderboard — weekly rank/elite; Core XP changes do not reorder leaderboard.
  */
 
 import type { SeasonalToCoreResult } from "../types";

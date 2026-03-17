@@ -43,6 +43,22 @@ describe("POST /api/emotional-stats/record-event", () => {
     expect(mockRecordEmotionalEventServer).not.toHaveBeenCalled();
   });
 
+  it("returns 401 with error as string", async () => {
+    mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: new Response() });
+    const res = await POST(makeRequest({ event_id: "reflection" }));
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(typeof data.error).toBe("string");
+  });
+
+  it("returns 401 with JSON body containing only error key", async () => {
+    mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: new Response() });
+    const res = await POST(makeRequest({ event_id: "e1" }));
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
   it("returns 400 when body is invalid JSON", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
@@ -76,6 +92,18 @@ describe("POST /api/emotional-stats/record-event", () => {
     expect(mockRecordEmotionalEventServer).not.toHaveBeenCalled();
   });
 
+  it("returns 400 with JSON body containing only error key when event_id invalid", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {},
+      base: new Response(),
+    });
+    const res = await POST(makeRequest({ event_id: "INVALID" }));
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
   it("returns 500 when recordEmotionalEventServer fails", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
@@ -88,6 +116,20 @@ describe("POST /api/emotional-stats/record-event", () => {
     expect(res.status).toBe(500);
     const data = await res.json();
     expect(data.error).toBe("Failed to record event");
+  });
+
+  it("returns 200 with ok as boolean", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {},
+      base: new Response(),
+    });
+    mockRecordEmotionalEventServer.mockResolvedValue({ ok: true });
+    const res = await POST(makeRequest({ event_id: "FEELING_LABELED" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.ok).toBe("boolean");
+    expect(data.ok).toBe(true);
   });
 
   it("returns 200 with ok when authenticated and event recorded", async () => {

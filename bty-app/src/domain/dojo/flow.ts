@@ -1,7 +1,7 @@
 /**
  * Dojo / Dear Me — 진입·제출·결과 비즈니스 규칙만 (순수 함수).
  * 단일 참조: docs/DOJO_DEAR_ME_NEXT_CONTENT.md §7.
- * 질문 50·제출 규칙(50개 1–5)·경계 단일 소스. 문항 타입·매핑 = dojo/questions.
+ * 질문 50·제출 규칙(50개 1–5)·0–100 영역 점수. Healing/Awakening phase·액트는 `healing.ts` (Q4)와 무관.
  */
 
 import type { IntegritySubmitPayload } from "./integrity";

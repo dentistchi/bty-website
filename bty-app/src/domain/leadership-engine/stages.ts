@@ -1,6 +1,8 @@
 /**
  * Leadership Engine — 4 Core Stages & transition rules.
  * Single source: docs/ENGINE_ARCHITECTURE_DIRECTIVE_PLAN.md §1.
+ * 전이: getNextStage·StageTransitionContext. 진행률 매핑: STAGE_PROGRESS_PERCENT·stageProgressPercent (0–100).
+ * Stage 4 (Integrity Reset) **강제 트리거** 조건 = `forced-reset.ts` (`evaluateForcedReset`). TII = `tii.ts` (별도).
  * Pure domain only; no UI, API, or DB.
  */
 
@@ -51,10 +53,19 @@ export type StageTransitionContext =
   | "air_below_threshold"
   | "stage_4_completion";
 
+/** 유효 전이 컨텍스트 목록 (API·엔진 검증용). StageTransitionContext 단일 소스. */
+export const STAGE_TRANSITION_CONTEXTS: readonly StageTransitionContext[] = [
+  "repeat_1_without_delegation",
+  "repeat_2_without_corrective_activation",
+  "air_below_threshold",
+  "stage_4_completion",
+];
+
 /**
  * Returns the next stage given current stage and transition context, or null if no transition.
  * Rules (§1): 1 repeat without delegation → 2; 2 repeat without corrective activation → 3;
- * 3 + AIR below threshold → 4; Stage 4 completion → 1.
+ * 3 + AIR below threshold → 4 (`air_below_threshold`: align with `air.AIR_THRESHOLD_STAGE_ESCALATION` / low band);
+ * Stage 4 completion → 1.
  */
 export function getNextStage(
   currentStage: Stage,

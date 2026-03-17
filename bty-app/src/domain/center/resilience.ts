@@ -1,9 +1,14 @@
 /**
  * Center 회복 탄력성 — 일별/기간별 트렉 도메인 (§4 CENTER_PAGE_IMPROVEMENT_SPEC).
- * 순수 함수만. 경계: energy 1–5 → low/mid/high (energyToLevel). periodDays 옵션으로 기간 제한.
+ * 진도 = `aggregateLetterRowsToDailyEntries`·`energyToLevel`. energy 1–5 권장; 그 밖 값은 구간 규칙으로 매핑(API에서 1–5 클램프 권장).
+ * `periodDays`: 최신 일 기준 **포함** `periodDays`일 구간만 반환.
+ * @see letter — 편지 본문 검증(`validateLetterBody`)은 제출 경로 전용.
  */
 
 export type ResilienceDailyLevel = "high" | "mid" | "low";
+
+/** 레벨 id 목록 (API·순회용). */
+export const RESILIENCE_LEVEL_IDS: readonly ResilienceDailyLevel[] = ["low", "mid", "high"];
 
 export type ResilienceDayEntry = {
   date: string; // YYYY-MM-DD

@@ -1,6 +1,7 @@
 /**
  * POST /api/dojo/integrity/submit — 역지사지 연습 제출 (thin handler).
- * Auth → body parse → integritySubmitService.submitIntegrity → response.
+ * Body: { text?, choiceId?, scenarioId? }. Response (200): { submissionId: string }.
+ * Errors: 401 { error: "UNAUTHENTICATED" }; 400 { error: "invalid_body" } | { error: string } (submitIntegrity 검증 실패).
  */
 
 import { NextResponse } from "next/server";

@@ -1,6 +1,7 @@
 /**
  * GET /api/center/resilience — Center 일별/기간별 회복 탄력성 트렉.
- * Query: period (optional). Response (200): { entries: ResilienceDayEntry[] }. Error: 401 { error: "Unauthorized" }, 500.
+ * Query: period (optional, parsed via parsePeriodDays). Response 200: { entries: ResilienceDayEntry[] }.
+ * Errors: 401 { error: "Unauthorized" }; 500 { error: string | "Something went wrong" } (service or catch).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";

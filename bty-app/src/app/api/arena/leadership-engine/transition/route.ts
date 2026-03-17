@@ -15,6 +15,7 @@ const VALID_CONTEXTS: StageTransitionContext[] = [
  * Body: { context: StageTransitionContext }.
  * Applies deterministic transition rule (domain getNextStage); returns applied flag and current stage.
  * UI must not compute transitions; only call this API when context is determined elsewhere.
+ * Response (200): { applied: boolean, currentStage, stageName }. Error: 401, 400 INVALID_JSON/INVALID_CONTEXT, 500.
  */
 export async function POST(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);

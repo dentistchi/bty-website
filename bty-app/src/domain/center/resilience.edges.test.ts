@@ -6,8 +6,24 @@ import { describe, it, expect } from "vitest";
 import {
   energyToLevel,
   aggregateLetterRowsToDailyEntries,
+  RESILIENCE_LEVEL_IDS,
   type LetterRow,
+  type ResilienceDailyLevel,
 } from "./resilience";
+
+describe("RESILIENCE_LEVEL_IDS (boundary)", () => {
+  it("has length 3 and contains low, mid, high", () => {
+    expect(RESILIENCE_LEVEL_IDS).toHaveLength(3);
+    expect(RESILIENCE_LEVEL_IDS).toContain("low");
+    expect(RESILIENCE_LEVEL_IDS).toContain("mid");
+    expect(RESILIENCE_LEVEL_IDS).toContain("high");
+  });
+
+  it("every ResilienceDailyLevel is in RESILIENCE_LEVEL_IDS", () => {
+    const levels: ResilienceDailyLevel[] = ["low", "mid", "high"];
+    levels.forEach((l) => expect(RESILIENCE_LEVEL_IDS).toContain(l));
+  });
+});
 
 describe("energyToLevel (edges)", () => {
   it("null and undefined → mid", () => {

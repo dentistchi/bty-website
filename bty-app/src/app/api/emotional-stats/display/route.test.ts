@@ -49,6 +49,63 @@ describe("GET /api/emotional-stats/display", () => {
     expect(Object.keys(data)).toEqual(["error"]);
   });
 
+  it("returns 401 with error as string", async () => {
+    mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: new Response() });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(typeof data.error).toBe("string");
+  });
+
+  it("returns 200 with phrases as array", async () => {
+    const base = new Response();
+    const supabase = {
+      from: () => ({ select: () => ({ eq: () => thenableWithEmpty }) }),
+    };
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase,
+      base,
+    });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data.phrases)).toBe(true);
+  });
+
+  it("returns 200 with phase key present", async () => {
+    const base = new Response();
+    const supabase = {
+      from: () => ({ select: () => ({ eq: () => thenableWithEmpty }) }),
+    };
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase,
+      base,
+    });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveProperty("phase");
+  });
+
+  it("returns 200 with exactly phrases and phase keys", async () => {
+    const base = new Response();
+    const supabase = {
+      from: () => ({ select: () => ({ eq: () => thenableWithEmpty }) }),
+    };
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase,
+      base,
+    });
+
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Object.keys(data).sort()).toEqual(["phase", "phrases"].sort());
+  });
+
   it("returns 200 with phrases and phase when authenticated", async () => {
     const base = new Response();
     const supabase = {
@@ -65,6 +122,55 @@ describe("GET /api/emotional-stats/display", () => {
     const data = await res.json();
     expect(Array.isArray(data.phrases)).toBe(true);
     expect(data.phase).toBe(null);
+  });
+
+  it("returns 200 with phrases array length >= 0", async () => {
+    const base = new Response();
+    const supabase = {
+      from: () => ({ select: () => ({ eq: () => thenableWithEmpty }) }),
+    };
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase,
+      base,
+    });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data.phrases)).toBe(true);
+    expect(data.phrases.length).toBeGreaterThanOrEqual(0);
+  });
+
+  it("returns 200 with phase null or string", async () => {
+    const base = new Response();
+    const supabase = {
+      from: () => ({ select: () => ({ eq: () => thenableWithEmpty }) }),
+    };
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase,
+      base,
+    });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.phase === null || typeof data.phase === "string").toBe(true);
+  });
+
+  it("returns 200 with phrases array when authenticated", async () => {
+    const base = new Response();
+    const supabase = {
+      from: () => ({ select: () => ({ eq: () => thenableWithEmpty }) }),
+    };
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase,
+      base,
+    });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data.phrases)).toBe(true);
   });
 
   it("returns 200 with content-type application/json on success", async () => {

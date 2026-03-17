@@ -1,13 +1,7 @@
 /**
- * POST /api/assessment/submit — 자존감 진단 50문항 제출·점수·패턴·저장.
- * Thin handler: auth → body parse → service → response.
- *
- * @contract
- * POST /api/assessment/submit
- *   Auth: required (session)
- *   Body: { answers?: Record<string, number> } (50 keys 1..50, values 1..5)
- *   200: AssessmentSubmitPostResponse
- *   400 | 401 | 500: AssessmentSubmitErrorResponse
+ * POST /api/assessment/submit — Center 자존감 진단 50문항 제출·점수·패턴·진로(path) 저장.
+ * Response 200: { submissionId, scores, pattern, recommendedTrack } — recommendedTrack = Center 추천 트랙 키(e.g. default, compassion_path, growth_path).
+ * Errors: 401 { error: "UNAUTHENTICATED" 등 }, 400 { error }, 500 { error, detail? }. See AssessmentSubmitErrorResponse.
  */
 import { NextResponse } from "next/server";
 import { getLetterAuth, submitAssessment } from "@/lib/bty/center";

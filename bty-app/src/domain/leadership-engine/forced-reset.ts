@@ -2,9 +2,11 @@
  * Leadership Engine — Stage 4 (Integrity Reset) forced trigger logic.
  * Single source: docs/LEADERSHIP_ENGINE_SPEC.md §5, ENGINE_ARCHITECTURE_DIRECTIVE_PLAN §4 P3.
  *
+ * LE Stage (1–4) = `stages`·`le-stage`; TII = `tii.ts` (팀 지표, 강제 리셋 조건과 별도).
+ *
  * Stage 4 triggers when ANY TWO of:
  *   - Stage 3 selected twice within 14 days
- *   - AIR_7d < 0.70 for 2 consecutive weeks
+ *   - AIR_7d < FORCED_RESET_AIR_7D_THRESHOLD for 2 consecutive weeks (`air.AIR_BAND_MID_HIGH`)
  *   - No QR verification for 7 days
  *   - TSP declining for 2 consecutive weeks
  *
@@ -14,9 +16,12 @@
  * Pure domain only; no UI, API, or DB.
  */
 
+import { AIR_BAND_MID_HIGH } from "./air";
+
 /** Stage 4 forced transition — 단일 소스. TII·certified 경계는 각각 tii.ts·certified.ts. */
 export const FORCED_RESET_STAGE3_COUNT_THRESHOLD = 2 as const;
-export const FORCED_RESET_AIR_7D_THRESHOLD = 0.7 as const;
+/** Aligns with `air.AIR_BAND_MID_HIGH` (below = not high band). */
+export const FORCED_RESET_AIR_7D_THRESHOLD = AIR_BAND_MID_HIGH;
 export const FORCED_RESET_NO_QR_DAYS_THRESHOLD = 7 as const;
 export const FORCED_RESET_DELAY_HOURS = 48 as const;
 

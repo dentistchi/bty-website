@@ -4,8 +4,91 @@ Summary of gate/integration runs (C7). Major sprint state changes. C1 REFRESH re
 
 ---
 
+## 2026-03-17
+
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 233 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 234 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당. Sprint ID 234.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 232 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 233 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당. Sprint ID 233.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 231 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 232 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당. Sprint ID 232. C7: 2026-03-17 GATE PASS.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 230 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 231 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당. Sprint ID 231. C7 최신: 2026-03-17 GATE PASS.
+
 ## 2026-03-16
 
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 222 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 223 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **REFRESH (C1)**: SPRINT 222. C2(2) [ ] BLOCKER·C3(5) [ ]·C5(1) [ ] BLOCKER. C4(5)·C5(2~5)·C6(5) [x]. C3 실행 가능 → Plan 유지. 다음 런 = 222.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test FAIL (leaderboard/route.test.ts: myRank expected number, received object). Build not run. Overall FAIL. Owner C6.
+- **REFRESH (C1)**: SPRINT 221 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 222 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **REFRESH (C1)**: SPRINT 221. C2(2) [ ] BLOCKER·C6(5) [ ]·C5(1) [ ] BLOCKER. C3·C4·C5(2~5) [x]. C6 실행 가능 → Plan 유지. 다음 런 = 221.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 220 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 221 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **REFRESH (C1)**: SPRINT 220. C2(2) [ ] BLOCKER·C4(5) [ ]·C5(1) [ ] BLOCKER. C3·C5(2~5)·C6 [x]. C4 실행 가능 → Plan 유지. 다음 런 = 220.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 219 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 220 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당. C7 Lint(mainAriaLabel) → 220 C5 TASK 2에서 수정.
+- **GATE (C7)**: self-healing-ci.sh run. Lint FAIL (TS2339 PageClient.tsx: CenterMessages lacks mainAriaLabel). Test/Build not run. Overall FAIL. Owner C5.
+- **REFRESH (C1)**: SPRINT 218 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 219 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 218. C2(2) [ ] BLOCKER·C3(5)·C4(5)·C5(1) [ ] BLOCKER·C6(5) [ ]. C3·C4·C5(2~5)·C6 실행 가능 → Plan 유지. 다음 런 = 218.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 217 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 218 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 216 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 217 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **REFRESH (C1)**: SPRINT 216. C2(2) [ ] BLOCKER·C3(5)·C5(1) [ ] BLOCKER·C5(4) [ ]. C3·C5(2~5) 실행 가능 → Plan 유지. 다음 런 = 216.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 215 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 216 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 214 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 215 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 213 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 214 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 212 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 213 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 211 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 212 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 210 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 211 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 210. C2(2) [ ] BLOCKER·C4(5)·C5(5) [ ]. C4·C5(2~5) 실행 가능 → Plan 유지. 다음 런 = 210.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 209 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 210 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 208 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 209 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 207 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 208 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **REFRESH (C1)**: SPRINT 207. C2(2) [ ] BLOCKER·C5(1) [ ] BLOCKER·C6(5) [ ]. C6 실행 가능 → Plan 유지. 다음 런 = 207.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 207. C2(2) [ ] BLOCKER·C3(5)·C4(5)·C5(4)·C6(5) [ ]. 비-BLOCKER 실행 가능 → Plan 유지. 다음 런 = 207.
+- **REFRESH (C1)**: SPRINT 206 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 207 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 205 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 206 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 204 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 205 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 203 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 204 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 202 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 203 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 201 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 202 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 200 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 201 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 199 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 200 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 198 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 199 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 197 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 198 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 196 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 197 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **REFRESH (C1)**: SPRINT 196. C2(2) [ ] BLOCKER·C3(5) [x]·C4(5) [ ]·C5(1) [ ] BLOCKER·C6(5) [x]. C4 실행 가능 5건 남음 → Plan 유지.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1)**: SPRINT 195 남은 [ ] C5 BLOCKER 1건만(Journey·bounce-back) → 회전 완료. SPRINT 196 생성. C2 배포 시 2건·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **배포 (C2)**: 195 배포 시 1회. Gate § A~F·MVP 최종 확인·self-healing-ci 실행 완료. Lint ✓ Test ✓ Build ✓. PASS. BTY_RELEASE_GATE_CHECK·SPRINT_LOG 반영.
+- **REFRESH (C1)**: SPRINT 194 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 195 생성. C2·C5 BLOCKER 이관. C5 실행 가능 4건 추가(재개). C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
 - **REFRESH (C1)**: SPRINT 193 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 194 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
 - **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
 - **REFRESH (C1)**: SPRINT 192 남은 [ ] 모두 BLOCKER(C2 배포 시 2건·C5 Journey/bounce-back 1건) → 회전 완료. SPRINT 193 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당.
@@ -26,6 +109,14 @@ Summary of gate/integration runs (C7). Major sprint state changes. C1 REFRESH re
 
 ## 2026-03-14
 
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
 - **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
 - **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
 - **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.

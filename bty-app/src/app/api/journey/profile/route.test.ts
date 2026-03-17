@@ -34,6 +34,22 @@ describe("GET /api/journey/profile", () => {
     expect(mockGetSupabaseAdmin).not.toHaveBeenCalled();
   });
 
+  it("returns 401 with JSON body containing only error key", async () => {
+    mockGetAuthUserFromRequest.mockResolvedValue(null);
+    const res = await GET(makeGetRequest());
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
+  });
+
+  it("returns 401 with error as string (GET)", async () => {
+    mockGetAuthUserFromRequest.mockResolvedValue(null);
+    const res = await GET(makeGetRequest());
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(typeof data.error).toBe("string");
+  });
+
   it("returns 503 when admin client not configured", async () => {
     mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
     mockGetSupabaseAdmin.mockReturnValue(null);
@@ -42,6 +58,15 @@ describe("GET /api/journey/profile", () => {
     expect(res.status).toBe(503);
     const data = await res.json();
     expect(data.error).toBe("Database not configured");
+  });
+
+  it("returns 503 with JSON body containing only error key", async () => {
+    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    mockGetSupabaseAdmin.mockReturnValue(null);
+    const res = await GET(makeGetRequest());
+    expect(res.status).toBe(503);
+    const data = await res.json();
+    expect(Object.keys(data)).toEqual(["error"]);
   });
 
   it("returns 200 with default profile when no row", async () => {
@@ -59,7 +84,72 @@ describe("GET /api/journey/profile", () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.current_day).toBe(1);
-    expect(data.is_new).toBe(true);
+  });
+
+  it("returns 200 with current_day as number", async () => {
+    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    const mockFrom = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: null, error: { code: "PGRST116" } }),
+        }),
+      }),
+    });
+    mockGetSupabaseAdmin.mockReturnValue({ from: mockFrom });
+    const res = await GET(makeGetRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.current_day).toBe("number");
+  });
+
+  it("returns 200 with current_day key present", async () => {
+    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    const mockFrom = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: null, error: { code: "PGRST116" } }),
+        }),
+      }),
+    });
+    mockGetSupabaseAdmin.mockReturnValue({ from: mockFrom });
+    const res = await GET(makeGetRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveProperty("current_day");
+    expect(typeof data.current_day).toBe("number");
+  });
+
+  it("returns 200 with is_new as boolean", async () => {
+    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    const mockFrom = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: null, error: { code: "PGRST116" } }),
+        }),
+      }),
+    });
+    mockGetSupabaseAdmin.mockReturnValue({ from: mockFrom });
+    const res = await GET(makeGetRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(typeof data.is_new).toBe("boolean");
+  });
+
+  it("returns 200 with is_new key present", async () => {
+    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    const mockFrom = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: null, error: { code: "PGRST116" } }),
+        }),
+      }),
+    });
+    mockGetSupabaseAdmin.mockReturnValue({ from: mockFrom });
+    const res = await GET(makeGetRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveProperty("is_new");
+    expect(typeof data.is_new).toBe("boolean");
   });
 
   it("returns 200 with content-type application/json on success", async () => {

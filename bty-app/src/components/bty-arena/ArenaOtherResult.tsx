@@ -21,8 +21,9 @@ export function ArenaOtherResult({
   lastXp, nextScenarioLabel, onContinue, continueLoading,
 }: ArenaOtherResultProps) {
   const isKo = locale === "ko";
+  const resultRegionLabel = isKo ? "자유 입력 결과 및 다음 시나리오" : "Free-form result and next scenario";
   return (
-    <div style={{ marginTop: 18, padding: 16, border: "1px solid #e5e5e5", borderRadius: 14 }}>
+    <div role="region" aria-label={resultRegionLabel} style={{ marginTop: 18, padding: 16, border: "1px solid #e5e5e5", borderRadius: 14 }}>
       {freeResponseFeedback ? (
         <>
           <p style={{ margin: "0 0 8px", fontWeight: 600 }}>{freeResponseFeedback.praise}</p>

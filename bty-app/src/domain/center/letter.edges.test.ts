@@ -16,6 +16,14 @@ describe("center/letter (edges)", () => {
     expect(LETTER_BODY_MAX_LENGTH).toBe(10_000);
   });
 
+  it("LETTER_BODY_MAX_LENGTH is positive", () => {
+    expect(LETTER_BODY_MAX_LENGTH).toBeGreaterThan(0);
+  });
+
+  it("LETTER_BODY_MAX_LENGTH is finite number", () => {
+    expect(Number.isFinite(LETTER_BODY_MAX_LENGTH)).toBe(true);
+  });
+
   describe("validateLetterBody boundaries", () => {
     it("rejects tab-only input", () => {
       const r = validateLetterBody("\t\t\t");

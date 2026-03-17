@@ -13,25 +13,58 @@
 
 ---
 
-## 이번 런: SPRINT 45 (FOUNDRY) — 2026-03-11
+## 이번 런: SPRINT 46 (FOUNDRY) — 2026-03-12
 
-- **C1 splint 10 (2026-03-11)**: SPRINT 44 8/10 완료(TASK 8·9 선택 미실행) → SPRINT 45 생성. First Task = Release Gate 45차.
-- **대기 6건 (NEXT_PHASE·NEXT_BACKLOG와 동일)**: Release Gate 45차 · NEXT_PHASE·NEXT_BACKLOG 대기 갱신 · 문서 점검 121·122·123차 · Center/Foundry 접근성 1곳 · 다음 배치 선정 · Arena·Center·Foundry 대기 목록 동기화.
+- **C1 splint 10 (2026-03-12)**: SPRINT 45 전량 10/10 완료 → SPRINT 46 생성. First Task = Release Gate 46차.
+- **대기 6건 (NEXT_PHASE·NEXT_BACKLOG와 동일)**: Release Gate 46차 · NEXT_PHASE·NEXT_BACKLOG 대기 갱신 · 문서 점검 124·125·126차 · Center/Foundry 접근성 1곳 · 다음 배치 선정 · Arena·Center·Foundry 대기 목록 동기화.
+- **[VERIFY] Release Gate 46차 (2026-03-12)**: C5. A~E N/A · F) Lint ✓ Test 1819 ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+- **[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 (46차 TASK 2, 2026-03-12)**: C1. SPRINT 46 TASK 1 완료 반영·갱신일 동기화. **완료.**
+- **[DOCS] 문서 점검 124·125·126차 (46차 TASK 3, 2026-03-12)**: C1. 삼문서·보드·BTY_RELEASE_GATE_CHECK 점검·갱신. **완료.**
+- **[UI] Center/Foundry 추가 접근성 1곳 (46차 TASK 4, 2026-03-12)**: C4. 대시보드 바로가기 링크 그룹 role=region·aria-label(ko/en). render-only. **완료.**
+
+**SPRINT 46 — TASK 1~10 (MODE FOUNDRY)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] [VERIFY] Release Gate A~F — Foundry 46차 | bty-release-gate.mdc A~F. Lint·Test·Build. **완료.** F) Lint ✓ Test 1819 ✓ Build ✓. RESULT: PASS. |
+| 2 | C1 | [x] [DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 | SPRINT 45 완료 반영. 대기 6건 동기화. **완료.** |
+| 3 | C1 | [x] [DOCS] 문서 점검 124·125·126차 | NEXT_PHASE·NEXT_BACKLOG·보드·BTY_RELEASE_GATE_CHECK 점검·갱신. **완료.** |
+| 4 | C4 | [x] [UI] Center/Foundry 추가 접근성 1곳 | 대시보드 바로가기 링크 그룹 role=region·aria-label. **완료.** |
+| 5 | C1 | [ ] [DOCS] 다음 배치 선정 (선택) | NEXT_BACKLOG_AUTO4·NEXT_PHASE_AUTO4 수동 갱신. 필요 시에만. 완료 시 보드·CURRENT_TASK 반영. 코드 없음. |
+| 6 | C5 | [ ] [VERIFY] 엘리트 3차 체크리스트 1회 | ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목. Elite=Weekly XP만·시즌 미반영. §3·보드·CURRENT_TASK 반영. |
+| 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | § "다음 작업 (반복 제외)" 진행 현황·다음 후보 체크·갱신일. 코드 없음. |
+| 8 | C3 | [ ] [DOMAIN] Center/Foundry 미커버 경계 테스트 1건 (선택) | 미커버 1곳 *.test.ts. npm test 통과. 필요 시. |
+| 9 | C3 | [ ] [TEST] Center/Foundry route 테스트 1건 (선택) | POST/GET route 401·200 등. npm test 통과. 필요 시. |
+| 10 | C1 | [ ] [DOCS] Arena·Center·Foundry 대기 목록 동기화 | NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 대기 행 일치 확인·갱신. MODE FOUNDRY. 코드 없음. |
+
+---
+
+## 이전 런: SPRINT 45 (FOUNDRY) — 2026-03-11
+
+- **C1 SPRINT 45 전량 10/10 완료 (2026-03-12)**: TASK 1~10 전부 [x]. 다음 스프린트 First Task = Release Gate 46차.
+- **[VERIFY] 엘리트 3차 체크리스트 45차 (2026-03-16)**: C5. 6항목 1회. **RESULT: PASS.**
+- **[VERIFY] Release Gate 45차 (2026-03-16)**: C5. F) Lint ✓ Test 1728 ✓ Build ✓. **RESULT: PASS.**
+- **[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 (45차 TASK 2, 2026-03-12)**: C1. **완료.**
+- **[DOCS] 문서 점검 121·122·123차 (45차 TASK 3, 2026-03-12)**: C1. **완료.**
+- **[UI] Center/Foundry 추가 접근성 1곳 (45차 TASK 4, 2026-03-12)**: C4. PageClient Center main 4곳 aria-label. **완료.**
+- **[DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 (45차 TASK 7)**: C1. **완료.**
+- **[DOCS] Arena·Center·Foundry 대기 목록 동기화 (45차 TASK 10)**: C1. **완료.**
+- **[DOCS] 다음 배치 선정 (45차 TASK 5, 선택)**: C1. **완료.** **[DOMAIN] (45차 TASK 8)·[TEST] (45차 TASK 9)**: C3. **완료.**
 
 **SPRINT 45 — TASK 1~10 (MODE FOUNDRY)**
 
 | # | OWNER | TASK LINE | PROMPT |
 |---|-------|-----------|--------|
-| 1 | C5 | [ ] [VERIFY] Release Gate A~F — Foundry 45차 | bty-release-gate.mdc A~F. Lint·Test·Build. BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영. |
-| 2 | C1 | [ ] [DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 | SPRINT 44 완료 반영. 대기 6건 = Release Gate 45차·문서 121·122·123차·접근성·다음 배치·대기 동기화. NEXT_PHASE↔NEXT_BACKLOG↔보드 동기화. 코드 없음. |
-| 3 | C1 | [ ] [DOCS] 문서 점검 121·122·123차 | NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드·BTY_RELEASE_GATE_CHECK 2~3건 점검·갱신. 코드 없음. |
-| 4 | C4 | [ ] [UI] Center/Foundry 추가 접근성 1곳 | dear-me·assessment·center·dojo·integrity·mentor·elite 중 미적용 1곳 aria-label·aria-describedby. render-only. npm run lint 통과. |
-| 5 | C1 | [ ] [DOCS] 다음 배치 선정 (선택) | NEXT_BACKLOG_AUTO4·NEXT_PHASE_AUTO4 수동 갱신. 필요 시에만. 완료 시 보드·CURRENT_TASK 반영. 코드 없음. |
-| 6 | C5 | [ ] [VERIFY] 엘리트 3차 체크리스트 1회 | ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목. Elite=Weekly XP만·시즌 미반영. 보드·CURRENT_TASK·§3 반영. |
-| 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | § "다음 작업 (반복 제외)" 진행 현황·다음 후보 체크·갱신일. 코드 없음. |
-| 8 | C3 | [ ] [DOMAIN] Center/Foundry 미커버 경계 테스트 1건 (선택) | 미커버 1곳 *.test.ts. npm test 통과. 필요 시. |
-| 9 | C3 | [ ] [TEST] Center/Foundry route 테스트 1건 (선택) | POST/GET route 401·200 등. npm test 통과. 필요 시. |
-| 10 | C1 | [ ] [DOCS] Arena·Center·Foundry 대기 목록 동기화 | NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 대기 행 일치 확인·갱신. MODE FOUNDRY. 코드 없음. |
+| 1 | C5 | [x] [VERIFY] Release Gate A~F — Foundry 45차 | **완료.** |
+| 2 | C1 | [x] [DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 | **완료.** |
+| 3 | C1 | [x] [DOCS] 문서 점검 121·122·123차 | **완료.** |
+| 4 | C4 | [x] [UI] Center/Foundry 추가 접근성 1곳 | **완료.** |
+| 5 | C1 | [x] [DOCS] 다음 배치 선정 (선택) | **완료.** |
+| 6 | C5 | [x] [VERIFY] 엘리트 3차 체크리스트 1회 | **완료.** |
+| 7 | C1 | [x] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | **완료.** |
+| 8 | C3 | [x] [DOMAIN] Center/Foundry 미커버 경계 테스트 1건 (선택) | **완료.** |
+| 9 | C3 | [x] [TEST] Center/Foundry route 테스트 1건 (선택) | **완료.** |
+| 10 | C1 | [x] [DOCS] Arena·Center·Foundry 대기 목록 동기화 | **완료.** |
 
 ---
 

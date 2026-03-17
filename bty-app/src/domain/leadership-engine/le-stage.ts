@@ -12,7 +12,7 @@ export const LE_STAGE_PROGRESS_STEP = PROGRESS_PERCENT_MAX / LE_STAGE_MAX;
 
 /** Arena 런/시나리오 결과 요약 — API·대시보드 노출용. */
 export interface ArenaResultSummary {
-  /** 사용자 현재 스테이지 (1–4). */
+  /** LE Core Stage 1–4 (`stages.Stage`). Not Arena Core-XP stage 1–7 (`level-tier.stageFromCoreXp`). */
   currentStage: Stage;
   /** 완료한 시나리오 수 (또는 해당 기간 내 런 수). */
   completedCount: number;

@@ -1,6 +1,7 @@
 /**
- * GET /api/dojo/questions — Dojo 50문항·선택지 조회.
- * Response (200): { questions, choiceValues }. Error: 500 { error: string }.
+ * GET /api/dojo/questions — Dojo 50문항·선택지 조회 (auth 없음).
+ * Response (200): { questions: DojoQuestion[], choiceValues: number[] } (Likert 1..5).
+ * Error: 500 { error: string } (dojo_questions select 실패).
  */
 
 import { NextResponse } from "next/server";

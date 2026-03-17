@@ -1,6 +1,7 @@
 /**
  * POST /api/dear-me/letter — Dear Me 편지 제출·답장 반환.
- * Response (200): service result. Errors: 401 { error: "Unauthorized" }, 400 missing_text, 500.
+ * Response (200): { letterId, replyMessage }.
+ * Errors: 401 { error: "Unauthorized" }; 400 validation (missing_text, text_too_long, body_too_long, etc.); 500 { error: "Something went wrong" } (catch/JSON parse failure).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getLetterAuth, submitLetter } from "@/lib/bty/center";

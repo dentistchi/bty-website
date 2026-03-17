@@ -1,20 +1,27 @@
 /**
- * 대시보드 — 진도·추천 요약에 쓸 공통 타입·상수.
- * Pure types only. No UI, API, or DB.
+ * 대시보드·Arena 추천·진도 타입 단일 소스 (API·위젯).
+ * RecommendationSummary·ProgressSummary = 대시보드·Arena API 응답 타입 단일 소스. Pure types only. No UI, API, or DB.
  * Ref: docs/ROADMAP_Q3_Q4.md 대시보드.
  */
 
 /** 영역별 진도 미제공 시 표시할 기본값 (0). */
 export const PROGRESS_PERCENT_DEFAULT = 0 as const;
 
-/** 영역별 진도 요약 (0–100 또는 null). */
+/** 영역별 진도 상한 (0–100). ProgressSummary·진도 표시 단일 경계. leadership-engine PROGRESS_PERCENT_MAX와 의미 동일, 네임스페이스 충돌 회피로 별도 이름. */
+export const DASHBOARD_PROGRESS_PERCENT_MAX = 100 as const;
+
+/**
+ * 영역별 진도 요약 (0–100 또는 null).
+ * Percent scale matches `leadership-engine/stages` `PROGRESS_PERCENT_MAX` (100) for Arena LE widgets.
+ * API must clamp each value to [0, DASHBOARD_PROGRESS_PERCENT_MAX] before filling.
+ */
 export interface ProgressSummary {
   arenaProgress?: number | null;
   foundryProgress?: number | null;
   centerProgress?: number | null;
 }
 
-/** 추천 출처 (어느 영역 기준). */
+/** 추천 출처 — 반드시 `RECOMMENDATION_SOURCE_ORDER` 멤버 또는 null. */
 export type RecommendationSource = "arena" | "foundry" | "center" | null;
 
 /** 소스별 우선순위 (높을수록 먼저 노출). 대시보드 recommendation 정렬 단일 소스. */
