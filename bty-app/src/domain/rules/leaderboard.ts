@@ -38,7 +38,9 @@ export function eliteCutoffRank(totalEntries: number): number {
   return Math.max(1, Math.ceil(totalEntries * ELITE_TOP_FRACTION));
 }
 
-/** Whether a 1-based rank is in the elite group for this leaderboard size. */
+/**
+ * Weekly-rank “Elite” (top 5%). Not LE `certified` (`leadership-engine/certified`) — different product concept.
+ */
 export function isElite(rank: number, totalEntries: number): boolean {
   return rank <= eliteCutoffRank(totalEntries);
 }

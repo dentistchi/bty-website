@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { AuthGate } from "@/components/AuthGate";
 import { Comeback } from "@/components/Comeback";
-import { Nav } from "@/components/Nav";
 import { ThemeBody } from "@/components/ThemeBody";
 import { LoadingFallback } from "@/components/bty-arena";
 import { MissionCard } from "@/components/journey/MissionCard";
@@ -274,7 +273,6 @@ export function JourneyBoard() {
       <main className="min-h-screen bg-foundry-white">
         <Comeback />
         <div className="max-w-2xl mx-auto px-4 py-6 sm:py-10">
-          <Nav locale={locale} pathname={pathname} />
           <header className="text-center mb-10">
             <h1 className="text-2xl sm:text-3xl font-semibold text-foundry-purple-dark">
               나의 여정 (My Journey)

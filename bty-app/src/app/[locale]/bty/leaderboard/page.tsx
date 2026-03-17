@@ -3,7 +3,6 @@
 import React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import BtyTopNav from "@/components/bty/BtyTopNav";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 import { LeaderboardRow, UserAvatar, LeaderboardListSkeleton, EmptyState } from "@/components/bty-arena";
 import { getMessages } from "@/lib/i18n";
@@ -27,6 +26,7 @@ type Row = {
 type LeaderboardScope = "overall" | "role" | "office";
 
 type LeaderboardRes = {
+  viewerAnonymous?: boolean;
   leaderboard?: Row[];
   nearMe?: Row[];
   top10?: Row[];
@@ -140,26 +140,44 @@ export default function LeaderboardPage() {
   /** API 반환 순서만 사용. 타이 브레이커 적용 시에도 UI에서 정렬하지 않음. */
   const rows = data?.nearMe?.length ? data.nearMe : (data?.leaderboard ?? []);
   const myRank = data?.myRank ?? null;
+  const anonymousView = Boolean(data?.viewerAnonymous);
 
   React.useEffect(() => {
-    if (loading || error || myRank !== 0) return;
+    if (loading || error || data?.viewerAnonymous || myRank !== 0) return;
     let cancelled = false;
     arenaFetch<StatusRes>("/api/arena/leaderboard/status")
       .then((s) => { if (!cancelled) setStatus(s); })
       .catch(() => { if (!cancelled) setStatus({ hasWeeklyXpRow: false, xpTotal: 0 }); });
     return () => { cancelled = true; };
-  }, [loading, error, myRank]);
+  }, [loading, error, myRank, data?.viewerAnonymous]);
 
   return (
     <div style={{ maxWidth: 860, margin: "0 auto", padding: "24px 16px" }}>
-      <BtyTopNav />
-      <div style={{ marginTop: 18 }} role="region" aria-label={tBty.leaderboardMainRegionAria}>
+      <div style={{ marginTop: 0 }} role="region" aria-label={tBty.leaderboardMainRegionAria}>
         <div style={{ fontSize: 14, opacity: 0.7 }}>bty</div>
         <h1 style={{ margin: 0, fontSize: 28 }}>{t.title}</h1>
         <p style={{ margin: "6px 0 0", fontSize: 15, opacity: 0.85 }}>{t.slogan}</p>
         <div style={{ marginTop: 6, fontSize: 14, opacity: 0.7 }}>
           {t.subtitle}
         </div>
+        {data?.viewerAnonymous && (
+          <div
+            role="status"
+            style={{
+              marginTop: 12,
+              padding: "12px 14px",
+              borderRadius: 10,
+              border: "1px solid #e8d4a8",
+              background: "#fffbeb",
+              fontSize: 13,
+              color: "#713f12",
+            }}
+          >
+            {locale === "ko"
+              ? "공개 순위만 보이는 중이에요. 내 순위·역할·지점 뷰를 쓰려면 bty에서 로그인한 뒤 다시 열어 주세요."
+              : "Showing public rankings only. Sign in from bty home to see your rank and Role/Office views."}
+          </div>
+        )}
         {/* API 응답의 주간 경계 값만 표시(UI에서 계산 금지) */}
         {data?.reset_at != null && (
           <div role="region" aria-label={tBty.leaderboardWeekResetRegion} style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>
@@ -187,7 +205,11 @@ export default function LeaderboardPage() {
             <button
               key={s}
               type="button"
-              onClick={() => setScope(s)}
+              disabled={anonymousView && s !== "overall"}
+              onClick={() => {
+                if (anonymousView && s !== "overall") return;
+                setScope(s);
+              }}
               aria-label={
                 s === "overall"
                   ? (locale === "ko" ? "리더보드 전체 보기" : "View leaderboard overall")
@@ -205,7 +227,8 @@ export default function LeaderboardPage() {
                 background: scope === s ? "color-mix(in srgb, var(--arena-accent, #6366f1) 12%, transparent)" : "transparent",
                 fontSize: 14,
                 fontWeight: scope === s ? 600 : 500,
-                cursor: "pointer",
+                cursor: anonymousView && s !== "overall" ? "not-allowed" : "pointer",
+                opacity: anonymousView && s !== "overall" ? 0.45 : 1,
               }}
             >
               {s === "overall" ? t.tabOverall : s === "role" ? t.tabRole : t.tabOffice}

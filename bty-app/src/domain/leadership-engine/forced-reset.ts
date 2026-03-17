@@ -2,7 +2,8 @@
  * Leadership Engine — Stage 4 (Integrity Reset) forced trigger logic.
  * Single source: docs/LEADERSHIP_ENGINE_SPEC.md §5, ENGINE_ARCHITECTURE_DIRECTIVE_PLAN §4 P3.
  *
- * LE Stage (1–4) = `stages`·`le-stage`; TII = `tii.ts` (팀 지표, 강제 리셋 조건과 별도).
+ * LE Stage (1–4) = `./stages`·`le-stage`; TII = `tii.ts` (팀 지표, 강제 리셋 조건과 별도).
+ * @see stages — `STAGE_3`/`STAGE_4`·전이 컨텍스트 단일 소스.
  *
  * Stage 4 triggers when ANY TWO of:
  *   - Stage 3 selected twice within 14 days

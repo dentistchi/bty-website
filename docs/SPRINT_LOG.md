@@ -4,6 +4,18 @@ Summary of gate/integration runs (C7). Major sprint state changes. C1 REFRESH re
 
 ---
 
+## 2026-03-14
+
+- **REFRESH (C1) — SPRINT_PLAN:** **234→235.** 234 잔여 구현 가능 [ ] 없음(C5 TASK1 Journey·bounce-back만 BLOCKER). C2 Gate [ ] 재오픈. C3·C4·C5(2~5)·C6 각 신규 5건. `docs/SPRINT_PLAN.md` UTF-8 정리·단일 진실 갱신. (CURSOR_TASK_BOARD 이번 런 SPRINT 46 Foundry 트랙은 별도.)
+
+## 2026-03-18
+
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **배포 (C2, post-push)**: **`fd81860`**. Gate § A~F·MVP 최종 확인 + `bty-app/scripts/self-healing-ci.sh` — Lint ✓ Test 218 files ✓ Build ✓. **PASS.** BTY_RELEASE_GATE_CHECK·본 로그. SPRINT_PLAN C2 TASK 1·2 [x].
+- **REFRESH (C1)**: SPRINT **234 유지**. C3 도메인 5건 [ ] 미완료 → **235 회전 안 함**. C4·C6 [x]. C5 Journey·bounce-back BLOCKER. C2는 fd81860 배포 후 아래 **배포 (C2)** 로 완료; 다음 배포 전 C1이 C2 [ ] 재설정.
+- **배포 push**: **`fd81860`** — chore: 배포 — 아바타/아웃핏, API·도메인·Q3/Q4 테스트·문서. 200 files (+4,015 / -423). **`e4ae594..fd81860` → origin/main**. BTY_RELEASE_GATE_CHECK·SPRINT_PLAN·CURRENT_TASK 반영.
+- **C3 (SPRINT 234)**: Tasks 5건 [x] 확인. CONTINUE 규칙상 C3 추가 할 일 없음·중단. (C3 Plan 제목·설명 UTF-8 깨짐은 요청 시 C3 구간만 복구.)
+
 ## 2026-03-17
 
 - **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.

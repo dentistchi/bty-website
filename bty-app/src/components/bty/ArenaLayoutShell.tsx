@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Noto_Sans_KR } from "next/font/google";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { LangSwitch } from "@/components/LangSwitch";
-import BtyTopNav from "@/components/bty/BtyTopNav";
+import HubTopNav from "@/components/bty/HubTopNav";
 
 /** DESIGN_FIRST_IMPRESSION_BRIEF §4 B: 제목·로고용 포인트 폰트 (Arena 영역만) */
 const notoSansKr = Noto_Sans_KR({
@@ -23,17 +23,18 @@ export function ArenaLayoutShell({ children }: { children: ReactNode }) {
         className="sticky top-0 z-20 backdrop-blur border-b border-[var(--arena-bg-end)]"
         style={{ background: "rgba(245, 240, 232, 0.92)" }}
       >
-        <div className="max-w-6xl mx-auto px-4 h-12 flex items-center justify-between gap-4 flex-nowrap shrink-0">
-          <span className="bty-arena-logo font-semibold text-[var(--arena-text)]" style={{ letterSpacing: "0.02em" }}>
+        <div className="max-w-6xl mx-auto px-4 py-2 min-h-12 flex flex-wrap items-start justify-between gap-x-4 gap-y-2 shrink-0">
+          <span className="bty-arena-logo font-semibold text-[var(--arena-text)] pt-1 shrink-0" style={{ letterSpacing: "0.02em" }}>
             BTY Arena
           </span>
-          <div className="flex items-center gap-3 flex-nowrap min-w-0">
-            <BtyTopNav showLogout={false} />
-            <span className="flex-shrink-0 border-l border-[var(--arena-text-soft)]/30 pl-3 ml-1 flex items-center gap-3">
-              <LangSwitch />
-              <LogoutButton />
-            </span>
-          </div>
+          <HubTopNav
+            trailing={
+              <>
+                <LangSwitch />
+                <LogoutButton />
+              </>
+            }
+          />
         </div>
       </header>
 

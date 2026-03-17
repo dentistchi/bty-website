@@ -2,6 +2,16 @@
 
 **진행 에이전트**: 이 파일 또는 커맨더 메시지에 적힌 **기능(요구사항)** 을 구현하세요.
 
+**[REFRESH (C1)] SPRINT_PLAN 235**: [x] **적용 (2026-03-14).** 234→235 회전. C2 다음 배포 Gate [ ] 재오픈. C3·C4·C5(2~5)·C6 신규 5건. **CURSOR_TASK_BOARD** 이번 런(SPRINT 46 Foundry)은 별도 트랙 — 구현 배치는 **SPRINT_PLAN §235** 우선.
+
+**[C4] SPRINT 235 API 5건 (SPRINT_PLAN)**: [x] **완료.** reflect·sub-name·runs·leaderboard↔core-xp·journey entries POST·me/elite·ARENA_DOMAIN_SPEC 235.
+
+**[C3] SPRINT 234 도메인 5건**: [x] **완료(이전 스프린트).**
+
+**[C2] SPRINT 234 배포 Gate (fd81860)**: [x] **완료(이력).** 다음 배포 시 **SPRINT 235** C2 TASK [ ] 실행.
+
+**[배포] Git push 완료**: [x] **`fd81860`** chore: 배포 — 아바타/아웃핏, API·도메인·Q3/Q4 테스트·문서 · 200 files (+4,015/-423) · **`e4ae594..fd81860` → origin/main** · BTY_RELEASE_GATE_CHECK·SPRINT_LOG·본 파일 반영.
+
 **[C4] SPRINT 234 API 5건 (SPRINT_PLAN)**: [x] **완료.** healing·awakening·dojo·avatar-assets·mentor·assessment JSDoc 재확인·ARENA_DOMAIN_SPEC 234.
 
 **[C4] SPRINT 233 API 5건 (SPRINT_PLAN)**: [x] **완료.** run/complete·profile·core-xp·leaderboard·LE·journey·me/elite·dashboard·center·dear-me JSDoc·에러 재확인·ARENA_DOMAIN_SPEC 233.

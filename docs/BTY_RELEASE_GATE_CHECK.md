@@ -47,6 +47,10 @@
 
 **배포 시 실행 순서**: MVP_DEPLOYMENT_READINESS(1회) → Gate(self-healing-ci 등) → 본 문서·보드·CURRENT_TASK 반영.
 
+**배포 후 (C2, 2026-03-18)**: **`fd81860`** — Git push 완료(`e4ae594..fd81860` → origin/main). Gate § A~F·`MVP_DEPLOYMENT_READINESS` 요약 대조(인바리언트·Auth/Weekly/Leaderboard 분리 유지, 본 배포는 아바타·API·도메인·테스트·문서 중심). **`./scripts/self-healing-ci.sh`**: tsc ✓ · Vitest **218 files** ✓ · Build ✓. **RESULT: PASS.**
+
+**최근 완료 (배포 push)**: **`fd81860`** — chore: 배포 — 아바타/아웃핏, API·도메인·Q3/Q4 테스트·문서. **200 files** (+4,015 / -423). **`e4ae594..fd81860` → origin/main**. Gate·MVP·문서 반영. **RESULT: PASS.**
+
 **최근 완료 (2026-03-12)**: [UI] Center/Foundry 접근성 1곳 (SPRINT 46 TASK 4, C4). 대시보드 바로가기 링크 그룹 role=region·aria-label. render-only.
 
 **최근 완료 (2026-03-12)**: [DOCS] 문서 점검 124·125·126차 (SPRINT 46 TASK 3, C1). NEXT_PHASE·NEXT_BACKLOG·보드·BTY_RELEASE_GATE_CHECK 2~3건 점검·갱신. 삼문서 대기 6건 일치. 코드 없음.

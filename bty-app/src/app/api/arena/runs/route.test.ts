@@ -23,14 +23,14 @@ describe("GET /api/arena/runs", () => {
     mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: {} });
   });
 
-  it("returns 401 with message when unauthenticated", async () => {
+  it("returns 200 with empty runs when unauthenticated (no scary error in Arena UI)", async () => {
     mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: {} });
 
     const res = await GET(makeRequest());
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data.error).toBe("UNAUTHENTICATED");
-    expect(data.message).toBe("Sign in to see past scenarios");
+    expect(data.runs).toEqual([]);
+    expect(data.viewerAnonymous).toBe(true);
   });
 
   it("returns 500 when arena_runs query fails", async () => {

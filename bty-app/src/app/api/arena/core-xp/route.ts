@@ -8,6 +8,7 @@
  *
  * Gate 1: UI MUST use response.tier only; do not compute tier from coreXpTotal.
  * Gate 2: use response.requiresBeginnerPath for beginner redirect; do not compare coreXpTotal to 200 (use domain BEGINNER_CORE_XP_THRESHOLD in API only).
+ * Related: weekly ranking = GET /api/arena/leaderboard only (core XP ≠ weekly rank).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";

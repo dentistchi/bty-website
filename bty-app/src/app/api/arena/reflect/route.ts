@@ -1,7 +1,9 @@
 /**
- * POST /api/arena/reflect
- * Reflection Deepening Engine – server-only. Uses Arena Human Model.
- * Requires auth. levelId is resolved from user tenure when not provided.
+ * POST /api/arena/reflect — Reflection Deepening Engine (Arena Human Model). Domain/lib only.
+ * Body: { userText: string (required), levelId?: S1|S2|S3|L1|L2|L3|L4, locale?: "ko"|"en", scenario?: unknown }.
+ * levelId omitted → resolved from tenure (membership / arena_profiles.l4_access) like unlocked-scenarios.
+ * Response (200): { ok: true, summary, questions, next_action, detected: { tags, topTag } }.
+ * Errors: 401 { error: "UNAUTHENTICATED" }; 400 { error: "Invalid JSON body" } | { error: "userText is required" }.
  */
 
 import { NextResponse } from "next/server";

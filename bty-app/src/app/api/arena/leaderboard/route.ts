@@ -7,18 +7,20 @@
  *   - Method: GET
  *   - Path: /api/arena/leaderboard
  *   - Query: scope? = "overall" | "role" | "office" (invalid/missing → overall, parseLeaderboardScope)
- *   - Auth: 세션 쿠키 필수 (Supabase getUser)
+ *   - Auth: 세션 권장. 쿠키가 Edge에서 누락되어도 scope=overall + service role 시 공개 리더보드(아바타 포함) 200.
  * 응답:
- *   - 200: { leaderboard, nearMe, top10, champions, myRank, myXp, gapToAbove, count, scope, scopeLabel, scopeUnavailable, week_end, reset_at, season }
- *   - 401: { error: "UNAUTHENTICATED", message: "Sign in to see leaderboard" }
+ *   - 200: { leaderboard, nearMe, …, viewerAnonymous?: true }
+ *   - 401: scope가 role/office이거나 공개 폴백 불가 시
  *   - 500: { error: "WEEKLY_XP_QUERY_FAILED", detail: string }
  * Cache: no-store (ranking is user-specific; no public cache).
  * Invariant: rank order uses weekly XP (+ tie-break) only; season fields in JSON are display-only.
+ * Related: GET /api/arena/core-xp — lifetime tier/code; do not infer weekly rank from core XP.
  * Thin handler: auth → service calls → response.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { writeSupabaseAuthCookies } from "@/lib/bty/cookies/authCookies";
+import { mergeAuthCookiesFromResponse } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getActiveLeague } from "@/lib/bty/arena/activeLeague";
 import { parseLeaderboardScope } from "@/lib/bty/arena/leaderboardScope";
@@ -56,7 +58,59 @@ export async function GET(req: NextRequest) {
   });
 
   const { data: userData } = await supabase.auth.getUser();
-  const user = userData.user;
+  let user = userData.user;
+
+  const scope = parseLeaderboardScope(req.nextUrl.searchParams.get("scope"));
+  const admin = getSupabaseAdmin();
+
+  if (!user && scope === "overall" && admin) {
+    const { rows: weeklyRows, error: weeklyErr } = await fetchWeeklyXpRows(
+      admin,
+      null,
+      500,
+    );
+    if (!weeklyErr) {
+      const rows = (weeklyRows ?? []).filter((r) => !!r.user_id);
+      const userIds = rows.map((r) => r.user_id);
+      const profileMap =
+        userIds.length > 0 ? await fetchProfileMap(admin, admin, userIds) : new Map();
+      const leaderboard = buildLeaderboardRows(rows, profileMap);
+      const top10 = leaderboard.slice(0, 10);
+      const champions = leaderboard.slice(0, 3);
+      const weekBoundary = getLeaderboardWeekBoundary();
+      const league = await getActiveLeague(admin, admin);
+      const out = NextResponse.json(
+        {
+          leaderboard,
+          nearMe: top10.length ? top10 : leaderboard,
+          top10,
+          champions,
+          myRank: null,
+          myXp: 0,
+          gapToAbove: null,
+          count: leaderboard.length,
+          scope,
+          scopeLabel: null,
+          scopeUnavailable: false,
+          week_end: weekBoundary.week_end,
+          reset_at: weekBoundary.reset_at,
+          season: league
+            ? {
+                league_id: league.league_id,
+                start_at: league.start_at,
+                end_at: league.end_at,
+                name: league.name ?? null,
+              }
+            : null,
+          viewerAnonymous: true,
+        },
+        { status: 200 },
+      );
+      tmp.headers.forEach((v, k) => out.headers.set(k, v));
+      mergeAuthCookiesFromResponse(tmp, out);
+      return out;
+    }
+  }
 
   if (!user) {
     const out = NextResponse.json(
@@ -64,12 +118,10 @@ export async function GET(req: NextRequest) {
       { status: 401 },
     );
     tmp.headers.forEach((v, k) => out.headers.set(k, v));
+    mergeAuthCookiesFromResponse(tmp, out);
     return out;
   }
 
-  // --- Parse scope & resolve filter ---
-  const scope = parseLeaderboardScope(req.nextUrl.searchParams.get("scope"));
-  const admin = getSupabaseAdmin();
   const db = admin ?? supabase;
 
   const scopeFilter =

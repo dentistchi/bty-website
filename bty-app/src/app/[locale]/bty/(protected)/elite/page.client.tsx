@@ -75,7 +75,7 @@ export default function ElitePageClient() {
       <div
         style={{ maxWidth: 640, margin: "0 auto", padding: "24px 16px" }}
         aria-busy="true"
-        aria-label={locale === "ko" ? "Elite 페이지 불러오는 중" : "Loading Elite page"}
+        aria-label={tElite.loadingElitePageAria}
       >
         <div style={{ display: "grid", gap: 28, marginTop: 24 }}>
           <CardSkeleton lines={3} showLabel={true} />

@@ -3,6 +3,8 @@
  * Tier is internal (not exposed). Code and Sub Name drive **identity** on leaderboard rows, not **rank** (rank = weekly XP + tiebreak).
  * 경계 상수: constants (CORE_XP_PER_TIER, TIERS_PER_CODE, CODE_NAMES, SUB_NAMES) 단일 소스.
  * tier = floor(coreXp/10), code = floor(tier/100) 0..6, subTier = floor((tier%100)/25) 0..3.
+ * @see leaderboard — weekly rank uses weeklyXp + tiebreak, not tier/code.
+ * @see xp — seasonal→Core conversion; tier grows with Core only.
  * See docs/spec/arena-domain-rules.md.
  */
 

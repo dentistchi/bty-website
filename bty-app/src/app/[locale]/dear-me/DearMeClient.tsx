@@ -6,7 +6,7 @@ import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { AuthGate } from "@/components/AuthGate";
 import { ThemeBody } from "@/components/ThemeBody";
-import { Nav } from "@/components/Nav";
+import HubTopNav from "@/components/bty/HubTopNav";
 import { CardSkeleton, EmptyState } from "@/components/bty-arena";
 
 /** API 응답 계약(UI 기대). replyMessage (dear-me/letter). */
@@ -25,8 +25,6 @@ export default function DearMeClient({ locale }: { locale: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [reply, setReply] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const pathname = `/${locale}/dear-me`;
-
   const [history, setHistory] = useState<LetterHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -90,7 +88,7 @@ export default function DearMeClient({ locale }: { locale: string }) {
       <ThemeBody theme="dear" />
       <main className="min-h-screen" aria-label={t.mainAriaLabel}>
         <div className="max-w-xl mx-auto px-4 py-6 sm:py-10" role="region" aria-label={t.contentLabel}>
-          <Nav locale={lang} pathname={pathname} theme="dear" />
+          <HubTopNav theme="dear" showLangSwitch />
           <header className="text-center mb-10 pt-4" role="region" aria-label={t.headerLabel}>
             <h1 className="font-serif text-2xl sm:text-3xl font-medium text-dear-charcoal">
               {lang === "ko" ? "Dear Me — 나에게 쓰는 편지" : "Dear Me — Letter to yourself"}

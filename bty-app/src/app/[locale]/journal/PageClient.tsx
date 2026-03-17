@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import HubTopNav from "@/components/bty/HubTopNav";
 import { PageLoadingFallback } from "@/components/bty-arena";
 
 export default function JournalPage() {
@@ -20,6 +21,7 @@ export default function JournalPage() {
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-xl mx-auto p-6 space-y-4">
+        <HubTopNav theme="dear" showLangSwitch />
         <h1 className="text-2xl font-semibold">저널</h1>
         <p className="opacity-70 text-sm">
           오늘 마음을 내려놓는 연습을 함께 해보자.

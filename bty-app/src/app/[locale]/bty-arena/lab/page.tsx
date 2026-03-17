@@ -4,7 +4,6 @@ import React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { CardSkeleton, ProgressCard } from "@/components/bty-arena";
-import BtyTopNav from "@/components/bty/BtyTopNav";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 
 type LabUsageRes = {
@@ -41,8 +40,7 @@ export default function LabPage() {
 
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}>
-      <BtyTopNav />
-      <div style={{ marginTop: 24 }}>
+      <div style={{ marginTop: 0 }}>
         <h1 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 700 }}>
           {isKo ? "Leadership Lab" : "Leadership Lab"}
         </h1>

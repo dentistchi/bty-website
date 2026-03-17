@@ -55,4 +55,16 @@ describe("domain/index", () => {
     expect(domain.AWAKENING_ACT_NAMES[1]).toBe("Reflection Chamber");
     expect(domain.DOJO_50_AREAS).toHaveLength(5);
   });
+
+  it("barrel: arena tiebreak + center CTA + xp conversion (C3 CONTINUE)", () => {
+    expect(typeof domain.compareWeeklyXpTieBreak).toBe("function");
+    expect(domain.getCenterCtaHref("ko")).toBe("/ko/bty");
+    expect(domain.seasonalToCoreConversion(45, 100).coreGain).toBe(1);
+  });
+
+  it("barrel 235: certified + dear-me path + weekly step", () => {
+    expect(typeof domain.certifiedStatus).toBe("function");
+    expect(domain.getDearMeHref("en")).toBe("/en/dear-me");
+    expect(domain.WEEKLY_LEVEL_STEP).toBe(100);
+  });
 });

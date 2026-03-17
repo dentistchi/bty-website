@@ -5,6 +5,7 @@ import { detectPattern, scoreAnswers } from "@/lib/assessment/score";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { CardSkeleton, EmptyState } from "@/components/bty-arena";
+import HubTopNav from "@/components/bty/HubTopNav";
 import { getMessages, type Locale } from "@/lib/i18n";
 
 type ApiResult = {
@@ -218,6 +219,9 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
   if (!computed) {
     return (
       <div className="max-w-xl mx-auto px-6 py-10" role="main" aria-labelledby="assessment-no-result-heading">
+        <div className="mb-6">
+          <HubTopNav theme="dear" showLangSwitch />
+        </div>
         <h1 id="assessment-no-result-heading" className="text-2xl font-semibold mb-2">
           {isEn ? "No result found" : "결과를 찾을 수 없습니다"}
         </h1>
@@ -247,6 +251,9 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
       role="main"
       aria-labelledby="assessment-result-heading"
     >
+      <div className="mb-6">
+        <HubTopNav theme="dear" showLangSwitch />
+      </div>
       <h1 id="assessment-result-heading" className="text-2xl font-semibold mb-2">
         {isEn ? "Result summary" : "결과 요약"}
       </h1>

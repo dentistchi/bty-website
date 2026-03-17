@@ -877,7 +877,7 @@ export default function DashboardClient() {
           <ProgressCard label={tBty.pointsTodayLabel}>
             <div role="region" aria-label={tBty.pointsTodayLabel} style={{ display: "block" }}>
               <div style={{ fontSize: 28, fontWeight: 800 }}>{xpToday}</div>
-              <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>XP earned today (UTC date).</div>
+              <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>{tBty.pointsTodaySubline}</div>
             </div>
           </ProgressCard>
 

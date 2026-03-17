@@ -1,6 +1,6 @@
 # Arena Domain Spec
 
-> 단일 참조 문서. **갱신: 2026-03-17** (SPRINT 234 C4: healing·awakening·dojo·avatar-assets·mentor·assessment path·재확인).
+> 단일 참조 문서. **갱신: 2026-03-17** (SPRINT 235 C4: reflect·sub-name·runs·leaderboard↔core-xp·journey POST·me/elite·§4).
 
 **관련 스펙**: [Foundry Domain Spec](./FOUNDRY_DOMAIN_SPEC.md) — Dojo·Integrity·Mentor·시나리오 콘텐츠는 Foundry. 시나리오 50개·Leadership Engine·Elite 정의는 Foundry 스펙과 동기화.
 
@@ -150,15 +150,15 @@ lib/bty/arena/domain.ts ──────── domain/rules import + re-export
 
 ## 4. API 엔드포인트 목록 (32개)
 
-**JSDoc 정합성 (2026-03-14):** run/complete·core-xp·leaderboard·stage-summary·dashboard/summary·center/letter·resilience·dear-me/letter·letters 등에 401·400·404·500 응답 본문 명시. **227:** arena/profile PATCH·leadership-engine/state·dojo. **228:** leadership-engine/air 401·500 명시. **229:** leadership-engine/tii 401·500 명시. **230:** leadership-engine/certified 401·500 명시. **231:** leaderboard 주간순위 불변·run/complete 멱등·profile/core-xp 500 맥락·LE stage-summary·air 빈로그 200·dashboard/summary 500 노출·journey/profile·me/elite·center·dear-me JSDoc 보강. **232:** bty/healing·awakening 200 스키마·dojo questions/submit/integrity·avatar-assets 캐시·mentor 429·assessment recommendedTrack/track(path)·§4-12b. **233:** run/complete·profile·core-xp·leaderboard·LE stage-summary·air·journey·me/elite·dashboard·center·dear-me JSDoc·에러 재확인. **234:** bty/healing·awakening·dojo·integrity·questions·avatar-assets·mentor·assessment submit/submissions JSDoc·에러 재확인.
+**JSDoc 정합성 (2026-03-14):** run/complete·core-xp·leaderboard·stage-summary·dashboard/summary·center/letter·resilience·dear-me/letter·letters 등에 401·400·404·500 응답 본문 명시. **227:** arena/profile PATCH·leadership-engine/state·dojo. **228:** leadership-engine/air 401·500 명시. **229:** leadership-engine/tii 401·500 명시. **230:** leadership-engine/certified 401·500 명시. **231:** leaderboard 주간순위 불변·run/complete 멱등·profile/core-xp 500 맥락·LE stage-summary·air 빈로그 200·dashboard/summary 500 노출·journey/profile·me/elite·center·dear-me JSDoc 보강. **232:** bty/healing·awakening 200 스키마·dojo questions/submit/integrity·avatar-assets 캐시·mentor 429·assessment recommendedTrack/track(path)·§4-12b. **233:** run/complete·profile·core-xp·leaderboard·LE stage-summary·air·journey·me/elite·dashboard·center·dear-me JSDoc·에러 재확인. **234:** bty/healing·awakening·dojo·integrity·questions·avatar-assets·mentor·assessment submit/submissions JSDoc·에러 재확인. **235:** POST /api/arena/reflect 본문·에러·sub-name 403 계열·GET runs 무세션 200·leaderboard/core-xp 상호 참조·journey entries POST 401·503·500·me/elite.
 
 ### 4-1. Run Lifecycle
 
 | Method | Endpoint | 역할 |
 |---|---|---|
 | POST | `/api/arena/run` | 런 생성 (시나리오 배정). Body: scenarioId. 401·400 scenarioId_required·500 |
-| POST | `/api/arena/run/complete` | 런 완료 (XP 지급·성찰 저장) |
-| GET | `/api/arena/runs` | 런 이력 조회 |
+| POST | `/api/arena/run/complete` | 런 완료 (XP 지급·멱등) |
+| GET | `/api/arena/runs` | 런 이력 (limit); **무세션 시 200** `runs:[]`, viewerAnonymous (401 아님) |
 
 ### 4-2. Beginner Flow
 
@@ -192,7 +192,7 @@ lib/bty/arena/domain.ts ──────── domain/rules import + re-export
 |---|---|---|
 | GET/PATCH | `/api/arena/profile` | 프로필 조회·수정 |
 | GET | `/api/arena/code-name` | 코드 네임 조회 |
-| PATCH | `/api/arena/sub-name` | 서브 네임 변경 |
+| POST | `/api/arena/sub-name` | 서브 네임 변경 (tier≥25·주간 상위5%·코드당 1회; 400/403/404) |
 
 ### 4-6. Avatar
 
@@ -210,7 +210,7 @@ lib/bty/arena/domain.ts ──────── domain/rules import + re-export
 | Method | Endpoint | 역할 |
 |---|---|---|
 | POST | `/api/arena/event` | 시나리오 이벤트 기록 |
-| POST | `/api/arena/reflect` | 성찰 제출 |
+| POST | `/api/arena/reflect` | 성찰 엔진 (userText 필수, levelId tenure 추론) 200·401·400 |
 | POST | `/api/arena/free-response` | 자유 응답 |
 | GET | `/api/arena/unlocked-scenarios` | 해금된 시나리오 목록 |
 
@@ -250,6 +250,7 @@ lib/bty/arena/domain.ts ──────── domain/rules import + re-export
 | Method | Endpoint | 역할 |
 |---|---|---|
 | GET | `/api/journey/entries` | 일차 엔트리 (?day=1–28 또는 전체). 401·400·503·500 |
+| POST | `/api/journey/entries` | 일차 upsert. 401·503·500 |
 | GET | `/api/journey/profile` | bty_profiles 진행. 401·503·500 |
 | GET | `/api/me/elite` | Elite 상위 5%·배지. 401 (500 가능) |
 

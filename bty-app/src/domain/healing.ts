@@ -4,6 +4,7 @@
  * Ref: docs/specs/healing-coaching-spec-v3.json, docs/ROADMAP_Q3_Q4.md Q4.
  * Phase 전이·Awakening 액트(1–3)는 Dojo 50(`dojo/flow`: 50문항·summaryKey high/mid/low)과 **별도 네임스페이스**.
  * Phase 전이 경계는 API/서비스; 도메인은 라벨·트리거 상수만.
+ * @see dojo/flow — Dojo 50문항·summaryKey; 액트 진행과 혼동 금지.
  */
 
 /** Healing 공개 신호용 phase 라벨. */

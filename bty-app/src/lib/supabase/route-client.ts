@@ -54,6 +54,13 @@ export function createSupabaseRouteClient(req: NextRequest, res: NextResponse) {
   });
 }
 
+/** Copy Set-Cookie from Supabase refresh (tmp/base response) onto any JSON response — fixes 401 without losing session refresh on Edge. */
+export function mergeAuthCookiesFromResponse(from: NextResponse, to: NextResponse) {
+  for (const c of from.cookies.getAll()) {
+    to.cookies.set(c.name, c.value, cookieOptions);
+  }
+}
+
 export function copyCookiesAndDebug(
   from: NextResponse,
   to: NextResponse,

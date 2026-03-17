@@ -2,6 +2,7 @@
  * Center assessment 도메인 — 순수 타입·검증 함수.
  * DB/fetch 금지. 제출 후 네비게이션·CTA = `center/paths` (`getCenterCtaHref`, `CENTER_CTA_PATH`).
  * 진행 규칙 = `questionCount`·Likert 1–5 `validateAssessmentAnswers`.
+ * @see paths — CTA `getCenterCtaHref`; Dear Me `getDearMeHref` (별도).
  */
 
 /** 리커트 응답 경계 (1–5). validateAssessmentAnswers 단일 소스. */

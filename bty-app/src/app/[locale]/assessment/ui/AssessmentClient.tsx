@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import HubTopNav from "@/components/bty/HubTopNav";
 
 type Dimension = "core" | "compassion" | "stability" | "growth" | "social";
 type Question = { id: number; dimension: Dimension; text: string; reverse: boolean };
@@ -78,6 +79,9 @@ export default function AssessmentClient({
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12" role="main" aria-label={isEn ? "Self-esteem 50-item assessment" : "자존감 50문항 자가 진단"}>
+      <div className="mb-8">
+        <HubTopNav theme="dear" showLangSwitch />
+      </div>
       {/* Progress */}
       <div className="mb-8" role="region" aria-label={isEn ? "Assessment progress" : "진단 진행"}>
         <div className="flex items-center justify-between mb-6">

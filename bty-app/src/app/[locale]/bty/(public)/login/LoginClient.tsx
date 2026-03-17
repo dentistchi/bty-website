@@ -7,7 +7,11 @@ import { getMessages, type Locale } from "@/lib/i18n";
 
 async function forceCookieCommit() {
   try {
-    await fetch("/api/auth/whoami", { method: "GET", cache: "no-store" });
+    await fetch("/api/auth/whoami", {
+      method: "GET",
+      cache: "no-store",
+      credentials: "include",
+    });
   } catch {
     // ignore
   }

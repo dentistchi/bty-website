@@ -31,6 +31,12 @@ function isPublicPath(pathname: string) {
     if (pathname === `/${locale}/admin/login`) return true;
     if (pathname === `/${locale}/bty/login`) return true;
     if (pathname === `/${locale}/bty/logout`) return true;
+    /** Leaderboard: API serves public overall view when cookies missing (Workers/Edge). Page load must not force login. */
+    if (
+      pathname === `/${locale}/bty/leaderboard` ||
+      pathname.startsWith(`/${locale}/bty/leaderboard/`)
+    )
+      return true;
   }
 
   return false;

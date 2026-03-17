@@ -35,7 +35,7 @@ export function ReflectionBlock({
 
   if (submitting) {
     return (
-      <div style={{ marginTop: 14 }} aria-busy="true" aria-label={lang === "ko" ? "반영 중…" : "Submitting…"}>
+      <div style={{ marginTop: 14 }} aria-busy="true" aria-label={t.reflectionBusyAria}>
         <CardSkeleton showLabel={false} lines={2} style={{ padding: "16px 20px" }} />
       </div>
     );
@@ -43,7 +43,7 @@ export function ReflectionBlock({
 
   if (reflectionPrompt) {
     return (
-      <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }} role="region" aria-label={lang === "ko" ? "한 문장 반영" : "One-sentence reflection"}>
+      <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }} role="region" aria-label={t.reflectionSentenceBlockAria}>
         <div style={{ fontWeight: 700, marginBottom: 8 }}>{displayTitle}</div>
         <p style={{ margin: "0 0 12px", lineHeight: 1.5, opacity: 0.9 }}>{reflectionPrompt}</p>
         <div style={{ marginBottom: 12 }}>
@@ -86,7 +86,7 @@ export function ReflectionBlock({
   }
 
   return (
-    <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}>
+    <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }} role="region" aria-label={t.reflectionChoiceOptionsAria}>
       <div style={{ fontWeight: 700, marginBottom: 8 }}>{displayTitle}</div>
       <div style={{ display: "grid", gap: 10 }}>
         {options.map((opt, idx) => (

@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
 import { EmotionalStatsPhrases } from "@/components/bty/EmotionalStatsPhrases";
 import { GuideCharacterAvatar } from "@/components/GuideCharacterAvatar";
-import { Nav } from "@/components/Nav";
 import { ThemeBody } from "@/components/ThemeBody";
 import { CardSkeleton, LoadingFallback } from "@/components/bty-arena";
 import { cn } from "@/lib/utils";
@@ -350,7 +349,6 @@ export default function MentorPage() {
           }}
         >
           <div className="max-w-2xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
-            <Nav locale={locale as "ko" | "en"} pathname={`/${locale}/bty/mentor`} />
             <div
               style={{ flex: 1, paddingTop: 48 }}
               aria-busy="true"
@@ -380,7 +378,6 @@ export default function MentorPage() {
         aria-label={tMentorPage.pageMainLandmarkAria}
       >
         <div className="max-w-2xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
-          <Nav locale={locale as "ko" | "en"} pathname={`/${locale}/bty/mentor`} />
           <header className="text-center mb-8">
             <div className="flex flex-col items-center gap-3">
               <GuideCharacterAvatar codeName={userCodeName} variant="warm" size="lg" alt="Dr. Chi" className="flex-shrink-0" />
@@ -438,7 +435,7 @@ export default function MentorPage() {
               <p id="mentor-topic-heading" className="text-center text-mentor-ink-soft text-sm mb-6">
                 {t.topicPrompt}
               </p>
-              <div className="grid gap-3 sm:grid-cols-2" role="group" aria-label={isEn ? "Choose a topic" : "주제 선택"}>
+              <div className="grid gap-3 sm:grid-cols-2" role="group" aria-label={tMentorPage.topicChoiceGroupAria}>
                 {TOPICS.map((x) => (
                   <button
                     key={x.id}

@@ -8,6 +8,7 @@ export async function fetchJson<T = unknown>(
 ): Promise<{ ok: boolean; json?: T; raw?: string; status?: number }> {
   try {
     const res = await fetch(url, {
+      credentials: "include",
       ...init,
       headers: {
         ...init?.headers,

@@ -58,6 +58,11 @@ export interface LeaderboardEntry {
 
 // --- Constants (주간 레벨 경계·week_id는 API/서비스에서 관리) ---
 
+/**
+ * **주간 랭킹 경계:** 저장소의 `week_id`(또는 동일 의미 키)가 바뀌면 해당 주간 XP 합계는 새 행에만 누적;
+ * 이전 주 총합은 그 주 리더보드 정렬에만 쓰임. 도메인 함수는 “현재 주간 총XP” 스칼라만 받음.
+ * 주 내 표시용 레벨/티어 경계는 아래 `WEEKLY_LEVEL_STEP`만 사용 (시즌 달력과 무관).
+ */
 /** 1 레벨당 XP. level = floor(xpTotal / WEEKLY_LEVEL_STEP) + 1. Tier 경계 0/100/200/300. */
 export const WEEKLY_LEVEL_STEP = 100;
 

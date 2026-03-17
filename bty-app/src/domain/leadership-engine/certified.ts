@@ -3,6 +3,7 @@
  * Single source: docs/LEADERSHIP_ENGINE_SPEC.md §7A, ENGINE_ARCHITECTURE_DIRECTIVE_PLAN §4 P5.
  *
  * Certified is dynamic; re-evaluated quarterly and weekly.
+ * **≠ Arena “Elite”:** 주간 랭킹 상위 5%(`rules/leaderboard.isElite`, `ELITE_TOP_FRACTION`)와 무관. Certified = LE 리더 자격(AIR/MWD/리셋/슬립).
  * Conditions: AIR_14d >= 0.80, MWD_14d >= threshold, Reset compliance met, No integrity_slip in 14d.
  *
  * Pure domain only; no UI, API, or DB.

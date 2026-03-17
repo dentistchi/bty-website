@@ -4,15 +4,21 @@ import { requireUser, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 /**
  * GET /api/arena/runs
  * Query: limit (optional, 1–50, default 10).
- * Response (200): { runs: { run_id, scenario_id, locale, started_at, status }[] }.
- * Error: 401 { error: "UNAUTHENTICATED", message }, 500 { error: "DB_ERROR", detail }.
+ * Response (200) signed-in: { runs: { run_id, scenario_id, locale, started_at, status }[] }.
+ * Response (200) no session: { runs: [], viewerAnonymous: true, message } (not 401 — empty state for Edge/cookie miss).
+ * Error: 500 { error: "DB_ERROR", detail } when authenticated select fails.
  */
 export async function GET(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);
   if (!user) {
     const out = NextResponse.json(
-      { error: "UNAUTHENTICATED", message: "Sign in to see past scenarios" },
-      { status: 401 },
+      {
+        runs: [] as unknown[],
+        viewerAnonymous: true,
+        message:
+          "Session not detected on this request. Past runs are hidden; refresh or sign in again.",
+      },
+      { status: 200 },
     );
     copyCookiesAndDebug(base, out, req, false);
     return out;

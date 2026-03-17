@@ -57,9 +57,10 @@ export async function GET(request: Request) {
 }
 
 /**
- * POST /api/journey/entries
- * Body: { day?: number, completed?: boolean, mission_checks?: number[], reflection_text?: string }
- * Response (200): upserted row. Errors: 401, 503, 500.
+ * POST /api/journey/entries — 일차 엔트리 upsert (user_id+day).
+ * Body: { day?: 1–28, completed?, mission_checks?: number[], reflection_text?: string }.
+ * Response (200): upserted row object.
+ * Errors: 401 { error: "Unauthorized" }; 503 { error: "Database not configured" }; 500 { error: string } (Supabase).
  */
 export async function POST(request: Request) {
   const user = await getAuthUserFromRequest(request);

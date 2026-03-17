@@ -178,6 +178,15 @@ export type Messages = {
     weeklySeasonActivityAria: string;
     /** 대시보드 페이지 h1 */
     dashboardPageTitle: string;
+    /** Foundry 허브 메인 랜드마크 */
+    foundryHubMainLandmarkAria: string;
+    /** Foundry 기능 카드 그리드 */
+    foundryFeatureCardsRegionAria: string;
+    foundryBackToBtyHome: string;
+    /** bty 인덱스: Arena·Center·Foundry 한 줄 설명 */
+    indexThreeHubsExplainer: string;
+    /** 오늘 획득 XP 카드 부가 설명 */
+    pointsTodaySubline: string;
   };
   /** 자존감 50문항 결과 화면 (Center assessment). */
   assessmentResult: {
@@ -376,6 +385,7 @@ export type Messages = {
     unlockExposureLocked: string;
     /** Elite 멘토·심화 대화 링크 목록 접근성 */
     mentorDeepLinksListAria: string;
+    loadingElitePageAria: string;
   };
   /** Admin: 멘토 신청 큐·승인 UI. API 응답만 표시(render-only). */
   mentorRequestAdmin: {
@@ -398,6 +408,7 @@ export type Messages = {
     deleteAllHistoryConfirm: string;
     /** 멘토 허브 메인 랜드마크 */
     pageMainLandmarkAria: string;
+    topicChoiceGroupAria: string;
   };
   /** Dental RPG 장비 카드 UI. 레어리티 1–5 표시. */
   dentalRpg: {
@@ -429,6 +440,8 @@ export type Messages = {
     phaseProgressRegionAria: string;
     /** 2차 각성: 1~3막 의식 콘텐츠 묶음 */
     awakeningRitualActsRegionAria: string;
+    /** Awakening·대시보드 링크 nav 바깥 랜드마크 */
+    healingBottomNavSectionAria: string;
   };
   /** 28일 훈련(Train) 사이드바·진도. */
   train: {
@@ -516,6 +529,9 @@ export type Messages = {
     mainPlayLandmarkAria: string;
     preparingNewScenarioAria: string;
     scenarioProgressPanelAria: string;
+    reflectionBusyAria: string;
+    reflectionSentenceBlockAria: string;
+    reflectionChoiceOptionsAria: string;
     youChose: string;
     keyInsight: string;
     principle: string;
@@ -537,6 +553,8 @@ export type Messages = {
     pastScenariosExpand: string;
     loadingHistory: string;
     couldNotLoadHistory: string;
+    /** 세션 쿠키가 API에 안 잡힐 때(Edge 등) 과거 시나리오 대신 안내 */
+    pastScenariosSessionHint: string;
     retryLoadHistory: string;
     retry: string;
     noCompletedScenarios: string;
@@ -693,6 +711,11 @@ const ko: Messages = {
     leEngineTiiCertifiedBandAria: "팀 TII·AIR 요약·인증 상태",
     weeklySeasonActivityAria: "시즌·주간 XP 및 이벤트 수",
     dashboardPageTitle: "대시보드",
+    foundryHubMainLandmarkAria: "Foundry 연습 허브",
+    foundryFeatureCardsRegionAria: "Dojo·역지사지·멘토·대시보드·Elite 연결",
+    foundryBackToBtyHome: "← bty 메인",
+    indexThreeHubsExplainer: "Arena는 시나리오·랭킹, Center는 쉼·편지, Foundry는 대시보드·멘토·연습입니다.",
+    pointsTodaySubline: "오늘(UTC 기준) 획득한 XP입니다.",
   },
   assessmentResult: {
     mainContentRegionAria: "진단 결과 요약: 영역별 점수·권장 트랙",
@@ -900,6 +923,7 @@ const ko: Messages = {
     unlockExposureMet: "Elite 전용 콘텐츠(멘토 대화 신청, 서클 모임, 배지 등)를 이용할 수 있습니다.",
     unlockExposureLocked: "상위 5% 달성 시 Elite 전용 페이지·콘텐츠 이용 가능.",
     mentorDeepLinksListAria: "Elite 멘토·심화 대화 링크",
+    loadingElitePageAria: "Elite 페이지 불러오는 중",
   },
   mentorRequestAdmin: {
     title: "멘토 대화 신청 승인",
@@ -919,6 +943,7 @@ const ko: Messages = {
   mentorPage: {
     deleteAllHistoryConfirm: "저장된 멘토 대화 기록을 모두 삭제할까요?",
     pageMainLandmarkAria: "Dr. Chi 멘토 대화",
+    topicChoiceGroupAria: "대화 주제 선택",
   },
   dentalRpg: {
     empty: "장비가 없습니다.",
@@ -943,6 +968,7 @@ const ko: Messages = {
     awakeningLoadingLabel: "2차 각성 불러오는 중",
     phaseProgressRegionAria: "Healing 단계·진행 상태",
     awakeningRitualActsRegionAria: "2차 각성 의식 1~3막",
+    healingBottomNavSectionAria: "각성·대시보드 이동",
   },
   train: {
     title: "28일 훈련",
@@ -1022,6 +1048,9 @@ const ko: Messages = {
     mainPlayLandmarkAria: "Arena 시나리오 플레이",
     preparingNewScenarioAria: "새 시나리오 준비 중",
     scenarioProgressPanelAria: "시나리오 진행·완료",
+    reflectionBusyAria: "반영 제출 중",
+    reflectionSentenceBlockAria: "한 문장 성찰 입력",
+    reflectionChoiceOptionsAria: "성찰 선택지",
     youChose: "선택한 항목",
     keyInsight: "핵심 통찰:",
     principle: "원칙: \"사람을 먼저 안정시키고, 그다음 시스템을 고칩니다.\"",
@@ -1040,6 +1069,8 @@ const ko: Messages = {
     pastScenariosExpand: "펼치기",
     loadingHistory: "이력 불러오는 중…",
     couldNotLoadHistory: "이력을 불러오지 못했어요.",
+    pastScenariosSessionHint:
+      "이 기기에서 세션이 잠시 끊긴 것 같아요. bty 메인에서 다시 로그인하거나 페이지를 새로고침하면 이력이 보일 수 있어요.",
     retryLoadHistory: "이력 다시 불러오기",
     retry: "다시 시도",
     noCompletedScenarios: "아직 완료한 시나리오가 없어요.",
@@ -1192,6 +1223,11 @@ const en: Messages = {
     leEngineTiiCertifiedBandAria: "Team TII, AIR summary, and certification",
     weeklySeasonActivityAria: "Season and weekly XP, event count",
     dashboardPageTitle: "Dashboard",
+    foundryHubMainLandmarkAria: "Foundry practice hub",
+    foundryFeatureCardsRegionAria: "Links to Dojo, Integrity, mentor, dashboard, Elite",
+    foundryBackToBtyHome: "← bty home",
+    indexThreeHubsExplainer: "Arena: scenarios & ranking. Center: rest & letters. Foundry: dashboard, mentor & practice.",
+    pointsTodaySubline: "XP earned today (UTC date).",
   },
   assessmentResult: {
     mainContentRegionAria: "Assessment result: scores and recommended track",
@@ -1399,6 +1435,7 @@ const en: Messages = {
     unlockExposureMet: "You can access Elite-only content (mentor session request, circle meetup, badges, etc.).",
     unlockExposureLocked: "Elite page and content available when you reach top 5%.",
     mentorDeepLinksListAria: "Elite mentor and deep conversation links",
+    loadingElitePageAria: "Loading Elite page",
   },
   mentorRequestAdmin: {
     title: "Mentor session request approval",
@@ -1418,6 +1455,7 @@ const en: Messages = {
   mentorPage: {
     deleteAllHistoryConfirm: "Delete all saved mentor conversation?",
     pageMainLandmarkAria: "Dr. Chi mentor conversation",
+    topicChoiceGroupAria: "Choose a conversation topic",
   },
   dentalRpg: {
     empty: "No equipment.",
@@ -1442,6 +1480,7 @@ const en: Messages = {
     awakeningLoadingLabel: "Loading Second Awakening",
     phaseProgressRegionAria: "Healing phase and progress",
     awakeningRitualActsRegionAria: "Second Awakening ritual acts 1–3",
+    healingBottomNavSectionAria: "Awakening and dashboard links",
   },
   train: {
     title: "28-Day Training",
@@ -1521,6 +1560,9 @@ const en: Messages = {
     mainPlayLandmarkAria: "Arena scenario play",
     preparingNewScenarioAria: "Preparing new scenario",
     scenarioProgressPanelAria: "Scenario progress and result",
+    reflectionBusyAria: "Submitting reflection",
+    reflectionSentenceBlockAria: "One-sentence reflection",
+    reflectionChoiceOptionsAria: "Reflection choices",
     youChose: "You chose",
     keyInsight: "Key insight:",
     principle: "Principle: \"Stabilize people first, then fix the system.\"",
@@ -1539,6 +1581,8 @@ const en: Messages = {
     pastScenariosExpand: "Expand",
     loadingHistory: "Loading history…",
     couldNotLoadHistory: "Could not load history.",
+    pastScenariosSessionHint:
+      "Your session may not have reached this request. Try signing in again from bty home or refresh the page to see past runs.",
     retryLoadHistory: "Retry load history",
     retry: "Retry",
     noCompletedScenarios: "No completed scenarios yet.",

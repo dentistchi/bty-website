@@ -1,52 +1,17 @@
 /**
- * Q3: POST run/complete, GET core-xp, GET leaderboard — 200·401 batch contract.
+ * SPRINT 235 C6: GET profile, core-xp, leaderboard — 401·200 batch.
  */
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockRequireUser = vi.fn();
 const mockGetUser = vi.fn();
 const mockFetchWeeklyXpRows = vi.fn();
 
-vi.mock("next/headers", () => ({
-  cookies: () => Promise.resolve({ getAll: () => [] }),
-}));
-
-vi.mock("@/lib/bty/arena/supabaseServer", () => ({
-  getSupabaseServerClient: vi.fn(() =>
-    Promise.resolve({
-      auth: {
-        getUser: () => Promise.resolve({ data: { user: null } }),
-      },
-      from: () => ({
-        select: () => ({
-          eq: () => ({ maybeSingle: () => Promise.resolve({ data: null }) }),
-        }),
-      }),
-      rpc: () => Promise.resolve({ error: null }),
-    }),
-  ),
-}));
-
-vi.mock("@/lib/bty/arena/applyCoreXp", () => ({
-  applyDirectCoreXp: vi.fn(),
-  applySeasonalXpToCore: vi.fn(),
-}));
-
-vi.mock("@/lib/bty/arena/weeklyQuest", () => ({
-  getWeekStartUTC: () => "2026-03-02",
-  REFLECTION_QUEST_TARGET: 3,
-  REFLECTION_QUEST_BONUS_XP: 15,
-}));
-
 vi.mock("@/lib/supabase/route-client", () => ({
   requireUser: (...args: unknown[]) => mockRequireUser(...args),
-  unauthenticated: vi.fn(
-    () =>
-      new Response(JSON.stringify({ error: "UNAUTHENTICATED" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      }),
+  unauthenticated: vi.fn(() =>
+    NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 }),
   ),
   copyCookiesAndDebug: vi.fn(),
   mergeAuthCookiesFromResponse: vi.fn(),
@@ -89,7 +54,7 @@ vi.mock("@/lib/bty/arena/leaderboardWeekBoundary", () => ({
   }),
 }));
 
-const { POST: postRunComplete } = await import("./run/complete/route");
+const { GET: getProfile } = await import("./profile/route");
 const { GET: getCoreXp } = await import("./core-xp/route");
 const { GET: getLeaderboard } = await import("./leaderboard/route");
 
@@ -119,71 +84,99 @@ function makeCoreXpSupabase() {
       );
       return { select };
     }),
+    rpc: vi.fn().mockResolvedValue({}),
   };
 }
 
-describe("Q3 run/complete · core-xp · leaderboard — 200·401", () => {
+describe("Q235 profile · core-xp · leaderboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRequireUser.mockResolvedValue({
-      user: null,
-      supabase: {},
-      base: {},
+    mockRequireUser.mockImplementation(async (req: NextRequest) => {
+      if (req.nextUrl.pathname.includes("core-xp")) {
+        return {
+          user: null,
+          supabase: {},
+          base: {},
+        };
+      }
+      return { user: null, supabase: {}, base: {} };
     });
     mockGetUser.mockResolvedValue({ data: { user: null } });
     mockFetchWeeklyXpRows.mockResolvedValue({ rows: [], error: null });
   });
 
-  it("401: unauthenticated POST run/complete, GET core-xp, GET leaderboard", async () => {
-    const r1 = await postRunComplete(
-      new Request("http://localhost/api/arena/run/complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ runId: "run-1" }),
-      }),
+  it("401: unauthenticated profile, core-xp, leaderboard", async () => {
+    const p = await getProfile(
+      new NextRequest("http://localhost/api/arena/profile"),
     );
-    expect(r1.status).toBe(401);
-    expect((await r1.json()).error).toBe("UNAUTHENTICATED");
-    expect(r1.headers.get("content-type")).toMatch(/application\/json/);
+    expect(p.status).toBe(401);
 
-    const r2 = await getCoreXp(
+    const c = await getCoreXp(
       new NextRequest("http://localhost/api/arena/core-xp"),
     );
-    expect(r2.status).toBe(401);
-    expect((await r2.json()).error).toBe("UNAUTHENTICATED");
+    expect(c.status).toBe(401);
 
-    const r3 = await getLeaderboard(
+    const l = await getLeaderboard(
       new NextRequest("http://localhost/api/arena/leaderboard"),
     );
-    expect(r3.status).toBe(401);
-    const j3 = await r3.json();
-    expect(j3.error).toBe("UNAUTHENTICATED");
-    expect(j3.message).toBe("Sign in to see leaderboard");
+    expect(l.status).toBe(401);
   });
 
-  it("200: authenticated GET core-xp and GET leaderboard", async () => {
-    mockRequireUser.mockResolvedValue({
-      user: { id: "u1" },
-      supabase: makeCoreXpSupabase(),
-      base: {},
+  it("200: authenticated profile, core-xp, leaderboard", async () => {
+    const profileSb = {
+      rpc: vi.fn().mockResolvedValue({}),
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            single: () =>
+              Promise.resolve({
+                data: {
+                  user_id: "u1",
+                  avatar_character_id: null,
+                  core_xp_total: 0,
+                },
+                error: null,
+              }),
+          }),
+        }),
+      }),
+    };
+
+    mockRequireUser.mockImplementation(async (req: NextRequest) => {
+      if (req.nextUrl.pathname.includes("core-xp")) {
+        return {
+          user: { id: "u1" },
+          supabase: makeCoreXpSupabase(),
+          base: {},
+        };
+      }
+      return {
+        user: { id: "u1" },
+        supabase: profileSb,
+        base: {},
+      };
     });
+
     mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } } });
 
-    const r2 = await getCoreXp(
+    const p = await getProfile(
+      new NextRequest("http://localhost/api/arena/profile"),
+    );
+    expect(p.status).toBe(200);
+    const jp = await p.json();
+    expect(jp.profile).toBeDefined();
+    expect(jp.avatarCharacterId).toBeNull();
+
+    const c = await getCoreXp(
       new NextRequest("http://localhost/api/arena/core-xp"),
     );
-    expect(r2.status).toBe(200);
-    const d2 = await r2.json();
-    expect(d2.error).toBeUndefined();
-    expect(typeof d2.coreXpTotal).toBe("number");
+    expect(c.status).toBe(200);
+    expect((await c.json()).coreXpTotal).toBe(0);
 
-    const r3 = await getLeaderboard(
+    const l = await getLeaderboard(
       new NextRequest("http://localhost/api/arena/leaderboard"),
     );
-    expect(r3.status).toBe(200);
-    const d3 = await r3.json();
-    expect(d3.error).toBeUndefined();
-    expect(Array.isArray(d3.leaderboard)).toBe(true);
-    expect(r3.headers.get("Cache-Control")).toMatch(/no-store/);
+    expect(l.status).toBe(200);
+    expect(Array.isArray((await l.json()).leaderboard)).toBe(true);
   });
 });

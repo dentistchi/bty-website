@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Nav } from "@/components/Nav";
+import HubTopNav from "@/components/bty/HubTopNav";
 import { ThemeBody } from "@/components/ThemeBody";
 
 type LandingMessages = {
@@ -22,11 +22,10 @@ type LandingMessages = {
 
 type Props = {
   locale: string;
-  pathname: string;
   t: LandingMessages;
 };
 
-export default function LandingClient({ locale, pathname, t }: Props) {
+export default function LandingClient({ locale, t }: Props) {
   const arenaHref = `/${locale}/bty-arena`;
   const foundryHref = `/${locale}/bty`;
   const centerHref = `/${locale}/center`;
@@ -36,7 +35,7 @@ export default function LandingClient({ locale, pathname, t }: Props) {
       <ThemeBody theme="sanctuary" />
       <main className="min-h-screen bg-gradient-to-b from-[#F8F4F0] via-[#FDF9F5] to-[#F0EDF5]">
         <div className="max-w-2xl mx-auto px-4 py-10 sm:py-14">
-          <Nav locale={locale as "en" | "ko"} pathname={pathname} theme="dear" />
+          <HubTopNav theme="dear" showLangSwitch />
 
           <header className="text-center mb-14 sm:mb-20 pt-6">
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#3D3A36] tracking-tight leading-tight">

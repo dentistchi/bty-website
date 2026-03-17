@@ -17,7 +17,6 @@ import {
   ArenaRunHistory,
   LabUsageStrip,
 } from "@/components/bty-arena";
-import BtyTopNav from "@/components/bty/BtyTopNav";
 import { getMessages } from "@/lib/i18n";
 import { useArenaSession, OTHER_CHOICE_ID } from "./hooks/useArenaSession";
 
@@ -30,8 +29,7 @@ export default function BtyArenaPage() {
   if (!s.levelChecked) {
     return (
       <div style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}>
-        <BtyTopNav />
-        <div style={{ marginTop: 24 }} aria-busy="true" aria-label={tLoading.message}>
+        <div style={{ marginTop: 0 }} aria-busy="true" aria-label={tLoading.message}>
           <LoadingFallback
             icon="📋"
             message={tLoading.message}
@@ -46,8 +44,7 @@ export default function BtyArenaPage() {
   if (s.requiresBeginnerPath) {
     return (
       <div style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}>
-        <BtyTopNav />
-        <div style={{ marginTop: 24, display: "grid", gap: 20 }}>
+        <div style={{ marginTop: 0, display: "grid", gap: 20 }}>
           <CardSkeleton lines={2} showLabel={true} />
         </div>
       </div>
@@ -58,8 +55,7 @@ export default function BtyArenaPage() {
   if (!s.scenario) {
     return (
       <div style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}>
-        <BtyTopNav />
-        <div style={{ marginTop: 24, border: "1px solid #eee", borderRadius: 14, background: "var(--arena-card)" }}>
+        <div style={{ marginTop: 0, border: "1px solid #eee", borderRadius: 14, background: "var(--arena-card)" }}>
           <EmptyState icon="📋" message={t.scenarioNotFound} hint={t.scenarioNotFoundHint} />
         </div>
       </div>
@@ -83,9 +79,8 @@ export default function BtyArenaPage() {
           minWidth: 0, maxWidth: 860, margin: "0 auto", width: "100%",
         }}
       >
-      <BtyTopNav />
       <LabUsageStrip locale={locale} />
-      <div style={{ marginTop: 18 }}>
+      <div style={{ marginTop: 0 }}>
         {s.step === 1 && (
           <div className="bty-hero" style={{ paddingTop: 32, paddingBottom: 40, marginBottom: 28 }}>
             <p className="bty-hero-title" style={{ margin: 0, fontSize: "clamp(1.75rem, 4vw, 2rem)", fontWeight: 700, letterSpacing: "0.02em", lineHeight: 1.35, color: "var(--arena-text)" }}>

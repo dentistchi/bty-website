@@ -7,7 +7,6 @@ import {
 } from "@/lib/bty/scenario/beginnerScenarios";
 import type { BeginnerScenario } from "@/lib/bty/scenario/beginnerTypes";
 import { getMaturityFeedback } from "@/lib/bty/scenario/beginnerTypes";
-import BtyTopNav from "@/components/bty/BtyTopNav";
 import { CardSkeleton } from "@/components/bty-arena";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 
@@ -253,8 +252,7 @@ export default function BeginnerArenaPage() {
   if (!scenario) {
     return (
       <div style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}>
-        <BtyTopNav />
-        <div style={{ marginTop: 24, display: "grid", gap: 20 }}>
+        <div style={{ marginTop: 0, display: "grid", gap: 20 }}>
           <CardSkeleton lines={3} showLabel={true} />
           <CardSkeleton lines={2} showLabel={true} />
         </div>
@@ -266,8 +264,7 @@ export default function BeginnerArenaPage() {
     const feedback = getMaturityFeedback(completed.score, locale);
     return (
       <div style={{ maxWidth: 560, margin: "0 auto", padding: "24px 16px" }}>
-        <BtyTopNav />
-        <div style={{ marginTop: 24, padding: 24, border: "1px solid #eee", borderRadius: 14 }}>
+        <div style={{ marginTop: 0, padding: 24, border: "1px solid #eee", borderRadius: 14 }}>
           <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 8 }}>{ui.yourResult}</div>
           <h2 style={{ margin: "0 0 8px", fontSize: 22 }}>{feedback.label}</h2>
           <p style={{ margin: "0 0 16px", lineHeight: 1.5 }}>{feedback.message}</p>
@@ -306,7 +303,6 @@ export default function BeginnerArenaPage() {
 
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", padding: "24px 16px" }}>
-      <BtyTopNav />
       <div style={{ marginBottom: 8, fontSize: 14, opacity: 0.7 }}>
         {locale === "ko" ? "입문" : "Beginner"} · {ui.stepOf} {step} / 7: {getStepLabel(step, locale)}
       </div>

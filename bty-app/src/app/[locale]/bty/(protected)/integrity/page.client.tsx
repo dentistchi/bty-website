@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
-import { Nav } from "@/components/Nav";
 import { ThemeBody } from "@/components/ThemeBody";
 import { CardSkeleton, EmptyState } from "@/components/bty-arena";
 import { getMessages } from "@/lib/i18n";
@@ -85,7 +84,6 @@ export default function IntegrityMirrorPage() {
         <ThemeBody theme="foundry" />
         <main className="min-h-screen bg-foundry-white" aria-label={locale === "ko" ? "역지사지 시뮬레이터" : "Integrity simulator"}>
           <div className="max-w-xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
-            <Nav locale={locale} pathname={`/${locale}/bty/integrity`} />
             <header className="text-center mb-8">
               <h1 id="integrity-guide-heading" className="text-2xl sm:text-3xl font-semibold text-foundry-purple-dark">
                 {t.title}
@@ -135,7 +133,6 @@ export default function IntegrityMirrorPage() {
         <ThemeBody theme="foundry" />
         <main className="min-h-screen bg-foundry-white" aria-label={locale === "ko" ? "역지사지 시뮬레이터" : "Integrity simulator"}>
           <div className="max-w-xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
-            <Nav locale={locale} pathname={`/${locale}/bty/integrity`} />
             <div
               ref={sectionRef as React.RefObject<HTMLDivElement>}
               tabIndex={-1}
@@ -195,7 +192,6 @@ export default function IntegrityMirrorPage() {
       <ThemeBody theme="foundry" />
       <main className="min-h-screen bg-foundry-white" aria-label={locale === "ko" ? "역지사지 시뮬레이터" : "Integrity simulator"}>
         <div className="max-w-xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
-          <Nav locale={locale} pathname={`/${locale}/bty/integrity`} />
           <header className="text-center mb-6" role="region" aria-label={locale === "ko" ? "역지사지 제목" : "Integrity title"}>
             <h1 className="text-2xl sm:text-3xl font-semibold text-foundry-purple-dark">
               {t.title}

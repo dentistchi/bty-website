@@ -82,6 +82,7 @@ export default function HealingPageClient({ locale }: Props) {
         </p>
       )}
       </section>
+      <section aria-label={t.healingBottomNavSectionAria}>
       <nav aria-label={t.navLabel} style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
         <Link
           href={`/${locale}/bty/healing/awakening`}
@@ -116,6 +117,7 @@ export default function HealingPageClient({ locale }: Props) {
           {t.dashboardCta}
         </Link>
       </nav>
+      </section>
     </div>
   );
 }

@@ -42,6 +42,7 @@ export function ArenaRunHistory({ locale }: ArenaRunHistoryProps) {
   const [runs, setRuns] = useState<RunItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sessionHint, setSessionHint] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   /** §4 기본 노출, 접기 가능 */
   const [collapsed, setCollapsed] = useState(false);
@@ -53,9 +54,11 @@ export function ArenaRunHistory({ locale }: ArenaRunHistoryProps) {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    arenaFetch<{ runs: RunItem[] }>("/api/arena/runs?limit=20")
+    arenaFetch<{ runs: RunItem[]; viewerAnonymous?: boolean }>("/api/arena/runs?limit=20")
       .then((data) => {
-        if (!cancelled) setRuns(data.runs ?? []);
+        if (cancelled) return;
+        setRuns(data.runs ?? []);
+        setSessionHint(Boolean(data.viewerAnonymous));
       })
       .catch((e) => {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
@@ -179,9 +182,25 @@ export function ArenaRunHistory({ locale }: ArenaRunHistoryProps) {
           <h3 id="arena-run-history-heading" style={HEADING}>{t.pastScenariosHeading}</h3>
           {toggleButton}
         </div>
-        <div style={{ border: "1px solid #eee", borderRadius: 14, background: "var(--arena-card)" }}>
-          <EmptyState icon="📋" message={t.noCompletedScenarios} hint={t.startFirstScenario} />
-        </div>
+        {sessionHint ? (
+          <div
+            role="status"
+            style={{
+              padding: "14px 16px",
+              borderRadius: 12,
+              border: "1px solid #e8d4a8",
+              background: "#fffbeb",
+              fontSize: 14,
+              color: "#713f12",
+            }}
+          >
+            {t.pastScenariosSessionHint}
+          </div>
+        ) : (
+          <div style={{ border: "1px solid #eee", borderRadius: 14, background: "var(--arena-card)" }}>
+            <EmptyState icon="📋" message={t.noCompletedScenarios} hint={t.startFirstScenario} />
+          </div>
+        )}
       </section>
     );
   }

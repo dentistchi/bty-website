@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import BtyTopNav from "@/components/bty/BtyTopNav";
 import { CardSkeleton, LoadingFallback } from "@/components/bty-arena";
 import { getMessages } from "@/lib/i18n";
 import { arenaFetch } from "@/lib/http/arenaFetch";
@@ -87,7 +86,6 @@ export default function ProfileClient() {
   if (loading) {
     return (
       <div className="p-6 max-w-2xl mx-auto">
-        <BtyTopNav />
         {/* DESIGN_FIRST_IMPRESSION_BRIEF §2: 스피너 대신 아이콘 + 문구 + 카드형 스켈레톤 */}
         <LoadingFallback icon="⏳" message={tLoading.message} withSkeleton style={{ paddingTop: 24 }} />
       </div>
@@ -97,7 +95,6 @@ export default function ProfileClient() {
   if (error || !data) {
     return (
       <div className="p-6 max-w-2xl mx-auto">
-        <BtyTopNav />
         <p className="text-sm text-red-600 mt-4">{t.errorLoad}</p>
         <Link href={`/${locale}/bty/dashboard`} className="text-sm underline mt-2 inline-block" aria-label={t.backToDashboard}>
           {t.backToDashboard}
@@ -108,7 +105,6 @@ export default function ProfileClient() {
 
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-8">
-      <BtyTopNav />
       <div className="flex items-center justify-between mt-4">
         <h1 className="text-2xl font-bold">{t.title}</h1>
         <Link

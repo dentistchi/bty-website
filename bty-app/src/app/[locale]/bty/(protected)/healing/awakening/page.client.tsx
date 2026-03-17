@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
-import { Nav } from "@/components/Nav";
 import { ThemeBody } from "@/components/ThemeBody";
 import { CardSkeleton, LoadingFallback } from "@/components/bty-arena";
 import { getMessages } from "@/lib/i18n";
@@ -128,7 +127,6 @@ export default function SecondAwakeningPageClient() {
         <ThemeBody theme="foundry" />
         <main className="min-h-screen bg-foundry-white" aria-label={locale === "ko" ? "2차 각성 완료" : "Second Awakening completed"}>
           <div className="max-w-xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
-            <Nav locale={locale} pathname={pathname} />
             <div className="flex-1 flex flex-col items-center justify-center text-center px-4" role="region" aria-label={locale === "ko" ? "완료 안내 및 다음 단계" : "Completion summary and next step"}>
               <h1 className="text-xl sm:text-2xl font-semibold text-foundry-purple-dark mb-3">
                 {locale === "ko" ? "Phase II" : "Phase II"}
@@ -161,7 +159,6 @@ export default function SecondAwakeningPageClient() {
         <ThemeBody theme="foundry" />
         <main className="min-h-screen bg-foundry-white" aria-label={locale === "ko" ? "2차 각성 해금 조건" : "Second Awakening eligibility"}>
           <div className="max-w-xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
-            <Nav locale={locale} pathname={pathname} />
             <div className="flex-1 flex flex-col items-center justify-center text-center px-4" role="region" aria-label={locale === "ko" ? "해금 조건 안내 및 현재 진행" : "Eligibility info and progress"}>
               <h1 className="text-xl sm:text-2xl font-semibold text-foundry-purple-dark mb-3">
                 {locale === "ko" ? "Second Awakening" : "Second Awakening"}
@@ -201,7 +198,6 @@ export default function SecondAwakeningPageClient() {
       <ThemeBody theme="foundry" />
       <main className="min-h-screen bg-foundry-white" aria-label={locale === "ko" ? "2차 각성 의식" : "Second Awakening ritual"}>
         <div className="max-w-xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
-          <Nav locale={locale} pathname={pathname} />
           <header className="text-center mb-8" role="region" aria-label={locale === "ko" ? "의식 제목" : "Ritual title"}>
             <h1 className="text-2xl sm:text-3xl font-semibold text-foundry-purple-dark">
               {locale === "ko" ? "Second Awakening" : "Second Awakening"}
