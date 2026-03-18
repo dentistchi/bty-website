@@ -23,6 +23,7 @@
 - `CLOUDFLARE_ACCOUNT_ID`
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- **`SUPABASE_SERVICE_ROLE_KEY`** — Supabase Dashboard → Settings → API → **service_role** (secret). 배포 후 Worker에 `wrangler secret put`으로 동기화됨. 없으면 **`/api/journey/*`**(Growth Journey, comeback 모달 등)가 **503 / “Database not configured”** 로 실패함.
 
 > 확인 근거: **repo root** `.github/workflows/deploy-workers.yml`
 
