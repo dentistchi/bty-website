@@ -13,6 +13,7 @@ import { arenaFetch } from "@/lib/http/arenaFetch";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { difficultyFromScenarioChoices } from "@/lib/bty/arena/arenaLabXp";
+import { BTY_ARENA_STATE_STORAGE_KEY } from "@/lib/bty/arena/arenaLocalState";
 
 // ── exported types ──────────────────────────────────────────────
 export type ArenaPhase = "CHOOSING" | "SHOW_RESULT" | "FOLLOW_UP" | "DONE";
@@ -54,7 +55,7 @@ type SavedArenaState = {
 };
 
 // ── constants ───────────────────────────────────────────────────
-const STORAGE_KEY = "btyArenaState:v1";
+const STORAGE_KEY = BTY_ARENA_STATE_STORAGE_KEY;
 const STREAK_KEY = "btyArenaStreak:v1";
 const MIN_REFLECTION_LENGTH = 3;
 const REFLECTION_BONUS_XP = 10;

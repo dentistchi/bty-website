@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { AuthGate } from "@/components/AuthGate";
-import { Comeback } from "@/components/Comeback";
 import { ThemeBody } from "@/components/ThemeBody";
 import { LoadingFallback } from "@/components/bty-arena";
 import { MissionCard } from "@/components/journey/MissionCard";
@@ -24,9 +23,21 @@ function getAuthHeader(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export function JourneyBoard() {
+export type JourneyBoardVariant = "default" | "growth";
+
+export function JourneyBoard({
+  variant = "default",
+  growthReturnToOverview,
+  hideBounceBackCount,
+}: {
+  variant?: JourneyBoardVariant;
+  /** When set (e.g. Growth shell → missions), back control returns to overview instead of Growth hub. */
+  growthReturnToOverview?: () => void;
+  hideBounceBackCount?: boolean;
+}) {
   const pathname = usePathname() ?? "";
   const locale = pathname.startsWith("/ko") ? "ko" : "en";
+  const tUx = getMessages(locale).uxPhase1Stub;
   const { user } = useAuth();
   const [profile, setProfile] = useState<{
     current_day: number;
@@ -270,9 +281,34 @@ export function JourneyBoard() {
   return (
     <AuthGate>
       <ThemeBody theme="foundry" />
-      <main className="min-h-screen bg-foundry-white">
-        <Comeback />
+      <main
+        className={cn(
+          "min-h-screen bg-foundry-white",
+          variant === "growth" && "pb-24"
+        )}
+        aria-label={variant === "growth" ? tUx.growthJourneyLandmarkAria : undefined}
+      >
         <div className="max-w-2xl mx-auto px-4 py-6 sm:py-10">
+          {variant === "growth" ? (
+            <div className="mb-6">
+              {growthReturnToOverview ? (
+                <button
+                  type="button"
+                  onClick={growthReturnToOverview}
+                  className="text-sm text-foundry-ink-soft underline-offset-2 hover:text-foundry-purple-dark hover:underline"
+                >
+                  ← {locale === "ko" ? "복귀 루프로" : "Back to Recovery Loop"}
+                </button>
+              ) : (
+                <Link
+                  href={`/${locale}/growth`}
+                  className="text-sm text-foundry-ink-soft underline-offset-2 hover:text-foundry-purple-dark hover:underline"
+                >
+                  ← {tUx.growthBackToGrowth}
+                </Link>
+              )}
+            </div>
+          ) : null}
           <header className="text-center mb-10">
             <h1 className="text-2xl sm:text-3xl font-semibold text-foundry-purple-dark">
               나의 여정 (My Journey)
@@ -280,11 +316,16 @@ export function JourneyBoard() {
             <p className="text-foundry-ink-soft mt-1">
               28일. 어제보다 나은 오늘을 위한 연습.
             </p>
-            {(profile?.bounce_back_count ?? 0) > 0 && (
-              <p className="mt-3 text-sm text-foundry-purple font-medium">
-                돌아온 횟수: {profile?.bounce_back_count}회
+            {!hideBounceBackCount && (profile?.bounce_back_count ?? 0) > 0 ? (
+              <p
+                className="mt-2 text-xs text-foundry-ink-soft opacity-80"
+                aria-live="polite"
+              >
+                {locale === "ko"
+                  ? `복귀 기록 ${profile?.bounce_back_count}회`
+                  : `Returns logged: ${profile?.bounce_back_count}`}
               </p>
-            )}
+            ) : null}
           </header>
 
           {seasonComplete && (

@@ -55,4 +55,61 @@ describe("GET /api/arena/leaderboard/status", () => {
     const data = await res.json();
     expect(data.error).toBeDefined();
   });
+
+  /** SPRINT 48 TASK 9 / 254: 200 진단 본문. */
+  it("returns 200 with hasWeeklyXpRow false when no weekly_xp row", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            is: () => ({
+              maybeSingle: () =>
+                Promise.resolve({ data: null, error: null }),
+            }),
+          }),
+        }),
+      }),
+    });
+
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.hasWeeklyXpRow).toBe(false);
+    expect(data.xpTotal).toBe(0);
+    expect(data.updatedAt).toBeNull();
+  });
+
+  it("returns 200 with xpTotal when weekly_xp row exists", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            is: () => ({
+              maybeSingle: () =>
+                Promise.resolve({
+                  data: {
+                    xp_total: 42,
+                    updated_at: "2025-03-10T08:00:00.000Z",
+                  },
+                  error: null,
+                }),
+            }),
+          }),
+        }),
+      }),
+    });
+
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.hasWeeklyXpRow).toBe(true);
+    expect(data.xpTotal).toBe(42);
+    expect(data.updatedAt).toBe("2025-03-10T08:00:00.000Z");
+  });
 });

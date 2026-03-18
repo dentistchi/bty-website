@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { Chatbot } from "@/components/Chatbot";
+import { Comeback } from "@/components/Comeback";
 import { LocaleLayoutHeader } from "@/components/LocaleLayoutHeader";
 import { SkipToMainContent, MAIN_CONTENT_ID } from "@/components/SkipToMainContent";
 import type { Locale } from "@/lib/i18n";
@@ -26,6 +27,7 @@ export default async function LocaleLayout({ children, params }: Props) {
       <LocaleLayoutHeader />
       <main id={MAIN_CONTENT_ID}>{children}</main>
       <Chatbot />
+      <Comeback />
     </>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import {
   getLastVisit,
   setLastVisit,
@@ -8,9 +9,9 @@ import {
 } from "@/lib/utils";
 import { getStoredToken } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
-
-const COMEBACK_MESSAGE =
-  "다시 돌아와줘서 고마워요. 언제든 기다리고 있었어요.";
+import { useAuth } from "@/contexts/AuthContext";
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
 async function recordBounceBack() {
   const token = getStoredToken();
@@ -19,21 +20,31 @@ async function recordBounceBack() {
     await fetch("/api/journey/bounce-back", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     });
   } catch {
     // ignore
   }
 }
 
-/**
- * The Comeback (환영 인사)
- * - 3일 이상 미접속 후 복귀 시 "왜 안 왔어?"가 아닌 "다시 돌아와줘서 고마워요. 언제든 기다리고 있었어요." 표시.
- * - 로그인 사용자: 확인 시 bounce_back_count +1
- */
+function localeFromPath(pathname: string): Locale {
+  const seg = pathname.split("/").filter(Boolean)[0];
+  return seg === "ko" ? "ko" : "en";
+}
 
+/**
+ * Comeback (3+ days away) — docs/JOURNEY_COMEBACK_UX_SPEC.md
+ * POST /api/journey/bounce-back only on "Resume Journey", not on dismiss.
+ */
 export function Comeback() {
+  const pathname = usePathname() ?? "";
+  const router = useRouter();
+  const { user, loading } = useAuth();
   const [show, setShow] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  const locale = localeFromPath(pathname);
+  const t = getMessages(locale).uxPhase1Stub;
 
   useEffect(() => {
     setMounted(true);
@@ -41,6 +52,9 @@ export function Comeback() {
 
   useEffect(() => {
     if (!mounted || typeof window === "undefined") return;
+    if (loading) return;
+    if (!user) return;
+    if (pathname.includes("/login") || pathname.includes("/auth/")) return;
 
     const last = getLastVisit();
     const now = Date.now();
@@ -54,12 +68,21 @@ export function Comeback() {
       setShow(true);
     }
     setLastVisit(now);
-  }, [mounted]);
+  }, [mounted, loading, user, pathname]);
 
-  const close = () => {
-    recordBounceBack();
+  const dismiss = useCallback(() => {
     setShow(false);
-  };
+  }, []);
+
+  const onResumeJourney = useCallback(async () => {
+    await recordBounceBack();
+    dismiss();
+    router.push(`/${locale}/growth/journey`);
+  }, [dismiss, router, locale]);
+
+  const onNotNow = useCallback(() => {
+    dismiss();
+  }, [dismiss]);
 
   if (!show) return null;
 
@@ -68,37 +91,36 @@ export function Comeback() {
       role="dialog"
       aria-labelledby="comeback-title"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-dojo-ink/40"
-      onClick={close}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-bty-text/25 p-4 backdrop-blur-sm"
+      onClick={onNotNow}
     >
       <div
         className={cn(
-          "rounded-2xl border border-dojo-purple-muted bg-dojo-white",
-          "shadow-lg max-w-md w-full p-6 sm:p-8",
+          "w-full max-w-md rounded-2xl border border-bty-border bg-bty-surface p-6 shadow-lg sm:p-8",
           "animate-fadeIn"
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2
-          id="comeback-title"
-          className="text-lg font-semibold text-dojo-purple-dark"
-        >
-          돌아오신 걸 환영해요
+        <h2 id="comeback-title" className="text-lg font-semibold text-bty-text">
+          {t.comebackTitle}
         </h2>
-        <p className="mt-3 text-dojo-ink leading-relaxed">
-          {COMEBACK_MESSAGE}
-        </p>
+        <p className="mt-3 text-sm leading-relaxed text-bty-secondary">{t.comebackBody}</p>
         <button
           type="button"
-          onClick={close}
+          onClick={onResumeJourney}
           className={cn(
-            "mt-6 w-full py-3 rounded-xl font-medium",
-            "bg-dojo-purple text-dojo-white hover:bg-dojo-purple-dark",
-            "transition-colors"
+            "mt-6 w-full rounded-xl py-3 text-sm font-medium text-white transition-colors",
+            "bg-bty-steel hover:bg-bty-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bty-steel focus-visible:ring-offset-2"
           )}
-          aria-label="확인"
         >
-          확인
+          {t.comebackResumeJourneyCta}
+        </button>
+        <button
+          type="button"
+          onClick={onNotNow}
+          className="mt-3 w-full rounded-xl border border-bty-border bg-transparent py-2.5 text-sm text-bty-secondary transition-colors hover:bg-bty-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bty-steel focus-visible:ring-offset-2"
+        >
+          {t.comebackNotNowCta}
         </button>
       </div>
     </div>

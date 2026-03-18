@@ -55,10 +55,15 @@
 | 1 | **docs/CURSOR_TASK_BOARD.md** (repo root)를 연다. |
 | 2 | **"이번 런"** 섹션의 **TASK 1~10 표**에서 자기 OWNER(C1, C2, C3, C4, C5) 행만 본다. |
 | 3 | 자기 행 중 **[ ]** 인(미완료) TASK가 있으면 → 그 TASK 수행. 상세·복사용 문장은 **docs/agent-runtime/AUTO4_PROMPTS.md** 해당 블록 참고. |
-| 4 | 자기 행이 전부 **[x]** 이거나, C2처럼 해당 런에 OWNER 행이 없으면 → "해당 없음 Exit" 또는 "큐 비음. C1 splint 10으로 새 배치 생성 시 할 일 생김." |
-| 5 | **"이번 런"이 10/10 [x]** 이면 → 다음 배치가 아직 없음. **C1이 splint 10** 실행해 새 스프린트(이번 런) 생성해야 C2–C6에게 새 TASK가 생김. Exit 시 "No work. C1 splint 10 required." |
+| 4 | 자기 행이 전부 **[x]** 인데 **이번 런이 10/10 [x]가 아님** → **병렬 큐 기아.** Exit 말고 **즉시** 사용자에게 **「큐 보충」** 안내 또는 C1이 **`docs/agent-runtime/PARALLEL_QUEUE_REFILL.md`** 실행(새 이번 런 10행 `[ ]`). 점검: `bash scripts/check-parallel-task-queue.sh` (exit 2). |
+| 5 | **"이번 런"이 10/10 [x]** 이면 → **C1 splint 10** 으로 다음 스프린트. Exit 시 "No work until C1 splint 10." |
 
 **금지**: "C2 TASK QUEUE" 등 별도 큐 파일을 찾거나 생성하지 않는다. 보드 표가 유일한 큐다.
+
+**할 일 없음 → 채우기 (필수 흐름)**  
+1) `scripts/check-parallel-task-queue.sh` → **exit 2** → **`PARALLEL_QUEUE_REFILL.md`** (C1·같은 턴 서류 동기).  
+2) **exit 0** 이고 메시지가 "전량 [x]" → **splint 10** (새 10행).  
+3) **exit 0** 이고 "병렬 큐 정상" → 해당 OWNER는 실제로 할 일 있음; 보드·`AUTO4_PROMPTS` 재확인.
 
 ---
 
@@ -71,5 +76,7 @@
 | 다 했는데 명령이 동일한 경우? | 이번 런이 전부 [ ]이면 "다음 할 일"이 곧 이번 런 10개와 동일. 스프린트 구조가 매번 같은 유형(Release Gate N차, 문서 점검, 접근성 등)이므로 **유형은 같고 N/영역만 바뀜** → 명령이 비슷해 보이는 것은 정상. |
 
 ---
+
+**REFRESH** (refresh 명령): splint와 별도 — `docs/agent-runtime/REFRESH_PROCEDURE.md` (C2~C6 각 5작업·병렬 창).
 
 *참조: docs/CURSOR_TASK_BOARD.md, docs/agent-runtime/AUTO4_PROMPTS.md*

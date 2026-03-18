@@ -1,6 +1,6 @@
 import { RunDetailView } from "@/components/bty-arena/RunDetailView";
-import { BtyArenaBottomNav } from "@/components/bty/navigation/BtyArenaBottomNav";
-import { ScreenShell } from "@/components/bty/layout/ScreenShell";
+import { CardScreenShell } from "@/components/bty/layout/CardScreenShell";
+import BottomNav from "@/components/bty/navigation/BottomNav";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
@@ -16,18 +16,18 @@ export default async function Page({ params }: Props) {
 
   return (
     <div
-      className="mx-auto max-w-md bg-bty-bg px-4 py-6"
+      className="mx-auto max-w-md bg-bty-bg px-4 py-6 pb-28"
       role="region"
       aria-label={t.runDetailRegionAria}
     >
-      <ScreenShell
+      <CardScreenShell
         title={t.runDetailPageTitle}
         subtitle={t.runDetailPageSubtitle}
         menuLabel="Menu"
-        footer={<BtyArenaBottomNav locale={locale} active="arena" />}
       >
         <RunDetailView locale={locale} runId={runId} />
-      </ScreenShell>
+      </CardScreenShell>
+      <BottomNav locale={locale} />
     </div>
   );
 }

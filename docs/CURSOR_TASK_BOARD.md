@@ -1,6 +1,8 @@
 # Cursor 태스크 보드 (공동) — 우선순위 자동결정
 
 **단일 진실**: 이 표 + `docs/CURRENT_TASK.md` 1줄. First Task 완료 전 다음 Task 시작 불가(Start Trigger 잠금). **진행 에이전트(C2–C6)**: 할 일 = 이번 런 표에서 자기 OWNER 행 중 **[ ]** 인 TASK. 복사용 문장 = `docs/agent-runtime/AUTO4_PROMPTS.md`. (별도 "C2/C3 TASK QUEUE" 파일 없음.) **대기 작업**은 `docs/NEXT_PHASE_AUTO4.md`와 **docs/CURSOR_TASK_BOARD.md**(루트)와 동일한 기준으로 유지한다. 대기 후보는 **MASTER_PLAN → docs/NEXT_BACKLOG_AUTO4**에서 채운다. **다음 프로젝트 추천**: `docs/NEXT_PROJECT_RECOMMENDED.md` (엘리트 3차). **splint 10**: 방금 끝난 작업 검증 → 다음 10개 작업 선정 → C1–C5 프롬프트 생성. 절차는 `docs/agent-runtime/SPLINT_10_PROCEDURE.md`.  
+**병렬 큐 불변식**: 이번 런이 **10/10 [x]가 아닌 동안**, 표에 나온 **C3·C4·C5·C6** 각각은 **최소 1행 `[ ]`** 유지. 위반 시(문서 C1만 `[ ]` 등) **즉시** `docs/agent-runtime/PARALLEL_QUEUE_REFILL.md` 로 새 이번 런 10행 오픈. 점검: `bash scripts/check-parallel-task-queue.sh` (exit 2 = 보충 필수).  
+**REFRESH**: 사용자가 **refresh** 라고 하면 **이번 태스크 점검** 후 **C2·C3·C4·C5·C6 각 구체 작업 5개**를 만들어 응답·로그에 넣는다. 절차는 **`docs/agent-runtime/REFRESH_PROCEDURE.md`** (병렬 5창용; 보드 TASK 1~10과 병행 가능).  
 **우선순위 규칙**: 1) Auth/Redirect/Session 2) API Contract 3) Domain/Engine 4) UI 5) 문서.  
 **Arena 문서 참조 (루트 docs)**: 시스템 경계·경로 — `docs/architecture/DOMAIN_LAYER_TARGET_MAP.md`, `docs/architecture/IMPORT_BOUNDARY.md`. Arena 도메인·스펙 — `docs/spec/BTY_ARENA_DOMAIN_SPEC.md`(도메인 원칙 + 하위 스펙 참조). XP·Lab 규칙·수식 — `docs/spec/ARENA_LAB_XP_SPEC.md`(단일 기준 + 구현 위치). **지금까지 구현된 것** 단일 정리 — `docs/spec/ARENA_LAB_XP_RECONCILIATION.md` §7.
 
@@ -9,22 +11,255 @@
 - **CURRENT_TASK.md**: 완료한 작업을 [x] **완료.** 로 표시하고, 필요 시 상단에 완료 한 줄(작업명·날짜·Lint/Test 수치 등) 추가.  
 - **BTY_RELEASE_GATE_CHECK.md**: Release Gate·VERIFY 실행 시 §2·[VERIFY] 블록·최근 완료 줄 갱신.  
 - **ELITE_3RD_SPEC_AND_CHECKLIST.md**: 엘리트 3차 검증 실행 시 §3 검증 일시·결과 갱신.  
-- **NEXT_PHASE_AUTO4.md / NEXT_BACKLOG_AUTO4.md**: 문서 점검·백로그 갱신 시 해당 문서도 함께 갱신.
+- **NEXT_PHASE_AUTO4.md / NEXT_BACKLOG_AUTO4.md**: 문서 점검·백로그 갱신 시 해당 문서도 함께 갱신.  
+- **병렬 큐**: C3/C4/C5/C6 작업을 **[x]** 로 찍은 뒤, `bash scripts/check-parallel-task-queue.sh` 가 **exit 2** 이면 **같은 턴 또는 다음 턴에서** C1(또는 담당)이 **`PARALLEL_QUEUE_REFILL.md`** 수행 — 빈 창에 “할 일 없음”이 남지 않게 함.
 
 ---
 
-## 이번 런: SPRINT 46 (FOUNDRY) — 2026-03-12
+## 이번 런: SPRINT 56 (FOUNDRY) — 2026-03-18
 
-- **[REFRESH] SPRINT_PLAN 251 (2026-03-17):** C3·C4·C5(2–5)·C6 [x] 정합. BLOCKER C5 TASK1·C2 Gate만. §다음 스프린트·HANDOFFS·CURRENT_TASK 동기.
+- **병렬 큐 보충:** S55 **C3·C5·C6 전행 [x]** → 기아 → **S56** (`PARALLEL_QUEUE_REFILL.md` §3).
+- **First Task = C5 TASK1 (Gate 56).** `SPRINT_PLAN` **262**.
+
+**SPRINT 56 — TASK 1~10 (MODE FOUNDRY)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [ ] [VERIFY] Release Gate A~F — Foundry 56차 | `BTY_RELEASE_GATE_CHECK`·보드·`CURRENT_TASK`. |
+| 2 | C1 | [ ] [DOCS] NEXT_PHASE·NEXT_BACKLOG + S55·S54 잔여 | 대기 동기. |
+| 3 | C1 | [ ] [DOCS] 문서 점검 154·155·156차 | 보드·BACKLOG·Gate. |
+| 4 | C4 | [ ] [UI] Center/Foundry 추가 접근성 1곳 | **`/bty`·My Page·Growth 제외.** |
+| 5 | C1 | [ ] [DOCS] 다음 배치 선정 (선택) | NEXT_BACKLOG·NEXT_PHASE. |
+| 6 | C5 | [ ] [VERIFY] 엘리트 3차 체크리스트 1회 | ELITE_3RD §3. |
+| 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | SPRINT 57 예고. |
+| 8 | C3 | [ ] [DOMAIN] Arena 순수 규칙+테스트 1건 | `bty-app/src/domain`. |
+| 9 | C3 | [ ] [TEST] Arena `src/app/api` route 테스트 1건 | vitest. |
+| 10 | C6 | [ ] [VERIFY] test:q237-smoke + self-healing-ci | `SPRINT_LOG`. |
+
+---
+
+## 이전 런: SPRINT 55 (FOUNDRY) — 2026-03-18
+
+- Gate **55**·**277/2108**·C5·C3·C6 **[x].** C1·C4 → **S56**.
+
+**SPRINT 55 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] Gate 55 | 277/2108 ✓ |
+| 2 | C1 | [→S56] | **56 TASK2** |
+| 3 | C1 | [→S56] 151·152·153차 | **56 TASK3** |
+| 4 | C4 | [→S56] 접근성 | **56 TASK4** |
+| 5 | C1 | [→S56] | **56 TASK5** |
+| 6 | C5 | [x] 엘리트 3차 | PASS |
+| 7 | C1 | [→S56] § | **56 TASK7** |
+| 8 | C3 | [x] eliteMentorRequest.edges | ✓ |
+| 9 | C3 | [x] membership-request GET | ✓ |
+| 10 | C6 | [x] q237 + CI | 277/2108 ✓ |
+
+---
+
+## 이전 런: SPRINT 54 (FOUNDRY) — 2026-03-18
+
+- **C5** 1·6 **[x]** Gate **54**·엘리트. **C1·C4·C3·C6** 잔여 → **S55**.
+
+**SPRINT 54 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] Gate 54 | 275/2102 ✓ |
+| 2 | C1 | [→S55] | **55 TASK2** |
+| 3 | C1 | [→S55] 148·149·150차 | **55 TASK3** |
+| 4 | C4 | [→S55] 접근성 | **55 TASK4** |
+| 5 | C1 | [→S55] | **55 TASK5** |
+| 6 | C5 | [x] 엘리트 3차 | PASS |
+| 7 | C1 | [→S55] § | **55 TASK7** |
+| 8 | C3 | [→S55] domain | **55 TASK8** |
+| 9 | C3 | [→S55] route | **55 TASK9** |
+| 10 | C6 | [→S55] q237+CI | **55 TASK10** |
+
+---
+
+## 이전 런: SPRINT 53 (FOUNDRY) — 2026-03-18
+
+- Gate **53** **275/2102**·C5·C3·C6 **완료.** C1·C4 → **S54**.
+
+**SPRINT 53 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] Gate 53 | 275/2102 ✓ |
+| 2 | C1 | [→S54] | **54 TASK2** |
+| 3 | C1 | [→S54] 145·146·147차 | **54 TASK3** |
+| 4 | C4 | [→S54] 접근성 | **54 TASK4** |
+| 5 | C1 | [→S54] | **54 TASK5** |
+| 6 | C5 | [x] 엘리트 3차 | PASS |
+| 7 | C1 | [→S54] § | **54 TASK7** |
+| 8 | C3 | [x] xpAwardDedup.edges | ✓ |
+| 9 | C3 | [x] weekly-xp GET | ✓ |
+| 10 | C6 | [x] q237 + CI | 275/2102 ✓ |
+
+---
+
+## 이전 런: SPRINT 52 (FOUNDRY) — 2026-03-17
+
+- Gate **52** **273/2097**·C5·C3·C6 **완료.** C1·C4 → **S53**.
+
+**SPRINT 52 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] Gate 52 | 273/2097 ✓ |
+| 2 | C1 | [→S53] | **53 TASK2** |
+| 3 | C1 | [→S53] 142·143·144차 | **53 TASK3** |
+| 4 | C4 | [→S53] 접근성 | **53 TASK4** |
+| 5 | C1 | [→S53] | **53 TASK5** |
+| 6 | C5 | [x] 엘리트 3차 | PASS |
+| 7 | C1 | [→S53] § | **53 TASK7** |
+| 8 | C3 | [x] scenarioDisplay.edges | ✓ |
+| 9 | C3 | [x] beginner-complete | ✓ |
+| 10 | C6 | [x] q237 + CI | 273/2097 ✓ |
+
+---
+
+## 이전 런: SPRINT 51 (FOUNDRY) — 2026-03-17
+
+- **[C5] TASK1·6** **완료.** Gate **51** **271/2091**·Build ✓·엘리트 **PASS.** 잔여 → **S52**.
+
+**SPRINT 51 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] Gate 51 | 271/2091 ✓ |
+| 2 | C1 | [→S52] NEXT_PHASE·BACKLOG | **52 TASK2** |
+| 3 | C1 | [→S52] 문서 139·140·141차 | **52 TASK3** |
+| 4 | C4 | [→S52] 접근성 | **52 TASK4** |
+| 5 | C1 | [→S52] 다음 배치 | **52 TASK5** |
+| 6 | C5 | [x] 엘리트 3차 | PASS |
+| 7 | C1 | [→S52] § 다음 작업 | **52 TASK7** |
+| 8 | C3 | [x] DOMAIN | **52에서 완료** `scenarioDisplay.edges` |
+| 9 | C3 | [x] route | **52에서 완료** `beginner-complete` |
+| 10 | C6 | [→S52] q237 + CI | **52 TASK10** |
+
+---
+
+## 이전 런: SPRINT 50 (FOUNDRY) — 2026-03-17
+
+- **[C5] TASK1·6**·**[C3] 8·9**·**[C6] 10** **완료.** Gate **271/2091**·Build ✓·엘리트 **PASS.** C1·C4 → **S51**.
+
+**SPRINT 50 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] Gate 50 | 271/2091 ✓ |
+| 2 | C1 | [→S51] NEXT_PHASE·BACKLOG | **51 TASK2** |
+| 3 | C1 | [→S51] 문서 136·137·138차 | **51 TASK3** |
+| 4 | C4 | [→S51] 접근성 1곳 | **51 TASK4** |
+| 5 | C1 | [→S51] 다음 배치 | **51 TASK5** |
+| 6 | C5 | [x] 엘리트 3차 | PASS |
+| 7 | C1 | [→S51] § 다음 작업 | **51 TASK7** |
+| 8 | C3 | [x] reflectTextHint.edges | ✓ |
+| 9 | C3 | [x] code-name POST | ✓ |
+| 10 | C6 | [x] q237 + CI | ✓ |
+
+---
+
+## 이전 런: SPRINT 49 (FOUNDRY) — 2026-03-29
+
+- **종료 (2026-03-17):** C5·C3·C4·C6 **해당 TASK [x].** C1 **2·3·5·7** 미처리 → **SPRINT 50** 흡수. **병렬 큐 보충**으로 S50 오픈.
+- **[C5] TASK1·6:** Gate 49 **269/2086**·엘리트 3차 **PASS.** **[C3] 8·9**·**[C4] 4** (`/bty` 허브 region)·**[C6] 10** **완료.**
+
+**SPRINT 49 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] [VERIFY] Release Gate — Foundry 49차 | 269/2086 ✓ |
+| 2 | C1 | [→S50] NEXT_PHASE·BACKLOG + S48·S47 | **50 TASK2** |
+| 3 | C1 | [→S50] 문서 133·134·135차 | **50 TASK3** |
+| 4 | C4 | [x] [UI] `/bty` 허브 카드 region | `indexHubEntriesRegionAria` ✓ |
+| 5 | C1 | [→S50] 다음 배치 (선택) | **50 TASK5** |
+| 6 | C5 | [x] [VERIFY] 엘리트 3차 | PASS |
+| 7 | C1 | [→S50] § 다음 작업 | **50 TASK7** |
+| 8 | C3 | [x] [DOMAIN] runsCursorValidation | **완료** |
+| 9 | C3 | [x] [TEST] sub-name POST 404 | **완료** |
+| 10 | C6 | [x] [VERIFY] q237 + CI | **완료** |
+
+---
+
+## 이전 런: SPRINT 48 (FOUNDRY) — 2026-03-26
+
+- **종료 (2026-03-29):** C5·C3·C4·C6 **전행 [x].** C1 **TASK 2·3·5·7** 미처리 → **SPRINT 49** C1 행에 **흡수**.
+- **[C4] TASK4**: My Page 개요 aria. **완료.**
+- **[C5] TASK1·6**·**[C3] 8·9**·**[C6] 10**: **완료.**
+
+**SPRINT 48 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] [VERIFY] Release Gate — Foundry 48차 | 268/2082 ✓ |
+| 2 | C1 | [→S49] NEXT_PHASE·BACKLOG + S47 잔여 | **49 TASK2** |
+| 3 | C1 | [→S49] 문서 130·131·132차 | **49 TASK3** |
+| 4 | C4 | [x] [UI] 접근성 — My Page | **완료** |
+| 5 | C1 | [→S49] 다음 배치 (선택) | **49 TASK5** |
+| 6 | C5 | [x] [VERIFY] 엘리트 3차 | PASS |
+| 7 | C1 | [→S49] § 다음 작업 | **49 TASK7** |
+| 8 | C3 | [x] [DOMAIN] weeklyCompetitionDisplay | **완료** |
+| 9 | C3 | [x] [TEST] leaderboard/status | **완료** |
+| 10 | C6 | [x] [VERIFY] q237 + CI | **완료** |
+
+---
+
+## 이전 런: SPRINT 47 (FOUNDRY) — 2026-03-23
+
+- **종료 시점 (2026-03-26):** **1·4·6·8·9·C2 [x]** · C1 **TASK 2·3·5·7·10** 일부 미처리 시 **SPRINT 48 C1 행에 흡수**.
+- **[REFRESH 2026-03-25]** SPRINT **47** — C3·C4·C5 보드 `[ ]` 없음 → **48 오픈.**
+- **[C2] SPRINT 253 (2026-03-24)**: Gate 동기 **266/2076** 등. **완료.**
+- **[C4] TASK4**: Growth 허브 aria. **완료.**
+- **[C5] TASK1·6**·**[C3] TASK8·9**: **완료.**
+
+**SPRINT 47 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] [VERIFY] Release Gate A~F — Foundry 47차 | 266/2076 ✓ |
+| 2 | C1 | [ ] [DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 | → **48 TASK2**에 흡수 가능 |
+| 3 | C1 | [ ] [DOCS] 문서 점검 127·128·129차 | → **48 TASK3** 병행 |
+| 4 | C4 | [x] [UI] Center/Foundry 추가 접근성 1곳 | Growth 허브. |
+| 5 | C1 | [ ] [DOCS] 다음 배치 선정 (선택) | → **48 TASK5** |
+| 6 | C5 | [x] [VERIFY] 엘리트 3차 체크리스트 1회 | PASS |
+| 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | → **48 TASK7** |
+| 8 | C3 | [x] [DOMAIN] Arena domain 순수 규칙+테스트 1건 | coreXpDisplay.edges |
+| 9 | C3 | [x] [TEST] Arena route 테스트 1건 | today-xp |
+| 10 | C1 | [ ] [DOCS] Arena·Center·Foundry 대기 목록 동기화 | → **48 TASK2·10** |
+
+---
+
+## 이전 런: SPRINT 46 (FOUNDRY) — 2026-03-12
+
+- **[REFRESH 2026-03-23]** SPRINT **47** 오픈 전 스냅샷 — **46** **10/10 [x]**.
+- **[REFRESH 2026-03-22]** SPRINT **46** TASK **1~10 전원 [x]** → **이번 런 큐 비음.** **C1 splint 10**으로 **SPRINT 47**(또는 253) **이번 런 10행** 생성 전까지 CONTINUE(C2~C6) = **보드 기준 할 일 없음** · `SPRINT_PLAN` C1·C2 잔여 참고.
+- **[C2] SPRINT_PLAN 251 배포 Gate (2026-03-18)**: **`58b8342`** — BTY_RELEASE_GATE_CHECK §A~F·MVP·SPRINT_LOG. self-healing-ci 264 files / 2067 tests · build PASS. **완료.**
+- **[C3] SPRINT 46 TASK8·9 + 252 (2026-03-21)**: `healing.edges.test.ts`; `journey/entries` POST invalid JSON. vitest **265 / 2073** ✓. **완료.**
+- **[REFRESH 2026-03-21]** Foundry **SPRINT 46** — TASK **8·9**(C3) **[x]**; 나머지 10/10 전부 [x]. Arena **251 closed** · **252** active.
+- **[REFRESH 2026-03-20]** Arena **SPRINT 251** C2–C6·C5 TASK1–5 **전원 [x]** (`SPRINT_PLAN`). Foundry **SPRINT 46** C1 TASK **5·7·10** [x] · C3 TASK **8·9** (선택) [ ]. **다음:** C1 **splint 10 → SPRINT 252** 표·`SPRINT_PLAN` 갱신.
+- **[DOCS] SPRINT 46 TASK 5·7·10 (2026-03-20)**: C1. 다음 배치 후보(splint 252·TASK8·9)·§ 다음 작업·NEXT_PHASE≡NEXT_BACKLOG≡보드 동기화. **완료.**
+- **[C4 CONTINUE 2026-03-20]**: SPRINT **251 closed**. C4 **대기** — **252** C4 열 생길 때까지 `src/app/api` 신규 배치 없음.
+- **[C5 SPRINT 252 (2026-03-21)]**: Growth·Journey·Comeback 스모크 4건 + Arena 루트 정책 assert·`SPRINT_PLAN` C5 [x]. **완료.**
+- **[C4 SPRINT 252 (2026-03-21)]**: Journey bounce-back·profile·entries vitest 34 ✓·ARENA §4-11b·252. **완료.**
+- **[C5 SPRINT 251 TASK1 2026-03-18]**: Journey·bounce-back — Growth sub-nav·`/growth/journey`·global Comeback·Resume Journey·i18n. **완료.**
+- **[REFRESH 2026-03-19]** Foundry **SPRINT 46** 미완료 TASK **5·7·10**(C1)·**8·9**(C3). Arena **SPRINT 251** C5 TASK1 **[x]**. C2~C6×5 = 채팅 REFRESH.
+- **[REFRESH 2026-03-17]** Foundry **SPRINT 46** 미완료 TASK **5·7·10**(C1)·**8·9**(C3). Arena **SPRINT 251** — **BLOCKER C5 TASK1**만. C2~C6 각 5작업 = 채팅 REFRESH 블록.
+- **[REFRESH] SPRINT_PLAN 251:** C3·C4·C5(2–5)·C6·**C2 Gate `58b8342` [x]**. C5 TASK1 Journey·bounce-back — **IA 해제 후 구현 착수** (`SPRINT_PLAN`). §252 = TASK1 완료 후 C1 splint.
 - **[C4 CONTINUE 2026-03-18]**: SPRINT 251 C4 큐 소진. 252 = C1 splint 후 `SPRINT_PLAN` C4 열 확인.
 - **C1 splint 10 (2026-03-12)**: SPRINT 45 전량 10/10 완료 → SPRINT 46 생성. First Task = Release Gate 46차.
-- **대기 6건 (NEXT_PHASE·NEXT_BACKLOG와 동일)**: Release Gate 46차 · NEXT_PHASE·NEXT_BACKLOG 대기 갱신 · 문서 점검 124·125·126차 · Center/Foundry 접근성 1곳 · 다음 배치 선정 · Arena·Center·Foundry 대기 목록 동기화.
+- **대기 (NEXT_PHASE·NEXT_BACKLOG와 동일)**: C3 TASK 8·9 (선택) · **C1 splint 10 → SPRINT 252** (Arena 보드·SPRINT_PLAN).
 - **[C5 SPRINT_PLAN 247 Arena UX (2026-03-17)]**: my-page runs cursor·Elite SLA 배지·result 공유 복사·i18n. test 2023 ✓. TASK1 BLOCKER 유지. **완료.**
 - **[C5 SPRINT_PLAN 246 Arena UX (2026-03-17)]**: 런 상세 `RunDetailView`·모달 nearMe/미순위·LE stage a11y·growth 비참가 카피·reflect 심화 실패 문구. test 2007 ✓ build ✓. TASK1 BLOCKER 유지. **완료.**
 - **[C5 SPRINT_PLAN 245 Arena UX (2026-03-17)]**: my-page 최근 런(`MyPageRecentRuns`·GET runs), growth 내 순위(`GrowthMyRankCard`·GET leaderboard render-only), Awakening acts 3열 그리드, i18n. npm test 1993 ✓ build ✓. TASK1 BLOCKER 유지. **완료.**
 - **[C4 SPRINT_PLAN 246 API (2026-03-17)]**: reflect 413·stage-summary·run/complete 멱등·profile Cache-Control·ARENA_DOMAIN_SPEC §4·246·profile route test. vitest reflect+profile 21 ✓. **완료.**
 - **[C4 SPRINT_PLAN 247 API (2026-03-17)]**: ARENA_DOMAIN_SPEC §4·247 — runs cursor·400·profile 422·me/elite Cache-Control·healing 409. **완료.**
 - **[C4 SPRINT_PLAN 251 API (2026-03-17)]**: run/complete 409 RUN_ABORTED·core-xp/me/access 401·GET healing/progress 404 없음·ARENA_DOMAIN_SPEC §4·251. **완료.**
+- **[C4 Journey bounce-back (2026-03-18)]**: POST `/api/journey/bounce-back` @contract·§4-11b·Bearer|쿠키. C5 Comeback `credentials: 'include'` 권고. **완료.**
 - **[VERIFY] Release Gate 46차 (2026-03-12)**: C5. A~E N/A · F) Lint ✓ Test 1819 ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
 - **[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 (46차 TASK 2, 2026-03-12)**: C1. SPRINT 46 TASK 1 완료 반영·갱신일 동기화. **완료.**
 - **[DOCS] 문서 점검 124·125·126차 (46차 TASK 3, 2026-03-12)**: C1. 삼문서·보드·BTY_RELEASE_GATE_CHECK 점검·갱신. **완료.**
@@ -39,12 +274,12 @@
 | 2 | C1 | [x] [DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 | SPRINT 45 완료 반영. 대기 6건 동기화. **완료.** |
 | 3 | C1 | [x] [DOCS] 문서 점검 124·125·126차 | NEXT_PHASE·NEXT_BACKLOG·보드·BTY_RELEASE_GATE_CHECK 점검·갱신. **완료.** |
 | 4 | C4 | [x] [UI] Center/Foundry 추가 접근성 1곳 | 대시보드 바로가기 링크 그룹 role=region·aria-label. **완료.** |
-| 5 | C1 | [ ] [DOCS] 다음 배치 선정 (선택) | NEXT_BACKLOG_AUTO4·NEXT_PHASE_AUTO4 수동 갱신. 필요 시에만. 완료 시 보드·CURRENT_TASK 반영. 코드 없음. |
+| 5 | C1 | [x] [DOCS] 다음 배치 선정 (선택) | splint 252·TASK8·9 후보 반영. NEXT_BACKLOG·NEXT_PHASE 갱신. **완료.** |
 | 6 | C5 | [x] [VERIFY] 엘리트 3차 체크리스트 1회 | ELITE_3RD 6항목·코드 대조. **완료.** **RESULT: PASS.** |
-| 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | § "다음 작업 (반복 제외)" 진행 현황·다음 후보 체크·갱신일. 코드 없음. |
-| 8 | C3 | [ ] [DOMAIN] Center/Foundry 미커버 경계 테스트 1건 (선택) | 미커버 1곳 *.test.ts. npm test 통과. 필요 시. |
-| 9 | C3 | [ ] [TEST] Center/Foundry route 테스트 1건 (선택) | POST/GET route 401·200 등. npm test 통과. 필요 시. |
-| 10 | C1 | [ ] [DOCS] Arena·Center·Foundry 대기 목록 동기화 | NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 대기 행 일치 확인·갱신. MODE FOUNDRY. 코드 없음. |
+| 7 | C1 | [x] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | § SPRINT 46 기준·갱신일 2026-03-20. **완료.** |
+| 8 | C3 | [x] [DOMAIN] Center/Foundry 미커버 경계 테스트 1건 (선택) | `healing.edges.test.ts` — celebration 키·nextAct [1,3] null·unlock 3 before 2. **완료 (2026-03-21).** |
+| 9 | C3 | [x] [TEST] Center/Foundry route 테스트 1건 (선택) | `POST /api/journey/entries` invalid JSON → day 1. **완료 (2026-03-21).** |
+| 10 | C1 | [x] [DOCS] Arena·Center·Foundry 대기 목록 동기화 | NEXT_PHASE≡NEXT_BACKLOG≡보드. **완료.** |
 
 ---
 
@@ -1094,7 +1329,15 @@
 | 9 | C3 | [x] [TEST] Dojo submit API 테스트 | **이미 구현.** dojo/submit/route.test.ts. **완료.** |
 | 10 | C5 | [x] [VERIFY] Release Gate A~F — Foundry 19차 | Lint ✓ Test 122/998 ✓ Build ✓. **완료.** |
 
-**다음 작업 (반복 제외) — SPRINT 43 기준**  
+**다음 작업 (반복 제외) — SPRINT 46 — 갱신 2026-03-20**  
+- [x] TASK 1 [VERIFY] Release Gate 46차 · TASK 2 대기 갱신 · TASK 3 문서 124·125·126차 · TASK 4 접근성 · TASK 6 엘리트 3차.  
+- [x] TASK 5 [DOCS] 다음 배치 선정 — NEXT_BACKLOG·NEXT_PHASE에 splint 252·C3 TASK8·9 후보 반영.  
+- [x] TASK 7 [DOCS] 본 § 정리.  
+- [x] TASK 8·9 (C3, Center/Foundry 미커버·route 테스트) — **완료 2026-03-21.**  
+- [x] TASK 10 [DOCS] Arena·Center·Foundry 대기 목록 동기화.  
+*Arena SPRINT 251 전원 [x]. Foundry SPRINT 46 잔여 = C3 선택 2건만. **다음:** C1 splint 10 → SPRINT 252·`SPRINT_PLAN`.*
+
+**다음 작업 (반복 제외) — SPRINT 43 기준** (보관)  
 - [x] [VERIFY] Release Gate A~F — Foundry 43차 *(TASK 1 — 완료)*  
 - [x] [DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 *(TASK 2 — 완료)*  
 - [x] [DOCS] 문서 점검 115·116·117차 *(TASK 3 — 완료)*  

@@ -2,7 +2,7 @@
 
 **목적**: 대기 작업이 없을 때 `scripts/next-project-fill-board.sh`가 여기서 다음 작업을 읽어 보드에 추가한다.  
 **기준**: `docs/NEXT_PROJECT_RECOMMENDED.md` §1·§2.  
-**갱신일**: 2026-03-12 — splint 10. SPRINT 45 전량 완료 → SPRINT 46 생성. 다음 배치 목록 = NEXT_PHASE·보드 대기 6건과 동일. MODE FOUNDRY.
+**갱신일**: 2026-03-18 — 보드 **SPRINT 56** 이번 런. 다음 = **57**.
 
 ---
 
@@ -38,18 +38,17 @@ MASTER_PLAN  →  NEXT_BACKLOG_AUTO4  →  CURSOR_TASK_BOARD
 
 ---
 
-## 다음 배치 목록 (위에서부터 우선) — FOUNDRY MODE (SPRINT 46)
+## 다음 배치 목록 — FOUNDRY **SPRINT 49**
 
 ```
-Fix/Polish|[VERIFY] Release Gate A~F — Foundry 46차|C5.
-Fix/Polish|[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 — SPRINT 45 완료 반영|C1.
-Fix/Polish|[DOCS] 문서 점검 124·125·126차 — NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드·BTY_RELEASE_GATE_CHECK 2~3건 점검·갱신|C1.
-Feature|[UI] Center/Foundry 추가 접근성 1곳 — dear-me·assessment·center·dojo·integrity·mentor·elite aria-label·aria-describedby|C4.
-Fix/Polish|[DOCS] 다음 배치 선정 — NEXT_BACKLOG_AUTO4·NEXT_PHASE_AUTO4 수동 갱신|C1. 필요 시.
-Feature|[DOCS] Arena·Center·Foundry 대기 목록 동기화 — NEXT_PHASE·NEXT_BACKLOG·보드 대기 행 일치|C1.
+Fix/Polish|[VERIFY] Release Gate 49차|C5. 보드 S49 TASK1.
+Fix/Polish|[DOCS] BACKLOG + S48 잔여|C1. S49 TASK2·3·7·10.
+Fix/Polish|[UI] Center/Foundry 접근성|C4. S49 TASK4.
+Fix/Polish|[DOMAIN]·[TEST] Arena|C3. S49 TASK8·9.
+Fix/Polish|[VERIFY] q237-smoke + self-healing-ci|C6. S49 TASK10.
 ```
 
-*(참고: 2026-03-12 TASK 2 갱신. SPRINT 46 TASK 1 완료 반영. 대기 6건 = 보드·NEXT_PHASE와 동일. MODE FOUNDRY.)*
+*(2026-03-29: SPRINT 49.)*
 
 ---
 

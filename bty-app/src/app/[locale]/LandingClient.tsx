@@ -26,7 +26,7 @@ type Props = {
 };
 
 export default function LandingClient({ locale, t }: Props) {
-  const arenaHref = `/${locale}/bty-arena`;
+  const arenaHref = `/${locale}/bty-arena/play`;
   const foundryHref = `/${locale}/bty`;
   const centerHref = `/${locale}/center`;
 

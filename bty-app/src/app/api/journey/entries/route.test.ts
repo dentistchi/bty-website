@@ -212,4 +212,31 @@ describe("POST /api/journey/entries", () => {
     expect(data.day).toBe(1);
     expect(data.user_id).toBe("u1");
   });
+
+  /** SPRINT 252 C3: invalid JSON → {} → day defaults to 1 (contract). */
+  it("returns 200 defaulting day to 1 when POST body is not valid JSON", async () => {
+    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    const mockSingle = vi.fn().mockResolvedValue({
+      data: { user_id: "u1", day: 1, completed: false, updated_at: "2026-03-21T00:00:00Z" },
+      error: null,
+    });
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
+    const mockUpsert = vi.fn().mockReturnValue({ select: mockSelect });
+    mockGetSupabaseAdmin.mockReturnValue({
+      from: vi.fn().mockReturnValue({ upsert: mockUpsert }),
+    });
+
+    const req = new Request("http://localhost/api/journey/entries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "not-json{",
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.day).toBe(1);
+    expect(mockUpsert).toHaveBeenCalled();
+    const upsertArg = mockUpsert.mock.calls[0][0];
+    expect(upsertArg.day).toBe(1);
+  });
 });

@@ -1,20 +1,25 @@
 /**
- * Healing / Awakening domain — Q4 edges (C3-aligned constants).
+ * Healing domain — 미커버 경계 (SPRINT 46 TASK 8 / 252 C3).
  */
 import { describe, it, expect } from "vitest";
-import { AWAKENING_ACT_NAMES, HEALING_PHASE_I_LABEL } from "./healing";
+import {
+  healingAwakeningCompletionCelebrationMessageKey,
+  nextHealingAwakeningActAfter,
+  healingAwakeningNextUnlockedAfterCompleting,
+} from "./healing";
 
-describe("domain/healing (edges)", () => {
-  it("AWAKENING_ACT_NAMES has three distinct non-empty labels", () => {
-    const labels = Object.values(AWAKENING_ACT_NAMES);
-    expect(labels).toHaveLength(3);
-    expect(new Set(labels).size).toBe(3);
-    expect(labels.every((s) => typeof s === "string" && s.length > 0)).toBe(
-      true,
+describe("healing domain edges (252)", () => {
+  it("healingAwakeningCompletionCelebrationMessageKey is stable", () => {
+    expect(healingAwakeningCompletionCelebrationMessageKey()).toBe(
+      "healing_awakening_all_complete_next_steps"
     );
   });
 
-  it("HEALING_PHASE_I_LABEL differs from act-1 name (phase vs act copy)", () => {
-    expect(HEALING_PHASE_I_LABEL).not.toBe(AWAKENING_ACT_NAMES[1]);
+  it("nextHealingAwakeningActAfter returns null when act 2 skipped (1 then 3)", () => {
+    expect(nextHealingAwakeningActAfter([1, 3])).toBeNull();
+  });
+
+  it("healingAwakeningNextUnlockedAfterCompleting rejects completing 3 before 2", () => {
+    expect(healingAwakeningNextUnlockedAfterCompleting(3, [1])).toBeNull();
   });
 });

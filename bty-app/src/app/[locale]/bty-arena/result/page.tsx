@@ -1,80 +1,64 @@
 import Link from "next/link";
-import { ResultShareStub } from "@/components/bty-arena/ResultShareStub";
-import { ScreenShell } from "@/components/bty/layout/ScreenShell";
-import { BtyArenaBottomNav } from "@/components/bty/navigation/BtyArenaBottomNav";
-import { PrimaryButton } from "@/components/bty/ui/PrimaryButton";
-import { SecondaryButton } from "@/components/bty/ui/SecondaryButton";
+import ScreenShell from "@/components/bty/layout/ScreenShell";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
 type Props = { params: Promise<{ locale: string }> };
 
-/** Arena 결과 와이어 — PIXEL_WIREFRAMES §7 + 244 다음 행동 CTA */
-export default async function Page({ params }: Props) {
+/** Arena 결과 — ScreenShell · AIR raw·과장 없음. */
+export default async function ArenaResultPage({ params }: Props) {
   const { locale } = await params;
-  const loc = locale as Locale;
+  const loc = (locale === "ko" ? "ko" : "en") as Locale;
   const t = getMessages(loc).uxPhase1Stub;
-  const base = `/${locale}`;
-  const arena = `${base}/bty-arena`;
-  const wireframe = `${base}/bty-arena/wireframe`;
+  const m = getMessages(loc).myPageStub;
+  const hub = `/${locale}/bty-arena`;
+  const play = `/${locale}/bty-arena/play`;
 
   return (
-    <div className="mx-auto max-w-md bg-bty-bg px-4 py-6">
-      <ScreenShell
-        title={t.resultTitle}
-        subtitle={t.resultSubtitle}
-        footer={<BtyArenaBottomNav locale={locale} active="arena" />}
-      >
-        <div className="space-y-1 rounded-2xl border border-bty-border bg-bty-soft p-4">
-          <p className="text-lg font-semibold tabular-nums text-bty-text">{t.resultCoreXpSample}</p>
-          <p className="text-lg font-semibold tabular-nums text-bty-text">{t.resultWeeklyXpSample}</p>
-          <p className="mt-2 text-xs text-bty-secondary">{t.resultSampleNote}</p>
-        </div>
-
-        <div className="rounded-2xl border border-bty-border bg-bty-surface p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-bty-secondary">
-            {t.resultSystemTitle}
-          </p>
-          <p className="mt-2 text-sm text-bty-text">{t.resultSystemBody}</p>
-        </div>
-
-        <ResultShareStub locale={locale} />
-
-        <div
-          className="rounded-2xl border border-bty-gold/30 bg-bty-soft/80 p-4"
-          role="region"
-          aria-label={t.resultNextActionsRegionAria}
-        >
-          <p className="text-xs font-semibold uppercase tracking-wide text-bty-bronze">
-            {t.resultNextScenarioSectionLabel}
-          </p>
-          <div className="mt-3">
-            <PrimaryButton href={arena}>
-              <span className="block font-semibold">{t.resultNextScenarioCta}</span>
-              <span className="mt-1 block text-xs font-normal text-white/80">{t.resultNextScenarioSub}</span>
-            </PrimaryButton>
+    <ScreenShell
+      locale={locale}
+      eyebrow={t.arenaResultEyebrow}
+      title={t.arenaResultRecordedTitle}
+      subtitle={t.arenaResultRecordedSubtitle}
+    >
+      <div className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-[#1E2A38]">{m.coreXp}</p>
+            <p className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-[#1E2A38]">
+              +25
+            </p>
+          </div>
+          <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-[#1E2A38]">{m.weeklyXp}</p>
+            <p className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-[#1E2A38]">
+              +15
+            </p>
           </div>
         </div>
 
-        <div className="space-y-3 pt-1">
-          <SecondaryButton href={wireframe}>
-            <span className="block font-medium text-bty-text">{t.resultContinueCta}</span>
-            <span className="mt-0.5 block text-xs text-bty-secondary">{t.resultWireHubLink}</span>
-          </SecondaryButton>
-          <SecondaryButton href={arena}>{t.resultReturnArenaCta}</SecondaryButton>
+        <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
+          <p className="text-sm font-medium text-[#1E2A38]">{t.arenaResultSystemNoteTitle}</p>
+          <p className="mt-2 text-sm leading-6 text-[#667085]">{t.arenaResultSystemNoteBody}</p>
         </div>
 
-        <p className="text-center text-xs text-bty-muted">{t.resultRunCompleteHint}</p>
-
-        <p className="text-center text-xs text-bty-secondary">
+        <div className="flex flex-col gap-3">
           <Link
-            href={wireframe}
-            className="underline underline-offset-2 hover:text-bty-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bty-steel focus-visible:ring-offset-2"
+            href={play}
+            className="flex h-12 w-full items-center justify-center rounded-2xl bg-[#1E2A38] px-4 text-sm font-medium text-white hover:bg-[#243446]"
           >
-            {t.resultWireHubLink}
+            {t.arenaResultContinuePlayCta}
           </Link>
-        </p>
-      </ScreenShell>
-    </div>
+          <Link
+            href={hub}
+            className="flex h-12 w-full items-center justify-center rounded-2xl border border-[#D7CFBF] bg-white px-4 text-sm font-medium text-[#405A74] hover:bg-[#F6F4EE]"
+          >
+            {t.arenaResultReturnHubCta}
+          </Link>
+        </div>
+
+        <p className="px-1 text-center text-xs leading-relaxed text-[#98A2B3]">{t.resultSampleNote}</p>
+      </div>
+    </ScreenShell>
   );
 }

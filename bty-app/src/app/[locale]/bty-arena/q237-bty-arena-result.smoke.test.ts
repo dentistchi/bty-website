@@ -8,14 +8,14 @@ import type { ReactElement } from "react";
 import ResultPage from "./result/page";
 
 describe("bty-arena/result smoke (237)", () => {
-  it("renders Simulation Complete + XP lines", async () => {
+  it("renders result headline + XP lines + CTAs", async () => {
     const el = (await ResultPage({
       params: Promise.resolve({ locale: "en" }),
     })) as ReactElement;
     const html = renderToString(el);
-    expect(html).toContain("Simulation Complete");
+    expect(html).toMatch(/Decision recorded|Simulation Complete/i);
     expect(html).toMatch(/Core XP|Weekly XP/);
     expect(html).toMatch(/Continue|Arena/);
-    expect(html).toMatch(/Next scenario/i);
+    expect(html).toMatch(/Next scenario|Continue|Return to Arena/i);
   });
 });

@@ -3,6 +3,7 @@
   "private": true,
   "description": "Dear Me & BTY — 루트. Cloudflare Workers(bty-app) 단일 배포.",
   "scripts": {
+    "board:queue-check": "bash scripts/check-parallel-task-queue.sh",
     "build": "cd bty-app && npm ci && npm run build",
     "ci:guard": "echo 'Run via GitHub Actions: CI (Context Guard)'",
     "test:engine": "vitest run src/engine"

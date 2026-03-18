@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ScreenShell } from "@/components/bty/layout/ScreenShell";
-import { BtyArenaBottomNav } from "@/components/bty/navigation/BtyArenaBottomNav";
+import { CardScreenShell } from "@/components/bty/layout/CardScreenShell";
+import BottomNav from "@/components/bty/navigation/BottomNav";
 import { PrimaryButton } from "@/components/bty/ui/PrimaryButton";
 import { SecondaryButton } from "@/components/bty/ui/SecondaryButton";
 import { getMessages } from "@/lib/i18n";
@@ -16,26 +16,25 @@ export default async function Page({ params }: Props) {
   const loc = locale as Locale;
   const t = getMessages(loc).uxPhase1Stub;
   const base = `/${locale}`;
-  const arena = `${base}/bty-arena`;
+  const arenaPlay = `${base}/bty-arena/play`;
 
   return (
     <div
-      className="mx-auto max-w-md bg-bty-bg px-4 py-6"
+      className="mx-auto max-w-md bg-bty-bg px-4 py-6 pb-28"
       role="region"
       aria-label={t.wireframeLandmarkAria}
     >
-      <ScreenShell
+      <CardScreenShell
         title={t.wireframeScreenTitle}
         subtitle={t.wireframeScreenSubtitle}
         menuLabel="Menu"
-        footer={<BtyArenaBottomNav locale={locale} active="arena" />}
       >
         <div>
           <p className="text-base font-medium text-bty-text">{t.wireframeSystemReady}</p>
         </div>
 
         <div className="space-y-3">
-          <SecondaryButton href={arena}>
+          <SecondaryButton href={arenaPlay}>
             <span className="block font-semibold text-bty-text">{t.wireframeContinue}</span>
             <span className="mt-1 block text-xs font-normal text-bty-secondary">
               {t.wireframeResumeLast}
@@ -46,7 +45,7 @@ export default async function Page({ params }: Props) {
             <span>{t.wireframeOr}</span>
             <span className="h-px flex-1 bg-bty-border" aria-hidden />
           </div>
-          <PrimaryButton href={arena}>
+          <PrimaryButton href={arenaPlay}>
             <span className="block">{t.wireframePlayGame}</span>
             <span className="mt-1 block text-xs font-normal text-white/75">{t.wireframeStartScenario}</span>
           </PrimaryButton>
@@ -116,7 +115,8 @@ export default async function Page({ params }: Props) {
             /bty-arena/result
           </Link>
         </p>
-      </ScreenShell>
+      </CardScreenShell>
+      <BottomNav locale={locale} />
     </div>
   );
 }

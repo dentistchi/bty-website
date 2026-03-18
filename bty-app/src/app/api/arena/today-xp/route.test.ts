@@ -93,4 +93,35 @@ describe("GET /api/arena/today-xp", () => {
     const data = await res.json();
     expect(data.error).toBe("db error");
   });
+
+  /** SPRINT 47 TASK 9 / 253: null·비숫자 xp 행은 0으로 합산. */
+  it("returns 200 summing only numeric xp when rows have null or bad xp", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            gte: () =>
+              Promise.resolve({
+                data: [
+                  { xp: 5 },
+                  { xp: null },
+                  { xp: undefined },
+                  { xp: "x" },
+                  { xp: 7 },
+                ],
+                error: null,
+              }),
+          }),
+        }),
+      }),
+    });
+
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.xpToday).toBe(12);
+  });
 });

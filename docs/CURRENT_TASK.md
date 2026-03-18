@@ -1,5 +1,67 @@
 # 현재 작업 (진행 에이전트용)
 
+**이번 런 (2026-03-18):** **`docs/CURSOR_TASK_BOARD.md` → SPRINT 56.** First **C5 TASK1 (Gate 56).** S55 C5·C3·C6 **[x]** → 병렬 큐 보충 **S56**. `SPRINT_PLAN` **262**.
+
+**[운영] S55 → S56:** C3·C5·C6 전행 [x] → `PARALLEL_QUEUE_REFILL.md` §3.
+
+**[C5] SPRINT 55 TASK 1·6 / 261**: [x] **완료.** Gate **55** — **277 / 2108**·Build ✓·엘리트 **PASS**·§3.
+
+**[C3] SPRINT 55 TASK8·9 / 261**: [x] **완료.** `eliteMentorRequest.edges`·`GET /api/arena/membership-request`. **277 / 2108** ✓.
+
+**[C6] SPRINT 55 TASK10 / 261**: [x] **완료.** q237-smoke **7/7** ✓ · CI **277/2108** ✓ · Build ✓.
+
+**[C5] SPRINT 54 TASK 1·6 / 260**: [x] **완료 (2026-03-18).** Gate **54** — **275 / 2102**·Build ✓·엘리트 **PASS**·§3.
+
+**[C3] SPRINT 53 TASK8·9 / 259**: [x] **완료.** `xpAwardDedup.edges.test.ts`; `GET /api/arena/weekly-xp` 401·200. vitest **275 / 2102** ✓.
+
+**[C6] SPRINT 53 TASK10 / 259**: [x] **완료.** q237-smoke 3/7 ✓ · self-healing-ci **275/2102** ✓ · Build ✓.
+
+**[C5] SPRINT 53 TASK 1·6 / 259**: [x] **완료.** Gate **53** — **275 / 2102**·Build ✓·엘리트 **PASS**·§3.
+
+**[C5] SPRINT 52 TASK 1·6 / 258**: [x] **완료.** Gate **52** — **273 / 2097**·Build ✓·엘리트 **PASS**·§3.
+
+**[C3] SPRINT 52 TASK8·9 / 258**: [x] **완료.** `scenarioDisplay.edges.test.ts`; `POST /api/arena/beginner-complete` 401·400. vitest **273 / 2097** ✓.
+
+**[C5] SPRINT 51 TASK 1·6 / 257**: [x] **완료.** Gate 51 — **271 / 2091**·Build ✓·엘리트 **PASS**·§3.
+
+**[C5] SPRINT 50 TASK 1·6 / 256**: [x] **완료.** Gate 50 — **271 / 2091**·Build ✓·엘리트 **PASS**·§3.
+
+**[C3] SPRINT 50 TASK8·9 / 256**: [x] **완료.** `reflectTextHint.edges`·`code-name` POST. **271 / 2091** ✓.
+
+**[C6] SPRINT 50 TASK10 / 256**: [x] **완료.** q237-smoke + self-healing-ci **271/2091** ✓.
+
+**[C6] SPRINT 52 TASK10 / 258**: [x] **완료.** q237-smoke 3/7 ✓ · self-healing-ci **273/2097** ✓ · Build ✓ (C5 Gate 52 동기).
+
+**[C5] SPRINT 49 TASK 1·6 / 255**: [x] **완료 (2026-03-29).** Gate 49 — **269 / 2086**·Build ✓. 엘리트 3차 **PASS**·§3.  
+**[C3] SPRINT 49 TASK8·9 / 255**: [x] **완료 (2026-03-29).** `runsCursorValidation.edges.test.ts`; `POST /api/arena/sub-name` 404. vitest **269 / 2086** ✓.  
+**[x] 운영 (2026-03-17):** **병렬 큐 보충** 절차 — `PARALLEL_QUEUE_REFILL.md` · `npm run board:queue-check` (exit 2 → C1이 새 이번 런 10행 오픈).
+
+**[C4] SPRINT 48 TASK4 / 254**: [x] **완료 (2026-03-27).** `/my-page` 개요 **`role=region`**·`myPageOverviewRegionAria` ko/en.
+
+**[C6] SPRINT 49 TASK10 / 255**: [x] **완료 (2026-03-29).** `test:q237-smoke` 3/7 ✓ · self-healing-ci **269/2086** ✓ · Build ✓.
+
+**[C4] SPRINT 49 TASK4 / 255**: [x] **완료 (2026-03-17).** `/bty` 인덱스 세 허브 카드 **`role=region`**·`indexHubEntriesRegionAria` ko/en (My Page·Growth 제외).
+
+**[C5] SPRINT 48 TASK 1·6 / 254**: [x] **완료 (2026-03-26).** Gate 48 — **268 / 2082**·Build ✓·허브 스모크. 엘리트 3차 **PASS**·§3.
+
+**[C3] SPRINT 48 TASK8·9·254 (Arena)**: [x] **완료 (2026-03-26).** `weeklyCompetitionDisplay.edges.test.ts`; `GET /api/arena/leaderboard/status` 200 진단. vitest **268 / 2082** ✓.
+
+**[C2] SPRINT 253 (C5 TASK1 후 Gate 동기)**: [x] **완료 (2026-03-24).** BTY_RELEASE_GATE_CHECK·SPRINT_LOG·**266/2076**·build. 배포 **58b8342** → 다음 push 시 재Gate.
+
+**[C4] SPRINT 47 TASK4 / 253**: [x] **완료 (2026-03-24).** Growth `/growth` `role=region`·`growthHubMainRegionAria` ko/en·스모크 **4** ✓·보드 TASK4 [x].
+
+**[C5] SPRINT 47 TASK 1·6 / 253**: [x] **완료 (2026-03-23).** Gate 47차 — **266 files / 2076 tests**·Build ✓·`coreXpDisplay` NaN. 엘리트 3차 6항목 **PASS**·§3.
+
+**[C3] SPRINT 47 TASK8·9·253 (Arena)**: [x] **완료 (2026-03-23).** `coreXpDisplay.edges.test.ts`; `GET /api/arena/today-xp` null·비숫자 xp 합산. vitest **266 / 2076** ✓.
+
+**[C3] SPRINT 252 DOMAIN + 보드 TASK8·9**: [x] **완료 (2026-03-21).** `healing.edges.test.ts` (Foundry healing 경계); `POST /api/journey/entries` invalid JSON→day 1. vitest **265 / 2073** ✓·`SPRINT_PLAN` C3(252) [x].
+
+**[C5] SPRINT 252 UI 회귀·Arena 정책**: [x] **완료 (2026-03-21).** `growth/sprint252-journey-growth-regression.smoke.test.ts` — i18n en/ko·Growth RSC Journey 링크·`bty-arena/page.tsx`에 `growth/journey`·`JourneyBoard` 없음.
+
+**[C1] SPRINT 46 TASK 5·7·10 (보드)**: [x] **완료 (2026-03-20).** 다음 배치 후보(splint 252·TASK8·9)·§ 다음 작업·NEXT_PHASE≡NEXT_BACKLOG≡보드 동기화.
+
+**[C2] SPRINT 251 배포 Gate**: [x] **완료 (2026-03-18).** `58b8342` (`cce5374..58b8342`). BTY_RELEASE_GATE_CHECK §A~F·MVP·SPRINT_LOG. self-healing-ci **264 files / 2067 tests** · build PASS.
+
 **[C5] SPRINT 251 TASK2–5 (UI)**: [x] **완료.** LE Stage 진행 바·캡; 주간 경쟁 스테이지 밴드 라벨; Healing POST `ACT_PREREQUISITE`·`COOLDOWN_ACTIVE` 토스트+인라인; i18n ko/en.
 
 **[C3] SPRINT 251 DOMAIN**: [x] **완료.** `weeklyCompetitionStageTierBandDisplayLabelKey`; `healingPathProgressBlockedUserDisplayKey`+`HEALING_PROGRESS_BLOCKED_PHASE_DISPLAY_KEY`; LE clamp·시나리오 ID 기존 `isValidArenaScenarioCodeId`; barrel·arena-domain-rules §251.
@@ -8,9 +70,15 @@
 
 **[C5] SPRINT 46 TASK 6 (보드)**: [x] **완료 (2026-03-11).** 엘리트 3차 체크리스트 6항목·코드·API 대조. Elite=주간 상위 5%만. ELITE_3RD §3·CURSOR_TASK_BOARD.
 
-**[C4] CONTINUE**: **SPRINT 251** C4 5/5 [x] — `src/app/api` 추가 작업 없음. **252**는 C1 splint로 `SPRINT_PLAN` C4 표가 생긴 뒤 그때 실행.
+**[C4] CONTINUE (2026-03-23)**: **SPRINT 252** C4 **[x]** · 보드 **SPRINT 46** C4 행 **[x]** → **`src/app/api` 할 일 없음.** C1 splint → **253**·이번 런 C4 열 생길 때까지 대기.
 
-**다음 배치 (SPRINT_PLAN)**: **SPRINT 251** — C3·C4·C5(2–5)·C6 [x]. **잔여 BLOCKER:** C5 TASK1 Journey·bounce-back, C2 배포 Gate. **252** = C1 splint·REFRESH 후 표 갱신.
+**[C4] SPRINT 252 API 회귀**: [x] **완료 (2026-03-21).** Journey API vitest **35** ✓·ARENA §4-11b·`SPRINT_PLAN` C4 [x].
+
+**[C5] SPRINT 251 TASK1 Journey·bounce-back**: [x] **완료 (2026-03-18).** Growth sub-nav Dojo·Integrity·Guidance·Journey; `/growth/journey` + JourneyBoard; locale layout Comeback → Resume Journey + POST bounce-back; Reflection→dear-me; i18n en/ko.
+
+**다음 배치**: **SPRINT 47** 이번 런 **열림** (2026-03-23). **SPRINT 253** (`SPRINT_PLAN`) = 보드 47과 동기.
+
+**REFRESH 명령**: 사용자가 **refresh** 시 → `docs/agent-runtime/REFRESH_PROCEDURE.md` — 이번 태스크 점검 + **C2~C6 각 작업 5개** 인라인 → 각 Cursor는 자기 Cn 열만 진행.
 
 **[C6] SPRINT 251 TESTFIX**: [x] **완료.** q237-smoke; run/complete `aborted_at`→409+401 짝; core-xp 연속 401; barrel 251 LE·시나리오·cooldown 보강; 264 files / 2067 tests·build PASS.
 

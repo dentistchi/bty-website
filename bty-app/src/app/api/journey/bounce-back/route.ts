@@ -3,11 +3,16 @@ import { getAuthUserFromRequest } from "@/lib/auth-server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 /**
- * POST /api/journey/bounce-back
- * Increments bounce_back_count for the authenticated user.
+ * POST /api/journey/bounce-back — 복귀(comeback) 시 `bounce_back_count` +1 (XP·랭킹·시즌 무관).
  *
- * Response (200): { bounce_back_count: number }
- * Errors: 401 { error: "Unauthorized" }, 503 { error: "Database not configured" }, 500 { error: string }
+ * @contract
+ * - **인증:** `Authorization: Bearer …` **또는** 세션 쿠키(`getAuthUserFromRequest`) — 둘 중 하나면 200 경로 가능.
+ * - **200:** `{ bounce_back_count: number }`
+ * - **401:** `{ error: "Unauthorized" }`
+ * - **503:** `{ error: "Database not configured" }`
+ * - **500:** `{ error: string }`
+ *
+ * @see docs/JOURNEY_BOUNCEBACK_IA.md · docs/spec/ARENA_DOMAIN_SPEC.md §4-11b
  */
 export async function POST(request: Request) {
   const user = await getAuthUserFromRequest(request);

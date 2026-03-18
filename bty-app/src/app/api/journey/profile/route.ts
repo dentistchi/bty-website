@@ -33,16 +33,31 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
   if (!data) {
+    const started_at = new Date().toISOString();
     return NextResponse.json({
       current_day: 1,
-      started_at: new Date().toISOString(),
+      started_at,
       season: 1,
       bounce_back_count: 0,
       last_completed_at: null,
       is_new: true,
+      is_comeback_eligible: false,
+      total_days: 28,
     });
   }
+
+  const progressIso = data.last_completed_at ?? data.started_at;
+  const progressMs = progressIso ? new Date(progressIso).getTime() : Date.now();
+  const touchMs = data.updated_at
+    ? new Date(data.updated_at).getTime()
+    : progressMs;
+  const now = Date.now();
+  /** Both “stale progress” and “no recent profile touch” (bounce-back refreshes updated_at). */
+  const is_comeback_eligible =
+    now - progressMs >= 3 * DAY_MS && now - touchMs >= 3 * DAY_MS;
 
   return NextResponse.json({
     current_day: data.current_day,
@@ -51,6 +66,8 @@ export async function GET(request: Request) {
     season: data.season ?? 1,
     bounce_back_count: data.bounce_back_count ?? 0,
     last_completed_at: data.last_completed_at ?? null,
+    is_comeback_eligible,
+    total_days: 28,
   });
 }
 

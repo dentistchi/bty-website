@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "prebuild": "node scripts/check-env.mjs",
-    "build": "npm run prebuild && next build",
+    "build": "npm run prebuild && NODE_OPTIONS='--max-old-space-size=4096' next build",
     "build:local": "npm run prebuild && NODE_OPTIONS='--max-old-space-size=4096' next build",
     "build:fast": "npm run prebuild && SKIP_SOURCE_MAPS=1 NODE_OPTIONS='--max-old-space-size=4096' next build",
     "opennext:build": "opennextjs-cloudflare build",
@@ -17,6 +17,10 @@
     "test": "vitest run",
     "test:q237-smoke": "vitest run \"src/app/[locale]/bty-arena/q237-stub-routes.smoke.test.ts\" \"src/app/[locale]/bty-arena/q237-bty-arena-result.smoke.test.ts\" \"src/app/[locale]/my-page/q237-my-page-subroutes.smoke.test.ts\"",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium",
+    "e2e:auth": "playwright test --project=setup",
+    "test:e2e:ci": "playwright test --reporter=line --workers=2",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "db:push": "supabase db push",
@@ -39,6 +43,7 @@
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "^1.16.5",
+    "@playwright/test": "1.49",
     "@storybook/addon-a11y": "^8.4.0",
     "@storybook/addon-essentials": "^8.4.0",
     "@storybook/addon-links": "^8.4.0",

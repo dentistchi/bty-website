@@ -81,7 +81,11 @@ export default function BtyIndexPage({ locale, t }: Props) {
           {tBtyFull.indexThreeHubsExplainer}
         </p>
 
-        <div className="flex flex-col gap-5 mb-10">
+        <section
+          className="flex flex-col gap-5 mb-10"
+          role="region"
+          aria-label={tBtyFull.indexHubEntriesRegionAria}
+        >
           {hubs.map((h) => (
             <Link
               key={h.key}
@@ -107,7 +111,7 @@ export default function BtyIndexPage({ locale, t }: Props) {
               </span>
             </Link>
           ))}
-        </div>
+        </section>
 
         <nav className="text-center border-t border-[var(--arena-text-soft)]/15 pt-8" aria-label={isKo ? "리더보드" : "Leaderboard"}>
           <Link

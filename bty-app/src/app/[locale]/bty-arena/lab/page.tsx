@@ -75,7 +75,7 @@ export default function LabPage() {
 
       <div style={{ marginTop: 24 }}>
         <Link
-          href={`/${locale}/bty-arena`}
+          href={`/${locale}/bty-arena/play`}
           style={{
             display: "inline-block",
             padding: "10px 16px",

@@ -207,6 +207,7 @@ export type Messages = {
     /** LE Stage·AIR 카드 묶음 랜드마크 (접근성) */
     leAirSummarySectionAria: string;
     /** 대시보드 상단 바로가기: Arena */
+    /** 대시보드 바로가기 → /bty-arena/play (허브와 구분) */
     dashboardShortcutGoArena: string;
     /** 대시보드 상단 바로가기: 주간 랭킹 */
     dashboardShortcutWeeklyRanking: string;
@@ -274,6 +275,8 @@ export type Messages = {
     foundryBackToBtyHome: string;
     /** bty 인덱스: Arena·Center·Foundry 한 줄 설명 */
     indexThreeHubsExplainer: string;
+    /** bty 인덱스: 세 허브 진입 카드 묶음 (landmark) */
+    indexHubEntriesRegionAria: string;
     /** 오늘 획득 XP 카드 부가 설명 */
     pointsTodaySubline: string;
     /** 대시보드 AIR 위젯: integritySlip 플래그 시 (API 값만 표시) */
@@ -837,6 +840,62 @@ export type Messages = {
     growthMyRankWeekNotParticipated: string;
     growthMyRankAnonymous: string;
     growthMyRankSeeLeaderboard: string;
+    /** Comeback modal (3+ day return) — calm recovery tone */
+    comebackTitle: string;
+    comebackBody: string;
+    comebackResumeJourneyCta: string;
+    comebackNotNowCta: string;
+    growthNavDojoTitle: string;
+    growthNavDojoLine: string;
+    growthNavIntegrityTitle: string;
+    growthNavIntegrityLine: string;
+    growthNavGuidanceTitle: string;
+    growthNavGuidanceLine: string;
+    growthNavJourneyTitle: string;
+    growthNavJourneyLine: string;
+    growthNavReflectionTitle: string;
+    growthNavReflectionLine: string;
+    growthBackToGrowth: string;
+    growthJourneyLandmarkAria: string;
+    arenaHubTitle: string;
+    /** 허브 ScreenShell 메인 타이틀 (짧게; 카드에서 이어하기/준비 문구 구분) */
+    arenaHubShellTitle: string;
+    arenaHubSubtitle: string;
+    arenaHubReadyTitle: string;
+    arenaHubReadyBody: string;
+    arenaHubCardTitleContinue: string;
+    arenaHubCardBodyResume: string;
+    arenaHubCardBodyNew: string;
+    arenaHubCtaWeeklyRank: string;
+    arenaHubEntryLoading: string;
+    arenaHubContinueCta: string;
+    arenaHubPlayCta: string;
+    arenaHubWeeklyRankLabel: string;
+    arenaHubSeasonEndsLabel: string;
+    arenaHubSummaryRegionAria: string;
+    arenaHubSummaryLoadError: string;
+    arenaResultEyebrow: string;
+    arenaResultRecordedTitle: string;
+    arenaResultRecordedSubtitle: string;
+    arenaResultSystemNoteTitle: string;
+    arenaResultSystemNoteBody: string;
+    arenaResultContinuePlayCta: string;
+    arenaResultReturnHubCta: string;
+    /** Growth 허브 — 4카드 (Dojo · Integrity Mirror · Guidance · Journey) */
+    growthHubSectionLabel: string;
+    growthHubHeadline: string;
+    growthHubLead: string;
+    growthHubCardsNavAria: string;
+    /** Growth 허브 본문 랜드마크 (스크린리더) */
+    growthHubMainRegionAria: string;
+    growthCardDojoTitle: string;
+    growthCardDojoDesc: string;
+    growthCardIntegrityTitle: string;
+    growthCardIntegrityDesc: string;
+    growthCardGuidanceTitle: string;
+    growthCardGuidanceDesc: string;
+    growthCardJourneyTitle: string;
+    growthCardJourneyDesc: string;
   };
   /** my-page progress / team / leader 스텁 카피 */
   myPageStub: {
@@ -909,6 +968,36 @@ export type Messages = {
     runStatusLabelDone: string;
     runStatusLabelInProgress: string;
     runStatusLabelStarted: string;
+    /** My Page ScreenShell — overview / subpages */
+    myPageShellOverviewTitle: string;
+    myPageShellOverviewSubtitle: string;
+    /** My Page 개요 카드 묶음 랜드마크 */
+    myPageOverviewRegionAria: string;
+    myPageShellProgressTitle: string;
+    myPageShellProgressSubtitle: string;
+    myPageShellTeamTitle: string;
+    myPageShellTeamSubtitle: string;
+    myPageShellLeaderTitle: string;
+    myPageShellLeaderSubtitle: string;
+    myPageCardIdentity: string;
+    myPageCardProgress: string;
+    myPageCardTeam: string;
+    myPageLinkView: string;
+    myPageLinkLeader: string;
+    myPageLabelCodeName: string;
+    myPageLabelStage: string;
+    myPageLabelCoreProgress: string;
+    myPageLabelWeeklyProgress: string;
+    myPageOverviewTeamStatus: string;
+    myPageProgressMovement: string;
+    myPageTeamNoteHeading: string;
+    myPageAccountLink: string;
+    myPageTabsAria: string;
+    myPageTabOverview: string;
+    myPageTabProgress: string;
+    myPageTabTeam: string;
+    myPageTabLeader: string;
+    myPageTabAccount: string;
   };
 };
 
@@ -1054,7 +1143,7 @@ const ko: Messages = {
       "서버에서 계산한 티어입니다. Core XP로부터 UI에서 재계산하지 않습니다.",
     dashboardTierCardRegionAria: "Arena 티어 (API)",
     leAirSummarySectionAria: "리더십 엔진·AIR 요약 위젯",
-    dashboardShortcutGoArena: "Arena로 가기",
+    dashboardShortcutGoArena: "Arena 플레이",
     dashboardShortcutWeeklyRanking: "주간 랭킹 보기",
     leaderboardMainRegionAria: "리더보드 카드·순위 목록",
     dashboardHeroSubtitle: "Arena 진행을 한눈에 볼 수 있어요.",
@@ -1105,6 +1194,7 @@ const ko: Messages = {
     foundryFeatureCardsRegionAria: "Dojo·역지사지·멘토·대시보드·Elite 연결",
     foundryBackToBtyHome: "← bty 메인",
     indexThreeHubsExplainer: "Arena는 시나리오·랭킹, Center는 쉼·편지, Foundry는 대시보드·멘토·연습입니다.",
+    indexHubEntriesRegionAria: "Arena·Center·Foundry 허브 선택",
     pointsTodaySubline: "오늘(UTC 기준) 획득한 XP입니다.",
     airIntegritySlip: "무결성 이탈 감지",
     leStageSummaryUnavailable: "스테이지 요약을 불러올 수 없습니다.",
@@ -1638,6 +1728,59 @@ const ko: Messages = {
       "이번 주 주간 XP가 없어 순위에 올라가지 않았어요. Arena에서 플레이하면 반영돼요.",
     growthMyRankAnonymous: "로그인 후 내 순위가 표시됩니다.",
     growthMyRankSeeLeaderboard: "전체 리더보드",
+    comebackTitle: "다시 만나서 반가워요",
+    comebackBody:
+      "잠시 쉬어간 것으로 보여요. 부담 없이, 지금 이어가던 회복 루프를 계속할 수 있어요.",
+    comebackResumeJourneyCta: "여정 이어가기",
+    comebackNotNowCta: "나중에",
+    growthNavDojoTitle: "Dojo",
+    growthNavDojoLine: "지금 상태를 가늠하는 50문항",
+    growthNavIntegrityTitle: "Integrity",
+    growthNavIntegrityLine: "상대 시선에서 상황 보기",
+    growthNavGuidanceTitle: "Guidance",
+    growthNavGuidanceLine: "결정 패턴 되돌아보기",
+    growthNavJourneyTitle: "Journey",
+    growthNavJourneyLine: "28일 회복 루프 — 오늘 경로부터 이어가기",
+    growthNavReflectionTitle: "Reflection",
+    growthNavReflectionLine: "내면 목소리 안정화 (Dear Me)",
+    growthBackToGrowth: "성장으로 돌아가기",
+    growthJourneyLandmarkAria: "28일 Journey 보드",
+    arenaHubTitle: "아레나를 이어갑니다.",
+    arenaHubShellTitle: "아레나",
+    arenaHubSubtitle: "판단·반복·압박 훈련은 이 공간에 있습니다.",
+    arenaHubReadyTitle: "시스템 준비",
+    arenaHubReadyBody: "마지막 시뮬을 이어가거나 새 시나리오를 시작할 수 있어요.",
+    arenaHubCardTitleContinue: "아레나를 이어갑니다.",
+    arenaHubCardBodyResume: "진행 중이던 시뮬을 이어갈 수 있어요.",
+    arenaHubCardBodyNew: "새 시나리오를 시작할 수 있어요.",
+    arenaHubCtaWeeklyRank: "주간 순위",
+    arenaHubEntryLoading: "불러오는 중…",
+    arenaHubContinueCta: "이어하기",
+    arenaHubPlayCta: "플레이",
+    arenaHubWeeklyRankLabel: "주간 순위",
+    arenaHubSeasonEndsLabel: "시즌 종료까지",
+    arenaHubSummaryRegionAria: "아레나 허브 — 주간 순위·시즌",
+    arenaHubSummaryLoadError: "통계를 불러오지 못했습니다.",
+    arenaResultEyebrow: "Arena 결과",
+    arenaResultRecordedTitle: "결정이 기록되었습니다.",
+    arenaResultRecordedSubtitle: "결과가 반영되었습니다.",
+    arenaResultSystemNoteTitle: "시스템 메시지",
+    arenaResultSystemNoteBody: "의사결정 일관성이 개선된 것으로 감지되었습니다.",
+    arenaResultContinuePlayCta: "계속",
+    arenaResultReturnHubCta: "Arena로 돌아가기",
+    growthHubSectionLabel: "성장",
+    growthHubHeadline: "내면 상태를 다시 세웁니다.",
+    growthHubLead: "해석·회복·정렬은 이 공간에서 이어집니다.",
+    growthHubCardsNavAria: "Dojo·Integrity·Guidance·Journey",
+    growthHubMainRegionAria: "성장 허브 — 내면 정렬·Dojo·Integrity·Guidance·Journey",
+    growthCardDojoTitle: "Dojo",
+    growthCardDojoDesc: "지금 상태를 가늠합니다",
+    growthCardIntegrityTitle: "Integrity Mirror",
+    growthCardIntegrityDesc: "상대 시선에서 상황을 봅니다",
+    growthCardGuidanceTitle: "Guidance",
+    growthCardGuidanceDesc: "결정 패턴을 되돌아봅니다",
+    growthCardJourneyTitle: "Journey",
+    growthCardJourneyDesc: "28일 회복 경로를 이어갑니다",
   },
   myPageStub: {
     subMyPage: "마이 페이지",
@@ -1706,6 +1849,34 @@ const ko: Messages = {
     runStatusLabelDone: "완료",
     runStatusLabelInProgress: "진행 중",
     runStatusLabelStarted: "시작됨",
+    myPageShellOverviewTitle: "지금 상태입니다.",
+    myPageShellOverviewSubtitle: "아이덴티티·진행·팀 요약이 여기에 있습니다.",
+    myPageOverviewRegionAria: "마이 페이지 개요 — 아이덴티티·진행·팀·계정 링크",
+    myPageShellProgressTitle: "현재 움직임입니다.",
+    myPageShellProgressSubtitle: "성장은 누적됩니다. 경쟁 창은 주기적으로 초기화됩니다.",
+    myPageShellTeamTitle: "집단 무결성 상태입니다.",
+    myPageShellTeamSubtitle: "팀 점수는 집단 실행 품질을 반영합니다.",
+    myPageShellLeaderTitle: "준비도와 자격입니다.",
+    myPageShellLeaderSubtitle: "리더십은 상태로 표시됩니다. 과도한 수치는 보이지 않습니다.",
+    myPageCardIdentity: "아이덴티티",
+    myPageCardProgress: "진행",
+    myPageCardTeam: "팀",
+    myPageLinkView: "보기 →",
+    myPageLinkLeader: "리더 →",
+    myPageLabelCodeName: "코드네임",
+    myPageLabelStage: "단계",
+    myPageLabelCoreProgress: "코어 진행",
+    myPageLabelWeeklyProgress: "주간 진행",
+    myPageOverviewTeamStatus: "상태",
+    myPageProgressMovement: "단계 이동",
+    myPageTeamNoteHeading: "안내",
+    myPageAccountLink: "계정",
+    myPageTabsAria: "마이 페이지 섹션",
+    myPageTabOverview: "개요",
+    myPageTabProgress: "진행",
+    myPageTabTeam: "팀",
+    myPageTabLeader: "리더",
+    myPageTabAccount: "계정",
   },
 };
 
@@ -1851,7 +2022,7 @@ const en: Messages = {
       "Tier from the server. Do not derive tier from Core XP in the UI.",
     dashboardTierCardRegionAria: "Arena tier (API)",
     leAirSummarySectionAria: "Leadership Engine and AIR summary widgets",
-    dashboardShortcutGoArena: "Go to Arena",
+    dashboardShortcutGoArena: "Play Arena",
     dashboardShortcutWeeklyRanking: "View weekly ranking",
     leaderboardMainRegionAria: "Leaderboard cards and ranking list",
     dashboardHeroSubtitle: "Your arena progress at a glance.",
@@ -1902,6 +2073,7 @@ const en: Messages = {
     foundryFeatureCardsRegionAria: "Links to Dojo, Integrity, mentor, dashboard, Elite",
     foundryBackToBtyHome: "← bty home",
     indexThreeHubsExplainer: "Arena: scenarios & ranking. Center: rest & letters. Foundry: dashboard, mentor & practice.",
+    indexHubEntriesRegionAria: "Arena, Center, and Foundry hub links",
     pointsTodaySubline: "XP earned today (UTC date).",
     airIntegritySlip: "Integrity slip",
     leStageSummaryUnavailable: "Unable to load stage summary.",
@@ -2436,6 +2608,59 @@ const en: Messages = {
       "No weekly XP yet this week, so you’re not ranked. Play in Arena to appear.",
     growthMyRankAnonymous: "Sign in to see your rank.",
     growthMyRankSeeLeaderboard: "Full leaderboard",
+    comebackTitle: "Welcome back",
+    comebackBody:
+      "It looks like you stepped away for a few days. Whenever you’re ready, you can continue your recovery path—no pressure.",
+    comebackResumeJourneyCta: "Resume Journey",
+    comebackNotNowCta: "Not now",
+    growthNavDojoTitle: "Dojo",
+    growthNavDojoLine: "50-question snapshot of where you are",
+    growthNavIntegrityTitle: "Integrity",
+    growthNavIntegrityLine: "See the situation from the other side",
+    growthNavGuidanceTitle: "Guidance",
+    growthNavGuidanceLine: "Review your decision patterns",
+    growthNavJourneyTitle: "Journey",
+    growthNavJourneyLine: "28-day recovery loop—continue from your current day",
+    growthNavReflectionTitle: "Reflection",
+    growthNavReflectionLine: "Stabilize your inner voice (Dear Me)",
+    growthBackToGrowth: "Back to Growth",
+    growthJourneyLandmarkAria: "28-day Journey board",
+    arenaHubTitle: "Continue your Arena.",
+    arenaHubShellTitle: "Arena",
+    arenaHubSubtitle: "Decision, repetition, and pressure training live here.",
+    arenaHubReadyTitle: "System ready",
+    arenaHubReadyBody: "Resume your last simulation or begin a new scenario.",
+    arenaHubCardTitleContinue: "Continue your Arena.",
+    arenaHubCardBodyResume: "Resume your last simulation.",
+    arenaHubCardBodyNew: "Start a new scenario.",
+    arenaHubCtaWeeklyRank: "Weekly rank",
+    arenaHubEntryLoading: "Loading…",
+    arenaHubContinueCta: "Continue",
+    arenaHubPlayCta: "Play Game",
+    arenaHubWeeklyRankLabel: "Weekly rank",
+    arenaHubSeasonEndsLabel: "Season ends in",
+    arenaHubSummaryRegionAria: "Arena hub — weekly rank and season",
+    arenaHubSummaryLoadError: "Could not load stats.",
+    arenaResultEyebrow: "Arena Result",
+    arenaResultRecordedTitle: "Decision recorded.",
+    arenaResultRecordedSubtitle: "Outcome has been updated.",
+    arenaResultSystemNoteTitle: "System note",
+    arenaResultSystemNoteBody: "Improved decision consistency detected.",
+    arenaResultContinuePlayCta: "Continue",
+    arenaResultReturnHubCta: "Return to Arena",
+    growthHubSectionLabel: "Growth",
+    growthHubHeadline: "Rebuild your internal state.",
+    growthHubLead: "Reflection, recovery, and alignment live here.",
+    growthHubCardsNavAria: "Dojo, Integrity Mirror, Guidance, and Journey",
+    growthHubMainRegionAria: "Growth hub — inner alignment, Dojo, Integrity, Guidance, Journey",
+    growthCardDojoTitle: "Dojo",
+    growthCardDojoDesc: "Measure your current state",
+    growthCardIntegrityTitle: "Integrity Mirror",
+    growthCardIntegrityDesc: "See the situation from the other side",
+    growthCardGuidanceTitle: "Guidance",
+    growthCardGuidanceDesc: "Review your decision patterns",
+    growthCardJourneyTitle: "Journey",
+    growthCardJourneyDesc: "Continue your 28-day recovery path",
   },
   myPageStub: {
     subMyPage: "My Page",
@@ -2504,6 +2729,34 @@ const en: Messages = {
     runStatusLabelDone: "Completed",
     runStatusLabelInProgress: "In progress",
     runStatusLabelStarted: "Started",
+    myPageShellOverviewTitle: "Your current status.",
+    myPageShellOverviewSubtitle: "Identity, progress, and team summary live here.",
+    myPageOverviewRegionAria: "My Page overview — identity, progress, team, account link",
+    myPageShellProgressTitle: "Your current movement.",
+    myPageShellProgressSubtitle: "Growth remains cumulative. Competition resets by window.",
+    myPageShellTeamTitle: "Collective integrity status.",
+    myPageShellTeamSubtitle: "Team score reflects collective execution quality.",
+    myPageShellLeaderTitle: "Readiness and qualification.",
+    myPageShellLeaderSubtitle: "Leadership status is shown as state, not raw analytics.",
+    myPageCardIdentity: "Identity",
+    myPageCardProgress: "Progress",
+    myPageCardTeam: "Team",
+    myPageLinkView: "View →",
+    myPageLinkLeader: "Leader →",
+    myPageLabelCodeName: "Code Name",
+    myPageLabelStage: "Stage",
+    myPageLabelCoreProgress: "Core Progress",
+    myPageLabelWeeklyProgress: "Weekly Progress",
+    myPageOverviewTeamStatus: "Status",
+    myPageProgressMovement: "Stage movement",
+    myPageTeamNoteHeading: "Note",
+    myPageAccountLink: "Account",
+    myPageTabsAria: "My Page sections",
+    myPageTabOverview: "Overview",
+    myPageTabProgress: "Progress",
+    myPageTabTeam: "Team",
+    myPageTabLeader: "Leader",
+    myPageTabAccount: "Account",
   },
 };
 

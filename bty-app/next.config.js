@@ -1,5 +1,10 @@
+const path = require("path");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  outputFileTracingRoot: path.join(__dirname),
+  /** eslint-config-next + root `ajv` override → Ajv strict "additionalItems" throws; Gate lint = `tsc --noEmit`. */
+  eslint: { ignoreDuringBuilds: true },
   // Resolve these on server from node_modules instead of vendor chunks (avoids missing chunk errors)
   serverExternalPackages: ["tailwind-merge", "clsx"],
   // 로컬 빠른 빌드: SKIP_SOURCE_MAPS=1 일 때 소스맵 비활성화

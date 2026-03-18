@@ -455,7 +455,7 @@ export default function LeaderboardPage() {
                 message={t.noData}
                 cta={
                   <Link
-                    href={`/${locale}/bty-arena`}
+                    href={`/${locale}/bty-arena/play`}
                     style={{
                       padding: "10px 18px",
                       borderRadius: 10,

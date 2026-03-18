@@ -62,4 +62,26 @@ describe("POST /api/arena/sub-name", () => {
     expect(data.error).toBe("INVALID_SUB_NAME");
     expect(data.reason).toBe("MAX_7_CHARS");
   });
+
+  /** SPRINT 49 TASK 9 / 255: 프로필 없음 → 404. */
+  it("returns 404 when arena_profiles row missing", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: () =>
+                Promise.resolve({ data: null, error: null }),
+            }),
+          }),
+        }),
+      },
+      base: {},
+    });
+    const res = await POST(makePostRequest({ subName: "Nick" }));
+    expect(res.status).toBe(404);
+    const data = await res.json();
+    expect(data.error).toBe("NOT_FOUND");
+  });
 });

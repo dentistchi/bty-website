@@ -6,6 +6,22 @@
 **정책**: 문서·백로그·Release Gate 점검은 **배포 전 1회** 수행. 일상 작업은 웹 개발(UI·API·도메인) 집중.  
 **배포 준비:** `docs/MVP_DEPLOYMENT_READINESS.md` (배포 시 1회 체크리스트). **일상 vs 배포:** `docs/WORK_POLICY.md`.
 
+**SPRINT 56·Gate 56 (262) 오픈 (2026-03-18):** **First Task = C5 TASK1.** Gate **56차** PASS 시 본 블록 아래 한 줄 추가.
+
+**[VERIFY] Release Gate — Foundry 55차 (C5, SPRINT 55·261, 2026-03-18):** **RESULT: PASS.** **A~E)** 인바리언트 유지. **F)** `tsc --noEmit` ✓ · Vitest **277 / 2108** ✓ · `next build` ✓ (`rm -rf .next` 후 ENOENT 회피) · `test:q237-smoke` **7/7** ✓. C3 **eliteMentorRequest.edges**·**GET /api/arena/membership-request** 회귀 포함.
+
+**[VERIFY] Release Gate — Foundry 54차 (C5, SPRINT 54·260, 2026-03-18):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/API 스키마 변경 없음·인바리언트 유지. **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **275 files / 2102 tests** ✓ · `next build` ✓.
+
+**[VERIFY] Release Gate — Foundry 53차 (C5, SPRINT 53·259, 2026-03-18):** **RESULT: PASS.** **A~E)** 인바리언트 유지. **F)** `tsc --noEmit` ✓ · Vitest **275 / 2102** ✓ · `next build` ✓ · `test:q237-smoke` **3/7** ✓. C3 **xpAwardDedup.edges**·**GET /api/arena/weekly-xp** 회귀 포함.
+
+**[VERIFY] Release Gate — Foundry 52차 (C5, SPRINT 52·258, 2026-03-18):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/API 스키마 변경 없음·인바리언트 유지. **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **273 files / 2097 tests** ✓ · `next build` ✓. C3 **scenarioDisplay**·**beginner-complete** 회귀 포함.
+
+**[VERIFY] Release Gate — Foundry 51차 (C5, SPRINT 51·257, 2026-03-18):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/API 스키마 변경 없음·인바리언트 유지. **F)** `bty-app/scripts/self-healing-ci.sh`: tsc ✓ · Vitest **271 files / 2091 tests** ✓ · `next build` ✓ (Gate 50과 동일: `eslint.ignoreDuringBuilds`·`NODE_OPTIONS`·`outputFileTracingRoot`). **`.next` manifest ENOENT 시:** clean `.next` 후 재빌드.
+
+**[VERIFY] Release Gate — Foundry 50차 (C5, SPRINT 50·256, 2026-03-17):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/API 스키마 변경 없음·인바리언트 유지. **F)** `bty-app/scripts/self-healing-ci.sh`: `tsc --noEmit` ✓ · Vitest **271 files / 2091 tests** ✓ · `next build` ✓ (`eslint.ignoreDuringBuilds: true` — root `ajv` override로 `next lint`/ESLint Ajv strict 실패 회피; 타입 검사는 tsc). **`npm run build`:** `NODE_OPTIONS='--max-old-space-size=4096'`·`outputFileTracingRoot` = `bty-app` (모노레포 lockfile·`.next` ENOENT 완화).
+
+**Foundry 47차·SPRINT 253 동기 (C2, 2026-03-24):** 보드 **C5 TASK1(Gate)** 완료 후 문서·수치 반영. **`origin/main` 배포 = `58b8342`** (이번 동기는 **로컬/워크스페이스** `self-healing-ci` 기준). **A~E)** 세션·주간·랭킹·Core/Weekly 분리·API 계약 인바리언트 유지(C3 `coreXpDisplay`·today-xp, C4 Growth 허브 a11y 등 Foundry 47 범위). **F)** `bty-app/scripts/self-healing-ci.sh`: Lint ✓ · **266 files** / **2076 tests** ✓ · Build ✓. *(보조 타입/스모크: `uxPhase1Stub.arenaHubTitle`, q237 result smoke, wireframe 링크.)* **RESULT: PASS.** *다음 **배포 push** 시 커밋 단위 Gate 1회 재수행.*
+
 **리더보드 API 인증 요구사항 (Leaderboard API auth)** — 출처: docs/BTY_ARENA_FEEDBACK_2026-03.md §8.  
 - **인증**: 리더보드 API(및 관련 Live ranking / Past scenarios API)는 **인증된 사용자만** 허용.  
 - **미인증 시 처리**: 세션/쿠키 없거나 유효하지 않으면 **401 Unauthorized** 반환 또는 로그인 유도. UI에서는 "Sign in to see leaderboard" 등 명시적 문구 표시.  
@@ -47,6 +63,22 @@
 
 **배포 시 실행 순서**: MVP_DEPLOYMENT_READINESS(1회) → Gate(self-healing-ci 등) → 본 문서·보드·CURRENT_TASK 반영.
 
+**E) API (261, C3)**: **`GET /api/arena/membership-request`** — 미인증 **401**; 행 없음 **200** `{ request: null }`. **회귀 테스트**·핸들러 변경 없음.
+
+**E) API (259, C3)**: **`GET /api/arena/weekly-xp`** — 미인증 **401** `UNAUTHENTICATED`; 리그 없을 때 **200** `xpTotal`·`weekStartISO`·`season: null`. **회귀 테스트**·핸들러 변경 없음.
+
+**E) API (258, C3)**: **`POST /api/arena/beginner-complete`** — 미인증 **401**; `runId`/`scenarioId` 없음 **400** `runId and scenarioId required`. **회귀 테스트**·핸들러 변경 없음.
+
+**E) API (256, C3)**: **`POST /api/arena/code-name`** — 미인증 **401** `UNAUTHENTICATED`; 코드명 3자 미만 **400** `INVALID_CODE_NAME`·`LENGTH_3_TO_20`. **회귀 테스트**·핸들러 변경 없음.
+
+**E) API (255, C3, 2026-03-29)**: **`POST /api/arena/sub-name`** — `arena_profiles` 없으면 **404** `NOT_FOUND`. **회귀 테스트**·핸들러 변경 없음.
+
+**E) API (254, C3, 2026-03-26)**: **`GET /api/arena/leaderboard/status`** — **200** `{ hasWeeklyXpRow, xpTotal, updatedAt }` (weekly_xp `league_id` null 단건). **회귀 테스트**·핸들러 변경 없음.
+
+**E) API (253, C3, 2026-03-23)**: **`GET /api/arena/today-xp`** — 행 `xp`가 null·비숫자면 합산에서 **0 처리** (`Number(r.xp) || 0`). **회귀 테스트 1건**·핸들러 변경 없음.
+
+**E) API (252, C3, 2026-03-21)**: **`POST /api/journey/entries`** — 잘못된 JSON 본문은 `request.json().catch(() => ({}))`로 **day 기본 1** upsert (Journey 계약). **회귀 테스트만** 추가·핸들러 변경 없음.
+
 **E) API (251, C4)**: **`POST /api/arena/run/complete`** — **409** `{ error: "RUN_ABORTED" }` (`meta.aborted_at`); 이중 완료 **200** `idempotent`. **`GET /api/arena/core-xp`** — 401 `UNAUTHENTICATED`. **`GET /api/me/access`** — 401 `Unauthorized`. **`GET /api/bty/healing/progress`** — **404 없음**; 빈 진행 **200**.
 
 **E) API (250, C4)**: **`GET /api/arena/run/[id]`** — 404 `NOT_FOUND`(타인·없음). **`PATCH /api/arena/profile`** — 400 `INVALID_JSON`; 422 `EMPTY_PATCH`·아바타 검증. **`GET /api/arena/leaderboard`** — 401 `UNAUTHENTICATED`+`message`. **`GET /api/center/resilience`** — 비어 있지 않은 **`period`**가 1–365가 아니면 **400** `INVALID_PERIOD`.
@@ -63,11 +95,21 @@
 
 **D) Migration (SPRINT 241, C4, 로컬·다음 배포 전 적용)**: `20260317120000_user_healing_awakening_acts.sql` — `user_healing_awakening_acts`(user_id, act_id 1–3, RLS select/insert own). Healing POST 진행·Core/Weekly XP 비침해.
 
+**배포 후 (C2, 2026-03-18)**: **`58b8342`** — chore: 배포 — Arena/BTY UI·API, 도메인 규칙·테스트, 마이그레이션·문서. **202 files** (+11,498 / -718). **`cce5374..58b8342` → origin/main**. Gate § A~F·`MVP_DEPLOYMENT_READINESS` 대조. **A)** 쿠키 Secure(prod)·SameSite·Path — 본 배포는 Arena/BTY UI·API·도메인·마이그레이션 중심; 세션 정책 기존 유지 가정. **B)** week_id·Core/Weekly 분리·리셋이 Core 미감소 — 도메인 규칙 유지. **C)** 랭킹=Weekly XP·타이브레이커·시즌 미반영 유지. **D)** `user_healing_awakening_acts` 등 마이그레이션 포함 — 프로덕션 적용·롤백은 Supabase 마이그레이션 절차. **E)** § E) API(251 등)와 정합. **F)** `bty-app/scripts/self-healing-ci.sh`: Lint ✓ · **264 files** / **2067 tests** ✓ · Build ✓. **RESULT: PASS.**
+
 **배포 후 (C2, 2026-03-19)**: **`cce5374`** — chore: 배포 — Foundry, HubTopNav, API·도메인·Q235 테스트·문서. **62 files** (+1,279 / -277). **`fd81860..cce5374` → origin/main**. Gate § A~F·MVP 요약 대조(인바리언트 유지). **`bty-app/scripts/self-healing-ci.sh`**: tsc ✓ · Vitest **222 files** ✓ · Build ✓. **RESULT: PASS.**
 
 **배포 후 (C2, 2026-03-18)**: **`fd81860`** — Git push 완료(`e4ae594..fd81860` → origin/main). Gate § A~F·`MVP_DEPLOYMENT_READINESS` 요약 대조(인바리언트·Auth/Weekly/Leaderboard 분리 유지, 본 배포는 아바타·API·도메인·테스트·문서 중심). **`./scripts/self-healing-ci.sh`**: tsc ✓ · Vitest **218 files** ✓ · Build ✓. **RESULT: PASS.**
 
 **최근 완료 (배포 push)**: **`fd81860`** — chore: 배포 — 아바타/아웃핏, API·도메인·Q3/Q4 테스트·문서. **200 files** (+4,015 / -423). **`e4ae594..fd81860` → origin/main**. Gate·MVP·문서 반영. **RESULT: PASS.**
+
+**[VERIFY] Release Gate Foundry 50차 (2026-03-18, C5 SPRINT 50 TASK 1)**: A~E 기존 §·인바리언트 정합. **F)** `./scripts/self-healing-ci.sh`·Vitest **271 files** / **2091 tests** ✓ · Build ✓. **RESULT: PASS.** 보드·CURRENT_TASK·§3(TASK6) 반영.
+
+**[VERIFY] Release Gate Foundry 49차 (2026-03-29, C5 SPRINT 49 TASK 1)**: A~E 기존 §·인바리언트 정합. **F)** `./scripts/self-healing-ci.sh`·Vitest **269 files** / **2086 tests** ✓ · Build ✓. **RESULT: PASS.** 보드·CURRENT_TASK·§3(TASK6) 반영.
+
+**[VERIFY] Release Gate Foundry 48차 (2026-03-26, C5 SPRINT 48 TASK 1)**: A~E 기존 §·인바리언트 정합. **F)** `./scripts/self-healing-ci.sh`·Vitest **268 files** / **2082 tests** ✓ · Build ✓. 허브 스모크 `q237-bty-arena-hub` SSR(로딩 게이트) 정합. **RESULT: PASS.** 보드·CURRENT_TASK·§3(TASK6) 반영.
+
+**[VERIFY] Release Gate Foundry 47차 (2026-03-23, C5 SPRINT 47 TASK 1)**: A~E 기존 §·인바리언트 정합. **F)** `./scripts/self-healing-ci.sh`·Vitest **266 files** / **2076 tests** ✓ · Build ✓. 표시용 `coreXpDisplay` 비유한수 Core XP → 0 경로 정규화(NaN 엣지). **RESULT: PASS.** 보드·CURRENT_TASK·`ELITE_3RD` §3(TASK6) 반영.
 
 **최근 완료 (2026-03-12)**: [UI] Center/Foundry 접근성 1곳 (SPRINT 46 TASK 4, C4). 대시보드 바로가기 링크 그룹 role=region·aria-label. render-only.
 

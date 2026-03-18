@@ -174,6 +174,7 @@ export default function DashboardClient() {
   const [streak, setStreak] = React.useState<number>(0);
   const params = useParams();
   const locale = (typeof params?.locale === "string" ? params.locale : "en") as string;
+  const arenaPlayHref = `/${locale}/bty-arena/play`;
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [subNameDraft, setSubNameDraft] = React.useState("");
@@ -625,7 +626,7 @@ export default function DashboardClient() {
               <div style={{ minWidth: 120 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, opacity: 0.9 }}>{tLanding.arenaTitle}</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  <Link href={`/${locale}/bty-arena`} className="bty-btn-primary" style={{ padding: "10px 16px", borderRadius: 10, background: "var(--arena-accent)", color: "white", textDecoration: "none", fontWeight: 600, fontSize: 13 }} aria-label={locale === "ko" ? "아레나로 가기" : "Go to Arena"}>
+                  <Link href={arenaPlayHref} className="bty-btn-primary" style={{ padding: "10px 16px", borderRadius: 10, background: "var(--arena-accent)", color: "white", textDecoration: "none", fontWeight: 600, fontSize: 13 }} aria-label={locale === "ko" ? "아레나 플레이로 가기" : "Go to Arena play"}>
                     {tLanding.arenaCta}
                   </Link>
                   <Link href={`/${locale}/bty/leaderboard`} className="bty-btn-outline" style={{ padding: "10px 16px", borderRadius: 10, border: "1px solid var(--arena-accent)", color: "var(--arena-text)", textDecoration: "none", fontWeight: 600, fontSize: 13 }} aria-label={locale === "ko" ? "주간 랭킹 보기" : "View weekly ranking"}>
@@ -696,7 +697,7 @@ export default function DashboardClient() {
                   String(dashboardSummary.recommendation.nextAction).trim() !== "" &&
                   dashboardSummary?.recommendation?.source === "arena" && (
                   <Link
-                    href={`/${locale}/bty-arena`}
+                    href={arenaPlayHref}
                     style={{
                       display: "inline-block",
                       padding: "10px 16px",
@@ -707,9 +708,9 @@ export default function DashboardClient() {
                       fontWeight: 600,
                       fontSize: 13,
                     }}
-                    aria-label={locale === "ko" ? "아레나로 가기" : "Go to Arena"}
+                    aria-label={locale === "ko" ? "아레나 플레이로 가기" : "Go to Arena play"}
                   >
-                    {locale === "ko" ? "Arena로 이동 →" : "Go to Arena →"}
+                    {locale === "ko" ? "Arena 플레이 →" : "Play Arena →"}
                   </Link>
                 )}
                 {dashboardSummary?.recommendation?.nextAction != null &&
@@ -756,7 +757,7 @@ export default function DashboardClient() {
                   String(dashboardSummary.recommendation.nextAction).trim() !== "" &&
                   !dashboardSummary?.recommendation?.source && (
                   <Link
-                    href={`/${locale}/bty-arena`}
+                    href={arenaPlayHref}
                     style={{
                       display: "inline-block",
                       padding: "10px 16px",
@@ -767,9 +768,9 @@ export default function DashboardClient() {
                       fontWeight: 600,
                       fontSize: 13,
                     }}
-                    aria-label={locale === "ko" ? "아레나로 가기" : "Go to Arena"}
+                    aria-label={locale === "ko" ? "아레나 플레이로 가기" : "Go to Arena play"}
                   >
-                    {locale === "ko" ? "Arena로 이동 →" : "Go to Arena →"}
+                    {locale === "ko" ? "Arena 플레이 →" : "Play Arena →"}
                   </Link>
                 )}
               </div>
@@ -782,7 +783,7 @@ export default function DashboardClient() {
             style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}
           >
             <Link
-              href={`/${locale}/bty-arena`}
+              href={arenaPlayHref}
               className="bty-btn-primary"
               style={{
                 padding: "12px 20px",
@@ -1221,7 +1222,7 @@ export default function DashboardClient() {
                   locale={locale}
                   emptyCta={
                     <Link
-                      href={`/${locale}/bty-arena`}
+                      href={arenaPlayHref}
                       style={{
                         padding: "10px 18px",
                         borderRadius: 10,
