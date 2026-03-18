@@ -53,6 +53,7 @@ describe("GET /api/dojo/questions", () => {
     });
     const res = await GET();
     expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toMatch(/public.*max-age=120/);
     const data = await res.json();
     expect(Array.isArray(data.choiceValues)).toBe(true);
   });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import HubTopNav from "@/components/bty/HubTopNav";
 import { PageLoadingFallback } from "@/components/bty-arena";
@@ -9,8 +9,8 @@ import { PageLoadingFallback } from "@/components/bty-arena";
 export default function JournalPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [chatOpen, setChatOpen] = useState(false);
-
+  const params = useParams();
+  const loc = params?.locale === "ko" ? "ko" : "en";
   useEffect(() => {
     if (!loading && !user) router.replace("/login?next=" + encodeURIComponent("/journal"));
   }, [loading, user, router]);
@@ -33,29 +33,11 @@ export default function JournalPage() {
           <button type="button" className="px-3 py-2 border rounded" aria-label="저장">저장</button>
         </div>
       </div>
-
-      {/* 챗 토글 버튼 */}
-      <button
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full border shadow bg-white"
-        onClick={() => setChatOpen((v) => !v)}
-        aria-label="챗 열기"
-      >
-        챗
-      </button>
-
-      {chatOpen && (
-        <div className="fixed inset-0 z-50 bg-black/30" onClick={() => setChatOpen(false)}>
-          <div className="absolute right-0 bottom-0 top-0 w-[90%] max-w-md bg-white" onClick={(e) => e.stopPropagation()}>
-            <div className="h-12 border-b px-4 flex items-center justify-between">
-              <div className="font-semibold">코치 챗</div>
-              <button type="button" className="text-sm underline" onClick={() => setChatOpen(false)} aria-label="닫기">닫기</button>
-            </div>
-            <div className="p-4 text-sm">
-              (저널용 챗 UI)
-            </div>
-          </div>
-        </div>
-      )}
+      <p className="max-w-xl mx-auto px-6 pb-8 text-center text-sm text-gray-500">
+        {loc === "ko"
+          ? "Dr. Chi와 이야기하려면 오른쪽 아래 아바타 버튼을 눌러 주세요."
+          : "Tap the Dr. Chi avatar button (bottom-right) to chat."}
+      </p>
     </div>
   );
 }

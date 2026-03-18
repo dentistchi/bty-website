@@ -22,6 +22,8 @@ export interface LeaderboardRowProps {
   isMe?: boolean;
   /** Optional locale for number formatting (e.g. "en", "ko"). */
   locale?: string;
+  /** `leaderboardTieRankSuffixDisplayKey` → i18n; 위 행과 동일 주간 XP일 때만. */
+  tieRankSuffix?: string | null;
 }
 
 /**
@@ -38,6 +40,7 @@ export function LeaderboardRow({
   tier,
   isMe = false,
   locale,
+  tieRankSuffix,
 }: LeaderboardRowProps) {
   const displayName = subName ? `${codeName} · ${subName}` : codeName;
   const initials = codeName.slice(0, 2).toUpperCase();
@@ -49,9 +52,11 @@ export function LeaderboardRow({
   const isKo = locale === "ko";
   const tierBit =
     tier && tier !== "Code Name" ? (isKo ? `, 티어 ${tier}` : `, tier ${tier}`) : "";
+  const tieAria =
+    tieRankSuffix != null && tieRankSuffix !== "" ? `, ${tieRankSuffix}` : "";
   const rowAriaLabel = isKo
-    ? `순위 ${rank}, ${displayName}${tierBit}, 주간 XP ${formattedXp}${isMe ? ", 나" : ""}`
-    : `Rank ${rank}, ${displayName}${tierBit}, ${formattedXp} Weekly XP${isMe ? ", You" : ""}`;
+    ? `순위 ${rank}${tieAria}, ${displayName}${tierBit}, 주간 XP ${formattedXp}${isMe ? ", 나" : ""}`
+    : `Rank ${rank}${tieAria}, ${displayName}${tierBit}, ${formattedXp} Weekly XP${isMe ? ", You" : ""}`;
   const statsGroupAria = isKo ? "주간 XP 및 티어" : "Weekly XP and tier";
   return (
     <div
@@ -71,16 +76,24 @@ export function LeaderboardRow({
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <div
         style={{
-          width: 34,
-          height: 34,
+          minWidth: 34,
+          minHeight: 34,
+          padding: tieRankSuffix ? "4px 6px" : 0,
           borderRadius: 10,
           border: "1px solid color-mix(in srgb, var(--arena-text-soft) 30%, transparent)",
-          display: "grid",
-          placeItems: "center",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
           fontWeight: 800,
         }}
         >
-          {rank}
+          <span>{rank}</span>
+          {tieRankSuffix ? (
+            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, opacity: 0.85 }}>
+              {tieRankSuffix}
+            </span>
+          ) : null}
         </div>
         {avatarLayers?.characterImageUrl ? (
           <AvatarComposite

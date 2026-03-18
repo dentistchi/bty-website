@@ -50,6 +50,8 @@ describe("GET /api/me/elite", () => {
 
     const res = await GET();
     expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toMatch(/private/);
+    expect(res.headers.get("cache-control")).toMatch(/max-age=60/);
     const data = await res.json();
     expect(data.isElite).toBe(true);
     expect(data.badges).toHaveLength(1);

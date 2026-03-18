@@ -20,6 +20,15 @@ function makeRequest(): NextRequest {
   return new NextRequest("http://localhost/api/bty/awakening");
 }
 
+function supabaseWithActs(rows: { act_id: number }[]) {
+  const chain = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    order: vi.fn().mockResolvedValue({ data: rows, error: null }),
+  };
+  return { from: vi.fn(() => chain) };
+}
+
 describe("GET /api/bty/awakening", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -47,7 +56,7 @@ describe("GET /api/bty/awakening", () => {
   it("returns 200 with acts and trigger when authenticated", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
-      supabase: {},
+      supabase: supabaseWithActs([{ act_id: 1 }]),
       base: {},
     });
 
@@ -65,12 +74,13 @@ describe("GET /api/bty/awakening", () => {
       day: 30,
       requires_min_sessions: 10,
     });
+    expect(data.completedActs).toEqual([1]);
   });
 
   it("returns 200 with content-type application/json and body shape (ok, acts, trigger)", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u2" },
-      supabase: {},
+      supabase: supabaseWithActs([]),
       base: {},
     });
     const res = await GET(makeRequest());
@@ -85,22 +95,25 @@ describe("GET /api/bty/awakening", () => {
     expect(typeof data.trigger?.requires_min_sessions).toBe("number");
   });
 
-  it("returns 200 with exactly ok, acts, trigger keys (no extra fields)", async () => {
+  it("returns 200 with ok, acts, trigger, completedActs", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
-      supabase: {},
+      supabase: supabaseWithActs([]),
       base: {},
     });
     const res = await GET(makeRequest());
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(Object.keys(data).sort()).toEqual(["acts", "ok", "trigger"].sort());
+    expect(Object.keys(data).sort()).toEqual(
+      ["acts", "completedActs", "ok", "trigger"].sort()
+    );
+    expect(Array.isArray(data.completedActs)).toBe(true);
   });
 
   it("returns 500 with INTERNAL_ERROR and optional detail when handler throws", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
-      supabase: {},
+      supabase: supabaseWithActs([]),
       base: {},
     });
     mockCopyCookiesAndDebug.mockImplementation(() => {

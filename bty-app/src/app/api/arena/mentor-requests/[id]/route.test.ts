@@ -190,6 +190,26 @@ describe("PATCH /api/arena/mentor-requests/[id]", () => {
     expect(data.error).toBe("INVALID_TRANSITION");
   });
 
+  /** C6 240: rejected → approved 불가(도메인 pending만 전이). */
+  it("240: returns INVALID_TRANSITION when row already rejected", async () => {
+    mockRequireAdminEmail.mockResolvedValue({
+      ok: true,
+      user: { email: "admin@test.com", id: "a1" },
+    });
+    mockGetSupabaseAdmin.mockReturnValue(
+      createAdminMock({ id: "req-1", status: "rejected" }, { data: null, error: null })
+    );
+    mockCanTransitionStatus.mockImplementation(
+      (cur: string, next: string) => cur === "pending" && (next === "approved" || next === "rejected")
+    );
+
+    const res = await PATCH(makeRequest({ status: "approved" }), {
+      params: Promise.resolve({ id: "req-1" }),
+    });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("INVALID_TRANSITION");
+  });
+
   it("returns 200 with ok, id, status, respondedAt on approve success", async () => {
     mockRequireAdminEmail.mockResolvedValue({
       ok: true,

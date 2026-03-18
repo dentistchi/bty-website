@@ -41,6 +41,8 @@ export { ArenaOtherModal } from "./ArenaOtherModal";
 export type { ArenaOtherModalProps } from "./ArenaOtherModal";
 export { ArenaToast } from "./ArenaToast";
 export type { ArenaToastProps } from "./ArenaToast";
+export { ResultShareStub } from "./ResultShareStub";
+export { RunDetailView } from "./RunDetailView";
 export { ArenaRunHistory } from "./ArenaRunHistory";
 export type { ArenaRunHistoryProps } from "./ArenaRunHistory";
 export { LabUsageStrip } from "./LabUsageStrip";

@@ -4,13 +4,70 @@ Summary of gate/integration runs (C7). Major sprint state changes. C1 REFRESH re
 
 ---
 
+## 2026-03-18
+
+- **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (264 files, 2067 tests), Build PASS. Overall PASS. Owner to fix: —. *(SPRINT 251; latest)*
+- **C4 CONTINUE**: SPRINT **251** C4 태스크 전부 [x] 재확인. 신규 API 큐 없음 → **252** C1 splint·`SPRINT_PLAN` C4 표 대기.
+- **REFRESH (문서 읽기)**: SPRINT **251** — C3·C4·C5(2–5)·C6 본문 [x] 확인. BLOCKER: C5 TASK1 Journey·bounce-back, C2 배포 Gate (`cce5374` 이후 push 대기). 252 = C1 splint 후.
+- **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (264 files, 2067 tests), Build PASS. Overall PASS. Owner to fix: —. *(SPRINT 251)*
+
+## 2026-03-12
+
+- **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (264 files, 2067 tests), Build PASS. Overall PASS. Owner to fix: —.
+- **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (264 files, 2067 tests), Build PASS. Overall PASS. Owner to fix: —.
+- **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (264 files, 2058 tests), Build PASS. Overall PASS. Owner to fix: —.
+- **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (264 files, 2058 tests), Build PASS. Overall PASS. Owner to fix: —.
+
+## 2026-03-17
+
+- **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (263 files, 2050 tests), Build PASS. Overall PASS. Owner to fix: —.
+- **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (262 files, 2041 tests), Build PASS. Overall PASS. Owner to fix: —.
+- **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (262 files, 2023 tests), Build PASS. Overall PASS. Owner to fix: —. *(SPRINT 247)*
+- **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (258 files, 2007 tests), Build PASS. Overall PASS. Owner to fix: —. *(SPRINT 246)*
+- **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (254 files, 1993 tests), Build PASS. Overall PASS. Owner to fix: —. *(SPRINT 245; healing.test import + arenaRunLifecyclePhase fixtures)*
+- **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (249 files, 1973 tests), Build PASS. Overall PASS. Owner to fix: —. *(SPRINT 244)*
+- **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (247 files, 1963 tests), Build PASS. Overall PASS. Owner to fix: —. *(SPRINT 243; latest)*
+- **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (244 files, 1949 tests), Build PASS. Overall PASS. Owner to fix: —. *(SPRINT 242)*
+- **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (241 files, 1939 tests), Build PASS. Overall PASS. Owner to fix: —. *(SPRINT 241)*
+- **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (235 files, 1917 tests), Build PASS. Overall PASS. Owner to fix: —. *(SPRINT 240)*
+- **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (230 files), Build PASS. Overall PASS. Owner to fix: —. *(SPRINT 238)*
+- **REFRESH (C1) — SPRINT_PLAN:** **246→247.** C3·C4·C5(2~5)·C6 **[x]**. **247** — runs cursor·profile 422·SLA·공유 스텁.
+- **REFRESH (C1) — SPRINT_PLAN:** **245→246.** C3·C4·C5(2~5)·C6 **[x]**. **246** — reflect·stage-summary·nearMe·런 상세.
+- **REFRESH (C1) — SPRINT_PLAN:** **244→245.** C3·C4·C5(2~5)·C6 **[x]**. **245** — run/[id]·시나리오·my-page 런·acts 레이아웃.
+- **REFRESH (C1) — SPRINT_PLAN:** **243→244.** C3·C4·C5(2~5)·C6 **[x]**. **244** — runs·dojo·Healing GET·result/wireframe.
+- **REFRESH (C1) — SPRINT_PLAN:** **242→243.** C3·C4·C5(2~5)·C6 **[x]**. C2·C5 TASK1 잔여. **243** — 런 완료·me/elite·Healing 진행·와이어.
+- **REFRESH (C1) — SPRINT_PLAN:** **241→242.** C4 플랜 **코드와 동기**(`leaderboard`·`journey/entries`·`healing/progress`·awakening·§4 이미 반영). **242** — 프로필·second-awakening·Awakening UI·healing 409 테스트.
+- **REFRESH (C1) — SPRINT_PLAN:** **240→241.** C3·C4·C5(2~5)·C6 **[x]**. C2·C5 TASK1 잔여. **241** — 주간·라이브 랭킹·Healing 진행·스텁 UI.
+- **REFRESH (C1) — SPRINT_PLAN:** **239→240.** C3·C4·C5(2~5)·C6 **[x]**. C2·C5 TASK1 잔여. **240** — Elite PATCH·멘토 큐 UI·대시보드 심화·C6 짝 테스트.
+- **REFRESH (C1) — SPRINT_PLAN:** **238→239.** C3·C4·C5(2~5)·C6 **[x]**; C2·C5 TASK1만 잔여(배포·BLOCKER). **239** 신규 5건씩.
+- **REFRESH (C1) — SPRINT_PLAN:** **237→238.** C6 5건 **[x]**(스모크·leaderboard 엣지·test/build). C5 TASK1 BLOCKER 이관. C2 **`[ ]` 재오픈**(다음 배포). **238** C3·C4·C5(2~5)·C6 신규 5건씩.
+- **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (223 files), Build PASS. Overall PASS. Owner to fix: —.
+- **REFRESH (C1) — SPRINT_PLAN:** **237 유지**. C3·C4·C5 TASK2~5 **[x]** · C6 5건 **[ ]** → **238 미생성**. C5 TASK1 BLOCKER. C2 **[x]** (cce5374·게이트). C7 PASS. HANDOFFS: C6 우선. 다음 push 전 C2 `[ ]` 재오픈.
+- **REFRESH (C1):** 재확인 — 상태 동일(C6 **[ ]** · C5 BLOCKER). `SPRINT_PLAN` C5 BLOCKER 중복 줄 정리.
+
+## 2026-03-19
+
+- **REFRESH (C1) — SPRINT_PLAN:** **236→237.** C3·C4·C6 [x], C5 TASK1 BLOCKER만 [ ], C2 배포 전 [ ] 유지 → 회전. C5 TASK2~5·C6에 UX Phase 1·스텁 스모크 반영. `SPRINT_PLAN.md` UTF-8 재정리.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **C1 통지**: Phase 1 고정 — 루트 `bty-arena/page.tsx` 수정 금지, 스텁 `/bty-arena/wireframe`, C5는 §6 이하만. `docs/BTY_MULTI_CURSOR_DOC_HANDOFF.md` §7.
+- **C5 Phase 1 (단일 Cursor)**: `ScreenShell` + 스텁 라우트 — `/[locale]/bty-arena/wireframe`, `.../result`, `/growth`, `/my-page`(+progress/team/leader). 루트 `/bty-arena` 플레이 유지. `docs/BTY_MULTI_CURSOR_DOC_HANDOFF.md` §6.
+- **DOCS**: `docs/BTY_ARENA_UX_DOC_INDEX.md`, `docs/BTY_MULTI_CURSOR_DOC_HANDOFF.md` 추가. 오늘 서류 인덱스 + 7 Cursor 역할 분담·실행 순서.
+- **DOCS**: `docs/BTY_PAGE_SPLIT_IMPLEMENTATION_PLAN.md`, `docs/BTY_COMPONENT_PROPS_SPEC.md`, `docs/BTY_TAILWIND_THEME_TOKENS.md` 추가. 페이지 분리 순서, 공통 컴포넌트 props, BTY 테마 토큰 정리.
+- **DOCS**: `docs/BTY_PAGE_SPLIT_AND_THEME_PROMPT.md` 추가. 페이지 분리 우선 → 색감 적용 순서, App Router 경로, 공통 컴포넌트, BTY 컬러 토큰, Cursor 실행 프롬프트 정리.
+- **DOCS**: `BTYArenaWireframes` React 프로토타입을 `docs/BTY_PIXEL_WIREFRAMES.md`에 반영. 컴포넌트 맵·커버 화면·구조 검증 포인트 추가.
+- **DOCS**: `docs/BTY_PIXEL_WIREFRAMES.md` 추가. BTY Arena 실제 제품 화면용 텍스트 와이어프레임(Figma용) 정리.
+- **DOCS**: `docs/BTY_PRODUCT_DIRECTION_PROMPTS.md` 추가. BTY Arena 제품 방향성·네비게이션·첫 화면·Growth·My Page·시스템 톤 프롬프트 5종 정리.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **REFRESH (C1) — SPRINT_PLAN:** **235→236.** C2·C3·C4·C6 전부 [x], C5 TASK1만 Journey·bounce-back BLOCKER → 회전. C2 Gate [ ] 재오픈. C3·C4·C5(2~5)·C6 신규 5건. `SPRINT_PLAN.md` UTF-8 정리.
+- **배포 (C2, post-push)**: **`cce5374`** — chore: 배포 — Foundry, HubTopNav, API·도메인·Q235 테스트·문서. 62 files (+1,279 / -277). **`fd81860..cce5374` → origin/main**. Gate § A~F·MVP + `self-healing-ci.sh` — Lint ✓ Test **222 files** ✓ Build ✓. **PASS.** BTY_RELEASE_GATE_CHECK·본 로그. SPRINT_PLAN C2 TASK 1·2 [x].
+
 ## 2026-03-14
 
 - **REFRESH (C1) — SPRINT_PLAN:** **234→235.** 234 잔여 구현 가능 [ ] 없음(C5 TASK1 Journey·bounce-back만 BLOCKER). C2 Gate [ ] 재오픈. C3·C4·C5(2~5)·C6 각 신규 5건. `docs/SPRINT_PLAN.md` UTF-8 정리·단일 진실 갱신. (CURSOR_TASK_BOARD 이번 런 SPRINT 46 Foundry 트랙은 별도.)
 
 ## 2026-03-18
 
-- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS, Build PASS. Overall PASS.
+- **GATE (C7)**: self-healing-ci.sh run. Lint PASS, Test PASS (222 files, 1855 tests), Build PASS. Overall PASS.
 - **배포 (C2, post-push)**: **`fd81860`**. Gate § A~F·MVP 최종 확인 + `bty-app/scripts/self-healing-ci.sh` — Lint ✓ Test 218 files ✓ Build ✓. **PASS.** BTY_RELEASE_GATE_CHECK·본 로그. SPRINT_PLAN C2 TASK 1·2 [x].
 - **REFRESH (C1)**: SPRINT **234 유지**. C3 도메인 5건 [ ] 미완료 → **235 회전 안 함**. C4·C6 [x]. C5 Journey·bounce-back BLOCKER. C2는 fd81860 배포 후 아래 **배포 (C2)** 로 완료; 다음 배포 전 C1이 C2 [ ] 재설정.
 - **배포 push**: **`fd81860`** — chore: 배포 — 아바타/아웃핏, API·도메인·Q3/Q4 테스트·문서. 200 files (+4,015 / -423). **`e4ae594..fd81860` → origin/main**. BTY_RELEASE_GATE_CHECK·SPRINT_PLAN·CURRENT_TASK 반영.
@@ -298,12 +355,12 @@ Summary of gate/integration runs (C7). Major sprint state changes. C1 REFRESH re
 
 ## Latest
 
-- **Date**: 2026-03-16
-- **Command**: GATE (`./scripts/self-healing-ci.sh`)
+- **Date**: 2026-03-19
+- **Command**: GATE (`bty-app/scripts/self-healing-ci.sh` / `./scripts/self-healing-ci.sh`)
 - **Lint**: PASS
 - **Test**: PASS
 - **Build**: PASS
 - **Overall**: PASS
 - **Owner if fail**: —
 
-(Recorded 2026-03-16.)
+(Recorded 2026-03-17 REFRESH — 로그 상 2026-03-19 C7 런과 정합.)

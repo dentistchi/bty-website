@@ -12,6 +12,75 @@ export function parseLeaderboardScope(param: string | null): LeaderboardScope {
   return "overall";
 }
 
+/** Monday `YYYY-MM-DD` (UTC) for the week containing `d`. */
+export function mondayUTCDateString(d: Date): string {
+  const day = d.getUTCDay();
+  const off = day === 0 ? -6 : 1 - day;
+  const m = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + off));
+  const y = m.getUTCFullYear();
+  const mo = String(m.getUTCMonth() + 1).padStart(2, "0");
+  const da = String(m.getUTCDate()).padStart(2, "0");
+  return `${y}-${mo}-${da}`;
+}
+
+/**
+ * Strict leaderboard query: invalid `scope`/`week` → API returns 400.
+ * - **scope:** omit/empty → overall; else must be `overall`|`role`|`office` (trimmed).
+ * - **week:** omit, empty, or `current` → live week; else `YYYY-MM-DD` must be **this week’s Monday UTC** (historical weeks not supported yet).
+ */
+export type LeaderboardQueryResult =
+  | { ok: true; scope: LeaderboardScope }
+  | { ok: false; error: "INVALID_SCOPE" | "INVALID_WEEK"; message: string };
+
+export function parseLeaderboardQuery(
+  scopeParam: string | null,
+  weekParam: string | null,
+  now: Date = new Date(),
+): LeaderboardQueryResult {
+  const s = scopeParam == null ? "" : scopeParam.trim();
+  let scope: LeaderboardScope;
+  if (s === "") {
+    scope = "overall";
+  } else if (s === "overall" || s === "role" || s === "office") {
+    scope = s;
+  } else {
+    return {
+      ok: false,
+      error: "INVALID_SCOPE",
+      message: "scope must be overall, role, or office",
+    };
+  }
+
+  const w = weekParam == null ? "" : weekParam.trim();
+  if (w === "" || w === "current") {
+    return { ok: true, scope };
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(w)) {
+    return {
+      ok: false,
+      error: "INVALID_WEEK",
+      message: "week must be current or YYYY-MM-DD (Monday UTC)",
+    };
+  }
+  const d = new Date(`${w}T00:00:00.000Z`);
+  if (Number.isNaN(d.getTime()) || d.getUTCDay() !== 1) {
+    return {
+      ok: false,
+      error: "INVALID_WEEK",
+      message: "week must be a Monday UTC",
+    };
+  }
+  const thisMonday = mondayUTCDateString(now);
+  if (w !== thisMonday) {
+    return {
+      ok: false,
+      error: "INVALID_WEEK",
+      message: "only the current leaderboard week is supported",
+    };
+  }
+  return { ok: true, scope };
+}
+
 /** scope=role 시 역할 코드 → UI 표시 라벨. API에서 scopeLabel 반환 시 사용. */
 export function roleToScopeLabel(role: string): string {
   const r = (role ?? "").trim().toLowerCase();

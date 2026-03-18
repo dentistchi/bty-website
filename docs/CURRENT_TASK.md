@@ -1,14 +1,146 @@
 # 현재 작업 (진행 에이전트용)
 
+**[C5] SPRINT 251 TASK2–5 (UI)**: [x] **완료.** LE Stage 진행 바·캡; 주간 경쟁 스테이지 밴드 라벨; Healing POST `ACT_PREREQUISITE`·`COOLDOWN_ACTIVE` 토스트+인라인; i18n ko/en.
+
+**[C3] SPRINT 251 DOMAIN**: [x] **완료.** `weeklyCompetitionStageTierBandDisplayLabelKey`; `healingPathProgressBlockedUserDisplayKey`+`HEALING_PROGRESS_BLOCKED_PHASE_DISPLAY_KEY`; LE clamp·시나리오 ID 기존 `isValidArenaScenarioCodeId`; barrel·arena-domain-rules §251.
+
+**[C5] SPRINT 250 TASK2–5 (UI)**: [x] **완료.** 리더보드 동순위 접미·대시보드 추천 빈 플레이스홀더·런 상세 로딩/empty 도메인 키·회복 탄력성 레벨 범례·i18n ko/en. `docs/SPRINT_PLAN.md` §250.
+
+**[C5] SPRINT 46 TASK 6 (보드)**: [x] **완료 (2026-03-11).** 엘리트 3차 체크리스트 6항목·코드·API 대조. Elite=주간 상위 5%만. ELITE_3RD §3·CURSOR_TASK_BOARD.
+
+**[C4] CONTINUE**: **SPRINT 251** C4 5/5 [x] — `src/app/api` 추가 작업 없음. **252**는 C1 splint로 `SPRINT_PLAN` C4 표가 생긴 뒤 그때 실행.
+
+**다음 배치 (SPRINT_PLAN)**: **SPRINT 251** — C3·C4·C5(2–5)·C6 [x]. **잔여 BLOCKER:** C5 TASK1 Journey·bounce-back, C2 배포 Gate. **252** = C1 splint·REFRESH 후 표 갱신.
+
+**[C6] SPRINT 251 TESTFIX**: [x] **완료.** q237-smoke; run/complete `aborted_at`→409+401 짝; core-xp 연속 401; barrel 251 LE·시나리오·cooldown 보강; 264 files / 2067 tests·build PASS.
+
+**[C3] SPRINT 251 DOMAIN**: [x] **완료.** `WEEKLY_COMPETITION_STAGE_TIER_DISPLAY_LABEL_KEY`; `clampDashboardLeProgressDisplayPercent`; `isValidArenaScenarioCodeId`; `HEALING_PROGRESS_BLOCKED_COOLDOWN_DISPLAY_KEY`; §251.
+
+**[REFRESH (C1)] SPRINT_PLAN 250→251**: [x] **적용.** 250 회전 완료. 251: run/complete 409·core-xp·me/access·healing progress·주간 스테이지·LE 캡·시나리오 검증·Healing UI·테스트.
+
+**[C3] SPRINT 250 DOMAIN**: [x] **완료.** `leaderboardTieRankSuffixDisplayKey`; `DASHBOARD_RECOMMENDATION_EMPTY_PLACEHOLDER_KEY`; `arenaRunDetailSkeletonDisplayKey`; `resilienceLevelDisplayLabelKey`; barrel·arena-domain-rules §250.
+
+**[REFRESH (C1)] SPRINT_PLAN 249→250**: [x] **적용.** 249 회전 완료. 250: 리더보드 tie·빈추천·런 로딩·resilience 레벨·run 404·LB 401·center resilience API·UI·테스트.
+
+**[C5] SPRINT 249 TASK2–5**: [x] **완료.** 성찰 `reflectTextLengthHintKey`+24k·ReflectionBlock/beginner; Elite 배지 `eliteMentorRequestStatusDisplayLabelKey`+stale·SLA; Awakening `healingAwakeningActLockReasonDisplayKey`+`healingAwakeningLockReasonCopy`; i18n reflectHints·eliteDomain*·lock.
+
+**[C3] SPRINT 249 DOMAIN**: [x] **완료.** `reflectTextBounds`; `parseRunsListCursorOrNull`+lib runsCursor; `eliteMentorRequestStatusDisplayLabelKey`; `healingAwakeningActLockReasonDisplayKey`; barrel·arena-domain-rules §249.
+
+**[REFRESH (C1)] SPRINT_PLAN 248→249**: [x] **적용.** C5 TASK2~5 플랜 [x] 동기. 249: 성찰·runs·Elite·Awakening·reflect/mentor/acts API·UI·테스트.
+
+**[C6] SPRINT 250 TESTFIX**: [x] **완료.** `test:q237-smoke`; GET run/[runId] 404(trim·본문); leaderboard 401 짝; barrel 250 tie·추천순·resilience; 264 files / 2058 tests·build PASS.
+
+**[C6] SPRINT 248 TESTFIX**: [x] **완료.** `test:q237-smoke`; leaderboard 400 scope/week route.test; dashboard/summary 401·503(LE ensure throw); `domain/index` barrel 248; 262 files / 2041 tests·build PASS.
+
+**[C6] SPRINT 249 TESTFIX**: [x] **완료.** `test:q237-smoke`; reflect 401+413 짝; awakening act 404; barrel 249+권장 최소 글자 수; npm test·build PASS.
+
+**[C5] SPRINT 248 TASK2–5 (도메인 키 정합)**: [x] **완료.** 주간 티어 `weeklyTierDisplayLabelKey`+`arena`; 런 `arenaRunStateDisplayLabelKey`(마이페이지 status·런 상세 lifecycle); Awakening 액트 진행률 바+`clampHealingAwakeningActProgressDisplayPercent`; `arena`·`arenaStableLabel`. TASK1 BLOCKER 유지.
+
+**[C3] SPRINT_PLAN 248 DOMAIN**: [x] **완료.** `weeklyTierDisplayLabelKey`·`RECOMMENDATION_SOURCE_PRIORITY_MIN/MAX`·`arenaRunStateDisplayLabelKey`·`clampHealingAwakeningActProgressDisplayPercent`+테스트; `domain/index`·`arena-domain-rules` §248.
+
+**[REFRESH (C1)] SPRINT_PLAN 247→248**: [x] **적용.** 247 회전 완료(C2·C5 BLOCKER 제외). SPRINT 248: 리더보드 계약·dashboard·journey·center letter·도메인 티어/런상태/Healing 캡·UI·테스트.
+
+**[C5] SPRINT_PLAN 247 TASK2–5 (Arena UX)**: [x] **완료 (2026-03-17).** 마이페이지 런 `nextCursor` 더보기·Elite SLA 임박 배지(도메인 키)·결과 `ResultShareStub`·i18n; test 2023·build PASS. TASK1 BLOCKER 유지.
+
+**[C5] SPRINT_PLAN 246 TASK2–5 (Arena UX)**: [x] **완료 (2026-03-17).** 런 상세 `/bty-arena/run/[runId]`·대시보드 라이브 LB 모달 a11y·nearMe/미순위 배너·growth 비참가 주간 카피·reflect/stage-summary/nearMe i18n; test 2007·build PASS. TASK1 BLOCKER 유지.
+
+**[C5] SPRINT_PLAN 245 TASK2–5 (Arena UX)**: [x] **완료 (2026-03-17).** `MyPageRecentRuns`·`GrowthMyRankCard`·Awakening acts 그리드·i18n; `npm test`·`npm run build` PASS. TASK1 Journey·bounce-back BLOCKER 유지.
+
+**[C6/C3/C4] SPRINT 247**: [x] **완료 (2026-03-17).** runs cursor·profile 422·elite Cache-Control·healing 409·C6/C3·262 files / 2023 tests·build PASS. C5 TASK1 BLOCKER 유지.
+
+**[C4] SPRINT_PLAN 247 API (ARENA_DOMAIN_SPEC §4)**: [x] **완료 (2026-03-17).** §4·247 정합 — runs cursor/400·profile EMPTY_PATCH·me/elite 캐시·healing `ACT_ALREADY_COMPLETED`.
+
+**[C6] SPRINT 246 TESTFIX**: [x] **완료 (2026-03-17).** reflect 413·`reflectLimits.ts`, stage-summary 246 스모크, `q246-nearme-healing.edges.test.ts`, `test:q237-smoke`·258 files / 2007 tests·build PASS.
+
+**[C6] SPRINT 245 TESTFIX**: [x] **완료 (2026-03-17).** `GET /api/arena/run/[id]` + route.test, POST run 400 스모크, `q245-tier-mentor-sa.edges.test.ts`, `test:q237-smoke`·`npm test`·`npm run build` PASS.
+
 **진행 에이전트**: 이 파일 또는 커맨더 메시지에 적힌 **기능(요구사항)** 을 구현하세요.
 
-**[REFRESH (C1)] SPRINT_PLAN 235**: [x] **적용 (2026-03-14).** 234→235 회전. C2 다음 배포 Gate [ ] 재오픈. C3·C4·C5(2~5)·C6 신규 5건. **CURSOR_TASK_BOARD** 이번 런(SPRINT 46 Foundry)은 별도 트랙 — 구현 배치는 **SPRINT_PLAN §235** 우선.
+**[REFRESH (C1)] SPRINT_PLAN 237**: [x] **적용.** 236→237 회전. 구현 배치 = **SPRINT_PLAN §237**. C2 다음 배포 Gate [ ] 유지. Phase 1 §7 유지.
 
-**[C4] SPRINT 235 API 5건 (SPRINT_PLAN)**: [x] **완료.** reflect·sub-name·runs·leaderboard↔core-xp·journey entries POST·me/elite·ARENA_DOMAIN_SPEC 235.
+**[C1 Commander 통지] Phase 1 고정**: `docs/BTY_MULTI_CURSOR_DOC_HANDOFF.md` §7 — 루트 `bty-arena/page.tsx` 수정 금지. Arena 첫 화면 스텁 = `/[locale]/bty-arena/wireframe`. C5는 §6 이하만 채움.
 
-**[C3] SPRINT 234 도메인 5건**: [x] **완료(이전 스프린트).**
+**[C5] Phase 1 UX 뼈대 (단일 Cursor)**: [x] **완료.** `ScreenShell` + `/bty-arena/wireframe`·`/bty-arena/result`·`/growth`·`/my-page`(+progress/team/leader) 스텁. **`/[locale]/bty-arena` 루트 플레이는 비침해.** 다른 Cursor는 §6 이후 채움만. `docs/BTY_MULTI_CURSOR_DOC_HANDOFF.md` §6.
 
-**[C2] SPRINT 234 배포 Gate (fd81860)**: [x] **완료(이력).** 다음 배포 시 **SPRINT 235** C2 TASK [ ] 실행.
+**[C5] Phase 1 와이어 채움 (§6~§7)**: [x] **완료.** `PIXEL_WIREFRAMES` 카피·계층 — wireframe(Continue→Play·BottomNav→leaderboard)·result(Continue→wireframe)·growth(dojo/integrity/mentor/dear-me)·my-page 탭·카드. `bty-arena/page.tsx` 비터치.
+
+**[DOCS] 7 Cursor 핸드오프**: [x] **완료.** `docs/BTY_ARENA_UX_DOC_INDEX.md`·`docs/BTY_MULTI_CURSOR_DOC_HANDOFF.md` — 오늘 UX·구현 서류 목록 + C1~C7 역할·실행 순서. 구현은 Commander TASK로 분배.
+
+**[DOCS] BTY Tailwind Theme Tokens 문서화**: [x] **완료.** `docs/BTY_TAILWIND_THEME_TOKENS.md`에 구조 분리 이후 적용할 CSS 변수·Tailwind 매핑·UI 매핑 규칙 정리.
+
+**[DOCS] BTY Component Props Spec 문서화**: [x] **완료.** `docs/BTY_COMPONENT_PROPS_SPEC.md`에 ScreenShell·Buttons·InfoCard·ProgressBar·TabPills·BottomNav props 설계 정리.
+
+**[DOCS] BTY Page Split Implementation Plan 문서화**: [x] **완료.** `docs/BTY_PAGE_SPLIT_IMPLEMENTATION_PLAN.md`에 App Router 페이지 분리 → shared components → theme token → navigation → polish 순서 정리.
+
+**[DOCS] BTY 페이지 분리 + 컬러 토큰 프롬프트 문서화**: [x] **완료.** `docs/BTY_PAGE_SPLIT_AND_THEME_PROMPT.md`에 App Router 페이지 분리 우선, 이후 색감/테마 토큰 적용 순서와 Cursor 실행 프롬프트 정리.
+
+**[DOCS] BTY React Wireframe Reference 문서화**: [x] **완료.** `docs/BTY_PIXEL_WIREFRAMES.md`에 `BTYArenaWireframes` React 프로토타입의 컴포넌트 맵·커버 화면·구조 검증 포인트 추가.
+
+**[DOCS] BTY Pixel Wireframes 문서화**: [x] **완료.** `docs/BTY_PIXEL_WIREFRAMES.md`에 Arena 첫 화면·Growth·My Page·Progress·Team·Leader Track·Result 화면의 Figma용 텍스트 와이어프레임 정리.
+
+**[DOCS] BTY 제품 방향성 프롬프트 문서화**: [x] **완료.** `docs/BTY_PRODUCT_DIRECTION_PROMPTS.md`에 Cursor/Gemini/Genspark용 복사용 프롬프트 5종 정리. 제품 아키텍처·첫 화면·Growth·My Page·시스템 톤 포함.
+
+**[REFRESH (C1)] SPRINT_PLAN 236**: [x] **적용 (2026-03-19).** 235→236 회전. C2 다음 배포 Gate [ ] 재오픈. 구현 배치 = **SPRINT_PLAN §236**. (CURSOR_TASK_BOARD Foundry 트랙 별도.)
+
+**[C4] SPRINT 235 API 5건 (SPRINT_PLAN)**: [x] **완료(이전).**
+
+**[C4] SPRINT 236 API 5건 (SPRINT_PLAN)**: [x] **완료.** healing·awakening / dojo·integrity·questions / dashboard summary / center-dear-me / ARENA_DOMAIN_SPEC 236 확인.
+
+**[C4] SPRINT 237 API 5건 (SPRINT_PLAN)**: [x] **완료.** run·run/complete·reflect·journey/entries·me/elite·dashboard/summary JSDoc `@contract`; ARENA_DOMAIN_SPEC §4·237 동기. **작업 완료.**
+
+**[C4] SPRINT 238 API 5건 (SPRINT_PLAN)**: [x] **완료.** LE state·mentor PATCH·dashboard 연장·healing 에러·ARENA_DOMAIN_SPEC §4·238. **작업 완료.**
+
+**[C4] SPRINT 239 API 5건 (SPRINT_PLAN)**: [x] **완료.** dashboard LE+AIR·mentor-requests GET·run/complete 400·healing/awakening 401·404·ARENA_DOMAIN_SPEC §4·239. **작업 완료.**
+
+**[C4] SPRINT 240 API 5건 (SPRINT_PLAN)**: [x] **완료.** mentor PATCH 요약·dashboard Cache-Control·run/complete 409/429·second-awakening GET·ARENA_DOMAIN_SPEC §4·240. **작업 완료.**
+
+**[C4] SPRINT 241 API 5건 (SPRINT_PLAN)**: [x] **완료.** leaderboard @contract·journey 확장·POST healing/progress·GET awakening/acts 404·마이그레이션 `user_healing_awakening_acts`·ARENA_DOMAIN_SPEC §4·241. **작업 완료.**
+
+**[C4] SPRINT 242 API 5건 (SPRINT_PLAN)**: [x] **완료.** arena/profile @contract·second-awakening JSDoc·awakening acts·healing/progress 429·ARENA_DOMAIN_SPEC §4·242. **작업 완료.**
+
+**[C4] SPRINT 243 API 5건 (SPRINT_PLAN)**: [x] **완료.** run/complete 410·me/elite·reflect 413·GET healing/progress·ARENA_DOMAIN_SPEC §4·243. **작업 완료.**
+
+**[C4] SPRINT 244 API 5건 (SPRINT_PLAN)**: [x] **완료.** runs @contract·dojo/questions 캐시·healing/progress 쿼리 없음·dojo/submit 400·ARENA_DOMAIN_SPEC §4·244. **작업 완료.**
+
+**[C4] SPRINT 245 API 5건 (SPRINT_PLAN)**: [x] **완료.** GET arena/run/[runId]·POST run 409·leaderboard scope·GET bty/awakening/acts·ARENA_DOMAIN_SPEC §4·245. **작업 완료.**
+
+**[C4] SPRINT 246 API 5건 (SPRINT_PLAN)**: [x] **완료.** reflect 413·stage-summary·run/complete 멱등·profile Cache-Control·ARENA_DOMAIN_SPEC §4·246. **작업 완료.**
+
+**[C5] 멘토 큐·LE·AIR 로딩·growth/wireframe 링크·i18n**: [x] **완료.** Admin 큐 테이블·오류 문구; AIR/Stage 위젯 로딩 접근성; Foundry·Elite 링크. **작업 완료.**
+
+**[C5] 대시보드 LE·AIR 위젯·와이어/결과 3차·Elite a11y·i18n**: [x] **완료.** `LeAirWidget`/`LeStageWidget`, wireframe §1 순서·result `uxPhase1Stub`, Elite 테이블/배지/제목 키, bty·elitePage 문자열. **작업 완료.**
+
+**[C5] SPRINT_PLAN 테마 2차·BottomNav·Growth·my-page i18n**: [x] **완료.** `globals.css` `--bty-*`·Tailwind `bty.*`·ScreenShell·InfoCard·ProgressBar·Primary/Secondary·wireframe/result/growth/my-page 스텁; BottomNav `focus-visible`; Growth Arena·와이어 링크; `myPageStub` ko/en; 스모크 정규식. TASK1 bounce-back BLOCKER 유지. **작업 완료.**
+
+**[C5] SPRINT_PLAN 241 Healing 스텁·주간 위젯·growth/my-page 링크·i18n**: [x] **완료.** `healing/page.client` phase·ringType render-only; 대시보드 주간 XP 위젯+스켈레톤+리더보드 CTA; growth·my-page Healing/Awakening 링크; `healing.*`·`bty.dashboardWeekly*` 등 en/ko. TASK1 BLOCKER 유지. **작업 완료.**
+
+**[C5] SPRINT_PLAN 242 Awakening 액트 스텁·라이브 랭킹 모달·progress 토스트·프로필 i18n**: [x] **완료.** `getUserCompletedAwakeningActs`·GET awakening `completedActs`; `AwakeningActsTrack`(Healing+Awakening); 대시보드 라이브 리더보드 모달; `healing.awakeningActs*`·`bty.dashboardLive*`·`bty.profile*`. TASK1 BLOCKER 유지. **작업 완료.**
+
+**[C5] SPRINT_PLAN 243 Healing GET 진행·Elite me/elite 카드·와이어 카피·i18n**: [x] **완료.** GET healing `awakeningProgress`; Healing 진행률·다음 액트 UI; 대시보드 `eliteContentUnlocked`; Growth/result 와이어 문구; i18n. TASK1 BLOCKER 유지. **작업 완료.**
+
+**[C5] SPRINT_PLAN 244 result 다음 시나리오 CTA·wireframe Dojo/Integrity·Healing 새로고침·i18n**: [x] **완료.** result Primary 다음 시나리오; wireframe Dojo·Integrity·runs 힌트; Healing 진행 새로고침 카피/버튼. TASK1 BLOCKER 유지. **작업 완료.**
+
+**[C6] SPRINT_PLAN 237 Testfix 5건**: [x] **완료.** Vitest 스모크(wireframe·growth·my-page·result·progress/team/leader)·`weeklyCompetitionDisplay` 빈 리더보드 엣지·`npm test`(1875)·`npm run build` PASS. **작업 완료.**
+
+**[C6] SPRINT_PLAN 238 Testfix 5건**: [x] **완료.** `test:q237-smoke`·`reflect` route.test·middleware arena matcher·`rankByWeeklyXpOnly` weekly-only 단언·test(1890)·build PASS. **작업 완료.**
+
+**[C6] SPRINT_PLAN 239 Testfix 5건**: [x] **완료.** mentor-requests GET route.test·dashboard summary 239 smoke·`q239-le-air-elite`·q237-smoke·test(1902)·build. **작업 완료.**
+
+**[C6] SPRINT_PLAN 240 Testfix 5건**: [x] **완료.** q237-smoke·PATCH mentor-requests 240·dashboard summary 240·`q240-elite-healing`·test(1916)·build. **작업 완료.**
+
+**[C6] SPRINT_PLAN 241 Testfix 5건**: [x] **완료.** q237-smoke·리더보드 라이브 빈 주·Healing/Awakening GET 스모크·주간/큐 정렬 엣지·test(1928)·build(i18n·healing/progress 타입). **작업 완료.**
+
+**[C6] SPRINT_PLAN 242 Testfix 5건**: [x] **완료.** q237-smoke·healing/progress 400/409·awakening GET 스모크·시즌/3액트 엣지·test(1949)·build. **작업 완료.**
+
+**[C6] SPRINT_PLAN 243 Testfix 5건**: [x] **완료.** q237-smoke·run/complete 404·멱등·me/elite 스모크·주간 noop·Healing %·test(1963)·build. **작업 완료.**
+
+**[C6] SPRINT_PLAN 244 Testfix 5건**: [x] **완료.** q237-smoke·GET arena/runs·healing/progress 빈 진행·Core/Weekly·dojo 핑거프린트·test(1973)·build. **작업 완료.**
+
+**[C2] SPRINT 235 배포 Gate (cce5374)**: [x] **완료(이력).** 다음 배포 시 **236** C2 TASK [ ] 실행.
+
+**[C2] SPRINT 234 배포 Gate (fd81860)**: [x] **완료(이력).**
+
+**[배포] Git push 완료 (최신)**: [x] **`cce5374`** chore: 배포 — Foundry, HubTopNav, API·도메인·Q235 테스트·문서 · 62 files (+1,279/-277) · **`fd81860..cce5374` → origin/main** · BTY_RELEASE_GATE_CHECK·SPRINT_LOG·본 파일.
 
 **[배포] Git push 완료**: [x] **`fd81860`** chore: 배포 — 아바타/아웃핏, API·도메인·Q3/Q4 테스트·문서 · 200 files (+4,015/-423) · **`e4ae594..fd81860` → origin/main** · BTY_RELEASE_GATE_CHECK·SPRINT_LOG·본 파일 반영.
 
@@ -23,6 +155,14 @@
 **[C5] SPRINT 230 UI 접근성·i18n 4건 (BLOCKER 제외)**: [x] **완료.** 리더보드 주간 리셋 region·i18n, Elite 배지 region, Dojo 결과 Dr. Chi region, i18n leaderboardWeekResetRegion.
 
 **[C5] SPRINT 229 UI 접근성·i18n 4건 (BLOCKER 제외)**: [x] **완료.** 대시보드 Dojo 카드 region+aria-label, 멘토 메시지 article+aria-label, assessment 힌트 region, i18n dojoPracticeLabel/dojoPracticeLinksRegion.
+
+**[C4] SPRINT 251 API 5건 (run/complete 409·core-xp 401·me/access·healing/progress 404·ARENA_DOMAIN_SPEC)**: [x] **완료.** §4·게이트 **409 `RUN_ABORTED`** 코드 정합(run/complete `aborted_at`).
+
+**[C4] SPRINT 250 API 5건 (run/[id]·profile PATCH·leaderboard 401·center/resilience period·ARENA_DOMAIN_SPEC)**: [x] **완료.** resilience 400 INVALID_PERIOD·§4 250.
+
+**[C4] SPRINT 249 API 5건 (reflect·runs cursor·mentor-request 400·awakening acts 404·ARENA_DOMAIN_SPEC)**: [x] **완료.** @contract 보강·§4 249.
+
+**[C4] SPRINT 248 API 5건 (leaderboard week/scope 400·dashboard 503/500·journey/profile 401·center/letter body·ARENA_DOMAIN_SPEC)**: [x] **완료.** parseLeaderboardQuery·@contract·§4 248·Vitest leaderboard·scope.
 
 **[C4] SPRINT 230 API 5건 (arena run/complete·profile·core-xp·leaderboard·leadership-engine·journey·me/elite·dashboard·center·dear-me·ARENA_DOMAIN_SPEC)**: [x] **완료.** JSDoc 확인·leadership-engine/certified 401·500 명시·§4 230 반영.
 

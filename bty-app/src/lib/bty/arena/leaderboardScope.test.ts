@@ -3,6 +3,8 @@ import {
   LEADERBOARD_SCOPE_TYPES,
   LEADERBOARD_EXPOSED_FIELDS,
   parseLeaderboardScope,
+  parseLeaderboardQuery,
+  mondayUTCDateString,
   roleToScopeLabel,
 } from "./leaderboardScope";
 
@@ -38,6 +40,53 @@ describe("leaderboardScope", () => {
     it("returns role as-is for unknown, empty returns Role", () => {
       expect(roleToScopeLabel("custom_role")).toBe("custom_role");
       expect(roleToScopeLabel("")).toBe("Role");
+    });
+  });
+
+  describe("parseLeaderboardQuery", () => {
+    const wed = new Date("2025-03-12T12:00:00.000Z");
+    const thisMonday = mondayUTCDateString(wed);
+
+    it("rejects invalid scope", () => {
+      const r = parseLeaderboardQuery("nope", null, wed);
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.error).toBe("INVALID_SCOPE");
+    });
+
+    it("accepts empty scope as overall", () => {
+      const r = parseLeaderboardQuery("", "current", wed);
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.scope).toBe("overall");
+    });
+
+    it("accepts trimmed role", () => {
+      const r = parseLeaderboardQuery("  role  ", null, wed);
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.scope).toBe("role");
+    });
+
+    it("rejects invalid week string", () => {
+      const r = parseLeaderboardQuery(null, "not-a-date", wed);
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.error).toBe("INVALID_WEEK");
+    });
+
+    it("rejects non-Monday date", () => {
+      const r = parseLeaderboardQuery(null, "2025-03-11", wed);
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.error).toBe("INVALID_WEEK");
+    });
+
+    it("rejects past week Monday", () => {
+      const r = parseLeaderboardQuery(null, "2025-03-03", wed);
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.error).toBe("INVALID_WEEK");
+    });
+
+    it("accepts current week Monday", () => {
+      expect(thisMonday).toBe("2025-03-10");
+      const r = parseLeaderboardQuery(null, thisMonday, wed);
+      expect(r.ok).toBe(true);
     });
   });
 

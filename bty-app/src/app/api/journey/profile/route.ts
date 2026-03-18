@@ -4,8 +4,10 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 /**
  * GET /api/journey/profile — bty_profiles 현재 사용자 (current_day, season, bounce_back_count 등).
- * Response (200): { current_day, started_at, season, bounce_back_count, last_completed_at?, updated_at?, is_new? }.
- * Errors: 401 { error: "Unauthorized" }; 503 { error: "Database not configured" }; 500 { error: string } (Supabase).
+ *
+ * @contract **401:** `{ error: "Unauthorized" }` — Journey 경로 관례(arena `UNAUTHENTICATED`와 문자열 구분).
+ * **503:** `{ error: "Database not configured" }`. **500:** `{ error: string }`.
+ * **200:** `{ current_day, started_at, season, bounce_back_count, … }`.
  */
 export async function GET(request: Request) {
   const user = await getAuthUserFromRequest(request);

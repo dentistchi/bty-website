@@ -2,10 +2,18 @@ import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 
 /**
- * POST /api/arena/run — 시나리오 런 시작.
- * Body: { scenarioId: string, locale?: string, difficulty?: string, meta?: object }.
- * Response 200: { run: { run_id, scenario_id, started_at, status } }.
- * Errors: 401 { error: "UNAUTHENTICATED" }, 400 { error: "scenarioId_required" }, 500 { error: string }.
+ * POST /api/arena/run — Arena 시나리오 런 시작 (`arena_runs` insert, `ensure_arena_profile` RPC).
+ *
+ * @contract
+ * - **Auth:** 세션 필수 → 401 `{ error: "UNAUTHENTICATED" }`.
+ * - **Body (JSON):** `scenarioId` string 필수. 선택: `locale`, `difficulty`, `meta` (plain object).
+ * - **200:** `{ run: { run_id: string, scenario_id: string, started_at: string, status: string } }`.
+ * - **400:** `{ error: "scenarioId_required" }` — `scenarioId` 누락·빈 문자열.
+ * - **409:** 미사용 — 동일 시나리오 **연속 런 생성 허용**(중복 시작 충돌 코드 없음).
+ * - **500:** `{ error: string }` (insert/RPC 실패).
+ *
+ * **Flow:** `POST /api/arena/event` 등으로 이벤트 적재 → `POST /api/arena/run/complete` 로 종료·XP.
+ * @see docs/spec/ARENA_DOMAIN_SPEC.md §4-1 Run Lifecycle
  */
 export async function POST(req: Request) {
   const supabase = await getSupabaseServerClient();

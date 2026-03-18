@@ -19,3 +19,11 @@ export {
   type SeasonResetResult,
   type LeaderboardEntry,
 } from "@/domain/rules/weeklyXp";
+
+export {
+  ledgerStateAfterWeeklyBoundaryReset,
+  isWeeklyBoundaryResetNoop,
+  type WeeklyBoundaryLedgerOutcome,
+} from "@/domain/rules/weeklyResetIdempotency";
+
+export { weeklyCompetitionDisplay } from "@/domain/rules/leaderboard";

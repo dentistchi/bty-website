@@ -8,7 +8,11 @@ import {
 import type { BeginnerScenario } from "@/lib/bty/scenario/beginnerTypes";
 import { getMaturityFeedback } from "@/lib/bty/scenario/beginnerTypes";
 import { CardSkeleton } from "@/components/bty-arena";
+import { reflectTextLengthHintKey } from "@/domain/rules/reflectTextHint";
 import { arenaFetch } from "@/lib/http/arenaFetch";
+import { REFLECT_USER_TEXT_MAX_CHARS } from "@/lib/bty/arena/reflectLimits";
+import { getMessages, reflectHintLabel } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
 type BeginnerStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -408,12 +412,13 @@ export default function BeginnerArenaPage() {
             <p style={{ margin: "0 0 16px", fontSize: 16 }}>
               {ui.reflectionPrompt}
             </p>
-            <input
-              type="text"
+            <textarea
               value={reflectionText}
               onChange={(e) => setReflectionText(e.target.value)}
               placeholder={ui.reflectionPlaceholder}
-              maxLength={120}
+              maxLength={REFLECT_USER_TEXT_MAX_CHARS}
+              rows={4}
+              aria-describedby="beginner-reflect-hint beginner-reflect-count"
               style={{
                 width: "100%",
                 padding: "12px 14px",
@@ -421,8 +426,30 @@ export default function BeginnerArenaPage() {
                 border: "1px solid #e5e5e5",
                 fontSize: 15,
                 boxSizing: "border-box",
+                resize: "vertical",
+                minHeight: 96,
               }}
             />
+            <div
+              id="beginner-reflect-count"
+              style={{ fontSize: 11, opacity: 0.65, marginTop: 6 }}
+              aria-live="polite"
+            >
+              {getMessages((locale === "ko" ? "ko" : "en") as Locale).arenaRun.reflectionCharCount
+                .replace("{n}", String(reflectionText.length))
+                .replace("{max}", String(REFLECT_USER_TEXT_MAX_CHARS))}
+            </div>
+            <p
+              id="beginner-reflect-hint"
+              role="status"
+              aria-live="polite"
+              style={{ margin: "10px 0 16px", fontSize: 13, lineHeight: 1.45, opacity: 0.88 }}
+            >
+              {reflectHintLabel(
+                (locale === "ko" ? "ko" : "en") as Locale,
+                reflectTextLengthHintKey(reflectionText.length, REFLECT_USER_TEXT_MAX_CHARS),
+              )}
+            </p>
             <PrimaryButton label={ui.complete} onClick={goNext} disabled={loading} />
           </>
         )}

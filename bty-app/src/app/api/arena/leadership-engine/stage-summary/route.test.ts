@@ -32,6 +32,30 @@ describe("GET /api/arena/leadership-engine/stage-summary", () => {
     mockEnsureLeadershipEngineState.mockResolvedValue(undefined);
   });
 
+  /** C6 246: 401 → 200 스모크 체인. */
+  it("246 smoke: 401 unauthenticated then 200 with stage payload", async () => {
+    mockRequireUser.mockResolvedValueOnce({ user: null, supabase: {}, base: {} });
+    const r401 = await GET(makeRequest());
+    expect(r401.status).toBe(401);
+
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u246" },
+      supabase: {},
+      base: {},
+    });
+    mockGetLeadershipEngineState.mockResolvedValue({
+      currentStage: 3,
+      stageName: "Stage 3",
+      forcedResetTriggeredAt: null,
+      resetDueAt: null,
+    });
+    const r200 = await GET(makeRequest());
+    expect(r200.status).toBe(200);
+    const j = await r200.json();
+    expect(j.currentStage).toBe(3);
+    expect(j.progressPercent).toBe(75);
+  });
+
   it("returns 401 when unauthenticated", async () => {
     mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: {} });
 

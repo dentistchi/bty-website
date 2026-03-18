@@ -181,6 +181,7 @@ export default function BtyArenaPage() {
             hasFollowUp={s.hasFollowUp}
             followUpIndex={s.followUpIndex}
             reflectResult={s.reflectResult}
+            reflectDeepeningNotice={s.reflectDeepeningNotice}
             onNextToReflection={s.goToReflection}
             onSubmitReflection={s.submitReflection}
             reflectionSubmitting={s.reflectionSubmitting}

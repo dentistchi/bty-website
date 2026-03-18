@@ -17,6 +17,15 @@ vi.mock("@/lib/supabase/route-client", () => ({
 const { GET: getHealing } = await import("./healing/route");
 const { GET: getAwakening } = await import("./awakening/route");
 
+function supabaseActsEmpty() {
+  const chain = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    order: vi.fn().mockResolvedValue({ data: [], error: null }),
+  };
+  return { from: vi.fn(() => chain) };
+}
+
 describe("Q3 GET bty/healing · bty/awakening — 200·401", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -42,7 +51,7 @@ describe("Q3 GET bty/healing · bty/awakening — 200·401", () => {
 
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
-      supabase: {},
+      supabase: supabaseActsEmpty(),
       base: {},
     });
 

@@ -1,7 +1,9 @@
 /**
  * POST /api/center/letter — Center "나에게 쓰는 편지" 저장 + 답장 생성.
- * Response (200): { saved: true, reply }.
- * Errors: 401 { error: "Unauthorized" }; 400 { error: "body_empty" }; 500 { error: "Something went wrong" | string } (submit failure or catch).
+ *
+ * @contract **Body (JSON):** `body?` 편지 본문, `mood?`, `energy?`, `oneWord?`, `lang?` (locale).
+ * **400:** `{ error: "body_empty" }` — `body` 누락·공백만. **401:** `{ error: "Unauthorized" }`.
+ * **200:** `{ saved: true, reply }`. **500:** `{ error: string }` (submit 실패 또는 catch).
  */
 import { NextResponse } from "next/server";
 import { getLetterAuth, submitCenterLetter } from "@/lib/bty/center";

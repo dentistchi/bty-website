@@ -5,7 +5,10 @@
  * @see healing — `AwakeningActId`·phase 라벨과 무관 (별도 Q4 네임스페이스).
  */
 
-import type { IntegritySubmitPayload } from "./integrity";
+import {
+  validateIntegrityResponse,
+  type IntegritySubmitPayload,
+} from "./integrity";
 
 /** Dojo 50문항 5영역 (목차 수준). */
 export const DOJO_50_AREAS = [
@@ -67,10 +70,12 @@ export function computeDojo50Result(answers: Dojo50Answers): Dojo50Result {
   return { scores, summaryKey };
 }
 
-/** 역지사지 제출: 시나리오 입력(텍스트 또는 선택 ID) 필수. */
-export function validateIntegritySubmit(payload: IntegritySubmitPayload): { ok: boolean; error?: string } {
-  const hasText = typeof payload.text === "string" && payload.text.trim().length > 0;
-  const hasChoice = typeof payload.choiceId === "string" && payload.choiceId.length > 0;
-  if (hasText || hasChoice) return { ok: true };
-  return { ok: false, error: "missing_input" };
+/**
+ * 역지사지 제출 — Dojo 경계에서 `integrity` 단일 검증으로 위임 (텍스트 길이·필수 입력 동일).
+ */
+export function validateIntegritySubmit(payload: IntegritySubmitPayload): {
+  ok: boolean;
+  error?: string;
+} {
+  return validateIntegrityResponse(payload.text, payload.choiceId);
 }

@@ -95,3 +95,15 @@ export function certifiedStatus(inputs: CertifiedInputs): CertifiedStatusResult 
 export function isCertified(inputs: CertifiedInputs): boolean {
   return certifiedStatus(inputs).current;
 }
+
+/**
+ * First missing certified gate (stable order) for readiness UX / coaching focus.
+ * Null when certified. Not localized — caller maps to copy.
+ */
+export function certifiedReadinessNextGap(
+  inputs: CertifiedInputs
+): string | null {
+  const { current, reasons_missing } = certifiedStatus(inputs);
+  if (current) return null;
+  return reasons_missing[0] ?? null;
+}

@@ -50,6 +50,25 @@ describe("GET /api/arena/leaderboard", () => {
     mockFetchWeeklyXpRows.mockResolvedValue({ rows: [], error: null });
   });
 
+  /** C6 248: 잘못된 week·scope → 400 (auth 이전). */
+  it("returns 400 for invalid scope or invalid week query", async () => {
+    const rScope = await GET(
+      makeRequest("http://localhost/api/arena/leaderboard?scope=not-a-scope"),
+    );
+    expect(rScope.status).toBe(400);
+    const dScope = await rScope.json();
+    expect(dScope.error).toBe("INVALID_SCOPE");
+    expect(typeof dScope.message).toBe("string");
+
+    const rWeek = await GET(
+      makeRequest("http://localhost/api/arena/leaderboard?week=not-a-date"),
+    );
+    expect(rWeek.status).toBe(400);
+    const dWeek = await rWeek.json();
+    expect(dWeek.error).toBe("INVALID_WEEK");
+    expect(typeof dWeek.message).toBe("string");
+  });
+
   it("returns 401 with message when unauthenticated", async () => {
     mockGetUser.mockResolvedValue({ data: { user: null } });
 
@@ -58,6 +77,19 @@ describe("GET /api/arena/leaderboard", () => {
     const data = await res.json();
     expect(data.error).toBe("UNAUTHENTICATED");
     expect(data.message).toBe("Sign in to see leaderboard");
+  });
+
+  /** C6 250: 기본(overall)·scope=role 모두 비로그인 시 401 짝. */
+  it("250: returns 401 unauthenticated for default leaderboard and for scope=role", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: null } });
+    const r1 = await GET(makeRequest("http://localhost/api/arena/leaderboard"));
+    expect(r1.status).toBe(401);
+    expect((await r1.json()).error).toBe("UNAUTHENTICATED");
+    const r2 = await GET(
+      makeRequest("http://localhost/api/arena/leaderboard?scope=role"),
+    );
+    expect(r2.status).toBe(401);
+    expect((await r2.json()).error).toBe("UNAUTHENTICATED");
   });
 
   it("returns 401 with JSON body containing only error and message keys", async () => {
@@ -225,5 +257,38 @@ describe("GET /api/arena/leaderboard", () => {
     ].sort();
     expect(Object.keys(data).sort()).toEqual(expectedKeys);
     expect(res.headers.get("Cache-Control")).toMatch(/no-store/);
+  });
+
+  it("returns 400 INVALID_SCOPE for unknown scope param", async () => {
+    const res = await GET(
+      makeRequest("http://localhost/api/arena/leaderboard?scope=invalid"),
+    );
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe("INVALID_SCOPE");
+    expect(typeof data.message).toBe("string");
+  });
+
+  it("returns 400 INVALID_WEEK for garbage week param", async () => {
+    const res = await GET(
+      makeRequest("http://localhost/api/arena/leaderboard?week=xyz"),
+    );
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe("INVALID_WEEK");
+  });
+
+  /** C6 241 C4 짝: 라이브 주간 랭킹 빈 주·no-store·count 0. */
+  it("241: authenticated empty weekly rows → 200 live shape, count 0, no-store", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } } });
+    mockFetchWeeklyXpRows.mockResolvedValue({ rows: [], error: null });
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toMatch(/no-store/);
+    const data = await res.json();
+    expect(data.count).toBe(0);
+    expect(data.leaderboard).toEqual([]);
+    expect(data.champions).toEqual([]);
+    expect(data.top10).toEqual([]);
   });
 });

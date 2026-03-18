@@ -1,11 +1,13 @@
 /**
- * GET /api/arena/leadership-engine/stage-summary
- * LE Stage + Arena 결과·행동 패턴 요약. 도메인/서비스 호출만; UI는 렌더만.
+ * GET /api/arena/leadership-engine/stage-summary — LE Stage + Arena·행동 패턴 요약.
  *
- * Response 200: StageSummaryResponse (currentStage, stageName, progressPercent, forcedResetTriggeredAt, resetDueAt, arenaSummary, behaviorPattern). See export type StageSummaryResponse.
- * Response 401: { error: "UNAUTHENTICATED" }. Response 500: LE state/RPC failure (Next error page or { message } per runtime).
+ * @contract
+ * - **200:** `StageSummaryResponse` — `currentStage`, `stageName`, `progressPercent`, reset 필드 +
+ *   `arenaSummary`, `behaviorPattern` (**빈 로그·미집계 시 둘 다 `null`** — 정상 200).
+ * - **401:** `{ error: "UNAUTHENTICATED" }`.
+ * - **500:** LE state 보장/조회 실패 시(명시 JSON 미보장·Next 오류 페이지 가능).
  *
- * @see domain/leadership-engine/le-stage.ts LEStageSummary (단일 스키마 소스)
+ * @see domain/leadership-engine/le-stage.ts LEStageSummary
  */
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";

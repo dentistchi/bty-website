@@ -19,6 +19,7 @@ export type ConsolidationBlockProps = {
   lastXp: number;
   reflectionBonusXp: number;
   reflectResult?: ReflectResult | null;
+  reflectDeepeningNotice?: string | null;
   onComplete: () => void;
 };
 
@@ -30,6 +31,7 @@ export function ConsolidationBlock({
   lastXp,
   reflectionBonusXp,
   reflectResult = null,
+  reflectDeepeningNotice = null,
   onComplete,
 }: ConsolidationBlockProps) {
   const lang: Locale = locale === "ko" || locale === "en" ? locale : "en";
@@ -66,6 +68,14 @@ export function ConsolidationBlock({
         </p>
         <p style={{ margin: 0 }}>{t.principle}</p>
 
+        {reflectDeepeningNotice && !reflectResult && (
+          <p
+            style={{ margin: "12px 0 0 0", fontSize: 13, opacity: 0.8 }}
+            role="status"
+          >
+            {reflectDeepeningNotice}
+          </p>
+        )}
         {reflectResult && (
           <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid #eee" }}>
             <div style={{ fontWeight: 600, marginBottom: 8 }}>{t.deepeningTitle}</div>

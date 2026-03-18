@@ -1,10 +1,16 @@
 /**
  * Elite 1:1 mentor session request — domain rules only (PHASE_4_ELITE_5_PERCENT_SPEC §10 3차, PROJECT_BACKLOG §5).
- * 신청 권한·상태 전이·페이로드 검증. API는 이 도메인만 호출.
+ * 신청 권한·페이로드 검증. 승인/거절 전이는 `src/domain/rules/eliteMentorRequest` 단일 소스.
  */
 
-export const MENTOR_REQUEST_STATUSES = ["pending", "approved", "rejected"] as const;
-export type MentorRequestStatus = (typeof MENTOR_REQUEST_STATUSES)[number];
+import {
+  canEliteMentorAdminTransition,
+  ELITE_MENTOR_QUEUE_STATUSES,
+  type EliteMentorQueueStatus,
+} from "@/domain/rules/eliteMentorRequest";
+
+export const MENTOR_REQUEST_STATUSES = ELITE_MENTOR_QUEUE_STATUSES;
+export type MentorRequestStatus = EliteMentorQueueStatus;
 
 export const DEFAULT_MENTOR_ID = "dr_chi";
 
@@ -45,6 +51,5 @@ export function canTransitionStatus(
   current: MentorRequestStatus,
   next: MentorRequestStatus
 ): boolean {
-  if (current !== "pending") return false;
-  return next === "approved" || next === "rejected";
+  return canEliteMentorAdminTransition(current, next);
 }

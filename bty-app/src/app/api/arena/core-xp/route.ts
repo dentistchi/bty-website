@@ -1,10 +1,11 @@
 /**
- * GET /api/arena/core-xp
- * Returns core XP, tier, code/sub name, avatar, and display fields.
+ * GET /api/arena/core-xp — Core XP·티어·코드/서브네임·아바타 표시 필드.
  *
- * Response (200): CoreXpGetResponse (coreXpTotal, tier, requiresBeginnerPath, codeName, subName, seasonalXpTotal, codeHidden, subNameRenameAvailable, avatar*, currentOutfit, …).
- * Errors: 401 { error: "UNAUTHENTICATED" }, 500 { error: "DB_ERROR", detail?: string } (profile select/RPC).
- * Cache: no-store, must-revalidate (user-specific).
+ * @contract
+ * - **401:** `{ error: "UNAUTHENTICATED" }` — 무세션·`requireUser` 실패. **251:** 키 `error`만(arena 표준).
+ * - **200:** `CoreXpGetResponse` — `coreXpTotal`, `tier`, `requiresBeginnerPath`, `codeName`, `subName`, …
+ * - **500:** `{ error: "DB_ERROR", detail?: string }` — 프로필 select/RPC 실패.
+ * - **캐시:** no-store, must-revalidate.
  *
  * Gate 1: UI MUST use response.tier only; do not compute tier from coreXpTotal.
  * Gate 2: use response.requiresBeginnerPath for beginner redirect; do not compare coreXpTotal to 200 (use domain BEGINNER_CORE_XP_THRESHOLD in API only).

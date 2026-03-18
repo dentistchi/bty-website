@@ -17,6 +17,21 @@ This document is the **authoritative specification** for BTY Arena domain rules.
 - **Weekly XP resets** at the end of each league/season window. Only a defined carryover (e.g. 10%) may persist into the next window.
 - **Leaderboard rank** is determined **only** by Weekly XP (current window). Core XP must not affect ranking order.
 - When a run (or activity) awards XP: the same amount is added to Weekly XP for the current window and, via conversion, to Core XP. No separate “season progression” value affects leaderboard position.
+- **Weekly boundary idempotency:** Ledger rows keyed by `week_id` (e.g. Monday UTC). If `storedWeekId === activeWeekId`, reset must **not** clear XP again — see `ledgerStateAfterWeeklyBoundaryReset` / `isWeeklyBoundaryResetNoop` in `src/domain/rules/weeklyResetIdempotency.ts`. **Barrel:** `rules/index.ts` re-exports weekly reset + leaderboard helpers (`weeklyCompetitionDisplay`, etc.).
+- **SPRINT 238:** LE Stage run/result payload = `leStageDisplayForArenaRunResult`; leaderboard sort must ignore season/core identity fields; AIR bands at `AIR_BAND_LOW_MID` / `AIR_BAND_MID_HIGH`; Healing awakening path = `isValidHealingAwakeningActId` + `nextHealingAwakeningActAfter` (`healing.ts`).
+- **SPRINT 239:** `leStageDisplayWithWeeklySummary`; `normalizeDashboardAirTiiSummary`; Elite mentor queue `eliteMentorRequest.ts`; `canCompleteHealingAwakeningAct` (symmetric to next-act).
+- **SPRINT 240:** `applyEliteMentorAdminDecision`·terminal; `leStageSummaryLabelKey`; `normalizeDashboardAirTiiRollingSummary`; `isHealingAwakeningCompletionHistoryValid`.
+- **SPRINT 241:** `isLeaderboardWeekIdKey`·`weekIdForResetDisplayLabel`; `leaderboardLiveRowsAreDisplaySafeOrder`; `compareEliteMentorQueueRows`; `healingAwakeningNextUnlockedAfterCompleting`.
+- **SPRINT 242:** 리더보드 정렬에 시즌 필드 미반영 단언; `coreXpProfileDisplayLevelKey`; `eliteMentorRequestTerminalLabelKey`; `isHealingAwakeningAllActsComplete`.
+- **SPRINT 243:** `isDuplicateArenaRunCompletion`·멱등 재전송; Elite pending stale 14d·라벨 키; `utcWeekIdToSundayEndIso`·week_end 정합; `healingAwakeningProgressPercent`.
+- **SPRINT 244:** Core/Weekly 분리 단언; Dojo50 `validateDojo50QuestionSetContract`; Elite 승인 캡 `ELITE_MENTOR_APPROVED_ACTIVE_CAP`; `healingProgressGetPostMismatchMessageKey`.
+- **SPRINT 245:** `coreXpTierDisplayCodeKey`; `arenaRunLifecyclePhase`; `eliteMentorDuplicateApplicationBlockKey`; `isSecondAwakeningEligible`.
+- **SPRINT 246:** `xpAwardEventDedupKey`·중복 지급; 시나리오 난이도·길이 키; `leaderboardNearMeRanksAreContiguous`; `healingAwakeningActBlockedMessageKey`.
+- **SPRINT 247:** 주간 창 남은 일 표시; `reflectTextLengthHintKey`; `eliteMentorResponseSlaWarningKey`; `secondAwakeningJourneyCompleteMessageKeys`.
+- **SPRINT 248:** `weeklyTierDisplayLabelKey`; `RECOMMENDATION_SOURCE_PRIORITY_MIN/MAX`; `arenaRunStateDisplayLabelKey`; `clampHealingAwakeningActProgressDisplayPercent` / `HEALING_AWAKENING_PROGRESS_PERCENT_MAX`.
+- **SPRINT 249:** `reflectTextBounds` (min·max·recommended); `parseRunsListCursorOrNull` / `isValidRunsListCursorEncoding`; `eliteMentorRequestStatusDisplayLabelKey`; `healingAwakeningActLockReasonDisplayKey`.
+- **SPRINT 250:** `leaderboardTieRankSuffixDisplayKey`; `DASHBOARD_RECOMMENDATION_EMPTY_PLACEHOLDER_KEY`; `arenaRunDetailSkeletonDisplayKey`; `resilienceLevelDisplayLabelKey` (Center).
+- **SPRINT 251:** `weeklyCompetitionStageTierBandDisplayLabelKey`; `WEEKLY_COMPETITION_STAGE_TIER_DISPLAY_LABEL_KEY`; `clampDashboardLeProgressDisplayPercent`; `isValidArenaScenarioCodeId`; `healingPathProgressBlockedUserDisplayKey`; `HEALING_PROGRESS_BLOCKED_PHASE_DISPLAY_KEY`.
 
 ---
 

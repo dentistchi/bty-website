@@ -10,9 +10,10 @@
  *
  * POST /api/me/mentor-request
  *   Auth: required (session). Elite만; pending 중복 불가.
- *   Body: { message?: string } (optional, max 500 chars per MENTOR_REQUEST_MESSAGE_MAX_LENGTH)
+ *   Body: `{ message?: string }` — 선택, 최대 **500**자(`MENTOR_REQUEST_MESSAGE_MAX_LENGTH`).
+ *   **400:** `{ error: "message_too_long" }` — `message` 초과 시 **단일 키** `error`.
  *   201: MentorRequestPostResponse
- *   400 | 401 | 403 | 500: MentorRequestErrorResponse
+ *   401 | 403 | 500: MentorRequestErrorResponse
  */
 
 import { NextRequest, NextResponse } from "next/server";

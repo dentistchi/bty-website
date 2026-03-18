@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Admin: 멘토 대화 신청 큐·승인 UI (PHASE_4_ELITE_5_PERCENT_SPEC §10 3차).
- * Render-only: queue·에러는 GET /api/arena/mentor-requests 응답만 표시. 승인/거절은 PATCH API 호출 후 refetch.
+ * Admin: Elite 멘토 신청 큐 — render-only.
+ * 목록·상태·에러는 GET /api/arena/mentor-requests 응답만 표시. 승인/거절은 PATCH 후 refetch.
  */
 import { useState, useEffect, useCallback, Fragment } from "react";
 import Link from "next/link";
@@ -39,18 +39,18 @@ export default function AdminMentorRequestsPage() {
       const r = await fetch("/api/arena/mentor-requests", { credentials: "include" });
       const data: ListResp = await r.json().catch(() => ({}));
       if (!r.ok) {
-        setError((data as { error?: string }).error ?? t.error);
+        setError((data as { error?: string }).error ?? t.errorLoadQueue);
         setQueue([]);
         return;
       }
       setQueue(Array.isArray(data.queue) ? data.queue : []);
     } catch {
-      setError(t.error);
+      setError(t.errorLoadQueue);
       setQueue([]);
     } finally {
       setLoading(false);
     }
-  }, [t.error]);
+  }, [t.errorLoadQueue]);
 
   useEffect(() => {
     load();
@@ -71,15 +71,18 @@ export default function AdminMentorRequestsPage() {
       if (r.ok && (data as { ok?: boolean }).ok) {
         await load();
       } else {
-        setError((data as { error?: string }).error ?? t.error);
+        setError((data as { error?: string }).error ?? t.errorPatch);
       }
     } catch {
-      setError(t.error);
+      setError(t.errorPatch);
     } finally {
       setActingId(null);
       setActingStatus(null);
     }
   };
+
+  const statusLabel = (s: string) =>
+    s === "pending" ? t.statusPendingLabel : s;
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">
@@ -92,7 +95,7 @@ export default function AdminMentorRequestsPage() {
           href={`/${locale}/admin/debug`}
           className="text-sm text-neutral-600 underline hover:text-neutral-900"
         >
-          {locale === "ko" ? "디버깅" : "Debug"}
+          {t.debugLink}
         </Link>
       </div>
 
@@ -107,46 +110,72 @@ export default function AdminMentorRequestsPage() {
             />
           </div>
         )}
-        {error && <p className="mb-4 text-sm text-red-600" role="alert">{error}</p>}
-        {/* DESIGN_FIRST_IMPRESSION_BRIEF §2: 데이터 없을 때 일러·아이콘 + 한 줄 문구 */}
+        {error && (
+          <p className="mb-4 text-sm text-red-600" role="alert" aria-live="assertive">
+            {error}
+          </p>
+        )}
         {!loading && queue.length === 0 && !error && (
           <EmptyState icon="✉️" message={t.empty} style={{ padding: "32px 20px" }} />
         )}
         {!loading && queue.length > 0 && (
-          <div className="overflow-x-auto" role="region" aria-label={t.title}>
-            <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto" role="region" aria-label={t.queueTableAria}>
+            <table className="w-full text-left text-sm" aria-label={t.queueTableAria}>
+              <caption className="sr-only mb-2 text-left text-sm text-neutral-600">{t.tableCaption}</caption>
               <thead>
                 <tr className="border-b border-neutral-200">
-                  <th scope="col" className="pb-2 pr-4 font-medium">{t.userId}</th>
-                  <th scope="col" className="pb-2 pr-4 font-medium">{t.createdAt}</th>
-                  <th scope="col" className="pb-2 pr-4 font-medium">{t.message}</th>
-                  <th scope="col" className="pb-2 font-medium">{t.actions}</th>
+                  <th scope="col" className="pb-2 pr-4 font-medium">
+                    {t.userId}
+                  </th>
+                  <th scope="col" className="pb-2 pr-4 font-medium">
+                    {t.createdAt}
+                  </th>
+                  <th scope="col" className="pb-2 pr-4 font-medium">
+                    {t.colStatus}
+                  </th>
+                  <th scope="col" className="pb-2 pr-4 font-medium">
+                    {t.message}
+                  </th>
+                  <th scope="col" className="pb-2 font-medium">
+                    {t.actions}
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {queue.map((row) => (
                   <Fragment key={row.id}>
                     <tr className="border-b border-neutral-100">
-                      <td className="py-2 pr-4 font-mono text-xs">{row.userId}</td>
+                      <th scope="row" className="py-2 pr-4 text-left font-mono text-xs font-normal">
+                        {row.userId}
+                      </th>
                       <td className="py-2 pr-4">{row.createdAt.slice(0, 19).replace("T", " ")}</td>
-                      <td className="py-2 pr-4 max-w-[200px] truncate">{row.message ?? "—"}</td>
+                      <td className="py-2 pr-4">{statusLabel(row.status)}</td>
+                      <td className="max-w-[200px] truncate py-2 pr-4">{row.message ?? "—"}</td>
                       <td className="py-2">
-                        <div className="flex gap-2" role="group" aria-label={locale === "ko" ? "승인·거절" : "Approve or reject"}>
+                        <div className="flex gap-2" role="group" aria-label={t.approveRejectGroupAria}>
                           <button
                             type="button"
                             disabled={actingId === row.id}
-                            aria-label={actingId === row.id && actingStatus === "approved" ? t.approving : `${t.approve} ${row.id}`}
+                            aria-label={
+                              actingId === row.id && actingStatus === "approved"
+                                ? t.approving
+                                : `${t.approve}: ${row.userId}`
+                            }
                             onClick={() => respond(row.id, "approved")}
-                            className="rounded bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50 hover:bg-neutral-700"
+                            className="rounded bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
                           >
                             {actingId === row.id && actingStatus === "approved" ? t.approving : t.approve}
                           </button>
                           <button
                             type="button"
                             disabled={actingId === row.id}
-                            aria-label={actingId === row.id && actingStatus === "rejected" ? t.rejecting : `${t.reject} ${row.id}`}
+                            aria-label={
+                              actingId === row.id && actingStatus === "rejected"
+                                ? t.rejecting
+                                : `${t.reject}: ${row.userId}`
+                            }
                             onClick={() => respond(row.id, "rejected")}
-                            className="rounded border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 disabled:opacity-50 hover:bg-neutral-50"
+                            className="rounded border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
                           >
                             {actingId === row.id && actingStatus === "rejected" ? t.rejecting : t.reject}
                           </button>
@@ -155,7 +184,7 @@ export default function AdminMentorRequestsPage() {
                     </tr>
                     {actingId === row.id && (
                       <tr>
-                        <td colSpan={4} className="py-2">
+                        <td colSpan={5} className="py-2">
                           <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px", maxWidth: 320 }} />
                         </td>
                       </tr>
@@ -171,11 +200,11 @@ export default function AdminMentorRequestsPage() {
       <div className="mt-4 rounded border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
         <p>
           <Link href={`/${locale}/admin/users`} className="underline hover:text-neutral-900">
-            {locale === "ko" ? "사용자 관리" : "Users"}
+            {t.usersLink}
           </Link>
           {" · "}
           <Link href={`/${locale}/admin/arena-membership`} className="underline hover:text-neutral-900">
-            {locale === "ko" ? "Arena 멤버십 승인" : "Arena membership"}
+            {t.arenaMembershipLink}
           </Link>
           {" · "}
           <Link href={`/${locale}/admin/mentor-requests`} className="underline hover:text-neutral-900">
@@ -183,7 +212,7 @@ export default function AdminMentorRequestsPage() {
           </Link>
           {" · "}
           <Link href={`/${locale}/admin/debug`} className="underline hover:text-neutral-900">
-            {locale === "ko" ? "디버깅" : "Debug"}
+            {t.debugLink}
           </Link>
         </p>
       </div>

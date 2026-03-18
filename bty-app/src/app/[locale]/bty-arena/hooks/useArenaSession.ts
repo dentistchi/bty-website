@@ -279,6 +279,7 @@ export function useArenaSession() {
   const [startSimulationLoading, setStartSimulationLoading] = React.useState(false);
 
   const [reflectResult, setReflectResult] = React.useState<ReflectResult | null>(null);
+  const [reflectDeepeningNotice, setReflectDeepeningNotice] = React.useState<string | null>(null);
   const [reflectionSubmitting, setReflectionSubmitting] = React.useState(false);
   const [milestoneModal, setMilestoneModal] = React.useState<MilestoneModalState | null>(null);
   const [resetRunLoading, setResetRunLoading] = React.useState(false);
@@ -557,6 +558,7 @@ export function useArenaSession() {
     const bonus = meaningful ? REFLECTION_BONUS_XP : 0;
 
     setReflectionSubmitting(true);
+    setReflectDeepeningNotice(null);
     try {
       const rid = await ensureRunId();
       await postArenaEvent({
@@ -570,7 +572,7 @@ export function useArenaSession() {
       setReflectionBonusXp(bonus);
       setReflectResult(null);
 
-      if (trimmed.length > 0) {
+      if (trimmed.length >= MIN_REFLECTION_LENGTH) {
         try {
           const res = await arenaFetch<{
             ok?: boolean; summary?: string; questions?: string[];
@@ -592,9 +594,12 @@ export function useArenaSession() {
               next_action: res.next_action ?? "",
               detected: res.detected,
             });
+          } else {
+            setReflectDeepeningNotice(t.reflectDeepeningUnavailable);
           }
         } catch (e) {
           console.warn("[arena] reflect API failed", e);
+          setReflectDeepeningNotice(t.reflectDeepeningUnavailable);
         }
       }
 
@@ -836,7 +841,7 @@ export function useArenaSession() {
     selectChoice, selectOther,
     lastXp, systemMessage,
     followUpIndex, followUpOptions, hasFollowUp, followUpPrompt, followUpSubmitting,
-    reflectionBonusXp, reflectResult, reflectionSubmitting,
+    reflectionBonusXp, reflectResult, reflectDeepeningNotice, reflectionSubmitting,
     otherOpen, otherText, setOtherText,
     otherSubmitting, otherSubmitted, otherError,
     freeResponseFeedback, closeOtherModal,

@@ -1,3 +1,15 @@
+import type { ResilienceLevelDisplayLabelKey } from "@/domain/center/resilience";
+import { DASHBOARD_RECOMMENDATION_EMPTY_PLACEHOLDER_KEY } from "@/domain/dashboard";
+import {
+  HEALING_PROGRESS_BLOCKED_COOLDOWN_DISPLAY_KEY,
+  HEALING_PROGRESS_BLOCKED_PHASE_DISPLAY_KEY,
+} from "@/domain/healing";
+import {
+  ARENA_RUN_DETAIL_EMPTY_DISPLAY_KEY,
+  ARENA_RUN_DETAIL_LOADING_DISPLAY_KEY,
+} from "@/domain/rules/arenaRunDetailDisplay";
+import type { WeeklyCompetitionStageTierBandDisplayLabelKey } from "@/domain/rules/weeklyCompetitionDisplay";
+
 export type Locale = "ko" | "en";
 
 export type Messages = {
@@ -19,6 +31,30 @@ export type Messages = {
   };
   auth: { backToLogin: string; loading: string; callbackError: string };
   logout: string;
+  /**
+   * 도메인 stable 키(weeklyTierDisplayLabelKey·arenaRunStateDisplayLabelKey)와 1:1.
+   * @see domain/rules/leaderboard.ts · arenaRunState.ts
+   */
+  arena: {
+    weeklyTierBronze: string;
+    weeklyTierSilver: string;
+    weeklyTierGold: string;
+    weeklyTierPlatinum: string;
+    runStateInProgress: string;
+    runStateCompleted: string;
+    runStateAborted: string;
+    /** leaderboardTieRankSuffixDisplayKey(true) — 위 행과 동일 주간 XP 동순위 접미 */
+    tieRankSuffix: string;
+  };
+  /** 도메인 reflectTextLengthHintKey → 문구 (Arena 성찰 입력). */
+  reflectHints: {
+    reflect_hint_empty: string;
+    reflect_hint_short: string;
+    reflect_hint_developing: string;
+    reflect_hint_substantial: string;
+    reflect_hint_near_limit: string;
+    reflect_hint_at_limit: string;
+  };
   integrity: {
     title: string;
     subtitle: string;
@@ -144,6 +180,8 @@ export type Messages = {
     airLabel: string;
     /** 대시보드 추천 위젯 카드 라벨 */
     recommendationLabel: string;
+    /** DASHBOARD_RECOMMENDATION_EMPTY_PLACEHOLDER_KEY */
+    recommendationEmptyPlaceholder: string;
     /** AIR 위젯: 로드 실패 시 문구 */
     airUnavailable: string;
     /** 대시보드 주간 성찰 위젯 영역 aria-label */
@@ -162,6 +200,10 @@ export type Messages = {
     dojoPracticeLinksRegion: string;
     /** 리더보드 주간 리셋 일시 영역 aria-label */
     leaderboardWeekResetRegion: string;
+    /** 대시보드 Arena 티어 카드 (GET /api/arena/core-xp 의 tier 표시만) */
+    dashboardTierCardLabel: string;
+    dashboardTierCardSubline: string;
+    dashboardTierCardRegionAria: string;
     /** LE Stage·AIR 카드 묶음 랜드마크 (접근성) */
     leAirSummarySectionAria: string;
     /** 대시보드 상단 바로가기: Arena */
@@ -172,6 +214,53 @@ export type Messages = {
     leaderboardMainRegionAria: string;
     /** 대시보드 히어로 부제 (한눈에 보기) */
     dashboardHeroSubtitle: string;
+    /** 주간 XP·랭킹 위젯 (API 표시만, 순위는 리더보드 링크) */
+    dashboardWeeklyRankWidgetTitle: string;
+    dashboardWeeklyWidgetLoading: string;
+    dashboardWeeklyWidgetAria: string;
+    dashboardWeeklyXpCaption: string;
+    /** 주간 티어 라벨(도메인 calculateTier→weeklyTierDisplayLabelKey→arena) 상단 캡션 */
+    dashboardWeeklyTierCaption: string;
+    /** weeklyCompetitionStageTierBandDisplayLabelKey 캡션 */
+    dashboardWeeklyCompetitionStageCaption: string;
+    weeklyCompetitionStageBandBronze: string;
+    weeklyCompetitionStageBandSilver: string;
+    weeklyCompetitionStageBandGold: string;
+    weeklyCompetitionStageBandPlatinum: string;
+    /** LE Stage 위젯 진행 바 접근성 */
+    leStageLeProgressBarAria: string;
+    dashboardWeeklyRankSeeLeaderboard: string;
+    dashboardWeeklyRankHint: string;
+    /** 대시보드: 라이브 리더보드 미리보기 모달 */
+    dashboardOpenLiveLeaderboardCta: string;
+    dashboardLiveLeaderboardModalTitle: string;
+    dashboardLiveLeaderboardModalAria: string;
+    dashboardLiveLeaderboardLoading: string;
+    dashboardLiveLeaderboardEmpty: string;
+    dashboardLiveLeaderboardClose: string;
+    dashboardLiveLeaderboardFullPage: string;
+    dashboardLiveLeaderboardFailed: string;
+    /** 모달 보조 설명(aria-describedby) */
+    dashboardLiveLeaderboardModalDesc: string;
+    /** 순위 목록 ul 접근성 라벨 */
+    dashboardLiveLeaderboardListAria: string;
+    /** 내 순위 없을 때 상위 목록 안내 */
+    dashboardLiveLeaderboardNotRankedBanner: string;
+    /** nearMe 비어 전체 상위 표시 시 */
+    dashboardLiveLeaderboardNearMeFallbackBanner: string;
+    /** 닫기 버튼 스크린리더 */
+    dashboardLiveLeaderboardCloseAria: string;
+    /** LE stage-summary 위젯 스크린리더 부연 */
+    leStageSummaryWidgetDesc: string;
+    /** 프로필(Code·Sub Name) 카드 */
+    profileCodeNameCardLabel: string;
+    profileIdentitySubline: string;
+    profileRenamePlaceholder: string;
+    profileSaveSubName: string;
+    profileSaving: string;
+    eliteMeContentUnlockedLabel: string;
+    eliteMeContentUnlockedYes: string;
+    eliteMeContentUnlockedNo: string;
     /** LE 카드 내 TII·인증 요약 밴드 */
     leEngineTiiCertifiedBandAria: string;
     /** 시즌 카드: 주간 XP·이벤트·주간 구간 묶음 */
@@ -187,6 +276,23 @@ export type Messages = {
     indexThreeHubsExplainer: string;
     /** 오늘 획득 XP 카드 부가 설명 */
     pointsTodaySubline: string;
+    /** 대시보드 AIR 위젯: integritySlip 플래그 시 (API 값만 표시) */
+    airIntegritySlip: string;
+    /** LE Stage 요약 API 실패·빈 응답 시 */
+    leStageSummaryUnavailable: string;
+    /** AIR 7·14·90일 그룹 라벨 (접근성) */
+    leAirAria7d: string;
+    leAirAria14d: string;
+    leAirAria90d: string;
+    leAirAriaGrid: string;
+    /** LE·AIR 위젯: AIR API 대기 중 */
+    leAirLoading: string;
+    leStageSummarySectionAria: string;
+    leStageStagePrefix: string;
+    leStageResetDueLabel: string;
+    leStageArenaSummaryHeading: string;
+    leStageBehaviorHeading: string;
+    leStageLoading: string;
   };
   /** 자존감 50문항 결과 화면 (Center assessment). */
   assessmentResult: {
@@ -291,6 +397,11 @@ export type Messages = {
     emptyMessage: string;
     past: string;
     now: string;
+    /** resilienceLevelDisplayLabelKey(low|mid|high) */
+    levelLow: string;
+    levelMid: string;
+    levelHigh: string;
+    levelLegendAria: string;
   };
   arenaLevels: {
     membershipPending: string;
@@ -368,6 +479,18 @@ export type Messages = {
     listEmpty: string;
     colDate: string;
     colStatus: string;
+    /** 도메인 키 elite_mentor_sla_response_imminent 표시 */
+    slaImminentBadge: string;
+    /** eliteMentorRequestTerminalLabelKey(approved) */
+    eliteDomainTerminalApproved: string;
+    /** eliteMentorRequestTerminalLabelKey(rejected) */
+    eliteDomainTerminalRejected: string;
+    /** eliteMentorPendingStaleLabelKey */
+    eliteDomainPendingStale: string;
+    /** eliteMentorRequestStatusDisplayLabelKey */
+    eliteStatusBadgePending: string;
+    eliteStatusBadgeApproved: string;
+    eliteStatusBadgeRejected: string;
   };
   /** Elite 전용 페이지 (§7 서클 모임 카드 등). isElite 분기·render-only. §4차 해금 확장: 해금 조건·노출 문구. */
   elitePage: {
@@ -386,9 +509,13 @@ export type Messages = {
     /** Elite 멘토·심화 대화 링크 목록 접근성 */
     mentorDeepLinksListAria: string;
     loadingElitePageAria: string;
+    pageTitle: string;
+    pageIntroElite: string;
+    badgesSectionTitle: string;
+    tableColActions: string;
   };
   /** Admin: 멘토 신청 큐·승인 UI. API 응답만 표시(render-only). */
-  mentorRequestAdmin: {
+    mentorRequestAdmin: {
     title: string;
     description: string;
     empty: string;
@@ -397,11 +524,21 @@ export type Messages = {
     userId: string;
     createdAt: string;
     message: string;
+    colStatus: string;
+    tableCaption: string;
+    queueTableAria: string;
+    approveRejectGroupAria: string;
+    statusPendingLabel: string;
     approve: string;
     reject: string;
     approving: string;
     rejecting: string;
     error: string;
+    errorLoadQueue: string;
+    errorPatch: string;
+    debugLink: string;
+    usersLink: string;
+    arenaMembershipLink: string;
   };
   /** Foundry 멘토 허브(1:1 대화). */
   mentorPage: {
@@ -442,6 +579,50 @@ export type Messages = {
     awakeningRitualActsRegionAria: string;
     /** Awakening·대시보드 링크 nav 바깥 랜드마크 */
     healingBottomNavSectionAria: string;
+    mainLandmarkAria: string;
+    stubApiSectionTitle: string;
+    phaseFieldLabel: string;
+    ringTypeFieldLabel: string;
+    stubRenderOnlyNote: string;
+    /** Q4 GET /api/bty/awakening 액트 목록·진행 스텁 */
+    awakeningActsTrackTitle: string;
+    awakeningActsTrackRegionAria: string;
+    awakeningActsTriggerLine: string;
+    awakeningActDone: string;
+    awakeningActOpen: string;
+    awakeningRecordNextCta: string;
+    awakeningAllActsRecorded: string;
+    awakeningProgressToastOk: string;
+    awakeningProgressToast409: string;
+    awakeningProgressToast400: string;
+    awakeningProgressToastNetwork: string;
+    awakeningActsLoadError: string;
+    healingAwakeningProgressHeading: string;
+    healingAwakeningProgressPct: string;
+    healingProgressbarValuetext: string;
+    healingProgressbarDetailAllDone: string;
+    healingProgressbarDetailNext: string;
+    healingProgressbarDetailSync: string;
+    healingAwakeningAllActsDone: string;
+    healingNextActFromApi: string;
+    healingNextActSyncHint: string;
+    healingProgressRefreshHint: string;
+    healingProgressRefreshCta: string;
+    awakeningActsGridAria: string;
+    awakeningActNumberLabel: string;
+    healingActsOverallProgressAria: string;
+    healingActsOverallProgressCaption: string;
+    healingActsOverallProgressValuetext: string;
+    /** healingAwakeningActBlockedMessageKey */
+    healingAwakeningBlockedOrderRequired: string;
+    healingAwakeningBlockedAlreadyComplete: string;
+    /** healingAwakeningActLockReasonDisplayKey */
+    healingActLockPrerequisite: string;
+    healingActLockAlreadyComplete: string;
+    /** healingPathProgressBlockedUserDisplayKey — 쿨다운(향후 API) */
+    pathProgressBlockedCooldown: string;
+    /** 선행 단계 미충족 등 */
+    pathProgressBlockedPhase: string;
   };
   /** 28일 훈련(Train) 사이드바·진도. */
   train: {
@@ -532,6 +713,9 @@ export type Messages = {
     reflectionBusyAria: string;
     reflectionSentenceBlockAria: string;
     reflectionChoiceOptionsAria: string;
+    /** 성찰 본문 글자 수·힌트 영역 */
+    reflectionLengthHintAria: string;
+    reflectionCharCount: string;
     youChose: string;
     keyInsight: string;
     principle: string;
@@ -561,6 +745,8 @@ export type Messages = {
     startFirstScenario: string;
     completed: string;
     inProgress: string;
+    /** POST reflect 실패 시(성찰 저장은 됨) */
+    reflectDeepeningUnavailable: string;
   };
   /** PROJECT_BACKLOG §8: 대시보드 감정 스탯 카드 빈 상태·에러 */
   emotionalStats: {
@@ -584,6 +770,146 @@ export type Messages = {
     /** 저장 버튼 접근성(스크린 리더용) */
     saveButtonAriaLabel: string;
   };
+  /** Phase 1 스텁: Arena wireframe / Growth / My Page 공통 문구·네비 */
+  uxPhase1Stub: {
+    bottomNavArena: string;
+    bottomNavGrowth: string;
+    bottomNavMyPage: string;
+    growthTitle: string;
+    growthSubtitle: string;
+    growthLead: string;
+    growthReturnArena: string;
+    growthWeeklyRankingLink: string;
+    growthFoundryLink: string;
+    growthOptionsRegionAria: string;
+    wireframeLandmarkAria: string;
+    weeklySnapshotRegionAria: string;
+    wireframeScreenTitle: string;
+    wireframeScreenSubtitle: string;
+    wireframeSystemReady: string;
+    wireframePlayGame: string;
+    wireframeStartScenario: string;
+    wireframeContinue: string;
+    wireframeResumeLast: string;
+    wireframeOr: string;
+    wireframeWeeklyRankLine: string;
+    wireframeSeasonLine: string;
+    wireframeWireRuleNote: string;
+    wireframeResultStubPrefix: string;
+    resultTitle: string;
+    resultSubtitle: string;
+    resultCoreXpSample: string;
+    resultWeeklyXpSample: string;
+    resultSampleNote: string;
+    resultSystemTitle: string;
+    resultSystemBody: string;
+    resultContinueCta: string;
+    resultReturnArenaCta: string;
+    resultWireHubLink: string;
+    growthArenaPlayLink: string;
+    growthArenaWireHubLink: string;
+    growthShortcutsNavAria: string;
+    growthElitePageLink: string;
+    wireframeFoundryEliteAria: string;
+    growthHealingLink: string;
+    growthAwakeningLink: string;
+    resultRunCompleteHint: string;
+    resultShareRegionAria: string;
+    resultShareCta: string;
+    resultShareCopied: string;
+    resultShareFailed: string;
+    resultShareClipboardLine: string;
+    resultNextActionsRegionAria: string;
+    resultNextScenarioSectionLabel: string;
+    resultNextScenarioCta: string;
+    resultNextScenarioSub: string;
+    wireframeArenaPracticeNavAria: string;
+    wireframeDojoLink: string;
+    wireframeIntegrityLink: string;
+    wireframeRunsDashboardHint: string;
+    growthMyRankCardTitle: string;
+    growthMyRankRegionAria: string;
+    growthMyRankLoading: string;
+    growthMyRankYourRank: string;
+    growthMyRankWeeklyXpLine: string;
+    growthMyRankNoRank: string;
+    /** 이번 주 주간 XP 0·비참가 안내 */
+    growthMyRankWeekNotParticipated: string;
+    growthMyRankAnonymous: string;
+    growthMyRankSeeLeaderboard: string;
+  };
+  /** my-page progress / team / leader 스텁 카피 */
+  myPageStub: {
+    subMyPage: string;
+    progressTitle: string;
+    coreXp: string;
+    weeklyXp: string;
+    streak: string;
+    systemMsg: string;
+    progressStage: string;
+    progressRank: string;
+    progressStreakVal: string;
+    progressSystemLine: string;
+    progressFootnote: string;
+    teamTitle: string;
+    teamTiiCard: string;
+    teamStatusCard: string;
+    teamInnerStatus: string;
+    teamStable: string;
+    teamInnerTrend: string;
+    teamTrendVal: string;
+    teamRankCard: string;
+    teamRankCaption: string;
+    teamRankLine: string;
+    teamFooter: string;
+    leaderTitle: string;
+    leaderCardStatus: string;
+    leaderBuilding: string;
+    leaderCardReadiness: string;
+    leaderReadinessVal: string;
+    leaderCardCert: string;
+    leaderCertVal: string;
+    leaderSystem: string;
+    leaderSystemLine: string;
+    leaderFootnote: string;
+    overviewHealingCardTitle: string;
+    overviewHealingCardLead: string;
+    overviewHealingNavAria: string;
+    recentRunsCardTitle: string;
+    recentRunsRegionAria: string;
+    recentRunsLoading: string;
+    recentRunsEmpty: string;
+    recentRunsAnonymous: string;
+    recentRunsFootnote: string;
+    recentRunsLoadMore: string;
+    recentRunsLoadingMore: string;
+    recentRunsScenarioPrefix: string;
+    recentRunsStartedPrefix: string;
+    recentRunsStatusPrefix: string;
+    recentRunsOpenDetail: string;
+    runDetailPageTitle: string;
+    runDetailPageSubtitle: string;
+    runDetailRegionAria: string;
+    runDetailBackMyPage: string;
+    runDetailLoading: string;
+    /** arena.run_detail.loading — 도메인 키와 동일 문구 */
+    runDetailSkeletonLoading: string;
+    /** arena.run_detail.empty */
+    runDetailSkeletonEmpty: string;
+    runDetailError: string;
+    runDetailNotFound: string;
+    runDetailSignIn: string;
+    runDetailScenarioId: string;
+    runDetailStatus: string;
+    runDetailStartedAt: string;
+    runDetailCompletedAt: string;
+    runDetailLocaleLabel: string;
+    runDetailDifficulty: string;
+    /** 런 상태 API 값 → 표시 라벨 (render-only 매핑) */
+    runStatusLabelDone: string;
+    runStatusLabelInProgress: string;
+    runStatusLabelStarted: string;
+  };
 };
 
 const ko: Messages = {
@@ -604,6 +930,24 @@ const ko: Messages = {
   },
   auth: { backToLogin: "로그인으로 돌아가기", loading: "인증 처리 중...", callbackError: "인증 처리에 실패했습니다. 다시 시도해주세요." },
   logout: "로그아웃",
+  arena: {
+    weeklyTierBronze: "브론즈 (주간)",
+    weeklyTierSilver: "실버 (주간)",
+    weeklyTierGold: "골드 (주간)",
+    weeklyTierPlatinum: "플래티넘 (주간)",
+    runStateInProgress: "진행 중",
+    runStateCompleted: "완료",
+    runStateAborted: "중단",
+    tieRankSuffix: "동순위",
+  },
+  reflectHints: {
+    reflect_hint_empty: "한 문장이라도 적어 보면 다음 단계로 이어져요.",
+    reflect_hint_short: "조금만 더 구체적으로 적어 볼까요?",
+    reflect_hint_developing: "좋아요. 느낌이 드러나고 있어요.",
+    reflect_hint_substantial: "충분히 담겼어요. 마음을 더 덧붙여도 좋아요.",
+    reflect_hint_near_limit: "거의 한도에 가까워요. 마무리만 정리해 주세요.",
+    reflect_hint_at_limit: "이 길이로 제출할 수 있어요.",
+  },
   integrity: {
     title: "역지사지 시뮬레이터",
     subtitle: "Dr. Chi와 함께 갈등 상황을 돌려보세요.",
@@ -694,6 +1038,8 @@ const ko: Messages = {
     leStageLabel: "LE Stage",
     airLabel: "AIR",
     recommendationLabel: "추천",
+    recommendationEmptyPlaceholder:
+      "지금은 맞춤 추천이 없어요. Arena·Foundry·Center에서 활동하면 여기에 다음 행동이 안내돼요.",
     airUnavailable: "AIR 지표를 불러올 수 없습니다.",
     weeklyReflectionRegion: "주간 성찰 진행",
     personalRecordRegion: "이번 주 개인 기록",
@@ -703,11 +1049,55 @@ const ko: Messages = {
     dojoPracticeLabel: "Dojo 연습",
     dojoPracticeLinksRegion: "Dojo 연습 링크",
     leaderboardWeekResetRegion: "이번 주 리셋 일시",
+    dashboardTierCardLabel: "Arena 티어",
+    dashboardTierCardSubline:
+      "서버에서 계산한 티어입니다. Core XP로부터 UI에서 재계산하지 않습니다.",
+    dashboardTierCardRegionAria: "Arena 티어 (API)",
     leAirSummarySectionAria: "리더십 엔진·AIR 요약 위젯",
     dashboardShortcutGoArena: "Arena로 가기",
     dashboardShortcutWeeklyRanking: "주간 랭킹 보기",
     leaderboardMainRegionAria: "리더보드 카드·순위 목록",
     dashboardHeroSubtitle: "Arena 진행을 한눈에 볼 수 있어요.",
+    dashboardWeeklyRankWidgetTitle: "이번 주 랭킹",
+    dashboardWeeklyWidgetLoading: "주간 순위 불러오는 중…",
+    dashboardWeeklyWidgetAria: "이번 주 Arena 주간 XP·순위",
+    dashboardWeeklyXpCaption: "이번 주 획득 XP",
+    dashboardWeeklyTierCaption: "이번 주 경쟁 티어 (주간 XP 기준)",
+    dashboardWeeklyCompetitionStageCaption: "주간 경쟁 스테이지 (밴드)",
+    weeklyCompetitionStageBandBronze: "브론즈 밴드 — 주간 XP로 올라가는 첫 구간이에요.",
+    weeklyCompetitionStageBandSilver: "실버 밴드 — 꾸준히 쌓이고 있어요.",
+    weeklyCompetitionStageBandGold: "골드 밴드 — 상위권 경쟁 구간이에요.",
+    weeklyCompetitionStageBandPlatinum: "플래티넘 밴드 — 이번 주 최상위 밴드예요.",
+    leStageLeProgressBarAria: "리더십 엔진 현재 단계 진행률",
+    dashboardWeeklyRankSeeLeaderboard: "전체 리더보드 보기",
+    dashboardWeeklyRankHint: "실시간 순위는 리더보드에서 확인하세요.",
+    dashboardOpenLiveLeaderboardCta: "라이브 순위 미리보기",
+    dashboardLiveLeaderboardModalTitle: "이번 주 라이브 순위",
+    dashboardLiveLeaderboardModalAria: "주간 XP 리더보드 미리보기",
+    dashboardLiveLeaderboardLoading: "순위 불러오는 중…",
+    dashboardLiveLeaderboardEmpty: "표시할 순위가 없어요.",
+    dashboardLiveLeaderboardClose: "닫기",
+    dashboardLiveLeaderboardFullPage: "전체 리더보드로",
+    dashboardLiveLeaderboardFailed: "불러오지 못했어요.",
+    dashboardLiveLeaderboardModalDesc:
+      "이번 주 주간 XP 기준 순위입니다. 내 순위 주변 또는 상위 플레이어가 표시될 수 있어요.",
+    dashboardLiveLeaderboardListAria: "주간 XP 순위 목록",
+    dashboardLiveLeaderboardNotRankedBanner:
+      "이번 주 아직 순위에 없어요. 아래는 참가 중인 플레이어 미리보기예요.",
+    dashboardLiveLeaderboardNearMeFallbackBanner:
+      "주변 순위 구간이 비어 있어 상위 순위를 표시합니다.",
+    dashboardLiveLeaderboardCloseAria: "라이브 순위 미리보기 닫기",
+    leStageSummaryWidgetDesc:
+      "스테이지·리셋 기한·Arena 요약·행동 패턴은 서버 응답을 그대로 표시합니다.",
+    profileCodeNameCardLabel: "코드명 · 서브 이름",
+    profileIdentitySubline:
+      "대시보드에 표시되는 이름이에요. 리더보드에 올라가려면 Arena에서 시나리오를 한 번 완료해 주세요.",
+    profileRenamePlaceholder: "서브 이름 변경 (7자, 코드당 1회)",
+    profileSaveSubName: "저장",
+    profileSaving: "저장 중…",
+    eliteMeContentUnlockedLabel: "Elite 전용 콘텐츠 해금 (me/elite)",
+    eliteMeContentUnlockedYes: "예",
+    eliteMeContentUnlockedNo: "아니오",
     leEngineTiiCertifiedBandAria: "팀 TII·AIR 요약·인증 상태",
     weeklySeasonActivityAria: "시즌·주간 XP 및 이벤트 수",
     dashboardPageTitle: "대시보드",
@@ -716,6 +1106,19 @@ const ko: Messages = {
     foundryBackToBtyHome: "← bty 메인",
     indexThreeHubsExplainer: "Arena는 시나리오·랭킹, Center는 쉼·편지, Foundry는 대시보드·멘토·연습입니다.",
     pointsTodaySubline: "오늘(UTC 기준) 획득한 XP입니다.",
+    airIntegritySlip: "무결성 이탈 감지",
+    leStageSummaryUnavailable: "스테이지 요약을 불러올 수 없습니다.",
+    leAirAria7d: "AIR 7일",
+    leAirAria14d: "AIR 14일",
+    leAirAria90d: "AIR 90일",
+    leAirAriaGrid: "AIR 지표: 7일·14일·90일",
+    leAirLoading: "AIR 지표 불러오는 중…",
+    leStageSummarySectionAria: "리더십 엔진 스테이지 요약",
+    leStageStagePrefix: "단계",
+    leStageResetDueLabel: "Reset 완료 기한",
+    leStageArenaSummaryHeading: "Arena 결과 요약",
+    leStageBehaviorHeading: "행동 패턴",
+    leStageLoading: "스테이지 요약 불러오는 중…",
   },
   assessmentResult: {
     mainContentRegionAria: "진단 결과 요약: 영역별 점수·권장 트랙",
@@ -825,6 +1228,10 @@ const ko: Messages = {
     emptyMessage: "아직 궤적이 없어요. Center에서 오늘의 나·편지 단계를 진행하면 쌓여요.",
     past: "과거",
     now: "지금",
+    levelLow: "낮음 (에너지 1–2)",
+    levelMid: "중간 (에너지 3)",
+    levelHigh: "높음 (에너지 4–5)",
+    levelLegendAria: "일별 회복 수준 범례",
   },
   arenaLevels: {
     membershipPending: "멤버십 승인 대기 중입니다. 승인 후 레벨이 표시됩니다.",
@@ -910,6 +1317,13 @@ const ko: Messages = {
     listEmpty: "아직 신청 내역이 없습니다.",
     colDate: "신청 일시",
     colStatus: "상태",
+    slaImminentBadge: "멘토 응답 기한 임박 — 곧 안내가 올 수 있어요.",
+    eliteDomainTerminalApproved: "멘토 신청 · 승인됨",
+    eliteDomainTerminalRejected: "멘토 신청 · 거절됨",
+    eliteDomainPendingStale: "신청 후 2주 이상 경과했어요. 응답을 기다리는 중입니다.",
+    eliteStatusBadgePending: "멘토 신청 · 대기 중",
+    eliteStatusBadgeApproved: "멘토 신청 · 승인",
+    eliteStatusBadgeRejected: "멘토 신청 · 거절",
   },
   elitePage: {
     circleCardTitle: "서클(Circle) 모임",
@@ -924,6 +1338,11 @@ const ko: Messages = {
     unlockExposureLocked: "상위 5% 달성 시 Elite 전용 페이지·콘텐츠 이용 가능.",
     mentorDeepLinksListAria: "Elite 멘토·심화 대화 링크",
     loadingElitePageAria: "Elite 페이지 불러오는 중",
+    pageTitle: "Elite 전용",
+    pageIntroElite:
+      "주간 리더보드 상위 5%에 진입하셨습니다. 여기서는 Elite 전용 콘텐츠를 이용할 수 있습니다.",
+    badgesSectionTitle: "증정 배지",
+    tableColActions: "동작",
   },
   mentorRequestAdmin: {
     title: "멘토 대화 신청 승인",
@@ -934,11 +1353,21 @@ const ko: Messages = {
     userId: "유저 ID",
     createdAt: "신청 일시",
     message: "메시지",
+    colStatus: "상태",
+    tableCaption: "Elite 멘토 신청 대기 목록",
+    queueTableAria: "멘토 신청 대기 큐 테이블",
+    approveRejectGroupAria: "이 신청 승인 또는 거절",
+    statusPendingLabel: "대기",
     approve: "승인",
     reject: "거절",
     approving: "승인 중…",
     rejecting: "거절 중…",
     error: "처리 실패",
+    errorLoadQueue: "목록을 불러오지 못했습니다.",
+    errorPatch: "승인·거절 처리에 실패했습니다.",
+    debugLink: "디버깅",
+    usersLink: "사용자 관리",
+    arenaMembershipLink: "Arena 멤버십 승인",
   },
   mentorPage: {
     deleteAllHistoryConfirm: "저장된 멘토 대화 기록을 모두 삭제할까요?",
@@ -969,6 +1398,47 @@ const ko: Messages = {
     phaseProgressRegionAria: "Healing 단계·진행 상태",
     awakeningRitualActsRegionAria: "2차 각성 의식 1~3막",
     healingBottomNavSectionAria: "각성·대시보드 이동",
+    mainLandmarkAria: "Healing 허브",
+    stubApiSectionTitle: "서버 진행 상태 (표시 전용)",
+    phaseFieldLabel: "단계",
+    ringTypeFieldLabel: "링 유형",
+    stubRenderOnlyNote: "표시값은 API 응답이며, UI에서 단계를 계산하지 않습니다.",
+    awakeningActsTrackTitle: "Awakening 액트 (서버 기록)",
+    awakeningActsTrackRegionAria: "Awakening 액트 목록 및 완료 기록",
+    awakeningActsTriggerLine: "{day}일·세션 {sessions}회 이후 의식 해금(서버 트리거 정보).",
+    awakeningActDone: "기록됨",
+    awakeningActOpen: "미기록",
+    awakeningRecordNextCta: "다음 액트 완료 기록",
+    awakeningAllActsRecorded: "세 액트 기록이 모두 완료되었어요.",
+    awakeningProgressToastOk: "기록이 저장되었습니다.",
+    awakeningProgressToast409: "이미 기록된 액트예요.",
+    awakeningProgressToast400: "순서에 맞지 않거나 잘못된 요청이에요.",
+    awakeningProgressToastNetwork: "저장에 실패했어요. 다시 시도해 주세요.",
+    awakeningActsLoadError: "액트 정보를 불러오지 못했어요.",
+    healingAwakeningProgressHeading: "Awakening 진행 (서버)",
+    healingAwakeningProgressPct: "진행률 {n}%",
+    healingProgressbarValuetext: "진행률 {pct}퍼센트. {detail}",
+    healingProgressbarDetailAllDone: "모든 Act를 완료했습니다.",
+    healingProgressbarDetailNext: "다음 막: {name}.",
+    healingProgressbarDetailSync: "다음 막은 서버와 동기화되면 표시됩니다.",
+    healingAwakeningAllActsDone: "세 액트를 모두 기록했습니다.",
+    healingNextActFromApi: "다음 액트(서버): {name}",
+    healingNextActSyncHint:
+      "기록 순서가 어긋난 경우 아래에서 순서대로 다시 기록해 주세요.",
+    healingProgressRefreshHint:
+      "기록 후 목록이 바로 안 바뀌면 아래를 눌러 서버 상태를 다시 불러오세요.",
+    healingProgressRefreshCta: "진행 상태 새로고침",
+    awakeningActsGridAria: "Awakening 액트 1~3 그리드",
+    awakeningActNumberLabel: "액트 {n}",
+    healingAwakeningBlockedOrderRequired: "먼저 이전 액트를 순서대로 완료해 주세요.",
+    healingAwakeningBlockedAlreadyComplete: "이미 기록된 액트입니다.",
+    healingActLockPrerequisite: "먼저 이전 액트를 순서대로 완료해 주세요.",
+    healingActLockAlreadyComplete: "이미 기록된 액트입니다.",
+    pathProgressBlockedCooldown: "잠시 후 다시 시도해 주세요. (쿨다운)",
+    pathProgressBlockedPhase: "이전 단계를 먼저 완료한 뒤 진행할 수 있어요.",
+    healingActsOverallProgressAria: "Awakening 액트 기록 진행률",
+    healingActsOverallProgressCaption: "기록된 액트",
+    healingActsOverallProgressValuetext: "{done}개 중 {total}개 기록됨, 진행률 {pct}퍼센트",
   },
   train: {
     title: "28일 훈련",
@@ -1051,6 +1521,8 @@ const ko: Messages = {
     reflectionBusyAria: "반영 제출 중",
     reflectionSentenceBlockAria: "한 문장 성찰 입력",
     reflectionChoiceOptionsAria: "성찰 선택지",
+    reflectionLengthHintAria: "성찰 글 길이 안내",
+    reflectionCharCount: "{n} / {max}자",
     youChose: "선택한 항목",
     keyInsight: "핵심 통찰:",
     principle: "원칙: \"사람을 먼저 안정시키고, 그다음 시스템을 고칩니다.\"",
@@ -1077,6 +1549,8 @@ const ko: Messages = {
     startFirstScenario: "첫 시나리오를 시작해 보세요!",
     completed: "완료",
     inProgress: "진행 중",
+    reflectDeepeningUnavailable:
+      "심화 해석은 잠시 불러오지 못했어요. 성찰은 저장되었습니다.",
   },
   emotionalStats: {
     emptyMessage: "아직 기록이 없어요. Arena나 챗에서 대화를 진행해 보세요.",
@@ -1095,6 +1569,143 @@ const ko: Messages = {
     errorTooLong: "표시 이름은 64자 이하여야 해요.",
     avatarSettingsLink: "아바타 설정",
     saveButtonAriaLabel: "표시 이름 저장",
+  },
+  uxPhase1Stub: {
+    bottomNavArena: "Arena",
+    bottomNavGrowth: "성장",
+    bottomNavMyPage: "마이",
+    growthTitle: "성장",
+    growthSubtitle: "해석 · 회복",
+    growthLead: "내면 상태를 다시 세웁니다.",
+    growthReturnArena: "Arena 허브로",
+    growthWeeklyRankingLink: "주간 랭킹",
+    growthFoundryLink: "Foundry 대시보드",
+    growthOptionsRegionAria: "성장 영역 바로가기 목록",
+    wireframeLandmarkAria: "Arena 와이어프레임 허브",
+    weeklySnapshotRegionAria: "주간 순위 요약 예시",
+    wireframeScreenTitle: "BTY Arena",
+    wireframeScreenSubtitle: "와이어 · Phase 1",
+    wireframeSystemReady: "시스템 준비 완료.",
+    wireframePlayGame: "플레이",
+    wireframeStartScenario: "새 시나리오 시작",
+    wireframeContinue: "이어하기",
+    wireframeResumeLast: "마지막 시뮬 이어하기",
+    wireframeOr: "또는",
+    wireframeWeeklyRankLine: "주간 순위: #128",
+    wireframeSeasonLine: "시즌 종료까지 12일",
+    wireframeWireRuleNote:
+      "예시 수치 · AIR·TII·LRI 등은 본 화면에 노출하지 않음 (와이어 규칙).",
+    wireframeResultStubPrefix: "시뮬 결과 화면 스텁:",
+    resultTitle: "시뮬레이션 완료",
+    resultSubtitle: "Arena · 결과",
+    resultCoreXpSample: "+25 코어 XP",
+    resultWeeklyXpSample: "+15 주간 XP",
+    resultSampleNote: "예시 보상 · 실데이터는 API 연동 후",
+    resultSystemTitle: "시스템 메시지",
+    resultSystemBody: "의사결정 일관성이 개선된 것으로 감지되었습니다.",
+    resultContinueCta: "계속",
+    resultReturnArenaCta: "Arena로 돌아가기",
+    resultWireHubLink: "Arena 와이어 허브",
+    growthArenaPlayLink: "Arena 플레이",
+    growthArenaWireHubLink: "Arena 허브(와이어)",
+    growthShortcutsNavAria: "랭킹·대시보드·Arena·Healing 바로가기",
+    growthElitePageLink: "Elite (상위 5%)",
+    wireframeFoundryEliteAria: "Foundry·Elite 바로가기",
+    growthHealingLink: "Healing",
+    growthAwakeningLink: "Awakening",
+    resultRunCompleteHint:
+      "런 완료 후 「다음 시나리오」를 눌러야 주간 XP·리더보드에 반영됩니다.",
+    resultShareRegionAria: "완료 요약 공유",
+    resultShareCta: "완료 한 줄 복사",
+    resultShareCopied: "복사했어요.",
+    resultShareFailed: "복사하지 못했어요.",
+    resultShareClipboardLine: "BTY Arena에서 시나리오 런을 완료했습니다.",
+    resultNextActionsRegionAria: "런 완료 후 다음 행동",
+    resultNextScenarioSectionLabel: "권장 다음 행동",
+    resultNextScenarioCta: "다음 시나리오",
+    resultNextScenarioSub: "플레이를 이어가면 주간 XP·리더보드에 반영됩니다.",
+    wireframeArenaPracticeNavAria: "Dojo·역지사지 연습 진입",
+    wireframeDojoLink: "Dojo 50",
+    wireframeIntegrityLink: "역지사지",
+    wireframeRunsDashboardHint: "최근 런 목록은 Foundry 대시보드에서 확인할 수 있어요.",
+    growthMyRankCardTitle: "이번 주 내 순위",
+    growthMyRankRegionAria: "주간 리더보드 내 순위·주간 XP",
+    growthMyRankLoading: "순위 불러오는 중…",
+    growthMyRankYourRank: "내 순위: #{rank}",
+    growthMyRankWeeklyXpLine: "주간 XP: {xp}",
+    growthMyRankNoRank: "이번 주 리더보드에 아직 없어요.",
+    growthMyRankWeekNotParticipated:
+      "이번 주 주간 XP가 없어 순위에 올라가지 않았어요. Arena에서 플레이하면 반영돼요.",
+    growthMyRankAnonymous: "로그인 후 내 순위가 표시됩니다.",
+    growthMyRankSeeLeaderboard: "전체 리더보드",
+  },
+  myPageStub: {
+    subMyPage: "마이 페이지",
+    progressTitle: "진행",
+    coreXp: "코어 XP",
+    weeklyXp: "주간 XP",
+    streak: "연속",
+    systemMsg: "시스템 메시지",
+    progressStage: "3단계 → 4단계",
+    progressRank: "현재 순위: #128",
+    progressStreakVal: "일관성: 5일",
+    progressSystemLine: "안정적인 실행 패턴이 감지되었습니다.",
+    progressFootnote: "예시 수치 · 심층 분석·raw 지표는 노출하지 않음",
+    teamTitle: "팀",
+    teamTiiCard: "팀 무결성 지수 (TII)",
+    teamStatusCard: "팀 상태",
+    teamInnerStatus: "상태",
+    teamStable: "안정",
+    teamInnerTrend: "추세",
+    teamTrendVal: "개선 중",
+    teamRankCard: "팀 순위",
+    teamRankCaption: "순위",
+    teamRankLine: "#8",
+    teamFooter: "팀 점수는 집단 실행 품질을 반영합니다.",
+    leaderTitle: "리더 트랙",
+    leaderCardStatus: "상태",
+    leaderBuilding: "구축 중",
+    leaderCardReadiness: "리더 준비도",
+    leaderReadinessVal: "임계치 근접",
+    leaderCardCert: "인증",
+    leaderCertVal: "아직 자격 미달",
+    leaderSystem: "시스템 메시지",
+    leaderSystemLine: "책임 패턴이 개선되고 있습니다.",
+    leaderFootnote: "상태·톤 위주 · raw 수치·과도한 설명 없음",
+    overviewHealingCardTitle: "Healing",
+    overviewHealingCardLead: "회복·2차 각성 경로로 이동합니다.",
+    overviewHealingNavAria: "Healing·Awakening 바로가기",
+    recentRunsCardTitle: "최근 런",
+    recentRunsRegionAria: "최근 Arena 런 목록",
+    recentRunsLoading: "런 목록 불러오는 중…",
+    recentRunsEmpty: "최근 런이 없어요.",
+    recentRunsAnonymous: "로그인하면 최근 런 목록이 보여요.",
+    recentRunsFootnote: "순서·필드는 API 응답 그대로입니다. 다음 페이지는 cursor로 불러옵니다.",
+    recentRunsLoadMore: "다음 런 더 보기",
+    recentRunsLoadingMore: "불러오는 중…",
+    recentRunsScenarioPrefix: "시나리오",
+    recentRunsStartedPrefix: "시작",
+    recentRunsStatusPrefix: "상태",
+    recentRunsOpenDetail: "상세",
+    runDetailPageTitle: "런 상세",
+    runDetailPageSubtitle: "Arena · 단일 런",
+    runDetailRegionAria: "Arena 런 상세",
+    runDetailBackMyPage: "마이 페이지",
+    runDetailLoading: "런 정보 불러오는 중…",
+    runDetailSkeletonLoading: "런 정보 불러오는 중…",
+    runDetailSkeletonEmpty: "런을 찾을 수 없거나 권한이 없어요.",
+    runDetailError: "런을 불러오지 못했어요.",
+    runDetailNotFound: "런을 찾을 수 없거나 권한이 없어요.",
+    runDetailSignIn: "로그인 후 내 런을 볼 수 있어요.",
+    runDetailScenarioId: "시나리오",
+    runDetailStatus: "상태",
+    runDetailStartedAt: "시작",
+    runDetailCompletedAt: "완료",
+    runDetailLocaleLabel: "언어",
+    runDetailDifficulty: "난이도",
+    runStatusLabelDone: "완료",
+    runStatusLabelInProgress: "진행 중",
+    runStatusLabelStarted: "시작됨",
   },
 };
 
@@ -1116,6 +1727,24 @@ const en: Messages = {
   },
   auth: { backToLogin: "Back to sign in", loading: "Verifying…", callbackError: "Verification failed. Please try again." },
   logout: "Log out",
+  arena: {
+    weeklyTierBronze: "Bronze (weekly)",
+    weeklyTierSilver: "Silver (weekly)",
+    weeklyTierGold: "Gold (weekly)",
+    weeklyTierPlatinum: "Platinum (weekly)",
+    runStateInProgress: "In progress",
+    runStateCompleted: "Completed",
+    runStateAborted: "Aborted",
+    tieRankSuffix: "Tied",
+  },
+  reflectHints: {
+    reflect_hint_empty: "Even one sentence helps you move forward.",
+    reflect_hint_short: "A bit more detail would strengthen your reflection.",
+    reflect_hint_developing: "Nice — your perspective is coming through.",
+    reflect_hint_substantial: "You’ve captured plenty. You can still add if you like.",
+    reflect_hint_near_limit: "You’re close to the length limit — wrap up when ready.",
+    reflect_hint_at_limit: "You can submit at this length.",
+  },
   integrity: {
     title: "Integrity Mirror",
     subtitle: "Reframe the situation with Dr. Chi.",
@@ -1206,6 +1835,8 @@ const en: Messages = {
     leStageLabel: "LE Stage",
     airLabel: "AIR",
     recommendationLabel: "Recommendation",
+    recommendationEmptyPlaceholder:
+      "No personalized recommendation right now. Activity in Arena, Foundry, or Center will surface next steps here.",
     airUnavailable: "Unable to load AIR.",
     weeklyReflectionRegion: "Weekly reflection progress",
     personalRecordRegion: "Personal record this week",
@@ -1215,11 +1846,55 @@ const en: Messages = {
     dojoPracticeLabel: "Dojo practice",
     dojoPracticeLinksRegion: "Dojo practice links",
     leaderboardWeekResetRegion: "Weekly reset time",
+    dashboardTierCardLabel: "Arena tier",
+    dashboardTierCardSubline:
+      "Tier from the server. Do not derive tier from Core XP in the UI.",
+    dashboardTierCardRegionAria: "Arena tier (API)",
     leAirSummarySectionAria: "Leadership Engine and AIR summary widgets",
     dashboardShortcutGoArena: "Go to Arena",
     dashboardShortcutWeeklyRanking: "View weekly ranking",
     leaderboardMainRegionAria: "Leaderboard cards and ranking list",
     dashboardHeroSubtitle: "Your arena progress at a glance.",
+    dashboardWeeklyRankWidgetTitle: "Weekly XP & ranking",
+    dashboardWeeklyWidgetLoading: "Loading weekly info",
+    dashboardWeeklyWidgetAria: "This week’s weekly XP and ranking info",
+    dashboardWeeklyXpCaption: "Weekly XP earned this week (UTC window)",
+    dashboardWeeklyTierCaption: "This week's competition tier (from weekly XP)",
+    dashboardWeeklyCompetitionStageCaption: "Weekly competition stage (band)",
+    weeklyCompetitionStageBandBronze: "Bronze band — first weekly XP climb.",
+    weeklyCompetitionStageBandSilver: "Silver band — steady progress.",
+    weeklyCompetitionStageBandGold: "Gold band — upper competition tier.",
+    weeklyCompetitionStageBandPlatinum: "Platinum band — top weekly tier.",
+    leStageLeProgressBarAria: "Leadership Engine stage progress",
+    dashboardWeeklyRankSeeLeaderboard: "View rank on leaderboard",
+    dashboardWeeklyRankHint: "Weekly rank is shown only on the leaderboard.",
+    dashboardOpenLiveLeaderboardCta: "Preview live rankings",
+    dashboardLiveLeaderboardModalTitle: "This week’s live rankings",
+    dashboardLiveLeaderboardModalAria: "Weekly XP leaderboard preview",
+    dashboardLiveLeaderboardLoading: "Loading rankings…",
+    dashboardLiveLeaderboardEmpty: "No rows to show yet.",
+    dashboardLiveLeaderboardClose: "Close",
+    dashboardLiveLeaderboardFullPage: "Open full leaderboard",
+    dashboardLiveLeaderboardFailed: "Could not load.",
+    dashboardLiveLeaderboardModalDesc:
+      "Weekly XP rankings for this week. You may see players near your rank or the top of the board.",
+    dashboardLiveLeaderboardListAria: "Weekly XP ranking list",
+    dashboardLiveLeaderboardNotRankedBanner:
+      "You’re not on the board for this week yet. Below is a preview of active players.",
+    dashboardLiveLeaderboardNearMeFallbackBanner:
+      "No players in your nearby rank slice; showing top rankings instead.",
+    dashboardLiveLeaderboardCloseAria: "Close live rankings preview",
+    leStageSummaryWidgetDesc:
+      "Stage, reset due date, Arena summary, and behavior pattern are shown as returned by the server.",
+    profileCodeNameCardLabel: "Code · Sub name",
+    profileIdentitySubline:
+      "Your identity on the dashboard. Complete an Arena scenario to appear on the leaderboard.",
+    profileRenamePlaceholder: "Rename Sub Name (7 chars, once per code)",
+    profileSaveSubName: "Save",
+    profileSaving: "Saving…",
+    eliteMeContentUnlockedLabel: "Elite-only content (me/elite)",
+    eliteMeContentUnlockedYes: "Yes",
+    eliteMeContentUnlockedNo: "No",
     leEngineTiiCertifiedBandAria: "Team TII, AIR summary, and certification",
     weeklySeasonActivityAria: "Season and weekly XP, event count",
     dashboardPageTitle: "Dashboard",
@@ -1228,6 +1903,19 @@ const en: Messages = {
     foundryBackToBtyHome: "← bty home",
     indexThreeHubsExplainer: "Arena: scenarios & ranking. Center: rest & letters. Foundry: dashboard, mentor & practice.",
     pointsTodaySubline: "XP earned today (UTC date).",
+    airIntegritySlip: "Integrity slip",
+    leStageSummaryUnavailable: "Unable to load stage summary.",
+    leAirAria7d: "AIR 7d",
+    leAirAria14d: "AIR 14d",
+    leAirAria90d: "AIR 90d",
+    leAirAriaGrid: "AIR: 7d, 14d, 90d",
+    leAirLoading: "Loading AIR metrics…",
+    leStageSummarySectionAria: "Leadership Engine stage summary",
+    leStageStagePrefix: "Stage",
+    leStageResetDueLabel: "Reset due",
+    leStageArenaSummaryHeading: "Arena summary",
+    leStageBehaviorHeading: "Behavior pattern",
+    leStageLoading: "Loading stage summary…",
   },
   assessmentResult: {
     mainContentRegionAria: "Assessment result: scores and recommended track",
@@ -1337,6 +2025,10 @@ const en: Messages = {
     emptyMessage: "No trajectory yet. Complete today's steps or letter in Center to build it.",
     past: "Past",
     now: "Now",
+    levelLow: "Low (energy 1–2)",
+    levelMid: "Mid (energy 3)",
+    levelHigh: "High (energy 4–5)",
+    levelLegendAria: "Daily recovery level legend",
   },
   arenaLevels: {
     membershipPending: "Membership approval pending. Levels will show after approval.",
@@ -1422,6 +2114,13 @@ const en: Messages = {
     listEmpty: "No requests yet.",
     colDate: "Requested at",
     colStatus: "Status",
+    slaImminentBadge: "Mentor response window closing soon — you may hear back shortly.",
+    eliteDomainTerminalApproved: "Mentor request · Approved",
+    eliteDomainTerminalRejected: "Mentor request · Declined",
+    eliteDomainPendingStale: "It’s been over two weeks since you applied. We’re still waiting on a response.",
+    eliteStatusBadgePending: "Mentor request · Pending",
+    eliteStatusBadgeApproved: "Mentor request · Approved",
+    eliteStatusBadgeRejected: "Mentor request · Declined",
   },
   elitePage: {
     circleCardTitle: "Circle meetup",
@@ -1436,6 +2135,11 @@ const en: Messages = {
     unlockExposureLocked: "Elite page and content available when you reach top 5%.",
     mentorDeepLinksListAria: "Elite mentor and deep conversation links",
     loadingElitePageAria: "Loading Elite page",
+    pageTitle: "Elite only",
+    pageIntroElite:
+      "You're in the top 5% on the weekly leaderboard. Here you can access Elite-only content.",
+    badgesSectionTitle: "Badges",
+    tableColActions: "Actions",
   },
   mentorRequestAdmin: {
     title: "Mentor session request approval",
@@ -1446,11 +2150,21 @@ const en: Messages = {
     userId: "User ID",
     createdAt: "Requested at",
     message: "Message",
+    colStatus: "Status",
+    tableCaption: "Pending Elite mentor session requests",
+    queueTableAria: "Mentor request queue table",
+    approveRejectGroupAria: "Approve or reject this request",
+    statusPendingLabel: "Pending",
     approve: "Approve",
     reject: "Reject",
     approving: "Approving…",
     rejecting: "Rejecting…",
     error: "Action failed",
+    errorLoadQueue: "Could not load the queue.",
+    errorPatch: "Approve or reject failed.",
+    debugLink: "Debug",
+    usersLink: "Users",
+    arenaMembershipLink: "Arena membership",
   },
   mentorPage: {
     deleteAllHistoryConfirm: "Delete all saved mentor conversation?",
@@ -1481,6 +2195,48 @@ const en: Messages = {
     phaseProgressRegionAria: "Healing phase and progress",
     awakeningRitualActsRegionAria: "Second Awakening ritual acts 1–3",
     healingBottomNavSectionAria: "Awakening and dashboard links",
+    mainLandmarkAria: "Healing hub",
+    stubApiSectionTitle: "Server progress (display only)",
+    phaseFieldLabel: "Phase",
+    ringTypeFieldLabel: "Ring type",
+    stubRenderOnlyNote: "Values come from the API; the UI does not compute phase.",
+    awakeningActsTrackTitle: "Awakening acts (server record)",
+    awakeningActsTrackRegionAria: "Awakening act list and completion record",
+    awakeningActsTriggerLine:
+      "Ritual unlocks after {day} days and {sessions} sessions (server trigger info).",
+    awakeningActDone: "Recorded",
+    awakeningActOpen: "Not yet recorded",
+    awakeningRecordNextCta: "Record next act complete",
+    awakeningAllActsRecorded: "All three acts are recorded.",
+    awakeningProgressToastOk: "Progress saved.",
+    awakeningProgressToast409: "This act was already recorded.",
+    awakeningProgressToast400: "Wrong order or invalid request.",
+    awakeningProgressToastNetwork: "Could not save. Try again.",
+    awakeningActsLoadError: "Could not load act info.",
+    healingAwakeningProgressHeading: "Awakening progress (server)",
+    healingAwakeningProgressPct: "Progress {n}%",
+    healingProgressbarValuetext: "{pct} percent. {detail}",
+    healingProgressbarDetailAllDone: "All acts are complete.",
+    healingProgressbarDetailNext: "Next act: {name}.",
+    healingProgressbarDetailSync: "Next act appears when synced with the server.",
+    healingAwakeningAllActsDone: "All three acts are recorded.",
+    healingNextActFromApi: "Next act (server): {name}",
+    healingNextActSyncHint:
+      "If records are out of order, complete acts in sequence below.",
+    healingProgressRefreshHint:
+      "If the list doesn’t update after recording, refresh server state below.",
+    healingProgressRefreshCta: "Refresh progress",
+    awakeningActsGridAria: "Awakening acts 1–3 grid",
+    awakeningActNumberLabel: "Act {n}",
+    healingAwakeningBlockedOrderRequired: "Complete the previous act in order first.",
+    healingAwakeningBlockedAlreadyComplete: "This act is already recorded.",
+    healingActLockPrerequisite: "Complete the previous act in order first.",
+    healingActLockAlreadyComplete: "This act is already recorded.",
+    pathProgressBlockedCooldown: "Please try again in a moment. (Cooldown)",
+    pathProgressBlockedPhase: "Complete the previous step first to continue.",
+    healingActsOverallProgressAria: "Awakening acts completion progress",
+    healingActsOverallProgressCaption: "Acts recorded",
+    healingActsOverallProgressValuetext: "{done} of {total} acts recorded, {pct} percent",
   },
   train: {
     title: "28-Day Training",
@@ -1563,6 +2319,8 @@ const en: Messages = {
     reflectionBusyAria: "Submitting reflection",
     reflectionSentenceBlockAria: "One-sentence reflection",
     reflectionChoiceOptionsAria: "Reflection choices",
+    reflectionLengthHintAria: "Reflection length hint",
+    reflectionCharCount: "{n} / {max} characters",
     youChose: "You chose",
     keyInsight: "Key insight:",
     principle: "Principle: \"Stabilize people first, then fix the system.\"",
@@ -1589,6 +2347,8 @@ const en: Messages = {
     startFirstScenario: "Start your first scenario!",
     completed: "Completed",
     inProgress: "In progress",
+    reflectDeepeningUnavailable:
+      "We couldn’t load the deeper reflection right now. Your reflection was saved.",
   },
   emotionalStats: {
     emptyMessage: "No records yet. Try Arena or chat to start.",
@@ -1608,8 +2368,337 @@ const en: Messages = {
     avatarSettingsLink: "Avatar settings",
     saveButtonAriaLabel: "Save display name",
   },
+  uxPhase1Stub: {
+    bottomNavArena: "Arena",
+    bottomNavGrowth: "Growth",
+    bottomNavMyPage: "My Page",
+    growthTitle: "Growth",
+    growthSubtitle: "Interpretation · recovery",
+    growthLead: "Rebuild your internal state.",
+    growthReturnArena: "Arena hub",
+    growthWeeklyRankingLink: "Weekly ranking",
+    growthFoundryLink: "Foundry dashboard",
+    growthOptionsRegionAria: "Growth area shortcuts",
+    wireframeLandmarkAria: "Arena wireframe hub",
+    weeklySnapshotRegionAria: "Weekly rank snapshot sample",
+    wireframeScreenTitle: "BTY Arena",
+    wireframeScreenSubtitle: "Wireframe · Phase 1",
+    wireframeSystemReady: "System ready.",
+    wireframePlayGame: "Play Game",
+    wireframeStartScenario: "Start new scenario",
+    wireframeContinue: "Continue",
+    wireframeResumeLast: "Resume last simulation",
+    wireframeOr: "or",
+    wireframeWeeklyRankLine: "Weekly Rank: #128",
+    wireframeSeasonLine: "Season ends in 12 days",
+    wireframeWireRuleNote:
+      "Sample values · AIR, TII, LRI not shown on this screen (wireframe rules).",
+    wireframeResultStubPrefix: "Result screen stub:",
+    resultTitle: "Simulation Complete",
+    resultSubtitle: "Arena · Result",
+    resultCoreXpSample: "+25 Core XP",
+    resultWeeklyXpSample: "+15 Weekly XP",
+    resultSampleNote: "Sample rewards · live data after API wiring",
+    resultSystemTitle: "System message",
+    resultSystemBody: "System detected improved decision consistency.",
+    resultContinueCta: "Continue",
+    resultReturnArenaCta: "Return to Arena",
+    resultWireHubLink: "Arena wireframe hub",
+    growthArenaPlayLink: "Play Arena",
+    growthArenaWireHubLink: "Arena hub (wireframe)",
+    growthShortcutsNavAria: "Ranking, dashboard, Arena, and Healing shortcuts",
+    growthElitePageLink: "Elite (top 5%)",
+    wireframeFoundryEliteAria: "Foundry and Elite shortcuts",
+    growthHealingLink: "Healing",
+    growthAwakeningLink: "Awakening",
+    resultRunCompleteHint:
+      "After a run, tap “Next scenario” for weekly XP and leaderboard credit.",
+    resultShareRegionAria: "Share completion summary",
+    resultShareCta: "Copy one-line summary",
+    resultShareCopied: "Copied.",
+    resultShareFailed: "Could not copy.",
+    resultShareClipboardLine: "Completed an Arena scenario run on BTY.",
+    resultNextActionsRegionAria: "Next steps after your run",
+    resultNextScenarioSectionLabel: "Recommended next step",
+    resultNextScenarioCta: "Next scenario",
+    resultNextScenarioSub: "Keep playing to earn weekly XP and leaderboard credit.",
+    wireframeArenaPracticeNavAria: "Dojo and Integrity practice entry",
+    wireframeDojoLink: "Dojo 50",
+    wireframeIntegrityLink: "Integrity Mirror",
+    wireframeRunsDashboardHint: "Recent runs are listed on the Foundry dashboard.",
+    growthMyRankCardTitle: "Your rank this week",
+    growthMyRankRegionAria: "Weekly leaderboard rank and weekly XP",
+    growthMyRankLoading: "Loading rank…",
+    growthMyRankYourRank: "Your rank: #{rank}",
+    growthMyRankWeeklyXpLine: "Weekly XP: {xp}",
+    growthMyRankNoRank: "Not on the weekly leaderboard yet.",
+    growthMyRankWeekNotParticipated:
+      "No weekly XP yet this week, so you’re not ranked. Play in Arena to appear.",
+    growthMyRankAnonymous: "Sign in to see your rank.",
+    growthMyRankSeeLeaderboard: "Full leaderboard",
+  },
+  myPageStub: {
+    subMyPage: "My Page",
+    progressTitle: "Progress",
+    coreXp: "Core XP",
+    weeklyXp: "Weekly XP",
+    streak: "Streak",
+    systemMsg: "System message",
+    progressStage: "Stage 3 → Stage 4",
+    progressRank: "Current rank: #128",
+    progressStreakVal: "Consistency: 5 days",
+    progressSystemLine: "Stable execution pattern detected.",
+    progressFootnote: "Sample values · no deep analytics or raw metrics",
+    teamTitle: "Team",
+    teamTiiCard: "Team Integrity Score (TII)",
+    teamStatusCard: "Team status",
+    teamInnerStatus: "Status",
+    teamStable: "Stable",
+    teamInnerTrend: "Trend",
+    teamTrendVal: "Improving",
+    teamRankCard: "Team rank",
+    teamRankCaption: "Rank",
+    teamRankLine: "#8",
+    teamFooter: "Team score reflects collective execution quality.",
+    leaderTitle: "Leader Track",
+    leaderCardStatus: "Status",
+    leaderBuilding: "Building",
+    leaderCardReadiness: "Leader readiness",
+    leaderReadinessVal: "Near threshold",
+    leaderCardCert: "Certification",
+    leaderCertVal: "Not yet qualified",
+    leaderSystem: "System message",
+    leaderSystemLine: "Improving responsibility pattern detected.",
+    leaderFootnote: "Tone-first · minimal numbers",
+    overviewHealingCardTitle: "Healing",
+    overviewHealingCardLead: "Recovery and Second Awakening paths.",
+    overviewHealingNavAria: "Healing and Awakening shortcuts",
+    recentRunsCardTitle: "Recent runs",
+    recentRunsRegionAria: "Recent Arena runs",
+    recentRunsLoading: "Loading runs…",
+    recentRunsEmpty: "No recent runs.",
+    recentRunsAnonymous: "Sign in to see your recent runs.",
+    recentRunsFootnote: "Order and fields match the API. Next page uses cursor.",
+    recentRunsLoadMore: "Load more runs",
+    recentRunsLoadingMore: "Loading…",
+    recentRunsScenarioPrefix: "Scenario",
+    recentRunsStartedPrefix: "Started",
+    recentRunsStatusPrefix: "Status",
+    recentRunsOpenDetail: "Details",
+    runDetailPageTitle: "Run details",
+    runDetailPageSubtitle: "Arena · single run",
+    runDetailRegionAria: "Arena run details",
+    runDetailBackMyPage: "My page",
+    runDetailLoading: "Loading run…",
+    runDetailSkeletonLoading: "Loading run…",
+    runDetailSkeletonEmpty: "Run not found or not allowed.",
+    runDetailError: "Could not load this run.",
+    runDetailNotFound: "Run not found or not allowed.",
+    runDetailSignIn: "Sign in to view your runs.",
+    runDetailScenarioId: "Scenario",
+    runDetailStatus: "Status",
+    runDetailStartedAt: "Started",
+    runDetailCompletedAt: "Completed",
+    runDetailLocaleLabel: "Locale",
+    runDetailDifficulty: "Difficulty",
+    runStatusLabelDone: "Completed",
+    runStatusLabelInProgress: "In progress",
+    runStatusLabelStarted: "Started",
+  },
 };
 
 export function getMessages(locale: Locale): Messages {
   return locale === "en" ? en : ko;
+}
+
+/** 도메인 `weeklyTierDisplayLabelKey` / `arenaRunStateDisplayLabelKey` 반환 키 → 로케일 문구 */
+export type ArenaStableDisplayKey =
+  | "arena.leaderboard.weeklyTierBronze"
+  | "arena.leaderboard.weeklyTierSilver"
+  | "arena.leaderboard.weeklyTierGold"
+  | "arena.leaderboard.weeklyTierPlatinum"
+  | "arena.leaderboard.tieRankSuffix"
+  | "arena.run.stateInProgress"
+  | "arena.run.stateCompleted"
+  | "arena.run.stateAborted";
+
+export function arenaStableLabel(locale: Locale, key: ArenaStableDisplayKey): string {
+  const a = getMessages(locale).arena;
+  switch (key) {
+    case "arena.leaderboard.weeklyTierBronze":
+      return a.weeklyTierBronze;
+    case "arena.leaderboard.weeklyTierSilver":
+      return a.weeklyTierSilver;
+    case "arena.leaderboard.weeklyTierGold":
+      return a.weeklyTierGold;
+    case "arena.leaderboard.weeklyTierPlatinum":
+      return a.weeklyTierPlatinum;
+    case "arena.leaderboard.tieRankSuffix":
+      return a.tieRankSuffix;
+    case "arena.run.stateInProgress":
+      return a.runStateInProgress;
+    case "arena.run.stateCompleted":
+      return a.runStateCompleted;
+    case "arena.run.stateAborted":
+      return a.runStateAborted;
+    default: {
+      const _x: never = key;
+      return _x;
+    }
+  }
+}
+
+/** `arenaRunDetailSkeletonDisplayKey` → 로케일 문구 (250). */
+export function arenaRunDetailDisplayLabel(
+  locale: Locale,
+  key:
+    | typeof ARENA_RUN_DETAIL_LOADING_DISPLAY_KEY
+    | typeof ARENA_RUN_DETAIL_EMPTY_DISPLAY_KEY
+): string {
+  const m = getMessages(locale).myPageStub;
+  return key === ARENA_RUN_DETAIL_LOADING_DISPLAY_KEY
+    ? m.runDetailSkeletonLoading
+    : m.runDetailSkeletonEmpty;
+}
+
+/** `DASHBOARD_RECOMMENDATION_EMPTY_PLACEHOLDER_KEY` → 로케일 문구. */
+export function dashboardRecommendationEmptyCopy(locale: Locale): string {
+  void DASHBOARD_RECOMMENDATION_EMPTY_PLACEHOLDER_KEY;
+  return getMessages(locale).bty.recommendationEmptyPlaceholder;
+}
+
+/** `resilienceLevelDisplayLabelKey` → 로케일 문구. */
+export function resilienceLevelDisplayCopy(
+  locale: Locale,
+  key: ResilienceLevelDisplayLabelKey
+): string {
+  const r = getMessages(locale).resilience;
+  switch (key) {
+    case "center.resilience.level_low":
+      return r.levelLow;
+    case "center.resilience.level_mid":
+      return r.levelMid;
+    case "center.resilience.level_high":
+      return r.levelHigh;
+    default: {
+      const _e: never = key;
+      return _e;
+    }
+  }
+}
+
+export type ReflectTextLengthHintKey =
+  | "reflect_hint_empty"
+  | "reflect_hint_short"
+  | "reflect_hint_developing"
+  | "reflect_hint_substantial"
+  | "reflect_hint_near_limit"
+  | "reflect_hint_at_limit";
+
+export function reflectHintLabel(locale: Locale, key: ReflectTextLengthHintKey): string {
+  const h = getMessages(locale).reflectHints;
+  switch (key) {
+    case "reflect_hint_empty":
+      return h.reflect_hint_empty;
+    case "reflect_hint_short":
+      return h.reflect_hint_short;
+    case "reflect_hint_developing":
+      return h.reflect_hint_developing;
+    case "reflect_hint_substantial":
+      return h.reflect_hint_substantial;
+    case "reflect_hint_near_limit":
+      return h.reflect_hint_near_limit;
+    case "reflect_hint_at_limit":
+      return h.reflect_hint_at_limit;
+    default: {
+      const _e: never = key;
+      return _e;
+    }
+  }
+}
+
+export function eliteMentorDomainCopy(
+  locale: Locale,
+  key:
+    | "elite_mentor_terminal_approved"
+    | "elite_mentor_terminal_rejected"
+    | "elite_mentor_pending_stale"
+    | "elite_mentor_status_pending"
+    | "elite_mentor_status_approved"
+    | "elite_mentor_status_rejected"
+): string {
+  const m = getMessages(locale).mentorRequest;
+  switch (key) {
+    case "elite_mentor_terminal_approved":
+      return m.eliteDomainTerminalApproved;
+    case "elite_mentor_terminal_rejected":
+      return m.eliteDomainTerminalRejected;
+    case "elite_mentor_pending_stale":
+      return m.eliteDomainPendingStale;
+    case "elite_mentor_status_pending":
+      return m.eliteStatusBadgePending;
+    case "elite_mentor_status_approved":
+      return m.eliteStatusBadgeApproved;
+    case "elite_mentor_status_rejected":
+      return m.eliteStatusBadgeRejected;
+    default: {
+      const _e: never = key;
+      return _e;
+    }
+  }
+}
+
+export function healingAwakeningBlockedCopy(
+  locale: Locale,
+  key: "healing_awakening_act_already_complete" | "healing_awakening_act_order_required"
+): string {
+  const h = getMessages(locale).healing;
+  return key === "healing_awakening_act_already_complete"
+    ? h.healingAwakeningBlockedAlreadyComplete
+    : h.healingAwakeningBlockedOrderRequired;
+}
+
+export function healingAwakeningLockReasonCopy(
+  locale: Locale,
+  key: "healing_act_lock_prerequisite" | "healing_act_lock_already_complete"
+): string {
+  const h = getMessages(locale).healing;
+  return key === "healing_act_lock_prerequisite"
+    ? h.healingActLockPrerequisite
+    : h.healingActLockAlreadyComplete;
+}
+
+/** `weeklyCompetitionStageTierBandDisplayLabelKey` → 로케일 문구 (251). */
+export function weeklyCompetitionStageBandCopy(
+  locale: Locale,
+  key: WeeklyCompetitionStageTierBandDisplayLabelKey
+): string {
+  const b = getMessages(locale).bty;
+  switch (key) {
+    case "arena.weekly_competition.stage_band_bronze":
+      return b.weeklyCompetitionStageBandBronze;
+    case "arena.weekly_competition.stage_band_silver":
+      return b.weeklyCompetitionStageBandSilver;
+    case "arena.weekly_competition.stage_band_gold":
+      return b.weeklyCompetitionStageBandGold;
+    case "arena.weekly_competition.stage_band_platinum":
+      return b.weeklyCompetitionStageBandPlatinum;
+    default: {
+      const _e: never = key;
+      return _e;
+    }
+  }
+}
+
+/** `healingPathProgressBlockedUserDisplayKey` 결과·동일 상수 → 로케일 (251). */
+export function healingPathProgressBlockedCopy(
+  locale: Locale,
+  key:
+    | typeof HEALING_PROGRESS_BLOCKED_COOLDOWN_DISPLAY_KEY
+    | typeof HEALING_PROGRESS_BLOCKED_PHASE_DISPLAY_KEY
+): string {
+  const h = getMessages(locale).healing;
+  return key === HEALING_PROGRESS_BLOCKED_COOLDOWN_DISPLAY_KEY
+    ? h.pathProgressBlockedCooldown
+    : h.pathProgressBlockedPhase;
 }

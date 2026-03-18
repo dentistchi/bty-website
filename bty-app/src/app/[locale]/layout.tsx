@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
+import { Chatbot } from "@/components/Chatbot";
 import { LocaleLayoutHeader } from "@/components/LocaleLayoutHeader";
 import { SkipToMainContent, MAIN_CONTENT_ID } from "@/components/SkipToMainContent";
 import type { Locale } from "@/lib/i18n";
@@ -11,7 +12,8 @@ export function generateStaticParams() {
 }
 
 /**
- * 전역 플로팅 Chatbot 비노출. 챗은 Center·Foundry(bty) 등 필요한 경로 레이아웃/페이지에서만 마운트.
+ * Chatbot: locale 전역 1회 마운트 → Center `open-chatbot`·Arena·Foundry·저널 등 어디서든 패널 오픈 가능.
+ * 플로팅 버튼은 Chatbot 내부에서 허브 경로에만 표시.
  */
 export default async function LocaleLayout({ children, params }: Props) {
   const { locale } = await params;
@@ -23,6 +25,7 @@ export default async function LocaleLayout({ children, params }: Props) {
       <SkipToMainContent locale={locale as Locale} />
       <LocaleLayoutHeader />
       <main id={MAIN_CONTENT_ID}>{children}</main>
+      <Chatbot />
     </>
   );
 }

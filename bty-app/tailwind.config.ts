@@ -124,6 +124,23 @@ const config: Config = {
           accent: "#C4A77D",
           flower: "#E8B4B8",
         },
+        /** Phase 1 wireframe/result/Growth/my-page stubs — BTY_TAILWIND_THEME_TOKENS.md */
+        bty: {
+          bg: "var(--bty-bg)",
+          surface: "var(--bty-surface)",
+          soft: "var(--bty-surface-soft)",
+          text: "var(--bty-text)",
+          secondary: "var(--bty-text-secondary)",
+          muted: "var(--bty-text-muted)",
+          navy: "var(--bty-brand-navy)",
+          steel: "var(--bty-brand-steel)",
+          gold: "var(--bty-muted-gold)",
+          bronze: "var(--bty-soft-bronze)",
+          stable: "var(--bty-stable)",
+          warning: "var(--bty-warning)",
+          risk: "var(--bty-risk)",
+          border: "var(--bty-border)",
+        },
       },
       fontFamily: {
         sans: ["system-ui", "Apple SD Gothic Neo", "Malgun Gothic", "sans-serif"],

@@ -35,6 +35,7 @@ export const AIR_BAND_MID_HIGH = 0.7 as const;
 /**
  * Stage 3→4 transition (`stages.air_below_threshold`): AIR strictly below this is “below threshold”
  * (same boundary as low vs mid band). Service should pass `air_below_threshold` when e.g. `airToBand` is `low`.
+ * @see stages — stage 3 transitions to stage 4 on this threshold.
  */
 export const AIR_THRESHOLD_STAGE_ESCALATION = AIR_BAND_LOW_MID;
 

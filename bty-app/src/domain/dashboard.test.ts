@@ -6,11 +6,48 @@ import {
   RECOMMENDATION_SOURCE_PRIORITY,
   RECOMMENDATION_SOURCE_ORDER,
   PROGRESS_PERCENT_DEFAULT,
+  RECOMMENDATION_SOURCE_PRIORITY_MIN,
+  RECOMMENDATION_SOURCE_PRIORITY_MAX,
+  DASHBOARD_RECOMMENDATION_EMPTY_PLACEHOLDER_KEY,
+  DASHBOARD_LE_PROGRESS_DISPLAY_PERCENT_MIN,
+  DASHBOARD_LE_PROGRESS_DISPLAY_PERCENT_MAX,
+  clampDashboardLeProgressDisplayPercent,
 } from "./dashboard";
+
+describe("clampDashboardLeProgressDisplayPercent (251)", () => {
+  it("caps 0–100 and rounds", () => {
+    expect(DASHBOARD_LE_PROGRESS_DISPLAY_PERCENT_MIN).toBe(0);
+    expect(DASHBOARD_LE_PROGRESS_DISPLAY_PERCENT_MAX).toBe(100);
+    expect(clampDashboardLeProgressDisplayPercent(-1)).toBe(0);
+    expect(clampDashboardLeProgressDisplayPercent(101)).toBe(100);
+    expect(clampDashboardLeProgressDisplayPercent(33.6)).toBe(34);
+    expect(clampDashboardLeProgressDisplayPercent(Number.NaN)).toBe(0);
+  });
+});
+
+describe("DASHBOARD_RECOMMENDATION_EMPTY_PLACEHOLDER_KEY (250)", () => {
+  it("is stable i18n key for empty recommendation", () => {
+    expect(DASHBOARD_RECOMMENDATION_EMPTY_PLACEHOLDER_KEY).toBe(
+      "dashboard.recommendation.empty_placeholder"
+    );
+  });
+});
 
 describe("PROGRESS_PERCENT_DEFAULT", () => {
   it("is 0 for missing progress display", () => {
     expect(PROGRESS_PERCENT_DEFAULT).toBe(0);
+  });
+});
+
+describe("RECOMMENDATION_SOURCE_PRIORITY bounds", () => {
+  it("MIN/MAX align with center and arena priorities", () => {
+    expect(RECOMMENDATION_SOURCE_PRIORITY_MIN).toBe(RECOMMENDATION_SOURCE_PRIORITY.center);
+    expect(RECOMMENDATION_SOURCE_PRIORITY_MAX).toBe(RECOMMENDATION_SOURCE_PRIORITY.arena);
+    expect(RECOMMENDATION_SOURCE_PRIORITY_MIN).toBeLessThan(RECOMMENDATION_SOURCE_PRIORITY_MAX);
+    expect(RECOMMENDATION_SOURCE_PRIORITY.foundry).toBeGreaterThan(
+      RECOMMENDATION_SOURCE_PRIORITY_MIN
+    );
+    expect(RECOMMENDATION_SOURCE_PRIORITY.foundry).toBeLessThan(RECOMMENDATION_SOURCE_PRIORITY_MAX);
   });
 });
 

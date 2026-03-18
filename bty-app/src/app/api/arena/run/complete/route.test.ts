@@ -59,7 +59,7 @@ function chainable(value: Record<string, unknown>) {
   return self;
 }
 
-function mockSupabase(user: { id: string } | null) {
+function mockSupabase(user: { id: string } | null, flags?: { runAborted?: boolean }) {
   const callCounts: Record<string, number> = {};
 
   const sb = {
@@ -73,6 +73,17 @@ function mockSupabase(user: { id: string } | null) {
 
       if (table === "arena_runs") {
         if (n === 1) {
+          if (flags?.runAborted) {
+            return chainable({
+              data: {
+                run_id: "run-aborted",
+                status: "IN_PROGRESS",
+                scenario_id: "sc-1",
+                meta: { aborted_at: "2026-01-01T00:00:00.000Z" },
+              },
+              error: null,
+            });
+          }
           return chainable({
             data: {
               run_id: "run-1",
@@ -149,6 +160,18 @@ describe("POST /api/arena/run/complete", () => {
     expect(res.status).toBe(401);
     const data = await res.json();
     expect(Object.keys(data)).toEqual(["error"]);
+  });
+
+  /** C6 251: 비인증 401 짝 + 중단 런(meta.aborted_at) → 409 RUN_ABORTED. */
+  it("251: returns 401 then 409 RUN_ABORTED when run has aborted_at in meta", async () => {
+    mockSupabase(null);
+    expect((await POST(makeRequest({ runId: "run-aborted" }))).status).toBe(401);
+    mockSupabase({ id: "u1" }, { runAborted: true });
+    const res = await POST(makeRequest({ runId: "run-aborted" }));
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error).toBe("RUN_ABORTED");
+    expect(Object.keys(body)).toEqual(["error"]);
   });
 
   it("returns 400 with error as string when runId missing", async () => {
@@ -393,5 +416,51 @@ describe("POST /api/arena/run/complete", () => {
     expect(res.status).toBe(404);
     const data = await res.json();
     expect(Object.keys(data)).toEqual(["error"]);
+  });
+
+  /** C6 243: 404 NOT_FOUND vs 이미 완료 멱등 200(델타 필드 없음). */
+  it("243: unknown run NOT_FOUND; applied run returns idempotent without delta fields", async () => {
+    const sb404 = {
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+      rpc: () => Promise.resolve({ error: null }),
+      from: () => chainable({ data: null, error: null }),
+    };
+    (getSupabaseServerClient as ReturnType<typeof vi.fn>).mockResolvedValue(sb404);
+    const r404 = await POST(makeRequest({ runId: "ghost-run" }));
+    expect(r404.status).toBe(404);
+    expect((await r404.json()).error).toBe("NOT_FOUND");
+
+    const callCounts: Record<string, number> = {};
+    const sb200 = {
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+      rpc: () => Promise.resolve({ error: null }),
+      from: (table: string) => {
+        callCounts[table] = (callCounts[table] ?? 0) + 1;
+        const n = callCounts[table];
+        if (table === "arena_runs") {
+          return chainable({
+            data: { run_id: "run-done", status: "DONE", scenario_id: "sc-1" },
+            error: null,
+          });
+        }
+        if (table === "arena_events" && n === 1) {
+          return chainable({ data: [{ event_id: "ev-applied" }], error: null });
+        }
+        return chainable({ data: null, error: null });
+      },
+    };
+    (getSupabaseServerClient as ReturnType<typeof vi.fn>).mockResolvedValue(sb200);
+    const r200 = await POST(makeRequest({ runId: "run-done" }));
+    expect(r200.status).toBe(200);
+    const j = await r200.json();
+    expect(j).toMatchObject({ ok: true, runId: "run-done", status: "DONE", idempotent: true });
+    expect("deltaApplied" in j).toBe(false);
+    expect("coreXp" in j).toBe(false);
   });
 });

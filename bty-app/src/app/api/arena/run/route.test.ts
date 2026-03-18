@@ -58,6 +58,21 @@ describe("POST /api/arena/run", () => {
     expect(data.error).toBe("scenarioId_required");
   });
 
+  /** C6 245: 시나리오 시작 401→400 스모크. */
+  it("245 smoke: unauthenticated 401 then missing scenarioId 400", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: null } }) },
+    });
+    expect((await POST(makeRequest({ scenarioId: "s" }))).status).toBe(401);
+
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u245" } } }) },
+    });
+    const r400 = await POST(makeRequest({}));
+    expect(r400.status).toBe(400);
+    expect((await r400.json()).error).toBe("scenarioId_required");
+  });
+
   it("returns 200 with content-type application/json", async () => {
     const mockSingle = vi.fn().mockResolvedValue({
       data: { run_id: "r1", scenario_id: "s1", started_at: "2026-03-01T00:00:00Z", status: "started" },

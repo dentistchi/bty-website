@@ -6,7 +6,10 @@ import {
   isElite,
   rankFromCountAbove,
   weeklyRankFromCounts,
+  weeklyCompetitionDisplay,
+  weeklyTierDisplayLabelKey,
 } from "./leaderboard";
+import { calculateTier } from "./weeklyXp";
 
 describe("domain/rules/leaderboard", () => {
   describe("rankByWeeklyXpOnly", () => {
@@ -30,6 +33,17 @@ describe("domain/rules/leaderboard", () => {
       const result = rankByWeeklyXpOnly([{ id: "only", weeklyXp: 50 }]);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({ id: "only", weeklyXp: 50, rank: 1 });
+    });
+
+    /** C6 238: ordering uses weeklyXp only; season/core-like fields must not affect rank. */
+    it("sorts by weeklyXp only (extra fields do not change order)", () => {
+      const entries = [
+        { id: "low_week_high_season", weeklyXp: 10, seasonProgress: 99 as unknown as number },
+        { id: "high_week", weeklyXp: 200, coreXp: 1 as unknown as number },
+      ];
+      const result = rankByWeeklyXpOnly(entries);
+      expect(result[0].id).toBe("high_week");
+      expect(result[1].id).toBe("low_week_high_season");
     });
   });
 
@@ -100,6 +114,45 @@ describe("domain/rules/leaderboard", () => {
       expect(r6.isTop5Percent).toBe(false);
 
       expect(weeklyRankFromCounts(0, 0)).toEqual({ rank: 0, isTop5Percent: false });
+    });
+  });
+
+  describe("weeklyCompetitionDisplay", () => {
+    it("combines weekly tier/level from XP with elite from rank", () => {
+      const d = weeklyCompetitionDisplay({
+        weeklyXpTotal: 150,
+        rank: 2,
+        totalLeaderboardEntries: 100,
+      });
+      expect(d.weeklyTier).toBe("Silver");
+      expect(d.weeklyLevel).toBe(2);
+      expect(d.isWeeklyElite).toBe(true);
+    });
+
+    it("rank 0 never elite even with high weekly XP", () => {
+      const d = weeklyCompetitionDisplay({
+        weeklyXpTotal: 500,
+        rank: 0,
+        totalLeaderboardEntries: 100,
+      });
+      expect(d.isWeeklyElite).toBe(false);
+      expect(d.weeklyTier).toBe("Platinum");
+    });
+  });
+
+  describe("weeklyTierDisplayLabelKey", () => {
+    it("maps each WeeklyTierName to stable i18n keys", () => {
+      expect(weeklyTierDisplayLabelKey("Bronze")).toBe("arena.leaderboard.weeklyTierBronze");
+      expect(weeklyTierDisplayLabelKey("Silver")).toBe("arena.leaderboard.weeklyTierSilver");
+      expect(weeklyTierDisplayLabelKey("Gold")).toBe("arena.leaderboard.weeklyTierGold");
+      expect(weeklyTierDisplayLabelKey("Platinum")).toBe("arena.leaderboard.weeklyTierPlatinum");
+    });
+
+    it("matches calculateTier boundaries (0 Bronze, 100 Silver, 200 Gold, 300 Platinum)", () => {
+      expect(weeklyTierDisplayLabelKey(calculateTier(0))).toBe("arena.leaderboard.weeklyTierBronze");
+      expect(weeklyTierDisplayLabelKey(calculateTier(100))).toBe("arena.leaderboard.weeklyTierSilver");
+      expect(weeklyTierDisplayLabelKey(calculateTier(200))).toBe("arena.leaderboard.weeklyTierGold");
+      expect(weeklyTierDisplayLabelKey(calculateTier(300))).toBe("arena.leaderboard.weeklyTierPlatinum");
     });
   });
 });

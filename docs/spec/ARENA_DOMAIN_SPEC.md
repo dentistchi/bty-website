@@ -1,6 +1,6 @@
 # Arena Domain Spec
 
-> 단일 참조 문서. **갱신: 2026-03-17** (SPRINT 235 C4: reflect·sub-name·runs·leaderboard↔core-xp·journey POST·me/elite·§4).
+> 단일 참조 문서. **갱신: 2026-03-19** (SPRINT 251 C4: run/complete 409 RUN_ABORTED·core-xp/me/access 401·healing progress 404 문서·§4).
 
 **관련 스펙**: [Foundry Domain Spec](./FOUNDRY_DOMAIN_SPEC.md) — Dojo·Integrity·Mentor·시나리오 콘텐츠는 Foundry. 시나리오 50개·Leadership Engine·Elite 정의는 Foundry 스펙과 동기화.
 
@@ -150,15 +150,16 @@ lib/bty/arena/domain.ts ──────── domain/rules import + re-export
 
 ## 4. API 엔드포인트 목록 (32개)
 
-**JSDoc 정합성 (2026-03-14):** run/complete·core-xp·leaderboard·stage-summary·dashboard/summary·center/letter·resilience·dear-me/letter·letters 등에 401·400·404·500 응답 본문 명시. **227:** arena/profile PATCH·leadership-engine/state·dojo. **228:** leadership-engine/air 401·500 명시. **229:** leadership-engine/tii 401·500 명시. **230:** leadership-engine/certified 401·500 명시. **231:** leaderboard 주간순위 불변·run/complete 멱등·profile/core-xp 500 맥락·LE stage-summary·air 빈로그 200·dashboard/summary 500 노출·journey/profile·me/elite·center·dear-me JSDoc 보강. **232:** bty/healing·awakening 200 스키마·dojo questions/submit/integrity·avatar-assets 캐시·mentor 429·assessment recommendedTrack/track(path)·§4-12b. **233:** run/complete·profile·core-xp·leaderboard·LE stage-summary·air·journey·me/elite·dashboard·center·dear-me JSDoc·에러 재확인. **234:** bty/healing·awakening·dojo·integrity·questions·avatar-assets·mentor·assessment submit/submissions JSDoc·에러 재확인. **235:** POST /api/arena/reflect 본문·에러·sub-name 403 계열·GET runs 무세션 200·leaderboard/core-xp 상호 참조·journey entries POST 401·503·500·me/elite.
+**JSDoc 정합성 (2026-03-14):** run/complete·core-xp·leaderboard·stage-summary·dashboard/summary·center/letter·resilience·dear-me/letter·letters 등에 401·400·404·500 응답 본문 명시. **227:** arena/profile PATCH·leadership-engine/state·dojo. **228:** leadership-engine/air 401·500 명시. **229:** leadership-engine/tii 401·500 명시. **230:** leadership-engine/certified 401·500 명시. **231:** leaderboard 주간순위 불변·run/complete 멱등·profile/core-xp 500 맥락·LE stage-summary·air 빈로그 200·dashboard/summary 500 노출·journey/profile·me/elite·center·dear-me JSDoc 보강. **232:** bty/healing·awakening 200 스키마·dojo questions/submit/integrity·avatar-assets 캐시·mentor 429·assessment recommendedTrack/track(path)·§4-12b. **233:** run/complete·profile·core-xp·leaderboard·LE stage-summary·air·journey·me/elite·dashboard·center·dear-me JSDoc·에러 재확인. **234:** bty/healing·awakening·dojo·integrity·questions·avatar-assets·mentor·assessment submit/submissions JSDoc·에러 재확인. **235:** POST /api/arena/reflect 본문·에러·sub-name 403 계열·GET runs 무세션 200·leaderboard/core-xp 상호 참조·journey entries POST 401·503·500·me/elite. **236:** bty/healing·awakening·dojo·dashboard·center/dear-me JSDoc·ARENA API 목록 재확인. **237:** `POST /api/arena/run`·`run/complete`·`reflect`·`GET|POST /api/journey/entries`·`GET /api/me/elite`·`GET /api/arena/dashboard/summary` JSDoc `@contract` 보강·§4-1·4-7·4-11·4-11b 표 동기. **238:** `GET /api/arena/leadership-engine/state` @contract·`PATCH mentor-requests/[id]` 401·403·500·dashboard/summary `RecommendationSummary` 연장·`GET /api/bty/healing` INTERNAL_ERROR. **239:** dashboard/summary LE+AIR 병합 소비 문서·GET mentor-requests 쿼리/에러·run/complete 400 클라이언트·healing/awakening 401·404 미사용 명시. **240:** PATCH mentor-requests 240 요약·dashboard/summary `Cache-Control private no-store`·run/complete 409/429 미사용·`GET emotional-stats/second-awakening` @contract. **241:** leaderboard 라이브 `@contract`·journey entries 확장·`POST /api/bty/healing/progress`·`GET /api/bty/awakening/acts/[actId]` 404. **242:** arena/profile GET/PATCH `@contract`·second-awakening 200 스키마·awakening acts 고정 3·401·healing/progress 429 미적용. **243:** run/complete 410·idempotent·me/elite 스키마·reflect 413·`GET healing/progress`. **244:** GET runs `@contract`·limit·private no-store·dojo/questions Cache-Control·healing/progress 쿼리 없음·dojo/submit 400. **245:** `GET /api/arena/run/[runId]`·POST run 409·leaderboard scope 폴백·`GET /api/bty/awakening/acts`. **246:** reflect USER_TEXT_TOO_LARGE 413·stage-summary 빈 null·run/complete 멱등 본문·profile GET no-store·304 없음. **247:** GET runs `cursor`·`nextCursor`·400 `INVALID_CURSOR`·PATCH profile `EMPTY_PATCH`·GET me/elite `Cache-Control private max-age=60`·POST healing/progress 409 `ACT_ALREADY_COMPLETED`. **248:** leaderboard `scope`/`week` 400·dashboard 503/500 계약·catch 500·journey/profile 401 문서·center/letter body 키. **249:** reflect 400/413 본문·runs cursor 512·me/mentor-request POST 400 `message_too_long`·GET bty/awakening/acts 404는 `[actId]`·ACT_NOT_FOUND. **250:** run/[id] 404 NOT_FOUND 본문·PATCH profile 400 INVALID_JSON vs 422·leaderboard 401 error+message·GET center/resilience period 400 INVALID_PERIOD. **251:** run/complete **409** `RUN_ABORTED`(aborted 런)·멱등 **200**·core-xp 401·me/access 401·GET healing/progress 404 없음.
 
 ### 4-1. Run Lifecycle
 
 | Method | Endpoint | 역할 |
 |---|---|---|
-| POST | `/api/arena/run` | 런 생성 (시나리오 배정). Body: scenarioId. 401·400 scenarioId_required·500 |
-| POST | `/api/arena/run/complete` | 런 완료 (XP 지급·멱등) |
-| GET | `/api/arena/runs` | 런 이력 (limit); **무세션 시 200** `runs:[]`, viewerAnonymous (401 아님) |
+| POST | `/api/arena/run` | 런 생성. 400·409 미사용·401·500. 200 `{ run }` |
+| GET | `/api/arena/run/[runId]` | 단일 런 본인. **250:** 404 `{ error: "NOT_FOUND" }`·401·500 |
+| POST | `/api/arena/run/complete` | **251:** **409** `RUN_ABORTED`·이중완료 **200** `idempotent`·400·404·401·500 |
+| GET | `/api/arena/runs` | `cursor`·`nextCursor`·깨진 cursor 400 `INVALID_CURSOR`·limit 1–50·무세션 200·no-store @contract |
 
 ### 4-2. Beginner Flow
 
@@ -172,7 +173,7 @@ lib/bty/arena/domain.ts ──────── domain/rules import + re-export
 
 | Method | Endpoint | 역할 |
 |---|---|---|
-| GET | `/api/arena/core-xp` | Core XP + 파생 표시값 (stage, codeLore, progress) |
+| GET | `/api/arena/core-xp` | **251:** 401 `UNAUTHENTICATED`·500 `DB_ERROR`·@contract |
 | GET | `/api/arena/weekly-xp` | Weekly XP 현재값 |
 | GET | `/api/arena/weekly-stats` | 주간 통계 |
 | GET | `/api/arena/today-xp` | 오늘 XP |
@@ -181,7 +182,7 @@ lib/bty/arena/domain.ts ──────── domain/rules import + re-export
 
 | Method | Endpoint | 역할 |
 |---|---|---|
-| GET | `/api/arena/leaderboard` | 리더보드 (scope=overall/role/office) |
+| GET | `/api/arena/leaderboard` | **248:** scope/week 400. **250:** 401 `UNAUTHENTICATED`+`message`·no-store·500 |
 | GET | `/api/arena/leaderboard/status` | 내 리더보드 상태 |
 
 **리더보드 프로필 아바타:** 응답 각 행(LeaderboardRow)에 `avatarUrl`, `avatarLayers`(characterImageUrl, outfitImageUrl), `avatar`(characterKey, theme, outfitKey, accessoryKeys) 포함. 캐릭터+옷+악세사리 ID 및 합성용 URL 규칙은 avatarOutfits/leaderboardService 참조.
@@ -190,7 +191,7 @@ lib/bty/arena/domain.ts ──────── domain/rules import + re-export
 
 | Method | Endpoint | 역할 |
 |---|---|---|
-| GET/PATCH | `/api/arena/profile` | 프로필 조회·수정 |
+| GET/PATCH | `/api/arena/profile` | **250:** PATCH 400 `INVALID_JSON`만·422 `EMPTY_PATCH`·아바타 검증 422·GET no-store |
 | GET | `/api/arena/code-name` | 코드 네임 조회 |
 | POST | `/api/arena/sub-name` | 서브 네임 변경 (tier≥25·주간 상위5%·코드당 1회; 400/403/404) |
 
@@ -210,7 +211,7 @@ lib/bty/arena/domain.ts ──────── domain/rules import + re-export
 | Method | Endpoint | 역할 |
 |---|---|---|
 | POST | `/api/arena/event` | 시나리오 이벤트 기록 |
-| POST | `/api/arena/reflect` | 성찰 엔진 (userText 필수, levelId tenure 추론) 200·401·400 |
+| POST | `/api/arena/reflect` | **249:** 400 `Invalid JSON body`·`userText is required`·413 `USER_TEXT_TOO_LARGE`(24000)·401·200 |
 | POST | `/api/arena/free-response` | 자유 응답 |
 | GET | `/api/arena/unlocked-scenarios` | 해금된 시나리오 목록 |
 
@@ -219,8 +220,8 @@ lib/bty/arena/domain.ts ──────── domain/rules import + re-export
 | Method | Endpoint | 역할 |
 |---|---|---|
 | POST | `/api/arena/membership-request` | 멤버십 가입 요청 |
-| GET | `/api/arena/mentor-requests` | 멘토 신청 큐 (admin) |
-| PATCH | `/api/arena/mentor-requests/[id]` | 멘토 신청 승인/거절 |
+| GET | `/api/arena/mentor-requests` | pending 큐·쿼리 없음. 401·403·500·503 |
+| PATCH | `/api/arena/mentor-requests/[id]` | Elite 승인/거절 @contract 401·403·404·500·503·400 |
 
 ### 4-9. League
 
@@ -232,46 +233,55 @@ lib/bty/arena/domain.ts ──────── domain/rules import + re-export
 
 | Method | Endpoint | 역할 |
 |---|---|---|
-| GET | `/api/arena/leadership-engine/state` | LE 현재 상태 |
+| GET | `/api/arena/leadership-engine/state` | LE Stage·stageName·reset 필드. 401·500. `@contract` |
 | GET | `/api/arena/leadership-engine/air` | AIR 점수·밴드 (air_7d/14d/90d: air, missedWindows, integritySlip, band low\|mid\|high) |
 | GET | `/api/arena/leadership-engine/tii` | TII 값 |
 | GET | `/api/arena/leadership-engine/certified` | Certified 상태 |
-| GET | `/api/arena/leadership-engine/stage-summary` | LE Stage + Arena·행동 패턴 요약 (progressPercent, arenaSummary, behaviorPattern) |
+| GET | `/api/arena/leadership-engine/stage-summary` | arenaSummary·behaviorPattern null 가능·401·500 @contract |
 | POST | `/api/arena/leadership-engine/transition` | Stage 전이 실행 |
 
 ### 4-11. Dashboard
 
 | Method | Endpoint | 역할 |
 |---|---|---|
-| GET | `/api/arena/dashboard/summary` | 진도·추천·오늘 성장 요약 (progress, recommendation, todayGrowth.xpToday; 쿼리 source=arena\|foundry\|center) |
+| GET | `/api/arena/dashboard/summary` | **248:** 503 `SERVICE_UNAVAILABLE`(계약)·500 `DASHBOARD_SUMMARY_FAILED`·401·LE+AIR 분리 호출·no-store |
 
 ### 4-11b. Journey & Me (대시보드·Elite 연동)
 
 | Method | Endpoint | 역할 |
 |---|---|---|
-| GET | `/api/journey/entries` | 일차 엔트리 (?day=1–28 또는 전체). 401·400·503·500 |
-| POST | `/api/journey/entries` | 일차 upsert. 401·503·500 |
-| GET | `/api/journey/profile` | bty_profiles 진행. 401·503·500 |
-| GET | `/api/me/elite` | Elite 상위 5%·배지. 401 (500 가능) |
+| GET | `/api/journey/entries` | ?day=1–28·스키마 확장 시 필드 증가. 401·400·503·500 |
+| POST | `/api/journey/entries` | day·completed·mission_checks·reflection_text upsert. 401·503·500 |
+| GET | `/api/journey/profile` | **248:** 401 `Unauthorized`(Journey 관)·503·500 |
+| GET | `/api/me/elite` | EliteGetResponse·badges 빈배열·`Cache-Control private max-age=60 stale-while-revalidate=120`·401·500 |
+| POST | `/api/me/mentor-request` | **249:** 400 `{ error: "message_too_long" }`·201·401·403·500 |
+| GET | `/api/me/access` | **251:** 401 `Unauthorized`·503 `Server not configured`·200 user+memberships |
 
 ### 4-12. BTY (Healing / Awakening)
 
 | Method | Endpoint | 역할 |
 |---|---|---|
-| GET | `/api/bty/healing` | Q4 Healing phase·콘텐츠 (ok, phase, content.ringType) |
-| GET | `/api/bty/awakening` | Q4 Awakening (ok, acts[], trigger day_based). 401·500 INTERNAL_ERROR |
+| GET | `/api/bty/healing` | 200·401·500. 404 미사용 |
+| GET | `/api/bty/awakening` | acts 3고정·빈배열 없음·401 acts 미수신·500 |
+| GET | `/api/bty/awakening/acts` | **249:** 목록 404 없음·404는 `[actId]` `ACT_NOT_FOUND`. 200·401 |
+| GET | `/api/bty/awakening/acts/[actId]` | 단일 액트. 401·404 `ACT_NOT_FOUND`·200 |
+| GET | `/api/bty/healing/progress` | **251:** **404 없음**·신규=200 빈배열·nextAct 1·401·500 |
+| POST | `/api/bty/healing/progress` | 409 `ACT_ALREADY_COMPLETED`·400·401·500·429 미적용 |
+| GET | `/api/emotional-stats/second-awakening` | eligible·completed·userDay·sessionCount·ritual?. 401·500 |
 
 ### 4-12b. Dojo·Mentor·Avatar·Center Assessment
 
 | Method | Endpoint | 역할 |
 |---|---|---|
-| GET | `/api/dojo/questions` | 50문항·choiceValues (비인증). 500 |
-| POST | `/api/dojo/submit` | 50문항 제출. 401·400·500 |
+| GET | `/api/dojo/questions` | public max-age=120·ETag 없음·500 |
+| POST | `/api/dojo/submit` | 400 invalid_body·검증 문자열·401·500 |
 | POST | `/api/dojo/integrity/submit` | 역지사지 제출. 401·400 |
 | GET | `/api/arena/avatar-assets` | 아바타 카탈로그 JSON. public max-age=300 |
 | POST | `/api/mentor` | Dr. Chi 멘토. 400·429·500; 200 safety_valve |
 | POST | `/api/assessment/submit` | 진단 제출·recommendedTrack(진로 키) |
 | GET | `/api/assessment/submissions` | 이력·track = 저장 path |
+| POST | `/api/center/letter` | **248:** JSON `body`·`mood`·`energy`·`oneWord`·`lang`·400 `body_empty` |
+| GET | `/api/center/resilience` | **250:** `period` 비어 있지 않고 1–365 아니면 **400** `INVALID_PERIOD` |
 
 ### 4-13. Combined
 

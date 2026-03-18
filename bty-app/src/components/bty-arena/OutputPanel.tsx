@@ -27,6 +27,7 @@ export type OutputPanelProps = {
   followUpIndex: number | null;
   /** Result from /api/arena/reflect; shown in ConsolidationBlock when present. */
   reflectResult?: ReflectResult | null;
+  reflectDeepeningNotice?: string | null;
   /** When true, ReflectionBlock shows loading skeleton (reflection submit in flight). */
   reflectionSubmitting?: boolean;
   onNextToReflection: () => void;
@@ -55,6 +56,7 @@ export function OutputPanel({
   hasFollowUp,
   followUpIndex,
   reflectResult = null,
+  reflectDeepeningNotice = null,
   reflectionSubmitting = false,
   onNextToReflection,
   onSubmitReflection,
@@ -142,6 +144,7 @@ export function OutputPanel({
           lastXp={lastXp}
           reflectionBonusXp={reflectionBonusXp}
           reflectResult={reflectResult}
+          reflectDeepeningNotice={reflectDeepeningNotice}
           onComplete={onComplete}
         />
       )}

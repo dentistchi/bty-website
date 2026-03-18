@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
 import { ThemeBody } from "@/components/ThemeBody";
 import { CardSkeleton, LoadingFallback } from "@/components/bty-arena";
+import { AwakeningActsTrack } from "@/components/bty/healing/AwakeningActsTrack";
 import { getMessages } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -198,6 +199,7 @@ export default function SecondAwakeningPageClient() {
       <ThemeBody theme="foundry" />
       <main className="min-h-screen bg-foundry-white" aria-label={locale === "ko" ? "2차 각성 의식" : "Second Awakening ritual"}>
         <div className="max-w-xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
+          <AwakeningActsTrack locale={locale} />
           <header className="text-center mb-8" role="region" aria-label={locale === "ko" ? "의식 제목" : "Ritual title"}>
             <h1 className="text-2xl sm:text-3xl font-semibold text-foundry-purple-dark">
               {locale === "ko" ? "Second Awakening" : "Second Awakening"}

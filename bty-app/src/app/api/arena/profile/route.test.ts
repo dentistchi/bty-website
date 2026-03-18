@@ -95,6 +95,7 @@ describe("GET /api/arena/profile", () => {
     mockRequireUser.mockResolvedValue({ user: { id: "u1" }, supabase, base: {} });
     const res = await GET(makeGetRequest());
     expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("private, no-store, max-age=0");
     const data = await res.json();
     expect(data.profile).toBeDefined();
     expect(data.profile).toHaveProperty("user_id");
@@ -324,5 +325,16 @@ describe("PATCH /api/arena/profile", () => {
     expect(res.status).toBe(400);
     const data = await res.json();
     expect(Object.keys(data)).toEqual(["error"]);
+  });
+
+  it("247: returns 422 EMPTY_PATCH when body has no patchable fields", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {},
+      base: {},
+    });
+    const res = await PATCH(makePatchRequest({}));
+    expect(res.status).toBe(422);
+    expect((await res.json()).error).toBe("EMPTY_PATCH");
   });
 });

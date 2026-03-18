@@ -3,10 +3,15 @@ import { getAuthUserFromRequest } from "@/lib/auth-server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 /**
- * GET /api/journey/entries
- * Query: day (optional, 1–28) — single day entry. Omit for all entries (array).
- * Response 200: single object | null (when ?day=N), or array (when no day).
- * Errors: 401 { error: "Unauthorized" }, 400 { error: "Invalid day" }, 503 { error: "Database not configured" }, 500 { error: string }.
+ * GET /api/journey/entries — BTY 일차 엔트리 조회 (`bty_day_entries`).
+ *
+ * @contract
+ * - **Auth:** 401 `{ error: "Unauthorized" }`.
+ * - **Query:** `day` 생략 → 200 전체 배열(오름차순). `day=1..28` → 200 단일 행 또는 `null`(없음).
+ * - **400:** `day`가 범위 밖 → `{ error: "Invalid day" }`.
+ * - **503:** `{ error: "Database not configured" }` (admin 클라이언트 없음).
+ * - **500:** `{ error: string }` (Supabase 조회 실패; PGRST116 단건 미존재는 200 null).
+ * - **확장 필드:** `select("*")` — `bty_day_entries` 스키마 추가 시 응답 키 확장; 클라는 미지 키 무시.
  */
 export async function GET(request: Request) {
   const user = await getAuthUserFromRequest(request);
@@ -57,10 +62,15 @@ export async function GET(request: Request) {
 }
 
 /**
- * POST /api/journey/entries — 일차 엔트리 upsert (user_id+day).
- * Body: { day?: 1–28, completed?, mission_checks?: number[], reflection_text?: string }.
- * Response (200): upserted row object.
- * Errors: 401 { error: "Unauthorized" }; 503 { error: "Database not configured" }; 500 { error: string } (Supabase).
+ * POST /api/journey/entries — 일차 upsert (`user_id`+`day` 고유).
+ *
+ * @contract
+ * - **Auth:** 401 `{ error: "Unauthorized" }`.
+ * - **Body (JSON):** `day` 1–28(미지정·비숫자 시 1로 클램프). `completed` boolean, `mission_checks` number[],
+ *   `reflection_text` string(빈 문자열→null). 잘못된 JSON → `{}` 처리.
+ * - **200:** upsert된 행 전체(테이블 스키마).
+ * - **503:** `{ error: "Database not configured" }`.
+ * - **500:** `{ error: string }` (upsert 실패).
  */
 export async function POST(request: Request) {
   const user = await getAuthUserFromRequest(request);

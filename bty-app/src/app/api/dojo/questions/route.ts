@@ -1,7 +1,10 @@
 /**
- * GET /api/dojo/questions — Dojo 50문항·선택지 조회 (auth 없음).
- * Response (200): { questions: DojoQuestion[], choiceValues: number[] } (Likert 1..5).
- * Error: 500 { error: string } (dojo_questions select 실패).
+ * GET /api/dojo/questions — Dojo 50문항·선택지 조회 (비인증).
+ *
+ * @contract
+ * - **200:** `{ questions, choiceValues }` (Likert 1..5).
+ * - **500:** `{ error: string }`.
+ * - **캐시·버전:** `Cache-Control: public, max-age=120, stale-while-revalidate=86400`; **ETag 미제공** — 집합 변경 감지는 클라가 `questions.length`/id 범위로 휴리스틱.
  */
 
 import { NextResponse } from "next/server";
@@ -60,5 +63,7 @@ export async function GET(): Promise<
     questions,
     choiceValues: [...DOJO_LIKERT_5_VALUES],
   };
-  return NextResponse.json(body);
+  const res = NextResponse.json(body);
+  res.headers.set("Cache-Control", "public, max-age=120, stale-while-revalidate=86400");
+  return res;
 }

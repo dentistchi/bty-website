@@ -32,6 +32,21 @@ type Message = {
 const TYPING_TIMEOUT_10S = 10_000;
 const TYPING_TIMEOUT_25S = 25_000;
 
+/** Dr. Chi 플로팅 버튼 노출 경로 (admin·train·bty 로그인 등 제외) */
+function showChatFabForPath(pathname: string): boolean {
+  if (!pathname) return false;
+  if (pathname.includes("/admin")) return false;
+  if (pathname.includes("/train")) return false;
+  if (/\/bty\/(login|forgot-password|logout)(\/|\?|$)/.test(pathname)) return false;
+  if (pathname.includes("/center")) return true;
+  if (pathname.includes("/dear-me")) return true;
+  if (pathname.includes("/assessment")) return true;
+  if (/\/journal(\/|$|\?)/.test(pathname)) return true;
+  if (pathname.includes("/bty-arena")) return true;
+  if (pathname.includes("/bty") && !pathname.includes("/bty-arena")) return true;
+  return false;
+}
+
 export function Chatbot() {
   const pathname = usePathname() ?? "";
   const locale: Locale = pathname.startsWith("/en") ? "en" : "ko";
@@ -333,9 +348,30 @@ export function Chatbot() {
         retry: "text-dear-sage",
       };
 
-  // §2: 플로팅 버튼(오른쪽 아래) 전역 비노출. 패널은 open-chatbot 이벤트로만 열림.
+  const showFab = showChatFabForPath(pathname);
+  const fabAria =
+    locale === "ko"
+      ? `${open ? "채팅 닫기" : "Dr. Chi와 말걸기"}`
+      : `${open ? "Close chat" : "Chat with Dr. Chi"}`;
+
   return (
     <>
+      {showFab && (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className={cn(
+            "fixed bottom-6 right-6 z-[45] flex h-14 w-14 items-center justify-center rounded-full border-2 shadow-lg transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+            isBtyPage || isArenaPage
+              ? "border-foundry-purple-muted bg-white hover:bg-foundry-purple-muted/20 focus-visible:ring-foundry-purple/40"
+              : "border-dear-sage/40 bg-white hover:bg-dear-sage/10 focus-visible:ring-dear-sage/40"
+          )}
+          aria-label={fabAria}
+          aria-expanded={open}
+        >
+          <GuideCharacterAvatar codeName={userCodeName} variant={guideVariant} size="md" className="pointer-events-none" alt="" />
+        </button>
+      )}
       {open && (
         <div
           className={cn(

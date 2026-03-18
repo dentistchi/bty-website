@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 import { LeaderboardRow, UserAvatar, LeaderboardListSkeleton, EmptyState } from "@/components/bty-arena";
-import { getMessages } from "@/lib/i18n";
+import { arenaStableLabel, getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
+import { leaderboardTieRankSuffixDisplayKey } from "@/domain/rules/leaderboardTieBreak";
 
 /**
  * BTY_ARENA_SYSTEM_SPEC §4: 리더보드 팀(역할/지점) 뷰 전환.
@@ -423,9 +425,16 @@ export default function LeaderboardPage() {
 
         {!loading && !error && (
           <div role="list" aria-label={locale === "ko" ? "주간 순위 목록" : "Weekly ranking list"} style={{ display: "grid", gap: 10 }}>
-            {rows.map((r) => (
+            {rows.map((r, i) => {
+              const loc = (locale === "ko" ? "ko" : "en") as Locale;
+              const tieKey = leaderboardTieRankSuffixDisplayKey(
+                i > 0 && r.xpTotal === rows[i - 1]!.xpTotal
+              );
+              const tieSuffix =
+                tieKey != null ? arenaStableLabel(loc, "arena.leaderboard.tieRankSuffix") : null;
+              return (
               <LeaderboardRow
-                key={`${r.rank}-${r.codeName}`}
+                key={`${r.rank}-${r.codeName}-${i}`}
                 rank={r.rank}
                 codeName={r.codeName}
                 subName={r.subName}
@@ -435,8 +444,9 @@ export default function LeaderboardPage() {
                 tier={r.tier}
                 isMe={myRank != null && r.rank === myRank}
                 locale={locale}
+                tieRankSuffix={tieSuffix}
               />
-            ))}
+            );})}
 
             {/* DESIGN_FIRST_IMPRESSION_BRIEF §2·PROJECT_BACKLOG §8: 빈 목록 시 일러·아이콘 + 한 줄 문구 + CTA */}
             {rows.length === 0 && (

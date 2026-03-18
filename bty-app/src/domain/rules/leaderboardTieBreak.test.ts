@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   compareWeeklyXpTieBreak,
   LEADERBOARD_TIE_BREAK_ORDER,
+  LEADERBOARD_TIE_RANK_SUFFIX_DISPLAY_KEY,
+  leaderboardTieRankSuffixDisplayKey,
   type WeeklyXpRowForTieBreak,
 } from "./leaderboardTieBreak";
 
@@ -90,5 +92,16 @@ describe("domain/rules/leaderboardTieBreak", () => {
     };
     expect(compareWeeklyXpTieBreak(a, b)).toBeGreaterThan(0);
     expect(compareWeeklyXpTieBreak(b, a)).toBeLessThan(0);
+  });
+
+  describe("leaderboardTieRankSuffixDisplayKey (250)", () => {
+    it("returns tie suffix key when same displayed rank as row above", () => {
+      expect(leaderboardTieRankSuffixDisplayKey(true)).toBe(
+        LEADERBOARD_TIE_RANK_SUFFIX_DISPLAY_KEY
+      );
+    });
+    it("returns null when not tied for display", () => {
+      expect(leaderboardTieRankSuffixDisplayKey(false)).toBeNull();
+    });
   });
 });

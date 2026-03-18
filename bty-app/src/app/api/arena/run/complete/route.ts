@@ -18,12 +18,23 @@ import {
 } from "@/lib/bty/arena/weeklyQuest";
 
 /**
- * POST /api/arena/run/complete
- * Body: { runId: string, time_remaining?: number }. Marks run DONE and applies XP (once per run).
- * Response 200: { ok, runId, status: "DONE", deltaApplied?, coreXp?, weeklyXp? } or { ok, runId, status, idempotent: true }.
- * Errors: 401 { error: "UNAUTHENTICATED" }, 400 { error: "MISSING_RUN_ID" | "INVALID_JSON" }, 404 { error: "NOT_FOUND" }, 500 { error: string }.
- * Idempotent: repeat POST after XP applied returns 200 with idempotent: true (no double weekly/core grant).
- * Gate 3: Daily cap in lib (activityXp); route uses getArenaTodayTotal + capArenaDailyDelta only.
+ * POST /api/arena/run/complete — 런 종료 + **주간/코어 XP 1회 지급** (멱등).
+ *
+ * @contract
+ * - **Auth:** 401 `{ error: "UNAUTHENTICATED" }`.
+ * - **Body:** `{ runId: string }` 필수. 선택 `time_remaining` (number): 미전달 시 `arena_runs.meta.time_remaining` 사용.
+ * - **400:** `{ error: "INVALID_JSON" }` | `{ error: "MISSING_RUN_ID" }` — **클라이언트 흔함:** 빈 body·깨진 JSON→INVALID_JSON; `runId` 없음·빈 문자열·비문자열→MISSING_RUN_ID.
+ * - **404:** `{ error: "NOT_FOUND" }` (다른 사용자 런 또는 없음).
+ * - **410:** 미사용. **이미 해당 runId로 XP 지급 완료** → **200 `{ idempotent: true }`** (410 Gone 아님).
+ * - **200 (첫 완료):** `{ ok: true, runId, status: "DONE", deltaApplied: number, coreXp: number, weeklyXp: number }`
+ *   — `weeklyXp`/`deltaApplied`는 일일 캡 적용 후 주간 누적에 반영된 값; `coreXp`는 이번 런 코어 가산(영구).
+ * - **200 (멱등·이중 제출):** `{ ok: true, runId, status: "DONE", idempotent: true }` — **`deltaApplied`·`coreXp`·`weeklyXp` 없음**(첫 완료와 본문 스키마 구분).
+ * - **500:** `{ error: string }` (DB/XP 적용 실패).
+ * - **409:** `{ error: "RUN_ABORTED" }` — `meta.aborted_at` 설정된 런은 완료 처리·XP 지급 불가.
+ * - **멱등:** 이미 XP 지급된 동일 `runId` 재요청 → **200** `{ idempotent: true }` (409 아님).
+ * - **429:** 미사용. DB 경합·일시 오류는 **500** — 클라이언트 백오프 재시도.
+ *
+ * @see docs/spec/ARENA_DOMAIN_SPEC.md §4-1 (Weekly XP 경쟁 / Core XP 영구 분리)
  */
 export async function POST(req: Request) {
   const supabase = await getSupabaseServerClient();
@@ -57,7 +68,18 @@ export async function POST(req: Request) {
 
   const scenarioId = (existing as { scenario_id?: string }).scenario_id ?? "";
   const runDifficulty = parseStoredDifficulty((existing as { difficulty?: unknown }).difficulty);
-  const runMeta = (existing as { meta?: { time_remaining?: number; time_limit?: number } | null }).meta;
+  const runMeta = (
+    existing as {
+      meta?: {
+        time_remaining?: number;
+        time_limit?: number;
+        aborted_at?: string | null;
+      } | null;
+    }
+  ).meta;
+  if (runMeta?.aborted_at != null && String(runMeta.aborted_at).trim() !== "") {
+    return NextResponse.json({ error: "RUN_ABORTED" }, { status: 409 });
+  }
 
   if (existing.status !== "DONE") {
     const nowIso = new Date().toISOString();

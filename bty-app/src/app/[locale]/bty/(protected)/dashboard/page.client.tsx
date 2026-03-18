@@ -3,18 +3,40 @@
 import React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { TierMilestoneModal, ProgressCard, ProgressVisual, UserAvatar, AvatarComposite, ArenaLevelsCard, CardSkeleton } from "@/components/bty-arena";
+import {
+  TierMilestoneModal,
+  ProgressCard,
+  ProgressVisual,
+  UserAvatar,
+  AvatarComposite,
+  ArenaLevelsCard,
+  CardSkeleton,
+  LeaderboardRow,
+} from "@/components/bty-arena";
 import { EmotionalStatsPhrases } from "@/components/bty/EmotionalStatsPhrases";
 import { arenaFetch } from "@/lib/http/arenaFetch";
-import { getMessages } from "@/lib/i18n";
+import {
+  arenaStableLabel,
+  dashboardRecommendationEmptyCopy,
+  getMessages,
+  weeklyCompetitionStageBandCopy,
+} from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
+import { leaderboardTieRankSuffixDisplayKey } from "@/domain/rules/leaderboardTieBreak";
+import { weeklyCompetitionStageTierBandDisplayLabelKey } from "@/domain/rules/weeklyCompetitionDisplay";
 import { getVisibleAvatarCharacters, getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
 import { getAccessoryImageUrl, OUTFIT_OPTIONS_BY_THEME, FANTASY_THEME_UI_READY } from "@/lib/bty/arena/avatarOutfits";
+import { LeAirWidget } from "@/components/bty/dashboard/LeAirWidget";
+import { LeStageWidget } from "@/components/bty/dashboard/LeStageWidget";
+import { weeklyTierDisplayLabelKey } from "@/domain/rules/leaderboard";
+import { calculateTier } from "@/domain/rules/weeklyXp";
 
 type WeeklyXpRes = { weekStartISO?: string | null; weekEndISO?: string | null; xpTotal: number; count?: number };
 /** Core XP API response. Dashboard uses only display fields for progress/milestone; no tier/code computation in UI. */
 type CoreXpRes = {
   coreXpTotal: number;
+  /** GET /api/arena/core-xp — 표시만. UI에서 coreXpTotal로 티어 계산 금지. */
+  tier?: number;
   codeName: string;
   subName: string;
   seasonalXpTotal: number;
@@ -112,6 +134,22 @@ type DashboardSummaryRes = {
   recommendation?: { nextAction?: string | null; source?: string | null; priority?: number | null };
 };
 
+type LiveLbRow = {
+  rank: number;
+  codeName: string;
+  subName: string;
+  xpTotal: number;
+  avatarUrl?: string | null;
+  avatarLayers?: { characterImageUrl: string | null; outfitImageUrl: string | null } | null;
+  tier?: string;
+};
+type LiveLbRes = {
+  leaderboard?: LiveLbRow[];
+  nearMe?: LiveLbRow[];
+  myRank?: number | null;
+  count?: number;
+};
+
 const STREAK_KEY = "btyArenaStreak:v1";
 
 /** PROJECT_BACKLOG §2: MVP에서는 true(노출), MVP 이후 false로 설정해 Arena Level 카드 숨김 */
@@ -159,12 +197,19 @@ export default function DashboardClient() {
   const [membershipSubmitting, setMembershipSubmitting] = React.useState(false);
   const [isElite, setIsElite] = React.useState<boolean | null>(null);
   const [eliteBadges, setEliteBadges] = React.useState<Array<{ kind: string; labelKey: string }>>([]);
+  const [eliteContentUnlocked, setEliteContentUnlocked] = React.useState<boolean | null>(null);
   const [leState, setLeState] = React.useState<LeadershipEngineStateRes | null>(null);
   const [leAir, setLeAir] = React.useState<AIRSnapshotRes | null>(null);
   const [leTii, setLeTii] = React.useState<TIIRes | null>(null);
   const [leCertified, setLeCertified] = React.useState<CertifiedRes | null>(null);
   const [leStageSummary, setLeStageSummary] = React.useState<StageSummaryRes | null>(null);
   const [dashboardSummary, setDashboardSummary] = React.useState<DashboardSummaryRes | null>(null);
+  const [liveLbOpen, setLiveLbOpen] = React.useState(false);
+  const [liveLbRows, setLiveLbRows] = React.useState<LiveLbRow[]>([]);
+  const [liveLbLoading, setLiveLbLoading] = React.useState(false);
+  const [liveLbErr, setLiveLbErr] = React.useState<string | null>(null);
+  const [liveLbNotRankedBanner, setLiveLbNotRankedBanner] = React.useState(false);
+  const [liveLbNearMeFallback, setLiveLbNearMeFallback] = React.useState(false);
   const [membershipForm, setMembershipForm] = React.useState({
     job_function: "assistant",
     joined_at: "",
@@ -306,7 +351,15 @@ export default function DashboardClient() {
             return msg === "UNAUTHENTICATED" ? ({ error: "UNAUTHENTICATED" } as UnlockedScenariosRes) : null;
           }),
           arenaFetch<MembershipRequestRes>("/api/arena/membership-request").catch(() => ({ request: null })),
-          arenaFetch<{ isElite?: boolean; badges?: Array<{ kind: string; labelKey: string }> }>("/api/me/elite").catch(() => ({ isElite: false, badges: [] as Array<{ kind: string; labelKey: string }> })),
+          arenaFetch<{
+            isElite?: boolean;
+            badges?: Array<{ kind: string; labelKey: string }>;
+            eliteContentUnlocked?: boolean;
+          }>("/api/me/elite").catch(() => ({
+            isElite: false,
+            badges: [] as Array<{ kind: string; labelKey: string }>,
+            eliteFetchFailed: true as const,
+          })),
           arenaFetch<LeadershipEngineStateRes>("/api/arena/leadership-engine/state").catch(() => null),
           arenaFetch<AIRSnapshotRes>("/api/arena/leadership-engine/air").catch(() => null),
           arenaFetch<TIIRes>("/api/arena/leadership-engine/tii").catch(() => null),
@@ -333,6 +386,17 @@ export default function DashboardClient() {
         if (membershipRes?.request != null) setMembershipRequest(membershipRes.request);
         setIsElite(Boolean(eliteRes?.isElite));
         setEliteBadges(eliteRes?.badges ?? []);
+        const eliteFailed = Boolean(
+          eliteRes && "eliteFetchFailed" in eliteRes && eliteRes.eliteFetchFailed
+        );
+        if (eliteFailed) {
+          setEliteContentUnlocked(null);
+        } else {
+          const ok = eliteRes as { eliteContentUnlocked?: boolean };
+          setEliteContentUnlocked(
+            typeof ok.eliteContentUnlocked === "boolean" ? ok.eliteContentUnlocked : null
+          );
+        }
         if (leStateRes) setLeState(leStateRes);
         if (leAirRes) setLeAir(leAirRes);
         if (leTiiRes) setLeTii(leTiiRes);
@@ -360,6 +424,41 @@ export default function DashboardClient() {
   const tElitePage = getMessages(localeTyped).elitePage;
   const tLanding = getMessages(localeTyped).landing;
   const tBty = getMessages(localeTyped).bty;
+  const openLiveLeaderboardModal = React.useCallback(async () => {
+    setLiveLbOpen(true);
+    setLiveLbLoading(true);
+    setLiveLbErr(null);
+    setLiveLbNotRankedBanner(false);
+    setLiveLbNearMeFallback(false);
+    try {
+      const json = await arenaFetch<LiveLbRes>("/api/arena/leaderboard");
+      const near = json.nearMe ?? [];
+      const board = json.leaderboard ?? [];
+      const cnt =
+        typeof json.count === "number" ? json.count : (Array.isArray(board) ? board.length : 0);
+      const myRank = json.myRank;
+      let rows: LiveLbRow[];
+      let nearFallback = false;
+      if (near.length > 0) {
+        rows = near.slice(0, 25);
+      } else if (board.length > 0) {
+        rows = board.slice(0, 25);
+        nearFallback = true;
+      } else {
+        rows = [];
+      }
+      setLiveLbRows(rows);
+      setLiveLbNearMeFallback(nearFallback);
+      setLiveLbNotRankedBanner(
+        rows.length > 0 && cnt > 0 && (myRank == null || myRank < 1),
+      );
+    } catch {
+      setLiveLbErr(tBty.dashboardLiveLeaderboardFailed);
+      setLiveLbRows([]);
+    } finally {
+      setLiveLbLoading(false);
+    }
+  }, [tBty.dashboardLiveLeaderboardFailed]);
   const displayAvatarUrl =
     core?.avatarUrl ?? getAvatarCharacter(core?.avatarCharacterId)?.imageUrl ?? null;
   const avatarLayers =
@@ -410,10 +509,22 @@ export default function DashboardClient() {
       </div>
 
       {loading && (
-        <div style={{ display: "grid", gap: 28, marginTop: 28 }}>
-          {[1, 2, 3, 4].map((i) => (
-            <CardSkeleton key={i} lines={i === 1 ? 3 : 2} />
-          ))}
+        <div style={{ marginTop: 24 }}>
+          <ProgressCard label={tBty.dashboardWeeklyRankWidgetTitle}>
+            <div
+              role="status"
+              aria-busy="true"
+              aria-live="polite"
+              aria-label={tBty.dashboardWeeklyWidgetLoading}
+            >
+              <CardSkeleton lines={2} />
+            </div>
+          </ProgressCard>
+          <div style={{ display: "grid", gap: 28, marginTop: 28 }}>
+            {[1, 2, 3].map((i) => (
+              <CardSkeleton key={i} lines={i === 1 ? 3 : 2} />
+            ))}
+          </div>
         </div>
       )}
 
@@ -426,6 +537,84 @@ export default function DashboardClient() {
 
       {!loading && !error && (
         <div style={{ display: "grid", gap: 28 }}>
+          <ProgressCard label={tBty.dashboardWeeklyRankWidgetTitle}>
+            <div role="region" aria-label={tBty.dashboardWeeklyWidgetAria}>
+              <p style={{ fontSize: 13, opacity: 0.85, marginBottom: 8 }}>
+                {tBty.dashboardWeeklyXpCaption}
+              </p>
+              <p style={{ fontSize: 24, fontWeight: 700, margin: "0 0 8px 0" }}>
+                {typeof weekly?.xpTotal === "number"
+                  ? weekly.xpTotal.toLocaleString(locale === "ko" ? "ko-KR" : "en-US")
+                  : "—"}
+              </p>
+              {typeof weekly?.xpTotal === "number" && (
+                <>
+                  <p style={{ fontSize: 15, fontWeight: 600, margin: "0 0 8px 0", opacity: 0.92 }}>
+                    {tBty.dashboardWeeklyTierCaption}:{" "}
+                    {arenaStableLabel(
+                      localeTyped,
+                      weeklyTierDisplayLabelKey(calculateTier(weekly.xpTotal)),
+                    )}
+                  </p>
+                  <p
+                    style={{ fontSize: 14, fontWeight: 500, margin: "0 0 8px 0", opacity: 0.88 }}
+                    role="status"
+                  >
+                    {tBty.dashboardWeeklyCompetitionStageCaption}:{" "}
+                    {weeklyCompetitionStageBandCopy(
+                      localeTyped,
+                      weeklyCompetitionStageTierBandDisplayLabelKey(calculateTier(weekly.xpTotal)),
+                    )}
+                  </p>
+                </>
+              )}
+              {weekly?.weekStartISO != null && weekly?.weekEndISO != null && (
+                <p style={{ fontSize: 12, opacity: 0.75, marginBottom: 12 }}>
+                  {String(weekly.weekStartISO).slice(0, 10)} →{" "}
+                  {String(weekly.weekEndISO).slice(0, 10)} (UTC)
+                </p>
+              )}
+              <Link
+                href={`/${locale}/bty/leaderboard`}
+                className="bty-btn-outline"
+                style={{
+                  display: "inline-block",
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  border: "1px solid var(--arena-accent)",
+                  color: "var(--arena-text)",
+                  textDecoration: "none",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  marginBottom: 8,
+                }}
+                aria-label={tBty.dashboardShortcutWeeklyRanking}
+              >
+                {tBty.dashboardWeeklyRankSeeLeaderboard} →
+              </Link>
+              <p style={{ fontSize: 12, opacity: 0.7, margin: 0 }}>{tBty.dashboardWeeklyRankHint}</p>
+              <button
+                type="button"
+                onClick={openLiveLeaderboardModal}
+                className="bty-btn-outline"
+                style={{
+                  display: "inline-block",
+                  marginTop: 10,
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  border: "1px solid var(--arena-accent)",
+                  background: "transparent",
+                  color: "var(--arena-text)",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                {tBty.dashboardOpenLiveLeaderboardCta}
+              </button>
+            </div>
+          </ProgressCard>
+
           {/* Arena / Foundry / Center 통합 진입점 — 기존 dashboard 보강 */}
           <ProgressCard label={[tLanding.arenaTitle, tLanding.foundryTitle, tLanding.centerTitle].join(" · ")}>
             <div role="region" aria-label={locale === "ko" ? "Arena·Foundry·Center 진입점" : "Arena, Foundry, Center entry points"}>
@@ -481,16 +670,31 @@ export default function DashboardClient() {
             </div>
           </ProgressCard>
 
-          {/* [Q3] 추천 위젯 — GET /api/arena/dashboard/summary recommendation 표시만 */}
-          {(dashboardSummary?.recommendation?.nextAction != null || dashboardSummary?.recommendation != null) && (
+          {/* [Q3] 추천 위젯 — recommendation 또는 DASHBOARD_RECOMMENDATION_EMPTY_PLACEHOLDER_KEY */}
+          {!loading && (
             <ProgressCard label={tBty.recommendationLabel}>
               <div role="region" aria-label={locale === "ko" ? "대시보드 추천" : "Dashboard recommendation"}>
-                {dashboardSummary?.recommendation?.nextAction != null && (
+                {(() => {
+                  const na = dashboardSummary?.recommendation?.nextAction;
+                  const hasRec = na != null && String(na).trim() !== "";
+                  if (!hasRec) {
+                    return (
+                      <p style={{ fontSize: 14, opacity: 0.9, margin: 0 }} role="status">
+                        {dashboardRecommendationEmptyCopy(localeTyped)}
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
+                {dashboardSummary?.recommendation?.nextAction != null &&
+                  String(dashboardSummary.recommendation.nextAction).trim() !== "" && (
                   <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>
                     {dashboardSummary.recommendation.nextAction}
                   </p>
                 )}
-                {dashboardSummary?.recommendation?.source === "arena" && (
+                {dashboardSummary?.recommendation?.nextAction != null &&
+                  String(dashboardSummary.recommendation.nextAction).trim() !== "" &&
+                  dashboardSummary?.recommendation?.source === "arena" && (
                   <Link
                     href={`/${locale}/bty-arena`}
                     style={{
@@ -508,7 +712,9 @@ export default function DashboardClient() {
                     {locale === "ko" ? "Arena로 이동 →" : "Go to Arena →"}
                   </Link>
                 )}
-                {dashboardSummary?.recommendation?.source === "foundry" && (
+                {dashboardSummary?.recommendation?.nextAction != null &&
+                  String(dashboardSummary.recommendation.nextAction).trim() !== "" &&
+                  dashboardSummary?.recommendation?.source === "foundry" && (
                   <Link
                     href={`/${locale}/bty/dashboard`}
                     style={{
@@ -526,7 +732,9 @@ export default function DashboardClient() {
                     {locale === "ko" ? "Foundry →" : "Foundry →"}
                   </Link>
                 )}
-                {dashboardSummary?.recommendation?.source === "center" && (
+                {dashboardSummary?.recommendation?.nextAction != null &&
+                  String(dashboardSummary.recommendation.nextAction).trim() !== "" &&
+                  dashboardSummary?.recommendation?.source === "center" && (
                   <Link
                     href={`/${locale}/center`}
                     style={{
@@ -544,7 +752,9 @@ export default function DashboardClient() {
                     {locale === "ko" ? "Center →" : "Center →"}
                   </Link>
                 )}
-                {dashboardSummary?.recommendation?.nextAction != null && !dashboardSummary?.recommendation?.source && (
+                {dashboardSummary?.recommendation?.nextAction != null &&
+                  String(dashboardSummary.recommendation.nextAction).trim() !== "" &&
+                  !dashboardSummary?.recommendation?.source && (
                   <Link
                     href={`/${locale}/bty-arena`}
                     style={{
@@ -874,6 +1084,15 @@ export default function DashboardClient() {
             </div>
           </ProgressCard>
 
+          <ProgressCard label={tBty.dashboardTierCardLabel}>
+            <div role="region" aria-label={tBty.dashboardTierCardRegionAria} style={{ display: "block" }}>
+              <div style={{ fontSize: 28, fontWeight: 800 }} aria-live="polite">
+                {typeof core?.tier === "number" ? core.tier : "—"}
+              </div>
+              <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>{tBty.dashboardTierCardSubline}</div>
+            </div>
+          </ProgressCard>
+
           <ProgressCard label={tBty.pointsTodayLabel}>
             <div role="region" aria-label={tBty.pointsTodayLabel} style={{ display: "block" }}>
               <div style={{ fontSize: 28, fontWeight: 800 }}>{xpToday}</div>
@@ -883,80 +1102,49 @@ export default function DashboardClient() {
 
           {/* [Q3] LE·AIR 요약 랜드마크 — TASK: 접근성 1곳 */}
           <section aria-label={tBty.leAirSummarySectionAria} style={{ display: "contents" }}>
-          {/* [Q3] AIR 위젯 — API 응답 표시만, 규칙 계산 없음 */}
+          {/* [Q3] AIR 위젯 — LeAirWidget: API 스냅샷만 표시 */}
           <ProgressCard label={tBty.airLabel}>
-            {leAir == null ? (
-              <div role="region" aria-label={locale === "ko" ? "AIR 지표" : "AIR metrics"} style={{ display: "block" }}>
-                <p style={{ fontSize: 13, color: "var(--arena-text)", opacity: 0.8 }} role="status">
-                  {tBty.airUnavailable}
-                </p>
-              </div>
-            ) : (
-              <div role="region" aria-label={locale === "ko" ? "AIR 지표: 7일·14일·90일" : "AIR: 7d, 14d, 90d"} style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, fontSize: 14 }}>
-                <div role="group" aria-label={locale === "ko" ? "AIR 7일" : "AIR 7d"} style={{ textAlign: "center", padding: "12px 8px", border: "1px solid var(--arena-text-soft, #e5e7eb)", borderRadius: 10 }}>
-                  <div style={{ fontWeight: 700, fontSize: 20 }}>{(leAir.air_7d.air * 100).toFixed(0)}%</div>
-                  <div style={{ marginTop: 4, opacity: 0.8 }}>7d</div>
-                  {leAir.air_7d.integritySlip && <div style={{ marginTop: 4, fontSize: 11, color: "var(--arena-accent)" }}>{locale === "ko" ? "integrity slip" : "integrity slip"}</div>}
-                </div>
-                <div role="group" aria-label={locale === "ko" ? "AIR 14일" : "AIR 14d"} style={{ textAlign: "center", padding: "12px 8px", border: "1px solid var(--arena-text-soft, #e5e7eb)", borderRadius: 10 }}>
-                  <div style={{ fontWeight: 700, fontSize: 20 }}>{(leAir.air_14d.air * 100).toFixed(0)}%</div>
-                  <div style={{ marginTop: 4, opacity: 0.8 }}>14d</div>
-                  {leAir.air_14d.integritySlip && <div style={{ marginTop: 4, fontSize: 11, color: "var(--arena-accent)" }}>{locale === "ko" ? "integrity slip" : "integrity slip"}</div>}
-                </div>
-                <div role="group" aria-label={locale === "ko" ? "AIR 90일" : "AIR 90d"} style={{ textAlign: "center", padding: "12px 8px", border: "1px solid var(--arena-text-soft, #e5e7eb)", borderRadius: 10 }}>
-                  <div style={{ fontWeight: 700, fontSize: 20 }}>{(leAir.air_90d.air * 100).toFixed(0)}%</div>
-                  <div style={{ marginTop: 4, opacity: 0.8 }}>90d</div>
-                  {leAir.air_90d.integritySlip && <div style={{ marginTop: 4, fontSize: 11, color: "var(--arena-accent)" }}>{locale === "ko" ? "integrity slip" : "integrity slip"}</div>}
-                </div>
-              </div>
-            )}
+            <LeAirWidget
+              data={leAir}
+              dashboardLoading={loading}
+              labels={{
+                regionMain: locale === "ko" ? "AIR 지표" : "AIR metrics",
+                regionGrid: tBty.leAirAriaGrid,
+                region7d: tBty.leAirAria7d,
+                region14d: tBty.leAirAria14d,
+                region90d: tBty.leAirAria90d,
+                period7d: "7d",
+                period14d: "14d",
+                period90d: "90d",
+                integritySlip: tBty.airIntegritySlip,
+                airUnavailable: tBty.airUnavailable,
+                airLoading: tBty.leAirLoading,
+              }}
+            />
           </ProgressCard>
 
-          {/* [Q3] LE Stage 위젯 — GET stage-summary API 연동, Arena 결과·행동 패턴 노출 (API가 채우면 표시) */}
+          {/* [Q3] LE Stage 위젯 — LeStageWidget: stage-summary API만 표시 */}
           <ProgressCard label={tBty.leStageLabel}>
-            {leStageSummary == null ? (
-              <div
-                role="region"
-                aria-label={locale === "ko" ? "리더십 엔진 스테이지 요약" : "Leadership Engine stage summary"}
-                aria-busy="true"
-                aria-live="polite"
-              >
-                <CardSkeleton showLabel={false} lines={2} />
-              </div>
-            ) : (
-              <div role="region" aria-label={locale === "ko" ? "리더십 엔진 스테이지 요약" : "Leadership Engine stage summary"}>
-                <div style={{ fontSize: 15, fontWeight: 700 }}>{leStageSummary.stageName}</div>
-                <div style={{ marginTop: 6, fontSize: 13, opacity: 0.9 }}>
-                  {locale === "ko" ? "Stage" : "Stage"} {leStageSummary.currentStage} · {leStageSummary.progressPercent}%
-                </div>
-                {leStageSummary.resetDueAt != null && (
-                  <div style={{ marginTop: 8, fontSize: 12, opacity: 0.8 }}>
-                    {locale === "ko" ? "Reset 완료 기한" : "Reset due"}:{" "}
-                    {new Date(leStageSummary.resetDueAt).toLocaleString(locale === "ko" ? "ko-KR" : "en-US", { dateStyle: "short", timeStyle: "short" })}
-                  </div>
-                )}
-                {leStageSummary.arenaSummary != null && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--arena-text-soft, #e5e7eb)" }} role="group" aria-label={locale === "ko" ? "Arena 결과 요약" : "Arena summary"}>
-                    <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{locale === "ko" ? "Arena 결과 요약" : "Arena summary"}</div>
-                    <div style={{ fontSize: 13, opacity: 0.9 }}>
-                      {typeof leStageSummary.arenaSummary === "string"
-                        ? leStageSummary.arenaSummary
-                        : JSON.stringify(leStageSummary.arenaSummary)}
-                    </div>
-                  </div>
-                )}
-                {leStageSummary.behaviorPattern != null && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--arena-text-soft, #e5e7eb)" }} role="group" aria-label={locale === "ko" ? "행동 패턴" : "Behavior pattern"}>
-                    <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{locale === "ko" ? "행동 패턴" : "Behavior pattern"}</div>
-                    <div style={{ fontSize: 13, opacity: 0.9 }}>
-                      {typeof leStageSummary.behaviorPattern === "string"
-                        ? leStageSummary.behaviorPattern
-                        : JSON.stringify(leStageSummary.behaviorPattern)}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+            <div aria-describedby="le-stage-summary-desc">
+              <p id="le-stage-summary-desc" className="sr-only">
+                {tBty.leStageSummaryWidgetDesc}
+              </p>
+              <LeStageWidget
+                data={leStageSummary}
+                dashboardLoading={loading}
+                locale={locale}
+                labels={{
+                  regionAria: tBty.leStageSummarySectionAria,
+                  stageLabel: tBty.leStageStagePrefix,
+                  resetDueLabel: tBty.leStageResetDueLabel,
+                  arenaSummaryLabel: tBty.leStageArenaSummaryHeading,
+                  behaviorPatternLabel: tBty.leStageBehaviorHeading,
+                  unavailable: tBty.leStageSummaryUnavailable,
+                  loadingStatus: tBty.leStageLoading,
+                  leProgressBarAria: tBty.leStageLeProgressBarAria,
+                }}
+              />
+            </div>
           </ProgressCard>
           </section>
 
@@ -1068,6 +1256,14 @@ export default function DashboardClient() {
 
           {/* PHASE_4_ELITE_5_PERCENT_SPEC §9·ELITE_4TH 해금 확장: Elite 5% 해금 조건·노출. isElite from GET /api/me/elite only; no XP/rank computation in UI. */}
           <ProgressCard label={locale === "ko" ? "Elite 전용 콘텐츠" : "Elite-only content"}>
+            {eliteContentUnlocked !== null && (
+              <p style={{ fontSize: 12, opacity: 0.88, marginBottom: 10 }}>
+                <strong>{tBty.eliteMeContentUnlockedLabel}:</strong>{" "}
+                {eliteContentUnlocked
+                  ? tBty.eliteMeContentUnlockedYes
+                  : tBty.eliteMeContentUnlockedNo}
+              </p>
+            )}
             <div style={{ fontSize: 13, opacity: 0.85, marginBottom: isElite && eliteBadges.length > 0 ? 12 : 8 }}>
               <strong>{tElitePage.unlockConditionTitle}:</strong>{" "}
               {isElite ? tElitePage.unlockConditionMet : tElitePage.unlockConditionLocked}
@@ -1128,7 +1324,7 @@ export default function DashboardClient() {
             <EmotionalStatsPhrases />
           </section>
 
-          <ProgressCard label="Code Name">
+          <ProgressCard label={tBty.profileCodeNameCardLabel}>
             {/* COMMANDER_BACKLOG §5: 마우스 오버 시 단계·수준 설명 툴팁. 문구 = BTY_ARENA_SYSTEM_SPEC·ARENA_CODENAME_AVATAR_PLAN Code/Tier/Sub Name 규칙 요약 */}
             <div
               className="group relative inline-block cursor-help"
@@ -1174,16 +1370,14 @@ export default function DashboardClient() {
               </div>
             </div>
             <div style={{ marginTop: 6, fontSize: 13, opacity: 0.75 }}>
-              {locale === "ko"
-                ? "대시보드에 표시되는 이름이에요. 리더보드에 올라가려면 Arena에서 시나리오를 한 번 완료해 주세요."
-                : "Your identity (Code · Sub Name). To appear on the leaderboard, complete at least one Arena scenario."}
+              {tBty.profileIdentitySubline}
             </div>
             {core?.subNameRenameAvailable && (
               <div style={{ marginTop: 12 }}>
                 <input
                   value={subNameDraft}
                   onChange={(e) => setSubNameDraft(e.target.value.slice(0, 7))}
-                  placeholder="Rename Sub Name (7 chars, once per code)"
+                  placeholder={tBty.profileRenamePlaceholder}
                   maxLength={7}
                   style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #ddd", marginRight: 8 }}
                 />
@@ -1191,7 +1385,7 @@ export default function DashboardClient() {
                   type="button"
                   onClick={saveSubName}
                   disabled={subNameSaving || subNameDraft.trim().length === 0}
-                  aria-label={subNameSaving ? "Saving…" : "Save sub name"}
+                  aria-label={subNameSaving ? tBty.profileSaving : tBty.profileSaveSubName}
                   style={{
                     padding: "8px 12px",
                     borderRadius: 8,
@@ -1201,7 +1395,7 @@ export default function DashboardClient() {
                     cursor: subNameSaving || subNameDraft.trim().length === 0 ? "not-allowed" : "pointer",
                   }}
                 >
-                  {subNameSaving ? "Saving…" : "Save"}
+                  {subNameSaving ? tBty.profileSaving : tBty.profileSaveSubName}
                 </button>
                 {subNameSaving && (
                   <div style={{ marginTop: 12 }}>
@@ -1499,6 +1693,148 @@ export default function DashboardClient() {
           }
           onClose={() => setMilestoneModal(null)}
         />
+      )}
+
+      {liveLbOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.45)",
+            padding: 16,
+          }}
+          role="presentation"
+          onClick={() => setLiveLbOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={tBty.dashboardLiveLeaderboardModalAria}
+            aria-describedby="dashboard-live-lb-desc"
+            style={{
+              maxHeight: "85vh",
+              width: "100%",
+              maxWidth: 440,
+              overflow: "hidden",
+              borderRadius: 16,
+              background: "var(--arena-bg, #fff)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                borderBottom: "1px solid rgba(0,0,0,0.08)",
+                padding: "12px 16px",
+              }}
+            >
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{tBty.dashboardLiveLeaderboardModalTitle}</h2>
+              <button
+                type="button"
+                onClick={() => setLiveLbOpen(false)}
+                aria-label={tBty.dashboardLiveLeaderboardCloseAria}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 8,
+                  border: "1px solid var(--arena-accent)",
+                  background: "transparent",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  fontSize: 13,
+                }}
+              >
+                {tBty.dashboardLiveLeaderboardClose}
+              </button>
+            </div>
+            <p
+              id="dashboard-live-lb-desc"
+              style={{ margin: 0, padding: "8px 16px 0", fontSize: 12, opacity: 0.78, lineHeight: 1.45 }}
+            >
+              {tBty.dashboardLiveLeaderboardModalDesc}
+            </p>
+            <div style={{ maxHeight: "55vh", overflowY: "auto", padding: 12 }}>
+              {liveLbLoading && (
+                <p
+                  style={{ margin: 0, fontSize: 14, opacity: 0.75 }}
+                  role="status"
+                  aria-busy="true"
+                  aria-live="polite"
+                >
+                  {tBty.dashboardLiveLeaderboardLoading}
+                </p>
+              )}
+              {liveLbErr && !liveLbLoading && (
+                <p style={{ margin: 0, fontSize: 14, color: "#b91c1c" }} role="alert">
+                  {liveLbErr}
+                </p>
+              )}
+              {!liveLbLoading && !liveLbErr && liveLbRows.length === 0 && (
+                <p style={{ margin: 0, fontSize: 14, opacity: 0.75 }} role="status">
+                  {tBty.dashboardLiveLeaderboardEmpty}
+                </p>
+              )}
+              {!liveLbLoading && !liveLbErr && liveLbNearMeFallback && (
+                <p style={{ margin: "0 0 10px 0", fontSize: 13, opacity: 0.85 }} role="status">
+                  {tBty.dashboardLiveLeaderboardNearMeFallbackBanner}
+                </p>
+              )}
+              {!liveLbLoading && !liveLbErr && liveLbNotRankedBanner && (
+                <p style={{ margin: "0 0 10px 0", fontSize: 13, opacity: 0.85 }} role="status">
+                  {tBty.dashboardLiveLeaderboardNotRankedBanner}
+                </p>
+              )}
+              {!liveLbLoading && !liveLbErr && liveLbRows.length > 0 && (
+                <div role="list" aria-label={tBty.dashboardLiveLeaderboardListAria}>
+                  {liveLbRows.map((r, i) => {
+                    const tieKey = leaderboardTieRankSuffixDisplayKey(
+                      i > 0 && r.xpTotal === liveLbRows[i - 1]!.xpTotal
+                    );
+                    const tieSuffix =
+                      tieKey != null
+                        ? arenaStableLabel(localeTyped, "arena.leaderboard.tieRankSuffix")
+                        : null;
+                    return (
+                    <div key={`${r.rank}-${r.codeName}-${i}`} role="listitem">
+                      <LeaderboardRow
+                        rank={r.rank}
+                        codeName={r.codeName}
+                        subName={r.subName}
+                        weeklyXp={r.xpTotal}
+                        avatarUrl={r.avatarUrl}
+                        avatarLayers={r.avatarLayers}
+                        tier={r.tier}
+                        locale={locale}
+                        tieRankSuffix={tieSuffix}
+                      />
+                    </div>
+                  );})}
+                </div>
+              )}
+            </div>
+            <div style={{ borderTop: "1px solid rgba(0,0,0,0.08)", padding: "12px 16px" }}>
+              <Link
+                href={`/${locale}/bty/leaderboard`}
+                onClick={() => setLiveLbOpen(false)}
+                style={{
+                  display: "inline-block",
+                  fontWeight: 600,
+                  fontSize: 14,
+                  color: "var(--arena-accent)",
+                  textDecoration: "none",
+                }}
+              >
+                {tBty.dashboardLiveLeaderboardFullPage} →
+              </Link>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

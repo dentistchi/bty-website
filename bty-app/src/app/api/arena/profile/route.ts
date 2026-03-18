@@ -2,9 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 
 /**
- * GET /api/arena/profile — 현재 사용자 arena_profiles 행 + avatarCharacterId.
- * Response 200: { profile: object, avatarCharacterId: string | null }.
- * Errors: 401 { error: "UNAUTHENTICATED" }, 500 { error: string } (DB/RPC ensure_arena_profile or select).
+ * GET/PATCH `/api/arena/profile` — Arena **`arena_profiles`** 조회·부분 갱신(아바타·display_name).
+ *
+ * @contract **GET**
+ * - **200:** `{ profile: object, avatarCharacterId: string | null }` — `profile`은 테이블 전열.
+ * - **401:** `{ error: "UNAUTHENTICATED" }`.
+ * - **500:** `{ error: string }` — `ensure_arena_profile` RPC 또는 select 실패.
+ * - **캐시:** `Cache-Control: private, no-store, max-age=0` — **304/ETag 미지원**(매 GET 신선 프로필).
+ *
+ * @contract **PATCH**
+ * - **Body (JSON):** 선택 필드 `avatarUrl`, `avatarCharacterId`, `avatarOutfitTheme`, `avatarSelectedOutfitId`, `avatarAccessoryIds`, `display_name`.
+ * - **200:** `{ ok: true }` (성공 갱신; 전체 행 미반환).
+ * - **400:** `{ error: "INVALID_JSON" }` — 본문 JSON 파싱 실패만.
+ * - **422:** `{ error: … }` — `EMPTY_PATCH`(갱신 필드 없음·알 수 없는 키만)·`INVALID_AVATAR_CHARACTER_ID`·`INVALID_AVATAR_OUTFIT_ID`·`ACCESSORY_SLOTS_EXCEEDED`·display_name 검증 실패 키.
+ * - **403:** `{ error: "AVATAR_CHARACTER_LOCKED" }`.
+ * - **401 / 500:** GET과 동일.
+ * - **250:** 422·400 구분 = JSON 파싱만 400, 검증·빈 패치는 422.
+ *
+ * @see docs/spec/ARENA_DOMAIN_SPEC.md §4-5·§4-6
  */
 export async function GET(req: NextRequest) {
   const { user, supabase: routeSupabase, base } = await requireUser(req);
@@ -29,11 +44,12 @@ export async function GET(req: NextRequest) {
     profile: data,
     avatarCharacterId: profile?.avatar_character_id ?? null,
   });
+  res.headers.set("Cache-Control", "private, no-store, max-age=0");
   copyCookiesAndDebug(base, res, req, true);
   return res;
 }
 
-/** PATCH /api/arena/profile — 아바타·display_name 등 갱신. Body: avatarUrl?, avatarCharacterId?, … Response (200): profile row. Errors: 401 { error: "UNAUTHENTICATED" }; 400 { error: "INVALID_JSON" }; 500 { error: string }. */
+/** @see 파일 상단 GET/PATCH @contract */
 export async function PATCH(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);
   if (!user) return unauthenticated(req, base);
@@ -70,7 +86,7 @@ export async function PATCH(req: NextRequest) {
         ? rawCharId.trim() || null
         : null;
   if (avatarCharacterId !== null && !isValidAvatarCharacterId(avatarCharacterId)) {
-    const out = NextResponse.json({ error: "INVALID_AVATAR_CHARACTER_ID" }, { status: 400 });
+    const out = NextResponse.json({ error: "INVALID_AVATAR_CHARACTER_ID" }, { status: 422 });
     copyCookiesAndDebug(base, out, req, true);
     return out;
   }
@@ -126,7 +142,7 @@ export async function PATCH(req: NextRequest) {
       const themeForValidation = avatarOutfitTheme ?? "professional";
       const valid = getOutfitById(themeForValidation, outfitIdToSet);
       if (!valid) {
-        const out = NextResponse.json({ error: "INVALID_AVATAR_OUTFIT_ID" }, { status: 400 });
+        const out = NextResponse.json({ error: "INVALID_AVATAR_OUTFIT_ID" }, { status: 422 });
         copyCookiesAndDebug(base, out, req, true);
         return out;
       }
@@ -149,7 +165,7 @@ export async function PATCH(req: NextRequest) {
     const coreXp = (profileRow as { core_xp_total?: number } | null)?.core_xp_total ?? 0;
     const maxSlots = accessorySlotsFromTier(tierFromCoreXp(coreXp));
     if (accessoryIds.length > maxSlots) {
-      const out = NextResponse.json({ error: "ACCESSORY_SLOTS_EXCEEDED" }, { status: 400 });
+      const out = NextResponse.json({ error: "ACCESSORY_SLOTS_EXCEEDED" }, { status: 422 });
       copyCookiesAndDebug(base, out, req, true);
       return out;
     }
@@ -161,11 +177,18 @@ export async function PATCH(req: NextRequest) {
     const { validateDisplayName } = await import("@/lib/bty/arena/profileDisplayName");
     const result = validateDisplayName(body.display_name);
     if (!result.valid) {
-      const out = NextResponse.json({ error: result.error ?? "INVALID_DISPLAY_NAME" }, { status: 400 });
+      const out = NextResponse.json({ error: result.error ?? "INVALID_DISPLAY_NAME" }, { status: 422 });
       copyCookiesAndDebug(base, out, req, true);
       return out;
     }
     updates.display_name = result.sanitized;
+  }
+
+  const semanticKeys = Object.keys(updates).filter((k) => k !== "updated_at");
+  if (semanticKeys.length === 0) {
+    const out = NextResponse.json({ error: "EMPTY_PATCH" }, { status: 422 });
+    copyCookiesAndDebug(base, out, req, true);
+    return out;
   }
 
   const { error: updateError } = await supabase

@@ -233,22 +233,21 @@ describe("GET /api/center/resilience", () => {
     expect(periodDays).toBe(14);
   });
 
-  it("returns 200 when period query is omitted (default period)", async () => {
+  it("returns 200 when period query is omitted (no parsePeriodDays call)", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
       },
     });
-    mockParsePeriodDays.mockReturnValue(7);
     mockGetResilienceEntries.mockResolvedValue({ ok: true, entries: [] });
 
     const res = await GET(makeRequest());
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.entries).toEqual([]);
-    expect(mockParsePeriodDays).toHaveBeenCalledWith(null);
-    expect(mockGetResilienceEntries).toHaveBeenCalledWith(expect.anything(), "u1", 7);
+    expect(mockParsePeriodDays).not.toHaveBeenCalled();
+    expect(mockGetResilienceEntries).toHaveBeenCalledWith(expect.anything(), "u1", undefined);
   });
 
   it("returns 200 with content-type application/json on success", async () => {
@@ -308,14 +307,13 @@ describe("GET /api/center/resilience", () => {
     expect(mockGetResilienceEntries).not.toHaveBeenCalled();
   });
 
-  it("returns 200 when period query is empty string (treated as default)", async () => {
+  it("returns 200 when period query is empty string (omit periodDays)", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
       },
     });
-    mockParsePeriodDays.mockReturnValue(7);
     mockGetResilienceEntries.mockResolvedValue({ ok: true, entries: [] });
 
     const req = new NextRequest("http://localhost/api/center/resilience?period=");
@@ -323,26 +321,26 @@ describe("GET /api/center/resilience", () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.entries).toEqual([]);
-    expect(mockGetResilienceEntries).toHaveBeenCalledOnce();
+    expect(mockParsePeriodDays).not.toHaveBeenCalled();
+    expect(mockGetResilienceEntries).toHaveBeenCalledWith(expect.anything(), "u1", undefined);
   });
 
-  it("returns 200 when period query is invalid (e.g. abc) and parsePeriodDays returns default", async () => {
+  it("returns 400 INVALID_PERIOD when period is non-empty but invalid (e.g. abc)", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
       },
     });
-    mockParsePeriodDays.mockReturnValue(7);
+    mockParsePeriodDays.mockReturnValue(undefined);
     mockGetResilienceEntries.mockResolvedValue({ ok: true, entries: [] });
 
     const req = new NextRequest("http://localhost/api/center/resilience?period=abc");
     const res = await GET(req);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(400);
     const data = await res.json();
-    expect(data.entries).toEqual([]);
-    expect(mockParsePeriodDays).toHaveBeenCalledWith("abc");
-    expect(mockGetResilienceEntries).toHaveBeenCalledOnce();
+    expect(data.error).toBe("INVALID_PERIOD");
+    expect(mockGetResilienceEntries).not.toHaveBeenCalled();
   });
 
   it("returns 200 when period is 1 (minimum valid)", async () => {

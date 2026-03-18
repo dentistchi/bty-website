@@ -7,7 +7,11 @@ export const runtime = "nodejs";
 
 /**
  * GET /api/me/access — 현재 사용자 + 활성 멤버십 목록.
- * Response (200): { user: { id, email }, memberships: array }. Error: 401 { error: "Unauthorized" }, 503 { error: "Server not configured" }.
+ *
+ * @contract
+ * - **401:** `{ error: "Unauthorized" }` — `getUser` 실패·무세션. **251:** arena `UNAUTHENTICATED`와 문자열 구분(me/* 관례).
+ * - **503:** `{ error: "Server not configured" }` — admin 클라이언트 없음.
+ * - **200:** `{ user: { id, email }, memberships: … }`.
  */
 export async function GET(req: NextRequest) {
   const supabase = await getSupabaseServer();

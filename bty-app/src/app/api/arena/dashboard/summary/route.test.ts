@@ -51,6 +51,108 @@ describe("GET /api/arena/dashboard/summary", () => {
     expect(data.error).toBe("UNAUTHENTICATED");
   });
 
+  /** C6 248: 401 비인증 짝 + LE ensure 실패 시 503. */
+  it("248: returns 401 unauthenticated then 503 when ensureLeadershipEngineState throws", async () => {
+    mockRequireUser.mockResolvedValueOnce({ user: null, supabase: {}, base: {} });
+    const r401 = await GET(makeRequest());
+    expect(r401.status).toBe(401);
+
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {
+        from: () => ({
+          select: () => ({
+            eq: () => ({ gte: () => Promise.resolve({ data: [] }) }),
+          }),
+        }),
+      },
+      base: {},
+    });
+    mockEnsureLeadershipEngineState.mockRejectedValueOnce(new Error("db down"));
+    const r503 = await GET(makeRequest());
+    expect(r503.status).toBe(503);
+    const body = await r503.json();
+    expect(body.error).toBe("SERVICE_UNAVAILABLE");
+    expect(body.message).toBe("LE_STATE_UNAVAILABLE");
+    expect(r503.headers.get("cache-control")).toBe("private, no-store, max-age=0");
+  });
+
+  /** C6 239: 대시보드 요약 API 401→200 스모크 한 건. */
+  it("239 smoke: unauthenticated 401 then authenticated 200 with progress", async () => {
+    mockRequireUser.mockResolvedValueOnce({ user: null, supabase: {}, base: {} });
+    const r401 = await GET(makeRequest());
+    expect(r401.status).toBe(401);
+
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {
+        from: () => ({
+          select: () => ({
+            eq: () => ({ gte: () => Promise.resolve({ data: [] }) }),
+          }),
+        }),
+      },
+      base: {},
+    });
+    mockGetLeadershipEngineState.mockResolvedValue({
+      currentStage: 2,
+      stageName: "Test Stage",
+      forcedResetTriggeredAt: null,
+      resetDueAt: null,
+    });
+    const r200 = await GET(makeRequest());
+    expect(r200.status).toBe(200);
+    expect(r200.headers.get("cache-control")).toBe("private, no-store, max-age=0");
+    const body = await r200.json();
+    expect(body.progress?.currentStage).toBe(2);
+    expect(body.recommendation !== undefined).toBe(true);
+  });
+
+  /** C6 240: LE progress + todayGrowth + recommendation; 연장 필드 recommendedTrack 선택. */
+  it("240 smoke: 401 then 200 with progress shape and optional recommendedTrack on recommendation", async () => {
+    mockRequireUser.mockResolvedValueOnce({ user: null, supabase: {}, base: {} });
+    expect((await GET(makeRequest())).status).toBe(401);
+
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {
+        from: () => ({
+          select: () => ({
+            eq: () => ({ gte: () => Promise.resolve({ data: [{ xp: 5 }] }) }),
+          }),
+        }),
+      },
+      base: {},
+    });
+    mockGetLeadershipEngineState.mockResolvedValue({
+      currentStage: 3,
+      stageName: "Stage Three",
+      forcedResetTriggeredAt: null,
+      resetDueAt: null,
+    });
+
+    const res = await GET(
+      new NextRequest("http://localhost/api/arena/dashboard/summary?source=arena")
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.progress).toMatchObject({
+      currentStage: 3,
+      stageName: "Stage Three",
+      progressPercent: expect.any(Number),
+    });
+    expect(body.todayGrowth).toEqual({ xpToday: 5 });
+    expect(body.recommendation).toMatchObject({
+      nextAction: expect.any(String),
+      source: "arena",
+    });
+    expect(
+      body.recommendation.recommendedTrack === undefined ||
+        body.recommendation.recommendedTrack === null ||
+        typeof body.recommendation.recommendedTrack === "string"
+    ).toBe(true);
+  });
+
   it("returns 200 with progress, recommendation, and todayGrowth", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },

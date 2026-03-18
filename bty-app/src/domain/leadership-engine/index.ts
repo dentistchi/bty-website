@@ -9,6 +9,7 @@ export * from "./stages";
 export * from "./le-stage";
 export * from "./air";
 export * from "./tii";
+export * from "./dashboardAirTiiNormalize";
 export * from "./forced-reset";
 export * from "./certified";
 export * from "./lri";

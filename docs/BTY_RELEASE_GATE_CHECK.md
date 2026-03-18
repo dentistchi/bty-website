@@ -47,6 +47,24 @@
 
 **배포 시 실행 순서**: MVP_DEPLOYMENT_READINESS(1회) → Gate(self-healing-ci 등) → 본 문서·보드·CURRENT_TASK 반영.
 
+**E) API (251, C4)**: **`POST /api/arena/run/complete`** — **409** `{ error: "RUN_ABORTED" }` (`meta.aborted_at`); 이중 완료 **200** `idempotent`. **`GET /api/arena/core-xp`** — 401 `UNAUTHENTICATED`. **`GET /api/me/access`** — 401 `Unauthorized`. **`GET /api/bty/healing/progress`** — **404 없음**; 빈 진행 **200**.
+
+**E) API (250, C4)**: **`GET /api/arena/run/[id]`** — 404 `NOT_FOUND`(타인·없음). **`PATCH /api/arena/profile`** — 400 `INVALID_JSON`; 422 `EMPTY_PATCH`·아바타 검증. **`GET /api/arena/leaderboard`** — 401 `UNAUTHENTICATED`+`message`. **`GET /api/center/resilience`** — 비어 있지 않은 **`period`**가 1–365가 아니면 **400** `INVALID_PERIOD`.
+
+**E) API (249, C4)**: **`POST /api/arena/reflect`** — 400 `Invalid JSON body`·`userText is required`; **413** `USER_TEXT_TOO_LARGE` (24k). **`GET /api/arena/runs`** — `cursor` ≤512·opaque. **`POST /api/me/mentor-request`** — **400** `message_too_long`. **`GET /api/bty/awakening/acts`** 목록은 404 없음; **`/acts/[actId]`** 잘못된 id → **404** `ACT_NOT_FOUND`.
+
+**E) API (248, C4)**: **`GET /api/arena/leaderboard`** — Query `scope` must be `overall`|`role`|`office` (or omit); `week` omit/`current`/이번 주 월요일 UTC만; else **400** `INVALID_SCOPE` / `INVALID_WEEK`. 랭킹=Weekly XP·타이브레이커 불변.
+
+**E) API (247)**: **`GET /api/arena/runs`** — `cursor`·`nextCursor`·`limit+1` 슬라이스; 잘못된·타인 앵커 **400** `INVALID_CURSOR`. **`PATCH /api/arena/profile`** 빈 본문 **422** `EMPTY_PATCH`. **`GET /api/me/elite`** `Cache-Control: private, max-age=60, stale-while-revalidate=120`. **Healing POST** UNIQUE → **409** `ACT_ALREADY_COMPLETED`.
+
+**E) API (C6, 2026-03-17, SPRINT 246)**: **`POST /api/arena/reflect`** — `userText` trim 후 길이 > `REFLECT_USER_TEXT_MAX_CHARS`(`reflectLimits.ts`, 24000) → **413** `{ error: "USER_TEXT_TOO_LARGE" }`. Core/Weekly·랭킹 무관.
+
+**E) API (C6/C4, 2026-03-17, SPRINT 245)**: **`GET /api/arena/run/[id]`** — 인증 필수(401 `UNAUTHENTICATED`). 본인 `arena_runs` 행만 200 `{ run }`; 없음·타인 404 `NOT_FOUND`. XP/리더보드 규칙 미포함(조회만).
+
+**D) Migration (SPRINT 241, C4, 로컬·다음 배포 전 적용)**: `20260317120000_user_healing_awakening_acts.sql` — `user_healing_awakening_acts`(user_id, act_id 1–3, RLS select/insert own). Healing POST 진행·Core/Weekly XP 비침해.
+
+**배포 후 (C2, 2026-03-19)**: **`cce5374`** — chore: 배포 — Foundry, HubTopNav, API·도메인·Q235 테스트·문서. **62 files** (+1,279 / -277). **`fd81860..cce5374` → origin/main**. Gate § A~F·MVP 요약 대조(인바리언트 유지). **`bty-app/scripts/self-healing-ci.sh`**: tsc ✓ · Vitest **222 files** ✓ · Build ✓. **RESULT: PASS.**
+
 **배포 후 (C2, 2026-03-18)**: **`fd81860`** — Git push 완료(`e4ae594..fd81860` → origin/main). Gate § A~F·`MVP_DEPLOYMENT_READINESS` 요약 대조(인바리언트·Auth/Weekly/Leaderboard 분리 유지, 본 배포는 아바타·API·도메인·테스트·문서 중심). **`./scripts/self-healing-ci.sh`**: tsc ✓ · Vitest **218 files** ✓ · Build ✓. **RESULT: PASS.**
 
 **최근 완료 (배포 push)**: **`fd81860`** — chore: 배포 — 아바타/아웃핏, API·도메인·Q3/Q4 테스트·문서. **200 files** (+4,015 / -423). **`e4ae594..fd81860` → origin/main**. Gate·MVP·문서 반영. **RESULT: PASS.**

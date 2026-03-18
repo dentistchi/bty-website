@@ -10,6 +10,7 @@ import {
   AIR_MIN,
   AIR_MAX,
   AIR_BAND_IDS,
+  AIR_THRESHOLD_STAGE_ESCALATION,
   type ActivationRecord,
   type AIRLedger,
 } from "./air";
@@ -336,5 +337,9 @@ describe("AIR domain constants", () => {
     expect(AIR_MAX).toBe(1);
     expect(AIR_BAND_IDS).toEqual(["low", "mid", "high"]);
     expect(AIR_BAND_IDS).toHaveLength(3);
+  });
+
+  it("AIR threshold for stage transition matches low/mid boundary", () => {
+    expect(AIR_THRESHOLD_STAGE_ESCALATION).toBe(0.4);
   });
 });

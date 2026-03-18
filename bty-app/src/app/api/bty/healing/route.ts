@@ -1,32 +1,54 @@
 /**
- * GET /api/bty/healing
- * Q4 Healing API — phase·콘텐츠 연동. 도메인 상수만 노출; 사용자별 phase는 추후 서비스 연동.
+ * GET /api/bty/healing — Q4 Healing phase·콘텐츠. 도메인 상수 노출; per-user phase는 추후 서비스 연동.
  *
- * Response (200): { ok: true, phase, content: { ringType } }.
- * Error responses:
- * - 401: { error: "UNAUTHENTICATED" } (route-client)
- * - 500: { error: "INTERNAL_ERROR", detail?: string } (btyErrorResponse)
+ * @contract
+ * - **200:** `{ ok: true, phase, content: { ringType }, awakeningProgress: { progressPercent, nextActId, nextActName, completedActIds, allActsComplete } }` — Awakening 진행은 DB+도메인 순수값만.
+ * - **401:** `{ error: "UNAUTHENTICATED" }` — `requireUser` 실패 (`unauthenticated`).
+ * - **404:** 발행 안 함 — 경로 파라미터·목록 ID 없음(단일 GET 고정 페이로드).
+ * - **500:** `{ error: "INTERNAL_ERROR", detail?: string }` — try/catch 비정상; `detail`은 진단용(운영 노출 주의).
+ *
+ * @see `src/app/api/bty/errors.ts` BtyApiErrorResponse
  */
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import {
+  AWAKENING_ACT_NAMES,
   HEALING_PHASE_II_LABEL,
   HEALING_PHASE_RING_TYPE,
+  healingAwakeningProgressPercent,
+  isHealingAwakeningAllActsComplete,
+  nextHealingAwakeningActAfter,
   type HealingPhaseLabel,
 } from "@/domain/healing";
+import { getUserCompletedAwakeningActs } from "@/lib/bty/healing/getUserCompletedAwakeningActs";
 import { btyErrorResponse } from "../errors";
 
 export async function GET(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, supabase, base } = await requireUser(req);
   if (!user) return unauthenticated(req, base);
 
   try {
+    const actsRes = await getUserCompletedAwakeningActs(supabase, user.id);
+    if (!actsRes.ok) {
+      return btyErrorResponse(500, "INTERNAL_ERROR", actsRes.error);
+    }
+    const completed = actsRes.completedActs;
+    const nextId = nextHealingAwakeningActAfter(completed);
+    const nextName = nextId != null ? AWAKENING_ACT_NAMES[nextId] : null;
+
     const phase: HealingPhaseLabel = HEALING_PHASE_II_LABEL;
     const res = NextResponse.json({
       ok: true,
       phase,
       content: {
         ringType: HEALING_PHASE_RING_TYPE,
+      },
+      awakeningProgress: {
+        progressPercent: healingAwakeningProgressPercent(completed),
+        nextActId: nextId,
+        nextActName: nextName,
+        completedActIds: completed,
+        allActsComplete: isHealingAwakeningAllActsComplete(completed),
       },
     });
     copyCookiesAndDebug(base, res, req, true);

@@ -1,6 +1,7 @@
 /**
  * BTY domain barrel — arena·center·foundry export 단일 진입점.
- * Arena: constants·types·rules·LE·dojo. Center: center. Foundry: foundry. 기타: dashboard·healing·roadmap·dentalRpg. Single source of truth: docs/spec/arena-domain-rules.md.
+ * SPRINT 248–251: display keys; 251 weekly stage/tier label, LE clamp, scenario id, healing cooldown.
+ * Arena: constants·types·rules·LE·dojo. Center·foundry·dashboard·healing·roadmap·dentalRpg. @see docs/spec/arena-domain-rules.md.
  */
 
 export * from "./constants";

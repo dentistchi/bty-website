@@ -5,6 +5,11 @@ import { getMessages } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { Locale } from "@/lib/i18n";
 import type { ResilienceDayEntry, ResilienceDailyLevel } from "@/app/api/center/resilience/route";
+import {
+  RESILIENCE_LEVEL_IDS,
+  resilienceLevelDisplayLabelKey,
+} from "@/domain/center/resilience";
+import { resilienceLevelDisplayCopy } from "@/lib/i18n";
 
 /**
  * §4 CENTER_PAGE_IMPROVEMENT_SPEC — 일별 트렉 시각화, render-only.
@@ -240,6 +245,11 @@ export function ResilienceGraph({
                 fill={levelColor[d.level]}
                 stroke="#fff"
                 strokeWidth="1.5"
+                role="img"
+                aria-label={resilienceLevelDisplayCopy(
+                  locale,
+                  resilienceLevelDisplayLabelKey(d.level)
+                )}
               />
             ))}
           </svg>
@@ -251,6 +261,25 @@ export function ResilienceGraph({
             <span>{axisEndLabel}</span>
           </div>
         ) : null}
+        <div
+          role="list"
+          aria-label={t.levelLegendAria}
+          className={cn(
+            "flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs",
+            labelColor
+          )}
+        >
+          {[...RESILIENCE_LEVEL_IDS].reverse().map((level) => (
+            <span key={level} role="listitem" className="inline-flex items-center gap-1.5">
+              <span
+                className="size-2 shrink-0 rounded-full"
+                style={{ background: levelColor[level] }}
+                aria-hidden
+              />
+              {resilienceLevelDisplayCopy(locale, resilienceLevelDisplayLabelKey(level))}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );

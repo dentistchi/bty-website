@@ -20,6 +20,15 @@ function makeRequest(): NextRequest {
   return new NextRequest("http://localhost/api/bty/healing");
 }
 
+function supabaseActs(rows: { act_id: number }[]) {
+  const chain = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    order: vi.fn().mockResolvedValue({ data: rows, error: null }),
+  };
+  return { from: vi.fn(() => chain) };
+}
+
 describe("GET /api/bty/healing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -44,10 +53,10 @@ describe("GET /api/bty/healing", () => {
     expect(data.error).toBe("UNAUTHENTICATED");
   });
 
-  it("returns 200 with ok, phase and content when authenticated", async () => {
+  it("returns 200 with ok, phase, content, awakeningProgress when authenticated", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
-      supabase: {},
+      supabase: supabaseActs([{ act_id: 1 }]),
       base: {},
     });
 
@@ -57,12 +66,17 @@ describe("GET /api/bty/healing", () => {
     expect(data.ok).toBe(true);
     expect(data.phase).toBe("Phase II");
     expect(data.content).toEqual({ ringType: "phase_ring" });
+    expect(data.awakeningProgress.progressPercent).toBe(33);
+    expect(data.awakeningProgress.nextActId).toBe(2);
+    expect(data.awakeningProgress.nextActName).toBe("Transition");
+    expect(data.awakeningProgress.completedActIds).toEqual([1]);
+    expect(data.awakeningProgress.allActsComplete).toBe(false);
   });
 
   it("returns 200 with content-type application/json and body shape (ok, phase, content)", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u2" },
-      supabase: {},
+      supabase: supabaseActs([]),
       base: {},
     });
     const res = await GET(makeRequest());
@@ -75,22 +89,25 @@ describe("GET /api/bty/healing", () => {
     expect(typeof data.content).toBe("object");
   });
 
-  it("returns 200 with exactly ok, phase, content keys (no extra fields)", async () => {
+  it("returns 200 with ok, phase, content, awakeningProgress", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
-      supabase: {},
+      supabase: supabaseActs([]),
       base: {},
     });
     const res = await GET(makeRequest());
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(Object.keys(data).sort()).toEqual(["content", "ok", "phase"].sort());
+    expect(Object.keys(data).sort()).toEqual(
+      ["awakeningProgress", "content", "ok", "phase"].sort()
+    );
+    expect(data.awakeningProgress.nextActId).toBe(1);
   });
 
   it("returns 500 when copyCookiesAndDebug throws", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
-      supabase: {},
+      supabase: supabaseActs([]),
       base: {},
     });
     mockCopyCookiesAndDebug.mockImplementation(() => {

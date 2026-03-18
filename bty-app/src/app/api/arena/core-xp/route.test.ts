@@ -50,6 +50,17 @@ describe("GET /api/arena/core-xp", () => {
     expect(typeof data.error).toBe("string");
   });
 
+  /** C6 251: 비세션 연속 GET 모두 401 (짝·안정). */
+  it("251: returns 401 on consecutive unauthenticated GETs", async () => {
+    mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: {} });
+    const r1 = await GET(makeRequest());
+    const r2 = await GET(makeRequest());
+    expect(r1.status).toBe(401);
+    expect(r2.status).toBe(401);
+    expect((await r1.json()).error).toBe("UNAUTHENTICATED");
+    expect((await r2.json()).error).toBe("UNAUTHENTICATED");
+  });
+
   it("returns 200 with content-type application/json", async () => {
     const countResult = { count: 0, error: null };
     const countThenable = Object.assign(Promise.resolve(countResult), {

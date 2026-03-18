@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   isCertified,
   certifiedStatus,
+  certifiedReadinessNextGap,
   CERTIFIED_AIR_14D_MIN,
   CERTIFIED_MWD_THRESHOLD_DEFAULT,
   type CertifiedInputs,
@@ -90,5 +91,22 @@ describe("certifiedStatus / isCertified", () => {
     });
     expect(r.current).toBe(false);
     expect(r.reasons_missing).toHaveLength(4);
+  });
+
+  it("certifiedReadinessNextGap is null when certified", () => {
+    expect(certifiedReadinessNextGap(allMet)).toBeNull();
+  });
+
+  it("certifiedReadinessNextGap returns first missing gate (AIR order)", () => {
+    expect(certifiedReadinessNextGap({ ...allMet, air14d: 0.5 })).toBe(
+      "air_14d_ge_80"
+    );
+    expect(
+      certifiedReadinessNextGap({
+        ...allMet,
+        air14d: 0.85,
+        mwd14d: 0.05,
+      })
+    ).toBe("mwd_14d_ge_threshold");
   });
 });

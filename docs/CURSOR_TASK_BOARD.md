@@ -15,12 +15,21 @@
 
 ## 이번 런: SPRINT 46 (FOUNDRY) — 2026-03-12
 
+- **[REFRESH] SPRINT_PLAN 251 (2026-03-17):** C3·C4·C5(2–5)·C6 [x] 정합. BLOCKER C5 TASK1·C2 Gate만. §다음 스프린트·HANDOFFS·CURRENT_TASK 동기.
+- **[C4 CONTINUE 2026-03-18]**: SPRINT 251 C4 큐 소진. 252 = C1 splint 후 `SPRINT_PLAN` C4 열 확인.
 - **C1 splint 10 (2026-03-12)**: SPRINT 45 전량 10/10 완료 → SPRINT 46 생성. First Task = Release Gate 46차.
 - **대기 6건 (NEXT_PHASE·NEXT_BACKLOG와 동일)**: Release Gate 46차 · NEXT_PHASE·NEXT_BACKLOG 대기 갱신 · 문서 점검 124·125·126차 · Center/Foundry 접근성 1곳 · 다음 배치 선정 · Arena·Center·Foundry 대기 목록 동기화.
+- **[C5 SPRINT_PLAN 247 Arena UX (2026-03-17)]**: my-page runs cursor·Elite SLA 배지·result 공유 복사·i18n. test 2023 ✓. TASK1 BLOCKER 유지. **완료.**
+- **[C5 SPRINT_PLAN 246 Arena UX (2026-03-17)]**: 런 상세 `RunDetailView`·모달 nearMe/미순위·LE stage a11y·growth 비참가 카피·reflect 심화 실패 문구. test 2007 ✓ build ✓. TASK1 BLOCKER 유지. **완료.**
+- **[C5 SPRINT_PLAN 245 Arena UX (2026-03-17)]**: my-page 최근 런(`MyPageRecentRuns`·GET runs), growth 내 순위(`GrowthMyRankCard`·GET leaderboard render-only), Awakening acts 3열 그리드, i18n. npm test 1993 ✓ build ✓. TASK1 BLOCKER 유지. **완료.**
+- **[C4 SPRINT_PLAN 246 API (2026-03-17)]**: reflect 413·stage-summary·run/complete 멱등·profile Cache-Control·ARENA_DOMAIN_SPEC §4·246·profile route test. vitest reflect+profile 21 ✓. **완료.**
+- **[C4 SPRINT_PLAN 247 API (2026-03-17)]**: ARENA_DOMAIN_SPEC §4·247 — runs cursor·400·profile 422·me/elite Cache-Control·healing 409. **완료.**
+- **[C4 SPRINT_PLAN 251 API (2026-03-17)]**: run/complete 409 RUN_ABORTED·core-xp/me/access 401·GET healing/progress 404 없음·ARENA_DOMAIN_SPEC §4·251. **완료.**
 - **[VERIFY] Release Gate 46차 (2026-03-12)**: C5. A~E N/A · F) Lint ✓ Test 1819 ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
 - **[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 (46차 TASK 2, 2026-03-12)**: C1. SPRINT 46 TASK 1 완료 반영·갱신일 동기화. **완료.**
 - **[DOCS] 문서 점검 124·125·126차 (46차 TASK 3, 2026-03-12)**: C1. 삼문서·보드·BTY_RELEASE_GATE_CHECK 점검·갱신. **완료.**
 - **[UI] Center/Foundry 추가 접근성 1곳 (46차 TASK 4, 2026-03-12)**: C4. 대시보드 바로가기 링크 그룹 role=region·aria-label(ko/en). render-only. **완료.**
+- **[VERIFY] 엘리트 3차 체크리스트 46차 (2026-03-11)**: C5. ELITE_3RD 6항목·코드 대조. Elite=Weekly XP만. **RESULT: PASS.** §3·보드·CURRENT_TASK.
 
 **SPRINT 46 — TASK 1~10 (MODE FOUNDRY)**
 
@@ -31,7 +40,7 @@
 | 3 | C1 | [x] [DOCS] 문서 점검 124·125·126차 | NEXT_PHASE·NEXT_BACKLOG·보드·BTY_RELEASE_GATE_CHECK 점검·갱신. **완료.** |
 | 4 | C4 | [x] [UI] Center/Foundry 추가 접근성 1곳 | 대시보드 바로가기 링크 그룹 role=region·aria-label. **완료.** |
 | 5 | C1 | [ ] [DOCS] 다음 배치 선정 (선택) | NEXT_BACKLOG_AUTO4·NEXT_PHASE_AUTO4 수동 갱신. 필요 시에만. 완료 시 보드·CURRENT_TASK 반영. 코드 없음. |
-| 6 | C5 | [ ] [VERIFY] 엘리트 3차 체크리스트 1회 | ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목. Elite=Weekly XP만·시즌 미반영. §3·보드·CURRENT_TASK 반영. |
+| 6 | C5 | [x] [VERIFY] 엘리트 3차 체크리스트 1회 | ELITE_3RD 6항목·코드 대조. **완료.** **RESULT: PASS.** |
 | 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | § "다음 작업 (반복 제외)" 진행 현황·다음 후보 체크·갱신일. 코드 없음. |
 | 8 | C3 | [ ] [DOMAIN] Center/Foundry 미커버 경계 테스트 1건 (선택) | 미커버 1곳 *.test.ts. npm test 통과. 필요 시. |
 | 9 | C3 | [ ] [TEST] Center/Foundry route 테스트 1건 (선택) | POST/GET route 401·200 등. npm test 통과. 필요 시. |

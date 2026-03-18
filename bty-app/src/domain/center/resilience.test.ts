@@ -3,8 +3,17 @@ import {
   energyToLevel,
   aggregateLetterRowsToDailyEntries,
   RESILIENCE_LEVEL_IDS,
+  resilienceLevelDisplayLabelKey,
   type LetterRow,
 } from "./resilience";
+
+describe("resilienceLevelDisplayLabelKey (250)", () => {
+  it("maps low, mid, high to stable keys", () => {
+    expect(resilienceLevelDisplayLabelKey("low")).toBe("center.resilience.level_low");
+    expect(resilienceLevelDisplayLabelKey("mid")).toBe("center.resilience.level_mid");
+    expect(resilienceLevelDisplayLabelKey("high")).toBe("center.resilience.level_high");
+  });
+});
 
 describe("energyToLevel", () => {
   it("returns low for 1–2", () => {

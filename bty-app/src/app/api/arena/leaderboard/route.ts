@@ -1,21 +1,17 @@
 /**
- * GET /api/arena/leaderboard
- * BTY_ARENA_SYSTEM_SPEC §4: scope=overall|role|office.
+ * GET /api/arena/leaderboard — **라이브 주간 랭킹** (Weekly XP + tie-break만; 시즌 필드 표시 전용).
  *
- * --- API 계약 (Leaderboard status endpoint) ---
- * 요청:
- *   - Method: GET
- *   - Path: /api/arena/leaderboard
- *   - Query: scope? = "overall" | "role" | "office" (invalid/missing → overall, parseLeaderboardScope)
- *   - Auth: 세션 권장. 쿠키가 Edge에서 누락되어도 scope=overall + service role 시 공개 리더보드(아바타 포함) 200.
- * 응답:
- *   - 200: { leaderboard, nearMe, …, viewerAnonymous?: true }
- *   - 401: scope가 role/office이거나 공개 폴백 불가 시
- *   - 500: { error: "WEEKLY_XP_QUERY_FAILED", detail: string }
- * Cache: no-store (ranking is user-specific; no public cache).
- * Invariant: rank order uses weekly XP (+ tie-break) only; season fields in JSON are display-only.
- * Related: GET /api/arena/core-xp — lifetime tier/code; do not infer weekly rank from core XP.
- * Thin handler: auth → service calls → response.
+ * @contract
+ * - **Query `scope`:** omit/empty → `overall`. Else **`overall`|`role`|`office`** only (trim). 잘못된 값 → **400** `{ error: "INVALID_SCOPE", message }`.
+ * - **Query `week`:** omit, empty, or **`current`** → 라이브 주간. Else **`YYYY-MM-DD`** = **이번 주 월요일 UTC**만 허용; 그 외 형식·과거·미래 주 → **400** `{ error: "INVALID_WEEK", message }`.
+ * - **200:** `leaderboard`·`count`·`nearMe`·`myRank` 등. 빈 주간 → `leaderboard: []`, `count: 0`.
+ * - **200 (무세션·overall):** service role 가능 시 상위 랭크 공개; `viewerAnonymous: true`.
+ * - **401:** `{ error: "UNAUTHENTICATED", message: "Sign in to see leaderboard" }` — `scope=role|office` 미로그인, 또는 overall 공개(service role) 폴백 불가 시.
+ * - **250:** 401 응답 **키는 `error`·`message`만**(문자열).
+ * - **500:** `{ error: "WEEKLY_XP_QUERY_FAILED", detail }`.
+ * - **캐시:** `Cache-Control: no-store`.
+ *
+ * @see docs/spec/ARENA_DOMAIN_SPEC.md §4-4
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
@@ -23,7 +19,7 @@ import { writeSupabaseAuthCookies } from "@/lib/bty/cookies/authCookies";
 import { mergeAuthCookiesFromResponse } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getActiveLeague } from "@/lib/bty/arena/activeLeague";
-import { parseLeaderboardScope } from "@/lib/bty/arena/leaderboardScope";
+import { parseLeaderboardQuery } from "@/lib/bty/arena/leaderboardScope";
 import { getLeaderboardWeekBoundary } from "@/lib/bty/arena/leaderboardWeekBoundary";
 import {
   getScopeFilter,
@@ -41,6 +37,18 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const baseHeaders = new Headers();
   baseHeaders.set("Cache-Control", "no-store");
+
+  const parsed = parseLeaderboardQuery(
+    req.nextUrl.searchParams.get("scope"),
+    req.nextUrl.searchParams.get("week"),
+  );
+  if (!parsed.ok) {
+    return NextResponse.json(
+      { error: parsed.error, message: parsed.message },
+      { status: 400, headers: baseHeaders },
+    );
+  }
+  const scope = parsed.scope;
 
   let didSetAll = false;
   const tmp = NextResponse.json({ ok: true }, { status: 200, headers: baseHeaders });
@@ -60,7 +68,6 @@ export async function GET(req: NextRequest) {
   const { data: userData } = await supabase.auth.getUser();
   let user = userData.user;
 
-  const scope = parseLeaderboardScope(req.nextUrl.searchParams.get("scope"));
   const admin = getSupabaseAdmin();
 
   if (!user && scope === "overall" && admin) {

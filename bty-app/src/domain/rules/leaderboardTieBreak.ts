@@ -7,6 +7,16 @@
 export const LEADERBOARD_TIE_BREAK_ORDER =
   "xp_total desc, updated_at asc, user_id asc" as const;
 
+/** 동순위 표시 접미(render-only). 동일 주간 XP로 표시 순위가 위 행과 같을 때 접미 라벨. */
+export const LEADERBOARD_TIE_RANK_SUFFIX_DISPLAY_KEY =
+  "arena.leaderboard.tieRankSuffix" as const;
+
+export function leaderboardTieRankSuffixDisplayKey(
+  sameDisplayedRankAsRowAbove: boolean
+): typeof LEADERBOARD_TIE_RANK_SUFFIX_DISPLAY_KEY | null {
+  return sameDisplayedRankAsRowAbove ? LEADERBOARD_TIE_RANK_SUFFIX_DISPLAY_KEY : null;
+}
+
 export interface WeeklyXpRowForTieBreak {
   weeklyXp: number;
   updatedAt: string | null;

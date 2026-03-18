@@ -1,9 +1,18 @@
 /**
- * POST /api/arena/reflect — Reflection Deepening Engine (Arena Human Model). Domain/lib only.
- * Body: { userText: string (required), levelId?: S1|S2|S3|L1|L2|L3|L4, locale?: "ko"|"en", scenario?: unknown }.
- * levelId omitted → resolved from tenure (membership / arena_profiles.l4_access) like unlocked-scenarios.
- * Response (200): { ok: true, summary, questions, next_action, detected: { tags, topTag } }.
- * Errors: 401 { error: "UNAUTHENTICATED" }; 400 { error: "Invalid JSON body" } | { error: "userText is required" }.
+ * POST /api/arena/reflect — 성찰 심화 엔진 (Human Model; 계산은 `@/lib/bty/arena/reflection-engine`).
+ *
+ * @contract
+ * - **Auth:** 401 `{ error: "UNAUTHENTICATED" }`.
+ * - **Body (JSON):** `userText` string 필수(공백만 불가). 선택: `levelId` (S1|S2|S3|L1|L2|L3|L4),
+ *   `locale` `"ko"` | 그 외→`en`, `scenario` 임의(JSON 직렬화 가능).
+ * - **levelId 생략:** `GET /api/arena/unlocked-scenarios` 와 동일 테넌시(멤버십·L4)로 추론.
+ * - **200:** `{ ok: true, summary: string, questions: string[], next_action: string, detected: { tags: string[], topTag: string } }`.
+ * - **400:** `{ error: "Invalid JSON body" }` (JSON 파싱 실패) | `{ error: "userText is required" }` (`userText` 누락·공백만).
+ * - **413:** `{ error: "USER_TEXT_TOO_LARGE" }` — trim 후 `userText.length` > `REFLECT_USER_TEXT_MAX_CHARS` (`reflectLimits.ts`, 24000).
+ * - **249:** 위 400·413 응답은 **`error` 문자열 단일 키** (추가 필드 없음).
+ * - **422:** 미사용. 플랫폼 전체 본문 한도 초과는 인프라 **413** 가능.
+ *
+ * @see docs/spec/ARENA_DOMAIN_SPEC.md §4-7
  */
 
 import { NextResponse } from "next/server";
@@ -12,6 +21,7 @@ import { getEffectiveTrack } from "@/lib/bty/arena/program";
 import { getUnlockedContentWindow } from "@/lib/bty/arena/unlock";
 import { buildReflection, type LevelId, type HumanModelConfig } from "@/lib/bty/arena/reflection-engine";
 import humanModelJson from "@/lib/bty/arena/arena_human_model.json";
+import { REFLECT_USER_TEXT_MAX_CHARS } from "@/lib/bty/arena/reflectLimits";
 
 export const runtime = "nodejs";
 
@@ -35,6 +45,9 @@ export async function POST(req: Request) {
   const userText = String(body.userText ?? "").trim();
   if (!userText) {
     return NextResponse.json({ error: "userText is required" }, { status: 400 });
+  }
+  if (userText.length > REFLECT_USER_TEXT_MAX_CHARS) {
+    return NextResponse.json({ error: "USER_TEXT_TOO_LARGE" }, { status: 413 });
   }
 
   let levelId: LevelId;

@@ -15,6 +15,7 @@
     "lint:eslint": "next lint",
     "extract:questions": "node scripts/extract-questions.mjs",
     "test": "vitest run",
+    "test:q237-smoke": "vitest run \"src/app/[locale]/bty-arena/q237-stub-routes.smoke.test.ts\" \"src/app/[locale]/bty-arena/q237-bty-arena-result.smoke.test.ts\" \"src/app/[locale]/my-page/q237-my-page-subroutes.smoke.test.ts\"",
     "test:watch": "vitest",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",

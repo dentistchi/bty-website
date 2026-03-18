@@ -13,6 +13,11 @@ import {
   compareWeeklyXpTieBreak,
   type WeeklyXpRowForTieBreak,
 } from "./leaderboardTieBreak";
+import {
+  calculateLevel,
+  calculateTier,
+  type WeeklyTierName,
+} from "./weeklyXp";
 
 /**
  * Sort by weeklyXp descending only. Ties: stable sort order (not domain tiebreak).
@@ -69,4 +74,68 @@ export function weeklyRankFromCounts(totalCount: number, countAbove: number): {
   const rank = rankFromCountAbove(totalCount, countAbove);
   const isTop5Percent = isElite(rank, totalCount);
   return { rank, isTop5Percent };
+}
+
+/**
+ * Single source for UI: within-week level/tier (from Weekly XP totals) vs weekly Elite
+ * (top 5% by rank). Core XP tier must not be mixed with either.
+ * `rank` must be 1-based; use 0 when user has no row / not ranked → never elite.
+ */
+/**
+ * 라이브 랭킹: API가 준 `rank` 순서가 표시 순서의 단일 진실.
+ * 클라이언트는 weeklyXp만으로 재정렬하면 안 됨(동점 시 API 타이브레이크 유지).
+ */
+export function leaderboardLiveRowsAreDisplaySafeOrder<
+  T extends { rank: number; weeklyXp: number; userId: string },
+>(rows: T[]): boolean {
+  if (rows.length === 0) return true;
+  for (let i = 1; i < rows.length; i++) {
+    const prev = rows[i - 1]!;
+    const cur = rows[i]!;
+    if (cur.rank !== prev.rank + 1) return false;
+  }
+  return rows[0]!.rank === 1;
+}
+
+export function weeklyCompetitionDisplay(input: {
+  weeklyXpTotal: number;
+  rank: number;
+  totalLeaderboardEntries: number;
+}): {
+  weeklyTier: WeeklyTierName;
+  weeklyLevel: number;
+  isWeeklyElite: boolean;
+} {
+  const weeklyTier = calculateTier(input.weeklyXpTotal);
+  const weeklyLevel = calculateLevel(input.weeklyXpTotal);
+  const isWeeklyElite =
+    input.rank >= 1 &&
+    input.totalLeaderboardEntries > 0 &&
+    isElite(input.rank, input.totalLeaderboardEntries);
+  return { weeklyTier, weeklyLevel, isWeeklyElite };
+}
+
+/** Render-only i18n keys for weekly competition tier (leaderboard card). UI maps via t(key). */
+export type WeeklyTierDisplayLabelKey =
+  | "arena.leaderboard.weeklyTierBronze"
+  | "arena.leaderboard.weeklyTierSilver"
+  | "arena.leaderboard.weeklyTierGold"
+  | "arena.leaderboard.weeklyTierPlatinum";
+
+/** Maps canonical weekly tier name → stable label key (no user-facing copy in domain). */
+export function weeklyTierDisplayLabelKey(tier: WeeklyTierName): WeeklyTierDisplayLabelKey {
+  switch (tier) {
+    case "Bronze":
+      return "arena.leaderboard.weeklyTierBronze";
+    case "Silver":
+      return "arena.leaderboard.weeklyTierSilver";
+    case "Gold":
+      return "arena.leaderboard.weeklyTierGold";
+    case "Platinum":
+      return "arena.leaderboard.weeklyTierPlatinum";
+    default: {
+      const _exhaustive: never = tier;
+      return _exhaustive;
+    }
+  }
 }

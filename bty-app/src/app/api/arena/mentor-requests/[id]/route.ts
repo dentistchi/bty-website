@@ -1,17 +1,18 @@
 /**
- * Elite 멘토 신청 승인/거절 (admin only). PHASE_4_ELITE_5_PERCENT_SPEC §10 3차.
- * PATCH: body { status: "approved" | "rejected" }. lib/bty/arena/mentorRequest canTransitionStatus 검증.
+ * PATCH /api/arena/mentor-requests/[id] — Elite 멘토 신청 **승인/거절** (관리자 전용). `canTransitionStatus`로 전이 검증.
  *
  * @contract
- * PATCH /api/arena/mentor-requests/[id]
- *   Auth: admin only (requireAdminEmail)
- *   Body: { status: "approved" | "rejected" }
- *   200: { ok: true, id: string, status: string, respondedAt: string }
- *   400: { error: "MISSING_ID" | "INVALID_BODY" | "INVALID_STATUS" | "INVALID_TRANSITION" }
- *   401/403: { error } (auth failure)
- *   404: { error: "NOT_FOUND" }
- *   500: { error: string } (update failed)
- *   503: { error: "ADMIN_UNAVAILABLE" }
+ * - **240 Elite PATCH 요약:** **401** 비인증 · **403** 비관리자 · **404** 미존재 id · **500** DB 갱신 실패 · **503** admin 클라이언트 없음 · **400** 바디/id/전이 오류.
+ * - **Body:** `{ status: "approved" | "rejected" }`.
+ * - **200:** `{ ok: true, id, status, respondedAt }`.
+ * - **400:** `MISSING_ID` | `INVALID_BODY` | `INVALID_STATUS` | `INVALID_TRANSITION`.
+ * - **401:** `{ error: string }` — 세션 없음·로그인 필요 (`requireUser` 실패).
+ * - **403:** `{ error: "Forbidden: Admin access required" }` 등 — 로그인됐으나 관리자 이메일 아님.
+ * - **404:** `{ error: "NOT_FOUND" }`.
+ * - **500:** `{ error: string }` — Supabase update 실패 등 서버 오류.
+ * - **503:** `{ error: "ADMIN_UNAVAILABLE" }` — admin 클라이언트 미구성.
+ *
+ * @see docs/spec/ARENA_DOMAIN_SPEC.md §4-8
  */
 
 import { NextRequest, NextResponse } from "next/server";

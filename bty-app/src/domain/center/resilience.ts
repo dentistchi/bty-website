@@ -7,6 +7,29 @@
 
 export type ResilienceDailyLevel = "high" | "mid" | "low";
 
+/** resilience 트렉 셀 라벨(render-only). */
+export type ResilienceLevelDisplayLabelKey =
+  | "center.resilience.level_low"
+  | "center.resilience.level_mid"
+  | "center.resilience.level_high";
+
+export function resilienceLevelDisplayLabelKey(
+  level: ResilienceDailyLevel
+): ResilienceLevelDisplayLabelKey {
+  switch (level) {
+    case "low":
+      return "center.resilience.level_low";
+    case "mid":
+      return "center.resilience.level_mid";
+    case "high":
+      return "center.resilience.level_high";
+    default: {
+      const _e: never = level;
+      return _e;
+    }
+  }
+}
+
 /** 레벨 id 목록 (API·순회용). */
 export const RESILIENCE_LEVEL_IDS: readonly ResilienceDailyLevel[] = ["low", "mid", "high"];
 

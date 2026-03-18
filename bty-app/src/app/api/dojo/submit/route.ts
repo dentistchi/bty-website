@@ -1,8 +1,9 @@
 /**
- * POST /api/dojo/submit — Dojo 50문항 제출 (thin handler).
- * Body: { answers: Record<string, number> } (q 1–50, value 1–5).
- * Response (200): { submissionId, scores, summaryKey, mentorComment? } (mentorComment 로케일별 Dojo 결과 코멘트).
- * Errors: 401 { error: "UNAUTHENTICATED" }; 400 { error: "invalid_body" | string }; 500 { error: string }.
+ * POST /api/dojo/submit — Dojo 50문항 제출.
+ *
+ * @contract
+ * - **400:** `{ error: "invalid_body" }` — JSON 파싱 실패; 그 외 **50문항 미충족·값 범위** 등은 `{ error: string }` (서비스 검증 메시지).
+ * - **401 / 200 / 500:** 기존과 동일.
  */
 
 import { NextResponse } from "next/server";

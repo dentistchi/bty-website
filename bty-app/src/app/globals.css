@@ -81,6 +81,21 @@
   --text-light: #718096;
   --bg-base: #FFFFFF;
   --border-base: #E2E8F0;
+  /* BTY Phase 1 stubs — docs/BTY_TAILWIND_THEME_TOKENS.md §4 */
+  --bty-bg: #f6f4ee;
+  --bty-surface: #ffffff;
+  --bty-surface-soft: #f1eee6;
+  --bty-text: #1f2937;
+  --bty-text-secondary: #667085;
+  --bty-text-muted: #98a2b3;
+  --bty-brand-navy: #1e2a38;
+  --bty-brand-steel: #405a74;
+  --bty-muted-gold: #b08d57;
+  --bty-soft-bronze: #8b6b4a;
+  --bty-stable: #4d6b57;
+  --bty-warning: #a06a3a;
+  --bty-risk: #8a4d4d;
+  --bty-border: #e7e4dc;
 }
 .dark {
   --arena-primary: #A3CEF1;

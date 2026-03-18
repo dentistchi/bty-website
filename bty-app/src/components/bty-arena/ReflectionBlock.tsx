@@ -1,7 +1,9 @@
 "use client";
 
 import React from "react";
-import { getMessages } from "@/lib/i18n";
+import { reflectTextLengthHintKey } from "@/domain/rules/reflectTextHint";
+import { REFLECT_USER_TEXT_MAX_CHARS } from "@/lib/bty/arena/reflectLimits";
+import { getMessages, reflectHintLabel } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { CardSkeleton } from "@/components/bty-arena";
 
@@ -32,6 +34,9 @@ export function ReflectionBlock({
   const nextLabel = t.reflectionNext;
   const optionalLabel = t.reflectionOptional;
   const placeholder = t.reflectionPlaceholder;
+  const maxChars = REFLECT_USER_TEXT_MAX_CHARS;
+  const hintKey = reflectTextLengthHintKey(inputValue.length, maxChars);
+  const hintText = reflectHintLabel(lang, hintKey);
 
   if (submitting) {
     return (
@@ -43,20 +48,28 @@ export function ReflectionBlock({
 
   if (reflectionPrompt) {
     return (
-      <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }} role="region" aria-label={t.reflectionSentenceBlockAria}>
+      <div
+        style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}
+        role="region"
+        aria-label={t.reflectionSentenceBlockAria}
+      >
         <div style={{ fontWeight: 700, marginBottom: 8 }}>{displayTitle}</div>
         <p style={{ margin: "0 0 12px", lineHeight: 1.5, opacity: 0.9 }}>{reflectionPrompt}</p>
-        <div style={{ marginBottom: 12 }}>
-          <label htmlFor="reflection-optional-input" style={{ display: "block", fontSize: 12, opacity: 0.8, marginBottom: 4 }}>
+        <div style={{ marginBottom: 8 }}>
+          <label
+            htmlFor="reflection-optional-input"
+            style={{ display: "block", fontSize: 12, opacity: 0.8, marginBottom: 4 }}
+          >
             {optionalLabel}
           </label>
-          <input
+          <textarea
             id="reflection-optional-input"
-            type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder={placeholder}
-            maxLength={120}
+            maxLength={maxChars}
+            rows={4}
+            aria-describedby="reflection-length-hint reflection-char-count"
             style={{
               width: "100%",
               padding: "10px 12px",
@@ -64,8 +77,33 @@ export function ReflectionBlock({
               border: "1px solid #e5e5e5",
               fontSize: 14,
               boxSizing: "border-box",
+              resize: "vertical",
+              minHeight: 88,
             }}
           />
+          <div
+            id="reflection-char-count"
+            style={{ fontSize: 11, opacity: 0.65, marginTop: 4 }}
+            aria-live="polite"
+          >
+            {t.reflectionCharCount
+              .replace("{n}", String(inputValue.length))
+              .replace("{max}", String(maxChars))}
+          </div>
+          <p
+            id="reflection-length-hint"
+            role="status"
+            aria-live="polite"
+            style={{
+              margin: "8px 0 0 0",
+              fontSize: 12,
+              lineHeight: 1.45,
+              opacity: 0.88,
+            }}
+            aria-label={t.reflectionLengthHintAria}
+          >
+            {hintText}
+          </p>
         </div>
         <button
           type="button"
@@ -86,9 +124,13 @@ export function ReflectionBlock({
   }
 
   return (
-    <div style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }} role="region" aria-label={t.reflectionChoiceOptionsAria}>
+    <div
+      style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}
+      role="region"
+      aria-label={t.reflectionChoiceOptionsAria}
+    >
       <div style={{ fontWeight: 700, marginBottom: 8 }}>{displayTitle}</div>
-      <div style={{ display: "grid", gap: 10 }}>
+      <div style={{ display: "grid", gap: 10 }} role="group" aria-label={t.reflectionChoiceOptionsAria}>
         {options.map((opt, idx) => (
           <button
             key={idx}

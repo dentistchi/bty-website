@@ -38,3 +38,35 @@ export function mapDojoQuestionRow(row: {
     scaleType: String(row.scale_type ?? "likert_5"),
   };
 }
+
+/** API/캐시 버전 — 질문 세트 교체 시 갱신. */
+export const DOJO_50_QUESTION_SET_VERSION = "dojo50_v1" as const;
+
+/** 1..50 합 — 세트 치환·누락 탐지용 순수 체크섬. */
+export const DOJO_50_QUESTION_IDS_SUM = 1275 as const;
+
+export function validateDojo50QuestionIdsChecksum(ids: readonly number[]): boolean {
+  if (!Array.isArray(ids) || ids.length !== 50) return false;
+  let sum = 0;
+  const seen = new Set<number>();
+  for (const id of ids) {
+    if (!Number.isInteger(id) || id < 1 || id > 50 || seen.has(id)) return false;
+    seen.add(id);
+    sum += id;
+  }
+  return sum === DOJO_50_QUESTION_IDS_SUM;
+}
+
+export function validateDojo50QuestionSetContract(input: {
+  setVersion: string | null | undefined;
+  questionIds: readonly number[];
+}): { ok: boolean; error?: "version" | "checksum" } {
+  const v = input.setVersion?.trim();
+  if (!v || v !== DOJO_50_QUESTION_SET_VERSION) {
+    return { ok: false, error: "version" };
+  }
+  if (!validateDojo50QuestionIdsChecksum(input.questionIds)) {
+    return { ok: false, error: "checksum" };
+  }
+  return { ok: true };
+}
