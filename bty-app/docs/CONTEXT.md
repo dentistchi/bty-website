@@ -26,6 +26,9 @@
 
 > 확인 근거: **repo root** `.github/workflows/deploy-workers.yml`
 
+### CI Context Guard
+- `main`으로 가는 PR에서 배포·미들웨어·인증·locale `(public)`/`(protected)` 등 **repo** `.github/workflows/ci-context-guard.yml`에 정의된 경로가 바뀌면 **같은 PR에서 이 문서를 1~5줄이라도 갱신**해야 한다.
+
 ### Output
 - OpenNext output: `.open-next/`
 - Next intermediate: `.next/`
