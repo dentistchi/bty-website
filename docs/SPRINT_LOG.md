@@ -6,7 +6,13 @@ Summary of gate/integration runs (C7). Major sprint state changes. C1 REFRESH re
 
 ## 2026-03-18
 
+- **병렬 큐 보충 → SPRINT 57:** S56 **C3·C6 [x]** · C5·C1·C4 `[ ]` → **263** · 10행 전부 `[ ]` · First **Gate 57** · `check-parallel-task-queue.sh` OK.
+- **C3 SPRINT 56 / 262:** `reflectTextBounds.edges` · `GET /api/arena/weekly-stats` 401·200 · **279/2115** ✓.
+- **배포 (C2, post-push):** **`6afdfe4`** — E2E/Playwright, Growth IA, Arena Hub, 도메인·문서. **108 files** (+5,767/-846). **`58b8342..6afdfe4` → origin/main**. `BTY_RELEASE_GATE_CHECK`·본 로그. **self-healing-ci** **277 / 2108** · Build PASS.
+- **병렬 큐 보충 → SPRINT 57:** S56 C5·C3·C6 **[x]** · Gate **56** **279/2115** · **263** · First **Gate 57**.
+- **C6 SPRINT 56 / 262:** `test:q237-smoke` **3/7** ✓ · `self-healing-ci.sh` **279 / 2115** ✓ · Build ✓. 보드 S56 TASK10 [x]·`SPRINT_PLAN` C6(262).
 - **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (277 files, 2108 tests), Build PASS. Overall PASS. Owner to fix: —. *(SPRINT 262 / S56)*
+- **REFRESH:** **SPRINT 56** — **10행 `[ ]`** · First **C5 Gate 56** · C1 **2·3·5·7** · C4 **4** · C3 **8·9** · C5 **6** · C6 **10** · S55 **277/2108** · `board:queue-check` **OK.** C2~C6×5 인라인.
 - **병렬 큐 보충 → SPRINT 56:** S55 C5·C3·C6 **[x]** → **262** · First **Gate 56** · C1·C4 **55** 잔여 흡수 · `check-parallel-task-queue.sh` OK.
 - **C6 SPRINT 55 / 261:** `test:q237-smoke` **7/7** ✓ · CI **277 / 2108** ✓ · Build ✓. 보드 S55 TASK10 [x]·`SPRINT_PLAN` C6(261).
 - **REFRESH:** **SPRINT 55** — **10행 `[ ]`** · First **C5 Gate 55** · C1 **2·3·5·7** · C4 **4** · C3 **8·9** · C5 **6** · C6 **10** · S54 **275/2102** · `board:queue-check` **OK.** C2~C6×5 인라인.

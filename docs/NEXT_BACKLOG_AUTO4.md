@@ -2,7 +2,7 @@
 
 **목적**: 대기 작업이 없을 때 `scripts/next-project-fill-board.sh`가 여기서 다음 작업을 읽어 보드에 추가한다.  
 **기준**: `docs/NEXT_PROJECT_RECOMMENDED.md` §1·§2.  
-**갱신일**: 2026-03-18 — 보드 **SPRINT 56** 이번 런. 다음 = **57**.
+**갱신일**: 2026-03-18 — 보드 **SPRINT 57** 이번 런. 다음 = **58**.
 
 ---
 

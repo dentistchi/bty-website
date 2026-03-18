@@ -16,25 +16,48 @@
 
 ---
 
-## 이번 런: SPRINT 56 (FOUNDRY) — 2026-03-18
+## 이번 런: SPRINT 57 (FOUNDRY) — 2026-03-18
 
-- **병렬 큐 보충:** S55 **C3·C5·C6 전행 [x]** → 기아 → **S56** (`PARALLEL_QUEUE_REFILL.md` §3).
-- **First Task = C5 TASK1 (Gate 56).** `SPRINT_PLAN` **262**.
+- **[C5] TASK1·6** **완료 (2026-03-18).** Gate **57** **279/2115**·Build ✓·엘리트 **PASS**·§3.
+- **병렬 큐 보충:** S56 **C3·C6 [x]** → **S57**. C1·C4·C3·C6 잔여 `[ ]`.
+- **[C2] 배포 Gate `6afdfe4`:** **완료** (참조).
+- **First Task (C5 잠금 해제):** C1·C4·C3·C6. `SPRINT_PLAN` **263**.
 
-**SPRINT 56 — TASK 1~10 (MODE FOUNDRY)**
+**SPRINT 57 — TASK 1~10 (MODE FOUNDRY)**
 
 | # | OWNER | TASK LINE | PROMPT |
 |---|-------|-----------|--------|
-| 1 | C5 | [ ] [VERIFY] Release Gate A~F — Foundry 56차 | `BTY_RELEASE_GATE_CHECK`·보드·`CURRENT_TASK`. |
-| 2 | C1 | [ ] [DOCS] NEXT_PHASE·NEXT_BACKLOG + S55·S54 잔여 | 대기 동기. |
-| 3 | C1 | [ ] [DOCS] 문서 점검 154·155·156차 | 보드·BACKLOG·Gate. |
+| 1 | C5 | [x] [VERIFY] Release Gate A~F — Foundry 57차 | `BTY_RELEASE_GATE_CHECK`·보드·`CURRENT_TASK`. |
+| 2 | C1 | [ ] [DOCS] NEXT_PHASE·NEXT_BACKLOG + S56·S55 잔여 | 대기 동기. |
+| 3 | C1 | [ ] [DOCS] 문서 점검 157·158·159차 | 보드·BACKLOG·Gate. |
 | 4 | C4 | [ ] [UI] Center/Foundry 추가 접근성 1곳 | **`/bty`·My Page·Growth 제외.** |
 | 5 | C1 | [ ] [DOCS] 다음 배치 선정 (선택) | NEXT_BACKLOG·NEXT_PHASE. |
-| 6 | C5 | [ ] [VERIFY] 엘리트 3차 체크리스트 1회 | ELITE_3RD §3. |
-| 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | SPRINT 57 예고. |
+| 6 | C5 | [x] [VERIFY] 엘리트 3차 체크리스트 1회 | ELITE_3RD §3. |
+| 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | SPRINT 58 예고. |
 | 8 | C3 | [ ] [DOMAIN] Arena 순수 규칙+테스트 1건 | `bty-app/src/domain`. |
 | 9 | C3 | [ ] [TEST] Arena `src/app/api` route 테스트 1건 | vitest. |
 | 10 | C6 | [ ] [VERIFY] test:q237-smoke + self-healing-ci | `SPRINT_LOG`. |
+
+---
+
+## 이전 런: SPRINT 56 (FOUNDRY) — 2026-03-18
+
+- Gate **56** **279/2115**·C5·C3·C6 **[x].** C1·C4 → **S57**.
+
+**SPRINT 56 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] Gate 56 | 279/2115 ✓ |
+| 2 | C1 | [→S57] | **57 TASK2** |
+| 3 | C1 | [→S57] 154·155·156차 | **57 TASK3** |
+| 4 | C4 | [→S57] 접근성 | **57 TASK4** |
+| 5 | C1 | [→S57] | **57 TASK5** |
+| 6 | C5 | [x] 엘리트 3차 | PASS |
+| 7 | C1 | [→S57] § | **57 TASK7** |
+| 8 | C3 | [x] reflectTextBounds.edges | ✓ |
+| 9 | C3 | [x] weekly-stats GET | ✓ |
+| 10 | C6 | [x] q237 + CI | 279/2115 ✓ |
 
 ---
 

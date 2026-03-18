@@ -1,8 +1,18 @@
 # 현재 작업 (진행 에이전트용)
 
-**이번 런 (2026-03-18):** **`docs/CURSOR_TASK_BOARD.md` → SPRINT 56.** First **C5 TASK1 (Gate 56).** S55 C5·C3·C6 **[x]** → 병렬 큐 보충 **S56**. `SPRINT_PLAN` **262**.
+**[C2] 배포 Gate `6afdfe4`**: [x] **완료.** `58b8342..6afdfe4` → origin/main. BTY_RELEASE_GATE_CHECK·SPRINT_LOG. **277 / 2108** · build PASS. **다음 push** 시 C2 재Gate.
 
-**[운영] S55 → S56:** C3·C5·C6 전행 [x] → `PARALLEL_QUEUE_REFILL.md` §3.
+**이번 런 (2026-03-18):** **`docs/CURSOR_TASK_BOARD.md` → SPRINT 57.** **[C5] TASK1·6 완료** · C1·C4·C3·C6 잔여. `SPRINT_PLAN` **263**.
+
+**[C5] SPRINT 57 TASK 1·6 / 263**: [x] **완료 (2026-03-18).** Gate **57** — **279 / 2115**·Build ✓·엘리트 **PASS**·§3.
+
+**[운영] S56 → S57:** C3·C6 전행 [x] → `PARALLEL_QUEUE_REFILL.md` §3.
+
+**[C5] SPRINT 56 TASK 1·6 / 262**: [x] **완료.** Gate **56** — **279 / 2115**·Build ✓·엘리트 **PASS**·§3.
+
+**[C3] SPRINT 56 TASK8·9 / 262**: [x] **완료.** `reflectTextBounds.edges`·`GET /api/arena/weekly-stats`. **279 / 2115** ✓.
+
+**[C6] SPRINT 56 TASK10 / 262**: [x] **완료.** q237-smoke **7/7** ✓ · CI **279/2115** ✓ · Build ✓.
 
 **[C5] SPRINT 55 TASK 1·6 / 261**: [x] **완료.** Gate **55** — **277 / 2108**·Build ✓·엘리트 **PASS**·§3.
 

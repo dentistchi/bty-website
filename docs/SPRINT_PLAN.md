@@ -8,9 +8,9 @@
 
 | 우선 | 문서 | 보는 법 |
 |------|------|---------|
-| **1** | **`docs/CURSOR_TASK_BOARD.md`** | **"이번 런"** = **SPRINT 56** — First **C5 Gate 56** · 전 행 `[ ]`. |
-| **2** | **본 파일 `SPRINT 262`** | 보드 **56**과 동기. |
-| **작업 없다고 할 때** | 보드 **전부 [x]**면 | **SPRINT 57** + 본 문서 263. |
+| **1** | **`docs/CURSOR_TASK_BOARD.md`** | **"이번 런"** = **SPRINT 57** — C5 **완료** · C1·C4·C3·C6 잔여 `[ ]`. |
+| **2** | **본 파일 `SPRINT 263`** | 보드 **57**과 동기. |
+| **작업 없다고 할 때** | 보드 **전부 [x]**면 | **SPRINT 58** + 본 문서 264. |
 
 *이전에는 251만 닫고 252에 빈 칸을 안 넣어서, SPRINT_PLAN만 보던 Cursor는 "큐 없음"으로 보였음.*
 
@@ -23,31 +23,61 @@
 
 ---
 
-## SPRINT 262 — **active (보드 SPRINT 56)**
+## SPRINT 263 — **active (보드 SPRINT 57)**
 
-- **First Task = C5 Gate 56.** S55 C5·C3·C6 **[x]** → 병렬 큐 보충 **S56**.
+- **C5 Gate 57·엘리트 완료 (2026-03-18).** S56 → **S57** 큐 보충.
 
-| 워커 | S56 |
+| 워커 | S57 |
 |------|-----|
-| **C5** | **1·6** `[ ]` |
+| **C5** | **1·6** **[x]** |
 | **C1** | **2·3·5·7** `[ ]` |
 | **C4** | **4** `[ ]` |
 | **C3** | **8·9** `[ ]` |
 | **C6** | **10** `[ ]` |
 
-### C5 — UI ENGINEER (262)
+### C5 — UI ENGINEER (263)
 
-- [ ] **TASK 1** [VERIFY] Release Gate A~F Foundry **56차**.
-- [ ] **TASK 6** [VERIFY] 엘리트 3차 체크리스트 · §3.
+- [x] **TASK 1** [VERIFY] Release Gate A~F Foundry **57차** — **279 / 2115**·Build ✓.
+- [x] **TASK 6** [VERIFY] 엘리트 3차 — §2 **PASS**·§3.
 
-### C3 — DOMAIN ENGINEER (262)
+**Notes:** **CONTINUE(C5) 2026-03-18** — SPRINT **57** C5 **1·6 [x]**.
+
+### C3 — DOMAIN ENGINEER (263)
 
 - [ ] **TASK 8** — Arena domain 순수 규칙+테스트 1건.
 - [ ] **TASK 9** — Arena `src/app/api` route 테스트 1건.
 
-### C6 — TESTFIX ENGINEER (262)
+### C6 — TESTFIX ENGINEER (263)
 
 - [ ] **TASK 10** — `test:q237-smoke` + CI · `SPRINT_LOG`.
+
+---
+
+## SPRINT 262 — closed (보드 SPRINT 56)
+
+- **279 / 2115** · **C3·C6 [x]** · C5·C1·C4 `[ ]` → **57** (병렬 큐 보충).
+
+| 워커 | (56) |
+|------|------|
+| **C3** | **8·9** **[x]** |
+| **C6** | **10** **[x]** |
+| **C5** | → **57** |
+| **C1** | → **57** |
+| **C4** | → **57** |
+
+### C5 — UI ENGINEER (262) — closed (잔여 → 57)
+
+- [ ] **TASK 1** Gate **56차** — **S57**에서 **57차**로 이월.
+- [ ] **TASK 6** — **S57** 이월.
+
+### C3 — DOMAIN ENGINEER (262) — closed
+
+- [x] **TASK 8** — `reflectTextBounds.edges.test.ts`.
+- [x] **TASK 9** — `GET /api/arena/weekly-stats` **401**·**200**.
+
+### C6 — TESTFIX ENGINEER (262) — closed
+
+- [x] **TASK 10** — q237-smoke + CI **279/2115** ✓.
 
 ---
 
@@ -229,9 +259,10 @@
 ### C2 — GATEKEEPER (253)
 
 - [x] **C5 TASK1(Gate 47) 후** — `BTY_RELEASE_GATE_CHECK`·`SPRINT_LOG`·self-healing-ci **266 files / 2076 tests**·Build PASS (2026-03-24). 워크스페이스: `arenaHubTitle` 타입·q237 result smoke·wireframe 링크 보정 후 CI 녹색.
-- [ ] **다음 `origin/main` 배포 push**(58b8342 초과) 시 §A~F·MVP·커밋 수치 **재1회**.
+- [x] **배포 `6afdfe4`** (`58b8342..6afdfe4` → origin/main, 108 files +5,767/-846) — §A~F·MVP·`SPRINT_LOG`·**277 / 2108**·build PASS.
+- [ ] **다음 `origin/main` 배포 push**(**6afdfe4** 초과) 시 §A~F·MVP·커밋 수치 **재1회**.
 
-**CONTINUE(C2):** `origin/main` = **58b8342**인 동안 배포 Gate `[ ]` **보류·중단** — **신규 배포 push** 후 재실행. (재호출 반복 = 동일.)
+**CONTINUE(C2):** HEAD **6afdfe4**까지 Gate 반영 완료 — **다음 배포 push** 전까지 위 `[ ]` **보류.** **CONTINUE 재호출:** `origin/main` **6afdfe4** 동일 → **중단.**
 
 ### C6 — TESTFIX ENGINEER (253)
 
@@ -493,7 +524,7 @@ C5 TASK1 is unblocked and can proceed with UI and navigation implementation base
 - **overall:** PASS
 - **Owner to fix:** —
 
-**Last run:** 2026-03-18 — self-healing-ci.sh · Lint PASS · Test PASS (**277 files** / **2108 tests**) · Build PASS · **Overall PASS** (SPRINT 262 C7 · S56).
+**Last run:** 2026-03-18 — self-healing-ci.sh · **279 / 2115** ✓ · Build ✓ · **Gate 57 PASS** (SPRINT **263** C5 · C7).
 
 *C2 문서 게이트:* `cce5374`·`BTY_RELEASE_GATE_CHECK`. *이전 배포 풀 스위트 참고:* `58b8342` 264 files.*
 
