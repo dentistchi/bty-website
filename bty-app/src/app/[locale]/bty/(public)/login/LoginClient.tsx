@@ -79,7 +79,7 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
+    <div className="min-h-screen flex items-center justify-center p-6" data-testid="login-page">
       <div className="w-full max-w-md border rounded-2xl p-6 bg-white">
         <h1 className="text-xl font-semibold mb-1">{t.title}</h1>
         <p className="text-sm text-gray-600 mb-4">
@@ -92,6 +92,7 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
           </label>
           <input
             id="login-email"
+            data-testid="login-email-input"
             className="w-full border rounded-lg px-3 py-2 mb-3"
             placeholder="you@example.com"
             autoComplete="email"
@@ -104,6 +105,7 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
           </label>
           <input
             id="login-password"
+            data-testid="login-password-input"
             className="w-full border rounded-lg px-3 py-2 mb-3"
             placeholder="••••••••"
             type="password"
@@ -125,9 +127,10 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
           {error ? <div className="text-sm text-red-600 mb-3">{error}</div> : null}
 
           <button
+            type="submit"
+            data-testid="login-submit-button"
             className="w-full rounded-lg px-4 py-2 bg-black text-white disabled:opacity-60"
             disabled={!canSubmit}
-            type="submit"
             aria-label={isLoading ? t.submitting : t.submit}
           >
             {isLoading ? t.submitting : t.submit}

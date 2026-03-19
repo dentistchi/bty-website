@@ -1,5 +1,7 @@
 # Cursor 태스크 보드 (공동) — 우선순위 자동결정
 
+**진행 에이전트 할 일 읽는 법:** 아래 **"이번 런"** 섹션의 **SPRINT N 표**만 보면 됨. 표에서 **자기 OWNER(C1~C6)** 열의 **`[ ]`** 인 행 = 할 일. 경로·상세: **`docs/agent-runtime/HOW_TO_READ_TASKS.md`** (bty-app이면 `../docs/agent-runtime/HOW_TO_READ_TASKS.md`).
+
 **단일 진실**: 이 표 + `docs/CURRENT_TASK.md` 1줄. First Task 완료 전 다음 Task 시작 불가(Start Trigger 잠금). **진행 에이전트(C2–C6)**: 할 일 = 이번 런 표에서 자기 OWNER 행 중 **[ ]** 인 TASK. 복사용 문장 = `docs/agent-runtime/AUTO4_PROMPTS.md`. (별도 "C2/C3 TASK QUEUE" 파일 없음.) **대기 작업**은 `docs/NEXT_PHASE_AUTO4.md`와 **docs/CURSOR_TASK_BOARD.md**(루트)와 동일한 기준으로 유지한다. 대기 후보는 **MASTER_PLAN → docs/NEXT_BACKLOG_AUTO4**에서 채운다. **다음 프로젝트 추천**: `docs/NEXT_PROJECT_RECOMMENDED.md` (엘리트 3차). **splint 10**: 방금 끝난 작업 검증 → 다음 10개 작업 선정 → C1–C5 프롬프트 생성. 절차는 `docs/agent-runtime/SPLINT_10_PROCEDURE.md`.  
 **병렬 큐 불변식**: 이번 런이 **10/10 [x]가 아닌 동안**, 표에 나온 **C3·C4·C5·C6** 각각은 **최소 1행 `[ ]`** 유지. 위반 시(문서 C1만 `[ ]` 등) **즉시** `docs/agent-runtime/PARALLEL_QUEUE_REFILL.md` 로 새 이번 런 10행 오픈. 점검: `bash scripts/check-parallel-task-queue.sh` (exit 2 = 보충 필수).  
 **REFRESH**: 사용자가 **refresh** 라고 하면 **이번 태스크 점검** 후 **C2·C3·C4·C5·C6 각 구체 작업 5개**를 만들어 응답·로그에 넣는다. 절차는 **`docs/agent-runtime/REFRESH_PROCEDURE.md`** (병렬 5창용; 보드 TASK 1~10과 병행 가능).  
@@ -16,26 +18,46 @@
 
 ---
 
-## 이번 런: SPRINT 64 (FOUNDRY) — 2026-03-18
+## 이번 런: SPRINT 65 (FOUNDRY) — 2026-03-18
 
-- **병렬 큐 보충:** S63 **C5 전행 [x]** → **S64** (`PARALLEL_QUEUE_REFILL.md` §3). Gate **63** **284/2131** ✓.
-- **REFRESH (운영):** TASK10 **조기 [x]** → C6 기아 → **TASK10 재 `[ ]`** (Gate **64**·병렬 C6 창 복구).
-- **First Task = C5 TASK1 (Gate 64).** `SPRINT_PLAN` **270**.
+- **병렬 큐 보충:** S64 **C5·C4·C3·C6 전행 [x]** · C1만 `[ ]` → **S65** 10행 전부 `[ ]` (`PARALLEL_QUEUE_REFILL.md` §3). **할 일 읽는 법:** `docs/agent-runtime/HOW_TO_READ_TASKS.md`.
+- **First Task = C5 TASK1 (Gate 65).** `SPRINT_PLAN` **271**.
 
-**SPRINT 64 — TASK 1~10 (MODE FOUNDRY)**
+**SPRINT 65 — TASK 1~10 (MODE FOUNDRY)**
 
 | # | OWNER | TASK LINE | PROMPT |
 |---|-------|-----------|--------|
-| 1 | C5 | [x] [VERIFY] Release Gate A~F — Foundry 64차 | `BTY_RELEASE_GATE_CHECK`·보드·`CURRENT_TASK`. |
-| 2 | C1 | [ ] [DOCS] NEXT_PHASE·NEXT_BACKLOG + S63 잔여 동기 | 대기 동기. |
-| 3 | C1 | [ ] [DOCS] 문서 점검 175·176·177차 | 보드·BACKLOG·Gate. |
-| 4 | C4 | [x] [UI] Center/Foundry 추가 접근성 1곳 | Dojo History `section role=region` + `dojoHistoryMainRegionAria`. |
+| 1 | C5 | [ ] [VERIFY] Release Gate A~F — Foundry 65차 | `BTY_RELEASE_GATE_CHECK`·보드·`CURRENT_TASK`. |
+| 2 | C1 | [ ] [DOCS] NEXT_PHASE·NEXT_BACKLOG + S64·S63 잔여 동기 | 대기 동기. |
+| 3 | C1 | [ ] [DOCS] 문서 점검 178·179·180차 | 보드·BACKLOG·Gate. |
+| 4 | C4 | [ ] [UI] Center/Foundry 추가 접근성 1곳 | **`/bty`·My Page·Growth·Dojo History 제외.** |
 | 5 | C1 | [ ] [DOCS] 다음 배치 선정 (선택) | NEXT_BACKLOG·NEXT_PHASE. |
-| 6 | C5 | [x] [VERIFY] 엘리트 3차 체크리스트 1회 | ELITE_3RD §3. |
-| 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | SPRINT 65 예고. |
-| 8 | C3 | [x] [DOMAIN] Arena 순수 규칙+테스트 1건 | leaderboardWeekId.edges · ✓ |
-| 9 | C3 | [x] [TEST] Arena route 테스트 1건 | GET league/active 401·503·200 · ✓ |
-| 10 | C6 | [x] test:q237-smoke + self-healing-ci | **284/2131** ✓ · q237 **7/7** ✓ |
+| 6 | C5 | [ ] [VERIFY] 엘리트 3차 체크리스트 1회 | ELITE_3RD §3. |
+| 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | SPRINT 66 예고. |
+| 8 | C3 | [ ] [DOMAIN] Arena 순수 규칙+테스트 1건 | `bty-app/src/domain`. |
+| 9 | C3 | [ ] [TEST] Arena `src/app/api` route 테스트 1건 | vitest. |
+| 10 | C6 | [ ] [VERIFY] test:q237-smoke + self-healing-ci | `SPRINT_LOG`. TASK1·6 병행 가능. |
+
+---
+
+## 이전 런: SPRINT 64 (FOUNDRY) — 2026-03-18
+
+- **종료:** C5 **1·6**·C4 **4**·C3 **8·9**·C6 **10** **[x]** · C1 **2·3·5·7** → **S65** 흡수. Gate **64** **286/2140** ✓.
+
+**SPRINT 64 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] Gate 64 | 286/2140 ✓ |
+| 2 | C1 | [→S65] | **65 TASK2** |
+| 3 | C1 | [→S65] 175·176·177차 | **65 TASK3** |
+| 4 | C4 | [x] Dojo History region | ✓ |
+| 5 | C1 | [→S65] | **65 TASK5** |
+| 6 | C5 | [x] 엘리트 3차 | PASS |
+| 7 | C1 | [→S65] § | **65 TASK7** |
+| 8 | C3 | [x] leaderboardWeekId.edges | ✓ |
+| 9 | C3 | [x] league/active GET | ✓ |
+| 10 | C6 | [x] q237+CI | ✓ |
 
 ---
 

@@ -4,7 +4,7 @@
 
 **[C2] 배포 Gate `6afdfe4`**: [x] **완료.** `58b8342..6afdfe4` → origin/main. BTY_RELEASE_GATE_CHECK·SPRINT_LOG. **277 / 2108** · build PASS.
 
-**이번 런 (2026-03-18):** **`docs/CURSOR_TASK_BOARD.md` → SPRINT 64.** First **C5 Gate 64.** S63 C5 완료·잔여 흡수. `SPRINT_PLAN` **270**.
+**이번 런 (2026-03-18):** **`docs/CURSOR_TASK_BOARD.md` → SPRINT 65.** **할 일 읽는 법:** `docs/agent-runtime/HOW_TO_READ_TASKS.md`. First **C5 Gate 65.** S64 C5·C4·C3·C6 [x] → 큐 보충 **S65** 10행 `[ ]`. `SPRINT_PLAN` **271**.
 
 **[C5] SPRINT 64 TASK 1 / 270 (Gate 64):** [x] **완료.** Release Gate A~F — **286 / 2140** · Build ✓ · BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
 

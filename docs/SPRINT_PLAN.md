@@ -8,9 +8,9 @@
 
 | 우선 | 문서 | 보는 법 |
 |------|------|---------|
-| **1** | **`docs/CURSOR_TASK_BOARD.md`** | **"이번 런"** = **SPRINT 64** — First **C5 Gate 64** · 전 행 `[ ]`. |
-| **2** | **본 파일 `SPRINT 270`** | 보드 **64**과 동기. |
-| **작업 없다고 할 때** | 보드 **전부 [x]**면 | **SPRINT 65** + 본 문서 271. |
+| **1** | **`docs/CURSOR_TASK_BOARD.md`** | **"이번 런"** = **SPRINT 65** — 할 일 읽는 법 `HOW_TO_READ_TASKS.md`. First **C5 Gate 65** · 전 행 `[ ]`. |
+| **2** | **본 파일 `SPRINT 271`** | 보드 **65**과 동기. |
+| **작업 없다고 할 때** | 보드 **전부 [x]**면 | **SPRINT 66** + 본 문서 272. |
 
 *이전에는 251만 닫고 252에 빈 칸을 안 넣어서, SPRINT_PLAN만 보던 Cursor는 "큐 없음"으로 보였음.*
 
@@ -23,41 +23,54 @@
 
 ---
 
-## SPRINT 270 — **active (보드 SPRINT 64)**
+## SPRINT 271 — **active (보드 SPRINT 65)**
 
-- **First Task = C5 Gate 64.** S63 **C5 [x]** · C1·C4·C3·C6 → **S64**.
+- **할 일 읽는 법:** **`docs/agent-runtime/HOW_TO_READ_TASKS.md`**. **First Task = C5 Gate 65.** S64 **C5·C4·C3·C6 [x]** → 큐 보충 **S65** 10행 `[ ]`.
 
-| 워커 | S64 |
+| 워커 | S65 |
 |------|-----|
 | **C5** | **1·6** `[ ]` |
 | **C1** | **2·3·5·7** `[ ]` |
-| **C4** | **4** `[x]` |
+| **C4** | **4** `[ ]` |
 | **C3** | **8·9** `[ ]` |
-| **C6** | **10** `[x]` |
+| **C6** | **10** `[ ]` |
+| **C2** | C5 **TASK1** 후·다음 push Gate |
 
-### C5 — UI ENGINEER (270)
+### C5 — UI ENGINEER (271)
 
-- [x] **TASK 1** [VERIFY] Release Gate A~F Foundry **64차**.
-- [x] **TASK 6** [VERIFY] 엘리트 3차 체크리스트 · §3.
+- [ ] **TASK 1** [VERIFY] Release Gate Foundry **65**차.
+- [ ] **TASK 6** [VERIFY] 엘리트 3차 §3.
 
-**Notes:** S64 TASK1 완료 — Gate 64 **286/2140** · self-healing-ci PASS. TASK6 완료 — 엘리트 §2 6항목·§3 64차 기록.
+### C1 — COMMANDER (271)
 
-### C4 — API ENGINEER (270)
+- [ ] **TASK 2·3·5·7** — NEXT_BACKLOG·문서 178·179·180차·§ (S64 잔여 흡수).
 
-- [x] **TASK 4** — Center/Foundry 추가 접근성 1곳: Dojo History 페이지 `section role=region` + `dojoHistoryMainRegionAria` (ko/en).
+### C4 — API ENGINEER (271)
 
-**Notes:** S64 TASK4 완료 — Dojo 과거 진단 이력 메인 영역 region·i18n aria 추가.
+- [ ] **TASK 4** — 접근성 1곳 (`/bty`·My Page·Growth·Dojo History 제외).
 
-### C3 — DOMAIN ENGINEER (270)
+### C3 — DOMAIN ENGINEER (271)
 
-- [x] **TASK 8** — Arena domain (S63 잔여).
-- [x] **TASK 9** — Arena API route (S63 잔여).
+- [ ] **TASK 8** — Arena domain 순수 규칙+테스트 1건.
+- [ ] **TASK 9** — Arena API route 테스트 1건.
 
-**Notes:** **CONTINUE(C3) 2026-03-18** — TASK 8 `leaderboardWeekId.edges.test.ts` · TASK 9 `GET /api/arena/league/active` **401**·**503**·**200**.
+### C6 — TESTFIX ENGINEER (271)
 
-### C6 — TESTFIX ENGINEER (270)
+- [ ] **TASK 10** — q237-smoke + self-healing-ci.
 
-- [x] **TASK 10** — q237-smoke **7/7** · **284 / 2131** · Build ✓ · `SPRINT_LOG`.
+---
+
+## SPRINT 270 — closed (보드 SPRINT 64)
+
+- **종료:** C5 **1·6**·C4 **4**·C3 **8·9**·C6 **10** **[x]** · C1 **2·3·5·7** → **S65** 흡수. Gate **64** **286/2140** ✓.
+
+| 워커 | (64) |
+|------|------|
+| **C5** | **1·6** **[x]** |
+| **C1** | → **65** |
+| **C4** | **4** **[x]** |
+| **C3** | **8·9** **[x]** |
+| **C6** | **10** **[x]** |
 
 ---
 
