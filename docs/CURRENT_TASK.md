@@ -6,6 +6,8 @@
 
 **이번 런 (2026-03-18):** **`docs/CURSOR_TASK_BOARD.md` → SPRINT 64.** First **C5 Gate 64.** S63 C5 완료·잔여 흡수. `SPRINT_PLAN` **270**.
 
+**[C3] SPRINT 64 TASK8·9 / 270**: [x] **완료.** `leaderboardWeekId.edges.test.ts` · `GET /api/arena/league/active` 401·503·200.
+
 **[운영] S63 → S64:** C5 **1·6 [x]** → `check-parallel-task-queue` **exit 2** → `PARALLEL_QUEUE_REFILL.md` §3.
 
 **[C5] SPRINT 63 TASK 1·6 / 269**: [x] **완료.** Gate **63** — **284 / 2131**·q237 **7/7**·Build ✓·엘리트 §3 **PASS** · `arenaRunState.edges.test.ts` tsc 수정.
