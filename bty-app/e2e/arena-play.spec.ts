@@ -27,7 +27,7 @@ test.describe("Arena Play (authenticated)", () => {
 
   test("hub → Play preserves route separation", async ({ page }) => {
     await page.goto("/en/bty-arena");
-    await page.getByRole("link", { name: /Play Game/i }).first().click();
+    await page.getByTestId("arena-play-button").first().click();
     await expect(page).toHaveURL(/\/en\/bty-arena\/play/);
     await expect(page.getByTestId("arena-hub-summary")).toHaveCount(0);
   });

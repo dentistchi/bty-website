@@ -28,7 +28,7 @@ export function ArenaHubEntryCard({ locale }: { locale: string }) {
         <p className="text-sm text-[#667085]">{t.arenaHubEntryLoading}</p>
         <div className="mt-5 h-10 w-full animate-pulse rounded-2xl bg-[#F0EBE3]" />
         <Link
-          data-testid="arena-hub-cta-play"
+          data-testid="arena-play-button"
           href={play}
           className="mt-3 flex h-12 w-full items-center justify-center rounded-2xl bg-[#1E2A38] px-4 text-sm font-medium text-white transition hover:bg-[#243446]"
         >
@@ -54,7 +54,7 @@ export function ArenaHubEntryCard({ locale }: { locale: string }) {
       <div className="mt-5 flex flex-col gap-3">
         {showContinue && (
           <Link
-            data-testid="arena-hub-cta-continue"
+            data-testid="arena-continue-button"
             href={play}
             className="flex h-12 w-full items-center justify-center rounded-2xl bg-[#1E2A38] px-4 text-sm font-medium text-white transition hover:bg-[#243446]"
           >
@@ -62,7 +62,7 @@ export function ArenaHubEntryCard({ locale }: { locale: string }) {
           </Link>
         )}
         <Link
-          data-testid="arena-hub-cta-play"
+          data-testid="arena-play-button"
           href={play}
           className={
             showContinue

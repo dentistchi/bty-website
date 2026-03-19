@@ -1,18 +1,18 @@
 /**
- * 기본 E2E 계정 → e2e/.auth/user.json
+ * Comeback 전용 계정 → e2e/.auth/comeback-user.json
  */
 import * as path from "node:path";
 import { expect, test as setup } from "@playwright/test";
 
-const authFile = path.join(__dirname, ".auth", "user.json");
+const authFile = path.join(__dirname, ".auth", "comeback-user.json");
 
-setup("authenticate default user", async ({ page }) => {
-  const email = process.env.E2E_EMAIL?.trim();
-  const password = process.env.E2E_PASSWORD;
+setup("authenticate comeback user", async ({ page }) => {
+  const email = process.env.E2E_COMEBACK_EMAIL?.trim();
+  const password = process.env.E2E_COMEBACK_PASSWORD;
   const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
 
   if (!email || !password) {
-    throw new Error("Missing E2E credentials (E2E_EMAIL, E2E_PASSWORD).");
+    throw new Error("Missing E2E comeback credentials (E2E_COMEBACK_EMAIL, E2E_COMEBACK_PASSWORD).");
   }
 
   await page.goto(`${baseUrl}/en/bty/login?next=/en/bty`, { waitUntil: "domcontentloaded" });

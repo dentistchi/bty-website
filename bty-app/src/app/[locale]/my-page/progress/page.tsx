@@ -22,8 +22,8 @@ export default async function Page({ params }: Props) {
         <BtyMyPageTabs locale={locale} />
       </div>
 
-      <div className="space-y-4">
-        <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
+      <div data-testid="my-page-progress-screen" className="space-y-4">
+        <div data-testid="my-page-core-xp" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
           <p className="text-sm font-medium text-[#1E2A38]">{m.coreXp}</p>
           <div className="mt-3 flex items-center justify-between text-sm">
             <span className="text-[#667085]">{m.coreXp}</span>
@@ -37,7 +37,7 @@ export default async function Page({ params }: Props) {
           </div>
         </div>
 
-        <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
+        <div data-testid="my-page-weekly-xp" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
           <p className="text-sm font-medium text-[#1E2A38]">{m.weeklyXp}</p>
           <div className="mt-3 flex items-center justify-between text-sm">
             <span className="text-[#667085]">{m.weeklyXp}</span>
@@ -45,7 +45,7 @@ export default async function Page({ params }: Props) {
           </div>
         </div>
 
-        <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
+        <div data-testid="my-page-streak" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
           <p className="text-sm font-medium text-[#1E2A38]">{m.streak}</p>
           <div className="mt-3 flex items-center justify-between text-sm">
             <span className="text-[#667085]">{m.streak}</span>
@@ -53,7 +53,7 @@ export default async function Page({ params }: Props) {
           </div>
         </div>
 
-        <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
+        <div data-testid="my-page-system-note" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
           <p className="text-sm font-medium text-[#1E2A38]">{m.systemMsg}</p>
           <p className="mt-2 text-sm leading-6 text-[#667085]">{m.progressSystemLine}</p>
         </div>

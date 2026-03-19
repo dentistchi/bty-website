@@ -22,8 +22,8 @@ export default async function Page({ params }: Props) {
         <BtyMyPageTabs locale={locale} />
       </div>
 
-      <div className="space-y-4">
-        <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
+      <div data-testid="my-page-team-screen" className="space-y-4">
+        <div data-testid="my-page-tii" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
           <p className="text-sm font-medium text-[#1E2A38]">{m.teamTiiCard}</p>
           <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums text-[#1E2A38]">
             0.72
@@ -31,15 +31,15 @@ export default async function Page({ params }: Props) {
         </div>
 
         <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between text-sm">
+          <div data-testid="my-page-team-status" className="flex items-center justify-between text-sm">
             <span className="text-[#667085]">{m.teamInnerStatus}</span>
             <span className="font-semibold text-[#1E2A38]">{m.teamStable}</span>
           </div>
-          <div className="mt-3 flex items-center justify-between text-sm">
+          <div data-testid="my-page-team-trend" className="mt-3 flex items-center justify-between text-sm">
             <span className="text-[#667085]">{m.teamInnerTrend}</span>
             <span className="font-semibold text-[#1E2A38]">{m.teamTrendVal}</span>
           </div>
-          <div className="mt-3 flex items-center justify-between text-sm">
+          <div data-testid="my-page-team-rank" className="mt-3 flex items-center justify-between text-sm">
             <span className="text-[#667085]">{m.teamRankCaption}</span>
             <span className="font-semibold tabular-nums text-[#1E2A38]">{m.teamRankLine}</span>
           </div>

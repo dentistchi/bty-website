@@ -22,17 +22,17 @@ export default async function Page({ params }: Props) {
         <BtyMyPageTabs locale={locale} />
       </div>
 
-      <div className="space-y-4">
+      <div data-testid="my-page-leader-screen" className="space-y-4">
         <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between text-sm">
+          <div data-testid="my-page-leader-status" className="flex items-center justify-between text-sm">
             <span className="text-[#667085]">{m.leaderCardStatus}</span>
             <span className="font-semibold text-[#1E2A38]">{m.leaderBuilding}</span>
           </div>
-          <div className="mt-4 flex items-center justify-between text-sm">
+          <div data-testid="my-page-leader-readiness" className="mt-4 flex items-center justify-between text-sm">
             <span className="text-[#667085]">{m.leaderCardReadiness}</span>
             <span className="font-semibold text-[#1E2A38]">{m.leaderReadinessVal}</span>
           </div>
-          <div className="mt-3 flex items-center justify-between text-sm">
+          <div data-testid="my-page-certification" className="mt-3 flex items-center justify-between text-sm">
             <span className="text-[#667085]">{m.leaderCardCert}</span>
             <span className="font-semibold text-[#1E2A38]">{m.leaderCertVal}</span>
           </div>

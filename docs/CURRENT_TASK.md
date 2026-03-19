@@ -1,8 +1,46 @@
 # 현재 작업 (진행 에이전트용)
 
-**[C2] 배포 Gate `6afdfe4`**: [x] **완료.** `58b8342..6afdfe4` → origin/main. BTY_RELEASE_GATE_CHECK·SPRINT_LOG. **277 / 2108** · build PASS. **다음 push** 시 C2 재Gate.
+**[C2] Gate `d7d5a24` (6afdfe4 이후 mainline)**: [x] **완료.** 배포 **3ca0233**·run 라우트·Worker CI. **279 / 2117** · build PASS. **다음 push** 시 C2 재Gate.
 
-**이번 런 (2026-03-18):** **`docs/CURSOR_TASK_BOARD.md` → SPRINT 57.** **[C5] TASK1·6 완료** · C1·C4·C3·C6 잔여. `SPRINT_PLAN` **263**.
+**[C2] 배포 Gate `6afdfe4`**: [x] **완료.** `58b8342..6afdfe4` → origin/main. BTY_RELEASE_GATE_CHECK·SPRINT_LOG. **277 / 2108** · build PASS.
+
+**이번 런 (2026-03-18):** **`docs/CURSOR_TASK_BOARD.md` → SPRINT 64.** First **C5 Gate 64.** S63 C5 완료·잔여 흡수. `SPRINT_PLAN` **270**.
+
+**[운영] S63 → S64:** C5 **1·6 [x]** → `check-parallel-task-queue` **exit 2** → `PARALLEL_QUEUE_REFILL.md` §3.
+
+**[C5] SPRINT 63 TASK 1·6 / 269**: [x] **완료.** Gate **63** — **284 / 2131**·q237 **7/7**·Build ✓·엘리트 §3 **PASS** · `arenaRunState.edges.test.ts` tsc 수정.
+
+**[C6] SPRINT 64 TASK10 / 270**: [x] **완료.** q237 **7/7** ✓ · **284 / 2131** ✓ · Build ✓ (S62·S63 C6 이월).
+
+**[운영] S62 → S63:** C3 전행 [x] → `PARALLEL_QUEUE_REFILL.md` §3.
+
+**[C3] SPRINT 62 TASK8·9 / 268**: [x] **완료.** `arenaRunState.edges`·`POST /api/arena/lab/complete` 401·400. **284 / 2131** ✓.
+
+**[운영] S61 → S62:** C5 **1·6 [x]** → `check-parallel-task-queue` **exit 2 (C5 기아)** → `PARALLEL_QUEUE_REFILL.md` §3.
+
+**[C5] SPRINT 61 TASK 1·6 / 267**: [x] **완료.** Gate **61** — **282 / 2125**·Build ✓·엘리트 §3 **PASS**.
+
+**[운영] S60 → S61:** C5·C3·C6 전행 [x] → `PARALLEL_QUEUE_REFILL.md` §3.
+
+**[C3] SPRINT 60 TASK8·9 / 266**: [x] **완료.** `weeklyResetIdempotency.edges`·`GET /api/arena/lab/usage`. **282 / 2125** ✓.
+
+**[C5] SPRINT 60 TASK 1·6 / 266**: [x] **완료.** Gate **60** — **280 / 2119**·q237 **7/7**·Build ✓·엘리트 §3 **PASS**.
+
+**[C6] SPRINT 60 TASK10 / 266**: [x] **완료.** q237-smoke **7/7** ✓ · **282/2125** ✓ · Build ✓.
+
+**[운영] S59 → S60:** C5 **1·6 [x]** → `check-parallel-task-queue` **exit 2 (C5 기아)** → `PARALLEL_QUEUE_REFILL.md` §3.
+
+**[C5] SPRINT 59 TASK 1·6 / 265**: [x] **완료.** Gate **59** — **280 / 2119**·Build ✓·엘리트 §3 **PASS**.
+
+**[운영] S58 → S59:** C5·C6 전행 [x] → `PARALLEL_QUEUE_REFILL.md` §3.
+
+**[C5] SPRINT 58 TASK 1·6 / 264**: [x] **완료.** Gate **58** — **280 / 2119**·Build ✓·엘리트 **PASS**·§3.
+
+**[C6] SPRINT 58 TASK10 / 264**: [x] **완료.** q237 + CI **280/2119** ✓ · Build ✓.
+
+**[C3] SPRINT 57 TASK8·9 / 263**: [x] **완료.** `arenaRunCompletion.edges`·`POST /api/arena/event` 401·400. **280 / 2119** ✓.
+
+**[C6] SPRINT 57 TASK10 / 263**: [x] **완료.** q237-smoke + CI **280/2119** ✓.
 
 **[C5] SPRINT 57 TASK 1·6 / 263**: [x] **완료 (2026-03-18).** Gate **57** — **279 / 2115**·Build ✓·엘리트 **PASS**·§3.
 

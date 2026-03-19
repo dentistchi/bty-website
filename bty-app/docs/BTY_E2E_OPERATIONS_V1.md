@@ -14,10 +14,15 @@
 
 | Script | 설명 |
 |--------|------|
-| `e2e:auth` | `playwright test --project=setup` — 로그인만, `user.json` 생성 |
-| `test:e2e` | 전 프로젝트 (setup → chromium + public 병렬) |
-| `test:e2e:ci` | CI용 reporter/workers |
+| `e2e:auth` | `playwright test --project=setup` — `e2e/.auth/user.json` |
+| `e2e:auth:comeback` | `setup-comeback` — `e2e/.auth/comeback-user.json` (`E2E_COMEBACK_*` 필수) |
+| `test:e2e` | 로컬: 등록된 전 프로젝트 (`public` + `chromium` ± comeback) |
+| `test:e2e:ci` | CI: `chromium` + `chromium-comeback`만 (`E2E_COMEBACK_*` 필수) |
 | `test:e2e:install` | `playwright install chromium` |
+
+**Comeback E2E** (`journey.spec.ts`, 태그 `@comeback-journey`): `E2E_COMEBACK_EMAIL` / `E2E_COMEBACK_PASSWORD`가 있을 때만 `setup-comeback`·`chromium-comeback`이 등록됩니다. 계정은 `bty_profiles.current_day = 8`(또는 `E2E_COMEBACK_JOURNEY_DAY`) 및 comeback eligible(진행·터치 3일+) 상태 권장.
+
+GitHub Secrets: `E2E_COMEBACK_EMAIL`, `E2E_COMEBACK_PASSWORD` (선택, 없으면 comeback 스펙 스킵).
 
 ## 환경 변수
 
@@ -29,7 +34,7 @@ E2E_PASSWORD=…
 BASE_URL=http://localhost:3000
 ```
 
-CI: GitHub Secrets `E2E_EMAIL`, `E2E_PASSWORD`. `BASE_URL`은 워크플로에서 `http://127.0.0.1:3000` 고정(dev 서버 기동).
+CI (E2E 워크플로): Secrets **`BASE_URL`**(예: `http://127.0.0.1:3000`), **`E2E_EMAIL`**, **`E2E_PASSWORD`**, **`E2E_COMEBACK_EMAIL`**, **`E2E_COMEBACK_PASSWORD`** — 하나라도 없으면 워크플로가 fail-fast. 트리거는 기본 **`workflow_dispatch`** (Actions → E2E → Run workflow).
 
 ## 로컬 플로우
 
@@ -46,9 +51,14 @@ npm run e2e:auth
 
 ## Playwright 구조
 
-- **setup** — `auth.setup.ts`: `/en/bty/login` → storage 저장 (BTY locale 경로).
-- **public** — `*.public.spec.ts`, storage 없음 (비로그인 리다이렉트).
-- **chromium** — setup 의존, `e2e/.auth/user.json` 사용.
+- **fullyParallel: false** · CI **workers: 2** · 로컬 reporter **html** / CI **line** · 실패 시 screenshot·video
+- **setup** — `auth.setup.ts` → `user.json` (`/en/bty/login`, label 기반 입력)
+- **setup-comeback** — `auth-comeback.setup.ts` → `comeback-user.json` (env 있을 때만)
+- **public** — `*.public.spec.ts`, storage 없음
+- **chromium** — 기본 스펙, `user.json` (`grepInvert: @comeback-journey`)
+- **chromium-comeback** — `journey.spec.ts` 중 `@comeback-journey`만, `comeback-user.json`
+
+전체 testid 표: **`docs/E2E_DATA_TESTIDS.md`**.
 
 ## 테스트 계층
 
@@ -73,6 +83,8 @@ Comeback 강화 예시 (API가 있을 때만):
 
 ## 관련 문서
 
+- `docs/E2E_DATA_TESTIDS.md` — testid 맵  
+- `docs/CURSOR_MASTER_PROMPT_DATA_TESTIDS.md` — Cursor용 testid 반영 프롬프트(전체·짧은 버전)  
 - `docs/E2E_ARENA.md` — 스펙 파일 목록  
 - `docs/ARENA_HUB_CTA_POLICY.md` — 허브 CTA  
 - `docs/GROWTH_IA_ROUTE_MAP.md` — 라우트

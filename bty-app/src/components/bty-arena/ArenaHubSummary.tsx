@@ -92,7 +92,9 @@ export function ArenaHubSummary({ locale }: { locale: string }) {
       <div className="flex items-start justify-between gap-3 text-sm">
         <span className="shrink-0 text-[#667085]">{t.arenaHubWeeklyRankLabel}</span>
         <div className="min-w-0 text-right">
-          <span className="font-semibold tabular-nums text-[#1E2A38]">{rankMain}</span>
+          <span data-testid="arena-weekly-rank" className="font-semibold tabular-nums text-[#1E2A38]">
+            {rankMain}
+          </span>
           {rankSub ? (
             <p className="mt-1 text-xs leading-5 text-[#667085]">{rankSub}</p>
           ) : null}
@@ -100,7 +102,9 @@ export function ArenaHubSummary({ locale }: { locale: string }) {
       </div>
       <div className="mt-4 flex items-center justify-between border-t border-[#F0EBE3] pt-4 text-sm">
         <span className="text-[#667085]">{t.arenaHubSeasonEndsLabel}</span>
-        <span className="font-semibold tabular-nums text-[#1E2A38]">{seasonText}</span>
+        <span data-testid="arena-season-ends" className="font-semibold tabular-nums text-[#1E2A38]">
+          {seasonText}
+        </span>
       </div>
     </div>
   );

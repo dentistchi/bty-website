@@ -16,27 +16,173 @@
 
 ---
 
-## 이번 런: SPRINT 57 (FOUNDRY) — 2026-03-18
+## 이번 런: SPRINT 64 (FOUNDRY) — 2026-03-18
 
-- **[C5] TASK1·6** **완료 (2026-03-18).** Gate **57** **279/2115**·Build ✓·엘리트 **PASS**·§3.
-- **병렬 큐 보충:** S56 **C3·C6 [x]** → **S57**. C1·C4·C3·C6 잔여 `[ ]`.
-- **[C2] 배포 Gate `6afdfe4`:** **완료** (참조).
-- **First Task (C5 잠금 해제):** C1·C4·C3·C6. `SPRINT_PLAN` **263**.
+- **병렬 큐 보충:** S63 **C5 전행 [x]** → **S64** (`PARALLEL_QUEUE_REFILL.md` §3). Gate **63** **284/2131** ✓.
+- **REFRESH (운영):** TASK10 **조기 [x]** → C6 기아 → **TASK10 재 `[ ]`** (Gate **64**·병렬 C6 창 복구).
+- **First Task = C5 TASK1 (Gate 64).** `SPRINT_PLAN` **270**.
 
-**SPRINT 57 — TASK 1~10 (MODE FOUNDRY)**
+**SPRINT 64 — TASK 1~10 (MODE FOUNDRY)**
 
 | # | OWNER | TASK LINE | PROMPT |
 |---|-------|-----------|--------|
-| 1 | C5 | [x] [VERIFY] Release Gate A~F — Foundry 57차 | `BTY_RELEASE_GATE_CHECK`·보드·`CURRENT_TASK`. |
-| 2 | C1 | [ ] [DOCS] NEXT_PHASE·NEXT_BACKLOG + S56·S55 잔여 | 대기 동기. |
-| 3 | C1 | [ ] [DOCS] 문서 점검 157·158·159차 | 보드·BACKLOG·Gate. |
-| 4 | C4 | [ ] [UI] Center/Foundry 추가 접근성 1곳 | **`/bty`·My Page·Growth 제외.** |
+| 1 | C5 | [ ] [VERIFY] Release Gate A~F — Foundry 64차 | `BTY_RELEASE_GATE_CHECK`·보드·`CURRENT_TASK`. |
+| 2 | C1 | [ ] [DOCS] NEXT_PHASE·NEXT_BACKLOG + S63 잔여 동기 | 대기 동기. |
+| 3 | C1 | [ ] [DOCS] 문서 점검 175·176·177차 | 보드·BACKLOG·Gate. |
+| 4 | C4 | [ ] [UI] Center/Foundry 추가 접근성 1곳 | **`/bty`·My Page·Growth·S63 TASK4 화면 제외.** |
 | 5 | C1 | [ ] [DOCS] 다음 배치 선정 (선택) | NEXT_BACKLOG·NEXT_PHASE. |
-| 6 | C5 | [x] [VERIFY] 엘리트 3차 체크리스트 1회 | ELITE_3RD §3. |
-| 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | SPRINT 58 예고. |
+| 6 | C5 | [ ] [VERIFY] 엘리트 3차 체크리스트 1회 | ELITE_3RD §3. |
+| 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | SPRINT 65 예고. |
 | 8 | C3 | [ ] [DOMAIN] Arena 순수 규칙+테스트 1건 | `bty-app/src/domain`. |
 | 9 | C3 | [ ] [TEST] Arena `src/app/api` route 테스트 1건 | vitest. |
-| 10 | C6 | [ ] [VERIFY] test:q237-smoke + self-healing-ci | `SPRINT_LOG`. |
+| 10 | C6 | [ ] [VERIFY] test:q237-smoke + self-healing-ci | Gate **64**·병렬 작업 반영 후 수치 `SPRINT_LOG`. TASK1·6 병행 가능. |
+
+---
+
+## 이전 런: SPRINT 63 (FOUNDRY) — 2026-03-18
+
+- Gate **63** **284/2131**·C5 **1·6 [x].** C1·C4·C3·C6 잔여 → **S64 흡수.**
+
+**SPRINT 63 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] Gate 63 | 284/2131 ✓ |
+| 2 | C1 | [→S64] | **64 TASK2** |
+| 3 | C1 | [→S64] 172·173·174차 | **64 TASK3** |
+| 4 | C4 | [→S64] | **64 TASK4** |
+| 5 | C1 | [→S64] | **64 TASK5** |
+| 6 | C5 | [x] 엘리트 3차 | PASS |
+| 7 | C1 | [→S64] | **64 TASK7** |
+| 8 | C3 | [→S64] | **64 TASK8** |
+| 9 | C3 | [→S64] | **64 TASK9** |
+| 10 | C6 | [x] q237+CI | S64에서 **284/2131** ✓ |
+
+---
+
+## 이전 런: SPRINT 62 (FOUNDRY) — 2026-03-18
+
+- **284/2131** · **C3 [x]** · C5·C1·C4·C6 `[ ]` → **S63**.
+
+**SPRINT 62 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [→S63] | **63 TASK1** |
+| 2 | C1 | [→S63] | **63 TASK2** |
+| 3 | C1 | [→S63] 169·170·171차 | **63 TASK3** |
+| 4 | C4 | [→S63] 접근성 | **63 TASK4** |
+| 5 | C1 | [→S63] | **63 TASK5** |
+| 6 | C5 | [→S63] 엘리트 | **63 TASK6** |
+| 7 | C1 | [→S63] § | **63 TASK7** |
+| 8 | C3 | [x] arenaRunState.edges | ✓ |
+| 9 | C3 | [x] lab/complete POST | ✓ |
+| 10 | C6 | [x] q237+CI | S63에서 **284/2131** ✓ |
+
+---
+
+## 이전 런: SPRINT 61 (FOUNDRY) — 2026-03-18
+
+- Gate **61** **282/2125**·C5 **1·6 [x].** C1·C4·C3·C6 잔여 → **S62 흡수.**
+
+**SPRINT 61 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] Gate 61 | 282/2125 ✓ |
+| 2 | C1 | [→S62] | **62 TASK2** |
+| 3 | C1 | [→S62] 166·167·168차 | **62 TASK3** |
+| 4 | C4 | [→S62] 접근성 | **62 TASK4** |
+| 5 | C1 | [→S62] | **62 TASK5** |
+| 6 | C5 | [x] 엘리트 3차 | PASS |
+| 7 | C1 | [→S62] § | **62 TASK7** |
+| 8 | C3 | [→S62] | **62 TASK8** |
+| 9 | C3 | [→S62] | **62 TASK9** |
+| 10 | C6 | [→S62] | **62 TASK10** |
+
+---
+
+## 이전 런: SPRINT 60 (FOUNDRY) — 2026-03-18
+
+- **282/2125** · Gate **60**·C5·C3·C6 **[x].** C1·C4 → **S61**.
+
+**SPRINT 60 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] Gate 60 | 280/2119 ✓ |
+| 2 | C1 | [→S61] | **61 TASK2** |
+| 3 | C1 | [→S61] 163·164·165차 | **61 TASK3** |
+| 4 | C4 | [→S61] 접근성 | **61 TASK4** |
+| 5 | C1 | [→S61] | **61 TASK5** |
+| 6 | C5 | [x] 엘리트 3차 | PASS |
+| 7 | C1 | [→S61] § | **61 TASK7** |
+| 8 | C3 | [x] weeklyResetIdempotency.edges | ✓ |
+| 9 | C3 | [x] lab/usage GET | ✓ |
+| 10 | C6 | [x] q237 + CI | **282/2125** ✓ |
+
+---
+
+## 이전 런: SPRINT 59 (FOUNDRY) — 2026-03-18
+
+- Gate **59** **280/2119**·C5 **1·6 [x].** C1·C4·C3·C6 잔여 → **S60 흡수.**
+
+**SPRINT 59 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] Gate 59 | 280/2119 ✓ |
+| 2 | C1 | [→S60] | **60 TASK2** |
+| 3 | C1 | [→S60] | **60 TASK3** |
+| 4 | C4 | [→S60] | **60 TASK4** |
+| 5 | C1 | [→S60] | **60 TASK5** |
+| 6 | C5 | [x] 엘리트 3차 | PASS |
+| 7 | C1 | [→S60] | **60 TASK7** |
+| 8 | C3 | [→S60] | **60 TASK8** |
+| 9 | C3 | [→S60] | **60 TASK9** |
+| 10 | C6 | [→S60] | **60 TASK10** |
+
+---
+
+## 이전 런: SPRINT 58 (FOUNDRY) — 2026-03-18
+
+- Gate **58** **280/2119**·C5·C6 **[x].** C1·C4·C3 → **S59**.
+
+**SPRINT 58 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] Gate 58 | 280/2119 ✓ |
+| 2 | C1 | [→S59] | **59 TASK2** |
+| 3 | C1 | [→S59] 160·161·162차 | **59 TASK3** |
+| 4 | C4 | [→S59] 접근성 | **59 TASK4** |
+| 5 | C1 | [→S59] | **59 TASK5** |
+| 6 | C5 | [x] 엘리트 3차 | PASS |
+| 7 | C1 | [→S59] § | **59 TASK7** |
+| 8 | C3 | [→S59] domain | **59 TASK8** |
+| 9 | C3 | [→S59] route | **59 TASK9** |
+| 10 | C6 | [x] q237 + CI | 280/2119 ✓ |
+
+---
+
+## 이전 런: SPRINT 57 (FOUNDRY) — 2026-03-18
+
+- **280/2119** · Gate **57**·C5·C3·C6 **[x].** C1·C4 → **S58**.
+
+**SPRINT 57 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] Gate 57 | 279/2115 ✓ |
+| 2 | C1 | [→S58] | **58 TASK2** |
+| 3 | C1 | [→S58] 157·158·159차 | **58 TASK3** |
+| 4 | C4 | [→S58] 접근성 | **58 TASK4** |
+| 5 | C1 | [→S58] | **58 TASK5** |
+| 6 | C5 | [x] 엘리트 3차 | PASS |
+| 7 | C1 | [→S58] § | **58 TASK7** |
+| 8 | C3 | [x] arenaRunCompletion.edges | ✓ |
+| 9 | C3 | [x] POST /api/arena/event | ✓ |
+| 10 | C6 | [x] q237+CI | **280/2119** ✓ |
 
 ---
 

@@ -14,26 +14,35 @@ export default async function GrowthPage({ params }: Props) {
   const t = getMessages(loc).uxPhase1Stub;
   const base = `/${locale}`;
 
-  const cards: { href: string; title: string; description: string }[] = [
+  const cards: {
+    href: string;
+    title: string;
+    description: string;
+    "data-testid": string;
+  }[] = [
     {
       href: `${base}/growth/dojo`,
       title: t.growthCardDojoTitle,
       description: t.growthCardDojoDesc,
+      "data-testid": "growth-dojo-card",
     },
     {
       href: `${base}/growth/integrity`,
       title: t.growthCardIntegrityTitle,
       description: t.growthCardIntegrityDesc,
+      "data-testid": "growth-integrity-card",
     },
     {
       href: `${base}/growth/guidance`,
       title: t.growthCardGuidanceTitle,
       description: t.growthCardGuidanceDesc,
+      "data-testid": "growth-guidance-card",
     },
     {
       href: `${base}/growth/journey`,
       title: t.growthCardJourneyTitle,
       description: t.growthCardJourneyDesc,
+      "data-testid": "growth-journey-card",
     },
   ];
 
@@ -44,12 +53,13 @@ export default async function GrowthPage({ params }: Props) {
       title={t.growthHubHeadline}
       subtitle={t.growthHubLead}
     >
-      <section role="region" aria-label={t.growthHubMainRegionAria}>
+      <section data-testid="growth-page" role="region" aria-label={t.growthHubMainRegionAria}>
         <nav className="space-y-3" aria-label={t.growthHubCardsNavAria}>
           {cards.map((item) => (
             <Link
               key={item.href}
               href={item.href}
+              data-testid={item["data-testid"]}
               className="block rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm transition hover:bg-[#FCFAF5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B08D57]/30"
             >
               <p className="text-base font-semibold text-[#1E2A38]">{item.title}</p>

@@ -14,6 +14,7 @@ export default function RestartJourneyDialog({ open, onConfirm, onClose }: Resta
       open={open}
       onClose={onClose}
       ariaLabel="Restart Journey?"
+      panelDataTestId="restart-journey-dialog"
       className="max-w-sm border-[#E8E3D8] bg-white p-0"
     >
       <div className="p-6">
@@ -25,6 +26,7 @@ export default function RestartJourneyDialog({ open, onConfirm, onClose }: Resta
       <div className="flex flex-col gap-3 border-t border-[#EEE7DA] px-6 py-5">
         <button
           type="button"
+          data-testid="restart-journey-confirm"
           onClick={onConfirm}
           className="flex h-12 w-full items-center justify-center rounded-2xl bg-[#1E2A38] text-sm font-medium text-white hover:bg-[#243446]"
         >
@@ -32,6 +34,7 @@ export default function RestartJourneyDialog({ open, onConfirm, onClose }: Resta
         </button>
         <button
           type="button"
+          data-testid="restart-journey-cancel"
           onClick={onClose}
           className="flex h-12 w-full items-center justify-center rounded-2xl border border-[#D7CFBF] bg-transparent text-sm font-medium text-[#405A74] hover:bg-[#F6F4EE]"
         >

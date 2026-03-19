@@ -2,7 +2,7 @@
 
 **목적**: 대기 작업이 없을 때 `scripts/next-project-fill-board.sh`가 여기서 다음 작업을 읽어 보드에 추가한다.  
 **기준**: `docs/NEXT_PROJECT_RECOMMENDED.md` §1·§2.  
-**갱신일**: 2026-03-18 — 보드 **SPRINT 57** 이번 런. 다음 = **58**.
+**갱신일**: 2026-03-18 — 보드 **SPRINT 63** 이번 런. 다음 = **64**.
 
 ---
 
@@ -38,17 +38,17 @@ MASTER_PLAN  →  NEXT_BACKLOG_AUTO4  →  CURSOR_TASK_BOARD
 
 ---
 
-## 다음 배치 목록 — FOUNDRY **SPRINT 49**
+## 다음 배치 목록 — FOUNDRY **SPRINT 58**
 
 ```
-Fix/Polish|[VERIFY] Release Gate 49차|C5. 보드 S49 TASK1.
-Fix/Polish|[DOCS] BACKLOG + S48 잔여|C1. S49 TASK2·3·7·10.
-Fix/Polish|[UI] Center/Foundry 접근성|C4. S49 TASK4.
-Fix/Polish|[DOMAIN]·[TEST] Arena|C3. S49 TASK8·9.
-Fix/Polish|[VERIFY] q237-smoke + self-healing-ci|C6. S49 TASK10.
+Fix/Polish|[VERIFY] Release Gate 58차|C5. 보드 S58 TASK1.
+Fix/Polish|[DOCS] BACKLOG + S57·S56 잔여|C1. S58 TASK2·3·5·7.
+Fix/Polish|[UI] Center/Foundry 접근성|C4. S58 TASK4.
+Fix/Polish|[DOMAIN]·[TEST] Arena|C3. S58 TASK8·9.
+Fix/Polish|[VERIFY] q237-smoke + self-healing-ci|C6. S58 TASK10.
 ```
 
-*(2026-03-29: SPRINT 49.)*
+*(2026-03-18: SPRINT 58.)*
 
 ---
 

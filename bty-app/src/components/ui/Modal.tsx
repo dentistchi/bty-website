@@ -12,9 +12,11 @@ type ModalProps = {
   ariaLabel?: string;
   children: React.ReactNode;
   className?: string;
+  /** E2E: panel container (e.g. comeback-modal) */
+  panelDataTestId?: string;
 };
 
-export function Modal({ open, onClose, title, ariaLabel, children, className }: ModalProps) {
+export function Modal({ open, onClose, title, ariaLabel, children, className, panelDataTestId }: ModalProps) {
   useEffect(() => {
     if (!open) return;
     const handle = (e: KeyboardEvent) => {
@@ -44,6 +46,7 @@ export function Modal({ open, onClose, title, ariaLabel, children, className }: 
         aria-hidden
       />
       <div
+        data-testid={panelDataTestId}
         className={cn(
           "relative w-full max-w-md rounded-2xl border border-foundry-purple-muted bg-foundry-white shadow-xl",
           "transition-all duration-200",

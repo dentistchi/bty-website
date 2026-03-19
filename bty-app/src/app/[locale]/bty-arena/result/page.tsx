@@ -21,15 +21,15 @@ export default async function ArenaResultPage({ params }: Props) {
       title={t.arenaResultRecordedTitle}
       subtitle={t.arenaResultRecordedSubtitle}
     >
-      <div className="space-y-4">
+      <div data-testid="arena-result" className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
+          <div data-testid="arena-result-core-xp" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
             <p className="text-sm font-medium text-[#1E2A38]">{m.coreXp}</p>
             <p className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-[#1E2A38]">
               +25
             </p>
           </div>
-          <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
+          <div data-testid="arena-result-weekly-xp" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
             <p className="text-sm font-medium text-[#1E2A38]">{m.weeklyXp}</p>
             <p className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-[#1E2A38]">
               +15
@@ -37,19 +37,21 @@ export default async function ArenaResultPage({ params }: Props) {
           </div>
         </div>
 
-        <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
+        <div data-testid="arena-result-system-note" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
           <p className="text-sm font-medium text-[#1E2A38]">{t.arenaResultSystemNoteTitle}</p>
           <p className="mt-2 text-sm leading-6 text-[#667085]">{t.arenaResultSystemNoteBody}</p>
         </div>
 
         <div className="flex flex-col gap-3">
           <Link
+            data-testid="arena-result-continue-button"
             href={play}
             className="flex h-12 w-full items-center justify-center rounded-2xl bg-[#1E2A38] px-4 text-sm font-medium text-white hover:bg-[#243446]"
           >
             {t.arenaResultContinuePlayCta}
           </Link>
           <Link
+            data-testid="arena-result-return-button"
             href={hub}
             className="flex h-12 w-full items-center justify-center rounded-2xl border border-[#D7CFBF] bg-white px-4 text-sm font-medium text-[#405A74] hover:bg-[#F6F4EE]"
           >

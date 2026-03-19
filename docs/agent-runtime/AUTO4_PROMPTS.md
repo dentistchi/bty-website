@@ -1,6 +1,6 @@
 # Auto 4 — 각 Cursor에게 붙여 넣을 프롬프트
 
-**갱신**: 2026-03-18 — 보드 **SPRINT 57**.  
+**갱신**: 2026-03-18 — 보드 **SPRINT 63**.  
 **사용법**: 아래 해당 Cursor 블록을 **그대로** 복사. 완료 시 보드 `[x]` + `CURRENT_TASK.md` + (Gate 시) `BTY_RELEASE_GATE_CHECK.md`.
 
 **할 일 단일 진실**: **`docs/CURSOR_TASK_BOARD.md`** "이번 런" 표 — 자기 **OWNER** 행 중 **`[ ]`** 만.
@@ -13,7 +13,7 @@
 
 다음 작업 해줘.
 
-**할 일**: [C1(DOCS)] 보드 **SPRINT 57** C1 TASK **2·3·5·7**. TASK 2: NEXT_PHASE·NEXT_BACKLOG + S56·S55 잔여. TASK 3: 문서 점검 **157·158·159**차. TASK 5: 다음 배치(선택). TASK 7: §·**SPRINT 58** 예고. **C5 Gate 57 미완 시** 문서만 선행.
+**할 일**: [C1(DOCS)] 보드 **SPRINT 63** C1 TASK **2·3·5·7**. TASK 2: NEXT_PHASE·NEXT_BACKLOG + S62·S61 잔여. TASK 3: 문서 점검 **172·173·174**차. TASK 5: 다음 배치(선택). TASK 7: §·**SPRINT 64** 예고. **C5 Gate 63 미완 시** 문서만 선행.
 
 **완료 시**: (1) `CURSOR_TASK_BOARD.md` 해당 행 `[x]` (2) `CURRENT_TASK.md` 완료 1줄 (3) "작업 완료. 보드·CURRENT_TASK 반영했습니다."
 
@@ -25,7 +25,7 @@
 
 다음 작업 해줘.
 
-**할 일**: [C2] **C5 TASK1 (Release Gate 57차) 완료 후**, 다음 **`origin/main` 배포 push** 시 Gate 문서·수치 **재1회** 동기.
+**할 일**: [C2] **C5 TASK1 (Release Gate 63차) 완료 후**, 다음 **`origin/main` 배포 push** 시 Gate 문서·수치 **재1회** 동기.
 
 **완료 시**: Gate 문서 갱신 + 보드 C2 메모.
 
@@ -37,7 +37,7 @@
 
 다음 작업 해줘.
 
-**할 일**: [C3] 보드 S57 **TASK 8·9**: Arena **domain** + **`src/app/api` route** 테스트 각 1건. vitest 통과. **C5 TASK1 (Gate 57) [x] 후 착수.**
+**할 일**: [C3] 보드 S63 **TASK 8·9**: Arena **domain** + **`src/app/api` route** 테스트 각 1건. vitest 통과. **C5 TASK1 (Gate 63) [x] 후 착수.**
 
 **완료 시**: 보드 `[x]`·`CURRENT_TASK.md` 1줄·"작업 완료. 보드·CURRENT_TASK 반영했습니다."
 
@@ -49,7 +49,7 @@
 
 다음 작업 해줘.
 
-**할 일**: [C4] 보드 S57 **TASK 4** — Center/Foundry **추가 접근성 1곳**. **`/bty`·My Page·Growth 제외** 권장. render-only. **C5 Gate 57 [x] 후 착수.**
+**할 일**: [C4] 보드 S63 **TASK 4** — Center/Foundry **추가 접근성 1곳**. **`/bty`·My Page·Growth·S62 TASK4 화면 제외** 권장. render-only. **C5 Gate 63 [x] 후 착수.**
 
 **완료 시**: 보드 `[x]`·`CURRENT_TASK.md`·"작업 완료. 보드·CURRENT_TASK 반영했습니다."
 
@@ -61,7 +61,7 @@
 
 다음 작업 해줘.
 
-**할 일**: [C5] 보드 S57 **First TASK 1** — [VERIFY] Release Gate A~F **Foundry 57차** (S56에서 **56차 미완 이월** 시 본 차수로 수행). bty-release-gate.mdc A~F. Lint·Test·Build. `BTY_RELEASE_GATE_CHECK.md`·보드·`CURRENT_TASK.md`. **TASK 6**: 엘리트 3차 체크리스트 1회·§3.
+**할 일**: [C5] 보드 S63 **First TASK 1** — [VERIFY] Release Gate A~F **Foundry 63차**. bty-release-gate.mdc A~F. Lint·Test·Build. `BTY_RELEASE_GATE_CHECK.md`·보드·`CURRENT_TASK.md`. **TASK 6**: 엘리트 3차 체크리스트 1회·§3.
 
 **완료 시**: Gate 문서·보드·CURRENT_TASK 반영·"작업 완료. 보드·CURRENT_TASK 반영했습니다."
 
@@ -73,10 +73,10 @@
 
 다음 작업 해줘.
 
-**할 일**: [C6] 보드 S57 **TASK 10** — `npm run test:q237-smoke` + `self-healing-ci.sh`. 수치 **`SPRINT_LOG.md`**. **TASK1·6과 병행 가능.**
+**할 일**: [C6] 보드 S63 **TASK 10** — `npm run test:q237-smoke` + `self-healing-ci.sh`. 수치 **`SPRINT_LOG.md`**. **TASK1·6과 병행 가능.**
 
 **완료 시**: 보드 `[x]`·`CURRENT_TASK.md`·로그 수치.
 
 ---
 
-*출처: 보드 SPRINT 57. First Task = C5 TASK1 Gate 57.*
+*출처: 보드 SPRINT 63. First Task = C5 TASK1 Gate 63.*

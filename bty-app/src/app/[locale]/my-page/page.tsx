@@ -26,11 +26,12 @@ export default async function Page({ params }: Props) {
       </div>
 
       <section
+        data-testid="my-page-overview"
         className="space-y-4"
         role="region"
         aria-label={m.myPageOverviewRegionAria}
       >
-        <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
+        <div data-testid="my-page-identity-card" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-[#1E2A38]">{m.myPageCardIdentity}</p>
             <Link
@@ -43,16 +44,20 @@ export default async function Page({ params }: Props) {
           <div className="mt-3 space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-[#667085]">{m.myPageLabelCodeName}</span>
-              <span className="font-semibold text-[#1E2A38]">Builder-07</span>
+              <span data-testid="my-page-code-name" className="font-semibold text-[#1E2A38]">
+                Builder-07
+              </span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-[#667085]">{m.myPageLabelStage}</span>
-              <span className="font-semibold text-[#1E2A38]">3</span>
+              <span data-testid="my-page-stage" className="font-semibold text-[#1E2A38]">
+                3
+              </span>
             </div>
           </div>
         </div>
 
-        <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
+        <div data-testid="my-page-progress-card" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-[#1E2A38]">{m.myPageCardProgress}</p>
             <Link
@@ -63,7 +68,7 @@ export default async function Page({ params }: Props) {
             </Link>
           </div>
           <div className="mt-4 space-y-4">
-            <div>
+            <div data-testid="my-page-core-progress">
               <div className="mb-2 flex items-center justify-between text-xs text-[#667085]">
                 <span>{m.myPageLabelCoreProgress}</span>
                 <span>60%</span>
@@ -72,7 +77,7 @@ export default async function Page({ params }: Props) {
                 <div className="h-2 w-[60%] rounded-full bg-[#1E2A38]" />
               </div>
             </div>
-            <div>
+            <div data-testid="my-page-weekly-progress">
               <div className="mb-2 flex items-center justify-between text-xs text-[#667085]">
                 <span>{m.myPageLabelWeeklyProgress}</span>
                 <span>40%</span>
@@ -84,7 +89,7 @@ export default async function Page({ params }: Props) {
           </div>
         </div>
 
-        <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
+        <div data-testid="my-page-team-card" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-[#1E2A38]">{m.myPageCardTeam}</p>
             <Link
@@ -101,7 +106,9 @@ export default async function Page({ params }: Props) {
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-[#667085]">TII</span>
-              <span className="font-semibold tabular-nums text-[#1E2A38]">0.72</span>
+              <span data-testid="my-page-tii-summary" className="font-semibold tabular-nums text-[#1E2A38]">
+                0.72
+              </span>
             </div>
           </div>
         </div>

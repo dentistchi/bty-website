@@ -16,5 +16,7 @@
 | `arena-hub.spec.ts` | chromium |
 | `arena-play.spec.ts` | chromium |
 | `journey.spec.ts` | chromium |
+| `journey.spec.ts` (`@comeback-journey`) | chromium-comeback (E2E_COMEBACK_* 필요) |
+| `auth-comeback.setup.ts` | setup-comeback |
 | `my-page.spec.ts` | chromium |
 | `auth.setup.ts` | setup |

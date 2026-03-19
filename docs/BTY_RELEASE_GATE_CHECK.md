@@ -6,11 +6,33 @@
 **정책**: 문서·백로그·Release Gate 점검은 **배포 전 1회** 수행. 일상 작업은 웹 개발(UI·API·도메인) 집중.  
 **배포 준비:** `docs/MVP_DEPLOYMENT_READINESS.md` (배포 시 1회 체크리스트). **일상 vs 배포:** `docs/WORK_POLICY.md`.
 
+**배포 후 (C2, post-push):** **`d7d5a24`** — **`6afdfe4..d7d5a24`** — 중간 **`3ca0233`** chore: 배포(favicon·weekly-stats·reflectTextBounds·문서) + **919d7bb** 중복 `run/[id]` 제거(Worker 500) + **d7d5a24** Journey API Worker `SUPABASE_SERVICE_ROLE_KEY` 동기·CONTEXT. **A–E)** Auth·Weekly·Leaderboard·Core/Weekly 분리 유지; **E)** Arena run 라우트 단일화·Journey Worker 시크릿 배포 절차 반영. **F)** `self-healing-ci.sh`: Lint ✓ · **279 files** / **2117 tests** ✓ · Build ✓. **RESULT: PASS.** *다음 `origin/main` push 시 Gate 1회.*
+
 **배포 후 (C2, post-push):** **`6afdfe4`** — chore: 배포 — E2E/Playwright, Growth IA, Arena Hub, 도메인·문서. **108 files** (+5,767 / -846). **`58b8342..6afdfe4` → origin/main**. **A)** 세션·쿠키(Secure/SameSite/Path) 기존 가정 — 본 배포는 E2E·Growth IA·Arena Hub·도메인·문서 중심. **B–C)** week_id·Core/Weekly 분리·랭킹=Weekly XP·시즌 미반영 유지. **D)** 본 배포 요약에 **신규 DB 마이그레이션 명시 없음** — 기존 경로. **E)** Journey·Arena Hub·E2E 범위 API/UI는 코드베이스·§와 정합 가정. **F)** `bty-app/scripts/self-healing-ci.sh`: Lint ✓ · **277 files** / **2108 tests** ✓ · Build ✓. **RESULT: PASS.** *다음 배포 push 시 Gate 1회 재수행.*
+
+**SPRINT 64·Gate 64 (270) 오픈 (2026-03-18):** **First Task = C5 TASK1.** Gate **64차** PASS 시 본 블록 아래 한 줄 추가. *(S63 C5 **1·6 [x]** → C5 기아 → S64.)*
+
+**[VERIFY] Release Gate — Foundry 63차 (C5, SPRINT 63·269, 2026-03-18):** **RESULT: PASS.** **A~E)** 인바리언트 유지. **F)** `tsc --noEmit` ✓ · Vitest **284 files / 2131 tests** ✓ · `next build` ✓ · `test:q237-smoke` **7/7** ✓. *(도메인: `arenaRunState.edges.test.ts` `completedAt` 인자 보강.)*
+
+**E) API (268, C3):** **`POST /api/arena/lab/complete`** — 미인증 **401**; 본문 비 JSON **400** `INVALID_JSON`. **`arenaRunState.edges`** — 시작/완료/중단 시각 공백 경계. 회귀 테스트.
+
+**[VERIFY] Release Gate — Foundry 62차 (C5, SPRINT 62·268, 2026-03-18):** **RESULT: PASS.** **A~E)** 인바리언트 유지. **F)** `tsc` ✓ · Vitest **282 / 2125** ✓ · `next build` ✓ · q237 **7/7** ✓. *(C3 **268** 회귀 추가 후 **284 / 2131**.)*
+
+**[VERIFY] Release Gate — Foundry 61차 (C5, SPRINT 61·267, 2026-03-18):** **RESULT: PASS.** **A~E)** 인바리언트 유지(C2 **`d7d5a24`** 기준). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **282 files / 2125 tests** ✓ · `next build` ✓.
+
+**E) API (266, C3):** **`GET /api/arena/lab/usage`** — 미인증 **401**; **200** `limit`·`attemptsUsed`·`attemptsRemaining`. **`weeklyResetIdempotency.edges`** — 주간 ledger noop·전이 경계. 회귀 테스트.
+
+**[VERIFY] Release Gate — Foundry 60차 (C5, SPRINT 60·266, 2026-03-18):** **RESULT: PASS.** **A~E)** 인바리언트 유지. **F)** `tsc --noEmit` ✓ · Vitest **280 files / 2119 tests** ✓ · `next build` ✓ (clean `.next` 후 재시도로 ENOENT 회피) · `test:q237-smoke` **7/7** ✓. *(C3 이후 전 스위트 **282/2125**.)*
+
+**[VERIFY] Release Gate — Foundry 59차 (C5, SPRINT 59·265, 2026-03-18):** **RESULT: PASS.** **A~E)** 인바리언트 유지(C2 **`d7d5a24`** 기준 워크스페이스 재검). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **280 files / 2119 tests** ✓ · `next build` ✓.
+
+**[VERIFY] Release Gate — Foundry 58차 (C5, SPRINT 58·264, 2026-03-18):** **RESULT: PASS.** **A~E)** 인바리언트 유지(C2 **`d7d5a24`** 이후 워크스페이스 재검). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **280 files / 2119 tests** ✓ · `next build` ✓.
 
 **[VERIFY] Release Gate — Foundry 57차 (C5, SPRINT 57·263, 2026-03-18):** **RESULT: PASS.** **A~E)** 인바리언트 유지. **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **279 files / 2115 tests** ✓ · `next build` ✓.
 
 **[VERIFY] Release Gate — Foundry 56차 (C5, SPRINT 56·262, 2026-03-18):** **RESULT: PASS.** **A~E)** 인바리언트 유지. **F)** `tsc --noEmit` ✓ · Vitest **279 / 2115** ✓ · `next build` ✓ (`chmod -R u+w .next`·`rm -rf .next` 후 ENOENT 회피) · `test:q237-smoke` **7/7** ✓. C3 **reflectTextBounds.edges**·**GET /api/arena/weekly-stats** 회귀 포함.
+
+**E) API (263, C3):** **`POST /api/arena/event`** — 미인증 **401**; `runId`·`scenarioId`·`eventType` 누락 **400** `runId_scenarioId_eventType_required`. **회귀 테스트**.
 
 **E) API (262, C3):** **`GET /api/arena/weekly-stats`** — 미인증 **401**; 주간 이벤트 없을 때 **200** `reflectionCount`·`weekMaxDailyXp` 등. **회귀 테스트**·핸들러 변경 없음.
 

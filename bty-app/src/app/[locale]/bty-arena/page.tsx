@@ -20,7 +20,7 @@ export default async function ArenaHubPage({ params }: Props) {
       title={t.arenaHubShellTitle}
       subtitle={t.arenaHubSubtitle}
     >
-      <div className="space-y-4">
+      <div data-testid="arena-hub" className="space-y-4">
         <ArenaHubEntryCard locale={locale} />
 
         <ArenaHubSummary locale={locale} />
