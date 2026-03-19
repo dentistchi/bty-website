@@ -6,6 +6,12 @@
 
 **이번 런 (2026-03-18):** **`docs/CURSOR_TASK_BOARD.md` → SPRINT 65.** **할 일 읽는 법:** `docs/agent-runtime/HOW_TO_READ_TASKS.md`. First **C5 Gate 65.** S64 C5·C4·C3·C6 [x] → 큐 보충 **S65** 10행 `[ ]`. `SPRINT_PLAN` **271**.
 
+**[C6] SPRINT 65 TASK10 / 271**: [x] **완료.** q237 **7/7** ✓ · **286 / 2140** ✓ · Build ✓.
+
+**[C4] SPRINT 65 TASK4 / 271**: [x] **완료.** Center/Foundry 접근성 1곳 — Integrity `integrityMainRegionAria` (ko/en).
+
+**[C3] SPRINT 65 TASK8·9 / 271**: [x] **완료.** `leaderboardNearMe.edges.test.ts` · `POST /api/arena/beginner-run` 401·400.
+
 **[C5] SPRINT 64 TASK 1 / 270 (Gate 64):** [x] **완료.** Release Gate A~F — **286 / 2140** · Build ✓ · BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
 
 **[C5] SPRINT 64 TASK 6 / 270 (엘리트 3차):** [x] **완료.** ELITE_3RD §2 6항목·§3 64차 기록 · **286/2140** 동기 · PASS.

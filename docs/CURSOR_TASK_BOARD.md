@@ -30,13 +30,13 @@
 | 1 | C5 | [ ] [VERIFY] Release Gate A~F — Foundry 65차 | `BTY_RELEASE_GATE_CHECK`·보드·`CURRENT_TASK`. |
 | 2 | C1 | [ ] [DOCS] NEXT_PHASE·NEXT_BACKLOG + S64·S63 잔여 동기 | 대기 동기. |
 | 3 | C1 | [ ] [DOCS] 문서 점검 178·179·180차 | 보드·BACKLOG·Gate. |
-| 4 | C4 | [ ] [UI] Center/Foundry 추가 접근성 1곳 | **`/bty`·My Page·Growth·Dojo History 제외.** |
+| 4 | C4 | [x] [UI] Center/Foundry 추가 접근성 1곳 | Integrity `integrityMainRegionAria` (ko/en). |
 | 5 | C1 | [ ] [DOCS] 다음 배치 선정 (선택) | NEXT_BACKLOG·NEXT_PHASE. |
 | 6 | C5 | [ ] [VERIFY] 엘리트 3차 체크리스트 1회 | ELITE_3RD §3. |
 | 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | SPRINT 66 예고. |
-| 8 | C3 | [ ] [DOMAIN] Arena 순수 규칙+테스트 1건 | `bty-app/src/domain`. |
-| 9 | C3 | [ ] [TEST] Arena `src/app/api` route 테스트 1건 | vitest. |
-| 10 | C6 | [ ] [VERIFY] test:q237-smoke + self-healing-ci | `SPRINT_LOG`. TASK1·6 병행 가능. |
+| 8 | C3 | [x] [DOMAIN] Arena 순수 규칙+테스트 1건 | leaderboardNearMe.edges · ✓ |
+| 9 | C3 | [x] [TEST] Arena route 테스트 1건 | POST beginner-run 401·400 · ✓ |
+| 10 | C6 | [x] test:q237-smoke + self-healing-ci | **286/2140** ✓ · q237 **7/7** ✓ |
 
 ---
 

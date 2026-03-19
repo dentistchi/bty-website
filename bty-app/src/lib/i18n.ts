@@ -99,6 +99,8 @@ export type Messages = {
     mentorName?: string;
     conversationSimulatorAria: string;
     messageComposerAria: string;
+    /** 역지사지 페이지 메인 랜드마크 */
+    integrityMainRegionAria: string;
   };
   center: {
     /** §2: 전환 중 로딩/대기 문구 (locale에 맞게) */
@@ -1069,6 +1071,7 @@ const ko: Messages = {
     mentorName: "Dr. Chi",
     conversationSimulatorAria: "역지사지 대화 내용",
     messageComposerAria: "메시지 입력·전송",
+    integrityMainRegionAria: "역지사지 시뮬레이터 — 안내·대화·완료",
   },
   center: {
     loading: "잠시만 기다려 주세요.",
@@ -1949,6 +1952,7 @@ const en: Messages = {
     mentorName: "Dr. Chi",
     conversationSimulatorAria: "Integrity conversation",
     messageComposerAria: "Message input and send",
+    integrityMainRegionAria: "Integrity simulator — guide, conversation, completion",
   },
   center: {
     loading: "Please wait…",

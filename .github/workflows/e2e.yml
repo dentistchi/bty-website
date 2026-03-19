@@ -47,6 +47,15 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Set BASE_URL (local dev server by default)
+        run: |
+          if [ -z "$BASE_URL" ]; then
+            echo "BASE_URL=http://127.0.0.1:3000" >> "$GITHUB_ENV"
+            echo "Using default BASE_URL: http://127.0.0.1:3000 (local E2E)"
+          else
+            echo "Using BASE_URL: $BASE_URL"
+          fi
+
       - name: Check required E2E secrets
         run: |
           if [ -z "$E2E_EMAIL" ]; then
@@ -63,10 +72,6 @@ jobs:
           fi
           if [ -z "$E2E_COMEBACK_PASSWORD" ]; then
             echo "Missing secret: E2E_COMEBACK_PASSWORD"
-            exit 1
-          fi
-          if [ -z "$BASE_URL" ]; then
-            echo "Missing secret: BASE_URL (예: http://127.0.0.1:3000 또는 배포 URL)"
             exit 1
           fi
 

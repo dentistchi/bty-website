@@ -22,13 +22,13 @@ setup("authenticate comeback user", async ({ page, context }) => {
   console.log("[auth-comeback-setup] URL after goto:", page.url());
   console.log("[auth-comeback-setup] title:", await page.title());
 
-  const emailInput = page.getByTestId("login-email-input");
-  const passwordInput = page.getByTestId("login-password-input");
-  const submitBtn = page.getByTestId("login-submit-button");
+  const emailInput = page.getByTestId("login-email-input").or(page.locator('input[type="email"]').first());
+  const passwordInput = page.getByTestId("login-password-input").or(page.locator('input[type="password"]').first());
+  const submitBtn = page.getByTestId("login-submit-button").or(page.getByRole("button", { name: /sign in|login|로그인/i }));
 
   await emailInput.waitFor({ state: "visible", timeout: 15_000 }).catch(async () => {
-    console.log("[auth-comeback-setup] login-email-input not found. body preview:", (await page.locator("body").innerText()).slice(0, 500));
-    throw new Error("login-email-input not found");
+    console.log("[auth-comeback-setup] login form not found. body preview:", (await page.locator("body").innerText()).slice(0, 500));
+    throw new Error("login form (email input) not found");
   });
   await emailInput.fill(email);
   await passwordInput.waitFor({ state: "visible", timeout: 5_000 });

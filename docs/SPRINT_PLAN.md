@@ -31,9 +31,9 @@
 |------|-----|
 | **C5** | **1·6** `[ ]` |
 | **C1** | **2·3·5·7** `[ ]` |
-| **C4** | **4** `[ ]` |
+| **C4** | **4** `[x]` |
 | **C3** | **8·9** `[ ]` |
-| **C6** | **10** `[ ]` |
+| **C6** | **10** `[x]` |
 | **C2** | C5 **TASK1** 후·다음 push Gate |
 
 ### C5 — UI ENGINEER (271)
@@ -41,22 +41,28 @@
 - [ ] **TASK 1** [VERIFY] Release Gate Foundry **65**차.
 - [ ] **TASK 6** [VERIFY] 엘리트 3차 §3.
 
+**BLOCKER:** Gate 65 실패 — `leaderboardNearMe.edges.test.ts` 1건 실패 (domain `leaderboardNearMeSliceBounds(100, 10)` 기대값과 구현 불일치). C3 domain 구간 수정 필요 후 C5 재검증.
+
 ### C1 — COMMANDER (271)
 
 - [ ] **TASK 2·3·5·7** — NEXT_BACKLOG·문서 178·179·180차·§ (S64 잔여 흡수).
 
 ### C4 — API ENGINEER (271)
 
-- [ ] **TASK 4** — 접근성 1곳 (`/bty`·My Page·Growth·Dojo History 제외).
+- [x] **TASK 4** — 접근성 1곳: Integrity 페이지 `main` aria-label → `integrityMainRegionAria` (ko/en).
+
+**Notes:** S65 TASK4 완료 — 역지사지 메인 랜드마크 i18n 적용.
 
 ### C3 — DOMAIN ENGINEER (271)
 
-- [ ] **TASK 8** — Arena domain 순수 규칙+테스트 1건.
-- [ ] **TASK 9** — Arena API route 테스트 1건.
+- [x] **TASK 8** — Arena domain 순수 규칙+테스트 1건.
+- [x] **TASK 9** — Arena API route 테스트 1건.
+
+**Notes:** **CONTINUE(C3) S65** — TASK 8 `leaderboardNearMe.edges.test.ts` · TASK 9 `POST /api/arena/beginner-run` **401**·**400**.
 
 ### C6 — TESTFIX ENGINEER (271)
 
-- [ ] **TASK 10** — q237-smoke + self-healing-ci.
+- [x] **TASK 10** — q237-smoke **7/7** · **286 / 2140** · Build ✓ · `SPRINT_LOG`.
 
 ---
 
@@ -725,7 +731,7 @@ C5 TASK1 is unblocked and can proceed with UI and navigation implementation base
 - **overall:** PASS
 - **Owner to fix:** —
 
-**Last run:** 2026-03-18 — self-healing-ci.sh · Lint PASS · Test PASS (**286 files** / **2140 tests**) · Build PASS · **Overall PASS** (SPRINT 270 C7 · S64 · latest).
+**Last run:** 2026-03-18 — self-healing-ci.sh · Lint PASS · Test PASS (**288 files** / **2148 tests**) · Build PASS · **Overall PASS** (SPRINT 271 C7 · S65).
 
 *C2 문서 게이트:* `cce5374`·`BTY_RELEASE_GATE_CHECK`. *이전 배포 풀 스위트 참고:* `58b8342` 264 files.*
 
