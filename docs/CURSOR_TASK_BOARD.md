@@ -27,12 +27,12 @@
 
 | # | OWNER | TASK LINE | PROMPT |
 |---|-------|-----------|--------|
-| 1 | C5 | [ ] [VERIFY] Release Gate A~F — Foundry 65차 | `BTY_RELEASE_GATE_CHECK`·보드·`CURRENT_TASK`. |
+| 1 | C5 | [x] [VERIFY] Release Gate A~F — Foundry 65차 | `BTY_RELEASE_GATE_CHECK`·보드·`CURRENT_TASK`. |
 | 2 | C1 | [ ] [DOCS] NEXT_PHASE·NEXT_BACKLOG + S64·S63 잔여 동기 | 대기 동기. |
 | 3 | C1 | [ ] [DOCS] 문서 점검 178·179·180차 | 보드·BACKLOG·Gate. |
 | 4 | C4 | [x] [UI] Center/Foundry 추가 접근성 1곳 | Integrity `integrityMainRegionAria` (ko/en). |
 | 5 | C1 | [ ] [DOCS] 다음 배치 선정 (선택) | NEXT_BACKLOG·NEXT_PHASE. |
-| 6 | C5 | [ ] [VERIFY] 엘리트 3차 체크리스트 1회 | ELITE_3RD §3. |
+| 6 | C5 | [x] [VERIFY] 엘리트 3차 체크리스트 1회 | ELITE_3RD §3. |
 | 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | SPRINT 66 예고. |
 | 8 | C3 | [x] [DOMAIN] Arena 순수 규칙+테스트 1건 | leaderboardNearMe.edges · ✓ |
 | 9 | C3 | [x] [TEST] Arena route 테스트 1건 | POST beginner-run 401·400 · ✓ |
@@ -42,6 +42,7 @@
 
 ## 이전 런: SPRINT 64 (FOUNDRY) — 2026-03-18
 
+- **C5 Gate 65 (271, 2026-03-18):** [x] Release Gate A~F — **288 / 2148** · Build ✓. **C5 TASK6:** [x] 엘리트 3차 §3 65차 PASS.
 - **종료:** C5 **1·6**·C4 **4**·C3 **8·9**·C6 **10** **[x]** · C1 **2·3·5·7** → **S65** 흡수. Gate **64** **286/2140** ✓.
 
 **SPRINT 64 — TASK 1~10 (아카이브)**

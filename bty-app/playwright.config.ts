@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
-const baseURL = process.env.BASE_URL || "http://127.0.0.1:3000";
+const baseURL = (process.env.BASE_URL || "http://127.0.0.1:3000").trim().replace(/\/$/, "") || "http://127.0.0.1:3000";
 const authFile = path.join(__dirname, "e2e", ".auth", "user.json");
 const comebackAuthFile = path.join(__dirname, "e2e", ".auth", "comeback-user.json");
 

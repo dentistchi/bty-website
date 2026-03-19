@@ -11,7 +11,7 @@ const authFile = path.join(__dirname, ".auth", "user.json");
 setup("authenticate default user", async ({ page, context }) => {
   const email = process.env.E2E_EMAIL?.trim();
   const password = process.env.E2E_PASSWORD;
-  const baseUrl = process.env.BASE_URL || "http://127.0.0.1:3000";
+  const baseUrl = (process.env.BASE_URL || "http://127.0.0.1:3000").trim().replace(/\/$/, "") || "http://127.0.0.1:3000";
 
   if (!email || !password) {
     throw new Error("Missing E2E credentials");

@@ -49,12 +49,14 @@ jobs:
 
       - name: Set BASE_URL (local dev server by default)
         run: |
-          if [ -z "$BASE_URL" ]; then
-            echo "BASE_URL=http://127.0.0.1:3000" >> "$GITHUB_ENV"
-            echo "Using default BASE_URL: http://127.0.0.1:3000 (local E2E)"
+          BASE_URL_CLEAN=$(echo "$BASE_URL" | tr -d '\n\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          if [ -z "$BASE_URL_CLEAN" ]; then
+            BASE_URL_CLEAN="http://127.0.0.1:3000"
+            echo "Using default BASE_URL: $BASE_URL_CLEAN (local E2E)"
           else
-            echo "Using BASE_URL: $BASE_URL"
+            echo "Using BASE_URL: $BASE_URL_CLEAN"
           fi
+          echo "BASE_URL=$BASE_URL_CLEAN" >> "$GITHUB_ENV"
 
       - name: Check required E2E secrets
         run: |

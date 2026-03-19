@@ -12,6 +12,8 @@
 
 **SPRINT 64·Gate 64 (270) 오픈 (2026-03-18):** **First Task = C5 TASK1.** Gate **64차** PASS 시 본 블록 아래 한 줄 추가. *(S63 C5 **1·6 [x]** → C5 기아 → S64.)*
 
+**[VERIFY] Release Gate — Foundry 65차 (C5, SPRINT 65·271, 2026-03-18):** **RESULT: PASS.** **A~E)** 인바리언트 유지(S65: C4 Integrity a11y·C3 leaderboardNearMe 등). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **288 files / 2148 tests** ✓ · `next build` ✓.
+
 **[VERIFY] Release Gate — Foundry 64차 (C5, SPRINT 64·270, 2026-03-18):** **RESULT: PASS.** **A~E)** 인바리언트 유지(S64: C4 Dojo History a11y·C3 leaderboardWeekId·league/active·C6 q237+CI). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **286 files / 2140 tests** ✓ · `next build` ✓.
 
 **[VERIFY] Release Gate — Foundry 63차 (C5, SPRINT 63·269, 2026-03-18):** **RESULT: PASS.** **A~E)** 인바리언트 유지. **F)** `tsc --noEmit` ✓ · Vitest **284 files / 2131 tests** ✓ · `next build` ✓ · `test:q237-smoke` **7/7** ✓. *(도메인: `arenaRunState.edges.test.ts` `completedAt` 인자 보강.)*

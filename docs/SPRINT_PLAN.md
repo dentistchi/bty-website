@@ -38,10 +38,10 @@
 
 ### C5 — UI ENGINEER (271)
 
-- [ ] **TASK 1** [VERIFY] Release Gate Foundry **65**차.
-- [ ] **TASK 6** [VERIFY] 엘리트 3차 §3.
+- [x] **TASK 1** [VERIFY] Release Gate Foundry **65**차.
+- [x] **TASK 6** [VERIFY] 엘리트 3차 §3.
 
-**BLOCKER:** Gate 65 실패 — `leaderboardNearMe.edges.test.ts` 1건 실패 (domain `leaderboardNearMeSliceBounds(100, 10)` 기대값과 구현 불일치). C3 domain 구간 수정 필요 후 C5 재검증.
+**Notes:** S65 TASK1 완료 — Gate 65 **288/2148** · self-healing-ci PASS (BLOCKER 해제). TASK6 완료 — 엘리트 §3 65차 기록.
 
 ### C1 — COMMANDER (271)
 
