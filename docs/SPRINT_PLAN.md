@@ -731,7 +731,7 @@ C5 TASK1 is unblocked and can proceed with UI and navigation implementation base
 - **overall:** PASS
 - **Owner to fix:** —
 
-**Last run:** 2026-03-18 — self-healing-ci.sh · Lint PASS · Test PASS (**288 files** / **2148 tests**) · Build PASS · **Overall PASS** (SPRINT 271 C7 · S65).
+**Last run:** 2026-03-18 — self-healing-ci.sh · Lint PASS · Test PASS (**288 files** / **2148 tests**) · Build PASS · **Overall PASS** (SPRINT 271 C7 · S65 · latest).
 
 *C2 문서 게이트:* `cce5374`·`BTY_RELEASE_GATE_CHECK`. *이전 배포 풀 스위트 참고:* `58b8342` 264 files.*
 

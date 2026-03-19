@@ -35,7 +35,11 @@ setup("authenticate comeback user", async ({ page, context }) => {
   await passwordInput.fill(password);
   await submitBtn.click();
 
-  await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 20_000 });
+  await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 20_000 }).catch(async () => {
+    const body = (await page.locator("body").innerText()).slice(0, 800);
+    const currentUrl = page.url();
+    throw new Error(`Login did not redirect from /login (current: ${currentUrl}). Body preview: ${body}`);
+  });
 
   await page.goto(`${baseUrl}/en/growth/journey`, { waitUntil: "networkidle" });
   await expect(page).toHaveURL(/\/en\/growth\/journey/);
