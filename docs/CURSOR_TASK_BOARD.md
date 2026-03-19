@@ -18,31 +18,53 @@
 
 ---
 
-## 이번 런: SPRINT 65 (FOUNDRY) — 2026-03-18
+## 이번 런: SPRINT 66 (FOUNDRY) — 2026-03-18
 
-- **병렬 큐 보충:** S64 **C5·C4·C3·C6 전행 [x]** · C1만 `[ ]` → **S65** 10행 전부 `[ ]` (`PARALLEL_QUEUE_REFILL.md` §3). **할 일 읽는 법:** `docs/agent-runtime/HOW_TO_READ_TASKS.md`.
-- **First Task = C5 TASK1 (Gate 65).** `SPRINT_PLAN` **271**.
+- **병렬 큐 보충:** S65 **C5·C4·C3·C6 [x]** · C1만 `[ ]` → **S66** 10행 `[ ]` (`PARALLEL_QUEUE_REFILL.md` §3).
+- **할 일은 `docs/SPRINT_PLAN.md`가 아니라 본 표만.** `SPRINT_PLAN`은 요약·역사용 — **TASK 할당은 여기 "이번 런" 표** (`HOW_TO_READ_TASKS.md`).
+- **First Task = C5 TASK1 (Gate 66).** `SPRINT_PLAN` **272**.
 
-**SPRINT 65 — TASK 1~10 (MODE FOUNDRY)**
+**SPRINT 66 — TASK 1~10 (MODE FOUNDRY)**
 
 | # | OWNER | TASK LINE | PROMPT |
 |---|-------|-----------|--------|
-| 1 | C5 | [x] [VERIFY] Release Gate A~F — Foundry 65차 | `BTY_RELEASE_GATE_CHECK`·보드·`CURRENT_TASK`. |
-| 2 | C1 | [ ] [DOCS] NEXT_PHASE·NEXT_BACKLOG + S64·S63 잔여 동기 | 대기 동기. |
-| 3 | C1 | [ ] [DOCS] 문서 점검 178·179·180차 | 보드·BACKLOG·Gate. |
-| 4 | C4 | [x] [UI] Center/Foundry 추가 접근성 1곳 | Integrity `integrityMainRegionAria` (ko/en). |
+| 1 | C5 | [ ] [VERIFY] Release Gate A~F — Foundry 66차 | `BTY_RELEASE_GATE_CHECK`·보드·`CURRENT_TASK`. |
+| 2 | C1 | [ ] [DOCS] NEXT_PHASE·NEXT_BACKLOG + S65 잔여 동기 | 대기 동기. |
+| 3 | C1 | [ ] [DOCS] 문서 점검 178·179·180차 (미처리분) | 보드·BACKLOG·Gate. |
+| 4 | C4 | [ ] [UI] Center/Foundry 추가 접근성 1곳 | **`/bty`·My Page·Growth·Dojo History·Integrity 제외.** |
 | 5 | C1 | [ ] [DOCS] 다음 배치 선정 (선택) | NEXT_BACKLOG·NEXT_PHASE. |
-| 6 | C5 | [x] [VERIFY] 엘리트 3차 체크리스트 1회 | ELITE_3RD §3. |
-| 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | SPRINT 66 예고. |
-| 8 | C3 | [x] [DOMAIN] Arena 순수 규칙+테스트 1건 | leaderboardNearMe.edges · ✓ |
-| 9 | C3 | [x] [TEST] Arena route 테스트 1건 | POST beginner-run 401·400 · ✓ |
-| 10 | C6 | [x] test:q237-smoke + self-healing-ci | **286/2140** ✓ · q237 **7/7** ✓ |
+| 6 | C5 | [ ] [VERIFY] 엘리트 3차 체크리스트 1회 | ELITE_3RD §3. |
+| 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | SPRINT 67 예고. |
+| 8 | C3 | [ ] [DOMAIN] Arena 순수 규칙+테스트 1건 | `bty-app/src/domain`. |
+| 9 | C3 | [ ] [TEST] Arena `src/app/api` route 테스트 1건 | vitest. |
+| 10 | C6 | [ ] [VERIFY] test:q237-smoke + self-healing-ci | `SPRINT_LOG`. TASK1·6 병행 가능. |
+
+---
+
+## 이전 런: SPRINT 65 (FOUNDRY) — 2026-03-18
+
+- **종료:** C5 **1·6**·C4 **4**·C3 **8·9**·C6 **10** **[x]** · C1 **2·3·5·7** → **S66** 흡수. Gate **65** **288/2148** ✓.
+
+**SPRINT 65 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] Gate 65 | 288/2148 ✓ |
+| 2 | C1 | [→S66] | **66 TASK2** |
+| 3 | C1 | [→S66] 178·179·180차 | **66 TASK3** |
+| 4 | C4 | [x] Integrity region | ✓ |
+| 5 | C1 | [→S66] | **66 TASK5** |
+| 6 | C5 | [x] 엘리트 3차 | PASS |
+| 7 | C1 | [→S66] § | **66 TASK7** |
+| 8 | C3 | [x] leaderboardNearMe.edges | ✓ |
+| 9 | C3 | [x] beginner-run POST | ✓ |
+| 10 | C6 | [x] q237+CI | ✓ |
 
 ---
 
 ## 이전 런: SPRINT 64 (FOUNDRY) — 2026-03-18
 
-- **C5 Gate 65 (271, 2026-03-18):** [x] Release Gate A~F — **288 / 2148** · Build ✓. **C5 TASK6:** [x] 엘리트 3차 §3 65차 PASS.
+- **C5 Gate 64 (270, 2026-03-18):** [x] Release Gate A~F — **286 / 2140** · Build ✓. **C5 TASK6:** [x] 엘리트 3차 §3 64차 PASS.
 - **종료:** C5 **1·6**·C4 **4**·C3 **8·9**·C6 **10** **[x]** · C1 **2·3·5·7** → **S65** 흡수. Gate **64** **286/2140** ✓.
 
 **SPRINT 64 — TASK 1~10 (아카이브)**

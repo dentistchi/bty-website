@@ -4,7 +4,9 @@
 
 **[C2] 배포 Gate `6afdfe4`**: [x] **완료.** `58b8342..6afdfe4` → origin/main. BTY_RELEASE_GATE_CHECK·SPRINT_LOG. **277 / 2108** · build PASS.
 
-**이번 런 (2026-03-18):** **`docs/CURSOR_TASK_BOARD.md` → SPRINT 65.** **할 일 읽는 법:** `docs/agent-runtime/HOW_TO_READ_TASKS.md`. First **C5 Gate 65.** S64 C5·C4·C3·C6 [x] → 큐 보충 **S65** 10행 `[ ]`. `SPRINT_PLAN` **271**.
+**이번 런 (2026-03-18):** **`docs/CURSOR_TASK_BOARD.md` → SPRINT 66.** **할 일 읽는 법:** `docs/agent-runtime/HOW_TO_READ_TASKS.md`. First **C5 Gate 66.** S65 C5·C4·C3·C6 [x] → 큐 보충 **S66** 10행 `[ ]`. **`SPRINT_PLAN`은 요약용 — TASK는 보드 표만.** `SPRINT_PLAN` **272**.
+
+**[운영] S65 → S66:** C5·C4·C3·C6 전행 [x] · C1만 `[ ]` → **`PARALLEL_QUEUE_REFILL.md`** · 보드·`SPRINT_PLAN`·AUTO4·NEXT_BACKLOG·CURRENT_TASK 동기.
 
 **[C5] SPRINT 65 TASK 1·6 / 271 (Gate 65·엘리트 3차):** [x] **완료.** Gate 65 — **288 / 2148** · Build ✓ · BLOCKER 해제. 엘리트 §3 65차 기록 · PASS.
 

@@ -52,6 +52,7 @@ export default defineConfig({
             dependencies: ["setup-comeback"],
             testMatch: "**/journey.spec.ts",
             grep: /@comeback-journey/,
+            retries: 0,
             use: { storageState: comebackAuthFile },
           },
         ]

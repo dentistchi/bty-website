@@ -27,6 +27,8 @@ test.describe("Journey", () => {
   });
 
   test.describe("comeback user flow", () => {
+    /** Resume Journey가 updated_at을 갱신하면 재시도 시 모달이 안 뜸 → 이 describe만 retry 끔 */
+    test.describe.configure({ retries: 0 });
     test.use({ storageState: "e2e/.auth/comeback-user.json" });
 
     test(

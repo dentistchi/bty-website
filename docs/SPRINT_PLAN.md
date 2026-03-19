@@ -1,6 +1,8 @@
 # BTY SPRINT PLAN
 
-멀티 Cursor 스프린트의 **단일 진실(single source of truth)** 문서.
+멀티 Cursor 스프린트 **타임라인·요약·역사** 문서.
+
+**⚠️ TASK(할 일) 큐의 단일 진실은 이 파일이 아님.** **`docs/CURSOR_TASK_BOARD.md`의 "이번 런" 표**만 따른다. 본 문서는 보드와 **동기화용**이며, **불일치 시 보드가 우선.** Cursor는 **SPRINT_PLAN만 보고 OWNER별 `[ ]`를 추측하지 말 것.**
 
 ---
 
@@ -8,11 +10,11 @@
 
 | 우선 | 문서 | 보는 법 |
 |------|------|---------|
-| **1** | **`docs/CURSOR_TASK_BOARD.md`** | **"이번 런"** = **SPRINT 65** — 할 일 읽는 법 `HOW_TO_READ_TASKS.md`. First **C5 Gate 65** · 전 행 `[ ]`. |
-| **2** | **본 파일 `SPRINT 271`** | 보드 **65**과 동기. |
-| **작업 없다고 할 때** | 보드 **전부 [x]**면 | **SPRINT 66** + 본 문서 272. |
+| **1** | **`docs/CURSOR_TASK_BOARD.md`** | **"이번 런"** 표만 — 자기 **OWNER(C1~C6)** 열의 **`[ ]`** = 할 일. 상세: `docs/agent-runtime/HOW_TO_READ_TASKS.md`. |
+| **2** | **본 파일 `SPRINT 272`** | 보드 **SPRINT 66**과 동기(요약). **여기 표에 `[ ]`가 없어도 보드에 있을 수 있음.** |
+| **작업 없다고 할 때** | 자기 OWNER **전부 [x]**면 | 정상. C1이 **`PARALLEL_QUEUE_REFILL.md`** 로 다음 이번 런 10행 오픈. |
 
-*이전에는 251만 닫고 252에 빈 칸을 안 넣어서, SPRINT_PLAN만 보던 Cursor는 "큐 없음"으로 보였음.*
+*SPRINT_PLAN만 보면 "전 행 `[ ]`" 같은 **과거 문구**에 걸려 병렬 창이 할 일이 없다고 오해할 수 있음 — **반드시 보드 표를 연다.***
 
 ---
 
@@ -23,46 +25,72 @@
 
 ---
 
-## SPRINT 271 — **active (보드 SPRINT 65)**
+## SPRINT 272 — **active (보드 SPRINT 66)**
 
-- **할 일 읽는 법:** **`docs/agent-runtime/HOW_TO_READ_TASKS.md`**. **First Task = C5 Gate 65.** S64 **C5·C4·C3·C6 [x]** → 큐 보충 **S65** 10행 `[ ]`.
+- **할 일 읽는 법:** **`docs/agent-runtime/HOW_TO_READ_TASKS.md`**. **First Task = C5 Gate 66.** S65 **C5·C4·C3·C6 [x]** · C1만 `[ ]` → 큐 보충 **S66** 10행 `[ ]`.
 
-| 워커 | S65 |
+| 워커 | S66 |
 |------|-----|
 | **C5** | **1·6** `[ ]` |
 | **C1** | **2·3·5·7** `[ ]` |
-| **C4** | **4** `[x]` |
+| **C4** | **4** `[ ]` |
 | **C3** | **8·9** `[ ]` |
-| **C6** | **10** `[x]` |
+| **C6** | **10** `[ ]` |
 | **C2** | C5 **TASK1** 후·다음 push Gate |
 
-### C5 — UI ENGINEER (271)
+### C5 — UI ENGINEER (272)
 
-- [x] **TASK 1** [VERIFY] Release Gate Foundry **65**차.
-- [x] **TASK 6** [VERIFY] 엘리트 3차 §3.
+- [ ] **TASK 1** [VERIFY] Release Gate Foundry **66**차.
+- [ ] **TASK 6** [VERIFY] 엘리트 3차 §3.
 
-**Notes:** S65 TASK1 완료 — Gate 65 **288/2148** · self-healing-ci PASS (BLOCKER 해제). TASK6 완료 — 엘리트 §3 65차 기록.
+### C1 — COMMANDER (272)
 
-### C1 — COMMANDER (271)
+- [ ] **TASK 2·3·5·7** — NEXT_BACKLOG·문서 178·179·180차·§ (S65 잔여 흡수).
 
-- [ ] **TASK 2·3·5·7** — NEXT_BACKLOG·문서 178·179·180차·§ (S64 잔여 흡수).
+### C4 — API ENGINEER (272)
 
-### C4 — API ENGINEER (271)
+- [ ] **TASK 4** — 접근성 1곳 (**`/bty`·My Page·Growth·Dojo History·Integrity 제외**).
 
-- [x] **TASK 4** — 접근성 1곳: Integrity 페이지 `main` aria-label → `integrityMainRegionAria` (ko/en).
+### C3 — DOMAIN ENGINEER (272)
 
-**Notes:** S65 TASK4 완료 — 역지사지 메인 랜드마크 i18n 적용.
+- [ ] **TASK 8** — Arena domain 순수 규칙+테스트 1건.
+- [ ] **TASK 9** — Arena API route 테스트 1건.
 
-### C3 — DOMAIN ENGINEER (271)
+### C6 — TESTFIX ENGINEER (272)
 
-- [x] **TASK 8** — Arena domain 순수 규칙+테스트 1건.
-- [x] **TASK 9** — Arena API route 테스트 1건.
+- [ ] **TASK 10** — q237-smoke + self-healing-ci · `SPRINT_LOG`.
 
-**Notes:** **CONTINUE(C3) S65** — TASK 8 `leaderboardNearMe.edges.test.ts` · TASK 9 `POST /api/arena/beginner-run` **401**·**400**.
+---
 
-### C6 — TESTFIX ENGINEER (271)
+## SPRINT 271 — closed (보드 SPRINT 65)
 
-- [x] **TASK 10** — q237-smoke **7/7** · **286 / 2140** · Build ✓ · `SPRINT_LOG`.
+- **종료:** C5 **1·6**·C4 **4**·C3 **8·9**·C6 **10** **[x]** · C1 **2·3·5·7** → **S66** 흡수. Gate **65** **288/2148** ✓.
+
+| 워커 | (65) |
+|------|------|
+| **C5** | **1·6** **[x]** |
+| **C1** | → **66** |
+| **C4** | **4** **[x]** |
+| **C3** | **8·9** **[x]** |
+| **C6** | **10** **[x]** |
+
+### C5 — UI ENGINEER (271) — closed
+
+- [x] **TASK 1** Gate **65**차 — **288 / 2148** ✓.
+- [x] **TASK 6** 엘리트 3차 §3 65차.
+
+### C4 — API ENGINEER (271) — closed
+
+- [x] **TASK 4** — Integrity `integrityMainRegionAria` (ko/en).
+
+### C3 — DOMAIN ENGINEER (271) — closed
+
+- [x] **TASK 8** — `leaderboardNearMe.edges.test.ts`.
+- [x] **TASK 9** — `POST /api/arena/beginner-run` 401·400.
+
+### C6 — TESTFIX ENGINEER (271) — closed
+
+- [x] **TASK 10** — q237 **7/7** · **286 / 2140** ✓.
 
 ---
 

@@ -6,6 +6,7 @@ Summary of gate/integration runs (C7). Major sprint state changes. C1 REFRESH re
 
 ## 2026-03-18
 
+- **PARALLEL_QUEUE_REFILL → SPRINT 66:** S65 **C5·C4·C3·C6 [x]** · C1만 `[ ]` → **272** · 10행 전부 `[ ]` · **First Gate 66** · `SPRINT_PLAN` 상단 **“TASK는 보드만”** 명시 · 보드·`AUTO4_PROMPTS`·`NEXT_BACKLOG`·`CURRENT_TASK` 동기.
 - **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (288 files, 2148 tests), Build PASS. Overall PASS. Owner to fix: —. *(SPRINT 271 / S65)*
 - **REFRESH:** **SPRINT 65** — C5 **1·6**·C4 **4**·C3 **8·9**·C6 **10** **[x]** · 잔여 **C1 2·3·5·7** 만 · `board:queue-check` **exit 2 (C3·C4·C5·C6 기아)** → **C1 `PARALLEL_QUEUE_REFILL.md`** (S66 10행) 필수. C2~C6×5 인라인.
 - **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (288 files, 2148 tests), Build PASS. Overall PASS. Owner to fix: —. *(SPRINT 271 / S65; latest)*

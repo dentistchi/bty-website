@@ -7,7 +7,7 @@ alwaysApply: true
 
 이 폴더가 **bty-app**일 때, **CONTINUE** / 작업 큐 확인 시:
 
-- **할 일 단일 진실** = **상위 폴더의 docs** → **`../docs/CURSOR_TASK_BOARD.md`**
+- **할 일 단일 진실** = **상위 폴더의 docs** → **`../docs/CURSOR_TASK_BOARD.md`** (`../docs/SPRINT_PLAN.md`는 요약용 — TASK는 보드 표만)
 - 그 파일에서 **"이번 런"** 섹션의 **SPRINT N** 표(TASK 1~10)를 읽는다.
 - **현재 배치** = 표 제목 **SPRINT N** — 열 때마다 확인. 자기 **OWNER(C1~C6)** 행 중 **[ ]** 인 TASK가 할 일. 별도 "C2 TASK QUEUE" 파일 없음.
 - **할 일 읽는 법**: **`../docs/agent-runtime/HOW_TO_READ_TASKS.md`** 참고.
