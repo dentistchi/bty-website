@@ -37,8 +37,10 @@
 
 ### C5 — UI ENGINEER (270)
 
-- [ ] **TASK 1** [VERIFY] Release Gate A~F Foundry **64차**.
-- [ ] **TASK 6** [VERIFY] 엘리트 3차 체크리스트 · §3.
+- [x] **TASK 1** [VERIFY] Release Gate A~F Foundry **64차**.
+- [x] **TASK 6** [VERIFY] 엘리트 3차 체크리스트 · §3.
+
+**Notes:** S64 TASK1 완료 — Gate 64 **286/2140** · self-healing-ci PASS. TASK6 완료 — 엘리트 §2 6항목·§3 64차 기록.
 
 ### C4 — API ENGINEER (270)
 
@@ -710,7 +712,7 @@ C5 TASK1 is unblocked and can proceed with UI and navigation implementation base
 - **overall:** PASS
 - **Owner to fix:** —
 
-**Last run:** 2026-03-18 — self-healing-ci.sh · Lint PASS · Test PASS (**284 files** / **2131 tests**) · Build PASS · **Overall PASS** (SPRINT 270 C7 · S64).
+**Last run:** 2026-03-18 — self-healing-ci.sh · Lint PASS · Test PASS (**286 files** / **2140 tests**) · Build PASS · **Overall PASS** (SPRINT 270 C7 · S64 · latest).
 
 *C2 문서 게이트:* `cce5374`·`BTY_RELEASE_GATE_CHECK`. *이전 배포 풀 스위트 참고:* `58b8342` 264 files.*
 
