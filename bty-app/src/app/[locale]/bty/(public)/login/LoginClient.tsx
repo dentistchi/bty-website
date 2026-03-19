@@ -87,8 +87,11 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
         </p>
 
         <form onSubmit={onSubmit}>
-          <label className="block text-sm mb-1">{t.email}</label>
+          <label htmlFor="login-email" className="block text-sm mb-1">
+            {t.email}
+          </label>
           <input
+            id="login-email"
             className="w-full border rounded-lg px-3 py-2 mb-3"
             placeholder="you@example.com"
             autoComplete="email"
@@ -96,8 +99,11 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
             onChange={(e) => setEmail(e.target.value)}
           />
 
-          <label className="block text-sm mb-1">{t.password}</label>
+          <label htmlFor="login-password" className="block text-sm mb-1">
+            {t.password}
+          </label>
           <input
+            id="login-password"
             className="w-full border rounded-lg px-3 py-2 mb-3"
             placeholder="••••••••"
             type="password"

@@ -31,7 +31,7 @@
 |------|-----|
 | **C5** | **1·6** `[ ]` |
 | **C1** | **2·3·5·7** `[ ]` |
-| **C4** | **4** `[ ]` |
+| **C4** | **4** `[x]` |
 | **C3** | **8·9** `[ ]` |
 | **C6** | **10** `[x]` |
 
@@ -40,10 +40,18 @@
 - [ ] **TASK 1** [VERIFY] Release Gate A~F Foundry **64차**.
 - [ ] **TASK 6** [VERIFY] 엘리트 3차 체크리스트 · §3.
 
+### C4 — API ENGINEER (270)
+
+- [x] **TASK 4** — Center/Foundry 추가 접근성 1곳: Dojo History 페이지 `section role=region` + `dojoHistoryMainRegionAria` (ko/en).
+
+**Notes:** S64 TASK4 완료 — Dojo 과거 진단 이력 메인 영역 region·i18n aria 추가.
+
 ### C3 — DOMAIN ENGINEER (270)
 
-- [ ] **TASK 8** — Arena domain (S63 잔여).
-- [ ] **TASK 9** — Arena API route (S63 잔여).
+- [x] **TASK 8** — Arena domain (S63 잔여).
+- [x] **TASK 9** — Arena API route (S63 잔여).
+
+**Notes:** **CONTINUE(C3) 2026-03-18** — TASK 8 `leaderboardWeekId.edges.test.ts` · TASK 9 `GET /api/arena/league/active` **401**·**503**·**200**.
 
 ### C6 — TESTFIX ENGINEER (270)
 

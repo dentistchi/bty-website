@@ -10,7 +10,9 @@
 
 **[C5] SPRINT 63 TASK 1·6 / 269**: [x] **완료.** Gate **63** — **284 / 2131**·q237 **7/7**·Build ✓·엘리트 §3 **PASS** · `arenaRunState.edges.test.ts` tsc 수정.
 
-**[C6] SPRINT 64 TASK10 / 270**: [x] **완료.** q237 **7/7** ✓ · **284 / 2131** ✓ · Build ✓ (S62·S63 C6 이월).
+**[C6] SPRINT 64 TASK10 / 270**: [x] **완료.** q237 **7/7** ✓ · **284 / 2131** ✓ · Build ✓ (TASK10 재오픈 후 재실행).
+
+**[C4] SPRINT 64 TASK4 / 270**: [x] **완료.** Center/Foundry 접근성 1곳 — Dojo History `section role=region` + `dojoHistoryMainRegionAria` (ko/en).
 
 **[운영] S62 → S63:** C3 전행 [x] → `PARALLEL_QUEUE_REFILL.md` §3.
 

@@ -17,9 +17,12 @@ setup("authenticate default user", async ({ page }) => {
 
   await page.goto(`${baseUrl}/en/bty/login?next=/en/bty`, { waitUntil: "domcontentloaded" });
 
-  await page.getByLabel(/email/i).fill(email);
-  await page.getByLabel(/password/i).fill(password);
-  await page.getByRole("button", { name: /sign in|login|로그인/i }).click();
+  const emailInput = page.getByLabel(/email/i).or(page.getByPlaceholder("you@example.com"));
+  const passwordInput = page.getByLabel(/password/i).or(page.getByPlaceholder("••••••••"));
+  await emailInput.waitFor({ state: "visible", timeout: 15_000 });
+  await emailInput.fill(email);
+  await passwordInput.fill(password);
+  await page.getByRole("button", { name: /sign in|login|로그인|Log in/i }).click();
 
   await page.waitForURL(/\/en\/(bty|bty-arena|growth|my-page)/, { timeout: 45_000 });
   await expect(page).toHaveURL(/\/en\//);

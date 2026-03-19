@@ -676,6 +676,8 @@ export type Messages = {
     resultScoresInsightRegionAria: string;
     /** Dojo 50문항 페이지 메인 랜드마크 */
     dojoPageMainAria: string;
+    /** Dojo 과거 진단 이력 페이지 메인 영역 */
+    dojoHistoryMainRegionAria: string;
   };
   /** Arena 런 페이지·컴포넌트 문구. locale=ko 시 한국어만 표시(render-only). */
   arenaRun: {
@@ -1573,6 +1575,7 @@ const ko: Messages = {
     questionStepSectionAria: "현재 문항 및 응답 선택",
     resultScoresInsightRegionAria: "영역별 점수 및 코멘트",
     dojoPageMainAria: "Dojo 역량 진단 50문항",
+    dojoHistoryMainRegionAria: "Dojo 과거 진단 이력 — 제출일·요약 목록",
   },
   arenaRun: {
     reflectionPrompt: "한 문장으로: 이 판에서 가져갈 것은?",
@@ -2453,6 +2456,7 @@ const en: Messages = {
     questionStepSectionAria: "Current question and response options",
     resultScoresInsightRegionAria: "Scores by area and comment",
     dojoPageMainAria: "Dojo 50-item assessment",
+    dojoHistoryMainRegionAria: "Dojo past assessment history — submission date and summary list",
   },
   arenaRun: {
     reflectionPrompt: "In one sentence: what will you take from this scenario?",

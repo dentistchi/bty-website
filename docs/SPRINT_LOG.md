@@ -11,7 +11,7 @@ Summary of gate/integration runs (C7). Major sprint state changes. C1 REFRESH re
 - **PARALLEL_QUEUE_REFILL → SPRINT 64:** S63 C5 **1·6 [x]** → **270** · First **Gate 64** · **284/2131** · `arenaRunState.edges.test.ts` **completedAt** tsc.
 - **C5 SPRINT 63 / 269:** Gate **63** · 엘리트 **PASS** · **284/2131** · q237 **7/7** · Build ✓.
 - **PARALLEL_QUEUE_REFILL → SPRINT 63:** S62 C3 **8·9 [x]** → **269** · C3 **arenaRunState.edges**·**lab/complete POST** · **284/2131** ✓.
-- **C6 SPRINT 64 / 270:** `test:q237-smoke` **7/7** ✓ · **284 / 2131** ✓ · Build ✓. 보드 S64 TASK10 [x]·S62·S63 C6 이월 종료·`SPRINT_PLAN` **270**.
+- **C6 SPRINT 64 / 270 (재실행):** TASK10 재 `[ ]` 후 `test:q237-smoke` **7/7** ✓ · **284 / 2131** ✓ · Build ✓. 보드 S64 TASK10 [x]·`SPRINT_PLAN` **270**.
 - **PARALLEL_QUEUE_REFILL → SPRINT 62:** S61 C5 **1·6 [x]** · `check-parallel-task-queue` **exit 2 (C5 기아)** → **268** · 10행 `[ ]` · First **Gate 62** · 보드·`SPRINT_PLAN`·`AUTO4_PROMPTS`·`NEXT_BACKLOG`·`CURRENT_TASK`·`BTY_RELEASE_GATE_CHECK` 동기.
 - **GATE (C7)**: `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (282 files, 2125 tests), Build PASS. Overall PASS. Owner to fix: —. *(SPRINT 267 / S61)*
 - **REFRESH:** **SPRINT 61** — **10행 `[ ]`** · First **C5 Gate 61** · C1 **2·3·5·7** · C4 **4** (S60 TASK4 화면 제외) · C3 **8·9** · C5 **6** · C6 **10** · S60 **282/2125** · `board:queue-check` **OK.** C2~C6×5 인라인.

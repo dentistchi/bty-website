@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { CardSkeleton, EmptyState } from "@/components/bty-arena";
+import { getMessages } from "@/lib/i18n";
 import type { DojoSubmissionRow, DojoSubmissionsResponse } from "@/lib/bty/foundry/dojoSubmitService";
 
 const SUMMARY_LABELS_KO: Record<string, string> = {
@@ -114,10 +115,12 @@ export default function DojoHistoryClient({ locale = "ko" }: { locale?: string }
   }
 
   const retakeLabel = isEn ? "Retake" : "다시 진단하기";
+  const tDojo = getMessages(isEn ? "en" : "ko").dojoResult;
 
   return (
     <div className="max-w-xl mx-auto px-6 py-10" role="main" aria-labelledby="dojo-history-heading">
       <h1 id="dojo-history-heading" className="text-2xl font-semibold mb-4">{title}</h1>
+      <section role="region" aria-label={tDojo.dojoHistoryMainRegionAria}>
       <ul className="list-none p-0 m-0 space-y-3" role="list" aria-label={title}>
         {submissions.map((row) => {
           const label = summaryLabels[row.summary_key] ?? row.summary_key;
@@ -155,6 +158,7 @@ export default function DojoHistoryClient({ locale = "ko" }: { locale?: string }
           {retakeLabel}
         </Link>
       </div>
+      </section>
     </div>
   );
 }
