@@ -34,6 +34,13 @@ export default defineConfig({
       ? [{ name: "setup-comeback", testMatch: /auth-comeback\.setup\.ts$/ }]
       : []),
     { name: "public", testMatch: "**/*.public.spec.ts" },
+    /** BTY leadership loop — Arena → Growth → My Page (uses storageState when setup exists). */
+    {
+      name: "bty-loop",
+      testMatch: "**/e2e/bty/**/*.spec.ts",
+      dependencies: ["setup"],
+      use: { storageState: authFile },
+    },
     {
       name: "chromium",
       dependencies: ["setup"],
@@ -41,6 +48,7 @@ export default defineConfig({
         /auth\.setup\.ts$/,
         /auth-comeback\.setup\.ts$/,
         /\.public\.spec\.ts$/,
+        /e2e\/bty\//,
       ],
       grepInvert: /@comeback-journey/,
       use: { storageState: authFile },

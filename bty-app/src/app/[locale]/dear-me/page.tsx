@@ -1,8 +1,6 @@
 import { Suspense } from "react";
 import DearMeClient from "./DearMeClient";
-import { getMessages } from "@/lib/i18n";
-import type { Locale } from "@/lib/i18n";
-import { PageLoadingFallback } from "@/components/bty-arena";
+import { DearMeLoadingShell } from "./DearMeLoadingShell";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -18,11 +16,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function DearMePage({ params }: Props) {
   const { locale } = await params;
-  const lang = locale === "ko" ? "ko" : "en";
-  const t = getMessages(lang as Locale).center;
 
   return (
-    <Suspense fallback={<PageLoadingFallback message={t.loading} />}>
+    <Suspense fallback={<DearMeLoadingShell />}>
       <DearMeClient locale={locale} />
     </Suspense>
   );

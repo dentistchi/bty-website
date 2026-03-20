@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import {
+  ARENA_AVATAR_UPLOAD_MAX_BYTES,
+  ARENA_AVATAR_UPLOAD_ALLOWED_MIME_TYPES,
+  isAllowedArenaAvatarMimeType,
+} from "@/domain/rules/arenaAvatarUploadLimits";
 
 const AVATAR_BUCKET = "avatars";
-const MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
 const EXT_MAP: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -33,18 +36,18 @@ export async function POST(req: NextRequest) {
   }
 
   const type = file.type as string;
-  if (!ALLOWED_TYPES.includes(type as (typeof ALLOWED_TYPES)[number])) {
+  if (!isAllowedArenaAvatarMimeType(type)) {
     const out = NextResponse.json(
-      { error: "INVALID_TYPE", allowed: [...ALLOWED_TYPES] },
+      { error: "INVALID_TYPE", allowed: [...ARENA_AVATAR_UPLOAD_ALLOWED_MIME_TYPES] },
       { status: 400 }
     );
     copyCookiesAndDebug(base, out, req, true);
     return out;
   }
 
-  if (file.size > MAX_SIZE_BYTES) {
+  if (file.size > ARENA_AVATAR_UPLOAD_MAX_BYTES) {
     const out = NextResponse.json(
-      { error: "FILE_TOO_LARGE", maxBytes: MAX_SIZE_BYTES },
+      { error: "FILE_TOO_LARGE", maxBytes: ARENA_AVATAR_UPLOAD_MAX_BYTES },
       { status: 400 }
     );
     copyCookiesAndDebug(base, out, req, true);

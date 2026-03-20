@@ -92,4 +92,26 @@ describe("GET /api/arena/mentor-requests", () => {
       mentorId: "m1",
     });
   });
+
+  /** S82 C3: Supabase elite_mentor_requests 조회 실패 → 500. */
+  it("returns 500 when elite_mentor_requests query fails", async () => {
+    mockRequireAdminEmail.mockResolvedValue({ ok: true, user: { id: "a1" } });
+    mockGetSupabaseAdmin.mockReturnValue({
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            order: () =>
+              Promise.resolve({
+                data: null,
+                error: { message: "relation not found" },
+              }),
+          }),
+        }),
+      }),
+    });
+
+    const res = await GET(req());
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toBe("relation not found");
+  });
 });

@@ -167,6 +167,10 @@ export type Messages = {
     replyActionsLabel: string;
     /** Dear Me 페이지 푸터(Center 링크) 영역 라벨 */
     footerLabel: string;
+    /** `/[locale]/dear-me` Suspense fallback `<main>` 라벨 */
+    dearMeSuspenseMainRegionAria: string;
+    /** `/[locale]/center` Suspense fallback `<main>` 라벨 */
+    centerSuspenseMainRegionAria: string;
   };
   bty: {
     title: string;
@@ -270,8 +274,14 @@ export type Messages = {
     weeklySeasonActivityAria: string;
     /** 대시보드 페이지 h1 */
     dashboardPageTitle: string;
+    /** 대시보드 페이지 메인 랜드마크 (Foundry) */
+    dashboardMainRegionAria: string;
     /** Foundry 허브 메인 랜드마크 */
     foundryHubMainLandmarkAria: string;
+    /** Foundry 허브 Suspense fallback `<main>` 라벨 */
+    foundryHubSuspenseMainRegionAria: string;
+    /** bty(protected) 인덱스 메인 랜드마크 — Arena·Center·Foundry 허브 */
+    btyIndexMainRegionAria: string;
     /** Foundry 기능 카드 그리드 */
     foundryFeatureCardsRegionAria: string;
     foundryBackToBtyHome: string;
@@ -326,6 +336,10 @@ export type Messages = {
     /** 대시보드 상단 카드 내 "Today's growth" 섹션으로 가는 링크 문구 */
     todayGrowthLink: string;
     footerHint: string;
+    /** 자존감 50문항 진단 폼 페이지 메인 랜드마크 (Center 계열) */
+    assessmentMainRegionAria: string;
+    /** `/[locale]` 랜딩 허브 — Arena·Foundry·Center 카드 진입 */
+    landingHubMainRegionAria: string;
   };
   safeMirror: {
     title: string;
@@ -448,6 +462,12 @@ export type Messages = {
     errorLoad: string;
     /** outfitKey → 표시 라벨 (en/ko) */
     outfitLabels: Record<string, string>;
+    /** 대시보드 Avatar 카드 — 레벨 악세·현재 옷·캐릭터 선택 제목 */
+    currentLevelAccessories: string;
+    currentOutfitPrefix: string;
+    pickCharacterTitle: string;
+    /** 아바타 설정(/profile/avatar) 메인 랜드마크 */
+    avatarSettingsMainRegionAria: string;
   };
   arenaMembership: {
     label: string;
@@ -514,6 +534,8 @@ export type Messages = {
     /** Elite 멘토·심화 대화 링크 목록 접근성 */
     mentorDeepLinksListAria: string;
     loadingElitePageAria: string;
+    /** Elite 페이지 메인 랜드마크 (Foundry) */
+    elitePageMainRegionAria: string;
     pageTitle: string;
     pageIntroElite: string;
     badgesSectionTitle: string;
@@ -521,6 +543,8 @@ export type Messages = {
   };
   /** Admin: 멘토 신청 큐·승인 UI. API 응답만 표시(render-only). */
     mentorRequestAdmin: {
+    /** Admin mentor-requests page `<main>` landmark (ko/en). */
+    mainRegionAria: string;
     title: string;
     description: string;
     empty: string;
@@ -544,6 +568,45 @@ export type Messages = {
     debugLink: string;
     usersLink: string;
     arenaMembershipLink: string;
+  };
+  /** Admin: 일반 사용자 계정 CRUD UI. API만 호출(render-only). */
+  adminUsers: {
+    /** Admin users page `<main>` landmark (ko/en). */
+    mainRegionAria: string;
+  };
+  /** Admin: Quality Events 허브(stub). render-only. */
+  adminQuality: {
+    /** Admin quality page `<main>` landmark (ko/en). */
+    mainRegionAria: string;
+  };
+  /** Admin: 조직 목록(API만). render-only. */
+  adminOrganizations: {
+    /** Admin organizations page `<main>` landmark (ko/en). */
+    mainRegionAria: string;
+  };
+  /** Admin: Arena 멤버십 승인 큐. API만(render-only). */
+  adminArenaMembership: {
+    /** Admin arena-membership page `<main>` landmark (ko/en). */
+    mainRegionAria: string;
+  };
+  /** Admin 로그인 (세션 쿠키). render-only. */
+  adminLogin: {
+    /** Admin login page `<main>` landmark (ko/en). */
+    mainRegionAria: string;
+    heading: string;
+    emailPlaceholder: string;
+    passwordPlaceholder: string;
+    loginSubmit: string;
+    signingIn: string;
+    loginSubmitAriaBusy: string;
+    loginSubmitAriaIdle: string;
+    loginFailed: string;
+  };
+  /** `/[locale]/admin` 허브 — 디버그 등으로 안내 이동. */
+  adminHub: {
+    /** Admin hub `<main>` landmark while redirecting (ko/en). */
+    mainRegionAria: string;
+    redirecting: string;
   };
   /** Foundry 멘토 허브(1:1 대화). */
   mentorPage: {
@@ -578,6 +641,11 @@ export type Messages = {
     loadError: string;
     /** 2차 각성 페이지 로딩 시 메인 랜드마크 라벨. */
     awakeningLoadingLabel: string;
+    /** 2차 각성 페이지 메인 랜드마크: 오류·완료·해금 조건·의식 */
+    awakeningMainRegionAriaError: string;
+    awakeningMainRegionAriaCompleted: string;
+    awakeningMainRegionAriaEligibility: string;
+    awakeningMainRegionAriaRitual: string;
     /** Healing 인덱스: 단계·로딩·에러 영역 접근성 */
     phaseProgressRegionAria: string;
     /** 2차 각성: 1~3막 의식 콘텐츠 묶음 */
@@ -680,6 +748,8 @@ export type Messages = {
     dojoPageMainAria: string;
     /** Dojo 과거 진단 이력 페이지 메인 영역 */
     dojoHistoryMainRegionAria: string;
+    /** Dojo 결과 페이지(점수·코멘트·액션) 메인 영역 */
+    dojoResultMainRegionAria: string;
   };
   /** Arena 런 페이지·컴포넌트 문구. locale=ko 시 한국어만 표시(render-only). */
   arenaRun: {
@@ -754,6 +824,12 @@ export type Messages = {
     inProgress: string;
     /** POST reflect 실패 시(성찰 저장은 됨) */
     reflectDeepeningUnavailable: string;
+    /** `/bty-arena/run` 레벨·세션 준비 로딩 */
+    runPageLevelCheckMainRegionAria: string;
+    /** 입문 경로 게이트(리다이렉트 전) */
+    runPageBeginnerPathMainRegionAria: string;
+    /** 시나리오 없음 빈 상태 */
+    runPageNoScenarioMainRegionAria: string;
   };
   /** PROJECT_BACKLOG §8: 대시보드 감정 스탯 카드 빈 상태·에러 */
   emotionalStats: {
@@ -776,6 +852,8 @@ export type Messages = {
     avatarSettingsLink: string;
     /** 저장 버튼 접근성(스크린 리더용) */
     saveButtonAriaLabel: string;
+    /** 프로필 화면 주 랜드마크(표시 이름·아바타 링크) */
+    profileMainRegionAria: string;
   };
   /** Phase 1 스텁: Arena wireframe / Growth / My Page 공통 문구·네비 */
   uxPhase1Stub: {
@@ -878,6 +956,48 @@ export type Messages = {
     arenaHubSeasonEndsLabel: string;
     arenaHubSummaryRegionAria: string;
     arenaHubSummaryLoadError: string;
+    /** `/[locale]/bty-arena/hub` ScreenShell `<main>` 랜드마크 */
+    arenaHubMainRegionAria: string;
+    /** `/[locale]/bty-arena` 미션 로비(세션 준비 후) `<main>` 랜드마크 */
+    arenaMissionLobbyMainRegionAria: string;
+    /** 미션 로비 세션 hydration 대기 `<main>` 랜드마크 */
+    arenaMissionLobbyLoadingMainRegionAria: string;
+    /** `/bty-arena/play` 로딩 `<main>` 랜드마크 */
+    arenaMissionPlayLoadingMainRegionAria: string;
+    /** `/bty-arena/play` 플레이 단계 `<main>` 랜드마크 */
+    arenaMissionPlayMainRegionAria: string;
+    /** `/bty-arena/result` (미션 결정 기록·해석) 로딩 `<main>` 랜드마크 */
+    arenaMissionResultLoadingMainRegionAria: string;
+    /** `/bty-arena/result` 본문 `<main>` 랜드마크 */
+    arenaMissionResultMainRegionAria: string;
+    /** `/bty-arena/play/resolve` 로딩 `<main>` 랜드마크 */
+    arenaResolveSessionLoadingMainRegionAria: string;
+    /** `/bty-arena/play/resolve` 본문 `<main>` 랜드마크 */
+    arenaResolveSessionMainRegionAria: string;
+    /** `/bty-arena/lab` Leader Lab `<main>` 랜드마크 */
+    arenaLabMainRegionAria: string;
+    arenaLabTitle: string;
+    arenaLabLead: string;
+    arenaLabRemainingTodayLabel: string;
+    /** `남은/전체` 숫자 뒤에 붙는 접미사 (예: " 회 남음" / " remaining") */
+    arenaLabRemainingSuffix: string;
+    /** 사용 횟수 줄 접두 (값은 숫자로 이어짐) */
+    arenaLabUsedPrefix: string;
+    arenaLabBackToArena: string;
+    /** 사용량 API 실패 시 기본 문구 */
+    arenaLabUsageLoadError: string;
+    /** `/bty-arena/beginner` 시나리오 준비 중(첫 페인트) */
+    arenaBeginnerPathInitMainRegionAria: string;
+    /** `/bty-arena/beginner` 7단계 플로 `<main>` */
+    arenaBeginnerPathMainRegionAria: string;
+    /** `/bty-arena/beginner` 완료·결과 화면 `<main>` */
+    arenaBeginnerPathCompleteMainRegionAria: string;
+    /** 상단 진행 꼬리말 — 입문/Beginner */
+    arenaBeginnerPathTrackLabel: string;
+    /** beginner-complete 요청 처리 중 */
+    arenaBeginnerPathSubmittingAria: string;
+    /** `/bty-arena/record` (기록 요약 스텁) ScreenShell `<main>` 랜드마크 */
+    arenaRecordPageMainRegionAria: string;
     arenaResultEyebrow: string;
     arenaResultRecordedTitle: string;
     arenaResultRecordedSubtitle: string;
@@ -900,6 +1020,143 @@ export type Messages = {
     growthCardGuidanceDesc: string;
     growthCardJourneyTitle: string;
     growthCardJourneyDesc: string;
+    /** Arena → Growth reflection entry */
+    growthReflectionRegionAria: string;
+    growthReflectionEyebrow: string;
+    growthReflectionTitle: string;
+    growthReflectionSubtitle: string;
+    growthReflectionFocusLabel: string;
+    growthReflectionCueLabel: string;
+    growthReflectionOpenCta: string;
+    growthReflectionSuggestedTrack: string;
+    growthReflectionBackHub: string;
+    growthReflectionNoSeed: string;
+    growthRecoveryCardTitle: string;
+    growthRecoveryCardBody: string;
+    /** Growth reflection entry (dark airlock) */
+    growthReflectionAirlockEyebrow: string;
+    growthReflectionAirlockTitle: string;
+    growthReflectionAirlockLead: string;
+    growthReflectionFocusChannel: string;
+    growthReflectionFocusClarity: string;
+    growthReflectionFocusTrust: string;
+    growthReflectionFocusRegulation: string;
+    growthReflectionFocusAlignment: string;
+    growthReflectionFocusReady: string;
+    growthReflectionSectionPrompt: string;
+    growthReflectionSectionCue: string;
+    growthReflectionSectionRecovery: string;
+    growthReflectionOpenReflection: string;
+    growthReflectionOpenRecovery: string;
+    growthReflectionReturnArena: string;
+    growthReflectionCueEmpty: string;
+    growthRecoveryPlaceholderTitle: string;
+    growthRecoveryPlaceholderLead: string;
+    /** Growth reflection writing (structured chamber) */
+    growthWritingGuidedLabel: string;
+    growthWritingHeadline: string;
+    growthWritingSubhead: string;
+    growthWritingPromptSection: string;
+    growthWritingCueInline: string;
+    growthWritingQ1Label: string;
+    growthWritingQ1: string;
+    growthWritingQ2Label: string;
+    growthWritingQ2: string;
+    growthWritingQ3Label: string;
+    growthWritingQ3: string;
+    growthWritingCommitmentLabel: string;
+    growthWritingCommitmentHelper: string;
+    growthWritingPlaceholder: string;
+    growthWritingCommitmentPlaceholder: string;
+    growthWritingSystemNote: string;
+    growthWritingSave: string;
+    growthWritingSaved: string;
+    growthWritingReturnArena: string;
+    growthWritingViewMyPage: string;
+    growthWritingNoSeed: string;
+    /** Growth history — reflection accumulation board */
+    growthHistoryRegionAria: string;
+    growthHistoryEyebrow: string;
+    growthHistoryHeadline: string;
+    growthHistoryLead: string;
+    growthHistoryEmpty: string;
+    growthHistoryRecoveryStrip: string;
+    growthHistoryFocusLabel: string;
+    growthHistoryCommitmentLabel: string;
+    growthHistoryRecoveryBadge: string;
+    growthHistoryBackGrowth: string;
+    growthCardHistoryTitle: string;
+    growthCardHistoryDesc: string;
+    growthHistoryReflectionCountLabel: string;
+    growthHistoryCapsuleClarity: string;
+    growthHistoryCapsuleTrust: string;
+    growthHistoryCapsuleRegulation: string;
+    growthHistoryCapsuleAlignment: string;
+    growthHistoryArenaReflectionBadge: string;
+    growthHistoryRecoveryTitle: string;
+    growthHistoryOpenRecoveryCta: string;
+    growthHistoryEmptyEyebrow: string;
+    growthHistoryEmptyTitle: string;
+    growthHistoryEmptySubtext: string;
+    growthHistoryCtaOpenLatest: string;
+    growthHistoryCtaReturnArena: string;
+    /** Recovery entry — re-entry gate (not failure / not warning) */
+    recoveryPromptLowRegulationTitle: string;
+    recoveryPromptLowRegulationBody: string;
+    recoveryPromptLowRegulationCue: string;
+    recoveryPromptRepeatedFrictionTitle: string;
+    recoveryPromptRepeatedFrictionBody: string;
+    recoveryPromptRepeatedFrictionCue: string;
+    recoveryPromptPressureAccumulationTitle: string;
+    recoveryPromptPressureAccumulationBody: string;
+    recoveryPromptPressureAccumulationCue: string;
+    recoveryEntryEyebrow: string;
+    recoveryEntryHeadline: string;
+    recoveryEntryLead: string;
+    recoveryEntryChannelLabel: string;
+    recoveryChannelLowRegulation: string;
+    recoveryChannelRepeatedFriction: string;
+    recoveryChannelPressureAccumulation: string;
+    recoveryChannelReady: string;
+    recoveryEntrySignalTitle: string;
+    recoveryEntryCueLabel: string;
+    recoveryEntryNoPrompt: string;
+    recoveryEntryQ1Label: string;
+    recoveryEntryQ1: string;
+    recoveryEntryQ2Label: string;
+    recoveryEntryQ2: string;
+    recoveryEntryQ3Label: string;
+    recoveryEntryQ3: string;
+    recoveryEntryPlaceholder: string;
+    recoveryEntrySystemStrip: string;
+    recoveryEntrySave: string;
+    recoveryEntryReturnGrowth: string;
+    recoveryEntryReturnArena: string;
+    recoveryEntryRegionAria: string;
+  };
+  /** /[locale]/journal — 플레이스홀더 저널 UI */
+  journal: {
+    title: string;
+    subtitle: string;
+    prompt: string;
+    placeholder: string;
+    save: string;
+    saveAria: string;
+    footerDrChi: string;
+    chatToggle: string;
+    chatToggleAria: string;
+    chatTitle: string;
+    chatClose: string;
+    chatCloseAria: string;
+    chatStub: string;
+    /** Journal 페이지 메인 랜드마크 (Center 계열 / dear 허브) */
+    journalMainRegionAria: string;
+    /** 저널 로딩·Suspense 시 `<main>` 라벨 */
+    journalLoadingMainRegionAria: string;
+    /** 비로그인 리다이렉트 시 `<main>` 라벨 */
+    journalRedirectingMainRegionAria: string;
+    /** 비로그인 리다이렉트 안내 문구 */
+    journalRedirectingMessage: string;
   };
   /** my-page progress / team / leader 스텁 카피 */
   myPageStub: {
@@ -1002,6 +1259,62 @@ export type Messages = {
     myPageTabTeam: string;
     myPageTabLeader: string;
     myPageTabAccount: string;
+    /** My Page leadership console (Arena accumulation) */
+    leadershipRegionAria: string;
+    leadershipCardInsight: string;
+    leadershipCardInfluence: string;
+    leadershipCardRhythm: string;
+    leadershipSectionSignalPattern: string;
+    leadershipSectionInfluence: string;
+    leadershipSectionNext: string;
+    leadershipLabelRelationalBias: string;
+    leadershipLabelOperationalBias: string;
+    leadershipLabelEmotionalRegulation: string;
+    leadershipLabelCommunicationWeight: string;
+    leadershipLabelTeamSignal: string;
+    leadershipLabelInfluencePattern: string;
+    leadershipLabelAlignmentTrend: string;
+    leadershipLinkArena: string;
+    leadershipLinkGrowth: string;
+    leadershipCoreTrace: string;
+    leadershipIdentityEyebrow: string;
+    leadershipSystemNoteTitle: string;
+    leadershipSystemNoteBodyDormant: string;
+    leadershipSystemNoteBodyActive: string;
+    leadershipAbbrevAir: string;
+    leadershipAbbrevTii: string;
+    leadershipAbbrevRhythm: string;
+    leadershipNextFocusHeading: string;
+    leadershipDevelopmentCueHeading: string;
+    leadershipSuggestedModuleLine: string;
+    leadershipReflectionLayerEyebrow: string;
+    leadershipReflectionDepthColumn: string;
+    leadershipReflectionIntegrationColumn: string;
+    leadershipRecoveryAwarenessColumn: string;
+    leadershipReflectionDepthEarly: string;
+    leadershipReflectionDepthActive: string;
+    leadershipReflectionDepthDeepening: string;
+    leadershipReflectionIntegrationForming: string;
+    leadershipReflectionIntegrationImproving: string;
+    leadershipRecoveryAwarenessStable: string;
+    leadershipRecoveryAwarenessDetected: string;
+    leadershipNextFocusWithReflectionRegulation: string;
+    /** Premium identity console — field sections */
+    leadershipFieldPatternTitle: string;
+    leadershipFieldInfluenceTitle: string;
+    leadershipReflectionPanelTitle: string;
+    leadershipRowRecentFocus: string;
+    leadershipRowIntegration: string;
+    leadershipReflectionTraceEmpty: string;
+    leadershipRecoveryTraceEmpty: string;
+    leadershipIdentityCrestAria: string;
+    leadershipRecoverySupportNote: string;
+    leadershipRecoveryStableNote: string;
+    leadershipSupportNoteLabel: string;
+    leadershipRecoveryStatusLabel: string;
+    leadershipSuggestedRouteHeading: string;
+    leadershipSuggestedRouteDefault: string;
+    leadershipSuggestedRouteRecovery: string;
   };
 };
 
@@ -1119,6 +1432,8 @@ const ko: Messages = {
     letterHistoryNoReply: "답장 없음",
     replyActionsLabel: "답장 후 액션",
     footerLabel: "Center로 돌아가기",
+    dearMeSuspenseMainRegionAria: "Dear Me — 불러오는 중",
+    centerSuspenseMainRegionAria: "Center — 불러오는 중",
   },
   bty: {
     title: "bty",
@@ -1195,7 +1510,10 @@ const ko: Messages = {
     leEngineTiiCertifiedBandAria: "팀 TII·AIR 요약·인증 상태",
     weeklySeasonActivityAria: "시즌·주간 XP 및 이벤트 수",
     dashboardPageTitle: "대시보드",
+    dashboardMainRegionAria: "대시보드 — Arena 진행·주간 랭킹·추천",
     foundryHubMainLandmarkAria: "Foundry 연습 허브",
+    foundryHubSuspenseMainRegionAria: "Foundry 연습 허브 — 불러오는 중",
+    btyIndexMainRegionAria: "bty 메인 — Arena·Center·Foundry 허브",
     foundryFeatureCardsRegionAria: "Dojo·역지사지·멘토·대시보드·Elite 연결",
     foundryBackToBtyHome: "← bty 메인",
     indexThreeHubsExplainer: "Arena는 시나리오·랭킹, Center는 쉼·편지, Foundry는 대시보드·멘토·연습입니다.",
@@ -1237,6 +1555,8 @@ const ko: Messages = {
     centerCta: "쉬러 가기",
     todayGrowthLink: "오늘의 성장",
     footerHint: "위에서 가고 싶은 곳을 골라주세요.",
+    assessmentMainRegionAria: "자존감 50문항 자가 진단",
+    landingHubMainRegionAria: "BTY 랜딩 — Arena·Foundry·Center 진입",
   },
   safeMirror: {
     title: "안전한 거울",
@@ -1378,6 +1698,10 @@ const ko: Messages = {
       fantasy_outfit_senior_plus: "시니어+",
       fantasy_outfit_master: "마스터",
     },
+    currentLevelAccessories: "현재 레벨 악세사리",
+    currentOutfitPrefix: "현재:",
+    pickCharacterTitle: "캐릭터 선택",
+    avatarSettingsMainRegionAria: "아바타 설정 — 테마·옷·악세사리",
   },
   arenaMembership: {
     label: "Arena 가입",
@@ -1433,6 +1757,7 @@ const ko: Messages = {
     unlockExposureLocked: "상위 5% 달성 시 Elite 전용 페이지·콘텐츠 이용 가능.",
     mentorDeepLinksListAria: "Elite 멘토·심화 대화 링크",
     loadingElitePageAria: "Elite 페이지 불러오는 중",
+    elitePageMainRegionAria: "Elite 전용 — 해금 조건·배지·멘토 신청",
     pageTitle: "Elite 전용",
     pageIntroElite:
       "주간 리더보드 상위 5%에 진입하셨습니다. 여기서는 Elite 전용 콘텐츠를 이용할 수 있습니다.",
@@ -1440,6 +1765,7 @@ const ko: Messages = {
     tableColActions: "동작",
   },
   mentorRequestAdmin: {
+    mainRegionAria: "멘토 신청 승인 — 관리",
     title: "멘토 대화 신청 승인",
     description: "Elite 멘토(1:1) 신청 큐. 승인/거절 처리합니다.",
     empty: "대기 중인 신청이 없습니다.",
@@ -1463,6 +1789,33 @@ const ko: Messages = {
     debugLink: "디버깅",
     usersLink: "사용자 관리",
     arenaMembershipLink: "Arena 멤버십 승인",
+  },
+  adminUsers: {
+    mainRegionAria: "사용자 계정 — 관리",
+  },
+  adminQuality: {
+    mainRegionAria: "품질 이벤트 — 관리",
+  },
+  adminOrganizations: {
+    mainRegionAria: "조직 목록 — 관리",
+  },
+  adminArenaMembership: {
+    mainRegionAria: "Arena 멤버십 승인 — 관리",
+  },
+  adminLogin: {
+    mainRegionAria: "관리자 로그인",
+    heading: "Admin 로그인",
+    emailPlaceholder: "이메일",
+    passwordPlaceholder: "비밀번호",
+    loginSubmit: "로그인",
+    signingIn: "로그인 중…",
+    loginSubmitAriaBusy: "로그인 처리 중",
+    loginSubmitAriaIdle: "관리자 로그인 제출",
+    loginFailed: "로그인에 실패했습니다.",
+  },
+  adminHub: {
+    mainRegionAria: "관리자 영역 — 이동 중",
+    redirecting: "관리 화면으로 이동 중…",
   },
   mentorPage: {
     deleteAllHistoryConfirm: "저장된 멘토 대화 기록을 모두 삭제할까요?",
@@ -1490,6 +1843,10 @@ const ko: Messages = {
     emptyPhase: "진도 단계 정보를 불러올 수 없습니다. Awakening으로 이동해 보세요.",
     loadError: "진도 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
     awakeningLoadingLabel: "2차 각성 불러오는 중",
+    awakeningMainRegionAriaError: "2차 각성 오류",
+    awakeningMainRegionAriaCompleted: "2차 각성 완료",
+    awakeningMainRegionAriaEligibility: "2차 각성 해금 조건",
+    awakeningMainRegionAriaRitual: "2차 각성 의식",
     phaseProgressRegionAria: "Healing 단계·진행 상태",
     awakeningRitualActsRegionAria: "2차 각성 의식 1~3막",
     healingBottomNavSectionAria: "각성·대시보드 이동",
@@ -1579,6 +1936,7 @@ const ko: Messages = {
     resultScoresInsightRegionAria: "영역별 점수 및 코멘트",
     dojoPageMainAria: "Dojo 역량 진단 50문항",
     dojoHistoryMainRegionAria: "Dojo 과거 진단 이력 — 제출일·요약 목록",
+    dojoResultMainRegionAria: "Dojo 역량 진단 결과 — 요약·영역 점수·다음 액션",
   },
   arenaRun: {
     reflectionPrompt: "한 문장으로: 이 판에서 가져갈 것은?",
@@ -1647,6 +2005,9 @@ const ko: Messages = {
     inProgress: "진행 중",
     reflectDeepeningUnavailable:
       "심화 해석은 잠시 불러오지 못했어요. 성찰은 저장되었습니다.",
+    runPageLevelCheckMainRegionAria: "미션 실행 — 레벨·세션 확인 중",
+    runPageBeginnerPathMainRegionAria: "입문 경로로 이동 중",
+    runPageNoScenarioMainRegionAria: "미션 실행 — 시나리오 없음",
   },
   emotionalStats: {
     emptyMessage: "아직 기록이 없어요. Arena나 챗에서 대화를 진행해 보세요.",
@@ -1665,6 +2026,7 @@ const ko: Messages = {
     errorTooLong: "표시 이름은 64자 이하여야 해요.",
     avatarSettingsLink: "아바타 설정",
     saveButtonAriaLabel: "표시 이름 저장",
+    profileMainRegionAria: "프로필 · 표시 이름 및 아바타 설정",
   },
   uxPhase1Stub: {
     bottomNavArena: "Arena",
@@ -1767,6 +2129,29 @@ const ko: Messages = {
     arenaHubSeasonEndsLabel: "시즌 종료까지",
     arenaHubSummaryRegionAria: "아레나 허브 — 주간 순위·시즌",
     arenaHubSummaryLoadError: "통계를 불러오지 못했습니다.",
+    arenaHubMainRegionAria: "아레나 허브 — 진입 카드·주간 순위·시즌",
+    arenaMissionLobbyMainRegionAria: "아레나 미션 로비 — 시나리오 진입·이어하기",
+    arenaMissionLobbyLoadingMainRegionAria: "아레나 미션 로비 — 불러오는 중",
+    arenaMissionPlayLoadingMainRegionAria: "미션 플레이 — 불러오는 중",
+    arenaMissionPlayMainRegionAria: "미션 플레이 — 실행·선택·성찰·이력",
+    arenaMissionResultLoadingMainRegionAria: "미션 결과 — 불러오는 중",
+    arenaMissionResultMainRegionAria: "미션 결과 — 결정 기록·해석·다음 행동",
+    arenaResolveSessionLoadingMainRegionAria: "세션 복원 — 불러오는 중",
+    arenaResolveSessionMainRegionAria: "세션 복원 — 새 시나리오·선택·성찰",
+    arenaLabMainRegionAria: "리더십 Lab — 일일 시도·남은 횟수",
+    arenaLabTitle: "Leadership Lab",
+    arenaLabLead: "오늘 하루 3회까지 시나리오를 완료하면 Core XP를 얻을 수 있습니다.",
+    arenaLabRemainingTodayLabel: "오늘 남은 횟수",
+    arenaLabRemainingSuffix: "회 남음",
+    arenaLabUsedPrefix: "사용한 횟수: ",
+    arenaLabBackToArena: "← Arena로 돌아가기",
+    arenaLabUsageLoadError: "불러오지 못했습니다.",
+    arenaBeginnerPathInitMainRegionAria: "입문 경로 — 시나리오 준비 중",
+    arenaBeginnerPathMainRegionAria: "입문 경로 — 상황·감정·결정·성찰",
+    arenaBeginnerPathCompleteMainRegionAria: "입문 경로 — 결과 요약",
+    arenaBeginnerPathTrackLabel: "입문",
+    arenaBeginnerPathSubmittingAria: "완료 처리 중",
+    arenaRecordPageMainRegionAria: "Arena 결과 — 결정 기록·XP·다음 행동",
     arenaResultEyebrow: "Arena 결과",
     arenaResultRecordedTitle: "결정이 기록되었습니다.",
     arenaResultRecordedSubtitle: "결과가 반영되었습니다.",
@@ -1777,7 +2162,7 @@ const ko: Messages = {
     growthHubSectionLabel: "성장",
     growthHubHeadline: "내면 상태를 다시 세웁니다.",
     growthHubLead: "해석·회복·정렬은 이 공간에서 이어집니다.",
-    growthHubCardsNavAria: "Dojo·Integrity·Guidance·Journey",
+    growthHubCardsNavAria: "Dojo·Integrity·Guidance·Journey·성장 기록",
     growthHubMainRegionAria: "성장 허브 — 내면 정렬·Dojo·Integrity·Guidance·Journey",
     growthCardDojoTitle: "Dojo",
     growthCardDojoDesc: "지금 상태를 가늠합니다",
@@ -1787,6 +2172,147 @@ const ko: Messages = {
     growthCardGuidanceDesc: "결정 패턴을 되돌아봅니다",
     growthCardJourneyTitle: "Journey",
     growthCardJourneyDesc: "28일 회복 경로를 이어갑니다",
+    growthReflectionRegionAria: "Arena에서 이어진 성찰 진입",
+    growthReflectionEyebrow: "연결된 성찰",
+    growthReflectionTitle: "직전 결정에서 이어지는 질문",
+    growthReflectionSubtitle:
+      "일반 일기가 아니라, 방금 밀봉한 선택과 연결된 해석형 질문입니다. 판단이 아니라 관찰에 머뭅니다.",
+    growthReflectionFocusLabel: "초점",
+    growthReflectionCueLabel: "개발 힌트",
+    growthReflectionOpenCta: "저널에서 펼치기",
+    growthReflectionSuggestedTrack: "추천 성장 트랙으로",
+    growthReflectionBackHub: "성장 허브로",
+    growthReflectionNoSeed:
+      "저장된 Arena 성찰 시드가 없습니다. Arena를 한 사이클 완료하면 이 화면이 채워집니다.",
+    growthRecoveryCardTitle: "회복·정렬 신호",
+    growthRecoveryCardBody:
+      "최근 결정에서 정서 조절 부담이 누적된 패턴이 보입니다. 잠시 속도를 낮추고 호흡·경계·신뢰 회복을 점검해 보세요. 탈락이 아니라 복귀를 위한 순환입니다.",
+    growthReflectionAirlockEyebrow: "성장 성찰",
+    growthReflectionAirlockTitle: "다음 주기 전에 패턴을 살펴보세요.",
+    growthReflectionAirlockLead:
+      "직전 Arena 결정이 해석된 성찰 질문으로 옮겨졌습니다. 과거를 되짚기보다, 다음 응답을 단단히 하는 데 쓰세요.",
+    growthReflectionFocusChannel: "초점 채널",
+    growthReflectionFocusClarity: "명료성 초점",
+    growthReflectionFocusTrust: "신뢰 초점",
+    growthReflectionFocusRegulation: "조절 초점",
+    growthReflectionFocusAlignment: "정렬 초점",
+    growthReflectionFocusReady: "성찰 준비됨",
+    growthReflectionSectionPrompt: "성찰 질문",
+    growthReflectionSectionCue: "개발 힌트",
+    growthReflectionSectionRecovery: "회복 안내",
+    growthReflectionOpenReflection: "성찰 열기",
+    growthReflectionOpenRecovery: "회복 프롬프트 열기",
+    growthReflectionReturnArena: "Arena로 돌아가기",
+    growthReflectionCueEmpty: "아직 활성 힌트가 없습니다.",
+    growthRecoveryPlaceholderTitle: "회복 공간",
+    growthRecoveryPlaceholderLead:
+      "압박 후 회복과 복귀를 위한 경로입니다. 여기서 속도를 낮추고 다음 주기를 준비하세요.",
+    growthWritingGuidedLabel: "안내 성찰",
+    growthWritingHeadline: "신호를 다음 방향으로 바꿉니다.",
+    growthWritingSubhead:
+      "감상문이 아니라 패턴 정리입니다. 짧고 선명하게 적고, 마지막은 실행 문장으로 닫습니다.",
+    growthWritingPromptSection: "성찰 프롬프트",
+    growthWritingCueInline: "개발 힌트",
+    growthWritingQ1Label: "질문 1",
+    growthWritingQ1: "압박 속에서 가장 먼저 떠오른 반응은 무엇이었나요?",
+    growthWritingQ2Label: "질문 2",
+    growthWritingQ2: "무엇을 지키려 했고, 무엇이 취약해졌나요?",
+    growthWritingQ3Label: "질문 3",
+    growthWritingQ3: "다음 응답에서 무엇이 더 정밀해져야 하나요?",
+    growthWritingCommitmentLabel: "다음 약속",
+    growthWritingCommitmentHelper: "다음 결정 주기에 실제로 지킬 한 문장으로 마무리하세요.",
+    growthWritingPlaceholder: "짧고 구체적으로 적어 보세요.",
+    growthWritingCommitmentPlaceholder: "나는 …",
+    growthWritingSystemNote: "SYSTEM // 성찰은 신호를 방향으로 바꿉니다.",
+    growthWritingSave: "성찰 저장",
+    growthWritingSaved: "저장되었습니다.",
+    growthWritingReturnArena: "Arena로 돌아가기",
+    growthWritingViewMyPage: "리더십 상태 보기",
+    growthWritingNoSeed:
+      "성찰 시드가 없습니다. Arena를 한 사이클 완료한 뒤 다시 오세요.",
+    growthHistoryRegionAria: "성장 기록 — 최근 성찰",
+    growthHistoryEyebrow: "성장 기록",
+    growthHistoryHeadline: "결정이 무엇을 가르치는지 추적합니다.",
+    growthHistoryLead:
+      "성찰 기록은 저널 피드가 아닙니다. Arena 판단이 더 선명한 다음 행동으로 번역되는 구조화된 흔적입니다.",
+    growthHistoryEmpty: "저장된 성찰이 아직 없습니다. Arena 후 성찰을 한 번 완료하면 여기에 쌓입니다.",
+    growthHistoryRecoveryStrip:
+      "다음 압박 주기 전에 회복 지원을 열어 둘 수 있습니다. 조용한 복귀를 위한 순환입니다.",
+    growthHistoryFocusLabel: "초점",
+    growthHistoryCommitmentLabel: "다음 약속",
+    growthHistoryRecoveryBadge: "회복 연계",
+    growthHistoryBackGrowth: "성장 허브로",
+    growthCardHistoryTitle: "성장 기록",
+    growthCardHistoryDesc: "최근 성찰과 약속 문장을 한눈에 봅니다",
+    growthHistoryReflectionCountLabel: "성찰 수",
+    growthHistoryCapsuleClarity: "명료성",
+    growthHistoryCapsuleTrust: "신뢰",
+    growthHistoryCapsuleRegulation: "조절",
+    growthHistoryCapsuleAlignment: "정렬",
+    growthHistoryArenaReflectionBadge: "Arena 성찰",
+    growthHistoryRecoveryTitle: "회복 신호",
+    growthHistoryOpenRecoveryCta: "회복 열기",
+    growthHistoryEmptyEyebrow: "성찰 기록 없음",
+    growthHistoryEmptyTitle: "구조화된 성찰이 아직 기록되지 않았습니다.",
+    growthHistoryEmptySubtext:
+      "Arena 결정 주기를 한 번 완료하고 성찰을 저장하면 성장 기록이 쌓이기 시작합니다.",
+    growthHistoryCtaOpenLatest: "최근 성찰 열기",
+    growthHistoryCtaReturnArena: "Arena로 돌아가기",
+    recoveryPromptLowRegulationTitle: "회복보다 빠르게 압력이 쌓이고 있습니다.",
+    recoveryPromptLowRegulationBody:
+      "최근 신호는 내부 조절이 완전히 리셋되기 전에 응답 압력이 올라가는 패턴을 보여 줍니다.",
+    recoveryPromptLowRegulationCue: "다음 에스컬레이션 주기 전에 조절을 다시 세우세요.",
+    recoveryPromptRepeatedFrictionTitle: "조절 초점이 연속적으로 모이고 있습니다.",
+    recoveryPromptRepeatedFrictionBody:
+      "최근 성찰에서 정서 조절이 반복적으로 드러납니다. 다음 응답 전에 패턴을 명명하는 것이 도움이 됩니다.",
+    recoveryPromptRepeatedFrictionCue: "패턴을 인식한 뒤, 다음 에스컬레이션 전 속도를 재정렬하세요.",
+    recoveryPromptPressureAccumulationTitle: "에스컬레이션 압력이 서서히 올라가고 있습니다.",
+    recoveryPromptPressureAccumulationBody:
+      "경보 수준은 아니지만 회복 여유가 얇아지고 있습니다. 구조화된 멈춤이 다음 수를 보호합니다.",
+    recoveryPromptPressureAccumulationCue: "다음 에스컬레이션 전 명료성과 속도를 조여 주세요.",
+    recoveryEntryEyebrow: "회복 진입",
+    recoveryEntryHeadline: "다음 에스컬레이션 주기 전에 구조를 다시 세웁니다.",
+    recoveryEntryLead:
+      "회복은 후퇴가 아닙니다. 다음 결정이 불필요한 왜곡을 덜 겪도록 보호하는 정렬된 멈춤입니다.",
+    recoveryEntryChannelLabel: "회복 채널",
+    recoveryChannelLowRegulation: "조절 회복",
+    recoveryChannelRepeatedFriction: "마찰 반복",
+    recoveryChannelPressureAccumulation: "압력 누적",
+    recoveryChannelReady: "회복 준비",
+    recoveryEntrySignalTitle: "회복 신호",
+    recoveryEntryCueLabel: "회복 힌트",
+    recoveryEntryNoPrompt: "지금은 활성화된 회복 프롬프트가 없습니다. Growth 또는 Arena로 돌아가도 됩니다.",
+    recoveryEntryQ1Label: "회복 질문 1",
+    recoveryEntryQ1: "응답이 안정되기 전에 어떤 압력 패턴이 반복되나요?",
+    recoveryEntryQ2Label: "회복 질문 2",
+    recoveryEntryQ2: "다음 에스컬레이션 전에 무엇을 다시 세워야 하나요?",
+    recoveryEntryQ3Label: "복귀 약속",
+    recoveryEntryQ3: "다음 응답을 이끌 한 문장을 적으세요.",
+    recoveryEntryPlaceholder: "짧고 정확하게 적어 보세요.",
+    recoveryEntrySystemStrip: "SYSTEM // 회복은 다음 결정 주기를 보호합니다.",
+    recoveryEntrySave: "회복 저장",
+    recoveryEntryReturnGrowth: "Growth로",
+    recoveryEntryReturnArena: "Arena로",
+    recoveryEntryRegionAria: "회복 진입 — 재정렬",
+  },
+  journal: {
+    title: "저널",
+    subtitle: "오늘 마음을 내려놓는 연습을 함께 해보자.",
+    prompt: "오늘 누구에게도 말 못했던 마음은?",
+    placeholder: "여기에 적어줘.",
+    save: "저장",
+    saveAria: "저장",
+    footerDrChi: "Dr. Chi와 이야기하려면 오른쪽 아래 아바타 버튼을 눌러 주세요.",
+    chatToggle: "챗",
+    chatToggleAria: "챗 열기",
+    chatTitle: "코치 챗",
+    chatClose: "닫기",
+    chatCloseAria: "닫기",
+    chatStub: "(저널용 챗 UI)",
+    journalMainRegionAria: "저널 — 오늘의 마음 기록·코치 챗",
+    journalLoadingMainRegionAria: "저널 — 불러오는 중",
+    journalRedirectingMainRegionAria: "저널 — 로그인으로 이동 중",
+    journalRedirectingMessage: "로그인 페이지로 이동 중…",
   },
   myPageStub: {
     subMyPage: "마이 페이지",
@@ -1856,7 +2382,7 @@ const ko: Messages = {
     runStatusLabelInProgress: "진행 중",
     runStatusLabelStarted: "시작됨",
     myPageShellOverviewTitle: "지금 상태입니다.",
-    myPageShellOverviewSubtitle: "아이덴티티·진행·팀 요약이 여기에 있습니다.",
+    myPageShellOverviewSubtitle: "Arena에 쌓인 결정이 리더십 정체성을 만듭니다.",
     myPageOverviewRegionAria: "마이 페이지 개요 — 아이덴티티·진행·팀·계정 링크",
     myPageShellProgressTitle: "현재 움직임입니다.",
     myPageShellProgressSubtitle: "성장은 누적됩니다. 경쟁 창은 주기적으로 초기화됩니다.",
@@ -1883,6 +2409,61 @@ const ko: Messages = {
     myPageTabTeam: "팀",
     myPageTabLeader: "리더",
     myPageTabAccount: "계정",
+    leadershipRegionAria: "리더십 상태 콘솔",
+    leadershipCardInsight: "인사이트 패턴",
+    leadershipCardInfluence: "팀 영향",
+    leadershipCardRhythm: "리듬",
+    leadershipSectionSignalPattern: "신호 패턴",
+    leadershipSectionInfluence: "팀 · 영향",
+    leadershipSectionNext: "다음 포커스",
+    leadershipLabelRelationalBias: "관계 편향",
+    leadershipLabelOperationalBias: "운영 편향",
+    leadershipLabelEmotionalRegulation: "정서 조절",
+    leadershipLabelCommunicationWeight: "커뮤니케이션 비중",
+    leadershipLabelTeamSignal: "팀 신호",
+    leadershipLabelInfluencePattern: "영향 패턴",
+    leadershipLabelAlignmentTrend: "정렬 경향",
+    leadershipLinkArena: "Arena로",
+    leadershipLinkGrowth: "Growth 반성",
+    leadershipCoreTrace: "코어 궤적",
+    leadershipIdentityEyebrow: "리더십 아이덴티티",
+    leadershipSystemNoteTitle: "시스템 노트",
+    leadershipSystemNoteBodyDormant: "Arena 신호가 쌓이면 리더십 패턴이 형성됩니다.",
+    leadershipSystemNoteBodyActive: "Arena 신호가 안정적인 리더십 패턴으로 누적되고 있습니다.",
+    leadershipAbbrevAir: "AIR",
+    leadershipAbbrevTii: "TII",
+    leadershipAbbrevRhythm: "리듬",
+    leadershipNextFocusHeading: "다음 포커스",
+    leadershipDevelopmentCueHeading: "개발 힌트",
+    leadershipSuggestedModuleLine: "제안: Arena 시나리오 · Growth 반성",
+    leadershipReflectionLayerEyebrow: "성찰 누적",
+    leadershipReflectionDepthColumn: "성찰 깊이",
+    leadershipReflectionIntegrationColumn: "패턴 통합",
+    leadershipRecoveryAwarenessColumn: "회복 인지",
+    leadershipReflectionDepthEarly: "초기",
+    leadershipReflectionDepthActive: "활성",
+    leadershipReflectionDepthDeepening: "심화",
+    leadershipReflectionIntegrationForming: "형성 중",
+    leadershipReflectionIntegrationImproving: "개선 중",
+    leadershipRecoveryAwarenessStable: "안정",
+    leadershipRecoveryAwarenessDetected: "감지됨",
+    leadershipNextFocusWithReflectionRegulation:
+      "관계 신호는 강하지만, 운영적 명료성을 다듬는 것이 다음 정밀 가장자리로 남아 있습니다.",
+    leadershipFieldPatternTitle: "패턴 해석",
+    leadershipFieldInfluenceTitle: "영향",
+    leadershipReflectionPanelTitle: "성찰 깊이",
+    leadershipRowRecentFocus: "최근 초점",
+    leadershipRowIntegration: "통합 신호",
+    leadershipReflectionTraceEmpty: "구조화된 성찰이 쌓이면 이 영역이 열립니다.",
+    leadershipRecoveryTraceEmpty: "회복 인지는 압력 패턴이 모일 때 조용히 표시됩니다.",
+    leadershipIdentityCrestAria: "리더 정체성 마크",
+    leadershipRecoverySupportNote: "압박 패턴이 겹칠 때는 회복 프레이밍으로 다음 결정을 보호할 수 있습니다.",
+    leadershipRecoveryStableNote: "이 구간에서는 즉각적인 회복 개입이 필요하다는 신호는 없습니다.",
+    leadershipSupportNoteLabel: "보조 안내",
+    leadershipRecoveryStatusLabel: "회복 인지 상태",
+    leadershipSuggestedRouteHeading: "제안 경로",
+    leadershipSuggestedRouteDefault: "Arena · Growth · Reflection",
+    leadershipSuggestedRouteRecovery: "Recovery · Reflection",
   },
 };
 
@@ -2000,6 +2581,8 @@ const en: Messages = {
     letterHistoryNoReply: "No reply",
     replyActionsLabel: "Actions after reply",
     footerLabel: "Back to Center",
+    dearMeSuspenseMainRegionAria: "Dear Me — loading",
+    centerSuspenseMainRegionAria: "Center — loading",
   },
   bty: {
     title: "bty",
@@ -2076,7 +2659,10 @@ const en: Messages = {
     leEngineTiiCertifiedBandAria: "Team TII, AIR summary, and certification",
     weeklySeasonActivityAria: "Season and weekly XP, event count",
     dashboardPageTitle: "Dashboard",
+    dashboardMainRegionAria: "Dashboard — Arena progress, weekly ranking, recommendations",
     foundryHubMainLandmarkAria: "Foundry practice hub",
+    foundryHubSuspenseMainRegionAria: "Foundry practice hub — loading",
+    btyIndexMainRegionAria: "bty home — Arena, Center, Foundry hubs",
     foundryFeatureCardsRegionAria: "Links to Dojo, Integrity, mentor, dashboard, Elite",
     foundryBackToBtyHome: "← bty home",
     indexThreeHubsExplainer: "Arena: scenarios & ranking. Center: rest & letters. Foundry: dashboard, mentor & practice.",
@@ -2118,6 +2704,8 @@ const en: Messages = {
     centerCta: "Rest here",
     todayGrowthLink: "Today's growth",
     footerHint: "Choose a path above.",
+    assessmentMainRegionAria: "Self-esteem 50-item assessment",
+    landingHubMainRegionAria: "BTY landing — Arena, Foundry, and Center entry",
   },
   safeMirror: {
     title: "Safe Mirror",
@@ -2259,6 +2847,10 @@ const en: Messages = {
       fantasy_outfit_senior_plus: "Senior+",
       fantasy_outfit_master: "Master",
     },
+    currentLevelAccessories: "Current level accessories",
+    currentOutfitPrefix: "Current:",
+    pickCharacterTitle: "Choose a character",
+    avatarSettingsMainRegionAria: "Avatar settings — theme, outfit, accessories",
   },
   arenaMembership: {
     label: "Arena membership",
@@ -2314,6 +2906,7 @@ const en: Messages = {
     unlockExposureLocked: "Elite page and content available when you reach top 5%.",
     mentorDeepLinksListAria: "Elite mentor and deep conversation links",
     loadingElitePageAria: "Loading Elite page",
+    elitePageMainRegionAria: "Elite only — unlock condition, badges, mentor request",
     pageTitle: "Elite only",
     pageIntroElite:
       "You're in the top 5% on the weekly leaderboard. Here you can access Elite-only content.",
@@ -2321,6 +2914,7 @@ const en: Messages = {
     tableColActions: "Actions",
   },
   mentorRequestAdmin: {
+    mainRegionAria: "Mentor request approval — admin",
     title: "Mentor session request approval",
     description: "Elite mentor (1:1) request queue. Approve or reject.",
     empty: "No pending requests.",
@@ -2344,6 +2938,33 @@ const en: Messages = {
     debugLink: "Debug",
     usersLink: "Users",
     arenaMembershipLink: "Arena membership",
+  },
+  adminUsers: {
+    mainRegionAria: "User accounts — admin",
+  },
+  adminQuality: {
+    mainRegionAria: "Quality events — admin",
+  },
+  adminOrganizations: {
+    mainRegionAria: "Organizations — admin",
+  },
+  adminArenaMembership: {
+    mainRegionAria: "Arena membership approval — admin",
+  },
+  adminLogin: {
+    mainRegionAria: "Admin sign-in",
+    heading: "Admin sign-in",
+    emailPlaceholder: "Email",
+    passwordPlaceholder: "Password",
+    loginSubmit: "Sign in",
+    signingIn: "Signing in…",
+    loginSubmitAriaBusy: "Signing in",
+    loginSubmitAriaIdle: "Submit admin sign-in",
+    loginFailed: "Sign-in failed.",
+  },
+  adminHub: {
+    mainRegionAria: "Admin area — redirecting",
+    redirecting: "Taking you to admin…",
   },
   mentorPage: {
     deleteAllHistoryConfirm: "Delete all saved mentor conversation?",
@@ -2371,6 +2992,10 @@ const en: Messages = {
     emptyPhase: "Phase information is unavailable. Try going to Awakening.",
     loadError: "Could not load progress. Please try again later.",
     awakeningLoadingLabel: "Loading Second Awakening",
+    awakeningMainRegionAriaError: "Second Awakening error",
+    awakeningMainRegionAriaCompleted: "Second Awakening completed",
+    awakeningMainRegionAriaEligibility: "Second Awakening eligibility",
+    awakeningMainRegionAriaRitual: "Second Awakening ritual",
     phaseProgressRegionAria: "Healing phase and progress",
     awakeningRitualActsRegionAria: "Second Awakening ritual acts 1–3",
     healingBottomNavSectionAria: "Awakening and dashboard links",
@@ -2461,6 +3086,7 @@ const en: Messages = {
     resultScoresInsightRegionAria: "Scores by area and comment",
     dojoPageMainAria: "Dojo 50-item assessment",
     dojoHistoryMainRegionAria: "Dojo past assessment history — submission date and summary list",
+    dojoResultMainRegionAria: "Dojo 50-item result — summary, area scores, next actions",
   },
   arenaRun: {
     reflectionPrompt: "In one sentence: what will you take from this scenario?",
@@ -2529,6 +3155,9 @@ const en: Messages = {
     inProgress: "In progress",
     reflectDeepeningUnavailable:
       "We couldn’t load the deeper reflection right now. Your reflection was saved.",
+    runPageLevelCheckMainRegionAria: "Mission run — checking level and session",
+    runPageBeginnerPathMainRegionAria: "Redirecting to beginner path",
+    runPageNoScenarioMainRegionAria: "Mission run — no scenario",
   },
   emotionalStats: {
     emptyMessage: "No records yet. Try Arena or chat to start.",
@@ -2547,6 +3176,7 @@ const en: Messages = {
     errorTooLong: "Display name must be 64 characters or less.",
     avatarSettingsLink: "Avatar settings",
     saveButtonAriaLabel: "Save display name",
+    profileMainRegionAria: "Profile, display name and avatar settings",
   },
   uxPhase1Stub: {
     bottomNavArena: "Arena",
@@ -2649,6 +3279,29 @@ const en: Messages = {
     arenaHubSeasonEndsLabel: "Season ends in",
     arenaHubSummaryRegionAria: "Arena hub — weekly rank and season",
     arenaHubSummaryLoadError: "Could not load stats.",
+    arenaHubMainRegionAria: "Arena hub — entry card, weekly rank, season",
+    arenaMissionLobbyMainRegionAria: "Arena mission lobby — scenario entry and resume",
+    arenaMissionLobbyLoadingMainRegionAria: "Arena mission lobby — loading",
+    arenaMissionPlayLoadingMainRegionAria: "Mission play — loading",
+    arenaMissionPlayMainRegionAria: "Mission play — run, choices, reflection, history",
+    arenaMissionResultLoadingMainRegionAria: "Mission result — loading",
+    arenaMissionResultMainRegionAria: "Mission result — decision record, interpretation, next actions",
+    arenaResolveSessionLoadingMainRegionAria: "Restore session — loading",
+    arenaResolveSessionMainRegionAria: "Restore session — new scenario, choices, reflection",
+    arenaLabMainRegionAria: "Leadership Lab — daily attempts and remaining uses",
+    arenaLabTitle: "Leadership Lab",
+    arenaLabLead: "Complete up to 3 scenarios per day to earn Core XP.",
+    arenaLabRemainingTodayLabel: "Remaining today",
+    arenaLabRemainingSuffix: "remaining",
+    arenaLabUsedPrefix: "Used: ",
+    arenaLabBackToArena: "← Back to Arena",
+    arenaLabUsageLoadError: "Could not load usage.",
+    arenaBeginnerPathInitMainRegionAria: "Beginner path — preparing scenario",
+    arenaBeginnerPathMainRegionAria: "Beginner path — situation, emotion, decision, reflection",
+    arenaBeginnerPathCompleteMainRegionAria: "Beginner path — your result",
+    arenaBeginnerPathTrackLabel: "Beginner",
+    arenaBeginnerPathSubmittingAria: "Completing…",
+    arenaRecordPageMainRegionAria: "Arena result — decision record, XP, next actions",
     arenaResultEyebrow: "Arena Result",
     arenaResultRecordedTitle: "Decision recorded.",
     arenaResultRecordedSubtitle: "Outcome has been updated.",
@@ -2659,7 +3312,7 @@ const en: Messages = {
     growthHubSectionLabel: "Growth",
     growthHubHeadline: "Rebuild your internal state.",
     growthHubLead: "Reflection, recovery, and alignment live here.",
-    growthHubCardsNavAria: "Dojo, Integrity Mirror, Guidance, and Journey",
+    growthHubCardsNavAria: "Dojo, Integrity Mirror, Guidance, Journey, and Growth history",
     growthHubMainRegionAria: "Growth hub — inner alignment, Dojo, Integrity, Guidance, Journey",
     growthCardDojoTitle: "Dojo",
     growthCardDojoDesc: "Measure your current state",
@@ -2669,6 +3322,147 @@ const en: Messages = {
     growthCardGuidanceDesc: "Review your decision patterns",
     growthCardJourneyTitle: "Journey",
     growthCardJourneyDesc: "Continue your 28-day recovery path",
+    growthReflectionRegionAria: "Reflection entry from Arena",
+    growthReflectionEyebrow: "Linked reflection",
+    growthReflectionTitle: "A question from your last decision",
+    growthReflectionSubtitle:
+      "This is not generic journaling—it follows your sealed choice. Observational, not judgmental.",
+    growthReflectionFocusLabel: "Focus",
+    growthReflectionCueLabel: "Development cue",
+    growthReflectionOpenCta: "Open in Journal",
+    growthReflectionSuggestedTrack: "Suggested growth track",
+    growthReflectionBackHub: "Back to Growth hub",
+    growthReflectionNoSeed:
+      "No Arena reflection seed yet. Complete an Arena cycle to populate this entry.",
+    growthRecoveryCardTitle: "Recovery alignment signal",
+    growthRecoveryCardBody:
+      "Recent decisions show elevated pressure on emotional regulation. Consider pace, boundaries, and trust repair—not removal, re-entry.",
+    growthReflectionAirlockEyebrow: "Growth Reflection",
+    growthReflectionAirlockTitle: "Review the pattern before the next cycle.",
+    growthReflectionAirlockLead:
+      "Your last Arena decision has been translated into a guided reflection prompt. Use this to strengthen the next response—not to replay the past.",
+    growthReflectionFocusChannel: "Focus channel",
+    growthReflectionFocusClarity: "Clarity focus",
+    growthReflectionFocusTrust: "Trust focus",
+    growthReflectionFocusRegulation: "Regulation focus",
+    growthReflectionFocusAlignment: "Alignment focus",
+    growthReflectionFocusReady: "Reflection ready",
+    growthReflectionSectionPrompt: "Reflection prompt",
+    growthReflectionSectionCue: "Development cue",
+    growthReflectionSectionRecovery: "Recovery prompt",
+    growthReflectionOpenReflection: "Open reflection",
+    growthReflectionOpenRecovery: "Open recovery prompt",
+    growthReflectionReturnArena: "Return to Arena",
+    growthReflectionCueEmpty: "No active cue detected yet.",
+    growthRecoveryPlaceholderTitle: "Recovery space",
+    growthRecoveryPlaceholderLead:
+      "A path for post-pressure recovery and re-entry. Slow the pace before the next cycle.",
+    growthWritingGuidedLabel: "Guided reflection",
+    growthWritingHeadline: "Convert the last signal into your next direction.",
+    growthWritingSubhead:
+      "This is pattern clarification—not a mood essay. Keep it short, precise, and close with a commitment sentence.",
+    growthWritingPromptSection: "Reflection prompt",
+    growthWritingCueInline: "Development cue",
+    growthWritingQ1Label: "Question 1",
+    growthWritingQ1: "What reaction surfaced first under pressure?",
+    growthWritingQ2Label: "Question 2",
+    growthWritingQ2: "What did you try to protect, and what became vulnerable?",
+    growthWritingQ3Label: "Question 3",
+    growthWritingQ3: "What must become more precise in your next response?",
+    growthWritingCommitmentLabel: "Next commitment",
+    growthWritingCommitmentHelper: "End with one sentence you can carry into the next decision cycle.",
+    growthWritingPlaceholder: "Write a precise response.",
+    growthWritingCommitmentPlaceholder: "I will…",
+    growthWritingSystemNote: "SYSTEM // Reflection converts signal into direction.",
+    growthWritingSave: "Save reflection",
+    growthWritingSaved: "Saved.",
+    growthWritingReturnArena: "Return to Arena",
+    growthWritingViewMyPage: "View leadership state",
+    growthWritingNoSeed: "No reflection seed yet. Complete an Arena cycle first.",
+    growthHistoryRegionAria: "Growth history — recent reflections",
+    growthHistoryEyebrow: "Growth history",
+    growthHistoryHeadline: "Track what your decisions are teaching you.",
+    growthHistoryLead:
+      "Reflection history is not a journal feed. It is a structured record of how Arena decisions are being translated into clearer future behavior.",
+    growthHistoryEmpty: "No saved reflections yet. Complete a post-Arena reflection to populate this board.",
+    growthHistoryRecoveryStrip:
+      "Recovery support is available before the next escalation cycle—a quiet path for re-entry.",
+    growthHistoryFocusLabel: "Focus",
+    growthHistoryCommitmentLabel: "Commitment",
+    growthHistoryRecoveryBadge: "Recovery-linked",
+    growthHistoryBackGrowth: "Back to Growth hub",
+    growthCardHistoryTitle: "Growth history",
+    growthCardHistoryDesc: "Recent reflections and commitment lines at a glance",
+    growthHistoryReflectionCountLabel: "Reflection count",
+    growthHistoryCapsuleClarity: "Clarity",
+    growthHistoryCapsuleTrust: "Trust",
+    growthHistoryCapsuleRegulation: "Regulation",
+    growthHistoryCapsuleAlignment: "Alignment",
+    growthHistoryArenaReflectionBadge: "Arena reflection",
+    growthHistoryRecoveryTitle: "Recovery signal",
+    growthHistoryOpenRecoveryCta: "Open recovery",
+    growthHistoryEmptyEyebrow: "No reflection history",
+    growthHistoryEmptyTitle: "No structured reflection has been recorded yet.",
+    growthHistoryEmptySubtext:
+      "Complete one Arena decision cycle and save one reflection to begin building your growth record.",
+    growthHistoryCtaOpenLatest: "Open latest reflection",
+    growthHistoryCtaReturnArena: "Return to Arena",
+    recoveryPromptLowRegulationTitle: "Pressure is accumulating faster than recovery.",
+    recoveryPromptLowRegulationBody:
+      "Recent signals suggest response pressure is rising before internal regulation fully resets.",
+    recoveryPromptLowRegulationCue: "Rebuild regulation before the next escalation cycle.",
+    recoveryPromptRepeatedFrictionTitle: "Regulation-focused threads are clustering.",
+    recoveryPromptRepeatedFrictionBody:
+      "Recent reflections emphasize emotional regulation—depth is building before your next response.",
+    recoveryPromptRepeatedFrictionCue: "Name the pattern, then reset pace before the next escalation.",
+    recoveryPromptPressureAccumulationTitle: "Escalation pressure is edging upward.",
+    recoveryPromptPressureAccumulationBody:
+      "Not an alarm state, but recovery margin is thinning. A structured pause protects the next move.",
+    recoveryPromptPressureAccumulationCue: "Tighten clarity and pace before the next escalation cycle.",
+    recoveryEntryEyebrow: "Recovery entry",
+    recoveryEntryHeadline: "Reset structure before the next escalation cycle.",
+    recoveryEntryLead:
+      "Recovery is not retreat. It is a structured pause that protects the next decision from avoidable distortion.",
+    recoveryEntryChannelLabel: "Recovery channel",
+    recoveryChannelLowRegulation: "Regulation recovery",
+    recoveryChannelRepeatedFriction: "Friction recovery",
+    recoveryChannelPressureAccumulation: "Pressure recovery",
+    recoveryChannelReady: "Recovery ready",
+    recoveryEntrySignalTitle: "Recovery signal",
+    recoveryEntryCueLabel: "Recovery cue",
+    recoveryEntryNoPrompt:
+      "No recovery prompt is active right now. You can return to Growth or Arena.",
+    recoveryEntryQ1Label: "Recovery question 1",
+    recoveryEntryQ1: "What pressure pattern is repeating before your response stabilizes?",
+    recoveryEntryQ2Label: "Recovery question 2",
+    recoveryEntryQ2: "What must be reset before the next escalation?",
+    recoveryEntryQ3Label: "Re-entry commitment",
+    recoveryEntryQ3: "Write one sentence that will guide your next response.",
+    recoveryEntryPlaceholder: "Write a precise response.",
+    recoveryEntrySystemStrip: "SYSTEM // Recovery protects the next decision cycle.",
+    recoveryEntrySave: "Save recovery",
+    recoveryEntryReturnGrowth: "Return to Growth",
+    recoveryEntryReturnArena: "Return to Arena",
+    recoveryEntryRegionAria: "Recovery entry — re-alignment",
+  },
+  journal: {
+    title: "Journal",
+    subtitle: "Let’s practice letting your mind rest today.",
+    prompt: "What’s on your mind that you couldn’t tell anyone today?",
+    placeholder: "Write here.",
+    save: "Save",
+    saveAria: "Save journal entry",
+    footerDrChi: "Tap the Dr. Chi avatar button (bottom-right) to chat.",
+    chatToggle: "Chat",
+    chatToggleAria: "Open chat",
+    chatTitle: "Coach chat",
+    chatClose: "Close",
+    chatCloseAria: "Close chat",
+    chatStub: "(Journal chat UI — placeholder)",
+    journalMainRegionAria: "Journal — daily reflection and coach chat",
+    journalLoadingMainRegionAria: "Journal — loading",
+    journalRedirectingMainRegionAria: "Journal — redirecting to sign-in",
+    journalRedirectingMessage: "Redirecting to sign-in…",
   },
   myPageStub: {
     subMyPage: "My Page",
@@ -2738,7 +3532,7 @@ const en: Messages = {
     runStatusLabelInProgress: "In progress",
     runStatusLabelStarted: "Started",
     myPageShellOverviewTitle: "Your current status.",
-    myPageShellOverviewSubtitle: "Identity, progress, and team summary live here.",
+    myPageShellOverviewSubtitle: "Accumulated Arena decisions shape your leadership identity.",
     myPageOverviewRegionAria: "My Page overview — identity, progress, team, account link",
     myPageShellProgressTitle: "Your current movement.",
     myPageShellProgressSubtitle: "Growth remains cumulative. Competition resets by window.",
@@ -2765,6 +3559,62 @@ const en: Messages = {
     myPageTabTeam: "Team",
     myPageTabLeader: "Leader",
     myPageTabAccount: "Account",
+    leadershipRegionAria: "Leadership state console",
+    leadershipCardInsight: "Insight pattern",
+    leadershipCardInfluence: "Team influence",
+    leadershipCardRhythm: "Rhythm",
+    leadershipSectionSignalPattern: "Signal pattern",
+    leadershipSectionInfluence: "Team & influence",
+    leadershipSectionNext: "Recommended next focus",
+    leadershipLabelRelationalBias: "Relational bias",
+    leadershipLabelOperationalBias: "Operational bias",
+    leadershipLabelEmotionalRegulation: "Emotional regulation",
+    leadershipLabelCommunicationWeight: "Communication weight",
+    leadershipLabelTeamSignal: "Team signal",
+    leadershipLabelInfluencePattern: "Influence pattern",
+    leadershipLabelAlignmentTrend: "Alignment trend",
+    leadershipLinkArena: "Open Arena",
+    leadershipLinkGrowth: "Growth reflection",
+    leadershipCoreTrace: "Core trace",
+    leadershipIdentityEyebrow: "Leadership Identity",
+    leadershipSystemNoteTitle: "System Note",
+    leadershipSystemNoteBodyDormant: "Arena signals will accumulate into a leadership pattern.",
+    leadershipSystemNoteBodyActive: "Arena signals are accumulating into a stable leadership pattern.",
+    leadershipAbbrevAir: "AIR",
+    leadershipAbbrevTii: "TII",
+    leadershipAbbrevRhythm: "Rhythm",
+    leadershipNextFocusHeading: "Next focus",
+    leadershipDevelopmentCueHeading: "Development cue",
+    leadershipSuggestedModuleLine: "Suggested: Arena scenario · Growth reflection",
+    leadershipReflectionLayerEyebrow: "Reflection accumulation",
+    leadershipReflectionDepthColumn: "Reflection depth",
+    leadershipReflectionIntegrationColumn: "Pattern integration",
+    leadershipRecoveryAwarenessColumn: "Recovery awareness",
+    leadershipReflectionDepthEarly: "Early",
+    leadershipReflectionDepthActive: "Active",
+    leadershipReflectionDepthDeepening: "Deepening",
+    leadershipReflectionIntegrationForming: "Forming",
+    leadershipReflectionIntegrationImproving: "Improving",
+    leadershipRecoveryAwarenessStable: "Stable",
+    leadershipRecoveryAwarenessDetected: "Detected",
+    leadershipNextFocusWithReflectionRegulation:
+      "Operational clarity remains the next refinement edge while relational signal stays strong.",
+    leadershipFieldPatternTitle: "Pattern interpretation",
+    leadershipFieldInfluenceTitle: "Influence",
+    leadershipReflectionPanelTitle: "Reflection depth",
+    leadershipRowRecentFocus: "Recent focus",
+    leadershipRowIntegration: "Integration signal",
+    leadershipReflectionTraceEmpty: "This layer opens as structured reflections accumulate.",
+    leadershipRecoveryTraceEmpty: "Recovery awareness appears quietly when pressure patterns cluster.",
+    leadershipIdentityCrestAria: "Leadership identity mark",
+    leadershipRecoverySupportNote:
+      "When patterns cluster, recovery-oriented framing can protect the next decision.",
+    leadershipRecoveryStableNote: "No immediate recovery framing is required at this window.",
+    leadershipSupportNoteLabel: "Support note",
+    leadershipRecoveryStatusLabel: "Recovery status",
+    leadershipSuggestedRouteHeading: "Suggested route",
+    leadershipSuggestedRouteDefault: "Arena · Growth · Reflection",
+    leadershipSuggestedRouteRecovery: "Recovery · Reflection",
   },
 };
 

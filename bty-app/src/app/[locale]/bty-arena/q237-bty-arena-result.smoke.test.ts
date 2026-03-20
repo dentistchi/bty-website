@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { renderToString } from "react-dom/server";
 import type { ReactElement } from "react";
 
-import ResultPage from "./result/page";
+import ResultPage from "./record/page";
 
 describe("bty-arena/result smoke (237)", () => {
   it("renders result headline + XP lines + CTAs", async () => {

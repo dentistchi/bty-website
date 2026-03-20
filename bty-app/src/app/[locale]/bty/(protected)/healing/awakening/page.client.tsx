@@ -42,6 +42,7 @@ type SecondAwakeningRes = {
 export default function SecondAwakeningPageClient() {
   const pathname = usePathname() ?? "";
   const locale = pathname.startsWith("/ko") ? "ko" : "en";
+  const tHealing = getMessages(locale === "ko" ? "ko" : "en").healing;
   const router = useRouter();
   const [data, setData] = useState<SecondAwakeningRes | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,7 +85,7 @@ export default function SecondAwakeningPageClient() {
     return (
       <AuthGate>
         <ThemeBody theme="foundry" />
-        <main className="min-h-screen bg-foundry-white flex items-center justify-center" aria-busy="true" aria-label={locale === "ko" ? "2차 각성 불러오는 중" : "Loading Second Awakening"} aria-live="polite">
+        <main className="min-h-screen bg-foundry-white flex items-center justify-center" aria-busy="true" aria-label={tHealing.awakeningLoadingLabel} aria-live="polite">
           <LoadingFallback icon="⏳" message={tLoading.message} withSkeleton />
         </main>
       </AuthGate>
@@ -95,7 +96,7 @@ export default function SecondAwakeningPageClient() {
     return (
       <AuthGate>
         <ThemeBody theme="foundry" />
-        <main className="min-h-screen bg-foundry-white flex flex-col items-center justify-center px-4" aria-label={locale === "ko" ? "2차 각성 오류" : "Second Awakening error"}>
+        <main className="min-h-screen bg-foundry-white flex flex-col items-center justify-center px-4" aria-label={tHealing.awakeningMainRegionAriaError}>
           <div className="flex flex-col items-center" role="region" aria-label={locale === "ko" ? "오류 안내 및 복귀" : "Error message and return"}>
             <p className="text-foundry-ink-soft text-center mb-4" role="alert">{error}</p>
             <Link href={locale === "ko" ? "/ko/bty/healing" : "/en/bty/healing"} className="rounded-xl px-6 py-3 font-medium border border-foundry-purple-muted text-foundry-purple hover:bg-foundry-purple/10 transition-colors" aria-label={locale === "ko" ? "Healing으로 돌아가기" : "Back to Healing"}>
@@ -109,7 +110,6 @@ export default function SecondAwakeningPageClient() {
 
   if (!data) {
     const tLoading = getMessages(locale === "ko" ? "ko" : "en").loading;
-    const tHealing = getMessages(locale === "ko" ? "ko" : "en").healing;
     return (
       <AuthGate>
         <ThemeBody theme="foundry" />
@@ -126,7 +126,7 @@ export default function SecondAwakeningPageClient() {
     return (
       <AuthGate>
         <ThemeBody theme="foundry" />
-        <main className="min-h-screen bg-foundry-white" aria-label={locale === "ko" ? "2차 각성 완료" : "Second Awakening completed"}>
+        <main className="min-h-screen bg-foundry-white" aria-label={tHealing.awakeningMainRegionAriaCompleted}>
           <div className="max-w-xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
             <div className="flex-1 flex flex-col items-center justify-center text-center px-4" role="region" aria-label={locale === "ko" ? "완료 안내 및 다음 단계" : "Completion summary and next step"}>
               <h1 className="text-xl sm:text-2xl font-semibold text-foundry-purple-dark mb-3">
@@ -158,7 +158,7 @@ export default function SecondAwakeningPageClient() {
     return (
       <AuthGate>
         <ThemeBody theme="foundry" />
-        <main className="min-h-screen bg-foundry-white" aria-label={locale === "ko" ? "2차 각성 해금 조건" : "Second Awakening eligibility"}>
+        <main className="min-h-screen bg-foundry-white" aria-label={tHealing.awakeningMainRegionAriaEligibility}>
           <div className="max-w-xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
             <div className="flex-1 flex flex-col items-center justify-center text-center px-4" role="region" aria-label={locale === "ko" ? "해금 조건 안내 및 현재 진행" : "Eligibility info and progress"}>
               <h1 className="text-xl sm:text-2xl font-semibold text-foundry-purple-dark mb-3">
@@ -193,11 +193,10 @@ export default function SecondAwakeningPageClient() {
   }
 
   const ritual = data.ritual!;
-  const tHeal = getMessages(locale === "ko" ? "ko" : "en").healing;
   return (
     <AuthGate>
       <ThemeBody theme="foundry" />
-      <main className="min-h-screen bg-foundry-white" aria-label={locale === "ko" ? "2차 각성 의식" : "Second Awakening ritual"}>
+      <main className="min-h-screen bg-foundry-white" aria-label={tHealing.awakeningMainRegionAriaRitual}>
         <div className="max-w-xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
           <AwakeningActsTrack locale={locale} />
           <header className="text-center mb-8" role="region" aria-label={locale === "ko" ? "의식 제목" : "Ritual title"}>
@@ -209,7 +208,7 @@ export default function SecondAwakeningPageClient() {
             </p>
           </header>
 
-          <section className="space-y-8 flex-1" aria-label={tHeal.awakeningRitualActsRegionAria}>
+          <section className="space-y-8 flex-1" aria-label={tHealing.awakeningRitualActsRegionAria}>
             <section className="rounded-2xl border border-foundry-purple-muted bg-foundry-purple/5 p-5" role="region" aria-label={locale === "ko" ? "의식 1막" : "Act 1"}>
               <h2 className="text-sm font-semibold text-foundry-purple-dark mb-3">
                 {ritual.act1.name}

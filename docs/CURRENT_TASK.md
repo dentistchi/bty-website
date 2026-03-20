@@ -1,2512 +1,2798 @@
-# 현재 작업 (진행 에이전트용)
+# 현재 작업 (CURRENT_TASK)
 
-**[C2] Gate `d7d5a24` (6afdfe4 이후 mainline)**: [x] **완료.** 배포 **3ca0233**·run 라우트·Worker CI. **279 / 2117** · build PASS. **다음 push** 시 C2 재Gate.
+**[C4] SPRINT 83 TASK31 / 289 (`train/day/[day]`):** [x] **완료.** **`page.tsx`** → **`page.client` re-export** · **`<main aria-label={train.lessonLabel}>`** (`role="region"` 제거) · **`npm run lint` ✓** · 보드 **TASK31 [x]** · 다음 C4 **`[ ]` = TASK33** · `BTY_RELEASE_GATE_CHECK`·`CURSOR_TASK_BOARD` 동기.
 
-**[C2] 배포 Gate `6afdfe4`**: [x] **완료.** `58b8342..6afdfe4` → origin/main. BTY_RELEASE_GATE_CHECK·SPRINT_LOG. **277 / 2108** · build PASS.
+**[C5] SPRINT 83 TASK27 / 289 (큐 보충 Gate·엘리트·문서):** [x] **완료.** **`334/2311`** ✓ · `self-healing-ci.sh` · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` · 보드 **TASK27 [x]** · 다음 C5 **`[ ]` = TASK32** · `SPRINT_LOG`·`SPRINT_PLAN`·`AUTO4`·`NEXT_PHASE` 동기.
 
-**이번 런 (2026-03-18):** **`docs/CURSOR_TASK_BOARD.md` → SPRINT 66.** **할 일 읽는 법:** `docs/agent-runtime/HOW_TO_READ_TASKS.md`. First **C5 Gate 66.** S65 C5·C4·C3·C6 [x] → 큐 보충 **S66** 10행 `[ ]`. **`SPRINT_PLAN`은 요약용 — TASK는 보드 표만.** `SPRINT_PLAN` **272**.
+**[C3] SPRINT 83 TASK28 / 289 (큐 보충 DOMAIN):** [x] **완료.** **`arenaScenarioOutcomesFromUnknown`** + **`arenaScenarioOutcomesFromUnknown.edges.test.ts`** · mission outcome map · **`ARENA_SCENARIO_OUTCOMES_MAX_KEYS` 32** · canonical keys · barrel · Vitest **3** ✓ · 보드 **TASK28 [x]** · 다음 C3 **`[ ]` = TASK29** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
 
-**[운영] S65 → S66:** C5·C4·C3·C6 전행 [x] · C1만 `[ ]` → **`PARALLEL_QUEUE_REFILL.md`** · 보드·`SPRINT_PLAN`·AUTO4·NEXT_BACKLOG·CURRENT_TASK 동기.
+**[C4] SPRINT 83 TASK25 / 289 (`/[locale]` 랜딩):** [x] **완료.** `LandingClient` **`<main aria-label={landing.landingHubMainRegionAria}>`** · **`npm run lint` ✓** · 보드 **TASK25 [x]** · 다음 C4 **`[ ]` = TASK31** · `BTY_RELEASE_GATE_CHECK`·`CURSOR_TASK_BOARD` 동기.
 
-**[C5] SPRINT 65 TASK 1·6 / 271 (Gate 65·엘리트 3차):** [x] **완료.** Gate 65 — **288 / 2148** · Build ✓ · BLOCKER 해제. 엘리트 §3 65차 기록 · PASS.
+**[C6] SPRINT 83 TASK 20 / 289 (큐 보충 VERIFY):** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **332 / 2304** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK20 [x]** · 다음 C6 **`[ ]` = TASK30** (큐 보충) · `SPRINT_LOG`·`SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
 
-**[C6] SPRINT 65 TASK10 / 271**: [x] **완료.** q237 **7/7** ✓ · **286 / 2140** ✓ · Build ✓.
+**[C3] SPRINT 83 TASK26 / 289 (큐 보충 DOMAIN):** [x] **완료.** **`arenaScenarioDescriptionLinesFromUnknown`** + **`arenaScenarioDescriptionLinesFromUnknown.edges.test.ts`** · `ARENA_SCENARIO_DESCRIPTION_MAX_LINES` **64** · line max **4096** · **≥1 line** · barrel · Vitest **4** ✓ · 보드 **TASK26 [x]** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
 
-**[C4] SPRINT 65 TASK4 / 271**: [x] **완료.** Center/Foundry 접근성 1곳 — Integrity `integrityMainRegionAria` (ko/en).
+**[C4] SPRINT 83 TASK24 / 289 (`bty-arena/wireframe`):** [x] **완료.** **`<main aria-label={wireframeLandmarkAria}>`** (구 `div`/`role="region"` 제거) · 로케일 **`ko`|`en`** · **`npm run lint` ✓** · 보드 **TASK24 [x]** · 다음 C4 **`[ ]` = TASK25→TASK31** · **`CURSOR_TASK_BOARD`·`BTY_RELEASE_GATE_CHECK`** 동기.
 
-**[C3] SPRINT 65 TASK8·9 / 271**: [x] **완료.** `leaderboardNearMe.edges.test.ts` · `POST /api/arena/beginner-run` 401·400.
+**[C3] SPRINT 83 TASK 22 / 289 (큐 보충 DOMAIN):** [x] **완료.** **`arenaScenarioCopyFieldsFromUnknown`** + **`arenaScenarioCopyFieldsFromUnknown.edges.test.ts`** · `stage`/`caseTag`/`title` 길이 상한 · barrel · Vitest **4** ✓ · 보드 **TASK22 [x]** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
 
-**[C5] SPRINT 64 TASK 1 / 270 (Gate 64):** [x] **완료.** Release Gate A~F — **286 / 2140** · Build ✓ · BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[C1] REFRESH 2026-03-20 (`REFRESH_PROCEDURE.md` § C1 이중 의무 · 5차):** 보드 잔여 **`[ ]` = DOCS** TASK2·3·5·7 · **C4 TASK33** · **C5 TASK32** · **C3 TASK29** · **C6 TASK30** · 큐 **exit 0** · **`SPRINT_PLAN`(C4 **TASK33** 요약)·`AUTO4`·`AI_TASK_BOARD`·`NEXT_PHASE`·`SPRINT_LOG`** 동기 · C7 **334/2311** · Gate/스모크 **미실행**.
 
-**[C5] SPRINT 64 TASK 6 / 270 (엘리트 3차):** [x] **완료.** ELITE_3RD §2 6항목·§3 64차 기록 · **286/2140** 동기 · PASS.
+**[C5] SPRINT 83 TASK27 / 289 (큐 보충 Gate·엘리트·문서):** [x] **완료.** **`334/2311`** ✓ · `self-healing-ci.sh` · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` · 보드 **TASK27 [x]** · 다음 C5 **`[ ]` = TASK32** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
 
-**[C3] SPRINT 64 TASK8·9 / 270**: [x] **완료.** `leaderboardWeekId.edges.test.ts` · `GET /api/arena/league/active` 401·503·200.
+**[C5] SPRINT 83 TASK23 / 289 (큐 보충 Gate·엘리트·문서):** [x] **완료.** **`332/2304`** ✓ · **`bty-arena/wireframe`** **`</main>`** (TS17002) · `self-healing-ci.sh` · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` · 보드 **TASK23 [x]** · 이후 **TASK27** → **[x]** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
 
-**[운영] S63 → S64:** C5 **1·6 [x]** → `check-parallel-task-queue` **exit 2** → `PARALLEL_QUEUE_REFILL.md` §3.
+**[C5] SPRINT 83 TASK21 / 289 (큐 보충 Gate·엘리트·문서):** [x] **완료.** **`331/2300`** ✓ · `self-healing-ci.sh` · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` · 보드 **TASK21 [x]** · **TASK23** 후속 — 위 동기.
 
-**[C5] SPRINT 63 TASK 1·6 / 269**: [x] **완료.** Gate **63** — **284 / 2131**·q237 **7/7**·Build ✓·엘리트 §3 **PASS** · `arenaRunState.edges.test.ts` tsc 수정.
+**[C5] SPRINT 83 TASK18 / 289 (큐 보충 Gate·엘리트·문서):** [x] **완료.** **`331/2300`** ✓ · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` · 보드 **TASK18 [x]** · **TASK21** 후속 — 위 동기.
 
-**[C6] SPRINT 64 TASK10 / 270**: [x] **완료.** q237 **7/7** ✓ · **284 / 2131** ✓ · Build ✓ (TASK10 재오픈 후 재실행).
+**[C4] SPRINT 83 TASK19 / 289 (`bty-arena/record`):** [x] **완료.** `ScreenShell` **`mainAriaLabel`** · **`uxPhase1Stub.arenaRecordPageMainRegionAria`** · **`npm run lint` ✓** · 보드 **TASK19 [x]** · 다음 C4 **`[ ]` = TASK24→TASK25** · `BTY_RELEASE_GATE_CHECK` · `CURSOR_TASK_BOARD` 동기.
 
-**[C4] SPRINT 64 TASK4 / 270**: [x] **완료.** Center/Foundry 접근성 1곳 — Dojo History `section role=region` + `dojoHistoryMainRegionAria` (ko/en).
+**[C3] SPRINT 83 TASK 16 / 289 (큐 보충 DOMAIN):** [x] **완료.** **`arenaPrimaryChoiceFromUnknown`** · **`arenaReinforcementChoiceFromUnknown`** + **`arenaMissionChoiceShapeFromUnknown.edges.test.ts`** · `ARENA_MISSION_CHOICE_*_MAX_LENGTH` · barrel · Vitest **3** ✓ · 보드 **TASK16 [x]**.
 
-**[운영] S62 → S63:** C3 전행 [x] → `PARALLEL_QUEUE_REFILL.md` §3.
+**[C4] SPRINT 83 TASK15 / 289 (`bty-arena/beginner`):** [x] **완료.** `<main>` 분기 3종 **`arenaBeginnerPath*`** · 진행 **`loading.message`** · 제출 **`arenaBeginnerPathSubmittingAria`** · **`npm run lint` ✓** · 보드 **TASK15 [x]** · 다음 C4 **`[ ]` = TASK19→TASK24** · `BTY_RELEASE_GATE_CHECK` 동기.
 
-**[C3] SPRINT 62 TASK8·9 / 268**: [x] **완료.** `arenaRunState.edges`·`POST /api/arena/lab/complete` 401·400. **284 / 2131** ✓.
+**[C6] SPRINT 83 TASK 17 / 289 (큐 보충 VERIFY):** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **330 / 2297** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 TASK17 [x] · 이후 **TASK20** → **[x]** (상단) · `SPRINT_LOG`·`SPRINT_PLAN` 동기.
 
-**[운영] S61 → S62:** C5 **1·6 [x]** → `check-parallel-task-queue` **exit 2 (C5 기아)** → `PARALLEL_QUEUE_REFILL.md` §3.
+**[C5] SPRINT 83 TASK14 / 289 (큐 보충 Gate·엘리트·문서):** [x] **완료.** **`330/2297`** ✓ · `self-healing-ci.sh` · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` · 보드 **TASK14 [x]** · 이어 **TASK18** → **[x]** · `SPRINT_PLAN` 동기.
 
-**[C5] SPRINT 61 TASK 1·6 / 267**: [x] **완료.** Gate **61** — **282 / 2125**·Build ✓·엘리트 §3 **PASS**.
+**[C4] SPRINT 83 TASK11 / 289 (`bty-arena/result`):** [x] **완료.** `<main>` **`arenaMissionResult*`** · 로딩 **`loading.message`** · **`npm run lint` ✓** · 보드 **TASK11 [x]** · 이어 **TASK15**·**TASK19** · `BTY_RELEASE_GATE_CHECK` 동기.
 
-**[운영] S60 → S61:** C5·C3·C6 전행 [x] → `PARALLEL_QUEUE_REFILL.md` §3.
+**[C4] SPRINT 83 TASK4 / 289 (`bty-arena/lab`):** [x] **완료.** `<main>` **`arenaLabMainRegionAria`** · `arenaLab*` 문자열 일원화 · 로딩 **`loading.message`** · **`npm run lint` ✓** · 보드 **TASK4 [x]** · 이어 **TASK11** → **TASK15** · `SPRINT_PLAN`·`BTY_RELEASE_GATE_CHECK` 동기.
 
-**[C3] SPRINT 60 TASK8·9 / 266**: [x] **완료.** `weeklyResetIdempotency.edges`·`GET /api/arena/lab/usage`. **282 / 2125** ✓.
+**[C3] SPRINT 83 TASK 8·9 / 289:** [x] **완료.** **TASK8:** `arenaSystemMessageFromUnknown` + `arenaSystemMessageFromUnknown.edges.test.ts` · barrel · **TASK9:** `POST /api/bty/arena/signals` `route.test.ts` (401·400) · Vitest **6** ✓ · 보드 **TASK8·9 [x]** · **S83 C3 `[ ]` 없음** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
 
-**[C5] SPRINT 60 TASK 1·6 / 266**: [x] **완료.** Gate **60** — **280 / 2119**·q237 **7/7**·Build ✓·엘리트 §3 **PASS**.
+**[C6] SPRINT 83 TASK 10 / 289 (VERIFY):** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **327 / 2287** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 TASK10 [x] · **S83 C6 `[ ]` 없음** · `SPRINT_LOG`·`SPRINT_PLAN` 동기.
 
-**[C6] SPRINT 60 TASK10 / 266**: [x] **완료.** q237-smoke **7/7** ✓ · **282/2125** ✓ · Build ✓.
+**[C1] REFILL 2026-03-20 (`PARALLEL_QUEUE_REFILL.md` §3):** S82 `check-parallel-task-queue` **exit 2** (C3·C5·C6 기아) → **SPRINT 83** 이번 런 오픈 · `SPRINT_PLAN` **289** · 보드·`AUTO4_PROMPTS`·`NEXT_BACKLOG_AUTO4`·`SPRINT_LOG`·`bty-app/docs/AI_TASK_BOARD` 동기 · **First = C5 TASK1 (Gate 83)** · 큐 **exit 0** 재확인됨.
 
-**[운영] S59 → S60:** C5 **1·6 [x]** → `check-parallel-task-queue` **exit 2 (C5 기아)** → `PARALLEL_QUEUE_REFILL.md` §3.
+**[C6] SPRINT 82 TASK 50 / 288 (큐 보충 VERIFY):** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **327 / 2287** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 TASK50 [x] · **C6 S82 표상 전행 [x]** · 이어 **REFILL→S83**.
 
-**[C5] SPRINT 59 TASK 1·6 / 265**: [x] **완료.** Gate **59** — **280 / 2119**·Build ✓·엘리트 §3 **PASS**.
+**[C5] SPRINT 82 TASK48 / 288 (큐 보충 Gate·엘리트·문서):** [x] **완료.** **`327/2287`** ✓ · `self-healing-ci.sh` · `ELITE_3RD`·`BTY_RELEASE_GATE_CHECK` TASK48 · 보드 TASK48 [x] · **S82 C5 행 전부 [x]** · 병렬 잔여 **C1·C3·C4·C6** · `SPRINT_PLAN` 동기.
 
-**[운영] S58 → S59:** C5·C6 전행 [x] → `PARALLEL_QUEUE_REFILL.md` §3.
+**[C3] SPRINT 82 TASK 49 / 288 (큐 보충 DOMAIN):** [x] **완료.** **`arenaInterpretationLinesFromUnknown`** + **`arenaInterpretationLinesFromUnknown.edges.test.ts`** · `ARENA_INTERPRETATION_MAX_LINES` / `ARENA_INTERPRETATION_LINE_MAX_LENGTH` · `arena/scenarios` barrel · Vitest **4 tests** ✓ · 보드 **TASK49 [x]** · C3 S82 **`[ ]` 없음** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
 
-**[C5] SPRINT 58 TASK 1·6 / 264**: [x] **완료.** Gate **58** — **280 / 2119**·Build ✓·엘리트 **PASS**·§3.
+**[C1] REFILL 후 작업 스텝 (S83):** **C1 TASK2·3·5·7** `[ ]` — **TASK1·6 [x]** 됨 · **다음:** TASK2 — `NEXT_PHASE_AUTO4`·`NEXT_BACKLOG_AUTO4` **S83/289·Gate83** 정합 → TASK3·5·7.
 
-**[C6] SPRINT 58 TASK10 / 264**: [x] **완료.** q237 + CI **280/2119** ✓ · Build ✓.
+**[C4] SPRINT 82 TASK45 / 288 (Arena play·run·resolve `<main>`):** [x] **완료.** **`bty-arena/play`**·**`/run`**·**`ArenaResolveSessionScreen`** — `<main>`/`aria-label` · `arenaMissionPlay*`·`arenaResolveSession*`·`arenaRun.runPage*` i18n · `/run` 레이아웃 **`</div>`** 정리 · `createSupabaseRouteClient` **`setAll` 매개변수 타입** (tsc) · **`npm run lint` ✓** · 보드 **TASK45 [x]** · 병렬 큐 **TASK51** C4 `[ ]` · `SPRINT_PLAN`·`BTY_RELEASE_GATE_CHECK` 동기.
 
-**[C3] SPRINT 57 TASK8·9 / 263**: [x] **완료.** `arenaRunCompletion.edges`·`POST /api/arena/event` 401·400. **280 / 2119** ✓.
+**[C3] SPRINT 82 TASK 44 / 288 (큐 보충 DOMAIN):** [x] **완료.** **`arenaActivatedHiddenStatsFromUnknown`** + **`arenaActivatedHiddenStatsFromUnknown.edges.test.ts`** · `ResolveOutcome.activatedStats` · `arena/scenarios` barrel · Vitest **3 tests** ✓ · 보드 TASK44 [x] · 다음 C3 **`[ ]` = TASK49** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD`·`BTY_RELEASE_GATE_CHECK` 동기.
 
-**[C6] SPRINT 57 TASK10 / 263**: [x] **완료.** q237-smoke + CI **280/2119** ✓.
+**[C6] SPRINT 82 TASK 47 / 288 (큐 보충 VERIFY):** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **326 / 2280** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 TASK47 [x] · 이어 **TASK50** · `SPRINT_LOG`·`BTY_RELEASE_GATE_CHECK` 동기.
 
-**[C5] SPRINT 57 TASK 1·6 / 263**: [x] **완료 (2026-03-18).** Gate **57** — **279 / 2115**·Build ✓·엘리트 **PASS**·§3.
+**[C6] SPRINT 82 TASK 43 / 288 (큐 보충 VERIFY):** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **325 / 2277** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 TASK43 [x] · **TASK47** C6 `[ ]` · `SPRINT_LOG`·`BTY_RELEASE_GATE_CHECK` 동기.
 
-**[운영] S56 → S57:** C3·C6 전행 [x] → `PARALLEL_QUEUE_REFILL.md` §3.
+**[C5] SPRINT 82 TASK46 / 288 (큐 보충 Gate·엘리트·문서):** [x] **완료.** **326/2280** ✓ · `ELITE_3RD`·`BTY_RELEASE_GATE_CHECK` TASK46 · 보드 TASK46 [x] · **TASK48** C5 `[ ]` · 다음 C5 **`[ ]` = TASK48**.
 
-**[C5] SPRINT 56 TASK 1·6 / 262**: [x] **완료.** Gate **56** — **279 / 2115**·Build ✓·엘리트 **PASS**·§3.
+**[C1] REFRESH 2026-03-25 (AUTO4·NEXT_PHASE·AI_TASK_BOARD 동기):** [x] **완료.** 잔여 **`[ ]` = C1 + TASK45·48·49·50** · `check-parallel-task-queue` **exit 0** · C7 **326/2280** (보드·`SPRINT_LOG` 참고).
 
-**[C3] SPRINT 56 TASK8·9 / 262**: [x] **완료.** `reflectTextBounds.edges`·`GET /api/arena/weekly-stats`. **279 / 2115** ✓.
+**[C3] SPRINT 82 TASK40 / 288 (큐 보충 DOMAIN):** [x] **완료.** **`arenaOutcomeMetaFromUnknown`** + **`arenaOutcomeMetaFromUnknown.edges.test.ts`** · `ResolveOutcome.meta` 3축 [0,1] · `arena/scenarios` barrel · Vitest ✓ · **TASK44 [x]** · 다음 C3 **`[ ]` = TASK49** · `SPRINT_PLAN`·`BTY_RELEASE_GATE_CHECK` 동기.
 
-**[C6] SPRINT 56 TASK10 / 262**: [x] **완료.** q237-smoke **7/7** ✓ · CI **279/2115** ✓ · Build ✓.
+**[C4] SPRINT 82 TASK42 / 288 (bty-arena·assessment 결과 `<main>`):** [x] **완료.** `bty-arena` 루트·`/hub` `ScreenShell.mainAriaLabel` · `arenaHubMainRegionAria`·`arenaMissionLobby*` · `assessment/ui/ResultClient` 전 분기 `dojoResultMainRegionAria` · `npm run lint` ✓ · 다음 C4 **`[ ]` = TASK45**.
 
-**[C5] SPRINT 55 TASK 1·6 / 261**: [x] **완료.** Gate **55** — **277 / 2108**·Build ✓·엘리트 **PASS**·§3.
+**[C5] SPRINT 82 TASK 34 / 288 (큐 보충 Gate·엘리트·문서):** [x] **완료.** **324/2274** ✓ · `ELITE_3RD`·`BTY_RELEASE_GATE_CHECK` TASK34 · 보드 TASK34 [x] · **TASK46** C5 `[ ]` → TASK46 완료 후 **TASK48**.
 
-**[C3] SPRINT 55 TASK8·9 / 261**: [x] **완료.** `eliteMentorRequest.edges`·`GET /api/arena/membership-request`. **277 / 2108** ✓.
+**[C6] SPRINT 82 TASK 41 / 288 (큐 보충 VERIFY):** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **324 / 2274** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 TASK41 [x] · 이어 **TASK43** → **TASK47** · `SPRINT_LOG`·`BTY_RELEASE_GATE_CHECK` 동기.
 
-**[C6] SPRINT 55 TASK10 / 261**: [x] **완료.** q237-smoke **7/7** ✓ · CI **277/2108** ✓ · Build ✓.
+**[C4] SPRINT 82 TASK37 / 288 (dear-me·center·foundry Suspense `<main>`):** [x] **완료.** `DearMeLoadingShell`·`CenterLoadingShell`·`FoundryHubLoadingShell` · i18n `dearMeSuspenseMainRegionAria`·`centerSuspenseMainRegionAria`·`foundryHubSuspenseMainRegionAria` · `npm run lint` ✓ · 이어 **TASK42**·**TASK45** 큐.
 
-**[C5] SPRINT 54 TASK 1·6 / 260**: [x] **완료 (2026-03-18).** Gate **54** — **275 / 2102**·Build ✓·엘리트 **PASS**·§3.
+**[C6] SPRINT 82 TASK 38 / 288 (큐 보충 VERIFY):** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **324 / 2274** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 TASK38 [x] · 이어 **TASK41** → **TASK43** · `SPRINT_LOG`·`BTY_RELEASE_GATE_CHECK` 동기.
 
-**[C3] SPRINT 53 TASK8·9 / 259**: [x] **완료.** `xpAwardDedup.edges.test.ts`; `GET /api/arena/weekly-xp` 401·200. vitest **275 / 2102** ✓.
+**[C3] SPRINT 82 TASK 39 / 288 (큐 보충 DOMAIN):** [x] **완료.** **`arenaScenarioIdFromUnknown`** · **`ARENA_SCENARIO_ID_MAX_LENGTH`** · **`arenaScenarioIdFromUnknown.edges.test.ts`** · barrel **`arenaOutcome*`** export 복구 · **324/2274** ✓ · 보드 TASK39 [x] · 이어 **TASK40**·**TASK44** C3 큐.
 
-**[C6] SPRINT 53 TASK10 / 259**: [x] **완료.** q237-smoke 3/7 ✓ · self-healing-ci **275/2102** ✓ · Build ✓.
+**[C3] SPRINT 82 TASK35 / 288 (큐 보충 DOMAIN):** [x] **완료.** **`arenaOutcomeTraitsPartialFromUnknown`** · **`arenaOutcomeTraitWeightFromUnknown`** + **`arenaOutcomeTraitsFromUnknown.edges.test.ts`** · `ResolveOutcome.traits` 0–1 · `arena/scenarios` barrel · Vitest ✓ · `SPRINT_PLAN`·`BTY_RELEASE_GATE_CHECK` 동기.
 
-**[C5] SPRINT 53 TASK 1·6 / 259**: [x] **완료.** Gate **53** — **275 / 2102**·Build ✓·엘리트 **PASS**·§3.
+**[C1] REFRESH 2026-03-24 (S82/288):** [x] **완료.** `check-parallel-task-queue` **exit 0** · `AUTO4`·`SPRINT_PLAN` · 잔여 **`[ ]` = C1** + **TASK43·44·45·46** · C7 **324/2274** ✓.
 
-**[C5] SPRINT 52 TASK 1·6 / 258**: [x] **완료.** Gate **52** — **273 / 2097**·Build ✓·엘리트 **PASS**·§3.
+**[C6] SPRINT 82 TASK 36 / 288 (큐 보충 VERIFY):** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **320 / 2259** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 TASK36 [x] · 이어 **TASK38** · `SPRINT_LOG`·`BTY_RELEASE_GATE_CHECK` 동기.
 
-**[C3] SPRINT 52 TASK8·9 / 258**: [x] **완료.** `scenarioDisplay.edges.test.ts`; `POST /api/arena/beginner-complete` 401·400. vitest **273 / 2097** ✓.
+**[C4] SPRINT 82 TASK33 / 288 (journal 로딩·Suspense·리다이렉트 a11y):** [x] **완료.** `JournalLoadingShell` · `page.client` 로딩·비로그인 `<main>` · i18n `journalLoadingMainRegionAria`·`journalRedirectingMainRegionAria`·`journalRedirectingMessage` · 이어 **TASK37**·**TASK42** 큐 · `check-parallel-task-queue` **exit 0**.
 
-**[C5] SPRINT 51 TASK 1·6 / 257**: [x] **완료.** Gate 51 — **271 / 2091**·Build ✓·엘리트 **PASS**·§3.
+**[C3] SPRINT 82 TASK31 / 288 (큐 보충 DOMAIN):** [x] **완료.** **`arenaMissionOutcomeKeyPartsFromUnknown`** + **`arenaMissionOutcomeKeyPartsFromUnknown.edges.test.ts`** · `ArenaMissionOutcomeKeyParts` · `arena/scenarios` barrel · Vitest ✓ · 보드·`SPRINT_PLAN`·`BTY_RELEASE_GATE_CHECK` 동기.
 
-**[C5] SPRINT 50 TASK 1·6 / 256**: [x] **완료.** Gate 50 — **271 / 2091**·Build ✓·엘리트 **PASS**·§3.
+**[C6] SPRINT 82 TASK 30 / 288 (큐 보충 VERIFY):** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **318 / 2254** ✓ · Build ✓ · 보드 TASK30 [x] · 다음 C6 **`[ ]` = TASK36** · `SPRINT_LOG`·`BTY_RELEASE_GATE_CHECK` 동기.
 
-**[C3] SPRINT 50 TASK8·9 / 256**: [x] **완료.** `reflectTextHint.edges`·`code-name` POST. **271 / 2091** ✓.
+**[C5] SPRINT 82 TASK 32 / 288 (큐 보충 Gate·엘리트·문서):** [x] **완료.** **318/2254** ✓ · `ELITE_3RD`·`BTY_RELEASE_GATE_CHECK` TASK32 · 보드 TASK32 [x] · **TASK34** C5 `[ ]` (병렬 큐 유지).
 
-**[C6] SPRINT 50 TASK10 / 256**: [x] **완료.** q237-smoke + self-healing-ci **271/2091** ✓.
+**[C1] REFRESH 2026-03-23 (S82/288):** [x] **완료.** `check-parallel-task-queue` **exit 0** · `AUTO4`·`SPRINT_PLAN` · 잔여 **`[ ]` = C1** + **TASK34·35·36·37**.
 
-**[C6] SPRINT 52 TASK10 / 258**: [x] **완료.** q237-smoke 3/7 ✓ · self-healing-ci **273/2097** ✓ · Build ✓ (C5 Gate 52 동기).
+**[C1] REFRESH 2026-03-19 (S82/288):** [x] **완료.** C6 TASK36·보드 TASK38 반영 · `check-parallel-task-queue` **exit 0** · 잔여 **`[ ]` = C1** + **TASK34·35·37·38**.
 
-**[C5] SPRINT 49 TASK 1·6 / 255**: [x] **완료 (2026-03-29).** Gate 49 — **269 / 2086**·Build ✓. 엘리트 3차 **PASS**·§3.  
-**[C3] SPRINT 49 TASK8·9 / 255**: [x] **완료 (2026-03-29).** `runsCursorValidation.edges.test.ts`; `POST /api/arena/sub-name` 404. vitest **269 / 2086** ✓.  
-**[x] 운영 (2026-03-17):** **병렬 큐 보충** 절차 — `PARALLEL_QUEUE_REFILL.md` · `npm run board:queue-check` (exit 2 → C1이 새 이번 런 10행 오픈).
+**[C4] SPRINT 82 TASK29 / 288 (admin/login + admin hub a11y):** [x] **완료.** `admin/login`·`admin/page` `<main aria-label>` · i18n `adminLogin`·`adminHub` · post-login `/${locale}/bty` · `router.replace` → debug · 터치 파일 타입체크 ✓ · 이어 **TASK33**·**TASK37** 큐.
 
-**[C4] SPRINT 48 TASK4 / 254**: [x] **완료 (2026-03-27).** `/my-page` 개요 **`role=region`**·`myPageOverviewRegionAria` ko/en.
+**[C6] SPRINT 82 TASK 27 / 288 (큐 보충 VERIFY):** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **316 / 2250** ✓ · `bty-app/src/domain/arena/scenarios/` **Git 추가** (webpack **`arenaMissionOutcomeKey`** 모듈 해소) · 보드 TASK27·TASK30~32 · `SPRINT_LOG`·`BTY_RELEASE_GATE_CHECK` 동기.
 
-**[C6] SPRINT 49 TASK10 / 255**: [x] **완료 (2026-03-29).** `test:q237-smoke` 3/7 ✓ · self-healing-ci **269/2086** ✓ · Build ✓.
+**[C5] SPRINT 82 TASK 28 / 288 (큐 보충 Gate·엘리트·문서):** [x] **완료.** **316/2250** ✓ · `ELITE_3RD`·`BTY_RELEASE_GATE_CHECK` TASK28 · 보드 TASK28 [x].
 
-**[C4] SPRINT 49 TASK4 / 255**: [x] **완료 (2026-03-17).** `/bty` 인덱스 세 허브 카드 **`role=region`**·`indexHubEntriesRegionAria` ko/en (My Page·Growth 제외).
+**[C3] SPRINT 82 TASK26 / 288 (큐 보충 DOMAIN):** [x] **완료.** `arenaMissionOutcomeKeyFromChoiceIds` + **`arenaMissionOutcomeKey.edges.test.ts`** · `arena/scenarios` barrel · Vitest ✓ · 보드·`SPRINT_PLAN`·`BTY_RELEASE_GATE_CHECK` 동기.
 
-**[C5] SPRINT 48 TASK 1·6 / 254**: [x] **완료 (2026-03-26).** Gate 48 — **268 / 2082**·Build ✓·허브 스모크. 엘리트 3차 **PASS**·§3.
+**[C1] REFRESH 2026-03-22 (S82/288):** [x] **완료.** `check-parallel-task-queue` **exit 2→0** — **TASK28** C5·**TASK30~32** (C6·C3·C5) 보충 · **TASK33** C4 (TASK29 완료 후) · 잔여 **`[ ]` = C1** + **TASK30·31·32·33**.
 
-**[C3] SPRINT 48 TASK8·9·254 (Arena)**: [x] **완료 (2026-03-26).** `weeklyCompetitionDisplay.edges.test.ts`; `GET /api/arena/leaderboard/status` 200 진단. vitest **268 / 2082** ✓.
+**[C5] SPRINT 82 TASK 24 / 288 (큐 보충 Gate·엘리트·빌드):** [x] **완료.** **315/2247** ✓ · `mockScenario` **HiddenStat** 리터럠 · `ELITE_3RD`·`BTY_RELEASE_GATE_CHECK` TASK24 · 보드 TASK24 [x].
 
-**[C2] SPRINT 253 (C5 TASK1 후 Gate 동기)**: [x] **완료 (2026-03-24).** BTY_RELEASE_GATE_CHECK·SPRINT_LOG·**266/2076**·build. 배포 **58b8342** → 다음 push 시 재Gate.
+**[C6] SPRINT 82 TASK 23 / 288 (큐 보충 VERIFY):** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **315 / 2247** ✓ · Build ✓ · 보드 TASK23 · `SPRINT_LOG`·`BTY_RELEASE_GATE_CHECK` 동기.
 
-**[C4] SPRINT 47 TASK4 / 253**: [x] **완료 (2026-03-24).** Growth `/growth` `role=region`·`growthHubMainRegionAria` ko/en·스모크 **4** ✓·보드 TASK4 [x].
+**[C4] SPRINT 82 TASK19 / 288 (admin/organizations a11y):** [x] **완료.** `<main aria-label>` · i18n `adminOrganizations.mainRegionAria` · `loading.message` · `npm run lint` ✓ · 다음 C4 **`[ ]` = TASK25**.
 
-**[C5] SPRINT 47 TASK 1·6 / 253**: [x] **완료 (2026-03-23).** Gate 47차 — **266 files / 2076 tests**·Build ✓·`coreXpDisplay` NaN. 엘리트 3차 6항목 **PASS**·§3.
+**[C3] SPRINT 82 TASK21 / 288 (큐 보충 DOMAIN):** [x] **완료.** `arenaScenarioDifficultyFromUnknown` + edges · `ScenarioDifficulty` · `arena/scenarios` export.
 
-**[C3] SPRINT 47 TASK8·9·253 (Arena)**: [x] **완료 (2026-03-23).** `coreXpDisplay.edges.test.ts`; `GET /api/arena/today-xp` null·비숫자 xp 합산. vitest **266 / 2076** ✓.
+**[C1] REFRESH 2026-03-21 (S82/288):** [x] **완료.** `check-parallel-task-queue` **exit 2→0** — 보드 **TASK24** C5 `[ ]` 추가 · `AUTO4`·`SPRINT_PLAN` · 잔여 **`[ ]` = C1** + **TASK24·25·26** (TASK23·C3 TASK21 [x]).
 
-**[C3] SPRINT 252 DOMAIN + 보드 TASK8·9**: [x] **완료 (2026-03-21).** `healing.edges.test.ts` (Foundry healing 경계); `POST /api/journey/entries` invalid JSON→day 1. vitest **265 / 2073** ✓·`SPRINT_PLAN` C3(252) [x].
+**[C5] SPRINT 82 TASK 22 / 288 (큐 보충 Gate·엘리트 문서 스테일):** [x] **완료.** `ELITE_3RD` 갱신일·§3 **313/2239** · `BTY_RELEASE_GATE_CHECK` TASK22 · 보드 TASK22 [x].
 
-**[C5] SPRINT 252 UI 회귀·Arena 정책**: [x] **완료 (2026-03-21).** `growth/sprint252-journey-growth-regression.smoke.test.ts` — i18n en/ko·Growth RSC Journey 링크·`bty-arena/page.tsx`에 `growth/journey`·`JourneyBoard` 없음.
+**[C6] SPRINT 82 TASK 18 / 288 (큐 보충 VERIFY):** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **313 / 2239** ✓ · Build ✓ (`next build` 1차 `.next` ENOENT → 재시도) · 보드 TASK18 · `SPRINT_LOG`·`BTY_RELEASE_GATE_CHECK` 동기.
 
-**[C1] SPRINT 46 TASK 5·7·10 (보드)**: [x] **완료 (2026-03-20).** 다음 배치 후보(splint 252·TASK8·9)·§ 다음 작업·NEXT_PHASE≡NEXT_BACKLOG≡보드 동기화.
+**[C4] SPRINT 82 TASK15 / 288 (admin/quality a11y):** [x] **완료.** `admin/quality` `<main aria-label>` · i18n `adminQuality.mainRegionAria` · `/${locale}/admin/*` nav · `npm run lint` ✓.
 
-**[C2] SPRINT 251 배포 Gate**: [x] **완료 (2026-03-18).** `58b8342` (`cce5374..58b8342`). BTY_RELEASE_GATE_CHECK §A~F·MVP·SPRINT_LOG. self-healing-ci **264 files / 2067 tests** · build PASS.
+**[C3] SPRINT 82 TASK20 / 288 (큐 보충 DOMAIN):** [x] **완료.** `isArenaPrimaryMissionChoiceId` · `isArenaReinforcementMissionChoiceId` + edges · `arena/scenarios`.
 
-**[C5] SPRINT 251 TASK2–5 (UI)**: [x] **완료.** LE Stage 진행 바·캡; 주간 경쟁 스테이지 밴드 라벨; Healing POST `ACT_PREREQUISITE`·`COOLDOWN_ACTIVE` 토스트+인라인; i18n ko/en.
+**[C3] SPRINT 82 TASK16 / 288 (큐 보충 DOMAIN):** [x] **완료.** `isArenaHiddenStatLabel` + edges · `src/domain/arena/scenarios`.
 
-**[C3] SPRINT 251 DOMAIN**: [x] **완료.** `weeklyCompetitionStageTierBandDisplayLabelKey`; `healingPathProgressBlockedUserDisplayKey`+`HEALING_PROGRESS_BLOCKED_PHASE_DISPLAY_KEY`; LE clamp·시나리오 ID 기존 `isValidArenaScenarioCodeId`; barrel·arena-domain-rules §251.
+**[C6] SPRINT 82 TASK 14 / 288 (큐 보충 VERIFY):** [x] **완료.** `test:q237-smoke` **3 / 7** ✓ · `self-healing-ci.sh` **311 / 2233** ✓ · Build ✓ · `SPRINT_LOG`·보드 TASK14 동기.
 
-**[C5] SPRINT 250 TASK2–5 (UI)**: [x] **완료.** 리더보드 동순위 접미·대시보드 추천 빈 플레이스홀더·런 상세 로딩/empty 도메인 키·회복 탄력성 레벨 범례·i18n ko/en. `docs/SPRINT_PLAN.md` §250.
+**[C4] SPRINT 82 TASK11 / 288 (admin/users a11y):** [x] **완료.** `admin/users` `<main aria-label>` · i18n `adminUsers.mainRegionAria` · `/${locale}/admin/quality` · `npm run lint` ✓.
 
-**[C5] SPRINT 46 TASK 6 (보드)**: [x] **완료 (2026-03-11).** 엘리트 3차 체크리스트 6항목·코드·API 대조. Elite=주간 상위 5%만. ELITE_3RD §3·CURSOR_TASK_BOARD.
+**[C5] SPRINT 82 TASK 1·6 / 288 (Gate 82 + 엘리트 §3):** [x] **완료.** Release Gate A~F **310 / 2229** ✓ · Build ✓ · ELITE_3RD §2 6항·§3 **82차 PASS** · `ArenaResolveScreen` resolved 시나리오·`BTY_RELEASE_GATE_CHECK`·보드 동기.
 
-**[C4] CONTINUE (2026-03-23)**: **SPRINT 252** C4 **[x]** · 보드 **SPRINT 46** C4 행 **[x]** → **`src/app/api` 할 일 없음.** C1 splint → **253**·이번 런 C4 열 생길 때까지 대기.
+**[C3] SPRINT 82 TASK12 / 288 (큐 보충 DOMAIN):** [x] **완료.** `normalizeArenaMissionPayloadFromUnknown` + edges · `missionStorage.readMissionPayload` · `src/domain/arena/scenarios`.
 
-**[C4] SPRINT 252 API 회귀**: [x] **완료 (2026-03-21).** Journey API vitest **35** ✓·ARENA §4-11b·`SPRINT_PLAN` C4 [x].
+**[C3] SPRINT 82 TASK8·9 / 288:** [x] **완료.** `arenaLeaderboardScopeRoleLabel` + edges · `roleToScopeLabel` → domain · `GET /api/arena/mentor-requests` 조회 실패 **500** (`route.test.ts`) · Vitest 로컬 4 files.
 
-**[C5] SPRINT 251 TASK1 Journey·bounce-back**: [x] **완료 (2026-03-18).** Growth sub-nav Dojo·Integrity·Guidance·Journey; `/growth/journey` + JourneyBoard; locale layout Comeback → Resume Journey + POST bounce-back; Reflection→dear-me; i18n en/ko.
+**[C4] SPRINT 82 TASK4 / 288 (Center/Foundry a11y):** [x] **완료.** `admin/mentor-requests` 페이지 `<main aria-label={t.mainRegionAria}>` · `mentorRequestAdmin` ko/en · Foundry `/bty/mentor` 미터치 · `npm run lint` ✓ · 보드 보충 행·`check-parallel-task-queue` **exit 0**.
 
-**다음 배치**: **SPRINT 47** 이번 런 **열림** (2026-03-23). **SPRINT 253** (`SPRINT_PLAN`) = 보드 47과 동기.
+**[C1] REFRESH 2026-03-20 (S82/288):** [x] **완료.** `check-parallel-task-queue` **exit 0** · `AUTO4_PROMPTS`·`SPRINT_PLAN`·보드 · 잔여 **`[ ]` = C1** TASK2·3·5·7 + **TASK19** (C4 큐 보충).
 
-**REFRESH 명령**: 사용자가 **refresh** 시 → `docs/agent-runtime/REFRESH_PROCEDURE.md` — 이번 태스크 점검 + **C2~C6 각 작업 5개** 인라인 → 각 Cursor는 자기 Cn 열만 진행.
+**[C1] REFRESH 2026-03-19 (S82/288):** [x] **완료.** `check-parallel-task-queue` **exit 0** · `SPRINT_PLAN`·`AUTO4_PROMPTS`·보드 REFRESH 불릿 · C1 TASK2·3·5·7 **잔여 [ ]** · **TASK11~14** 진행 중.
 
-**[C6] SPRINT 251 TESTFIX**: [x] **완료.** q237-smoke; run/complete `aborted_at`→409+401 짝; core-xp 연속 401; barrel 251 LE·시나리오·cooldown 보강; 264 files / 2067 tests·build PASS.
+**[DOC] MULTI_MACHINE_REFRESH_PROMPT:** [x] **완료.** 다른 PC·Cursor용 **복사 블록** — `docs/agent-runtime/MULTI_MACHINE_REFRESH_PROMPT.md`.
 
-**[C3] SPRINT 251 DOMAIN**: [x] **완료.** `WEEKLY_COMPETITION_STAGE_TIER_DISPLAY_LABEL_KEY`; `clampDashboardLeProgressDisplayPercent`; `isValidArenaScenarioCodeId`; `HEALING_PROGRESS_BLOCKED_COOLDOWN_DISPLAY_KEY`; §251.
+**[C1] PARALLEL_QUEUE_REFILL S81→S82 / REFRESH 2026-03-17:** [x] **완료.** 보드 **SPRINT 82** 10행 `[ ]` 오픈 · `SPRINT_PLAN` **288** active · `AUTO4_PROMPTS`·`NEXT_BACKLOG`·`AI_TASK_BOARD` 동기 · `check-parallel-task-queue` **exit 0** · C1 TASK2·3·5·7 DOCS **잔여 [ ]**.
 
-**[REFRESH (C1)] SPRINT_PLAN 250→251**: [x] **적용.** 250 회전 완료. 251: run/complete 409·core-xp·me/access·healing progress·주간 스테이지·LE 캡·시나리오 검증·Healing UI·테스트.
+**[DOC] REFRESH C1 이중 의무:** [x] **완료.** `REFRESH_PROCEDURE.md` — REFRESH 시 C1이 **보드 C1 `[ ]` DOCS** 처리·`CURRENT_TASK` 동기 + **C2~C6** `SPRINT_PLAN` 큐 갱신을 **동일 절차**에서 수행하도록 명문화 · 보드·`HOW_TO_READ_TASKS` §7·`SPRINT_PLAN` 표 동기.
 
-**[C3] SPRINT 250 DOMAIN**: [x] **완료.** `leaderboardTieRankSuffixDisplayKey`; `DASHBOARD_RECOMMENDATION_EMPTY_PLACEHOLDER_KEY`; `arenaRunDetailSkeletonDisplayKey`; `resilienceLevelDisplayLabelKey`; barrel·arena-domain-rules §250.
+**[DOC] HOW_TO_READ_TASKS §5:** [x] **완료.** «여러 커서가 동시에 할 일 없음» — 보드에서 C3~C6 행이 모두 `[x]`·남은 `[ ]`가 C1만일 때 정상; C2는 push 후 Gate 대기 별도.
 
-**[REFRESH (C1)] SPRINT_PLAN 249→250**: [x] **적용.** 249 회전 완료. 250: 리더보드 tie·빈추천·런 로딩·resilience 레벨·run 404·LB 401·center resilience API·UI·테스트.
+**[C4] SPRINT 287 REFRESH (C4 API 1~5) 4차:** [x] **완료.** 플랜 C4 무코드 점검 · `admin/mentor-requests` S82 후보 메모 · `npm run lint` PASS.
 
-**[C5] SPRINT 249 TASK2–5**: [x] **완료.** 성찰 `reflectTextLengthHintKey`+24k·ReflectionBlock/beginner; Elite 배지 `eliteMentorRequestStatusDisplayLabelKey`+stale·SLA; Awakening `healingAwakeningActLockReasonDisplayKey`+`healingAwakeningLockReasonCopy`; i18n reflectHints·eliteDomain*·lock.
+**[C6] SPRINT 81 TASK 10 / 287:** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **309 / 2222** ✓ · Build ✓ · `SPRINT_PLAN` 워커표 **C6·10**·VERIFY 1~5 **`[x]`** · C7 **309/2222** · `SPRINT_LOG` 동기.
 
-**[C3] SPRINT 249 DOMAIN**: [x] **완료.** `reflectTextBounds`; `parseRunsListCursorOrNull`+lib runsCursor; `eliteMentorRequestStatusDisplayLabelKey`; `healingAwakeningActLockReasonDisplayKey`; barrel·arena-domain-rules §249.
+**[C5] SPRINT 81 TASK 1·6 / 287 (Gate 81 + 엘리트 §3):** [x] **완료.** Release Gate A~F **308 / 2216** ✓ · Build ✓ · ELITE_3RD §2 6항·§3 **81차 PASS** · `BTY_RELEASE_GATE_CHECK`·보드 동기.
 
-**[REFRESH (C1)] SPRINT_PLAN 248→249**: [x] **적용.** C5 TASK2~5 플랜 [x] 동기. 249: 성찰·runs·Elite·Awakening·reflect/mentor/acts API·UI·테스트.
+**[C5] SPRINT 287 REFRESH (C5 UI 1~5):** [x] **완료.** `SPRINT_PLAN` C5 — UI 점검 **[x]** · Gate81·§3 동기 · S82·TASK7 예고 · `elite/page.client` API-only.
 
-**[C6] SPRINT 250 TESTFIX**: [x] **완료.** `test:q237-smoke`; GET run/[runId] 404(trim·본문); leaderboard 401 짝; barrel 250 tie·추천순·resilience; 264 files / 2058 tests·build PASS.
+**[C5] SPRINT 287 REFRESH (C5 UI 1~5) 플랜 재갱신 후:** [x] **완료.** `SPRINT_PLAN` **C2~C6 할일** 교체 뒤 5항 재점검 **`[x]`** · Gate81·§3·보드 S81 C5 동기.
 
-**[C6] SPRINT 248 TESTFIX**: [x] **완료.** `test:q237-smoke`; leaderboard 400 scope/week route.test; dashboard/summary 401·503(LE ensure throw); `domain/index` barrel 248; 262 files / 2041 tests·build PASS.
+**[C5] SPRINT 287 REFRESH (C5 UI 1~5) S82 대기판:** [x] **완료.** S81 **10/10 [x]**·First=C5 Gate·TASK7·`elite/page.client` render-only · `C5 — UI` 5항 **`[x]`**.
 
-**[C6] SPRINT 249 TESTFIX**: [x] **완료.** `test:q237-smoke`; reflect 401+413 짝; awakening act 404; barrel 249+권장 최소 글자 수; npm test·build PASS.
+**[C3] SPRINT 81 TASK8·9 / 287:** [x] **완료.** `arenaLeaderboardMondayUtcFromDate` + edges · `GET /api/arena/leaderboard` 과거 월요일 `week` → **400** `INVALID_WEEK` (Vitest 로컬 3 files).
 
-**[C5] SPRINT 248 TASK2–5 (도메인 키 정합)**: [x] **완료.** 주간 티어 `weeklyTierDisplayLabelKey`+`arena`; 런 `arenaRunStateDisplayLabelKey`(마이페이지 status·런 상세 lifecycle); Awakening 액트 진행률 바+`clampHealingAwakeningActProgressDisplayPercent`; `arena`·`arenaStableLabel`. TASK1 BLOCKER 유지.
+**[C4] SPRINT 81 TASK4 / 287:** [x] **완료.** Mentor `/bty/mentor` prefs 로딩 분기 `<main aria-label={pageMainLandmarkAria}>` (i18n `mentorPage`).
 
-**[C3] SPRINT_PLAN 248 DOMAIN**: [x] **완료.** `weeklyTierDisplayLabelKey`·`RECOMMENDATION_SOURCE_PRIORITY_MIN/MAX`·`arenaRunStateDisplayLabelKey`·`clampHealingAwakeningActProgressDisplayPercent`+테스트; `domain/index`·`arena-domain-rules` §248.
+**[C4] SPRINT 287 REFRESH (C4 API 1~5):** [x] **완료.** `/bty/test-avatar` `<main aria-label>` ko/en · `SPRINT_PLAN` C4 할일 1~5 **[x]** · `npm run lint` PASS.
 
-**[REFRESH (C1)] SPRINT_PLAN 247→248**: [x] **적용.** 247 회전 완료(C2·C5 BLOCKER 제외). SPRINT 248: 리더보드 계약·dashboard·journey·center letter·도메인 티어/런상태/Healing 캡·UI·테스트.
+**[C4] SPRINT 287 REFRESH (C4 API 1~5) 2차:** [x] **완료.** `admin/sql-migrations` `<main>`·`role=region`·ko/en·`npm run lint` PASS.
 
-**[C5] SPRINT_PLAN 247 TASK2–5 (Arena UX)**: [x] **완료 (2026-03-17).** 마이페이지 런 `nextCursor` 더보기·Elite SLA 임박 배지(도메인 키)·결과 `ResultShareStub`·i18n; test 2023·build PASS. TASK1 BLOCKER 유지.
+**[C4] SPRINT 287 REFRESH (C4 API 1~5) 3차:** [x] **완료.** `admin/debug` + `debugCopy.ts` · main·region·ko/en·Lint PASS.
 
-**[C5] SPRINT_PLAN 246 TASK2–5 (Arena UX)**: [x] **완료 (2026-03-17).** 런 상세 `/bty-arena/run/[runId]`·대시보드 라이브 LB 모달 a11y·nearMe/미순위 배너·growth 비참가 주간 카피·reflect/stage-summary/nearMe i18n; test 2007·build PASS. TASK1 BLOCKER 유지.
+**[C5] SPRINT 80 TASK 1?6 / 286 (Gate 80???? ?3):** [x] **??.** Release Gate A~F ? **308 / 2216** ? Build ? ? ELITE_3RD ?2 6????3 **80?** **PASS** ? `BTY_RELEASE_GATE_CHECK`??? ??.
 
-**[C5] SPRINT_PLAN 245 TASK2–5 (Arena UX)**: [x] **완료 (2026-03-17).** `MyPageRecentRuns`·`GrowthMyRankCard`·Awakening acts 그리드·i18n; `npm test`·`npm run build` PASS. TASK1 Journey·bounce-back BLOCKER 유지.
+**[C4] SPRINT 80 TASK4 / 286**: [x] **??.** Healing awakening `/bty/healing/awakening` main landmark i18n (awakeningMainRegionAria* + tHealing); exclude list +1.
 
-**[C6/C3/C4] SPRINT 247**: [x] **완료 (2026-03-17).** runs cursor·profile 422·elite Cache-Control·healing 409·C6/C3·262 files / 2023 tests·build PASS. C5 TASK1 BLOCKER 유지.
+**[C6] SPRINT 80 TASK 10 / 286:** [x] **??.** `test:q237-smoke` **7/7** ? `self-healing-ci.sh` **308 / 2216** ? Build ? ? `SPRINT_LOG`??? ??.
 
-**[C4] SPRINT_PLAN 247 API (ARENA_DOMAIN_SPEC §4)**: [x] **완료 (2026-03-17).** §4·247 정합 — runs cursor/400·profile EMPTY_PATCH·me/elite 캐시·healing `ACT_ALREADY_COMPLETED`.
+**[C3] SPRINT 80 TASK8?9 / 286**: [x] **??.** `arenaLeaderboardWeekParamValid` + edges ? GET /api/arena/run/[runId] empty runId 400.
 
-**[C6] SPRINT 246 TESTFIX**: [x] **완료 (2026-03-17).** reflect 413·`reflectLimits.ts`, stage-summary 246 스모크, `q246-nearme-healing.edges.test.ts`, `test:q237-smoke`·258 files / 2007 tests·build PASS.
+**[C3] SPRINT 79 TASK8?9 / 285**: [x] **??.** `arenaLeaderboardScopeFromParam` + edges ? GET /api/arena/leaderboard scope=office 200.
 
-**[C6] SPRINT 245 TESTFIX**: [x] **완료 (2026-03-17).** `GET /api/arena/run/[id]` + route.test, POST run 400 스모크, `q245-tier-mentor-sa.edges.test.ts`, `test:q237-smoke`·`npm test`·`npm run build` PASS.
+**[C6] SPRINT 78 TASK 10 / 284:** [x] **??.** `test:q237-smoke` **7/7** ? `self-healing-ci.sh` **306 / 2204** ? Build ? ? `SPRINT_LOG`??? ??.
 
-**진행 에이전트**: 이 파일 또는 커맨더 메시지에 적힌 **기능(요구사항)** 을 구현하세요.
+**[C5] SPRINT 78 TASK 1?6 / 284 (Gate 78???? ?3):** [x] **??.** Release Gate A~F ? **306 / 2204** ? Build ? ? ELITE_3RD ?2 6????3 **78?** **PASS** ? `BTY_RELEASE_GATE_CHECK`??? ??.
 
-**[REFRESH (C1)] SPRINT_PLAN 237**: [x] **적용.** 236→237 회전. 구현 배치 = **SPRINT_PLAN §237**. C2 다음 배포 Gate [ ] 유지. Phase 1 §7 유지.
+**[C5] SPRINT 77 TASK 1?6 / 283 (Gate 77???? ?3):** [x] **??.** Release Gate A~F ? **306 / 2204** ? Build ? ? ELITE_3RD ?2 6????3 **77?** **PASS** ? `BTY_RELEASE_GATE_CHECK`??? ??.
 
-**[C1 Commander 통지] Phase 1 고정**: `docs/BTY_MULTI_CURSOR_DOC_HANDOFF.md` §7 — 루트 `bty-arena/page.tsx` 수정 금지. Arena 첫 화면 스텁 = `/[locale]/bty-arena/wireframe`. C5는 §6 이하만 채움.
+**[C5] SPRINT 76 TASK 1?6 / 282 (Gate 76???? ?3):** [x] **??.** Release Gate A~F ? **305 / 2199** ? Build ? ? ELITE_3RD ?2 6????3 **76?** **PASS** ? `BTY_RELEASE_GATE_CHECK`??? ??.
 
-**[C5] Phase 1 UX 뼈대 (단일 Cursor)**: [x] **완료.** `ScreenShell` + `/bty-arena/wireframe`·`/bty-arena/result`·`/growth`·`/my-page`(+progress/team/leader) 스텁. **`/[locale]/bty-arena` 루트 플레이는 비침해.** 다른 Cursor는 §6 이후 채움만. `docs/BTY_MULTI_CURSOR_DOC_HANDOFF.md` §6.
+**[C3] SPRINT 77 TASK8?9 / 283**: [x] **??.** `arenaLabAttemptsRemaining` + edges ? `GET /api/arena/lab/usage` attemptsRemaining 0 ??.
 
-**[C5] Phase 1 와이어 채움 (§6~§7)**: [x] **완료.** `PIXEL_WIREFRAMES` 카피·계층 — wireframe(Continue→Play·BottomNav→leaderboard)·result(Continue→wireframe)·growth(dojo/integrity/mentor/dear-me)·my-page 탭·카드. `bty-arena/page.tsx` 비터치.
+**[C4] SPRINT 78 TASK4 / 284**: [x] **??.** Foundry Dojo 50? `<main aria-label={dojoPageMainAria}>` (ko/en); Dashboard?Profile?Dojo?Journal?Avatar?Elite?Healing?Leaderboard?Growth?Dojo History?bty index?assessment ??.
 
-**[DOCS] 7 Cursor 핸드오프**: [x] **완료.** `docs/BTY_ARENA_UX_DOC_INDEX.md`·`docs/BTY_MULTI_CURSOR_DOC_HANDOFF.md` — 오늘 UX·구현 서류 목록 + C1~C7 역할·실행 순서. 구현은 Commander TASK로 분배.
+**[C4] SPRINT 77 TASK4 / 283**: [x] **??.** Center `/assessment` ? `<main aria-label={assessmentMainRegionAria}>` (landing, ko/en); Dashboard?Profile?Dojo?Journal?Avatar?Elite?Healing?Leaderboard?Growth?Dojo History?bty index ??.
 
-**[DOCS] BTY Tailwind Theme Tokens 문서화**: [x] **완료.** `docs/BTY_TAILWIND_THEME_TOKENS.md`에 구조 분리 이후 적용할 CSS 변수·Tailwind 매핑·UI 매핑 규칙 정리.
+**[C3] SPRINT 76 TASK8?9 / 282**: [x] **??.** `arenaRecommendationSourceFromParam` + edges ? `GET /api/arena/dashboard/summary` source param ??.
 
-**[DOCS] BTY Component Props Spec 문서화**: [x] **완료.** `docs/BTY_COMPONENT_PROPS_SPEC.md`에 ScreenShell·Buttons·InfoCard·ProgressBar·TabPills·BottomNav props 설계 정리.
+**[C3] SPRINT 75 TASK8?9 / 281**: [x] **??.** `arenaRunsCursorMaxLength` + `isArenaRunsCursorOverMax` edges ? `GET /api/arena/runs` cursor over max **400** ??.
 
-**[DOCS] BTY Page Split Implementation Plan 문서화**: [x] **완료.** `docs/BTY_PAGE_SPLIT_IMPLEMENTATION_PLAN.md`에 App Router 페이지 분리 → shared components → theme token → navigation → polish 순서 정리.
+**[C4] SPRINT 76 TASK4 / 282**: [x] **??.** bty(protected) index ? `<main aria-label={btyIndexMainRegionAria}>` (ko/en); Dashboard?Profile?Dojo?Journal?Avatar?Elite?Healing?Leaderboard?Growth?Dojo History ??.
 
-**[DOCS] BTY 페이지 분리 + 컬러 토큰 프롬프트 문서화**: [x] **완료.** `docs/BTY_PAGE_SPLIT_AND_THEME_PROMPT.md`에 App Router 페이지 분리 우선, 이후 색감/테마 토큰 적용 순서와 Cursor 실행 프롬프트 정리.
+**[C6] SPRINT 74 TASK 10 / 280:** [x] **??.** `test:q237-smoke` **7/7** ? `self-healing-ci.sh` **303 / 2190** ? Build ? (?? build? `.next/types` ??) ? `SPRINT_LOG`??? ??.
 
-**[DOCS] BTY React Wireframe Reference 문서화**: [x] **완료.** `docs/BTY_PIXEL_WIREFRAMES.md`에 `BTYArenaWireframes` React 프로토타입의 컴포넌트 맵·커버 화면·구조 검증 포인트 추가.
+**[C6] SPRINT 73 TASK 10 / 279:** [x] **??.** `test:q237-smoke` **7/7** ? `self-healing-ci.sh` **302 / 2184** ? Build ? ? `SPRINT_LOG`??? ??.
 
-**[DOCS] BTY Pixel Wireframes 문서화**: [x] **완료.** `docs/BTY_PIXEL_WIREFRAMES.md`에 Arena 첫 화면·Growth·My Page·Progress·Team·Leader Track·Result 화면의 Figma용 텍스트 와이어프레임 정리.
+**[C4] SPRINT 74 TASK4 / 280**: [x] **??.** Growth `/growth` ? `<main aria-label={growthHubMainRegionAria}>` (?? i18n); Dashboard?Profile?Dojo?Journal?Avatar?Elite?Healing?Leaderboard ??.
 
-**[DOCS] BTY 제품 방향성 프롬프트 문서화**: [x] **완료.** `docs/BTY_PRODUCT_DIRECTION_PROMPTS.md`에 Cursor/Gemini/Genspark용 복사용 프롬프트 5종 정리. 제품 아키텍처·첫 화면·Growth·My Page·시스템 톤 포함.
+**[C4] SPRINT 73 TASK4 / 279**: [x] **??.** bty `/bty/leaderboard` ? `<main aria-label={leaderboardMainRegionAria}>` (?? i18n); Dashboard?Profile?Dojo?Journal?Avatar?Elite?Healing ??.
 
-**[REFRESH (C1)] SPRINT_PLAN 236**: [x] **적용 (2026-03-19).** 235→236 회전. C2 다음 배포 Gate [ ] 재오픈. 구현 배치 = **SPRINT_PLAN §236**. (CURSOR_TASK_BOARD Foundry 트랙 별도.)
+**[C3] SPRINT 74 TASK8?9 / 280**: [x] **??.** `arenaRunsListLimit` + `clampArenaRunsListLimit` edges ? `GET /api/arena/runs` limit clamp ??.
 
-**[C4] SPRINT 235 API 5건 (SPRINT_PLAN)**: [x] **완료(이전).**
+**[C3] SPRINT 73 TASK8?9 / 279**: [x] **??.** `clampArenaReflectUserTextToMax` (reflectTextBounds) + edges ? `POST /api/arena` 200 ?? ??.
 
-**[C4] SPRINT 236 API 5건 (SPRINT_PLAN)**: [x] **완료.** healing·awakening / dojo·integrity·questions / dashboard summary / center-dear-me / ARENA_DOMAIN_SPEC 236 확인.
+**[C5] SPRINT 74 TASK 1?6 / 280 (Gate 74???? ?3):** [x] **??.** Release Gate A~F ? **302 / 2186** ? Build ? ? ELITE_3RD ?2 6????3 **74?** **PASS** ? `BTY_RELEASE_GATE_CHECK`??? ??.
 
-**[C4] SPRINT 237 API 5건 (SPRINT_PLAN)**: [x] **완료.** run·run/complete·reflect·journey/entries·me/elite·dashboard/summary JSDoc `@contract`; ARENA_DOMAIN_SPEC §4·237 동기. **작업 완료.**
+**[C5] SPRINT 73 TASK 1?6 / 279 (Gate 73???? ?3):** [x] **??.** Release Gate A~F ? **302 / 2184** ? Build ? ? ELITE_3RD ?2 6????3 **73?** **PASS** ? `BTY_RELEASE_GATE_CHECK`??? ??.
 
-**[C4] SPRINT 238 API 5건 (SPRINT_PLAN)**: [x] **완료.** LE state·mentor PATCH·dashboard 연장·healing 에러·ARENA_DOMAIN_SPEC §4·238. **작업 완료.**
+**[C6] SPRINT 72 TASK 10 / 278:** [x] **??.** `test:q237-smoke` **7/7** ? `self-healing-ci.sh` **301 / 2182** ? Build ? ? `SPRINT_LOG`??? ??.
 
-**[C4] SPRINT 239 API 5건 (SPRINT_PLAN)**: [x] **완료.** dashboard LE+AIR·mentor-requests GET·run/complete 400·healing/awakening 401·404·ARENA_DOMAIN_SPEC §4·239. **작업 완료.**
+**[C6] SPRINT 70 TASK 10 / 276:** [x] **??.** `test:q237-smoke` **7/7** ? `self-healing-ci.sh` **298 / 2173** ? Build ? ? `SPRINT_LOG`??? ??.
 
-**[C4] SPRINT 240 API 5건 (SPRINT_PLAN)**: [x] **완료.** mentor PATCH 요약·dashboard Cache-Control·run/complete 409/429·second-awakening GET·ARENA_DOMAIN_SPEC §4·240. **작업 완료.**
+**[C5] SPRINT 72 TASK 1?6 / 278 (Gate 72???? ?3):** [x] **??.** Release Gate A~F ? **300 / 2179** ? Build ? ? ELITE_3RD ?2 6????3 **72?** **PASS** ? `BTY_RELEASE_GATE_CHECK`??? ??.
 
-**[C4] SPRINT 241 API 5건 (SPRINT_PLAN)**: [x] **완료.** leaderboard @contract·journey 확장·POST healing/progress·GET awakening/acts 404·마이그레이션 `user_healing_awakening_acts`·ARENA_DOMAIN_SPEC §4·241. **작업 완료.**
+**[C3] SPRINT 72 TASK8?9 / 278**: [x] **??.** `normalizeOptionalArenaBodyString` + edges ? `POST /api/arena` 401?400 ?? ? arena root route domain ??.
 
-**[C4] SPRINT 242 API 5건 (SPRINT_PLAN)**: [x] **완료.** arena/profile @contract·second-awakening JSDoc·awakening acts·healing/progress 429·ARENA_DOMAIN_SPEC §4·242. **작업 완료.**
+**[??] PARALLEL_QUEUE_REFILL (2026-03-19):** S71 **exit 2 (C3 ??)** ? **SPRINT 72** / `SPRINT_PLAN` **278** ? 10? `[ ]` ? First **C5 Gate 72** ? ???`AUTO4_PROMPTS`?`NEXT_BACKLOG`?`SPRINT_LOG`?`CURRENT_TASK` ??.
 
-**[C4] SPRINT 243 API 5건 (SPRINT_PLAN)**: [x] **완료.** run/complete 410·me/elite·reflect 413·GET healing/progress·ARENA_DOMAIN_SPEC §4·243. **작업 완료.**
+**[C5] SPRINT 71 TASK 1?6 / 277 (Gate 71???? ?3):** [x] **??.** Release Gate A~F ? **298 / 2173** ? Build ? ? ELITE_3RD ?2 6????3 **71?** **PASS** ? `BTY_RELEASE_GATE_CHECK`??? ??.
 
-**[C4] SPRINT 244 API 5건 (SPRINT_PLAN)**: [x] **완료.** runs @contract·dojo/questions 캐시·healing/progress 쿼리 없음·dojo/submit 400·ARENA_DOMAIN_SPEC §4·244. **작업 완료.**
+**[C3] SPRINT 71 TASK8?9 / 277**: [x] **??.** `arenaAvatarUploadLimits` + edges ? `POST /api/arena/avatar/upload` 401?400 ?? ? upload route domain ??.
 
-**[C4] SPRINT 245 API 5건 (SPRINT_PLAN)**: [x] **완료.** GET arena/run/[runId]·POST run 409·leaderboard scope·GET bty/awakening/acts·ARENA_DOMAIN_SPEC §4·245. **작업 완료.**
+**[??] PARALLEL_QUEUE_REFILL (2026-03-19):** S70 **exit 2 (C3?C4?C5 ??)** ? **SPRINT 71** / `SPRINT_PLAN` **277** ? 10? `[ ]` ? First **C5 Gate 71** ? ???`AUTO4_PROMPTS`?`NEXT_BACKLOG`?`NEXT_PHASE_AUTO4`?`SPRINT_LOG`?`CURRENT_TASK` ??.
 
-**[C4] SPRINT 246 API 5건 (SPRINT_PLAN)**: [x] **완료.** reflect 413·stage-summary·run/complete 멱등·profile Cache-Control·ARENA_DOMAIN_SPEC §4·246. **작업 완료.**
+**[C5] SPRINT 70 TASK 1?6 / 276 (Gate 70???? ?3):** [x] **??.** Release Gate A~F ? **298 / 2173** ? Build ? ? `unlocked-scenarios` `arenaContentLocaleFromParam` import ??. ELITE_3RD ?2 6????3 **70?** **PASS** ? `BTY_RELEASE_GATE_CHECK`??? ??.
 
-**[C5] 멘토 큐·LE·AIR 로딩·growth/wireframe 링크·i18n**: [x] **완료.** Admin 큐 테이블·오류 문구; AIR/Stage 위젯 로딩 접근성; Foundry·Elite 링크. **작업 완료.**
+**[??] PARALLEL_QUEUE_REFILL (2026-03-19):** S69 **exit 2 (C3?C6 ??)** ? **SPRINT 70** / `SPRINT_PLAN` **276** ? 10? `[ ]` ? First **C5 Gate 70** ? ???`AUTO4_PROMPTS`?`NEXT_BACKLOG`?`NEXT_PHASE`?`SPRINT_LOG` ??.
 
-**[C5] 대시보드 LE·AIR 위젯·와이어/결과 3차·Elite a11y·i18n**: [x] **완료.** `LeAirWidget`/`LeStageWidget`, wireframe §1 순서·result `uxPhase1Stub`, Elite 테이블/배지/제목 키, bty·elitePage 문자열. **작업 완료.**
+**?? ?:** **`docs/CURSOR_TASK_BOARD.md` ? SPRINT 79.** **? ? ?? ?:** `docs/agent-runtime/HOW_TO_READ_TASKS.md`. First **C5 Gate 81.**
 
-**[C5] SPRINT_PLAN 테마 2차·BottomNav·Growth·my-page i18n**: [x] **완료.** `globals.css` `--bty-*`·Tailwind `bty.*`·ScreenShell·InfoCard·ProgressBar·Primary/Secondary·wireframe/result/growth/my-page 스텁; BottomNav `focus-visible`; Growth Arena·와이어 링크; `myPageStub` ko/en; 스모크 정규식. TASK1 bounce-back BLOCKER 유지. **작업 완료.**
+**[C4] SPRINT 72 TASK4 / 278**: [x] **??.** Foundry `/bty/healing` ? `<main aria-label={mainLandmarkAria}>` (?? i18n); Dashboard?Profile?Dojo?Journal?Avatar?Elite ??.
 
-**[C5] SPRINT_PLAN 241 Healing 스텁·주간 위젯·growth/my-page 링크·i18n**: [x] **완료.** `healing/page.client` phase·ringType render-only; 대시보드 주간 XP 위젯+스켈레톤+리더보드 CTA; growth·my-page Healing/Awakening 링크; `healing.*`·`bty.dashboardWeekly*` 등 en/ko. TASK1 BLOCKER 유지. **작업 완료.**
+**[C4] SPRINT 71 TASK4 / 277**: [x] **??.** Foundry `/bty/elite` ? `<main aria-label={elitePageMainRegionAria}>` (ko/en); Dashboard?Profile?Dojo?Journal?Avatar ??.
 
-**[C5] SPRINT_PLAN 242 Awakening 액트 스텁·라이브 랭킹 모달·progress 토스트·프로필 i18n**: [x] **완료.** `getUserCompletedAwakeningActs`·GET awakening `completedActs`; `AwakeningActsTrack`(Healing+Awakening); 대시보드 라이브 리더보드 모달; `healing.awakeningActs*`·`bty.dashboardLive*`·`bty.profile*`. TASK1 BLOCKER 유지. **작업 완료.**
+**[C4] SPRINT 70 TASK4 / 276**: [x] **??.** Foundry `/bty/dashboard` ? `<main aria-label={dashboardMainRegionAria}>` (ko/en); Profile?Dojo?Journal?Avatar ??.
 
-**[C5] SPRINT_PLAN 243 Healing GET 진행·Elite me/elite 카드·와이어 카피·i18n**: [x] **완료.** GET healing `awakeningProgress`; Healing 진행률·다음 액트 UI; 대시보드 `eliteContentUnlocked`; Growth/result 와이어 문구; i18n. TASK1 BLOCKER 유지. **작업 완료.**
+**[C3] SPRINT 70 TASK8?9 / 276**: [x] **??.** `arenaContentLocaleFromParam` + edges ? `GET /api/arena/profile/avatar` 401 ?? ? `unlocked-scenarios` locale domain ??.
 
-**[C5] SPRINT_PLAN 244 result 다음 시나리오 CTA·wireframe Dojo/Integrity·Healing 새로고침·i18n**: [x] **완료.** result Primary 다음 시나리오; wireframe Dojo·Integrity·runs 힌트; Healing 진행 새로고침 카피/버튼. TASK1 BLOCKER 유지. **작업 완료.**
+**[C6] SPRINT 69 TASK 10 / 275:** [x] **??.** `test:q237-smoke` **7/7** ? `self-healing-ci.sh` **294 / 2164** ? Build ? (`rm -rf .next` ??) ? `SPRINT_LOG`??? ??.
 
-**[C6] SPRINT_PLAN 237 Testfix 5건**: [x] **완료.** Vitest 스모크(wireframe·growth·my-page·result·progress/team/leader)·`weeklyCompetitionDisplay` 빈 리더보드 엣지·`npm test`(1875)·`npm run build` PASS. **작업 완료.**
+**[C5] SPRINT 69 TASK 1?6 / 275 (Gate 69???? ?3):** [x] **??.** Release Gate A~F ? **294 / 2164** ? Build ? (`rm -rf .next` ??). ELITE_3RD ?2 6????3 **69?** **PASS** ? `BTY_RELEASE_GATE_CHECK`??? ??.
 
-**[C6] SPRINT_PLAN 238 Testfix 5건**: [x] **완료.** `test:q237-smoke`·`reflect` route.test·middleware arena matcher·`rankByWeeklyXpOnly` weekly-only 단언·test(1890)·build PASS. **작업 완료.**
+**[C3] SPRINT 69 TASK8?9 / 275**: [x] **??.** `isValidArenaAvatarUserIdKey` + `arenaAvatarUserIdParam.edges.test.ts` ? `GET /api/arena/avatar` 400 ?? ? `avatar/route.ts` domain ??.
 
-**[C6] SPRINT_PLAN 239 Testfix 5건**: [x] **완료.** mentor-requests GET route.test·dashboard summary 239 smoke·`q239-le-air-elite`·q237-smoke·test(1902)·build. **작업 완료.**
+**[C4] SPRINT 69 TASK4 / 275**: [x] **??.** Foundry `/bty/profile/avatar` ? `<main aria-label={avatarSettingsMainRegionAria}>` (ko/en); Profile?Dojo Result?Journal ??.
 
-**[C6] SPRINT_PLAN 240 Testfix 5건**: [x] **완료.** q237-smoke·PATCH mentor-requests 240·dashboard summary 240·`q240-elite-healing`·test(1916)·build. **작업 완료.**
+**[C5] SPRINT 68 TASK 1?6 / 274 (Gate 68???? ?3):** [x] **??.** Release Gate A~F ? **294 / 2164** ? Build ? (`clean .next`). ELITE_3RD ?2 6????3 68? **PASS** ? `BTY_RELEASE_GATE_CHECK`??? ??.
 
-**[C6] SPRINT_PLAN 241 Testfix 5건**: [x] **완료.** q237-smoke·리더보드 라이브 빈 주·Healing/Awakening GET 스모크·주간/큐 정렬 엣지·test(1928)·build(i18n·healing/progress 타입). **작업 완료.**
+**[C2] Gate `7654875` (post-`d7d5a24`)**: [x] **??.** E2E?Playwright?Journey ?? ? **11 commits** ? **57 files** (+2003/?525). **292 / 2159** ? build PASS ? `BTY_RELEASE_GATE_CHECK`?`SPRINT_LOG`?`SPRINT_PLAN` C2(253). **`7654875` ?? push** ? C2 ?Gate.
 
-**[C6] SPRINT_PLAN 242 Testfix 5건**: [x] **완료.** q237-smoke·healing/progress 400/409·awakening GET 스모크·시즌/3액트 엣지·test(1949)·build. **작업 완료.**
+**[C2] Gate `d7d5a24` (6afdfe4 ?? mainline)**: [x] **??.** ?? **3ca0233**?run ????Worker CI. **279 / 2117** ? build PASS.
 
-**[C6] SPRINT_PLAN 243 Testfix 5건**: [x] **완료.** q237-smoke·run/complete 404·멱등·me/elite 스모크·주간 noop·Healing %·test(1963)·build. **작업 완료.**
+**[C2] ?? Gate `6afdfe4`**: [x] **??.** `58b8342..6afdfe4` ? origin/main. BTY_RELEASE_GATE_CHECK?SPRINT_LOG. **277 / 2108** ? build PASS.
 
-**[C6] SPRINT_PLAN 244 Testfix 5건**: [x] **완료.** q237-smoke·GET arena/runs·healing/progress 빈 진행·Core/Weekly·dojo 핑거프린트·test(1973)·build. **작업 완료.**
+**[C5] SPRINT 67 TASK 1 / 273 (Gate 67):** [x] **??.** Release Gate A~F ? **290 / 2155** ? Build ? ? `BTY_RELEASE_GATE_CHECK`??? ??.
 
-**[C2] SPRINT 235 배포 Gate (cce5374)**: [x] **완료(이력).** 다음 배포 시 **236** C2 TASK [ ] 실행.
+**[??] PARALLEL_QUEUE_REFILL (2026-03-19):** S67 **C3?C4 ?? ? ?? [x]** ? ?? `[ ]` ? `check-parallel-task-queue.sh` **exit 2** ? **S68** 10? `[ ]` ? First **C5 Gate 68** ? ???`SPRINT_PLAN` **274**?`AUTO4_PROMPTS`?`NEXT_BACKLOG`?`NEXT_PHASE_AUTO4`?`SPRINT_LOG`?`CURRENT_TASK` ??.
 
-**[C2] SPRINT 234 배포 Gate (fd81860)**: [x] **완료(이력).**
+**[REFRESH 2026-03-19] C1:** ?? ? **SPRINT 68** / `SPRINT_PLAN` **274** ? **10? `[ ]`** ? First **C5 Gate 68** ? `check-parallel-task-queue.sh` **exit 0** ? **`SPRINT_PLAN`? ??? ? TASK? ?? ??.**
 
-**[배포] Git push 완료 (최신)**: [x] **`cce5374`** chore: 배포 — Foundry, HubTopNav, API·도메인·Q235 테스트·문서 · 62 files (+1,279/-277) · **`fd81860..cce5374` → origin/main** · BTY_RELEASE_GATE_CHECK·SPRINT_LOG·본 파일.
+**[??] PARALLEL_QUEUE_REFILL (2026-03-18):** S66 **exit 2** ?? ? **S67** ?? ? C1 ?? **TASK2?3?5?7** S67?? ?? ? `check-parallel-task-queue.sh` **OK** ? `AUTO4_PROMPTS`?`NEXT_PHASE_AUTO4`?`NEXT_BACKLOG` ??.
 
-**[배포] Git push 완료**: [x] **`fd81860`** chore: 배포 — 아바타/아웃핏, API·도메인·Q3/Q4 테스트·문서 · 200 files (+4,015/-423) · **`e4ae594..fd81860` → origin/main** · BTY_RELEASE_GATE_CHECK·SPRINT_LOG·본 파일 반영.
+**?? ? (2026-03-19):** **`docs/CURSOR_TASK_BOARD.md` ? SPRINT 68.** **? ? ?? ?:** `docs/agent-runtime/HOW_TO_READ_TASKS.md`. First **C5 Gate 68.** `SPRINT_PLAN` **274**.
 
-**[C4] SPRINT 234 API 5건 (SPRINT_PLAN)**: [x] **완료.** healing·awakening·dojo·avatar-assets·mentor·assessment JSDoc 재확인·ARENA_DOMAIN_SPEC 234.
+**[C3] SPRINT 68 TASK8?9 / 274**: [x] **??.** `isArenaProgramLevelUnlockedByMax` + `arenaProgramLevelUnlockedByMax.edges.test.ts` ? `GET /api/arena/unlocked-scenarios` 401 ?? ? ??? domain ??.
 
-**[C4] SPRINT 233 API 5건 (SPRINT_PLAN)**: [x] **완료.** run/complete·profile·core-xp·leaderboard·LE·journey·me/elite·dashboard·center·dear-me JSDoc·에러 재확인·ARENA_DOMAIN_SPEC 233.
+**[C4] SPRINT 68 TASK4 / 274**: [x] **??.** Journal ? `<main aria-label={journalMainRegionAria}>` (ko/en); Profile?Dojo Result ??.
 
-**[C4] SPRINT 232 API 5건 (SPRINT_PLAN)**: [x] **완료.** healing·awakening·dojo·avatar-assets·mentor·assessment(path)·ARENA §4-12b JSDoc.
+**[C4] SPRINT 67 TASK4 / 273**: [x] **??.** Foundry Profile ? `<main aria-label={profileMainRegionAria}>` ???????? (ko/en).
 
-**[C4] SPRINT 231 API 5건 (SPRINT_PLAN)**: [x] **완료.** JSDoc·에러 문구 정합성(run/complete 멱등·leaderboard 주간순위·LE stage-summary·air·journey/profile·me/elite·dashboard·center·dear-me)·ARENA_DOMAIN_SPEC §4-11b·231 메모.
+**[C5] SPRINT 66 TASK 1?6 / 272 (Gate 66???? 3?):** [x] **??.** Gate 66 ? **288 / 2148** ? Build ?. ??? ?3 66? ?? ? PASS.
 
-**[C5] SPRINT 230 UI 접근성·i18n 4건 (BLOCKER 제외)**: [x] **완료.** 리더보드 주간 리셋 region·i18n, Elite 배지 region, Dojo 결과 Dr. Chi region, i18n leaderboardWeekResetRegion.
+**[C4] SPRINT 66 TASK4 / 272**: [x] **??.** Center/Foundry ??? 1? ? Dojo Result `dojoResultMainRegionAria` (ko/en).
 
-**[C5] SPRINT 229 UI 접근성·i18n 4건 (BLOCKER 제외)**: [x] **완료.** 대시보드 Dojo 카드 region+aria-label, 멘토 메시지 article+aria-label, assessment 힌트 region, i18n dojoPracticeLabel/dojoPracticeLinksRegion.
+**[C3] SPRINT 66 TASK8?9 / 272**: [x] **??.** `scenarioDisplayCodeId.edges.test.ts` ? `POST /api/arena/free-response` 401?400.
 
-**[C4] SPRINT 251 API 5건 (run/complete 409·core-xp 401·me/access·healing/progress 404·ARENA_DOMAIN_SPEC)**: [x] **완료.** §4·게이트 **409 `RUN_ABORTED`** 코드 정합(run/complete `aborted_at`).
+**[C3] SPRINT 67 TASK8?9 / 273**: [x] **??.** `beginnerRunEventStep` + `beginnerRunEventStep.edges.test.ts` ? `POST /api/arena/beginner-event` 401?400 ? Vitest **292 / 2159** ?.
 
-**[C4] SPRINT 250 API 5건 (run/[id]·profile PATCH·leaderboard 401·center/resilience period·ARENA_DOMAIN_SPEC)**: [x] **완료.** resilience 400 INVALID_PERIOD·§4 250.
+**[C6] SPRINT 66 TASK10 / 272**: [x] **??.** q237 **7/7** ? ? **290 / 2155** ? ? Build ? ? `SPRINT_LOG`.
 
-**[C4] SPRINT 249 API 5건 (reflect·runs cursor·mentor-request 400·awakening acts 404·ARENA_DOMAIN_SPEC)**: [x] **완료.** @contract 보강·§4 249.
+**[??] S65 ? S66:** C5?C4?C3?C6 ?? [x] ? C1? `[ ]` ? **`PARALLEL_QUEUE_REFILL.md`** ? ???`SPRINT_PLAN`?AUTO4?NEXT_BACKLOG?CURRENT_TASK ??.
 
-**[C4] SPRINT 248 API 5건 (leaderboard week/scope 400·dashboard 503/500·journey/profile 401·center/letter body·ARENA_DOMAIN_SPEC)**: [x] **완료.** parseLeaderboardQuery·@contract·§4 248·Vitest leaderboard·scope.
+**[C5] SPRINT 65 TASK 1?6 / 271 (Gate 65???? 3?):** [x] **??.** Gate 65 ? **288 / 2148** ? Build ? ? BLOCKER ??. ??? ?3 65? ?? ? PASS.
 
-**[C4] SPRINT 230 API 5건 (arena run/complete·profile·core-xp·leaderboard·leadership-engine·journey·me/elite·dashboard·center·dear-me·ARENA_DOMAIN_SPEC)**: [x] **완료.** JSDoc 확인·leadership-engine/certified 401·500 명시·§4 230 반영.
+**[C6] SPRINT 65 TASK10 / 271**: [x] **??.** q237 **7/7** ? ? **286 / 2140** ? ? Build ?.
 
-**[C4] SPRINT 229 API 5건 (arena profile·run·leaderboard·core-xp·leadership-engine·me/elite·journey·dashboard·bounce-back·dojo·assessment·center·ARENA_DOMAIN_SPEC)**: [x] **완료.** JSDoc 확인·leadership-engine/tii 401·500 명시·§4 229 반영.
+**[C4] SPRINT 65 TASK4 / 271**: [x] **??.** Center/Foundry ??? 1? ? Integrity `integrityMainRegionAria` (ko/en).
 
-**[C4] SPRINT 228 API 5건 (arena run/complete·profile·core-xp·leaderboard·leadership-engine·journey·me/elite·dashboard·center·dear-me·ARENA_DOMAIN_SPEC)**: [x] **완료.** JSDoc 확인·leadership-engine/air 401·500 명시·§4 228 반영.
+**[C3] SPRINT 65 TASK8?9 / 271**: [x] **??.** `leaderboardNearMe.edges.test.ts` ? `POST /api/arena/beginner-run` 401?400.
 
-**[C4] SPRINT 227 API 5건 (arena/profile·run·leaderboard·core-xp·leadership-engine·me/elite·journey·dashboard·bounce-back·dojo·assessment·center·ARENA_DOMAIN_SPEC)**: [x] **완료.** JSDoc 에러/응답 명시·ARENA_DOMAIN_SPEC §4 227 반영.
+**[C5] SPRINT 64 TASK 1 / 270 (Gate 64):** [x] **??.** Release Gate A~F ? **286 / 2140** ? Build ? ? BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[C4] SPRINT 226 API 5건 (run/complete·stage-summary·journey·me/elite·dashboard·center/letter·resilience·dear-me·ARENA_DOMAIN_SPEC)**: [x] **완료.** JSDoc 에러/응답 명시·ARENA_DOMAIN_SPEC 갱신일·§4 API 목록 정합성 메모.
+**[C5] SPRINT 64 TASK 6 / 270 (??? 3?):** [x] **??.** ELITE_3RD ?2 6????3 64? ?? ? **286/2140** ?? ? PASS.
 
-**[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 (SPRINT 46 TASK 2, C1)**: [x] **완료.** SPRINT 46 TASK 1 완료 반영·갱신일 동기화.
+**[C3] SPRINT 64 TASK8?9 / 270**: [x] **??.** `leaderboardWeekId.edges.test.ts` ? `GET /api/arena/league/active` 401?503?200.
 
-**[DOCS] 문서 점검 124·125·126차 (SPRINT 46 TASK 3, C1)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG·보드·BTY_RELEASE_GATE_CHECK 점검·갱신.
+**[??] S63 ? S64:** C5 **1?6 [x]** ? `check-parallel-task-queue` **exit 2** ? `PARALLEL_QUEUE_REFILL.md` ?3.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (SPRINT 46 TASK 4, C4)**: [x] **완료.** 대시보드 바로가기 링크 그룹 role=region·aria-label. render-only.
+**[C5] SPRINT 63 TASK 1?6 / 269**: [x] **??.** Gate **63** ? **284 / 2131**?q237 **7/7**?Build ????? ?3 **PASS** ? `arenaRunState.edges.test.ts` tsc ??.
 
-**[VERIFY] Release Gate 46차 (SPRINT 46 TASK 1, C5)**: [x] **완료.** A~E N/A · F) Lint ✓ Test 1819 ✓ Build ✓. RESULT: PASS. BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[C6] SPRINT 64 TASK10 / 270**: [x] **??.** q237 **7/7** ? ? **284 / 2131** ? ? Build ? (TASK10 ??? ? ???).
 
-**C1 splint 10 (2026-03-12)**: SPRINT 45 전량 10/10 완료 → SPRINT 46 생성. First Task = Release Gate 46차. 보드·NEXT_PHASE·NEXT_BACKLOG·AUTO4_PROMPTS 갱신.
+**[C4] SPRINT 64 TASK4 / 270**: [x] **??.** Center/Foundry ??? 1? ? Dojo History `section role=region` + `dojoHistoryMainRegionAria` (ko/en).
 
-**[DOCS] 다음 배치 선정 (SPRINT 45 TASK 5, C1, 선택)**: [x] **완료.** 추가 배치 불필요·동기화 유지.
+**[??] S62 ? S63:** C3 ?? [x] ? `PARALLEL_QUEUE_REFILL.md` ?3.
 
-**[DOMAIN] Center/Foundry 미커버 경계 테스트 1건 (SPRINT 45 TASK 8, C3, 선택)**: [x] **완료.** domain/center/resilience.edges.test.ts RESILIENCE_LEVEL_IDS. npm test 통과.
+**[C3] SPRINT 62 TASK8?9 / 268**: [x] **??.** `arenaRunState.edges`?`POST /api/arena/lab/complete` 401?400. **284 / 2131** ?.
 
-**[TEST] Center/Foundry route 테스트 1건 (SPRINT 45 TASK 9, C3, 선택)**: [x] **완료.** GET /api/dear-me/letters 401 error as string. npm test 통과.
+**[??] S61 ? S62:** C5 **1?6 [x]** ? `check-parallel-task-queue` **exit 2 (C5 ??)** ? `PARALLEL_QUEUE_REFILL.md` ?3.
 
-**[DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 (SPRINT 45 TASK 7, C1)**: [x] **완료.** § 다음 작업(반복 제외) 진행 현황·갱신일 2026-03-12 반영.
+**[C5] SPRINT 61 TASK 1?6 / 267**: [x] **??.** Gate **61** ? **282 / 2125**?Build ????? ?3 **PASS**.
 
-**[DOCS] Arena·Center·Foundry 대기 목록 동기화 (SPRINT 45 TASK 10, C1)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG·보드 대기 6건 일치 확인.
+**[??] S60 ? S61:** C5?C3?C6 ?? [x] ? `PARALLEL_QUEUE_REFILL.md` ?3.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (SPRINT 45 TASK 4, C4)**: [x] **완료.** PageClient Center main 4곳 aria-label={t.mainAriaLabel}. render-only.
+**[C3] SPRINT 60 TASK8?9 / 266**: [x] **??.** `weeklyResetIdempotency.edges`?`GET /api/arena/lab/usage`. **282 / 2125** ?.
 
-**[DOCS] 문서 점검 121·122·123차 (SPRINT 45 TASK 3, C1)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드·BTY_RELEASE_GATE_CHECK 2~3건 점검·갱신. 코드 없음.
+**[C5] SPRINT 60 TASK 1?6 / 266**: [x] **??.** Gate **60** ? **280 / 2119**?q237 **7/7**?Build ????? ?3 **PASS**.
 
-**[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 (SPRINT 45 TASK 2, C1)**: [x] **완료.** SPRINT 44 완료 반영·대기 6건 동기화. NEXT_PHASE·NEXT_BACKLOG·보드 갱신일 반영.
+**[C6] SPRINT 60 TASK10 / 266**: [x] **??.** q237-smoke **7/7** ? ? **282/2125** ? ? Build ?.
 
-**[VERIFY] 엘리트 3차 체크리스트 45차 (SPRINT 45 TASK 6, C5)**: [x] **완료.** 6항목 1회. Elite=Weekly XP만·시즌 미반영. RESULT: PASS. ELITE_3RD_SPEC §3·보드·CURRENT_TASK 반영.
+**[??] S59 ? S60:** C5 **1?6 [x]** ? `check-parallel-task-queue` **exit 2 (C5 ??)** ? `PARALLEL_QUEUE_REFILL.md` ?3.
 
-**[VERIFY] Release Gate 45차 (SPRINT 45 TASK 1, C5)**: [x] **완료.** A~E N/A · F) Lint ✓ Test 1728 ✓ Build ✓. RESULT: PASS. BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[C5] SPRINT 59 TASK 1?6 / 265**: [x] **??.** Gate **59** ? **280 / 2119**?Build ????? ?3 **PASS**.
 
-**[배포] 195 배포 완료**: [x] **완료.** C2 Gate § A~F·MVP 최종 확인·self-healing-ci 실행·BTY_RELEASE_GATE_CHECK·SPRINT_LOG 반영.
+**[??] S58 ? S59:** C5?C6 ?? [x] ? `PARALLEL_QUEUE_REFILL.md` ?3.
 
-**[C4] SPRINT 223 API 5건 (leadership-engine·me/elite·mentor-request·journey·center·dojo·assessment·bty-arena)**: [x] **완료.** JSDoc·응답·에러 검증.
+**[C5] SPRINT 58 TASK 1?6 / 264**: [x] **??.** Gate **58** ? **280 / 2119**?Build ????? **PASS**??3.
 
-**[C4] SPRINT 222 API 5건 (leaderboard·core-xp·run/complete·profile·emotional-stats·journey·dear-me·mentor·me/access)**: [x] **완료.** JSDoc·응답·에러 검증.
+**[C6] SPRINT 58 TASK10 / 264**: [x] **??.** q237 + CI **280/2119** ? ? Build ?.
 
-**[C4] SPRINT 221 API 5건 (leadership-engine/state·air·transition·me/elite·mentor-request·journey·center·dojo·assessment·bty-arena)**: [x] **완료.** JSDoc·응답·에러 검증. transition JSDoc 추가.
+**[C3] SPRINT 57 TASK8?9 / 263**: [x] **??.** `arenaRunCompletion.edges`?`POST /api/arena/event` 401?400. **280 / 2119** ?.
 
-**[C4] SPRINT 220 API 5건 (leaderboard·core-xp·run/complete·profile·emotional-stats·journey·dear-me·mentor·me/access)**: [x] **완료.** JSDoc·응답·에러 검증.
+**[C6] SPRINT 57 TASK10 / 263**: [x] **??.** q237-smoke + CI **280/2119** ?.
 
-**[C4] SPRINT 219 API 5건 (leadership-engine/state·air·me/elite·mentor-request·journey·center·dojo·assessment)**: [x] **완료.** JSDoc·응답·에러 검증. state·air JSDoc 추가.
+**[C5] SPRINT 57 TASK 1?6 / 263**: [x] **?? (2026-03-18).** Gate **57** ? **279 / 2115**?Build ????? **PASS**??3.
 
-**[C4] SPRINT 218 API 5건 (profile·run/complete·emotional-stats·journey·train·safe-mirror·me/access·bty-arena·assessment)**: [x] **완료.** JSDoc·응답·에러 검증.
+**[??] S56 ? S57:** C3?C6 ?? [x] ? `PARALLEL_QUEUE_REFILL.md` ?3.
 
-**[C4] SPRINT 217 API 5건 (leaderboard·core-xp·center/letter·resilience·dear-me·dojo·mentor·me/elite·assessment)**: [x] **완료.** JSDoc·응답·에러 검증.
+**[C5] SPRINT 56 TASK 1?6 / 262**: [x] **??.** Gate **56** ? **279 / 2115**?Build ????? **PASS**??3.
 
-**[C4] SPRINT 216 API 5건 (profile·run/complete·emotional-stats·journey·train·safe-mirror·me/access·bty-arena·assessment)**: [x] **완료.** JSDoc·응답·에러 검증.
+**[C3] SPRINT 56 TASK8?9 / 262**: [x] **??.** `reflectTextBounds.edges`?`GET /api/arena/weekly-stats`. **279 / 2115** ?.
 
-**[C4] SPRINT 215 API 5건 (leaderboard·core-xp·center/letter·resilience·dear-me·dojo·mentor·me/elite·assessment)**: [x] **완료.** JSDoc·응답·에러 검증.
+**[C6] SPRINT 56 TASK10 / 262**: [x] **??.** q237-smoke **7/7** ? ? CI **279/2115** ? ? Build ?.
 
-**[C4] SPRINT 213 API 5건 (leaderboard·core-xp·center/letter·resilience·dear-me·dojo·mentor·me/elite·assessment)**: [x] **완료.** JSDoc·응답·에러 검증.
+**[C5] SPRINT 55 TASK 1?6 / 261**: [x] **??.** Gate **55** ? **277 / 2108**?Build ????? **PASS**??3.
 
-**[C4] SPRINT 212 API 5건 (profile·run/complete·emotional-stats·journey·train·safe-mirror·me/access·bty-arena·assessment)**: [x] **완료.** JSDoc·응답·에러 검증.
+**[C3] SPRINT 55 TASK8?9 / 261**: [x] **??.** `eliteMentorRequest.edges`?`GET /api/arena/membership-request`. **277 / 2108** ?.
 
-**[C4] SPRINT 211 API 5건 (leaderboard·core-xp·center/letter·resilience·dear-me·dojo·mentor·me/elite·assessment)**: [x] **완료.** JSDoc·응답·에러 검증.
+**[C6] SPRINT 55 TASK10 / 261**: [x] **??.** q237-smoke **7/7** ? ? CI **277/2108** ? ? Build ?.
 
-**[C4] SPRINT 210 API 5건 (profile·run/complete·emotional-stats·journey·train·safe-mirror·me/access·bty-arena·assessment)**: [x] **완료.** JSDoc·응답·에러 검증.
+**[C5] SPRINT 54 TASK 1?6 / 260**: [x] **?? (2026-03-18).** Gate **54** ? **275 / 2102**?Build ????? **PASS**??3.
 
-**다음 배치 (SPRINT_PLAN)**: 이번 런 = **SPRINT 230** (Q3·Q4 로드맵 연속). C3·C4·C5·C6 각 5건 [ ]. C5(1) BLOCKER 이관(Journey·bounce-back). C2(2) BLOCKER. docs/SPRINT_PLAN.md 참고. REFRESH 시 C1이 전량 [x] 또는 BLOCKER만 확인 후 231 전환. 검증=배포 전 1회만.
+**[C3] SPRINT 53 TASK8?9 / 259**: [x] **??.** `xpAwardDedup.edges.test.ts`; `GET /api/arena/weekly-xp` 401?200. vitest **275 / 2102** ?.
 
-**[REFRESH (C1)] SPRINT 222 → 223**: [x] **완료.** 222 남은 [ ] 모두 BLOCKER → 회전 완료. SPRINT 223 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당. SPRINT_LOG·다음 배치 반영.
+**[C6] SPRINT 53 TASK10 / 259**: [x] **??.** q237-smoke 3/7 ? ? self-healing-ci **275/2102** ? ? Build ?.
 
-**[REFRESH (C1)] SPRINT 221 → 222**: [x] **완료.** 221 남은 [ ] 모두 BLOCKER → 회전 완료. SPRINT 222 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당. SPRINT_LOG·다음 배치 반영.
+**[C5] SPRINT 53 TASK 1?6 / 259**: [x] **??.** Gate **53** ? **275 / 2102**?Build ????? **PASS**??3.
 
-**[REFRESH (C1)] SPRINT 219 → 220**: [x] **완료.** 219 남은 [ ] 모두 BLOCKER → 회전 완료. SPRINT 220 생성. C2·C5 BLOCKER 이관. C3·C4·C5(이관 1+신규 4)·C6 각 5건 [ ] 할당. C7 Lint → C5 TASK 2. SPRINT_LOG·다음 배치 반영.
+**[C5] SPRINT 52 TASK 1?6 / 258**: [x] **??.** Gate **52** ? **273 / 2097**?Build ????? **PASS**??3.
 
-**[REFRESH (C1)] SPRINT 217 → 218**: [x] **완료.** 217 남은 [ ] 모두 BLOCKER → 회전 완료. 218 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[C3] SPRINT 52 TASK8?9 / 258**: [x] **??.** `scenarioDisplay.edges.test.ts`; `POST /api/arena/beginner-complete` 401?400. vitest **273 / 2097** ?.
 
-**[REFRESH (C1)] SPRINT 216 → 217**: [x] **완료.** 216 남은 [ ] 모두 BLOCKER → 회전 완료. 217 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[C5] SPRINT 51 TASK 1?6 / 257**: [x] **??.** Gate 51 ? **271 / 2091**?Build ????? **PASS**??3.
 
-**[REFRESH (C1)] SPRINT 215 → 216**: [x] **완료.** 215 남은 [ ] 모두 BLOCKER → 회전 완료. 216 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[C5] SPRINT 50 TASK 1?6 / 256**: [x] **??.** Gate 50 ? **271 / 2091**?Build ????? **PASS**??3.
 
-**[REFRESH (C1)] SPRINT 214 → 215**: [x] **완료.** 214 남은 [ ] 모두 BLOCKER → 회전 완료. 215 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[C3] SPRINT 50 TASK8?9 / 256**: [x] **??.** `reflectTextHint.edges`?`code-name` POST. **271 / 2091** ?.
 
-**[REFRESH (C1)] SPRINT 213 → 214**: [x] **완료.** 213 남은 [ ] 모두 BLOCKER → 회전 완료. 214 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[C6] SPRINT 50 TASK10 / 256**: [x] **??.** q237-smoke + self-healing-ci **271/2091** ?.
 
-**[REFRESH (C1)] SPRINT 212 → 213**: [x] **완료.** 212 남은 [ ] 모두 BLOCKER → 회전 완료. 213 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[C6] SPRINT 52 TASK10 / 258**: [x] **??.** q237-smoke 3/7 ? ? self-healing-ci **273/2097** ? ? Build ? (C5 Gate 52 ??).
 
-**[REFRESH (C1)] SPRINT 211 → 212**: [x] **완료.** 211 남은 [ ] 모두 BLOCKER → 회전 완료. 212 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[C5] SPRINT 49 TASK 1?6 / 255**: [x] **?? (2026-03-29).** Gate 49 ? **269 / 2086**?Build ?. ??? 3? **PASS**??3.  
+**[C3] SPRINT 49 TASK8?9 / 255**: [x] **?? (2026-03-29).** `runsCursorValidation.edges.test.ts`; `POST /api/arena/sub-name` 404. vitest **269 / 2086** ?.  
+**[x] ?? (2026-03-17):** **?? ? ??** ?? ? `PARALLEL_QUEUE_REFILL.md` ? `npm run board:queue-check` (exit 2 ? C1? ? ?? ? 10? ??).
 
-**[REFRESH (C1)] SPRINT 210 → 211**: [x] **완료.** 210 남은 [ ] 모두 BLOCKER → 회전 완료. 211 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[C4] SPRINT 48 TASK4 / 254**: [x] **?? (2026-03-27).** `/my-page` ?? **`role=region`**?`myPageOverviewRegionAria` ko/en.
 
-**[C3] SPRINT 211 5건 (level-tier·leaderboard·xp·letter·resilience·stage·forced-reset·paths·assessment·domain barrel)**: [x] **완료.** 타이브레이크·XP 경계·기간·유효성·stageNumber·TII·경로·진행 규칙 검토·확인, arena·center·foundry export 확인. 변경 없음.
+**[C6] SPRINT 49 TASK10 / 255**: [x] **?? (2026-03-29).** `test:q237-smoke` 3/7 ? ? self-healing-ci **269/2086** ? ? Build ?.
 
-**[C3] SPRINT 212 5건 (season·weeklyXp·dashboard·stages·air·paths·assessment·domain barrel)**: [x] **완료.** 시즌·주간 경계·ProgressSummary·RecommendationSource·STAGE_PROGRESS·AIR 밴드·경로·진행 규칙 검토·확인, leadership-engine·foundry export 확인. 변경 없음.
+**[C4] SPRINT 49 TASK4 / 255**: [x] **?? (2026-03-17).** `/bty` ??? ? ?? ?? **`role=region`**?`indexHubEntriesRegionAria` ko/en (My Page?Growth ??).
 
-**[C3] SPRINT 213 5건 (level-tier·leaderboard·xp·letter·resilience·stage·forced-reset·paths·assessment·domain barrel)**: [x] **완료.** 타이브레이크·XP 경계·기간·유효성·stageNumber·TII·경로·진행 규칙 검토·확인, arena·center·foundry export 확인. 변경 없음.
+**[C5] SPRINT 48 TASK 1?6 / 254**: [x] **?? (2026-03-26).** Gate 48 ? **268 / 2082**?Build ???? ???. ??? 3? **PASS**??3.
 
-**[C3] SPRINT 214 5건 (season·weeklyXp·dashboard·stages·air·paths·assessment·domain barrel)**: [x] **완료.** 시즌·주간 경계·ProgressSummary·RecommendationSource·STAGE_PROGRESS·AIR 밴드·경로·진행 규칙 검토·확인, leadership-engine·foundry export 확인. 변경 없음.
+**[C3] SPRINT 48 TASK8?9?254 (Arena)**: [x] **?? (2026-03-26).** `weeklyCompetitionDisplay.edges.test.ts`; `GET /api/arena/leaderboard/status` 200 ??. vitest **268 / 2082** ?.
 
-**[C3] SPRINT 215 5건 (level-tier·leaderboard·xp·letter·resilience·stage·forced-reset·paths·assessment·domain barrel)**: [x] **완료.** 타이브레이크·XP 경계·기간·유효성·stageNumber·TII·경로·진행 규칙 검토·확인, arena·center·foundry export 확인. 변경 없음.
+**[C2] SPRINT 253 (C5 TASK1 ? Gate ??)**: [x] **?? (2026-03-24).** BTY_RELEASE_GATE_CHECK?SPRINT_LOG?**266/2076**?build. ?? **58b8342** ? ?? push ? ?Gate.
 
-**[C3] SPRINT 216 5건 (season·weeklyXp·dashboard·stages·air·paths·assessment·domain barrel)**: [x] **완료.** 시즌·주간 경계·ProgressSummary·RecommendationSource·STAGE_PROGRESS·AIR 밴드·경로·진행 규칙 검토·확인, leadership-engine·foundry export 확인. 변경 없음.
+**[C4] SPRINT 47 TASK4 / 253**: [x] **?? (2026-03-24).** Growth `/growth` `role=region`?`growthHubMainRegionAria` ko/en???? **4** ???? TASK4 [x].
 
-**[C3] SPRINT 217 5건 (level-tier·leaderboard·xp·letter·resilience·stage·forced-reset·paths·assessment·domain barrel)**: [x] **완료.** 타이브레이크·XP 경계·기간·유효성·stageNumber·TII·경로·진행 규칙 검토·확인, arena·center·foundry export 확인. 변경 없음.
+**[C5] SPRINT 47 TASK 1?6 / 253**: [x] **?? (2026-03-23).** Gate 47? ? **266 files / 2076 tests**?Build ??`coreXpDisplay` NaN. ??? 3? 6?? **PASS**??3.
 
-**[C3] SPRINT 218 5건 (season·weeklyXp·dashboard·stages·air·paths·assessment·domain barrel)**: [x] **완료.** 시즌·주간 경계·ProgressSummary·RecommendationSource·STAGE_PROGRESS·AIR 밴드·경로·진행 규칙 검토·확인, leadership-engine·foundry export 확인. 변경 없음.
+**[C3] SPRINT 47 TASK8?9?253 (Arena)**: [x] **?? (2026-03-23).** `coreXpDisplay.edges.test.ts`; `GET /api/arena/today-xp` null???? xp ??. vitest **266 / 2076** ?.
 
-**[C3] SPRINT 219 5건 (LE Stage·state 전이·AIR 밴드·점수·dashboard 위젯·진입점 타입·letter·resilience 엣지·arena·center export)**: [x] **완료.** stages getNextStage·StageTransitionContext, air airToBand·computeAIR, dashboard ProgressSummary·RecommendationSummary, letter·resilience 엣지, arena·center export 검토·확인. 변경 없음.
+**[C3] SPRINT 252 DOMAIN + ?? TASK8?9**: [x] **?? (2026-03-21).** `healing.edges.test.ts` (Foundry healing ??); `POST /api/journey/entries` invalid JSON?day 1. vitest **265 / 2073** ??`SPRINT_PLAN` C3(252) [x].
 
-**[C3] SPRINT 220 5건 (level-tier·xp·certified·tii 엣지·dashboard RecommendationSource·진입점·assessment 경로·진행·foundry·rules export)**: [x] **완료.** 레벨·티어·XP 규칙, certified·tii 엣지, RecommendationSource·진입점, assessment 경로·진행 규칙, foundry·rules export 검토·확인. 변경 없음.
+**[C5] SPRINT 252 UI ???Arena ??**: [x] **?? (2026-03-21).** `growth/sprint252-journey-growth-regression.smoke.test.ts` ? i18n en/ko?Growth RSC Journey ???`bty-arena/page.tsx`? `growth/journey`?`JourneyBoard` ??.
 
-**[C3] SPRINT 221 5건 (season·weeklyXp·transition·air 엣지·ProgressSummary·위젯·letter·resilience·paths·center·leadership-engine export)**: [x] **완료.** 시즌·주간 경계, transition·air 엣지, ProgressSummary·위젯, letter·resilience·paths, center·leadership-engine export 검토·확인. 변경 없음.
+**[C1] SPRINT 46 TASK 5?7?10 (??)**: [x] **?? (2026-03-20).** ?? ?? ??(splint 252?TASK8?9)?? ?? ???NEXT_PHASE?NEXT_BACKLOG??? ???.
 
-**[C3] SPRINT 222 5건 (level-tier·xp·certified·tii 엣지·RecommendationSource·진입점·assessment 경로·진행·foundry·rules export)**: [x] **완료.** 레벨·티어·XP 규칙, certified·tii 엣지, RecommendationSource·진입점, assessment 경로·진행, foundry·rules export 검토·확인. 변경 없음.
+**[C2] SPRINT 251 ?? Gate**: [x] **?? (2026-03-18).** `58b8342` (`cce5374..58b8342`). BTY_RELEASE_GATE_CHECK ?A~F?MVP?SPRINT_LOG. self-healing-ci **264 files / 2067 tests** ? build PASS.
 
-**[C3] SPRINT 223 5건 (season·weeklyXp·transition·air 엣지·ProgressSummary·위젯·letter·resilience·paths·center·leadership-engine export)**: [x] **완료.** 시즌·주간 경계, transition·air 엣지, ProgressSummary·위젯, letter·resilience·paths, center·leadership-engine export 검토·확인. 변경 없음.
+**[C5] SPRINT 251 TASK2?5 (UI)**: [x] **??.** LE Stage ?? ???; ?? ?? ???? ?? ??; Healing POST `ACT_PREREQUISITE`?`COOLDOWN_ACTIVE` ???+???; i18n ko/en.
 
-**[REFRESH (C1)] SPRINT 209 → 210**: [x] **완료.** 209 남은 [ ] 모두 BLOCKER → 회전 완료. 210 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[C3] SPRINT 251 DOMAIN**: [x] **??.** `weeklyCompetitionStageTierBandDisplayLabelKey`; `healingPathProgressBlockedUserDisplayKey`+`HEALING_PROGRESS_BLOCKED_PHASE_DISPLAY_KEY`; LE clamp????? ID ?? `isValidArenaScenarioCodeId`; barrel?arena-domain-rules ?251.
 
-**[C4] SPRINT 209 API 5건 (leaderboard·core-xp·center·dear-me·dojo·mentor·me/elite·assessment)**: [x] **완료.** JSDoc·응답·에러 검증. mentor/route.ts 응답·에러 JSDoc 추가.
+**[C5] SPRINT 250 TASK2?5 (UI)**: [x] **??.** ???? ??? ??????? ?? ? ???????? ?? ??/empty ??? ???? ??? ?? ???i18n ko/en. `docs/SPRINT_PLAN.md` ?250.
 
-**[C3] SPRINT 207 5건 (level-tier·leaderboard·xp·letter·resilience·stage·forced-reset·paths·assessment·domain barrel)**: [x] **완료.** 타이브레이크·XP 경계·기간·유효성·stageNumber·TII·경로·진행 규칙 검토·확인, arena·center·foundry export 확인. 변경 없음.
+**[C5] SPRINT 46 TASK 6 (??)**: [x] **?? (2026-03-11).** ??? 3? ????? 6??????API ??. Elite=?? ?? 5%?. ELITE_3RD ?3?CURSOR_TASK_BOARD.
 
-**[C3] SPRINT 208 5건 (season·weeklyXp·dashboard·stages·air·paths·assessment·domain barrel)**: [x] **완료.** 시즌·주간 경계·ProgressSummary·RecommendationSource·STAGE_PROGRESS·AIR 밴드·경로·진행 규칙 검토·확인, leadership-engine·foundry export 확인. 변경 없음.
+**[C4] CONTINUE (2026-03-23)**: **SPRINT 252** C4 **[x]** ? ?? **SPRINT 46** C4 ? **[x]** ? **`src/app/api` ? ? ??.** C1 splint ? **253**??? ? C4 ? ?? ??? ??.
 
-**[C3] SPRINT 210 5건 (season·weeklyXp·dashboard·stages·air·paths·assessment·domain barrel)**: [x] **완료.** 시즌·주간 경계·ProgressSummary·RecommendationSource·STAGE_PROGRESS·AIR 밴드·경로·진행 규칙 검토·확인, leadership-engine·foundry export 확인. 변경 없음.
+**[C4] SPRINT 252 API ??**: [x] **?? (2026-03-21).** Journey API vitest **35** ??ARENA ?4-11b?`SPRINT_PLAN` C4 [x].
 
-**[C3] SPRINT 206 5건 (season·weeklyXp·dashboard·stages·air·paths·assessment·domain barrel)**: [x] **완료.** 시즌·주간 경계·ProgressSummary·STAGE_PROGRESS·AIR 밴드·경로·진행 규칙 검토·확인, leadership-engine·foundry export 확인. 변경 없음.
+**[C5] SPRINT 251 TASK1 Journey?bounce-back**: [x] **?? (2026-03-18).** Growth sub-nav Dojo?Integrity?Guidance?Journey; `/growth/journey` + JourneyBoard; locale layout Comeback ? Resume Journey + POST bounce-back; Reflection?dear-me; i18n en/ko.
 
-**[REFRESH (C1)] SPRINT 205 → 206**: [x] **완료.** 205 남은 [ ] 모두 BLOCKER → 회전 완료. 206 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**?? ??**: **SPRINT 47** ?? ? **??** (2026-03-23). **SPRINT 253** (`SPRINT_PLAN`) = ?? 47? ??.
 
-**[C3] SPRINT 205 5건 (level-tier·leaderboard·xp·letter·resilience·stage·forced-reset·paths·assessment·domain barrel)**: [x] **완료.** 타이브레이크·XP 경계·기간·유효성·stageNumber·TII·경로·진행 규칙 검토·확인, arena·center·foundry export 확인. 변경 없음.
+**REFRESH ??**: ???? **refresh** ? ? `docs/agent-runtime/REFRESH_PROCEDURE.md` ? ?? ??? ?? + **C2~C6 ? ?? 5?** ??? ? ? Cursor? ?? Cn ?? ??.
 
-**[REFRESH (C1)] SPRINT 204 → 205**: [x] **완료.** 204 남은 [ ] 모두 BLOCKER → 회전 완료. 205 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[C6] SPRINT 251 TESTFIX**: [x] **??.** q237-smoke; run/complete `aborted_at`?409+401 ?; core-xp ?? 401; barrel 251 LE??????cooldown ??; 264 files / 2067 tests?build PASS.
 
-**[C3] SPRINT 204 5건 (season·weeklyXp·dashboard·stages·air·paths·assessment·domain barrel)**: [x] **완료.** 시즌·주간 경계·ProgressSummary·STAGE_PROGRESS·AIR 밴드·경로·진행 규칙 검토·확인, leadership-engine·foundry export 확인. 변경 없음.
+**[C3] SPRINT 251 DOMAIN**: [x] **??.** `WEEKLY_COMPETITION_STAGE_TIER_DISPLAY_LABEL_KEY`; `clampDashboardLeProgressDisplayPercent`; `isValidArenaScenarioCodeId`; `HEALING_PROGRESS_BLOCKED_COOLDOWN_DISPLAY_KEY`; ?251.
 
-**[REFRESH (C1)] SPRINT 203 → 204**: [x] **완료.** 203 남은 [ ] 모두 BLOCKER → 회전 완료. 204 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT_PLAN 250?251**: [x] **??.** 250 ?? ??. 251: run/complete 409?core-xp?me/access?healing progress??? ?????LE ?????? ???Healing UI????.
 
-**[C3] SPRINT 203 5건 (stage·level-tier·leaderboard·xp·letter·resilience·forced-reset·domain barrel)**: [x] **완료.** stageNumber·tier·타이브레이크·XP 수식·경계·유효성·TII·certified 검토·확인, arena·rules·center export 확인. 변경 없음.
+**[C3] SPRINT 250 DOMAIN**: [x] **??.** `leaderboardTieRankSuffixDisplayKey`; `DASHBOARD_RECOMMENDATION_EMPTY_PLACEHOLDER_KEY`; `arenaRunDetailSkeletonDisplayKey`; `resilienceLevelDisplayLabelKey`; barrel?arena-domain-rules ?250.
 
-**[REFRESH (C1)] SPRINT 202 → 203**: [x] **완료.** 202 남은 [ ] 모두 BLOCKER → 회전 완료. 203 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT_PLAN 249?250**: [x] **??.** 249 ?? ??. 250: ???? tie?????? ???resilience ???run 404?LB 401?center resilience API?UI????.
 
-**[C3] SPRINT 202 5건 (season·weeklyXp·dashboard·air·assessment·domain barrel)**: [x] **완료.** 시즌·주간 경계·ProgressSummary·RecommendationSource·AIR 밴드·기간·경로·진행 규칙 검토·확인, leadership-engine·foundry export 확인. 변경 없음.
+**[C5] SPRINT 249 TASK2?5**: [x] **??.** ?? `reflectTextLengthHintKey`+24k?ReflectionBlock/beginner; Elite ?? `eliteMentorRequestStatusDisplayLabelKey`+stale?SLA; Awakening `healingAwakeningActLockReasonDisplayKey`+`healingAwakeningLockReasonCopy`; i18n reflectHints?eliteDomain*?lock.
 
-**[REFRESH (C1)] SPRINT 201 → 202**: [x] **완료.** 201 남은 [ ] 모두 BLOCKER → 회전 완료. 202 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[C3] SPRINT 249 DOMAIN**: [x] **??.** `reflectTextBounds`; `parseRunsListCursorOrNull`+lib runsCursor; `eliteMentorRequestStatusDisplayLabelKey`; `healingAwakeningActLockReasonDisplayKey`; barrel?arena-domain-rules ?249.
 
-**[C3] SPRINT 201 5건 (leaderboard·xp·letter·resilience·forced-reset·paths·domain barrel)**: [x] **완료.** 타이브레이크·XP 수식·경계·유효성·TII·certified·경로·상수 검토·확인, rules·center export 확인. 변경 없음.
+**[REFRESH (C1)] SPRINT_PLAN 248?249**: [x] **??.** C5 TASK2~5 ?? [x] ??. 249: ???runs?Elite?Awakening?reflect/mentor/acts API?UI????.
 
-**[REFRESH (C1)] SPRINT 200 → 201**: [x] **완료.** 200 남은 [ ] 모두 BLOCKER → 회전 완료. 201 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[C6] SPRINT 250 TESTFIX**: [x] **??.** `test:q237-smoke`; GET run/[runId] 404(trim???); leaderboard 401 ?; barrel 250 tie?????resilience; 264 files / 2058 tests?build PASS.
 
-**[C3] SPRINT 200 5건 (stage·level-tier·dashboard·stages·assessment·domain barrel)**: [x] **완료.** stageNumber·tier 경계·ProgressSummary·RecommendationSource·STAGE_PROGRESS_PERCENT·전이·경로·진행 규칙 검토·확인, arena·foundry export 확인. 변경 없음.
+**[C6] SPRINT 248 TESTFIX**: [x] **??.** `test:q237-smoke`; leaderboard 400 scope/week route.test; dashboard/summary 401?503(LE ensure throw); `domain/index` barrel 248; 262 files / 2041 tests?build PASS.
 
-**[REFRESH (C1)] SPRINT 199 → 200**: [x] **완료.** 199 남은 [ ] 모두 BLOCKER → 회전 완료. 200 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[C6] SPRINT 249 TESTFIX**: [x] **??.** `test:q237-smoke`; reflect 401+413 ?; awakening act 404; barrel 249+?? ?? ?? ?; npm test?build PASS.
 
-**[C3] SPRINT 199 5건 (season·weeklyXp·paths·air·letter·domain barrel)**: [x] **완료.** 시즌·주간 경계(weeklyXp 교차참조)·경로·AIR 밴드·기간·letter 유효성 검토·확인, leadership-engine·center export 확인. npm test 39 통과.
+**[C5] SPRINT 248 TASK2?5 (??? ? ??)**: [x] **??.** ?? ?? `weeklyTierDisplayLabelKey`+`arena`; ? `arenaRunStateDisplayLabelKey`(????? status?? ?? lifecycle); Awakening ?? ??? ?+`clampHealingAwakeningActProgressDisplayPercent`; `arena`?`arenaStableLabel`. TASK1 BLOCKER ??.
 
-**[REFRESH (C1)] SPRINT 198 → 199**: [x] **완료.** 198 남은 [ ] 모두 BLOCKER → 회전 완료. 199 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[C3] SPRINT_PLAN 248 DOMAIN**: [x] **??.** `weeklyTierDisplayLabelKey`?`RECOMMENDATION_SOURCE_PRIORITY_MIN/MAX`?`arenaRunStateDisplayLabelKey`?`clampHealingAwakeningActProgressDisplayPercent`+???; `domain/index`?`arena-domain-rules` ?248.
 
-**[C3] SPRINT 198 5건 (leaderboard·xp·assessment·forced-reset·resilience·domain barrel)**: [x] **완료.** 타이브레이크·XP 수식·경로·진행 규칙·TII·certified 경계·resilience 진도·경계 검토·확인, arena·rules export 확인. npm test 통과.
+**[REFRESH (C1)] SPRINT_PLAN 247?248**: [x] **??.** 247 ?? ??(C2?C5 BLOCKER ??). SPRINT 248: ???? ???dashboard?journey?center letter???? ??/???/Healing ??UI????.
 
-**[REFRESH (C1)] SPRINT 197 → 198**: [x] **완료.** 197 남은 [ ] 모두 BLOCKER → 회전 완료. 198 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[C5] SPRINT_PLAN 247 TASK2?5 (Arena UX)**: [x] **?? (2026-03-17).** ????? ? `nextCursor` ????Elite SLA ?? ??(??? ?)??? `ResultShareStub`?i18n; test 2023?build PASS. TASK1 BLOCKER ??.
 
-**[C3] SPRINT 197 5건 (stage·level-tier·dashboard·stages·letter·domain barrel)**: [x] **완료.** stageNumber·tier 경계·ProgressSummary·RecommendationSource·STAGE_PROGRESS_PERCENT·letter 유효성 검토·확인, center·foundry export 확인. npm test 86 통과.
+**[C5] SPRINT_PLAN 246 TASK2?5 (Arena UX)**: [x] **?? (2026-03-17).** ? ?? `/bty-arena/run/[runId]`????? ??? LB ?? a11y?nearMe/??? ???growth ??? ?? ???reflect/stage-summary/nearMe i18n; test 2007?build PASS. TASK1 BLOCKER ??.
 
-**[REFRESH (C1)] SPRINT 196 → 197**: [x] **완료.** 196 남은 [ ] 모두 BLOCKER → 회전 완료. 197 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[C5] SPRINT_PLAN 245 TASK2?5 (Arena UX)**: [x] **?? (2026-03-17).** `MyPageRecentRuns`?`GrowthMyRankCard`?Awakening acts ????i18n; `npm test`?`npm run build` PASS. TASK1 Journey?bounce-back BLOCKER ??.
 
-**[C3] SPRINT 196 5건 (leaderboard·paths·air·resilience·domain barrel)**: [x] **완료.** 타이브레이크·정렬·경로·AIR 밴드·기간·resilience 진도·경계 주석, rules·leadership-engine export 확인. npm test 125 통과.
+**[C6/C3/C4] SPRINT 247**: [x] **?? (2026-03-17).** runs cursor?profile 422?elite Cache-Control?healing 409?C6/C3?262 files / 2023 tests?build PASS. C5 TASK1 BLOCKER ??.
 
-**[REFRESH (C1)] SPRINT 195 → 196**: [x] **완료.** 195 남은 [ ] C5 BLOCKER 1건만 → 회전 완료. 196 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[C4] SPRINT_PLAN 247 API (ARENA_DOMAIN_SPEC ?4)**: [x] **?? (2026-03-17).** ?4?247 ?? ? runs cursor/400?profile EMPTY_PATCH?me/elite ???healing `ACT_ALREADY_COMPLETED`.
 
-**[C3] SPRINT 195 5건 (level-tier·xp·stages·letter·domain index)**: [x] **완료.** tier/code/subTier·XP 수식·전이·진행률·letter 본문 경계 JSDoc·주석, dashboard·healing·assessment export 확인. npm test 73 통과.
+**[C6] SPRINT 246 TESTFIX**: [x] **?? (2026-03-17).** reflect 413?`reflectLimits.ts`, stage-summary 246 ???, `q246-nearme-healing.edges.test.ts`, `test:q237-smoke`?258 files / 2007 tests?build PASS.
 
-**[REFRESH (C1)] SPRINT 194 → 195**: [x] **완료.** 194 남은 [ ] 모두 BLOCKER → 회전 완료. 195 생성. C2·C5 BLOCKER 이관·C5 실행 가능 4건 추가·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[C6] SPRINT 245 TESTFIX**: [x] **?? (2026-03-17).** `GET /api/arena/run/[id]` + route.test, POST run 400 ???, `q245-tier-mentor-sa.edges.test.ts`, `test:q237-smoke`?`npm test`?`npm run build` PASS.
 
-**[C3] SPRINT 194 5건 (xp·season·dojo·assessment·domain barrel)**: [x] **완료.** xp·season·dojo·assessment JSDoc·주석, arena·center·foundry re-export 일치 확인. npm test 통과.
+**?? ????**: ? ?? ?? ??? ???? ?? **??(????)** ? ?????.
 
-**[REFRESH (C1)] SPRINT 193 → 194**: [x] **완료.** 193 남은 [ ] 모두 BLOCKER → 회전 완료. 194 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT_PLAN 237**: [x] **??.** 236?237 ??. ?? ?? = **SPRINT_PLAN ?237**. C2 ?? ?? Gate [ ] ??. Phase 1 ?7 ??.
 
-**[C3] SPRINT 193 5건 (leaderboard·level-tier·stage·center·domain index)**: [x] **완료.** 정렬/타이브레이크·경계 상수·StageState·letter/resilience 유효성 JSDoc·주석, leadership-engine·rules export 확인. npm test 233 통과.
+**[C1 Commander ??] Phase 1 ??**: `docs/BTY_MULTI_CURSOR_DOC_HANDOFF.md` ?7 ? ?? `bty-arena/page.tsx` ?? ??. Arena ? ?? ?? = `/[locale]/bty-arena/wireframe`. C5? ?6 ??? ??.
 
-**[REFRESH (C1)] SPRINT 192 → 193**: [x] **완료.** 192 남은 [ ] 모두 BLOCKER → 회전 완료. 193 생성. C2·C5 BLOCKER 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[C5] Phase 1 UX ?? (?? Cursor)**: [x] **??.** `ScreenShell` + `/bty-arena/wireframe`?`/bty-arena/result`?`/growth`?`/my-page`(+progress/team/leader) ??. **`/[locale]/bty-arena` ?? ???? ???.** ?? Cursor? ?6 ?? ???. `docs/BTY_MULTI_CURSOR_DOC_HANDOFF.md` ?6.
 
-**[C3] SPRINT 192 5건 (LE transition·weeklyXp·season·Healing·domain types)**: [x] **완료.** forced-reset·weeklyXp WEEKLY_LEVEL_STEP·season·healing 주석·domain barrel 확인. npm test 통과.
+**[C5] Phase 1 ??? ?? (?6~?7)**: [x] **??.** `PIXEL_WIREFRAMES` ????? ? wireframe(Continue?Play?BottomNav?leaderboard)?result(Continue?wireframe)?growth(dojo/integrity/mentor/dear-me)?my-page ????. `bty-arena/page.tsx` ???.
 
-**[REFRESH (C1)] SPRINT 191 → 192**: [x] **완료.** 191 전량 [x]. 192 생성. C2 2건 이관·C3~C6 각 5건 할당. SPRINT_LOG·CURRENT_TASK 반영.
+**[DOCS] 7 Cursor ????**: [x] **??.** `docs/BTY_ARENA_UX_DOC_INDEX.md`?`docs/BTY_MULTI_CURSOR_DOC_HANDOFF.md` ? ?? UX??? ?? ?? + C1~C7 ????? ??. ??? Commander TASK? ??.
 
-**[배포] 191 배포 완료**: [x] **완료.** C2 Gate § A~F·MVP 최종 확인·self-healing-ci 실행·BTY_RELEASE_GATE_CHECK·SPRINT_LOG 반영.  
-지시가 없으면 이 파일의 내용을 확인하고, 아래 형식으로 적힌 항목을 도메인 → API → UI 순으로 진행하세요.
+**[DOCS] BTY Tailwind Theme Tokens ???**: [x] **??.** `docs/BTY_TAILWIND_THEME_TOKENS.md`? ?? ?? ?? ??? CSS ???Tailwind ???UI ?? ?? ??.
 
-**[C3] LE Stage 검토 (SPRINT 191 TASK 1)**: [x] **완료.** stages.ts 진행도·스테이지 경계 상수(LE_STAGE_MIN/MAX·PROGRESS_PERCENT·STAGE_PROGRESS_PERCENT) 단일 소스 확인. 변경 없음.
+**[DOCS] BTY Component Props Spec ???**: [x] **??.** `docs/BTY_COMPONENT_PROPS_SPEC.md`? ScreenShell?Buttons?InfoCard?ProgressBar?TabPills?BottomNav props ?? ??.
 
-**[C3] SPRINT 191 TASK 2~5 (AIR·대시보드·Healing·domain barrel)**: [x] **완료.** air.ts·dashboard.ts·healing.ts·domain index 검토·확인. 단일 소스 유지. npm test 586 통과.
+**[DOCS] BTY Page Split Implementation Plan ???**: [x] **??.** `docs/BTY_PAGE_SPLIT_IMPLEMENTATION_PLAN.md`? App Router ??? ?? ? shared components ? theme token ? navigation ? polish ?? ??.
 
-**[SPRINT 190] C3 Domain Engineer 5건**: [x] **완료.** LE Stage·AIR·대시보드 검토 유지, RECOMMENDATION_SOURCE_ORDER·HEALING_PHASE_I_LABEL 추가, domain index에 foundry export 추가. npm test 583 통과.
+**[DOCS] BTY ??? ?? + ?? ?? ???? ???**: [x] **??.** `docs/BTY_PAGE_SPLIT_AND_THEME_PROMPT.md`? App Router ??? ?? ??, ?? ??/?? ?? ?? ??? Cursor ?? ???? ??.
 
-**[DOCS] 다음 배치 선정 (SPRINT 43 TASK 5, 선택)**: [x] **완료.** 이번 스프린트 추가 배치 선정 불필요. NEXT_PHASE·NEXT_BACKLOG·보드 대기 4건 이미 동기화됨. 보드·CURRENT_TASK 반영. 코드 없음.
+**[DOCS] BTY React Wireframe Reference ???**: [x] **??.** `docs/BTY_PIXEL_WIREFRAMES.md`? `BTYArenaWireframes` React ?????? ???? ???? ????? ?? ??? ??.
 
-**[DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 (SPRINT 43 TASK 7)**: [x] **완료.** § "다음 작업 (반복 제외)" SPRINT 43 기준으로 갱신. 진행 현황 8/10 완료·잔여 TASK 5(선택)·다음 후보·갱신일 반영. 코드 없음.
+**[DOCS] BTY Pixel Wireframes ???**: [x] **??.** `docs/BTY_PIXEL_WIREFRAMES.md`? Arena ? ???Growth?My Page?Progress?Team?Leader Track?Result ??? Figma? ??? ?????? ??.
 
-**[DOCS] Arena·Center·Foundry 대기 목록 동기화 (SPRINT 43 TASK 10)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 대기 4건 일치 확인. 갱신일 반영. 코드 없음.
+**[DOCS] BTY ?? ??? ???? ???**: [x] **??.** `docs/BTY_PRODUCT_DIRECTION_PROMPTS.md`? Cursor/Gemini/Genspark? ??? ???? 5? ??. ?? ?????? ???Growth?My Page???? ? ??.
 
-**[DOCS] 문서 점검 115·116·117차 (SPRINT 43 TASK 3)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 대기 5건 일치 확인. BTY_RELEASE_GATE_CHECK 최근 완료 1건 추가. 코드 없음.
+**[REFRESH (C1)] SPRINT_PLAN 236**: [x] **?? (2026-03-19).** 235?236 ??. C2 ?? ?? Gate [ ] ???. ?? ?? = **SPRINT_PLAN ?236**. (CURSOR_TASK_BOARD Foundry ?? ??.)
 
-**[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 (SPRINT 43 TASK 2)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4 현재 대기 5건 = 문서 115·116·117차·다음 배치 선정·보드 § 정리·대기 동기화·Release Gate 44차. 보드 "대기 5건" 동기화. 43차·접근성·TASK 8·9 완료 반영.
+**[C4] SPRINT 235 API 5? (SPRINT_PLAN)**: [x] **??(??).**
 
-**[TEST] Center/Foundry route 테스트 1건 (SPRINT 43 TASK 9)**: [x] **완료.** GET /api/bty/healing — copyCookiesAndDebug throw 시 500·INTERNAL_ERROR·detail 검증 추가. Lint ✓ npm test ✓.
+**[C4] SPRINT 236 API 5? (SPRINT_PLAN)**: [x] **??.** healing?awakening / dojo?integrity?questions / dashboard summary / center-dear-me / ARENA_DOMAIN_SPEC 236 ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (SPRINT 43 TASK 4)**: [x] **완료.** PageClient.tsx Center 플로우(나에게 쓰는 편지 단계) `<main>`에 aria-label 추가(ko: "Center 나에게 쓰는 편지", en: "Center letter to yourself"). render-only. Lint ✓.
+**[C4] SPRINT 237 API 5? (SPRINT_PLAN)**: [x] **??.** run?run/complete?reflect?journey/entries?me/elite?dashboard/summary JSDoc `@contract`; ARENA_DOMAIN_SPEC ?4?237 ??. **?? ??.**
 
-**[배포] chore: 배포 push 완료**: e6fc417 (28 files, +379/-94) → origin/main. 정상 완료.
+**[C4] SPRINT 238 API 5? (SPRINT_PLAN)**: [x] **??.** LE state?mentor PATCH?dashboard ???healing ???ARENA_DOMAIN_SPEC ?4?238. **?? ??.**
 
-**[VERIFY] Release Gate A~F — Foundry 44차 (SPRINT 44 TASK 1)**: [x] **완료.** C5. A~E N/A · F) Lint ✓ Test 1584/207 ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+**[C4] SPRINT 239 API 5? (SPRINT_PLAN)**: [x] **??.** dashboard LE+AIR?mentor-requests GET?run/complete 400?healing/awakening 401?404?ARENA_DOMAIN_SPEC ?4?239. **?? ??.**
 
-**[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 (SPRINT 44 TASK 2)**: [x] **완료.** SPRINT 43 완료·Release Gate 44차 완료 반영. NEXT_PHASE·NEXT_BACKLOG·보드 대기 6건 동기화. 코드 없음.
+**[C4] SPRINT 240 API 5? (SPRINT_PLAN)**: [x] **??.** mentor PATCH ???dashboard Cache-Control?run/complete 409/429?second-awakening GET?ARENA_DOMAIN_SPEC ?4?240. **?? ??.**
 
-**[DOCS] 문서 점검 118·119·120차 (SPRINT 44 TASK 3)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드·BTY_RELEASE_GATE_CHECK 점검·갱신. 삼문서·보드 대기 6건 일치. 코드 없음.
+**[C4] SPRINT 241 API 5? (SPRINT_PLAN)**: [x] **??.** leaderboard @contract?journey ???POST healing/progress?GET awakening/acts 404??????? `user_healing_awakening_acts`?ARENA_DOMAIN_SPEC ?4?241. **?? ??.**
 
-**[UI] Center/Foundry 추가 접근성 1곳 (SPRINT 44 TASK 4)**: [x] **완료.** integrity 페이지 `<main>` 3곳에 aria-label(ko/en) 추가. render-only. Lint ✓.
+**[C4] SPRINT 242 API 5? (SPRINT_PLAN)**: [x] **??.** arena/profile @contract?second-awakening JSDoc?awakening acts?healing/progress 429?ARENA_DOMAIN_SPEC ?4?242. **?? ??.**
 
-**[DOCS] 다음 배치 선정 (SPRINT 44 TASK 5, 선택)**: [x] **완료.** 추가 배치 불필요·NEXT_PHASE·NEXT_BACKLOG·보드 동기화 유지. 코드 없음.
+**[C4] SPRINT 243 API 5? (SPRINT_PLAN)**: [x] **??.** run/complete 410?me/elite?reflect 413?GET healing/progress?ARENA_DOMAIN_SPEC ?4?243. **?? ??.**
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (SPRINT 44 TASK 6)**: [x] **완료.** 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** ELITE_3RD_SPEC_AND_CHECKLIST §3·보드 반영.
+**[C4] SPRINT 244 API 5? (SPRINT_PLAN)**: [x] **??.** runs @contract?dojo/questions ???healing/progress ?? ???dojo/submit 400?ARENA_DOMAIN_SPEC ?4?244. **?? ??.**
 
-**[DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 (SPRINT 44 TASK 7)**: [x] **완료.** § "다음 작업 (반복 제외)" SPRINT 44 기준·8/10 완료·잔여 TASK 8·9(선택)·갱신일 반영. 코드 없음.
+**[C4] SPRINT 245 API 5? (SPRINT_PLAN)**: [x] **??.** GET arena/run/[runId]?POST run 409?leaderboard scope?GET bty/awakening/acts?ARENA_DOMAIN_SPEC ?4?245. **?? ??.**
 
-**[DOCS] Arena·Center·Foundry 대기 목록 동기화 (SPRINT 44 TASK 10)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG·보드 대기 6건 일치 확인. 코드 없음.
+**[C4] SPRINT 246 API 5? (SPRINT_PLAN)**: [x] **??.** reflect 413?stage-summary?run/complete ???profile Cache-Control?ARENA_DOMAIN_SPEC ?4?246. **?? ??.**
 
-**다음 배치**: 이번 런 = **SPRINT 45**. First Task = TASK 1 [VERIFY] Release Gate A~F — Foundry 45차. 할 일 = **docs/CURSOR_TASK_BOARD.md** "이번 런" 표 TASK 1~10 중 **[ ]** 인 항목.
+**[C5] ?? ??LE?AIR ???growth/wireframe ???i18n**: [x] **??.** Admin ? ?????? ??; AIR/Stage ?? ?? ???; Foundry?Elite ??. **?? ??.**
 
-**C1 splint 10 (2026-03-11)**: [x] **완료.** SPRINT 44 8/10 완료(TASK 8·9 선택 미실행) → SPRINT 45 생성. 보드 "이번 런" = SPRINT 45 (TASK 1~10 [ ]). NEXT_PHASE·NEXT_BACKLOG 대기 6건 갱신. CURRENT_TASK 반영.
+**[C5] ???? LE?AIR ??????/?? 3??Elite a11y?i18n**: [x] **??.** `LeAirWidget`/`LeStageWidget`, wireframe ?1 ???result `uxPhase1Stub`, Elite ???/??/?? ?, bty?elitePage ???. **?? ??.**
 
-**다음 배치 (SPRINT_PLAN)**: 이번 런 = **SPRINT 191** (구현 전용). **C2** 2건 [ ] BLOCKER 이관(배포 시 1회만). **C3·C4·C5·C6** 각 1~2건 [ ] 다음 백로그 대기(C1이 채우면 진행). docs/SPRINT_PLAN.md 참고. 검증=배포 전 1회만.
+**[C5] SPRINT_PLAN ?? 2??BottomNav?Growth?my-page i18n**: [x] **??.** `globals.css` `--bty-*`?Tailwind `bty.*`?ScreenShell?InfoCard?ProgressBar?Primary/Secondary?wireframe/result/growth/my-page ??; BottomNav `focus-visible`; Growth Arena???? ??; `myPageStub` ko/en; ??? ???. TASK1 bounce-back BLOCKER ??. **?? ??.**
 
-**다음 배치 (이전)**: **SPRINT 185** 완료. 캐릭터·옷·악세사리 연동 C3·C4·C5·C6 전부 [x]. 186 전환됨.
+**[C5] SPRINT_PLAN 241 Healing ????? ???growth/my-page ???i18n**: [x] **??.** `healing/page.client` phase?ringType render-only; ???? ?? XP ??+????+???? CTA; growth?my-page Healing/Awakening ??; `healing.*`?`bty.dashboardWeekly*` ? en/ko. TASK1 BLOCKER ??. **?? ??.**
 
-**[SPRINT 182] C4 API Engineer 5건 (2026-03-14)**: [x] **완료.** LE stage-summary 응답 스키마(StageSummaryResponse·도메인 타입), dashboard/summary source 쿼리 필터·DashboardSummaryResponse, Healing/Awakening bty/errors.ts 에러 형식 통일, requireUser 점검 1건, docs/spec/ARENA_DOMAIN_SPEC.md API 목록 갱신. 테스트 통과.
+**[C5] SPRINT_PLAN 242 Awakening ?? ?????? ?? ???progress ??????? i18n**: [x] **??.** `getUserCompletedAwakeningActs`?GET awakening `completedActs`; `AwakeningActsTrack`(Healing+Awakening); ???? ??? ???? ??; `healing.awakeningActs*`?`bty.dashboardLive*`?`bty.profile*`. TASK1 BLOCKER ??. **?? ??.**
 
-**[SPRINT 182] C3 Domain Engineer 5건 (2026-03-14)**: [x] **완료.** LE Stage(stage-summary 타입·진행도 경계 상수), AIR(밴드·기간 상수), 대시보드(RECOMMENDATION_SOURCE_PRIORITY), ContentScenarioId, domain index export 확인. 도메인만, 테스트 통과.
+**[C5] SPRINT_PLAN 243 Healing GET ???Elite me/elite ?????? ???i18n**: [x] **??.** GET healing `awakeningProgress`; Healing ?????? ?? UI; ???? `eliteContentUnlocked`; Growth/result ??? ??; i18n. TASK1 BLOCKER ??. **?? ??.**
 
-**플랜 전환 (구현 전용)**: [x] **완료.** 검증=배포 전 1회만. SPRINT 176 = Q3·Q4 구현 태스크만. SPRINT_PLAN·SPRINT_LOG·CURRENT_TASK 반영.
+**[C5] SPRINT_PLAN 244 result ?? ???? CTA?wireframe Dojo/Integrity?Healing ?????i18n**: [x] **??.** result Primary ?? ????; wireframe Dojo?Integrity?runs ??; Healing ?? ???? ??/??. TASK1 BLOCKER ??. **?? ??.**
 
-**Arena §4·§5 BLOCKER 해제**: [x] **완료.** §4 Past scenarios 기본 노출+접기 결정·구현(ArenaRunHistory 토글·i18n). §5 메뉴 IA 현재 플랫 유지 결정. SPRINT_PLAN C5 [x]·Blockers 제거, BTY_ARENA_FEEDBACK_2026-03 §4·§5 조치 [x] 반영.
+**[C6] SPRINT_PLAN 237 Testfix 5?**: [x] **??.** Vitest ???(wireframe?growth?my-page?result?progress/team/leader)?`weeklyCompetitionDisplay` ? ???? ???`npm test`(1875)?`npm run build` PASS. **?? ??.**
 
-**Arena/Lab XP 서류 구조 정리**: [x] **완료.** RECONCILIATION §7 = 구현 상태 단일 정리, ARENA_LAB_XP_SPEC = 수식·규칙 기준 + 구현 위치, BTY_ARENA_DOMAIN_SPEC = 도메인 원칙 + 위 두 문서 참조. CURSOR_TASK_BOARD·DOCS_SINGLE_SOURCE_OF_TRUTH·CURRENT_TASK 반영.
+**[C6] SPRINT_PLAN 238 Testfix 5?**: [x] **??.** `test:q237-smoke`?`reflect` route.test?middleware arena matcher?`rankByWeeklyXpOnly` weekly-only ???test(1890)?build PASS. **?? ??.**
 
-**[C5 SPRINT 182 5건 (docs/SPRINT_PLAN.md)]**: [x] **완료.** AIR 위젯 에러 문구, Elite 비Elite CTA role=group+aria-label, Healing 로딩·t.loading, dear-me 완료/답장 region+aria-label, healing.loading i18n. Lint ✓.
+**[C6] SPRINT_PLAN 239 Testfix 5?**: [x] **??.** mentor-requests GET route.test?dashboard summary 239 smoke?`q239-le-air-elite`?q237-smoke?test(1902)?build. **?? ??.**
 
-**[다음 Q3·Q4 백로그 UI 보강 1건 (C5, docs/SPRINT_PLAN.md)]**: [x] **완료.** 대시보드 Points Today 카드 role="region" + aria-label(ko/en). Lint ✓.
+**[C6] SPRINT_PLAN 240 Testfix 5?**: [x] **??.** q237-smoke?PATCH mentor-requests 240?dashboard summary 240?`q240-elite-healing`?test(1916)?build. **?? ??.**
 
-**[(선택) 다음 연도 백로그 (C5, docs/SPRINT_PLAN.md)]**: [x] **완료.** docs/NEXT_YEAR_BACKLOG.md 1페이지 요약·내부 문서 링크. ROADMAP_INTERNAL 참조 추가.
+**[C6] SPRINT_PLAN 241 Testfix 5?**: [x] **??.** q237-smoke????? ??? ? ??Healing/Awakening GET ??????/? ?? ???test(1928)?build(i18n?healing/progress ??). **?? ??.**
 
-**[Q3] 대시보드 추천 위젯 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** GET /api/arena/dashboard/summary 연동, 추천 ProgressCard(nextAction + arena/foundry/center 링크). Lint ✓.
+**[C6] SPRINT_PLAN 242 Testfix 5?**: [x] **??.** q237-smoke?healing/progress 400/409?awakening GET ??????/3?? ???test(1949)?build. **?? ??.**
 
-**[Q4] 로드맵 2페이지 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** docs/ROADMAP_PUBLIC.md(공개용), docs/ROADMAP_INTERNAL.md(내부용) 추가.
+**[C6] SPRINT_PLAN 243 Testfix 5?**: [x] **??.** q237-smoke?run/complete 404????me/elite ?????? noop?Healing %?test(1963)?build. **?? ??.**
 
-**[Q4] Healing/Awakening 페이지 콘텐츠·플로우 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** i18n healing(ko/en) 추가, Healing 인덱스 getMessages().healing·GET /api/bty/healing 연동(phase 표시). Lint ✓.
+**[C6] SPRINT_PLAN 244 Testfix 5?**: [x] **??.** q237-smoke?GET arena/runs?healing/progress ? ???Core/Weekly?dojo ??????test(1973)?build. **?? ??.**
 
-**[Q4] Healing + Awakening 라우트·페이지 골격 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** /bty/healing page.tsx + page.client.tsx 골격 추가, Awakening 링크·대시보드 링크. /bty/healing/awakening 기존 유지. Lint ✓.
+**[C2] SPRINT 235 ?? Gate (cce5374)**: [x] **??(??).** ?? ?? ? **236** C2 TASK [ ] ??.
 
-**[Q3] Elite 멘토 승인/거절 UI 또는 Elite 화면·접근성 1곳 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** Elite 서클 모임 카드에 role="region" + aria-label(tElite.circleCardTitle). Lint ✓.
+**[C2] SPRINT 234 ?? Gate (fd81860)**: [x] **??(??).**
 
-**[Q3] LE Stage Arena 결과·행동 패턴 노출 위젯 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** GET /api/arena/leadership-engine/stage-summary 연동, LE Stage ProgressCard(stageName, progressPercent, resetDueAt, arenaSummary/behaviorPattern). Lint ✓.
+**[??] Git push ?? (??)**: [x] **`cce5374`** chore: ?? ? Foundry, HubTopNav, API?????Q235 ?????? ? 62 files (+1,279/-277) ? **`fd81860..cce5374` ? origin/main** ? BTY_RELEASE_GATE_CHECK?SPRINT_LOG?? ??.
 
-**[Q3] 대시보드 AIR 또는 LE 진도 위젯 1개 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** AIR 위젯 ProgressCard(7d/14d/90d %, integritySlip). 기존 leAir API 응답 표시만. Lint ✓.
+**[??] Git push ??**: [x] **`fd81860`** chore: ?? ? ???/???, API?????Q3/Q4 ?????? ? 200 files (+4,015/-423) ? **`e4ae594..fd81860` ? origin/main** ? BTY_RELEASE_GATE_CHECK?SPRINT_LOG?? ?? ??.
 
-**[Q3] 대시보드 Arena/Foundry/Center 통합 진입점·카드/링크 정리 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** 통합 진입점 ProgressCard(Arena·Foundry·Center nav) 추가, Center(나에게 쓰는 편지) 링크 추가. render-only. Lint ✓.
+**[C4] SPRINT 234 API 5? (SPRINT_PLAN)**: [x] **??.** healing?awakening?dojo?avatar-assets?mentor?assessment JSDoc ????ARENA_DOMAIN_SPEC 234.
 
-**[VERIFY] Release Gate A~F — Foundry 175차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+**[C4] SPRINT 233 API 5? (SPRINT_PLAN)**: [x] **??.** run/complete?profile?core-xp?leaderboard?LE?journey?me/elite?dashboard?center?dear-me JSDoc??? ????ARENA_DOMAIN_SPEC 233.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (175차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C4] SPRINT 232 API 5? (SPRINT_PLAN)**: [x] **??.** healing?awakening?dojo?avatar-assets?mentor?assessment(path)?ARENA ?4-12b JSDoc.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (175차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. elite 배지 목록 `<ul>`에 role="list" + aria-label (ko/en). Lint ✓.
+**[C4] SPRINT 231 API 5? (SPRINT_PLAN)**: [x] **??.** JSDoc??? ?? ???(run/complete ???leaderboard ?????LE stage-summary?air?journey/profile?me/elite?dashboard?center?dear-me)?ARENA_DOMAIN_SPEC ?4-11b?231 ??.
 
-**[VERIFY] Release Gate A~F — Foundry 174차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+**[C5] SPRINT 230 UI ????i18n 4? (BLOCKER ??)**: [x] **??.** ???? ?? ?? region?i18n, Elite ?? region, Dojo ?? Dr. Chi region, i18n leaderboardWeekResetRegion.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (174차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C5] SPRINT 229 UI ????i18n 4? (BLOCKER ??)**: [x] **??.** ???? Dojo ?? region+aria-label, ?? ??? article+aria-label, assessment ?? region, i18n dojoPracticeLabel/dojoPracticeLinksRegion.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (174차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. integrity 완료 단계 다음 단계 링크 그룹 role="group" aria-label (integrity/page.client.tsx). Lint ✓.
+**[C4] SPRINT 251 API 5? (run/complete 409?core-xp 401?me/access?healing/progress 404?ARENA_DOMAIN_SPEC)**: [x] **??.** ?4???? **409 `RUN_ABORTED`** ?? ??(run/complete `aborted_at`).
 
-**[VERIFY] Release Gate A~F — Foundry 173차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+**[C4] SPRINT 250 API 5? (run/[id]?profile PATCH?leaderboard 401?center/resilience period?ARENA_DOMAIN_SPEC)**: [x] **??.** resilience 400 INVALID_PERIOD??4 250.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (173차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C4] SPRINT 249 API 5? (reflect?runs cursor?mentor-request 400?awakening acts 404?ARENA_DOMAIN_SPEC)**: [x] **??.** @contract ????4 249.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (173차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. assessment result 이전 대비 변화 role="group" aria-label (ResultClient.tsx). Lint ✓.
+**[C4] SPRINT 248 API 5? (leaderboard week/scope 400?dashboard 503/500?journey/profile 401?center/letter body?ARENA_DOMAIN_SPEC)**: [x] **??.** parseLeaderboardQuery?@contract??4 248?Vitest leaderboard?scope.
 
-**[VERIFY] Release Gate A~F — Foundry 172차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+**[C4] SPRINT 230 API 5? (arena run/complete?profile?core-xp?leaderboard?leadership-engine?journey?me/elite?dashboard?center?dear-me?ARENA_DOMAIN_SPEC)**: [x] **??.** JSDoc ???leadership-engine/certified 401?500 ????4 230 ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (172차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C4] SPRINT 229 API 5? (arena profile?run?leaderboard?core-xp?leadership-engine?me/elite?journey?dashboard?bounce-back?dojo?assessment?center?ARENA_DOMAIN_SPEC)**: [x] **??.** JSDoc ???leadership-engine/tii 401?500 ????4 229 ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (172차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. assessment result 권장 트랙 region·이유 ul aria-label (ResultClient.tsx). Lint ✓.
+**[C4] SPRINT 228 API 5? (arena run/complete?profile?core-xp?leaderboard?leadership-engine?journey?me/elite?dashboard?center?dear-me?ARENA_DOMAIN_SPEC)**: [x] **??.** JSDoc ???leadership-engine/air 401?500 ????4 228 ??.
 
-**[VERIFY] Release Gate A~F — Foundry 171차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+**[C4] SPRINT 227 API 5? (arena/profile?run?leaderboard?core-xp?leadership-engine?me/elite?journey?dashboard?bounce-back?dojo?assessment?center?ARENA_DOMAIN_SPEC)**: [x] **??.** JSDoc ??/?? ???ARENA_DOMAIN_SPEC ?4 227 ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (171차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C4] SPRINT 226 API 5? (run/complete?stage-summary?journey?me/elite?dashboard?center/letter?resilience?dear-me?ARENA_DOMAIN_SPEC)**: [x] **??.** JSDoc ??/?? ???ARENA_DOMAIN_SPEC ?????4 API ?? ??? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (171차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. dojo history 과거 진단 이력 목록 ul aria-label (DojoHistoryClient.tsx). Lint ✓.
+**[DOCS] NEXT_PHASE?NEXT_BACKLOG ?? ?? (SPRINT 46 TASK 2, C1)**: [x] **??.** SPRINT 46 TASK 1 ?? ?????? ???.
 
-**[VERIFY] Release Gate A~F — Foundry 170차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+**[DOCS] ?? ?? 124?125?126? (SPRINT 46 TASK 3, C1)**: [x] **??.** NEXT_PHASE?NEXT_BACKLOG????BTY_RELEASE_GATE_CHECK ?????.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (170차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (SPRINT 46 TASK 4, C4)**: [x] **??.** ???? ???? ?? ?? role=region?aria-label. render-only.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (170차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. mentor 대화 이력 목록 ul aria-label·role=list (MentorConversationHistory.tsx). Lint ✓.
+**[VERIFY] Release Gate 46? (SPRINT 46 TASK 1, C5)**: [x] **??.** A~E N/A ? F) Lint ? Test 1819 ? Build ?. RESULT: PASS. BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 169차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+**C1 splint 10 (2026-03-12)**: SPRINT 45 ?? 10/10 ?? ? SPRINT 46 ??. First Task = Release Gate 46?. ???NEXT_PHASE?NEXT_BACKLOG?AUTO4_PROMPTS ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (169차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[DOCS] ?? ?? ?? (SPRINT 45 TASK 5, C1, ??)**: [x] **??.** ?? ?? ??????? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (169차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. dear-me 편지 이력 목록 ul aria-label (DearMeClient.tsx). Lint ✓.
+**[DOMAIN] Center/Foundry ??? ?? ??? 1? (SPRINT 45 TASK 8, C3, ??)**: [x] **??.** domain/center/resilience.edges.test.ts RESILIENCE_LEVEL_IDS. npm test ??.
 
-**[VERIFY] Release Gate A~F — Foundry 168차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+**[TEST] Center/Foundry route ??? 1? (SPRINT 45 TASK 9, C3, ??)**: [x] **??.** GET /api/dear-me/letters 401 error as string. npm test ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (168차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[DOCS] CURSOR_TASK_BOARD ? ?? ?? ?? (SPRINT 45 TASK 7, C1)**: [x] **??.** ? ?? ??(?? ??) ?? ?????? 2026-03-12 ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (168차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. assessment result 이전 진단 이력 목록 ul aria-label (ResultClient.tsx). Lint ✓.
+**[DOCS] Arena?Center?Foundry ?? ?? ??? (SPRINT 45 TASK 10, C1)**: [x] **??.** NEXT_PHASE?NEXT_BACKLOG??? ?? 6? ?? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 167차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+**[UI] Center/Foundry ?? ??? 1? (SPRINT 45 TASK 4, C4)**: [x] **??.** PageClient Center main 4? aria-label={t.mainAriaLabel}. render-only.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (167차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 121?122?123? (SPRINT 45 TASK 3, C1)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4????BTY_RELEASE_GATE_CHECK 2~3? ?????. ?? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (167차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Integrity 시나리오 대화 영역 role="region" aria-label (integrity/page.client.tsx). Lint ✓.
+**[DOCS] NEXT_PHASE?NEXT_BACKLOG ?? ?? (SPRINT 45 TASK 2, C1)**: [x] **??.** SPRINT 44 ?? ????? 6? ???. NEXT_PHASE?NEXT_BACKLOG??? ??? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 166차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+**[VERIFY] ??? 3? ????? 45? (SPRINT 45 TASK 6, C5)**: [x] **??.** 6?? 1?. Elite=Weekly XP???? ???. RESULT: PASS. ELITE_3RD_SPEC ?3????CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (166차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[VERIFY] Release Gate 45? (SPRINT 45 TASK 1, C5)**: [x] **??.** A~E N/A ? F) Lint ? Test 1728 ? Build ?. RESULT: PASS. BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (166차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Elite 멘토 신청 메시지 textarea aria-label (elite/page.client.tsx). Lint ✓.
+**[??] 195 ?? ??**: [x] **??.** C2 Gate ? A~F?MVP ?? ???self-healing-ci ???BTY_RELEASE_GATE_CHECK?SPRINT_LOG ??.
 
-**[UI] §1·§2·§9·§4·§5 (아바타·i18n·로딩·Past scenarios)**: [x] **완료.** §1 AvatarComposite outfit/accessory onError로 404 시 레이어 숨김. §2 Avatar/Profile 문자열 getMessages(locale).avatarOutfit·outfitLabels로 분리, EN 한글 제거. §9 loading.tsx·Suspense fallback 한글 제거 → LocaleAwareRouteLoading·PageLoadingFallback(pathname→locale). §4 Past scenarios 기본 노출+접기 버튼, arenaRun i18n. §5 메뉴(네비게이션): IA 검토 후 그룹핑·계층 정리 예정(현재 BtyTopNav 플랫 유지). Lint ✓.
+**[C4] SPRINT 223 API 5? (leadership-engine?me/elite?mentor-request?journey?center?dojo?assessment?bty-arena)**: [x] **??.** JSDoc?????? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 165차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+**[C4] SPRINT 222 API 5? (leaderboard?core-xp?run/complete?profile?emotional-stats?journey?dear-me?mentor?me/access)**: [x] **??.** JSDoc?????? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (165차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C4] SPRINT 221 API 5? (leadership-engine/state?air?transition?me/elite?mentor-request?journey?center?dojo?assessment?bty-arena)**: [x] **??.** JSDoc?????? ??. transition JSDoc ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (165차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. dashboard 아바타 설정 "선택한 옷" select에 aria-label (ko/en). Lint ✓.
+**[C4] SPRINT 220 API 5? (leaderboard?core-xp?run/complete?profile?emotional-stats?journey?dear-me?mentor?me/access)**: [x] **??.** JSDoc?????? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 164차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+**[C4] SPRINT 219 API 5? (leadership-engine/state?air?me/elite?mentor-request?journey?center?dojo?assessment)**: [x] **??.** JSDoc?????? ??. state?air JSDoc ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (164차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C4] SPRINT 218 API 5? (profile?run/complete?emotional-stats?journey?train?safe-mirror?me/access?bty-arena?assessment)**: [x] **??.** JSDoc?????? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (164차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. dashboard Arena Level 카드 emptyCta Link에 aria-label (ko/en). Lint ✓.
+**[C4] SPRINT 217 API 5? (leaderboard?core-xp?center/letter?resilience?dear-me?dojo?mentor?me/elite?assessment)**: [x] **??.** JSDoc?????? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 163차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+**[C4] SPRINT 216 API 5? (profile?run/complete?emotional-stats?journey?train?safe-mirror?me/access?bty-arena?assessment)**: [x] **??.** JSDoc?????? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (163차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C4] SPRINT 215 API 5? (leaderboard?core-xp?center/letter?resilience?dear-me?dojo?mentor?me/elite?assessment)**: [x] **??.** JSDoc?????? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (163차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. dashboard Elite 카드 "Elite 전용 페이지로 이동 →" Link에 aria-label (ko/en). Lint ✓.
+**[C4] SPRINT 213 API 5? (leaderboard?core-xp?center/letter?resilience?dear-me?dojo?mentor?me/elite?assessment)**: [x] **??.** JSDoc?????? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 162차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓ (auth LoadingFallback import 수정). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드 반영.
+**[C4] SPRINT 212 API 5? (profile?run/complete?emotional-stats?journey?train?safe-mirror?me/access?bty-arena?assessment)**: [x] **??.** JSDoc?????? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (162차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C4] SPRINT 211 API 5? (leaderboard?core-xp?center/letter?resilience?dear-me?dojo?mentor?me/elite?assessment)**: [x] **??.** JSDoc?????? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (162차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. dashboard Dojo 카드 "Dear Me 자존감 (50문항) →" Link에 aria-label (ko/en). Lint ✓.
+**[C4] SPRINT 210 API 5? (profile?run/complete?emotional-stats?journey?train?safe-mirror?me/access?bty-arena?assessment)**: [x] **??.** JSDoc?????? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 161차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK 반영.
+**?? ?? (SPRINT_PLAN)**: ?? ? = **SPRINT 230** (Q3?Q4 ??? ??). C3?C4?C5?C6 ? 5? [ ]. C5(1) BLOCKER ??(Journey?bounce-back). C2(2) BLOCKER. docs/SPRINT_PLAN.md ??. REFRESH ? C1? ?? [x] ?? BLOCKER? ?? ? 231 ??. ??=?? ? 1??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (161차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT 222 ? 223**: [x] **??.** 222 ?? [ ] ?? BLOCKER ? ?? ??. SPRINT 223 ??. C2?C5 BLOCKER ??. C3?C4?C5(?? 1+?? 4)?C6 ? 5? [ ] ??. SPRINT_LOG??? ?? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (161차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. dashboard Dojo "역지사지 연습 →" Link aria-label. Lint ✓.
+**[REFRESH (C1)] SPRINT 221 ? 222**: [x] **??.** 221 ?? [ ] ?? BLOCKER ? ?? ??. SPRINT 222 ??. C2?C5 BLOCKER ??. C3?C4?C5(?? 1+?? 4)?C6 ? 5? [ ] ??. SPRINT_LOG??? ?? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 160차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK 반영.
+**[REFRESH (C1)] SPRINT 219 ? 220**: [x] **??.** 219 ?? [ ] ?? BLOCKER ? ?? ??. SPRINT 220 ??. C2?C5 BLOCKER ??. C3?C4?C5(?? 1+?? 4)?C6 ? 5? [ ] ??. C7 Lint ? C5 TASK 2. SPRINT_LOG??? ?? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (160차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT 217 ? 218**: [x] **??.** 217 ?? [ ] ?? BLOCKER ? ?? ??. 218 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (160차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. dashboard/page.client.tsx "Dear Me 자존감 (50문항)" Link aria-label. Lint ✓.
+**[REFRESH (C1)] SPRINT 216 ? 217**: [x] **??.** 216 ?? [ ] ?? BLOCKER ? ?? ??. 217 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 159차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT 215 ? 216**: [x] **??.** 215 ?? [ ] ?? BLOCKER ? ?? ??. 216 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (159차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT 214 ? 215**: [x] **??.** 214 ?? [ ] ?? BLOCKER ? ?? ??. 215 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (159차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 404 not-found 대시보드 링크 aria-label. Lint ✓.
+**[REFRESH (C1)] SPRINT 213 ? 214**: [x] **??.** 213 ?? [ ] ?? BLOCKER ? ?? ??. 214 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 158차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT 212 ? 213**: [x] **??.** 212 ?? [ ] ?? BLOCKER ? ?? ??. 213 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (158차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT 211 ? 212**: [x] **??.** 211 ?? [ ] ?? BLOCKER ? ?? ??. 212 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (158차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 404 not-found 홈 링크 aria-label. Lint ✓.
+**[REFRESH (C1)] SPRINT 210 ? 211**: [x] **??.** 210 ?? [ ] ?? BLOCKER ? ?? ??. 211 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 157차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[C3] SPRINT 211 5? (level-tier?leaderboard?xp?letter?resilience?stage?forced-reset?paths?assessment?domain barrel)**: [x] **??.** ???????XP ??????????stageNumber?TII?????? ?? ?????, arena?center?foundry export ??. ?? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (157차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C3] SPRINT 212 5? (season?weeklyXp?dashboard?stages?air?paths?assessment?domain barrel)**: [x] **??.** ????? ???ProgressSummary?RecommendationSource?STAGE_PROGRESS?AIR ???????? ?? ?????, leadership-engine?foundry export ??. ?? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (157차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Foundry Profile 아바타 설정 링크 aria-label (ProfileClient). Lint ✓.
+**[C3] SPRINT 213 5? (level-tier?leaderboard?xp?letter?resilience?stage?forced-reset?paths?assessment?domain barrel)**: [x] **??.** ???????XP ??????????stageNumber?TII?????? ?? ?????, arena?center?foundry export ??. ?? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 156차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[C3] SPRINT 214 5? (season?weeklyXp?dashboard?stages?air?paths?assessment?domain barrel)**: [x] **??.** ????? ???ProgressSummary?RecommendationSource?STAGE_PROGRESS?AIR ???????? ?? ?????, leadership-engine?foundry export ??. ?? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (156차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C3] SPRINT 215 5? (level-tier?leaderboard?xp?letter?resilience?stage?forced-reset?paths?assessment?domain barrel)**: [x] **??.** ???????XP ??????????stageNumber?TII?????? ?? ?????, arena?center?foundry export ??. ?? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (156차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Foundry Profile 오류 시 대시보드로 돌아가기 링크 aria-label (ProfileClient). Lint ✓.
+**[C3] SPRINT 216 5? (season?weeklyXp?dashboard?stages?air?paths?assessment?domain barrel)**: [x] **??.** ????? ???ProgressSummary?RecommendationSource?STAGE_PROGRESS?AIR ???????? ?? ?????, leadership-engine?foundry export ??. ?? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 155차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[C3] SPRINT 217 5? (level-tier?leaderboard?xp?letter?resilience?stage?forced-reset?paths?assessment?domain barrel)**: [x] **??.** ???????XP ??????????stageNumber?TII?????? ?? ?????, arena?center?foundry export ??. ?? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (155차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C3] SPRINT 218 5? (season?weeklyXp?dashboard?stages?air?paths?assessment?domain barrel)**: [x] **??.** ????? ???ProgressSummary?RecommendationSource?STAGE_PROGRESS?AIR ???????? ?? ?????, leadership-engine?foundry export ??. ?? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (155차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Foundry 아바타 설정 대시보드 링크 aria-label (AvatarSettingsClient). Lint ✓.
+**[C3] SPRINT 219 5? (LE Stage?state ???AIR ??????dashboard ?????? ???letter?resilience ???arena?center export)**: [x] **??.** stages getNextStage?StageTransitionContext, air airToBand?computeAIR, dashboard ProgressSummary?RecommendationSummary, letter?resilience ??, arena?center export ?????. ?? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 154차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[C3] SPRINT 220 5? (level-tier?xp?certified?tii ???dashboard RecommendationSource?????assessment ??????foundry?rules export)**: [x] **??.** ??????XP ??, certified?tii ??, RecommendationSource????, assessment ????? ??, foundry?rules export ?????. ?? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (154차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C3] SPRINT 221 5? (season?weeklyXp?transition?air ???ProgressSummary????letter?resilience?paths?center?leadership-engine export)**: [x] **??.** ????? ??, transition?air ??, ProgressSummary???, letter?resilience?paths, center?leadership-engine export ?????. ?? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (154차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Foundry 아바타 설정 오류 시 훈련장으로 돌아가기 링크 aria-label (AvatarSettingsClient). Lint ✓.
+**[C3] SPRINT 222 5? (level-tier?xp?certified?tii ???RecommendationSource?????assessment ??????foundry?rules export)**: [x] **??.** ??????XP ??, certified?tii ??, RecommendationSource????, assessment ?????, foundry?rules export ?????. ?? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 153차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[C3] SPRINT 223 5? (season?weeklyXp?transition?air ???ProgressSummary????letter?resilience?paths?center?leadership-engine export)**: [x] **??.** ????? ??, transition?air ??, ProgressSummary???, letter?resilience?paths, center?leadership-engine export ?????. ?? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (153차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT 209 ? 210**: [x] **??.** 209 ?? [ ] ?? BLOCKER ? ?? ??. 210 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (153차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Foundry Profile 대시보드로 돌아가기 링크 aria-label (ProfileClient). Lint ✓.
+**[C4] SPRINT 209 API 5? (leaderboard?core-xp?center?dear-me?dojo?mentor?me/elite?assessment)**: [x] **??.** JSDoc?????? ??. mentor/route.ts ????? JSDoc ??.
 
-**[VERIFY] Release Gate A~F — Foundry 152차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[C3] SPRINT 207 5? (level-tier?leaderboard?xp?letter?resilience?stage?forced-reset?paths?assessment?domain barrel)**: [x] **??.** ???????XP ??????????stageNumber?TII?????? ?? ?????, arena?center?foundry export ??. ?? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (152차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C3] SPRINT 208 5? (season?weeklyXp?dashboard?stages?air?paths?assessment?domain barrel)**: [x] **??.** ????? ???ProgressSummary?RecommendationSource?STAGE_PROGRESS?AIR ???????? ?? ?????, leadership-engine?foundry export ??. ?? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (152차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. admin 디버그 해결된 제보만 보기 버튼 aria-label. Lint ✓.
+**[C3] SPRINT 210 5? (season?weeklyXp?dashboard?stages?air?paths?assessment?domain barrel)**: [x] **??.** ????? ???ProgressSummary?RecommendationSource?STAGE_PROGRESS?AIR ???????? ?? ?????, leadership-engine?foundry export ??. ?? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 151차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[C3] SPRINT 206 5? (season?weeklyXp?dashboard?stages?air?paths?assessment?domain barrel)**: [x] **??.** ????? ???ProgressSummary?STAGE_PROGRESS?AIR ???????? ?? ?????, leadership-engine?foundry export ??. ?? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (151차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT 205 ? 206**: [x] **??.** 205 ?? [ ] ?? BLOCKER ? ?? ??. 206 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (151차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. admin 디버그 미해결 제보만 보기 버튼 aria-label. Lint ✓.
+**[C3] SPRINT 205 5? (level-tier?leaderboard?xp?letter?resilience?stage?forced-reset?paths?assessment?domain barrel)**: [x] **??.** ???????XP ??????????stageNumber?TII?????? ?? ?????, arena?center?foundry export ??. ?? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 150차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT 204 ? 205**: [x] **??.** 204 ?? [ ] ?? BLOCKER ? ?? ??. 205 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (150차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C3] SPRINT 204 5? (season?weeklyXp?dashboard?stages?air?paths?assessment?domain barrel)**: [x] **??.** ????? ???ProgressSummary?STAGE_PROGRESS?AIR ???????? ?? ?????, leadership-engine?foundry export ??. ?? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (150차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. admin 디버그 제보 목록 전체 보기 버튼 aria-label. Lint ✓.
+**[REFRESH (C1)] SPRINT 203 ? 204**: [x] **??.** 203 ?? [ ] ?? BLOCKER ? ?? ??. 204 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 149차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[C3] SPRINT 203 5? (stage?level-tier?leaderboard?xp?letter?resilience?forced-reset?domain barrel)**: [x] **??.** stageNumber?tier????????XP ??????????TII?certified ?????, arena?rules?center export ??. ?? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (149차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT 202 ? 203**: [x] **??.** 202 ?? [ ] ?? BLOCKER ? ?? ??. 203 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (149차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. admin 디버그 제보 교정 완료 버튼 aria-label. Lint ✓.
+**[C3] SPRINT 202 5? (season?weeklyXp?dashboard?air?assessment?domain barrel)**: [x] **??.** ????? ???ProgressSummary?RecommendationSource?AIR ??????????? ?? ?????, leadership-engine?foundry export ??. ?? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 148차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT 201 ? 202**: [x] **??.** 201 ?? [ ] ?? BLOCKER ? ?? ??. 202 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (148차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C3] SPRINT 201 5? (leaderboard?xp?letter?resilience?forced-reset?paths?domain barrel)**: [x] **??.** ???????XP ??????????TII?certified?????? ?????, rules?center export ??. ?? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (148차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. admin 디버그 로그인 테스트 버튼 aria-label. Lint ✓.
+**[REFRESH (C1)] SPRINT 200 ? 201**: [x] **??.** 200 ?? [ ] ?? BLOCKER ? ?? ??. 201 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 147차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** (도메인: validateDojo50Submit 비정수 거부.) BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[C3] SPRINT 200 5? (stage?level-tier?dashboard?stages?assessment?domain barrel)**: [x] **??.** stageNumber?tier ???ProgressSummary?RecommendationSource?STAGE_PROGRESS_PERCENT????????? ?? ?????, arena?foundry export ??. ?? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (147차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT 199 ? 200**: [x] **??.** 199 ?? [ ] ?? BLOCKER ? ?? ??. 200 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (147차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. admin 디버그 패치 생성 및 배포 버튼 aria-label. Lint ✓.
+**[C3] SPRINT 199 5? (season?weeklyXp?paths?air?letter?domain barrel)**: [x] **??.** ????? ??(weeklyXp ????)????AIR ??????letter ??? ?????, leadership-engine?center export ??. npm test 39 ??.
 
-**[VERIFY] Release Gate A~F — Foundry 146차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT 198 ? 199**: [x] **??.** 198 ?? [ ] ?? BLOCKER ? ?? ??. 199 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (146차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C3] SPRINT 198 5? (leaderboard?xp?assessment?forced-reset?resilience?domain barrel)**: [x] **??.** ???????XP ???????? ???TII?certified ???resilience ????? ?????, arena?rules export ??. npm test ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (146차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. admin 디버그 제보 올리기 버튼 aria-label. Lint ✓.
+**[REFRESH (C1)] SPRINT 197 ? 198**: [x] **??.** 197 ?? [ ] ?? BLOCKER ? ?? ??. 198 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 145차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[C3] SPRINT 197 5? (stage?level-tier?dashboard?stages?letter?domain barrel)**: [x] **??.** stageNumber?tier ???ProgressSummary?RecommendationSource?STAGE_PROGRESS_PERCENT?letter ??? ?????, center?foundry export ??. npm test 86 ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (145차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT 196 ? 197**: [x] **??.** 196 ?? [ ] ?? BLOCKER ? ?? ??. 197 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (145차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. admin 디버그 세션 확인 버튼 aria-label. Lint ✓.
+**[C3] SPRINT 196 5? (leaderboard?paths?air?resilience?domain barrel)**: [x] **??.** ?????????????AIR ??????resilience ????? ??, rules?leadership-engine export ??. npm test 125 ??.
 
-**[VERIFY] Release Gate A~F — Foundry 144차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT 195 ? 196**: [x] **??.** 195 ?? [ ] C5 BLOCKER 1?? ? ?? ??. 196 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (144차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C3] SPRINT 195 5? (level-tier?xp?stages?letter?domain index)**: [x] **??.** tier/code/subTier?XP ??????????letter ?? ?? JSDoc???, dashboard?healing?assessment export ??. npm test 73 ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (144차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. admin 사용자 관리 비밀번호 변경 버튼 aria-label. Lint ✓.
+**[REFRESH (C1)] SPRINT 194 ? 195**: [x] **??.** 194 ?? [ ] ?? BLOCKER ? ?? ??. 195 ??. C2?C5 BLOCKER ???C5 ?? ?? 4? ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 143차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[C3] SPRINT 194 5? (xp?season?dojo?assessment?domain barrel)**: [x] **??.** xp?season?dojo?assessment JSDoc???, arena?center?foundry re-export ?? ??. npm test ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (143차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT 193 ? 194**: [x] **??.** 193 ?? [ ] ?? BLOCKER ? ?? ??. 194 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (143차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. admin 사용자 관리 새 사용자 생성 폼 제출 버튼 aria-label. Lint ✓.
+**[C3] SPRINT 193 5? (leaderboard?level-tier?stage?center?domain index)**: [x] **??.** ??/????????? ???StageState?letter/resilience ??? JSDoc???, leadership-engine?rules export ??. npm test 233 ??.
 
-**[VERIFY] Release Gate A~F — Foundry 142차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[REFRESH (C1)] SPRINT 192 ? 193**: [x] **??.** 192 ?? [ ] ?? BLOCKER ? ?? ??. 193 ??. C2?C5 BLOCKER ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (142차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C3] SPRINT 192 5? (LE transition?weeklyXp?season?Healing?domain types)**: [x] **??.** forced-reset?weeklyXp WEEKLY_LEVEL_STEP?season?healing ???domain barrel ??. npm test ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (142차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. admin 사용자 관리 새 사용자 생성 버튼 aria-label. Lint ✓.
+**[REFRESH (C1)] SPRINT 191 ? 192**: [x] **??.** 191 ?? [x]. 192 ??. C2 2? ???C3~C6 ? 5? ??. SPRINT_LOG?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 141차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[??] 191 ?? ??**: [x] **??.** C2 Gate ? A~F?MVP ?? ???self-healing-ci ???BTY_RELEASE_GATE_CHECK?SPRINT_LOG ??.  
+??? ??? ? ??? ??? ????, ?? ???? ?? ??? ??? ? API ? UI ??? ?????.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (141차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[C3] LE Stage ?? (SPRINT 191 TASK 1)**: [x] **??.** stages.ts ???????? ?? ??(LE_STAGE_MIN/MAX?PROGRESS_PERCENT?STAGE_PROGRESS_PERCENT) ?? ?? ??. ?? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (141차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. admin Arena 멤버십 승인 버튼 aria-label. Lint ✓.
+**[C3] SPRINT 191 TASK 2~5 (AIR??????Healing?domain barrel)**: [x] **??.** air.ts?dashboard.ts?healing.ts?domain index ?????. ?? ?? ??. npm test 586 ??.
 
-**[VERIFY] Release Gate A~F — Foundry 140차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[SPRINT 190] C3 Domain Engineer 5?**: [x] **??.** LE Stage?AIR????? ?? ??, RECOMMENDATION_SOURCE_ORDER?HEALING_PHASE_I_LABEL ??, domain index? foundry export ??. npm test 583 ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (140차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[DOCS] ?? ?? ?? (SPRINT 43 TASK 5, ??)**: [x] **??.** ?? ???? ?? ?? ?? ???. NEXT_PHASE?NEXT_BACKLOG??? ?? 4? ?? ????. ???CURRENT_TASK ??. ?? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (140차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. admin 로그인 제출 버튼 aria-label. Lint ✓.
+**[DOCS] CURSOR_TASK_BOARD ? ?? ?? ?? (SPRINT 43 TASK 7)**: [x] **??.** ? "?? ?? (?? ??)" SPRINT 43 ???? ??. ?? ?? 8/10 ????? TASK 5(??)??? ?????? ??. ?? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 139차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[DOCS] Arena?Center?Foundry ?? ?? ??? (SPRINT 43 TASK 10)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4??? ?? 4? ?? ??. ??? ??. ?? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (139차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 115?116?117? (SPRINT 43 TASK 3)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4??? ?? 5? ?? ??. BTY_RELEASE_GATE_CHECK ?? ?? 1? ??. ?? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (139차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. forbidden 홈·관리자 로그인 링크 aria-label. Lint ✓.
+**[DOCS] NEXT_PHASE?NEXT_BACKLOG ?? ?? (SPRINT 43 TASK 2)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4 ?? ?? 5? = ?? 115?116?117???? ?? ????? ? ????? ????Release Gate 44?. ?? "?? 5?" ???. 43??????TASK 8?9 ?? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 138차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[TEST] Center/Foundry route ??? 1? (SPRINT 43 TASK 9)**: [x] **??.** GET /api/bty/healing ? copyCookiesAndDebug throw ? 500?INTERNAL_ERROR?detail ?? ??. Lint ? npm test ?.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (138차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (SPRINT 43 TASK 4)**: [x] **??.** PageClient.tsx Center ???(??? ?? ?? ??) `<main>`? aria-label ??(ko: "Center ??? ?? ??", en: "Center letter to yourself"). render-only. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (138차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. journal 페이지 저장·닫기 버튼 aria-label. Lint ✓.
+**[??] chore: ?? push ??**: e6fc417 (28 files, +379/-94) ? origin/main. ?? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 137차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 44? (SPRINT 44 TASK 1)**: [x] **??.** C5. A~E N/A ? F) Lint ? Test 1584/207 ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK??? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (137차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[DOCS] NEXT_PHASE?NEXT_BACKLOG ?? ?? (SPRINT 44 TASK 2)**: [x] **??.** SPRINT 43 ???Release Gate 44? ?? ??. NEXT_PHASE?NEXT_BACKLOG??? ?? 6? ???. ?? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (137차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. train/start Day 1 링크 aria-label. Lint ✓.
+**[DOCS] ?? ?? 118?119?120? (SPRINT 44 TASK 3)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4????BTY_RELEASE_GATE_CHECK ?????. ?????? ?? 6? ??. ?? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 136차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (SPRINT 44 TASK 4)**: [x] **??.** integrity ??? `<main>` 3?? aria-label(ko/en) ??. render-only. Lint ?.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (136차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[DOCS] ?? ?? ?? (SPRINT 44 TASK 5, ??)**: [x] **??.** ?? ?? ????NEXT_PHASE?NEXT_BACKLOG??? ??? ??. ?? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (136차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. train/28days Day 1 링크 aria-label. Lint ✓.
+**[VERIFY] ??? 3? ????? 1? (SPRINT 44 TASK 6)**: [x] **??.** 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ELITE_3RD_SPEC_AND_CHECKLIST ?3??? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 135차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[DOCS] CURSOR_TASK_BOARD ? ?? ?? ?? (SPRINT 44 TASK 7)**: [x] **??.** ? "?? ?? (?? ??)" SPRINT 44 ???8/10 ????? TASK 8?9(??)???? ??. ?? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (135차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[DOCS] Arena?Center?Foundry ?? ?? ??? (SPRINT 44 TASK 10)**: [x] **??.** NEXT_PHASE?NEXT_BACKLOG??? ?? 6? ?? ??. ?? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (135차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Login 제출 버튼 aria-label. Lint ✓.
+**?? ??**: ?? ? = **SPRINT 45**. First Task = TASK 1 [VERIFY] Release Gate A~F ? Foundry 45?. ? ? = **docs/CURSOR_TASK_BOARD.md** "?? ?" ? TASK 1~10 ? **[ ]** ? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 134차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**C1 splint 10 (2026-03-11)**: [x] **??.** SPRINT 44 8/10 ??(TASK 8?9 ?? ???) ? SPRINT 45 ??. ?? "?? ?" = SPRINT 45 (TASK 1~10 [ ]). NEXT_PHASE?NEXT_BACKLOG ?? 6? ??. CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (134차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**?? ?? (SPRINT_PLAN)**: ?? ? = **SPRINT 191** (?? ??). **C2** 2? [ ] BLOCKER ??(?? ? 1??). **C3?C4?C5?C6** ? 1~2? [ ] ?? ??? ??(C1? ??? ??). docs/SPRINT_PLAN.md ??. ??=?? ? 1??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (134차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 비밀번호 찾기 재설정 링크 받기 버튼 aria-label. Lint ✓.
+**?? ?? (??)**: **SPRINT 185** ??. ?????????? ?? C3?C4?C5?C6 ?? [x]. 186 ???.
 
-**[VERIFY] Release Gate A~F — Foundry 133차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[SPRINT 182] C4 API Engineer 5? (2026-03-14)**: [x] **??.** LE stage-summary ?? ???(StageSummaryResponse???? ??), dashboard/summary source ?? ???DashboardSummaryResponse, Healing/Awakening bty/errors.ts ?? ?? ??, requireUser ?? 1?, docs/spec/ARENA_DOMAIN_SPEC.md API ?? ??. ??? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (133차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[SPRINT 182] C3 Domain Engineer 5? (2026-03-14)**: [x] **??.** LE Stage(stage-summary ?????? ?? ??), AIR(????? ??), ????(RECOMMENDATION_SOURCE_PRIORITY), ContentScenarioId, domain index export ??. ????, ??? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (133차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Auth 비밀번호 재설정 제출 버튼 aria-label. Lint ✓.
+**?? ?? (?? ??)**: [x] **??.** ??=?? ? 1??. SPRINT 176 = Q3?Q4 ?? ????. SPRINT_PLAN?SPRINT_LOG?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 132차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**Arena ?4??5 BLOCKER ??**: [x] **??.** ?4 Past scenarios ?? ??+?? ?????(ArenaRunHistory ???i18n). ?5 ?? IA ?? ?? ?? ??. SPRINT_PLAN C5 [x]?Blockers ??, BTY_ARENA_FEEDBACK_2026-03 ?4??5 ?? [x] ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (132차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**Arena/Lab XP ?? ?? ??**: [x] **??.** RECONCILIATION ?7 = ?? ?? ?? ??, ARENA_LAB_XP_SPEC = ????? ?? + ?? ??, BTY_ARENA_DOMAIN_SPEC = ??? ?? + ? ? ?? ??. CURSOR_TASK_BOARD?DOCS_SINGLE_SOURCE_OF_TRUTH?CURRENT_TASK ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (132차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Train day 완료·Coach chat·Completion summary 버튼 aria-label. Lint ✓.
+**[C5 SPRINT 182 5? (docs/SPRINT_PLAN.md)]**: [x] **??.** AIR ?? ?? ??, Elite ?Elite CTA role=group+aria-label, Healing ???t.loading, dear-me ??/?? region+aria-label, healing.loading i18n. Lint ?.
 
-**[VERIFY] Release Gate A~F — Foundry 131차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[?? Q3?Q4 ??? UI ?? 1? (C5, docs/SPRINT_PLAN.md)]**: [x] **??.** ???? Points Today ?? role="region" + aria-label(ko/en). Lint ?.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (131차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[(??) ?? ?? ??? (C5, docs/SPRINT_PLAN.md)]**: [x] **??.** docs/NEXT_YEAR_BACKLOG.md 1??? ????? ?? ??. ROADMAP_INTERNAL ?? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (131차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Profile 아바타 설정 테마·저장 버튼 aria-label. Lint ✓.
+**[Q3] ???? ?? ?? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** GET /api/arena/dashboard/summary ??, ?? ProgressCard(nextAction + arena/foundry/center ??). Lint ?.
 
-**[VERIFY] Release Gate A~F — Foundry 130차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[Q4] ??? 2??? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** docs/ROADMAP_PUBLIC.md(???), docs/ROADMAP_INTERNAL.md(???) ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (130차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[Q4] Healing/Awakening ??? ??????? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** i18n healing(ko/en) ??, Healing ??? getMessages().healing?GET /api/bty/healing ??(phase ??). Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (130차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Healing awakening 다음 단계 버튼 aria-label. Lint ✓.
+**[Q4] Healing + Awakening ??????? ?? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** /bty/healing page.tsx + page.client.tsx ?? ??, Awakening ??????? ??. /bty/healing/awakening ?? ??. Lint ?.
 
-**[VERIFY] Release Gate A~F — Foundry 129차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[Q3] Elite ?? ??/?? UI ?? Elite ?????? 1? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** Elite ?? ?? ??? role="region" + aria-label(tElite.circleCardTitle). Lint ?.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (129차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[Q3] LE Stage Arena ????? ?? ?? ?? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** GET /api/arena/leadership-engine/stage-summary ??, LE Stage ProgressCard(stageName, progressPercent, resetDueAt, arenaSummary/behaviorPattern). Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (129차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Journal 저장·닫기 버튼 aria-label. Lint ✓.
+**[Q3] ???? AIR ?? LE ?? ?? 1? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** AIR ?? ProgressCard(7d/14d/90d %, integritySlip). ?? leAir API ?? ???. Lint ?.
 
-**[VERIFY] Release Gate A~F — Foundry 128차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[Q3] ???? Arena/Foundry/Center ?? ??????/?? ?? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** ?? ??? ProgressCard(Arena?Foundry?Center nav) ??, Center(??? ?? ??) ?? ??. render-only. Lint ?.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (128차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 175? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK??? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (128차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Dashboard 아바타 옷 테마 버튼 aria-label. Lint ✓.
+**[VERIFY] ??? 3? ????? 1? (175?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 127차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (175?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. elite ?? ?? `<ul>`? role="list" + aria-label (ko/en). Lint ?.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (127차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 174? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK??? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (127차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Dashboard 아바타 캐릭터 버튼 aria-label. Lint ✓.
+**[VERIFY] ??? 3? ????? 1? (174?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 126차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (174?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. integrity ?? ?? ?? ?? ?? ?? role="group" aria-label (integrity/page.client.tsx). Lint ?.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (126차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 173? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK??? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (126차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Dashboard Sub Name 저장 버튼 aria-label. Lint ✓.
+**[VERIFY] ??? 3? ????? 1? (173?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 125차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (173?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. assessment result ?? ?? ?? role="group" aria-label (ResultClient.tsx). Lint ?.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (125차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 172? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK??? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (125차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Dashboard 멤버십 제출 버튼 aria-label. Lint ✓.
+**[VERIFY] ??? 3? ????? 1? (172?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 124차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (172?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. assessment result ?? ?? region??? ul aria-label (ResultClient.tsx). Lint ?.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (124차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 171? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK??? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (124차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Assessment 결과 점수 그리드 role="group" aria-label. Lint ✓.
+**[VERIFY] ??? 3? ????? 1? (171?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 123차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (171?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. dojo history ?? ?? ?? ?? ul aria-label (DojoHistoryClient.tsx). Lint ?.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (123차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 170? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK??? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (123차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Assessment 선택지 그룹 aria-describedby. Lint ✓.
+**[VERIFY] ??? 3? ????? 1? (170?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 122차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (170?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. mentor ?? ?? ?? ul aria-label?role=list (MentorConversationHistory.tsx). Lint ?.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (122차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 169? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK??? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (122차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Chatbot 예시 문구 버튼 aria-label. Lint ✓.
+**[VERIFY] ??? 3? ????? 1? (169?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 121차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (169?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. dear-me ?? ?? ?? ul aria-label (DearMeClient.tsx). Lint ?.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (121차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 168? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK??? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (121차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. SafeMirror 전송 버튼 aria-label. Lint ✓.
+**[VERIFY] ??? 3? ????? 1? (168?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 120차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (168?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. assessment result ?? ?? ?? ?? ul aria-label (ResultClient.tsx). Lint ?.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (120차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 167? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK??? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (120차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. SelfEsteemTest 선택 버튼 aria-label. Lint ✓.
+**[VERIFY] ??? 3? ????? 1? (167?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 119차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (167?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Integrity ???? ?? ?? role="region" aria-label (integrity/page.client.tsx). Lint ?.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (119차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 166? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK??? ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (119차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Comeback 확인 버튼 aria-label. Lint ✓.
+**[VERIFY] ??? 3? ????? 1? (166?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 118차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (166?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Elite ?? ?? ??? textarea aria-label (elite/page.client.tsx). Lint ?.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (118차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] ?1??2??9??4??5 (????i18n????Past scenarios)**: [x] **??.** ?1 AvatarComposite outfit/accessory onError? 404 ? ??? ??. ?2 Avatar/Profile ??? getMessages(locale).avatarOutfit?outfitLabels? ??, EN ?? ??. ?9 loading.tsx?Suspense fallback ?? ?? ? LocaleAwareRouteLoading?PageLoadingFallback(pathname?locale). ?4 Past scenarios ?? ??+?? ??, arenaRun i18n. ?5 ??(?????): IA ?? ? ?????? ?? ??(?? BtyTopNav ?? ??). Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (118차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Chatbot 대화 기록 삭제 버튼 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 165? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK??? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 117차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (165?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (117차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (165?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. dashboard ??? ?? "??? ?" select? aria-label (ko/en). Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (117차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Chatbot 전송 버튼 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 164? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK??? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 116차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (164?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (116차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (164?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. dashboard Arena Level ?? emptyCta Link? aria-label (ko/en). Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (116차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Chatbot 재시도 버튼 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 163? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK??? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 115차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (163?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (115차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (163?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. dashboard Elite ?? "Elite ?? ???? ?? ?" Link? aria-label (ko/en). Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (115차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. mentor 대화 기록 삭제 버튼 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 162? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ? (auth LoadingFallback import ??). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK??? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 114차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (162?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (114차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (162?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. dashboard Dojo ?? "Dear Me ??? (50??) ?" Link? aria-label (ko/en). Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (114차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. AuthGate 로그인/회원가입 토글 버튼 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 161? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 113차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (161?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (113차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (161?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. dashboard Dojo "???? ?? ?" Link aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (113차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. IntegritySimulator 생각해보기 버튼 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 160? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 112차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (160?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (112차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (160?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. dashboard/page.client.tsx "Dear Me ??? (50??)" Link aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (112차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. IntegritySimulator 스토리 단계 다음 버튼 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 159? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 111차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (159?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (111차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (159?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 404 not-found ???? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (111차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. IntegritySimulator 상황 입력 다음 버튼 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 158? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 110차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (158?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (110차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (158?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 404 not-found ? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (110차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. PracticeJournal 모달 확인 버튼 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 157? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 109차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (157?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (109차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (157?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Foundry Profile ??? ?? ?? aria-label (ProfileClient). Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (109차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. PracticeJournal "오늘의 연습 다시 기록하기" 버튼 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 156? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 108차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (156?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (108차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (156?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Foundry Profile ?? ? ????? ???? ?? aria-label (ProfileClient). Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (108차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. PracticeJournal "실패했지만 기록함" 버튼 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 155? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 107차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (155?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (107차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (155?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Foundry ??? ?? ???? ?? aria-label (AvatarSettingsClient). Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (107차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. PracticeJournal "성공" 버튼 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 154? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 106차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (154?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (106차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (154?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Foundry ??? ?? ?? ? ????? ???? ?? aria-label (AvatarSettingsClient). Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (106차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. IntegritySimulator "처음부터 다시하기" 버튼 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 153? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 105차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (153?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (105차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (153?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Foundry Profile ????? ???? ?? aria-label (ProfileClient). Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (105차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. SelfEsteemTest 다시하기 버튼 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 152? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 104차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (152?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (104차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (152?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. admin ??? ??? ??? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (104차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. SmallWinsStack 제안(추가) 버튼 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 151? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 103차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (151?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (103차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (151?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. admin ??? ??? ??? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (103차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. SmallWinsStack 커스텀 추가 버튼 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 150? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 102차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (150?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (102차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (150?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. admin ??? ?? ?? ?? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (102차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. SafeMirror 제출 버튼 aria-label·aria-busy. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 149? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 101차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (149?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (101차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (149?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. admin ??? ?? ?? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (101차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. MissionCard 오늘의 미션 완료 버튼 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 148? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 100차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (148?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (100차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (148?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. admin ??? ??? ??? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (100차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. JourneyBoard Day 셀 버튼 aria-label (locale별). Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 147? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** (???: validateDojo50Submit ??? ??.) BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 99차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (147?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (99차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (147?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. admin ??? ?? ?? ? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (99차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. MissionCard 확인 Dialog.Close aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 146? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 98차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (146?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (98차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (146?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. admin ??? ?? ??? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (98차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. JourneyBoard 시즌 2 시작 버튼 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 145? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 97차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (145?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (97차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (145?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. admin ??? ?? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (97차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. JourneyBoard.tsx Center 링크 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 144? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 96차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (144?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (96차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (144?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. admin ??? ?? ???? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (96차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. JourneyBoard.tsx 역지사지 시뮬레이터 링크 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 143? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 95차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (143?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (95차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (143?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. admin ??? ?? ? ??? ?? ? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (95차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. JourneyBoard.tsx 멘토 링크 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 142? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 94차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (142?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (94차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (142?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. admin ??? ?? ? ??? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (94차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Elite 페이지 멘토 승인 CTA Link aria-label(t.approvedCta). Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 141? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 93차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (141?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (93차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (141?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. admin Arena ??? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (93차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료). Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 140? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 92차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (140?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (92차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (140?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. admin ??? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (92차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료). Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 139? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 91차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (139?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (91차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (139?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. forbidden ????? ??? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (91차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료). Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 138? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 90차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (138?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (90차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (138?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. journal ??? ????? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (90차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료). Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 137? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 89차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (137?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (89차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (137?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. train/start Day 1 ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (89차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료). Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 136? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 88차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (136?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (88차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (136?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. train/28days Day 1 ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (88차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Chatbot.tsx 멘토 링크(챗봇 제안) aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 135? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 87차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] ??? 3? ????? 1? (135?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (87차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (135?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Login ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (87차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. dashboard/page.client.tsx "Integrity mirror" Link aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 134? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 86차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] ??? 3? ????? 1? (134?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (86차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (134?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. ???? ?? ??? ?? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (86차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. dashboard/page.client.tsx "Elite" Link aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 133? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 85차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] ??? 3? ????? 1? (133?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (85차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (133?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Auth ???? ??? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (85차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. dashboard/page.client.tsx "Profile" Link aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 132? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 84차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] ??? 3? ????? 1? (132?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (84차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (132?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Train day ???Coach chat?Completion summary ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (84차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. dashboard/page.client.tsx "View Weekly Ranking" Link aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 131? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 83차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] ??? 3? ????? 1? (131?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (83차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (131?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Profile ??? ?? ????? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (83차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. dashboard/page.client.tsx "Go to Arena" Link aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 130? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 82차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] ??? 3? ????? 1? (130?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (82차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (130?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Healing awakening ?? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (82차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. assessment/ui/ResultClient.tsx 에러·결과 블록 "진단으로 돌아가기" Link aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 129? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 79차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (129?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (79차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (129?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Journal ????? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (79차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Chatbot.tsx Foundry 링크(챗봇 제안) aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 128? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 78차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (128?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (78차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (128?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Dashboard ??? ? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (78차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Chatbot.tsx Center 링크(챗봇 제안) aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 127? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 77차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (127?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (77차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (127?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Dashboard ??? ??? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (77차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Nav.tsx Arena 링크 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 126? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 76차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (126?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (76차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (126?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Dashboard Sub Name ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (76차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Nav.tsx Foundry 링크 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 125? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 75차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (125?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (75차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (125?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Dashboard ??? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (75차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. Nav.tsx Center 링크 aria-label. Lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 124? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 74차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (124?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (74차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (124?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Assessment ?? ?? ??? role="group" aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (74차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 123? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 73차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (123?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (73차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (123?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Assessment ??? ?? aria-describedby. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (73차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 122? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 72차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (122?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (72차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (122?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Chatbot ?? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (72차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 121? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 71차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (121?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (71차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (121?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. SafeMirror ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (71차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 120? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 69차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (120?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (69차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (120?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. SelfEsteemTest ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (69차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 119? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 68차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (119?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (68차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (119?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Comeback ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (68차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 118? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 67차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (118?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (67차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (118?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Chatbot ?? ?? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (67차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 117? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 66차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (117?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (66차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (117?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Chatbot ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (66차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 116? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 65차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (116?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (65차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (116?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Chatbot ??? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (65차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 115? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 64차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (115?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (64차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (115?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. mentor ?? ?? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (64차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 114? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 63차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (114?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (63차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (114?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. AuthGate ???/???? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (63차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 113? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 62차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (113?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (62차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (113?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. IntegritySimulator ????? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (62차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 112? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 61차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (112?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (61차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (112?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. IntegritySimulator ??? ?? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (61차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 111? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 60차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (111?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (60차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (111?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. IntegritySimulator ?? ?? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (60차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 110? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 59차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (110?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (59차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (110?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. PracticeJournal ?? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (59차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 109? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 58차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (109?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (58차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (109?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. PracticeJournal "??? ?? ?? ????" ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (58차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 108? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 57차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (108?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (57차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (108?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. PracticeJournal "????? ???" ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (57차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 107? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 56차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (107?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (56차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (107?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. PracticeJournal "??" ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (56차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 106? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 55차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (106?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (55차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (106?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. IntegritySimulator "???? ????" ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (55차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 105? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 54차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (105?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (54차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (105?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. SelfEsteemTest ???? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (54차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 104? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 53차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (104?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (53차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (104?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. SmallWinsStack ??(??) ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (53차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 103? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 52차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (103?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (52차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (103?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. SmallWinsStack ??? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (52차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 102? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 51차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (102?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (51차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (102?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. SafeMirror ?? ?? aria-label?aria-busy. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (51차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 101? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 50차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (101?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (50차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (101?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. MissionCard ??? ?? ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (50차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 100? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 49차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (100?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (49차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (100?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. JourneyBoard Day ? ?? aria-label (locale?). Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (49차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. N/A (기존 적용 완료).
+**[VERIFY] Release Gate A~F ? Foundry 99? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 48차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (99?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (48차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (99?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. MissionCard ?? Dialog.Close aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (48차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. (미적용 1곳 없음 — 기존 적용 완료. Notes에 N/A 기록.)
+**[VERIFY] Release Gate A~F ? Foundry 98? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 47차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (98?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (47차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (98?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. JourneyBoard ?? 2 ?? ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (47차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. PageClient.tsx Center assessment 링크에 aria-label. render-only. npm run lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 97? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 46차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (97?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (46차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (97?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. JourneyBoard.tsx Center ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (46차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. PageClient.tsx 푸터 CTA Link에 aria-label. render-only. npm run lint ✓.
+**[VERIFY] Release Gate A~F ? Foundry 96? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 45차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (96?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (45차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (96?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. JourneyBoard.tsx ???? ????? ?? aria-label. Lint ?.
 
-**[VERIFY] Release Gate A~F — Foundry 44차 (C5, docs/SPRINT_PLAN.md)**: [x] **완료.** A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 95? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (44차, docs/SPRINT_PLAN.md)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** §3·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (95?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 43차 (TASK 1, 2026-03-11)**: [x] **완료.** C5. A~E N/A · F) Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (95?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. JourneyBoard.tsx ?? ?? aria-label. Lint ?.
 
-**[UI] C5 Center/Foundry 접근성 2건 (SPRINT_PLAN 블로커 해소)**: [x] **완료.** Center: PageClient.tsx 요약 카드 2곳 aria-label. Foundry: page.client.tsx 기능 카드 Link aria-describedby·설명 id. CenterCard/FoundryCard 미생성, 기존 파일에 적용. SPRINT_PLAN C5 Tasks·Blockers 갱신.
+**[VERIFY] Release Gate A~F ? Foundry 94? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (43차 TASK 6, 2026-03-11)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** 보드·CURRENT_TASK·ELITE_3RD §3 반영.
+**[VERIFY] ??? 3? ????? 1? (94?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOMAIN] SPRINT 43 TASK 8 (2026-03-11)**: [x] **완료.** C3. domain/center/assessment.edges.test.ts — non-integer answer value → answer_out_of_range 경계 1건. npm test 통과. 보드·CURRENT_TASK 반영. (TASK 9 route 테스트는 src/app/api 소관 → C3 범위 외.) C3. domain/center/assessment.edges.test.ts — non-integer answer value → answer_out_of_range 경계 1건. npm test 통과. 보드·CURRENT_TASK 반영. (TASK 9 route 테스트는 src/app/api 소관 → C3 범위 외.)
+**[UI] Center/Foundry ?? ??? 1? (94?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Elite ??? ?? ?? CTA Link aria-label(t.approvedCta). Lint ?.
 
-**[splint 10 → SPRINT 43 생성 (2026-03-11)]**: [x] **완료.** 검증 Lint ✓ Test 166/1204 ✓ Build ✓. SPRINT 42 전량 완료 → SPRINT 43 생성. 대기 5건 = Release Gate 43차·문서 115·116·117차·접근성·다음 배치·대기 동기화. CURSOR_TASK_BOARD·NEXT_PHASE·NEXT_BACKLOG·SPRINT_PLAN·CURRENT_TASK 갱신.
+**[VERIFY] Release Gate A~F ? Foundry 93? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOMAIN·TEST] SPRINT 42 TASK 8·9 (2026-03-11)**: [x] **완료.** C3. [DOMAIN] domain/center/resilience.edges.test.ts empty rows 경계 1건. [TEST] app/api/journey/entries/route.test.ts GET 401·503·200·400, POST 401·503·200 (7 tests). npm test 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (93?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**C6 TASK QUEUE (latest Commander batch = SPRINT 42, 2026-03-11)**: 이번 런 표(CURSOR_TASK_BOARD) 기준 OWNER C6 행 없음 → **C6 TASK QUEUE empty.** Recorded once; stop.
+**[UI] Center/Foundry ?? ??? 1? (93?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??). Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (42차 TASK 4, 2026-03-11)**: [x] **완료.** C4 적용. Dojo DojoClient 빈 상태(문항 없음) "다시 시도" 버튼 aria-label(다시 시도/Retry). render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 92? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] C1 DOCS 5건 (SPRINT 42 TASK 2·3·5·7·10, 2026-03-11)**: [x] **완료.** 대기 갱신(SPRINT 41 반영)·문서 112·113·114차 점검·다음 배치 선정·§ 다음 작업 정리·대기 동기화. 삼문서 일치. 코드 없음. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (92?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 42차 (TASK 1, 2026-03-11)**: [x] **완료.** C5. A~E N/A · F) Lint ✓ Test 165/1196 ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영. C5. A~E N/A · F) Lint ✓ Test 165/1196 ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (92?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??). Lint ?.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (42차 TASK 6, 2026-03-11)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** 보드·CURRENT_TASK·ELITE_3RD §3 반영.
+**[VERIFY] Release Gate A~F ? Foundry 91? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] splint 10 실행 (2026-03-11)**: [x] **완료.** SPRINT 41 전량 완료·SPRINT 42 생성. 대기 5건 = Release Gate 42차·문서 112·113·114차·접근성·다음 배치·대기 동기화. CURSOR_TASK_BOARD·NEXT_PHASE·NEXT_BACKLOG·AUTO4_PROMPTS·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 갱신. First Task = TASK 1 (C5 Release Gate 42차).
+**[VERIFY] ??? 3? ????? 1? (91?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOMAIN·TEST] SPRINT 41 TASK 8·9 (2026-03-11)**: [x] **완료.** [DOMAIN] 미커버 경계 테스트 1건·[TEST] route 테스트 1건 이미 처리/반영됨. 보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (91?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??). Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (41차 TASK 4, 2026-03-11)**: [x] **완료.** C4 적용. dear-me/error.tsx·assessment/error.tsx — "다시 시도" 버튼 aria-label(다시 시도/Try again). render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 90? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[검증] lint·test·build 1회 (2026-03-11)**: [x] **완료.** `./scripts/self-healing-ci.sh`. ~17s. Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] ??? 3? ????? 1? (90?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[splint 10 → SPRINT 41 First Task 완료 시점] lint·test·build 1회 (2026-03-11)**: [x] **완료.** Release Gate 41차(TASK 1) 완료 시점에 `./scripts/self-healing-ci.sh` 실행. ~18s. Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[UI] Center/Foundry ?? ??? 1? (90?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??). Lint ?.
 
-**[DOCS] C1 DOCS 5건 (SPRINT 41 TASK 2·3·5·7·10, 2026-03-11)**: [x] **완료.** 대기 갱신(SPRINT 40 반영)·문서 109·110·111차 점검·다음 배치 선정·§ 다음 작업 정리·대기 동기화. 삼문서 일치. 코드 없음. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 89? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 41차 (TASK 1, 2026-03-11)**: [x] **완료.** C5. A~E N/A · F) Lint ✓ Test 165/1196 ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영. C5. A~E N/A · F) Lint ✓ Test 165/1196 ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (89?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (41차 TASK 6, 2026-03-11)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** 보드·CURRENT_TASK·ELITE_3RD §3 반영.
+**[UI] Center/Foundry ?? ??? 1? (89?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??). Lint ?.
 
-**[DOCS] splint 10 실행 (2026-03-11)**: [x] **완료.** SPRINT 40 전량 완료·SPRINT 41 생성. 대기 5건 = Release Gate 41차·문서 109·110·111차·접근성·다음 배치·대기 동기화. CURSOR_TASK_BOARD·NEXT_PHASE·NEXT_BACKLOG·AUTO4_PROMPTS·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 갱신. First Task = TASK 1 (C5 Release Gate 41차).
+**[VERIFY] Release Gate A~F ? Foundry 88? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] 5건 반영 후 lint·test·build 1회 (2026-03-11)**: [x] **완료.** C1 DOCS 5건 반영 상태에서 `./scripts/self-healing-ci.sh` 1회 실행. ~18s. Lint ✓ Test ✓ Build ✓. **RESULT: PASS.** 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] ??? 3? ????? 1? (88?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOCS] C1 DOCS 5건 (SPRINT 40 TASK 2·3·5·7·10, 2026-03-11)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG 대기 갱신·문서 106·107·108차 점검·다음 배치 선정·§ 다음 작업 정리·대기 목록 동기화. 삼문서 일치. 코드 없음. 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[UI] Center/Foundry ?? ??? 1? (88?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Chatbot.tsx ?? ??(?? ??) aria-label. Lint ?.
 
-**[DOMAIN·TEST] SPRINT 40 TASK 8·9 (2026-03-11)**: [x] **완료.** C3. domain/rules/weeklyXp.edges.test.ts · app/api/journey/profile/route.test.ts. npm test 165/1196 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 87? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 40차 (SPRINT 40 TASK 1, 2026-03-11)**: [x] **완료.** C5. A~E N/A · F) Lint ✓ Test 163/1185 ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (87?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (SPRINT 40 TASK 6, 2026-03-11)**: [x] **완료.** C5. 6항목 점검. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** 보드·CURRENT_TASK·ELITE_3RD §3 반영.
+**[UI] Center/Foundry ?? ??? 1? (87?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. dashboard/page.client.tsx "Integrity mirror" Link aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (40차 TASK 4, 2026-03-11)**: [x] **완료.** C4 적용. Center error.tsx — 다시 시도 버튼 aria-label(다시 시도/Try again). render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 86? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK ??.
 
-**[DOCS] splint 10 실행 (2026-03-11)**: [x] **완료.** SPRINT 39 전량 완료·SPRINT 40 생성. 대기 5건 = Release Gate 40차·문서 106·107·108차·Center/Foundry 접근성·다음 배치 선정·대기 동기화. CURSOR_TASK_BOARD·NEXT_PHASE·NEXT_BACKLOG·AUTO4_PROMPTS 갱신. First Task = TASK 1 (C5 Release Gate 40차). 코드 없음.
+**[VERIFY] ??? 3? ????? 1? (86?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[C7 GATE] Integration validation (17th, 2026-03-11)**: [x] **완료.** `./scripts/self-healing-ci.sh`. ~19s. Lint ✓ Test ✓ Build ✓. **Overall: PASS.** AI_TASK_BOARD·보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[UI] Center/Foundry ?? ??? 1? (86?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. dashboard/page.client.tsx "Elite" Link aria-label. Lint ?.
 
-**[C7 GATE] Integration validation (16th, 2026-03-11)**: [x] **완료.** `./scripts/self-healing-ci.sh`. ~17s. Lint ✓ Test ✓ Build ✓. **Overall: PASS.** AI_TASK_BOARD·보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 85? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK ??.
 
-**[C7 GATE] Integration validation (15th, 2026-03-11)**: [x] **완료.** `./scripts/self-healing-ci.sh`. ~17s. Lint ✓ Test ✓ Build ✓. **Overall: PASS.** AI_TASK_BOARD·보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] ??? 3? ????? 1? (85?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[C7 GATE] Integration validation (14th, 2026-03-11)**: [x] **완료.** `./scripts/self-healing-ci.sh`. ~17s. Lint ✓ Test ✓ Build ✓. **Overall: PASS.** AI_TASK_BOARD·보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[UI] Center/Foundry ?? ??? 1? (85?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. dashboard/page.client.tsx "Profile" Link aria-label. Lint ?.
 
-**[C7 GATE] Integration validation (13th, 2026-03-11)**: [x] **완료.** `./scripts/self-healing-ci.sh`. ~17s. Lint ✓ Test ✓ Build ✓. **Overall: PASS.** AI_TASK_BOARD·보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 84? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK ??.
 
-**[C7 GATE] Integration validation (12th, 2026-03-11)**: [x] **완료.** `./scripts/self-healing-ci.sh`. ~18s. Lint ✓ Test ✓ Build ✓. **Overall: PASS.** AI_TASK_BOARD·보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] ??? 3? ????? 1? (84?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[C7 GATE] Integration validation (11th, 2026-03-11)**: [x] **완료.** `./scripts/self-healing-ci.sh`. ~17s. Lint ✓ Test ✓ Build ✓. **Overall: PASS.** AI_TASK_BOARD·보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[UI] Center/Foundry ?? ??? 1? (84?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. dashboard/page.client.tsx "View Weekly Ranking" Link aria-label. Lint ?.
 
-**[C7 GATE] Integration validation (10th, 2026-03-11)**: [x] **완료.** `./scripts/self-healing-ci.sh`. ~19s. Lint ✓ Test ✓ Build ✓. **Overall: PASS.** AI_TASK_BOARD·보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 83? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK ??.
 
-**[C7 GATE] Integration validation (9th, 2026-03-11)**: [x] **완료.** `./scripts/self-healing-ci.sh`. ~17s. Lint ✓ Test ✓ Build ✓. **Overall: PASS.** AI_TASK_BOARD·보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] ??? 3? ????? 1? (83?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[C7 GATE] Integration validation (8th, 2026-03-11)**: [x] **완료.** `./scripts/self-healing-ci.sh`. ~17s. Lint ✓ Test ✓ Build ✓. **Overall: PASS.** AI_TASK_BOARD·보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[UI] Center/Foundry ?? ??? 1? (83?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. dashboard/page.client.tsx "Go to Arena" Link aria-label. Lint ?.
 
-**[C7 GATE] Integration validation (7th, 2026-03-11)**: [x] **완료.** `./scripts/self-healing-ci.sh`. ~17s. Lint ✓ Test ✓ Build ✓. **Overall: PASS.** AI_TASK_BOARD·보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 82? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK ??.
 
-**[C7 GATE] Integration validation (6th, 2026-03-11)**: [x] **완료.** `./scripts/self-healing-ci.sh`. ~17s. Lint ✓ Test ✓ Build ✓. **Overall: PASS.** AI_TASK_BOARD·보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] ??? 3? ????? 1? (82?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[C7 GATE] Integration validation (5th, 2026-03-11)**: [x] **완료.** `./scripts/self-healing-ci.sh`. ~17s. Lint ✓ Test ✓ Build ✓. **Overall: PASS.** AI_TASK_BOARD·보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[UI] Center/Foundry ?? ??? 1? (82?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. assessment/ui/ResultClient.tsx ????? ?? "???? ????" Link aria-label. Lint ?.
 
-**[C7 GATE] Integration validation (4th, 2026-03-11)**: [x] **완료.** `./scripts/self-healing-ci.sh`. ~18s. Lint ✓ Test ✓ Build ✓. **Overall: PASS.** AI_TASK_BOARD·보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 79? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[C7 GATE] Integration validation (3rd, 2026-03-11)**: [x] **완료.** `./scripts/self-healing-ci.sh`. ~17s. Lint ✓ Test ✓ Build ✓. **Overall: PASS.** AI_TASK_BOARD·보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] ??? 3? ????? 1? (79?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[C7 GATE] Integration validation (2nd, 2026-03-11)**: [x] **완료.** `./scripts/self-healing-ci.sh`. ~17s. Lint ✓ Test ✓ Build ✓. **Overall: PASS.** AI_TASK_BOARD·보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[UI] Center/Foundry ?? ??? 1? (79?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Chatbot.tsx Foundry ??(?? ??) aria-label. Lint ?.
 
-**[VERIFY] Release Gate A~F — Foundry 39차 + 엘리트 3차 체크리스트 (2026-03-11)**: [x] **완료.** C5 TASK 1·6. A~E N/A · F) Lint ✓ Test 163/1185 ✓ Build ✓. Elite 3차 6항목 **RESULT: PASS.** 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK·ELITE_3RD §3 반영.
+**[VERIFY] Release Gate A~F ? Foundry 78? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate 39차 + 엘리트 3차 체크리스트 (2026-03-11)**: [x] **완료.** Worker C6. F) Lint ✓ (build 후 tsc) Test 163/1185 ✓ Build ✓. Elite 6항목 PASS. BTY_RELEASE_GATE_CHECK·CURSOR_TASK_BOARD·CURRENT_TASK·ELITE_3RD §3 반영.
+**[VERIFY] ??? 3? ????? 1? (78?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[C7 GATE] Integration validation (2026-03-11)**: [x] **완료.** `./scripts/self-healing-ci.sh`. 실행 시간 ~19s. Lint ✓ Test ✓ Build ✓. **Overall: PASS.** AI_TASK_BOARD.md·CURSOR_TASK_BOARD·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[UI] Center/Foundry ?? ??? 1? (78?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Chatbot.tsx Center ??(?? ??) aria-label. Lint ?.
 
-**[DOMAIN·TEST] SPRINT 39 TASK 8·9 (2026-03-10)**: [x] **완료.** domain/rules/stage.edges.test.ts · arena/sub-name/route.test.ts. npm test 1185 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 77? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] C1 DOCS 5건 (SPRINT 39 TASK 2·3·5·7·10) (2026-03-10)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG 대기 갱신(삼문서 일치·39차·103·104·105차) · 문서 점검 103·104·105차 · 다음 배치 선정(NEXT_BACKLOG≡NEXT_PHASE≡보드) · § 다음 작업 정리(SPRINT 39 기준) · 대기 목록 동기화. 코드 없음. 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영. NEXT_PHASE·NEXT_BACKLOG 대기 갱신(삼문서 일치·39차·103·104·105차) · 문서 점검 103·104·105차 · 다음 배치 선정(NEXT_BACKLOG≡NEXT_PHASE≡보드) · § 다음 작업 정리(SPRINT 39 기준) · 대기 목록 동기화. 코드 없음. 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] ??? 3? ????? 1? (77?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOCS] splint 10 실행 (2026-03-10)**: SPRINT 38 전량 완료·SPRINT 39 생성. 대기 5건 = Release Gate 39차·문서 103·104·105차·Center/Foundry 접근성·다음 배치 선정·대기 동기화. AUTO4_PROMPTS·NEXT_PHASE·NEXT_BACKLOG·보드 갱신. First Task = TASK 1 (C5 Release Gate 39차). 코드 없음.
+**[UI] Center/Foundry ?? ??? 1? (77?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Nav.tsx Arena ?? aria-label. Lint ?.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (39차 TASK 4)**: [x] **완료.** Center PageClient 메인 랜딩(ko) — 진단 안내 링크·진단 CTA 카드 aria-label. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 76? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] C1 DOCS 2건 (SPRINT 38 TASK 5·10) (2026-03-10)**: [x] **완료.** 다음 배치 선정(NEXT_BACKLOG≡NEXT_PHASE≡보드 일치 확인) · Arena·Center·Foundry 대기 목록 동기화(삼문서 동기화). 코드 없음. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (76?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOCS] splint 10 실행 (2026-03-10)**: SPRINT 38 검증 8/10 완료. 다음 할 일 = TASK 5·10(C1)만. AUTO4_PROMPTS 갱신. C2·C3·C4·C5 해당 없음 Exit. 코드 없음.
+**[UI] Center/Foundry ?? ??? 1? (76?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Nav.tsx Foundry ?? aria-label. Lint ?.
 
-**[DOMAIN·TEST] SPRINT 38 TASK 8·9 (2026-03-10)**: [x] **완료.** domain/rules/season.edges.test.ts · arena/profile/route.test.ts. npm test 1178 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 75? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 38차 (SPRINT 38 TASK 1, 2026-03-10)**: [x] **완료.** bty-release-gate.mdc A~F. A~E N/A · F) Lint ✓ Test 159/1170 ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영. bty-release-gate.mdc A~F. A~E N/A · F) Lint ✓ Test 159/1170 ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (75?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (SPRINT 38 TASK 6, 2026-03-10)**: [x] **완료.** ELITE_3RD_SPEC_AND_CHECKLIST.md 6항목. Elite=Weekly XP만·시즌 미반영. 배지 API·UI, 멘토 API·UI, 경로 회귀 없음. **RESULT: PASS.** 보드·CURRENT_TASK·§3 반영.
+**[UI] Center/Foundry ?? ??? 1? (75?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. Nav.tsx Center ?? aria-label. Lint ?.
 
-**[DOMAIN·TEST] SPRINT 37 TASK 8·9 (2026-03-10)**: [x] **완료.** domain/rules/level-tier.edges.test.ts · arena/core-xp/route.test.ts. npm test 1170 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 74? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (38차 TASK 4)**: [x] **완료.** Dojo 결과 페이지 에러·노결과 링크 aria-label(retry·goToAssessment). render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (74?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 37차 (SPRINT 37 TASK 1, 2026-03-10)**: [x] **완료.** bty-release-gate.mdc A~F. A~E N/A · F) Lint ✓ Test 157/1162 ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영. bty-release-gate.mdc A~F. A~E N/A · F) Lint ✓ Test 157/1162 ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (74?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (SPRINT 37 TASK 6, 2026-03-10)**: [x] **완료.** ELITE_3RD_SPEC_AND_CHECKLIST.md 6항목. Elite=Weekly XP만·시즌 미반영. 배지 API·UI, 멘토 API·UI, 경로 회귀 없음. **RESULT: PASS.** 보드·CURRENT_TASK·§3 반영.
+**[VERIFY] Release Gate A~F ? Foundry 73? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] C1 DOCS 5건 (SPRINT 38 TASK 2·3·5·7·10) (2026-03-10)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG 대기 갱신(삼문서 일치·38차·100·101·102차) · 문서 점검 100·101·102차 · 다음 배치 선정 · § 다음 작업 정리(SPRINT 38 기준) · 대기 목록 동기화. 코드 없음. 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] ??? 3? ????? 1? (73?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOCS] splint 10 실행 (2026-03-10)**: SPRINT 37 전량 완료·SPRINT 38 생성. 대기 5건 = Release Gate 38차·문서 100·101·102차·Center/Foundry 접근성·다음 배치 선정·대기 동기화. AUTO4_PROMPTS·NEXT_PHASE·NEXT_BACKLOG·보드 갱신. First Task = TASK 1 (C5 Release Gate 38차). 코드 없음.
+**[UI] Center/Foundry ?? ??? 1? (73?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[DOCS] splint 10 실행 (2026-03-10)**: SPRINT 37 검증 9/10 완료. 다음 할 일 = TASK 4(C4)만. AUTO4_PROMPTS 갱신. C1·C2·C3·C5 해당 없음 Exit. 코드 없음.
+**[VERIFY] Release Gate A~F ? Foundry 72? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] C1 DOCS 5건 (SPRINT 37 TASK 2·3·5·7·10) (2026-03-10)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG 대기 갱신(삼문서 일치·37차·97·98·99차) · 문서 점검 97·98·99차 · 다음 배치 선정 · § 다음 작업 정리(SPRINT 37 기준) · 대기 목록 동기화. 코드 없음. 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] ??? 3? ????? 1? (72?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (37차 TASK 4)**: [x] **완료.** Center PageClient 완료(step 5) 구간 — 진단 안내 링크·진단 CTA 카드 aria-label. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (72?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[DOCS] splint 10 실행 (2026-03-10)**: SPRINT 36 전량 완료·SPRINT 37 생성. 대기 5건 = Release Gate 37차·문서 97·98·99차·Center/Foundry 접근성·다음 배치 선정·대기 동기화. AUTO4_PROMPTS·NEXT_PHASE·NEXT_BACKLOG·보드 갱신. First Task = TASK 1 (C5 Release Gate 37차). 코드 없음.
+**[VERIFY] Release Gate A~F ? Foundry 71? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] splint 10 확인 (2026-03-10)**: SPRINT 36 검증 8/10. 다음 할 일 = TASK 8·9(C3)만. AUTO4_PROMPTS 변경 없음.
+**[VERIFY] ??? 3? ????? 1? (71?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOCS] splint 10 실행 (2026-03-10)**: SPRINT 36 검증 8/10 완료. 다음 할 일 = TASK 8·9(C3)만. AUTO4_PROMPTS 갱신. C1·C2·C4·C5 해당 없음 Exit. 코드 없음.
+**[UI] Center/Foundry ?? ??? 1? (71?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[DOMAIN·TEST] SPRINT 36 TASK 8·9 (2026-03-10)**: [x] **완료.** domain/rules/leaderboardTieBreak.edges.test.ts · arena/leadership-engine/transition/route.test.ts. npm test 1162 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 69? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 36차 (SPRINT 36 TASK 1, 2026-03-10)**: [x] **완료.** bty-release-gate.mdc A~F. A~E N/A · F) Lint ✓ Test 155/1154 ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (69?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (SPRINT 36 TASK 6, 2026-03-10)**: [x] **완료.** ELITE_3RD_SPEC_AND_CHECKLIST.md 6항목. Elite=Weekly XP만·시즌 미반영. 배지 API·UI, 멘토 API·UI, 경로 회귀 없음. **RESULT: PASS.** 보드·CURRENT_TASK·§3 반영.
+**[UI] Center/Foundry ?? ??? 1? (69?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[DOCS] splint 10 실행 (2026-03-10)**: SPRINT 35 전량 완료·SPRINT 36 생성. 대기 5건 = Release Gate 36차·문서 94·95·96차·Center/Foundry 접근성·다음 배치 선정·대기 동기화. AUTO4_PROMPTS·NEXT_PHASE·NEXT_BACKLOG·보드 갱신. First Task = TASK 1 (C5 Release Gate 36차). 코드 없음.
+**[VERIFY] Release Gate A~F ? Foundry 68? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (36차 TASK 4)**: [x] **완료.** Dojo 결과 페이지 '다시 진단하기' 링크 aria-label. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (68?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOCS] C1 DOCS 5건 (SPRINT 36 TASK 2·3·5·7·10) (2026-03-10)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG 대기 갱신(삼문서 일치·36차·94·95·96차) · 문서 점검 94·95·96차 · 다음 배치 선정 · § 다음 작업 정리(SPRINT 36 기준) · 대기 목록 동기화. 코드 없음. 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[UI] Center/Foundry ?? ??? 1? (68?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[DOCS] C1 DOCS 5건 (SPRINT 35 TASK 2·3·5·7·10) (2026-03-10)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG 대기 갱신(삼문서 일치·35차·91·92·93차) · 문서 점검 91·92·93차 · 다음 배치 선정 · § 다음 작업 정리 · 대기 목록 동기화. 코드 없음. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 67? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 35차 (SPRINT 35 TASK 1, 2026-03-10)**: [x] **완료.** bty-release-gate.mdc A~F. A~E N/A · F) Lint ✓ Test 153/1147 ✓ Build ✓. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (67?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (SPRINT 35 TASK 6, 2026-03-10)**: [x] **완료.** ELITE_3RD_SPEC_AND_CHECKLIST.md 6항목. Elite=Weekly XP만·시즌 미반영. 배지 API·UI, 멘토 API·UI, 경로 회귀 없음. **RESULT: PASS.** 보드·CURRENT_TASK·§3 반영.
+**[UI] Center/Foundry ?? ??? 1? (67?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[UI] Center/Foundry 추가 접근성 1곳 (35차 TASK 4)**: [x] **완료.** Dear Me 제출 버튼 aria-label(t.submitLetter). render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 66? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (34차 TASK 4)**: [x] **완료.** Mentor 채팅 입력 영역 — role="group", aria-label(메시지 입력/Message input), input·전송·대화 종료 버튼 aria-label. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (66?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOMAIN·TEST] SPRINT 35 TASK 8·9 (2026-03-10)**: [x] **완료.** domain/leadership-engine/air.edges.test.ts · arena/leadership-engine/air/route.test.ts. npm test 1154 통과. 보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (66?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[DOCS] C1 DOCS 5건 (SPRINT 34 TASK 2·3·5·7·10) (2026-03-10)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG 대기 갱신(삼문서 일치 확인) · 문서 점검 88·89·90차(보드·BTY_RELEASE_GATE_CHECK 갱신) · 다음 배치 선정 · § 다음 작업 정리(SPRINT 34 기준) · 대기 목록 동기화. 코드 없음. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 65? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] splint 10 실행 (2026-03-10)**: SPRINT 33 전량 완료·SPRINT 34 생성. 대기 5건 = Release Gate 34차·문서 88·89·90차·Center/Foundry 접근성·다음 배치 선정·대기 동기화. AUTO4_PROMPTS·NEXT_PHASE·NEXT_BACKLOG·보드 갱신. First Task = TASK 1 (C5 Release Gate 34차). 코드 없음.
+**[VERIFY] ??? 3? ????? 1? (65?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOCS] C1 TASK 2·5 (SPRINT 33) (2026-03-10)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG 대기 갱신(삼문서 일치 확인) · 다음 배치 선정(NEXT_BACKLOG≡NEXT_PHASE≡보드 확인). 코드 없음. 보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (65?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[DOCS] splint 10 실행 (2026-03-10)**: SPRINT 33 검증 8/10 완료. 다음 할 일 = TASK 2·5(C1)만. AUTO4_PROMPTS C1만 TASK 2·5 할당·C2/C3/C4/C5 해당 없음 Exit. 보드 § 다음 작업·BTY_RELEASE_GATE_CHECK 갱신.
+**[VERIFY] Release Gate A~F ? Foundry 64? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] C1 DOCS 5건 (SPRINT 33 TASK 2·3·5·7·10) (2026-03-10)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG 대기 갱신(삼문서 일치 확인) · 문서 점검 85·86·87차(보드·BTY_RELEASE_GATE_CHECK 갱신) · 다음 배치 선정 · § 다음 작업 정리 · 대기 목록 동기화. 코드 없음. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (64?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOMAIN·TEST] SPRINT 33 TASK 8·9 (2026-03-10)**: [x] **완료.** domain/rules/leaderboard.edges.test.ts · arena/leadership-engine/state/route.test.ts. npm test 1139 통과. 보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (64?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[DOCS] splint 10 실행 (2026-03-10)**: SPRINT 32 검증 10/10 완료. 이번 런 → SPRINT 33 생성. 대기 5건 = Release Gate 33차·문서 85·86·87차·Center/Foundry 접근성·다음 배치 선정·대기 동기화. AUTO4_PROMPTS·NEXT_PHASE·NEXT_BACKLOG·보드·§ 다음 작업 갱신. 코드 없음.
+**[VERIFY] Release Gate A~F ? Foundry 63? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (33차 TASK 4)**: [x] **완료.** Integrity 안내(guide) 단계 — role="region", aria-labelledby="integrity-guide-heading", h1 id, 푸터 Foundry 링크 aria-label. render-only. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (63?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOCS] splint 10 실행 (2026-03-10)**: SPRINT 32 검증 8/10 완료. TASK 4 표 [x] 반영. 다음 할 일 = TASK 8·9(C3)만. AUTO4_PROMPTS C3만 할당·C1/C2/C4/C5 해당 없음 Exit. 보드 § 다음 작업·BTY_RELEASE_GATE_CHECK 갱신.
+**[UI] Center/Foundry ?? ??? 1? (63?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[DOMAIN·TEST] TASK 8·9 추가 (2026-03-10)**: [x] **완료.** domain/leadership-engine/certified.edges.test.ts · arena/leadership-engine/certified/route.test.ts. npm test 1132 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 62? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] C1 DOCS 5건 (SPRINT 32 TASK 2·3·5·7·10) (2026-03-10)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG 대기 갱신(삼문서 일치 확인) · 문서 점검 82·83·84차(보드·BTY_RELEASE_GATE_CHECK 갱신) · 다음 배치 선정 · § 다음 작업 정리 · 대기 목록 동기화. 코드 없음. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (62?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOMAIN·TEST] SPRINT 32 TASK 8·9 (2026-03-10)**: [x] **완료.** domain/dojo/questions.edges.test.ts · me/conversation-preferences/route.test.ts. npm test 1125 통과. 보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (62?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[UI] Center/Foundry 추가 접근성 1곳 (32차 TASK 4)**: [x] **완료.** Mentor 대화 종료 블록 — role="region", aria-labelledby="mentor-conversation-ended-heading", p id, 다른 주제·Foundry aria-label. render-only. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 61? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] splint 10 확인 (2026-03-10)**: SPRINT 32 검증. TASK 1~10 전부 [ ]. 다음 할 일 = SPRINT 32 TASK 1~10 그대로. AUTO4_PROMPTS 변경 없음. 보드·§ 다음 작업 이미 SPRINT 32 기준.
+**[VERIFY] ??? 3? ????? 1? (61?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOCS] splint 10 실행 (2026-03-10)**: SPRINT 31 검증 10/10 완료. 이번 런 → SPRINT 32 생성. 대기 5건 = Release Gate 32차·문서 82·83·84차·Center/Foundry 접근성·다음 배치 선정·대기 동기화. AUTO4_PROMPTS·NEXT_PHASE·NEXT_BACKLOG·보드·§ 다음 작업 갱신. 코드 없음.
+**[UI] Center/Foundry ?? ??? 1? (61?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[DOCS] splint 10 대기 목록 동기화 (2026-03-10)**: NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 대기 5건 일치 확인. 보드 "대기 5건" 문구에서 Center/Foundry 접근성 완료 표기 제거 → 삼문서 동일 5건 유지. 코드 없음.
+**[VERIFY] Release Gate A~F ? Foundry 60? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOMAIN·TEST] SPRINT 31 TASK 8·9 (2026-03-10)**: [x] **완료.** domain/center/paths.edges.test.ts · me/region/route.test.ts. npm test 1116 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (60?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOMAIN·TEST] SPRINT 30 TASK 8·9 (2026-03-10)**: [x] **완료.** domain/center/assessment.edges.test.ts · me/access/route.test.ts. npm test 1109 통과. 보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (60?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[DOMAIN·TEST] SPRINT 29 TASK 8·9 (2026-03-10)**: [x] **완료.** domain/dojo/integrity/index.test.ts · me/elite/route.test.ts. npm test 1100 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 59? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] 다음 splint 10 (2026-03-10)**: NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 대기 5건 재확인. 삼문서 동일(Release Gate 29차·문서 73·74·75차·Center/Foundry 접근성·다음 배치 선정·대기 동기화). 수정 없음. 코드 없음.
+**[VERIFY] ??? 3? ????? 1? (59?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOCS] splint 10 실행 (2026-03-10)**: SPRINT 29 검증 10/10 완료. 이번 런 → SPRINT 30 생성. 대기 5건 = Release Gate 30차·문서 76·77·78차·Center/Foundry 접근성·다음 배치 선정·대기 동기화. AUTO4_PROMPTS·NEXT_PHASE·NEXT_BACKLOG·보드·§ 다음 작업 갱신. 코드 없음.
+**[UI] Center/Foundry ?? ??? 1? (59?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[DOCS] splint 10 실행 (2026-03-10)**: SPRINT 30 검증 10/10 완료. 이번 런 → SPRINT 31 생성. 대기 5건 = Release Gate 31차·문서 79·80·81차·Center/Foundry 접근성·다음 배치 선정·대기 동기화. AUTO4_PROMPTS·NEXT_PHASE·NEXT_BACKLOG·보드·§ 다음 작업 갱신. 코드 없음.
+**[VERIFY] Release Gate A~F ? Foundry 58? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] C1 DOCS (SPRINT 31 TASK 2·3) (2026-03-10)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG 대기 갱신(삼문서 일치) · 문서 점검 79·80·81차(보드·BTY_RELEASE_GATE_CHECK 갱신). 코드 없음. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (58?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOCS] Arena·Center·Foundry 대기 목록 동기화 (SPRINT 31 TASK 10) (2026-03-10)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 대기 5건 일치 확인. 보드 "대기 5건" 문구 접근성 완료 표기 제거 → 삼문서 동일. 코드 없음. 보드·CURRENT_TASK 갱신.
+**[UI] Center/Foundry ?? ??? 1? (58?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 (SPRINT 31 TASK 7) (2026-03-10)**: [x] **완료.** § "다음 작업 (반복 제외)" 진행 현황(TASK 2·3·5·6 완료)·다음 후보·갱신일 반영. 코드 없음. 보드·CURRENT_TASK 갱신.
+**[VERIFY] Release Gate A~F ? Foundry 57? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] C1 DOCS 5건 (SPRINT 30 TASK 2·3·5·7·10) (2026-03-10)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG 대기 갱신 · 문서 점검 76·77·78차 · 다음 배치 선정 · § 다음 작업 정리 · 대기 목록 동기화. NEXT_PHASE≡NEXT_BACKLOG≡보드 일치. BTY_RELEASE_GATE_CHECK 문서 76·77·78차 반영. 코드 없음. 보드·CURRENT_TASK 갱신.
+**[VERIFY] ??? 3? ????? 1? (57?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**오늘 4커서 병렬 작업 목록**: **`docs/CURSORS_PARALLEL_TASK_LIST.md`** — Cursor 1·2·3·4별 할 일·복사용 프롬프트·완료 시 문서 업데이트 규칙이 정리되어 있음. 커맨더가 해당 문서에서 프롬프트를 복사해 각 Cursor에 붙이면 병렬 진행 가능.
+**[UI] Center/Foundry ?? ??? 1? (57?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**MODE: FOUNDRY** — next / auto / SPRINT 시 **Foundry** 영역 작업만 선택. (작업 선택용)
+**[VERIFY] Release Gate A~F ? Foundry 56? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (30차 TASK 4)**: [x] **완료.** PageClient Center "답장 보기"(step 4) — role="region", aria-labelledby="center-reply-heading", h2 id, 다음 버튼 aria-label. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (56?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**다음 10개 READY (SPRINT 33).** C1–C5에게 할당된 할 일·복사용 프롬프트는 **`docs/agent-runtime/AUTO4_PROMPTS.md`** 참고. 보드 "이번 런" 표와 동기화됨.
+**[UI] Center/Foundry ?? ??? 1? (56?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[VERIFY] Release Gate A~F — Foundry 33차 (2026-03-10, SPRINT 33 TASK 1)**: [x] **완료.** bty-release-gate.mdc A~F 점검. A~E N/A/PASS · F) Lint ✓ Test 149/1132 ✓ Build ✓ (147 pages). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 55? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (2026-03-10, 33차 SPRINT 33 TASK 6)**: [x] **완료.** ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목 실행. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** 보드·CURRENT_TASK·§3 반영.
+**[VERIFY] ??? 3? ????? 1? (55?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 31차 (2026-03-10, SPRINT 31 TASK 1)**: [x] **완료.** bty-release-gate.mdc A~F 점검. A~E N/A/PASS · F) Lint ✓ Test 143/1109 ✓ Build ✓ (147 pages). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (55?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (2026-03-10, 31차 SPRINT 31 TASK 6)**: [x] **완료.** ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목 실행. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** 보드·CURRENT_TASK·§3 반영.
+**[VERIFY] Release Gate A~F ? Foundry 54? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 30차 (2026-03-10, SPRINT 30 TASK 1)**: [x] **완료.** bty-release-gate.mdc A~F 점검. A~E N/A/PASS · F) Lint ✓ Test 141/1100 ✓ Build ✓ (147 pages). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (54?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (2026-03-10, 30차 SPRINT 30 TASK 6)**: [x] **완료.** ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목 실행. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** 보드·CURRENT_TASK·§3 반영.
+**[UI] Center/Foundry ?? ??? 1? (54?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[VERIFY] Release Gate A~F — Foundry 29차 (2026-03-10, SPRINT 29 TASK 1)**: [x] **완료.** bty-release-gate.mdc A~F 점검. A~E N/A/PASS · F) Lint ✓ Test 139/1094 ✓ Build ✓ (147 pages). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 53? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (2026-03-10, 29차 SPRINT 29 TASK 6)**: [x] **완료.** ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목 실행. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** 보드·CURRENT_TASK·§3 반영.
+**[VERIFY] ??? 3? ????? 1? (53?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (29차 TASK 4)**: [x] **완료.** Elite 페이지 — role="main", aria-labelledby="elite-page-heading", h1 id, 링크 aria-label. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (53?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[DOMAIN] Center/Foundry 미커버 경계 테스트 1건 (2026-03-10, SPRINT 29 TASK 8)**: [x] **완료.** domain/dojo/integrity/index.test.ts 추가. re-export INTEGRITY_MAX_TEXT_LENGTH·validateIntegrityResponse·타입 3 tests. npm test 1100 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 52? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[TEST] Center/Foundry route 테스트 1건 (2026-03-10, SPRINT 29 TASK 9)**: [x] **완료.** GET /api/me/elite 401·200. me/elite/route.test.ts 3 tests. npm test 1100 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (52?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 (2026-03-10, SPRINT 29 TASK 2)**: [x] **완료.** SPRINT 28 완료 반영. 대기 5건 = Release Gate 29차·문서 73·74·75차·Center/Foundry 접근성·다음 배치 선정·대기 동기화. NEXT_PHASE↔NEXT_BACKLOG↔보드 동기화. splint 10 시 반영·삼문서 일치 확인. 코드 없음. 보드 TASK 2 완료.
+**[UI] Center/Foundry ?? ??? 1? (52?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[DOCS] 문서 점검 73·74·75차 (2026-03-10, SPRINT 29 TASK 3)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드·BTY_RELEASE_GATE_CHECK 2~3건 점검·갱신. 코드 없음. 보드 TASK 3·CURRENT_TASK 갱신.
+**[VERIFY] Release Gate A~F ? Foundry 51? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] 다음 배치 선정 (선택) (2026-03-10, SPRINT 29 TASK 5)**: [x] **완료.** NEXT_BACKLOG_AUTO4·NEXT_PHASE_AUTO4 일치 확인. 다음 배치 목록 = NEXT_PHASE 대기 5건. 필요 시에만. 코드 없음. 보드 TASK 5 완료.
+**[VERIFY] ??? 3? ????? 1? (51?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 (2026-03-10, SPRINT 29 TASK 7)**: [x] **완료.** § "다음 작업 (반복 제외)" SPRINT 29 기준 진행 현황·다음 후보·갱신일 갱신. C1 DOCS 5건 반영. 코드 없음. 보드 TASK 7 완료.
+**[UI] Center/Foundry ?? ??? 1? (51?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[DOCS] Arena·Center·Foundry 대기 목록 동기화 (2026-03-10, SPRINT 29 TASK 10)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 대기 행 일치 확인·갱신. MODE FOUNDRY. 삼문서 동기화. 코드 없음. 보드 TASK 10 완료.
+**[VERIFY] Release Gate A~F ? Foundry 50? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**splint 10 실행 (2026-03-10)**: SPRINT 28 10/10 [x] 확인. 이번 런 → SPRINT 29 생성. 대기 5건 = Release Gate 29차·문서 73·74·75차·Center/Foundry 접근성·다음 배치 선정·대기 동기화. AUTO4_PROMPTS·NEXT_PHASE·NEXT_BACKLOG·§ 다음 작업 갱신.
+**[VERIFY] ??? 3? ????? 1? (50?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**C1 SPRINT 29 (2026-03-10 — MODE FOUNDRY)**: [ ] **SPRINT READY.** 10 tasks. C1–C5 명령 = **docs/agent-runtime/AUTO4_PROMPTS.md**. 대기 5건 = Release Gate 29차·문서 73·74·75차·Center/Foundry 접근성·다음 배치 선정·대기 동기화.
+**[UI] Center/Foundry ?? ??? 1? (50?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**C1 SPRINT 28 (2026-03-10 — MODE FOUNDRY)**: [x] **전량 완료.** TASK 1~10 전부 완료. Lint ✓ Test 137/1087 ✓ Build ✓.
+**[VERIFY] Release Gate A~F ? Foundry 49? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**C1 DOCS 5건 (2026-03-10, SPRINT 28 TASK 2·3·5·7·10)**: [x] **완료.** (1) 대기 갱신 (2) 문서 점검 70·71·72차 (3) 다음 배치 선정 (4) § 다음 작업 정리 (5) 대기 목록 동기화. 보드 [x]·NEXT_PHASE·NEXT_BACKLOG·BTY_RELEASE_GATE_CHECK 갱신. **SPRINT 28 전량 완료.**
+**[VERIFY] ??? 3? ????? 1? (49?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOMAIN] Center/Foundry 미커버 경계 테스트 1건 (2026-03-10, SPRINT 28 TASK 8)**: [x] **완료.** domain/dojo/integrity/types.test.ts 추가. INTEGRITY_MAX_TEXT_LENGTH·IntegritySubmitPayload·IntegrityScenario·IntegritySubmission 4 tests. npm test 1094 통과. 보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (49?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. N/A (?? ?? ??).
 
-**[TEST] Center/Foundry route 테스트 1건 (2026-03-10, SPRINT 28 TASK 9)**: [x] **완료.** GET /api/me/conversations 401·400·200. me/conversations/route.test.ts 3 tests. npm test 1094 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 48? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[UI] Center/Foundry 추가 접근성 1곳 (28차 TASK 4)**: [x] **완료.** Mentor 채팅 — 대화 헤더 role="region"·aria-label, 다른 주제 선택·대화 종료 버튼·safety valve Center 링크 aria-label. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (48?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 (2026-03-10, SPRINT 28 TASK 2)**: [x] **완료.** SPRINT 27 완료 반영. 대기 5건 = Release Gate 28차·문서 70·71·72차·Center/Foundry 접근성·다음 배치 선정·대기 동기화. NEXT_PHASE↔NEXT_BACKLOG↔보드 동기화. splint 10 시 반영·삼문서 일치 확인. 코드 없음. 보드 TASK 2 완료.
+**[UI] Center/Foundry ?? ??? 1? (48?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. (??? 1? ?? ? ?? ?? ??. Notes? N/A ??.)
 
-**[DOCS] 문서 점검 70·71·72차 (2026-03-10, SPRINT 28 TASK 3)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드·BTY_RELEASE_GATE_CHECK 2~3건 점검·갱신. 코드 없음. 보드 TASK 3·CURRENT_TASK 갱신.
+**[VERIFY] Release Gate A~F ? Foundry 47? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] 다음 배치 선정 (선택) (2026-03-10, SPRINT 28 TASK 5)**: [x] **완료.** NEXT_BACKLOG_AUTO4·NEXT_PHASE_AUTO4 일치 확인. 다음 배치 목록 = NEXT_PHASE 대기 5건. 필요 시에만. 코드 없음. 보드 TASK 5 완료.
+**[VERIFY] ??? 3? ????? 1? (47?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 (2026-03-10, SPRINT 28 TASK 7)**: [x] **완료.** § "다음 작업 (반복 제외)" SPRINT 28 기준 진행 현황·다음 후보·갱신일 갱신. C1 DOCS 5건 반영. 코드 없음. 보드 TASK 7 완료.
+**[UI] Center/Foundry ?? ??? 1? (47?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. PageClient.tsx Center assessment ??? aria-label. render-only. npm run lint ?.
 
-**[DOCS] Arena·Center·Foundry 대기 목록 동기화 (2026-03-10, SPRINT 28 TASK 10)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 대기 행 일치 확인·갱신. MODE FOUNDRY. 삼문서 동기화. 코드 없음. 보드 TASK 10 완료.
+**[VERIFY] Release Gate A~F ? Foundry 46? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 28차 (2026-03-10, SPRINT 28 TASK 1)**: [x] **완료.** bty-release-gate.mdc A~F 점검. A~E N/A/PASS · F) Lint ✓ Test 137/1087 ✓ Build ✓ (147 pages). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (46?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (2026-03-10, 28차 SPRINT 28 TASK 6)**: [x] **완료.** ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목 실행. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** 보드·CURRENT_TASK·§3 반영.
+**[UI] Center/Foundry ?? ??? 1? (46?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. PageClient.tsx ?? CTA Link? aria-label. render-only. npm run lint ?.
 
-**[DOMAIN] Center/Foundry 미커버 경계 테스트 1건 (2026-03-10, SPRINT 27 TASK 8)**: [x] **완료.** lib/bty/center/index.test.ts 추가. re-export hub getLetterAuth·resilience·letter·assessment 4 tests. npm test 1087 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 45? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK?CURRENT_TASK ??.
 
-**[TEST] Center/Foundry route 테스트 1건 (2026-03-10, SPRINT 27 TASK 9)**: [x] **완료.** GET /api/dojo/questions 500·200. dojo/questions/route.test.ts 3 tests. npm test 1087 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (45?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 27차 (2026-03-10, SPRINT 27 TASK 1)**: [x] **완료.** bty-release-gate.mdc A~F 점검. A~E N/A/PASS · F) Lint ✓ Test 135/1080 ✓ Build ✓ (147 pages). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 44? (C5, docs/SPRINT_PLAN.md)**: [x] **??.** A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (2026-03-10, 27차 SPRINT 27 TASK 6)**: [x] **완료.** ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목 실행. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** 보드·CURRENT_TASK·§3 반영.
+**[VERIFY] ??? 3? ????? 1? (44?, docs/SPRINT_PLAN.md)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ?3?CURRENT_TASK ??.
 
-**[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 (2026-03-10, SPRINT 27 TASK 2)**: [x] **완료.** SPRINT 26 완료 반영. 대기 5건 = Release Gate 27차·문서 67·68·69차·Center 접근성·다음 배치 선정·대기 동기화. NEXT_PHASE↔NEXT_BACKLOG↔보드 동기화. splint 10 시 반영·삼문서 일치 확인. 코드 없음. 보드 TASK 2 완료.
+**[VERIFY] Release Gate A~F ? Foundry 43? (TASK 1, 2026-03-11)**: [x] **??.** C5. A~E N/A ? F) Lint ? Test ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] 문서 점검 67·68·69차 (2026-03-10, SPRINT 27 TASK 3)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드·BTY_RELEASE_GATE_CHECK 2~3건 점검·갱신. 코드 없음. 보드 TASK 3·CURRENT_TASK 갱신.
+**[UI] C5 Center/Foundry ??? 2? (SPRINT_PLAN ??? ??)**: [x] **??.** Center: PageClient.tsx ?? ?? 2? aria-label. Foundry: page.client.tsx ?? ?? Link aria-describedby??? id. CenterCard/FoundryCard ???, ?? ??? ??. SPRINT_PLAN C5 Tasks?Blockers ??.
 
-**[DOCS] 다음 배치 선정 (선택) (2026-03-10, SPRINT 27 TASK 5)**: [x] **완료.** NEXT_BACKLOG_AUTO4·NEXT_PHASE_AUTO4 일치 확인. 다음 배치 목록 = NEXT_PHASE 대기 5건. 필요 시에만. 코드 없음. 보드 TASK 5 완료.
+**[VERIFY] ??? 3? ????? 1? (43? TASK 6, 2026-03-11)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ???CURRENT_TASK?ELITE_3RD ?3 ??.
 
-**[DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 (2026-03-10, SPRINT 27 TASK 7)**: [x] **완료.** § "다음 작업 (반복 제외)" SPRINT 27 기준 진행 현황·다음 후보·갱신일 갱신. C1 DOCS 5건 반영. 코드 없음. 보드 TASK 7 완료.
+**[DOMAIN] SPRINT 43 TASK 8 (2026-03-11)**: [x] **??.** C3. domain/center/assessment.edges.test.ts ? non-integer answer value ? answer_out_of_range ?? 1?. npm test ??. ???CURRENT_TASK ??. (TASK 9 route ???? src/app/api ?? ? C3 ?? ?.) C3. domain/center/assessment.edges.test.ts ? non-integer answer value ? answer_out_of_range ?? 1?. npm test ??. ???CURRENT_TASK ??. (TASK 9 route ???? src/app/api ?? ? C3 ?? ?.)
 
-**[DOCS] Arena·Center·Foundry 대기 목록 동기화 (2026-03-10, SPRINT 27 TASK 10)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 대기 행 일치 확인·갱신. MODE FOUNDRY. 삼문서 동기화. 코드 없음. 보드 TASK 10 완료.
+**[splint 10 ? SPRINT 43 ?? (2026-03-11)]**: [x] **??.** ?? Lint ? Test 166/1204 ? Build ?. SPRINT 42 ?? ?? ? SPRINT 43 ??. ?? 5? = Release Gate 43???? 115?116?117???????? ????? ???. CURSOR_TASK_BOARD?NEXT_PHASE?NEXT_BACKLOG?SPRINT_PLAN?CURRENT_TASK ??.
 
-**splint 10 실행 (2026-03-10)**: SPRINT 27 10/10 완료 반영(보드 TASK 1·8·9 [x] 동기화). 이번 런 → SPRINT 28 생성. 대기 5건 = Release Gate 28차·문서 70·71·72차·Center/Foundry 접근성·다음 배치 선정·대기 동기화. AUTO4_PROMPTS·NEXT_PHASE·NEXT_BACKLOG·§ 다음 작업 갱신.
+**[DOMAIN?TEST] SPRINT 42 TASK 8?9 (2026-03-11)**: [x] **??.** C3. [DOMAIN] domain/center/resilience.edges.test.ts empty rows ?? 1?. [TEST] app/api/journey/entries/route.test.ts GET 401?503?200?400, POST 401?503?200 (7 tests). npm test ??. ???CURRENT_TASK ??.
 
-**다음 10개 READY (SPRINT 28).** C1–C5 명령 = **docs/agent-runtime/AUTO4_PROMPTS.md**. 보드 "이번 런" SPRINT 28과 동기화됨.
+**C6 TASK QUEUE (latest Commander batch = SPRINT 42, 2026-03-11)**: ?? ? ?(CURSOR_TASK_BOARD) ?? OWNER C6 ? ?? ? **C6 TASK QUEUE empty.** Recorded once; stop.
 
-**C1 SPRINT 28 (2026-03-10 — MODE FOUNDRY)**: [ ] **SPRINT READY.** 10 tasks. 대기 5건 = Release Gate 28차·문서 70·71·72차·Center/Foundry 접근성·다음 배치 선정·대기 동기화.
+**[UI] Center/Foundry ?? ??? 1? (42? TASK 4, 2026-03-11)**: [x] **??.** C4 ??. Dojo DojoClient ? ??(?? ??) "?? ??" ?? aria-label(?? ??/Retry). render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**C1 SPRINT 27 (2026-03-10 — MODE FOUNDRY)**: [x] **전량 완료.** TASK 1~10 전부 완료. Lint ✓ Test 135/1080 ✓ Build ✓.
+**[DOCS] C1 DOCS 5? (SPRINT 42 TASK 2?3?5?7?10, 2026-03-11)**: [x] **??.** ?? ??(SPRINT 41 ??)??? 112?113?114? ????? ?? ???? ?? ?? ????? ???. ??? ??. ?? ??. ???CURRENT_TASK ??.
 
-**C1 SPRINT 26 (2026-03-10 — MODE FOUNDRY)**: [x] **전량 완료.** TASK 1~10 전부 완료. Lint ✓ Test 133/1080 ✓ Build ✓.
+**[VERIFY] Release Gate A~F ? Foundry 42? (TASK 1, 2026-03-11)**: [x] **??.** C5. A~E N/A ? F) Lint ? Test 165/1196 ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??. C5. A~E N/A ? F) Lint ? Test 165/1196 ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 (2026-03-10, SPRINT 24 TASK 2)**: [x] **완료.** SPRINT 23 완료 반영. 대기 5건 = Release Gate 24차·문서 58·59·60차·Foundry 접근성·다음 배치 선정·대기 동기화. NEXT_PHASE↔NEXT_BACKLOG↔보드 동기화. 코드 없음. 보드 TASK 2 완료.
+**[VERIFY] ??? 3? ????? 1? (42? TASK 6, 2026-03-11)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ???CURRENT_TASK?ELITE_3RD ?3 ??.
 
-**[DOCS] 문서 점검 58·59·60차 (2026-03-10, SPRINT 24 TASK 3)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG·보드·BTY_RELEASE_GATE_CHECK 점검·갱신. 대기에서 문서 점검 제거·[DOMAIN] Center/Foundry 미커버 후보 승격. 코드 없음. 보드 TASK 3 완료.
+**[DOCS] splint 10 ?? (2026-03-11)**: [x] **??.** SPRINT 41 ?? ???SPRINT 42 ??. ?? 5? = Release Gate 42???? 112?113?114???????? ????? ???. CURSOR_TASK_BOARD?NEXT_PHASE?NEXT_BACKLOG?AUTO4_PROMPTS?CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??. First Task = TASK 1 (C5 Release Gate 42?).
 
-**[DOCS] 다음 배치 선정 (선택) (2026-03-10, SPRINT 24 TASK 5)**: [x] **완료.** NEXT_BACKLOG·NEXT_PHASE 수동 갱신. 다음 배치 목록 = 대기 5건 동기화. 필요 시에만. 코드 없음. 보드 TASK 5 완료.
+**[DOMAIN?TEST] SPRINT 41 TASK 8?9 (2026-03-11)**: [x] **??.** [DOMAIN] ??? ?? ??? 1??[TEST] route ??? 1? ?? ??/???. ???CURRENT_TASK ??.
 
-**[DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 (2026-03-10, SPRINT 24 TASK 7)**: [x] **완료.** § "다음 작업 (반복 제외)" 진행 현황·다음 후보 체크·갱신일 갱신. TASK 2·3·5 완료 반영. 코드 없음. 보드 TASK 7 완료.
+**[UI] Center/Foundry ?? ??? 1? (41? TASK 4, 2026-03-11)**: [x] **??.** C4 ??. dear-me/error.tsx?assessment/error.tsx ? "?? ??" ?? aria-label(?? ??/Try again). render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**[DOCS] Arena·Center·Foundry 대기 목록 동기화 (2026-03-10, SPRINT 24 TASK 10)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 대기 행 일치 확인·갱신. MODE FOUNDRY. 삼문서 동기화. 코드 없음. 보드 TASK 10 완료.
+**[??] lint?test?build 1? (2026-03-11)**: [x] **??.** `./scripts/self-healing-ci.sh`. ~17s. Lint ? Test ? Build ?. **RESULT: PASS.** ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[DOMAIN] Center/Foundry 미커버 경계 테스트 1건 (2026-03-10, SPRINT 24 TASK 8)**: [x] **완료.** lib/bty/foundry/integritySubmitService.test.ts 추가. submitIntegrity missing_input·공백만·성공·insert 실패 4 tests. npm test 1064 통과. 보드·CURRENT_TASK 반영.
+**[splint 10 ? SPRINT 41 First Task ?? ??] lint?test?build 1? (2026-03-11)**: [x] **??.** Release Gate 41?(TASK 1) ?? ??? `./scripts/self-healing-ci.sh` ??. ~18s. Lint ? Test ? Build ?. **RESULT: PASS.** ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[TEST] Center/Foundry route 테스트 1건 (2026-03-10, SPRINT 24 TASK 9)**: [x] **완료.** POST /api/center/letter 401·400·500·200. center/letter/route.test.ts 4 tests. npm test 1064 통과. 보드·CURRENT_TASK 반영.
+**[DOCS] C1 DOCS 5? (SPRINT 41 TASK 2?3?5?7?10, 2026-03-11)**: [x] **??.** ?? ??(SPRINT 40 ??)??? 109?110?111? ????? ?? ???? ?? ?? ????? ???. ??? ??. ?? ??. ???CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 24차 (2026-03-10, SPRINT 24 TASK 1)**: [x] **완료.** bty-release-gate.mdc A~F 점검. A~E N/A/PASS · F) Lint ✓ Test 129/1056 ✓ Build ✓ (147 pages). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 41? (TASK 1, 2026-03-11)**: [x] **??.** C5. A~E N/A ? F) Lint ? Test 165/1196 ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??. C5. A~E N/A ? F) Lint ? Test 165/1196 ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (2026-03-10, 24차 SPRINT 24 TASK 6)**: [x] **완료.** ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목 실행. Elite=Weekly XP만·시즌 미반영. **RESULT: PASS.** 보드·CURRENT_TASK·§3 반영.
+**[VERIFY] ??? 3? ????? 1? (41? TASK 6, 2026-03-11)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ???CURRENT_TASK?ELITE_3RD ?3 ??.
 
-**C1 SPRINT 24 (2026-03-10 — MODE FOUNDRY)**: [x] **전량 완료.** TASK 1~10 전부 완료. Lint ✓ Test 129/1064 ✓ Build ✓.
+**[DOCS] splint 10 ?? (2026-03-11)**: [x] **??.** SPRINT 40 ?? ???SPRINT 41 ??. ?? 5? = Release Gate 41???? 109?110?111???????? ????? ???. CURSOR_TASK_BOARD?NEXT_PHASE?NEXT_BACKLOG?AUTO4_PROMPTS?CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??. First Task = TASK 1 (C5 Release Gate 41?).
 
-**[UI] Foundry 추가 접근성 1곳**: [x] **완료.** Integrity 완료(done) 단계 — role="region", aria-labelledby="integrity-done-heading", h2 id, 링크 aria-label. render-only. 보드·CURRENT_TASK 반영.
+**[DOCS] 5? ?? ? lint?test?build 1? (2026-03-11)**: [x] **??.** C1 DOCS 5? ?? ???? `./scripts/self-healing-ci.sh` 1? ??. ~18s. Lint ? Test ? Build ?. **RESULT: PASS.** ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**C1 SPRINT 23 (2026-03-10 — MODE FOUNDRY)**: [x] **전량 완료.** TASK 1~10 전부 완료. Lint ✓ Test 126/1045 ✓ Build ✓.
+**[DOCS] C1 DOCS 5? (SPRINT 40 TASK 2?3?5?7?10, 2026-03-11)**: [x] **??.** NEXT_PHASE?NEXT_BACKLOG ?? ????? 106?107?108? ????? ?? ???? ?? ?? ????? ?? ???. ??? ??. ?? ??. ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 23차 (2026-03-10, SPRINT 23 TASK 1)**: [x] **완료.** bty-release-gate.mdc A~F 점검. A~E N/A/PASS · F) Lint ✓ Test 126/1045 ✓ Build ✓ (147 pages). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[DOMAIN?TEST] SPRINT 40 TASK 8?9 (2026-03-11)**: [x] **??.** C3. domain/rules/weeklyXp.edges.test.ts ? app/api/journey/profile/route.test.ts. npm test 165/1196 ??. ???CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (2026-03-10, 23차 SPRINT 23 TASK 6)**: [x] **완료.** ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목 실행. Elite=Weekly XP만·시즌 미반영. 배지 API·UI, 멘토 API·UI, 경로 회귀 없음. **RESULT: PASS.** 보드·CURRENT_TASK·§3 반영.
+**[VERIFY] Release Gate A~F ? Foundry 40? (SPRINT 40 TASK 1, 2026-03-11)**: [x] **??.** C5. A~E N/A ? F) Lint ? Test 163/1185 ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOMAIN] Center/Foundry 미커버 경계 테스트 1건 (2026-03-10, SPRINT 23 TASK 8)**: [x] **완료.** lib/bty/center/letterAuth.test.ts 추가. getLetterAuth null·user.id 없음·{ supabase, userId } 3 tests. npm test 1056 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (SPRINT 40 TASK 6, 2026-03-11)**: [x] **??.** C5. 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ???CURRENT_TASK?ELITE_3RD ?3 ??.
 
-**[TEST] Center/dear-me route 테스트 1건 (2026-03-10, SPRINT 23 TASK 9)**: [x] **완료.** POST /api/dear-me/letter(401·400·200), GET /api/dear-me/letters(401·500·200). letter/route.test.ts·letters/route.test.ts 8 tests. npm test 1056 통과. 보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (40? TASK 4, 2026-03-11)**: [x] **??.** C4 ??. Center error.tsx ? ?? ?? ?? aria-label(?? ??/Try again). render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 (2026-03-10, SPRINT 23 TASK 2)**: [x] **완료.** SPRINT 22 완료 반영. 대기 5건 = Release Gate 23차·문서 55·56·57차·Center 접근성·다음 배치 선정·대기 동기화. NEXT_PHASE↔NEXT_BACKLOG↔보드 동기화. 코드 없음. 보드 TASK 2 완료.
+**[DOCS] splint 10 ?? (2026-03-11)**: [x] **??.** SPRINT 39 ?? ???SPRINT 40 ??. ?? 5? = Release Gate 40???? 106?107?108??Center/Foundry ?????? ?? ????? ???. CURSOR_TASK_BOARD?NEXT_PHASE?NEXT_BACKLOG?AUTO4_PROMPTS ??. First Task = TASK 1 (C5 Release Gate 40?). ?? ??.
 
-**[DOCS] 문서 점검 55·56·57차 (2026-03-10, SPRINT 23 TASK 3)**: [x] **완료.** NEXT_PHASE·NEXT_BACKLOG·보드·BTY_RELEASE_GATE_CHECK 점검·갱신. 대기에서 문서 점검 제거·[DOMAIN] Center/Foundry 미커버 후보 승격. 코드 없음. 보드 TASK 3 완료.
+**[C7 GATE] Integration validation (17th, 2026-03-11)**: [x] **??.** `./scripts/self-healing-ci.sh`. ~19s. Lint ? Test ? Build ?. **Overall: PASS.** AI_TASK_BOARD????CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[DOCS] 다음 배치 선정 (선택) (2026-03-10, SPRINT 23 TASK 5)**: [x] **완료.** NEXT_BACKLOG·NEXT_PHASE 수동 갱신. 다음 배치 목록 = 대기 5건 동기화. 필요 시에만. 코드 없음. 보드 TASK 5 완료.
+**[C7 GATE] Integration validation (16th, 2026-03-11)**: [x] **??.** `./scripts/self-healing-ci.sh`. ~17s. Lint ? Test ? Build ?. **Overall: PASS.** AI_TASK_BOARD????CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 (2026-03-10, SPRINT 23 TASK 7)**: [x] **완료.** § "다음 작업 (반복 제외)" 진행 현황·다음 후보 체크·갱신일 갱신. TASK 2·3·5 완료 반영. 코드 없음. 보드 TASK 7 완료.
+**[C7 GATE] Integration validation (15th, 2026-03-11)**: [x] **??.** `./scripts/self-healing-ci.sh`. ~17s. Lint ? Test ? Build ?. **Overall: PASS.** AI_TASK_BOARD????CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[DOCS] Arena·Center·Foundry 대기 목록 동기화 (2026-03-10, SPRINT 23 TASK 10)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 대기 행 일치 확인·갱신. MODE FOUNDRY. 삼문서 동기화. 코드 없음. 보드 TASK 10 완료.
+**[C7 GATE] Integration validation (14th, 2026-03-11)**: [x] **??.** `./scripts/self-healing-ci.sh`. ~17s. Lint ? Test ? Build ?. **Overall: PASS.** AI_TASK_BOARD????CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[DOCS] 다음 배치 선정 (선택) (2026-03-10)**: [x] **완료.** NEXT_BACKLOG 다음 배치 목록 = NEXT_PHASE 대기 5건과 동기화(문서 점검 52·53·54 제거·assessment API JSDoc 반영). 코드 없음. 보드 TASK 6 완료.
+**[C7 GATE] Integration validation (13th, 2026-03-11)**: [x] **??.** `./scripts/self-healing-ci.sh`. ~17s. Lint ? Test ? Build ?. **Overall: PASS.** AI_TASK_BOARD????CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[DOMAIN] Center/Foundry 경계 단위 테스트 1건 (2026-03-10)**: [x] **완료.** domain/dojo/flow.edges.test.ts 추가. validateDojo50Submit·computeDojo50Result·validateIntegritySubmit 경계 14 tests. npm test 1045 통과. 보드·CURRENT_TASK 반영.
+**[C7 GATE] Integration validation (12th, 2026-03-11)**: [x] **??.** `./scripts/self-healing-ci.sh`. ~18s. Lint ? Test ? Build ?. **Overall: PASS.** AI_TASK_BOARD????CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[API] assessment API 응답 타입 JSDoc (2026-03-10)**: [x] **완료.** GET /api/assessment/submissions: AssessmentSubmissionsGetResponse·AssessmentSubmissionsErrorResponse, @contract·@returns·satisfies. POST /api/assessment/submit: AssessmentSubmitPostResponse·AssessmentSubmitErrorResponse, @contract·@returns·satisfies. npm test 통과. 보드·CURRENT_TASK 반영.
+**[C7 GATE] Integration validation (11th, 2026-03-11)**: [x] **??.** `./scripts/self-healing-ci.sh`. ~17s. Lint ? Test ? Build ?. **Overall: PASS.** AI_TASK_BOARD????CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 (2026-03-10, 22차)**: [x] **완료.** ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목 실행. 배지 API·UI, 멘토 신청 API·UI, 규칙 준수(Elite=Weekly XP만·시즌 미반영), 경로 회귀 없음. **RESULT: PASS.** ELITE_3RD §3·BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[C7 GATE] Integration validation (10th, 2026-03-11)**: [x] **??.** `./scripts/self-healing-ci.sh`. ~19s. Lint ? Test ? Build ?. **Overall: PASS.** AI_TASK_BOARD????CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 22차 (2026-03-10)**: [x] **완료.** bty-release-gate.mdc A~F 점검. A~E N/A/PASS(21차 대비 변경 없음) · F) Lint ✓ Test 124/1025 ✓ Build ✓ (147 pages). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[C7 GATE] Integration validation (9th, 2026-03-11)**: [x] **??.** `./scripts/self-healing-ci.sh`. ~17s. Lint ? Test ? Build ?. **Overall: PASS.** AI_TASK_BOARD????CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[C5 Integrator] 통합 점검 (2026-03-10)**: [x] **완료.** C3·C4 변경 통합 점검. Lint ✓ Test 124/1025 ✓ Build ✓. API–UI 연결(dojo/questions·submit·submissions, assessment/submit·submissions, me/conversations·mentor-request, arena/core-xp) 정상. 동일 파일 충돌 없음. **RESULT: PASS.** 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[C7 GATE] Integration validation (8th, 2026-03-11)**: [x] **??.** `./scripts/self-healing-ci.sh`. ~17s. Lint ? Test ? Build ?. **Overall: PASS.** AI_TASK_BOARD????CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 (2026-03-10)**: [x] **완료.** SPRINT 21 완료 반영. 대기 5건 = Release Gate 22차·문서 52·53·54차·assessment submit 테스트·Foundry 접근성·다음 배치 선정. NEXT_PHASE·NEXT_BACKLOG·보드 동기화. 코드 없음. 보드 TASK 2 완료.
+**[C7 GATE] Integration validation (7th, 2026-03-11)**: [x] **??.** `./scripts/self-healing-ci.sh`. ~17s. Lint ? Test ? Build ?. **Overall: PASS.** AI_TASK_BOARD????CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[TEST] assessment submit route 테스트 (2026-03-10)**: [x] **완료.** POST /api/assessment/submit route.test.ts 추가. 401·400(invalid_body·validation)·200(success·submissionId null)·submitAssessment 인자. 6 tests. npm test 1031 통과. 보드·CURRENT_TASK 반영.
+**[C7 GATE] Integration validation (6th, 2026-03-11)**: [x] **??.** `./scripts/self-healing-ci.sh`. ~17s. Lint ? Test ? Build ?. **Overall: PASS.** AI_TASK_BOARD????CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[DOCS] 문서 점검 52·53·54차 (2026-03-10)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드·BTY_RELEASE_GATE_CHECK 점검·갱신. 대기에서 문서 점검 제거·[API] assessment API JSDoc 후보 승격. 코드 없음. 보드 TASK 3 완료.
+**[C7 GATE] Integration validation (5th, 2026-03-11)**: [x] **??.** `./scripts/self-healing-ci.sh`. ~17s. Lint ? Test ? Build ?. **Overall: PASS.** AI_TASK_BOARD????CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**C1 SPRINT 23 (2026-03-10 — MODE FOUNDRY)**: [x] **전량 완료.** TASK 1~10 전부 완료. Lint ✓ Test 126/1045 ✓ Build ✓.
+**[C7 GATE] Integration validation (4th, 2026-03-11)**: [x] **??.** `./scripts/self-healing-ci.sh`. ~18s. Lint ? Test ? Build ?. **Overall: PASS.** AI_TASK_BOARD????CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[UI] Center 추가 접근성 1곳**: [x] **완료.** PageClient Center "나의 현황" — role="region", aria-labelledby="center-overview-heading", h2 id, 링크 aria-label. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[C7 GATE] Integration validation (3rd, 2026-03-11)**: [x] **??.** `./scripts/self-healing-ci.sh`. ~17s. Lint ? Test ? Build ?. **Overall: PASS.** AI_TASK_BOARD????CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**C1 SPRINT 22 (2026-03-09 — MODE FOUNDRY)**: [x] **전량 완료.** TASK 1~10 전부 완료. Lint ✓ Test 124/1025 ✓ Build ✓.
+**[C7 GATE] Integration validation (2nd, 2026-03-11)**: [x] **??.** `./scripts/self-healing-ci.sh`. ~17s. Lint ? Test ? Build ?. **Overall: PASS.** AI_TASK_BOARD????CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[UI] Foundry 추가 접근성 1곳**: [x] **완료.** DojoHistoryClient — role="main", aria-labelledby="dojo-history-heading", h1 id, ul role="list", 링크 aria-label. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 39? + ??? 3? ????? (2026-03-11)**: [x] **??.** C5 TASK 1?6. A~E N/A ? F) Lint ? Test 163/1185 ? Build ?. Elite 3? 6?? **RESULT: PASS.** ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK?ELITE_3RD ?3 ??.
 
-**[DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 (2026-03-09)**: [x] **완료.** § "다음 작업 (반복 제외)" 진행 현황 반영(TASK 3·4·로드맵 Q3 완료 표시)·다음 후보 체크·갱신일 추가. 코드 없음. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate 39? + ??? 3? ????? (2026-03-11)**: [x] **??.** Worker C6. F) Lint ? (build ? tsc) Test 163/1185 ? Build ?. Elite 6?? PASS. BTY_RELEASE_GATE_CHECK?CURSOR_TASK_BOARD?CURRENT_TASK?ELITE_3RD ?3 ??.
 
-**[DOCS] Foundry 로드맵 Q3 목표 1줄 갱신 (2026-03-09)**: [x] **완료.** FOUNDRY_ROADMAP 연도별 마일스톤 Q3 완료 기준 1줄 갱신: LE Stage/AIR API 노출·Foundry 대시보드, Elite 멘토 신청 목록·승인/거절 API·UI. 코드 없음. 보드·CURRENT_TASK 반영.
+**[C7 GATE] Integration validation (2026-03-11)**: [x] **??.** `./scripts/self-healing-ci.sh`. ?? ?? ~19s. Lint ? Test ? Build ?. **Overall: PASS.** AI_TASK_BOARD.md?CURSOR_TASK_BOARD?CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[DOCS] NEXT_PHASE·NEXT_BACKLOG 대기 갱신 (2026-03-09)**: [x] **완료.** SPRINT 20 완료 반영. 대기 5건 = Release Gate 21차·Integrity submit 테스트·Foundry 접근성·dojo/questions JSDoc·LE 테스트. NEXT_PHASE·NEXT_BACKLOG·보드 § 다음 작업(반복 제외) 동기화. 코드 없음. 보드·CURRENT_TASK 반영.
+**[DOMAIN?TEST] SPRINT 39 TASK 8?9 (2026-03-10)**: [x] **??.** domain/rules/stage.edges.test.ts ? arena/sub-name/route.test.ts. npm test 1185 ??. ???CURRENT_TASK ??.
 
-**C1 SPRINT 21 (2026-03-09 — MODE FOUNDRY)**: [x] **전량 완료.** TASK 1~10 전부 완료. Lint ✓ Test 123/1015 ✓ Build ✓.
+**[DOCS] C1 DOCS 5? (SPRINT 39 TASK 2?3?5?7?10) (2026-03-10)**: [x] **??.** NEXT_PHASE?NEXT_BACKLOG ?? ??(??? ???39??103?104?105?) ? ?? ?? 103?104?105? ? ?? ?? ??(NEXT_BACKLOG?NEXT_PHASE???) ? ? ?? ?? ??(SPRINT 39 ??) ? ?? ?? ???. ?? ??. ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??. NEXT_PHASE?NEXT_BACKLOG ?? ??(??? ???39??103?104?105?) ? ?? ?? 103?104?105? ? ?? ?? ??(NEXT_BACKLOG?NEXT_PHASE???) ? ? ?? ?? ??(SPRINT 39 ??) ? ?? ?? ???. ?? ??. ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**작업 완료 시 서류 반영 (매번 필수)**  
-작업이 완료되면 서류에 **작업 완료**로 갱신한다. 구현/태스크 완료 턴에서 즉시: CURSOR_TASK_BOARD(완료 불릿·테이블 [x] 완료), CURRENT_TASK(본 파일 상단 근처 한 줄 [x] 완료), BTY_RELEASE_GATE_CHECK(Auth/리더보드/API 관련 시 해당 섹션 갱신).
+**[DOCS] splint 10 ?? (2026-03-10)**: SPRINT 38 ?? ???SPRINT 39 ??. ?? 5? = Release Gate 39???? 103?104?105??Center/Foundry ?????? ?? ????? ???. AUTO4_PROMPTS?NEXT_PHASE?NEXT_BACKLOG??? ??. First Task = TASK 1 (C5 Release Gate 39?). ?? ??.
 
-**[TEST] mentor route 에러·한계 케이스 테스트**: [x] **완료.** route.test.ts error and edge cases: empty string message→400, OPENAI not ok→200 usedFallback. 12 tests. npm test 통과. 보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (39? TASK 4)**: [x] **??.** Center PageClient ?? ??(ko) ? ?? ?? ????? CTA ?? aria-label. render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**[DOMAIN] LE stages 전이 규칙 단위 테스트 1건**: [x] **완료.** getNextStage full cycle 1→2→3→4→1 (valid contexts in order). stages.test.ts 9 tests. npm test 통과. 보드·CURRENT_TASK 반영.
+**[DOCS] C1 DOCS 2? (SPRINT 38 TASK 5?10) (2026-03-10)**: [x] **??.** ?? ?? ??(NEXT_BACKLOG?NEXT_PHASE??? ?? ??) ? Arena?Center?Foundry ?? ?? ???(??? ???). ?? ??. ???CURRENT_TASK ??.
 
-**[UI] Dojo 50 문항 로딩 스켈레톤**: [x] **완료.** DojoClient: 문항 fetch 중 진단 화면 구조 스켈레톤(헤더·진행바·문항 카드·5개 옵션·이전/다음)·aria-busy·aria-label. render-only. 보드·CURRENT_TASK 반영.
+**[DOCS] splint 10 ?? (2026-03-10)**: SPRINT 38 ?? 8/10 ??. ?? ? ? = TASK 5?10(C1)?. AUTO4_PROMPTS ??. C2?C3?C4?C5 ?? ?? Exit. ?? ??.
 
-**[API] dojo/questions GET 응답 타입 JSDoc**: [x] **완료.** GET /api/dojo/questions. DojoQuestionsGetResponse(questions·choiceValues)·DojoQuestionsErrorResponse export·@contract·@returns·satisfies. npm test 통과. 보드·CURRENT_TASK 반영.
+**[DOMAIN?TEST] SPRINT 38 TASK 8?9 (2026-03-10)**: [x] **??.** domain/rules/season.edges.test.ts ? arena/profile/route.test.ts. npm test 1178 ??. ???CURRENT_TASK ??.
 
-**[UI] Foundry 메인 접근성 보강**: [x] **완료.** bty/(protected)/page.client: main 랜드마크(id·aria-label·tabIndex -1), 스킵 링크(본문으로 건너뛰기), header/section/footer/nav aria-label, Arena CTA·기능 카드·리더보드 링크 aria-label. render-only. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 38? (SPRINT 38 TASK 1, 2026-03-10)**: [x] **??.** bty-release-gate.mdc A~F. A~E N/A ? F) Lint ? Test 159/1170 ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??. bty-release-gate.mdc A~F. A~E N/A ? F) Lint ? Test 159/1170 ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[TEST] POST /api/dojo/integrity/submit route 테스트**: [x] **완료.** dojo/integrity/submit/route.test.ts 추가. 401·400(invalid_body·missing_input·text_too_long)·200(submissionId)·submitIntegrity 인자·insert 실패(submissionId null). 7 tests. npm test 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (SPRINT 38 TASK 6, 2026-03-10)**: [x] **??.** ELITE_3RD_SPEC_AND_CHECKLIST.md 6??. Elite=Weekly XP???? ???. ?? API?UI, ?? API?UI, ?? ?? ??. **RESULT: PASS.** ???CURRENT_TASK??3 ??.
 
-**[VERIFY] Release Gate A~F — Foundry 21차**: [x] **완료.** bty-release-gate.mdc A~F 점검. A~E N/A/PASS · F) Lint ✓ Test 123/1015 ✓ Build ✓ (147 pages). RESULT: PASS. BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[DOMAIN?TEST] SPRINT 37 TASK 8?9 (2026-03-10)**: [x] **??.** domain/rules/level-tier.edges.test.ts ? arena/core-xp/route.test.ts. npm test 1170 ??. ???CURRENT_TASK ??.
 
-**[DOMAIN] dojo/integrity 경계 테스트**: [x] **완료.** validateIntegrityResponse return shape·empty choiceId·1/5000/5001 길이·error 집합·IntegritySubmitPayload(text only/choiceId only/both/empty/over max). 27 tests. npm test 통과. 보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (38? TASK 4)**: [x] **??.** Dojo ?? ??? ?????? ?? aria-label(retry?goToAssessment). render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**[API] mentor-request 응답 타입 JSDoc**: [x] **완료.** GET/POST /api/me/mentor-request. MentorRequestItem·MentorRequestGetResponse·MentorRequestPostResponse·MentorRequestErrorResponse export·@returns JSDoc·satisfies 반영. npm test 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 37? (SPRINT 37 TASK 1, 2026-03-10)**: [x] **??.** bty-release-gate.mdc A~F. A~E N/A ? F) Lint ? Test 157/1162 ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??. bty-release-gate.mdc A~F. A~E N/A ? F) Lint ? Test 157/1162 ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[UI] Dojo 결과 페이지 로딩·에러 보강**: [x] **완료.** DojoResultClient: sessionStorage 비동기 로딩·CardSkeleton 로딩 UI·파싱/형식 에러 시 role=alert·빈 결과 CTA. ko/en 메시지. render-only. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (SPRINT 37 TASK 6, 2026-03-10)**: [x] **??.** ELITE_3RD_SPEC_AND_CHECKLIST.md 6??. Elite=Weekly XP???? ???. ?? API?UI, ?? API?UI, ?? ?? ??. **RESULT: PASS.** ???CURRENT_TASK??3 ??.
 
-**[TEST] GET /api/dojo/submissions route 테스트**: [x] **완료.** 2026-03-09. submissions/route.test.ts 추가. 401·500(select 실패)·200(빈 배열)·200(행 구조 검증). 4 tests. npm test 통과. 보드·CURRENT_TASK 반영.
+**[DOCS] C1 DOCS 5? (SPRINT 38 TASK 2?3?5?7?10) (2026-03-10)**: [x] **??.** NEXT_PHASE?NEXT_BACKLOG ?? ??(??? ???38??100?101?102?) ? ?? ?? 100?101?102? ? ?? ?? ?? ? ? ?? ?? ??(SPRINT 38 ??) ? ?? ?? ???. ?? ??. ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[UI] Mentor 대화 이력 UI**: [x] **완료.** GET /api/me/conversations?channel=mentor&list=sessions 추가. MentorConversationHistory(날짜·주제 목록, CardSkeleton·EmptyState·에러). mentor 페이지 하단 통합. render-only. 보드·CURRENT_TASK 반영.
+**[DOCS] splint 10 ?? (2026-03-10)**: SPRINT 37 ?? ???SPRINT 38 ??. ?? 5? = Release Gate 38???? 100?101?102??Center/Foundry ?????? ?? ????? ???. AUTO4_PROMPTS?NEXT_PHASE?NEXT_BACKLOG??? ??. First Task = TASK 1 (C5 Release Gate 38?). ?? ??.
 
-**[API] Integrity 제출 서비스 계층**: [x] **완료.** 2026-03-09. integritySubmitService(validate→insert)·POST /api/dojo/integrity/submit thin route·integrity_submissions migration·foundry re-export. npm test 122/999. 보드·CURRENT_TASK 반영.
+**[DOCS] splint 10 ?? (2026-03-10)**: SPRINT 37 ?? 9/10 ??. ?? ? ? = TASK 4(C4)?. AUTO4_PROMPTS ??. C1?C2?C3?C5 ?? ?? Exit. ?? ??.
 
-**[DOCS] 스펙·로드맵 교차 참조 (2026-03-09)**: [x] **완료.** FOUNDRY_DOMAIN_SPEC에 로드맵 참조 1줄, FOUNDRY_ROADMAP에 스펙 참조 1줄 추가. 코드 없음. 보드·CURRENT_TASK 반영.
+**[DOCS] C1 DOCS 5? (SPRINT 37 TASK 2?3?5?7?10) (2026-03-10)**: [x] **??.** NEXT_PHASE?NEXT_BACKLOG ?? ??(??? ???37??97?98?99?) ? ?? ?? 97?98?99? ? ?? ?? ?? ? ? ?? ?? ??(SPRINT 37 ??) ? ?? ?? ???. ?? ??. ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[DOCS] MODE·다음 배치 갱신 (2026-03-09)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4 MODE FOUNDRY, 대기/다음 배치 = Foundry 신규 5건(Integrity 서비스·Mentor 이력 UI·dojo/submissions 테스트·Dojo 로딩·mentor-request JSDoc). CURRENT_TASK MODE FOUNDRY. 코드 없음.
+**[UI] Center/Foundry ?? ??? 1? (37? TASK 4)**: [x] **??.** Center PageClient ??(step 5) ?? ? ?? ?? ????? CTA ?? aria-label. render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 20차**: [x] **완료.** bty-release-gate.mdc A~F 점검. A~E N/A/PASS · F) Lint ✓ Test 122/998 ✓ Build ✓ (146 pages). RESULT: PASS. BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[DOCS] splint 10 ?? (2026-03-10)**: SPRINT 36 ?? ???SPRINT 37 ??. ?? 5? = Release Gate 37???? 97?98?99??Center/Foundry ?????? ?? ????? ???. AUTO4_PROMPTS?NEXT_PHASE?NEXT_BACKLOG??? ??. First Task = TASK 1 (C5 Release Gate 37?). ?? ??.
 
-**[TEST] Dojo submit API 테스트**: [x] **완료.** 2026-03-09. POST /api/dojo/submit route.test.ts 추가. 401/400( invalid_body·validation)/200·submitDojo50 호출·locale·insert 실패 케이스. 7 tests. npm test 122/998. 보드·CURRENT_TASK 반영.
+**[DOCS] splint 10 ?? (2026-03-10)**: SPRINT 36 ?? 8/10. ?? ? ? = TASK 8?9(C3)?. AUTO4_PROMPTS ?? ??.
 
-**C6 TASK QUEUE (latest Commander batch = SPRINT 42, 2026-03-11)**: 이번 런 표(CURSOR_TASK_BOARD) 기준 OWNER C6 행 없음 → **C6 TASK QUEUE empty.** Recorded once; stop.
+**[DOCS] splint 10 ?? (2026-03-10)**: SPRINT 36 ?? 8/10 ??. ?? ? ? = TASK 8?9(C3)?. AUTO4_PROMPTS ??. C1?C2?C4?C5 ?? ?? Exit. ?? ??.
 
-**[VERIFY] Release Gate A~F — Foundry 18차**: [x] **완료.** bty-release-gate.mdc A~F 점검. A~E N/A/PASS · F) Lint ✓ Test 121/991 ✓ Build ✓ (146 pages). RESULT: PASS. BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[DOMAIN?TEST] SPRINT 36 TASK 8?9 (2026-03-10)**: [x] **??.** domain/rules/leaderboardTieBreak.edges.test.ts ? arena/leadership-engine/transition/route.test.ts. npm test 1162 ??. ???CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F — Foundry 17차**: [x] **완료.** bty-release-gate.mdc A~F 점검. A~E N/A/PASS · F) Lint ✓ Test 121/984 ✓ Build ✓ (146 pages). RESULT: PASS. BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F ? Foundry 36? (SPRINT 36 TASK 1, 2026-03-10)**: [x] **??.** bty-release-gate.mdc A~F. A~E N/A ? F) Lint ? Test 155/1154 ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F 1회 — Foundry 16차**: [x] **완료.** bty-release-gate.mdc A~F 점검. A~E N/A/PASS · F) Lint ✓ Test 121/972 ✓ Build ✓. RESULT: PASS. BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? (SPRINT 36 TASK 6, 2026-03-10)**: [x] **??.** ELITE_3RD_SPEC_AND_CHECKLIST.md 6??. Elite=Weekly XP???? ???. ?? API?UI, ?? API?UI, ?? ?? ??. **RESULT: PASS.** ???CURRENT_TASK??3 ??.
 
-**[DOMAIN] Center 추가 단위 테스트**: [x] **완료.** assessment.test.ts: validateAssessmentAnswers 문자열 값 거부. paths.test.ts: getCenterCtaHref("") → "//bty". npm test 통과. 보드·CURRENT_TASK 반영.
-**[API] Assessment 제출 API 정리**: [x] **완료.** assessment/submit·submissions에서 getLetterAuth 사용, try/catch·logApiError 통일. thin handler 유지. 보드·CURRENT_TASK 반영.
+**[DOCS] splint 10 ?? (2026-03-10)**: SPRINT 35 ?? ???SPRINT 36 ??. ?? 5? = Release Gate 36???? 94?95?96??Center/Foundry ?????? ?? ????? ???. AUTO4_PROMPTS?NEXT_PHASE?NEXT_BACKLOG??? ??. First Task = TASK 1 (C5 Release Gate 36?). ?? ??.
 
-**[API] Center/Dear Me letter API 중복 정리**: [x] **완료.** getLetterAuth 공통화(lib/bty/center/letterAuth.ts). api/center/letter·api/dear-me/letter·api/dear-me/letters에서 사용. dear-me/letter 로깅 logApiError 통일. API thin handler 유지. 보드·CURRENT_TASK 반영.
+**[UI] Center/Foundry ?? ??? 1? (36? TASK 4)**: [x] **??.** Dojo ?? ??? '?? ????' ?? aria-label. render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**[UI] Dear Me 접근성 보강**: [x] **완료.** DearMeClient: main aria-label(나에게 쓰는 편지/Letter to yourself), footer Link aria-label(Center로 가기/Go to Center). render-only. 보드·CURRENT_TASK 반영.
-**[UI] Center·Dear Me loading.tsx 추가**: [x] **완료.** center/loading.tsx·dear-me/loading.tsx 래퍼에 aria-busy="true", aria-label="Loading…" 추가. LoadingFallback 유지. 보드·CURRENT_TASK 반영.
+**[DOCS] C1 DOCS 5? (SPRINT 36 TASK 2?3?5?7?10) (2026-03-10)**: [x] **??.** NEXT_PHASE?NEXT_BACKLOG ?? ??(??? ???36??94?95?96?) ? ?? ?? 94?95?96? ? ?? ?? ?? ? ? ?? ?? ??(SPRINT 36 ??) ? ?? ?? ???. ?? ??. ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[DOMAIN] Center resilience 단위 테스트 보강**: [x] **완료.** energyToLevel(3.5)→mid, periodDays > date span 시 전체 엔트리 반환. domain/center/resilience*.test.ts. 보드·BTY_RELEASE_GATE_CHECK 반영.
-**[API] Center service 계층 생성**: [x] **완료.** lib/bty/center/index.ts 추가(resilience·letter·assessment 재export). API 6곳 @/lib/bty/center 사용. 보드·BTY_RELEASE_GATE_CHECK 반영.
+**[DOCS] C1 DOCS 5? (SPRINT 35 TASK 2?3?5?7?10) (2026-03-10)**: [x] **??.** NEXT_PHASE?NEXT_BACKLOG ?? ??(??? ???35??91?92?93?) ? ?? ?? 91?92?93? ? ?? ?? ?? ? ? ?? ?? ?? ? ?? ?? ???. ?? ??. ???CURRENT_TASK ??.
+
+**[VERIFY] Release Gate A~F ? Foundry 35? (SPRINT 35 TASK 1, 2026-03-10)**: [x] **??.** bty-release-gate.mdc A~F. A~E N/A ? F) Lint ? Test 153/1147 ? Build ?. **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
+
+**[VERIFY] ??? 3? ????? 1? (SPRINT 35 TASK 6, 2026-03-10)**: [x] **??.** ELITE_3RD_SPEC_AND_CHECKLIST.md 6??. Elite=Weekly XP???? ???. ?? API?UI, ?? API?UI, ?? ?? ??. **RESULT: PASS.** ???CURRENT_TASK??3 ??.
+
+**[UI] Center/Foundry ?? ??? 1? (35? TASK 4)**: [x] **??.** Dear Me ?? ?? aria-label(t.submitLetter). render-only. npm run lint ??. ???CURRENT_TASK ??.
+
+**[UI] Center/Foundry ?? ??? 1? (34? TASK 4)**: [x] **??.** Mentor ?? ?? ?? ? role="group", aria-label(??? ??/Message input), input?????? ?? ?? aria-label. render-only. npm run lint ??. ???CURRENT_TASK ??.
+
+**[DOMAIN?TEST] SPRINT 35 TASK 8?9 (2026-03-10)**: [x] **??.** domain/leadership-engine/air.edges.test.ts ? arena/leadership-engine/air/route.test.ts. npm test 1154 ??. ???CURRENT_TASK ??.
+
+**[DOCS] C1 DOCS 5? (SPRINT 34 TASK 2?3?5?7?10) (2026-03-10)**: [x] **??.** NEXT_PHASE?NEXT_BACKLOG ?? ??(??? ?? ??) ? ?? ?? 88?89?90?(???BTY_RELEASE_GATE_CHECK ??) ? ?? ?? ?? ? ? ?? ?? ??(SPRINT 34 ??) ? ?? ?? ???. ?? ??. ???CURRENT_TASK ??.
+
+**[DOCS] splint 10 ?? (2026-03-10)**: SPRINT 33 ?? ???SPRINT 34 ??. ?? 5? = Release Gate 34???? 88?89?90??Center/Foundry ?????? ?? ????? ???. AUTO4_PROMPTS?NEXT_PHASE?NEXT_BACKLOG??? ??. First Task = TASK 1 (C5 Release Gate 34?). ?? ??.
+
+**[DOCS] C1 TASK 2?5 (SPRINT 33) (2026-03-10)**: [x] **??.** NEXT_PHASE?NEXT_BACKLOG ?? ??(??? ?? ??) ? ?? ?? ??(NEXT_BACKLOG?NEXT_PHASE??? ??). ?? ??. ???CURRENT_TASK ??.
+
+**[DOCS] splint 10 ?? (2026-03-10)**: SPRINT 33 ?? 8/10 ??. ?? ? ? = TASK 2?5(C1)?. AUTO4_PROMPTS C1? TASK 2?5 ???C2/C3/C4/C5 ?? ?? Exit. ?? ? ?? ???BTY_RELEASE_GATE_CHECK ??.
+
+**[DOCS] C1 DOCS 5? (SPRINT 33 TASK 2?3?5?7?10) (2026-03-10)**: [x] **??.** NEXT_PHASE?NEXT_BACKLOG ?? ??(??? ?? ??) ? ?? ?? 85?86?87?(???BTY_RELEASE_GATE_CHECK ??) ? ?? ?? ?? ? ? ?? ?? ?? ? ?? ?? ???. ?? ??. ???CURRENT_TASK ??.
+
+**[DOMAIN?TEST] SPRINT 33 TASK 8?9 (2026-03-10)**: [x] **??.** domain/rules/leaderboard.edges.test.ts ? arena/leadership-engine/state/route.test.ts. npm test 1139 ??. ???CURRENT_TASK ??.
+
+**[DOCS] splint 10 ?? (2026-03-10)**: SPRINT 32 ?? 10/10 ??. ?? ? ? SPRINT 33 ??. ?? 5? = Release Gate 33???? 85?86?87??Center/Foundry ?????? ?? ????? ???. AUTO4_PROMPTS?NEXT_PHASE?NEXT_BACKLOG????? ?? ?? ??. ?? ??.
+
+**[UI] Center/Foundry ?? ??? 1? (33? TASK 4)**: [x] **??.** Integrity ??(guide) ?? ? role="region", aria-labelledby="integrity-guide-heading", h1 id, ?? Foundry ?? aria-label. render-only. ???CURRENT_TASK ??.
+
+**[DOCS] splint 10 ?? (2026-03-10)**: SPRINT 32 ?? 8/10 ??. TASK 4 ? [x] ??. ?? ? ? = TASK 8?9(C3)?. AUTO4_PROMPTS C3? ???C1/C2/C4/C5 ?? ?? Exit. ?? ? ?? ???BTY_RELEASE_GATE_CHECK ??.
+
+**[DOMAIN?TEST] TASK 8?9 ?? (2026-03-10)**: [x] **??.** domain/leadership-engine/certified.edges.test.ts ? arena/leadership-engine/certified/route.test.ts. npm test 1132 ??. ???CURRENT_TASK ??.
+
+**[DOCS] C1 DOCS 5? (SPRINT 32 TASK 2?3?5?7?10) (2026-03-10)**: [x] **??.** NEXT_PHASE?NEXT_BACKLOG ?? ??(??? ?? ??) ? ?? ?? 82?83?84?(???BTY_RELEASE_GATE_CHECK ??) ? ?? ?? ?? ? ? ?? ?? ?? ? ?? ?? ???. ?? ??. ???CURRENT_TASK ??.
+
+**[DOMAIN?TEST] SPRINT 32 TASK 8?9 (2026-03-10)**: [x] **??.** domain/dojo/questions.edges.test.ts ? me/conversation-preferences/route.test.ts. npm test 1125 ??. ???CURRENT_TASK ??.
+
+**[UI] Center/Foundry ?? ??? 1? (32? TASK 4)**: [x] **??.** Mentor ?? ?? ?? ? role="region", aria-labelledby="mentor-conversation-ended-heading", p id, ?? ???Foundry aria-label. render-only. ???CURRENT_TASK ??.
+
+**[DOCS] splint 10 ?? (2026-03-10)**: SPRINT 32 ??. TASK 1~10 ?? [ ]. ?? ? ? = SPRINT 32 TASK 1~10 ???. AUTO4_PROMPTS ?? ??. ???? ?? ?? ?? SPRINT 32 ??.
+
+**[DOCS] splint 10 ?? (2026-03-10)**: SPRINT 31 ?? 10/10 ??. ?? ? ? SPRINT 32 ??. ?? 5? = Release Gate 32???? 82?83?84??Center/Foundry ?????? ?? ????? ???. AUTO4_PROMPTS?NEXT_PHASE?NEXT_BACKLOG????? ?? ?? ??. ?? ??.
+
+**[DOCS] splint 10 ?? ?? ??? (2026-03-10)**: NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4??? ?? 5? ?? ??. ?? "?? 5?" ???? Center/Foundry ??? ?? ?? ?? ? ??? ?? 5? ??. ?? ??.
+
+**[DOMAIN?TEST] SPRINT 31 TASK 8?9 (2026-03-10)**: [x] **??.** domain/center/paths.edges.test.ts ? me/region/route.test.ts. npm test 1116 ??. ???CURRENT_TASK ??.
+
+**[DOMAIN?TEST] SPRINT 30 TASK 8?9 (2026-03-10)**: [x] **??.** domain/center/assessment.edges.test.ts ? me/access/route.test.ts. npm test 1109 ??. ???CURRENT_TASK ??.
+
+**[DOMAIN?TEST] SPRINT 29 TASK 8?9 (2026-03-10)**: [x] **??.** domain/dojo/integrity/index.test.ts ? me/elite/route.test.ts. npm test 1100 ??. ???CURRENT_TASK ??.
+
+**[DOCS] ?? splint 10 (2026-03-10)**: NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4??? ?? 5? ???. ??? ??(Release Gate 29???? 73?74?75??Center/Foundry ?????? ?? ????? ???). ?? ??. ?? ??.
+
+**[DOCS] splint 10 ?? (2026-03-10)**: SPRINT 29 ?? 10/10 ??. ?? ? ? SPRINT 30 ??. ?? 5? = Release Gate 30???? 76?77?78??Center/Foundry ?????? ?? ????? ???. AUTO4_PROMPTS?NEXT_PHASE?NEXT_BACKLOG????? ?? ?? ??. ?? ??.
+
+**[DOCS] splint 10 ?? (2026-03-10)**: SPRINT 30 ?? 10/10 ??. ?? ? ? SPRINT 31 ??. ?? 5? = Release Gate 31???? 79?80?81??Center/Foundry ?????? ?? ????? ???. AUTO4_PROMPTS?NEXT_PHASE?NEXT_BACKLOG????? ?? ?? ??. ?? ??.
+
+**[DOCS] C1 DOCS (SPRINT 31 TASK 2?3) (2026-03-10)**: [x] **??.** NEXT_PHASE?NEXT_BACKLOG ?? ??(??? ??) ? ?? ?? 79?80?81?(???BTY_RELEASE_GATE_CHECK ??). ?? ??. ???CURRENT_TASK ??.
+
+**[DOCS] Arena?Center?Foundry ?? ?? ??? (SPRINT 31 TASK 10) (2026-03-10)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4??? ?? 5? ?? ??. ?? "?? 5?" ?? ??? ?? ?? ?? ? ??? ??. ?? ??. ???CURRENT_TASK ??.
+
+**[DOCS] CURSOR_TASK_BOARD ? ?? ?? ?? (SPRINT 31 TASK 7) (2026-03-10)**: [x] **??.** ? "?? ?? (?? ??)" ?? ??(TASK 2?3?5?6 ??)??? ?????? ??. ?? ??. ???CURRENT_TASK ??.
+
+**[DOCS] C1 DOCS 5? (SPRINT 30 TASK 2?3?5?7?10) (2026-03-10)**: [x] **??.** NEXT_PHASE?NEXT_BACKLOG ?? ?? ? ?? ?? 76?77?78? ? ?? ?? ?? ? ? ?? ?? ?? ? ?? ?? ???. NEXT_PHASE?NEXT_BACKLOG??? ??. BTY_RELEASE_GATE_CHECK ?? 76?77?78? ??. ?? ??. ???CURRENT_TASK ??.
+
+**?? 4?? ?? ?? ??**: **`docs/CURSORS_PARALLEL_TASK_LIST.md`** ? Cursor 1?2?3?4? ? ????? ??????? ? ?? ???? ??? ???? ??. ???? ?? ???? ????? ??? ? Cursor? ??? ?? ?? ??.
+
+**MODE: FOUNDRY** ? next / auto / SPRINT ? **Foundry** ?? ??? ??. (?? ???)
+
+**[UI] Center/Foundry ?? ??? 1? (30? TASK 4)**: [x] **??.** PageClient Center "?? ??"(step 4) ? role="region", aria-labelledby="center-reply-heading", h2 id, ?? ?? aria-label. render-only. npm run lint ??. ???CURRENT_TASK ??.
+
+**?? 10? READY (SPRINT 33).** C1?C5?? ??? ? ????? ????? **`docs/agent-runtime/AUTO4_PROMPTS.md`** ??. ?? "?? ?" ?? ????.
+
+**[VERIFY] Release Gate A~F ? Foundry 33? (2026-03-10, SPRINT 33 TASK 1)**: [x] **??.** bty-release-gate.mdc A~F ??. A~E N/A/PASS ? F) Lint ? Test 149/1132 ? Build ? (147 pages). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
+
+**[VERIFY] ??? 3? ????? 1? (2026-03-10, 33? SPRINT 33 TASK 6)**: [x] **??.** ELITE_3RD_SPEC_AND_CHECKLIST.md ?? 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ???CURRENT_TASK??3 ??.
+
+**[VERIFY] Release Gate A~F ? Foundry 31? (2026-03-10, SPRINT 31 TASK 1)**: [x] **??.** bty-release-gate.mdc A~F ??. A~E N/A/PASS ? F) Lint ? Test 143/1109 ? Build ? (147 pages). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
+
+**[VERIFY] ??? 3? ????? 1? (2026-03-10, 31? SPRINT 31 TASK 6)**: [x] **??.** ELITE_3RD_SPEC_AND_CHECKLIST.md ?? 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ???CURRENT_TASK??3 ??.
+
+**[VERIFY] Release Gate A~F ? Foundry 30? (2026-03-10, SPRINT 30 TASK 1)**: [x] **??.** bty-release-gate.mdc A~F ??. A~E N/A/PASS ? F) Lint ? Test 141/1100 ? Build ? (147 pages). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
+
+**[VERIFY] ??? 3? ????? 1? (2026-03-10, 30? SPRINT 30 TASK 6)**: [x] **??.** ELITE_3RD_SPEC_AND_CHECKLIST.md ?? 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ???CURRENT_TASK??3 ??.
+
+**[VERIFY] Release Gate A~F ? Foundry 29? (2026-03-10, SPRINT 29 TASK 1)**: [x] **??.** bty-release-gate.mdc A~F ??. A~E N/A/PASS ? F) Lint ? Test 139/1094 ? Build ? (147 pages). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
+
+**[VERIFY] ??? 3? ????? 1? (2026-03-10, 29? SPRINT 29 TASK 6)**: [x] **??.** ELITE_3RD_SPEC_AND_CHECKLIST.md ?? 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ???CURRENT_TASK??3 ??.
+
+**[UI] Center/Foundry ?? ??? 1? (29? TASK 4)**: [x] **??.** Elite ??? ? role="main", aria-labelledby="elite-page-heading", h1 id, ?? aria-label. render-only. npm run lint ??. ???CURRENT_TASK ??.
+
+**[DOMAIN] Center/Foundry ??? ?? ??? 1? (2026-03-10, SPRINT 29 TASK 8)**: [x] **??.** domain/dojo/integrity/index.test.ts ??. re-export INTEGRITY_MAX_TEXT_LENGTH?validateIntegrityResponse??? 3 tests. npm test 1100 ??. ???CURRENT_TASK ??.
+
+**[TEST] Center/Foundry route ??? 1? (2026-03-10, SPRINT 29 TASK 9)**: [x] **??.** GET /api/me/elite 401?200. me/elite/route.test.ts 3 tests. npm test 1100 ??. ???CURRENT_TASK ??.
+
+**[DOCS] NEXT_PHASE?NEXT_BACKLOG ?? ?? (2026-03-10, SPRINT 29 TASK 2)**: [x] **??.** SPRINT 28 ?? ??. ?? 5? = Release Gate 29???? 73?74?75??Center/Foundry ?????? ?? ????? ???. NEXT_PHASE?NEXT_BACKLOG??? ???. splint 10 ? ?????? ?? ??. ?? ??. ?? TASK 2 ??.
+
+**[DOCS] ?? ?? 73?74?75? (2026-03-10, SPRINT 29 TASK 3)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4????BTY_RELEASE_GATE_CHECK 2~3? ?????. ?? ??. ?? TASK 3?CURRENT_TASK ??.
+
+**[DOCS] ?? ?? ?? (??) (2026-03-10, SPRINT 29 TASK 5)**: [x] **??.** NEXT_BACKLOG_AUTO4?NEXT_PHASE_AUTO4 ?? ??. ?? ?? ?? = NEXT_PHASE ?? 5?. ?? ???. ?? ??. ?? TASK 5 ??.
+
+**[DOCS] CURSOR_TASK_BOARD ? ?? ?? ?? (2026-03-10, SPRINT 29 TASK 7)**: [x] **??.** ? "?? ?? (?? ??)" SPRINT 29 ?? ?? ????? ?????? ??. C1 DOCS 5? ??. ?? ??. ?? TASK 7 ??.
+
+**[DOCS] Arena?Center?Foundry ?? ?? ??? (2026-03-10, SPRINT 29 TASK 10)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4??? ?? ? ?? ?????. MODE FOUNDRY. ??? ???. ?? ??. ?? TASK 10 ??.
+
+**splint 10 ?? (2026-03-10)**: SPRINT 28 10/10 [x] ??. ?? ? ? SPRINT 29 ??. ?? 5? = Release Gate 29???? 73?74?75??Center/Foundry ?????? ?? ????? ???. AUTO4_PROMPTS?NEXT_PHASE?NEXT_BACKLOG?? ?? ?? ??.
+
+**C1 SPRINT 29 (2026-03-10 ? MODE FOUNDRY)**: [ ] **SPRINT READY.** 10 tasks. C1?C5 ?? = **docs/agent-runtime/AUTO4_PROMPTS.md**. ?? 5? = Release Gate 29???? 73?74?75??Center/Foundry ?????? ?? ????? ???.
+
+**C1 SPRINT 28 (2026-03-10 ? MODE FOUNDRY)**: [x] **?? ??.** TASK 1~10 ?? ??. Lint ? Test 137/1087 ? Build ?.
+
+**C1 DOCS 5? (2026-03-10, SPRINT 28 TASK 2?3?5?7?10)**: [x] **??.** (1) ?? ?? (2) ?? ?? 70?71?72? (3) ?? ?? ?? (4) ? ?? ?? ?? (5) ?? ?? ???. ?? [x]?NEXT_PHASE?NEXT_BACKLOG?BTY_RELEASE_GATE_CHECK ??. **SPRINT 28 ?? ??.**
+
+**[DOMAIN] Center/Foundry ??? ?? ??? 1? (2026-03-10, SPRINT 28 TASK 8)**: [x] **??.** domain/dojo/integrity/types.test.ts ??. INTEGRITY_MAX_TEXT_LENGTH?IntegritySubmitPayload?IntegrityScenario?IntegritySubmission 4 tests. npm test 1094 ??. ???CURRENT_TASK ??.
+
+**[TEST] Center/Foundry route ??? 1? (2026-03-10, SPRINT 28 TASK 9)**: [x] **??.** GET /api/me/conversations 401?400?200. me/conversations/route.test.ts 3 tests. npm test 1094 ??. ???CURRENT_TASK ??.
+
+**[UI] Center/Foundry ?? ??? 1? (28? TASK 4)**: [x] **??.** Mentor ?? ? ?? ?? role="region"?aria-label, ?? ?? ????? ?? ???safety valve Center ?? aria-label. render-only. npm run lint ??. ???CURRENT_TASK ??.
+
+**[DOCS] NEXT_PHASE?NEXT_BACKLOG ?? ?? (2026-03-10, SPRINT 28 TASK 2)**: [x] **??.** SPRINT 27 ?? ??. ?? 5? = Release Gate 28???? 70?71?72??Center/Foundry ?????? ?? ????? ???. NEXT_PHASE?NEXT_BACKLOG??? ???. splint 10 ? ?????? ?? ??. ?? ??. ?? TASK 2 ??.
+
+**[DOCS] ?? ?? 70?71?72? (2026-03-10, SPRINT 28 TASK 3)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4????BTY_RELEASE_GATE_CHECK 2~3? ?????. ?? ??. ?? TASK 3?CURRENT_TASK ??.
+
+**[DOCS] ?? ?? ?? (??) (2026-03-10, SPRINT 28 TASK 5)**: [x] **??.** NEXT_BACKLOG_AUTO4?NEXT_PHASE_AUTO4 ?? ??. ?? ?? ?? = NEXT_PHASE ?? 5?. ?? ???. ?? ??. ?? TASK 5 ??.
+
+**[DOCS] CURSOR_TASK_BOARD ? ?? ?? ?? (2026-03-10, SPRINT 28 TASK 7)**: [x] **??.** ? "?? ?? (?? ??)" SPRINT 28 ?? ?? ????? ?????? ??. C1 DOCS 5? ??. ?? ??. ?? TASK 7 ??.
+
+**[DOCS] Arena?Center?Foundry ?? ?? ??? (2026-03-10, SPRINT 28 TASK 10)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4??? ?? ? ?? ?????. MODE FOUNDRY. ??? ???. ?? ??. ?? TASK 10 ??.
+
+**[VERIFY] Release Gate A~F ? Foundry 28? (2026-03-10, SPRINT 28 TASK 1)**: [x] **??.** bty-release-gate.mdc A~F ??. A~E N/A/PASS ? F) Lint ? Test 137/1087 ? Build ? (147 pages). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
+
+**[VERIFY] ??? 3? ????? 1? (2026-03-10, 28? SPRINT 28 TASK 6)**: [x] **??.** ELITE_3RD_SPEC_AND_CHECKLIST.md ?? 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ???CURRENT_TASK??3 ??.
+
+**[DOMAIN] Center/Foundry ??? ?? ??? 1? (2026-03-10, SPRINT 27 TASK 8)**: [x] **??.** lib/bty/center/index.test.ts ??. re-export hub getLetterAuth?resilience?letter?assessment 4 tests. npm test 1087 ??. ???CURRENT_TASK ??.
+
+**[TEST] Center/Foundry route ??? 1? (2026-03-10, SPRINT 27 TASK 9)**: [x] **??.** GET /api/dojo/questions 500?200. dojo/questions/route.test.ts 3 tests. npm test 1087 ??. ???CURRENT_TASK ??.
+
+**[VERIFY] Release Gate A~F ? Foundry 27? (2026-03-10, SPRINT 27 TASK 1)**: [x] **??.** bty-release-gate.mdc A~F ??. A~E N/A/PASS ? F) Lint ? Test 135/1080 ? Build ? (147 pages). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
+
+**[VERIFY] ??? 3? ????? 1? (2026-03-10, 27? SPRINT 27 TASK 6)**: [x] **??.** ELITE_3RD_SPEC_AND_CHECKLIST.md ?? 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ???CURRENT_TASK??3 ??.
+
+**[DOCS] NEXT_PHASE?NEXT_BACKLOG ?? ?? (2026-03-10, SPRINT 27 TASK 2)**: [x] **??.** SPRINT 26 ?? ??. ?? 5? = Release Gate 27???? 67?68?69??Center ?????? ?? ????? ???. NEXT_PHASE?NEXT_BACKLOG??? ???. splint 10 ? ?????? ?? ??. ?? ??. ?? TASK 2 ??.
+
+**[DOCS] ?? ?? 67?68?69? (2026-03-10, SPRINT 27 TASK 3)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4????BTY_RELEASE_GATE_CHECK 2~3? ?????. ?? ??. ?? TASK 3?CURRENT_TASK ??.
+
+**[DOCS] ?? ?? ?? (??) (2026-03-10, SPRINT 27 TASK 5)**: [x] **??.** NEXT_BACKLOG_AUTO4?NEXT_PHASE_AUTO4 ?? ??. ?? ?? ?? = NEXT_PHASE ?? 5?. ?? ???. ?? ??. ?? TASK 5 ??.
+
+**[DOCS] CURSOR_TASK_BOARD ? ?? ?? ?? (2026-03-10, SPRINT 27 TASK 7)**: [x] **??.** ? "?? ?? (?? ??)" SPRINT 27 ?? ?? ????? ?????? ??. C1 DOCS 5? ??. ?? ??. ?? TASK 7 ??.
+
+**[DOCS] Arena?Center?Foundry ?? ?? ??? (2026-03-10, SPRINT 27 TASK 10)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4??? ?? ? ?? ?????. MODE FOUNDRY. ??? ???. ?? ??. ?? TASK 10 ??.
+
+**splint 10 ?? (2026-03-10)**: SPRINT 27 10/10 ?? ??(?? TASK 1?8?9 [x] ???). ?? ? ? SPRINT 28 ??. ?? 5? = Release Gate 28???? 70?71?72??Center/Foundry ?????? ?? ????? ???. AUTO4_PROMPTS?NEXT_PHASE?NEXT_BACKLOG?? ?? ?? ??.
+
+**?? 10? READY (SPRINT 28).** C1?C5 ?? = **docs/agent-runtime/AUTO4_PROMPTS.md**. ?? "?? ?" SPRINT 28? ????.
+
+**C1 SPRINT 28 (2026-03-10 ? MODE FOUNDRY)**: [ ] **SPRINT READY.** 10 tasks. ?? 5? = Release Gate 28???? 70?71?72??Center/Foundry ?????? ?? ????? ???.
+
+**C1 SPRINT 27 (2026-03-10 ? MODE FOUNDRY)**: [x] **?? ??.** TASK 1~10 ?? ??. Lint ? Test 135/1080 ? Build ?.
+
+**C1 SPRINT 26 (2026-03-10 ? MODE FOUNDRY)**: [x] **?? ??.** TASK 1~10 ?? ??. Lint ? Test 133/1080 ? Build ?.
+
+**[DOCS] NEXT_PHASE?NEXT_BACKLOG ?? ?? (2026-03-10, SPRINT 24 TASK 2)**: [x] **??.** SPRINT 23 ?? ??. ?? 5? = Release Gate 24???? 58?59?60??Foundry ?????? ?? ????? ???. NEXT_PHASE?NEXT_BACKLOG??? ???. ?? ??. ?? TASK 2 ??.
+
+**[DOCS] ?? ?? 58?59?60? (2026-03-10, SPRINT 24 TASK 3)**: [x] **??.** NEXT_PHASE?NEXT_BACKLOG????BTY_RELEASE_GATE_CHECK ?????. ???? ?? ?? ???[DOMAIN] Center/Foundry ??? ?? ??. ?? ??. ?? TASK 3 ??.
+
+**[DOCS] ?? ?? ?? (??) (2026-03-10, SPRINT 24 TASK 5)**: [x] **??.** NEXT_BACKLOG?NEXT_PHASE ?? ??. ?? ?? ?? = ?? 5? ???. ?? ???. ?? ??. ?? TASK 5 ??.
+
+**[DOCS] CURSOR_TASK_BOARD ? ?? ?? ?? (2026-03-10, SPRINT 24 TASK 7)**: [x] **??.** ? "?? ?? (?? ??)" ?? ????? ?? ?????? ??. TASK 2?3?5 ?? ??. ?? ??. ?? TASK 7 ??.
+
+**[DOCS] Arena?Center?Foundry ?? ?? ??? (2026-03-10, SPRINT 24 TASK 10)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4??? ?? ? ?? ?????. MODE FOUNDRY. ??? ???. ?? ??. ?? TASK 10 ??.
+
+**[DOMAIN] Center/Foundry ??? ?? ??? 1? (2026-03-10, SPRINT 24 TASK 8)**: [x] **??.** lib/bty/foundry/integritySubmitService.test.ts ??. submitIntegrity missing_input????????insert ?? 4 tests. npm test 1064 ??. ???CURRENT_TASK ??.
+
+**[TEST] Center/Foundry route ??? 1? (2026-03-10, SPRINT 24 TASK 9)**: [x] **??.** POST /api/center/letter 401?400?500?200. center/letter/route.test.ts 4 tests. npm test 1064 ??. ???CURRENT_TASK ??.
+
+**[VERIFY] Release Gate A~F ? Foundry 24? (2026-03-10, SPRINT 24 TASK 1)**: [x] **??.** bty-release-gate.mdc A~F ??. A~E N/A/PASS ? F) Lint ? Test 129/1056 ? Build ? (147 pages). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
+
+**[VERIFY] ??? 3? ????? 1? (2026-03-10, 24? SPRINT 24 TASK 6)**: [x] **??.** ELITE_3RD_SPEC_AND_CHECKLIST.md ?? 6?? ??. Elite=Weekly XP???? ???. **RESULT: PASS.** ???CURRENT_TASK??3 ??.
+
+**C1 SPRINT 24 (2026-03-10 ? MODE FOUNDRY)**: [x] **?? ??.** TASK 1~10 ?? ??. Lint ? Test 129/1064 ? Build ?.
+
+**[UI] Foundry ?? ??? 1?**: [x] **??.** Integrity ??(done) ?? ? role="region", aria-labelledby="integrity-done-heading", h2 id, ?? aria-label. render-only. ???CURRENT_TASK ??.
+
+**C1 SPRINT 23 (2026-03-10 ? MODE FOUNDRY)**: [x] **?? ??.** TASK 1~10 ?? ??. Lint ? Test 126/1045 ? Build ?.
+
+**[VERIFY] Release Gate A~F ? Foundry 23? (2026-03-10, SPRINT 23 TASK 1)**: [x] **??.** bty-release-gate.mdc A~F ??. A~E N/A/PASS ? F) Lint ? Test 126/1045 ? Build ? (147 pages). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
+
+**[VERIFY] ??? 3? ????? 1? (2026-03-10, 23? SPRINT 23 TASK 6)**: [x] **??.** ELITE_3RD_SPEC_AND_CHECKLIST.md ?? 6?? ??. Elite=Weekly XP???? ???. ?? API?UI, ?? API?UI, ?? ?? ??. **RESULT: PASS.** ???CURRENT_TASK??3 ??.
+
+**[DOMAIN] Center/Foundry ??? ?? ??? 1? (2026-03-10, SPRINT 23 TASK 8)**: [x] **??.** lib/bty/center/letterAuth.test.ts ??. getLetterAuth null?user.id ???{ supabase, userId } 3 tests. npm test 1056 ??. ???CURRENT_TASK ??.
+
+**[TEST] Center/dear-me route ??? 1? (2026-03-10, SPRINT 23 TASK 9)**: [x] **??.** POST /api/dear-me/letter(401?400?200), GET /api/dear-me/letters(401?500?200). letter/route.test.ts?letters/route.test.ts 8 tests. npm test 1056 ??. ???CURRENT_TASK ??.
+
+**[DOCS] NEXT_PHASE?NEXT_BACKLOG ?? ?? (2026-03-10, SPRINT 23 TASK 2)**: [x] **??.** SPRINT 22 ?? ??. ?? 5? = Release Gate 23???? 55?56?57??Center ?????? ?? ????? ???. NEXT_PHASE?NEXT_BACKLOG??? ???. ?? ??. ?? TASK 2 ??.
+
+**[DOCS] ?? ?? 55?56?57? (2026-03-10, SPRINT 23 TASK 3)**: [x] **??.** NEXT_PHASE?NEXT_BACKLOG????BTY_RELEASE_GATE_CHECK ?????. ???? ?? ?? ???[DOMAIN] Center/Foundry ??? ?? ??. ?? ??. ?? TASK 3 ??.
+
+**[DOCS] ?? ?? ?? (??) (2026-03-10, SPRINT 23 TASK 5)**: [x] **??.** NEXT_BACKLOG?NEXT_PHASE ?? ??. ?? ?? ?? = ?? 5? ???. ?? ???. ?? ??. ?? TASK 5 ??.
+
+**[DOCS] CURSOR_TASK_BOARD ? ?? ?? ?? (2026-03-10, SPRINT 23 TASK 7)**: [x] **??.** ? "?? ?? (?? ??)" ?? ????? ?? ?????? ??. TASK 2?3?5 ?? ??. ?? ??. ?? TASK 7 ??.
+
+**[DOCS] Arena?Center?Foundry ?? ?? ??? (2026-03-10, SPRINT 23 TASK 10)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4??? ?? ? ?? ?????. MODE FOUNDRY. ??? ???. ?? ??. ?? TASK 10 ??.
+
+**[DOCS] ?? ?? ?? (??) (2026-03-10)**: [x] **??.** NEXT_BACKLOG ?? ?? ?? = NEXT_PHASE ?? 5?? ???(?? ?? 52?53?54 ???assessment API JSDoc ??). ?? ??. ?? TASK 6 ??.
+
+**[DOMAIN] Center/Foundry ?? ?? ??? 1? (2026-03-10)**: [x] **??.** domain/dojo/flow.edges.test.ts ??. validateDojo50Submit?computeDojo50Result?validateIntegritySubmit ?? 14 tests. npm test 1045 ??. ???CURRENT_TASK ??.
+
+**[API] assessment API ?? ?? JSDoc (2026-03-10)**: [x] **??.** GET /api/assessment/submissions: AssessmentSubmissionsGetResponse?AssessmentSubmissionsErrorResponse, @contract?@returns?satisfies. POST /api/assessment/submit: AssessmentSubmitPostResponse?AssessmentSubmitErrorResponse, @contract?@returns?satisfies. npm test ??. ???CURRENT_TASK ??.
+
+**[VERIFY] ??? 3? ????? 1? (2026-03-10, 22?)**: [x] **??.** ELITE_3RD_SPEC_AND_CHECKLIST.md ?? 6?? ??. ?? API?UI, ?? ?? API?UI, ?? ??(Elite=Weekly XP???? ???), ?? ?? ??. **RESULT: PASS.** ELITE_3RD ?3?BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
+
+**[VERIFY] Release Gate A~F ? Foundry 22? (2026-03-10)**: [x] **??.** bty-release-gate.mdc A~F ??. A~E N/A/PASS(21? ?? ?? ??) ? F) Lint ? Test 124/1025 ? Build ? (147 pages). **RESULT: PASS.** BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
+
+**[C5 Integrator] ?? ?? (2026-03-10)**: [x] **??.** C3?C4 ?? ?? ??. Lint ? Test 124/1025 ? Build ?. API?UI ??(dojo/questions?submit?submissions, assessment/submit?submissions, me/conversations?mentor-request, arena/core-xp) ??. ?? ?? ?? ??. **RESULT: PASS.** ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
+
+**[DOCS] NEXT_PHASE?NEXT_BACKLOG ?? ?? (2026-03-10)**: [x] **??.** SPRINT 21 ?? ??. ?? 5? = Release Gate 22???? 52?53?54??assessment submit ????Foundry ?????? ?? ??. NEXT_PHASE?NEXT_BACKLOG??? ???. ?? ??. ?? TASK 2 ??.
+
+**[TEST] assessment submit route ??? (2026-03-10)**: [x] **??.** POST /api/assessment/submit route.test.ts ??. 401?400(invalid_body?validation)?200(success?submissionId null)?submitAssessment ??. 6 tests. npm test 1031 ??. ???CURRENT_TASK ??.
+
+**[DOCS] ?? ?? 52?53?54? (2026-03-10)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4????BTY_RELEASE_GATE_CHECK ?????. ???? ?? ?? ???[API] assessment API JSDoc ?? ??. ?? ??. ?? TASK 3 ??.
+
+**C1 SPRINT 23 (2026-03-10 ? MODE FOUNDRY)**: [x] **?? ??.** TASK 1~10 ?? ??. Lint ? Test 126/1045 ? Build ?.
+
+**[UI] Center ?? ??? 1?**: [x] **??.** PageClient Center "?? ??" ? role="region", aria-labelledby="center-overview-heading", h2 id, ?? aria-label. render-only. npm run lint ??. ???CURRENT_TASK ??.
+
+**C1 SPRINT 22 (2026-03-09 ? MODE FOUNDRY)**: [x] **?? ??.** TASK 1~10 ?? ??. Lint ? Test 124/1025 ? Build ?.
+
+**[UI] Foundry ?? ??? 1?**: [x] **??.** DojoHistoryClient ? role="main", aria-labelledby="dojo-history-heading", h1 id, ul role="list", ?? aria-label. render-only. npm run lint ??. ???CURRENT_TASK ??.
+
+**[DOCS] CURSOR_TASK_BOARD ? ?? ?? ?? (2026-03-09)**: [x] **??.** ? "?? ?? (?? ??)" ?? ?? ??(TASK 3?4???? Q3 ?? ??)??? ?? ?????? ??. ?? ??. ???CURRENT_TASK ??.
+
+**[DOCS] Foundry ??? Q3 ?? 1? ?? (2026-03-09)**: [x] **??.** FOUNDRY_ROADMAP ??? ???? Q3 ?? ?? 1? ??: LE Stage/AIR API ???Foundry ????, Elite ?? ?? ?????/?? API?UI. ?? ??. ???CURRENT_TASK ??.
+
+**[DOCS] NEXT_PHASE?NEXT_BACKLOG ?? ?? (2026-03-09)**: [x] **??.** SPRINT 20 ?? ??. ?? 5? = Release Gate 21??Integrity submit ????Foundry ????dojo/questions JSDoc?LE ???. NEXT_PHASE?NEXT_BACKLOG??? ? ?? ??(?? ??) ???. ?? ??. ???CURRENT_TASK ??.
+
+**C1 SPRINT 21 (2026-03-09 ? MODE FOUNDRY)**: [x] **?? ??.** TASK 1~10 ?? ??. Lint ? Test 123/1015 ? Build ?.
+
+**?? ?? ? ?? ?? (?? ??)**  
+??? ???? ??? **?? ??**? ????. ??/??? ?? ??? ??: CURSOR_TASK_BOARD(?? ?????? [x] ??), CURRENT_TASK(? ?? ?? ?? ? ? [x] ??), BTY_RELEASE_GATE_CHECK(Auth/????/API ?? ? ?? ?? ??).
+
+**[TEST] mentor route ????? ??? ???**: [x] **??.** route.test.ts error and edge cases: empty string message?400, OPENAI not ok?200 usedFallback. 12 tests. npm test ??. ???CURRENT_TASK ??.
+
+**[DOMAIN] LE stages ?? ?? ?? ??? 1?**: [x] **??.** getNextStage full cycle 1?2?3?4?1 (valid contexts in order). stages.test.ts 9 tests. npm test ??. ???CURRENT_TASK ??.
+
+**[UI] Dojo 50 ?? ?? ????**: [x] **??.** DojoClient: ?? fetch ? ?? ?? ?? ????(????????? ???5? ?????/??)?aria-busy?aria-label. render-only. ???CURRENT_TASK ??.
+
+**[API] dojo/questions GET ?? ?? JSDoc**: [x] **??.** GET /api/dojo/questions. DojoQuestionsGetResponse(questions?choiceValues)?DojoQuestionsErrorResponse export?@contract?@returns?satisfies. npm test ??. ???CURRENT_TASK ??.
+
+**[UI] Foundry ?? ??? ??**: [x] **??.** bty/(protected)/page.client: main ????(id?aria-label?tabIndex -1), ?? ??(???? ????), header/section/footer/nav aria-label, Arena CTA??? ??????? ?? aria-label. render-only. ???CURRENT_TASK ??.
+
+**[TEST] POST /api/dojo/integrity/submit route ???**: [x] **??.** dojo/integrity/submit/route.test.ts ??. 401?400(invalid_body?missing_input?text_too_long)?200(submissionId)?submitIntegrity ???insert ??(submissionId null). 7 tests. npm test ??. ???CURRENT_TASK ??.
+
+**[VERIFY] Release Gate A~F ? Foundry 21?**: [x] **??.** bty-release-gate.mdc A~F ??. A~E N/A/PASS ? F) Lint ? Test 123/1015 ? Build ? (147 pages). RESULT: PASS. BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
+
+**[DOMAIN] dojo/integrity ?? ???**: [x] **??.** validateIntegrityResponse return shape?empty choiceId?1/5000/5001 ???error ???IntegritySubmitPayload(text only/choiceId only/both/empty/over max). 27 tests. npm test ??. ???CURRENT_TASK ??.
+
+**[API] mentor-request ?? ?? JSDoc**: [x] **??.** GET/POST /api/me/mentor-request. MentorRequestItem?MentorRequestGetResponse?MentorRequestPostResponse?MentorRequestErrorResponse export?@returns JSDoc?satisfies ??. npm test ??. ???CURRENT_TASK ??.
+
+**[UI] Dojo ?? ??? ????? ??**: [x] **??.** DojoResultClient: sessionStorage ??? ???CardSkeleton ?? UI???/?? ?? ? role=alert?? ?? CTA. ko/en ???. render-only. ???CURRENT_TASK ??.
+
+**[TEST] GET /api/dojo/submissions route ???**: [x] **??.** 2026-03-09. submissions/route.test.ts ??. 401?500(select ??)?200(? ??)?200(? ?? ??). 4 tests. npm test ??. ???CURRENT_TASK ??.
+
+**[UI] Mentor ?? ?? UI**: [x] **??.** GET /api/me/conversations?channel=mentor&list=sessions ??. MentorConversationHistory(????? ??, CardSkeleton?EmptyState???). mentor ??? ?? ??. render-only. ???CURRENT_TASK ??.
+
+**[API] Integrity ?? ??? ??**: [x] **??.** 2026-03-09. integritySubmitService(validate?insert)?POST /api/dojo/integrity/submit thin route?integrity_submissions migration?foundry re-export. npm test 122/999. ???CURRENT_TASK ??.
+
+**[DOCS] ?????? ?? ?? (2026-03-09)**: [x] **??.** FOUNDRY_DOMAIN_SPEC? ??? ?? 1?, FOUNDRY_ROADMAP? ?? ?? 1? ??. ?? ??. ???CURRENT_TASK ??.
+
+**[DOCS] MODE??? ?? ?? (2026-03-09)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4 MODE FOUNDRY, ??/?? ?? = Foundry ?? 5?(Integrity ????Mentor ?? UI?dojo/submissions ????Dojo ???mentor-request JSDoc). CURRENT_TASK MODE FOUNDRY. ?? ??.
+
+**[VERIFY] Release Gate A~F ? Foundry 20?**: [x] **??.** bty-release-gate.mdc A~F ??. A~E N/A/PASS ? F) Lint ? Test 122/998 ? Build ? (146 pages). RESULT: PASS. BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
+
+**[TEST] Dojo submit API ???**: [x] **??.** 2026-03-09. POST /api/dojo/submit route.test.ts ??. 401/400( invalid_body?validation)/200?submitDojo50 ???locale?insert ?? ???. 7 tests. npm test 122/998. ???CURRENT_TASK ??.
+
+**C6 TASK QUEUE (latest Commander batch = SPRINT 42, 2026-03-11)**: ?? ? ?(CURSOR_TASK_BOARD) ?? OWNER C6 ? ?? ? **C6 TASK QUEUE empty.** Recorded once; stop.
+
+**[VERIFY] Release Gate A~F ? Foundry 18?**: [x] **??.** bty-release-gate.mdc A~F ??. A~E N/A/PASS ? F) Lint ? Test 121/991 ? Build ? (146 pages). RESULT: PASS. BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
+
+**[VERIFY] Release Gate A~F ? Foundry 17?**: [x] **??.** bty-release-gate.mdc A~F ??. A~E N/A/PASS ? F) Lint ? Test 121/984 ? Build ? (146 pages). RESULT: PASS. BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
+
+**[VERIFY] Release Gate A~F 1? ? Foundry 16?**: [x] **??.** bty-release-gate.mdc A~F ??. A~E N/A/PASS ? F) Lint ? Test 121/972 ? Build ?. RESULT: PASS. BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
+
+**[DOMAIN] Center ?? ?? ???**: [x] **??.** assessment.test.ts: validateAssessmentAnswers ??? ? ??. paths.test.ts: getCenterCtaHref("") ? "//bty". npm test ??. ???CURRENT_TASK ??.
+**[API] Assessment ?? API ??**: [x] **??.** assessment/submit?submissions?? getLetterAuth ??, try/catch?logApiError ??. thin handler ??. ???CURRENT_TASK ??.
+
+**[API] Center/Dear Me letter API ?? ??**: [x] **??.** getLetterAuth ???(lib/bty/center/letterAuth.ts). api/center/letter?api/dear-me/letter?api/dear-me/letters?? ??. dear-me/letter ?? logApiError ??. API thin handler ??. ???CURRENT_TASK ??.
+
+**[UI] Dear Me ??? ??**: [x] **??.** DearMeClient: main aria-label(??? ?? ??/Letter to yourself), footer Link aria-label(Center? ??/Go to Center). render-only. ???CURRENT_TASK ??.
+**[UI] Center?Dear Me loading.tsx ??**: [x] **??.** center/loading.tsx?dear-me/loading.tsx ??? aria-busy="true", aria-label="Loading?" ??. LoadingFallback ??. ???CURRENT_TASK ??.
+
+**[DOMAIN] Center resilience ?? ??? ??**: [x] **??.** energyToLevel(3.5)?mid, periodDays > date span ? ?? ??? ??. domain/center/resilience*.test.ts. ???BTY_RELEASE_GATE_CHECK ??.
+**[API] Center service ?? ??**: [x] **??.** lib/bty/center/index.ts ??(resilience?letter?assessment ?export). API 6? @/lib/bty/center ??. ???BTY_RELEASE_GATE_CHECK ??.
 
 ---
 
-**C1 SPRINT 10 (2026-03-09 21차)**: **SPRINT READY.** **MODE CENTER.** **문서 49·50·51차 [x] 완료.** **TASK 9·10 [DOCS] 다음 배치 선정·대기 동기화 [x] 완료.** 10 tasks: [UI] Assessment 접근성 보강, [DOMAIN] Center 추가 단위 테스트, [API] Assessment 제출 API 정리, [VERIFY] Release Gate·엘리트 3차, [DOCS] 다음 배치·대기 동기화. CURSOR_TASK_BOARD § "SPRINT 10 (21차)" 표 참고.
+**C1 SPRINT 10 (2026-03-09 21?)**: **SPRINT READY.** **MODE CENTER.** **?? 49?50?51? [x] ??.** **TASK 9?10 [DOCS] ?? ?? ????? ??? [x] ??.** 10 tasks: [UI] Assessment ??? ??, [DOMAIN] Center ?? ?? ???, [API] Assessment ?? API ??, [VERIFY] Release Gate???? 3?, [DOCS] ?? ????? ???. CURSOR_TASK_BOARD ? "SPRINT 10 (21?)" ? ??.
 
-**[DOCS] 다음 배치 선정 (선택) (21차)**: [x] **완료.** NEXT_BACKLOG_AUTO4 상위 5줄·NEXT_PHASE_AUTO4 현재 대기 5건 일치 확인. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? ?? (??) (21?)**: [x] **??.** NEXT_BACKLOG_AUTO4 ?? 5??NEXT_PHASE_AUTO4 ?? ?? 5? ?? ??. ???CURRENT_TASK ??.
 
-**[DOCS] Arena·Center·Foundry 대기 목록 동기화 1회 (21차)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 대기 행 일치 확인. MODE CENTER 유지. 보드·BTY_RELEASE_GATE_CHECK 반영.
+**[DOCS] Arena?Center?Foundry ?? ?? ??? 1? (21?)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4??? ?? ? ?? ??. MODE CENTER ??. ???BTY_RELEASE_GATE_CHECK ??.
 
-**[UI] Assessment 접근성 보강**: [x] **완료.** AssessmentClient: progressbar aria-label, 선택지 role="group"·aria-label, 옵션 버튼 aria-label. ResultClient: role="main"·aria-labelledby·h1 id, ko/en 결과 문구, 링크 aria-label. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[UI] Assessment ??? ??**: [x] **??.** AssessmentClient: progressbar aria-label, ??? role="group"?aria-label, ?? ?? aria-label. ResultClient: role="main"?aria-labelledby?h1 id, ko/en ?? ??, ?? aria-label. render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**[DOCS] 문서 점검 2~3건 (49·50·51차)**: [x] **완료.** C1 실행. NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·BTY_RELEASE_GATE_CHECK 49·50·51차 갱신. 코드 없음. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 2~3? (49?50?51?)**: [x] **??.** C1 ??. NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4?BTY_RELEASE_GATE_CHECK 49?50?51? ??. ?? ??. ???CURRENT_TASK ??.
 
-**C1 SPRINT 10 (2026-03-09 20차)**: **SPRINT READY.** **MODE CENTER.** **문서 46·47·48차 [x] 완료.** **TASK 9·10 [DOCS] 다음 배치 선정·대기 동기화 [x] 완료.** 10 tasks: [UI] Dear Me 접근성·loading(완료), [API] letter API 중복 정리, [VERIFY] Release Gate·엘리트 3차, [DOCS] 다음 배치·대기 동기화. CURSOR_TASK_BOARD § "SPRINT 10 (20차)" 표 참고.
+**C1 SPRINT 10 (2026-03-09 20?)**: **SPRINT READY.** **MODE CENTER.** **?? 46?47?48? [x] ??.** **TASK 9?10 [DOCS] ?? ?? ????? ??? [x] ??.** 10 tasks: [UI] Dear Me ????loading(??), [API] letter API ?? ??, [VERIFY] Release Gate???? 3?, [DOCS] ?? ????? ???. CURSOR_TASK_BOARD ? "SPRINT 10 (20?)" ? ??.
 
-**[DOCS] 다음 배치 선정 (선택)**: [x] **완료.** NEXT_BACKLOG_AUTO4 다음 배치 목록 상위 5줄=현재 대기 정렬. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? ?? (??)**: [x] **??.** NEXT_BACKLOG_AUTO4 ?? ?? ?? ?? 5?=?? ?? ??. ???CURRENT_TASK ??.
 
-**[DOCS] Arena·Center·Foundry 대기 목록 동기화 1회 (20차)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 대기 행 일치 확인. MODE CENTER 유지. 보드·BTY_RELEASE_GATE_CHECK 반영.
+**[DOCS] Arena?Center?Foundry ?? ?? ??? 1? (20?)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4??? ?? ? ?? ??. MODE CENTER ??. ???BTY_RELEASE_GATE_CHECK ??.
 
-**[DOCS] 문서 점검 2~3건 (46·47·48차)**: [x] **완료.** C1 실행. NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·BTY_RELEASE_GATE_CHECK 46·47·48차 갱신. 코드 없음. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 2~3? (46?47?48?)**: [x] **??.** C1 ??. NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4?BTY_RELEASE_GATE_CHECK 46?47?48? ??. ?? ??. ???CURRENT_TASK ??.
 
-**C1 SPRINT 10 (2026-03-09 19차)**: **SPRINT VERIFY PASS.** **TASK 1~10 전부 완료.** **MODE CENTER.** 문서 43·44·45차, [DOMAIN] Center resilience, [API] Center service, [UI] Dear Me·Assessment 이력, [VERIFY] Release Gate·엘리트 3차(121/968), [DOCS] 대기 동기화. CURSOR_TASK_BOARD § "SPRINT 10 (19차)" 표 참고.
+**C1 SPRINT 10 (2026-03-09 19?)**: **SPRINT VERIFY PASS.** **TASK 1~10 ?? ??.** **MODE CENTER.** ?? 43?44?45?, [DOMAIN] Center resilience, [API] Center service, [UI] Dear Me?Assessment ??, [VERIFY] Release Gate???? 3?(121/968), [DOCS] ?? ???. CURSOR_TASK_BOARD ? "SPRINT 10 (19?)" ? ??.
 
-**[DOCS] Arena·Center·Foundry 대기 목록 동기화 1회**: [x] **완료.** NEXT_PHASE_AUTO4 현재 대기 5건·NEXT_BACKLOG_AUTO4 다음 배치 상위 5줄·보드 일치 확인. MODE CENTER 유지. 코드 없음. 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[DOCS] Arena?Center?Foundry ?? ?? ??? 1?**: [x] **??.** NEXT_PHASE_AUTO4 ?? ?? 5??NEXT_BACKLOG_AUTO4 ?? ?? ?? 5???? ?? ??. MODE CENTER ??. ?? ??. ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[DOCS] 문서 점검 2~3건 (43·44·45차)**: [x] **완료.** C1 실행. NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·BTY_RELEASE_GATE_CHECK 43·44·45차 갱신. 코드 없음. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 2~3? (43?44?45?)**: [x] **??.** C1 ??. NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4?BTY_RELEASE_GATE_CHECK 43?44?45? ??. ?? ??. ???CURRENT_TASK ??.
 
-**[UI] Dear Me 편지 이력 보기 UI**: [x] **완료.** DearMeClient.tsx — GET /api/dear-me/letters, 이력 리스트(날짜·body 발췌·reply 유무), CardSkeleton·EmptyState, 제출 후 새로고침. render-only. 보드·CURRENT_TASK 반영.
+**[UI] Dear Me ?? ?? ?? UI**: [x] **??.** DearMeClient.tsx ? GET /api/dear-me/letters, ?? ???(???body ???reply ??), CardSkeleton?EmptyState, ?? ? ????. render-only. ???CURRENT_TASK ??.
 
-**[UI] Assessment 제출 이력 보기 UI**: [x] **완료.** ResultClient.tsx — GET /api/assessment/submissions, 이전 진단 이력(날짜·pattern_key·recommended_track), CardSkeleton·EmptyState. render-only. 보드·CURRENT_TASK 반영.
+**[UI] Assessment ?? ?? ?? UI**: [x] **??.** ResultClient.tsx ? GET /api/assessment/submissions, ?? ?? ??(???pattern_key?recommended_track), CardSkeleton?EmptyState. render-only. ???CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F + 엘리트 3차 (C5 TASK 7·8, 20차)**: [x] **완료.** 2026-03-09. A~F 1회 점검 + 엘리트 3차 6항목 1회 실행. Lint ✓ Test 121/970 ✓ Build ✓. Release Gate PASS · 엘리트 3차 PASS. BTY_RELEASE_GATE_CHECK·ELITE_3RD §3·보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F + ??? 3? (C5 TASK 7?8, 20?)**: [x] **??.** 2026-03-09. A~F 1? ?? + ??? 3? 6?? 1? ??. Lint ? Test 121/970 ? Build ?. Release Gate PASS ? ??? 3? PASS. BTY_RELEASE_GATE_CHECK?ELITE_3RD ?3????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F + 엘리트 3차 (C5 TASK 7·8, 21차)**: [x] **완료.** 2026-03-09. A~F 1회 점검 + 엘리트 3차 6항목 1회 실행. Lint ✓ Test 121/970 ✓ Build ✓. Release Gate PASS · 엘리트 3차 PASS. BTY_RELEASE_GATE_CHECK·ELITE_3RD §3·보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F + ??? 3? (C5 TASK 7?8, 21?)**: [x] **??.** 2026-03-09. A~F 1? ?? + ??? 3? 6?? 1? ??. Lint ? Test 121/970 ? Build ?. Release Gate PASS ? ??? 3? PASS. BTY_RELEASE_GATE_CHECK?ELITE_3RD ?3????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F + 엘리트 3차 (C5 TASK 8·9, 19차)**: [x] **완료.** 2026-03-09. A~F 1회 점검 + 엘리트 3차 6항목 1회 실행. Lint ✓ Test 121/968 ✓ Build ✓. Release Gate PASS · 엘리트 3차 PASS. BTY_RELEASE_GATE_CHECK·ELITE_3RD §3·보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F + ??? 3? (C5 TASK 8?9, 19?)**: [x] **??.** 2026-03-09. A~F 1? ?? + ??? 3? 6?? 1? ??. Lint ? Test 121/968 ? Build ?. Release Gate PASS ? ??? 3? PASS. BTY_RELEASE_GATE_CHECK?ELITE_3RD ?3????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F + 엘리트 3차 (C5 TASK 7·8, 20차)**: [x] **완료.** 2026-03-09. A~F 1회 점검 + 엘리트 3차 6항목 1회 실행. Lint ✓ Test 121/970 ✓ Build ✓. Release Gate PASS · 엘리트 3차 PASS. BTY_RELEASE_GATE_CHECK·ELITE_3RD §3·보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F + ??? 3? (C5 TASK 7?8, 20?)**: [x] **??.** 2026-03-09. A~F 1? ?? + ??? 3? 6?? 1? ??. Lint ? Test 121/970 ? Build ?. Release Gate PASS ? ??? 3? PASS. BTY_RELEASE_GATE_CHECK?ELITE_3RD ?3????CURRENT_TASK ??.
 
-**C1 SPRINT 10 (2026-03-09 18차)**: **SPRINT VERIFY PASS.** **TASK 1~10 전부 완료.** Lint ✓ Test 121/966 ✓ Build ✓. **MODE FOUNDRY.** 문서 40·41·42차, Foundry 단위 테스트 3·4차, 로딩/스켈레톤(mentor), 접근성(DojoResultClient), VERIFY(Release Gate·엘리트 3차), 대기 목록 동기화. CURSOR_TASK_BOARD § "SPRINT 10 (18차)" 참고.
+**C1 SPRINT 10 (2026-03-09 18?)**: **SPRINT VERIFY PASS.** **TASK 1~10 ?? ??.** Lint ? Test 121/966 ? Build ?. **MODE FOUNDRY.** ?? 40?41?42?, Foundry ?? ??? 3?4?, ??/????(mentor), ???(DojoResultClient), VERIFY(Release Gate???? 3?), ?? ?? ???. CURSOR_TASK_BOARD ? "SPRINT 10 (18?)" ??.
 
-**[UI] Foundry 로딩/스켈레톤 1곳 (dojo·integrity·mentor)**: [x] **완료.** C4 적용. mentor 페이지 초기 로딩(!prefsLoaded) 시 LoadingFallback 래퍼에 aria-busy="true", aria-label(Loading…/불러오는 중…) 추가. mentor/page.client.tsx. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[UI] Foundry ??/???? 1? (dojo?integrity?mentor)**: [x] **??.** C4 ??. mentor ??? ?? ??(!prefsLoaded) ? LoadingFallback ??? aria-busy="true", aria-label(Loading?/???? ??) ??. mentor/page.client.tsx. npm run lint ??. ???CURRENT_TASK ??.
 
-**[DOMAIN] Foundry 단위 테스트 3·4차**: [x] **완료.** C3 적용. (3차) validateIntegritySubmit·getRandomScenario·getNextStage. (4차) validateDojo50Submit. npm test 통과. 보드·CURRENT_TASK 반영.
+**[DOMAIN] Foundry ?? ??? 3?4?**: [x] **??.** C3 ??. (3?) validateIntegritySubmit?getRandomScenario?getNextStage. (4?) validateDojo50Submit. npm test ??. ???CURRENT_TASK ??.
 
-**[UI] Foundry 접근성 1건 (2곳째)**: [x] **완료.** C4 적용. DojoResultClient.tsx 루트에 role="region", aria-labelledby="dojo-result-heading", h1 id="dojo-result-heading" 추가. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[UI] Foundry ??? 1? (2??)**: [x] **??.** C4 ??. DojoResultClient.tsx ??? role="region", aria-labelledby="dojo-result-heading", h1 id="dojo-result-heading" ??. npm run lint ??. ???CURRENT_TASK ??.
 
-**[DOCS] 문서 점검 2~3건 (40·41·42차)**: [x] **완료.** C1 실행. NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·BTY_RELEASE_GATE_CHECK 40·41·42차 갱신. 코드 없음. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 2~3? (40?41?42?)**: [x] **??.** C1 ??. NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4?BTY_RELEASE_GATE_CHECK 40?41?42? ??. ?? ??. ???CURRENT_TASK ??.
 
-**C1 SPRINT 10 (2026-03-09 17차)**: [x] **SPRINT READY.** 문서 37·38·39차·Foundry 단위 테스트 2건·로딩/스켈레톤·접근성·VERIFY·대기 동기화 완료.
+**C1 SPRINT 10 (2026-03-09 17?)**: [x] **SPRINT READY.** ?? 37?38?39??Foundry ?? ??? 2????/?????????VERIFY??? ??? ??.
 
-**[UI] Foundry 로딩/스켈레톤 1곳 (bty/(protected))**: [x] **완료.** C4 적용. `bty/(protected)/dashboard/loading.tsx` 루트 div에 aria-busy="true", aria-label="Loading…" 추가. LoadingFallback·스켈레톤 유지. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[UI] Foundry ??/???? 1? (bty/(protected))**: [x] **??.** C4 ??. `bty/(protected)/dashboard/loading.tsx` ?? div? aria-busy="true", aria-label="Loading?" ??. LoadingFallback????? ??. npm run lint ??. ???CURRENT_TASK ??.
 
-**[UI] Foundry 접근성 1건 (bty/(protected))**: [x] **완료.** C4 적용. `dashboard/page.client.tsx` 메인 콘텐츠 영역에 role="region", aria-labelledby="dashboard-heading" 추가. h1에 id="dashboard-heading" 부여. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[UI] Foundry ??? 1? (bty/(protected))**: [x] **??.** C4 ??. `dashboard/page.client.tsx` ?? ??? ??? role="region", aria-labelledby="dashboard-heading" ??. h1? id="dashboard-heading" ??. npm run lint ??. ???CURRENT_TASK ??.
 
-**[DOCS] Arena·Center·Foundry 대기 목록 동기화 1회**: [x] **완료.** NEXT_PHASE_AUTO4 현재 대기 5건·NEXT_BACKLOG_AUTO4 다음 배치 상위 5줄·보드 일치 확인. MODE FOUNDRY 유지. 코드 없음. 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[DOCS] Arena?Center?Foundry ?? ?? ??? 1?**: [x] **??.** NEXT_PHASE_AUTO4 ?? ?? 5??NEXT_BACKLOG_AUTO4 ?? ?? ?? 5???? ?? ??. MODE FOUNDRY ??. ?? ??. ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[DOCS] 문서 점검 2~3건 (37·38·39차)**: [x] **완료.** C1 실행. NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·BTY_RELEASE_GATE_CHECK 37·38·39차 갱신. 코드 없음. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 2~3? (37?38?39?)**: [x] **??.** C1 ??. NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4?BTY_RELEASE_GATE_CHECK 37?38?39? ??. ?? ??. ???CURRENT_TASK ??.
 
-**C1 SPRINT 10 (2026-03-09 16차)**: [x] **SPRINT READY.** 문서 34·35·36차·로딩/스켈레톤·접근성·대기 동기화 완료. 단위 테스트 27·28·VERIFY 9·10 대기.
+**C1 SPRINT 10 (2026-03-09 16?)**: [x] **SPRINT READY.** ?? 34?35?36????/??????????? ??? ??. ?? ??? 27?28?VERIFY 9?10 ??.
 
-**[DOCS] 문서 점검 2~3건 (34·35·36차)**: [x] **완료.** C1 실행. NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·BTY_RELEASE_GATE_CHECK 34·35·36차 갱신. 코드 없음. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 2~3? (34?35?36?)**: [x] **??.** C1 ??. NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4?BTY_RELEASE_GATE_CHECK 34?35?36? ??. ?? ??. ???CURRENT_TASK ??.
 
-**[DOCS] Arena·Center 대기 목록 동기화 1회**: [x] **완료.** NEXT_PHASE_AUTO4 현재 대기 5건·NEXT_BACKLOG_AUTO4 다음 배치 상위 5줄·보드 일치 확인. 코드 없음. 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[DOCS] Arena?Center ?? ?? ??? 1?**: [x] **??.** NEXT_PHASE_AUTO4 ?? ?? 5??NEXT_BACKLOG_AUTO4 ?? ?? ?? 5???? ?? ??. ?? ??. ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**C1 SPRINT 10 (2026-03-09 15차)**: [x] **SPRINT READY.** TASK 1(C4 tier·requiresBeginnerPath)·문서 31·32·33차·VERIFY 9·10 완료. 단위 테스트 25·26·로딩/스켈레톤·접근성 대기.
+**C1 SPRINT 10 (2026-03-09 15?)**: [x] **SPRINT READY.** TASK 1(C4 tier?requiresBeginnerPath)??? 31?32?33??VERIFY 9?10 ??. ?? ??? 25?26???/???????? ??.
 
-**[DOCS] 문서 점검 2~3건 (31·32·33차)**: [x] **완료.** C1 실행. NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·BTY_RELEASE_GATE_CHECK 31·32·33차 갱신. 코드 없음. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 2~3? (31?32?33?)**: [x] **??.** C1 ??. NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4?BTY_RELEASE_GATE_CHECK 31?32?33? ??. ?? ??. ???CURRENT_TASK ??.
 
-**[C4] TASK 1 — useArenaSession·page API tier·requiresBeginnerPath**: [x] **완료.** useArenaSession: API `tier`·`requiresBeginnerPath` state 저장·사용. 초기 시나리오 픽을 levelChecked 후로 이동해 API tier 반영. page.tsx: `s.requiresBeginnerPath`만 사용. C2 Violation 1·2 해소. Lint ✓ Test 960 ✓.
+**[C4] TASK 1 ? useArenaSession?page API tier?requiresBeginnerPath**: [x] **??.** useArenaSession: API `tier`?`requiresBeginnerPath` state ?????. ?? ???? ?? levelChecked ?? ??? API tier ??. page.tsx: `s.requiresBeginnerPath`? ??. C2 Violation 1?2 ??. Lint ? Test 960 ?.
 
-**C1 SPRINT 10 (2026-03-09 14차)**: [x] **SPRINT READY.** 문서 28·29·30차·VERIFY 9·10 완료. C4 tier·requiresBeginnerPath·단위 테스트 23·24·로딩/스켈레톤·접근성 대기.
+**C1 SPRINT 10 (2026-03-09 14?)**: [x] **SPRINT READY.** ?? 28?29?30??VERIFY 9?10 ??. C4 tier?requiresBeginnerPath??? ??? 23?24???/???????? ??.
 
-**[DOCS] 문서 점검 2~3건 (28·29·30차)**: [x] **완료.** C1 실행. NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·BTY_RELEASE_GATE_CHECK 28·29·30차 갱신. 코드 없음. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 2~3? (28?29?30?)**: [x] **??.** C1 ??. NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4?BTY_RELEASE_GATE_CHECK 28?29?30? ??. ?? ??. ???CURRENT_TASK ??.
 
-**C1 SPRINT 10 (2026-03-09 13차)**: [x] 문서 25·26·27차·VERIFY 9·10 완료. C4 tier·requiresBeginnerPath·단위 테스트 21·22·로딩/스켈레톤·접근성 대기.
+**C1 SPRINT 10 (2026-03-09 13?)**: [x] ?? 25?26?27??VERIFY 9?10 ??. C4 tier?requiresBeginnerPath??? ??? 21?22???/???????? ??.
 
-**[VERIFY] Release Gate A~F 1회 점검 후 서류 반영 (C5 TASK 9)**: [x] **완료.** bty-release-gate.mdc A~F 1회 점검. A~E PASS · F) Lint ✓ Test 121/966 ✓ Build ✓. Release Gate PASS. BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F 1? ?? ? ?? ?? (C5 TASK 9)**: [x] **??.** bty-release-gate.mdc A~F 1? ??. A~E PASS ? F) Lint ? Test 121/966 ? Build ?. Release Gate PASS. BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 실행 후 서류 반영 (C5 TASK 10)**: [x] **완료.** ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목 1회 실행. Elite=Weekly XP만·시즌 미반영·배지·멘토 API·경로 확인. **RESULT: PASS.** §3·BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? ?? ? ?? ?? (C5 TASK 10)**: [x] **??.** ELITE_3RD_SPEC_AND_CHECKLIST.md ?? 6?? 1? ??. Elite=Weekly XP???? ????????? API??? ??. **RESULT: PASS.** ?3?BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[DOCS] 문서 점검 2~3건 (25·26·27차)**: [x] **완료.** C1 실행. NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·BTY_RELEASE_GATE_CHECK 25·26·27차 갱신. 코드 없음. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 2~3? (25?26?27?)**: [x] **??.** C1 ??. NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4?BTY_RELEASE_GATE_CHECK 25?26?27? ??. ?? ??. ???CURRENT_TASK ??.
 
-**검증 (2026-03-09)**: [x] **완료.** Lint ✓ Test 121/953 ✓ Build ✓. CI GATE PASSED. 보드·BTY_RELEASE_GATE_CHECK·CURRENT_TASK 반영.
+**?? (2026-03-09)**: [x] **??.** Lint ? Test 121/953 ? Build ?. CI GATE PASSED. ???BTY_RELEASE_GATE_CHECK?CURRENT_TASK ??.
 
-**C1 SPRINT 10 (2026-03-09 12차)**: **서류·VERIFY 확인 완료.** 문서 23·24차·Release Gate·엘리트 3차는 11차와 동일 내용으로 이미 완료됨 → 확인 후 완료 처리. **다음 작업**: C2 Gate 3건(C3)·단위 테스트 20차(C3)·로딩/스켈레톤 1곳(C4)·접근성 1건(C4). CURSOR_TASK_BOARD § "다음 작업 (12차 미완료)" 표 참고.
+**C1 SPRINT 10 (2026-03-09 12?)**: **???VERIFY ?? ??.** ?? 23?24??Release Gate???? 3?? 11?? ?? ???? ?? ??? ? ?? ? ?? ??. **?? ??**: C2 Gate 3?(C3)??? ??? 20?(C3)???/???? 1?(C4)???? 1?(C4). CURSOR_TASK_BOARD ? "?? ?? (12? ???)" ? ??.
 
-**C1 SPRINT 10 (2026-03-09 11차)**: [x] **SPRINT READY.** 문서 21·22차·VERIFY 2건 완료. C2 Gate 3건·단위 테스트 19차·로딩/스켈레톤·접근성 일부 대기.
+**C1 SPRINT 10 (2026-03-09 11?)**: [x] **SPRINT READY.** ?? 21?22??VERIFY 2? ??. C2 Gate 3???? ??? 19????/???????? ?? ??.
 
-**[DOCS] 문서 점검 2~3건 (23·24차)**: [x] **완료(확인).** 21·22차와 동일 절차. NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4 23·24차·BTY_RELEASE_GATE_CHECK 반영.
+**[DOCS] ?? ?? 2~3? (23?24?)**: [x] **??(??).** 21?22?? ?? ??. NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4 23?24??BTY_RELEASE_GATE_CHECK ??.
 
-**[DOCS] 문서 점검 2~3건 (21·22차)**: [x] **완료.** (이전 완료 유지.)
-
----
-
-## 형식 예시
-
-아래처럼 **한 줄이라도** 구체적으로 적어 주세요.
-
-- 「대시보드에 ○○ 버튼 추가하고, 클릭 시 API /api/arena/… 호출」
-- 「리더보드에 주간 리셋 일시 표시」
-- 「Arena 시나리오 완료 시 △△ 알림 토스트」
-- 「프로필에 ○○ 필드 추가, PATCH /api/arena/profile 에 반영」
+**[DOCS] ?? ?? 2~3? (21?22?)**: [x] **??.** (?? ?? ??.)
 
 ---
 
-## 이번에 구현할 기능
+## ?? ??
 
-**[DOCS] 시나리오 50개 목록 문서 (2026-03-09)**: [x] **완료.** `docs/specs/scenarios/SCENARIOS_LIST.md` 신규. 50건 파일 목록(#·파일명·scenario_id·비고)·ID 규칙(SCN_{PREFIX}_{NNNN})·스키마 요약·FOUNDRY_DOMAIN_SPEC 참조. 코드 변경 없음.
+???? **? ????** ????? ?? ???.
 
-**[DOCS] Foundry 스펙 갱신 (2026-03-09)**: [x] **완료.** `docs/spec/FOUNDRY_DOMAIN_SPEC.md` 갱신. §1 Scenario Engine 50개·§2 dojo/integrity 모듈 추가·§5 시나리오 50건 목록·SCENARIOS_LIST.md 참조. 코드 변경 없음.
+- ?????? ?? ?? ????, ?? ? API /api/arena/? ???
+- ?????? ?? ?? ?? ???
+- ?Arena ???? ?? ? ?? ?? ????
+- ????? ?? ?? ??, PATCH /api/arena/profile ? ???
 
-**[DOCS] Foundry·Arena 스펙 동기화 (2026-03-09)**: [x] **완료.** FOUNDRY_DOMAIN_SPEC·ARENA_DOMAIN_SPEC 상호 참조·갱신일 통일(2026-03-09)·관련 스펙 문단·참조 목록에 상대 문서 추가. 코드 변경 없음.
+---
 
-**[DOCS] Foundry 연간 로드맵 1페이지 (2026-03-09)**: [x] **완료.** `docs/plans/FOUNDRY_ROADMAP.md` 신규. Feature 우선순위 7단계·연도별 마일스톤(Q1~Q4)·시스템 범위·참조. FOUNDRY_DOMAIN_SPEC 참조에 로드맵 추가. 코드 변경 없음.
+## ??? ??? ??
 
-**C1 SPRINT 20 (2026-03-09 — MODE FOUNDRY)**: [ ] **SPRINT VERIFY PASS.** Lint ✓ Test 122/998 ✓ Build ✓. 반복 10건 미포함 — 신규 10건(Integrity 서비스·Mentor 이력 UI·로드맵·dojo/submissions 테스트·배치 갱신·Dojo 로딩·mentor-request JSDoc·integrity 경계 테스트·스펙↔로드맵·Release Gate). **SPRINT READY.**
+**[DOCS] ???? 50? ?? ?? (2026-03-09)**: [x] **??.** `docs/specs/scenarios/SCENARIOS_LIST.md` ??. 50? ?? ??(#?????scenario_id???)?ID ??(SCN_{PREFIX}_{NNNN})???? ???FOUNDRY_DOMAIN_SPEC ??. ?? ?? ??.
 
-**C1 SPRINT 19 (2026-03-09 — MODE FOUNDRY)**: [x] **전량 점검 완료.** TASK 1~9 이미 구현됨 → 완료 처리. TASK 10 Release Gate 검증 통과. **같은 Foundry 10건 반복 금지** — 다음은 보드 § "다음 작업 (반복 제외)" 신규 항목만 진행.
+**[DOCS] Foundry ?? ?? (2026-03-09)**: [x] **??.** `docs/spec/FOUNDRY_DOMAIN_SPEC.md` ??. ?1 Scenario Engine 50???2 dojo/integrity ?? ????5 ???? 50? ???SCENARIOS_LIST.md ??. ?? ?? ??.
 
-**다음 작업 (반복 제외)**: (1) [API] Integrity 제출 서비스 계층 (2) [UI] Mentor 대화 이력 UI (3) [DOCS] Foundry 연간 로드맵 1페이지 (4) [TEST] GET /api/dojo/submissions route 테스트 (5) MODE 전환 후 Arena/Center 스프린트.
+**[DOCS] Foundry?Arena ?? ??? (2026-03-09)**: [x] **??.** FOUNDRY_DOMAIN_SPEC?ARENA_DOMAIN_SPEC ?? ?????? ??(2026-03-09)??? ?? ????? ??? ?? ?? ??. ?? ?? ??.
 
-**C1 SPRINT 18 (2026-03-09 — MODE FOUNDRY)**: 10 tasks. TASK 8·10 완료. 8건 → 19차에서 전부 이미 구현 확인·완료 처리.
+**[DOCS] Foundry ?? ??? 1??? (2026-03-09)**: [x] **??.** `docs/plans/FOUNDRY_ROADMAP.md` ??. Feature ???? 7?????? ????(Q1~Q4)???? ?????. FOUNDRY_DOMAIN_SPEC ??? ??? ??. ?? ?? ??.
 
-**C1 SPRINT 17 (2026-03-09 — MODE FOUNDRY)**: 10 tasks. TASK 8·10 완료. 8건 대기.
+**C1 SPRINT 20 (2026-03-09 ? MODE FOUNDRY)**: [ ] **SPRINT VERIFY PASS.** Lint ? Test 122/998 ? Build ?. ?? 10? ??? ? ?? 10?(Integrity ????Mentor ?? UI?????dojo/submissions ?????? ???Dojo ???mentor-request JSDoc?integrity ?? ???????????Release Gate). **SPRINT READY.**
 
-**C1 SPRINT 16 (2026-03-09 — MODE FOUNDRY)**: [ ] 10 tasks. TASK 7·10 완료. 8건 대기.
+**C1 SPRINT 19 (2026-03-09 ? MODE FOUNDRY)**: [x] **?? ?? ??.** TASK 1~9 ?? ??? ? ?? ??. TASK 10 Release Gate ?? ??. **?? Foundry 10? ?? ??** ? ??? ?? ? "?? ?? (?? ??)" ?? ??? ??.
 
-**[C3] C2 Gate 1 — API tier만 사용 (API 계약 완료)**: [x] **완료.** `CoreXpGetResponse`(lib/bty/arena/coreXpApi.ts) 추가, GET /api/arena/core-xp 응답에 `tier` 명시·JSDoc Gate 1. route 응답 `satisfies CoreXpGetResponse`. C4: useArenaSession에서 `response.tier` 사용·`Math.floor(coreXpTotal/10)` 제거 대기. npm test 121/953, lint 0. 보드·CURRENT_TASK 반영.
+**?? ?? (?? ??)**: (1) [API] Integrity ?? ??? ?? (2) [UI] Mentor ?? ?? UI (3) [DOCS] Foundry ?? ??? 1??? (4) [TEST] GET /api/dojo/submissions route ??? (5) MODE ?? ? Arena/Center ????.
 
-**[C3] C2 Gate 2 — beginner 200 → API 플래그 (API 계약 완료)**: [x] **완료.** GET /api/arena/core-xp 응답에 `requiresBeginnerPath: coreXpTotal < BEGINNER_CORE_XP_THRESHOLD` 추가(domain/constants 사용). CoreXpGetResponse 타입·JSDoc Gate 2. C4: useArenaSession에서 `data.requiresBeginnerPath` 사용·`coreXpTotal < 200` 제거 대기. npm test 121/953, lint 0. 보드·CURRENT_TASK 반영.
+**C1 SPRINT 18 (2026-03-09 ? MODE FOUNDRY)**: 10 tasks. TASK 8?10 ??. 8? ? 19??? ?? ?? ?? ????? ??.
 
-**[C3] C2 Gate 3 — run/complete DAILY_CAP → lib 추출**: [x] **완료.** `ARENA_DAILY_XP_CAP`를 lib/bty/arena/activityXp.ts에서 export, run/complete route·route.test.ts에서 해당 상수만 사용. 단일 소스 유지. npm test 121/953, lint 0. 보드·CURRENT_TASK 반영.
+**C1 SPRINT 17 (2026-03-09 ? MODE FOUNDRY)**: 10 tasks. TASK 8?10 ??. 8? ??.
 
-**[DOMAIN] 단위 테스트 1개 추가 (Arena 19차)**: [x] **완료.** `src/lib/bty/arena/leaderboardService.edges.test.ts` 신규 — buildLeaderboardRows(빈 배열·1-based rank·xp_total·profile 유무·code_index 6→CODELESS ZONE·LeaderboardRow shape), ScopeFilterResult·MyRankInfo 타입 검증 8 tests. 기존 동작만 검증, 비즈니스/XP 로직 미변경. npm test 121/953, lint 0. 보드·CURRENT_TASK 반영.
+**C1 SPRINT 16 (2026-03-09 ? MODE FOUNDRY)**: [ ] 10 tasks. TASK 7?10 ??. 8? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 실행 후 서류 반영 (2026-03-09)**: [x] **완료.** ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목 1회 실행. 배지 API·배지 UI·멘토 API·멘토 UI·규칙 준수(Elite=Weekly XP만·시즌 미반영·render-only)·경로 회귀 없음. **RESULT: PASS.** §3·BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[C3] C2 Gate 1 ? API tier? ?? (API ?? ??)**: [x] **??.** `CoreXpGetResponse`(lib/bty/arena/coreXpApi.ts) ??, GET /api/arena/core-xp ??? `tier` ???JSDoc Gate 1. route ?? `satisfies CoreXpGetResponse`. C4: useArenaSession?? `response.tier` ???`Math.floor(coreXpTotal/10)` ?? ??. npm test 121/953, lint 0. ???CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F 1회 점검 후 서류 반영 (2026-03-09)**: [x] **완료.** bty-release-gate.mdc A~F 1회 점검. A) Auth · B) Weekly Reset · C) Leaderboard · D) Migration · E) API · F) Lint ✓ Test 120/945 ✓ Build ✓. **Release Gate Results: PASS.** 필수 패치 0건. C2 위반 3건 Required patches 유지. BTY_RELEASE_GATE_CHECK § 해당 섹션·보드·CURRENT_TASK 반영.
+**[C3] C2 Gate 2 ? beginner 200 ? API ??? (API ?? ??)**: [x] **??.** GET /api/arena/core-xp ??? `requiresBeginnerPath: coreXpTotal < BEGINNER_CORE_XP_THRESHOLD` ??(domain/constants ??). CoreXpGetResponse ???JSDoc Gate 2. C4: useArenaSession?? `data.requiresBeginnerPath` ???`coreXpTotal < 200` ?? ??. npm test 121/953, lint 0. ???CURRENT_TASK ??.
 
-**[C5 Integrator] 통합 점검 (2026-03-09)**: [x] **완료.** C3·C4 변경 통합 점검(이번 런 = 문서 점검 2~3건 → C3/C4 해당 없음). Lint ✓ Test 120/945 ✓ Build ✓. API–UI 연결·동일 파일 충돌 없음. **RESULT: PASS.** C2 Gatekeeper 위반 3건(useArenaSession tier·beginner 200·run/complete DAILY_CAP)은 C3 handoff. 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[C3] C2 Gate 3 ? run/complete DAILY_CAP ? lib ??**: [x] **??.** `ARENA_DAILY_XP_CAP`? lib/bty/arena/activityXp.ts?? export, run/complete route?route.test.ts?? ?? ??? ??. ?? ?? ??. npm test 121/953, lint 0. ???CURRENT_TASK ??.
 
-**[C2 Gatekeeper] gate check (2026-03-09)**: [x] **완료.** src/domain·lib/bty·app/api·app·components 아키텍처 검사 실행. RESULT: FAIL — 위반 3건(useArenaSession tier 중복·BEGINNER 200 하드코딩·run/complete DAILY_CAP 인라인). BTY_RELEASE_GATE_CHECK § C2 Gatekeeper 2026-03-09·보드·CURRENT_TASK 반영.
+**[DOMAIN] ?? ??? 1? ?? (Arena 19?)**: [x] **??.** `src/lib/bty/arena/leaderboardService.edges.test.ts` ?? ? buildLeaderboardRows(? ???1-based rank?xp_total?profile ???code_index 6?CODELESS ZONE?LeaderboardRow shape), ScopeFilterResult?MyRankInfo ?? ?? 8 tests. ?? ??? ??, ????/XP ?? ???. npm test 121/953, lint 0. ???CURRENT_TASK ??.
 
-**[UI] Dojo 50문항 클라이언트 로딩/스켈레톤/빈 상태·aria 보강**: [x] **완료.** DojoClient.tsx — 문항 로딩 시 LoadingFallback(withSkeleton)+aria-busy·aria-label, 에러 시 role=alert·재시도 aria-label, 문항 0건 시 EmptyState, 제출 중 CardSkeleton+aria-busy. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? ?? ? ?? ?? (2026-03-09)**: [x] **??.** ELITE_3RD_SPEC_AND_CHECKLIST.md ?? 6?? 1? ??. ?? API??? UI??? API??? UI??? ??(Elite=Weekly XP???? ????render-only)??? ?? ??. **RESULT: PASS.** ?3?BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[C3] 문서 점검 2~3건 런 — 해당 없음 Exit**: C1 목표 = 문서 점검 2~3건 → Domain/API 해당 없음. **해당 없음 Exit.** npm run lint(tsc --noEmit) ✓, npm test 120/945 ✓. 보드·CURRENT_TASK 반영. [x] **완료.** `reflection-engine.edges.test.ts`에 KO 패턴 4종(방어적·비난·성급·통제 8건), EN 패턴 4종(defensive·blame·rushed·control 8건), 혼합 언어 4건, 빈·null·undefined·whitespace 안전 4건 추가. npm test 120/945, lint 0. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F 1? ?? ? ?? ?? (2026-03-09)**: [x] **??.** bty-release-gate.mdc A~F 1? ??. A) Auth ? B) Weekly Reset ? C) Leaderboard ? D) Migration ? E) API ? F) Lint ? Test 120/945 ? Build ?. **Release Gate Results: PASS.** ?? ?? 0?. C2 ?? 3? Required patches ??. BTY_RELEASE_GATE_CHECK ? ?? ??????CURRENT_TASK ??.
 
-**[DOMAIN] weeklyXp.ts 도메인 승격 — lib/bty/arena/domain.ts 함수 6개 + 타입 7개**: [x] **완료.** `src/domain/rules/weeklyXp.ts` 신규 — `awardXp`, `calculateLevel`, `calculateTier`, `calculateLevelTierProgress`, `seasonReset`, `leaderboardSort` + 타입 7개 도메인 승격. `lib/bty/arena/domain.ts`는 `@/domain/rules/weeklyXp` import+re-export 전환(후방 호환). `index.ts` re-export. `weeklyXp.test.ts` 18 tests. npm test 120/921, lint 0. 보드·CURRENT_TASK 반영.
+**[C5 Integrator] ?? ?? (2026-03-09)**: [x] **??.** C3?C4 ?? ?? ??(?? ? = ?? ?? 2~3? ? C3/C4 ?? ??). Lint ? Test 120/945 ? Build ?. API?UI ????? ?? ?? ??. **RESULT: PASS.** C2 Gatekeeper ?? 3?(useArenaSession tier?beginner 200?run/complete DAILY_CAP)? C3 handoff. ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[DOMAIN] stage.ts 중복 함수 4개 제거 — level-tier.ts import로 교체**: [x] **완료.** `src/domain/rules/stage.ts`에서 `codeIndexFromTier`, `subTierGroupFromTier`, `codeNameFromIndex`, `resolveSubName` 자체 구현 제거 → `./level-tier` import로 교체. 고유 함수 3개(`stageNumberFromCoreXp`, `defaultSubName`, `stageStateFromCoreXp`)만 유지. `index.ts` 선택 re-export 기존 유지. npm test 119/903 통과, lint 0. 보드·CURRENT_TASK 반영.
+**[C2 Gatekeeper] gate check (2026-03-09)**: [x] **??.** src/domain?lib/bty?app/api?app?components ???? ?? ??. RESULT: FAIL ? ?? 3?(useArenaSession tier ???BEGINNER 200 ?????run/complete DAILY_CAP ???). BTY_RELEASE_GATE_CHECK ? C2 Gatekeeper 2026-03-09????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F 1회 점검 — SPRINT 15 변경분 기준**: [x] **완료.** bty-release-gate.mdc A~F 점검(C5 TASK 10). A~B N/A · C) Leaderboard PASS · D) N/A · E) API PASS · F) Lint ✓ Test 119/909 ✓ Build ✓. Domain Purity·Import Boundary PASS. RESULT: PASS. 필수 패치 0건. 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[UI] Dojo 50?? ????? ??/????/? ???aria ??**: [x] **??.** DojoClient.tsx ? ?? ?? ? LoadingFallback(withSkeleton)+aria-busy?aria-label, ?? ? role=alert???? aria-label, ?? 0? ? EmptyState, ?? ? CardSkeleton+aria-busy. render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**[API] Arena run/complete route 단위 테스트 추가**: [x] **완료.** `src/app/api/arena/run/complete/route.test.ts` 신규 — 미인증 401, runId 누락/비문자열 400, 정상 200 응답 구조, applySeasonalXpToCore 호출, idempotent 재실행, run 미존재 404. Supabase 모킹. npm test 119/909, lint 0. 보드·CURRENT_TASK 반영.
+**[C3] ?? ?? 2~3? ? ? ?? ?? Exit**: C1 ?? = ?? ?? 2~3? ? Domain/API ?? ??. **?? ?? Exit.** npm run lint(tsc --noEmit) ?, npm test 120/945 ?. ???CURRENT_TASK ??. [x] **??.** `reflection-engine.edges.test.ts`? KO ?? 4?(???????????? 8?), EN ?? 4?(defensive?blame?rushed?control 8?), ?? ?? 4?, ??null?undefined?whitespace ?? 4? ??. npm test 120/945, lint 0. ???CURRENT_TASK ??.
 
-**[API] milestone.ts 순수 함수 분리 + useMilestoneTracker 훅 생성**: [x] **완료.** `src/lib/bty/arena/milestone.ts`에서 localStorage 직접 사용(사이드 이펙트 위반) 해소. (1) 순수 함수 `getPendingMilestone(currentTier, lastCelebratedMilestone)` 추출. (2) `src/hooks/useMilestoneTracker.ts` 신규 — localStorage 읽기/쓰기를 React 훅으로 이동, `checkMilestone`·`markShown` 제공. (3) 기존 `getMilestoneToShow` 후방 호환 유지. (4) `MILESTONE_STORAGE_KEY` export. 테스트 14건 통과. npm test 118/902, lint 0. 보드·CURRENT_TASK 반영.
+**[DOMAIN] weeklyXp.ts ??? ?? ? lib/bty/arena/domain.ts ?? 6? + ?? 7?**: [x] **??.** `src/domain/rules/weeklyXp.ts` ?? ? `awardXp`, `calculateLevel`, `calculateTier`, `calculateLevelTierProgress`, `seasonReset`, `leaderboardSort` + ?? 7? ??? ??. `lib/bty/arena/domain.ts`? `@/domain/rules/weeklyXp` import+re-export ??(?? ??). `index.ts` re-export. `weeklyXp.test.ts` 18 tests. npm test 120/921, lint 0. ???CURRENT_TASK ??.
 
-**[API] leaderboard route thin handler 리팩터 — leaderboardService.ts 추출**: [x] **완료.** `/api/arena/leaderboard/route.ts`(408→135줄)에서 getScopeFilter·fetchWeeklyXpRows·fetchProfileMap·buildLeaderboardRows·resolveMyRank을 `leaderboardService.ts`로 추출. route는 auth→service→응답만. API 응답 계약 변경 없음. npm test 118/893 통과, lint 0. 보드·CURRENT_TASK 반영.
+**[DOMAIN] stage.ts ?? ?? 4? ?? ? level-tier.ts import? ??**: [x] **??.** `src/domain/rules/stage.ts`?? `codeIndexFromTier`, `subTierGroupFromTier`, `codeNameFromIndex`, `resolveSubName` ?? ?? ?? ? `./level-tier` import? ??. ?? ?? 3?(`stageNumberFromCoreXp`, `defaultSubName`, `stageStateFromCoreXp`)? ??. `index.ts` ?? re-export ?? ??. npm test 119/903 ??, lint 0. ???CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F 1회 점검 — SPRINT 14 변경분 기준**: [x] **완료.** bty-release-gate.mdc A~F 점검(C5 TASK 10). A~C N/A · D) Migration N/A · E) API PASS · F) Lint ✓ Test 118/893 ✓ Build ✓. Domain Purity·Import Boundary PASS. RESULT: PASS. 필수 패치 0건. 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[VERIFY] Release Gate A~F 1? ?? ? SPRINT 15 ??? ??**: [x] **??.** bty-release-gate.mdc A~F ??(C5 TASK 10). A~B N/A ? C) Leaderboard PASS ? D) N/A ? E) API PASS ? F) Lint ? Test 119/909 ? Build ?. Domain Purity?Import Boundary PASS. RESULT: PASS. ?? ?? 0?. ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[API] domain.ts import direction 위반 해소 — domain 호출로 리팩터**: [x] **완료.** `src/lib/bty/arena/domain.ts`의 `awardXp` XP 변환 로직을 `seasonalToCoreConversion`(`@/domain/rules`) 호출로 교체. 로컬 상수 CORE_RATE_UNDER_200·CORE_RATE_200_PLUS 제거. weekly display 함수는 domain 대응 없어 유지. export 시그니처 유지. npm test 118/893 통과. 보드·CURRENT_TASK 반영.
+**[API] Arena run/complete route ?? ??? ??**: [x] **??.** `src/app/api/arena/run/complete/route.test.ts` ?? ? ??? 401, runId ??/???? 400, ?? 200 ?? ??, applySeasonalXpToCore ??, idempotent ???, run ??? 404. Supabase ??. npm test 119/909, lint 0. ???CURRENT_TASK ??.
 
-**[API] codes.ts import direction 위반 해소 — domain 호출로 리팩터**: [x] **완료.** `src/lib/bty/arena/codes.ts` 자체 구현 도메인 규칙 8개를 `@/domain/rules`·`@/domain/constants` import+re-export로 교체. display 함수도 domain 호출(defaultSubName·CORE_XP_PER_TIER·TIERS_PER_CODE) 전환. 기존 export API 완전 유지. npm test 118/893 통과. 보드·CURRENT_TASK 반영.
+**[API] milestone.ts ?? ?? ?? + useMilestoneTracker ? ??**: [x] **??.** `src/lib/bty/arena/milestone.ts`?? localStorage ?? ??(??? ??? ??) ??. (1) ?? ?? `getPendingMilestone(currentTier, lastCelebratedMilestone)` ??. (2) `src/hooks/useMilestoneTracker.ts` ?? ? localStorage ??/??? React ??? ??, `checkMilestone`?`markShown` ??. (3) ?? `getMilestoneToShow` ?? ?? ??. (4) `MILESTONE_STORAGE_KEY` export. ??? 14? ??. npm test 118/902, lint 0. ???CURRENT_TASK ??.
 
-**[DOMAIN] domain/rules/index.ts barrel에 stage.ts re-export 추가**: [x] **완료.** `src/domain/rules/index.ts`에 stage.ts 고유 함수(stageNumberFromCoreXp·defaultSubName·stageStateFromCoreXp) 선택적 re-export. level-tier.ts 중복 4함수는 canonical 유지. npm test 118/893 통과. 보드·CURRENT_TASK 반영.
+**[API] leaderboard route thin handler ??? ? leaderboardService.ts ??**: [x] **??.** `/api/arena/leaderboard/route.ts`(408?135?)?? getScopeFilter?fetchWeeklyXpRows?fetchProfileMap?buildLeaderboardRows?resolveMyRank? `leaderboardService.ts`? ??. route? auth?service????. API ?? ?? ?? ??. npm test 118/893 ??, lint 0. ???CURRENT_TASK ??.
 
-**[DOMAIN] Leadership Engine 단위 테스트 보강 — 경계 케이스**: [x] **완료.** `src/domain/leadership-engine/edges.test.ts` 신규 — LRI(입력 0·음수·NaN), TII(NaN·음수 targetMwd), AIR(빈 배열·전부 완료·전부 missed·slip 3/2 경계), Certified(정확히 threshold·0.79·0.29·전부 실패), Forced Reset(1/2/4/0조건·threshold 경계·getResetDueAt 48h) 27 tests. npm test 118/893 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F 1? ?? ? SPRINT 14 ??? ??**: [x] **??.** bty-release-gate.mdc A~F ??(C5 TASK 10). A~C N/A ? D) Migration N/A ? E) API PASS ? F) Lint ? Test 118/893 ? Build ?. Domain Purity?Import Boundary PASS. RESULT: PASS. ?? ?? 0?. ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[DOMAIN] Integrity 도메인 타입·검증 확장 — integrity.ts**: [x] **완료.** `src/domain/dojo/integrity.ts` 신규 — IntegrityScenario, IntegritySubmission, validateIntegrityResponse(빈 입력·5000자 초과 거부). 순수 함수만. `integrity.test.ts` 15 tests. npm test 117/866 통과. 보드·CURRENT_TASK 반영.
+**[API] domain.ts import direction ?? ?? ? domain ??? ???**: [x] **??.** `src/lib/bty/arena/domain.ts`? `awardXp` XP ?? ??? `seasonalToCoreConversion`(`@/domain/rules`) ??? ??. ?? ?? CORE_RATE_UNDER_200?CORE_RATE_200_PLUS ??. weekly display ??? domain ?? ?? ??. export ???? ??. npm test 118/893 ??. ???CURRENT_TASK ??.
 
-**[UI] Dojo 결과 화면 시각화 보강 — 5영역 바 차트 + Dr. Chi 코멘트 스타일**: [x] **완료.** DojoResultClient.tsx — 카드 그리드→수평 바 차트(CSS-only, green/amber/rose). Dr. Chi 🧑‍⚕️ 아이콘+카드. summaryKey별 배경색+배지(high/mid/low). render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[API] codes.ts import direction ?? ?? ? domain ??? ???**: [x] **??.** `src/lib/bty/arena/codes.ts` ?? ?? ??? ?? 8?? `@/domain/rules`?`@/domain/constants` import+re-export? ??. display ??? domain ??(defaultSubName?CORE_XP_PER_TIER?TIERS_PER_CODE) ??. ?? export API ?? ??. npm test 118/893 ??. ???CURRENT_TASK ??.
 
-**[API] Foundry service 계층 허브 생성 — index.ts**: [x] **완료.** `src/lib/bty/foundry/index.ts` 신규 — mentor·scenario·leadership-engine 선택적 re-export(naming conflict 회피). `index.test.ts` 15 tests. npm test 116/851, lint 통과. 보드·CURRENT_TASK 반영.
+**[DOMAIN] domain/rules/index.ts barrel? stage.ts re-export ??**: [x] **??.** `src/domain/rules/index.ts`? stage.ts ?? ??(stageNumberFromCoreXp?defaultSubName?stageStateFromCoreXp) ??? re-export. level-tier.ts ?? 4??? canonical ??. npm test 118/893 ??. ???CURRENT_TASK ??.
 
-**[UI] Integrity 연습 화면 접근성·로딩 보강**: [x] **완료.** integrity/page.client.tsx — input aria-describedby+aria-label, skeleton aria-busy·aria-label, sectionRef step 전환 focus 이동, 버튼 aria-label. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[DOMAIN] Leadership Engine ?? ??? ?? ? ?? ???**: [x] **??.** `src/domain/leadership-engine/edges.test.ts` ?? ? LRI(?? 0????NaN), TII(NaN??? targetMwd), AIR(? ????? ????? missed?slip 3/2 ??), Certified(??? threshold?0.79?0.29??? ??), Forced Reset(1/2/4/0???threshold ???getResetDueAt 48h) 27 tests. npm test 118/893 ??. ???CURRENT_TASK ??.
 
-**[DOCS] Arena 도메인 스펙 문서 작성 (2026-03-09)**: [x] **완료.** `docs/spec/ARENA_DOMAIN_SPEC.md` 신규. Arena 시스템 범위 10개·domain 모듈 7개(xp·level-tier·stage·leaderboard·leaderboardTieBreak·season + constants/types)·**domain duplication 현황 표**(level-tier vs stage vs codes vs domain 중복 함수 매핑)·리팩터 방향·API 32개 목록·서비스 26개 역할 요약·비즈니스 규칙 10개·아키텍처 이슈 7건·테스트 현황. 코드 변경 없음.
+**[DOMAIN] Integrity ??? ????? ?? ? integrity.ts**: [x] **??.** `src/domain/dojo/integrity.ts` ?? ? IntegrityScenario, IntegritySubmission, validateIntegrityResponse(? ???5000? ?? ??). ?? ???. `integrity.test.ts` 15 tests. npm test 117/866 ??. ???CURRENT_TASK ??.
 
-**[DOCS] Foundry 도메인 스펙 문서 1페이지 작성 (2026-03-09)**: [x] **완료.** `docs/spec/FOUNDRY_DOMAIN_SPEC.md` 신규. Foundry 시스템 범위 8개(Dojo·Integrity·Mentor·Scenario·Beginner·Leadership Engine·Elite·Healing)·도메인 4모듈(dojo/flow·dojo/questions·leadership-engine/6모듈·foundry/hub)·서비스 2모듈(mentor/·scenario/)·API 계약 6개·시나리오 파일 구조(48건, 스키마·ID 규칙)·비즈니스 규칙 11개·DB 3테이블·UI 12라우트 정리. 코드 변경 없음.
+**[UI] Dojo ?? ?? ??? ?? ? 5?? ? ?? + Dr. Chi ??? ???**: [x] **??.** DojoResultClient.tsx ? ?? ?????? ? ??(CSS-only, green/amber/rose). Dr. Chi ????? ???+??. summaryKey? ???+??(high/mid/low). render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**[DOMAIN] 시나리오 3개 추가 — 47개 → 50개 달성**: [x] **완료.** SCN_EC_0046(윤리적 용기)·SCN_CG_0047(세대 간 갈등)·SCN_RM_0048(원격 근무 리더십) 추가. bty_scenario_v1 스키마·4선택지·delayed_outcome 동일. 시나리오 50개 달성. npm test 115/836 통과. 보드·CURRENT_TASK 반영.
+**[API] Foundry service ?? ?? ?? ? index.ts**: [x] **??.** `src/lib/bty/foundry/index.ts` ?? ? mentor?scenario?leadership-engine ??? re-export(naming conflict ??). `index.test.ts` 15 tests. npm test 116/851, lint ??. ???CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F 1회 점검 — Foundry 13차 변경분 기준**: [x] **완료.** bty-release-gate.mdc A~F 점검(C5 TASK 10). A) Auth N/A · B) Weekly Reset N/A · C) Leaderboard N/A · D) Migration N/A · E) API PASS · F) Lint ✓ Test 110/779 ✓ Build ✓. Domain Purity·Import Boundary PASS. RESULT: PASS. 필수 패치 0건. 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[UI] Integrity ?? ?? ?????? ??**: [x] **??.** integrity/page.client.tsx ? input aria-describedby+aria-label, skeleton aria-busy?aria-label, sectionRef step ?? focus ??, ?? aria-label. render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**[UI] Foundry 메인 페이지 보강 — 기능 카드 레이아웃 개선**: [x] **완료.** page.client.tsx 단순 링크 목록 → 반응형 카드 그리드(sm:grid-cols-2). 5카드: Dojo·역지사지·Dr.Chi 멘토·대시보드·Elite — 아이콘·제목·설명·링크. useRouter 제거. ko/en. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[DOCS] Arena ??? ?? ?? ?? (2026-03-09)**: [x] **??.** `docs/spec/ARENA_DOMAIN_SPEC.md` ??. Arena ??? ?? 10??domain ?? 7?(xp?level-tier?stage?leaderboard?leaderboardTieBreak?season + constants/types)?**domain duplication ?? ?**(level-tier vs stage vs codes vs domain ?? ?? ??)???? ???API 32? ?????? 26? ?? ??????? ?? 10?????? ?? 7????? ??. ?? ?? ??.
 
-**[DOMAIN] Foundry 도메인 모듈 생성 — re-export 허브**: [x] **완료.** `src/domain/foundry/index.ts` 신규 — dojo/flow·dojo/questions·leadership-engine re-export. 기존 파일 이동 없음. `index.test.ts` 10 tests. npm test 115/836 통과. 보드·CURRENT_TASK 반영.
+**[DOCS] Foundry ??? ?? ?? 1??? ?? (2026-03-09)**: [x] **??.** `docs/spec/FOUNDRY_DOMAIN_SPEC.md` ??. Foundry ??? ?? 8?(Dojo?Integrity?Mentor?Scenario?Beginner?Leadership Engine?Elite?Healing)???? 4??(dojo/flow?dojo/questions?leadership-engine/6???foundry/hub)???? 2??(mentor/?scenario/)?API ?? 6?????? ?? ??(48?, ????ID ??)????? ?? 11??DB 3????UI 12??? ??. ?? ?? ??.
 
-**[UI] Center 에러 boundary 보강 — error.tsx 추가**: [x] **완료.** center/error.tsx·dear-me/error.tsx·assessment/error.tsx 신규 — "use client", 에러 메시지·재시도(reset), dev 에러 상세. ko/en. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[DOMAIN] ???? 3? ?? ? 47? ? 50? ??**: [x] **??.** SCN_EC_0046(??? ??)?SCN_CG_0047(?? ? ??)?SCN_RM_0048(?? ?? ???) ??. bty_scenario_v1 ????4????delayed_outcome ??. ???? 50? ??. npm test 115/836 ??. ???CURRENT_TASK ??.
 
-**[UI] Center 종합 현황 섹션 — 최근 진단·편지 요약 카드 추가**: [x] **완료.** PageClient.tsx Center 진입 화면(KO·EN)에 "나의 현황" — 최근 진단 카드(pattern·track·날짜, 없으면 링크) + 최근 편지 카드(body 발췌·날짜, 없으면 링크). 로딩 CardSkeleton. 테마 자동 적용. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F 1? ?? ? Foundry 13? ??? ??**: [x] **??.** bty-release-gate.mdc A~F ??(C5 TASK 10). A) Auth N/A ? B) Weekly Reset N/A ? C) Leaderboard N/A ? D) Migration N/A ? E) API PASS ? F) Lint ? Test 110/779 ? Build ?. Domain Purity?Import Boundary PASS. RESULT: PASS. ?? ?? 0?. ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[API] Center resilience API 리팩터 — resilienceService.ts**: [x] **완료.** `src/lib/bty/center/resilienceService.ts` 신규 — getResilienceEntries(DB SELECT→domain aggregate), parsePeriodDays(1–365 clamp). API route thin handler 리팩터. `resilienceService.test.ts` 13 tests. npm test 114/826, lint 통과. 보드·CURRENT_TASK 반영.
+**[UI] Foundry ?? ??? ?? ? ?? ?? ???? ??**: [x] **??.** page.client.tsx ?? ?? ?? ? ??? ?? ???(sm:grid-cols-2). 5??: Dojo??????Dr.Chi ????????Elite ? ????????????. useRouter ??. ko/en. render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**[UI] Assessment 결과 시각화 보강 — 레이더 차트 + 비교 표시**: [x] **완료.** ResultClient.tsx에 SVG-only RadarChart 추가 — 점수 레이더 폴리곤+가이드 링+localized 라벨(dimLabels). 이력 2건↑ 시 이전 vs 현재 오버레이+범례+변화 비교 그리드. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[DOMAIN] Foundry ??? ?? ?? ? re-export ??**: [x] **??.** `src/domain/foundry/index.ts` ?? ? dojo/flow?dojo/questions?leadership-engine re-export. ?? ?? ?? ??. `index.test.ts` 10 tests. npm test 115/836 ??. ???CURRENT_TASK ??.
 
-**[DOMAIN] Center letter 단위 테스트 보강 — 경계 케이스 추가**: [x] **완료.** `src/domain/center/letter.edges.test.ts` 추가(validateLetterBody 탭만·개행만·undefined·XSS·9999자·1자·emoji·number, LetterLocale union, LetterSubmission 빈 userId, LetterWithReply reply 빈 문자열 vs null). 미커버 경계만. npm test 113/813 통과. 보드·CURRENT_TASK 반영.
+**[UI] Center ?? boundary ?? ? error.tsx ??**: [x] **??.** center/error.tsx?dear-me/error.tsx?assessment/error.tsx ?? ? "use client", ?? ???????(reset), dev ?? ??. ko/en. render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**[API] Assessment service 계층 생성 — assessmentService.ts**: [x] **완료.** `src/lib/bty/center/assessmentService.ts` 신규 — submitAssessment(validate→scoreAnswers→detectPattern→INSERT), getAssessmentHistory(SELECT→AssessmentHistory[]). API routes thin handler 리팩터. `assessmentService.test.ts` 9 tests. npm test 112/800, lint 통과. 보드·CURRENT_TASK 반영.
+**[UI] Center ?? ?? ?? ? ?? ????? ?? ?? ??**: [x] **??.** PageClient.tsx Center ?? ??(KO?EN)? "?? ??" ? ?? ?? ??(pattern?track???, ??? ??) + ?? ?? ??(body ?????, ??? ??). ?? CardSkeleton. ?? ?? ??. render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F 1회 점검 — Center 12차 변경분 기준**: [x] **완료.** bty-release-gate.mdc A~F 점검(C5 TASK 10). A) Auth N/A · B) Weekly Reset N/A · C) Leaderboard N/A · D) Migration PASS · E) API PASS · F) Lint ✓ Test 110/779 ✓ Build ✓. RESULT: PASS. 필수 패치 0건. 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[API] Center resilience API ??? ? resilienceService.ts**: [x] **??.** `src/lib/bty/center/resilienceService.ts` ?? ? getResilienceEntries(DB SELECT?domain aggregate), parsePeriodDays(1?365 clamp). API route thin handler ???. `resilienceService.test.ts` 13 tests. npm test 114/826, lint ??. ???CURRENT_TASK ??.
 
-**[DOCS] Center 도메인 스펙 문서 1페이지 작성 (2026-03-09)**: [x] **완료.** `docs/spec/CENTER_DOMAIN_SPEC.md` 신규. Center 시스템 범위·도메인 4모듈·서비스·API 계약 6개·비즈니스 규칙 5개·DB 3테이블·UI 4라우트 정리. 코드 변경 없음.
+**[UI] Assessment ?? ??? ?? ? ??? ?? + ?? ??**: [x] **??.** ResultClient.tsx? SVG-only RadarChart ?? ? ?? ??? ???+??? ?+localized ??(dimLabels). ?? 2?? ? ?? vs ?? ????+??+?? ?? ???. render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**[DOMAIN] Center assessment 도메인 타입·검증 함수 추가**: [x] **완료.** `src/domain/center/assessment.ts` 신규 — AssessmentSubmission, validateAssessmentAnswers(빈·개수 불일치·범위·비정수 거부), AssessmentHistory. 순수 함수만. `assessment.test.ts` 12 tests. npm test 111/791 통과. 보드·CURRENT_TASK 반영.
+**[DOMAIN] Center letter ?? ??? ?? ? ?? ??? ??**: [x] **??.** `src/domain/center/letter.edges.test.ts` ??(validateLetterBody ???????undefined?XSS?9999??1??emoji?number, LetterLocale union, LetterSubmission ? userId, LetterWithReply reply ? ??? vs null). ??? ???. npm test 113/813 ??. ???CURRENT_TASK ??.
 
-**[UI] Dear Me 편지 상세 보기 — 이력에서 클릭 시 편지 전문·답장 표시**: [x] **완료.** DearMeClient 이력 리스트 인라인 확장 — 클릭 시 body 전문 + reply 표시(없으면 "답장 대기 중"). aria-expanded·aria-label. expandedId 토글. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[API] Assessment service ?? ?? ? assessmentService.ts**: [x] **??.** `src/lib/bty/center/assessmentService.ts` ?? ? submitAssessment(validate?scoreAnswers?detectPattern?INSERT), getAssessmentHistory(SELECT?AssessmentHistory[]). API routes thin handler ???. `assessmentService.test.ts` 9 tests. npm test 112/800, lint ??. ???CURRENT_TASK ??.
 
-**[UI] Center·Dear Me 로딩 페이지 보강 — loading.tsx 추가**: [x] **완료.** center/loading.tsx(🏠) + dear-me/loading.tsx(✉️) 신규 — LoadingFallback(icon·message·withSkeleton). Arena 패턴 동일. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate A~F 1? ?? ? Center 12? ??? ??**: [x] **??.** bty-release-gate.mdc A~F ??(C5 TASK 10). A) Auth N/A ? B) Weekly Reset N/A ? C) Leaderboard N/A ? D) Migration PASS ? E) API PASS ? F) Lint ? Test 110/779 ? Build ?. RESULT: PASS. ?? ?? 0?. ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[UI] Dear Me 접근성 보강 — aria-describedby·포커스 이동·aria-label**: [x] **완료.** (1) textarea aria-describedby="dear-me-hint". (2) reply section useRef focus 이동. (3) "Center로 가기" 링크 aria-label. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[DOCS] Center ??? ?? ?? 1??? ?? (2026-03-09)**: [x] **??.** `docs/spec/CENTER_DOMAIN_SPEC.md` ??. Center ??? ?????? 4???????API ?? 6?????? ?? 5??DB 3????UI 4??? ??. ?? ?? ??.
 
-**[API] Center/Dear Me letter API 중복 정리**: [x] **완료.** center/letter와 dear-me/letter는 별개 기능(다른 테이블·필드·LLM 프롬프트). 통합 불가 → 둘 다 유지. `/api/center/letter`를 thin handler로 리팩터(submitCenterLetter service 호출). UI 호출 경로 변경 없음. npm test 110/779, lint 통과. 보드·CURRENT_TASK 반영.
+**[DOMAIN] Center assessment ??? ????? ?? ??**: [x] **??.** `src/domain/center/assessment.ts` ?? ? AssessmentSubmission, validateAssessmentAnswers(???? ?????????? ??), AssessmentHistory. ?? ???. `assessment.test.ts` 12 tests. npm test 111/791 ??. ???CURRENT_TASK ??.
 
-**[UI] Assessment 제출 이력 보기 UI — /assessment/result 하단에 과거 진단 목록 표시**: [x] **완료.** ResultClient.tsx에 이전 진단 이력 섹션 추가 — mount 시 GET /api/assessment/submissions → CardSkeleton → 리스트(날짜·pattern_key·recommended_track). 빈 이력 EmptyState, 에러 role=alert, inline ko/en. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[UI] Dear Me ?? ?? ?? ? ???? ?? ? ?? ????? ??**: [x] **??.** DearMeClient ?? ??? ??? ?? ? ?? ? body ?? + reply ??(??? "?? ?? ?"). aria-expanded?aria-label. expandedId ??. render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**[API] Center service 계층 생성 — letterService.ts**: [x] **완료.** `src/lib/bty/center/letterService.ts` 신규 — submitLetter(validate→reply→INSERT), getLetterHistory(SELECT→LetterWithReply[]). API thin handler 리팩터. `letterService.test.ts` 10 tests. npm test 110/779, lint 통과. 보드·CURRENT_TASK 반영.
+**[UI] Center?Dear Me ?? ??? ?? ? loading.tsx ??**: [x] **??.** center/loading.tsx(??) + dear-me/loading.tsx(??) ?? ? LoadingFallback(icon?message?withSkeleton). Arena ?? ??. render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**[VERIFY] Release Gate A~F 1회 점검 — Center 변경분 기준 (C5, 2026-03-09)**: [x] **완료.** PASS. Lint ✓ Test 109/769 ✓ Build ✓. A~C N/A, D·E·F PASS. 보드·BTY_RELEASE_GATE_CHECK 반영.
+**[UI] Dear Me ??? ?? ? aria-describedby???? ???aria-label**: [x] **??.** (1) textarea aria-describedby="dear-me-hint". (2) reply section useRef focus ??. (3) "Center? ??" ?? aria-label. render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**[UI] Dear Me 편지 이력 보기 UI — /dear-me 하단에 과거 편지 목록 표시**: [x] **완료.** DearMeClient.tsx에 편지 이력 섹션 추가 — mount 시 GET /api/dear-me/letters → CardSkeleton → 리스트(날짜·body 발췌·reply 유무). 빈 이력 EmptyState, 에러 role=alert, i18n 6키. 편지 제출 후 이력 새로고침. render-only. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[API] Center/Dear Me letter API ?? ??**: [x] **??.** center/letter? dear-me/letter? ?? ??(?? ???????LLM ????). ?? ?? ? ? ? ??. `/api/center/letter`? thin handler? ???(submitCenterLetter service ??). UI ?? ?? ?? ??. npm test 110/779, lint ??. ???CURRENT_TASK ??.
 
-**[DOMAIN] Center resilience 단위 테스트 보강 — 경계 케이스 추가**: [x] **완료.** `src/domain/center/resilience.edges.test.ts` 추가(energyToLevel 0/-1/6, aggregate null energy·periodDays=1·역순·all null→mid). 미커버 경계만. npm test 109/769 통과. 보드·CURRENT_TASK 반영.
+**[UI] Assessment ?? ?? ?? UI ? /assessment/result ??? ?? ?? ?? ??**: [x] **??.** ResultClient.tsx? ?? ?? ?? ?? ?? ? mount ? GET /api/assessment/submissions ? CardSkeleton ? ???(???pattern_key?recommended_track). ? ?? EmptyState, ?? role=alert, inline ko/en. render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**[DOMAIN] Center letter 도메인 타입·검증 함수 추가**: [x] **완료.** `src/domain/center/letter.ts` 신규 — LetterSubmission, validateLetterBody(빈 문자열·10000자 초과 거부), LetterWithReply. 순수 함수만. `letter.test.ts` 10 tests. npm test 108/760 통과. 보드·CURRENT_TASK 반영.
+**[API] Center service ?? ?? ? letterService.ts**: [x] **??.** `src/lib/bty/center/letterService.ts` ?? ? submitLetter(validate?reply?INSERT), getLetterHistory(SELECT?LetterWithReply[]). API thin handler ???. `letterService.test.ts` 10 tests. npm test 110/779, lint ??. ???CURRENT_TASK ??.
 
-**[DOCS] Center 백로그·상태 점검 (2026-03-09)**: [x] **완료.** C1 실행. NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4를 Arena → Center 대기 작업으로 전면 갱신. CURSOR_TASK_BOARD에 SPRINT 11차(CENTER) 기록. MODE CENTER 확인. 코드 없음.
+**[VERIFY] Release Gate A~F 1? ?? ? Center ??? ?? (C5, 2026-03-09)**: [x] **??.** PASS. Lint ? Test 109/769 ? Build ?. A~C N/A, D?E?F PASS. ???BTY_RELEASE_GATE_CHECK ??.
 
-**C1 SPRINT 11 (2026-03-09 11차 — CENTER 첫 스프린트)**: [x] **SPRINT VERIFY PASS.** Lint ✓ Test 108/760 ✓ Build ✓. MODE CENTER. 10 tasks 생성. TASK 1(letter domain) 완료. 나머지 9건 대기. **SPRINT READY.**
+**[UI] Dear Me ?? ?? ?? UI ? /dear-me ??? ?? ?? ?? ??**: [x] **??.** DearMeClient.tsx? ?? ?? ?? ?? ? mount ? GET /api/dear-me/letters ? CardSkeleton ? ???(???body ???reply ??). ? ?? EmptyState, ?? role=alert, i18n 6?. ?? ?? ? ?? ????. render-only. npm run lint ??. ???CURRENT_TASK ??.
 
-**[DOMAIN/API/UI] Dojo·Dear Me 50문항 DB화 2차 구현 (2026-03-09)**: [x] **완료.** Lint ✓ Test 107/750 ✓ Build ✓. (1) `dojo_questions` 실제 문항 50건 UPDATE 마이그레이션 (5영역×10문항 한국어·영어). (2) Assessment UI → POST /api/assessment/submit API 호출 전환 (sessionStorage fallback 유지). ResultClient API 결과 우선 사용. (3) Dojo 50문항 stepper UI 신규 (`/bty/(protected)/dojo` + `/dojo/result`). API 문항 fetch → 한 문항씩 → submit → 결과 화면. (4) 조회 API 3개: GET `/api/dojo/submissions`, GET `/api/assessment/submissions`, GET `/api/dear-me/letters`.
+**[DOMAIN] Center resilience ?? ??? ?? ? ?? ??? ??**: [x] **??.** `src/domain/center/resilience.edges.test.ts` ??(energyToLevel 0/-1/6, aggregate null energy?periodDays=1????all null?mid). ??? ???. npm test 109/769 ??. ???CURRENT_TASK ??.
 
-**[DOMAIN/API] Dojo·Dear Me 50문항 DB화 1차 구현 (2026-03-09)**: [x] **완료.** SPRINT VERIFY PASS (Lint ✓ Test 107/750 ✓ Build ✓). 마이그레이션 3개 작성(`dojo_submissions`, `assessment_submissions`, `dear_me_letters`). API 3개 저장 연동: (1) POST `/api/dojo/submit` + INSERT + submissionId. (2) POST `/api/assessment/submit` (신규) — scoreAnswers·detectPattern 도메인 호출 + INSERT. (3) POST `/api/dear-me/letter` + INSERT + letterId. 기존 응답 계약 유지. Lint ✓ Test 107/750 ✓ Build ✓.
+**[DOMAIN] Center letter ??? ????? ?? ??**: [x] **??.** `src/domain/center/letter.ts` ?? ? LetterSubmission, validateLetterBody(? ????10000? ?? ??), LetterWithReply. ?? ???. `letter.test.ts` 10 tests. npm test 108/760 ??. ???CURRENT_TASK ??.
 
-**[DOCS] Dojo·Dear Me 콘텐츠 다음 단계 설계 (50문항 DB화 등) (2026-03-09)**: [x] **완료.** 현재 상태 진단(Assessment 50문항 코드 vs Dojo 50문항 DB 플레이스홀더 vs Dear Me 편지 미저장) → 설계 문서 `docs/DOJO_DEAR_ME_DB_NEXT_PHASE_DESIGN.md` 작성. 테이블 3개(dojo_submissions, assessment_submissions, dear_me_letters) 스키마·RLS·마이그레이션, API 저장 연동, 구현 로드맵 10단계 정리. 코드 변경 없음.
+**[DOCS] Center ?????? ?? (2026-03-09)**: [x] **??.** C1 ??. NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4? Arena ? Center ?? ???? ?? ??. CURSOR_TASK_BOARD? SPRINT 11?(CENTER) ??. MODE CENTER ??. ?? ??.
 
-**C1 SPRINT 10 (2026-03-09 10차)**: [x] **SPRINT VERIFY PASS.** Lint ✓ Test 107/750 ✓ Build ✓. MODE ARENA. 10 tasks OWNER·PROMPT below. 직전(9차)과 대조 → 9차 10건 모두 완료. 이번 10차 새 10건. **SPRINT READY.** 각 커서 완료 시 보드·CURRENT_TASK 갱신 필수.
+**C1 SPRINT 11 (2026-03-09 11? ? CENTER ? ????)**: [x] **SPRINT VERIFY PASS.** Lint ? Test 108/760 ? Build ?. MODE CENTER. 10 tasks ??. TASK 1(letter domain) ??. ??? 9? ??. **SPRINT READY.**
 
-**[UI] 접근성 1건 (2곳째) — TierMilestoneModal rename input aria-label 적용**: [x] **완료.** TierMilestoneModal의 sub-name 입력 필드에 aria-label="Sub name (max 7 characters)" 적용. render-only·npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[DOMAIN/API/UI] Dojo?Dear Me 50?? DB? 2? ?? (2026-03-09)**: [x] **??.** Lint ? Test 107/750 ? Build ?. (1) `dojo_questions` ?? ?? 50? UPDATE ?????? (5???10?? ??????). (2) Assessment UI ? POST /api/assessment/submit API ?? ?? (sessionStorage fallback ??). ResultClient API ?? ?? ??. (3) Dojo 50?? stepper UI ?? (`/bty/(protected)/dojo` + `/dojo/result`). API ?? fetch ? ? ??? ? submit ? ?? ??. (4) ?? API 3?: GET `/api/dojo/submissions`, GET `/api/assessment/submissions`, GET `/api/dear-me/letters`.
 
-**[UI] 로딩/스켈레톤 1곳 보강 (2곳째) — Arena 메인 !levelChecked 초기 로딩에 LoadingFallback 적용**: [x] **완료.** Arena 메인 페이지 !levelChecked 상태(coreXP 확인 중)를 CardSkeleton → LoadingFallback(icon·message·withSkeleton) + aria-busy로 업그레이드. render-only·npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[DOMAIN/API] Dojo?Dear Me 50?? DB? 1? ?? (2026-03-09)**: [x] **??.** SPRINT VERIFY PASS (Lint ? Test 107/750 ? Build ?). ?????? 3? ??(`dojo_submissions`, `assessment_submissions`, `dear_me_letters`). API 3? ?? ??: (1) POST `/api/dojo/submit` + INSERT + submissionId. (2) POST `/api/assessment/submit` (??) ? scoreAnswers?detectPattern ??? ?? + INSERT. (3) POST `/api/dear-me/letter` + INSERT + letterId. ?? ?? ?? ??. Lint ? Test 107/750 ? Build ?.
 
-**[UI] 접근성 1건 — Arena Other 모달 textarea aria-label 적용**: [x] **완료.** Arena 메인 Other(직접 작성) 모달의 textarea에 aria-label={t.otherPlaceholder} 적용. render-only·npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[DOCS] Dojo?Dear Me ??? ?? ?? ?? (50?? DB? ?) (2026-03-09)**: [x] **??.** ?? ?? ??(Assessment 50?? ?? vs Dojo 50?? DB ?????? vs Dear Me ?? ???) ? ?? ?? `docs/DOJO_DEAR_ME_DB_NEXT_PHASE_DESIGN.md` ??. ??? 3?(dojo_submissions, assessment_submissions, dear_me_letters) ????RLS???????, API ?? ??, ?? ??? 10?? ??. ?? ?? ??.
 
-**[UI] 로딩/스켈레톤 1곳 보강 — Arena beginner 중간 스텝(2→3~5→6) 전환 시 loading 활성화**: [x] **완료.** beginner goNext steps 2-5에서 sendEvent 비동기 호출 중 setLoading(true/false) 추가 → 기존 CardSkeleton 활성화. render-only·npm run lint 통과. 보드·CURRENT_TASK 반영.
+**C1 SPRINT 10 (2026-03-09 10?)**: [x] **SPRINT VERIFY PASS.** Lint ? Test 107/750 ? Build ?. MODE ARENA. 10 tasks OWNER?PROMPT below. ??(9?)? ?? ? 9? 10? ?? ??. ?? 10? ? 10?. **SPRINT READY.** ? ?? ?? ? ???CURRENT_TASK ?? ??.
 
-**[DOMAIN] 단위 테스트 1개 추가 (Arena 16차)**: [x] **완료.** TASK 2(15차)와 다른 미커버 모듈로 `src/lib/bty/arena/reflection-engine.edges.test.ts` 추가(detectPatterns 우선순위·dental/SSO 도메인 키워드·score threshold·scores shape). 기존 동작만 검증, 비즈니스/XP 로직 미변경. npm test 107/750 통과. 보드·CURRENT_TASK 반영.
+**[UI] ??? 1? (2??) ? TierMilestoneModal rename input aria-label ??**: [x] **??.** TierMilestoneModal? sub-name ?? ??? aria-label="Sub name (max 7 characters)" ??. render-only?npm run lint ??. ???CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 실행 후 서류 반영**: [x] **완료.** docs/ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목 1회 실행(C5 TASK 6 — 9차 스프린트). 결과 PASS. Elite=Weekly XP만·시즌 미반영. BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK·§3 반영.
+**[UI] ??/???? 1? ?? (2??) ? Arena ?? !levelChecked ?? ??? LoadingFallback ??**: [x] **??.** Arena ?? ??? !levelChecked ??(coreXP ?? ?)? CardSkeleton ? LoadingFallback(icon?message?withSkeleton) + aria-busy? ?????. render-only?npm run lint ??. ???CURRENT_TASK ??.
 
-**[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영**: [x] **완료.** bty-release-gate.mdc A~F 1회 점검(C5 TASK 5 — 9차 스프린트). 결과 PASS. 필수 패치 0건. CI: Lint ✓ Test 105/728 ✓ Build ✓. 결과를 docs/BTY_RELEASE_GATE_CHECK.md에 반영. 보드·CURRENT_TASK 갱신.
+**[UI] ??? 1? ? Arena Other ?? textarea aria-label ??**: [x] **??.** Arena ?? Other(?? ??) ??? textarea? aria-label={t.otherPlaceholder} ??. render-only?npm run lint ??. ???CURRENT_TASK ??.
 
-**[DOMAIN] 단위 테스트 1개 추가 (Arena 15차)**: [x] **완료.** 13차·14차와 다른 미커버 모듈로 `src/lib/bty/arena/engine.edges.test.ts` 추가(computeXp 경계·pickSystemMessageId 우선순위·evaluateChoice tags·evaluateFollowUp). 기존 동작만 검증, 비즈니스/XP 로직 미변경. npm test 106/742 통과. 보드·CURRENT_TASK 반영.
+**[UI] ??/???? 1? ?? ? Arena beginner ?? ??(2?3~5?6) ?? ? loading ???**: [x] **??.** beginner goNext steps 2-5?? sendEvent ??? ?? ? setLoading(true/false) ?? ? ?? CardSkeleton ???. render-only?npm run lint ??. ???CURRENT_TASK ??.
 
-**C1 SPRINT 10 (2026-03-08 9차)**: [x] **SPRINT VERIFY PASS.** Lint ✓ Test 105/728 ✓ Build ✓. MODE ARENA. 10 tasks OWNER·PROMPT below. 직전(8차)과 대조 → 8차 10건 모두 완료. 이번 9차 새 10건. **SPRINT READY.** 각 커서 완료 시 보드·CURRENT_TASK 갱신 필수.
+**[DOMAIN] ?? ??? 1? ?? (Arena 16?)**: [x] **??.** TASK 2(15?)? ?? ??? ??? `src/lib/bty/arena/reflection-engine.edges.test.ts` ??(detectPatterns ?????dental/SSO ??? ????score threshold?scores shape). ?? ??? ??, ????/XP ?? ???. npm test 107/750 ??. ???CURRENT_TASK ??.
 
-**[DOCS] 문서 점검 2~3건 (17차) (2026-03-08)**: [x] **완료.** C1 실행. NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·CURSOR_TASK_BOARD 2~3건 점검·갱신. 코드 변경 없음. 보드·CURRENT_TASK 갱신. C2·C3·C4 해당 없음 Exit.
+**[VERIFY] ??? 3? ????? 1? ?? ? ?? ??**: [x] **??.** docs/ELITE_3RD_SPEC_AND_CHECKLIST.md ?? 6?? 1? ??(C5 TASK 6 ? 9? ????). ?? PASS. Elite=Weekly XP???? ???. BTY_RELEASE_GATE_CHECK????CURRENT_TASK??3 ??.
 
-**[DOCS] 문서 점검 2~3건 (18차) (2026-03-08)**: [x] **완료.** C1 실행. NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 2~3건 점검·갱신. 코드 변경 없음. 보드·CURRENT_TASK 갱신. C2·C3·C4 해당 없음 Exit.
+**[VERIFY] Release Gate ????? 1? ?? ? ?? ??**: [x] **??.** bty-release-gate.mdc A~F 1? ??(C5 TASK 5 ? 9? ????). ?? PASS. ?? ?? 0?. CI: Lint ? Test 105/728 ? Build ?. ??? docs/BTY_RELEASE_GATE_CHECK.md? ??. ???CURRENT_TASK ??.
 
-**[UI] 접근성 1건 (2곳째) — beginner PrimaryButton aria-label**: [x] **완료.** Arena beginner PrimaryButton에 aria-label={label} 적용. render-only·npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[DOMAIN] ?? ??? 1? ?? (Arena 15?)**: [x] **??.** 13??14?? ?? ??? ??? `src/lib/bty/arena/engine.edges.test.ts` ??(computeXp ???pickSystemMessageId ?????evaluateChoice tags?evaluateFollowUp). ?? ??? ??, ????/XP ?? ???. npm test 106/742 ??. ???CURRENT_TASK ??.
 
-**[UI] 로딩/스켈레톤 1곳 보강 (2곳째) — Arena beginner 하단 skeleton aria 보강**: [x] **완료.** beginner 하단 CardSkeleton에 aria-busy·aria-label 추가. render-only·npm run lint 통과. 보드·CURRENT_TASK 반영.
+**C1 SPRINT 10 (2026-03-08 9?)**: [x] **SPRINT VERIFY PASS.** Lint ? Test 105/728 ? Build ?. MODE ARENA. 10 tasks OWNER?PROMPT below. ??(8?)? ?? ? 8? 10? ?? ??. ?? 9? ? 10?. **SPRINT READY.** ? ?? ?? ? ???CURRENT_TASK ?? ??.
 
-**[UI] 접근성 1건 — Arena Other 모달 제출 버튼 aria-label**: [x] **완료.** Arena Other 모달 submit 버튼에 aria-label={t.submit} 적용. render-only·npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 2~3? (17?) (2026-03-08)**: [x] **??.** C1 ??. NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4?CURSOR_TASK_BOARD 2~3? ?????. ?? ?? ??. ???CURRENT_TASK ??. C2?C3?C4 ?? ?? Exit.
 
-**[DOMAIN] 단위 테스트 1개 추가 (Arena 14차)**: [x] **완료.** TASK 2(13차)와 다른 미커버 모듈로 `src/lib/bty/arena/avatarOutfits.edges.test.ts` 추가(ACCESSORY_CATALOG·OUTFIT_LEVEL_IDS·getOutfitForLevel·tierToDisplayLevelId 경계·resolveDisplayAvatarUrl). 기존 동작만 검증, 비즈니스/XP 로직 미변경. npm test 105/728 통과. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 2~3? (18?) (2026-03-08)**: [x] **??.** C1 ??. NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4??? 2~3? ?????. ?? ?? ??. ???CURRENT_TASK ??. C2?C3?C4 ?? ?? Exit.
 
-**[UI] 로딩/스켈레톤 1곳 보강 — Arena Other 경로 Next Scenario 버튼**: [x] **완료.** Arena Other 제출 결과 "다음 시나리오" 버튼에 disabled·opacity(nextScenarioLoading) 로딩 상태 반영. render-only·npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[UI] ??? 1? (2??) ? beginner PrimaryButton aria-label**: [x] **??.** Arena beginner PrimaryButton? aria-label={label} ??. render-only?npm run lint ??. ???CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 실행 후 서류 반영**: [x] **완료.** docs/ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목 1회 실행(C5 TASK 6). 결과 PASS. Elite=Weekly XP만·시즌 미반영. BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK·§3 반영.
+**[UI] ??/???? 1? ?? (2??) ? Arena beginner ?? skeleton aria ??**: [x] **??.** beginner ?? CardSkeleton? aria-busy?aria-label ??. render-only?npm run lint ??. ???CURRENT_TASK ??.
 
-**[DOMAIN] 단위 테스트 1개 추가 (Arena 13차)**: [x] **완료.** TASK 2·11차·12차와 다른 미커버 모듈로 `src/lib/bty/arena/avatarCharacters.edges.test.ts` 추가(shape·unique ids·공백·마지막 항목). 기존 동작만 검증, 비즈니스/XP 로직 미변경. npm test 104/714 통과. 보드·CURRENT_TASK 반영.
+**[UI] ??? 1? ? Arena Other ?? ?? ?? aria-label**: [x] **??.** Arena Other ?? submit ??? aria-label={t.submit} ??. render-only?npm run lint ??. ???CURRENT_TASK ??.
 
-**[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영**: [x] **완료.** bty-release-gate.mdc A~F 1회 점검(C5 TASK 5). 결과 PASS. 결과를 docs/BTY_RELEASE_GATE_CHECK.md에 반영. 보드·CURRENT_TASK 갱신.
+**[DOMAIN] ?? ??? 1? ?? (Arena 14?)**: [x] **??.** TASK 2(13?)? ?? ??? ??? `src/lib/bty/arena/avatarOutfits.edges.test.ts` ??(ACCESSORY_CATALOG?OUTFIT_LEVEL_IDS?getOutfitForLevel?tierToDisplayLevelId ???resolveDisplayAvatarUrl). ?? ??? ??, ????/XP ?? ???. npm test 105/728 ??. ???CURRENT_TASK ??.
 
-**C1 SPRINT 10 (2026-03-08 8차)**: [x] **SPRINT VERIFY PASS.** Lint ✓ Test 103/707 ✓ Build ✓. MODE ARENA. 10 tasks OWNER·PROMPT below. 직전(7차)과 대조 → 7차 10건 모두 완료. 이번 8차 새 10건. **SPRINT READY.** 각 커서 완료 시 보드·CURRENT_TASK 갱신 필수.
+**[UI] ??/???? 1? ?? ? Arena Other ?? Next Scenario ??**: [x] **??.** Arena Other ?? ?? "?? ????" ??? disabled?opacity(nextScenarioLoading) ?? ?? ??. render-only?npm run lint ??. ???CURRENT_TASK ??.
 
-**[DOCS] 문서 점검 2~3건 (15차) (2026-03-08)**: [x] **완료.** C1 실행. NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·CURSOR_TASK_BOARD 2~3건 점검·갱신. 코드 변경 없음. 보드·CURRENT_TASK 갱신. C2·C3·C4 해당 없음 Exit.
+**[VERIFY] ??? 3? ????? 1? ?? ? ?? ??**: [x] **??.** docs/ELITE_3RD_SPEC_AND_CHECKLIST.md ?? 6?? 1? ??(C5 TASK 6). ?? PASS. Elite=Weekly XP???? ???. BTY_RELEASE_GATE_CHECK????CURRENT_TASK??3 ??.
 
-**[DOCS] 문서 점검 2~3건 (16차) (2026-03-08)**: [x] **완료.** C1 실행. NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 2~3건 점검·갱신. 코드 변경 없음. 보드·CURRENT_TASK 갱신. C2·C3·C4 해당 없음 Exit.
+**[DOMAIN] ?? ??? 1? ?? (Arena 13?)**: [x] **??.** TASK 2?11??12?? ?? ??? ??? `src/lib/bty/arena/avatarCharacters.edges.test.ts` ??(shape?unique ids??????? ??). ?? ??? ??, ????/XP ?? ???. npm test 104/714 ??. ???CURRENT_TASK ??.
 
-**[UI] 접근성 1건 (2곳째) — aria-label·포커스/스킵**: [x] **완료.** Arena beginner 페이지 OptionButton에 aria-label 적용. render-only·npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate ????? 1? ?? ? ?? ??**: [x] **??.** bty-release-gate.mdc A~F 1? ??(C5 TASK 5). ?? PASS. ??? docs/BTY_RELEASE_GATE_CHECK.md? ??. ???CURRENT_TASK ??.
 
-**[UI] 로딩/스켈레톤 1곳 보강 (2곳째) — Arena/bty-arena 미적용 1곳**: [x] **완료.** Arena beginner 라우트 loading.tsx 추가, LoadingFallback(withSkeleton) 적용. render-only·npm run lint 통과. 보드·CURRENT_TASK 반영.
+**C1 SPRINT 10 (2026-03-08 8?)**: [x] **SPRINT VERIFY PASS.** Lint ? Test 103/707 ? Build ?. MODE ARENA. 10 tasks OWNER?PROMPT below. ??(7?)? ?? ? 7? 10? ?? ??. ?? 8? ? 10?. **SPRINT READY.** ? ?? ?? ? ???CURRENT_TASK ?? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 실행 후 서류 반영**: [x] **완료.** docs/ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목 1회 실행. 결과 **PASS.** Elite=Weekly XP만·시즌 미반영 확인. BTY_RELEASE_GATE_CHECK·CURSOR_TASK_BOARD·CURRENT_TASK·ELITE_3RD_SPEC_AND_CHECKLIST §3 반영.
+**[DOCS] ?? ?? 2~3? (15?) (2026-03-08)**: [x] **??.** C1 ??. NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4?CURSOR_TASK_BOARD 2~3? ?????. ?? ?? ??. ???CURRENT_TASK ??. C2?C3?C4 ?? ?? Exit.
 
-**[UI] 접근성 1건 (aria-label·포커스/스킵) — Arena 컴포넌트**: [x] **완료.** FollowUpBlock 따라하기 옵션 버튼에 aria-label 적용. render-only·npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 2~3? (16?) (2026-03-08)**: [x] **??.** C1 ??. NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4??? 2~3? ?????. ?? ?? ??. ???CURRENT_TASK ??. C2?C3?C4 ?? ?? Exit.
 
-**[DOMAIN] 단위 테스트 1개 추가 (Arena 12차)**: [x] **완료.** TASK 2·TASK 8(11차)와 다른 미커버 모듈로 `src/lib/bty/arena/unlock.edges.test.ts` 추가(buildTenurePolicyConfig·getUnlockedContentWindow 경계). 기존 동작만 검증, 비즈니스/XP 로직 미변경. npm test 103/707 통과. 보드·CURRENT_TASK 반영.
+**[UI] ??? 1? (2??) ? aria-label????/??**: [x] **??.** Arena beginner ??? OptionButton? aria-label ??. render-only?npm run lint ??. ???CURRENT_TASK ??.
 
-**[UI] 로딩/스켈레톤 1곳 보강 — Arena 또는 bty-arena 경로**: [x] **완료.** Arena 라우트 loading.tsx 추가, LoadingFallback(withSkeleton) 적용. render-only·npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[UI] ??/???? 1? ?? (2??) ? Arena/bty-arena ??? 1?**: [x] **??.** Arena beginner ??? loading.tsx ??, LoadingFallback(withSkeleton) ??. render-only?npm run lint ??. ???CURRENT_TASK ??.
 
-**[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영**: [x] **완료.** bty-release-gate.mdc A~F 1회 점검(C5). 결과 PASS. 결과를 docs/BTY_RELEASE_GATE_CHECK.md에 반영. 보드·CURRENT_TASK 갱신.
+**[VERIFY] ??? 3? ????? 1? ?? ? ?? ??**: [x] **??.** docs/ELITE_3RD_SPEC_AND_CHECKLIST.md ?? 6?? 1? ??. ?? **PASS.** Elite=Weekly XP???? ??? ??. BTY_RELEASE_GATE_CHECK?CURSOR_TASK_BOARD?CURRENT_TASK?ELITE_3RD_SPEC_AND_CHECKLIST ?3 ??.
 
-**[DOMAIN] 단위 테스트 1개 추가 (Arena 11차)**: [x] **완료.** TASK 2(weeklyQuest)와 다른 미커버 모듈로 `src/lib/bty/arena/program.edges.test.ts` 추가(경계·상수·minLevel). 비즈니스/XP 로직 미변경. npm test 102/702 통과. 보드·CURRENT_TASK 반영.
+**[UI] ??? 1? (aria-label????/??) ? Arena ????**: [x] **??.** FollowUpBlock ???? ?? ??? aria-label ??. render-only?npm run lint ??. ???CURRENT_TASK ??.
 
-**[DOCS] 문서 점검 23건 (13차) (2026-03-08)**: [x] **완료.** C1 실행. NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·CURSOR_TASK_BOARD 23건 점검·갱신. 코드 변경 없음. 보드·CURRENT_TASK 갱신. C2·C3·C4 해당 없음 Exit.
+**[DOMAIN] ?? ??? 1? ?? (Arena 12?)**: [x] **??.** TASK 2?TASK 8(11?)? ?? ??? ??? `src/lib/bty/arena/unlock.edges.test.ts` ??(buildTenurePolicyConfig?getUnlockedContentWindow ??). ?? ??? ??, ????/XP ?? ???. npm test 103/707 ??. ???CURRENT_TASK ??.
 
-**[DOCS] 문서 점검 23건 (14차) (2026-03-08)**: [x] **완료.** C1 실행. NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 23건 점검·갱신. 코드 변경 없음. 보드·CURRENT_TASK 갱신. C2·C3·C4 해당 없음 Exit.
+**[UI] ??/???? 1? ?? ? Arena ?? bty-arena ??**: [x] **??.** Arena ??? loading.tsx ??, LoadingFallback(withSkeleton) ??. render-only?npm run lint ??. ???CURRENT_TASK ??.
 
-**C1 SPRINT 10 (2026-03-08 7차)**: [x] **SPRINT VERIFY PASS.** Lint ✓ Test 101/696 ✓ Build ✓. MODE ARENA. 10 tasks OWNER·PROMPT below. 직전(6차)과 대조 → 이번 10건(문서 13·14차·단위 테스트 11·12차·로딩/스켈레톤·접근성·VERIFY 2건). **SPRINT READY.** 각 커서 완료 시 보드·CURRENT_TASK 갱신 필수.
+**[VERIFY] Release Gate ????? 1? ?? ? ?? ??**: [x] **??.** bty-release-gate.mdc A~F 1? ??(C5). ?? PASS. ??? docs/BTY_RELEASE_GATE_CHECK.md? ??. ???CURRENT_TASK ??.
 
-**[UI] Arena 로딩/스켈레톤 1곳 보강**: [x] **완료.** Arena step 1·runId 미설정 시 CardSkeleton(런 준비 중/Preparing run) 적용. render-only·npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[DOMAIN] ?? ??? 1? ?? (Arena 11?)**: [x] **??.** TASK 2(weeklyQuest)? ?? ??? ??? `src/lib/bty/arena/program.edges.test.ts` ??(??????minLevel). ????/XP ?? ???. npm test 102/702 ??. ???CURRENT_TASK ??.
 
-**[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영**: [x] **완료.** bty-release-gate.mdc A~F 1회 점검(C5). 결과 PASS. 결과를 docs/BTY_RELEASE_GATE_CHECK.md에 반영. 보드·CURRENT_TASK 갱신.
+**[DOCS] ?? ?? 23? (13?) (2026-03-08)**: [x] **??.** C1 ??. NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4?CURSOR_TASK_BOARD 23? ?????. ?? ?? ??. ???CURRENT_TASK ??. C2?C3?C4 ?? ?? Exit.
 
-**[DOMAIN] 단위 테스트 1개 추가 (Arena 10차)**: [x] **완료.** TASK 2(weeklyQuest)와 다른 미커버 모듈로 `src/lib/bty/arena/tenure.edges.test.ts` 추가(isNewJoinerTenure 경계·STAFF/LEADER·getNextLockedLevel L3→L4). 비즈니스/XP 로직 미변경. npm test 101/696 통과. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 23? (14?) (2026-03-08)**: [x] **??.** C1 ??. NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4??? 23? ?????. ?? ?? ??. ???CURRENT_TASK ??. C2?C3?C4 ?? ?? Exit.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 실행 후 서류 반영**: [x] **완료.** docs/ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목 1회 실행. 결과 **PASS.** Elite=Weekly XP만·시즌 미반영 확인. BTY_RELEASE_GATE_CHECK·CURSOR_TASK_BOARD·CURRENT_TASK·ELITE_3RD_SPEC_AND_CHECKLIST §3 반영.
+**C1 SPRINT 10 (2026-03-08 7?)**: [x] **SPRINT VERIFY PASS.** Lint ? Test 101/696 ? Build ?. MODE ARENA. 10 tasks OWNER?PROMPT below. ??(6?)? ?? ? ?? 10?(?? 13?14???? ??? 11?12????/?????????VERIFY 2?). **SPRINT READY.** ? ?? ?? ? ???CURRENT_TASK ?? ??.
 
-**[DOCS] 문서 점검 2~3건 (12차) (2026-03-08)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 2~3건 점검·갱신. 코드 없음. 보드·CURRENT_TASK 갱신. C2·C3·C4 해당 없음 Exit.
+**[UI] Arena ??/???? 1? ??**: [x] **??.** Arena step 1?runId ??? ? CardSkeleton(? ?? ?/Preparing run) ??. render-only?npm run lint ??. ???CURRENT_TASK ??.
 
-**[DOMAIN] 단위 테스트 1개 추가 (Arena 9차 — 미커버 1모듈)**: [x] **완료.** `src/lib/bty/arena/domain.edges.test.ts` 추가(domain 경계·leaderboardSort 빈 배열·undefined xpTotal). 기존 동작만 검증, 비즈니스/XP 로직 변경 금지. npm test 100/691 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate ????? 1? ?? ? ?? ??**: [x] **??.** bty-release-gate.mdc A~F 1? ??(C5). ?? PASS. ??? docs/BTY_RELEASE_GATE_CHECK.md? ??. ???CURRENT_TASK ??.
 
-**[DOCS] 문서 점검 2~3건 (11차) (2026-03-08)**: [x] **완료.** NEXT_BACKLOG_AUTO4·BTY_RELEASE_GATE_CHECK·보드 2~3건 점검·갱신. 코드 없음. 보드·CURRENT_TASK 갱신. C2·C3·C4 해당 없음 Exit.
+**[DOMAIN] ?? ??? 1? ?? (Arena 10?)**: [x] **??.** TASK 2(weeklyQuest)? ?? ??? ??? `src/lib/bty/arena/tenure.edges.test.ts` ??(isNewJoinerTenure ???STAFF/LEADER?getNextLockedLevel L3?L4). ????/XP ?? ???. npm test 101/696 ??. ???CURRENT_TASK ??.
 
-**[UI] Arena 접근성 1건 (aria-label 또는 포커스/스킵)**: [x] **완료.** ReflectionBlock 성찰 옵션 버튼에 aria-label 적용. render-only·npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? ?? ? ?? ??**: [x] **??.** docs/ELITE_3RD_SPEC_AND_CHECKLIST.md ?? 6?? 1? ??. ?? **PASS.** Elite=Weekly XP???? ??? ??. BTY_RELEASE_GATE_CHECK?CURSOR_TASK_BOARD?CURRENT_TASK?ELITE_3RD_SPEC_AND_CHECKLIST ?3 ??.
 
-**[DOCS] 문서 점검 2~3건 (10차) (2026-03-08)**: [x] **완료.** docs/에서 NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·CURSOR_TASK_BOARD 2~3건 점검·갱신. 코드 변경 없음. 보드·CURRENT_TASK 갱신. C2·C3·C4 해당 없음 Exit.
+**[DOCS] ?? ?? 2~3? (12?) (2026-03-08)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4??? 2~3? ?????. ?? ??. ???CURRENT_TASK ??. C2?C3?C4 ?? ?? Exit.
 
-**C1 SPRINT 10 (2026-03-08 6차)**: [x] **SPRINT VERIFY PASS.** Lint ✓ Test 99/685 ✓ Build ✓. MODE ARENA. 10 tasks 선정·OWNER·PROMPT 생성. 직전(5차)과 대조 → 동일 아님(새 10건). 보드·CURRENT_TASK 반영. **각 커서 완료 시 보드·CURRENT_TASK 갱신 필수.**
+**[DOMAIN] ?? ??? 1? ?? (Arena 9? ? ??? 1??)**: [x] **??.** `src/lib/bty/arena/domain.edges.test.ts` ??(domain ???leaderboardSort ? ???undefined xpTotal). ?? ??? ??, ????/XP ?? ?? ??. npm test 100/691 ??. ???CURRENT_TASK ??.
 
-**[UI] Arena i18n 누락 키 1건 보강**: [x] **완료.** arenaRun에 scenarioNotFound·scenarioNotFoundHint(ko/en) 추가, Arena 페이지 시나리오 없음 빈 상태에서 t 사용. render-only·npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 2~3? (11?) (2026-03-08)**: [x] **??.** NEXT_BACKLOG_AUTO4?BTY_RELEASE_GATE_CHECK??? 2~3? ?????. ?? ??. ???CURRENT_TASK ??. C2?C3?C4 ?? ?? Exit.
 
-**[DOMAIN] 단위 테스트 1개 추가 (Arena 8차)**: [x] **완료.** TASK 2(weeklyQuest)와 다른 미커버 모듈로 `src/lib/bty/arena/eliteUnlock.edges.test.ts` 추가(canAccessEliteOnlyContent 4조합·contentEliteOnly 경계). 비즈니스/XP 로직 미변경. npm test 99/685 통과. 보드·CURRENT_TASK 반영.
+**[UI] Arena ??? 1? (aria-label ?? ???/??)**: [x] **??.** ReflectionBlock ?? ?? ??? aria-label ??. render-only?npm run lint ??. ???CURRENT_TASK ??.
 
-**[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영**: [x] **완료.** bty-release-gate.mdc A~F 1회 점검. 결과 PASS. 결과를 docs/BTY_RELEASE_GATE_CHECK.md에 반영. 보드·CURRENT_TASK 갱신.
+**[DOCS] ?? ?? 2~3? (10?) (2026-03-08)**: [x] **??.** docs/?? NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4?CURSOR_TASK_BOARD 2~3? ?????. ?? ?? ??. ???CURRENT_TASK ??. C2?C3?C4 ?? ?? Exit.
 
-**[DOCS] 문서 점검 2~3건 (9차) (2026-03-08)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·보드 2~3건 점검·갱신. 코드 없음. 보드·CURRENT_TASK 갱신. C2·C3·C4 해당 없음 Exit.
+**C1 SPRINT 10 (2026-03-08 6?)**: [x] **SPRINT VERIFY PASS.** Lint ? Test 99/685 ? Build ?. MODE ARENA. 10 tasks ???OWNER?PROMPT ??. ??(5?)? ?? ? ?? ??(? 10?). ???CURRENT_TASK ??. **? ?? ?? ? ???CURRENT_TASK ?? ??.**
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 실행 후 서류 반영**: [x] **완료.** docs/ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목 1회 실행. 결과 **PASS.** Elite=Weekly XP만·시즌 미반영 확인. BTY_RELEASE_GATE_CHECK·CURSOR_TASK_BOARD·CURRENT_TASK 반영.
+**[UI] Arena i18n ?? ? 1? ??**: [x] **??.** arenaRun? scenarioNotFound?scenarioNotFoundHint(ko/en) ??, Arena ??? ???? ?? ? ???? t ??. render-only?npm run lint ??. ???CURRENT_TASK ??.
 
-**[UI] Arena 빈 상태·에러 문구 1곳 보강**: [x] **완료.** Arena 메인 페이지 시나리오 없음(!scenario) 시 EmptyState(icon·message·hint) 적용. render-only·npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[DOMAIN] ?? ??? 1? ?? (Arena 8?)**: [x] **??.** TASK 2(weeklyQuest)? ?? ??? ??? `src/lib/bty/arena/eliteUnlock.edges.test.ts` ??(canAccessEliteOnlyContent 4???contentEliteOnly ??). ????/XP ?? ???. npm test 99/685 ??. ???CURRENT_TASK ??.
 
-**[DOCS] 문서 점검 2~3건 (8차) (2026-03-08)**: [x] **완료.** NEXT_BACKLOG_AUTO4·BTY_RELEASE_GATE_CHECK·보드 2~3건 점검·갱신. 코드 없음. 보드·CURRENT_TASK 갱신. C2·C3·C4 해당 없음 Exit.
+**[VERIFY] Release Gate ????? 1? ?? ? ?? ??**: [x] **??.** bty-release-gate.mdc A~F 1? ??. ?? PASS. ??? docs/BTY_RELEASE_GATE_CHECK.md? ??. ???CURRENT_TASK ??.
 
-**[DOMAIN] 단위 테스트 1개 추가 (Arena 7차 — 미커버 1모듈)**: [x] **완료.** src/domain/arena 없음, src/lib/bty/arena 전 모듈 대응 테스트 있음. 미커버 보강으로 `src/lib/bty/arena/leaderboardTieBreak.edges.test.ts` 추가(LEADERBOARD_ORDER_RULE·xp_total 누락·동일 행 0). 기존 동작만 검증, 비즈니스/XP 로직 변경 금지. npm test 98/682 통과. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 2~3? (9?) (2026-03-08)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4??? 2~3? ?????. ?? ??. ???CURRENT_TASK ??. C2?C3?C4 ?? ?? Exit.
 
-**[DOCS] 문서 점검 2~3건 (7차) (2026-03-08)**: [x] **완료.** docs/에서 NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·CURSOR_TASK_BOARD 2~3건 점검·갱신. 코드 변경 없음. 보드·CURRENT_TASK 갱신. C2·C3·C4 해당 없음 Exit.
+**[VERIFY] ??? 3? ????? 1? ?? ? ?? ??**: [x] **??.** docs/ELITE_3RD_SPEC_AND_CHECKLIST.md ?? 6?? 1? ??. ?? **PASS.** Elite=Weekly XP???? ??? ??. BTY_RELEASE_GATE_CHECK?CURSOR_TASK_BOARD?CURRENT_TASK ??.
 
-**C1 SPRINT 10 (2026-03-08 5차)**: [x] **SPRINT VERIFY PASS.** Lint ✓ Test 97/679 ✓ Build ✓. MODE ARENA. 10 tasks 선정·OWNER·PROMPT 생성. 보드·CURRENT_TASK 반영. NEXT: C2·C3·C4·C5에게 프롬프트 전달. **각 커서 완료 시 보드·CURRENT_TASK 갱신 필수.**
+**[UI] Arena ? ????? ?? 1? ??**: [x] **??.** Arena ?? ??? ???? ??(!scenario) ? EmptyState(icon?message?hint) ??. render-only?npm run lint ??. ???CURRENT_TASK ??.
 
-**C4 (UI) Arena 로딩/스켈레톤·접근성**: [x] **완료.** Arena 영역 로딩/스켈레톤(CompleteBlock·TierMilestoneModal·Other 경로·confirmingChoice·FollowUpBlock·startSimulation·resetRun) 및 접근성(OutputPanel skip·TierMilestoneModal Skip/Continue/Save·ChoiceList·ReflectionBlock Next·기타 버튼·Other 모달 취소) 다건 적용. render-only·npm run lint 통과. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 2~3? (8?) (2026-03-08)**: [x] **??.** NEXT_BACKLOG_AUTO4?BTY_RELEASE_GATE_CHECK??? 2~3? ?????. ?? ??. ???CURRENT_TASK ??. C2?C3?C4 ?? ?? Exit.
 
-**C5 검증 완료**: [x] **완료.** Lint ✓ Test 97/679 ✓ Build ✓. 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 갱신.
+**[DOMAIN] ?? ??? 1? ?? (Arena 7? ? ??? 1??)**: [x] **??.** src/domain/arena ??, src/lib/bty/arena ? ?? ?? ??? ??. ??? ???? `src/lib/bty/arena/leaderboardTieBreak.edges.test.ts` ??(LEADERBOARD_ORDER_RULE?xp_total ????? ? 0). ?? ??? ??, ????/XP ?? ?? ??. npm test 98/682 ??. ???CURRENT_TASK ??.
 
-**C2 Gatekeeper Exit (2026-03-08)**: § "단위 테스트 1개 추가 변경분 Gate" 대조 — 테스트만 추가(비즈니스/XP 미변경) → 해당 없음 **PASS**. Gate 결과·보드·BTY_RELEASE_GATE_CHECK·CURRENT_TASK 한 줄 반영.
+**[DOCS] ?? ?? 2~3? (7?) (2026-03-08)**: [x] **??.** docs/?? NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4?CURSOR_TASK_BOARD 2~3? ?????. ?? ?? ??. ???CURRENT_TASK ??. C2?C3?C4 ?? ?? Exit.
 
-**C1 SPRINT 10 (2026-03-08 4차)**: [x] **SPRINT VERIFY PASS.** .next 클린·재빌드 후 Lint ✓ Test 97/679 ✓ Build ✓. MODE ARENA. 10 tasks 선정·OWNER·PROMPT 생성. 보드·CURRENT_TASK 반영. NEXT: C2·C3·C4·C5에게 프롬프트 전달.
+**C1 SPRINT 10 (2026-03-08 5?)**: [x] **SPRINT VERIFY PASS.** Lint ? Test 97/679 ? Build ?. MODE ARENA. 10 tasks ???OWNER?PROMPT ??. ???CURRENT_TASK ??. NEXT: C2?C3?C4?C5?? ???? ??. **? ?? ?? ? ???CURRENT_TASK ?? ??.**
 
-**[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영 (배포 전 점검)**: [x] **완료.** bty-release-gate.mdc A~F 1회 점검(C5). 결과 PASS. Assumptions·Findings A–F·Required patches(필수 0)·Next steps를 docs/BTY_RELEASE_GATE_CHECK.md에 반영. 보드·CURRENT_TASK 갱신.
+**C4 (UI) Arena ??/????????**: [x] **??.** Arena ?? ??/????(CompleteBlock?TierMilestoneModal?Other ???confirmingChoice?FollowUpBlock?startSimulation?resetRun) ? ???(OutputPanel skip?TierMilestoneModal Skip/Continue/Save?ChoiceList?ReflectionBlock Next??? ???Other ?? ??) ?? ??. render-only?npm run lint ??. ???CURRENT_TASK ??.
 
-**[DOMAIN] 단위 테스트 1개 추가 (Arena 6차)**: [x] **완료.** TASK 3(mentorRequest)과 다른 미커버 모듈로 `src/lib/bty/arena/leaderboardScope.edges.test.ts` 추가(parseLeaderboardScope 공백 param·roleToScopeLabel trim·상수 길이). 비즈니스/XP 로직 미변경. npm test 97/679 통과. 보드·CURRENT_TASK 반영.
+**C5 ?? ??**: [x] **??.** Lint ? Test 97/679 ? Build ?. ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 실행 (3회)**: [x] **완료.** docs/ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목 1회 실행. 결과 **PASS.** Elite=Weekly XP만·시즌 미반영·랭킹 규칙 유지. BTY_RELEASE_GATE_CHECK·CURSOR_TASK_BOARD·ELITE_3RD_SPEC_AND_CHECKLIST §3 반영.
+**C2 Gatekeeper Exit (2026-03-08)**: ? "?? ??? 1? ?? ??? Gate" ?? ? ???? ??(????/XP ???) ? ?? ?? **PASS**. Gate ??????BTY_RELEASE_GATE_CHECK?CURRENT_TASK ? ? ??.
 
-**[DOMAIN] 단위 테스트 1개 추가 (Arena 5차 — 미커버 1모듈)**: [x] **완료.** src/domain/arena 없음, src/lib/bty/arena 전 모듈 대응 테스트 있음. 미커버 보강으로 `src/lib/bty/arena/eliteBadge.edges.test.ts` 추가(ELITE_BADGE_KINDS·EliteBadgeGrant shape·getEliteBadgeGrants 빈 배열). 기존 동작만 검증, 비즈니스/XP 로직 변경 금지. npm test 96/676 통과. 보드·CURRENT_TASK 반영.
+**C1 SPRINT 10 (2026-03-08 4?)**: [x] **SPRINT VERIFY PASS.** .next ?????? ? Lint ? Test 97/679 ? Build ?. MODE ARENA. 10 tasks ???OWNER?PROMPT ??. ???CURRENT_TASK ??. NEXT: C2?C3?C4?C5?? ???? ??.
 
-**[DOCS] 문서 점검 2~3건 (5차) (2026-03-08)**: [x] **완료.** docs/에서 NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·CURSOR_TASK_BOARD 2~3건 점검·갱신. 코드 변경 없음. 보드·CURRENT_TASK 갱신. C2·C3·C4 해당 없음 Exit.
+**[VERIFY] Release Gate ????? 1? ?? ? ?? ?? (?? ? ??)**: [x] **??.** bty-release-gate.mdc A~F 1? ??(C5). ?? PASS. Assumptions?Findings A?F?Required patches(?? 0)?Next steps? docs/BTY_RELEASE_GATE_CHECK.md? ??. ???CURRENT_TASK ??.
 
-**C1 SPRINT 10 (2026-03-08 3차)**: [x] **SPRINT VERIFY PASS.** .next 클린 후 Lint ✓ Test 95/673 ✓ Build ✓. MODE ARENA. 10 tasks 선정·OWNER·PROMPT 생성. 보드·CURRENT_TASK 반영. NEXT: C2·C3·C4·C5에게 프롬프트 전달.
+**[DOMAIN] ?? ??? 1? ?? (Arena 6?)**: [x] **??.** TASK 3(mentorRequest)? ?? ??? ??? `src/lib/bty/arena/leaderboardScope.edges.test.ts` ??(parseLeaderboardScope ?? param?roleToScopeLabel trim??? ??). ????/XP ?? ???. npm test 97/679 ??. ???CURRENT_TASK ??.
 
-**C1 SPRINT 10 (2026-03-08 2차)**: [x] **SPRINT BLOCKED** → .next 클린·재빌드 후 3차에서 PASS.
+**[VERIFY] ??? 3? ????? 1? ?? (3?)**: [x] **??.** docs/ELITE_3RD_SPEC_AND_CHECKLIST.md ?? 6?? 1? ??. ?? **PASS.** Elite=Weekly XP???? ?????? ?? ??. BTY_RELEASE_GATE_CHECK?CURSOR_TASK_BOARD?ELITE_3RD_SPEC_AND_CHECKLIST ?3 ??.
 
-**[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영 (배포 전 점검)**: [x] **완료.** bty-release-gate.mdc A~F 1회 점검. 결과 **PASS.** Assumptions, Release Gate PASS, Findings A–F, Required patches(필수 0), Next steps를 docs/BTY_RELEASE_GATE_CHECK.md에 반영. 보드·CURRENT_TASK 갱신.
+**[DOMAIN] ?? ??? 1? ?? (Arena 5? ? ??? 1??)**: [x] **??.** src/domain/arena ??, src/lib/bty/arena ? ?? ?? ??? ??. ??? ???? `src/lib/bty/arena/eliteBadge.edges.test.ts` ??(ELITE_BADGE_KINDS?EliteBadgeGrant shape?getEliteBadgeGrants ? ??). ?? ??? ??, ????/XP ?? ?? ??. npm test 96/676 ??. ???CURRENT_TASK ??.
 
-**[DOMAIN] 단위 테스트 1개 추가 (Arena 4차)**: [x] **완료.** TASK 3(mentorRequest)과 다른 미커버 모듈로 `src/lib/bty/arena/profileDisplayName.edges.test.ts` 추가(validateDisplayName 경계 64/65·trim). 비즈니스/XP 로직 미변경. npm test 95/673 통과. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 2~3? (5?) (2026-03-08)**: [x] **??.** docs/?? NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4?CURSOR_TASK_BOARD 2~3? ?????. ?? ?? ??. ???CURRENT_TASK ??. C2?C3?C4 ?? ?? Exit.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 실행 (재실행)**: [x] **완료.** docs/ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목 1회 재실행. 결과 **PASS.** Elite=Weekly XP만·시즌 미반영·랭킹 규칙 유지 확인. BTY_RELEASE_GATE_CHECK·CURSOR_TASK_BOARD·ELITE_3RD_SPEC_AND_CHECKLIST §3 반영.
+**C1 SPRINT 10 (2026-03-08 3?)**: [x] **SPRINT VERIFY PASS.** .next ?? ? Lint ? Test 95/673 ? Build ?. MODE ARENA. 10 tasks ???OWNER?PROMPT ??. ???CURRENT_TASK ??. NEXT: C2?C3?C4?C5?? ???? ??.
 
-**[DOMAIN] 단위 테스트 1개 추가 (Arena 3차 — 미커버 1모듈)**: [x] **완료.** src/domain/arena 없음, src/lib/bty/arena 전 모듈 대응 테스트 있음. 미커버 보강으로 `src/lib/bty/arena/mentorRequest.edges.test.ts` 추가(상수·canTransitionStatus 비pending 거부). 기존 동작만 검증, 비즈니스/XP 로직 변경 금지. npm test 94/670 통과. 보드·CURRENT_TASK 반영.
+**C1 SPRINT 10 (2026-03-08 2?)**: [x] **SPRINT BLOCKED** ? .next ?????? ? 3??? PASS.
 
-**[DOCS] 문서 점검 2~3건 (4차) (2026-03-08)**: [x] **완료.** NEXT_BACKLOG_AUTO4·BTY_RELEASE_GATE_CHECK·보드 2~3건 점검·갱신. 코드 없음. 보드·CURRENT_TASK 갱신. C2·C3·C4 해당 없음 Exit.
+**[VERIFY] Release Gate ????? 1? ?? ? ?? ?? (?? ? ??)**: [x] **??.** bty-release-gate.mdc A~F 1? ??. ?? **PASS.** Assumptions, Release Gate PASS, Findings A?F, Required patches(?? 0), Next steps? docs/BTY_RELEASE_GATE_CHECK.md? ??. ???CURRENT_TASK ??.
 
-**[DOCS] 문서 점검 2~3건 (3차) (2026-03-08)**: [x] **완료.** docs/에서 NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·CURSOR_TASK_BOARD 2~3건 점검·갱신. 코드 변경 없음. 보드·CURRENT_TASK 갱신. C2·C3·C4 해당 없음 Exit.
+**[DOMAIN] ?? ??? 1? ?? (Arena 4?)**: [x] **??.** TASK 3(mentorRequest)? ?? ??? ??? `src/lib/bty/arena/profileDisplayName.edges.test.ts` ??(validateDisplayName ?? 64/65?trim). ????/XP ?? ???. npm test 95/673 ??. ???CURRENT_TASK ??.
 
-**C1 SPRINT 10 (2026-03-08 재실행)**: [x] **SPRINT VERIFY PASS.** Lint ✓ Test 93/666 ✓ Build ✓. MODE ARENA. 10 tasks 선정·OWNER·PROMPT 생성. 보드·CURRENT_TASK 반영. NEXT: C2·C3·C4·C5에게 프롬프트 전달.
+**[VERIFY] ??? 3? ????? 1? ?? (???)**: [x] **??.** docs/ELITE_3RD_SPEC_AND_CHECKLIST.md ?? 6?? 1? ???. ?? **PASS.** Elite=Weekly XP???? ?????? ?? ?? ??. BTY_RELEASE_GATE_CHECK?CURSOR_TASK_BOARD?ELITE_3RD_SPEC_AND_CHECKLIST ?3 ??.
 
-**[DOMAIN] 단위 테스트 1개 추가 (Arena 2차)**: [x] **완료.** TASK 4(leaderboardWeekBoundary)와 다른 미커버 모듈로 `src/lib/bty/arena/weeklyQuest.edges.test.ts` 추가(getWeekStartUTC 토·금·일·화 경계 검증). 비즈니스/XP 로직 미변경. npm test 93/666 통과. 보드·CURRENT_TASK 반영.
+**[DOMAIN] ?? ??? 1? ?? (Arena 3? ? ??? 1??)**: [x] **??.** src/domain/arena ??, src/lib/bty/arena ? ?? ?? ??? ??. ??? ???? `src/lib/bty/arena/mentorRequest.edges.test.ts` ??(???canTransitionStatus ?pending ??). ?? ??? ??, ????/XP ?? ?? ??. npm test 94/670 ??. ???CURRENT_TASK ??.
 
-**[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영 (배포 전 점검)**: [x] **완료.** bty-release-gate.mdc A~F 1회 점검. 결과 **PASS.** Assumptions, Release Gate PASS, Findings A–F, Required patches(필수 0), Next steps를 docs/BTY_RELEASE_GATE_CHECK.md에 반영. CURSOR_TASK_BOARD·CURRENT_TASK 갱신.
+**[DOCS] ?? ?? 2~3? (4?) (2026-03-08)**: [x] **??.** NEXT_BACKLOG_AUTO4?BTY_RELEASE_GATE_CHECK??? 2~3? ?????. ?? ??. ???CURRENT_TASK ??. C2?C3?C4 ?? ?? Exit.
 
-**[DOMAIN] 단위 테스트 1개 추가 — Arena 미커버 1모듈**: [x] **완료.** src/domain/arena 없음, src/lib/bty/arena 전 모듈 대응 테스트 있음. Arena 경계 검증 보강으로 `src/lib/bty/arena/leaderboardWeekBoundary.edges.test.ts` 추가(getLeaderboardWeekBoundary 화·토·일 00:00 등). 기존 함수/동작만 검증, 비즈니스/XP 로직 변경 없음. npm test 92/663 통과. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 2~3? (3?) (2026-03-08)**: [x] **??.** docs/?? NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4?CURSOR_TASK_BOARD 2~3? ?????. ?? ?? ??. ???CURRENT_TASK ??. C2?C3?C4 ?? ?? Exit.
 
-**[DOCS] 문서 점검 2~3건 (2차) (2026-03-08)**: [x] **완료.** NEXT_PHASE_AUTO4·NEXT_BACKLOG_AUTO4·CURSOR_TASK_BOARD 2~3건 점검·갱신. 코드 없음. 보드·CURRENT_TASK 갱신. C2·C3·C4 해당 없음 Exit.
+**C1 SPRINT 10 (2026-03-08 ???)**: [x] **SPRINT VERIFY PASS.** Lint ? Test 93/666 ? Build ?. MODE ARENA. 10 tasks ???OWNER?PROMPT ??. ???CURRENT_TASK ??. NEXT: C2?C3?C4?C5?? ???? ??.
 
-**[DOCS] 문서 점검 2~3건 (2026-03-08 이번 런)**: [x] **완료.** docs/에서 NEXT_BACKLOG_AUTO4 갱신일, BTY_RELEASE_GATE_CHECK § 문서 점검 런(31차), CURSOR_TASK_BOARD·CURRENT_TASK 한 줄 반영. 2~3건만 점검. 코드 변경 없음. C2·C3·C4 해당 없음 Exit.
+**[DOMAIN] ?? ??? 1? ?? (Arena 2?)**: [x] **??.** TASK 4(leaderboardWeekBoundary)? ?? ??? ??? `src/lib/bty/arena/weeklyQuest.edges.test.ts` ??(getWeekStartUTC ??????? ?? ??). ????/XP ?? ???. npm test 93/666 ??. ???CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 실행**: [x] **완료.** docs/ELITE_3RD_SPEC_AND_CHECKLIST.md 검증 6항목 1회 실행. 결과 **PASS.** Elite=Weekly XP만·시즌 미반영·랭킹 규칙 유지. BTY_RELEASE_GATE_CHECK·CURSOR_TASK_BOARD·ELITE_3RD_SPEC_AND_CHECKLIST §3 반영.
+**[VERIFY] Release Gate ????? 1? ?? ? ?? ?? (?? ? ??)**: [x] **??.** bty-release-gate.mdc A~F 1? ??. ?? **PASS.** Assumptions, Release Gate PASS, Findings A?F, Required patches(?? 0), Next steps? docs/BTY_RELEASE_GATE_CHECK.md? ??. CURSOR_TASK_BOARD?CURRENT_TASK ??.
 
-**C1 SPRINT 10 (2026-03-08)**: [x] **SPRINT VERIFY PASS.** Lint ✓ Test 91/660 ✓ Build ✓. MODE ARENA. 10 tasks 선정·OWNER·PROMPT 생성. 보드·CURRENT_TASK 반영. NEXT: C2·C3·C4·C5에게 프롬프트 전달.
+**[DOMAIN] ?? ??? 1? ?? ? Arena ??? 1??**: [x] **??.** src/domain/arena ??, src/lib/bty/arena ? ?? ?? ??? ??. Arena ?? ?? ???? `src/lib/bty/arena/leaderboardWeekBoundary.edges.test.ts` ??(getLeaderboardWeekBoundary ????? 00:00 ?). ?? ??/??? ??, ????/XP ?? ?? ??. npm test 92/663 ??. ???CURRENT_TASK ??.
 
-**[C3] 단위 테스트 1개 추가 (Arena 미커버 1모듈)**: [x] **완료.** Arena 영역 테스트 없는 모듈 1개에 `src/lib/bty/arena/codes.tierHelpers.test.ts` 추가(codeIndexFromTier·subTierGroupFromTier 기존 동작만 검증). npm test 91/660 통과. 보드·CURRENT_TASK 반영.
+**[DOCS] ?? ?? 2~3? (2?) (2026-03-08)**: [x] **??.** NEXT_PHASE_AUTO4?NEXT_BACKLOG_AUTO4?CURSOR_TASK_BOARD 2~3? ?????. ?? ??. ???CURRENT_TASK ??. C2?C3?C4 ?? ?? Exit.
 
-**[DOCS] 문서 점검 2~3건 (2026-03-08)**: [x] **완료.** docs/에서 백로그·Release Gate 2~3건 점검·갱신. NEXT_BACKLOG_AUTO4 갱신일, BTY_RELEASE_GATE_CHECK § 문서 점검 런, CURSOR_TASK_BOARD·CURRENT_TASK 한 줄 반영. C2·C3·C4 해당 없음 Exit.
+**[DOCS] ?? ?? 2~3? (2026-03-08 ?? ?)**: [x] **??.** docs/?? NEXT_BACKLOG_AUTO4 ???, BTY_RELEASE_GATE_CHECK ? ?? ?? ?(31?), CURSOR_TASK_BOARD?CURRENT_TASK ? ? ??. 2~3?? ??. ?? ?? ??. C2?C3?C4 ?? ?? Exit.
 
-**[DOCS] 엘리트 3차 스펙·검증 체크리스트 1페이지 정리 (2026-03-08)**: [x] **완료.** 루트 `docs/ELITE_3RD_SPEC_AND_CHECKLIST.md` 추가. PHASE_4_ELITE_5_PERCENT_SPEC §10·bty-app/docs/ELITE_3RD_SPEC_AND_CHECKLIST 참고, 배지 증정·멘토 대화 신청 스펙 요약·검증 6항목. 보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 3? ????? 1? ??**: [x] **??.** docs/ELITE_3RD_SPEC_AND_CHECKLIST.md ?? 6?? 1? ??. ?? **PASS.** Elite=Weekly XP???? ?????? ?? ??. BTY_RELEASE_GATE_CHECK?CURSOR_TASK_BOARD?ELITE_3RD_SPEC_AND_CHECKLIST ?3 ??.
 
-**C1 auto (2026-03-08)**: [x] **VERIFY PASS.** Lint ✓ Test 90/654 ✓ Build ✓. First Task = 단위 테스트 1개 추가. NEXT OWNER: C3. 보드·CURRENT_TASK 반영.
+**C1 SPRINT 10 (2026-03-08)**: [x] **SPRINT VERIFY PASS.** Lint ? Test 91/660 ? Build ?. MODE ARENA. 10 tasks ???OWNER?PROMPT ??. ???CURRENT_TASK ??. NEXT: C2?C3?C4?C5?? ???? ??.
 
-**C1 auto (2026-03-08 재실행)**: [x] **VERIFY PASS.** Lint ✓ Test 90/654 ✓ Build ✓. First Task 유지 = 단위 테스트 1개 추가. NEXT OWNER: C3. 보드 반영.
+**[C3] ?? ??? 1? ?? (Arena ??? 1??)**: [x] **??.** Arena ?? ??? ?? ?? 1?? `src/lib/bty/arena/codes.tierHelpers.test.ts` ??(codeIndexFromTier?subTierGroupFromTier ?? ??? ??). npm test 91/660 ??. ???CURRENT_TASK ??.
 
-**C1 auto (2026-03-08 이전)**: [x] VERIFY FAIL 후 C3 수정 반영·검증 통과.
+**[DOCS] ?? ?? 2~3? (2026-03-08)**: [x] **??.** docs/?? ????Release Gate 2~3? ?????. NEXT_BACKLOG_AUTO4 ???, BTY_RELEASE_GATE_CHECK ? ?? ?? ?, CURSOR_TASK_BOARD?CURRENT_TASK ? ? ??. C2?C3?C4 ?? ?? Exit.
 
-**C1 verify (2026-03-08 재실행)**: [x] **검증 완료.** C1이 bty-app에서 lint/test/build 실행. Lint ✓ Test 88/644 ✓ Build ✓. **CI GATE PASSED.** First Task = 문서 점검 2~3건 대기. 보드 상단 이전 런 갱신.
+**[DOCS] ??? 3? ????? ????? 1??? ?? (2026-03-08)**: [x] **??.** ?? `docs/ELITE_3RD_SPEC_AND_CHECKLIST.md` ??. PHASE_4_ELITE_5_PERCENT_SPEC ?10?bty-app/docs/ELITE_3RD_SPEC_AND_CHECKLIST ??, ?? ????? ?? ?? ?? ????? 6??. ???CURRENT_TASK ??.
 
-**C5 통합 검증 (2026-03-08)**: [x] **완료.** Lint ✓ Test 91/660 ✓ Build ✓ (`.next` 클린 후 재빌드). **CI GATE PASSED.** 통합 검증 완료. 보드·BTY_RELEASE_GATE_CHECK·CURRENT_TASK 반영.
+**C1 auto (2026-03-08)**: [x] **VERIFY PASS.** Lint ? Test 90/654 ? Build ?. First Task = ?? ??? 1? ??. NEXT OWNER: C3. ???CURRENT_TASK ??.
 
-**C5 Integrator (2026-03-08)**: [ ] **RESULT: FAIL.** C3·C4 변경 통합 점검. Lint ✓ Test 88/644 ✓ Build ✗. Next.js 빌드 타입 오류: `.next/types/app/(public)/assessment/page.ts` not found. HANDOFF: C1 — 빌드 수정 또는 .next 클린 후 재검증. 보드·BTY_RELEASE_GATE_CHECK 반영. → **후속**: .next 클린 후 재검증으로 통과(C5 통합 검증). [x] **검증 완료.** C1이 bty-app에서 lint/test/build 실행. Lint ✓ Test 88/644 ✓ Build ✓. **CI GATE PASSED.** First Task = 문서 점검 2~3건 대기. 보드·CURRENT_TASK 반영.
+**C1 auto (2026-03-08 ???)**: [x] **VERIFY PASS.** Lint ? Test 90/654 ? Build ?. First Task ?? = ?? ??? 1? ??. NEXT OWNER: C3. ?? ??.
 
-**C5 (done) 2026-03-08**: [x] **완료.** C2 Exit 확인 후 ./scripts/orchestrate.sh 실행. Lint ✓ Test 85/640 ✓ Build ✓. WRAP·CI PASSED (done). 보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 갱신 완료.
+**C1 auto (2026-03-08 ??)**: [x] VERIFY FAIL ? C3 ?? ????? ??.
 
-**C5 Verify (2026-03-08)**: [x] **완료.** cd bty-app → ./scripts/ci-gate.sh. Lint ✓ Test 85/640 ✓ Build ✓. CI GATE PASSED. 작업 완료. BTY_RELEASE_GATE_CHECK·CURSOR_TASK_BOARD·CURRENT_TASK 반영.
+**C1 verify (2026-03-08 ???)**: [x] **?? ??.** C1? bty-app?? lint/test/build ??. Lint ? Test 88/644 ? Build ?. **CI GATE PASSED.** First Task = ?? ?? 2~3? ??. ?? ?? ?? ? ??.
 
-**C1 (2026-03-08)**: [x] 다음 작업 선정 — [UI] 엘리트 멘토 대화 신청 플로우 완료 반영. First Task = 단위 테스트 1개 추가. 보드·NEXT_PHASE_AUTO4·CURRENT_TASK 갱신.
+**C5 ?? ?? (2026-03-08)**: [x] **??.** Lint ? Test 91/660 ? Build ? (`.next` ?? ? ???). **CI GATE PASSED.** ?? ?? ??. ???BTY_RELEASE_GATE_CHECK?CURRENT_TASK ??.
 
-**[UI] 엘리트 멘토 대화 신청 플로우**: [x] **완료.** GET/POST /api/me/mentor-request, GET/PATCH /api/arena/mentor-requests 연동. Elite 전용 신청·목록(render-only). C4 aria(section·버튼·테이블 region·에러 role=alert) 보강. 보드·CURRENT_TASK 반영.
+**C5 Integrator (2026-03-08)**: [ ] **RESULT: FAIL.** C3?C4 ?? ?? ??. Lint ? Test 88/644 ? Build ?. Next.js ?? ?? ??: `.next/types/app/(public)/assessment/page.ts` not found. HANDOFF: C1 ? ?? ?? ?? .next ?? ? ???. ???BTY_RELEASE_GATE_CHECK ??. ? **??**: .next ?? ? ????? ??(C5 ?? ??). [x] **?? ??.** C1? bty-app?? lint/test/build ??. Lint ? Test 88/644 ? Build ?. **CI GATE PASSED.** First Task = ?? ?? 2~3? ??. ???CURRENT_TASK ??.
 
-**C1 auto (2026-03-08 8차)**: [x] 검증 실행 → **CI GATE PASSED.** 로딩/스켈레톤 1곳 보강 wrap. 다음 First Task = 문서 점검 2~3건. 보드·NEXT_PHASE_AUTO4·CURRENT_TASK 갱신.
+**C5 (done) 2026-03-08**: [x] **??.** C2 Exit ?? ? ./scripts/orchestrate.sh ??. Lint ? Test 85/640 ? Build ?. WRAP?CI PASSED (done). ???CURRENT_TASK?BTY_RELEASE_GATE_CHECK ?? ??.
 
-**First Task (현재 대기)**: **단위 테스트 1개 추가** — [x] C3 완료(Arena codes.tierHelpers.test.ts). C5 검증 대기 또는 다음 First Task 선정.
+**C5 Verify (2026-03-08)**: [x] **??.** cd bty-app ? ./scripts/ci-gate.sh. Lint ? Test 85/640 ? Build ?. CI GATE PASSED. ?? ??. BTY_RELEASE_GATE_CHECK?CURSOR_TASK_BOARD?CURRENT_TASK ??.
 
-**MODE (작업 선택용)**: **FOUNDRY** — next/auto/SPRINT 시 Foundry 영역 작업만 선택.
+**C1 (2026-03-08)**: [x] ?? ?? ?? ? [UI] ??? ?? ?? ?? ??? ?? ??. First Task = ?? ??? 1? ??. ???NEXT_PHASE_AUTO4?CURRENT_TASK ??.
 
-**C5 Verify (2026-03-07)**: [x] **완료.** cd bty-app → lint → test → build → ./scripts/ci-gate.sh 통과. CI GATE PASSED. [UI] 엘리트 멘토 대화 신청 플로우 작업 완료·보드·CURRENT_TASK·BTY_RELEASE_GATE_CHECK 반영.
+**[UI] ??? ?? ?? ?? ???**: [x] **??.** GET/POST /api/me/mentor-request, GET/PATCH /api/arena/mentor-requests ??. Elite ?? ?????(render-only). C4 aria(section??????? region??? role=alert) ??. ???CURRENT_TASK ??.
 
-**[C3] 엘리트 멘토 대화 신청 플로우 (도메인·API)**: [x] **완료.** GET/POST /api/me/mentor-request·GET/PATCH /api/arena/mentor-requests 검증+도메인 호출만. mentorRequest 도메인·테스트 유지. 보드·CURRENT_TASK 반영.
+**C1 auto (2026-03-08 8?)**: [x] ?? ?? ? **CI GATE PASSED.** ??/???? 1? ?? wrap. ?? First Task = ?? ?? 2~3?. ???NEXT_PHASE_AUTO4?CURRENT_TASK ??.
 
-**[VERIFY] 엘리트 4차·다음 단계 체크리스트 1회 실행 후 서류 반영**: [x] **완료.** ELITE_4TH_AND_NEXT_STEPS_SPEC §3 1회 점검. 결과 PASS. §4·보드·CURRENT_TASK 반영.
+**First Task (?? ??)**: **?? ??? 1? ??** ? [x] C3 ??(Arena codes.tierHelpers.test.ts). C5 ?? ?? ?? ?? First Task ??.
 
-**[UI] 접근성 1건 (aria-label·포커스 1곳)**: [x] **완료.** ConsolidationBlock 완료 버튼에 type="button", aria-label={t.completeBtn} 적용. npm run lint 통과. 보드·CURRENT_TASK 반영.
+**MODE (?? ???)**: **FOUNDRY** ? next/auto/SPRINT ? Foundry ?? ??? ??.
 
-**[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영 (재실행 5차)**: [x] **완료.** 2026-03-06 bty-release-gate.mdc A~F 1회 점검. 결과 PASS. 필수 패치 0건. BTY_RELEASE_GATE_CHECK 재실행 5차·보드·CURRENT_TASK 반영.
+**C5 Verify (2026-03-07)**: [x] **??.** cd bty-app ? lint ? test ? build ? ./scripts/ci-gate.sh ??. CI GATE PASSED. [UI] ??? ?? ?? ?? ??? ?? ??????CURRENT_TASK?BTY_RELEASE_GATE_CHECK ??.
 
-**[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영 (재실행 4차)**: [x] **완료.** 2026-03-06 bty-release-gate.mdc A~F 1회 점검. 결과 PASS. 필수 패치 0건. BTY_RELEASE_GATE_CHECK 재실행 4차·보드·CURRENT_TASK 반영.
+**[C3] ??? ?? ?? ?? ??? (????API)**: [x] **??.** GET/POST /api/me/mentor-request?GET/PATCH /api/arena/mentor-requests ??+??? ???. mentorRequest ??????? ??. ???CURRENT_TASK ??.
 
-**[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영 (2026-03-06 4차)**: [x] **완료.** bty-release-gate.mdc A~F 1회 점검. 결과 PASS. 필수 패치 0건. 권장: core-xp rank/isTop5Percent 도메인 이전. BTY_RELEASE_GATE_CHECK·보드·CURRENT_TASK 반영.
+**[VERIFY] ??? 4???? ?? ????? 1? ?? ? ?? ??**: [x] **??.** ELITE_4TH_AND_NEXT_STEPS_SPEC ?3 1? ??. ?? PASS. ?4????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영**: [x] **완료.** 2026-03-06 bty-release-gate.mdc A~F 1회 점검. 결과 PASS. 필수 패치 0건. BTY_RELEASE_GATE_CHECK 재실행 3차·보드·CURRENT_TASK 반영.
+**[UI] ??? 1? (aria-label???? 1?)**: [x] **??.** ConsolidationBlock ?? ??? type="button", aria-label={t.completeBtn} ??. npm run lint ??. ???CURRENT_TASK ??.
 
-**[VERIFY] Release Gate 체크리스트 1회 실행 후 서류 반영 (재실행 2차)**: [x] **완료.** 2026-03-06 bty-release-gate.mdc A~F 재점검. 결과 PASS. 필수 패치 0건. 권장: core-xp rank/isTop5Percent 도메인 이전. BTY_RELEASE_GATE_CHECK 재실행 2차 블록·보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate ????? 1? ?? ? ?? ?? (??? 5?)**: [x] **??.** 2026-03-06 bty-release-gate.mdc A~F 1? ??. ?? PASS. ?? ?? 0?. BTY_RELEASE_GATE_CHECK ??? 5?????CURRENT_TASK ??.
 
-**[UI] 로딩/스켈레톤 1곳 보강**: [x] C4 auth/reset-password 페이지(`auth/reset-password/page.client.tsx`) — 비밀번호 변경 제출 중(loading)일 때 버튼 하단에 CardSkeleton(showLabel=false, lines=1) 적용. npm run lint 통과. **완료.**
+**[VERIFY] Release Gate ????? 1? ?? ? ?? ?? (??? 4?)**: [x] **??.** 2026-03-06 bty-release-gate.mdc A~F 1? ??. ?? PASS. ?? ?? 0?. BTY_RELEASE_GATE_CHECK ??? 4?????CURRENT_TASK ??.
 
-**[AUTH] 로그인·세션 문서 1줄 점검 (BTY_RELEASE_GATE_CHECK 반영)**: [x] **완료.** BTY_RELEASE_GATE_CHECK § "[AUTH] 로그인·세션 (문서 1줄)" 추가. Supabase 쿠키·getUser()·Path/SameSite/Secure/HttpOnly·로그아웃 정리. 보드·CURRENT_TASK 반영 완료.
+**[VERIFY] Release Gate ????? 1? ?? ? ?? ?? (2026-03-06 4?)**: [x] **??.** bty-release-gate.mdc A~F 1? ??. ?? PASS. ?? ?? 0?. ??: core-xp rank/isTop5Percent ??? ??. BTY_RELEASE_GATE_CHECK????CURRENT_TASK ??.
 
-**[VERIFY] Release Gate 체크리스트 1회 실행**: [x] **작업 완료.** bty-release-gate.mdc 기준 A~F 전 항목 1회 점검. 결과 PASS. 필수 패치 0건. BTY_RELEASE_GATE_CHECK·CURSOR_TASK_BOARD·CURRENT_TASK 반영 완료.
+**[VERIFY] Release Gate ????? 1? ?? ? ?? ??**: [x] **??.** 2026-03-06 bty-release-gate.mdc A~F 1? ??. ?? PASS. ?? ?? 0?. BTY_RELEASE_GATE_CHECK ??? 3?????CURRENT_TASK ??.
 
-**[DOCS] 엘리트 3차 스펙·검증 체크리스트 1페이지 정리**: [x] **완료.** `docs/ELITE_3RD_SPEC_AND_CHECKLIST.md` 생성. §10 기준 배지 증정·멘토 대화 신청 UI 스펙 요약·검증 6항목. 보드·CURRENT_TASK 반영.
+**[VERIFY] Release Gate ????? 1? ?? ? ?? ?? (??? 2?)**: [x] **??.** 2026-03-06 bty-release-gate.mdc A~F ???. ?? PASS. ?? ?? 0?. ??: core-xp rank/isTop5Percent ??? ??. BTY_RELEASE_GATE_CHECK ??? 2? ??????CURRENT_TASK ??.
 
-**[UI] 엘리트 멘토 대화 신청 플로우**: [x] **완료.** GET/POST /api/me/mentor-request, GET/PATCH /api/arena/mentor-requests 연동. Elite 전용 신청 폼·내 신청 상태 표시·admin /admin/mentor-requests 큐·승인/거절 UI render-only. ELITE_3RD_SPEC_AND_CHECKLIST §1 반영. 보드·CURRENT_TASK 반영.
+**[UI] ??/???? 1? ??**: [x] C4 auth/reset-password ???(`auth/reset-password/page.client.tsx`) ? ???? ?? ?? ?(loading)? ? ?? ??? CardSkeleton(showLabel=false, lines=1) ??. npm run lint ??. **??.**
 
-**[DOMAIN] 단위 테스트 1개 추가 (미커버 1모듈, 비즈니스/XP 미변경)**: [x] **완료.** `src/lib/bty/mentor/drChiCharacter.test.ts` 추가(5케이스). DR_CHI_PHILOSOPHY·DR_CHI_FEW_SHOT_EXAMPLES 검증. npm test 538 통과. 보드·CURRENT_TASK 반영.
+**[AUTH] ?????? ?? 1? ?? (BTY_RELEASE_GATE_CHECK ??)**: [x] **??.** BTY_RELEASE_GATE_CHECK ? "[AUTH] ?????? (?? 1?)" ??. Supabase ???getUser()?Path/SameSite/Secure/HttpOnly????? ??. ???CURRENT_TASK ?? ??.
 
-**다음 프로젝트 (추천)**: **엘리트 3차** — `docs/NEXT_PROJECT_RECOMMENDED.md` 참고.  
-**First Task (현재 대기)**: **문서 점검 2~3건** 또는 **로딩/스켈레톤 1곳** — NEXT_PHASE_AUTO4·보드 대기와 동일.
+**[VERIFY] Release Gate ????? 1? ??**: [x] **?? ??.** bty-release-gate.mdc ?? A~F ? ?? 1? ??. ?? PASS. ?? ?? 0?. BTY_RELEASE_GATE_CHECK?CURSOR_TASK_BOARD?CURRENT_TASK ?? ??.
 
-**[VERIFY] 엘리트 3차 체크리스트 1회 실행**: [x] **작업 완료.** PHASE_4_ELITE_5_PERCENT_SPEC §10 3차(엘리트 배지 증정·멘토 대화 신청) 기준 검증. Elite 판정=Weekly XP만·API 도메인 호출만·UI render-only 확인. 결과 PASS. BTY_RELEASE_GATE_CHECK·CURSOR_TASK_BOARD·CURRENT_TASK 반영 완료.
+**[DOCS] ??? 3? ????? ????? 1??? ??**: [x] **??.** `docs/ELITE_3RD_SPEC_AND_CHECKLIST.md` ??. ?10 ?? ?? ????? ?? ?? UI ?? ????? 6??. ???CURRENT_TASK ??.
 
-**[VERIFY] Dojo·Dear Me 2차 검증 체크리스트 1회 실행**: [x] **작업 완료.** DOJO_DEAR_ME_NEXT_CONTENT §1-4·§4-7 기준 Dojo 2차(50문항·연습 플로우·진입·1단계·도메인)·Dear Me(/dear-me→center) 검증. 결과 **PASS**. BTY_RELEASE_GATE_CHECK·CURSOR_TASK_BOARD·CURRENT_TASK 서류 반영 완료.
+**[UI] ??? ?? ?? ?? ???**: [x] **??.** GET/POST /api/me/mentor-request, GET/PATCH /api/arena/mentor-requests ??. Elite ?? ?? ??? ?? ?? ???admin /admin/mentor-requests ????/?? UI render-only. ELITE_3RD_SPEC_AND_CHECKLIST ?1 ??. ???CURRENT_TASK ??.
 
-**NEXT_PHASE_AUTO4.md와 보드 같은 대기 작업 기준 갱신**: [x] **완료.** 보드 First Task = 단위 테스트 1개 추가를 기준으로 `docs/NEXT_PHASE_AUTO4.md` §3을 C2~C5 동일 내용으로 갱신. 보드 § "Auto 4 대기 작업"을 동일 기준(단위 테스트 1개 추가 런의 C2~C5)으로 수정. 서류 반영 완료.
+**[DOMAIN] ?? ??? 1? ?? (??? 1??, ????/XP ???)**: [x] **??.** `src/lib/bty/mentor/drChiCharacter.test.ts` ??(5???). DR_CHI_PHILOSOPHY?DR_CHI_FEW_SHOT_EXAMPLES ??. npm test 538 ??. ???CURRENT_TASK ??.
 
-**[AUTH] 쿠키 Secure 시 로컬 HTTP 동작 정리·문서 1줄**: [x] **완료.** Secure 쿠키는 HTTPS에서만 저장·전송; 로컬 http://에서는 미저장 → 로그인 유지 안 됨/루프처럼 보일 수 있음. 로컬 검증 시 HTTPS(또는 localhost HTTPS/터널) 사용 권장. `docs/BTY_RELEASE_GATE_CHECK.md` § "[AUTH] login redirect loop 점검" 내 "Secure 쿠키와 로컬 HTTP" 1줄 반영. CURRENT_TASK 반영 완료.
+**?? ???? (??)**: **??? 3?** ? `docs/NEXT_PROJECT_RECOMMENDED.md` ??.  
+**First Task (?? ??)**: **?? ?? 2~3?** ?? **??/???? 1?** ? NEXT_PHASE_AUTO4??? ??? ??.
 
-**[VERIFY] Release Gate 체크리스트 1회 실행**: [x] **작업 완료.** bty-release-gate.mdc 기준 A~F 전 항목 1회 점검. 결과 **PASS**. BTY_RELEASE_GATE_CHECK·CURSOR_TASK_BOARD·CURRENT_TASK 서류 반영 완료.
+**[VERIFY] ??? 3? ????? 1? ??**: [x] **?? ??.** PHASE_4_ELITE_5_PERCENT_SPEC ?10 3?(??? ?? ????? ?? ??) ?? ??. Elite ??=Weekly XP??API ??? ????UI render-only ??. ?? PASS. BTY_RELEASE_GATE_CHECK?CURSOR_TASK_BOARD?CURRENT_TASK ?? ??.
 
-**[AUTH] admin 세션 타임아웃·재로그인 시 리다이렉트 점검**: [x] **완료.** 미들웨어·AdminLayout·admin 로그인 페이지·AdminHeader signOut 점검. 미들웨어 경유 시 bty 로그인으로 next 전달·복귀 정상. admin 로그인 페이지는 next 미사용으로 재로그인 후 항상 /bty 이동(개선 권장). AdminHeader는 next-auth signOut 사용, Supabase와 불일치 가능(권장: 쿠키 제거 통일). 상세·권장·검증: `docs/BTY_RELEASE_GATE_CHECK.md` § "[AUTH] admin 세션 타임아웃·재로그인 시 리다이렉트 점검". 서류 반영 완료.
+**[VERIFY] Dojo?Dear Me 2? ?? ????? 1? ??**: [x] **?? ??.** DOJO_DEAR_ME_NEXT_CONTENT ?1-4??4-7 ?? Dojo 2?(50????? ???????1??????)?Dear Me(/dear-me?center) ??. ?? **PASS**. BTY_RELEASE_GATE_CHECK?CURSOR_TASK_BOARD?CURRENT_TASK ?? ?? ??.
 
-**C5 Verify (2026-03-06, 절차 1~5)**: [x] **작업 완료.** cd bty-app → lint → test → build → `../scripts/ci-gate.sh` 통과. CI GATE PASSED. BTY_RELEASE_GATE_CHECK·CURSOR_TASK_BOARD·CURRENT_TASK 서류 갱신 완료.
+**NEXT_PHASE_AUTO4.md? ?? ?? ?? ?? ?? ??**: [x] **??.** ?? First Task = ?? ??? 1? ??? ???? `docs/NEXT_PHASE_AUTO4.md` ?3? C2~C5 ?? ???? ??. ?? ? "Auto 4 ?? ??"? ?? ??(?? ??? 1? ?? ?? C2~C5)?? ??. ?? ?? ??.
 
-**C2 Gatekeeper 규칙 검사 (서류 반영)**: [x] 아키텍처 규칙 검사 완료. 결과 **FAIL** — 위반 2건(core-xp/route.ts rank·isTop5Percent 인라인, leaderboard/route.ts myRank 인라인). BTY_RELEASE_GATE_CHECK.md § "C2 Gatekeeper 검사 (규칙 준수 — 2026-03-06)", CURSOR_TASK_BOARD C2·Gate Report, 본 CURRENT_TASK에 반영.
+**[AUTH] ?? Secure ? ?? HTTP ?? ????? 1?**: [x] **??.** Secure ??? HTTPS??? ?????; ?? http://??? ??? ? ??? ?? ? ?/???? ?? ? ??. ?? ?? ? HTTPS(?? localhost HTTPS/??) ?? ??. `docs/BTY_RELEASE_GATE_CHECK.md` ? "[AUTH] login redirect loop ??" ? "Secure ??? ?? HTTP" 1? ??. CURRENT_TASK ?? ??.
 
-**[AUTH] login redirect loop 점검**: [x] **완료.** 미들웨어·로그인·next 정제·쿠키 설정 점검. 로직 상 루프 원인 없음. 잠재 이슈: 로컬 HTTP에서 Secure 쿠키 미저장 시 루프처럼 보일 수 있음; AuthGate vs BTY 로그인 API(토큰 vs 쿠키) 불일치 가능. 상세·검증 체크리스트: `docs/BTY_RELEASE_GATE_CHECK.md` § "[AUTH] login redirect loop 점검". 서류 반영 완료.
+**[VERIFY] Release Gate ????? 1? ??**: [x] **?? ??.** bty-release-gate.mdc ?? A~F ? ?? 1? ??. ?? **PASS**. BTY_RELEASE_GATE_CHECK?CURSOR_TASK_BOARD?CURRENT_TASK ?? ?? ??.
 
-**leaderboard status 엔드포인트 계약 점검**: [x] GET /api/arena/leaderboard 요청(scope)·응답 계약 점검. "not in top 100" 분기에서 랭크 계산을 도메인 rankFromCountAbove(totalCount, countAbove) 호출만 사용하도록 수정. npm test 526 통과. 관련 서류: BTY_RELEASE_GATE_CHECK § Cursor 2 Gatekeeper·C2 Gatekeeper 검사 갱신(leaderboard 패치 반영 완료).
+**[AUTH] admin ?? ????????? ? ????? ??**: [x] **??.** ?????AdminLayout?admin ??? ????AdminHeader signOut ??. ???? ?? ? bty ????? next ????? ??. admin ??? ???? next ????? ???? ? ?? /bty ??(?? ??). AdminHeader? next-auth signOut ??, Supabase? ??? ??(??: ?? ?? ??). ????????: `docs/BTY_RELEASE_GATE_CHECK.md` ? "[AUTH] admin ?? ????????? ? ????? ??". ?? ?? ??.
 
-**[API] leaderboard scope(role/office) 쿼리·응답 계약 점검**: [x] 쿼리 scope=role|office(parseLeaderboardScope), 응답 scope·scopeLabel·scopeUnavailable 계약을 route 상단 JSDoc에 명시. scopeLabel=role 시 roleToScopeLabel, office 시 지점명. scopeUnavailable=role|office 요청 시 풀 비어 있을 때 true. 도메인 호출만 사용. **관련 서류 갱신 완료.**
+**C5 Verify (2026-03-06, ?? 1~5)**: [x] **?? ??.** cd bty-app ? lint ? test ? build ? `../scripts/ci-gate.sh` ??. CI GATE PASSED. BTY_RELEASE_GATE_CHECK?CURSOR_TASK_BOARD?CURRENT_TASK ?? ?? ??.
 
-**[DOMAIN] weekly XP tie-break 규칙 보완**: [x] 이미 완료됨. `src/domain/rules/leaderboardTieBreak.ts` — 규칙 단일 소스(LEADERBOARD_TIE_BREAK_ORDER, compareWeeklyXpTieBreak). lib/bty/arena/leaderboardTieBreak가 도메인 호출만 사용. domain/rules/index에 export. 테스트 7케이스. **관련 서류 갱신 완료.**
+**C2 Gatekeeper ?? ?? (?? ??)**: [x] ???? ?? ?? ??. ?? **FAIL** ? ?? 2?(core-xp/route.ts rank?isTop5Percent ???, leaderboard/route.ts myRank ???). BTY_RELEASE_GATE_CHECK.md ? "C2 Gatekeeper ?? (?? ?? ? 2026-03-06)", CURSOR_TASK_BOARD C2?Gate Report, ? CURRENT_TASK? ??.
 
-**C5 Verify (2026-03-06)**: [x] `./scripts/ci-gate.sh` 실행. Lint ✓ Test 59/526 ✓ Build ✓. notify-done.sh 실행. **CI GATE PASSED.**
+**[AUTH] login redirect loop ??**: [x] **??.** ?????????next ????? ?? ??. ?? ? ?? ?? ??. ?? ??: ?? HTTP?? Secure ?? ??? ? ???? ?? ? ??; AuthGate vs BTY ??? API(?? vs ??) ??? ??. ????? ?????: `docs/BTY_RELEASE_GATE_CHECK.md` ? "[AUTH] login redirect loop ??". ?? ?? ??.
 
-**[UI] Dojo 연습 화면 빈 상태·로딩 문구 1곳 보강**: [x] C4 역지사지(integrity) 연습 화면 — 빈 대화 시 EmptyState(icon 💬, t.emptyHint) 적용. 전송 중(sending) 시 t.thinking 문구 + CardSkeleton, aria-live="polite". render-only·i18n 기존 키 사용. npm run lint 통과. **완료.**
+**leaderboard status ????? ?? ??**: [x] GET /api/arena/leaderboard ??(scope)??? ?? ??. "not in top 100" ???? ?? ??? ??? rankFromCountAbove(totalCount, countAbove) ??? ????? ??. npm test 526 ??. ?? ??: BTY_RELEASE_GATE_CHECK ? Cursor 2 Gatekeeper?C2 Gatekeeper ?? ??(leaderboard ?? ?? ??).
 
-**[UI] 리더보드 Near Me 뷰 로딩/빈 상태 문구 점검**: [x] C4 ArenaRankingSidebar(실시간 순위) — 로딩은 LeaderboardListSkeleton 유지. 에러 시 재시도 버튼 문구 t.retry(ko/en) 사용. 빈 목록 시 EmptyState 추가(icon 📊, t.empty: "아직 순위가 없어요. 시나리오를 완료하면 여기 나타나요." / "No rankings yet. Finish a scenario to appear here."). render-only·npm run lint 통과. **완료.**
+**[API] leaderboard scope(role/office) ????? ?? ??**: [x] ?? scope=role|office(parseLeaderboardScope), ?? scope?scopeLabel?scopeUnavailable ??? route ?? JSDoc? ??. scopeLabel=role ? roleToScopeLabel, office ? ???. scopeUnavailable=role|office ?? ? ? ?? ?? ? true. ??? ??? ??. **?? ?? ?? ??.**
 
-**[UI] Arena leaderboard empty state 문구 점검**: [x] C4 리더보드 페이지 LB.noData(ko) 점검·수정 — "아직 주간 XP 기록이 없어요. Arena에서 첫 시나리오를 시작해 보세요."(서브타이틀·EN과 일치). notOnBoard/notOnBoardHint/scopeUnavailable 유지. render-only·npm run lint 통과. **완료.**
+**[DOMAIN] weekly XP tie-break ?? ??**: [x] ?? ???. `src/domain/rules/leaderboardTieBreak.ts` ? ?? ?? ??(LEADERBOARD_TIE_BREAK_ORDER, compareWeeklyXpTieBreak). lib/bty/arena/leaderboardTieBreak? ??? ??? ??. domain/rules/index? export. ??? 7???. **?? ?? ?? ??.**
 
-**로딩/스켈레톤 1곳 (admin/users)**: [x] C4 admin/users 목록 로딩에 LoadingFallback(withSkeleton) 적용(render-only). 이미 적용됨·npm run lint 통과. **Exit 체크 완료.**
+**C5 Verify (2026-03-06)**: [x] `./scripts/ci-gate.sh` ??. Lint ? Test 59/526 ? Build ?. notify-done.sh ??. **CI GATE PASSED.**
 
-**다른 PC 이어받기**: 이 컴퓨터 작업 종료. **First Task = 접근성 1건**. ResultBlock aria-label 적용(C4) 완료. **다른 PC에서** C1으로 `docs/C1_COMMANDER_HANDOFF.md` 참고 후, "검증 돌려줘" → C1이 검증 통과 시 done+auto 수행.
+**[UI] Dojo ?? ?? ? ????? ?? 1? ??**: [x] C4 ????(integrity) ?? ?? ? ? ?? ? EmptyState(icon ??, t.emptyHint) ??. ?? ?(sending) ? t.thinking ?? + CardSkeleton, aria-live="polite". render-only?i18n ?? ? ??. npm run lint ??. **??.**
 
-**이전 런 완료**: CI PASSED — **문서 점검 2~3건** 런 C5·WRAP 완료. (검증 → done+auto)
+**[UI] ???? Near Me ? ??/? ?? ?? ??**: [x] C4 ArenaRankingSidebar(??? ??) ? ??? LeaderboardListSkeleton ??. ?? ? ??? ?? ?? t.retry(ko/en) ??. ? ?? ? EmptyState ??(icon ??, t.empty: "?? ??? ???. ????? ???? ?? ????." / "No rankings yet. Finish a scenario to appear here."). render-only?npm run lint ??. **??.**
 
-**First Task (우선순위 자동)**: **단위 테스트 1개 추가** — 미커버 1모듈 단위 테스트 추가. C2·C4 해당 없음. C3 구현·npm test·C5 검증 통과. *(직전=문서 점검과 다른 유형, 우선순위 3 Domain/테스트.)*
+**[UI] Arena leaderboard empty state ?? ??**: [x] C4 ???? ??? LB.noData(ko) ????? ? "?? ?? XP ??? ???. Arena?? ? ????? ??? ???."(??????EN? ??). notOnBoard/notOnBoardHint/scopeUnavailable ??. render-only?npm run lint ??. **??.**
 
-**홈/랜딩 페이지 레이아웃·형태 변경 (이전 런)**: [x] C4 LandingClient 레이아웃·비주얼·UX 적용. C5 검증(orchestrate) 통과. **WRAP·CI PASSED.**
+**??/???? 1? (admin/users)**: [x] C4 admin/users ?? ??? LoadingFallback(withSkeleton) ??(render-only). ?? ????npm run lint ??. **Exit ?? ??.**
 
-**로딩/스켈레톤 1곳 (이번 런)**: [x] C4 AvatarSettingsClient 저장 중(saving) CardSkeleton 적용. C5 검증(orchestrate) 통과. **WRAP·CI PASSED.** (done+auto 완료.)
+**?? PC ????**: ? ??? ?? ??. **First Task = ??? 1?**. ResultBlock aria-label ??(C4) ??. **?? PC??** C1?? `docs/C1_COMMANDER_HANDOFF.md` ?? ?, "?? ???" ? C1? ?? ?? ? done+auto ??.
 
-**단위 테스트 1개 추가 (이번 런)**: [x] C3 미커버 1모듈 `src/lib/bty/quality.test.ts` 추가(8케이스). severityForReason·issueForReason·recordQualityEventApp. npm test 495 통과(54파일). **Exit 체크 완료.**
+**?? ? ??**: CI PASSED ? **?? ?? 2~3?** ? C5?WRAP ??. (?? ? done+auto)
 
-**단위 테스트 1개 추가 (이전 런)**: [x] C3 미커버 1모듈 `src/lib/bty/mentor/mentorFewshotRouter.test.ts` 추가(8케이스). npm test 487 통과. **Exit 체크 완료.**
+**First Task (???? ??)**: **?? ??? 1? ??** ? ??? 1?? ?? ??? ??. C2?C4 ?? ??. C3 ???npm test?C5 ?? ??. *(??=?? ??? ?? ??, ???? 3 Domain/???.)*
 
-**단위 테스트 1개 추가 (이전 런)**: [x] C3 미커버 1모듈 `src/lib/bty/systemMessages.test.ts` 추가(5케이스). npm test 479 통과. **Exit 체크 완료.**
+**?/?? ??? ??????? ?? (?? ?)**: [x] C4 LandingClient ?????????UX ??. C5 ??(orchestrate) ??. **WRAP?CI PASSED.**
 
-**단위 테스트 1개 추가 (이전 런)**: [x] C3 미커버 1모듈 `src/lib/safeParse.test.ts` 추가(6케이스). npm test 424 통과. **Exit 체크 완료.**
+**??/???? 1? (?? ?)**: [x] C4 AvatarSettingsClient ?? ?(saving) CardSkeleton ??. C5 ??(orchestrate) ??. **WRAP?CI PASSED.** (done+auto ??.)
 
-**문서 점검 2~3건 (이번 런)**: [x] C1 문서 점검·갱신. C5 검증(orchestrate) 통과. **WRAP·CI PASSED.** (done+auto 완료.) *(이번 검증으로 wrap.)*
+**?? ??? 1? ?? (?? ?)**: [x] C3 ??? 1?? `src/lib/bty/quality.test.ts` ??(8???). severityForReason?issueForReason?recordQualityEventApp. npm test 495 ??(54??). **Exit ?? ??.**
 
-**core-xp·sub-name 도메인 이전 (이번 런)**: [x] C3 도메인 `rankFromCountAbove`·`weeklyRankFromCounts` 추가, core-xp·sub-name route 도메인 호출만. npm test 365 통과. C5 lint/test/build 대기.
+**?? ??? 1? ?? (?? ?)**: [x] C3 ??? 1?? `src/lib/bty/mentor/mentorFewshotRouter.test.ts` ??(8???). npm test 487 ??. **Exit ?? ??.**
 
-**로딩/스켈레톤 2곳 적용 (이번 런)**: [x] **AvatarSettingsClient** (`profile/avatar/AvatarSettingsClient.tsx`) — 로딩 시 텍스트만 → `LoadingFallback`(icon + message + withSkeleton) + locale별 `getMessages(locale).loading.message` 사용. [x] **SecondAwakeningPageClient** (`healing/awakening/page.client.tsx`) — 로딩/!data 시 문단만 → `LoadingFallback`(icon + message + withSkeleton) + locale별 loading.message. [x] npm run lint(tsc --noEmit) 통과. **Exit 체크 완료.**
+**?? ??? 1? ?? (?? ?)**: [x] C3 ??? 1?? `src/lib/bty/systemMessages.test.ts` ??(5???). npm test 479 ??. **Exit ?? ??.**
 
-**C2 Gatekeeper Exit**: Exit 시 **Gate 결과·보드·가능하면 CURRENT_TASK 한 줄** 반영. § "단위 테스트 1개 추가 변경분 Gate" — 테스트만 추가(비즈니스/XP 미변경) → 해당 없음 **PASS**. 보드·BTY_RELEASE_GATE_CHECK·CURRENT_TASK 반영. **문서 점검 2~3건 런**: § 문서 점검 2~3건 변경분 Gate — 문서만 변경(코드 없음) → 해당 없음 **PASS**·Exit 체크 완료·C5 실행 가능 표시 반영. **단위 테스트 1개 추가 런**: § 단위 테스트 1개 추가 변경분 Gate — 테스트만 추가(비즈니스/XP 로직 미변경) → 해당 없음 **PASS**·Exit 체크 완료·검증 가능 표시 반영. **접근성 1건 런**: § 접근성 1건 변경분 Gate — UI만 변경 → 해당 없음 **PASS**·Exit 체크 완료·C5 실행 가능 표시 반영. **로딩/스켈레톤 1곳 런**: § 로딩/스켈레톤 1곳 변경분 Gate — UI만 변경 → 해당 없음 **PASS**·Exit 체크 완료. **Cursor 2 Gatekeeper 검사**: Arena locale 변경분 **PASS**; 기존 위반 2건(core-xp·sub-name API 내 랭크/상위5% 계산) → Required patches § "Cursor 2 Gatekeeper 검사" 반영. core-xp API·§1·§8 Gate 반영. **Arena 한국어 §4.1 변경분 Gate** 대조 완료: Auth/XP/리더보드/마이그레이션 미접촉 → **PASS** (해당 없음). **Dojo 2차 변경분 Gate**: CURSOR_TASK_BOARD C2 체크리스트 대조, § Dojo 2차 변경분 Gate 섹션 추가·반영. 범위: DOJO_DEAR_ME_NEXT_CONTENT §1-4·§6·§4·§5, Auth/쿠키/경로 미접촉. Assumptions·Gate 결과 PASS·위반 없음·Findings(A·Auth·F 해당 시 PASS)·Required patches 없음·Next steps 기록. C2 Exit 조건 충족, Exit 체크 완료.
+**?? ??? 1? ?? (?? ?)**: [x] C3 ??? 1?? `src/lib/safeParse.test.ts` ??(6???). npm test 424 ??. **Exit ?? ??.**
 
-**접근성 1건 적용 (이번 런)**: [x] **ResultBlock** (`components/bty-arena/ResultBlock.tsx`) — Next 버튼에 `type="button"`, `aria-label={t.reflectionNext}` 적용. [x] npm run lint 통과. **Exit 체크 완료.**
+**?? ?? 2~3? (?? ?)**: [x] C1 ?? ?????. C5 ??(orchestrate) ??. **WRAP?CI PASSED.** (done+auto ??.) *(?? ???? wrap.)*
 
-**로딩/스켈레톤 1곳 (이번 런)**: [x] C4 대시보드 Leadership Engine 카드 — leState/leAir/leTii/leCertified 모두 null일 때 텍스트 "Loading…" 대신 `CardSkeleton`(showLabel=false, lines=3) 적용. npm run lint 통과. **Exit 체크 완료.**
+**core-xp?sub-name ??? ?? (?? ?)**: [x] C3 ??? `rankFromCountAbove`?`weeklyRankFromCounts` ??, core-xp?sub-name route ??? ???. npm test 365 ??. C5 lint/test/build ??.
 
-**로딩/스켈레톤 1곳 (C4 추가)**: [x] C4 멘토 페이지(`mentor/page.client.tsx`) — `prefsLoaded` false일 때 본문 영역에 `LoadingFallback`(icon + message + withSkeleton, locale별 "불러오는 중…"/"Loading…") 적용. npm run lint 통과. **Exit 체크 완료.**
+**??/???? 2? ?? (?? ?)**: [x] **AvatarSettingsClient** (`profile/avatar/AvatarSettingsClient.tsx`) ? ?? ? ???? ? `LoadingFallback`(icon + message + withSkeleton) + locale? `getMessages(locale).loading.message` ??. [x] **SecondAwakeningPageClient** (`healing/awakening/page.client.tsx`) ? ??/!data ? ??? ? `LoadingFallback`(icon + message + withSkeleton) + locale? loading.message. [x] npm run lint(tsc --noEmit) ??. **Exit ?? ??.**
 
-**로딩/스켈레톤 1곳 (C4 이번 런)**: [x] C4 비밀번호 찾기 페이지(`bty/(public)/forgot-password/page.tsx`) — 전송 중(loading)일 때 폼 하단에 `CardSkeleton`(showLabel=false, lines=1) 플레이스홀더 적용. npm run lint 통과. **Exit 체크 완료.**
+**C2 Gatekeeper Exit**: Exit ? **Gate ?????????? CURRENT_TASK ? ?** ??. ? "?? ??? 1? ?? ??? Gate" ? ???? ??(????/XP ???) ? ?? ?? **PASS**. ???BTY_RELEASE_GATE_CHECK?CURRENT_TASK ??. **?? ?? 2~3? ?**: ? ?? ?? 2~3? ??? Gate ? ??? ??(?? ??) ? ?? ?? **PASS**?Exit ?? ???C5 ?? ?? ?? ??. **?? ??? 1? ?? ?**: ? ?? ??? 1? ?? ??? Gate ? ???? ??(????/XP ?? ???) ? ?? ?? **PASS**?Exit ?? ????? ?? ?? ??. **??? 1? ?**: ? ??? 1? ??? Gate ? UI? ?? ? ?? ?? **PASS**?Exit ?? ???C5 ?? ?? ?? ??. **??/???? 1? ?**: ? ??/???? 1? ??? Gate ? UI? ?? ? ?? ?? **PASS**?Exit ?? ??. **Cursor 2 Gatekeeper ??**: Arena locale ??? **PASS**; ?? ?? 2?(core-xp?sub-name API ? ??/??5% ??) ? Required patches ? "Cursor 2 Gatekeeper ??" ??. core-xp API??1??8 Gate ??. **Arena ??? ?4.1 ??? Gate** ?? ??: Auth/XP/????/?????? ??? ? **PASS** (?? ??). **Dojo 2? ??? Gate**: CURSOR_TASK_BOARD C2 ????? ??, ? Dojo 2? ??? Gate ?? ?????. ??: DOJO_DEAR_ME_NEXT_CONTENT ?1-4??6??4??5, Auth/??/?? ???. Assumptions?Gate ?? PASS??? ???Findings(A?Auth?F ?? ? PASS)?Required patches ???Next steps ??. C2 Exit ?? ??, Exit ?? ??.
 
-**로딩/스켈레톤 1곳 (C4 이번 런)**: [x] C4 로그인 페이지(`bty/(public)/login/LoginClient.tsx`) — 제출 중(isLoading)일 때 폼 하단에 `CardSkeleton`(showLabel=false, lines=1) 플레이스홀더 적용. npm run lint 통과. **Exit 체크 완료.**
+**??? 1? ?? (?? ?)**: [x] **ResultBlock** (`components/bty-arena/ResultBlock.tsx`) ? Next ??? `type="button"`, `aria-label={t.reflectionNext}` ??. [x] npm run lint ??. **Exit ?? ??.**
 
-**로딩/스켈레톤 1곳 (C4 이번 런)**: [x] C4 Elite 페이지(`elite/page.client.tsx`) — 멘토 신청 제출 중(submitLoading)일 때 버튼 하단에 `CardSkeleton`(showLabel=false, lines=1) 플레이스홀더 적용. npm run lint 통과. **Exit 체크 완료.**
+**??/???? 1? (?? ?)**: [x] C4 ???? Leadership Engine ?? ? leState/leAir/leTii/leCertified ?? null? ? ??? "Loading?" ?? `CardSkeleton`(showLabel=false, lines=3) ??. npm run lint ??. **Exit ?? ??.**
 
-**로딩/스켈레톤 1곳 (C4 이번 런)**: [x] C4 역지사지(integrity) 페이지(`integrity/page.client.tsx`) — Dr. Chi 응답 대기 중(sending)일 때 기존 텍스트 말풍선을 `CardSkeleton`(showLabel=false, lines=1)로 교체. npm run lint 통과. **Exit 체크 완료.**
+**??/???? 1? (C4 ??)**: [x] C4 ?? ???(`mentor/page.client.tsx`) ? `prefsLoaded` false? ? ?? ??? `LoadingFallback`(icon + message + withSkeleton, locale? "???? ??"/"Loading?") ??. npm run lint ??. **Exit ?? ??.**
 
-**로딩/스켈레톤 1곳 (C4 이번 런)**: [x] C4 멘토 페이지(`mentor/page.client.tsx`) — Dr. Chi 응답 대기 중(sending)일 때 기존 "생각하고 있어요…" 말풍선을 `CardSkeleton`(showLabel=false, lines=1)로 교체. npm run lint 통과. **Exit 체크 완료.**
+**??/???? 1? (C4 ?? ?)**: [x] C4 ???? ?? ???(`bty/(public)/forgot-password/page.tsx`) ? ?? ?(loading)? ? ? ??? `CardSkeleton`(showLabel=false, lines=1) ?????? ??. npm run lint ??. **Exit ?? ??.**
 
-**로딩/스켈레톤 1곳 (C4 이번 런)**: [x] C4 healing/awakening 페이지(`healing/awakening/page.client.tsx`) — Enter Next Phase 처리 중(submitting)일 때 버튼 하단에 `CardSkeleton`(showLabel=false, lines=1) 플레이스홀더 적용. npm run lint 통과. **Exit 체크 완료.**
+**??/???? 1? (C4 ?? ?)**: [x] C4 ??? ???(`bty/(public)/login/LoginClient.tsx`) ? ?? ?(isLoading)? ? ? ??? `CardSkeleton`(showLabel=false, lines=1) ?????? ??. npm run lint ??. **Exit ?? ??.**
 
-**로딩/스켈레톤 1곳 (C4 이번 런)**: [x] C4 대시보드(`dashboard/page.client.tsx`) — Arena Membership 제출 중(membershipSubmitting)일 때 버튼 하단에 `CardSkeleton`(showLabel=false, lines=1) 플레이스홀더 적용. npm run lint 통과. **Exit 체크 완료.**
+**??/???? 1? (C4 ?? ?)**: [x] C4 Elite ???(`elite/page.client.tsx`) ? ?? ?? ?? ?(submitLoading)? ? ?? ??? `CardSkeleton`(showLabel=false, lines=1) ?????? ??. npm run lint ??. **Exit ?? ??.**
 
-**로딩/스켈레톤 1곳 (C4 이번 런)**: [x] C4 test-avatar 페이지(`test-avatar/page.tsx`) — PATCH profile 요청 중(patching)일 때 저장 버튼 하단에 `CardSkeleton`(showLabel=false, lines=1) 플레이스홀더 적용. npm run lint 통과. **Exit 체크 완료.**
+**??/???? 1? (C4 ?? ?)**: [x] C4 ????(integrity) ???(`integrity/page.client.tsx`) ? Dr. Chi ?? ?? ?(sending)? ? ?? ??? ???? `CardSkeleton`(showLabel=false, lines=1)? ??. npm run lint ??. **Exit ?? ??.**
 
-**로딩/스켈레톤 1곳 (C4 이번 런)**: [x] C4 대시보드(`dashboard/page.client.tsx`) — Code Name·Sub Name 저장 중(subNameSaving)일 때 Save 버튼 하단에 `CardSkeleton`(showLabel=false, lines=1) 플레이스홀더 적용. npm run lint 통과. **Exit 체크 완료.**
+**??/???? 1? (C4 ?? ?)**: [x] C4 ?? ???(`mentor/page.client.tsx`) ? Dr. Chi ?? ?? ?(sending)? ? ?? "???? ????" ???? `CardSkeleton`(showLabel=false, lines=1)? ??. npm run lint ??. **Exit ?? ??.**
 
-**로딩/스켈레톤 1곳 (C4 이번 런)**: [x] C4 프로필 페이지(`profile/ProfileClient.tsx`) — 프로필 저장 중(saving)일 때 Save 버튼 하단에 `CardSkeleton`(showLabel=false, lines=1) 플레이스홀더 적용. npm run lint 통과. **Exit 체크 완료.**
+**??/???? 1? (C4 ?? ?)**: [x] C4 healing/awakening ???(`healing/awakening/page.client.tsx`) ? Enter Next Phase ?? ?(submitting)? ? ?? ??? `CardSkeleton`(showLabel=false, lines=1) ?????? ??. npm run lint ??. **Exit ?? ??.**
 
-**로딩/스켈레톤 1곳 (C4 이번 런)**: [x] C4 AvatarSettingsClient(`profile/avatar/AvatarSettingsClient.tsx`) — 아바타 설정 저장 중(saving)일 때 Save 버튼 하단에 `CardSkeleton`(showLabel=false, lines=1) 플레이스홀더 적용. npm run lint 통과. **Exit 체크 완료.**
+**??/???? 1? (C4 ?? ?)**: [x] C4 ????(`dashboard/page.client.tsx`) ? Arena Membership ?? ?(membershipSubmitting)? ? ?? ??? `CardSkeleton`(showLabel=false, lines=1) ?????? ??. npm run lint ??. **Exit ?? ??.**
 
-**C2 Gatekeeper (2026-03-05)**: 규칙 준수 검사 완료. **Release Gate: FAIL.** E) API 위반 2건 — core-xp/route.ts·sub-name/route.ts handler 내 rank/isTop5Percent 계산 → 도메인 이전 요구. 상세·Required patches: `docs/BTY_RELEASE_GATE_CHECK.md` § "Cursor 2 Gatekeeper 검사 (변경분 규칙 준수 — 2026-03-05)".
+**??/???? 1? (C4 ?? ?)**: [x] C4 test-avatar ???(`test-avatar/page.tsx`) ? PATCH profile ?? ?(patching)? ? ?? ?? ??? `CardSkeleton`(showLabel=false, lines=1) ?????? ??. npm run lint ??. **Exit ?? ??.**
 
-**First Task (우선순위 자동)**: **단위 테스트 1개 추가** — 미커버 1모듈 단위 테스트 추가. C2·C4 해당 없음. C3 구현·npm test·C5 검증 통과. *(근거 1: Auth/API 범위 없음 → 우선순위 3. 근거 2: 테스트만 추가, 비즈니스/XP 미변경.)*
+**??/???? 1? (C4 ?? ?)**: [x] C4 ????(`dashboard/page.client.tsx`) ? Code Name?Sub Name ?? ?(subNameSaving)? ? Save ?? ??? `CardSkeleton`(showLabel=false, lines=1) ?????? ??. npm run lint ??. **Exit ?? ??.**
 
-- **BTY_ARENA_SYSTEM_SPEC §4: 리더보드 scope=role|office 도메인/API**: [x] `src/lib/bty/arena/leaderboardScope.ts` 추가 — `parseLeaderboardScope`, `roleToScopeLabel`, `LEADERBOARD_EXPOSED_FIELDS`. API는 도메인 호출만 사용(scope 파라미터·scopeLabel). weekly_xp·nearMe 규칙 유지. [x] npm test 195통과 Exit 0.
+**??/???? 1? (C4 ?? ?)**: [x] C4 ??? ???(`profile/ProfileClient.tsx`) ? ??? ?? ?(saving)? ? Save ?? ??? `CardSkeleton`(showLabel=false, lines=1) ?????? ??. npm run lint ??. **Exit ?? ??.**
 
-**DoD**: [x] lint 통과 [x] test 통과 (150) [x] build 통과 [ ] (옵션) workers verify [ ] C5 실행 커맨드 실행.  
-**First Task 체크**: [x] 이번 First Task에 Domain/API 변경 없음 → N/A(해당 없음) 명시. [x] (변경한 경우에만) npm test 통과 → 미변경 시 해당 없음, 기존 150통과 확인.
+**??/???? 1? (C4 ?? ?)**: [x] C4 AvatarSettingsClient(`profile/avatar/AvatarSettingsClient.tsx`) ? ??? ?? ?? ?(saving)? ? Save ?? ??? `CardSkeleton`(showLabel=false, lines=1) ?????? ??. npm run lint ??. **Exit ?? ??.**
 
-- **C3 (Domain/API) Exit**: C1 선정 항목 확인 → CURSOR_TASK_BOARD "이번 런" 기준 **선정 항목 없음**(C1 Exit [ ], 목표 1줄 미확정). Domain/API 해당 여부 판단 불가 → **해당 없음 Exit**. (C1이 목표 1줄 확정 후 해당 항목에 Domain/API 있으면 별도 구현·npm test.)
-- **C3 (단위 테스트 1개 추가 런) Exit**: 미커버 1모듈 — `src/lib/bty/mentor/mentor_fewshot_router.test.ts` 추가. detectBundleEN·buildMentorMessagesEN·debugRouteEN 8케이스. **npm test 51파일 474통과. Exit 체크 완료.**
-- **C3 (단위 테스트 1개 추가 런, buildChatMessages) Exit**: 미커버 1모듈 — `src/lib/bty/chat/buildChatMessages.test.ts` 추가. normalizeMode·getFallbackMessage 9케이스. **npm test 50파일 466통과. Exit 체크 완료.**
-- **C3 (단위 테스트 1개 추가 런, arena/engine) Exit**: 미커버 1모듈 — `src/lib/bty/arena/engine.test.ts` 추가. computeXp·pickSystemMessageId·evaluateChoice·evaluateFollowUp·INTEGRITY_BONUS_XP 12케이스. **npm test 49파일 457통과. Exit 체크 완료.**
-- **C3 (단위 테스트 1개 추가 런, coreStats) Exit**: 미커버 1모듈 — `src/lib/bty/emotional-stats/coreStats.test.ts` 추가. EVENT_IDS·CORE_STAT_IDS·getQualityWeight·getSessionMaxPossibleWeight·EVENTS·STAT_DISTRIBUTION 9케이스. **npm test 48파일 445통과. Exit 체크 완료.**
-- **C3 (단위 테스트 1개 추가 런, beginnerScenarios) Exit**: 미커버 1모듈 — `src/lib/bty/scenario/beginnerScenarios.test.ts` 추가. getBeginnerScenarioById·pickRandomBeginnerScenario 5케이스. **npm test 47파일 436통과. Exit 체크 완료.**
-- **C3 (단위 테스트 1개 추가 런, scenario/engine) Exit**: 미커버 1모듈 — `src/lib/bty/scenario/engine.test.ts` 추가. getContextForUser(메타 문구 제거)·getScenarioById 7케이스. **npm test 46파일 431통과. Exit 체크 완료.**
-- **C3 (단위 테스트 1개 추가 런, beginnerTypes) Exit**: 미커버 1모듈 — `src/lib/bty/scenario/beginnerTypes.test.ts` 추가. MATURITY_BANDS·BEGINNER_SCORING·computeBeginnerMaturityScore·getMaturityFeedback 9케이스. **npm test 44파일 418통과. Exit 체크 완료.**
-- **C3 (단위 테스트 1개 추가 런, reflection-engine) Exit**: 미커버 1모듈 — `src/lib/bty/arena/reflection-engine.test.ts` 추가. detectPatterns(빈/무관 텍스트·defensive·blame·rushed·control·topTag·null) 8케이스. **npm test 43파일 409통과. Exit 체크 완료.**
-- **C3 (단위 테스트 1개 추가 런, detectEvent) Exit**: 미커버 1모듈 — `src/lib/bty/emotional-stats/detectEvent.test.ts` 추가. detectEmotionalEventFromText(빈/비문자열·KO/EN 패턴·미매칭·우선순위) 9케이스. **npm test 42파일 401통과. Exit 체크 완료.**
-- **C3 (단위 테스트 1개 추가 런, emotional-stats/unlock) Exit**: 미커버 1모듈 — `src/lib/bty/emotional-stats/unlock.test.ts` 추가. checkAdvancedUnlock(PRM·SAG·CNS·CD), getUnlockedAdvancedStats 7케이스. **npm test 41파일 392통과. Exit 체크 완료.**
-- **C3 (단위 테스트 1개 추가 런, antiExploit) Exit**: 미커버 유틸 1모듈 — `src/lib/bty/emotional-stats/antiExploit.test.ts` 추가. shouldApplyReward(빈 세션·rapid penalty·duplicate pattern·통과), computeNovelty·computeConsistency 14케이스. **npm test 40파일 385통과. Exit 체크 완료.**
-- **C3 (단위 테스트 1개 추가 런, unlock) Exit**: 미커버 도메인 1모듈 — `src/lib/bty/arena/unlock.test.ts` 추가. buildTenurePolicyConfig(기본값·new_joiner_rule days), getUnlockedContentWindow(staff S1/preview S2, leader l4Granted→L4, jobFunction doctor→S3·senior_doctor→L1) 6케이스. **npm test 39파일 371통과. Exit 체크 완료.**
-- **C3 (core-xp·sub-name 랭크/상위5% 도메인 이전) Exit**: 도메인 `src/domain/rules/leaderboard.ts`에 `rankFromCountAbove`, `weeklyRankFromCounts` 추가. core-xp·sub-name route는 DB count 조회 후 도메인 호출만 사용. totalCount/rank/isTop5Percent 응답(core-xp) 및 403 판단(sub-name)에 도메인 결과만 반영. **npm test 38파일 365통과. Exit 체크 완료.**
-- **C3 (§10 런) Exit**: C1 목표 = PROJECT_BACKLOG §10 점검·갱신. §10 미완료 1건이 목표 1줄로 확정되어 있지 않음. 점검·문서만 해당 → **해당 없음 Exit**.
-- **PHASE_4 §10·PROJECT_BACKLOG §4·§5: 엘리트 배지 증정 1건**: [x] 도메인 `src/lib/bty/arena/eliteBadge.ts` — `getEliteBadgeGrants(isEliteWeekly)`, `EliteBadgeGrant`, `weekly_elite` 배지. API `GET /api/me/elite` 확장 — `{ isElite, badges }` 반환. 비즈니스 규칙 도메인만. eliteBadge.test.ts 3케이스. npm test 198 통과. **Exit 체크 완료.**
-- **PHASE_4 §10 3차·PROJECT_BACKLOG §5: Elite 멘토 1:1 대화 신청·큐·승인**: [x] 도메인 `src/lib/bty/arena/mentorRequest.ts` — `canRequestMentorSession`, `validateMentorRequestPayload`, `canTransitionStatus`. 마이그레이션 `elite_mentor_requests` 테이블. API: GET/POST `/api/me/mentor-request` (내 신청 조회/생성), GET `/api/arena/mentor-requests` (admin 큐), PATCH `/api/arena/mentor-requests/[id]` (승인/거절). 비즈니스 규칙 도메인만. mentorRequest.test.ts·route.test.ts. npm test 222 통과. **Exit 체크 완료.**
-- **C3 (빈 상태 보강 런) Exit**: 빈 상태 보강은 UI만 해당 → Domain/API 해당 없음. **해당 없음 Exit.**
-- **C3 (빈 상태 보강 2곳째 런) Exit**: 빈 상태 보강은 UI만 해당 → Domain/API 해당 없음. **해당 없음 Exit.**
-- **C3 (Phase 4 체크리스트 런) Exit**: §2-1 검증만 해당 → Domain/API 해당 없음. **해당 없음 Exit.** (선정 항목이 수정·구현 해당 시에는 해당 시 구현·npm test 통과 후 Exit.)
-- **C3 (§2-2 엘리트 5% 검증 런) Exit**: §2-2 검증만 해당 → Domain/API 해당 없음. **해당 없음 Exit.** (수정 시 Elite 판정/API 점검·npm test 후 Exit.)
-- **C3 (§7 서클 모임 1차 런) Exit**: PHASE_4_ELITE_5_PERCENT_SPEC §7 서클 모임은 아이디어 표 한 줄뿐, 일정/참여 API 상세 없음. 1차는 Elite 페이지 카드·플레이스홀더만 → **플레이스홀더만 해당. 해당 없음 Exit.** (일정/참여 API 해당 시 구현·도메인 호출만·npm test 후 Exit.)
-- **C3 (Arena 시나리오 완료 시점 런) Exit**: Arena 시나리오 완료는 기존 submit/reflect API·run/complete 플로우 활용(bty-arena/page.tsx → POST /api/arena/reflect, POST /api/arena/run/complete). 도메인·랭킹 규칙 변경 없음. **해당 없음 Exit.** npm test 통과.
-- **C3 (대시보드 버튼 런) Exit**: 대시보드 버튼은 신규 API 없음 → 기존 API·라우트만 활용. **해당 없음 Exit.** 기존 API 호출만 사용. npm test 통과.
-- **C3 (빈 상태 보강 3곳째 런) Exit**: 빈 상태 보강은 UI만 해당 → Domain/API 해당 없음. **해당 없음 Exit.** npm test 통과.
-- **C3 (챗봇 재시도·에러 UI 런) Exit**: 챗봇 재시도·에러 UI는 클라이언트(Chatbot)만 해당 → Domain/API 해당 없음. **해당 없음 Exit.** npm test 통과.
-- **C3 (i18n 보강 런) Exit**: i18n 보강은 Domain/API 해당 없음. **해당 없음 Exit.** npm test 통과.
-- **C3 (접근성 aria/포커스 런) Exit**: 접근성(aria/포커스)은 Domain/API 해당 없음. **해당 없음 Exit.** npm test 통과.
-- **C3 (접근성 1건 런) Exit**: C1 목표 = 접근성 1건 → Domain/API 해당 없음. **해당 없음 Exit.** npm test 통과.
-- **C3 (로딩/스켈레톤 보강 런) Exit**: 로딩/스켈레톤 보강은 Domain/API 해당 없음. **해당 없음 Exit.** npm test 통과.
-- **C3 (단위 테스트 1개 추가 런) Exit**: `weeklyQuest.ts` 미커버 → `weeklyQuest.test.ts` 추가. getWeekStartUTC(월/일/수·일요일 엣지), 상수 검증. **npm test 242 통과 후 Exit.**
-- **C3 (문서 점검 런) Exit**: 문서 점검은 Domain/API 해당 없음. **해당 없음 Exit.** npm test 통과.
-- **C3 (문서 점검 2~3건 런) Exit**: C1 목표 = 문서 점검 2~3건 → Domain/API 해당 없음. **해당 없음 Exit.** npm test 통과.
-- **C3 (단위 테스트 2개 추가 런) Exit**: 미커버 도메인 2모듈 — `domain/rules/xp.test.ts`(seasonalToCoreConversion), `domain/rules/leaderboard.test.ts`(rankByWeeklyXpOnly·eliteCutoffRank·isElite). **npm test 252 통과 후 Exit.**
-- **C3 (단위 테스트 1모듈 추가 런) Exit**: 미커버 도메인 1모듈 — `src/domain/rules/season.test.ts` 추가. `isDateWithinSeason`, `carryoverWeeklyXp` 4케이스. **npm test 256 통과 후 Exit 체크 완료.**
-- **C3 (단위 테스트 1모듈 추가 런) Exit**: 미커버 도메인 1모듈 — `src/domain/rules/level-tier.test.ts` 추가. `tierFromCoreXp`, `codeIndexFromTier`, `subTierGroupFromTier`, `resolveSubName`, `codeNameFromIndex`, `stageFromCoreXp` 8케이스. **npm test 264 통과 후 Exit 체크 완료.**
-- **C3 (i18n·접근성 런) Exit**: i18n·접근성은 Domain/API 해당 없음. **해당 없음 Exit.** npm test 통과.
-- **C3 (로딩/스켈레톤 런) Exit**: 로딩/스켈레톤은 Domain/API 해당 없음. **해당 없음 Exit.** npm test 통과.
-- **C3 (로딩/스켈레톤 2곳 런) Exit**: C1 목표 = 로딩/스켈레톤 2곳 → Domain/API 해당 없음. **해당 없음 Exit.** npm test 통과.
-- **C3 (단위 테스트 1모듈 추가 런) Exit**: 미커버 도메인 1모듈 — `src/domain/rules/stage.test.ts` 추가. `codeIndexFromTier`, `subTierGroupFromTier`, `stageNumberFromCoreXp`, `codeNameFromIndex`, `defaultSubName`, `resolveSubName`, `stageStateFromCoreXp` 11케이스. **npm test 32파일 275통과 후 Exit 체크 완료.**
-- **C3 (문서 점검 2~3건 런) Exit**: C1 목표 = 문서 점검 2~3건 → Domain/API 해당 없음. **해당 없음 Exit.** npm test 통과 (32파일 275).
-- **C3 (단위 테스트 1모듈 추가 런) Exit**: 미커버 도메인 1모듈 — `src/domain/constants.test.ts` 추가. CODE_NAMES·SUB_NAMES·XP/Tier·League·Leaderboard 상수 검증 14케이스. **npm test 33파일 289통과 후 Exit 체크 완료.**
-- **C3 (단위 테스트 1모듈 추가 런) Exit**: 미커버 유틸 1모듈 — `src/lib/bty/arena/domain.test.ts` 추가. awardXp·calculateLevel·calculateTier·calculateLevelTierProgress·seasonReset·leaderboardSort 8케이스. **npm test 34파일 297통과 후 Exit 체크 완료.**
-- **C4 (UI) Exit**: C1 선정 항목 확인 → 동일 기준 **선정 항목 없음**(목표 1줄 미확정). UI 해당 여부 판단 불가 → **해당 없음 Exit**. (lint 사전 확인: npm run lint Exit 0.)
-- **C4 (문서 점검 2~3건 런) Exit**: C1 목표 = 문서 점검 2~3건 → UI 해당 없음. **해당 없음 Exit.** npm run lint 통과.
-- **C4 (단위 테스트 1모듈 런) Exit**: C1 목표 = 단위 테스트 1모듈 → UI 해당 없음. **해당 없음 Exit.** npm run lint 통과.
-- **C4 (엘리트 5% 1차 표시 UI render-only)**: [x] 대시보드 Elite 카드·`elite/page.client.tsx`·멘토 Elite 멘토 배지에 render-only 주석 추가. isElite는 GET /api/me/elite만 사용, XP/랭킹 계산 없음. [x] npm run lint Exit 0.
+**C2 Gatekeeper (2026-03-05)**: ?? ?? ?? ??. **Release Gate: FAIL.** E) API ?? 2? ? core-xp/route.ts?sub-name/route.ts handler ? rank/isTop5Percent ?? ? ??? ?? ??. ???Required patches: `docs/BTY_RELEASE_GATE_CHECK.md` ? "Cursor 2 Gatekeeper ?? (??? ?? ?? ? 2026-03-05)".
 
-**Arena 한국어 locale 분기 (이번 런)**: [x] 시나리오·안내·대답 locale 분기(API·도메인). `ScenarioSubmitPayload.locale` optional 추가, `computeResult(payload)`가 locale=ko 시 resultKo/microInsightKo/followUp.*Ko 반환. ko 콘텐츠 경로/포맷 `docs/LOCALE_SCENARIO_GUIDE_RESPONSE.md`에 반영. getContextForUser 주석 보강(contextKo는 그대로 사용). [x] npm test 14파일 150통과. Exit 체크 완료.
+**First Task (???? ??)**: **?? ??? 1? ??** ? ??? 1?? ?? ??? ??. C2?C4 ?? ??. C3 ???npm test?C5 ?? ??. *(?? 1: Auth/API ?? ?? ? ???? 3. ?? 2: ???? ??, ????/XP ???.)*
 
-- **Arena 한국어: locale=ko 시 한국어만 표시 (이번 런)**: [x] i18n `arenaRun` 추가(ko/en). Arena 페이지·컴포넌트가 `getMessages(locale).arenaRun`만 사용하도록 수정(render-only, locale 전달). ArenaHeader, ScenarioIntro, PrimaryActions, ChoiceList, OutputPanel, ReflectionBlock, ResultBlock, ConsolidationBlock, CompleteBlock에서 인라인 한/영 분기 제거 → i18n 키 사용. [x] tsc --noEmit 통과. **Exit 체크**: 완료.
+- **BTY_ARENA_SYSTEM_SPEC ?4: ???? scope=role|office ???/API**: [x] `src/lib/bty/arena/leaderboardScope.ts` ?? ? `parseLeaderboardScope`, `roleToScopeLabel`, `LEADERBOARD_EXPOSED_FIELDS`. API? ??? ??? ??(scope ?????scopeLabel). weekly_xp?nearMe ?? ??. [x] npm test 195?? Exit 0.
 
-*(커맨더가 여기에 요구사항을 적거나, 채팅으로 "CURRENT_TASK.md 참고해서 구현해줘" + 기능 설명을 보냅니다.)*
+**DoD**: [x] lint ?? [x] test ?? (150) [x] build ?? [ ] (??) workers verify [ ] C5 ?? ??? ??.  
+**First Task ??**: [x] ?? First Task? Domain/API ?? ?? ? N/A(?? ??) ??. [x] (??? ????) npm test ?? ? ??? ? ?? ??, ?? 150?? ??.
 
-**우선 진행 (Center 페이지)**  
-- **`docs/CENTER_PAGE_IMPROVEMENT_SPEC.md`** §9 순서대로: CTA 통합·재로그인 버그 → 챗으로 이어하기 → 5문항 순서 → EN/KO 플로우·로딩 → 회복 탄력성 그래프 → 50문항 정성 → 아늑한 방 톤.  
-- 전체 분류·다음 리스트: **`docs/COMMANDER_BACKLOG_AND_NEXT.md`**.  
-- 백로그 §10: **`docs/PROJECT_BACKLOG.md`** §10.
+- **C3 (Domain/API) Exit**: C1 ?? ?? ?? ? CURSOR_TASK_BOARD "?? ?" ?? **?? ?? ??**(C1 Exit [ ], ?? 1? ???). Domain/API ?? ?? ?? ?? ? **?? ?? Exit**. (C1? ?? 1? ?? ? ?? ??? Domain/API ??? ?? ???npm test.)
+- **C3 (?? ??? 1? ?? ?) Exit**: ??? 1?? ? `src/lib/bty/mentor/mentor_fewshot_router.test.ts` ??. detectBundleEN?buildMentorMessagesEN?debugRouteEN 8???. **npm test 51?? 474??. Exit ?? ??.**
+- **C3 (?? ??? 1? ?? ?, buildChatMessages) Exit**: ??? 1?? ? `src/lib/bty/chat/buildChatMessages.test.ts` ??. normalizeMode?getFallbackMessage 9???. **npm test 50?? 466??. Exit ?? ??.**
+- **C3 (?? ??? 1? ?? ?, arena/engine) Exit**: ??? 1?? ? `src/lib/bty/arena/engine.test.ts` ??. computeXp?pickSystemMessageId?evaluateChoice?evaluateFollowUp?INTEGRITY_BONUS_XP 12???. **npm test 49?? 457??. Exit ?? ??.**
+- **C3 (?? ??? 1? ?? ?, coreStats) Exit**: ??? 1?? ? `src/lib/bty/emotional-stats/coreStats.test.ts` ??. EVENT_IDS?CORE_STAT_IDS?getQualityWeight?getSessionMaxPossibleWeight?EVENTS?STAT_DISTRIBUTION 9???. **npm test 48?? 445??. Exit ?? ??.**
+- **C3 (?? ??? 1? ?? ?, beginnerScenarios) Exit**: ??? 1?? ? `src/lib/bty/scenario/beginnerScenarios.test.ts` ??. getBeginnerScenarioById?pickRandomBeginnerScenario 5???. **npm test 47?? 436??. Exit ?? ??.**
+- **C3 (?? ??? 1? ?? ?, scenario/engine) Exit**: ??? 1?? ? `src/lib/bty/scenario/engine.test.ts` ??. getContextForUser(?? ?? ??)?getScenarioById 7???. **npm test 46?? 431??. Exit ?? ??.**
+- **C3 (?? ??? 1? ?? ?, beginnerTypes) Exit**: ??? 1?? ? `src/lib/bty/scenario/beginnerTypes.test.ts` ??. MATURITY_BANDS?BEGINNER_SCORING?computeBeginnerMaturityScore?getMaturityFeedback 9???. **npm test 44?? 418??. Exit ?? ??.**
+- **C3 (?? ??? 1? ?? ?, reflection-engine) Exit**: ??? 1?? ? `src/lib/bty/arena/reflection-engine.test.ts` ??. detectPatterns(?/?? ????defensive?blame?rushed?control?topTag?null) 8???. **npm test 43?? 409??. Exit ?? ??.**
+- **C3 (?? ??? 1? ?? ?, detectEvent) Exit**: ??? 1?? ? `src/lib/bty/emotional-stats/detectEvent.test.ts` ??. detectEmotionalEventFromText(?/?????KO/EN ???????????) 9???. **npm test 42?? 401??. Exit ?? ??.**
+- **C3 (?? ??? 1? ?? ?, emotional-stats/unlock) Exit**: ??? 1?? ? `src/lib/bty/emotional-stats/unlock.test.ts` ??. checkAdvancedUnlock(PRM?SAG?CNS?CD), getUnlockedAdvancedStats 7???. **npm test 41?? 392??. Exit ?? ??.**
+- **C3 (?? ??? 1? ?? ?, antiExploit) Exit**: ??? ?? 1?? ? `src/lib/bty/emotional-stats/antiExploit.test.ts` ??. shouldApplyReward(? ???rapid penalty?duplicate pattern???), computeNovelty?computeConsistency 14???. **npm test 40?? 385??. Exit ?? ??.**
+- **C3 (?? ??? 1? ?? ?, unlock) Exit**: ??? ??? 1?? ? `src/lib/bty/arena/unlock.test.ts` ??. buildTenurePolicyConfig(????new_joiner_rule days), getUnlockedContentWindow(staff S1/preview S2, leader l4Granted?L4, jobFunction doctor?S3?senior_doctor?L1) 6???. **npm test 39?? 371??. Exit ?? ??.**
+- **C3 (core-xp?sub-name ??/??5% ??? ??) Exit**: ??? `src/domain/rules/leaderboard.ts`? `rankFromCountAbove`, `weeklyRankFromCounts` ??. core-xp?sub-name route? DB count ?? ? ??? ??? ??. totalCount/rank/isTop5Percent ??(core-xp) ? 403 ??(sub-name)? ??? ??? ??. **npm test 38?? 365??. Exit ?? ??.**
+- **C3 (?10 ?) Exit**: C1 ?? = PROJECT_BACKLOG ?10 ?????. ?10 ??? 1?? ?? 1?? ???? ?? ??. ?????? ?? ? **?? ?? Exit**.
+- **PHASE_4 ?10?PROJECT_BACKLOG ?4??5: ??? ?? ?? 1?**: [x] ??? `src/lib/bty/arena/eliteBadge.ts` ? `getEliteBadgeGrants(isEliteWeekly)`, `EliteBadgeGrant`, `weekly_elite` ??. API `GET /api/me/elite` ?? ? `{ isElite, badges }` ??. ???? ?? ????. eliteBadge.test.ts 3???. npm test 198 ??. **Exit ?? ??.**
+- **PHASE_4 ?10 3??PROJECT_BACKLOG ?5: Elite ?? 1:1 ?? ???????**: [x] ??? `src/lib/bty/arena/mentorRequest.ts` ? `canRequestMentorSession`, `validateMentorRequestPayload`, `canTransitionStatus`. ?????? `elite_mentor_requests` ???. API: GET/POST `/api/me/mentor-request` (? ?? ??/??), GET `/api/arena/mentor-requests` (admin ?), PATCH `/api/arena/mentor-requests/[id]` (??/??). ???? ?? ????. mentorRequest.test.ts?route.test.ts. npm test 222 ??. **Exit ?? ??.**
+- **C3 (? ?? ?? ?) Exit**: ? ?? ??? UI? ?? ? Domain/API ?? ??. **?? ?? Exit.**
+- **C3 (? ?? ?? 2?? ?) Exit**: ? ?? ??? UI? ?? ? Domain/API ?? ??. **?? ?? Exit.**
+- **C3 (Phase 4 ????? ?) Exit**: ?2-1 ??? ?? ? Domain/API ?? ??. **?? ?? Exit.** (?? ??? ????? ?? ??? ?? ? ???npm test ?? ? Exit.)
+- **C3 (?2-2 ??? 5% ?? ?) Exit**: ?2-2 ??? ?? ? Domain/API ?? ??. **?? ?? Exit.** (?? ? Elite ??/API ???npm test ? Exit.)
+- **C3 (?7 ?? ?? 1? ?) Exit**: PHASE_4_ELITE_5_PERCENT_SPEC ?7 ?? ??? ???? ? ? ??, ??/?? API ?? ??. 1?? Elite ??? ?????????? ? **??????? ??. ?? ?? Exit.** (??/?? API ?? ? ?????? ????npm test ? Exit.)
+- **C3 (Arena ???? ?? ?? ?) Exit**: Arena ???? ??? ?? submit/reflect API?run/complete ??? ??(bty-arena/page.tsx ? POST /api/arena/reflect, POST /api/arena/run/complete). ?????? ?? ?? ??. **?? ?? Exit.** npm test ??.
+- **C3 (???? ?? ?) Exit**: ???? ??? ?? API ?? ? ?? API????? ??. **?? ?? Exit.** ?? API ??? ??. npm test ??.
+- **C3 (? ?? ?? 3?? ?) Exit**: ? ?? ??? UI? ?? ? Domain/API ?? ??. **?? ?? Exit.** npm test ??.
+- **C3 (?? ?????? UI ?) Exit**: ?? ?????? UI? ?????(Chatbot)? ?? ? Domain/API ?? ??. **?? ?? Exit.** npm test ??.
+- **C3 (i18n ?? ?) Exit**: i18n ??? Domain/API ?? ??. **?? ?? Exit.** npm test ??.
+- **C3 (??? aria/??? ?) Exit**: ???(aria/???)? Domain/API ?? ??. **?? ?? Exit.** npm test ??.
+- **C3 (??? 1? ?) Exit**: C1 ?? = ??? 1? ? Domain/API ?? ??. **?? ?? Exit.** npm test ??.
+- **C3 (??/???? ?? ?) Exit**: ??/???? ??? Domain/API ?? ??. **?? ?? Exit.** npm test ??.
+- **C3 (?? ??? 1? ?? ?) Exit**: `weeklyQuest.ts` ??? ? `weeklyQuest.test.ts` ??. getWeekStartUTC(?/?/????? ??), ?? ??. **npm test 242 ?? ? Exit.**
+- **C3 (?? ?? ?) Exit**: ?? ??? Domain/API ?? ??. **?? ?? Exit.** npm test ??.
+- **C3 (?? ?? 2~3? ?) Exit**: C1 ?? = ?? ?? 2~3? ? Domain/API ?? ??. **?? ?? Exit.** npm test ??.
+- **C3 (?? ??? 2? ?? ?) Exit**: ??? ??? 2?? ? `domain/rules/xp.test.ts`(seasonalToCoreConversion), `domain/rules/leaderboard.test.ts`(rankByWeeklyXpOnly?eliteCutoffRank?isElite). **npm test 252 ?? ? Exit.**
+- **C3 (?? ??? 1?? ?? ?) Exit**: ??? ??? 1?? ? `src/domain/rules/season.test.ts` ??. `isDateWithinSeason`, `carryoverWeeklyXp` 4???. **npm test 256 ?? ? Exit ?? ??.**
+- **C3 (?? ??? 1?? ?? ?) Exit**: ??? ??? 1?? ? `src/domain/rules/level-tier.test.ts` ??. `tierFromCoreXp`, `codeIndexFromTier`, `subTierGroupFromTier`, `resolveSubName`, `codeNameFromIndex`, `stageFromCoreXp` 8???. **npm test 264 ?? ? Exit ?? ??.**
+- **C3 (i18n???? ?) Exit**: i18n????? Domain/API ?? ??. **?? ?? Exit.** npm test ??.
+- **C3 (??/???? ?) Exit**: ??/????? Domain/API ?? ??. **?? ?? Exit.** npm test ??.
+- **C3 (??/???? 2? ?) Exit**: C1 ?? = ??/???? 2? ? Domain/API ?? ??. **?? ?? Exit.** npm test ??.
+- **C3 (?? ??? 1?? ?? ?) Exit**: ??? ??? 1?? ? `src/domain/rules/stage.test.ts` ??. `codeIndexFromTier`, `subTierGroupFromTier`, `stageNumberFromCoreXp`, `codeNameFromIndex`, `defaultSubName`, `resolveSubName`, `stageStateFromCoreXp` 11???. **npm test 32?? 275?? ? Exit ?? ??.**
+- **C3 (?? ?? 2~3? ?) Exit**: C1 ?? = ?? ?? 2~3? ? Domain/API ?? ??. **?? ?? Exit.** npm test ?? (32?? 275).
+- **C3 (?? ??? 1?? ?? ?) Exit**: ??? ??? 1?? ? `src/domain/constants.test.ts` ??. CODE_NAMES?SUB_NAMES?XP/Tier?League?Leaderboard ?? ?? 14???. **npm test 33?? 289?? ? Exit ?? ??.**
+- **C3 (?? ??? 1?? ?? ?) Exit**: ??? ?? 1?? ? `src/lib/bty/arena/domain.test.ts` ??. awardXp?calculateLevel?calculateTier?calculateLevelTierProgress?seasonReset?leaderboardSort 8???. **npm test 34?? 297?? ? Exit ?? ??.**
+- **C4 (UI) Exit**: C1 ?? ?? ?? ? ?? ?? **?? ?? ??**(?? 1? ???). UI ?? ?? ?? ?? ? **?? ?? Exit**. (lint ?? ??: npm run lint Exit 0.)
+- **C4 (?? ?? 2~3? ?) Exit**: C1 ?? = ?? ?? 2~3? ? UI ?? ??. **?? ?? Exit.** npm run lint ??.
+- **C4 (?? ??? 1?? ?) Exit**: C1 ?? = ?? ??? 1?? ? UI ?? ??. **?? ?? Exit.** npm run lint ??.
+- **C4 (??? 5% 1? ?? UI render-only)**: [x] ???? Elite ???`elite/page.client.tsx`??? Elite ?? ??? render-only ?? ??. isElite? GET /api/me/elite? ??, XP/?? ?? ??. [x] npm run lint Exit 0.
 
-**이번 지시 (택일 진행)**  
-- **옵션 A — 감정 스탯 v3 확장**: `docs/HEALING_COACHING_SPEC_V3.md`·`docs/specs/healing-coaching-spec-v3.json` 기준으로 coreStats에 v3 이벤트 14종·stat_distribution·헬퍼 추가 후, 30일 가속·phase_tuning을 formula와 recordEmotionalEventServer에 반영.  
-- **옵션 B — Dojo 2차 확장 (WHAT_NEXT §2-2)**: `docs/DOJO_DEAR_ME_NEXT_CONTENT.md` §1-4·§6·§4·§5 기준으로 50문항 목차·연습 플로우 2~5단계 스펙 정리 및 추가 구현. PROJECT_BACKLOG §7은 [x]; 2차 확장은 위 스펙으로 진행.
+**Arena ??? locale ?? (?? ?)**: [x] ?????????? locale ??(API????). `ScenarioSubmitPayload.locale` optional ??, `computeResult(payload)`? locale=ko ? resultKo/microInsightKo/followUp.*Ko ??. ko ??? ??/?? `docs/LOCALE_SCENARIO_GUIDE_RESPONSE.md`? ??. getContextForUser ?? ??(contextKo? ??? ??). [x] npm test 14?? 150??. Exit ?? ??.
 
-*진행 에이전트는 위 A/B 중 지시된 쪽을 우선 진행. 지시가 없으면 CURRENT_TASK 또는 WHAT_NEXT §2-2 표의 복사용 프롬프트를 참고.*
+- **Arena ???: locale=ko ? ???? ?? (?? ?)**: [x] i18n `arenaRun` ??(ko/en). Arena ????????? `getMessages(locale).arenaRun`? ????? ??(render-only, locale ??). ArenaHeader, ScenarioIntro, PrimaryActions, ChoiceList, OutputPanel, ReflectionBlock, ResultBlock, ConsolidationBlock, CompleteBlock?? ??? ?/? ?? ?? ? i18n ? ??. [x] tsc --noEmit ??. **Exit ??**: ??.
 
-**§2 챗봇 플로팅 /center 비노출 완료**: COMMANDER_BACKLOG §2. `src/app/[locale]/center/page.tsx`에서 Chatbot import 및 `<Chatbot />` 제거. /center 플로팅 챗 미노출. bty는 layout에서만 Chatbot. lint Exit 0. **C5·WRAP**: 사용자 터미널 verify 완료 → wrap-ci PASSED 반영.
+*(???? ??? ????? ???, ???? "CURRENT_TASK.md ???? ????" + ?? ??? ????.)*
 
-**이전 완료**: 챗봇 훈련 (PROJECT_BACKLOG §9) — ✅ 완료
+**?? ?? (Center ???)**  
+- **`docs/CENTER_PAGE_IMPROVEMENT_SPEC.md`** ?9 ????: CTA ??????? ?? ? ??? ???? ? 5?? ?? ? EN/KO ?????? ? ?? ??? ??? ? 50?? ?? ? ??? ? ?.  
+- ?? ????? ???: **`docs/COMMANDER_BACKLOG_AND_NEXT.md`**.  
+- ??? ?10: **`docs/PROJECT_BACKLOG.md`** ?10.
 
-- **BTY_ARENA_SYSTEM_SPEC §4: 리더보드 팀(역할/지점) 뷰 전환**: 리더보드 페이지에 Overall | Role | Office 탭 UI 있음. scope 쿼리로 API 호출, scopeLabel·scopeUnavailable·행 데이터는 API 응답만 표시(render-only). 주석 보강. [x] npm run lint Exit 0.
+**?? ?? (?? ??)**  
+- **?? A ? ?? ?? v3 ??**: `docs/HEALING_COACHING_SPEC_V3.md`?`docs/specs/healing-coaching-spec-v3.json` ???? coreStats? v3 ??? 14??stat_distribution??? ?? ?, 30? ???phase_tuning? formula? recordEmotionalEventServer? ??.  
+- **?? B ? Dojo 2? ?? (WHAT_NEXT ?2-2)**: `docs/DOJO_DEAR_ME_NEXT_CONTENT.md` ?1-4??6??4??5 ???? 50?? ????? ??? 2~5?? ?? ?? ? ?? ??. PROJECT_BACKLOG ?7? [x]; 2? ??? ? ???? ??.
 
-- **COMMANDER_BACKLOG §5: 대시보드 코드네임 툴팁**: Code Name 표시 영역 마우스 오버 시 단계·수준 설명 팝오버. BTY_ARENA_SYSTEM_SPEC §1·§5, ARENA_CODENAME_AVATAR_PLAN §2 규칙 요약. aria-describedby·id 연동. [x] npm run lint Exit 0.
+*?? ????? ? A/B ? ??? ?? ?? ??. ??? ??? CURRENT_TASK ?? WHAT_NEXT ?2-2 ?? ??? ????? ??.*
 
-- **AVATAR_LAYER_SPEC §6·§7: AvatarComposite 레이어 합성·옷 입힌 캐릭터 UI (render-only)**: AvatarComposite 주석에 render-only 명시(API/도메인 URL만 표시). 대시보드: core.currentOutfit.accessoryIds → getAccessoryImageUrl(도메인) → avatarAccessoryUrls로 두 곳 AvatarComposite에 전달. OutfitCard render-only 주석. [x] npm run lint Exit 0.
+**?2 ?? ??? /center ??? ??**: COMMANDER_BACKLOG ?2. `src/app/[locale]/center/page.tsx`?? Chatbot import ? `<Chatbot />` ??. /center ??? ? ???. bty? layout??? Chatbot. lint Exit 0. **C5?WRAP**: ??? ??? verify ?? ? wrap-ci PASSED ??.
 
-- **COMMANDER_BACKLOG §2: 전역 플로팅 챗봇 /center 비노출**: Center 페이지에서 Chatbot 마운트 제거. `src/app/[locale]/center/page.tsx`에서 `<Chatbot />` 및 import 제거. /center 접속 시 플로팅 챗 패널 미노출. 챗은 Foundry(bty) 레이아웃에서만 노출. [x] npm run lint Exit 0. COMMANDER_BACKLOG_AND_NEXT §2·CURRENT_TASK 반영.
+**?? ??**: ?? ?? (PROJECT_BACKLOG ?9) ? ? ??
 
-- **CENTER_PAGE_IMPROVEMENT_SPEC §9 점검 (Center 페이지·컴포넌트 완료 상태 + render-only 보완)**: §9 순서(§5→§6→§3→§2→§4→§7→§1·§8) 기준 점검 완료. **§5** 단일 CTA `t.ctaToFoundry`, `href=/${locale}/bty` 적용. **§6** 챗으로 이어하기 `open-chatbot` dispatch. **§3** 5문항 → 안내+50문항 링크 → 50문항 카드 → SafeMirror → SmallWins → ResilienceGraph → EmotionalBridge. **§2** EN/KO 질문 먼저·로딩 i18n. **§4** ResilienceGraph GET /api/center/resilience만 사용(render-only). **§7** Assessment 한 문항씩. **§1·§8** dear 톤·영어 일관. **보완**: PageClient KO 뷰(step5·메인)에서 `ResilienceGraph`에 `locale={locale}` 누락 수정(§8 일관). [x] npm run lint Exit 0. **서류**: CURRENT_TASK·CURSOR_TASK_BOARD 반영.
+- **BTY_ARENA_SYSTEM_SPEC ?4: ???? ?(??/??) ? ??**: ???? ???? Overall | Role | Office ? UI ??. scope ??? API ??, scopeLabel?scopeUnavailable?? ???? API ??? ??(render-only). ?? ??. [x] npm run lint Exit 0.
 
-- **Dojo 2차 UI: 진입·연습 플로우 2~5단계 (render-only)**: 역지사지(integrity) 페이지에서 Dr. Chi 피드백을 **API 응답만** 표시. `POST /api/mentor` 호출(message, messages, lang, topic: "patient"), 응답 `message` 필드만 표시. 하드코딩 `t.reply` 제거. i18n `integrity.apiError`(네트워크 오류), `integrity.replyFallback`(API 빈 응답 시). 단계: guide(2) → scenario(3·4) → done(5) 유지. [x] npm run lint Exit 0. **서류**: CURRENT_TASK·CURSOR_TASK_BOARD 반영. **완료.** Next steps: 로컬 `/bty/integrity` 접속 후 안내→시나리오 입력→전송 시 Dr. Chi 답변이 `/api/mentor` 응답으로만 나오는지 확인. (선택) topic: "patient" 또는 Dojo 전용 엔드포인트 확장.
+- **COMMANDER_BACKLOG ?5: ???? ???? ??**: Code Name ?? ?? ??? ?? ? ????? ?? ???. BTY_ARENA_SYSTEM_SPEC ?1??5, ARENA_CODENAME_AVATAR_PLAN ?2 ?? ??. aria-describedby?id ??. [x] npm run lint Exit 0.
 
-- **감정 스탯 v3 표시 UI (render-only)**: 적용 완료. display API만 사용(render-only). 대시보드·bty·멘토 연동. [x] npm run lint Exit 0. **서류**: CURRENT_TASK·CURSOR_TASK_BOARD 반영 완료.
+- **AVATAR_LAYER_SPEC ?6??7: AvatarComposite ??? ???? ?? ??? UI (render-only)**: AvatarComposite ??? render-only ??(API/??? URL? ??). ????: core.currentOutfit.accessoryIds ? getAccessoryImageUrl(???) ? avatarAccessoryUrls? ? ? AvatarComposite? ??. OutfitCard render-only ??. [x] npm run lint Exit 0.
 
-- **§2 EN/KO 진입 플로우·로딩 문구 (CENTER_PAGE_IMPROVEMENT_SPEC)**: 영어도 한국어와 동일하게 "질문 먼저(intro+Start) → 답 → Center 메인". 전환 중 로딩은 locale별: center/page.tsx Suspense·AuthGate에 t.loading, [locale]/loading.tsx는 LocaleAwareRouteLoading. [x] npm run lint Exit 0.
+- **COMMANDER_BACKLOG ?2: ?? ??? ?? /center ???**: Center ????? Chatbot ??? ??. `src/app/[locale]/center/page.tsx`?? `<Chatbot />` ? import ??. /center ?? ? ??? ? ?? ???. ?? Foundry(bty) ??????? ??. [x] npm run lint Exit 0. COMMANDER_BACKLOG_AND_NEXT ?2?CURRENT_TASK ??.
 
-- **§3 Center 본문 블록 순서 (CENTER_PAGE_IMPROVEMENT_SPEC)**: 5문항(자존감 알아보기) 맨 위 → "더 자세한 테스트를 원하시면 클릭하세요" + 50문항 링크 → 50문항 링크 카드. PageClient 4곳(EN step5, EN 메인, KO step5, KO 메인) 이미 동일 순서. render-only. [x] npm run lint Exit 0.
+- **CENTER_PAGE_IMPROVEMENT_SPEC ?9 ?? (Center ???????? ?? ?? + render-only ??)**: ?9 ??(?5??6??3??2??4??7??1??8) ?? ?? ??. **?5** ?? CTA `t.ctaToFoundry`, `href=/${locale}/bty` ??. **?6** ??? ???? `open-chatbot` dispatch. **?3** 5?? ? ??+50?? ?? ? 50?? ?? ? SafeMirror ? SmallWins ? ResilienceGraph ? EmotionalBridge. **?2** EN/KO ?? ????? i18n. **?4** ResilienceGraph GET /api/center/resilience? ??(render-only). **?7** Assessment ? ???. **?1??8** dear ???? ??. **??**: PageClient KO ?(step5???)?? `ResilienceGraph`? `locale={locale}` ?? ??(?8 ??). [x] npm run lint Exit 0. **??**: CURRENT_TASK?CURSOR_TASK_BOARD ??.
 
-- **§4 ResilienceGraph 일별/기간별 트렉 (도메인·API·UI)**: **데이터 소스**: GET /api/center/resilience만 사용. `{ entries: ResilienceDayEntry[] }` (date, level, source) 계약. **제거**: getSelfEsteemHistory()·localStorage 병합 전부 제거. UI에서 level/날짜 계산·추가 병합 없음. **타입**: ResilienceGraphApiResponse, ResilienceDayEntry·ResilienceDailyLevel은 API 라우트·도메인만. **도메인**: `src/domain/center/resilience.ts` — energyToLevel, aggregateLetterRowsToDailyEntries(periodDays). **API**: route는 도메인만 호출, `?period=7|30` (1–365). **UI**: 로딩 시 t.subtitle, 빈 배열 동일 문구, 데이터 시 t.dailyTrajectorySubtitle. fetch 취소 처리. **검증**: [x] npm run lint Exit 0 [x] npm test 13파일 140통과. [x] 로컬 Center 접속 시 회복 탄력성 그래프 일별 트렉 표시 확인. **공동 문서**: CURSOR_TASK_BOARD·CURRENT_TASK 반영 완료.
+- **Dojo 2? UI: ????? ??? 2~5?? (render-only)**: ????(integrity) ????? Dr. Chi ???? **API ???** ??. `POST /api/mentor` ??(message, messages, lang, topic: "patient"), ?? `message` ??? ??. ???? `t.reply` ??. i18n `integrity.apiError`(???? ??), `integrity.replyFallback`(API ? ?? ?). ??: guide(2) ? scenario(3?4) ? done(5) ??. [x] npm run lint Exit 0. **??**: CURRENT_TASK?CURSOR_TASK_BOARD ??. **??.** Next steps: ?? `/bty/integrity` ?? ? ??????? ????? ? Dr. Chi ??? `/api/mentor` ????? ???? ??. (??) topic: "patient" ?? Dojo ?? ????? ??.
 
-- **Center CTA 통일 + CENTER_PAGE_IMPROVEMENT_SPEC (render-only)**: Center/Foundry CTA 링크를 \`/${locale}/bty\`로 통일 (PageClient 푸터, Nav, Chatbot, integrity, mentor, auth/callback). §5 단일 CTA·§6 챗으로 이어하기·§3 5문항 순서·§2 로딩 i18n·§1·§8 톤/영어 일관 반영. **검증**: [x] CTA href=\`/${locale}/bty\` [x] npm run lint 통과 (Exit 0). §4 별도 완료.
+- **?? ?? v3 ?? UI (render-only)**: ?? ??. display API? ??(render-only). ?????bty??? ??. [x] npm run lint Exit 0. **??**: CURRENT_TASK?CURSOR_TASK_BOARD ?? ??.
 
-- **§1·§8 Center 톤·비주얼(아늑한 방) + locale=en 전부 영어**: [x] i18n center tagline/entryIntro/heroTitleMain·Accent (ko: 아늑한 방·치유, en: cozy room to rest and heal). EN 헤더에 hero 타이틀. resilience.dailyTrajectorySubtitle·selfEsteem·safeMirror·smallWins en 완비. 컴포넌트 locale 전달·fallback 영어. **이번 First Task(§1·§8)**: [x] Domain/API 변경 없음 → 해당 없음 (N/A). [x] (변경한 경우에만) npm test 통과 → Domain/API 미변경이므로 해당 없음. 기존 스위트 실행 시 14파일 150통과 확인. **Exit**: CENTER_PAGE_IMPROVEMENT_SPEC §1·§8 반영·완료 이력 갱신.
-- **§1·§8 Center dear 테마·카피 적용 + EN 경로 한글 미노출 (이번 런)**: [x] EN Center 경로 전 구간 **dear** 테마 적용(ThemeBody theme="dear", text-dear-*·border-dear-sage 등). KO와 동일 톤(아늑한 방). EN 경로 문구는 `t`(getMessages(lang).center)만 사용·한글 미노출. Nav entry 화면 `locale={locale}` 사용. SelfEsteemTest/SafeMirror/SmallWinsStack/ResilienceGraph/EmotionalBridge에 theme="dear"·locale 전달. render-only. [x] npm run lint 통과. **Exit 체크**: 완료.
+- **?2 EN/KO ?? ?????? ?? (CENTER_PAGE_IMPROVEMENT_SPEC)**: ??? ???? ???? "?? ??(intro+Start) ? ? ? Center ??". ?? ? ??? locale?: center/page.tsx Suspense?AuthGate? t.loading, [locale]/loading.tsx? LocaleAwareRouteLoading. [x] npm run lint Exit 0.
 
-- **Cursor 4 UI Worker (bty-ui-render-only)**: [x] 대시보드가 core-xp display 필드만 사용(API 확장 반영). UI에서 tier/코드 계산 없음. [x] **리더보드·사이드바 render-only 보강**: LeaderboardRow — API 값만 표시, XP는 toLocaleString 포맷만(계산 없음), locale prop·list/listitem·aria-label. ArenaRankingSidebar — 에러 시 재시도 버튼·aria-label·role=alert. 리더보드 페이지 — rows key=`rank-codeName`(타이 구분), role=list. **UI 계산 로직 0건** 확인.
+- **?3 Center ?? ?? ?? (CENTER_PAGE_IMPROVEMENT_SPEC)**: 5??(??? ????) ? ? ? "? ??? ???? ???? ?????" + 50?? ?? ? 50?? ?? ??. PageClient 4?(EN step5, EN ??, KO step5, KO ??) ?? ?? ??. render-only. [x] npm run lint Exit 0.
 
-- **할 일**: `docs/ROADMAP_NEXT_STEPS.md` § 챗봇 훈련 시기, `docs/CHATBOT_TRAINING_CHECKLIST.md` 참고해서 시스템 프롬프트 보강(역할·말투·금지), 구역별(bty / today-me) 예시 대화, 메타 질문 답변 가이드. 필요 시 RAG. `src/app/api/chat/route.ts`, `src/components/Chatbot.tsx` 수정. CHATBOT_TRAINING_CHECKLIST §3 [ ] 항목 정리·반영.
-- **반영 요약**: `src/lib/bty/chat/buildChatMessages.ts`(NVC·치유 스펙, 메타/인사/BTY·Dear Me 소개, few-shot), `chatGuards.ts`(isMetaQuestion, getMetaReply), `route.ts`(메타 질문 시 고정 답변), `Chatbot.tsx`(소개·공간 안내 i18n), `i18n.ts`(chat.introDojo/introDearMe/spaceHintDojo/spaceHintDearMe). §3 항목 전부 [x].
-- **구현 테스트 검증**: ✅ **PASS** — Cursor 2에서 Lint 통과, Vitest 10/10 통과. next/headers·supabaseServer 목 추가로 테스트 환경 이슈 해결. 상세는 `docs/NEXT_STEPS_RUNBOOK.md` § "챗봇 구현 테스트 결과".
+- **?4 ResilienceGraph ??/??? ?? (????API?UI)**: **??? ??**: GET /api/center/resilience? ??. `{ entries: ResilienceDayEntry[] }` (date, level, source) ??. **??**: getSelfEsteemHistory()?localStorage ?? ?? ??. UI?? level/?? ????? ?? ??. **??**: ResilienceGraphApiResponse, ResilienceDayEntry?ResilienceDailyLevel? API ????????. **???**: `src/domain/center/resilience.ts` ? energyToLevel, aggregateLetterRowsToDailyEntries(periodDays). **API**: route? ???? ??, `?period=7|30` (1?365). **UI**: ?? ? t.subtitle, ? ?? ?? ??, ??? ? t.dailyTrajectorySubtitle. fetch ?? ??. **??**: [x] npm run lint Exit 0 [x] npm test 13?? 140??. [x] ?? Center ?? ? ?? ??? ??? ?? ?? ?? ??. **?? ??**: CURSOR_TASK_BOARD?CURRENT_TASK ?? ??.
 
-**다음 예정 (챗봇 훈련 이후)**  
-- **시스템 업그레이드 (감정 스탯)**: `docs/SYSTEM_UPGRADE_PLAN_EMOTIONAL_STATS.md` — Core Stats·Events·Advanced Stats 해금, Q/Δ 공식, UI 문구만·악용 방지.  
-  - **Phase A1–F1**: ✅ **도메인 → DB → API → UI 순 반영 완료** (coreStats/formula/unlock/antiExploit, 마이그레이션, record-event/display API, 챗/멘토 연동, UI phrases).  
-  - **이후**: v3 스펙(이벤트 15종·stat_distribution·30일 가속·rapid_session_penalty 등)은 `docs/HEALING_COACHING_SPEC_V3.md`·`docs/specs/healing-coaching-spec-v3.json` 기준으로 확장 가능. 검증은 Cursor 2에 "감정 스탯 API·UI 검증해줘" 등으로 지시.
+- **Center CTA ?? + CENTER_PAGE_IMPROVEMENT_SPEC (render-only)**: Center/Foundry CTA ??? \`/${locale}/bty\`? ?? (PageClient ??, Nav, Chatbot, integrity, mentor, auth/callback). ?5 ?? CTA??6 ??? ??????3 5?? ????2 ?? i18n??1??8 ?/?? ?? ??. **??**: [x] CTA href=\`/${locale}/bty\` [x] npm run lint ?? (Exit 0). ?4 ?? ??.
 
-**현재 단계**: Phase 4 (코드별 테마·엘리트 5%). 상세 목록은 **`docs/PHASE_4_CHECKLIST.md`** 참고.  
-**백로그**: **`docs/PROJECT_BACKLOG.md`**.
+- **?1??8 Center ?????(??? ?) + locale=en ?? ??**: [x] i18n center tagline/entryIntro/heroTitleMain?Accent (ko: ??? ????, en: cozy room to rest and heal). EN ??? hero ???. resilience.dailyTrajectorySubtitle?selfEsteem?safeMirror?smallWins en ??. ???? locale ???fallback ??. **?? First Task(?1??8)**: [x] Domain/API ?? ?? ? ?? ?? (N/A). [x] (??? ????) npm test ?? ? Domain/API ?????? ?? ??. ?? ??? ?? ? 14?? 150?? ??. **Exit**: CENTER_PAGE_IMPROVEMENT_SPEC ?1??8 ????? ?? ??.
+- **?1??8 Center dear ????? ?? + EN ?? ?? ??? (?? ?)**: [x] EN Center ?? ? ?? **dear** ?? ??(ThemeBody theme="dear", text-dear-*?border-dear-sage ?). KO? ?? ?(??? ?). EN ?? ??? `t`(getMessages(lang).center)? ????? ???. Nav entry ?? `locale={locale}` ??. SelfEsteemTest/SafeMirror/SmallWinsStack/ResilienceGraph/EmotionalBridge? theme="dear"?locale ??. render-only. [x] npm run lint ??. **Exit ??**: ??.
 
-- **시나리오 노출 확인**: **`docs/SCENARIO_UNLOCK_VERIFICATION.md`** — 가입·레벨에 따른 시나리오 노출 검증 시, 문서의 체크박스를 **순서대로** 확인하면 됩니다.
+- **Cursor 4 UI Worker (bty-ui-render-only)**: [x] ????? core-xp display ??? ??(API ?? ??). UI?? tier/?? ?? ??. [x] **????????? render-only ??**: LeaderboardRow ? API ?? ??, XP? toLocaleString ???(?? ??), locale prop?list/listitem?aria-label. ArenaRankingSidebar ? ?? ? ??? ???aria-label?role=alert. ???? ??? ? rows key=`rank-codeName`(?? ??), role=list. **UI ?? ?? 0?** ??.
 
-**한 줄 지시 (복사용)** — 상세·전체 프롬프트: **`docs/NEXT_PROMPTS.md`**. 작업 반영 시 해당 문서에서 `[x]` 로 체크.  
-**진행 방식**: NEXT_PROMPTS.md 상단 「다음 작업 진행 방식」 참고 — [ ] 항목 선택 → 프롬프트 복사 → 에이전트 지시 → 완료 시 [x] 반영.
+- **? ?**: `docs/ROADMAP_NEXT_STEPS.md` ? ?? ?? ??, `docs/CHATBOT_TRAINING_CHECKLIST.md` ???? ??? ???? ??(????????), ???(bty / today-me) ?? ??, ?? ?? ?? ???. ?? ? RAG. `src/app/api/chat/route.ts`, `src/components/Chatbot.tsx` ??. CHATBOT_TRAINING_CHECKLIST ?3 [ ] ?? ?????.
+- **?? ??**: `src/lib/bty/chat/buildChatMessages.ts`(NVC??? ??, ??/??/BTY?Dear Me ??, few-shot), `chatGuards.ts`(isMetaQuestion, getMetaReply), `route.ts`(?? ?? ? ?? ??), `Chatbot.tsx`(????? ?? i18n), `i18n.ts`(chat.introDojo/introDearMe/spaceHintDojo/spaceHintDearMe). ?3 ?? ?? [x].
+- **?? ??? ??**: ? **PASS** ? Cursor 2?? Lint ??, Vitest 10/10 ??. next/headers?supabaseServer ? ??? ??? ?? ?? ??. ??? `docs/NEXT_STEPS_RUNBOOK.md` ? "?? ?? ??? ??".
 
-| 상태 | 지시 |
+**?? ?? (?? ?? ??)**  
+- **??? ????? (?? ??)**: `docs/SYSTEM_UPGRADE_PLAN_EMOTIONAL_STATS.md` ? Core Stats?Events?Advanced Stats ??, Q/? ??, UI ?????? ??.  
+  - **Phase A1?F1**: ? **??? ? DB ? API ? UI ? ?? ??** (coreStats/formula/unlock/antiExploit, ??????, record-event/display API, ?/?? ??, UI phrases).  
+  - **??**: v3 ??(??? 15??stat_distribution?30? ???rapid_session_penalty ?)? `docs/HEALING_COACHING_SPEC_V3.md`?`docs/specs/healing-coaching-spec-v3.json` ???? ?? ??. ??? Cursor 2? "?? ?? API?UI ????" ??? ??.
+
+**?? ??**: Phase 4 (??? ?????? 5%). ?? ??? **`docs/PHASE_4_CHECKLIST.md`** ??.  
+**???**: **`docs/PROJECT_BACKLOG.md`**.
+
+- **???? ?? ??**: **`docs/SCENARIO_UNLOCK_VERIFICATION.md`** ? ?????? ?? ???? ?? ?? ?, ??? ????? **????** ???? ???.
+
+**? ? ?? (???)** ? ????? ????: **`docs/NEXT_PROMPTS.md`**. ?? ?? ? ?? ???? `[x]` ? ??.  
+**?? ??**: NEXT_PROMPTS.md ?? ??? ?? ?? ??? ?? ? [ ] ?? ?? ? ???? ?? ? ???? ?? ? ?? ? [x] ??.
+
+| ?? | ?? |
 |------|------|
-| [x] | **챗봇 훈련 (PROJECT_BACKLOG §9)**: ROADMAP § 챗봇 훈련 시기·CHATBOT_TRAINING_CHECKLIST 참고 — 시스템 프롬프트 보강, 구역별 예시, 메타 질문 가이드, Chatbot 소개·공간 안내 i18n. |
-| [x] | **Phase 4 (4-1~4-4)** 완료. 스펙·코드 스킨·엘리트 기획·멘토 배지·해금 콘텐츠. `docs/PHASE_4_CHECKLIST.md` 참고. |
-| [x] | **대시보드 Arena Level 숨기기**: "PROJECT_BACKLOG §2: Arena Level 카드 플래그로 MVP 후 숨기기 구현해줘." |
-| [x] | **Partner 시나리오**: "PROJECT_BACKLOG §3: Partner일 때 S1~L4 시나리오 노출되도록 점검·수정해줘." |
-| [x] | **엘리트 정책**: "PROJECT_BACKLOG §4: 주간 vs 시즌 5% 정책·특혜 1페이지 정리해줘." |
-| [x] | **엘리트 특혜 선정**: "PROJECT_BACKLOG §5: 엘리트 특혜 후보 중 1~2차 구현 항목 선정·한 줄 스펙해줘." |
-| [x] | **시나리오 검증**: "SCENARIO_UNLOCK_VERIFICATION.md 체크리스트 순서대로 검증해줘." |
-| [x] | **Arena UI (B)**: "ARENA_UI_REDESIGN_BRIEF C → B 적용해줘." — B(대시보드 카드·상단 문구) 적용 완료. |
-| [x] | **Arena UI (C)**: "ARENA_UI_REDESIGN_BRIEF 프롬프트 C 적용해줘." — 색·테마(변수·그라데이션) 적용 완료. |
-| [x] | **Arena UI (D)**: "ARENA_UI_REDESIGN_BRIEF 프롬프트 D 적용해줘." (문구·톤만) |
-| [x] | **Arena UI (E)**: "ARENA_UI_REDESIGN_BRIEF 프롬프트 E 적용해줘." (네비·레이아웃, 헤더 포근함) |
-| [x] | **Arena UI (A)**: "ARENA_UI_REDESIGN_BRIEF 프롬프트 A 적용해줘." (전체 감성·테마·타이포·카드 변수 통일) |
-| [x] | **Leadership Engine P8 최종 검증**: ENGINE_ARCHITECTURE_DIRECTIVE_PLAN §8 — SPEC 일치·bty-arena-global·bty-release-gate·bty-ui-render-only 점검. **통과**. |
-| [x] | **인증 user + /bty/login → /bty 302 리다이렉트**: `src/middleware.ts`에서 인증된 사용자가 `/${locale}/bty/login` 요청 시 `/${locale}/bty`로 302 리다이렉트. 쿠키 설정 변경 없음. npm test 132 통과. |
-| [x] | **Center §4 회복 탄력성 일별/기간별 트렉**: CENTER_PAGE_IMPROVEMENT_SPEC §4 기준. 도메인 `src/domain/center/resilience.ts`(energyToLevel, aggregateLetterRowsToDailyEntries) 추가, API는 도메인만 호출·쿼리 `period` 지원. 쿠키/리다이렉트 변경 없음. npm test 140 통과. |
-| [x] | **coreStats v3 (HEALING_COACHING_SPEC_V3·healing-coaching-spec-v3.json)**: 이벤트 14종·stat_distribution·30일 가속·phase_tuning을 formula·recordEmotionalEventServer에 반영. SELF_REFRAMING CD→RD(core). phase.test.ts·formula.test.ts 추가. 도메인만 비즈니스 규칙. npm test 171 통과. |
-| [x] | **DOJO_DEAR_ME_NEXT_CONTENT §7**: 50문항 목차·연습 플로우 2~5단계 스펙 정리(§1-4·§6·§4·§5). 도메인 `src/domain/dojo/flow.ts`(canEnterDojo, validateDojo50Submit, computeDojo50Result, validateIntegritySubmit) 추가. 도메인만 비즈니스 규칙. flow.test.ts 9케이스. npm test 180 통과. |
-| [x] | **CENTER_PAGE_IMPROVEMENT_SPEC §9 순서 §5~§8 Center API·도메인 점검**: §9-1 완료 상태 표 추가. 도메인 `src/domain/center/paths.ts`(CENTER_CTA_PATH, CENTER_CHAT_OPEN_EVENT, getCenterCtaHref) 추가, PageClient에서 사용. 도메인만 비즈니스 규칙. paths.test.ts 3케이스. npm test 183 통과. |
-| [x] | **§9 점검 완료 (C3·C4)**: §9-1 표 상태·비고 갱신. C4 PageClient ResilienceGraph locale={locale} 보완(KO step5·메인). npm run lint Exit 0. CURSOR_TASK_BOARD·CURSORS_PARALLEL_TASK_LIST §8 완료 로그 반영. |
-| [x] | **AVATAR_LAYER_SPEC §6·§7**: 아바타 레이어·옷 DB/API/도메인. avatarAssets·스키마·리더보드 응답 확장. 도메인 profileToAvatarCompositeKeys, 리더보드 행에 avatar 키. RPC avatar_accessory_ids. npm test 186 통과. |
+| [x] | **?? ?? (PROJECT_BACKLOG ?9)**: ROADMAP ? ?? ?? ???CHATBOT_TRAINING_CHECKLIST ?? ? ??? ???? ??, ??? ??, ?? ?? ???, Chatbot ????? ?? i18n. |
+| [x] | **Phase 4 (4-1~4-4)** ??. ????? ?????? ????? ????? ???. `docs/PHASE_4_CHECKLIST.md` ??. |
+| [x] | **???? Arena Level ???**: "PROJECT_BACKLOG ?2: Arena Level ?? ???? MVP ? ??? ????." |
+| [x] | **Partner ????**: "PROJECT_BACKLOG ?3: Partner? ? S1~L4 ???? ????? ???????." |
+| [x] | **??? ??**: "PROJECT_BACKLOG ?4: ?? vs ?? 5% ????? 1??? ????." |
+| [x] | **??? ?? ??**: "PROJECT_BACKLOG ?5: ??? ?? ?? ? 1~2? ?? ?? ???? ? ????." |
+| [x] | **???? ??**: "SCENARIO_UNLOCK_VERIFICATION.md ????? ???? ????." |
+| [x] | **Arena UI (B)**: "ARENA_UI_REDESIGN_BRIEF C ? B ????." ? B(???? ????? ??) ?? ??. |
+| [x] | **Arena UI (C)**: "ARENA_UI_REDESIGN_BRIEF ???? C ????." ? ????(????????) ?? ??. |
+| [x] | **Arena UI (D)**: "ARENA_UI_REDESIGN_BRIEF ???? D ????." (?????) |
+| [x] | **Arena UI (E)**: "ARENA_UI_REDESIGN_BRIEF ???? E ????." (???????, ?? ???) |
+| [x] | **Arena UI (A)**: "ARENA_UI_REDESIGN_BRIEF ???? A ????." (?? ???????????? ?? ??) |
+| [x] | **Leadership Engine P8 ?? ??**: ENGINE_ARCHITECTURE_DIRECTIVE_PLAN ?8 ? SPEC ???bty-arena-global?bty-release-gate?bty-ui-render-only ??. **??**. |
+| [x] | **?? user + /bty/login ? /bty 302 ?????**: `src/middleware.ts`?? ??? ???? `/${locale}/bty/login` ?? ? `/${locale}/bty`? 302 ?????. ?? ?? ?? ??. npm test 132 ??. |
+| [x] | **Center ?4 ?? ??? ??/??? ??**: CENTER_PAGE_IMPROVEMENT_SPEC ?4 ??. ??? `src/domain/center/resilience.ts`(energyToLevel, aggregateLetterRowsToDailyEntries) ??, API? ???? ????? `period` ??. ??/????? ?? ??. npm test 140 ??. |
+| [x] | **coreStats v3 (HEALING_COACHING_SPEC_V3?healing-coaching-spec-v3.json)**: ??? 14??stat_distribution?30? ???phase_tuning? formula?recordEmotionalEventServer? ??. SELF_REFRAMING CD?RD(core). phase.test.ts?formula.test.ts ??. ???? ???? ??. npm test 171 ??. |
+| [x] | **DOJO_DEAR_ME_NEXT_CONTENT ?7**: 50?? ????? ??? 2~5?? ?? ??(?1-4??6??4??5). ??? `src/domain/dojo/flow.ts`(canEnterDojo, validateDojo50Submit, computeDojo50Result, validateIntegritySubmit) ??. ???? ???? ??. flow.test.ts 9???. npm test 180 ??. |
+| [x] | **CENTER_PAGE_IMPROVEMENT_SPEC ?9 ?? ?5~?8 Center API???? ??**: ?9-1 ?? ?? ? ??. ??? `src/domain/center/paths.ts`(CENTER_CTA_PATH, CENTER_CHAT_OPEN_EVENT, getCenterCtaHref) ??, PageClient?? ??. ???? ???? ??. paths.test.ts 3???. npm test 183 ??. |
+| [x] | **?9 ?? ?? (C3?C4)**: ?9-1 ? ????? ??. C4 PageClient ResilienceGraph locale={locale} ??(KO step5???). npm run lint Exit 0. CURSOR_TASK_BOARD?CURSORS_PARALLEL_TASK_LIST ?8 ?? ?? ??. |
+| [x] | **AVATAR_LAYER_SPEC ?6??7**: ??? ????? DB/API/???. avatarAssets????????? ?? ??. ??? profileToAvatarCompositeKeys, ???? ?? avatar ?. RPC avatar_accessory_ids. npm test 186 ??. |
 
-- 위 한 줄 지시를 복사해 붙여 넣거나, NEXT_TASKS_2.md §4 표에서 [ ] 항목을 복사해 지시하면 됩니다.
+- ? ? ? ??? ??? ?? ???, NEXT_TASKS_2.md ?4 ??? [ ] ??? ??? ???? ???.
 
 ---
 
-**한 줄 지시 (2차)** — 상세·전체 프롬프트: **`docs/NEXT_TASKS_2.md`**. 작업 반영 시 해당 문서에서 `[x]` 로 체크.  
-**진행 방식**: NEXT_TASKS_2.md 상단 「다음 작업 진행 방식」 참고 — [ ] 항목 선택 → 프롬프트 복사 → 에이전트 지시 → 완료 시 [x] 반영.  
-**진행 ↔ 검증 번갈아**: 한 커서는 진행, 다른 커서는 검증으로 단계별 진행할 때는 **`docs/AGENTS_TURN_BY_TURN.md`** 참고 (단계 1 진행 → 1 검증 → 2 진행 → 2 검증 → …).
+**? ? ?? (2?)** ? ????? ????: **`docs/NEXT_TASKS_2.md`**. ?? ?? ? ?? ???? `[x]` ? ??.  
+**?? ??**: NEXT_TASKS_2.md ?? ??? ?? ?? ??? ?? ? [ ] ?? ?? ? ???? ?? ? ???? ?? ? ?? ? [x] ??.  
+**?? ? ?? ???**: ? ??? ??, ?? ??? ???? ??? ??? ?? **`docs/AGENTS_TURN_BY_TURN.md`** ?? (?? 1 ?? ? 1 ?? ? 2 ?? ? 2 ?? ? ?).
 
-| 상태 | 지시 |
+| ?? | ?? |
 |------|------|
-| [x] | **Dojo·Dear Me 콘텐츠 기획**: "NEXT_TASKS_2 §1-1: Dojo/Dear Me 1차 콘텐츠 스펙 문서 작성해줘." |
-| [x] | **배포 전 체크**: "NEXT_TASKS_2 §1-2: bty-release-gate 규칙에 맞게 배포 전 체크 실행해줘." |
-| [x] | **진행 순서 문서 업데이트**: "NEXT_TASKS_2 §1-3: PROJECT_PROGRESS_ORDER·로드맵 Phase 4 완료 반영해줘." |
-| [x] | **엘리트 2차 기능**: "NEXT_TASKS_2 §1-4: 챔피언십 또는 특별 프로젝트 1종 구현해줘." |
-| [x] | **언어 선택 시나리오·안내·대답 통일**: "NEXT_TASKS_2 §1-5: 한국어 선택 시 한국어 시나리오·안내·대답, 영어 선택 시 영어로 나오게 해줘." |
-| [x] | **통합 테스트**: "NEXT_TASKS_2 §2-1: 로그인→XP→리더보드·프로필 통합 시나리오 테스트해줘." |
-| [x] | **접근성 점검**: "NEXT_TASKS_2 §3-1: 대시보드·멘토·Arena·리더보드 접근성·키보드 포커스 점검해줘." |
-| [x] | **첫인상 디자인**: "NEXT_TASKS_2 §3-3: DESIGN_FIRST_IMPRESSION_BRIEF 참고해서 히어로·폰트·악센트·호버 적용해줘." |
-| [x] | **성능 점검 (선택)**: "NEXT_TASKS_2 §3-4: 메인 경로 번들·로딩 점검해줘." |
+| [x] | **Dojo?Dear Me ??? ??**: "NEXT_TASKS_2 ?1-1: Dojo/Dear Me 1? ??? ?? ?? ????." |
+| [x] | **?? ? ??**: "NEXT_TASKS_2 ?1-2: bty-release-gate ??? ?? ?? ? ?? ????." |
+| [x] | **?? ?? ?? ????**: "NEXT_TASKS_2 ?1-3: PROJECT_PROGRESS_ORDER???? Phase 4 ?? ????." |
+| [x] | **??? 2? ??**: "NEXT_TASKS_2 ?1-4: ???? ?? ?? ???? 1? ????." |
+| [x] | **?? ?? ?????????? ??**: "NEXT_TASKS_2 ?1-5: ??? ?? ? ??? ??????????, ?? ?? ? ??? ??? ??." |
+| [x] | **?? ???**: "NEXT_TASKS_2 ?2-1: ????XP????????? ?? ???? ?????." |
+| [x] | **??? ??**: "NEXT_TASKS_2 ?3-1: ????????Arena????? ??????? ??? ????." |
+| [x] | **??? ???**: "NEXT_TASKS_2 ?3-3: DESIGN_FIRST_IMPRESSION_BRIEF ???? ????????????? ????." |
+| [x] | **?? ?? (??)**: "NEXT_TASKS_2 ?3-4: ?? ?? ????? ????." |
 
-**Dojo·Dear Me 2차 (진행)**  
-| [x] | **Dear Me 1차 플로우 진입 화면**: `docs/DOJO_DEAR_ME_NEXT_CONTENT.md` §2-2 단계 1 — 소개 1~2문장 + "시작하기" 버튼, 클릭 시 본문 노출. (i18n `entryIntro`/`startCta`, PageClient 진입 분기.) |
+**Dojo?Dear Me 2? (??)**  
+| [x] | **Dear Me 1? ??? ?? ??**: `docs/DOJO_DEAR_ME_NEXT_CONTENT.md` ?2-2 ?? 1 ? ?? 1~2?? + "????" ??, ?? ? ?? ??. (i18n `entryIntro`/`startCta`, PageClient ?? ??.) |
 
-**Integrator 검증 (공통 서류 반영)**  
-- **규칙**: lint/test/build 실행 결과는 이 블록 + `docs/CURSOR_TASK_BOARD.md` C5·Gate Report에 반영한다.
-- **Verify**: 사용자가 C5 터미널에서 직접 `npm run lint && npm test -- --run && npm run build` 및 `./scripts/orchestrate.sh` 실행. 통과 시 "wrap-ci passed" 또는 **"done"** 으로 표시.
-- **"wrap ci passed" / "done" 의미**: 위 둘 다 통과한 상태. **"done"이라고 쓰면 wrap-ci passed와 동일하게 이해한다.** 이때 보드·문서 갱신·Exit 체크 후, 사용자가 **auto** 사용 시 다음 First Task 작성.
-- **auto 실행 시 필수**: **2~3개 연관 항목**을 묶어 First Task로 선정. 같은 스펙/레이어/플로우끼리 묶고, Auth·XP·리더보드 등 위험 구간은 1개만. **같은 명령 반복** 금지. 상세: `docs/CURSOR_TASK_BOARD.md` § "AUTO 시 2~3개 묶기", § "AUTO 실행 시 필수 (같은 명령 반복 방지)".  
-- **최신 (wrap)**: **CI PASSED** — Lint [x] Test [x] Build [x]. **빈 상태 보강 1곳 추가** 런 C5·WRAP 완료. Gate 검증 완료.
-- **[UI] Arena page.tsx useArenaSession 훅 추출 (2026-03-09)**: C4 실행. page.tsx(1195줄) → useArenaSession.ts(~470줄 훅) + page.tsx(~250줄 순수 렌더). ~30 state + API 로직 분리. npm run lint 통과. **완료.**
-- **[UI] Arena page.tsx 스텝별 JSX 블록 컴포넌트 추출 (2026-03-09)**: C4 실행. 5개 컴포넌트(ArenaStepIntro·ArenaStepChoose·ArenaOtherResult·ArenaOtherModal·ArenaToast) 추출. page.tsx ~180줄 순수 조합. npm run lint 통과. **완료.**
-- **[UI] Arena useArenaSession 훅 hooks/ 디렉토리 이동 (2026-03-09)**: C4 실행. `bty-arena/hooks/useArenaSession.ts`로 이동, import 갱신. npm run lint 0 errors. **완료.**
-- **[UI] Arena 과거 런 이력 섹션 추가 (2026-03-09)**: C4 실행. ArenaRunHistory 컴포넌트 — GET /api/arena/runs fetch, 날짜·시나리오 제목·상태 표시, CardSkeleton 로딩, EmptyState 빈 이력, role=alert 에러. render-only. npm run lint 0 errors. **완료.**
-- **스크립트**: `scripts/verify-workers-dev.sh` — exit 0/1 자동 판정, placeholder 검증, HTTP 코드·본문 검증. `scripts/ci-gate.sh` — lint→test→build→(선택)verify-workers-dev→notify-done. 사용: `./scripts/ci-gate.sh` 또는 `BASE=... LOGIN_BODY='...' ./scripts/ci-gate.sh`
+**Integrator ?? (?? ?? ??)**  
+- **??**: lint/test/build ?? ??? ? ?? + `docs/CURSOR_TASK_BOARD.md` C5?Gate Report? ????.
+- **Verify**: ???? C5 ????? ?? `npm run lint && npm test -- --run && npm run build` ? `./scripts/orchestrate.sh` ??. ?? ? "wrap-ci passed" ?? **"done"** ?? ??.
+- **"wrap ci passed" / "done" ??**: ? ? ? ??? ??. **"done"??? ?? wrap-ci passed? ???? ????.** ?? ????? ???Exit ?? ?, ???? **auto** ?? ? ?? First Task ??.
+- **auto ?? ? ??**: **2~3? ?? ??**? ?? First Task? ??. ?? ??/???/????? ??, Auth?XP????? ? ?? ??? 1??. **?? ?? ??** ??. ??: `docs/CURSOR_TASK_BOARD.md` ? "AUTO ? 2~3? ??", ? "AUTO ?? ? ?? (?? ?? ?? ??)".  
+- **?? (wrap)**: **CI PASSED** ? Lint [x] Test [x] Build [x]. **? ?? ?? 1? ??** ? C5?WRAP ??. Gate ?? ??.
+- **[UI] Arena page.tsx useArenaSession ? ?? (2026-03-09)**: C4 ??. page.tsx(1195?) ? useArenaSession.ts(~470? ?) + page.tsx(~250? ?? ??). ~30 state + API ?? ??. npm run lint ??. **??.**
+- **[UI] Arena page.tsx ??? JSX ?? ???? ?? (2026-03-09)**: C4 ??. 5? ????(ArenaStepIntro?ArenaStepChoose?ArenaOtherResult?ArenaOtherModal?ArenaToast) ??. page.tsx ~180? ?? ??. npm run lint ??. **??.**
+- **[UI] Arena useArenaSession ? hooks/ ???? ?? (2026-03-09)**: C4 ??. `bty-arena/hooks/useArenaSession.ts`? ??, import ??. npm run lint 0 errors. **??.**
+- **[UI] Arena ?? ? ?? ?? ?? (2026-03-09)**: C4 ??. ArenaRunHistory ???? ? GET /api/arena/runs fetch, ??????? ????? ??, CardSkeleton ??, EmptyState ? ??, role=alert ??. render-only. npm run lint 0 errors. **??.**
+- **????**: `scripts/verify-workers-dev.sh` ? exit 0/1 ?? ??, placeholder ??, HTTP ????? ??. `scripts/ci-gate.sh` ? lint?test?build?(??)verify-workers-dev?notify-done. ??: `./scripts/ci-gate.sh` ?? `BASE=... LOGIN_BODY='...' ./scripts/ci-gate.sh`
 
-**Gatekeeper 검사 (2026-03-03)**  
-- **규칙 준수**: bty-release-gate, bty-auth-deploy-safety, bty-ui-render-only 기준으로 변경분·관련 경로 검사. **Release Gate Results: PASS.**  
-- **상세**: `docs/GATE_REPORT_LATEST.md` — Auth/리셋/리더보드/API/검증 단계 정리. UI에서 tierFromCoreXp/codeIndexFromTier 사용 시 FAIL로 처리하도록 명시.
+**Gatekeeper ?? (2026-03-03)**  
+- **?? ??**: bty-release-gate, bty-auth-deploy-safety, bty-ui-render-only ???? ?????? ?? ??. **Release Gate Results: PASS.**  
+- **??**: `docs/GATE_REPORT_LATEST.md` ? Auth/??/????/API/?? ?? ??. UI?? tierFromCoreXp/codeIndexFromTier ?? ? FAIL? ????? ??.
 SS.**  
-- **상세**: `docs/GATE_REPORT_LATEST.md` — Auth/리셋/리더보드/API/검증 단계 정리. UI에서 tierFromCoreXp/codeIndexFromTier 사용 시 FAIL로 처리하도록 명시.
+- **??**: `docs/GATE_REPORT_LATEST.md` ? Auth/??/????/API/?? ?? ??. UI?? tierFromCoreXp/codeIndexFromTier ?? ? FAIL? ????? ??.

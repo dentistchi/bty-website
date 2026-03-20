@@ -64,23 +64,23 @@ export default function ResultClient({ locale }: { locale: string }) {
 
   if (loading) {
     return (
-      <div
+      <main
         className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12"
+        aria-label={t.dojoResultMainRegionAria}
         aria-busy="true"
-        aria-label={lang === "ko" ? "결과 불러오는 중" : "Loading result"}
       >
         <h1 className="text-xl sm:text-2xl font-semibold text-[var(--arena-text)] mb-4">{t.title}</h1>
         <p className="text-[var(--arena-text-soft)] mb-4" aria-live="polite">
           {t.loading}
         </p>
         <CardSkeleton showLabel={false} lines={2} style={{ padding: "16px 20px" }} />
-      </div>
+      </main>
     );
   }
 
   if (!answers || Object.keys(answers).length === 0) {
     return (
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <main aria-label={t.dojoResultMainRegionAria} className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <h1 className="text-xl sm:text-2xl font-semibold text-[var(--arena-text)] mb-4">{t.title}</h1>
         <p className="text-[var(--arena-text-soft)] mb-6">{t.noAnswers}</p>
         <Link
@@ -90,13 +90,13 @@ export default function ResultClient({ locale }: { locale: string }) {
         >
           {t.backToAssessment}
         </Link>
-      </div>
+      </main>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <main aria-label={t.dojoResultMainRegionAria} className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <h1 className="text-xl sm:text-2xl font-semibold text-[var(--arena-text)] mb-4">{t.title}</h1>
         <p className="text-red-600 mb-6">{error}</p>
         <Link
@@ -106,7 +106,7 @@ export default function ResultClient({ locale }: { locale: string }) {
         >
           {t.backToAssessment}
         </Link>
-      </div>
+      </main>
     );
   }
 
@@ -123,7 +123,7 @@ export default function ResultClient({ locale }: { locale: string }) {
   const drChiComment = data?.drChiComment ?? data?.mentorComment ?? "";
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <main aria-label={t.dojoResultMainRegionAria} className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <h1 className="text-xl sm:text-2xl font-semibold text-[var(--arena-text)] mb-6">{t.title}</h1>
 
       {areaScores.length > 0 && (
@@ -173,6 +173,6 @@ export default function ResultClient({ locale }: { locale: string }) {
       >
         {t.backToAssessment}
       </Link>
-    </div>
+    </main>
   );
 }

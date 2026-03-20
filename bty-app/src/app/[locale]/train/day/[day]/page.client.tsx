@@ -83,7 +83,7 @@ export default function TrainDayPage() {
       </aside>
 
       {/* CENTER: Lesson */}
-      <main style={{ padding: 24, overflow: "auto" }} role="region" aria-label={t.lessonLabel}>
+      <main style={{ padding: 24, overflow: "auto" }} aria-label={t.lessonLabel}>
         <div style={{ opacity: 0.6, marginBottom: 6 }}>{lesson?.date ?? ""}</div>
         <h1 style={{ margin: 0, marginBottom: 8 }}>Day {day}</h1>
         <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 18 }}>{lesson?.title ?? ""}</div>

@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import HubTopNav from "@/components/bty/HubTopNav";
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
 type Dimension = "core" | "compassion" | "stability" | "growth" | "social";
 type Question = { id: number; dimension: Dimension; text: string; reverse: boolean };
@@ -77,8 +79,10 @@ export default function AssessmentClient({
     ? "Pick the option that feels closest. There are no wrong answers."
     : "맞는 말에 가깝다고 느끼는 칸을 골라 주세요. 정답은 없어요.";
 
+  const tLanding = getMessages((locale === "ko" ? "ko" : "en") as Locale).landing;
+
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12" role="main" aria-label={isEn ? "Self-esteem 50-item assessment" : "자존감 50문항 자가 진단"}>
+    <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12" aria-label={tLanding.assessmentMainRegionAria}>
       <div className="mb-8">
         <HubTopNav theme="dear" showLangSwitch />
       </div>
@@ -175,6 +179,6 @@ export default function AssessmentClient({
           ? "This is not a grade. It's an energy map."
           : "이건 성적표가 아니라 에너지 지도예요."}
       </p>
-    </div>
+    </main>
   );
 }

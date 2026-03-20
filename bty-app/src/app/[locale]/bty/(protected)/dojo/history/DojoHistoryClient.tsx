@@ -45,6 +45,7 @@ export default function DojoHistoryClient({ locale = "ko" }: { locale?: string }
   }, [isEn]);
 
   const summaryLabels = isEn ? SUMMARY_LABELS_EN : SUMMARY_LABELS_KO;
+  const tDojo = getMessages(isEn ? "en" : "ko").dojoResult;
 
   function fmtDate(iso: string): string {
     return new Date(iso).toLocaleDateString(
@@ -58,7 +59,7 @@ export default function DojoHistoryClient({ locale = "ko" }: { locale?: string }
 
   if (loading) {
     return (
-      <div className="max-w-xl mx-auto px-6 py-10" role="main" aria-labelledby="dojo-history-heading">
+      <main className="max-w-xl mx-auto px-6 py-10" aria-label={tDojo.dojoHistoryMainRegionAria}>
         <h1 id="dojo-history-heading" className="text-2xl font-semibold mb-4">{title}</h1>
         <div aria-busy="true" aria-label={isEn ? "Loading…" : "불러오는 중…"}>
           <CardSkeleton showLabel={false} lines={2} style={{ padding: "16px 20px" }} />
@@ -71,13 +72,13 @@ export default function DojoHistoryClient({ locale = "ko" }: { locale?: string }
             {backLabel}
           </Link>
         </div>
-      </div>
+      </main>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-xl mx-auto px-6 py-10" role="main" aria-labelledby="dojo-history-heading">
+      <main className="max-w-xl mx-auto px-6 py-10" aria-label={tDojo.dojoHistoryMainRegionAria}>
         <h1 id="dojo-history-heading" className="text-2xl font-semibold mb-4">{title}</h1>
         <p role="alert" className="text-sm text-red-600 mb-4">
           {error}
@@ -85,13 +86,13 @@ export default function DojoHistoryClient({ locale = "ko" }: { locale?: string }
         <Link href="../result" className="text-sm underline text-gray-600 hover:text-gray-900" aria-label={backLabel}>
           {backLabel}
         </Link>
-      </div>
+      </main>
     );
   }
 
   if (submissions.length === 0) {
     return (
-      <div className="max-w-xl mx-auto px-6 py-10" role="main" aria-labelledby="dojo-history-heading">
+      <main className="max-w-xl mx-auto px-6 py-10" aria-label={tDojo.dojoHistoryMainRegionAria}>
         <h1 id="dojo-history-heading" className="text-2xl font-semibold mb-4">{title}</h1>
         <div className="rounded-xl border border-gray-200 bg-gray-50/50 overflow-hidden">
           <EmptyState
@@ -110,15 +111,14 @@ export default function DojoHistoryClient({ locale = "ko" }: { locale?: string }
             {backLabel}
           </Link>
         </div>
-      </div>
+      </main>
     );
   }
 
   const retakeLabel = isEn ? "Retake" : "다시 진단하기";
-  const tDojo = getMessages(isEn ? "en" : "ko").dojoResult;
 
   return (
-    <div className="max-w-xl mx-auto px-6 py-10" role="main" aria-labelledby="dojo-history-heading">
+    <main className="max-w-xl mx-auto px-6 py-10" aria-label={tDojo.dojoHistoryMainRegionAria}>
       <h1 id="dojo-history-heading" className="text-2xl font-semibold mb-4">{title}</h1>
       <section role="region" aria-label={tDojo.dojoHistoryMainRegionAria}>
       <ul className="list-none p-0 m-0 space-y-3" role="list" aria-label={title}>
@@ -159,6 +159,6 @@ export default function DojoHistoryClient({ locale = "ko" }: { locale?: string }
         </Link>
       </div>
       </section>
-    </div>
+    </main>
   );
 }

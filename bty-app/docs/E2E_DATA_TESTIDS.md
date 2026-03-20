@@ -51,8 +51,12 @@
 | testid | 용도 |
 |--------|------|
 | `my-page-overview` | 개요 region |
-| `my-page-identity-card` / `progress-card` / `team-card` | 카드 |
-| `my-page-code-name` / `stage` / `core-progress` / `weekly-progress` / `tii-summary` | 필드 |
+| `my-page-leadership-console` | Arena 누적 리더십 콘솔 래퍼 |
+| `my-page-identity-card` | Identity 헤더 |
+| `my-page-summary-row` / `my-page-summary-insight` / `my-page-summary-influence` / `my-page-summary-rhythm` | 요약 카드 |
+| `my-page-signal-pattern` / `my-page-influence-panel` / `my-page-next-focus` | 패널 |
+| `my-page-code-name` / `stage` / `core-progress` | 필드 |
+| `my-page-team-signal-label` / `influence-pattern-label` / `alignment-trend-label` | 팀·영향 해석 라벨 |
 | `my-page-progress-screen` / `core-xp` / `weekly-xp` / `streak` / `system-note` | Progress |
 | `my-page-team-screen` / `tii` / `team-status` / `team-trend` / `team-rank` | Team |
 | `my-page-leader-screen` / `leader-status` / `leader-readiness` / `certification` | Leader |

@@ -1,0 +1,58 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { computeMetrics } from "@/features/arena/logic";
+import { shouldShowCompoundRecovery } from "@/features/growth/logic";
+import type { ReflectionEntry } from "@/features/growth/logic/types";
+import { computeLeadershipState, mergeLeadershipReflectionLayer } from "@/features/my-page/logic";
+import type { ArenaSignal, LeadershipMetrics, LeadershipState } from "@/features/my-page/logic/types";
+import type { Locale } from "@/lib/i18n";
+import { fetchSignalsAndReflections } from "./fetchIdentityRows";
+
+export type MyPageIdentityPayload = {
+  metrics: LeadershipMetrics;
+  leadershipState: LeadershipState;
+  /** Same compound signal as Growth history (Arena pressure + regulation pattern). */
+  recoveryTriggered: boolean;
+  recoveryEntryCount: number;
+  /** For premium UI + client-side recovery prompt; identity metrics already derived from these. */
+  signals: ArenaSignal[];
+  reflections: ReflectionEntry[];
+};
+
+/**
+ * Loads Arena signals + reflection entries from Supabase, runs domain compute + merge (server-side).
+ * Does not duplicate XP/season/leaderboard rules — identity metrics only.
+ */
+export async function getMyPageIdentityState(
+  supabase: SupabaseClient,
+  userId: string,
+  locale: Locale,
+): Promise<{ ok: true; data: MyPageIdentityPayload } | { ok: false; message: string }> {
+  const bundle = await fetchSignalsAndReflections(supabase, userId);
+  if (!bundle.ok) return bundle;
+
+  const { signals, reflections } = bundle;
+
+  const { count: recoveryCount, error: recErr } = await supabase
+    .from("bty_recovery_entries")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  if (recErr) return { ok: false, message: recErr.message };
+
+  const metrics = computeMetrics(signals);
+  const base = computeLeadershipState(metrics, locale, reflections);
+  const leadershipState = mergeLeadershipReflectionLayer(base, metrics, signals, locale, reflections);
+  const recoveryTriggered = shouldShowCompoundRecovery(signals, reflections);
+
+  return {
+    ok: true,
+    data: {
+      metrics,
+      leadershipState,
+      recoveryTriggered,
+      recoveryEntryCount: recoveryCount ?? 0,
+      signals,
+      reflections,
+    },
+  };
+}

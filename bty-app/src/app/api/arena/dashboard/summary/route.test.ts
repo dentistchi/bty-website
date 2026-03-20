@@ -32,6 +32,33 @@ describe("GET /api/arena/dashboard/summary", () => {
     mockEnsureLeadershipEngineState.mockResolvedValue(undefined);
   });
 
+  it("returns 200 with recommendation when source param is invalid (filter not applied)", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {
+        from: () => ({
+          select: () => ({
+            eq: () => ({ gte: () => Promise.resolve({ data: [] }) }),
+          }),
+        }),
+      },
+      base: {},
+    });
+    mockGetLeadershipEngineState.mockResolvedValue({
+      currentStage: "awareness",
+      stageName: "Awareness",
+      forcedResetTriggeredAt: null,
+      resetDueAt: null,
+    });
+    mockEnsureLeadershipEngineState.mockResolvedValue(undefined);
+
+    const res = await GET(makeRequest("http://localhost/api/arena/dashboard/summary?source=invalid"));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.recommendation).not.toBeNull();
+    expect(data.recommendation?.source).toBe("arena");
+  });
+
   it("returns 401 when unauthenticated", async () => {
     mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: {} });
 

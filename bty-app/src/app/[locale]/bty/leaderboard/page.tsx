@@ -154,8 +154,8 @@ export default function LeaderboardPage() {
   }, [loading, error, myRank, data?.viewerAnonymous]);
 
   return (
-    <div style={{ maxWidth: 860, margin: "0 auto", padding: "24px 16px" }}>
-      <div style={{ marginTop: 0 }} role="region" aria-label={tBty.leaderboardMainRegionAria}>
+    <main style={{ maxWidth: 860, margin: "0 auto", padding: "24px 16px" }} aria-label={tBty.leaderboardMainRegionAria}>
+      <div style={{ marginTop: 0 }}>
         <div style={{ fontSize: 14, opacity: 0.7 }}>bty</div>
         <h1 style={{ margin: 0, fontSize: 28 }}>{t.title}</h1>
         <p style={{ margin: "6px 0 0", fontSize: 15, opacity: 0.85 }}>{t.slogan}</p>
@@ -455,7 +455,7 @@ export default function LeaderboardPage() {
                 message={t.noData}
                 cta={
                   <Link
-                    href={`/${locale}/bty-arena/play`}
+                    href={`/${locale}/bty-arena/run`}
                     style={{
                       padding: "10px 18px",
                       borderRadius: 10,
@@ -474,6 +474,6 @@ export default function LeaderboardPage() {
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }

@@ -38,6 +38,7 @@ export default function TestAvatarPage() {
 
   const t = locale === "ko"
     ? {
+        mainRegionAria: "아바타 프로필 PATCH 수동 테스트",
         title: "Phase 3 아바타 테스트",
         test2: "테스트 2: 대시보드 아바타",
         test2Desc: "대시보드로 이동해 아바타(또는 이니셜 폴백)가 보이는지 확인",
@@ -52,6 +53,7 @@ export default function TestAvatarPage() {
         dashboard: "대시보드로 이동",
       }
     : {
+        mainRegionAria: "Avatar profile PATCH manual test",
         title: "Phase 3 Avatar Test",
         test2: "Test 2: Dashboard avatar",
         test2Desc: "Go to dashboard and verify avatar (or initials fallback) visible",
@@ -67,7 +69,7 @@ export default function TestAvatarPage() {
       };
 
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", padding: 24 }}>
+    <main style={{ maxWidth: 640, margin: "0 auto", padding: 24 }} aria-label={t.mainRegionAria}>
       <h1 style={{ fontSize: 22, marginTop: 0 }}>{t.title}</h1>
       <p style={{ fontSize: 13, opacity: 0.8, marginTop: 8 }}>
         PHASE_3_CHECKLIST.md 테스트 2·4·5·6
@@ -141,6 +143,6 @@ export default function TestAvatarPage() {
           </pre>
         )}
       </div>
-    </div>
+    </main>
   );
 }

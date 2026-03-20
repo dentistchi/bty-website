@@ -14,12 +14,15 @@ import type { LevelWithTenure } from "@/lib/bty/arena/program";
 import { getUnlockedContentWindow } from "@/lib/bty/arena/unlock";
 import type { Track } from "@/lib/bty/arena/tenure";
 import { getIsEliteTop5 } from "@/lib/bty/arena/eliteStatus";
-
-const STAFF_ORDER = ["S1", "S2", "S3"];
-const LEADER_ORDER = ["L1", "L2", "L3", "L4"];
+import {
+  ARENA_STAFF_LEVEL_ORDER,
+  arenaTrackLevelOrdering,
+  isArenaProgramLevelUnlockedByMax,
+} from "@/domain/rules/arenaProgramLevelUnlockedByMax";
+import { arenaContentLocaleFromParam } from "@/domain/rules/arenaContentLocaleFromParam";
 
 export async function GET(req: NextRequest) {
-  const locale = req.nextUrl.searchParams.get("locale") === "ko" ? "ko" : "en";
+  const locale = arenaContentLocaleFromParam(req.nextUrl.searchParams.get("locale"));
   const supabase = await getSupabaseServerClient();
   const {
     data: { user },
@@ -99,14 +102,12 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const ordering = track === "staff" ? STAFF_ORDER : LEADER_ORDER;
-  const maxIndex = ordering.indexOf(maxUnlockedLevel);
+  const ordering = arenaTrackLevelOrdering(track);
   const isElite = await getIsEliteTop5(supabase, user.id);
   const levels = trackConfig.levels
-    .filter((lvl) => {
-      const i = ordering.indexOf(lvl.level);
-      return i >= 0 && i <= maxIndex;
-    })
+    .filter((lvl) =>
+      isArenaProgramLevelUnlockedByMax(lvl.level, maxUnlockedLevel, ordering),
+    )
     .map((lvl) => {
       const { items, human_model: _hm, ...rest } = lvl as LevelWithTenure;
       const displayTitle = locale === "ko" && rest.title_ko ? rest.title_ko : rest.title;
@@ -118,13 +119,17 @@ export async function GET(req: NextRequest) {
     });
 
   let finalLevels = levels;
-  if (track === "leader" && STAFF_ORDER.indexOf(maxUnlockedLevel) < 0) {
-    const leaderMaxIndex = LEADER_ORDER.indexOf(maxUnlockedLevel);
+  const staffOrderStrings = ARENA_STAFF_LEVEL_ORDER as readonly string[];
+  if (
+    track === "leader" &&
+    !staffOrderStrings.includes(maxUnlockedLevel)
+  ) {
+    const leaderMaxIndex = arenaTrackLevelOrdering("leader").indexOf(maxUnlockedLevel);
     if (leaderMaxIndex >= 0) {
       const staffConfig = program.tracks.find((t) => t.track === "staff");
       if (staffConfig?.levels?.length) {
         const staffLevels = staffConfig.levels
-          .filter((lvl) => STAFF_ORDER.includes(lvl.level))
+          .filter((lvl) => staffOrderStrings.includes(lvl.level))
           .map((lvl) => {
             const { items, human_model: _hm, ...rest } = lvl as LevelWithTenure;
             const displayTitle = locale === "ko" && rest.title_ko ? rest.title_ko : rest.title;

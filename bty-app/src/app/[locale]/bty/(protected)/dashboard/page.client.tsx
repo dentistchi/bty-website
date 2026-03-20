@@ -174,7 +174,7 @@ export default function DashboardClient() {
   const [streak, setStreak] = React.useState<number>(0);
   const params = useParams();
   const locale = (typeof params?.locale === "string" ? params.locale : "en") as string;
-  const arenaPlayHref = `/${locale}/bty-arena/play`;
+  const arenaPlayHref = `/${locale}/bty-arena/run`;
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [subNameDraft, setSubNameDraft] = React.useState("");
@@ -471,10 +471,9 @@ export default function DashboardClient() {
     core?.currentOutfit?.accessoryIds?.map((id) => getAccessoryImageUrl(id)) ?? [];
 
   const content = (
-    <div
+    <main
       style={{ maxWidth: 980, margin: "0 auto", padding: "24px 16px" }}
-      role="region"
-      aria-labelledby="dashboard-heading"
+      aria-label={tBty.dashboardMainRegionAria}
     >
       {/* DESIGN_FIRST_IMPRESSION_BRIEF §4 A: 첫 화면 = 히어로 한 문장 — 페이지 최상단에 배치 */}
       <div className="bty-hero" style={{ paddingTop: 32, paddingBottom: 40, marginBottom: 32 }}>
@@ -1407,7 +1406,7 @@ export default function DashboardClient() {
             )}
           </ProgressCard>
 
-          <ProgressCard label="Avatar">
+          <ProgressCard label={tAvatarOutfit.pageTitle}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
               {/* 왼쪽: 선택한 캐릭터 아바타 + 악세사리 */}
               <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
@@ -1452,12 +1451,12 @@ export default function DashboardClient() {
                         />
                       ))}
                     </div>
-                    <span style={{ fontSize: 10, color: "#666" }}>현재 레벨 악세사리</span>
+                    <span style={{ fontSize: 10, color: "#666" }}>{tAvatarOutfit.currentLevelAccessories}</span>
                   </div>
                 )}
                 {core?.currentOutfit && (
                   <div style={{ fontSize: 11, opacity: 0.9, textAlign: "center", maxWidth: 140 }}>
-                    <span style={{ fontWeight: 600 }}>현재:</span> {core.currentOutfit.outfitLabel}
+                    <span style={{ fontWeight: 600 }}>{tAvatarOutfit.currentOutfitPrefix}</span> {core.currentOutfit.outfitLabel}
                   </div>
                 )}
               </div>
@@ -1465,7 +1464,7 @@ export default function DashboardClient() {
               <div style={{ flex: 1, minWidth: 200 }}>
                 {core?.avatarCharacterLocked ? (
                   <>
-                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>캐릭터</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{tAvatarOutfit.character}</div>
                     <div style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>
                       {locale === "ko"
                         ? "캐릭터는 한 번 저장하면 변경할 수 없습니다. 다음 Code 진화까지 유지됩니다. 아웃핏만 변경 가능합니다."
@@ -1489,7 +1488,7 @@ export default function DashboardClient() {
                   </>
                 ) : (
                   <>
-                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>캐릭터 선택</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{tAvatarOutfit.pickCharacterTitle}</div>
                     <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>
                       {locale === "ko" ? "한 번 저장하면 변경할 수 없습니다." : "Cannot be changed after first save."}
                     </div>
@@ -1837,7 +1836,7 @@ export default function DashboardClient() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
   return content;
 }

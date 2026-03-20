@@ -347,6 +347,7 @@ export default function MentorPage() {
           style={{
             background: "linear-gradient(180deg, #F5F0E8 0%, #EDE6DB 50%, #E8DFD2 100%)",
           }}
+          aria-label={tMentorPage.pageMainLandmarkAria}
         >
           <div className="max-w-2xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
             <div

@@ -29,7 +29,7 @@
 
 ## 3. 자기 할 일만 고르기
 
-- **OWNER**: C1(문서), C2(Gate), C3(domain/API), C4(UI), C5(VERIFY), **C6**(CI/스모크).
+- **OWNER (표가 정본)**: 예시 — C1 문서·C2 Gate·**C3** Domain+테스트·**C4** API·서비스·**C5** UI+VERIFY(Gate 등)·**C6** 스모크·CI. 행마다 다를 수 있으니 **항상 표의 OWNER 열**을 본다.
 - 표에서 **OWNER가 자기 역할인 행**만 본다.
 - 그중 **TASK LINE이 `[ ]`** 인 것만 **할 일**. `[x]`는 완료라서 건너뜀.
 
@@ -46,11 +46,29 @@
 
 ---
 
-## 5. 복사용 문장(상세 지시)
+## 5. 왜 여러 커서(C2~C6)가 동시에 «할 일 없음»인가?
+
+- **표는 OWNER마다 행이 다르다.** C3·C4·C5·C6이 담당인 행이 **모두 `[x]`** 이면, 그 역할들은 **동시에** CONTINUE 종료가 맞다 (버그 아님).
+- **남은 `[ ]`가 C1(DOCS 등)만** 있으면 **구현 커서(C2~C6)는 표에서 건드릴 `[ ]`가 없다** — DOCS·지휘는 C1 담당.
+- **C2(게이트)** 는 표에 전용 행이 없을 수 있고, **새 코드 push 이후**에만 Gate를 돌리는 운영이면 «push 없음 → 게이트 미실행·블로커»는 **보드 `[ ]`와 별개의 대기**다.
+- **다음 구현 큐를 만들려면:** C1이 **`PARALLEL_QUEUE_REFILL.md`** 로 **새 이번 런(S82 등)** 을 열어 **C3~C6에 새 `[ ]` 행**을 부여한다.
+
+---
+
+## 6. 복사용 문장(상세 지시)
 
 - **`docs/agent-runtime/AUTO4_PROMPTS.md`** (bty-app이면 **`../docs/agent-runtime/AUTO4_PROMPTS.md`**)  
 - 거기서 자기 역할(C1~C6) 블록을 **그대로 복사**해 쓰면 됨.
 
 ---
 
-*참조: .cursor/rules/bty-continue-read-board.mdc, CURSOR_TASK_BOARD.md*
+## 7. REFRESH (사용자가 refresh 라고 할 때)
+
+- **목적: 빠른 구현 + C1 DOCS 동시 처리** — REFRESH 실행 에이전트(**C1**)는 **(a)** 보드 **OWNER C1 `[ ]`** 를 이번 턴에서 진행·서류 반영하거나 `CURRENT_TASK`에 다음 스텝을 남기고, **(b)** **C2~C6에 각각 구현 우선순위 5줄**을 채팅·`SPRINT_PLAN`「C2~C6 할일」에 넣는다. **C2~C6만 쓰고 C1 `[ ]`를 비우면 절차 미준수.**
+- **배포 전 검증**(전체 Gate, 스모크·CI 루틴을 일상적으로 돌리기)은 **하지 않는다** — 그건 **배포 직전**·보드 **Gate/VERIFY `[ ]`** 일 때만.
+- **`CURSOR_TASK_BOARD.md`** 에 해당 OWNER **`[ ]`가 없으면** 1번에 **CONTINUE(구현) 중단**·다음은 새 이번 런. (예: C3 행 전부 [x]면 C3 구현 태스크 없음.)
+- 2~5번은 **다음 구현 후보**(비의무). 절차: **`docs/agent-runtime/REFRESH_PROCEDURE.md`** (§ C1 이중 의무 포함).
+
+---
+
+*참조: .cursor/rules/bty-continue-read-board.mdc, CURSOR_TASK_BOARD.md, REFRESH_PROCEDURE.md*

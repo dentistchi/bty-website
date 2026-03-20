@@ -69,6 +69,35 @@ describe("GET /api/arena/leaderboard", () => {
     expect(typeof dWeek.message).toBe("string");
   });
 
+  /** S81 C3: Monday YYYY-MM-DD but not current week → 400 (before auth). */
+  it("returns 400 when week is a Monday but not the current leaderboard week", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-03-18T15:00:00.000Z"));
+      const res = await GET(
+        makeRequest("http://localhost/api/arena/leaderboard?week=2026-03-09"),
+      );
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toBe("INVALID_WEEK");
+      expect(String(data.message)).toMatch(/current/i);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /** S78 C3: valid scope from domain (overall|role|office) → 200. */
+  it("returns 200 for scope=office when authenticated (valid scope from domain)", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } } });
+    mockFetchWeeklyXpRows.mockResolvedValue({ rows: [], error: null });
+    const res = await GET(
+      makeRequest("http://localhost/api/arena/leaderboard?scope=office"),
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.scope).toBe("office");
+  });
+
   it("returns 401 with message when unauthenticated", async () => {
     mockGetUser.mockResolvedValue({ data: { user: null } });
 

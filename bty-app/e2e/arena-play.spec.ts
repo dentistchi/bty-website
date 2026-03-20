@@ -7,8 +7,8 @@ test.describe("Arena Play (authenticated)", () => {
   test("play route is separate from hub; simulation shell without hub summary card", async ({
     page,
   }) => {
-    await page.goto("/en/bty-arena/play");
-    await expect(page).toHaveURL(/\/en\/bty-arena\/play/);
+    await page.goto("/en/bty-arena/run");
+    await expect(page).toHaveURL(/\/en\/bty-arena\/run/);
     await expect(page.getByTestId("arena-hub-summary")).toHaveCount(0);
 
     const shell = page.locator(
@@ -26,9 +26,9 @@ test.describe("Arena Play (authenticated)", () => {
   });
 
   test("hub → Play preserves route separation", async ({ page }) => {
-    await page.goto("/en/bty-arena");
+    await page.goto("/en/bty-arena/hub");
     await page.getByTestId("arena-play-button").first().click();
-    await expect(page).toHaveURL(/\/en\/bty-arena\/play/);
+    await expect(page).toHaveURL(/\/en\/bty-arena\/run/);
     await expect(page.getByTestId("arena-hub-summary")).toHaveCount(0);
   });
 });

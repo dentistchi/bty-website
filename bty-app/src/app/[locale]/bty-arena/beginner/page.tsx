@@ -127,6 +127,9 @@ const UI_EN = {
 export default function BeginnerArenaPage() {
   const params = useParams();
   const locale = typeof params?.locale === "string" ? params.locale : "en";
+  const loc = (locale === "ko" ? "ko" : "en") as Locale;
+  const m = getMessages(loc);
+  const stub = m.uxPhase1Stub;
   const ui = locale === "ko" ? UI_KO : UI_EN;
   const [scenario, setScenario] = React.useState<BeginnerScenario | null>(null);
   const [runId, setRunId] = React.useState<string | null>(null);
@@ -255,19 +258,26 @@ export default function BeginnerArenaPage() {
 
   if (!scenario) {
     return (
-      <div style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}>
+      <main
+        aria-busy="true"
+        aria-label={stub.arenaBeginnerPathInitMainRegionAria}
+        style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}
+      >
         <div style={{ marginTop: 0, display: "grid", gap: 20 }}>
           <CardSkeleton lines={3} showLabel={true} />
           <CardSkeleton lines={2} showLabel={true} />
         </div>
-      </div>
+      </main>
     );
   }
 
   if (completed) {
     const feedback = getMaturityFeedback(completed.score, locale);
     return (
-      <div style={{ maxWidth: 560, margin: "0 auto", padding: "24px 16px" }}>
+      <main
+        aria-label={stub.arenaBeginnerPathCompleteMainRegionAria}
+        style={{ maxWidth: 560, margin: "0 auto", padding: "24px 16px" }}
+      >
         <div style={{ marginTop: 0, padding: 24, border: "1px solid #eee", borderRadius: 14 }}>
           <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 8 }}>{ui.yourResult}</div>
           <h2 style={{ margin: "0 0 8px", fontSize: 22 }}>{feedback.label}</h2>
@@ -290,7 +300,7 @@ export default function BeginnerArenaPage() {
             }}
           />
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -306,13 +316,13 @@ export default function BeginnerArenaPage() {
   const growthText = isKo && scenario.growthKo ? scenario.growthKo : scenario.growth;
 
   return (
-    <div style={{ maxWidth: 560, margin: "0 auto", padding: "24px 16px" }}>
+    <main aria-label={stub.arenaBeginnerPathMainRegionAria} style={{ maxWidth: 560, margin: "0 auto", padding: "24px 16px" }}>
       <div style={{ marginBottom: 8, fontSize: 14, opacity: 0.7 }}>
-        {locale === "ko" ? "입문" : "Beginner"} · {ui.stepOf} {step} / 7: {getStepLabel(step, locale)}
+        {stub.arenaBeginnerPathTrackLabel} · {ui.stepOf} {step} / 7: {getStepLabel(step, locale)}
       </div>
       <div style={{ padding: 20, border: "1px solid #eee", borderRadius: 14 }}>
         {loading && (
-          <div style={{ marginBottom: 16 }} aria-busy="true" aria-label={locale === "ko" ? "진행 중…" : "Loading…"}>
+          <div style={{ marginBottom: 16 }} aria-busy="true" aria-label={m.loading.message}>
             <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
           </div>
         )}
@@ -455,7 +465,7 @@ export default function BeginnerArenaPage() {
         )}
 
         {loading && (
-          <div style={{ marginTop: 12 }} aria-busy="true" aria-label={locale === "ko" ? "완료 처리 중…" : "Completing…"}>
+          <div style={{ marginTop: 12 }} aria-busy="true" aria-label={stub.arenaBeginnerPathSubmittingAria}>
             <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
           </div>
         )}
@@ -464,6 +474,6 @@ export default function BeginnerArenaPage() {
           <p style={{ marginTop: 12, color: "#c00", fontSize: 14 }}>{error}</p>
         )}
       </div>
-    </div>
+    </main>
   );
 }

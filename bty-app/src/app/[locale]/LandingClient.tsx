@@ -18,6 +18,7 @@ type LandingMessages = {
   centerDesc: string;
   centerCta: string;
   footerHint: string;
+  landingHubMainRegionAria: string;
 };
 
 type Props = {
@@ -26,14 +27,17 @@ type Props = {
 };
 
 export default function LandingClient({ locale, t }: Props) {
-  const arenaHref = `/${locale}/bty-arena/play`;
+  const arenaHref = `/${locale}/bty-arena/run`;
   const foundryHref = `/${locale}/bty`;
   const centerHref = `/${locale}/center`;
 
   return (
     <>
       <ThemeBody theme="sanctuary" />
-      <main className="min-h-screen bg-gradient-to-b from-[#F8F4F0] via-[#FDF9F5] to-[#F0EDF5]">
+      <main
+        className="min-h-screen bg-gradient-to-b from-[#F8F4F0] via-[#FDF9F5] to-[#F0EDF5]"
+        aria-label={t.landingHubMainRegionAria}
+      >
         <div className="max-w-2xl mx-auto px-4 py-10 sm:py-14">
           <HubTopNav theme="dear" showLangSwitch />
 

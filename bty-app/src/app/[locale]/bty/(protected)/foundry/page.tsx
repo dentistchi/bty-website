@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import FoundryHubClient from "./page.client";
-import { PageLoadingFallback } from "@/components/bty-arena";
+import { FoundryHubLoadingShell } from "./FoundryHubLoadingShell";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ export default async function FoundryHubPage({ params }: Props) {
   const t = getMessages(lang as Locale).bty;
   const tLand = getMessages(lang as Locale).landing;
   return (
-    <Suspense fallback={<PageLoadingFallback />}>
+    <Suspense fallback={<FoundryHubLoadingShell />}>
       <FoundryHubClient locale={locale} t={t} tLand={tLand} />
     </Suspense>
   );

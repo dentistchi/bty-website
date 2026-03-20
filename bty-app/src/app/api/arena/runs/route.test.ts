@@ -5,6 +5,7 @@ import { NextRequest } from "next/server";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "./route";
 import { encodeRunsCursor } from "@/lib/bty/arena/runsCursor";
+import { ARENA_RUNS_CURSOR_MAX_LENGTH } from "@/domain/rules/arenaRunsCursorMaxLength";
 
 const mockRequireUser = vi.fn();
 
@@ -34,6 +35,35 @@ describe("GET /api/arena/runs", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: {} });
+  });
+
+  it("clamps limit query to 1–50 (invalid uses default)", async () => {
+    let seenLimit = 0;
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                order: () => ({
+                  limit: (n: number) => {
+                    seenLimit = n;
+                    return Promise.resolve({ data: [], error: null });
+                  },
+                }),
+              }),
+            }),
+          }),
+        }),
+      },
+      base: {},
+    });
+    await GET(new NextRequest("http://localhost/api/arena/runs?limit=0"));
+    expect(seenLimit).toBe(11); // default 10 + 1
+    seenLimit = 0;
+    await GET(new NextRequest("http://localhost/api/arena/runs?limit=100"));
+    expect(seenLimit).toBe(51); // max 50 + 1
   });
 
   it("returns 200 with empty runs when unauthenticated (no scary error in Arena UI)", async () => {
@@ -132,6 +162,20 @@ describe("GET /api/arena/runs", () => {
       base: {},
     });
     const res = await GET(new NextRequest("http://localhost/api/arena/runs?cursor=not-valid-base64!!!"));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("INVALID_CURSOR");
+  });
+
+  it("returns 400 INVALID_CURSOR when cursor exceeds max length", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: firstPageSupabase([], null),
+      base: {},
+    });
+    const longCursor = "a".repeat(ARENA_RUNS_CURSOR_MAX_LENGTH + 1);
+    const res = await GET(
+      new NextRequest(`http://localhost/api/arena/runs?cursor=${encodeURIComponent(longCursor)}`),
+    );
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("INVALID_CURSOR");
   });

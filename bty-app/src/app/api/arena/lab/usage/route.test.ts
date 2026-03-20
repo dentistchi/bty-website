@@ -52,4 +52,19 @@ describe("GET /api/arena/lab/usage", () => {
       "u-lab"
     );
   });
+
+  it("returns 200 with attemptsRemaining 0 when used equals limit", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u-lab" } } }),
+      },
+    });
+    vi.mocked(getLabAttemptsUsed).mockResolvedValue(3);
+
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.attemptsRemaining).toBe(0);
+    expect(data.attemptsUsed).toBe(3);
+  });
 });

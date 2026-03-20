@@ -24,6 +24,7 @@ import {
 import { stageProgressPercent, type Stage } from "@/domain/leadership-engine/stages";
 import type { RecommendationSummary, RecommendationSource } from "@/domain/dashboard";
 import { RECOMMENDATION_SOURCE_PRIORITY } from "@/domain/dashboard";
+import { arenaRecommendationSourceFromParam } from "@/domain/rules/arenaRecommendationSourceFromParam";
 
 export type DashboardSummaryResponse = {
   progress: {
@@ -37,8 +38,6 @@ export type DashboardSummaryResponse = {
   todayGrowth: { xpToday: number };
 };
 
-const VALID_SOURCES: RecommendationSource[] = ["arena", "foundry", "center"];
-
 function startOfTodayUTC(): string {
   const d = new Date();
   d.setUTCHours(0, 0, 0, 0);
@@ -46,9 +45,7 @@ function startOfTodayUTC(): string {
 }
 
 function parseSourceParam(req: NextRequest): RecommendationSource | null {
-  const source = req.nextUrl.searchParams.get("source");
-  if (source == null || source === "") return null;
-  return VALID_SOURCES.includes(source as RecommendationSource) ? (source as RecommendationSource) : null;
+  return arenaRecommendationSourceFromParam(req.nextUrl.searchParams.get("source"));
 }
 
 export async function GET(req: NextRequest) {

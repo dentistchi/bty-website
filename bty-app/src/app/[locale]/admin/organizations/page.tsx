@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { fetchJson } from "@/lib/read-json";
 import { LoadingFallback } from "@/components/bty-arena";
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
 type OrganizationRow = {
   id: string;
@@ -13,6 +16,12 @@ type OrganizationRow = {
 type OrgsResp = { organizations?: OrganizationRow[] };
 
 export default function AdminOrganizationsPage() {
+  const params = useParams();
+  const locale = (typeof params?.locale === "string" ? params.locale : "en") as Locale;
+  const messages = getMessages(locale);
+  const t = messages.adminOrganizations;
+  const loadingMessage = messages.loading.message;
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [organizations, setOrganizations] = useState<OrganizationRow[]>([]);
@@ -46,24 +55,24 @@ export default function AdminOrganizationsPage() {
 
   if (loading) {
     return (
-      <div className="p-6">
+      <main className="p-6" aria-label={t.mainRegionAria}>
         <h1 className="text-xl font-semibold">Organizations</h1>
-        <LoadingFallback icon="📋" message="불러오는 중…" withSkeleton />
-      </div>
+        <LoadingFallback icon="📋" message={loadingMessage} withSkeleton />
+      </main>
     );
   }
 
   if (error) {
     return (
-      <div className="p-6">
+      <main className="p-6" aria-label={t.mainRegionAria}>
         <h1 className="text-xl font-semibold">Organizations</h1>
         <p className="mt-3 text-sm text-red-600">{error}</p>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="p-6">
+    <main className="p-6" aria-label={t.mainRegionAria}>
       <h1 className="text-xl font-semibold">Organizations</h1>
 
       <div className="mt-4 overflow-x-auto rounded-xl border">
@@ -93,6 +102,6 @@ export default function AdminOrganizationsPage() {
           </tbody>
         </table>
       </div>
-    </div>
+    </main>
   );
 }

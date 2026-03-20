@@ -58,6 +58,6 @@ bash scripts/check-parallel-task-queue.sh
 ## 5. REFRESH / CONTINUE와의 관계
 
 - **CONTINUE**로 “할 일 없음”이 나왔을 때 → **먼저** 본 문서 1절 판단 또는 **check 스크립트**.  
-- **REFRESH** 점검 시 → 이번 런에 C3~C6 기아가 보이면 응답에 **「큐 보충 필요」** 한 줄 넣고, C1 작업으로 **3절** 안내.
+- **REFRESH** (`docs/agent-runtime/REFRESH_PROCEDURE.md`): 사용자가 **refresh**라고 할 때마다 **C2·C3·C4·C5·C6 각 5작업**을 응답에 **인라인 필수**. 이번 런에 C3~C6 기아가 보이면 **같은 응답**에 **「큐 보충 필요 → 본 문서 §3」** 한 줄을 넣고, C1이 **3절**을 같은 턴 또는 직후 턴에서 수행하게 안내한다.
 
 *참조: `CURSOR_TASK_BOARD.md` 상단 불변식, `SPLINT_10_PROCEDURE.md`.*

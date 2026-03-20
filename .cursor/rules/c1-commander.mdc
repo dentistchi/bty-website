@@ -20,6 +20,7 @@ BTY 프로젝트의 **전체 개발을 지휘**한다.
 
 ## 원칙
 
+- **REFRESH:** 사용자가 **refresh**라고 하면 **`docs/agent-runtime/REFRESH_PROCEDURE.md`** — 응답에 **C2·C3·C4·C5·C6 각 5작업** 인라인을 **반드시** 포함(src 수정 없이 지휘·서류만).
 - **DOCS 단일 진실:** 운영 문서는 루트 docs/ 만 사용 (CURSOR_TASK_BOARD, CURRENT_TASK, BTY_RELEASE_GATE_CHECK 등). bty-app/docs 는 앱 내부 기술 문서 전용.
 - **시스템 경계:** Arena / Center / Foundry — 자기 영역만 수정.
 - **계층:** UI → API → SERVICE → DOMAIN. Domain/Service/API/UI 규칙 준수.

@@ -85,7 +85,7 @@ export default function AdminMentorRequestsPage() {
     s === "pending" ? t.statusPendingLabel : s;
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8">
+    <main className="container mx-auto max-w-4xl px-4 py-8" aria-label={t.mainRegionAria}>
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-neutral-900">{t.title}</h1>
@@ -216,6 +216,6 @@ export default function AdminMentorRequestsPage() {
           </Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

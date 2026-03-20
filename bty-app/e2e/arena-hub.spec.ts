@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 
 /** Arena 허브 — testid 우선 (카피/i18n 변경에 덜 민감). */
 test.describe("Arena Hub (authenticated)", () => {
-  test("hub entry, summary values, Play → /play", async ({ page }) => {
-    await page.goto("/en/bty-arena");
+  test("hub entry, summary values, Play → /run", async ({ page }) => {
+    await page.goto("/en/bty-arena/hub");
     await expect(page).not.toHaveURL(/login/);
 
     await expect(page.getByTestId("arena-hub")).toBeVisible();
@@ -19,6 +19,6 @@ test.describe("Arena Hub (authenticated)", () => {
     await expect(page.getByTestId("arena-season-ends")).toBeVisible();
 
     await page.getByTestId("arena-play-button").first().click();
-    await expect(page).toHaveURL(/\/en\/bty-arena\/play/);
+    await expect(page).toHaveURL(/\/en\/bty-arena\/run/);
   });
 });

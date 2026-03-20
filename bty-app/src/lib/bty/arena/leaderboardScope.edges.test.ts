@@ -13,8 +13,13 @@ import {
 describe("leaderboardScope (edges)", () => {
   it("parseLeaderboardScope returns overall for null or invalid param", () => {
     expect(parseLeaderboardScope(null)).toBe("overall");
-    expect(parseLeaderboardScope("role ")).toBe("overall");
-    expect(parseLeaderboardScope(" office")).toBe("overall");
+    expect(parseLeaderboardScope("invalid")).toBe("overall");
+    expect(parseLeaderboardScope("  ")).toBe("overall");
+  });
+
+  it("parseLeaderboardScope trims param and returns valid scope", () => {
+    expect(parseLeaderboardScope("role ")).toBe("role");
+    expect(parseLeaderboardScope(" office")).toBe("office");
   });
 
   it("roleToScopeLabel trims and lowercases before mapping", () => {

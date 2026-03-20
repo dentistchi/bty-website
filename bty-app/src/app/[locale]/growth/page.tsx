@@ -44,6 +44,12 @@ export default async function GrowthPage({ params }: Props) {
       description: t.growthCardJourneyDesc,
       "data-testid": "growth-journey-card",
     },
+    {
+      href: `${base}/growth/history`,
+      title: t.growthCardHistoryTitle,
+      description: t.growthCardHistoryDesc,
+      "data-testid": "growth-history-card",
+    },
   ];
 
   return (
@@ -53,7 +59,7 @@ export default async function GrowthPage({ params }: Props) {
       title={t.growthHubHeadline}
       subtitle={t.growthHubLead}
     >
-      <section data-testid="growth-page" role="region" aria-label={t.growthHubMainRegionAria}>
+      <main data-testid="growth-page" aria-label={t.growthHubMainRegionAria}>
         <nav className="space-y-3" aria-label={t.growthHubCardsNavAria}>
           {cards.map((item) => (
             <Link
@@ -67,7 +73,7 @@ export default async function GrowthPage({ params }: Props) {
             </Link>
           ))}
         </nav>
-      </section>
+      </main>
     </ScreenShell>
   );
 }

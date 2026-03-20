@@ -33,6 +33,16 @@ describe("GET /api/arena/run/[runId]", () => {
     vi.clearAllMocks();
   });
 
+  /** S80 C3: empty runId → 400 MISSING_RUN_ID (before auth). */
+  it("returns 400 when runId is empty", async () => {
+    mockGetSupabaseServerClient.mockReturnValue(makeClient({ id: "u1" }, null, null));
+    const res = await GET(new NextRequest("http://x"), {
+      params: Promise.resolve({ runId: "" }),
+    });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("MISSING_RUN_ID");
+  });
+
   it("401 unauthenticated", async () => {
     mockGetSupabaseServerClient.mockReturnValue(makeClient(null, null, null));
     const res = await GET(new NextRequest("http://x"), {

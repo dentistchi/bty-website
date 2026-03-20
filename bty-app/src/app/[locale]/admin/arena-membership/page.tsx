@@ -23,7 +23,10 @@ type ListResp = { requests: RequestRow[]; error?: string };
 export default function AdminArenaMembershipPage() {
   const params = useParams();
   const locale = (typeof params?.locale === "string" ? params.locale : "en") as Locale;
-  const loadingMessage = getMessages(locale).loading.message;
+  const messages = getMessages(locale);
+  const t = messages.adminArenaMembership;
+  const loadingMessage = messages.loading.message;
+  const a = `/${locale}/admin`;
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +77,7 @@ export default function AdminArenaMembershipPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8">
+    <main className="container mx-auto max-w-4xl px-4 py-8" aria-label={t.mainRegionAria}>
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-neutral-900">Arena 멤버십 승인</h1>
@@ -82,10 +85,7 @@ export default function AdminArenaMembershipPage() {
             pending 요청을 검토한 뒤 승인합니다. 승인 시 해당 유저의 tenure(입사일·리더시작일)가 반영됩니다.
           </p>
         </div>
-        <Link
-          href="/admin/debug"
-          className="text-sm text-neutral-600 underline hover:text-neutral-900"
-        >
+        <Link href={`${a}/debug`} className="text-sm text-neutral-600 underline hover:text-neutral-900">
           디버깅
         </Link>
       </div>
@@ -163,19 +163,31 @@ export default function AdminArenaMembershipPage() {
 
       <div className="mt-4 rounded border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
         <p>
-          <Link href="/admin/users" className="hover:text-neutral-900 underline">사용자 관리</Link>
+          <Link href={`${a}/users`} className="hover:text-neutral-900 underline">
+            사용자 관리
+          </Link>
           {" · "}
-          <Link href="/admin/organizations" className="hover:text-neutral-900 underline">조직</Link>
+          <Link href={`${a}/organizations`} className="hover:text-neutral-900 underline">
+            조직
+          </Link>
           {" · "}
-          <Link href="/admin/arena-membership" className="hover:text-neutral-900 underline">Arena 멤버십 승인</Link>
+          <Link href={`${a}/arena-membership`} className="hover:text-neutral-900 underline">
+            Arena 멤버십 승인
+          </Link>
           {" · "}
-          <Link href="/admin/sql-migrations" className="hover:text-neutral-900 underline">SQL 복사</Link>
+          <Link href={`${a}/sql-migrations`} className="hover:text-neutral-900 underline">
+            SQL 복사
+          </Link>
           {" · "}
-          <Link href="/admin/debug" className="hover:text-neutral-900 underline">디버깅</Link>
+          <Link href={`${a}/debug`} className="hover:text-neutral-900 underline">
+            디버깅
+          </Link>
           {" · "}
-          <Link href="/admin/quality" className="hover:text-neutral-900 underline">Quality</Link>
+          <Link href={`${a}/quality`} className="hover:text-neutral-900 underline">
+            Quality
+          </Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

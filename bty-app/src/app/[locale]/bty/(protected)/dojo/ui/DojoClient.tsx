@@ -164,7 +164,7 @@ export default function DojoClient({ locale = "ko" }: { locale?: string }) {
   const skipToQuestionLabel = isEn ? "Skip to current question" : "현재 문항으로 건너뛰기";
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12" role="main" aria-label={tDojo.dojoPageMainAria}>
+    <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12" aria-label={tDojo.dojoPageMainAria}>
       {/* Screen reader: announce step when it changes */}
       <div aria-live="polite" aria-atomic="true" className="sr-only" key={currentIndex}>
         {stepLabel}
@@ -288,6 +288,6 @@ export default function DojoClient({ locale = "ko" }: { locale?: string }) {
             : `응답 완료: ${answeredCount} / ${total}`}
         </p>
       </div>
-    </div>
+    </main>
   );
 }

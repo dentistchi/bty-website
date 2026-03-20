@@ -1,66 +1,124 @@
-import Link from "next/link";
-import ScreenShell from "@/components/bty/layout/ScreenShell";
+"use client";
+
+import { useEffect, useMemo, useRef } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { saveArenaSignal } from "@/features/arena/api/saveArenaSignal";
+import ArenaResolveScreen from "@/features/arena/resolve/ArenaResolveScreen";
+import { buildArenaSignal, pushSignalIfNew } from "@/features/arena/logic";
+import { buildReflectionSeed, pushReflectionSeedIfNew } from "@/features/growth/logic";
+import { useArenaSession } from "@/features/arena/state/useArenaSession";
 import { getMessages } from "@/lib/i18n";
-import type { Locale } from "@/lib/i18n";
 
-type Props = { params: Promise<{ locale: string }> };
+/** Mission resolve chamber — persists sealed decision via API (guests fall back to local storage). */
+export default function BtyArenaMissionResultPage() {
+  const router = useRouter();
+  const params = useParams();
+  const locale = params?.locale === "ko" ? "ko" : "en";
+  const prefix = `/${locale}/bty-arena`;
+  const m = getMessages(locale);
+  const stub = m.uxPhase1Stub;
 
-/** Arena 결과 — ScreenShell · AIR raw·과장 없음. */
-export default async function ArenaResultPage({ params }: Props) {
-  const { locale } = await params;
-  const loc = (locale === "ko" ? "ko" : "en") as Locale;
-  const t = getMessages(loc).uxPhase1Stub;
-  const m = getMessages(loc).myPageStub;
-  const hub = `/${locale}/bty-arena`;
-  const play = `/${locale}/bty-arena/play`;
+  const {
+    hydrated,
+    session,
+    scenario,
+    outcome,
+    continueArena,
+    returnToLobby,
+    reviewReflection,
+  } = useArenaSession();
+
+  const signalSavedRef = useRef(false);
+
+  const signalDedupeKey = useMemo(() => {
+    if (!session?.selectedPrimary || !session.selectedReinforcement) return null;
+    return `${session.scenarioId}:${session.selectedPrimary}:${session.selectedReinforcement}:${session.updatedAt}`;
+  }, [session]);
+
+  useEffect(() => {
+    if (!hydrated || !scenario || !outcome || !signalDedupeKey) return;
+    if (!session?.selectedPrimary || !session.selectedReinforcement) return;
+    if (signalSavedRef.current) return;
+
+    const signal = buildArenaSignal({
+      scenario,
+      selectedPrimary: session.selectedPrimary,
+      selectedReinforcement: session.selectedReinforcement,
+    });
+    if (!signal) return;
+
+    const traits = Object.fromEntries(
+      Object.entries(signal.traits ?? {}).filter(([, v]) => typeof v === "number"),
+    ) as Record<string, number>;
+
+    signalSavedRef.current = true;
+
+    void saveArenaSignal({
+      scenarioId: signal.scenarioId,
+      primaryChoice: signal.primary,
+      reinforcementChoice: signal.reinforcement,
+      traits,
+      meta: signal.meta,
+    })
+      .then(() => {})
+      .catch(() => {
+        signalSavedRef.current = false;
+        if (pushSignalIfNew(signal, signalDedupeKey)) {
+          const seed = buildReflectionSeed(signal);
+          pushReflectionSeedIfNew(seed, signalDedupeKey);
+          signalSavedRef.current = true;
+        }
+      });
+  }, [hydrated, scenario, outcome, session, signalDedupeKey]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!session) {
+      router.replace(prefix);
+      return;
+    }
+    if (!session.selectedPrimary || !session.selectedReinforcement) {
+      router.replace(`${prefix}/play`);
+      return;
+    }
+    if (session.phase !== "result") {
+      router.replace(`${prefix}/play`);
+    }
+  }, [hydrated, session, router, prefix]);
+
+  if (!hydrated || !session?.selectedPrimary || !session?.selectedReinforcement || session.phase !== "result") {
+    return (
+      <main
+        className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-400"
+        aria-busy="true"
+        aria-label={stub.arenaMissionResultLoadingMainRegionAria}
+      >
+        {m.loading.message}
+      </main>
+    );
+  }
 
   return (
-    <ScreenShell
-      locale={locale}
-      eyebrow={t.arenaResultEyebrow}
-      title={t.arenaResultRecordedTitle}
-      subtitle={t.arenaResultRecordedSubtitle}
+    <main
+      data-testid="arena-mission-flow"
+      data-arena-flow-phase="result"
+      aria-label={stub.arenaMissionResultMainRegionAria}
     >
-      <div data-testid="arena-result" className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div data-testid="arena-result-core-xp" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
-            <p className="text-sm font-medium text-[#1E2A38]">{m.coreXp}</p>
-            <p className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-[#1E2A38]">
-              +25
-            </p>
-          </div>
-          <div data-testid="arena-result-weekly-xp" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
-            <p className="text-sm font-medium text-[#1E2A38]">{m.weeklyXp}</p>
-            <p className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-[#1E2A38]">
-              +15
-            </p>
-          </div>
-        </div>
-
-        <div data-testid="arena-result-system-note" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-[#1E2A38]">{t.arenaResultSystemNoteTitle}</p>
-          <p className="mt-2 text-sm leading-6 text-[#667085]">{t.arenaResultSystemNoteBody}</p>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <Link
-            data-testid="arena-result-continue-button"
-            href={play}
-            className="flex h-12 w-full items-center justify-center rounded-2xl bg-[#1E2A38] px-4 text-sm font-medium text-white hover:bg-[#243446]"
-          >
-            {t.arenaResultContinuePlayCta}
-          </Link>
-          <Link
-            data-testid="arena-result-return-button"
-            href={hub}
-            className="flex h-12 w-full items-center justify-center rounded-2xl border border-[#D7CFBF] bg-white px-4 text-sm font-medium text-[#405A74] hover:bg-[#F6F4EE]"
-          >
-            {t.arenaResultReturnHubCta}
-          </Link>
-        </div>
-
-        <p className="px-1 text-center text-xs leading-relaxed text-[#98A2B3]">{t.resultSampleNote}</p>
-      </div>
-    </ScreenShell>
+      <ArenaResolveScreen
+        scenario={scenario}
+        selectedPrimary={session.selectedPrimary}
+        selectedReinforcement={session.selectedReinforcement}
+        outcome={outcome}
+        onContinueArena={() => {
+          continueArena();
+          router.push(`${prefix}/play`);
+        }}
+        onReviewReflection={reviewReflection}
+        onReturnToArena={() => {
+          returnToLobby();
+          router.push(prefix);
+        }}
+      />
+    </main>
   );
 }

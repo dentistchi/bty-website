@@ -173,7 +173,7 @@ export default function DojoResultClient({ locale = "ko" }: { locale?: string })
     <div
       className="max-w-3xl mx-auto px-6 py-10"
       role="region"
-      aria-labelledby="dojo-result-heading"
+      aria-label={dojoT.dojoResultMainRegionAria}
     >
       <h1 id="dojo-result-heading" className="text-2xl font-semibold mb-2">
         {isEn ? "Dojo 50-Item Result" : "Dojo 역량 진단 결과"}

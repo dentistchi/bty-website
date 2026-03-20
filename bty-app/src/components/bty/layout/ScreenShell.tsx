@@ -13,6 +13,8 @@ export type ScreenShellProps = {
   contentClassName?: string;
   /** true면 가로 풀폭(자식에서 max-w-md 등 처리) */
   fullWidth?: boolean;
+  /** 있으면 내부 `<main>`에 `aria-label` (접근성 랜드마크) */
+  mainAriaLabel?: string;
 };
 
 /**
@@ -28,6 +30,7 @@ export default function ScreenShell({
   showBottomNav = true,
   contentClassName = "pb-24",
   fullWidth = false,
+  mainAriaLabel,
 }: ScreenShellProps) {
   const container = fullWidth
     ? `mx-auto w-full max-w-full px-0 py-6 ${contentClassName}`
@@ -50,7 +53,7 @@ export default function ScreenShell({
             ) : null}
           </header>
         ) : null}
-        <main>{children}</main>
+        <main {...(mainAriaLabel ? { "aria-label": mainAriaLabel } : {})}>{children}</main>
       </div>
       {showBottomNav ? <BottomNav locale={locale} /> : null}
     </div>

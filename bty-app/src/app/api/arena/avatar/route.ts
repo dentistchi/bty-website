@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isValidArenaAvatarUserIdKey } from "@/domain/rules/arenaAvatarUserIdParam";
 
 /**
  * GET /api/arena/avatar?userId=xxx
@@ -8,11 +9,9 @@ import { NextRequest, NextResponse } from "next/server";
  */
 export const dynamic = "force-dynamic";
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get("userId");
-  if (!userId || !UUID_REGEX.test(userId)) {
+  if (!isValidArenaAvatarUserIdKey(userId)) {
     return NextResponse.json({ error: "Invalid userId" }, { status: 400 });
   }
 

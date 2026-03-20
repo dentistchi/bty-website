@@ -1,16 +1,172 @@
 # BTY 배포 전 체크 결과 (bty-release-gate)
 
+**UI / a11y (83, C4 TASK31, 2026-03-19):** **`/[locale]/train/day/[day]`** — 라우트 **`page.tsx`** → **`page.client`** 통합 · 가운데 레슨 **`<main aria-label={getMessages(locale).train.lessonLabel}>`** · 중첩 `role="region"` on `<main>` 제거 · **카피/라우트만** · **XP/리더보드 규칙 미변경** · `npm run lint` ✓.
+
+**UI / a11y (83, C4 TASK25, 2026-03-19):** **`/[locale]`** (랜딩) — **`LandingClient` `<main>`** · `aria-label` = **`landing.landingHubMainRegionAria`** · **카피/라우트만** · **XP/리더보드 규칙 미변경** · `npm run lint` ✓.
+
+**UI / a11y (83, C4 TASK24, 2026-03-19):** **`/bty-arena/wireframe`** — **`<main aria-label={wireframeLandmarkAria}>`** (구 `role="region"` 래퍼 제거) · 로케일 narrow **`ko`|`en`** · **랜드마크만** · **XP/리더보드 규칙 미변경** · `npm run lint` ✓.
+
+**UI / a11y (83, C4 TASK19, 2026-03-19):** **`/bty-arena/record`** — **`ScreenShell` `<main>`** · `aria-label` = **`uxPhase1Stub.arenaRecordPageMainRegionAria`** · **랜드마크만** · **XP/리더보드 규칙 미변경** · `npm run lint` ✓.
+
+**UI / a11y (83, C4 TASK15, 2026-03-19):** **`/bty-arena/beginner`** — **`<main>`** (`arenaBeginnerPathInit/Main/CompleteMainRegionAria` · `arenaBeginnerPathTrackLabel` · 제출 `arenaBeginnerPathSubmittingAria` · 단계 로딩 `loading.message`) · **입문 런/API 규칙 미변경** · `npm run lint` ✓.
+
+**UI / a11y (83, C4 TASK11, 2026-03-19):** **`/bty-arena/result`** (미션 플로우) — **`<main>`** · `uxPhase1Stub.arenaMissionResultLoadingMainRegionAria` / `arenaMissionResultMainRegionAria` · 로딩 `loading.message` · **시그널/시나리오 규칙 미변경** · `npm run lint` ✓.
+
+**UI / a11y (83, C4 TASK4, 2026-03-19):** **`/bty-arena/lab`** — **`<main aria-label={arenaLabMainRegionAria}>`** · `uxPhase1Stub.arenaLab*` (제목·리드·진행·복귀 링크·에러) · 로딩 `loading.message` · **Core XP/Lab 수치 규칙은 API 유지** · `npm run lint` ✓.
+
+**UI / a11y (82, C4 TASK45, 2026-03-19):** **`bty-arena/play`**·**`/run`**·**`/play/resolve`** — semantic **`<main>`** + **`aria-label`** (`uxPhase1Stub.arenaMissionPlay*`·`arenaResolveSession*`·`arenaRun.runPage*`) · `/run` flex 루트+aside+모달 DOM 정리 · **XP/리더보드 규칙 미변경** · `npm run lint` ✓.
+
+**E) 도메인 (82, C3 TASK44, 2026-03-24):** **`arenaActivatedHiddenStatsFromUnknown`** — 비신뢰 배열 → 원소 전부 **`isArenaHiddenStatLabel`** 통과 시에만 **`HiddenStat[]`** (빈 배열 허용) · 그 외 **`null`** · **`arenaActivatedHiddenStatsFromUnknown.edges.test.ts`** · barrel.
+
+**E) 도메인 (82, C3 TASK40, 2026-03-24):** **`arenaOutcomeMetaFromUnknown`** — 비신뢰 객체에서 **`relationalBias` / `operationalBias` / `emotionalRegulation`** 필수 · 각 축 **`arenaOutcomeTraitWeightFromUnknown`** 와 동일하게 [0,1] 클램프 · 누락·비유한·비숫자 → **`null`** · **`arenaOutcomeMetaFromUnknown.edges.test.ts`** · barrel.
+
+**E) 도메인 (82, C3 TASK39, 2026-03-19):** **`arenaScenarioIdFromUnknown`** — 비신뢰 값에서 시나리오 id **trim** · 빈 문자열·**`ARENA_SCENARIO_ID_MAX_LENGTH`(128)** 초과 → **`null`** · **`arenaScenarioIdFromUnknown.edges.test.ts`** · `arena/scenarios` barrel (**`arenaOutcome*`** export TASK39에서 복구).
+
+**E) 도메인 (82, C3 TASK35, 2026-03-24):** **`arenaOutcomeTraitWeightFromUnknown`** · **`arenaOutcomeTraitsPartialFromUnknown`** — `ResolveOutcome.traits` 용 **0–1** 유한 실수만·클램프 · **`HiddenStat` 키만** 채택(그 외 키 무시) · 잘못된 가중치 시 partial **`null`** · **`arenaOutcomeTraitsFromUnknown.edges.test.ts`** · barrel.
+
+**E) 도메인 (82, C3 TASK31, 2026-03-23):** **`arenaMissionOutcomeKeyPartsFromUnknown`** — outcomes map key 문자열을 **첫 `_`** 기준으로 분리 · primary/reinforcement 각각 mission token 규칙 통과 시에만 **`ArenaMissionOutcomeKeyParts`** 반환 · **`arenaMissionOutcomeKeyPartsFromUnknown.edges.test.ts`** · `FromChoiceIds`와 round-trip.
+
+**E) 도메인 (82, C3 TASK26, 2026-03-19):** **`arenaMissionOutcomeKeyFromChoiceIds`** — prototype primary+reinforcement id → outcomes lookup key **`A_X`** 형식(둘 다 유효할 때만) · **`arenaMissionOutcomeKey.edges.test.ts`** · `arena/scenarios/index` export.
+
+**E) 도메인 (82, C3 TASK21, 2026-03-21):** **`arenaScenarioDifficultyFromUnknown`** — `ScenarioDifficulty` (**`Low`\|`Moderate`\|`High`**) 문자열 정규화 · **`arenaScenarioDifficultyFromUnknown.edges.test.ts`** · `arena/scenarios/index` export.
+
+**E) 도메인 (82, C3 TASK20, 2026-03-20):** **`isArenaPrimaryMissionChoiceId`** · **`isArenaReinforcementMissionChoiceId`** — prototype mission A|B|C · X|Y 토큰(trim·대소문자 구분) · **`arenaMissionChoiceToken.edges.test.ts`**.
+
+**E) 도메인 (82, C3 TASK16, 2026-03-20):** **`isArenaHiddenStatLabel`** — Arena `HiddenStat` 5개 라벨(type guard) · **`arenaHiddenStatLabel.edges.test.ts`** · `arena/scenarios/index` export.
+
+**E) 도메인 (82, C3 TASK12, 2026-03-19):** **`normalizeArenaMissionPayloadFromUnknown`** — Arena mission sessionStorage JSON 검증·`decidedAt` 기본값 · **`missionStorage.readMissionPayload`** 호출 정합 · **`missionPayloadFromUnknown.edges.test.ts`**.
+
+**E) API (82, C3, 2026-03-19):** **`GET /api/arena/mentor-requests`** — `elite_mentor_requests` 조회 **`error`** 시 **500** + `error.message` 본문 · **`mentor-requests/route.test.ts`**. **scope=role 라벨** — **`arenaLeaderboardScopeRoleLabel`** (domain) · `leaderboardScope.roleToScopeLabel` 위임.
+
 **실행일**: 배포 전 체크.  
 **규칙**: `.cursor/rules/bty-release-gate.mdc`  
 **범위**: bty-app (Auth, Weekly Reset, Leaderboard, XP, API).  
 **정책**: 문서·백로그·Release Gate 점검은 **배포 전 1회** 수행. 일상 작업은 웹 개발(UI·API·도메인) 집중.  
 **배포 준비:** `docs/MVP_DEPLOYMENT_READINESS.md` (배포 시 1회 체크리스트). **일상 vs 배포:** `docs/WORK_POLICY.md`.
 
+**[VERIFY] C5 TASK27 — SPRINT 83·289 (2026-03-19):** **RESULT: PASS.** Gate·**`ELITE_3RD`**·문서 스테일 — **큐 보충 C5** — **334/2311** · 인바리언트(A–E) **스키마 변경 없음** 가정 · `self-healing-ci.sh` Lint ✓ · Vitest **334 files / 2311 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행). **보드 TASK32** C5 **`[ ]`** · **TASK30** C6 **`[ ]`** · **TASK33** C4 **`[ ]`** · `check-parallel-task-queue` **exit 0**.
+
+**[VERIFY] C5 TASK23 — SPRINT 83·289 (2026-03-19):** **RESULT: PASS.** Gate·**`ELITE_3RD`**·문서 스테일 — **`bty-arena/wireframe`** **`</main>`** 교정 포함 — **332/2304** · 인바리언트(A–E) **Weekly/Core/Season 분리·UI 규칙 미변경** 가정 · `self-healing-ci.sh` Lint ✓ · Vitest **332 files / 2304 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행). **후속 TASK27** — **[x]** (**334/2311** · **TASK30·31** 큐).
+
+**[VERIFY] C5 TASK21 — SPRINT 83·289 (2026-03-19):** **RESULT: PASS.** Gate·**`ELITE_3RD`**·문서 스테일 — **큐 보충 C5** — **331/2300** · 인바리언트(A–E) **스키마 변경 없음** 가정 · `self-healing-ci.sh` Lint ✓ · Vitest **331 files / 2300 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행). **후속 TASK23** — **[x]** (**332/2304** · `wireframe` **`</main>`**).
+
+**[VERIFY] C5 TASK18 — SPRINT 83·289 (2026-03-20):** **RESULT: PASS.** Gate·**`ELITE_3RD`**·문서 스테일 — **331/2300** · 인바리언트(A–E) **스키마 변경 없음** 가정 · `self-healing-ci.sh` Lint ✓ · Vitest **331 files / 2300 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행). **TASK14 후속** · **TASK21** 큐 오픈.
+
+**[VERIFY] C5 TASK14 — SPRINT 83·289 (2026-03-20):** **RESULT: PASS.** Gate·**`ELITE_3RD`**·문서 스테일 **재동기** — **330/2297** · 인바리언트(A–E) **스키마 변경 없음** 가정 · `self-healing-ci.sh` Lint ✓ · Vitest **330 files / 2297 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행). **S83 C5 TASK1·6·14 전부 [x].**
+
+**[VERIFY] Release Gate — Foundry 83차 (C5, SPRINT 83·289, 2026-03-20):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/마이그레이션/API **스키마 변경 없음**·인바리언트 유지(S83·`PARALLEL_QUEUE_REFILL` 직후 워크스페이스 재검). **F)** `self-healing-ci.sh`: Lint ✓ · Vitest **329 files / 2293 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행).
+
+**[VERIFY] C5 TASK6 — SPRINT 83·289 (2026-03-20):** **RESULT: PASS.** **`ELITE_3RD`** 상단·§3 **83차·329/2293** 정합 · §2 6항목·Elite=주간 5%·render-only **스팟 재확인** (코드 변경 없음 가정).
+
+**[VERIFY] Release Gate — Foundry 82차 (C5, SPRINT 82·288, 2026-03-19):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/마이그레이션/API **스키마 변경 없음**·인바리언트 유지(S82 워크스페이스 재검; UI **ArenaResolveScreen** 세션 payload 연동만). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **310 files / 2229 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행).
+
+**[VERIFY] C5 TASK13 — SPRINT 82·288 (2026-03-19):** **RESULT: PASS.** `ELITE_3RD` 상단 **갱신일**·§3 **82차·310/2229** 문구 정합 · Foundry **`admin/users/page.tsx`** **`<main>`** 닫는 태그(`</main>`) 정정(빌드 차단 해소) · `self-healing-ci.sh` **310 / 2229** ✓ · `next build` ✓.
+
+**[VERIFY] C5 TASK17 — SPRINT 82·288 (2026-03-19):** **RESULT: PASS.** Gate 문서 **스테일 재점검** — 상단 E)·82차 **[VERIFY]** 줄·인바리언트 **정합** · `self-healing-ci.sh` tsc ✓ · Vitest **313 files / 2239 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행). *(수치 C6 TASK14 대비 +4 files / +6 tests 반영.)*
+
+**[VERIFY] C5 TASK22 — SPRINT 82·288 (2026-03-19):** **RESULT: PASS.** **`ELITE_3RD`** **갱신일**·§3 선행 **TASK22** 스탬프 · **313/2239**·TASK17 후속 **정합** · Auth/Weekly/Leaderboard 인바리언트 문구 **변경 없음** · 본 턴 CI 스택 **TASK17과 동일** 가정.
+
+**[VERIFY] C5 TASK24 — SPRINT 82·288 (2026-03-21):** **RESULT: PASS.** **C5 기아 방지** 큐 보충 VERIFY — `ELITE_3RD`·Gate **315/2247** 동기 · 도메인 **`mockScenario`** `activatedStats` **`satisfies HiddenStat[]`** (리터럴 `string[]` 완화 방지) · `self-healing-ci.sh` tsc ✓ · Vitest **315 files / 2247 tests** ✓ · `next build` ✓.
+
+**[VERIFY] C5 TASK28 — SPRINT 82·288 (2026-03-22):** **RESULT: PASS.** Gate·**`ELITE_3RD`**·수치 **재동기** — **316/2250** · 인바리언트(A–E) 문구 **변경 없음** 가정 · `self-healing-ci.sh` tsc ✓ · Vitest **316 files / 2250 tests** ✓ · `next build` ✓.
+
+**[VERIFY] C5 TASK32 — SPRINT 82·288 (2026-03-19):** **RESULT: PASS.** Gate·**`ELITE_3RD`**·수치 **재동기** — **318/2254** · 인바리언트(A–E) **스키마 변경 없음** 가정 · `self-healing-ci.sh` tsc ✓ · Vitest **318 files / 2254 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행).
+
+**[VERIFY] C5 TASK46 — SPRINT 82·288 (2026-03-25):** **RESULT: PASS.** Gate·**`ELITE_3RD`**·수치 **재동기** — **326/2280** · 인바리언트(A–E) **스키마 변경 없음** 가정 · `self-healing-ci.sh` tsc ✓ · Vitest **326 files / 2280 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행). **C5 기아 방지 → TASK48.**
+
+**[VERIFY] C5 TASK48 — SPRINT 82·288 (2026-03-19):** **RESULT: PASS.** Gate·**`ELITE_3RD`**·수치 **재동기** — **327/2287** · 인바리언트(A–E) **스키마 변경 없음** 가정 · `self-healing-ci.sh` tsc ✓ · Vitest **327 files / 2287 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행). **S82 C5 열 `[ ]` 없음.**
+
+**[VERIFY] C5 TASK34 — SPRINT 82·288 (2026-03-19):** **RESULT: PASS.** Gate·**`ELITE_3RD`**·수치 **재동기** — **324/2274** · 인바리언트(A–E) **스키마 변경 없음** 가정 · `self-healing-ci.sh` tsc ✓ · Vitest **324 files / 2274 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행).
+
+**[VERIFY] C6 TASK10 — SPRINT 82·288 (2026-03-19):** **RESULT: PASS.** `npm run test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **310 / 2229** ✓ · `next build` ✓ · 본 턴 TS: **`ArenaMissionPayload`** `@/domain/arena/scenarios` barrel **`missionStorage`에서 재export** · **Resolve** TopBar **`resolved.meta` 상태** · `SPRINT_LOG`·보드 동기.
+
+**[VERIFY] C6 TASK18 — SPRINT 82·288 (2026-03-19):** **RESULT: PASS.** `npm run test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **313 files / 2239 tests** ✓ · `next build` ✓ (`self-healing-ci` **Attempt 2** — `.next/server/pages-manifest.json` ENOENT 후 재시도) · `SPRINT_LOG`·보드 TASK18 동기.
+
+**[VERIFY] C6 TASK23 — SPRINT 82·288 (2026-03-21):** **RESULT: PASS.** `npm run test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **315 files / 2247 tests** ✓ · `next build` ✓ · `SPRINT_LOG`·보드 TASK23 동기.
+
+**[VERIFY] C6 TASK27 — SPRINT 82·288 (2026-03-22):** **RESULT: PASS.** `npm run test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **316 files / 2250 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행 권장) · **`bty-app/src/domain/arena/scenarios/**` 추적 추가** → Next **Can't resolve `./arenaMissionOutcomeKey`** 제거 · `SPRINT_LOG`·보드 TASK27 동기.
+
+**[VERIFY] C6 TASK30 — SPRINT 82·288 (2026-03-23):** **RESULT: PASS.** `npm run test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **318 files / 2254 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행) · `SPRINT_LOG`·보드 TASK30 동기.
+
+**[VERIFY] C6 TASK36 — SPRINT 82·288 (2026-03-19):** **RESULT: PASS.** `npm run test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **320 files / 2259 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행) · 보드 **TASK38** C6 **`[ ]`** 병렬 큐 유지 · `SPRINT_LOG`·보드 TASK36 동기.
+
+**[VERIFY] C6 TASK38 — SPRINT 82·288 (2026-03-24):** **RESULT: PASS.** `npm run test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **324 files / 2274 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행) · 보드 **TASK41** C6 **`[ ]`** 병렬 큐 유지 · `SPRINT_LOG`·보드 TASK38 동기.
+
+**[VERIFY] C6 TASK41 — SPRINT 82·288 (2026-03-24):** **RESULT: PASS.** `npm run test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **324 files / 2274 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행) · 보드 **TASK43** C6 **`[ ]`** 병렬 큐 유지 · `SPRINT_LOG`·보드 TASK41 동기.
+
+**[VERIFY] C6 TASK43 — SPRINT 82·288 (2026-03-25):** **RESULT: PASS.** `npm run test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **325 files / 2277 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행) · 보드 **TASK47** C6 **`[ ]`** 병렬 큐 유지 · `SPRINT_LOG`·보드 TASK43 동기.
+
+**[VERIFY] C6 TASK47 — SPRINT 82·288 (2026-03-25):** **RESULT: PASS.** `npm run test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **326 files / 2280 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행) · 보드 **TASK50** C6 **`[ ]`** 병렬 큐 유지 · `SPRINT_LOG`·보드 TASK47 동기.
+
+**[VERIFY] Release Gate — Foundry 81차 (C5, SPRINT 81·287, 2026-03-19):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/마이그레이션/API **스키마 변경 없음**·인바리언트 유지(S81 워크스페이스 재검). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **308 files / 2216 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행).
+
+**[VERIFY] C6 TASK10 — SPRINT 81·287 (2026-03-19):** **RESULT: PASS.** `npm run test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` tsc ✓ · Vitest **309 files / 2222 tests** ✓ · `next build` ✓ · `SPRINT_LOG`/`CURRENT_TASK`/`SPRINT_PLAN`·보드 TASK10 동기.
+
+**배포 후 (C2, post-push):** **`7654875`** — **`d7d5a24..7654875`** — E2E GitHub Actions·Playwright·Journey 서비스 롤·comeback 프로필 시드·로그인 `data-testid`/selector·문서·테스트 (**57 files**, +2003 / −525, **11 commits**). **A–E)** 세션·쿠키·주간 리셋·랭킹=Weekly XP·Core/Weekly 분리·시즌 미반영 인바리언트 유지; 본 구간은 주로 CI/E2E·테스트 인프라. **MVP_DEPLOYMENT_READINESS:** 스키마/배포 체크리스트 변경 없음 가정. **F)** `bty-app/scripts/self-healing-ci.sh`: tsc ✓ · **292 files** / **2159 tests** ✓ · `next build` ✓ (`.next` ENOENT 시 clean 후 재시도). **RESULT: PASS.** *다음 `origin/main` push 시 Gate 1회.*
+
+**[VERIFY] Release Gate — Foundry 80차 (C5, SPRINT 80·286, 2026-03-19):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/마이그레이션/API **스키마 변경 없음**·인바리언트 유지(S80 워크스페이스 재검). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **308 files / 2216 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행). *(leaderboardScope.edges: trim-then-validate 기대치 정렬.)*
+
+**[VERIFY] Release Gate — Foundry 78차 (C5, SPRINT 78·284, 2026-03-19):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/마이그레이션/API **스키마 변경 없음**·인바리언트 유지(S78 워크스페이스 재검). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **306 files / 2204 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행).
+
+**[VERIFY] Release Gate — Foundry 77차 (C5, SPRINT 77·283, 2026-03-19):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/마이그레이션/API **스키마 변경 없음**·인바리언트 유지(S77 워크스페이스 재검). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **306 files / 2204 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행).
+
+**[VERIFY] Release Gate — Foundry 76차 (C5, SPRINT 76·282, 2026-03-19):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/마이그레이션/API **스키마 변경 없음**·인바리언트 유지(S76 워크스페이스 재검). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **305 files / 2199 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행).
+
+**[VERIFY] Release Gate — Foundry 75차 (C5, SPRINT 75·281, 2026-03-19):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/마이그레이션/API **스키마 변경 없음**·인바리언트 유지(S75 Dojo History JSX 수정·Gate 75). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **304 files / 2194 tests** ✓ · `next build` ✓.
+
+**[VERIFY] Release Gate — Foundry 74차 (C5, SPRINT 74·280, 2026-03-19):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/마이그레이션/API **스키마 변경 없음**·인바리언트 유지(S74 워크스페이스 재검). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **302 files / 2186 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행).
+
+**[VERIFY] Release Gate — Foundry 73차 (C5, SPRINT 73·279, 2026-03-19):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/마이그레이션/API **스키마 변경 없음**·인바리언트 유지(S73 워크스페이스 재검). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **302 files / 2184 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행).
+
+**[VERIFY] Release Gate — Foundry 72차 (C5, SPRINT 72·278, 2026-03-19):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/마이그레이션/API **스키마 변경 없음**·인바리언트 유지(S72 워크스페이스 재검). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **300 files / 2179 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행).
+
+**[VERIFY] Release Gate — Foundry 71차 (C5, SPRINT 71·277, 2026-03-19):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/마이그레이션/API **스키마 변경 없음**·인바리언트 유지(S71 워크스페이스 재검). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **298 files / 2173 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행).
+
+**[VERIFY] Release Gate — Foundry 70차 (C5, SPRINT 70·276, 2026-03-19):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/마이그레이션/API **스키마 변경 없음**·인바리언트 유지(S70 워크스페이스 재검). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **298 files / 2173 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행). *(Fix: `unlocked-scenarios/route.ts` — `arenaContentLocaleFromParam` import 추가.)*
+
+**[VERIFY] Release Gate — Foundry 69차 (C5, SPRINT 69·275, 2026-03-19):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/마이그레이션/API **스키마 변경 없음**·인바리언트 유지(S69 워크스페이스 재검). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **294 files / 2164 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행·한 패스 PASS).
+
 **배포 후 (C2, post-push):** **`d7d5a24`** — **`6afdfe4..d7d5a24`** — 중간 **`3ca0233`** chore: 배포(favicon·weekly-stats·reflectTextBounds·문서) + **919d7bb** 중복 `run/[id]` 제거(Worker 500) + **d7d5a24** Journey API Worker `SUPABASE_SERVICE_ROLE_KEY` 동기·CONTEXT. **A–E)** Auth·Weekly·Leaderboard·Core/Weekly 분리 유지; **E)** Arena run 라우트 단일화·Journey Worker 시크릿 배포 절차 반영. **F)** `self-healing-ci.sh`: Lint ✓ · **279 files** / **2117 tests** ✓ · Build ✓. **RESULT: PASS.** *다음 `origin/main` push 시 Gate 1회.*
+
+**[VERIFY] Release Gate — Foundry 68차 (C5, SPRINT 68·274, 2026-03-19):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/마이그레이션/API **스키마 변경 없음**·인바리언트 유지(S68 워크스페이스 재검). **F)** `tsc --noEmit` ✓ · Vitest **294 files / 2164 tests** ✓ · `next build` ✓ (`rm -rf .next` 후 ENOENT `build-manifest.json` 회피). *(self-healing-ci 1차 빌드 단계만 실패·재빌드 PASS.)*
 
 **배포 후 (C2, post-push):** **`6afdfe4`** — chore: 배포 — E2E/Playwright, Growth IA, Arena Hub, 도메인·문서. **108 files** (+5,767 / -846). **`58b8342..6afdfe4` → origin/main**. **A)** 세션·쿠키(Secure/SameSite/Path) 기존 가정 — 본 배포는 E2E·Growth IA·Arena Hub·도메인·문서 중심. **B–C)** week_id·Core/Weekly 분리·랭킹=Weekly XP·시즌 미반영 유지. **D)** 본 배포 요약에 **신규 DB 마이그레이션 명시 없음** — 기존 경로. **E)** Journey·Arena Hub·E2E 범위 API/UI는 코드베이스·§와 정합 가정. **F)** `bty-app/scripts/self-healing-ci.sh`: Lint ✓ · **277 files** / **2108 tests** ✓ · Build ✓. **RESULT: PASS.** *다음 배포 push 시 Gate 1회 재수행.*
 
 **SPRINT 64·Gate 64 (270) 오픈 (2026-03-18):** **First Task = C5 TASK1.** Gate **64차** PASS 시 본 블록 아래 한 줄 추가. *(S63 C5 **1·6 [x]** → C5 기아 → S64.)*
+
+**[VERIFY] Release Gate — Foundry 67차 (C5, SPRINT 67·273, 2026-03-19):** **RESULT: PASS.** **A~E)** 본 턴 Auth/Weekly/Leaderboard/마이그레이션/API 계약 **스키마 변경 없음**·인바리언트 유지(S67 오픈·워크스페이스 재검). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **292 files / 2159 tests** ✓ · `next build` ✓. *(C3 S67 beginner-event·beginnerRunEventStep 회귀 반영.)*
+
+**E) API (81, C3, 2026-03-19):** **`GET /api/arena/leaderboard`** — **`parseLeaderboardQuery`** 현재 주 월요일 UTC는 **`arenaLeaderboardMondayUtcFromDate`** (domain); 과거 월요일 **`week`** → **400** `INVALID_WEEK` (`leaderboard/route.test.ts`, fake timers).
+
+**E) API (80, C3, 2026-03-19):** **`GET /api/arena/leaderboard`** — **week** 쿼리 **`arenaLeaderboardWeekParamValid`** (domain) 정합. **`GET /api/arena/run/[runId]`** — empty runId **400** `MISSING_RUN_ID` 회귀.
+
+**E) API (79, C3, 2026-03-19):** **`GET /api/arena/leaderboard`** — **scope** 쿼리 **`arenaLeaderboardScopeFromParam`** (domain) 정합 · scope=office 200 회귀.
+
+**E) API (77, C3, 2026-03-19):** **`GET /api/arena/lab/usage`** — **attemptsRemaining** **`arenaLabAttemptsRemaining`** (domain) 정합 · used=limit → 0 회귀.
+
+**E) API (77, C3, 2026-03-19):** **`GET /api/arena/lab/usage`** — **attemptsRemaining** **`arenaLabAttemptsRemaining`** (domain) 정합 · used=limit → 0 회귀.
+
+**E) API (76, C3, 2026-03-19):** **`GET /api/arena/dashboard/summary`** — **source** 쿼리 **`arenaRecommendationSourceFromParam`** (domain) 정합 · invalid source 200 회귀.
+
+**E) API (75, C3, 2026-03-19):** **`GET /api/arena/runs`** — cursor **`isArenaRunsCursorOverMax`** (domain) · 513자 **400** `INVALID_CURSOR` 회귀.
+
+**E) API (74, C3, 2026-03-19):** **`GET /api/arena/runs`** — **limit** 쿼리 **`clampArenaRunsListLimit`** (domain) 정합 · limit=0/100 clamp 회귀.
+
+**E) API (73, C3, 2026-03-19):** **`POST /api/arena`** — **200** levelId/scenarioId (인증·유효 JSON) 추가 회귀 · reflect 본문 **`clampArenaReflectUserTextToMax`** (domain) 추가.
+
+**E) API (72, C3, 2026-03-19):** **`POST /api/arena`** — 미인증 **401** · 비JSON 본문 **400** `Invalid JSON body` · **`arena/route.test.ts`** · body 문자열 **`normalizeOptionalArenaBodyString`** (domain) 정합.
+
+**E) API (71, C3, 2026-03-19):** **`POST /api/arena/avatar/upload`** — 미인증 **401** · 파일 없음 **400** `NO_FILE` · **`avatar/upload/route.test.ts`** · 업로드 한도 **`arenaAvatarUploadLimits`** (domain) 정합.
+
+**E) API (70, C3, 2026-03-19):** **`GET /api/arena/profile/avatar`** — 미인증 **401** `UNAUTHENTICATED` · **`profile/avatar/route.test.ts`** · 콘텐츠 로케일 **`arenaContentLocaleFromParam`** (domain) `unlocked-scenarios` 정합.
+
+**E) API (69, C3, 2026-03-19):** **`GET /api/arena/avatar`** — `userId` 누락·비UUID **400** `Invalid userId` · 검증 **`isValidArenaAvatarUserIdKey`** (domain) · **`avatar/route.test.ts`** 회귀.
+
+**E) API (68, C3, 2026-03-19):** **`GET /api/arena/unlocked-scenarios`** — 미인증 **401** `UNAUTHENTICATED` · **`unlocked-scenarios/route.test.ts`** · 레벨 슬라이스 필터는 **`isArenaProgramLevelUnlockedByMax`** (domain)로 기존 STAFF/LEADER 순서와 동일 동작.
+
+**E) API (67, C3, 2026-03-19):** **`POST /api/arena/beginner-event`** — 미인증 **401** `UNAUTHENTICATED`; `runId`/step 2–5 누락·무효 **400** `runId and step 2-5 required` · 검증 단일화 `isValidBeginnerEventStep` (domain). **`beginner-event/route.test.ts`** 회귀. *(post-C3 Vitest **292 / 2159**.)*
+
+**[VERIFY] Release Gate — Foundry 66차 (C5, SPRINT 66·272, 2026-03-18):** **RESULT: PASS.** **A~E)** 인바리언트 유지(S66 오픈·워크스페이스 기준 재검). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **288 files / 2148 tests** ✓ · `next build` ✓.
 
 **[VERIFY] Release Gate — Foundry 65차 (C5, SPRINT 65·271, 2026-03-18):** **RESULT: PASS.** **A~E)** 인바리언트 유지(S65: C4 Integrity a11y·C3 leaderboardNearMe 등). **F)** `self-healing-ci.sh`: tsc ✓ · Vitest **288 files / 2148 tests** ✓ · `next build` ✓.
 

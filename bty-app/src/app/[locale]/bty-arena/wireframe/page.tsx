@@ -13,17 +13,13 @@ type Props = { params: Promise<{ locale: string }> };
  */
 export default async function Page({ params }: Props) {
   const { locale } = await params;
-  const loc = locale as Locale;
+  const loc = (locale === "ko" ? "ko" : "en") as Locale;
   const t = getMessages(loc).uxPhase1Stub;
   const base = `/${locale}`;
-  const arenaPlay = `${base}/bty-arena/play`;
+  const arenaPlay = `${base}/bty-arena/run`;
 
   return (
-    <div
-      className="mx-auto max-w-md bg-bty-bg px-4 py-6 pb-28"
-      role="region"
-      aria-label={t.wireframeLandmarkAria}
-    >
+    <main className="mx-auto max-w-md bg-bty-bg px-4 py-6 pb-28" aria-label={t.wireframeLandmarkAria}>
       <CardScreenShell
         title={t.wireframeScreenTitle}
         subtitle={t.wireframeScreenSubtitle}
@@ -109,14 +105,14 @@ export default async function Page({ params }: Props) {
         <p className="text-xs text-bty-secondary">
           {t.wireframeResultStubPrefix}{" "}
           <Link
-            href={`${base}/bty-arena/result`}
+            href={`${base}/bty-arena/record`}
             className="font-medium text-bty-text underline underline-offset-2"
           >
-            /bty-arena/result
+            /bty-arena/record
           </Link>
         </p>
       </CardScreenShell>
       <BottomNav locale={locale} />
-    </div>
+    </main>
   );
 }

@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useCallback, Fragment } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { fetchJson } from "@/lib/read-json";
 import { safeParse } from "@/lib/safeParse";
 import { LoadingFallback, CardSkeleton } from "@/components/bty-arena";
+import { getDebugCopy, type DebugLocale } from "./debugCopy";
 
 type DebugResp = { ok: boolean; error?: string; where?: string };
 
@@ -23,13 +25,18 @@ type Report = {
 };
 
 export default function DebugPage() {
+  const params = useParams();
+  const locale: DebugLocale =
+    typeof params?.locale === "string" && params.locale === "ko" ? "ko" : "en";
+  const t = getDebugCopy(locale);
+  const dateLocale = locale === "ko" ? "ko-KR" : "en-US";
+
   const [testEmail, setTestEmail] = useState("");
   const [testPassword, setTestPassword] = useState("");
   const [testResult, setTestResult] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [sessionCheck, setSessionCheck] = useState<string | null>(null);
 
-  // MVP 에러 제보
   const [reportTitle, setReportTitle] = useState("");
   const [reportDesc, setReportDesc] = useState("");
   const [reportRoute, setReportRoute] = useState<"chat" | "mentor" | "arena" | "other">("other");
@@ -37,16 +44,18 @@ export default function DebugPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
 
-  // 제보 목록
   const [reports, setReports] = useState<Report[]>([]);
   const [reportFilter, setReportFilter] = useState<"" | "open" | "resolved">("");
   const [loadingReports, setLoadingReports] = useState(true);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [resolutionNote, setResolutionNote] = useState<Record<string, string>>({});
 
-  // 패치 배포
   const [patchDeploying, setPatchDeploying] = useState(false);
-  const [patchResult, setPatchResult] = useState<{ ok: boolean; steps?: { step: string; ok: boolean; detail?: string }[]; hint?: string } | null>(null);
+  const [patchResult, setPatchResult] = useState<{
+    ok: boolean;
+    steps?: { step: string; ok: boolean; detail?: string }[];
+    hint?: string;
+  } | null>(null);
 
   const loadReports = useCallback(async () => {
     setLoadingReports(true);
@@ -69,7 +78,7 @@ export default function DebugPage() {
 
   const testLogin = async () => {
     if (!testEmail || !testPassword) {
-      setTestResult("이메일과 비밀번호를 입력해주세요.");
+      setTestResult(t.needCredentials);
       return;
     }
     setTesting(true);
@@ -82,7 +91,7 @@ export default function DebugPage() {
       });
       if (r.ok) {
         const data = r.json;
-        setTestResult(`✅ 성공: ${JSON.stringify(data, null, 2)}`);
+        setTestResult(`${t.loginOkPrefix}${JSON.stringify(data, null, 2)}`);
         if (data?.token) {
           localStorage.setItem("bty_auth_token", data.token);
           setTimeout(() => checkSession(data.token), 500);
@@ -91,9 +100,9 @@ export default function DebugPage() {
       }
       const errObj = safeParse<{ error?: string }>(r.raw);
       const errMsg = errObj?.error ?? r.raw ?? "";
-      setTestResult(`❌ 실패 (${r.status}): ${errMsg}`);
+      setTestResult(`${t.loginFailPrefix}${r.status}): ${errMsg}`);
     } catch (e) {
-      setTestResult(`❌ 네트워크 오류: ${e instanceof Error ? e.message : String(e)}`);
+      setTestResult(`${t.networkErrorPrefix}${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setTesting(false);
     }
@@ -102,7 +111,7 @@ export default function DebugPage() {
   const checkSession = async (token?: string) => {
     const storedToken = token ?? (typeof localStorage !== "undefined" ? localStorage.getItem("bty_auth_token") : null);
     if (!storedToken) {
-      setSessionCheck("토큰이 없습니다.");
+      setSessionCheck(t.noToken);
       return;
     }
     try {
@@ -112,18 +121,18 @@ export default function DebugPage() {
       const data = r.ok ? r.json : null;
       setSessionCheck(
         r.ok && data
-          ? `✅ 세션 확인: ${JSON.stringify(data, null, 2)}`
-          : `❌ 세션 확인 실패 (${r.status}): ${data ? JSON.stringify(data) : r.raw ?? ""}`
+          ? `${t.sessionOkPrefix}${JSON.stringify(data, null, 2)}`
+          : `${t.sessionFailPrefix}${r.status}): ${data ? JSON.stringify(data) : r.raw ?? ""}`
       );
     } catch (e) {
-      setSessionCheck(`❌ 네트워크 오류: ${e instanceof Error ? e.message : String(e)}`);
+      setSessionCheck(`${t.networkErrorPrefix}${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
   const submitReport = async () => {
     const title = reportTitle.trim();
     if (!title) {
-      setSubmitMsg("제목을 입력해주세요.");
+      setSubmitMsg(t.needTitle);
       return;
     }
     setSubmitting(true);
@@ -150,7 +159,7 @@ export default function DebugPage() {
         setReportTitle("");
         setReportDesc("");
         setReportContext("");
-        setSubmitMsg("✅ 제보가 등록되었습니다.");
+        setSubmitMsg(t.reportSubmitted);
         loadReports();
       } else {
         setSubmitMsg(`❌ ${data.error || r.status}`);
@@ -206,68 +215,69 @@ export default function DebugPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8">
+    <main className="container mx-auto max-w-4xl px-4 py-8" aria-label={t.mainRegionAria}>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-neutral-900">디버깅</h1>
-          <p className="mt-1 text-sm text-neutral-600">
-            로그인 테스트, MVP 에러 제보, 교정·패치 배포를 한 곳에서 처리합니다.
-          </p>
+          <h1 className="text-2xl font-semibold text-neutral-900">{t.title}</h1>
+          <p className="mt-1 text-sm text-neutral-600">{t.subtitle}</p>
         </div>
         <Link
-          href="/admin/quality"
+          href={`/${locale}/admin/quality`}
           className="text-sm text-neutral-600 hover:text-neutral-900 underline"
         >
-          Quality Events
+          {t.qualityNav}
         </Link>
       </div>
 
       <div className="space-y-6">
-        {/* MVP 에러 제보 */}
-        <div className="rounded border border-neutral-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-medium text-neutral-900">에러 제보 (MVP)</h2>
+        <section
+          className="rounded border border-neutral-200 bg-white p-6 shadow-sm"
+          role="region"
+          aria-label={t.regionMvp}
+        >
+          <h2 className="mb-4 text-lg font-medium text-neutral-900">{t.mvpTitle}</h2>
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-neutral-700">제목 *</label>
+              <label className="block text-sm font-medium text-neutral-700">{t.titleLabel}</label>
               <input
                 type="text"
                 value={reportTitle}
                 onChange={(e) => setReportTitle(e.target.value)}
                 className="mt-1 w-full rounded border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
-                placeholder="예: 챗봇이 특정 질문에 부적절 응답"
+                placeholder={t.titlePh}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700">설명</label>
+              <label className="block text-sm font-medium text-neutral-700">{t.descLabel}</label>
               <textarea
                 value={reportDesc}
                 onChange={(e) => setReportDesc(e.target.value)}
                 rows={2}
                 className="mt-1 w-full rounded border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
-                placeholder="재현 방법, 기대 동작 등"
+                placeholder={t.descPh}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700">구역</label>
+              <label className="block text-sm font-medium text-neutral-700">{t.routeLabel}</label>
               <select
                 value={reportRoute}
                 onChange={(e) => setReportRoute(e.target.value as "chat" | "mentor" | "arena" | "other")}
                 className="mt-1 rounded border border-neutral-300 px-3 py-2 text-sm"
               >
-                <option value="chat">챗봇</option>
-                <option value="mentor">멘토</option>
-                <option value="arena">아레나</option>
-                <option value="other">기타</option>
+                <option value="chat">{t.routeChat}</option>
+                <option value="mentor">{t.routeMentor}</option>
+                <option value="arena">{t.routeArena}</option>
+                <option value="other">{t.routeOther}</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700">상세(JSON, 선택)</label>
+              <label className="block text-sm font-medium text-neutral-700">{t.contextLabel}</label>
               <textarea
                 value={reportContext}
                 onChange={(e) => setReportContext(e.target.value)}
                 rows={2}
                 className="mt-1 w-full font-mono text-xs rounded border border-neutral-300 px-3 py-2 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
-                placeholder='{"user_message":"...","assistant_message":"..."}'
+                placeholder={t.contextPh}
               />
             </div>
             <button
@@ -275,12 +285,12 @@ export default function DebugPage() {
               onClick={submitReport}
               disabled={submitting}
               className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
-              aria-label={submitting ? "등록 중..." : "제보 올리기"}
+              aria-label={submitting ? t.submitReportAriaBusy : t.submitReportAriaIdle}
             >
-              {submitting ? "등록 중..." : "제보 올리기"}
+              {submitting ? t.submittingReport : t.submitReport}
             </button>
             {submitting && (
-              <div aria-busy="true" aria-label="제보 등록 중">
+              <div aria-busy="true" aria-label={t.submitBusyRegionAria}>
                 <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px", marginTop: 12 }} />
               </div>
             )}
@@ -288,46 +298,49 @@ export default function DebugPage() {
               <p className="text-sm text-neutral-600">{submitMsg}</p>
             )}
           </div>
-        </div>
+        </section>
 
-        {/* 제보 목록 + 교정 완료 */}
-        <div className="rounded border border-neutral-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-medium text-neutral-900">제보 목록</h2>
+        <section
+          className="rounded border border-neutral-200 bg-white p-6 shadow-sm"
+          role="region"
+          aria-label={t.regionList}
+        >
+          <h2 className="mb-4 text-lg font-medium text-neutral-900">{t.listTitle}</h2>
           <div className="mb-3 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => setReportFilter("")}
               className={`rounded px-3 py-1.5 text-sm ${reportFilter === "" ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"}`}
-              aria-label="제보 목록 전체 보기"
+              aria-label={t.filterAllAria}
             >
-              전체
+              {t.filterAll}
             </button>
             <button
               type="button"
               onClick={() => setReportFilter("open")}
               className={`rounded px-3 py-1.5 text-sm ${reportFilter === "open" ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"}`}
-              aria-label="미해결 제보만 보기"
+              aria-label={t.filterOpenAria}
             >
-              미해결
+              {t.filterOpen}
             </button>
             <button
               type="button"
               onClick={() => setReportFilter("resolved")}
               className={`rounded px-3 py-1.5 text-sm ${reportFilter === "resolved" ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"}`}
-              aria-label="해결된 제보만 보기"
+              aria-label={t.filterResolvedAria}
             >
-              해결됨
+              {t.filterResolved}
             </button>
           </div>
           {loadingReports ? (
             <LoadingFallback
               icon="📋"
-              message="제보 목록 불러오는 중…"
+              message={t.loadingList}
               withSkeleton
               style={{ padding: "32px 20px" }}
             />
           ) : reports.length === 0 ? (
-            <p className="text-sm text-neutral-500">제보가 없습니다.</p>
+            <p className="text-sm text-neutral-500">{t.noReports}</p>
           ) : (
             <ul className="space-y-3">
               {reports.map((r) => (
@@ -345,19 +358,22 @@ export default function DebugPage() {
                         )}
                         {r.status === "resolved" && (
                           <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-800">
-                            해결됨
+                            {t.resolvedBadge}
                           </span>
                         )}
                       </div>
                       <span className="text-xs text-neutral-500">
-                        {new Date(r.created_at).toLocaleString("ko-KR")}
+                        {new Date(r.created_at).toLocaleString(dateLocale)}
                       </span>
                     </div>
                     {r.description && (
                       <p className="mt-1 text-sm text-neutral-600">{r.description}</p>
                     )}
                     {r.status === "resolved" && r.resolution_note && (
-                      <p className="mt-2 text-sm text-emerald-700">교정 메모: {r.resolution_note}</p>
+                      <p className="mt-2 text-sm text-emerald-700">
+                        {t.resolutionNotePrefix}
+                        {r.resolution_note}
+                      </p>
                     )}
                     {r.status === "open" && (
                       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -365,7 +381,7 @@ export default function DebugPage() {
                           type="text"
                           value={resolutionNote[r.id] ?? ""}
                           onChange={(e) => setResolutionNote((prev) => ({ ...prev, [r.id]: e.target.value }))}
-                          placeholder="교정 메모 (선택)"
+                          placeholder={t.resolutionNotePh}
                           className="rounded border border-neutral-300 px-2 py-1 text-sm w-48"
                         />
                         <button
@@ -373,15 +389,15 @@ export default function DebugPage() {
                           onClick={() => resolveReport(r.id)}
                           disabled={resolvingId === r.id}
                           className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-                          aria-label={resolvingId === r.id ? "처리 중..." : "교정 완료"}
+                          aria-label={resolvingId === r.id ? t.resolveAriaBusy : t.resolveAriaIdle}
                         >
-                          {resolvingId === r.id ? "처리 중..." : "교정 완료"}
+                          {resolvingId === r.id ? t.resolving : t.resolveDone}
                         </button>
                       </div>
                     )}
                   </li>
                   {resolvingId === r.id && (
-                    <li aria-busy="true" aria-label="처리 중">
+                    <li aria-busy="true" aria-label={t.resolvingRegionAria}>
                       <CardSkeleton showLabel={false} lines={2} style={{ padding: "16px 20px" }} />
                     </li>
                   )}
@@ -389,32 +405,33 @@ export default function DebugPage() {
               ))}
             </ul>
           )}
-        </div>
+        </section>
 
-        {/* 패치 배포 (클릭 하나로) */}
-        <div className="rounded border border-neutral-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-medium text-neutral-900">패치 배포</h2>
-          <p className="mb-3 text-sm text-neutral-600">
-            패치 생성(bty-ai-core)과 배포 웹훅을 한 번에 실행합니다. DEPLOY_WEBHOOK_URL을 설정하면 실제 배포가 트리거됩니다.
-          </p>
+        <section
+          className="rounded border border-neutral-200 bg-white p-6 shadow-sm"
+          role="region"
+          aria-label={t.regionPatch}
+        >
+          <h2 className="mb-4 text-lg font-medium text-neutral-900">{t.patchTitle}</h2>
+          <p className="mb-3 text-sm text-neutral-600">{t.patchDesc}</p>
           <button
             type="button"
             onClick={runPatchDeploy}
             disabled={patchDeploying}
             className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
-            aria-label={patchDeploying ? "실행 중..." : "패치 생성 및 배포"}
+            aria-label={patchDeploying ? t.patchAriaBusy : t.patchAriaIdle}
           >
-            {patchDeploying ? "실행 중..." : "패치 생성 및 배포"}
+            {patchDeploying ? t.patchRunning : t.patchRun}
           </button>
           {patchDeploying && (
-            <div className="mt-3" aria-busy="true" aria-label="패치 배포 실행 중">
+            <div className="mt-3" aria-busy="true" aria-label={t.patchBusyRegionAria}>
               <CardSkeleton showLabel={false} lines={2} style={{ padding: "16px 20px" }} />
             </div>
           )}
           {patchResult && (
             <div className="mt-3 rounded bg-neutral-50 p-3 text-sm">
               <p className={patchResult.ok ? "text-emerald-700 font-medium" : "text-amber-700"}>
-                {patchResult.ok ? "✅ 완료" : "⚠️ 일부 단계 실패"}
+                {patchResult.ok ? t.patchOk : t.patchWarn}
               </p>
               {patchResult.steps?.map((s, i) => (
                 <p key={i} className="mt-1 text-neutral-600">
@@ -426,14 +443,17 @@ export default function DebugPage() {
               )}
             </div>
           )}
-        </div>
+        </section>
 
-        {/* 로그인 테스트 */}
-        <div className="rounded border border-neutral-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-medium text-neutral-900">로그인 테스트</h2>
+        <section
+          className="rounded border border-neutral-200 bg-white p-6 shadow-sm"
+          role="region"
+          aria-label={t.regionLogin}
+        >
+          <h2 className="mb-4 text-lg font-medium text-neutral-900">{t.loginTitle}</h2>
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-neutral-700">이메일</label>
+              <label className="block text-sm font-medium text-neutral-700">{t.emailLabel}</label>
               <input
                 type="email"
                 value={testEmail}
@@ -443,13 +463,13 @@ export default function DebugPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700">비밀번호</label>
+              <label className="block text-sm font-medium text-neutral-700">{t.passwordLabel}</label>
               <input
                 type="password"
                 value={testPassword}
                 onChange={(e) => setTestPassword(e.target.value)}
                 className="mt-1 w-full rounded border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
-                placeholder="비밀번호"
+                placeholder={t.passwordPh}
               />
             </div>
             <button
@@ -457,12 +477,12 @@ export default function DebugPage() {
               onClick={testLogin}
               disabled={testing}
               className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
-              aria-label={testing ? "테스트 중..." : "로그인 테스트"}
+              aria-label={testing ? t.loginTestAriaBusy : t.loginTestAriaIdle}
             >
-              {testing ? "테스트 중..." : "로그인 테스트"}
+              {testing ? t.loginTesting : t.loginTest}
             </button>
             {testing && (
-              <div className="mt-3" aria-busy="true" aria-label="로그인 테스트 중">
+              <div className="mt-3" aria-busy="true" aria-label={t.loginBusyRegionAria}>
                 <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
               </div>
             )}
@@ -472,33 +492,41 @@ export default function DebugPage() {
               </div>
             )}
           </div>
-        </div>
+        </section>
 
-        <div className="rounded border border-neutral-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-medium text-neutral-900">세션 확인</h2>
+        <section
+          className="rounded border border-neutral-200 bg-white p-6 shadow-sm"
+          role="region"
+          aria-label={t.regionSession}
+        >
+          <h2 className="mb-4 text-lg font-medium text-neutral-900">{t.sessionTitle}</h2>
           <button
             type="button"
             onClick={() => checkSession()}
             className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
-            aria-label="현재 세션 확인"
+            aria-label={t.sessionCheckAria}
           >
-            현재 세션 확인
+            {t.sessionCheck}
           </button>
           {sessionCheck && (
             <div className="mt-3 rounded bg-neutral-50 p-3">
               <pre className="whitespace-pre-wrap text-xs text-neutral-800">{sessionCheck}</pre>
             </div>
           )}
-        </div>
+        </section>
 
-        <div className="rounded border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
-          <p className="mb-2 font-semibold">디버깅 팁</p>
+        <section
+          className="rounded border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800"
+          role="region"
+          aria-label={t.regionTips}
+        >
+          <p className="mb-2 font-semibold">{t.tipsTitle}</p>
           <ul className="list-disc list-inside space-y-1 text-xs">
-            <li>에러 제보 후 제보 목록에서 「교정 완료」로 처리하고, 「패치 생성 및 배포」로 한 번에 반영할 수 있습니다.</li>
-            <li>DEPLOY_WEBHOOK_URL: Cloudflare Pages Deploy Hook URL 또는 배포 트리거용 URL을 넣으면 클릭 시 배포가 실행됩니다.</li>
+            <li>{t.tips1}</li>
+            <li>{t.tips2}</li>
           </ul>
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }

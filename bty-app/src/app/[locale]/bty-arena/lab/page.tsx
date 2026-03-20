@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { CardSkeleton, ProgressCard } from "@/components/bty-arena";
 import { arenaFetch } from "@/lib/http/arenaFetch";
+import { getMessages } from "@/lib/i18n";
 
 type LabUsageRes = {
   limit: number;
@@ -15,7 +16,9 @@ type LabUsageRes = {
 export default function LabPage() {
   const params = useParams();
   const locale = typeof params?.locale === "string" ? params.locale : "en";
-  const isKo = locale === "ko";
+  const loc = locale === "ko" ? "ko" : "en";
+  const m = getMessages(loc);
+  const t = m.uxPhase1Stub;
 
   const [usage, setUsage] = React.useState<LabUsageRes | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -25,48 +28,54 @@ export default function LabPage() {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    const stub = getMessages(loc).uxPhase1Stub;
     arenaFetch<LabUsageRes>("/api/arena/lab/usage")
       .then((data) => {
         if (!cancelled) setUsage(data);
       })
-      .catch((e) => {
-        if (!cancelled) setError(e?.message ?? "Failed to load");
+      .catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message.trim() : "";
+        if (!cancelled) setError(msg || stub.arenaLabUsageLoadError);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    return () => { cancelled = true; };
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [loc]);
 
   return (
-    <div style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}>
+    <main
+      data-testid="arena-lab-main"
+      aria-label={t.arenaLabMainRegionAria}
+      style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}
+    >
       <div style={{ marginTop: 0 }}>
-        <h1 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 700 }}>
-          {isKo ? "Leadership Lab" : "Leadership Lab"}
-        </h1>
-        <p style={{ margin: 0, fontSize: 14, opacity: 0.85 }}>
-          {isKo ? "오늘 하루 3회까지 시나리오를 완료하면 Core XP를 얻을 수 있습니다." : "Complete up to 3 scenarios per day to earn Core XP."}
-        </p>
+        <h1 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 700 }}>{t.arenaLabTitle}</h1>
+        <p style={{ margin: 0, fontSize: 14, opacity: 0.85 }}>{t.arenaLabLead}</p>
       </div>
 
       <div style={{ marginTop: 20 }}>
-        <ProgressCard label={isKo ? "오늘 남은 횟수" : "Remaining today"}>
+        <ProgressCard label={t.arenaLabRemainingTodayLabel}>
           {loading && (
-            <CardSkeleton showLabel={false} lines={1} style={{ padding: "16px 20px" }} />
+            <div aria-busy="true" aria-label={m.loading.message}>
+              <CardSkeleton showLabel={false} lines={1} style={{ padding: "16px 20px" }} />
+            </div>
           )}
-          {error && (
-            <p style={{ margin: 0, fontSize: 14, color: "#8b2e2e" }}>{error}</p>
-          )}
+          {error && <p style={{ margin: 0, fontSize: 14, color: "#8b2e2e" }}>{error}</p>}
           {!loading && !error && usage !== null && (
             <div style={{ padding: "4px 0" }}>
               <p style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
                 {usage.attemptsRemaining} / {usage.limit}
                 <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.85 }}>
-                  {" "}{isKo ? "회 남음" : "remaining"}
+                  {" "}
+                  {t.arenaLabRemainingSuffix}
                 </span>
               </p>
               <p style={{ margin: "8px 0 0", fontSize: 13, opacity: 0.8 }}>
-                {isKo ? "사용한 횟수: " : "Used: "}{usage.attemptsUsed}
+                {t.arenaLabUsedPrefix}
+                {usage.attemptsUsed}
               </p>
             </div>
           )}
@@ -75,7 +84,7 @@ export default function LabPage() {
 
       <div style={{ marginTop: 24 }}>
         <Link
-          href={`/${locale}/bty-arena/play`}
+          href={`/${locale}/bty-arena/run`}
           style={{
             display: "inline-block",
             padding: "10px 16px",
@@ -86,11 +95,11 @@ export default function LabPage() {
             fontSize: 14,
             fontWeight: 500,
           }}
-          aria-label={isKo ? "Arena로 돌아가기" : "Back to Arena"}
+          aria-label={t.arenaLabBackToArena}
         >
-          {isKo ? "← Arena로 돌아가기" : "← Back to Arena"}
+          {t.arenaLabBackToArena}
         </Link>
       </div>
-    </div>
+    </main>
   );
 }

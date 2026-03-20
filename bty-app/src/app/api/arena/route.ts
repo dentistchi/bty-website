@@ -9,6 +9,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { withArenaReflection } from "@/lib/bty/arena/withArenaReflection";
+import { normalizeOptionalArenaBodyString } from "@/domain/rules/normalizeOptionalArenaBodyString";
 
 export const runtime = "nodejs";
 
@@ -17,15 +18,15 @@ async function baseArenaHandler(req: Request): Promise<Response> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
 
-  let body: { levelId?: string; scenarioId?: string; userText?: string; scenario?: unknown };
+  let body: { levelId?: unknown; scenarioId?: unknown; userText?: string; scenario?: unknown };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const levelId = body.levelId != null ? String(body.levelId).trim() : undefined;
-  const scenarioId = body.scenarioId != null ? String(body.scenarioId).trim() : undefined;
+  const levelId = normalizeOptionalArenaBodyString(body.levelId);
+  const scenarioId = normalizeOptionalArenaBodyString(body.scenarioId);
 
   return NextResponse.json({
     ok: true,

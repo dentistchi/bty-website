@@ -2,7 +2,7 @@
 
 **목적**: 대기 작업이 없을 때 `scripts/next-project-fill-board.sh`가 여기서 다음 작업을 읽어 보드에 추가한다.  
 **기준**: `docs/NEXT_PROJECT_RECOMMENDED.md` §1·§2.  
-**갱신일**: 2026-03-18 — 보드 **SPRINT 66** 이번 런. 다음 = **67**.
+**갱신일**: 2026-03-20 — 보드 **SPRINT 83** 이번 런. (S82 → `exit 2` → `PARALLEL_QUEUE_REFILL` §3 → S83.)
 
 ---
 
@@ -38,17 +38,17 @@ MASTER_PLAN  →  NEXT_BACKLOG_AUTO4  →  CURSOR_TASK_BOARD
 
 ---
 
-## 다음 배치 목록 — FOUNDRY **SPRINT 65**
+## 다음 배치 목록 — FOUNDRY **SPRINT 83**
 
 ```
-Fix/Polish|[VERIFY] Release Gate 65차|C5. 보드 S65 TASK1.
-Fix/Polish|[DOCS] BACKLOG + S64·S63 잔여|C1. S65 TASK2·3·5·7.
-Fix/Polish|[UI] Center/Foundry 접근성|C4. S65 TASK4.
-Fix/Polish|[DOMAIN]·[TEST] Arena|C3. S65 TASK8·9.
-Fix/Polish|[VERIFY] q237-smoke + self-healing-ci|C6. S65 TASK10.
+Fix/Polish|[VERIFY] Release Gate 83차|C5. 보드 S83 TASK1.
+Fix/Polish|[DOCS] BACKLOG + S82 잔여|C1. S83 TASK2·3·5·7.
+Fix/Polish|[UI] Center/Foundry 접근성|C4. S83 TASK4. 보드 PROMPT 제외 목록 준수.
+Fix/Polish|[DOMAIN]·[TEST] Arena|C3. S83 TASK8·9.
+Fix/Polish|[VERIFY] q237-smoke + self-healing-ci|C6. S83 TASK10.
 ```
 
-*(2026-03-18: SPRINT 65.)*
+*(2026-03-20: SPRINT 83 · S82 병렬 기아 `exit 2` → `PARALLEL_QUEUE_REFILL` §3.)*
 
 ---
 

@@ -13,3 +13,10 @@ export const REFLECT_USER_TEXT_MIN_CHARS = 1 as const;
  * 권장 최소 글자 수 — `reflectTextLengthHintKey` developing 구간(≥ max의 15%)과 정합.
  */
 export const REFLECT_USER_TEXT_RECOMMENDED_MIN_CHARS = 3600 as const;
+
+/**
+ * Clamps reflect user text to max chars (Arena reflect only — weekly/season unrelated).
+ */
+export function clampArenaReflectUserTextToMax(text: string): string {
+  return text.slice(0, REFLECT_USER_TEXT_MAX_CHARS);
+}

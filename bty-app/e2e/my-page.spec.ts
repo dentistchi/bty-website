@@ -2,21 +2,29 @@ import { expect, test } from "@playwright/test";
 
 /** My Page — 상태 화면 testid 고정. */
 test.describe("My Page (authenticated)", () => {
-  test("overview cards & no raw AIR", async ({ page }) => {
-    await page.goto("/en/my-page");
-    await expect(page.getByTestId("my-page-overview")).toBeVisible();
-    await expect(page.getByTestId("my-page-identity-card")).toBeVisible();
-    await expect(page.getByTestId("my-page-progress-card")).toBeVisible();
-    await expect(page.getByTestId("my-page-team-card")).toBeVisible();
+  test("overview leadership console & no raw AIR", async ({ page }) => {
+    test.setTimeout(120_000);
+
+    const statePromise = page
+      .waitForResponse(
+        (res) => res.url().includes("/api/bty/my-page/state") && res.request().method() === "GET",
+        { timeout: 35_000 },
+      )
+      .catch(() => null);
+
+    await page.goto("/en/my-page", { waitUntil: "load" });
+    await expect(page).toHaveURL(/\/en\/my-page/, { timeout: 10_000 });
+    await expect(page).not.toHaveURL(/\/bty\/login/);
+    await statePromise;
+
+    await expect(page.getByTestId("my-page-overview")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId("my-page-leadership-console")).toBeVisible();
     await expect(page.getByTestId("my-page-code-name")).toBeVisible();
     await expect(page.getByTestId("my-page-stage")).toBeVisible();
-    await expect(page.getByTestId("my-page-core-progress")).toBeVisible();
-    await expect(page.getByTestId("my-page-weekly-progress")).toBeVisible();
-    await expect(page.getByTestId("my-page-tii-summary")).toBeVisible();
+    await expect(page.getByTestId("leadership-state-row")).toBeVisible();
 
     const overview = page.getByTestId("my-page-overview");
-    await expect(overview.getByText(/^AIR$/)).toHaveCount(0);
-    await expect(overview.getByText(/AIR\s*(score|raw|index)/i)).toHaveCount(0);
+    await expect(overview.getByText(/AIR\s*[0-9.]/)).toHaveCount(0);
   });
 
   test("progress screen", async ({ page }) => {

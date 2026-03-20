@@ -2,12 +2,48 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { LoadingFallback } from "@/components/bty-arena";
 
 type ListResp = { files: string[]; error?: string };
 type ContentResp = { file: string; content: string; error?: string };
 
 export default function AdminSqlMigrationsPage() {
+  const params = useParams();
+  const locale = typeof params?.locale === "string" && params.locale === "ko" ? "ko" : "en";
+  const t =
+    locale === "ko"
+      ? {
+          mainRegionAria: "SQL 마이그레이션 복사",
+          title: "SQL 마이그레이션 복사",
+          subtitle:
+            "파일을 고른 뒤 [복사] 버튼으로 클립보드에 넣고, 에디터(Supabase SQL 등)에서 실행하세요.",
+          debugLink: "디버깅",
+          loadingList: "목록 불러오는 중…",
+          loadingContent: "내용 불러오는 중…",
+          fileLabel: "파일 선택",
+          copy: "복사",
+          copied: "복사됨",
+          copyAria: "선택한 파일 내용을 클립보드에 복사",
+          copyDoneAria: "복사됨",
+          noFiles: "마이그레이션 파일이 없습니다.",
+        }
+      : {
+          mainRegionAria: "SQL migration copy",
+          title: "SQL migrations",
+          subtitle:
+            "Pick a file, use Copy to put it on the clipboard, then run it in your editor (e.g. Supabase SQL).",
+          debugLink: "Debug",
+          loadingList: "Loading list…",
+          loadingContent: "Loading file content…",
+          fileLabel: "Choose file",
+          copy: "Copy",
+          copied: "Copied",
+          copyAria: "Copy selected file contents to clipboard",
+          copyDoneAria: "Copied",
+          noFiles: "No migration files found.",
+        };
+
   const [files, setFiles] = useState<string[]>([]);
   const [selected, setSelected] = useState<string>("");
   const [content, setContent] = useState<string>("");
@@ -86,28 +122,29 @@ export default function AdminSqlMigrationsPage() {
   }, [content]);
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8">
+    <main className="container mx-auto max-w-4xl px-4 py-8" aria-label={t.mainRegionAria}>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-neutral-900">SQL 마이그레이션 복사</h1>
-          <p className="mt-1 text-sm text-neutral-600">
-            파일을 고른 뒤 [복사] 버튼으로 클립보드에 넣고, 에디터(Supabase SQL 등)에서 실행하세요.
-          </p>
+          <h1 className="text-2xl font-semibold text-neutral-900">{t.title}</h1>
+          <p className="mt-1 text-sm text-neutral-600">{t.subtitle}</p>
         </div>
-        <Link href="/admin/debug" className="text-sm text-neutral-600 underline hover:text-neutral-900">
-          디버깅
+        <Link
+          href={`/${locale}/admin/debug`}
+          className="text-sm text-neutral-600 underline hover:text-neutral-900"
+        >
+          {t.debugLink}
         </Link>
       </div>
 
       {loading && (
-        <LoadingFallback icon="📋" message="목록 불러오는 중…" withSkeleton />
+        <LoadingFallback icon="📋" message={t.loadingList} withSkeleton />
       )}
       {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 
       {!loading && files.length > 0 && (
-        <div className="space-y-4">
+        <div className="space-y-4" role="region" aria-label={t.fileLabel}>
           <div>
-            <label className="mb-2 block text-sm font-medium text-neutral-700">파일 선택</label>
+            <label className="mb-2 block text-sm font-medium text-neutral-700">{t.fileLabel}</label>
             <select
               value={selected}
               onChange={(e) => setSelected(e.target.value)}
@@ -124,23 +161,27 @@ export default function AdminSqlMigrationsPage() {
           {contentLoading && (
             <LoadingFallback
               icon="📄"
-              message="내용 불러오는 중…"
+              message={t.loadingContent}
               withSkeleton
               style={{ padding: "24px 16px" }}
             />
           )}
 
           {!contentLoading && content && (
-            <div className="rounded border border-neutral-200 bg-white shadow-sm">
+            <div
+              className="rounded border border-neutral-200 bg-white shadow-sm"
+              role="region"
+              aria-label={selected}
+            >
               <div className="flex items-center justify-between border-b border-neutral-200 bg-neutral-50 px-4 py-2">
                 <span className="text-sm font-medium text-neutral-700">{selected}</span>
                 <button
                   type="button"
                   onClick={copyToClipboard}
-                  aria-label={copyDone ? "복사됨" : "선택한 파일 내용을 클립보드에 복사"}
+                  aria-label={copyDone ? t.copyDoneAria : t.copyAria}
                   className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700"
                 >
-                  {copyDone ? "복사됨" : "복사"}
+                  {copyDone ? t.copied : t.copy}
                 </button>
               </div>
               <pre className="max-h-[60vh] overflow-auto p-4 text-left text-xs leading-relaxed text-neutral-800 whitespace-pre-wrap break-all">
@@ -152,16 +193,20 @@ export default function AdminSqlMigrationsPage() {
       )}
 
       {!loading && files.length === 0 && !error && (
-        <p className="text-sm text-neutral-600">마이그레이션 파일이 없습니다.</p>
+        <p className="text-sm text-neutral-600">{t.noFiles}</p>
       )}
 
       <div className="mt-6 rounded border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
         <p>
-          <Link href="/admin/arena-membership" className="underline hover:text-neutral-900">Arena 멤버십 승인</Link>
+          <Link href={`/${locale}/admin/arena-membership`} className="underline hover:text-neutral-900">
+            {locale === "ko" ? "Arena 멤버십 승인" : "Arena membership"}
+          </Link>
           {" · "}
-          <Link href="/admin/quality" className="underline hover:text-neutral-900">Quality</Link>
+          <Link href={`/${locale}/admin/quality`} className="underline hover:text-neutral-900">
+            Quality
+          </Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

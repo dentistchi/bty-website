@@ -78,21 +78,21 @@ export default function ElitePageClient() {
 
   if (loading) {
     return (
-      <div
+      <main
         style={{ maxWidth: 640, margin: "0 auto", padding: "24px 16px" }}
         aria-busy="true"
-        aria-label={tElite.loadingElitePageAria}
+        aria-label={tElite.elitePageMainRegionAria}
       >
         <div style={{ display: "grid", gap: 28, marginTop: 24 }}>
           <CardSkeleton lines={3} showLabel={true} />
           <CardSkeleton lines={2} showLabel={true} />
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", padding: "24px 16px" }} role="main" aria-labelledby="elite-page-heading">
+    <main style={{ maxWidth: 640, margin: "0 auto", padding: "24px 16px" }} aria-label={tElite.elitePageMainRegionAria}>
       <div style={{ marginTop: 24 }}>
         <h1 id="elite-page-heading" style={{ fontSize: 24, fontWeight: 700, marginBottom: 16 }}>
           {tElite.pageTitle}
@@ -456,6 +456,6 @@ export default function ElitePageClient() {
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }

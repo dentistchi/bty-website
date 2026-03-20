@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { isValidBeginnerEventStep } from "@/domain/rules/beginnerRunEventStep";
 
 /** POST body: { runId, step (2|3|4|5), emotionIndex? | riskIndex? | integrityIndex? | decisionIndex? } */
 export async function POST(req: Request) {
@@ -10,11 +11,12 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const runId = String(body?.runId ?? "");
-  const step = Number(body?.step);
-  if (!runId || ![2, 3, 4, 5].includes(step)) {
+  const runId = String(body?.runId ?? "").trim();
+  const stepRaw = body?.step;
+  if (!runId || !isValidBeginnerEventStep(stepRaw)) {
     return NextResponse.json({ error: "runId and step 2-5 required" }, { status: 400 });
   }
+  const step = stepRaw;
 
   const eventType =
     step === 2 ? "BEGINNER_EMOTION" :

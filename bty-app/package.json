@@ -18,6 +18,7 @@
     "test:q237-smoke": "vitest run \"src/app/[locale]/bty-arena/q237-stub-routes.smoke.test.ts\" \"src/app/[locale]/bty-arena/q237-bty-arena-result.smoke.test.ts\" \"src/app/[locale]/my-page/q237-my-page-subroutes.smoke.test.ts\"",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:bty": "playwright test --project=bty-loop",
     "test:e2e:install": "playwright install chromium",
     "e2e:auth": "playwright test e2e/auth.setup.ts --project=setup",
     "e2e:seed-comeback": "node scripts/e2e-seed-comeback-profile.mjs",

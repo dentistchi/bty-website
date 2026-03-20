@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getLabAttemptsUsed } from "@/lib/bty/arena/labUsage";
 import { LAB_DAILY_ATTEMPT_LIMIT } from "@/lib/bty/arena/arenaLabXp";
+import { arenaLabAttemptsRemaining } from "@/domain/rules/arenaLabAttemptsRemaining";
 
 /**
  * GET /api/arena/lab/usage
@@ -16,7 +17,7 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
 
   const attemptsUsed = await getLabAttemptsUsed(supabase, user.id);
-  const attemptsRemaining = Math.max(0, LAB_DAILY_ATTEMPT_LIMIT - attemptsUsed);
+  const attemptsRemaining = arenaLabAttemptsRemaining(attemptsUsed, LAB_DAILY_ATTEMPT_LIMIT);
 
   return NextResponse.json({
     limit: LAB_DAILY_ATTEMPT_LIMIT,

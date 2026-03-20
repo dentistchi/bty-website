@@ -20,7 +20,9 @@ type UsersResp = { users?: User[]; error?: string };
 export default function UsersPage() {
   const params = useParams();
   const locale = (typeof params?.locale === "string" ? params.locale : "en") as Locale;
-  const loadingMessage = getMessages(locale).loading.message;
+  const messages = getMessages(locale);
+  const t = messages.adminUsers;
+  const loadingMessage = messages.loading.message;
 
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,7 +128,7 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8">
+    <main className="container mx-auto max-w-4xl px-4 py-8" aria-label={t.mainRegionAria}>
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-neutral-900">사용자 관리</h1>
@@ -135,7 +137,7 @@ export default function UsersPage() {
           </p>
         </div>
         <Link
-          href="/admin/quality"
+          href={`/${locale}/admin/quality`}
           className="text-sm text-neutral-600 hover:text-neutral-900 underline"
         >
           Quality Events로 돌아가기
@@ -303,6 +305,6 @@ export default function UsersPage() {
           <li>목록·생성·삭제·비밀번호 변경은 Supabase 대시보드에서도 가능합니다.</li>
         </ul>
       </div>
-    </div>
+    </main>
   );
 }

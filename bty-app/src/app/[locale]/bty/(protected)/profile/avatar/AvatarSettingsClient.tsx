@@ -105,25 +105,25 @@ export default function AvatarSettingsClient() {
   if (loading) {
     const tLoading = getMessages(locale === "ko" ? "ko" : "en").loading;
     return (
-      <div className="p-6 max-w-2xl mx-auto">
+      <main className="p-6 max-w-2xl mx-auto" aria-label={t.avatarSettingsMainRegionAria}>
         <LoadingFallback icon="⏳" message={tLoading.message} withSkeleton style={{ paddingTop: 24 }} />
-      </div>
+      </main>
     );
   }
 
   if (!data) {
     return (
-      <div className="p-6 max-w-2xl mx-auto">
+      <main className="p-6 max-w-2xl mx-auto" aria-label={t.avatarSettingsMainRegionAria}>
         <p className="text-sm text-red-600">{t.errorLoad}</p>
         <Link href={`/${locale}/bty`} className="text-sm underline mt-2 inline-block" aria-label={t.backToFoundryAria}>
           {t.backToFoundry}
         </Link>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-8">
+    <main className="p-6 max-w-2xl mx-auto space-y-8" aria-label={t.avatarSettingsMainRegionAria}>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t.pageTitle}</h1>
         <Link
@@ -276,6 +276,6 @@ export default function AvatarSettingsClient() {
           )}
         </div>
       )}
-    </div>
+    </main>
   );
 }

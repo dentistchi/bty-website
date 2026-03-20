@@ -5,8 +5,8 @@ import {
   encodeRunsCursor,
   postgrestOrRunsAfterCursor,
 } from "@/lib/bty/arena/runsCursor";
-
-const CURSOR_MAX_LEN = 512;
+import { clampArenaRunsListLimit } from "@/domain/rules/arenaRunsListLimit";
+import { isArenaRunsCursorOverMax } from "@/domain/rules/arenaRunsCursorMaxLength";
 
 /**
  * GET /api/arena/runs — 사용자 **런 목록**(최근순, 페이지네이션 `limit`·`cursor`).
@@ -42,14 +42,16 @@ export async function GET(req: NextRequest) {
 
   const url = new URL(req.url);
   const limitRaw = url.searchParams.get("limit");
-  const limit = Math.max(1, Math.min(50, Number(limitRaw ?? 10) || 10));
+  const limit = clampArenaRunsListLimit(
+    limitRaw !== null ? Number(limitRaw) : 10,
+  );
   const fetchSize = limit + 1;
 
   const cursorParam = url.searchParams.get("cursor");
   const trimmedCursor = cursorParam?.trim() ?? "";
 
   if (trimmedCursor.length > 0) {
-    if (trimmedCursor.length > CURSOR_MAX_LEN) {
+    if (isArenaRunsCursorOverMax(trimmedCursor)) {
       const out = NextResponse.json({ error: "INVALID_CURSOR" }, { status: 400 });
       copyCookiesAndDebug(base, out, req, true);
       return out;

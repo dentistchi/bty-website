@@ -88,9 +88,8 @@ export default function HealingPageClient({ locale }: Props) {
       : undefined;
 
   return (
-    <div
+    <main
       style={{ maxWidth: 640, margin: "0 auto", padding: "24px 16px" }}
-      role="main"
       aria-label={t.mainLandmarkAria}
       aria-labelledby="healing-heading"
     >
@@ -239,7 +238,7 @@ export default function HealingPageClient({ locale }: Props) {
           </Link>
         </nav>
       </section>
-    </div>
+    </main>
   );
 }
 

@@ -9,18 +9,18 @@
 
 ## CURRENT TASK
 
-**현재 배치**: **SPRINT 40** (2026-03-11 splint 10).  
-**First Task**: TASK 1 (C5 Release Gate 40차) — 미완료 시 C1·C3·C4는 대기.  
-**할 일 확인**: repo root **docs/CURSOR_TASK_BOARD.md** "이번 런" 표 + **docs/agent-runtime/AUTO4_PROMPTS.md** 복사용 문장.
+**현재 배치**: **SPRINT 83** (`SPRINT_PLAN` **289**, REFRESH 2026-03-20 · Cursor 5).  
+**잔여 `[ ]`:** **C1** TASK2·3·5·7 · **C4 TASK33** · **C3 TASK29** · **C6 TASK30** · **C5 TASK32** (보드 표 단일 진실).  
+**할 일 확인**: repo root **docs/CURSOR_TASK_BOARD.md** "이번 런" 표 + **docs/agent-runtime/AUTO4_PROMPTS.md**.
 
-| OWNER | SPRINT 40 할 일 | 비고 |
+| OWNER | SPRINT 83 할 일 | 비고 |
 |-------|------------------|------|
-| C5 | TASK 1 [ ] Release Gate 40차, TASK 6 [ ] 엘리트 3차 체크리스트 | 선행 |
-| C1 | TASK 2·3·5·7·10 [ ] | TASK 1 후 진행 |
-| C4 | TASK 4 [ ] 접근성 1곳 | TASK 1 후 진행 |
-| C3 | TASK 8·9 [ ] 미커버/route 테스트 (선택) | TASK 1 후 진행 |
-| C2 | 해당 없음 (이번 런 C2 행 없음) | N/A Exit |
-| C6 | 해당 없음 (보드에 C6 행 없음) | N/A Exit |
+| C5 | **1·6·14·18·21·23·27** **[x]** · **32** `[ ]` | Gate·엘리트 동기 |
+| C1 | TASK **2·3·5·7** `[ ]` DOCS | |
+| C4 | **4·11·15·19·24·25·31** **[x]** · **33** `[ ]` UI | |
+| C3 | **8·9·13·16·22·26·28** **[x]** · **29** `[ ]` DOMAIN | |
+| C2 | 다음 **push** 시 Gate 동기 | 표에 C2 행 없음 |
+| C6 | **10·12·17·20** **[x]** · **30** `[ ]` VERIFY | |
 
 ---
 
@@ -28,12 +28,12 @@
 
 | Cursor | Role | Status | Task |
 |--------|------|--------|------|
-| C1 | Commander | idle | SPRINT 40 TASK 2·3·5·7·10 — TASK 1 후 진행 |
-| C2 | Gatekeeper | done | SPRINT 40: no OWNER row; N/A exit |
-| C3 | Domain/API | idle | SPRINT 40 TASK 8·9 — TASK 1 후 진행 |
-| C4 | UI | idle | SPRINT 40 TASK 4 — TASK 1 후 진행 |
-| C5 | Integrator | pending | SPRINT 40 TASK 1 (Release Gate 40차) · TASK 6 (엘리트 3차) — 선행 |
-| C6 | Test/Fix | done | SPRINT 40: no C6 row; N/A exit |
+| C1 | Commander | pending | TASK 2·3·5·7 DOCS |
+| C2 | Gatekeeper | pending | push 후 Gate 동기 |
+| C3 | Domain/API | pending | **TASK 29** |
+| C4 | UI | pending | **TASK 33** |
+| C5 | Integrator | pending | **TASK 32** |
+| C6 | Test/Fix | pending | **TASK 30** |
 
 ---
 
@@ -41,11 +41,11 @@
 
 | Step | Owner | Description | Status |
 |------|-------|--------------|--------|
-| 1 | C5 | Release Gate 40차 + Elite 3차 (TASK 1·6) | pending — First Task |
-| 2 | C1 | DOCS (TASK 2·3·5·7·10) | pending |
-| 3 | C3 | Domain/Test (TASK 8·9, 선택) | pending |
-| 4 | C4 | UI 접근성 (TASK 4) | pending |
-| 5 | C7 | Integration check (lint·test·build) | after TASK 1·6 |
+| 1 | C5 | Gate 83 + Elite + TASK14~27 | **[x]** · **TASK32** 큐 |
+| 2 | C1 | DOCS (TASK 2·3·5·7) | pending |
+| 3 | C3 | DOMAIN (TASK 29) | pending |
+| 4 | C4 | UI (TASK 33) | pending |
+| 5 | C7 | Integration check | VERIFY 행·Gate와 병행 |
 
 ---
 
@@ -64,7 +64,7 @@
 ## EXIT CONDITIONS
 
 | Cursor | Exit condition |
-|--------|-----------------|
+|--------|----------------|
 | **C1** | CURRENT_TASK updated |
 | **C2** | Gate check complete |
 | **C3** | npm test pass |

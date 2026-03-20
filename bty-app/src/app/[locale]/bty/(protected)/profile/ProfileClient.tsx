@@ -85,26 +85,26 @@ export default function ProfileClient() {
 
   if (loading) {
     return (
-      <div className="p-6 max-w-2xl mx-auto">
+      <main className="p-6 max-w-2xl mx-auto" aria-label={t.profileMainRegionAria}>
         {/* DESIGN_FIRST_IMPRESSION_BRIEF §2: 스피너 대신 아이콘 + 문구 + 카드형 스켈레톤 */}
         <LoadingFallback icon="⏳" message={tLoading.message} withSkeleton style={{ paddingTop: 24 }} />
-      </div>
+      </main>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="p-6 max-w-2xl mx-auto">
+      <main className="p-6 max-w-2xl mx-auto" aria-label={t.profileMainRegionAria}>
         <p className="text-sm text-red-600 mt-4">{t.errorLoad}</p>
         <Link href={`/${locale}/bty/dashboard`} className="text-sm underline mt-2 inline-block" aria-label={t.backToDashboard}>
           {t.backToDashboard}
         </Link>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-8">
+    <main className="p-6 max-w-2xl mx-auto space-y-8" aria-label={t.profileMainRegionAria}>
       <div className="flex items-center justify-between mt-4">
         <h1 className="text-2xl font-bold">{t.title}</h1>
         <Link
@@ -160,6 +160,6 @@ export default function ProfileClient() {
           {t.avatarSettingsLink}
         </Link>
       </p>
-    </div>
+    </main>
   );
 }

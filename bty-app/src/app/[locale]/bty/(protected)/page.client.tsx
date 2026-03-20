@@ -56,7 +56,6 @@ export default function BtyIndexPage({ locale, t }: Props) {
     },
   ];
 
-  const mainLabel = isKo ? "bty 메인" : "bty home";
   const skipLabel = isKo ? "본문으로 건너뛰기" : "Skip to main content";
 
   return (
@@ -71,7 +70,7 @@ export default function BtyIndexPage({ locale, t }: Props) {
         id="foundry-main"
         tabIndex={-1}
         className="max-w-3xl mx-auto px-4 py-8"
-        aria-label={mainLabel}
+        aria-label={tBtyFull.btyIndexMainRegionAria}
       >
         <header className="text-center mb-8" aria-label={isKo ? "페이지 헤더" : "Page header"}>
           <h1 className="text-2xl sm:text-3xl font-semibold text-[var(--arena-text)] mb-2">{t.title}</h1>

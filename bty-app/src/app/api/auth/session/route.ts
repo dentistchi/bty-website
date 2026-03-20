@@ -8,7 +8,8 @@ const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 const SESSION_TIMEOUT_MS = 5000;
 
-// GET: 쿠키 기반 세션에서 user 확인 (미로그인은 200 + ok:false로 401 노이즈 제거)
+// GET: 쿠키 기반 세션에서 user 확인 (미로그인은 200 + ok:false로 401 노이즈 제거).
+// 항상 JSON 본문 반환 — 빈 body로 인한 클라이언트 "Unexpected end of JSON input" 방지.
 export async function GET() {
   try {
     const timeout = new Promise<never>((_, reject) =>

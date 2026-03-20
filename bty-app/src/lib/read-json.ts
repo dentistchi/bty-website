@@ -17,7 +17,8 @@ export async function fetchJson<T = unknown>(
     const raw = await res.text();
     let json: T | undefined;
     try {
-      json = raw ? (JSON.parse(raw) as T) : undefined;
+      const trimmed = (raw ?? "").trim();
+      json = trimmed ? (JSON.parse(trimmed) as T) : undefined;
     } catch {
       json = undefined;
     }

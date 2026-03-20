@@ -6,6 +6,7 @@ import {
   REFLECT_USER_TEXT_MAX_CHARS,
   REFLECT_USER_TEXT_MIN_CHARS,
   REFLECT_USER_TEXT_RECOMMENDED_MIN_CHARS,
+  clampArenaReflectUserTextToMax,
 } from "./reflectTextBounds";
 import { reflectTextLengthHintKey } from "./reflectTextHint";
 
@@ -45,5 +46,14 @@ describe("reflectTextBounds (edges)", () => {
     expect(
       reflectTextLengthHintKey(0, REFLECT_USER_TEXT_MAX_CHARS)
     ).toBe("reflect_hint_empty");
+  });
+
+  it("clampArenaReflectUserTextToMax truncates at max chars", () => {
+    const short = "hello";
+    expect(clampArenaReflectUserTextToMax(short)).toBe(short);
+    const atMax = "x".repeat(REFLECT_USER_TEXT_MAX_CHARS);
+    expect(clampArenaReflectUserTextToMax(atMax)).toBe(atMax);
+    const over = "x".repeat(REFLECT_USER_TEXT_MAX_CHARS + 100);
+    expect(clampArenaReflectUserTextToMax(over).length).toBe(REFLECT_USER_TEXT_MAX_CHARS);
   });
 });

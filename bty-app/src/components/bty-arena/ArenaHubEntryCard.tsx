@@ -9,7 +9,7 @@ import type { Locale } from "@/lib/i18n";
 export function ArenaHubEntryCard({ locale }: { locale: string }) {
   const loc = (locale === "ko" ? "ko" : "en") as Locale;
   const t = getMessages(loc).uxPhase1Stub;
-  const play = `/${locale}/bty-arena/play`;
+  const play = `/${locale}/bty-arena/run`;
   const leaderboard = `/${locale}/bty/leaderboard`;
 
   const [resumable, setResumable] = React.useState<boolean | null>(null);

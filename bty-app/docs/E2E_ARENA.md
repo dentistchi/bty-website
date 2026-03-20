@@ -2,6 +2,10 @@
 
 **전체 운영 기준은 [`BTY_E2E_OPERATIONS_V1.md`](./BTY_E2E_OPERATIONS_V1.md)를 따릅니다.**
 
+**Play 화면 UI 명세 (Cursor 실행용):** [`BTY_ARENA_PLAY_SCREEN_UI_SPEC.md`](./BTY_ARENA_PLAY_SCREEN_UI_SPEC.md)  
+**Result/Resolve 화면 UI 명세:** [`BTY_ARENA_RESOLVE_SCREEN_UI_SPEC.md`](./BTY_ARENA_RESOLVE_SCREEN_UI_SPEC.md)  
+**Lobby (Mission) 화면 UI 명세:** [`BTY_ARENA_LOBBY_SCREEN_UI_SPEC.md`](./BTY_ARENA_LOBBY_SCREEN_UI_SPEC.md)
+
 요약:
 
 - **Auth storage is local/CI-generated only and must never be committed.**
