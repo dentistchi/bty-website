@@ -121,16 +121,34 @@ const DEFAULT_THEME: AvatarOutfitTheme = "professional";
  */
 export const FANTASY_THEME_UI_READY = false;
 
-/** 옷 이미지: /avatars/outfits/outfit_{outfitId}.png (저장 위치: bty-app/public/avatars/outfits/) */
+/** 옷 이미지 베이스 (실제 파일명은 OUTFIT_ID_TO_FILENAME 매핑 사용) */
 const OUTFIT_IMAGE_BASE = "/avatars/outfits";
 
-/** §4.2 bodyType별 옷 URL: outfit_{outfitId}_{bodyType}.png. bodyType 없으면 outfit_{outfitId}.png. 에셋 없어도 규칙만. */
+/**
+ * outfitId → 실제 파일명 매핑 (public/avatars/outfits/ 에 있는 파일 기준).
+ * Professional 7종만 매핑; Fantasy/캐릭터용 옷은 에셋 추가 전까지 fallback.
+ */
+const OUTFIT_ID_TO_FILENAME: Record<string, string> = {
+  scrub_general: "1 Basic Clinic Scrubs.png",
+  figs_scrub: "3 Hygiene Scrubs.png",
+  doctor_gown: "4 Standard Dental Coat.png",
+  surgery_coat_suit: "11 Implant Surgery Armor Scrubs.png",
+  brand_suit: "12 AI Diagnostic Suit.png",
+  figs_scrub_short: "8 Surgical Scrubs.png",
+  shorts_tee: "5 Clinic Utility Uniform.png",
+};
+
+function getOutfitFilename(outfitId: string): string {
+  return OUTFIT_ID_TO_FILENAME[outfitId] ?? `outfit_${outfitId}.png`;
+}
+
+/** §4.2 bodyType별 옷 URL. 실제 파일명 사용; bodyType별 에셋 없으면 동일 URL 반환. */
 export function getOutfitImageUrlForBodyType(
   outfitId: string,
   bodyType?: BodyType | null
 ): string {
-  const base = `${OUTFIT_IMAGE_BASE}/outfit_${outfitId}`;
-  return bodyType ? `${base}_${bodyType}.png` : `${base}.png`;
+  const file = getOutfitFilename(outfitId);
+  return `${OUTFIT_IMAGE_BASE}/${encodeURIComponent(file)}`;
 }
 
 /** 캐릭터별 게임 스타일 옷 파일명 (fantasy 테마일 때 선택된 캐릭터에 따라 사용). 6종만 존재. */
@@ -149,7 +167,9 @@ export function getCharacterOutfitImageUrl(
 ): string | null {
   if (!characterId || typeof characterId !== "string") return null;
   const file = CHARACTER_OUTFIT_FILE[characterId.trim()];
-  return file ? `${OUTFIT_IMAGE_BASE}/outfit_${file}.png` : null;
+  if (!file) return null;
+  const filename = getOutfitFilename(file);
+  return `${OUTFIT_IMAGE_BASE}/${encodeURIComponent(filename)}`;
 }
 
 /** 악세서리 이미지: avatar-assets.json game은 .png, dental은 .svg. 규칙: /avatars/accessories/{id}.svg|.png */
@@ -181,7 +201,7 @@ export function getOutfitForLevel(
   const accessoryLabels = entry.accessoryIds.map(
     (id) => ACCESSORY_CATALOG[id] ?? id
   );
-  const imageUrl = `${OUTFIT_IMAGE_BASE}/outfit_${entry.outfitId}.png`;
+  const imageUrl = `${OUTFIT_IMAGE_BASE}/${encodeURIComponent(getOutfitFilename(entry.outfitId))}`;
   return {
     outfitId: entry.outfitId,
     outfitLabel: entry.outfitLabel,
@@ -274,7 +294,7 @@ export function getOutfitById(
     outfitLabel: entry.outfitLabel,
     accessoryIds: entry.accessoryIds,
     accessoryLabels,
-    imageUrl: `${OUTFIT_IMAGE_BASE}/outfit_${entry.outfitId}.png`,
+    imageUrl: `${OUTFIT_IMAGE_BASE}/${encodeURIComponent(getOutfitFilename(entry.outfitId))}`,
   };
 }
 

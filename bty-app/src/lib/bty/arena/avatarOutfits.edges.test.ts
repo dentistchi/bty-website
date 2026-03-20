@@ -40,10 +40,11 @@ describe("avatarOutfits (edges)", () => {
       expect(r1.outfitId).toBe("scrub_general");
       expect(r2.outfitId).toBe("scrub_general");
     });
-    it("imageUrl follows pattern /avatars/outfits/outfit_*.png", () => {
+    it("imageUrl is under /avatars/outfits/ and ends with .png", () => {
       for (const lid of OUTFIT_LEVEL_IDS) {
         const r = getOutfitForLevel("professional", lid);
-        expect(r.imageUrl).toMatch(/^\/avatars\/outfits\/outfit_.+\.png$/);
+        expect(r.imageUrl).toMatch(/^\/avatars\/outfits\/.+/);
+        expect(r.imageUrl.endsWith(".png")).toBe(true);
       }
     });
     it("fantasy theme returns outfit with non-empty outfitId for S1", () => {

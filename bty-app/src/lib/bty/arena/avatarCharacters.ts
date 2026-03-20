@@ -1,9 +1,10 @@
 /**
- * Track C: 게임 느낌 2D 캐릭터 N종 정의.
+ * Track C: 게임 느낌 2D 캐릭터 정의.
  * id는 arena_profiles.avatar_character_id에 저장됨.
  *
- * 12 visible + 1 hidden (Legend). Legend 해금 = 진행 레벨 700 (tier 699), Core XP 700이 아님.
- * URL 규칙: /avatars/characters/{id}.png (public/avatars/characters/).
+ * 총 13종: 일반 선택 12명 + 13번째 Legend. Legend 해금 = 진행 레벨 700(내부 tier 699 이상), Core XP 숫자와 다름.
+ * 캐릭터 PNG: public/avatars/characters/ + CHARACTER_ID_TO_FILENAME 매핑.
+ * 악세사리: public/avatars/accessories/ (getAccessoryImageUrl, avatar-assets.json).
  * §4.2 체형: bodyType A/B/C/D (옷 URL 해석은 추후, 에셋 없어도 됨).
  */
 
@@ -24,21 +25,47 @@ export type AvatarCharacter = {
   bodyType?: BodyType;
 };
 
-/** 캐릭터 12명 + Legend(숨김, 진행 레벨 700 = tier 699 해금). */
+const AVATAR_CHARACTERS_DIR = "/avatars/characters";
+
+/** characterId → 실제 파일명 (public/avatars/characters/). URL 인코딩 후 사용. */
+const CHARACTER_ID_TO_FILENAME: Record<string, string> = {
+  guardian_04: "1️⃣ Guardian (Korean Male).png",
+  hero_01: "1️⃣1️⃣ Mentor (Korean Male).png",
+  character_11: "1️⃣2️⃣ Radiologist (Mexican Female).png",
+  mage_02: "2️⃣ Architect (White Male).png",
+  healer_07: "3️⃣ Healer (Korean Female).png",
+  heroine_06: "4️⃣ Innovator (Korean Female).png",
+  pilot_05: "5️⃣ Technologist (Filipino Male).png",
+  scout_03: "6️⃣ Scout (Filipino Female).png",
+  character_12: "7️⃣ Assistant (Filipino Female).png",
+  sorceress_09: "8️⃣ Artisan (Mexican Female).png",
+  ranger_08: "9️⃣ Hygienist (White Female).png",
+  captain_10: "🔟 Alchemist (Black Female).png",
+  legend_13: "13 legend.png",
+};
+
+function getCharacterImageUrl(id: string): string {
+  const file = CHARACTER_ID_TO_FILENAME[id];
+  return file
+    ? `${AVATAR_CHARACTERS_DIR}/${encodeURIComponent(file)}`
+    : `${AVATAR_CHARACTERS_DIR}/${id}.png`;
+}
+
+/** 캐릭터 12명 + Legend(숨김, 진행 레벨 700 = tier 699 해금). 라벨·이미지는 실제 에셋명 반영. */
 export const AVATAR_CHARACTERS: AvatarCharacter[] = [
-  { id: "hero_01", label: "Hero", imageUrl: "/avatars/characters/hero_01.png" },
-  { id: "mage_02", label: "Mage", imageUrl: "/avatars/characters/mage_02.png" },
-  { id: "scout_03", label: "Scout", imageUrl: "/avatars/characters/scout_03.png" },
-  { id: "guardian_04", label: "Guardian", imageUrl: "/avatars/characters/guardian_04.png" },
-  { id: "pilot_05", label: "Pilot", imageUrl: "/avatars/characters/pilot_05.png" },
-  { id: "heroine_06", label: "Heroine", imageUrl: "/avatars/characters/heroine_06.png" },
-  { id: "healer_07", label: "Healer", imageUrl: "/avatars/characters/healer_07.png" },
-  { id: "ranger_08", label: "Ranger", imageUrl: "/avatars/characters/ranger_08.png" },
-  { id: "sorceress_09", label: "Sorceress", imageUrl: "/avatars/characters/sorceress_09.png" },
-  { id: "captain_10", label: "Captain", imageUrl: "/avatars/characters/captain_10.png" },
-  { id: "character_11", label: "Character 11", imageUrl: "/avatars/characters/character_11.png" },
-  { id: "character_12", label: "Character 12", imageUrl: "/avatars/characters/character_12.png" },
-  { id: "legend_13", label: "Legend", imageUrl: "/avatars/characters/legend.png", unlockAtTier: LEGEND_UNLOCK_TIER },
+  { id: "hero_01", label: "Mentor", imageUrl: getCharacterImageUrl("hero_01") },
+  { id: "mage_02", label: "Architect", imageUrl: getCharacterImageUrl("mage_02") },
+  { id: "scout_03", label: "Scout", imageUrl: getCharacterImageUrl("scout_03") },
+  { id: "guardian_04", label: "Guardian", imageUrl: getCharacterImageUrl("guardian_04") },
+  { id: "pilot_05", label: "Technologist", imageUrl: getCharacterImageUrl("pilot_05") },
+  { id: "heroine_06", label: "Innovator", imageUrl: getCharacterImageUrl("heroine_06") },
+  { id: "healer_07", label: "Healer", imageUrl: getCharacterImageUrl("healer_07") },
+  { id: "ranger_08", label: "Hygienist", imageUrl: getCharacterImageUrl("ranger_08") },
+  { id: "sorceress_09", label: "Artisan", imageUrl: getCharacterImageUrl("sorceress_09") },
+  { id: "captain_10", label: "Alchemist", imageUrl: getCharacterImageUrl("captain_10") },
+  { id: "character_11", label: "Radiologist", imageUrl: getCharacterImageUrl("character_11") },
+  { id: "character_12", label: "Assistant", imageUrl: getCharacterImageUrl("character_12") },
+  { id: "legend_13", label: "Legend", imageUrl: getCharacterImageUrl("legend_13"), unlockAtTier: LEGEND_UNLOCK_TIER },
 ];
 
 const ID_SET = new Set(AVATAR_CHARACTERS.map((c) => c.id));

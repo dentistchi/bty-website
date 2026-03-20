@@ -21,7 +21,7 @@ describe("avatarCharacters (edges)", () => {
         expect(typeof c.id).toBe("string");
         expect(c.id.length).toBeGreaterThan(0);
         expect(typeof c.label).toBe("string");
-        expect(c.imageUrl).toMatch(/^\/avatars\/.+\.png$/);
+        expect(c.imageUrl).toMatch(/^\/avatars\/characters\/.+\.png$/);
       }
     });
     it("all ids are unique", () => {
