@@ -1,22 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
-
-function normalize(input: string) {
-  return input.trim();
-}
-
-function validateCodeName(
-  raw: string
-): { ok: true; value: string } | { ok: false; reason: string } {
-  const v = normalize(raw);
-
-  if (v.length < 3 || v.length > 20) return { ok: false, reason: "LENGTH_3_TO_20" };
-  if (!/^[A-Za-z0-9-]+$/.test(v)) return { ok: false, reason: "ONLY_ALNUM_DASH" };
-  if (v.startsWith("-") || v.endsWith("-")) return { ok: false, reason: "NO_EDGE_DASH" };
-  if (v.includes("--")) return { ok: false, reason: "NO_DOUBLE_DASH" };
-
-  return { ok: true, value: v };
-}
+import { arenaCodeNameFromUnknown } from "@/domain/arena/scenarios";
 
 export async function POST(req: NextRequest) {
   const supabase = await getSupabaseServerClient();
@@ -27,7 +11,7 @@ export async function POST(req: NextRequest) {
 
   const body = (await req.json().catch(() => ({}))) as { codeName?: unknown };
   const codeNameInput = String(body?.codeName ?? "");
-  const validated = validateCodeName(codeNameInput);
+  const validated = arenaCodeNameFromUnknown(codeNameInput);
   if (!validated.ok) {
     return NextResponse.json(
       { error: "INVALID_CODE_NAME", reason: validated.reason },

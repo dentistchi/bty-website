@@ -57,6 +57,24 @@ describe("POST /api/arena/reflect", () => {
     expect((await res.json()).error).toBe("Invalid JSON body");
   });
 
+  it("returns 200 when levelId S1 is accepted via domain whitelist (skips tenure inference)", async () => {
+    vi.mocked(getSupabaseServerClient).mockResolvedValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1", created_at: new Date().toISOString() } } }),
+      },
+    } as never);
+
+    const res = await POST(
+      makeRequest({ userText: "short reflection text", levelId: "S1" }),
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+    expect(typeof data.summary).toBe("string");
+    expect(Array.isArray(data.questions)).toBe(true);
+  });
+
   it("returns 400 when userText missing or whitespace-only", async () => {
     vi.mocked(getSupabaseServerClient).mockResolvedValue({
       auth: {
@@ -71,6 +89,20 @@ describe("POST /api/arena/reflect", () => {
 
     const r2 = await POST(makeRequest({ userText: "   " }));
     expect(r2.status).toBe(400);
+  });
+
+  /** S95 TASK9: boundary 400 — JSON `userText: null` coerces to empty via `??`. */
+  it("returns 400 userText is required when userText is JSON null", async () => {
+    vi.mocked(getSupabaseServerClient).mockResolvedValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1", created_at: new Date().toISOString() } } }),
+      },
+    } as never);
+
+    const res = await POST(makeRequest({ userText: null }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("userText is required");
   });
 
   it("returns 413 when userText exceeds max length", async () => {

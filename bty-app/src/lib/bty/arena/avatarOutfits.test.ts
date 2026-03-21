@@ -100,8 +100,9 @@ describe("getOutfitById", () => {
       expect(result!.outfitId).toBe(id);
       expect(result!.outfitLabel).toBeTruthy();
       expect(Array.isArray(result!.accessoryIds)).toBe(true);
+      expect(result!.imageUrl).not.toBeNull();
       expect(result!.imageUrl).toMatch(/^\/avatars\/outfits\/.+/);
-      expect(result!.imageUrl.endsWith(".png")).toBe(true);
+      expect(result!.imageUrl!.endsWith(".png")).toBe(true);
     }
   });
 
@@ -110,8 +111,9 @@ describe("getOutfitById", () => {
       const result = getOutfitById("fantasy", id);
       expect(result).not.toBeNull();
       expect(result!.outfitId).toBe(id);
+      expect(result!.imageUrl).not.toBeNull();
       expect(result!.imageUrl).toMatch(/^\/avatars\/outfits\/.+/);
-      expect(result!.imageUrl.endsWith(".png")).toBe(true);
+      expect(result!.imageUrl!.endsWith(".png")).toBe(true);
     }
   });
 

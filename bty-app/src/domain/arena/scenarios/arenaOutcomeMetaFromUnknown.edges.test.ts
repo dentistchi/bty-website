@@ -42,6 +42,36 @@ describe("arenaOutcomeMetaFromUnknown (edges)", () => {
     });
   });
 
+  it("ignores unknown keys even when their values are invalid for weights", () => {
+    expect(
+      arenaOutcomeMetaFromUnknown({
+        relationalBias: 0.25,
+        operationalBias: 0.5,
+        emotionalRegulation: 0.75,
+        badAxis: NaN,
+        noise: "nope",
+      }),
+    ).toEqual({
+      relationalBias: 0.25,
+      operationalBias: 0.5,
+      emotionalRegulation: 0.75,
+    });
+  });
+
+  it("treats -0 on an axis as 0 (IEEE edge)", () => {
+    expect(
+      arenaOutcomeMetaFromUnknown({
+        relationalBias: -0,
+        operationalBias: 0.5,
+        emotionalRegulation: 0.5,
+      }),
+    ).toEqual({
+      relationalBias: 0,
+      operationalBias: 0.5,
+      emotionalRegulation: 0.5,
+    });
+  });
+
   it("returns null when value is not an object or any axis is missing/invalid", () => {
     expect(arenaOutcomeMetaFromUnknown(null)).toBeNull();
     expect(arenaOutcomeMetaFromUnknown([])).toBeNull();
@@ -58,6 +88,23 @@ describe("arenaOutcomeMetaFromUnknown (edges)", () => {
         relationalBias: "0.5",
         operationalBias: 0.5,
         emotionalRegulation: 0.5,
+      }),
+    ).toBeNull();
+  });
+
+  it("returns null when any axis is non-finite (±Infinity)", () => {
+    expect(
+      arenaOutcomeMetaFromUnknown({
+        relationalBias: Number.POSITIVE_INFINITY,
+        operationalBias: 0.5,
+        emotionalRegulation: 0.5,
+      }),
+    ).toBeNull();
+    expect(
+      arenaOutcomeMetaFromUnknown({
+        relationalBias: 0.25,
+        operationalBias: Number.NEGATIVE_INFINITY,
+        emotionalRegulation: 0.75,
       }),
     ).toBeNull();
   });

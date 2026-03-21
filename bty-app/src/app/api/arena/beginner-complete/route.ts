@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { arenaRunIdFromUnknown, arenaScenarioIdFromUnknown } from "@/domain/arena/scenarios";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { applySeasonalXpToCore } from "@/lib/bty/arena/applyCoreXp";
 import { getBeginnerScenarioById } from "@/lib/bty/scenario/beginnerScenarios";
@@ -8,7 +9,7 @@ import {
   type BeginnerRunResponses,
 } from "@/lib/bty/scenario/beginnerTypes";
 
-/** POST body: { runId, scenarioId, emotionIndex, riskIndex, integrityIndex, decisionIndex, reflectionText? } */
+/** POST body: { runId, scenarioId, … } — `runId` / `scenarioId` via domain parsers (trim, max length, runId no inner whitespace). */
 export async function POST(req: Request) {
   const supabase = await getSupabaseServerClient();
   const {
@@ -17,16 +18,19 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const runId = String(body?.runId ?? "");
-  const scenarioId = String(body?.scenarioId ?? "");
+  const runId = arenaRunIdFromUnknown(body?.runId);
+  const scenarioId = arenaScenarioIdFromUnknown(body?.scenarioId);
   const emotionIndex = Number(body?.emotionIndex);
   const riskIndex = Number(body?.riskIndex);
   const integrityIndex = Number(body?.integrityIndex);
   const decisionIndex = Number(body?.decisionIndex);
   const reflectionText = typeof body?.reflectionText === "string" ? body.reflectionText : null;
 
-  if (!runId || !scenarioId) {
-    return NextResponse.json({ error: "runId and scenarioId required" }, { status: 400 });
+  if (!runId) {
+    return NextResponse.json({ error: "runId_required" }, { status: 400 });
+  }
+  if (!scenarioId) {
+    return NextResponse.json({ error: "scenarioId_required" }, { status: 400 });
   }
 
   const scenario = getBeginnerScenarioById(scenarioId);

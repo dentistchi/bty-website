@@ -1,14 +1,374 @@
 # 현재 작업 (CURRENT_TASK)
 
-**[C4] SPRINT 83 TASK31 / 289 (`train/day/[day]`):** [x] **완료.** **`page.tsx`** → **`page.client` re-export** · **`<main aria-label={train.lessonLabel}>`** (`role="region"` 제거) · **`npm run lint` ✓** · 보드 **TASK31 [x]** · 다음 C4 **`[ ]` = TASK33** · `BTY_RELEASE_GATE_CHECK`·`CURSOR_TASK_BOARD` 동기.
+**[C5] SPRINT 99 TASK1·6 / 305 (VERIFY):** [x] **완료.** Gate **99** A~F · **`346/2442`** ✓ · `self-healing-ci` · q237 **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `ELITE_3RD` §3 · Gate **99**(TASK1) 동기 · 보드 **TASK1·6 [x]** · `BTY_RELEASE_GATE_CHECK` · **2026-03-21 C5.**
 
-**[C5] SPRINT 83 TASK27 / 289 (큐 보충 Gate·엘리트·문서):** [x] **완료.** **`334/2311`** ✓ · `self-healing-ci.sh` · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` · 보드 **TASK27 [x]** · 다음 C5 **`[ ]` = TASK32** · `SPRINT_LOG`·`SPRINT_PLAN`·`AUTO4`·`NEXT_PHASE` 동기.
+**[C3] SPRINT 99 TASK8·9 / 305:** [x] **`arenaIsoTimestampFromUnknown` edges** (ZWSP·내부 `\n` · Vitest **6**) · **`POST /api/arena/membership-request`** optional **`submitted_at`** · **400** `submitted_at_invalid` · `route.test.ts` **7** ✓ · 보드 **TASK8·9 [x]** · **완료. 2026-03-21 C3.**
 
-**[C3] SPRINT 83 TASK28 / 289 (큐 보충 DOMAIN):** [x] **완료.** **`arenaScenarioOutcomesFromUnknown`** + **`arenaScenarioOutcomesFromUnknown.edges.test.ts`** · mission outcome map · **`ARENA_SCENARIO_OUTCOMES_MAX_KEYS` 32** · canonical keys · barrel · Vitest **3** ✓ · 보드 **TASK28 [x]** · 다음 C3 **`[ ]` = TASK29** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
+**[C6] SPRINT 99 TASK10 / 305:** [x] **`test:q237-smoke` 3 files / 7 tests** · **`self-healing-ci` 346/2442** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **완료. 2026-03-21 C6.**
+
+**[REFRESH 2026-03-21 (C1 · 19)]** S99/305 · **`PARALLEL_QUEUE_REFILL` §3** → **S99** · C5 **TASK1·6**·C6 **TASK10** **`[x]`** · **First** 해제 → **Next C1** **TASK2** (DOCS) · `SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
+
+**[C4] SPRINT 99 TASK4 / 305:** [x] **`/[locale]/bty-arena/loading`** · **`BtyArenaRouteLoadingShell`** · **`arenaBtyArenaRouteSegmentLoadingMainRegionAria`** (ko/en) · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-21 C4.**
+
+**[C1] SPRINT 99 / 305 (DOCS · 다음 턴):** **[ ]** **TASK2** — `NEXT_PHASE_AUTO4`·`NEXT_BACKLOG_AUTO4` **S99/305** · Gate **99** · **S98** 아카이브 정합 · 보드·`CURRENT_TASK` 한 줄.
+
+**[C5] SPRINT 98 TASK1·6 / 304 (VERIFY):** [x] **완료.** Gate **98** A~F · **`346/2438`** ✓ · `self-healing-ci` · q237 **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `ELITE_3RD` §3 · Gate **98**(TASK1) 동기 · 보드 **TASK1·6 [x]** · `BTY_RELEASE_GATE_CHECK` · **2026-03-21 C5.**
+
+**[C6] SPRINT 98 TASK10 / 304:** [x] **`test:q237-smoke` 3 files / 7 tests** · **`self-healing-ci` 346/2438** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **완료. 2026-03-21 C6.**
+
+**[C3] SPRINT 98 TASK8·9 / 304:** [x] **`arenaIsoDateOnlyFromUnknown` edges** (NBSP·윤년 · Vitest **4**) · **`POST /api/arena/lab/complete`** optional **`completedOn`** · **400** `completed_on_invalid` · `route.test.ts` **5** ✓ · 보드 **TASK8·9 [x]** · **완료. 2026-03-21 C3.**
+
+**[REFRESH 2026-03-21 (C1 · 18)]** S98/304 · **`check-parallel-task-queue` exit 2** (C3·C4·C5·C6) → **`PARALLEL_QUEUE_REFILL` §3** → **S98** · 보드 **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **98**) · `SPRINT_PLAN`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_LOG`·`CURSOR_TASK_BOARD` 동기 · **Next C1** **TASK2** (DOCS, **First** 잠금).
+
+**[C4] SPRINT 98 TASK4 / 304:** [x] **`/[locale]/assessment/loading`** · **`AssessmentRouteLoadingShell`** · **`landing.assessmentSuspenseMainRegionAria`** (ko/en) · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-21 C4.**
+
+**[C5] SPRINT 97 TASK1·6 / 303 (VERIFY):** [x] **완료.** Gate **97** A~F · **`346/2436`** ✓ · `self-healing-ci` · q237 **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `ELITE_3RD` §3 · Gate **97**(TASK1) 동기 · 보드 **TASK1·6 [x]** · `BTY_RELEASE_GATE_CHECK` · **2026-03-21 C5.**
+
+**[C6] SPRINT 97 TASK10 / 303:** [x] **`test:q237-smoke` 3 files / 7 tests** · **`self-healing-ci` 346/2436** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **완료. 2026-03-20 C6.**
+
+**[REFRESH 2026-03-21 (C1 · 17)]** S97/303 · **`check-parallel-task-queue` exit 2** (C3·C5·C6) → **`PARALLEL_QUEUE_REFILL` §3** → **S97** · 보드 **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **97**) · `SPRINT_PLAN`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_LOG`·`CURSOR_TASK_BOARD` 동기 · **Next C1** **TASK2** (DOCS, **First** 잠금).
+
+**[C3] SPRINT 97 TASK8·9 / 303:** [x] **`arenaRunIdFromUnknown` edges** (barrel · Vitest **7**) · **`GET /api/arena/run/[runId]`** domain **400** (`MISSING_RUN_ID`) · `route.test.ts` **8** ✓ · 보드 **TASK8·9 [x]** · **완료. 2026-03-20 C3.**
+
+**[C4] SPRINT 97 TASK4 / 303:** [x] **`/[locale]/growth/loading`** · **`GrowthRouteLoadingShell`** · **`growthRouteSuspenseMainRegionAria`** (ko/en) · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-20 C4.**
+
+**[C4] SPRINT 96 TASK4 / 302:** [x] **`/[locale]/center/loading`** · **`CenterRouteLoadingShell`** · **`centerSuspenseMainRegionAria`** (ko/en) · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-20 C4.**
+
+**[C5] SPRINT 96 TASK1·6 / 302 (VERIFY):** [x] **완료.** Gate **96** A~F · **`346/2435`** ✓ · `self-healing-ci` · q237 **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `ELITE_3RD` §3 · Gate **96**(TASK1) 동기 · 보드 **TASK1·6 [x]** · `BTY_RELEASE_GATE_CHECK` · **2026-03-21 C5.**
+
+**[C6] SPRINT 96 TASK10 / 302:** [x] **`test:q237-smoke` 3/7** · **`self-healing-ci` 346/2435** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **완료. 2026-03-21 C6.**
+
+**[C3] SPRINT 96 TASK8·9 / 302:** [x] **`arenaRunLifecyclePhaseFromUnknown` edges** (hyphen·`__`·내부 `\t`·NBSP) · **`POST /api/arena/run`** `scenarioId: null` → **400** · Vitest ✓ · 보드 **TASK8·9 [x]** · **완료. 2026-03-21 C3.**
+
+**[REFRESH 2026-03-21 (C1 · 16)]** S96/302 · **C5·C3·C4·C6 TASK1·4·6·8·9·10 `[x]`** · 잔여 **`[ ]`:** C1 **TASK2·3·5·7** · **First** C1 **TASK2** · `SPRINT_PLAN`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_LOG` 동기.
+
+**[C5] SPRINT 95 TASK1·6 / 301 (VERIFY):** [x] **완료.** Gate **95** A~F · **`346/2433`** ✓ · `self-healing-ci` · q237 **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `ELITE_3RD` §3 · Gate **95**(TASK1) 동기 · 보드 **TASK1·6 [x]** · `BTY_RELEASE_GATE_CHECK` · **2026-03-20 C5.**
+
+**[C6] SPRINT 95 TASK10 / 301:** [x] **`test:q237-smoke` 3/7** · **`self-healing-ci` 346/2433** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **완료. 2026-03-20 C6.**
+
+**[C3] SPRINT 95 TASK8·9 / 301:** [x] **`arenaReflectLevelIdFromUnknown` edges** (NBSP·전각·ZWSP) · **`POST /api/arena/reflect`** `userText: null` → **400** · Vitest ✓ · 보드 **TASK8·9 [x]** · **완료. 2026-03-20 C3.**
+
+**[REFRESH 2026-03-21 (C1 · 15)]** S95/301 · **C5·C3·C6 TASK1·6·8·9·10 `[x]`** · 잔여 **`[ ]`:** C1 **TASK2·3·5·7** · C4 **TASK4** · **First** C1 **TASK2** · REFRESH **Gate/스모크 전량 재실행 안 함** (보드 태스크만).
+
+**[C1] SPRINT 95 splint 10 / 301:** S94 **22/22 `[x]`** → **S95** 오픈 · 보드 **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **95**) · `NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_PLAN`·`CURRENT_TASK`·`SPRINT_LOG` 동기.
+
+**[REFRESH 2026-03-21 (C1 · 14)]** S94/300 · `check-parallel-task-queue` **exit 0** ✓ · **TASK1~22 [x]** · **PARALLEL_QUEUE_REFILL 생략** · C2~C6 **보드 `[ ]` 없음** → **CONTINUE 중단** · **Next** C1 **`splint 10` → S95/301** · 서류 스냅샷만 갱신.
+
+**[REFRESH 2026-03-21 (C1 · 13)]** S94/300 · `check-parallel-task-queue` **exit 0** ✓ · **TASK1~22 [x]** · **PARALLEL_QUEUE_REFILL 생략** · C2~C6 **보드 `[ ]` 없음** → **CONTINUE 중단** · **Next** C1 **`splint 10` → S95/301** · `SPRINT_PLAN` C2 **5줄 형식** 재정렬.
+
+**[REFRESH 2026-03-21 (C1 · 12)]** S94/300 · `check-parallel-task-queue` **exit 0** ✓ · **TASK1~22 [x]** · C2~C6 **보드 `[ ]` 없음** → **CONTINUE(구현) 중단** · **Next** C1 **`splint 10` → S95/301** · `SPRINT_PLAN` C2~C6 **5줄 형식** 정리.
+
+**[REFRESH 2026-03-20 (C1 · 11)]** S94/300 · `check-parallel-task-queue` **exit 0** ✓ · **TASK1~22 [x]** · C2~C6 **보드 `[ ]` 없음** → **CONTINUE(구현) 중단** · **Next** C1 **`splint 10` → S95/301** (`SPLINT_10_PROCEDURE.md` · `NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_PLAN`) · 보드·`SPRINT_LOG` 동기.
+
+**[C5] SPRINT 94 TASK6 / 300 (엘리트 3차 §3):** [x] **완료.** **`self-healing-ci` 346/2431** ✓ · q237 **3/7** ✓ · Build ✓ · `ELITE_3RD` §3 · Gate **94**(TASK1) 동기 · 보드 **TASK6 [x]** · `CURRENT_TASK`·`SPRINT_LOG` 반영.
+
+**[C6] SPRINT 94 TASK21 / 300 (VERIFY · 큐 보충):** [x] **`test:q237-smoke` 3/7** · **`self-healing-ci` 346/2431** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK21 [x]** · **C6 S94 `[ ]` 없음** · **완료. 2026-03-21 C6.** · **Next** C1 **splint 10** (S94 **TASK1~22** 전행 `[x]` 확인).
+
+**[C4] SPRINT 94 TASK22 / 300 (UI 큐 보충):** [x] **`/[locale]/bty/(protected)/profile/loading`** · **`ProfileRouteLoadingShell`** · **`bty.profileRouteSuspenseMainRegionAria`** (ko/en) · `npm run lint` ✓ · 보드 **TASK22 [x]** · **C4 S94 `[ ]` 없음** · **완료. 2026-03-21 C4.**
+
+**[REFRESH (본 턴)]** S94/300 — **C5 TASK6 [x]** · **C6 TASK21 [x]** · **C4·C1 전행 [x]** · **C3 표 `[ ]` 없음** → `check-parallel-task-queue` **재점검** · **다음** C1 **splint 10** / **S95** 예고 (`TASK7`·보드 §).
+
+**[REFRESH 2026-03-21 (C1 · 10)]** S94/300 · `check-parallel-task-queue` **exit 0** ✓ · **TASK1·2·3·4·5·7·8·9·10·11·12·13·14·15·16·17·18·20 [x]** · 잔여 **`[ ]`:** **TASK6·19·21·22** · **First** C5 **TASK6** · C7 **346/2430** ✓ · **C5 TASK6** · **C3 TASK19** · **C6 TASK21** · **C4 TASK22** · **C1 S94 DOCS** `TASK2·3·5·7` **`[x]`**.
+
+**[C4] SPRINT 94 TASK18 / 300 (UI 큐 보충):** [x] **`/[locale]/bty/leaderboard/loading`** · **`BtyLeaderboardRouteLoadingShell`** · **`bty.leaderboardRouteSuspenseMainRegionAria`** (ko/en) · `npm run lint` ✓ · 보드 **TASK18 [x]** · **TASK22** C4 **`[ ]`** (병렬 큐) · **완료. 2026-03-21 C4.** · **Next C4** **TASK22**.
+
+**[C6] SPRINT 94 TASK20 / 300 (VERIFY · 큐 보충):** [x] **`test:q237-smoke` 3/7** · **`self-healing-ci` 346/2430** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK20 [x]** · **TASK21** C6 **`[ ]`** · **`check-parallel-task-queue` exit 0** · **완료. 2026-03-21 C6.** · **Next C6** **TASK21**.
+
+**[C6] SPRINT 94 TASK17 / 300 (VERIFY · 큐 보충):** [x] **`test:q237-smoke` 3/7** · **`self-healing-ci` 346/2429** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK17 [x]** · **`check-parallel-task-queue` exit 0** · **완료. 2026-03-21 C6.**
+
+**[C3] SPRINT 94 TASK16 / 300 (DOMAIN 큐 보충):** [x] **`arenaOutcomeMetaFromUnknown` edges** · 축 **±Infinity** → **null** · Vitest **6** ✓ · 보드 **TASK16 [x]** · **완료. 2026-03-21 C3.**
+
+**[C4] SPRINT 94 TASK15 / 300 (UI 큐 보충):** [x] **`/[locale]/my-page/loading`** · **`MyPageRouteLoadingShell`** · **`myPageStub.myPageRouteSuspenseMainRegionAria`** · `npm run lint` ✓ · 보드 **TASK15 [x]** · **TASK18** C4 **`[ ]`** (당시 병렬 큐) · **완료. 2026-03-21 C4.**
+
+**[C1] SPRINT 94 TASK5 / 300 (DOCS):** [x] **S95/301** 예고 — `NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD` · `SPRINT_PLAN` **§301 planned** · 보드 **TASK5 [x]** · **완료. 2026-03-21 C1.** · **Next C1** **TASK7**.
+
+**[C6] SPRINT 94 TASK13 / 300 (VERIFY · 큐 보충):** [x] **`test:q237-smoke` 3/7** · **`self-healing-ci` 346/2427** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK13 [x]** · **TASK17** C6 (→ **[x]** 상단) · **`check-parallel-task-queue` exit 0** · **완료. 2026-03-21 C6.**
+
+**[C4] SPRINT 94 TASK14 / 300 (UI 큐 보충):** [x] **`/[locale]/bty/(public)/loading`** · **`BtyPublicRouteLoadingShell`** · **`login.btyPublicRouteSuspenseMainRegionAria`** · `npm run lint` ✓ · 보드 **TASK14 [x]** · **완료. 2026-03-21 C4.**
+
+**[C1] SPRINT 94 TASK3 / 300 (DOCS):** [x] 문서 점검 **201·202차** — `SPRINT_LOG`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`SPRINT_PLAN`·`CURRENT_TASK`·`BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` · `AI_TASK_BOARD` **S94** 정합 · **346/2425**·**346/2427** · 보드 **TASK3 [x]** · **완료. 2026-03-21 C1.** · **Next C1** **TASK5**.
+
+**[REFRESH 2026-03-21 (C1 · 7)]** S94/300 · `check-parallel-task-queue` **exit 0** · **TASK1·2·3·4·8·9·10·11·12·13·14 [x]** · 잔여 **TASK5·6·7·15·16·17** **`[ ]`** · **First** C1 **TASK5** · C7 **346/2427** ✓.
+
+**[C4] SPRINT 94 TASK12 / 300 (UI 큐 보충):** [x] **`/[locale]/train/loading`** · **`TrainRouteLoadingShell`** · **`train.trainRouteSuspenseMainRegionAria`** · `npm run lint` ✓ · 보드 **TASK12 [x]** · **완료. 2026-03-21 C4.**
+
+**[C1] SPRINT 94 TASK2 / 300 (DOCS):** [x] `NEXT_PHASE_AUTO4`·`NEXT_BACKLOG_AUTO4` **S94/300** · Gate **94** · **S93** 아카이브 · 표 **TASK1~20** · `AUTO4`·`AI_TASK_BOARD`·`SPRINT_PLAN` 동기 · 보드 **TASK2 [x]** · **완료. 2026-03-21 C1.** · **Next C1** **TASK3**.
+
+**[C5] SPRINT 94 TASK1 / 300 (Gate 94):** [x] **`self-healing-ci` 346/2425** ✓ · q237 **3/7** ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK`·보드 **TASK1 [x]** · **완료. 2026-03-21 C5.** · **Next C5** **TASK6**.
+
+**[C6] SPRINT 94 TASK10 / 300 (VERIFY):** [x] **`test:q237-smoke` 3/7** · **`self-healing-ci` 346/2427** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **TASK13** C6 **`[ ]`** (병렬 큐) · **`check-parallel-task-queue` exit 0** · **완료. 2026-03-21 C6.** · **Next C6** **TASK13**.
+
+**[C1] S94 병렬 큐 보충 (2026-03-21):** [x] `check-parallel-task-queue` **exit 2** (C3·C4) → 보드 **TASK11·12** **`[ ]`** 오픈 → **`exit 0`** · `NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4` 동기 · **후속:** C6 **TASK10 [x]** → **TASK13** **`[ ]`** (동일 S94).
+
+**[C4] SPRINT 94 TASK4 / 300 (UI):** [x] **`/[locale]/journal/loading`** · **`JournalLoadingShell`** · **`journal.journalLoadingMainRegionAria`** · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-21 C4.**
+
+**[REFRESH 2026-03-21 (C1 · 6)]** S94/300 · **TASK1·4·8·9·10·12 [x]** · 잔여 **TASK2·3·5·6·7·11·13·14** **`[ ]`** · **First** C1 **TASK2** · C7 **346/2425**·**346/2427** · **C4 다음:** **TASK14** (UI 큐).
+
+**[C3] SPRINT 94 TASK9 / 300 (TEST):** [x] **`POST /api/arena/code-name`** **`NO_EDGE_DASH`** · **`arenaCodeNameFromUnknown`** · `route.test.ts` **5** ✓ · 보드 **TASK9 [x]**.
+
+**[C3] SPRINT 94 TASK11 / 300 (DOMAIN 큐 보충):** [x] **`arenaActivatedHiddenStatsFromUnknown` edges** · 빈 문자열·비문자·**null**·**중복 Insight** · Vitest **5** ✓ · 보드 **TASK11 [x]** · **C3 S94 `[ ]` 없음** → **PARALLEL_QUEUE_REFILL** (C1).
+
+**[C3] SPRINT 94 TASK8 / 300 (DOMAIN):** [x] **`isArenaHiddenStatLabel` edges** · 공백·NBSP·**U+200B** (exact match) · Vitest **4** ✓ · 보드 **TASK8 [x]**.
+
+**[C1] SPRINT 94 / 300 (splint 10 오픈):** [x] 보드 **TASK1~10** 전부 **`[ ]`** 오픈 · **First** C5 **TASK1** (Gate **94**) · C7 **346/2425** carry · `NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_PLAN` **300** 동기 · **완료. 2026-03-21 C1.** · 후속 **TASK11·12·13** 큐 보충 반영.
+
+**[REFRESH 2026-03-21 (C1 · 3)]** S93/299 · **31/31 `[x]`** · `check-parallel-task-queue` **exit 0** → **S94/300** 오픈 (**본 턴 splint 10**).
+
+**[C1] SPRINT 93 / 299 마감:** **31/31 `[x]`** · C7 **346/2425** ✓ · `check-parallel-task-queue` **exit 0** · **Next** **`splint 10`** → **S94** / **`SPRINT_PLAN` 300** (→ **완료** 상단).
+
+**[C4] SPRINT 93 TASK30 / 299 (UI 큐 보충):** [x] **`/[locale]/growth/loading`** · **`GrowthRouteLoadingShell`** · **`uxPhase1Stub.growthRouteSuspenseMainRegionAria`** · `npm run lint` ✓ · 보드 **TASK30 [x]** · **완료. 2026-03-20 C4.**
+
+**[C6] SPRINT 93 TASK28 / 299 (VERIFY · 큐 재오픈):** [x] **`test:q237-smoke` 3/7** · **`self-healing-ci` 346/2425** ✓ · Lint(tsc) ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK28 [x]** · **C6 S93 `[ ]` 없음** · **CONTINUE 2026-03-21**.
+
+**[C5] SPRINT 93 TASK31 / 299 (VERIFY 큐 보충):** [x] **`BTY_RELEASE_GATE_CHECK`·`ELITE_3RD`** **346/2425** · q237 **3/7** · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK31 [x]** · **완료. 2026-03-20 C5.** · **C5 S93 `[ ]` 없음**.
+
+**[REFRESH 2026-03-21 (C1 · 2)]** S93/299 · `check-parallel-task-queue` **exit 2** → **TASK29·30·31** 오픈 → 마감 후 **`exit 0`** · C7 **346/2425** ✓ · **S93 31/31 `[x]`** · **Next** **C1 `splint 10`** → **S94/300**.
+
+**[C3] SPRINT 93 TASK29 / 299 (DOMAIN 큐 보충):** [x] **`arenaMissionChoiceToken` edges** · **U+200B** · **NBSP** 패딩 trim · Vitest **7** ✓ · 보드 **TASK29 [x]** · **C3 열 S93 `[ ]` 없음** · **S93 31/31** → **C1 `splint 10`**.
+
+**[C5] SPRINT 93 TASK27 / 299 (VERIFY 큐 보충):** [x] **`BTY_RELEASE_GATE_CHECK`·`ELITE_3RD`** **346/2423** · q237 **3/7** · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK27 [x]** · **완료. 2026-03-20 C5.** · **Next C5** **TASK31** (→ **[x]** 상단).
+
+**[C3] SPRINT 93 TASK26 / 299 (DOMAIN 큐 보충):** [x] **`arenaMissionChoiceShapeFromUnknown` edges** · subtitle **MAX+1** · **`id` U+200B** · Vitest **4** ✓ · 보드 **TASK26 [x]**.
+
+**[C5] SPRINT 93 TASK23 / 299 (VERIFY 큐 보충):** [x] **`BTY_RELEASE_GATE_CHECK`·`ELITE_3RD`** **346/2422** · q237 **3/7** · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK23 [x]** · **완료. 2026-03-20 C5.** · **Next C5** **TASK27** (→ **TASK27 [x]** 상단).
+
+**[C3] SPRINT 93 TASK24 / 299 (DOMAIN 큐 보충):** [x] **`arenaMissionOutcomeKeyFromChoiceIds`** edges · 빈 reinforcement · **U+200B** · Vitest **4** ✓ · 보드 **TASK24 [x]**.
+
+**[C1] SPRINT 93 TASK7 / 299 (DOCS):** [x] **§ 다음** — **S94 `splint 10`** · **S93 31/31 `[x]`** 후 · `NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD` 동기.
+
+**[C5] SPRINT 93 TASK18 / 299 (VERIFY 큐):** [x] **`BTY_RELEASE_GATE_CHECK`·`ELITE_3RD`** **346/2414** · 보드 **TASK18 [x]** · **Next C5** **TASK23** (→ **TASK23 [x]** 상단).
+
+**[C3] SPRINT 93 TASK19 / 299 (DOMAIN 큐):** [x] **`arenaOutcomeTraitsFromUnknown.edges.test.ts`** · **`-0`** · unknown keys · Vitest **7** ✓ · 보드 **TASK19 [x]** · **Next C3** **TASK20**.
+
+**[C4] SPRINT 93 TASK16 / 299 (UI 큐):** [x] **`/[locale]/loading`** · **`LocaleRouteLoadingShell`** · **`loading.localeRouteSuspenseMainRegionAria`** · `npm run lint` ✓ · 보드 **TASK16 [x]** · **Next C4** **TASK21**.
+
+**[C6] SPRINT 93 TASK17 / 299 (VERIFY 큐):** [x] **`test:q237-smoke` 3/7** · **`self-healing-ci` 346/2414** ✓ · Build ✓ · 보드 **TASK17 [x]**.
+
+**[C6] SPRINT 93 TASK22 / 299 (VERIFY 큐 보충):** [x] **`test:q237-smoke` 3/7** · **`self-healing-ci` 346/2414** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK22 [x]** · 후속 **TASK25** 큐 보충으로 마감.
+
+**[C5] SPRINT 93 TASK6 / 299 (엘리트 §3):** [x] **`346/2414`** ✓ · `ELITE_3RD` §3 · Gate **93**(TASK1) 동기 · 보드 **TASK6 [x]**.
+
+**[C3] SPRINT 93 TASK15 / 299 (DOMAIN 큐):** [x] **`arenaRunIdFromUnknown.edges.test.ts`** 패딩·max · NBSP/전각 space **내부 → null** · **ZWSP** 허용 · Vitest **7** ✓ · 보드 **TASK15 [x]**.
+
+**[C3] SPRINT 93 TASK14 / 299 (DOMAIN 큐):** [x] **`arenaMissionOutcomeKeyPartsFromUnknown.edges.test.ts`** · **`A_X_Y`** → **`null`** · Vitest **4** ✓ · 보드 **TASK14 [x]**.
+
+**[C4] SPRINT 93 TASK12 / 299 (UI 큐):** [x] **`/[locale]/bty/(protected)/integrity/loading`** · **`IntegrityRouteLoadingShell`** · **`integrityPracticeSuspenseMainRegionAria`** · `npm run lint` ✓ · 보드 **TASK12 [x]**.
+
+**[C6] SPRINT 93 TASK13 / 299 (VERIFY 큐):** [x] **`test:q237-smoke` 3/7** · **`self-healing-ci` 346/2414** ✓ · Build ✓ · 보드 **TASK13 [x]**.
+
+**[C3] SPRINT 93 TASK11 / 299 (DOMAIN 큐):** [x] **`arenaScenarioIdFromUnknown.edges.test.ts`** 패딩·max 길이 · NBSP-only **null** · 내부 **`\n`/`\t`** · Vitest **7** ✓ · 보드 **TASK11 [x]**.
+
+**[C6] SPRINT 93 TASK10 / 299 (VERIFY):** [x] **`test:q237-smoke` 3/7** · **`self-healing-ci` 346/2408** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]**.
+
+**[C4] SPRINT 93 TASK4 / 299 (UI):** [x] **`/[locale]/bty/(protected)/mentor/loading`** · **`MentorRouteLoadingShell`** · **`mentorSuspenseMainRegionAria`** · `npm run lint` ✓ · 보드 **TASK4 [x]**.
+
+**[C3] SPRINT 93 TASK9 / 299 (TEST):** [x] **`POST /api/arena/sub-name`** **`INVALID_JSON`** · **`arenaSubNameFromUnknown`** `{}`/null **EMPTY** · **`xxxxxx@`**/**`xxxxxxx@`** 경계 · `route.test.ts` **8** ✓ · 보드 **TASK9 [x]**.
+
+**[C3] SPRINT 93 TASK8 / 299 (DOMAIN):** [x] **`arenaSubNameFromUnknown.edges.test.ts`** 전각 문자 · NBSP-only **EMPTY** · 내부 **`\t`/`\n`** · **MAX_7** vs **INVALID** 경계 · Vitest **6** ✓ · 보드 **TASK8 [x]**.
+
+**[C1] SPRINT 93 TASK3 / 299 (DOCS):** [x] **199·200차** — `SPRINT_LOG`·`NEXT_PHASE_AUTO4`·`NEXT_BACKLOG_AUTO4`·`AUTO4_PROMPTS`·`SPRINT_PLAN`·`BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` 헤더 · `bty-app/docs/AI_TASK_BOARD` **S93** 정합 · Gate **93**·C7 **346/2397** · 보드 **TASK3 [x]** · **First** C4 **TASK4**.
+
+**[C1] SPRINT 93 TASK2 / 299 (DOCS):** [x] **`NEXT_PHASE_AUTO4`·`NEXT_BACKLOG_AUTO4`** **S93/299** · Gate **93** · **S92** 아카이브 · `AUTO4_PROMPTS` 동기 · 보드 **TASK2 [x]** · **First** **TASK3**.
+
+**[C5] SPRINT 93 TASK1 / 299 (Gate 93):** [x] **Release Gate A~F** — **346/2397** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · q237 **3/7** ✓ · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]**.
+
+**[C3] SPRINT 92 TASK11 / 298 (DOMAIN 큐):** [x] **완료.** **`arenaScenarioDescriptionLinesFromUnknown.edges.test.ts`** 내부 **`\n`/`\t`**·**max 줄+패딩 trim** · Vitest **6** ✓ · 보드 **TASK11 [x]** · **TASK12** C3 **`[ ]`**.
+
+**[C3] SPRINT 92 TASK9 / 298 (TEST):** [x] **완료.** **`POST /api/arena/beginner-complete`** **`arenaRunIdFromUnknown`·`arenaScenarioIdFromUnknown`** · **400** `runId_required`·`scenarioId_required` · `route.test` **6** ✓ · 보드 **TASK9 [x]**.
+
+**[C3] SPRINT 92 TASK8 / 298 (DOMAIN):** [x] **완료.** **`arenaInterpretationLinesFromUnknown.edges.test.ts`** 내부 개행·탭·max 줄 trim · Vitest **6** ✓ · 보드 **TASK8 [x]**.
+
+**[C1] SPRINT 92 TASK2 / 298 (DOCS):** [x] **`NEXT_PHASE_AUTO4`·`NEXT_BACKLOG_AUTO4`** **S92/298** · Gate **92** · **S91** 아카이브 · `AUTO4_PROMPTS` 동기 · 보드 **TASK2 [x]** · **First** **TASK3**.
+
+**[C5] SPRINT 92 TASK1 / 298 (Gate 92):** [x] **Release Gate A~F** — **346/2387** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · q237 **3/7** ✓ · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]**.
+
+**[C6] SPRINT 91 TASK10 / 297 (VERIFY):** [x] **`test:q237-smoke` 3/7** · **`self-healing-ci` 346/2387** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]**.
+
+**[C5] SPRINT 91 TASK6 / 297 (엘리트 §3):** [x] **`346/2387`** ✓ · `ELITE_3RD` §3 · Gate **91**(TASK1) 동기 · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK6 [x]**.
+
+**[C1] SPRINT 91 TASK7 / 297 (DOCS):** [x] **보드 § 다음** — **S92** **`splint 10`** 본 턴 · 보드 **TASK7 [x]**.
+
+**[C1] SPRINT 91 TASK5 / 297 (DOCS):** [x] **다음 = 93** · `NEXT_BACKLOG`·`NEXT_PHASE` 동기 · 보드 **TASK5 [x]**.
+
+**[C3] SPRINT 91 TASK9 / 297 (TEST):** [x] **`POST /api/arena/event`** · **`arenaRunIdFromUnknown`·`arenaScenarioIdFromUnknown`** · **400** `runId_required`·`scenarioId_required`·`eventType_required` · `route.test` **5** ✓ · 보드 **TASK9 [x]**.
+
+**[C4] SPRINT 91 TASK4 / 297 (UI):** [x] **`bty-arena/loading`** · **`BtyArenaRouteLoadingShell`** · **`arenaBtyArenaRouteSegmentLoadingMainRegionAria`** · **`npm run lint` ✓** · 보드 **TASK4 [x]**.
+
+**[C3] SPRINT 91 TASK8 / 297 (DOMAIN):** [x] **`arenaSystemMessageFromUnknown`** edges · **`arenaScenarioCopyFieldsFromUnknown`** whitespace-only 필드 · Vitest ✓ · 보드 **TASK8 [x]**.
+
+**[C1] SPRINT 91 TASK3 / 297 (DOCS):** [x] **195·196차** — `SPRINT_LOG`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`SPRINT_PLAN`·`BTY_RELEASE_GATE_CHECK` · 보드 **TASK3 [x]** · **First** C4 **TASK4**.
+
+**[C1] SPRINT 91 TASK2 / 297 (DOCS):** [x] **`NEXT_PHASE_AUTO4`·`NEXT_BACKLOG_AUTO4`** **S91/297** · Gate **91** · **S90** 아카이브 · **First** **TASK3** · `AUTO4_PROMPTS` 동기 · 보드 **TASK2 [x]**.
+
+**[C5] SPRINT 91 TASK1 / 297 (Gate 91):** [x] **Release Gate A~F** — **346/2381** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · q237 **3/7** ✓ · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]**.
+
+**[C1] SPRINT 90 TASK2·3·5·7 / 296 (DOCS):** [x] **`NEXT_PHASE_AUTO4`·`NEXT_BACKLOG_AUTO4`** **S90/296** · **S89** 아카이브 · 193·194차 · **91** 예고 · 보드·`AUTO4`·`SPRINT_PLAN` **297** 동기.
+
+**[C4] SPRINT 90 TASK4 / 296 (UI):** [x] **`elite/loading`** · **`EliteRouteLoadingShell`** · **`eliteSuspenseMainRegionAria`** · **`npm run lint` ✓**.
+
+**[C3] SPRINT 90 TASK11 / 296 (DOMAIN 큐):** [x] **`arenaCodeNameFromUnknown.edges.test.ts`** 내부 **space/tab** · Vitest **3** ✓.
+
+**[C3] SPRINT 90 TASK9 / 296 (TEST, reflect 추가):** [x] **`POST /api/arena/reflect`** `levelId` **S1** → **200** · `route.test` **6** tests (파일) ✓ · (기존 **beginner-run** `route.test` **6** ✓).
+
+**[C5] SPRINT 90 TASK6 / 296 (엘리트 §3):** [x] **`346/2381`** ✓ · Build ✓ (`rm -rf .next` 선행) · `ELITE_3RD` §3 · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK6 [x]**.
+
+**[C6] SPRINT 90 TASK10 / 296 (VERIFY):** [x] **`test:q237-smoke` 3/7** · **`self-healing-ci` 346/2381** ✓ · Build ✓ · 보드 **TASK10 [x]**.
+
+**[C3] SPRINT 90 TASK9 / 296 (TEST, beginner-run):** [x] **완료.** **`POST /api/arena/beginner-run`** **`arenaScenarioIdFromUnknown`** · **400** 공백·초과길이 · insert **trim** · `route.test` **6** ✓ · 보드 **TASK9 [x]**.
+
+**[C3] SPRINT 90 TASK8 / 296 (DOMAIN):** [x] **완료.** **`arenaReflectLevelIdFromUnknown.edges.test.ts`** near-miss (**`S 1`**, **`SS1`**, **`S11`**, …) · Vitest **10** ✓ · 보드 **TASK8 [x]**.
+
+**[C5] SPRINT 90 TASK1 / 296 (Gate 90):** [x] **`346/2381`** (C7 최신) ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]**.
+
+**[C3] SPRINT 89 TASK25 / 295:** [x] **`arenaRunTypeFromUnknown.edges.test.ts`** plural·hyphen·spaced near-miss · Vitest **4** ✓.
+
+**[C4] SPRINT 89 TASK22 / 295:** [x] **`foundry/loading`** · **`FoundryHubLoadingShell`** · **`foundryHubSuspenseMainRegionAria`** · **`npm run lint` ✓**.
+
+**[C5] SPRINT 89 TASK23 / 295:** [x] **`BTY_RELEASE_GATE_CHECK`·`ELITE_3RD`** · **346/2375** · Build ✓ (`rm -rf .next` 선행).
+
+**[C6] SPRINT 89 TASK24 / 295:** [x] **`npm run lint`** ✓ · spot **`src/app/api/arena/run/**` **`route.test.ts` 4파일** · **`self-healing-ci` 346/2375** ✓.
+
+**[C1] SPRINT 89 TASK3·5·7 / 295 (DOCS):** [x] **완료.** 191·192차 — `SPRINT_LOG`·아카이브·보드 **모순 없음** · `NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4` · **SPRINT 90** 예고 · **346/2371** 정합.
+
+**[C3] SPRINT 89 TASK20 / 295:** [x] **`arenaScenarioDifficultyFromUnknown`** edges (mixed-case·복합 거부) · Vitest **5** ✓ · **lab 난이도와 별개**.
+
+**[C4] SPRINT 89 TASK17 / 295:** [x] **`healing/loading`** **`HealingRouteLoadingShell`** · **`healingSuspenseMainRegionAria`** · **`npm run lint` ✓**.
+
+**[C6] SPRINT 89 TASK18 / 295:** [x] **`lab/complete`** `route.test` spot · **`self-healing-ci` 346/2371** ✓.
+
+**[C5] SPRINT 89 TASK19 / 295:** [x] **`BTY_RELEASE_GATE_CHECK`·`ELITE_3RD`** · **346/2371** · Build ✓ (`rm -rf .next` 선행).
+
+**[C3] SPRINT 89 TASK16 / 295:** [x] **`arenaScenarioOutcomeKeyViolations.edges.test.ts`** · Vitest **6** ✓.
+
+**[C3] SPRINT 89 TASK21 / 295:** [x] **`POST /api/arena/run`** **`arenaScenarioIdFromUnknown`** · **400** 경계 · `route.test` **9** ✓.
+
+**[C1] SPRINT 89 TASK2 / 295 (DOCS):** [x] **`346/2371`** 동기 · 보드 **TASK2 [x]**.
+
+**[C6] SPRINT 89 TASK10·14 / 295 (VERIFY):** [x] **`self-healing-ci`** **346/2371** ✓ · 보드 **TASK10·14 [x]**.
+
+**[C4] SPRINT 89 TASK4 / 295 (dashboard/loading):** [x] **`DashboardRouteLoadingShell`** · **`npm run lint` ✓** · 보드 **TASK4 [x]**.
+
+**[C4] SPRINT 89 TASK13 / 295 (dojo/loading):** [x] **`DojoRouteLoadingShell`** · 보드 **TASK13 [x]**.
+
+**[C3] SPRINT 89 TASK11 / 295 (큐 보충 DOMAIN):** [x] **`arenaIsoDateOnlyFromUnknown`** + **`membership-request`** · 보드 **TASK11 [x]**.
+
+**[C5] SPRINT 89 TASK12·15 / 295 (큐 보충 C5):** [x] **`346/2371`** ✓ · 보드 **TASK12·15 [x]**.
+
+**[C5] SPRINT 89 TASK6 / 295 (엘리트 §3):** [x] **`346/2371`** · `ELITE_3RD` §3 · 보드 **TASK6 [x]**.
+
+**[C5] SPRINT 89 TASK1 / 295 (Gate 89):** [x] **`346/2371`** ✓ · 보드 **TASK1 [x]** · **S90 First → C5 TASK1 (Gate 90)**.
+
+**[C3] SPRINT 89 TASK8·9 / 295 (DOMAIN·TEST):** [x] **완료.** **`arenaLabDifficultyKeyFromUnknown`** + edges · **`POST /api/arena/lab/complete`** domain 위임 · **`coreXp`** 200 검증 · Vitest(본턴) **5** ✓ · 보드 **TASK8·9 [x]** · `SPRINT_PLAN` C3 동기.
+
+**[C4] SPRINT 88 TASK4 / 294 (dear-me/loading):** [x] **`DearMeRouteLoadingShell`** · **`npm run lint` ✓** · 보드 **TASK4 [x]**.
+
+**[C6] SPRINT 88 TASK10 / 294:** [x] q237 **3/7** · **`344/2356`** · Build ✓ · 보드 **TASK10 [x]**.
+
+**[C1] SPRINT 88 TASK2·3·5·7 / 294 (DOCS):** [x] **189·190**차·S89 splint·보드 **C1 전행 [x]**.
+
+**[C3] SPRINT 88 TASK8·9 / 294 (DOMAIN·TEST):** [x] **완료.** **`arenaScenarioMissionChoiceRowsFromUnknown.edges`** 보강 · **`POST /api/arena/free-response`** domain **runId/scenarioId** · **400** 경계 · 보드 **TASK8·9 [x]** · `SPRINT_PLAN` C3 동기.
+
+**[C5] SPRINT 88 TASK6 / 294 (엘리트 §3):** [x] **완료.** **344/2356** · `ELITE_3RD` §3 · Gate **88** TASK1 동기 · 보드 **TASK6 [x]**.
+
+**[C5] SPRINT 88 TASK1 / 294 (Gate 88):** [x] **완료.** **344/2356** ✓ · Build ✓ · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]** · `SPRINT_LOG` C7 한 줄 권장.
+
+**[C1] SPRINT 87 TASK2·3·5·7 / 293 (DOCS · splint):** [x] **완료.** NEXT_PHASE·BACKLOG·187·188차·§88·보드·`SPRINT_PLAN` **294**·S88 표 오픈 · 보드 **TASK2·3·5·7 [x]**.
+
+**[C6] SPRINT 87 TASK10 / 293 (VERIFY):** [x] **완료.** q237 **3 files / 7 tests** ✓ · **`344/2351`** ✓ · Build ✓ · 보드 **TASK10 [x]** · `SPRINT_LOG` 동기.
+
+**[C4] SPRINT 87 TASK4 / 293 (접근성):** [x] **완료.** **`/[locale]/center/loading`** **`<main aria-label={center.centerSuspenseMainRegionAria}>`** · **`npm run lint` ✓** · 보드 **TASK4 [x]**.
+
+**[C5] SPRINT 87 TASK6 / 293 (엘리트 §3):** [x] **완료.** **`344/2351`** · `ELITE_3RD` §3 · Gate **87** TASK1 동기 · 보드 **TASK6 [x]**.
+
+**[C5] SPRINT 87 TASK1 / 293 (Gate 87):** [x] **완료.** **`344/2351`** ✓ · Build ✓ · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]**.
+
+**[REFILL 2026-03-20 (3)]** 이번 런 **SPRINT 87** / **293** — `check-parallel-task-queue` **exit 2** (**C3·C4·C5·C6** 기아 · C1만 `[ ]` 잔여) → **TASK 1~10** 전부 **`[ ]`** · **First** C5 **TASK1 (Gate 87)** · S86 아카이브 · 문서 동기.
+
+**[C3] SPRINT 87 TASK8·9 / 293 (DOMAIN·TEST):** [x] **완료.** **`arenaReflectLevelIdFromUnknown`** + edges · **`POST /api/arena/reflect`** · beginner-event **`arenaRunIdFromUnknown`** + runId 공백 **400** · 보드 **TASK8·9 [x]** · `SPRINT_PLAN` **C3** 동기.
+
+**[C1] SPRINT 87 다음 스텝 (DOCS):** TASK **2** — `NEXT_PHASE_AUTO4`·`NEXT_BACKLOG_AUTO4`를 **S87/293**·Gate **87**·**C5 TASK1·6 [x]** 후 **First**로 반영 — 이어서 **TASK3** **187·188**차 정합.
+
+**[C6] SPRINT 86 TASK10 / 292 (VERIFY):** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **342/2338** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · `SPRINT_LOG` 동기.
+
+**[C5] SPRINT 86 TASK1·6 / 292 (Gate 86·엘리트 §3):** [x] **완료.** **342/2338** ✓ · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` §3 · 보드 **TASK1·6 [x]**.
+
+**[C4] SPRINT 86 TASK4 / 292 (접근성):** [x] **완료.** **`/[locale]/center/error`** **`<main aria-label={center.centerErrorMainRegionAria}>`** · ko/en · **`npm run lint` ✓** · 보드 **TASK4 [x]**.
+
+**[REFILL 2026-03-20 (2)]** 이번 런 **SPRINT 86** / **292** — `check-parallel-task-queue` **exit 2** (**C3·C4·C5** 기아) → **TASK 1~10** 전부 **`[ ]`** · **First** C5 **TASK1 (Gate 86)** · S85 아카이브 · 문서 동기.
+
+**[C3] SPRINT 86 TASK8·9 / 292 (DOMAIN·TEST):** [x] **완료.** **`arenaSubNameFromUnknown`** + edges · **`POST /api/arena/sub-name`** domain 위임 · **`INVALID_CHARS` 400** · Vitest(본턴) **7** ✓ · 보드 **TASK8·9 [x]** · `SPRINT_PLAN` **C3** 동기.
+
+**[C1] SPRINT 86 다음 스텝 (DOCS):** TASK **2** — `NEXT_PHASE_AUTO4`·`NEXT_BACKLOG_AUTO4`를 **S86/292**·Gate **86** First에 맞춰 **REFILL (2)에서 반영** — 잔여 문구는 구현 착수 후 **TASK3** **185·186**차 점검으로 이어짐.
+
+**[C3] SPRINT 85 TASK8·9 / 291 (DOMAIN·TEST):** [x] **완료.** **`arenaIsoTimestampFromUnknown`** + edges · barrel · **`POST /api/arena/code-name`** `NO_DOUBLE_DASH` **400** · Vitest(본턴) **6** ✓ · 보드 **TASK8·9 [x]** · `SPRINT_PLAN` **C3** 동기.
+
+**[C5] SPRINT 85 TASK1·6 / 291 (Gate 85·엘리트 §3):** [x] **완료.** `self-healing-ci` **341/2335** ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` §3 · 보드 **TASK1·6 [x]**.
+
+**[C4] SPRINT 85 TASK4 / 291 (접근성):** [x] **완료.** **`/[locale]/dear-me/error`** **`<main aria-label={center.dearMeErrorMainRegionAria}>`** · ko/en · **`npm run lint` ✓** · 보드 **TASK4 [x]**.
+
+**[REFILL 2026-03-20]** 이번 런 **SPRINT 85** / **291** — `check-parallel-task-queue` **exit 2** (**C3** 기아) → 표준 **TASK 1~10** 전부 **`[ ]`** · **First Task** C5 **TASK1 (Gate 85)** · S84 아카이브 · 문서 동기 완료.
+
+**[C1] SPRINT 85 다음 스텝 (DOCS):** TASK **2** — `NEXT_PHASE_AUTO4`·`NEXT_BACKLOG_AUTO4`를 **S85/291**·Gate **85** First·BACKLOG 5줄에 맞춰 이미 REFILL에서 일부 반영됨 → 잔여 **§183·184** 문구 수치·보드 정합만 TASK3에서 이어서 점검.
+
+**[C4] SPRINT 84 TASK4 / 290 (접근성):** [x] **완료.** **`/[locale]/bty/forgot-password`** **`<main aria-label={login.forgotPasswordMainRegionAria}>`** · ko/en · **`npm run lint` ✓** · 보드 **TASK4 [x]**.
+
+**[C5] SPRINT 84 TASK1 / 290 (Gate 84):** [x] **완료.** Release Gate A~F — **339/2327** · Build ✓ · `BTY_RELEASE_GATE_CHECK`·보드·`CURRENT_TASK` 반영.
+
+**[C6] SPRINT 84 TASK10 / 289 TASK40 (큐 보충 VERIFY):** [x] **완료.** q237 **3 files / 7 tests** ✓ · `self-healing-ci.sh` **339/2327** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · `SPRINT_PLAN` C6 **TASK40 [x]** · `SPRINT_LOG`·`CURSOR_TASK_BOARD` 반영.
+
+**[REFRESH 2026-03-11]** 이번 런 **SPRINT 84** / **290** — C5 **Gate 84 [x]** · First **C1 TASK2** · `check-parallel-task-queue` **exit 0** · C2~C6×5 = 본 턴 채팅. **다음 C1:** TASK2 — NEXT_PHASE·NEXT_BACKLOG + S83 잔여 동기.
+
+**[C3] SPRINT 84 TASK8·9 / 290 (DOMAIN·TEST):** [x] **완료.** **TASK8** `arenaRunIdFromUnknown` + edges · **TASK9** GET `/api/arena/run/[runId]` 400 whitespace-only runId · Vitest **340/2330** ✓ · 보드 **TASK8·9 [x]** · C3 **`[ ]` 없음** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
+
+**[C6] SPRINT 83 TASK40 / 289 (큐 보충 VERIFY):** [x] **완료.** q237 **3 files / 7 tests** ✓ · `self-healing-ci.sh` **338/2324** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK40 [x]** · **C6 기아 방지 → TASK46** · `SPRINT_LOG`·`CURRENT_TASK` 반영.
+
+**[REFILL 2026-03-14]** 이번 런 **SPRINT 84** / **290** — `check-parallel-task-queue` **exit 2** (C3·C4·C6 기아) → **S84** TASK 1~10 전부 **`[ ]`** · **First Task** C5 **TASK1 (Gate 84)** · `CURSOR_TASK_BOARD`·`SPRINT_PLAN`·`NEXT_BACKLOG`·`AUTO4_PROMPTS`·`SPRINT_LOG`·`CURRENT_TASK` 반영.
+
+**[C6] SPRINT 83 TASK40 / 289 (VERIFY 재검증):** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **338 / 2324** ✓ · Build ✓ · 보드 TASK40 **[x]** · `SPRINT_LOG` 갱신 (2026-03-14).
+
+**[C5] SPRINT 289 TASK41 / `SPRINT_PLAN` C5 — UI ENGINEER (CONTINUE 2026-03-20):** [x] **완료.** Gate·엘리트·문서 스테일 — **`340/2331`** ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` §3 · **`SPRINT_PLAN` TASK41 [x]** 동기 · 보드 **S85** C5 VERIFY는 별도 First(문서 단일 진실 `CURSOR_TASK_BOARD`).
+
+**[C4] SPRINT 83 TASK45 / 289 (큐 보충 접근성):** [x] **완료.** **`/[locale]/train/28days/day/[day]`** **`<main aria-label={train.track28DayMainRegionAria}>`** · ko/en · **`npm run lint` ✓** · 보드 **TASK45 [x]**.
+
+**[C1] SPRINT 83 TASK 2·3·5·7 / 289 (DOCS):** [x] **완료.** NEXT_PHASE·NEXT_BACKLOG + S82 잔여 동기 · 문서 점검 178·179·180차 (보드·BACKLOG·Gate 정합) · 다음 배치 **84** · **SPRINT 84 예고** · `NEXT_PHASE_AUTO4`·`NEXT_BACKLOG_AUTO4`·`CURSOR_TASK_BOARD` 반영.
+
+**[C4] SPRINT 83 TASK38 / 289 (큐 보충 접근성):** [x] **완료.** **`/[locale]/train/28days`** **`<main aria-label={train.track28HubMainRegionAria}>`** · ko/en · **`npm run lint` ✓** · 보드 **TASK38 [x]** · C4 **`[ ]` 없음** (큐 보충 대기).
+
+**[REFRESH 2026-03-11]** 이번 런 **SPRINT 83** / **289** — `check-parallel-task-queue` **exit 0** · **C1 전행 [x]** · 잔여 **`[ ]`** = **C3 TASK44** · **C4 TASK45** (완료 시 C4 `[ ]` 없음) · **C5 TASK43** · **C6 TASK46** (TASK40 [x] 후) · C2 다음 push Gate.
+
+**[C3] SPRINT 83 TASK44 / 289 (큐 보충 DOMAIN):** [x] **완료.** **`arenaRunLifecyclePhaseFromUnknown`** + **`arenaRunLifecyclePhaseFromUnknown.edges.test.ts`** · in_progress/completed/aborted · barrel · Vitest **3** ✓ · **339/2327** · 보드 **TASK44 [x]** · C3 **`[ ]` 없음** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
+
+**[C3] SPRINT 83 TASK42 / 289 (큐 보충 DOMAIN):** [x] **완료.** **`arenaRunTypeFromUnknown`** + **`arenaRunTypeFromUnknown.edges.test.ts`** · lab/mission/beginner · barrel · Vitest **3** ✓ · **338/2324** · 보드 **TASK42 [x]** · C3 **`[ ]` 없음** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
+
+**[C3] SPRINT 83 TASK39 / 289 (큐 보충 DOMAIN):** [x] **완료.** **`listArenaScenarioOutcomeKeyViolations`** + **`arenaScenarioOutcomeKeyViolations.edges.test.ts`** · outcomes keys vs choice ids · barrel · Vitest scenarios **21 files / 74 tests** ✓ · 보드 **TASK39 [x]** · 다음 C3 **`[ ]` = TASK42** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD`·`AI_TASK_BOARD` 동기.
+
+**[C5] SPRINT 83 TASK36 / 289 (큐 보충 Gate·엘리트·문서):** [x] **완료.** **`336/2317`** ✓ · `self-healing-ci.sh` · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` · 보드 **TASK36 [x]** · 다음 C5 **`[ ]` = TASK41** · `SPRINT_LOG`·`SPRINT_PLAN`·`AUTO4`·`NEXT_PHASE` 동기.
+
+**[C6] SPRINT 83 TASK 37 / 289 (큐 보충 VERIFY):** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **335 / 2315** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK37 [x]** · 다음 C6 **`[ ]` = TASK40** · `SPRINT_LOG`·`CURSOR_TASK_BOARD` 동기.
+
+**[C3] SPRINT 83 TASK34 / 289 (큐 보충 DOMAIN):** [x] **완료.** **`arenaScenarioFromUnknown`** + **`arenaScenarioFromUnknown.edges.test.ts`** · sibling `*FromUnknown` 조립 · full **`ArenaScenario`** · barrel · Vitest **2** ✓ · 보드 **TASK34 [x]** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
+
+**[C4] SPRINT 83 TASK35 / 289 (`/[locale]/train/start`):** [x] **완료.** **`train.journeyStartMainRegionAria`** · **`<main>`** (`p-6 space-y-4`) · **`npm run lint` ✓** · 보드 **TASK35 [x]** · 다음 C4 **`[ ]` = TASK38** · `BTY_RELEASE_GATE_CHECK`·`CURSOR_TASK_BOARD` 동기.
+
+**[C6] SPRINT 83 TASK 30 / 289 (큐 보충 VERIFY):** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **335 / 2315** ✓ · **`avatarOutfits*`** 테스트 `imageUrl` nullability · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK30 [x]** · 이후 **TASK37** → **[x]** (상단) · `SPRINT_LOG`·`CURSOR_TASK_BOARD` 동기.
+
+**[C5] SPRINT 83 TASK32 / 289 (큐 보충 Gate·엘리트·문서):** [x] **완료.** **`335/2315`** ✓ · `self-healing-ci.sh` · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` · 보드 **TASK32 [x]** · 이후 **TASK36** **[x]** — 현재 대기 C5 **`[ ]` = TASK41** · `SPRINT_PLAN`·`AUTO4`·`NEXT_PHASE` 동기.
+
+**[C2] post-push Gate 동기 (`7654875`→`822c19c`):** [x] **완료.** `self-healing-ci.sh` **335 / 2315** ✓ · Build ✓ · **`BTY_RELEASE_GATE_CHECK`**·**`SPRINT_LOG`**·**`SPRINT_PLAN`**(S253 rolling `[x]`/`[ ]`) 동기 · *다음 `origin/main` push 시 재동기.*
+
+**[C4] SPRINT 83 TASK33 / 289 (`dojo/result`):** [x] **완료.** `DojoResultClient` 전 분기 **`<main>`** · `dojoResult.loading` / `apiError` / `dojoResultMainRegionAria` · Dr. Chi **`drChiCommentTitle`** · **`npm run lint` ✓** · 보드 **TASK33 [x]** · 다음 C4 **`[ ]` = TASK35→TASK38** · `BTY_RELEASE_GATE_CHECK`·`CURSOR_TASK_BOARD` 동기.
+
+**[C3] SPRINT 83 TASK29 / 289 (큐 보충 DOMAIN):** [x] **완료.** **`arenaScenarioMissionChoiceRowsFromUnknown`** · **`arenaScenarioPrimaryChoicesRowFromUnknown`** · **`arenaScenarioReinforcementChoicesRowFromUnknown`** + **`arenaScenarioMissionChoiceRowsFromUnknown.edges.test.ts`** · **A/B/C** · **X/Y** 행 검증 · barrel · Vitest **4** ✓ · 보드 **TASK29 [x]** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
+
+**[C4] SPRINT 83 TASK31 / 289 (`train/day/[day]`):** [x] **완료.** **`page.tsx`** → **`page.client` re-export** · **`<main aria-label={train.lessonLabel}>`** (`role="region"` 제거) · **`npm run lint` ✓** · 보드 **TASK31 [x]** · 다음 C4 **`[ ]` = TASK33→TASK35** · `BTY_RELEASE_GATE_CHECK`·`CURSOR_TASK_BOARD` 동기.
+
+**[C5] SPRINT 83 TASK27 / 289 (큐 보충 Gate·엘리트·문서):** [x] **완료.** **`334/2311`** ✓ · `self-healing-ci.sh` · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` · 보드 **TASK27 [x]** · 이후 **TASK32** **[x]** — 현재 대기 C5 **`[ ]` = TASK36** · `SPRINT_LOG`·`SPRINT_PLAN`·`AUTO4`·`NEXT_PHASE` 동기.
+
+**[C3] SPRINT 83 TASK28 / 289 (큐 보충 DOMAIN):** [x] **완료.** **`arenaScenarioOutcomesFromUnknown`** + **`arenaScenarioOutcomesFromUnknown.edges.test.ts`** · mission outcome map · **`ARENA_SCENARIO_OUTCOMES_MAX_KEYS` 32** · canonical keys · barrel · Vitest **3** ✓ · 보드 **TASK28 [x]** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
 
 **[C4] SPRINT 83 TASK25 / 289 (`/[locale]` 랜딩):** [x] **완료.** `LandingClient` **`<main aria-label={landing.landingHubMainRegionAria}>`** · **`npm run lint` ✓** · 보드 **TASK25 [x]** · 다음 C4 **`[ ]` = TASK31** · `BTY_RELEASE_GATE_CHECK`·`CURSOR_TASK_BOARD` 동기.
 
-**[C6] SPRINT 83 TASK 20 / 289 (큐 보충 VERIFY):** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **332 / 2304** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK20 [x]** · 다음 C6 **`[ ]` = TASK30** (큐 보충) · `SPRINT_LOG`·`SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
+**[C6] SPRINT 83 TASK 20 / 289 (큐 보충 VERIFY):** [x] **완료.** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci.sh` **332 / 2304** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK20 [x]** · 이후 **TASK30** → **[x]** (상단) · `SPRINT_LOG`·`SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
 
 **[C3] SPRINT 83 TASK26 / 289 (큐 보충 DOMAIN):** [x] **완료.** **`arenaScenarioDescriptionLinesFromUnknown`** + **`arenaScenarioDescriptionLinesFromUnknown.edges.test.ts`** · `ARENA_SCENARIO_DESCRIPTION_MAX_LINES` **64** · line max **4096** · **≥1 line** · barrel · Vitest **4** ✓ · 보드 **TASK26 [x]** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
 
@@ -16,9 +376,7 @@
 
 **[C3] SPRINT 83 TASK 22 / 289 (큐 보충 DOMAIN):** [x] **완료.** **`arenaScenarioCopyFieldsFromUnknown`** + **`arenaScenarioCopyFieldsFromUnknown.edges.test.ts`** · `stage`/`caseTag`/`title` 길이 상한 · barrel · Vitest **4** ✓ · 보드 **TASK22 [x]** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
 
-**[C1] REFRESH 2026-03-20 (`REFRESH_PROCEDURE.md` § C1 이중 의무 · 5차):** 보드 잔여 **`[ ]` = DOCS** TASK2·3·5·7 · **C4 TASK33** · **C5 TASK32** · **C3 TASK29** · **C6 TASK30** · 큐 **exit 0** · **`SPRINT_PLAN`(C4 **TASK33** 요약)·`AUTO4`·`AI_TASK_BOARD`·`NEXT_PHASE`·`SPRINT_LOG`** 동기 · C7 **334/2311** · Gate/스모크 **미실행**.
-
-**[C5] SPRINT 83 TASK27 / 289 (큐 보충 Gate·엘리트·문서):** [x] **완료.** **`334/2311`** ✓ · `self-healing-ci.sh` · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` · 보드 **TASK27 [x]** · 다음 C5 **`[ ]` = TASK32** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
+**[C1] REFRESH 2026-03-20 (`REFRESH_PROCEDURE.md` § C1 이중 의무 · 6차):** 보드 잔여 **`[ ]` = DOCS** TASK2·3·5·7 · **C3 TASK42** · **C4 TASK38** · **C5 TASK41** · **C6 TASK40** · 큐 **exit 0** · **`SPRINT_PLAN`·`AUTO4`·`AI_TASK_BOARD`·`NEXT_PHASE`·`SPRINT_LOG`** 동기 · C7 **336/2317** (`822c19c` + C5 TASK36 VERIFY) · Gate/스모크 **미실행**.
 
 **[C5] SPRINT 83 TASK23 / 289 (큐 보충 Gate·엘리트·문서):** [x] **완료.** **`332/2304`** ✓ · **`bty-arena/wireframe`** **`</main>`** (TS17002) · `self-healing-ci.sh` · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` · 보드 **TASK23 [x]** · 이후 **TASK27** → **[x]** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD` 동기.
 

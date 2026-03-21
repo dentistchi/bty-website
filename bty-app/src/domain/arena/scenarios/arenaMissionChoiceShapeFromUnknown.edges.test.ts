@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   ARENA_MISSION_CHOICE_LABEL_MAX_LENGTH,
+  ARENA_MISSION_CHOICE_SUBTITLE_MAX_LENGTH,
   ARENA_MISSION_CHOICE_TITLE_MAX_LENGTH,
   arenaPrimaryChoiceFromUnknown,
   arenaReinforcementChoiceFromUnknown,
@@ -78,6 +79,43 @@ describe("arenaMissionChoiceShapeFromUnknown (edges)", () => {
       arenaReinforcementChoiceFromUnknown({
         id: "Z",
         label: "Z",
+        title: "t",
+      }),
+    ).toBeNull();
+  });
+
+  it("rejects subtitle over max length (boundary) and ZWSP inside mission choice ids", () => {
+    const okSub = "s".repeat(ARENA_MISSION_CHOICE_SUBTITLE_MAX_LENGTH);
+    expect(
+      arenaPrimaryChoiceFromUnknown({
+        id: "A",
+        label: "A",
+        title: "t",
+        subtitle: ` ${okSub} `,
+      }),
+    ).toEqual({ id: "A", label: "A", title: "t", subtitle: okSub });
+
+    const tooLongSub = "s".repeat(ARENA_MISSION_CHOICE_SUBTITLE_MAX_LENGTH + 1);
+    expect(
+      arenaPrimaryChoiceFromUnknown({
+        id: "A",
+        label: "A",
+        title: "t",
+        subtitle: tooLongSub,
+      }),
+    ).toBeNull();
+
+    expect(
+      arenaPrimaryChoiceFromUnknown({
+        id: "A\u200b",
+        label: "A",
+        title: "t",
+      }),
+    ).toBeNull();
+    expect(
+      arenaReinforcementChoiceFromUnknown({
+        id: "X\u200b",
+        label: "X",
         title: "t",
       }),
     ).toBeNull();

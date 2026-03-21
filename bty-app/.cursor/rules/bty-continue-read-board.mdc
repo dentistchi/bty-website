@@ -12,7 +12,7 @@ alwaysApply: true
 - **현재 배치** = 표 제목 **SPRINT N** — 열 때마다 확인. 자기 **OWNER(C1~C6)** 행 중 **[ ]** 인 TASK가 할 일. 별도 "C2 TASK QUEUE" 파일 없음.
 - **할 일 읽는 법**: **`../docs/agent-runtime/HOW_TO_READ_TASKS.md`** 참고.
 - 복사용 문장: **../docs/agent-runtime/AUTO4_PROMPTS.md** 해당 블록.
-- **REFRESH**: **../docs/agent-runtime/REFRESH_PROCEDURE.md** — **매번** 이번 태스크 점검 후 **C2~C6 각 역할당 정확히 5줄** 인라인(빈 줄 금지·미정은 `대기:`); 병렬 창은 자기 **Cn** 1~5만 순서 진행.
+- **REFRESH**: **../docs/agent-runtime/REFRESH_PROCEDURE.md** — **매번** 이번 태스크 점검 후 **C2~C6 각 역할당 정확히 5줄** 인라인(빈 줄 금지·미정은 `대기:`); 병렬 창은 자기 **Cn** 1~5만 순서 진행. **현재 모드: 구현 단계** — 할 일은 **코드 생성·구현** 우선; 5줄을 검증 루틴만으로 채우지 않음.
 - **할 일 없음** (이번 런 미완료인데 자기 OWNER `[ ]` 없음): **../docs/agent-runtime/PARALLEL_QUEUE_REFILL.md** · 점검 `bash scripts/check-parallel-task-queue.sh`(repo 루트). exit 2 → C1 큐 보충.
 
 이 디렉터리(bty-app/docs/)의 AI_TASK_BOARD.md는 요약만. 할 일 목록은 **반드시 ../docs/CURSOR_TASK_BOARD.md** 에서 확인.

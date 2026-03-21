@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { arenaRunIdFromUnknown, arenaScenarioIdFromUnknown } from "@/domain/arena/scenarios";
 
 const FREE_RESPONSE_XP = 25;
 const MAX_RESPONSE_LENGTH = 2000;
@@ -30,17 +31,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
   }
 
-  const runId = (body as { runId?: string })?.runId;
-  const scenarioId = (body as { scenarioId?: string })?.scenarioId;
+  const runId = arenaRunIdFromUnknown((body as { runId?: unknown })?.runId);
+  const scenarioId = arenaScenarioIdFromUnknown((body as { scenarioId?: unknown })?.scenarioId);
   const rawText = (body as { responseText?: string })?.responseText;
   const responseText = typeof rawText === "string" ? rawText.trim() : "";
   const locale = (body as { locale?: string })?.locale === "ko" ? "ko" : "en";
   const feedback = getFeedback(locale);
 
-  if (!runId || typeof runId !== "string") {
+  if (!runId) {
     return NextResponse.json({ error: "runId_required" }, { status: 400 });
   }
-  if (!scenarioId || typeof scenarioId !== "string") {
+  if (!scenarioId) {
     return NextResponse.json({ error: "scenarioId_required" }, { status: 400 });
   }
   if (responseText.length === 0) {

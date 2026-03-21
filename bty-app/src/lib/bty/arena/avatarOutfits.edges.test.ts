@@ -43,8 +43,9 @@ describe("avatarOutfits (edges)", () => {
     it("imageUrl is under /avatars/outfits/ and ends with .png", () => {
       for (const lid of OUTFIT_LEVEL_IDS) {
         const r = getOutfitForLevel("professional", lid);
+        expect(r.imageUrl).not.toBeNull();
         expect(r.imageUrl).toMatch(/^\/avatars\/outfits\/.+/);
-        expect(r.imageUrl.endsWith(".png")).toBe(true);
+        expect(r.imageUrl!.endsWith(".png")).toBe(true);
       }
     });
     it("fantasy theme returns outfit with non-empty outfitId for S1", () => {

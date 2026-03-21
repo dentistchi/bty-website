@@ -101,11 +101,10 @@ export default function DojoResultClient({ locale = "ko" }: { locale?: string })
 
   if (loading) {
     return (
-      <div
+      <main
         className="max-w-3xl mx-auto px-6 py-10"
-        role="region"
         aria-busy="true"
-        aria-label={t.loading}
+        aria-label={dojoT.loading}
       >
         <div className="mb-6">
           <CardSkeleton showLabel={true} lines={1} style={{ padding: "16px 20px", marginBottom: 12 }} />
@@ -120,13 +119,13 @@ export default function DojoResultClient({ locale = "ko" }: { locale?: string })
           <CardSkeleton showLabel={false} lines={1} style={{ padding: "10px 20px", width: 120 }} />
           <CardSkeleton showLabel={false} lines={1} style={{ padding: "10px 20px", width: 120 }} />
         </div>
-      </div>
+      </main>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-xl mx-auto px-6 py-10" role="alert">
+      <main className="max-w-xl mx-auto px-6 py-10" role="alert" aria-label={dojoT.apiError}>
         <h1 className="text-2xl font-semibold text-gray-800 mb-2">{t.error}</h1>
         <p className="text-sm text-gray-600 mb-6">{t.errorHint}</p>
         <Link
@@ -136,13 +135,13 @@ export default function DojoResultClient({ locale = "ko" }: { locale?: string })
         >
           {t.retry}
         </Link>
-      </div>
+      </main>
     );
   }
 
   if (!result) {
     return (
-      <div className="max-w-xl mx-auto px-6 py-10" role="region" aria-label={isEn ? "No result" : "결과 없음"}>
+      <main className="max-w-xl mx-auto px-6 py-10" aria-label={dojoT.dojoResultMainRegionAria}>
         <h1 className="text-2xl font-semibold mb-2">{t.noResult}</h1>
         <p className="text-sm text-gray-600 mb-6">{t.noResultHint}</p>
         <Link
@@ -152,7 +151,7 @@ export default function DojoResultClient({ locale = "ko" }: { locale?: string })
         >
           {t.goToAssessment}
         </Link>
-      </div>
+      </main>
     );
   }
 
@@ -170,11 +169,7 @@ export default function DojoResultClient({ locale = "ko" }: { locale?: string })
   const sm = summaryStyle[summaryKey] ?? { bg: "bg-gray-50", border: "border-gray-200", badge: "bg-gray-100 text-gray-700", badgeText: "" };
 
   return (
-    <div
-      className="max-w-3xl mx-auto px-6 py-10"
-      role="region"
-      aria-label={dojoT.dojoResultMainRegionAria}
-    >
+    <main className="max-w-3xl mx-auto px-6 py-10" aria-label={dojoT.dojoResultMainRegionAria}>
       <h1 id="dojo-result-heading" className="text-2xl font-semibold mb-2">
         {isEn ? "Dojo 50-Item Result" : "Dojo 역량 진단 결과"}
       </h1>
@@ -209,7 +204,7 @@ export default function DojoResultClient({ locale = "ko" }: { locale?: string })
       </div>
 
       {mentorComment && (
-        <div className={`rounded-2xl border p-5 ${sm.bg} ${sm.border}`} role="region" aria-label={isEn ? "Dr. Chi comment" : "Dr. Chi 코멘트"}>
+        <div className={`rounded-2xl border p-5 ${sm.bg} ${sm.border}`} role="region" aria-label={dojoT.drChiCommentTitle}>
           <div className="flex items-start gap-3">
             <span className="text-2xl shrink-0" aria-hidden="true">🧑‍⚕️</span>
             <div className="min-w-0">
@@ -233,6 +228,6 @@ export default function DojoResultClient({ locale = "ko" }: { locale?: string })
           {isEn ? "View past results" : "과거 진단 보기"}
         </Link>
       </div>
-    </div>
+    </main>
   );
 }

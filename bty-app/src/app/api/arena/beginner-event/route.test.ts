@@ -43,4 +43,19 @@ describe("POST /api/arena/beginner-event", () => {
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("runId and step 2-5 required");
   });
+
+  /** S87 C3 TASK9: runId with internal whitespace — arenaRunIdFromUnknown rejects. */
+  it("returns 400 when runId contains whitespace", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+    });
+    const req = new Request("http://localhost/api/arena/beginner-event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ runId: "run with space", step: 2 }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("runId and step 2-5 required");
+  });
 });

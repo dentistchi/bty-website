@@ -19,12 +19,27 @@ describe("arenaOutcomeTraitWeightFromUnknown (edges)", () => {
     expect(arenaOutcomeTraitWeightFromUnknown(NaN)).toBeNull();
     expect(arenaOutcomeTraitWeightFromUnknown(Number.POSITIVE_INFINITY)).toBeNull();
   });
+
+  it("treats -0 as 0 (IEEE edge)", () => {
+    expect(Object.is(arenaOutcomeTraitWeightFromUnknown(-0), 0)).toBe(true);
+  });
 });
 
 describe("arenaOutcomeTraitsPartialFromUnknown (edges)", () => {
   it("returns {} for empty object; ignores non–HiddenStat keys", () => {
     expect(arenaOutcomeTraitsPartialFromUnknown({})).toEqual({});
     expect(arenaOutcomeTraitsPartialFromUnknown({ noise: 0.5, foo: "x" })).toEqual({});
+    expect(arenaOutcomeTraitsPartialFromUnknown({ notAStat: NaN, bogus: "nope" })).toEqual({});
+  });
+
+  it("ignores unknown keys even when their values would be invalid for weights", () => {
+    expect(
+      arenaOutcomeTraitsPartialFromUnknown({
+        Integrity: 0.5,
+        notAHiddenStat: "bad",
+        alsoNoise: NaN,
+      }),
+    ).toEqual({ Integrity: 0.5 });
   });
 
   it("keeps only valid HiddenStat keys with clamped weights", () => {

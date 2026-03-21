@@ -17,6 +17,30 @@ describe("arenaScenarioCopyFieldsFromUnknown (edges)", () => {
     ).toEqual({ stage: "S1", caseTag: "ER", title: "T" });
   });
 
+  it("returns null when stage, caseTag, or title are non-strings", () => {
+    expect(
+      arenaScenarioCopyFieldsFromUnknown({
+        stage: 1,
+        caseTag: "b",
+        title: "c",
+      }),
+    ).toBeNull();
+    expect(
+      arenaScenarioCopyFieldsFromUnknown({
+        stage: "a",
+        caseTag: null,
+        title: "c",
+      }),
+    ).toBeNull();
+    expect(
+      arenaScenarioCopyFieldsFromUnknown({
+        stage: "a",
+        caseTag: "b",
+        title: true,
+      }),
+    ).toBeNull();
+  });
+
   it("returns null when value is not a plain object or any field is missing/invalid", () => {
     expect(arenaScenarioCopyFieldsFromUnknown(null)).toBeNull();
     expect(arenaScenarioCopyFieldsFromUnknown([])).toBeNull();
@@ -74,5 +98,61 @@ describe("arenaScenarioCopyFieldsFromUnknown (edges)", () => {
       caseTag: "b".repeat(ARENA_SCENARIO_CASE_TAG_MAX_LENGTH),
       title: "c".repeat(ARENA_SCENARIO_TITLE_MAX_LENGTH),
     });
+  });
+
+  it("returns null when any field is whitespace-only after trim", () => {
+    expect(
+      arenaScenarioCopyFieldsFromUnknown({
+        stage: "\t \n",
+        caseTag: "b",
+        title: "c",
+      }),
+    ).toBeNull();
+    expect(
+      arenaScenarioCopyFieldsFromUnknown({
+        stage: "a",
+        caseTag: "   ",
+        title: "c",
+      }),
+    ).toBeNull();
+    expect(
+      arenaScenarioCopyFieldsFromUnknown({
+        stage: "a",
+        caseTag: "b",
+        title: "\t\n",
+      }),
+    ).toBeNull();
+  });
+
+  /** NBSP trims away; ZWSP (U+200B) is not stripped by String#trim — still non-empty. */
+  it("treats NBSP-only fields as empty after trim but keeps lone ZWSP as content", () => {
+    expect(
+      arenaScenarioCopyFieldsFromUnknown({
+        stage: "\u00A0\u00A0",
+        caseTag: "ok",
+        title: "ok",
+      }),
+    ).toBeNull();
+    expect(
+      arenaScenarioCopyFieldsFromUnknown({
+        stage: "ok",
+        caseTag: "\u00A0",
+        title: "ok",
+      }),
+    ).toBeNull();
+    expect(
+      arenaScenarioCopyFieldsFromUnknown({
+        stage: "ok",
+        caseTag: "ok",
+        title: "\u00A0",
+      }),
+    ).toBeNull();
+    expect(
+      arenaScenarioCopyFieldsFromUnknown({
+        stage: "\u200b",
+        caseTag: "\u200b",
+        title: "\u200b",
+      }),
+    ).toEqual({ stage: "\u200b", caseTag: "\u200b", title: "\u200b" });
   });
 });

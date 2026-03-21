@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { arenaScenarioIdFromUnknown } from "@/domain/arena/scenarios";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 
 /**
@@ -8,7 +9,7 @@ import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
  * - **Auth:** 세션 필수 → 401 `{ error: "UNAUTHENTICATED" }`.
  * - **Body (JSON):** `scenarioId` string 필수. 선택: `locale`, `difficulty`, `meta` (plain object).
  * - **200:** `{ run: { run_id: string, scenario_id: string, started_at: string, status: string } }`.
- * - **400:** `{ error: "scenarioId_required" }` — `scenarioId` 누락·빈 문자열.
+ * - **400:** `{ error: "scenarioId_required" }` — `scenarioId` 누락·공백만·비문자·**초과 길이** (`ARENA_SCENARIO_ID_MAX_LENGTH`).
  * - **409:** 미사용 — 동일 시나리오 **연속 런 생성 허용**(중복 시작 충돌 코드 없음).
  * - **500:** `{ error: string }` (insert/RPC 실패).
  *
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const scenarioId = String(body?.scenarioId ?? "");
+  const scenarioId = arenaScenarioIdFromUnknown(body?.scenarioId);
   const locale = body?.locale ? String(body.locale) : null;
   const difficulty = body?.difficulty != null ? String(body.difficulty) : null;
   const meta = body?.meta != null && typeof body.meta === "object" ? body.meta : null;

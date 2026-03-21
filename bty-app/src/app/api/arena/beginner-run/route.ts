@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { arenaScenarioIdFromUnknown } from "@/domain/arena/scenarios";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 
-/** POST body: { scenarioId: string } */
+/** POST body: { scenarioId: string } — normalized via `arenaScenarioIdFromUnknown` (trim, max length). */
 export async function POST(req: Request) {
   const supabase = await getSupabaseServerClient();
   const {
@@ -10,7 +11,7 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const scenarioId = String(body?.scenarioId ?? "");
+  const scenarioId = arenaScenarioIdFromUnknown(body?.scenarioId);
   if (!scenarioId) return NextResponse.json({ error: "scenarioId_required" }, { status: 400 });
 
   await supabase.rpc("ensure_arena_profile");

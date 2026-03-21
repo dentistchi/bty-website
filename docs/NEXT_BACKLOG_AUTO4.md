@@ -1,61 +1,53 @@
 # 다음 배치 (Auto 4 — 기본 5건 완료 시 보드에 추가할 후보)
 
-**목적**: 대기 작업이 없을 때 `scripts/next-project-fill-board.sh`가 여기서 다음 작업을 읽어 보드에 추가한다.  
+**목적**: `scripts/next-project-fill-board.sh`가 여기서 다음 작업을 읽어 보드에 추가한다.  
 **기준**: `docs/NEXT_PROJECT_RECOMMENDED.md` §1·§2.  
-**갱신일**: 2026-03-20 — 보드 **SPRINT 83** 이번 런. (S82 → `exit 2` → `PARALLEL_QUEUE_REFILL` §3 → S83.)
+**갱신일**: 2026-03-21 — 보드 **SPRINT 99** (TASK **1~10**) · **`SPRINT_PLAN` 305** · **First C5 TASK1** (Gate **99**) · **S98 → 아카이브** (`PARALLEL_QUEUE_REFILL` §3).
 
 ---
 
 ## MASTER PLAN 연결
 
-C1이 작업을 자동으로 채우는 **흐름**은 다음과 같다.
-
 ```text
 MASTER_PLAN  →  NEXT_BACKLOG_AUTO4  →  CURSOR_TASK_BOARD
 ```
-
-1. **MASTER_PLAN** — Feature → Phase → Task 정의.  
-   - Arena: `docs/plans/ARENA_MASTER_PLAN.md`  
-   - (추후 Center/Foundry MASTER_PLAN 추가 시 동일 방식)
-2. **NEXT_BACKLOG_AUTO4** — 이 문서. MASTER_PLAN에서 **미완료 Task**를 가져와 "다음 배치 목록"에 반영한다.
-3. **CURSOR_TASK_BOARD** — 백로그(이 문서)의 목록을 **대기**로 채운다. (`next-project-fill-board.sh` 또는 C1이 동일 규칙 적용)
-
-**C1 동작**
-- MODE가 **ARENA**일 때: `ARENA_MASTER_PLAN`의 FEATURE → PHASE 순서대로 미완료 TASK를 확인하고, 이 문서(다음 배치 목록)에 추가한 뒤 보드에 반영한다.
-- 완료된 TASK는 건너뛴다. PHASE 순서: Domain → API → UI.
-- TASK 태그([DOMAIN], [API], [UI] 등)에 따라 owner(C2/C3/C4)를 결정한다.
 
 ---
 
 ## 작업 행 형식
 
-아래 목록은 한 줄이 하나의 보드 행 후보다. 형식: `타입|할 일 한 줄(태그 포함)|비고`
-
 - **타입**: `Fix/Polish` 또는 `Feature`
 - **할 일**: `[AUTH]`, `[API]`, `[DOMAIN]`, `[UI]`, `[DOCS]`, `[VERIFY]` 중 하나 포함.
-- 스크립트는 이미 보드에 **완료** 또는 **대기**로 있는 할 일과 동일한 텍스트는 추가하지 않는다.
-- **문서·AUTH N차 점검**: 반복 추가하지 않음. 배포 전 1회 [VERIFY] Release Gate·문서 점검 수행.
 
 ---
 
-## 다음 배치 목록 — FOUNDRY **SPRINT 83**
+## 다음 배치 목록 — **SPRINT 99** (진행 중)
 
 ```
-Fix/Polish|[VERIFY] Release Gate 83차|C5. 보드 S83 TASK1.
-Fix/Polish|[DOCS] BACKLOG + S82 잔여|C1. S83 TASK2·3·5·7.
-Fix/Polish|[UI] Center/Foundry 접근성|C4. S83 TASK4. 보드 PROMPT 제외 목록 준수.
-Fix/Polish|[DOMAIN]·[TEST] Arena|C3. S83 TASK8·9.
-Fix/Polish|[VERIFY] q237-smoke + self-healing-ci|C6. S83 TASK10.
+Fix/Polish|[VERIFY] C5 Gate 99 A~F|C5. S99 TASK1 [ ].
+Fix/Polish|[DOCS] C1 NEXT_PHASE·BACKLOG S99/305|C1. S99 TASK2 [ ].
+Fix/Polish|[DOMAIN] C3 arenaIsoTimestampFromUnknown edges|C3. S99 TASK8 [ ].
+Fix/Polish|[UI] C4 bty-arena loading|C4. S99 TASK4 [ ].
+Fix/Polish|[VERIFY] C6 q237 + self-healing-ci|C6. S99 TASK10 [ ].
 ```
-
-*(2026-03-20: SPRINT 83 · S82 병렬 기아 `exit 2` → `PARALLEL_QUEUE_REFILL` §3.)*
 
 ---
 
-## 갱신 방법
+## S100 예고 (`splint 10` · 이번 런 **전량 [x]** 후)
 
-- **대기 0건**이면 `next-project-fill-board.sh`가 이 파일의 **다음 배치 목록**에서 아직 보드에 없는 할 일을 읽어 보드에 추가한다. (목록이 "구현 배치"면 N차 자동 증가 없음.)
-- **기본 5건 + 이 배치까지 모두 완료**되면: 이 파일 § "다음 배치 목록"을 로드맵·NEXT_PROJECT_RECOMMENDED §2 대안 기준으로 수정해 새 후보를 추가할 수 있다.
-- 또는 **[DOCS] 다음 배치 선정** 작업으로 이 파일을 수동 갱신한 뒤 보드에 반영한다.
+`CURSOR_TASK_BOARD` **SPRINT 100** 오픈 시 **`SPRINT_PLAN` 306** 과 동기. 후보 시드(복사용):
 
-*참고: `docs/NEXT_PROJECT_RECOMMENDED.md`, `docs/NEXT_PHASE_AUTO4.md`, `docs/plans/ARENA_MASTER_PLAN.md`, `scripts/next-project-fill-board.sh`*
+```
+Fix/Polish|[VERIFY] C5 Gate 100 A~F|C5. S100 TASK1 [ ].
+Fix/Polish|[DOCS] C1 NEXT_PHASE·BACKLOG S100/306|C1. S100 TASK2 [ ].
+Fix/Polish|[DOMAIN] C3 Arena *FromUnknown|C3. S100 TASK8 [ ].
+Fix/Polish|[UI] C4 Arena a11y|C4. S100 TASK4 [ ].
+Fix/Polish|[VERIFY] C6 q237 + self-healing-ci|C6. S100 TASK10 [ ].
+```
+
+---
+
+## 이전 스프린트 후보 보관
+
+- S98 마감 **큐 보충** → S99 오픈 — **`SPRINT_LOG`** · **`CURSOR_TASK_BOARD`** 아카이브.
+- S97 마감 **큐 보충** → S98 오픈.

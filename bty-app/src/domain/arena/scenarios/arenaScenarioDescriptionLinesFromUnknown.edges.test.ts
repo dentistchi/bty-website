@@ -36,4 +36,19 @@ describe("arenaScenarioDescriptionLinesFromUnknown (edges)", () => {
     const maxLines = Array.from({ length: ARENA_SCENARIO_DESCRIPTION_MAX_LINES }, (_, i) => `L${i}`);
     expect(arenaScenarioDescriptionLinesFromUnknown(maxLines)).toEqual(maxLines);
   });
+
+  /** S92 TASK11: per-element trim; internal `\n`/`\t` kept; max rows with padded cells (≠ interpretation caps). */
+  it("preserves internal newlines and tabs inside one description line", () => {
+    expect(arenaScenarioDescriptionLinesFromUnknown(["  para1\npara2\tend  "])).toEqual(["para1\npara2\tend"]);
+  });
+
+  it("accepts max line count when every element has surrounding whitespace", () => {
+    const padded = Array.from({ length: ARENA_SCENARIO_DESCRIPTION_MAX_LINES }, (_, i) => `  D${i}  `);
+    const expected = Array.from({ length: ARENA_SCENARIO_DESCRIPTION_MAX_LINES }, (_, i) => `D${i}`);
+    expect(arenaScenarioDescriptionLinesFromUnknown(padded)).toEqual(expected);
+  });
+
+  it("returns null when a middle array element trims to empty", () => {
+    expect(arenaScenarioDescriptionLinesFromUnknown(["ok", "\n\t  ", "tail"])).toBeNull();
+  });
 });

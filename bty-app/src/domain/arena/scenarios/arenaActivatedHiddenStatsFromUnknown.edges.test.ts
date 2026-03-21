@@ -20,4 +20,15 @@ describe("arenaActivatedHiddenStatsFromUnknown (edges)", () => {
     expect(arenaActivatedHiddenStatsFromUnknown(["Integrity", "unknown"])).toBeNull();
     expect(arenaActivatedHiddenStatsFromUnknown(["integrity"])).toBeNull();
   });
+
+  it("returns null when any element is not a string, is empty, or is a hole", () => {
+    expect(arenaActivatedHiddenStatsFromUnknown(["Integrity", ""])).toBeNull();
+    expect(arenaActivatedHiddenStatsFromUnknown(["Integrity", 1])).toBeNull();
+    expect(arenaActivatedHiddenStatsFromUnknown([undefined])).toBeNull();
+    expect(arenaActivatedHiddenStatsFromUnknown(["Gratitude", null])).toBeNull();
+  });
+
+  it("preserves duplicate valid labels (no dedupe)", () => {
+    expect(arenaActivatedHiddenStatsFromUnknown(["Insight", "Insight"])).toEqual(["Insight", "Insight"]);
+  });
 });

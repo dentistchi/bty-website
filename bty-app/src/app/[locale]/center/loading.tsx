@@ -1,10 +1,6 @@
-import { LocaleAwareRouteLoading } from "@/components/LocaleAwareRouteLoading";
+import CenterRouteLoadingShell from "./CenterRouteLoadingShell";
 
-/** §9 locale 기반 로딩 문구 */
+/** §9 locale 기반 로딩 문구 + `<main>` 랜드마크 */
 export default function CenterLoading() {
-  return (
-    <div style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}>
-      <LocaleAwareRouteLoading icon="🏠" withSkeleton showHint={false} />
-    </div>
-  );
+  return <CenterRouteLoadingShell />;
 }

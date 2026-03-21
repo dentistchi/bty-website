@@ -9,16 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { weeklyRankFromCounts } from "@/domain/rules/leaderboard";
 import { tierFromCoreXp, codeIndexFromTier } from "@/lib/bty/arena/codes";
-
-const MAX_SUB_NAME_LENGTH = 7;
-
-function validateSubName(raw: string): { ok: true; value: string } | { ok: false; reason: string } {
-  const v = raw.trim();
-  if (v.length === 0) return { ok: false, reason: "EMPTY" };
-  if (v.length > MAX_SUB_NAME_LENGTH) return { ok: false, reason: "MAX_7_CHARS" };
-  if (!/^[\p{L}\p{N}\s\-_]+$/u.test(v)) return { ok: false, reason: "INVALID_CHARS" };
-  return { ok: true, value: v };
-}
+import { arenaSubNameFromUnknown } from "@/domain/arena/scenarios";
 
 export async function POST(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);
@@ -26,7 +17,7 @@ export async function POST(req: NextRequest) {
 
   let body: { subName?: unknown };
   try {
-    body = (await req.json().catch(() => ({}))) as { subName?: unknown };
+    body = (await req.json()) as { subName?: unknown };
   } catch {
     const out = NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
     copyCookiesAndDebug(base, out, req, false);
@@ -34,7 +25,7 @@ export async function POST(req: NextRequest) {
   }
 
   const subNameInput = String(body?.subName ?? "");
-  const validated = validateSubName(subNameInput);
+  const validated = arenaSubNameFromUnknown(subNameInput);
   if (!validated.ok) {
     const out = NextResponse.json(
       { error: "INVALID_SUB_NAME", reason: validated.reason },

@@ -7,20 +7,16 @@ import {
   type DifficultyKey,
 } from "@/lib/bty/arena/arenaLabXp";
 import { getLabAttemptsUsed, consumeLabAttempt } from "@/lib/bty/arena/labUsage";
-
-const DIFFICULTIES: DifficultyKey[] = ["easy", "mid", "hard", "extreme"];
-
-function parseDifficulty(v: unknown): DifficultyKey {
-  if (typeof v === "string" && DIFFICULTIES.includes(v as DifficultyKey)) {
-    return v as DifficultyKey;
-  }
-  return "mid";
-}
+import {
+  arenaIsoDateOnlyFromUnknown,
+  arenaLabDifficultyKeyFromUnknown,
+} from "@/domain/arena/scenarios";
 
 /**
  * POST /api/arena/lab/complete
  * Leadership Lab submit success: consume 1 daily attempt, grant Core XP only (no Weekly).
- * Body: { scenarioId?: string, choiceId?: string, difficulty?: "easy"|"mid"|"hard"|"extreme" }
+ * Body: { scenarioId?: string, choiceId?: string, difficulty?: "easy"|"mid"|"hard"|"extreme", completedOn?: string }
+ * — optional **completedOn** (YYYY-MM-DD) validated by **`arenaIsoDateOnlyFromUnknown`** when the key is present.
  */
 export async function POST(req: Request) {
   const supabase = await getSupabaseServerClient();
@@ -36,7 +32,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
   }
 
-  const difficulty = parseDifficulty((body as { difficulty?: unknown })?.difficulty);
+  const bodyObj = body as { difficulty?: unknown; completedOn?: unknown };
+  if ("completedOn" in bodyObj) {
+    const parsed = arenaIsoDateOnlyFromUnknown(bodyObj.completedOn);
+    if (parsed === null) {
+      return NextResponse.json({ error: "completed_on_invalid" }, { status: 400 });
+    }
+  }
+
+  const difficulty: DifficultyKey = arenaLabDifficultyKeyFromUnknown(
+    bodyObj.difficulty,
+  );
   const coreXp = computeLabCoreXp(difficulty);
 
   const consumed = await consumeLabAttempt(supabase, user.id);

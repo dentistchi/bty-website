@@ -23,4 +23,14 @@ describe("arenaSystemMessageFromUnknown (edges)", () => {
     const s = "S".repeat(ARENA_SYSTEM_MESSAGE_MAX_LENGTH);
     expect(arenaSystemMessageFromUnknown(s)).toBe(s);
   });
+
+  /** S91 TASK8: trim-only padding; internal newlines/tabs are content (not collapsed). */
+  it("accepts exactly max length after surrounding trim", () => {
+    const core = "m".repeat(ARENA_SYSTEM_MESSAGE_MAX_LENGTH);
+    expect(arenaSystemMessageFromUnknown(` \n${core}\t `)).toBe(core);
+  });
+
+  it("preserves internal newlines and tabs", () => {
+    expect(arenaSystemMessageFromUnknown("  line1\nline2\tend  ")).toBe("line1\nline2\tend");
+  });
 });

@@ -28,4 +28,19 @@ describe("arenaScenarioIdFromUnknown (edges)", () => {
     const at = "a".repeat(ARENA_SCENARIO_ID_MAX_LENGTH);
     expect(arenaScenarioIdFromUnknown(at)).toBe(at);
   });
+
+  /** S93 TASK11: per-edge trim to max; NBSP-only null; internal `\n`/`\t` not stripped (≠ description/interpretation parsers). */
+  it("accepts max length when value is padded with ASCII spaces", () => {
+    const inner = "z".repeat(ARENA_SCENARIO_ID_MAX_LENGTH);
+    expect(arenaScenarioIdFromUnknown(`  ${inner}  `)).toBe(inner);
+  });
+
+  it("returns null for NBSP-only strings after trim", () => {
+    expect(arenaScenarioIdFromUnknown("\u00A0")).toBe(null);
+    expect(arenaScenarioIdFromUnknown("\u00A0\u00A0")).toBe(null);
+  });
+
+  it("preserves internal newlines and tabs inside the id", () => {
+    expect(arenaScenarioIdFromUnknown("  sc\nen\tid  ")).toBe("sc\nen\tid");
+  });
 });

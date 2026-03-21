@@ -24,4 +24,11 @@ describe("isArenaHiddenStatLabel (edges)", () => {
     expect(isArenaHiddenStatLabel(1)).toBe(false);
     expect(isArenaHiddenStatLabel(["Integrity"])).toBe(false);
   });
+
+  it("returns false when padding or invisible chars differ from canonical spelling (no trim)", () => {
+    expect(isArenaHiddenStatLabel(" Integrity")).toBe(false);
+    expect(isArenaHiddenStatLabel("Integrity ")).toBe(false);
+    expect(isArenaHiddenStatLabel("\u00a0Integrity")).toBe(false);
+    expect(isArenaHiddenStatLabel("Integrity\u200b")).toBe(false);
+  });
 });

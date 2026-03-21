@@ -11,8 +11,8 @@ export type NormalizedArenaMissionPayload = {
 };
 
 /**
- * Accepts a value typically from `JSON.parse`. Returns null if required choice ids are missing or not strings.
- * `decidedAt` defaults to "" when absent or non-string (legacy payloads).
+ * Accepts a value typically from `JSON.parse`. Returns null if required choice ids are missing, not strings, or **empty after trim**.
+ * `decidedAt` defaults to "" when absent or non-string (legacy payloads); string values are **trimmed** only (internal spaces kept).
  */
 export function normalizeArenaMissionPayloadFromUnknown(
   value: unknown,
@@ -29,11 +29,15 @@ export function normalizeArenaMissionPayloadFromUnknown(
   ) {
     return null;
   }
+  const sId = scenarioId.trim();
+  const pId = selectedPrimaryId.trim();
+  const rId = selectedReinforcementId.trim();
+  if (sId === "" || pId === "" || rId === "") return null;
   const decidedAt = o.decidedAt;
   return {
-    scenarioId,
-    selectedPrimaryId,
-    selectedReinforcementId,
-    decidedAt: typeof decidedAt === "string" ? decidedAt : "",
+    scenarioId: sId,
+    selectedPrimaryId: pId,
+    selectedReinforcementId: rId,
+    decidedAt: typeof decidedAt === "string" ? decidedAt.trim() : "",
   };
 }

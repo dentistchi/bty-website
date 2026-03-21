@@ -1,5 +1,163 @@
 # BTY 배포 전 체크 결과 (bty-release-gate)
 
+**C5 TASK1 (S99·305, Gate 99차, 2026-03-21 CONTINUE):** [VERIFY] Release Gate A~F — **RESULT: PASS.** **346 files / 2442 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · `test:q237-smoke` **3 files / 7 tests** ✓ · `BTY_RELEASE_GATE_CHECK`·보드 **TASK1 [x]** · A~F: **A)** Auth/쿠키/세션 **본 턴 미변경 가정** — Secure/SameSite/Path **기존 유지**. **B)** 주간 경계 **기존 SoT** — Core XP **비감소**·주간 XP **랭킹 전용**. **C)** 랭킹 **Weekly XP**·tie-break **기존 구현** — 시즌 필드 **정렬 미사용** 가정. **D)** 마이그레이션 **본 턴 없음** 가정. **E)** **S99** 병렬 — C3 **`arenaIsoTimestampFromUnknown`**·**`POST /api/arena/membership-request`**·C4 **`bty-arena/loading`** **본 런 반영** 가정; UI **render-only**·도메인 위임 **유지** 가정. **F)** 로컬 `self-healing-ci` · q237-smoke **본 턴 실행** ✓.
+
+**E) API (S99, C3 TASK9, 2026-03-21):** **`POST /api/arena/membership-request`** — optional **`submitted_at`** (키 존재 시) **`arenaIsoTimestampFromUnknown`** · **400** `submitted_at_invalid` · `route.test.ts` **7** ✓.
+
+**C5 TASK1 (S98·304, Gate 98차, 2026-03-21 CONTINUE):** [VERIFY] Release Gate A~F — **RESULT: PASS.** **346 files / 2438 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · `test:q237-smoke` **3 files / 7 tests** ✓ · `BTY_RELEASE_GATE_CHECK`·보드 **TASK1 [x]** · A~F: **A)** Auth/쿠키/세션 **본 턴 미변경 가정** — Secure/SameSite/Path **기존 유지**. **B)** 주간 경계 **기존 SoT** — Core XP **비감소**·주간 XP **랭킹 전용**. **C)** 랭킹 **Weekly XP**·tie-break **기존 구현** — 시즌 필드 **정렬 미사용** 가정. **D)** 마이그레이션 **본 턴 없음** 가정. **E)** **S98** 병렬 — C3 **`arenaIsoDateOnlyFromUnknown`**·**`POST /api/arena/lab/complete`**·C4 **`assessment/loading`** 등 **구현 중** 가정; UI **render-only**·도메인 위임 **유지** 가정. **F)** 로컬 `self-healing-ci` · q237-smoke **본 턴 실행** ✓.
+
+**E) API (S98, C3 TASK9, 2026-03-21):** **`POST /api/arena/lab/complete`** — optional **`completedOn`** (키 존재 시) **`arenaIsoDateOnlyFromUnknown`** · **400** `completed_on_invalid` · `route.test.ts` **5** ✓ · Core/Weekly XP **스키마 변경 없음**.
+
+**C5 TASK1 (S97·303, Gate 97차, 2026-03-21 CONTINUE):** [VERIFY] Release Gate A~F — **RESULT: PASS.** **346 files / 2436 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · `test:q237-smoke` **3 files / 7 tests** ✓ · `BTY_RELEASE_GATE_CHECK`·보드 **TASK1 [x]** · A~F: **A)** Auth/쿠키/세션 **본 턴 미변경 가정** — Secure/SameSite/Path **기존 유지**. **B)** 주간 경계 **기존 SoT** — Core XP **비감소**·주간 XP **랭킹 전용**. **C)** 랭킹 **Weekly XP**·tie-break **기존 구현** — 시즌 필드 **정렬 미사용** 가정. **D)** 마이그레이션 **본 턴 없음** 가정. **E)** **S97** 병렬 — C3 **`arenaRunIdFromUnknown`**·**`GET /api/arena/run/[runId]`**·C4 **`growth/loading`** 등 **구현 중** 가정; UI **render-only**·도메인 위임 **유지** 가정. **F)** 로컬 `self-healing-ci` · q237-smoke **본 턴 실행** ✓.
+
+**C5 TASK1 (S96·302, Gate 96차, 2026-03-21 CONTINUE):** [VERIFY] Release Gate A~F — **RESULT: PASS.** **346 files / 2435 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · `test:q237-smoke` **3 files / 7 tests** ✓ · `BTY_RELEASE_GATE_CHECK`·보드 **TASK1 [x]** · A~F: **A)** Auth/쿠키/세션 **본 턴 미변경 가정** — Secure/SameSite/Path **기존 유지**. **B)** 주간 경계 **기존 SoT** — Core XP **비감소**·주간 XP **랭킹 전용**. **C)** 랭킹 **Weekly XP**·tie-break **기존 구현** — 시즌 필드 **정렬 미사용** 가정. **D)** 마이그레이션 **본 턴 없음** 가정. **E)** **S96** 병렬 — C3 **`arenaRunLifecyclePhaseFromUnknown`**·**`POST /api/arena/run`**·C4 **`center/loading`** 등 **구현 중** 가정; UI **render-only**·도메인 위임 **유지** 가정. **F)** 로컬 `self-healing-ci` · q237-smoke **본 턴 실행** ✓.
+
+**C5 TASK1 (S95·301, Gate 95차, 2026-03-20 CONTINUE):** [VERIFY] Release Gate A~F — **RESULT: PASS.** **346 files / 2433 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · `test:q237-smoke` **3 files / 7 tests** ✓ · `BTY_RELEASE_GATE_CHECK`·보드 **TASK1 [x]** · A~F: **A)** Auth/쿠키/세션 **본 턴 미변경 가정** — Secure/SameSite/Path **기존 유지**. **B)** 주간 경계 **기존 SoT** — Core XP **비감소**·주간 XP **랭킹 전용**. **C)** 랭킹 **Weekly XP**·tie-break **기존 구현** — 시즌 필드 **정렬 미사용** 가정. **D)** 마이그레이션 **본 턴 없음** 가정. **E)** **S95** 오픈 **VERIFY** — C3 **reflect** edges·route **400**·C4 **dear-me/loading** 등 **병렬 구현 중** 가정; UI **render-only**·도메인 위임 **유지** 가정. **F)** 로컬 `self-healing-ci` · q237-smoke **본 턴 실행** ✓.
+
+**문서 (C1 TASK7, S94·300, 2026-03-21 CONTINUE):** 보드 **§ 다음 작업 (S94→S95)** · `NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`SPRINT_PLAN`·`AI_TASK_BOARD`·`SPLINT_10_PROCEDURE.md` 정합 · 보드 **TASK7 [x]** · **C1 S94 DOCS 마감** · **First** C5 **TASK6** · 코드 변경 없음.
+
+**문서 (C1 TASK5, S94·300, 2026-03-21 CONTINUE):** **S95/301** 예고 — `NEXT_PHASE_AUTO4`·`NEXT_BACKLOG_AUTO4`·`AUTO4_PROMPTS`·`SPRINT_PLAN` **§301 planned** · `bty-app/docs/AI_TASK_BOARD` · 보드 **TASK5 [x]** · **First** C1 **TASK7** · 코드 변경 없음.
+
+**문서 (C1 TASK3, S94·300, 2026-03-21 CONTINUE):** **201·202차** 미처리분 정합 — `SPRINT_LOG`·`NEXT_PHASE_AUTO4`·`NEXT_BACKLOG_AUTO4`·`AUTO4_PROMPTS`·`SPRINT_PLAN`·`CURRENT_TASK`·본 문서 · `ELITE_3RD` 헤더 · `bty-app/docs/AI_TASK_BOARD` **S94** 동기 · **346/2425** (Gate)·**346/2427** (C6 TASK10) · 보드 **TASK3 [x]** · **First** C1 **TASK5** · 코드 변경 없음.
+
+**C5 TASK1 (S94·300, Gate 94차, 2026-03-21 CONTINUE):** [VERIFY] Release Gate A~F — **RESULT: PASS.** **346 files / 2425 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · `test:q237-smoke` **3 files / 7 tests** ✓ · `BTY_RELEASE_GATE_CHECK`·보드 **TASK1 [x]** · A~F: **A)** Auth/쿠키/세션 **본 턴 코드 변경 없음** — Secure/SameSite/Path **기존 유지 가정**. **B)** 주간 경계 **기존 SoT** — Core XP **비감소**·주간 XP **랭킹 전용** 가정. **C)** 랭킹 **Weekly XP**·tie-break **기존 구현** — 시즌 필드 **정렬 미사용** 가정. **D)** 마이그레이션 **없음**. **E)** **S93** 마감 스냅·**S94** 오픈 **문서만** — UI **render-only**·도메인 위임 **기존 유지** 가정. **F)** 로컬 `npm run lint` · 전체 Vitest · Next build · q237-smoke **본 턴 실행** ✓.
+
+**C5 TASK31 (S93·299, 2026-03-20 CONTINUE):** Gate·엘리트 문서 스테일 — **RESULT: PASS.** **346 files / 2425 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · `test:q237-smoke` **3 files / 7 tests** ✓ · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD`·보드 **TASK31 [x]** · A~E **인바리언트 유지 가정** (본 턴 **VERIFY·문서 동기** · 코드 변경 없음 가정).
+
+**C5 TASK27 (S93·299, 2026-03-20 CONTINUE):** Gate·엘리트 문서 스테일 — **RESULT: PASS.** **346 files / 2423 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · `test:q237-smoke` **3 files / 7 tests** ✓ · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD`·보드 **TASK27 [x]** · A~E **인바리언트 유지 가정** (본 턴 **VERIFY·문서 동기** · 코드 변경 없음 가정).
+
+**C5 TASK23 (S93·299, 2026-03-20 CONTINUE):** Gate·엘리트 문서 스테일 — **RESULT: PASS.** **346 files / 2422 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · `test:q237-smoke` **3 files / 7 tests** ✓ · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD`·보드 **TASK23 [x]** · A~E **인바리언트 유지 가정** (본 턴 **VERIFY·문서 동기** · 코드 변경 없음 가정).
+
+**C5 TASK18 (S93·299, 2026-03-21 CONTINUE):** Gate·엘리트 문서 스테일 — **RESULT: PASS.** **`BTY_RELEASE_GATE_CHECK`**·**`ELITE_3RD`** 헤더 **346/2414** 동기 · 보드 **TASK18 [x]** · A~E **인바리언트 유지 가정** (코드 변경: **`[locale]/loading`** · **traits** edges).
+
+**C6 TASK17 (S93·299, 2026-03-21 CONTINUE):** q237-smoke + `self-healing-ci` — **RESULT: PASS.** **346 files / 2414 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK17 [x]** · A~E **인바리언트 유지 가정**.
+
+**C6 TASK22 (S93·299, 2026-03-21 CONTINUE):** q237-smoke + `self-healing-ci` — **RESULT: PASS.** **346 files / 2414 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK22 [x]** · A~E **인바리언트 유지 가정** (코드 변경 없음 · 큐 보충 VERIFY).
+
+**UI / a11y (93, C4 TASK16, 2026-03-21 CONTINUE):** **`/[locale]/loading`** — **`LocaleRouteLoadingShell`** · **`loading.localeRouteSuspenseMainRegionAria`** · `LocaleAwareRouteLoading` · render-only.
+
+**E) 도메인 (93, C3 TASK19, 2026-03-21):** **`arenaOutcomeTraitsFromUnknown.edges.test.ts`** — **`-0`→0** · unknown keys **무시** · Vitest **7** ✓ · XP/랭킹 **무관**.
+
+**C6 TASK13 (S93·299, 2026-03-21 CONTINUE):** q237-smoke + `self-healing-ci` — **RESULT: PASS.** **346 files / 2408 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK13 [x]** · A~E **인바리언트 유지 가정** (본 턴 **`integrity/loading`** a11y · **`arenaMissionOutcomeKeyPartsFromUnknown`** **`A_X_Y`** edge).
+
+**C6 TASK10 (S93·299, 2026-03-21 CONTINUE):** q237-smoke + `self-healing-ci` — **RESULT: PASS.** **346 files / 2408 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · A~E **인바리언트 유지 가정** (본 턴 **`mentor/loading`** · **`sub-name` API**·도메인 위임).
+
+**C5 TASK1 (S93·299, Gate 93차, 2026-03-21 CONTINUE):** [VERIFY] Release Gate A~F — **RESULT: PASS.** **346 files / 2397 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · `test:q237-smoke` **3 files / 7 tests** ✓ · `BTY_RELEASE_GATE_CHECK`·보드 **TASK1 [x]** · A~F: **A)** Auth/쿠키/세션 **본 턴 코드 변경 없음** — Secure/SameSite/Path **기존 유지 가정**. **B)** 주간 경계 **기존 SoT** — Core XP **비감소**·주간 XP **랭킹 전용** 가정. **C)** 랭킹 **Weekly XP**·tie-break **기존 구현** — 시즌 필드 **정렬 미사용** 가정. **D)** 마이그레이션 **없음**. **E)** **S92** **`beginner-complete`**·**`beginner` loading a11y**·**description-lines**·**iso-ts** edges·**S91** **`arena/event`** — UI **render-only**·도메인 위임 가정. **F)** 로컬 `npm run lint` · 전체 Vitest · Next build · q237-smoke **본 턴 실행** ✓.
+
+**문서 (C1 TASK3, S93·299, 2026-03-21 CONTINUE):** **199·200차** 미처리분 정합 — `SPRINT_LOG`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`SPRINT_PLAN`·`CURRENT_TASK`·본 문서 **S93** 동기 · **346/2397** · 보드 **TASK3 [x]** · **First** C4 **TASK4** · 코드 변경 없음.
+
+**문서 (splint, S93·299, 2026-03-21):** **Gate 93** · C7 **`346/2408`** · **TASK12·13·14 [x]** · 큐 **TASK15~17** **`[ ]`** · **First** C5 **TASK6**.
+
+**UI / a11y (93, C4 TASK12, 2026-03-21 CONTINUE):** **`/[locale]/bty/(protected)/integrity/loading`** — **`IntegrityRouteLoadingShell`** · **`integrityPracticeSuspenseMainRegionAria`** · `LocaleAwareRouteLoading` · render-only.
+
+**UI / a11y (93, C4 TASK4, 2026-03-21 CONTINUE):** **`/[locale]/bty/(protected)/mentor/loading`** — **`MentorRouteLoadingShell`** · **`mentorSuspenseMainRegionAria`** · `LocaleAwareRouteLoading` · render-only.
+
+**E) 도메인 (93, C3 TASK14, 2026-03-21):** **`arenaMissionOutcomeKeyPartsFromUnknown.edges.test.ts`** — **`A_X_Y`** → **`null`** (reinforcement 비토큰) · Vitest **4** ✓ · XP/랭킹 **무관**.
+
+**E) 도메인 (93, C3 TASK8, 2026-03-21):** **`arenaSubNameFromUnknown.edges.test.ts`** — 전각 **`\p{L}`/`\p{N}`** · NBSP-only **EMPTY** · 내부 whitespace · **MAX_7** vs **INVALID** · Vitest **6** ✓ · XP/랭킹 **무관**.
+
+**문서 (아카이브, S92·298, 2026-03-21):** **Gate 92** · C7 **`346/2397`** — S92 **12/12 [x]** · splint **S93**.
+
+**E) 도메인 (92, C3 TASK8, 2026-03-21):** **`arenaInterpretationLinesFromUnknown.edges.test.ts`** — `interpretation` 배열 **요소별 trim**·내부 **`\n`/`\t` 보존**·**max 줄수**에서 패딩 trim · Vitest **6** ✓ · XP/랭킹 **무관**.
+
+**API (92, C3 TASK9, 2026-03-21):** **`POST /api/arena/beginner-complete`** — **`arenaRunIdFromUnknown`·`arenaScenarioIdFromUnknown`** · **400** `runId_required` | `scenarioId_required` (과거 단일 문구 **`runId and scenarioId required` 폐기**) · `route.test.ts` **6** ✓ · Core/Weekly XP **스키마 변경 없음** 가정.
+
+**C5 TASK1 (S92·298, Gate 92차, 2026-03-21 CONTINUE):** [VERIFY] Release Gate A~F — **RESULT: PASS.** **346 files / 2387 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · `test:q237-smoke` **3 files / 7 tests** ✓ · `BTY_RELEASE_GATE_CHECK`·보드 **TASK1 [x]** · A~F: **A)** Auth/쿠키/세션 **본 턴 코드 변경 없음** — Secure/SameSite/Path **기존 유지 가정**. **B)** 주간 경계 **기존 SoT** — Core XP **비감소**·주간 XP **랭킹 전용** 가정. **C)** 랭킹 **Weekly XP**·tie-break **기존 구현** — 시즌 필드 **정렬 미사용** 가정. **D)** 마이그레이션 **없음**. **E)** **S91** **`POST /api/arena/event`** 도메인 **`400`**·`route.test` **유지**; **S92** **`arenaInterpretationLinesFromUnknown`** edges·**`POST /api/arena/beginner-complete`** **`runId`/`scenarioId`** 도메인·**400** `runId_required`·`scenarioId_required` (**상단 E/API 블록**) — UI **render-only** 가정. **F)** 로컬 `npm run lint` · 전체 Vitest · Next build · q237-smoke **본 턴 실행** ✓.
+
+**C6 TASK10 (S91·297, 2026-03-21 CONTINUE):** q237-smoke + `self-healing-ci` — **RESULT: PASS.** **346 files / 2387 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · A~E **인바리언트 유지 가정** (본 턴 **`bty-arena/loading`** · **`POST /api/arena/event`** domain **400** · **copy-fields** edges).
+
+**C5 TASK6 (S91·297, 엘리트 §3, 2026-03-21 CONTINUE):** [VERIFY] 엘리트 3차 체크리스트 1회 — **RESULT: PASS.** **346 / 2387** ✓ · Build ✓ (`rm -rf .next` 선행) · `ELITE_3RD` §3 · Gate **91**(TASK1) 동기 · 보드 **TASK6 [x]**.
+
+**E) API (91, C3 TASK9, 2026-03-21):** **`POST /api/arena/event`** — **`arenaRunIdFromUnknown`·`arenaScenarioIdFromUnknown`** · **400** `runId_required` · `scenarioId_required` · `eventType_required` · `route.test.ts` **5** ✓ · (과거 단일 코드 `runId_scenarioId_eventType_required` **폐기**).
+
+**UI / a11y (91, C4 TASK4, 2026-03-21):** **`/[locale]/bty-arena/loading`** — **`BtyArenaRouteLoadingShell`** · **`arenaBtyArenaRouteSegmentLoadingMainRegionAria`**.
+
+**E) 도메인 (91, C3 TASK8, 2026-03-21):** **`arenaSystemMessageFromUnknown.edges.test.ts`** · **`arenaScenarioCopyFieldsFromUnknown.edges.test.ts`** whitespace-only **`stage`/`caseTag`/`title`** · Vitest ✓ · XP/랭킹 **무관**.
+
+**문서 (splint, S91·297, 2026-03-21):** **Gate 91** · C7 **`346/2381`→`2387`** — **S91** 마감 **10/10 [x]** · **splint → S92/298**.
+
+**C5 TASK1 (S91·297, Gate 91차, 2026-03-21 CONTINUE):** [VERIFY] Release Gate A~F — **RESULT: PASS.** **346 files / 2381 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · `test:q237-smoke` **3 files / 7 tests** ✓ · `BTY_RELEASE_GATE_CHECK`·보드 **TASK1 [x]** · A~F: **A)** Auth/쿠키/세션 **본 턴 코드 변경 없음** — Secure/SameSite/Path **기존 prod 규칙 유지 가정**. **B)** 주간 경계 **기존 SoT** — Core XP **비감소**·주간 XP **랭킹 전용**·idempotency **스키마 변경 없음** 가정. **C)** 랭킹 **Weekly XP** 정렬·tie-break **기존 구현** — 시즌 진행 필드 **정렬 미사용** 가정. **D)** 마이그레이션 **없음**. **E)** API 계약 **본 턴 변경 없음** — UI **render-only** 가정. **F)** 로컬 `npm run lint` · 전체 Vitest · Next build · q237-smoke **본 턴 실행** ✓.
+
+**C6 TASK10 (S90·296, 2026-03-21 CONTINUE):** q237-smoke + `self-healing-ci` — **RESULT: PASS.** **346 files / 2381 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · A~E **인바리언트 유지 가정** (본 턴 **`elite/loading`** · **`reflect`** `levelId` **S1** · **`arenaCodeNameFromUnknown`** whitespace edges).
+
+**UI / a11y (90, C4 TASK4, 2026-03-21):** **`/[locale]/bty/(protected)/elite/loading`** — **`EliteRouteLoadingShell`** · **`eliteSuspenseMainRegionAria`**.
+
+**API (90, C3 TASK9, 2026-03-21):** **`POST /api/arena/reflect`** — `levelId` **`S1`** 화이트리스트 경로 → **200** · `route.test.ts` **6** tests ✓ · (동 스프린트 **`beginner-run`** `scenarioId` **400** · `route.test` **6** ✓).
+
+**E) 도메인 (90, C3 TASK11, 2026-03-21):** **`arenaCodeNameFromUnknown.edges.test.ts`** — 내부 **space/tab** → **`ONLY_ALNUM_DASH`**.
+
+**문서 (splint, S90·296, 2026-03-21):** **Gate 90** · C7 **`346/2380`** (`self-healing-ci` 이전 턴) · **C5 TASK1·6**·C6 **TASK10 [x]** · **First** C1 **TASK2**.
+
+**C5 TASK6 (S90·296, 엘리트 §3, 2026-03-21 CONTINUE):** [VERIFY] 엘리트 3차 체크리스트 1회 — **RESULT: PASS.** **346 / 2381** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · §2 6항목·`/api/me/elite`·`mentor-request`·admin 큐·UI **render-only**·`getIsEliteTop5` **스팟 유지 가정** · Gate **90**(TASK1) 동기 · 보드 **TASK6 [x]**.
+
+**API (90, C3 TASK9 beginner-run, 2026-03-21):** **`POST /api/arena/beginner-run`** — `scenarioId`를 **`arenaScenarioIdFromUnknown`** 로 검증 · **400** `scenarioId_required` = 누락·공백만·비문자·**max length 초과** · insert **`scenario_id` trim** · `route.test.ts` **6** ✓.
+
+**E) 도메인 (90, C3 TASK8, 2026-03-21):** **`arenaReflectLevelIdFromUnknown.edges.test.ts`** — reflect **`levelId`** near-miss **null** (**내부 공백·`SS1`·`S11`·`1S`**) · XP/주간랭킹 **무관** · Vitest **10** ✓.
+
+**C5 TASK1 (S90·296, Gate 90차, 2026-03-21):** [VERIFY] Release Gate A~F — **RESULT: PASS.** **346 files / 2375 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · A~E **인바리언트 유지 가정** (본 턴 **Gate VERIFY만** · S89 잔재 **`foundry/loading`**·**`/api/arena/run` `scenarioId`**·**`arenaRunType` edges**; Auth/Weekly/Leaderboard **스키마 변경 없음** 가정).
+
+**C5 TASK23 (S89·295, 큐 보충 4차 C5, 2026-03-21 CONTINUE):** Gate·엘리트·문서 스테일 — **RESULT: PASS.** **346 files / 2375 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD`·보드 **TASK23 [x]** · A~E **인바리언트 유지 가정** (본 턴 **`foundry/loading`** · **`arenaRunTypeFromUnknown`** edges · **arena/run** `route.test` spot; Auth/Weekly/Leaderboard **스키마 변경 없음** 가정).
+
+**C5 TASK19 (S89·295, 2026-03-21):** Gate·엘리트·문서 스테일 — **RESULT: PASS.** **346 / 2371** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · 보드 **TASK19 [x]**.
+
+**C5 TASK15 (S89·295, 큐 보충 C5, 2026-03-21):** Gate·엘리트·문서 스테일 — **RESULT: PASS.** **346 / 2371** ✓ (후속 동기) · 보드 **TASK15 [x]** · A~E **인바리언트 유지 가정**.
+
+**C5 TASK12 (S89·295, 큐 보충 C5, 2026-03-20):** Gate·엘리트·문서 스테일 — **RESULT: PASS.** **346 files / 2368 tests** ✓ (후속 턴 동기) · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · 보드 **TASK12 [x]** · A~E **인바리언트 유지 가정**.
+
+**C5 TASK1 (S89·295, Gate 89차, 2026-03-21):** [VERIFY] Release Gate A~F — **RESULT: PASS.** **346 / 2371** ✓ (C7 최신) · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · A~E **인바리언트 유지 가정** (본 턴 **`healing/loading`** · **`arenaScenarioDifficultyFromUnknown`** · 기존 **`dojo`·`dashboard`·iso-date·lab**; Auth/Weekly/Leaderboard **스키마 변경 없음** 가정).
+
+**UI / a11y (89, C4 TASK4, 2026-03-20):** **`/[locale]/bty/(protected)/dashboard/loading`** — **`<main aria-label={…dashboardSuspenseMainRegionAria}>`** · **`LocaleAwareRouteLoading`**.
+
+**UI / a11y (89, C4 TASK13, 2026-03-21):** **`/[locale]/bty/(protected)/dojo/loading`** — **`DojoRouteLoadingShell`** · **`dojoSuspenseMainRegionAria`**.
+
+**UI / a11y (89, C4 TASK17, 2026-03-21):** **`/[locale]/bty/(protected)/healing/loading`** — **`HealingRouteLoadingShell`** · **`healingSuspenseMainRegionAria`**.
+
+**E) 도메인 (89, C3 TASK8, 2026-03-20):** **`arenaLabDifficultyKeyFromUnknown`** + **`arenaLabDifficultyKeyFromUnknown.edges.test.ts`**.
+
+**E) 도메인 (89, C3 TASK11, 2026-03-20 continuing):** **`arenaIsoDateOnlyFromUnknown`** · **`membership-request`** 일자 필드.
+
+**E) 도메인 (89, C3 TASK20, 2026-03-21):** **`arenaScenarioDifficultyFromUnknown`** edges (`Low`/`Moderate`/`High` — **lab `arenaLabDifficultyKey`와 별개**).
+
+**E) API (89, C3 TASK21, 2026-03-21):** **`POST /api/arena/run`** — `scenarioId` 검증을 **`arenaScenarioIdFromUnknown`** 로 위임 · **400** `scenarioId_required` = 누락·공백만·비문자·**`ARENA_SCENARIO_ID_MAX_LENGTH` 초과** · DB insert **`scenario_id`는 trim된 값** · free-response와 동일 계약.
+
+**F) 검증:** 로컬 `npx vitest run src/app/api/arena/run/route.test.ts` **9** tests ✓ (본 턴).
+
+**API (89, C3 TASK9, 2026-03-20):** **`POST /api/arena/lab/complete`** — domain **`coreXp`** · **200** 검증 (`route.test.ts`).
+
+**F) (89, C6 TASK10·14·18·24, 2026-03-21):** `npm run test:q237-smoke` **3 / 7** ✓ · `self-healing-ci.sh` — Lint PASS · Test PASS (**346 / 2375**) · spot **`lab/complete`** · **arena/run** `route.test` · Build PASS (`rm -rf .next` 선행).
+
+**UI / a11y (89, C4 TASK22, 2026-03-21):** **`/[locale]/bty/(protected)/foundry/loading`** — **`FoundryHubLoadingShell`** · **`foundryHubSuspenseMainRegionAria`**.
+
+**E) 도메인 (89, C3 TASK25, 2026-03-21):** **`arenaRunTypeFromUnknown.edges.test.ts`** — plural·hyphen·spaced near-miss → **`null`**.
+
+**C5 TASK1 (S88·294, Gate 88차, 2026-03-20):** [VERIFY] Release Gate A~F — **RESULT: PASS.** **344 files / 2356 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · A~E **인바리언트 유지 가정** (본 턴 **`dear-me/loading`** `<main>` · **`free-response`** **`arenaRunIdFromUnknown`·`arenaScenarioIdFromUnknown`** · mission-choice **edges**; Auth/Weekly/Leaderboard **스키마 변경 없음** 가정).
+
+**UI / a11y (88, C4 TASK4, 2026-03-20):** **`/[locale]/dear-me/loading`** — **`DearMeRouteLoadingShell`** · **`center.dearMeSuspenseMainRegionAria`**.
+
+**API (88, C3 TASK9, 2026-03-20):** **`POST /api/arena/free-response`** — runId/scenarioId **400** 경계 (`runId_required` / `scenarioId_required`).
+
+**C5 TASK1 (S87·293, Gate 87차, 2026-03-20):** [VERIFY] Release Gate A~F — **RESULT: PASS.** **344 files / 2351 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · A~E **인바리언트 유지 가정** (본 턴 **reflect `levelId` 도메인**·**center/loading `<main>`**·beginner-event **`arenaRunIdFromUnknown`**; Auth/Weekly/Leaderboard **스키마 변경 없음** 가정).
+
+**UI / a11y (87, C4 TASK4, 2026-03-20):** **`/[locale]/center/loading`** — **`<main aria-label={center.centerSuspenseMainRegionAria}>`** · **`CenterRouteLoadingShell`** · **render-only** · `npm run lint` ✓.
+
+**E) 도메인 (87, C3 TASK8, 2026-03-20):** **`arenaReflectLevelIdFromUnknown`** — S1–L4 화이트리스트 · **`arenaReflectLevelIdFromUnknown.edges.test.ts`** · barrel · **`POST /api/arena/reflect`**.
+
+**C5 TASK1 (S86·292, Gate 86차, 2026-03-20):** [VERIFY] Release Gate A~F — **RESULT: PASS.** **342 files / 2338 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · A~E **인바리언트 유지 가정** (본 턴 **Center `center/error`** `<main>`·i18n만; Auth/Weekly/Leaderboard **스키마 변경 없음**).
+
+**UI / a11y (86, C4 TASK4, 2026-03-20):** **`/[locale]/center/error`** — **`<main aria-label={center.centerErrorMainRegionAria}>`** · **`role="alert"`** · ko/en · **render-only** · **XP/리더보드 규칙 미변경** · `npm run lint` ✓.
+
+**C5 TASK1 (S85·291, Gate 85차, 2026-03-20):** [VERIFY] Release Gate A~F — **RESULT: PASS.** **341 files / 2335 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · A~E **인바리언트 유지 가정** (본 턴 **Center `dear-me/error`** `<main>`·i18n만; Auth/Weekly/Leaderboard·API 계약 **스키마 변경 없음**).
+
+**UI / a11y (85, C4 TASK4, 2026-03-20):** **`/[locale]/dear-me/error`** — **`<main aria-label={center.dearMeErrorMainRegionAria}>`** · **`role="alert"`** · ko/en · **render-only** · **XP/리더보드 규칙 미변경** · `npm run lint` ✓.
+
+**C5 TASK1 (S84·290, Gate 84차):** [VERIFY] Release Gate A~F — **339 files / 2327 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · A~E 인바리언트 유지.
+
+**C5 TASK41 (S83·289, CONTINUE 2026-03-20):** [VERIFY] Gate·엘리트·문서 스테일 점검 — **340 files / 2331 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `self-healing-ci.sh` · A~E 인바리언트·`SPRINT_PLAN` **TASK41 [x]** 동기.
+
+**UI / a11y (83, C4 TASK35, 2026-03-20):** **`/[locale]/train/start`** — **`<main aria-label={train.journeyStartMainRegionAria}>`** · `i18n` ko/en · **render-only** · **XP/리더보드 규칙 미변경** · `npm run lint` ✓.
+
+**UI / a11y (83, C4 TASK33, 2026-03-19):** **`bty/(protected)/dojo/result`** — **`DojoResultClient`** 로딩·에러·빈·점수 본문 **`<main aria-label={dojoResult.loading|apiError|dojoResultMainRegionAria}>`** · Dr. Chi 카드 **`aria-label={dojoResult.drChiCommentTitle}`** · **render-only** · **XP/리더보드 규칙 미변경** · `npm run lint` ✓.
+
 **UI / a11y (83, C4 TASK31, 2026-03-19):** **`/[locale]/train/day/[day]`** — 라우트 **`page.tsx`** → **`page.client`** 통합 · 가운데 레슨 **`<main aria-label={getMessages(locale).train.lessonLabel}>`** · 중첩 `role="region"` on `<main>` 제거 · **카피/라우트만** · **XP/리더보드 규칙 미변경** · `npm run lint` ✓.
 
 **UI / a11y (83, C4 TASK25, 2026-03-19):** **`/[locale]`** (랜딩) — **`LandingClient` `<main>`** · `aria-label` = **`landing.landingHubMainRegionAria`** · **카피/라우트만** · **XP/리더보드 규칙 미변경** · `npm run lint` ✓.
@@ -44,7 +202,13 @@
 **정책**: 문서·백로그·Release Gate 점검은 **배포 전 1회** 수행. 일상 작업은 웹 개발(UI·API·도메인) 집중.  
 **배포 준비:** `docs/MVP_DEPLOYMENT_READINESS.md` (배포 시 1회 체크리스트). **일상 vs 배포:** `docs/WORK_POLICY.md`.
 
-**[VERIFY] C5 TASK27 — SPRINT 83·289 (2026-03-19):** **RESULT: PASS.** Gate·**`ELITE_3RD`**·문서 스테일 — **큐 보충 C5** — **334/2311** · 인바리언트(A–E) **스키마 변경 없음** 가정 · `self-healing-ci.sh` Lint ✓ · Vitest **334 files / 2311 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행). **보드 TASK32** C5 **`[ ]`** · **TASK30** C6 **`[ ]`** · **TASK33** C4 **`[ ]`** · `check-parallel-task-queue` **exit 0**.
+**배포 후 (C2, post-push, 2026-03-20):** **`822c19c`** — **`7654875..822c19c`** (**2 commits**, **파일 340**, +18057 / −2574) — E2E 안정화(my-page·arena)·아바타 경로(`avatars/characters`·기본 캐릭터)·arena 모듈. **A–E)** Auth/쿠키·Weekly 리셋·랭킹=Weekly XP·Core/시즌 인바리언트 **유지 가정**; 본 구간은 자산·E2E·테스트 정리. **MVP_DEPLOYMENT_READINESS:** 스키마/배포 체크리스트 변경 없음 가정. **F)** `bty-app/scripts/self-healing-ci.sh`: Lint ✓ · **335 files** / **2315 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행). **RESULT: PASS.** *다음 `origin/main` push 시 Gate 1회.*
+
+**[VERIFY] C5 TASK36 — SPRINT 83·289 (2026-03-19):** **RESULT: PASS.** Gate·**`ELITE_3RD`**·문서 스테일 — **큐 보충 C5** — **336/2317** · 인바리언트(A–E) **스키마 변경 없음** 가정 · `self-healing-ci.sh` Lint ✓ · Vitest **336 files / 2317 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행). **보드 TASK41** C5 **`[ ]`** · **C4 TASK38** · **C3 TASK39** · **C6 TASK40** · `check-parallel-task-queue` **exit 0**.
+
+**[VERIFY] C5 TASK32 — SPRINT 83·289 (2026-03-19):** **RESULT: PASS.** Gate·**`ELITE_3RD`**·문서 스테일 — **큐 보충 C5** — **335/2315** · 인바리언트(A–E) **스키마 변경 없음** 가정 · `self-healing-ci.sh` Lint ✓ · Vitest **335 files / 2315 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행). **후속 TASK36** — **[x]** (**336/2317** · **TASK41** 큐).
+
+**[VERIFY] C5 TASK27 — SPRINT 83·289 (2026-03-19):** **RESULT: PASS.** Gate·**`ELITE_3RD`**·문서 스테일 — **큐 보충 C5** — **334/2311** · 인바리언트(A–E) **스키마 변경 없음** 가정 · `self-healing-ci.sh` Lint ✓ · Vitest **334 files / 2311 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행). **후속 TASK32** — **[x]** (**335/2315** · **TASK36** 큐).
 
 **[VERIFY] C5 TASK23 — SPRINT 83·289 (2026-03-19):** **RESULT: PASS.** Gate·**`ELITE_3RD`**·문서 스테일 — **`bty-arena/wireframe`** **`</main>`** 교정 포함 — **332/2304** · 인바리언트(A–E) **Weekly/Core/Season 분리·UI 규칙 미변경** 가정 · `self-healing-ci.sh` Lint ✓ · Vitest **332 files / 2304 tests** ✓ · `next build` ✓ (`rm -rf .next` 선행). **후속 TASK27** — **[x]** (**334/2311** · **TASK30·31** 큐).
 
@@ -192,7 +356,7 @@
 
 **[VERIFY] Release Gate — Foundry 56차 (C5, SPRINT 56·262, 2026-03-18):** **RESULT: PASS.** **A~E)** 인바리언트 유지. **F)** `tsc --noEmit` ✓ · Vitest **279 / 2115** ✓ · `next build` ✓ (`chmod -R u+w .next`·`rm -rf .next` 후 ENOENT 회피) · `test:q237-smoke` **7/7** ✓. C3 **reflectTextBounds.edges**·**GET /api/arena/weekly-stats** 회귀 포함.
 
-**E) API (263, C3):** **`POST /api/arena/event`** — 미인증 **401**; `runId`·`scenarioId`·`eventType` 누락 **400** `runId_scenarioId_eventType_required`. **회귀 테스트**.
+**E) API (263, C3):** **`POST /api/arena/event`** — 미인증 **401**; 유효하지 않은 `runId`/`scenarioId`/`eventType` **400** (`runId_required` 등 — **S91** 도메인 정규화 분기). *(과거: 단일 `runId_scenarioId_eventType_required`.)* **회귀 테스트**.
 
 **E) API (262, C3):** **`GET /api/arena/weekly-stats`** — 미인증 **401**; 주간 이벤트 없을 때 **200** `reflectionCount`·`weekMaxDailyXp` 등. **회귀 테스트**·핸들러 변경 없음.
 
@@ -251,15 +415,17 @@
 
 **배포 시 실행 순서**: MVP_DEPLOYMENT_READINESS(1회) → Gate(self-healing-ci 등) → 본 문서·보드·CURRENT_TASK 반영.
 
+**E) API (262, C3, S93 TASK9, 2026-03-21)**: **`POST /api/arena/sub-name`** — 본문 JSON 파싱 실패 **`400`** `INVALID_JSON` (`req.json()` 직접; `.catch(() => ({}))` 제거). **`{}`** / **`subName: null`** → **`400`** `INVALID_SUB_NAME`·`EMPTY` (`arenaSubNameFromUnknown`). **`xxxxxx@`** → `INVALID_CHARS`; **`xxxxxxx@`** → `MAX_7_CHARS`. **`route.test.ts`** **8** tests.
+
 **E) API (261, C3)**: **`GET /api/arena/membership-request`** — 미인증 **401**; 행 없음 **200** `{ request: null }`. **회귀 테스트**·핸들러 변경 없음.
 
 **E) API (259, C3)**: **`GET /api/arena/weekly-xp`** — 미인증 **401** `UNAUTHENTICATED`; 리그 없을 때 **200** `xpTotal`·`weekStartISO`·`season: null`. **회귀 테스트**·핸들러 변경 없음.
 
-**E) API (258, C3)**: **`POST /api/arena/beginner-complete`** — 미인증 **401**; `runId`/`scenarioId` 없음 **400** `runId and scenarioId required`. **회귀 테스트**·핸들러 변경 없음.
+**E) API (258, C3)**: **`POST /api/arena/beginner-complete`** — 미인증 **401**; *→ **S92/298** 상단 **`API (92, C3 TASK9)`** — 도메인 파서·**400** `runId_required`·`scenarioId_required`로 갱신.*
 
 **E) API (256, C3)**: **`POST /api/arena/code-name`** — 미인증 **401** `UNAUTHENTICATED`; 코드명 3자 미만 **400** `INVALID_CODE_NAME`·`LENGTH_3_TO_20`. **회귀 테스트**·핸들러 변경 없음.
 
-**E) API (255, C3, 2026-03-29)**: **`POST /api/arena/sub-name`** — `arena_profiles` 없으면 **404** `NOT_FOUND`. **회귀 테스트**·핸들러 변경 없음.
+**E) API (255, C3, 2026-03-29)**: **`POST /api/arena/sub-name`** — `arena_profiles` 없으면 **404** `NOT_FOUND`. **회귀 테스트**·핸들러 변경 없음. *→ **S93 TASK9** 상단 **`E) API (262)`** — 비 JSON **`INVALID_JSON`**·도메인 **400**.*
 
 **E) API (254, C3, 2026-03-26)**: **`GET /api/arena/leaderboard/status`** — **200** `{ hasWeeklyXpRow, xpTotal, updatedAt }` (weekly_xp `league_id` null 단건). **회귀 테스트**·핸들러 변경 없음.
 

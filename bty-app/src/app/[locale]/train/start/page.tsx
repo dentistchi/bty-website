@@ -11,7 +11,7 @@ export default function TrainStartPage() {
   const t = getMessages(loc).train;
 
   return (
-    <div className="p-6 space-y-4">
+    <main className="p-6 space-y-4" aria-label={t.journeyStartMainRegionAria}>
       <h1 className="text-2xl font-semibold">{t.journeyStartTitle}</h1>
       <p className="opacity-80">{t.journeyStartIntro}</p>
       <div className="rounded-lg border p-4">
@@ -19,6 +19,6 @@ export default function TrainStartPage() {
           {t.journeyStartDay1Link}
         </Link>
       </div>
-    </div>
+    </main>
   );
 }

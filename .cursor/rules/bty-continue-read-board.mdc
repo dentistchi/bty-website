@@ -17,7 +17,7 @@ alwaysApply: true
 6. **`docs/SPRINT_PLAN.md`는 타임라인·요약용.** TASK·`[ ]` 판단은 **보드 표만** (불일치 시 보드 우선).
 7. **할 일 읽는 법 요약**: **`docs/agent-runtime/HOW_TO_READ_TASKS.md`** (bty-app이면 `../docs/agent-runtime/HOW_TO_READ_TASKS.md`).
 
-8. **REFRESH** (사용자가 refresh/REFRESH 라고 할 때): **`docs/agent-runtime/REFRESH_PROCEDURE.md`** 따름 — **매번 필수**: (1) 이번 런·`CURRENT_TASK`·`SPRINT_PLAN` 점검 (2) **C2·C3·C4·C5·C6 각 역할당 정확히 5개**(미정이면 `대기: …`로 채움) 응답 인라인 (3) 권장: 보드 `[REFRESH YYYY-MM-DD]`·`SPRINT_LOG` 한 줄. 병렬 5창은 자기 Cn 1~5만 수행.
+8. **REFRESH** (사용자가 refresh/REFRESH 라고 할 때): **`docs/agent-runtime/REFRESH_PROCEDURE.md`** 따름 — **매번 필수**: (1) 이번 런·`CURRENT_TASK`·`SPRINT_PLAN` 점검 (2) **C2·C3·C4·C5·C6 각 역할당 정확히 5개**(미정이면 `대기: …`로 채움) 응답 인라인 (3) 권장: 보드 `[REFRESH YYYY-MM-DD]`·`SPRINT_LOG` 한 줄. 병렬 5창은 자기 Cn 1~5만 수행. **현재 모드: 구현 단계** — C2~C6 할 일은 **코드 생성·구현** 우선; 5줄을 검증 루틴만으로 채우지 않음.
 
 9. **「할 일 없음」** (CONTINUE 등): 이번 런이 **10/10 [x]가 아닌데** 자기 OWNER에 **`[ ]`가 없으면** → **응답에 반드시** 이렇게 적기: **「이번 런(SPRINT N)에서 내 OWNER(Cx) 행에 [ ] 없음. 할 일 없음. C1이 PARALLEL_QUEUE_REFILL 또는 splint 10 하면 새 TASK 생김.»** (C1은 **`docs/agent-runtime/PARALLEL_QUEUE_REFILL.md`** 실행.) **전량 [x]** 면 **「전량 완료. C1 splint 10.»**
 

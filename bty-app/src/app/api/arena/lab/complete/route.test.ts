@@ -11,6 +11,18 @@ vi.mock("@/lib/bty/arena/supabaseServer", () => ({
     mockGetSupabaseServerClient(...args),
 }));
 
+vi.mock("@/lib/bty/arena/labUsage", () => ({
+  getLabAttemptsUsed: vi.fn(),
+  consumeLabAttempt: vi.fn(),
+}));
+
+vi.mock("@/lib/bty/arena/applyCoreXp", () => ({
+  applyDirectCoreXp: vi.fn(),
+}));
+
+import { consumeLabAttempt } from "@/lib/bty/arena/labUsage";
+import { applyDirectCoreXp } from "@/lib/bty/arena/applyCoreXp";
+
 describe("POST /api/arena/lab/complete", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -44,5 +56,79 @@ describe("POST /api/arena/lab/complete", () => {
     const res = await POST(req);
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("INVALID_JSON");
+  });
+
+  /** S98 C3 TASK9: optional `completedOn` — `arenaIsoDateOnlyFromUnknown` rejects → 400. */
+  it("returns 400 completed_on_invalid when completedOn is present but not a valid ISO date", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const res = await POST(
+      new Request("http://localhost/api/arena/lab/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ difficulty: "easy", completedOn: "2024-02-30" }),
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("completed_on_invalid");
+  });
+
+  /** S98 C3 TASK9: valid completedOn still proceeds (consume + core XP mocked). */
+  it("returns 200 when completedOn is valid YYYY-MM-DD", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    vi.mocked(consumeLabAttempt).mockResolvedValue({ consumed: true, attemptsUsed: 1 });
+    vi.mocked(applyDirectCoreXp).mockResolvedValue({ newCoreTotal: 500 });
+
+    const res = await POST(
+      new Request("http://localhost/api/arena/lab/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ difficulty: "easy", completedOn: "2024-06-15" }),
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).ok).toBe(true);
+  });
+
+  /** S89 C3 TASK9: domain difficulty → coreXp matches computeLabCoreXp. */
+  it("returns 200 coreXp for mid when difficulty invalid; extreme when valid", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    vi.mocked(consumeLabAttempt).mockResolvedValue({ consumed: true, attemptsUsed: 1 });
+    vi.mocked(applyDirectCoreXp).mockResolvedValue({ newCoreTotal: 500 });
+
+    const { computeLabCoreXp } = await import("@/lib/bty/arena/arenaLabXp");
+    const midXp = computeLabCoreXp("mid");
+    const extremeXp = computeLabCoreXp("extreme");
+
+    const r1 = await POST(
+      new Request("http://localhost/api/arena/lab/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ difficulty: "not-a-difficulty" }),
+      }),
+    );
+    expect(r1.status).toBe(200);
+    expect((await r1.json()).coreXp).toBe(midXp);
+
+    const r2 = await POST(
+      new Request("http://localhost/api/arena/lab/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ difficulty: "extreme" }),
+      }),
+    );
+    expect(r2.status).toBe(200);
+    expect((await r2.json()).coreXp).toBe(extremeXp);
   });
 });

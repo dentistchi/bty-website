@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
+import { arenaRunIdFromUnknown, arenaScenarioIdFromUnknown } from "@/domain/arena/scenarios";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 
+/**
+ * POST /api/arena/event
+ * - **400:** `runId_required` | `scenarioId_required` | `eventType_required` — domain **`arenaRunIdFromUnknown`** / **`arenaScenarioIdFromUnknown`** · `eventType` 비문자·trim 후 빈 문자열.
+ */
 export async function POST(req: Request) {
   const supabase = await getSupabaseServerClient();
   const {
@@ -9,19 +14,20 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const runId = String(body?.runId ?? "");
-  const scenarioId = String(body?.scenarioId ?? "");
+  const runId = arenaRunIdFromUnknown(body?.runId);
+  const scenarioId = arenaScenarioIdFromUnknown(body?.scenarioId);
   const step = Number(body?.step ?? 1);
-  const eventType = String(body?.eventType ?? "");
+  const eventTypeRaw = body?.eventType;
+  const eventType = typeof eventTypeRaw === "string" ? eventTypeRaw.trim() : "";
   const choiceId = body?.choiceId ? String(body.choiceId) : null;
   const followUpIndex = typeof body?.followUpIndex === "number" ? body.followUpIndex : null;
   const xp = Number(body?.xp ?? 0);
   const deltas = body?.deltas ?? null;
   const meta = body?.meta ?? null;
 
-  if (!runId || !scenarioId || !eventType) {
-    return NextResponse.json({ error: "runId_scenarioId_eventType_required" }, { status: 400 });
-  }
+  if (!runId) return NextResponse.json({ error: "runId_required" }, { status: 400 });
+  if (!scenarioId) return NextResponse.json({ error: "scenarioId_required" }, { status: 400 });
+  if (!eventType) return NextResponse.json({ error: "eventType_required" }, { status: 400 });
 
   const { error } = await supabase.from("arena_events").insert({
     run_id: runId,

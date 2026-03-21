@@ -61,4 +61,62 @@ describe("POST /api/arena/free-response", () => {
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("runId_required");
   });
+
+  it("returns 400 scenarioId_required when scenarioId is whitespace-only (arenaScenarioIdFromUnknown)", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+    });
+    const req = new Request("http://localhost/api/arena/free-response", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: "r1",
+        scenarioId: "   ",
+        responseText: "hello",
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("scenarioId_required");
+  });
+
+  it("returns 400 runId_required when runId contains internal whitespace (arenaRunIdFromUnknown)", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+    });
+    const req = new Request("http://localhost/api/arena/free-response", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: "run with-space",
+        scenarioId: "s1",
+        responseText: "hello",
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("runId_required");
+  });
+
+  /** S88 C3 TASK9: scenario id over domain max → scenarioId_required. */
+  it("returns 400 scenarioId_required when scenario id exceeds max length", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+    });
+    const { ARENA_SCENARIO_ID_MAX_LENGTH } = await import(
+      "@/domain/arena/scenarios/arenaScenarioIdFromUnknown"
+    );
+    const req = new Request("http://localhost/api/arena/free-response", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: "valid-run-id",
+        scenarioId: "z".repeat(ARENA_SCENARIO_ID_MAX_LENGTH + 1),
+        responseText: "x",
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("scenarioId_required");
+  });
 });

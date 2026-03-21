@@ -22,10 +22,10 @@ import { getUnlockedContentWindow } from "@/lib/bty/arena/unlock";
 import { buildReflection, type LevelId, type HumanModelConfig } from "@/lib/bty/arena/reflection-engine";
 import humanModelJson from "@/lib/bty/arena/arena_human_model.json";
 import { REFLECT_USER_TEXT_MAX_CHARS } from "@/lib/bty/arena/reflectLimits";
+import { arenaReflectLevelIdFromUnknown } from "@/domain/arena/scenarios";
 
 export const runtime = "nodejs";
 
-const VALID_LEVEL_IDS: LevelId[] = ["S1", "S2", "S3", "L1", "L2", "L3", "L4"];
 const HUMAN_MODEL = humanModelJson as HumanModelConfig;
 
 export async function POST(req: Request) {
@@ -51,9 +51,9 @@ export async function POST(req: Request) {
   }
 
   let levelId: LevelId;
-  const bodyLevel = body.levelId ? String(body.levelId).trim().toUpperCase() : "";
-  if (bodyLevel && VALID_LEVEL_IDS.includes(bodyLevel as LevelId) && HUMAN_MODEL.levels[bodyLevel as LevelId]) {
-    levelId = bodyLevel as LevelId;
+  const parsedLevel = arenaReflectLevelIdFromUnknown(body.levelId);
+  if (parsedLevel != null && HUMAN_MODEL.levels[parsedLevel]) {
+    levelId = parsedLevel;
   } else {
     // Resolve from user tenure (same as GET /api/arena/unlocked-scenarios). Prefer arena_membership_requests.
     let joinedAt = user.created_at ?? new Date().toISOString();

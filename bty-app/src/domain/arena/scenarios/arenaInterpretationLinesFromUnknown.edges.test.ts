@@ -34,4 +34,15 @@ describe("arenaInterpretationLinesFromUnknown (edges)", () => {
     const maxLines = Array.from({ length: ARENA_INTERPRETATION_MAX_LINES }, (_, i) => `L${i}`);
     expect(arenaInterpretationLinesFromUnknown(maxLines)).toEqual(maxLines);
   });
+
+  /** S92 TASK8: per-element trim only; internal `\n`/`\t` are kept; max count with padded rows. */
+  it("preserves internal newlines and tabs inside one interpretation line", () => {
+    expect(arenaInterpretationLinesFromUnknown(["  first\nsecond\tbit  "])).toEqual(["first\nsecond\tbit"]);
+  });
+
+  it("accepts max line count when every element has surrounding whitespace", () => {
+    const padded = Array.from({ length: ARENA_INTERPRETATION_MAX_LINES }, (_, i) => `  L${i}  `);
+    const expected = Array.from({ length: ARENA_INTERPRETATION_MAX_LINES }, (_, i) => `L${i}`);
+    expect(arenaInterpretationLinesFromUnknown(padded)).toEqual(expected);
+  });
 });

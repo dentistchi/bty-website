@@ -22,4 +22,16 @@ describe("arenaScenarioDifficultyFromUnknown (edges)", () => {
     expect(arenaScenarioDifficultyFromUnknown(null)).toBeNull();
     expect(arenaScenarioDifficultyFromUnknown(1)).toBeNull();
   });
+
+  it("accepts mixed-case spellings after trim (full-string lowercase)", () => {
+    expect(arenaScenarioDifficultyFromUnknown("  lOw  ")).toBe("Low");
+    expect(arenaScenarioDifficultyFromUnknown("MoDeRaTe")).toBe("Moderate");
+    expect(arenaScenarioDifficultyFromUnknown("hIGh")).toBe("High");
+  });
+
+  it("rejects substring typos and compound tokens", () => {
+    expect(arenaScenarioDifficultyFromUnknown("low-ish")).toBeNull();
+    expect(arenaScenarioDifficultyFromUnknown("superhigh")).toBeNull();
+    expect(arenaScenarioDifficultyFromUnknown("moderately")).toBeNull();
+  });
 });

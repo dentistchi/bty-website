@@ -2,6 +2,7 @@
  * POST /api/arena/run — 401·400·500·200 (start run).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { ARENA_SCENARIO_ID_MAX_LENGTH } from "@/domain/arena/scenarios";
 import { POST } from "./route";
 
 const mockGetSupabaseServerClient = vi.fn();
@@ -56,6 +57,58 @@ describe("POST /api/arena/run", () => {
     expect(res.status).toBe(400);
     const data = await res.json();
     expect(data.error).toBe("scenarioId_required");
+  });
+
+  /** S96 TASK9: boundary 400 — JSON `scenarioId: null` (`arenaScenarioIdFromUnknown` non-string). */
+  it("returns 400 scenarioId_required when scenarioId is JSON null", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+    });
+    const res = await POST(makeRequest({ scenarioId: null }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("scenarioId_required");
+  });
+
+  /** S89 TASK21: domain `arenaScenarioIdFromUnknown` — whitespace / overlong rejected like free-response. */
+  it("returns 400 when scenarioId is whitespace-only", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+    });
+    const res = await POST(makeRequest({ scenarioId: "  \t\n  " }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("scenarioId_required");
+  });
+
+  it("returns 400 when scenarioId exceeds max length", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+    });
+    const res = await POST(makeRequest({ scenarioId: "x".repeat(ARENA_SCENARIO_ID_MAX_LENGTH + 1) }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("scenarioId_required");
+  });
+
+  it("persists trimmed scenario_id via insert row", async () => {
+    const mockSingle = vi.fn().mockResolvedValue({
+      data: { run_id: "r1", scenario_id: "trimmed-id", started_at: "2026-03-01T00:00:00Z", status: "started" },
+      error: null,
+    });
+    const mockInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({ single: mockSingle }),
+    });
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+      rpc: vi.fn().mockResolvedValue({ error: null }),
+      from: vi.fn().mockReturnValue({
+        insert: mockInsert,
+      }),
+    });
+
+    const res = await POST(makeRequest({ scenarioId: "  trimmed-id  " }));
+    expect(res.status).toBe(200);
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ scenario_id: "trimmed-id" }),
+    );
   });
 
   /** C6 245: 시나리오 시작 401→400 스모크. */

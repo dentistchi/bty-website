@@ -18,5 +18,13 @@ describe("arenaMissionOutcomeKeyFromChoiceIds (edges)", () => {
     expect(arenaMissionOutcomeKeyFromChoiceIds(null, "X")).toBeNull();
     expect(arenaMissionOutcomeKeyFromChoiceIds("A", 1)).toBeNull();
     expect(arenaMissionOutcomeKeyFromChoiceIds("   ", "X")).toBeNull();
+    expect(arenaMissionOutcomeKeyFromChoiceIds("A", "   ")).toBeNull();
+    expect(arenaMissionOutcomeKeyFromChoiceIds("A", "\t\n")).toBeNull();
+  });
+
+  it("rejects ZWSP and other invisible chars inside tokens (trim does not strip U+200B)", () => {
+    expect(arenaMissionOutcomeKeyFromChoiceIds("A\u200b", "X")).toBeNull();
+    expect(arenaMissionOutcomeKeyFromChoiceIds("A", "X\u200b")).toBeNull();
+    expect(arenaMissionOutcomeKeyFromChoiceIds("\u200bA", "X")).toBeNull();
   });
 });

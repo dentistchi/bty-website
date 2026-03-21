@@ -14,7 +14,7 @@ export type Locale = "ko" | "en";
 
 export type Messages = {
   /** §2: 전환 중 로딩 문구 (locale별) */
-  loading: { message: string; hint: string };
+  loading: { message: string; hint: string; localeRouteSuspenseMainRegionAria: string };
   nav: { center: string; bty: string; arena: string; en: string; ko: string; skipToMainContent: string };
   login: {
     title: string;
@@ -28,6 +28,10 @@ export type Messages = {
     forgotPassword: string;
     forgotPasswordSent: string;
     forgotPasswordError: string;
+    /** `/[locale]/bty/forgot-password` 페이지 `<main>` 랜드마크 */
+    forgotPasswordMainRegionAria: string;
+    /** `/[locale]/bty/(public)/loading` Suspense `<main>` 라벨 (로그인·비밀번호 찾기 공통) */
+    btyPublicRouteSuspenseMainRegionAria: string;
   };
   auth: { backToLogin: string; loading: string; callbackError: string };
   logout: string;
@@ -169,8 +173,12 @@ export type Messages = {
     footerLabel: string;
     /** `/[locale]/dear-me` Suspense fallback `<main>` 라벨 */
     dearMeSuspenseMainRegionAria: string;
+    /** `/[locale]/dear-me` `error.tsx` 경계 `<main>` 라벨 */
+    dearMeErrorMainRegionAria: string;
     /** `/[locale]/center` Suspense fallback `<main>` 라벨 */
     centerSuspenseMainRegionAria: string;
+    /** `/[locale]/center` `error.tsx` 경계 `<main>` 라벨 */
+    centerErrorMainRegionAria: string;
   };
   bty: {
     title: string;
@@ -219,6 +227,10 @@ export type Messages = {
     dashboardShortcutWeeklyRanking: string;
     /** 리더보드 카드·목록 묶음 랜드마크 */
     leaderboardMainRegionAria: string;
+    /** `/[locale]/bty/leaderboard/loading` Suspense `<main>` 라벨 */
+    leaderboardRouteSuspenseMainRegionAria: string;
+    /** `/[locale]/bty/(protected)/profile/loading` Suspense `<main>` 라벨 */
+    profileRouteSuspenseMainRegionAria: string;
     /** 대시보드 히어로 부제 (한눈에 보기) */
     dashboardHeroSubtitle: string;
     /** 주간 XP·랭킹 위젯 (API 표시만, 순위는 리더보드 링크) */
@@ -276,6 +288,18 @@ export type Messages = {
     dashboardPageTitle: string;
     /** 대시보드 페이지 메인 랜드마크 (Foundry) */
     dashboardMainRegionAria: string;
+    /** 대시보드 Suspense fallback `<main>` 라벨 (Foundry) */
+    dashboardSuspenseMainRegionAria: string;
+    /** Dojo Suspense fallback `<main>` 라벨 (Foundry) */
+    dojoSuspenseMainRegionAria: string;
+    /** Elite Suspense fallback `<main>` 라벨 (Foundry) */
+    eliteSuspenseMainRegionAria: string;
+    /** Healing Suspense fallback `<main>` 라벨 (Foundry) */
+    healingSuspenseMainRegionAria: string;
+    /** Mentor Suspense fallback `<main>` 라벨 (Foundry) */
+    mentorSuspenseMainRegionAria: string;
+    /** Integrity 연습 Suspense fallback `<main>` 라벨 (Foundry) */
+    integrityPracticeSuspenseMainRegionAria: string;
     /** Foundry 허브 메인 랜드마크 */
     foundryHubMainLandmarkAria: string;
     /** Foundry 허브 Suspense fallback `<main>` 라벨 */
@@ -338,6 +362,10 @@ export type Messages = {
     footerHint: string;
     /** 자존감 50문항 진단 폼 페이지 메인 랜드마크 (Center 계열) */
     assessmentMainRegionAria: string;
+    /** `/[locale]/assessment` 세그먼트 `error.tsx` `<main>` 라벨 */
+    assessmentErrorMainRegionAria: string;
+    /** `/[locale]/assessment` Suspense `loading.tsx` `<main>` 라벨 */
+    assessmentSuspenseMainRegionAria: string;
     /** `/[locale]` 랜딩 허브 — Arena·Foundry·Center 카드 진입 */
     landingHubMainRegionAria: string;
   };
@@ -721,6 +749,14 @@ export type Messages = {
     journeyStartIntro: string;
     journeyStartDay1Link: string;
     journeyStartDay1Aria: string;
+    /** `/train/start` 페이지 `<main>` 랜드마크 */
+    journeyStartMainRegionAria: string;
+    /** `/train/28days` 허브 페이지 `<main>` 랜드마크 */
+    track28HubMainRegionAria: string;
+    /** `/train/28days/day/[day]` 레슨 페이지 `<main>` 랜드마크 */
+    track28DayMainRegionAria: string;
+    /** `/[locale]/train/loading` Suspense `<main>` 라벨 */
+    trainRouteSuspenseMainRegionAria: string;
   };
   /** Dojo 50문항 결과 화면. 영역별 점수·Dr. Chi 코멘트 표시(render-only). */
   dojoResult: {
@@ -939,6 +975,8 @@ export type Messages = {
     growthNavReflectionLine: string;
     growthBackToGrowth: string;
     growthJourneyLandmarkAria: string;
+    /** `/[locale]/growth/loading` Suspense `<main>` 라벨 */
+    growthRouteSuspenseMainRegionAria: string;
     arenaHubTitle: string;
     /** 허브 ScreenShell 메인 타이틀 (짧게; 카드에서 이어하기/준비 문구 구분) */
     arenaHubShellTitle: string;
@@ -962,6 +1000,8 @@ export type Messages = {
     arenaMissionLobbyMainRegionAria: string;
     /** 미션 로비 세션 hydration 대기 `<main>` 랜드마크 */
     arenaMissionLobbyLoadingMainRegionAria: string;
+    /** `/[locale]/bty-arena/loading` — 라우트 세그먼트 로딩 `<main>` 랜드마크 */
+    arenaBtyArenaRouteSegmentLoadingMainRegionAria: string;
     /** `/bty-arena/play` 로딩 `<main>` 랜드마크 */
     arenaMissionPlayLoadingMainRegionAria: string;
     /** `/bty-arena/play` 플레이 단계 `<main>` 랜드마크 */
@@ -1259,6 +1299,8 @@ export type Messages = {
     myPageTabTeam: string;
     myPageTabLeader: string;
     myPageTabAccount: string;
+    /** `/[locale]/my-page/loading` Suspense `<main>` 라벨 */
+    myPageRouteSuspenseMainRegionAria: string;
     /** My Page leadership console (Arena accumulation) */
     leadershipRegionAria: string;
     leadershipCardInsight: string;
@@ -1319,7 +1361,11 @@ export type Messages = {
 };
 
 const ko: Messages = {
-  loading: { message: "잠시만 기다려 주세요.", hint: "첫 로딩은 1–2분 걸릴 수 있어요." },
+  loading: {
+    message: "잠시만 기다려 주세요.",
+    hint: "첫 로딩은 1–2분 걸릴 수 있어요.",
+    localeRouteSuspenseMainRegionAria: "앱 — 불러오는 중",
+  },
   nav: { center: "Center", bty: "Foundry", arena: "Arena", en: "English", ko: "한국어", skipToMainContent: "본문으로 건너뛰기" },
   login: {
     title: "bty 로그인",
@@ -1333,6 +1379,8 @@ const ko: Messages = {
     forgotPassword: "비밀번호 찾기",
     forgotPasswordSent: "재설정 링크를 이메일로 보냈습니다. 받은편지함(또는 스팸)을 확인해주세요.",
     forgotPasswordError: "요청에 실패했습니다. 이메일을 확인하거나 잠시 후 다시 시도해주세요.",
+    forgotPasswordMainRegionAria: "비밀번호 찾기",
+    btyPublicRouteSuspenseMainRegionAria: "Foundry 로그인 — 불러오는 중",
   },
   auth: { backToLogin: "로그인으로 돌아가기", loading: "인증 처리 중...", callbackError: "인증 처리에 실패했습니다. 다시 시도해주세요." },
   logout: "로그아웃",
@@ -1433,7 +1481,9 @@ const ko: Messages = {
     replyActionsLabel: "답장 후 액션",
     footerLabel: "Center로 돌아가기",
     dearMeSuspenseMainRegionAria: "Dear Me — 불러오는 중",
+    dearMeErrorMainRegionAria: "Dear Me — 오류",
     centerSuspenseMainRegionAria: "Center — 불러오는 중",
+    centerErrorMainRegionAria: "Center — 오류",
   },
   bty: {
     title: "bty",
@@ -1466,6 +1516,8 @@ const ko: Messages = {
     dashboardShortcutGoArena: "Arena 플레이",
     dashboardShortcutWeeklyRanking: "주간 랭킹 보기",
     leaderboardMainRegionAria: "리더보드 카드·순위 목록",
+    leaderboardRouteSuspenseMainRegionAria: "리더보드 — 불러오는 중",
+    profileRouteSuspenseMainRegionAria: "프로필 — 불러오는 중",
     dashboardHeroSubtitle: "Arena 진행을 한눈에 볼 수 있어요.",
     dashboardWeeklyRankWidgetTitle: "이번 주 랭킹",
     dashboardWeeklyWidgetLoading: "주간 순위 불러오는 중…",
@@ -1511,6 +1563,12 @@ const ko: Messages = {
     weeklySeasonActivityAria: "시즌·주간 XP 및 이벤트 수",
     dashboardPageTitle: "대시보드",
     dashboardMainRegionAria: "대시보드 — Arena 진행·주간 랭킹·추천",
+    dashboardSuspenseMainRegionAria: "대시보드 — 불러오는 중",
+    dojoSuspenseMainRegionAria: "Dojo — 불러오는 중",
+    eliteSuspenseMainRegionAria: "Elite — 불러오는 중",
+    healingSuspenseMainRegionAria: "Healing — 불러오는 중",
+    mentorSuspenseMainRegionAria: "멘토 — 불러오는 중",
+    integrityPracticeSuspenseMainRegionAria: "역지사지 연습 — 불러오는 중",
     foundryHubMainLandmarkAria: "Foundry 연습 허브",
     foundryHubSuspenseMainRegionAria: "Foundry 연습 허브 — 불러오는 중",
     btyIndexMainRegionAria: "bty 메인 — Arena·Center·Foundry 허브",
@@ -1556,6 +1614,8 @@ const ko: Messages = {
     todayGrowthLink: "오늘의 성장",
     footerHint: "위에서 가고 싶은 곳을 골라주세요.",
     assessmentMainRegionAria: "자존감 50문항 자가 진단",
+    assessmentErrorMainRegionAria: "자존감 진단 — 오류",
+    assessmentSuspenseMainRegionAria: "자존감 진단 — 불러오는 중",
     landingHubMainRegionAria: "BTY 랜딩 — Arena·Foundry·Center 진입",
   },
   safeMirror: {
@@ -1906,6 +1966,10 @@ const ko: Messages = {
     journeyStartIntro: "왼쪽에서 Day를 선택하면 레슨이 보이고, 오른쪽에서 코치와 대화할 수 있어요.",
     journeyStartDay1Link: "Day 1부터 시작하기",
     journeyStartDay1Aria: "Day 1부터 시작하기",
+    journeyStartMainRegionAria: "28일 훈련 시작",
+    track28HubMainRegionAria: "28일 훈련 허브",
+    track28DayMainRegionAria: "28일 훈련 레슨",
+    trainRouteSuspenseMainRegionAria: "28일 훈련 — 불러오는 중",
   },
   dojoResult: {
     title: "Today-Me 50문항 결과",
@@ -2113,6 +2177,7 @@ const ko: Messages = {
     growthNavReflectionLine: "내면 목소리 안정화 (Dear Me)",
     growthBackToGrowth: "성장으로 돌아가기",
     growthJourneyLandmarkAria: "28일 Journey 보드",
+    growthRouteSuspenseMainRegionAria: "오늘의 성장 — 불러오는 중",
     arenaHubTitle: "아레나를 이어갑니다.",
     arenaHubShellTitle: "아레나",
     arenaHubSubtitle: "판단·반복·압박 훈련은 이 공간에 있습니다.",
@@ -2132,6 +2197,7 @@ const ko: Messages = {
     arenaHubMainRegionAria: "아레나 허브 — 진입 카드·주간 순위·시즌",
     arenaMissionLobbyMainRegionAria: "아레나 미션 로비 — 시나리오 진입·이어하기",
     arenaMissionLobbyLoadingMainRegionAria: "아레나 미션 로비 — 불러오는 중",
+    arenaBtyArenaRouteSegmentLoadingMainRegionAria: "BTY Arena — 페이지 불러오는 중",
     arenaMissionPlayLoadingMainRegionAria: "미션 플레이 — 불러오는 중",
     arenaMissionPlayMainRegionAria: "미션 플레이 — 실행·선택·성찰·이력",
     arenaMissionResultLoadingMainRegionAria: "미션 결과 — 불러오는 중",
@@ -2409,6 +2475,7 @@ const ko: Messages = {
     myPageTabTeam: "팀",
     myPageTabLeader: "리더",
     myPageTabAccount: "계정",
+    myPageRouteSuspenseMainRegionAria: "마이 페이지 — 불러오는 중",
     leadershipRegionAria: "리더십 상태 콘솔",
     leadershipCardInsight: "인사이트 패턴",
     leadershipCardInfluence: "팀 영향",
@@ -2468,7 +2535,11 @@ const ko: Messages = {
 };
 
 const en: Messages = {
-  loading: { message: "Please wait…", hint: "First load may take 1–2 minutes." },
+  loading: {
+    message: "Please wait…",
+    hint: "First load may take 1–2 minutes.",
+    localeRouteSuspenseMainRegionAria: "App — loading",
+  },
   nav: { center: "Center", bty: "Foundry", arena: "Arena", en: "English", ko: "한국어", skipToMainContent: "Skip to main content" },
   login: {
     title: "bty Sign in",
@@ -2482,6 +2553,8 @@ const en: Messages = {
     forgotPassword: "Forgot password?",
     forgotPasswordSent: "We sent a reset link to your email. Check your inbox (and spam folder).",
     forgotPasswordError: "Request failed. Check the email address or try again later.",
+    forgotPasswordMainRegionAria: "Forgot password",
+    btyPublicRouteSuspenseMainRegionAria: "Foundry sign-in — loading",
   },
   auth: { backToLogin: "Back to sign in", loading: "Verifying…", callbackError: "Verification failed. Please try again." },
   logout: "Log out",
@@ -2582,7 +2655,9 @@ const en: Messages = {
     replyActionsLabel: "Actions after reply",
     footerLabel: "Back to Center",
     dearMeSuspenseMainRegionAria: "Dear Me — loading",
+    dearMeErrorMainRegionAria: "Dear Me — error",
     centerSuspenseMainRegionAria: "Center — loading",
+    centerErrorMainRegionAria: "Center — error",
   },
   bty: {
     title: "bty",
@@ -2615,6 +2690,8 @@ const en: Messages = {
     dashboardShortcutGoArena: "Play Arena",
     dashboardShortcutWeeklyRanking: "View weekly ranking",
     leaderboardMainRegionAria: "Leaderboard cards and ranking list",
+    leaderboardRouteSuspenseMainRegionAria: "Leaderboard — loading",
+    profileRouteSuspenseMainRegionAria: "Profile — loading",
     dashboardHeroSubtitle: "Your arena progress at a glance.",
     dashboardWeeklyRankWidgetTitle: "Weekly XP & ranking",
     dashboardWeeklyWidgetLoading: "Loading weekly info",
@@ -2660,6 +2737,12 @@ const en: Messages = {
     weeklySeasonActivityAria: "Season and weekly XP, event count",
     dashboardPageTitle: "Dashboard",
     dashboardMainRegionAria: "Dashboard — Arena progress, weekly ranking, recommendations",
+    dashboardSuspenseMainRegionAria: "Dashboard — loading",
+    dojoSuspenseMainRegionAria: "Dojo — loading",
+    eliteSuspenseMainRegionAria: "Elite — loading",
+    healingSuspenseMainRegionAria: "Healing — loading",
+    mentorSuspenseMainRegionAria: "Mentor — loading",
+    integrityPracticeSuspenseMainRegionAria: "Integrity practice — loading",
     foundryHubMainLandmarkAria: "Foundry practice hub",
     foundryHubSuspenseMainRegionAria: "Foundry practice hub — loading",
     btyIndexMainRegionAria: "bty home — Arena, Center, Foundry hubs",
@@ -2705,6 +2788,8 @@ const en: Messages = {
     todayGrowthLink: "Today's growth",
     footerHint: "Choose a path above.",
     assessmentMainRegionAria: "Self-esteem 50-item assessment",
+    assessmentErrorMainRegionAria: "Self-esteem assessment — error",
+    assessmentSuspenseMainRegionAria: "Self-esteem assessment — loading",
     landingHubMainRegionAria: "BTY landing — Arena, Foundry, and Center entry",
   },
   safeMirror: {
@@ -3056,6 +3141,10 @@ const en: Messages = {
     journeyStartIntro: "Pick a day on the left for the lesson; chat with the coach on the right.",
     journeyStartDay1Link: "Start from Day 1",
     journeyStartDay1Aria: "Start from Day 1",
+    journeyStartMainRegionAria: "28-day training start",
+    track28HubMainRegionAria: "28-day training hub",
+    track28DayMainRegionAria: "28-day training lesson",
+    trainRouteSuspenseMainRegionAria: "28-day training — loading",
   },
   dojoResult: {
     title: "Today-Me 50-Item Result",
@@ -3263,6 +3352,7 @@ const en: Messages = {
     growthNavReflectionLine: "Stabilize your inner voice (Dear Me)",
     growthBackToGrowth: "Back to Growth",
     growthJourneyLandmarkAria: "28-day Journey board",
+    growthRouteSuspenseMainRegionAria: "Growth — loading",
     arenaHubTitle: "Continue your Arena.",
     arenaHubShellTitle: "Arena",
     arenaHubSubtitle: "Decision, repetition, and pressure training live here.",
@@ -3282,6 +3372,7 @@ const en: Messages = {
     arenaHubMainRegionAria: "Arena hub — entry card, weekly rank, season",
     arenaMissionLobbyMainRegionAria: "Arena mission lobby — scenario entry and resume",
     arenaMissionLobbyLoadingMainRegionAria: "Arena mission lobby — loading",
+    arenaBtyArenaRouteSegmentLoadingMainRegionAria: "BTY Arena — loading page",
     arenaMissionPlayLoadingMainRegionAria: "Mission play — loading",
     arenaMissionPlayMainRegionAria: "Mission play — run, choices, reflection, history",
     arenaMissionResultLoadingMainRegionAria: "Mission result — loading",
@@ -3559,6 +3650,7 @@ const en: Messages = {
     myPageTabTeam: "Team",
     myPageTabLeader: "Leader",
     myPageTabAccount: "Account",
+    myPageRouteSuspenseMainRegionAria: "My Page — loading",
     leadershipRegionAria: "Leadership state console",
     leadershipCardInsight: "Insight pattern",
     leadershipCardInfluence: "Team influence",

@@ -35,7 +35,7 @@ describe("POST /api/arena/event", () => {
     expect(data.error).toBe("UNAUTHENTICATED");
   });
 
-  it("returns 400 when runId, scenarioId, or eventType missing", async () => {
+  it("returns 400 runId_required when body empty", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({
       auth: {
         getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
@@ -49,6 +49,66 @@ describe("POST /api/arena/event", () => {
     const res = await POST(req);
     expect(res.status).toBe(400);
     const data = await res.json();
-    expect(data.error).toBe("runId_scenarioId_eventType_required");
+    expect(data.error).toBe("runId_required");
+  });
+
+  it("returns 400 runId_required when runId has internal whitespace (arenaRunIdFromUnknown)", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const req = new Request("http://localhost/api/arena/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: "r1 r2",
+        scenarioId: "s1",
+        eventType: "CHOICE",
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("runId_required");
+  });
+
+  it("returns 400 scenarioId_required when scenarioId is whitespace-only (arenaScenarioIdFromUnknown)", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const req = new Request("http://localhost/api/arena/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: "r1",
+        scenarioId: "   ",
+        eventType: "CHOICE",
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("scenarioId_required");
+  });
+
+  it("returns 400 eventType_required when eventType is whitespace-only", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const req = new Request("http://localhost/api/arena/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: "r1",
+        scenarioId: "s1",
+        eventType: "  \t  ",
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("eventType_required");
   });
 });

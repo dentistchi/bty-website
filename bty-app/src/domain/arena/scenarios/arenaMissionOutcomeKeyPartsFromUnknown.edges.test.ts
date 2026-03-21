@@ -40,4 +40,8 @@ describe("arenaMissionOutcomeKeyPartsFromUnknown (edges)", () => {
       reinforcementId: "X",
     });
   });
+
+  it("returns null when an extra underscore leaves reinforcement as a non-token (e.g. A_X_Y)", () => {
+    expect(arenaMissionOutcomeKeyPartsFromUnknown("A_X_Y")).toBeNull();
+  });
 });

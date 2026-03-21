@@ -1,8 +1,9 @@
 /**
- * GET /api/arena/run/[runId] — 401·404·200 (245 C4/C6).
+ * GET /api/arena/run/[runId] — 401·400·404·200 (245 C4/C6).
  */
 import { NextRequest } from "next/server";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { ARENA_RUN_ID_MAX_LENGTH } from "@/domain/arena/scenarios";
 import { GET } from "./route";
 
 const mockGetSupabaseServerClient = vi.fn();
@@ -38,6 +39,36 @@ describe("GET /api/arena/run/[runId]", () => {
     mockGetSupabaseServerClient.mockReturnValue(makeClient({ id: "u1" }, null, null));
     const res = await GET(new NextRequest("http://x"), {
       params: Promise.resolve({ runId: "" }),
+    });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("MISSING_RUN_ID");
+  });
+
+  /** S84 C3 TASK9: whitespace-only runId → 400 MISSING_RUN_ID (trim). */
+  it("returns 400 when runId is whitespace-only", async () => {
+    mockGetSupabaseServerClient.mockReturnValue(makeClient({ id: "u1" }, null, null));
+    const res = await GET(new NextRequest("http://x"), {
+      params: Promise.resolve({ runId: "   \t  " }),
+    });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("MISSING_RUN_ID");
+  });
+
+  /** S97 C3 TASK9: `arenaRunIdFromUnknown` — internal whitespace → 400. */
+  it("returns 400 when runId has internal whitespace (arenaRunIdFromUnknown)", async () => {
+    mockGetSupabaseServerClient.mockReturnValue(makeClient({ id: "u1" }, null, null));
+    const res = await GET(new NextRequest("http://x"), {
+      params: Promise.resolve({ runId: "r1 r2" }),
+    });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("MISSING_RUN_ID");
+  });
+
+  /** S97 C3 TASK9: over max length → 400. */
+  it("returns 400 when runId exceeds ARENA_RUN_ID_MAX_LENGTH", async () => {
+    mockGetSupabaseServerClient.mockReturnValue(makeClient({ id: "u1" }, null, null));
+    const res = await GET(new NextRequest("http://x"), {
+      params: Promise.resolve({ runId: "x".repeat(ARENA_RUN_ID_MAX_LENGTH + 1) }),
     });
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("MISSING_RUN_ID");

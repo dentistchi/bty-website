@@ -28,6 +28,13 @@ export {
   arenaPrimaryChoiceFromUnknown,
   arenaReinforcementChoiceFromUnknown,
 } from "./arenaMissionChoiceShapeFromUnknown";
+export type { ArenaScenarioMissionChoiceRows } from "./arenaScenarioMissionChoiceRowsFromUnknown";
+export {
+  arenaScenarioMissionChoiceRowsFromUnknown,
+  arenaScenarioPrimaryChoicesRowFromUnknown,
+  arenaScenarioReinforcementChoicesRowFromUnknown,
+} from "./arenaScenarioMissionChoiceRowsFromUnknown";
+export { arenaScenarioFromUnknown } from "./arenaScenarioFromUnknown";
 export { arenaScenarioDifficultyFromUnknown } from "./arenaScenarioDifficultyFromUnknown";
 export {
   ARENA_SCENARIO_ID_MAX_LENGTH,
@@ -49,6 +56,7 @@ export {
   ARENA_SCENARIO_OUTCOMES_MAX_KEYS,
   arenaScenarioOutcomesFromUnknown,
 } from "./arenaScenarioOutcomesFromUnknown";
+export { listArenaScenarioOutcomeKeyViolations } from "./arenaScenarioOutcomeKeyViolations";
 export {
   arenaOutcomeTraitWeightFromUnknown,
   arenaOutcomeTraitsPartialFromUnknown,
@@ -64,6 +72,46 @@ export {
   ARENA_SYSTEM_MESSAGE_MAX_LENGTH,
   arenaSystemMessageFromUnknown,
 } from "./arenaSystemMessageFromUnknown";
+export type { ArenaRunType } from "./arenaRunTypeFromUnknown";
+export { arenaRunTypeFromUnknown } from "./arenaRunTypeFromUnknown";
+export type { ArenaRunLifecyclePhase } from "./arenaRunLifecyclePhaseFromUnknown";
+export { arenaRunLifecyclePhaseFromUnknown } from "./arenaRunLifecyclePhaseFromUnknown";
+export {
+  ARENA_RUN_ID_MAX_LENGTH,
+  arenaRunIdFromUnknown,
+} from "./arenaRunIdFromUnknown";
+export {
+  ARENA_ISO_TIMESTAMP_MAX_LENGTH,
+  arenaIsoTimestampFromUnknown,
+} from "./arenaIsoTimestampFromUnknown";
+export type {
+  ArenaSubNameFromUnknownResult,
+  ArenaSubNameParseFailureReason,
+} from "./arenaSubNameFromUnknown";
+export {
+  ARENA_SUB_NAME_MAX_LENGTH,
+  arenaSubNameFromUnknown,
+} from "./arenaSubNameFromUnknown";
+export type { ArenaReflectLevelId } from "./arenaReflectLevelIdFromUnknown";
+export {
+  ARENA_REFLECT_LEVEL_IDS,
+  arenaReflectLevelIdFromUnknown,
+} from "./arenaReflectLevelIdFromUnknown";
+export type {
+  ArenaCodeNameFromUnknownResult,
+  ArenaCodeNameParseFailureReason,
+} from "./arenaCodeNameFromUnknown";
+export {
+  ARENA_CODE_NAME_MAX_LENGTH,
+  ARENA_CODE_NAME_MIN_LENGTH,
+  arenaCodeNameFromUnknown,
+} from "./arenaCodeNameFromUnknown";
+export type { ArenaLabDifficultyKey } from "./arenaLabDifficultyKeyFromUnknown";
+export { arenaLabDifficultyKeyFromUnknown } from "./arenaLabDifficultyKeyFromUnknown";
+export {
+  ARENA_ISO_DATE_ONLY_LENGTH,
+  arenaIsoDateOnlyFromUnknown,
+} from "./arenaIsoDateOnlyFromUnknown";
 export {
   arenaMissionOutcomeKeyFromChoiceIds,
   arenaMissionOutcomeKeyPartsFromUnknown,

@@ -42,7 +42,7 @@ export default function ForgotPasswordClient() {
 
   if (sent) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
+      <main className="min-h-screen flex items-center justify-center p-6" aria-label={t.forgotPasswordMainRegionAria}>
         <div className="w-full max-w-md border rounded-2xl p-6 bg-white">
           <p className="text-gray-700 mb-4">{t.forgotPasswordSent}</p>
           <Link
@@ -52,12 +52,12 @@ export default function ForgotPasswordClient() {
             {t.password} · {locale === "ko" ? "로그인으로 돌아가기" : "Back to sign in"}
           </Link>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
+    <main className="min-h-screen flex items-center justify-center p-6" aria-label={t.forgotPasswordMainRegionAria}>
       <div className="w-full max-w-md border rounded-2xl p-6 bg-white">
         <h1 className="text-xl font-semibold mb-1">
           {locale === "ko" ? "비밀번호 찾기" : "Forgot password"}
@@ -104,6 +104,6 @@ export default function ForgotPasswordClient() {
           {locale === "ko" ? "로그인으로 돌아가기" : "Back to sign in"}
         </Link>
       </div>
-    </div>
+    </main>
   );
 }

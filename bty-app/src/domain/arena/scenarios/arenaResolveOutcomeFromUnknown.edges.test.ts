@@ -78,4 +78,58 @@ describe("arenaResolveOutcomeFromUnknown (edges)", () => {
       }),
     ).toBeNull();
   });
+
+  /** S93 TASK20: orchestration — extra keys ignored; empty/unknown-only `traits`; `meta: undefined` skips parser. */
+  it("ignores unknown top-level keys on the payload object", () => {
+    const base = {
+      interpretation: ["ok"],
+      systemMessage: "SYSTEM // x",
+      activatedStats: ["Insight" as const],
+    };
+    expect(
+      arenaResolveOutcomeFromUnknown({
+        ...base,
+        clientEcho: "ignore-me",
+        nested: { a: 1 },
+      }),
+    ).toEqual({
+      interpretation: ["ok"],
+      systemMessage: "SYSTEM // x",
+      activatedStats: ["Insight"],
+    });
+  });
+
+  it("omits traits when traits object is empty or has no hidden-stat keys", () => {
+    const base = {
+      interpretation: ["ok"],
+      systemMessage: "SYSTEM // x",
+      activatedStats: ["Insight" as const],
+    };
+    expect(arenaResolveOutcomeFromUnknown({ ...base, traits: {} })).toEqual({
+      interpretation: ["ok"],
+      systemMessage: "SYSTEM // x",
+      activatedStats: ["Insight"],
+    });
+    const noTraits = arenaResolveOutcomeFromUnknown({
+      ...base,
+      traits: { notAHiddenStat: 0.5 },
+    });
+    expect(noTraits).toEqual({
+      interpretation: ["ok"],
+      systemMessage: "SYSTEM // x",
+      activatedStats: ["Insight"],
+    });
+    expect(noTraits).not.toHaveProperty("traits");
+  });
+
+  it("does not attach meta when the key is present but value is undefined", () => {
+    const parsed = arenaResolveOutcomeFromUnknown({
+      interpretation: ["ok"],
+      systemMessage: "SYSTEM // x",
+      activatedStats: ["Insight"],
+      meta: undefined,
+    });
+    expect(parsed).not.toBeNull();
+    expect(parsed).not.toHaveProperty("meta");
+  });
 });
