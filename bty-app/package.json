@@ -21,6 +21,7 @@
     "test:e2e:bty": "playwright test --project=bty-loop",
     "test:e2e:install": "playwright install chromium",
     "e2e:auth": "playwright test e2e/auth.setup.ts --project=setup",
+    "e2e:seed-default-journey": "node scripts/e2e-seed-default-journey-profile.mjs",
     "e2e:seed-comeback": "node scripts/e2e-seed-comeback-profile.mjs",
     "e2e:auth:comeback": "playwright test e2e/auth-comeback.setup.ts --project=setup-comeback",
     "test:e2e:ci": "playwright test --project=chromium --project=chromium-comeback --reporter=line --workers=2",

@@ -57,6 +57,7 @@ export function arenaScenarioReinforcementChoicesRowFromUnknown(
 /**
  * Parses both mission choice arrays from an untrusted object (e.g. JSON fragment of `ArenaScenario`).
  * Requires **primaryChoices** and **reinforcementChoices** keys; each must satisfy the row rules above.
+ * Root value must be a plain object; **`Symbol`**, **`bigint`**, arrays, and **`null`** → **`null`**.
  */
 export function arenaScenarioMissionChoiceRowsFromUnknown(
   value: unknown,

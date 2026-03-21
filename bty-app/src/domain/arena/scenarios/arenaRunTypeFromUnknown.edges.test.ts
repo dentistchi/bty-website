@@ -51,9 +51,9 @@ describe("arenaRunTypeFromUnknown (edges)", () => {
   });
 
   /**
-   * S119 C3 TASK8 — **S118** `arenaScenarioIdFromUnknown` Symbol·bigint·**S106** BOM 라인과 구분 (run **type** 축).
+   * S149 C3 TASK8 — **S119** 동일 축 — top-level **`Symbol`** / **`bigint`** → **null** (run **type** 축).
    */
-  it("S119: returns null for Symbol and bigint", () => {
+  it("S149: returns null for Symbol and bigint", () => {
     expect(arenaRunTypeFromUnknown(Symbol("lab"))).toBeNull();
     expect(arenaRunTypeFromUnknown(BigInt(1))).toBeNull();
   });

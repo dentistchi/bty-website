@@ -259,6 +259,8 @@ export default function BeginnerArenaPage() {
   if (!scenario) {
     return (
       <main
+        role="status"
+        aria-live="polite"
         aria-busy="true"
         aria-label={stub.arenaBeginnerPathInitMainRegionAria}
         style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}
@@ -275,6 +277,8 @@ export default function BeginnerArenaPage() {
     const feedback = getMaturityFeedback(completed.score, locale);
     return (
       <main
+        role="status"
+        aria-live="polite"
         aria-label={stub.arenaBeginnerPathCompleteMainRegionAria}
         style={{ maxWidth: 560, margin: "0 auto", padding: "24px 16px" }}
       >
@@ -317,12 +321,23 @@ export default function BeginnerArenaPage() {
 
   return (
     <main aria-label={stub.arenaBeginnerPathMainRegionAria} style={{ maxWidth: 560, margin: "0 auto", padding: "24px 16px" }}>
-      <div style={{ marginBottom: 8, fontSize: 14, opacity: 0.7 }}>
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        style={{ marginBottom: 8, fontSize: 14, opacity: 0.7 }}
+      >
         {stub.arenaBeginnerPathTrackLabel} · {ui.stepOf} {step} / 7: {getStepLabel(step, locale)}
       </div>
       <div style={{ padding: 20, border: "1px solid #eee", borderRadius: 14 }}>
         {loading && (
-          <div style={{ marginBottom: 16 }} aria-busy="true" aria-label={m.loading.message}>
+          <div
+            role="status"
+            aria-live="polite"
+            aria-busy={true}
+            aria-label={step === 7 ? stub.arenaBeginnerPathSubmittingAria : m.loading.message}
+            style={{ marginBottom: 16 }}
+          >
             <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
           </div>
         )}
@@ -462,12 +477,6 @@ export default function BeginnerArenaPage() {
             </p>
             <PrimaryButton label={ui.complete} onClick={goNext} disabled={loading} />
           </>
-        )}
-
-        {loading && (
-          <div style={{ marginTop: 12 }} aria-busy="true" aria-label={stub.arenaBeginnerPathSubmittingAria}>
-            <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
-          </div>
         )}
 
         {error && (

@@ -17,6 +17,16 @@ test.describe("Journey", () => {
       await expect(page.getByTestId("journey-current-day")).toBeVisible();
       await expect(page.getByTestId("journey-continue-button")).toBeVisible();
 
+      /** 기본 계정도 DB에서 comeback 조건을 만족하면 모달이 위에 떠서 Continue 클릭이 막힘 */
+      const comebackModal = page.getByTestId("comeback-modal");
+      try {
+        await comebackModal.waitFor({ state: "visible", timeout: 4_000 });
+        await page.getByTestId("close-comeback-button").click();
+        await expect(comebackModal).not.toBeVisible({ timeout: 8_000 });
+      } catch {
+        /* 모달 없음 */
+      }
+
       await page.getByTestId("journey-continue-button").click();
 
       await expect(page).toHaveURL(/\/en\/growth\/journey\/day\/\d+/);

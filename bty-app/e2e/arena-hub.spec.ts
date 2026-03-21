@@ -18,7 +18,9 @@ test.describe("Arena Hub (authenticated)", () => {
     await expect(page.getByTestId("arena-weekly-rank")).toBeVisible();
     await expect(page.getByTestId("arena-season-ends")).toBeVisible();
 
-    await page.getByTestId("arena-play-button").first().click();
-    await expect(page).toHaveURL(/\/en\/bty-arena\/run/);
+    await Promise.all([
+      page.waitForURL(/\/en\/bty-arena\/run/, { timeout: 30_000 }),
+      page.getByTestId("arena-play-button").first().click(),
+    ]);
   });
 });

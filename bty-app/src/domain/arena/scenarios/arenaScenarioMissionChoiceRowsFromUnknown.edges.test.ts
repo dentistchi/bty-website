@@ -121,9 +121,9 @@ describe("arenaScenarioMissionChoiceRowsFromUnknown (edges)", () => {
   });
 
   /**
-   * S135 C3 TASK8 — **S88** root·choice-shape 라인과 구분 (최상위 `typeof` 비객체).
+   * S148 C3 TASK8 — **S135** 동일 축 — top-level **`Symbol`** / **`bigint`** → **null** (S88 root·choice-shape와 구분).
    */
-  it("S135: returns null when value is Symbol or bigint", () => {
+  it("S148: returns null when value is Symbol or bigint", () => {
     expect(arenaScenarioMissionChoiceRowsFromUnknown(Symbol("mission"))).toBeNull();
     expect(arenaScenarioMissionChoiceRowsFromUnknown(BigInt(1))).toBeNull();
   });

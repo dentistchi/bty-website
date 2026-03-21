@@ -1,6 +1,7 @@
 /**
  * Arena run_type — 순수 정규화. lab | mission | beginner.
  * API/저장소 값 검증·표시용. XP·랭킹·시즌 무관.
+ * Non-strings (including top-level **`Symbol`** / **`bigint`**) → **`null`**.
  */
 
 export type ArenaRunType = "lab" | "mission" | "beginner";

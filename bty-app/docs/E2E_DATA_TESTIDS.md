@@ -68,5 +68,6 @@
 ## CI (Journey / Comeback)
 
 - GitHub Actions E2E job에는 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, **`SUPABASE_SERVICE_ROLE_KEY`** 가 필요합니다. Journey `/api/journey/profile`가 admin 클라이언트로 `bty_profiles`를 읽습니다.
-- `@comeback-journey` 테스트 전에 `npm run e2e:seed-comeback`이 `E2E_COMEBACK_EMAIL` 사용자의 `bty_profiles`를 **5일 전 타임스탬프**로 upsert해 `is_comeback_eligible`이 true가 되게 합니다. (모달은 3일+ 미접촉 규칙을 따름.)
+- **`npm run e2e:seed-default-journey`** (`E2E_EMAIL`): 기본 chromium Journey 테스트에서 Comeback 모달이 뜨지 않도록 `bty_profiles.updated_at`을 **지금**으로 맞추고 나머지 필드(`current_day` 등)는 유지합니다.
+- **`npm run e2e:seed-comeback`** (`E2E_COMEBACK_EMAIL`): `bty_profiles`를 **5일 전 타임스탬프**로 upsert해 `is_comeback_eligible`이 true가 되게 합니다. (모달은 3일+ 미접촉 규칙을 따름.)
 - Comeback 플로우는 첫 실행에서 Resume 시 `updated_at`이 갱신되므로 **재시도 시 모달이 안 뜰 수 있어** `chromium-comeback` 프로젝트와 해당 describe에서 `retries: 0`입니다.

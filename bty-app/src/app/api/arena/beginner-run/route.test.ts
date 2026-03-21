@@ -88,6 +88,24 @@ describe("POST /api/arena/beginner-run", () => {
     expect((await res.json()).error).toBe("scenarioId_required");
   });
 
+  /**
+   * S149 C3 TASK9: `scenarioId` **bigint** (≠ **S148** `run/complete` runId · JSON 본문 불가 → `req.json()` 스텁).
+   */
+  it("returns 400 scenarioId_required when scenarioId is bigint", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+    });
+    const req = new Request("http://localhost/api/arena/beginner-run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    vi.spyOn(req, "json").mockResolvedValue({ scenarioId: BigInt(1) });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("scenarioId_required");
+  });
+
   it("inserts trimmed scenario_id", async () => {
     const mockSingle = vi.fn().mockResolvedValue({
       data: { run_id: "r1", scenario_id: "b-sc", started_at: "t", status: "IN_PROGRESS" },

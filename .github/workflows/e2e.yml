@@ -86,6 +86,7 @@ jobs:
             npm run dev &
             npx wait-on --timeout 120000 "$BASE_URL" || (echo "Dev server failed to start" && exit 1)
           fi
+          npm run e2e:seed-default-journey
           npm run e2e:seed-comeback
           npm run e2e:auth
           npm run e2e:auth:comeback

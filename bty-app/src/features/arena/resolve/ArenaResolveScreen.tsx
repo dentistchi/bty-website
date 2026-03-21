@@ -54,17 +54,17 @@ export default function ArenaResolveScreen({
 
   if (!primary || !reinforcement) {
     return (
-      <main
+      <div
         data-testid="arena-resolve-screen"
         className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-6 py-5 text-white"
       >
         <div className="mx-auto max-w-7xl py-16 text-center text-slate-400">No decision payload.</div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main
+    <div
       data-testid="arena-resolve-screen"
       className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-6 py-5 text-white"
     >
@@ -178,6 +178,6 @@ export default function ArenaResolveScreen({
           message={outcome?.systemMessage ?? "SYSTEM // Decision cycle complete."}
         />
       </div>
-    </main>
+    </div>
   );
 }

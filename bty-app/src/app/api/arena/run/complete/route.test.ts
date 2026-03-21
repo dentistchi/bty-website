@@ -208,6 +208,23 @@ describe("POST /api/arena/run/complete", () => {
     expect(data.error).toBe("MISSING_RUN_ID");
   });
 
+  /**
+   * S148 C3 TASK9: `runId` **bigint** (≠ 위 **number** · **S147** `membership-request` `submitted_at`).
+   * JSON 본문은 bigint를 담을 수 없어 `req.json()` 스텁으로 파싱 결과만 재현.
+   */
+  it("returns 400 MISSING_RUN_ID when runId is bigint", async () => {
+    mockSupabase({ id: "u1" });
+    const req = new Request("http://localhost/api/arena/run/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    vi.spyOn(req, "json").mockResolvedValue({ runId: BigInt(1) });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("MISSING_RUN_ID");
+  });
+
   it("returns 200 with deltaApplied >= 0", async () => {
     mockSupabase({ id: "u1" });
     vi.mocked(applyDirectCoreXp).mockResolvedValue({ newCoreTotal: 201 });
