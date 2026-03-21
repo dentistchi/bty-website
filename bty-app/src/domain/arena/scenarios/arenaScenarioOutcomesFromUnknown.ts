@@ -16,7 +16,8 @@ export const ARENA_SCENARIO_OUTCOMES_MAX_KEYS = 32;
 export function arenaScenarioOutcomesFromUnknown(
   value: unknown,
 ): Record<string, ResolveOutcome> | null {
-  if (value == null || typeof value !== "object" || Array.isArray(value)) return null;
+  if (value == null || typeof value === "bigint" || typeof value === "symbol") return null;
+  if (typeof value !== "object" || Array.isArray(value)) return null;
   const o = value as Record<string, unknown>;
   const keys = Object.keys(o);
   if (keys.length === 0 || keys.length > ARENA_SCENARIO_OUTCOMES_MAX_KEYS) return null;

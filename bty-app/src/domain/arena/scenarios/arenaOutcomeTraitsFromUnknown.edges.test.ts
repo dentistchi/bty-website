@@ -20,6 +20,12 @@ describe("arenaOutcomeTraitWeightFromUnknown (edges)", () => {
     expect(arenaOutcomeTraitWeightFromUnknown(Number.POSITIVE_INFINITY)).toBeNull();
   });
 
+  /** S138 C3 TASK8 — Symbol·bigint (`arenaOutcomeTraitsFromUnknown` / weight). */
+  it("returns null for Symbol and bigint", () => {
+    expect(arenaOutcomeTraitWeightFromUnknown(Symbol("t"))).toBeNull();
+    expect(arenaOutcomeTraitWeightFromUnknown(BigInt(1))).toBeNull();
+  });
+
   it("treats -0 as 0 (IEEE edge)", () => {
     expect(Object.is(arenaOutcomeTraitWeightFromUnknown(-0), 0)).toBe(true);
   });
@@ -61,5 +67,11 @@ describe("arenaOutcomeTraitsPartialFromUnknown (edges)", () => {
     expect(arenaOutcomeTraitsPartialFromUnknown([])).toBeNull();
     expect(arenaOutcomeTraitsPartialFromUnknown({ Integrity: NaN })).toBeNull();
     expect(arenaOutcomeTraitsPartialFromUnknown({ Insight: "0.2" })).toBeNull();
+  });
+
+  /** S138 C3 TASK8 — Symbol·bigint top-level (`arenaOutcomeTraitsPartialFromUnknown`). */
+  it("returns null for Symbol and bigint as the traits container", () => {
+    expect(arenaOutcomeTraitsPartialFromUnknown(Symbol("traits"))).toBeNull();
+    expect(arenaOutcomeTraitsPartialFromUnknown(BigInt(2))).toBeNull();
   });
 });

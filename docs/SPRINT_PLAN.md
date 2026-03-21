@@ -26,83 +26,248 @@
 
 ---
 
-## SPRINT 343 — **active (보드 SPRINT 137)**
+## SPRINT 353 — **active (보드 SPRINT 147)**
 
 - **현재 모드: 구현 단계** — C2~C6 할 일은 **코드 생성·구현** 우선; 검증은 보드 `[ ]` 태스크에서 수행.
-- **[REFRESH (본 턴)]** S137/343 — **`PARALLEL_QUEUE_REFILL` §3** — S136 **`check-parallel-task-queue` exit 2** (**C4** 기아 — **C1·C5** 잔여) → **S137** · **TASK1~10** 전부 **`[ ]`** · **First** C5 **TASK1** (Gate **137**) · carry **`346/2528`** (C7 GATE · S136·Gate **136** 스냅 **346/2526**).
-- **C7 (참고):** **`346/2528`** — Gate **137** 미실행.
+- **MODE ARENA:** **SPRINT 147** — Arena 경계 (`domain/arena` · `bty-arena` · `api/arena`).
+- **`PARALLEL_QUEUE_REFILL` §3 (2026-03-21):** S146 **`exit 2`** (**C3·C4·C5·C6** 기아 — **C1** 잔여 **TASK3·5·7 `[ ]`**) → **S147** · **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **147**) · carry **`346/2546`** (Gate **146** 스냅) · **S146** 잔여 **C1 TASK3·5·7** → **S147** 흡수.
+- **C7 (참고):** **`346/2549`** — **S147** Gate **147** (C7 `self-healing-ci`) ✓ **2026-03-21**; **C5 TASK6**·**C6 TASK10** **`[ ]`** · `check-parallel-task-queue` 재점검.
 
-| 워커 | S137 |
+| 워커 | S147 |
 |------|-----|
-| **C5** | **1·6 `[ ]`** |
-| **C1** | **2·3·5·7 `[ ]`** |
-| **C4** | **4 `[ ]`** *(dojo loading · foundry 직후 제외)* |
-| **C3** | **8·9 `[ ]`** *(outcome meta edges · membership-request `submitted_at`)* |
+| **C5** | **1 `[x]`** · **6 `[ ]`** *(Gate **147** · **`346/2546`*)* |
+| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** *(S146 흡수)* |
+| **C4** | **4 `[x]`** *(`bty-arena/play` a11y)* |
+| **C3** | **8·9 `[x]`** *(`arenaMissionChoiceShapeFromUnknown` · `POST /api/arena/membership-request`)* |
 | **C6** | **10 `[ ]`** |
-| **C2** | C5 **TASK1**·IMPORT — Gate **137** `[ ]`
+| **C2** | **1 `[ ]`** — Gate **147** · IMPORT · C3·C4 **TASK8·9**·**TASK4** 메모 |
 
 ### C2~C6 할일 (REFRESH 시 갱신)
 
-**S137 —** **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **137**) · **S136** 잔여 **C1·C5** 흡수.
+**S147 — MODE ARENA —** **C5 TASK1** **`[x]`** (Gate **147** · **`346/2546`**) · **C5 TASK6** **`[ ]`** · **C1 TASK3·5·7** **`[ ]`** · **C1 TASK2** **`[x]`** (NEXT·BACKLOG **S147/353** 동기 · **2026-03-21 REFRESH**) · **C4** TASK4 **`[x]`** · **C3** TASK8·9 **`[x]`** · **C6** TASK10 **`[x]`** (**346/2546**).
 
 #### C2 — Gatekeeper
-1. **보드 S137** — C5 **TASK1 `[ ]`** — Gate **137** — **`origin/main` push** 후 `SPRINT_LOG`·문서 재동기.
-2. **IMPORT_BOUNDARY** — `bty-layer-import` / domain 경계 **rg** 샘플 1회.
-3. **API 계약** — S137 **TASK8·9** · **C3 `[ ]`**.
+1. **보드 S147** — C5 **TASK6 `[ ]`** — `ELITE_3RD` §3 — Gate **147** TASK1 **`[x]`** — **`origin/main` push** 시 `SPRINT_LOG`·문서 재동기 (**First**).
+2. **IMPORT_BOUNDARY** — `bty-layer-import` / domain **rg** 1회 — `bty-app/src/domain` → `lib`/`app` **0건**.
+3. **API 계약** — S147 **TASK8·9** (`arenaMissionChoiceShapeFromUnknown` · **`POST /api/arena/membership-request`**) **C3 `[x]`** · route `@contract` 동기.
 4. **Auth** 미터치 시 쿠키 문서 변경 없음.
 5. **Gate** 스테일 시 `SPRINT_LOG` 한 줄.
 
-**Notes (C2 · S343):** **CONTINUE 2026-03-21:** **`PARALLEL_QUEUE_REFILL`** — S136 **`exit 2`** (**C4**) → **S137** · **First** C5 **TASK1** (Gate **137**).
+**Notes (C2 · S353):** Gate **147** C5 TASK1 **`[x]`** · carry **`346/2546`** (Gate **147** TASK1 ✓).
+**BLOCKER:** 보드 S147 **C5 TASK6** (Gate **147** 동기) **`[ ]`** — item 1 (`origin/main` push 시 `SPRINT_LOG`·문서 재동기)는 **C5 TASK6 VERIFY 완료·보드 `[x]`** 후에만 `[x]` 처리 가능.
+**CONTINUE (C2) 2026-03-21:** **First** C5 **TASK6** · C1 **TASK3·5·7** DOCS **`[ ]`**.
 
 #### C3 — Domain
-1. **보드 TASK8 `[ ]`** — **`arenaOutcomeMetaFromUnknown`** Symbol·bigint · Vitest.
-2. **보드 TASK9 `[ ]`** — **`POST /api/arena/membership-request`** **`submitted_at_invalid`** · `route.test.ts`.
-3. **domain**→`lib`/`app` **금지**.
-4. **S104 TASK14** 후보 — **NEXT_BACKLOG**와 중복 확인.
-5. barrel·export 확인.
+1. **보드 TASK8 `[x]`** — **`arenaMissionChoiceShapeFromUnknown`** top-level Symbol·bigint · Vitest — **S147 TASK8**.
+2. **보드 TASK9 `[x]`** — **`POST /api/arena/membership-request`** 계약 **400** 1건 · `route.test.ts` — **S146** `event` TASK9와 중복 금지.
+3. **domain**→`lib`/`app` **금지** — **확인 `[x]`**.
+4. **S104 TASK14** — **NEXT_BACKLOG**와 중복 확인 **`[x]`**.
+5. barrel·export 확인 **`[x]`**.
 
-**Notes (C3 · S343):** **CONTINUE 2026-03-21:** **TASK8·9 `[ ]`**.
+**Notes (C3 · S353):** **CONTINUE 2026-03-21:** **TASK8·9 `[x]`** — primary/reinforcement JSDoc·S147 edges; membership-request **`submitted_at` bigint** (`req.json` 스텁).
 
 #### C4 — UI
-1. **보드 TASK4 `[ ]`** — **`/[locale]/bty/(protected)/dojo/loading`** · **`DojoRouteLoadingShell`** · **`bty.dojoSuspenseMainRegionAria`** (ko/en) · `npm run lint`.
-2. 제외 목록 준수.
+1. **보드 TASK4 `[x]`** — **`/[locale]/bty-arena/play`** · **`arenaMissionPlayLoadingMainRegionAria`** · **`arenaMissionPlayMainRegionAria`** (ko/en) · **lab** 페이지와 중복 금지 · `npm run lint`.
+2. **Arena** 경계 — `src/app/[locale]/bty-arena` 만.
 3. i18n **aria** 확인.
 4. **S104 TASK15** 백로그 — 정합.
 5. 터치 시 **Lint만**.
 
-**Notes (C4 · S343):** **CONTINUE 2026-03-21:** TASK4 **`[ ]`**.
+**Notes (C4 · S353):** **CONTINUE 2026-03-21:** TASK4 **`[x]`** — **`play/page.tsx`** 단일 `<main>` · `ArenaPlayScreen` `<div>` · 로딩 **`role="status"`·`aria-live="polite"`** · **MODE ARENA**.
 
 #### C5 — VERIFY
-1. **보드 TASK1 `[ ]`** — Release Gate **137** A~F · `BTY_RELEASE_GATE_CHECK` · **C7** (실행 후 갱신).
-2. **보드 TASK6 `[ ]`** — `ELITE_3RD` §3 · Gate **137**(TASK1) 동기.
+1. **보드 TASK1 `[x]`** — Release Gate **147** A~F · `BTY_RELEASE_GATE_CHECK` · **`346/2546`** ✓.
+2. **보드 TASK6 `[ ]`** — `ELITE_3RD` §3 · Gate **147**(TASK1) 동기 — **First**.
 3. 배포 직전이 아니면 Gate **일상 반복 안 함** (REFRESH 루틴 아님).
 4. **Elite** 패치 후보 (비의무).
 5. q237 **3/7** — TASK1과 동일 런에서 정합.
 
-**Notes (C5 · S343):** **CONTINUE 2026-03-21:** **TASK1·6 `[ ]`** — **First** **TASK1** (Gate **137**).
+**Notes (C5 · S353):** **CONTINUE 2026-03-21:** **TASK1 `[x]`** · **TASK6 `[ ]`** · **`346/2546`**.
 
 #### C6 — VERIFY
-1. **보드 TASK10 `[ ]`** — q237 **3/7** · **`self-healing-ci`** (실행 후 갱신) · `npm run lint` · Build ✓ (`rm -rf .next` 선행).
+1. **보드 TASK10 `[ ]`** — q237 **3/7** · **`self-healing-ci`** (갱신) · `npm run lint` · Build ✓ (`rm -rf .next` 선행) — **S147** (C5 Gate **147** TASK1 **`[x]`**).
 2. 실패 시 **Owner·한 줄** `SPRINT_LOG`.
 3. C5 **TASK1**과 spot 중복만 조정.
 4. REFRESH로 전체 스모크 **반복 안 함** (보드 태스크에서만).
-5. **S136**에서 **TASK10** **`[x]`** 완료 — **S137** 새 **`[ ]`**.
+5. **S146** **TASK10** **`[x]`** — **S147** **TASK10** **`[ ]`** (신규).
 
-**Notes (C6 · S343):** **CONTINUE 2026-03-21:** TASK10 **`[ ]`** — carry **`346/2528`** (C7 최신) · Gate **137** 실행 후 갱신.
+**Notes (C6 · S353):** **CONTINUE 2026-03-21:** TASK10 **`[ ]`**.
 
 ### C1 Commander — REFRESH snapshot
 
 | 항목 | 내용 |
 |------|------|
-| **이번 런** | **SPRINT 137** · **343** |
-| **C1 잔여** | **TASK2·3·5·7 `[ ]`** (DOCS) — **S136** 흡수 |
-| **C5 잔여** | **TASK6 `[ ]`** — **S136** 흡수 |
-| **다음 스텝 (CONTINUE 2026-03-21)** | **First** C5 **TASK1** (Gate **137**) · 이후 **C1 TASK2** (`NEXT_PHASE`·`NEXT_BACKLOG` **S137/343**) |
-| **병렬** | **TASK1~10 `[ ]`** · **First** C5 **TASK1** |
-| **C7** | **`346/2528`** — Gate **137** 미실행 |
-| **다음 C1** | **TASK2** — Gate **137** PASS 후 |
+| **이번 런** | **SPRINT 147** · **353** · **MODE ARENA** |
+| **C1 잔여** | **TASK3·5·7 `[ ]`** (DOCS) · **TASK2 `[x]`** (NEXT·BACKLOG **2026-03-21**) |
+| **C5 잔여** | **TASK1 `[x]`** · **TASK6 `[ ]`** *(Gate **147** · **First** **TASK6**)* |
+| **다음 스텝 (CONTINUE 2026-03-21)** | **First** C5 **TASK6** (`ELITE_3RD` §3) · **C1 TASK3** (221·222차) |
+| **병렬** | **C4** TASK4 **`[x]`** · **C3** TASK8·9 **`[x]`** · **C6** TASK10 **`[ ]`** · **C5** TASK1 **`[x]`** · **C5** TASK6 **`[ ]`** · **C1** TASK3·5·7 **`[ ]`** |
+| **C7** | **`346/2549`** — Gate **147** (C7 `self-healing-ci`) ✓ **2026-03-21** |
+| **다음 C1** | C5 **TASK6** 후 **TASK3** → **TASK5** → **TASK7** |
 
-- **PARALLEL_QUEUE_REFILL (2026-03-21):** S136 **`check-parallel-task-queue` exit 2** (**C4**) → **S137** 오픈 · `SPRINT_PLAN`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`CURRENT_TASK` 동기.
+- **PARALLEL_QUEUE_REFILL (2026-03-21):** S146 **`exit 2`** (**C3·C4·C5·C6** 기아 — **C1** 잔여 **`[ ]`**) → **S147** 오픈 · `SPRINT_PLAN`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`CURRENT_TASK` 동기.
+- **REFRESH (2026-03-21):** **`SPRINT_PLAN`「C2~C6 할일」** · C1 snapshot · **C1 TASK2** **`[x]`** (S147/353).
+
+---
+
+## SPRINT 352 — **archived (보드 SPRINT 146)**
+
+- **요약:** **TASK1·2·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S147** · **`346/2546`** (Gate **146** · C7).
+- **C7:** **346/2546** — Gate **146** (TASK1·6) ✓.
+
+| 워커 | S146 (마감) |
+|------|-----|
+| **C5** | **1·6 `[x]`** *(Gate **146** · **`346/2546`*)* |
+| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S147** 흡수 |
+| **C4** | **4 `[x]`** *(`bty-arena/lab`)* |
+| **C3** | **8·9 `[x]`** |
+| **C6** | **10 `[x]`** |
+
+- **PARALLEL_QUEUE_REFILL (2026-03-21):** S146 **`exit 2`** → **S147** · **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **147**).
+
+---
+
+## SPRINT 351 — **archived (보드 SPRINT 145)**
+
+- **요약:** **TASK1·2·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S146** · **`346/2545`** (Gate **145** · C7).
+- **C7:** **346/2545** — Gate **145** (TASK1·6) ✓.
+
+| 워커 | S145 (마감) |
+|------|-----|
+| **C5** | **1·6 `[x]`** |
+| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S146** |
+| **C4** | **4 `[x]`** *(`bty-arena` 루트 loading)* |
+| **C3** | **8·9 `[x]`** |
+| **C6** | **10 `[x]`** |
+| **C2** | C5 **TASK1**·IMPORT — Gate **145** **`[x]`** |
+
+---
+
+## SPRINT 350 — **archived (보드 SPRINT 144)**
+
+- **요약:** **TASK1·2·6·8·9·10 `[x]`** · 잔여 **C1 TASK3·5·7 `[ ]`** · **C4 TASK4 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S145** · **`346/2542`** (Gate **144** · C7).
+- **C7:** **346/2542** — Gate **144** (TASK1·6) ✓.
+
+| 워커 | S144 (마감) |
+|------|-----|
+| **C5** | **1·6 `[x]`** |
+| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S145** |
+| **C4** | **4 `[ ]`** → **S145** |
+| **C3** | **8·9 `[x]`** |
+| **C6** | **10 `[x]`** |
+| **C2** | C5 **TASK1**·IMPORT — Gate **144** **`[x]`** |
+
+---
+
+## SPRINT 349 — **archived (보드 SPRINT 143)**
+
+- **요약:** **TASK1·4·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7 `[ ]`** · **C5 TASK6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S144** · **`346/2539`** (Gate **143** · C7).
+- **C7:** **346/2539** — Gate **143** (TASK1) ✓.
+
+| 워커 | S143 (마감) |
+|------|-----|
+| **C5** | **1 `[x]`** · **6 `[ ]`** → **S144** |
+| **C1** | **2 `[ ]`** · **3·5·7 `[ ]`** → **S144** *(S144 오픈 직후 **TASK2 `[x]`** — NEXT·BACKLOG 동기)* |
+| **C4** | **4 `[x]`** *(dashboard loading)* |
+| **C3** | **8·9 `[x]`** |
+| **C6** | **10 `[x]`** |
+| **C2** | C5 **TASK1**·IMPORT — Gate **143** **`[x]`** |
+
+---
+
+## SPRINT 348 — **archived (보드 SPRINT 142)**
+
+- **요약:** **TASK1·2·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S143** · **`346/2539`** (Gate **142** · C7).
+- **C7:** **346/2539** — Gate **142** (TASK1) ✓.
+
+| 워커 | S142 (마감) |
+|------|-----|
+| **C5** | **1·6 `[x]`** |
+| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S143** |
+| **C4** | **4 `[x]`** *(healing loading)* |
+| **C3** | **8·9 `[x]`** |
+| **C6** | **10 `[x]`** |
+| **C2** | C5 **TASK1**·IMPORT — Gate **142** **`[x]`** |
+
+---
+
+## SPRINT 347 — **archived (보드 SPRINT 141)**
+
+- **요약:** **TASK1·2·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S142** · **`346/2537`** (Gate **141** · C7).
+- **C7:** **346/2537** — Gate **141** (TASK1) ✓.
+
+| 워커 | S141 (마감) |
+|------|-----|
+| **C5** | **1·6 `[x]`** |
+| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S142** |
+| **C4** | **4 `[x]`** *(profile loading)* |
+| **C3** | **8·9 `[x]`** |
+| **C6** | **10 `[x]`** |
+| **C2** | C5 **TASK1**·IMPORT — Gate **141** **`[x]`** |
+
+---
+
+## SPRINT 346 — **archived (보드 SPRINT 140)**
+
+- **요약:** **TASK1·2·4·6·8·9 `[x]`** · 잔여 **C1 TASK3·5·7 `[ ]`** · **C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S141** · **`346/2537`** (Gate **140** · C7).
+- **C7:** **346/2537** — Gate **140** (TASK1) ✓.
+
+| 워커 | S140 (마감) |
+|------|-----|
+| **C5** | **1·6 `[x]`** |
+| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S141** |
+| **C4** | **4 `[x]`** *(mentor loading)* |
+| **C3** | **8·9 `[x]`** |
+| **C6** | **10 `[ ]`** → **S141** |
+| **C2** | C5 **TASK1**·IMPORT — Gate **140** **`[x]`** |
+
+---
+
+## SPRINT 345 — **archived (보드 SPRINT 139)**
+
+- **요약:** **TASK1·2·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S140** · **`346/2533`** (Gate **139** · C7).
+- **C7:** **346/2533** — Gate **139** (TASK1) ✓.
+
+| 워커 | S139 (마감) |
+|------|-----|
+| **C5** | **1·6 `[x]`** |
+| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S140** |
+| **C4** | **4 `[x]`** *(integrity loading)* |
+| **C3** | **8·9 `[x]`** |
+| **C6** | **10 `[x]`** |
+| **C2** | C5 **TASK1**·IMPORT — Gate **139** **`[x]`** |
+
+---
+
+## SPRINT 344 — **archived (보드 SPRINT 138)**
+
+- **요약:** **TASK1·4·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7 `[ ]`** · **C5 TASK6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S139** · **`346/2530`** (Gate **138** · C7).
+- **C7:** **346/2530** — Gate **138** (TASK1) ✓.
+
+| 워커 | S138 (마감) |
+|------|-----|
+| **C5** | **1 `[x]`** · **6 `[ ]`** → **S139** |
+| **C1** | **2·3·5·7 `[ ]`** → **S139** |
+| **C4** | **4 `[x]`** *(elite loading)* |
+| **C3** | **8·9 `[x]`** |
+| **C6** | **10 `[x]`** |
+| **C2** | C5 **TASK1**·IMPORT — Gate **138** **`[x]`** |
+
+---
+
+## SPRINT 343 — **archived (보드 SPRINT 137)**
+
+- **요약:** **TASK1·4·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7 `[ ]`** · **C5 TASK6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S138** · **`346/2529`** (Gate **137** · C7).
+- **C7:** **346/2529** — Gate **137** (TASK1) ✓.
+
+| 워커 | S137 (마감) |
+|------|-----|
+| **C5** | **1 `[x]`** · **6 `[ ]`** → **S138** |
+| **C1** | **2·3·5·7 `[ ]`** → **S138** |
+| **C4** | **4 `[x]`** *(dojo loading)* |
+| **C3** | **8·9 `[x]`** |
+| **C6** | **10 `[x]`** |
+| **C2** | C5 **TASK1**·IMPORT — Gate **137** **`[x]`** |
 
 ---
 
@@ -2172,7 +2337,7 @@ C5 TASK1 is unblocked and can proceed with UI and navigation implementation base
 - **overall:** PASS
 - **Owner to fix:** —
 
-**Last run:** 2026-03-21 — `bty-app/scripts/self-healing-ci.sh` · lint PASS · test PASS · build PASS · overall PASS · Owner to fix: — · (**346 files** / **2528 tests**) (S343 / S137 · C7 GATE; carry **`346/2528`** · Gate **137**).
+**Last run:** 2026-03-21 — `bty-app/scripts/self-healing-ci.sh` · lint PASS · test PASS · build PASS · overall PASS · Owner to fix: — · (**346 files** / **2549 tests**) (S353 / S147 · C7 GATE · carry **`346/2549`** · Gate **147**).
 
 ---
 

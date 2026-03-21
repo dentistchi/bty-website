@@ -38,7 +38,7 @@ export default function ArenaPlayScreen({
   const reinforcementLocked = selectedReinforcement !== null;
 
   return (
-    <main
+    <div
       data-testid="arena-mission-play-screen"
       className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-6 py-5 text-white"
     >
@@ -147,6 +147,6 @@ export default function ArenaPlayScreen({
 
         <ArenaSystemLog testId="arena-system-log" message={systemMessage} />
       </div>
-    </main>
+    </div>
   );
 }

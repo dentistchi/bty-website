@@ -1,5 +1,5 @@
 /**
- * POST /api/arena/free-response — 401·400 (SPRINT 66 TASK 9 / C3; **S100** `previewScenario_invalid`).
+ * POST /api/arena/free-response — 401·400 (SPRINT 66 TASK 9 / C3; **S100** `previewScenario_invalid`; **S142** string).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "./route";
@@ -178,6 +178,28 @@ describe("POST /api/arena/free-response", () => {
     expect((await res.json()).error).toBe("previewScenario_invalid");
   });
 
+  /**
+   * S142 C3 TASK9: optional `previewScenario` — non-empty string (≠ **S134** number · **S128** boolean · **S116** array · **S100** `{}`) → 400.
+   */
+  it("returns 400 previewScenario_invalid when previewScenario is a string", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+    });
+    const req = new Request("http://localhost/api/arena/free-response", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: "r1",
+        scenarioId: "s1",
+        responseText: "hello",
+        previewScenario: "not-a-scenario-object",
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("previewScenario_invalid");
+  });
+
   /** S134 C3 TASK9: optional `previewScenario` — JSON number (≠ S128 boolean · S116 array · **S133** event 라인) → 400. */
   it("returns 400 previewScenario_invalid when previewScenario is a number", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({
@@ -196,6 +218,27 @@ describe("POST /api/arena/free-response", () => {
     const res = await POST(req);
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("previewScenario_invalid");
+  });
+
+  /**
+   * S145 C3 TASK9: `responseText` JSON number (≠ **S134** `previewScenario` number · **S144** `code-name`) → **400** `responseText_required`.
+   */
+  it("returns 400 responseText_required when responseText is a number", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+    });
+    const req = new Request("http://localhost/api/arena/free-response", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: "r1",
+        scenarioId: "s1",
+        responseText: 42,
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("responseText_required");
   });
 
   /** S88 C3 TASK9: scenario id over domain max → scenarioId_required. */

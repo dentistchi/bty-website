@@ -185,7 +185,7 @@ describe("arenaScenarioCopyFieldsFromUnknown (edges)", () => {
   });
 
   /**
-   * S131 C3 TASK8 — **S130** scenario-difficulty·**S104** boxed `String` 라인과 구분 (최상위 비객체).
+   * S131·S141 C3 TASK8 — **S130** scenario-difficulty·**S104** boxed `String` 라인과 구분 (최상위 비객체; **S141** explicit bigint/symbol guard).
    */
   it("S131: returns null when value is Symbol or bigint", () => {
     expect(arenaScenarioCopyFieldsFromUnknown(Symbol("copy"))).toBeNull();

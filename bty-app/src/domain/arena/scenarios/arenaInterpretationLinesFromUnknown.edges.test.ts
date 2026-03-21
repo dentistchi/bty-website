@@ -58,9 +58,9 @@ describe("arenaInterpretationLinesFromUnknown (edges)", () => {
   });
 
   /**
-   * S123 C3 TASK8 — **S122** iso-timestamp·**S104** boxed `String`·sparse 라인과 구분 (최상위 비배열).
+   * S146 C3 TASK8 — **S123** 동일 축 — top-level **`Symbol`** / **`bigint`** → **null** (최상위 비배열).
    */
-  it("S123: returns null when value is Symbol or bigint", () => {
+  it("S146: returns null when value is Symbol or bigint", () => {
     expect(arenaInterpretationLinesFromUnknown(Symbol("arr"))).toBeNull();
     expect(arenaInterpretationLinesFromUnknown(BigInt(1))).toBeNull();
   });

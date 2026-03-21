@@ -75,6 +75,24 @@ describe("POST /api/arena/reflect", () => {
     expect(Array.isArray(data.questions)).toBe(true);
   });
 
+  /**
+   * S143 C3 TASK9: `levelId` 키 존재 + **비문자(number)** → **400** `levelId_invalid` (**S132** 비화이트리스트 문자열·**free-response** `previewScenario` 라인과 구분).
+   */
+  it("returns 400 levelId_invalid when levelId is present but not a string", async () => {
+    vi.mocked(getSupabaseServerClient).mockResolvedValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1", created_at: new Date().toISOString() } } }),
+      },
+    } as never);
+
+    const res = await POST(
+      makeRequest({ userText: "short reflection text", levelId: 1 }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("levelId_invalid");
+  });
+
   /** S132 C3 TASK9: `levelId` present but not whitelist — **400** (`S131` sub-name·`S130` code-name 라인과 구분). */
   it("returns 400 levelId_invalid when levelId key is present but not a valid reflect level id", async () => {
     vi.mocked(getSupabaseServerClient).mockResolvedValue({

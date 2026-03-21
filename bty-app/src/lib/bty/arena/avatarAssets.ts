@@ -6,10 +6,12 @@
  * URL 규칙: 캐릭터·옷은 실제 에셋 파일명 매핑(avatarCharacters/avatarOutfits), 악세사리 /avatars/accessories/{id}.svg|.png.
  */
 
+import type { BodyType } from "@/lib/bty/arena/avatarCharacters";
 import { AVATAR_CHARACTERS } from "@/lib/bty/arena/avatarCharacters";
 import {
   getAccessoryImageUrl,
   getOutfitImageUrlForBodyType,
+  parseCompositeOutfitKey,
   type AvatarOutfitTheme,
 } from "@/lib/bty/arena/avatarOutfits";
 import {
@@ -79,6 +81,8 @@ export type ResolveAvatarUrlsParams = {
   outfitKey?: string | null;
   accessoryKeys?: string[];
   useThumb?: boolean;
+  /** 캐릭터 체형 — 있으면 `getOutfitImageUrlForBodyType`으로 옷 URL 생성(체형별 PNG 접미사). */
+  bodyType?: BodyType | null;
 };
 
 export type ResolveAvatarUrlsResult = {
@@ -95,6 +99,7 @@ export function resolveAvatarUrls({
   outfitKey,
   accessoryKeys = [],
   useThumb = false,
+  bodyType = null,
 }: ResolveAvatarUrlsParams): ResolveAvatarUrlsResult {
   const charEntry = characterKey
     ? characterAssetMap[characterKey.trim()]
@@ -109,7 +114,10 @@ export function resolveAvatarUrls({
   if (outfitKey && typeof outfitKey === "string") {
     const k = outfitKey.trim();
     const entry = outfitAssetMap[k];
-    if (entry) {
+    const parsed = parseCompositeOutfitKey(k);
+    if (bodyType && parsed) {
+      outfitUrl = getOutfitImageUrlForBodyType(parsed.outfitId, bodyType);
+    } else if (entry) {
       outfitUrl = useThumb ? entry.thumb ?? entry.layer : entry.layer;
     }
   }

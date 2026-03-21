@@ -22,7 +22,8 @@ function boundedTrimmedString(raw: unknown, max: number): string | null {
 }
 
 export function arenaScenarioCopyFieldsFromUnknown(value: unknown): ArenaScenarioCopyFields | null {
-  if (value == null || typeof value !== "object" || Array.isArray(value)) return null;
+  if (value == null || typeof value === "bigint" || typeof value === "symbol") return null;
+  if (typeof value !== "object" || Array.isArray(value)) return null;
   const o = value as Record<string, unknown>;
   const stage = boundedTrimmedString(o.stage, ARENA_SCENARIO_STAGE_MAX_LENGTH);
   const caseTag = boundedTrimmedString(o.caseTag, ARENA_SCENARIO_CASE_TAG_MAX_LENGTH);

@@ -7,6 +7,7 @@ import { useAvatar } from "@/hooks/useAvatar";
 import { resolveAvatarUrls } from "@/lib/bty/arena/avatarAssets";
 import { ACCESSORY_IDS_ALL } from "@/lib/bty/arena/avatar-assets.data";
 import { getOutfitsForTheme, FANTASY_THEME_UI_READY, getAccessoryImageUrl, ACCESSORY_CATALOG } from "@/lib/bty/arena/avatarOutfits";
+import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
 import { AvatarComposite, CardSkeleton, OutfitCard, LoadingFallback } from "@/components/bty-arena";
 import { getMessages } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -93,12 +94,17 @@ export default function AvatarSettingsClient() {
         ? `${draftTheme}_outfit_${draftOutfitKey}`
         : draftOutfitKey ?? undefined;
 
+  const previewBodyType = avatar?.characterKey
+    ? getAvatarCharacter(avatar.characterKey)?.bodyType
+    : undefined;
+
   const previewUrls = avatar
     ? resolveAvatarUrls({
         characterKey: avatar.characterKey,
         outfitKey: previewOutfitKey,
         accessoryKeys: draftAccessoryKeys,
         useThumb: false,
+        bodyType: previewBodyType ?? undefined,
       })
     : null;
 

@@ -138,17 +138,26 @@ const OUTFIT_ID_TO_FILENAME: Record<string, string> = {
   shorts_tee: "5 Clinic Utility Uniform.png",
 };
 
-function getOutfitFilename(outfitId: string): string {
+/** outfitId → `public/avatars/outfits/` 파일명 (체형 접미사 전). */
+export function getOutfitFilename(outfitId: string): string {
   return OUTFIT_ID_TO_FILENAME[outfitId] ?? `outfit_${outfitId}.png`;
 }
 
-/** §4.2 bodyType별 옷 URL. 실제 파일명 사용; bodyType별 에셋 없으면 동일 URL 반환. */
+/**
+ * §4.2 bodyType별 옷 URL.
+ * 체형 에셋이 있으면 `파일명_A.png` … `파일명_D.png` 규칙(확장자 앞에 `_${bodyType}`).
+ * 해당 파일이 아직 없으면 404 → AvatarComposite가 레이어 숨김; 기본 파일만 있으면 bodyType 생략 권장.
+ */
 export function getOutfitImageUrlForBodyType(
   outfitId: string,
   bodyType?: BodyType | null
 ): string {
   const file = getOutfitFilename(outfitId);
-  return `${OUTFIT_IMAGE_BASE}/${encodeURIComponent(file)}`;
+  if (!bodyType) {
+    return `${OUTFIT_IMAGE_BASE}/${encodeURIComponent(file)}`;
+  }
+  const bodyFile = file.replace(/\.png$/i, `_${bodyType}.png`);
+  return `${OUTFIT_IMAGE_BASE}/${encodeURIComponent(bodyFile)}`;
 }
 
 /** 캐릭터별 게임 스타일 옷 파일명 (fantasy 테마일 때 선택된 캐릭터에 따라 사용). 6종만 존재. */
@@ -405,6 +414,11 @@ export type ProfileAvatarFields = {
   avatarOutfitTheme: "professional" | "fantasy" | null;
   avatarSelectedOutfitId: string | null;
   avatarAccessoryIds: string[];
+  /**
+   * DB에 `avatar_selected_outfit_id`가 없을 때 레벨 기본 옷 키를 쓰기 위한 표시용 레벨.
+   * 리더보드 등에서 전달. 없으면 S1 기본(일반 스크럽 / fantasy 견습)으로 간주.
+   */
+  displayLevelId?: LevelId;
 };
 
 function toOutfitKey(theme: "professional" | "fantasy", outfitId: string | null): string | null {
@@ -412,11 +426,32 @@ function toOutfitKey(theme: "professional" | "fantasy", outfitId: string | null)
   return `${theme}_outfit_${outfitId.trim()}`;
 }
 
+/** `professional_outfit_*` / `fantasy_outfit_*` 키에서 테마·outfitId 추출. */
+export function parseCompositeOutfitKey(outfitKey: string | null | undefined): {
+  theme: "professional" | "fantasy";
+  outfitId: string;
+} | null {
+  if (!outfitKey || typeof outfitKey !== "string") return null;
+  const s = outfitKey.trim();
+  if (s.startsWith("professional_outfit_")) {
+    return { theme: "professional", outfitId: s.slice("professional_outfit_".length) };
+  }
+  if (s.startsWith("fantasy_outfit_")) {
+    return { theme: "fantasy", outfitId: s.slice("fantasy_outfit_".length) };
+  }
+  return null;
+}
+
 export function profileToAvatarCompositeKeys(fields: ProfileAvatarFields): AvatarCompositeKeys {
   const theme: "professional" | "fantasy" =
     fields.avatarOutfitTheme === "fantasy" ? "fantasy" : "professional";
   const characterKey = (fields.avatarCharacterId ?? "").trim() || "hero_01";
-  const outfitKey = toOutfitKey(theme, fields.avatarSelectedOutfitId);
+  let outfitId = fields.avatarSelectedOutfitId?.trim() ?? null;
+  if (!outfitId) {
+    const levelId = fields.displayLevelId ?? "S1";
+    outfitId = getOutfitForLevel(theme, levelId).outfitId;
+  }
+  const outfitKey = toOutfitKey(theme, outfitId);
   const accessoryKeys = Array.isArray(fields.avatarAccessoryIds)
     ? fields.avatarAccessoryIds.filter((x): x is string => typeof x === "string")
     : [];

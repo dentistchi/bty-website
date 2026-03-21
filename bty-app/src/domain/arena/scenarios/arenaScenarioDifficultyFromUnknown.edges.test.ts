@@ -50,9 +50,9 @@ describe("arenaScenarioDifficultyFromUnknown (edges)", () => {
   });
 
   /**
-   * S130 C3 TASK8 — **S129** run-id·**S105** BOM/boxed 라인과 구분 (비문자 스칼라).
+   * S144 C3 TASK8 — **S130** 동일 축 — top-level **`Symbol`** / **`bigint`** → **null** (S129 run-id·S105 BOM/boxed와 구분).
    */
-  it("S130: returns null for Symbol and bigint", () => {
+  it("S144: returns null for Symbol and bigint", () => {
     expect(arenaScenarioDifficultyFromUnknown(Symbol("Low"))).toBeNull();
     expect(arenaScenarioDifficultyFromUnknown(BigInt(1))).toBeNull();
   });

@@ -11,6 +11,7 @@ import {
   getOutfitById,
   getAllowedOutfitsForLevel,
   accessorySlotsFromTier,
+  getOutfitForLevel,
   type AvatarOutfitTheme,
 } from "@/lib/bty/arena/avatarOutfits";
 import type { AvatarUiResponse, PatchAvatarRequest } from "@/types/arena";
@@ -64,12 +65,16 @@ export async function GET(req: NextRequest) {
       const levelId = tierToDisplayLevelId(tier);
       const theme: "professional" | "fantasy" =
         p.avatar_outfit_theme === "fantasy" ? "fantasy" : "professional";
-      const outfitId = (p.avatar_selected_outfit_id as string | null) ?? null;
+      const outfitIdRaw = (p.avatar_selected_outfit_id as string | null) ?? null;
+      const effectiveOutfitId =
+        outfitIdRaw && typeof outfitIdRaw === "string" && outfitIdRaw.trim()
+          ? outfitIdRaw.trim()
+          : getOutfitForLevel(theme, levelId).outfitId;
       const res: AvatarUiResponse = {
         avatar: {
           characterKey: (p.avatar_character_id as string) ?? "",
           theme,
-          outfitKey: toOutfitKey(theme, outfitId),
+          outfitKey: toOutfitKey(theme, effectiveOutfitId),
           accessoryKeys: [],
           characterLocked: (p.avatar_character_locked as boolean) === true,
         },
@@ -93,7 +98,11 @@ export async function GET(req: NextRequest) {
   const levelId = tierToDisplayLevelId(tier);
   const theme: "professional" | "fantasy" =
     p.avatar_outfit_theme === "fantasy" ? "fantasy" : "professional";
-  const outfitId = (p.avatar_selected_outfit_id as string | null) ?? null;
+  const outfitIdRaw = (p.avatar_selected_outfit_id as string | null) ?? null;
+  const effectiveOutfitId =
+    outfitIdRaw && typeof outfitIdRaw === "string" && outfitIdRaw.trim()
+      ? outfitIdRaw.trim()
+      : getOutfitForLevel(theme, levelId).outfitId;
   const accessoryIds = Array.isArray(p.avatar_accessory_ids)
     ? (p.avatar_accessory_ids as string[]).filter((x): x is string => typeof x === "string")
     : [];
@@ -102,7 +111,7 @@ export async function GET(req: NextRequest) {
     avatar: {
       characterKey: (p.avatar_character_id as string) ?? "",
       theme,
-      outfitKey: toOutfitKey(theme, outfitId),
+      outfitKey: toOutfitKey(theme, effectiveOutfitId),
       accessoryKeys: accessoryIds,
       characterLocked: (p.avatar_character_locked as boolean) === true,
     },

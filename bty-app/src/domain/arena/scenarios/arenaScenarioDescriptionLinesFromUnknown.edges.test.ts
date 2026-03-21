@@ -74,9 +74,9 @@ describe("arenaScenarioDescriptionLinesFromUnknown (edges)", () => {
   });
 
   /**
-   * S125 C3 TASK8 — **S124** sub-name·**S112** string/number·**S123** interpretation 라인과 구분 (비배열 스칼라).
+   * S145 C3 TASK8 — **S125** 동일 축 — top-level **`Symbol`** / **`bigint`** → **null** (비배열 스칼라).
    */
-  it("S125: returns null when value is Symbol or bigint", () => {
+  it("S145: returns null when value is Symbol or bigint", () => {
     expect(arenaScenarioDescriptionLinesFromUnknown(Symbol("desc"))).toBeNull();
     expect(arenaScenarioDescriptionLinesFromUnknown(BigInt(1))).toBeNull();
   });

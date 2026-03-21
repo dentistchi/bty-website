@@ -88,8 +88,10 @@ export function useArenaSession() {
 
   const scenario: ArenaScenario = useMemo(() => {
     const id = session?.scenarioId ?? patientComplaintScenario.id;
-    return getScenarioById(id) ?? patientComplaintScenario;
-  }, [session?.scenarioId]);
+    const contentLocale = locale === "ko" ? "ko" : "en";
+    const fallback = getScenarioById(patientComplaintScenario.id, contentLocale)!;
+    return getScenarioById(id, contentLocale) ?? fallback;
+  }, [session?.scenarioId, locale]);
 
   const outcomeKey = useMemo(() => {
     if (!session?.selectedPrimary || !session?.selectedReinforcement) return null;

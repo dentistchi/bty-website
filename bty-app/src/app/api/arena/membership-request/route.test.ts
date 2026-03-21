@@ -1,6 +1,6 @@
 /**
  * GET /api/arena/membership-request — 401·200 (SPRINT 55 TASK 9 / 261 C3).
- * POST — 401·400 INVALID_JSON·MISSING_FIELDS·submitted_at_invalid (SPRINT 89 C3; **S99** optional `submitted_at`).
+ * POST — 401·400 INVALID_JSON·MISSING_FIELDS·submitted_at_invalid (SPRINT 89 C3; **S99** optional `submitted_at`; **S139** `job_function` 배열).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, POST } from "./route";
@@ -97,6 +97,27 @@ describe("POST /api/arena/membership-request", () => {
     expect(data.error).toBe("MISSING_FIELDS");
   });
 
+  /**
+   * S139 C3 TASK9 — `job_function` must be a string (배열 → 비문자 → **MISSING_FIELDS**; **S85** whitespace·**S89** JSON 라인과 구분).
+   */
+  it("returns 400 MISSING_FIELDS when job_function is an array", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+    });
+    const req = new Request("http://localhost/api/arena/membership-request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        job_function: ["IC", "assistant"],
+        joined_at: "2024-01-01",
+      }),
+    });
+    const res = await POST(req as Parameters<typeof POST>[0]);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe("MISSING_FIELDS");
+  });
+
   /** S89 C3 TASK11: joined_at must pass arenaIsoDateOnlyFromUnknown (invalid calendar). */
   it("returns 400 MISSING_FIELDS when joined_at is not a valid ISO date-only", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({
@@ -152,6 +173,30 @@ describe("POST /api/arena/membership-request", () => {
     expect(data.error).toBe("submitted_at_invalid");
   });
 
+  /**
+   * S147 C3 TASK9: optional `submitted_at` — bigint (≠ **S107** number · **S146** `event` `previewDescriptionLines`).
+   * JSON은 bigint를 담지 못해 `req.json()` 스텁으로 파싱 결과만 재현.
+   */
+  it("returns 400 submitted_at_invalid when submitted_at is bigint", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+    });
+    const req = new Request("http://localhost/api/arena/membership-request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    vi.spyOn(req, "json").mockResolvedValue({
+      job_function: "IC",
+      joined_at: "2024-01-01",
+      submitted_at: BigInt(0),
+    });
+    const res = await POST(req as Parameters<typeof POST>[0]);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe("submitted_at_invalid");
+  });
+
   /** S118 C3 TASK9: optional `submitted_at` — boolean (≠ S107 number) → 400. */
   it("returns 400 submitted_at_invalid when submitted_at is boolean", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({
@@ -184,6 +229,28 @@ describe("POST /api/arena/membership-request", () => {
         job_function: "IC",
         joined_at: "2024-01-01",
         submitted_at: ["2026-01-01T00:00:00.000Z"],
+      }),
+    });
+    const res = await POST(req as Parameters<typeof POST>[0]);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe("submitted_at_invalid");
+  });
+
+  /**
+   * S137 C3 TASK9: optional `submitted_at` — plain object `{}` (≠ S125 array · **S136** code-name `""`) → 400.
+   */
+  it("returns 400 submitted_at_invalid when submitted_at is a plain object", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+    });
+    const req = new Request("http://localhost/api/arena/membership-request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        job_function: "IC",
+        joined_at: "2024-01-01",
+        submitted_at: {},
       }),
     });
     const res = await POST(req as Parameters<typeof POST>[0]);

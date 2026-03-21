@@ -220,16 +220,26 @@ describe("profileToAvatarCompositeKeys", () => {
     expect(keys.accessoryKeys).toEqual(["acc_handpiece"]);
   });
 
-  it("returns null outfitKey when outfitId is null", () => {
+  it("uses S1 default outfit when outfitId is null (fantasy → apprentice)", () => {
     const keys = profileToAvatarCompositeKeys({
       avatarCharacterId: "mage_02",
       avatarOutfitTheme: "fantasy",
       avatarSelectedOutfitId: null,
       avatarAccessoryIds: [],
     });
-    expect(keys.outfitKey).toBeNull();
+    expect(keys.outfitKey).toBe("fantasy_outfit_apprentice");
     expect(keys.theme).toBe("fantasy");
     expect(keys.accessoryKeys).toEqual([]);
+  });
+
+  it("uses professional S1 scrub when outfitId is null", () => {
+    const keys = profileToAvatarCompositeKeys({
+      avatarCharacterId: "hero_01",
+      avatarOutfitTheme: "professional",
+      avatarSelectedOutfitId: null,
+      avatarAccessoryIds: [],
+    });
+    expect(keys.outfitKey).toBe("professional_outfit_scrub_general");
   });
 
   it("defaults characterKey to hero_01 when empty", () => {

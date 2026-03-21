@@ -114,6 +114,21 @@ describe("avatarAssets", () => {
       expect(r.outfitUrl!.startsWith("/avatars/outfits/")).toBe(true);
     });
 
+    it("uses bodyType-specific outfit filename when bodyType is set", () => {
+      const base = resolveAvatarUrls({
+        characterKey: "hero_01",
+        outfitKey: "professional_outfit_scrub_general",
+      });
+      const withBody = resolveAvatarUrls({
+        characterKey: "hero_01",
+        outfitKey: "professional_outfit_scrub_general",
+        bodyType: "A",
+      });
+      expect(withBody.outfitUrl).toContain("/avatars/outfits/");
+      expect(withBody.outfitUrl).not.toBe(base.outfitUrl);
+      expect(withBody.outfitUrl).toMatch(/_A\.png|%5FA\.png/);
+    });
+
     it("returns null outfitUrl for unknown outfitKey", () => {
       const r = resolveAvatarUrls({
         characterKey: "hero_01",

@@ -180,6 +180,32 @@ describe("POST /api/arena/event", () => {
     expect((await res.json()).error).toBe("preview_description_lines_invalid");
   });
 
+  /**
+   * S146 C3 TASK9: optional `previewDescriptionLines` — bigint (≠ **S117** number · **S145** `free-response` `responseText`).
+   * JSON은 bigint를 담지 못해 `req.json()` 스텁으로 파싱 결과만 재현.
+   */
+  it("returns 400 preview_description_lines_invalid when previewDescriptionLines is bigint", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const req = new Request("http://localhost/api/arena/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    vi.spyOn(req, "json").mockResolvedValue({
+      runId: "r1",
+      scenarioId: "s1",
+      eventType: "CHOICE",
+      previewDescriptionLines: BigInt(0),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("preview_description_lines_invalid");
+  });
+
   /** S112 C3 TASK9: optional `previewDescriptionLines` — JSON string (≠ array) → 400. */
   it("returns 400 preview_description_lines_invalid when previewDescriptionLines is a string", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({
@@ -217,6 +243,28 @@ describe("POST /api/arena/event", () => {
         scenarioId: "s1",
         eventType: "CHOICE",
         previewDescriptionLines: null,
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("preview_description_lines_invalid");
+  });
+
+  /** S138 C3 TASK9: optional `previewDescriptionLines` — 배열 **첫 요소**가 객체 `[{}]` (≠ **S133** 최상위 `{}`) → 400. */
+  it("returns 400 preview_description_lines_invalid when previewDescriptionLines first element is a plain object", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const req = new Request("http://localhost/api/arena/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: "r1",
+        scenarioId: "s1",
+        eventType: "CHOICE",
+        previewDescriptionLines: [{}],
       }),
     });
     const res = await POST(req);

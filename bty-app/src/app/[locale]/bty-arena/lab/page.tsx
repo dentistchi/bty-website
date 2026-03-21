@@ -58,27 +58,34 @@ export default function LabPage() {
 
       <div style={{ marginTop: 20 }}>
         <ProgressCard label={t.arenaLabRemainingTodayLabel}>
-          {loading && (
-            <div aria-busy="true" aria-label={m.loading.message}>
-              <CardSkeleton showLabel={false} lines={1} style={{ padding: "16px 20px" }} />
-            </div>
-          )}
-          {error && <p style={{ margin: 0, fontSize: 14, color: "#8b2e2e" }}>{error}</p>}
-          {!loading && !error && usage !== null && (
-            <div style={{ padding: "4px 0" }}>
-              <p style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
-                {usage.attemptsRemaining} / {usage.limit}
-                <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.85 }}>
-                  {" "}
-                  {t.arenaLabRemainingSuffix}
-                </span>
-              </p>
-              <p style={{ margin: "8px 0 0", fontSize: 13, opacity: 0.8 }}>
-                {t.arenaLabUsedPrefix}
-                {usage.attemptsUsed}
-              </p>
-            </div>
-          )}
+          <div
+            role="status"
+            aria-live="polite"
+            aria-busy={loading}
+            aria-label={loading ? m.loading.message : undefined}
+          >
+            {loading && (
+              <div>
+                <CardSkeleton showLabel={false} lines={1} style={{ padding: "16px 20px" }} />
+              </div>
+            )}
+            {error && <p style={{ margin: 0, fontSize: 14, color: "#8b2e2e" }}>{error}</p>}
+            {!loading && !error && usage !== null && (
+              <div style={{ padding: "4px 0" }}>
+                <p style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
+                  {usage.attemptsRemaining} / {usage.limit}
+                  <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.85 }}>
+                    {" "}
+                    {t.arenaLabRemainingSuffix}
+                  </span>
+                </p>
+                <p style={{ margin: "8px 0 0", fontSize: 13, opacity: 0.8 }}>
+                  {t.arenaLabUsedPrefix}
+                  {usage.attemptsUsed}
+                </p>
+              </div>
+            )}
+          </div>
         </ProgressCard>
       </div>
 

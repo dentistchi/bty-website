@@ -1,5 +1,6 @@
 import type { ArenaScenario, ResolveOutcome } from "./types";
 import { getArenaOutcome } from "./types";
+import type { ArenaMissionContentLocale } from "./mockScenario";
 import { getScenarioById } from "./mockScenario";
 import { normalizeArenaMissionPayloadFromUnknown } from "./missionPayloadFromUnknown";
 
@@ -52,13 +53,14 @@ export function clearMissionPayload(): void {
 /** Resolve helpers: look up choices + outcome for sealed cards / interpretation */
 export function resolveMissionAgainstScenario(
   payload: ArenaMissionPayload,
+  locale: ArenaMissionContentLocale = "en",
 ): {
   scenario: ArenaScenario;
   primary: ArenaScenario["primaryChoices"][number];
   reinforcement: ArenaScenario["reinforcementChoices"][number];
   outcome: ResolveOutcome | null;
 } | null {
-  const scenario = getScenarioById(payload.scenarioId);
+  const scenario = getScenarioById(payload.scenarioId, locale);
   if (!scenario) return null;
   const primary = scenario.primaryChoices.find((c) => c.id === payload.selectedPrimaryId);
   const reinforcement = scenario.reinforcementChoices.find(

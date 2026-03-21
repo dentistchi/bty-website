@@ -1,6 +1,130 @@
 # 현재 작업 (CURRENT_TASK)
 
-**[C1] SPRINT 137 / 343 (`PARALLEL_QUEUE_REFILL` §3):** [x] S136 **`exit 2`** (**C4** 기아 — **C1·C5** 잔여 **`[ ]`**) → **S137** · 보드·`SPRINT_PLAN` **343**·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_LOG`·`CURRENT_TASK` 동기 · **First** C5 **TASK1** (Gate **137**) · **2026-03-21 C1.**
+**[C4] Arena 미션 locale 갭 2026-03-21:** [x] `getScenarioById(id,locale)`·`patientComplaintScenarioKo`·`resolveMissionAgainstScenario(...,locale)`·`useArenaSession`·`ArenaResolveSessionScreen` · My Page Arena 링크 `→ /bty-arena/run` · `outcome.test.ts` · `BTY_RELEASE_GATE_CHECK` Arena §4.1 갱신.
+
+**[C5] SPRINT 147 TASK1 / 353 (VERIFY):** [x] Gate **147** A~F **PASS** · **`346/2546`** ✓ · `self-healing-ci` · `test:q237-smoke` **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]** · **First** C5 **TASK6** (엘리트 §3) · **2026-03-21 C5.**
+
+**[C1] SPRINT 147 / 353 (`PARALLEL_QUEUE_REFILL` §3 · REFRESH 2026-03-21):** [x] S146 **`exit 2`** (**C3·C4·C5·C6** 기아 — **C1** 잔여 **TASK3·5·7 `[ ]`**) → **S147** · NEXT·BACKLOG·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_PLAN` **353** 동기 · **C1 TASK2** **`[x]`** (NEXT·BACKLOG) · **First** C5 **TASK6** (Gate **147** TASK1·`ELITE_3RD` §3) · carry **`346/2546`** · **S146** 잔여 **C1 TASK3·5·7** → **S147** 흡수.
+
+**[C4] SPRINT 147 TASK4 / 353 (UI):** [x] **`/[locale]/bty-arena/play`** · **`arenaMissionPlayLoadingMainRegionAria`** / **`arenaMissionPlayMainRegionAria`** · 단일 `<main>` (`ArenaPlayScreen` → `<div>`) · 로딩 **`role="status"`·`aria-live="polite"`** · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-21 C4.**
+
+**[C3] SPRINT 147 TASK8·9 / 353:** [x] **`arenaPrimaryChoiceFromUnknown` / `arenaReinforcementChoiceFromUnknown`** JSDoc·S147 Symbol/bigint edges · **`POST /api/arena/membership-request`** **`submitted_at` bigint** → **400** `submitted_at_invalid` (`req.json` 스텁) · Vitest ✓ · 보드 **TASK8·9 [x]** · **완료. 2026-03-21 C3.**
+
+**[C6] SPRINT 147 TASK10 / 353 (VERIFY):** [x] `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` **346/2546** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **완료. 2026-03-21 C6.**
+
+**[C5] SPRINT 146 TASK1 / 352 (VERIFY):** [x] Gate **146** A~F **PASS** · **`346/2546`** ✓ · `self-healing-ci` · `test:q237-smoke` **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]** · **First** C5 **TASK6** (엘리트 §3) · **2026-03-21 C5.**
+
+**[C5] SPRINT 146 TASK6 / 352 (VERIFY):** [x] `ELITE_3RD` §2 **PASS** · Gate **146**(TASK1) 동기 · **`346/2546`** ✓ · q237 **3/7** ✓ · `npm run lint` ✓ · 보드 **TASK6 [x]** · **2026-03-21 C5.**
+
+**[C1] SPRINT 146 / 352 (`PARALLEL_QUEUE_REFILL` §3 · REFRESH 2026-03-21):** [x] S145 **`exit 2`** (**C3·C4·C5·C6** 기아) → **S146** · NEXT·BACKLOG·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_PLAN` **352** 동기 · **C1 TASK2** **`[x]`** (NEXT·BACKLOG) · **First** C1 **TASK3** (221·222차) · **MODE ARENA** · **S145** 잔여 **C1 TASK3·5·7** → **S146** 흡수.
+
+**[C4] SPRINT 146 TASK4 / 352 (UI):** [x] **`/[locale]/bty-arena/lab`** · **`arenaLabMainRegionAria`** · usage fetch **`role="status"`** · **`aria-busy`·`aria-live="polite"`** · `m.loading.message` (ko/en) · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-21 C4.**
+
+**[C3] SPRINT 146 TASK8·9 / 352:** [x] **`arenaInterpretationLinesFromUnknown`** JSDoc·S146 Symbol/bigint edges · **`POST /api/arena/event`** **`previewDescriptionLines` bigint** → **400** `preview_description_lines_invalid` (`req.json` 스텁) · Vitest ✓ · 보드 **TASK8·9 [x]** · **완료. 2026-03-21 C3.**
+
+**[C6] SPRINT 145 TASK10 / 351:** [x] `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` **346/2545** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **완료. 2026-03-21 C6.**
+
+**[C5] SPRINT 145 TASK6 / 351 (VERIFY):** [x] `ELITE_3RD` §2 **PASS** · Gate **145**(TASK1) 동기 · **`346/2545`** ✓ · q237 **3/7** ✓ · `npm run lint` ✓ · 보드 **TASK6 [x]** · **2026-03-21 C5.**
+
+**[C5] SPRINT 145 TASK1 / 351 (VERIFY):** [x] Gate **145** A~F **PASS** · **`346/2545`** ✓ · `self-healing-ci` · `test:q237-smoke` **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]** · **First** C6 **TASK10** · **2026-03-21 C5.**
+
+**[C3] Arena 아바타 배포·체형·기본 스크럽 2026-03-21:** [x] `GET /api/arena/profile/avatar` 레벨 기본 `outfitKey` · `profileToAvatarCompositeKeys`·리더보드 `displayLevelId` · `getOutfitImageUrlForBodyType` 체형 접미사 · `resolveAvatarUrls(bodyType)` · 캐릭터 `bodyType` A–D · `npm run verify:avatar-assets`·`bty-app/docs/AVATAR_DEPLOY_VERIFY.md` · `mage_02`/`healer_07`/`pilot_05` 파일명 `.png.png` 정합.
+
+**[C4] SPRINT 145 TASK4 / 351 (UI):** [x] **`/[locale]/bty-arena/loading`** · **`BtyArenaRouteLoadingShell`** · **`arenaBtyArenaRouteSegmentLoadingMainRegionAria`** (ko/en) · beginner 하위와 aria 분리 · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-21 C4.**
+
+**[C1] SPRINT 145 / 351 (`PARALLEL_QUEUE_REFILL` §3 · REFRESH 2026-03-21):** [x] S144 **`exit 2`** (**C3·C5·C6** 기아) → **S145** · NEXT·BACKLOG·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_PLAN` **351** 동기 · **C1 TASK2** **`[x]`** (NEXT·BACKLOG) · **First** C5 **TASK1** (Gate **145**) · **MODE ARENA** · **S144** 잔여 **C1·C4** → **S145** 흡수.
+
+**[C6] SPRINT 144 TASK10 / 350:** [x] `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` **346/2542** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **완료. 2026-03-21 C6.**
+
+**[C5] SPRINT 144 TASK6 / 350 (VERIFY):** [x] `ELITE_3RD` §2 **PASS** · Gate **144**(TASK1) 동기 · **`346/2542`** ✓ · q237 **3/7** ✓ · `npm run lint` ✓ · 보드 **TASK6 [x]** · **2026-03-21 C5.**
+
+**[C5] SPRINT 144 TASK1 / 350 (VERIFY):** [x] Gate **144** A~F **PASS** · **`346/2542`** ✓ · `self-healing-ci` · `test:q237-smoke` **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]** · **First** C4 **TASK4** · **2026-03-21 C5.**
+
+**MODE ARENA (2026-03-21):** [x] **SPRINT 144** 이번 런 — 보드·`SPRINT_PLAN`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD` **MODE ARENA** 동기 · C4 **TASK4** = **`/[locale]/bty-arena/loading`** (`BtyArenaRouteLoadingShell`) · 경계 `docs/architecture/DOMAIN_LAYER_TARGET_MAP.md`.
+
+**[C3] SPRINT 144 TASK8·9 / 350:** [x] **`arenaScenarioDifficultyFromUnknown`** Symbol/bigint JSDoc·S144 edges · **`POST /api/arena/code-name`** **`preferredLabDifficulty` bigint** → **400** (`req.json` 스텁) · Vitest ✓ · 보드 **TASK8·9 [x]** · **완료. 2026-03-21 C3.**
+
+**[C1] SPRINT 144 / 350 (`PARALLEL_QUEUE_REFILL` §3 · REFRESH 2026-03-21):** [x] S143 **`exit 2`** (**C3·C4·C6** 기아) → **S144** · NEXT·BACKLOG·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_PLAN` **350** 동기 · **C1 TASK2** **`[x]`** (NEXT·BACKLOG) · **First** C5 **TASK1** (Gate **144**) · **S143** 잔여 **C1·C5** → **S144** 흡수.
+
+**[DOCS] 제품 완료율 정리 2026-03-21:** [x] `MVP_AND_COMPLETION_INDICATORS` §3.1(Phase vs 500점) · `PROGRESS_TRACKER`/`PROGRESS_SNAPSHOT` bty-app 감사 **325/500** · 보드·`NEXT_PROJECT_RECOMMENDED` 링크.
+
+**[C5] SPRINT 143 TASK1 / 349 (VERIFY):** [x] Gate **143** A~F **PASS** · **`346/2539`** ✓ · `self-healing-ci` · `test:q237-smoke` **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]** · **First** C5 **TASK6** · **2026-03-21 C5.**
+
+**[C6] SPRINT 143 TASK10 / 349:** [x] `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` **346/2539** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **완료. 2026-03-21 C6.**
+
+**[C4] SPRINT 143 TASK4 / 349:** [x] **`/[locale]/bty/(protected)/dashboard/loading`** · **`DashboardRouteLoadingShell`** · **`bty.dashboardSuspenseMainRegionAria`** (ko/en) · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-21 C4.**
+
+**[C3] SPRINT 143 TASK8·9 / 349:** [x] **`arenaOutcomeMetaFromUnknown`** Symbol/bigint guard + bias-axis edges · **`POST /api/arena/reflect`** **`levelId` number** → **400** `levelId_invalid` · Vitest ✓ · 보드 **TASK8·9 [x]** · **완료. 2026-03-21 C3.**
+
+**[C1] SPRINT 143 / 349 (`PARALLEL_QUEUE_REFILL` §3 · REFRESH 2026-03-21):** [x] S142 **`check-parallel-task-queue` exit 2** → **S143** · 보드·`SPRINT_PLAN` **349** 동기 · C5 **TASK1** Gate **143** **`[x]`** · carry **`346/2539`** · **First** C5 **TASK6** · **S142** **C1 TASK3·5·7** → **S143** 흡수.
+
+**[C5] SPRINT 142 TASK6 / 348 (VERIFY):** [x] `ELITE_3RD` §2 **PASS** · Gate **142**(TASK1) 동기 · **`346/2538`** ✓ · q237 **3/7** ✓ · `npm run lint` ✓ · 보드 **TASK6 [x]** · **2026-03-21 C5.**
+
+**[C5] SPRINT 142 TASK1 / 348 (VERIFY):** [x] Gate **142** A~F **PASS** · **`346/2538`** ✓ · `self-healing-ci` · `test:q237-smoke` **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]** · **2026-03-21 C5.**
+
+**[C6] SPRINT 142 TASK10 / 348:** [x] `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` **346/2538** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **완료. 2026-03-21 C6.**
+
+**[C4] SPRINT 142 TASK4 / 348:** [x] **`/[locale]/bty/(protected)/healing/loading`** · **`HealingRouteLoadingShell`** · **`bty.healingSuspenseMainRegionAria`** (ko/en) · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-21 C4.**
+
+**[C1] SPRINT 142 / 348 (`PARALLEL_QUEUE_REFILL` §3 · REFRESH 2026-03-21):** [x] S141 **`check-parallel-task-queue` exit 2** (**C3·C4·C5·C6** 기아 — **C1** 잔여 **`[ ]`**) → **S142** · 보드·`SPRINT_PLAN` **348**·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_LOG` 동기 · **C1 TASK2** **`[x]`** (NEXT·BACKLOG 동기) · C5 **TASK1·6** Gate **142** **`[x]`** · carry **`346/2538`** · **First** C1 **TASK3** (221·222차) · **S141** **C1 TASK3·5·7** → **S142** 흡수.
+
+**[C1] S143 TASK3 다음 액션 (REFRESH 2026-03-21):** [ ] 221·222차 — `SPRINT_LOG`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_PLAN`·`CURRENT_TASK`·`BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` 교차점검 1패스 후 보드 TASK3 **`[x]`** 조건 정리.
+
+**[C5] SPRINT 141 TASK6 / 347 (VERIFY):** [x] `ELITE_3RD` §2 **PASS** · Gate **141**(TASK1) 동기 · **`346/2537`** ✓ · q237 **3/7** ✓ · `npm run lint` ✓ · 보드 **TASK6 [x]** · **2026-03-21 C5.**
+
+**[C5] SPRINT 141 TASK1 / 347 (VERIFY):** [x] Gate **141** A~F **PASS** · **`346/2537`** ✓ · `self-healing-ci` · `test:q237-smoke` **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]** · **2026-03-21 C5.**
+
+**[C6] SPRINT 141 TASK10 / 347:** [x] `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` **346/2537** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **완료. 2026-03-21 C6.**
+
+**[C4] SPRINT 141 TASK4 / 347:** [x] **`/[locale]/bty/(protected)/profile/loading`** · **`ProfileRouteLoadingShell`** · **`bty.profileRouteSuspenseMainRegionAria`** (ko/en) · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-21 C4.**
+
+**[C3] SPRINT 141 TASK8·9 / 347:** [x] **`arenaScenarioCopyFieldsFromUnknown`** Symbol·bigint guard + edges · **`POST /api/arena/sub-name`** **`scenarioOutcomes`** duplicate canonical keys → **400** `scenario_outcomes_invalid` · Vitest ✓ · 보드 **TASK8·9 [x]** · **완료. 2026-03-21 C3.**
+
+**[C1] SPRINT 141 / 347 (`PARALLEL_QUEUE_REFILL` §3 · REFRESH 2026-03-21):** [x] S140 **`check-parallel-task-queue` exit 2** (**C3·C4·C5** 기아 — **C1·C6** 잔여 **`[ ]`**) → **S141** · 보드·`SPRINT_PLAN` **347**·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_LOG` 동기 · **C1 TASK2** **`[x]`** (NEXT·BACKLOG 동기) · C5 **TASK1·6** Gate **141** **`[x]`** · carry **`346/2537`** · **First** C1 **TASK3** (221·222차) · **S140** **C6 TASK10**·**C1 TASK3·5·7** → **S141** 흡수.
+
+**[C5] SPRINT 140 TASK6 / 346 (VERIFY):** [x] `ELITE_3RD` §2 **PASS** · Gate **140**(TASK1) 동기 · **`346/2536`** ✓ · q237 **3/7** ✓ · 보드 **TASK6 [x]** · **2026-03-21 C5.**
+
+**[C5] SPRINT 140 TASK1 / 346 (VERIFY):** [x] Gate **140** A~F **PASS** · **`346/2536`** ✓ · `self-healing-ci` · `test:q237-smoke` **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]** · **2026-03-21 C5.**
+
+**[C4] SPRINT 140 TASK4 / 346:** [x] **`/[locale]/bty/(protected)/mentor/loading`** · **`MentorRouteLoadingShell`** · **`bty.mentorSuspenseMainRegionAria`** (ko/en) · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-21 C4.**
+
+**[C3] SPRINT 140 TASK8·9 / 346:** [x] **`arenaLabDifficultyKeyStrictFromUnknown`** Symbol·bigint guard + edges · **`POST /api/arena/code-name`** **`preferredLabDifficulty: "mid\u200b"`** → **400** `preferred_lab_difficulty_invalid` · Vitest ✓ · 보드 **TASK8·9 [x]** · **완료. 2026-03-21 C3.**
+
+**[C1] SPRINT 140 / 346 (`PARALLEL_QUEUE_REFILL` §3 · REFRESH 2026-03-21):** [x] S139 **`check-parallel-task-queue` exit 2** (**C4·C5·C6** 기아 — **C1** 잔여 **`[ ]`**) → **S140** · 보드·`SPRINT_PLAN` **346**·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_LOG` 동기 · **C1 TASK2** **`[x]`** (NEXT·BACKLOG 동기) · C5 **TASK1·6** Gate **140** **`[x]`** · carry **`346/2536`** · **First (권장)** C1 **TASK3** (221·222차).
+
+**[C5] SPRINT 139 TASK1 / 345 (VERIFY):** [x] Gate **139** A~F **PASS** · **`346/2533`** ✓ · `self-healing-ci` · `test:q237-smoke` **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]** · **2026-03-21 C5.**
+
+**[C5] SPRINT 139 TASK6 / 345 (VERIFY):** [x] `ELITE_3RD` §2 **PASS** · Gate **139**(TASK1) 동기 · **`346/2533`** ✓ · q237 **3/7** ✓ · 보드 **TASK6 [x]** · **2026-03-21 C5.**
+
+**[C6] SPRINT 139 TASK10 / 345:** [x] `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` **346/2534** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **완료. 2026-03-21 C6.**
+
+**[C4] SPRINT 139 TASK4 / 345:** [x] **`/[locale]/bty/(protected)/integrity/loading`** · **`IntegrityRouteLoadingShell`** · **`bty.integrityPracticeSuspenseMainRegionAria`** (ko/en) · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-21 C4.**
+
+**[C3] SPRINT 139 TASK8·9 / 345:** [x] **`arenaScenarioOutcomesFromUnknown`** Symbol·bigint guard + edges · **`POST /api/arena/membership-request`** **`job_function` 배열** → **400** `MISSING_FIELDS` · Vitest ✓ · 보드 **TASK8·9 [x]** · **완료. 2026-03-21 C3.**
+
+**[C1] SPRINT 139 / 345 (REFRESH 2026-03-21):** [x] **`check-parallel-task-queue` exit 0** (refill 생략) · **TASK2** NEXT·BACKLOG·AUTO4·`AI_TASK_BOARD`·`SPRINT_PLAN` **S139/345** 정합 · 보드 **TASK2 [x]** · **다음:** **TASK3** 221·222차 (S138 흡수) — Gate **139** **PASS** (C5 TASK1 **[x]**).
+
+**[C1] SPRINT 139 / 345 (`PARALLEL_QUEUE_REFILL` §3):** [x] S138 **`exit 2`** (**C3·C4·C6** 기아 — **C1·C5** 잔여 **`[ ]`**) → **S139** · 보드·`SPRINT_PLAN` **345**·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_LOG`·`CURRENT_TASK` 동기 · **First** C5 **TASK1** (Gate **139**) · **2026-03-21 C1.**
+
+**[C5] SPRINT 138 TASK1 / 344 (VERIFY):** [x] Gate **138** A~F **PASS** · **`346/2530`** ✓ · `self-healing-ci` · `test:q237-smoke` **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]** · **2026-03-21 C5.**
+
+**[C6] SPRINT 138 TASK10 / 344:** [x] `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` **346/2530** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **완료. 2026-03-21 C6.**
+
+**[C3] SPRINT 138 TASK8·9 / 344:** [x] **`arenaOutcomeTraitsFromUnknown`** Symbol·bigint · **`POST /api/arena/event`** **`previewDescriptionLines: [{}]`** → **400** `preview_description_lines_invalid` · Vitest ✓ · 보드 **TASK8·9 [x]** · **완료. 2026-03-21 C3.**
+
+**[C1] SPRINT 138 / 344 (`PARALLEL_QUEUE_REFILL` §3):** [x] S137 **`exit 2`** (**C3·C4·C6** 기아 — **C1·C5** 잔여 **`[ ]`**) → **S138** · 보드·`SPRINT_PLAN` **344**·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_LOG`·`CURRENT_TASK` 동기 · **First** C5 **TASK1** (Gate **138**) · **C6** **TASK10 `[x]`** · **2026-03-21 C1.**
+
+**[C4] SPRINT 138 TASK4 / 344:** [x] **`/[locale]/bty/(protected)/elite/loading`** · **`EliteRouteLoadingShell`** · **`bty.eliteSuspenseMainRegionAria`** (ko/en) · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-21 C4.**
+
+**[C5] SPRINT 137 TASK1 / 343 (VERIFY):** [x] Gate **137** A~F **PASS** · **`346/2529`** ✓ · `self-healing-ci` · `test:q237-smoke` **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]** · **2026-03-21 C5.**
+
+**[C6] SPRINT 137 TASK10 / 343:** [x] `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` **346/2529** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **완료. 2026-03-21 C6.**
+
+**[C2] SPRINT 139 / 345 (Gatekeeper):** [ ] Item **1** **BLOCKER** — C5 Gate **139** TASK1 **`[ ]`** · Item **2** IMPORT rg **0** ✓ · **C1 TASK2 `[x]`** (REFRESH) · carry **`346/2530`** · C7 **`346/2530`** (Gate **139** 미실행) · **2026-03-21 C2.**
+
+**[C3] SPRINT 137 TASK8·9 / 343:** [x] **`arenaOutcomeMetaFromUnknown`** Symbol·bigint · **`POST /api/arena/membership-request`** optional **`submitted_at: {}`** → **400** `submitted_at_invalid` · Vitest ✓ · 보드 **TASK8·9 [x]** · **완료. 2026-03-21 C3.**
+
+**[C1] SPRINT 137 / 343 (`PARALLEL_QUEUE_REFILL` §3):** [x] S136 **`exit 2`** (**C4** 기아 — **C1·C5** 잔여 **`[ ]`**) → **S137** · 보드·`SPRINT_PLAN` **343**·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_LOG`·`CURRENT_TASK` 동기 · **First** C5 **TASK1** (Gate **137**) · **C6** **TASK10 `[x]`** · **2026-03-21 C1.**
 
 **[C5] SPRINT 136 TASK1 / 342 (VERIFY):** [x] Gate **136** A~F **PASS** · **`346/2526`** ✓ · `self-healing-ci` · `test:q237-smoke` **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]** · **2026-03-21 C5.**
 

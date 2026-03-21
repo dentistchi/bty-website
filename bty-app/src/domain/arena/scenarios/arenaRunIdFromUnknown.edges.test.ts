@@ -58,7 +58,7 @@ describe("arenaRunIdFromUnknown (edges)", () => {
   });
 
   /**
-   * S129 C3 TASK8 — **S128** activated-stats·**S111** BOM/boxed 라인과 구분 (Symbol·bigint).
+   * S129·S142 C3 TASK8 — **S128** activated-stats·**S111** BOM/boxed 라인과 구분 (Symbol·bigint; **S142** explicit guard).
    */
   it("S129: returns null for Symbol and bigint", () => {
     expect(arenaRunIdFromUnknown(Symbol("run"))).toBeNull();

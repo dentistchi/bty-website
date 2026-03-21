@@ -1,4 +1,8 @@
 import type { ArenaScenario, HiddenStat } from "./types";
+import { patientComplaintScenarioKo } from "./patientComplaintScenarioKo";
+
+/** Route/content locale for mission scenario lookup (`en` default). */
+export type ArenaMissionContentLocale = "en" | "ko";
 
 export const MOCK_SCENARIO_ID = "patient-complaint-revised-estimate" as const;
 
@@ -167,9 +171,12 @@ export const patientComplaintScenario: ArenaScenario = {
 /** Stable alias for imports that expect `MOCK_SCENARIO`. */
 export const MOCK_SCENARIO = patientComplaintScenario;
 
-export function getScenarioById(id: string): ArenaScenario | null {
-  if (id === patientComplaintScenario.id) return patientComplaintScenario;
-  return null;
+export function getScenarioById(
+  id: string,
+  locale: ArenaMissionContentLocale = "en",
+): ArenaScenario | null {
+  if (id !== patientComplaintScenario.id) return null;
+  return locale === "ko" ? patientComplaintScenarioKo : patientComplaintScenario;
 }
 
 /**

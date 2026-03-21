@@ -5,6 +5,7 @@
 export const ARENA_RUN_ID_MAX_LENGTH = 128;
 
 export function arenaRunIdFromUnknown(raw: unknown): string | null {
+  if (typeof raw === "bigint" || typeof raw === "symbol") return null;
   if (typeof raw !== "string") return null;
   const s = raw.trim();
   if (!s || s.length > ARENA_RUN_ID_MAX_LENGTH) return null;

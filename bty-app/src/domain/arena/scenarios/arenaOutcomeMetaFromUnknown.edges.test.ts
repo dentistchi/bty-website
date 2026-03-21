@@ -108,4 +108,32 @@ describe("arenaOutcomeMetaFromUnknown (edges)", () => {
       }),
     ).toBeNull();
   });
+
+  /**
+   * S137·S143 C3 TASK8 — **S125** membership·**S112** meta string-axis 라인과 구분 (최상위 비객체 스칼라; **S143** explicit guard).
+   */
+  it("S137: returns null when value is Symbol or bigint", () => {
+    expect(arenaOutcomeMetaFromUnknown(Symbol("meta"))).toBeNull();
+    expect(arenaOutcomeMetaFromUnknown(BigInt(1))).toBeNull();
+  });
+
+  /**
+   * S143 C3 TASK8 — **bias** 축이 `Symbol` / `bigint` (**S137** 최상위·**S112** 문자열 축과 구분).
+   */
+  it("S143: returns null when a bias axis is Symbol or bigint", () => {
+    expect(
+      arenaOutcomeMetaFromUnknown({
+        relationalBias: Symbol("b"),
+        operationalBias: 0.5,
+        emotionalRegulation: 0.5,
+      }),
+    ).toBeNull();
+    expect(
+      arenaOutcomeMetaFromUnknown({
+        relationalBias: 0.25,
+        operationalBias: BigInt(1),
+        emotionalRegulation: 0.75,
+      }),
+    ).toBeNull();
+  });
 });

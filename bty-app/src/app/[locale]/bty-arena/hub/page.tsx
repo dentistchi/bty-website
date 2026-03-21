@@ -8,6 +8,7 @@ type Props = { params: Promise<{ locale: string }> };
 /**
  * Arena 허브 — 행동 우선. API 시뮬 본편은 /bty-arena/run · 미션 플로우는 /bty-arena → /play → /result.
  * Root `/bty-arena`는 미션 런타임 플로우(Lobby→Play→Resolve)로 사용합니다.
+ * locale=ko이면 미션 시나리오 본문은 domain `patientComplaintScenarioKo` 경로로 로드됩니다.
  */
 export default async function ArenaHubPage({ params }: Props) {
   const { locale } = await params;

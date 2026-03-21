@@ -120,6 +120,7 @@ export {
   arenaMissionOutcomeKeyPartsFromUnknown,
 } from "./arenaMissionOutcomeKey";
 export type { ArenaMissionOutcomeKeyParts } from "./arenaMissionOutcomeKey";
+export type { ArenaMissionContentLocale } from "./mockScenario";
 export {
   DEFAULT_ARENA_MISSION_TOP_BAR,
   getScenarioById,
@@ -127,6 +128,7 @@ export {
   MOCK_SCENARIO_ID,
   patientComplaintScenario,
 } from "./mockScenario";
+export { patientComplaintScenarioKo } from "./patientComplaintScenarioKo";
 export {
   clearMissionPayload,
   MISSION_STORAGE_KEY,

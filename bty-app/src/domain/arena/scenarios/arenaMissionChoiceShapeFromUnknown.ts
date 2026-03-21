@@ -17,6 +17,7 @@ function trimmedNonEmptyBounded(s: string, max: number): string | null {
 /**
  * Parses a `PrimaryChoice`-shaped object from JSON-like input.
  * `id` must satisfy `isArenaPrimaryMissionChoiceId` (A|B|C).
+ * Non-objects (including top-level **`Symbol`** / **`bigint`**) → **`null`**.
  */
 export function arenaPrimaryChoiceFromUnknown(value: unknown): PrimaryChoice | null {
   if (value == null || typeof value !== "object" || Array.isArray(value)) return null;
@@ -49,6 +50,7 @@ export function arenaPrimaryChoiceFromUnknown(value: unknown): PrimaryChoice | n
 /**
  * Parses a `ReinforcementChoice`-shaped object from JSON-like input.
  * `id` must satisfy `isArenaReinforcementMissionChoiceId` (X|Y).
+ * Non-objects (including top-level **`Symbol`** / **`bigint`**) → **`null`**.
  */
 export function arenaReinforcementChoiceFromUnknown(value: unknown): ReinforcementChoice | null {
   if (value == null || typeof value !== "object" || Array.isArray(value)) return null;

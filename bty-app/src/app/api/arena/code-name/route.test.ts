@@ -109,6 +109,30 @@ describe("POST /api/arena/code-name", () => {
     expect((await res.json()).error).toBe("preferred_lab_difficulty_invalid");
   });
 
+  /**
+   * S144 C3 TASK9: optional `preferredLabDifficulty` — bigint (≠ **S110** number).
+   * JSON 본문은 bigint를 담을 수 없어 `req.json()` 스텁으로 파싱 결과만 재현.
+   */
+  it("returns 400 preferred_lab_difficulty_invalid when preferredLabDifficulty is bigint", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const req = new NextRequest("http://localhost/api/arena/code-name", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    vi.spyOn(req, "json").mockResolvedValue({
+      codeName: "Valid-Name",
+      preferredLabDifficulty: BigInt(0),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("preferred_lab_difficulty_invalid");
+  });
+
   /** S113 C3 TASK9: optional `preferredLabDifficulty` — boolean (≠ S101 string · S110 number) → 400. */
   it("returns 400 preferred_lab_difficulty_invalid when preferredLabDifficulty is boolean", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({
@@ -160,6 +184,22 @@ describe("POST /api/arena/code-name", () => {
     });
     const res = await POST(
       makeReq({ codeName: "Valid-Name", preferredLabDifficulty: {} }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("preferred_lab_difficulty_invalid");
+  });
+
+  /**
+   * S140 C3 TASK9: optional `preferredLabDifficulty` — ZWSP suffix (domain **S110** strict; ≠ **S136** `""` · **S130** `{}`) → 400.
+   */
+  it("returns 400 preferred_lab_difficulty_invalid when preferredLabDifficulty has trailing ZWSP", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const res = await POST(
+      makeReq({ codeName: "Valid-Name", preferredLabDifficulty: "mid\u200b" }),
     );
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("preferred_lab_difficulty_invalid");

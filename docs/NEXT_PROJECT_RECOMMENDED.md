@@ -3,6 +3,7 @@
 **갱신일**: 2026-03-08  
 **목적**: 현재 런이 끝난 뒤 **다음에 진행할 프로젝트**를 한 곳에서 정리한다.  
 **기준**: 보드(`docs/CURSOR_TASK_BOARD.md`)의 **대기** 목록과 이 파일의 추천을 맞춘다.  
+**제품 % 정의(Phase vs 500점 트래커)**: `docs/MVP_AND_COMPLETION_INDICATORS.md` §3.1 · `docs/PROGRESS_SNAPSHOT.md`.  
 **현재**: **웹 개발 집중**. 문서·Release Gate 점검은 **배포 전 1회** 수행. 일상 보드는 UI·API·도메인·엘리트/Dojo 등 웹페이지 개발 중심.
 
 ---

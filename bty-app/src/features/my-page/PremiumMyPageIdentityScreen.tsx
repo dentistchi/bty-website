@@ -412,7 +412,7 @@ export function PremiumMyPageIdentityScreen({
         <p className="text-center text-[11px] text-slate-500">{t.leadershipSuggestedModuleLine}</p>
         <div className="flex flex-wrap items-center justify-center gap-3 pb-2">
           <Link
-            href={`/${locale}/bty-arena`}
+            href={`/${locale}/bty-arena/run`}
             className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-cyan-100/90 transition-colors hover:border-cyan-400/20"
           >
             {t.leadershipLinkArena}

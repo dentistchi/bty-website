@@ -3,6 +3,7 @@
  * Accepts string arrays only: each element trimmed to non-empty, bounded per line and by count.
  * **At least one line** is required (lobby/play copy must exist).
  * Distinct caps from `arenaInterpretationLinesFromUnknown` (resolve copy).
+ * Top-level value must be an array; **`Symbol`**, **`bigint`**, and other non-arrays → **`null`**.
  */
 
 export const ARENA_SCENARIO_DESCRIPTION_MAX_LINES = 64;

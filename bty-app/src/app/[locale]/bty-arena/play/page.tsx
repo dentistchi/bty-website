@@ -46,6 +46,8 @@ export default function BtyArenaMissionPlayPage() {
     return (
       <main
         className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-400"
+        role="status"
+        aria-live="polite"
         aria-busy="true"
         aria-label={stub.arenaMissionPlayLoadingMainRegionAria}
       >

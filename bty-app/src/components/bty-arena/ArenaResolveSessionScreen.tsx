@@ -145,7 +145,7 @@ export default function ArenaResolveSessionScreen() {
 
   useEffect(() => {
     const payload = readMissionPayload();
-    const resolved = payload ? resolveMissionAgainstScenario(payload) : null;
+    const resolved = payload ? resolveMissionAgainstScenario(payload, locale === "ko" ? "ko" : "en") : null;
 
     if (!resolved) {
       router.replace(`${base}/bty-arena`);
@@ -184,7 +184,7 @@ export default function ArenaResolveSessionScreen() {
       window.clearTimeout(statTimer);
       window.clearTimeout(actionTimer);
     };
-  }, [base, router]);
+  }, [base, router, locale]);
 
   if (!ready) {
     return (

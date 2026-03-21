@@ -311,19 +311,13 @@ export function buildLeaderboardRows(
 
     const { avatarUrl, avatarLayers } = resolveAvatarUrl(r.user_id, prof, levelId);
 
-    const avatarKeys = prof
-      ? profileToAvatarCompositeKeys({
-          avatarCharacterId: prof.avatar_character_id,
-          avatarOutfitTheme: prof.avatar_outfit_theme,
-          avatarSelectedOutfitId: prof.avatar_selected_outfit_id,
-          avatarAccessoryIds: prof.avatar_accessory_ids ?? [],
-        })
-      : {
-          characterKey: "hero_01",
-          theme: "professional" as const,
-          outfitKey: null,
-          accessoryKeys: [],
-        };
+    const avatarKeys = profileToAvatarCompositeKeys({
+      avatarCharacterId: prof?.avatar_character_id ?? null,
+      avatarOutfitTheme: prof?.avatar_outfit_theme ?? "professional",
+      avatarSelectedOutfitId: prof?.avatar_selected_outfit_id ?? null,
+      avatarAccessoryIds: prof?.avatar_accessory_ids ?? [],
+      displayLevelId: levelId,
+    });
 
     return {
       rank: idx + 1,

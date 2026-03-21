@@ -87,4 +87,10 @@ describe("arenaScenarioOutcomesFromUnknown (edges)", () => {
       }),
     ).toBeNull();
   });
+
+  /** S139 C3 TASK8 — top-level `Symbol` / `bigint` (`arenaScenarioOutcomesFromUnknown` container). */
+  it("returns null when value is Symbol or bigint", () => {
+    expect(arenaScenarioOutcomesFromUnknown(Symbol("outcomes"))).toBeNull();
+    expect(arenaScenarioOutcomesFromUnknown(BigInt(3))).toBeNull();
+  });
 });

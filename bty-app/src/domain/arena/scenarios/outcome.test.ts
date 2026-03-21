@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { getArenaOutcome, getArenaOutcomeKey } from "./types";
-import { patientComplaintScenario } from "./mockScenario";
+import { getScenarioById, patientComplaintScenario } from "./mockScenario";
+import { patientComplaintScenarioKo } from "./patientComplaintScenarioKo";
 import { resolveMissionAgainstScenario } from "./missionStorage";
 
 describe("Arena scenario outcomes (1+1 model)", () => {
@@ -36,5 +37,25 @@ describe("Arena scenario outcomes (1+1 model)", () => {
     });
     expect(resolved).not.toBeNull();
     expect(resolved!.outcome?.interpretation[0]).toContain("operational anchoring");
+  });
+
+  it("getScenarioById returns Korean copy when locale is ko", () => {
+    const ko = getScenarioById(patientComplaintScenario.id, "ko");
+    expect(ko?.title).toBe(patientComplaintScenarioKo.title);
+    expect(ko?.description[0]).toBe(patientComplaintScenarioKo.description[0]);
+  });
+
+  it("resolveMissionAgainstScenario uses Korean outcome copy when locale is ko", () => {
+    const resolved = resolveMissionAgainstScenario(
+      {
+        scenarioId: patientComplaintScenario.id,
+        selectedPrimaryId: "B",
+        selectedReinforcementId: "Y",
+        decidedAt: "",
+      },
+      "ko",
+    );
+    expect(resolved).not.toBeNull();
+    expect(resolved!.outcome?.interpretation[0]).toContain("운영");
   });
 });

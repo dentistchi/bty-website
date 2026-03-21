@@ -8,13 +8,13 @@
 
 ## CURRENT TASK
 
-**SPRINT 137** · **343** (TASK **1~10**) · **Gate 137** **`[ ]`** · **First** **C5 TASK1**.
+**SPRINT 147** · **353** (TASK **1~10**) · **MODE ARENA** · **Gate 147** **`[ ]`** · **First** **C5 TASK1**.
 
 | OWNER | 할 일 |
 |-------|--------|
 | C5 | **TASK1·6 `[ ]`** |
-| C1 | **TASK2·3·5·7 `[ ]`** |
-| C4 | **TASK4 `[ ]`** *(dojo loading · foundry 직후 제외)* |
+| C1 | **TASK2 `[x]`** · **TASK3·5·7 `[ ]`** *(S146 흡수)* |
+| C4 | **TASK4 `[ ]`** *(`bty-arena/play` a11y)* |
 | C3 | **TASK8·9 `[ ]`** |
 | C6 | **TASK10 `[ ]`** |
 
@@ -24,9 +24,9 @@
 
 | Cursor | Role | Task |
 |--------|------|------|
-| C1 | Commander | **TASK2·3·5·7** (DOCS) |
-| C2 | Gatekeeper | C5 TASK1 후 push Gate 동기 |
+| C1 | Commander | **TASK3·5·7** (DOCS) · **TASK2** 완료 |
+| C2 | Gatekeeper | C5 TASK1 (First) 후 push Gate 동기 |
 | C3 | Domain | **8** → **9** |
-| C4 | UI | **4** (dojo loading) |
+| C4 | UI | **4** (play) |
 | C5 | VERIFY | **1** (First) → **6** |
 | C6 | Test | **10** |

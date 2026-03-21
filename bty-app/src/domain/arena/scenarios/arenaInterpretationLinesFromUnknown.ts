@@ -2,6 +2,7 @@
  * Parses `ResolveOutcome.interpretation` from an unknown value (e.g. JSON).
  * Accepts only string arrays: each element must be a string; trimmed lines must be non-empty
  * and within `ARENA_INTERPRETATION_LINE_MAX_LENGTH`. At most `ARENA_INTERPRETATION_MAX_LINES` entries.
+ * Top-level value must be an array; **`Symbol`**, **`bigint`**, and other non-arrays → **`null`**.
  */
 
 export const ARENA_INTERPRETATION_MAX_LINES = 32;

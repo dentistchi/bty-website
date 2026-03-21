@@ -158,6 +158,33 @@ describe("POST /api/arena/sub-name", () => {
   });
 
   /**
+   * S141 C3 TASK9: optional `scenarioOutcomes` — **duplicate canonical keys** (`A_X` vs `" A_X"`) (≠ **S135** `A_X: {}` · **S102** 바깥 `{}`) → 400.
+   */
+  it("returns 400 scenario_outcomes_invalid when scenarioOutcomes has duplicate canonical outcome keys", async () => {
+    const minimal = {
+      interpretation: ["one"],
+      systemMessage: "SYSTEM // ok",
+      activatedStats: ["Integrity"],
+    };
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: { from: vi.fn() },
+      base: {},
+    });
+    const res = await POST(
+      makePostRequest({
+        subName: "Valid",
+        scenarioOutcomes: {
+          A_X: minimal,
+          " A_X": { ...minimal, interpretation: ["two"] },
+        },
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("scenario_outcomes_invalid");
+  });
+
+  /**
    * S135 C3 TASK9: optional `scenarioOutcomes` — 유효 키 하나 + **빈 outcome 객체** (≠ **S102** 바깥 `{}` · **S134** free-response) → 400.
    */
   it("returns 400 scenario_outcomes_invalid when scenarioOutcomes has a valid key but empty outcome object", async () => {

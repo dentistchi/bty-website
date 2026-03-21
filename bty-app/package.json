@@ -27,7 +27,8 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "db:push": "supabase db push",
-    "storage:cors": "bash scripts/storage-cors.sh"
+    "storage:cors": "bash scripts/storage-cors.sh",
+    "verify:avatar-assets": "npx --yes tsx scripts/verify-avatar-assets.ts"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",

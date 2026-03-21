@@ -122,9 +122,9 @@ describe("arenaMissionChoiceShapeFromUnknown (edges)", () => {
   });
 
   /**
-   * S136 C3 TASK8 — **S115** lenient `Symbol`·**S113** strict 타입·**S87** null/array 라인과 구분 (primary·reinforcement shape).
+   * S147 C3 TASK8 — **S136** 동일 축 — top-level **`Symbol`** / **`bigint`** → **null** (primary·reinforcement).
    */
-  it("S136: returns null when value is Symbol or bigint", () => {
+  it("S147: returns null when value is Symbol or bigint", () => {
     expect(arenaPrimaryChoiceFromUnknown(Symbol("A"))).toBeNull();
     expect(arenaPrimaryChoiceFromUnknown(BigInt(1))).toBeNull();
     expect(arenaReinforcementChoiceFromUnknown(Symbol("X"))).toBeNull();
