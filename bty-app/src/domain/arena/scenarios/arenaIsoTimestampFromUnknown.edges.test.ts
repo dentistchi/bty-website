@@ -46,4 +46,26 @@ describe("arenaIsoTimestampFromUnknown (edges)", () => {
   it("returns null when the string contains an embedded newline", () => {
     expect(arenaIsoTimestampFromUnknown("2026-06-15\nT12:00:00.000Z")).toBeNull();
   });
+
+  /**
+   * S109 TASK8 — **S108** code-name·**S107** lifecycle·**S99** ZWSP/개행 라인과 구분:
+   * BOM-only empty, BOM + 유효 ISO, boxed String.
+   */
+  it("S109: BOM-only trims to empty; BOM prefix + valid ISO; boxed String → null", () => {
+    expect(arenaIsoTimestampFromUnknown("\uFEFF")).toBeNull();
+    expect(arenaIsoTimestampFromUnknown("\uFEFF  \uFEFF")).toBeNull();
+    expect(arenaIsoTimestampFromUnknown("\uFEFF2026-03-20T12:00:00.000Z")).toBe(
+      "2026-03-20T12:00:00.000Z",
+    );
+    expect(arenaIsoTimestampFromUnknown(Object("2026-01-01T00:00:00.000Z"))).toBeNull();
+    expect(arenaIsoTimestampFromUnknown(Object("2026-06-15T12:00:00.000Z"))).toBeNull();
+  });
+
+  /**
+   * S122 C3 TASK8 — **S121** date-only Symbol·bigint·**S109** boxed `String` 라인과 구분 (ISO **timestamp** 축).
+   */
+  it("S122: returns null for Symbol and bigint", () => {
+    expect(arenaIsoTimestampFromUnknown(Symbol("2026-01-01T00:00:00.000Z"))).toBeNull();
+    expect(arenaIsoTimestampFromUnknown(BigInt(1735689600000))).toBeNull();
+  });
 });

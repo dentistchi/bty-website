@@ -43,4 +43,12 @@ describe("arenaScenarioIdFromUnknown (edges)", () => {
   it("preserves internal newlines and tabs inside the id", () => {
     expect(arenaScenarioIdFromUnknown("  sc\nen\tid  ")).toBe("sc\nen\tid");
   });
+
+  /**
+   * S118 C3 TASK8 — **S117** reflect `Symbol`·bigint·**S93** NBSP 라인과 구분 (시나리오 id 축).
+   */
+  it("S118: returns null for Symbol and bigint", () => {
+    expect(arenaScenarioIdFromUnknown(Symbol("s1"))).toBe(null);
+    expect(arenaScenarioIdFromUnknown(BigInt(1))).toBe(null);
+  });
 });

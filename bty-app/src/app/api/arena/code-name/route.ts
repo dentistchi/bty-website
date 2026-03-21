@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
-import { arenaCodeNameFromUnknown } from "@/domain/arena/scenarios";
+import {
+  arenaCodeNameFromUnknown,
+  arenaLabDifficultyKeyStrictFromUnknown,
+} from "@/domain/arena/scenarios";
+
+/** Optional **`preferredLabDifficulty`**: exact **easy|mid|hard|extreme** (빈 문자열·`null`·비문자 등 불가) — **`arenaLabDifficultyKeyStrictFromUnknown`** · **400** `preferred_lab_difficulty_invalid`. */
 
 export async function POST(req: NextRequest) {
   const supabase = await getSupabaseServerClient();
@@ -9,7 +14,16 @@ export async function POST(req: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
 
-  const body = (await req.json().catch(() => ({}))) as { codeName?: unknown };
+  const body = (await req.json().catch(() => ({}))) as {
+    codeName?: unknown;
+    preferredLabDifficulty?: unknown;
+  };
+  if ("preferredLabDifficulty" in body) {
+    if (arenaLabDifficultyKeyStrictFromUnknown(body.preferredLabDifficulty) === null) {
+      return NextResponse.json({ error: "preferred_lab_difficulty_invalid" }, { status: 400 });
+    }
+  }
+
   const codeNameInput = String(body?.codeName ?? "");
   const validated = arenaCodeNameFromUnknown(codeNameInput);
   if (!validated.ok) {

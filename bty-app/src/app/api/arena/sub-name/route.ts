@@ -1,27 +1,36 @@
 /**
  * POST /api/arena/sub-name — Sub Name 변경 (코드당 1회, tier≥25·주간 상위 5%·CODELESS 제외).
- * Body: { subName: string } (≤7자, 문자·숫자·공백·-_).
+ * Body: { subName: string } (≤7자, 문자·숫자·공백·-_); optional **scenarioOutcomes** — **`arenaScenarioOutcomesFromUnknown`** · **400** `scenario_outcomes_invalid`
+ * (키 존재 시; 비객체·배열·바깥 `{}`·유효 키에 대한 빈 outcome 등 파싱 실패).
  * Response (200): { ok: true, subName }.
- * Errors: 401 UNAUTHENTICATED; 400 INVALID_JSON | INVALID_SUB_NAME (reason) | CODELESS_ZONE_USE_FREE_SET;
+ * Errors: 401 UNAUTHENTICATED; 400 INVALID_JSON | INVALID_SUB_NAME (reason) | scenario_outcomes_invalid | CODELESS_ZONE_USE_FREE_SET;
  * 403 TIER_25_REQUIRED | ALREADY_RENAMED_IN_THIS_CODE | ELITE_TOP_5_PERCENT_REQUIRED; 404 NOT_FOUND; 500 { error: string }.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { weeklyRankFromCounts } from "@/domain/rules/leaderboard";
 import { tierFromCoreXp, codeIndexFromTier } from "@/lib/bty/arena/codes";
-import { arenaSubNameFromUnknown } from "@/domain/arena/scenarios";
+import { arenaScenarioOutcomesFromUnknown, arenaSubNameFromUnknown } from "@/domain/arena/scenarios";
 
 export async function POST(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);
   if (!user) return unauthenticated(req, base);
 
-  let body: { subName?: unknown };
+  let body: { subName?: unknown; scenarioOutcomes?: unknown };
   try {
-    body = (await req.json()) as { subName?: unknown };
+    body = (await req.json()) as { subName?: unknown; scenarioOutcomes?: unknown };
   } catch {
     const out = NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
     copyCookiesAndDebug(base, out, req, false);
     return out;
+  }
+
+  if ("scenarioOutcomes" in body) {
+    if (arenaScenarioOutcomesFromUnknown(body.scenarioOutcomes) === null) {
+      const out = NextResponse.json({ error: "scenario_outcomes_invalid" }, { status: 400 });
+      copyCookiesAndDebug(base, out, req, true);
+      return out;
+    }
   }
 
   const subNameInput = String(body?.subName ?? "");

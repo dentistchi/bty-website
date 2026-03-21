@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
-import { arenaRunIdFromUnknown, arenaScenarioIdFromUnknown } from "@/domain/arena/scenarios";
+import {
+  arenaRunIdFromUnknown,
+  arenaScenarioFromUnknown,
+  arenaScenarioIdFromUnknown,
+} from "@/domain/arena/scenarios";
 
 const FREE_RESPONSE_XP = 25;
 const MAX_RESPONSE_LENGTH = 2000;
@@ -17,6 +21,10 @@ function getFeedback(locale: string) {
   return locale === "ko" ? DEFAULT_FEEDBACK_KO : DEFAULT_FEEDBACK_EN;
 }
 
+/**
+ * POST /api/arena/free-response — optional **`previewScenario`**: **`arenaScenarioFromUnknown`** · **400** `previewScenario_invalid`
+ * (키 존재 시; 비객체·배열·`null`·스칼라 등 파싱 실패).
+ */
 export async function POST(req: Request) {
   const supabase = await getSupabaseServerClient();
   const {
@@ -31,11 +39,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
   }
 
-  const runId = arenaRunIdFromUnknown((body as { runId?: unknown })?.runId);
-  const scenarioId = arenaScenarioIdFromUnknown((body as { scenarioId?: unknown })?.scenarioId);
-  const rawText = (body as { responseText?: string })?.responseText;
+  const b = body as {
+    runId?: unknown;
+    scenarioId?: unknown;
+    responseText?: unknown;
+    locale?: unknown;
+    previewScenario?: unknown;
+  };
+  if ("previewScenario" in b) {
+    if (arenaScenarioFromUnknown(b.previewScenario) === null) {
+      return NextResponse.json({ error: "previewScenario_invalid" }, { status: 400 });
+    }
+  }
+
+  const runId = arenaRunIdFromUnknown(b.runId);
+  const scenarioId = arenaScenarioIdFromUnknown(b.scenarioId);
+  const rawText = b.responseText;
   const responseText = typeof rawText === "string" ? rawText.trim() : "";
-  const locale = (body as { locale?: string })?.locale === "ko" ? "ko" : "en";
+  const locale = typeof b.locale === "string" && b.locale === "ko" ? "ko" : "en";
   const feedback = getFeedback(locale);
 
   if (!runId) {

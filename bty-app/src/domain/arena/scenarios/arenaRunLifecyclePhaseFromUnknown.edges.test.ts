@@ -39,4 +39,26 @@ describe("arenaRunLifecyclePhaseFromUnknown (edges)", () => {
   it("accepts NBSP padding that trims to canonical phase strings", () => {
     expect(arenaRunLifecyclePhaseFromUnknown("\u00a0aborted\u00a0")).toBe("aborted");
   });
+
+  /**
+   * S107 TASK8 — **S106** `arenaRunTypeFromUnknown`·**S105** difficulty·event·**S104** 라인과 구분:
+   * BOM·boxed String·ZWSP·fullwidth homoglyphs.
+   */
+  it("S107: BOM prefix normalizes; boxed strings and homoglyph near-misses reject", () => {
+    expect(arenaRunLifecyclePhaseFromUnknown("\uFEFFcompleted")).toBe("completed");
+    expect(arenaRunLifecyclePhaseFromUnknown("\uFEFF  in_progress  ")).toBe("in_progress");
+    expect(arenaRunLifecyclePhaseFromUnknown(Object("aborted"))).toBeNull();
+    expect(arenaRunLifecyclePhaseFromUnknown(Object("completed"))).toBeNull();
+    expect(arenaRunLifecyclePhaseFromUnknown("in_\u200bprogress")).toBeNull();
+    expect(arenaRunLifecyclePhaseFromUnknown("ｉn_progress")).toBeNull();
+    expect(arenaRunLifecyclePhaseFromUnknown("completed\uFF3C")).toBeNull();
+  });
+
+  /**
+   * S120 C3 TASK8 — **S119** `arenaRunTypeFromUnknown` Symbol·bigint·**S107** BOM 라인과 구분 (lifecycle **phase** 축).
+   */
+  it("S120: returns null for Symbol and bigint", () => {
+    expect(arenaRunLifecyclePhaseFromUnknown(Symbol("completed"))).toBeNull();
+    expect(arenaRunLifecyclePhaseFromUnknown(BigInt(1))).toBeNull();
+  });
 });

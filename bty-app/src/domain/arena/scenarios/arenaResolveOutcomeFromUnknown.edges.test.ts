@@ -132,4 +132,12 @@ describe("arenaResolveOutcomeFromUnknown (edges)", () => {
     expect(parsed).not.toBeNull();
     expect(parsed).not.toHaveProperty("meta");
   });
+
+  /**
+   * S126 C3 TASK8 — **S125** description lines·**S93** orchestration 라인과 구분 (최상위 비객체).
+   */
+  it("S126: returns null when value is Symbol or bigint", () => {
+    expect(arenaResolveOutcomeFromUnknown(Symbol("o"))).toBeNull();
+    expect(arenaResolveOutcomeFromUnknown(BigInt(1))).toBeNull();
+  });
 });

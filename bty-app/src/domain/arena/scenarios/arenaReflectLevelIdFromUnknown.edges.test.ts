@@ -41,4 +41,22 @@ describe("arenaReflectLevelIdFromUnknown", () => {
     expect(arenaReflectLevelIdFromUnknown("S\u200b1")).toBeNull();
     expect(arenaReflectLevelIdFromUnknown("L1\u200b")).toBeNull();
   });
+
+  /**
+   * S117 C3 TASK8 — **S116** `arenaCodeNameFromUnknown` Symbol·bigint·**S95** ZWSP 라인과 구분 (`reflect` level id 축).
+   */
+  it("S117: rejects Symbol and bigint", () => {
+    expect(arenaReflectLevelIdFromUnknown(Symbol("S1"))).toBeNull();
+    expect(arenaReflectLevelIdFromUnknown(BigInt(1))).toBeNull();
+  });
+
+  /**
+   * S133 C3 TASK8 — 보드 **Symbol·bigint**는 **S117**; 여기서는 **추가** 비문자·컨테이너 (**S90** near-miss·**S117**와 구분).
+   */
+  it("S133: rejects Date, RegExp, boxed String, and plain object", () => {
+    expect(arenaReflectLevelIdFromUnknown(new Date())).toBeNull();
+    expect(arenaReflectLevelIdFromUnknown(/S1/)).toBeNull();
+    expect(arenaReflectLevelIdFromUnknown(Object("S1"))).toBeNull();
+    expect(arenaReflectLevelIdFromUnknown({ tag: "S1" })).toBeNull();
+  });
 });

@@ -120,4 +120,14 @@ describe("arenaMissionChoiceShapeFromUnknown (edges)", () => {
       }),
     ).toBeNull();
   });
+
+  /**
+   * S136 C3 TASK8 — **S115** lenient `Symbol`·**S113** strict 타입·**S87** null/array 라인과 구분 (primary·reinforcement shape).
+   */
+  it("S136: returns null when value is Symbol or bigint", () => {
+    expect(arenaPrimaryChoiceFromUnknown(Symbol("A"))).toBeNull();
+    expect(arenaPrimaryChoiceFromUnknown(BigInt(1))).toBeNull();
+    expect(arenaReinforcementChoiceFromUnknown(Symbol("X"))).toBeNull();
+    expect(arenaReinforcementChoiceFromUnknown(BigInt(1))).toBeNull();
+  });
 });

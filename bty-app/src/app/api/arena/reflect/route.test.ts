@@ -75,6 +75,22 @@ describe("POST /api/arena/reflect", () => {
     expect(Array.isArray(data.questions)).toBe(true);
   });
 
+  /** S132 C3 TASK9: `levelId` present but not whitelist — **400** (`S131` sub-name·`S130` code-name 라인과 구분). */
+  it("returns 400 levelId_invalid when levelId key is present but not a valid reflect level id", async () => {
+    vi.mocked(getSupabaseServerClient).mockResolvedValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1", created_at: new Date().toISOString() } } }),
+      },
+    } as never);
+
+    const res = await POST(
+      makeRequest({ userText: "short reflection text", levelId: "S99" }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("levelId_invalid");
+  });
+
   it("returns 400 when userText missing or whitespace-only", async () => {
     vi.mocked(getSupabaseServerClient).mockResolvedValue({
       auth: {
@@ -89,6 +105,20 @@ describe("POST /api/arena/reflect", () => {
 
     const r2 = await POST(makeRequest({ userText: "   " }));
     expect(r2.status).toBe(400);
+  });
+
+  /** S104 TASK9: explicit empty string → 400 (boundary). */
+  it("returns 400 userText is required when userText is empty string", async () => {
+    vi.mocked(getSupabaseServerClient).mockResolvedValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1", created_at: new Date().toISOString() } } }),
+      },
+    } as never);
+
+    const res = await POST(makeRequest({ userText: "" }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("userText is required");
   });
 
   /** S95 TASK9: boundary 400 — JSON `userText: null` coerces to empty via `??`. */

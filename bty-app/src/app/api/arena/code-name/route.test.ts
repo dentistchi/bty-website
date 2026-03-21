@@ -81,6 +81,106 @@ describe("POST /api/arena/code-name", () => {
     expect(endData.reason).toBe("NO_EDGE_DASH");
   });
 
+  /** S101 C3 TASK9: optional `preferredLabDifficulty` — strict lab key → 400. */
+  it("returns 400 preferred_lab_difficulty_invalid when preferredLabDifficulty is present but not a valid key", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const res = await POST(
+      makeReq({ codeName: "Valid-Name", preferredLabDifficulty: "super-hard" }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("preferred_lab_difficulty_invalid");
+  });
+
+  /** S110 C3 TASK9: optional `preferredLabDifficulty` — number (≠ S101 invalid string) → 400. */
+  it("returns 400 preferred_lab_difficulty_invalid when preferredLabDifficulty is a number", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const res = await POST(
+      makeReq({ codeName: "Valid-Name", preferredLabDifficulty: 2 }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("preferred_lab_difficulty_invalid");
+  });
+
+  /** S113 C3 TASK9: optional `preferredLabDifficulty` — boolean (≠ S101 string · S110 number) → 400. */
+  it("returns 400 preferred_lab_difficulty_invalid when preferredLabDifficulty is boolean", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const res = await POST(
+      makeReq({ codeName: "Valid-Name", preferredLabDifficulty: true }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("preferred_lab_difficulty_invalid");
+  });
+
+  /** S119 C3 TASK9: optional `preferredLabDifficulty` — array (≠ S113 boolean · S110 number) → 400. */
+  it("returns 400 preferred_lab_difficulty_invalid when preferredLabDifficulty is an array", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const res = await POST(
+      makeReq({ codeName: "Valid-Name", preferredLabDifficulty: ["easy"] }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("preferred_lab_difficulty_invalid");
+  });
+
+  /** S123 C3 TASK9: optional `preferredLabDifficulty` — JSON `null` (키 존재) (≠ S119 배열) → 400. */
+  it("returns 400 preferred_lab_difficulty_invalid when preferredLabDifficulty is JSON null", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const res = await POST(
+      makeReq({ codeName: "Valid-Name", preferredLabDifficulty: null }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("preferred_lab_difficulty_invalid");
+  });
+
+  /** S130 C3 TASK9: optional `preferredLabDifficulty` — plain object (≠ S123 `null` · S119 배열) → 400. */
+  it("returns 400 preferred_lab_difficulty_invalid when preferredLabDifficulty is a plain object", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const res = await POST(
+      makeReq({ codeName: "Valid-Name", preferredLabDifficulty: {} }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("preferred_lab_difficulty_invalid");
+  });
+
+  /**
+   * S136 C3 TASK9: optional `preferredLabDifficulty` — empty string `""` (≠ **S123** JSON `null` · **S101** `super-hard` · **S135** sub-name) → 400.
+   */
+  it("returns 400 preferred_lab_difficulty_invalid when preferredLabDifficulty is an empty string", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const res = await POST(
+      makeReq({ codeName: "Valid-Name", preferredLabDifficulty: "" }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("preferred_lab_difficulty_invalid");
+  });
+
   /** S85 C3 TASK9: double hyphen in code name → 400 NO_DOUBLE_DASH. */
   it("returns 400 INVALID_CODE_NAME when codeName contains --", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({

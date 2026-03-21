@@ -76,6 +76,96 @@ describe("POST /api/arena/lab/complete", () => {
     expect((await res.json()).error).toBe("completed_on_invalid");
   });
 
+  /** S108 C3 TASK9: optional `completedOn` — non-string (≠ S98 invalid date string) → 400. */
+  it("returns 400 completed_on_invalid when completedOn is present but not a string", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const res = await POST(
+      new Request("http://localhost/api/arena/lab/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ difficulty: "easy", completedOn: true }),
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("completed_on_invalid");
+  });
+
+  /** S121 C3 TASK9: optional `completedOn` — plain object (≠ S108 boolean · S114 number) → 400. */
+  it("returns 400 completed_on_invalid when completedOn is an object", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const res = await POST(
+      new Request("http://localhost/api/arena/lab/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ difficulty: "easy", completedOn: {} }),
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("completed_on_invalid");
+  });
+
+  /** S124 C3 TASK9: optional `completedOn` — JSON `null` (키 존재) (≠ S121 `{}`) → 400. */
+  it("returns 400 completed_on_invalid when completedOn is JSON null", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const res = await POST(
+      new Request("http://localhost/api/arena/lab/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ difficulty: "easy", completedOn: null }),
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("completed_on_invalid");
+  });
+
+  /** S114 C3 TASK9: optional `completedOn` — number (≠ S108 boolean) → 400. */
+  it("returns 400 completed_on_invalid when completedOn is a number", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const res = await POST(
+      new Request("http://localhost/api/arena/lab/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ difficulty: "easy", completedOn: 20240615 }),
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("completed_on_invalid");
+  });
+
+  /** S129 C3 TASK9: optional `completedOn` — array (≠ S114 number · S121 `{}`) → 400. */
+  it("returns 400 completed_on_invalid when completedOn is an array", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const res = await POST(
+      new Request("http://localhost/api/arena/lab/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ difficulty: "easy", completedOn: ["2024-06-15"] }),
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("completed_on_invalid");
+  });
+
   /** S98 C3 TASK9: valid completedOn still proceeds (consume + core XP mocked). */
   it("returns 200 when completedOn is valid YYYY-MM-DD", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({

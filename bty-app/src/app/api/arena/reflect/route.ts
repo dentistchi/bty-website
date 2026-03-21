@@ -8,6 +8,7 @@
  * - **levelId 생략:** `GET /api/arena/unlocked-scenarios` 와 동일 테넌시(멤버십·L4)로 추론.
  * - **200:** `{ ok: true, summary: string, questions: string[], next_action: string, detected: { tags: string[], topTag: string } }`.
  * - **400:** `{ error: "Invalid JSON body" }` (JSON 파싱 실패) | `{ error: "userText is required" }` (`userText` 누락·공백만).
+ *   | `{ error: "levelId_invalid" }` — **`levelId` 키가 있고** 값이 `arenaReflectLevelIdFromUnknown` 파싱 실패(또는 `null`).
  * - **413:** `{ error: "USER_TEXT_TOO_LARGE" }` — trim 후 `userText.length` > `REFLECT_USER_TEXT_MAX_CHARS` (`reflectLimits.ts`, 24000).
  * - **249:** 위 400·413 응답은 **`error` 문자열 단일 키** (추가 필드 없음).
  * - **422:** 미사용. 플랫폼 전체 본문 한도 초과는 인프라 **413** 가능.
@@ -48,6 +49,10 @@ export async function POST(req: Request) {
   }
   if (userText.length > REFLECT_USER_TEXT_MAX_CHARS) {
     return NextResponse.json({ error: "USER_TEXT_TOO_LARGE" }, { status: 413 });
+  }
+
+  if ("levelId" in body && arenaReflectLevelIdFromUnknown(body.levelId) === null) {
+    return NextResponse.json({ error: "levelId_invalid" }, { status: 400 });
   }
 
   let levelId: LevelId;

@@ -35,4 +35,26 @@ describe("arenaRunTypeFromUnknown (edges)", () => {
     expect(arenaRunTypeFromUnknown("lab run")).toBeNull();
     expect(arenaRunTypeFromUnknown("mission-mode")).toBeNull();
   });
+
+  /**
+   * S106 TASK8 — **S105** difficulty·event·**S104** copy/interpret 라인과 구분:
+   * BOM trim → canonical, boxed String, ZWSP / fullwidth homoglyphs inside token.
+   */
+  it("S106: BOM prefix normalizes; boxed strings and homoglyph near-misses reject", () => {
+    expect(arenaRunTypeFromUnknown("\uFEFFbeginner")).toBe("beginner");
+    expect(arenaRunTypeFromUnknown("\uFEFF  lab  ")).toBe("lab");
+    expect(arenaRunTypeFromUnknown(Object("mission"))).toBeNull();
+    expect(arenaRunTypeFromUnknown(Object("lab"))).toBeNull();
+    expect(arenaRunTypeFromUnknown("mi\u200bssion")).toBeNull();
+    expect(arenaRunTypeFromUnknown("ｌab")).toBeNull();
+    expect(arenaRunTypeFromUnknown("lab\uFF3C")).toBeNull();
+  });
+
+  /**
+   * S119 C3 TASK8 — **S118** `arenaScenarioIdFromUnknown` Symbol·bigint·**S106** BOM 라인과 구분 (run **type** 축).
+   */
+  it("S119: returns null for Symbol and bigint", () => {
+    expect(arenaRunTypeFromUnknown(Symbol("lab"))).toBeNull();
+    expect(arenaRunTypeFromUnknown(BigInt(1))).toBeNull();
+  });
 });

@@ -155,4 +155,40 @@ describe("arenaScenarioCopyFieldsFromUnknown (edges)", () => {
       }),
     ).toEqual({ stage: "\u200b", caseTag: "\u200b", title: "\u200b" });
   });
+
+  /** S104 TASK8 — boxed String / BOM trim (S103 NBSP·ZWSP 라인과 구분). */
+  it("returns null when any field is a boxed String object", () => {
+    expect(
+      arenaScenarioCopyFieldsFromUnknown({
+        stage: new String("S1"),
+        caseTag: "b",
+        title: "c",
+      }),
+    ).toBeNull();
+    expect(
+      arenaScenarioCopyFieldsFromUnknown({
+        stage: "a",
+        caseTag: new String("b"),
+        title: "c",
+      }),
+    ).toBeNull();
+  });
+
+  it("trims BOM (U+FEFF) from copy fields to valid content", () => {
+    expect(
+      arenaScenarioCopyFieldsFromUnknown({
+        stage: "\uFEFF S1",
+        caseTag: "\uFEFFtag",
+        title: "\uFEFFT",
+      }),
+    ).toEqual({ stage: "S1", caseTag: "tag", title: "T" });
+  });
+
+  /**
+   * S131 C3 TASK8 — **S130** scenario-difficulty·**S104** boxed `String` 라인과 구분 (최상위 비객체).
+   */
+  it("S131: returns null when value is Symbol or bigint", () => {
+    expect(arenaScenarioCopyFieldsFromUnknown(Symbol("copy"))).toBeNull();
+    expect(arenaScenarioCopyFieldsFromUnknown(BigInt(1))).toBeNull();
+  });
 });

@@ -92,6 +92,160 @@ describe("POST /api/arena/event", () => {
     expect((await res.json()).error).toBe("scenarioId_required");
   });
 
+  /** S103 C3 TASK9: optional `previewDescriptionLines` — `arenaScenarioDescriptionLinesFromUnknown` rejects → 400. */
+  it("returns 400 preview_description_lines_invalid when previewDescriptionLines is present but empty array", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const req = new Request("http://localhost/api/arena/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: "r1",
+        scenarioId: "s1",
+        eventType: "CHOICE",
+        previewDescriptionLines: [],
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("preview_description_lines_invalid");
+  });
+
+  /** S105 C3 TASK9: optional `previewDescriptionLines` — `null` element (≠ S103 empty array). */
+  it("returns 400 preview_description_lines_invalid when previewDescriptionLines contains a null element", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const req = new Request("http://localhost/api/arena/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: "r1",
+        scenarioId: "s1",
+        eventType: "CHOICE",
+        previewDescriptionLines: ["ok", null],
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("preview_description_lines_invalid");
+  });
+
+  /** S120 C3 TASK9: optional `previewDescriptionLines` — boolean (≠ S117 number · S112 string) → 400. */
+  it("returns 400 preview_description_lines_invalid when previewDescriptionLines is boolean", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const req = new Request("http://localhost/api/arena/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: "r1",
+        scenarioId: "s1",
+        eventType: "CHOICE",
+        previewDescriptionLines: true,
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("preview_description_lines_invalid");
+  });
+
+  /** S117 C3 TASK9: optional `previewDescriptionLines` — number (≠ S103 [] · S105 null elt · S112 string) → 400. */
+  it("returns 400 preview_description_lines_invalid when previewDescriptionLines is a number", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const req = new Request("http://localhost/api/arena/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: "r1",
+        scenarioId: "s1",
+        eventType: "CHOICE",
+        previewDescriptionLines: 3,
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("preview_description_lines_invalid");
+  });
+
+  /** S112 C3 TASK9: optional `previewDescriptionLines` — JSON string (≠ array) → 400. */
+  it("returns 400 preview_description_lines_invalid when previewDescriptionLines is a string", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const req = new Request("http://localhost/api/arena/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: "r1",
+        scenarioId: "s1",
+        eventType: "CHOICE",
+        previewDescriptionLines: "not-an-array",
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("preview_description_lines_invalid");
+  });
+
+  /** S127 C3 TASK9: optional `previewDescriptionLines` — JSON `null` (키 존재) (≠ S120 boolean) → 400. */
+  it("returns 400 preview_description_lines_invalid when previewDescriptionLines is JSON null", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const req = new Request("http://localhost/api/arena/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: "r1",
+        scenarioId: "s1",
+        eventType: "CHOICE",
+        previewDescriptionLines: null,
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("preview_description_lines_invalid");
+  });
+
+  /** S133 C3 TASK9: optional `previewDescriptionLines` — plain object `{}` (≠ S112 string · S117 number · S127 JSON null) → 400. */
+  it("returns 400 preview_description_lines_invalid when previewDescriptionLines is a plain object", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const req = new Request("http://localhost/api/arena/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: "r1",
+        scenarioId: "s1",
+        eventType: "CHOICE",
+        previewDescriptionLines: {},
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("preview_description_lines_invalid");
+  });
+
   it("returns 400 eventType_required when eventType is whitespace-only", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({
       auth: {

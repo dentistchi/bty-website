@@ -25,7 +25,10 @@ do
   fi
 
   echo "Running build..."
-  if npm run build; then
+  rm -rf .next
+  # Next 15.x can intermittently fail on a cold .next with ENOENT for
+  # pages-manifest.json during "Collecting page data"; a second build usually succeeds.
+  if npm run build || npm run build; then
     echo "Build successful"
     exit 0
   fi

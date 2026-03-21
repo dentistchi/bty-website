@@ -131,4 +131,64 @@ describe("POST /api/arena/membership-request", () => {
     const data = await res.json();
     expect(data.error).toBe("submitted_at_invalid");
   });
+
+  /** S107 C3 TASK9: optional `submitted_at` — non-string (≠ S99 invalid string) → 400. */
+  it("returns 400 submitted_at_invalid when submitted_at is present but not a string", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+    });
+    const req = new Request("http://localhost/api/arena/membership-request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        job_function: "IC",
+        joined_at: "2024-01-01",
+        submitted_at: 1735689600000,
+      }),
+    });
+    const res = await POST(req as Parameters<typeof POST>[0]);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe("submitted_at_invalid");
+  });
+
+  /** S118 C3 TASK9: optional `submitted_at` — boolean (≠ S107 number) → 400. */
+  it("returns 400 submitted_at_invalid when submitted_at is boolean", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+    });
+    const req = new Request("http://localhost/api/arena/membership-request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        job_function: "IC",
+        joined_at: "2024-01-01",
+        submitted_at: true,
+      }),
+    });
+    const res = await POST(req as Parameters<typeof POST>[0]);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe("submitted_at_invalid");
+  });
+
+  /** S125 C3 TASK9: optional `submitted_at` — array (≠ S118 boolean · S107 number) → 400. */
+  it("returns 400 submitted_at_invalid when submitted_at is an array", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+    });
+    const req = new Request("http://localhost/api/arena/membership-request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        job_function: "IC",
+        joined_at: "2024-01-01",
+        submitted_at: ["2026-01-01T00:00:00.000Z"],
+      }),
+    });
+    const res = await POST(req as Parameters<typeof POST>[0]);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe("submitted_at_invalid");
+  });
 });

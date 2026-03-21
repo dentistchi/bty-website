@@ -107,7 +107,10 @@ export {
   arenaCodeNameFromUnknown,
 } from "./arenaCodeNameFromUnknown";
 export type { ArenaLabDifficultyKey } from "./arenaLabDifficultyKeyFromUnknown";
-export { arenaLabDifficultyKeyFromUnknown } from "./arenaLabDifficultyKeyFromUnknown";
+export {
+  arenaLabDifficultyKeyFromUnknown,
+  arenaLabDifficultyKeyStrictFromUnknown,
+} from "./arenaLabDifficultyKeyFromUnknown";
 export {
   ARENA_ISO_DATE_ONLY_LENGTH,
   arenaIsoDateOnlyFromUnknown,

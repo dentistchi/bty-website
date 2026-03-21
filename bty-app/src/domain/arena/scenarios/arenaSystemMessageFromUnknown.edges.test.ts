@@ -33,4 +33,12 @@ describe("arenaSystemMessageFromUnknown (edges)", () => {
   it("preserves internal newlines and tabs", () => {
     expect(arenaSystemMessageFromUnknown("  line1\nline2\tend  ")).toBe("line1\nline2\tend");
   });
+
+  /**
+   * S127 C3 TASK8 — **S126** resolve-outcome·**S91** trim 라인과 구분 (비문자 스칼라).
+   */
+  it("S127: returns null for Symbol and bigint", () => {
+    expect(arenaSystemMessageFromUnknown(Symbol("SYS"))).toBeNull();
+    expect(arenaSystemMessageFromUnknown(BigInt(1))).toBeNull();
+  });
 });

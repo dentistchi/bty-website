@@ -34,4 +34,24 @@ describe("arenaCodeNameFromUnknown (edges)", () => {
     expect(arenaCodeNameFromUnknown("ab c")).toEqual({ ok: false, reason: "ONLY_ALNUM_DASH" });
     expect(arenaCodeNameFromUnknown("ab\tc")).toEqual({ ok: false, reason: "ONLY_ALNUM_DASH" });
   });
+
+  /**
+   * S108 TASK8 — **S107** lifecycle·**S106** runType·**S105** difficulty·event·**TASK9** lab 라인과 구분.
+   */
+  it("S108: BOM trim accepts valid code; boxed strings, ZWSP, fullwidth reject", () => {
+    expect(arenaCodeNameFromUnknown("\uFEFFAb-1")).toEqual({ ok: true, value: "Ab-1" });
+    expect(arenaCodeNameFromUnknown(Object("Xyz-9"))).toEqual({ ok: false, reason: "LENGTH_3_TO_20" });
+    expect(arenaCodeNameFromUnknown(Object("Ab-cd"))).toEqual({ ok: false, reason: "LENGTH_3_TO_20" });
+    expect(arenaCodeNameFromUnknown("Ab\u200b-cd")).toEqual({ ok: false, reason: "ONLY_ALNUM_DASH" });
+    expect(arenaCodeNameFromUnknown("Ａbc-1")).toEqual({ ok: false, reason: "ONLY_ALNUM_DASH" });
+    expect(arenaCodeNameFromUnknown("Code\uFF3C")).toEqual({ ok: false, reason: "ONLY_ALNUM_DASH" });
+  });
+
+  /**
+   * S116 C3 TASK8 — **S115** lab Symbol·**S108** boxed/`String` 라인과 구분: non-string **`Symbol`** / **`bigint`** → **LENGTH_3_TO_20**.
+   */
+  it("S116: rejects Symbol and bigint", () => {
+    expect(arenaCodeNameFromUnknown(Symbol("Ab-1"))).toEqual({ ok: false, reason: "LENGTH_3_TO_20" });
+    expect(arenaCodeNameFromUnknown(BigInt(123))).toEqual({ ok: false, reason: "LENGTH_3_TO_20" });
+  });
 });

@@ -49,4 +49,19 @@ describe("arenaRunIdFromUnknown (edges)", () => {
     const withZwsp = "a\u200bb";
     expect(arenaRunIdFromUnknown(withZwsp)).toBe(withZwsp);
   });
+
+  /** S111 C3 TASK8: BOM trim · BOM-only null · boxed `String` (≠ S93 NBSP/ZWSP 라인). */
+  it("handles BOM padding, BOM-only trim, and boxed string objects", () => {
+    expect(arenaRunIdFromUnknown("\uFEFFrun-1")).toBe("run-1");
+    expect(arenaRunIdFromUnknown("\uFEFF")).toBeNull();
+    expect(arenaRunIdFromUnknown(Object("run-1"))).toBeNull();
+  });
+
+  /**
+   * S129 C3 TASK8 — **S128** activated-stats·**S111** BOM/boxed 라인과 구분 (Symbol·bigint).
+   */
+  it("S129: returns null for Symbol and bigint", () => {
+    expect(arenaRunIdFromUnknown(Symbol("run"))).toBeNull();
+    expect(arenaRunIdFromUnknown(BigInt(1))).toBeNull();
+  });
 });

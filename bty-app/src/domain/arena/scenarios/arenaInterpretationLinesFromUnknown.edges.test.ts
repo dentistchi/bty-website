@@ -45,4 +45,23 @@ describe("arenaInterpretationLinesFromUnknown (edges)", () => {
     const expected = Array.from({ length: ARENA_INTERPRETATION_MAX_LINES }, (_, i) => `L${i}`);
     expect(arenaInterpretationLinesFromUnknown(padded)).toEqual(expected);
   });
+
+  /** S104 TASK12 — `arenaInterpretationLinesFromUnknown` (TASK8·9 copyFields·reflect 라인과 구분). */
+  it("returns null when any element is a boxed String object", () => {
+    expect(arenaInterpretationLinesFromUnknown([new String("a")])).toBeNull();
+    expect(arenaInterpretationLinesFromUnknown(["ok", new String("b")])).toBeNull();
+  });
+
+  it("returns null for sparse arrays (holes yield non-string elements)", () => {
+    expect(arenaInterpretationLinesFromUnknown([, "ok"])).toBeNull();
+    expect(arenaInterpretationLinesFromUnknown([,])).toBeNull();
+  });
+
+  /**
+   * S123 C3 TASK8 — **S122** iso-timestamp·**S104** boxed `String`·sparse 라인과 구분 (최상위 비배열).
+   */
+  it("S123: returns null when value is Symbol or bigint", () => {
+    expect(arenaInterpretationLinesFromUnknown(Symbol("arr"))).toBeNull();
+    expect(arenaInterpretationLinesFromUnknown(BigInt(1))).toBeNull();
+  });
 });

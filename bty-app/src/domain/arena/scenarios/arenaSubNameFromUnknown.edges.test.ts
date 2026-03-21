@@ -50,4 +50,12 @@ describe("arenaSubNameFromUnknown (edges)", () => {
     expect(arenaSubNameFromUnknown("xxxxxx@")).toEqual({ ok: false, reason: "INVALID_CHARS" });
     expect(arenaSubNameFromUnknown("xxxxxxx@")).toEqual({ ok: false, reason: "MAX_7_CHARS" });
   });
+
+  /**
+   * S124 C3 TASK8 — **S123** `arenaInterpretationLinesFromUnknown`·**S86** 숫자 `EMPTY` 라인과 구분 (비문자 스칼라).
+   */
+  it("S124: returns EMPTY for Symbol and bigint", () => {
+    expect(arenaSubNameFromUnknown(Symbol("sub"))).toEqual({ ok: false, reason: "EMPTY" });
+    expect(arenaSubNameFromUnknown(BigInt(1))).toEqual({ ok: false, reason: "EMPTY" });
+  });
 });

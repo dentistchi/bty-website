@@ -34,4 +34,26 @@ describe("arenaScenarioDifficultyFromUnknown (edges)", () => {
     expect(arenaScenarioDifficultyFromUnknown("superhigh")).toBeNull();
     expect(arenaScenarioDifficultyFromUnknown("moderately")).toBeNull();
   });
+
+  /**
+   * S105 TASK8 — **S104** copy-fields·interpretation-lines·**TASK9** reflect 라인과 다른 축:
+   * BOM trim → canonical, boxed String, ZWSP / fullwidth homoglyphs.
+   */
+  it("S105: BOM-prefixed tokens normalize; boxed strings and homoglyphs reject", () => {
+    expect(arenaScenarioDifficultyFromUnknown("\uFEFFhigh")).toBe("High");
+    expect(arenaScenarioDifficultyFromUnknown("\uFEFF  moderate  ")).toBe("Moderate");
+    expect(arenaScenarioDifficultyFromUnknown(Object("low"))).toBeNull();
+    expect(arenaScenarioDifficultyFromUnknown(Object("High"))).toBeNull();
+    expect(arenaScenarioDifficultyFromUnknown("lo\u200bw")).toBeNull();
+    expect(arenaScenarioDifficultyFromUnknown("Ｈigh")).toBeNull();
+    expect(arenaScenarioDifficultyFromUnknown("Hｉgh")).toBeNull();
+  });
+
+  /**
+   * S130 C3 TASK8 — **S129** run-id·**S105** BOM/boxed 라인과 구분 (비문자 스칼라).
+   */
+  it("S130: returns null for Symbol and bigint", () => {
+    expect(arenaScenarioDifficultyFromUnknown(Symbol("Low"))).toBeNull();
+    expect(arenaScenarioDifficultyFromUnknown(BigInt(1))).toBeNull();
+  });
 });

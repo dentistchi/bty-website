@@ -1,5 +1,5 @@
 /**
- * POST /api/arena/sub-name — 401·400·404 (서브네임 변경; S93 TASK9 INVALID_JSON·도메인 경계).
+ * POST /api/arena/sub-name — 401·400·404 (서브네임 변경; S102 optional `scenarioOutcomes`·S93 INVALID_JSON·도메인 경계).
  */
 import { NextRequest } from "next/server";
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -61,6 +61,116 @@ describe("POST /api/arena/sub-name", () => {
     const data = await res.json();
     expect(data.error).toBe("INVALID_SUB_NAME");
     expect(data.reason).toBe("MAX_7_CHARS");
+  });
+
+  /** S102 C3 TASK9: optional `scenarioOutcomes` — `arenaScenarioOutcomesFromUnknown` rejects → 400. */
+  it("returns 400 scenario_outcomes_invalid when scenarioOutcomes is present but empty", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: { from: vi.fn() },
+      base: {},
+    });
+    const res = await POST(makePostRequest({ subName: "Valid", scenarioOutcomes: {} }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("scenario_outcomes_invalid");
+  });
+
+  /** S106 C3 TASK9: optional `scenarioOutcomes` — array (≠ S102 plain empty object) → 400. */
+  it("returns 400 scenario_outcomes_invalid when scenarioOutcomes is an array", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: { from: vi.fn() },
+      base: {},
+    });
+    const res = await POST(makePostRequest({ subName: "Valid", scenarioOutcomes: [] }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("scenario_outcomes_invalid");
+  });
+
+  /** S111 C3 TASK9: optional `scenarioOutcomes` — string (≠ object/array) → 400. */
+  it("returns 400 scenario_outcomes_invalid when scenarioOutcomes is a string", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: { from: vi.fn() },
+      base: {},
+    });
+    const res = await POST(
+      makePostRequest({ subName: "Valid", scenarioOutcomes: "not-an-object" }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("scenario_outcomes_invalid");
+  });
+
+  /** S131 C3 TASK9: optional `scenarioOutcomes` — empty string (≠ S111 non-empty string) → 400. */
+  it("returns 400 scenario_outcomes_invalid when scenarioOutcomes is an empty string", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: { from: vi.fn() },
+      base: {},
+    });
+    const res = await POST(
+      makePostRequest({ subName: "Valid", scenarioOutcomes: "" }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("scenario_outcomes_invalid");
+  });
+
+  /** S115 C3 TASK9: optional `scenarioOutcomes` — number (≠ S111 string·S106 array·S102 object) → 400. */
+  it("returns 400 scenario_outcomes_invalid when scenarioOutcomes is a number", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: { from: vi.fn() },
+      base: {},
+    });
+    const res = await POST(
+      makePostRequest({ subName: "Valid", scenarioOutcomes: 42 }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("scenario_outcomes_invalid");
+  });
+
+  /** S122 C3 TASK9: optional `scenarioOutcomes` — JSON `null` (키 존재, ≠ S115 number) → 400. */
+  it("returns 400 scenario_outcomes_invalid when scenarioOutcomes is JSON null", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: { from: vi.fn() },
+      base: {},
+    });
+    const res = await POST(
+      makePostRequest({ subName: "Valid", scenarioOutcomes: null }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("scenario_outcomes_invalid");
+  });
+
+  /** S126 C3 TASK9: optional `scenarioOutcomes` — boolean (≠ S122 null · S115 number) → 400. */
+  it("returns 400 scenario_outcomes_invalid when scenarioOutcomes is boolean", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: { from: vi.fn() },
+      base: {},
+    });
+    const res = await POST(
+      makePostRequest({ subName: "Valid", scenarioOutcomes: true }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("scenario_outcomes_invalid");
+  });
+
+  /**
+   * S135 C3 TASK9: optional `scenarioOutcomes` — 유효 키 하나 + **빈 outcome 객체** (≠ **S102** 바깥 `{}` · **S134** free-response) → 400.
+   */
+  it("returns 400 scenario_outcomes_invalid when scenarioOutcomes has a valid key but empty outcome object", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: { from: vi.fn() },
+      base: {},
+    });
+    const res = await POST(
+      makePostRequest({ subName: "Valid", scenarioOutcomes: { A_X: {} } }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("scenario_outcomes_invalid");
   });
 
   /** S86 C3 TASK9: disallowed characters → INVALID_CHARS. */

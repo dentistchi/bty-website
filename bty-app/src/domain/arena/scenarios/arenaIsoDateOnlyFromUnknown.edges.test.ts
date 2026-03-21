@@ -31,4 +31,19 @@ describe("arenaIsoDateOnlyFromUnknown (edges)", () => {
     expect(arenaIsoDateOnlyFromUnknown("2024-02-29")).toBe("2024-02-29");
     expect(arenaIsoDateOnlyFromUnknown("2023-02-29")).toBeNull();
   });
+
+  /** S114 C3 TASK8: number / boxed `String` / array (≠ S98 NBSP·윤년 · S108 route boolean). */
+  it("returns null for JSON number, boxed string object, or array", () => {
+    expect(arenaIsoDateOnlyFromUnknown(20240615)).toBeNull();
+    expect(arenaIsoDateOnlyFromUnknown(Object("2024-06-15"))).toBeNull();
+    expect(arenaIsoDateOnlyFromUnknown(["2024-06-15"])).toBeNull();
+  });
+
+  /**
+   * S121 C3 TASK8 — **S120** lifecycle Symbol·bigint·**S114** number·array 라인과 구분 (ISO **date-only** 축).
+   */
+  it("S121: returns null for Symbol and bigint", () => {
+    expect(arenaIsoDateOnlyFromUnknown(Symbol("2024-06-15"))).toBeNull();
+    expect(arenaIsoDateOnlyFromUnknown(BigInt(20240615))).toBeNull();
+  });
 });

@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
-import { arenaRunIdFromUnknown, arenaScenarioIdFromUnknown } from "@/domain/arena/scenarios";
+import {
+  arenaRunIdFromUnknown,
+  arenaScenarioDescriptionLinesFromUnknown,
+  arenaScenarioIdFromUnknown,
+} from "@/domain/arena/scenarios";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 
 /**
  * POST /api/arena/event
- * - **400:** `runId_required` | `scenarioId_required` | `eventType_required` — domain **`arenaRunIdFromUnknown`** / **`arenaScenarioIdFromUnknown`** · `eventType` 비문자·trim 후 빈 문자열.
+ * - **400:** `runId_required` | `scenarioId_required` | `eventType_required` | `preview_description_lines_invalid` — domain **`arenaRunIdFromUnknown`** / **`arenaScenarioIdFromUnknown`** · optional **`previewDescriptionLines`** → **`arenaScenarioDescriptionLinesFromUnknown`** (배열 아님·`{}`·`null` 등) · `eventType` 비문자·trim 후 빈 문자열.
  */
 export async function POST(req: Request) {
   const supabase = await getSupabaseServerClient();
@@ -13,7 +17,14 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
 
-  const body = await req.json().catch(() => ({}));
+  const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+
+  if ("previewDescriptionLines" in body) {
+    if (arenaScenarioDescriptionLinesFromUnknown(body.previewDescriptionLines) === null) {
+      return NextResponse.json({ error: "preview_description_lines_invalid" }, { status: 400 });
+    }
+  }
+
   const runId = arenaRunIdFromUnknown(body?.runId);
   const scenarioId = arenaScenarioIdFromUnknown(body?.scenarioId);
   const step = Number(body?.step ?? 1);

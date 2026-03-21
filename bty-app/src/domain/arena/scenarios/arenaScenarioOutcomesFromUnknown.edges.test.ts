@@ -1,3 +1,6 @@
+/**
+ * arenaScenarioOutcomesFromUnknown — **S102** edges는 **S101** lab·**S100** full-scenario 라인과 중복하지 않음.
+ */
 import { describe, it, expect } from "vitest";
 import {
   ARENA_SCENARIO_OUTCOMES_MAX_KEYS,
@@ -68,5 +71,20 @@ describe("arenaScenarioOutcomesFromUnknown (edges)", () => {
     const parsed = arenaScenarioOutcomesFromUnknown(raw);
     expect(parsed).not.toBeNull();
     expect(Object.keys(parsed!)).toHaveLength(6);
+  });
+
+  /** S102 TASK8: `Date` is `object` but enumerable keys are empty → `null` (≠ array/null). */
+  it("returns null when container is a Date instance", () => {
+    expect(arenaScenarioOutcomesFromUnknown(new Date("2026-01-01T00:00:00.000Z"))).toBeNull();
+  });
+
+  /** S102 TASK8: outcome entry value `null` fails `arenaResolveOutcomeFromUnknown`. */
+  it("returns null when a key maps to null", () => {
+    expect(
+      arenaScenarioOutcomesFromUnknown({
+        A_X: minimalOutcome,
+        B_Y: null,
+      }),
+    ).toBeNull();
   });
 });

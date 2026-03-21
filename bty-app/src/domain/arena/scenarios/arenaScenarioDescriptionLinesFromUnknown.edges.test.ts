@@ -1,3 +1,6 @@
+/**
+ * arenaScenarioDescriptionLinesFromUnknown — **S103** edges는 **S102** outcomes·**S101** lab 라인과 중복하지 않음.
+ */
 import { describe, it, expect } from "vitest";
 import {
   ARENA_SCENARIO_DESCRIPTION_LINE_MAX_LENGTH,
@@ -50,5 +53,36 @@ describe("arenaScenarioDescriptionLinesFromUnknown (edges)", () => {
 
   it("returns null when a middle array element trims to empty", () => {
     expect(arenaScenarioDescriptionLinesFromUnknown(["ok", "\n\t  ", "tail"])).toBeNull();
+  });
+
+  /** S103 TASK8: explicit `null` element (JSON `[, "a"]` is not valid JSON; domain still rejects `null`). */
+  it("returns null when an array element is null", () => {
+    expect(arenaScenarioDescriptionLinesFromUnknown([null, "a"] as unknown)).toBeNull();
+  });
+
+  /** S103 TASK8: sparse array — first slot is `undefined` (≠ S100 `description` string). */
+  it("returns null when the array has a hole before a valid line", () => {
+    const sparse: unknown[] = [];
+    sparse[1] = "only";
+    expect(arenaScenarioDescriptionLinesFromUnknown(sparse)).toBeNull();
+  });
+
+  /** S112 C3 TASK8: top-level JSON must be string[] — string/number (≠ S103 null element·sparse). */
+  it("returns null when value is a string or number instead of an array", () => {
+    expect(arenaScenarioDescriptionLinesFromUnknown("not-array")).toBeNull();
+    expect(arenaScenarioDescriptionLinesFromUnknown(42)).toBeNull();
+  });
+
+  /**
+   * S125 C3 TASK8 — **S124** sub-name·**S112** string/number·**S123** interpretation 라인과 구분 (비배열 스칼라).
+   */
+  it("S125: returns null when value is Symbol or bigint", () => {
+    expect(arenaScenarioDescriptionLinesFromUnknown(Symbol("desc"))).toBeNull();
+    expect(arenaScenarioDescriptionLinesFromUnknown(BigInt(1))).toBeNull();
+  });
+
+  /** S132 C3 TASK8 — **S125** Symbol·bigint·**S112** string/number와 구분 (비배열 객체 스칼라). */
+  it("S132: returns null when value is a Date instance", () => {
+    expect(arenaScenarioDescriptionLinesFromUnknown(new Date("2025-01-01"))).toBeNull();
   });
 });

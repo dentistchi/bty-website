@@ -13,3 +13,12 @@ export function arenaLabDifficultyKeyFromUnknown(raw: unknown): ArenaLabDifficul
   }
   return "mid";
 }
+
+/**
+ * Strict parse for optional API fields — unknown·비허용 문자열·trim 불일치 → **`null`** (lenient **`arenaLabDifficultyKeyFromUnknown`** 는 **`mid`**).
+ */
+export function arenaLabDifficultyKeyStrictFromUnknown(raw: unknown): ArenaLabDifficultyKey | null {
+  if (typeof raw !== "string") return null;
+  if ((KEYS as readonly string[]).includes(raw)) return raw as ArenaLabDifficultyKey;
+  return null;
+}
