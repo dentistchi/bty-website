@@ -4,6 +4,30 @@
 
 ---
 
+## 배포 시 할 일 (산출물에 넣을 파일)
+
+1. **`public/avatars/characters/`**  
+   - 코드의 캐릭터 `id`와 **동일한 파일명**의 PNG (예: `hero_01.png`, `healer_07.png`, …).  
+   - 기준: [`AVATAR_CHARACTERS`](../src/lib/bty/arena/avatarCharacters.ts)의 `id`와 1:1.
+
+2. **`public/avatars/outfits/`**  
+   - [`OUTFIT_ID_TO_FILENAME`](../src/lib/bty/arena/avatarOutfits.ts) 및 [`public/avatars/outfits/README.md`](../public/avatars/outfits/README.md) 목록과 동일한 이름 (예: `outfit_scrub_general.png`, `outfit_figs_scrub_short.png`).
+
+3. **`public/avatars/accessories/`**  
+   - 경로: `/avatars/accessories/{id}.svg` — **치과(dental)** 는 기본 `.svg`.  
+   - **게임(game)** 악세사리는 코드상 `.png` 요청 가능 (`getAccessoryImageUrl`).  
+   - Network에서 404면 해당 경로에 SVG(또는 game용은 PNG)를 추가한다.  
+   - 치과 장비 PNG만 있고 이름이 다르면, 파일명을 `explorer.svg` 등 **코드 id 규칙**에 맞추거나 에셋을 다시 내보낸다.
+
+4. **체형(`bodyType`) 사용 시**  
+   - [`getOutfitImageUrlForBodyType`](../src/lib/bty/arena/avatarOutfits.ts) 때문에 `outfit_figs_scrub_short_A.png` 같이 **확장자 앞에 `_${bodyType}`** 접미사 파일이 요청될 수 있다.  
+   - 없으면 해당 레이어만 404일 수 있다. 당분간 체형별 에셋이 없으면 캐릭터에서 `bodyType` 생략 등도 검토.
+
+5. **재배포 후**  
+   - 같은 화면에서 DevTools Network로 `healer_07.png`, `outfit_figs_scrub_short.png` 등 요청이 **코드와 일치하는지** 보고 **200**인지 확인한다.
+
+---
+
 ## 1. 브라우저 (프로덕션)
 
 1. 아바타 설정 또는 리더보드 페이지를 연다.
@@ -13,8 +37,9 @@
 
 **파일명 단일 기준**
 
-- 캐릭터: [`avatarCharacters.ts`](../src/lib/bty/arena/avatarCharacters.ts) `CHARACTER_ID_TO_FILENAME`
-- 옷: [`avatarOutfits.ts`](../src/lib/bty/arena/avatarOutfits.ts) `OUTFIT_ID_TO_FILENAME` 및 `getOutfitFilename`
+- 캐릭터: `public/avatars/characters/{characterId}.png` — id는 [`AVATAR_CHARACTERS`](../src/lib/bty/arena/avatarCharacters.ts)와 동일 (예: `healer_07.png`).
+- 옷: [`OUTFIT_ID_TO_FILENAME`](../src/lib/bty/arena/avatarOutfits.ts) — Professional은 `outfit_{outfitId}.png` (예: `outfit_figs_scrub_short.png`).
+- 악세사리(dental): [`getAccessoryImageUrl`](../src/lib/bty/arena/avatarOutfits.ts) → `/avatars/accessories/{id}.svg` (game은 `.png`).
 
 ---
 

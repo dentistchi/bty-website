@@ -3,7 +3,7 @@
  * id는 arena_profiles.avatar_character_id에 저장됨.
  *
  * 총 13종: 일반 선택 12명 + 13번째 Legend. Legend 해금 = 진행 레벨 700(내부 tier 699 이상), Core XP 숫자와 다름.
- * 캐릭터 PNG: public/avatars/characters/ + CHARACTER_ID_TO_FILENAME 매핑.
+ * 캐릭터 PNG: public/avatars/characters/{characterId}.png
  * 악세사리: public/avatars/accessories/ (getAccessoryImageUrl, avatar-assets.json).
  * §4.2 체형: bodyType A/B/C/D (옷 URL 해석은 추후, 에셋 없어도 됨).
  */
@@ -27,28 +27,13 @@ export type AvatarCharacter = {
 
 const AVATAR_CHARACTERS_DIR = "/avatars/characters";
 
-/** characterId → 실제 파일명 (public/avatars/characters/). URL 인코딩 후 사용. */
-const CHARACTER_ID_TO_FILENAME: Record<string, string> = {
-  guardian_04: "1️⃣ Guardian (Korean Male).png",
-  hero_01: "1️⃣1️⃣ Mentor (Korean Male).png",
-  character_11: "1️⃣2️⃣ Radiologist (Mexican Female).png",
-  mage_02: "2️⃣ Architect (White Male).png.png",
-  healer_07: "3️⃣ Healer (Korean Female).png.png",
-  heroine_06: "4️⃣ Innovator (Korean Female).png",
-  pilot_05: "5️⃣ Technologist (Filipino Male).png.png",
-  scout_03: "6️⃣ Scout (Filipino Female).png",
-  character_12: "7️⃣ Assistant (Filipino Female).png",
-  sorceress_09: "8️⃣ Artisan (Mexican Female).png",
-  ranger_08: "9️⃣ Hygienist (White Female).png",
-  captain_10: "🔟 Alchemist (Black Female).png",
-  legend_13: "13 legend.png",
-};
-
+/**
+ * Canonical PNG name: `{characterId}.png` under `public/avatars/characters/`.
+ * (이전 이모지 파일명은 배포·Network와 어긋나 404가 났음 — README·verify 스크립트와 동일 규칙으로 통일.)
+ */
 function getCharacterImageUrl(id: string): string {
-  const file = CHARACTER_ID_TO_FILENAME[id];
-  return file
-    ? `${AVATAR_CHARACTERS_DIR}/${encodeURIComponent(file)}`
-    : `${AVATAR_CHARACTERS_DIR}/${id}.png`;
+  const file = `${id}.png`;
+  return `${AVATAR_CHARACTERS_DIR}/${encodeURIComponent(file)}`;
 }
 
 /** 캐릭터 12명 + Legend(숨김, 진행 레벨 700 = tier 699 해금). 라벨·이미지는 실제 에셋명 반영. */

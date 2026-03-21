@@ -29,7 +29,7 @@ export default async function Page({ params }: Props) {
           <p className="text-base font-medium text-bty-text">{t.wireframeSystemReady}</p>
         </div>
 
-        <div className="space-y-3">
+        <section className="space-y-3" role="region" aria-label={t.wireframeCtaRegionAria}>
           <SecondaryButton href={arenaPlay}>
             <span className="block font-semibold text-bty-text">{t.wireframeContinue}</span>
             <span className="mt-1 block text-xs font-normal text-bty-secondary">
@@ -45,7 +45,7 @@ export default async function Page({ params }: Props) {
             <span className="block">{t.wireframePlayGame}</span>
             <span className="mt-1 block text-xs font-normal text-white/75">{t.wireframeStartScenario}</span>
           </PrimaryButton>
-        </div>
+        </section>
 
         <nav
           className="flex flex-wrap gap-2 border-b border-bty-border pb-4"
@@ -112,7 +112,7 @@ export default async function Page({ params }: Props) {
           </Link>
         </p>
       </CardScreenShell>
-      <BottomNav locale={locale} />
+      <BottomNav locale={locale} aria-label={t.wireframeBottomNavAria} />
     </main>
   );
 }

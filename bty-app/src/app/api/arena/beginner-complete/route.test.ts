@@ -91,6 +91,30 @@ describe("POST /api/arena/beginner-complete", () => {
     expect((await res.json()).error).toBe("runId_required");
   });
 
+  /**
+   * S151 C3 TASK9: `runId` **bigint** (≠ **S150** `beginner-event` `step`); `arenaRunIdFromUnknown` rejects bigint.
+   * JSON 본문은 bigint를 담지 못해 `req.json()` 스텁.
+   */
+  it("returns 400 runId_required when runId is bigint", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const req = new Request("http://localhost/api/arena/beginner-complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    vi.spyOn(req, "json").mockResolvedValue({
+      runId: BigInt(1),
+      scenarioId: "x",
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("runId_required");
+  });
+
   it("returns 400 scenarioId_required when scenarioId is whitespace-only", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({
       auth: {

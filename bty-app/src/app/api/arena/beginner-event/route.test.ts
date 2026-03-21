@@ -58,4 +58,23 @@ describe("POST /api/arena/beginner-event", () => {
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("runId and step 2-5 required");
   });
+
+  /**
+   * S150 C3 TASK9: `step` **bigint** (≠ **S149** `beginner-run` `scenarioId`).
+   * JSON은 bigint를 담지 못해 `req.json()` 스텁; `Number(BigInt(6))===6` → `isValidBeginnerEventStep` false.
+   */
+  it("returns 400 runId and step 2-5 required when step is bigint", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+    });
+    const req = new Request("http://localhost/api/arena/beginner-event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    vi.spyOn(req, "json").mockResolvedValue({ runId: "r1", step: BigInt(6) });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("runId and step 2-5 required");
+  });
 });

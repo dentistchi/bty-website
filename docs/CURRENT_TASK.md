@@ -1,6 +1,32 @@
 # 현재 작업 (CURRENT_TASK)
 
-**[C6] SPRINT 149 TASK10 / 355 (VERIFY):** [x] `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` **346/2550** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **완료. 2026-03-21 C6.**
+**[C1] SPRINT 151 TASK3 / 357 (DOCS):** [x] 223·224차 — `SPRINT_LOG`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`SPRINT_PLAN`·`CURRENT_TASK`·`BTY_RELEASE_GATE_CHECK` E)·`ELITE_3RD` · `bty-app/docs/AI_TASK_BOARD` **S151** 동기 · carry **`346/2553`** · 보드 **TASK3 [x]** · **완료. 2026-03-21 C1.**
+
+**[C5] SPRINT 151 TASK6 / 357 (VERIFY):** [x] `ELITE_3RD` §3 · Gate **151**(TASK1) 동기 · **`self-healing-ci` 346/2553** ✓ · q237 **3/7** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK6 [x]** · **완료. 2026-03-21 C5.**
+
+**[C5] SPRINT 151 TASK1 / 357 (VERIFY):** [x] Gate **151** A~F **PASS** · **`346/2553`** ✓ · `self-healing-ci` · `test:q237-smoke` **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]** · **First** C1 **TASK3** → **TASK5** · **2026-03-21 C5.**
+
+**[C6] SPRINT 151 TASK10 / 357 (VERIFY):** [x] `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` **346/2553** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **완료. 2026-03-21 C6.**
+
+**[C4] 아바타 에셋 URL·배포 정합 2026-03-21:** [x] 캐릭터 PNG `{characterId}.png`, Professional 옷 `outfit_{outfitId}.png`로 통일(Network·README·코드 불일치 해소). `public/avatars/*/README.md`·`bty-app/docs/AVATAR_DEPLOY_VERIFY.md` 갱신.
+
+**[C3] SPRINT 151 TASK8·9 / 357:** [x] **`arenaScenarioIdFromUnknown`** JSDoc·S151 Symbol/bigint edges · **`POST /api/arena/beginner-complete`** **`runId: BigInt(1)`** → **400** `runId_required` (`req.json` 스텁) · Vitest **15 tests** ✓ · 보드 **TASK8·9 [x]** · **완료. 2026-03-21 C3.**
+
+**[C4] SPRINT 151 TASK4 / 357 (UI):** [x] **`/[locale]/bty-arena/wireframe`** · **`wireframeLandmarkAria`** 스텁 문구 · **`wireframeCtaRegionAria`** · **`wireframeBottomNavAria`** · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-21 C4.**
+
+**[C1] SPRINT 151 / 357 (`PARALLEL_QUEUE_REFILL` §3 · REFRESH 2026-03-21):** [x] S150 **`exit 2`** (**C3·C4·C5·C6** 기아 — **C1** 잔여 **TASK3·5·7 `[ ]`**) → **S151** · NEXT·BACKLOG·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_PLAN` **357** 동기 · **C1 TASK2·3** **`[x]`** · **C5** Gate **151** **`[x]`** · carry **`346/2553`** · **First** C1 **TASK5** · **S150** 잔여 **C1 TASK5·7** 흡수.
+
+**[C5] SPRINT 150 TASK6 / 356 (VERIFY):** [x] `ELITE_3RD` §3 · Gate **150**(TASK1) 동기 · **`self-healing-ci` 346/2552** ✓ · q237 **3/7** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK6 [x]** · **완료. 2026-03-21 C5.**
+
+**[C5] SPRINT 150 TASK1 / 356 (VERIFY):** [x] Gate **150** A~F **PASS** · **`346/2552`** ✓ · `self-healing-ci` · `test:q237-smoke` **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]** · **First** C1 **TASK3** · **2026-03-21 C5.**
+
+**[C6] SPRINT 150 TASK10 / 356 (VERIFY):** [x] `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` **346/2552** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **완료. 2026-03-21 C6.**
+
+**[C1] SPRINT 150 / 356 (`PARALLEL_QUEUE_REFILL` §3 · REFRESH 2026-03-21):** [x] S149 **`exit 2`** (**C3·C4·C6** 기아 — **C1·C5** 잔여 **`[ ]`**) → **S150** · NEXT·BACKLOG·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_PLAN` **356** 동기 · **C1 TASK2** **`[x]`** · **C5** TASK1·6 **`[x]`** · **First** C1 **TASK3** (223·224차 선택) · carry **`346/2552`** · **S149** 잔여 **C1 TASK5·7** 흡수.
+
+**[C3] SPRINT 150 TASK8·9 / 356:** [x] **`arenaIsoDateOnlyFromUnknown`** JSDoc·S150 Symbol/bigint edges · **`POST /api/arena/beginner-event`** **`step: BigInt(6)`** → **400** `runId and step 2-5 required` (`req.json` 스텁) · Vitest ✓ · 보드 **TASK8·9 [x]** · **완료. 2026-03-21 C3.**
+
+**[C4] SPRINT 150 TASK4 / 356 (UI):** [x] **`/[locale]/bty-arena/hub`** · **`ArenaHubEntryCard`** (`role="status"`·`aria-live` 로딩 · `role="region"`·`aria-labelledby`) · **`ArenaHubSummary`** **`aria-live="polite"`** · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-21 C4.**
 
 **[C1] SPRINT 149 TASK3 / 355 (DOCS):** [x] 221·222차 (레거시 `SPRINT_LOG` REFRESH)·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_PLAN`·`BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` · `CURRENT_TASK` **S143** 스테일 줄 **`[x]`** · 보드 **TASK3 [x]** · **완료. 2026-03-21 C1.**
 

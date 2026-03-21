@@ -23,7 +23,10 @@ export function ArenaHubEntryCard({ locale }: { locale: string }) {
       <div
         data-testid="arena-hub-card"
         className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm"
-        aria-busy="true"
+        role="status"
+        aria-live="polite"
+        aria-busy={true}
+        aria-label={t.arenaHubEntryLoading}
       >
         <p className="text-sm text-[#667085]">{t.arenaHubEntryLoading}</p>
         <div className="mt-5 h-10 w-full animate-pulse rounded-2xl bg-[#F0EBE3]" />
@@ -47,8 +50,12 @@ export function ArenaHubEntryCard({ locale }: { locale: string }) {
     <div
       data-testid="arena-hub-card"
       className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm"
+      role="region"
+      aria-labelledby="arena-hub-entry-title"
     >
-      <p className="text-sm font-medium text-[#1E2A38]">{title}</p>
+      <p id="arena-hub-entry-title" className="text-sm font-medium text-[#1E2A38]">
+        {title}
+      </p>
       <p className="mt-2 text-sm leading-6 text-[#667085]">{body}</p>
 
       <div className="mt-5 flex flex-col gap-3">

@@ -1,13 +1,18 @@
 # Outfit images (§1·§3)
 
-옷 이미지는 이 폴더에 `outfit_{outfitId}.png` 형식으로 두면 됩니다.
+옷 이미지는 이 폴더에 `outfit_{outfitId}.png` 형식으로 둡니다 (**코드와 동일**).
 
-- **URL 규칙**: `/avatars/outfits/outfit_{outfitId}.png`
-- **데이터 출처**: `src/lib/bty/arena/avatarOutfits.ts` (PROFESSIONAL_LEVEL_MAP, FANTASY_LEVEL_MAP)
+- **URL 규칙**: `/avatars/outfits/outfit_{outfitId}.png` — Professional 7종은 `OUTFIT_ID_TO_FILENAME`과 일치 (예: `outfit_figs_scrub_short.png`).
+- **데이터 출처**: `src/lib/bty/arena/avatarOutfits.ts` (`OUTFIT_ID_TO_FILENAME`, PROFESSIONAL_LEVEL_MAP, FANTASY_LEVEL_MAP)
 - **Preview/썸네일**: `avatarAssets.outfitAssetMap` → `resolveAvatarUrls({ outfitKey })` → `OutfitCard` / `AvatarComposite`에 `outfitUrl` 전달
 
-**현재**: PNG 파일 없음. 아래 목록대로 자산 추가 필요 (C5/디자인).  
-체형 타입(3종) 도입 시: `outfit_{id}_A.png` / `_B.png` / `_C.png` 또는 서브폴더 `typeA/` 등으로 타입별 파일 둘 수 있음. 설계는 `docs/BTY_ARENA_FEEDBACK_2026-03.md` §1 참고.
+**현재**: PNG 파일 없음. 아래 목록대로 자산 추가 필요 (C5/디자인).
+
+**체형(`bodyType` A/B/C/D)**: [`getOutfitImageUrlForBodyType`](../../../src/lib/bty/arena/avatarOutfits.ts)는 기본 파일명 `outfit_figs_scrub_short.png`에 대해  
+`outfit_figs_scrub_short_A.png` … `_D.png` 형태로 **확장자 앞에 접미사**를 붙여 요청한다.  
+해당 파일이 없으면 그 레이어만 404 → `AvatarComposite`에서 숨김. 배포 시 체형별 PNG를 넣거나, 당분간 `bodyType` 미사용을 검토.
+
+설계 참고: `docs/BTY_ARENA_FEEDBACK_2026-03.md` §1.
 
 ## Professional (치과) — 추가 필요
 

@@ -20,6 +20,20 @@ Summary of gate/integration runs (C7). Major sprint state changes. C1 REFRESH re
 
 ## 2026-03-21
 
+- **C1 SPRINT 151 TASK3 / 357 (DOCS):** 223·224차 — `SPRINT_LOG`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`SPRINT_PLAN`·`CURRENT_TASK`·`BTY_RELEASE_GATE_CHECK` E)·`ELITE_3RD` · `bty-app/docs/AI_TASK_BOARD` **S151** 동기 · carry **`346/2553`** · 보드 **TASK3 [x]** · **2026-03-21 C1 CONTINUE.**
+
+- **C6 SPRINT 151 TASK10 / 357 (VERIFY):** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` **346/2553** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD`·`CURRENT_TASK` 동기 · **2026-03-21 C6 CONTINUE.**
+
+- **병렬 큐 보충 (`PARALLEL_QUEUE_REFILL.md` §3):** `check-parallel-task-queue.sh` **exit 2** (S150 **C3·C4·C5·C6** 기아 — **C1** 잔여 **`[ ]`**) → **SPRINT 151** 오픈 · `SPRINT_PLAN` **357** · 보드 TASK **1~10** 전부 **`[ ]`** · S150 아카이브 · **First Task** C5 **TASK1 (Gate 151)** · carry **`346/2552`** · `NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`CURRENT_TASK` 동기 · **C1 TASK2** **`[x]`** · **MODE ARENA** · **REFRESH 2026-03-21 C1.**
+
+- **GATE (C7):** `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (**346 files** / **2552 tests**), Build PASS. Overall PASS. Owner to fix: —. *(S356 / S150 · C7 GATE · carry **346/2552** · Gate **150**)*
+
+- **C5 SPRINT 150 TASK1·6 / 356 (VERIFY):** Gate **150** A~F **PASS** · **`346/2552`** ✓ · `self-healing-ci` · `test:q237-smoke` **3/7** ✓ · `ELITE_3RD` §3 · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1·6 [x]** · **2026-03-21 C5.**
+
+- **병렬 큐 보충 (`PARALLEL_QUEUE_REFILL.md` §3):** `check-parallel-task-queue.sh` **exit 2** (S149 **C3·C4·C6** 기아 — **C1·C5** 잔여 **`[ ]`**) → **SPRINT 150** 오픈 · `SPRINT_PLAN` **356** · 보드 TASK **1~10** 전부 **`[ ]`** · S149 아카이브 · **First Task** C5 **TASK1 (Gate 150)** · carry **`346/2550`** · `NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`CURRENT_TASK` 동기 · **C1 TASK2** **`[x]`** · **MODE ARENA** · **REFRESH 2026-03-21 C1.**
+
+- **C6 SPRINT 150 TASK10 / 356 (VERIFY):** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` **346/2552** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD`·`CURRENT_TASK` 동기 · **2026-03-21 C6 CONTINUE.**
+
 - **GATE (C7):** `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (**346 files** / **2551 tests**), Build PASS. Overall PASS. Owner to fix: —. *(S355 / S149 · C7 GATE · carry **346/2551** · Gate **149**)*
 
 - **C6 SPRINT 149 TASK10 / 355 (VERIFY):** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` **346/2550** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · `SPRINT_PLAN`·`CURSOR_TASK_BOARD`·`CURRENT_TASK` 동기 · **2026-03-21 C6 CONTINUE.**

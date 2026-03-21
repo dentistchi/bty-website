@@ -904,6 +904,10 @@ export type Messages = {
     growthFoundryLink: string;
     growthOptionsRegionAria: string;
     wireframeLandmarkAria: string;
+    /** Continue / Play primary actions — distinct from hub·beginner main labels */
+    wireframeCtaRegionAria: string;
+    /** Fixed BTY tab bar on wireframe screen — distinct from in-page nav regions */
+    wireframeBottomNavAria: string;
     weeklySnapshotRegionAria: string;
     wireframeScreenTitle: string;
     wireframeScreenSubtitle: string;
@@ -2103,7 +2107,9 @@ const ko: Messages = {
     growthWeeklyRankingLink: "주간 랭킹",
     growthFoundryLink: "Foundry 대시보드",
     growthOptionsRegionAria: "성장 영역 바로가기 목록",
-    wireframeLandmarkAria: "Arena 와이어프레임 허브",
+    wireframeLandmarkAria: "Arena 와이어프레임 — Phase 1 스텁 화면",
+    wireframeCtaRegionAria: "시나리오 런 진입 — 이어하기 또는 새로 시작",
+    wireframeBottomNavAria: "BTY 앱 하단 탭 — Arena·성장·마이",
     weeklySnapshotRegionAria: "주간 순위 요약 예시",
     wireframeScreenTitle: "BTY Arena",
     wireframeScreenSubtitle: "와이어 · Phase 1",
@@ -3278,7 +3284,9 @@ const en: Messages = {
     growthWeeklyRankingLink: "Weekly ranking",
     growthFoundryLink: "Foundry dashboard",
     growthOptionsRegionAria: "Growth area shortcuts",
-    wireframeLandmarkAria: "Arena wireframe hub",
+    wireframeLandmarkAria: "Arena wireframe — Phase 1 stub screen",
+    wireframeCtaRegionAria: "Scenario run entry — continue or start new",
+    wireframeBottomNavAria: "BTY app tab bar — Arena, Growth, My Page",
     weeklySnapshotRegionAria: "Weekly rank snapshot sample",
     wireframeScreenTitle: "BTY Arena",
     wireframeScreenSubtitle: "Wireframe · Phase 1",

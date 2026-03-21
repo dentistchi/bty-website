@@ -128,14 +128,15 @@ const OUTFIT_IMAGE_BASE = "/avatars/outfits";
  * outfitId → 실제 파일명 매핑 (public/avatars/outfits/ 에 있는 파일 기준).
  * Professional 7종만 매핑; Fantasy/캐릭터용 옷은 에셋 추가 전까지 fallback.
  */
+/** `public/avatars/outfits/` 파일명 — README `outfit_{outfitId}.png` 규칙과 동일 (공백·한글 제거). */
 const OUTFIT_ID_TO_FILENAME: Record<string, string> = {
-  scrub_general: "1 Basic Clinic Scrubs.png",
-  figs_scrub: "3 Hygiene Scrubs.png",
-  doctor_gown: "4 Standard Dental Coat.png",
-  surgery_coat_suit: "11 Implant Surgery Armor Scrubs.png",
-  brand_suit: "12 AI Diagnostic Suit.png",
-  figs_scrub_short: "8 Surgical Scrubs.png",
-  shorts_tee: "5 Clinic Utility Uniform.png",
+  scrub_general: "outfit_scrub_general.png",
+  figs_scrub: "outfit_figs_scrub.png",
+  doctor_gown: "outfit_doctor_gown.png",
+  surgery_coat_suit: "outfit_surgery_coat_suit.png",
+  brand_suit: "outfit_brand_suit.png",
+  figs_scrub_short: "outfit_figs_scrub_short.png",
+  shorts_tee: "outfit_shorts_tee.png",
 };
 
 /** outfitId → `public/avatars/outfits/` 파일명 (체형 접미사 전). */

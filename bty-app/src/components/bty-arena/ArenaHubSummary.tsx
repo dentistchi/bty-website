@@ -86,6 +86,7 @@ export function ArenaHubSummary({ locale }: { locale: string }) {
       data-testid="arena-hub-summary"
       className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm"
       role="region"
+      aria-live="polite"
       aria-label={t.arenaHubSummaryRegionAria}
       aria-busy={loading}
     >

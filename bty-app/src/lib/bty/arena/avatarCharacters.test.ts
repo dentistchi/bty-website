@@ -1,6 +1,6 @@
 /**
  * avatarCharacters — getAvatarCharacterIds, isValidAvatarCharacterId, getAvatarCharacter 단위 테스트.
- * imageUrl: 실제 에셋 파일명 매핑 기준 /avatars/characters/... (CHARACTER_ID_TO_FILENAME).
+ * imageUrl: `{id}.png` under `/avatars/characters/`.
  */
 import { describe, it, expect } from "vitest";
 import {

@@ -21,31 +21,77 @@
 
 ---
 
-## 이번 런: SPRINT 149 (ARENA) — 2026-03-21
+## 이번 런: SPRINT 151 (ARENA) — 2026-03-21
 
-- **S149 상태 (2026-03-21):** 오픈 **`PARALLEL_QUEUE_REFILL.md` §3** (S148 **`exit 2`**) · **C1 TASK3** **`[x]`** (221·222차) · **C3·C4·C6** TASK8·9·4·10 **`[x]`** · **잔여** C5 **TASK1·6** · C1 **TASK5·7** **`[ ]`** · **First** C5 **TASK1** (Gate **149**) · carry **`346/2550`**.
+- **S151 상태 (2026-03-21):** 오픈 **`PARALLEL_QUEUE_REFILL.md` §3** (S150 **`exit 2`**) · **C5** TASK1·6 **`[x]`** (Gate **151**) · **C3·C4·C6** TASK4·8·9·10 **`[x]`** · **C1** TASK2·3 **`[x]`** · carry **`346/2553`** (Gate **151** C7) · **잔여** C1 **TASK5·7** **`[ ]`** · **First** C1 **TASK5** (S152/358 예고).
 - **MODE ARENA:** `src/domain/arena` · `src/lib/bty/arena` · `src/app/[locale]/bty-arena` · `src/app/api/arena/*` — `docs/architecture/DOMAIN_LAYER_TARGET_MAP.md`.
-- **할 일은 본 표만.** `SPRINT_PLAN` **355** · **`check-parallel-task-queue` exit 0** 재점검.
-- **C4 UI (2026-03-21):** TASK **4** **`[x]`** — **`bty-arena/beginner/page.tsx`** · 스텝 **`aria-live`** · 중복 로딩 스켈레톤 제거 · `npm run lint` ✓.
-- **First Task (잠금):** C5 **TASK1** — **`[ ]`** — **Gate 149** A~F.
-- **C7 (참고):** **`346/2550`** — **S149** C6 **TASK10** ✓ (`self-healing-ci` 본 턴); Gate **148** ✓; **S149** Gate **149** 미실행 (C5 TASK1).
+- **할 일은 본 표만.** `SPRINT_PLAN` **357** · **`check-parallel-task-queue` exit 0** 재점검.
+- **First Task (잠금):** C1 **TASK5** — **`[ ]`** — 다음 배치 선정 (선택).
+- **C4 UI (2026-03-21):** TASK **4** **`[x]`** — **`bty-arena/wireframe`** · **`wireframeLandmarkAria`**(허브 문구 분리) · **`wireframeCtaRegionAria`** · **`wireframeBottomNavAria`** · `npm run lint` ✓.
+- **C7 (참고):** **`346/2553`** — Gate **151** (C5 TASK1·6) ✓ · **S151** C6 **TASK10** ✓ (`self-healing-ci` 동일 스냅).
 
-**SPRINT 149 — TASK 1~10 (MODE ARENA)**
+**SPRINT 151 — TASK 1~10 (MODE ARENA)**
 
 | # | OWNER | TASK LINE | PROMPT |
 |---|-------|-----------|--------|
-| 1 | C5 | [ ] [VERIFY] Release Gate A~F — Arena 149차 | **Gate 149** · A~F · `BTY_RELEASE_GATE_CHECK` · Build ✓ (`rm -rf .next` 선행) · q237 **3/7** · **`self-healing-ci`** (실행 후 갱신) · **`npm run lint`** |
+| 1 | C5 | [x] [VERIFY] Release Gate A~F — Arena 151차 | **Gate 151** · A~F · `BTY_RELEASE_GATE_CHECK` · Build ✓ (`rm -rf .next` 선행) · q237 **3/7** · **`self-healing-ci`** (실행 후 갱신) · **`npm run lint`** · **완료. 2026-03-21 C5.** |
+| 2 | C1 | [x] [DOCS] NEXT_PHASE·NEXT_BACKLOG + **이번 런**·이전 런 동기 | `NEXT_PHASE_AUTO4`·`NEXT_BACKLOG_AUTO4` **S151/357** · Gate **151** · **S150** 아카이브 · **`SPRINT_PLAN`·`AUTO4`·`AI_TASK_BOARD`** 동기 · **완료. 2026-03-21 C1 REFRESH.** |
+| 3 | C1 | [x] [DOCS] 문서 점검 223·224차 (선택) — **S150 TASK3 흡수** | `SPRINT_LOG`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4` · `SPRINT_PLAN`·`CURRENT_TASK`·`BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` · `bty-app/docs/AI_TASK_BOARD` **S151** · **완료. 2026-03-21 C1.** |
+| 4 | C4 | [x] [UI] Arena **`/bty-arena/wireframe`** 와이어 접근성 1곳 (**메인·네비·CTA 랜드마크**) | **`/[locale]/bty-arena/wireframe`** · **`<main aria-label={wireframeLandmarkAria}>`** (스텁 화면 — 허브와 문구 분리) · **CTA** `role="region"` **`wireframeCtaRegionAria`** · **하단** **`BottomNav`** **`wireframeBottomNavAria`** · 기존 Foundry·연습 **`nav`** 유지 · `npm run lint` ✓ · **완료. 2026-03-21 C4.** |
+| 5 | C1 | [ ] [DOCS] 다음 배치 선정 (선택) | 다음 = **152** · `SPRINT_PLAN` **358** 예고 · `NEXT_BACKLOG`·`NEXT_PHASE`·`AUTO4`·`AI_TASK_BOARD` |
+| 6 | C5 | [x] [VERIFY] 엘리트 3차 체크리스트 1회 | **Gate 151**(TASK1) 동기 · `ELITE_3RD` §3 · Build ✓ (`rm -rf .next`) · q237 **3/7** · **완료. 2026-03-21 C5.** |
+| 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | **S152** `splint 10` 예고 · `NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD` |
+| 8 | C3 | [x] [DOMAIN] Arena 순수 규칙+테스트 1건 | **`arenaScenarioIdFromUnknown`** — **top-level `Symbol` / `bigint`** → **null** · Vitest — **S151 TASK8** · **완료. 2026-03-21 C3.** |
+| 9 | C3 | [x] [TEST] Arena route/API 테스트 1건 | **`POST /api/arena/beginner-complete`** **`runId` JSON bigint** → **400** `runId_required` · `route.test.ts` — **S151 TASK9** (`beginner-event` **S150**와 중복 없음) · **완료. 2026-03-21 C3.** |
+| 10 | C6 | [x] [VERIFY] test:q237-smoke + self-healing-ci | q237 **3 files / 7 tests** ✓ · **`self-healing-ci` 346/2553** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · **완료. 2026-03-21 C6.** |
+
+- **[REFRESH 2026-03-21]** S151/357 — **`PARALLEL_QUEUE_REFILL` §3** — S150 **`exit 2`** · **C5** TASK1·6 **`[x]`** · **C4** TASK4 **`[x]`** · **C3** TASK8·9 **`[x]`** · **C6** TASK10 **`[x]`** (**346/2553**) · **C1** TASK3 **`[x]`** · **First** C1 **TASK5** · carry **`346/2553`** · **MODE ARENA**.
+
+## 이전 런: SPRINT 150 (ARENA) — 2026-03-21
+
+- **종료:** **`PARALLEL_QUEUE_REFILL.md` §3** — **`check-parallel-task-queue` exit 2** (**C3·C4·C5·C6** 기아 — **C1** 잔여 **`[ ]`**) · **TASK1·2·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK3·5·7** → **S151** 재오픈.
+- **할 일은 본 표만.** `SPRINT_PLAN` **356** · **S150** 잔여 **C1** → **S151** 흡수.
+- **C7 (참고):** **`346/2552`** — Gate **150** (TASK1·6·C6) ✓ (`self-healing-ci` 본 턴).
+
+**SPRINT 150 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [x] [VERIFY] Release Gate A~F — Arena 150차 | **Gate 150** · A~F · `BTY_RELEASE_GATE_CHECK` · Build ✓ (`rm -rf .next` 선행) · q237 **3/7** · **`self-healing-ci` 346/2552** ✓ · **`npm run lint`** ✓ · **완료. 2026-03-21 C5.** |
+| 2 | C1 | [x] [DOCS] NEXT_PHASE·NEXT_BACKLOG + **이번 런**·이전 런 동기 | `NEXT_PHASE_AUTO4`·`NEXT_BACKLOG_AUTO4` **S150/356** · Gate **150** · **S149** 아카이브 · **`SPRINT_PLAN`·`AUTO4`·`AI_TASK_BOARD`** 동기 · **완료. 2026-03-21 C1 REFRESH (PARALLEL refill).** |
+| 3 | C1 | [x] [DOCS] 문서 점검 223·224차 (선택) — **S149 TASK3 완료** 후 | `SPRINT_LOG`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4` · `SPRINT_PLAN`·`CURRENT_TASK`·`BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` · `bty-app/docs/AI_TASK_BOARD` **S150** → **S151 TASK3** · **완료. 2026-03-21 C1 (S151 TASK3 흡수).** |
+| 4 | C4 | [x] [UI] Arena **`/bty-arena/hub`** 허브 접근성 1곳 (**요약·카드 로딩·메인 랜드마크**) | **`/[locale]/bty-arena/hub`** · **`ScreenShell`** **`arenaHubMainRegionAria`** · **`ArenaHubEntryCard`** · **`ArenaHubSummary`** **`aria-live`** · `npm run lint` ✓ · **완료. 2026-03-21 C4.** |
+| 5 | C1 | [ ] [DOCS] 다음 배치 선정 (선택) | 다음 = **151** · `SPRINT_PLAN` **357** 예고 · `NEXT_BACKLOG`·`NEXT_PHASE`·`AUTO4`·`AI_TASK_BOARD` → **S151 TASK5** |
+| 6 | C5 | [x] [VERIFY] 엘리트 3차 체크리스트 1회 | **Gate 150**(TASK1) 동기 · `ELITE_3RD` §3 · Build ✓ (`rm -rf .next`) · q237 **3/7** · **완료. 2026-03-21 C5.** |
+| 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | **S151** `splint 10` 예고 · `NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD` → **S151 TASK7** |
+| 8 | C3 | [x] [DOMAIN] Arena 순수 규칙+테스트 1건 | **`arenaIsoDateOnlyFromUnknown`** — **top-level `Symbol` / `bigint`** → **null** · Vitest — **S150 TASK8** · **완료. 2026-03-21 C3.** |
+| 9 | C3 | [x] [TEST] Arena route/API 테스트 1건 | **`POST /api/arena/beginner-event`** **`step` bigint** (`BigInt(6)`) → **400** `runId and step 2-5 required` · `route.test.ts` · **완료. 2026-03-21 C3.** |
+| 10 | C6 | [x] [VERIFY] test:q237-smoke + self-healing-ci | q237 **3 files / 7 tests** ✓ · **`self-healing-ci` 346/2552** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · **완료. 2026-03-21 C6.** |
+
+- **PARALLEL_QUEUE_REFILL (2026-03-21):** S150 **`exit 2`** (**C3·C4·C5·C6** 기아 — **C1** 잔여 **`[ ]`**) → **S151** · **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **151**) · `SPRINT_PLAN` **357** 동기.
+
+## 이전 런: SPRINT 149 (ARENA) — 2026-03-21
+
+- **종료:** **`PARALLEL_QUEUE_REFILL.md` §3** — **`check-parallel-task-queue` exit 2** (**C3·C4·C6** 기아 — **C1·C5** 잔여 **`[ ]`**) · **TASK2·3·4·8·9·10 `[x]`** · 잔여 **C1 TASK5·7** · **C5 TASK1·6** → **S150** 재오픈.
+- **할 일은 본 표만.** `SPRINT_PLAN` **355** · **S149** 잔여 → **S150** 흡수.
+- **C7 (참고):** **`346/2550`** — **S149** C6 **TASK10** ✓ (`self-healing-ci` 본 턴); **C5** Gate **149** 미완료 → **S150 TASK1·6** 흡수.
+
+**SPRINT 149 — TASK 1~10 (아카이브)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [ ] [VERIFY] Release Gate A~F — Arena 149차 | **Gate 149** · A~F · `BTY_RELEASE_GATE_CHECK` · Build ✓ (`rm -rf .next` 선행) · q237 **3/7** · **`self-healing-ci`** (실행 후 갱신) · **`npm run lint`** → **S150 TASK1** |
 | 2 | C1 | [x] [DOCS] NEXT_PHASE·NEXT_BACKLOG + **이번 런**·이전 런 동기 | `NEXT_PHASE_AUTO4`·`NEXT_BACKLOG_AUTO4` **S149/355** · Gate **149** · **S148** 아카이브 · **`SPRINT_PLAN`·`AUTO4`·`AI_TASK_BOARD`** 동기 · **완료. 2026-03-21 C1 REFRESH (PARALLEL refill).** |
 | 3 | C1 | [x] [DOCS] 문서 점검 221·222차 (미처리분) — **S148 TASK3 흡수** | `SPRINT_LOG`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4` · `SPRINT_PLAN`·`CURRENT_TASK`·`BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` · `bty-app/docs/AI_TASK_BOARD` **S149** · **완료. 2026-03-21 C1.** |
-| 4 | C4 | [x] [UI] Arena **`/bty-arena/beginner`** 비기너 플로우 접근성 1곳 (**로딩·메인 랜드마크**) | **`/[locale]/bty-arena/beginner`** · **`role="status"`·`aria-live="polite"`** (초기·완료·스텝·인플라이트 로딩) · **`arenaBeginnerPath*MainRegionAria`** 계열 · step 7 제출 **`arenaBeginnerPathSubmittingAria`** · **play·lab·result** 키 분리 · `npm run lint` ✓ · **완료. 2026-03-21 C4.** |
-| 5 | C1 | [ ] [DOCS] 다음 배치 선정 (선택) | 다음 = **150** · `SPRINT_PLAN` **356** 예고 · `NEXT_BACKLOG`·`NEXT_PHASE`·`AUTO4`·`AI_TASK_BOARD` |
-| 6 | C5 | [ ] [VERIFY] 엘리트 3차 체크리스트 1회 | **Gate 149**(TASK1) 동기 · `ELITE_3RD` §3 · Build ✓ (`rm -rf .next`) · q237 **3/7** |
-| 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | **S150** `splint 10` 예고 · `NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD` |
+| 4 | C4 | [x] [UI] Arena **`/bty-arena/beginner`** 비기너 플로우 접근성 1곳 (**로딩·메인 랜드마크**) | **`/[locale]/bty-arena/beginner`** · **`role="status"`·`aria-live="polite"`** · **`arenaBeginnerPath*MainRegionAria`** · step 7 **`arenaBeginnerPathSubmittingAria`** · `npm run lint` ✓ · **완료. 2026-03-21 C4.** |
+| 5 | C1 | [ ] [DOCS] 다음 배치 선정 (선택) | 다음 = **150** · `SPRINT_PLAN` **356** 예고 · `NEXT_BACKLOG`·`NEXT_PHASE`·`AUTO4`·`AI_TASK_BOARD` → **S150 TASK5** |
+| 6 | C5 | [ ] [VERIFY] 엘리트 3차 체크리스트 1회 | **Gate 149**(TASK1) 동기 · `ELITE_3RD` §3 · Build ✓ (`rm -rf .next`) · q237 **3/7** → **S150 TASK6** |
+| 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | **S150** `splint 10` 예고 · `NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD` → **S150 TASK7** |
 | 8 | C3 | [x] [DOMAIN] Arena 순수 규칙+테스트 1건 | **`arenaRunTypeFromUnknown`** — **top-level `Symbol` / `bigint`** → **null** · Vitest — **S149 TASK8** · **완료. 2026-03-21 C3.** |
-| 9 | C3 | [x] [TEST] Arena route/API 테스트 1건 | **`POST /api/arena/beginner-run`** **`scenarioId` bigint** → **400** `scenarioId_required` · `route.test.ts` (`req.json` 스텁; ≠ **S148** `run/complete`) · **완료. 2026-03-21 C3.** |
+| 9 | C3 | [x] [TEST] Arena route/API 테스트 1건 | **`POST /api/arena/beginner-run`** **`scenarioId` bigint** → **400** `scenarioId_required` · `route.test.ts` · **완료. 2026-03-21 C3.** |
 | 10 | C6 | [x] [VERIFY] test:q237-smoke + self-healing-ci | q237 **3 files / 7 tests** ✓ · **`self-healing-ci` 346/2550** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · **완료. 2026-03-21 C6.** |
 
-- **[REFRESH 2026-03-21]** S149/355 — **`PARALLEL_QUEUE_REFILL` §3** — S148 **`exit 2`** · **C1 TASK2·3** **`[x]`** · **C3·C4·C6** TASK8·9·4·10 **`[x]`** (**346/2550**) · **First** C5 **TASK1** (Gate **149**) · carry **`346/2550`** · **MODE ARENA**.
+- **PARALLEL_QUEUE_REFILL (2026-03-21):** S149 **`exit 2`** (**C3·C4·C6** 기아 — **C1·C5** 잔여 **`[ ]`**) → **S150** · **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **150**) · `SPRINT_PLAN` **356** 동기.
 
 ## 이전 런: SPRINT 148 (ARENA) — 2026-03-21
 

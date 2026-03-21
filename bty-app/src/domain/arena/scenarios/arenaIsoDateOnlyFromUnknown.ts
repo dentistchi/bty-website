@@ -1,6 +1,7 @@
 /**
  * ISO calendar day **YYYY-MM-DD** — 순수 검증. 멤버십 `joined_at` 등 날짜-only 필드용.
  * XP·랭킹·시즌 무관.
+ * Non-strings (including top-level **`Symbol`** / **`bigint`**) → **`null`**.
  */
 
 export const ARENA_ISO_DATE_ONLY_LENGTH = 10;

@@ -40,9 +40,9 @@ describe("arenaIsoDateOnlyFromUnknown (edges)", () => {
   });
 
   /**
-   * S121 C3 TASK8 — **S120** lifecycle Symbol·bigint·**S114** number·array 라인과 구분 (ISO **date-only** 축).
+   * S150 C3 TASK8 — **S121** 동일 축 — top-level **`Symbol`** / **`bigint`** → **null** (ISO **date-only** 축).
    */
-  it("S121: returns null for Symbol and bigint", () => {
+  it("S150: returns null for Symbol and bigint", () => {
     expect(arenaIsoDateOnlyFromUnknown(Symbol("2024-06-15"))).toBeNull();
     expect(arenaIsoDateOnlyFromUnknown(BigInt(20240615))).toBeNull();
   });

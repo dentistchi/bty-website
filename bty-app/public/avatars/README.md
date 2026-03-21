@@ -1,5 +1,7 @@
 # Avatar assets
 
+배포 시 넣을 파일·404 확인 절차: [`docs/AVATAR_DEPLOY_VERIFY.md`](../docs/AVATAR_DEPLOY_VERIFY.md) **「배포 시 할 일」**.
+
 - **캐릭터 (12 + Legend)**: `characters/{id}.png` — `avatarCharacters.ts`에서 13종 참조.  
   - 12명: `hero_01.png` … `character_12.png`  
   - 1명 숨김: `legend.png` (진행 레벨 700 = tier 699 달성 시 해금. Core XP 700이 아님.)  
