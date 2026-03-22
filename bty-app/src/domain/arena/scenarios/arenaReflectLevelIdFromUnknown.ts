@@ -1,5 +1,6 @@
 /**
  * Arena reflect `levelId` — 순수 정규화. S1…L4만 허용. XP·주간 랭킹·시즌 무관.
+ * Non-strings (including top-level **`Symbol`** / **`bigint`**) → **`null`**.
  */
 
 export const ARENA_REFLECT_LEVEL_IDS = ["S1", "S2", "S3", "L1", "L2", "L3", "L4"] as const;

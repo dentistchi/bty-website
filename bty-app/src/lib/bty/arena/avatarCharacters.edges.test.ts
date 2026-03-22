@@ -4,6 +4,7 @@
 import { describe, it, expect } from "vitest";
 import {
   AVATAR_CHARACTERS,
+  AVATAR_CHARACTER_IMAGE_BASE,
   getAvatarCharacterIds,
   getVisibleAvatarCharacters,
   isValidAvatarCharacterId,
@@ -21,7 +22,9 @@ describe("avatarCharacters (edges)", () => {
         expect(typeof c.id).toBe("string");
         expect(c.id.length).toBeGreaterThan(0);
         expect(typeof c.label).toBe("string");
-        expect(c.imageUrl).toMatch(/^\/avatars\/characters\/.+\.png$/);
+        expect(c.imageUrl).toMatch(
+          new RegExp(`^${AVATAR_CHARACTER_IMAGE_BASE.replace(/\//g, "\\/")}\\/.+\\.png$`),
+        );
       }
     });
     it("all ids are unique", () => {

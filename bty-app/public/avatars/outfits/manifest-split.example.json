@@ -1,0 +1,26 @@
+{
+  "professional": [
+    "scrub_general",
+    "figs_scrub",
+    "doctor_gown",
+    "surgery_coat_suit",
+    "brand_suit",
+    "figs_scrub_short",
+    "shorts_tee",
+    "extra_pro_01",
+    "extra_pro_02",
+    "extra_pro_03"
+  ],
+  "fantasy": [
+    "apprentice",
+    "adventurer",
+    "journeyer",
+    "warrior_mage_mid",
+    "senior",
+    "senior_plus",
+    "master",
+    "extra_fan_01",
+    "extra_fan_02",
+    "extra_fan_03"
+  ]
+}

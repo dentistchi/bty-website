@@ -93,6 +93,31 @@ describe("POST /api/arena/reflect", () => {
     expect((await res.json()).error).toBe("levelId_invalid");
   });
 
+  /**
+   * S152 C3 TASK9: `levelId` **bigint** (JSON 본문 불가 → `req.json` 스텁) → **400** `levelId_invalid` (**S151** beginner-complete·beginner-event와 구분).
+   */
+  it("returns 400 levelId_invalid when levelId is bigint", async () => {
+    vi.mocked(getSupabaseServerClient).mockResolvedValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1", created_at: new Date().toISOString() } } }),
+      },
+    } as never);
+
+    const req = new Request("http://localhost/api/arena/reflect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    vi.spyOn(req, "json").mockResolvedValue({
+      userText: "short reflection text",
+      levelId: BigInt(1),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("levelId_invalid");
+  });
+
   /** S132 C3 TASK9: `levelId` present but not whitelist — **400** (`S131` sub-name·`S130` code-name 라인과 구분). */
   it("returns 400 levelId_invalid when levelId key is present but not a valid reflect level id", async () => {
     vi.mocked(getSupabaseServerClient).mockResolvedValue({

@@ -1,6 +1,6 @@
 # Auto 4 — 각 Cursor에게 붙여 넣을 프롬프트
 
-**갱신**: 2026-03-21 — 보드 **SPRINT 151** (TASK **1~10**) · **MODE ARENA** · **Gate 151** **`[x]`** · **First** C1 **TASK5** · **`SPRINT_PLAN` 357**.
+**갱신**: 2026-03-21 — 보드 **SPRINT 154** (TASK **1~10**) · **MODE ARENA** · **Gate 154** **`[ ]`** · **First** **C5 TASK1** · **`SPRINT_PLAN` 360**.
 
 **할 일 단일 진실**: **`docs/CURSOR_TASK_BOARD.md`** "이번 런" 표.
 
@@ -12,7 +12,7 @@
 
 다음 작업 해줘.
 
-**할 일**: [C1] **S151** 보드 **TASK5·7** 중 **`[ ]`** — **TASK5** S152/358 예고 · **TASK7** § 다음 작업 · **TASK2·3** NEXT·223·224차 **`[x]`**. **First Task** — **TASK5** (다음 배치 선정).
+**할 일**: [C1] **S154** 보드 **TASK2·3·5·7** 중 **`[ ]`** — **TASK2** NEXT·BACKLOG **S154/360** · **TASK3** 227·228차 (선택) · **TASK5** S155/361 예고 · **TASK7** § 다음 작업 — **S153** **TASK3·5·7** 흡수. **First Task** — **C5 TASK1** (Gate **154**).
 
 **완료 시**: `SPRINT_LOG`·보드·`CURRENT_TASK`.
 
@@ -24,7 +24,7 @@
 
 다음 작업 해줘.
 
-**할 일**: [C2] Gate **151** — **`[x]`** — **`origin/main` push** 시 `SPRINT_LOG`·문서 재동기 · **IMPORT_BOUNDARY** 샘플 **rg** 1회 · C3·C4 **TASK8·9**·C4 **TASK4** 메모 (완료 상태 동기).
+**할 일**: [C2] Gate **154** — **`[ ]`** — **First** C5 **TASK1** · **`origin/main` push** 시 `SPRINT_LOG`·문서 재동기 · **IMPORT_BOUNDARY** 샘플 **rg** 1회 · C3·C4 **TASK8·9**·**TASK4** 메모.
 
 ---
 
@@ -34,7 +34,7 @@
 
 다음 작업 해줘.
 
-**할 일**: [C3] **S151 TASK8·9** **`[x]`** — **`arenaScenarioIdFromUnknown`** top-level **Symbol·bigint** · **`POST /api/arena/beginner-complete`** **`runId` bigint** → **400** `runId_required` · `route.test.ts` · Vitest ✓.
+**할 일**: [C3] **S154 TASK8·9** **`[ ]`** — **`arenaScenarioIdFromUnknown`** top-level **Symbol·bigint** · **`POST /api/arena/sub-name`** **`scenarioOutcomes` bigint** → **400** `scenario_outcomes_invalid` · `route.test.ts` · Vitest ✓.
 
 ---
 
@@ -44,7 +44,7 @@
 
 다음 작업 해줘.
 
-**할 일**: [C4] **S151 TASK4** **`[x]`** — **`/[locale]/bty-arena/wireframe`** · **`wireframeLandmarkAria`** · **hub·beginner** 과 중복 금지 · `npm run lint`.
+**할 일**: [C4] **S154 TASK4** **`[ ]`** — **`/[locale]/bty-arena/play`** · **play·record·lobby** 과 중복 금지 · `npm run lint`.
 
 ---
 
@@ -54,7 +54,7 @@
 
 다음 작업 해줘.
 
-**할 일**: [C5] **S151 TASK1·6** **`[x]`** — **`[VERIFY]`** Release Gate **151** A~F · `ELITE_3RD` §3 · `BTY_RELEASE_GATE_CHECK` · **`self-healing-ci`** (실행 후 갱신) · q237 **3/7**.
+**할 일**: [C5] **S154 TASK1·6** **`[ ]`** — **`[VERIFY]`** Release Gate **154** A~F · `ELITE_3RD` §3 · `BTY_RELEASE_GATE_CHECK` · **`self-healing-ci`** (실행 후 갱신) · q237 **3/7** — **S153** TASK6 흡수.
 
 ---
 
@@ -64,8 +64,8 @@
 
 다음 작업 해줘.
 
-**할 일**: [C6] **S151 TASK10** **`[x]`** — `test:q237-smoke` **3/7** · **`self-healing-ci`** **346/2553** · `npm run lint` · Build ✓ (`rm -rf .next` 선행).
+**할 일**: [C6] **S154 TASK10** **`[ ]`** — `test:q237-smoke` **3/7** · **`self-healing-ci`** (실행 후 갱신) · `npm run lint` · Build ✓ (`rm -rf .next` 선행).
 
 ---
 
-*출처: S151 · **MODE ARENA** · **Gate 151** **`[x]`** · **First** C1 **TASK5** · **`PARALLEL_QUEUE_REFILL` §3** (S150 **exit 2**) · **2026-03-21**.*
+*출처: S154 · **MODE ARENA** · **Gate 154** **`[ ]`** · **First** **C5 TASK1** · **`PARALLEL_QUEUE_REFILL` §3** (S153 **exit 2**) · **2026-03-21**.*

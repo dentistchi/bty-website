@@ -1004,6 +1004,14 @@ export type Messages = {
     arenaMissionLobbyMainRegionAria: string;
     /** 미션 로비 세션 hydration 대기 `<main>` 랜드마크 */
     arenaMissionLobbyLoadingMainRegionAria: string;
+    /** `/[locale]/bty-arena/lobby` — `<main>` (허브·와이어·입문과 문구 분리) */
+    lobbyLandmarkAria: string;
+    /** `/[locale]/bty-arena/lobby` — hydration 대기 `<main>` */
+    lobbyLoadingMainRegionAria: string;
+    /** 미션 로비 히어로 **Enter / Resume** CTA 묶음 */
+    lobbyCtaRegionAria: string;
+    /** 미션 로비 상단 스테이지 바 (`ArenaTopBar`) */
+    lobbyTopBarAria: string;
     /** `/[locale]/bty-arena/loading` — 라우트 세그먼트 로딩 `<main>` 랜드마크 */
     arenaBtyArenaRouteSegmentLoadingMainRegionAria: string;
     /** `/bty-arena/play` 로딩 `<main>` 랜드마크 */
@@ -1040,8 +1048,12 @@ export type Messages = {
     arenaBeginnerPathTrackLabel: string;
     /** beginner-complete 요청 처리 중 */
     arenaBeginnerPathSubmittingAria: string;
-    /** `/bty-arena/record` (기록 요약 스텁) ScreenShell `<main>` 랜드마크 */
-    arenaRecordPageMainRegionAria: string;
+    /** `/bty-arena/record` (기록 요약 스텁) ScreenShell `<main>` — 허브·로비·와이어·입문과 문구 분리 */
+    recordLandmarkAria: string;
+    /** `/bty-arena/record` — 플레이·허브 CTA 묶음 */
+    recordCtaRegionAria: string;
+    /** `/bty-arena/record` — 하단 3탭 (와이어와 동일 UX, 키 분리) */
+    recordBottomNavAria: string;
     arenaResultEyebrow: string;
     arenaResultRecordedTitle: string;
     arenaResultRecordedSubtitle: string;
@@ -2203,6 +2215,10 @@ const ko: Messages = {
     arenaHubMainRegionAria: "아레나 허브 — 진입 카드·주간 순위·시즌",
     arenaMissionLobbyMainRegionAria: "아레나 미션 로비 — 시나리오 진입·이어하기",
     arenaMissionLobbyLoadingMainRegionAria: "아레나 미션 로비 — 불러오는 중",
+    lobbyLandmarkAria: "아레나 로비 — 판단 주기·런 진입",
+    lobbyLoadingMainRegionAria: "아레나 로비 — 불러오는 중",
+    lobbyCtaRegionAria: "런 진입 — 아레나 입장·시나리오 이어하기",
+    lobbyTopBarAria: "아레나 미션 상단 — 단계·진행률",
     arenaBtyArenaRouteSegmentLoadingMainRegionAria: "BTY Arena — 페이지 불러오는 중",
     arenaMissionPlayLoadingMainRegionAria: "미션 플레이 — 불러오는 중",
     arenaMissionPlayMainRegionAria: "미션 플레이 — 실행·선택·성찰·이력",
@@ -2223,7 +2239,9 @@ const ko: Messages = {
     arenaBeginnerPathCompleteMainRegionAria: "입문 경로 — 결과 요약",
     arenaBeginnerPathTrackLabel: "입문",
     arenaBeginnerPathSubmittingAria: "완료 처리 중",
-    arenaRecordPageMainRegionAria: "Arena 결과 — 결정 기록·XP·다음 행동",
+    recordLandmarkAria: "아레나 기록 화면 — 시뮬 요약·XP·다음 행동",
+    recordCtaRegionAria: "다음 행동 — 플레이 이어가기·허브로",
+    recordBottomNavAria: "하단 앱 탭 — Arena·성장·마이",
     arenaResultEyebrow: "Arena 결과",
     arenaResultRecordedTitle: "결정이 기록되었습니다.",
     arenaResultRecordedSubtitle: "결과가 반영되었습니다.",
@@ -3380,6 +3398,10 @@ const en: Messages = {
     arenaHubMainRegionAria: "Arena hub — entry card, weekly rank, season",
     arenaMissionLobbyMainRegionAria: "Arena mission lobby — scenario entry and resume",
     arenaMissionLobbyLoadingMainRegionAria: "Arena mission lobby — loading",
+    lobbyLandmarkAria: "Arena lobby — decision cycle and run entry",
+    lobbyLoadingMainRegionAria: "Arena lobby — loading",
+    lobbyCtaRegionAria: "Run entry — enter arena or resume scenario",
+    lobbyTopBarAria: "Arena mission header — stage and progress",
     arenaBtyArenaRouteSegmentLoadingMainRegionAria: "BTY Arena — loading page",
     arenaMissionPlayLoadingMainRegionAria: "Mission play — loading",
     arenaMissionPlayMainRegionAria: "Mission play — run, choices, reflection, history",
@@ -3400,7 +3422,9 @@ const en: Messages = {
     arenaBeginnerPathCompleteMainRegionAria: "Beginner path — your result",
     arenaBeginnerPathTrackLabel: "Beginner",
     arenaBeginnerPathSubmittingAria: "Completing…",
-    arenaRecordPageMainRegionAria: "Arena result — decision record, XP, next actions",
+    recordLandmarkAria: "Arena record screen — run summary, XP, and next actions",
+    recordCtaRegionAria: "Next actions — continue play or return to hub",
+    recordBottomNavAria: "Bottom app tabs — Arena, Growth, My Page",
     arenaResultEyebrow: "Arena Result",
     arenaResultRecordedTitle: "Decision recorded.",
     arenaResultRecordedSubtitle: "Outcome has been updated.",

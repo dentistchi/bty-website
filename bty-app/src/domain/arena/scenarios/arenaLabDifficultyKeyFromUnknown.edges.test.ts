@@ -69,8 +69,8 @@ describe("arenaLabDifficultyKeyStrictFromUnknown (edges)", () => {
     expect(arenaLabDifficultyKeyFromUnknown(Symbol("easy"))).toBe("mid");
   });
 
-  /** S140 C3 TASK8 — top-level `Symbol` / `bigint` (**strict** → **null**; **S115** lenient·**S113** 타입 라인과 구분). */
-  it("S140: strict returns null for Symbol and bigint", () => {
+  /** S153 C3 TASK8 — top-level **`Symbol`** / **`bigint`** (**strict** → **null**; **S115** lenient·**S113** 타입 라인과 구분). */
+  it("S153: strict returns null for Symbol and bigint", () => {
     expect(arenaLabDifficultyKeyStrictFromUnknown(Symbol("mid"))).toBeNull();
     expect(arenaLabDifficultyKeyStrictFromUnknown(BigInt(0))).toBeNull();
   });

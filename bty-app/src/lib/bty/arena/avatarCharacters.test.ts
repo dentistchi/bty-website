@@ -1,6 +1,6 @@
 /**
  * avatarCharacters — getAvatarCharacterIds, isValidAvatarCharacterId, getAvatarCharacter 단위 테스트.
- * imageUrl: `{id}.png` under `/avatars/characters/`.
+ * imageUrl: `{id}.png` under `AVATAR_CHARACTER_IMAGE_BASE`.
  */
 import { describe, it, expect } from "vitest";
 import {
@@ -9,13 +9,14 @@ import {
   getAvatarCharacter,
   getVisibleAvatarCharacters,
   AVATAR_CHARACTERS,
+  AVATAR_CHARACTER_IMAGE_BASE,
 } from "./avatarCharacters";
 
 describe("avatarCharacters", () => {
   describe("AVATAR_CHARACTERS imageUrl", () => {
-    it("every character imageUrl is under /avatars/characters/ and ends with .png", () => {
+    it("every character imageUrl is under AVATAR_CHARACTER_IMAGE_BASE and ends with .png", () => {
       for (const c of AVATAR_CHARACTERS) {
-        expect(c.imageUrl.startsWith("/avatars/characters/")).toBe(true);
+        expect(c.imageUrl.startsWith(`${AVATAR_CHARACTER_IMAGE_BASE}/`)).toBe(true);
         expect(c.imageUrl.endsWith(".png")).toBe(true);
       }
     });
@@ -57,12 +58,12 @@ describe("avatarCharacters", () => {
   });
 
   describe("getAvatarCharacter", () => {
-    it("returns character for valid id with imageUrl under /avatars/characters/ and label from asset", () => {
+    it("returns character for valid id with imageUrl under default characters dir and label from asset", () => {
       const c = getAvatarCharacter("hero_01");
       expect(c).not.toBeNull();
       expect(c!.id).toBe("hero_01");
       expect(c!.label).toBe("Mentor");
-      expect(c!.imageUrl.startsWith("/avatars/characters/")).toBe(true);
+      expect(c!.imageUrl.startsWith(`${AVATAR_CHARACTER_IMAGE_BASE}/`)).toBe(true);
       expect(c!.imageUrl.endsWith(".png")).toBe(true);
     });
 

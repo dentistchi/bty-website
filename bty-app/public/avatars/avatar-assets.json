@@ -1,30 +1,57 @@
 {
   "accessories": {
     "dental": [
-      "mask", "goggles", "goggles_premium", "scrub_cap", "headlight", "dental_mirror", "dental_mirror_premium",
-      "explorer", "loupes", "face_shield", "handpiece", "apron", "surgical_gloves",
-      "xray_portable", "suction_tip", "curing_light", "scaler", "retractor", "saliva_ejector",
-      "syringe", "impression_tray", "probe", "excavator", "burnisher", "carver",
-      "matrix_band", "hve_tip", "n95", "name_badge", "sleeve", "stethoscope",
-      "bite_block", "cotton_holder", "polisher", "finisher", "air_water_syringe",
-      "wedge", "bib", "safety_glasses", "articulating_paper", "magnifier"
+      "all_on_x",
+      "arena_core",
+      "btyarena",
+      "coronal_polishing_machine",
+      "cotton_plier",
+      "dental_loupes",
+      "dental_tray",
+      "endo_rotary_machine",
+      "explorer",
+      "foundry_core",
+      "high_speed_handpiece",
+      "implant_crown",
+      "implant_surgicla_handpiece",
+      "light_cure",
+      "mallet",
+      "neurosight",
+      "overdenture",
+      "portable_x_ray_machine",
+      "sinus_lift_kit",
+      "sterilzation_machine",
+      "ultrasonic_scaler",
+      "vetech_x_ray_gun",
+      "workstation",
+      "x_ray_sensor"
     ],
-    "game": [
-      "sword", "shield", "crown", "ring", "cloak", "wings", "halo", "bow", "staff",
-      "potion", "gem", "coin", "key", "pet_cat", "pet_dragon", "pet_dog", "map",
-      "compass", "lantern", "book", "scroll", "amulet", "bracelet", "boots", "helmet",
-      "gauntlet", "dagger", "wand", "rune", "weapon", "hat", "glasses", "accessory",
-      "quiver", "belt"
-    ]
+    "game": []
   },
   "outfits": {
     "professional": [
-      "scrub_general", "figs_scrub", "doctor_gown", "surgery_coat_suit",
-      "brand_suit", "figs_scrub_short", "shorts_tee"
+      "1_basic_clinic_scrubs",
+      "10_pediatric_dentistry_uniform",
+      "11_implant_surgery_armor_scrubs",
+      "12_ai_diagnostic_suit",
+      "13_research_lab_coat",
+      "14_master_hygienist_uniform",
+      "15_prosthetic_design_coat",
+      "16_neurosight_clinical_suit",
+      "17_bty_arena_champion_uniform",
+      "18_foundry_engineer_outfit"
     ],
     "fantasy": [
-      "apprentice", "adventurer", "journeyer", "warrior_mage_mid",
-      "senior", "senior_plus", "master"
+      "19_master_surgeon_robe",
+      "2_assistant_utility_uniform",
+      "20_digital_dentistry_elite_coat",
+      "3_hygiene_scrubs",
+      "4_standard_dental_coat",
+      "5_clinic_utility_uniform",
+      "6_digital_dentistry_coat",
+      "7_imaging_technician_suit",
+      "8_surgical_scrubs",
+      "9_orthodontic_specialist_coat"
     ]
   }
 }

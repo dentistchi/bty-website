@@ -1,5 +1,37 @@
 # 현재 작업 (CURRENT_TASK)
 
+**[C1] SPRINT 154 / 360 (`PARALLEL_QUEUE_REFILL` §3 · 2026-03-21):** [x] S153 **`exit 2`** (**C3·C4·C6** 기아 — **C5** TASK6 · **C1** TASK3·5·7 **`[ ]`**) → **S154** · NEXT·BACKLOG·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_PLAN` **360** 동기 · **TASK1~10** 전부 **`[ ]`** · **First** C5 **TASK1** (Gate **154**) · carry **`346/2554`** · **S153** 잔여 **C5 TASK6** · **C1 TASK3·5·7** 흡수.
+
+**[C4] 아바타 매니페스트 생성기 2026-03-22:** [x] `npm run generate:avatar-manifest` — `outfits`·`accessories/catalog` 스캔 → `avatar-assets.json` 이중 기록 · catalog→루트 동기화 · `avatar-manifest-scan`·상수 · `verify:avatar-assets` Fantasy 옷 항상 검사 · `AVATAR_DEPLOY_VERIFY`·`public/avatars/README.md`.
+
+**[C4] 아바타 인벤토리 명세 2026-03-22:** [x] 기획: 캐릭터 12+1 히든·옷 20·악세 24 — `AVATAR_ALIGNMENT_AND_OUTFIT_SPEC`·`ARENA_PROGRESSION_AND_LEGEND_SPEC`·`public/avatars/README.md`·`avatarCharacters`/`avatar-assets.data` 주석. (JSON id를 20/24로 맞추는 데이터 작업은 별도.)
+
+**[C1] SPRINT 153 TASK2 / 359 (DOCS):** [x] NEXT·BACKLOG·`AUTO4`·`SPRINT_PLAN`·`AI_TASK_BOARD` **S153/359** · Gate **153** · **S152** 아카이브 동기 · 보드 **TASK2 [x]** · **2026-03-21 C1.**
+
+**[C5] SPRINT 153 TASK1 / 359 (VERIFY):** [x] Gate **153** A~F **PASS** · **`346/2554`** ✓ · `self-healing-ci` · `test:q237-smoke` **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]** · **First** C5 **TASK6** / **C1 TASK3** · **2026-03-21 C5.**
+
+**[C6] SPRINT 153 TASK10 / 359 (VERIFY):** [x] `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` **346/2554** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **완료. 2026-03-21 C6.**
+
+**[C1] SPRINT 153 / 359 (`PARALLEL_QUEUE_REFILL` §3 · REFRESH 2026-03-21):** [x] S152 **`exit 2`** (**C3·C4·C6** 기아 — **C5** TASK6 · **C1** TASK3·5·7 **`[ ]`**) → **S153** · NEXT·BACKLOG·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_PLAN` **359** 동기 · **TASK1·2·4·8·9·10 `[x]`** · **First** C5 **TASK6** (엘리트 §3) · carry **`346/2554`** · **S152** 잔여 **C5 TASK6** · **C1 TASK3·5·7** 흡수.
+
+**[C3] SPRINT 153 TASK8·9 / 359:** [x] **`arenaLabDifficultyKeyStrictFromUnknown`** JSDoc·S153 Symbol/bigint edges · **`POST /api/arena/code-name`** **`preferredLabDifficulty: BigInt(0)`** → **400** `preferred_lab_difficulty_invalid` (`req.json` 스텁) · Vitest **23 tests** ✓ · 보드 **TASK8·9 [x]** · **완료. 2026-03-21 C3.**
+
+**[C4] SPRINT 153 TASK4 / 359 (UI):** [x] **`/[locale]/bty-arena/record`** · **`recordLandmarkAria`** · **`recordCtaRegionAria`** · **`recordBottomNavAria`** · **`ScreenShell`** `bottomNavAriaLabel` · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-21 C4.**
+
+**[C4] 아바타 verify 스크립트 2026-03-21:** [x] `scripts/verify-avatar-assets.ts`에 `--characters-only` · `package.json` `verify:avatar-assets:characters` · `public/avatars/default/characters/README.md`·`.gitkeep` · `AVATAR_DEPLOY_VERIFY.md`·`public/avatars/characters/README.md` 경로 안내. (저장소에 PNG 없으면 verify는 exit 1 — 에셋 주입 후 통과.)
+
+**[C1] SPRINT 152 TASK2 / 358 (DOCS):** [x] NEXT·BACKLOG·`AUTO4`·`SPRINT_PLAN`·`AI_TASK_BOARD` **S152/358** · Gate **152** 동기 · 보드 **TASK2 [x]** · **완료. 2026-03-21 C1.**
+
+**[C5] SPRINT 152 TASK1 / 358 (VERIFY):** [x] Gate **152** A~F **PASS** · **`346/2554`** ✓ · `self-healing-ci` · `test:q237-smoke` **3 files / 7 tests** ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1 [x]** · **First** C5 **TASK6** / **C1 TASK3** · **2026-03-21 C5.**
+
+**[C6] SPRINT 152 TASK10 / 358 (VERIFY):** [x] `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` **346/2554** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · **완료. 2026-03-21 C6.**
+
+**[C1] SPRINT 152 / 358 (`PARALLEL_QUEUE_REFILL` §3 · REFRESH 2026-03-21):** [x] S151 **`exit 2`** (**C3·C4·C5·C6** 기아 — **C1** 잔여 **TASK5·7 `[ ]`**) → **S152** · NEXT·BACKLOG·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_PLAN` **358** 동기 · **C5** Gate **152** **`[x]`** · **C1 TASK2** **`[x]`** · carry **`346/2554`** · **First** C5 **TASK6** · **S151** 잔여 **C1 TASK3·5·7** 흡수.
+
+**[C3] SPRINT 152 TASK8·9 / 358:** [x] **`arenaReflectLevelIdFromUnknown`** JSDoc·S152 Symbol/bigint edges · **`POST /api/arena/reflect`** **`levelId: BigInt(1)`** → **400** `levelId_invalid` (`req.json` 스텁) · Vitest **24 tests** ✓ · 보드 **TASK8·9 [x]** · **완료. 2026-03-21 C3.**
+
+**[C4] SPRINT 152 TASK4 / 358 (UI):** [x] **`/[locale]/bty-arena/lobby`** · **`lobbyLandmarkAria`** · **`lobbyCtaRegionAria`** · **`lobbyTopBarAria`** · **`BtyArenaMissionLobbyPage`** · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-21 C4.**
+
 **[C1] SPRINT 151 TASK3 / 357 (DOCS):** [x] 223·224차 — `SPRINT_LOG`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`SPRINT_PLAN`·`CURRENT_TASK`·`BTY_RELEASE_GATE_CHECK` E)·`ELITE_3RD` · `bty-app/docs/AI_TASK_BOARD` **S151** 동기 · carry **`346/2553`** · 보드 **TASK3 [x]** · **완료. 2026-03-21 C1.**
 
 **[C5] SPRINT 151 TASK6 / 357 (VERIFY):** [x] `ELITE_3RD` §3 · Gate **151**(TASK1) 동기 · **`self-healing-ci` 346/2553** ✓ · q237 **3/7** ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK6 [x]** · **완료. 2026-03-21 C5.**

@@ -6,6 +6,16 @@
 
 ## 1. 목표
 
+### 1.1 인벤토리 (기획 기준)
+
+| 구분 | 개수 | 비고 |
+|------|------|------|
+| **캐릭터** | **13** | **12명 기본 선택 + 1명 히든(Legend)**. 히든은 **CODELESS ZONE(Stage 7)** 진행과 묶인 해금(상세는 `ARENA_PROGRESSION_AND_LEGEND_SPEC.md`). |
+| **옷** | **20** | 에셋·기획 목표. 코드·`avatar-assets.json`의 outfit id 목록은 단계적으로 이 개수에 맞출 것(현재 JSON은 Professional·Fantasy 합산 14 id). |
+| **악세사리** | **24** | 에셋·기획 목표. `avatar-assets.json`의 dental/game id 합산을 이 개수로 정리할 때 매니페스트·파일 1:1 유지. |
+
+### 1.2 구현·문서 단일 기준
+
 - **캐릭터 12명 + Legend(숨김)** — Legend 해금은 **진행 레벨 700** (tier 699). Core XP 700이 아님. (코드: `avatarCharacters.ts` `unlockAtTier: 699`, 대시보드 `getVisibleAvatarCharacters(coreXpTotal)`.)
 - **악세서리** 목록은 `public/avatars/avatar-assets.json` + `avatarOutfits.ts` `ACCESSORY_CATALOG` + `avatarAssets` `accessoryAssetMap` 에서 읽어 사용.
 - **옷** 을 캐릭터 이미지에 맞추기: 정렬 스크립트로 동일 좌표계 보장 후, 한 가지 몸형 템플릿 또는 3종 체형 타입별 옷으로 합성.
@@ -16,7 +26,7 @@
 
 | 구분 | 경로 | 비고 |
 |------|------|------|
-| **캐릭터 이미지** | `bty-app/public/avatars/characters/` | `hero_01.png` … `character_12.png`, `legend.png` (13개). 정렬 스크립트 출력을 여기로 복사. |
+| **캐릭터 이미지** | `bty-app/public/avatars/default/characters/` | `{characterId}.png` 13개 (`hero_01` … `character_12`, `legend_13`). 정렬 스크립트 출력을 여기로 복사. (`AVATAR_CHARACTER_IMAGE_BASE`) |
 | **옷 이미지** | `bty-app/public/avatars/outfits/` | `outfit_{outfitId}.png`. 정렬 스크립트로 동일 캔버스/앵커 맞춘 뒤 배치. **색상**: CSS hue-rotate 4톤만 사용 (`AvatarComposite` `outfitColorVariant` 0–3). `public/avatars/outfits/README.md` §옷 색상 다양화. |
 | **악세서리** | `bty-app/public/avatars/accessories/` | `{id}.svg` (치과 41종). `avatar-assets.json` 의 `accessories.dental` 과 1:1. |
 | **정렬 스크립트** | (프로젝트 외부 또는 `scripts/` 등) | Python PIL 기반. 입력: raw 이미지 → 출력: 1024×1024, 앵커·bbox 메타. |
@@ -87,8 +97,8 @@
 
 1. **캐릭터 12+Legend**:  
    - raw → 정렬 스크립트 `mode: character` → `assets/aligned/characters/` 출력.  
-   - 출력물을 `bty-app/public/avatars/characters/` 로 복사.  
-   - 파일명: `hero_01.png` … `character_12.png`, `legend.png`.
+   - 출력물을 `bty-app/public/avatars/default/characters/` 로 복사.  
+   - 파일명: `hero_01.png` … `character_12.png`, `legend_13.png`.
 2. **옷**:  
    - (1안) 표준 실루엣 1종으로 옷 디자인 후, 정렬 스크립트 `mode: clothing` (같은 앵커 비율)로 1024×1024 출력 → `public/avatars/outfits/outfit_{id}.png`.  
    - (2안) 체형 A/B/C 3종이면, 타입별로 옷 3벌 제작 후 `outfit_{id}_A.png` 등 규칙으로 저장하고, 코드에서 `bodyType` → URL 매핑.

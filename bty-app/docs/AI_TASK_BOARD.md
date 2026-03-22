@@ -8,15 +8,15 @@
 
 ## CURRENT TASK
 
-**SPRINT 151** · **357** (TASK **1~10**) · **MODE ARENA** · **Gate 151** **`[x]`** · **First** C1 **TASK5** (S152/358 예고).
+**SPRINT 154** · **360** (TASK **1~10**) · **MODE ARENA** · **Gate 154** **`[ ]`** · **First** **C5 TASK1**.
 
 | OWNER | 할 일 |
 |-------|--------|
-| C5 | **TASK1·6 `[x]`** |
-| C1 | **TASK2·3 `[x]`** · **TASK5·7 `[ ]`** *(S150 흡수)* |
-| C4 | **TASK4 `[x]`** *(`bty-arena/wireframe` a11y)* |
-| C3 | **TASK8·9 `[x]`** |
-| C6 | **TASK10 `[x]`** |
+| C5 | **TASK1·6 `[ ]`** *(S153 TASK6 흡수)* |
+| C1 | **TASK2·3·5·7 `[ ]`** *(S153 TASK3·5·7 흡수)* |
+| C4 | **TASK4 `[ ]`** *(`bty-arena/play` a11y)* |
+| C3 | **TASK8·9 `[ ]`** |
+| C6 | **TASK10 `[ ]`** |
 
 ---
 
@@ -24,9 +24,9 @@
 
 | Cursor | Role | Task |
 |--------|------|------|
-| C1 | Commander | **TASK5·7** (DOCS) · **TASK2·3** 완료 |
-| C2 | Gatekeeper | Gate **151** **`[x]`** |
-| C3 | Domain | **8·9** 완료 |
-| C4 | UI | **4** 완료 |
-| C5 | VERIFY | **1·6** 완료 |
-| C6 | Test | **10** 완료 |
+| C1 | Commander | **TASK2·3·5·7** (DOCS) |
+| C2 | Gatekeeper | Gate **154** · **First** C5 **TASK1** |
+| C3 | Domain | **8·9** |
+| C4 | UI | **4** |
+| C5 | VERIFY | **1·6** |
+| C6 | Test | **10** |

@@ -1,7 +1,9 @@
 /**
  * avatar-assets.json 연동 (§1, AVATAR_ALIGNMENT_AND_OUTFIT_SPEC).
  * 단일 소스: public/avatars/avatar-assets.json과 동기화. 도메인/리브는 이 모듈만 참조.
- * 치과 41종 + 게임 33종 악세사리 ID, 옷 Professional 7종 + Fantasy 7종.
+ *
+ * 기획 인벤토리: 옷 **20종** · 악세사리 **24종** 목표. 폴더 스캔으로 갱신: `npm run generate:avatar-manifest`.
+ * (커밋된 JSON은 레벨 맵·UI와 맞춘 수동/이전 스냅샷일 수 있음.)
  */
 
 import data from "./data/avatar-assets.json";

@@ -110,7 +110,7 @@ describe("POST /api/arena/code-name", () => {
   });
 
   /**
-   * S144 C3 TASK9: optional `preferredLabDifficulty` — bigint (≠ **S110** number).
+   * S153 C3 TASK9: optional `preferredLabDifficulty` — bigint (≠ **S110** number; **S152** reflect·beginner 라인과 무관).
    * JSON 본문은 bigint를 담을 수 없어 `req.json()` 스텁으로 파싱 결과만 재현.
    */
   it("returns 400 preferred_lab_difficulty_invalid when preferredLabDifficulty is bigint", async () => {

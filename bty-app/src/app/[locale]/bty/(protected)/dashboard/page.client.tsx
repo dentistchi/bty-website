@@ -1476,12 +1476,53 @@ export default function DashboardClient() {
                           const ch = getAvatarCharacter(core.avatarCharacterId);
                           return ch ? (
                             <>
-                              <div style={{ width: 40, height: 40, borderRadius: 8, overflow: "hidden", background: "#e0e0e0" }}>
-                                <img src={ch.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              <div
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: 8,
+                                  overflow: "hidden",
+                                  background: "#e0e0e0",
+                                  position: "relative",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    position: "absolute",
+                                    zIndex: 0,
+                                    fontSize: 16,
+                                    fontWeight: 700,
+                                    color: "#666",
+                                  }}
+                                  aria-hidden
+                                >
+                                  {ch.label.slice(0, 1)}
+                                </span>
+                                <img
+                                  src={ch.imageUrl}
+                                  alt=""
+                                  style={{
+                                    position: "relative",
+                                    zIndex: 1,
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                  }}
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                />
                               </div>
                               <span style={{ fontWeight: 600 }}>{ch.label}</span>
                             </>
-                          ) : null;
+                          ) : (
+                            <span style={{ fontSize: 12, color: "#999" }}>
+                              {locale === "ko" ? "알 수 없는 캐릭터 id" : "Unknown character id"}
+                            </span>
+                          );
                         })()}
                       </div>
                     )}

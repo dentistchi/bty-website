@@ -15,6 +15,8 @@ export type ScreenShellProps = {
   fullWidth?: boolean;
   /** 있으면 내부 `<main>`에 `aria-label` (접근성 랜드마크) */
   mainAriaLabel?: string;
+  /** 있으면 `BottomNav`에 전달 (경로별 하단 탭 랜드마크) */
+  bottomNavAriaLabel?: string;
 };
 
 /**
@@ -31,6 +33,7 @@ export default function ScreenShell({
   contentClassName = "pb-24",
   fullWidth = false,
   mainAriaLabel,
+  bottomNavAriaLabel,
 }: ScreenShellProps) {
   const container = fullWidth
     ? `mx-auto w-full max-w-full px-0 py-6 ${contentClassName}`
@@ -55,7 +58,9 @@ export default function ScreenShell({
         ) : null}
         <main {...(mainAriaLabel ? { "aria-label": mainAriaLabel } : {})}>{children}</main>
       </div>
-      {showBottomNav ? <BottomNav locale={locale} /> : null}
+      {showBottomNav ? (
+        <BottomNav locale={locale} aria-label={bottomNavAriaLabel ?? "Main navigation"} />
+      ) : null}
     </div>
   );
 }

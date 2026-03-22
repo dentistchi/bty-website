@@ -43,9 +43,9 @@ describe("arenaReflectLevelIdFromUnknown", () => {
   });
 
   /**
-   * S117 C3 TASK8 — **S116** `arenaCodeNameFromUnknown` Symbol·bigint·**S95** ZWSP 라인과 구분 (`reflect` level id 축).
+   * S152 C3 TASK8 — **S117** 동일 축 — top-level **`Symbol`** / **`bigint`** → **null** (`reflect` level id 축).
    */
-  it("S117: rejects Symbol and bigint", () => {
+  it("S152: rejects Symbol and bigint", () => {
     expect(arenaReflectLevelIdFromUnknown(Symbol("S1"))).toBeNull();
     expect(arenaReflectLevelIdFromUnknown(BigInt(1))).toBeNull();
   });

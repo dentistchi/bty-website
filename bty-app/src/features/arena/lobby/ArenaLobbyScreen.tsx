@@ -1,8 +1,11 @@
 "use client";
 
+import { useParams } from "next/navigation";
 import type { ArenaScenario } from "@/domain/arena/scenarios";
 import { DEFAULT_ARENA_MISSION_TOP_BAR } from "@/domain/arena/scenarios";
 import { ArenaTopBar, GlassPanel } from "@/components/arena";
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
 export type ArenaLobbyScreenProps = {
   scenario: ArenaScenario;
@@ -27,8 +30,13 @@ export default function ArenaLobbyScreen({
   onEnterArena,
   onResumeScenario,
 }: ArenaLobbyScreenProps) {
+  const params = useParams();
+  const locale = params?.locale === "ko" ? "ko" : "en";
+  const loc = locale as Locale;
+  const t = getMessages(loc).uxPhase1Stub;
+
   return (
-    <main
+    <div
       data-testid="arena-lobby-screen"
       className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-6 py-5 text-white"
     >
@@ -39,6 +47,7 @@ export default function ArenaLobbyScreen({
           level={DEFAULT_ARENA_MISSION_TOP_BAR.level}
           codename={DEFAULT_ARENA_MISSION_TOP_BAR.codename}
           progress={DEFAULT_ARENA_MISSION_TOP_BAR.progress}
+          aria-label={t.lobbyTopBarAria}
         />
 
         <GlassPanel data-testid="arena-lobby-hero" className="grid grid-cols-12 gap-6 p-6">
@@ -52,7 +61,11 @@ export default function ArenaLobbyScreen({
             </p>
           </div>
 
-          <div className="col-span-12 flex flex-col justify-center gap-3 lg:col-span-5">
+          <section
+            className="col-span-12 flex flex-col justify-center gap-3 lg:col-span-5"
+            role="region"
+            aria-label={t.lobbyCtaRegionAria}
+          >
             <button
               type="button"
               data-testid="arena-enter"
@@ -69,7 +82,7 @@ export default function ArenaLobbyScreen({
             >
               Resume Scenario
             </button>
-          </div>
+          </section>
         </GlassPanel>
 
         <section className="grid grid-cols-12 gap-6">
@@ -113,6 +126,6 @@ export default function ArenaLobbyScreen({
           <StatusCapsule label="Team Signal" value="Stable" />
         </section>
       </div>
-    </main>
+    </div>
   );
 }

@@ -29,7 +29,10 @@
     "build-storybook": "storybook build",
     "db:push": "supabase db push",
     "storage:cors": "bash scripts/storage-cors.sh",
-    "verify:avatar-assets": "npx --yes tsx scripts/verify-avatar-assets.ts"
+    "verify:avatar-assets": "npx --yes tsx scripts/verify-avatar-assets.ts",
+    "verify:avatar-assets:characters": "npx --yes tsx scripts/verify-avatar-assets.ts --characters-only",
+    "generate:avatar-manifest": "npx --yes tsx scripts/generate-avatar-manifest.ts",
+    "embed:accessory-png-as-svg": "npx --yes tsx scripts/embed-accessory-png-as-svg.ts"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",

@@ -36,7 +36,8 @@
 
 ## 3. Legend 캐릭터 해금
 
-- **조건**: 진행 레벨 700 도달 = **tier >= 699** (Core XP 6,990 이상).
+- **기획 서술**: 선택 가능 캐릭터 **12명 + 히든 1명(Legend)**. 히든은 **CODELESS ZONE(Stage 7)** 구간의 최종 진행과 연동되어 열리는 구조로 설명한다.
+- **조건(구현)**: 진행 레벨 700 도달 = **tier >= 699** (Core XP 6,990 이상). 즉 Stage 7 **진입**(레벨 601)만으로는 해금되지 않고, **해 Stage의 마지막 레벨(700)** 에 도달할 때 해금된다.
 - **코드**: `domain/constants.ts` — `LEGEND_UNLOCK_TIER = 699`, `PROGRESSION_LEVEL_MAX = 700`.  
   `avatarCharacters.ts` — `legend_13`에 `unlockAtTier: LEGEND_UNLOCK_TIER`.  
   `getVisibleAvatarCharacters(coreXpTotal)`는 `tierFromCoreXp(coreXpTotal)`로 tier를 구한 뒤, `unlockAtTier == null || tier >= c.unlockAtTier`인 캐릭터만 반환.

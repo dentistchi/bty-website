@@ -7,6 +7,8 @@ export type ArenaTopBarProps = {
   progress: number;
   /** e2e / analytics */
   testId?: string;
+  /** 접근성: 상단 스테이지 바 랜드마크 */
+  "aria-label"?: string;
 };
 
 export default function ArenaTopBar({
@@ -15,9 +17,11 @@ export default function ArenaTopBar({
   codename,
   progress,
   testId = "arena-top-bar",
+  "aria-label": ariaLabel,
 }: ArenaTopBarProps) {
   return (
     <header
+      aria-label={ariaLabel}
       data-testid={testId}
       className={cn(
         "rounded-3xl border border-white/10 bg-white/[0.04] px-5 py-4",

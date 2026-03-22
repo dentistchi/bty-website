@@ -16,6 +16,7 @@ export function arenaLabDifficultyKeyFromUnknown(raw: unknown): ArenaLabDifficul
 
 /**
  * Strict parse for optional API fields — unknown·비허용 문자열·trim 불일치 → **`null`** (lenient **`arenaLabDifficultyKeyFromUnknown`** 는 **`mid`**).
+ * Non-strings (including top-level **`Symbol`** / **`bigint`**) → **`null`**.
  */
 export function arenaLabDifficultyKeyStrictFromUnknown(raw: unknown): ArenaLabDifficultyKey | null {
   if (typeof raw === "bigint" || typeof raw === "symbol") return null;

@@ -2,9 +2,10 @@
  * Track C: 게임 느낌 2D 캐릭터 정의.
  * id는 arena_profiles.avatar_character_id에 저장됨.
  *
- * 총 13종: 일반 선택 12명 + 13번째 Legend. Legend 해금 = 진행 레벨 700(내부 tier 699 이상), Core XP 숫자와 다름.
- * 캐릭터 PNG: public/avatars/characters/{characterId}.png
- * 악세사리: public/avatars/accessories/ (getAccessoryImageUrl, avatar-assets.json).
+ * 총 13종: **기본 12명 + 히든 1명(Legend)**. 기획상 히든은 **CODELESS ZONE(Stage 7)** 진행과 연동.
+ * 구현: Legend 해금 = **진행 레벨 700**(내부 tier ≥ `LEGEND_UNLOCK_TIER`), Core XP 숫자와 다름 — `docs/spec/ARENA_PROGRESSION_AND_LEGEND_SPEC.md`.
+ * 캐릭터 베이스 PNG(옷·악세 합성 전 단계): `public/avatars/default/characters/{characterId}.png`
+ * 옷(기획 20종 목표)·악세(기획 24종 목표): 매니페스트 `avatar-assets.json` — `public/avatars/outfits/` · `public/avatars/accessories/` (getAccessoryImageUrl).
  * §4.2 체형: bodyType A/B/C/D (옷 URL 해석은 추후, 에셋 없어도 됨).
  */
 
@@ -25,15 +26,18 @@ export type AvatarCharacter = {
   bodyType?: BodyType;
 };
 
-const AVATAR_CHARACTERS_DIR = "/avatars/characters";
+/**
+ * 전신 캐릭터 이미지 URL prefix (`/avatars/default/characters`).
+ * 합성 파이프라인(옷 레이어·악세사리) 완성 후에는 동일 id로 `characters/` 등으로 옮기며 이 상수만 바꾸면 됨.
+ */
+export const AVATAR_CHARACTER_IMAGE_BASE = "/avatars/default/characters";
 
 /**
- * Canonical PNG name: `{characterId}.png` under `public/avatars/characters/`.
- * (이전 이모지 파일명은 배포·Network와 어긋나 404가 났음 — README·verify 스크립트와 동일 규칙으로 통일.)
+ * Canonical PNG name: `{characterId}.png` under `public/avatars/default/characters/`.
  */
 function getCharacterImageUrl(id: string): string {
   const file = `${id}.png`;
-  return `${AVATAR_CHARACTERS_DIR}/${encodeURIComponent(file)}`;
+  return `${AVATAR_CHARACTER_IMAGE_BASE}/${encodeURIComponent(file)}`;
 }
 
 /** 캐릭터 12명 + Legend(숨김, 진행 레벨 700 = tier 699 해금). 라벨·이미지는 실제 에셋명 반영. */

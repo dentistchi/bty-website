@@ -6,9 +6,9 @@
 
 ## 배포 시 할 일 (산출물에 넣을 파일)
 
-1. **`public/avatars/characters/`**  
+1. **`public/avatars/default/characters/`**  
    - 코드의 캐릭터 `id`와 **동일한 파일명**의 PNG (예: `hero_01.png`, `healer_07.png`, …).  
-   - 기준: [`AVATAR_CHARACTERS`](../src/lib/bty/arena/avatarCharacters.ts)의 `id`와 1:1.
+   - 기준: [`AVATAR_CHARACTERS`](../src/lib/bty/arena/avatarCharacters.ts)의 `id`와 1:1. (`AVATAR_CHARACTER_IMAGE_BASE`)
 
 2. **`public/avatars/outfits/`**  
    - [`OUTFIT_ID_TO_FILENAME`](../src/lib/bty/arena/avatarOutfits.ts) 및 [`public/avatars/outfits/README.md`](../public/avatars/outfits/README.md) 목록과 동일한 이름 (예: `outfit_scrub_general.png`, `outfit_figs_scrub_short.png`).
@@ -33,11 +33,11 @@
 1. 아바타 설정 또는 리더보드 페이지를 연다.
 2. DevTools → **Network** → 필터 `avatars`.
 3. `characters`·`outfits` 요청이 **404**인지 **200**인지 확인.
-4. 404면 `public/avatars/characters`·`public/avatars/outfits`에 동일 파일명으로 PNG를 추가한 뒤 재배포한다.
+4. 404면 `public/avatars/default/characters`·`public/avatars/outfits`에 동일 파일명으로 PNG를 추가한 뒤 재배포한다.
 
 **파일명 단일 기준**
 
-- 캐릭터: `public/avatars/characters/{characterId}.png` — id는 [`AVATAR_CHARACTERS`](../src/lib/bty/arena/avatarCharacters.ts)와 동일 (예: `healer_07.png`).
+- 캐릭터: `public/avatars/default/characters/{characterId}.png` — id는 [`AVATAR_CHARACTERS`](../src/lib/bty/arena/avatarCharacters.ts)와 동일 (예: `healer_07.png`).
 - 옷: [`OUTFIT_ID_TO_FILENAME`](../src/lib/bty/arena/avatarOutfits.ts) — Professional은 `outfit_{outfitId}.png` (예: `outfit_figs_scrub_short.png`).
 - 악세사리(dental): [`getAccessoryImageUrl`](../src/lib/bty/arena/avatarOutfits.ts) → `/avatars/accessories/{id}.svg` (game은 `.png`).
 
@@ -50,12 +50,26 @@
 ```bash
 cd bty-app
 npx --yes tsx scripts/verify-avatar-assets.ts
+# 옷 에셋 없이 캐릭터 PNG만 검사:
+npm run verify:avatar-assets:characters
 ```
 
 - **exit 0:** 매핑된 경로에 파일이 있음.
 - **exit 1:** 누락 목록 출력 — `public/avatars/`에 에셋을 넣거나 매핑을 수정.
 
 에셋이 Git에 없고(용량·LFS) 배포 파이프라인에서만 주입하는 경우, 이 스크립트는 스킵하고 §1만 수행한다.
+
+### 매니페스트 자동 생성 (옷 20 · 악세 24)
+
+폴더에 에셋을 맞춰 둔 뒤 `avatar-assets.json`을 갱신할 때:
+
+```bash
+cd bty-app
+npm run generate:avatar-manifest
+```
+
+- 스캔 규칙·`manifest-split`: [`public/avatars/README.md`](../public/avatars/README.md), `public/avatars/accessories/catalog/README.md`, `public/avatars/outfits/manifest-split.example.json`.
+- 생성 후 `accessories/catalog/` → `accessories/` 루트로 동일 파일명 복사(런타임 URL).
 
 ---
 

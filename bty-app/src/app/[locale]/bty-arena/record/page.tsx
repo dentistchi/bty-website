@@ -20,7 +20,8 @@ export default async function ArenaResultPage({ params }: Props) {
       eyebrow={t.arenaResultEyebrow}
       title={t.arenaResultRecordedTitle}
       subtitle={t.arenaResultRecordedSubtitle}
-      mainAriaLabel={t.arenaRecordPageMainRegionAria}
+      mainAriaLabel={t.recordLandmarkAria}
+      bottomNavAriaLabel={t.recordBottomNavAria}
     >
       <div data-testid="arena-result" className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -43,7 +44,7 @@ export default async function ArenaResultPage({ params }: Props) {
           <p className="mt-2 text-sm leading-6 text-[#667085]">{t.arenaResultSystemNoteBody}</p>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <section className="flex flex-col gap-3" role="region" aria-label={t.recordCtaRegionAria}>
           <Link
             data-testid="arena-result-continue-button"
             href={play}
@@ -58,7 +59,7 @@ export default async function ArenaResultPage({ params }: Props) {
           >
             {t.arenaResultReturnHubCta}
           </Link>
-        </div>
+        </section>
 
         <p className="px-1 text-center text-xs leading-relaxed text-[#98A2B3]">{t.resultSampleNote}</p>
       </div>
