@@ -21,15 +21,38 @@
 
 ---
 
-## 이번 런: SPRINT 154 (ARENA) — 2026-03-21
+## 이번 런: SPRINT 155 (ARENA) — 2026-03-21
 
-- **S154 오픈:** **`PARALLEL_QUEUE_REFILL.md` §3** — S153 **`check-parallel-task-queue` exit 2** (**C3·C4·C6** 기아 — **C5** TASK6 · **C1** TASK3·5·7 **`[ ]`**) · **TASK1~10** 전부 **`[ ]`** · **First** C5 **TASK1** (Gate **154**) · carry **`346/2554`** (Gate **153** C7 스냅) · **S153** 잔여 **C5 TASK6** · **C1 TASK3·5·7** → **S154** 흡수.
+- **S155 오픈:** **`PARALLEL_QUEUE_REFILL.md` §3** — S154 **`check-parallel-task-queue` exit 2** (**C3·C4·C5** 기아 — **C1** TASK3·5·7 · **C6** TASK10 **`[ ]`**) · **TASK1~10** 전부 **`[ ]`** · **First** C5 **TASK1** (Gate **155**) · carry **`347/2567`** (Gate **154** C7) · **S154** 잔여 **C1 TASK3·5·7** · **C6 TASK10** → **S155** 흡수.
 - **MODE ARENA:** `src/domain/arena` · `src/lib/bty/arena` · `src/app/[locale]/bty-arena` · `src/app/api/arena/*` — `docs/architecture/DOMAIN_LAYER_TARGET_MAP.md`.
-- **할 일은 본 표만.** `SPRINT_PLAN` **360** · **`check-parallel-task-queue` exit 0** 재점검.
-- **First Task (잠금):** C5 **TASK1·TASK6** **`[x]`** (Gate **154**) · 다음 **`[ ]`:** C6 **TASK10** · **C1 TASK3·5·7**
-- **C7 (참고):** **`347/2567`** — Gate **154** ✓ (`self-healing-ci`·C5 TASK1·TASK6 본 턴); C6 **TASK10** 대기.
+- **할 일은 본 표만.** `SPRINT_PLAN` **361** · **`check-parallel-task-queue` exit 0** 재점검.
+- **First Task (잠금):** C5 **TASK1** — **`[ ]`** — **Gate 155** A~F.
+- **C7 (참고):** **`347/2567`** — Gate **154** ✓ (이전 런); **Gate 155** 미실행.
 
-**SPRINT 154 — TASK 1~10 (MODE ARENA)**
+**SPRINT 155 — TASK 1~10 (MODE ARENA)**
+
+| # | OWNER | TASK LINE | PROMPT |
+|---|-------|-----------|--------|
+| 1 | C5 | [ ] [VERIFY] Release Gate A~F — Arena 155차 | **Gate 155** · A~F · `BTY_RELEASE_GATE_CHECK` · Build ✓ (`rm -rf .next` 선행) · q237 **3/7** · **`self-healing-ci`** (실행 후 갱신) · **`npm run lint`** |
+| 2 | C1 | [ ] [DOCS] NEXT_PHASE·NEXT_BACKLOG + **이번 런**·이전 런 동기 | `NEXT_PHASE_AUTO4`·`NEXT_BACKLOG_AUTO4` **S155/361** · Gate **155** · **S154** 아카이브 · **`SPRINT_PLAN`·`AUTO4`·`AI_TASK_BOARD`** 동기 |
+| 3 | C1 | [ ] [DOCS] 문서 점검 227·228차 (선택) — **S154 TASK3 흡수** | `SPRINT_LOG`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4` · `SPRINT_PLAN`·`CURRENT_TASK`·`BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` · `bty-app/docs/AI_TASK_BOARD` **S155** |
+| 4 | C4 | [ ] [UI] Arena **`/bty-arena/lab`** 랩 접근성 1곳 (**메인·네비·CTA 랜드마크** · **play 제외**) | **`/[locale]/bty-arena/lab`** · **record·play·lobby** 과 중복 금지 · `npm run lint` ✓ |
+| 5 | C1 | [ ] [DOCS] 다음 배치 선정 (선택) | 다음 = **156** · `SPRINT_PLAN` **362** 예고 · `NEXT_BACKLOG`·`NEXT_PHASE`·`AUTO4`·`AI_TASK_BOARD` — **S154 TASK5** 흡수 |
+| 6 | C5 | [ ] [VERIFY] 엘리트 3차 체크리스트 1회 | **Gate 155**(TASK1) 동기 · `ELITE_3RD` §3 · Build ✓ (`rm -rf .next`) · q237 **3/7** — **S154 TASK6** 맥락 흡수 |
+| 7 | C1 | [ ] [DOCS] CURSOR_TASK_BOARD § 다음 작업 정리 | **S156** `splint 10` 예고 · `NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD` — **S154 TASK7** 흡수 |
+| 8 | C3 | [ ] [DOMAIN] Arena 순수 규칙+테스트 1건 | **`arenaRunIdFromUnknown`** — **top-level `Symbol` / `bigint`** → **null** · Vitest — **S155 TASK8** (미정 시 백로그에서 선정) |
+| 9 | C3 | [ ] [TEST] Arena route/API 테스트 1건 | **`POST /api/arena/lab/complete`** **`completedOn` JSON bigint** → **400** `completed_on_invalid` · `route.test.ts` — **S155 TASK9** |
+| 10 | C6 | [ ] [VERIFY] test:q237-smoke + self-healing-ci | q237 **3 files / 7 tests** · **`self-healing-ci`** (실행 후 갱신) · `npm run lint` · Build ✓ (`rm -rf .next` 선행) — **S154 TASK10** 흡수 |
+
+- **[REFILL 2026-03-21]** S155/361 — **`PARALLEL_QUEUE_REFILL` §3** — S154 **`exit 2`** (**C3·C4·C5** 기아) · **TASK1~10** 전부 **`[ ]`** · **First** C5 **TASK1** (Gate **155**) · carry **`347/2567`** · **MODE ARENA**.
+
+## 이전 런: SPRINT 154 (ARENA) — 2026-03-21
+
+- **종료:** **`PARALLEL_QUEUE_REFILL.md` §3** — **`check-parallel-task-queue` exit 2** (**C3·C4·C5** 기아 — **C1** TASK3·5·7 · **C6** TASK10 **`[ ]`**) · **TASK1·2·4·6·8·9 `[x]`** · 잔여 **C1 TASK3·5·7** · **C6 TASK10** → **S155** 재오픈.
+- **할 일은 본 표만.** `SPRINT_PLAN` **360** · **S154** 잔여 → **S155** 흡수.
+- **C7 (참고):** **`347/2567`** — Gate **154** (C5 TASK1·TASK6) ✓ (`self-healing-ci` 본 턴).
+
+**SPRINT 154 — TASK 1~10 (아카이브)**
 
 | # | OWNER | TASK LINE | PROMPT |
 |---|-------|-----------|--------|
@@ -47,6 +70,7 @@
 - **[REFRESH 2026-03-21]** S154/360 — **`PARALLEL_QUEUE_REFILL` §3** — S153 **`exit 2`** (**C3·C4·C6** 기아) · **TASK1~10** 전부 **`[ ]`** · **First** C5 **TASK1** (Gate **154**) · carry **`346/2554`** · **MODE ARENA**.
 - **[REFRESH 2026-03-21 (2)]** S154/360 — **`check-parallel-task-queue` exit 0** · **C1 TASK2 `[x]`** — NEXT·BACKLOG·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_PLAN` **S154/360** 동기 확인 · **BLOCKER:** C5 **TASK1** Gate **154** **`[ ]`** · 잔여 **C1 TASK3·5·7** · **C3·C4·C6·C5** 병렬 **`[ ]`**.
 - **[REFRESH 2026-03-21 (3)]** S154/360 — C5 **TASK1·TASK6 `[x]`** (Gate **154** · **`347/2567`**) · **C3·C4·TASK8·9·4 `[x]`** · 잔여 **C6 TASK10** · **C1 TASK3·5·7** **`[ ]`**.
+- **PARALLEL_QUEUE_REFILL (2026-03-21 · 4):** S154 **`exit 2`** (**C3·C4·C5** 기아) → **S155** · **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **155**) · `SPRINT_PLAN` **361** 동기.
 
 ## 이전 런: SPRINT 153 (ARENA) — 2026-03-21
 

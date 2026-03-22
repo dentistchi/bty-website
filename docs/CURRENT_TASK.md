@@ -1,5 +1,7 @@
 # 현재 작업 (CURRENT_TASK)
 
+**[C1] SPRINT 155 / 361 (`PARALLEL_QUEUE_REFILL` §3 · REFRESH 2026-03-21):** [x] S154 **`exit 2`** (**C3·C4·C5** 기아 — **C1** TASK3·5·7 · **C6** TASK10 **`[ ]`**) → **S155** · NEXT·BACKLOG·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_PLAN` **361** 동기 · **TASK1~10** 전부 **`[ ]`** · **First** C5 **TASK1** (Gate **155**) · carry **`347/2567`** · **S154** 잔여 **C1 TASK3·5·7** · **C6 TASK10** 흡수.
+
 **[C5] SPRINT 154 TASK1·TASK6 / 360 (VERIFY):** [x] Gate **154** A~F **PASS** · **`ELITE_3RD` §3** · **`347/2567`** ✓ · `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` · Build ✓ (`rm -rf .next` 선행) · `avatar-assets.json` 15·32 매니페스트 동기 · 보드 **TASK1·TASK6 [x]** · **완료. 2026-03-21 C5.**
 
 **[C4] SPRINT 154 TASK4 / 360 (UI):** [x] **`/[locale]/bty-arena/play`** — **`arenaMissionPlayTopBarAria`·`arenaMissionPlaySceneRegionAria`·`arenaMissionPlayDecisionsRegionAria`** · `ArenaPlayScreen` · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-21 C4.**

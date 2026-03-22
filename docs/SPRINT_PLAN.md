@@ -26,88 +26,104 @@
 
 ---
 
-## SPRINT 360 — **active (보드 SPRINT 154)**
+## SPRINT 361 — **active (보드 SPRINT 155)**
 
 - **현재 모드: 구현 단계** — C2~C6 할 일은 **코드 생성·구현** 우선; 검증은 보드 `[ ]` 태스크에서 수행.
-- **MODE ARENA:** **SPRINT 154** — Arena 경계 (`domain/arena` · `bty-arena` · `api/arena`).
-- **`PARALLEL_QUEUE_REFILL` §3 (2026-03-21):** S153 **`exit 2`** (**C3·C4·C6** 기아 — **C5** TASK6 · **C1** TASK3·5·7 **`[ ]`**) → **S154** · **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **154**) · carry **`346/2554`** · **S153** 잔여 **C5 TASK6** · **C1 TASK3·5·7** 흡수.
-- **C7 (참고):** **`347/2567`** — Gate **154** ✓ (C5 TASK1·TASK6) · `check-parallel-task-queue` **exit 0** (REFRESH **2026-03-21**).
+- **MODE ARENA:** **SPRINT 155** — Arena 경계 (`domain/arena` · `bty-arena` · `api/arena`).
+- **`PARALLEL_QUEUE_REFILL` §3 (2026-03-21):** S154 **`exit 2`** (**C3·C4·C5** 기아 — **C1** TASK3·5·7 · **C6** TASK10 **`[ ]`**) → **S155** · **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **155**) · carry **`347/2567`** · **S154** 잔여 **C1 TASK3·5·7** · **C6 TASK10** 흡수.
+- **C7 (참고):** **`347/2567`** — Gate **154** ✓ (이전 런); **Gate 155** 미실행 · `check-parallel-task-queue` **exit 0** (REFILL **2026-03-21**).
 
-| 워커 | S154 |
+| 워커 | S155 |
 |------|-----|
-| **C5** | **1·6 `[x]`** *(Gate **154** · **`347/2567`**)* |
-| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** *(S153 TASK3·5·7 흡수)* |
-| **C4** | **4 `[x]`** *(`bty-arena/play` a11y)* |
-| **C3** | **8·9 `[x]`** *(`arenaScenarioIdFromUnknown` · `POST /api/arena/sub-name`)* |
-| **C6** | **10 `[x]`** *(**347/2567** · q237 **7/7**)* |
-| **C2** | **1 `[ ]`** — Gate **154** · IMPORT · C3·C4 **TASK8·9**·**TASK4** 메모 |
+| **C5** | **1·6 `[ ]`** *(Gate **155**)* |
+| **C1** | **2·3·5·7 `[ ]`** *(S154 TASK3·5·7 흡수)* |
+| **C4** | **4 `[ ]`** *(`bty-arena/lab` a11y · **play** 제외)* |
+| **C3** | **8·9 `[ ]`** *(`arenaRunIdFromUnknown` · `POST /api/arena/lab/complete`)* |
+| **C6** | **10 `[ ]`** *(**S154** TASK10 흡수)* |
+| **C2** | **1 `[ ]`** — Gate **155** · IMPORT · C3·C4 **TASK8·9**·**TASK4** 메모 |
 
 ### C2~C6 할일 (REFRESH 시 갱신)
 
-**S154 — MODE ARENA —** C5 **TASK1·TASK6 `[x]`** (Gate **154** · **`347/2567`**) · **C1** TASK2 **`[x]`** · **TASK3·5·7 `[ ]`** · **C4** TASK4 **`[x]`** · **C3** TASK8·9 **`[x]`** · **C6** TASK10 **`[x]`** · **REFRESH 2026-03-21** · **`check-parallel-task-queue` exit 0**.
+**S155 — MODE ARENA —** **First** C5 **TASK1** **`[ ]`** (Gate **155**) · **C1** TASK2·3·5·7 **`[ ]`** · **C4** TASK4 **`[ ]`** · **C3** TASK8·9 **`[ ]`** · **C5** TASK6 **`[ ]`** · **C6** TASK10 **`[ ]`** · **REFILL 2026-03-21** · **`check-parallel-task-queue` exit 0** 재점검.
 
 #### C2 — Gatekeeper
-1. **보드 S154** — C5 **TASK1 `[x]`** — Gate **154** A~F — **`origin/main` push** 시 `SPRINT_LOG`·문서 재동기 (**C5 TASK1·TASK6·`347/2567` 본 턴** · 잠금 해제 **C6 TASK10** / **C1 DOCS**).
+1. **보드 S155** — **First** C5 **TASK1 `[ ]`** — Gate **155** A~F — **`origin/main` push** 시 `SPRINT_LOG`·문서 재동기.
 2. **IMPORT_BOUNDARY** — `bty-layer-import` / domain **rg** 1회 — `bty-app/src/domain` → `lib`/`app` **0건**.
-3. **API 계약** — S154 **TASK8·9** (`arenaScenarioIdFromUnknown` · **`POST /api/arena/sub-name`**) **C3 `[x]`** · route `@contract` 동기.
+3. **API 계약** — S155 **TASK8·9** (`arenaRunIdFromUnknown` · **`POST /api/arena/lab/complete`**) **C3 `[ ]`** · route `@contract` 동기.
 4. **Auth** 미터치 시 쿠키 문서 변경 없음.
 5. **Gate** 스테일 시 `SPRINT_LOG` 한 줄.
 
-**Notes (C2 · S360):** C5 **TASK1·TASK6** Gate **154** **`347/2567`** · **C1 TASK2** REFRESH **`[x]`**.
-**BLOCKER:** **해제** — C5 **TASK1·TASK6** **`[x]`** · 다음 push-Gate 동기는 **`origin/main` 변화 시** 항목 1.
-**CONTINUE (C2) 2026-03-21:** **C6 TASK10** · **C1 TASK3·5·7** DOCS **`[ ]`**.
+**Notes (C2 · S361):** **First** C5 **TASK1** Gate **155** · carry **`347/2567`** (Gate **154** ✓).
+**BLOCKER:** 보드 S155 **C5 TASK1** (Gate **155**) **`[ ]`** — item 1 (`origin/main` push 시 `SPRINT_LOG`·문서 재동기)는 **C5 VERIFY 완료·보드 `[x]`** 후에만 `[x]` 처리 가능.
+**CONTINUE (C2) 2026-03-21:** **First** C5 **TASK1** · C3·C4 **TASK8·9**·**TASK4** 구현 큐.
 
 #### C3 — Domain
-1. **보드 TASK8 `[x]`** — **`arenaScenarioIdFromUnknown`** — top-level **Symbol·bigint** → **null** · Vitest — **S154 TASK8**.
-2. **보드 TASK9 `[x]`** — **`POST /api/arena/sub-name`** **`scenarioOutcomes` JSON bigint** → **400** `scenario_outcomes_invalid` · `route.test.ts` — **S154 TASK9**.
-3. **domain**→`lib`/`app` **금지** — **확인 `[x]`** (`rg` **0건**).
-4. **S104 TASK14** — **NEXT_BACKLOG**와 중복 확인 **`[x]`** (`NEXT_BACKLOG_AUTO4` §S104 · S154 TASK8·9 한 줄 합침).
-5. barrel·export 확인 **`[x]`** (`arenaScenarioIdFromUnknown` → `scenarios/index`).
+1. **보드 TASK8 `[ ]`** — **`arenaRunIdFromUnknown`** — top-level **Symbol·bigint** → **null** · Vitest — **S155 TASK8**.
+2. **보드 TASK9 `[ ]`** — **`POST /api/arena/lab/complete`** **`completedOn` JSON bigint** → **400** `completed_on_invalid` · `route.test.ts` — **S155 TASK9**.
+3. **domain**→`lib`/`app` **금지** — **확인**.
+4. **S104 TASK14** — **NEXT_BACKLOG**와 중복 확인.
+5. barrel·export 확인.
 
-**Notes (C3 · S360):** **CONTINUE 2026-03-21:** **TASK8·9 `[x]`** — `arenaScenarioIdFromUnknown` S151 edges 유지; sub-name **`scenarioOutcomes: BigInt`** `req.json` 스텁 회귀 **S154**.
+**Notes (C3 · S361):** **CONTINUE 2026-03-21:** **TASK8·9 `[ ]`** — run id edges·lab/complete `req.json` 스텁.
 
 #### C4 — UI
-1. **보드 TASK4 `[x]`** — **`/[locale]/bty-arena/play`** · **play·record·lobby** 과 중복 금지 · `npm run lint`.
+1. **보드 TASK4 `[ ]`** — **`/[locale]/bty-arena/lab`** · **lab·record·play** 과 중복 금지 · `npm run lint`.
 2. **Arena** 경계 — `src/app/[locale]/bty-arena` 만.
 3. i18n **aria** 확인.
 4. **S104 TASK15** 백로그 — 정합.
 5. 터치 시 **Lint만**.
 
-**Notes (C4 · S360):** **CONTINUE 2026-03-21:** TASK4 **`[x]`** — **`arenaMissionPlayTopBarAria`·`arenaMissionPlaySceneRegionAria`·`arenaMissionPlayDecisionsRegionAria`** · `ArenaPlayScreen` · `npm run lint` ✓.
+**Notes (C4 · S361):** **CONTINUE 2026-03-21:** TASK4 **`[ ]`** — **lab** 메인·네비·CTA 랜드마크 (**play** 직전 런과 중복 금지).
 
 #### C5 — VERIFY
-1. **보드 TASK1 `[x]`** — Release Gate **154** A~F · `BTY_RELEASE_GATE_CHECK` · **`self-healing-ci` 347/2567** — **완료. 2026-03-21 C5.**
-2. **보드 TASK6 `[x]`** — `ELITE_3RD` §3 · Gate **154**(TASK1) 동기 — **S153** TASK6 흡수 — **완료. 2026-03-21 C5.**
+1. **보드 TASK1 `[ ]`** — Release Gate **155** A~F · `BTY_RELEASE_GATE_CHECK` · **`self-healing-ci`** (실행 후 갱신).
+2. **보드 TASK6 `[ ]`** — `ELITE_3RD` §3 · Gate **155**(TASK1) 동기 — **S154** TASK6 맥락 흡수.
 3. 배포 직전이 아니면 Gate **일상 반복 안 함** (REFRESH 루틴 아님).
 4. **Elite** 패치 후보 (비의무).
 5. q237 **3/7** — TASK1과 동일 런에서 정합.
 
-**Notes (C5 · S360):** **CONTINUE 2026-03-21:** **TASK1·6 `[x]`** · **`347/2567`** · `avatar-assets.json` / public 동기 · 매니페스트 **15·32**.
+**Notes (C5 · S361):** **CONTINUE 2026-03-21:** **TASK1·6 `[ ]`** · carry **`347/2567`** (이전 Gate) → Gate **155** 후 갱신.
 
 #### C6 — VERIFY
-1. **보드 TASK10 `[x]`** — q237 **3 files / 7 tests** ✓ · **`self-healing-ci` 347/2567** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · **2026-03-21 C6 CONTINUE.**
+1. **보드 TASK10 `[ ]`** — q237 **3/7** · **`self-healing-ci`** (실행 후 갱신) · `npm run lint` · Build ✓ (`rm -rf .next` 선행).
 2. 실패 시 **Owner·한 줄** `SPRINT_LOG`.
 3. C5 **TASK1**과 spot 중복만 조정.
 4. REFRESH로 전체 스모크 **반복 안 함** (보드 태스크에서만).
-5. **S153** **TASK10** **`[x]`** — carry **`347/2567`** (Gate **154** 후 갱신).
+5. **S154** **TASK10** 흡수 — carry **`347/2567`** (Gate **155** 후 갱신).
 
-**Notes (C6 · S360):** **CONTINUE 2026-03-21:** TASK10 **`[x]`** — avatar 매니페스트 **15·32**·`avatarAssets` 테스트를 `OUTFITS_*` 기준으로 정합; **`347/2567`** ✓.
+**Notes (C6 · S361):** **CONTINUE 2026-03-21:** TASK10 **`[ ]`** — 보드 VERIFY 태스크에서만 전체 루틴.
 
 ### C1 Commander — REFRESH snapshot
 
 | 항목 | 내용 |
 |------|------|
-| **이번 런** | **SPRINT 154** · **360** · **MODE ARENA** |
-| **C1 잔여** | **TASK3·5·7 `[ ]`** (DOCS) — **TASK2 `[x]`** (NEXT·BACKLOG **S154/360** REFRESH **2026-03-21**) |
-| **C5 잔여** | **없음** *(TASK1·6 **`[x]`** · Gate **154** · **`347/2567`**)* |
-| **다음 스텝 (CONTINUE 2026-03-21)** | **C6 TASK10** → **C1 TASK3** → **TASK5** → **TASK7** |
-| **병렬** | **C4** TASK4 **`[x]`** · **C3** TASK8·9 **`[x]`** · **C6** TASK10 **`[x]`** · **C5** TASK1·6 **`[x]`** · **C1** TASK3·5·7 **`[ ]`** — **`check-parallel-task-queue` exit 0** (REFRESH) |
-| **C7** | **`347/2567`** — Gate **154** ✓ (C5 TASK1·TASK6) |
-| **다음 C1** | **TASK3** → **TASK5** → **TASK7** |
+| **이번 런** | **SPRINT 155** · **361** · **MODE ARENA** |
+| **C1 잔여** | **TASK2·3·5·7 `[ ]`** (DOCS) — **S154** **TASK3·5·7** 흡수 |
+| **C5 잔여** | **TASK1·6 `[ ]`** *(Gate **155**)* — **S154** **TASK6** 맥락 흡수 |
+| **다음 스텝 (CONTINUE 2026-03-21)** | **First** C5 **TASK1** (Gate **155**) → **C1 TASK2** (NEXT·BACKLOG) → **TASK3** → **TASK5** → **TASK7** |
+| **병렬** | **C4** TASK4 **`[ ]`** · **C3** TASK8·9 **`[ ]`** · **C6** TASK10 **`[ ]`** · **C5** TASK1·6 **`[ ]`** · **C1** TASK2·3·5·7 **`[ ]`** — **`check-parallel-task-queue` exit 0** (REFILL) |
+| **C7** | **`347/2567`** — Gate **154** ✓ · **Gate 155** 대기 |
+| **다음 C1** | **TASK2** → **TASK3** → **TASK5** → **TASK7** |
 
-- **PARALLEL_QUEUE_REFILL (2026-03-21):** S153 **`exit 2`** (**C3·C4·C6** 기아 — **C5** TASK6 · **C1** TASK3·5·7 **`[ ]`**) → **S154** 오픈 · `SPRINT_PLAN`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`CURRENT_TASK` 동기.
-- **REFRESH (2026-03-21 · 2):** **`check-parallel-task-queue` exit 0** · **C1 TASK2 `[x]`** · **`SPRINT_PLAN`「C2~C6 할일」** · C1 snapshot · **BLOCKER** C5 **TASK1** *(해제: REFRESH **3** · C5 **TASK1·TASK6** **`[x]`**)*.
-- **REFRESH (2026-03-21 · 3):** C5 **TASK1·TASK6** **`[x]`** · **`347/2567`** · C2 **BLOCKER** 해제 · 잔여 **C6 TASK10** · **C1 TASK3·5·7**.
+- **PARALLEL_QUEUE_REFILL (2026-03-21 · 4):** S154 **`exit 2`** (**C3·C4·C5** 기아) → **S155** 오픈 · `SPRINT_PLAN`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`CURRENT_TASK` 동기.
+- **REFRESH (2026-03-21):** **`SPRINT_PLAN`「C2~C6 할일」** · C1 snapshot · **S155/361** 오픈.
+
+---
+
+## SPRINT 360 — **archived (보드 SPRINT 154)**
+
+- **요약:** **TASK1·2·4·6·8·9 `[x]`** · 잔여 **C1 TASK3·5·7** · **C6 TASK10** **`[ ]`** · **`PARALLEL_QUEUE_REFILL` → S155** · carry **`347/2567`** (C7 참고).
+- **C7:** **347/2567** — Gate **154** (C5 TASK1·6) ✓; **S154** 잔여 → **S155** 흡수.
+
+| 워커 | S154 (마감) |
+|------|-----|
+| **C5** | **1·6 `[x]`** *(Gate **154** · **`347/2567`*)* |
+| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S155** 흡수 |
+| **C4** | **4 `[x]`** *(`bty-arena/play` a11y)* |
+| **C3** | **8·9 `[x]`** *(`arenaScenarioIdFromUnknown` · `POST /api/arena/sub-name`)* |
+| **C6** | **10 `[ ]`** → **S155 TASK10** 흡수 |
+
+- **PARALLEL_QUEUE_REFILL (2026-03-21 · 4):** S154 **`exit 2`** (**C3·C4·C5** 기아) → **S155** · `SPRINT_PLAN` **361** 동기.
 
 ---
 

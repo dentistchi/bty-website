@@ -252,6 +252,23 @@ export function getAccessoryImageUrl(accessoryId: string): string {
 }
 
 /**
+ * 레벨 맵(PROFESSIONAL_LEVEL_MAP 등)에서 참조하지만 `avatar-assets.json` dental/game 목록과 id가 다른 항목.
+ * `write-accessory-placeholders`·`verify-avatar-assets`가 동일 집합을 검사한다.
+ */
+export const LEGACY_ACCESSORY_IDS_FOR_ASSETS: readonly string[] = [
+  "apron",
+  "goggles",
+  "surgical_gloves",
+  "mask",
+  "dental_mirror",
+  "loupes",
+  "goggles_premium",
+  "handpiece",
+  "dental_mirror_premium",
+  "xray_portable",
+];
+
+/**
  * 레벨에 맞는 옷 + 악세사리 반환.
  * imageUrl: /avatars/outfits/outfit_{outfitId}.png (Professional 7종 + Fantasy 레벨별는 outfit_apprentice.png 등)
  */

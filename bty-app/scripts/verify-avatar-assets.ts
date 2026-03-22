@@ -13,8 +13,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { AVATAR_CHARACTERS, getCharacterThumbImageUrl } from "../src/lib/bty/arena/avatarCharacters";
-import { getOutfitFilename } from "../src/lib/bty/arena/avatarOutfits";
-import { OUTFIT_IDS } from "../src/lib/bty/arena/avatar-assets.data";
+import {
+  getOutfitFilename,
+  getAccessoryImageUrl,
+  LEGACY_ACCESSORY_IDS_FOR_ASSETS,
+} from "../src/lib/bty/arena/avatarOutfits";
+import { OUTFIT_IDS, ACCESSORY_IDS_ALL } from "../src/lib/bty/arena/avatar-assets.data";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
@@ -43,6 +47,7 @@ function main(): void {
   }
 
   let outfitIdsChecked = 0;
+  let accessoryIdsChecked = 0;
   if (!charactersOnly) {
     const outfitIds = new Set<string>([...OUTFIT_IDS]);
     outfitIdsChecked = outfitIds.size;
@@ -52,6 +57,15 @@ function main(): void {
       const abs = path.join(publicDir, rel);
       if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) {
         missing.push(`[outfit] ${id} → avatars/outfits/${name}`);
+      }
+    }
+
+    const accessoryIds = new Set<string>([...ACCESSORY_IDS_ALL, ...LEGACY_ACCESSORY_IDS_FOR_ASSETS]);
+    accessoryIdsChecked = accessoryIds.size;
+    for (const id of accessoryIds) {
+      const url = getAccessoryImageUrl(id);
+      if (!fileExistsFromUrlPath(url)) {
+        missing.push(`[accessory] ${id} → ${url.replace(/^\//, "")}`);
       }
     }
   }
@@ -67,8 +81,8 @@ function main(): void {
     "verify-avatar-assets: OK — character files:",
     AVATAR_CHARACTERS.length,
     charactersOnly
-      ? "(characters-only; outfits not checked)"
-      : `outfit ids checked: ${outfitIdsChecked}`,
+      ? "(characters-only; outfits/accessories not checked)"
+      : `outfit ids: ${outfitIdsChecked}, accessory ids: ${accessoryIdsChecked}`,
   );
   process.exit(0);
 }
