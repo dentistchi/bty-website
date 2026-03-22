@@ -51,7 +51,7 @@ describe("leaderboardService", () => {
       expect(result[0].avatar).toEqual({
         characterKey: "hero_01",
         theme: "professional",
-        outfitKey: "professional_outfit_scrub_general",
+        outfitKey: "outfit_scrub_general",
         accessoryKeys: [],
       });
       expect(result[0].tier).toBeDefined();

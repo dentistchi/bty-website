@@ -2,7 +2,7 @@
 
 배포 시 넣을 파일·404 확인 절차: [`docs/AVATAR_DEPLOY_VERIFY.md`](../docs/AVATAR_DEPLOY_VERIFY.md) **「배포 시 할 일」**.
 
-**기획 인벤토리(에셋 목표):** 캐릭터 **13**(12 + 히든 1) · 옷 **20** · 악세사리 **24**. 상세·진행 해금: repo `docs/spec/AVATAR_ALIGNMENT_AND_OUTFIT_SPEC.md`.
+**기획 인벤토리(에셋 목표):** 캐릭터 **13**(12 + 히든 1) · 옷 **20**(Professional 15 + Fantasy 5, `avatar-assets.json`과 동일) · 악세사리 **24**. **옷 PNG 위치:** `public/avatars/outfits/` — 파일명 `outfit_{id}.png` (`id`는 JSON의 outfit 문자열). 상세: `docs/spec/AVATAR_ALIGNMENT_AND_OUTFIT_SPEC.md`.
 
 **매니페스트 자동 생성:** `public/avatars/outfits/`에 `outfit_{id}.png` **20개**(체형 접미사 `_*_[ABCD].png` 제외), `public/avatars/accessories/catalog/`에 규칙에 맞는 파일 **24개**를 둔 뒤:
 

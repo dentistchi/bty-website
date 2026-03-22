@@ -24,8 +24,8 @@ import {
 import type { Locale } from "@/lib/i18n";
 import { leaderboardTieRankSuffixDisplayKey } from "@/domain/rules/leaderboardTieBreak";
 import { weeklyCompetitionStageTierBandDisplayLabelKey } from "@/domain/rules/weeklyCompetitionDisplay";
-import { getVisibleAvatarCharacters, getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
-import { getAccessoryImageUrl, OUTFIT_OPTIONS_BY_THEME, FANTASY_THEME_UI_READY } from "@/lib/bty/arena/avatarOutfits";
+import { getVisibleAvatarCharacters, getAvatarCharacter, getCharacterThumbImageUrl } from "@/lib/bty/arena/avatarCharacters";
+import { getAccessoryImageUrl, OUTFIT_OPTIONS_ALL } from "@/lib/bty/arena/avatarOutfits";
 import { LeAirWidget } from "@/components/bty/dashboard/LeAirWidget";
 import { LeStageWidget } from "@/components/bty/dashboard/LeStageWidget";
 import { weeklyTierDisplayLabelKey } from "@/domain/rules/leaderboard";
@@ -180,7 +180,6 @@ export default function DashboardClient() {
   const [subNameDraft, setSubNameDraft] = React.useState("");
   const [subNameSaving, setSubNameSaving] = React.useState(false);
   const [avatarCharacterSaving, setAvatarCharacterSaving] = React.useState(false);
-  const [avatarOutfitThemeSaving, setAvatarOutfitThemeSaving] = React.useState(false);
   const [avatarSelectedOutfitSaving, setAvatarSelectedOutfitSaving] = React.useState(false);
   const [avatarPrefsSavedAt, setAvatarPrefsSavedAt] = React.useState<number | null>(null);
 
@@ -253,25 +252,6 @@ export default function DashboardClient() {
       setCore((c) => (c ? { ...c, avatarCharacterId: core?.avatarCharacterId ?? null } : c));
     } finally {
       setAvatarCharacterSaving(false);
-    }
-  }
-
-  async function saveAvatarOutfitTheme(theme: "professional" | "fantasy" | null) {
-    setCore((c) => (c ? { ...c, avatarOutfitTheme: theme } : c));
-    setAvatarOutfitThemeSaving(true);
-    try {
-      await arenaFetch("/api/arena/profile", {
-        method: "PATCH",
-        json: { avatarOutfitTheme: theme },
-      });
-      const next = await arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => core);
-      if (next) setCore(next);
-      setAvatarPrefsSavedAt(Date.now());
-      setTimeout(() => setAvatarPrefsSavedAt(null), 2000);
-    } catch {
-      setCore((c) => (c ? { ...c, avatarOutfitTheme: core?.avatarOutfitTheme ?? null } : c));
-    } finally {
-      setAvatarOutfitThemeSaving(false);
     }
   }
 
@@ -1467,8 +1447,8 @@ export default function DashboardClient() {
                     <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{tAvatarOutfit.character}</div>
                     <div style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>
                       {locale === "ko"
-                        ? "캐릭터는 한 번 저장하면 변경할 수 없습니다. 다음 Code 진화까지 유지됩니다. 아웃핏만 변경 가능합니다."
-                        : "Character is permanent after first save until next code evolution. Only outfit theme can be changed."}
+                        ? "캐릭터는 한 번 저장하면 변경할 수 없습니다. 다음 Code 진화까지 유지됩니다. 옷만 변경할 수 있습니다."
+                        : "Character is permanent after first save until next code evolution. Only outfit can be changed."}
                     </div>
                     {core?.avatarCharacterId && (
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1570,7 +1550,7 @@ export default function DashboardClient() {
                             >
                               <span style={{ position: "relative", zIndex: 0 }}>{ch.label.slice(0, 1)}</span>
                               <img
-                                src={ch.imageUrl}
+                                src={getCharacterThumbImageUrl(ch.id)}
                                 alt=""
                                 style={{
                                   position: "absolute",
@@ -1596,77 +1576,33 @@ export default function DashboardClient() {
                 )}
                 <div style={{ marginTop: 16 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{tAvatarOutfit.label}</div>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <button
-                      type="button"
-                      disabled={avatarOutfitThemeSaving}
-                      onClick={() => saveAvatarOutfitTheme("professional")}
-                      aria-label={tAvatarOutfit.professional}
-                      style={{
-                        padding: "8px 14px",
-                        borderRadius: 8,
-                        border: core?.avatarOutfitTheme === "professional" ? "2px solid #111" : "1px solid #ddd",
-                        background: core?.avatarOutfitTheme === "professional" ? "#f0f0f0" : "transparent",
-                        cursor: avatarOutfitThemeSaving ? "not-allowed" : "pointer",
-                        fontWeight: core?.avatarOutfitTheme === "professional" ? 700 : 500,
-                      }}
-                    >
-                      {tAvatarOutfit.professional}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={avatarOutfitThemeSaving}
-                      onClick={() => saveAvatarOutfitTheme("fantasy")}
-                      aria-label={tAvatarOutfit.fantasy}
-                      style={{
-                        padding: "8px 14px",
-                        borderRadius: 8,
-                        border: core?.avatarOutfitTheme === "fantasy" ? "2px solid #111" : "1px solid #ddd",
-                        background: core?.avatarOutfitTheme === "fantasy" ? "#f0f0f0" : "transparent",
-                        cursor: avatarOutfitThemeSaving ? "not-allowed" : "pointer",
-                        fontWeight: core?.avatarOutfitTheme === "fantasy" ? 700 : 500,
-                      }}
-                    >
-                      {tAvatarOutfit.fantasy}
-                    </button>
-                  </div>
                   <div style={{ marginTop: 10 }}>
-                    {core?.avatarOutfitTheme === "fantasy" && !FANTASY_THEME_UI_READY ? (
-                      <div style={{ fontSize: 12, color: "#666" }}>
-                        {locale === "ko" ? "Fantasy 옷 선택은 준비 중입니다." : "Fantasy outfit selection is coming soon."}
-                      </div>
-                    ) : (
-                      <>
-                        <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
-                          {locale === "ko" ? "선택한 옷" : "Selected outfit"}
-                        </label>
-                        <select
-                          value={core?.avatarSelectedOutfitId ?? ""}
-                          onChange={(e) => saveAvatarSelectedOutfit(e.target.value || null)}
-                          disabled={avatarSelectedOutfitSaving}
-                          aria-label={locale === "ko" ? "선택한 옷" : "Selected outfit"}
-                          style={{
-                            width: "100%",
-                            maxWidth: 280,
-                            padding: "8px 10px",
-                            borderRadius: 8,
-                            border: "1px solid #ddd",
-                            fontSize: 13,
-                          }}
-                        >
-                          <option value="">
-                            {locale === "ko" ? "레벨 기본값" : "Level default"}
-                          </option>
-                          {(OUTFIT_OPTIONS_BY_THEME[core?.avatarOutfitTheme === "fantasy" ? "fantasy" : "professional"] ?? []).map(
-                            (opt) => (
-                              <option key={opt.outfitId} value={opt.outfitId}>
-                                {opt.outfitLabel}
-                              </option>
-                            )
-                          )}
-                        </select>
-                      </>
-                    )}
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+                      {locale === "ko" ? "선택한 옷" : "Selected outfit"}
+                    </label>
+                    <select
+                      value={core?.avatarSelectedOutfitId ?? ""}
+                      onChange={(e) => saveAvatarSelectedOutfit(e.target.value || null)}
+                      disabled={avatarSelectedOutfitSaving}
+                      aria-label={locale === "ko" ? "선택한 옷" : "Selected outfit"}
+                      style={{
+                        width: "100%",
+                        maxWidth: 280,
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        border: "1px solid #ddd",
+                        fontSize: 13,
+                      }}
+                    >
+                      <option value="">
+                        {locale === "ko" ? "레벨 기본값" : "Level default"}
+                      </option>
+                      {OUTFIT_OPTIONS_ALL.map((opt) => (
+                        <option key={opt.outfitId} value={opt.outfitId}>
+                          {opt.outfitLabel}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div style={{ marginTop: 8, fontSize: 12, opacity: 0.8 }}>{tAvatarOutfit.hint}</div>
                   <div style={{ marginTop: 6, fontSize: 11, opacity: 0.75 }}>

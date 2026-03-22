@@ -10,10 +10,16 @@ import {
   accessoryAssetMap,
   type ResolveAvatarUrlsResult,
 } from "./avatarAssets";
-import { OUTFITS_PROFESSIONAL, OUTFITS_FANTASY, ACCESSORY_IDS_ALL } from "./avatar-assets.data";
+import { OUTFIT_IDS, ACCESSORY_IDS_ALL } from "./avatar-assets.data";
 
 const OUTFIT_URL_PATTERN = /^\/avatars\/outfits\/.+/;
 const ACCESSORY_URL_PATTERN = /^\/avatars\/accessories\/[^/]+\.(svg|png)$/;
+
+/** Snaps to `avatar-assets.json`. */
+const UNIFIED_0 = `outfit_${OUTFIT_IDS[0]}`;
+const UNIFIED_1 = `outfit_${OUTFIT_IDS[1]}`;
+const LEGACY_PRO_0 = `professional_outfit_${OUTFIT_IDS[0]}`;
+const LEGACY_FAN_0 = `fantasy_outfit_${OUTFIT_IDS[0]}`;
 
 describe("avatarAssets", () => {
   describe("characterAssetMap", () => {
@@ -35,11 +41,11 @@ describe("avatarAssets", () => {
   });
 
   describe("outfitAssetMap", () => {
-    it("has professional and fantasy outfit keys", () => {
-      expect(outfitAssetMap["professional_outfit_scrub_general"]).toBeDefined();
-      expect(outfitAssetMap["professional_outfit_figs_scrub"]).toBeDefined();
-      expect(outfitAssetMap["fantasy_outfit_apprentice"]).toBeDefined();
-      expect(outfitAssetMap["fantasy_outfit_master"]).toBeDefined();
+    it("has unified outfit_* and legacy alias keys", () => {
+      expect(outfitAssetMap[UNIFIED_0]).toBeDefined();
+      expect(outfitAssetMap[UNIFIED_1]).toBeDefined();
+      expect(outfitAssetMap[LEGACY_PRO_0]).toBeDefined();
+      expect(outfitAssetMap[LEGACY_FAN_0]).toBeDefined();
     });
 
     it("each entry has layer under /avatars/outfits/ and theme", () => {
@@ -51,14 +57,12 @@ describe("avatarAssets", () => {
       }
     });
 
-    it("keys are theme_outfit_{id} for OUTFITS_PROFESSIONAL and OUTFITS_FANTASY", () => {
-      for (const id of OUTFITS_PROFESSIONAL) {
+    it("keys cover outfit_{id} and legacy professional_/fantasy_ aliases for OUTFIT_IDS", () => {
+      for (const id of OUTFIT_IDS) {
+        expect(outfitAssetMap[`outfit_${id}`]).toBeDefined();
         expect(outfitAssetMap[`professional_outfit_${id}`]).toBeDefined();
-        expect(outfitAssetMap[`professional_outfit_${id}`].layer.startsWith("/avatars/outfits/")).toBe(true);
-      }
-      for (const id of OUTFITS_FANTASY) {
         expect(outfitAssetMap[`fantasy_outfit_${id}`]).toBeDefined();
-        expect(outfitAssetMap[`fantasy_outfit_${id}`].layer.startsWith("/avatars/outfits/")).toBe(true);
+        expect(outfitAssetMap[`outfit_${id}`].layer.startsWith("/avatars/outfits/")).toBe(true);
       }
     });
   });
@@ -108,7 +112,7 @@ describe("avatarAssets", () => {
     it("returns outfitUrl for known outfitKey under /avatars/outfits/", () => {
       const r = resolveAvatarUrls({
         characterKey: "hero_01",
-        outfitKey: "professional_outfit_scrub_general",
+        outfitKey: UNIFIED_0,
       });
       expect(r.characterUrl).toBeTruthy();
       expect(r.characterUrl!.startsWith("/avatars/")).toBe(true);
@@ -119,11 +123,11 @@ describe("avatarAssets", () => {
     it("uses bodyType-specific outfit filename when bodyType is set", () => {
       const base = resolveAvatarUrls({
         characterKey: "hero_01",
-        outfitKey: "professional_outfit_scrub_general",
+        outfitKey: UNIFIED_0,
       });
       const withBody = resolveAvatarUrls({
         characterKey: "hero_01",
-        outfitKey: "professional_outfit_scrub_general",
+        outfitKey: UNIFIED_0,
         bodyType: "A",
       });
       expect(withBody.outfitUrl).toContain("/avatars/outfits/");
@@ -166,7 +170,7 @@ describe("avatarAssets", () => {
     it("returns accessoryUrls for known accessoryKeys matching /avatars/accessories/*.svg|.png", () => {
       const r = resolveAvatarUrls({
         characterKey: "hero_01",
-        accessoryKeys: ["handpiece", "weapon"],
+        accessoryKeys: ["explorer", "weapon"],
       });
       expect(r.characterUrl).toBeTruthy();
       expect(r.characterUrl!.startsWith("/avatars/")).toBe(true);
@@ -175,7 +179,7 @@ describe("avatarAssets", () => {
         expect(url).toMatch(ACCESSORY_URL_PATTERN);
         expect(url.startsWith("/avatars/accessories/")).toBe(true);
       }
-      expect(r.accessoryUrls).toContain("/avatars/accessories/handpiece.svg");
+      expect(r.accessoryUrls).toContain("/avatars/accessories/explorer.svg");
       expect(r.accessoryUrls).toContain("/avatars/accessories/weapon.png");
     });
   });

@@ -2,7 +2,7 @@
 
 **목적**: `scripts/next-project-fill-board.sh`가 여기서 다음 작업을 읽어 보드에 추가한다.  
 **기준**: `docs/NEXT_PROJECT_RECOMMENDED.md` §1·§2.  
-**갱신일**: 2026-03-21 — 보드 **SPRINT 154** (TASK **1~10**) · **`SPRINT_PLAN` 360** · **MODE ARENA** · **Gate 154** **`[ ]`** · **First** **C5 TASK1** · **S153** `PARALLEL_QUEUE_REFILL` · **S104** 미완 **TASK14·15** 참고.
+**갱신일**: 2026-03-21 — 보드 **SPRINT 154** (TASK **1~10**) · **`SPRINT_PLAN` 360** · **MODE ARENA** · **Gate 154** **`[ ]`** · **First** **C5 TASK1** · **C1 TASK2 `[x]`** (REFRESH) · **S153** `PARALLEL_QUEUE_REFILL` · **S104** 미완 **TASK14·15** 참고.
 
 ---
 
@@ -25,14 +25,14 @@ MASTER_PLAN  →  NEXT_BACKLOG_AUTO4  →  CURSOR_TASK_BOARD
 
 ```
 Fix/Polish|[VERIFY] C5 Gate 154 A~F|C5. S154 TASK1 [ ].
-Fix/Polish|[DOCS] C1 NEXT_PHASE·BACKLOG S154/360|C1. S154 TASK2 [ ].
+Fix/Polish|[DOCS] C1 NEXT_PHASE·BACKLOG S154/360|C1. S154 TASK2 [x].
 Fix/Polish|[DOCS] C1 227·228차|C1. S154 TASK3 [ ].
 Fix/Polish|[DOCS] C1 다음 배치 S155/361|C1. S154 TASK5 [ ].
-Fix/Polish|[DOMAIN] C3 arenaScenarioIdFromUnknown|C3. S154 TASK8 [ ].
+Fix/Polish|[DOMAIN] C3 arenaScenarioIdFromUnknown|C3. S154 TASK8 [x] (2026-03-21).
 Fix/Polish|[UI] C4 bty-arena play a11y|C4. S154 TASK4 [ ].
 Fix/Polish|[VERIFY] C6 q237 + self-healing-ci|C6. S154 TASK10 [ ].
 Fix/Polish|[VERIFY] C5 Elite §3|C5. S154 TASK6 [ ].
-Fix/Polish|[TEST] C3 POST /api/arena/sub-name scenarioOutcomes bigint|C3. S154 TASK9 [ ].
+Fix/Polish|[TEST] C3 POST /api/arena/sub-name scenarioOutcomes bigint|C3. S154 TASK9 [x] (2026-03-21).
 ```
 
 ---

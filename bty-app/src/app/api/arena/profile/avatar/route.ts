@@ -9,28 +9,16 @@ import { tierFromCoreXp } from "@/lib/bty/arena/codes";
 import {
   tierToDisplayLevelId,
   getOutfitById,
-  getAllowedOutfitsForLevel,
+  getUnifiedOutfitManifestAllowed,
   accessorySlotsFromTier,
   getOutfitForLevel,
-  type AvatarOutfitTheme,
+  parseApiOutfitKey,
+  toUnifiedOutfitKey,
 } from "@/lib/bty/arena/avatarOutfits";
 import type { AvatarUiResponse, PatchAvatarRequest } from "@/types/arena";
 
 const AVATAR_SELECT =
   "user_id, core_xp_total, avatar_character_id, avatar_character_locked, avatar_outfit_theme, avatar_selected_outfit_id, avatar_accessory_ids";
-
-function parseOutfitKey(outfitKey: string | null | undefined): { theme: AvatarOutfitTheme; outfitId: string } | null {
-  if (!outfitKey || typeof outfitKey !== "string") return null;
-  const s = outfitKey.trim();
-  if (s.startsWith("professional_outfit_")) return { theme: "professional", outfitId: s.slice("professional_outfit_".length) };
-  if (s.startsWith("fantasy_outfit_")) return { theme: "fantasy", outfitId: s.slice("fantasy_outfit_".length) };
-  return null;
-}
-
-function toOutfitKey(theme: "professional" | "fantasy", outfitId: string | null): string | null {
-  if (!outfitId) return null;
-  return `${theme}_outfit_${outfitId}`;
-}
 
 export async function GET(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);
@@ -74,12 +62,12 @@ export async function GET(req: NextRequest) {
         avatar: {
           characterKey: (p.avatar_character_id as string) ?? "",
           theme,
-          outfitKey: toOutfitKey(theme, effectiveOutfitId),
+          outfitKey: toUnifiedOutfitKey(effectiveOutfitId),
           accessoryKeys: [],
           characterLocked: (p.avatar_character_locked as boolean) === true,
         },
         allowed: {
-          outfits: getAllowedOutfitsForLevel(theme, levelId),
+          outfits: getUnifiedOutfitManifestAllowed(),
           accessorySlots: accessorySlotsFromTier(tier),
         },
       };
@@ -111,12 +99,12 @@ export async function GET(req: NextRequest) {
     avatar: {
       characterKey: (p.avatar_character_id as string) ?? "",
       theme,
-      outfitKey: toOutfitKey(theme, effectiveOutfitId),
+      outfitKey: toUnifiedOutfitKey(effectiveOutfitId),
       accessoryKeys: accessoryIds,
       characterLocked: (p.avatar_character_locked as boolean) === true,
     },
     allowed: {
-      outfits: getAllowedOutfitsForLevel(theme, levelId),
+      outfits: getUnifiedOutfitManifestAllowed(),
       accessorySlots: accessorySlotsFromTier(tier),
     },
   };
@@ -169,30 +157,29 @@ export async function PATCH(req: NextRequest) {
   const p = row as Record<string, unknown>;
   const coreXp = typeof p.core_xp_total === "number" ? p.core_xp_total : 0;
   const tier = tierFromCoreXp(coreXp);
-  const levelId = tierToDisplayLevelId(tier);
-  const currentTheme: "professional" | "fantasy" =
-    p.avatar_outfit_theme === "fantasy" ? "fantasy" : "professional";
-  const effectiveTheme = theme ?? currentTheme;
-  const allowedOutfits = getAllowedOutfitsForLevel(effectiveTheme, levelId);
+  /** 통합 옷 목록(전체 매니페스트). 향후 tier/code 해금 시 여기서 필터. */
+  const allowedOutfits = getUnifiedOutfitManifestAllowed();
   const allowedSlots = accessorySlotsFromTier(tier);
 
   if (outfitKey !== undefined) {
     if (outfitKey === null) {
       // null = use level default; allowed
     } else {
-      const parsed = parseOutfitKey(outfitKey);
+      const parsed = parseApiOutfitKey(outfitKey);
       if (!parsed) {
         const out = NextResponse.json({ error: "INVALID_OUTFIT_KEY" }, { status: 400 });
         copyCookiesAndDebug(base, out, req, true);
         return out;
       }
-      const inAllowed = allowedOutfits.some((o) => o.key === outfitKey);
+      const unifiedKey = toUnifiedOutfitKey(parsed.outfitId);
+      const inAllowed =
+        unifiedKey != null && allowedOutfits.some((o) => o.key === unifiedKey);
       if (!inAllowed) {
         const out = NextResponse.json({ error: "OUTFIT_NOT_ALLOWED" }, { status: 400 });
         copyCookiesAndDebug(base, out, req, true);
         return out;
       }
-      const outfitInfo = getOutfitById(parsed.theme, parsed.outfitId);
+      const outfitInfo = getOutfitById(null, parsed.outfitId);
       if (!outfitInfo) {
         const out = NextResponse.json({ error: "INVALID_OUTFIT_KEY" }, { status: 400 });
         copyCookiesAndDebug(base, out, req, true);
@@ -216,10 +203,10 @@ export async function PATCH(req: NextRequest) {
     if (outfitKey === null) {
       updates.avatar_selected_outfit_id = null;
     } else {
-      const parsed = parseOutfitKey(outfitKey);
+      const parsed = parseApiOutfitKey(outfitKey);
       if (parsed) {
         updates.avatar_selected_outfit_id = parsed.outfitId;
-        updates.avatar_outfit_theme = parsed.theme;
+        updates.avatar_outfit_theme = parsed.avatarOutfitTheme;
       }
     }
     updates.avatar_outfit_updated_at = new Date().toISOString();

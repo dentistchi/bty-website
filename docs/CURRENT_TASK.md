@@ -1,5 +1,13 @@
 # 현재 작업 (CURRENT_TASK)
 
+**[C5] SPRINT 154 TASK1·TASK6 / 360 (VERIFY):** [x] Gate **154** A~F **PASS** · **`ELITE_3RD` §3** · **`347/2567`** ✓ · `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` · Build ✓ (`rm -rf .next` 선행) · `avatar-assets.json` 15·32 매니페스트 동기 · 보드 **TASK1·TASK6 [x]** · **완료. 2026-03-21 C5.**
+
+**[C4] SPRINT 154 TASK4 / 360 (UI):** [x] **`/[locale]/bty-arena/play`** — **`arenaMissionPlayTopBarAria`·`arenaMissionPlaySceneRegionAria`·`arenaMissionPlayDecisionsRegionAria`** · `ArenaPlayScreen` · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료. 2026-03-21 C4.**
+
+**[C3] SPRINT 154 TASK8·9 / 360:** [x] **`arenaScenarioIdFromUnknown`** Symbol/bigint edges (기존 Vitest) · **`POST /api/arena/sub-name`** **`scenarioOutcomes: BigInt(1)`** (`req.json` 스텁) → **400** `scenario_outcomes_invalid` · `route.test.ts` **18 tests** ✓ · 보드 **TASK8·9 [x]** · **완료. 2026-03-21 C3.**
+
+**[C1] SPRINT 154 TASK2 / 360 (DOCS · REFRESH 2026-03-21):** [x] NEXT·BACKLOG·`AUTO4`·`SPRINT_PLAN`·`AI_TASK_BOARD` **S154/360** · Gate **154** · **S153** 아카이브 동기 · 보드 **TASK2 [x]** · **First** C5 **TASK1** (Gate **154**) · 잔여 **C1 TASK3·5·7 `[ ]`**.
+
 **[C1] SPRINT 154 / 360 (`PARALLEL_QUEUE_REFILL` §3 · 2026-03-21):** [x] S153 **`exit 2`** (**C3·C4·C6** 기아 — **C5** TASK6 · **C1** TASK3·5·7 **`[ ]`**) → **S154** · NEXT·BACKLOG·`AUTO4`·`AI_TASK_BOARD`·`SPRINT_PLAN` **360** 동기 · **TASK1~10** 전부 **`[ ]`** · **First** C5 **TASK1** (Gate **154**) · carry **`346/2554`** · **S153** 잔여 **C5 TASK6** · **C1 TASK3·5·7** 흡수.
 
 **[C4] 아바타 매니페스트 생성기 2026-03-22:** [x] `npm run generate:avatar-manifest` — `outfits`·`accessories/catalog` 스캔 → `avatar-assets.json` 이중 기록 · catalog→루트 동기화 · `avatar-manifest-scan`·상수 · `verify:avatar-assets` Fantasy 옷 항상 검사 · `AVATAR_DEPLOY_VERIFY`·`public/avatars/README.md`.

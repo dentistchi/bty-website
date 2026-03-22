@@ -7,9 +7,7 @@
  *   npx --yes tsx scripts/generate-avatar-manifest.ts --force   # 개수 불일치여도 쓰기(비권장)
  *
  * 목표 개수: `avatar-manifest-constants.ts` (옷 20 · 악세 24).
- * Professional / Fantasy 분할:
- *   - `public/avatars/outfits/manifest-split.json` 이 있으면 그대로 사용(스캔 id와 집합 일치 필수).
- *   - 없으면 파일명 id를 정렬해 앞 절반 → professional, 뒤 절반 → fantasy.
+ * 옷: 스캔한 id를 정렬해 **단일 `outfits` 배열**로 기록 (pro/fantasy 분할 없음).
  *
  * 출력(동일 내용):
  *   - src/lib/bty/arena/data/avatar-assets.json
@@ -26,9 +24,6 @@ import {
 import {
   accessoryIdAndKindFromAnyFilename,
   outfitIdFromAnyOutfitPngFilename,
-  partitionOutfitsAlphabetical,
-  partitionOutfitsFromSplit,
-  type ManifestSplit,
 } from "../src/lib/bty/arena/avatar-manifest-scan";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -38,7 +33,6 @@ const outfitsDir = path.join(publicDir, "avatars", "outfits");
 /** 공백·임시 PNG가 섞인 상위 폴더와 분리: `catalog/`에 `[a-z0-9_]+.(svg|png)`만 두면 24개 스캔이 안정적. */
 const accessoriesCatalogDir = path.join(publicDir, "avatars", "accessories", "catalog");
 const accessoriesRootDir = path.join(publicDir, "avatars", "accessories");
-const splitPath = path.join(outfitsDir, "manifest-split.json");
 const outSrc = path.join(root, "src", "lib", "bty", "arena", "data", "avatar-assets.json");
 const outPublic = path.join(publicDir, "avatars", "avatar-assets.json");
 
@@ -210,23 +204,6 @@ function scanAccessories(dir: string): { dental: string[]; game: string[] } {
   return { dental, game };
 }
 
-function loadSplit(): ManifestSplit | null {
-  if (!fs.existsSync(splitPath)) return null;
-  const raw = fs.readFileSync(splitPath, "utf8");
-  const j = JSON.parse(raw) as unknown;
-  if (!j || typeof j !== "object") throw new Error("manifest-split.json must be an object");
-  const o = j as Record<string, unknown>;
-  const pro = o.professional;
-  const fan = o.fantasy;
-  if (!Array.isArray(pro) || !Array.isArray(fan)) {
-    throw new Error("manifest-split.json requires { professional: string[], fantasy: string[] }");
-  }
-  if (!pro.every((x) => typeof x === "string") || !fan.every((x) => typeof x === "string")) {
-    throw new Error("manifest-split.json arrays must contain strings");
-  }
-  return { professional: pro as string[], fantasy: fan as string[] };
-}
-
 function writeManifest(data: object): void {
   const text = `${JSON.stringify(data, null, 2)}\n`;
   fs.mkdirSync(path.dirname(outSrc), { recursive: true });
@@ -291,27 +268,16 @@ function main(): void {
     }
   }
 
-  let outfits: ManifestSplit;
-  const split = loadSplit();
-  if (split) {
-    outfits = partitionOutfitsFromSplit(outfitIds, split);
-  } else {
-    outfits = partitionOutfitsAlphabetical(outfitIds);
-  }
-
   const manifest = {
     accessories: { dental, game },
-    outfits: {
-      professional: outfits.professional,
-      fantasy: outfits.fantasy,
-    },
+    outfits: outfitIds,
   };
 
   writeManifest(manifest);
   syncAccessoriesCatalogToRoot();
 
   console.log(
-    `generate-avatar-manifest: wrote ${outSrc} and ${outPublic} — outfits ${outfits.professional.length}+${outfits.fantasy.length}=${outfitIds.length}, accessories dental ${dental.length} + game ${game.length} = ${accTotal}`,
+    `generate-avatar-manifest: wrote ${outSrc} and ${outPublic} — outfits ${outfitIds.length}, accessories dental ${dental.length} + game ${game.length} = ${accTotal}`,
   );
   process.exit(0);
 }

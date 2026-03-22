@@ -14,11 +14,7 @@ import {
   parseCompositeOutfitKey,
   type AvatarOutfitTheme,
 } from "@/lib/bty/arena/avatarOutfits";
-import {
-  OUTFITS_PROFESSIONAL,
-  OUTFITS_FANTASY,
-  ACCESSORY_IDS_ALL,
-} from "@/lib/bty/arena/avatar-assets.data";
+import { OUTFIT_IDS, ACCESSORY_IDS_ALL } from "@/lib/bty/arena/avatar-assets.data";
 
 /** 캐릭터 키 → base URL, thumb(512px). thumb 없으면 base 사용. */
 export const characterAssetMap: Record<
@@ -31,7 +27,7 @@ export const characterAssetMap: Record<
   ])
 );
 
-/** 옷 키(theme_outfit_outfitId) → layer URL, thumb(선택), theme. */
+/** 옷 키(outfit_{id} 또는 레거시 theme_outfit_{id}) → layer URL, thumb(선택), theme. */
 export type OutfitAssetEntry = {
   layer: string;
   thumb?: string;
@@ -40,15 +36,12 @@ export type OutfitAssetEntry = {
 
 function buildOutfitAssetMap(): Record<string, OutfitAssetEntry> {
   const map: Record<string, OutfitAssetEntry> = {};
-  for (const id of OUTFITS_PROFESSIONAL) {
-    const key = `professional_outfit_${id}`;
+  for (const id of OUTFIT_IDS) {
     const url = getOutfitImageUrlForBodyType(id);
-    map[key] = { layer: url, thumb: url, theme: "professional" };
-  }
-  for (const id of OUTFITS_FANTASY) {
-    const key = `fantasy_outfit_${id}`;
-    const url = getOutfitImageUrlForBodyType(id);
-    map[key] = { layer: url, thumb: url, theme: "fantasy" };
+    const entry: OutfitAssetEntry = { layer: url, thumb: url, theme: "professional" };
+    map[`outfit_${id}`] = entry;
+    map[`professional_outfit_${id}`] = entry;
+    map[`fantasy_outfit_${id}`] = entry;
   }
   return map;
 }
@@ -119,6 +112,8 @@ export function resolveAvatarUrls({
       outfitUrl = getOutfitImageUrlForBodyType(parsed.outfitId, bodyType);
     } else if (entry) {
       outfitUrl = useThumb ? entry.thumb ?? entry.layer : entry.layer;
+    } else if (parsed) {
+      outfitUrl = getOutfitImageUrlForBodyType(parsed.outfitId);
     }
   }
 

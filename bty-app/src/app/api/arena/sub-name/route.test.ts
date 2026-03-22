@@ -158,6 +158,29 @@ describe("POST /api/arena/sub-name", () => {
   });
 
   /**
+   * S154 C3 TASK9: optional `scenarioOutcomes` — **bigint** (JSON 본문 불가 → `req.json` 스텁) → **400** `scenario_outcomes_invalid` (**S153** code-name `preferredLabDifficulty` 라인과 무관).
+   */
+  it("returns 400 scenario_outcomes_invalid when scenarioOutcomes is bigint", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: { from: vi.fn() },
+      base: {},
+    });
+    const req = new NextRequest("http://localhost/api/arena/sub-name", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    vi.spyOn(req, "json").mockResolvedValue({
+      subName: "Valid",
+      scenarioOutcomes: BigInt(1),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("scenario_outcomes_invalid");
+  });
+
+  /**
    * S141 C3 TASK9: optional `scenarioOutcomes` — **duplicate canonical keys** (`A_X` vs `" A_X"`) (≠ **S135** `A_X: {}` · **S102** 바깥 `{}`) → 400.
    */
   it("returns 400 scenario_outcomes_invalid when scenarioOutcomes has duplicate canonical outcome keys", async () => {

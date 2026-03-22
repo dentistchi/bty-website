@@ -7,6 +7,10 @@ import { cn } from "@/lib/utils";
 
 export type ArenaPlayScreenProps = {
   scenario: ArenaScenario;
+  /** Top stage bar — distinct from lobby/record landmarks */
+  topBarAriaLabel: string;
+  sceneRegionAriaLabel: string;
+  decisionsRegionAriaLabel: string;
   selectedPrimary: string | null;
   selectedReinforcement: string | null;
   canRevealReinforcement: boolean;
@@ -21,6 +25,9 @@ export type ArenaPlayScreenProps = {
  */
 export default function ArenaPlayScreen({
   scenario,
+  topBarAriaLabel,
+  sceneRegionAriaLabel,
+  decisionsRegionAriaLabel,
   selectedPrimary,
   selectedReinforcement,
   canRevealReinforcement,
@@ -49,23 +56,31 @@ export default function ArenaPlayScreen({
           level={DEFAULT_ARENA_MISSION_TOP_BAR.level}
           codename={DEFAULT_ARENA_MISSION_TOP_BAR.codename}
           progress={DEFAULT_ARENA_MISSION_TOP_BAR.progress}
+          aria-label={topBarAriaLabel}
         />
 
         <section className="grid grid-cols-12 gap-6">
           <GlassPanel className="relative col-span-12 h-[min(640px,70vh)] overflow-hidden lg:col-span-7">
-            <div className="absolute left-5 top-5 rounded-full border border-cyan-300/20 bg-slate-950/70 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-cyan-100/80 backdrop-blur-md">
-              Scenario Active
-            </div>
-
-            <div className="flex h-full items-center justify-center px-6">
-              <div className="text-center">
-                <div className="text-xs uppercase tracking-[0.3em] text-slate-500">visual scene placeholder</div>
-                <div className="mt-4 text-lg font-medium text-slate-300">Cinematic illustration area</div>
+            <section
+              className="flex h-full flex-col"
+              role="region"
+              aria-label={sceneRegionAriaLabel}
+            >
+              <div className="absolute left-5 top-5 rounded-full border border-cyan-300/20 bg-slate-950/70 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-cyan-100/80 backdrop-blur-md">
+                Scenario Active
               </div>
-            </div>
+
+              <div className="flex h-full items-center justify-center px-6">
+                <div className="text-center">
+                  <div className="text-xs uppercase tracking-[0.3em] text-slate-500">visual scene placeholder</div>
+                  <div className="mt-4 text-lg font-medium text-slate-300">Cinematic illustration area</div>
+                </div>
+              </div>
+            </section>
           </GlassPanel>
 
           <GlassPanel className="col-span-12 flex min-h-[640px] flex-col p-5 lg:col-span-5">
+            <section className="flex min-h-0 flex-1 flex-col" role="region" aria-label={decisionsRegionAriaLabel}>
             <div className="mb-4 shrink-0">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <span className="text-[11px] uppercase tracking-[0.24em] text-cyan-100/70">Scenario Active</span>
@@ -142,6 +157,7 @@ export default function ArenaPlayScreen({
                 </button>
               ) : null}
             </div>
+            </section>
           </GlassPanel>
         </section>
 

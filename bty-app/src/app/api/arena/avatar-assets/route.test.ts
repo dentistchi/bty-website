@@ -18,11 +18,8 @@ describe("GET /api/arena/avatar-assets", () => {
     expect(data).toHaveProperty("outfits");
     expect(data.accessories).toHaveProperty("dental");
     expect(data.accessories).toHaveProperty("game");
-    expect(data.outfits).toHaveProperty("professional");
-    expect(data.outfits).toHaveProperty("fantasy");
     expect(Array.isArray(data.accessories.dental)).toBe(true);
     expect(Array.isArray(data.accessories.game)).toBe(true);
-    expect(Array.isArray(data.outfits.professional)).toBe(true);
-    expect(Array.isArray(data.outfits.fantasy)).toBe(true);
+    expect(Array.isArray(data.outfits)).toBe(true);
   });
 });

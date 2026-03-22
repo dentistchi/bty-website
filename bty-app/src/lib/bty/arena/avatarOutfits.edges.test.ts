@@ -75,7 +75,7 @@ describe("avatarOutfits (edges)", () => {
       expect(getAccessoryImageUrl("weapon")).toBe("/avatars/accessories/weapon.png");
     });
     it("non-game accessories use .svg", () => {
-      expect(getAccessoryImageUrl("handpiece")).toBe("/avatars/accessories/handpiece.svg");
+      expect(getAccessoryImageUrl("explorer")).toBe("/avatars/accessories/explorer.svg");
     });
   });
 

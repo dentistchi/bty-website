@@ -2,10 +2,7 @@
 
 옷 레이어·악세사리 합성을 넣기 **전**에는 여기에 전신 일러스트를 둡니다.
 
-- **경로·파일명**: `public/avatars/default/characters/{basename}.png`.
-  - 대부분 **`basename` = `AVATAR_CHARACTERS`의 `id`**(예: `hero_01.png`, `guardian_04.png`).
-  - 예외(매핑): `character_11` → 디스크 파일 **`artisan_11.png`**, `character_12` → **`assistant_12.png`**. API/DB에는 `character_11` / `character_12` 유지.
-- **썸네일(512)**: `public/avatars/default/characters/thumbs/{basename}.png` — 본편과 같은 `basename` 규칙(예: `thumbs/artisan_11.png`).
+- **경로·파일명**: `public/avatars/default/characters/{characterId}.png` — **`characterId`는 `AVATAR_CHARACTERS`의 `id`와 정확히 같아야** 합니다(예: `hero_01.png`, `guardian_04.png`). 표시용 라벨·번호를 파일명에 쓰면 브라우저가 `/avatars/default/characters/hero_01.png`를 요청할 때 404가 납니다.
 - **코드**: [`avatarCharacters.ts`](../../../../src/lib/bty/arena/avatarCharacters.ts) — `AVATAR_CHARACTER_IMAGE_BASE`
 - **검증 (캐릭터만)**: `npm run verify:avatar-assets:characters`
 - **검증 (캐릭터 + Professional 옷)**: `npm run verify:avatar-assets`

@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useAvatar } from "@/hooks/useAvatar";
 import { resolveAvatarUrls } from "@/lib/bty/arena/avatarAssets";
 import { ACCESSORY_IDS_ALL } from "@/lib/bty/arena/avatar-assets.data";
-import { getOutfitsForTheme, FANTASY_THEME_UI_READY, getAccessoryImageUrl, ACCESSORY_CATALOG } from "@/lib/bty/arena/avatarOutfits";
+import { getUnifiedOutfitManifestAllowed, getAccessoryImageUrl, ACCESSORY_CATALOG } from "@/lib/bty/arena/avatarOutfits";
 import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
 import { AvatarComposite, CardSkeleton, OutfitCard, LoadingFallback } from "@/components/bty-arena";
 import { getMessages } from "@/lib/i18n";
@@ -22,7 +22,6 @@ export default function AvatarSettingsClient() {
   const locale = (params?.locale as string) ?? "en";
   const { data, loading, patch } = useAvatar();
   const t = getMessages(locale === "ko" ? "ko" : "en").avatarOutfit;
-  const [draftTheme, setDraftTheme] = useState<"professional" | "fantasy">("professional");
   const [draftOutfitKey, setDraftOutfitKey] = useState<string | null>(null);
   const [draftAccessoryKeys, setDraftAccessoryKeys] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -33,27 +32,22 @@ export default function AvatarSettingsClient() {
 
   useEffect(() => {
     if (avatar) {
-      setDraftTheme(avatar.theme);
       setDraftOutfitKey(avatar.outfitKey);
       setDraftAccessoryKeys(avatar.accessoryKeys ?? []);
     }
-  }, [avatar?.theme, avatar?.outfitKey, avatar?.accessoryKeys]);
+  }, [avatar?.outfitKey, avatar?.accessoryKeys]);
 
   const accessoryKeysEqual =
     (avatar?.accessoryKeys?.length ?? 0) === draftAccessoryKeys.length &&
     draftAccessoryKeys.every((k, i) => (avatar?.accessoryKeys ?? [])[i] === k);
   const dirty =
-    avatar &&
-    (draftTheme !== avatar.theme ||
-      draftOutfitKey !== avatar.outfitKey ||
-      !accessoryKeysEqual);
+    avatar && (draftOutfitKey !== avatar.outfitKey || !accessoryKeysEqual);
 
   const handleSave = async () => {
     if (!dirty || saving) return;
     setSaving(true);
     try {
       await patch({
-        theme: draftTheme,
         outfitKey: draftOutfitKey ?? undefined,
         accessoryKeys: draftAccessoryKeys,
       });
@@ -72,27 +66,12 @@ export default function AvatarSettingsClient() {
     );
   };
 
-  const apiOutfitsForTheme = (allowed?.outfits ?? []).filter((o) =>
-    o.key.startsWith(`${draftTheme}_`)
-  );
-  /** Professional 7종·Fantasy 7종. API 비어 있으면 getOutfitsForTheme(동기화된 목록) 기반 폴백. Fantasy는 FANTASY_THEME_UI_READY일 때만 목록 표시. */
-  const outfitsForTheme: { key: string; label?: string }[] =
-    apiOutfitsForTheme.length > 0
-      ? apiOutfitsForTheme
-      : draftTheme === "fantasy" && !FANTASY_THEME_UI_READY
-        ? []
-        : getOutfitsForTheme(draftTheme).map((o) => ({
-            key: `${draftTheme}_outfit_${o.outfitId}`,
-            label: o.outfitLabel,
-          }));
+  /** 통합 옷 목록(매니페스트). API가 비어 있으면 클라이언트 폴백. */
+  const outfitChoices: { key: string; label?: string }[] =
+    (allowed?.outfits?.length ?? 0) > 0 ? allowed!.outfits : getUnifiedOutfitManifestAllowed();
 
-  /** §1: Full outfit key (theme_outfit_outfitId) for resolveAvatarUrls so Preview/thumbnail get correct outfitUrl. */
-  const previewOutfitKey =
-    draftOutfitKey && draftOutfitKey.includes("_outfit_")
-      ? draftOutfitKey
-      : draftOutfitKey && draftTheme
-        ? `${draftTheme}_outfit_${draftOutfitKey}`
-        : draftOutfitKey ?? undefined;
+  /** §1: `outfit_{id}` 또는 레거시 키 — resolveAvatarUrls에 그대로 전달. */
+  const previewOutfitKey = draftOutfitKey ?? undefined;
 
   const previewBodyType = avatar?.characterKey
     ? getAvatarCharacter(avatar.characterKey)?.bodyType
@@ -172,54 +151,27 @@ export default function AvatarSettingsClient() {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold mb-3">{t.label}</h2>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setDraftTheme("professional")}
-            aria-label={t?.professional ?? "Professional"}
-            className={cn(
-              "px-4 py-2 rounded-lg border font-medium transition",
-              draftTheme === "professional"
-                ? "border-foundry-purple bg-foundry-purple/10 text-foundry-purple"
-                : "border-gray-200 hover:border-gray-400"
-            )}
-          >
-            {t?.professional ?? "Professional"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setDraftTheme("fantasy")}
-            aria-label={t?.fantasy ?? "Fantasy"}
-            className={cn(
-              "px-4 py-2 rounded-lg border font-medium transition",
-              draftTheme === "fantasy"
-                ? "border-foundry-purple bg-foundry-purple/10 text-foundry-purple"
-                : "border-gray-200 hover:border-gray-400"
-            )}
-          >
-            {t?.fantasy ?? "Fantasy"}
-          </button>
-        </div>
-      </section>
-
-      <section>
         <h2 className="text-lg font-semibold mb-3">{t.outfit}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {outfitsForTheme.map((o) => (
+          {outfitChoices.map((o) => (
             <OutfitCard
               key={o.key}
               characterKey={avatar!.characterKey}
               outfitKey={o.key}
               accessoryKeys={draftAccessoryKeys}
-              name={t.outfitLabels?.[o.key] ?? (o as { label?: string }).label ?? o.key}
+              name={
+                t.outfitLabels?.[o.key] ??
+                (o as { name?: string }).name ??
+                (o as { label?: string }).label ??
+                o.key
+              }
               previewLabel={t.preview}
               selected={draftOutfitKey === o.key}
               onClick={() => setDraftOutfitKey(o.key)}
             />
           ))}
         </div>
-        {outfitsForTheme.length === 0 && (
+        {outfitChoices.length === 0 && (
           <p className="text-sm text-gray-500">{t.noOutfits}</p>
         )}
       </section>

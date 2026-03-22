@@ -64,6 +64,9 @@ export default function BtyArenaMissionPlayPage() {
     >
       <ArenaPlayScreen
         scenario={scenario}
+        topBarAriaLabel={stub.arenaMissionPlayTopBarAria}
+        sceneRegionAriaLabel={stub.arenaMissionPlaySceneRegionAria}
+        decisionsRegionAriaLabel={stub.arenaMissionPlayDecisionsRegionAria}
         selectedPrimary={session.selectedPrimary}
         selectedReinforcement={session.selectedReinforcement}
         canRevealReinforcement={Boolean(canRevealReinforcement)}

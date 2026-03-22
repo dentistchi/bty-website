@@ -138,13 +138,15 @@ export async function PATCH(req: NextRequest) {
           ? rawOutfitId.trim() || null
           : null;
     if (outfitIdToSet !== null) {
-      const { getOutfitById } = await import("@/lib/bty/arena/avatarOutfits");
-      const themeForValidation = avatarOutfitTheme ?? "professional";
-      const valid = getOutfitById(themeForValidation, outfitIdToSet);
+      const { getOutfitById, inferAvatarOutfitThemeFromOutfitId } = await import("@/lib/bty/arena/avatarOutfits");
+      const valid = getOutfitById(null, outfitIdToSet);
       if (!valid) {
         const out = NextResponse.json({ error: "INVALID_AVATAR_OUTFIT_ID" }, { status: 422 });
         copyCookiesAndDebug(base, out, req, true);
         return out;
+      }
+      if (rawTheme === undefined) {
+        updates.avatar_outfit_theme = inferAvatarOutfitThemeFromOutfitId(outfitIdToSet);
       }
     }
     updates.avatar_selected_outfit_id = outfitIdToSet;

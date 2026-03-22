@@ -14,7 +14,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { AVATAR_CHARACTERS } from "../src/lib/bty/arena/avatarCharacters";
 import { getOutfitFilename } from "../src/lib/bty/arena/avatarOutfits";
-import { OUTFITS_PROFESSIONAL, OUTFITS_FANTASY } from "../src/lib/bty/arena/avatar-assets.data";
+import { OUTFIT_IDS } from "../src/lib/bty/arena/avatar-assets.data";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
@@ -40,7 +40,7 @@ function main(): void {
 
   let outfitIdsChecked = 0;
   if (!charactersOnly) {
-    const outfitIds = new Set<string>([...OUTFITS_PROFESSIONAL, ...OUTFITS_FANTASY]);
+    const outfitIds = new Set<string>([...OUTFIT_IDS]);
     outfitIdsChecked = outfitIds.size;
     for (const id of outfitIds) {
       const name = getOutfitFilename(id);

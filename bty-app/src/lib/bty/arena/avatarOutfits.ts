@@ -1,18 +1,21 @@
 /**
- * Track D: Outfit theme (professional / fantasy) and level → outfit + accessories.
- * Professional = 치과 중심: Figs 스크럽, 핸드피스, 치과거울, explorer, X-ray portable, apron, 장갑, 마스크, loupes, 고글 등.
- * 캐릭터는 동일한 옷/악세사리 세트를 착용 가능(나중에 캐릭터별로 옷 바꿈).
+ * Track D: Outfit (저장 필드는 `avatar_outfit_theme` + `avatar_selected_outfit_id`; 테마는 레거시·호환용).
+ * 매니페스트 옷은 **단일 목록** (`OUTFIT_IDS`); API/UI 키는 `outfit_{outfitId}`.
+ * 향후 code/tier 해금은 `getUnifiedOutfitManifestAllowed` 등에서 필터.
  *
- * §1·§3: 옷 데이터·URL은 avatarOutfits (getOutfitForLevel, getOutfitById, resolveDisplayAvatarLayers)와
- * avatarAssets (outfitAssetMap, resolveAvatarUrls)를 통해 Preview/썸네일에 전달됨.
- * 키 형식: theme_outfit_outfitId. 옷 이미지: /avatars/outfits/outfit_{outfitId}.png. 악세사리: /avatars/accessories/{id}.svg|.png (game→png).
- * PNG 미배포 시 URL은 유효하나 404; 합성·표시는 UI(AvatarComposite/OutfitCard) 책임.
+ * §1·§3: 옷 데이터·URL은 avatarOutfits·avatarAssets를 통해 Preview/썸네일에 전달.
+ * 키 형식: `outfit_{outfitId}` (레거시: `professional_outfit_*` / `fantasy_outfit_*`).
+ * 옷 이미지: /avatars/outfits/outfit_{outfitId}.png. 악세사리: /avatars/accessories/{id}.svg|.png (game→png).
  */
 
 import type { LevelId } from "@/lib/bty/arena/tenure";
 import type { AvatarCompositeKeys } from "@/types/arena";
 import { getAvatarCharacter, type BodyType } from "@/lib/bty/arena/avatarCharacters";
-import { GAME_ACCESSORY_IDS, ACCESSORY_IDS_ALL } from "@/lib/bty/arena/avatar-assets.data";
+import {
+  GAME_ACCESSORY_IDS,
+  ACCESSORY_IDS_ALL,
+  OUTFIT_IDS,
+} from "@/lib/bty/arena/avatar-assets.data";
 
 export type AvatarOutfitTheme = "professional" | "fantasy";
 
@@ -114,12 +117,8 @@ const FANTASY_LEVEL_MAP: Record<
 
 const DEFAULT_THEME: AvatarOutfitTheme = "professional";
 
-/**
- * §3 Fantasy 테마: true면 옷 선택 UI 노출, false면 UI에서 "준비 중" 안내.
- * 기획 결정 반영: Fantasy outfit id·URL 데이터는 존재하나 PNG 자산 미배포 시 false 권장.
- * 자산 추가 후 true로 변경 시 Preview/썸네일에 동일 URL 규칙(/avatars/outfits/outfit_{outfitId}.png) 적용.
- */
-export const FANTASY_THEME_UI_READY = false;
+/** 레거시 플래그. 옷 UI는 통합 매니페스트만 사용. */
+export const FANTASY_THEME_UI_READY = true;
 
 /** 옷 이미지 베이스 (실제 파일명은 OUTFIT_ID_TO_FILENAME 매핑 사용) */
 const OUTFIT_IMAGE_BASE = "/avatars/outfits";
@@ -142,6 +141,70 @@ const OUTFIT_ID_TO_FILENAME: Record<string, string> = {
 /** outfitId → `public/avatars/outfits/` 파일명 (체형 접미사 전). */
 export function getOutfitFilename(outfitId: string): string {
   return OUTFIT_ID_TO_FILENAME[outfitId] ?? `outfit_${outfitId}.png`;
+}
+
+/** 매니페스트 기준 유효 outfit id 집합 (단일 목록). */
+const MANIFEST_SET = new Set(OUTFIT_IDS);
+
+function findLevelMapEntryByOutfitId(id: string) {
+  const pro = (
+    Object.values(PROFESSIONAL_LEVEL_MAP) as {
+      outfitId: string;
+      outfitLabel: string;
+      accessoryIds: string[];
+    }[]
+  ).find((e) => e.outfitId === id);
+  if (pro) return pro;
+  return (
+    Object.values(FANTASY_LEVEL_MAP) as {
+      outfitId: string;
+      outfitLabel: string;
+      accessoryIds: string[];
+    }[]
+  ).find((e) => e.outfitId === id);
+}
+
+function buildLegacyOutfitResult(entry: {
+  outfitId: string;
+  outfitLabel: string;
+  accessoryIds: string[];
+}): OutfitResult {
+  const accessoryLabels = entry.accessoryIds.map((aid) => ACCESSORY_CATALOG[aid] ?? aid);
+  return {
+    outfitId: entry.outfitId,
+    outfitLabel: entry.outfitLabel,
+    accessoryIds: entry.accessoryIds,
+    accessoryLabels,
+    imageUrl: `${OUTFIT_IMAGE_BASE}/${encodeURIComponent(getOutfitFilename(entry.outfitId))}`,
+  };
+}
+
+function getLegacyOutfitByTheme(theme: AvatarOutfitTheme, id: string): OutfitResult | null {
+  const map = theme === "fantasy" ? FANTASY_LEVEL_MAP : PROFESSIONAL_LEVEL_MAP;
+  const legacySet = theme === "fantasy" ? FANTASY_OUTFIT_IDS : PROFESSIONAL_OUTFIT_IDS;
+  if (!legacySet.has(id)) return null;
+  const entry = (
+    Object.values(map) as {
+      outfitId: string;
+      outfitLabel: string;
+      accessoryIds: string[];
+    }[]
+  ).find((e) => e.outfitId === id);
+  if (!entry) return null;
+  return buildLegacyOutfitResult(entry);
+}
+
+/**
+ * 매니페스트 outfit id → UI 표시용 라벨 (예: `10_pediatric_dentistry_uniform` → "Pediatric Dentistry Uniform").
+ * 선행 숫자+언더스코어는 제거 후 단어별 타이틀 케이스.
+ */
+export function outfitIdToDisplayLabel(outfitId: string): string {
+  const core = outfitId.replace(/^\d+_/, "");
+  return core
+    .split("_")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
 }
 
 /**
@@ -237,7 +300,7 @@ export type AllowedOutfitEntry = { key: string; name: string; rarity?: "common" 
 
 /**
  * levelId 기준으로 열린 옷만 반환 (해당 레벨 이하에서 언락된 outfit id 수집).
- * key = `${theme}_outfit_${outfitId}`.
+ * key = `outfit_{outfitId}`.
  */
 export function getAllowedOutfitsForLevel(
   theme: AvatarOutfitTheme,
@@ -253,7 +316,7 @@ export function getAllowedOutfitsForLevel(
     const entry = map[lid];
     if (entry && !seen.has(entry.outfitId)) {
       seen.add(entry.outfitId);
-      out.push({ key: `${theme}_outfit_${entry.outfitId}`, name: entry.outfitLabel });
+      out.push({ key: `outfit_${entry.outfitId}`, name: entry.outfitLabel });
     }
   }
   return out;
@@ -264,25 +327,64 @@ export function accessorySlotsFromTier(tier: number): number {
   return Math.max(0, Math.floor(tier / 25));
 }
 
-/** 테마별 옷 선택 옵션 (id, label). 대시보드 등에서 사용. Fantasy 7종·Professional 7종. */
+/** 옷 선택 옵션 (id, label). 대시보드 등 — `avatar-assets.json` 매니페스트 전체. */
 export type OutfitOption = { outfitId: string; outfitLabel: string };
+
+/** 통합 매니페스트만 사용 (pro/fantasy 구분 없음). */
+export const OUTFIT_OPTIONS_ALL: OutfitOption[] = OUTFIT_IDS.map((outfitId) => ({
+  outfitId,
+  outfitLabel: outfitIdToDisplayLabel(outfitId),
+}));
+
+/** @deprecated 레거시 호출부용. `getOutfitsForTheme`·`OUTFIT_OPTIONS_ALL` 사용. */
 export const OUTFIT_OPTIONS_BY_THEME: Record<"professional" | "fantasy", OutfitOption[]> = {
-  professional: (Object.values(PROFESSIONAL_LEVEL_MAP) as { outfitId: string; outfitLabel: string }[]).map(
-    (e) => ({ outfitId: e.outfitId, outfitLabel: e.outfitLabel })
-  ),
-  fantasy: (Object.values(FANTASY_LEVEL_MAP) as { outfitId: string; outfitLabel: string }[]).map(
-    (e) => ({ outfitId: e.outfitId, outfitLabel: e.outfitLabel })
-  ),
+  professional: OUTFIT_OPTIONS_ALL,
+  fantasy: [],
 };
 
-/** 테마별 옷 목록 반환. Fantasy 7종·Professional 7종 노출. */
-export function getOutfitsForTheme(theme: AvatarOutfitTheme): OutfitOption[] {
-  return OUTFIT_OPTIONS_BY_THEME[theme] ?? [];
+/**
+ * 프로필/아바타 UI용 허용 목록 — **전체 매니페스트** (해금 규칙은 추후 tier/code 필터).
+ * 키 형식: `outfit_{id}`.
+ */
+export function getUnifiedOutfitManifestAllowed(): AllowedOutfitEntry[] {
+  return OUTFIT_OPTIONS_ALL.map((o) => ({
+    key: `outfit_${o.outfitId}`,
+    name: o.outfitLabel,
+  }));
 }
 
 /**
- * 테마 + outfit id로 옷 정보 반환. (캐릭터 고정+옷 선택: 유저가 고른 옷)
- * 해당 테마에 없는 id면 null.
+ * `avatar_selected_outfit_id`만으로 테마 추론 (레거시 레벨 맵 id만).
+ * 매니페스트 id(`OUTFIT_IDS`)는 테마 구분 없음 → null.
+ */
+export function inferAvatarOutfitThemeFromOutfitId(outfitId: string): AvatarOutfitTheme | null {
+  const id = outfitId.trim();
+  if (!id) return null;
+  if (MANIFEST_SET.has(id)) return null;
+  if (PROFESSIONAL_OUTFIT_IDS.has(id) && !FANTASY_OUTFIT_IDS.has(id)) return "professional";
+  if (FANTASY_OUTFIT_IDS.has(id) && !PROFESSIONAL_OUTFIT_IDS.has(id)) return "fantasy";
+  return null;
+}
+
+/** 레벨 구간별로 pro+fantasy에서 열린 옷을 합친 목록 (레거시 레벨 맵 기준). */
+export function getAllowedOutfitsForLevelUnified(levelId: LevelId): AllowedOutfitEntry[] {
+  const pro = getAllowedOutfitsForLevel("professional", levelId);
+  const fan = getAllowedOutfitsForLevel("fantasy", levelId);
+  const byKey = new Map<string, AllowedOutfitEntry>();
+  for (const o of pro) byKey.set(o.key, o);
+  for (const o of fan) byKey.set(o.key, o);
+  return Array.from(byKey.values());
+}
+
+/** 테마별 옷 목록 — 통합 매니페스트만 사용 (theme 무시). */
+export function getOutfitsForTheme(_theme: AvatarOutfitTheme): OutfitOption[] {
+  return OUTFIT_OPTIONS_ALL;
+}
+
+/**
+ * 테마 + outfit id로 옷 정보 반환.
+ * - 매니페스트 id(`OUTFIT_IDS`)는 테마 무시.
+ * - 레거시 레벨 맵 id는 `theme`이 `fantasy`/`professional`일 때 해당 맵만; `theme`이 null/undefined면 pro→fantasy 순으로 시도.
  */
 export function getOutfitById(
   theme: AvatarOutfitTheme | null | undefined,
@@ -290,22 +392,25 @@ export function getOutfitById(
 ): OutfitResult | null {
   if (!outfitId || typeof outfitId !== "string") return null;
   const id = outfitId.trim();
-  const effectiveTheme = theme === "fantasy" ? "fantasy" : DEFAULT_THEME;
-  const map = effectiveTheme === "fantasy" ? FANTASY_LEVEL_MAP : PROFESSIONAL_LEVEL_MAP;
-  const set = effectiveTheme === "fantasy" ? FANTASY_OUTFIT_IDS : PROFESSIONAL_OUTFIT_IDS;
-  if (!set.has(id)) return null;
-  const entry = (Object.values(map) as { outfitId: string; outfitLabel: string; accessoryIds: string[] }[]).find(
-    (e) => e.outfitId === id
-  );
-  if (!entry) return null;
-  const accessoryLabels = entry.accessoryIds.map((aid) => ACCESSORY_CATALOG[aid] ?? aid);
-  return {
-    outfitId: entry.outfitId,
-    outfitLabel: entry.outfitLabel,
-    accessoryIds: entry.accessoryIds,
-    accessoryLabels,
-    imageUrl: `${OUTFIT_IMAGE_BASE}/${encodeURIComponent(getOutfitFilename(entry.outfitId))}`,
-  };
+  if (!id) return null;
+
+  if (MANIFEST_SET.has(id)) {
+    const levelEntry = findLevelMapEntryByOutfitId(id);
+    const accessoryIds = levelEntry?.accessoryIds ?? [];
+    const accessoryLabels = accessoryIds.map((aid) => ACCESSORY_CATALOG[aid] ?? aid);
+    return {
+      outfitId: id,
+      outfitLabel: levelEntry?.outfitLabel ?? outfitIdToDisplayLabel(id),
+      accessoryIds,
+      accessoryLabels,
+      imageUrl: `${OUTFIT_IMAGE_BASE}/${encodeURIComponent(getOutfitFilename(id))}`,
+    };
+  }
+
+  if (theme === "fantasy") return getLegacyOutfitByTheme("fantasy", id);
+  if (theme === "professional") return getLegacyOutfitByTheme("professional", id);
+
+  return getLegacyOutfitByTheme("professional", id) ?? getLegacyOutfitByTheme("fantasy", id);
 }
 
 /**
@@ -422,23 +527,54 @@ export type ProfileAvatarFields = {
   displayLevelId?: LevelId;
 };
 
-function toOutfitKey(theme: "professional" | "fantasy", outfitId: string | null): string | null {
-  if (!outfitId || !outfitId.trim()) return null;
-  return `${theme}_outfit_${outfitId.trim()}`;
+/** 통합 키: `outfit_{outfitId}`. */
+export function toUnifiedOutfitKey(outfitId: string | null): string | null {
+  if (!outfitId?.trim()) return null;
+  return `outfit_${outfitId.trim()}`;
 }
 
-/** `professional_outfit_*` / `fantasy_outfit_*` 키에서 테마·outfitId 추출. */
+/**
+ * `outfit_*` / 레거시 `professional_outfit_*` / `fantasy_outfit_*` 에서 테마·outfitId 추출.
+ * 합성 URL용: 매니페스트 id는 `inferAvatarOutfitThemeFromOutfitId`가 null이면 theme을 `professional`로 둠.
+ */
 export function parseCompositeOutfitKey(outfitKey: string | null | undefined): {
   theme: "professional" | "fantasy";
   outfitId: string;
 } | null {
   if (!outfitKey || typeof outfitKey !== "string") return null;
   const s = outfitKey.trim();
+  if (s.startsWith("outfit_")) {
+    const outfitId = s.slice("outfit_".length);
+    const inferred = inferAvatarOutfitThemeFromOutfitId(outfitId);
+    return { theme: inferred ?? "professional", outfitId };
+  }
   if (s.startsWith("professional_outfit_")) {
     return { theme: "professional", outfitId: s.slice("professional_outfit_".length) };
   }
   if (s.startsWith("fantasy_outfit_")) {
     return { theme: "fantasy", outfitId: s.slice("fantasy_outfit_".length) };
+  }
+  return null;
+}
+
+/**
+ * PATCH `outfitKey` → `avatar_selected_outfit_id` + DB `avatar_outfit_theme` (null = 매니페스트 id).
+ */
+export function parseApiOutfitKey(outfitKey: string | null | undefined): {
+  outfitId: string;
+  avatarOutfitTheme: "professional" | "fantasy" | null;
+} | null {
+  if (!outfitKey || typeof outfitKey !== "string") return null;
+  const s = outfitKey.trim();
+  if (s.startsWith("outfit_")) {
+    const outfitId = s.slice("outfit_".length);
+    return { outfitId, avatarOutfitTheme: inferAvatarOutfitThemeFromOutfitId(outfitId) };
+  }
+  if (s.startsWith("professional_outfit_")) {
+    return { outfitId: s.slice("professional_outfit_".length), avatarOutfitTheme: "professional" };
+  }
+  if (s.startsWith("fantasy_outfit_")) {
+    return { outfitId: s.slice("fantasy_outfit_".length), avatarOutfitTheme: "fantasy" };
   }
   return null;
 }
@@ -452,7 +588,7 @@ export function profileToAvatarCompositeKeys(fields: ProfileAvatarFields): Avata
     const levelId = fields.displayLevelId ?? "S1";
     outfitId = getOutfitForLevel(theme, levelId).outfitId;
   }
-  const outfitKey = toOutfitKey(theme, outfitId);
+  const outfitKey = toUnifiedOutfitKey(outfitId);
   const accessoryKeys = Array.isArray(fields.avatarAccessoryIds)
     ? fields.avatarAccessoryIds.filter((x): x is string => typeof x === "string")
     : [];
