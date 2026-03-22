@@ -33,7 +33,8 @@
     "verify:avatar-assets:characters": "npx --yes tsx scripts/verify-avatar-assets.ts --characters-only",
     "generate:avatar-manifest": "npx --yes tsx scripts/generate-avatar-manifest.ts",
     "embed:accessory-png-as-svg": "npx --yes tsx scripts/embed-accessory-png-as-svg.ts",
-    "write:character-placeholder-pngs": "npx --yes tsx scripts/write-character-placeholder-pngs.ts"
+    "write:character-placeholder-pngs": "npx --yes tsx scripts/write-character-placeholder-pngs.ts",
+    "generate:character-thumbs": "npx --yes tsx scripts/generate-character-thumbs.ts"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",

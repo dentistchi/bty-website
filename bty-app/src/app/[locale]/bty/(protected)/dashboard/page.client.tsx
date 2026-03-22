@@ -182,6 +182,8 @@ export default function DashboardClient() {
   const [avatarCharacterSaving, setAvatarCharacterSaving] = React.useState(false);
   const [avatarSelectedOutfitSaving, setAvatarSelectedOutfitSaving] = React.useState(false);
   const [avatarPrefsSavedAt, setAvatarPrefsSavedAt] = React.useState<number | null>(null);
+  /** 썸네일 PNG 미배포·404 시 깨진 아이콘 대신 이니셜만 표시 */
+  const [characterThumbFailed, setCharacterThumbFailed] = React.useState<Record<string, boolean>>({});
 
   type MilestoneModalState = {
     milestone: 25 | 50 | 75;
@@ -1440,142 +1442,138 @@ export default function DashboardClient() {
                   </div>
                 )}
               </div>
-              {/* 오른쪽: 캐릭터 선택(잠금 전만), Outfit theme */}
+              {/* 오른쪽: 캐릭터 그리드(잠금 시에도 전체 노출, 선택만 비활성) + 옷 */}
               <div style={{ flex: 1, minWidth: 200 }}>
-                {core?.avatarCharacterLocked ? (
-                  <>
-                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{tAvatarOutfit.character}</div>
-                    <div style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>
-                      {locale === "ko"
-                        ? "캐릭터는 한 번 저장하면 변경할 수 없습니다. 다음 Code 진화까지 유지됩니다. 옷만 변경할 수 있습니다."
-                        : "Character is permanent after first save until next code evolution. Only outfit can be changed."}
-                    </div>
-                    {core?.avatarCharacterId && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        {(() => {
-                          const ch = getAvatarCharacter(core.avatarCharacterId);
-                          return ch ? (
-                            <>
+                {(() => {
+                  const characterLocked = core?.avatarCharacterLocked === true;
+                  const visibleCharacters = getVisibleAvatarCharacters(core?.coreXpTotal ?? 0);
+                  return (
+                    <>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                        {characterLocked ? tAvatarOutfit.character : tAvatarOutfit.pickCharacterTitle}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>
+                        {characterLocked
+                          ? tAvatarOutfit.dashboardCharacterLockedGridHint
+                          : locale === "ko"
+                            ? "한 번 저장하면 변경할 수 없습니다."
+                            : "Cannot be changed after first save."}
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 10,
+                          opacity: characterLocked ? 0.95 : 1,
+                        }}
+                        aria-label={
+                          locale === "ko" ? "캐릭터 선택" : "Character selection"
+                        }
+                      >
+                        {visibleCharacters.map((ch) => {
+                          const selected = core?.avatarCharacterId === ch.id;
+                          const thumbMissing = characterThumbFailed[ch.id] === true;
+                          const selectDisabled = characterLocked || avatarCharacterSaving;
+                          return (
+                            <button
+                              key={ch.id}
+                              type="button"
+                              disabled={selectDisabled}
+                              onClick={() => {
+                                if (selectDisabled) return;
+                                selectAvatarCharacter(selected ? null : ch.id);
+                              }}
+                              style={{
+                                padding: 8,
+                                borderRadius: 12,
+                                border: selected ? "2px solid #111" : "1px solid #ddd",
+                                background: selected ? "#f5f5f5" : "transparent",
+                                cursor: selectDisabled ? "not-allowed" : "pointer",
+                                opacity: selectDisabled ? 0.75 : 1,
+                              }}
+                              title={ch.label}
+                              aria-label={
+                                locale === "ko"
+                                  ? selected
+                                    ? `${ch.label}, 선택됨`
+                                    : ch.label
+                                  : selected
+                                    ? `${ch.label}, selected`
+                                    : ch.label
+                              }
+                            >
                               <div
                                 style={{
-                                  width: 40,
-                                  height: 40,
+                                  width: 48,
+                                  height: 48,
                                   borderRadius: 8,
-                                  overflow: "hidden",
-                                  background: "#e0e0e0",
-                                  position: "relative",
+                                  background: "#e8e8e8",
                                   display: "flex",
                                   alignItems: "center",
                                   justifyContent: "center",
+                                  fontSize: 18,
+                                  fontWeight: 700,
+                                  position: "relative",
+                                  overflow: "hidden",
+                                  color: "#444",
                                 }}
                               >
-                                <span
-                                  style={{
-                                    position: "absolute",
-                                    zIndex: 0,
-                                    fontSize: 16,
-                                    fontWeight: 700,
-                                    color: "#666",
-                                  }}
-                                  aria-hidden
-                                >
-                                  {ch.label.slice(0, 1)}
-                                </span>
-                                <img
-                                  src={ch.imageUrl}
-                                  alt=""
-                                  style={{
-                                    position: "relative",
-                                    zIndex: 1,
-                                    width: "100%",
-                                    height: "100%",
-                                    objectFit: "cover",
-                                  }}
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = "none";
-                                  }}
-                                />
+                                {thumbMissing ? (
+                                  <span aria-hidden>{ch.label.slice(0, 1)}</span>
+                                ) : (
+                                  <>
+                                    <span
+                                      style={{
+                                        position: "absolute",
+                                        zIndex: 0,
+                                        opacity: 0.35,
+                                        userSelect: "none",
+                                      }}
+                                      aria-hidden
+                                    >
+                                      {ch.label.slice(0, 1)}
+                                    </span>
+                                    <img
+                                      src={getCharacterThumbImageUrl(ch.id)}
+                                      alt=""
+                                      loading="lazy"
+                                      decoding="async"
+                                      style={{
+                                        position: "absolute",
+                                        inset: 0,
+                                        width: "100%",
+                                        height: "100%",
+                                        objectFit: "cover",
+                                        zIndex: 1,
+                                      }}
+                                      onError={() =>
+                                        setCharacterThumbFailed((prev) => ({ ...prev, [ch.id]: true }))
+                                      }
+                                    />
+                                  </>
+                                )}
                               </div>
-                              <span style={{ fontWeight: 600 }}>{ch.label}</span>
-                            </>
-                          ) : (
-                            <span style={{ fontSize: 12, color: "#999" }}>
-                              {locale === "ko" ? "알 수 없는 캐릭터 id" : "Unknown character id"}
-                            </span>
-                          );
-                        })()}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{tAvatarOutfit.pickCharacterTitle}</div>
-                    <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>
-                      {locale === "ko" ? "한 번 저장하면 변경할 수 없습니다." : "Cannot be changed after first save."}
-                    </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                      {getVisibleAvatarCharacters(core?.coreXpTotal ?? 0).map((ch) => {
-                        const selected = core?.avatarCharacterId === ch.id;
-                        return (
-                          <button
-                            key={ch.id}
-                            type="button"
-                            disabled={avatarCharacterSaving}
-                            onClick={() => selectAvatarCharacter(selected ? null : ch.id)}
-                            style={{
-                              padding: 8,
-                              borderRadius: 12,
-                              border: selected ? "2px solid #111" : "1px solid #ddd",
-                              background: selected ? "#f5f5f5" : "transparent",
-                              cursor: avatarCharacterSaving ? "not-allowed" : "pointer",
-                              opacity: avatarCharacterSaving ? 0.7 : 1,
-                            }}
-                            title={ch.label}
-                            aria-label={locale === "ko" ? (selected ? `${ch.label}, 선택됨` : ch.label) : selected ? `${ch.label}, selected` : ch.label}
-                          >
-                            <div
-                              style={{
-                                width: 48,
-                                height: 48,
-                                borderRadius: 8,
-                                background: "#e0e0e0",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontSize: 18,
-                                fontWeight: 700,
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                            >
-                              <span style={{ position: "relative", zIndex: 0 }}>{ch.label.slice(0, 1)}</span>
-                              <img
-                                src={getCharacterThumbImageUrl(ch.id)}
-                                alt=""
+                              <div
                                 style={{
-                                  position: "absolute",
-                                  inset: 0,
-                                  width: "100%",
-                                  height: "100%",
-                                  objectFit: "cover",
-                                  zIndex: 1,
+                                  marginTop: 4,
+                                  fontSize: 11,
+                                  fontWeight: selected ? 700 : 500,
+                                  maxWidth: 72,
+                                  textAlign: "center",
+                                  lineHeight: 1.2,
                                 }}
-                                onError={(e) => {
-                                  e.currentTarget.style.display = "none";
-                                }}
-                              />
-                            </div>
-                            <div style={{ marginTop: 4, fontSize: 11, fontWeight: selected ? 700 : 500 }}>
-                              {ch.label}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
+                              >
+                                {ch.label}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  );
+                })()}
                 <div style={{ marginTop: 16 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{tAvatarOutfit.label}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{tAvatarOutfit.outfit}</div>
                   <div style={{ marginTop: 10 }}>
                     <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
                       {locale === "ko" ? "선택한 옷" : "Selected outfit"}

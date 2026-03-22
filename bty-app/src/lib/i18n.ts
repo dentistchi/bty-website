@@ -494,6 +494,8 @@ export type Messages = {
     currentLevelAccessories: string;
     currentOutfitPrefix: string;
     pickCharacterTitle: string;
+    /** 대시보드: 캐릭터 잠금 시에도 전체 그리드 표시용 안내 */
+    dashboardCharacterLockedGridHint: string;
     /** 아바타 설정(/profile/avatar) 메인 랜드마크 */
     avatarSettingsMainRegionAria: string;
   };
@@ -1747,7 +1749,7 @@ const ko: Messages = {
     label: "옷",
     professional: "직업군",
     fantasy: "롤플레잉",
-    hint: "매니페스트에 있는 옷 중에서 고릅니다. 이후 Code·Tier 진행에 따라 해금 범위가 달라질 수 있어요.",
+    hint: "옷 카탈로그에서 선택합니다. 이후 Code·Tier 진행에 따라 해금 범위가 달라질 수 있어요.",
     pageTitle: "아바타",
     backToFoundry: "훈련장으로 돌아가기",
     backToFoundryAria: "훈련장으로 돌아가기",
@@ -1803,7 +1805,9 @@ const ko: Messages = {
     currentLevelAccessories: "현재 레벨 악세사리",
     currentOutfitPrefix: "현재:",
     pickCharacterTitle: "캐릭터 선택",
-    avatarSettingsMainRegionAria: "아바타 설정 — 테마·옷·악세사리",
+    dashboardCharacterLockedGridHint:
+      "캐릭터는 이미 저장되어 변경할 수 없습니다. 아래는 전체 캐릭터 목록입니다.",
+    avatarSettingsMainRegionAria: "아바타 설정 — 캐릭터·옷·악세사리",
   },
   arenaMembership: {
     label: "Arena 가입",
@@ -2952,7 +2956,7 @@ const en: Messages = {
     label: "Outfit",
     professional: "Professional",
     fantasy: "Fantasy",
-    hint: "Pick from the catalog. Unlock rules may follow Code or Tier progression later.",
+    hint: "Choose from the outfit catalog. Unlock rules may follow Code or Tier progression later.",
     pageTitle: "Avatar",
     backToFoundry: "Back to Foundry",
     backToFoundryAria: "Back to Foundry",
@@ -3008,7 +3012,9 @@ const en: Messages = {
     currentLevelAccessories: "Current level accessories",
     currentOutfitPrefix: "Current:",
     pickCharacterTitle: "Choose a character",
-    avatarSettingsMainRegionAria: "Avatar settings — theme, outfit, accessories",
+    dashboardCharacterLockedGridHint:
+      "Your character is saved and locked. Below is the full character roster (selection disabled).",
+    avatarSettingsMainRegionAria: "Avatar settings — character, outfit, accessories",
   },
   arenaMembership: {
     label: "Arena membership",

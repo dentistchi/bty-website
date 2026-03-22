@@ -41,7 +41,8 @@ const CHARACTER_IMAGE_FILE_BASENAME: Record<string, string> = {
   character_12: "assistant_12",
 };
 
-function getCharacterImageBasename(id: string): string {
+/** Disk PNG basename (e.g. `character_11` → `artisan_11`). */
+export function getCharacterImageBasename(id: string): string {
   return CHARACTER_IMAGE_FILE_BASENAME[id] ?? id;
 }
 
