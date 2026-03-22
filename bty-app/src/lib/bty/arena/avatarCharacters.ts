@@ -4,7 +4,7 @@
  *
  * 총 13종: **기본 12명 + 히든 1명(Legend)**. 기획상 히든은 **CODELESS ZONE(Stage 7)** 진행과 연동.
  * 구현: Legend 해금 = **진행 레벨 700**(내부 tier ≥ `LEGEND_UNLOCK_TIER`), Core XP 숫자와 다름 — `docs/spec/ARENA_PROGRESSION_AND_LEGEND_SPEC.md`.
- * 캐릭터 베이스 PNG(옷·악세 합성 전 단계): `public/avatars/default/characters/{characterId}.png`
+ * 캐릭터 베이스 PNG(옷·악세 합성 전 단계): `public/avatars/default/characters/{basename}.png` — 11·12번은 `artisan_11` / `assistant_12`. 썸네일(512): `.../thumbs/{basename}.png`.
  * 옷(기획 20종 목표)·악세(기획 24종 목표): 매니페스트 `avatar-assets.json` — `public/avatars/outfits/` · `public/avatars/accessories/` (getAccessoryImageUrl).
  * §4.2 체형: bodyType A/B/C/D (옷 URL 해석은 추후, 에셋 없어도 됨).
  */
@@ -33,11 +33,32 @@ export type AvatarCharacter = {
 export const AVATAR_CHARACTER_IMAGE_BASE = "/avatars/default/characters";
 
 /**
- * Canonical PNG name: `{characterId}.png` under `public/avatars/default/characters/`.
+ * Disk PNG basename may differ from logical `id` (stable API / DB id; file renamed on disk).
+ * `character_11` / `character_12` → `artisan_11` / `assistant_12` (see `public/avatars/default/characters/`).
+ */
+const CHARACTER_IMAGE_FILE_BASENAME: Record<string, string> = {
+  character_11: "artisan_11",
+  character_12: "assistant_12",
+};
+
+function getCharacterImageBasename(id: string): string {
+  return CHARACTER_IMAGE_FILE_BASENAME[id] ?? id;
+}
+
+/**
+ * Full-resolution PNG: `public/avatars/default/characters/{basename}.png`.
  */
 function getCharacterImageUrl(id: string): string {
-  const file = `${id}.png`;
+  const file = `${getCharacterImageBasename(id)}.png`;
   return `${AVATAR_CHARACTER_IMAGE_BASE}/${encodeURIComponent(file)}`;
+}
+
+/**
+ * 512px thumbnails: `public/avatars/default/characters/thumbs/{basename}.png` (same basename as full-res).
+ */
+export function getCharacterThumbImageUrl(id: string): string {
+  const file = `${getCharacterImageBasename(id)}.png`;
+  return `${AVATAR_CHARACTER_IMAGE_BASE}/thumbs/${encodeURIComponent(file)}`;
 }
 
 /** 캐릭터 12명 + Legend(숨김, 진행 레벨 700 = tier 699 해금). 라벨·이미지는 실제 에셋명 반영. */

@@ -24,10 +24,12 @@ describe("avatarAssets", () => {
       expect(characterAssetMap["captain_10"]).toBeDefined();
     });
 
-    it("each entry has base and thumb", () => {
+    it("each entry has base and thumb under /thumbs/", () => {
       for (const entry of Object.values(characterAssetMap)) {
         expect(entry.base).toBeTruthy();
         expect(typeof entry.base).toBe("string");
+        expect(entry.thumb).toMatch(/\/thumbs\/.+\.png$/);
+        expect(entry.thumb).toBeTruthy();
       }
     });
   });
@@ -149,11 +151,16 @@ describe("avatarAssets", () => {
       } as ResolveAvatarUrlsResult);
     });
 
-    it("useThumb uses thumb when available", () => {
+    it("useThumb uses 512px thumb URL under /thumbs/", () => {
       const rBase = resolveAvatarUrls({ characterKey: "hero_01", useThumb: false });
       const rThumb = resolveAvatarUrls({ characterKey: "hero_01", useThumb: true });
-      expect(rBase.characterUrl).toBeTruthy();
-      expect(rThumb.characterUrl).toBeTruthy();
+      expect(rBase.characterUrl).toBe("/avatars/default/characters/hero_01.png");
+      expect(rThumb.characterUrl).toBe("/avatars/default/characters/thumbs/hero_01.png");
+    });
+
+    it("useThumb maps character_11 to artisan_11 in thumbs path", () => {
+      const r = resolveAvatarUrls({ characterKey: "character_11", useThumb: true });
+      expect(r.characterUrl).toBe("/avatars/default/characters/thumbs/artisan_11.png");
     });
 
     it("returns accessoryUrls for known accessoryKeys matching /avatars/accessories/*.svg|.png", () => {

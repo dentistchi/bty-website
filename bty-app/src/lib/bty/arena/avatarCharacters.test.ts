@@ -1,15 +1,15 @@
 /**
  * avatarCharacters — getAvatarCharacterIds, isValidAvatarCharacterId, getAvatarCharacter 단위 테스트.
- * imageUrl: `{id}.png` under `AVATAR_CHARACTER_IMAGE_BASE`.
+ * imageUrl: `{basename}.png` under `AVATAR_CHARACTER_IMAGE_BASE` (basename may differ from id for character_11/12).
  */
 import { describe, it, expect } from "vitest";
 import {
   getAvatarCharacterIds,
   isValidAvatarCharacterId,
   getAvatarCharacter,
-  getVisibleAvatarCharacters,
   AVATAR_CHARACTERS,
   AVATAR_CHARACTER_IMAGE_BASE,
+  getCharacterThumbImageUrl,
 } from "./avatarCharacters";
 
 describe("avatarCharacters", () => {
@@ -19,6 +19,22 @@ describe("avatarCharacters", () => {
         expect(c.imageUrl.startsWith(`${AVATAR_CHARACTER_IMAGE_BASE}/`)).toBe(true);
         expect(c.imageUrl.endsWith(".png")).toBe(true);
       }
+    });
+
+    it("character_11 / character_12 map to artisan_11 / assistant_12 filenames on disk", () => {
+      const c11 = getAvatarCharacter("character_11");
+      const c12 = getAvatarCharacter("character_12");
+      expect(c11!.imageUrl).toBe(`${AVATAR_CHARACTER_IMAGE_BASE}/artisan_11.png`);
+      expect(c12!.imageUrl).toBe(`${AVATAR_CHARACTER_IMAGE_BASE}/assistant_12.png`);
+    });
+
+    it("getCharacterThumbImageUrl uses thumbs/ and same basename as full image", () => {
+      expect(getCharacterThumbImageUrl("hero_01")).toBe(
+        `${AVATAR_CHARACTER_IMAGE_BASE}/thumbs/hero_01.png`,
+      );
+      expect(getCharacterThumbImageUrl("character_11")).toBe(
+        `${AVATAR_CHARACTER_IMAGE_BASE}/thumbs/artisan_11.png`,
+      );
     });
   });
 

@@ -32,7 +32,8 @@
     "verify:avatar-assets": "npx --yes tsx scripts/verify-avatar-assets.ts",
     "verify:avatar-assets:characters": "npx --yes tsx scripts/verify-avatar-assets.ts --characters-only",
     "generate:avatar-manifest": "npx --yes tsx scripts/generate-avatar-manifest.ts",
-    "embed:accessory-png-as-svg": "npx --yes tsx scripts/embed-accessory-png-as-svg.ts"
+    "embed:accessory-png-as-svg": "npx --yes tsx scripts/embed-accessory-png-as-svg.ts",
+    "write:character-placeholder-pngs": "npx --yes tsx scripts/write-character-placeholder-pngs.ts"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",
@@ -63,6 +64,7 @@
     "eslint": "^8.57.0",
     "eslint-config-next": "15.5.7",
     "postcss": "^8.4.47",
+    "sharp": "^0.34.5",
     "storybook": "^8.6.17",
     "supabase": "^2.76.15",
     "tailwindcss": "^3.4.14",

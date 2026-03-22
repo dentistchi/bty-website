@@ -18,7 +18,7 @@ npm run generate:avatar-manifest
 - 악세: 스캔 후 `accessories/catalog/*` → `accessories/*` 로 복사(런타임 URL 경로 맞춤).
 
 - **캐릭터 (12 + Legend)**: `default/characters/{characterId}.png` — `avatarCharacters.ts`에서 13종 참조.  
-  - 12명: `hero_01.png` … `character_12.png`  
+  - 12명: `hero_01.png` … (11·12번은 디스크 `artisan_11.png`, `assistant_12.png`, id는 `character_11` / `character_12`)  
   - 1명 히든: `legend_13.png` — **CODELESS ZONE(Stage 7)** 맥락의 Legend; 해금은 **진행 레벨 700**(tier 699). Core XP 700이 아님. (`ARENA_PROGRESSION_AND_LEGEND_SPEC.md`)  
   - 정렬 스크립트 출력을 `default/characters/` 에 복사해 사용.
 - **옷(outfits)**: `outfits/outfit_{outfitId}.png` — 기획 **20종**에 맞춰 `avatar-assets.json`·`avatarOutfits` id를 정리. `/avatars/outfits/outfit_scrub_general.png` 등. **색상 다양화**: CSS hue-rotate 4톤만 사용. `outfits/README.md` 참고.

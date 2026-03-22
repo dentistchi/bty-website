@@ -7,7 +7,7 @@
  */
 
 import type { BodyType } from "@/lib/bty/arena/avatarCharacters";
-import { AVATAR_CHARACTERS } from "@/lib/bty/arena/avatarCharacters";
+import { AVATAR_CHARACTERS, getCharacterThumbImageUrl } from "@/lib/bty/arena/avatarCharacters";
 import {
   getAccessoryImageUrl,
   getOutfitImageUrlForBodyType,
@@ -20,14 +20,14 @@ import {
   ACCESSORY_IDS_ALL,
 } from "@/lib/bty/arena/avatar-assets.data";
 
-/** 캐릭터 키 → base URL, thumb(선택). thumb 없으면 base 사용. */
+/** 캐릭터 키 → base URL, thumb(512px). thumb 없으면 base 사용. */
 export const characterAssetMap: Record<
   string,
   { base: string; thumb?: string }
 > = Object.fromEntries(
   AVATAR_CHARACTERS.map((c) => [
     c.id,
-    { base: c.imageUrl, thumb: c.imageUrl },
+    { base: c.imageUrl, thumb: getCharacterThumbImageUrl(c.id) },
   ])
 );
 

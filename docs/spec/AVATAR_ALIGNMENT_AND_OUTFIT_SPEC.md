@@ -26,7 +26,7 @@
 
 | 구분 | 경로 | 비고 |
 |------|------|------|
-| **캐릭터 이미지** | `bty-app/public/avatars/default/characters/` | `{characterId}.png` 13개 (`hero_01` … `character_12`, `legend_13`). 정렬 스크립트 출력을 여기로 복사. (`AVATAR_CHARACTER_IMAGE_BASE`) |
+| **캐릭터 이미지** | `bty-app/public/avatars/default/characters/` | `{basename}.png` 13개. API `id`는 `character_11` / `character_12`이나 디스크 파일은 **`artisan_11.png`**, **`assistant_12.png`** (코드 매핑). `legend_13` 등 나머지는 `id`와 파일명 동일. 썸네일(512): `default/characters/thumbs/{basename}.png`. (`AVATAR_CHARACTER_IMAGE_BASE`) |
 | **옷 이미지** | `bty-app/public/avatars/outfits/` | `outfit_{outfitId}.png`. 정렬 스크립트로 동일 캔버스/앵커 맞춘 뒤 배치. **색상**: CSS hue-rotate 4톤만 사용 (`AvatarComposite` `outfitColorVariant` 0–3). `public/avatars/outfits/README.md` §옷 색상 다양화. |
 | **악세서리** | `bty-app/public/avatars/accessories/` | `{id}.svg` (치과 41종). `avatar-assets.json` 의 `accessories.dental` 과 1:1. |
 | **정렬 스크립트** | (프로젝트 외부 또는 `scripts/` 등) | Python PIL 기반. 입력: raw 이미지 → 출력: 1024×1024, 앵커·bbox 메타. |
@@ -98,7 +98,7 @@
 1. **캐릭터 12+Legend**:  
    - raw → 정렬 스크립트 `mode: character` → `assets/aligned/characters/` 출력.  
    - 출력물을 `bty-app/public/avatars/default/characters/` 로 복사.  
-   - 파일명: `hero_01.png` … `character_12.png`, `legend_13.png`.
+   - 파일명: `hero_01.png` … (11·12는 `artisan_11.png`, `assistant_12.png`), `legend_13.png`.
 2. **옷**:  
    - (1안) 표준 실루엣 1종으로 옷 디자인 후, 정렬 스크립트 `mode: clothing` (같은 앵커 비율)로 1024×1024 출력 → `public/avatars/outfits/outfit_{id}.png`.  
    - (2안) 체형 A/B/C 3종이면, 타입별로 옷 3벌 제작 후 `outfit_{id}_A.png` 등 규칙으로 저장하고, 코드에서 `bodyType` → URL 매핑.
