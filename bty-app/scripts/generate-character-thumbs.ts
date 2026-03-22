@@ -1,9 +1,11 @@
 /**
- * Writes 512×512 PNG thumbnails to `public/avatars/default/characters/thumbs/{basename}.png`
- * from full-res `.../characters/{basename}.png`, using the same basename mapping as
- * `getCharacterImageBasename` in `avatarCharacters.ts`.
+ * Writes **512×512** PNG thumbnails to `public/avatars/default/characters/thumbs/{basename}.png`
+ * from full-res `.../characters/{basename}.png`, using **`getCharacterImageBasename(id)`**
+ * ([`avatarCharacters.ts`](../src/lib/bty/arena/avatarCharacters.ts)) so `character_11` → `artisan_11.png`, etc.
  *
  * Run from bty-app: `npm run generate:character-thumbs`
+ *
+ * CI: `verify:avatar-assets:characters` requires both full-res and thumb files.
  */
 import fs from "node:fs/promises";
 import path from "node:path";

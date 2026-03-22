@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 
 import sharp from "sharp";
 
-import { AVATAR_CHARACTERS } from "../src/lib/bty/arena/avatarCharacters";
+import { AVATAR_CHARACTERS, getCharacterImageBasename } from "../src/lib/bty/arena/avatarCharacters";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -39,10 +39,11 @@ async function main(): Promise<void> {
     fill="rgba(255,255,255,0.92)">${letter}</text>
 </svg>`;
 
-    const pngPath = path.join(outDir, `${c.id}.png`);
+    const base = getCharacterImageBasename(c.id);
+    const pngPath = path.join(outDir, `${base}.png`);
     await sharp(Buffer.from(svg, "utf8")).png().toFile(pngPath);
     // eslint-disable-next-line no-console -- script output
-    console.log("wrote", path.relative(process.cwd(), pngPath));
+    console.log("wrote", path.relative(process.cwd(), pngPath), `(${c.id} → ${base}.png)`);
   }
 }
 

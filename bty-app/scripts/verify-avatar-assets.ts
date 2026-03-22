@@ -12,7 +12,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { AVATAR_CHARACTERS } from "../src/lib/bty/arena/avatarCharacters";
+import { AVATAR_CHARACTERS, getCharacterThumbImageUrl } from "../src/lib/bty/arena/avatarCharacters";
 import { getOutfitFilename } from "../src/lib/bty/arena/avatarOutfits";
 import { OUTFIT_IDS } from "../src/lib/bty/arena/avatar-assets.data";
 
@@ -35,6 +35,10 @@ function main(): void {
     const p = c.imageUrl.replace(/^\//, "");
     if (!fileExistsFromUrlPath("/" + p)) {
       missing.push(`[character] ${c.id} → ${p}`);
+    }
+    const thumb = getCharacterThumbImageUrl(c.id).replace(/^\//, "");
+    if (!fileExistsFromUrlPath("/" + thumb)) {
+      missing.push(`[character thumb 512] ${c.id} → ${thumb}`);
     }
   }
 
