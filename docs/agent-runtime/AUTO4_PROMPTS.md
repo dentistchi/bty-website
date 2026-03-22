@@ -1,6 +1,6 @@
 # Auto 4 — 각 Cursor에게 붙여 넣을 프롬프트
 
-**갱신**: 2026-03-21 — 보드 **SPRINT 155** (TASK **1~10**) · **MODE ARENA** · **Gate 155** **`[ ]`** · **First** **C5 TASK1** · **`SPRINT_PLAN` 361**.
+**갱신**: 2026-03-22 — 보드 **SPRINT 155** (TASK **1~10**) · **MODE ARENA** · **Gate 155** **`[ ]`** · **First** **C5 TASK1** · **C1 TASK2 `[x]`** · **`SPRINT_PLAN` 361**.
 
 **할 일 단일 진실**: **`docs/CURSOR_TASK_BOARD.md`** "이번 런" 표.
 
@@ -12,7 +12,7 @@
 
 다음 작업 해줘.
 
-**할 일**: [C1] **S155** 보드 **TASK2·3·5·7** 중 **`[ ]`** — **TASK2** NEXT·BACKLOG **S155/361** · **TASK3** 227·228차 (선택) · **TASK5** S156/362 예고 · **TASK7** § 다음 작업 — **S154** **TASK3·5·7** 흡수. **First Task** — **C5 TASK1** (Gate **155**).
+**할 일**: [C1] **S155** 보드 **TASK3·5·7** 중 **`[ ]`** — **TASK3** 227·228차 (선택) · **TASK5** S156/362 예고 · **TASK7** § 다음 작업 — **S154** **TASK3·5·7** 흡수 · **TASK2 `[x]`** (NEXT·BACKLOG **S155/361** 동기 **2026-03-22**). **First Task** — **C5 TASK1** (Gate **155**).
 
 **완료 시**: `SPRINT_LOG`·보드·`CURRENT_TASK`.
 
@@ -68,4 +68,4 @@
 
 ---
 
-*출처: S155 · **MODE ARENA** · **Gate 155** **`[ ]`** · **First** **C5 TASK1** · **`PARALLEL_QUEUE_REFILL` §3** (S154 **exit 2**) · **2026-03-21**.*
+*출처: S155 · **MODE ARENA** · **Gate 155** **`[ ]`** · **First** **C5 TASK1** · **`PARALLEL_QUEUE_REFILL` §3** (S154 **exit 2**) · **2026-03-22** (REFRESH).*

@@ -10,6 +10,10 @@
 2. **프로덕션**: 위 파일들이 **배포 아티팩트에 포함**되는지 확인(OpenNext/Cloudflare는 `public/`이 빌드에 들어가야 함).  
    오래된 에지 캐시면 **강력 새로고침** 또는 캐시 무효화.
 
+3. **자주 보이는 404**
+   - `character_11.png` / `character_12.png` — 논리 id 기준 파일명을 요청하는 경우가 있어, 저장소에는 `artisan_11` / `assistant_12`와 **동일 내용의 복제본**을 함께 둡니다(`generate:character-thumbs`가 생성).
+   - `outfit_shorts_tee.png` — 레거시 Professional L4 레벨맵(`shorts_tee`)이 참조하는 파일. `public/avatars/outfits/`에 파일이 있어야 하며 `verify:avatar-assets`가 검사합니다.
+
 ## 대시보드에 아직 "Professional / Fantasy" 테마가 보일 때
 
 현재 `bty-app` 소스의 `dashboard/page.client.tsx`에는 **테마 토글이 없습니다**(통합 옷 드롭다운만).  

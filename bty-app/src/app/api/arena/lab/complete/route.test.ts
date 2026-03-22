@@ -130,6 +130,30 @@ describe("POST /api/arena/lab/complete", () => {
     expect((await res.json()).error).toBe("completed_on_invalid");
   });
 
+  /**
+   * S155 C3 TASK9: `completedOn` **bigint**; `arenaIsoDateOnlyFromUnknown` rejects (≠ S114 number).
+   * JSON 본문은 bigint를 담지 못해 `req.json()` 스텁.
+   */
+  it("returns 400 completed_on_invalid when completedOn is bigint", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    const req = new Request("http://localhost/api/arena/lab/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    vi.spyOn(req, "json").mockResolvedValue({
+      difficulty: "easy",
+      completedOn: BigInt(20240615),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("completed_on_invalid");
+  });
+
   /** S114 C3 TASK9: optional `completedOn` — number (≠ S108 boolean) → 400. */
   it("returns 400 completed_on_invalid when completedOn is a number", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({

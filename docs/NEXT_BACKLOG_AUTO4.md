@@ -2,7 +2,7 @@
 
 **목적**: `scripts/next-project-fill-board.sh`가 여기서 다음 작업을 읽어 보드에 추가한다.  
 **기준**: `docs/NEXT_PROJECT_RECOMMENDED.md` §1·§2.  
-**갱신일**: 2026-03-21 — 보드 **SPRINT 155** (TASK **1~10**) · **`SPRINT_PLAN` 361** · **MODE ARENA** · **Gate 155** **`[ ]`** · **First** **C5 TASK1** · **S154** `PARALLEL_QUEUE_REFILL` · **S104** 미완 **TASK14·15** 참고.
+**갱신일**: 2026-03-22 — 보드 **SPRINT 155** (TASK **1~10**) · **`SPRINT_PLAN` 361** · **MODE ARENA** · **Gate 155** **`[ ]`** · **First** **C5 TASK1** · **C1 TASK2 `[x]`** (REFRESH) · **S154** `PARALLEL_QUEUE_REFILL` · **S104** 미완 **TASK14·15** 참고.
 
 ---
 
@@ -25,7 +25,7 @@ MASTER_PLAN  →  NEXT_BACKLOG_AUTO4  →  CURSOR_TASK_BOARD
 
 ```
 Fix/Polish|[VERIFY] C5 Gate 155 A~F|C5. S155 TASK1 [ ].
-Fix/Polish|[DOCS] C1 NEXT_PHASE·BACKLOG S155/361|C1. S155 TASK2 [ ].
+Fix/Polish|[DOCS] C1 NEXT_PHASE·BACKLOG S155/361|C1. S155 TASK2 [x].
 Fix/Polish|[DOCS] C1 227·228차|C1. S155 TASK3 [ ].
 Fix/Polish|[DOCS] C1 다음 배치 S156/362|C1. S155 TASK5 [ ].
 Fix/Polish|[DOMAIN] C3 arenaRunIdFromUnknown|C3. S155 TASK8 [ ].

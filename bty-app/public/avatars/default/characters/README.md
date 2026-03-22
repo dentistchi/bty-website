@@ -7,6 +7,7 @@
 - **전신(풀해상도)**: `public/avatars/default/characters/{basename}.png`
 - 논리 `id`(DB/API)와 디스크 파일명이 다를 수 있습니다. **`getCharacterImageBasename(id)`** ([`avatarCharacters.ts`](../../../../src/lib/bty/arena/avatarCharacters.ts))로 basename을 구합니다.  
   예: `character_11` → `artisan_11.png`, `character_12` → `assistant_12.png`
+- **호환 복제본**: 일부 클라이언트·캐시가 논리 id 파일명(`character_11.png`, `character_12.png`)을 직접 요청할 수 있어, `generate` 스크립트가 동일 내용의 복제본을 함께 둡니다(배포 404 방지).
 
 ## 썸네일 512×512
 

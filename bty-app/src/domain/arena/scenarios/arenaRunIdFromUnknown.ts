@@ -1,5 +1,6 @@
 /**
  * Arena run_id — 순수 정규화. API/저장소 값 검증용. XP·랭킹·시즌 무관.
+ * Non-strings (including top-level **`Symbol`** / **`bigint`**) → **`null`**.
  */
 
 export const ARENA_RUN_ID_MAX_LENGTH = 128;

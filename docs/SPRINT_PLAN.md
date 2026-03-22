@@ -31,20 +31,20 @@
 - **현재 모드: 구현 단계** — C2~C6 할 일은 **코드 생성·구현** 우선; 검증은 보드 `[ ]` 태스크에서 수행.
 - **MODE ARENA:** **SPRINT 155** — Arena 경계 (`domain/arena` · `bty-arena` · `api/arena`).
 - **`PARALLEL_QUEUE_REFILL` §3 (2026-03-21):** S154 **`exit 2`** (**C3·C4·C5** 기아 — **C1** TASK3·5·7 · **C6** TASK10 **`[ ]`**) → **S155** · **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **155**) · carry **`347/2567`** · **S154** 잔여 **C1 TASK3·5·7** · **C6 TASK10** 흡수.
-- **C7 (참고):** **`347/2567`** — Gate **154** ✓ (이전 런); **Gate 155** 미실행 · `check-parallel-task-queue` **exit 0** (REFILL **2026-03-21**).
+- **C7 (Integrator Gate):** `bty-app/scripts/self-healing-ci.sh` — **lint PASS** · **test PASS** · **build PASS** · **overall PASS** · **owner to fix:** — · carry **`347/2576`** · Gate **155** · **2026-03-22 C7**. *(이전 carry **`347/2575`** · **2026-03-22 C5/C6**)* · 이전 Gate **154** **`347/2567`** · `check-parallel-task-queue` **exit 0** (REFILL **2026-03-21** · REFRESH 재점검 **2026-03-22**).
 
 | 워커 | S155 |
 |------|-----|
-| **C5** | **1·6 `[ ]`** *(Gate **155**)* |
-| **C1** | **2·3·5·7 `[ ]`** *(S154 TASK3·5·7 흡수)* |
-| **C4** | **4 `[ ]`** *(`bty-arena/lab` a11y · **play** 제외)* |
-| **C3** | **8·9 `[ ]`** *(`arenaRunIdFromUnknown` · `POST /api/arena/lab/complete`)* |
-| **C6** | **10 `[ ]`** *(**S154** TASK10 흡수)* |
+| **C5** | **1·6 `[x]`** *(Gate **155** · **2026-03-22 C5**)* |
+| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** *(S154 TASK3·5·7 흡수)* |
+| **C4** | **4 `[x]`** *(`bty-arena/lab` a11y · **play** 제외)* |
+| **C3** | **8·9 `[x]`** *(`arenaRunIdFromUnknown` · `POST /api/arena/lab/complete`)* |
+| **C6** | **10 `[x]`** *(**S154** TASK10 흡수 · **2026-03-22 C6**)* |
 | **C2** | **1 `[ ]`** — Gate **155** · IMPORT · C3·C4 **TASK8·9**·**TASK4** 메모 |
 
 ### C2~C6 할일 (REFRESH 시 갱신)
 
-**S155 — MODE ARENA —** **First** C5 **TASK1** **`[ ]`** (Gate **155**) · **C1** TASK2·3·5·7 **`[ ]`** · **C4** TASK4 **`[ ]`** · **C3** TASK8·9 **`[ ]`** · **C5** TASK6 **`[ ]`** · **C6** TASK10 **`[ ]`** · **REFILL 2026-03-21** · **`check-parallel-task-queue` exit 0** 재점검.
+**S155 — MODE ARENA —** **C5** **TASK1·TASK6** **`[x]`** (Gate **155** · **2026-03-22 C5**) · **C1** TASK3·5·7 **`[ ]`** (**TASK2 `[x]`** · **2026-03-22 C1 REFRESH**) · **C4** TASK4 **`[x]`** · **C3** TASK8·9 **`[x]`** · **C6** TASK10 **`[x]`** · **REFILL 2026-03-21** · **`check-parallel-task-queue` exit 0** (REFRESH **2026-03-22** 재점검).
 
 #### C2 — Gatekeeper
 1. **보드 S155** — **First** C5 **TASK1 `[ ]`** — Gate **155** A~F — **`origin/main` push** 시 `SPRINT_LOG`·문서 재동기.
@@ -53,60 +53,61 @@
 4. **Auth** 미터치 시 쿠키 문서 변경 없음.
 5. **Gate** 스테일 시 `SPRINT_LOG` 한 줄.
 
-**Notes (C2 · S361):** **First** C5 **TASK1** Gate **155** · carry **`347/2567`** (Gate **154** ✓).
+**Notes (C2 · S361):** **CONTINUE 2026-03-22 (C2):** `CURSOR_TASK_BOARD` S155 **C5 TASK1** 여전히 **`[ ]`** — item 1 미실행 · item 2~5 대기.
 **BLOCKER:** 보드 S155 **C5 TASK1** (Gate **155**) **`[ ]`** — item 1 (`origin/main` push 시 `SPRINT_LOG`·문서 재동기)는 **C5 VERIFY 완료·보드 `[x]`** 후에만 `[x]` 처리 가능.
-**CONTINUE (C2) 2026-03-21:** **First** C5 **TASK1** · C3·C4 **TASK8·9**·**TASK4** 구현 큐.
+**CONTINUE (C2) 2026-03-22:** **First** C5 **TASK1** · C3·C4 **TASK8·9**·**TASK4** 구현 큐.
 
 #### C3 — Domain
-1. **보드 TASK8 `[ ]`** — **`arenaRunIdFromUnknown`** — top-level **Symbol·bigint** → **null** · Vitest — **S155 TASK8**.
-2. **보드 TASK9 `[ ]`** — **`POST /api/arena/lab/complete`** **`completedOn` JSON bigint** → **400** `completed_on_invalid` · `route.test.ts` — **S155 TASK9**.
-3. **domain**→`lib`/`app` **금지** — **확인**.
-4. **S104 TASK14** — **NEXT_BACKLOG**와 중복 확인.
-5. barrel·export 확인.
+1. **보드 TASK8 `[x]`** — **`arenaRunIdFromUnknown`** — top-level **Symbol·bigint** → **null** · Vitest — **S155 TASK8**.
+2. **보드 TASK9 `[x]`** — **`POST /api/arena/lab/complete`** **`completedOn` JSON bigint** → **400** `completed_on_invalid` · `route.test.ts` — **S155 TASK9**.
+3. **domain**→`lib`/`app` **금지** — **확인 `[x]`** (`src/domain` → `@/lib`·`@/app` **0건**).
+4. **S104 TASK14** — **NEXT_BACKLOG**와 중복 확인 **`[x]`** (`NEXT_BACKLOG_AUTO4` §S104 한 줄 합침 참고).
+5. barrel·export 확인 **`[x]`** (`arenaRunIdFromUnknown` — `scenarios/index`).
 
-**Notes (C3 · S361):** **CONTINUE 2026-03-21:** **TASK8·9 `[ ]`** — run id edges·lab/complete `req.json` 스텁.
+**Notes (C3 · S361):** **CONTINUE 2026-03-22:** **TASK8·9 `[x]`** — `arenaRunIdFromUnknown` JSDoc·기존 Vitest; lab/complete **bigint** `completedOn` · `req.json` 스텁 · `completed_on_invalid`.
 
 #### C4 — UI
-1. **보드 TASK4 `[ ]`** — **`/[locale]/bty-arena/lab`** · **lab·record·play** 과 중복 금지 · `npm run lint`.
-2. **Arena** 경계 — `src/app/[locale]/bty-arena` 만.
-3. i18n **aria** 확인.
-4. **S104 TASK15** 백로그 — 정합.
-5. 터치 시 **Lint만**.
+1. **보드 TASK4 `[x]`** — **`/[locale]/bty-arena/lab`** · **lab·record·play** 과 중복 금지 · `npm run lint`.
+2. **Arena** 경계 — `src/app/[locale]/bty-arena` 만. **`[x]`** *(lab·i18n만 터치)*
+3. i18n **aria** 확인. **`[x]`** *(`arenaLabUsageRegionAria`·`arenaLabBackNavAria` ko/en)*
+4. **S104 TASK15** 백로그 — 정합. **`[x]`** *(TASK14·15 = 보드 시드 중복 참고만; lab 랜드마크 별도 키)*
+5. 터치 시 **Lint만**. **`[x]`** *(`npm run lint` PASS)*
 
-**Notes (C4 · S361):** **CONTINUE 2026-03-21:** TASK4 **`[ ]`** — **lab** 메인·네비·CTA 랜드마크 (**play** 직전 런과 중복 금지).
+**Notes (C4 · S361):** **CONTINUE 2026-03-22:** TASK4 **`[x]`** — lab `<main>` 유지 + `section[region]` 일일 시도 + `<nav>` 런 선택 복귀; record·play·lobby aria 문구와 분리 · **2026-03-22 C4 CONTINUE.**
 
 #### C5 — VERIFY
-1. **보드 TASK1 `[ ]`** — Release Gate **155** A~F · `BTY_RELEASE_GATE_CHECK` · **`self-healing-ci`** (실행 후 갱신).
-2. **보드 TASK6 `[ ]`** — `ELITE_3RD` §3 · Gate **155**(TASK1) 동기 — **S154** TASK6 맥락 흡수.
+1. **보드 TASK1 `[x]`** — Release Gate **155** A~F · `BTY_RELEASE_GATE_CHECK` · **`self-healing-ci` · `347/2575`** ✓ · **`npm run lint`** ✓ · q237 **3/7** ✓ — **완료. 2026-03-22 C5.**
+2. **보드 TASK6 `[x]`** — `ELITE_3RD` §3 · Gate **155**(TASK1) 동기 — **S154** TASK6 맥락 흡수 — **완료. 2026-03-22 C5.**
 3. 배포 직전이 아니면 Gate **일상 반복 안 함** (REFRESH 루틴 아님).
 4. **Elite** 패치 후보 (비의무).
-5. q237 **3/7** — TASK1과 동일 런에서 정합.
+5. q237 **3/7** — TASK1과 동일 런에서 정합 ✓ *(본 턴)*
 
-**Notes (C5 · S361):** **CONTINUE 2026-03-21:** **TASK1·6 `[ ]`** · carry **`347/2567`** (이전 Gate) → Gate **155** 후 갱신.
+**Notes (C5 · S361):** **CONTINUE 2026-03-22 C5:** **TASK1·6 `[x]`** · **`347/2575`** · Gate **155** · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` §3 동기.
 
 #### C6 — VERIFY
-1. **보드 TASK10 `[ ]`** — q237 **3/7** · **`self-healing-ci`** (실행 후 갱신) · `npm run lint` · Build ✓ (`rm -rf .next` 선행).
+1. **보드 TASK10 `[x]`** — q237 **3/7** · **`self-healing-ci`** (실행 후 갱신) · `npm run lint` · Build ✓ (`rm -rf .next` 선행) · **`347/2575`** ✓ · **2026-03-22 C6.**
 2. 실패 시 **Owner·한 줄** `SPRINT_LOG`.
 3. C5 **TASK1**과 spot 중복만 조정.
 4. REFRESH로 전체 스모크 **반복 안 함** (보드 태스크에서만).
-5. **S154** **TASK10** 흡수 — carry **`347/2567`** (Gate **155** 후 갱신).
+5. **S154** **TASK10** 흡수 — carry **`347/2576`** (C7 · Gate **155** 후 갱신).
 
-**Notes (C6 · S361):** **CONTINUE 2026-03-21:** TASK10 **`[ ]`** — 보드 VERIFY 태스크에서만 전체 루틴.
+**Notes (C6 · S361):** **CONTINUE 2026-03-22:** TASK10 **`[x]`** — q237 **3 files / 7 tests** ✓ · `self-healing-ci` **347/2575** ✓ · lint·build ✓ · `SPRINT_LOG`·보드 **TASK10** 동기.
 
 ### C1 Commander — REFRESH snapshot
 
 | 항목 | 내용 |
 |------|------|
 | **이번 런** | **SPRINT 155** · **361** · **MODE ARENA** |
-| **C1 잔여** | **TASK2·3·5·7 `[ ]`** (DOCS) — **S154** **TASK3·5·7** 흡수 |
-| **C5 잔여** | **TASK1·6 `[ ]`** *(Gate **155**)* — **S154** **TASK6** 맥락 흡수 |
-| **다음 스텝 (CONTINUE 2026-03-21)** | **First** C5 **TASK1** (Gate **155**) → **C1 TASK2** (NEXT·BACKLOG) → **TASK3** → **TASK5** → **TASK7** |
-| **병렬** | **C4** TASK4 **`[ ]`** · **C3** TASK8·9 **`[ ]`** · **C6** TASK10 **`[ ]`** · **C5** TASK1·6 **`[ ]`** · **C1** TASK2·3·5·7 **`[ ]`** — **`check-parallel-task-queue` exit 0** (REFILL) |
-| **C7** | **`347/2567`** — Gate **154** ✓ · **Gate 155** 대기 |
-| **다음 C1** | **TASK2** → **TASK3** → **TASK5** → **TASK7** |
+| **C1 잔여** | **TASK3·5·7 `[ ]`** (DOCS) — **S154** **TASK3·5·7** 흡수 · **TASK2 `[x]`** (**2026-03-22**) |
+| **C5 잔여** | **없음** *(TASK1·6 **`[x]`** · Gate **155** · **2026-03-22 C5**)* |
+| **다음 스텝 (CONTINUE 2026-03-22)** | **C1 TASK3** (227·228차) → **TASK5** → **TASK7** *(C5 Gate **155** 완료)* |
+| **병렬** | **C4** TASK4 **`[x]`** · **C3** TASK8·9 **`[x]`** · **C6** TASK10 **`[x]`** · **C5** — *(TASK1·6 완료)* · **C1** TASK3·5·7 **`[ ]`** — **`check-parallel-task-queue` exit 0** (REFILL · REFRESH 재점검) |
+| **C7** | **`347/2576`** — Gate **155** ✓ (**2026-03-22 C7**) · self-healing-ci **lint·test·build PASS** · overall **PASS** · 이전 **`347/2575`** · 이전 Gate **154** **`347/2567`** |
+| **다음 C1** | **TASK3** → **TASK5** → **TASK7** |
 
 - **PARALLEL_QUEUE_REFILL (2026-03-21 · 4):** S154 **`exit 2`** (**C3·C4·C5** 기아) → **S155** 오픈 · `SPRINT_PLAN`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`CURRENT_TASK` 동기.
 - **REFRESH (2026-03-21):** **`SPRINT_PLAN`「C2~C6 할일」** · C1 snapshot · **S155/361** 오픈.
+- **REFRESH (2026-03-22):** **`SPRINT_PLAN`「C2~C6 할일」** · C1 snapshot · **C1 TASK2 `[x]`** · **`check-parallel-task-queue` exit 0**.
 
 ---
 

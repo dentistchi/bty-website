@@ -25,7 +25,8 @@ import type { Locale } from "@/lib/i18n";
 import { leaderboardTieRankSuffixDisplayKey } from "@/domain/rules/leaderboardTieBreak";
 import { weeklyCompetitionStageTierBandDisplayLabelKey } from "@/domain/rules/weeklyCompetitionDisplay";
 import { getVisibleAvatarCharacters, getAvatarCharacter, getCharacterThumbImageUrl } from "@/lib/bty/arena/avatarCharacters";
-import { getAccessoryImageUrl, OUTFIT_OPTIONS_ALL } from "@/lib/bty/arena/avatarOutfits";
+import { getAccessoryImageUrl, outfitIdToDisplayLabel } from "@/lib/bty/arena/avatarOutfits";
+import { OUTFIT_IDS } from "@/lib/bty/arena/avatar-assets.data";
 import { LeAirWidget } from "@/components/bty/dashboard/LeAirWidget";
 import { LeStageWidget } from "@/components/bty/dashboard/LeStageWidget";
 import { weeklyTierDisplayLabelKey } from "@/domain/rules/leaderboard";
@@ -1595,11 +1596,16 @@ export default function DashboardClient() {
                       <option value="">
                         {locale === "ko" ? "레벨 기본값" : "Level default"}
                       </option>
-                      {OUTFIT_OPTIONS_ALL.map((opt) => (
-                        <option key={opt.outfitId} value={opt.outfitId}>
-                          {opt.outfitLabel}
-                        </option>
-                      ))}
+                      {OUTFIT_IDS.map((outfitId) => {
+                        const outfitKey = `outfit_${outfitId}`;
+                        const label =
+                          tAvatarOutfit.outfitLabels[outfitKey] ?? outfitIdToDisplayLabel(outfitId);
+                        return (
+                          <option key={outfitId} value={outfitId}>
+                            {label}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                   <div style={{ marginTop: 8, fontSize: 12, opacity: 0.8 }}>{tAvatarOutfit.hint}</div>

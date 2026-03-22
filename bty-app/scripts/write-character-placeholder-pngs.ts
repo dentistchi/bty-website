@@ -44,6 +44,12 @@ async function main(): Promise<void> {
     await sharp(Buffer.from(svg, "utf8")).png().toFile(pngPath);
     // eslint-disable-next-line no-console -- script output
     console.log("wrote", path.relative(process.cwd(), pngPath), `(${c.id} → ${base}.png)`);
+    if (base !== c.id) {
+      const compatPath = path.join(outDir, `${c.id}.png`);
+      await fs.copyFile(pngPath, compatPath);
+      // eslint-disable-next-line no-console -- script output
+      console.log("compat copy", path.relative(process.cwd(), compatPath));
+    }
   }
 }
 

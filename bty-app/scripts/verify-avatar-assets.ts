@@ -17,6 +17,7 @@ import {
   getOutfitFilename,
   getAccessoryImageUrl,
   LEGACY_ACCESSORY_IDS_FOR_ASSETS,
+  LEGACY_OUTFIT_DISK_FILENAMES,
 } from "../src/lib/bty/arena/avatarOutfits";
 import { OUTFIT_IDS, ACCESSORY_IDS_ALL } from "../src/lib/bty/arena/avatar-assets.data";
 
@@ -57,6 +58,14 @@ function main(): void {
       const abs = path.join(publicDir, rel);
       if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) {
         missing.push(`[outfit] ${id} → avatars/outfits/${name}`);
+      }
+    }
+
+    for (const name of LEGACY_OUTFIT_DISK_FILENAMES) {
+      const rel = path.join("avatars", "outfits", name);
+      const abs = path.join(publicDir, rel);
+      if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) {
+        missing.push(`[legacy outfit file] → avatars/outfits/${name}`);
       }
     }
 

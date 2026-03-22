@@ -2,7 +2,7 @@
 
 **목적**: Auto 4와 **`docs/CURSOR_TASK_BOARD.md`** 의 **대기 작업**을 같은 기준으로 유지한다.
 
-**상태 2026-03-21:** **정본 = 보드 SPRINT 155** · `SPRINT_PLAN` **361** — **MODE ARENA** · **Gate 155** **`[ ]`** · **First** C5 **TASK1** · **`PARALLEL_QUEUE_REFILL` §3** (S154 **exit 2**) · carry **`347/2567`** (Gate **154** C7).
+**상태 2026-03-22:** **정본 = 보드 SPRINT 155** · `SPRINT_PLAN` **361** — **MODE ARENA** · **Gate 155** **`[ ]`** · **First** C5 **TASK1** · **C1 TASK2 `[x]`** (REFRESH) · **`PARALLEL_QUEUE_REFILL` §3** (S154 **exit 2**) · carry **`347/2567`** (Gate **154** C7).
 
 ---
 
@@ -11,7 +11,7 @@
 | # | 할 일 (한 줄) | 보드 |
 |---|----------------|------|
 | 1 | **[VERIFY] C5** Gate 155 A~F | **`[ ]`** |
-| 2 | **[DOCS] C1** NEXT·BACKLOG | **`[ ]`** |
+| 2 | **[DOCS] C1** NEXT·BACKLOG | **`[x]`** |
 | 3 | **[DOCS] C1** 227·228차 (선택) | **`[ ]`** |
 | 4 | **[UI] C4** `bty-arena/lab` 접근성 | **`[ ]`** |
 | 5 | **[DOCS] C1** 다음 배치 (S156/362 예고) | **`[ ]`** |
@@ -31,4 +31,4 @@
 
 ---
 
-*최종 갱신: 2026-03-21 — **S155** — **First** C5 **TASK1** (Gate **155**) · carry **`347/2567`** · **PARALLEL_QUEUE_REFILL §3** (S154).*
+*최종 갱신: 2026-03-22 — **S155** — **C1 TASK2 `[x]`** · **First** C5 **TASK1** (Gate **155**) · carry **`347/2567`** · **PARALLEL_QUEUE_REFILL §3** (S154).*

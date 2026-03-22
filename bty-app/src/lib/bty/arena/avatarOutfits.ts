@@ -138,6 +138,12 @@ const OUTFIT_ID_TO_FILENAME: Record<string, string> = {
   shorts_tee: "outfit_shorts_tee.png",
 };
 
+/**
+ * 레거시 레벨맵이 참조하는 디스크 파일 중, 저장소에 반드시 있어야 하는 항목만 검사한다.
+ * (`outfit_scrub_general.png` 등 나머지는 아직 매니페스트 PNG로 대체·미배치일 수 있음 — Network 404 시 추가.)
+ */
+export const LEGACY_OUTFIT_DISK_FILENAMES: readonly string[] = ["outfit_shorts_tee.png"];
+
 /** outfitId → `public/avatars/outfits/` 파일명 (체형 접미사 전). */
 export function getOutfitFilename(outfitId: string): string {
   return OUTFIT_ID_TO_FILENAME[outfitId] ?? `outfit_${outfitId}.png`;

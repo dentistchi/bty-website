@@ -56,7 +56,11 @@ export default function LabPage() {
         <p style={{ margin: 0, fontSize: 14, opacity: 0.85 }}>{t.arenaLabLead}</p>
       </div>
 
-      <div style={{ marginTop: 20 }}>
+      <section
+        style={{ marginTop: 20 }}
+        role="region"
+        aria-label={t.arenaLabUsageRegionAria}
+      >
         <ProgressCard label={t.arenaLabRemainingTodayLabel}>
           <div
             role="status"
@@ -87,9 +91,9 @@ export default function LabPage() {
             )}
           </div>
         </ProgressCard>
-      </div>
+      </section>
 
-      <div style={{ marginTop: 24 }}>
+      <nav style={{ marginTop: 24 }} aria-label={t.arenaLabBackNavAria}>
         <Link
           href={`/${locale}/bty-arena/run`}
           style={{
@@ -106,7 +110,7 @@ export default function LabPage() {
         >
           {t.arenaLabBackToArena}
         </Link>
-      </div>
+      </nav>
     </main>
   );
 }
