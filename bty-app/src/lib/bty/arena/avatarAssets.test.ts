@@ -120,19 +120,33 @@ describe("avatarAssets", () => {
       expect(r.outfitUrl!.startsWith("/avatars/outfits/")).toBe(true);
     });
 
-    it("uses bodyType-specific outfit filename when bodyType is set", () => {
+    it("uses bodyType-specific outfit filename when bodyType overrides character", () => {
       const base = resolveAvatarUrls({
         characterKey: "hero_01",
         outfitKey: UNIFIED_0,
       });
-      const withBody = resolveAvatarUrls({
+      const withBodyB = resolveAvatarUrls({
+        characterKey: "hero_01",
+        outfitKey: UNIFIED_0,
+        bodyType: "B",
+      });
+      expect(withBodyB.outfitUrl).toContain("/avatars/outfits/");
+      expect(withBodyB.outfitUrl).not.toBe(base.outfitUrl);
+      expect(withBodyB.outfitUrl).toMatch(/_B\.png|%5FB\.png/);
+    });
+
+    it("derives outfit bodyType from characterKey when bodyType prop is omitted", () => {
+      const auto = resolveAvatarUrls({
+        characterKey: "hero_01",
+        outfitKey: UNIFIED_0,
+      });
+      const explicitA = resolveAvatarUrls({
         characterKey: "hero_01",
         outfitKey: UNIFIED_0,
         bodyType: "A",
       });
-      expect(withBody.outfitUrl).toContain("/avatars/outfits/");
-      expect(withBody.outfitUrl).not.toBe(base.outfitUrl);
-      expect(withBody.outfitUrl).toMatch(/_A\.png|%5FA\.png/);
+      expect(auto.outfitUrl).toBe(explicitA.outfitUrl);
+      expect(auto.outfitUrl).toMatch(/_A\.png|%5FA\.png/);
     });
 
     it("returns null outfitUrl for unknown outfitKey", () => {

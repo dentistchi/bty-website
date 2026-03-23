@@ -88,7 +88,7 @@ export default function BtyArenaPage() {
     >
       <main
         data-testid="arena-play-main"
-        aria-label={t.mainPlayLandmarkAria}
+        aria-label={t.arenaRunPageMainRegionAria}
         style={{
           display: "flex", flexDirection: "column", flex: 1,
           minWidth: 0, maxWidth: 860, margin: "0 auto", width: "100%",

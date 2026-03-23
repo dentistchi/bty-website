@@ -1,5 +1,7 @@
 -- AVATAR_LAYER_SPEC §4: 리더보드 행에 아바타 키(accessoryKeys) 포함. get_leaderboard_profiles에 avatar_accessory_ids 추가.
 
+drop function if exists public.get_leaderboard_profiles(uuid[]);
+
 create or replace function public.get_leaderboard_profiles(p_user_ids uuid[])
 returns table (
   user_id uuid,
@@ -32,7 +34,7 @@ as $$
 $$;
 
 comment on function public.get_leaderboard_profiles(uuid[]) is
-  'Returns profile rows for given user IDs for leaderboard display. SECURITY DEFINER. Includes avatar keys (avatar_accessory_ids) for §4 composite.';
+  'Returns profile rows for given user IDs for leaderboard display. SECURITY DEFINER so RLS does not restrict to current user. Includes avatar_selected_outfit_id and avatar_accessory_ids for avatar layer composition.';
 
 revoke all on function public.get_leaderboard_profiles(uuid[]) from public;
 grant execute on function public.get_leaderboard_profiles(uuid[]) to authenticated;

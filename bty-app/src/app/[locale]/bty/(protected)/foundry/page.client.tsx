@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ProgramRecommenderWidget } from "@/components/foundry/ProgramRecommenderWidget";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
@@ -71,6 +72,9 @@ export default function FoundryHubClient({
           <h1 className="text-2xl font-semibold text-[var(--arena-text)]">{tLand.foundryTitle}</h1>
           <p className="text-[var(--arena-text-soft)] mt-2">{tLand.foundryDesc}</p>
         </header>
+        <div className="mb-8">
+          <ProgramRecommenderWidget locale={locale} />
+        </div>
         <section aria-label={tBty.foundryFeatureCardsRegionAria}>
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 list-none p-0 m-0" role="list">
           {features.map((f) => (

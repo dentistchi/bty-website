@@ -48,7 +48,7 @@ export default function LabPage() {
   return (
     <main
       data-testid="arena-lab-main"
-      aria-label={t.arenaLabMainRegionAria}
+      aria-label={t.arenaLabUsageRegionAria}
       style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}
     >
       <div style={{ marginTop: 0 }}>
@@ -56,11 +56,7 @@ export default function LabPage() {
         <p style={{ margin: 0, fontSize: 14, opacity: 0.85 }}>{t.arenaLabLead}</p>
       </div>
 
-      <section
-        style={{ marginTop: 20 }}
-        role="region"
-        aria-label={t.arenaLabUsageRegionAria}
-      >
+      <div style={{ marginTop: 20 }}>
         <ProgressCard label={t.arenaLabRemainingTodayLabel}>
           <div
             role="status"
@@ -91,7 +87,7 @@ export default function LabPage() {
             )}
           </div>
         </ProgressCard>
-      </section>
+      </div>
 
       <nav style={{ marginTop: 24 }} aria-label={t.arenaLabBackNavAria}>
         <Link

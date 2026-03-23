@@ -1,0 +1,299 @@
+"use client";
+
+/**
+ * Center Healing — 4-step vertical stepper (인정→성찰→재통합→갱신).
+ * State: GET /api/bty/healing/phase-tracker; advance: POST (domain `getCurrentPhase` / advance in lib).
+ * Reloads when `dear_me_submitted` fires ({@link DEAR_ME_SUBMITTED_EVENT} from Dear Me composer).
+ * Render-only for phase labels; completion rules live in @/domain/center/healingPhase + service.
+ */
+
+import React from "react";
+import type { HealingJourneyPhaseId } from "@/domain/center/healingPhase";
+import { HEALING_JOURNEY_PHASE_IDS } from "@/domain/center/healingPhase";
+import { DEAR_ME_SUBMITTED_EVENT } from "@/lib/bty/center/dearMeEvents";
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
+
+export const HEALING_PHASE_ADVANCED_EVENT = "phase_advanced" as const;
+
+export type HealingPhaseAdvancedDetail = {
+  previousPhase: HealingJourneyPhaseId;
+  newPhase: HealingJourneyPhaseId;
+  userId?: string;
+};
+
+type PhaseTrackerApi = {
+  ok?: boolean;
+  activePhase?: HealingJourneyPhaseId;
+  canAdvance?: boolean;
+  phaseComplete?: Record<string, boolean>;
+  inputsSummary?: {
+    assessmentCount: number;
+    dearMeLetterCount: number;
+    awakeningActsCompleted: number;
+  };
+  error?: string;
+};
+
+function dispatchPhaseAdvanced(detail: HealingPhaseAdvancedDetail) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(HEALING_PHASE_ADVANCED_EVENT, { detail }));
+}
+
+function stepTitle(t: ReturnType<typeof getMessages>["healing"], id: HealingJourneyPhaseId): string {
+  switch (id) {
+    case 1:
+      return t.healingPhaseStep1;
+    case 2:
+      return t.healingPhaseStep2;
+    case 3:
+      return t.healingPhaseStep3;
+    case 4:
+      return t.healingPhaseStep4;
+    default:
+      return "";
+  }
+}
+
+function stepPrompt(t: ReturnType<typeof getMessages>["healing"], id: HealingJourneyPhaseId): string {
+  switch (id) {
+    case 1:
+      return t.healingPhasePrompt1;
+    case 2:
+      return t.healingPhasePrompt2;
+    case 3:
+      return t.healingPhasePrompt3;
+    case 4:
+      return t.healingPhasePrompt4;
+    default:
+      return "";
+  }
+}
+
+export type HealingPhaseTrackerProps = {
+  locale: Locale | string;
+  /** Optional; included in `phase_advanced` detail when provided. */
+  userId?: string;
+};
+
+export function HealingPhaseTracker({ locale, userId }: HealingPhaseTrackerProps) {
+  const loc = locale === "ko" ? "ko" : "en";
+  const t = getMessages(loc).healing;
+
+  const [data, setData] = React.useState<PhaseTrackerApi | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [advancing, setAdvancing] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const load = React.useCallback(async () => {
+    setError(null);
+    try {
+      const r = await fetch("/api/bty/healing/phase-tracker", { credentials: "include" });
+      const json = (await r.json().catch(() => ({}))) as PhaseTrackerApi;
+      if (!r.ok) {
+        setError((json as { error?: string }).error ?? t.healingPhaseTrackerLoadError);
+        setData(null);
+        return;
+      }
+      setData(json);
+    } catch {
+      setError(t.healingPhaseTrackerLoadError);
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [t.healingPhaseTrackerLoadError]);
+
+  React.useEffect(() => {
+    void load();
+  }, [load]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onDearMe = () => {
+      void load();
+    };
+    window.addEventListener(DEAR_ME_SUBMITTED_EVENT, onDearMe);
+    return () => window.removeEventListener(DEAR_ME_SUBMITTED_EVENT, onDearMe);
+  }, [load]);
+
+  const advance = async () => {
+    setAdvancing(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/bty/healing/phase-tracker", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const json = (await r.json().catch(() => ({}))) as {
+        ok?: boolean;
+        previousPhase?: HealingJourneyPhaseId;
+        newPhase?: HealingJourneyPhaseId;
+        error?: string;
+      };
+      if (!r.ok || !json.ok) {
+        setError(json.error ?? t.healingPhaseAdvanceError);
+        return;
+      }
+      if (json.previousPhase != null && json.newPhase != null) {
+        dispatchPhaseAdvanced({
+          previousPhase: json.previousPhase,
+          newPhase: json.newPhase,
+          userId,
+        });
+      }
+      await load();
+    } catch {
+      setError(t.healingPhaseAdvanceError);
+    } finally {
+      setAdvancing(false);
+    }
+  };
+
+  if (loading && !data) {
+    return (
+      <section role="status" aria-busy="true" aria-label={t.loading}>
+        <p style={{ margin: "0 0 8px", fontWeight: 600 }}>{t.healingPhaseTrackerTitle}</p>
+        <p style={{ margin: 0, color: "#64748b" }}>{t.loading}</p>
+      </section>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <section role="alert" aria-label={t.healingPhaseTrackerRegionAria}>
+        <p style={{ margin: 0, color: "#b91c1c" }}>{error}</p>
+      </section>
+    );
+  }
+
+  const activePhase = (data?.activePhase ?? 1) as HealingJourneyPhaseId;
+  const canAdvance = Boolean(data?.canAdvance);
+  const phaseComplete = data?.phaseComplete ?? {};
+  const sum = data?.inputsSummary;
+
+  const inputsHint =
+    sum != null
+      ? t.healingPhaseInputsHint
+          .replace(/\{a\}/g, String(sum.assessmentCount))
+          .replace(/\{l\}/g, String(sum.dearMeLetterCount))
+          .replace(/\{aw\}/g, String(sum.awakeningActsCompleted))
+      : null;
+
+  return (
+    <section
+      role="region"
+      aria-label={t.healingPhaseTrackerRegionAria}
+      style={{
+        maxWidth: 480,
+        padding: "16px",
+        borderRadius: 12,
+        border: "1px solid #e2e8f0",
+        background: "#fff",
+      }}
+    >
+      <h2 style={{ margin: "0 0 16px", fontSize: 18, fontWeight: 700 }}>{t.healingPhaseTrackerTitle}</h2>
+
+      {inputsHint ? (
+        <p style={{ margin: "0 0 16px", fontSize: 12, color: "#64748b" }}>{inputsHint}</p>
+      ) : null}
+
+      <ol
+        style={{
+          margin: 0,
+          padding: 0,
+          listStyle: "none",
+          display: "flex",
+          flexDirection: "column",
+          gap: 0,
+        }}
+      >
+        {HEALING_JOURNEY_PHASE_IDS.map((id, idx) => {
+          const isActive = id === activePhase;
+          const done = Boolean(phaseComplete[String(id)]);
+          const title = stepTitle(t, id);
+          const prompt = stepPrompt(t, id);
+          const isLast = idx === HEALING_JOURNEY_PHASE_IDS.length - 1;
+
+          return (
+            <li
+              key={id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "28px 1fr",
+                columnGap: 12,
+                position: "relative",
+              }}
+            >
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <span
+                  aria-current={isActive ? "step" : undefined}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    flexShrink: 0,
+                    border: `2px solid ${isActive ? "#2563eb" : done ? "#16a34a" : "#cbd5e1"}`,
+                    background: isActive ? "#eff6ff" : done ? "#f0fdf4" : "#f8fafc",
+                    color: isActive ? "#1d4ed8" : done ? "#15803d" : "#64748b",
+                  }}
+                >
+                  {id}
+                </span>
+                {!isLast ? (
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 2,
+                      flex: 1,
+                      minHeight: 24,
+                      background: done ? "#86efac" : "#e2e8f0",
+                      marginTop: 4,
+                    }}
+                  />
+                ) : null}
+              </div>
+              <div style={{ paddingBottom: isLast ? 0 : 20 }}>
+                <p
+                  style={{
+                    margin: "0 0 6px",
+                    fontWeight: isActive ? 700 : 600,
+                    color: isActive ? "#0f172a" : "#334155",
+                  }}
+                >
+                  {title}
+                </p>
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "#475569" }}>{prompt}</p>
+                {done ? (
+                  <span style={{ fontSize: 11, color: "#16a34a", fontWeight: 600 }}>✓</span>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+
+      {error && data ? <p style={{ color: "#b91c1c", fontSize: 13, marginTop: 12 }}>{error}</p> : null}
+
+      {canAdvance ? (
+        <div style={{ marginTop: 20 }}>
+          <button
+            type="button"
+            className="rounded-lg border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            disabled={advancing}
+            onClick={() => void advance()}
+          >
+            {advancing ? t.healingPhaseAdvancing : t.healingPhaseAdvanceCta}
+          </button>
+        </div>
+      ) : null}
+    </section>
+  );
+}

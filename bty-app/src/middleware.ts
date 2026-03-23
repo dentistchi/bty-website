@@ -179,6 +179,46 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(login);
     }
 
+    /**
+     * Onboarding gate (see `OnboardingShell`): unauthenticated users are sent to **login** above.
+     * Here: authenticated + `user_onboarding_progress.step_completed < 5` + path is `/arena` | `/bty/foundry` | `/center`
+     * → redirect `/{locale}/onboarding`. Completed onboarding + user on `/onboarding` → `/arena`.
+     */
+    const onboardingPath =
+      pathname === `/${locale}/onboarding` || pathname.startsWith(`/${locale}/onboarding/`);
+    const onboardingGated =
+      pathname.startsWith(`/${locale}/arena`) ||
+      pathname.startsWith(`/${locale}/bty/foundry`) ||
+      pathname.startsWith(`/${locale}/center`);
+
+    if (onboardingGated || onboardingPath) {
+      const { data: ob } = await supabase
+        .from("user_onboarding_progress")
+        .select("step_completed")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const scRaw = (ob as { step_completed?: unknown } | null)?.step_completed;
+      const sc = typeof scRaw === "number" && Number.isFinite(scRaw) ? scRaw : 0;
+      const onboardingDone = sc >= 5;
+
+      if (!onboardingDone && onboardingGated) {
+        const jump = NextResponse.redirect(new URL(`/${locale}/onboarding`, req.url));
+        reassertAuthCookiesPathRoot(req, jump);
+        jump.headers.set("x-mw-hit", "1");
+        jump.headers.set("x-mw-user", "1");
+        jump.headers.set("x-mw-onboarding", "required");
+        return jump;
+      }
+      if (onboardingDone && onboardingPath) {
+        const jump = NextResponse.redirect(new URL(`/${locale}/arena`, req.url));
+        reassertAuthCookiesPathRoot(req, jump);
+        jump.headers.set("x-mw-hit", "1");
+        jump.headers.set("x-mw-user", "1");
+        jump.headers.set("x-mw-onboarding", "done");
+        return jump;
+      }
+    }
+
     reassertAuthCookiesPathRoot(req, res);
     res.headers.set("x-mw-hit", "1");
     res.headers.set("x-mw-user", "1");

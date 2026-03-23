@@ -34,7 +34,7 @@
 
 다음 작업 해줘.
 
-**할 일**: [C3] **S155 TASK8·9** **`[ ]`** — **`arenaRunIdFromUnknown`** top-level **Symbol·bigint** · **`POST /api/arena/lab/complete`** **`completedOn` bigint** → **400** `completed_on_invalid` · `route.test.ts` · Vitest ✓.
+**할 일**: [C3] **S155 TASK9** **`[ ]`** — **`POST /api/arena/lab/complete`** **`completedOn` bigint** → **400** `completed_on_invalid` · `route.test.ts` · Vitest ✓. (**TASK8** **`arenaRunIdFromUnknown`** **`[x]`** · 2026-03-22.)
 
 ---
 

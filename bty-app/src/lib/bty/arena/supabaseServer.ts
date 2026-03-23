@@ -2,7 +2,12 @@ import { cookies as nextCookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
 /**
- * Server Supabase client for Arena API. Auth must be checked in each API.
+ * Server Supabase client bound to the **current request** cookie jar (Next.js App Router).
+ *
+ * **Only call from Route Handlers, Server Actions, or Server Components** — `cookies()` from
+ * `next/headers` throws outside an active request. Engine/services must not import this; they
+ * should receive a `SupabaseClient` from the caller or use **`getSupabaseAdmin()`** where
+ * service-role access is appropriate (tests, smoke, admin jobs).
  */
 export async function getSupabaseServerClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;

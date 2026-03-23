@@ -16,12 +16,12 @@ vi.mock("@/lib/bty/arena/labUsage", () => ({
   consumeLabAttempt: vi.fn(),
 }));
 
-vi.mock("@/lib/bty/arena/applyCoreXp", () => ({
-  applyDirectCoreXp: vi.fn(),
+vi.mock("@/engine/xp/lab-xp.service", () => ({
+  awardLabXP: vi.fn().mockResolvedValue({ newCoreTotal: 500 }),
 }));
 
 import { consumeLabAttempt } from "@/lib/bty/arena/labUsage";
-import { applyDirectCoreXp } from "@/lib/bty/arena/applyCoreXp";
+import { awardLabXP } from "@/engine/xp/lab-xp.service";
 
 describe("POST /api/arena/lab/complete", () => {
   beforeEach(() => {
@@ -131,8 +131,8 @@ describe("POST /api/arena/lab/complete", () => {
   });
 
   /**
-   * S155 C3 TASK9: `completedOn` **bigint**; `arenaIsoDateOnlyFromUnknown` rejects (≠ S114 number).
-   * JSON 본문은 bigint를 담지 못해 `req.json()` 스텁.
+   * S155 C3 TASK9: `completedOn` **bigint** — `arenaIsoDateOnlyFromUnknown` 비문자 → `null` (≠ **S114** `JSON.stringify` **number**).
+   * 표준 JSON은 bigint를 직렬화하지 않으므로 런타임 파서가 넣는 값만 재현하기 위해 **`req.json()` 스텁**.
    */
   it("returns 400 completed_on_invalid when completedOn is bigint", async () => {
     mockGetSupabaseServerClient.mockResolvedValue({
@@ -145,13 +145,17 @@ describe("POST /api/arena/lab/complete", () => {
       headers: { "Content-Type": "application/json" },
       body: "{}",
     });
-    vi.spyOn(req, "json").mockResolvedValue({
+    const jsonSpy = vi.spyOn(req, "json").mockResolvedValue({
       difficulty: "easy",
       completedOn: BigInt(20240615),
     });
-    const res = await POST(req);
-    expect(res.status).toBe(400);
-    expect((await res.json()).error).toBe("completed_on_invalid");
+    try {
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe("completed_on_invalid");
+    } finally {
+      jsonSpy.mockRestore();
+    }
   });
 
   /** S114 C3 TASK9: optional `completedOn` — number (≠ S108 boolean) → 400. */
@@ -198,7 +202,7 @@ describe("POST /api/arena/lab/complete", () => {
       },
     });
     vi.mocked(consumeLabAttempt).mockResolvedValue({ consumed: true, attemptsUsed: 1 });
-    vi.mocked(applyDirectCoreXp).mockResolvedValue({ newCoreTotal: 500 });
+    vi.mocked(awardLabXP).mockResolvedValue({ newCoreTotal: 500 });
 
     const res = await POST(
       new Request("http://localhost/api/arena/lab/complete", {
@@ -219,7 +223,7 @@ describe("POST /api/arena/lab/complete", () => {
       },
     });
     vi.mocked(consumeLabAttempt).mockResolvedValue({ consumed: true, attemptsUsed: 1 });
-    vi.mocked(applyDirectCoreXp).mockResolvedValue({ newCoreTotal: 500 });
+    vi.mocked(awardLabXP).mockResolvedValue({ newCoreTotal: 500 });
 
     const { computeLabCoreXp } = await import("@/lib/bty/arena/arenaLabXp");
     const midXp = computeLabCoreXp("mid");

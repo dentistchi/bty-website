@@ -20,9 +20,37 @@ Summary of gate/integration runs (C7). Major sprint state changes. C1 REFRESH re
 
 ## 2026-03-22
 
-- **GATE (C7):** `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (**347 files** / **2576 tests**), Build PASS. Overall PASS. Owner to fix: —. *(C7 GATE · **`347/2576`** · S155/361 · Gate **155**)*
+- **C5 SPRINT 160 TASK1·TASK6 / 366 (Gate 160):** [VERIFY] Release Gate A~F · **`ELITE_3RD` §3** — **`352/2601`** ✓ · q237 **3/7** ✓ · `self-healing-ci` · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **S160 TASK1·TASK6 [x]** · `BTY_RELEASE_GATE_CHECK`·`SPRINT_PLAN` **366** · `check-parallel-task-queue` **exit 2** (C4·C5 기아 → C1 REFILL) · **2026-03-22 C5.**
+
+- **C2 SPRINT 160 / 366 (Gatekeeper · RUN):** Gate **160** §A~F **`BTY_RELEASE_GATE_CHECK`** 대조 **PASS** · **`352/2601`** · **C2↔TASK1(C5)** **`[x]`** · **2026-03-22 C2.**
+
+- **GATE (C7) — 최종:** `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (**352 files** / **2601 tests**), Build PASS. Overall PASS. Owner to fix: —. *(C5 Integrator · **`352/2601`** · Attempt **1/5** · exit **0** · Vitest ~**9.7s** · S160/366 · Gate **160** · `SPRINT_LOG` 확정)*
+
+- **C5 SPRINT 159 TASK1·TASK6 / 365 (Gate 159):** [VERIFY] Release Gate A~F · **`ELITE_3RD` §3** — **`350/2591`** ✓ · q237 **3/7** ✓ · `self-healing-ci` · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **S159 TASK1·TASK6 [x]** · `BTY_RELEASE_GATE_CHECK`·`SPRINT_PLAN` **365** · `check-parallel-task-queue` **exit 2** (C4·C5 기아 → C1 REFILL) · **2026-03-22 C5.**
+
+- **C2 SPRINT 159 / 365 (Gatekeeper · RUN):** Gate **159** §A~F **`BTY_RELEASE_GATE_CHECK`** 대조 **PASS** · **`350/2591`** · **C2↔TASK1(C5)** **`[x]`** · **2026-03-22 C2.**
+
+- **GATE (C7) — 최종:** `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (**350 files** / **2591 tests**), Build PASS. Overall PASS. Owner to fix: —. *(C5 Integrator · **`350/2591`** · Attempt **1/5** · exit **0** · Vitest ~**11.2s** · S159/365 · Gate **159** · `SPRINT_LOG` 확정)*
+
+- **C5 SPRINT 158 TASK1·TASK6 / 364 (Gate 158):** [VERIFY] Release Gate A~F · **`ELITE_3RD` §3** — **`349/2588`** ✓ · q237 **3/7** ✓ · `self-healing-ci` · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **S158 TASK1·TASK6 [x]** · `BTY_RELEASE_GATE_CHECK`·`SPRINT_PLAN` **364** · `check-parallel-task-queue` **exit 2** (C4·C5 기아 → C1 REFILL) · **2026-03-22 C5.**
+
+- **C2 SPRINT 158 / 364 (Gatekeeper · RUN):** Gate **158** §A~F **`BTY_RELEASE_GATE_CHECK`** 대조 **PASS** · **`349/2588`** · **C2↔TASK1(C5)** **`[x]`** · **2026-03-22 C2.**
+
+- **GATE (C7) — 최종:** `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (**349 files** / **2588 tests**), Build PASS. Overall PASS. Owner to fix: —. *(C5 Integrator · **`349/2588`** · Attempt **1/5** · exit **0** · Vitest ~**13.3s** · S158/364 · Gate **158** · `SPRINT_LOG` 확정)*
+
+- **C5 SPRINT 157 TASK1·TASK6 / 363 (Gate 157):** [VERIFY] Release Gate A~F · **`ELITE_3RD` §3** — **`348/2583`** ✓ · q237 **3/7** ✓ · `self-healing-ci` · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **S157 TASK1·TASK6 [x]** · `BTY_RELEASE_GATE_CHECK`·`SPRINT_PLAN` **363** · `check-parallel-task-queue` **exit 2** (C4·C5 기아 → C1 REFILL) · **2026-03-22 C5.**
+
+- **C2 SPRINT 157 / 363 (Gatekeeper · RUN):** Gate **157** §A~F **`BTY_RELEASE_GATE_CHECK`** 대조 **PASS** · **`348/2583`** · **C2↔TASK1(C5)** **`[x]`** · **2026-03-22 C2.**
+
+- **C5 SPRINT 156 TASK1·TASK6 / 362 (Gate 156):** [VERIFY] Release Gate A~F · **`ELITE_3RD` §3** — **`347/2576`** ✓ · q237 **3/7** ✓ · `self-healing-ci` · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **S156 TASK1·TASK6 [x]** · `BTY_RELEASE_GATE_CHECK`·`SPRINT_PLAN` **362** · `check-parallel-task-queue` **exit 2** (C4·C5 기아 → C1 REFILL) · **2026-03-22 C5.**
+
+- **GATE (C7) — 최종:** `bty-app/scripts/self-healing-ci.sh`. Lint PASS, Test PASS (**347 files** / **2576 tests**), Build PASS. Overall PASS. Owner to fix: —. *(C5 Integrator · **`347/2576`** · Attempt **1/5** · exit **0** · Vitest ~**10.2s** · S155/361 · Gate **155** · `SPRINT_LOG` 확정)*
 
 - **C5 SPRINT 155 TASK1·TASK6 / 361 (Gate 155):** [VERIFY] Release Gate A~F · **`ELITE_3RD` §3** — **`347/2575`** ✓ · q237 **3/7** ✓ · `self-healing-ci` · 보드 **TASK1·TASK6 [x]** · `BTY_RELEASE_GATE_CHECK`·`CURRENT_TASK` · **2026-03-22 C5.**
+
+- **C2 SPRINT 155 / 361 (Gatekeeper):** Gate **155** Release Gate **A~F** — `BTY_RELEASE_GATE_CHECK` **C5 TASK1** **PASS** 확인 · **2026-03-22 C2.**
+
+- **C2 SPRINT 155 / 361 (Gatekeeper · RUN):** Gate **155** §A~F **실행** · `BTY_RELEASE_GATE_CHECK` 대조 **PASS** · **C2↔TASK1(C5)** **`[x]`** · **2026-03-22 C2.**
 
 - **C6 SPRINT 155 TASK10 / 361 (VERIFY):** `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` **347/2575** ✓ · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · 보드 **TASK10 [x]** · `SPRINT_PLAN` **C6** 동기 · **2026-03-22 C6 CONTINUE.**
 

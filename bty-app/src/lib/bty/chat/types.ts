@@ -26,6 +26,8 @@ export interface ChatResponseBody {
   suggestFoundry?: boolean;
   suggestMentor?: boolean;
   mentorPath?: string;
+  /** Latest Arena `flag_type` from choice history (mentor UI tag). */
+  flag_type?: string | null;
   /** true when API failed and fallback message was returned */
   usedFallback?: boolean;
 }

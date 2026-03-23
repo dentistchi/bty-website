@@ -7,7 +7,11 @@
  */
 
 import type { BodyType } from "@/lib/bty/arena/avatarCharacters";
-import { AVATAR_CHARACTERS, getCharacterThumbImageUrl } from "@/lib/bty/arena/avatarCharacters";
+import {
+  AVATAR_CHARACTERS,
+  getAvatarCharacter,
+  getCharacterThumbImageUrl,
+} from "@/lib/bty/arena/avatarCharacters";
 import {
   getAccessoryImageUrl,
   getOutfitImageUrlForBodyType,
@@ -94,6 +98,10 @@ export function resolveAvatarUrls({
   useThumb = false,
   bodyType = null,
 }: ResolveAvatarUrlsParams): ResolveAvatarUrlsResult {
+  const effectiveBodyType =
+    bodyType ??
+    (characterKey ? getAvatarCharacter(characterKey.trim())?.bodyType ?? null : null);
+
   const charEntry = characterKey
     ? characterAssetMap[characterKey.trim()]
     : undefined;
@@ -106,14 +114,14 @@ export function resolveAvatarUrls({
   let outfitUrl: string | null = null;
   if (outfitKey && typeof outfitKey === "string") {
     const k = outfitKey.trim();
-    const entry = outfitAssetMap[k];
     const parsed = parseCompositeOutfitKey(k);
-    if (bodyType && parsed) {
-      outfitUrl = getOutfitImageUrlForBodyType(parsed.outfitId, bodyType);
-    } else if (entry) {
-      outfitUrl = useThumb ? entry.thumb ?? entry.layer : entry.layer;
-    } else if (parsed) {
-      outfitUrl = getOutfitImageUrlForBodyType(parsed.outfitId);
+    if (parsed) {
+      outfitUrl = getOutfitImageUrlForBodyType(parsed.outfitId, effectiveBodyType);
+    } else {
+      const entry = outfitAssetMap[k];
+      if (entry) {
+        outfitUrl = useThumb ? entry.thumb ?? entry.layer : entry.layer;
+      }
     }
   }
 

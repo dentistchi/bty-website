@@ -79,7 +79,11 @@ export { arenaRunLifecyclePhaseFromUnknown } from "./arenaRunLifecyclePhaseFromU
 export {
   ARENA_RUN_ID_MAX_LENGTH,
   arenaRunIdFromUnknown,
-} from "./arenaRunIdFromUnknown";
+} from "../arenaRunIdFromUnknown";
+export {
+  ARENA_RUN_SCORE_MAX,
+  arenaRunScoreFromUnknown,
+} from "./arenaRunScoreFromUnknown";
 export {
   ARENA_ISO_TIMESTAMP_MAX_LENGTH,
   arenaIsoTimestampFromUnknown,
@@ -111,6 +115,18 @@ export {
   arenaLabDifficultyKeyFromUnknown,
   arenaLabDifficultyKeyStrictFromUnknown,
 } from "./arenaLabDifficultyKeyFromUnknown";
+export type { CalculateArenaLabScoreInput } from "../lab/calculateArenaLabScore";
+export {
+  ARENA_LAB_SCORE_ATTEMPT_LIMIT,
+  ARENA_LAB_SCORE_MAX,
+  calculateArenaLabScore,
+} from "../lab/calculateArenaLabScore";
+export type { IsArenaLabAttemptAllowedInput } from "../lab/isArenaLabAttemptAllowed";
+export {
+  ARENA_LAB_DAILY_ATTEMPT_LIMIT,
+  isArenaLabAttemptAllowed,
+} from "../lab/isArenaLabAttemptAllowed";
+export { arenaLabDailyResetAt } from "../lab/arenaLabDailyResetAt";
 export {
   ARENA_ISO_DATE_ONLY_LENGTH,
   arenaIsoDateOnlyFromUnknown,

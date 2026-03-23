@@ -6,4 +6,5 @@
 export * from "./paths";
 export * from "./letter";
 export * from "./assessment";
+export * from "./healingPhase";
 export * from "./resilience";

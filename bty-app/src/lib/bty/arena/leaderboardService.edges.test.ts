@@ -45,6 +45,8 @@ describe("leaderboardService", () => {
       const rows: WeeklyXpRow[] = [{ user_id: "u1", xp_total: 250 }];
       const profileMap = new Map<string, NormalizedProfile>();
       const result = buildLeaderboardRows(rows, profileMap);
+      expect(result[0].userId).toBe("u1");
+      expect(result[0].coreXpTotal).toBe(0);
       expect(result[0].xpTotal).toBe(250);
       expect(result[0].codeName).toBeDefined();
       expect(result[0].subName).toBeDefined();
@@ -75,6 +77,8 @@ describe("leaderboardService", () => {
         ],
       ]);
       const result = buildLeaderboardRows(rows, profileMap);
+      expect(result[0].userId).toBe("u1");
+      expect(result[0].coreXpTotal).toBe(150);
       expect(result[0].codeName).toBe("PULSE");
       expect(result[0].subName).toBe("Custom");
       expect(result[0].avatarUrl).toBeDefined();
@@ -113,6 +117,8 @@ describe("leaderboardService", () => {
       expect(row).toHaveProperty("avatarUrl");
       expect(row).toHaveProperty("avatar");
       expect(row).toHaveProperty("tier");
+      expect(row).toHaveProperty("userId");
+      expect(row).toHaveProperty("coreXpTotal");
       expect(typeof row.tier).toBe("string");
     });
   });

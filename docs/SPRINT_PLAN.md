@@ -4,6 +4,8 @@
 
 **⚠️ TASK(할 일) 큐의 단일 진실은 이 파일이 아님.** **`docs/CURSOR_TASK_BOARD.md`의 "이번 런" 표**만 따른다. 본 문서는 보드와 **동기화용**이며, **불일치 시 보드가 우선.** Cursor는 **SPRINT_PLAN만 보고 OWNER별 `[ ]`를 추측하지 말 것.**
 
+**C1 (Commander):** 본 문서는 **C1 실행 태스크**를 **`[ ]`로 추적하지 않는다** — **NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 정합** 등 **계획·동기**만 적는다. C1 OWNER의 열린 일은 **보드**만 본다.
+
 ---
 
 ## 다른 Cursor가 할 일을 어디서 보나 (필독)
@@ -13,9 +15,9 @@
 | 역할 | 보는 위치 |
 |------|-----------|
 | **C2~C6** | **먼저 보드**에 자기 OWNER **`[ ]` 있는지 확인** → 있으면 본 문서 **C2~C6 할일** 1~5 · **없으면 CONTINUE 중단**(아래 블록은 참고만) |
-| **C1** | `CURSOR_TASK_BOARD.md` "이번 런" + 본 문서. 보드가 단일 진실. **REFRESH** 시에는 **`REFRESH_PROCEDURE.md`「C1 이중 의무」** — 자기 `[ ]` DOCS 처리와 **아래 C2~C6 블록 서류 갱신**을 **같은 절차**에서 수행. |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 
-*보드에 자기 OWNER **`[ ]`가 없으면* (해당 이번 런에서 전부 [x]) → **CONTINUE는 그 역할에서 중단.** 다음 태스크는 **C1이 새 이번 런(S82 등)** 을 열 때 생김. **`SPRINT_PLAN`의 REFRESH 5줄은 참고·선택 준비일 뿐이며, 보드 `[ ]` 없으면 의무 작업 아님.** (예: **SPRINT 81** 에서 **C3는 TASK8·9 [x]** 이면 C3 할 일 없음 — 같은 런에 **`[ ]`는 C1 DOCS** 등만 남는 경우가 많음.)
+*보드에 자기 OWNER **`[ ]`가 없으면* (해당 이번 런에서 전부 [x]) → **CONTINUE는 그 역할에서 중단.** 다음 태스크는 **C1이 새 이번 런(S82 등)** 을 열 때 생김. **`SPRINT_PLAN`의 REFRESH 5줄은 참고·선택 준비일 뿐이며, 보드 `[ ]` 없으면 의무 작업 아님.** (예: **SPRINT 81** 에서 **C3는 TASK8·9 [x]** 이면 C3 할 일 없음 — 같은 런에 **C2~C6 `[ ]`만 남고 C1은 계획·보드 동기만 남는 경우가 많음.)
 
 ---
 
@@ -26,100 +28,161 @@
 
 ---
 
-## SPRINT 361 — **active (보드 SPRINT 155)**
+## SPRINT 366 — **active (보드 SPRINT 160)**
 
 - **현재 모드: 구현 단계** — C2~C6 할 일은 **코드 생성·구현** 우선; 검증은 보드 `[ ]` 태스크에서 수행.
-- **MODE ARENA:** **SPRINT 155** — Arena 경계 (`domain/arena` · `bty-arena` · `api/arena`).
-- **`PARALLEL_QUEUE_REFILL` §3 (2026-03-21):** S154 **`exit 2`** (**C3·C4·C5** 기아 — **C1** TASK3·5·7 · **C6** TASK10 **`[ ]`**) → **S155** · **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **155**) · carry **`347/2567`** · **S154** 잔여 **C1 TASK3·5·7** · **C6 TASK10** 흡수.
-- **C7 (Integrator Gate):** `bty-app/scripts/self-healing-ci.sh` — **lint PASS** · **test PASS** · **build PASS** · **overall PASS** · **owner to fix:** — · carry **`347/2576`** · Gate **155** · **2026-03-22 C7**. *(이전 carry **`347/2575`** · **2026-03-22 C5/C6**)* · 이전 Gate **154** **`347/2567`** · `check-parallel-task-queue` **exit 0** (REFILL **2026-03-21** · REFRESH 재점검 **2026-03-22**).
+- **MODE ARENA:** **SPRINT 160** — Arena 경계 (`domain/arena` · `bty-arena` · `api/arena`).
+- **S160 오픈 (2026-03-22):** S159 클로저 → **Gate 160** C5 **TASK1·TASK6** **`[x]`** · carry **`352/2601`** · `SPRINT_PLAN` **366** · 보드 동기.
+- **C7 (Integrator Gate):** `bty-app/scripts/self-healing-ci.sh` — carry **`352/2601`** · Gate **160** · **2026-03-22 C5** · 이전 Gate **159** **`350/2591`**.
 
-| 워커 | S155 |
+| 워커 | S160 |
 |------|-----|
-| **C5** | **1·6 `[x]`** *(Gate **155** · **2026-03-22 C5**)* |
-| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** *(S154 TASK3·5·7 흡수)* |
-| **C4** | **4 `[x]`** *(`bty-arena/lab` a11y · **play** 제외)* |
-| **C3** | **8·9 `[x]`** *(`arenaRunIdFromUnknown` · `POST /api/arena/lab/complete`)* |
-| **C6** | **10 `[x]`** *(**S154** TASK10 흡수 · **2026-03-22 C6**)* |
-| **C2** | **1 `[ ]`** — Gate **155** · IMPORT · C3·C4 **TASK8·9**·**TASK4** 메모 |
+| **C5** | **1·6 `[x]`** *(Gate **160** · **2026-03-22 C5**)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
+| **C4** | **4 `[x]`** *(`bty-arena/lab` a11y · carry)* |
+| **C3** | **8 `[x]`** · **9 `[ ]`** *(lab/complete bigint — **TASK9**)* |
+| **C6** | **10 `[ ]`** *(q237·self-healing-ci 재실행·보드 갱신)* |
+| **C2** | **1 `[ ]`** — Gate **160** · IMPORT · C3·C4 **TASK8·9**·**TASK4** 메모 |
 
 ### C2~C6 할일 (REFRESH 시 갱신)
 
-**S155 — MODE ARENA —** **C5** **TASK1·TASK6** **`[x]`** (Gate **155** · **2026-03-22 C5**) · **C1** TASK3·5·7 **`[ ]`** (**TASK2 `[x]`** · **2026-03-22 C1 REFRESH**) · **C4** TASK4 **`[x]`** · **C3** TASK8·9 **`[x]`** · **C6** TASK10 **`[x]`** · **REFILL 2026-03-21** · **`check-parallel-task-queue` exit 0** (REFRESH **2026-03-22** 재점검).
+**S160 — MODE ARENA —** **C5** **TASK1·TASK6** **`[x]`** (Gate **160**) · **C1** TASK2·3·5·7 **`[ ]`** · **C4** TASK4 **`[x]`** · **C3** TASK8 **`[x]`** · **TASK9** **`[ ]`** · **C6** TASK10 **`[ ]`** · **`check-parallel-task-queue` exit 2** → C1 **`PARALLEL_QUEUE_REFILL.md`**.
 
 #### C2 — Gatekeeper
-1. **보드 S155** — **First** C5 **TASK1 `[ ]`** — Gate **155** A~F — **`origin/main` push** 시 `SPRINT_LOG`·문서 재동기.
-2. **IMPORT_BOUNDARY** — `bty-layer-import` / domain **rg** 1회 — `bty-app/src/domain` → `lib`/`app` **0건**.
-3. **API 계약** — S155 **TASK8·9** (`arenaRunIdFromUnknown` · **`POST /api/arena/lab/complete`**) **C3 `[ ]`** · route `@contract` 동기.
+1. **보드 S160** — Gate **160** · IMPORT · C3 **TASK9** · C4 **TASK4** (carry) 메모.
+2. **IMPORT_BOUNDARY** — `bty-app/src/domain` → `lib`/`app` **0건**.
+3. **API 계약** — **`POST /api/arena/lab/complete`** **TASK9** **`[ ]`** · route `@contract` 동기.
 4. **Auth** 미터치 시 쿠키 문서 변경 없음.
 5. **Gate** 스테일 시 `SPRINT_LOG` 한 줄.
 
-**Notes (C2 · S361):** **CONTINUE 2026-03-22 (C2):** `CURSOR_TASK_BOARD` S155 **C5 TASK1** 여전히 **`[ ]`** — item 1 미실행 · item 2~5 대기.
-**BLOCKER:** 보드 S155 **C5 TASK1** (Gate **155**) **`[ ]`** — item 1 (`origin/main` push 시 `SPRINT_LOG`·문서 재동기)는 **C5 VERIFY 완료·보드 `[x]`** 후에만 `[x]` 처리 가능.
-**CONTINUE (C2) 2026-03-22:** **First** C5 **TASK1** · C3·C4 **TASK8·9**·**TASK4** 구현 큐.
-
 #### C3 — Domain
-1. **보드 TASK8 `[x]`** — **`arenaRunIdFromUnknown`** — top-level **Symbol·bigint** → **null** · Vitest — **S155 TASK8**.
-2. **보드 TASK9 `[x]`** — **`POST /api/arena/lab/complete`** **`completedOn` JSON bigint** → **400** `completed_on_invalid` · `route.test.ts` — **S155 TASK9**.
-3. **domain**→`lib`/`app` **금지** — **확인 `[x]`** (`src/domain` → `@/lib`·`@/app` **0건**).
-4. **S104 TASK14** — **NEXT_BACKLOG**와 중복 확인 **`[x]`** (`NEXT_BACKLOG_AUTO4` §S104 한 줄 합침 참고).
-5. barrel·export 확인 **`[x]`** (`arenaRunIdFromUnknown` — `scenarios/index`).
-
-**Notes (C3 · S361):** **CONTINUE 2026-03-22:** **TASK8·9 `[x]`** — `arenaRunIdFromUnknown` JSDoc·기존 Vitest; lab/complete **bigint** `completedOn` · `req.json` 스텁 · `completed_on_invalid`.
+1. **보드 TASK8 `[x]`** — **`arenaRunIdFromUnknown`** — carry.
+2. **보드 TASK9 `[ ]`** — **`POST /api/arena/lab/complete`** **`completedOn` JSON bigint** → **400** `completed_on_invalid` · `route.test.ts` — **S160 TASK9**.
+3. **domain**→`lib`/`app` **금지** — 유지.
 
 #### C4 — UI
-1. **보드 TASK4 `[x]`** — **`/[locale]/bty-arena/lab`** · **lab·record·play** 과 중복 금지 · `npm run lint`.
-2. **Arena** 경계 — `src/app/[locale]/bty-arena` 만. **`[x]`** *(lab·i18n만 터치)*
-3. i18n **aria** 확인. **`[x]`** *(`arenaLabUsageRegionAria`·`arenaLabBackNavAria` ko/en)*
-4. **S104 TASK15** 백로그 — 정합. **`[x]`** *(TASK14·15 = 보드 시드 중복 참고만; lab 랜드마크 별도 키)*
-5. 터치 시 **Lint만**. **`[x]`** *(`npm run lint` PASS)*
-
-**Notes (C4 · S361):** **CONTINUE 2026-03-22:** TASK4 **`[x]`** — lab `<main>` 유지 + `section[region]` 일일 시도 + `<nav>` 런 선택 복귀; record·play·lobby aria 문구와 분리 · **2026-03-22 C4 CONTINUE.**
+1. **보드 TASK4 `[x]`** — lab a11y carry.
+2. **Arena** 경계 유지.
 
 #### C5 — VERIFY
-1. **보드 TASK1 `[x]`** — Release Gate **155** A~F · `BTY_RELEASE_GATE_CHECK` · **`self-healing-ci` · `347/2575`** ✓ · **`npm run lint`** ✓ · q237 **3/7** ✓ — **완료. 2026-03-22 C5.**
-2. **보드 TASK6 `[x]`** — `ELITE_3RD` §3 · Gate **155**(TASK1) 동기 — **S154** TASK6 맥락 흡수 — **완료. 2026-03-22 C5.**
-3. 배포 직전이 아니면 Gate **일상 반복 안 함** (REFRESH 루틴 아님).
-4. **Elite** 패치 후보 (비의무).
-5. q237 **3/7** — TASK1과 동일 런에서 정합 ✓ *(본 턴)*
-
-**Notes (C5 · S361):** **CONTINUE 2026-03-22 C5:** **TASK1·6 `[x]`** · **`347/2575`** · Gate **155** · `BTY_RELEASE_GATE_CHECK`·`ELITE_3RD` §3 동기.
+1. **보드 TASK1 `[x]`** — Release Gate **160** A~F · **`352/2601`** ✓ · q237 **3/7** ✓ — **완료. 2026-03-22 C5.**
+2. **보드 TASK6 `[x]`** — `ELITE_3RD` §3 · Gate **160**(TASK1) 동기 — **완료. 2026-03-22 C5.**
 
 #### C6 — VERIFY
-1. **보드 TASK10 `[x]`** — q237 **3/7** · **`self-healing-ci`** (실행 후 갱신) · `npm run lint` · Build ✓ (`rm -rf .next` 선행) · **`347/2575`** ✓ · **2026-03-22 C6.**
-2. 실패 시 **Owner·한 줄** `SPRINT_LOG`.
-3. C5 **TASK1**과 spot 중복만 조정.
-4. REFRESH로 전체 스모크 **반복 안 함** (보드 태스크에서만).
-5. **S154** **TASK10** 흡수 — carry **`347/2576`** (C7 · Gate **155** 후 갱신).
+1. **보드 TASK10 `[ ]`** — q237 · **`self-healing-ci`** · lint · Build — 실행 후 보드 **`[x]`**.
 
-**Notes (C6 · S361):** **CONTINUE 2026-03-22:** TASK10 **`[x]`** — q237 **3 files / 7 tests** ✓ · `self-healing-ci` **347/2575** ✓ · lint·build ✓ · `SPRINT_LOG`·보드 **TASK10** 동기.
+### C1 — 계획 전용 (실행 `[ ]` 미기재)
 
-### C1 Commander — REFRESH snapshot
+**C1**은 **NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드·`SPRINT_LOG`** 정합만 본다. **C1 OWNER 실행 태스크**(`[ ]`/`[x]`)는 **`CURSOR_TASK_BOARD.md`** 만 따른다.
 
 | 항목 | 내용 |
 |------|------|
-| **이번 런** | **SPRINT 155** · **361** · **MODE ARENA** |
-| **C1 잔여** | **TASK3·5·7 `[ ]`** (DOCS) — **S154** **TASK3·5·7** 흡수 · **TASK2 `[x]`** (**2026-03-22**) |
-| **C5 잔여** | **없음** *(TASK1·6 **`[x]`** · Gate **155** · **2026-03-22 C5**)* |
-| **다음 스텝 (CONTINUE 2026-03-22)** | **C1 TASK3** (227·228차) → **TASK5** → **TASK7** *(C5 Gate **155** 완료)* |
-| **병렬** | **C4** TASK4 **`[x]`** · **C3** TASK8·9 **`[x]`** · **C6** TASK10 **`[x]`** · **C5** — *(TASK1·6 완료)* · **C1** TASK3·5·7 **`[ ]`** — **`check-parallel-task-queue` exit 0** (REFILL · REFRESH 재점검) |
-| **C7** | **`347/2576`** — Gate **155** ✓ (**2026-03-22 C7**) · self-healing-ci **lint·test·build PASS** · overall **PASS** · 이전 **`347/2575`** · 이전 Gate **154** **`347/2567`** |
-| **다음 C1** | **TASK3** → **TASK5** → **TASK7** |
+| **이번 런** | **SPRINT 160** · **366** · **MODE ARENA** |
+| **계획 채널** | `NEXT_PHASE_AUTO4` · `NEXT_BACKLOG_AUTO4` · `AUTO4` · `AI_TASK_BOARD` · 보드 동기 |
+| **병렬 큐** | **`check-parallel-task-queue` exit 2** — **C4·C5** 기아 → **`PARALLEL_QUEUE_REFILL.md`** |
+| **C7** | **`352/2601`** — Gate **160** ✓ (**2026-03-22 C5**)|
+
+---
+
+## SPRINT 365 — **closed (보드 SPRINT 159)**
+
+- **종료:** **S160** 이관 **2026-03-22** — **S159** 클로저 · Gate **159** **`350/2591`** · **S160** C7 **`352/2601`** carry.
+- **C7 (참고):** Gate **159** · **`350/2591`**.
+
+| 워커 | S159 (아카이브) |
+|------|-----|
+| **C5** | **1·6 `[x]`** *(Gate **159**)* |
+| **C6** | **10 `[ ]`** *(보드 S159 마감 시점)* |
+| **C3** | **8 `[x]`** · **9 `[ ]`** |
+
+### C2~C6 할일 (REFRESH 시 갱신)
+
+**S159 — MODE ARENA —** *(아카이브)* **C5** **TASK1·TASK6** **`[x]`** (Gate **159**) · **`check-parallel-task-queue` exit 2** → REFILL.
+
+---
+
+## SPRINT 364 — **closed (보드 SPRINT 158)**
+
+- **종료:** **S159** 이관 **2026-03-22** — Gate **158** 완료 · C7 **`350/2591`** carry.
+- **C7 (참고):** Gate **158** · **`349/2588`**.
+
+| 워커 | S158 (아카이브) |
+|------|-----|
+| **C5** | **1·6 `[x]`** *(Gate **158**)* |
+| **C6** | **10 `[ ]`** *(보드 S158 마감 시점)* |
+| **C3** | **8 `[x]`** · **9 `[ ]`** |
+
+### C2~C6 할일 (REFRESH 시 갱신)
+
+**S158 — MODE ARENA —** *(아카이브)* **C5** **TASK1·TASK6** **`[x]`** (Gate **158**) · **`check-parallel-task-queue` exit 2** → REFILL.
+
+---
+
+## SPRINT 363 — **closed (보드 SPRINT 157)**
+
+- **종료:** **S158** 이관 **2026-03-22** — Gate **157** 완료 · C7 **`349/2588`** carry.
+- **C7 (참고):** Gate **157** · **`348/2583`**.
+
+| 워커 | S157 (아카이브) |
+|------|-----|
+| **C5** | **1·6 `[x]`** *(Gate **157**)* |
+| **C6** | **10 `[ ]`** *(보드 S157 마감 시점)* |
+| **C3** | **8 `[x]`** · **9 `[ ]`** |
+
+### C2~C6 할일 (REFRESH 시 갱신)
+
+**S157 — MODE ARENA —** *(아카이브)* **C5** **TASK1·TASK6** **`[x]`** (Gate **157**) · **`check-parallel-task-queue` exit 2** → REFILL.
+
+---
+
+## SPRINT 362 — **closed (보드 SPRINT 156)**
+
+- **종료:** **S157** 이관 **2026-03-22** — Gate **156** 완료 · C7 **`348/2583`** carry.
+- **C7 (참고):** Gate **156** · **`347/2576`**.
+
+| 워커 | S156 (아카이브) |
+|------|-----|
+| **C5** | **1·6 `[x]`** *(Gate **156**)* |
+| **C6** | **10 `[ ]`** *(보드 S156 마감 시점)* |
+| **C3** | **8 `[x]`** · **9 `[ ]`** |
+
+### C2~C6 할일 (REFRESH 시 갱신)
+
+**S156 — MODE ARENA —** *(아카이브)* **C5** **TASK1·TASK6** **`[x]`** (Gate **156**) · **`check-parallel-task-queue` exit 2** → REFILL.
+
+---
+
+## SPRINT 361 — **closed (보드 SPRINT 155)**
+
+- **종료:** **S156** 이관 **2026-03-22** — Gate **155** 완료 · C7 **`347/2576`** carry.
+- **REFILL 2026-03-21:** S154 **`exit 2`** → **S155** · carry **`347/2567`**.
+- **C7 (참고):** Gate **155** · **`347/2575`** ~ **`347/2576`** (self-healing-ci 최종).
+
+| 워커 | S155 (아카이브) |
+|------|-----|
+| **C5** | **1·6 `[x]`** *(Gate **155**)* |
+| **C6** | **10 `[x]`** *(2026-03-22 C6)* |
+| **C3** | **8 `[x]`** · **9 `[ ]`** |
+
+### C2~C6 할일 (REFRESH 시 갱신)
+
+**S155 — MODE ARENA —** *(아카이브)* **C5** **TASK1·TASK6** **`[x]`** (Gate **155**) · **C6** TASK10 **`[x]`** · **REFILL 2026-03-21** · **`check-parallel-task-queue` exit 0** (REFRESH **2026-03-22** 재점검).
 
 - **PARALLEL_QUEUE_REFILL (2026-03-21 · 4):** S154 **`exit 2`** (**C3·C4·C5** 기아) → **S155** 오픈 · `SPRINT_PLAN`·`NEXT_PHASE`·`NEXT_BACKLOG`·`AUTO4`·`AI_TASK_BOARD`·`CURRENT_TASK` 동기.
-- **REFRESH (2026-03-21):** **`SPRINT_PLAN`「C2~C6 할일」** · C1 snapshot · **S155/361** 오픈.
-- **REFRESH (2026-03-22):** **`SPRINT_PLAN`「C2~C6 할일」** · C1 snapshot · **C1 TASK2 `[x]`** · **`check-parallel-task-queue` exit 0**.
+- **REFRESH (2026-03-21):** **`SPRINT_PLAN`「C2~C6 할일」** · C1 계획 정합 · **S155/361** 오픈.
+- **REFRESH (2026-03-22):** **`SPRINT_PLAN`「C2~C6 할일」** · C1 계획 정합 · **`check-parallel-task-queue` exit 0**.
 
 ---
 
 ## SPRINT 360 — **archived (보드 SPRINT 154)**
 
-- **요약:** **TASK1·2·4·6·8·9 `[x]`** · 잔여 **C1 TASK3·5·7** · **C6 TASK10** **`[ ]`** · **`PARALLEL_QUEUE_REFILL` → S155** · carry **`347/2567`** (C7 참고).
+- **요약:** **TASK1·2·4·6·8·9 `[x]`** · 잔여 **C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S155** · carry **`347/2567`** (C7 참고).
 - **C7:** **347/2567** — Gate **154** (C5 TASK1·6) ✓; **S154** 잔여 → **S155** 흡수.
 
 | 워커 | S154 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** *(Gate **154** · **`347/2567`*)* |
-| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S155** 흡수 |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(`bty-arena/play` a11y)* |
 | **C3** | **8·9 `[x]`** *(`arenaScenarioIdFromUnknown` · `POST /api/arena/sub-name`)* |
 | **C6** | **10 `[ ]`** → **S155 TASK10** 흡수 |
@@ -130,13 +193,13 @@
 
 ## SPRINT 359 — **archived (보드 SPRINT 153)**
 
-- **요약:** **TASK1·2·4·8·9·10 `[x]`** · 잔여 **C5 TASK6** · **C1 TASK3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S154** · carry **`346/2554`** (C7 참고).
+- **요약:** **TASK1·2·4·8·9·10 `[x]`** · 잔여 **C5 TASK6** · **`PARALLEL_QUEUE_REFILL` → S154** · carry **`346/2554`** (C7 참고).
 - **C7:** **346/2554** — Gate **153** (TASK1·C6) ✓; **S153** 잔여 → **S154** 흡수.
 
 | 워커 | S153 (마감) |
 |------|-----|
 | **C5** | **1 `[x]`** · **6 `[ ]`** → **S154 TASK6** *(Gate **153** · **`346/2554`*)* |
-| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S154** 흡수 |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(`bty-arena/record` a11y)* |
 | **C3** | **8·9 `[x]`** *(`arenaLabDifficultyKeyStrictFromUnknown` · `POST /api/arena/code-name`)* |
 | **C6** | **10 `[x]`** |
@@ -147,67 +210,67 @@
 
 ## SPRINT 358 — **archived (보드 SPRINT 152)**
 
-- **요약:** **TASK1·2·4·8·9·10 `[x]`** · 잔여 **C5 TASK6** · **C1 TASK3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S153** · carry **`346/2554`** (C7 참고).
+- **요약:** **TASK1·2·4·8·9·10 `[x]`** · 잔여 **C5 TASK6** · **`PARALLEL_QUEUE_REFILL` → S153** · carry **`346/2554`** (C7 참고).
 - **C7:** **346/2554** — Gate **152** (TASK1·C6) ✓; **S152** 잔여 → **S153** 흡수.
 
 | 워커 | S152 (마감) |
 |------|-----|
 | **C5** | **1 `[x]`** · **6 `[ ]`** → **S153 TASK6** *(Gate **152** · **`346/2554`*)* |
-| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S153** 흡수 |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(`bty-arena/lobby` a11y)* |
 | **C3** | **8·9 `[x]`** *(`arenaReflectLevelIdFromUnknown` · `POST /api/arena/reflect`)* |
 | **C6** | **10 `[x]`** |
 
-- **PARALLEL_QUEUE_REFILL (2026-03-21):** S152 **`exit 2`** (**C3·C4·C6** 기아 — **C5** TASK6 · **C1** TASK3·5·7 **`[ ]`**) → **S153** · **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **153**).
+- **PARALLEL_QUEUE_REFILL (2026-03-21):** S152 **`exit 2`** (**C3·C4·C6** 기아 — **C5** TASK6) → **S153** · **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **153**).
 
 ---
 
 ## SPRINT 357 — **archived (보드 SPRINT 151)**
 
-- **요약:** **TASK1·2·3·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S152** · carry **`346/2553`** (C7 참고).
-- **C7:** **346/2553** — Gate **151** (TASK1·6·C6) ✓; **S151** 잔여 **C1** → **S152** 흡수.
+- **요약:** **TASK1·2·3·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S152** · carry **`346/2553`** (C7 참고).
+- **C7:** **346/2553** — Gate **151** (TASK1·6·C6) ✓; **S151** 계획·보드 → **S152** 흡수.
 
 | 워커 | S151 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** *(Gate **151** · **`346/2553`*)* |
-| **C1** | **2·3 `[x]`** · **5·7 `[ ]`** → **S152** 흡수 |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(`bty-arena/wireframe` a11y)* |
 | **C3** | **8·9 `[x]`** *(`arenaScenarioIdFromUnknown` · `POST /api/arena/beginner-complete`)* |
 | **C6** | **10 `[x]`** |
 
-- **PARALLEL_QUEUE_REFILL (2026-03-21):** S151 **`exit 2`** (**C3·C4·C5·C6** 기아 — **C1** 잔여 **`[ ]`**) → **S152** · **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **152**).
+- **PARALLEL_QUEUE_REFILL (2026-03-21):** S151 **`exit 2`** (**C3·C4·C5·C6** 기아) → **S152** · **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **152**).
 
 ---
 
 ## SPRINT 356 — **archived (보드 SPRINT 150)**
 
-- **요약:** **TASK1·2·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S151** · carry **`346/2552`** (C7 참고).
-- **C7:** **346/2552** — Gate **150** (TASK1·6·C6) ✓; **S150** 잔여 **C1** → **S151** 흡수.
+- **요약:** **TASK1·2·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S151** · carry **`346/2552`** (C7 참고).
+- **C7:** **346/2552** — Gate **150** (TASK1·6·C6) ✓; **S150** 계획·보드 → **S151** 흡수.
 
 | 워커 | S150 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** *(Gate **150** · **`346/2552`*)* |
-| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S151** 흡수 |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(`bty-arena/hub` a11y)* |
 | **C3** | **8·9 `[x]`** *(`arenaIsoDateOnlyFromUnknown` · `POST /api/arena/beginner-event`)* |
 | **C6** | **10 `[x]`** |
 
-- **PARALLEL_QUEUE_REFILL (2026-03-21):** S150 **`exit 2`** (**C3·C4·C5·C6** 기아 — **C1** 잔여 **`[ ]`**) → **S151** · **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **151**).
+- **PARALLEL_QUEUE_REFILL (2026-03-21):** S150 **`exit 2`** (**C3·C4·C5·C6** 기아) → **S151** · **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **151**).
 
 ### C2~C6 할일 (아카이브 · S150)
 
-**S150 — MODE ARENA —** **C5 TASK1·6** **`[x]`** (Gate **150**) · **C1 TASK3·5·7** **`[ ]`** · **C1 TASK2** **`[x]`** (NEXT·BACKLOG **S150/356** 동기) · **C4** TASK4 **`[x]`** · **C3** TASK8·9 **`[x]`** · **C6** TASK10 **`[x]`** (**346/2552**).
+**S150 — MODE ARENA —** **C5 TASK1·6** **`[x]`** (Gate **150**) · **C1** *(계획·TASK2 동기)* · **C1 TASK2** **`[x]`** (NEXT·BACKLOG **S150/356** 동기) · **C4** TASK4 **`[x]`** · **C3** TASK8·9 **`[x]`** · **C6** TASK10 **`[x]`** (**346/2552**).
 
 #### C2 — Gatekeeper
-1. **보드 S150** — C5 **TASK1 `[x]`** — Gate **150** A~F — **`origin/main` push** 시 `SPRINT_LOG`·문서 재동기 (**First** C1 **TASK3**).
+1. **보드 S150** — C5 **TASK1 `[x]`** — Gate **150** A~F — **`origin/main` push** 시 `SPRINT_LOG`·문서 재동기 (C1 계획 항목 — 보드).
 2. **IMPORT_BOUNDARY** — `bty-layer-import` / domain **rg** 1회 — `bty-app/src/domain` → `lib`/`app` **0건**.
 3. **API 계약** — S150 **TASK8·9** (`arenaIsoDateOnlyFromUnknown` · **`POST /api/arena/beginner-event`**) **C3 `[x]`** · route `@contract` 동기.
 4. **Auth** 미터치 시 쿠키 문서 변경 없음.
 5. **Gate** 스테일 시 `SPRINT_LOG` 한 줄.
 
 **Notes (C2 · S356):** Gate **150** **PASS** · carry **`346/2552`**.
-**BLOCKER:** **해제** — C5 **TASK1·6** **`[x]`** · **First** C1 **TASK3** DOCS **`[ ]`**.
-**CONTINUE (C2) 2026-03-21:** **First** C1 **TASK3** · C1 **TASK5·7** DOCS **`[ ]`**.
+**BLOCKER:** **해제** — C5 **TASK1·6** **`[x]`** · C1 DOCS는 **보드·`CURRENT_TASK`** 참조.
+**CONTINUE (C2) 2026-03-21:** C1 계획·DOCS는 **보드** 참조.
 
 #### C3 — Domain
 1. **보드 TASK8 `[x]`** — **`arenaIsoDateOnlyFromUnknown`** top-level Symbol·bigint · Vitest — **S150 TASK8**.
@@ -250,22 +313,20 @@
 | 항목 | 내용 |
 |------|------|
 | **이번 런** | **SPRINT 150** · **356** · **MODE ARENA** |
-| **C1 잔여** | **TASK3·5·7 `[ ]`** (DOCS) · **TASK2 `[x]`** (NEXT·BACKLOG **2026-03-21**) |
 | **C5 잔여** | **없음** *(TASK1·6 **`[x]`**)* |
-| **다음 스텝** | **S151** 흡수 — **First** C5 **TASK1** · C1 **TASK3·5·7** |
 | **C7** | **`346/2552`** — Gate **150** ✓ · **S150** C6 **TASK10** ✓ |
 
 ---
 
 ## SPRINT 355 — **archived (보드 SPRINT 149)**
 
-- **요약:** **TASK2·3·4·8·9·10 `[x]`** · 잔여 **C1 TASK5·7 `[ ]`** · **C5 TASK1·6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S150** · carry **`346/2550`** (C7 참고).
+- **요약:** **TASK2·3·4·8·9·10 `[x]`** · **C5 TASK1·6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S150** · carry **`346/2550`** (C7 참고).
 - **C7:** **346/2550** — **S149** C6 **TASK10** ✓; Gate **149** (C5) 미완료 → **S150** 흡수.
 
 | 워커 | S149 (마감) |
 |------|-----|
 | **C5** | **1·6 `[ ]`** → **S150 TASK1·6** |
-| **C1** | **2·3 `[x]`** · **5·7 `[ ]`** → **S150** 흡수 |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(`bty-arena/beginner`)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
@@ -276,30 +337,30 @@
 
 ## SPRINT 354 — **archived (보드 SPRINT 148)**
 
-- **요약:** **TASK1·2·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S149** · **`346/2550`** (Gate **148** · C7).
+- **요약:** **TASK1·2·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S149** · **`346/2550`** (Gate **148** · C7).
 - **C7:** **346/2550** — Gate **148** (TASK1·6) ✓.
 
 | 워커 | S148 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** *(Gate **148** · **`346/2550`*)* |
-| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S149** 흡수 |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(`bty-arena/result`)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
 
-- **PARALLEL_QUEUE_REFILL (2026-03-21):** S148 **`exit 2`** (**C3·C4·C5·C6** 기아 — **C1** 잔여 **`[ ]`**) → **S149** · **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **149**).
+- **PARALLEL_QUEUE_REFILL (2026-03-21):** S148 **`exit 2`** (**C3·C4·C5·C6** 기아) → **S149** · **TASK1~10 `[ ]`** · **First** C5 **TASK1** (Gate **149**).
 
 ---
 
 ## SPRINT 353 — **archived (보드 SPRINT 147)**
 
-- **요약:** **TASK1·2·4·8·9·10 `[x]`** · 잔여 **C1 TASK3·5·7 `[ ]`** · **C5 TASK6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S148** · **`346/2549`** (Gate **147** · C7).
+- **요약:** **TASK1·2·4·8·9·10 `[x]`** · **C5 TASK6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S148** · **`346/2549`** (Gate **147** · C7).
 - **C7:** **346/2549** — Gate **147** (TASK1) ✓.
 
 | 워커 | S147 (마감) |
 |------|-----|
 | **C5** | **1 `[x]`** · **6 `[ ]`** → **S148 TASK6** |
-| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S148** 흡수 |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(`bty-arena/play`)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
@@ -310,13 +371,13 @@
 
 ## SPRINT 352 — **archived (보드 SPRINT 146)**
 
-- **요약:** **TASK1·2·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S147** · **`346/2546`** (Gate **146** · C7).
+- **요약:** **TASK1·2·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S147** · **`346/2546`** (Gate **146** · C7).
 - **C7:** **346/2546** — Gate **146** (TASK1·6) ✓.
 
 | 워커 | S146 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** *(Gate **146** · **`346/2546`*)* |
-| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S147** 흡수 |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(`bty-arena/lab`)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
@@ -327,13 +388,13 @@
 
 ## SPRINT 351 — **archived (보드 SPRINT 145)**
 
-- **요약:** **TASK1·2·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S146** · **`346/2545`** (Gate **145** · C7).
+- **요약:** **TASK1·2·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S146** · **`346/2545`** (Gate **145** · C7).
 - **C7:** **346/2545** — Gate **145** (TASK1·6) ✓.
 
 | 워커 | S145 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** |
-| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S146** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(`bty-arena` 루트 loading)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
@@ -343,13 +404,13 @@
 
 ## SPRINT 350 — **archived (보드 SPRINT 144)**
 
-- **요약:** **TASK1·2·6·8·9·10 `[x]`** · 잔여 **C1 TASK3·5·7 `[ ]`** · **C4 TASK4 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S145** · **`346/2542`** (Gate **144** · C7).
+- **요약:** **TASK1·2·6·8·9·10 `[x]`** · **C4 TASK4 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S145** · **`346/2542`** (Gate **144** · C7).
 - **C7:** **346/2542** — Gate **144** (TASK1·6) ✓.
 
 | 워커 | S144 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** |
-| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S145** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[ ]`** → **S145** |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
@@ -359,13 +420,13 @@
 
 ## SPRINT 349 — **archived (보드 SPRINT 143)**
 
-- **요약:** **TASK1·4·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7 `[ ]`** · **C5 TASK6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S144** · **`346/2539`** (Gate **143** · C7).
+- **요약:** **TASK1·4·8·9·10 `[x]`** · **C5 TASK6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S144** · **`346/2539`** (Gate **143** · C7).
 - **C7:** **346/2539** — Gate **143** (TASK1) ✓.
 
 | 워커 | S143 (마감) |
 |------|-----|
 | **C5** | **1 `[x]`** · **6 `[ ]`** → **S144** |
-| **C1** | **2 `[ ]`** · **3·5·7 `[ ]`** → **S144** *(S144 오픈 직후 **TASK2 `[x]`** — NEXT·BACKLOG 동기)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(dashboard loading)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
@@ -375,13 +436,13 @@
 
 ## SPRINT 348 — **archived (보드 SPRINT 142)**
 
-- **요약:** **TASK1·2·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S143** · **`346/2539`** (Gate **142** · C7).
+- **요약:** **TASK1·2·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S143** · **`346/2539`** (Gate **142** · C7).
 - **C7:** **346/2539** — Gate **142** (TASK1) ✓.
 
 | 워커 | S142 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** |
-| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S143** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(healing loading)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
@@ -391,13 +452,13 @@
 
 ## SPRINT 347 — **archived (보드 SPRINT 141)**
 
-- **요약:** **TASK1·2·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S142** · **`346/2537`** (Gate **141** · C7).
+- **요약:** **TASK1·2·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S142** · **`346/2537`** (Gate **141** · C7).
 - **C7:** **346/2537** — Gate **141** (TASK1) ✓.
 
 | 워커 | S141 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** |
-| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S142** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(profile loading)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
@@ -407,13 +468,13 @@
 
 ## SPRINT 346 — **archived (보드 SPRINT 140)**
 
-- **요약:** **TASK1·2·4·6·8·9 `[x]`** · 잔여 **C1 TASK3·5·7 `[ ]`** · **C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S141** · **`346/2537`** (Gate **140** · C7).
+- **요약:** **TASK1·2·4·6·8·9 `[x]`** · **C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S141** · **`346/2537`** (Gate **140** · C7).
 - **C7:** **346/2537** — Gate **140** (TASK1) ✓.
 
 | 워커 | S140 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** |
-| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S141** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(mentor loading)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[ ]`** → **S141** |
@@ -423,13 +484,13 @@
 
 ## SPRINT 345 — **archived (보드 SPRINT 139)**
 
-- **요약:** **TASK1·2·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S140** · **`346/2533`** (Gate **139** · C7).
+- **요약:** **TASK1·2·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S140** · **`346/2533`** (Gate **139** · C7).
 - **C7:** **346/2533** — Gate **139** (TASK1) ✓.
 
 | 워커 | S139 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** |
-| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S140** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(integrity loading)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
@@ -439,13 +500,13 @@
 
 ## SPRINT 344 — **archived (보드 SPRINT 138)**
 
-- **요약:** **TASK1·4·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7 `[ ]`** · **C5 TASK6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S139** · **`346/2530`** (Gate **138** · C7).
+- **요약:** **TASK1·4·8·9·10 `[x]`** · **C5 TASK6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S139** · **`346/2530`** (Gate **138** · C7).
 - **C7:** **346/2530** — Gate **138** (TASK1) ✓.
 
 | 워커 | S138 (마감) |
 |------|-----|
 | **C5** | **1 `[x]`** · **6 `[ ]`** → **S139** |
-| **C1** | **2·3·5·7 `[ ]`** → **S139** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(elite loading)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
@@ -455,13 +516,13 @@
 
 ## SPRINT 343 — **archived (보드 SPRINT 137)**
 
-- **요약:** **TASK1·4·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7 `[ ]`** · **C5 TASK6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S138** · **`346/2529`** (Gate **137** · C7).
+- **요약:** **TASK1·4·8·9·10 `[x]`** · **C5 TASK6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S138** · **`346/2529`** (Gate **137** · C7).
 - **C7:** **346/2529** — Gate **137** (TASK1) ✓.
 
 | 워커 | S137 (마감) |
 |------|-----|
 | **C5** | **1 `[x]`** · **6 `[ ]`** → **S138** |
-| **C1** | **2·3·5·7 `[ ]`** → **S138** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(dojo loading)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
@@ -471,13 +532,13 @@
 
 ## SPRINT 342 — **archived (보드 SPRINT 136)**
 
-- **요약:** **TASK1·4·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7 `[ ]`** · **C5 TASK6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S137** · **`346/2526`** (Gate **136** · C7).
+- **요약:** **TASK1·4·8·9·10 `[x]`** · **C5 TASK6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S137** · **`346/2526`** (Gate **136** · C7).
 - **C7:** **346/2526** — Gate **136** (TASK1) ✓.
 
 | 워커 | S136 (마감) |
 |------|-----|
 | **C5** | **1 `[x]`** · **6 `[ ]`** → **S137** |
-| **C1** | **2·3·5·7 `[ ]`** → **S137** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(foundry loading)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
@@ -487,13 +548,13 @@
 
 ## SPRINT 341 — **archived (보드 SPRINT 135)**
 
-- **요약:** **TASK1·4·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7 `[ ]`** · **C5 TASK6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S136** · **`346/2524`** (Gate **135** · C7).
+- **요약:** **TASK1·4·8·9·10 `[x]`** · **C5 TASK6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S136** · **`346/2524`** (Gate **135** · C7).
 - **C7:** **346/2524** — Gate **135** (TASK1) ✓.
 
 | 워커 | S135 (마감) |
 |------|-----|
 | **C5** | **1 `[x]`** · **6 `[ ]`** → **S136** |
-| **C1** | **2·3·5·7 `[ ]`** → **S136** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(dashboard loading)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
@@ -503,13 +564,13 @@
 
 ## SPRINT 340 — **archived (보드 SPRINT 134)**
 
-- **요약:** **TASK1·2·8·9·10 `[x]`** · 잔여 **C1 TASK3·5·7 `[ ]`** · **C4 TASK4 `[ ]`** · **C5 TASK6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S135** · **`346/2522`** (Gate **134** · C7).
+- **요약:** **TASK1·2·8·9·10 `[x]`** · **C4 TASK4 `[ ]`** · **C5 TASK6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S135** · **`346/2522`** (Gate **134** · C7).
 - **C7:** **346/2522** — Gate **134** (TASK1) ✓.
 
 | 워커 | S134 (마감) |
 |------|-----|
 | **C5** | **1 `[x]`** · **6 `[ ]`** → **S135** |
-| **C1** | **2 `[x]`** · **3·5·7 `[ ]`** → **S135** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[ ]`** *(dashboard loading)* → **S135** |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
@@ -519,13 +580,13 @@
 
 ## SPRINT 339 — **archived (보드 SPRINT 133)**
 
-- **요약:** **TASK1·4·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7 `[ ]`** · **C5 TASK6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S134** · **`346/2520`** (Gate **133** · C7).
+- **요약:** **TASK1·4·8·9·10 `[x]`** · **C5 TASK6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S134** · **`346/2520`** (Gate **133** · C7).
 - **C7:** **346/2520** — Gate **133** (TASK1) ✓.
 
 | 워커 | S133 (마감) |
 |------|-----|
 | **C5** | **1 `[x]`** · **6 `[ ]`** → **S134** |
-| **C1** | **2·3·5·7 `[ ]`** → **S134** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(healing loading · integrity 직후 제외)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
@@ -535,13 +596,13 @@
 
 ## SPRINT 338 — **archived (보드 SPRINT 132)**
 
-- **요약:** **TASK1·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S133** · **`346/2520`** (Gate **132** · C7).
+- **요약:** **TASK1·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S133** · **`346/2520`** (Gate **132** · C7).
 - **C7:** **346/2520** — Gate **132** (TASK1) ✓.
 
 | 워커 | S132 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** → **S133** |
-| **C1** | **2·3·5·7 `[ ]`** → **S133** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(integrity loading · elite 직후 제외)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
@@ -551,13 +612,13 @@
 
 ## SPRINT 337 — **archived (보드 SPRINT 131)**
 
-- **요약:** **TASK1·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S132** · **`346/2516`** (Gate **131** · C7).
+- **요약:** **TASK1·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S132** · **`346/2516`** (Gate **131** · C7).
 - **C7:** **346/2516** — Gate **131** (TASK1) ✓.
 
 | 워커 | S131 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** → **S132** |
-| **C1** | **2·3·5·7 `[ ]`** → **S132** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(elite loading · mentor 직후 제외)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
@@ -567,13 +628,13 @@
 
 ## SPRINT 336 — **archived (보드 SPRINT 130)**
 
-- **요약:** **TASK1·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S131** · **`346/2516`** (Gate **130** · C7).
+- **요약:** **TASK1·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S131** · **`346/2516`** (Gate **130** · C7).
 - **C7:** **346/2516** — Gate **130** (TASK1) ✓.
 
 | 워커 | S130 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** → **S131** |
-| **C1** | **2·3·5·7 `[ ]`** → **S131** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(mentor loading · profile 직후 제외)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
@@ -583,13 +644,13 @@
 
 ## SPRINT 335 — **archived (보드 SPRINT 129)**
 
-- **요약:** **TASK4·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7**·**C5 TASK1·6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S130** · **`346/2514`** (C7 스냅) · C7 **`346/2512`** (C6 TASK10 완료).
+- **요약:** **TASK4·8·9·10 `[x]`**·**C5 TASK1·6 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S130** · **`346/2514`** (C7 스냅) · C7 **`346/2512`** (C6 TASK10 완료).
 - **C7:** **346/2514** (S129 C7 baseline) · **346/2512** (C6 TASK10 `self-healing-ci`) — superseded by **S130** Gate **130** · **`346/2516`** ✓.
 
 | 워커 | S129 (마감) |
 |------|-----|
 | **C5** | **1·6 `[ ]`** → **S130** |
-| **C1** | **2·3·5·7 `[ ]`** → **S130** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(profile loading · dojo 직후 제외)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[x]`** |
@@ -599,13 +660,13 @@
 
 ## SPRINT 334 — **archived (보드 SPRINT 128)**
 
-- **요약:** **TASK1·4·6·8·9 `[x]`** · 잔여 **C1 TASK2·3·5·7**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S129** · Gate **128** TASK1·6 **`[x]`** · **346/2511** (C7) · **C7** **`346/2511`** (`self-healing-ci` Gate **128**).
+- **요약:** **TASK1·4·6·8·9 `[x]`**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S129** · Gate **128** TASK1·6 **`[x]`** · **346/2511** (C7) · **C7** **`346/2511`** (`self-healing-ci` Gate **128**).
 - **C7:** **346/2511** ✓ (S128 마감 스냅) — superseded by Gate **129** (carry **`346/2514`** · C5 **TASK1·6** **`[x]`**).
 
 | 워커 | S128 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** |
-| **C1** | **2·3·5·7 `[ ]`** → **S129** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(dojo loading · dashboard 직후 제외)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[ ]`** → **S129** |
@@ -615,13 +676,13 @@
 
 ## SPRINT 333 — **archived (보드 SPRINT 127)**
 
-- **요약:** **TASK1·4·6·8·9 `[x]`** · 잔여 **C1 TASK2·3·5·7**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S128** · Gate **127** TASK1·6 **`[x]`** · **346/2510** (C7) · **C7** **`346/2510`** (`self-healing-ci` Gate **127**).
+- **요약:** **TASK1·4·6·8·9 `[x]`**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S128** · Gate **127** TASK1·6 **`[x]`** · **346/2510** (C7) · **C7** **`346/2510`** (`self-healing-ci` Gate **127**).
 - **C7:** **346/2510** ✓ (S127 마감 스냅) — superseded by Gate **128** (미실행).
 
 | 워커 | S127 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** |
-| **C1** | **2·3·5·7 `[ ]`** → **S128** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(dashboard loading · healing 직후 제외)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[ ]`** → **S128** |
@@ -631,13 +692,13 @@
 
 ## SPRINT 332 — **archived (보드 SPRINT 126)**
 
-- **요약:** **TASK1·4·6·8·9 `[x]`** · 잔여 **C1 TASK2·3·5·7**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S127** · Gate **126** TASK1·6 **`[x]`** · **346/2508** (C7) · **C7** **`346/2508`** (`self-healing-ci` Gate **126**).
+- **요약:** **TASK1·4·6·8·9 `[x]`**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S127** · Gate **126** TASK1·6 **`[x]`** · **346/2508** (C7) · **C7** **`346/2508`** (`self-healing-ci` Gate **126**).
 - **C7:** **346/2508** ✓ (S126 마감 스냅) — superseded by Gate **127** **`346/2510`** ✓.
 
 | 워커 | S126 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** |
-| **C1** | **2·3·5·7 `[ ]`** → **S127** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(healing loading · integrity 직후 제외)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[ ]`** → **S127** |
@@ -647,13 +708,13 @@
 
 ## SPRINT 331 — **archived (보드 SPRINT 125)**
 
-- **요약:** **TASK1·4·6·8·9 `[x]`** · 잔여 **C1 TASK2·3·5·7**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S126** · Gate **125** TASK1·6 **`[x]`** · **346/2506** (Gate) · **C7** **`346/2506`** (`self-healing-ci` 최신).
+- **요약:** **TASK1·4·6·8·9 `[x]`**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S126** · Gate **125** TASK1·6 **`[x]`** · **346/2506** (Gate) · **C7** **`346/2506`** (`self-healing-ci` 최신).
 - **C7:** **346/2506** ✓ (S125 마감 스냅) — superseded by Gate **126** **`346/2508`** ✓.
 
 | 워커 | S125 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** |
-| **C1** | **2·3·5·7 `[ ]`** → **S126** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(integrity loading · elite 직후 제외)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[ ]`** → **S126** |
@@ -663,13 +724,13 @@
 
 ## SPRINT 330 — **archived (보드 SPRINT 124)**
 
-- **요약:** **TASK1·4·6·8·9 `[x]`** · 잔여 **C1 TASK2·3·5·7**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S125** · Gate **124** TASK1·6 **`[x]`** · **346/2504** (Gate) · **C7** **`346/2504`** (`self-healing-ci` 최신).
+- **요약:** **TASK1·4·6·8·9 `[x]`**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S125** · Gate **124** TASK1·6 **`[x]`** · **346/2504** (Gate) · **C7** **`346/2504`** (`self-healing-ci` 최신).
 - **C7:** **346/2504** ✓ (S124 마감 스냅) — superseded by Gate **125** **`346/2506`** ✓.
 
 | 워커 | S124 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** |
-| **C1** | **2·3·5·7 `[ ]`** → **S125** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(elite loading · foundry 직후 제외)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[ ]`** → **S125** |
@@ -679,13 +740,13 @@
 
 ## SPRINT 329 — **archived (보드 SPRINT 123)**
 
-- **요약:** **TASK1·4·6·8·9 `[x]`** · 잔여 **C1 TASK2·3·5·7**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S124** · Gate **123** TASK1·6 **`[x]`** · **346/2502** (Gate) · **C7** **`346/2502`** (`self-healing-ci` 최신).
+- **요약:** **TASK1·4·6·8·9 `[x]`**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S124** · Gate **123** TASK1·6 **`[x]`** · **346/2502** (Gate) · **C7** **`346/2502`** (`self-healing-ci` 최신).
 - **C7:** **346/2502** ✓ (S123 마감 스냅) — superseded by Gate **124** **`346/2504`** ✓.
 
 | 워커 | S123 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** |
-| **C1** | **2·3·5·7 `[ ]`** → **S124** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(foundry hub loading · mentor 직후 제외)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[ ]`** → **S124** |
@@ -695,13 +756,13 @@
 
 ## SPRINT 328 — **archived (보드 SPRINT 122)**
 
-- **요약:** **TASK1·4·6·8·9 `[x]`** · 잔여 **C1 TASK2·3·5·7**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S123** · Gate **122** TASK1·6 **`[x]`** · **346/2500** (Gate) · **C7** **`346/2500`** (`self-healing-ci` 최신).
+- **요약:** **TASK1·4·6·8·9 `[x]`**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S123** · Gate **122** TASK1·6 **`[x]`** · **346/2500** (Gate) · **C7** **`346/2500`** (`self-healing-ci` 최신).
 - **C7:** **346/2500** ✓ (S122 마감 스냅) — superseded by Gate **123** **`346/2502`**.
 
 | 워커 | S122 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** |
-| **C1** | **2·3·5·7 `[ ]`** → **S123** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(mentor loading · profile 직후 제외)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[ ]`** → **S123** |
@@ -711,13 +772,13 @@
 
 ## SPRINT 327 — **archived (보드 SPRINT 121)**
 
-- **요약:** **TASK1·4·6·8·9 `[x]`** · 잔여 **C1 TASK2·3·5·7**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S122** · Gate **121** TASK1·6 **`[x]`** · **346/2497** (Gate) · **C7** **`346/2497`** (`self-healing-ci` 최신).
+- **요약:** **TASK1·4·6·8·9 `[x]`**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S122** · Gate **121** TASK1·6 **`[x]`** · **346/2497** (Gate) · **C7** **`346/2497`** (`self-healing-ci` 최신).
 - **C7:** **346/2497** ✓ (S121 마감 스냅) — superseded by Gate **122** **`346/2500`**.
 
 | 워커 | S121 (마감) |
 |------|-----|
 | **C5** | **1·6 `[x]`** |
-| **C1** | **2·3·5·7 `[ ]`** → **S122** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4 `[x]`** *(profile loading · dojo 직후 제외)* |
 | **C3** | **8·9 `[x]`** |
 | **C6** | **10 `[ ]`** → **S122** |
@@ -727,13 +788,13 @@
 
 ## SPRINT 326 — **archived (보드 SPRINT 120)**
 
-- **요약:** **TASK1·4·6·8·9 `[x]`** · 잔여 **C1 TASK2·3·5·7**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S121** · Gate **120** TASK1·6 **`[x]`** · **346/2494** (Gate) · **C7** **`346/2494`** (`self-healing-ci` 최신).
+- **요약:** **TASK1·4·6·8·9 `[x]`**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S121** · Gate **120** TASK1·6 **`[x]`** · **346/2494** (Gate) · **C7** **`346/2494`** (`self-healing-ci` 최신).
 - **C7:** **346/2494** ✓ (S120 마감 스냅) — superseded by Gate **121** **`346/2497`**.
 
 | 워커 | S120 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **`[ ]`** *(→ S121)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **`[ ]`** *(→ S121 TASK10)* |
@@ -743,13 +804,13 @@
 
 ## SPRINT 325 — **archived (보드 SPRINT 119)**
 
-- **요약:** **TASK1·4·6·8·9 `[x]`** · 잔여 **C1 TASK2·3·5·7**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S120** · Gate **119** TASK1·6 **`[x]`** · **346/2493** (Gate) · **C7** **`346/2493`** (`self-healing-ci` 최신).
+- **요약:** **TASK1·4·6·8·9 `[x]`**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S120** · Gate **119** TASK1·6 **`[x]`** · **346/2493** (Gate) · **C7** **`346/2493`** (`self-healing-ci` 최신).
 - **C7:** **346/2493** ✓ (S119 마감 스냅) — Gate **120** 미실행.
 
 | 워커 | S119 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **`[ ]`** *(→ S120)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **`[ ]`** *(→ S120 TASK10)* |
@@ -759,13 +820,13 @@
 
 ## SPRINT 324 — **archived (보드 SPRINT 118)**
 
-- **요약:** **TASK1·4·6·8·9 `[x]`** · 잔여 **C1 TASK2·3·5·7**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S119** · Gate **118** TASK1·6 **`[x]`** · **346/2492** (Gate) · **C7** **`346/2492`** (`self-healing-ci` 최신).
+- **요약:** **TASK1·4·6·8·9 `[x]`**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S119** · Gate **118** TASK1·6 **`[x]`** · **346/2492** (Gate) · **C7** **`346/2492`** (`self-healing-ci` 최신).
 - **C7:** **346/2492** ✓ (S118 마감 스냅) — Gate **119** 미실행.
 
 | 워커 | S118 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **`[ ]`** *(→ S119)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **`[ ]`** *(→ S119 TASK10)* |
@@ -775,13 +836,13 @@
 
 ## SPRINT 323 — **archived (보드 SPRINT 117)**
 
-- **요약:** **TASK1·4·6·8·9 `[x]`** · 잔여 **C1 TASK2·3·5·7**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S118** · Gate **117** TASK1·6 **`[x]`** · **346/2489** (Gate) · **C7** **`346/2490`** (`self-healing-ci` 최신).
+- **요약:** **TASK1·4·6·8·9 `[x]`**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S118** · Gate **117** TASK1·6 **`[x]`** · **346/2489** (Gate) · **C7** **`346/2490`** (`self-healing-ci` 최신).
 - **C7:** **346/2490** ✓ (S117 마감 스냅) — Gate **118** 미실행.
 
 | 워커 | S117 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **`[ ]`** *(→ S118)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **`[ ]`** *(→ S118 TASK10)* |
@@ -791,13 +852,13 @@
 
 ## SPRINT 322 — **archived (보드 SPRINT 116)**
 
-- **요약:** **TASK1·4·6·8·9 `[x]`** · 잔여 **C1 TASK2·3·5·7**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S117** · Gate **116** TASK1·6 **`[x]`** · **346/2487** (Gate 로그) · **C7** **`346/2488`** (`self-healing-ci` 최신).
+- **요약:** **TASK1·4·6·8·9 `[x]`**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S117** · Gate **116** TASK1·6 **`[x]`** · **346/2487** (Gate 로그) · **C7** **`346/2488`** (`self-healing-ci` 최신).
 - **C7:** **346/2488** ✓ (S116 마감 스냅) — Gate **117** 미실행.
 
 | 워커 | S116 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **`[ ]`** *(→ S117)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **`[ ]`** *(→ S117 TASK10)* |
@@ -807,13 +868,13 @@
 
 ## SPRINT 321 — **archived (보드 SPRINT 115)**
 
-- **요약:** **TASK1·6·8·9 `[x]`** · 잔여 **C1 TASK2·3·5·7**·**C4 TASK4**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S116** · Gate **115** TASK1·6 **`[x]`** · **346/2486** carry.
+- **요약:** **TASK1·6·8·9 `[x]`**·**C4 TASK4**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S116** · Gate **115** TASK1·6 **`[x]`** · **346/2486** carry.
 - **C7:** **346/2486** ✓ (S115).
 
 | 워커 | S115 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **`[ ]`** *(→ S116)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **`[ ]`** *(→ S116 TASK4)* |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **`[ ]`** *(→ S116 TASK10)* |
@@ -823,13 +884,13 @@
 
 ## SPRINT 320 — **archived (보드 SPRINT 114)**
 
-- **요약:** **TASK1·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S115** · Gate **114** TASK1·6 **`[x]`** · **346/2484** carry.
+- **요약:** **TASK1·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S115** · Gate **114** TASK1·6 **`[x]`** · **346/2484** carry.
 - **C7:** **346/2484** ✓ (S114).
 
 | 워커 | S114 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **`[ ]`** *(→ S115)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **[x]** |
@@ -839,13 +900,13 @@
 
 ## SPRINT 319 — **archived (보드 SPRINT 113)**
 
-- **요약:** **TASK1·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S114** · Gate **113** TASK1·6 **`[x]`** · **346/2482** carry.
+- **요약:** **TASK1·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S114** · Gate **113** TASK1·6 **`[x]`** · **346/2482** carry.
 - **C7:** **346/2482** ✓ (S113).
 
 | 워커 | S113 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **`[ ]`** *(→ S114)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **[x]** |
@@ -855,13 +916,13 @@
 
 ## SPRINT 318 — **archived (보드 SPRINT 112)**
 
-- **요약:** **TASK1·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S113** · Gate **112** TASK1·6 **`[x]`** · **346/2480** carry.
+- **요약:** **TASK1·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S113** · Gate **112** TASK1·6 **`[x]`** · **346/2480** carry.
 - **C7:** **346/2480** ✓ (S112).
 
 | 워커 | S112 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **`[ ]`** *(→ S113)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **[x]** |
@@ -871,13 +932,13 @@
 
 ## SPRINT 317 — **archived (보드 SPRINT 111)**
 
-- **요약:** **TASK1·4·6·8·9 `[x]`** · 잔여 **C1 TASK2·3·5·7**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S112** · Gate **111** TASK1·6 **`[x]`** · **346/2478** carry.
+- **요약:** **TASK1·4·6·8·9 `[x]`**·**C6 TASK10 `[ ]`** · **`PARALLEL_QUEUE_REFILL` → S112** · Gate **111** TASK1·6 **`[x]`** · **346/2478** carry.
 - **C7:** **346/2478** ✓ (S111).
 
 | 워커 | S111 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **`[ ]`** *(→ S112)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **`[ ]`** *(→ S112 TASK10)* |
@@ -887,13 +948,13 @@
 
 ## SPRINT 316 — **archived (보드 SPRINT 110)**
 
-- **요약:** **TASK1·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7** · **`PARALLEL_QUEUE_REFILL` → S111** · Gate **110** TASK1·6 **`[x]`** · **346/2476** carry.
+- **요약:** **TASK1·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S111** · Gate **110** TASK1·6 **`[x]`** · **346/2476** carry.
 - **C7:** **346/2476** ✓ (S110).
 
 | 워커 | S110 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **`[ ]`** *(→ S111)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **[x]** |
@@ -903,13 +964,13 @@
 
 ## SPRINT 315 — **archived (보드 SPRINT 109)**
 
-- **요약:** **TASK1·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7** · **`PARALLEL_QUEUE_REFILL` → S110** · Gate **109** TASK1·6 **`[x]`** · **346/2474** carry.
+- **요약:** **TASK1·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S110** · Gate **109** TASK1·6 **`[x]`** · **346/2474** carry.
 - **C7:** **346/2474** ✓ (S109).
 
 | 워커 | S109 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **`[ ]`** *(→ S110)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **[x]** |
@@ -919,13 +980,13 @@
 
 ## SPRINT 314 — **archived (보드 SPRINT 108)**
 
-- **요약:** **TASK1·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7** · **`PARALLEL_QUEUE_REFILL` → S109** · Gate **108** TASK1·6 **`[x]`** · **346/2472** carry.
+- **요약:** **TASK1·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S109** · Gate **108** TASK1·6 **`[x]`** · **346/2472** carry.
 - **C7:** **346/2472** ✓ (S108).
 
 | 워커 | S108 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **`[ ]`** *(→ S109)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **[x]** |
@@ -935,13 +996,13 @@
 
 ## SPRINT 313 — **archived (보드 SPRINT 107)**
 
-- **요약:** **TASK1·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7** · **`PARALLEL_QUEUE_REFILL` → S108** · Gate **107** TASK1·6 **`[x]`** · **346/2470** carry.
+- **요약:** **TASK1·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S108** · Gate **107** TASK1·6 **`[x]`** · **346/2470** carry.
 - **C7:** **346/2470** ✓ (S107).
 
 | 워커 | S107 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **`[ ]`** *(→ S108)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **[x]** |
@@ -951,13 +1012,13 @@
 
 ## SPRINT 312 — **archived (보드 SPRINT 106)**
 
-- **요약:** **TASK1·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7** · **`PARALLEL_QUEUE_REFILL` → S107** · Gate **106** TASK1·6 **`[x]`** · **346/2468** carry.
+- **요약:** **TASK1·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S107** · Gate **106** TASK1·6 **`[x]`** · **346/2468** carry.
 - **C7:** **346/2468** ✓ (S106).
 
 | 워커 | S106 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **`[ ]`** *(→ S107)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **[x]** |
@@ -967,13 +1028,13 @@
 
 ## SPRINT 311 — **archived (보드 SPRINT 105)**
 
-- **요약:** **TASK1·4·6·8·9·10 `[x]`** · 잔여 **C1 TASK2·3·5·7** · **`PARALLEL_QUEUE_REFILL` → S106** · Gate **105** TASK1·6 **`[x]`** · **346/2464** carry.
+- **요약:** **TASK1·4·6·8·9·10 `[x]`** · **`PARALLEL_QUEUE_REFILL` → S106** · Gate **105** TASK1·6 **`[x]`** · **346/2464** carry.
 - **C7:** **346/2464** ✓ (S105).
 
 | 워커 | S105 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **`[ ]`** *(→ S106)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **[x]** |
@@ -983,13 +1044,13 @@
 
 ## SPRINT 310 — **archived (보드 SPRINT 104)**
 
-- **요약:** **TASK1·2·4·8·9·10·11·12·13 `[x]`** · 잔여 **C1 TASK3·5·7 · C5 TASK6 · C3 TASK14 · C4 TASK15** · **`PARALLEL_QUEUE_REFILL` → S105** · Gate **104** TASK1 **`[x]`** · **346/2464** carry.
+- **요약:** **TASK1·2·4·8·9·10·11·12·13 `[x]`** · 잔여 **C5 TASK6 · C3 TASK14 · C4 TASK15** · **C1** *(계획·보드)* · **`PARALLEL_QUEUE_REFILL` → S105** · Gate **104** TASK1 **`[x]`** · **346/2464** carry.
 - **C7:** **346/2464** ✓ (S104).
 
 | 워커 | S104 (마감) |
 |------|------------|
 | **C5** | 1 **[x]** · 6 **`[ ]`** |
-| **C1** | 2 **[x]** · 3·5·7 **`[ ]`** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4·11 **[x]** · 15 **`[ ]`** |
 | **C3** | 8·9·12 **[x]** · 14 **`[ ]`** |
 | **C6** | 10·13 **[x]** |
@@ -1005,7 +1066,7 @@
 | 워커 | S103 (마감) |
 |------|------------|
 | **C5** | 1·6 **`[ ]`** *(미완)* |
-| **C1** | 2·3·5·7 **`[ ]`** *(→ S104 DOCS 재개)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** *(elite loading)* |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **`[ ]`** *(미완)* |
@@ -1021,7 +1082,7 @@
 | 워커 | S102 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **[ ]** *(→ S103 DOCS 재개)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** *(dojo loading)* |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **[x]** |
@@ -1037,7 +1098,7 @@
 | 워커 | S101 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **[ ]** *(→ S102 DOCS 재개)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** *(locale root loading)* |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **[x]** |
@@ -1053,7 +1114,7 @@
 | 워커 | S100 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **[ ]** *(→ S101 DOCS 재개)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** *(bty-arena beginner loading)* |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **[x]** |
@@ -1069,7 +1130,7 @@
 | 워커 | S99 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **[ ]** *(→ S100 DOCS 재개)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** *(bty-arena root loading)* |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **[x]** |
@@ -1085,7 +1146,7 @@
 | 워커 | S98 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **[ ]** *(→ S99 DOCS 재개)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** *(assessment loading)* |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **[x]** |
@@ -1101,7 +1162,7 @@
 | 워커 | S97 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **[ ]** *(→ S98 DOCS 재개)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** *(growth loading)* |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **[x]** |
@@ -1117,7 +1178,7 @@
 | 워커 | S96 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **[ ]** *(→ S97 DOCS 재개)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** *(center loading 완료 → S97 **TASK4**는 **growth** 신규)* |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **[x]** |
@@ -1133,7 +1194,7 @@
 | 워커 | S95 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **[ ]** *(아카이브 잔여 → S96 DOCS에서 재개)* |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[ ]** *(dear-me 미완 → S96 TASK4는 **center** 경로로 신규)* |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **[x]** |
@@ -1149,7 +1210,7 @@
 | 워커 | S94 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **[x]** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4·12·14·15·18·22 **[x]** |
 | **C3** | 8·9·11·16·19 **[x]** |
 | **C6** | 10·13·17·20·21 **[x]** |
@@ -1166,7 +1227,7 @@
 | 워커 | S93 (마감) |
 |------|------------|
 | **C5** | 1·6·18·23·27·31 **[x]** |
-| **C1** | 2·3·5·7 **[x]** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4·12·16·21·30 **[x]** |
 | **C3** | 8·9·11·14·15·19·20·24·26·29 **[x]** |
 | **C6** | 10·13·17·22·25·28 **[x]** |
@@ -1182,7 +1243,7 @@
 | 워커 | S92 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **[x]** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** |
 | **C3** | 8·9·11·12 **[x]** |
 | **C6** | 10 **[x]** |
@@ -1197,7 +1258,7 @@
 | 워커 | S91 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **[x]** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **[x]** |
@@ -1212,7 +1273,7 @@
 | 워커 | S90 (마감) |
 |------|------------|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **[x]** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** |
 | **C3** | 8·9·11 **[x]** |
 | **C6** | 10 **[x]** |
@@ -1227,7 +1288,7 @@
 | 워커 | S88 |
 |------|-----|
 | **C5** | 1·6 **[x]** |
-| **C1** | 2·3·5·7 **[x]** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | 4 **[x]** |
 | **C3** | 8·9 **[x]** |
 | **C6** | 10 **[x]** |
@@ -1242,7 +1303,7 @@
 | 워커 | S87 (마감 스냅샷) |
 |------|-------------------|
 | **C5** | TASK1·6 **[x]** |
-| **C1** | TASK2·3·5·7 **[x]** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | TASK4 **[x]** |
 | **C3** | TASK8·9 **[x]** |
 | **C6** | TASK10 **[x]** |
@@ -1252,13 +1313,13 @@
 
 ## SPRINT 292 — **archived (보드 SPRINT 86)**
 
-- **요약:** S86에서 **C3·C4·C5·C6** **전부 [x]** · **C1 DOCS만 `[ ]`** → **exit 2** → **S87** (`PARALLEL_QUEUE_REFILL` §3 · 2026-03-20).
+- **요약:** S86에서 **C3·C4·C5·C6** **전부 [x]** · **C1 계획·DOCS (보드)** → **exit 2** → **S87** (`PARALLEL_QUEUE_REFILL` §3 · 2026-03-20).
 - **C7:** **342/2338** ✓.
 
 | 워커 | S86 (마감 스냅샷) |
 |------|-------------------|
 | **C5** | TASK1·6 **[x]** |
-| **C1** | TASK2·3·5·7 **[ ]** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | TASK4 **[x]** |
 | **C3** | TASK8·9 **[x]** |
 | **C6** | TASK10 **[x]** |
@@ -1268,13 +1329,13 @@
 
 ## SPRINT 291 — **archived (보드 SPRINT 85)**
 
-- **요약:** S85에서 **C3·C4·C5** 열 **전부 [x]** · **C1·C6** **`[ ]` 잔여** → **exit 2** → **S86** (`PARALLEL_QUEUE_REFILL` §3 · 2026-03-20).
+- **요약:** S85에서 **C3·C4·C5** 열 **전부 [x]** · **C6** **`[ ]` 잔여** · C1 *(계획)* → **exit 2** → **S86** (`PARALLEL_QUEUE_REFILL` §3 · 2026-03-20).
 - **C7:** **341/2335** ✓.
 
 | 워커 | S85 (마감 스냅샷) |
 |------|-------------------|
 | **C5** | TASK1·6 **[x]** |
-| **C1** | TASK2·3·5·7 **[ ]** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | TASK4 **[x]** |
 | **C3** | TASK8·9 **[x]** |
 | **C6** | TASK10 **[ ]** |
@@ -1284,13 +1345,13 @@
 
 ## SPRINT 290 — **archived (보드 SPRINT 84)**
 
-- **요약:** S84 미완료 중 **C3 표시 행 전부 [x]** · C1·C4·C5·C6 **`[ ]` 잔여** → **exit 2** → **S85** (`PARALLEL_QUEUE_REFILL` §3 · 2026-03-20).
+- **요약:** S84 미완료 중 **C3 표시 행 전부 [x]** · C4·C5·C6 **`[ ]` 잔여** · C1 *(계획)* → **exit 2** → **S85** (`PARALLEL_QUEUE_REFILL` §3 · 2026-03-20).
 - **C7:** **339/2327** ✓.
 
 | 워커 | S84 (마감 스냅샷) |
 |------|-------------------|
 | **C5** | TASK1 [x] · TASK6 + 큐 보충 **[ ]** |
-| **C1** | TASK2·3·5·7 **[ ]** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | TASK4 [x] · TASK11 **[ ]** |
 | **C3** | TASK8·9 **[x]** |
 | **C6** | TASK10 [x] · TASK12 **[ ]** |
@@ -1359,7 +1420,7 @@
 
 ## SPRINT 288 — **archived (보드 SPRINT 82)**
 
-- **요약:** 이번 런 미완인데 C3·C5·C6 표 행이 **전부 [x]** · C1·C4만 `[ ]` → `check-parallel-task-queue` **exit 2** → **S83** (`PARALLEL_QUEUE_REFILL` §3 · 2026-03-20).
+- **요약:** 이번 런 미완인데 C3·C5·C6 표 행이 **전부 [x]** · C4만 `[ ]` · C1 *(계획)* → `check-parallel-task-queue` **exit 2** → **S83** (`PARALLEL_QUEUE_REFILL` §3 · 2026-03-20).
 - **세부:** 보드 **「이전 런: SPRINT 82」** 표 · 종료 시점 C7 **327/2287** ✓.
 
 ### C5 — UI ENGINEER (288)
@@ -1400,7 +1461,7 @@
 
 ## SPRINT 287 — **archived (보드 SPRINT 81)**
 
-- **요약:** S81 완료 후 **C1만** `[ ]` 남음 → `check-parallel-task-queue` **exit 2** → **S82** `PARALLEL_QUEUE_REFILL` §3.
+- **요약:** S81 완료 후 **C2~C6 완료 후** C1 *(계획·보드)* 남음 → `check-parallel-task-queue` **exit 2** → **S82** `PARALLEL_QUEUE_REFILL` §3.
 - **세부:** 상단 **「이전 런: SPRINT 81」** 표·`SPRINT_LOG` 참고.
 
 ---
@@ -1471,7 +1532,7 @@
 
 ## SPRINT 286 — closed (보드 SPRINT 80)
 
-- **종료:** C5 **1·6** [x] Gate **80** **308/2216** · C3 **8·9** [x] · C6 **10** [x] · C1 **2·3·5·7**·C4 **4** `[ ]` → **S81** 흡수 · C3·C5 기아 → `PARALLEL_QUEUE_REFILL`.
+- **종료:** C5 **1·6** [x] Gate **80** **308/2216** · C3 **8·9** [x] · C6 **10** [x] · C4 **4** `[ ]` · C1 *(계획)* → **S81** 흡수 · C3·C5 기아 → `PARALLEL_QUEUE_REFILL`.
 
 ---
 
@@ -1485,25 +1546,25 @@
 
 ## SPRINT 285 — closed (보드 SPRINT 79)
 
-- **종료:** C3 **8·9** [x] · C1 **2·3·5·7**·C5 **1·6**·C4 **4**·C6 **10** `[ ]` → **S80** 흡수 · C3 기아 → `PARALLEL_QUEUE_REFILL`.
+- **종료:** C3 **8·9** [x] · C5 **1·6**·C4 **4**·C6 **10** `[ ]` · C1 *(계획)* → **S80** 흡수 · C3 기아 → `PARALLEL_QUEUE_REFILL`.
 
 ---
 
 ## SPRINT 284 — closed (보드 SPRINT 78)
 
-- **종료:** C5 **1·6** [x] Gate **78** **306/2204** · C4 **4** [x] Dojo 50문항 a11y · C1 **2·3·5·7**·C3 **8·9**·C6 **10** `[ ]` → **S79** 흡수 · C4·C5 기아 → `PARALLEL_QUEUE_REFILL`.
+- **종료:** C5 **1·6** [x] Gate **78** **306/2204** · C4 **4** [x] Dojo 50문항 a11y · C3 **8·9**·C6 **10** `[ ]` · C1 *(계획)* → **S79** 흡수 · C4·C5 기아 → `PARALLEL_QUEUE_REFILL`.
 
 ---
 
 ## SPRINT 283 — closed (보드 SPRINT 77)
 
-- **종료:** C5 **1·6** [x] Gate **77** **306/2204** · C4 **4** [x] assessment a11y · C3 **8·9** [x] · C6 **10** [x] · C1 **2·3·5·7** `[ ]` → **S78** 흡수 · C3·C5·C6 기아 → `PARALLEL_QUEUE_REFILL`.
+- **종료:** C5 **1·6** [x] Gate **77** **306/2204** · C4 **4** [x] assessment a11y · C3 **8·9** [x] · C6 **10** [x] · C1 *(계획)* → **S78** 흡수 · C3·C5·C6 기아 → `PARALLEL_QUEUE_REFILL`.
 
 ---
 
 ## SPRINT 282 — closed (보드 SPRINT 76)
 
-- **종료:** C5 **1·6** [x] Gate **76** **305/2199** · C4 **4** [x] bty index a11y · C3 **8·9** [x] · C1 **2·3·5·7**·C6 **10** `[ ]` → **S77** 흡수 · C3·C4·C5 기아 → `PARALLEL_QUEUE_REFILL`.
+- **종료:** C5 **1·6** [x] Gate **76** **305/2199** · C4 **4** [x] bty index a11y · C3 **8·9** [x] · C6 **10** `[ ]` · C1 *(계획)* → **S77** 흡수 · C3·C4·C5 기아 → `PARALLEL_QUEUE_REFILL`.
 
 ---
 
@@ -1546,12 +1607,12 @@
 
 ## SPRINT 279 — closed (보드 SPRINT 73)
 
-- **종료:** C5 **1·6** **[x]** · C4 **4** **[x]** · C3 **8·9** **[x]** · C6 **10** **[x]** · C1 **2·3·5·7** `[ ]` → **S74** 흡수 · C4·C5·C6 기아 → `PARALLEL_QUEUE_REFILL`.
+- **종료:** C5 **1·6** **[x]** · C4 **4** **[x]** · C3 **8·9** **[x]** · C6 **10** **[x]** · C1 *(계획)* → **S74** 흡수 · C4·C5·C6 기아 → `PARALLEL_QUEUE_REFILL`.
 
 | 워커 | S73 |
 |------|-----|
 | **C5** | **1·6** **[x]** |
-| **C1** | **2·3·5·7** → **74** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4** **[x]** |
 | **C3** | **8·9** **[x]** |
 | **C6** | **10** **[x]** |
@@ -1578,12 +1639,12 @@
 
 ## SPRINT 278 — closed (보드 SPRINT 72)
 
-- **종료:** C5 **1·6** **[x]** · C4 **4** **[x]** · C3 **8·9** **[x]** · C6 **10** **[x]** · C1 **2·3·5·7** `[ ]` → **S73** 흡수 · C3·C4·C5 기아 → `PARALLEL_QUEUE_REFILL`.
+- **종료:** C5 **1·6** **[x]** · C4 **4** **[x]** · C3 **8·9** **[x]** · C6 **10** **[x]** · C1 *(계획)* → **S73** 흡수 · C3·C4·C5 기아 → `PARALLEL_QUEUE_REFILL`.
 
 | 워커 | S72 |
 |------|-----|
 | **C5** | **1·6** **[x]** |
-| **C1** | **2·3·5·7** → **73** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4** **[x]** |
 | **C3** | **8·9** **[x]** |
 | **C6** | **10** **[x]** |
@@ -1610,12 +1671,12 @@
 
 ## SPRINT 277 — closed (보드 SPRINT 71)
 
-- **종료:** C5 **1** [x] · C4 **4** [x] · C3 **8·9** [x] · C6 **10** [x] (SPRINT_PLAN) · C1·C5 6·C6(보드) `[ ]` → **S72** 흡수 · C3 기아 → `PARALLEL_QUEUE_REFILL`.
+- **종료:** C5 **1** [x] · C4 **4** [x] · C3 **8·9** [x] · C6 **10** [x] (SPRINT_PLAN) · C5 **6**·C6(보드) `[ ]` · C1 *(계획)* → **S72** 흡수 · C3 기아 → `PARALLEL_QUEUE_REFILL`.
 
 | 워커 | S71 |
 |------|-----|
 | **C5** | **1** **[x]** · **6** → **72** |
-| **C1** | **2·3·5·7** → **72** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4** **[x]** |
 | **C3** | **8·9** **[x]** |
 | **C6** | **10** **[x]** |
@@ -1642,12 +1703,12 @@
 
 ## SPRINT 276 — closed (보드 SPRINT 70)
 
-- **종료:** C5 **1·6** **[x]** · C4 **4** **[x]** · C3 **8·9** **[x]** · C6 **10** **[x]** · C1 **2·3·5·7** `[ ]` → **S71** 흡수 · C3·C4·C5 기아 → `PARALLEL_QUEUE_REFILL`.
+- **종료:** C5 **1·6** **[x]** · C4 **4** **[x]** · C3 **8·9** **[x]** · C6 **10** **[x]** · C1 *(계획)* → **S71** 흡수 · C3·C4·C5 기아 → `PARALLEL_QUEUE_REFILL`.
 
 | 워커 | S70 |
 |------|-----|
 | **C5** | **1·6** **[x]** |
-| **C1** | **2·3·5·7** → **71** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4** **[x]** |
 | **C3** | **8·9** **[x]** |
 | **C6** | **10** **[x]** |
@@ -1678,12 +1739,12 @@
 
 ## SPRINT 275 — closed (보드 SPRINT 69)
 
-- **종료:** C5 **1·6** **[x]** · C4 **4** **[x]** · C3 **8·9** **[x]** · C6 **10** **[x]** · C1 **2·3·5·7** `[ ]` → **S70** 흡수 · C3·C4·C5·C6 기아 → `PARALLEL_QUEUE_REFILL`.
+- **종료:** C5 **1·6** **[x]** · C4 **4** **[x]** · C3 **8·9** **[x]** · C6 **10** **[x]** · C1 *(계획)* → **S70** 흡수 · C3·C4·C5·C6 기아 → `PARALLEL_QUEUE_REFILL`.
 
 | 워커 | S69 |
 |------|-----|
 | **C5** | **1·6** **[x]** |
-| **C1** | **2·3·5·7** → **70** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4** **[x]** |
 | **C3** | **8·9** **[x]** |
 | **C6** | **10** **[x]** |
@@ -1723,12 +1784,12 @@
 
 ## SPRINT 274 — closed (보드 SPRINT 68)
 
-- **종료:** C5 **1·6** **[x]** · C4 **4** **[x]** · C3 **8·9** **[x]** · C6 **10** **[x]** · C1 **2·3·5·7** `[ ]` → **S69** 흡수 · C3·C4·C5·C6 기아 → `PARALLEL_QUEUE_REFILL`.
+- **종료:** C5 **1·6** **[x]** · C4 **4** **[x]** · C3 **8·9** **[x]** · C6 **10** **[x]** · C1 *(계획)* → **S69** 흡수 · C3·C4·C5·C6 기아 → `PARALLEL_QUEUE_REFILL`.
 
 | 워커 | S68 |
 |------|-----|
 | **C5** | **1·6** **[x]** |
-| **C1** | **2·3·5·7** → **69** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4** **[x]** |
 | **C3** | **8·9** **[x]** |
 | **C6** | **10** **[x]** |
@@ -1768,12 +1829,12 @@
 
 ## SPRINT 273 — closed (보드 SPRINT 67)
 
-- **종료:** C5 **1** **[x]** · **6** `[ ]` · C4 **4** **[x]** · C3 **8·9** **[x]** · C6 **10** `[ ]` · C1 **2·3·5·7** `[ ]` → **S68** 흡수 · C3·C4 기아 → `PARALLEL_QUEUE_REFILL`.
+- **종료:** C5 **1** **[x]** · **6** `[ ]` · C4 **4** **[x]** · C3 **8·9** **[x]** · C6 **10** `[ ]` · C1 *(계획)* → **S68** 흡수 · C3·C4 기아 → `PARALLEL_QUEUE_REFILL`.
 
 | 워커 | (67) |
 |------|-----|
 | **C5** | **1** **[x]** · **6** → **68** |
-| **C1** | → **68** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4** **[x]** |
 | **C3** | **8·9** **[x]** |
 | **C6** | → **68** |
@@ -1800,12 +1861,12 @@
 
 ## SPRINT 272 — closed (보드 SPRINT 66)
 
-- **종료:** C5 **1·6**·C4 **4**·C3 **8·9**·C6 **10** **[x]** · C1 **2·3·5·7** → **S67** 흡수 · 병렬 큐 보충.
+- **종료:** C5 **1·6**·C4 **4**·C3 **8·9**·C6 **10** **[x]** · C1 *(계획)* → **S67** 흡수 · 병렬 큐 보충.
 
 | 워커 | S66 |
 |------|-----|
 | **C5** | **1·6** **[x]** |
-| **C1** | → **67** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4** **[x]** |
 | **C3** | **8·9** **[x]** |
 | **C6** | **10** **[x]** |
@@ -1832,12 +1893,12 @@
 
 ## SPRINT 271 — closed (보드 SPRINT 65)
 
-- **종료:** C5 **1·6**·C4 **4**·C3 **8·9**·C6 **10** **[x]** · C1 **2·3·5·7** → **S66** 흡수. Gate **65** **288/2148** ✓.
+- **종료:** C5 **1·6**·C4 **4**·C3 **8·9**·C6 **10** **[x]** · C1 *(계획)* → **S66** 흡수. Gate **65** **288/2148** ✓.
 
 | 워커 | (65) |
 |------|------|
 | **C5** | **1·6** **[x]** |
-| **C1** | → **66** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4** **[x]** |
 | **C3** | **8·9** **[x]** |
 | **C6** | **10** **[x]** |
@@ -1864,12 +1925,12 @@
 
 ## SPRINT 270 — closed (보드 SPRINT 64)
 
-- **종료:** C5 **1·6**·C4 **4**·C3 **8·9**·C6 **10** **[x]** · C1 **2·3·5·7** → **S65** 흡수. Gate **64** **286/2140** ✓.
+- **종료:** C5 **1·6**·C4 **4**·C3 **8·9**·C6 **10** **[x]** · C1 *(계획)* → **S65** 흡수. Gate **64** **286/2140** ✓.
 
 | 워커 | (64) |
 |------|------|
 | **C5** | **1·6** **[x]** |
-| **C1** | → **65** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | **4** **[x]** |
 | **C3** | **8·9** **[x]** |
 | **C6** | **10** **[x]** |
@@ -1883,7 +1944,7 @@
 | 워커 | (63) |
 |------|------|
 | **C5** | **1·6** **[x]** |
-| **C1** | → **64** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | → **64** |
 | **C3** | → **64** |
 | **C6** | **10** `[x]` *(S64 실행)* |
@@ -1911,7 +1972,7 @@
 |------|------|
 | **C3** | **8·9** **[x]** |
 | **C5** | → **63** |
-| **C1** | → **63** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | → **63** |
 | **C6** | **10** `[x]` *(S63 실행)* |
 
@@ -1933,7 +1994,7 @@
 | 워커 | (61) |
 |------|-----|
 | **C5** | **1·6** **[x]** |
-| **C1** | → **62** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | → **62** |
 | **C3** | → **62** |
 | **C6** | → **62** |
@@ -1957,7 +2018,7 @@
 |------|------|
 | **C5** | **1·6** **[x]** |
 | **C6** | **10** **[x]** |
-| **C1** | → **61** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | → **61** |
 | **C3** | **8·9** → **61** |
 
@@ -1983,7 +2044,7 @@
 | 워커 | (59) |
 |------|-----|
 | **C5** | **1·6** **[x]** |
-| **C1** | → **60** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | → **60** |
 | **C3** | → **60** |
 | **C6** | → **60** |
@@ -2007,7 +2068,7 @@
 |------|-----|
 | **C5** | **1·6** **[x]** |
 | **C6** | **10** **[x]** |
-| **C1** | → **59** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | → **59** |
 | **C3** | → **59** |
 
@@ -2035,7 +2096,7 @@
 | **C5** | **1·6** **[x]** |
 | **C3** | **8·9** **[x]** |
 | **C6** | **10** **[x]** |
-| **C1** | → **58** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | → **58** |
 
 ### C5 — UI ENGINEER (263) — closed
@@ -2063,8 +2124,7 @@
 | **C5** | **1·6** **[x]** |
 | **C3** | **8·9** **[x]** |
 | **C6** | **10** **[x]** |
-| **C1** | → **57** |
-| **C1** | → **57** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | → **57** |
 
 ### C5 — UI ENGINEER (262) — closed
@@ -2092,7 +2152,7 @@
 | **C5** | **1·6** **[x]** |
 | **C3** | **8·9** **[x]** |
 | **C6** | **10** **[x]** |
-| **C1** | → **56** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | → **56** |
 
 ### C5 — UI ENGINEER (261) — closed
@@ -2118,7 +2178,7 @@
 | 워커 | (54) |
 |------|-----|
 | **C5** | **1·6** **[x]** |
-| **C1** | → **55** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | → **55** |
 | **C3** | → **55** |
 | **C6** | → **55** |
@@ -2143,7 +2203,7 @@
 | **C5** | **1·6** **[x]** |
 | **C3** | **8·9** **[x]** |
 | **C6** | **10** **[x]** |
-| **C1** | → **54** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | → **54** |
 
 ### C5 — UI ENGINEER (259) — closed
@@ -2171,7 +2231,7 @@
 | **C5** | **1·6** **[x]** |
 | **C3** | **8·9** **[x]** |
 | **C6** | **10** **[x]** |
-| **C1** | → **53** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | → **53** |
 
 ---
@@ -2191,7 +2251,7 @@
 | **C5** | **1·6** **[x]** |
 | **C3** | **8·9** **[x]** |
 | **C6** | **10** **[x]** |
-| **C1** | → **51** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | → **51** |
 
 ---
@@ -2203,7 +2263,7 @@
 | 워커 | (49 최종) |
 |------|-----------|
 | **C5** | **1·6** **[x]** |
-| **C1** | **2·3·5·7** → **50** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C3** | **8·9** **[x]** |
 | **C4** | **4** **[x]** — `/bty` 허브 region |
 | **C6** | **10** **[x]** |
@@ -2212,12 +2272,12 @@
 
 ## SPRINT 254 — closed (보드 SPRINT 48)
 
-- **종료 (2026-03-29):** C5·C3·C4·C6 전행 [x] · C1 **2·3·5·7** 미처리 → **S49** 흡수. **268 files / 2082 tests** (Gate 48).
+- **종료 (2026-03-29):** C5·C3·C4·C6 전행 [x] · C1 *(계획·보드)* 미동기 → **S49** 흡수. **268 files / 2082 tests** (Gate 48).
 
 | 워커 | (48 최종) |
 |------|-----------|
 | **C5** | TASK **1**·**6** **[x]** |
-| **C1** | **2·3·5·7** → **49** |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | TASK **4** **[x]** — My Page 개요 aria |
 | **C3** | **8·9** **[x]** |
 | **C6** | **10** **[x]** |
@@ -2231,7 +2291,7 @@
 | 워커 | (47 최종) |
 |------|-----------|
 | **C5** | TASK **1**·**6** **[x]** |
-| **C1** | TASK **2·3·5·7·10** 일부 → **48**에 흡수 |
+| **C1** | **계획 전용** — NEXT·BACKLOG·`AUTO4`·스프린트 오픈·보드 동기 *(실행 태스크·`[ ]`는 `CURSOR_TASK_BOARD`만)* |
 | **C4** | TASK **4** **[x]** |
 | **C3** | TASK **8·9** **[x]** |
 | **C2** | **[x]** Gate 동기 |
@@ -2354,7 +2414,7 @@
 
 Planning only. `REFRESH`로 본 문서·로그만 갱신.
 
-- **Last C1 REFRESH:** **2026-03-17** — **SPRINT 50** — S49 병렬 완료·C1 잔여 → **256**·**10행 `[ ]`**. REFRESH 동기.
+- **Last C1 REFRESH:** **2026-03-17** — **SPRINT 50** — S49 병렬 완료 → **256** (실행 `[ ]`는 보드). REFRESH 동기.
 
 ---
 

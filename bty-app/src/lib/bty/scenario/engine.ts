@@ -36,10 +36,10 @@ export function getRandomScenario(excludeIds: string[] = []): Scenario {
  * XP: xpEarned = round(xpBase * difficulty). Higher difficulty => higher reward.
  * When payload.locale === "ko", returns Korean result/microInsight/followUp when available.
  */
-export function computeResult(payload: ScenarioSubmitPayload): ScenarioSubmitResult {
-  const scenario = getScenarioById(payload.scenarioId);
-  if (!scenario) throw new Error("Scenario not found");
-
+export function computeResultFromScenario(
+  scenario: Scenario,
+  payload: ScenarioSubmitPayload,
+): ScenarioSubmitResult {
   const choice = scenario.choices.find((c) => c.choiceId === payload.choiceId);
   if (!choice) throw new Error("Choice not found");
 
@@ -69,4 +69,10 @@ export function computeResult(payload: ScenarioSubmitPayload): ScenarioSubmitRes
     result,
     followUp,
   };
+}
+
+export function computeResult(payload: ScenarioSubmitPayload): ScenarioSubmitResult {
+  const scenario = getScenarioById(payload.scenarioId);
+  if (!scenario) throw new Error("Scenario not found");
+  return computeResultFromScenario(scenario, payload);
 }

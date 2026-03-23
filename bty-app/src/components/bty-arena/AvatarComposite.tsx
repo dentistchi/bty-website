@@ -1,14 +1,20 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import type { BodyType } from "@/lib/bty/arena/avatarCharacters";
+import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
+import { getOutfitImageUrlForBodyType, parseCompositeOutfitKey } from "@/lib/bty/arena/avatarOutfits";
+import { getManifestForTier } from "@/engine/avatar/avatar-manifest.service";
+import type { AvatarTier } from "@/engine/avatar/avatar-state.service";
 
 /**
  * AVATAR_LAYER_SPEC §5, §6·§7: 레이어 합성 아바타 (옷 입힌 캐릭터).
- * Render-only: API/도메인에서 계산된 URL만 표시. characterUrl, outfitUrl, accessoryUrls는 모두 API 또는 resolveAvatarUrls(키) 결과로 전달.
- * 레이어 순서: base(character) zIndex 1 → outfit 2 → accessories 3,4,… position absolute, objectFit contain, loading="lazy".
- * §1: outfit/accessory 로드 실패 시 해당 레이어만 숨김(404 등으로 이미지 없을 때 깨진 아이콘 방지).
- * Preview/썸네일: characterUrl + outfitUrl + accessoryUrls 전달 시 옷 레이어가 합성·표시됨(zIndex 2).
+ * characterUrl은 베이스(전달 또는 resolveAvatarUrls). outfit은 base 위 오버레이(zIndex 2).
+ * `outfitUrl`을 주면 그대로 사용; 생략 시 `characterKey`의 bodyType + `outfitId`/`outfitKey`로 `getOutfitImageUrlForBodyType` 해석.
+ * 레이어 순서: base(character) zIndex 1 → outfit 2 → accessories 3,4,… — **hue-rotate는 outfit 레이어만**.
+ * §1: outfit/accessory 로드 실패 시 해당 레이어만 숨김(404 등).
+ * `avatarTier`가 있으면 악세서리 URL은 `avatar-manifest.service`의 `asset_slots`만큼만 렌더(티어 표시 규칙과 동일).
  */
 
 /** 0–3: 같은 옷 이미지에 CSS hue-rotate로 4가지 톤 적용. 에셋 추가 없이 다양성 확보용. */
@@ -32,10 +38,21 @@ const HUEROTATE_DEG: Record<OutfitColorVariant, number> = {
 export interface AvatarCompositeProps {
   size: number;
   characterUrl: string | null;
+  /** 명시 시 그대로 사용(우선). 생략 시 outfitId/outfitKey + 체형으로 계산. */
   outfitUrl?: string | null;
+  /** outfitUrl 없을 때: 매니페스트 옷 id (예: scrub_basic). */
+  outfitId?: string | null;
+  /** outfitUrl 없을 때: `outfit_{id}` 등 — parse 후 outfitId + 체형으로 URL 생성. */
+  outfitKey?: string | null;
+  /** outfitUrl 없을 때: `getAvatarCharacter(characterKey).bodyType`으로 옷 PNG 접미사(_A…_D) 선택. */
+  characterKey?: string | null;
+  /** characterKey보다 우선하는 체형(테스트/오버라이드). */
+  bodyType?: BodyType | null;
   /** 옷 레이어에만 적용. 4가지 톤(에셋 추가 없음). */
   outfitColorVariant?: OutfitColorVariant;
   accessoryUrls?: string[];
+  /** 설정 시 악세서리 레이어 수를 티어 `asset_slots`로 제한. */
+  avatarTier?: AvatarTier;
   alt?: string;
   className?: string;
 }
@@ -44,11 +61,31 @@ export function AvatarComposite({
   size,
   characterUrl,
   outfitUrl,
+  outfitId,
+  outfitKey,
+  characterKey,
+  bodyType,
   outfitColorVariant = 0,
   accessoryUrls = [],
+  avatarTier,
   alt = "Avatar",
   className,
 }: AvatarCompositeProps) {
+  const resolvedOutfitUrl = useMemo(() => {
+    const direct = outfitUrl?.trim();
+    if (direct) return direct;
+    const oid =
+      outfitId?.trim() ||
+      (outfitKey ? parseCompositeOutfitKey(outfitKey)?.outfitId : null) ||
+      null;
+    if (!oid) return null;
+    const bt =
+      bodyType ??
+      (characterKey ? getAvatarCharacter(characterKey)?.bodyType : undefined) ??
+      null;
+    return getOutfitImageUrlForBodyType(oid, bt);
+  }, [outfitUrl, outfitId, outfitKey, characterKey, bodyType]);
+
   const [characterFailed, setCharacterFailed] = useState(false);
   const [outfitFailed, setOutfitFailed] = useState(false);
   const [failedAccessories, setFailedAccessories] = useState<Set<number>>(new Set());
@@ -63,10 +100,16 @@ export function AvatarComposite({
   }, [characterUrl]);
   useEffect(() => {
     setOutfitFailed(false);
-  }, [outfitUrl]);
+  }, [resolvedOutfitUrl]);
+  const accessoryUrlsClamped = useMemo(() => {
+    if (avatarTier == null) return accessoryUrls;
+    const max = getManifestForTier(avatarTier).asset_slots;
+    return accessoryUrls.slice(0, max);
+  }, [accessoryUrls, avatarTier]);
+
   useEffect(() => {
     setFailedAccessories(new Set());
-  }, [accessoryUrls?.length, accessoryUrls?.join(",")]);
+  }, [accessoryUrlsClamped.length, accessoryUrlsClamped.join(","), avatarTier]);
 
   const containerStyle: React.CSSProperties = {
     width: size,
@@ -118,9 +161,9 @@ export function AvatarComposite({
           onError={onCharacterError}
         />
       )}
-      {outfitUrl && !outfitFailed && (
+      {resolvedOutfitUrl && !outfitFailed && (
         <img
-          src={outfitUrl}
+          src={resolvedOutfitUrl}
           alt=""
           style={{
             ...layerStyle,
@@ -134,7 +177,7 @@ export function AvatarComposite({
           onError={onOutfitError}
         />
       )}
-      {accessoryUrls.map((url, i) =>
+      {accessoryUrlsClamped.map((url, i) =>
         failedAccessories.has(i) ? null : (
           <img
             key={`${url}-${i}`}

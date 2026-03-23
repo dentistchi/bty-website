@@ -28,7 +28,7 @@ Fix/Polish|[VERIFY] C5 Gate 155 A~F|C5. S155 TASK1 [ ].
 Fix/Polish|[DOCS] C1 NEXT_PHASE·BACKLOG S155/361|C1. S155 TASK2 [x].
 Fix/Polish|[DOCS] C1 227·228차|C1. S155 TASK3 [ ].
 Fix/Polish|[DOCS] C1 다음 배치 S156/362|C1. S155 TASK5 [ ].
-Fix/Polish|[DOMAIN] C3 arenaRunIdFromUnknown|C3. S155 TASK8 [ ].
+Fix/Polish|[DOMAIN] C3 arenaRunIdFromUnknown|C3. S155 TASK8 [x].
 Fix/Polish|[UI] C4 bty-arena lab a11y|C4. S155 TASK4 [ ].
 Fix/Polish|[VERIFY] C6 q237 + self-healing-ci|C6. S155 TASK10 [ ].
 Fix/Polish|[VERIFY] C5 Elite §3|C5. S155 TASK6 [ ].

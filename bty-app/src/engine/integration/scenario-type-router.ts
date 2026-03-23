@@ -1,0 +1,137 @@
+/**
+ * Single entry for Arena next-session routing: {@link checkEjectionCondition} → delayed outcomes flag →
+ * rotation **standard → mirror → perspective-switch** (when pool / eligibility allow) →
+ * default {@link selectNextScenario}.
+ */
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { checkEjectionCondition } from "@/engine/integration/arena-center-ejection";
+import {
+  getMirrorScenarios,
+  mirrorPoolRowToScenario,
+  MIRROR_SCENARIO_PREFIX,
+  type MirrorScenario,
+} from "@/engine/perspective-switch/mirror-scenario.service";
+import {
+  getNextPerspectiveSwitch,
+  perspectiveSwitchToScenario,
+} from "@/engine/scenario/perspective-switch.service";
+import { getDueOutcomes } from "@/engine/scenario/delayed-outcome-trigger.service";
+import {
+  fetchPlayedScenarioIds,
+  selectNextScenario,
+  type ScenarioLocalePreference,
+  type SelectNextScenarioOptions,
+} from "@/engine/scenario/scenario-selector.service";
+import type { Scenario } from "@/lib/bty/scenario/types";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+
+/** Standard → mirror → perspective-switch; index = `played_scenario_ids.length % 3`. */
+export const ARENA_SESSION_ROTATION_MOD = 3 as const;
+
+export type ScenarioRouteResult = {
+  delayedOutcomePending: boolean;
+  /** `mirror` = pool row; `perspective_switch` = curated pool; `catalog` = DB/static catalog. */
+  route: "mirror" | "perspective_switch" | "catalog";
+  scenario: Scenario;
+  /** Present when `route === "mirror"` (pool rows for diagnostics / UI). */
+  mirrors?: MirrorScenario[];
+};
+
+function pickLeastRecentMirror(mirrors: MirrorScenario[], played: string[]): MirrorScenario {
+  const withMeta = mirrors.map((m) => {
+    const sid = `${MIRROR_SCENARIO_PREFIX}${m.id}`;
+    return { m, li: played.lastIndexOf(sid) };
+  });
+  const never = withMeta.filter((x) => x.li === -1);
+  if (never.length > 0) {
+    never.sort((a, b) => new Date(a.m.created_at).getTime() - new Date(b.m.created_at).getTime());
+    return never[0]!.m;
+  }
+  withMeta.sort((a, b) => a.li - b.li);
+  return withMeta[0]!.m;
+}
+
+/**
+ * Arena next scenario: ejection → due outcomes flag → mod-3 rotation (catalog / mirror / perspective) →
+ * {@link selectNextScenario}.
+ *
+ * @returns `null` when the user is Arena-ejected; otherwise a routed catalog, mirror, or perspective scenario.
+ */
+export async function getNextScenarioForSession(
+  userId: string,
+  locale: ScenarioLocalePreference,
+  options?: SelectNextScenarioOptions,
+): Promise<ScenarioRouteResult | null> {
+  const admin = getSupabaseAdmin();
+
+  const ej = await checkEjectionCondition(userId, {
+    readonly: true,
+    ...(admin ? { supabase: admin } : {}),
+  });
+  if (ej.alreadyEjected) {
+    return null;
+  }
+
+  /** Post-Foundry: catalog-only pick, biased by completed program tag via `preferFlagType`. */
+  if (options?.foundry_return) {
+    const due = await getDueOutcomes(userId, admin ? { locale, supabase: admin } : { locale });
+    const scenario = await selectNextScenario(userId, locale, {
+      preferFlagType: options.preferFlagType,
+      forceDifficultyTier: options.forceDifficultyTier,
+    });
+    return {
+      route: "catalog",
+      scenario,
+      delayedOutcomePending: due.length > 0,
+    };
+  }
+
+  if (!admin) {
+    const due = await getDueOutcomes(userId, { locale });
+    const scenario = await selectNextScenario(userId, locale, options);
+    return {
+      route: "catalog",
+      scenario,
+      delayedOutcomePending: due.length > 0,
+    };
+  }
+
+  const due = await getDueOutcomes(userId, { locale, supabase: admin });
+  const delayedOutcomePending = due.length > 0;
+
+  const played = await fetchPlayedScenarioIds(userId);
+  const sessionSlot = played.length % ARENA_SESSION_ROTATION_MOD;
+
+  const mirrors = await getMirrorScenarios(userId, admin);
+  const poolLen = mirrors.length;
+
+  const catalogFallback = async (): Promise<Scenario> => selectNextScenario(userId, locale, options);
+
+  if (sessionSlot === 0) {
+    const scenario = await catalogFallback();
+    return { route: "catalog", scenario, delayedOutcomePending };
+  }
+
+  if (sessionSlot === 1) {
+    if (poolLen >= 1) {
+      const row = pickLeastRecentMirror(mirrors, played);
+      return {
+        route: "mirror",
+        scenario: mirrorPoolRowToScenario(row, locale),
+        mirrors,
+        delayedOutcomePending,
+      };
+    }
+    const scenario = await catalogFallback();
+    return { route: "catalog", scenario, delayedOutcomePending };
+  }
+
+  // sessionSlot === 2 — perspective third, then mirror, then catalog
+  const psEntry = await getNextPerspectiveSwitch(userId, admin);
+  return {
+    route: "perspective_switch",
+    scenario: perspectiveSwitchToScenario(psEntry, locale),
+    delayedOutcomePending,
+  };
+}

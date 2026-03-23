@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
-import { applyDirectCoreXp } from "@/lib/bty/arena/applyCoreXp";
+import { awardLabXP } from "@/engine/xp/lab-xp.service";
 import {
   computeLabCoreXp,
   LAB_DAILY_ATTEMPT_LIMIT,
@@ -58,7 +58,9 @@ export async function POST(req: Request) {
     );
   }
 
-  const coreResult = await applyDirectCoreXp(supabase, user.id, coreXp);
+  const usageDate = new Date().toISOString().slice(0, 10);
+  const sourceId = `lab:${user.id}:${usageDate}:${consumed.attemptsUsed}`;
+  const coreResult = await awardLabXP(user.id, coreXp, { supabase, sourceId });
   if ("error" in coreResult) {
     return NextResponse.json({ error: coreResult.error }, { status: 500 });
   }

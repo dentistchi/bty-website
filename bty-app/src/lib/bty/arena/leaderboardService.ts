@@ -46,6 +46,10 @@ export type NormalizedProfile = {
 };
 
 export type LeaderboardRow = {
+  /** Arena user id — for highlighting current viewer (weekly rank only; no extra rules in UI). */
+  userId: string;
+  /** Lifetime Core XP from profile (display only; not used for weekly ordering). */
+  coreXpTotal: number;
   rank: number;
   codeName: string;
   subName: string;
@@ -320,6 +324,8 @@ export function buildLeaderboardRows(
     });
 
     return {
+      userId: r.user_id,
+      coreXpTotal: coreXp,
       rank: idx + 1,
       codeName,
       subName,

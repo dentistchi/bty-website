@@ -1,5 +1,7 @@
 -- Leaderboard: include avatar_selected_outfit_id so API can resolve character+outfit layers (§3 ARENA_CODENAME_AVATAR_PLAN).
 
+drop function if exists public.get_leaderboard_profiles(uuid[]);
+
 create or replace function public.get_leaderboard_profiles(p_user_ids uuid[])
 returns table (
   user_id uuid,

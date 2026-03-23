@@ -1,5 +1,59 @@
 # 현재 작업 (CURRENT_TASK)
 
+**E2E engine request-scope + integrity FK (2026-03-22):** [x] **`program-recommender`** — `getSupabaseAdmin()` fallback (no `cookies()`) · **`routeHealingToFoundry`** `deps.supabase` + **`session-lifecycle`** / **`ejection-recovery`** / **`e2e-loop-validator`** 전달 · **`supabaseServer`** 주석 · **`integrity-score-card`** `auth.users` 존재 시에만 persist · **`getProgramProgress`** 서비스 롤/주입 필수 · **`npx tsc --noEmit`** ✓ · **완료.**
+
+**E2E smoke fixture alignment (2026-03-22):** [x] **`resolveE2ETestUserId`** — `E2E_FIXTURE_USER_ID` → `SMOKE_*` / `LOOP_*` → **`FIXTURE_USER_ID`** · **`seedFixtureUser`** seeds resolved user + **`unlockedAssetsForTier(1)`** · **`fetchAnyEnScenarioId`** 공유 (`full-system-smoke-test`) · **`npx tsc --noEmit`** ✓ · **완료.**
+
+**E2E smoke DB blockers (2026-03-22):** [x] **`e2e-test-fixtures.service.ts`** — empty DB 시 `scenarios` (`en` minimal) + `avatar_composite_snapshots` (`persistSnapshotForUser` for `resolveE2ETestUserId`) · **`npx tsc --noEmit`** ✓ · **완료.**
+
+**E2E runner (2026-03-22):** [x] **`e2e-runner.ts`** + **`e2e-fixture-user.ts`** · **`npm run e2e`** (`tsx`) · 시퀀스: seed → smoke → extended health → wiring → i18n → release readiness · **`E2E_FIXTURE_USER_ID`** · **완료.**
+
+**Full-system smoke extension (2026-03-22):** [x] **`full-system-smoke-test.ts`** — avatar / onboarding / notifications 섹션 · **`smoke_test_log`** **`20260430311000`** · **`SystemStatusWidget`** · **`BTY_RELEASE_GATE_CHECK`** · **완료.**
+
+**Release readiness check (2026-03-22):** [x] **`release-readiness-check.ts`** · **`POST /api/admin/release-readiness`** · **`release_readiness_log`** **`20260430300000`** + **`20260430310000`** (`avatar_ok`, `scorecard_ok`) · smoke + health + wiring + i18n + avatar + scorecard · **`BTY_RELEASE_GATE_CHECK`** 동기 · **완료.**
+
+**Integrity score card integration (2026-03-22):** [x] **`engine/integration/integrity-score-card.service.ts`** re-export · **`GET /api/bty/center/integrity-scorecard`** · **`weekly-report-card`** / **`integrity-dashboard`** / **`WeeklyReportCard`** import 경로 정리 · **완료.**
+
+**[C3] SPRINT 160 TASK9 / 366 (Arena Lab complete · 2026-03-22):** [x] **`POST /api/arena/lab/complete`** — `completedOn` **bigint** ( `req.json` 스텁) → **400** `completed_on_invalid` · `route.test.ts` **11** ✓ · **완료.**
+
+**Integrity score card (2026-03-22):** [x] **`integrity-score-card.service.ts`** · **`integrity_score_cards`** migration **`20260430280000`** · **`getIntegrityScoreCard`** (AIR 40% + LRI 30% + resilience 30%) · **`WeeklyReportCard`** + **`GET /api/center/weekly-report-card`** · **`LeadershipEngineWidget`** + **`getIntegrityDashboard`** · **`npx tsc --noEmit`** ✓ · **완료.**
+
+**Recovery loop router (2026-03-22):** [x] **`recovery-loop-router.ts`** · **`handleSlipRecovery`** · `slip-recovery.service` persist 후 동적 import · **`recovery_task_assigned`** · **`npm run lint`** ✓ · **완료.**
+
+**Elite Spec flow (2026-03-22):** [x] **`elite-spec-flow.ts`** · **`elite_spec_nominations`** 마이그레이션 · **`GET /api/arena/leadership-engine/promotion-readiness`** · **`POST .../elite-spec/nominate`** · **`POST /api/admin/arena/elite-spec-nominations/[id]/approve`** · **`LeadershipEngineWidget`** 게이트 교차 시 nominate · **`npm run lint`** ✓ · **완료.**
+
+**Loop health (2026-03-22):** [x] **`full-loop-validator`** + **`POST /api/admin/arena/loop-health`** + **`loop_health_log`** 마이그레이션 · **`npm run lint`** ✓ · **`BTY_RELEASE_GATE_CHECK`** 동기 · **완료.**
+
+**[C2] SPRINT 160 TASK1 / 366 (Gatekeeper · 2026-03-22):** [x] Gate **160** §A~F **`BTY_RELEASE_GATE_CHECK`** 실행·대조 **PASS** (**`352/2601`** · **C5 TASK1** 동기) · **완료.**
+
+**Center (2026-03-22):** [x] **`AwakeningMilestoneTracker`** (`bty-app/src/components/center/AwakeningMilestoneTracker.tsx`) — `GET /api/center/awakening-progress`, Realtime `user_awakening_milestones` INSERT → 카드 플래시 + refetch, 4 마일스톤·RENEWAL 오버레이, `mentorMilestonePending` → `MentorChatShell` CTA · `bty.awakeningMilestoneTracker*` i18n · `npm run lint` ✓ · **완료.**
+
+**Avatar (2026-03-22):** [x] **`AvatarRenderer`** + **`GET /api/bty/avatar/state`** — `getCoreXPBreakdown` → `core_xp_breakdown` · 5티어 48px SVG·`avatar_tier_upgraded`·16px 자산 도트 · Core XP 바 `title`/SR 툴팁(ARENA/LAB/FOUNDRY/MENTOR%) · `bty.avatarRendererCoreXpSources` · `npm run lint` ✓ · **완료.**
+
+**Arena (2026-03-22):** [x] **`DelayedOutcomeBanner`** — `GET /api/arena/session/delayed-outcomes` · `POST …/dismiss` (`outcomeId`) + 서버 `scheduleOutcomes` · `ScenarioSessionShell` 위에 배치 · `uxPhase1Stub.delayedOutcome*` · `npm run lint` ✓ · **완료.**
+
+**[C5] SPRINT 160 TASK1·TASK6 / 366 (VERIFY · Gate 160 · 2026-03-22):** [x] Gate **160** A~F **PASS** · **`ELITE_3RD` §3** 동기 · **`352/2601`** ✓ · `test:q237-smoke` **3/7** ✓ · `self-healing-ci` · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **S160 TASK1·TASK6 [x]** · `check-parallel-task-queue` **exit 2** (C4·C5 기아) → C1 **`PARALLEL_QUEUE_REFILL`** · **완료.**
+
+**[C2] SPRINT 159 TASK1 / 365 (Gatekeeper · 2026-03-22):** [x] Gate **159** §A~F **`BTY_RELEASE_GATE_CHECK`** 실행·대조 **PASS** (**`350/2591`** · **C5 TASK1** 동기) · **완료.**
+
+**[C5] SPRINT 159 TASK1·TASK6 / 365 (VERIFY · Gate 159 · 2026-03-22):** [x] Gate **159** A~F **PASS** · **`ELITE_3RD` §3** 동기 · **`350/2591`** ✓ · `test:q237-smoke` **3/7** ✓ · `self-healing-ci` · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **S159 TASK1·TASK6 [x]** · `check-parallel-task-queue` **exit 2** (C4·C5 기아) → C1 **`PARALLEL_QUEUE_REFILL`** · **완료.**
+
+**[C2] SPRINT 158 TASK1 / 364 (Gatekeeper · 2026-03-22):** [x] Gate **158** §A~F **`BTY_RELEASE_GATE_CHECK`** 실행·대조 **PASS** (**`349/2588`** · **C5 TASK1** 동기) · **완료.**
+
+**[C5] SPRINT 158 TASK1·TASK6 / 364 (VERIFY · Gate 158 · 2026-03-22):** [x] Gate **158** A~F **PASS** · **`ELITE_3RD` §3** 동기 · **`349/2588`** ✓ · `test:q237-smoke` **3/7** ✓ · `self-healing-ci` · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **S158 TASK1·TASK6 [x]** · `check-parallel-task-queue` **exit 2** (C4·C5 기아) → C1 **`PARALLEL_QUEUE_REFILL`** · **완료.**
+
+**[C2] SPRINT 157 TASK1 / 363 (Gatekeeper · 2026-03-22):** [x] Gate **157** §A~F **`BTY_RELEASE_GATE_CHECK`** 실행·대조 **PASS** (**`348/2583`** · **C5 TASK1** 동기) · **완료.**
+
+**[C5] SPRINT 157 TASK1·TASK6 / 363 (VERIFY · Gate 157 · 2026-03-22):** [x] Gate **157** A~F **PASS** · **`ELITE_3RD` §3** 동기 · **`348/2583`** ✓ · `test:q237-smoke` **3/7** ✓ · `self-healing-ci` · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **S157 TASK1·TASK6 [x]** · `check-parallel-task-queue` **exit 2** (C4·C5 기아) → C1 **`PARALLEL_QUEUE_REFILL`** · **완료.**
+
+**[C5] SPRINT 156 TASK1·TASK6 / 362 (VERIFY · Gate 156 · 2026-03-22):** [x] Gate **156** A~F **PASS** · **`ELITE_3RD` §3** 동기 · **`347/2576`** ✓ · `test:q237-smoke` **3/7** ✓ · `self-healing-ci` · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **S156 TASK1·TASK6 [x]** · `check-parallel-task-queue` **exit 2** (C4·C5 기아) → C1 **`PARALLEL_QUEUE_REFILL`** · **완료.**
+
+**[C2] SPRINT 155 TASK1 / 361 (Gatekeeper · 2026-03-22):** [x] Gate **155** §A~F **`BTY_RELEASE_GATE_CHECK`** 실행·대조 **PASS** (**C5 TASK1** 동기) · **완료.**
+
+**[C5] SPRINT 155 / 361 (VERIFY · self-healing-ci 최종 · 2026-03-22):** [x] `bty-app/scripts/self-healing-ci.sh` — Lint PASS · Vitest **347 / 2576** ✓ (~**10.2s**) · Build PASS · exit **0** · Attempt **1/5** · `SPRINT_LOG` **최종**·`BTY_RELEASE_GATE_CHECK`·보드 **C7** 동기 · **완료.**
+
+**[C3] SPRINT 155 TASK8 / 361 (DOMAIN · 2026-03-22):** [x] **`arenaRunIdFromUnknown`** — **`src/domain/arena/arenaRunIdFromUnknown.ts`** (시나리오 폴더에서 이동) · Symbol·bigint → **null** · `arenaRunIdFromUnknown.edges.test.ts` **9** ✓ · 보드 **TASK8 [x]** · **완료.**
+
 **[C4] SPRINT 155 TASK4 / 361 (UI · 2026-03-22):** [x] **`/[locale]/bty-arena/lab`** — **`arenaLabUsageRegionAria`** + **`arenaLabBackNavAria`** (ko/en) · `section`/`nav` 랜드마크 · `npm run lint` ✓ · 보드 **TASK4 [x]** · **완료.**
 
 **[C5] SPRINT 155 TASK1·TASK6 / 361 (VERIFY · 2026-03-22):** [x] Gate **155** A~F **PASS** · **`ELITE_3RD` §3** · **`347/2575`** ✓ · `test:q237-smoke` **3 files / 7 tests** ✓ · `self-healing-ci` · `npm run lint` ✓ · Build ✓ (`rm -rf .next` 선행) · `BTY_RELEASE_GATE_CHECK` · 보드 **TASK1·TASK6 [x]** · **완료.**

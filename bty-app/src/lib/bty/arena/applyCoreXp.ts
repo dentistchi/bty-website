@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { syncAvatarStateAfterCoreXpChange } from "@/engine/avatar/avatar-state.service";
 import {
   tierFromCoreXp,
   codeIndexFromTier,
@@ -84,6 +85,9 @@ export async function applySeasonalXpToCore(
     .eq("user_id", userId);
 
   if (e1) return { error: e1.message };
+  void syncAvatarStateAfterCoreXpChange(userId, supabase, currentCore, newCoreTotal).catch((err) =>
+    console.warn("[applySeasonalXpToCore] avatar state sync", err),
+  );
   return { coreGain: totalCoreGain, newCoreTotal };
 }
 
@@ -119,6 +123,9 @@ export async function applyDirectCoreXp(
       code_hidden: false,
     });
     if (insErr) return { error: insErr.message };
+    void syncAvatarStateAfterCoreXpChange(userId, supabase, 0, coreGain).catch((err) =>
+      console.warn("[applyDirectCoreXp] avatar state sync", err),
+    );
     return { newCoreTotal: coreGain };
   }
 
@@ -150,5 +157,8 @@ export async function applyDirectCoreXp(
     .eq("user_id", userId);
 
   if (e1) return { error: e1.message };
+  void syncAvatarStateAfterCoreXpChange(userId, supabase, currentCore, newCoreTotal).catch((err) =>
+    console.warn("[applyDirectCoreXp] avatar state sync", err),
+  );
   return { newCoreTotal };
 }

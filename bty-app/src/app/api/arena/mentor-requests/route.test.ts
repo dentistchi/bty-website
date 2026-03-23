@@ -15,8 +15,8 @@ vi.mock("@/lib/supabase-admin", () => ({
   getSupabaseAdmin: () => mockGetSupabaseAdmin(),
 }));
 
-function req() {
-  return new NextRequest("http://localhost/api/arena/mentor-requests");
+function req(url = "http://localhost/api/arena/mentor-requests") {
+  return new NextRequest(url);
 }
 
 describe("GET /api/arena/mentor-requests", () => {
@@ -62,20 +62,22 @@ describe("GET /api/arena/mentor-requests", () => {
       from: () => ({
         select: () => ({
           eq: () => ({
-            order: () =>
-              Promise.resolve({
-                data: [
-                  {
-                    id: "r1",
-                    user_id: "u1",
-                    status: "pending",
-                    message: null,
-                    mentor_id: "m1",
-                    created_at: "2026-01-01T00:00:00Z",
-                  },
-                ],
-                error: null,
-              }),
+            order: () => ({
+              limit: () =>
+                Promise.resolve({
+                  data: [
+                    {
+                      id: "r1",
+                      user_id: "u1",
+                      status: "pending",
+                      message: null,
+                      mentor_id: "m1",
+                      created_at: "2026-01-01T00:00:00Z",
+                    },
+                  ],
+                  error: null,
+                }),
+            }),
           }),
         }),
       }),
@@ -93,6 +95,45 @@ describe("GET /api/arena/mentor-requests", () => {
     });
   });
 
+  it("returns 200 with scope=all without status eq (all statuses, updated_at order)", async () => {
+    mockRequireAdminEmail.mockResolvedValue({ ok: true, user: { id: "a1" } });
+    mockGetSupabaseAdmin.mockReturnValue({
+      from: () => ({
+        select: () => ({
+          order: () => ({
+            limit: () =>
+              Promise.resolve({
+                data: [
+                  {
+                    id: "r2",
+                    user_id: "u2",
+                    status: "approved",
+                    message: null,
+                    mentor_id: "m1",
+                    created_at: "2026-01-02T00:00:00Z",
+                    updated_at: "2026-01-03T00:00:00Z",
+                    responded_at: "2026-01-03T00:00:00Z",
+                  },
+                ],
+                error: null,
+              }),
+          }),
+        }),
+      }),
+    });
+
+    const res = await GET(req("http://localhost/api/arena/mentor-requests?scope=all"));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.queue).toHaveLength(1);
+    expect(data.queue[0]).toMatchObject({
+      id: "r2",
+      userId: "u2",
+      status: "approved",
+      respondedAt: "2026-01-03T00:00:00Z",
+    });
+  });
+
   /** S82 C3: Supabase elite_mentor_requests 조회 실패 → 500. */
   it("returns 500 when elite_mentor_requests query fails", async () => {
     mockRequireAdminEmail.mockResolvedValue({ ok: true, user: { id: "a1" } });
@@ -100,11 +141,13 @@ describe("GET /api/arena/mentor-requests", () => {
       from: () => ({
         select: () => ({
           eq: () => ({
-            order: () =>
-              Promise.resolve({
-                data: null,
-                error: { message: "relation not found" },
-              }),
+            order: () => ({
+              limit: () =>
+                Promise.resolve({
+                  data: null,
+                  error: { message: "relation not found" },
+                }),
+            }),
           }),
         }),
       }),

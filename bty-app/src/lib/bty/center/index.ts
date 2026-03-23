@@ -28,3 +28,12 @@ export {
   type SubmitAssessmentInput,
   type SubmitAssessmentResult,
 } from "./assessmentService";
+
+export {
+  getCurrentPhase,
+  getHealingPhaseTrackerState,
+  advanceHealingPhase,
+  type HealingPhaseTrackerState,
+} from "./healingPhaseService";
+
+export { DEAR_ME_SUBMITTED_EVENT } from "./dearMeEvents";

@@ -167,6 +167,15 @@ export type Messages = {
     letterHistoryLoading: string;
     letterHistoryReplied: string;
     letterHistoryNoReply: string;
+    /** DearMeComposer — bty center API, 100–1000자 */
+    dearMeComposerRegionAria: string;
+    dearMeComposerCharCount: string;
+    dearMeComposerSubmit: string;
+    dearMeComposerSubmitting: string;
+    dearMeComposerSaved: string;
+    dearMeComposerLoadError: string;
+    dearMeComposerSubmitError: string;
+    dearMeComposerPreviousTitle: string;
     /** 답장 화면 하단 액션 그룹 접근성 라벨 (다시 쓰기·Center로) */
     replyActionsLabel: string;
     /** Dear Me 페이지 푸터(Center 링크) 영역 라벨 */
@@ -179,6 +188,21 @@ export type Messages = {
     centerSuspenseMainRegionAria: string;
     /** `/[locale]/center` `error.tsx` 경계 `<main>` 라벨 */
     centerErrorMainRegionAria: string;
+    /** 강제 리셋(Stage 4) · 48h 잠금 UX */
+    forcedResetRegionAria: string;
+    forcedResetBannerTitle: string;
+    forcedResetCountdownLive: string;
+    forcedResetArenaNavLabel: string;
+    forcedResetArenaBlockedHint: string;
+    forcedResetChecklistTitle: string;
+    forcedResetItemStabilize: string;
+    forcedResetItemBoundary: string;
+    forcedResetItemAccountability: string;
+    forcedResetProgress: string;
+    forcedResetReturnCta: string;
+    forcedResetSubmitting: string;
+    forcedResetError: string;
+    forcedResetWindowElapsed: string;
   };
   bty: {
     title: string;
@@ -229,6 +253,31 @@ export type Messages = {
     leaderboardMainRegionAria: string;
     /** `/[locale]/bty/leaderboard/loading` Suspense `<main>` 라벨 */
     leaderboardRouteSuspenseMainRegionAria: string;
+    /** Arena LeaderboardWidget — top 20 weekly + Core XP + reset countdown */
+    leaderboardWidgetRegionAria: string;
+    leaderboardWidgetTitle: string;
+    leaderboardWidgetResetCountdown: string;
+    leaderboardWidgetLoading: string;
+    leaderboardWidgetError: string;
+    leaderboardWidgetEmpty: string;
+    leaderboardWidgetTop20Aria: string;
+    /** AvatarRenderer — tier visual + Core XP bar (no weekly XP) */
+    avatarRendererRegionAria: string;
+    avatarRendererLoading: string;
+    avatarRendererError: string;
+    avatarRendererNextTierProgress: string;
+    avatarRendererMaxTier: string;
+    avatarRendererUnlockedBadges: string;
+    avatarRendererCoreXpLabel: string;
+    /** Core XP bar — `title` / SR: ledger ARENA·LAB·FOUNDRY·MENTOR % (AvatarRenderer). */
+    avatarRendererCoreXpSources: string;
+    /** Segmented strip — share of positive Core XP ledger by bucket (AvatarRenderer). */
+    avatarRendererCoreXpSegmentsAria: string;
+    avatarRendererXpArena: string;
+    avatarRendererXpLab: string;
+    avatarRendererXpFoundry: string;
+    avatarRendererXpMentor: string;
+    avatarRendererXpOther: string;
     /** `/[locale]/bty/(protected)/profile/loading` Suspense `<main>` 라벨 */
     profileRouteSuspenseMainRegionAria: string;
     /** 대시보드 히어로 부제 (한눈에 보기) */
@@ -280,6 +329,21 @@ export type Messages = {
     eliteMeContentUnlockedLabel: string;
     eliteMeContentUnlockedYes: string;
     eliteMeContentUnlockedNo: string;
+    /** Foundry EliteSpecWidget — Certified / mentor queue */
+    eliteSpecWidgetRegionAria: string;
+    eliteSpecWidgetCertifiedBadge: string;
+    eliteSpecWidgetCertifiedYes: string;
+    eliteSpecWidgetCertifiedNo: string;
+    eliteSpecWidgetLriHint: string;
+    eliteSpecWidgetQueueTitle: string;
+    eliteSpecWidgetQueueForbidden: string;
+    eliteSpecWidgetStatusPending: string;
+    eliteSpecWidgetStatusApproved: string;
+    eliteSpecWidgetStatusRejected: string;
+    eliteSpecWidgetApprove: string;
+    eliteSpecWidgetReject: string;
+    eliteSpecWidgetLoading: string;
+    eliteSpecWidgetError: string;
     /** LE 카드 내 TII·인증 요약 밴드 */
     leEngineTiiCertifiedBandAria: string;
     /** 시즌 카드: 주간 XP·이벤트·주간 구간 묶음 */
@@ -309,6 +373,15 @@ export type Messages = {
     /** Foundry 기능 카드 그리드 */
     foundryFeatureCardsRegionAria: string;
     foundryBackToBtyHome: string;
+    /** Foundry — 추천 프로그램 위젯 영역 */
+    programRecommenderWidgetRegionAria: string;
+    programRecommenderWidgetTitle: string;
+    programRecommenderWidgetLoading: string;
+    programRecommenderWidgetError: string;
+    programRecommenderWidgetEmpty: string;
+    programRecommenderWidgetLocked: string;
+    /** Foundry 프로그램 상세 페이지 메인 */
+    foundryProgramDetailMainAria: string;
     /** bty 인덱스: Arena·Center·Foundry 한 줄 설명 */
     indexThreeHubsExplainer: string;
     /** bty 인덱스: 세 허브 진입 카드 묶음 (landmark) */
@@ -331,7 +404,127 @@ export type Messages = {
     leStageResetDueLabel: string;
     leStageArenaSummaryHeading: string;
     leStageBehaviorHeading: string;
+    /** Leadership Engine 위젯 — AIR(14d)·TII·LRI·인증 배지 */
+    leadershipEngineWidgetRegionAria: string;
+    leadershipEngineWidgetTitle: string;
+    leadershipEngineAir14Aria: string;
+    leadershipEngineTiiAria: string;
+    leadershipEngineLriAria: string;
+    leadershipEngineReadinessReady: string;
+    leadershipEngineReadinessNotReady: string;
+    leadershipEngineCertifiedBadge: string;
+    leadershipEngineWidgetLoading: string;
+    leadershipEngineWidgetError: string;
+    leadershipEngineAirTrendSparklineAria: string;
+    leadershipEnginePromotionBlockedBadge: string;
+    leadershipEngineCertifiedExpiresIn: string;
+    /** Certified Leader — auto-renewal attempts after grant expiry */
+    leadershipEngineRenewalHistoryAria: string;
+    leadershipEngineRenewalEmpty: string;
+    leadershipEngineRenewalRowRenewed: string;
+    leadershipEngineRenewalRowNotRenewed: string;
+    leadershipEngineElitePendingBadge: string;
+    leadershipEngineEliteApprovedBadge: string;
+    leadershipEngineWeeklyStreak: string;
+    leadershipEngineWeeklyCompletion: string;
+    /** Overall integrity grade + composite (from integrity_score_cards) */
+    leadershipEngineIntegrityRegionAria: string;
+    leadershipEngineIntegrityLabel: string;
+    leadershipEngineEliteCta: string;
+    leadershipEngineEliteCtaBusy: string;
+    /** Dashboard TIIWidget — team health bar (team_integrity_index + Realtime) */
+    tiiWidgetRegionAria: string;
+    tiiWidgetTitle: string;
+    tiiWidgetHealthBarAria: string;
+    tiiWidgetBandRed: string;
+    tiiWidgetBandYellow: string;
+    tiiWidgetBandGreen: string;
+    tiiWidgetMembersLabel: string;
+    tiiWidgetLastCalculated: string;
+    tiiWidgetNoSnapshot: string;
+    tiiWidgetLoading: string;
+    tiiWidgetError: string;
+    tiiWidgetScorePct: string;
     leStageLoading: string;
+    /** Dashboard AIRTrendWidget — 30d sparkline, 7d avg, Certified countdown, Realtime warning */
+    airTrendWidgetRegionAria: string;
+    airTrendWidgetTitle: string;
+    airTrendWidgetSevenDayLabel: string;
+    airTrendWidgetSevenDayAria: string;
+    airTrendWidgetCertifiedExpiryPrefix: string;
+    airTrendWidgetWarningBanner: string;
+    airTrendWidgetLoading: string;
+    airTrendWidgetError: string;
+    /** Center WeeklyReportCard — weekly AIR report + phase gates */
+    weeklyReportCardRegionAria: string;
+    weeklyReportCardTitle: string;
+    weeklyReportCardWeekLabel: string;
+    weeklyReportCardCompletionLabel: string;
+    weeklyReportCardStreakLabel: string;
+    weeklyReportCardStreakDays: string;
+    weeklyReportCardFlagHero: string;
+    weeklyReportCardFlagIntegrity: string;
+    weeklyReportCardFlagClean: string;
+    weeklyReportCardFlagBarAria: string;
+    weeklyReportCardPhaseLabel: string;
+    weeklyReportCardResilienceLabel: string;
+    /** Weekly report — overall integrity grade (AIR/LRI/resilience weighted) */
+    weeklyReportCardIntegrityRegionAria: string;
+    weeklyReportCardIntegrityLabel: string;
+    /** Placeholders: {grade}, {score} */
+    weeklyReportCardIntegritySubline: string;
+    weeklyReportCardLoading: string;
+    weeklyReportCardError: string;
+    weeklyReportCardNoReport: string;
+    weeklyReportCardCtaStart: string;
+    /** Foundry MentorChatShell — Dr. Chi */
+    mentorChatShellRegionAria: string;
+    mentorChatShellTitle: string;
+    mentorChatShellPhaseBadge: string;
+    mentorChatShellFlagLabel: string;
+    mentorChatShellRecsCta: string;
+    mentorChatShellPlaceholder: string;
+    mentorChatShellSend: string;
+    mentorChatShellLoading: string;
+    mentorChatShellError: string;
+    /** Foundry DojoAssessmentShell — micro Likert assessment */
+    dojoAssessmentShellRegionAria: string;
+    dojoAssessmentShellLoading: string;
+    dojoAssessmentShellError: string;
+    dojoAssessmentShellProgress: string;
+    dojoAssessmentShellNext: string;
+    dojoAssessmentShellSubmit: string;
+    dojoAssessmentShellPass: string;
+    dojoAssessmentShellFail: string;
+    dojoAssessmentShellScoreLabel: string;
+    dojoAssessmentShellHintLabel: string;
+    dojoAssessmentShellReturnToFoundry: string;
+    dojoAssessmentShellLikert1: string;
+    dojoAssessmentShellLikert2: string;
+    dojoAssessmentShellLikert3: string;
+    dojoAssessmentShellLikert4: string;
+    /** Foundry ProgramProgressShell — modules + progress bar */
+    programProgressShellRegionAria: string;
+    programProgressShellLoading: string;
+    programProgressShellError: string;
+    programProgressShellPhaseLabel: string;
+    programProgressShellCompletionLabel: string;
+    programProgressShellModulesHeading: string;
+    programProgressShellModuleTap: string;
+    programProgressShellCompleteOverlay: string;
+    programProgressShellArenaCta: string;
+    programProgressShellDojoCta: string;
+    /** Center AwakeningMilestoneTracker — RENEWAL milestones */
+    awakeningMilestoneTrackerRegionAria: string;
+    awakeningMilestoneTrackerTitle: string;
+    awakeningMilestoneTrackerNextLabel: string;
+    awakeningMilestoneTrackerRenewalUnlocked: string;
+    awakeningMilestoneTrackerRenewalSub: string;
+    awakeningMilestoneTrackerDismiss: string;
+    awakeningMilestoneTrackerChatCta: string;
+    awakeningMilestoneTrackerCollapseChat: string;
+    awakeningMilestoneTrackerLoading: string;
+    awakeningMilestoneTrackerError: string;
   };
   /** 자존감 50문항 결과 화면 (Center assessment). */
   assessmentResult: {
@@ -726,6 +919,22 @@ export type Messages = {
     pathProgressBlockedCooldown: string;
     /** 선행 단계 미충족 등 */
     pathProgressBlockedPhase: string;
+    /** Center HealingPhaseTracker — 4단계 스테퍼 (인정→성찰→재통합→갱신) */
+    healingPhaseTrackerRegionAria: string;
+    healingPhaseTrackerTitle: string;
+    healingPhaseStep1: string;
+    healingPhaseStep2: string;
+    healingPhaseStep3: string;
+    healingPhaseStep4: string;
+    healingPhasePrompt1: string;
+    healingPhasePrompt2: string;
+    healingPhasePrompt3: string;
+    healingPhasePrompt4: string;
+    healingPhaseAdvanceCta: string;
+    healingPhaseAdvancing: string;
+    healingPhaseTrackerLoadError: string;
+    healingPhaseAdvanceError: string;
+    healingPhaseInputsHint: string;
   };
   /** 28일 훈련(Train) 사이드바·진도. */
   train: {
@@ -821,8 +1030,8 @@ export type Messages = {
     skipFollowUp: string;
     followUpSelected: string;
     step6Title: string;
-    /** Arena 런 메인 랜드마크 */
-    mainPlayLandmarkAria: string;
+    /** `/bty-arena/run` 본문 `<main>` — Lab·`/play`·`/record` 랜드마크 문구와 분리 */
+    arenaRunPageMainRegionAria: string;
     preparingNewScenarioAria: string;
     scenarioProgressPanelAria: string;
     reflectionBusyAria: string;
@@ -868,6 +1077,11 @@ export type Messages = {
     runPageBeginnerPathMainRegionAria: string;
     /** 시나리오 없음 빈 상태 */
     runPageNoScenarioMainRegionAria: string;
+    /** `/bty-arena/run` 에러 전용 셸 `<main>` — `runPageNoScenarioMainRegionAria`·Lab·`/play`·기록과 분리 */
+    arenaRunErrorMainRegionAria: string;
+    arenaRunErrorTitle: string;
+    arenaRunErrorDescription: string;
+    arenaRunErrorHint: string;
   };
   /** PROJECT_BACKLOG §8: 대시보드 감정 스탯 카드 빈 상태·에러 */
   emotionalStats: {
@@ -1030,6 +1244,14 @@ export type Messages = {
     arenaMissionResultLoadingMainRegionAria: string;
     /** `/bty-arena/result` 본문 `<main>` 랜드마크 */
     arenaMissionResultMainRegionAria: string;
+    /** `DelayedOutcomeBanner` — 7일 지연 결과 (ScenarioSessionShell) */
+    delayedOutcomeBannerRegionAria: string;
+    delayedOutcomeIntro: string;
+    delayedOutcomeDismiss: string;
+    delayedOutcomeFlagHeroTrap: string;
+    delayedOutcomeFlagIntegritySlip: string;
+    delayedOutcomeFlagClean: string;
+    delayedOutcomeFlagRoleMirror: string;
     /** `/bty-arena/play/resolve` 로딩 `<main>` 랜드마크 */
     arenaResolveSessionLoadingMainRegionAria: string;
     /** `/bty-arena/play/resolve` 본문 `<main>` 랜드마크 */
@@ -1038,6 +1260,8 @@ export type Messages = {
     arenaLabMainRegionAria: string;
     /** `/bty-arena/lab` — 일일 시도·남은 할당 (`role="region"` · record·play 랜드마크와 문구 분리) */
     arenaLabUsageRegionAria: string;
+    /** `/bty-arena/lab` — 다음 행동·Arena 복귀 (`role="region"` · `<nav>`와 중첩 · record·lobby CTA와 키 분리) */
+    arenaLabCtaRegionAria: string;
     /** `/bty-arena/lab` — Arena 런 선택으로 돌아가기 (`<nav>` · record CTA·하단 탭·미션 플레이와 분리) */
     arenaLabBackNavAria: string;
     arenaLabTitle: string;
@@ -1050,6 +1274,21 @@ export type Messages = {
     arenaLabBackToArena: string;
     /** 사용량 API 실패 시 기본 문구 */
     arenaLabUsageLoadError: string;
+    /** Lab 점수 카드 — `calculateArenaLabScore` 표시 (`{score}`·`{max}`) */
+    arenaLabScoreCardRegionAria: string;
+    arenaLabScoreTitle: string;
+    arenaLabScoreSlashMax: string;
+    arenaLabScoreDifficultyPrefix: string;
+    arenaLabScoreAttemptPrefix: string;
+    arenaLabScoreDifficultyEasy: string;
+    arenaLabScoreDifficultyMid: string;
+    arenaLabScoreDifficultyHard: string;
+    arenaLabScoreDifficultyExtreme: string;
+    /** Lab — 활성 시나리오 없음 (`ArenaLabEmptyState`) */
+    arenaLabEmptyRegionAria: string;
+    arenaLabEmptyTitle: string;
+    arenaLabEmptyMessage: string;
+    arenaLabEmptyHint: string;
     /** `/bty-arena/beginner` 시나리오 준비 중(첫 페인트) */
     arenaBeginnerPathInitMainRegionAria: string;
     /** `/bty-arena/beginner` 7단계 플로 `<main>` */
@@ -1506,12 +1745,34 @@ const ko: Messages = {
     letterHistoryLoading: "편지 이력을 불러오는 중…",
     letterHistoryReplied: "답장 있음",
     letterHistoryNoReply: "답장 없음",
+    dearMeComposerRegionAria: "Dear Me 편지 작성",
+    dearMeComposerCharCount: "{n} / 최소 100 · 최대 1000",
+    dearMeComposerSubmit: "편지 보내기",
+    dearMeComposerSubmitting: "저장 중…",
+    dearMeComposerSaved: "편지가 저장되었습니다",
+    dearMeComposerLoadError: "불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    dearMeComposerSubmitError: "저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    dearMeComposerPreviousTitle: "이전 편지",
     replyActionsLabel: "답장 후 액션",
     footerLabel: "Center로 돌아가기",
     dearMeSuspenseMainRegionAria: "Dear Me — 불러오는 중",
     dearMeErrorMainRegionAria: "Dear Me — 오류",
     centerSuspenseMainRegionAria: "Center — 불러오는 중",
     centerErrorMainRegionAria: "Center — 오류",
+    forcedResetRegionAria: "무결성 리셋 — 잠금·진단·복귀",
+    forcedResetBannerTitle: "Arena는 무결성 리셋 기간 동안 잠겨 있어요.",
+    forcedResetCountdownLive: "잠금 해제까지 남은 시간",
+    forcedResetArenaNavLabel: "Arena로 이동",
+    forcedResetArenaBlockedHint: "잠금 중에는 Arena로 이동할 수 없어요.",
+    forcedResetChecklistTitle: "Center 진단 체크리스트",
+    forcedResetItemStabilize: "호흡·신경계 안정 점검 완료",
+    forcedResetItemBoundary: "경계·회복 계획 확인 완료",
+    forcedResetItemAccountability: "책임·복귀 약속 정리 완료",
+    forcedResetProgress: "{done} / {total} 완료",
+    forcedResetReturnCta: "복귀 신청",
+    forcedResetSubmitting: "처리 중…",
+    forcedResetError: "복귀 신청을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    forcedResetWindowElapsed: "48시간 창이 지났어요. 아래 진단을 완료한 뒤 복귀를 신청하세요.",
   },
   bty: {
     title: "bty",
@@ -1545,6 +1806,27 @@ const ko: Messages = {
     dashboardShortcutWeeklyRanking: "주간 랭킹 보기",
     leaderboardMainRegionAria: "리더보드 카드·순위 목록",
     leaderboardRouteSuspenseMainRegionAria: "리더보드 — 불러오는 중",
+    leaderboardWidgetRegionAria: "주간 XP 상위 20명",
+    leaderboardWidgetTitle: "주간 리더보드 (상위 20)",
+    leaderboardWidgetResetCountdown: "주간 초기화까지",
+    leaderboardWidgetLoading: "순위 불러오는 중…",
+    leaderboardWidgetError: "리더보드를 불러오지 못했습니다.",
+    leaderboardWidgetEmpty: "아직 순위 데이터가 없습니다.",
+    leaderboardWidgetTop20Aria: "주간 XP 상위 20명 목록",
+    avatarRendererRegionAria: "아바타 표시 티어",
+    avatarRendererLoading: "아바타 불러오는 중…",
+    avatarRendererError: "아바타 상태를 불러오지 못했습니다.",
+    avatarRendererNextTierProgress: "다음 티어까지 (Core XP)",
+    avatarRendererMaxTier: "최고 티어",
+    avatarRendererUnlockedBadges: "해금 자산",
+    avatarRendererCoreXpLabel: "Core XP",
+    avatarRendererCoreXpSources: "Core XP 출처",
+    avatarRendererCoreXpSegmentsAria: "획득 Core XP 대비 출처 비율",
+    avatarRendererXpArena: "ARENA",
+    avatarRendererXpLab: "LAB",
+    avatarRendererXpFoundry: "FOUNDRY",
+    avatarRendererXpMentor: "MENTOR",
+    avatarRendererXpOther: "기타",
     profileRouteSuspenseMainRegionAria: "프로필 — 불러오는 중",
     dashboardHeroSubtitle: "Arena 진행을 한눈에 볼 수 있어요.",
     dashboardWeeklyRankWidgetTitle: "이번 주 랭킹",
@@ -1587,6 +1869,20 @@ const ko: Messages = {
     eliteMeContentUnlockedLabel: "Elite 전용 콘텐츠 해금 (me/elite)",
     eliteMeContentUnlockedYes: "예",
     eliteMeContentUnlockedNo: "아니오",
+    eliteSpecWidgetRegionAria: "Elite — 인증·멘토 신청 큐",
+    eliteSpecWidgetCertifiedBadge: "Certified Leader",
+    eliteSpecWidgetCertifiedYes: "인증됨 (리더십 엔진 기준)",
+    eliteSpecWidgetCertifiedNo: "미인증",
+    eliteSpecWidgetLriHint: "LRI·Certified 판정은 서버·도메인 단일 기준입니다.",
+    eliteSpecWidgetQueueTitle: "Dr. Chi 1:1 신청 큐",
+    eliteSpecWidgetQueueForbidden: "멘토/관리자만 큐를 볼 수 있어요.",
+    eliteSpecWidgetStatusPending: "대기",
+    eliteSpecWidgetStatusApproved: "승인",
+    eliteSpecWidgetStatusRejected: "거절",
+    eliteSpecWidgetApprove: "승인",
+    eliteSpecWidgetReject: "거절",
+    eliteSpecWidgetLoading: "불러오는 중…",
+    eliteSpecWidgetError: "불러오지 못했습니다.",
     leEngineTiiCertifiedBandAria: "팀 TII·AIR 요약·인증 상태",
     weeklySeasonActivityAria: "시즌·주간 XP 및 이벤트 수",
     dashboardPageTitle: "대시보드",
@@ -1602,6 +1898,13 @@ const ko: Messages = {
     btyIndexMainRegionAria: "bty 메인 — Arena·Center·Foundry 허브",
     foundryFeatureCardsRegionAria: "Dojo·역지사지·멘토·대시보드·Elite 연결",
     foundryBackToBtyHome: "← bty 메인",
+    programRecommenderWidgetRegionAria: "추천 학습 프로그램",
+    programRecommenderWidgetTitle: "추천 프로그램",
+    programRecommenderWidgetLoading: "불러오는 중…",
+    programRecommenderWidgetError: "추천을 불러오지 못했습니다.",
+    programRecommenderWidgetEmpty: "아직 추천된 프로그램이 없습니다. Arena·힐링 활동 후 다시 확인해 보세요.",
+    programRecommenderWidgetLocked: "잠금 — Arena에서 해금",
+    foundryProgramDetailMainAria: "Foundry 프로그램 상세",
     indexThreeHubsExplainer: "Arena는 시나리오·랭킹, Center는 쉼·편지, Foundry는 대시보드·멘토·연습입니다.",
     indexHubEntriesRegionAria: "Arena·Center·Foundry 허브 선택",
     pointsTodaySubline: "오늘(UTC 기준) 획득한 XP입니다.",
@@ -1617,7 +1920,115 @@ const ko: Messages = {
     leStageResetDueLabel: "Reset 완료 기한",
     leStageArenaSummaryHeading: "Arena 결과 요약",
     leStageBehaviorHeading: "행동 패턴",
+    leadershipEngineWidgetRegionAria: "리더십 엔진 — AIR·TII·LRI",
+    leadershipEngineWidgetTitle: "Leadership Engine",
+    leadershipEngineAir14Aria: "AIR 최근 14일",
+    leadershipEngineTiiAria: "팀 무결성 지수 TII",
+    leadershipEngineLriAria: "LRI 준비도",
+    leadershipEngineReadinessReady: "준비됨",
+    leadershipEngineReadinessNotReady: "준비 중",
+    leadershipEngineCertifiedBadge: "Certified Leader — AIR 14일 80% 이상",
+    leadershipEngineWidgetLoading: "리더십 지표 불러오는 중…",
+    leadershipEngineWidgetError: "지표를 불러오지 못했습니다.",
+    leadershipEngineAirTrendSparklineAria: "AIR 30일 추세",
+    leadershipEnginePromotionBlockedBadge: "승진 보류",
+    leadershipEngineCertifiedExpiresIn: "Certified 만료까지",
+    leadershipEngineRenewalHistoryAria: "Certified 인증 갱신 시도 기록",
+    leadershipEngineRenewalEmpty: "갱신 시도 기록이 없습니다.",
+    leadershipEngineRenewalRowRenewed: "갱신됨",
+    leadershipEngineRenewalRowNotRenewed: "갱신 안 됨",
+    leadershipEngineElitePendingBadge: "Elite Spec 심사 대기",
+    leadershipEngineEliteApprovedBadge: "Elite Spec 승인됨",
+    leadershipEngineWeeklyStreak: "주간 연속",
+    leadershipEngineWeeklyCompletion: "주간 완료율",
+    leadershipEngineIntegrityRegionAria: "전체 무결성 등급",
+    leadershipEngineIntegrityLabel: "무결성 종합",
+    leadershipEngineEliteCta: "Elite 후보 등록",
+    leadershipEngineEliteCtaBusy: "등록 중…",
+    tiiWidgetRegionAria: "팀 무결성 지수 TII — 팀 건강도",
+    tiiWidgetTitle: "팀 무결성 지수 (TII)",
+    tiiWidgetHealthBarAria: "TII 팀 건강도 막대. 빨강 0–59, 노랑 60–79, 초록 80–100.",
+    tiiWidgetBandRed: "주의 (0–59)",
+    tiiWidgetBandYellow: "양호 (60–79)",
+    tiiWidgetBandGreen: "건강 (80–100)",
+    tiiWidgetMembersLabel: "점수에 반영된 팀원 수",
+    tiiWidgetLastCalculated: "마지막 계산",
+    tiiWidgetNoSnapshot: "아직 TII 스냅샷이 없습니다.",
+    tiiWidgetLoading: "TII 불러오는 중…",
+    tiiWidgetError: "TII를 불러오지 못했습니다.",
+    tiiWidgetScorePct: "{pct}%",
     leStageLoading: "스테이지 요약 불러오는 중…",
+    airTrendWidgetRegionAria: "AIR 30일 추세",
+    airTrendWidgetTitle: "AIR 추세 (30일)",
+    airTrendWidgetSevenDayLabel: "최근 7일 평균",
+    airTrendWidgetSevenDayAria: "최근 7일 AIR 평균 점수",
+    airTrendWidgetCertifiedExpiryPrefix: "Certified Leader 만료까지",
+    airTrendWidgetWarningBanner: "AIR 롤링 추세가 연속 하락 중입니다. 활동 패턴을 점검해 보세요.",
+    airTrendWidgetLoading: "AIR 추세 불러오는 중…",
+    airTrendWidgetError: "AIR 추세를 불러오지 못했습니다.",
+    weeklyReportCardRegionAria: "주간 AIR 리포트",
+    weeklyReportCardTitle: "주간 리포트",
+    weeklyReportCardWeekLabel: "주간 (UTC 월요일 기준)",
+    weeklyReportCardCompletionLabel: "시나리오 완료율",
+    weeklyReportCardStreakLabel: "연속 플레이",
+    weeklyReportCardStreakDays: "{n}일",
+    weeklyReportCardFlagHero: "히어로 트랩",
+    weeklyReportCardFlagIntegrity: "무결성 이탈",
+    weeklyReportCardFlagClean: "클린·기타",
+    weeklyReportCardFlagBarAria: "플래그 유형 비율",
+    weeklyReportCardPhaseLabel: "힐링 단계 진행",
+    weeklyReportCardResilienceLabel: "회복력 지수",
+    weeklyReportCardIntegrityRegionAria: "전체 무결성 등급",
+    weeklyReportCardIntegrityLabel: "전체 무결성 등급",
+    weeklyReportCardIntegritySubline: "등급 {grade} · 종합 {score}점 (AIR·LRI·회복력 가중)",
+    weeklyReportCardLoading: "주간 리포트 불러오는 중…",
+    weeklyReportCardError: "주간 리포트를 불러오지 못했습니다.",
+    weeklyReportCardNoReport: "아직 이번 주 리포트가 없습니다. 잠시 후 다시 확인해 주세요.",
+    weeklyReportCardCtaStart: "센터 진단 시작",
+    mentorChatShellRegionAria: "Dr. Chi 멘토 채팅",
+    mentorChatShellTitle: "Dr. Chi",
+    mentorChatShellPhaseBadge: "힐링 단계",
+    mentorChatShellFlagLabel: "플래그",
+    mentorChatShellRecsCta: "Foundry 프로그램 추천 보기",
+    mentorChatShellPlaceholder: "메시지를 입력하세요…",
+    mentorChatShellSend: "보내기",
+    mentorChatShellLoading: "세션 준비 중…",
+    mentorChatShellError: "채팅을 불러오지 못했습니다.",
+    dojoAssessmentShellRegionAria: "Foundry Dojo 미니 역량 진단",
+    dojoAssessmentShellLoading: "진단을 준비하는 중…",
+    dojoAssessmentShellError: "진단을 불러오지 못했습니다.",
+    dojoAssessmentShellProgress: "문항 {current} / {total}",
+    dojoAssessmentShellNext: "다음",
+    dojoAssessmentShellSubmit: "제출",
+    dojoAssessmentShellPass: "합격",
+    dojoAssessmentShellFail: "미합격",
+    dojoAssessmentShellScoreLabel: "영역 점수",
+    dojoAssessmentShellHintLabel: "개선 힌트",
+    dojoAssessmentShellReturnToFoundry: "Foundry 프로그램으로 돌아가기",
+    dojoAssessmentShellLikert1: "전혀 그렇지 않다",
+    dojoAssessmentShellLikert2: "그렇지 않다",
+    dojoAssessmentShellLikert3: "그렇다",
+    dojoAssessmentShellLikert4: "매우 그렇다",
+    programProgressShellRegionAria: "Foundry 프로그램 진행",
+    programProgressShellLoading: "진행 정보를 불러오는 중…",
+    programProgressShellError: "불러오지 못했습니다.",
+    programProgressShellPhaseLabel: "단계",
+    programProgressShellCompletionLabel: "완료율",
+    programProgressShellModulesHeading: "모듈",
+    programProgressShellModuleTap: "탭하여 완료",
+    programProgressShellCompleteOverlay: "프로그램을 완료했습니다",
+    programProgressShellArenaCta: "Arena로 돌아가기",
+    programProgressShellDojoCta: "Dojo 평가 시작",
+    awakeningMilestoneTrackerRegionAria: "어웨이크닝 마일스톤",
+    awakeningMilestoneTrackerTitle: "RENEWAL 어웨이크닝 마일스톤",
+    awakeningMilestoneTrackerNextLabel: "다음 목표",
+    awakeningMilestoneTrackerRenewalUnlocked: "RENEWAL 배지 해금",
+    awakeningMilestoneTrackerRenewalSub: "네 가지 마일스톤을 모두 완료했습니다.",
+    awakeningMilestoneTrackerDismiss: "닫기",
+    awakeningMilestoneTrackerChatCta: "Dr. Chi와 대화하기",
+    awakeningMilestoneTrackerCollapseChat: "채팅 접기",
+    awakeningMilestoneTrackerLoading: "마일스톤 불러오는 중…",
+    awakeningMilestoneTrackerError: "마일스톤을 불러오지 못했습니다.",
   },
   assessmentResult: {
     mainContentRegionAria: "진단 결과 요약: 영역별 점수·권장 트랙",
@@ -2001,6 +2412,26 @@ const ko: Messages = {
     healingActsOverallProgressAria: "Awakening 액트 기록 진행률",
     healingActsOverallProgressCaption: "기록된 액트",
     healingActsOverallProgressValuetext: "{done}개 중 {total}개 기록됨, 진행률 {pct}퍼센트",
+    healingPhaseTrackerRegionAria: "힐링 여정 — 네 단계 진행",
+    healingPhaseTrackerTitle: "치유 여정 단계",
+    healingPhaseStep1: "인정",
+    healingPhaseStep2: "성찰",
+    healingPhaseStep3: "재통합",
+    healingPhaseStep4: "갱신",
+    healingPhasePrompt1:
+      "자기 자존감 진단을 완료해 지금의 나를 인정하는 출발점을 세우세요. (Center 50문항 1회 이상)",
+    healingPhasePrompt2:
+      "Dear Me 편지로 감정과 생각을 말로 옮겨 성찰을 깊게 하세요. (진단 1회 + 편지 1통 이상)",
+    healingPhasePrompt3:
+      "Awakening 첫 액트를 기록해 새로운 통합로로 나아가세요. (진단·편지 + 액트 1 완료)",
+    healingPhasePrompt4:
+      "Awakening 세 액트를 모두 기록해 여정을 갱신하고 마무리하세요. (액트 1·2·3 완료)",
+    healingPhaseAdvanceCta: "다음 단계로 진행",
+    healingPhaseAdvancing: "진행 중…",
+    healingPhaseTrackerLoadError: "단계 정보를 불러오지 못했어요.",
+    healingPhaseAdvanceError: "다음 단계로 넘어가지 못했어요. 조건을 확인해 주세요.",
+    healingPhaseInputsHint:
+      "요약: 진단 {a}회 · 편지 {l}통 · 액트 기록 {aw}개 (개인 점수는 표시하지 않습니다)",
   },
   train: {
     title: "28일 훈련",
@@ -2083,7 +2514,7 @@ const ko: Messages = {
     skipFollowUp: "따라하기 건너뛰기 · 다음 시나리오",
     followUpSelected: "선택한 따라하기",
     step6Title: "Step 6 · 정리",
-    mainPlayLandmarkAria: "Arena 시나리오 플레이",
+    arenaRunPageMainRegionAria: "Arena 런 — 시나리오 허브·선택·성찰·이력",
     preparingNewScenarioAria: "새 시나리오 준비 중",
     scenarioProgressPanelAria: "시나리오 진행·완료",
     reflectionBusyAria: "반영 제출 중",
@@ -2122,6 +2553,11 @@ const ko: Messages = {
     runPageLevelCheckMainRegionAria: "미션 실행 — 레벨·세션 확인 중",
     runPageBeginnerPathMainRegionAria: "입문 경로로 이동 중",
     runPageNoScenarioMainRegionAria: "미션 실행 — 시나리오 없음",
+    arenaRunErrorMainRegionAria: "Arena 런 — 오류",
+    arenaRunErrorTitle: "문제가 발생했습니다",
+    arenaRunErrorDescription:
+      "Arena 런을 불러오지 못했어요. 연결을 확인한 뒤 다시 시도해 주세요.",
+    arenaRunErrorHint: "계속되면 페이지를 새로고침해 보세요.",
   },
   emotionalStats: {
     emptyMessage: "아직 기록이 없어요. Arena나 챗에서 대화를 진행해 보세요.",
@@ -2261,10 +2697,18 @@ const ko: Messages = {
     arenaMissionPlayDecisionsRegionAria: "미션 플레이 — 시나리오·선택·의도 확정·결과 확정",
     arenaMissionResultLoadingMainRegionAria: "미션 결과 — 불러오는 중",
     arenaMissionResultMainRegionAria: "미션 결과 — 결정 기록·해석·다음 행동",
+    delayedOutcomeBannerRegionAria: "7일 지연 결과",
+    delayedOutcomeIntro: "7일 전 당신의 선택이 결과를 만들었습니다.",
+    delayedOutcomeDismiss: "닫기",
+    delayedOutcomeFlagHeroTrap: "히어로 트랩",
+    delayedOutcomeFlagIntegritySlip: "무결성 이탈",
+    delayedOutcomeFlagClean: "클린",
+    delayedOutcomeFlagRoleMirror: "역할 거울",
     arenaResolveSessionLoadingMainRegionAria: "세션 복원 — 불러오는 중",
     arenaResolveSessionMainRegionAria: "세션 복원 — 새 시나리오·선택·성찰",
     arenaLabMainRegionAria: "리더십 Lab — 일일 시도·남은 횟수",
     arenaLabUsageRegionAria: "리더십 Lab — 오늘 시도·남은 할당",
+    arenaLabCtaRegionAria: "리더십 Lab — 다음 행동 — Arena 런으로",
     arenaLabBackNavAria: "리더십 Lab — Arena 런 선택으로 이동",
     arenaLabTitle: "Leadership Lab",
     arenaLabLead: "오늘 하루 3회까지 시나리오를 완료하면 Core XP를 얻을 수 있습니다.",
@@ -2273,6 +2717,19 @@ const ko: Messages = {
     arenaLabUsedPrefix: "사용한 횟수: ",
     arenaLabBackToArena: "← Arena로 돌아가기",
     arenaLabUsageLoadError: "불러오지 못했습니다.",
+    arenaLabScoreCardRegionAria: "리더십 Lab — 난이도·시도별 점수",
+    arenaLabScoreTitle: "Lab 점수",
+    arenaLabScoreSlashMax: "{score} / {max}점",
+    arenaLabScoreDifficultyPrefix: "난이도",
+    arenaLabScoreAttemptPrefix: "시도",
+    arenaLabScoreDifficultyEasy: "쉬움",
+    arenaLabScoreDifficultyMid: "중간",
+    arenaLabScoreDifficultyHard: "어려움",
+    arenaLabScoreDifficultyExtreme: "극한",
+    arenaLabEmptyRegionAria: "리더십 Lab — 활성 시나리오 없음",
+    arenaLabEmptyTitle: "진행할 시나리오가 없어요",
+    arenaLabEmptyMessage: "Arena에서 시나리오를 선택한 뒤 Lab에서 이어갈 수 있어요.",
+    arenaLabEmptyHint: "Arena 런 화면으로 돌아가 시나리오를 시작해 보세요.",
     arenaBeginnerPathInitMainRegionAria: "입문 경로 — 시나리오 준비 중",
     arenaBeginnerPathMainRegionAria: "입문 경로 — 상황·감정·결정·성찰",
     arenaBeginnerPathCompleteMainRegionAria: "입문 경로 — 결과 요약",
@@ -2715,12 +3172,34 @@ const en: Messages = {
     letterHistoryLoading: "Loading letter history…",
     letterHistoryReplied: "Replied",
     letterHistoryNoReply: "No reply",
+    dearMeComposerRegionAria: "Dear Me letter composer",
+    dearMeComposerCharCount: "{n} / min 100 · max 1000",
+    dearMeComposerSubmit: "Send letter",
+    dearMeComposerSubmitting: "Saving…",
+    dearMeComposerSaved: "Your letter was saved",
+    dearMeComposerLoadError: "Could not load. Please try again.",
+    dearMeComposerSubmitError: "Could not save. Please try again.",
+    dearMeComposerPreviousTitle: "Previous letters",
     replyActionsLabel: "Actions after reply",
     footerLabel: "Back to Center",
     dearMeSuspenseMainRegionAria: "Dear Me — loading",
     dearMeErrorMainRegionAria: "Dear Me — error",
     centerSuspenseMainRegionAria: "Center — loading",
     centerErrorMainRegionAria: "Center — error",
+    forcedResetRegionAria: "Integrity reset — lockout, diagnostics, return",
+    forcedResetBannerTitle: "Arena is locked during the integrity reset window.",
+    forcedResetCountdownLive: "Time remaining until unlock",
+    forcedResetArenaNavLabel: "Go to Arena",
+    forcedResetArenaBlockedHint: "Arena navigation is disabled while locked.",
+    forcedResetChecklistTitle: "Center diagnostic checklist",
+    forcedResetItemStabilize: "Breathing & nervous-system stabilization check done",
+    forcedResetItemBoundary: "Boundaries & recovery plan confirmed",
+    forcedResetItemAccountability: "Accountability & return commitment captured",
+    forcedResetProgress: "{done} / {total} complete",
+    forcedResetReturnCta: "Request return",
+    forcedResetSubmitting: "Submitting…",
+    forcedResetError: "Could not complete return request. Please try again.",
+    forcedResetWindowElapsed: "The 48-hour window has passed. Finish the checklist below, then request return.",
   },
   bty: {
     title: "bty",
@@ -2754,6 +3233,27 @@ const en: Messages = {
     dashboardShortcutWeeklyRanking: "View weekly ranking",
     leaderboardMainRegionAria: "Leaderboard cards and ranking list",
     leaderboardRouteSuspenseMainRegionAria: "Leaderboard — loading",
+    leaderboardWidgetRegionAria: "Top 20 weekly XP",
+    leaderboardWidgetTitle: "Weekly leaderboard (top 20)",
+    leaderboardWidgetResetCountdown: "Weekly reset in",
+    leaderboardWidgetLoading: "Loading rankings…",
+    leaderboardWidgetError: "Could not load leaderboard.",
+    leaderboardWidgetEmpty: "No rankings yet.",
+    leaderboardWidgetTop20Aria: "Top 20 weekly XP list",
+    avatarRendererRegionAria: "Avatar display tier",
+    avatarRendererLoading: "Loading avatar…",
+    avatarRendererError: "Could not load avatar state.",
+    avatarRendererNextTierProgress: "Progress to next tier (Core XP)",
+    avatarRendererMaxTier: "Max tier",
+    avatarRendererUnlockedBadges: "Unlocked assets",
+    avatarRendererCoreXpLabel: "Core XP",
+    avatarRendererCoreXpSources: "Core XP by source",
+    avatarRendererCoreXpSegmentsAria: "Core XP earned by source (share)",
+    avatarRendererXpArena: "ARENA",
+    avatarRendererXpLab: "LAB",
+    avatarRendererXpFoundry: "FOUNDRY",
+    avatarRendererXpMentor: "MENTOR",
+    avatarRendererXpOther: "Other",
     profileRouteSuspenseMainRegionAria: "Profile — loading",
     dashboardHeroSubtitle: "Your arena progress at a glance.",
     dashboardWeeklyRankWidgetTitle: "Weekly XP & ranking",
@@ -2796,6 +3296,20 @@ const en: Messages = {
     eliteMeContentUnlockedLabel: "Elite-only content (me/elite)",
     eliteMeContentUnlockedYes: "Yes",
     eliteMeContentUnlockedNo: "No",
+    eliteSpecWidgetRegionAria: "Elite — certification and mentor request queue",
+    eliteSpecWidgetCertifiedBadge: "Certified Leader",
+    eliteSpecWidgetCertifiedYes: "Certified (leadership engine rules)",
+    eliteSpecWidgetCertifiedNo: "Not certified",
+    eliteSpecWidgetLriHint: "LRI and Certified status follow server/domain rules.",
+    eliteSpecWidgetQueueTitle: "Dr. Chi 1:1 request queue",
+    eliteSpecWidgetQueueForbidden: "Only mentors/admins can view the queue.",
+    eliteSpecWidgetStatusPending: "Pending",
+    eliteSpecWidgetStatusApproved: "Approved",
+    eliteSpecWidgetStatusRejected: "Rejected",
+    eliteSpecWidgetApprove: "Approve",
+    eliteSpecWidgetReject: "Reject",
+    eliteSpecWidgetLoading: "Loading…",
+    eliteSpecWidgetError: "Could not load.",
     leEngineTiiCertifiedBandAria: "Team TII, AIR summary, and certification",
     weeklySeasonActivityAria: "Season and weekly XP, event count",
     dashboardPageTitle: "Dashboard",
@@ -2811,6 +3325,13 @@ const en: Messages = {
     btyIndexMainRegionAria: "bty home — Arena, Center, Foundry hubs",
     foundryFeatureCardsRegionAria: "Links to Dojo, Integrity, mentor, dashboard, Elite",
     foundryBackToBtyHome: "← bty home",
+    programRecommenderWidgetRegionAria: "Recommended learning programs",
+    programRecommenderWidgetTitle: "Recommended programs",
+    programRecommenderWidgetLoading: "Loading…",
+    programRecommenderWidgetError: "Could not load recommendations.",
+    programRecommenderWidgetEmpty: "No recommendations yet. Play Arena or progress healing, then check back.",
+    programRecommenderWidgetLocked: "Locked — unlock in Arena",
+    foundryProgramDetailMainAria: "Foundry program detail",
     indexThreeHubsExplainer: "Arena: scenarios & ranking. Center: rest & letters. Foundry: dashboard, mentor & practice.",
     indexHubEntriesRegionAria: "Arena, Center, and Foundry hub links",
     pointsTodaySubline: "XP earned today (UTC date).",
@@ -2826,7 +3347,116 @@ const en: Messages = {
     leStageResetDueLabel: "Reset due",
     leStageArenaSummaryHeading: "Arena summary",
     leStageBehaviorHeading: "Behavior pattern",
+    leadershipEngineWidgetRegionAria: "Leadership Engine — AIR, TII, LRI",
+    leadershipEngineWidgetTitle: "Leadership Engine",
+    leadershipEngineAir14Aria: "AIR (14 days)",
+    leadershipEngineTiiAria: "Team Integrity Index (TII)",
+    leadershipEngineLriAria: "LRI readiness",
+    leadershipEngineReadinessReady: "Ready",
+    leadershipEngineReadinessNotReady: "Building",
+    leadershipEngineCertifiedBadge: "Certified Leader — AIR 14d at or above 80%",
+    leadershipEngineWidgetLoading: "Loading leadership metrics…",
+    leadershipEngineWidgetError: "Could not load leadership metrics.",
+    leadershipEngineAirTrendSparklineAria: "AIR 30-day trend",
+    leadershipEnginePromotionBlockedBadge: "Promotion blocked",
+    leadershipEngineCertifiedExpiresIn: "Certified expires in",
+    leadershipEngineRenewalHistoryAria: "Certified Leader renewal attempts",
+    leadershipEngineRenewalEmpty: "No renewal attempts yet.",
+    leadershipEngineRenewalRowRenewed: "Renewed",
+    leadershipEngineRenewalRowNotRenewed: "Not renewed",
+    leadershipEngineElitePendingBadge: "Elite Spec pending review",
+    leadershipEngineEliteApprovedBadge: "Elite Spec approved",
+    leadershipEngineWeeklyStreak: "Weekly streak",
+    leadershipEngineWeeklyCompletion: "Weekly completion",
+    leadershipEngineIntegrityRegionAria: "Overall integrity grade",
+    leadershipEngineIntegrityLabel: "Integrity composite",
+    leadershipEngineEliteCta: "Register as Elite candidate",
+    leadershipEngineEliteCtaBusy: "Submitting…",
+    tiiWidgetRegionAria: "Team Integrity Index — team health",
+    tiiWidgetTitle: "Team Integrity Index (TII)",
+    tiiWidgetHealthBarAria: "TII health bar: red 0–59, yellow 60–79, green 80–100.",
+    tiiWidgetBandRed: "At risk (0–59)",
+    tiiWidgetBandYellow: "Fair (60–79)",
+    tiiWidgetBandGreen: "Healthy (80–100)",
+    tiiWidgetMembersLabel: "Members included in team average",
+    tiiWidgetLastCalculated: "Last calculated",
+    tiiWidgetNoSnapshot: "No TII snapshot yet.",
+    tiiWidgetLoading: "Loading TII…",
+    tiiWidgetError: "Could not load TII.",
+    tiiWidgetScorePct: "{pct}%",
     leStageLoading: "Loading stage summary…",
+    airTrendWidgetRegionAria: "AIR 30-day trend",
+    airTrendWidgetTitle: "AIR trend (30 days)",
+    airTrendWidgetSevenDayLabel: "Last 7-day average",
+    airTrendWidgetSevenDayAria: "Last 7-day average AIR score",
+    airTrendWidgetCertifiedExpiryPrefix: "Certified Leader expires in",
+    airTrendWidgetWarningBanner:
+      "Your 7-day rolling AIR has declined for several days in a row. Consider reviewing your activation pattern.",
+    airTrendWidgetLoading: "Loading AIR trend…",
+    airTrendWidgetError: "Could not load AIR trend.",
+    weeklyReportCardRegionAria: "Weekly AIR report",
+    weeklyReportCardTitle: "Weekly report",
+    weeklyReportCardWeekLabel: "Week (UTC Monday)",
+    weeklyReportCardCompletionLabel: "Scenario completion",
+    weeklyReportCardStreakLabel: "Play streak",
+    weeklyReportCardStreakDays: "{n} days",
+    weeklyReportCardFlagHero: "Hero trap",
+    weeklyReportCardFlagIntegrity: "Integrity slip",
+    weeklyReportCardFlagClean: "Clean / other",
+    weeklyReportCardFlagBarAria: "Flag type mix",
+    weeklyReportCardPhaseLabel: "Healing phase progress",
+    weeklyReportCardResilienceLabel: "Resilience score",
+    weeklyReportCardIntegrityRegionAria: "Overall integrity grade",
+    weeklyReportCardIntegrityLabel: "Overall integrity",
+    weeklyReportCardIntegritySubline: "Grade {grade} · composite {score} (weighted AIR, LRI, resilience)",
+    weeklyReportCardLoading: "Loading weekly report…",
+    weeklyReportCardError: "Could not load weekly report.",
+    weeklyReportCardNoReport: "No report for this week yet. Check back soon.",
+    weeklyReportCardCtaStart: "Start Center assessment",
+    mentorChatShellRegionAria: "Dr. Chi mentor chat",
+    mentorChatShellTitle: "Dr. Chi",
+    mentorChatShellPhaseBadge: "Healing phase",
+    mentorChatShellFlagLabel: "Flag",
+    mentorChatShellRecsCta: "View Foundry program recommendations",
+    mentorChatShellPlaceholder: "Type a message…",
+    mentorChatShellSend: "Send",
+    mentorChatShellLoading: "Preparing session…",
+    mentorChatShellError: "Could not load chat.",
+    dojoAssessmentShellRegionAria: "Foundry Dojo micro skill check",
+    dojoAssessmentShellLoading: "Preparing assessment…",
+    dojoAssessmentShellError: "Could not load assessment.",
+    dojoAssessmentShellProgress: "Question {current} of {total}",
+    dojoAssessmentShellNext: "Next",
+    dojoAssessmentShellSubmit: "Submit",
+    dojoAssessmentShellPass: "Passed",
+    dojoAssessmentShellFail: "Not passed",
+    dojoAssessmentShellScoreLabel: "Area score",
+    dojoAssessmentShellHintLabel: "Improvement hint",
+    dojoAssessmentShellReturnToFoundry: "Back to Foundry programs",
+    dojoAssessmentShellLikert1: "Strongly disagree",
+    dojoAssessmentShellLikert2: "Disagree",
+    dojoAssessmentShellLikert3: "Agree",
+    dojoAssessmentShellLikert4: "Strongly agree",
+    programProgressShellRegionAria: "Foundry program progress",
+    programProgressShellLoading: "Loading progress…",
+    programProgressShellError: "Could not load.",
+    programProgressShellPhaseLabel: "Phase",
+    programProgressShellCompletionLabel: "Completion",
+    programProgressShellModulesHeading: "Modules",
+    programProgressShellModuleTap: "Tap to complete",
+    programProgressShellCompleteOverlay: "Program complete",
+    programProgressShellArenaCta: "Back to Arena",
+    programProgressShellDojoCta: "Start Dojo assessment",
+    awakeningMilestoneTrackerRegionAria: "Awakening milestones",
+    awakeningMilestoneTrackerTitle: "RENEWAL awakening milestones",
+    awakeningMilestoneTrackerNextLabel: "Next focus",
+    awakeningMilestoneTrackerRenewalUnlocked: "RENEWAL badge unlocked",
+    awakeningMilestoneTrackerRenewalSub: "You completed all four milestones.",
+    awakeningMilestoneTrackerDismiss: "Dismiss",
+    awakeningMilestoneTrackerChatCta: "Chat with Dr. Chi",
+    awakeningMilestoneTrackerCollapseChat: "Collapse chat",
+    awakeningMilestoneTrackerLoading: "Loading milestones…",
+    awakeningMilestoneTrackerError: "Could not load milestones.",
   },
   assessmentResult: {
     mainContentRegionAria: "Assessment result: scores and recommended track",
@@ -3211,6 +3841,26 @@ const en: Messages = {
     healingActsOverallProgressAria: "Awakening acts completion progress",
     healingActsOverallProgressCaption: "Acts recorded",
     healingActsOverallProgressValuetext: "{done} of {total} acts recorded, {pct} percent",
+    healingPhaseTrackerRegionAria: "Healing journey — four steps",
+    healingPhaseTrackerTitle: "Healing journey phases",
+    healingPhaseStep1: "Acknowledgment",
+    healingPhaseStep2: "Reflection",
+    healingPhaseStep3: "Re-integration",
+    healingPhaseStep4: "Renewal",
+    healingPhasePrompt1:
+      "Complete the self-esteem assessment to acknowledge where you are. (At least one Center 50-item submission.)",
+    healingPhasePrompt2:
+      "Write a Dear Me letter to reflect in words. (Assessment + at least one letter.)",
+    healingPhasePrompt3:
+      "Record Awakening act 1 to move toward re-integration. (Assessment, letter + act 1.)",
+    healingPhasePrompt4:
+      "Record all three Awakening acts to renew and close the arc. (Acts 1, 2, 3 complete.)",
+    healingPhaseAdvanceCta: "Continue to next phase",
+    healingPhaseAdvancing: "Continuing…",
+    healingPhaseTrackerLoadError: "Could not load phase information.",
+    healingPhaseAdvanceError: "Could not advance. Check that requirements are met.",
+    healingPhaseInputsHint:
+      "Summary: {a} assessment(s) · {l} letter(s) · {aw} act(s) recorded (no individual scores shown)",
   },
   train: {
     title: "28-Day Training",
@@ -3293,7 +3943,7 @@ const en: Messages = {
     skipFollowUp: "Skip follow-up · Next scenario",
     followUpSelected: "FOLLOW-UP SELECTED",
     step6Title: "Step 6 · Consolidation",
-    mainPlayLandmarkAria: "Arena scenario play",
+    arenaRunPageMainRegionAria: "Arena mission run — scenario hub, choices, reflection, history",
     preparingNewScenarioAria: "Preparing new scenario",
     scenarioProgressPanelAria: "Scenario progress and result",
     reflectionBusyAria: "Submitting reflection",
@@ -3332,6 +3982,11 @@ const en: Messages = {
     runPageLevelCheckMainRegionAria: "Mission run — checking level and session",
     runPageBeginnerPathMainRegionAria: "Redirecting to beginner path",
     runPageNoScenarioMainRegionAria: "Mission run — no scenario",
+    arenaRunErrorMainRegionAria: "Arena run — error",
+    arenaRunErrorTitle: "Something went wrong",
+    arenaRunErrorDescription:
+      "We couldn’t load the Arena run. Check your connection and try again.",
+    arenaRunErrorHint: "If this keeps happening, refresh the page.",
   },
   emotionalStats: {
     emptyMessage: "No records yet. Try Arena or chat to start.",
@@ -3472,10 +4127,18 @@ const en: Messages = {
       "Mission play — scenario copy, primary choice, intent lock-in, resolve",
     arenaMissionResultLoadingMainRegionAria: "Mission result — loading",
     arenaMissionResultMainRegionAria: "Mission result — decision record, interpretation, next actions",
+    delayedOutcomeBannerRegionAria: "7-day delayed outcome",
+    delayedOutcomeIntro: "A choice from one week ago shaped this outcome.",
+    delayedOutcomeDismiss: "Dismiss",
+    delayedOutcomeFlagHeroTrap: "Hero Trap",
+    delayedOutcomeFlagIntegritySlip: "Integrity Slip",
+    delayedOutcomeFlagClean: "Clean",
+    delayedOutcomeFlagRoleMirror: "Role mirror",
     arenaResolveSessionLoadingMainRegionAria: "Restore session — loading",
     arenaResolveSessionMainRegionAria: "Restore session — new scenario, choices, reflection",
     arenaLabMainRegionAria: "Leadership Lab — daily attempts and remaining uses",
     arenaLabUsageRegionAria: "Leadership Lab — today's attempts and remaining quota",
+    arenaLabCtaRegionAria: "Leadership Lab — next actions — back to Arena run",
     arenaLabBackNavAria: "Leadership Lab — return to Arena run picker",
     arenaLabTitle: "Leadership Lab",
     arenaLabLead: "Complete up to 3 scenarios per day to earn Core XP.",
@@ -3484,6 +4147,19 @@ const en: Messages = {
     arenaLabUsedPrefix: "Used: ",
     arenaLabBackToArena: "← Back to Arena",
     arenaLabUsageLoadError: "Could not load usage.",
+    arenaLabScoreCardRegionAria: "Leadership Lab — score by difficulty and attempt",
+    arenaLabScoreTitle: "Lab score",
+    arenaLabScoreSlashMax: "{score} / {max} pts",
+    arenaLabScoreDifficultyPrefix: "Difficulty",
+    arenaLabScoreAttemptPrefix: "Attempt",
+    arenaLabScoreDifficultyEasy: "Easy",
+    arenaLabScoreDifficultyMid: "Mid",
+    arenaLabScoreDifficultyHard: "Hard",
+    arenaLabScoreDifficultyExtreme: "Extreme",
+    arenaLabEmptyRegionAria: "Leadership Lab — no active scenario",
+    arenaLabEmptyTitle: "No scenario to continue",
+    arenaLabEmptyMessage: "Pick a scenario in Arena, then continue here in the Lab.",
+    arenaLabEmptyHint: "Go back to the Arena run screen to start a scenario.",
     arenaBeginnerPathInitMainRegionAria: "Beginner path — preparing scenario",
     arenaBeginnerPathMainRegionAria: "Beginner path — situation, emotion, decision, reflection",
     arenaBeginnerPathCompleteMainRegionAria: "Beginner path — your result",

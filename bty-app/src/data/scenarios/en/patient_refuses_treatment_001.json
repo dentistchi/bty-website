@@ -1,0 +1,30 @@
+{
+  "id": "patient_refuses_treatment_001",
+  "locale": "en",
+  "title": "Patient Refuses Necessary Treatment Due to Cost",
+  "body": "A patient diagnosed with advanced periodontal disease needs treatment. They decline after hearing the total cost.",
+  "scenario_type": "clinical_cost_pressure",
+  "difficulty": 2,
+  "choices": [
+    {
+      "id": "A",
+      "text": "Emphasize consequences and recommend they proceed.",
+      "flag_type": "integrity_push"
+    },
+    {
+      "id": "B",
+      "text": "Pause and explore what would need to change.",
+      "flag_type": "empathy_explore"
+    },
+    {
+      "id": "C",
+      "text": "Offer phased treatment starting with the most critical part.",
+      "flag_type": "compromise_path"
+    },
+    {
+      "id": "D",
+      "text": "Defer and let them think about it.",
+      "flag_type": "defer"
+    }
+  ]
+}

@@ -413,15 +413,20 @@ const HISTORY_SLICE = 8;
 export function buildChatMessagesForModel(
   conversationMessages: { role: string; content: string }[],
   mode: ChatMode,
-  lang: string
+  lang: string,
+  options?: { mentorContextPrefix?: string; embedFoundryFewShotInSystem?: boolean },
 ): OpenAIChatMessage[] {
   const lastUserContent = conversationMessages
     .filter((m) => m.role === "user")
     .map((m) => String(m.content ?? "").trim())
     .filter(Boolean)
     .pop();
-  const systemContent = buildSystemPrompt(mode, lang, lastUserContent);
-  const useFewShot = conversationMessages.length <= 6;
+  const baseSystem = buildSystemPrompt(mode, lang, lastUserContent);
+  const prefix = options?.mentorContextPrefix?.trim();
+  const systemContent =
+    prefix && prefix.length > 0 ? `${prefix}\n\n${baseSystem}` : baseSystem;
+  const useFewShot =
+    conversationMessages.length <= 6 && !options?.embedFoundryFewShotInSystem;
   const fewShot = useFewShot ? getFewShotForMode(mode) : [];
   const history = conversationMessages
     .slice(-HISTORY_SLICE)

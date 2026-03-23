@@ -12,6 +12,8 @@ export interface LeaderboardRowProps {
   subName?: string | null;
   /** Weekly XP value (rendered as-is from API). */
   weeklyXp: number;
+  /** Lifetime Core XP (optional; shown under weekly when set — ordering still weekly-only). */
+  coreXpTotal?: number | null;
   /** Avatar URL (optional). When null, UserAvatar shows fallback. Used when avatarLayers is not provided. */
   avatarUrl?: string | null;
   /** Character + outfit layers for stacked avatar display (§3). When set, UserAvatar uses layer composition. */
@@ -35,6 +37,7 @@ export function LeaderboardRow({
   codeName,
   subName,
   weeklyXp,
+  coreXpTotal,
   avatarUrl,
   avatarLayers,
   tier,
@@ -48,15 +51,23 @@ export function LeaderboardRow({
     typeof locale === "string"
       ? weeklyXp.toLocaleString(locale === "ko" ? "ko-KR" : "en-US")
       : weeklyXp.toLocaleString();
+  const formattedCore =
+    coreXpTotal != null && Number.isFinite(coreXpTotal)
+      ? typeof locale === "string"
+        ? coreXpTotal.toLocaleString(locale === "ko" ? "ko-KR" : "en-US")
+        : coreXpTotal.toLocaleString()
+      : null;
 
   const isKo = locale === "ko";
   const tierBit =
     tier && tier !== "Code Name" ? (isKo ? `, 티어 ${tier}` : `, tier ${tier}`) : "";
   const tieAria =
     tieRankSuffix != null && tieRankSuffix !== "" ? `, ${tieRankSuffix}` : "";
+  const coreAria =
+    formattedCore != null ? (isKo ? `, Core XP ${formattedCore}` : `, Core XP ${formattedCore}`) : "";
   const rowAriaLabel = isKo
-    ? `순위 ${rank}${tieAria}, ${displayName}${tierBit}, 주간 XP ${formattedXp}${isMe ? ", 나" : ""}`
-    : `Rank ${rank}${tieAria}, ${displayName}${tierBit}, ${formattedXp} Weekly XP${isMe ? ", You" : ""}`;
+    ? `순위 ${rank}${tieAria}, ${displayName}${tierBit}, 주간 XP ${formattedXp}${coreAria}${isMe ? ", 나" : ""}`
+    : `Rank ${rank}${tieAria}, ${displayName}${tierBit}, ${formattedXp} Weekly XP${coreAria}${isMe ? ", You" : ""}`;
   const statsGroupAria = isKo ? "주간 XP 및 티어" : "Weekly XP and tier";
   return (
     <div
@@ -114,6 +125,12 @@ export function LeaderboardRow({
       <div role="group" aria-label={statsGroupAria} style={{ textAlign: "right" }}>
         <div style={{ fontWeight: 900, fontSize: 18 }}>{formattedXp}</div>
         <div style={{ fontSize: 12, opacity: 0.7 }}>{isKo ? "주간 XP" : "Weekly XP"}</div>
+        {formattedCore != null ? (
+          <>
+            <div style={{ fontWeight: 700, fontSize: 14, marginTop: 6 }}>{formattedCore}</div>
+            <div style={{ fontSize: 11, opacity: 0.65 }}>{isKo ? "Core XP (영구)" : "Core XP (lifetime)"}</div>
+          </>
+        ) : null}
       </div>
     </div>
   );

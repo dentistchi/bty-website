@@ -503,9 +503,17 @@ export function resolveDisplayAvatarLayers(
     characterImageUrl = effectiveOutfit.imageUrl;
     return { characterImageUrl, outfitImageUrl: null };
   }
+  const bodyTypeForOutfit =
+    avatarCharacterId != null
+      ? getAvatarCharacter(avatarCharacterId)?.bodyType ?? null
+      : null;
+
   return {
     characterImageUrl,
-    outfitImageUrl: characterImageUrl && effectiveOutfit.imageUrl ? effectiveOutfit.imageUrl : null,
+    outfitImageUrl:
+      characterImageUrl && effectiveOutfit.imageUrl
+        ? getOutfitImageUrlForBodyType(effectiveOutfit.outfitId, bodyTypeForOutfit)
+        : null,
   };
 }
 
@@ -617,3 +625,14 @@ export function profileToAvatarCompositeKeys(fields: ProfileAvatarFields): Avata
     : [];
   return { characterKey, theme, outfitKey, accessoryKeys };
 }
+
+/** Static overlay manifest: `public/avatars/outfits` — body A–D + four color variant slots. */
+export {
+  avatarOutfits,
+  OUTFIT_BODY_TYPES,
+  OUTFIT_COLOR_VARIANTS,
+  type AvatarOutfitManifestEntry,
+  type OutfitBodyTypeId,
+  type OutfitColorVariantId,
+  type OutfitRarityTier,
+} from "./avatar-outfits-manifest";

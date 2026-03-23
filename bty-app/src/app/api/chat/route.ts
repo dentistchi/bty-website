@@ -22,16 +22,34 @@ import {
   type ChatMode,
   type ChatResponseBody,
 } from "@/lib/bty/chat";
+import { getLastChoiceFlagType } from "@/engine/scenario/scenario-stats.service";
 import { recordActivityXp } from "@/lib/bty/arena/activityXp";
 import { detectEmotionalEventFromText, recordEmotionalEventServer } from "@/lib/bty/emotional-stats";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { recordQualityEventApp } from "@/lib/bty/quality";
 import { checkRateLimit, getClientIdentifier } from "@/lib/rate-limit";
 import { logApiError } from "@/lib/log-api-error";
+import {
+  buildMentorContext,
+  mentorContextToSystemPromptPrefix,
+} from "@/engine/rag/mentor-context.service";
+import { injectExamplesIntoContext } from "@/engine/mentor/mentor-example-bank.service";
+import { expandContextByPhase } from "@/engine/mentor/mentor-rag-expander.service";
+import { getCurrentPhase } from "@/engine/healing/healing-phase.service";
 
 export type { ChatMode } from "@/lib/bty/chat";
 
 const RATE_LIMIT_PER_MINUTE = 60;
+
+async function withFlagType(
+  body: ChatResponseBody,
+  userId: string | undefined,
+): Promise<ChatResponseBody> {
+  if (!userId) return { ...body, flag_type: null };
+  const supabase = await getSupabaseServerClient();
+  const flag_type = await getLastChoiceFlagType(userId, supabase);
+  return { ...body, flag_type };
+}
 
 export async function POST(request: Request) {
   const id = getClientIdentifier(request);
@@ -44,6 +62,12 @@ export async function POST(request: Request) {
   }
 
   try {
+    const supabaseSession = await getSupabaseServerClient();
+    const {
+      data: { user: sessionChatUser },
+    } = await supabaseSession.auth.getUser();
+    const chatUserId = sessionChatUser?.id;
+
     const body = (await request.json()) as { messages?: { role: string; content: string }[]; mode?: unknown; lang?: string };
     const messages = Array.isArray(body.messages) ? body.messages : [];
     const userContent = messages.filter((m) => m.role === "user").pop()?.content;
@@ -57,29 +81,69 @@ export async function POST(request: Request) {
     // PROJECT_BACKLOG §9, CHATBOT_TRAINING_CHECKLIST §3: 메타 질문 → 고정 답변
     if (isMetaQuestion(userContent)) {
       const message = getMetaReply(lang);
-      return NextResponse.json({ message, mode } satisfies ChatResponseBody);
+      return NextResponse.json(
+        await withFlagType({ message, mode } satisfies ChatResponseBody, chatUserId),
+      );
     }
 
     // CHATBOT_TRAINING_CHECKLIST §4·ROADMAP: BTY·Foundry·Center 소개 질문 → 고정 답변 (토큰 절약)
     const introKind = getIntroQuestionKind(userContent);
     if (introKind) {
       const message = getIntroReply(introKind, lang);
-      return NextResponse.json({ message, mode } satisfies ChatResponseBody);
+      return NextResponse.json(
+        await withFlagType({ message, mode } satisfies ChatResponseBody, chatUserId),
+      );
     }
 
     // Phase 1-1: 낮은 자존감 → Center 안전 밸브 (우선)
     if (isLowSelfEsteemSignal(userContent)) {
       const message = getSafetyValveMessage(lang);
-      return NextResponse.json({ message, suggestCenter: true } satisfies Partial<ChatResponseBody>);
+      return NextResponse.json(
+        await withFlagType(
+          { message, suggestCenter: true } satisfies Partial<ChatResponseBody>,
+          chatUserId,
+        ),
+      );
     }
 
     // Phase 1-2: 학습/연습 필요 → Foundry(멘토·역지사지) 링크 제안 — 전역
     if (isFoundryRecommendSignal(userContent)) {
       const message = getFoundryRecommendMessage(lang);
-      return NextResponse.json({ message, suggestFoundry: true } satisfies Partial<ChatResponseBody>);
+      return NextResponse.json(
+        await withFlagType(
+          { message, suggestFoundry: true } satisfies Partial<ChatResponseBody>,
+          chatUserId,
+        ),
+      );
     }
 
-    const messagesForModel = buildChatMessagesForModel(messages, mode, lang);
+    const supabaseForMentor = await getSupabaseServerClient();
+    const { data: mentorUser } = await supabaseForMentor.auth.getUser();
+    let mentorContextPrefix = "";
+    if (
+      mentorUser?.user?.id &&
+      (mode === "foundry" || mode === "center")
+    ) {
+      const mentorLocale = lang === "ko" ? "ko" : "en";
+      let mentorCtx = await injectExamplesIntoContext(
+        await buildMentorContext(mentorUser.user.id, supabaseForMentor),
+        { locale: mentorLocale, supabase: supabaseForMentor },
+      );
+      if (mode === "foundry") {
+        const phase =
+          mentorCtx.phase ??
+          (await getCurrentPhase(mentorUser.user.id, supabaseForMentor)) ??
+          "ACKNOWLEDGEMENT";
+        mentorCtx = expandContextByPhase(mentorCtx, phase, mentorLocale);
+      }
+      mentorContextPrefix = mentorContextToSystemPromptPrefix(mentorCtx);
+    }
+
+    const messagesForModel = buildChatMessagesForModel(messages, mode, lang, {
+      mentorContextPrefix: mentorContextPrefix || undefined,
+      embedFoundryFewShotInSystem:
+        mode === "foundry" && !!mentorContextPrefix.trim(),
+    });
     const fallback = getFallbackMessage(mode, lang);
 
     const apiKey = process.env.OPENAI_API_KEY;
@@ -128,7 +192,9 @@ export async function POST(request: Request) {
               );
             }
           }
-          return NextResponse.json({ message: text, mode } satisfies ChatResponseBody);
+          return NextResponse.json(
+            await withFlagType({ message: text, mode } satisfies ChatResponseBody, chatUserId),
+          );
         }
         recordQualityEventApp({ route: "chat", reason: "empty_response", mode, lang });
       } else {
@@ -151,11 +217,16 @@ export async function POST(request: Request) {
         );
       }
     }
-    return NextResponse.json({
-      message: fallback,
-      mode,
-      usedFallback: true,
-    } satisfies ChatResponseBody);
+    return NextResponse.json(
+      await withFlagType(
+        {
+          message: fallback,
+          mode,
+          usedFallback: true,
+        } satisfies ChatResponseBody,
+        chatUserId,
+      ),
+    );
   } catch (e) {
     logApiError("chat", 500, e);
     recordQualityEventApp({ route: "chat", reason: "error" });

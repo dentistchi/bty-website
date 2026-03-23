@@ -25,4 +25,10 @@ describe("lib/bty/center re-export hub", () => {
     expect(typeof center.submitAssessment).toBe("function");
     expect(typeof center.getAssessmentHistory).toBe("function");
   });
+
+  it("exports healing phase: getCurrentPhase, getHealingPhaseTrackerState, advanceHealingPhase", () => {
+    expect(typeof center.getCurrentPhase).toBe("function");
+    expect(typeof center.getHealingPhaseTrackerState).toBe("function");
+    expect(typeof center.advanceHealingPhase).toBe("function");
+  });
 });
