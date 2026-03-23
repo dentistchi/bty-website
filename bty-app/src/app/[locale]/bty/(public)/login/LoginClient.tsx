@@ -92,6 +92,9 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
           </label>
           <input
             id="login-email"
+            name="email"
+            type="email"
+            inputMode="email"
             data-testid="login-email-input"
             className="w-full border rounded-lg px-3 py-2 mb-3"
             placeholder="you@example.com"
@@ -105,6 +108,7 @@ export default function LoginClient({ nextPath, locale }: { nextPath: string; lo
           </label>
           <input
             id="login-password"
+            name="password"
             data-testid="login-password-input"
             className="w-full border rounded-lg px-3 py-2 mb-3"
             placeholder="••••••••"

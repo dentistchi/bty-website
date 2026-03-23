@@ -1,5 +1,7 @@
 # 현재 작업 (CURRENT_TASK)
 
+**Client-safe avatar/healing imports (2026-03-22):** [x] **`avatar-outfit-unlock-data`** + **`avatar-equip-conflict`** — manifest/UI에서 `next/headers` 체인 제거 · **`healing-phase` / `avatar-state` / `avatar-assets` / `awakening-phase` / `healing-content`** — `getSupabaseAdmin` 폴백 · **`npx tsc --noEmit`** ✓ · **완료.**
+
 **E2E engine request-scope + integrity FK (2026-03-22):** [x] **`program-recommender`** — `getSupabaseAdmin()` fallback (no `cookies()`) · **`routeHealingToFoundry`** `deps.supabase` + **`session-lifecycle`** / **`ejection-recovery`** / **`e2e-loop-validator`** 전달 · **`supabaseServer`** 주석 · **`integrity-score-card`** `auth.users` 존재 시에만 persist · **`getProgramProgress`** 서비스 롤/주입 필수 · **`npx tsc --noEmit`** ✓ · **완료.**
 
 **E2E smoke fixture alignment (2026-03-22):** [x] **`resolveE2ETestUserId`** — `E2E_FIXTURE_USER_ID` → `SMOKE_*` / `LOOP_*` → **`FIXTURE_USER_ID`** · **`seedFixtureUser`** seeds resolved user + **`unlockedAssetsForTier(1)`** · **`fetchAnyEnScenarioId`** 공유 (`full-system-smoke-test`) · **`npx tsc --noEmit`** ✓ · **완료.**

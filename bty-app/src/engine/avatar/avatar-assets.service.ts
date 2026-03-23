@@ -5,7 +5,17 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AvatarTier, AvatarTierUpgradedPayload } from "./avatar-state.service";
-import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+
+function resolveAssetsClient(supabase?: SupabaseClient): SupabaseClient {
+  const c = supabase ?? getSupabaseAdmin();
+  if (!c) {
+    throw new Error(
+      "[avatar-assets] Pass supabase (e.g. getSupabaseServerClient from a route handler) or set SUPABASE_SERVICE_ROLE_KEY.",
+    );
+  }
+  return c;
+}
 
 export type AssetUnlockMap = Record<AvatarTier, string[]>;
 
@@ -93,7 +103,7 @@ export async function getUnlockedAssets(
   userId: string,
   supabase?: SupabaseClient,
 ): Promise<string[]> {
-  const client = supabase ?? (await getSupabaseServerClient());
+  const client = resolveAssetsClient(supabase);
 
   const { data: rows, error } = await client
     .from("user_avatar_assets")
@@ -124,7 +134,7 @@ export async function getOutfitTintByAssetId(
   userId: string,
   supabase?: SupabaseClient,
 ): Promise<Record<string, string>> {
-  const client = supabase ?? (await getSupabaseServerClient());
+  const client = resolveAssetsClient(supabase);
 
   const { data, error } = await client
     .from("user_avatar_assets")

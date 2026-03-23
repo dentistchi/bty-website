@@ -4,8 +4,8 @@
  * Setup 성공 = 로그인 후 /en/bty-arena 보호 페이지 실제 접근 가능할 때만 state 저장.
  *
  * Login route: `src/app/[locale]/bty/(public)/login/` → **`/{locale}/bty/login`**
- * (e.g. `/en/bty/login`). `data-testid="login-page"` lives on `LoginClient` root; we wait on
- * `#login-email` instead so CI still passes if the shell hydrates slowly or the wrapper is skipped.
+ * (e.g. `/en/bty/login`). `data-testid="login-page"` / `login-email-input` on `LoginClient`; we wait on
+ * `#login-email` or `data-testid=login-email-input` so CI passes if the (public) route loading shell shows first.
  *
  * Middleware: authenticated users hitting `/bty/login` are redirected to `/bty` — clear cookies first.
  */

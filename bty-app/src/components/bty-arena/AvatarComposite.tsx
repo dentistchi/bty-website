@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 import type { BodyType } from "@/lib/bty/arena/avatarCharacters";
 import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
 import { getOutfitImageUrlForBodyType, parseCompositeOutfitKey } from "@/lib/bty/arena/avatarOutfits";
-import { getManifestForTier } from "@/engine/avatar/avatar-manifest.service";
+/** Tier slot cap only — import tier module so this client bundle does not pull `resolveCompositeAssets`. */
+import { getManifestForTier } from "@/engine/avatar/avatar-manifest-tier";
 import type { AvatarTier } from "@/engine/avatar/avatar-state.service";
 
 /**

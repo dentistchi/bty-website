@@ -4,7 +4,17 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+
+function resolveAvatarClient(supabase?: SupabaseClient): SupabaseClient {
+  const c = supabase ?? getSupabaseAdmin();
+  if (!c) {
+    throw new Error(
+      "[avatar-state] Pass supabase (e.g. getSupabaseServerClient from a route handler) or set SUPABASE_SERVICE_ROLE_KEY.",
+    );
+  }
+  return c;
+}
 import {
   getOutfitTintByAssetId,
   persistTierUnlockAssetsFromEvent,
@@ -191,7 +201,7 @@ export async function getAvatarState(
   userId: string,
   supabase?: SupabaseClient,
 ): Promise<AvatarState> {
-  const client = supabase ?? (await getSupabaseServerClient());
+  const client = resolveAvatarClient(supabase);
 
   const { data: row, error } = await client
     .from("user_avatar_state")

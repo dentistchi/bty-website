@@ -7,8 +7,17 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAIRTrend } from "@/engine/integrity/air-trend.service";
 import { getScenarioStats } from "@/engine/scenario/scenario-stats.service";
 import { getPhaseGateStatus } from "@/engine/healing/healing-content.service";
-import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+
+function resolveAwakeningClient(supabase?: SupabaseClient): SupabaseClient {
+  const c = supabase ?? getSupabaseAdmin();
+  if (!c) {
+    throw new Error(
+      "[awakening-phase] Pass supabase (e.g. getSupabaseServerClient from a route handler) or set SUPABASE_SERVICE_ROLE_KEY.",
+    );
+  }
+  return c;
+}
 
 export type AwakeningConditionType =
   | "streak"
@@ -195,7 +204,7 @@ async function fetchStoredMilestoneIds(
   userId: string,
   supabase?: SupabaseClient,
 ): Promise<Set<string>> {
-  const client = supabase ?? (await getSupabaseServerClient());
+  const client = resolveAwakeningClient(supabase);
   const { data, error } = await client
     .from("user_awakening_milestones")
     .select("milestone_id")
@@ -217,7 +226,7 @@ export async function persistNewlyCompletedMilestones(
   supabase?: SupabaseClient,
   preloaded?: MilestoneEvaluationContext,
 ): Promise<void> {
-  const client = supabase ?? (await getSupabaseServerClient());
+  const client = resolveAwakeningClient(supabase);
   const ctx = preloaded ?? (await loadEvaluationContext(userId, client));
   const live = satisfiedIds(ctx);
   const stored = await fetchStoredMilestoneIds(userId, client);
@@ -249,7 +258,7 @@ export async function getAwakeningProgress(
   userId: string,
   supabase?: SupabaseClient,
 ): Promise<AwakeningProgress> {
-  const client = supabase ?? (await getSupabaseServerClient());
+  const client = resolveAwakeningClient(supabase);
   const ctx = await loadEvaluationContext(userId, client);
   await persistNewlyCompletedMilestones(userId, client, ctx);
 

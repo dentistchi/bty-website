@@ -4,7 +4,17 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+
+function resolveHealingClient(supabase?: SupabaseClient): SupabaseClient {
+  const c = supabase ?? getSupabaseAdmin();
+  if (!c) {
+    throw new Error(
+      "[healing-phase] Pass supabase (e.g. getSupabaseServerClient from a route handler) or set SUPABASE_SERVICE_ROLE_KEY.",
+    );
+  }
+  return c;
+}
 
 /** Ordered healing phases (Center / integrity recovery). */
 export const HEALING_PHASE_ORDER = [
@@ -68,7 +78,7 @@ export async function assignHealingPhaseOnCenterDiagnosticComplete(
   supabase?: SupabaseClient,
   options?: { force?: boolean },
 ): Promise<HealingPhase> {
-  const client = supabase ?? (await getSupabaseServerClient());
+  const client = resolveHealingClient(supabase);
   const { slipLogCount, lockoutCount } = await fetchSeverityCounts(client, userId);
   const phase = computeHealingPhaseFromSeverity(slipLogCount, lockoutCount);
 
@@ -117,7 +127,7 @@ export async function getCurrentPhase(
   userId: string,
   supabase?: SupabaseClient,
 ): Promise<HealingPhase | null> {
-  const client = supabase ?? (await getSupabaseServerClient());
+  const client = resolveHealingClient(supabase);
   const { data, error } = await client
     .from("user_healing_phase")
     .select("phase")
@@ -136,7 +146,7 @@ export async function advancePhase(
   userId: string,
   supabase?: SupabaseClient,
 ): Promise<HealingPhase> {
-  const client = supabase ?? (await getSupabaseServerClient());
+  const client = resolveHealingClient(supabase);
   const current = await getCurrentPhase(userId, client);
   const start: HealingPhase = current ?? "ACKNOWLEDGEMENT";
   const idx = HEALING_PHASE_ORDER.indexOf(start);

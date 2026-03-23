@@ -6,7 +6,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AvatarManifestTierId } from "@/engine/avatar/avatar-manifest.service";
 import { getOutfitLayers } from "@/engine/avatar/avatar-manifest.service";
-import { assetTypeForEquipConflict } from "@/engine/avatar/avatar-outfit-unlock.service";
+import { assetTypeForEquipConflict } from "@/engine/avatar/avatar-equip-conflict";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export const EQUIPPED_SLOT_COUNT = 5 as const;

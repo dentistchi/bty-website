@@ -4,7 +4,17 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+
+function resolveHealingContentClient(supabase?: SupabaseClient): SupabaseClient {
+  const c = supabase ?? getSupabaseAdmin();
+  if (!c) {
+    throw new Error(
+      "[healing-content] Pass supabase (e.g. getSupabaseServerClient from a route handler) or set SUPABASE_SERVICE_ROLE_KEY.",
+    );
+  }
+  return c;
+}
 import type { HealingJourneyPhaseId } from "@/domain/center/healingPhase";
 import {
   HEALING_PHASE_ORDER,
@@ -90,7 +100,7 @@ export async function getPhaseGateStatus(
   phase: HealingPhase,
   supabase?: SupabaseClient,
 ): Promise<PhaseGateStatus> {
-  const client = supabase ?? (await getSupabaseServerClient());
+  const client = resolveHealingContentClient(supabase);
   const requiredList = PHASE_GATE_MAP[phase];
   const required = requiredList.length;
 

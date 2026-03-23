@@ -89,18 +89,23 @@ async function fetchSessionAfterLogin(retries = 3, delayMs = 120): Promise<Sessi
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   // ✅ 로그인/공개 페이지에서는 세션 자동조회 자체를 하지 않음 (401 노이즈 제거)
+  // pathname이 아직 null이면(SSR/첫 클라이언트 틱) 세션 조회를 건너뜀 — CI/E2E에서 폼이 막히지 않게 함
   const skipInitialSessionCheck =
-    pathname?.includes("/bty/login") ||
-    pathname?.includes("/admin/login");
+    pathname == null ||
+    pathname.includes("/bty/login") ||
+    pathname.includes("/admin/login");
 
-  // ✅ 랜딩·Arena·Center는 먼저 화면 띄우고 세션은 백그라운드에서 조회 (로딩에 막히지 않음)
+  // ✅ 랜딩·Arena·Center·로그인은 먼저 화면 띄우고 세션은 백그라운드에서 조회 (로딩에 막히지 않음)
+  // pathname이 아직 null이면(라우터 준비 전) 공개 첫 페인트로 간주해 loading=false 유지
   const isPublicFirstPaint =
+    pathname == null ||
     pathname === "/en" ||
     pathname === "/en/" ||
     pathname === "/ko" ||
     pathname === "/ko/" ||
-    pathname?.includes("/center") ||
-    pathname?.includes("/bty-arena");
+    pathname.includes("/center") ||
+    pathname.includes("/bty-arena") ||
+    pathname.includes("/bty/login");
 
   const [user, setUser] = useState<AuthUser>(null);
   const [loading, setLoading] = useState(!isPublicFirstPaint);
