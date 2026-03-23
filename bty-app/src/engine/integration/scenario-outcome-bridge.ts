@@ -13,6 +13,7 @@ import {
 import { handleMirrorTrigger } from "@/engine/integration/scenario-mirror-bridge";
 import { validateXPAward, type XPAwardResult } from "@/engine/integration/xp-integrity-bridge";
 import { adjustDifficultyFloorFromChoiceConfirmed } from "@/engine/scenario/scenario-difficulty-adjuster.service";
+import { appendPlayedScenarioId } from "@/engine/scenario/user-scenario-played-append.service";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export type ChoiceConfirmedEvent = {
@@ -90,6 +91,8 @@ export async function handleChoiceConfirmed(
     flagType: event.flagType,
     playedAt: event.playedAt,
   });
+
+  await appendPlayedScenarioId(userId, event.scenarioId);
 
   const [xpAwardCore, xpAwardWeekly] = await Promise.all([
     validateXPAward(userId, "core", event.xp.core),

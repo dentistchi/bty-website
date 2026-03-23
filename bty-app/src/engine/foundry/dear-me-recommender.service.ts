@@ -9,7 +9,16 @@ import {
   type HealingPhase,
 } from "@/engine/healing/healing-phase.service";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+
+function resolveDearMeReadClient(supabase?: SupabaseClient): SupabaseClient {
+  const c = supabase ?? getSupabaseAdmin();
+  if (!c) {
+    throw new Error(
+      "[dear-me-recommender] Pass supabase from a route handler or set SUPABASE_SERVICE_ROLE_KEY.",
+    );
+  }
+  return c;
+}
 
 const MS_PER_DAY = 86_400_000;
 const REFLECTION_STALE_DAYS = 14 as const;
@@ -91,7 +100,7 @@ export async function refreshDearMeRecommendation(
   userId: string,
   supabase?: SupabaseClient,
 ): Promise<DearMePrompt> {
-  const client = supabase ?? (await getSupabaseServerClient());
+  const client = resolveDearMeReadClient(supabase);
   const now = new Date();
   const phase = await getCurrentPhase(userId, client);
   const { letterCount, lastWrittenAt } = await fetchLetterStats(client, userId);

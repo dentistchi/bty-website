@@ -48,7 +48,12 @@ async function fetchScenarioDifficultyFromDb(
     return d === 1 || d === 2 || d === 3 ? d : null;
   };
 
-  const a = await client.from("scenarios").select("difficulty").eq("scenario_id", scenarioId).maybeSingle();
+  const a = await client
+    .from("scenarios")
+    .select("difficulty")
+    .eq("id", scenarioId)
+    .eq("locale", "en")
+    .maybeSingle();
   const fromScenarioId = tryParse(a.data as { difficulty?: number | null } | null);
   if (fromScenarioId != null) return fromScenarioId;
 

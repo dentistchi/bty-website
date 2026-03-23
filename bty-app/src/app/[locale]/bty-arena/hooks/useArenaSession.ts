@@ -3,7 +3,6 @@
 import React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getContextForUser } from "@/lib/bty/scenario/engine";
-import { SCENARIOS } from "@/lib/bty/scenario/scenarios";
 import type { Scenario } from "@/lib/bty/scenario/types";
 import { evaluateChoice, evaluateFollowUp } from "@/lib/bty/arena/engine";
 import type { SystemMsg } from "@/components/bty-arena";
@@ -94,17 +93,42 @@ function clearState() {
   localStorage.removeItem(STORAGE_KEY);
 }
 
-function getScenarioById(id: string): Scenario | undefined {
-  return SCENARIOS.find((s) => s.scenarioId === id);
+type SessionNextResponse = {
+  ok: boolean;
+  scenario?: Scenario;
+  scenarioRoute?: string;
+  delayedOutcomePending?: boolean;
+  mirrors?: unknown;
+  error?: string;
+  code?: string;
+};
+
+/** Next scenario from server session router (DB history, mirror / perspective rotation, catalog). */
+async function fetchSessionNextScenario(locale: Locale): Promise<Scenario | null> {
+  const loc = locale === "ko" ? "ko" : "en";
+  try {
+    const data = await arenaFetch<SessionNextResponse>(`/api/arena/session/next?locale=${loc}`);
+    if (data.ok && data.scenario) return data.scenario;
+    return null;
+  } catch (e) {
+    console.warn("[arena] session/next failed", e);
+    return null;
+  }
 }
 
-function pickRandomScenario(excludeId?: string, userTier?: number): Scenario {
-  let pool = excludeId ? SCENARIOS.filter((s) => s.scenarioId !== excludeId) : [...SCENARIOS];
-  if (typeof userTier === "number") {
-    pool = pool.filter((s) => s.minTier == null || s.minTier <= userTier);
+/** Resolve catalog / perspective / mirror scenario by id (same rules as submit). */
+async function fetchResolvedScenarioById(scenarioId: string, locale: Locale): Promise<Scenario | null> {
+  const loc = locale === "ko" ? "ko" : "en";
+  const qs = new URLSearchParams({ scenarioId, locale: loc });
+  try {
+    const data = await arenaFetch<{ ok?: boolean; scenario?: Scenario }>(
+      `/api/arena/session/scenario?${qs.toString()}`,
+    );
+    if (data.ok && data.scenario) return data.scenario;
+    return null;
+  } catch {
+    return null;
   }
-  const arr = pool.length > 0 ? pool : SCENARIOS;
-  return arr[Math.floor(Math.random() * arr.length)];
 }
 
 function normalizeFollowUpOptions(choice: { followUp?: { options?: string[] } } | null | undefined): string[] {
@@ -254,6 +278,8 @@ export function useArenaSession() {
 
   // Core state
   const [scenario, setScenario] = React.useState<Scenario | null>(null);
+  const [scenarioLoading, setScenarioLoading] = React.useState(false);
+  const [scenarioInitError, setScenarioInitError] = React.useState<string | null>(null);
   const [phase, setPhase] = React.useState<ArenaPhase>("CHOOSING");
   const [step, setStep] = React.useState<ArenaStep>(1);
   const [reflectionIndex, setReflectionIndex] = React.useState<number | null>(null);
@@ -308,53 +334,144 @@ export function useArenaSession() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [otherOpen]);
 
-  // Resume on mount, or pick first scenario when level check completes (Gate 1: use API tier for pick).
+  // Resume or load first scenario from `/api/arena/session/next` (DB-backed rotation + catalog), not in-memory SCENARIOS.
   React.useEffect(() => {
-    const streakInfo = updateStreak();
-    const saved = loadState();
-    if (saved) {
-      const sc = getScenarioById(saved.scenarioId) ?? pickRandomScenario();
-      let resumePhase = saved.phase;
-      let resumeStep = (saved.step ?? stepFromPhase(saved.phase)) as number;
-      if (resumeStep < 1 || resumeStep > 7) { resumeStep = 1; resumePhase = "CHOOSING"; }
-      const noSelection = saved.selectedChoiceId == null || saved.selectedChoiceId === undefined;
-      if (resumePhase !== "CHOOSING" && noSelection && !saved.otherSubmitted) { resumePhase = "CHOOSING"; resumeStep = 1; }
-      setScenario(sc);
-      setPhase(resumePhase);
-      setStep(resumeStep as ArenaStep);
-      setReflectionIndex(typeof saved.reflectionIndex === "number" ? saved.reflectionIndex : null);
-      setReflectionText(typeof saved.reflectionText === "string" ? saved.reflectionText : "");
-      setReflectionBonusXp(typeof saved.reflectionBonusXp === "number" ? saved.reflectionBonusXp : 0);
-      setSelectedChoiceId(noSelection && saved.otherSubmitted ? OTHER_CHOICE_ID : (saved.selectedChoiceId ?? null));
-      setOtherSubmitted(Boolean(saved.otherSubmitted));
-      setFollowUpIndex(typeof saved.followUpIndex === "number" ? saved.followUpIndex : null);
-      setLastXp(saved.lastXp ?? 0);
-      setRunId(saved.runId ?? null);
-      setFreeResponseFeedback(saved.freeResponseFeedback ?? null);
-      if (saved.lastSystemMessage) {
-        setSystemMessage(SYSTEM_MESSAGES.find((m) => m.id === saved.lastSystemMessage) ?? null);
-      } else if (streakInfo.message) {
-        setSystemMessage(streakInfo.message);
-      }
-      return;
-    }
+    if (!levelChecked || requiresBeginnerPath) return;
 
-    // No saved state: pick first scenario only after level check (so we have API tier when available).
-    if (!levelChecked || scenario != null) return;
-    const userTier = tier !== null ? tier : undefined;
-    const sc = pickRandomScenario(undefined, userTier);
-    setScenario(sc);
-    if (streakInfo.message) setSystemMessage(streakInfo.message);
+    let cancelled = false;
 
-    arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", { json: { scenarioId: sc.scenarioId, locale } })
-      .then((data) => {
-        if (data.run?.run_id) {
-          setRunId(data.run.run_id);
-          saveState({ version: 1, scenarioId: sc.scenarioId, phase: "CHOOSING", step: 1, runId: data.run.run_id, updatedAtISO: safeNowISO() });
+    (async () => {
+      const streakInfo = updateStreak();
+      const saved = loadState();
+
+      setScenarioLoading(true);
+      setScenarioInitError(null);
+
+      try {
+        if (saved) {
+          let sc = await fetchResolvedScenarioById(saved.scenarioId, locale);
+          if (!sc) {
+            clearState();
+            sc = await fetchSessionNextScenario(locale);
+            if (cancelled) return;
+            if (!sc) {
+              setScenario(null);
+              setScenarioInitError(t.scenarioNotFound);
+              return;
+            }
+            setScenario(sc);
+            setPhase("CHOOSING");
+            setStep(1);
+            setReflectionIndex(null);
+            setReflectionText("");
+            setReflectionBonusXp(0);
+            setReflectResult(null);
+            setSelectedChoiceId(null);
+            setFollowUpIndex(null);
+            setLastXp(0);
+            setRunId(null);
+            runMetaRef.current = null;
+            setOtherOpen(false);
+            setOtherText("");
+            setOtherSubmitting(false);
+            setOtherSubmitted(false);
+            setFreeResponseFeedback(null);
+            setSystemMessage(
+              streakInfo.message ?? SYSTEM_MESSAGES.find((m) => m.id === "arch_init") ?? null,
+            );
+            try {
+              const data = await arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", {
+                json: { scenarioId: sc.scenarioId, locale },
+              });
+              if (cancelled) return;
+              if (data.run?.run_id) {
+                setRunId(data.run.run_id);
+                saveState({
+                  version: 1,
+                  scenarioId: sc.scenarioId,
+                  phase: "CHOOSING",
+                  step: 1,
+                  runId: data.run.run_id,
+                  updatedAtISO: safeNowISO(),
+                });
+              }
+            } catch (e) {
+              console.warn("Arena run create failed", e);
+            }
+            return;
+          }
+
+          if (cancelled) return;
+
+          let resumePhase = saved.phase;
+          let resumeStep = (saved.step ?? stepFromPhase(saved.phase)) as number;
+          if (resumeStep < 1 || resumeStep > 7) {
+            resumeStep = 1;
+            resumePhase = "CHOOSING";
+          }
+          const noSelection = saved.selectedChoiceId == null || saved.selectedChoiceId === undefined;
+          if (resumePhase !== "CHOOSING" && noSelection && !saved.otherSubmitted) {
+            resumePhase = "CHOOSING";
+            resumeStep = 1;
+          }
+          setScenario(sc);
+          setPhase(resumePhase);
+          setStep(resumeStep as ArenaStep);
+          setReflectionIndex(typeof saved.reflectionIndex === "number" ? saved.reflectionIndex : null);
+          setReflectionText(typeof saved.reflectionText === "string" ? saved.reflectionText : "");
+          setReflectionBonusXp(typeof saved.reflectionBonusXp === "number" ? saved.reflectionBonusXp : 0);
+          setSelectedChoiceId(noSelection && saved.otherSubmitted ? OTHER_CHOICE_ID : (saved.selectedChoiceId ?? null));
+          setOtherSubmitted(Boolean(saved.otherSubmitted));
+          setFollowUpIndex(typeof saved.followUpIndex === "number" ? saved.followUpIndex : null);
+          setLastXp(saved.lastXp ?? 0);
+          setRunId(saved.runId ?? null);
+          setFreeResponseFeedback(saved.freeResponseFeedback ?? null);
+          if (saved.lastSystemMessage) {
+            setSystemMessage(SYSTEM_MESSAGES.find((m) => m.id === saved.lastSystemMessage) ?? null);
+          } else if (streakInfo.message) {
+            setSystemMessage(streakInfo.message);
+          }
+          return;
         }
-      })
-      .catch((e) => console.warn("Arena run create failed", e));
-  }, [levelChecked, tier, scenario, locale]);
+
+        const sc = await fetchSessionNextScenario(locale);
+        if (cancelled) return;
+        if (!sc) {
+          setScenario(null);
+          setScenarioInitError(t.scenarioNotFound);
+          return;
+        }
+        setScenario(sc);
+        if (streakInfo.message) setSystemMessage(streakInfo.message);
+
+        try {
+          const data = await arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", {
+            json: { scenarioId: sc.scenarioId, locale },
+          });
+          if (cancelled) return;
+          if (data.run?.run_id) {
+            setRunId(data.run.run_id);
+            saveState({
+              version: 1,
+              scenarioId: sc.scenarioId,
+              phase: "CHOOSING",
+              step: 1,
+              runId: data.run.run_id,
+              updatedAtISO: safeNowISO(),
+            });
+          }
+        } catch (e) {
+          console.warn("Arena run create failed", e);
+        }
+      } finally {
+        if (!cancelled) setScenarioLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [levelChecked, requiresBeginnerPath, locale, t.scenarioNotFound]);
 
   // ── derived values ──────────────────────────────────────────
   const current = scenario;
@@ -685,14 +802,11 @@ export function useArenaSession() {
         }
       }
 
-      // Gate 1: next scenario uses API tier only (core.tier or state tier).
-      const nextTier =
-        core && typeof core.tier === "number"
-          ? core.tier
-          : tier !== null
-            ? tier
-            : undefined;
-      const next = pickRandomScenario(current.scenarioId, nextTier);
+      const next = await fetchSessionNextScenario(locale);
+      if (!next) {
+        setCompleteError(t.completeErrorPrefix + "no_scenario_available" + t.completeErrorSuffix);
+        return;
+      }
       setScenario(next);
       setPhase("CHOOSING");
       setStep(1);
@@ -738,45 +852,51 @@ export function useArenaSession() {
     });
   }
 
-  function resetRun() {
+  async function resetRun() {
     setResetRunLoading(true);
     clearState();
-    // Gate 1: use API tier only for pickRandomScenario.
-    const userTier = tier !== null ? tier : undefined;
-    const next = pickRandomScenario(undefined, userTier);
-    setScenario(next);
-    setPhase("CHOOSING");
-    setStep(1);
-    resetAllLocal();
-    setSystemMessage(SYSTEM_MESSAGES.find((m) => m.id === "arch_init") ?? null);
+    try {
+      const next = await fetchSessionNextScenario(locale);
+      if (!next) {
+        setScenario(null);
+        setScenarioInitError(t.scenarioNotFound);
+        return;
+      }
+      setScenario(next);
+      setPhase("CHOOSING");
+      setStep(1);
+      resetAllLocal();
+      setSystemMessage(SYSTEM_MESSAGES.find((m) => m.id === "arch_init") ?? null);
 
-    createRun(next.scenarioId, locale ?? undefined, {
-      scenario: next,
-      timeLimitSeconds: ARENA_TIME_LIMIT_SECONDS,
-    })
-      .then((result) => {
-        if (result) {
-          setRunId(result.run_id);
-          runMetaRef.current =
-            result.timeLimitSeconds != null && result.timeLimitSeconds > 0
-              ? {
-                  runId: result.run_id,
-                  startedAt: result.started_at,
-                  timeLimitSeconds: result.timeLimitSeconds,
-                }
-              : null;
-          saveState({
-            version: 1,
-            scenarioId: next.scenarioId,
-            phase: "CHOOSING",
-            step: 1,
-            runId: result.run_id,
-            updatedAtISO: safeNowISO(),
-          });
-        }
-      })
-      .catch((e) => console.warn("Arena run create (reset) failed", e))
-      .finally(() => setResetRunLoading(false));
+      const result = await createRun(next.scenarioId, locale ?? undefined, {
+        scenario: next,
+        timeLimitSeconds: ARENA_TIME_LIMIT_SECONDS,
+      }).catch((e) => {
+        console.warn("Arena run create (reset) failed", e);
+        return null;
+      });
+      if (result) {
+        setRunId(result.run_id);
+        runMetaRef.current =
+          result.timeLimitSeconds != null && result.timeLimitSeconds > 0
+            ? {
+                runId: result.run_id,
+                startedAt: result.started_at,
+                timeLimitSeconds: result.timeLimitSeconds,
+              }
+            : null;
+        saveState({
+          version: 1,
+          scenarioId: next.scenarioId,
+          phase: "CHOOSING",
+          step: 1,
+          runId: result.run_id,
+          updatedAtISO: safeNowISO(),
+        });
+      }
+    } finally {
+      setResetRunLoading(false);
+    }
   }
 
   async function onStartSimulation() {
@@ -836,7 +956,7 @@ export function useArenaSession() {
   return {
     locale, t,
     levelChecked, coreXpTotal, tier, requiresBeginnerPath,
-    scenario, displayTitle, contextForUser,
+    scenario, scenarioLoading, scenarioInitError, displayTitle, contextForUser,
     phase, step,
     selectedChoiceId, choice,
     selectChoice, selectOther,

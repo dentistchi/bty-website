@@ -1,5 +1,7 @@
 # 현재 작업 (CURRENT_TASK)
 
+**Arena scenario repetition (2026-03-22):** [x] **`public.scenarios`** 카탈로그 조회 **`id`** 컬럼 수정 · **`ensureMinimumScenarioCatalogRows`** (<50행 시 **`syncCatalogToDB`**) · **`pickScenarioIdByFlagCoverage`** 랜덤 타이브레이크 · **`e2e_smoke_minimal` / `smoke_synthetic`** Arena 후보 제외 · **`fetchAnyEnScenarioId`** 랜덤 · **`seedFixtureUser`** 선행 시드 · **`npx tsc --noEmit`** ✓ · **완료.**
+
 **Client-safe avatar/healing imports (2026-03-22):** [x] **`avatar-outfit-unlock-data`** + **`avatar-equip-conflict`** — manifest/UI에서 `next/headers` 체인 제거 · **`healing-phase` / `avatar-state` / `avatar-assets` / `awakening-phase` / `healing-content`** — `getSupabaseAdmin` 폴백 · **`npx tsc --noEmit`** ✓ · **완료.**
 
 **E2E engine request-scope + integrity FK (2026-03-22):** [x] **`program-recommender`** — `getSupabaseAdmin()` fallback (no `cookies()`) · **`routeHealingToFoundry`** `deps.supabase` + **`session-lifecycle`** / **`ejection-recovery`** / **`e2e-loop-validator`** 전달 · **`supabaseServer`** 주석 · **`integrity-score-card`** `auth.users` 존재 시에만 persist · **`getProgramProgress`** 서비스 롤/주입 필수 · **`npx tsc --noEmit`** ✓ · **완료.**

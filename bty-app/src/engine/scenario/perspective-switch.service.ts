@@ -5,7 +5,17 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Scenario, ScenarioChoice } from "@/lib/bty/scenario/types";
-import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+
+function resolvePerspectiveDbClient(supabase?: SupabaseClient): SupabaseClient {
+  const c = supabase ?? getSupabaseAdmin();
+  if (!c) {
+    throw new Error(
+      "[perspective-switch] Pass supabase from a route handler or set SUPABASE_SERVICE_ROLE_KEY.",
+    );
+  }
+  return c;
+}
 
 export type PerspectivePov = "subordinate" | "peer" | "client" | "observer";
 
@@ -194,7 +204,7 @@ export async function getNextPerspectiveSwitch(
   userId: string,
   supabase?: SupabaseClient,
 ): Promise<PerspectiveSwitchScenario> {
-  const client = supabase ?? (await getSupabaseServerClient());
+  const client = resolvePerspectiveDbClient(supabase);
 
   const { data: histRows, error: hErr } = await client
     .from('perspective_switch_history')

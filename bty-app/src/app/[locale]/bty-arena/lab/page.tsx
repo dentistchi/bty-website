@@ -26,22 +26,40 @@ export default function LabPage() {
 
   React.useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
     const stub = getMessages(loc).uxPhase1Stub;
-    arenaFetch<LabUsageRes>("/api/arena/lab/usage")
-      .then((data) => {
-        if (!cancelled) setUsage(data);
-      })
-      .catch((e: unknown) => {
-        const msg = e instanceof Error ? e.message.trim() : "";
-        if (!cancelled) setError(msg || stub.arenaLabUsageLoadError);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+
+    function loadUsage(silent: boolean) {
+      if (!silent) {
+        setLoading(true);
+        setError(null);
+      }
+      arenaFetch<LabUsageRes>("/api/arena/lab/usage")
+        .then((data) => {
+          if (!cancelled) setUsage(data);
+        })
+        .catch((e: unknown) => {
+          const msg = e instanceof Error ? e.message.trim() : "";
+          if (!cancelled && !silent) setError(msg || stub.arenaLabUsageLoadError);
+        })
+        .finally(() => {
+          if (!cancelled && !silent) setLoading(false);
+        });
+    }
+
+    loadUsage(false);
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") loadUsage(true);
+    };
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) loadUsage(true);
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", onPageShow);
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", onPageShow);
     };
   }, [loc]);
 

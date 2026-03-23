@@ -25,7 +25,13 @@ import type { Locale } from "@/lib/i18n";
 import { leaderboardTieRankSuffixDisplayKey } from "@/domain/rules/leaderboardTieBreak";
 import { weeklyCompetitionStageTierBandDisplayLabelKey } from "@/domain/rules/weeklyCompetitionDisplay";
 import { getVisibleAvatarCharacters, getAvatarCharacter, getCharacterThumbImageUrl } from "@/lib/bty/arena/avatarCharacters";
-import { getAccessoryImageUrl, outfitIdToDisplayLabel } from "@/lib/bty/arena/avatarOutfits";
+import {
+  getAccessoryImageUrl,
+  outfitIdToDisplayLabel,
+  profileToAvatarCompositeKeys,
+  tierToDisplayLevelId,
+} from "@/lib/bty/arena/avatarOutfits";
+import { resolveAvatarUrls } from "@/lib/bty/arena/avatarAssets";
 import { OUTFIT_IDS } from "@/lib/bty/arena/avatar-assets.data";
 import { LeAirWidget } from "@/components/bty/dashboard/LeAirWidget";
 import { LeStageWidget } from "@/components/bty/dashboard/LeStageWidget";
@@ -219,6 +225,14 @@ export default function DashboardClient() {
     leader_started_at: "",
   });
 
+  const dashboardMountedRef = React.useRef(true);
+  React.useEffect(() => {
+    dashboardMountedRef.current = true;
+    return () => {
+      dashboardMountedRef.current = false;
+    };
+  }, []);
+
   async function saveSubName() {
     if (!subNameDraft.trim() || subNameDraft.length > 7) return;
     try {
@@ -306,100 +320,114 @@ export default function DashboardClient() {
     }
   }
 
-  React.useEffect(() => {
-    let alive = true;
-    setStreak(readLocalStreak());
-
-    (async () => {
-      try {
+  const reloadDashboard = React.useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = Boolean(opts?.silent);
+    try {
+      if (!silent) {
         setLoading(true);
         setError(null);
-
-        const w = await arenaFetch<WeeklyXpRes>("/api/arena/weekly-xp").catch(
-          () => ({ xpTotal: 0 } as WeeklyXpRes)
-        );
-
-        const fallbackCore: CoreXpRes = {
-          coreXpTotal: 0,
-          codeName: "FORGE",
-          subName: "Spark",
-          seasonalXpTotal: 0,
-        };
-        const [c, leagueRes, todayRes, statsRes, unlockedRes, membershipRes, eliteRes, leStateRes, leAirRes, leTiiRes, leCertifiedRes, stageSummaryRes, dashboardSummaryRes] = await Promise.all([
-          arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => fallbackCore),
-          arenaFetch<LeagueRes>("/api/arena/league/active").catch(() => null),
-          arenaFetch<TodayXpRes>("/api/arena/today-xp").catch(() => ({ xpToday: 0 })),
-          arenaFetch<WeeklyStatsRes>("/api/arena/weekly-stats").catch(() => null),
-          arenaFetch<UnlockedScenariosRes>(`/api/arena/unlocked-scenarios?locale=${locale}`).catch((e) => {
-            const msg = e instanceof Error ? e.message : String(e);
-            return msg === "UNAUTHENTICATED" ? ({ error: "UNAUTHENTICATED" } as UnlockedScenariosRes) : null;
-          }),
-          arenaFetch<MembershipRequestRes>("/api/arena/membership-request").catch(() => ({ request: null })),
-          arenaFetch<{
-            isElite?: boolean;
-            badges?: Array<{ kind: string; labelKey: string }>;
-            eliteContentUnlocked?: boolean;
-          }>("/api/me/elite").catch(() => ({
-            isElite: false,
-            badges: [] as Array<{ kind: string; labelKey: string }>,
-            eliteFetchFailed: true as const,
-          })),
-          arenaFetch<LeadershipEngineStateRes>("/api/arena/leadership-engine/state").catch(() => null),
-          arenaFetch<AIRSnapshotRes>("/api/arena/leadership-engine/air").catch(() => null),
-          arenaFetch<TIIRes>("/api/arena/leadership-engine/tii").catch(() => null),
-          arenaFetch<CertifiedRes>("/api/arena/leadership-engine/certified").catch(() => null),
-          arenaFetch<StageSummaryRes>("/api/arena/leadership-engine/stage-summary").catch(() => null),
-          arenaFetch<DashboardSummaryRes>("/api/arena/dashboard/summary").catch(() => null),
-        ]);
-
-        if (!alive) return;
-        setWeekly(w);
-        setCore(c);
-        if (c?.milestoneToCelebrate != null) {
-          setMilestoneModal({
-            milestone: c.milestoneToCelebrate,
-            previousSubName: c.previousSubName ?? undefined,
-            subName: c.subName ?? "Spark",
-            subNameRenameAvailable: Boolean(c.subNameRenameAvailable),
-          });
-        }
-        if (leagueRes) setLeague(leagueRes);
-        setXpToday(todayRes?.xpToday ?? 0);
-        if (statsRes) setWeeklyStats(statsRes);
-        if (unlockedRes) setUnlockedScenarios(unlockedRes);
-        if (membershipRes?.request != null) setMembershipRequest(membershipRes.request);
-        setIsElite(Boolean(eliteRes?.isElite));
-        setEliteBadges(eliteRes?.badges ?? []);
-        const eliteFailed = Boolean(
-          eliteRes && "eliteFetchFailed" in eliteRes && eliteRes.eliteFetchFailed
-        );
-        if (eliteFailed) {
-          setEliteContentUnlocked(null);
-        } else {
-          const ok = eliteRes as { eliteContentUnlocked?: boolean };
-          setEliteContentUnlocked(
-            typeof ok.eliteContentUnlocked === "boolean" ? ok.eliteContentUnlocked : null
-          );
-        }
-        if (leStateRes) setLeState(leStateRes);
-        if (leAirRes) setLeAir(leAirRes);
-        if (leTiiRes) setLeTii(leTiiRes);
-        if (leCertifiedRes) setLeCertified(leCertifiedRes);
-        if (stageSummaryRes) setLeStageSummary(stageSummaryRes);
-        if (dashboardSummaryRes) setDashboardSummary(dashboardSummaryRes);
-      } catch (e) {
-        if (!alive) return;
-        setError(e instanceof Error ? e.message : "Unknown error");
-      } finally {
-        if (!alive) return;
-        setLoading(false);
       }
-    })();
+      setStreak(readLocalStreak());
 
-    return () => {
-      alive = false;
-    };
+      const w = await arenaFetch<WeeklyXpRes>("/api/arena/weekly-xp").catch(
+        () => ({ xpTotal: 0 } as WeeklyXpRes)
+      );
+
+      const fallbackCore: CoreXpRes = {
+        coreXpTotal: 0,
+        codeName: "FORGE",
+        subName: "Spark",
+        seasonalXpTotal: 0,
+      };
+      const [c, leagueRes, todayRes, statsRes, unlockedRes, membershipRes, eliteRes, leStateRes, leAirRes, leTiiRes, leCertifiedRes, stageSummaryRes, dashboardSummaryRes] = await Promise.all([
+        arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => fallbackCore),
+        arenaFetch<LeagueRes>("/api/arena/league/active").catch(() => null),
+        arenaFetch<TodayXpRes>("/api/arena/today-xp").catch(() => ({ xpToday: 0 })),
+        arenaFetch<WeeklyStatsRes>("/api/arena/weekly-stats").catch(() => null),
+        arenaFetch<UnlockedScenariosRes>(`/api/arena/unlocked-scenarios?locale=${locale}`).catch((e) => {
+          const msg = e instanceof Error ? e.message : String(e);
+          return msg === "UNAUTHENTICATED" ? ({ error: "UNAUTHENTICATED" } as UnlockedScenariosRes) : null;
+        }),
+        arenaFetch<MembershipRequestRes>("/api/arena/membership-request").catch(() => ({ request: null })),
+        arenaFetch<{
+          isElite?: boolean;
+          badges?: Array<{ kind: string; labelKey: string }>;
+          eliteContentUnlocked?: boolean;
+        }>("/api/me/elite").catch(() => ({
+          isElite: false,
+          badges: [] as Array<{ kind: string; labelKey: string }>,
+          eliteFetchFailed: true as const,
+        })),
+        arenaFetch<LeadershipEngineStateRes>("/api/arena/leadership-engine/state").catch(() => null),
+        arenaFetch<AIRSnapshotRes>("/api/arena/leadership-engine/air").catch(() => null),
+        arenaFetch<TIIRes>("/api/arena/leadership-engine/tii").catch(() => null),
+        arenaFetch<CertifiedRes>("/api/arena/leadership-engine/certified").catch(() => null),
+        arenaFetch<StageSummaryRes>("/api/arena/leadership-engine/stage-summary").catch(() => null),
+        arenaFetch<DashboardSummaryRes>("/api/arena/dashboard/summary").catch(() => null),
+      ]);
+
+      if (!dashboardMountedRef.current) return;
+      setWeekly(w);
+      setCore(c);
+      if (!silent && c?.milestoneToCelebrate != null) {
+        setMilestoneModal({
+          milestone: c.milestoneToCelebrate,
+          previousSubName: c.previousSubName ?? undefined,
+          subName: c.subName ?? "Spark",
+          subNameRenameAvailable: Boolean(c.subNameRenameAvailable),
+        });
+      }
+      if (leagueRes) setLeague(leagueRes);
+      setXpToday(todayRes?.xpToday ?? 0);
+      if (statsRes) setWeeklyStats(statsRes);
+      if (unlockedRes) setUnlockedScenarios(unlockedRes);
+      if (membershipRes?.request != null) setMembershipRequest(membershipRes.request);
+      setIsElite(Boolean(eliteRes?.isElite));
+      setEliteBadges(eliteRes?.badges ?? []);
+      const eliteFailed = Boolean(
+        eliteRes && "eliteFetchFailed" in eliteRes && eliteRes.eliteFetchFailed
+      );
+      if (eliteFailed) {
+        setEliteContentUnlocked(null);
+      } else {
+        const ok = eliteRes as { eliteContentUnlocked?: boolean };
+        setEliteContentUnlocked(
+          typeof ok.eliteContentUnlocked === "boolean" ? ok.eliteContentUnlocked : null
+        );
+      }
+      if (leStateRes) setLeState(leStateRes);
+      if (leAirRes) setLeAir(leAirRes);
+      if (leTiiRes) setLeTii(leTiiRes);
+      if (leCertifiedRes) setLeCertified(leCertifiedRes);
+      if (stageSummaryRes) setLeStageSummary(stageSummaryRes);
+      if (dashboardSummaryRes) setDashboardSummary(dashboardSummaryRes);
+    } catch (e) {
+      if (!dashboardMountedRef.current) return;
+      if (!silent) setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      if (!dashboardMountedRef.current) return;
+      if (!silent) setLoading(false);
+    }
   }, [locale]);
+
+  React.useEffect(() => {
+    void reloadDashboard();
+  }, [reloadDashboard]);
+
+  React.useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void reloadDashboard({ silent: true });
+    };
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) void reloadDashboard({ silent: true });
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, [reloadDashboard]);
 
   const localeTyped = (locale === "ko" ? "ko" : "en") as Locale;
   const tArenaLevels = getMessages(localeTyped).arenaLevels;
@@ -445,13 +473,26 @@ export default function DashboardClient() {
   }, [tBty.dashboardLiveLeaderboardFailed]);
   const displayAvatarUrl =
     core?.avatarUrl ?? getAvatarCharacter(core?.avatarCharacterId)?.imageUrl ?? null;
-  const avatarLayers =
-    core?.avatarCharacterImageUrl != null || core?.avatarOutfitImageUrl != null
-      ? { characterImageUrl: core?.avatarCharacterImageUrl ?? null, outfitImageUrl: core?.avatarOutfitImageUrl ?? null }
-      : undefined;
-  /** §6·§7 render-only: API currentOutfit.accessoryIds → domain getAccessoryImageUrl → AvatarComposite accessoryUrls */
-  const avatarAccessoryUrls =
-    core?.currentOutfit?.accessoryIds?.map((id) => getAccessoryImageUrl(id)) ?? [];
+  /** Same key → URL path as Avatar settings / leaderboard: profileToAvatarCompositeKeys + resolveAvatarUrls(useThumb). */
+  const dashboardResolvedAvatar = React.useMemo(() => {
+    if (!core) return null;
+    const levelId =
+      typeof core.tier === "number" ? tierToDisplayLevelId(core.tier) : "S1";
+    const keys = profileToAvatarCompositeKeys({
+      avatarCharacterId: core.avatarCharacterId ?? null,
+      avatarOutfitTheme: core.avatarOutfitTheme ?? null,
+      avatarSelectedOutfitId: core.avatarSelectedOutfitId ?? null,
+      avatarAccessoryIds: core.currentOutfit?.accessoryIds ?? [],
+      displayLevelId: levelId,
+    });
+    return resolveAvatarUrls({
+      characterKey: keys.characterKey,
+      outfitKey: keys.outfitKey,
+      accessoryKeys: keys.accessoryKeys,
+      useThumb: true,
+      bodyType: getAvatarCharacter(keys.characterKey)?.bodyType ?? null,
+    });
+  }, [core]);
 
   const content = (
     <main
@@ -467,12 +508,12 @@ export default function DashboardClient() {
 
       <div style={{ marginBottom: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {avatarLayers?.characterImageUrl ? (
+          {dashboardResolvedAvatar?.characterUrl ? (
             <AvatarComposite
               size={56}
-              characterUrl={avatarLayers.characterImageUrl}
-              outfitUrl={avatarLayers.outfitImageUrl ?? undefined}
-              accessoryUrls={avatarAccessoryUrls}
+              characterUrl={dashboardResolvedAvatar.characterUrl}
+              outfitUrl={dashboardResolvedAvatar.outfitUrl ?? undefined}
+              accessoryUrls={dashboardResolvedAvatar.accessoryUrls}
               alt=""
             />
           ) : (
@@ -1393,12 +1434,12 @@ export default function DashboardClient() {
             <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
               {/* 왼쪽: 선택한 캐릭터 아바타 + 악세사리 */}
               <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                {avatarLayers?.characterImageUrl ? (
+                {dashboardResolvedAvatar?.characterUrl ? (
                   <AvatarComposite
                     size={40}
-                    characterUrl={avatarLayers.characterImageUrl}
-                    outfitUrl={avatarLayers.outfitImageUrl ?? undefined}
-                    accessoryUrls={avatarAccessoryUrls}
+                    characterUrl={dashboardResolvedAvatar.characterUrl}
+                    outfitUrl={dashboardResolvedAvatar.outfitUrl ?? undefined}
+                    accessoryUrls={dashboardResolvedAvatar.accessoryUrls}
                     alt=""
                   />
                 ) : (

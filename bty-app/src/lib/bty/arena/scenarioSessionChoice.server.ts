@@ -7,23 +7,17 @@ import type { XPAwardResult } from "@/engine/integration/xp-integrity-bridge";
 import { validateXPAward } from "@/engine/integration/xp-integrity-bridge";
 import { getPatternNarrative } from "@/engine/memory/pattern-history.service";
 import type { SessionFlagBadgeVariant } from "@/domain/arena/sessionSummary";
-import { getMirrorScenarioForLocaleSubmit } from "@/engine/perspective-switch/mirror-scenario.service";
-import { getPerspectiveScenarioForSubmit } from "@/engine/scenario/perspective-switch.service";
-import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
-import { computeResultFromScenario, getScenarioById } from "@/lib/bty/scenario/engine";
+import { computeResultFromScenario } from "@/lib/bty/scenario/engine";
 import type { Scenario, ScenarioSubmitPayload } from "@/lib/bty/scenario/types";
+import { resolveArenaScenarioForUser } from "@/lib/bty/arena/arenaScenarioResolve.server";
+import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 async function resolveScenarioForSubmit(userId: string, payload: ScenarioSubmitPayload): Promise<Scenario> {
   const locale = payload.locale === "ko" ? "ko" : "en";
-  const fromCatalog = getScenarioById(payload.scenarioId);
-  if (fromCatalog) return fromCatalog;
-  const ps = getPerspectiveScenarioForSubmit(payload.scenarioId, locale);
-  if (ps) return ps;
-  const client = await getSupabaseServerClient();
-  const mirror = await getMirrorScenarioForLocaleSubmit(userId, payload.scenarioId, locale, client);
-  if (mirror) return mirror;
-  throw new Error("Scenario not found");
+  const resolved = await resolveArenaScenarioForUser(userId, payload.scenarioId, locale);
+  if (!resolved) throw new Error("Scenario not found");
+  return resolved;
 }
 
 export type ScenarioChoiceSubmitResult = {

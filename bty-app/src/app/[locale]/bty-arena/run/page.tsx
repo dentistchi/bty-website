@@ -61,6 +61,22 @@ export default function BtyArenaPage() {
     );
   }
 
+  // ── gate: loading scenario from /api/arena/session/next ───
+  if (s.scenarioLoading) {
+    return (
+      <main
+        data-testid="arena-play-loading-scenario"
+        aria-busy="true"
+        aria-label={t.runPageLevelCheckMainRegionAria}
+        style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}
+      >
+        <div style={{ marginTop: 0 }} aria-busy="true" aria-label={tLoading.message}>
+          <LoadingFallback icon="📋" message={tLoading.message} withSkeleton />
+        </div>
+      </main>
+    );
+  }
+
   // ── gate: no scenario ─────────────────────────────────────
   if (!s.scenario) {
     return (
@@ -70,7 +86,11 @@ export default function BtyArenaPage() {
         style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}
       >
         <div style={{ marginTop: 0, border: "1px solid #eee", borderRadius: 14, background: "var(--arena-card)" }}>
-          <EmptyState icon="📋" message={t.scenarioNotFound} hint={t.scenarioNotFoundHint} />
+          <EmptyState
+            icon="📋"
+            message={s.scenarioInitError ?? t.scenarioNotFound}
+            hint={t.scenarioNotFoundHint}
+          />
         </div>
       </main>
     );

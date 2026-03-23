@@ -15,10 +15,12 @@ import {
   getLatestSnapshot,
   persistSnapshotForUser,
 } from "@/engine/avatar/avatar-composite-snapshot.service";
+import { ensureMinimumScenarioCatalogRows } from "@/engine/scenario/scenario-catalog-sync.service";
+import { E2E_SMOKE_SCENARIO_ID } from "@/engine/scenario/scenario-production-exclusions";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 /** Minimal `public.scenarios` row for smoke when the DB has no English catalog (composite key locale+id). */
-const SMOKE_SCENARIO_ID = "e2e_smoke_minimal" as const;
+const SMOKE_SCENARIO_ID = E2E_SMOKE_SCENARIO_ID;
 
 /** Stable UUID for local smoke / release / extended health (not a production account). */
 export const FIXTURE_USER_ID = "a0000000-0000-4000-8000-00000000e2e1" as const;
@@ -40,10 +42,15 @@ const SMOKE_SEED_AVATAR_TIER = 1 as AvatarTier;
 export async function fetchAnyEnScenarioId(
   admin: SupabaseClient,
 ): Promise<string | null> {
-  const { data, error } = await admin.from("scenarios").select("id").eq("locale", "en").limit(1).maybeSingle();
-  if (error || !data) return null;
-  const id = (data as { id?: string }).id;
-  return typeof id === "string" ? id : null;
+  const { data, error } = await admin.from("scenarios").select("id").eq("locale", "en");
+  if (error || !data?.length) return null;
+  const ids = (data as { id?: string }[])
+    .map((r) => r.id)
+    .filter((id): id is string => typeof id === "string" && id.length > 0);
+  const nonSmoke = ids.filter((id) => id !== SMOKE_SCENARIO_ID);
+  const pool = nonSmoke.length > 0 ? nonSmoke : ids;
+  if (pool.length === 0) return null;
+  return pool[Math.floor(Math.random() * pool.length)] ?? null;
 }
 
 /**
@@ -217,6 +224,7 @@ export async function seedFixtureUser(): Promise<void> {
   const { error: eqDelErr } = await admin.from("user_equipped_assets").delete().eq("user_id", userId);
   if (eqDelErr) throw new Error(`seedFixtureUser user_equipped_assets delete: ${eqDelErr.message}`);
 
+  await ensureMinimumScenarioCatalogRows();
   await ensureSmokeScenarioRow(admin);
   await ensureSmokeAvatarSnapshot(admin);
 }

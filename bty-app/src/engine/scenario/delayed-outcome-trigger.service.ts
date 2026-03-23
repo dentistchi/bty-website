@@ -4,7 +4,17 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+
+function resolveDelayedOutcomeDbClient(supabase?: SupabaseClient): SupabaseClient {
+  const c = supabase ?? getSupabaseAdmin();
+  if (!c) {
+    throw new Error(
+      "[delayed-outcome-trigger] Pass supabase from a route handler or set SUPABASE_SERVICE_ROLE_KEY.",
+    );
+  }
+  return c;
+}
 
 export const DELAYED_OUTCOME_DELAY_DAYS = 7 as const;
 
@@ -202,7 +212,7 @@ export async function scheduleOutcomes(
   userId: string,
   supabase?: SupabaseClient,
 ): Promise<number> {
-  const client = supabase ?? (await getSupabaseServerClient());
+  const client = resolveDelayedOutcomeDbClient(supabase);
   const playedBefore = cutoffEligiblePlayedAt();
 
   const { data: rows, error } = await client
@@ -312,7 +322,7 @@ export async function getDueOutcomes(
   userId: string,
   options?: { locale?: "ko" | "en"; supabase?: SupabaseClient; now?: Date },
 ): Promise<DelayedOutcome[]> {
-  const client = options?.supabase ?? (await getSupabaseServerClient());
+  const client = resolveDelayedOutcomeDbClient(options?.supabase);
   const locale = options?.locale ?? "ko";
   const now = options?.now ?? new Date();
   const nowIso = now.toISOString();
@@ -355,7 +365,7 @@ export async function markDueOutcomesDelivered(
   supabase?: SupabaseClient,
 ): Promise<void> {
   if (pendingOutcomeIds.length === 0) return;
-  const client = supabase ?? (await getSupabaseServerClient());
+  const client = resolveDelayedOutcomeDbClient(supabase);
   const now = new Date().toISOString();
 
   const { data: rows, error: selErr } = await client

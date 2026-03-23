@@ -348,3 +348,32 @@ export async function syncCatalogToDB(): Promise<SyncResult> {
     errors,
   };
 }
+
+/** Full EN+KO sync yields well above this; below it we upsert the in-app catalog. */
+export const MIN_SCENARIO_CATALOG_ROW_COUNT = 50;
+
+/**
+ * When `public.scenarios` has fewer than {@link MIN_SCENARIO_CATALOG_ROW_COUNT} rows, runs {@link syncCatalogToDB}.
+ * No-op without admin client or if count query fails.
+ */
+export async function ensureMinimumScenarioCatalogRows(
+  minRows: number = MIN_SCENARIO_CATALOG_ROW_COUNT,
+): Promise<void> {
+  const admin = getSupabaseAdmin();
+  if (!admin) return;
+
+  const { count, error } = await admin.from("scenarios").select("*", { count: "exact", head: true });
+
+  if (error) {
+    console.warn("[scenario-catalog-sync] ensureMinimumScenarioCatalogRows count failed:", error.message);
+    return;
+  }
+
+  const n = count ?? 0;
+  if (n >= minRows) return;
+
+  const result = await syncCatalogToDB();
+  if (!result.ok) {
+    console.warn("[scenario-catalog-sync] ensureMinimumScenarioCatalogRows sync failed:", result.errors);
+  }
+}

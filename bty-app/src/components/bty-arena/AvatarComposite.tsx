@@ -6,8 +6,7 @@ import type { BodyType } from "@/lib/bty/arena/avatarCharacters";
 import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
 import { getOutfitImageUrlForBodyType, parseCompositeOutfitKey } from "@/lib/bty/arena/avatarOutfits";
 /** Tier slot cap only — import tier module so this client bundle does not pull `resolveCompositeAssets`. */
-import { getManifestForTier } from "@/engine/avatar/avatar-manifest-tier";
-import type { AvatarTier } from "@/engine/avatar/avatar-state.service";
+import { getManifestForTier, type AvatarManifestTierId } from "@/engine/avatar/avatar-manifest-tier";
 
 /**
  * AVATAR_LAYER_SPEC §5, §6·§7: 레이어 합성 아바타 (옷 입힌 캐릭터).
@@ -53,7 +52,7 @@ export interface AvatarCompositeProps {
   outfitColorVariant?: OutfitColorVariant;
   accessoryUrls?: string[];
   /** 설정 시 악세서리 레이어 수를 티어 `asset_slots`로 제한. */
-  avatarTier?: AvatarTier;
+  avatarTier?: AvatarManifestTierId;
   alt?: string;
   className?: string;
 }
@@ -130,7 +129,7 @@ export function AvatarComposite({
     objectFit: "contain",
   };
 
-  if (!characterUrl) {
+  if (!characterUrl?.trim() || characterFailed) {
     return (
       <span
         className={cn(
@@ -153,15 +152,13 @@ export function AvatarComposite({
       role="img"
       aria-label={alt}
     >
-      {!characterFailed && (
-        <img
-          src={characterUrl}
-          alt=""
-          style={{ ...layerStyle, zIndex: 1 }}
-          loading="lazy"
-          onError={onCharacterError}
-        />
-      )}
+      <img
+        src={characterUrl}
+        alt=""
+        style={{ ...layerStyle, zIndex: 1 }}
+        loading="lazy"
+        onError={onCharacterError}
+      />
       {resolvedOutfitUrl && !outfitFailed && (
         <img
           src={resolvedOutfitUrl}

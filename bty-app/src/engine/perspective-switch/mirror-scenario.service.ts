@@ -8,7 +8,17 @@ import { getRoleMirrorScenario } from "@/engine/integrity/role-mirror-content.se
 import type { ScenarioLocalePreference } from "@/engine/scenario/scenario-selector.service";
 import { getScenarioById } from "@/lib/bty/scenario/scenarios";
 import type { Scenario, ScenarioChoice } from "@/lib/bty/scenario/types";
-import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+
+function resolveMirrorDbClient(supabase?: SupabaseClient): SupabaseClient {
+  const c = supabase ?? getSupabaseAdmin();
+  if (!c) {
+    throw new Error(
+      "[mirror-scenario] Pass supabase from a route handler or set SUPABASE_SERVICE_ROLE_KEY.",
+    );
+  }
+  return c;
+}
 
 /** Synthetic {@link Scenario.scenarioId} prefix for rows from `mirror_scenario_pool`. */
 export const MIRROR_SCENARIO_PREFIX = "mirror:" as const;
@@ -109,7 +119,7 @@ export async function getMirrorScenarioForLocaleSubmit(
 ): Promise<Scenario | null> {
   if (!scenarioId.startsWith(MIRROR_SCENARIO_PREFIX)) return null;
   const rawId = scenarioId.slice(MIRROR_SCENARIO_PREFIX.length);
-  const client = supabase ?? (await getSupabaseServerClient());
+  const client = resolveMirrorDbClient(supabase);
   const { data, error } = await client
     .from("mirror_scenario_pool")
     .select(
@@ -280,7 +290,7 @@ export async function getMirrorScenarios(
   userId: string,
   supabase?: SupabaseClient,
 ): Promise<MirrorScenario[]> {
-  const client = supabase ?? (await getSupabaseServerClient());
+  const client = resolveMirrorDbClient(supabase);
   await syncMirrorPoolForUser(client, userId);
 
   const { data, error } = await client
@@ -314,7 +324,7 @@ export async function generateMirror(
   supabase?: SupabaseClient,
   options?: GenerateMirrorOptions,
 ): Promise<void> {
-  const client = supabase ?? (await getSupabaseServerClient());
+  const client = resolveMirrorDbClient(supabase);
 
   if (options?.originFlagType) {
     const rm = await getRoleMirrorScenario(userId, options.originFlagType, { supabase: client });

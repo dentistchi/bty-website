@@ -2,13 +2,16 @@
  * Arena session start — pick next {@link Scenario} from catalog minus played ids,
  * filtered by locale, weighted toward least-seen `flag_type` (coverage gaps).
  *
- * Reads `user_scenario_history` + `scenarios` when Supabase is configured; otherwise
- * falls back to in-app {@link SCENARIOS} with `flag_type` inferred from coach notes.
+ * Reads `user_scenario_history` (with backfill from `user_scenario_choice_history` when the
+ * aggregate array was empty) + `scenarios` when Supabase is configured; otherwise falls back to
+ * in-app {@link SCENARIOS} merged with DB metadata with `flag_type` inferred from coach notes.
  */
 
 import type { Scenario } from "@/lib/bty/scenario/types";
 import { SCENARIOS, getScenarioById } from "@/lib/bty/scenario/scenarios";
 import { isUserArenaEjected } from "@/engine/integration/arena-center-ejection";
+import { ensureMinimumScenarioCatalogRows } from "@/engine/scenario/scenario-catalog-sync.service";
+import { isExcludedFromArenaProduction } from "@/engine/scenario/scenario-production-exclusions";
 import { getDifficultyFloor } from "@/engine/scenario/scenario-difficulty-adjuster.service";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
@@ -82,7 +85,7 @@ export function playCountsByFlagType(
 
 /**
  * Among candidates, prefer those whose `flag_type` was seen least often in history.
- * Tie-break: lexicographic `scenario_id` (stable).
+ * Tie-break: uniform random among the minimum-coverage tier (avoids always picking the same id).
  */
 export function pickScenarioIdByFlagCoverage(
   candidates: readonly ScenarioMeta[],
@@ -97,8 +100,9 @@ export function pickScenarioIdByFlagCoverage(
     if (n < min) min = n;
   }
   const tier = candidates.filter((c) => (counts.get(c.flag_type) ?? 0) === min);
-  tier.sort((a, b) => a.scenarioId.localeCompare(b.scenarioId));
-  return tier[0]!;
+  const idx =
+    tier.length <= 1 ? 0 : Math.floor(Math.random() * tier.length);
+  return tier[idx]!;
 }
 
 /** Played scenario ids for Arena routing (catalog + `mirror:` + `pswitch_`). */
@@ -112,30 +116,49 @@ export async function fetchPlayedScenarioIds(userId: string): Promise<string[]> 
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (error || !data) return [];
-  const raw = (data as { played_scenario_ids?: unknown }).played_scenario_ids;
-  if (!Array.isArray(raw)) return [];
-  return raw.filter((x): x is string => typeof x === "string");
+  if (error) return [];
+  const raw = (data as { played_scenario_ids?: unknown } | null)?.played_scenario_ids;
+  if (Array.isArray(raw) && raw.length > 0) {
+    return raw.filter((x): x is string => typeof x === "string");
+  }
+
+  const { data: rows, error: chErr } = await admin
+    .from("user_scenario_choice_history")
+    .select("scenario_id")
+    .eq("user_id", userId)
+    .order("played_at", { ascending: true });
+
+  if (chErr || !rows?.length) return [];
+  return rows
+    .map((r) => (r as { scenario_id?: string }).scenario_id)
+    .filter((x): x is string => typeof x === "string");
 }
 
 async function fetchScenarioCatalogFromDb(): Promise<ScenarioMeta[] | null> {
   const admin = getSupabaseAdmin();
   if (!admin) return null;
 
-  const { data, error } = await admin.from("scenarios").select("scenario_id, flag_type, locale, difficulty");
+  await ensureMinimumScenarioCatalogRows();
+
+  const { data, error } = await admin
+    .from("scenarios")
+    .select("id, flag_type, locale, difficulty, scenario_type");
   if (error || !data?.length) return null;
 
   const out: ScenarioMeta[] = [];
   for (const row of data as Array<{
-    scenario_id?: string;
+    id?: string;
     flag_type?: string;
     locale?: string;
     difficulty?: number | null;
+    scenario_type?: string | null;
   }>) {
-    const scenarioId = row.scenario_id;
+    const scenarioId = row.id;
     const flag_type = row.flag_type;
     const locale = row.locale;
+    const scenario_type = row.scenario_type;
     if (!scenarioId || !flag_type) continue;
+    if (isExcludedFromArenaProduction(scenarioId, scenario_type)) continue;
     if (locale !== "en" && locale !== "ko" && locale !== "both") continue;
     const d = row.difficulty;
     const difficulty: ScenarioDifficultyTier =
@@ -154,11 +177,25 @@ function buildFallbackCatalog(): ScenarioMeta[] {
   }));
 }
 
+/** Union in-app catalog with DB rows so selection never depends on a thin DB slice missing static ids. */
+function mergeDbCatalogWithStatic(db: ScenarioMeta[] | null): ScenarioMeta[] {
+  const staticCatalog = buildFallbackCatalog();
+  if (!db?.length) return staticCatalog;
+  const map = new Map<string, ScenarioMeta>();
+  for (const m of staticCatalog) {
+    map.set(m.scenarioId, m);
+  }
+  for (const m of db) {
+    map.set(m.scenarioId, m);
+  }
+  return [...map.values()];
+}
+
 /** Scenarios the user can play in this locale (DB catalog or in-app fallback). Used for completion rate. */
 export async function getSelectableScenarioMetasForLocale(
   locale: ScenarioLocalePreference,
 ): Promise<ScenarioMeta[]> {
-  const catalog = (await fetchScenarioCatalogFromDb()) ?? buildFallbackCatalog();
+  const catalog = mergeDbCatalogWithStatic(await fetchScenarioCatalogFromDb());
   return catalog.filter((m) => isSelectableMeta(m, locale));
 }
 
@@ -205,7 +242,7 @@ export async function selectNextScenario(
     );
   }
 
-  const catalog = (await fetchScenarioCatalogFromDb()) ?? buildFallbackCatalog();
+  const catalog = mergeDbCatalogWithStatic(await fetchScenarioCatalogFromDb());
   const flagLookupFromCatalog = new Map(catalog.map((m) => [m.scenarioId, m.flag_type] as const));
 
   for (let attempt = 0; attempt < 2; attempt++) {
