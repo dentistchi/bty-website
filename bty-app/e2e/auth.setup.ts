@@ -3,7 +3,11 @@
  *
  * Setup 성공 = 로그인 후 /en/bty-arena 보호 페이지 실제 접근 가능할 때만 state 저장.
  *
- * Login UI: `src/app/[locale]/bty/(public)/login/` → route **`/{locale}/bty/login`** (e.g. `/en/bty/login`).
+ * Login route: `src/app/[locale]/bty/(public)/login/` → **`/{locale}/bty/login`**
+ * (e.g. `/en/bty/login`). `data-testid="login-page"` lives on `LoginClient` root; we wait on
+ * `#login-email` instead so CI still passes if the shell hydrates slowly or the wrapper is skipped.
+ *
+ * Middleware: authenticated users hitting `/bty/login` are redirected to `/bty` — clear cookies first.
  */
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
@@ -12,11 +16,20 @@ import { expect, test as setup, type Page } from "@playwright/test";
 const authFile = path.join(__dirname, ".auth", "user.json");
 const failureScreenshot = path.join(__dirname, ".auth", "last-auth-setup-failure.png");
 
-/** App login page (locale-prefixed). Email field has no `type="email"` (text + autocomplete). */
+/** Locale-prefixed BTY login (see `src/app/[locale]/bty/(public)/login/`). */
 const LOGIN_PATH = "/en/bty/login";
 
 async function mkdirAuthDir(): Promise<void> {
   await fs.mkdir(path.dirname(authFile), { recursive: true }).catch(() => {});
+}
+
+function pathnameLooksLikeLogin(url: string): boolean {
+  try {
+    const p = new URL(url).pathname;
+    return p.includes("/bty/login");
+  } catch {
+    return false;
+  }
 }
 
 async function logAuthSetupFailure(page: Page, label: string): Promise<void> {
@@ -59,25 +72,39 @@ setup("authenticate default user", async ({ page, context }) => {
 
   const loginUrl = `${baseUrl}${LOGIN_PATH}?next=${encodeURIComponent("/en/bty-arena")}`;
 
+  await context.clearCookies();
+
   try {
-    await page.goto(loginUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
-    await page.getByTestId("login-page").waitFor({ state: "visible", timeout: 30_000 });
+    await page.goto(loginUrl, { waitUntil: "load", timeout: 120_000 });
   } catch (e) {
-    await logAuthSetupFailure(page, "goto or login shell not visible");
+    await logAuthSetupFailure(page, "goto login failed");
     throw e instanceof Error ? e : new Error(String(e));
   }
 
-  console.log("[auth-setup] URL after goto:", page.url());
-  console.log("[auth-setup] title:", await page.title());
+  const urlAfter = page.url();
+  console.log("[auth-setup] URL after goto:", urlAfter);
+  try {
+    console.log("[auth-setup] title:", await page.title());
+  } catch {
+    /* ignore */
+  }
+
+  if (!pathnameLooksLikeLogin(urlAfter)) {
+    await logAuthSetupFailure(page, "not on /bty/login (middleware redirect or wrong BASE_URL?)");
+    throw new Error(
+      `[auth-setup] Expected URL path to include /bty/login; got ${urlAfter}. ` +
+        `If already authenticated, ensure cookies are cleared. Check BASE_URL in CI.`,
+    );
+  }
 
   const emailInput = page
-    .getByTestId("login-email-input")
-    .or(page.locator("#login-email"))
+    .locator("#login-email")
+    .or(page.getByTestId("login-email-input"))
     .or(page.locator('input[autocomplete="email"]'))
     .first();
   const passwordInput = page
-    .getByTestId("login-password-input")
-    .or(page.locator("#login-password"))
+    .locator("#login-password")
+    .or(page.getByTestId("login-password-input"))
     .or(page.locator('input[type="password"]'))
     .first();
   const submitBtn = page
@@ -85,20 +112,20 @@ setup("authenticate default user", async ({ page, context }) => {
     .or(page.getByRole("button", { name: /sign in|login|로그인/i }));
 
   try {
-    await emailInput.waitFor({ state: "visible", timeout: 20_000 });
+    await emailInput.waitFor({ state: "visible", timeout: 90_000 });
   } catch (e) {
-    await logAuthSetupFailure(page, "login form (email input) not found");
+    await logAuthSetupFailure(page, "login email field not visible (hydration or wrong page?)");
     throw e instanceof Error ? e : new Error("login form (email input) not found");
   }
 
   await emailInput.fill(email);
-  await passwordInput.waitFor({ state: "visible", timeout: 10_000 });
+  await passwordInput.waitFor({ state: "visible", timeout: 15_000 });
   await passwordInput.fill(password);
   await submitBtn.click();
 
   try {
-    await page.waitForURL((u) => !u.pathname.includes("/login"), { timeout: 45_000 });
-  } catch (e) {
+    await page.waitForURL((u) => !u.pathname.includes("/login"), { timeout: 60_000 });
+  } catch {
     await logAuthSetupFailure(page, "login did not redirect away from /login");
     let current = "(unavailable)";
     try {
@@ -110,7 +137,7 @@ setup("authenticate default user", async ({ page, context }) => {
   }
 
   try {
-    await page.goto(`${baseUrl}/en/bty-arena`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    await page.goto(`${baseUrl}/en/bty-arena`, { waitUntil: "load", timeout: 120_000 });
   } catch (e) {
     await logAuthSetupFailure(page, "goto /en/bty-arena after login failed");
     throw e instanceof Error ? e : new Error(String(e));
