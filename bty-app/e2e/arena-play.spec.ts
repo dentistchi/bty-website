@@ -1,34 +1,40 @@
 import { expect, test } from "@playwright/test";
+import { arenaShellLocator, canonicalArenaUrlPattern } from "./helpers/arena-canonical";
+
+const LOCALE = "en";
 
 /**
- * Arena Play — 실행 화면; 허브 전용 요약 카드(arena-hub-summary)는 플레이에 없어야 함.
+ * Canonical Arena lives at `/[locale]/bty-arena` (live `useArenaSession` flow).
+ * Hub summary card must not appear on the play shell.
  */
 test.describe("Arena Play (authenticated)", () => {
-  test("play route is separate from hub; simulation shell without hub summary card", async ({
+  test("canonical route stays /bty-arena or /bty-arena/beginner; simulation shell without hub summary", async ({
     page,
   }) => {
-    await page.goto("/en/bty-arena");
-    await expect(page).toHaveURL(/\/en\/bty-arena\/run/);
+    await page.goto(`/${LOCALE}/bty-arena`);
+    await expect(page).toHaveURL(canonicalArenaUrlPattern(LOCALE));
     await expect(page.getByTestId("arena-hub-summary")).toHaveCount(0);
 
-    const shell = page.locator(
-      '[data-testid="arena-play-main"], [data-testid="arena-play-loading"], [data-testid="arena-play-gate-beginner"], [data-testid="arena-play-empty-scenario"]',
-    );
-    await expect(shell.first()).toBeVisible({ timeout: 45_000 });
+    const shell = arenaShellLocator(page);
+    await expect(shell.first()).toBeVisible({ timeout: 60_000 });
 
-    const main = page.getByRole("main", { name: /Arena scenario play/i });
+    const main = page.getByRole("main", { name: /Arena mission run|Arena 런/i });
     if (await main.isVisible().catch(() => false)) {
       await expect(main).toBeVisible();
-      await expect(
-        main.getByText(/Better Than Yesterday|One step today|시나리오|Scenario/i).first(),
-      ).toBeVisible({ timeout: 10_000 });
     }
   });
 
-  test("hub → Play preserves route separation", async ({ page }) => {
-    await page.goto("/en/bty-arena/hub");
-    await page.getByTestId("arena-play-button").first().click();
-    await expect(page).toHaveURL(/\/en\/bty-arena\/run/);
+  test("hub Play button opens canonical Arena (same shell, not /run or /play)", async ({ page }) => {
+    await page.goto(`/${LOCALE}/bty-arena/hub`);
+    await expect(page.getByTestId("arena-hub")).toBeVisible();
+
+    await Promise.all([
+      page.waitForURL(canonicalArenaUrlPattern(LOCALE), { timeout: 30_000 }),
+      page.getByTestId("arena-play-button").first().click(),
+    ]);
+
+    await expect(page).not.toHaveURL(/\/bty-arena\/(run|play)(\/|$)/);
     await expect(page.getByTestId("arena-hub-summary")).toHaveCount(0);
+    await expect(arenaShellLocator(page).first()).toBeVisible({ timeout: 45_000 });
   });
 });

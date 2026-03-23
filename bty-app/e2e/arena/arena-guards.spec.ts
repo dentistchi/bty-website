@@ -1,34 +1,27 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * Route guards for mission Play / Result (sessionStorage).
+ * Legacy mission routes redirect to canonical `/[locale]/bty-arena`.
+ * (No separate sessionStorage gate on /play — unified client state on canonical route.)
  */
-test.describe("Arena mission guards", () => {
-  test("cannot access /result without committed decisions", async ({ page }) => {
-    await page.goto("/en/bty-arena");
-    await page.evaluate(() => {
-      try {
-        sessionStorage.clear();
-      } catch {
-        /* ignore */
-      }
-    });
-
-    await page.goto("/en/bty-arena/result");
-    await expect(page).toHaveURL(/\/en\/bty-arena$/, { timeout: 15_000 });
+test.describe("Arena legacy route redirects", () => {
+  test("/result redirects to canonical Arena", async ({ page }) => {
+    await page.goto("/en/bty-arena/result", { waitUntil: "commit" });
+    await expect(page).toHaveURL(/\/en\/bty-arena(\/beginner)?$/, { timeout: 15_000 });
   });
 
-  test("cannot access /play without mission session", async ({ page }) => {
-    await page.goto("/en/bty-arena");
-    await page.evaluate(() => {
-      try {
-        sessionStorage.clear();
-      } catch {
-        /* ignore */
-      }
-    });
+  test("/play redirects to canonical Arena", async ({ page }) => {
+    await page.goto("/en/bty-arena/play", { waitUntil: "commit" });
+    await expect(page).toHaveURL(/\/en\/bty-arena(\/beginner)?$/, { timeout: 15_000 });
+  });
 
-    await page.goto("/en/bty-arena/play");
-    await expect(page).toHaveURL(/\/en\/bty-arena$/);
+  test("/play/resolve redirects to canonical Arena", async ({ page }) => {
+    await page.goto("/en/bty-arena/play/resolve", { waitUntil: "commit" });
+    await expect(page).toHaveURL(/\/en\/bty-arena(\/beginner)?$/, { timeout: 15_000 });
+  });
+
+  test("/run compatibility redirect goes to canonical Arena", async ({ page }) => {
+    await page.goto("/en/bty-arena/run", { waitUntil: "commit" });
+    await expect(page).toHaveURL(/\/en\/bty-arena(\/beginner)?$/, { timeout: 15_000 });
   });
 });

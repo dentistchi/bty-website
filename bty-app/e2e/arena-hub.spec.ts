@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { canonicalArenaUrlPattern } from "./helpers/arena-canonical";
 
-/** Arena 허브 — testid 우선 (카피/i18n 변경에 덜 민감). */
+/** Arena hub — testid-first (less sensitive to copy/i18n tweaks). */
 test.describe("Arena Hub (authenticated)", () => {
-  test("hub entry, summary values, Play → /run", async ({ page }) => {
+  test("hub entry, summary values, Play → canonical /bty-arena", async ({ page }) => {
     await page.goto("/en/bty-arena/hub");
     await expect(page).not.toHaveURL(/login/);
 
@@ -19,7 +20,7 @@ test.describe("Arena Hub (authenticated)", () => {
     await expect(page.getByTestId("arena-season-ends")).toBeVisible();
 
     await Promise.all([
-      page.waitForURL(/\/en\/bty-arena\/run/, { timeout: 30_000 }),
+      page.waitForURL(canonicalArenaUrlPattern("en"), { timeout: 30_000 }),
       page.getByTestId("arena-play-button").first().click(),
     ]);
   });

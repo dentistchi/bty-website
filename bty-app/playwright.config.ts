@@ -29,7 +29,8 @@ export default defineConfig({
     ...devices["Desktop Chrome"],
   },
   projects: [
-    { name: "setup", testMatch: /auth\.setup\.ts$/ },
+    /** Login + storageState; needs >30s when dev server cold-starts / hydrates login shell. */
+    { name: "setup", testMatch: /auth\.setup\.ts$/, timeout: 180_000 },
     ...(enableComebackE2E
       ? [{ name: "setup-comeback", testMatch: /auth-comeback\.setup\.ts$/ }]
       : []),
