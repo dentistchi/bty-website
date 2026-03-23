@@ -1030,7 +1030,7 @@ export type Messages = {
     skipFollowUp: string;
     followUpSelected: string;
     step6Title: string;
-    /** `/bty-arena/run` 본문 `<main>` — Lab·`/play`·`/record` 랜드마크 문구와 분리 */
+    /** `/bty-arena` 본문 `<main>` — Lab·`/play`·`/record` 랜드마크 문구와 분리 */
     arenaRunPageMainRegionAria: string;
     preparingNewScenarioAria: string;
     scenarioProgressPanelAria: string;
@@ -1071,13 +1071,13 @@ export type Messages = {
     inProgress: string;
     /** POST reflect 실패 시(성찰 저장은 됨) */
     reflectDeepeningUnavailable: string;
-    /** `/bty-arena/run` 레벨·세션 준비 로딩 */
+    /** `/bty-arena` 레벨·세션 준비 로딩 */
     runPageLevelCheckMainRegionAria: string;
     /** 입문 경로 게이트(리다이렉트 전) */
     runPageBeginnerPathMainRegionAria: string;
     /** 시나리오 없음 빈 상태 */
     runPageNoScenarioMainRegionAria: string;
-    /** `/bty-arena/run` 에러 전용 셸 `<main>` — `runPageNoScenarioMainRegionAria`·Lab·`/play`·기록과 분리 */
+    /** `/bty-arena` 에러 전용 셸 `<main>` — `runPageNoScenarioMainRegionAria`·Lab·`/play`·기록과 분리 */
     arenaRunErrorMainRegionAria: string;
     arenaRunErrorTitle: string;
     arenaRunErrorDescription: string;

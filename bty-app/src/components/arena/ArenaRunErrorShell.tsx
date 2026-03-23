@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 
 /**
- * `/bty-arena/run` 전용 에러 상태 UI 셸(render-only).
+ * `/bty-arena` 세션 UI용 에러 상태 셸(render-only).
  * 문구는 `getMessages(locale).arenaRun` 의 `arenaRunError*` 키를 전달한다.
  */
 export type ArenaRunErrorShellProps = {

@@ -12,7 +12,7 @@ export default async function ArenaResultPage({ params }: Props) {
   const t = getMessages(loc).uxPhase1Stub;
   const m = getMessages(loc).myPageStub;
   const hub = `/${locale}/bty-arena/hub`;
-  const play = `/${locale}/bty-arena/run`;
+  const play = `/${locale}/bty-arena`;
 
   return (
     <ScreenShell

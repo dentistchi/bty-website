@@ -1,11 +1,9 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import ArenaResolveSessionScreen from "@/components/bty-arena/ArenaResolveSessionScreen";
+type Props = { params: Promise<{ locale: string }> };
 
-/**
- * Arena post-decision chamber (prototype).
- * @see docs/BTY_ARENA_RESOLVE_SCREEN_UI_SPEC.md
- */
-export default function ArenaPlayResolvePage() {
-  return <ArenaResolveSessionScreen />;
+/** Legacy resolve chamber — canonical Arena is `/bty-arena`. */
+export default async function ArenaPlayResolveRedirect({ params }: Props) {
+  const { locale } = await params;
+  redirect(`/${locale}/bty-arena`);
 }

@@ -181,7 +181,7 @@ export default function DashboardClient() {
   const [streak, setStreak] = React.useState<number>(0);
   const params = useParams();
   const locale = (typeof params?.locale === "string" ? params.locale : "en") as string;
-  const arenaPlayHref = `/${locale}/bty-arena/run`;
+  const arenaPlayHref = `/${locale}/bty-arena`;
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [subNameDraft, setSubNameDraft] = React.useState("");

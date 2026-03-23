@@ -7,7 +7,7 @@ test.describe("Arena Play (authenticated)", () => {
   test("play route is separate from hub; simulation shell without hub summary card", async ({
     page,
   }) => {
-    await page.goto("/en/bty-arena/run");
+    await page.goto("/en/bty-arena");
     await expect(page).toHaveURL(/\/en\/bty-arena\/run/);
     await expect(page.getByTestId("arena-hub-summary")).toHaveCount(0);
 

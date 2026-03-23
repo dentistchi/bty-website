@@ -16,7 +16,7 @@ export default async function Page({ params }: Props) {
   const loc = (locale === "ko" ? "ko" : "en") as Locale;
   const t = getMessages(loc).uxPhase1Stub;
   const base = `/${locale}`;
-  const arenaPlay = `${base}/bty-arena/run`;
+  const arenaEntry = `${base}/bty-arena`;
 
   return (
     <main className="mx-auto max-w-md bg-bty-bg px-4 py-6 pb-28" aria-label={t.wireframeLandmarkAria}>
@@ -30,7 +30,7 @@ export default async function Page({ params }: Props) {
         </div>
 
         <section className="space-y-3" role="region" aria-label={t.wireframeCtaRegionAria}>
-          <SecondaryButton href={arenaPlay}>
+          <SecondaryButton href={arenaEntry}>
             <span className="block font-semibold text-bty-text">{t.wireframeContinue}</span>
             <span className="mt-1 block text-xs font-normal text-bty-secondary">
               {t.wireframeResumeLast}
@@ -41,7 +41,7 @@ export default async function Page({ params }: Props) {
             <span>{t.wireframeOr}</span>
             <span className="h-px flex-1 bg-bty-border" aria-hidden />
           </div>
-          <PrimaryButton href={arenaPlay}>
+          <PrimaryButton href={arenaEntry}>
             <span className="block">{t.wireframePlayGame}</span>
             <span className="mt-1 block text-xs font-normal text-white/75">{t.wireframeStartScenario}</span>
           </PrimaryButton>

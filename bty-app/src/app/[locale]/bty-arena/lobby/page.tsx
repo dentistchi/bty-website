@@ -1,6 +1,9 @@
-import BtyArenaMissionLobbyPage from "@/features/arena/lobby/BtyArenaMissionLobbyPage";
+import { redirect } from "next/navigation";
 
-/** Prototype lobby path — same mission lobby as `/bty-arena` with `lobbyLandmarkAria` on `<main>`. */
-export default function ArenaLobbyAliasPage() {
-  return <BtyArenaMissionLobbyPage mainLandmark="lobbyRoute" />;
+type Props = { params: Promise<{ locale: string }> };
+
+/** Alias: same session UI as `/bty-arena`. */
+export default async function ArenaLobbyAliasRedirect({ params }: Props) {
+  const { locale } = await params;
+  redirect(`/${locale}/bty-arena`);
 }

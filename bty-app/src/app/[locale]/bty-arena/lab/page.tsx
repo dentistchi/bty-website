@@ -109,7 +109,7 @@ export default function LabPage() {
 
       <nav style={{ marginTop: 24 }} aria-label={t.arenaLabBackNavAria}>
         <Link
-          href={`/${locale}/bty-arena/run`}
+          href={`/${locale}/bty-arena`}
           style={{
             display: "inline-block",
             padding: "10px 16px",
