@@ -23,8 +23,10 @@ import {
   type ScenarioLocalePreference,
   type SelectNextScenarioOptions,
 } from "@/engine/scenario/scenario-selector.service";
+import type { ArenaRecallPrompt } from "@/lib/bty/arena/memoryRecallPrompt.types";
 import type { Scenario } from "@/lib/bty/scenario/types";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { consumePendingPatternThresholdRecall } from "@/engine/memory/memory-recall-prompt.service";
 
 /** Standard → mirror → perspective-switch; index = `played_scenario_ids.length % 3`. */
 export const ARENA_SESSION_ROTATION_MOD = 3 as const;
@@ -36,7 +38,23 @@ export type ScenarioRouteResult = {
   scenario: Scenario;
   /** Present when `route === "mirror"` (pool rows for diagnostics / UI). */
   mirrors?: MirrorScenario[];
+  /** Memory Engine: pattern-threshold recall copy for this scenario (consumed from trigger queue). */
+  recallPrompt?: ArenaRecallPrompt | null;
 };
+
+async function attachRecallPrompt(
+  userId: string,
+  locale: ScenarioLocalePreference,
+  scenario: Scenario,
+  base: Omit<ScenarioRouteResult, "recallPrompt">,
+): Promise<ScenarioRouteResult> {
+  const recallPrompt = await consumePendingPatternThresholdRecall({
+    userId,
+    locale: locale === "ko" ? "ko" : "en",
+    scenarioId: scenario.scenarioId,
+  });
+  return { ...base, ...(recallPrompt ? { recallPrompt } : {}) };
+}
 
 function pickLeastRecentMirror(mirrors: MirrorScenario[], played: string[]): MirrorScenario {
   const withMeta = mirrors.map((m) => {
@@ -80,21 +98,21 @@ export async function getNextScenarioForSession(
       preferFlagType: options.preferFlagType,
       forceDifficultyTier: options.forceDifficultyTier,
     });
-    return {
+    return attachRecallPrompt(userId, locale, scenario, {
       route: "catalog",
       scenario,
       delayedOutcomePending: due.length > 0,
-    };
+    });
   }
 
   if (!admin) {
     const due = await getDueOutcomes(userId, { locale });
     const scenario = await selectNextScenario(userId, locale, options);
-    return {
+    return attachRecallPrompt(userId, locale, scenario, {
       route: "catalog",
       scenario,
       delayedOutcomePending: due.length > 0,
-    };
+    });
   }
 
   const due = await getDueOutcomes(userId, { locale, supabase: admin });
@@ -110,28 +128,38 @@ export async function getNextScenarioForSession(
 
   if (sessionSlot === 0) {
     const scenario = await catalogFallback();
-    return { route: "catalog", scenario, delayedOutcomePending };
+    return attachRecallPrompt(userId, locale, scenario, {
+      route: "catalog",
+      scenario,
+      delayedOutcomePending,
+    });
   }
 
   if (sessionSlot === 1) {
     if (poolLen >= 1) {
       const row = pickLeastRecentMirror(mirrors, played);
-      return {
+      const scenario = mirrorPoolRowToScenario(row, locale);
+      return attachRecallPrompt(userId, locale, scenario, {
         route: "mirror",
-        scenario: mirrorPoolRowToScenario(row, locale),
+        scenario,
         mirrors,
         delayedOutcomePending,
-      };
+      });
     }
     const scenario = await catalogFallback();
-    return { route: "catalog", scenario, delayedOutcomePending };
+    return attachRecallPrompt(userId, locale, scenario, {
+      route: "catalog",
+      scenario,
+      delayedOutcomePending,
+    });
   }
 
   // sessionSlot === 2 — perspective third, then mirror, then catalog
   const psEntry = await getNextPerspectiveSwitch(userId, admin);
-  return {
+  const scenario = perspectiveSwitchToScenario(psEntry, locale);
+  return attachRecallPrompt(userId, locale, scenario, {
     route: "perspective_switch",
-    scenario: perspectiveSwitchToScenario(psEntry, locale),
+    scenario,
     delayedOutcomePending,
-  };
+  });
 }

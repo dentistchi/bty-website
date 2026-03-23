@@ -111,6 +111,16 @@ export default function BtyArenaRunPageClient() {
           >
             <LabUsageStrip locale={locale} />
             <div>
+              {s.step === 1 && s.phase === "CHOOSING" && s.recallPrompt && (
+                <div
+                  data-testid="arena-recall-prompt"
+                  role="note"
+                  className="mb-4 rounded-xl border border-bty-border/80 bg-bty-soft/60 px-4 py-3 text-sm leading-relaxed"
+                  style={{ color: "var(--arena-text-soft)" }}
+                >
+                  {s.recallPrompt.message}
+                </div>
+              )}
               {s.step === 1 && (
                 <div className="bty-hero" style={{ paddingTop: 32, paddingBottom: 40, marginBottom: 28 }}>
                   <p
@@ -137,6 +147,7 @@ export default function BtyArenaRunPageClient() {
                 onPause={s.pause}
                 onReset={s.resetRun}
                 showPause={false}
+                identity={s.arenaIdentity}
               />
 
               {s.resetRunLoading && (

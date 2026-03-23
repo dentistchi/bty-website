@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   pickRandomBeginnerScenario,
@@ -68,7 +69,18 @@ function OptionButton({
   );
 }
 
-function PrimaryButton({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) {
+function PrimaryButton({
+  label,
+  onClick,
+  disabled,
+  variant = "solid",
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  variant?: "solid" | "outline";
+}) {
+  const outline = variant === "outline";
   return (
     <button
       type="button"
@@ -76,11 +88,13 @@ function PrimaryButton({ label, onClick, disabled }: { label: string; onClick: (
       disabled={disabled}
       aria-label={label}
       style={{
+        display: "block",
+        width: "100%",
         padding: "14px 24px",
         borderRadius: 12,
         border: "1px solid #111",
-        background: disabled ? "#ccc" : "#111",
-        color: "white",
+        background: disabled ? "#e5e5e5" : outline ? "#fff" : "#111",
+        color: disabled ? "#888" : outline ? "#111" : "white",
         fontSize: 16,
         fontWeight: 600,
         cursor: disabled ? "not-allowed" : "pointer",
@@ -100,6 +114,7 @@ const UI_KO = {
   yourResult: "결과",
   score: "점수",
   tryAnother: "다른 시나리오 해보기",
+  continueToMainArena: "메인 아레나로 계속하기",
   whatEmotion: "지금 가장 가까운 감정은?",
   whatWouldYouDo: "어떻게 하시겠어요?",
   reflectionPrompt: "한 문장으로: 이 판에서 가져갈 것은?",
@@ -116,6 +131,7 @@ const UI_EN = {
   yourResult: "Your result",
   score: "Score",
   tryAnother: "Try another scenario",
+  continueToMainArena: "Continue to main Arena",
   whatEmotion: "What emotion is closest right now?",
   whatWouldYouDo: "What would you do?",
   reflectionPrompt: "In one sentence: what will you take from this?",
@@ -289,20 +305,42 @@ export default function BeginnerArenaPage() {
           <p style={{ margin: 0, fontSize: 14, opacity: 0.8 }}>
             {ui.score}: {completed.score} / 20
           </p>
-          <PrimaryButton
-            label={ui.tryAnother}
-            onClick={() => {
-              setCompleted(null);
-              setScenario(pickRandomBeginnerScenario());
-              setRunId(null);
-              setStep(1);
-              setEmotionIndex(null);
-              setRiskIndex(null);
-              setIntegrityIndex(null);
-              setDecisionIndex(null);
-              setReflectionText("");
-            }}
-          />
+          <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 10 }}>
+            <Link
+              href={`/${locale}/bty-arena`}
+              style={{
+                display: "block",
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "14px 24px",
+                borderRadius: 12,
+                border: "1px solid #111",
+                background: "#111",
+                color: "white",
+                fontSize: 16,
+                fontWeight: 600,
+                textAlign: "center",
+                textDecoration: "none",
+              }}
+            >
+              {ui.continueToMainArena}
+            </Link>
+            <PrimaryButton
+              variant="outline"
+              label={ui.tryAnother}
+              onClick={() => {
+                setCompleted(null);
+                setScenario(pickRandomBeginnerScenario());
+                setRunId(null);
+                setStep(1);
+                setEmotionIndex(null);
+                setRiskIndex(null);
+                setIntegrityIndex(null);
+                setDecisionIndex(null);
+                setReflectionText("");
+              }}
+            />
+          </div>
         </div>
       </main>
     );

@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
       scenario: routed.scenario,
       scenarioRoute: routed.route,
       delayedOutcomePending: routed.delayedOutcomePending,
+      ...(routed.recallPrompt ? { recallPrompt: routed.recallPrompt } : {}),
       ...(routed.route === "mirror" && routed.mirrors ? { mirrors: routed.mirrors } : {}),
     });
     copyCookiesAndDebug(base, res, req, true);

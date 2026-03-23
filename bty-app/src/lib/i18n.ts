@@ -1020,6 +1020,8 @@ export type Messages = {
     pauseLabel: string;
     resetLabel: string;
     mainLabel: string;
+    /** Arena header identity chip — link to profile / avatar (no metrics). */
+    headerIdentityLinkAria: string;
     startSimulation: string;
     confirm: string;
     reflectionTitle: string;
@@ -2504,6 +2506,7 @@ const ko: Messages = {
     pauseLabel: "일시정지",
     resetLabel: "초기화",
     mainLabel: "메인",
+    headerIdentityLinkAria: "프로필·아바타로 이동",
     startSimulation: "시뮬레이션 시작",
     confirm: "확인",
     reflectionTitle: "성찰",
@@ -3933,6 +3936,7 @@ const en: Messages = {
     pauseLabel: "Pause",
     resetLabel: "Reset",
     mainLabel: "Main",
+    headerIdentityLinkAria: "Open profile and avatar",
     startSimulation: "Start Simulation",
     confirm: "Confirm",
     reflectionTitle: "Reflection",

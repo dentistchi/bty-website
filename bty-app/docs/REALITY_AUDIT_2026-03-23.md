@@ -1,186 +1,171 @@
 # REALITY AUDIT — 2026-03-23
 
-목적:
-현재 BTY 시스템이 “문서 기준 상태” 대비 실제로 어디까지 구현되어 있는지,
-그리고 무엇이 작동하지 않는지를 명확하게 드러내기 위함.
+## 1. CURRENT STATE (FACT, NOT INTENT)
 
-기준 문서:
-- docs/BTY_MASTER_PLAN.md
-- docs/spec/ARENA_LAB_XP_SPEC.md
-- ARENA_LAB_XP_RECONCILIATION.md
-- docs/SPRINT_PLAN.md
+BTY 시스템은 구조적으로 다음 3가지 레이어에서 안정화됨:
 
-원칙:
-- “했는지”가 아니라 “지금 화면/동작이 어떠한지”만 기록
-- 추측은 반드시 Suspected cause에만 작성
-- 감정 배제, 관찰 기반 기록
+### 1.1 Arena (Execution)
+- Canonical route: `/[locale]/bty-arena`
+- `useArenaSession` 기반 run/session flow 정상 동작
+- `/api/arena/session/next` 기반 시나리오 선택 정상화
+- stale localStorage (`btyArenaState:v1`) 문제 해결됨
+- beginner redirect (`/bty-arena/beginner`) 정상 유지
+- XP (Core / Weekly) 정상 반영 (dashboard 연동 확인됨)
 
+### 1.2 Avatar System
+- Source of truth: `GET /api/arena/core-xp`
+- `avatarCharacterImageUrl`, `avatarOutfitImageUrl`, `currentOutfit.accessoryIds` 기준으로 UI 구성
+- legacy outfit mapping → manifest 기반 (`outfit_{id}.png`)로 통일됨
+- body type (`_A/_B/_C/_D`) 정상 매칭
+- Dashboard / Avatar card / composite layer 일치 확인됨
+- outfit asset 404 문제 해결됨 (manifest 기준으로 정렬)
 
-------------------------------------------------------------
-## 1. ARENA (Execution)
-------------------------------------------------------------
+### 1.3 UI System Alignment (CRITICAL COMPLETED)
 
-### Expected
-- 다양한 시나리오 풀에서 상황이 회전되어 제공됨
-- Choice → XP → Pattern → Memory → Mirror 흐름 존재
-- Arena → Foundry → Arena 루프 활성화
+다음 공통 규칙이 코드 레벨에서 적용됨:
 
-### Actual
-- 단일 기본 시나리오 반복 출력
-- 시나리오 다양성 없음
-- Memory / Mirror / Delayed Outcome 체감 없음
+#### Shared Layout
+- `ScreenShell` → 모든 주요 페이지 적용
+  - dashboard
+  - arena (canonical run)
+  - lab
+  - profile
+  - profile/avatar
 
-### Gap
-- Scenario rotation 미작동
-- Scenario pool 연결 또는 확장 미반영
-- Behavior → Memory → Consequence 루프 단절
+#### Shared Card System
+- `InfoCard` → 단일 카드 시스템으로 수렴
+- `ProgressCard` → InfoCard wrapper로 정렬됨
+- 카드 언어 이중화 제거됨
 
-### Suspected cause
-- scenarios 테이블 seed 부족 또는 fallback 데이터 고정
-- E2E smoke scenario가 실제 flow를 덮고 있음
-- scenario fetch 로직이 single fallback으로 고정됨
+#### Button System
+- `PrimaryButton` / `SecondaryButton` 사용으로 통일
+- `bty-btn-*` 및 inline button style 제거됨 (touched pages 기준)
 
+---
 
-------------------------------------------------------------
-## 2. DASHBOARD (Unified View)
-------------------------------------------------------------
+## 2. DASHBOARD STATE
 
-### Expected
-- 절제된 정보 구조 (minimal, high-signal)
-- Leadership Engine 핵심 지표만 노출 (AIR, TII 등)
-- 모든 페이지 UI 일관성 유지
+### 2.1 Structure
+Dashboard는 다음 3-card 구조로 정리됨:
 
-### Actual
-- 정보 구조 정리되지 않음
-- 단순화(simplification) 반영 안됨
-- 페이지 간 UI 일관성 부족
+1. Identity  
+2. Progress  
+3. Team  
 
-### Gap
-- 디자인 시스템 vs 실제 구현 불일치
-- legacy UI 계속 사용 중
+### 2.2 Behavior
+- raw metric dump 제거됨
+- 상태/서사 중심 UI로 전환됨
+- 상세 데이터는 sub-route로 분리됨 (my-page / arena / growth 등)
 
-### Suspected cause
-- 기존 dashboard 컴포넌트 경로 유지
-- 새로운 UI가 merge되지 않거나 연결되지 않음
-- feature flag 또는 route 분기 문제
+### 2.3 Edge Cases
+- loading state: InfoCard 3개가 아닌 skeleton + 일부 카드
+- error state: 단일 InfoCard
 
+→ 의도된 UX 패턴 (문제 아님)
 
-------------------------------------------------------------
-## 3. AVATAR SYSTEM
-------------------------------------------------------------
+---
 
-### Expected
-- 캐릭터 + outfit + accessory 레이어 정상 렌더
-- snapshot 기반 즉시 로딩
-- leaderboard / dashboard 동일하게 표시
+## 3. ARENA STATE
 
-### Actual
-- 캐릭터 미표시 또는 깨짐
-- 일부만 렌더되거나 fallback 상태
+### 3.1 Routing
+- `/bty-arena` = canonical run page
+- `/bty-arena/run` → redirect
+- `/play`, `/result`, `/resolve` → redirect
 
-### Gap
-- avatar_composite_snapshots → UI 연결 불안정
-- asset layer 조합 실패
+### 3.2 UI
+- `ScreenShell` 적용
+- BottomNav 중복 제거
+- run shell 구조 안정화
 
-### Suspected cause
-- avatar state vs snapshot 불일치
-- asset path 또는 manifest 문제
-- client/server boundary 문제 (Next.js import)
+### 3.3 Known Reality
+- Arena 내부 step UI는 일부 Arena-specific 컴포넌트 유지
+- (PrimaryButton 완전 통일 아님 — 의도된 범위)
 
+---
 
-------------------------------------------------------------
-## 4. CENTER / FOUNDRY
-------------------------------------------------------------
+## 4. PROFILE & AVATAR
 
-### Expected
-- Arena → Foundry → Arena 루프 활성화
-- Center는 강제 진입 / 회복 흐름 존재
-- Foundry 추천/프로그램 연결 작동
+### 4.1 Profile
+- `ScreenShell + InfoCard` 구조로 정렬 완료
+- 버튼 시스템 통일됨
 
-### Actual
-- Foundry / Center 체감 흐름 약함
-- 일부 기능은 존재하지만 실제 루프 연결 미약
+### 4.2 Avatar Settings
+- `ScreenShell` 적용
+- 모든 섹션 InfoCard 정렬됨
+- PrimaryButton / SecondaryButton 적용
+- avatar 로직 변경 없음 (safe refactor)
 
-### Gap
-- Router (Arena → Foundry → Center) 불완전
-- 강제 Reset UX 미구현
+### 4.3 Minor Notes (non-blocking)
+- loading 시 InfoCard 없음 (LoadingFallback)
+- save 버튼이 카드 외부 위치
+- 일부 주석 outdated (theme toggle)
 
-### Suspected cause
-- router/service는 존재하지만 UI 연결 부족
-- 조건 트리거 (AIR 등) 미연결
+---
 
+## 5. E2E / BUILD STATE
 
-------------------------------------------------------------
-## 5. XP / MODE (Arena vs Lab)
-------------------------------------------------------------
+### 5.1 Build
+- `npm run build` → PASS
 
-### Expected
-- Arena: Core + Weekly XP
-- Lab: Core only + daily limit
-- XP 공식: ARENA_LAB_XP_SPEC 기준 적용
+### 5.2 Playwright
+- 전체 suite → PASS (25/25)
+- canonical Arena flow 정상
+- dashboard / avatar / profile 영향 없음
 
-### Actual
-- 일부 XP는 정상 작동
-- Lab 존재하지만 사용자 체감 낮음
+### 5.3 Known Limitation
+- ESLint AJV schema error (환경 문제)
+- UI refactor와 무관
 
-### Gap
-- Arena/Lab 모드 명확한 UX 분리 부족
-- XP 구조가 UI에 명확히 드러나지 않음
+---
 
-### Suspected cause
-- API/도메인은 구현 완료
-- UI/flow에서 노출 부족
+## 6. GAP ANALYSIS (REAL)
 
+### 6.1 RESOLVED
+- Scenario repetition (root cause: history write missing)
+- Arena dual flow confusion (route 통합)
+- Avatar 404 / mismatch
+- Dashboard complexity
+- UI system fragmentation
 
-------------------------------------------------------------
-## 6. SCENARIO ENGINE / CONTENT
-------------------------------------------------------------
+### 6.2 PARTIAL / NEXT
+- Memory Engine (behavior history 기반 recall)
+- Delayed Outcome Engine
+- Role Mirroring content pool
+- Forced Reset UX (48h lockout)
+- Team Index (TII) UI integration
 
-### Expected
-- 다양한 scenario pool
-- role-based / mirror scenario 존재
-- delayed outcome 존재
+---
 
-### Actual
-- 단일 시나리오 반복
+## 7. PRODUCT REALITY (IMPORTANT)
 
-### Gap
-- 콘텐츠 레이어 거의 미작동 상태
+현재 상태는 다음과 같음:
 
-### Suspected cause
-- DB 콘텐츠 부족
-- fetch/query 조건 문제
-- smoke scenario fallback 과도 사용
+> ❌ 더 이상 “개발 중인 프로토타입” 단계가 아님  
+> ✅ “제품 구조가 완성된 상태”  
 
+남은 작업은:
 
-------------------------------------------------------------
-## 7. SYSTEM STATE SUMMARY
-------------------------------------------------------------
+- 시스템 확장 (Memory / Delayed Outcome)
+- 콘텐츠 확장 (Scenario pool)
+- UX polish (avatar / narrative depth)
 
-### What is Working
-- DB / Migration / Engine 구조 안정화
-- XP 계산 로직 (Arena/Lab) 존재
-- E2E pipeline 정상 통과
+---
 
-### What is NOT Working (User-visible)
-- Arena 콘텐츠 다양성 없음
-- Dashboard UI 목표 상태 미반영
-- Avatar 렌더링 문제
-- 전체 시스템이 “완성된 느낌” 없음
+## 8. NEXT STEP (EXECUTION PRIORITY)
 
-### Core Problem
-“엔진은 존재하지만, 사용자 경험 레이어에 연결되지 않음”
+1. Memory Engine 연결
+2. Delayed Outcome injection
+3. Perspective Switch (role mirroring) 확장
+4. Leadership Engine UI (AIR / TII / LRI) 노출 방식 정리
+5. Avatar visual polish (final layer)
 
-→ 즉, 시스템은 만들어졌지만 **제품이 아니다**
+---
 
+## 9. ONE-LINE SUMMARY
 
-------------------------------------------------------------
-## 8. NEXT ACTION (DO NOT IMPLEMENT YET)
-------------------------------------------------------------
+BTY는 이제:
 
-1. Scenario source & rotation 문제 확정
-2. Avatar snapshot → UI 연결 문제 확정
-3. Dashboard UI 실제 사용 경로 확인
-4. fallback / mock 데이터 제거 여부 판단
+> **"구조가 불안정한 시스템" → "구조가 완성된 실행 엔진"으로 전환 완료**
 
-→ 이 4개가 해결되기 전까지 기능 추가 금지
+UI / routing / avatar / arena flow는 정렬되었고,  
+이제 핵심은 **behavior engine 고도화 단계**이다.

@@ -2,17 +2,19 @@
 
 import React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getContextForUser } from "@/lib/bty/scenario/engine";
+import { getContextForUser, getScenarioById } from "@/lib/bty/scenario/engine";
 import type { Scenario } from "@/lib/bty/scenario/types";
 import { evaluateChoice, evaluateFollowUp } from "@/lib/bty/arena/engine";
 import type { SystemMsg } from "@/components/bty-arena";
 import { getMilestoneToShow } from "@/lib/bty/arena/milestone";
 import type { CoreXpGetResponse } from "@/lib/bty/arena/coreXpApi";
+import type { ArenaHeaderIdentity } from "@/components/bty-arena/ArenaHeader";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { difficultyFromScenarioChoices } from "@/lib/bty/arena/arenaLabXp";
 import { BTY_ARENA_STATE_STORAGE_KEY } from "@/lib/bty/arena/arenaLocalState";
+import type { ArenaRecallPrompt } from "@/lib/bty/arena/memoryRecallPrompt.types";
 
 // ── exported types ──────────────────────────────────────────────
 export type ArenaPhase = "CHOOSING" | "SHOW_RESULT" | "FOLLOW_UP" | "DONE";
@@ -93,14 +95,35 @@ function clearState() {
   localStorage.removeItem(STORAGE_KEY);
 }
 
-/** True when saved state is only the pre-choice lobby (no run progress). Session/next must win over stale scenarioId. */
-function isFreshLobbyState(saved: SavedArenaState): boolean {
+/**
+ * True when the user has not committed an Arena choice yet (no XP-bearing selection).
+ * Includes intro (step 1) and choice screen (step 2) before confirm — session/next may replace stale/basic lobby state.
+ * Mid-run resume: once phase !== CHOOSING or a choice/other is recorded, this is false.
+ */
+function isPreChoiceLobby(saved: SavedArenaState): boolean {
   if (saved.phase !== "CHOOSING") return false;
-  const st = saved.step ?? 1;
-  if (st > 1) return false;
-  if (saved.selectedChoiceId != null && saved.selectedChoiceId !== "") return false;
   if (saved.otherSubmitted) return false;
+  if (saved.selectedChoiceId != null && saved.selectedChoiceId !== "") return false;
   return true;
+}
+
+/** Catalog scenarios with no tier gate — prefer fresher session/next sooner (top-nav / stale lobby). */
+function isBasicOnlyCatalogScenario(scenarioId: string): boolean {
+  const sc = getScenarioById(scenarioId);
+  if (!sc) return false;
+  return !sc.elite_only && (sc.minTier == null || sc.minTier === 0);
+}
+
+/** Lobby localStorage older than this should resync from /api/arena/session/next (same or new scenario id). */
+const STALE_LOBBY_MS = 2 * 60 * 60 * 1000;
+const STALE_BASIC_LOBBY_MS = 15 * 60 * 1000;
+
+function isStaleLobby(saved: SavedArenaState): boolean {
+  const t = Date.parse(saved.updatedAtISO);
+  if (Number.isNaN(t)) return true;
+  const age = Date.now() - t;
+  const threshold = isBasicOnlyCatalogScenario(saved.scenarioId) ? STALE_BASIC_LOBBY_MS : STALE_LOBBY_MS;
+  return age > threshold;
 }
 
 type SessionNextResponse = {
@@ -109,20 +132,25 @@ type SessionNextResponse = {
   scenarioRoute?: string;
   delayedOutcomePending?: boolean;
   mirrors?: unknown;
+  recallPrompt?: ArenaRecallPrompt;
   error?: string;
   code?: string;
 };
 
+type SessionNextFetchResult = { scenario: Scenario | null; recallPrompt: ArenaRecallPrompt | null };
+
 /** Next scenario from server session router (DB history, mirror / perspective rotation, catalog). */
-async function fetchSessionNextScenario(locale: Locale): Promise<Scenario | null> {
+async function fetchSessionNextScenario(locale: Locale): Promise<SessionNextFetchResult> {
   const loc = locale === "ko" ? "ko" : "en";
   try {
     const data = await arenaFetch<SessionNextResponse>(`/api/arena/session/next?locale=${loc}`);
-    if (data.ok && data.scenario) return data.scenario;
-    return null;
+    if (data.ok && data.scenario) {
+      return { scenario: data.scenario, recallPrompt: data.recallPrompt ?? null };
+    }
+    return { scenario: null, recallPrompt: null };
   } catch (e) {
     console.warn("[arena] session/next failed", e);
-    return null;
+    return { scenario: null, recallPrompt: null };
   }
 }
 
@@ -263,6 +291,7 @@ export function useArenaSession() {
   const [coreXpTotal, setCoreXpTotal] = React.useState<number | null>(null);
   const [tier, setTier] = React.useState<number | null>(null);
   const [requiresBeginnerPath, setRequiresBeginnerPath] = React.useState(false);
+  const [arenaIdentity, setArenaIdentity] = React.useState<ArenaHeaderIdentity | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -272,10 +301,22 @@ export function useArenaSession() {
         if (typeof data.coreXpTotal === "number") setCoreXpTotal(data.coreXpTotal);
         if (typeof data.tier === "number") setTier(data.tier);
         setRequiresBeginnerPath(Boolean(data.requiresBeginnerPath));
+        setArenaIdentity({
+          codeName: typeof data.codeName === "string" ? data.codeName : "",
+          subName: typeof data.subName === "string" ? data.subName : "",
+          avatarUrl: data.avatarUrl ?? null,
+          avatarCharacterId: data.avatarCharacterId ?? null,
+          avatarCharacterImageUrl: data.avatarCharacterImageUrl ?? null,
+          avatarOutfitImageUrl: data.avatarOutfitImageUrl ?? null,
+          accessoryIds: Array.isArray(data.currentOutfit?.accessoryIds) ? data.currentOutfit.accessoryIds : [],
+        });
         setLevelChecked(true);
       })
       .catch(() => {
-        if (!cancelled) setLevelChecked(true);
+        if (!cancelled) {
+          setArenaIdentity(null);
+          setLevelChecked(true);
+        }
       });
     return () => { cancelled = true; };
   }, []);
@@ -320,6 +361,7 @@ export function useArenaSession() {
   const [reflectionSubmitting, setReflectionSubmitting] = React.useState(false);
   const [milestoneModal, setMilestoneModal] = React.useState<MilestoneModalState | null>(null);
   const [resetRunLoading, setResetRunLoading] = React.useState(false);
+  const [recallPrompt, setRecallPrompt] = React.useState<ArenaRecallPrompt | null>(null);
 
   const runMetaRef = React.useRef<{
     runId: string;
@@ -359,14 +401,16 @@ export function useArenaSession() {
 
       try {
         if (saved) {
-          // Fresh lobby (CHOOSING, no choice yet): session/next is source of truth — stale localStorage scenarioId must not skip it.
-          if (isFreshLobbyState(saved)) {
-            const serverNext = await fetchSessionNextScenario(locale);
+          // Pre-choice lobby: session/next wins when it differs, or when local lobby is stale (basic catalog expires faster).
+          if (isPreChoiceLobby(saved)) {
+            const serverPack = await fetchSessionNextScenario(locale);
+            const serverNext = serverPack.scenario;
             if (cancelled) return;
 
-            if (serverNext && serverNext.scenarioId !== saved.scenarioId) {
+            if (serverNext && (serverNext.scenarioId !== saved.scenarioId || isStaleLobby(saved))) {
               clearState();
               resetAllLocal();
+              setRecallPrompt(serverPack.recallPrompt);
               setScenario(serverNext);
               setPhase("CHOOSING");
               setStep(1);
@@ -395,6 +439,7 @@ export function useArenaSession() {
 
             if (serverNext && serverNext.scenarioId === saved.scenarioId) {
               if (cancelled) return;
+              setRecallPrompt(serverPack.recallPrompt);
               let resumePhase = saved.phase;
               let resumeStep = (saved.step ?? stepFromPhase(saved.phase)) as number;
               if (resumeStep < 1 || resumeStep > 7) {
@@ -430,13 +475,16 @@ export function useArenaSession() {
           let sc = await fetchResolvedScenarioById(saved.scenarioId, locale);
           if (!sc) {
             clearState();
-            sc = await fetchSessionNextScenario(locale);
+            const nextPack = await fetchSessionNextScenario(locale);
             if (cancelled) return;
+            sc = nextPack.scenario;
             if (!sc) {
               setScenario(null);
+              setRecallPrompt(null);
               setScenarioInitError(t.scenarioNotFound);
               return;
             }
+            setRecallPrompt(nextPack.recallPrompt);
             setScenario(sc);
             setPhase("CHOOSING");
             setStep(1);
@@ -492,6 +540,7 @@ export function useArenaSession() {
             resumePhase = "CHOOSING";
             resumeStep = 1;
           }
+          setRecallPrompt(null);
           setScenario(sc);
           setPhase(resumePhase);
           setStep(resumeStep as ArenaStep);
@@ -512,13 +561,16 @@ export function useArenaSession() {
           return;
         }
 
-        const sc = await fetchSessionNextScenario(locale);
+        const firstPack = await fetchSessionNextScenario(locale);
         if (cancelled) return;
+        const sc = firstPack.scenario;
         if (!sc) {
           setScenario(null);
+          setRecallPrompt(null);
           setScenarioInitError(t.scenarioNotFound);
           return;
         }
+        setRecallPrompt(firstPack.recallPrompt);
         setScenario(sc);
         if (streakInfo.message) setSystemMessage(streakInfo.message);
 
@@ -633,6 +685,7 @@ export function useArenaSession() {
     setOtherSubmitting(false);
     setOtherSubmitted(false);
     setFreeResponseFeedback(null);
+    setRecallPrompt(null);
   }
 
   // ── actions ─────────────────────────────────────────────────
@@ -880,7 +933,8 @@ export function useArenaSession() {
         }
       }
 
-      const next = await fetchSessionNextScenario(locale);
+      const nextPack = await fetchSessionNextScenario(locale);
+      const next = nextPack.scenario;
       if (!next) {
         setCompleteError(t.completeErrorPrefix + "no_scenario_available" + t.completeErrorSuffix);
         return;
@@ -889,6 +943,7 @@ export function useArenaSession() {
       setPhase("CHOOSING");
       setStep(1);
       resetAllLocal();
+      setRecallPrompt(nextPack.recallPrompt);
 
       createRun(next.scenarioId, locale ?? undefined, {
         scenario: next,
@@ -934,9 +989,11 @@ export function useArenaSession() {
     setResetRunLoading(true);
     clearState();
     try {
-      const next = await fetchSessionNextScenario(locale);
+      const nextPack = await fetchSessionNextScenario(locale);
+      const next = nextPack.scenario;
       if (!next) {
         setScenario(null);
+        setRecallPrompt(null);
         setScenarioInitError(t.scenarioNotFound);
         return;
       }
@@ -944,6 +1001,7 @@ export function useArenaSession() {
       setPhase("CHOOSING");
       setStep(1);
       resetAllLocal();
+      setRecallPrompt(nextPack.recallPrompt);
       setSystemMessage(SYSTEM_MESSAGES.find((m) => m.id === "arch_init") ?? null);
 
       const result = await createRun(next.scenarioId, locale ?? undefined, {
@@ -980,6 +1038,7 @@ export function useArenaSession() {
   async function onStartSimulation() {
     if (!current) return;
     setStartSimulationLoading(true);
+    setRecallPrompt(null);
     try {
       const rid = await ensureRunId();
       try {
@@ -1033,8 +1092,9 @@ export function useArenaSession() {
 
   return {
     locale, t,
-    levelChecked, coreXpTotal, tier, requiresBeginnerPath,
+    levelChecked, coreXpTotal, tier, requiresBeginnerPath, arenaIdentity,
     scenario, scenarioLoading, scenarioInitError, displayTitle, contextForUser,
+    recallPrompt,
     phase, step,
     selectedChoiceId, choice,
     selectChoice, selectOther,
