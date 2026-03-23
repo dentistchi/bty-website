@@ -3,6 +3,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import ScreenShell from "@/components/bty/layout/ScreenShell";
+import { InfoCard } from "@/components/bty/ui/InfoCard";
+import { PrimaryButton } from "@/components/bty/ui/PrimaryButton";
+import { SecondaryButton } from "@/components/bty/ui/SecondaryButton";
 import { CardSkeleton, LoadingFallback } from "@/components/bty-arena";
 import { getMessages } from "@/lib/i18n";
 import { arenaFetch } from "@/lib/http/arenaFetch";
@@ -18,7 +22,7 @@ type ProfileRes = {
 
 export default function ProfileClient() {
   const params = useParams();
-  const locale = (typeof params?.locale === "string" && params.locale === "ko") ? "ko" : "en";
+  const locale = typeof params?.locale === "string" && params.locale === "ko" ? "ko" : "en";
   const t = getMessages(locale).profile;
   const tLoading = getMessages(locale).loading;
 
@@ -35,9 +39,10 @@ export default function ProfileClient() {
     try {
       const res = await arenaFetch<ProfileRes>("/api/arena/profile");
       setData(res);
-      const name = res?.profile && typeof (res.profile as { display_name?: string | null }).display_name === "string"
-        ? (res.profile as { display_name: string }).display_name
-        : "";
+      const name =
+        res?.profile && typeof (res.profile as { display_name?: string | null }).display_name === "string"
+          ? (res.profile as { display_name: string }).display_name
+          : "";
       setDraftDisplayName(name ?? "");
     } catch (e) {
       setError(e instanceof Error ? e.message : "FAILED");
@@ -52,9 +57,10 @@ export default function ProfileClient() {
 
   useEffect(() => {
     if (data?.profile) {
-      const name = typeof (data.profile as { display_name?: string | null }).display_name === "string"
-        ? (data.profile as { display_name: string }).display_name
-        : "";
+      const name =
+        typeof (data.profile as { display_name?: string | null }).display_name === "string"
+          ? (data.profile as { display_name: string }).display_name
+          : "";
       setDraftDisplayName(name ?? "");
     }
   }, [data?.profile]);
@@ -85,81 +91,81 @@ export default function ProfileClient() {
 
   if (loading) {
     return (
-      <main className="p-6 max-w-2xl mx-auto" aria-label={t.profileMainRegionAria}>
-        {/* DESIGN_FIRST_IMPRESSION_BRIEF §2: 스피너 대신 아이콘 + 문구 + 카드형 스켈레톤 */}
-        <LoadingFallback icon="⏳" message={tLoading.message} withSkeleton style={{ paddingTop: 24 }} />
-      </main>
+      <ScreenShell locale={locale} title={t.title} fullWidth contentClassName="pb-28 px-4" mainAriaLabel={t.profileMainRegionAria}>
+        <div className="mx-auto max-w-md">
+          <LoadingFallback icon="⏳" message={tLoading.message} withSkeleton style={{ paddingTop: 24 }} />
+        </div>
+      </ScreenShell>
     );
   }
 
   if (error || !data) {
     return (
-      <main className="p-6 max-w-2xl mx-auto" aria-label={t.profileMainRegionAria}>
-        <p className="text-sm text-red-600 mt-4">{t.errorLoad}</p>
-        <Link href={`/${locale}/bty/dashboard`} className="text-sm underline mt-2 inline-block" aria-label={t.backToDashboard}>
-          {t.backToDashboard}
-        </Link>
-      </main>
+      <ScreenShell locale={locale} title={t.title} fullWidth contentClassName="pb-28 px-4" mainAriaLabel={t.profileMainRegionAria}>
+        <div className="mx-auto max-w-md space-y-3">
+          <InfoCard title={locale === "ko" ? "오류" : "Error"} tone="warning">
+            <p className="text-sm">{t.errorLoad}</p>
+          </InfoCard>
+          <SecondaryButton href={`/${locale}/bty/dashboard`}>{t.backToDashboard}</SecondaryButton>
+        </div>
+      </ScreenShell>
     );
   }
 
   return (
-    <main className="p-6 max-w-2xl mx-auto space-y-8" aria-label={t.profileMainRegionAria}>
-      <div className="flex items-center justify-between mt-4">
-        <h1 className="text-2xl font-bold">{t.title}</h1>
-        <Link
-          href={`/${locale}/bty/dashboard`}
-          className="text-sm text-foundry-purple hover:underline"
-          aria-label={t.backToDashboard}
-        >
-          {t.backToDashboard}
-        </Link>
-      </div>
+    <ScreenShell locale={locale} title={t.title} fullWidth contentClassName="pb-28 px-4" mainAriaLabel={t.profileMainRegionAria}>
+      <div className="mx-auto max-w-md space-y-4">
+        <div className="flex justify-end">
+          <Link
+            href={`/${locale}/bty/dashboard`}
+            className="text-sm font-medium text-bty-steel underline-offset-4 hover:underline"
+            aria-label={t.backToDashboard}
+          >
+            {t.backToDashboard}
+          </Link>
+        </div>
 
-      <section>
-        <label htmlFor="profile-display-name" className="block text-sm font-medium text-gray-700 mb-1">
-          {t.displayNameLabel}
-        </label>
-        <input
-          id="profile-display-name"
-          type="text"
-          maxLength={65}
-          placeholder={t.displayNamePlaceholder}
-          value={draftDisplayName}
-          onChange={(e) => setDraftDisplayName(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-foundry-purple/30 focus:border-foundry-purple"
-          aria-describedby={saveError ? "profile-save-error" : undefined}
-        />
-        {saveError && (
-          <p id="profile-save-error" className="mt-2 text-sm text-red-600">
-            {saveError}
-          </p>
-        )}
-        {dirty && (
-          <div className="flex justify-end mt-3">
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              aria-label={t.saveButtonAriaLabel}
-              className="px-6 py-2 rounded-xl bg-foundry-purple text-white font-medium hover:bg-foundry-purple/90 disabled:opacity-50"
+        <InfoCard title={t.displayNameLabel}>
+          <label htmlFor="profile-display-name" className="sr-only">
+            {t.displayNameLabel}
+          </label>
+          <input
+            id="profile-display-name"
+            type="text"
+            maxLength={65}
+            placeholder={t.displayNamePlaceholder}
+            value={draftDisplayName}
+            onChange={(e) => setDraftDisplayName(e.target.value)}
+            className="w-full rounded-xl border border-bty-border bg-bty-surface px-3 py-2 text-sm text-bty-text outline-none focus:border-bty-steel focus:ring-2 focus:ring-bty-steel/25"
+            aria-describedby={saveError ? "profile-save-error" : undefined}
+          />
+          {saveError && (
+            <p id="profile-save-error" className="mt-2 text-sm text-bty-risk">
+              {saveError}
+            </p>
+          )}
+          {dirty && (
+            <div className="mt-3 flex flex-col gap-2">
+              <PrimaryButton type="button" onClick={handleSave} disabled={saving} className="max-w-xs">
+                {saving ? t.saving : t.save}
+              </PrimaryButton>
+              {saving && <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />}
+            </div>
+          )}
+        </InfoCard>
+
+        <InfoCard title={locale === "ko" ? "아바타" : "Avatar"}>
+          <p className="text-sm text-bty-secondary">
+            <Link
+              href={`/${locale}/bty/profile/avatar`}
+              className="font-medium text-bty-navy underline-offset-4 hover:underline"
+              aria-label={t.avatarSettingsLink}
             >
-              {saving ? t.saving : t.save}
-            </button>
-            {saving && (
-              <div className="mt-3">
-                <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-
-      <p className="text-sm text-gray-500">
-        <Link href={`/${locale}/bty/profile/avatar`} className="text-foundry-purple hover:underline" aria-label={t.avatarSettingsLink}>
-          {t.avatarSettingsLink}
-        </Link>
-      </p>
-    </main>
+              {t.avatarSettingsLink}
+            </Link>
+          </p>
+        </InfoCard>
+      </div>
+    </ScreenShell>
   );
 }

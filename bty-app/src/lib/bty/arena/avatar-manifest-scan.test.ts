@@ -11,12 +11,12 @@ import {
 
 describe("avatar-manifest-scan", () => {
   it("outfitIdFromOutfitFilename parses base outfit_*.png", () => {
-    expect(outfitIdFromOutfitFilename("outfit_scrub_general.png")).toBe("scrub_general");
-    expect(outfitIdFromOutfitFilename("outfit_figs_scrub_short.png")).toBe("figs_scrub_short");
+    expect(outfitIdFromOutfitFilename("outfit_1_basic_clinic_scrubs.png")).toBe("1_basic_clinic_scrubs");
+    expect(outfitIdFromOutfitFilename("outfit_6_digital_dentistry_coat.png")).toBe("6_digital_dentistry_coat");
   });
 
   it("outfitIdFromOutfitFilename rejects body variants", () => {
-    expect(outfitIdFromOutfitFilename("outfit_figs_scrub_short_A.png")).toBeNull();
+    expect(outfitIdFromOutfitFilename("outfit_6_digital_dentistry_coat_A.png")).toBeNull();
     expect(outfitIdFromOutfitFilename("outfit_x_D.png")).toBeNull();
   });
 
@@ -26,7 +26,7 @@ describe("avatar-manifest-scan", () => {
 
   it("outfitIdFromAnyOutfitPngFilename accepts loose filenames", () => {
     expect(outfitIdFromAnyOutfitPngFilename("1 Basic Clinic Scrubs.png")).toBe("1_basic_clinic_scrubs");
-    expect(outfitIdFromAnyOutfitPngFilename("outfit_scrub_general.png")).toBe("scrub_general");
+    expect(outfitIdFromAnyOutfitPngFilename("outfit_1_basic_clinic_scrubs.png")).toBe("1_basic_clinic_scrubs");
   });
 
   it("accessoryIdAndKindFromFilename maps svg→dental, png→game", () => {

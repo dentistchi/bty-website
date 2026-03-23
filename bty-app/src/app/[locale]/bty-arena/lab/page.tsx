@@ -1,9 +1,11 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
-import { CardSkeleton, ProgressCard } from "@/components/bty-arena";
+import ScreenShell from "@/components/bty/layout/ScreenShell";
+import { InfoCard } from "@/components/bty/ui/InfoCard";
+import { SecondaryButton } from "@/components/bty/ui/SecondaryButton";
+import { CardSkeleton } from "@/components/bty-arena";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 import { getMessages } from "@/lib/i18n";
 
@@ -63,19 +65,19 @@ export default function LabPage() {
     };
   }, [loc]);
 
-  return (
-    <main
-      data-testid="arena-lab-main"
-      aria-label={t.arenaLabUsageRegionAria}
-      style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}
-    >
-      <div style={{ marginTop: 0 }}>
-        <h1 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 700 }}>{t.arenaLabTitle}</h1>
-        <p style={{ margin: 0, fontSize: 14, opacity: 0.85 }}>{t.arenaLabLead}</p>
-      </div>
+  const arenaEntry = `/${locale}/bty-arena`;
 
-      <div style={{ marginTop: 20 }}>
-        <ProgressCard label={t.arenaLabRemainingTodayLabel}>
+  return (
+    <ScreenShell
+      locale={locale}
+      title={t.arenaLabTitle}
+      subtitle={t.arenaLabLead}
+      fullWidth
+      contentClassName="pb-28 px-4"
+      mainAriaLabel={t.arenaLabUsageRegionAria}
+    >
+      <div className="mx-auto max-w-md space-y-4">
+        <InfoCard title={t.arenaLabRemainingTodayLabel}>
           <div
             role="status"
             aria-live="polite"
@@ -87,44 +89,30 @@ export default function LabPage() {
                 <CardSkeleton showLabel={false} lines={1} style={{ padding: "16px 20px" }} />
               </div>
             )}
-            {error && <p style={{ margin: 0, fontSize: 14, color: "#8b2e2e" }}>{error}</p>}
+            {error && <p className="text-sm text-bty-risk">{error}</p>}
             {!loading && !error && usage !== null && (
-              <div style={{ padding: "4px 0" }}>
-                <p style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
+              <div className="py-1">
+                <p className="m-0 text-lg font-semibold">
                   {usage.attemptsRemaining} / {usage.limit}
-                  <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.85 }}>
-                    {" "}
+                  <span className="ml-1 text-sm font-normal text-bty-secondary">
                     {t.arenaLabRemainingSuffix}
                   </span>
                 </p>
-                <p style={{ margin: "8px 0 0", fontSize: 13, opacity: 0.8 }}>
+                <p className="mt-2 text-sm text-bty-secondary">
                   {t.arenaLabUsedPrefix}
                   {usage.attemptsUsed}
                 </p>
               </div>
             )}
           </div>
-        </ProgressCard>
-      </div>
+        </InfoCard>
 
-      <nav style={{ marginTop: 24 }} aria-label={t.arenaLabBackNavAria}>
-        <Link
-          href={`/${locale}/bty-arena`}
-          style={{
-            display: "inline-block",
-            padding: "10px 16px",
-            borderRadius: 10,
-            border: "1px solid #ddd",
-            textDecoration: "none",
-            color: "inherit",
-            fontSize: 14,
-            fontWeight: 500,
-          }}
-          aria-label={t.arenaLabBackToArena}
-        >
-          {t.arenaLabBackToArena}
-        </Link>
-      </nav>
-    </main>
+        <nav aria-label={t.arenaLabBackNavAria}>
+          <SecondaryButton href={arenaEntry} className="max-w-xs">
+            {t.arenaLabBackToArena}
+          </SecondaryButton>
+        </nav>
+      </div>
+    </ScreenShell>
   );
 }

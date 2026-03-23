@@ -9,6 +9,10 @@ import { ACCESSORY_IDS_ALL } from "@/lib/bty/arena/avatar-assets.data";
 import { getUnifiedOutfitManifestAllowed, getAccessoryImageUrl, ACCESSORY_CATALOG } from "@/lib/bty/arena/avatarOutfits";
 import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
 import { AvatarComposite, CardSkeleton, OutfitCard, LoadingFallback } from "@/components/bty-arena";
+import ScreenShell from "@/components/bty/layout/ScreenShell";
+import { InfoCard } from "@/components/bty/ui/InfoCard";
+import { PrimaryButton } from "@/components/bty/ui/PrimaryButton";
+import { SecondaryButton } from "@/components/bty/ui/SecondaryButton";
 import { getMessages } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -19,9 +23,9 @@ import { cn } from "@/lib/utils";
 
 export default function AvatarSettingsClient() {
   const params = useParams();
-  const locale = (params?.locale as string) ?? "en";
+  const locale = typeof params?.locale === "string" && params.locale === "ko" ? "ko" : "en";
   const { data, loading, patch } = useAvatar();
-  const t = getMessages(locale === "ko" ? "ko" : "en").avatarOutfit;
+  const t = getMessages(locale).avatarOutfit;
   const [draftOutfitKey, setDraftOutfitKey] = useState<string | null>(null);
   const [draftAccessoryKeys, setDraftAccessoryKeys] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -87,153 +91,172 @@ export default function AvatarSettingsClient() {
       })
     : null;
 
+  const accessorySectionTitle = locale === "ko" ? "악세사리" : "Accessories";
+
   if (loading) {
-    const tLoading = getMessages(locale === "ko" ? "ko" : "en").loading;
+    const tLoading = getMessages(locale).loading;
     return (
-      <main className="p-6 max-w-2xl mx-auto" aria-label={t.avatarSettingsMainRegionAria}>
-        <LoadingFallback icon="⏳" message={tLoading.message} withSkeleton style={{ paddingTop: 24 }} />
-      </main>
+      <ScreenShell
+        locale={locale}
+        title={t.pageTitle}
+        fullWidth
+        contentClassName="pb-28 px-4"
+        mainAriaLabel={t.avatarSettingsMainRegionAria}
+      >
+        <div className="mx-auto max-w-2xl">
+          <LoadingFallback icon="⏳" message={tLoading.message} withSkeleton style={{ paddingTop: 24 }} />
+        </div>
+      </ScreenShell>
     );
   }
 
   if (!data) {
     return (
-      <main className="p-6 max-w-2xl mx-auto" aria-label={t.avatarSettingsMainRegionAria}>
-        <p className="text-sm text-red-600">{t.errorLoad}</p>
-        <Link href={`/${locale}/bty`} className="text-sm underline mt-2 inline-block" aria-label={t.backToFoundryAria}>
-          {t.backToFoundry}
-        </Link>
-      </main>
+      <ScreenShell
+        locale={locale}
+        title={t.pageTitle}
+        fullWidth
+        contentClassName="pb-28 px-4"
+        mainAriaLabel={t.avatarSettingsMainRegionAria}
+      >
+        <div className="mx-auto max-w-2xl space-y-3">
+          <InfoCard title={locale === "ko" ? "오류" : "Error"} tone="warning">
+            <p className="text-sm">{t.errorLoad}</p>
+          </InfoCard>
+          <SecondaryButton href={`/${locale}/bty`}>{t.backToFoundry}</SecondaryButton>
+        </div>
+      </ScreenShell>
     );
   }
 
   return (
-    <main className="p-6 max-w-2xl mx-auto space-y-8" aria-label={t.avatarSettingsMainRegionAria}>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t.pageTitle}</h1>
-        <Link
-          href={`/${locale}/bty/dashboard`}
-          className="text-sm text-foundry-purple hover:underline"
-          aria-label={t.goToDashboardAria}
-        >
-          {t.goToDashboard}
-        </Link>
-      </div>
-
-      <section>
-        <h2 className="text-lg font-semibold mb-3">{t.preview}</h2>
-        <div className="flex justify-center p-6 rounded-2xl border border-gray-200 bg-gray-50/50">
-          {previewUrls && (
-            <AvatarComposite
-              size={160}
-              characterUrl={previewUrls.characterUrl}
-              outfitUrl={previewUrls.outfitUrl}
-              accessoryUrls={previewUrls.accessoryUrls}
-              alt={t.previewAria}
-            />
-          )}
-        </div>
-      </section>
-
-      <section>
-        <h2 className="text-lg font-semibold mb-3">{t.character}</h2>
-        {avatar?.characterLocked ? (
-          <p className="text-sm text-gray-500">{t.characterLocked}</p>
-        ) : (
-          <p className="text-sm text-gray-600">{t.characterChangeHint}</p>
-        )}
-        <Link
-          href={`/${locale}/bty/dashboard`}
-          className="inline-block mt-2 text-sm font-medium text-foundry-purple hover:underline"
-        >
-          {t.goToDashboard}
-        </Link>
-      </section>
-
-      <section>
-        <h2 className="text-lg font-semibold mb-3">{t.outfit}</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {outfitChoices.map((o) => (
-            <OutfitCard
-              key={o.key}
-              characterKey={avatar!.characterKey}
-              outfitKey={o.key}
-              accessoryKeys={draftAccessoryKeys}
-              name={
-                t.outfitLabels?.[o.key] ??
-                (o as { name?: string }).name ??
-                (o as { label?: string }).label ??
-                o.key
-              }
-              previewLabel={t.preview}
-              selected={draftOutfitKey === o.key}
-              onClick={() => setDraftOutfitKey(o.key)}
-            />
-          ))}
-        </div>
-        {outfitChoices.length === 0 && (
-          <p className="text-sm text-gray-500">{t.noOutfits}</p>
-        )}
-      </section>
-
-      <section role="group" aria-label={locale === "ko" ? "악세사리 선택" : "Accessory selection"}>
-        <h2 className="text-lg font-semibold mb-3">{locale === "ko" ? "악세사리" : "Accessories"}</h2>
-        <p className="text-sm text-gray-600 mb-3">
-          {locale === "ko"
-            ? `최대 ${maxAccessorySlots}개 선택. 미리보기에 반영됩니다.`
-            : `Select up to ${maxAccessorySlots}. Shown in preview.`}
-        </p>
-        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-64 overflow-y-auto" role="list" aria-label={locale === "ko" ? "악세사리 목록" : "Accessories list"}>
-          {Array.from(ACCESSORY_IDS_ALL).map((id) => {
-            const selected = draftAccessoryKeys.includes(id);
-            const url = getAccessoryImageUrl(id);
-            const label = ACCESSORY_CATALOG[id] ?? id;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => toggleAccessory(id)}
-                aria-label={selected ? `${label}, selected` : label}
-                className={cn(
-                  "flex flex-col items-center p-2 rounded-lg border transition",
-                  selected ? "border-foundry-purple bg-foundry-purple/10" : "border-gray-200 hover:border-gray-400"
-                )}
-              >
-                <div className="w-10 h-10 flex items-center justify-center bg-gray-100 rounded overflow-hidden">
-                  <img
-                    src={url}
-                    alt=""
-                    className="w-full h-full object-contain"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
-                  />
-                </div>
-                <span className="text-xs mt-1 truncate w-full text-center">{label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {dirty && (
+    <ScreenShell
+      locale={locale}
+      title={t.pageTitle}
+      fullWidth
+      contentClassName="pb-28 px-4"
+      mainAriaLabel={t.avatarSettingsMainRegionAria}
+    >
+      <div className="mx-auto max-w-2xl space-y-4">
         <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            aria-label={saving ? t.saveAria : t.saveAria}
-            className="px-6 py-2 rounded-xl bg-foundry-purple text-white font-medium hover:bg-foundry-purple/90 disabled:opacity-50"
+          <Link
+            href={`/${locale}/bty/dashboard`}
+            className="text-sm font-medium text-bty-steel underline-offset-4 hover:underline"
+            aria-label={t.goToDashboardAria}
           >
-            {saving ? t.saving : t.save}
-          </button>
-          {saving && (
-            <div className="mt-3">
-              <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
-            </div>
-          )}
+            {t.goToDashboard}
+          </Link>
         </div>
-      )}
-    </main>
+
+        <InfoCard title={t.preview}>
+          <div className="flex justify-center rounded-2xl border border-bty-border bg-bty-soft/50 p-6">
+            {previewUrls && (
+              <AvatarComposite
+                size={160}
+                characterUrl={previewUrls.characterUrl}
+                outfitUrl={previewUrls.outfitUrl}
+                accessoryUrls={previewUrls.accessoryUrls}
+                alt={t.previewAria}
+              />
+            )}
+          </div>
+        </InfoCard>
+
+        <InfoCard title={t.character}>
+          {avatar?.characterLocked ? (
+            <p className="text-sm text-bty-secondary">{t.characterLocked}</p>
+          ) : (
+            <p className="text-sm text-bty-secondary">{t.characterChangeHint}</p>
+          )}
+          <Link
+            href={`/${locale}/bty/dashboard`}
+            className="mt-2 inline-block text-sm font-medium text-bty-navy underline-offset-4 hover:underline"
+          >
+            {t.goToDashboard}
+          </Link>
+        </InfoCard>
+
+        <InfoCard title={t.outfit}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {outfitChoices.map((o) => (
+              <OutfitCard
+                key={o.key}
+                characterKey={avatar!.characterKey}
+                outfitKey={o.key}
+                accessoryKeys={draftAccessoryKeys}
+                name={
+                  t.outfitLabels?.[o.key] ??
+                  (o as { name?: string }).name ??
+                  (o as { label?: string }).label ??
+                  o.key
+                }
+                previewLabel={t.preview}
+                selected={draftOutfitKey === o.key}
+                onClick={() => setDraftOutfitKey(o.key)}
+              />
+            ))}
+          </div>
+          {outfitChoices.length === 0 && <p className="text-sm text-bty-secondary">{t.noOutfits}</p>}
+        </InfoCard>
+
+        <InfoCard title={accessorySectionTitle}>
+          <section role="group" aria-label={locale === "ko" ? "악세사리 선택" : "Accessory selection"}>
+            <p className="text-sm text-bty-secondary">
+              {locale === "ko"
+                ? `최대 ${maxAccessorySlots}개 선택. 미리보기에 반영됩니다.`
+                : `Select up to ${maxAccessorySlots}. Shown in preview.`}
+            </p>
+            <div
+              className="mt-3 grid max-h-64 grid-cols-4 gap-2 overflow-y-auto sm:grid-cols-6"
+              role="list"
+              aria-label={locale === "ko" ? "악세사리 목록" : "Accessories list"}
+            >
+              {Array.from(ACCESSORY_IDS_ALL).map((id) => {
+                const selected = draftAccessoryKeys.includes(id);
+                const url = getAccessoryImageUrl(id);
+                const label = ACCESSORY_CATALOG[id] ?? id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => toggleAccessory(id)}
+                    aria-label={selected ? `${label}, selected` : label}
+                    className={cn(
+                      "flex flex-col items-center rounded-lg border p-2 transition",
+                      selected
+                        ? "border-bty-steel bg-bty-steel/10"
+                        : "border-bty-border hover:border-bty-steel/40"
+                    )}
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded bg-bty-soft">
+                      <img
+                        src={url}
+                        alt=""
+                        className="h-full w-full object-contain"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    </div>
+                    <span className="mt-1 w-full truncate text-center text-xs">{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        </InfoCard>
+
+        {dirty && (
+          <div className="flex flex-col items-end gap-2">
+            <PrimaryButton type="button" onClick={handleSave} disabled={saving} className="max-w-xs">
+              {saving ? t.saving : t.save}
+            </PrimaryButton>
+            {saving && (
+              <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
+            )}
+          </div>
+        )}
+      </div>
+    </ScreenShell>
   );
 }

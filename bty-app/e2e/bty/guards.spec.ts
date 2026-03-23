@@ -1,9 +1,10 @@
 import { test, expect } from "@playwright/test";
+import { canonicalArenaUrlPattern } from "../helpers/arena-canonical";
 
 const LOCALE = "en";
 
 test.describe("BTY route guards", () => {
-  test("cannot land on arena result without completed play session", async ({ page }) => {
+  test("deprecated arena result URL resolves to canonical Arena entry", async ({ page }) => {
     await page.goto(`/${LOCALE}/bty-arena`);
     await page.evaluate(() => {
       sessionStorage.clear();
@@ -12,7 +13,7 @@ test.describe("BTY route guards", () => {
 
     await page.goto(`/${LOCALE}/bty-arena/result`);
 
-    await expect(page).toHaveURL(new RegExp(`/${LOCALE}/bty-arena(?:/play)?$`));
+    await expect(page).toHaveURL(canonicalArenaUrlPattern(LOCALE), { timeout: 15_000 });
   });
 
   test("reflection write shows calm empty state when no seed", async ({ page }) => {

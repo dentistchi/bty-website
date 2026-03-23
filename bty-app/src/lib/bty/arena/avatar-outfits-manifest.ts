@@ -1,6 +1,6 @@
 /**
  * Static manifest for outfit overlays under `public/avatars/outfits/`.
- * File naming: base `outfit_{id}.png` (see {@link OUTFIT_ID_TO_FILENAME} in avatarOutfits.ts);
+ * File naming: base `outfit_{id}.png` (same as {@link getOutfitFilename} / shipped assets);
  * body overlays: `outfit_{id}_A.png` … `_D.png` (suffix before `.png`).
  * Color tone variants 0–3 use the **same** PNG; UI applies CSS hue-rotate (see public/avatars/outfits/README.md).
  */
@@ -17,21 +17,11 @@ export type OutfitColorVariantId = (typeof OUTFIT_COLOR_VARIANTS)[number];
 
 export type OutfitRarityTier = 1 | 2 | 3 | 4 | 5;
 
-/** Same basename map as avatarOutfits.ts — keep in sync when adding disk files. */
-const OUTFIT_ID_TO_FILENAME: Record<string, string> = {
-  scrub_general: "outfit_scrub_general.png",
-  figs_scrub: "outfit_figs_scrub.png",
-  doctor_gown: "outfit_doctor_gown.png",
-  surgery_coat_suit: "outfit_surgery_coat_suit.png",
-  brand_suit: "outfit_brand_suit.png",
-  figs_scrub_short: "outfit_figs_scrub_short.png",
-  shorts_tee: "outfit_shorts_tee.png",
-};
-
 const OUTFIT_BASE = "/avatars/outfits";
 
 function filenameForOutfitId(outfitId: string): string {
-  return OUTFIT_ID_TO_FILENAME[outfitId] ?? `outfit_${outfitId}.png`;
+  const stem = outfitId.trim().replace(/\.png$/i, "").trim();
+  return `outfit_${stem}.png`;
 }
 
 function displayNameForOutfitId(outfitId: string): string {

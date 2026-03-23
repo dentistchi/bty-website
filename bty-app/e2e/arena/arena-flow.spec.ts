@@ -1,27 +1,28 @@
 import { expect, test } from "@playwright/test";
-import { arenaShellLocator, canonicalArenaUrlPattern } from "../helpers/arena-canonical";
+import {
+  arenaShellLocator,
+  canonicalArenaUrlPattern,
+  openCanonicalArenaAndWaitForShell,
+  optionalStartSimulationIfPresent,
+} from "../helpers/arena-canonical";
 
 /**
- * Canonical Arena session — single-route UI (`BtyArenaRunPageClient`), not legacy Lobby → /play → /result.
+ * Canonical Arena — single route `BtyArenaRunPageClient` at `/[locale]/bty-arena` (optional `/beginner`).
  */
 test.describe("Arena canonical session", () => {
-  test("direct /bty-arena shows canonical shell (loading, beginner gate, empty, or main)", async ({
+  test("direct entry shows canonical run shell (loaders, beginner gate, empty, or main)", async ({
     page,
   }) => {
-    await page.goto("/en/bty-arena");
-    await expect(page).toHaveURL(canonicalArenaUrlPattern("en"));
-    await expect(arenaShellLocator(page).first()).toBeVisible({ timeout: 60_000 });
+    await openCanonicalArenaAndWaitForShell(page, "en", 60_000);
   });
 
-  /**
-   * Optional: when the session reaches a non-loading shell, Start Simulation should exist.
-   * Skips softly if the account stays on long-running loaders (API/session variance).
-   */
-  test("Start Simulation visible only when main shell is reached", async ({ page }) => {
+  test("optional Start Simulation when the run main surface is ready", async ({ page }) => {
     test.setTimeout(180_000);
     await page.goto("/en/bty-arena");
     await expect(page).toHaveURL(canonicalArenaUrlPattern("en"));
     await expect(arenaShellLocator(page).first()).toBeVisible({ timeout: 30_000 });
+
+    await optionalStartSimulationIfPresent(page, "en");
 
     const main = page.getByTestId("arena-play-main");
     const reached = await main
@@ -32,7 +33,7 @@ test.describe("Arena canonical session", () => {
     if (!reached) {
       test.info().annotations.push({
         type: "note",
-        description: "Main shell not reached in time (loaders/onboarding/API); canonical URL + shell already covered above.",
+        description: "Main run surface not reached in time (loaders/API variance); shell visibility covered by prior test.",
       });
       return;
     }

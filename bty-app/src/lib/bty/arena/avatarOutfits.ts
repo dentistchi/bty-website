@@ -55,64 +55,88 @@ export const ACCESSORY_CATALOG: Record<string, string> = {
   ),
 };
 
-/** Professional: S1 일반 스크럽 → L4 반바지/반팔티 (요청 매핑) */
+/**
+ * Professional: 레벨 기본 옷 — `avatar-assets.json` / `OUTFIT_IDS` 매니페스트 id만 사용.
+ * 디스크 파일: `outfit_{id}.png`, 체형 `outfit_{id}_A.png` … `_D.png`.
+ */
 const PROFESSIONAL_LEVEL_MAP: Record<
   LevelId,
   { outfitId: string; outfitLabel: string; accessoryIds: string[] }
 > = {
   S1: {
-    outfitId: "scrub_general",
+    outfitId: "1_basic_clinic_scrubs",
     outfitLabel: "일반 스크럽",
     accessoryIds: ["apron", "goggles", "surgical_gloves", "mask"],
   },
   S2: {
-    outfitId: "figs_scrub",
+    outfitId: "2_assistant_utility_uniform",
     outfitLabel: "Figs 스크럽",
     accessoryIds: ["dental_mirror"],
   },
   S3: {
-    outfitId: "doctor_gown",
+    outfitId: "3_hygiene_scrubs",
     outfitLabel: "의사 가운",
     accessoryIds: ["loupes", "dental_mirror", "goggles_premium"],
   },
   L1: {
-    outfitId: "surgery_coat_suit",
+    outfitId: "4_standard_dental_coat",
     outfitLabel: "수술 코트 + 정장",
     accessoryIds: ["handpiece", "explorer", "dental_mirror_premium"],
   },
   L2: {
-    outfitId: "brand_suit",
+    outfitId: "5_clinic_utility_uniform",
     outfitLabel: "브랜드 정장",
     accessoryIds: ["handpiece", "explorer", "loupes", "xray_portable"],
   },
   L3: {
-    outfitId: "figs_scrub_short",
+    outfitId: "6_digital_dentistry_coat",
     outfitLabel: "반팔 Figs 스크럽",
     accessoryIds: ["explorer", "loupes", "xray_portable", "goggles"],
   },
   L4: {
-    outfitId: "shorts_tee",
+    outfitId: "7_imaging_technician_suit",
     outfitLabel: "반바지, 반팔티",
     accessoryIds: ["handpiece", "dental_mirror", "loupes", "xray_portable"],
   },
 };
 
-/** Fantasy: 레벨별 옷 + 소소한 무기/모자/안경 등 */
+/** Fantasy: 매니페스트 id 11–17 (pro 1–7과 분리). 악세사리는 game 슬롯. */
 const FANTASY_LEVEL_MAP: Record<
   LevelId,
   { outfitId: string; outfitLabel: string; accessoryIds: string[] }
 > = {
-  S1: { outfitId: "apprentice", outfitLabel: "견습", accessoryIds: ["hat"] },
-  S2: { outfitId: "adventurer", outfitLabel: "모험가", accessoryIds: ["weapon", "hat"] },
-  S3: { outfitId: "journeyer", outfitLabel: "여행자", accessoryIds: ["weapon", "hat", "accessory"] },
+  S1: { outfitId: "11_implant_surgery_armor_scrubs", outfitLabel: "견습", accessoryIds: ["hat"] },
+  S2: { outfitId: "12_ai_diagnostic_suit", outfitLabel: "모험가", accessoryIds: ["weapon", "hat"] },
+  S3: { outfitId: "13_research_lab_coat", outfitLabel: "여행자", accessoryIds: ["weapon", "hat", "accessory"] },
   L1: {
-    outfitId: "warrior_mage_mid",
+    outfitId: "14_master_hygienist_uniform",
     outfitLabel: "전사/마법/상인 중급",
     accessoryIds: ["weapon", "hat", "glasses"],
   },
-  L2: { outfitId: "senior", outfitLabel: "시니어", accessoryIds: ["weapon", "hat", "glasses", "accessory"] },
-  L3: { outfitId: "senior_plus", outfitLabel: "시니어+", accessoryIds: ["weapon", "hat", "glasses", "accessory"] },
-  L4: { outfitId: "master", outfitLabel: "마스터", accessoryIds: ["weapon", "hat", "glasses", "accessory"] },
+  L2: { outfitId: "15_prosthetic_design_coat", outfitLabel: "시니어", accessoryIds: ["weapon", "hat", "glasses", "accessory"] },
+  L3: { outfitId: "16_neurosight_clinical_suit", outfitLabel: "시니어+", accessoryIds: ["weapon", "hat", "glasses", "accessory"] },
+  L4: { outfitId: "17_bty_arena_champion_uniform", outfitLabel: "마스터", accessoryIds: ["weapon", "hat", "glasses", "accessory"] },
+};
+
+/** 레거시 저장값·키 → 위 매니페스트 outfitId (URL은 `outfit_{manifestId}.png`). */
+const PROFESSIONAL_LEGACY_TO_MANIFEST: Record<string, string> = {
+  scrub_general: "1_basic_clinic_scrubs",
+  figs_scrub: "2_assistant_utility_uniform",
+  doctor_gown: "3_hygiene_scrubs",
+  surgery_coat_suit: "4_standard_dental_coat",
+  brand_suit: "5_clinic_utility_uniform",
+  figs_scrub_short: "6_digital_dentistry_coat",
+  shorts_tee: "7_imaging_technician_suit",
+};
+
+const FANTASY_LEGACY_TO_MANIFEST: Record<string, string> = {
+  apprentice: "11_implant_surgery_armor_scrubs",
+  adventurer: "12_ai_diagnostic_suit",
+  journeyer: "13_research_lab_coat",
+  warrior_mage_mid: "14_master_hygienist_uniform",
+  senior: "15_prosthetic_design_coat",
+  senior_plus: "16_neurosight_clinical_suit",
+  master: "17_bty_arena_champion_uniform",
 };
 
 const DEFAULT_THEME: AvatarOutfitTheme = "professional";
@@ -120,33 +144,30 @@ const DEFAULT_THEME: AvatarOutfitTheme = "professional";
 /** 레거시 플래그. 옷 UI는 통합 매니페스트만 사용. */
 export const FANTASY_THEME_UI_READY = true;
 
-/** 옷 이미지 베이스 (실제 파일명은 OUTFIT_ID_TO_FILENAME 매핑 사용) */
+/** 옷 이미지 베이스 — 파일명은 `getOutfitFilename` (매니페스트 `outfit_{id}.png`). */
 const OUTFIT_IMAGE_BASE = "/avatars/outfits";
 
 /**
- * outfitId → 실제 파일명 매핑 (public/avatars/outfits/ 에 있는 파일 기준).
- * Professional 7종만 매핑; Fantasy/캐릭터용 옷은 에셋 추가 전까지 fallback.
+ * 스모크/검증용: 배포 시 존재해야 하는 베이스 PNG 예시 (매니페스트 1번).
  */
-/** `public/avatars/outfits/` 파일명 — README `outfit_{outfitId}.png` 규칙과 동일 (공백·한글 제거). */
-const OUTFIT_ID_TO_FILENAME: Record<string, string> = {
-  scrub_general: "outfit_scrub_general.png",
-  figs_scrub: "outfit_figs_scrub.png",
-  doctor_gown: "outfit_doctor_gown.png",
-  surgery_coat_suit: "outfit_surgery_coat_suit.png",
-  brand_suit: "outfit_brand_suit.png",
-  figs_scrub_short: "outfit_figs_scrub_short.png",
-  shorts_tee: "outfit_shorts_tee.png",
-};
+export const LEGACY_OUTFIT_DISK_FILENAMES: readonly string[] = ["outfit_1_basic_clinic_scrubs.png"];
 
-/**
- * 레거시 레벨맵이 참조하는 디스크 파일 중, 저장소에 반드시 있어야 하는 항목만 검사한다.
- * (`outfit_scrub_general.png` 등 나머지는 아직 매니페스트 PNG로 대체·미배치일 수 있음 — Network 404 시 추가.)
- */
-export const LEGACY_OUTFIT_DISK_FILENAMES: readonly string[] = ["outfit_shorts_tee.png"];
+function normalizeOutfitIdStem(raw: string): string {
+  let t = raw.trim().replace(/\.png$/i, "").trim();
+  if (t.toLowerCase().startsWith("outfit_")) {
+    t = t.slice("outfit_".length);
+  }
+  return t;
+}
 
-/** outfitId → `public/avatars/outfits/` 파일명 (체형 접미사 전). */
+/** outfitId → `public/avatars/outfits/` 베이스 파일명 (체형 접미사 전). 레거시 id는 매니페스트 id로 치환. */
 export function getOutfitFilename(outfitId: string): string {
-  return OUTFIT_ID_TO_FILENAME[outfitId] ?? `outfit_${outfitId}.png`;
+  const stem = normalizeOutfitIdStem(outfitId);
+  const resolved =
+    PROFESSIONAL_LEGACY_TO_MANIFEST[stem] ??
+    FANTASY_LEGACY_TO_MANIFEST[stem] ??
+    stem;
+  return `outfit_${resolved}.png`;
 }
 
 /** 매니페스트 기준 유효 outfit id 집합 (단일 목록). */
@@ -189,13 +210,17 @@ function getLegacyOutfitByTheme(theme: AvatarOutfitTheme, id: string): OutfitRes
   const map = theme === "fantasy" ? FANTASY_LEVEL_MAP : PROFESSIONAL_LEVEL_MAP;
   const legacySet = theme === "fantasy" ? FANTASY_OUTFIT_IDS : PROFESSIONAL_OUTFIT_IDS;
   if (!legacySet.has(id)) return null;
+  const resolvedId =
+    theme === "fantasy"
+      ? FANTASY_LEGACY_TO_MANIFEST[id] ?? id
+      : PROFESSIONAL_LEGACY_TO_MANIFEST[id] ?? id;
   const entry = (
     Object.values(map) as {
       outfitId: string;
       outfitLabel: string;
       accessoryIds: string[];
     }[]
-  ).find((e) => e.outfitId === id);
+  ).find((e) => e.outfitId === resolvedId || e.outfitId === id);
   if (!entry) return null;
   return buildLegacyOutfitResult(entry);
 }
@@ -230,14 +255,14 @@ export function getOutfitImageUrlForBodyType(
   return `${OUTFIT_IMAGE_BASE}/${encodeURIComponent(bodyFile)}`;
 }
 
-/** 캐릭터별 게임 스타일 옷 파일명 (fantasy 테마일 때 선택된 캐릭터에 따라 사용). 6종만 존재. */
+/** 캐릭터별 fantasy 오버레이 — 매니페스트 outfit id (`outfit_{id}.png` on disk). */
 const CHARACTER_OUTFIT_FILE: Record<string, string> = {
-  hero_01: "hero_armor",
-  mage_02: "mage_robe",
-  scout_03: "scout_cloak",
-  guardian_04: "guardian_armor",
-  pilot_05: "pilot_jacket",
-  healer_07: "healer_robe",
+  hero_01: "18_foundry_engineer_outfit",
+  mage_02: "19_master_surgeon_robe",
+  scout_03: "20_digital_dentistry_elite_coat",
+  guardian_04: "17_bty_arena_champion_uniform",
+  pilot_05: "16_neurosight_clinical_suit",
+  healer_07: "15_prosthetic_design_coat",
 };
 
 /** fantasy 테마 + 선택 캐릭터에 해당하는 게임 스타일 옷 이미지 URL. 없으면 null. */
@@ -276,7 +301,7 @@ export const LEGACY_ACCESSORY_IDS_FOR_ASSETS: readonly string[] = [
 
 /**
  * 레벨에 맞는 옷 + 악세사리 반환.
- * imageUrl: /avatars/outfits/outfit_{outfitId}.png (Professional 7종 + Fantasy 레벨별는 outfit_apprentice.png 등)
+ * imageUrl: /avatars/outfits/outfit_{manifestOutfitId}.png (레벨 맵·레거시 별칭 동일 규칙)
  */
 export function getOutfitForLevel(
   theme: AvatarOutfitTheme | null | undefined,
@@ -310,13 +335,15 @@ export function getOutfitForLevel(
 /** 레벨 순서 (스태프 → 리더) */
 export const OUTFIT_LEVEL_IDS: LevelId[] = ["S1", "S2", "S3", "L1", "L2", "L3", "L4"];
 
-/** 테마별 사용 가능한 outfit id 목록 (캐릭터 고정+옷 선택용). */
-const PROFESSIONAL_OUTFIT_IDS = new Set(
-  (Object.values(PROFESSIONAL_LEVEL_MAP) as { outfitId: string }[]).map((e) => e.outfitId)
-);
-const FANTASY_OUTFIT_IDS = new Set(
-  (Object.values(FANTASY_LEVEL_MAP) as { outfitId: string }[]).map((e) => e.outfitId)
-);
+/** 테마별 사용 가능한 outfit id 목록 (매니페스트 id + 레거시 별칭). */
+const PROFESSIONAL_OUTFIT_IDS = new Set([
+  ...(Object.values(PROFESSIONAL_LEVEL_MAP) as { outfitId: string }[]).map((e) => e.outfitId),
+  ...Object.keys(PROFESSIONAL_LEGACY_TO_MANIFEST),
+]);
+const FANTASY_OUTFIT_IDS = new Set([
+  ...(Object.values(FANTASY_LEVEL_MAP) as { outfitId: string }[]).map((e) => e.outfitId),
+  ...Object.keys(FANTASY_LEGACY_TO_MANIFEST),
+]);
 
 /** AVATAR_LAYER_SPEC §3.2: UI용 허용 옷 한 건 (key = theme_outfit_outfitId) */
 export type AllowedOutfitEntry = { key: string; name: string; rarity?: "common" | "rare" | "epic" };

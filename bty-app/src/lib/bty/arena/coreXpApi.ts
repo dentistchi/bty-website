@@ -28,7 +28,9 @@ export type CoreXpGetResponse = {
   avatarCharacterLocked: boolean;
   avatarOutfitTheme: "professional" | "fantasy" | null;
   avatarSelectedOutfitId: string | null;
+  /** Canonical layer URLs for Arena PNG `AvatarComposite` (dashboard, etc.). From `resolveDisplayAvatarLayers` with same `maxUnlockedLevel` as `currentOutfit`. */
   avatarCharacterImageUrl: string | null;
+  /** Outfit overlay URL when layered; null if single-layer or N/A. */
   avatarOutfitImageUrl: string | null;
   currentOutfit: {
     outfitId: string;

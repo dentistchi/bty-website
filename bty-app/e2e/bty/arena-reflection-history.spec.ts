@@ -1,13 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { canonicalArenaUrlPattern } from "../helpers/arena-canonical";
+import { canonicalArenaUrlPattern, openCanonicalArenaAndWaitForShell } from "../helpers/arena-canonical";
 
 const LOCALE = "en";
 
-/**
- * Full Arena → reflection seed → history chain depended on legacy mission `/result` + `review-reflection`.
- * Canonical Arena completes in-page; reflection integration should be covered by API/unit tests or a dedicated Growth E2E.
- */
-test.describe("BTY Arena → reflection → history", () => {
+test.describe("BTY Arena entry (reflection chain retired from E2E)", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(`/${LOCALE}/bty-arena`);
     await page.evaluate(() => {
@@ -20,9 +16,8 @@ test.describe("BTY Arena → reflection → history", () => {
     });
   });
 
-  test("canonical Arena route (not /play) after navigation", async ({ page }) => {
-    await page.goto(`/${LOCALE}/bty-arena`);
+  test("canonical Arena runtime after navigation", async ({ page }) => {
+    await openCanonicalArenaAndWaitForShell(page, LOCALE, 60_000);
     await expect(page).toHaveURL(canonicalArenaUrlPattern(LOCALE));
-    await expect(page).not.toHaveURL(/\/bty-arena\/play/);
   });
 });

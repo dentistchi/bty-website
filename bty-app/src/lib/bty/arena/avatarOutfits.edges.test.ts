@@ -37,8 +37,8 @@ describe("avatarOutfits (edges)", () => {
     it("defaults to professional when theme is null or undefined", () => {
       const r1 = getOutfitForLevel(null, "S1");
       const r2 = getOutfitForLevel(undefined, "S1");
-      expect(r1.outfitId).toBe("scrub_general");
-      expect(r2.outfitId).toBe("scrub_general");
+      expect(r1.outfitId).toBe("1_basic_clinic_scrubs");
+      expect(r2.outfitId).toBe("1_basic_clinic_scrubs");
     });
     it("imageUrl is under /avatars/outfits/ and ends with .png", () => {
       for (const lid of OUTFIT_LEVEL_IDS) {
@@ -57,8 +57,8 @@ describe("avatarOutfits (edges)", () => {
 
   describe("getCharacterOutfitImageUrl", () => {
     it("returns url for known character ids", () => {
-      expect(getCharacterOutfitImageUrl("hero_01")).toMatch(/outfit_hero_armor\.png$/);
-      expect(getCharacterOutfitImageUrl("mage_02")).toMatch(/outfit_mage_robe\.png$/);
+      expect(getCharacterOutfitImageUrl("hero_01")).toMatch(/outfit_18_foundry_engineer_outfit\.png$/);
+      expect(getCharacterOutfitImageUrl("mage_02")).toMatch(/outfit_19_master_surgeon_robe\.png$/);
     });
     it("returns null for unknown character", () => {
       expect(getCharacterOutfitImageUrl("unknown_99")).toBeNull();

@@ -26,7 +26,7 @@ import {
 import { getEffectiveTrack } from "@/lib/bty/arena/program";
 import { getUnlockedContentWindow } from "@/lib/bty/arena/unlock";
 import type { Track, LevelId } from "@/lib/bty/arena/tenure";
-import { getOutfitForLevel, getCharacterOutfitImageUrl, getOutfitById, tierToDisplayLevelId, resolveDisplayAvatarLayers } from "@/lib/bty/arena/avatarOutfits";
+import { getOutfitForLevel, getCharacterOutfitImageUrl, getOutfitById, resolveDisplayAvatarLayers } from "@/lib/bty/arena/avatarOutfits";
 import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
 
 export async function GET(req: NextRequest) {
@@ -205,12 +205,12 @@ export async function GET(req: NextRequest) {
     if (!avatarUrl && outfit.imageUrl) avatarUrl = outfit.imageUrl;
   }
 
-  const levelId = tierToDisplayLevelId(tier);
+  // Same level band as currentOutfit (maxUnlockedLevel), not tierToDisplayLevelId(tier) — keeps layer URLs aligned with outfit/accessory rows.
   const avatarLayers = resolveDisplayAvatarLayers({
     customAvatarUrl,
     avatarCharacterId,
     avatarOutfitTheme,
-    levelId,
+    levelId: maxUnlockedLevel,
     avatarSelectedOutfitId,
   });
 

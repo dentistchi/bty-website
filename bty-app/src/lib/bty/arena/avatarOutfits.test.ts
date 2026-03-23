@@ -8,6 +8,7 @@ import {
   getAllowedOutfitsForLevel,
   getAllowedOutfitsForLevelUnified,
   getOutfitById,
+  getOutfitFilename,
   accessorySlotsFromTier,
   profileToAvatarCompositeKeys,
   OUTFIT_OPTIONS_BY_THEME,
@@ -28,9 +29,9 @@ describe("getAllowedOutfitsForLevel", () => {
     const fan = getAllowedOutfitsForLevel("fantasy", "S1");
     expect(pro).toHaveLength(1);
     expect(fan).toHaveLength(1);
-    expect(pro[0].key).toBe("outfit_scrub_general");
+    expect(pro[0].key).toBe("outfit_1_basic_clinic_scrubs");
     expect(pro[0].name).toBe("일반 스크럽");
-    expect(fan[0].key).toBe("outfit_apprentice");
+    expect(fan[0].key).toBe("outfit_11_implant_surgery_armor_scrubs");
     expect(fan[0].name).toBe("견습");
   });
 
@@ -43,18 +44,18 @@ describe("getAllowedOutfitsForLevel", () => {
     expect(s2.length).toBeLessThanOrEqual(s3.length);
     expect(s3.length).toBeLessThanOrEqual(l1.length);
     const keys = new Set(l1.map((o) => o.key));
-    expect(keys.has("outfit_scrub_general")).toBe(true);
-    expect(keys.has("outfit_figs_scrub")).toBe(true);
-    expect(keys.has("outfit_doctor_gown")).toBe(true);
-    expect(keys.has("outfit_surgery_coat_suit")).toBe(true);
-  });
+    expect(keys.has("outfit_1_basic_clinic_scrubs")).toBe(true);
+    expect(keys.has("outfit_2_assistant_utility_uniform")).toBe(true);
+    expect(keys.has("outfit_3_hygiene_scrubs")).toBe(true);
+    expect(keys.has("outfit_4_standard_dental_coat")).toBe(true);
+    });
 
   it("returns cumulative outfits up to level (fantasy)", () => {
     const l4 = getAllowedOutfitsForLevel("fantasy", "L4");
     const keys = l4.map((o) => o.key);
-    expect(keys).toContain("outfit_apprentice");
-    expect(keys).toContain("outfit_adventurer");
-    expect(keys).toContain("outfit_master");
+    expect(keys).toContain("outfit_11_implant_surgery_armor_scrubs");
+    expect(keys).toContain("outfit_12_ai_diagnostic_suit");
+    expect(keys).toContain("outfit_17_bty_arena_champion_uniform");
   });
 
   it("uses key format outfit_{outfitId}", () => {
@@ -79,8 +80,8 @@ describe("getAllowedOutfitsForLevel", () => {
     const u = getAllowedOutfitsForLevelUnified("L4");
     expect(u).toHaveLength(14);
     const keys = new Set(u.map((o) => o.key));
-    expect(keys.has("outfit_scrub_general")).toBe(true);
-    expect(keys.has("outfit_apprentice")).toBe(true);
+    expect(keys.has("outfit_1_basic_clinic_scrubs")).toBe(true);
+    expect(keys.has("outfit_11_implant_surgery_armor_scrubs")).toBe(true);
   });
 });
 
@@ -113,11 +114,27 @@ describe("OUTFIT_OPTIONS_ALL and inferAvatarOutfitThemeFromOutfitId", () => {
 });
 
 // ---------------------------------------------------------------------------
+// getOutfitFilename — manifest + legacy + stem normalization
+// ---------------------------------------------------------------------------
+
+describe("getOutfitFilename", () => {
+  it("maps legacy professional ids to manifest stems", () => {
+    expect(getOutfitFilename("scrub_general")).toBe("outfit_1_basic_clinic_scrubs.png");
+  });
+  it("does not double-prefix when stem already includes outfit_", () => {
+    expect(getOutfitFilename("outfit_1_basic_clinic_scrubs")).toBe("outfit_1_basic_clinic_scrubs.png");
+  });
+  it("strips accidental .png in stem", () => {
+    expect(getOutfitFilename("1_basic_clinic_scrubs.png")).toBe("outfit_1_basic_clinic_scrubs.png");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // getOutfitById(theme, outfitId)
 // ---------------------------------------------------------------------------
 
 describe("getOutfitById", () => {
-  const professionalOutfits = [
+    const professionalOutfits = [
     "scrub_general",
     "figs_scrub",
     "doctor_gown",
@@ -140,12 +157,14 @@ describe("getOutfitById", () => {
     for (const id of professionalOutfits) {
       const result = getOutfitById("professional", id);
       expect(result).not.toBeNull();
-      expect(result!.outfitId).toBe(id);
+      expect(result!.outfitId).not.toBe(id);
+      expect(result!.outfitId).toMatch(/^\d+_/);
       expect(result!.outfitLabel).toBeTruthy();
       expect(Array.isArray(result!.accessoryIds)).toBe(true);
       expect(result!.imageUrl).not.toBeNull();
       expect(result!.imageUrl).toMatch(/^\/avatars\/outfits\/.+/);
       expect(result!.imageUrl!.endsWith(".png")).toBe(true);
+      expect(result!.imageUrl).toContain(`outfit_${result!.outfitId}.png`);
     }
   });
 
@@ -153,10 +172,12 @@ describe("getOutfitById", () => {
     for (const id of fantasyOutfits) {
       const result = getOutfitById("fantasy", id);
       expect(result).not.toBeNull();
-      expect(result!.outfitId).toBe(id);
+      expect(result!.outfitId).not.toBe(id);
+      expect(result!.outfitId).toMatch(/^\d+_/);
       expect(result!.imageUrl).not.toBeNull();
       expect(result!.imageUrl).toMatch(/^\/avatars\/outfits\/.+/);
       expect(result!.imageUrl!.endsWith(".png")).toBe(true);
+      expect(result!.imageUrl).toContain(`outfit_${result!.outfitId}.png`);
     }
   });
 
@@ -200,7 +221,7 @@ describe("getOutfitById", () => {
   it("treats null theme as pro→fantasy fallback for legacy ids", () => {
     const result = getOutfitById(null, "figs_scrub");
     expect(result).not.toBeNull();
-    expect(result!.outfitId).toBe("figs_scrub");
+    expect(result!.outfitId).toBe("2_assistant_utility_uniform");
   });
 });
 
@@ -283,14 +304,14 @@ describe("profileToAvatarCompositeKeys", () => {
     expect(keys.accessoryKeys).toEqual(["acc_handpiece"]);
   });
 
-  it("uses S1 default outfit when outfitId is null (fantasy → apprentice)", () => {
+  it("uses S1 default outfit when outfitId is null (fantasy → manifest S1)", () => {
     const keys = profileToAvatarCompositeKeys({
       avatarCharacterId: "mage_02",
       avatarOutfitTheme: "fantasy",
       avatarSelectedOutfitId: null,
       avatarAccessoryIds: [],
     });
-    expect(keys.outfitKey).toBe("outfit_apprentice");
+    expect(keys.outfitKey).toBe("outfit_11_implant_surgery_armor_scrubs");
     expect(keys.theme).toBe("fantasy");
     expect(keys.accessoryKeys).toEqual([]);
   });
@@ -302,7 +323,7 @@ describe("profileToAvatarCompositeKeys", () => {
       avatarSelectedOutfitId: null,
       avatarAccessoryIds: [],
     });
-    expect(keys.outfitKey).toBe("outfit_scrub_general");
+    expect(keys.outfitKey).toBe("outfit_1_basic_clinic_scrubs");
   });
 
   it("defaults characterKey to hero_01 when empty", () => {

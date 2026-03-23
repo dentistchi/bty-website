@@ -93,6 +93,16 @@ function clearState() {
   localStorage.removeItem(STORAGE_KEY);
 }
 
+/** True when saved state is only the pre-choice lobby (no run progress). Session/next must win over stale scenarioId. */
+function isFreshLobbyState(saved: SavedArenaState): boolean {
+  if (saved.phase !== "CHOOSING") return false;
+  const st = saved.step ?? 1;
+  if (st > 1) return false;
+  if (saved.selectedChoiceId != null && saved.selectedChoiceId !== "") return false;
+  if (saved.otherSubmitted) return false;
+  return true;
+}
+
 type SessionNextResponse = {
   ok: boolean;
   scenario?: Scenario;
@@ -349,6 +359,74 @@ export function useArenaSession() {
 
       try {
         if (saved) {
+          // Fresh lobby (CHOOSING, no choice yet): session/next is source of truth — stale localStorage scenarioId must not skip it.
+          if (isFreshLobbyState(saved)) {
+            const serverNext = await fetchSessionNextScenario(locale);
+            if (cancelled) return;
+
+            if (serverNext && serverNext.scenarioId !== saved.scenarioId) {
+              clearState();
+              resetAllLocal();
+              setScenario(serverNext);
+              setPhase("CHOOSING");
+              setStep(1);
+              if (streakInfo.message) setSystemMessage(streakInfo.message);
+              try {
+                const data = await arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", {
+                  json: { scenarioId: serverNext.scenarioId, locale },
+                });
+                if (cancelled) return;
+                if (data.run?.run_id) {
+                  setRunId(data.run.run_id);
+                  saveState({
+                    version: 1,
+                    scenarioId: serverNext.scenarioId,
+                    phase: "CHOOSING",
+                    step: 1,
+                    runId: data.run.run_id,
+                    updatedAtISO: safeNowISO(),
+                  });
+                }
+              } catch (e) {
+                console.warn("Arena run create failed", e);
+              }
+              return;
+            }
+
+            if (serverNext && serverNext.scenarioId === saved.scenarioId) {
+              if (cancelled) return;
+              let resumePhase = saved.phase;
+              let resumeStep = (saved.step ?? stepFromPhase(saved.phase)) as number;
+              if (resumeStep < 1 || resumeStep > 7) {
+                resumeStep = 1;
+                resumePhase = "CHOOSING";
+              }
+              const noSelection = saved.selectedChoiceId == null || saved.selectedChoiceId === undefined;
+              if (resumePhase !== "CHOOSING" && noSelection && !saved.otherSubmitted) {
+                resumePhase = "CHOOSING";
+                resumeStep = 1;
+              }
+              setScenario(serverNext);
+              setPhase(resumePhase);
+              setStep(resumeStep as ArenaStep);
+              setReflectionIndex(typeof saved.reflectionIndex === "number" ? saved.reflectionIndex : null);
+              setReflectionText(typeof saved.reflectionText === "string" ? saved.reflectionText : "");
+              setReflectionBonusXp(typeof saved.reflectionBonusXp === "number" ? saved.reflectionBonusXp : 0);
+              setSelectedChoiceId(noSelection && saved.otherSubmitted ? OTHER_CHOICE_ID : (saved.selectedChoiceId ?? null));
+              setOtherSubmitted(Boolean(saved.otherSubmitted));
+              setFollowUpIndex(typeof saved.followUpIndex === "number" ? saved.followUpIndex : null);
+              setLastXp(saved.lastXp ?? 0);
+              setRunId(saved.runId ?? null);
+              setFreeResponseFeedback(saved.freeResponseFeedback ?? null);
+              if (saved.lastSystemMessage) {
+                setSystemMessage(SYSTEM_MESSAGES.find((m) => m.id === saved.lastSystemMessage) ?? null);
+              } else if (streakInfo.message) {
+                setSystemMessage(streakInfo.message);
+              }
+              return;
+            }
+          }
+
           let sc = await fetchResolvedScenarioById(saved.scenarioId, locale);
           if (!sc) {
             clearState();
