@@ -84,10 +84,26 @@ jobs:
           fi
 
       - name: Run E2E suite
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
         run: |
+          set -e
           if [[ "$BASE_URL" == *"127.0.0.1"* ]] || [[ "$BASE_URL" == *"localhost"* ]]; then
-            npm run dev &
-            npx wait-on --timeout 120000 "$BASE_URL" || (echo "Dev server failed to start" && exit 1)
+            if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ]; then
+              echo "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY — add repo secrets for E2E."
+              exit 1
+            fi
+            echo "Starting Next.js dev (log: /tmp/next-dev.log) ..."
+            NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=4096" npm run dev -- -H 127.0.0.1 -p 3000 > /tmp/next-dev.log 2>&1 &
+            echo $! > /tmp/next-dev.pid
+            # First compile on CI can exceed 120s; TCP is reliable before HTTP responds.
+            npx wait-on --timeout 300000 tcp:127.0.0.1:3000 || (
+              echo "=== next dev log (last 200 lines) ==="
+              tail -200 /tmp/next-dev.log || true
+              echo "Dev server failed to start (wait-on tcp:127.0.0.1:3000 timed out after 300s)"
+              exit 1
+            )
+            echo "Dev server listening on tcp:127.0.0.1:3000"
           fi
           npm run e2e:seed-default-journey
           npm run e2e:seed-comeback
