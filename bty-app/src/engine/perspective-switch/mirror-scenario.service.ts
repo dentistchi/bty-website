@@ -23,6 +23,14 @@ function resolveMirrorDbClient(supabase?: SupabaseClient): SupabaseClient {
 /** Synthetic {@link Scenario.scenarioId} prefix for rows from `mirror_scenario_pool`. */
 export const MIRROR_SCENARIO_PREFIX = "mirror:" as const;
 
+/**
+ * Legacy `mirror_scenario_pool` (20260416010000) required `scenario_type` + `air_delta`; later migrations
+ * added origin/mirror columns but did not drop NOT NULL legacy columns on live DBs.
+ */
+const MIRROR_POOL_SCENARIO_TYPE_CATALOG = "mirror_perspective" as const;
+const MIRROR_POOL_SCENARIO_TYPE_ROLE_CURATED = "role_mirror_curated" as const;
+const MIRROR_POOL_AIR_DELTA_NEUTRAL = 0;
+
 const CHOICE_CONFIRMED = "CHOICE_CONFIRMED" as const;
 const LAST_N_SCENARIOS = 3;
 
@@ -253,6 +261,8 @@ async function syncMirrorPoolForUser(client: SupabaseClient, userId: string): Pr
     const { error: upErr } = await client.from("mirror_scenario_pool").upsert(
       {
         user_id: userId,
+        scenario_type: MIRROR_POOL_SCENARIO_TYPE_CATALOG,
+        air_delta: MIRROR_POOL_AIR_DELTA_NEUTRAL,
         origin_scenario_id: originScenarioId,
         target_role: targetRole,
         mirror_title: b.mirror_title,
@@ -332,6 +342,8 @@ export async function generateMirror(
     const { error } = await client.from("mirror_scenario_pool").upsert(
       {
         user_id: userId,
+        scenario_type: MIRROR_POOL_SCENARIO_TYPE_ROLE_CURATED,
+        air_delta: MIRROR_POOL_AIR_DELTA_NEUTRAL,
         origin_scenario_id: syntheticOrigin,
         target_role: rm.target_role,
         mirror_title: rm.title,
@@ -356,6 +368,8 @@ export async function generateMirror(
   const { error } = await client.from("mirror_scenario_pool").upsert(
     {
       user_id: userId,
+      scenario_type: MIRROR_POOL_SCENARIO_TYPE_CATALOG,
+      air_delta: MIRROR_POOL_AIR_DELTA_NEUTRAL,
       origin_scenario_id: originScenarioId,
       target_role: targetRole,
       mirror_title: b.mirror_title,

@@ -69,6 +69,55 @@ function isSelectableMeta(meta: ScenarioMeta, pref: ScenarioLocalePreference): b
   return staticScenarioMatchesLocale(s, pref);
 }
 
+/** Temporary instrumentation: which prefilter removes metas (remove after diagnosing empty-pool in prod). */
+function logSelectNextScenarioPrefilterCounts(
+  catalog: ScenarioMeta[],
+  playedSet: Set<string>,
+  locale: ScenarioLocalePreference,
+  attempt: number,
+): void {
+  let blockedByPlayed = 0;
+  let failMetaLocale = 0;
+  let failMissingPayload = 0;
+  let failStaticLocale = 0;
+  let candidatesAfterPrefilter = 0;
+
+  for (const m of catalog) {
+    if (playedSet.has(m.scenarioId)) {
+      blockedByPlayed++;
+      continue;
+    }
+    if (!metaMatchesLocale(m, locale)) {
+      failMetaLocale++;
+      continue;
+    }
+    const s = getScenarioById(m.scenarioId);
+    if (!s) {
+      failMissingPayload++;
+      continue;
+    }
+    if (!staticScenarioMatchesLocale(s, locale)) {
+      failStaticLocale++;
+      continue;
+    }
+    candidatesAfterPrefilter++;
+  }
+
+  console.warn(
+    "[arena] selectNextScenario prefilter",
+    JSON.stringify({
+      attempt,
+      locale,
+      catalogSize: catalog.length,
+      blockedByPlayed,
+      failMetaLocale,
+      failMissingPayload,
+      failStaticLocale,
+      candidatesAfterPrefilter,
+    }),
+  );
+}
+
 /** Count completed plays per `flag_type` from history (by scenario id → flag). */
 export function playCountsByFlagType(
   playedScenarioIds: readonly string[],
@@ -134,6 +183,37 @@ export async function fetchPlayedScenarioIds(userId: string): Promise<string[]> 
     .filter((x): x is string => typeof x === "string");
 }
 
+/**
+ * Collapse `(locale, id)` DB rows into one {@link ScenarioMeta} per `scenarioId` before {@link mergeDbCatalogWithStatic}'s Map.
+ * - same `scenarioId` + en row only → `locale: 'en'`
+ * - same `scenarioId` + ko row only → `locale: 'ko'`
+ * - same `scenarioId` + en and ko → `locale: 'both'`
+ */
+function dedupeScenarioMetasByLocaleUnion(rows: ScenarioMeta[]): ScenarioMeta[] {
+  const map = new Map<string, ScenarioMeta>();
+  for (const m of rows) {
+    const prev = map.get(m.scenarioId);
+    if (!prev) {
+      map.set(m.scenarioId, m);
+      continue;
+    }
+    const loc: ScenarioMeta["locale"] =
+      prev.locale === "both" ||
+      m.locale === "both" ||
+      (prev.locale === "en" && m.locale === "ko") ||
+      (prev.locale === "ko" && m.locale === "en")
+        ? "both"
+        : m.locale;
+    map.set(m.scenarioId, {
+      ...m,
+      locale: loc,
+      flag_type: m.flag_type || prev.flag_type,
+      difficulty: m.difficulty,
+    });
+  }
+  return [...map.values()];
+}
+
 async function fetchScenarioCatalogFromDb(): Promise<ScenarioMeta[] | null> {
   const admin = getSupabaseAdmin();
   if (!admin) return null;
@@ -163,7 +243,12 @@ async function fetchScenarioCatalogFromDb(): Promise<ScenarioMeta[] | null> {
     const d = row.difficulty;
     const difficulty: ScenarioDifficultyTier =
       d === 1 || d === 2 || d === 3 ? d : 2;
-    out.push({ scenarioId, flag_type, locale, difficulty });
+    out.push({
+      scenarioId,
+      flag_type,
+      locale: locale as ScenarioMeta["locale"],
+      difficulty,
+    });
   }
   return out.length ? out : null;
 }
@@ -181,11 +266,12 @@ function buildFallbackCatalog(): ScenarioMeta[] {
 function mergeDbCatalogWithStatic(db: ScenarioMeta[] | null): ScenarioMeta[] {
   const staticCatalog = buildFallbackCatalog();
   if (!db?.length) return staticCatalog;
+  const normalized = dedupeScenarioMetasByLocaleUnion(db);
   const map = new Map<string, ScenarioMeta>();
   for (const m of staticCatalog) {
     map.set(m.scenarioId, m);
   }
-  for (const m of db) {
+  for (const m of normalized) {
     map.set(m.scenarioId, m);
   }
   return [...map.values()];
@@ -251,6 +337,8 @@ export async function selectNextScenario(
 
     const counts = playCountsByFlagType(played, (id) => flagLookupFromCatalog.get(id));
 
+    logSelectNextScenarioPrefilterCounts(catalog, playedSet, locale, attempt);
+
     const candidates = catalog.filter(
       (m) => !playedSet.has(m.scenarioId) && isSelectableMeta(m, locale),
     );
@@ -279,6 +367,18 @@ export async function selectNextScenario(
     }
 
     if (pool.length === 0) {
+      console.warn(
+        "[arena] selectNextScenario pool empty (postfilters)",
+        JSON.stringify({
+          attempt,
+          locale,
+          candidatesLen: candidates.length,
+          poolLen: pool.length,
+          difficultyFloor,
+          forceDifficultyTier: options?.forceDifficultyTier ?? null,
+          preferFlagType: options?.preferFlagType ?? null,
+        }),
+      );
       throw new ScenarioSelectionError(
         "no_scenario_available",
         "No candidate scenarios after filters (pool empty).",
