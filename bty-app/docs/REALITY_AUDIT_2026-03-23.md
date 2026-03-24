@@ -169,3 +169,37 @@ BTY는 이제:
 
 UI / routing / avatar / arena flow는 정렬되었고,  
 이제 핵심은 **behavior engine 고도화 단계**이다.
+
+### Memory Engine
+- CHOICE_CONFIRMED → memory event insert wired
+- repeated flag aggregation wired (`flag_total`, `flag_consecutive`)
+- threshold queue wired (`memory_pattern_threshold`)
+- first recall prompt loop is live:
+  - trigger queue consume
+  - recall prompt returned
+  - recall log write path aligned
+- delayed outcome / perspective switch consumers are not yet wired
+
+### Memory Engine
+- Live verified on a real playable user
+- CHOICE_CONFIRMED → memory event insert works
+- repeated flag aggregation works
+- threshold trigger queue works
+- recall prompt consume works
+- first live recall loop is operational:
+  - trigger created
+  - trigger consumed
+  - recall message returned
+- delayed outcome / perspective switch consumers are not yet wired
+
+### Memory Engine
+- Live DB/API loop verified:
+  - trigger queue creation
+  - trigger consumption
+  - processed status transition
+  - recall log insertion
+  - recall prompt payload generation
+- Remaining UI verification blocker:
+  - tested account was forced into `/bty-arena/beginner` via `requiresBeginnerPath: true`
+  - main Arena recall banner was therefore not directly observed in-browser
+- Final UI verification requires a non-beginner account with a pending `memory_pattern_threshold` trigger

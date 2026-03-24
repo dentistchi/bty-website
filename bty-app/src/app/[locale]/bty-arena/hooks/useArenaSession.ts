@@ -143,7 +143,9 @@ type SessionNextFetchResult = { scenario: Scenario | null; recallPrompt: ArenaRe
 async function fetchSessionNextScenario(locale: Locale): Promise<SessionNextFetchResult> {
   const loc = locale === "ko" ? "ko" : "en";
   try {
-    const data = await arenaFetch<SessionNextResponse>(`/api/arena/session/next?locale=${loc}`);
+    const data = await arenaFetch<SessionNextResponse>(`/api/arena/session/next?locale=${loc}`, {
+      cache: "no-store",
+    });
     if (data.ok && data.scenario) {
       return { scenario: data.scenario, recallPrompt: data.recallPrompt ?? null };
     }
@@ -154,18 +156,20 @@ async function fetchSessionNextScenario(locale: Locale): Promise<SessionNextFetc
   }
 }
 
-/** Resolve catalog / perspective / mirror scenario by id (same rules as submit). */
-async function fetchResolvedScenarioById(scenarioId: string, locale: Locale): Promise<Scenario | null> {
-  const loc = locale === "ko" ? "ko" : "en";
-  const qs = new URLSearchParams({ scenarioId, locale: loc });
+/**
+ * True when `arena_runs` still has this run for the user and it matches the expected scenario
+ * (stale localStorage after DB deletes / rotation).
+ */
+async function validateRunForResume(runId: string | null | undefined, expectedScenarioId: string): Promise<boolean> {
+  if (runId == null || String(runId).trim() === "") return false;
   try {
-    const data = await arenaFetch<{ ok?: boolean; scenario?: Scenario }>(
-      `/api/arena/session/scenario?${qs.toString()}`,
+    const data = await arenaFetch<{ run?: { scenario_id?: string } }>(
+      `/api/arena/run/${encodeURIComponent(String(runId))}`,
     );
-    if (data.ok && data.scenario) return data.scenario;
-    return null;
+    const sid = data.run?.scenario_id;
+    return typeof sid === "string" && sid === expectedScenarioId;
   } catch {
-    return null;
+    return false;
   }
 }
 
@@ -386,149 +390,84 @@ export function useArenaSession() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [otherOpen]);
 
-  // Resume or load first scenario from `/api/arena/session/next` (DB-backed rotation + catalog), not in-memory SCENARIOS.
+  // Arena init: `/api/arena/session/next` runs before any localStorage read or streak — canonical session router is sole source for first paint merge.
   React.useEffect(() => {
     if (!levelChecked || requiresBeginnerPath) return;
 
     let cancelled = false;
 
     (async () => {
-      const streakInfo = updateStreak();
-      const saved = loadState();
-
       setScenarioLoading(true);
       setScenarioInitError(null);
 
       try {
-        if (saved) {
-          // Pre-choice lobby: session/next wins when it differs, or when local lobby is stale (basic catalog expires faster).
-          if (isPreChoiceLobby(saved)) {
-            const serverPack = await fetchSessionNextScenario(locale);
-            const serverNext = serverPack.scenario;
+        const serverPack = await fetchSessionNextScenario(locale);
+        if (cancelled) return;
+
+        const streakInfo = updateStreak();
+        const saved = loadState();
+
+        const serverNext = serverPack.scenario;
+
+        if (!serverNext) {
+          clearState();
+          resetAllLocal();
+          setScenario(null);
+          setPhase("CHOOSING");
+          setStep(1);
+          setScenarioInitError(t.scenarioNotFound);
+          return;
+        }
+
+        setRecallPrompt(serverPack.recallPrompt ?? null);
+
+        /** Canonical lobby: fresh scenario from session router + new `arena_runs` row. */
+        const applyCanonicalLobby = async (next: Scenario) => {
+          clearState();
+          resetAllLocal();
+          setRecallPrompt(serverPack.recallPrompt ?? null);
+          setScenario(next);
+          setPhase("CHOOSING");
+          setStep(1);
+          if (streakInfo.message) setSystemMessage(streakInfo.message);
+          try {
+            const data = await arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", {
+              json: { scenarioId: next.scenarioId, locale },
+            });
             if (cancelled) return;
-
-            if (serverNext && (serverNext.scenarioId !== saved.scenarioId || isStaleLobby(saved))) {
-              clearState();
-              resetAllLocal();
-              setRecallPrompt(serverPack.recallPrompt);
-              setScenario(serverNext);
-              setPhase("CHOOSING");
-              setStep(1);
-              if (streakInfo.message) setSystemMessage(streakInfo.message);
-              try {
-                const data = await arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", {
-                  json: { scenarioId: serverNext.scenarioId, locale },
-                });
-                if (cancelled) return;
-                if (data.run?.run_id) {
-                  setRunId(data.run.run_id);
-                  saveState({
-                    version: 1,
-                    scenarioId: serverNext.scenarioId,
-                    phase: "CHOOSING",
-                    step: 1,
-                    runId: data.run.run_id,
-                    updatedAtISO: safeNowISO(),
-                  });
-                }
-              } catch (e) {
-                console.warn("Arena run create failed", e);
-              }
-              return;
-            }
-
-            if (serverNext && serverNext.scenarioId === saved.scenarioId) {
-              if (cancelled) return;
-              setRecallPrompt(serverPack.recallPrompt);
-              let resumePhase = saved.phase;
-              let resumeStep = (saved.step ?? stepFromPhase(saved.phase)) as number;
-              if (resumeStep < 1 || resumeStep > 7) {
-                resumeStep = 1;
-                resumePhase = "CHOOSING";
-              }
-              const noSelection = saved.selectedChoiceId == null || saved.selectedChoiceId === undefined;
-              if (resumePhase !== "CHOOSING" && noSelection && !saved.otherSubmitted) {
-                resumePhase = "CHOOSING";
-                resumeStep = 1;
-              }
-              setScenario(serverNext);
-              setPhase(resumePhase);
-              setStep(resumeStep as ArenaStep);
-              setReflectionIndex(typeof saved.reflectionIndex === "number" ? saved.reflectionIndex : null);
-              setReflectionText(typeof saved.reflectionText === "string" ? saved.reflectionText : "");
-              setReflectionBonusXp(typeof saved.reflectionBonusXp === "number" ? saved.reflectionBonusXp : 0);
-              setSelectedChoiceId(noSelection && saved.otherSubmitted ? OTHER_CHOICE_ID : (saved.selectedChoiceId ?? null));
-              setOtherSubmitted(Boolean(saved.otherSubmitted));
-              setFollowUpIndex(typeof saved.followUpIndex === "number" ? saved.followUpIndex : null);
-              setLastXp(saved.lastXp ?? 0);
-              setRunId(saved.runId ?? null);
-              setFreeResponseFeedback(saved.freeResponseFeedback ?? null);
-              if (saved.lastSystemMessage) {
-                setSystemMessage(SYSTEM_MESSAGES.find((m) => m.id === saved.lastSystemMessage) ?? null);
-              } else if (streakInfo.message) {
-                setSystemMessage(streakInfo.message);
-              }
-              return;
-            }
-          }
-
-          let sc = await fetchResolvedScenarioById(saved.scenarioId, locale);
-          if (!sc) {
-            clearState();
-            const nextPack = await fetchSessionNextScenario(locale);
-            if (cancelled) return;
-            sc = nextPack.scenario;
-            if (!sc) {
-              setScenario(null);
-              setRecallPrompt(null);
-              setScenarioInitError(t.scenarioNotFound);
-              return;
-            }
-            setRecallPrompt(nextPack.recallPrompt);
-            setScenario(sc);
-            setPhase("CHOOSING");
-            setStep(1);
-            setReflectionIndex(null);
-            setReflectionText("");
-            setReflectionBonusXp(0);
-            setReflectResult(null);
-            setSelectedChoiceId(null);
-            setFollowUpIndex(null);
-            setLastXp(0);
-            setRunId(null);
-            runMetaRef.current = null;
-            setOtherOpen(false);
-            setOtherText("");
-            setOtherSubmitting(false);
-            setOtherSubmitted(false);
-            setFreeResponseFeedback(null);
-            setSystemMessage(
-              streakInfo.message ?? SYSTEM_MESSAGES.find((m) => m.id === "arch_init") ?? null,
-            );
-            try {
-              const data = await arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", {
-                json: { scenarioId: sc.scenarioId, locale },
+            if (data.run?.run_id) {
+              setRunId(data.run.run_id);
+              saveState({
+                version: 1,
+                scenarioId: next.scenarioId,
+                phase: "CHOOSING",
+                step: 1,
+                runId: data.run.run_id,
+                updatedAtISO: safeNowISO(),
               });
-              if (cancelled) return;
-              if (data.run?.run_id) {
-                setRunId(data.run.run_id);
-                saveState({
-                  version: 1,
-                  scenarioId: sc.scenarioId,
-                  phase: "CHOOSING",
-                  step: 1,
-                  runId: data.run.run_id,
-                  updatedAtISO: safeNowISO(),
-                });
-              }
-            } catch (e) {
-              console.warn("Arena run create failed", e);
             }
+          } catch (e) {
+            console.warn("Arena run create failed", e);
+          }
+        };
+
+        if (!saved) {
+          await applyCanonicalLobby(serverNext);
+          return;
+        }
+
+        const serverAligns = serverNext.scenarioId === saved.scenarioId;
+        const runOk =
+          saved.runId != null &&
+          saved.runId !== "" &&
+          (await validateRunForResume(saved.runId, saved.scenarioId));
+
+        // Mid-run: only restore when session agrees on scenario, DB run exists, and row matches scenario.
+        if (!isPreChoiceLobby(saved)) {
+          if (!serverAligns || !runOk) {
+            await applyCanonicalLobby(serverNext);
             return;
           }
-
-          if (cancelled) return;
-
           let resumePhase = saved.phase;
           let resumeStep = (saved.step ?? stepFromPhase(saved.phase)) as number;
           if (resumeStep < 1 || resumeStep > 7) {
@@ -540,8 +479,7 @@ export function useArenaSession() {
             resumePhase = "CHOOSING";
             resumeStep = 1;
           }
-          setRecallPrompt(null);
-          setScenario(sc);
+          setScenario(serverNext);
           setPhase(resumePhase);
           setStep(resumeStep as ArenaStep);
           setReflectionIndex(typeof saved.reflectionIndex === "number" ? saved.reflectionIndex : null);
@@ -561,37 +499,84 @@ export function useArenaSession() {
           return;
         }
 
-        const firstPack = await fetchSessionNextScenario(locale);
-        if (cancelled) return;
-        const sc = firstPack.scenario;
-        if (!sc) {
-          setScenario(null);
-          setRecallPrompt(null);
-          setScenarioInitError(t.scenarioNotFound);
+        // Pre-choice lobby
+        if (!serverAligns || isStaleLobby(saved)) {
+          await applyCanonicalLobby(serverNext);
           return;
         }
-        setRecallPrompt(firstPack.recallPrompt);
-        setScenario(sc);
-        if (streakInfo.message) setSystemMessage(streakInfo.message);
 
-        try {
-          const data = await arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", {
-            json: { scenarioId: sc.scenarioId, locale },
+        if (saved.runId && !runOk) {
+          await applyCanonicalLobby(serverNext);
+          return;
+        }
+
+        let resumePhase = saved.phase;
+        let resumeStep = (saved.step ?? stepFromPhase(saved.phase)) as number;
+        if (resumeStep < 1 || resumeStep > 7) {
+          resumeStep = 1;
+          resumePhase = "CHOOSING";
+        }
+        const noSelection = saved.selectedChoiceId == null || saved.selectedChoiceId === undefined;
+        if (resumePhase !== "CHOOSING" && noSelection && !saved.otherSubmitted) {
+          resumePhase = "CHOOSING";
+          resumeStep = 1;
+        }
+        setScenario(serverNext);
+        setPhase(resumePhase);
+        setStep(resumeStep as ArenaStep);
+        setReflectionIndex(typeof saved.reflectionIndex === "number" ? saved.reflectionIndex : null);
+        setReflectionText(typeof saved.reflectionText === "string" ? saved.reflectionText : "");
+        setReflectionBonusXp(typeof saved.reflectionBonusXp === "number" ? saved.reflectionBonusXp : 0);
+        setSelectedChoiceId(noSelection && saved.otherSubmitted ? OTHER_CHOICE_ID : (saved.selectedChoiceId ?? null));
+        setOtherSubmitted(Boolean(saved.otherSubmitted));
+        setFollowUpIndex(typeof saved.followUpIndex === "number" ? saved.followUpIndex : null);
+        setLastXp(saved.lastXp ?? 0);
+        setRunId(runOk ? saved.runId! : null);
+        setFreeResponseFeedback(saved.freeResponseFeedback ?? null);
+        if (saved.lastSystemMessage) {
+          setSystemMessage(SYSTEM_MESSAGES.find((m) => m.id === saved.lastSystemMessage) ?? null);
+        } else if (streakInfo.message) {
+          setSystemMessage(streakInfo.message);
+        }
+        if (runOk && saved.runId) {
+          saveState({
+            version: 1,
+            scenarioId: saved.scenarioId,
+            phase: resumePhase,
+            step: resumeStep as ArenaStep,
+            selectedChoiceId: saved.selectedChoiceId,
+            followUpIndex: saved.followUpIndex,
+            lastXp: saved.lastXp,
+            lastSystemMessage: saved.lastSystemMessage,
+            runId: saved.runId,
+            otherSubmitted: saved.otherSubmitted,
+            freeResponseFeedback: saved.freeResponseFeedback,
+            reflectionIndex: saved.reflectionIndex,
+            reflectionText: saved.reflectionText,
+            reflectionBonusXp: saved.reflectionBonusXp,
+            updatedAtISO: safeNowISO(),
           });
-          if (cancelled) return;
-          if (data.run?.run_id) {
-            setRunId(data.run.run_id);
-            saveState({
-              version: 1,
-              scenarioId: sc.scenarioId,
-              phase: "CHOOSING",
-              step: 1,
-              runId: data.run.run_id,
-              updatedAtISO: safeNowISO(),
+        }
+        if (!runOk || !saved.runId) {
+          try {
+            const data = await arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", {
+              json: { scenarioId: serverNext.scenarioId, locale },
             });
+            if (cancelled) return;
+            if (data.run?.run_id) {
+              setRunId(data.run.run_id);
+              saveState({
+                version: 1,
+                scenarioId: serverNext.scenarioId,
+                phase: "CHOOSING",
+                step: resumeStep as ArenaStep,
+                runId: data.run.run_id,
+                updatedAtISO: safeNowISO(),
+              });
+            }
+          } catch (e) {
+            console.warn("Arena run create failed (pre-choice recover)", e);
           }
-        } catch (e) {
-          console.warn("Arena run create failed", e);
         }
       } finally {
         if (!cancelled) setScenarioLoading(false);

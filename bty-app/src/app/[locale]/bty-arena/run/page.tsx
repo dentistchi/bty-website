@@ -1,9 +1,11 @@
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
 type Props = { params: Promise<{ locale: string }> };
 
-/** Compatibility: canonical Arena play is `/[locale]/bty-arena`. */
+export const dynamic = "force-dynamic";
+
+/** Compatibility: canonical Arena play is `/[locale]/bty-arena` (middleware also 308s here). */
 export default async function BtyArenaRunAliasRedirect({ params }: Props) {
   const { locale } = await params;
-  redirect(`/${locale}/bty-arena`);
+  permanentRedirect(`/${locale}/bty-arena`);
 }

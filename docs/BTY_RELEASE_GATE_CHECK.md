@@ -1,5 +1,9 @@
 # BTY 배포 전 체크 결과 (bty-release-gate)
 
+**C5 self-healing-ci (`bty-app/scripts/self-healing-ci.sh` · 2026-03-24):** [VERIFY] **RESULT: PASS** · Lint ✓ · **368 files / 2660 tests** ✓ · Build ✓ · exit **0** · A~F: **A)** 본 턴 **경로·세션 init 순서**만 — 쿠키 플래그 **미변경** 가정. **B)** Core/주간 XP **미터치** 가정. **C)** 리더보드 **미터치** 가정. **D)** 마이그레이션 **본 턴 커밋 없음** (`.bak` 미포함). **E)** UI **규칙 중복 없음** 가정. **F)** **`self-healing-ci.sh`** 본 턴 실행 ✓.
+
+**Arena canonical session entry (`middleware` + `useArenaSession` · 2026-03-24):** [ROUTE] `/${locale}/bty-arena/run` → **308** `/${locale}/bty-arena` in **`middleware.ts`**; **`run/page.tsx`** **`permanentRedirect`** + **`dynamic = force-dynamic`**; init **`fetchSessionNextScenario` before `loadState`/`updateStreak`**; **`GET /api/arena/session/next`** with **`cache: 'no-store'`**; **`session/next` 실패 시** **`clearState` + `resetAllLocal`**. A~F: **A)** 경로 리다이렉트만 — 쿠키 **미변경**. **B)** Core/주간 XP 저장 **미터치**. **C)** 리더보드 **미터치**. **D)** 마이그레이션 **없음**. **E)** session/next·run 계약 **UI 규칙 중복 없음**. **F)** 로컬 **`npx tsc -p bty-app/tsconfig.json --noEmit`** ✓.
+
 **BTY Memory Engine — `user_behavior_memory_events` 스키마 정렬 (2026-03-23):** [MIGRATION] 라이브에서 **`played_at` / `payload` 누락** 시 `insertBehaviorMemoryEvent` 실패 가능. **`20260430340000_memory_engine_user_behavior_events_align.sql`** — `ADD COLUMN IF NOT EXISTS` + `played_at` 백필 + **`source` 방어적 추가** + 인덱스 `IF NOT EXISTS`. 적용: Supabase SQL Editor 또는 `supabase db push`. 스모크: `npx tsx bty-app/scripts/memory-engine-smoke.ts <user_uuid>` (서비스 롤·URL).
 
 **BTY Memory Engine (마이그레이션 · 2026-03-23):** [SCAFFOLD] **`20260430330000_bty_memory_engine.sql`** — `user_behavior_memory_events`, `user_behavior_pattern_state`, `user_memory_recall_log`, `user_memory_trigger_queue` (RLS SELECT own) · 엔진 `src/engine/memory/*` · **`handleChoiceConfirmed`** → **`recordChoiceConfirmedMemory`** · delayed outcome **미연동** (큐 INSERT만 스캐폴드). 배포 전 Supabase 적용 필수. 라이브 컬럼 누락 시 **`20260430340000`** 추가 적용.

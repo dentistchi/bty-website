@@ -54,6 +54,14 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL(`/${locale}/center`, req.url), 308);
   }
 
+  /** Canonical Arena play is `/[locale]/bty-arena`; alias `/bty-arena/run` must not serve a cached shell without session/next. */
+  if (
+    locale &&
+    (pathname === `/${locale}/bty-arena/run` || pathname === `/${locale}/bty-arena/run/`)
+  ) {
+    return NextResponse.redirect(new URL(`/${locale}/bty-arena`, req.url), 308);
+  }
+
   if (!locale) {
     if (
       pathname.startsWith("/bty") ||

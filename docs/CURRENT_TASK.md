@@ -11,9 +11,12 @@ BTY 시스템은 다음 단계로 전환됨:
 
 ## 1. COMPLETED (THIS SPRINT)
 
+- [x] 2026-03-24 — C5 `self-healing-ci.sh` PASS (368 files / 2660 tests, build ✓) + docs sync — **작업 완료**
+
 ### Arena
 - canonical route 통합 (`/bty-arena`)
 - session/next 기반 시나리오 흐름 정상화
+- [x] 2026-03-24 — Arena entry: `fetchSessionNextScenario` before any `loadState`; `GET session/next` `cache: 'no-store'`; failure path `clearState` + `resetAllLocal`; middleware + `run/page` 308 canonical `/bty-arena`
 - stale local state 문제 해결
 - XP (Core / Weekly) 정상 반영
 - [x] BTY Memory Engine scaffold — `20260430330000_bty_memory_engine.sql`, `src/engine/memory/*`, `recordChoiceConfirmedMemory` in `scenario-outcome-bridge`
@@ -100,3 +103,39 @@ BTY 시스템은 다음 단계로 전환됨:
 
 > BTY는 이제 "UI 제품"이 아니라  
 > **"행동을 바꾸는 엔진"을 완성하는 단계**다.
+
+## Memory Engine
+- Live scaffold verified end-to-end
+- Smoke result: PASS
+- Current live capability:
+  - event record
+  - pattern aggregation
+  - threshold trigger enqueue
+  - recall prompt consume
+- Next phase:
+  - delayed outcome consumer
+  - perspective switch consumer
+
+  ## Memory Engine
+- Phase 1 live loop verified
+- Status: PASS
+- Verified path:
+  - event record
+  - pattern aggregation
+  - threshold trigger
+  - recall prompt consume
+- Next:
+  - delayed outcome consumer
+  - perspective switch consumer
+
+  ## Memory Engine
+- Phase 1 live backend loop: PASS
+- Verified:
+  - event insert
+  - pattern aggregation
+  - trigger enqueue
+  - trigger consume
+  - recall log write
+  - processed status transition
+- Remaining:
+  - UI recall banner verification on a non-beginner account
