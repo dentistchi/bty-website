@@ -1,9 +1,11 @@
 {
   "name": "bty-website",
   "private": true,
-  "description": "Dear Me & BTY — 루트. Cloudflare에서는 bty-app을 빌드하도록 설정 필요.",
+  "description": "Cloudflare/OpenNext는 모노레포 루트의 bty-app( canonical /bty-arena·session/next )을 빌드한다. bty-website/bty-app는 레거시 스텁이며 배포에 쓰지 않는다.",
   "scripts": {
-    "build": "cd bty-app && npm ci && npm run build",
-    "pages:build": "cd bty-app && npm ci && npm run pages:build"
+    "build": "cd ../bty-app && npm ci && npm run build",
+    "opennext:build": "cd ../bty-app && npm ci && npm run opennext:build",
+    "deploy": "cd ../bty-app && npm ci && npm run deploy",
+    "pages:build": "cd ../bty-app && npm ci && npm run opennext:build"
   }
 }
