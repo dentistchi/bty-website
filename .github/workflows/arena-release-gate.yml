@@ -1,0 +1,50 @@
+# Arena HTTP smoke — deploy URL + E2E credentials (same as Playwright).
+# Run manually after deploy, or chain from another workflow via workflow_call (extend as needed).
+name: Arena release gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Deploy origin (https://…). Leave empty to use BASE_URL secret."
+        required: false
+        type: string
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: bty-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Arena release gate (HTTP smoke)
+        env:
+          BASE_URL: ${{ inputs.base_url || secrets.BASE_URL }}
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+        run: bash scripts/arena-release-gate.sh
+
+      - name: Write runtime evidence (required for Arena signoff)
+        if: success()
+        env:
+          BASE_URL: ${{ inputs.base_url || secrets.BASE_URL }}
+        run: |
+          cat > "$GITHUB_WORKSPACE/arena-gate-evidence.txt" <<EOF
+          ARENA_RELEASE_GATE_AUTHENTICATED=PASS
+          BASE_URL=${BASE_URL}
+          GITHUB_REPOSITORY=${{ github.repository }}
+          GITHUB_RUN_ID=${{ github.run_id }}
+          GITHUB_RUN_URL=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PASSED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          EOF
+
+      - name: Upload arena release gate evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arena-release-gate-evidence
+          path: arena-gate-evidence.txt
