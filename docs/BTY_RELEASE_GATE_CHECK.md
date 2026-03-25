@@ -1,5 +1,11 @@
 # BTY 배포 전 체크 결과 (bty-release-gate)
 
+**Arena release signoff (blocking):** **승인(signoff) 금지** — 녹색 **`arena-release-gate.yml`** GitHub Actions 실행에서 내려받은 **`arena-release-gate-evidence`** 아티팩트만 인정(내부 `BASE_URL` = **배포된** origin). **로컬 실행·문서/코드 주장·배포 성공만으로는 불가.** 상세: `bty-app/docs/BTY_RELEASE_GATE_CHECK.md` § Arena release signoff.
+
+**Arena release signoff (recorded · 2026-03-25):** **RESULT: SIGNED OFF** — **`BASE_URL=https://bty-website.ywamer2022.workers.dev`** matches deployed origin · green run **`https://github.com/dentistchi/bty-website/actions/runs/23525350606`** · artifact **`arena-release-gate-evidence`** (`ARENA_RELEASE_GATE_AUTHENTICATED=PASS` in artifact) · no redeploy / no gate re-run this turn.
+
+**Arena release gate automation:** `bty-app/scripts/arena-release-gate.sh` (`npm run verify:arena-release-gate` in `bty-app`) + `.github/workflows/arena-release-gate.yml` (workflow_dispatch). Requires `BASE_URL` + `E2E_EMAIL` / `E2E_PASSWORD`. 상세·PASS 조건: `bty-app/docs/BTY_RELEASE_GATE_CHECK.md` § Arena automation.
+
 **C5 self-healing-ci (`bty-app/scripts/self-healing-ci.sh` · 2026-03-24):** [VERIFY] **RESULT: PASS** · Lint ✓ · **368 files / 2660 tests** ✓ · Build ✓ · exit **0** · A~F: **A)** 본 턴 **경로·세션 init 순서**만 — 쿠키 플래그 **미변경** 가정. **B)** Core/주간 XP **미터치** 가정. **C)** 리더보드 **미터치** 가정. **D)** 마이그레이션 **본 턴 커밋 없음** (`.bak` 미포함). **E)** UI **규칙 중복 없음** 가정. **F)** **`self-healing-ci.sh`** 본 턴 실행 ✓.
 
 **Arena canonical session entry (`middleware` + `useArenaSession` · 2026-03-24):** [ROUTE] `/${locale}/bty-arena/run` → **308** `/${locale}/bty-arena` in **`middleware.ts`**; **`run/page.tsx`** **`permanentRedirect`** + **`dynamic = force-dynamic`**; init **`fetchSessionNextScenario` before `loadState`/`updateStreak`**; **`GET /api/arena/session/next`** with **`cache: 'no-store'`**; **`session/next` 실패 시** **`clearState` + `resetAllLocal`**. A~F: **A)** 경로 리다이렉트만 — 쿠키 **미변경**. **B)** Core/주간 XP 저장 **미터치**. **C)** 리더보드 **미터치**. **D)** 마이그레이션 **없음**. **E)** session/next·run 계약 **UI 규칙 중복 없음**. **F)** 로컬 **`npx tsc -p bty-app/tsconfig.json --noEmit`** ✓.

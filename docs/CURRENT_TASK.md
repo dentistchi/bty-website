@@ -11,7 +11,9 @@ BTY 시스템은 다음 단계로 전환됨:
 
 ## 1. COMPLETED (THIS SPRINT)
 
+- [x] Arena release gate automation — `bty-app/scripts/arena-release-gate.sh`, `npm run verify:arena-release-gate`, `.github/workflows/arena-release-gate.yml` — **작업 완료**
 - [x] 2026-03-24 — C5 `self-healing-ci.sh` PASS (368 files / 2660 tests, build ✓) + docs sync — **작업 완료**
+- [x] 2026-03-25 — Arena release **final signoff** recorded: `BASE_URL=https://bty-website.ywamer2022.workers.dev`, run `23525350606`, artifact `arena-release-gate-evidence` — **작업 완료**
 
 ### Arena
 - canonical route 통합 (`/bty-arena`)
