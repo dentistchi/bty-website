@@ -32,7 +32,9 @@ const MIRROR_POOL_SCENARIO_TYPE_ROLE_CURATED = "role_mirror_curated" as const;
 const MIRROR_POOL_AIR_DELTA_NEUTRAL = 0;
 
 const CHOICE_CONFIRMED = "CHOICE_CONFIRMED" as const;
-const LAST_N_SCENARIOS = 3;
+
+/** Recent distinct CHOICE_CONFIRMED origins mirrored into `mirror_scenario_pool` (expanded from 3 → 5 for diversity). */
+export const MIRROR_POOL_RECENT_DISTINCT_ORIGIN_COUNT = 5 as const;
 
 export type MirrorChoiceSnapshot = {
   choiceId: string;
@@ -240,7 +242,7 @@ async function lastDistinctScenarioIds(
     if (!sid || seen.has(sid)) continue;
     seen.add(sid);
     ordered.push(sid);
-    if (ordered.length >= LAST_N_SCENARIOS) break;
+    if (ordered.length >= MIRROR_POOL_RECENT_DISTINCT_ORIGIN_COUNT) break;
   }
   return ordered;
 }
@@ -297,7 +299,7 @@ async function syncMirrorPoolForUser(client: SupabaseClient, userId: string): Pr
 }
 
 /**
- * 최근 Arena 선택 3건을 반영해 `mirror_scenario_pool`을 동기화한 뒤, 해당 사용자의 미러 행을 반환한다.
+ * 최근 Arena 선택(최대 {@link MIRROR_POOL_RECENT_DISTINCT_ORIGIN_COUNT}개 구분 origin)을 반영해 `mirror_scenario_pool`을 동기화한 뒤, 해당 사용자의 미러 행을 반환한다.
  */
 export async function getMirrorScenarios(
   userId: string,

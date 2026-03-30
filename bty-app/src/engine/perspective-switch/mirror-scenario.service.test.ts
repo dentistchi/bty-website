@@ -3,7 +3,11 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { generateMirror, getMirrorScenarios } from "./mirror-scenario.service";
+import {
+  generateMirror,
+  getMirrorScenarios,
+  MIRROR_POOL_RECENT_DISTINCT_ORIGIN_COUNT,
+} from "./mirror-scenario.service";
 
 function buildMirrorPoolMock(opts: {
   arenaEvents: { scenario_id: string; created_at: string }[];
@@ -68,6 +72,17 @@ describe("mirror-scenario.service", () => {
       expect(upsert.mock.calls[0][0]).toMatchObject({
         origin_scenario_id: "doctor_chronic_tension_v1",
       });
+    });
+
+    it("uses at most MIRROR_POOL_RECENT_DISTINCT_ORIGIN_COUNT distinct CHOICE_CONFIRMED origins for pool upserts", async () => {
+      const upsert = vi.fn().mockResolvedValue({ data: null, error: null });
+      const arenaEvents = Array.from({ length: 6 }, (_, i) => ({
+        scenario_id: `origin_distinct_${i}`,
+        created_at: new Date(Date.UTC(2026, 0, 20 - i)).toISOString(),
+      }));
+      const { from } = buildMirrorPoolMock({ arenaEvents, upsert });
+      await getMirrorScenarios("u1", { from } as unknown as SupabaseClient);
+      expect(upsert).toHaveBeenCalledTimes(MIRROR_POOL_RECENT_DISTINCT_ORIGIN_COUNT);
     });
   });
 

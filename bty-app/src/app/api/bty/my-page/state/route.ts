@@ -26,8 +26,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: result.message }, { status: 500 });
   }
 
+  const {
+    AIR: _airOmitted,
+    ...metricsPublic
+  } = result.data.metrics ?? {};
+
   return NextResponse.json({
-    metrics: result.data.metrics,
+    metrics: metricsPublic,
     leadershipState: result.data.leadershipState,
     recoveryTriggered: result.data.recoveryTriggered,
     recoveryEntryCount: result.data.recoveryEntryCount,

@@ -56,8 +56,27 @@ async function attachRecallPrompt(
   return { ...base, ...(recallPrompt ? { recallPrompt } : {}) };
 }
 
-function pickLeastRecentMirror(mirrors: MirrorScenario[], played: string[]): MirrorScenario {
-  const withMeta = mirrors.map((m) => {
+/** Most recently played mirror `scenarioId` in chronological `played` order (end = latest). */
+function lastServedMirrorScenarioId(played: string[]): string | null {
+  for (let i = played.length - 1; i >= 0; i--) {
+    const id = played[i];
+    if (typeof id === "string" && id.startsWith(MIRROR_SCENARIO_PREFIX)) return id;
+  }
+  return null;
+}
+
+/**
+ * Prefer mirrors not played recently; avoid serving the same mirror again immediately when another pool row exists.
+ */
+export function pickLeastRecentMirror(mirrors: MirrorScenario[], played: string[]): MirrorScenario {
+  const lastMirrorSid = lastServedMirrorScenarioId(played);
+  let candidateRows = mirrors;
+  if (lastMirrorSid !== null && mirrors.length > 1) {
+    const withoutLast = mirrors.filter((m) => `${MIRROR_SCENARIO_PREFIX}${m.id}` !== lastMirrorSid);
+    if (withoutLast.length >= 1) candidateRows = withoutLast;
+  }
+
+  const withMeta = candidateRows.map((m) => {
     const sid = `${MIRROR_SCENARIO_PREFIX}${m.id}`;
     return { m, li: played.lastIndexOf(sid) };
   });

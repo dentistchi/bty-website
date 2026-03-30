@@ -1,5 +1,8 @@
 # CURRENT TASK — 2026-03-23
 
+- [x] 2026-03-30 — **`GET /api/bty/my-page/state`** — **`metrics`** omits raw **`AIR`** (`AIR: _airOmitted` → **`metricsPublic`**) · **작업 완료**
+- [x] 2026-03-30 — **C5 mirror hotfix deploy** — Worker **`8c6a4c36-1bc7-43f4-8b4a-bad18948f3b5`** · **`BUILD_ID`** **`KTI5-X3HuP-QxWa74QaxL`** live match · unauth smoke only · **작업 완료**
+- [x] 2026-03-30 — **C3 mirror repetition hotfix** — **`pickLeastRecentMirror`** excludes last served **`mirror:`** id when **≥2** pool rows; **`MIRROR_POOL_RECENT_DISTINCT_ORIGIN_COUNT` = 5** (was 3); **`scenario-type-router.mirror-pick.test.ts`** + mirror pool window test · **작업 완료**
 - [x] 2026-03-30 — **C3 session/next + mirror pool hotfix** — pending `bty_action_contracts` gate **409** (`action_contract_pending`) + fire-and-forget **missed** expiry; **`syncMirrorPoolForUser`** filters **`mirror:`/`pswitch_`** before upsert; **`generateMirror`** returns **null** for ineligible origins; **`route.test.ts`** + **`mirror-scenario.service.test.ts`** · **작업 완료**
 - [x] 2026-03-30 — **C5 release rollout probe** — lint + Vitest **2665** + build **PASS**; prod URL **200** + my-page **401**; wrangler latest deploy **2026-03-30T06:18Z** vs **`e8b848d`** parity **unverified**; E2E **fail** CI cred; authenticated Arena/My Page checks **deferred** · **작업 완료**
 - [x] 2026-03-30 — **run/complete action contract for all scenarios** — `buildActionContractSpec` + `fetchCommittedActionFromRun` (ACTION_LOOP_COMMIT meta); `persistArenaRunActionContract` always when admin; non-elite default EN i18n + 48h; persist fail → log + 200 · Vitest route.test · **작업 완료**

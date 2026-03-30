@@ -203,7 +203,7 @@ export function MyPageLeadershipConsole({ locale }: Props) {
       {secureLinkUrl && (
         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
           <p className="mb-2 text-xs text-white/50">{tAction.completeByQrLink}</p>
-          <p className="select-all break-all text-xs text-cyan-300/70">{secureLinkUrl}</p>
+          <p className="select-all break-all text-xs text-cyan-600 dark:text-cyan-300/70">{secureLinkUrl}</p>
         </div>
       )}
 
