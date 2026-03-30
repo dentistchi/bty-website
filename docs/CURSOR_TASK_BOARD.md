@@ -2,7 +2,21 @@
 
 ## SYSTEM MODE: BEHAVIOR ENGINE BUILD
 
+**C3 (2026-03-28):** Action Contract + persistence + AIR/XP hooks — `domain/action-contract` · `lib/bty/action-contract` · migration `20260431230000` · vitest 10 · **작업 완료**
+
+**C3 (2026-03-28):** BTY AI Routing Engine v1 — `bty-app/src/domain/routing` + vitest 11 · **작업 완료**
+
+**C5 verify (2026-03-27 · Arena final integration gate):** `npm run lint` ✓ · Vitest **418 / 2959** ✓ · `npm run build` ✓ · PENDING-014·017·Level-first·tenure 전제 **PASS** — **작업 완료**
+
+**C5 verify (2026-03-27 · Arena branch release gate):** `npm run lint` ✓ · Vitest **417 files / 2954 tests** ✓ · `npm run build` ✓ · PENDING-014·017 전제 **PASS** — **작업 완료**
+
+**C5 verify (2026-03-25 · 재검증):** `next lint`+`npm run lint` **0** · Vitest **2811** · **8 FAIL** onboarding mock · build **PASS** · **NO-GO** — **보고 완료**
+
+**C5 verify (2026-03-25):** Lab org onboarding gate — `self-healing-ci.sh` **PASS** · **397 / 2803** · `next lint` **FAIL**(툴링) · onboard 시퀀스 테스트 **MISSING** — **작업 완료**
+
 **C5 verify (2026-03-24):** `self-healing-ci.sh` **PASS** · 368 files / 2660 tests · build ✓ — **작업 완료**
+
+**Arena release gate (deploy smoke):** `bty-app/scripts/arena-release-gate.sh` + workflow `arena-release-gate.yml` — **작업 완료**
 
 ---
 

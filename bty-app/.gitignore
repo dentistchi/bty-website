@@ -31,3 +31,11 @@ next-env.d.ts
 
 # Playwright E2E auth (see e2e/.gitignore)
 e2e/.auth/user.json
+
+.env.local
+.env.local.*
+*.save
+
+.env.local
+.env.local.*
+*.save
