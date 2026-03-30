@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MyPageLeadershipConsole } from "./MyPageLeadershipConsole";
 
@@ -39,6 +39,24 @@ function mockStatePayload() {
     signals: [],
     reflections: [],
     open_action_contract: null,
+  };
+}
+
+function mockStatePayloadWithQrContract(overrides?: { session_id?: string | null }) {
+  const defaultSessionId = "run-contract-1";
+  const session_id =
+    overrides && "session_id" in overrides ? overrides.session_id : defaultSessionId;
+  return {
+    ...mockStatePayload(),
+    open_action_contract: {
+      id: "ac1",
+      action_text: "Complete the loop",
+      deadline_at: new Date(Date.now() + 86_400_000).toISOString(),
+      verification_type: "qr" as const,
+      display_state: "pending" as const,
+      completion_method: "qr" as const,
+      session_id,
+    },
   };
 }
 
@@ -133,6 +151,101 @@ describe("MyPageLeadershipConsole", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("my-page-overview").getAttribute("data-load-error")).toBe("true");
+    });
+  });
+
+  it("handleRequestQr POSTs action-loop-token when open_action_contract has session_id", async () => {
+    const payload = mockStatePayloadWithQrContract({ session_id: "run-xyz" });
+    fetchMock.mockResolvedValue(jsonResponse(payload, 200));
+
+    await act(async () => {
+      render(<MyPageLeadershipConsole locale="en" />);
+    });
+
+    await waitFor(() => {
+      screen.getByRole("button", { name: /complete by qr/i });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /complete by qr/i }));
+    });
+
+    const qrPost = fetchMock.mock.calls.find(
+      (c) => typeof c[0] === "string" && c[0].includes("/api/arena/leadership-engine/qr/action-loop-token"),
+    );
+    expect(qrPost).toBeDefined();
+    expect(qrPost?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({ runId: "run-xyz" }),
+    });
+  });
+
+  it("handleRequestQr returns early when session_id missing (warn, no QR token fetch)", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const payload = mockStatePayloadWithQrContract({ session_id: null });
+    fetchMock.mockResolvedValue(jsonResponse(payload, 200));
+
+    await act(async () => {
+      render(<MyPageLeadershipConsole locale="en" />);
+    });
+
+    await waitFor(() => {
+      screen.getByRole("button", { name: /complete by qr/i });
+    });
+
+    const callsBeforeClick = fetchMock.mock.calls.length;
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /complete by qr/i }));
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith("[handleRequestQr] no contract or session_id", {
+      contract: payload.open_action_contract,
+    });
+    const qrPosts = fetchMock.mock.calls.filter(
+      (c) => typeof c[0] === "string" && c[0].includes("/api/arena/leadership-engine/qr/action-loop-token"),
+    );
+    expect(qrPosts).toHaveLength(0);
+    expect(fetchMock.mock.calls.length).toBe(callsBeforeClick);
+    warnSpy.mockRestore();
+  });
+
+  it("handleRequestQr uses contract from server after deferred load (serverPack not stale)", async () => {
+    let resolveState!: (r: Response) => void;
+    const stateDeferred = new Promise<Response>((r) => {
+      resolveState = r;
+    });
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      const s = typeof url === "string" ? url : String(url);
+      if (s.includes("/api/bty/my-page/state")) {
+        return stateDeferred;
+      }
+      return Promise.resolve(jsonResponse({}, 200));
+    });
+
+    await act(async () => {
+      render(<MyPageLeadershipConsole locale="en" />);
+    });
+
+    const payload = mockStatePayloadWithQrContract({ session_id: "run-deferred" });
+    await act(async () => {
+      resolveState(jsonResponse(payload, 200));
+    });
+
+    await waitFor(() => {
+      screen.getByRole("button", { name: /complete by qr/i });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /complete by qr/i }));
+    });
+
+    const qrPost = fetchMock.mock.calls.find(
+      (c) => typeof c[0] === "string" && c[0].includes("/api/arena/leadership-engine/qr/action-loop-token"),
+    );
+    expect(qrPost?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({ runId: "run-deferred" }),
     });
   });
 

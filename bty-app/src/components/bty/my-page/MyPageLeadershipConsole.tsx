@@ -108,7 +108,10 @@ export function MyPageLeadershipConsole({ locale }: Props) {
   const handleRequestQr = useCallback(async () => {
     const contract = serverPack?.open_action_contract;
     const runId = contract?.session_id?.trim();
-    if (!contract || !runId) return;
+    if (!contract || !runId) {
+      console.warn("[handleRequestQr] no contract or session_id", { contract });
+      return;
+    }
     try {
       const res = await fetch("/api/arena/leadership-engine/qr/action-loop-token", {
         method: "POST",
