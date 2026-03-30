@@ -1,5 +1,6 @@
 # CURRENT TASK — 2026-03-23
 
+- [x] 2026-03-30 — **C3 session/next + mirror pool hotfix** — pending `bty_action_contracts` gate **409** (`action_contract_pending`) + fire-and-forget **missed** expiry; **`syncMirrorPoolForUser`** filters **`mirror:`/`pswitch_`** before upsert; **`generateMirror`** returns **null** for ineligible origins; **`route.test.ts`** + **`mirror-scenario.service.test.ts`** · **작업 완료**
 - [x] 2026-03-30 — **C5 release rollout probe** — lint + Vitest **2665** + build **PASS**; prod URL **200** + my-page **401**; wrangler latest deploy **2026-03-30T06:18Z** vs **`e8b848d`** parity **unverified**; E2E **fail** CI cred; authenticated Arena/My Page checks **deferred** · **작업 완료**
 - [x] 2026-03-30 — **run/complete action contract for all scenarios** — `buildActionContractSpec` + `fetchCommittedActionFromRun` (ACTION_LOOP_COMMIT meta); `persistArenaRunActionContract` always when admin; non-elite default EN i18n + 48h; persist fail → log + 200 · Vitest route.test · **작업 완료**
 - [x] 2026-03-30 — **MyPageLeadershipConsole hotfix (no client userId)** — removed **`sessionUserId`** mismatch/refetch guards; **`fetch`** `/api/bty/my-page/state` + 401 retry; **`bty_mypage_refetch_required`** sessionStorage; local signals hydrate on mount; Vitest **`MyPageLeadershipConsole.test.tsx`** · **작업 완료**

@@ -247,15 +247,18 @@ async function lastDistinctScenarioIds(
 
 async function syncMirrorPoolForUser(client: SupabaseClient, userId: string): Promise<void> {
   const origins = await lastDistinctScenarioIds(client, userId);
-  const desired = new Set(origins);
+  const eligibleOrigins = origins.filter(
+    (s) => !s.startsWith("mirror:") && !s.startsWith("pswitch_"),
+  );
+  const desired = new Set(eligibleOrigins);
 
-  if (origins.length === 0) {
+  if (eligibleOrigins.length === 0) {
     const { error: delErr } = await client.from("mirror_scenario_pool").delete().eq("user_id", userId);
     if (delErr) throw new Error(delErr.message);
     return;
   }
 
-  for (const originScenarioId of origins) {
+  for (const originScenarioId of eligibleOrigins) {
     const targetRole = inferMirrorTargetRole(originScenarioId);
     const b = buildMirrorCopyBilingual(originScenarioId, targetRole);
     const { error: upErr } = await client.from("mirror_scenario_pool").upsert(
@@ -333,7 +336,7 @@ export async function generateMirror(
   choiceId: string,
   supabase?: SupabaseClient,
   options?: GenerateMirrorOptions,
-): Promise<void> {
+): Promise<void | null> {
   const client = resolveMirrorDbClient(supabase);
 
   if (options?.originFlagType) {
@@ -357,6 +360,11 @@ export async function generateMirror(
     );
     if (error) throw new Error(error.message);
     return;
+  }
+
+  if (originScenarioId.startsWith("mirror:") || originScenarioId.startsWith("pswitch_")) {
+    console.warn("[generateMirror] Skipping ineligible origin:", originScenarioId);
+    return null;
   }
 
   if (!getScenarioById(originScenarioId)) {
