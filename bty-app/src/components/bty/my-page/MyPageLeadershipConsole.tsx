@@ -10,15 +10,28 @@ import { computeLeadershipState, mergeLeadershipReflectionLayer } from "@/featur
 import type { ArenaSignal, LeadershipMetrics, LeadershipState } from "@/features/my-page/logic/types";
 import { MyPageLeadershipScreen } from "@/features/my-page/MyPageLeadershipScreen";
 import { ActionContractHub } from "@/components/bty/my-page/ActionContractHub";
+import { PostCompletionSheet } from "@/components/bty/my-page/PostCompletionSheet";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
-type Props = { locale: string };
+/** Server-provided result after action-loop QR commit (My Page query validation). */
+export type ActionLoopQrCompletion = {
+  success: boolean;
+  narrativeState?: string | null;
+};
+
+type Props = {
+  locale: string;
+  actionLoopQrCompletion?: ActionLoopQrCompletion | null;
+};
 
 /**
  * Signed-in: GET /api/bty/my-page/state (auth via cookie). Guests: local signals + domain compute.
  */
-export function MyPageLeadershipConsole({ locale }: Props) {
+export function MyPageLeadershipConsole({
+  locale,
+  actionLoopQrCompletion = null,
+}: Props) {
   const loc = (locale === "ko" ? "ko" : "en") as Locale;
   const t = getMessages(loc).myPageStub;
   const tAction = getMessages(loc).actionContract;
@@ -32,6 +45,8 @@ export function MyPageLeadershipConsole({ locale }: Props) {
   const [qrPanelOpen, setQrPanelOpen] = useState(false);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [secureLinkUrl, setSecureLinkUrl] = useState<string | null>(null);
+  const [showPostCompletion, setShowPostCompletion] = useState(false);
+  const [completionNarrativeState, setCompletionNarrativeState] = useState<string | null>(null);
 
   useEffect(() => {
     setLocalSignals(loadSignals());
@@ -104,6 +119,23 @@ export function MyPageLeadershipConsole({ locale }: Props) {
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [load]);
+
+  useEffect(() => {
+    if (!actionLoopQrCompletion?.success) return;
+    setShowPostCompletion(true);
+    setCompletionNarrativeState(actionLoopQrCompletion.narrativeState ?? null);
+    setQrPanelOpen(false);
+    void load();
+  }, [actionLoopQrCompletion, load]);
+
+  useEffect(() => {
+    if (!actionLoopQrCompletion?.success) return;
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("arena_action_loop");
+    url.searchParams.delete("aalo");
+    window.history.replaceState({}, "", url.toString());
+  }, [actionLoopQrCompletion]);
 
   const handleRequestQr = useCallback(async () => {
     const contract = serverPack?.open_action_contract;
@@ -209,6 +241,13 @@ export function MyPageLeadershipConsole({ locale }: Props) {
           <p className="select-all break-all text-xs text-cyan-600 dark:text-cyan-300/70">{secureLinkUrl}</p>
         </div>
       )}
+
+      <PostCompletionSheet
+        open={showPostCompletion}
+        onClose={() => setShowPostCompletion(false)}
+        locale={locale}
+        narrative={completionNarrativeState}
+      />
 
       {qrPanelOpen && qrUrl && (
         <div className="flex flex-col items-center gap-4 rounded-xl border border-gray-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.05]">

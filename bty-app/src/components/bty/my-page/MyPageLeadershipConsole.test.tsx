@@ -264,4 +264,34 @@ describe("MyPageLeadershipConsole", () => {
     });
     expect(sessionStorage.getItem("bty_mypage_refetch_required")).toBeNull();
   });
+
+  it("actionLoopQrCompletion success shows PostCompletionSheet, refetches state, strips URL params", async () => {
+    const payload = mockStatePayload();
+    fetchMock.mockResolvedValue(jsonResponse(payload, 200));
+
+    const replaceSpy = vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
+
+    await act(async () => {
+      render(
+        <MyPageLeadershipConsole
+          locale="en"
+          actionLoopQrCompletion={{ success: true, narrativeState: "Great job." }}
+        />,
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("post-completion-sheet")).toBeTruthy();
+    });
+
+    expect(screen.getByText("Great job.")).toBeTruthy();
+
+    const stateFetches = fetchMock.mock.calls.filter(
+      (c) => typeof c[0] === "string" && (c[0] as string).includes("/api/bty/my-page/state"),
+    );
+    expect(stateFetches.length).toBeGreaterThanOrEqual(2);
+
+    expect(replaceSpy).toHaveBeenCalled();
+    replaceSpy.mockRestore();
+  });
 });

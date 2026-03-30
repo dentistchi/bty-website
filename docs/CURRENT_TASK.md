@@ -1,5 +1,6 @@
 # CURRENT TASK — 2026-03-23
 
+- [x] 2026-03-30 — **My Page QR validate** — **`[locale]/my-page/page.tsx`** server **`fetch`** validate + **`actionLoopQrCompletion`**; **`POST .../qr/validate`** (HMAC+TTL, **`token.userId`** for DB, no session match); **`verifyArenaActionLoopToken`**; **`page.test.tsx`** · **작업 완료**
 - [x] 2026-03-30 — **`POST /api/arena/leadership-engine/qr/action-loop-token`** — mint **`aalo1.*`** token + URL; **`signArenaActionLoopToken`** (`lib/bty/leadership-engine/qr/arena-action-loop-token`); pending contract gate; **`route.test.ts`** · **작업 완료**
 - [x] 2026-03-30 — **`MyPageLeadershipConsole`** — **`handleRequestQr`** early-return **`console.warn`** + deps **`[serverPack, locale]`** (already present); Vitest QR / deferred-load / no-**`session_id`** · **작업 완료**
 - [x] 2026-03-30 — **`GET /api/bty/my-page/state`** — **`metrics`** omits raw **`AIR`** (`AIR: _airOmitted` → **`metricsPublic`**) · **작업 완료**
