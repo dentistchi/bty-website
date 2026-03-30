@@ -1,6 +1,6 @@
+import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { verifyArenaActionLoopToken } from "@/lib/bty/leadership-engine/qr/arena-action-loop-token";
-import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
 
@@ -32,9 +32,23 @@ export async function POST(req: NextRequest) {
 
   const { userId, sessionId, contractId } = verified.payload;
 
-  const admin = getSupabaseAdmin();
-  if (admin && contractId) {
-    const { data: row, error: selErr } = await admin
+  if (contractId) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "";
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+
+    if (!supabaseUrl.trim() || !serviceKey.trim()) {
+      console.error("[qr/validate] Missing Supabase admin credentials");
+      return NextResponse.json({ error: "server_config_error" }, { status: 500 });
+    }
+
+    const adminClient = createClient(supabaseUrl, serviceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+
+    const { data: row, error: selErr } = await adminClient
       .from("bty_action_contracts")
       .select("id, user_id, session_id, status")
       .eq("id", contractId)
@@ -49,7 +63,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "contract_not_pending" }, { status: 409 });
     }
 
-    const { error: upErr } = await admin
+    const { error: upErr } = await adminClient
       .from("bty_action_contracts")
       .update({ status: "completed", completed_at: new Date().toISOString() })
       .eq("id", contractId)

@@ -8,17 +8,18 @@ import { signArenaActionLoopToken } from "@/lib/bty/leadership-engine/qr/arena-a
 
 const adminFrom = vi.fn();
 
-vi.mock("@/lib/supabase-admin", () => ({
-  getSupabaseAdmin: () =>
-    ({
-      from: adminFrom,
-    }) as unknown as ReturnType<typeof import("@/lib/supabase-admin").getSupabaseAdmin>,
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: vi.fn(() => ({
+    from: adminFrom,
+  })),
 }));
 
 describe("POST /api/arena/leadership-engine/qr/validate", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("CRON_SECRET", "test-secret-validate");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://test.supabase.co");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key");
     adminFrom.mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
@@ -57,6 +58,22 @@ describe("POST /api/arena/leadership-engine/qr/validate", () => {
   it("401 when token invalid", async () => {
     const res = await POST(req({ arenaActionLoopToken: "nope" }));
     expect(res.status).toBe(401);
+  });
+
+  it("500 server_config_error when Supabase URL/key missing (contract update path)", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
+    vi.stubEnv("SUPABASE_URL", "");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
+    const token = signArenaActionLoopToken({
+      sessionId: "run1",
+      userId: "owner",
+      actionId: "arena_action_loop:run1",
+      issuedAt: Date.now(),
+      contractId: "c1",
+    });
+    const res = await POST(req({ arenaActionLoopToken: token }));
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toBe("server_config_error");
   });
 
   it("200 ok uses token userId for DB — does not require session user (no requireUser)", async () => {
