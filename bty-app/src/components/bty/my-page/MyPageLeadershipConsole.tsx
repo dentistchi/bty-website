@@ -23,6 +23,10 @@ export type ActionLoopQrCompletion = {
 type Props = {
   locale: string;
   actionLoopQrCompletion?: ActionLoopQrCompletion | null;
+  /** From URL `arena_action_loop` — client validates when `commit` + `aaloParam`. */
+  arenaActionLoopParam?: string | null;
+  /** From URL `aalo` — signed token for witness / deep link. */
+  aaloParam?: string | null;
 };
 
 /**
@@ -31,6 +35,8 @@ type Props = {
 export function MyPageLeadershipConsole({
   locale,
   actionLoopQrCompletion = null,
+  arenaActionLoopParam = null,
+  aaloParam = null,
 }: Props) {
   const loc = (locale === "ko" ? "ko" : "en") as Locale;
   const t = getMessages(loc).myPageStub;
@@ -136,6 +142,53 @@ export function MyPageLeadershipConsole({
     url.searchParams.delete("aalo");
     window.history.replaceState({}, "", url.toString());
   }, [actionLoopQrCompletion]);
+
+  useEffect(() => {
+    if (arenaActionLoopParam !== "commit" || !aaloParam) return;
+
+    const validate = async () => {
+      try {
+        const res = await fetch("/api/arena/leadership-engine/qr/validate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            arenaActionLoopToken: aaloParam,
+            clientScanAtIso: new Date().toISOString(),
+          }),
+        });
+
+        if (!res.ok) {
+          console.error("[QR validate] failed", res.status, await res.text());
+          return;
+        }
+
+        const data = (await res.json()) as {
+          ok?: boolean;
+          success?: boolean;
+          narrativeState?: string | null;
+        };
+
+        if (data.ok || data.success) {
+          setShowPostCompletion(true);
+          if (data.narrativeState) {
+            setCompletionNarrativeState(data.narrativeState);
+          }
+          setQrPanelOpen(false);
+          void load();
+          if (typeof window !== "undefined") {
+            const url = new URL(window.location.href);
+            url.searchParams.delete("arena_action_loop");
+            url.searchParams.delete("aalo");
+            window.history.replaceState({}, "", url.toString());
+          }
+        }
+      } catch (err) {
+        console.error("[QR validate] error", err);
+      }
+    };
+
+    void validate();
+  }, [arenaActionLoopParam, aaloParam, load]);
 
   const handleRequestQr = useCallback(async () => {
     const contract = serverPack?.open_action_contract;

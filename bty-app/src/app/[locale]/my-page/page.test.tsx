@@ -1,5 +1,5 @@
 /**
- * My Page overview — server QR validate wiring (arena_action_loop + aalo).
+ * My Page overview — passes action-loop query params to client (validate runs client-side).
  */
 /** @vitest-environment jsdom */
 import { cleanup, render } from "@testing-library/react";
@@ -21,26 +21,13 @@ vi.mock("@/components/bty/my-page/MyPageLeadershipConsole", () => ({
   MyPageLeadershipConsole: (props: {
     locale: string;
     actionLoopQrCompletion?: { success: boolean; narrativeState?: string | null } | null;
+    arenaActionLoopParam?: string | null;
+    aaloParam?: string | null;
   }) => {
     consolePropsSpy(props);
     return null;
   },
 }));
-
-vi.mock("next/headers", () => ({
-  cookies: vi.fn(async () => ({
-    getAll: () => [] as { name: string; value: string }[],
-  })),
-  headers: vi.fn(async () => ({
-    get: (n: string) => {
-      if (n === "host") return "localhost:3000";
-      return null;
-    },
-  })),
-}));
-
-const fetchMock = vi.fn();
-vi.stubGlobal("fetch", fetchMock);
 
 import Page from "./page";
 
@@ -48,23 +35,13 @@ describe("[locale]/my-page/page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     consolePropsSpy.mockClear();
-    fetchMock.mockImplementation(() =>
-      Promise.resolve({
-        ok: false,
-        json: async () => ({}),
-      }),
-    );
   });
 
   afterEach(() => {
     cleanup();
   });
 
-  it("searchParams commit + aalo → validate fetch → passes actionLoopQrCompletion to console", async () => {
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({ ok: true }),
-    });
+  it("searchParams commit + aalo → passes params to console (no server fetch)", async () => {
     const ui = await Page({
       params: Promise.resolve({ locale: "en" }),
       searchParams: Promise.resolve({
@@ -73,36 +50,25 @@ describe("[locale]/my-page/page", () => {
       }),
     });
     render(ui);
-    expect(fetchMock).toHaveBeenCalled();
-    const callUrl = String(fetchMock.mock.calls[0][0]);
-    expect(callUrl).toContain("/api/arena/leadership-engine/qr/validate");
     expect(consolePropsSpy).toHaveBeenCalled();
-    expect(consolePropsSpy.mock.calls[0][0].actionLoopQrCompletion).toEqual({
-      success: true,
-      narrativeState: null,
+    expect(consolePropsSpy.mock.calls[0][0]).toMatchObject({
+      locale: "en",
+      actionLoopQrCompletion: null,
+      arenaActionLoopParam: "commit",
+      aaloParam: "signed-token",
     });
   });
 
-  it("searchParams missing → validate not called → null completion", async () => {
+  it("searchParams missing → null params", async () => {
     const ui = await Page({
       params: Promise.resolve({ locale: "en" }),
       searchParams: Promise.resolve({}),
     });
     render(ui);
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(consolePropsSpy.mock.calls[0][0].actionLoopQrCompletion).toBeNull();
-  });
-
-  it("validate non-ok → null completion (no crash)", async () => {
-    fetchMock.mockResolvedValue({ ok: false, json: async () => ({ error: "x" }) });
-    const ui = await Page({
-      params: Promise.resolve({ locale: "en" }),
-      searchParams: Promise.resolve({
-        arena_action_loop: "commit",
-        aalo: "t",
-      }),
+    expect(consolePropsSpy.mock.calls[0][0]).toMatchObject({
+      actionLoopQrCompletion: null,
+      arenaActionLoopParam: null,
+      aaloParam: null,
     });
-    render(ui);
-    expect(consolePropsSpy.mock.calls[0][0].actionLoopQrCompletion).toBeNull();
   });
 });

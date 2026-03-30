@@ -294,4 +294,45 @@ describe("MyPageLeadershipConsole", () => {
     expect(replaceSpy).toHaveBeenCalled();
     replaceSpy.mockRestore();
   });
+
+  it("client QR validate: commit + aalo POSTs validate and opens PostCompletionSheet on ok", async () => {
+    const payload = mockStatePayload();
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      const s = typeof url === "string" ? url : String(url);
+      if (s.includes("/api/bty/my-page/state")) {
+        return Promise.resolve(jsonResponse(payload, 200));
+      }
+      if (s.includes("/api/arena/leadership-engine/qr/validate")) {
+        return Promise.resolve(jsonResponse({ ok: true }, 200));
+      }
+      return Promise.reject(new Error(`unexpected fetch: ${s}`));
+    });
+
+    const replaceSpy = vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
+
+    await act(async () => {
+      render(
+        <MyPageLeadershipConsole
+          locale="en"
+          arenaActionLoopParam="commit"
+          aaloParam="token-from-url"
+        />,
+      );
+    });
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some((c) =>
+          String(c[0]).includes("/api/arena/leadership-engine/qr/validate"),
+        ),
+      ).toBe(true);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("post-completion-sheet")).toBeTruthy();
+    });
+
+    expect(replaceSpy).toHaveBeenCalled();
+    replaceSpy.mockRestore();
+  });
 });

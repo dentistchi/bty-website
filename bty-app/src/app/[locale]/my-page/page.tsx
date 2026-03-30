@@ -1,4 +1,3 @@
-import { cookies, headers } from "next/headers";
 import Link from "next/link";
 import ScreenShell from "@/components/bty/layout/ScreenShell";
 import { MyPageLeadershipConsole } from "@/components/bty/my-page/MyPageLeadershipConsole";
@@ -7,9 +6,6 @@ import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
-
-/** Matches {@link MyPageLeadershipConsole} server prop (avoid importing client types into RSC). */
-type ActionLoopQrCompletion = { success: boolean; narrativeState?: string | null };
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -32,47 +28,8 @@ export default async function Page({ params, searchParams }: Props) {
   const t = getMessages(loc).uxPhase1Stub;
   const m = getMessages(loc).myPageStub;
 
-  let actionLoopQrCompletion: ActionLoopQrCompletion | null = null;
   const arenaActionLoop = firstSearchParam(sp?.arena_action_loop);
   const aalo = firstSearchParam(sp?.aalo);
-
-  if (arenaActionLoop === "commit" && aalo) {
-    try {
-      const h = await headers();
-      const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
-      const proto =
-        h.get("x-forwarded-proto") ?? (process.env.NODE_ENV === "production" ? "https" : "http");
-      const cookieStore = await cookies();
-      const cookieHeader = cookieStore
-        .getAll()
-        .map((c) => `${c.name}=${c.value}`)
-        .join("; ");
-
-      const validateRes = await fetch(
-        `${proto}://${host}/api/arena/leadership-engine/qr/validate`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(cookieHeader ? { Cookie: cookieHeader } : {}),
-          },
-          body: JSON.stringify({
-            arenaActionLoopToken: aalo,
-            clientScanAtIso: new Date().toISOString(),
-          }),
-          cache: "no-store",
-        },
-      );
-      if (validateRes.ok) {
-        const raw = (await validateRes.json()) as { ok?: boolean };
-        if (raw.ok === true) {
-          actionLoopQrCompletion = { success: true, narrativeState: null };
-        }
-      }
-    } catch (err) {
-      console.error("[my-page] QR validate failed", err);
-    }
-  }
 
   return (
     <ScreenShell
@@ -85,7 +42,12 @@ export default async function Page({ params, searchParams }: Props) {
         <BtyMyPageTabs locale={locale} />
       </div>
 
-      <MyPageLeadershipConsole locale={locale} actionLoopQrCompletion={actionLoopQrCompletion} />
+      <MyPageLeadershipConsole
+        locale={locale}
+        actionLoopQrCompletion={null}
+        arenaActionLoopParam={arenaActionLoop ?? null}
+        aaloParam={aalo ?? null}
+      />
 
       <p className="mt-4 px-1 text-center text-xs text-[#98A2B3]">
         <Link
