@@ -62,6 +62,21 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL(`/${locale}/bty-arena`, req.url), 308);
   }
 
+  /** Legacy Arena UI `/[locale]/arena` → canonical `/[locale]/bty-arena` (308). */
+  if (
+    locale &&
+    (pathname === `/${locale}/arena` ||
+      pathname.startsWith(`/${locale}/arena/`))
+  ) {
+    const rest = pathname.slice(`/${locale}/arena`.length);
+    const targetPath =
+      rest === "" || rest === "/"
+        ? `/${locale}/bty-arena`
+        : `/${locale}/bty-arena${rest}`;
+    const dest = new URL(targetPath + req.nextUrl.search, req.url);
+    return NextResponse.redirect(dest, 308);
+  }
+
   if (!locale) {
     if (
       pathname.startsWith("/bty") ||
@@ -189,13 +204,13 @@ export async function middleware(req: NextRequest) {
 
     /**
      * Onboarding gate (see `OnboardingShell`): unauthenticated users are sent to **login** above.
-     * Here: authenticated + `user_onboarding_progress.step_completed < 5` + path is `/arena` | `/bty/foundry` | `/center`
-     * → redirect `/{locale}/onboarding`. Completed onboarding + user on `/onboarding` → `/arena`.
+     * Here: authenticated + `user_onboarding_progress.step_completed < 5` + path is `/bty-arena` | `/bty/foundry` | `/center`
+     * → redirect `/{locale}/onboarding`. Completed onboarding + user on `/onboarding` → `/bty-arena`.
      */
     const onboardingPath =
       pathname === `/${locale}/onboarding` || pathname.startsWith(`/${locale}/onboarding/`);
     const onboardingGated =
-      pathname.startsWith(`/${locale}/arena`) ||
+      pathname.startsWith(`/${locale}/bty-arena`) ||
       pathname.startsWith(`/${locale}/bty/foundry`) ||
       pathname.startsWith(`/${locale}/center`);
 
@@ -218,7 +233,7 @@ export async function middleware(req: NextRequest) {
         return jump;
       }
       if (onboardingDone && onboardingPath) {
-        const jump = NextResponse.redirect(new URL(`/${locale}/arena`, req.url));
+        const jump = NextResponse.redirect(new URL(`/${locale}/bty-arena`, req.url));
         reassertAuthCookiesPathRoot(req, jump);
         jump.headers.set("x-mw-hit", "1");
         jump.headers.set("x-mw-user", "1");

@@ -1,5 +1,6 @@
 # CURRENT TASK — 2026-03-23
 
+- [x] 2026-03-30 — **C3 legacy Arena route unification** — `middleware.ts`: **`/{locale}/arena` → `/{locale}/bty-arena` (308)**; onboarding gate + post-onboarding redirect → **`/bty-arena`**; **`OnboardingShell`** **`router.replace`** → **`/bty-arena`**; **`[locale]/arena/page.tsx`** **`permanentRedirect`**; **`middleware.legacy-arena-redirect.test.ts`** · **작업 완료**
 - [x] 2026-03-30 — **`POST .../qr/validate`** — **`createClient`** service role (`NEXT_PUBLIC_SUPABASE_URL` / **`SUPABASE_URL`** + **`SUPABASE_SERVICE_ROLE_KEY`**); missing creds → **500** **`server_config_error`** · **작업 완료**
 - [x] 2026-03-30 — **My Page QR validate (client)** — RSC passes **`arenaActionLoopParam`/`aaloParam`**; **`MyPageLeadershipConsole`** **`fetch`** **`/qr/validate`** + sheet + **`load()`** + URL strip; server validate removed (Workers-safe) · **작업 완료**
 - [x] 2026-03-30 — **`POST /api/arena/leadership-engine/qr/action-loop-token`** — mint **`aalo1.*`** token + URL; **`signArenaActionLoopToken`** (`lib/bty/leadership-engine/qr/arena-action-loop-token`); pending contract gate; **`route.test.ts`** · **작업 완료**

@@ -1,12 +1,12 @@
-import ArenaShellLayout from "@/components/arena/ArenaShellLayout";
+import { permanentRedirect } from "next/navigation";
 
 type Props = { params: Promise<{ locale: string }> };
 
 /**
- * Arena session shell — stacked narrative / delayed outcomes / feedback + {@link ScenarioSessionShell}.
+ * Legacy path — canonical Arena is `/[locale]/bty-arena` (`middleware.ts` also 308s here).
  */
 export default async function ArenaPage({ params }: Props) {
   const { locale } = await params;
   const loc = locale === "ko" ? "ko" : "en";
-  return <ArenaShellLayout locale={loc} />;
+  permanentRedirect(`/${loc}/bty-arena`);
 }

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * Five-step onboarding — {@link OnboardingShell} (client).
- * **Middleware:** `user_onboarding_progress.step_completed < 5` → redirect to this page from gated routes (`/arena`, `/bty/foundry`, `/center`); completed users hitting `/onboarding` → `/arena`.
+ * **Middleware:** `user_onboarding_progress.step_completed < 5` → redirect to this page from gated routes (`/bty-arena`, `/bty/foundry`, `/center`); completed users hitting `/onboarding` → `/bty-arena`.
  */
 export default async function OnboardingPage({ params }: Props) {
   const { locale } = await params;

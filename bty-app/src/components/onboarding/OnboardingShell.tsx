@@ -6,8 +6,8 @@
  * - **Steps:** top dots — **filled teal** = completed step, **outline** = pending (current = teal ring, future = gray ring). (1) KO/EN · (2) four role cards + level 1–5 · (3) {@link ScenarioCard} + `BEGINNER_SCENARIOS[0]` · (4) AIR SVG arc 0→score **1s ease** · (5) {@link LearningPathWidget} `inlineFourPathPicker` + **시작하기** / Get started.
  * - **Advance:** `POST /api/bty/onboarding/step` `{ step, payload }`.
  * - **Back:** browser back suppressed from step 3+ (`popstate`).
- * - **Done:** {@link ONBOARDING_COMPLETE_EVENT} → `/{locale}/arena`.
- * - **Middleware:** no session → login; authenticated + `step_completed < 5` on `/arena` · `/bty/foundry` · `/center` → `/{locale}/onboarding` (`src/middleware.ts`).
+ * - **Done:** {@link ONBOARDING_COMPLETE_EVENT} → `/{locale}/bty-arena`.
+ * - **Middleware:** no session → login; authenticated + `step_completed < 5` on `/bty-arena` · `/bty/foundry` · `/center` → `/{locale}/onboarding` (`src/middleware.ts`).
  */
 
 import { useRouter } from "next/navigation";
@@ -161,7 +161,7 @@ export function OnboardingShell({ userId, locale }: OnboardingShellProps) {
       }
       setState(json);
       if (json.isComplete || json.nextStep == null) {
-        router.replace(`/${loc}/arena`);
+        router.replace(`/${loc}/bty-arena`);
       }
     } catch {
       setErr(loc === "ko" ? "온보딩 상태를 불러오지 못했습니다." : "Failed to load onboarding.");
@@ -188,7 +188,7 @@ export function OnboardingShell({ userId, locale }: OnboardingShellProps) {
   /** On {@link ONBOARDING_COMPLETE_EVENT}, navigate to Arena. */
   React.useEffect(() => {
     const go = () => {
-      router.replace(`/${localeChoice}/arena`);
+      router.replace(`/${localeChoice}/bty-arena`);
     };
     window.addEventListener(ONBOARDING_COMPLETE_EVENT, go);
     return () => window.removeEventListener(ONBOARDING_COMPLETE_EVENT, go);
