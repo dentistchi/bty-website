@@ -56,7 +56,18 @@ export async function POST(req: NextRequest) {
       issuedAt: Date.now(),
       contractId: contract.id,
     });
-  } catch {
+  } catch (err) {
+    console.error(
+      "[action-loop-token] mint failed",
+      {
+        error: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        runId: runIdStr,
+        userId: user.id,
+        hasSecret: !!process.env.ARENA_ACTION_LOOP_QR_SECRET,
+        hasCronSecret: !!process.env.CRON_SECRET,
+      },
+    );
     const out = NextResponse.json({ error: "token_mint_failed" }, { status: 500 });
     copyCookiesAndDebug(base, out, req, true);
     return out;

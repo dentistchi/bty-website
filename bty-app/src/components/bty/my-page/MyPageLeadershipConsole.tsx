@@ -211,8 +211,14 @@ export function MyPageLeadershipConsole({ locale }: Props) {
       )}
 
       {qrPanelOpen && qrUrl && (
-        <div className="flex flex-col items-center gap-4 rounded-xl border border-white/10 bg-white/[0.05] p-6">
-          <QRCodeSVG value={qrUrl} size={180} bgColor="transparent" fgColor="#ffffff" />
+        <div className="flex flex-col items-center gap-4 rounded-xl border border-gray-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.05]">
+          <QRCodeSVG
+            value={qrUrl}
+            size={200}
+            bgColor="#ffffff"
+            fgColor="#1a1a1a"
+            level="M"
+          />
           <button
             type="button"
             onClick={() => setQrPanelOpen(false)}
