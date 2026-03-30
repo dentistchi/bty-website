@@ -33,5 +33,6 @@ export async function GET(req: NextRequest) {
     recoveryEntryCount: result.data.recoveryEntryCount,
     signals: result.data.signals,
     reflections: result.data.reflections,
+    open_action_contract: result.data.open_action_contract,
   });
 }

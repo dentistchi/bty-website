@@ -1,5 +1,6 @@
 import type { ReflectionEntry } from "@/features/growth/logic/types";
 import type { ArenaSignal, LeadershipMetrics, LeadershipState } from "@/features/my-page/logic/types";
+import type { MyPageOpenActionContractUi } from "@/lib/bty/my-page/openActionContractForMyPage";
 
 export type MyPageStateResponse = {
   metrics: LeadershipMetrics;
@@ -8,6 +9,7 @@ export type MyPageStateResponse = {
   recoveryEntryCount: number;
   signals: ArenaSignal[];
   reflections: ReflectionEntry[];
+  open_action_contract: MyPageOpenActionContractUi | null;
 };
 
 export async function getMyPageState(locale: string): Promise<MyPageStateResponse> {

@@ -1627,6 +1627,22 @@ export type Messages = {
     leadershipSuggestedRouteDefault: string;
     leadershipSuggestedRouteRecovery: string;
   };
+  /** My Page — open action contract hub (QR / secure link). */
+  actionContract: {
+    pendingTitle: string;
+    pendingBody: string;
+    completedTitle: string;
+    completedBody: string;
+    missedTitle: string;
+    missedBody: string;
+    btnQr: string;
+    btnLink: string;
+    expiresIn: string;
+    /** Shown when deadline is in the past (formatDeadline). */
+    expiredShort: string;
+    completeByQrLink: string;
+    dismiss: string;
+  };
 };
 
 const ko: Messages = {
@@ -3054,6 +3070,20 @@ const ko: Messages = {
     leadershipSuggestedRouteHeading: "제안 경로",
     leadershipSuggestedRouteDefault: "Arena · Growth · Reflection",
     leadershipSuggestedRouteRecovery: "Recovery · Reflection",
+  },
+  actionContract: {
+    pendingTitle: "대기 중인 실행",
+    pendingBody: "다음 실행이 준비되었습니다.",
+    completedTitle: "실행이 기록되었습니다.",
+    completedBody: "다음 시나리오가 열렸습니다.",
+    missedTitle: "실행 기간이 종료되었습니다.",
+    missedBody: "다음 시나리오로 계속 진행할 수 있습니다.",
+    btnQr: "QR로 완료",
+    btnLink: "보안 링크로 완료",
+    expiresIn: "만료까지",
+    expiredShort: "만료됨",
+    completeByQrLink: "아래 링크로 완료하세요 (복사해 사용할 수 있습니다).",
+    dismiss: "닫기",
   },
 };
 
@@ -4486,6 +4516,20 @@ const en: Messages = {
     leadershipSuggestedRouteHeading: "Suggested route",
     leadershipSuggestedRouteDefault: "Arena · Growth · Reflection",
     leadershipSuggestedRouteRecovery: "Recovery · Reflection",
+  },
+  actionContract: {
+    pendingTitle: "Pending action",
+    pendingBody: "Your next action is ready.",
+    completedTitle: "Execution recorded.",
+    completedBody: "Next scenario unlocked.",
+    missedTitle: "Action window closed.",
+    missedBody: "You can continue to your next scenario.",
+    btnQr: "Complete by QR",
+    btnLink: "Complete by secure link",
+    expiresIn: "Expires in",
+    expiredShort: "expired",
+    completeByQrLink: "Complete using the link below (copy as needed).",
+    dismiss: "Close",
   },
 };
 

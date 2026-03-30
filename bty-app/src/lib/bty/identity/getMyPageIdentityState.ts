@@ -5,6 +5,10 @@ import type { ReflectionEntry } from "@/features/growth/logic/types";
 import { computeLeadershipState, mergeLeadershipReflectionLayer } from "@/features/my-page/logic";
 import type { ArenaSignal, LeadershipMetrics, LeadershipState } from "@/features/my-page/logic/types";
 import type { Locale } from "@/lib/i18n";
+import {
+  fetchOpenActionContractForMyPage,
+  type MyPageOpenActionContractUi,
+} from "@/lib/bty/my-page/openActionContractForMyPage";
 import { fetchSignalsAndReflections } from "./fetchIdentityRows";
 
 export type MyPageIdentityPayload = {
@@ -16,6 +20,8 @@ export type MyPageIdentityPayload = {
   /** For premium UI + client-side recovery prompt; identity metrics already derived from these. */
   signals: ArenaSignal[];
   reflections: ReflectionEntry[];
+  /** Open or latest terminal action contract for Action Contract Hub (server-derived). */
+  open_action_contract: MyPageOpenActionContractUi | null;
 };
 
 /**
@@ -44,6 +50,8 @@ export async function getMyPageIdentityState(
   const leadershipState = mergeLeadershipReflectionLayer(base, metrics, signals, locale, reflections);
   const recoveryTriggered = shouldShowCompoundRecovery(signals, reflections);
 
+  const open_action_contract = await fetchOpenActionContractForMyPage(supabase, userId);
+
   return {
     ok: true,
     data: {
@@ -53,6 +61,7 @@ export async function getMyPageIdentityState(
       recoveryEntryCount: recoveryCount ?? 0,
       signals,
       reflections,
+      open_action_contract,
     },
   };
 }

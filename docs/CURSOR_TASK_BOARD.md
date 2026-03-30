@@ -1,5 +1,7 @@
 # CURSOR TASK BOARD — 2026-03-23
 
+**C5 verify (2026-03-30 · release rollout probe):** `npm run lint` ✓ · Vitest **369 / 2665** ✓ · `npm run build` ✓ · prod smoke **200/401** · deploy **SHA parity unverified** (wrangler vs `e8b848d`) · auth flows **deferred** — **보고 완료**
+
 ## SYSTEM MODE: BEHAVIOR ENGINE BUILD
 
 **C3 (2026-03-28):** Action Contract + persistence + AIR/XP hooks — `domain/action-contract` · `lib/bty/action-contract` · migration `20260431230000` · vitest 10 · **작업 완료**
