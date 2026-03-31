@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { applyDirectCoreXp, applySeasonalXpToCore } from "@/lib/bty/arena/applyCoreXp";
 import { getArenaTodayTotal, capArenaDailyDelta } from "@/lib/bty/arena/activityXp";
 import {
@@ -16,6 +17,7 @@ import {
   REFLECTION_QUEST_TARGET,
   REFLECTION_QUEST_BONUS_XP,
 } from "@/lib/bty/arena/weeklyQuest";
+import { ensureActionContractForArenaRun } from "@/lib/bty/action-contract/ensureActionContractForArenaRun";
 
 /**
  * POST /api/arena/run/complete — 런 종료 + **주간/코어 XP 1회 지급** (멱등).
@@ -26,10 +28,13 @@ import {
  * - **400:** `{ error: "INVALID_JSON" }` | `{ error: "MISSING_RUN_ID" }` — **클라이언트 흔함:** 빈 body·깨진 JSON→INVALID_JSON; `runId` 없음·빈 문자열·비문자열→MISSING_RUN_ID.
  * - **404:** `{ error: "NOT_FOUND" }` (다른 사용자 런 또는 없음).
  * - **410:** 미사용. **이미 해당 runId로 XP 지급 완료** → **200 `{ idempotent: true }`** (410 Gone 아님).
- * - **200 (첫 완료):** `{ ok: true, runId, status: "DONE", deltaApplied: number, coreXp: number, weeklyXp: number }`
+ * - **200 (첫 완료):** `{ ok: true, runId, status: "DONE", deltaApplied, coreXp, weeklyXp, actionContractCreated, myPageRefetchRequired, contractId? }`
+ *   — `actionContractCreated` is true only when a **new** contract row was inserted; false if ensure failed after XP (still 200) or row already existed.
  *   — `weeklyXp`/`deltaApplied`는 일일 캡 적용 후 주간 누적에 반영된 값; `coreXp`는 이번 런 코어 가산(영구).
- * - **200 (멱등·이중 제출):** `{ ok: true, runId, status: "DONE", idempotent: true }` — **`deltaApplied`·`coreXp`·`weeklyXp` 없음**(첫 완료와 본문 스키마 구분).
+ *   — Action Contract: `ensureActionContractForArenaRun` → `public.bty_action_contracts` (idempotent per `user_id`+`session_id`).
+ * - **200 (멱등·이중 제출):** `{ ok: true, runId, status: "DONE", idempotent: true, actionContractCreated, contractId, myPageRefetchRequired }` — **`deltaApplied`·`coreXp`·`weeklyXp` 없음**; 항상 `ensureActionContractForArenaRun`로 계약 행 보장(복구).
  * - **500:** `{ error: string }` (DB/XP 적용 실패).
+ * - **계약:** `SUPABASE_SERVICE_ROLE_KEY` 누락 시 **멱등/첫 완료 모두** `ensureActionContractForArenaRun`이 `ok:false`로 로그만 남기고 **200** 유지(XP는 이미 적용된 경우).
  * - **409:** `{ error: "RUN_ABORTED" }` — `meta.aborted_at` 설정된 런은 완료 처리·XP 지급 불가.
  * - **멱등:** 이미 XP 지급된 동일 `runId` 재요청 → **200** `{ idempotent: true }` (409 아님).
  * - **429:** 미사용. DB 경합·일시 오류는 **500** — 클라이언트 백오프 재시도.
@@ -37,6 +42,15 @@ import {
  * @see docs/spec/ARENA_DOMAIN_SPEC.md §4-1 (Weekly XP 경쟁 / Core XP 영구 분리)
  */
 export async function POST(req: Request) {
+  console.log("[getSupabaseAdmin] FINAL CHECK", {
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? "present" : "missing",
+    SUPABASE_URL:
+      process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+        ? "present"
+        : "missing",
+    NODE_ENV: process.env.NODE_ENV,
+  });
+
   const supabase = await getSupabaseServerClient();
   const {
     data: { user },
@@ -104,7 +118,26 @@ export async function POST(req: Request) {
   if (appliedErr) return NextResponse.json({ error: appliedErr.message }, { status: 500 });
 
   if ((applied ?? []).length > 0) {
-    return NextResponse.json({ ok: true, runId, status: "DONE", idempotent: true });
+    console.log("[arena] before ensureActionContractForArenaRun", {
+      runId,
+      hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    });
+
+    const ensured = await ensureActionContractForArenaRun({
+      userId: user.id,
+      runId,
+      scenarioId: scenarioId || "unknown",
+      nbaLogId: null,
+    });
+    return NextResponse.json({
+      ok: true,
+      runId,
+      status: "DONE",
+      idempotent: true,
+      actionContractCreated: ensured.ok && ensured.created,
+      contractId: ensured.contractId,
+      myPageRefetchRequired: true,
+    });
   }
 
   const { data: evs, error: evErr } = await supabase
@@ -191,6 +224,34 @@ export async function POST(req: Request) {
 
   if (markErr) return NextResponse.json({ error: markErr.message }, { status: 500 });
 
+  const adminForContract = getSupabaseAdmin();
+  if (!adminForContract) {
+    console.error(
+      "[run/complete] admin null after RUN_COMPLETED_APPLIED insert — contract will not be created. Check SUPABASE_SERVICE_ROLE_KEY.",
+      { userId: user.id, runId },
+    );
+  }
+
+  console.log("[arena] before ensureActionContractForArenaRun", {
+    runId,
+    hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+  });
+
+  const ensured = await ensureActionContractForArenaRun({
+    userId: user.id,
+    runId,
+    scenarioId: scenarioId || "unknown",
+    nbaLogId: null,
+  });
+
+  if (!ensured.ok) {
+    console.error("[run/complete] ensureActionContract failed after XP applied", {
+      userId: user.id,
+      runId,
+      scenarioId,
+    });
+  }
+
   // Weekly reflection quest: 3 reflections in a week (Monday UTC) grant +15 Seasonal XP once.
   const weekStart = getWeekStartUTC();
   const weekStartISO = `${weekStart}T00:00:00.000Z`;
@@ -235,5 +296,8 @@ export async function POST(req: Request) {
     deltaApplied: deltaCapped,
     coreXp: arenaCoreXp,
     weeklyXp: deltaCapped,
+    actionContractCreated: ensured.ok && ensured.created,
+    contractId: ensured.contractId,
+    myPageRefetchRequired: true,
   });
 }
