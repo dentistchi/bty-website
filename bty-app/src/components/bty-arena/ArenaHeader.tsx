@@ -10,7 +10,13 @@ import { AvatarComposite } from "./AvatarComposite";
 import { UserAvatar } from "./UserAvatar";
 
 export type ArenaStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
-export type ArenaPhase = "CHOOSING" | "SHOW_RESULT" | "FOLLOW_UP" | "DONE";
+export type ArenaPhase =
+  | "CHOOSING"
+  | "ESCALATION"
+  | "FORCED_TRADEOFF"
+  | "SHOW_RESULT"
+  | "FOLLOW_UP"
+  | "DONE";
 
 /** Same fields as GET /api/arena/core-xp identity + layers (dashboard path). */
 export type ArenaHeaderIdentity = {

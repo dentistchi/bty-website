@@ -64,4 +64,25 @@ describe("pickLeastRecentMirror", () => {
     const picked = pickLeastRecentMirror([mA, mB], played);
     expect(picked.id).toBe(mA.id);
   });
+
+  it("when played aggregate omits mirror ids (canonical Arena), lastMirrorFromDb still excludes immediate repeat", () => {
+    const played = ["catalog_only_no_mirror_prefix"];
+    const picked = pickLeastRecentMirror(
+      [mA, mB],
+      played,
+      `${MIRROR_SCENARIO_PREFIX}${mA.id}`,
+    );
+    expect(picked.id).toBe(mB.id);
+  });
+
+  it("UUID case mismatch between pool row and lastMirrorFromDb still excludes the same logical mirror", () => {
+    const upper = mirrorRow(mA.id.toUpperCase(), "origin_a", "2026-01-01T00:00:00.000Z");
+    const played: string[] = [];
+    const picked = pickLeastRecentMirror(
+      [upper, mB],
+      played,
+      `${MIRROR_SCENARIO_PREFIX}${mA.id}`,
+    );
+    expect(picked.id.toLowerCase()).toBe(mB.id.toLowerCase());
+  });
 });

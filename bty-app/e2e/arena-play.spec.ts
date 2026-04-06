@@ -6,6 +6,8 @@ import {
   expectNoArenaHubSummaryOnRuntime,
   openCanonicalArenaAndWaitForShell,
 } from "./helpers/arena-canonical";
+import { cleanupStaleE2EActionContractsBeforeTest } from "./helpers/cleanup-action-contracts";
+import { E2E_CONTRACT_EMAILS, E2E_CONTRACT_USER_IDS } from "./helpers/three-contract-users";
 
 const LOCALE = "en";
 
@@ -13,6 +15,14 @@ const LOCALE = "en";
  * Canonical Arena: `/[locale]/bty-arena` session UI. Hub summary must not appear on runtime.
  */
 test.describe("Arena Play (authenticated)", () => {
+  test.beforeEach(async ({ request }) => {
+    await cleanupStaleE2EActionContractsBeforeTest(request, {
+      userId: E2E_CONTRACT_USER_IDS.default,
+      email: E2E_CONTRACT_EMAILS.default,
+      label: "arena-play:E2E_DEFAULT_USER",
+    });
+  });
+
   test("canonical runtime: URL + shell, no hub summary card", async ({ page }) => {
     await openCanonicalArenaAndWaitForShell(page, LOCALE, 60_000);
 

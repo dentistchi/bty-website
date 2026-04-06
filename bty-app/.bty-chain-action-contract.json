@@ -1,0 +1,32 @@
+{
+  "savedAt": "2026-04-03T19:09:04.897Z",
+  "chains": [
+    "Core_11_staffing_collapse",
+    "Core_01_training_system",
+    "Core_06_lead_assistant"
+  ],
+  "patternState": {
+    "archetypeCounts": {
+      "avoid": 0,
+      "structure": 0,
+      "confront": 9
+    },
+    "summedImpact": {
+      "reputation": -5,
+      "trust": 13,
+      "self_narrative": 16,
+      "courage": 18
+    },
+    "choiceCount": 9
+  },
+  "triggers": {
+    "repetition": true,
+    "negativeDrift": false,
+    "imbalance": true,
+    "interventionQr": false,
+    "stretchPrompt": true
+  },
+  "insight": "You face tension directly, even when it damages your standing.",
+  "patternOutcome": "stretch_prompt",
+  "stretchBalanceMessage": "You moved toward tension often here with less use of explicit structure. Next time, try anchoring one exchange with a clear frame or next step—lightly, to balance how you show up."
+}

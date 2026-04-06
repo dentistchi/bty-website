@@ -281,7 +281,7 @@ export default function MentorPage() {
         ...prev,
         {
           role: "chi",
-          text: isEn ? "Connection was unstable. Please try again." : "연결이 잠깐 불안정했네요. 다시 말해주실래요?",
+          text: isEn ? "Connection was unstable. Please resubmit." : "연결이 잠깐 불안정했네요. 다시 말해주실래요?",
         },
       ]);
     } finally {

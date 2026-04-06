@@ -82,24 +82,74 @@ export async function fetchOpenActionContractForMyPage(
     };
   }
 
-  const { data: terminal, error: terminalErr } = await supabase
+  const { data: awaitingVerify, error: avErr } = await supabase
     .from("bty_action_contracts")
     .select(
-      "id, contract_description, deadline_at, verification_mode, status, completion_method, completed_at, session_id",
+      "id, contract_description, deadline_at, verification_mode, status, completion_method, completed_at, required, session_id, validation_approved_at, verified_at",
     )
     .eq("user_id", userId)
-    .in("status", ["completed", "missed"])
-    .order("created_at", { ascending: false })
+    .eq("status", "approved")
+    .not("validation_approved_at", "is", null)
+    .is("verified_at", null)
+    .order("deadline_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (terminalErr || !terminal) return null;
+  if (avErr) return null;
+
+  if (awaitingVerify) {
+    const rowAv = awaitingVerify as Record<string, unknown>;
+    const deadlineMsAv = Date.parse(String(rowAv.deadline_at ?? ""));
+    if (!Number.isFinite(deadlineMsAv) || deadlineMsAv <= nowMs) {
+      const { error: expireErr } = await supabase
+        .from("bty_action_contracts")
+        .update({ status: "missed" })
+        .eq("id", String(rowAv.id))
+        .eq("status", "approved");
+      if (expireErr) {
+        console.error("[openActionContractForMyPage] awaiting-verify expiry failed", expireErr.message);
+      }
+    } else {
+      const display_state = toDisplayState("pending", false) as MyPageOpenActionContractUi["display_state"];
+      return {
+        id: String(rowAv.id),
+        session_id: rowAv.session_id != null ? String(rowAv.session_id) : null,
+        action_text: String(rowAv.contract_description ?? ""),
+        deadline_at: String(rowAv.deadline_at),
+        verification_type: asVerificationMode(rowAv.verification_mode as string),
+        display_state,
+        completion_method: null,
+      };
+    }
+  }
+
+  const { data: terminalRows, error: terminalErr } = await supabase
+    .from("bty_action_contracts")
+    .select(
+      "id, contract_description, deadline_at, verification_mode, status, completion_method, completed_at, session_id, verified_at",
+    )
+    .eq("user_id", userId)
+    .in("status", ["approved", "completed", "missed"])
+    .order("created_at", { ascending: false })
+    .limit(24);
+
+  if (terminalErr || !terminalRows?.length) return null;
+
+  const terminal = terminalRows.find((r) => {
+    const tr = r as Record<string, unknown>;
+    const s = String(tr.status ?? "");
+    if (s === "missed" || s === "completed") return true;
+    if (s === "approved" && tr.verified_at != null) return true;
+    return false;
+  });
+
+  if (!terminal) return null;
 
   const row = terminal as Record<string, unknown>;
   const st = row.status as string;
-  if (st !== "completed" && st !== "missed") return null;
+  if (st !== "approved" && st !== "completed" && st !== "missed") return null;
 
-  const status = st as BtyActionContractStatus;
+  const status = (st === "completed" ? "approved" : st) as BtyActionContractStatus;
   const display_state = toDisplayState(status, false) as MyPageOpenActionContractUi["display_state"];
 
   return {

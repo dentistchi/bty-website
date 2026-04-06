@@ -138,6 +138,36 @@
 
 ---
 
+## 2-2. Migration backlog — `arena_runs` escalation fields (column migration)
+
+**Context:** Step 3–4 escalation state (`primary_choice_id`, `escalation_branch_key`, `second_choice_id`, `difficulty_level`, etc.) is stored in **`arena_runs.meta` (JSONB)** until a dedicated migration is justified.
+
+| Backlog item | Rule |
+|----------------|------|
+| **Column migration (proposal)** | **Do not** open a design/proposal for first-class `arena_runs` columns for these fields **before** **F1 pool migration** is **≥ 50%** complete. |
+| **Rationale** | Keep the JSONB shape stable while real pool usage and escalation payloads evolve; avoid freezing column shapes too early. |
+| **After the gate** | When F1 ≥ 50%, **propose** the migration (spec + Supabase migration sketch + read path). Implementation timing is a separate decision. |
+
+**Measure for “F1 pool migration % complete”:** Use the same completion metric your F1 track already uses (e.g. scenarios with full `escalationBranches` in the served pool, or F1 checklist items done ÷ total). Record the numerator/denominator in the proposal ticket when the gate is met.
+
+---
+
+## 2-3. F1 — Elite pool escalation (`bty_elite_scenarios_v2.json`)
+
+**Runtime:** `eliteScenarioToScenario` (client `Scenario`) and `getArenaScenarioForRunStep` (server `POST /api/arena/run/step`) both resolve **`core_*`** and other elite ids from the same v2 row via `getEliteScenarioById` — no separate `core_*` shim in code once rows carry content.
+
+Per migrated scenario, add or update the object in **`src/data/bty_elite_scenarios_v2.json`** with at least:
+
+- `id` (e.g. `core_01_training_system`)
+- `difficulty_level` (1–5)
+- `escalationBranches` keyed by primary choice id (`A`–`D` as designed), each with `escalation_text`, `pressure_increase`, `second_choices` (2–3 items; each `id`, `label`, **`cost`** non-empty, `direction` `entry` | `exit`, optional `pattern_family`)
+
+**Copy rules (UX):** `docs/terminology-locks/UX_FLOW_LOCK_V1.md` §6 (C5) — e.g. `escalation_text` must not reference the prior choice, avoid “because”, avoid coaching tone.
+
+When a row includes non-empty `escalationBranches`, **Steps 3–4** activate in both client and server paths. Log each completed scenario in §5 (and optional §2 table row if tied to SCN_* mapping).
+
+---
+
 ## 3. Stage4 호환 체크 (supports_reset: true 인 시나리오)
 
 Stage4 호환 시나리오는 다음 세 가지를 **모두** 만족해야 함.
@@ -166,6 +196,8 @@ Stage4 호환 시나리오는 다음 세 가지를 **모두** 만족해야 함.
 
 | 일자 | 변경 내용 |
 |------|-----------|
+| 2026-04 | F1: `getArenaScenarioForRunStep` — `core_*` 전용 mock shim 제거; elite id는 v2 JSON 행만 사용(내용 없으면 A/B mock 폴백). §2-3 F1 v2 풀·UX(C5) 절차 추가. |
+| 2026-04 | §2-2 추가: `arena_runs` escalation 필드 JSONB → 컬럼 마이그레이션은 **F1 풀 마이그레이션 50% 이상 완료 후**에만 **제안**; 그 전에는 스키마를 실사용에 대해 안정화. |
 | 2026-03 | P3 Scenario Cursor 완료. SCN_RESET_0001 추가. SCN_WA_0001에 `supports_reset: false` 명시. 본 로그 문서 생성. |
 | 2026-03 | 기존 시나리오 bty_scenario_v1 이전 시작. `patient_refuses_treatment_001` → SCN_PT_0001.json 생성. §1 시나리오 파일 경로·§2 이전 표·참조에 ENGINE_SCENARIO_FIT_AND_ROLES·SCN_WA_0001 반영. |
 | 2026-03 | §2-1 이후 시나리오 이전 방법 추가. 순서(참조 JSON 작성 → 저장 경로 → §2·§1·§5 갱신)·남은 scenarioId 목록 참고용 기재. |

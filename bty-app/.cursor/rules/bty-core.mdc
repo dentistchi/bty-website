@@ -1,0 +1,48 @@
+---
+description: BTY 프로젝트 공통 규칙 — 모든 Cursor 창에 자동 적용
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# BTY Core Rules
+
+## 역할 구조
+- C1 Commander: 계획·지시만 (코드 수정 없음)
+- C2 Gatekeeper: 규칙 위반 검증만 (구현 없음)
+- C3 Domain/API: 서버 로직 구현
+- C4 UI: 프론트엔드 render-only 구현
+- C5 Integrator: lint → test → build 순서로 통합 검증
+
+## 도메인 규칙 (절대 위반 금지)
+- XP 계산: src/domain/ 또는 src/lib/bty/arena/ 에만 존재
+- UI는 render-only: API에서 받은 값만 표시, 계산 로직 금지
+- Arena / Center / Foundry 모듈 간 직접 import 금지
+- Weekly XP는 리더보드에만. Core XP는 영구 축적. 시즌 progress는 랭킹에 영향 없음
+
+## 파일 위치 원칙
+- 도메인 로직: src/domain/ 또는 src/lib/bty/
+- Arena API: src/app/api/arena/
+- Auth: src/lib/bty/cookies/authCookies.ts, src/middleware.ts
+- UI 컴포넌트: src/components/bty-arena/
+- 페이지: src/app/[locale]/
+
+## 출력 형식 (모든 작업 완료 시)
+완료 후 아래 형식으로만 보고:
+1. 변경한 파일 목록 (경로)
+2. 변경 이유 한 줄씩
+3. 인증/XP/리더보드 영향 여부
+
+불필요한 설명, 리팩터, 관련 없는 UI 변경 금지.
+
+## BTY 디자인 원칙 (UI 작업 시)
+- 배경: deep navy / slate-black
+- 패널: dark glass
+- 강조색: muted cyan (--arena-accent)
+- 모서리: rounded-2xl / rounded-3xl
+- 톤: calm, professional, non-judgmental
+- 절대 사용 금지: right/wrong, victory, reward burst, 초록/빨강 도덕 피드백
+
+## 검증 기준 문서
+- 공통 규칙: docs/AGENTS_SHARED_README.md
+- 파일 지도: docs/AI_MEMORY_MAP.md
+- 배포 체크: .cursor/rules/bty-release-gate.mdc

@@ -25,9 +25,10 @@ const SMOKE_SCENARIO_ID = E2E_SMOKE_SCENARIO_ID;
 /** Stable UUID for local smoke / release / extended health (not a production account). */
 export const FIXTURE_USER_ID = "a0000000-0000-4000-8000-00000000e2e1" as const;
 
-const FIXTURE_USER_EMAIL = "e2e-fixture+bty@local.test";
-/** Local-only; not for production auth. */
-const FIXTURE_USER_PASSWORD = "E2eFixture-local-smoke-32chars-min!!";
+/** Default fixture login for {@link seedFixtureUser} / release gate when `E2E_FIXTURE_USER_ID` is unset. */
+export const FIXTURE_USER_EMAIL = "e2e-fixture+bty@local.test";
+/** Default fixture password (Supabase Auth); align `E2E_PASSWORD` in CI with this when using the default fixture user. */
+export const FIXTURE_USER_PASSWORD = "E2eFixture-local-smoke-32chars-min!!";
 
 /** Same keys as `e2e-fixture-user` / smoke env (avoid circular imports). */
 const ENV_E2E_FIXTURE_USER_ID = "E2E_FIXTURE_USER_ID" as const;
@@ -61,6 +62,24 @@ export function resolveE2ETestUserId(): string {
   const a = process.env[ENV_SMOKE_TEST_USER_ID]?.trim();
   const b = process.env[ENV_LOOP_HEALTH_TEST_USER_ID]?.trim();
   return e2e || a || b || FIXTURE_USER_ID;
+}
+
+/**
+ * E2E cleanup / isolation: resolve Auth user id from email via Admin API (paginated list).
+ * Returns null when not found or admin unavailable.
+ */
+export async function resolveE2EAuthUserIdByEmail(email: string): Promise<string | null> {
+  const admin = getSupabaseAdmin();
+  if (!admin) return null;
+  const norm = email.trim().toLowerCase();
+  for (let page = 1; page <= 40; page += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+    if (error) throw new Error(`resolveE2EAuthUserIdByEmail listUsers page ${page}: ${error.message}`);
+    const hit = data.users.find((u) => (u.email || "").toLowerCase() === norm);
+    if (hit?.id) return hit.id;
+    if (data.users.length < 200) break;
+  }
+  return null;
 }
 
 function isAuthUserAlreadyExistsError(message: string): boolean {
@@ -120,6 +139,14 @@ async function ensureSmokeAvatarSnapshot(admin: SupabaseClient): Promise<void> {
 function fixtureEmailForUserId(userId: string): string {
   if (userId === FIXTURE_USER_ID) return FIXTURE_USER_EMAIL;
   return `e2e-fixture+${userId}@local.test`;
+}
+
+/**
+ * Login email that {@link seedFixtureUser} / `ensureFixtureAuthUser` use for {@link resolveE2ETestUserId}.
+ * **CI:** `E2E_EMAIL` must match this value or Playwright logs in as the wrong user while the DB is seeded for the fixture id.
+ */
+export function expectedFixtureLoginEmail(): string {
+  return fixtureEmailForUserId(resolveE2ETestUserId());
 }
 
 async function ensureFixtureAuthUser(admin: SupabaseClient, userId: string): Promise<void> {

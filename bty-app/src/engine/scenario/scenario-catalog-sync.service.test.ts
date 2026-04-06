@@ -1,34 +1,72 @@
-import { describe, it, expect } from "vitest";
-import { SCENARIOS } from "@/lib/bty/scenario/scenarios";
-import { BEGINNER_SCENARIOS } from "@/lib/bty/scenario/beginnerScenarios";
-import {
-  arenaScenarioToRows,
-  beginnerScenarioToRows,
-} from "./scenario-catalog-sync.service";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { syncCatalogToDB, ensureMinimumScenarioCatalogRows } from "./scenario-catalog-sync.service";
+
+const mockUpsertElite = vi.fn();
+vi.mock("@/lib/bty/arena/eliteScenariosCanonical.server", () => ({
+  upsertEliteCatalogToPublicScenarios: () => mockUpsertElite(),
+}));
+
+const mockGetAdmin = vi.fn();
+vi.mock("@/lib/supabase-admin", () => ({
+  getSupabaseAdmin: () => mockGetAdmin(),
+}));
 
 describe("scenario-catalog-sync.service", () => {
-  it("builds 90 rows: 41 bilingual arena + 4 bilingual beginner (no PK overlap)", () => {
-    const beginnerIds = new Set(BEGINNER_SCENARIOS.map((b) => b.scenarioId));
-    const arenaOnly = SCENARIOS.filter((s) => !beginnerIds.has(s.scenarioId));
-    expect(SCENARIOS.length).toBe(45);
-    expect(BEGINNER_SCENARIOS.length).toBe(4);
-    expect(arenaOnly.length).toBe(41);
-
-    let n = 0;
-    for (const s of arenaOnly) {
-      n += arenaScenarioToRows(s).length;
-    }
-    for (const b of BEGINNER_SCENARIOS) {
-      n += beginnerScenarioToRows(b).length;
-    }
-    expect(n).toBe(90);
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it("arena rows are not beginner; beginner rows have is_beginner", () => {
-    const first = arenaScenarioToRows(SCENARIOS[0]!)[0]!;
-    expect(first.is_beginner).toBe(false);
-    const beg = beginnerScenarioToRows(BEGINNER_SCENARIOS[0]!)[0]!;
-    expect(beg.is_beginner).toBe(true);
-    expect(beg.scenario_type).toBe("beginner_7step");
+  it("syncCatalogToDB delegates to upsertEliteCatalogToPublicScenarios only", async () => {
+    mockUpsertElite.mockResolvedValue({ ok: true, insertedOrUpdated: 100 });
+    const r = await syncCatalogToDB();
+    expect(mockUpsertElite).toHaveBeenCalledTimes(1);
+    expect(r.ok).toBe(true);
+    expect(r.inserted).toBe(100);
+  });
+
+  it("ensureMinimumScenarioCatalogRows loads elite mirror when count is 0", async () => {
+    mockGetAdmin.mockReturnValue({
+      from: () => ({
+        select: () =>
+          Promise.resolve({
+            count: 0,
+            error: null,
+          }),
+      }),
+    });
+    mockUpsertElite.mockResolvedValue({ ok: true, insertedOrUpdated: 100 });
+    await ensureMinimumScenarioCatalogRows(50);
+    expect(mockUpsertElite).toHaveBeenCalled();
+  });
+
+  it("ensureMinimumScenarioCatalogRows does not load when count >= min", async () => {
+    mockGetAdmin.mockReturnValue({
+      from: () => ({
+        select: () =>
+          Promise.resolve({
+            count: 120,
+            error: null,
+          }),
+      }),
+    });
+    await ensureMinimumScenarioCatalogRows(50);
+    expect(mockUpsertElite).not.toHaveBeenCalled();
+  });
+
+  it("ensureMinimumScenarioCatalogRows does not call upsert when sparse but non-zero", async () => {
+    mockGetAdmin.mockReturnValue({
+      from: () => ({
+        select: () =>
+          Promise.resolve({
+            count: 5,
+            error: null,
+          }),
+      }),
+    });
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    await ensureMinimumScenarioCatalogRows(50);
+    expect(mockUpsertElite).not.toHaveBeenCalled();
+    expect(err).toHaveBeenCalled();
+    err.mockRestore();
   });
 });

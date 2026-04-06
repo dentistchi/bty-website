@@ -1,8 +1,18 @@
 import { test, expect } from "@playwright/test";
+import { cleanupStaleE2EActionContractsBeforeTest } from "../helpers/cleanup-action-contracts";
+import { E2E_CONTRACT_EMAILS, E2E_CONTRACT_USER_IDS } from "../helpers/three-contract-users";
 
 const LOCALE = "en";
 
 test.describe("BTY My Page", () => {
+  test.beforeEach(async ({ request }) => {
+    await cleanupStaleE2EActionContractsBeforeTest(request, {
+      userId: E2E_CONTRACT_USER_IDS.default,
+      email: E2E_CONTRACT_EMAILS.default,
+      label: "bty-my-page-flow:E2E_DEFAULT_USER",
+    });
+  });
+
   test("identity console renders leadership regions", async ({ page }) => {
     test.setTimeout(120_000);
 

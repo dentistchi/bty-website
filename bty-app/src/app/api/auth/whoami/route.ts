@@ -7,7 +7,8 @@ export const revalidate = 0;
 export async function GET(req: NextRequest) {
   const all = req.cookies.getAll();
   const names = all.map((c) => c.name);
-  const authNames = names.filter((n) => AUTH_COOKIE_NAMES.includes(n));
+  const known = AUTH_COOKIE_NAMES as readonly string[];
+  const authNames = names.filter((n) => known.includes(n));
 
   const res = NextResponse.json({
     ok: true,

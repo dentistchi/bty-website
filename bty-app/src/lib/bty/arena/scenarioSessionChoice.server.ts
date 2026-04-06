@@ -1,5 +1,5 @@
 /**
- * Server-side completion for lib {@link Scenario} choice — {@link computeResult} + optional {@link handleChoiceConfirmed}.
+ * Server-side completion for lib {@link Scenario} choice — {@link computeResultFromScenario} + optional {@link handleChoiceConfirmed}.
  */
 
 import { handleChoiceConfirmed, type ChoiceConfirmedEvent } from "@/engine/integration/scenario-outcome-bridge";
@@ -80,6 +80,16 @@ export async function submitScenarioSessionChoice(
   const foundryUnlockFired = newAir > previousAir;
 
   const admin = getSupabaseAdmin();
+  const featureFlags: Record<string, unknown> = {};
+  console.log("[arena] pipeline gate", {
+    featureFlags,
+    env: process.env.NODE_ENV,
+    mode: "arena",
+    selectedPipeline: admin ? "new" : "legacy",
+    reason: admin
+      ? "choice_confirmed: handleChoiceConfirmed + persistence (service role ok)"
+      : "choice_confirmed skipped: getSupabaseAdmin() null — set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY",
+  });
   if (!admin) {
     const xpAwardCore = await validateXPAward(userId, "core", computed.xpEarned);
     const xpAwardWeekly = await validateXPAward(userId, "weekly", computed.xpEarned);
@@ -142,6 +152,7 @@ export async function submitScenarioSessionChoice(
         patternNarrativeLine = null;
       }
     }
+
     return {
       ok: true,
       xpEarned: computed.xpEarned,

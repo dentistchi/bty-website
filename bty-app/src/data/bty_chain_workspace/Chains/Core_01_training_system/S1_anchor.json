@@ -1,0 +1,54 @@
+{
+  "id": "core_01_s1_anchor",
+  "title": "Write Them Up or Name the System",
+  "level": 2,
+  "chain_stage": 1,
+  "context": {
+    "role": "Regional Director",
+    "pressure": "Two front-desk staff failed Medicaid eligibility verification three times this week, and corporate wants accountability documentation.",
+    "narrative": "Two front-desk staff failed Medicaid eligibility verification three times this week. The office manager wants to write them up. You know onboarding was cut from five days to two because volume pressure was already building, and you accepted that cut at the time. Corporate is now asking for accountability documentation. What you do next will decide whether this becomes an employee failure story or a system failure story that includes you."
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Approve the write-up, document the individual mistakes, and keep the system decision out of the report.",
+      "archetype": "avoid",
+      "state_impact": {
+        "reputation": 1,
+        "trust": -2,
+        "self_narrative": -1,
+        "courage": -2
+      }
+    },
+    {
+      "id": "B",
+      "label": "Document both the staff errors and the onboarding cut, then reopen the training expectation with local leadership.",
+      "archetype": "structure",
+      "state_impact": {
+        "reputation": 0,
+        "trust": 1,
+        "self_narrative": 1,
+        "courage": 0
+      }
+    },
+    {
+      "id": "C",
+      "label": "Stop the write-up process for now and tell the office manager you are naming the onboarding cut as part of the failure.",
+      "archetype": "confront",
+      "state_impact": {
+        "reputation": -1,
+        "trust": 1,
+        "self_narrative": 2,
+        "courage": 2
+      }
+    }
+  ],
+  "questions": {
+    "level_2": "What do you owe these employees if the system was never built to train them well?"
+  },
+  "next_map": {
+    "A": "core_01_s2_consequence",
+    "B": "core_01_s2_consequence",
+    "C": "core_01_s2_consequence"
+  }
+}

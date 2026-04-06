@@ -8,7 +8,7 @@ import { createNewProgress, outcomeToEvent, applyEventToProgress, withDerived } 
 const p0 = createNewProgress({ userId: "u1", seasonId: "2026Q1" });
 
 const ev = outcomeToEvent({
-  scenarioId: "conflict_staff_001",
+  scenarioId: "patient_refuses_treatment_001",
   userId: "u1",
   createdAt: new Date().toISOString(),
   xpBase: 60,

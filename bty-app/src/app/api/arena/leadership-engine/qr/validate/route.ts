@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { verifyArenaActionLoopToken } from "@/lib/bty/leadership-engine/qr/arena-action-loop-token";
+import { onArenaRunCompleteVerified } from "@/lib/bty/level-engine/arenaLevelRecords";
 
 export const runtime = "nodejs";
 
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
 
     const { data: row, error: selErr } = await adminClient
       .from("bty_action_contracts")
-      .select("id, user_id, session_id, status")
+      .select("id, user_id, session_id, status, validation_approved_at, verified_at")
       .eq("id", contractId)
       .eq("user_id", userId)
       .eq("session_id", sessionId)
@@ -59,19 +60,64 @@ export async function POST(req: NextRequest) {
     if (selErr || !row) {
       return NextResponse.json({ ok: false, error: "contract_not_found" }, { status: 409 });
     }
-    if (row.status !== "pending") {
+
+    const legacyPending = row.status === "pending";
+    const validatorApprovedAwaitingQr =
+      row.status === "approved" &&
+      row.validation_approved_at != null &&
+      row.verified_at == null;
+
+    if (!legacyPending && !validatorApprovedAwaitingQr) {
       return NextResponse.json({ ok: false, error: "contract_not_pending" }, { status: 409 });
     }
 
-    const { error: upErr } = await adminClient
-      .from("bty_action_contracts")
-      .update({ status: "completed", completed_at: new Date().toISOString() })
-      .eq("id", contractId)
-      .eq("user_id", userId)
-      .eq("status", "pending");
+    const verifiedAt = new Date().toISOString();
 
-    if (upErr) {
-      return NextResponse.json({ ok: false, error: "contract_update_failed" }, { status: 500 });
+    if (legacyPending) {
+      const { error: upErr } = await adminClient
+        .from("bty_action_contracts")
+        .update({
+          status: "approved",
+          verified_at: verifiedAt,
+          completed_at: verifiedAt,
+        })
+        .eq("id", contractId)
+        .eq("user_id", userId)
+        .eq("status", "pending");
+
+      if (upErr) {
+        return NextResponse.json({ ok: false, error: "contract_update_failed" }, { status: 500 });
+      }
+    } else {
+      const { error: upErr } = await adminClient
+        .from("bty_action_contracts")
+        .update({
+          verified_at: verifiedAt,
+          completed_at: verifiedAt,
+        })
+        .eq("id", contractId)
+        .eq("user_id", userId)
+        .eq("status", "approved")
+        .is("verified_at", null);
+
+      if (upErr) {
+        return NextResponse.json({ ok: false, error: "contract_update_failed" }, { status: 500 });
+      }
+    }
+
+    const { error: runErr } = await adminClient
+      .from("arena_runs")
+      .update({ completion_state: "complete_verified" })
+      .eq("run_id", sessionId)
+      .eq("user_id", userId);
+
+    if (runErr) {
+      console.error("[qr/validate] arena_runs completion_state update failed", runErr.message);
+    }
+
+    const levelRes = await onArenaRunCompleteVerified(adminClient, userId);
+    if (!levelRes.ok) {
+      console.error("[qr/validate] level record update failed", levelRes.error);
     }
   }
 

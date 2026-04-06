@@ -2,6 +2,7 @@
 
 import React from "react";
 import {
+  ActionContractFollowupModal,
   ArenaHeader,
   OutputPanel,
   TierMilestoneModal,
@@ -9,25 +10,54 @@ import {
   ArenaRankingSidebar,
   EmptyState,
   LoadingFallback,
-  ArenaStepIntro,
   ArenaStepChoose,
   ArenaOtherResult,
   ArenaOtherModal,
   ArenaToast,
   ArenaRunHistory,
   LabUsageStrip,
+  EliteArenaSetup,
+  ElitePostChoiceFlow,
 } from "@/components/bty-arena";
 import ScreenShell from "@/components/bty/layout/ScreenShell";
 import { getMessages } from "@/lib/i18n";
+import type { ArenaPipelineDefault } from "@/lib/bty/arena/arenaPipelineConfig";
 import { useArenaSession, OTHER_CHOICE_ID } from "./hooks/useArenaSession";
 
 /**
  * Canonical Arena session UI — same behavior as former `/bty-arena/run`; mounted at `/[locale]/bty-arena`.
  */
-export default function BtyArenaRunPageClient() {
-  const s = useArenaSession();
+export default function BtyArenaRunPageClient({
+  pipelineDefault = "legacy",
+}: {
+  pipelineDefault?: ArenaPipelineDefault;
+}) {
+  const s = useArenaSession(pipelineDefault);
   const { locale, t } = s;
   const tLoading = getMessages(locale === "ko" ? "ko" : "en").loading;
+  const [pendingFollowupContractId, setPendingFollowupContractId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!s.levelChecked || s.scenarioLoading || s.requiresBeginnerPath) return;
+    let alive = true;
+    const sid = s.runId ?? "";
+    void fetch(
+      `/api/bty/action-contract/pending-followup?sessionId=${encodeURIComponent(sid)}`,
+      { credentials: "include" },
+    )
+      .then(async (r) => {
+        const j = (await r.json().catch(() => ({}))) as {
+          followup?: { contractId?: string } | null;
+        };
+        if (!alive || !r.ok) return;
+        const id = j.followup?.contractId;
+        if (typeof id === "string" && id.length > 0) setPendingFollowupContractId(id);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [s.levelChecked, s.scenarioLoading, s.requiresBeginnerPath, s.runId]);
 
   if (!s.levelChecked) {
     return (
@@ -102,6 +132,13 @@ export default function BtyArenaRunPageClient() {
 
   return (
     <>
+      {pendingFollowupContractId ? (
+        <ActionContractFollowupModal
+          locale={locale}
+          contractId={pendingFollowupContractId}
+          onRecorded={() => setPendingFollowupContractId(null)}
+        />
+      ) : null}
       <ScreenShell locale={locale} fullWidth contentClassName="pb-24" mainAriaLabel={t.arenaRunPageMainRegionAria}>
         <div className="bty-arena-page-root mx-auto flex max-w-[1200px] flex-col gap-6 px-4 lg:flex-row lg:gap-6">
           <div
@@ -111,7 +148,7 @@ export default function BtyArenaRunPageClient() {
           >
             <LabUsageStrip locale={locale} />
             <div>
-              {s.step === 1 && s.phase === "CHOOSING" && s.recallPrompt && (
+              {s.step === 2 && s.phase === "CHOOSING" && s.recallPrompt && (
                 <div
                   data-testid="arena-recall-prompt"
                   role="note"
@@ -119,23 +156,6 @@ export default function BtyArenaRunPageClient() {
                   style={{ color: "var(--arena-text-soft)" }}
                 >
                   {s.recallPrompt.message}
-                </div>
-              )}
-              {s.step === 1 && (
-                <div className="bty-hero" style={{ paddingTop: 32, paddingBottom: 40, marginBottom: 28 }}>
-                  <p
-                    className="bty-hero-title"
-                    style={{
-                      margin: 0,
-                      fontSize: "clamp(1.75rem, 4vw, 2rem)",
-                      fontWeight: 700,
-                      letterSpacing: "0.02em",
-                      lineHeight: 1.35,
-                      color: "var(--arena-text)",
-                    }}
-                  >
-                    {t.heroTitle}
-                  </p>
                 </div>
               )}
 
@@ -195,18 +215,19 @@ export default function BtyArenaRunPageClient() {
                 aria-label={t.scenarioProgressPanelAria}
                 className="mt-[18px] rounded-2xl border border-bty-border bg-bty-surface p-4 shadow-sm"
               >
-                {s.step === 1 && (
-                  <ArenaStepIntro
+                {s.step >= 2 && s.scenario.eliteSetup && s.step === 2 && (
+                  <EliteArenaSetup
                     locale={locale}
-                    displayTitle={s.displayTitle}
-                    contextForUser={s.contextForUser}
-                    onStart={s.onStartSimulation}
-                    startLoading={s.startSimulationLoading}
-                    runId={s.runId}
+                    title={s.displayTitle}
+                    setup={s.scenario.eliteSetup}
                   />
                 )}
 
-                {s.step >= 2 && (
+                {s.step >= 2 && s.scenario.eliteSetup && s.step >= 3 && (
+                  <h2 style={{ marginTop: 0, marginBottom: 8 }}>{s.displayTitle}</h2>
+                )}
+
+                {s.step >= 2 && !s.scenario.eliteSetup && (
                   <>
                     <h2 style={{ marginTop: 0, marginBottom: 8 }}>{s.displayTitle}</h2>
                     <p style={{ marginTop: 0, lineHeight: 1.6, opacity: 0.9 }}>{s.contextForUser}</p>
@@ -228,6 +249,7 @@ export default function BtyArenaRunPageClient() {
                     onConfirm={s.onConfirmChoice}
                     onContinue={s.continueNextScenario}
                     confirmingChoice={s.confirmingChoice}
+                    hideChoiceIntentSlug={Boolean(s.scenario.eliteSetup)}
                   />
                 )}
 
@@ -244,33 +266,65 @@ export default function BtyArenaRunPageClient() {
                   />
                 )}
 
-                {s.step >= 3 && s.choice && (
-                  <OutputPanel
-                    locale={locale}
-                    step={s.step as 3 | 4 | 5 | 6 | 7}
-                    choice={s.choice}
-                    systemMessage={s.systemMessage}
-                    lastXp={s.lastXp}
-                    reflectionBonusXp={s.reflectionBonusXp}
-                    reflectionPrompt={t.reflectionPrompt}
-                    reflectionOptions={[]}
-                    followUpPrompt={s.followUpPrompt}
-                    followUpOptions={s.followUpOptions}
-                    hasFollowUp={s.hasFollowUp}
-                    followUpIndex={s.followUpIndex}
-                    reflectResult={s.reflectResult}
-                    reflectDeepeningNotice={s.reflectDeepeningNotice}
-                    onNextToReflection={s.goToReflection}
-                    onSubmitReflection={s.submitReflection}
-                    reflectionSubmitting={s.reflectionSubmitting}
-                    onSubmitFollowUp={s.submitFollowUp}
-                    onSkipFollowUp={s.handleSkipFollowUp}
-                    followUpSubmitting={s.followUpSubmitting}
-                    onComplete={s.handleComplete}
-                    onContinue={s.continueNextScenario}
-                    continueLoading={s.nextScenarioLoading}
-                  />
-                )}
+                {s.step >= 3 &&
+                  s.choice &&
+                  s.selectedChoiceId !== OTHER_CHOICE_ID &&
+                  s.scenario.eliteSetup && (
+                    <ElitePostChoiceFlow
+                      locale={locale}
+                      step={s.step as 3 | 4 | 5 | 6 | 7}
+                      choice={s.choice}
+                      scenario={s.scenario}
+                      scenarioId={s.scenario.scenarioId}
+                      setup={s.scenario.eliteSetup}
+                      lastXp={s.lastXp}
+                      reflectionSubmitting={s.reflectionSubmitting}
+                      runId={s.runId}
+                      onStanceConfirmNext={s.goToReflection}
+                      onSubmitStanceExplanation={(text) => s.submitReflection(0, text)}
+                      onEscalationContinue={s.acknowledgeEscalation}
+                      onSecondChoice={s.submitSecondChoice}
+                      escalationContinueLoading={s.escalationAckSubmitting}
+                      secondChoiceSubmitting={s.secondChoiceSubmitting}
+                      onMirrorAcknowledged={s.mirrorContinueToContract}
+                      onContractCommittedToGate={s.contractSubmitAdvanceToGate}
+                      onPatternThresholdContinueToGate={s.patternThresholdSkippedToGate}
+                      patternContractDeferred={s.patternContractDeferred}
+                      onContinueNextScenario={s.continueNextScenario}
+                      continueLoading={s.nextScenarioLoading}
+                    />
+                  )}
+
+                {s.step >= 3 &&
+                  s.choice &&
+                  s.selectedChoiceId !== OTHER_CHOICE_ID &&
+                  !s.scenario.eliteSetup && (
+                    <OutputPanel
+                      locale={locale}
+                      step={s.step as 3 | 4 | 5 | 6 | 7}
+                      choice={s.choice}
+                      systemMessage={s.systemMessage}
+                      lastXp={s.lastXp}
+                      reflectionBonusXp={s.reflectionBonusXp}
+                      reflectionPrompt={t.reflectionPrompt}
+                      reflectionOptions={[]}
+                      followUpPrompt={s.followUpPrompt}
+                      followUpOptions={s.followUpOptions}
+                      hasFollowUp={s.hasFollowUp}
+                      followUpIndex={s.followUpIndex}
+                      reflectResult={s.reflectResult}
+                      reflectDeepeningNotice={s.reflectDeepeningNotice}
+                      onNextToReflection={s.goToReflection}
+                      onSubmitReflection={s.submitReflection}
+                      reflectionSubmitting={s.reflectionSubmitting}
+                      onSubmitFollowUp={s.submitFollowUp}
+                      onSkipFollowUp={s.handleSkipFollowUp}
+                      followUpSubmitting={s.followUpSubmitting}
+                      onComplete={s.handleComplete}
+                      onContinue={s.continueNextScenario}
+                      continueLoading={s.nextScenarioLoading}
+                    />
+                  )}
               </div>
 
               <ArenaRunHistory locale={locale} />

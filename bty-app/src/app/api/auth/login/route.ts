@@ -1,28 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { expireAuthCookiesHard, writeSupabaseAuthCookies } from "@/lib/bty/cookies/authCookies";
+import { inferLocaleFromNextParam, sanitizeNextForRedirect } from "@/lib/auth/sanitize-next-for-redirect";
+import {
+  authCookieSecureForRequest,
+  expireAuthCookiesHard,
+  writeSupabaseAuthCookies,
+} from "@/lib/bty/cookies/authCookies";
+import { mergeCookiesForRouteHandler } from "@/lib/supabase/route-client";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-function sanitizeNext(raw: string | null): string {
-  const fallback = "/en/bty/dashboard";
-  if (!raw) return fallback;
-
-  let next = raw;
-  try {
-    next = decodeURIComponent(raw);
-  } catch {
-    next = raw;
-  }
-
-  if (!next.startsWith("/")) return fallback;
-  if (next.startsWith("/en/bty/login") || next.startsWith("/ko/bty/login")) return fallback;
-  return next;
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,7 +23,9 @@ export async function POST(req: NextRequest) {
     }
 
     const requestUrl = new URL(req.url);
-    const nextPath = sanitizeNext(requestUrl.searchParams.get("next"));
+    const rawNext = requestUrl.searchParams.get("next");
+    const locale = inferLocaleFromNextParam(rawNext);
+    const nextPath = sanitizeNextForRedirect(rawNext, { locale });
 
     const body = (await req.json().catch(() => null)) as null | { email?: string; password?: string };
     const email = (body?.email ?? "").trim();
@@ -45,15 +38,17 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.json({ ok: true, next: nextPath });
     res.headers.set("Cache-Control", "no-store");
 
-    expireAuthCookiesHard(req, res);
+    const cookieSecure = authCookieSecureForRequest(req);
+    expireAuthCookiesHard(req, res, { secure: cookieSecure });
 
+    const cookieStore = await cookies();
     const supabase = createServerClient(url, key, {
       cookies: {
         getAll() {
-          return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
+          return mergeCookiesForRouteHandler(req, cookieStore);
         },
-        setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
-          writeSupabaseAuthCookies(res, cookies);
+        setAll(cookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
+          writeSupabaseAuthCookies(res, cookiesToSet, { secure: cookieSecure });
           res.headers.set("x-cookie-writer", "login");
         },
       },

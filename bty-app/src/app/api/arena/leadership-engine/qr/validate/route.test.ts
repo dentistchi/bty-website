@@ -20,26 +20,69 @@ describe("POST /api/arena/leadership-engine/qr/validate", () => {
     vi.stubEnv("CRON_SECRET", "test-secret-validate");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://test.supabase.co");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key");
-    adminFrom.mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
+
+    const arenaLevelRow = {
+      consecutive_verified_completions: 0,
+      current_band: "easy",
+      cooldown_until: null as string | null,
+      last_band_change_at: null as string | null,
+    };
+    const levelMaybeSingle = vi
+      .fn()
+      .mockResolvedValueOnce({ data: null, error: null })
+      .mockResolvedValue({ data: arenaLevelRow, error: null });
+
+    adminFrom.mockImplementation((table: string) => {
+      if (table === "arena_level_records") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: levelMaybeSingle,
+            }),
+          }),
+          insert: vi.fn().mockResolvedValue({ error: null }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        };
+      }
+      if (table === "arena_runs") {
+        return {
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ error: null }),
+            }),
+          }),
+        };
+      }
+      return {
+        select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              maybeSingle: vi.fn().mockResolvedValue({
-                data: { id: "c1", user_id: "owner", session_id: "run1", status: "pending" },
-                error: null,
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: {
+                    id: "c1",
+                    user_id: "owner",
+                    session_id: "run1",
+                    status: "pending",
+                    validation_approved_at: null,
+                    verified_at: null,
+                  },
+                  error: null,
+                }),
               }),
             }),
           }),
         }),
-      }),
-      update: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({ error: null }),
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ error: null }),
+            }),
           }),
         }),
-      }),
+      };
     });
   });
 

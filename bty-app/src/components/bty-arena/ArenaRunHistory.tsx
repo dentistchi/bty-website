@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import type { Locale } from "@/lib/i18n";
 import { getMessages } from "@/lib/i18n";
 import { arenaFetch } from "@/lib/http/arenaFetch";
-import { SCENARIOS } from "@/lib/bty/scenario/scenarios";
 import { CardSkeleton } from "./CardSkeleton";
 import { EmptyState } from "./EmptyState";
 
@@ -69,10 +68,15 @@ export function ArenaRunHistory({ locale }: ArenaRunHistoryProps) {
     return () => { cancelled = true; };
   }, [retryCount]);
 
+  /** Display label without legacy SCENARIOS bundle — API may add titles later. */
   function scenarioTitle(scenarioId: string): string {
-    const sc = SCENARIOS.find((s) => s.scenarioId === scenarioId);
-    if (!sc) return scenarioId;
-    return isKo && sc.titleKo ? sc.titleKo : sc.title;
+    if (scenarioId.startsWith("mirror:")) {
+      return isKo ? `역지사지 ${scenarioId.slice(7, 14)}…` : `Mirror ${scenarioId.slice(7, 14)}…`;
+    }
+    if (scenarioId.startsWith("pswitch_")) {
+      return scenarioId.replace(/^pswitch_/, "PS ");
+    }
+    return scenarioId.replace(/_/g, " ");
   }
 
   function fmtDate(iso: string): string {

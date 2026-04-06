@@ -27,6 +27,8 @@ type Props = {
   arenaActionLoopParam?: string | null;
   /** From URL `aalo` — signed token for witness / deep link. */
   aaloParam?: string | null;
+  /** From URL `arena_contract=resolve` (middleware → bty hub → my-page) — scroll to Action Contract hub. */
+  actionContractResolveFocus?: boolean;
 };
 
 /**
@@ -37,6 +39,7 @@ export function MyPageLeadershipConsole({
   actionLoopQrCompletion = null,
   arenaActionLoopParam = null,
   aaloParam = null,
+  actionContractResolveFocus = false,
 }: Props) {
   const loc = (locale === "ko" ? "ko" : "en") as Locale;
   const t = getMessages(loc).myPageStub;
@@ -110,6 +113,29 @@ export function MyPageLeadershipConsole({
   useEffect(() => {
     void load();
   }, [locale, load]);
+
+  /** `arena_contract=resolve` — focus the contract hub (`ENGINE_ARCHITECTURE_V1.md` §6.3). */
+  useEffect(() => {
+    if (!actionContractResolveFocus || typeof window === "undefined") return;
+    if (isLoading) return;
+
+    const run = () => {
+      const el = document.getElementById("bty-action-contract-hub");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        el.focus();
+      }
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("arena_contract") === "resolve") {
+        url.searchParams.delete("arena_contract");
+        const next =
+          url.pathname + (url.searchParams.toString() ? `?${url.searchParams}` : "") + url.hash;
+        window.history.replaceState({}, "", next);
+      }
+    };
+
+    requestAnimationFrame(() => requestAnimationFrame(run));
+  }, [actionContractResolveFocus, isLoading, serverPack]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

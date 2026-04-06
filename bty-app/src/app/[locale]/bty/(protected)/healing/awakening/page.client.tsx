@@ -58,7 +58,7 @@ export default function SecondAwakeningPageClient() {
         setLoading(false);
       })
       .catch(() => {
-        setError(locale === "ko" ? "2차 각성 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요." : "Could not load Second Awakening. Please try again later.");
+        setError(locale === "ko" ? "2차 각성 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요." : "Could not load Second Awakening. Wait a moment and reload.");
         setLoading(false);
       });
   }, [locale]);

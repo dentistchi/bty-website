@@ -15,7 +15,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { writeSupabaseAuthCookies } from "@/lib/bty/cookies/authCookies";
+import { authCookieSecureForRequest, writeSupabaseAuthCookies } from "@/lib/bty/cookies/authCookies";
 import { mergeAuthCookiesFromResponse } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getActiveLeague } from "@/lib/bty/arena/activeLeague";
@@ -52,6 +52,7 @@ export async function GET(req: NextRequest) {
 
   let didSetAll = false;
   const tmp = NextResponse.json({ ok: true }, { status: 200, headers: baseHeaders });
+  const cookieSecure = authCookieSecureForRequest(req);
 
   const supabase = createServerClient(url, key, {
     cookies: {
@@ -60,7 +61,7 @@ export async function GET(req: NextRequest) {
       },
       setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
         didSetAll = true;
-        writeSupabaseAuthCookies(tmp, cookies);
+        writeSupabaseAuthCookies(tmp, cookies, { secure: cookieSecure });
       },
     },
   });
@@ -114,7 +115,7 @@ export async function GET(req: NextRequest) {
         { status: 200 },
       );
       tmp.headers.forEach((v, k) => out.headers.set(k, v));
-      mergeAuthCookiesFromResponse(tmp, out);
+      mergeAuthCookiesFromResponse(tmp, out, req);
       return out;
     }
   }
@@ -125,7 +126,7 @@ export async function GET(req: NextRequest) {
       { status: 401 },
     );
     tmp.headers.forEach((v, k) => out.headers.set(k, v));
-    mergeAuthCookiesFromResponse(tmp, out);
+    mergeAuthCookiesFromResponse(tmp, out, req);
     return out;
   }
 
@@ -212,7 +213,7 @@ export async function GET(req: NextRequest) {
     out.cookies.set(c.name, c.value, {
       path: "/",
       sameSite: "lax",
-      secure: true,
+      secure: cookieSecure,
       httpOnly: true,
     });
   }

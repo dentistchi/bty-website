@@ -48,9 +48,12 @@
 2. **비밀/키 관리**  
    `OPENAI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_API_KEY`, `DEPLOY_WEBHOOK_URL` 등은 서버 전용 환경 변수로만 두고, 클라이언트 번들/로그에 노출되지 않도록 유지.
 
-3. **배포 웹훅**  
+3. **프로덕션 `OPENAI_API_KEY` (필수 확인)**  
+   채팅·멘토·Action Contract **Layer 2**(`submit-validation`)는 서버에서 OpenAI를 사용한다. **스테이징/프로덕션 배포 환경**(Vercel, Cloudflare, 등)에 키가 **실제로 설정**되어 있는지 배포 대시보드에서 확인할 것 — 로컬 `.env.local` 또는 CI 테스트용만으로는 부족하다.
+
+4. **배포 웹훅**  
    `DEPLOY_WEBHOOK_URL`은 예측하기 어려운 값(예: 긴 랜덤 쿼리)을 사용하거나, 배포 제공처에서 IP/시크릿 제한을 두는 것을 권장.
 
-4. **추가 고려 (선택)**  
+5. **추가 고려 (선택)**  
    - 채팅/멘토 API에 rate limiting (IP 또는 사용자별).  
    - CSP(Content-Security-Policy) 도입 시 스크립트/스타일 소스 화이트리스트 검토.

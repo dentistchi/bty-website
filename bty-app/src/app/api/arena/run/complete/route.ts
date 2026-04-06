@@ -18,6 +18,8 @@ import {
   REFLECTION_QUEST_BONUS_XP,
 } from "@/lib/bty/arena/weeklyQuest";
 import { ensureActionContractForArenaRun } from "@/lib/bty/action-contract/ensureActionContractForArenaRun";
+import { resolvePatternFamilyForContractTrigger } from "@/lib/bty/pattern-engine/resolvePatternFamilyForContractTrigger";
+import { syncPatternStatesForUser } from "@/lib/bty/pattern-engine/syncPatternStates";
 
 /**
  * POST /api/arena/run/complete — 런 종료 + **주간/코어 XP 1회 지급** (멱등).
@@ -123,11 +125,15 @@ export async function POST(req: Request) {
       hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
     });
 
+    await syncPatternStatesForUser(supabase, user.id);
+    const patternFamily = await resolvePatternFamilyForContractTrigger(supabase, user.id);
+
     const ensured = await ensureActionContractForArenaRun({
       userId: user.id,
       runId,
       scenarioId: scenarioId || "unknown",
       nbaLogId: null,
+      patternFamily,
     });
     return NextResponse.json({
       ok: true,
@@ -237,14 +243,20 @@ export async function POST(req: Request) {
     hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
   });
 
+  await syncPatternStatesForUser(supabase, user.id);
+  const patternFamily = await resolvePatternFamilyForContractTrigger(supabase, user.id);
+
   const ensured = await ensureActionContractForArenaRun({
     userId: user.id,
     runId,
     scenarioId: scenarioId || "unknown",
     nbaLogId: null,
+    patternFamily,
   });
 
   if (!ensured.ok) {
+    // Intentional: no XP / weekly_xp / RUN_COMPLETED_APPLIED rollback here — core + weekly already committed.
+    // Repair: POST /api/admin/recover-contract or retry complete; see ensureActionContract reconcile + logs.
     console.error("[run/complete] ensureActionContract failed after XP applied", {
       userId: user.id,
       runId,

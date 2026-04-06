@@ -30,7 +30,9 @@ export async function GET(
 
   const { data, error } = await supabase
     .from("arena_runs")
-    .select("run_id, scenario_id, locale, started_at, status, completed_at, difficulty, meta")
+    .select(
+      "run_id, scenario_id, locale, started_at, status, completed_at, difficulty, meta, completion_state, acknowledgment_timestamp",
+    )
     .eq("run_id", runId)
     .eq("user_id", user.id)
     .maybeSingle();

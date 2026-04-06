@@ -21,11 +21,31 @@ vi.mock("@/lib/bty/arena/weeklyQuest", () => ({
   REFLECTION_QUEST_BONUS_XP: 15,
 }));
 
+vi.mock("@/lib/supabase-admin", () => ({
+  getSupabaseAdmin: vi.fn(),
+}));
+
+vi.mock("@/lib/bty/action-contract/ensureActionContractForArenaRun", () => ({
+  ensureActionContractForArenaRun: vi.fn(),
+}));
+
+vi.mock("@/lib/bty/pattern-engine/syncPatternStates", () => ({
+  syncPatternStatesForUser: vi.fn().mockResolvedValue({ ok: true }),
+}));
+
+vi.mock("@/lib/bty/pattern-engine/resolvePatternFamilyForContractTrigger", () => ({
+  resolvePatternFamilyForContractTrigger: vi.fn().mockResolvedValue(null),
+}));
+
 const { getSupabaseServerClient } = await import(
   "@/lib/bty/arena/supabaseServer"
 );
 const { applyDirectCoreXp } = await import(
   "@/lib/bty/arena/applyCoreXp"
+);
+const { getSupabaseAdmin } = await import("@/lib/supabase-admin");
+const { ensureActionContractForArenaRun } = await import(
+  "@/lib/bty/action-contract/ensureActionContractForArenaRun"
 );
 
 // ---------------------------------------------------------------------------
@@ -143,6 +163,12 @@ function mockSupabase(user: { id: string } | null, flags?: { runAborted?: boolea
 describe("POST /api/arena/run/complete", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getSupabaseAdmin).mockReturnValue({} as never);
+    vi.mocked(ensureActionContractForArenaRun).mockResolvedValue({
+      ok: true,
+      contractId: null,
+      created: false,
+    });
   });
 
   it("returns 401 when unauthenticated", async () => {
@@ -327,15 +353,27 @@ describe("POST /api/arena/run/complete", () => {
     expect(data.coreXp).toBeGreaterThanOrEqual(0);
   });
 
-  it("returns 200 with expected response keys (ok, runId, status, deltaApplied, coreXp, weeklyXp)", async () => {
+  it("returns 200 with expected response keys (ok, runId, status, deltaApplied, coreXp, weeklyXp, action contract flags)", async () => {
     mockSupabase({ id: "u1" });
     vi.mocked(applyDirectCoreXp).mockResolvedValue({ newCoreTotal: 201 });
 
     const res = await POST(makeRequest({ runId: "run-1" }));
     expect(res.status).toBe(200);
     const data = await res.json();
-    const expectedKeys = ["coreXp", "deltaApplied", "ok", "runId", "status", "weeklyXp"].sort();
+    const expectedKeys = [
+      "actionContractCreated",
+      "contractId",
+      "coreXp",
+      "deltaApplied",
+      "myPageRefetchRequired",
+      "ok",
+      "runId",
+      "status",
+      "weeklyXp",
+    ].sort();
     expect(Object.keys(data).sort()).toEqual(expectedKeys);
+    expect(data.actionContractCreated).toBe(false);
+    expect(data.myPageRefetchRequired).toBe(true);
   });
 
   it("calls applyDirectCoreXp with arena core XP", async () => {
@@ -351,6 +389,30 @@ describe("POST /api/arena/run/complete", () => {
     expect(userId).toBe("u1");
     expect(typeof coreXp).toBe("number");
     expect(coreXp).toBeGreaterThanOrEqual(0);
+  });
+
+  it("calls ensureActionContractForArenaRun on first completion with userId, runId, scenarioId", async () => {
+    mockSupabase({ id: "u1" });
+    vi.mocked(applyDirectCoreXp).mockResolvedValue({ newCoreTotal: 201 });
+    vi.mocked(ensureActionContractForArenaRun).mockResolvedValue({
+      ok: true,
+      created: true,
+      contractId: "contract-new-1",
+    });
+
+    const res = await POST(makeRequest({ runId: "run-1" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(ensureActionContractForArenaRun).toHaveBeenCalledWith({
+      userId: "u1",
+      runId: "run-1",
+      scenarioId: "sc-1",
+      nbaLogId: null,
+      patternFamily: null,
+    });
+    expect(data.actionContractCreated).toBe(true);
+    expect(data.myPageRefetchRequired).toBe(true);
+    expect(data.contractId).toBe("contract-new-1");
   });
 
   it("returns 200 with idempotent flag when run already applied", async () => {
@@ -394,6 +456,175 @@ describe("POST /api/arena/run/complete", () => {
     expect(data.ok).toBe(true);
     expect(data.idempotent).toBe(true);
     expect(applyDirectCoreXp).not.toHaveBeenCalled();
+    expect(ensureActionContractForArenaRun).toHaveBeenCalledWith({
+      userId: "u1",
+      runId: "run-1",
+      scenarioId: "sc-1",
+      nbaLogId: null,
+      patternFamily: null,
+    });
+  });
+
+  it("idempotent: RUN_COMPLETED_APPLIED + admin unavailable (ensure ok:false) — 200, actionContractCreated false", async () => {
+    vi.mocked(ensureActionContractForArenaRun).mockResolvedValue({
+      ok: false,
+      contractId: null,
+      created: false,
+    });
+    const callCounts: Record<string, number> = {};
+    const sb = {
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+      rpc: () => Promise.resolve({ error: null }),
+      from: (table: string) => {
+        callCounts[table] = (callCounts[table] ?? 0) + 1;
+        const n = callCounts[table];
+
+        if (table === "arena_runs") {
+          return chainable({
+            data: {
+              run_id: "run-1",
+              status: "DONE",
+              scenario_id: "sc-1",
+            },
+            error: null,
+          });
+        }
+        if (table === "arena_events" && n === 1) {
+          return chainable({
+            data: [{ event_id: "ev-already" }],
+            error: null,
+          });
+        }
+        return chainable({ data: null, error: null });
+      },
+    };
+    (getSupabaseServerClient as ReturnType<typeof vi.fn>).mockResolvedValue(
+      sb,
+    );
+
+    const res = await POST(makeRequest({ runId: "run-1" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.idempotent).toBe(true);
+    expect(data.actionContractCreated).toBe(false);
+    expect(data.contractId).toBeNull();
+    expect(ensureActionContractForArenaRun).toHaveBeenCalled();
+  });
+
+  it("idempotent: RUN_COMPLETED_APPLIED + repairs contract — ensure returns created:true", async () => {
+    vi.mocked(ensureActionContractForArenaRun).mockResolvedValue({
+      ok: true,
+      contractId: "recovered-uuid",
+      created: true,
+    });
+    const callCounts: Record<string, number> = {};
+    const sb = {
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+      rpc: () => Promise.resolve({ error: null }),
+      from: (table: string) => {
+        callCounts[table] = (callCounts[table] ?? 0) + 1;
+        const n = callCounts[table];
+
+        if (table === "arena_runs") {
+          return chainable({
+            data: {
+              run_id: "run-1",
+              status: "DONE",
+              scenario_id: "sc-1",
+            },
+            error: null,
+          });
+        }
+        if (table === "arena_events" && n === 1) {
+          return chainable({
+            data: [{ event_id: "ev-already" }],
+            error: null,
+          });
+        }
+        return chainable({ data: null, error: null });
+      },
+    };
+    (getSupabaseServerClient as ReturnType<typeof vi.fn>).mockResolvedValue(
+      sb,
+    );
+
+    const res = await POST(makeRequest({ runId: "run-1" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.idempotent).toBe(true);
+    expect(data.actionContractCreated).toBe(true);
+    expect(data.contractId).toBe("recovered-uuid");
+    expect(data.myPageRefetchRequired).toBe(true);
+    expect(applyDirectCoreXp).not.toHaveBeenCalled();
+  });
+
+  it("idempotent: contract already exists — actionContractCreated false", async () => {
+    vi.mocked(ensureActionContractForArenaRun).mockResolvedValue({
+      ok: true,
+      contractId: "existing-uuid",
+      created: false,
+    });
+    const callCounts: Record<string, number> = {};
+    const sb = {
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+      rpc: () => Promise.resolve({ error: null }),
+      from: (table: string) => {
+        callCounts[table] = (callCounts[table] ?? 0) + 1;
+        const n = callCounts[table];
+
+        if (table === "arena_runs") {
+          return chainable({
+            data: {
+              run_id: "run-1",
+              status: "DONE",
+              scenario_id: "sc-1",
+            },
+            error: null,
+          });
+        }
+        if (table === "arena_events" && n === 1) {
+          return chainable({
+            data: [{ event_id: "ev-already" }],
+            error: null,
+          });
+        }
+        return chainable({ data: null, error: null });
+      },
+    };
+    (getSupabaseServerClient as ReturnType<typeof vi.fn>).mockResolvedValue(
+      sb,
+    );
+
+    const res = await POST(makeRequest({ runId: "run-1" }));
+    const data = await res.json();
+    expect(data.actionContractCreated).toBe(false);
+    expect(data.contractId).toBe("existing-uuid");
+  });
+
+  it("first completion: ensure fails after XP — 200, actionContractCreated false", async () => {
+    mockSupabase({ id: "u1" });
+    vi.mocked(applyDirectCoreXp).mockResolvedValue({ newCoreTotal: 201 });
+    vi.mocked(ensureActionContractForArenaRun).mockResolvedValue({
+      ok: false,
+      contractId: null,
+      created: false,
+    });
+
+    const res = await POST(makeRequest({ runId: "run-1" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+    expect(data.actionContractCreated).toBe(false);
+    expect(data.myPageRefetchRequired).toBe(true);
   });
 
   it("returns 404 when run does not exist", async () => {
@@ -476,7 +707,13 @@ describe("POST /api/arena/run/complete", () => {
     const r200 = await POST(makeRequest({ runId: "run-done" }));
     expect(r200.status).toBe(200);
     const j = await r200.json();
-    expect(j).toMatchObject({ ok: true, runId: "run-done", status: "DONE", idempotent: true });
+    expect(j).toMatchObject({
+      ok: true,
+      runId: "run-done",
+      status: "DONE",
+      idempotent: true,
+      myPageRefetchRequired: true,
+    });
     expect("deltaApplied" in j).toBe(false);
     expect("coreXp" in j).toBe(false);
   });

@@ -5,11 +5,21 @@ import {
   openCanonicalArenaAndWaitForShell,
   optionalStartSimulationIfPresent,
 } from "../helpers/arena-canonical";
+import { cleanupStaleE2EActionContractsBeforeTest } from "../helpers/cleanup-action-contracts";
+import { E2E_CONTRACT_EMAILS, E2E_CONTRACT_USER_IDS } from "../helpers/three-contract-users";
 
 /**
  * Canonical Arena — single route `BtyArenaRunPageClient` at `/[locale]/bty-arena` (optional `/beginner`).
  */
 test.describe("Arena canonical session", () => {
+  test.beforeEach(async ({ request }) => {
+    await cleanupStaleE2EActionContractsBeforeTest(request, {
+      userId: E2E_CONTRACT_USER_IDS.default,
+      email: E2E_CONTRACT_EMAILS.default,
+      label: "arena-flow:E2E_DEFAULT_USER",
+    });
+  });
+
   test("direct entry shows canonical run shell (loaders, beginner gate, empty, or main)", async ({
     page,
   }) => {
@@ -22,9 +32,16 @@ test.describe("Arena canonical session", () => {
     await expect(page).toHaveURL(canonicalArenaUrlPattern("en"));
     await expect(arenaShellLocator(page).first()).toBeVisible({ timeout: 30_000 });
 
+    const main = page.getByTestId("arena-play-main");
+
+    // Run surface can mount without a Start Simulation CTA (resumed session, router path, etc.).
+    if (await main.isVisible({ timeout: 8_000 }).catch(() => false)) {
+      await expect(main).toBeVisible();
+      return;
+    }
+
     await optionalStartSimulationIfPresent(page, "en");
 
-    const main = page.getByTestId("arena-play-main");
     const reached = await main
       .waitFor({ state: "visible", timeout: 120_000 })
       .then(() => true)
@@ -38,8 +55,6 @@ test.describe("Arena canonical session", () => {
       return;
     }
 
-    await expect(
-      page.getByRole("button", { name: /Start Simulation|시뮬레이션 시작/i }).first(),
-    ).toBeVisible({ timeout: 20_000 });
+    await expect(main).toBeVisible();
   });
 });

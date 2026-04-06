@@ -1,3 +1,5 @@
+import { arenaDifficultyLevelFromUnknown } from "./arenaDifficultyLevelFromUnknown";
+import { arenaEscalationBranchesFromUnknown } from "./arenaEscalationFromUnknown";
 import { arenaScenarioCopyFieldsFromUnknown } from "./arenaScenarioCopyFieldsFromUnknown";
 import { arenaScenarioDescriptionLinesFromUnknown } from "./arenaScenarioDescriptionLinesFromUnknown";
 import { arenaScenarioDifficultyFromUnknown } from "./arenaScenarioDifficultyFromUnknown";
@@ -35,6 +37,25 @@ export function arenaScenarioFromUnknown(value: unknown): ArenaScenario | null {
   const outcomes = arenaScenarioOutcomesFromUnknown(o.outcomes);
   if (outcomes === null) return null;
 
+  const difficulty_level = arenaDifficultyLevelFromUnknown(o.difficulty_level);
+  if (difficulty_level === null) return null;
+
+  const difficulty_label =
+    o.difficulty_label !== undefined
+      ? typeof o.difficulty_label === "string"
+        ? o.difficulty_label.trim() || undefined
+        : null
+      : undefined;
+  if (difficulty_label === null) return null;
+
+  const primaryIds = rows.primaryChoices.map((p) => p.id);
+  let escalationBranches: ArenaScenario["escalationBranches"];
+  if ("escalationBranches" in o && o.escalationBranches != null) {
+    const eb = arenaEscalationBranchesFromUnknown(o.escalationBranches, primaryIds, id);
+    if (eb === null) return null;
+    escalationBranches = eb;
+  }
+
   return {
     id,
     stage: copy.stage,
@@ -45,5 +66,8 @@ export function arenaScenarioFromUnknown(value: unknown): ArenaScenario | null {
     primaryChoices: rows.primaryChoices,
     reinforcementChoices: rows.reinforcementChoices,
     outcomes,
+    ...(difficulty_level !== undefined ? { difficulty_level } : {}),
+    ...(difficulty_label !== undefined ? { difficulty_label } : {}),
+    ...(escalationBranches !== undefined ? { escalationBranches } : {}),
   };
 }

@@ -13,6 +13,10 @@ import { recordProgramSelected } from "@/engine/foundry/program-completion.servi
 import { syncCatalogToDB } from "@/engine/scenario/scenario-catalog-sync.service";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
+import { ONBOARDING_COMPLETE_EVENT } from "./onboarding-flow.constants";
+
+export { ONBOARDING_COMPLETE_EVENT };
+
 export const ONBOARDING_STEP_COUNT = 5 as const;
 
 export const ONBOARDING_STEPS = [1, 2, 3, 4, 5] as const;
@@ -28,8 +32,6 @@ export type OnboardingState = {
   isComplete: boolean;
   completedAt: string | null;
 };
-
-export const ONBOARDING_COMPLETE_EVENT = "onboarding_complete" as const;
 
 export type OnboardingCompletePayload = {
   event: typeof ONBOARDING_COMPLETE_EVENT;

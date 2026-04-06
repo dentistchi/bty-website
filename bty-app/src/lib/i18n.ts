@@ -1084,6 +1084,105 @@ export type Messages = {
     arenaRunErrorTitle: string;
     arenaRunErrorDescription: string;
     arenaRunErrorHint: string;
+    /** Canonical elite — section labels + initial decision hint */
+    eliteSetupRoleLabel: string;
+    eliteSetupPressureLabel: string;
+    eliteSetupTradeoffLabel: string;
+    eliteInitialDecisionHint: string;
+    /** Elite post-choice flow (replaces generic OutputPanel for `eliteSetup` scenarios). */
+    elitePostFlowRegionAria: string;
+    elitePostConfirmTitle: string;
+    elitePostConfirmLead: string;
+    elitePostConfirmNext: string;
+    elitePostExplainTitle: string;
+    elitePostExplainPrompt: string;
+    elitePostExplainOptionalLabel: string;
+    elitePostExplainPlaceholder: string;
+    elitePostExplainSubmit: string;
+    elitePostIntegrationTitle: string;
+    elitePostIntegrationNext: string;
+    elitePostBridgeTitle: string;
+    elitePostBridgeDefault: string;
+    elitePostBridgeNext: string;
+    elitePostCompleteTitle: string;
+    elitePostCompleteBody: string;
+    /** `{xp}` placeholder for API `lastXp` (render-only). */
+    elitePostXpLine: string;
+    /** UX_FLOW_LOCK_V1 Step 5 — Pattern Mirror */
+    eliteMirrorTitle: string;
+    eliteMirrorLead: string;
+    eliteMirrorEmpty: string;
+    eliteMirrorContinue: string;
+    eliteMirrorLoadError: string;
+    /** Steps 3–4 escalation + forced trade-off (UX_FLOW_LOCK_V1 §2) */
+    eliteSituationUpdateHeader: string;
+    eliteDecisionRequiredHeader: string;
+    eliteRunStepAdvanceError: string;
+    /** Step 4 forced trade-off — label above each option’s cost line */
+    eliteForcedTradeoffCostLabel: string;
+    eliteV2ErrorNotConfiguredTitle: string;
+    eliteV2ErrorNotConfiguredBody: string;
+    eliteV2ErrorMissingBranchTitle: string;
+    eliteV2ErrorMissingBranchBody: string;
+    eliteV2ErrorInvalidCostTitle: string;
+    eliteV2ErrorInvalidCostBody: string;
+    /** Step 6 — Action Contract */
+    eliteContractTitle: string;
+    eliteContractIntro: string;
+    eliteContractWhoLabel: string;
+    eliteContractWhoHint: string;
+    eliteContractWhatLabel: string;
+    eliteContractWhatHint: string;
+    eliteContractHowLabel: string;
+    /** Shown above the "how" field — verbatim script, no meta explanation */
+    eliteContractHowInstruction: string;
+    /** Lead with ownership / honesty, not accusation */
+    eliteContractHowResponsibilityLead: string;
+    eliteContractWhenLabel: string;
+    eliteContractWhenHint: string;
+    eliteContractWhoPlaceholder: string;
+    eliteContractWhatPlaceholder: string;
+    eliteContractHowPlaceholder: string;
+    eliteContractWhenPlaceholder: string;
+    eliteContractSubmit: string;
+    eliteContractSubmitting: string;
+    eliteContractLoadError: string;
+    eliteContractEnsureFailed: string;
+    eliteContractCreating: string;
+    /** Heading when draft contract could not be created (no form shown) */
+    eliteContractInitFailedTitle: string;
+    /** Step 6 — POST returned `gated: "pattern_threshold"` (not an error) */
+    eliteContractPatternThresholdTitle: string;
+    eliteContractPatternThresholdBody: string;
+    eliteContractPatternThresholdContinue: string;
+    eliteContractRevisionRequired: string;
+    /** After action contract — execution follow-up (yes/no + optional first 30s) */
+    actionContractFollowupTitle: string;
+    actionContractFollowupLead: string;
+    actionContractFollowupQuestion: string;
+    actionContractFollowupYes: string;
+    actionContractFollowupNo: string;
+    actionContractFollowupFirst30Label: string;
+    actionContractFollowupFirst30Placeholder: string;
+    actionContractFollowupSubmit: string;
+    actionContractFollowupSubmitting: string;
+    actionContractFollowupError: string;
+    /** Step 7 — Execution Gate + §3 lock copy */
+    eliteExecutionGateTitle: string;
+    eliteExecutionGateIntro: string;
+    eliteExecutionContractHeading: string;
+    eliteExecutionVerificationRecorded: string;
+    eliteExecutionAwaitingVerification: string;
+    eliteExecutionVerificationNotRecorded: string;
+    eliteExecutionUnderReview: string;
+    eliteExecutionAdditionalConfirmation: string;
+    eliteExecutionAbandonedLead: string;
+    eliteExecutionResumeHint: string;
+    eliteExecutionRawTextFallback: string;
+    eliteExecutionNextBlocked: string;
+    eliteExecutionLoadError: string;
+    /** Step 7 — user continued from step 6 without a draft (pattern window below contract threshold) */
+    eliteExecutionPatternThresholdDeferLine: string;
   };
   /** PROJECT_BACKLOG §8: 대시보드 감정 스탯 카드 빈 상태·에러 */
   emotionalStats: {
@@ -2056,7 +2155,7 @@ const ko: Messages = {
     ctaSrOnlyHeading: "진단 후 다음 단계",
   },
   landing: {
-    heroTitle: "Better Than Yesterday",
+    heroTitle: "Better Than Myself",
     heroSubtitle: "오늘 어디로 가볼까요?",
     recommended: "추천",
     arenaTitle: "Arena",
@@ -2551,7 +2650,7 @@ const ko: Messages = {
     step7Title: "Step 7 · 완료",
     step7Body: "저장되었습니다. 아래 버튼으로 다음 시나리오로 이동합니다.",
     choiceLabel: "선택",
-    scenarioCompletedToast: "시나리오를 완료했어요",
+    scenarioCompletedToast: "선택이 기록되었습니다.",
     scenarioNotFound: "시나리오를 찾을 수 없습니다.",
     scenarioNotFoundHint: "다른 시나리오를 선택하거나 새로고침해 보세요.",
     pastScenariosHeading: "지난 시나리오",
@@ -2577,6 +2676,101 @@ const ko: Messages = {
     arenaRunErrorDescription:
       "Arena 런을 불러오지 못했어요. 연결을 확인한 뒤 다시 시도해 주세요.",
     arenaRunErrorHint: "계속되면 페이지를 새로고침해 보세요.",
+    eliteSetupRoleLabel: "역할",
+    eliteSetupPressureLabel: "압박 상황",
+    eliteSetupTradeoffLabel: "딜레마",
+    eliteInitialDecisionHint:
+      "아래에서 첫 입장을 고른 뒤, 짧은 정리로 입장을 다듬고 실행에 연결합니다.",
+    elitePostFlowRegionAria: "엘리트 시나리오 마무리 단계",
+    elitePostConfirmTitle: "입장이 기록되었습니다",
+    elitePostConfirmLead: "이번 판에서의 작업 입장입니다. 다음으로, 왜 이 쪽인지 한 번만 짚어 봅니다.",
+    elitePostConfirmNext: "계속",
+    elitePostExplainTitle: "왜 이 입장인가요?",
+    elitePostExplainPrompt: "지금 상황에서 이 입장이 의미 있게 느껴지는 이유를 짧게 적어 보세요. (선택)",
+    elitePostExplainOptionalLabel: "한두 문장이면 충분해요",
+    elitePostExplainPlaceholder: "예: 팀 신뢰가 먼저라서, 솔직히 말하는 쪽이 맞다고 느꼈어요.",
+    elitePostExplainSubmit: "다음 단계로",
+    elitePostIntegrationTitle: "리더십으로 옮기기",
+    elitePostIntegrationNext: "다음",
+    elitePostBridgeTitle: "앞으로",
+    elitePostBridgeDefault: "다음 대화·회의·결정 한 번에, 방금 정리한 한 가지를 의도적으로 시도해 보세요.",
+    elitePostBridgeNext: "마무리로",
+    elitePostCompleteTitle: "이번 판 완료",
+    elitePostCompleteBody: "기록을 마쳤습니다. 다음 시나리오로 넘어가며 리듬을 이어 가세요.",
+    elitePostXpLine: "이번 판 경험치: +{xp} XP",
+    eliteMirrorTitle: "패턴 미러",
+    eliteMirrorLead:
+      "아래는 이번 실행의 패턴 exit 기록과 누적 패턴 창 상태입니다. 해석·평가 없이 기록만 표시합니다.",
+    eliteMirrorEmpty: "표시할 이전 실행 데이터가 없습니다.",
+    eliteMirrorContinue: "계속",
+    eliteMirrorLoadError: "미러 데이터를 불러오지 못했습니다.",
+    eliteSituationUpdateHeader: "상황 전개",
+    eliteDecisionRequiredHeader: "결정 필요",
+    eliteRunStepAdvanceError: "이 단계를 기록하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    eliteForcedTradeoffCostLabel: "비용",
+    eliteV2ErrorNotConfiguredTitle: "에스컬레이션 데이터 없음",
+    eliteV2ErrorNotConfiguredBody:
+      "이 시나리오에 escalationBranches가 없습니다. 관리자에게 문의하거나 다른 시나리오를 선택하세요.",
+    eliteV2ErrorMissingBranchTitle: "선택에 맞는 에스컬레이션 분기 없음",
+    eliteV2ErrorMissingBranchBody:
+      "escalationBranches에 현재 1차 선택 id에 해당하는 분기가 없습니다. 데이터를 수정해야 합니다.",
+    eliteV2ErrorInvalidCostTitle: "2차 선택 비용 데이터 오류",
+    eliteV2ErrorInvalidCostBody:
+      "second_choices 항목에 비어 있지 않은 cost가 필요합니다. 시나리오 데이터를 확인하세요.",
+    eliteContractTitle: "액션 계약",
+    eliteContractIntro:
+      "네 가지는 실행 가능한 약속을 고정합니다. 가깝고 구체적일수록 좋습니다. 아래 안내는 형식만 돕고, 사람을 평가하지 않습니다.",
+    eliteContractWhoLabel: "이 패턴의 영향을 받는 구체적인 한 사람은 누구인가요?",
+    eliteContractWhoHint: "실제 이름을 적어 주세요.",
+    eliteContractWhatLabel: "그 사람과 피해 오던 대화 한 가지는 무엇인가요?",
+    eliteContractWhatHint: "사람을 붙이는 말보다 상황을 적어 주세요.",
+    eliteContractHowLabel: "첫 문장은 무엇인가요?",
+    eliteContractHowInstruction: "말할 내용을 그대로 적으세요. 설명은 넣지 마세요.",
+    eliteContractHowResponsibilityLead: "솔직함이나 내 책임에서 시작하세요. 비난으로 시작하지 마세요.",
+    eliteContractWhenLabel: "그 대화를 언제 시작할까요?",
+    eliteContractWhenHint: "가깝고 실제적인 시간을 고르세요.",
+    eliteContractWhoPlaceholder: "예: 박지민",
+    eliteContractWhatPlaceholder: "예: 지난주에 미뤄 둔 일정 조정 안건",
+    eliteContractHowPlaceholder: "예: \"지난주 일정 얘기, 오늘 잠깐 맞추고 싶어요.\"",
+    eliteContractWhenPlaceholder: "예: 오늘 퇴근 후, 또는 목요일 오전",
+    eliteContractSubmit: "계약 제출",
+    eliteContractSubmitting: "제출 중…",
+    eliteContractLoadError: "제출 처리에 실패했습니다.",
+    eliteContractEnsureFailed: "계약 초기화를 완료하지 못했습니다. 잠시 후 다시 시도하세요.",
+    eliteContractCreating: "실행 계약을 준비하는 중…",
+    eliteContractInitFailedTitle: "실행 계약을 시작할 수 없습니다",
+    eliteContractPatternThresholdTitle: "실행 계약은 아직 열리지 않았습니다",
+    eliteContractPatternThresholdBody:
+      "같은 패턴 패밀리에 대한 qualifying exit가 아직 충분히 쌓이지 않았습니다. 이건 오류가 아니라 기록 규칙입니다. 실행 게이트로 계속 진행할 수 있습니다.",
+    eliteContractPatternThresholdContinue: "실행 게이트로 계속",
+    eliteContractRevisionRequired: "수정이 필요합니다. 아래 필드를 갱신한 뒤 다시 제출하세요.",
+    actionContractFollowupTitle: "실행 후속 확인",
+    actionContractFollowupLead: "계약과 연결된 짧은 확인입니다. 판단이나 조언이 아닙니다.",
+    actionContractFollowupQuestion: "대화를 시작했나요?",
+    actionContractFollowupYes: "예",
+    actionContractFollowupNo: "아니요",
+    actionContractFollowupFirst30Label: "처음 30초에 무슨 일이 있었나요?",
+    actionContractFollowupFirst30Placeholder: "있는 그대로 짧게 적어 주세요.",
+    actionContractFollowupSubmit: "보내기",
+    actionContractFollowupSubmitting: "보내는 중…",
+    actionContractFollowupError: "보내기에 실패했습니다. 잠시 후 다시 시도하세요.",
+    eliteExecutionGateTitle: "실행 게이트",
+    eliteExecutionGateIntro:
+      "검증은 절차에 따라 기록됩니다. 허용되는 증빙 유형과 제출 위치는 제품 정책을 따릅니다. 아래 문구는 제출한 그대로입니다.",
+    eliteExecutionContractHeading: "제출한 계약 텍스트",
+    eliteExecutionVerificationRecorded: "검증이 기록되었습니다.",
+    eliteExecutionAwaitingVerification: "검증 결과 대기 중입니다.",
+    eliteExecutionVerificationNotRecorded: "파일에 검증이 없습니다.",
+    eliteExecutionUnderReview: "검토 중입니다.",
+    eliteExecutionAdditionalConfirmation: "추가 확인이 필요합니다.",
+    eliteExecutionAbandonedLead: "실행 검증이 완료되지 않았습니다.",
+    eliteExecutionResumeHint:
+      "이 실행을 마치려면 증빙 제출·확인 절차를 이어가세요. 계약 문구는 아래와 동일하게 유지됩니다.",
+    eliteExecutionRawTextFallback: "(계약 텍스트 없음)",
+    eliteExecutionNextBlocked: "다음 시나리오로 이동하려면 검증이 기록되어야 합니다.",
+    eliteExecutionLoadError: "실행 상태를 불러오지 못했습니다.",
+    eliteExecutionPatternThresholdDeferLine:
+      "실행 계약 초안은 패턴 창 기준을 충족하면 열립니다. 지금은 제출된 계약 텍스트 없이 이 실행을 마무리할 수 있습니다.",
   },
   emotionalStats: {
     emptyMessage: "아직 기록이 없어요. Arena나 챗에서 대화를 진행해 보세요.",
@@ -3105,11 +3299,11 @@ const en: Messages = {
     errorDefault: "Sign in failed.",
     forgotPassword: "Forgot password?",
     forgotPasswordSent: "We sent a reset link to your email. Check your inbox (and spam folder).",
-    forgotPasswordError: "Request failed. Check the email address or try again later.",
+    forgotPasswordError: "Request failed. Check the email address or wait a moment and resubmit.",
     forgotPasswordMainRegionAria: "Forgot password",
     btyPublicRouteSuspenseMainRegionAria: "Foundry sign-in — loading",
   },
-  auth: { backToLogin: "Back to sign in", loading: "Verifying…", callbackError: "Verification failed. Please try again." },
+  auth: { backToLogin: "Back to sign in", loading: "Verifying…", callbackError: "Verification failed. Please resubmit." },
   logout: "Log out",
   arena: {
     weeklyTierBronze: "Bronze (weekly)",
@@ -3149,7 +3343,7 @@ const en: Messages = {
     doneCtaMentor: "Talk to mentor",
     doneCtaFoundry: "Back to Foundry",
     doneCtaAssessment: "50-item assessment",
-    apiError: "Connection issue. Please try again.",
+    apiError: "Connection issue. Please resubmit.",
     errorTitle: "Error",
     replyFallback: "Could you say a bit more?",
     ariaStartPractice: "Start practice",
@@ -3210,8 +3404,8 @@ const en: Messages = {
     dearMeComposerSubmit: "Send letter",
     dearMeComposerSubmitting: "Saving…",
     dearMeComposerSaved: "Your letter was saved",
-    dearMeComposerLoadError: "Could not load. Please try again.",
-    dearMeComposerSubmitError: "Could not save. Please try again.",
+    dearMeComposerLoadError: "Could not load. Please resubmit.",
+    dearMeComposerSubmitError: "Could not save. Please resubmit.",
     dearMeComposerPreviousTitle: "Previous letters",
     replyActionsLabel: "Actions after reply",
     footerLabel: "Back to Center",
@@ -3231,12 +3425,12 @@ const en: Messages = {
     forcedResetProgress: "{done} / {total} complete",
     forcedResetReturnCta: "Request return",
     forcedResetSubmitting: "Submitting…",
-    forcedResetError: "Could not complete return request. Please try again.",
+    forcedResetError: "Could not complete return request. Please resubmit.",
     forcedResetWindowElapsed: "The 48-hour window has passed. Finish the checklist below, then request return.",
   },
   bty: {
     title: "bty",
-    tagline: "Practice. Integrity & Better Than Yesterday.",
+    tagline: "Practice. Integrity & Better Than Myself.",
     linkToCenter: "Go to Center",
     entryIntro: "Dashboard, mentor, integrity practice. Choose what to work on.",
     startCta: "Start",
@@ -3499,7 +3693,7 @@ const en: Messages = {
     ctaSrOnlyHeading: "Next steps after assessment",
   },
   landing: {
-    heroTitle: "Better Than Yesterday",
+    heroTitle: "Better Than Myself",
     heroSubtitle: "Where would you like to go today?",
     recommended: "Recommended",
     arenaTitle: "Arena",
@@ -3537,7 +3731,7 @@ const en: Messages = {
   selfEsteem: {
     title: "Self-esteem check",
     subtitle: "A short conversation with yourself. Pick what feels closest. There are no wrong answers.",
-    again: "Try again",
+    again: "Start over",
     choices: [
       { value: 1, label: "Almost never" },
       { value: 2, label: "Rarely" },
@@ -3568,7 +3762,7 @@ const en: Messages = {
     placeholder: "Type something…",
     send: "Send",
     thinking: "Thinking…",
-    connectionError: "Connection failed or timed out. Please try again.",
+    connectionError: "Connection failed or timed out. Please resubmit.",
     retry: "Retry",
     introFoundry: "I'm Dr. Chi. I'm here to help you practice seeing things from the other person's side. Start with a line or two whenever you're ready.",
     introCenter: "I'm Dr. Chi. However you feel right now is okay. This is a safe space. Share whatever you'd like.",
@@ -3712,7 +3906,7 @@ const en: Messages = {
     messagePlaceholder: "e.g. I'd like feedback on leadership",
     errorEliteOnly: "Only available when you're in the top 5%.",
     errorPendingExists: "You already have a pending request.",
-    errorSubmit: "Request failed. Please try again.",
+    errorSubmit: "Request failed. Please resubmit.",
     approvedCta: "Go to Mentor page",
     listTitle: "My requests",
     listEmpty: "No requests yet.",
@@ -3823,7 +4017,7 @@ const en: Messages = {
     ariaDashboard: "Back to dashboard",
     loading: "Loading…",
     emptyPhase: "Phase information is unavailable. Try going to Awakening.",
-    loadError: "Could not load progress. Please try again later.",
+    loadError: "Could not load progress. Please wait and resubmit.",
     awakeningLoadingLabel: "Loading Second Awakening",
     awakeningMainRegionAriaError: "Second Awakening error",
     awakeningMainRegionAriaCompleted: "Second Awakening completed",
@@ -3848,7 +4042,7 @@ const en: Messages = {
     awakeningProgressToastOk: "Progress saved.",
     awakeningProgressToast409: "This act was already recorded.",
     awakeningProgressToast400: "Wrong order or invalid request.",
-    awakeningProgressToastNetwork: "Could not save. Try again.",
+    awakeningProgressToastNetwork: "Could not save. Resubmit.",
     awakeningActsLoadError: "Could not load act info.",
     healingAwakeningProgressHeading: "Awakening progress (server)",
     healingAwakeningProgressPct: "Progress {n}%",
@@ -3869,7 +4063,7 @@ const en: Messages = {
     healingAwakeningBlockedAlreadyComplete: "This act is already recorded.",
     healingActLockPrerequisite: "Complete the previous act in order first.",
     healingActLockAlreadyComplete: "This act is already recorded.",
-    pathProgressBlockedCooldown: "Please try again in a moment. (Cooldown)",
+    pathProgressBlockedCooldown: "Please wait a moment, then resubmit. (Cooldown)",
     pathProgressBlockedPhase: "Complete the previous step first to continue.",
     healingActsOverallProgressAria: "Awakening acts completion progress",
     healingActsOverallProgressCaption: "Acts recorded",
@@ -3924,7 +4118,7 @@ const en: Messages = {
     loading: "Loading result…",
     noAnswers: "Complete the 50 questions to see your result.",
     backToAssessment: "Go to assessment",
-    apiError: "Could not load result. Please try again later.",
+    apiError: "Could not load result. Please wait and resubmit.",
     dimensionLabels: {
       core: "Self-worth",
       compassion: "Self-compassion",
@@ -3950,7 +4144,7 @@ const en: Messages = {
     errorStartRun: "Could not start run.",
     errorSignIn: "Please sign in.",
     errorAlreadySubmitted: "Already submitted or session expired.",
-    errorSubmitFailed: "Submission failed. Please try again.",
+    errorSubmitFailed: "Submission failed. Please resubmit.",
     heroTitle: "One step today, in the Arena.",
     otherLabel: "Other (Write your own)",
     otherRecorded: "Other recorded.",
@@ -3995,7 +4189,7 @@ const en: Messages = {
     step7Title: "Step 7 · Complete",
     step7Body: "Saved. Use the button below to go to the next scenario.",
     choiceLabel: "Choice",
-    scenarioCompletedToast: "Scenario completed",
+    scenarioCompletedToast: "Selection recorded.",
     scenarioNotFound: "Scenario not found.",
     scenarioNotFoundHint: "Try another scenario or refresh.",
     pastScenariosHeading: "Past scenarios",
@@ -4019,8 +4213,104 @@ const en: Messages = {
     arenaRunErrorMainRegionAria: "Arena run — error",
     arenaRunErrorTitle: "Something went wrong",
     arenaRunErrorDescription:
-      "We couldn’t load the Arena run. Check your connection and try again.",
+      "We couldn’t load the Arena run. Check your connection and resubmit.",
     arenaRunErrorHint: "If this keeps happening, refresh the page.",
+    eliteSetupRoleLabel: "Your role",
+    eliteSetupPressureLabel: "Pressure",
+    eliteSetupTradeoffLabel: "The dilemma",
+    eliteInitialDecisionHint:
+      "Choose your stance below, then a short debrief connects it to your next move.",
+    elitePostFlowRegionAria: "Elite scenario debrief",
+    elitePostConfirmTitle: "Stance recorded",
+    elitePostConfirmLead: "This is your working stance for this round. Next, name briefly why it fits.",
+    elitePostConfirmNext: "Continue",
+    elitePostExplainTitle: "Why this stance?",
+    elitePostExplainPrompt: "In a sentence or two, why does this stance feel right here? (Optional)",
+    elitePostExplainOptionalLabel: "A short note is enough",
+    elitePostExplainPlaceholder: "e.g. Credibility matters more than speed right now.",
+    elitePostExplainSubmit: "Continue",
+    elitePostIntegrationTitle: "Leadership integration",
+    elitePostIntegrationNext: "Continue",
+    elitePostBridgeTitle: "Forward",
+    elitePostBridgeDefault:
+      "In your next conversation, meeting, or decision, try one deliberate move from what you just named.",
+    elitePostBridgeNext: "Finish round",
+    elitePostCompleteTitle: "Round complete",
+    elitePostCompleteBody: "You are set. Continue to the next scenario when you are ready.",
+    elitePostXpLine: "This round: +{xp} XP recorded",
+    eliteMirrorTitle: "Pattern Mirror",
+    eliteMirrorLead:
+      "Below is pattern exit data for this run and accumulated pattern-window state as recorded. No interpretation or evaluation.",
+    eliteMirrorEmpty: "No prior-run data is available to display.",
+    eliteMirrorContinue: "Continue",
+    eliteMirrorLoadError: "Could not load mirror data.",
+    eliteSituationUpdateHeader: "SITUATION UPDATE",
+    eliteDecisionRequiredHeader: "DECISION REQUIRED",
+    eliteRunStepAdvanceError: "Could not record this step. Try again in a moment.",
+    eliteForcedTradeoffCostLabel: "COST",
+    eliteV2ErrorNotConfiguredTitle: "Escalation data missing",
+    eliteV2ErrorNotConfiguredBody:
+      "This scenario has no escalationBranches configured. Contact support or pick another scenario.",
+    eliteV2ErrorMissingBranchTitle: "No escalation branch for this choice",
+    eliteV2ErrorMissingBranchBody:
+      "escalationBranches has no entry for your primary choice id. The scenario data must be fixed.",
+    eliteV2ErrorInvalidCostTitle: "Invalid second-choice cost",
+    eliteV2ErrorInvalidCostBody:
+      "Each second_choices item must include a non-empty cost. Check the scenario dataset.",
+    eliteContractTitle: "Action Contract",
+    eliteContractIntro:
+      "These four fields lock a commitment someone could verify. Keep it close, specific, and fair—about the move, not a verdict on anyone’s character.",
+    eliteContractWhoLabel: "Who is one specific person affected by this pattern?",
+    eliteContractWhoHint: "Use a real name.",
+    eliteContractWhatLabel: "What is one conversation you have been avoiding with this person?",
+    eliteContractWhatHint: "Describe the situation, not the person.",
+    eliteContractHowLabel: "What is your first sentence?",
+    eliteContractHowInstruction: "Write exactly what you will say. No explanation.",
+    eliteContractHowResponsibilityLead: "Start with your honesty or responsibility, not accusation.",
+    eliteContractWhenLabel: "When will you start this conversation?",
+    eliteContractWhenHint: "Choose a near, real time.",
+    eliteContractWhoPlaceholder: "e.g., Jordan Park",
+    eliteContractWhatPlaceholder: "e.g., the timeline slip we have not named directly",
+    eliteContractHowPlaceholder: "e.g., “I’d like 15 minutes today to align on the handoff.”",
+    eliteContractWhenPlaceholder: "e.g., today after standup, or Thursday 9am",
+    eliteContractSubmit: "Submit contract",
+    eliteContractSubmitting: "Submitting…",
+    eliteContractLoadError: "Submit failed.",
+    eliteContractEnsureFailed: "Could not initialize the contract. Retry shortly.",
+    eliteContractCreating: "Preparing your action contract…",
+    eliteContractInitFailedTitle: "Action contract unavailable",
+    eliteContractPatternThresholdTitle: "Action contract not open yet",
+    eliteContractPatternThresholdBody:
+      "Qualifying exits for the same pattern family have not reached the threshold yet. This is expected—not an error. You can continue to the execution gate.",
+    eliteContractPatternThresholdContinue: "Continue to execution gate",
+    eliteContractRevisionRequired: "Revision required. Update the contract fields below and submit again.",
+    actionContractFollowupTitle: "Execution check-in",
+    actionContractFollowupLead: "A short check-in tied to your contract. This is not scoring or coaching.",
+    actionContractFollowupQuestion: "Did you start the conversation?",
+    actionContractFollowupYes: "Yes",
+    actionContractFollowupNo: "No",
+    actionContractFollowupFirst30Label: "What happened in the first 30 seconds?",
+    actionContractFollowupFirst30Placeholder: "Say what happened, in your own words.",
+    actionContractFollowupSubmit: "Submit",
+    actionContractFollowupSubmitting: "Submitting…",
+    actionContractFollowupError: "Could not submit. Try again shortly.",
+    eliteExecutionGateTitle: "Execution Gate",
+    eliteExecutionGateIntro:
+      "Verification is recorded according to procedure. Accepted evidence types and where to submit follow product policy. Your contract text below is shown exactly as authored.",
+    eliteExecutionContractHeading: "Submitted contract text",
+    eliteExecutionVerificationRecorded: "Verification is on file.",
+    eliteExecutionAwaitingVerification: "Awaiting verification outcome.",
+    eliteExecutionVerificationNotRecorded: "No verification on file.",
+    eliteExecutionUnderReview: "Under review.",
+    eliteExecutionAdditionalConfirmation: "Additional confirmation required.",
+    eliteExecutionAbandonedLead: "Execution verification is still pending.",
+    eliteExecutionResumeHint:
+      "To close this run, continue evidence submission or the verification path. Your commitment text remains as written below.",
+    eliteExecutionRawTextFallback: "(No contract text)",
+    eliteExecutionNextBlocked: "A recorded verification is required before moving to the next scenario.",
+    eliteExecutionLoadError: "Could not load execution state.",
+    eliteExecutionPatternThresholdDeferLine:
+      "A draft action contract opens when your pattern window meets the threshold. You can finish this run without submitted contract text for now.",
   },
   emotionalStats: {
     emptyMessage: "No records yet. Try Arena or chat to start.",

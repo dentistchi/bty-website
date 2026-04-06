@@ -1,0 +1,56 @@
+{
+  "id": "core_11_s2_consequence",
+  "title": "The Day Starts Teaching Something",
+  "level": 4,
+  "chain_stage": 2,
+  "context": {
+    "role": "Clinic Director",
+    "pressure": "Your decision is now shaping how the team interprets safety and responsibility.",
+    "narrative": "The day unfolds under your decision. The team adjusts, but not evenly. Some move faster, some become quieter. A small mistake happens—nothing catastrophic, but noticeable. No one says it directly, but the atmosphere has changed. The team is watching what you prioritize when things are not fully safe, and patients are reacting in ways that reflect your choice."
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Treat the issue as a one-off mistake and push the team to finish the day without further disruption.",
+      "archetype": "avoid",
+      "state_impact": {
+        "reputation": 1,
+        "trust": -2,
+        "self_narrative": -2,
+        "courage": -1
+      }
+    },
+    {
+      "id": "B",
+      "label": "Slow the pace further and explicitly reset safety expectations for the remaining schedule.",
+      "archetype": "structure",
+      "state_impact": {
+        "reputation": 0,
+        "trust": 1,
+        "self_narrative": 1,
+        "courage": 1
+      }
+    },
+    {
+      "id": "C",
+      "label": "Pause operations again and acknowledge to both staff and patients that the situation is not within safe limits.",
+      "archetype": "confront",
+      "state_impact": {
+        "reputation": -2,
+        "trust": 2,
+        "self_narrative": 2,
+        "courage": 2
+      }
+    }
+  ],
+  "questions": {
+    "level_2": "Who is carrying the cost of keeping things running right now?",
+    "level_3": "What standard is still real if you continue under these conditions?",
+    "level_4": "What are you teaching your team about what is acceptable under pressure?"
+  },
+  "next_map": {
+    "A": "core_11_s3_identity",
+    "B": "core_11_s3_identity",
+    "C": "core_11_s3_identity"
+  }
+}

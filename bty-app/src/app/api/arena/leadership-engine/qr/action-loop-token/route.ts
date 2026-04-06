@@ -33,13 +33,26 @@ export async function POST(req: NextRequest) {
     return out;
   }
 
-  const { data: contract } = await supabase
+  let { data: contract } = await supabase
     .from("bty_action_contracts")
-    .select("id, session_id, status")
+    .select("id, session_id, status, validation_approved_at, verified_at")
     .eq("user_id", user.id)
     .eq("session_id", runIdStr)
     .eq("status", "pending")
     .maybeSingle();
+
+  if (!contract) {
+    const second = await supabase
+      .from("bty_action_contracts")
+      .select("id, session_id, status, validation_approved_at, verified_at")
+      .eq("user_id", user.id)
+      .eq("session_id", runIdStr)
+      .eq("status", "approved")
+      .not("validation_approved_at", "is", null)
+      .is("verified_at", null)
+      .maybeSingle();
+    contract = second.data;
+  }
 
   if (!contract) {
     const out = NextResponse.json({ error: "no_pending_contract" }, { status: 409 });

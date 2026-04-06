@@ -1,8 +1,18 @@
 import { test, expect } from "@playwright/test";
+import { cleanupStaleE2EActionContractsBeforeTest } from "../helpers/cleanup-action-contracts";
+import { E2E_CONTRACT_EMAILS, E2E_CONTRACT_USER_IDS } from "../helpers/three-contract-users";
 
 const LOCALE = "en";
 
 test.describe("BTY Recovery flow", () => {
+  test.beforeEach(async ({ request }) => {
+    await cleanupStaleE2EActionContractsBeforeTest(request, {
+      userId: E2E_CONTRACT_USER_IDS.default,
+      email: E2E_CONTRACT_EMAILS.default,
+      label: "bty-recovery-flow:E2E_DEFAULT_USER",
+    });
+  });
+
   test("recovery entry screen visible; when prompt active, save navigates to history", async ({ page }) => {
     await page.goto(`/${LOCALE}/growth/recovery`, { waitUntil: "networkidle" });
 

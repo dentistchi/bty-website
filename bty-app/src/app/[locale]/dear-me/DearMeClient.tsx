@@ -68,7 +68,7 @@ export default function DearMeClient({ locale }: { locale: string }) {
       setReply(replyText);
       fetchHistory();
     } catch {
-      setError(lang === "ko" ? "연결에 실패했어요. 잠시 후 다시 시도해 주세요." : "Connection failed. Please try again.");
+      setError(lang === "ko" ? "연결에 실패했어요. 잠시 후 다시 시도해 주세요." : "Connection failed. Please resubmit.");
     } finally {
       setSubmitting(false);
     }

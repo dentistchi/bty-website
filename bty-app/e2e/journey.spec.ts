@@ -1,10 +1,20 @@
 import { expect, test } from "@playwright/test";
+import { cleanupStaleE2EActionContractsBeforeTest } from "./helpers/cleanup-action-contracts";
+import { E2E_CONTRACT_EMAILS, E2E_CONTRACT_USER_IDS } from "./helpers/three-contract-users";
 
 const COMEBACK_DAY = Number(process.env.E2E_COMEBACK_JOURNEY_DAY ?? 8);
 
 test.describe("Journey", () => {
   test.describe("default user flow", () => {
     test.use({ storageState: "e2e/.auth/user.json" });
+
+    test.beforeEach(async ({ request }) => {
+      await cleanupStaleE2EActionContractsBeforeTest(request, {
+        userId: E2E_CONTRACT_USER_IDS.default,
+        email: E2E_CONTRACT_EMAILS.default,
+        label: "journey-default:E2E_DEFAULT_USER",
+      });
+    });
 
     test("opens Journey from Growth and navigates to current day step", async ({ page }) => {
       await page.goto("/en/growth");

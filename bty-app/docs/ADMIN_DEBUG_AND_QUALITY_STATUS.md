@@ -61,8 +61,8 @@
 | Quality API | `bty-ai-core` `/api/quality/*` | summary, trends, health, seed |
 | Patch 생성 | `bty-ai-core` `patchGenerator.ts` | quality 이벤트 집계 → GPT로 rule_patches 등 생성 |
 | Patch API | `bty-ai-core` `/api/patch/*` | generate, latest, recent, apply |
-| Admin Quality 페이지 | `bty-website/bty-app` `admin/quality/page.tsx` | KPI, 트렌드, 패치 리포트 카드, health, seed |
-| Admin Quality/Patch 프록시 | `bty-website/bty-app` `api/admin/quality/[[...path]]`, `api/admin/patch/[[...path]]` | `NEXT_PUBLIC_BTY_AI_URL` + `ADMIN_API_KEY`로 bty-ai-core로 프록시 |
+| Admin Quality 페이지 | `bty-app` `src/app/[locale]/admin/quality/page.tsx` | KPI, 트렌드, 패치 리포트 카드, health, seed |
+| Admin Quality/Patch 프록시 | `bty-app` `src/app/api/admin/quality/[[...path]]`, `api/admin/patch/[[...path]]` | `NEXT_PUBLIC_BTY_AI_URL` + `ADMIN_API_KEY`로 bty-ai-core로 프록시 |
 | 주간 패치 타이머 | `bty-website/bty-patch-timer` `WeeklyPatchTimer.ts` | Azure Functions, 매주 월요일 8시 → `generatePatchSuggestions("7d")` → Teams 알림 (TEAMS_ADMIN_URL으로 admin/quality 링크) |
 
 즉, **에러 기록 → Quality 대시보드 → 패치 자동 생성·알림** 파이프라인은 **bty-website + bty-ai-core** 기준으로만 연결되어 있습니다.

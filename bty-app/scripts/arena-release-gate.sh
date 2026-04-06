@@ -3,13 +3,24 @@
 #
 # Requires:
 #   BASE_URL        — deploy origin, e.g. https://example.com (no trailing slash)
-#   E2E_EMAIL       — smoke user (same as Playwright E2E)
-#   E2E_PASSWORD
+#
+# Credentials (defaults match seedFixtureUser() in src/engine/integration/e2e-test-fixtures.service.ts):
+#   E2E_EMAIL       — optional; default e2e-fixture+bty@local.test
+#   E2E_PASSWORD    — optional; default E2eFixture-local-smoke-32chars-min!!
+#
+# Fixture DB state (onboarding complete, arena profile, scenario pool) — run before gate when possible:
+#   If NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL is set AND SUPABASE_SERVICE_ROLE_KEY is set,
+#   runs: npx tsx scripts/seed-arena-release-gate-fixture.ts
+#   Set SKIP_SEED_FIXTURE=1 to skip (e.g. DB already seeded; no service role in shell).
 #
 # Usage (local):
-#   BASE_URL=https://preview.example.com E2E_EMAIL=... E2E_PASSWORD=... ./scripts/arena-release-gate.sh
+#   cd bty-app && BASE_URL=https://preview.example.com ./scripts/arena-release-gate.sh
 #
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BTY_APP_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$BTY_APP_ROOT" || exit 1
 
 BASE="${BASE_URL:-}"
 BASE="${BASE%/}"
@@ -18,15 +29,27 @@ if [[ -z "$BASE" ]]; then
   exit 1
 fi
 
-EMAIL="${E2E_EMAIL:-}"
-PASSWORD="${E2E_PASSWORD:-}"
-if [[ -z "$EMAIL" || -z "$PASSWORD" ]]; then
-  echo "FAIL: E2E_EMAIL and E2E_PASSWORD are required (authenticated session/next + /run follow)"
-  exit 1
+# Default fixture account — must match seedFixtureUser / ensureFixtureAuthUser (same Supabase project as BASE_URL).
+DEFAULT_FIXTURE_EMAIL="e2e-fixture+bty@local.test"
+DEFAULT_FIXTURE_PASSWORD="E2eFixture-local-smoke-32chars-min!!"
+# Treat empty string (e.g. unset GitHub secret) as unset so defaults apply.
+EMAIL="${E2E_EMAIL:-$DEFAULT_FIXTURE_EMAIL}"
+PASSWORD="${E2E_PASSWORD:-$DEFAULT_FIXTURE_PASSWORD}"
+[[ -z "$EMAIL" ]] && EMAIL="$DEFAULT_FIXTURE_EMAIL"
+[[ -z "$PASSWORD" ]] && PASSWORD="$DEFAULT_FIXTURE_PASSWORD"
+
+SUPABASE_URL_EFFECTIVE="${NEXT_PUBLIC_SUPABASE_URL:-${SUPABASE_URL:-}}"
+if [[ -z "${SKIP_SEED_FIXTURE:-}" ]] && [[ -n "${SUPABASE_SERVICE_ROLE_KEY:-}" ]] && [[ -n "$SUPABASE_URL_EFFECTIVE" ]]; then
+  echo "=== 0) seedFixtureUser (fixture DB state for session/next + /bty-arena, not auth) ==="
+  export NEXT_PUBLIC_SUPABASE_URL="${NEXT_PUBLIC_SUPABASE_URL:-$SUPABASE_URL_EFFECTIVE}"
+  export SUPABASE_URL="${SUPABASE_URL:-$SUPABASE_URL_EFFECTIVE}"
+  npx --yes tsx scripts/seed-arena-release-gate-fixture.ts
+elif [[ -z "${SKIP_SEED_FIXTURE:-}" ]] && [[ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]]; then
+  echo "=== 0) seedFixtureUser skipped (no SUPABASE_SERVICE_ROLE_KEY; set it or SKIP_SEED_FIXTURE=1) ==="
 fi
 
 COOKIE_JAR="$(mktemp)"
-cleanup() { rm -f "$COOKIE_JAR" /tmp/arena-gate-*.json /tmp/arena-gate-headers.txt 2>/dev/null || true; }
+cleanup() { rm -f "$COOKIE_JAR" /tmp/arena-gate-*.json /tmp/arena-gate-headers.txt /tmp/arena-gate-login-headers.txt 2>/dev/null || true; }
 trap cleanup EXIT
 
 if command -v jq >/dev/null 2>&1; then
@@ -38,7 +61,7 @@ fi
 echo "=== BASE: $BASE ==="
 
 echo "=== 1) POST /api/auth/login ==="
-code="$(curl -sS -o /tmp/arena-gate-login.json -w "%{http_code}" -X POST \
+code="$(curl -sS -D /tmp/arena-gate-login-headers.txt -o /tmp/arena-gate-login.json -w "%{http_code}" -X POST \
   -H "Content-Type: application/json" \
   -d "$LOGIN_BODY" \
   -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
@@ -46,6 +69,11 @@ code="$(curl -sS -o /tmp/arena-gate-login.json -w "%{http_code}" -X POST \
 if [[ "$code" != "200" ]]; then
   echo "FAIL: login HTTP $code"
   head -c 500 /tmp/arena-gate-login.json 2>/dev/null || true
+  exit 1
+fi
+if ! grep -qi '^set-cookie:' /tmp/arena-gate-login-headers.txt 2>/dev/null; then
+  echo "FAIL: login 200 but no Set-Cookie header (auth contract requires session cookie on success)"
+  head -20 /tmp/arena-gate-login-headers.txt 2>/dev/null || true
   exit 1
 fi
 

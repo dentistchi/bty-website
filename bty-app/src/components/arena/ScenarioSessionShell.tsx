@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Top-level Arena session: next scenario via `GET /api/arena/session/next` ({@link getNextScenarioForSession}) + {@link buildArenaContext} through `GET /api/arena/session/context`,
+ * Top-level Arena session: next scenario via arena session router (`/api/arena/session/next` legacy or `/api/arena/n/session` when Pipeline N) + {@link buildArenaContext} through `GET /api/arena/session/context`,
  * {@link ScenarioCard} (catalog or synthetic mirror), choice → POST `/api/arena/session/choice`, toast + summary overlay.
  * Shell locale preference: `localStorage` key {@link ARENA_SHELL_LOCALE_KEY}.
  */
@@ -17,6 +17,10 @@ import { FeedbackPromptModal, FEEDBACK_SUBMITTED_EVENT } from "@/components/aren
 import { ScenarioCard } from "@/components/arena/ScenarioCard";
 import type { ChoiceConfirmedDetail } from "@/components/arena/ScenarioCard";
 import { SessionSummaryOverlay } from "@/components/arena/SessionSummaryOverlay";
+import {
+  getArenaPipelineDefaultForClient,
+  getArenaSessionRouterPath,
+} from "@/lib/bty/arena/arenaPipelineConfig";
 
 export const ARENA_SHELL_LOCALE_KEY = "bty_arena_shell_locale_v1" as const;
 
@@ -31,7 +35,7 @@ export type ScenarioSessionShellProps = {
   onBumpFeedbackPrompt?: () => void;
   onActiveScenarioChange?: (scenario: CatalogScenario | null) => void;
   onArenaEjected?: () => void;
-  /** Bump to force reload via `GET /api/arena/session/next` (e.g. `detail.reloadSession` on `next_scenario_requested`). */
+  /** Bump to force reload via arena session router (e.g. `detail.reloadSession` on `next_scenario_requested`). */
   sessionReloadKey?: number;
   /** When set to a string, skips `/api/arena/profile`. Omit or `undefined` while unknown so shell can fetch. */
   parentUserId?: string;
@@ -216,8 +220,9 @@ export function ScenarioSessionShell({
     setLoadError(null);
     const loc = shellLocale;
     try {
+      const sessionPath = getArenaSessionRouterPath(getArenaPipelineDefaultForClient());
       const [nextRes, ctxRes] = await Promise.all([
-        fetch(`/api/arena/session/next?locale=${encodeURIComponent(loc)}`, { credentials: "include" }),
+        fetch(`${sessionPath}?locale=${encodeURIComponent(loc)}`, { credentials: "include" }),
         fetch("/api/arena/session/context", { credentials: "include" }),
       ]);
       const nextJson = (await nextRes.json().catch(() => ({}))) as NextApi;

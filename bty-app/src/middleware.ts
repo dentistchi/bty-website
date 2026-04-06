@@ -4,7 +4,13 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { expireAuthCookiesHard, reassertAuthCookiesPathRoot } from "@/lib/bty/cookies/authCookies";
+import {
+  authCookieSecureForRequest,
+  expireAuthCookiesHard,
+  reassertAuthCookiesPathRoot,
+} from "@/lib/bty/cookies/authCookies";
+import { getArenaPipelineDefault } from "@/lib/bty/arena/arenaPipelineConfig";
+import { userHasBlockingArenaActionContract } from "@/lib/bty/arena/blockingArenaActionContract";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -44,6 +50,7 @@ function isPublicPath(pathname: string) {
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const cookieSecure = authCookieSecureForRequest(req);
 
   if (pathname === "/") {
     return NextResponse.redirect(new URL("/en", req.url), 307);
@@ -100,7 +107,7 @@ export async function middleware(req: NextRequest) {
       res.headers.set("Clear-Site-Data", '"cookies"');
       res.headers.set("x-mw-hit", "1");
 
-      expireAuthCookiesHard(req, res);
+      expireAuthCookiesHard(req, res, { secure: cookieSecure });
       return res;
     } catch {
       return NextResponse.redirect(new URL(`/${locale}/bty/login`, req.url), 303);
@@ -130,7 +137,7 @@ export async function middleware(req: NextRequest) {
               resLogin.cookies.set(name, value, {
                 path: "/",
                 sameSite: "lax",
-                secure: true,
+                secure: cookieSecure,
                 httpOnly: true,
                 ...(typeof maxAge === "number" ? { maxAge } : {}),
                 ...(expires && !Number.isNaN(expires.getTime()) ? { expires } : {}),
@@ -180,7 +187,7 @@ export async function middleware(req: NextRequest) {
             res.cookies.set(name, value, {
               path: "/",
               sameSite: "lax",
-              secure: true,
+              secure: cookieSecure,
               httpOnly: true,
               ...(typeof maxAge === "number" ? { maxAge } : {}),
               ...(expires && !Number.isNaN(expires.getTime()) ? { expires } : {}),
@@ -239,6 +246,26 @@ export async function middleware(req: NextRequest) {
         jump.headers.set("x-mw-user", "1");
         jump.headers.set("x-mw-onboarding", "done");
         return jump;
+      }
+    }
+
+    /** `ENGINE_ARCHITECTURE_V1.md` §6.3 — Pipeline N: open contract → My Page resolution (307). */
+    if (
+      getArenaPipelineDefault() === "new" &&
+      locale &&
+      (pathname === `/${locale}/bty-arena` || pathname.startsWith(`/${locale}/bty-arena/`))
+    ) {
+      const blocking = await userHasBlockingArenaActionContract(supabase, user.id);
+      if (blocking) {
+        const dest = new URL(`/${locale}/bty`, req.url);
+        dest.searchParams.set("arena_contract", "resolve");
+        const redirect = NextResponse.redirect(dest, 307);
+        reassertAuthCookiesPathRoot(req, redirect);
+        redirect.headers.set("x-mw-hit", "1");
+        redirect.headers.set("x-mw-user", "1");
+        redirect.headers.set("x-arena-pipeline", "new");
+        redirect.headers.set("x-arena-contract-gate", "resolve");
+        return redirect;
       }
     }
 

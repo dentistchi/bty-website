@@ -3,6 +3,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { stableMirrorPoolRowId } from "@/lib/bty/arena/stableMirrorPoolRowId";
 import {
   generateMirror,
   getMirrorScenarios,
@@ -70,6 +71,7 @@ describe("mirror-scenario.service", () => {
       await getMirrorScenarios("u1", { from } as unknown as SupabaseClient);
       expect(upsert).toHaveBeenCalledTimes(1);
       expect(upsert.mock.calls[0][0]).toMatchObject({
+        id: stableMirrorPoolRowId("u1", "doctor_chronic_tension_v1"),
         origin_scenario_id: "doctor_chronic_tension_v1",
       });
     });

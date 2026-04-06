@@ -38,6 +38,9 @@ step() {
 step "1) Lint"
 npm run lint || fail "1) Lint"
 
+step "1b) Terminology lint (G-B11)"
+node scripts/terminology-lint.mjs || fail "1b) Terminology lint (G-B11)"
+
 step "2) Test"
 npm run test || fail "2) Test"
 

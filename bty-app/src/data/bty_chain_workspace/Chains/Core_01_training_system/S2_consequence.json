@@ -1,0 +1,56 @@
+{
+  "id": "core_01_s2_consequence",
+  "title": "The Report Starts Teaching the Wrong Lesson",
+  "level": 3,
+  "chain_stage": 2,
+  "context": {
+    "role": "Regional Director",
+    "pressure": "Your decision is now shaping what local leaders believe counts as accountability.",
+    "narrative": "A few days later, the story has started to travel. Office leaders are repeating some version of it: either 'people need to be more careful' or 'corporate won't let us tell the truth anyway.' The two staff members have gone quieter. The office manager is watching whether you really intend to let system decisions be named alongside employee mistakes. Without saying it directly, everyone is learning what kind of accountability survives pressure in your region."
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Let the local version of the story stand and move on before the issue grows into a bigger leadership conflict.",
+      "archetype": "avoid",
+      "state_impact": {
+        "reputation": 1,
+        "trust": -2,
+        "self_narrative": -1,
+        "courage": -1
+      }
+    },
+    {
+      "id": "B",
+      "label": "Send a follow-up note clarifying that both individual execution and training design are now under review.",
+      "archetype": "structure",
+      "state_impact": {
+        "reputation": 0,
+        "trust": 1,
+        "self_narrative": 1,
+        "courage": 1
+      }
+    },
+    {
+      "id": "C",
+      "label": "Call the office manager directly and tell them the report cannot teach staff that system cuts disappear when failure shows up.",
+      "archetype": "confront",
+      "state_impact": {
+        "reputation": -1,
+        "trust": 1,
+        "self_narrative": 2,
+        "courage": 2
+      }
+    }
+  ],
+  "questions": {
+    "level_2": "What in this office is still worth protecting besides your own position?",
+    "level_3": "If the system disappears from the story now, what standard are you actually leading?",
+    "level_4": "What will your managers believe they are allowed to hide the next time pressure produces failure?"
+  },
+  "next_map": {
+    "A": "core_01_s3_identity",
+    "B": "core_01_s3_identity",
+    "C": "core_01_s3_identity"
+  }
+}

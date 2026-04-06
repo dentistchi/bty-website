@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { cookies as nextCookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { writeSupabaseAuthCookies } from "@/lib/bty/cookies/authCookies";
+import { authCookieSecureForRequest, writeSupabaseAuthCookies } from "@/lib/bty/cookies/authCookies";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -52,7 +52,7 @@ export async function getSupabaseServerWithCookieCapture(req: NextRequest): Prom
   return {
     supabase,
     applyCookiesToResponse(res) {
-      writeSupabaseAuthCookies(res, captured);
+      writeSupabaseAuthCookies(res, captured, { secure: authCookieSecureForRequest(req) });
     },
   };
 }

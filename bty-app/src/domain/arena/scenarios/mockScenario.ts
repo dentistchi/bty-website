@@ -13,6 +13,8 @@ export const patientComplaintScenario: ArenaScenario = {
   caseTag: "PATIENT TRUST",
   title: "Patient Complaint: Revised Estimate",
   difficulty: "Moderate",
+  difficulty_level: 3,
+  difficulty_label: "Internal conflict, competing values",
   description: [
     "The patient believes the final estimate is higher than previously explained.",
     "Front desk and clinical explanations are not aligned.",
@@ -38,6 +40,92 @@ export const patientComplaintScenario: ArenaScenario = {
       subtitle: "Reduce emotional heat before detailed correction.",
     },
   ],
+  escalationBranches: {
+    A: {
+      escalation_text:
+        "The patient crosses their arms; your clarity lands as pressure, and the front-desk rumor about surprise fees now sits in the room.",
+      pressure_increase: 0.55,
+      second_choices: [
+        {
+          id: "X",
+          label: "Name the tension and invite them to correct your understanding.",
+          cost: "Time and a softer authority stance.",
+          pattern_family: "repair_avoidance",
+          direction: "entry",
+        },
+        {
+          id: "Y",
+          label: "Re-anchor only in fee policy and schedule a concrete next step.",
+          cost: "Warmth in the relationship short term.",
+          pattern_family: "ownership_escape",
+          direction: "exit",
+        },
+        {
+          id: "Z",
+          label: "Pause clinical detail and hand off to a finance conversation with a witness.",
+          cost: "Continuity of care narrative.",
+          pattern_family: "delegation_deflection",
+          direction: "entry",
+        },
+      ],
+    },
+    B: {
+      escalation_text:
+        "The patient hears 'policy' as dismissal; the line between structure and coldness thins, and staff are watching how you hold the boundary.",
+      pressure_increase: 0.62,
+      second_choices: [
+        {
+          id: "X",
+          label: "Acknowledge the emotional cost before restating the policy line.",
+          cost: "Perceived speed of resolution.",
+          pattern_family: "explanation_substitution",
+          direction: "entry",
+        },
+        {
+          id: "Y",
+          label: "Offer one bounded exception path and document it.",
+          cost: "Precedent risk with the team.",
+          pattern_family: "future_deferral",
+          direction: "exit",
+        },
+        {
+          id: "Z",
+          label: "Move the conversation to a private room and slow the pace.",
+          cost: "Chair time and schedule pressure.",
+          pattern_family: "repair_avoidance",
+          direction: "entry",
+        },
+      ],
+    },
+    C: {
+      escalation_text:
+        "De-escalation reads as avoidance to the patient; they want a commitment now, and the waiting room clock is loud.",
+      pressure_increase: 0.48,
+      second_choices: [
+        {
+          id: "X",
+          label: "Name the tradeoff and ask what commitment would feel fair to them.",
+          cost: "Exposure to a negotiation.",
+          pattern_family: "ownership_escape",
+          direction: "entry",
+        },
+        {
+          id: "Y",
+          label: "Set a short timer: one decision now, one follow-up item scheduled.",
+          cost: "Perceived rigidity.",
+          pattern_family: "future_deferral",
+          direction: "exit",
+        },
+        {
+          id: "Z",
+          label: "Bring in a neutral third voice (e.g. office manager) to align on next steps.",
+          cost: "Coordination overhead.",
+          pattern_family: "delegation_deflection",
+          direction: "entry",
+        },
+      ],
+    },
+  },
   reinforcementChoices: [
     {
       id: "X",

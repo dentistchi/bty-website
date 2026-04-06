@@ -1,20 +1,21 @@
 /**
- * GET /api/bty-arena/scenario — 404·200.
+ * GET /api/bty-arena/scenario — 404·200·400 (no random / legacy).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "./route";
 
-const mockGetScenarioById = vi.fn();
-const mockGetRandomScenario = vi.fn();
-vi.mock("@/lib/bty/scenario/engine", () => ({
-  getScenarioById: (...args: unknown[]) => mockGetScenarioById(...args),
-  getRandomScenario: (...args: unknown[]) => mockGetRandomScenario(...args),
+const mockReader = {};
+const mockLoad = vi.fn();
+
+vi.mock("@/lib/bty/arena/scenarioPayloadFromDb", () => ({
+  getSupabaseScenarioReader: vi.fn(() => mockReader),
+  loadArenaScenarioPayloadFromDb: (...args: unknown[]) => mockLoad(...args),
 }));
 
-function makeRequest(params?: { id?: string; exclude?: string }): Request {
+function makeRequest(params?: { id?: string; locale?: string }): Request {
   const url = new URL("http://localhost/api/bty-arena/scenario");
   if (params?.id) url.searchParams.set("id", params.id);
-  if (params?.exclude) url.searchParams.set("exclude", params.exclude);
+  if (params?.locale) url.searchParams.set("locale", params.locale);
   return new Request(url.toString(), { method: "GET" });
 }
 
@@ -23,45 +24,46 @@ describe("GET /api/bty-arena/scenario", () => {
     vi.clearAllMocks();
   });
 
-  it("returns 404 when scenario not found by id", async () => {
-    mockGetScenarioById.mockReturnValue(null);
+  it("returns 400 when id missing (random disabled)", async () => {
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.ok).toBe(false);
+    expect(data.code).toBe("legacy_catalog_blocked");
+    expect(mockLoad).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when scenario not found in DB", async () => {
+    mockLoad.mockResolvedValue(null);
 
     const res = await GET(makeRequest({ id: "missing" }));
     expect(res.status).toBe(404);
     const data = await res.json();
     expect(data.ok).toBe(false);
     expect(data.error).toBe("Scenario not found");
-    expect(mockGetScenarioById).toHaveBeenCalledWith("missing");
+    expect(mockLoad).toHaveBeenCalledWith(mockReader, "missing", "en");
   });
 
   it("returns 200 with scenario when id provided", async () => {
-    const scenario = { id: "s1", title: "Test", body: "Body" };
-    mockGetScenarioById.mockReturnValue(scenario);
+    const scenario = {
+      scenarioId: "s1",
+      title: "Test",
+      context: "Body",
+      choices: [],
+    };
+    mockLoad.mockResolvedValue(scenario);
 
     const res = await GET(makeRequest({ id: "s1" }));
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.ok).toBe(true);
     expect(data.scenario).toEqual(scenario);
-    expect(mockGetRandomScenario).not.toHaveBeenCalled();
   });
 
-  it("returns 200 with scenario when no id (random)", async () => {
-    const scenario = { id: "r1", title: "Random", body: "Content" };
-    mockGetRandomScenario.mockReturnValue(scenario);
+  it("passes ko locale to loader", async () => {
+    mockLoad.mockResolvedValue({ scenarioId: "s1", title: "T", context: "C", choices: [] });
 
-    const res = await GET(makeRequest());
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.ok).toBe(true);
-    expect(data.scenario).toEqual(scenario);
-    expect(mockGetRandomScenario).toHaveBeenCalledWith([]);
-  });
-
-  it("passes exclude param to getRandomScenario", async () => {
-    mockGetRandomScenario.mockReturnValue({ id: "r2", title: "R2" });
-
-    await GET(makeRequest({ exclude: "a,b,c" }));
-    expect(mockGetRandomScenario).toHaveBeenCalledWith(["a", "b", "c"]);
+    await GET(makeRequest({ id: "s1", locale: "ko" }));
+    expect(mockLoad).toHaveBeenCalledWith(mockReader, "s1", "ko");
   });
 });

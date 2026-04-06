@@ -35,5 +35,9 @@ export default async function Page({ searchParams, params }: Props) {
         ? nextParam[0]
         : "";
 
-  return <LoginClient nextPath={next ?? ""} locale={locale} />;
+  const errParam = sp.error;
+  const oauthError =
+    typeof errParam === "string" ? errParam : Array.isArray(errParam) ? errParam[0] : undefined;
+
+  return <LoginClient nextPath={next ?? ""} locale={locale} oauthError={oauthError} />;
 }

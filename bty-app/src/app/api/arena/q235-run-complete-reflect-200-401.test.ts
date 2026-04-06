@@ -24,6 +24,18 @@ vi.mock("@/lib/bty/arena/weeklyQuest", () => ({
   REFLECTION_QUEST_BONUS_XP: 15,
 }));
 
+vi.mock("@/lib/supabase-admin", () => ({
+  getSupabaseAdmin: vi.fn(() => ({})),
+}));
+
+vi.mock("@/lib/bty/action-contract/ensureActionContractForArenaRun", () => ({
+  ensureActionContractForArenaRun: vi.fn().mockResolvedValue({
+    ok: true,
+    contractId: null,
+    created: false,
+  }),
+}));
+
 const { getSupabaseServerClient } = await import(
   "@/lib/bty/arena/supabaseServer"
 );

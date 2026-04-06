@@ -88,6 +88,7 @@ async function fetchSessionAfterLogin(retries = 3, delayMs = 120): Promise<Sessi
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const localeForNext = pathname?.startsWith("/ko") ? "ko" : "en";
   // ✅ 로그인/공개 페이지에서는 세션 자동조회 자체를 하지 않음 (401 노이즈 제거)
   // pathname이 아직 null이면(SSR/첫 클라이언트 틱) 세션 조회를 건너뜀 — CI/E2E에서 폼이 막히지 않게 함
   const skipInitialSessionCheck =
@@ -189,7 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (mounted.current) setUser(j.user);
 
       // 4) 이동 - next 검증 후 서버 after-login을 거쳐 리다이렉트 (redirect loop 방지)
-      const nextSafe = sanitizeNext(next);
+      const nextSafe = sanitizeNext(next, localeForNext);
       window.location.assign(`/api/auth/after-login?next=${encodeURIComponent(nextSafe)}`);
     } catch (e: any) {
       if (mounted.current) {
@@ -199,7 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       if (mounted.current) setLoading(false);
     }
-  }, []);
+  }, [localeForNext]);
 
   const register = useCallback(async (email: string, password: string, next?: string) => {
     setError(null);
@@ -254,7 +255,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (mounted.current) setUser(j.user);
 
       // 4) 이동 - next 검증 후 서버 after-login을 거쳐 리다이렉트 (redirect loop 방지)
-      const nextSafe = sanitizeNext(next);
+      const nextSafe = sanitizeNext(next, localeForNext);
       window.location.assign(`/api/auth/after-login?next=${encodeURIComponent(nextSafe)}`);
     } catch (e: any) {
       if (mounted.current) {
@@ -264,7 +265,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       if (mounted.current) setLoading(false);
     }
-  }, []);
+  }, [localeForNext]);
 
   const logout = useCallback(async () => {
     // 서버에 logout route가 있으면 호출해도 좋지만, 지금은 쿠키 기반이라

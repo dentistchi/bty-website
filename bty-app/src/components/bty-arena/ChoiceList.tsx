@@ -10,9 +10,17 @@ export type ChoiceListProps = {
   choices: ScenarioChoice[];
   selectedChoiceId: string | null;
   onSelect: (choiceId: string) => void;
+  /** When true, hide internal intent slug (canonical elite / cleaner labels). */
+  hideIntentSlug?: boolean;
 };
 
-export function ChoiceList({ locale, choices, selectedChoiceId, onSelect }: ChoiceListProps) {
+export function ChoiceList({
+  locale,
+  choices,
+  selectedChoiceId,
+  onSelect,
+  hideIntentSlug = false,
+}: ChoiceListProps) {
   const lang: Locale = locale === "ko" || locale === "en" ? locale : "en";
   const t = getMessages(lang).arenaRun;
   const isKo = lang === "ko";
@@ -44,9 +52,20 @@ export function ChoiceList({ locale, choices, selectedChoiceId, onSelect }: Choi
             }}
           >
             <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
-              {t.choiceLabel} {c.choiceId} · {c.intent}
+              {hideIntentSlug ? (
+                <>
+                  {t.choiceLabel} {c.choiceId}
+                </>
+              ) : (
+                <>
+                  {t.choiceLabel} {c.choiceId} · {c.intent}
+                </>
+              )}
             </div>
             <div style={{ fontSize: 15 }}>{displayLabel}</div>
+            {c.choiceSubtext != null && c.choiceSubtext.trim() !== "" ? (
+              <div style={{ fontSize: 13, marginTop: 8, lineHeight: 1.45, opacity: 0.82 }}>{c.choiceSubtext}</div>
+            ) : null}
           </button>
         );
       })}

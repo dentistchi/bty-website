@@ -1,0 +1,24 @@
+{
+  "lockDir": "docs/terminology-locks",
+  "excludePathSubstrings": [
+    "/node_modules/",
+    "/.next/",
+    "/storybook-static/",
+    "/e2e/",
+    "docs/terminology-locks/",
+    "scripts/terminology-lint.mjs"
+  ],
+  "excludeFileSuffixes": [".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx", ".smoke.test.ts"],
+  "narrativeExcludeSubstrings": [
+    "/lib/bty/scenario/legacy/bundledScenarios.ts",
+    "/engine/scenario/"
+  ],
+  "systemApiNamingSubstrings": [
+    "/supabase/migrations/",
+    "/src/app/api/",
+    "/src/middleware.ts",
+    "/src/lib/bty/validator/"
+  ],
+  "i18nPathSubstrings": ["/src/lib/i18n.ts"],
+  "matchSingleWordSubstitutions": false
+}

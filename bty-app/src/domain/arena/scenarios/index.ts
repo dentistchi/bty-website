@@ -1,12 +1,16 @@
 export type {
+  ArenaDifficultyLevel,
   ArenaOutcomeMeta,
   ArenaScenario,
+  EscalationBranch,
   HiddenStat,
   PrimaryChoice,
   ReinforcementChoice,
   ResolveOutcome,
   ScenarioDifficulty,
+  SecondChoice,
 } from "./types";
+export { DIFFICULTY_ESCALATION_INTENSITY } from "./difficultyEscalationIntensity";
 export {
   ARENA_HIDDEN_STAT_ORDER,
   getArenaOutcome,
@@ -35,6 +39,8 @@ export {
   arenaScenarioReinforcementChoicesRowFromUnknown,
 } from "./arenaScenarioMissionChoiceRowsFromUnknown";
 export { arenaScenarioFromUnknown } from "./arenaScenarioFromUnknown";
+export { arenaDifficultyLevelFromUnknown } from "./arenaDifficultyLevelFromUnknown";
+export { arenaEscalationBranchesFromUnknown } from "./arenaEscalationFromUnknown";
 export { arenaScenarioDifficultyFromUnknown } from "./arenaScenarioDifficultyFromUnknown";
 export {
   ARENA_SCENARIO_ID_MAX_LENGTH,

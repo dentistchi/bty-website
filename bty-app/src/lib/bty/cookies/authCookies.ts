@@ -5,11 +5,10 @@ import type { NextRequest, NextResponse } from "next/server";
  *
  * - **발급**: 모든 인증 쿠키는 반드시 Path=/, domain 미설정(host-only).
  *   Supabase options.path/domain 은 무시하고, maxAge/expires 만 허용.
+ * - **Secure**: HTTPS 또는 x-forwarded-proto=https 일 때만 `secure: true`.
+ *   로컬 HTTP(E2E `http://127.0.0.1`)에서는 `secure: false` — 그렇지 않으면 브라우저가 Set-Cookie 를 버려 세션이 안 잡힘.
  * - **만료**: 로그인 직전·로그아웃·세션 POST 시에만 expireAuthCookiesHard 호출.
- *   만료 시에도 Path=/ 와 /api 만 사용, domain 미설정.
- * - **보호된 페이지**: 매 요청마다 reassertAuthCookiesPathRoot 로 기존 쿠키를 Path=/ 로 재설정만 함 (만료 아님).
- * - **디버그 헤더**: x-auth-expire-*, x-cookie-writer, x-auth-set-cookie-count, x-auth-reassert-count 등은
- *   배포/검증용으로 유지. 필요 시 프로덕션에서 제거 가능.
+ * - **보호된 페이지**: reassertAuthCookiesPathRoot 로 Path=/ 재설정.
  */
 
 export const AUTH_BASE = "sb-mveycersmqfiuddslnrj-auth-token";
@@ -19,16 +18,31 @@ export const AUTH_COOKIE_NAMES = [
   `${AUTH_BASE}.1`,
   `${AUTH_BASE}.2`,
   `${AUTH_BASE}.3`,
-];
+] as const;
+
+/**
+ * Use the same flag for set / expire / reassert on this request (HTTP dev vs HTTPS prod).
+ */
+export function authCookieSecureForRequest(req: NextRequest): boolean {
+  const forwarded = req.headers.get("x-forwarded-proto");
+  if (forwarded === "https") return true;
+  if (forwarded === "http") return false;
+  return req.nextUrl.protocol === "https:";
+}
+
+type CookieWriteOpts = { secure: boolean };
 
 /** 요청에 있는 인증 쿠키를 응답에 Path=/ 로 다시 씀 (다른 path로 덮어쓰여지는 것 방지) */
-export function reassertAuthCookiesPathRoot(req: NextRequest, res: NextResponse) {
+export function reassertAuthCookiesPathRoot(req: NextRequest, res: NextResponse, opts?: CookieWriteOpts) {
+  const secure = opts?.secure ?? authCookieSecureForRequest(req);
   const all = req.cookies.getAll();
-  const auth = all.filter((c) => AUTH_COOKIE_NAMES.includes(c.name));
+  const known = AUTH_COOKIE_NAMES as readonly string[];
+  const auth = all.filter((c) => known.includes(c.name));
   if (auth.length === 0) return;
-  const opts = { path: "/" as const, sameSite: "lax" as const, secure: true, httpOnly: true };
-  auth.forEach((c) => res.cookies.set(c.name, c.value, opts));
+  const cookieOpts = { path: "/" as const, sameSite: "lax" as const, secure, httpOnly: true };
+  auth.forEach((c) => res.cookies.set(c.name, c.value, cookieOpts));
   res.headers.set("x-auth-reassert-count", String(auth.length));
+  res.headers.set("x-auth-cookie-secure", secure ? "1" : "0");
 }
 
 type SupabaseCookie = { name: string; value: string; options?: Record<string, unknown> };
@@ -47,24 +61,21 @@ function pickDate(v: unknown): Date | undefined {
 }
 
 /**
- * ✅ ALWAYS write cookies as:
- * - host-only (NO domain)
- * - Path=/
- * - SameSite=Lax, Secure, HttpOnly
- * - keep only expires/maxAge if provided
+ * Write Supabase SSR auth cookies. Pass `secure` from {@link authCookieSecureForRequest} for HTTP local dev.
  */
-export function writeSupabaseAuthCookies(res: NextResponse, cookies: SupabaseCookie[]) {
+export function writeSupabaseAuthCookies(res: NextResponse, cookies: SupabaseCookie[], opts?: CookieWriteOpts) {
+  const secure = opts?.secure ?? true;
   let count = 0;
 
   for (const c of cookies) {
-    const opts = (c.options ?? {}) as Record<string, unknown>;
-    const maxAge = pickNumber(opts.maxAge);
-    const expires = pickDate(opts.expires);
+    const o = (c.options ?? {}) as Record<string, unknown>;
+    const maxAge = pickNumber(o.maxAge);
+    const expires = pickDate(o.expires);
 
     res.cookies.set(c.name, String(c.value ?? ""), {
       path: "/",
       sameSite: "lax",
-      secure: true,
+      secure,
       httpOnly: true,
       ...(typeof maxAge === "number" ? { maxAge } : {}),
       ...(expires ? { expires } : {}),
@@ -75,14 +86,14 @@ export function writeSupabaseAuthCookies(res: NextResponse, cookies: SupabaseCoo
 
   res.headers.set("x-cookie-writer", "normalized");
   res.headers.set("x-auth-set-cookie-count", String(count));
+  res.headers.set("x-auth-cookie-secure", secure ? "1" : "0");
 }
 
 /**
- * ✅ HARD expire: 쿠키는 이제 Path=/ 또는 Path=/api 로만 발급되므로
- * 만료도 "/" 와 "/api" 만 사용. locale path 제거 → Set-Cookie 경고/노출 감소.
- * domain 미설정(host-only).
+ * HARD expire: Path=/ 및 /api. `secure` must match how cookies were issued.
  */
-export function expireAuthCookiesHard(_req: NextRequest, res: NextResponse) {
+export function expireAuthCookiesHard(req: NextRequest, res: NextResponse, opts?: CookieWriteOpts) {
+  const secure = opts?.secure ?? authCookieSecureForRequest(req);
   const paths = ["/", "/api"];
 
   for (const name of AUTH_COOKIE_NAMES) {
@@ -91,7 +102,7 @@ export function expireAuthCookiesHard(_req: NextRequest, res: NextResponse) {
         path,
         expires: new Date(0),
         maxAge: 0,
-        secure: true,
+        secure,
         httpOnly: true,
         sameSite: "lax",
       });
@@ -100,4 +111,5 @@ export function expireAuthCookiesHard(_req: NextRequest, res: NextResponse) {
 
   res.headers.set("x-auth-expire-cookie-names", AUTH_COOKIE_NAMES.join(","));
   res.headers.set("x-auth-expire-paths", paths.join(","));
+  res.headers.set("x-auth-cookie-secure", secure ? "1" : "0");
 }

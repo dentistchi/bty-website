@@ -30,6 +30,7 @@ export default async function Page({ params, searchParams }: Props) {
 
   const arenaActionLoop = firstSearchParam(sp?.arena_action_loop);
   const aalo = firstSearchParam(sp?.aalo);
+  const actionContractResolveFocus = firstSearchParam(sp?.arena_contract) === "resolve";
 
   return (
     <ScreenShell
@@ -47,6 +48,7 @@ export default async function Page({ params, searchParams }: Props) {
         actionLoopQrCompletion={null}
         arenaActionLoopParam={arenaActionLoop ?? null}
         aaloParam={aalo ?? null}
+        actionContractResolveFocus={actionContractResolveFocus}
       />
 
       <p className="mt-4 px-1 text-center text-xs text-[#98A2B3]">

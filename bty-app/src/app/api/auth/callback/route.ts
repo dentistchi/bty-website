@@ -1,31 +1,24 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { expireAuthCookiesHard, writeSupabaseAuthCookies } from "@/lib/bty/cookies/authCookies";
+import { inferLocaleFromNextParam, sanitizeNextForRedirect } from "@/lib/auth/sanitize-next-for-redirect";
+import {
+  authCookieSecureForRequest,
+  expireAuthCookiesHard,
+  writeSupabaseAuthCookies,
+} from "@/lib/bty/cookies/authCookies";
 
 export const runtime = "nodejs";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-/** Default redirect when code is missing or exchange fails. Locale-aware. */
-function defaultLoginRedirect(origin: string, error?: string): URL {
-  const path = "/en/bty/login";
-  const u = new URL(path, origin);
-  if (error) u.searchParams.set("error", error);
+/** Default redirect when code is missing or exchange fails. Locale-aware via `next` hint. */
+function defaultLoginRedirect(origin: string, errorCode?: string, nextHint?: string | null): URL {
+  const locale = inferLocaleFromNextParam(nextHint);
+  const u = new URL(`/${locale}/bty/login`, origin);
+  if (errorCode) u.searchParams.set("error", errorCode);
   return u;
-}
-
-/** Sanitize next param for redirect (must start with /, avoid open redirect). */
-function sanitizeNext(raw: string | null, origin: string): string {
-  if (!raw || !raw.startsWith("/")) return "/en/bty/dashboard";
-  try {
-    const decoded = decodeURIComponent(raw);
-    if (!decoded.startsWith("/")) return "/en/bty/dashboard";
-    return decoded;
-  } catch {
-    return "/en/bty/dashboard";
-  }
 }
 
 export async function GET(req: NextRequest) {
@@ -35,7 +28,7 @@ export async function GET(req: NextRequest) {
   const origin = requestUrl.origin;
 
   if (!code) {
-    return NextResponse.redirect(defaultLoginRedirect(origin, "missing_code"), 302);
+    return NextResponse.redirect(defaultLoginRedirect(origin, "missing_code", next), 302);
   }
 
   const captured: Array<{ name: string; value: string; options?: Record<string, unknown> }> = [];
@@ -53,16 +46,17 @@ export async function GET(req: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
-    return NextResponse.redirect(
-      defaultLoginRedirect(origin, encodeURIComponent(error.message)),
-      302
-    );
+    console.warn("[auth/callback] exchangeCodeForSession failed", error.message);
+    return NextResponse.redirect(defaultLoginRedirect(origin, "oauth_session_failed", next), 302);
   }
 
-  const redirectUrl = new URL(sanitizeNext(next, origin), origin);
+  const locale = inferLocaleFromNextParam(next);
+  const safeNext = sanitizeNextForRedirect(next, { locale });
+  const redirectUrl = new URL(safeNext, origin);
   const res = NextResponse.redirect(redirectUrl, 302);
   res.headers.set("Cache-Control", "no-store");
-  expireAuthCookiesHard(req, res);
-  writeSupabaseAuthCookies(res, captured);
+  const cookieSecure = authCookieSecureForRequest(req);
+  expireAuthCookiesHard(req, res, { secure: cookieSecure });
+  writeSupabaseAuthCookies(res, captured, { secure: cookieSecure });
   return res;
 }

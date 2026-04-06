@@ -12,6 +12,25 @@ export type HiddenStat =
 
 export type ScenarioDifficulty = "Low" | "Moderate" | "High";
 
+/** Runtime difficulty tier (1–5); optional on legacy scenarios. */
+export type ArenaDifficultyLevel = 1 | 2 | 3 | 4 | 5;
+
+export type SecondChoice = {
+  id: string;
+  label: string;
+  /** Required — empty string is invalid content. */
+  cost: string;
+  pattern_family?: string;
+  direction: "entry" | "exit";
+};
+
+export type EscalationBranch = {
+  escalation_text: string;
+  /** 0.0–1.0 — how much harder the situation became after the primary choice. */
+  pressure_increase: number;
+  second_choices: SecondChoice[];
+};
+
 export type PrimaryChoice = {
   id: string;
   label: string; // A / B / C
@@ -52,6 +71,16 @@ export type ArenaScenario = {
   reinforcementChoices: ReinforcementChoice[];
   /** Keys like A_X, A_Y — primary id + "_" + reinforcement id */
   outcomes: Record<string, ResolveOutcome>;
+  /** Runtime tier; optional until all payloads carry it. */
+  difficulty_level?: ArenaDifficultyLevel;
+  /**
+   * Optional human-readable difficulty label (e.g. for UI). Distinct from `difficulty` (`Low` | `Moderate` | `High`).
+   */
+  difficulty_label?: string;
+  /**
+   * Post–primary-choice escalation: keyed by primary choice id (e.g. `A`); drives step 3–4 flow when present.
+   */
+  escalationBranches?: Record<string, EscalationBranch>;
 };
 
 /** Fixed five — UI shows monograms only; no numeric values. */

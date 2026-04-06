@@ -28,7 +28,7 @@ export default function CenterError({
         <p className="text-sm text-gray-600 mb-6">
           {locale === "ko"
             ? "페이지를 불러오는 중 오류가 생겼어요. 다시 시도해 주세요."
-            : "An error occurred while loading this page. Please try again."}
+            : "An error occurred while loading this page. Please reload the page."}
         </p>
         {process.env.NODE_ENV === "development" && error.message && (
           <pre className="text-xs text-red-600 bg-red-50 rounded-lg p-3 mb-6 text-left overflow-auto">
@@ -39,9 +39,9 @@ export default function CenterError({
           type="button"
           onClick={reset}
           className="rounded-xl px-6 py-3 font-medium bg-dear-sage/10 border border-dear-sage/30 text-dear-charcoal hover:bg-dear-sage/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-dear-sage"
-          aria-label={locale === "ko" ? "다시 시도" : "Try again"}
+          aria-label={locale === "ko" ? "다시 시도" : "Reload"}
         >
-          {locale === "ko" ? "다시 시도" : "Try again"}
+          {locale === "ko" ? "다시 시도" : "Reload"}
         </button>
       </div>
     </main>

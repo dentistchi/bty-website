@@ -3,14 +3,14 @@
  * filtered by locale, weighted toward least-seen `flag_type` (coverage gaps).
  *
  * Reads `user_scenario_history` (with backfill from `user_scenario_choice_history` when the
- * aggregate array was empty) + `scenarios` when Supabase is configured; otherwise falls back to
- * in-app {@link SCENARIOS} merged with DB metadata with `flag_type` inferred from coach notes.
+ * aggregate array was empty). Catalog metadata and scenario **body** come only from
+ * `bty_elite_scenarios.json` ({@link getEliteScenarioCatalogMetas}, {@link loadArenaScenarioPayloadFromDb}).
  */
 
 import type { Scenario } from "@/lib/bty/scenario/types";
-import { SCENARIOS, getScenarioById } from "@/lib/bty/scenario/scenarios";
+import { getEliteScenarioCatalogMetas } from "@/lib/bty/arena/eliteScenariosCanonical.server";
+import { loadArenaScenarioPayloadFromDb } from "@/lib/bty/arena/scenarioPayloadFromDb";
 import { isUserArenaEjected } from "@/engine/integration/arena-center-ejection";
-import { ensureMinimumScenarioCatalogRows } from "@/engine/scenario/scenario-catalog-sync.service";
 import { isExcludedFromArenaProduction } from "@/engine/scenario/scenario-production-exclusions";
 import { getDifficultyFloor } from "@/engine/scenario/scenario-difficulty-adjuster.service";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
@@ -24,15 +24,18 @@ export type ScenarioMeta = {
   flag_type: string;
   /** DB: `en` | `ko` | `both`. Fallback inference uses `both` when Korean copy exists. */
   locale: "en" | "ko" | "both";
-  /**
-   * `public.scenarios.difficulty`: 1=easy, 2=mid, 3=hard.
-   * Static fallback catalog uses **2** when not in DB.
-   */
+  /** Elite catalog uses tier 2 by default (1=easy, 2=mid, 3=hard). */
   difficulty: ScenarioDifficultyTier;
+  /** `bty_elite` for elite JSON catalog; used for production exclusions. */
+  scenario_type?: string;
 };
 
 export class ScenarioSelectionError extends Error {
-  readonly code: "no_scenario_available" | "scenario_payload_missing" | "user_ejected_from_arena";
+  readonly code:
+    | "no_scenario_available"
+    | "scenario_payload_missing"
+    | "user_ejected_from_arena"
+    | "catalog_unavailable";
 
   constructor(code: ScenarioSelectionError["code"], message: string) {
     super(message);
@@ -42,31 +45,13 @@ export class ScenarioSelectionError extends Error {
   }
 }
 
-function inferFlagTypeFromScenario(s: Scenario): string {
-  const first = s.coachNotes?.whatThisTrains?.[0];
-  return typeof first === "string" && first.length > 0 ? first : "general";
-}
-
-function inferLocaleAvailFromScenario(s: Scenario): "en" | "ko" | "both" {
-  if (s.titleKo && s.contextKo) return "both";
-  return "en";
-}
-
 function metaMatchesLocale(meta: ScenarioMeta, pref: ScenarioLocalePreference): boolean {
   if (meta.locale === "both") return true;
   return meta.locale === pref;
 }
 
-function staticScenarioMatchesLocale(s: Scenario, pref: ScenarioLocalePreference): boolean {
-  if (pref === "ko") return Boolean(s.titleKo && s.contextKo);
-  return true;
-}
-
 function isSelectableMeta(meta: ScenarioMeta, pref: ScenarioLocalePreference): boolean {
-  if (!metaMatchesLocale(meta, pref)) return false;
-  const s = getScenarioById(meta.scenarioId);
-  if (!s) return false;
-  return staticScenarioMatchesLocale(s, pref);
+  return metaMatchesLocale(meta, pref);
 }
 
 /** Temporary instrumentation: which prefilter removes metas (remove after diagnosing empty-pool in prod). */
@@ -78,8 +63,6 @@ function logSelectNextScenarioPrefilterCounts(
 ): void {
   let blockedByPlayed = 0;
   let failMetaLocale = 0;
-  let failMissingPayload = 0;
-  let failStaticLocale = 0;
   let candidatesAfterPrefilter = 0;
 
   for (const m of catalog) {
@@ -89,15 +72,6 @@ function logSelectNextScenarioPrefilterCounts(
     }
     if (!metaMatchesLocale(m, locale)) {
       failMetaLocale++;
-      continue;
-    }
-    const s = getScenarioById(m.scenarioId);
-    if (!s) {
-      failMissingPayload++;
-      continue;
-    }
-    if (!staticScenarioMatchesLocale(s, locale)) {
-      failStaticLocale++;
       continue;
     }
     candidatesAfterPrefilter++;
@@ -111,8 +85,6 @@ function logSelectNextScenarioPrefilterCounts(
       catalogSize: catalog.length,
       blockedByPlayed,
       failMetaLocale,
-      failMissingPayload,
-      failStaticLocale,
       candidatesAfterPrefilter,
     }),
   );
@@ -183,11 +155,60 @@ export async function fetchPlayedScenarioIds(userId: string): Promise<string[]> 
     .filter((x): x is string => typeof x === "string");
 }
 
+const MIRROR_SCENARIO_ID_PREFIX = "mirror:" as const;
+
 /**
- * Collapse `(locale, id)` DB rows into one {@link ScenarioMeta} per `scenarioId` before {@link mergeDbCatalogWithStatic}'s Map.
- * - same `scenarioId` + en row only → `locale: 'en'`
- * - same `scenarioId` + ko row only → `locale: 'ko'`
- * - same `scenarioId` + en and ko → `locale: 'both'`
+ * Most recently played mirror `scenarioId` (`mirror:<pool_row_uuid>`), using **authoritative** sources:
+ * - **`arena_events`** `CHOICE_CONFIRMED` (canonical 7-step Arena writes here via `POST /api/arena/event`; **not** `user_scenario_choice_history`).
+ * - **`user_scenario_choice_history`** (legacy `/api/arena/session/choice` → `handleChoiceConfirmed`).
+ *
+ * When both exist, the row with the **newer** timestamp wins. Returns `null` if neither has a mirror play.
+ */
+export async function fetchLastServedMirrorScenarioId(userId: string): Promise<string | null> {
+  const admin = getSupabaseAdmin();
+  if (!admin) return null;
+
+  const { data: chRows } = await admin
+    .from("user_scenario_choice_history")
+    .select("scenario_id, played_at")
+    .eq("user_id", userId)
+    .order("played_at", { ascending: false })
+    .limit(40);
+
+  let latestCh: { scenario_id: string; t: number } | null = null;
+  for (const r of chRows ?? []) {
+    const sid = (r as { scenario_id?: string }).scenario_id;
+    if (typeof sid !== "string" || !sid.startsWith(MIRROR_SCENARIO_ID_PREFIX)) continue;
+    const playedAt = (r as { played_at?: string }).played_at;
+    latestCh = { scenario_id: sid, t: new Date(playedAt ?? 0).getTime() };
+    break;
+  }
+
+  const { data: evRows } = await admin
+    .from("arena_events")
+    .select("scenario_id, created_at")
+    .eq("user_id", userId)
+    .eq("event_type", "CHOICE_CONFIRMED")
+    .order("created_at", { ascending: false })
+    .limit(80);
+
+  let latestEv: { scenario_id: string; t: number } | null = null;
+  for (const r of evRows ?? []) {
+    const sid = (r as { scenario_id?: string }).scenario_id;
+    if (typeof sid !== "string" || !sid.startsWith(MIRROR_SCENARIO_ID_PREFIX)) continue;
+    const createdAt = (r as { created_at?: string }).created_at;
+    latestEv = { scenario_id: sid, t: new Date(createdAt ?? 0).getTime() };
+    break;
+  }
+
+  if (!latestCh && !latestEv) return null;
+  if (!latestCh) return latestEv!.scenario_id;
+  if (!latestEv) return latestCh.scenario_id;
+  return latestEv.t >= latestCh.t ? latestEv.scenario_id : latestCh.scenario_id;
+}
+
+/**
+ * Collapse duplicate metas per `scenarioId` when multiple locale rows exist (elite catalog uses `both`).
  */
 function dedupeScenarioMetasByLocaleUnion(rows: ScenarioMeta[]): ScenarioMeta[] {
   const map = new Map<string, ScenarioMeta>();
@@ -209,83 +230,57 @@ function dedupeScenarioMetasByLocaleUnion(rows: ScenarioMeta[]): ScenarioMeta[] 
       locale: loc,
       flag_type: m.flag_type || prev.flag_type,
       difficulty: m.difficulty,
+      scenario_type: m.scenario_type ?? prev.scenario_type,
     });
   }
   return [...map.values()];
 }
 
+/**
+ * Metadata from `bty_elite_scenarios.json` only. Returns `null` if the file cannot be loaded.
+ */
 async function fetchScenarioCatalogFromDb(): Promise<ScenarioMeta[] | null> {
-  const admin = getSupabaseAdmin();
-  if (!admin) return null;
-
-  await ensureMinimumScenarioCatalogRows();
-
-  const { data, error } = await admin
-    .from("scenarios")
-    .select("id, flag_type, locale, difficulty, scenario_type");
-  if (error || !data?.length) return null;
-
-  const out: ScenarioMeta[] = [];
-  for (const row of data as Array<{
-    id?: string;
-    flag_type?: string;
-    locale?: string;
-    difficulty?: number | null;
-    scenario_type?: string | null;
-  }>) {
-    const scenarioId = row.id;
-    const flag_type = row.flag_type;
-    const locale = row.locale;
-    const scenario_type = row.scenario_type;
-    if (!scenarioId || !flag_type) continue;
-    if (isExcludedFromArenaProduction(scenarioId, scenario_type)) continue;
-    if (locale !== "en" && locale !== "ko" && locale !== "both") continue;
-    const d = row.difficulty;
-    const difficulty: ScenarioDifficultyTier =
-      d === 1 || d === 2 || d === 3 ? d : 2;
-    out.push({
-      scenarioId,
-      flag_type,
-      locale: locale as ScenarioMeta["locale"],
-      difficulty,
-    });
+  try {
+    const raw = getEliteScenarioCatalogMetas();
+    const out: ScenarioMeta[] = [];
+    for (const row of raw) {
+      if (isExcludedFromArenaProduction(row.scenarioId, row.scenario_type)) continue;
+      out.push({
+        scenarioId: row.scenarioId,
+        flag_type: row.flag_type,
+        locale: row.locale,
+        difficulty: row.difficulty,
+        scenario_type: row.scenario_type,
+      });
+    }
+    if (!out.length) {
+      console.error("[arena] catalog_empty: no elite scenarios after exclusions");
+      return null;
+    }
+    return dedupeScenarioMetasByLocaleUnion(out);
+  } catch (e) {
+    console.error(
+      "[arena] catalog_unavailable: elite scenarios file",
+      e instanceof Error ? e.message : e,
+    );
+    return null;
   }
-  return out.length ? out : null;
 }
 
-function buildFallbackCatalog(): ScenarioMeta[] {
-  return SCENARIOS.map((s) => ({
-    scenarioId: s.scenarioId,
-    flag_type: inferFlagTypeFromScenario(s),
-    locale: inferLocaleAvailFromScenario(s),
-    difficulty: 2,
-  }));
-}
-
-/** Union in-app catalog with DB rows so selection never depends on a thin DB slice missing static ids. */
-function mergeDbCatalogWithStatic(db: ScenarioMeta[] | null): ScenarioMeta[] {
-  const staticCatalog = buildFallbackCatalog();
-  if (!db?.length) return staticCatalog;
-  const normalized = dedupeScenarioMetasByLocaleUnion(db);
-  const map = new Map<string, ScenarioMeta>();
-  for (const m of staticCatalog) {
-    map.set(m.scenarioId, m);
-  }
-  for (const m of normalized) {
-    map.set(m.scenarioId, m);
-  }
-  return [...map.values()];
-}
-
-/** Scenarios the user can play in this locale (DB catalog or in-app fallback). Used for completion rate. */
+/** Scenarios the user can play in this locale (elite catalog metadata). Used for completion rate. */
 export async function getSelectableScenarioMetasForLocale(
   locale: ScenarioLocalePreference,
 ): Promise<ScenarioMeta[]> {
-  const catalog = mergeDbCatalogWithStatic(await fetchScenarioCatalogFromDb());
+  const raw = await fetchScenarioCatalogFromDb();
+  if (raw == null) {
+    console.warn("[arena] getSelectableScenarioMetasForLocale: catalog unavailable (empty list)");
+    return [];
+  }
+  const catalog = raw.filter((m) => !isExcludedFromArenaProduction(m.scenarioId, m.scenario_type));
   return catalog.filter((m) => isSelectableMeta(m, locale));
 }
 
-/** Scenarios the user can play in this locale (DB catalog or in-app fallback). Used for completion rate. */
+/** Scenarios the user can play in this locale (elite catalog metadata). Used for completion rate. */
 export async function countAvailableScenariosForLocale(
   locale: ScenarioLocalePreference,
 ): Promise<number> {
@@ -294,6 +289,11 @@ export async function countAvailableScenariosForLocale(
 }
 
 export type SelectNextScenarioOptions = {
+  /**
+   * `arena_runs.scenario_id` values for this user (server-sourced). Unioned with history-based played ids
+   * so the same catalog scenario is not served again while an active/incomplete run row exists.
+   */
+  servedArenaScenarioIds?: readonly string[];
   /**
    * When any unplayed candidates share this `flag_type` (e.g. `INTEGRITY_SLIP` recovery),
    * selection runs only within that subset; otherwise falls back to default coverage-gap pick.
@@ -328,12 +328,33 @@ export async function selectNextScenario(
     );
   }
 
-  const catalog = mergeDbCatalogWithStatic(await fetchScenarioCatalogFromDb());
+  const rawCatalog = await fetchScenarioCatalogFromDb();
+  if (rawCatalog == null || rawCatalog.length === 0) {
+    console.error(
+      "[arena] catalog_unavailable: elite scenarios (bty_elite_scenarios.json) missing or empty",
+    );
+    throw new ScenarioSelectionError(
+      "catalog_unavailable",
+      "Arena scenario catalog is unavailable or empty.",
+    );
+  }
+  const catalog = rawCatalog.filter((m) =>
+    !isExcludedFromArenaProduction(m.scenarioId, m.scenario_type),
+  );
+  if (catalog.length === 0) {
+    console.error("[arena] catalog_empty: all rows excluded for Arena production");
+    throw new ScenarioSelectionError(
+      "catalog_unavailable",
+      "Arena scenario catalog has no eligible rows after exclusions.",
+    );
+  }
+
   const flagLookupFromCatalog = new Map(catalog.map((m) => [m.scenarioId, m.flag_type] as const));
 
   for (let attempt = 0; attempt < 2; attempt++) {
     const played = await fetchPlayedScenarioIds(userId);
-    const playedSet = new Set(played);
+    const served = options?.servedArenaScenarioIds ?? [];
+    const playedSet = new Set<string>([...played, ...served]);
 
     const counts = playCountsByFlagType(played, (id) => flagLookupFromCatalog.get(id));
 
@@ -387,11 +408,16 @@ export async function selectNextScenario(
 
     const meta = pickScenarioIdByFlagCoverage(pool, counts);
 
-    const scenario = getScenarioById(meta.scenarioId);
+    const scenario = await loadArenaScenarioPayloadFromDb(null, meta.scenarioId, locale);
     if (!scenario) {
+      console.error("[arena] scenario_payload_missing", {
+        scenarioId: meta.scenarioId,
+        locale,
+        legacyFallback: "blocked",
+      });
       throw new ScenarioSelectionError(
         "scenario_payload_missing",
-        `No scenario payload for id ${meta.scenarioId}`,
+        `No scenario payload in public.scenarios for id ${meta.scenarioId}`,
       );
     }
 

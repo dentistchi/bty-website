@@ -1,4 +1,4 @@
-import { SCENARIOS } from "./scenarios";
+import { SCENARIOS } from "./legacy/bundledScenarios";
 import type { Scenario, ScenarioSubmitPayload, ScenarioSubmitResult } from "./types";
 
 /** Meta phrases used only for design/scoring — never show to user. */

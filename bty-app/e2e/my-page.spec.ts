@@ -1,7 +1,17 @@
 import { expect, test } from "@playwright/test";
+import { cleanupStaleE2EActionContractsBeforeTest } from "./helpers/cleanup-action-contracts";
+import { E2E_CONTRACT_EMAILS, E2E_CONTRACT_USER_IDS } from "./helpers/three-contract-users";
 
 /** My Page — 상태 화면 testid 고정. */
 test.describe("My Page (authenticated)", () => {
+  test.beforeEach(async ({ request }) => {
+    await cleanupStaleE2EActionContractsBeforeTest(request, {
+      userId: E2E_CONTRACT_USER_IDS.default,
+      email: E2E_CONTRACT_EMAILS.default,
+      label: "my-page:E2E_DEFAULT_USER",
+    });
+  });
+
   test("overview leadership console & no raw AIR", async ({ page }) => {
     test.setTimeout(120_000);
 

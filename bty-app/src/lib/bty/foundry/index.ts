@@ -12,7 +12,7 @@ export {
   getRandomScenario,
   computeResult,
 } from "../scenario/engine";
-export { SCENARIOS } from "../scenario/scenarios";
+export { SCENARIOS } from "../scenario/legacy/bundledScenarios";
 export type {
   Scenario,
   ScenarioChoice,

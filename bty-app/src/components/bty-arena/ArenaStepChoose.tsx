@@ -19,12 +19,14 @@ export type ArenaStepChooseProps = {
   onConfirm: () => void;
   onContinue: () => void;
   confirmingChoice: boolean;
+  hideChoiceIntentSlug?: boolean;
 };
 
 export function ArenaStepChoose({
   locale, choices, selectedChoiceId, onSelectChoice,
   onSelectOther, otherLabel, showActions, confirmDisabled,
   onConfirm, onContinue, confirmingChoice,
+  hideChoiceIntentSlug = false,
 }: ArenaStepChooseProps) {
   const isKo = locale === "ko";
   return (
@@ -34,6 +36,7 @@ export function ArenaStepChoose({
         choices={choices}
         selectedChoiceId={selectedChoiceId}
         onSelect={onSelectChoice}
+        hideIntentSlug={hideChoiceIntentSlug}
       />
       <div style={{ marginTop: 12 }}>
         <button

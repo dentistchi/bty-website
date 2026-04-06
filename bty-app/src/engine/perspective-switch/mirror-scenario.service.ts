@@ -1,12 +1,16 @@
 /**
  * Perspective switch — 최근 Arena 선택 시나리오를 역지사지(상대 역할) 버전으로 풀에 반영.
  * 원본은 `arena_events`(CHOICE_CONFIRMED); 저장은 `mirror_scenario_pool`.
+ *
+ * Pool row `id` is deterministic (UUID v5) per `(user_id, origin_scenario_id)` so `mirror:<id>` stays
+ * stable across sync — see `stableMirrorPoolRowId` / `SCENARIO_AUDIT_STANDARDS_V1.md` §3.1.1 (mirror UUID allowlist).
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getRoleMirrorScenario } from "@/engine/integrity/role-mirror-content.service";
 import type { ScenarioLocalePreference } from "@/engine/scenario/scenario-selector.service";
-import { getScenarioById } from "@/lib/bty/scenario/scenarios";
+import { stableMirrorPoolRowId } from "@/lib/bty/arena/stableMirrorPoolRowId";
+import { getSupabaseScenarioReader, loadArenaScenarioPayloadFromDb } from "@/lib/bty/arena/scenarioPayloadFromDb";
 import type { Scenario, ScenarioChoice } from "@/lib/bty/scenario/types";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
@@ -180,18 +184,25 @@ function roleLabelKo(role: string): string {
 /**
  * EN title/body + KO title/body + choice snapshots (label / labelKo) for pool persistence.
  */
-export function buildMirrorCopyBilingual(
+export async function buildMirrorCopyBilingual(
   originScenarioId: string,
   targetRole: string,
   options?: { originChoiceId?: string },
-): {
+): Promise<{
   mirror_title: string;
   mirror_title_ko: string;
   mirror_context: string;
   mirror_context_ko: string;
   mirror_choices: MirrorChoiceSnapshot[];
-} {
-  const scenario = getScenarioById(originScenarioId);
+}> {
+  const reader = getSupabaseScenarioReader();
+  let scenario: Scenario | null = null;
+  if (reader) {
+    scenario = await loadArenaScenarioPayloadFromDb(reader, originScenarioId, "en");
+    if (!scenario) {
+      scenario = await loadArenaScenarioPayloadFromDb(reader, originScenarioId, "ko");
+    }
+  }
   const titleEn = scenario?.title ?? originScenarioId;
   const titleKo = scenario?.titleKo ?? scenario?.title ?? originScenarioId;
   const label = roleLabelKo(targetRole);
@@ -262,9 +273,10 @@ async function syncMirrorPoolForUser(client: SupabaseClient, userId: string): Pr
 
   for (const originScenarioId of eligibleOrigins) {
     const targetRole = inferMirrorTargetRole(originScenarioId);
-    const b = buildMirrorCopyBilingual(originScenarioId, targetRole);
+    const b = await buildMirrorCopyBilingual(originScenarioId, targetRole);
     const { error: upErr } = await client.from("mirror_scenario_pool").upsert(
       {
+        id: stableMirrorPoolRowId(userId, originScenarioId),
         user_id: userId,
         scenario_type: MIRROR_POOL_SCENARIO_TYPE_CATALOG,
         air_delta: MIRROR_POOL_AIR_DELTA_NEUTRAL,
@@ -346,6 +358,7 @@ export async function generateMirror(
     const syntheticOrigin = `role_mirror:${rm.id}`;
     const { error } = await client.from("mirror_scenario_pool").upsert(
       {
+        id: stableMirrorPoolRowId(userId, syntheticOrigin),
         user_id: userId,
         scenario_type: MIRROR_POOL_SCENARIO_TYPE_ROLE_CURATED,
         air_delta: MIRROR_POOL_AIR_DELTA_NEUTRAL,
@@ -369,14 +382,22 @@ export async function generateMirror(
     return null;
   }
 
-  if (!getScenarioById(originScenarioId)) {
-    throw new Error(`generateMirror: unknown scenario ${originScenarioId}`);
+  const readerProbe = getSupabaseScenarioReader();
+  if (!readerProbe) {
+    throw new Error(`generateMirror: Supabase reader unavailable for ${originScenarioId}`);
+  }
+  const exists =
+    (await loadArenaScenarioPayloadFromDb(readerProbe, originScenarioId, "en")) ||
+    (await loadArenaScenarioPayloadFromDb(readerProbe, originScenarioId, "ko"));
+  if (!exists) {
+    throw new Error(`generateMirror: unknown scenario ${originScenarioId} (not in public.scenarios)`);
   }
   const targetRole = inferMirrorTargetRole(originScenarioId);
-  const b = buildMirrorCopyBilingual(originScenarioId, targetRole, { originChoiceId: choiceId });
+  const b = await buildMirrorCopyBilingual(originScenarioId, targetRole, { originChoiceId: choiceId });
 
   const { error } = await client.from("mirror_scenario_pool").upsert(
     {
+      id: stableMirrorPoolRowId(userId, originScenarioId),
       user_id: userId,
       scenario_type: MIRROR_POOL_SCENARIO_TYPE_CATALOG,
       air_delta: MIRROR_POOL_AIR_DELTA_NEUTRAL,

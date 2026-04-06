@@ -1,0 +1,56 @@
+{
+  "id": "core_06_s2_consequence",
+  "title": "The Story Spreads",
+  "level": 3,
+  "chain_stage": 2,
+  "context": {
+    "role": "Clinic Director",
+    "pressure": "Your previous decision is now shaping how the team interprets leadership.",
+    "narrative": "A few days pass. The clinic is quieter, but something has shifted. Conversations feel shorter. You overhear a comment: 'I guess if it gets hard enough, you can just step down.' Some team members seem distant, others are watching you more carefully. Your previous decision is now becoming a story the team is learning from."
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Ignore the shift in tone and focus on keeping the clinic running smoothly.",
+      "archetype": "avoid",
+      "state_impact": {
+        "reputation": -2,
+        "trust": -2,
+        "self_narrative": -1,
+        "courage": -1
+      }
+    },
+    {
+      "id": "B",
+      "label": "Address the team briefly, explaining the reasoning behind your decision and reaffirming expectations.",
+      "archetype": "structure",
+      "state_impact": {
+        "reputation": 0,
+        "trust": 1,
+        "self_narrative": 0,
+        "courage": 1
+      }
+    },
+    {
+      "id": "C",
+      "label": "Speak directly with team members who seem affected and ask what they believe your decision meant.",
+      "archetype": "confront",
+      "state_impact": {
+        "reputation": 1,
+        "trust": 1,
+        "self_narrative": 1,
+        "courage": 2
+      }
+    }
+  ],
+  "questions": {
+    "level_2": "What in this team is still worth protecting, even now?",
+    "level_3": "What did your previous choice teach the team about what is acceptable?",
+    "level_4": "How is your behavior now shaping what others believe leadership allows?"
+  },
+  "next_map": {
+    "A": "core_06_s3_identity",
+    "B": "core_06_s3_identity",
+    "C": "core_06_s3_identity"
+  }
+}

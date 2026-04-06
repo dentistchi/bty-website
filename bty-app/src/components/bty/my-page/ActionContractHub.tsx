@@ -43,7 +43,11 @@ export function ActionContractHub({
 
   if (contract.display_state === "pending" || contract.display_state === "blocked") {
     return (
-      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-white/10 dark:bg-white/[0.05] md:p-6">
+      <div
+        id="bty-action-contract-hub"
+        tabIndex={-1}
+        className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-white/10 dark:bg-white/[0.05] md:p-6"
+      >
         <p className="mb-2 text-xs uppercase tracking-widest text-cyan-700 dark:text-cyan-100/60">{t.pendingTitle}</p>
         <p className="mb-1 text-sm text-gray-900 dark:text-white/80">{t.pendingBody}</p>
         <p className="mb-4 text-sm text-gray-700 dark:text-white/60">{contract.action_text}</p>
@@ -76,7 +80,11 @@ export function ActionContractHub({
 
   if (contract.display_state === "completed") {
     return (
-      <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-white/[0.03] md:p-6">
+      <div
+        id="bty-action-contract-hub"
+        tabIndex={-1}
+        className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-white/[0.03] md:p-6"
+      >
         <p className="mb-2 text-xs uppercase tracking-widest text-cyan-700 dark:text-cyan-100/60">{t.completedTitle}</p>
         <p className="text-sm text-gray-700 dark:text-white/60">{t.completedBody}</p>
       </div>
@@ -85,7 +93,11 @@ export function ActionContractHub({
 
   if (contract.display_state === "missed") {
     return (
-      <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-white/[0.03] md:p-6">
+      <div
+        id="bty-action-contract-hub"
+        tabIndex={-1}
+        className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-white/[0.03] md:p-6"
+      >
         <p className="mb-2 text-xs uppercase tracking-widest text-gray-500 dark:text-white/40">{t.missedTitle}</p>
         <p className="text-sm text-gray-600 dark:text-white/50">{t.missedBody}</p>
       </div>

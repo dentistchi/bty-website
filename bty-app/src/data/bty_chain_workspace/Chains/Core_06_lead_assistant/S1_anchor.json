@@ -1,0 +1,54 @@
+{
+  "id": "core_06_s1_anchor",
+  "title": "Lead Assistant Demotion Request",
+  "level": 2,
+  "chain_stage": 1,
+  "context": {
+    "role": "Clinic Director",
+    "pressure": "Your lead assistant is requesting to step down from their leadership position due to ongoing stress.",
+    "narrative": "Your most trusted lead assistant, who has been a pillar for the team, approaches you to step down. Her performance has noticeably declined lately, and the team senses increasing uncertainty. The way you respond will not only influence this person's path but also impact the clinic’s broader culture of leadership."
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Accept her request immediately, prioritizing her well-being over her position.",
+      "archetype": "avoid",
+      "state_impact": {
+        "reputation": -1,
+        "trust": -1,
+        "self_narrative": -1,
+        "courage": -2
+      }
+    },
+    {
+      "id": "B",
+      "label": "Offer a role adjustment but establish clear expectations and performance standards going forward.",
+      "archetype": "structure",
+      "state_impact": {
+        "reputation": 0,
+        "trust": 0,
+        "self_narrative": 1,
+        "courage": 0
+      }
+    },
+    {
+      "id": "C",
+      "label": "Hold off on deciding and ask for a candid explanation about what has made leading difficult.",
+      "archetype": "confront",
+      "state_impact": {
+        "reputation": 1,
+        "trust": 0,
+        "self_narrative": 1,
+        "courage": 2
+      }
+    }
+  ],
+  "questions": {
+    "level_2": "Given all they have done, what do you owe this team member?"
+  },
+  "next_map": {
+    "A": "core_06_s2_consequence",
+    "B": "core_06_s2_consequence",
+    "C": "core_06_s2_consequence"
+  }
+}

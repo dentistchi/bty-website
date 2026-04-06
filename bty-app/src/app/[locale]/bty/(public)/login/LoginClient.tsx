@@ -1,153 +1,41 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
-import { CardSkeleton } from "@/components/bty-arena";
-import { getMessages, type Locale } from "@/lib/i18n";
+import { useMemo } from "react";
+import LoginCard from "@/components/auth/login-card";
+import { userMessageForOAuthCallbackError } from "@/lib/auth/oauth-callback-error-messages";
+import { sanitizeNextForRedirect } from "@/lib/auth/sanitize-next-for-redirect";
 
-async function forceCookieCommit() {
+function decodeError(raw: string | undefined): string | undefined {
+  if (!raw || typeof raw !== "string") return undefined;
   try {
-    await fetch("/api/auth/whoami", {
-      method: "GET",
-      cache: "no-store",
-      credentials: "include",
-    });
+    return decodeURIComponent(raw);
   } catch {
-    // ignore
+    return raw;
   }
 }
 
-function safeNext(nextPath: string, locale: "en" | "ko") {
-  if (!nextPath || typeof nextPath !== "string") return `/${locale}/bty`;
-  if (!nextPath.startsWith("/")) return `/${locale}/bty`;
-  if (nextPath.startsWith("//")) return `/${locale}/bty`;
-  return nextPath;
-}
-
-export default function LoginClient({ nextPath, locale }: { nextPath: string; locale: "en" | "ko" }) {
-  const next = useMemo(() => safeNext(nextPath, locale), [nextPath, locale]);
-  const t = getMessages(locale as Locale).login;
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string>("");
-
-  const canSubmit = email.trim().length > 3 && password.length > 3 && !isLoading;
-
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!canSubmit) return;
-
-    setIsLoading(true);
-    setError("");
-
-    try {
-      const loginUrl = next ? `/api/auth/login?next=${encodeURIComponent(next)}` : "/api/auth/login";
-      const r = await fetch(loginUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
-        credentials: "include",
-      });
-
-      const data = (await r.json().catch(() => ({}))) as {
-        ok?: boolean;
-        next?: string;
-        error?: string;
-        detail?: string;
-      };
-
-      if (data.ok && typeof data.next === "string") {
-        await forceCookieCommit();
-        await new Promise((r) => setTimeout(r, 50));
-        window.location.assign(data.next);
-        return;
-      }
-
-      if (!r.ok) {
-        const msg = data.detail ?? data.error ?? t.errorDefault;
-        throw new Error(msg);
-      }
-
-      throw new Error(data.error ?? t.errorDefault);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t.errorDefault);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+export default function LoginClient({
+  nextPath,
+  locale,
+  oauthError,
+}: {
+  nextPath: string;
+  locale: "en" | "ko";
+  oauthError?: string;
+}) {
+  const next = useMemo(() => sanitizeNextForRedirect(nextPath, { locale }), [nextPath, locale]);
+  const initialError = useMemo(() => {
+    const decoded = decodeError(oauthError);
+    if (!decoded) return undefined;
+    return userMessageForOAuthCallbackError(decoded, locale);
+  }, [oauthError, locale]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6" data-testid="login-page">
-      <div className="w-full max-w-md border rounded-2xl p-6 bg-white">
-        <h1 className="text-xl font-semibold mb-1">{t.title}</h1>
-        <p className="text-sm text-gray-600 mb-4">
-          {t.afterLoginGoTo} <span className="font-medium">{next}</span>
-        </p>
-
-        <form onSubmit={onSubmit}>
-          <label htmlFor="login-email" className="block text-sm mb-1">
-            {t.email}
-          </label>
-          <input
-            id="login-email"
-            name="email"
-            type="email"
-            inputMode="email"
-            data-testid="login-email-input"
-            className="w-full border rounded-lg px-3 py-2 mb-3"
-            placeholder="you@example.com"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-
-          <label htmlFor="login-password" className="block text-sm mb-1">
-            {t.password}
-          </label>
-          <input
-            id="login-password"
-            name="password"
-            data-testid="login-password-input"
-            className="w-full border rounded-lg px-3 py-2 mb-3"
-            placeholder="••••••••"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-
-          <div className="flex items-center justify-between gap-2 mb-3">
-            <span className="text-sm text-gray-500">{null}</span>
-            <Link
-              href={`/${locale}/bty/forgot-password`}
-              className="text-sm text-gray-600 underline hover:no-underline hover:text-black"
-            >
-              {t.forgotPassword}
-            </Link>
-          </div>
-
-          {error ? <div className="text-sm text-red-600 mb-3">{error}</div> : null}
-
-          <button
-            type="submit"
-            data-testid="login-submit-button"
-            className="w-full rounded-lg px-4 py-2 bg-black text-white disabled:opacity-60"
-            disabled={!canSubmit}
-            aria-label={isLoading ? t.submitting : t.submit}
-          >
-            {isLoading ? t.submitting : t.submit}
-          </button>
-          {isLoading && (
-            <div className="mt-3">
-              <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
-            </div>
-          )}
-
-          <div className="text-xs text-gray-500 mt-3">{t.cookieNotice}</div>
-        </form>
-      </div>
+    <div
+      className="min-h-screen flex flex-col items-center justify-center gap-6 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-4 py-12 sm:px-6"
+      data-testid="login-page"
+    >
+      <LoginCard locale={locale} nextPath={next} initialError={initialError} />
     </div>
   );
 }

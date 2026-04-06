@@ -18,7 +18,11 @@
 | `e2e:auth:comeback` | `setup-comeback` — `e2e/.auth/comeback-user.json` (`E2E_COMEBACK_*` 필수) |
 | `test:e2e` | 로컬: 등록된 전 프로젝트 (`public` + `chromium` ± comeback) |
 | `test:e2e:ci` | CI: `chromium` + `chromium-comeback`만 (`E2E_COMEBACK_*` 필수) |
+| `e2e:verify-fixture-email` | CI: `E2E_EMAIL` === `expectedFixtureLoginEmail()` (`seedFixtureUser`와 동일 principal) |
+| `e2e:seed-fixture-user` | `seedFixtureUser()` — `e2e:auth` 전에 CI에서 실행 (Arena Step 6 위생) |
 | `test:e2e:install` | `playwright install chromium` |
+| `test:e2e:bty-step6:isolated` | Step 6만 빠르게: `PW_STEP6_ISOLATED=1` → `setup`에만 의존 (DB에 다른 E2E가 동시에 Arena를 돌리지 않을 때만) |
+| `test:e2e:bty` / `test:e2e:bty-step6` | 기본값에서 `bty-loop-step6`은 `bty-loop`·`chromium` 완료 후 실행(공유 픽스처 409 방지). `bty-step6` 단독 선택 시에도 Playwright가 의존 프로젝트를 함께 돌림. |
 
 **Comeback E2E** (`journey.spec.ts`, 태그 `@comeback-journey`): `E2E_COMEBACK_EMAIL` / `E2E_COMEBACK_PASSWORD`가 있을 때만 `setup-comeback`·`chromium-comeback`이 등록됩니다. 계정은 `bty_profiles.current_day = 8`(또는 `E2E_COMEBACK_JOURNEY_DAY`) 및 comeback eligible(진행·터치 3일+) 상태 권장.
 
@@ -34,7 +38,7 @@ E2E_PASSWORD=…
 BASE_URL=http://localhost:3000
 ```
 
-CI (E2E 워크플로): Secrets **`BASE_URL`**(예: `http://127.0.0.1:3000`), **`E2E_EMAIL`**, **`E2E_PASSWORD`**, **`E2E_COMEBACK_EMAIL`**, **`E2E_COMEBACK_PASSWORD`** — 하나라도 없으면 워크플로가 fail-fast. 트리거는 기본 **`workflow_dispatch`** (Actions → E2E → Run workflow).
+CI (`.github/workflows/e2e.yml`): Secrets **`BASE_URL`**, **`E2E_EMAIL`**, **`E2E_PASSWORD`**, **`E2E_COMEBACK_EMAIL`**, **`E2E_COMEBACK_PASSWORD`**, **`NEXT_PUBLIC_SUPABASE_URL`**, **`SUPABASE_SERVICE_ROLE_KEY`** (fixture seed 필수). 선택 **`E2E_FIXTURE_USER_ID`** — 설정 시 **`E2E_EMAIL`**은 `e2e-fixture+<uuid>@local.test` 형태(또는 기본 UUID일 때 `e2e-fixture+bty@local.test`)로 `seedFixtureUser`와 맞춰야 함. **`NEXT_PUBLIC_SUPABASE_ANON_KEY`** — 로컬호스트 `BASE_URL`일 때 dev 서버 기동에 필요.
 
 ## 로컬 플로우
 

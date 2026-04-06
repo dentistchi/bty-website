@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { getSupabaseServer } from "@/lib/supabase-server";
-import { writeSupabaseAuthCookies, expireAuthCookiesHard } from "@/lib/bty/cookies/authCookies";
+import { mergeCookiesForRouteHandler } from "@/lib/supabase/route-client";
+import {
+  authCookieSecureForRequest,
+  expireAuthCookiesHard,
+  writeSupabaseAuthCookies,
+} from "@/lib/bty/cookies/authCookies";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -54,13 +60,14 @@ export async function POST(req: NextRequest) {
     }
 
     const captured: Array<{ name: string; value: string; options?: Record<string, unknown> }> = [];
+    const cookieStore = await cookies();
     const supabase = createServerClient(url, key, {
       cookies: {
         getAll() {
-          return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
+          return mergeCookiesForRouteHandler(req, cookieStore);
         },
-        setAll(cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
-          for (const c of cookies) captured.push({ name: c.name, value: c.value, options: c.options });
+        setAll(cookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
+          for (const c of cookiesToSet) captured.push({ name: c.name, value: c.value, options: c.options });
         },
       },
     });
@@ -79,9 +86,9 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
     res.headers.set("Cache-Control", "no-store");
-    // 기존 /ko, /en 등 잘못된 path 쿠키 제거 후 path=/ 로만 설정
-    expireAuthCookiesHard(req, res);
-    writeSupabaseAuthCookies(res, captured);
+    const cookieSecure = authCookieSecureForRequest(req);
+    expireAuthCookiesHard(req, res, { secure: cookieSecure });
+    writeSupabaseAuthCookies(res, captured, { secure: cookieSecure });
     return res;
   } catch (err) {
     console.error("SESSION POST ERROR:", err);

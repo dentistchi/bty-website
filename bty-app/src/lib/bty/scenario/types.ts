@@ -1,8 +1,14 @@
+import type { EscalationBranch, SecondChoice } from "@/domain/arena/scenarios/types";
+
 export type HiddenStatKey = "integrity" | "communication" | "insight" | "resilience" | "gratitude";
+
+export type { EscalationBranch, SecondChoice };
 
 export type ScenarioChoice = {
   choiceId: "A" | "B" | "C" | "D";
   label: string;
+  /** Elite v2: optional subcopy from `primaryChoices[].subtext` in bundled JSON (Step 2 only). */
+  choiceSubtext?: string;
   /** Korean choice label. When locale is ko, used instead of label. */
   labelKo?: string;
   intent: string;
@@ -31,6 +37,13 @@ export type ScenarioCoachNotes = {
   whyItMatters: string;
 };
 
+/** Canonical elite (`bty_elite_scenarios.json`) — structured setup; do not flatten internals into `context`. */
+export type EliteScenarioSetup = {
+  role: string;
+  pressure: string;
+  tradeoff: string;
+};
+
 export type Scenario = {
   scenarioId: string;
   title: string;
@@ -45,6 +58,15 @@ export type Scenario = {
   minTier?: number;
   /** If true, only Elite (top 5% weekly) users can access. ELITE_4TH_SPECIAL_OR_UNLOCK_1PAGE §3. */
   elite_only?: boolean;
+  /**
+   * When set (canonical elite), `/bty-arena` renders structured setup instead of a single `context` blob.
+   * `context` remains narrative text for APIs/DB mirror (role + pressure + tradeoff only).
+   */
+  eliteSetup?: EliteScenarioSetup;
+  /** Optional escalation path after primary choice (steps 3–4 debrief); see `POST /api/arena/run/step`. */
+  escalationBranches?: Record<string, EscalationBranch>;
+  /** Runtime tier (1–5); optional until all payloads carry it. */
+  difficulty_level?: 1 | 2 | 3 | 4 | 5;
 };
 
 export type ScenarioSubmitPayload = {

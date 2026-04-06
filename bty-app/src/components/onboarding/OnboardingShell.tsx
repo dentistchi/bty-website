@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 import React from "react";
 import { ScenarioCard } from "@/components/arena/ScenarioCard";
 import { LearningPathWidget } from "@/components/foundry/LearningPathWidget";
-import { ONBOARDING_COMPLETE_EVENT } from "@/engine/integration/onboarding-flow.service";
+import { ONBOARDING_COMPLETE_EVENT } from "@/engine/integration/onboarding-flow.constants";
 import { BEGINNER_SCENARIOS } from "@/lib/bty/scenario/beginnerScenarios";
 import type { BeginnerScenario } from "@/lib/bty/scenario/beginnerTypes";
 import type { Scenario as CatalogScenario, ScenarioChoice } from "@/lib/bty/scenario/types";

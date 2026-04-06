@@ -1,0 +1,54 @@
+{
+  "id": "core_11_s1_anchor",
+  "title": "Short-Staffed and Still Open",
+  "level": 3,
+  "chain_stage": 1,
+  "context": {
+    "role": "Clinic Director",
+    "pressure": "Two assistants called out, and the schedule is full with procedures that cannot be easily delayed.",
+    "narrative": "Two assistants called out this morning. The schedule is already full, including procedures that are difficult to reschedule. Your remaining staff is stretched, and patients have been waiting weeks for these appointments. You know running short increases risk, but cancelling creates its own consequences. Everyone is looking at you for a decision, and it has to be made now."
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Push forward with the schedule as planned and ask the team to move faster to keep up.",
+      "archetype": "avoid",
+      "state_impact": {
+        "reputation": 1,
+        "trust": -2,
+        "self_narrative": -1,
+        "courage": -2
+      }
+    },
+    {
+      "id": "B",
+      "label": "Adjust the schedule by reducing procedures and redistributing workload to protect basic safety.",
+      "archetype": "structure",
+      "state_impact": {
+        "reputation": 0,
+        "trust": 1,
+        "self_narrative": 1,
+        "courage": 0
+      }
+    },
+    {
+      "id": "C",
+      "label": "Stop the schedule temporarily and tell patients directly that you cannot safely operate under current staffing.",
+      "archetype": "confront",
+      "state_impact": {
+        "reputation": -2,
+        "trust": 2,
+        "self_narrative": 2,
+        "courage": 2
+      }
+    }
+  ],
+  "questions": {
+    "level_2": "What do you owe the people already in the chairs, and the team trying to carry them?"
+  },
+  "next_map": {
+    "A": "core_11_s2_consequence",
+    "B": "core_11_s2_consequence",
+    "C": "core_11_s2_consequence"
+  }
+}

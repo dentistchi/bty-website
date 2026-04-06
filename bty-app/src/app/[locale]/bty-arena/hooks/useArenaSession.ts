@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getContextForUser, getScenarioById } from "@/lib/bty/scenario/engine";
+import { getContextForUser } from "@/lib/bty/scenario/engine";
 import type { Scenario } from "@/lib/bty/scenario/types";
 import { evaluateChoice, evaluateFollowUp } from "@/lib/bty/arena/engine";
 import type { SystemMsg } from "@/components/bty-arena";
@@ -15,9 +15,26 @@ import type { Locale } from "@/lib/i18n";
 import { difficultyFromScenarioChoices } from "@/lib/bty/arena/arenaLabXp";
 import { BTY_ARENA_STATE_STORAGE_KEY } from "@/lib/bty/arena/arenaLocalState";
 import type { ArenaRecallPrompt } from "@/lib/bty/arena/memoryRecallPrompt.types";
+import {
+  getArenaSessionRouterPath,
+  type ArenaPipelineDefault,
+} from "@/lib/bty/arena/arenaPipelineConfig";
+import { isBtyE2eStep6TraceEnabled } from "@/lib/bty/arena/e2eStep6BrowserTrace";
 
 // ── exported types ──────────────────────────────────────────────
-export type ArenaPhase = "CHOOSING" | "SHOW_RESULT" | "FOLLOW_UP" | "DONE";
+export type ArenaPhase =
+  | "CHOOSING"
+  | "ESCALATION"
+  | "FORCED_TRADEOFF"
+  | "SHOW_RESULT"
+  | "FOLLOW_UP"
+  | "DONE";
+/**
+ * Client step index for the BTY Arena UI. Elite debrief: 3 = escalation or legacy stance, 4 = forced
+ * trade-off or reflection text, 5–7 = mirror / contract / gate. `POST /api/arena/run/step` uses the same
+ * step numbers (3 = escalation acknowledged, 4 = second choice) and persists `arena_runs.meta`.
+ * Phases `ESCALATION` / `FORCED_TRADEOFF` align with steps 3–4 when `scenario.escalationBranches` is present.
+ */
 export type ArenaStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export type MilestoneModalState = {
@@ -97,7 +114,7 @@ function clearState() {
 
 /**
  * True when the user has not committed an Arena choice yet (no XP-bearing selection).
- * Includes intro (step 1) and choice screen (step 2) before confirm — session/next may replace stale/basic lobby state.
+ * Covers the choice screen (step 2) before confirm — session/next may replace stale/basic lobby state.
  * Mid-run resume: once phase !== CHOOSING or a choice/other is recorded, this is false.
  */
 function isPreChoiceLobby(saved: SavedArenaState): boolean {
@@ -107,23 +124,26 @@ function isPreChoiceLobby(saved: SavedArenaState): boolean {
   return true;
 }
 
-/** Catalog scenarios with no tier gate — prefer fresher session/next sooner (top-nav / stale lobby). */
-function isBasicOnlyCatalogScenario(scenarioId: string): boolean {
-  const sc = getScenarioById(scenarioId);
-  if (!sc) return false;
-  return !sc.elite_only && (sc.minTier == null || sc.minTier === 0);
-}
-
-/** Lobby localStorage older than this should resync from /api/arena/session/next (same or new scenario id). */
+/** Lobby localStorage older than this should resync from the arena session router (same or new scenario id). */
 const STALE_LOBBY_MS = 2 * 60 * 60 * 1000;
 const STALE_BASIC_LOBBY_MS = 15 * 60 * 1000;
 
-function isStaleLobby(saved: SavedArenaState): boolean {
+function isBasicScenario(s: Scenario): boolean {
+  return !s.elite_only && (s.minTier == null || s.minTier === 0);
+}
+
+function lobbyStaleThresholdMs(saved: SavedArenaState, scenario: Scenario | null | undefined): number {
+  if (scenario && scenario.scenarioId === saved.scenarioId && isBasicScenario(scenario)) {
+    return STALE_BASIC_LOBBY_MS;
+  }
+  return STALE_LOBBY_MS;
+}
+
+function isStaleLobby(saved: SavedArenaState, scenario?: Scenario | null): boolean {
   const t = Date.parse(saved.updatedAtISO);
   if (Number.isNaN(t)) return true;
   const age = Date.now() - t;
-  const threshold = isBasicOnlyCatalogScenario(saved.scenarioId) ? STALE_BASIC_LOBBY_MS : STALE_LOBBY_MS;
-  return age > threshold;
+  return age > lobbyStaleThresholdMs(saved, scenario);
 }
 
 type SessionNextResponse = {
@@ -140,10 +160,14 @@ type SessionNextResponse = {
 type SessionNextFetchResult = { scenario: Scenario | null; recallPrompt: ArenaRecallPrompt | null };
 
 /** Next scenario from server session router (DB history, mirror / perspective rotation, catalog). */
-async function fetchSessionNextScenario(locale: Locale): Promise<SessionNextFetchResult> {
+async function fetchSessionNextScenario(
+  locale: Locale,
+  pipelineDefault: ArenaPipelineDefault,
+): Promise<SessionNextFetchResult> {
   const loc = locale === "ko" ? "ko" : "en";
+  const path = `${getArenaSessionRouterPath(pipelineDefault)}?locale=${loc}`;
   try {
-    const data = await arenaFetch<SessionNextResponse>(`/api/arena/session/next?locale=${loc}`, {
+    const data = await arenaFetch<SessionNextResponse>(path, {
       cache: "no-store",
     });
     if (data.ok && data.scenario) {
@@ -151,7 +175,7 @@ async function fetchSessionNextScenario(locale: Locale): Promise<SessionNextFetc
     }
     return { scenario: null, recallPrompt: null };
   } catch (e) {
-    console.warn("[arena] session/next failed", e);
+    console.warn("[arena] session router fetch failed", e);
     return { scenario: null, recallPrompt: null };
   }
 }
@@ -180,11 +204,31 @@ function normalizeFollowUpOptions(choice: { followUp?: { options?: string[] } } 
 function stepFromPhase(phase: ArenaPhase): ArenaStep {
   switch (phase) {
     case "CHOOSING": return 2;
+    case "ESCALATION": return 3;
+    case "FORCED_TRADEOFF": return 4;
     case "SHOW_RESULT": return 3;
     case "FOLLOW_UP": return 5;
     case "DONE": return 7;
     default: return 2;
   }
+}
+
+function hasEscalationBranchForChoice(scenario: Scenario | null | undefined, choiceId: string | null): boolean {
+  if (!scenario?.escalationBranches || choiceId == null || choiceId === "") return false;
+  const b = scenario.escalationBranches[choiceId];
+  return Boolean(b?.escalation_text && Array.isArray(b.second_choices) && b.second_choices.length > 0);
+}
+
+/** Elite debrief reuses steps 3–7 but never `FOLLOW_UP` phase; normalize stale saves from pre-fix runs. */
+function normalizeEliteResumePhase(
+  scenario: Scenario | null | undefined,
+  phase: ArenaPhase,
+  resumeStep: number,
+): ArenaPhase {
+  if (scenario?.eliteSetup && phase === "FOLLOW_UP" && resumeStep >= 3 && resumeStep <= 6) {
+    return "SHOW_RESULT";
+  }
+  return phase;
 }
 
 function updateStreak(): { streak: number; message?: SystemMsg } {
@@ -280,7 +324,7 @@ async function postArenaEvent(payload: Record<string, unknown>): Promise<void> {
 }
 
 // ── hook ────────────────────────────────────────────────────────
-export function useArenaSession() {
+export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy") {
   const params = useParams();
   const router = useRouter();
   const locale: Locale =
@@ -358,7 +402,8 @@ export function useArenaSession() {
   const [nextScenarioLoading, setNextScenarioLoading] = React.useState(false);
   const [confirmingChoice, setConfirmingChoice] = React.useState(false);
   const [followUpSubmitting, setFollowUpSubmitting] = React.useState(false);
-  const [startSimulationLoading, setStartSimulationLoading] = React.useState(false);
+  const [escalationAckSubmitting, setEscalationAckSubmitting] = React.useState(false);
+  const [secondChoiceSubmitting, setSecondChoiceSubmitting] = React.useState(false);
 
   const [reflectResult, setReflectResult] = React.useState<ReflectResult | null>(null);
   const [reflectDeepeningNotice, setReflectDeepeningNotice] = React.useState<string | null>(null);
@@ -366,6 +411,8 @@ export function useArenaSession() {
   const [milestoneModal, setMilestoneModal] = React.useState<MilestoneModalState | null>(null);
   const [resetRunLoading, setResetRunLoading] = React.useState(false);
   const [recallPrompt, setRecallPrompt] = React.useState<ArenaRecallPrompt | null>(null);
+  /** Step 6: user continued past action contract because `gated: "pattern_threshold"` (no draft yet). Step 7 may proceed without verification. */
+  const [patternContractDeferred, setPatternContractDeferred] = React.useState(false);
 
   const runMetaRef = React.useRef<{
     runId: string;
@@ -390,7 +437,7 @@ export function useArenaSession() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [otherOpen]);
 
-  // Arena init: `/api/arena/session/next` runs before any localStorage read or streak — canonical session router is sole source for first paint merge.
+  // Arena init: session router (`session/next` legacy vs `/api/arena/n/session` when Pipeline N) before localStorage merge.
   React.useEffect(() => {
     if (!levelChecked || requiresBeginnerPath) return;
 
@@ -401,7 +448,7 @@ export function useArenaSession() {
       setScenarioInitError(null);
 
       try {
-        const serverPack = await fetchSessionNextScenario(locale);
+        const serverPack = await fetchSessionNextScenario(locale, pipelineDefault);
         if (cancelled) return;
 
         const streakInfo = updateStreak();
@@ -414,7 +461,7 @@ export function useArenaSession() {
           resetAllLocal();
           setScenario(null);
           setPhase("CHOOSING");
-          setStep(1);
+          setStep(2);
           setScenarioInitError(t.scenarioNotFound);
           return;
         }
@@ -428,7 +475,8 @@ export function useArenaSession() {
           setRecallPrompt(serverPack.recallPrompt ?? null);
           setScenario(next);
           setPhase("CHOOSING");
-          setStep(1);
+          /** Canonical Arena: skip Legend step-1 intro; first screen is setup + initial choice (step 2). */
+          setStep(2);
           if (streakInfo.message) setSystemMessage(streakInfo.message);
           try {
             const data = await arenaFetch<{ run?: { run_id: string } }>("/api/arena/run", {
@@ -437,11 +485,21 @@ export function useArenaSession() {
             if (cancelled) return;
             if (data.run?.run_id) {
               setRunId(data.run.run_id);
+              try {
+                await postArenaEvent({
+                  runId: data.run.run_id,
+                  scenarioId: next.scenarioId,
+                  step: 1,
+                  eventType: "SCENARIO_STARTED",
+                });
+              } catch (e) {
+                console.warn("Arena SCENARIO_STARTED event failed", e);
+              }
               saveState({
                 version: 1,
                 scenarioId: next.scenarioId,
                 phase: "CHOOSING",
-                step: 1,
+                step: 2,
                 runId: data.run.run_id,
                 updatedAtISO: safeNowISO(),
               });
@@ -471,14 +529,19 @@ export function useArenaSession() {
           let resumePhase = saved.phase;
           let resumeStep = (saved.step ?? stepFromPhase(saved.phase)) as number;
           if (resumeStep < 1 || resumeStep > 7) {
-            resumeStep = 1;
+            resumeStep = 2;
             resumePhase = "CHOOSING";
           }
           const noSelection = saved.selectedChoiceId == null || saved.selectedChoiceId === undefined;
           if (resumePhase !== "CHOOSING" && noSelection && !saved.otherSubmitted) {
             resumePhase = "CHOOSING";
-            resumeStep = 1;
+            resumeStep = 2;
           }
+          /** Migrate old Legend step-1 intro to canonical first-choice screen. */
+          if (resumePhase === "CHOOSING" && resumeStep === 1 && noSelection && !saved.otherSubmitted) {
+            resumeStep = 2;
+          }
+          resumePhase = normalizeEliteResumePhase(serverNext, resumePhase, resumeStep);
           setScenario(serverNext);
           setPhase(resumePhase);
           setStep(resumeStep as ArenaStep);
@@ -500,7 +563,7 @@ export function useArenaSession() {
         }
 
         // Pre-choice lobby
-        if (!serverAligns || isStaleLobby(saved)) {
+        if (!serverAligns || isStaleLobby(saved, serverNext)) {
           await applyCanonicalLobby(serverNext);
           return;
         }
@@ -513,14 +576,19 @@ export function useArenaSession() {
         let resumePhase = saved.phase;
         let resumeStep = (saved.step ?? stepFromPhase(saved.phase)) as number;
         if (resumeStep < 1 || resumeStep > 7) {
-          resumeStep = 1;
+          resumeStep = 2;
           resumePhase = "CHOOSING";
         }
         const noSelection = saved.selectedChoiceId == null || saved.selectedChoiceId === undefined;
         if (resumePhase !== "CHOOSING" && noSelection && !saved.otherSubmitted) {
           resumePhase = "CHOOSING";
-          resumeStep = 1;
+          resumeStep = 2;
         }
+        /** Migrate old Legend step-1 intro to canonical first-choice screen. */
+        if (resumePhase === "CHOOSING" && resumeStep === 1 && noSelection && !saved.otherSubmitted) {
+          resumeStep = 2;
+        }
+        resumePhase = normalizeEliteResumePhase(serverNext, resumePhase, resumeStep);
         setScenario(serverNext);
         setPhase(resumePhase);
         setStep(resumeStep as ArenaStep);
@@ -586,7 +654,7 @@ export function useArenaSession() {
     return () => {
       cancelled = true;
     };
-  }, [levelChecked, requiresBeginnerPath, locale, t.scenarioNotFound]);
+  }, [levelChecked, requiresBeginnerPath, locale, pipelineDefault, t.scenarioNotFound]);
 
   // ── derived values ──────────────────────────────────────────
   const current = scenario;
@@ -671,6 +739,7 @@ export function useArenaSession() {
     setOtherSubmitted(false);
     setFreeResponseFeedback(null);
     setRecallPrompt(null);
+    setPatternContractDeferred(false);
   }
 
   // ── actions ─────────────────────────────────────────────────
@@ -703,9 +772,29 @@ export function useArenaSession() {
 
       setLastXp(xp);
       setSystemMessage(msg);
-      setPhase("SHOW_RESULT");
+      /** Elite (v2): always enter step 3 under ESCALATION — UI resolves `escalationBranches[primaryChoiceId]` only; no legacy stance path. */
+      const nextPhase: ArenaPhase =
+        current.eliteSetup ? "ESCALATION" : hasEscalationBranchForChoice(current, selectedChoiceId) ? "ESCALATION" : "SHOW_RESULT";
+      setPhase(nextPhase);
       setStep(3);
-      persist({ phase: "SHOW_RESULT", step: 3, lastXp: xp, lastSystemMessage: msg.id });
+      persist({
+        phase: nextPhase,
+        step: 3,
+        lastXp: xp,
+        lastSystemMessage: msg.id,
+      });
+      if (current.eliteSetup) {
+        const br =
+          selectedChoiceId && current.escalationBranches
+            ? current.escalationBranches[selectedChoiceId]
+            : undefined;
+        console.debug("[arena][elite-confirm]", {
+          scenarioId: current.scenarioId,
+          primaryChoiceId: selectedChoiceId,
+          escalationBranchKey: selectedChoiceId,
+          secondChoicesCount: br?.second_choices?.length ?? 0,
+        });
+      }
       setToast(t.scenarioCompletedToast);
     } finally {
       setConfirmingChoice(false);
@@ -785,6 +874,48 @@ export function useArenaSession() {
     persist({ step: 4 });
   }
 
+  async function acknowledgeEscalation() {
+    if (!current?.eliteSetup || !runId) {
+      setToast(t.errorStartRun);
+      throw new Error("run_missing");
+    }
+    setEscalationAckSubmitting(true);
+    try {
+      await arenaFetch("/api/arena/run/step", { json: { runId, step: 3 } });
+      setStep(4);
+      setPhase("FORCED_TRADEOFF");
+      persist({ step: 4, phase: "FORCED_TRADEOFF" });
+    } catch (e) {
+      console.warn("[arena] escalation acknowledge failed", e);
+      setToast(t.eliteRunStepAdvanceError);
+      throw e;
+    } finally {
+      setEscalationAckSubmitting(false);
+    }
+  }
+
+  async function submitSecondChoice(secondChoiceId: string) {
+    if (!current?.eliteSetup || !runId) {
+      setToast(t.errorStartRun);
+      throw new Error("run_missing");
+    }
+    setSecondChoiceSubmitting(true);
+    try {
+      await arenaFetch("/api/arena/run/step", {
+        json: { runId, step: 4, secondChoiceId },
+      });
+      setStep(5);
+      setPhase("SHOW_RESULT");
+      persist({ step: 5, phase: "SHOW_RESULT" });
+    } catch (e) {
+      console.warn("[arena] second choice step failed", e);
+      setToast(t.eliteRunStepAdvanceError);
+      throw e;
+    } finally {
+      setSecondChoiceSubmitting(false);
+    }
+  }
+
   async function submitReflection(idx: number, text?: string) {
     if (!current) return;
     const trimmed = typeof text === "string" ? text.trim() : "";
@@ -837,7 +968,17 @@ export function useArenaSession() {
         }
       }
 
-      if (hasFollowUp) {
+      if (current?.eliteSetup) {
+        setStep(5);
+        setPhase("SHOW_RESULT");
+        persist({
+          step: 5,
+          phase: "SHOW_RESULT",
+          reflectionIndex: idx,
+          reflectionText: trimmed || undefined,
+          reflectionBonusXp: bonus,
+        });
+      } else if (hasFollowUp) {
         setStep(5);
         setPhase("FOLLOW_UP");
         persist({ step: 5, phase: "FOLLOW_UP", reflectionIndex: idx, reflectionText: trimmed || undefined, reflectionBonusXp: bonus });
@@ -918,7 +1059,7 @@ export function useArenaSession() {
         }
       }
 
-      const nextPack = await fetchSessionNextScenario(locale);
+      const nextPack = await fetchSessionNextScenario(locale, pipelineDefault);
       const next = nextPack.scenario;
       if (!next) {
         setCompleteError(t.completeErrorPrefix + "no_scenario_available" + t.completeErrorSuffix);
@@ -926,7 +1067,7 @@ export function useArenaSession() {
       }
       setScenario(next);
       setPhase("CHOOSING");
-      setStep(1);
+      setStep(2);
       resetAllLocal();
       setRecallPrompt(nextPack.recallPrompt);
 
@@ -934,7 +1075,7 @@ export function useArenaSession() {
         scenario: next,
         timeLimitSeconds: ARENA_TIME_LIMIT_SECONDS,
       })
-        .then((result) => {
+        .then(async (result) => {
           if (result) {
             setRunId(result.run_id);
             runMetaRef.current =
@@ -945,11 +1086,21 @@ export function useArenaSession() {
                     timeLimitSeconds: result.timeLimitSeconds,
                   }
                 : null;
+            try {
+              await postArenaEvent({
+                runId: result.run_id,
+                scenarioId: next.scenarioId,
+                step: 1,
+                eventType: "SCENARIO_STARTED",
+              });
+            } catch (e) {
+              console.warn("Arena SCENARIO_STARTED event failed (continue)", e);
+            }
             saveState({
               version: 1,
               scenarioId: next.scenarioId,
               phase: "CHOOSING",
-              step: 1,
+              step: 2,
               runId: result.run_id,
               updatedAtISO: safeNowISO(),
             });
@@ -974,7 +1125,7 @@ export function useArenaSession() {
     setResetRunLoading(true);
     clearState();
     try {
-      const nextPack = await fetchSessionNextScenario(locale);
+      const nextPack = await fetchSessionNextScenario(locale, pipelineDefault);
       const next = nextPack.scenario;
       if (!next) {
         setScenario(null);
@@ -984,7 +1135,7 @@ export function useArenaSession() {
       }
       setScenario(next);
       setPhase("CHOOSING");
-      setStep(1);
+      setStep(2);
       resetAllLocal();
       setRecallPrompt(nextPack.recallPrompt);
       setSystemMessage(SYSTEM_MESSAGES.find((m) => m.id === "arch_init") ?? null);
@@ -1006,11 +1157,21 @@ export function useArenaSession() {
                 timeLimitSeconds: result.timeLimitSeconds,
               }
             : null;
+        try {
+          await postArenaEvent({
+            runId: result.run_id,
+            scenarioId: next.scenarioId,
+            step: 1,
+            eventType: "SCENARIO_STARTED",
+          });
+        } catch (e) {
+          console.warn("Arena SCENARIO_STARTED event failed (reset)", e);
+        }
         saveState({
           version: 1,
           scenarioId: next.scenarioId,
           phase: "CHOOSING",
-          step: 1,
+          step: 2,
           runId: result.run_id,
           updatedAtISO: safeNowISO(),
         });
@@ -1020,34 +1181,75 @@ export function useArenaSession() {
     }
   }
 
-  async function onStartSimulation() {
-    if (!current) return;
-    setStartSimulationLoading(true);
-    setRecallPrompt(null);
-    try {
-      const rid = await ensureRunId();
-      try {
-        await postArenaEvent({ runId: rid, scenarioId: current.scenarioId, step: 1, eventType: "SCENARIO_STARTED" });
-      } catch (e) {
-        console.warn("Arena SCENARIO_STARTED event failed", e);
-      }
-      setStep(2);
-      setPhase("CHOOSING");
-      persist({ step: 2, phase: "CHOOSING" });
-    } finally {
-      setStartSimulationLoading(false);
-    }
-  }
-
   function handleComplete() {
+    if (isBtyE2eStep6TraceEnabled()) {
+      console.log("[BTY_E2E_STEP6] handleComplete: setStep(7) + setPhase(DONE)", {
+        runId,
+        phaseBefore: phase,
+        stepBefore: step,
+      });
+    } else if (
+      typeof process !== "undefined" &&
+      process.env.NEXT_PUBLIC_DEBUG_ELITE_STEP7_TRANSITION === "1"
+    ) {
+      console.log("[useArenaSession] handleComplete", { runId, phaseBefore: phase, stepBefore: step });
+    }
     setStep(7);
     setPhase("DONE");
     persist({ step: 7, phase: "DONE" });
   }
 
+  /** Stable identity for `EliteActionContractStep` — avoids `onSubmit` useCallback churn from parent re-renders. */
+  const contractSubmitAdvanceToGateRef = React.useRef<() => void>(() => {});
+  React.useEffect(() => {
+    contractSubmitAdvanceToGateRef.current = () => {
+      setPatternContractDeferred(false);
+      handleComplete();
+    };
+  });
+
+  const contractSubmitAdvanceToGate = React.useCallback(() => {
+    if (isBtyE2eStep6TraceEnabled()) {
+      console.log("[BTY_E2E_STEP6] contractSubmitAdvanceToGate() invoked");
+    } else if (
+      typeof process !== "undefined" &&
+      process.env.NEXT_PUBLIC_DEBUG_ELITE_STEP7_TRANSITION === "1"
+    ) {
+      console.log("[useArenaSession] contractSubmitAdvanceToGate()");
+    }
+    contractSubmitAdvanceToGateRef.current();
+  }, []);
+
+  React.useEffect(() => {
+    if (step !== 7) return;
+    if (isBtyE2eStep6TraceEnabled()) {
+      console.log("[BTY_E2E_STEP6] parent committed step===7", { runId, phase });
+      return;
+    }
+    if (
+      typeof process !== "undefined" &&
+      process.env.NEXT_PUBLIC_DEBUG_ELITE_STEP7_TRANSITION === "1"
+    ) {
+      console.log("[useArenaSession] render with step===7", { runId, phase });
+    }
+  }, [step, runId, phase]);
+
   function handleSkipFollowUp() {
     setStep(6);
     persist({ step: 6 });
+  }
+
+  /** UX_FLOW_LOCK Step 5 → 6 after mirror Continue + acknowledgment_timestamp */
+  function mirrorContinueToContract() {
+    setPatternContractDeferred(false);
+    setStep(6);
+    persist({ step: 6, phase: "SHOW_RESULT" });
+  }
+
+  /** Step 6: POST /api/action-contracts returned `gated: "pattern_threshold"` — continue to gate without a draft contract */
+  function patternThresholdSkippedToGate() {
+    setPatternContractDeferred(true);
+    handleComplete();
   }
 
   function selectChoice(id: string) {
@@ -1089,14 +1291,20 @@ export function useArenaSession() {
     otherOpen, otherText, setOtherText,
     otherSubmitting, otherSubmitted, otherError,
     freeResponseFeedback, closeOtherModal,
-    nextScenarioLoading, confirmingChoice, startSimulationLoading, resetRunLoading,
+    nextScenarioLoading, confirmingChoice, resetRunLoading,
     completeError, toast,
     milestoneModal, closeMilestoneModal,
     runId,
     onConfirmChoice, submitOther, goToReflection,
+    acknowledgeEscalation, submitSecondChoice,
+    escalationAckSubmitting, secondChoiceSubmitting,
     submitReflection, submitFollowUp,
     continueNextScenario, pause, resetRun,
-    onStartSimulation, handleComplete, handleSkipFollowUp,
+    handleComplete, handleSkipFollowUp,
+    mirrorContinueToContract,
+    contractSubmitAdvanceToGate,
+    patternThresholdSkippedToGate,
+    patternContractDeferred,
     onRenameSubName,
   };
 }

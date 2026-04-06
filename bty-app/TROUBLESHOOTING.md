@@ -82,7 +82,7 @@ curl https://bty-website.pages.dev/api/deploy/ready
 
 #### Step 4: 로컬 빌드 테스트
 ```bash
-cd bty-website/bty-app
+cd bty-app
 npm install
 npm run build:cf
 ```

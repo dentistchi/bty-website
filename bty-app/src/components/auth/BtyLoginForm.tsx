@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { sanitizeNext } from "@/lib/sanitize-next";
 
 export default function BtyLoginForm({ nextPath }: { nextPath: string }) {
+  const pathname = usePathname();
+  const locale = pathname?.startsWith("/ko") ? "ko" : "en";
   const { user, loading, error, login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -13,9 +17,10 @@ export default function BtyLoginForm({ nextPath }: { nextPath: string }) {
   useEffect(() => {
     if (loading) return;
     if (user) {
-      window.location.assign(`/api/auth/after-login?next=${encodeURIComponent(nextPath)}`);
+      const safe = sanitizeNext(nextPath, locale);
+      window.location.assign(`/api/auth/after-login?next=${encodeURIComponent(safe)}`);
     }
-  }, [loading, user, nextPath]);
+  }, [loading, user, nextPath, locale]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

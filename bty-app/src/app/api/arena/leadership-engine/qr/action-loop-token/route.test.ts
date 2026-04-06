@@ -15,20 +15,35 @@ vi.mock("@/lib/supabase/route-client", () => ({
   copyCookiesAndDebug: vi.fn(),
 }));
 
-function makeSupabaseContractMock(contract: { id: string; session_id: string; status: string } | null) {
-  const maybeSingle = vi.fn().mockResolvedValue({ data: contract, error: null });
+type ContractRow = { id: string; session_id: string; status: string };
+
+/** Each `from()` call gets the next scenario (supports second query: approved + validation_approved_at, verified_at null). */
+function makeSupabaseContractMock(scenarios: Array<{ data: ContractRow | null }>) {
+  let fromIndex = 0;
   return {
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              maybeSingle,
-            })),
-          })),
-        })),
-      })),
-    })),
+    from: vi.fn(() => {
+      const scenarioIndex = fromIndex++;
+      const row = scenarios[scenarioIndex]?.data ?? null;
+      const b: {
+        select: ReturnType<typeof vi.fn>;
+        eq: ReturnType<typeof vi.fn>;
+        not: ReturnType<typeof vi.fn>;
+        is: ReturnType<typeof vi.fn>;
+        maybeSingle: ReturnType<typeof vi.fn>;
+      } = {
+        select: vi.fn(),
+        eq: vi.fn(),
+        not: vi.fn(),
+        is: vi.fn(),
+        maybeSingle: vi.fn(),
+      };
+      b.select.mockReturnValue(b);
+      b.eq.mockReturnValue(b);
+      b.not.mockReturnValue(b);
+      b.is.mockReturnValue(b);
+      b.maybeSingle.mockResolvedValue({ data: row, error: null });
+      return b;
+    }),
   };
 }
 
@@ -64,7 +79,7 @@ describe("POST /api/arena/leadership-engine/qr/action-loop-token", () => {
   it("returns 400 missing_run_id when runId empty", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
-      supabase: makeSupabaseContractMock(null),
+      supabase: makeSupabaseContractMock([{ data: null }]),
       base: {},
     });
     const res = await POST(postReq({ runId: "   " }));
@@ -75,7 +90,7 @@ describe("POST /api/arena/leadership-engine/qr/action-loop-token", () => {
   it("returns 409 no_pending_contract when no matching row", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
-      supabase: makeSupabaseContractMock(null),
+      supabase: makeSupabaseContractMock([{ data: null }, { data: null }]),
       base: {},
     });
     const res = await POST(postReq({ runId: "run-x" }));
@@ -86,11 +101,15 @@ describe("POST /api/arena/leadership-engine/qr/action-loop-token", () => {
   it("returns 200 with token and url when pending contract exists", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
-      supabase: makeSupabaseContractMock({
-        id: "cid-1",
-        session_id: "run-xyz",
-        status: "pending",
-      }),
+      supabase: makeSupabaseContractMock([
+        {
+          data: {
+            id: "cid-1",
+            session_id: "run-xyz",
+            status: "pending",
+          },
+        },
+      ]),
       base: {},
     });
     const res = await POST(postReq({ runId: "run-xyz" }, { origin: "https://app.example" }));
@@ -107,16 +126,41 @@ describe("POST /api/arena/leadership-engine/qr/action-loop-token", () => {
   it("uses locale=ko in url when query locale=ko", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
-      supabase: makeSupabaseContractMock({
-        id: "cid-1",
-        session_id: "run-ko",
-        status: "pending",
-      }),
+      supabase: makeSupabaseContractMock([
+        {
+          data: {
+            id: "cid-1",
+            session_id: "run-ko",
+            status: "pending",
+          },
+        },
+      ]),
       base: {},
     });
     const res = await POST(postReq({ runId: "run-ko" }, { locale: "ko" }));
     expect(res.status).toBe(200);
     const data = (await res.json()) as { url: string };
     expect(data.url).toContain("/ko/my-page");
+  });
+
+  it("returns 200 when validator-approved contract awaits execution verify (second query)", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: makeSupabaseContractMock([
+        { data: null },
+        {
+          data: {
+            id: "cid-val",
+            session_id: "run-v",
+            status: "approved",
+          },
+        },
+      ]),
+      base: {},
+    });
+    const res = await POST(postReq({ runId: "run-v" }, { origin: "https://app.example" }));
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { token: string };
+    expect(data.token.startsWith("aalo1.")).toBe(true);
   });
 });

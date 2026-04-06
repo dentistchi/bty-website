@@ -55,6 +55,27 @@ export async function POST(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  if (step >= 2) {
+    const nowIso = new Date().toISOString();
+    const { data: runRow } = await supabase
+      .from("arena_runs")
+      .select("reached_step_2_at")
+      .eq("run_id", runId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const reached = (runRow as { reached_step_2_at?: string | null } | null)?.reached_step_2_at;
+    await supabase
+      .from("arena_runs")
+      .update({
+        current_step: step,
+        ...(reached == null || String(reached).trim() === ""
+          ? { reached_step_2_at: nowIso }
+          : {}),
+      })
+      .eq("run_id", runId)
+      .eq("user_id", user.id);
+  }
+
   if (xp > 0) {
     await supabase.rpc("increment_arena_xp", {
       p_user_id: user.id,

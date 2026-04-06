@@ -1,0 +1,6 @@
+ARENA_RELEASE_GATE_AUTHENTICATED=PASS
+BASE_URL=https://bty-website.ywamer2022.workers.dev
+GITHUB_REPOSITORY=dentistchi/bty-website
+GITHUB_RUN_ID=23910789402
+GITHUB_RUN_URL=https://github.com/dentistchi/bty-website/actions/runs/23910789402
+PASSED_AT=2026-04-02T16:28:31Z
