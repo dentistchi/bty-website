@@ -54,16 +54,26 @@
 
 ---
 
-## 6. Release Criteria
+## 6. Action Contract Invariant
+
+- Every **`RUN_COMPLETED_APPLIED`** row in **`arena_events`** for a run **must** have a matching row in **`public.bty_action_contracts`** for the same **`user_id`** and **`session_id` = `arena_runs.run_id`** (logical key **`arena:run:<runId>`**; stored as **`session_id`**, not a separate `action_id` column).
+- **Invalid state:** `RUN_COMPLETED_APPLIED` exists **and** no **`bty_action_contracts`** row for that **`(user_id, session_id)`** → **must be recovered** (operator or client retry).
+- **Recovery:** **`POST /api/admin/recover-contract`** with **`{ userId, runId, scenarioId }`** (admin-only). Example: `userId` `38ce28d2-79e4-4de5-b554-c10404714d9f`, `runId` `908cfb24-4280-4cce-aa87-4e5ce844b1f3`, `scenarioId` `pswitch_ps_peer_1`.
+- **Idempotent path guarantee:** **`POST /api/arena/run/complete`** always invokes **`ensureActionContractForArenaRun`** when the run is already applied (`idempotent: true`), so a missing contract row is **repaired** on retry when **`SUPABASE_SERVICE_ROLE_KEY`** is configured.
+
+---
+
+## 7. Release Criteria
 
 1. 본 계약과 **`docs/SCENARIO_ROTATION_CONTRACT.md`** 가 **충돌 없음** (회전·mirror 정의 일치).
 2. **ikendo1** 기준 프로필은 본 문서 §3에 **고정** (회귀·스모크 기준).
 3. 동일 프로필 **시드**로 회귀 테스트 반영(가능 시).
 4. 이메일/내부 플래그 **비문서화 분기 없음** (코드 리뷰·감사 항목).
+5. §6 Action Contract invariant: **`run/complete`** 멱등 경로가 **`ensureActionContractForArenaRun`** 를 호출함 (부분 실패 복구).
 
 ---
 
-## 7. Cross-Account 검증 상태
+## 8. Cross-Account 검증 상태
 
 | 항목 | 상태 |
 |------|------|

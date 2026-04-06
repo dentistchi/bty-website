@@ -38,7 +38,7 @@ Cloudflare가 `package.json`의 `engines` 필드를 읽어 자동으로 Node.js 
 `bty-app` 폴더에 `.nvmrc` 파일을 생성하여 Node.js 버전을 명시할 수 있습니다:
 
 ```bash
-cd bty-website/bty-app
+cd bty-app
 echo "20" > .nvmrc
 ```
 

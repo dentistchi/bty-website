@@ -1,0 +1,51 @@
+# QA_INTEGRITY_FRAMEWORK_V1.md §5 — maps G-B01, G-B02, G-B03, G-B08 (Vitest) + G-B11 (terminology).
+# G-B04, G-B05, G-B09: see bty-app/docs/CI_RELEASE_GATE_MATRIX.md (manual / other workflows).
+# G-B06, G-B07: Vitest `src/app/api/bty/action-contract/submit-validation/route.test.ts` (included in `npm test`).
+# G-B10: partial — matrix lists target tests / Playwright.
+name: QA integrity gates (G-B01, G-B11 core)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "bty-app/**"
+      - ".github/workflows/qa-integrity-gates.yml"
+  pull_request:
+    paths:
+      - "bty-app/**"
+      - ".github/workflows/qa-integrity-gates.yml"
+
+jobs:
+  vitest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: bty-app
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: bty-app/package-lock.json
+      - run: npm ci
+      - name: Vitest (integrity-related + full suite)
+        run: npm test
+
+  terminology-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: bty-app
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: bty-app/package-lock.json
+      - run: npm ci
+      - name: G-B11 — terminology lint (zero violations)
+        run: npm run lint:terminology

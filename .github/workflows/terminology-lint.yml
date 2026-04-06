@@ -1,0 +1,33 @@
+# G-B11 / IB-TERMINOLOGY-LINT-01 — forbidden-substitution terminology lint (blocking)
+name: Terminology lint (G-B11)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "bty-app/**"
+      - ".github/workflows/terminology-lint.yml"
+  pull_request:
+    paths:
+      - "bty-app/**"
+      - ".github/workflows/terminology-lint.yml"
+
+jobs:
+  terminology-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: bty-app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Terminology lint (zero violations required)
+        run: node scripts/terminology-lint.mjs

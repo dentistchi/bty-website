@@ -20,6 +20,8 @@
 
 **Arena release gate (deploy smoke):** `bty-app/scripts/arena-release-gate.sh` + workflow `arena-release-gate.yml` — **작업 완료**
 
+**Cutover readiness (C3):** **`PENDING-014`** and **`PENDING-017`** **remain open** — **must appear** on the cutover checklist (`bty-app/docs/ARENA_PIPELINE_CUTOVER.md` § C3; `bty-app/docs/CI_RELEASE_GATE_MATRIX.md` § C3; `docs/BTY_RELEASE_GATE_CHECK.md`). **Neither blocks** cutover; **both require post-cutover resolution**.
+
 ---
 
 ## 🔵 ACTIVE TASKS
@@ -85,6 +87,19 @@
 - Healing / Awakening phase
 - Team Index full integration
 - Elite mentor flow 확장
+
+---
+
+## ⚫ CUTOVER — G-B09 (COMPLETE 2026-03-28)
+
+**G-B09 — Full-repo forbidden pattern sweep** — **DONE.**
+
+| | |
+| --- | --- |
+| **Normative doc** | **`bty-app/docs/terminology-locks/UX_FLOW_LOCK_V1.md`** §5 |
+| **Automation** | **`bty-app/scripts/ux-flow-lock-gb09-sweep.mjs`** (`npm run lint:ux-flow-gb09` in `bty-app`) |
+| **Result** | **PASS** — no high-risk §5 phrase hits in **966** `src/` files (2026-03-28 run). |
+| **Evidence** | **`docs/BTY_RELEASE_GATE_CHECK.md`** — G-B09 sign-off line. |
 
 ---
 

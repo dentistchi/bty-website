@@ -17,13 +17,29 @@ jobs:
     defaults:
       run:
         working-directory: bty-app
+    env:
+      # Same Supabase project as BASE_URL deploy; seedFixtureUser runs before HTTP smoke when key is set.
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: bty-app/package-lock.json
+
+      - name: Install dependencies (tsx + seed script)
+        run: npm ci
+
       - name: Arena release gate (HTTP smoke)
         env:
           BASE_URL: ${{ inputs.base_url || secrets.BASE_URL }}
+          # Optional: omit to use default fixture (e2e-fixture+bty@local.test) after seedFixtureUser
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
         run: bash scripts/arena-release-gate.sh

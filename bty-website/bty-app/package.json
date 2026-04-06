@@ -10,9 +10,9 @@
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "next lint",
-    "pages:build": "opennextjs-cloudflare build --dangerouslyUseUnsupportedNextVersion",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && wrangler deploy"
+    "pages:build": "node ./scripts/deploy-blocked.mjs",
+    "preview": "node ./scripts/deploy-blocked.mjs",
+    "deploy": "node ./scripts/deploy-blocked.mjs"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.16.5",

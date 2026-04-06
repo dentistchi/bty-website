@@ -1,21 +1,21 @@
+# Dear Me & BTY — **legacy stub (not for production deploy)**
+
+> **Production, Arena, and release gate** use the **monorepo root** app: [`../../bty-app`](../../bty-app) (Supabase cookie session, `requireUser`, `/api/arena/session/next`).  
+> **Deploy:** `cd ../../bty-app && npm run deploy` — not this directory.  
+> **Auth contract:** [`../../bty-app/docs/BTY_RELEASE_GATE_CHECK.md`](../../bty-app/docs/BTY_RELEASE_GATE_CHECK.md).  
+> `npm run deploy` / `preview` / `pages:build` here are **blocked** (`scripts/deploy-blocked.mjs`).
+
+---
+
 # Dear Me & BTY (통합 앱)
 
 한 앱에서 **자존감 회복실(Dear Me)** 와 **훈련장(BTY)** 를 모두 제공. 한국어 + **영어(/en)** 지원. 기본 AI 챗봇 탑재.
 
-## Cloudflare Pages 배포 시 설정
+## Cloudflare / Workers 배포 (canonical)
 
-**반드시 아래처럼 설정해야 Dear Me 화면이 나옵니다.** (루트가 아니라 `bty-app`을 빌드해야 함)
+**Do not** point the production Worker build at this folder (`bty-website/bty-app`). Use the **monorepo root** [`bty-app`](../../bty-app) — same Worker name (`bty-website` in `bty-app/wrangler.toml`), Supabase cookie auth, and Arena routes required by the release gate.
 
-1. **Cloudflare Dashboard** → Workers & Pages → **bty-website** → **Settings** → **Builds & deployments**
-2. **Build configuration**에서:
-   - **Root directory (Build root):** `bty-app` 입력
-   - **Framework preset:** `Next.js` 선택
-   - **Build command:** `npm run build` (기본값 유지)
-   - **Build output directory:** Next.js 사용 시 Cloudflare가 자동 처리 (비워두거나 기본값)
-
-3. **Save** 후 **Retry deployment** 또는 새 커밋 푸시로 다시 배포.
-
-이후 `bty-website.pages.dev` 접속 시 Dear Me 랜딩이 보입니다.
+If you maintain a **legacy** Cloudflare Pages project, set **Build root** to the repository’s **top-level `bty-app`** directory (sibling of `bty-website/`), not `bty-website/bty-app`.
 
 ## 경로
 
@@ -35,17 +35,17 @@
 
 ## 로컬 실행
 
+**권장:** 모노레포 루트 [`bty-app`](../../bty-app)에서 `npm run dev` (기본 포트 3000; Arena·릴리즈 게이트 계약과 동일).
+
+이 레거시 스텁만 띄울 때(포트 3001, 데모 인증 — **프로덕션/게이트 비사용**):
+
 ```bash
-cd bty-app
+cd bty-website/bty-app   # 저장소 루트 기준
 npm install
 npm run dev
 ```
 
-http://localhost:3001  
-- `/` → Dear Me (한국어)  
-- `/en` → Dear Me (English)  
-- `/bty` → 훈련장 (한국어)  
-- `/en/bty` → Dojo (English)
+- `/` → Dear Me (한국어) · `/en` → English · `/bty` / `/en/bty` → 훈련장
 
 ## AI 챗봇
 

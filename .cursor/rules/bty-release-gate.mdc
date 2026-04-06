@@ -26,6 +26,7 @@ RELEASE CHECKLIST (MUST INCLUDE IN OUTPUT)
 A) Auth / Cookies / Session
 - List cookie settings: Secure, SameSite, Path, Domain.
 - Confirm logout clears cookies and session state.
+- **Release gate contract:** valid login → **200**; **`Set-Cookie`** on success; authenticated **`GET /api/arena/session/next`** succeeds. **No** in-memory-only session/auth on **production** or **release-gate** path; **demo-auth** or test bypass in prod → **blocking**.
 - If runtime changes (edge/node/worker), explain impact and rollback plan.
 
 B) Weekly Reset Safety
