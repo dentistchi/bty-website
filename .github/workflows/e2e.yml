@@ -17,13 +17,14 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
     defaults:
       run:
         working-directory: bty-app
 
-  env:
+    env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-      CI: true
+      CI: "true"
       PLAYWRIGHT_NO_WEB_SERVER: "1"
       BASE_URL: ${{ secrets.BASE_URL }}
       E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
@@ -54,8 +55,10 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Set BASE_URL (local dev server by default)
+        shell: bash
         run: |
-          BASE_URL_CLEAN=$(echo "$BASE_URL" | tr -d '\n\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          set -euo pipefail
+          BASE_URL_CLEAN=$(printf '%s' "${BASE_URL:-}" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
           if [ -z "$BASE_URL_CLEAN" ]; then
             BASE_URL_CLEAN="http://127.0.0.1:3000"
             echo "Using default BASE_URL: $BASE_URL_CLEAN (local E2E)"
@@ -64,55 +67,67 @@ jobs:
           fi
           echo "BASE_URL=$BASE_URL_CLEAN" >> "$GITHUB_ENV"
 
-            - name: Check required E2E secrets
+      - name: Check required E2E secrets
+        shell: bash
         run: |
-          if [ -z "$E2E_EMAIL" ]; then
+          set -euo pipefail
+          if [ -z "${E2E_EMAIL:-}" ]; then
             echo "Missing secret: E2E_EMAIL"
             exit 1
           fi
-          if [ -z "$E2E_PASSWORD" ]; then
+          if [ -z "${E2E_PASSWORD:-}" ]; then
             echo "Missing secret: E2E_PASSWORD"
             exit 1
           fi
-          if [ -z "$E2E_COMEBACK_EMAIL" ]; then
+          if [ -z "${E2E_COMEBACK_EMAIL:-}" ]; then
             echo "Missing secret: E2E_COMEBACK_EMAIL"
             exit 1
           fi
-          if [ -z "$E2E_COMEBACK_PASSWORD" ]; then
+          if [ -z "${E2E_COMEBACK_PASSWORD:-}" ]; then
             echo "Missing secret: E2E_COMEBACK_PASSWORD"
             exit 1
           fi
-          if [ -z "$CRON_SECRET" ] && [ -z "$E2E_TEST_CLEANUP_SECRET" ]; then
+          if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ]; then
+            echo "Missing secret: NEXT_PUBLIC_SUPABASE_URL"
+            exit 1
+          fi
+          if [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ]; then
+            echo "Missing secret: NEXT_PUBLIC_SUPABASE_ANON_KEY"
+            exit 1
+          fi
+          if [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            echo "Missing secret: SUPABASE_SERVICE_ROLE_KEY"
+            exit 1
+          fi
+          if [ -z "${CRON_SECRET:-}" ] && [ -z "${E2E_TEST_CLEANUP_SECRET:-}" ]; then
             echo "Missing secret: CRON_SECRET or E2E_TEST_CLEANUP_SECRET"
             exit 1
           fi
 
       - name: Run E2E suite
+        shell: bash
         env:
           NEXT_TELEMETRY_DISABLED: "1"
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           E2E_TEST_CLEANUP_SECRET: ${{ secrets.E2E_TEST_CLEANUP_SECRET || secrets.CRON_SECRET }}
         run: |
-          set -e
-        run: |
-          set -e
+          set -euo pipefail
+
           if [[ "$BASE_URL" == *"127.0.0.1"* ]] || [[ "$BASE_URL" == *"localhost"* ]]; then
-            if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ]; then
-              echo "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY — add repo secrets for E2E."
-              exit 1
-            fi
             echo "Starting Next.js dev (log: /tmp/next-dev.log) ..."
             NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=4096" npm run dev -- -H 127.0.0.1 -p 3000 > /tmp/next-dev.log 2>&1 &
             echo $! > /tmp/next-dev.pid
-            # First compile on CI can exceed 120s; TCP is reliable before HTTP responds.
+
             npx wait-on --timeout 300000 tcp:127.0.0.1:3000 || (
               echo "=== next dev log (last 200 lines) ==="
               tail -200 /tmp/next-dev.log || true
               echo "Dev server failed to start (wait-on tcp:127.0.0.1:3000 timed out after 300s)"
               exit 1
             )
+
             echo "Dev server listening on tcp:127.0.0.1:3000"
           fi
+
           npm run e2e:seed-default-journey
           npm run e2e:seed-comeback
           npm run e2e:auth
