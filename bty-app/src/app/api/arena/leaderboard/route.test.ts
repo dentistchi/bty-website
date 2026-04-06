@@ -17,6 +17,7 @@ vi.mock("@supabase/ssr", () => ({
 
 vi.mock("@/lib/bty/cookies/authCookies", () => ({
   writeSupabaseAuthCookies: vi.fn(),
+  authCookieSecureForRequest: vi.fn().mockReturnValue(true),
 }));
 
 vi.mock("@/lib/supabase-admin", () => ({

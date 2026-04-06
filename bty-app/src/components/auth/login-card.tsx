@@ -79,11 +79,11 @@ const C = {
     oauthWait: "Connecting… Please wait.",
     otpSent:
       "We sent a code. Enter it below. If you don’t see it, check your spam folder.",
-    errorGeneric: "Something went wrong. Please try again.",
+    errorGeneric: "Something went wrong. Please retry.",
     errorSupabase: "Sign-in isn’t configured yet. Please contact your administrator.",
     errorInvalidPhone: "Check your phone number format.",
     errorInvalidCode: "Check your verification code.",
-    retryCta: "Try again",
+    retryCta: "Retry",
     cookieNote: "Your session is kept with secure cookies. You may be redirected after sign-in.",
   },
 } as const;

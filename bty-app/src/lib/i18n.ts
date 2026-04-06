@@ -4246,7 +4246,7 @@ const en: Messages = {
     eliteMirrorLoadError: "Could not load mirror data.",
     eliteSituationUpdateHeader: "SITUATION UPDATE",
     eliteDecisionRequiredHeader: "DECISION REQUIRED",
-    eliteRunStepAdvanceError: "Could not record this step. Try again in a moment.",
+    eliteRunStepAdvanceError: "Could not record this step. Please retry in a moment.",
     eliteForcedTradeoffCostLabel: "COST",
     eliteV2ErrorNotConfiguredTitle: "Escalation data missing",
     eliteV2ErrorNotConfiguredBody:
@@ -4293,7 +4293,7 @@ const en: Messages = {
     actionContractFollowupFirst30Placeholder: "Say what happened, in your own words.",
     actionContractFollowupSubmit: "Submit",
     actionContractFollowupSubmitting: "Submitting…",
-    actionContractFollowupError: "Could not submit. Try again shortly.",
+    actionContractFollowupError: "Could not submit. Please retry shortly.",
     eliteExecutionGateTitle: "Execution Gate",
     eliteExecutionGateIntro:
       "Verification is recorded according to procedure. Accepted evidence types and where to submit follow product policy. Your contract text below is shown exactly as authored.",
