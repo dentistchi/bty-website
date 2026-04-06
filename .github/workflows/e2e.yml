@@ -90,6 +90,10 @@ jobs:
       - name: Run E2E suite
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          E2E_TEST_CLEANUP_SECRET: ${{ secrets.E2E_TEST_CLEANUP_SECRET || secrets.CRON_SECRET }}
+        run: |
+          set -e
         run: |
           set -e
           if [[ "$BASE_URL" == *"127.0.0.1"* ]] || [[ "$BASE_URL" == *"localhost"* ]]; then
