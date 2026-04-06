@@ -21,9 +21,7 @@ jobs:
       run:
         working-directory: bty-app
 
-    env:
-      # Opt into Node 24 for JS actions (checkout/setup-node/upload-artifact) before default June 2026
-      # https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+  env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       CI: true
       PLAYWRIGHT_NO_WEB_SERVER: "1"
@@ -35,6 +33,8 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      E2E_TEST_CLEANUP_SECRET: ${{ secrets.E2E_TEST_CLEANUP_SECRET || secrets.CRON_SECRET }}
 
     steps:
       - name: Checkout
