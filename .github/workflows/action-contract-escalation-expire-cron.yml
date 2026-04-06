@@ -1,24 +1,23 @@
-# TII Weekly Job — 매주 compute_team_tii 호출 후 TeamWeeklyMetrics 삽입
-# docs/TII_WEEKLY_JOB_SPEC.md 기준. Cron으로 실행.
+# Expire open action-contract escalations past `expires_at` (72h SLA) — hourly
+# See bty-app/docs/ACTION_CONTRACT_ESCALATION_EXPIRE_CRON.md
 
-name: TII Weekly Job
+name: Action contract escalation expire
 
 on:
   schedule:
-    # 매주 월요일 00:00 UTC
-    - cron: '0 0 * * 1'
+    # Every hour UTC (SLA is 72h; frequent runs keep expiry tight)
+    - cron: "0 * * * *"
   workflow_dispatch:
 
 jobs:
-  tii-weekly:
-    name: Run TII weekly recomputation
+  escalation-expire:
+    name: POST /api/cron/action-contract-escalation-expire
     runs-on: ubuntu-latest
     env:
-      # Same value as deploy runtime (OpenNext / Cloudflare Workers / Vercel) — see docs/CI_SECRETS_CRON_E2E.md
       DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
     steps:
-      - name: Call TII weekly endpoint
+      - name: Call escalation expiry endpoint
         run: |
           set -euo pipefail
           if [ -z "${DEPLOY_URL:-}" ] || [ -z "${CRON_SECRET:-}" ]; then
@@ -26,7 +25,7 @@ jobs:
             exit 1
           fi
           BASE=$(printf '%s' "$DEPLOY_URL" | tr -d '\r\n' | sed 's/[[:space:]]*$//;s#/*$##')
-          URL="${BASE}/api/cron/tii-weekly"
+          URL="${BASE}/api/cron/action-contract-escalation-expire"
           echo "POST $URL (Authorization: Bearer <CRON_SECRET>)"
           res=$(curl -sS -w "\n%{http_code}" -X POST "$URL" \
             -H "Authorization: Bearer ${CRON_SECRET}" \
