@@ -18,9 +18,10 @@
 
 - **주기**: 매주 1회 (예: 월요일 00:00 UTC 또는 시즌/리그의 `week_start` 기준).
 - **실행 주체**: Cron, Vercel Cron, 또는 Supabase Edge Function 등 (Infrastructure 담당).
-- **실제 배포**: GitHub Actions `tii-weekly-cron.yml` — 매주 월요일 00:00 UTC에 `POST /api/cron/tii-weekly` 호출.  
+- **실제 배포**: GitHub Actions `tii-weekly-cron.yml` — 매주 월요일 00:00 UTC에 `POST /api/cron/tii-weekly` 호출 (`Authorization: Bearer <CRON_SECRET>`).  
   - **필수 Secrets**: `DEPLOY_URL`(배포된 앱 URL, 예: `https://bty-website.xxx.workers.dev`), `CRON_SECRET`(동일 값을 앱 env `CRON_SECRET`에 설정).  
-  - 배포 앱(Cloudflare Workers 등)에 `CRON_SECRET` 환경 변수 설정 필요.
+  - 배포 앱(Cloudflare Workers / OpenNext 등)에 `CRON_SECRET` 환경 변수 설정 필요.  
+  - **GitHub ↔ 런타임 parity 체크리스트**: monorepo `docs/CI_SECRETS_CRON_E2E.md`.
 
 ### 입력 수집 (Infrastructure)
 
