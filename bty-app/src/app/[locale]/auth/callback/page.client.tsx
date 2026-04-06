@@ -2,7 +2,8 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { inferLocaleFromNextParam, sanitizeNextForRedirect } from "@/lib/auth/sanitize-next-for-redirect";
 import { supabase } from "@/lib/supabase";
 
 function parseHashParams(hash: string): Record<string, string> {
@@ -17,6 +18,7 @@ function parseHashParams(hash: string): Record<string, string> {
 }
 
 function AuthCallbackForm() {
+  const pathname = usePathname() ?? "";
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<"loading" | "error">("loading");
@@ -35,6 +37,15 @@ function AuthCallbackForm() {
       const code = searchParams.get("code");
       const type = searchParams.get("type");
       const next = searchParams.get("next");
+      const locale = pathname.startsWith("/ko") ? "ko" : "en";
+
+      function redirectAfterSession() {
+        const locFromPath = pathname.startsWith("/ko") ? "ko" : "en";
+        const loc =
+          next != null && String(next).trim() !== "" ? inferLocaleFromNextParam(next) : locFromPath;
+        const safe = sanitizeNextForRedirect(next, { locale: loc });
+        router.replace(safe);
+      }
 
       if (code) {
         const { error } = await supabaseClient.auth.exchangeCodeForSession(code);
@@ -45,10 +56,10 @@ function AuthCallbackForm() {
           return;
         }
         if (type === "recovery") {
-          router.replace("/auth/reset-password");
+          router.replace(`/${locale}/auth/reset-password`);
           return;
         }
-        router.replace(next || "/admin/debug");
+        redirectAfterSession();
         return;
       }
 
@@ -70,10 +81,10 @@ function AuthCallbackForm() {
           return;
         }
         if (recoveryType === "recovery") {
-          router.replace("/auth/reset-password");
+          router.replace(`/${locale}/auth/reset-password`);
           return;
         }
-        router.replace(next || "/admin/debug");
+        redirectAfterSession();
         return;
       }
 
@@ -85,7 +96,7 @@ function AuthCallbackForm() {
     return () => {
       mounted = false;
     };
-  }, [router, searchParams]);
+  }, [pathname, router, searchParams]);
 
   if (status === "loading") {
     return (

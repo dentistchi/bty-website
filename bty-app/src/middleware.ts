@@ -36,6 +36,9 @@ function isPublicPath(pathname: string) {
     if (pathname === `/${locale}/center` || pathname === `/${locale}/center/`) return true;
     if (pathname === `/${locale}/admin/login`) return true;
     if (pathname === `/${locale}/bty/login`) return true;
+    /** OAuth return: session is created client-side on this page (`exchangeCodeForSession` / hash tokens). Must not require auth. */
+    if (pathname === `/${locale}/auth/callback` || pathname.startsWith(`/${locale}/auth/callback/`))
+      return true;
     if (pathname === `/${locale}/bty/logout`) return true;
     /** Leaderboard: API serves public overall view when cookies missing (Workers/Edge). Page load must not force login. */
     if (

@@ -93,10 +93,15 @@ function safeOrigin(): string {
   return window.location.origin;
 }
 
-function buildOAuthRedirectTo(nextPath: string): string {
+/**
+ * Supabase redirects here after IdP → `auth/v1/callback` with `?code=` or implicit hash tokens.
+ * Use the locale **page** (`/[locale]/auth/callback`) so the browser client can exchange the code / read hashes
+ * (PKCE + Microsoft/Azure edge cases). The `/api/auth/callback` route is server-only and only sees query params.
+ */
+function buildOAuthRedirectTo(locale: LoginCardLocale, nextPath: string): string {
   const origin = safeOrigin();
   const next = encodeURIComponent(nextPath);
-  return `${origin}/api/auth/callback?next=${next}`;
+  return `${origin}/${locale}/auth/callback?next=${next}`;
 }
 
 /** Logs full provider message; UI shows short copy only (release safety). */
@@ -149,7 +154,7 @@ export default function LoginCard({ locale, nextPath, initialError }: LoginCardP
       setOauthProvider(provider);
       try {
         const supabase = getSupabase();
-        const redirectTo = buildOAuthRedirectTo(nextPath);
+        const redirectTo = buildOAuthRedirectTo(locale, nextPath);
         const { error: oauthError } = await supabase.auth.signInWithOAuth({
           provider,
           options: {
@@ -169,7 +174,7 @@ export default function LoginCard({ locale, nextPath, initialError }: LoginCardP
         setOauthProvider(null);
       }
     },
-    [configured, nextPath, t.errorGeneric, t.errorSupabase]
+    [configured, locale, nextPath, t.errorGeneric, t.errorSupabase]
   );
 
   const onSendOtp = useCallback(async () => {

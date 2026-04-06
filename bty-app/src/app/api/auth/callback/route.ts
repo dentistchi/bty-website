@@ -1,3 +1,8 @@
+/**
+ * Server-side OAuth code exchange (query `code` only).
+ * BTY login (`login-card`) uses `/{locale}/auth/callback` for browser exchange + hash tokens; keep this route for
+ * bookmarks or integrations that still redirect to `/api/auth/callback`.
+ */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
