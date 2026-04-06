@@ -64,7 +64,7 @@ jobs:
           fi
           echo "BASE_URL=$BASE_URL_CLEAN" >> "$GITHUB_ENV"
 
-      - name: Check required E2E secrets
+            - name: Check required E2E secrets
         run: |
           if [ -z "$E2E_EMAIL" ]; then
             echo "Missing secret: E2E_EMAIL"
@@ -80,6 +80,10 @@ jobs:
           fi
           if [ -z "$E2E_COMEBACK_PASSWORD" ]; then
             echo "Missing secret: E2E_COMEBACK_PASSWORD"
+            exit 1
+          fi
+          if [ -z "$CRON_SECRET" ] && [ -z "$E2E_TEST_CLEANUP_SECRET" ]; then
+            echo "Missing secret: CRON_SECRET or E2E_TEST_CLEANUP_SECRET"
             exit 1
           fi
 
