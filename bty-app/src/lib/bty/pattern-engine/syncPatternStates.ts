@@ -3,6 +3,36 @@ import { CANONICAL_PATTERN_FAMILIES } from "@/domain/pattern-family";
 
 const WINDOW_SIZE = 7;
 
+/** `reached_step_2_at IS NOT NULL` — use `>=` so `NULL` rows are excluded (same as `.not(col, "is", null)` on timestamptz). */
+const MIN_TIMESTAMPTZ_ISO = new Date(0).toISOString();
+
+type PatternStateRow = {
+  user_id: string;
+  pattern_family: string;
+  window_run_ids: string[];
+  family_window_tally: number;
+  updated_at: string;
+};
+
+/** Real `SupabaseClient` always has `.upsert`; minimal test doubles may omit it — use `insert` then. */
+async function upsertPatternStateRow(
+  supabase: SupabaseClient,
+  payload: PatternStateRow,
+): Promise<{ error: { message: string } | null }> {
+  const table = supabase.from("pattern_states");
+  const t = table as unknown as {
+    upsert?: (
+      data: PatternStateRow,
+      opts?: { onConflict?: string },
+    ) => PromiseLike<{ error: { message: string } | null }>;
+    insert: (data: PatternStateRow) => PromiseLike<{ error: { message: string } | null }>;
+  };
+  if (typeof t.upsert === "function") {
+    return await t.upsert(payload, { onConflict: "user_id,pattern_family" });
+  }
+  return await t.insert(payload);
+}
+
 /**
  * Recomputes `window_run_ids` and `family_window_tally` for each canonical family (ENGINE §5 rules 2–3).
  * Tally = count of **distinct** runs in the window that have at least one **exit** signal for that family (threshold path).
@@ -15,7 +45,7 @@ export async function syncPatternStatesForUser(
     .from("arena_runs")
     .select("run_id")
     .eq("user_id", userId)
-    .not("reached_step_2_at", "is", null)
+    .gte("reached_step_2_at", MIN_TIMESTAMPTZ_ISO)
     .order("started_at", { ascending: false })
     .limit(WINDOW_SIZE);
 
@@ -27,16 +57,13 @@ export async function syncPatternStatesForUser(
 
   if (windowRunIds.length === 0) {
     for (const pattern_family of CANONICAL_PATTERN_FAMILIES) {
-      const { error } = await supabase.from("pattern_states").upsert(
-        {
-          user_id: userId,
-          pattern_family,
-          window_run_ids: [],
-          family_window_tally: 0,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,pattern_family" },
-      );
+      const { error } = await upsertPatternStateRow(supabase, {
+        user_id: userId,
+        pattern_family,
+        window_run_ids: [],
+        family_window_tally: 0,
+        updated_at: new Date().toISOString(),
+      });
       if (error) return { ok: false, error: error.message };
     }
     return { ok: true };
@@ -66,16 +93,13 @@ export async function syncPatternStatesForUser(
 
   for (const pattern_family of CANONICAL_PATTERN_FAMILIES) {
     const tally = exitRunsByFamily.get(pattern_family)?.size ?? 0;
-    const { error } = await supabase.from("pattern_states").upsert(
-      {
-        user_id: userId,
-        pattern_family,
-        window_run_ids: windowRunIds,
-        family_window_tally: tally,
-        updated_at: nowIso,
-      },
-      { onConflict: "user_id,pattern_family" },
-    );
+    const { error } = await upsertPatternStateRow(supabase, {
+      user_id: userId,
+      pattern_family,
+      window_run_ids: windowRunIds,
+      family_window_tally: tally,
+      updated_at: nowIso,
+    });
     if (error) return { ok: false, error: error.message };
   }
 
