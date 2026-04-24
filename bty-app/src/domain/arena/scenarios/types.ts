@@ -22,6 +22,26 @@ export type SecondChoice = {
   cost: string;
   pattern_family?: string;
   direction: "entry" | "exit";
+  /** Behavioral engine / binding template id — when set, overrides `${scenarioId}:second:*` in canonical loaders. */
+  dbChoiceId?: string;
+};
+
+/** Step after tradeoff — real-world act vs hold (not interpretive “insight” copy). */
+export type ActionDecisionChoice = {
+  id: string;
+  label: string;
+  /** Optional supporting line — commitment / consequence tone. */
+  commitment?: string;
+  /** Set in canonical loaders — must match POST `/api/arena/choice` `db_choice_id`. */
+  dbChoiceId?: string;
+  /** Binding / engine: only `is_action_commitment === true` may open an action contract row. */
+  meaning?: { is_action_commitment?: boolean };
+};
+
+export type ActionDecisionBlock = {
+  prompt: string;
+  promptKo?: string;
+  choices: ActionDecisionChoice[];
 };
 
 export type EscalationBranch = {
@@ -29,6 +49,8 @@ export type EscalationBranch = {
   /** 0.0–1.0 — how much harder the situation became after the primary choice. */
   pressure_increase: number;
   second_choices: SecondChoice[];
+  /** Required for canonical elite — third meaningful choice before contract / run end. */
+  action_decision?: ActionDecisionBlock;
 };
 
 export type PrimaryChoice = {

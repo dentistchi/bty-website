@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logActionContractActorTrace } from "@/lib/bty/action-contract/arenaRunActor.server";
 import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { evaluateActionContractPayload } from "@/lib/bty/validator/runActionContractValidation";
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
 
   const { data: contract, error: loadErr } = await supabase
     .from("bty_action_contracts")
-    .select("id, user_id, status, pattern_family, arena_scenario_id")
+    .select("id, user_id, status, pattern_family, arena_scenario_id, session_id, run_id")
     .eq("id", contractId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -94,6 +95,37 @@ export async function POST(req: NextRequest) {
     typeof (contract as { arena_scenario_id?: string }).arena_scenario_id === "string"
       ? (contract as { arena_scenario_id: string }).arena_scenario_id
       : "";
+  const sessionIdRaw =
+    typeof (contract as { session_id?: string }).session_id === "string"
+      ? (contract as { session_id: string }).session_id.trim()
+      : "";
+  let resolvedRunOwner: string | null = null;
+  if (sessionIdRaw !== "") {
+    const { data: runRow } = await supabase
+      .from("arena_runs")
+      .select("user_id")
+      .eq("run_id", sessionIdRaw)
+      .maybeSingle();
+    const ru = (runRow as { user_id?: string } | null)?.user_id;
+    resolvedRunOwner = typeof ru === "string" && ru.trim() !== "" ? ru.trim() : null;
+  }
+  const contractUserId = String((contract as { user_id: string }).user_id);
+  logActionContractActorTrace("submit_validation", {
+    incoming_actor_user_id: user.id,
+    source_run_id: sessionIdRaw || null,
+    resolved_run_owner_user_id: resolvedRunOwner,
+    resolved_auth_user_id: user.id,
+    contract_user_id: contractUserId,
+  });
+  if (resolvedRunOwner != null && resolvedRunOwner !== contractUserId) {
+    const out = NextResponse.json(
+      { error: "contract_run_user_mismatch", message: "Contract user_id does not match arena_runs.user_id for session_id." },
+      { status: 409 },
+    );
+    copyCookiesAndDebug(base, out, req, true);
+    return out;
+  }
+
   console.log("[submit-validation] contract loaded", {
     contractId,
     userId: user.id,
@@ -237,6 +269,14 @@ export async function POST(req: NextRequest) {
       userId: user.id,
       patch: approvePatch,
     });
+    logActionContractActorTrace("approve_action_contract", {
+      incoming_actor_user_id: user.id,
+      source_run_id: sessionIdRaw || null,
+      resolved_run_owner_user_id: resolvedRunOwner,
+      resolved_auth_user_id: user.id,
+      contract_user_id: contractUserId,
+      inserted_bty_action_contracts_user_id: contractUserId,
+    });
 
     const { error: apErr } = await supabase
       .from("bty_action_contracts")
@@ -256,6 +296,25 @@ export async function POST(req: NextRequest) {
       copyCookiesAndDebug(base, out, req, true);
       return out;
     }
+
+    // Backfill run_id for older rows (session_id is the arena run id); execution verification + run DONE happen in QR validate.
+    if (admin && sessionIdRaw !== "") {
+      const hasRunId =
+        contract != null &&
+        typeof (contract as { run_id?: string | null }).run_id === "string" &&
+        String((contract as { run_id?: string | null }).run_id).trim() !== "";
+      if (!hasRunId) {
+        const { error: ridErr } = await admin
+          .from("bty_action_contracts")
+          .update({ run_id: sessionIdRaw })
+          .eq("id", contractId)
+          .eq("user_id", user.id);
+        if (ridErr) {
+          console.warn("[submit-validation] run_id backfill skipped", ridErr.message);
+        }
+      }
+    }
+
     await logEvaluation(null);
     const out = NextResponse.json({ outcome: "approve" });
     copyCookiesAndDebug(base, out, req, true);

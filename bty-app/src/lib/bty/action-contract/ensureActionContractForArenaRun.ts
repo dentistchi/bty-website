@@ -3,6 +3,7 @@
  * Obtains Supabase admin internally — callers must not pass a client.
  */
 
+import { logActionContractActorTrace } from "@/lib/bty/action-contract/arenaRunActor.server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { ensureActionContractWithAdmin } from "./ensureActionContract";
 
@@ -36,6 +37,12 @@ export async function ensureActionContractForArenaRun(params: {
     );
     return { ok: false, contractId: null, created: false };
   }
+
+  logActionContractActorTrace("ensureActionContractWithAdmin", {
+    incoming_actor_user_id: params.userId,
+    source_run_id: params.runId,
+    resolved_auth_user_id: params.userId,
+  });
 
   return ensureActionContractWithAdmin(admin, {
     userId: params.userId,

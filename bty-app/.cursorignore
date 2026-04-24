@@ -1,63 +1,34 @@
-# dependency
-node_modules/
-
-# build outputs
-.next/
-dist/
-build/
-out/
-
-# logs
+node_modules
+.next
+dist
+build
+coverage
+.vercel
+tmp
+temp
 *.log
-logs/
-
-# environment
+*.tmp
 .env
 .env.local
-.env.*.local
+.env.production
+.cache
+.generated
+DS_Store
 
-# OS files
-.DS_Store
-Thumbs.db
+supabase/.branches
+supabase/.temp
 
-# git
-.git/
-.gitignore
+playwright-report
+test-results
+storybook-static
+out
 
-# editor
-.vscode/
-.idea/
-
-# coverage
-coverage/
-
-# package manager
-.pnpm-store/
-.npm/
-.yarn/
-
-# large assets
 *.png
 *.jpg
 *.jpeg
-*.gif
+*.webp
 *.mp4
 *.mov
-
-# Supabase local
-supabase/.temp
-supabase/.cache
-
-# Workers build
-.wrangler/
-
-# test artifacts
-playwright-report/
-test-results/
-
-# generated files
-*.lock
-package-lock.json
-
-# optional docs to skip (if too large)
-docs/archive/
+*.zip
+*.tar
+*.gz

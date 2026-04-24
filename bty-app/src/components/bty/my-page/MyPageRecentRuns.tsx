@@ -2,6 +2,10 @@
 
 /**
  * GET /api/arena/runs — 목록·nextCursor 페이지네이션 render-only.
+ *
+ * **Run deeplinks (`/${locale}/bty-arena/run/:runId`)** — infrastructure / historical record navigation (stable URL per run).
+ * Not “live Arena entry”: do not replace with session-router snapshot; “continue Arena now” is a separate product surface
+ * (see {@link useArenaEntryResolution}). @see `arenaProductVsInfrastructure.ts`
  */
 import Link from "next/link";
 import React from "react";

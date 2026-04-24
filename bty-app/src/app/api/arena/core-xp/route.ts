@@ -8,7 +8,7 @@
  * - **캐시:** no-store, must-revalidate.
  *
  * Gate 1: UI MUST use response.tier only; do not compute tier from coreXpTotal.
- * Gate 2: use response.requiresBeginnerPath for beginner redirect; do not compare coreXpTotal to 200 (use domain BEGINNER_CORE_XP_THRESHOLD in API only).
+ * Gate 2: `requiresBeginnerPath` only when `BTY_POST_LOGIN_ONBOARDING_ENABLED=1` and coreXpTotal < BEGINNER_CORE_XP_THRESHOLD; otherwise false (forced Elite entry).
  * Related: weekly ranking = GET /api/arena/leaderboard only (core XP ≠ weekly rank).
  */
 import { NextRequest, NextResponse } from "next/server";
@@ -28,6 +28,7 @@ import { getUnlockedContentWindow } from "@/lib/bty/arena/unlock";
 import type { Track, LevelId } from "@/lib/bty/arena/tenure";
 import { getOutfitForLevel, getCharacterOutfitImageUrl, getOutfitById, resolveDisplayAvatarLayers } from "@/lib/bty/arena/avatarOutfits";
 import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
+import { isPostLoginOnboardingWizardEnabled } from "@/lib/bty/arena/postLoginEliteEntry";
 
 export async function GET(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);
@@ -117,12 +118,14 @@ export async function GET(req: NextRequest) {
       return codeIndex > lastAt;
     })();
 
+  const beginnerGate = isPostLoginOnboardingWizardEnabled();
+
   if (!row) {
     const defaultOutfit = getOutfitForLevel(null, "S1");
     const out = NextResponse.json({
       coreXpTotal: 0,
       tier: 0,
-      requiresBeginnerPath: true,
+      requiresBeginnerPath: beginnerGate,
       codeName: CODE_NAMES[0],
       subName: "Spark",
       seasonalXpTotal: 0,
@@ -217,7 +220,7 @@ export async function GET(req: NextRequest) {
   const out = NextResponse.json({
     coreXpTotal,
     tier,
-    requiresBeginnerPath: coreXpTotal < BEGINNER_CORE_XP_THRESHOLD,
+    requiresBeginnerPath: beginnerGate && coreXpTotal < BEGINNER_CORE_XP_THRESHOLD,
     codeName,
     subName,
     seasonalXpTotal,

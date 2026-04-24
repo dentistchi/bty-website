@@ -20,7 +20,8 @@ function getClient(): SupabaseClient | null {
           auth: {
             persistSession: true,
             autoRefreshToken: true,
-            detectSessionInUrl: true,
+            /** PKCE OAuth return is handled explicitly on `/{locale}/auth/callback` (`exchangeCodeForSession`). */
+            detectSessionInUrl: false,
           },
           cookieOptions: { path: "/" },
         })

@@ -7,7 +7,7 @@
  *
  * Stage 4 triggers when ANY TWO of:
  *   - Stage 3 selected twice within 14 days
- *   - AIR_7d < FORCED_RESET_AIR_7D_THRESHOLD for 2 consecutive weeks (`air.AIR_BAND_MID_HIGH`)
+ *   - AIR_7d < FORCED_RESET_AIR_7D_THRESHOLD for 2 consecutive weeks (= below **high** band floor, `air.AIR_BAND_MID_HIGH` = 0.80)
  *   - No QR verification for 7 days
  *   - TSP declining for 2 consecutive weeks
  *
@@ -30,7 +30,10 @@ export const FORCED_RESET_DELAY_HOURS = 48 as const;
 export interface ResetEvalInputs {
   /** Number of times Stage 3 was selected in the last 14 days. */
   stage3SelectedCountIn14d: number;
-  /** True if AIR_7d has been < 0.70 for each of the last 2 consecutive weeks (weekly snapshots). */
+  /**
+   * Legacy field name. Semantics: true if AIR_7d was **strictly below** `AIR_BAND_MID_HIGH` (0.80)
+   * for each of the last 2 consecutive weeks — i.e. not in the **high** AIR band.
+   */
   air7dBelow70ForTwoConsecutiveWeeks: boolean;
   /** Days since last QR verification (any verified activation with method=qr). */
   noQrVerificationDays: number;
@@ -44,7 +47,8 @@ export interface ForcedResetEvalResult {
 }
 
 const REASON_STAGE3_TWICE = "stage3_selected_twice_in_14d";
-const REASON_AIR_LOW_TWO_WEEKS = "air_7d_below_70_two_consecutive_weeks";
+/** Machine reason: AIR_7d below high-band floor (0.80) for two consecutive weeks. */
+const REASON_AIR_LOW_TWO_WEEKS = "air_7d_below_high_band_two_consecutive_weeks";
 const REASON_NO_QR_7_DAYS = "no_qr_verification_7_days";
 const REASON_TSP_DECLINING_TWO_WEEKS = "tsp_declining_two_consecutive_weeks";
 

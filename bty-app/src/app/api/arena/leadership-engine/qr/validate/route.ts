@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { completeArenaRunAfterContractVerification } from "@/lib/bty/action-contract/actionContractLifecycle.server";
+import { logActionContractActorTrace } from "@/lib/bty/action-contract/arenaRunActor.server";
 import { verifyArenaActionLoopToken } from "@/lib/bty/leadership-engine/qr/arena-action-loop-token";
 import { onArenaRunCompleteVerified } from "@/lib/bty/level-engine/arenaLevelRecords";
 
@@ -9,8 +11,7 @@ export const runtime = "nodejs";
  * POST /api/arena/leadership-engine/qr/validate
  * Body: { arenaActionLoopToken: string, clientScanAtIso?: string }
  *
- * Witness / any signed-in user may call this — we do **not** require `session.user.id === token.userId`.
- * Contract owner is taken from the signed token; DB updates use service role keyed by token payload.
+ * Witness / any caller may POST — **no** `requireUser`. The token’s **`userId`** must equal **`arena_runs.user_id`** for **`sessionId`** (run id); otherwise **409** `run_actor_token_mismatch`. DB updates use service role keyed by verified token payload.
  */
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
@@ -33,10 +34,34 @@ export async function POST(req: NextRequest) {
 
   const { userId, sessionId, contractId } = verified.payload;
 
-  if (contractId) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "";
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "";
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
+  let runOwnerId: string | null = null;
+  if (supabaseUrl.trim() && serviceKey.trim()) {
+    const adminForActor = createClient(supabaseUrl, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { data: runActorRow } = await adminForActor
+      .from("arena_runs")
+      .select("user_id")
+      .eq("run_id", sessionId)
+      .maybeSingle();
+    const uid = (runActorRow as { user_id?: string } | null)?.user_id;
+    runOwnerId = typeof uid === "string" && uid.trim() !== "" ? uid.trim() : null;
+  }
+
+  logActionContractActorTrace("qr_validate", {
+    incoming_actor_user_id: userId,
+    source_run_id: sessionId,
+    resolved_run_owner_user_id: runOwnerId,
+    contract_user_id: contractId ?? null,
+  });
+  if (runOwnerId != null && runOwnerId !== userId) {
+    return NextResponse.json({ ok: false, error: "run_actor_token_mismatch" }, { status: 409 });
+  }
+
+  if (contractId) {
     if (!supabaseUrl.trim() || !serviceKey.trim()) {
       console.error("[qr/validate] Missing Supabase admin credentials");
       return NextResponse.json({ error: "server_config_error" }, { status: 500 });
@@ -105,14 +130,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const { error: runErr } = await adminClient
-      .from("arena_runs")
-      .update({ completion_state: "complete_verified" })
-      .eq("run_id", sessionId)
-      .eq("user_id", userId);
-
-    if (runErr) {
-      console.error("[qr/validate] arena_runs completion_state update failed", runErr.message);
+    const finalized = await completeArenaRunAfterContractVerification(adminClient, {
+      userId,
+      runId: sessionId,
+      verifiedAtIso: verifiedAt,
+    });
+    if (!finalized.runUpdated) {
+      console.error("[qr/validate] arena_runs completion after contract verify failed");
     }
 
     const levelRes = await onArenaRunCompleteVerified(adminClient, userId);

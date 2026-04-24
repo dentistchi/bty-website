@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { EmotionalStatsPhrases } from "@/components/bty/EmotionalStatsPhrases";
+import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
@@ -21,8 +22,10 @@ type Props = { locale: string; t: BtyMessages };
 /** bty 메인: Arena · Center · Foundry 세 허브만 노출. */
 export default function BtyIndexPage({ locale, t }: Props) {
   const isKo = locale === "ko";
-  const tLand = getMessages((locale === "ko" ? "ko" : "en") as Locale).landing;
-  const tBtyFull = getMessages((locale === "ko" ? "ko" : "en") as Locale).bty;
+  const loc = (locale === "ko" ? "ko" : "en") as Locale;
+  const { contract: arenaEntry } = useArenaEntryResolution(loc);
+  const tLand = getMessages(loc).landing;
+  const tBtyFull = getMessages(loc).bty;
 
   const hubs: {
     key: string;
@@ -34,7 +37,7 @@ export default function BtyIndexPage({ locale, t }: Props) {
   }[] = [
     {
       key: "arena",
-      href: `/${locale}/bty-arena`,
+      href: arenaEntry.href,
       title: tLand.arenaTitle,
       desc: tLand.arenaDesc,
       cta: tLand.arenaCta,

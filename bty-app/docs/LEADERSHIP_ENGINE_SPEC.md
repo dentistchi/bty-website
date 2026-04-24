@@ -104,7 +104,7 @@ compute_air(user_id, period: "7d" | "14d" | "90d") -> { air_value, missed_window
 **강제 조건 (최근 14일 내 아래 중 “어느 두 개”라도 만족하면 Stage4 강제)**
 
 - `stage3_selected_count >= 2`
-- `AIR_7d < 0.70` 가 **2주 연속** (주간 스냅샷 저장)
+- **AIR_7d가 high 밴드 미만(즉 &lt; 0.80)** 인 것이 **2주 연속** — `FORCED_RESET_AIR_7D_THRESHOLD` = `AIR_BAND_MID_HIGH` (0.80); 주간 스냅샷 입력. 머신 reason: **`air_7d_below_high_band_two_consecutive_weeks`**. *(구 규약 `AIR_7d < 0.70` / `air_7d_below_70_two_consecutive_weeks` 는 폐기.)*
 - `no_qr_verification_days >= 7`
 - TSP 추세가 **2주 연속 음수** (TSP_week_n < TSP_week_n-1)
 

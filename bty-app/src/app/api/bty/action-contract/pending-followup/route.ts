@@ -14,6 +14,8 @@ type ContractRow = {
 /**
  * GET /api/bty/action-contract/pending-followup?sessionId=<arena run_id>
  * Returns the oldest committed contract without a follow-up row, if trigger (new session | 24h) applies.
+ *
+ * **Not used by `/bty-arena` UI** — Arena has no Action Contract surfaces; other clients may poll this.
  */
 export async function GET(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);

@@ -74,6 +74,30 @@ export async function fetchBlockingArenaContractForSession(
   return awaitingVerify ? (awaitingVerify as BlockingArenaContractRow) : null;
 }
 
+/**
+ * When a contract was just created (same request) and {@link fetchBlockingArenaContractForSession}
+ * has not yet surfaced it, load by id for snapshot authority.
+ */
+export async function fetchBlockingContractRowByContractId(
+  supabase: SupabaseClient,
+  userId: string,
+  contractId: string,
+): Promise<BlockingArenaContractRow | null> {
+  const cid = typeof contractId === "string" ? contractId.trim() : "";
+  if (!cid) return null;
+  const { data, error } = await supabase
+    .from("bty_action_contracts")
+    .select("id, contract_description, deadline_at, verification_mode, created_at, status")
+    .eq("user_id", userId)
+    .eq("id", cid)
+    .maybeSingle();
+  if (error) {
+    console.error("[arena] blocking contract by id", error.message);
+    return null;
+  }
+  return data ? (data as BlockingArenaContractRow) : null;
+}
+
 export async function userHasBlockingArenaActionContract(
   supabase: SupabaseClient,
   userId: string,

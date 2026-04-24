@@ -31,7 +31,7 @@ describe("domain/index", () => {
   });
 
   it("re-exports leadership-engine + foundry barrel (AIR stage threshold, STAGE_1)", () => {
-    expect(domain.AIR_THRESHOLD_STAGE_ESCALATION).toBe(0.4);
+    expect(domain.AIR_THRESHOLD_STAGE_ESCALATION).toBe(0.5);
     expect(domain.STAGE_1).toBe(1);
     expect(typeof domain.validateDojo50Submit).toBe("function");
   });
@@ -71,7 +71,7 @@ describe("domain/index", () => {
   it("barrel 236: weekly elite, stage cap, AIR threshold, and healing label", () => {
     expect(domain.isElite(1, 10)).toBe(true);
     expect(domain.stageFromCoreXp(9999)).toBe(7);
-    expect(domain.AIR_THRESHOLD_STAGE_ESCALATION).toBe(0.4);
+    expect(domain.AIR_THRESHOLD_STAGE_ESCALATION).toBe(0.5);
     expect(domain.HEALING_PHASE_RING_TYPE).toBe("phase_ring");
   });
 

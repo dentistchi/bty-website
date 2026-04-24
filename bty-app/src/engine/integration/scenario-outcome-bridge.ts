@@ -15,6 +15,7 @@ import { validateXPAward, type XPAwardResult } from "@/engine/integration/xp-int
 import { adjustDifficultyFloorFromChoiceConfirmed } from "@/engine/scenario/scenario-difficulty-adjuster.service";
 import { recordChoiceConfirmedMemory } from "@/engine/memory/memory-integration.service";
 import { appendPlayedScenarioId } from "@/engine/scenario/user-scenario-played-append.service";
+import { logActionContractActorTrace } from "@/lib/bty/action-contract/arenaRunActor.server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export type ChoiceConfirmedEvent = {
@@ -83,6 +84,12 @@ export async function handleChoiceConfirmed(
   userId: string,
   event: ChoiceConfirmedEvent,
 ): Promise<ChoiceConfirmedPipelineResult> {
+  logActionContractActorTrace("record_choice_confirmed", {
+    incoming_actor_user_id: userId,
+    source_run_id: null,
+    resolved_auth_user_id: userId,
+    contract_user_id: null,
+  });
   await handleMirrorTrigger(userId, event);
 
   await insertUserScenarioChoiceHistory({

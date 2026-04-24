@@ -14,6 +14,7 @@ export type ArenaPhase =
   | "CHOOSING"
   | "ESCALATION"
   | "FORCED_TRADEOFF"
+  | "ACTION_DECISION"
   | "SHOW_RESULT"
   | "FOLLOW_UP"
   | "DONE";

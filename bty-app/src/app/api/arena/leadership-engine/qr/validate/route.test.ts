@@ -6,6 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "./route";
 import { signArenaActionLoopToken } from "@/lib/bty/leadership-engine/qr/arena-action-loop-token";
 
+vi.mock("@/lib/bty/action-contract/actionContractLifecycle.server", () => ({
+  completeArenaRunAfterContractVerification: vi
+    .fn()
+    .mockResolvedValue({ runUpdated: true, deferredQueued: false }),
+}));
+
 const adminFrom = vi.fn();
 
 vi.mock("@supabase/supabase-js", () => ({
@@ -48,6 +54,14 @@ describe("POST /api/arena/leadership-engine/qr/validate", () => {
       }
       if (table === "arena_runs") {
         return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { user_id: "owner" },
+                error: null,
+              }),
+            }),
+          }),
           update: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
               eq: vi.fn().mockResolvedValue({ error: null }),
@@ -117,6 +131,45 @@ describe("POST /api/arena/leadership-engine/qr/validate", () => {
     const res = await POST(req({ arenaActionLoopToken: token }));
     expect(res.status).toBe(500);
     expect((await res.json()).error).toBe("server_config_error");
+  });
+
+  it("409 run_actor_token_mismatch when token userId !== arena_runs.user_id", async () => {
+    adminFrom.mockImplementation((table: string) => {
+      if (table === "arena_runs") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { user_id: "real-owner" },
+                error: null,
+              }),
+            }),
+          }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ error: null }),
+            }),
+          }),
+        };
+      }
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
+        }),
+      };
+    });
+    const token = signArenaActionLoopToken({
+      sessionId: "run1",
+      userId: "owner",
+      actionId: "arena_action_loop:run1",
+      issuedAt: Date.now(),
+      contractId: "c1",
+    });
+    const res = await POST(req({ arenaActionLoopToken: token }));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe("run_actor_token_mismatch");
   });
 
   it("200 ok uses token userId for DB — does not require session user (no requireUser)", async () => {

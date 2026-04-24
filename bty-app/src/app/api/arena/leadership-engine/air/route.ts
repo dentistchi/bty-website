@@ -2,10 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { computeAIRSnapshot, airToBand } from "@/domain/leadership-engine/air";
 import type { ActivationRecord } from "@/domain/leadership-engine/air";
+import { runForcedResetAfterAirIfStage3 } from "@/lib/bty/leadership-engine/forced-reset-runtime.server";
 
 /**
  * GET /api/arena/leadership-engine/air
- * Returns AIR 점수·밴드 for 7d, 14d, 90d from activation + verification logs. Auth required. UI displays only.
+ *
+ * **AIR (execution integrity) adapter:** `le_activation_log` + `le_verification_log` → domain `ActivationRecord[]`
+ * → `computeAIRSnapshot` / `airToBand`. Official vocabulary mapping: `domain/leadership-engine/air.ts` file header.
+ * **Not** Pattern Shift (behavior layer); no merge with mirror/pattern engines here.
+ *
+ * Returns AIR score + band for 7d, 14d, 90d. Auth required. UI displays band only (raw score optional per product).
+ * **Side effect:** after computing AIR, runs {@link runForcedResetAfterAirIfStage3} (stage 3 → may persist stage 4 per `evaluateForcedReset`).
  * Response (200): { air_7d, air_14d, air_90d } (each: air, missedWindows, integritySlip, band low|mid|high). No rows → 200 with zeros and band low.
  * Errors: 401 { error: "UNAUTHENTICATED" }; unhandled DB errors → 500.
  */
@@ -25,6 +32,7 @@ export async function GET(req: NextRequest) {
       air_14d: { air: 0, missedWindows: 0, integritySlip: false, band: "low" as const },
       air_90d: { air: 0, missedWindows: 0, integritySlip: false, band: "low" as const },
     };
+    await runForcedResetAfterAirIfStage3(supabase, user.id, []);
     const res = NextResponse.json(empty);
     copyCookiesAndDebug(base, res, req, true);
     return res;
@@ -56,6 +64,8 @@ export async function GET(req: NextRequest) {
   }));
 
   const snapshot = computeAIRSnapshot(activations);
+  await runForcedResetAfterAirIfStage3(supabase, user.id, activations);
+
   const res = NextResponse.json({
     air_7d: { ...snapshot.air_7d, band: airToBand(snapshot.air_7d.air) },
     air_14d: { ...snapshot.air_14d, band: airToBand(snapshot.air_14d.air) },

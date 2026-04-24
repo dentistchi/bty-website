@@ -1,7 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { STAGE_4 } from "@/domain/leadership-engine/stages";
 import { getNextScenarioForSession } from "@/engine/integration/scenario-type-router";
 import { ScenarioSelectionError, type ScenarioLocalePreference } from "@/engine/scenario/scenario-selector.service";
 import { fetchBlockingArenaContractForSession } from "@/lib/bty/arena/blockingArenaActionContract";
+import {
+  scenarioWithJsonSource,
+  snapshotForBlockedContract,
+  snapshotForForcedResetPending,
+  snapshotForReexposureDue,
+  snapshotForScenarioReady,
+} from "@/lib/bty/arena/arenaRuntimeSnapshot.server";
+import { getLeadershipEngineState } from "@/lib/bty/leadership-engine/state-service";
+import { fetchFirstDueReexposureMeta } from "@/engine/scenario/delayed-outcome-trigger.service";
+import { consumeDueDelayedOutcomeTriggersForUser } from "@/engine/memory/delayed-outcome-consumer.service";
 
 export type ArenaSessionNextCoreResult =
   | { status: 200; body: Record<string, unknown> }
@@ -34,6 +45,7 @@ export async function runArenaSessionNextCore(params: {
     });
 
     if (blocking) {
+      const snap = snapshotForBlockedContract(blocking);
       return {
         status: 409,
         body: {
@@ -45,6 +57,8 @@ export async function runArenaSessionNextCore(params: {
             verification_type: blocking.verification_mode,
             created_at: blocking.created_at,
           },
+          ...snap,
+          scenario: null,
         },
       };
     }
@@ -56,6 +70,28 @@ export async function runArenaSessionNextCore(params: {
       .eq("status", "pending")
       .lte("deadline_at", new Date().toISOString());
 
+    /** Detectable from `leadership_engine_state` — Arena play deferred until Center integrity reset completes. */
+    try {
+      const le = await getLeadershipEngineState(supabase, userId);
+      if (le.currentStage === STAGE_4 && le.forcedResetTriggeredAt != null) {
+        const frSnap = snapshotForForcedResetPending();
+        return {
+          status: 200,
+          body: {
+            ok: true,
+            ...frSnap,
+            scenario: null,
+            scenarioRoute: null,
+          },
+        };
+      }
+    } catch (e) {
+      console.warn("[arena] session-router leadership_engine_state read failed", {
+        userId,
+        message: e instanceof Error ? e.message : String(e),
+      });
+    }
+
     const servedIds = await supabase
       .from("arena_runs")
       .select("scenario_id")
@@ -63,6 +99,16 @@ export async function runArenaSessionNextCore(params: {
       .eq("status", "DONE")
       .then((r) => r.data?.map((x) => x.scenario_id).filter((id): id is string => typeof id === "string") ?? []);
 
+    /**
+     * NEXT_SCENARIO_READY (GET) — not emitted here.
+     *
+     * POST /api/arena/run/complete returns {@link snapshotForNextScenarioReady} for transient UI until the client
+     * refetches session. This GET handler always runs {@link getNextScenarioForSession} synchronously; on success it
+     * materializes the next scenario and returns {@link snapshotForScenarioReady} (ARENA_SCENARIO_READY) or
+     * {@link snapshotForReexposureDue}. There is no persisted “completed run, next GET not yet consumed” row — so a
+     * distinct NEXT_SCENARIO_READY on GET would require new persisted source of truth (e.g. explicit pending-next flag
+     * with defined consumption semantics). Do not infer it from DONE runs alone (would duplicate ARENA_SCENARIO_READY).
+     */
     const routed = await getNextScenarioForSession(userId, locale, {
       servedArenaScenarioIds: servedIds,
     });
@@ -76,15 +122,53 @@ export async function runArenaSessionNextCore(params: {
         },
       };
     }
+    const consumedDelayedOutcomeTriggers = await consumeDueDelayedOutcomeTriggersForUser({
+      userId,
+      supabase,
+    });
+    const delayedOutcomePending =
+      routed.delayedOutcomePending || consumedDelayedOutcomeTriggers.consumedCount > 0;
+    const firstConsumedTrigger = consumedDelayedOutcomeTriggers.triggers[0] ?? null;
+
+    const reExposureMeta = delayedOutcomePending
+      ? await fetchFirstDueReexposureMeta(supabase, userId)
+      : null;
+    const readySnap = delayedOutcomePending
+      ? snapshotForReexposureDue()
+      : snapshotForScenarioReady();
+    /**
+     * While `REEXPOSURE_DUE` is active, do not attach a normal “next catalog” scenario — avoids mixed semantics
+     * (snapshot blocks play but body still carried a playable next scenario). Re-exposure play uses
+     * `GET /api/arena/re-exposure/[scenarioId]` after {@link fetchFirstDueReexposureMeta} identifies the source row.
+     */
     return {
       status: 200,
       body: {
         ok: true,
-        scenario: routed.scenario,
-        scenarioRoute: routed.route,
-        delayedOutcomePending: routed.delayedOutcomePending,
-        ...(routed.recallPrompt ? { recallPrompt: routed.recallPrompt } : {}),
-        ...(routed.route === "mirror" && routed.mirrors ? { mirrors: routed.mirrors } : {}),
+        ...readySnap,
+        ...(delayedOutcomePending
+          ? {
+              re_exposure: {
+                due: true,
+                scenario_id: reExposureMeta?.scenarioId ?? null,
+                pending_outcome_id: reExposureMeta?.pendingOutcomeId ?? null,
+                ...(firstConsumedTrigger
+                  ? {
+                      trigger_id: firstConsumedTrigger.triggerId,
+                      trigger_payload: firstConsumedTrigger.payload,
+                    }
+                  : {}),
+              },
+              scenario: null,
+              scenarioRoute: null,
+            }
+          : {
+              scenario: scenarioWithJsonSource(routed.scenario),
+              scenarioRoute: routed.route,
+              ...(routed.recallPrompt ? { recallPrompt: routed.recallPrompt } : {}),
+              ...(routed.route === "mirror" && routed.mirrors ? { mirrors: routed.mirrors } : {}),
+            }),
+        delayedOutcomePending,
       },
     };
   } catch (e) {

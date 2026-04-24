@@ -1,0 +1,7 @@
+BTY Arena global rules:
+- user_scenario_history is the only source of truth for scenario rotation
+- interpretArenaDecision must remain pure
+- QR validation must route only through /api/qr/validate
+- Migrations must be ordered and idempotent
+- Never regress the existing test baseline
+- ARENA_CANONICAL_CONTRACT.md overrides local assumptions and summaries

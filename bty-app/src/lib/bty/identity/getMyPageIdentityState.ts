@@ -9,6 +9,8 @@ import {
   fetchOpenActionContractForMyPage,
   type MyPageOpenActionContractUi,
 } from "@/lib/bty/my-page/openActionContractForMyPage";
+import { fetchUserPatternSignaturesForMyPage } from "@/lib/bty/arena/fetchUserPatternSignatures.server";
+import type { UserPatternSignaturePublic } from "@/lib/bty/arena/patternSignature.types";
 import { fetchSignalsAndReflections } from "./fetchIdentityRows";
 
 export type MyPageIdentityPayload = {
@@ -22,6 +24,8 @@ export type MyPageIdentityPayload = {
   reflections: ReflectionEntry[];
   /** Open or latest terminal action contract for Action Contract Hub (server-derived). */
   open_action_contract: MyPageOpenActionContractUi | null;
+  /** Arena Phase B — aggregated pattern signatures (re-exposure / reinforcement), newest first. */
+  pattern_signatures: UserPatternSignaturePublic[];
 };
 
 /**
@@ -52,6 +56,9 @@ export async function getMyPageIdentityState(
 
   const open_action_contract = await fetchOpenActionContractForMyPage(supabase, userId);
 
+  const sigBundle = await fetchUserPatternSignaturesForMyPage(supabase, userId);
+  if (!sigBundle.ok) return { ok: false, message: sigBundle.message };
+
   return {
     ok: true,
     data: {
@@ -62,6 +69,7 @@ export async function getMyPageIdentityState(
       signals,
       reflections,
       open_action_contract,
+      pattern_signatures: sigBundle.rows,
     },
   };
 }

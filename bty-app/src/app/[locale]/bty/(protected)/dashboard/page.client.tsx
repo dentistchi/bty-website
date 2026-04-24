@@ -14,6 +14,7 @@ import { weeklyCompetitionStageTierBandDisplayLabelKey } from "@/domain/rules/we
 import { calculateTier } from "@/domain/rules/weeklyXp";
 import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
 import { getAccessoryImageUrl } from "@/lib/bty/arena/avatarOutfits";
+import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 
 type WeeklyXpRes = { weekStartISO?: string | null; weekEndISO?: string | null; xpTotal: number; count?: number };
 type CoreXpRes = {
@@ -75,29 +76,6 @@ type MembershipRequestRes = {
   } | null;
 };
 
-type LeadershipEngineStateRes = {
-  currentStage: 1 | 2 | 3 | 4;
-  stageName: string;
-  forcedResetTriggeredAt: string | null;
-  resetDueAt: string | null;
-};
-
-type AIRResultRes = { air: number; missedWindows: number; integritySlip: boolean };
-type AIRSnapshotRes = { air_7d: AIRResultRes; air_14d: AIRResultRes; air_90d: AIRResultRes };
-
-type TIIRes = {
-  tii: number | null;
-  avg_air: number | null;
-  avg_mwd: number | null;
-  tsp: number | null;
-};
-
-type CertifiedRes = {
-  current: boolean;
-  reasons_met: string[];
-  reasons_missing: string[];
-};
-
 type StageSummaryRes = {
   currentStage: 1 | 2 | 3 | 4;
   stageName: string;
@@ -134,7 +112,8 @@ export default function DashboardClient() {
   const [streak, setStreak] = React.useState<number>(0);
   const params = useParams();
   const locale = (typeof params?.locale === "string" ? params.locale : "en") as string;
-  const arenaPlayHref = `/${locale}/bty-arena`;
+  const { contract: arenaEntry } = useArenaEntryResolution(locale === "ko" ? "ko" : "en");
+  const arenaPlayHref = arenaEntry.href;
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -151,10 +130,6 @@ export default function DashboardClient() {
   const [isElite, setIsElite] = React.useState<boolean | null>(null);
   const [eliteBadges, setEliteBadges] = React.useState<Array<{ kind: string; labelKey: string }>>([]);
   const [eliteContentUnlocked, setEliteContentUnlocked] = React.useState<boolean | null>(null);
-  const [leState, setLeState] = React.useState<LeadershipEngineStateRes | null>(null);
-  const [leAir, setLeAir] = React.useState<AIRSnapshotRes | null>(null);
-  const [leTii, setLeTii] = React.useState<TIIRes | null>(null);
-  const [leCertified, setLeCertified] = React.useState<CertifiedRes | null>(null);
   const [leStageSummary, setLeStageSummary] = React.useState<StageSummaryRes | null>(null);
   const [dashboardSummary, setDashboardSummary] = React.useState<DashboardSummaryRes | null>(null);
 
@@ -185,7 +160,7 @@ export default function DashboardClient() {
         subName: "Spark",
         seasonalXpTotal: 0,
       };
-      const [c, leagueRes, todayRes, statsRes, unlockedRes, membershipRes, eliteRes, leStateRes, leAirRes, leTiiRes, leCertifiedRes, stageSummaryRes, dashboardSummaryRes] = await Promise.all([
+      const [c, leagueRes, todayRes, statsRes, unlockedRes, membershipRes, eliteRes, stageSummaryRes, dashboardSummaryRes] = await Promise.all([
         arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => fallbackCore),
         arenaFetch<LeagueRes>("/api/arena/league/active").catch(() => null),
         arenaFetch<TodayXpRes>("/api/arena/today-xp").catch(() => ({ xpToday: 0 })),
@@ -204,10 +179,6 @@ export default function DashboardClient() {
           badges: [] as Array<{ kind: string; labelKey: string }>,
           eliteFetchFailed: true as const,
         })),
-        arenaFetch<LeadershipEngineStateRes>("/api/arena/leadership-engine/state").catch(() => null),
-        arenaFetch<AIRSnapshotRes>("/api/arena/leadership-engine/air").catch(() => null),
-        arenaFetch<TIIRes>("/api/arena/leadership-engine/tii").catch(() => null),
-        arenaFetch<CertifiedRes>("/api/arena/leadership-engine/certified").catch(() => null),
         arenaFetch<StageSummaryRes>("/api/arena/leadership-engine/stage-summary").catch(() => null),
         arenaFetch<DashboardSummaryRes>("/api/arena/dashboard/summary").catch(() => null),
       ]);
@@ -241,10 +212,6 @@ export default function DashboardClient() {
           typeof ok.eliteContentUnlocked === "boolean" ? ok.eliteContentUnlocked : null,
         );
       }
-      if (leStateRes) setLeState(leStateRes);
-      if (leAirRes) setLeAir(leAirRes);
-      if (leTiiRes) setLeTii(leTiiRes);
-      if (leCertifiedRes) setLeCertified(leCertifiedRes);
       if (stageSummaryRes) setLeStageSummary(stageSummaryRes);
       if (dashboardSummaryRes) setDashboardSummary(dashboardSummaryRes);
     } catch (e) {

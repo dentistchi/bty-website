@@ -1,6 +1,7 @@
 "use client";
 
 import { QRCodeSVG } from "qrcode.react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { computeMetrics, loadSignals } from "@/features/arena/logic";
 import { loadReflections } from "@/features/growth/logic/reflectionStorage";
@@ -10,7 +11,9 @@ import { computeLeadershipState, mergeLeadershipReflectionLayer } from "@/featur
 import type { ArenaSignal, LeadershipMetrics, LeadershipState } from "@/features/my-page/logic/types";
 import { MyPageLeadershipScreen } from "@/features/my-page/MyPageLeadershipScreen";
 import { ActionContractHub } from "@/components/bty/my-page/ActionContractHub";
+import { PatternSignaturePanel } from "@/components/bty/my-page/PatternSignaturePanel";
 import { PostCompletionSheet } from "@/components/bty/my-page/PostCompletionSheet";
+import { dispatchArenaEntryResolutionInvalidate } from "@/lib/bty/arena/arenaEntryResolutionInvalidate";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
@@ -41,6 +44,7 @@ export function MyPageLeadershipConsole({
   aaloParam = null,
   actionContractResolveFocus = false,
 }: Props) {
+  const { refresh: routerRefresh } = useRouter();
   const loc = (locale === "ko" ? "ko" : "en") as Locale;
   const t = getMessages(loc).myPageStub;
   const tAction = getMessages(loc).actionContract;
@@ -142,9 +146,12 @@ export function MyPageLeadershipConsole({
     const flag = sessionStorage.getItem("bty_mypage_refetch_required");
     if (flag === "1") {
       sessionStorage.removeItem("bty_mypage_refetch_required");
-      void load();
+      void load().then(() => {
+        dispatchArenaEntryResolutionInvalidate();
+        routerRefresh();
+      });
     }
-  }, [load]);
+  }, [load, routerRefresh]);
 
   useEffect(() => {
     const onFocus = () => void load();
@@ -157,8 +164,11 @@ export function MyPageLeadershipConsole({
     setShowPostCompletion(true);
     setCompletionNarrativeState(actionLoopQrCompletion.narrativeState ?? null);
     setQrPanelOpen(false);
-    void load();
-  }, [actionLoopQrCompletion, load]);
+    void load().then(() => {
+      dispatchArenaEntryResolutionInvalidate();
+      routerRefresh();
+    });
+  }, [actionLoopQrCompletion, load, routerRefresh]);
 
   useEffect(() => {
     if (!actionLoopQrCompletion?.success) return;
@@ -200,7 +210,10 @@ export function MyPageLeadershipConsole({
             setCompletionNarrativeState(data.narrativeState);
           }
           setQrPanelOpen(false);
-          void load();
+          void load().then(() => {
+            dispatchArenaEntryResolutionInvalidate();
+            routerRefresh();
+          });
           if (typeof window !== "undefined") {
             const url = new URL(window.location.href);
             url.searchParams.delete("arena_action_loop");
@@ -214,7 +227,7 @@ export function MyPageLeadershipConsole({
     };
 
     void validate();
-  }, [arenaActionLoopParam, aaloParam, load]);
+  }, [arenaActionLoopParam, aaloParam, load, routerRefresh]);
 
   const handleRequestQr = useCallback(async () => {
     const contract = serverPack?.open_action_contract;
@@ -311,6 +324,17 @@ export function MyPageLeadershipConsole({
           locale={locale}
           onRequestQr={handleRequestQr}
           onRequestSecureLink={handleRequestSecureLink}
+        />
+      )}
+
+      {!isLoading && (
+        <PatternSignaturePanel
+          locale={locale}
+          rows={serverPack?.pattern_signatures}
+          title={t.patternSignatureConsoleTitle}
+          lead={t.patternSignatureConsoleLead}
+          empty={t.patternSignatureConsoleEmpty}
+          regionAria={t.patternSignatureConsoleAria}
         />
       )}
 

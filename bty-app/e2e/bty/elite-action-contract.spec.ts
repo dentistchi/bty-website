@@ -43,7 +43,8 @@ function skipUnlessEliteGate(gate: Step6ArenaGate): void {
 
 test.describe.configure({ mode: "serial" });
 
-test.describe("Arena Step 6 — Action Contract (policy)", () => {
+/** Elite arena client no longer includes mirror / action contract / execution gate; superseded by run-complete flow. */
+test.describe.skip("Arena Step 6 — Action Contract (policy)", () => {
   const cleanupUserId = E2E_CONTRACT_USER_IDS.step6Policy;
   const cleanupEmail = E2E_CONTRACT_EMAILS.step6Policy;
 

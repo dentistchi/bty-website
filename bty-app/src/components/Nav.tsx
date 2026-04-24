@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { pathnameMatchesArenaEntryHref } from "@/components/bty/navigation/nav-items";
+import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -17,8 +19,9 @@ export function Nav({
   theme?: NavTheme;
 }) {
   const t = getMessages(locale).nav;
+  const { contract: arenaEntry } = useArenaEntryResolution(locale);
   const isBty = pathname.includes("/bty") && !pathname.includes("/bty-arena");
-  const isArena = pathname.includes("/bty-arena");
+  const arenaLinkActive = pathnameMatchesArenaEntryHref(pathname, arenaEntry.href);
   const isCenter = pathname.includes("/center");
   const isDear = theme === "dear";
   const muted = isDear ? "text-dear-charcoal-soft" : "text-foundry-ink-soft";
@@ -43,8 +46,8 @@ export function Nav({
         {t.bty}
       </Link>
       <Link
-        href={`/${locale}/bty-arena`}
-        className={isArena ? "font-medium underline" : cn(muted, "hover:underline")}
+        href={arenaEntry.href}
+        className={arenaLinkActive ? "font-medium underline" : cn(muted, "hover:underline")}
         aria-label={locale === "ko" ? "아레나로 이동" : "Go to Arena"}
       >
         {t.arena}

@@ -339,7 +339,7 @@ describe("AIR domain constants", () => {
     expect(AIR_BAND_IDS).toHaveLength(3);
   });
 
-  it("AIR threshold for stage transition matches low/mid boundary", () => {
-    expect(AIR_THRESHOLD_STAGE_ESCALATION).toBe(0.4);
+  it("AIR threshold for stage transition matches low/mid boundary (0.50)", () => {
+    expect(AIR_THRESHOLD_STAGE_ESCALATION).toBe(0.5);
   });
 });

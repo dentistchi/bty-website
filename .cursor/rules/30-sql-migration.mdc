@@ -1,0 +1,11 @@
+---
+description: Supabase/Postgres migration behavior
+globs: ["**/*.sql"]
+alwaysApply: false
+---
+For SQL migrations:
+- Must be idempotent
+- Must be safe to re-run
+- Prefer explicit SQL
+- Avoid unrelated schema changes
+- Preserve production behavior

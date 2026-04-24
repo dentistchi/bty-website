@@ -10,32 +10,62 @@ import { getMilestoneToShow } from "@/lib/bty/arena/milestone";
 import type { CoreXpGetResponse } from "@/lib/bty/arena/coreXpApi";
 import type { ArenaHeaderIdentity } from "@/components/bty-arena/ArenaHeader";
 import { arenaFetch } from "@/lib/http/arenaFetch";
+import {
+  arenaSessionRouterSnapshotScenarioReady,
+  fetchArenaSessionRouterPackWithRetry,
+  parseArenaSessionRouterSnapshotFromJson,
+  reexposureSnapshotFromSessionPack,
+  type ArenaPendingContractPayload,
+  type ArenaSessionRouterPack,
+} from "@/lib/bty/arena/arenaSessionRouterClient";
+import type {
+  ArenaBindingRuntimeSnapshot,
+  ArenaSessionRouterSnapshot,
+} from "@/lib/bty/arena/arenaRuntimeSnapshot.types";
+import {
+  isArenaActionBlockingRuntimeState,
+  isArenaExclusiveGateRuntimeState,
+  isArenaServerEntryShellRuntimeState,
+  snapshotAllowsArenaScenarioPlaySurface,
+} from "@/lib/bty/arena/arenaRuntimeSnapshot.types";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { difficultyFromScenarioChoices } from "@/lib/bty/arena/arenaLabXp";
 import { BTY_ARENA_STATE_STORAGE_KEY } from "@/lib/bty/arena/arenaLocalState";
 import type { ArenaRecallPrompt } from "@/lib/bty/arena/memoryRecallPrompt.types";
 import {
-  getArenaSessionRouterPath,
+  getArenaPipelineDefaultForClient,
   type ArenaPipelineDefault,
 } from "@/lib/bty/arena/arenaPipelineConfig";
-import { isBtyE2eStep6TraceEnabled } from "@/lib/bty/arena/e2eStep6BrowserTrace";
+import { isStaleEliteRunMetaForResume } from "@/lib/bty/arena/eliteRunResumeCompat";
+import { ARENA_ENTRY_RESOLUTION_INVALIDATE_EVENT } from "@/lib/bty/arena/arenaEntryResolutionInvalidate";
+import { isEliteChainScenarioId } from "@/lib/bty/arena/postLoginEliteEntry";
+import { postArenaChoice } from "@/lib/bty/arena/binding/postArenaChoice";
 
 // ── exported types ──────────────────────────────────────────────
 export type ArenaPhase =
   | "CHOOSING"
   | "ESCALATION"
   | "FORCED_TRADEOFF"
+  | "ACTION_DECISION"
   | "SHOW_RESULT"
   | "FOLLOW_UP"
   | "DONE";
 /**
- * Client step index for the BTY Arena UI. Elite debrief: 3 = escalation or legacy stance, 4 = forced
- * trade-off or reflection text, 5–7 = mirror / contract / gate. `POST /api/arena/run/step` uses the same
- * step numbers (3 = escalation acknowledged, 4 = second choice) and persists `arena_runs.meta`.
+ * Client step index for the BTY Arena UI. Elite: 3 = escalation, 4 = tradeoff, 5 = action decision, 6 = run complete.
+ * `POST /api/arena/run/step` covers steps 3–4; internal step 5 marks end-of-run before POST run/complete (not a snapshot label).
  * Phases `ESCALATION` / `FORCED_TRADEOFF` align with steps 3–4 when `scenario.escalationBranches` is present.
  */
 export type ArenaStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+/** Derived from step/phase only when the server allows the play surface — not a primary render authority. */
+export type ArenaPlayUiSegment =
+  | "none"
+  | "primary_choice"
+  | "forced_tradeoff"
+  | "action_decision"
+  | "run_complete"
+  | "legacy_escalation";
 
 export type MilestoneModalState = {
   milestone: 25 | 50 | 75;
@@ -146,52 +176,32 @@ function isStaleLobby(saved: SavedArenaState, scenario?: Scenario | null): boole
   return age > lobbyStaleThresholdMs(saved, scenario);
 }
 
-type SessionNextResponse = {
-  ok: boolean;
-  scenario?: Scenario;
-  scenarioRoute?: string;
-  delayedOutcomePending?: boolean;
-  mirrors?: unknown;
-  recallPrompt?: ArenaRecallPrompt;
-  error?: string;
-  code?: string;
-};
-
-type SessionNextFetchResult = { scenario: Scenario | null; recallPrompt: ArenaRecallPrompt | null };
-
-/** Next scenario from server session router (DB history, mirror / perspective rotation, catalog). */
-async function fetchSessionNextScenario(
-  locale: Locale,
-  pipelineDefault: ArenaPipelineDefault,
-): Promise<SessionNextFetchResult> {
-  const loc = locale === "ko" ? "ko" : "en";
-  const path = `${getArenaSessionRouterPath(pipelineDefault)}?locale=${loc}`;
-  try {
-    const data = await arenaFetch<SessionNextResponse>(path, {
-      cache: "no-store",
-    });
-    if (data.ok && data.scenario) {
-      return { scenario: data.scenario, recallPrompt: data.recallPrompt ?? null };
-    }
-    return { scenario: null, recallPrompt: null };
-  } catch (e) {
-    console.warn("[arena] session router fetch failed", e);
-    return { scenario: null, recallPrompt: null };
-  }
-}
-
 /**
  * True when `arena_runs` still has this run for the user and it matches the expected scenario
  * (stale localStorage after DB deletes / rotation).
+ *
+ * Elite chain (`core_01` / `core_06` / `core_11`): refuses resume of legacy scenario ids, non-`IN_PROGRESS`
+ * rows, or runs whose `meta` has pre-canonical escalation without `elite_runtime_compat` (see
+ * {@link isStaleEliteRunMetaForResume}).
  */
 async function validateRunForResume(runId: string | null | undefined, expectedScenarioId: string): Promise<boolean> {
   if (runId == null || String(runId).trim() === "") return false;
   try {
-    const data = await arenaFetch<{ run?: { scenario_id?: string } }>(
-      `/api/arena/run/${encodeURIComponent(String(runId))}`,
-    );
-    const sid = data.run?.scenario_id;
-    return typeof sid === "string" && sid === expectedScenarioId;
+    const data = await arenaFetch<{
+      run?: { scenario_id?: string; status?: string; meta?: Record<string, unknown> };
+    }>(`/api/arena/run/${encodeURIComponent(String(runId))}`);
+    const run = data.run;
+    const sid = run?.scenario_id;
+    if (typeof sid !== "string" || sid !== expectedScenarioId) return false;
+
+    if (isEliteChainScenarioId(expectedScenarioId)) {
+      if (!isEliteChainScenarioId(sid)) return false;
+      const st = typeof run?.status === "string" ? run.status.trim() : "";
+      if (st !== "IN_PROGRESS") return false;
+      if (isStaleEliteRunMetaForResume(run?.meta)) return false;
+    }
+
+    return true;
   } catch {
     return false;
   }
@@ -206,11 +216,22 @@ function stepFromPhase(phase: ArenaPhase): ArenaStep {
     case "CHOOSING": return 2;
     case "ESCALATION": return 3;
     case "FORCED_TRADEOFF": return 4;
+    case "ACTION_DECISION": return 5;
     case "SHOW_RESULT": return 3;
     case "FOLLOW_UP": return 5;
-    case "DONE": return 7;
+    case "DONE": return 5;
     default: return 2;
   }
+}
+
+/** Pre–action-decision saves used step 5 for DONE; migrate to step 6 for run-complete UI. */
+function normalizeEliteStoredStep(
+  scenario: Scenario | null | undefined,
+  phase: ArenaPhase,
+  step: number,
+): number {
+  if (scenario?.eliteSetup && phase === "DONE" && step === 5) return 6;
+  return step;
 }
 
 function hasEscalationBranchForChoice(scenario: Scenario | null | undefined, choiceId: string | null): boolean {
@@ -219,7 +240,7 @@ function hasEscalationBranchForChoice(scenario: Scenario | null | undefined, cho
   return Boolean(b?.escalation_text && Array.isArray(b.second_choices) && b.second_choices.length > 0);
 }
 
-/** Elite debrief reuses steps 3–7 but never `FOLLOW_UP` phase; normalize stale saves from pre-fix runs. */
+/** Elite flow reuses steps 3–7 but never `FOLLOW_UP` phase; normalize stale saves from pre-fix runs. */
 function normalizeEliteResumePhase(
   scenario: Scenario | null | undefined,
   phase: ArenaPhase,
@@ -324,7 +345,10 @@ async function postArenaEvent(payload: Record<string, unknown>): Promise<void> {
 }
 
 // ── hook ────────────────────────────────────────────────────────
-export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy") {
+export function useArenaSession(_pipelineFromServer?: ArenaPipelineDefault) {
+  /** Client bundle must call Pipeline N `/api/arena/n/session` when `NEXT_PUBLIC_ARENA_PIPELINE_DEFAULT=new`
+   * even if the RSC parent passed a mismatched default (OpenNext / edge env drift). */
+  const pipelineDefault = getArenaPipelineDefaultForClient();
   const params = useParams();
   const router = useRouter();
   const locale: Locale =
@@ -404,21 +428,52 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
   const [followUpSubmitting, setFollowUpSubmitting] = React.useState(false);
   const [escalationAckSubmitting, setEscalationAckSubmitting] = React.useState(false);
   const [secondChoiceSubmitting, setSecondChoiceSubmitting] = React.useState(false);
+  const [actionDecisionSubmitting, setActionDecisionSubmitting] = React.useState(false);
 
   const [reflectResult, setReflectResult] = React.useState<ReflectResult | null>(null);
   const [reflectDeepeningNotice, setReflectDeepeningNotice] = React.useState<string | null>(null);
   const [reflectionSubmitting, setReflectionSubmitting] = React.useState(false);
   const [milestoneModal, setMilestoneModal] = React.useState<MilestoneModalState | null>(null);
   const [resetRunLoading, setResetRunLoading] = React.useState(false);
+  const [reexposureEnterLoading, setReexposureEnterLoading] = React.useState(false);
+  /** Set when entering re-exposure play from `REEXPOSURE_DUE`; consumed after POST `/api/arena/re-exposure/validate`. */
+  const reexposurePendingOutcomeIdRef = React.useRef<string | null>(null);
+  /** GET `re_exposure` slice — kept until `beginReexposurePlay` succeeds so ids survive snapshot churn. */
+  const reexposureGateSnapshotRef = React.useRef<ArenaSessionRouterSnapshot | null>(null);
+  /** Last server `validation_result` from re-exposure closure (inspectable in dev / future UI). */
+  const [lastReexposureValidation, setLastReexposureValidation] = React.useState<string | null>(null);
   const [recallPrompt, setRecallPrompt] = React.useState<ArenaRecallPrompt | null>(null);
-  /** Step 6: user continued past action contract because `gated: "pattern_threshold"` (no draft yet). Step 7 may proceed without verification. */
-  const [patternContractDeferred, setPatternContractDeferred] = React.useState(false);
+  /** Session router 409 `action_contract_pending` — blocks next scenario until handled elsewhere (Center / contracts). */
+  const [pendingActionContract, setPendingActionContract] = React.useState<ArenaPendingContractPayload | null>(null);
+  const pendingActionContractRef = React.useRef<ArenaPendingContractPayload | null>(null);
+  React.useEffect(() => {
+    pendingActionContractRef.current = pendingActionContract;
+  }, [pendingActionContract]);
+  /** Server session-router snapshot (authoritative over local step/phase when conflict). */
+  const [arenaServerSnapshot, setArenaServerSnapshot] = React.useState<ArenaSessionRouterSnapshot | null>(null);
+  /** POST `/api/arena/choice` binding snapshot — merged with session snapshot for live gating. */
+  const [bindingRuntimeSnapshot, setBindingRuntimeSnapshot] = React.useState<ArenaBindingRuntimeSnapshot | null>(null);
+  /** Bumps arena init effect to re-fetch session router (e.g. after pending contract resolved). */
+  const [sessionLoadNonce, setSessionLoadNonce] = React.useState(0);
+
+  /** When My Page / Center completes QR elsewhere, re-fetch session only if this surface still shows a contract gate. */
+  React.useEffect(() => {
+    const onInvalidate = () => {
+      if (pendingActionContract != null) {
+        setSessionLoadNonce((n) => n + 1);
+      }
+    };
+    window.addEventListener(ARENA_ENTRY_RESOLUTION_INVALIDATE_EVENT, onInvalidate);
+    return () => window.removeEventListener(ARENA_ENTRY_RESOLUTION_INVALIDATE_EVENT, onInvalidate);
+  }, [pendingActionContract]);
 
   const runMetaRef = React.useRef<{
     runId: string;
     startedAt: string;
     timeLimitSeconds: number;
   } | null>(null);
+  /** Legacy save: elite step 3 + ESCALATION — auto-POST step 3 once to reach second-choice screen. */
+  const eliteResumeEscalationRef = React.useRef<string | null>(null);
 
   // Toast auto-dismiss
   React.useEffect(() => {
@@ -446,17 +501,46 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
     (async () => {
       setScenarioLoading(true);
       setScenarioInitError(null);
+      setBindingRuntimeSnapshot(null);
 
       try {
-        const serverPack = await fetchSessionNextScenario(locale, pipelineDefault);
+        const serverPack = await fetchArenaSessionRouterPackWithRetry(
+          locale === "ko" ? "ko" : "en",
+          pipelineDefault,
+        );
         if (cancelled) return;
+
+        if (serverPack.outcome === "blocked") {
+          reexposureGateSnapshotRef.current = serverPack.snapshot;
+          setPendingActionContract(serverPack.contract);
+          setArenaServerSnapshot(serverPack.snapshot);
+          console.info("[arena][session-router-blocked]", { context: "init" });
+          return;
+        }
+
+        const reexposureSnap = reexposureSnapshotFromSessionPack(serverPack);
+        if (reexposureSnap) {
+          applyReexposureHardStop(reexposureSnap, "init");
+          return;
+        }
+
+        if (serverPack.outcome === "session_shell") {
+          applyReexposureHardStop(serverPack.snapshot, "init");
+          return;
+        }
+
+        reexposureGateSnapshotRef.current = null;
 
         const streakInfo = updateStreak();
         const saved = loadState();
 
-        const serverNext = serverPack.scenario;
+        const serverNext = serverPack.outcome === "scenario" ? serverPack.scenario : null;
+        const routerRecall =
+          serverPack.outcome === "scenario" ? (serverPack.recallPrompt ?? null) : null;
 
         if (!serverNext) {
+          setPendingActionContract(null);
+          setArenaServerSnapshot(null);
           clearState();
           resetAllLocal();
           setScenario(null);
@@ -466,13 +550,42 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
           return;
         }
 
-        setRecallPrompt(serverPack.recallPrompt ?? null);
+        setPendingActionContract(null);
+        setArenaServerSnapshot(serverPack.outcome === "scenario" ? serverPack.snapshot : null);
+        setRecallPrompt(routerRecall);
+
+        if (serverPack.outcome === "scenario") {
+          const rs = serverPack.snapshot.runtime_state;
+          if (rs === "FORCED_RESET_PENDING") {
+            resetAllLocal();
+            setScenario(serverNext);
+            setPhase("CHOOSING");
+            setStep(2);
+            setScenarioInitError(null);
+            return;
+          }
+        }
 
         /** Canonical lobby: fresh scenario from session router + new `arena_runs` row. */
         const applyCanonicalLobby = async (next: Scenario) => {
+          if (pendingActionContractRef.current != null) {
+            console.warn("[arena] applyCanonicalLobby skipped: pending action contract");
+            return;
+          }
+          if (reexposureGateSnapshotRef.current?.runtime_state === "REEXPOSURE_DUE") {
+            console.error("C5 invariant violated: applyCanonicalLobby would bypass REEXPOSURE_DUE shell", {
+              catalogScenarioId: next.scenarioId,
+            });
+            return;
+          }
+          if (reexposureGateSnapshotRef.current != null) {
+            console.warn("[arena] applyCanonicalLobby skipped: server shell gate active");
+            return;
+          }
+          reexposureGateSnapshotRef.current = null;
           clearState();
           resetAllLocal();
-          setRecallPrompt(serverPack.recallPrompt ?? null);
+          setRecallPrompt(routerRecall);
           setScenario(next);
           setPhase("CHOOSING");
           /** Canonical Arena: skip Legend step-1 intro; first screen is setup + initial choice (step 2). */
@@ -509,6 +622,19 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
           }
         };
 
+        if (
+          serverPack.outcome === "scenario" &&
+          serverPack.snapshot.runtime_state === "ARENA_SCENARIO_READY" &&
+          saved &&
+          serverNext.scenarioId === saved.scenarioId &&
+          serverNext.eliteSetup &&
+          (saved.phase === "DONE" ||
+            (typeof saved.step === "number" && saved.step >= 5))
+        ) {
+          await applyCanonicalLobby(serverNext);
+          return;
+        }
+
         if (!saved) {
           await applyCanonicalLobby(serverNext);
           return;
@@ -542,9 +668,16 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
             resumeStep = 2;
           }
           resumePhase = normalizeEliteResumePhase(serverNext, resumePhase, resumeStep);
+          resumeStep = normalizeEliteStoredStep(serverNext, resumePhase, resumeStep);
+          let eliteStep = resumeStep;
+          let elitePh = resumePhase;
+          if (serverNext.eliteSetup && eliteStep >= 6 && eliteStep <= 7) {
+            eliteStep = 6;
+            elitePh = "DONE";
+          }
           setScenario(serverNext);
-          setPhase(resumePhase);
-          setStep(resumeStep as ArenaStep);
+          setPhase(elitePh);
+          setStep(eliteStep as ArenaStep);
           setReflectionIndex(typeof saved.reflectionIndex === "number" ? saved.reflectionIndex : null);
           setReflectionText(typeof saved.reflectionText === "string" ? saved.reflectionText : "");
           setReflectionBonusXp(typeof saved.reflectionBonusXp === "number" ? saved.reflectionBonusXp : 0);
@@ -589,9 +722,25 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
           resumeStep = 2;
         }
         resumePhase = normalizeEliteResumePhase(serverNext, resumePhase, resumeStep);
+        resumeStep = normalizeEliteStoredStep(serverNext, resumePhase, resumeStep);
+        let eliteStepLobby = resumeStep;
+        let elitePhLobby = resumePhase;
+        if (serverNext.eliteSetup && eliteStepLobby >= 6 && eliteStepLobby <= 7) {
+          eliteStepLobby = 6;
+          elitePhLobby = "DONE";
+        }
+        if (serverNext.eliteSetup) {
+          console.info("[arena][elite-lobby-restore]", {
+            scenarioId: saved.scenarioId,
+            phase: elitePhLobby,
+            step: eliteStepLobby,
+            persistedPhase: saved.phase,
+            persistedStep: saved.step,
+          });
+        }
         setScenario(serverNext);
-        setPhase(resumePhase);
-        setStep(resumeStep as ArenaStep);
+        setPhase(elitePhLobby);
+        setStep(eliteStepLobby as ArenaStep);
         setReflectionIndex(typeof saved.reflectionIndex === "number" ? saved.reflectionIndex : null);
         setReflectionText(typeof saved.reflectionText === "string" ? saved.reflectionText : "");
         setReflectionBonusXp(typeof saved.reflectionBonusXp === "number" ? saved.reflectionBonusXp : 0);
@@ -607,11 +756,18 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
           setSystemMessage(streakInfo.message);
         }
         if (runOk && saved.runId) {
+          if (serverNext.eliteSetup) {
+            console.info("[arena][elite-lobby-persist]", {
+              scenarioId: saved.scenarioId,
+              phase: elitePhLobby,
+              step: eliteStepLobby,
+            });
+          }
           saveState({
             version: 1,
             scenarioId: saved.scenarioId,
-            phase: resumePhase,
-            step: resumeStep as ArenaStep,
+            phase: elitePhLobby,
+            step: eliteStepLobby as ArenaStep,
             selectedChoiceId: saved.selectedChoiceId,
             followUpIndex: saved.followUpIndex,
             lastXp: saved.lastXp,
@@ -654,7 +810,7 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
     return () => {
       cancelled = true;
     };
-  }, [levelChecked, requiresBeginnerPath, locale, pipelineDefault, t.scenarioNotFound]);
+  }, [levelChecked, requiresBeginnerPath, locale, pipelineDefault, t.scenarioNotFound, sessionLoadNonce]);
 
   // ── derived values ──────────────────────────────────────────
   const current = scenario;
@@ -667,6 +823,91 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
   const contextForUser = getContextForUser(displayContext);
 
   const choice = current?.choices.find((c) => c.choiceId === selectedChoiceId) ?? null;
+
+  /**
+   * GET session must win over stale `bindingRuntimeSnapshot` for **all server entry shells**
+   * (`ACTION_*`, `REEXPOSURE_DUE`, `FORCED_RESET_PENDING`, `NEXT_SCENARIO_READY`) — otherwise binding
+   * snapshots from `postArenaChoice` mask the latest GET authority.
+   */
+  const serverShellPrioritySnapshot =
+    arenaServerSnapshot != null && isArenaServerEntryShellRuntimeState(arenaServerSnapshot.runtime_state)
+      ? arenaServerSnapshot
+      : null;
+
+  /** While contract 409 or exclusive server gate is active, ignore binding so TRADEOFF/ACTION_DECISION cannot resume over ACTION_* / REEXPOSURE / FORCED_RESET. */
+  const bindingSuppressedByExclusiveGate =
+    pendingActionContract != null ||
+    (arenaServerSnapshot != null &&
+      isArenaExclusiveGateRuntimeState(arenaServerSnapshot.runtime_state));
+
+  const effectiveArenaSnapshot = bindingSuppressedByExclusiveGate
+    ? serverShellPrioritySnapshot ?? arenaServerSnapshot
+    : serverShellPrioritySnapshot ?? bindingRuntimeSnapshot ?? arenaServerSnapshot;
+
+  /** Contract gate authority: 409 pending body and/or effective snapshot ACTION_*. */
+  const arenaActionBlocking =
+    pendingActionContract != null ||
+    (effectiveArenaSnapshot != null &&
+      isArenaActionBlockingRuntimeState(effectiveArenaSnapshot.runtime_state));
+
+  const arenaPlaySurfaceAllowed = snapshotAllowsArenaScenarioPlaySurface(
+    effectiveArenaSnapshot,
+    arenaActionBlocking,
+  );
+
+  /** Primary ChoiceList: snapshot `gates.choice_allowed` is authoritative (binding + GET session). */
+  const primaryChoiceInteractive =
+    arenaPlaySurfaceAllowed &&
+    step === 2 &&
+    phase === "CHOOSING" &&
+    (effectiveArenaSnapshot == null || effectiveArenaSnapshot.gates.choice_allowed);
+
+  const { canRenderScenarioProgressionUi, playUiSegment } = React.useMemo(() => {
+    const can = Boolean(current?.eliteSetup && arenaPlaySurfaceAllowed);
+    if (!can) {
+      return {
+        canRenderScenarioProgressionUi: false,
+        playUiSegment: "none" as ArenaPlayUiSegment,
+      };
+    }
+    /** Snapshot outranks local step/phase: tradeoff tier after primary binding. */
+    if (effectiveArenaSnapshot?.runtime_state === "TRADEOFF_ACTIVE") {
+      if (step === 4 && phase === "FORCED_TRADEOFF") {
+        return { canRenderScenarioProgressionUi: true, playUiSegment: "forced_tradeoff" as const };
+      }
+    }
+    /** Snapshot outranks local step/phase: mid-run commitment step after tradeoff binding. */
+    if (effectiveArenaSnapshot?.runtime_state === "ACTION_DECISION_ACTIVE") {
+      const eb =
+        selectedChoiceId && selectedChoiceId !== OTHER_CHOICE_ID && current?.escalationBranches
+          ? current.escalationBranches[selectedChoiceId]
+          : undefined;
+      const rawAd = eb && typeof eb === "object" ? eb.action_decision : undefined;
+      const ad =
+        rawAd && typeof rawAd === "object" && rawAd !== null && "choices" in rawAd ? rawAd : undefined;
+      if (ad?.choices && ad.choices.length > 0) {
+        return { canRenderScenarioProgressionUi: true, playUiSegment: "action_decision" as const };
+      }
+    }
+    let segment: ArenaPlayUiSegment = "none";
+    if (step === 2 && phase === "CHOOSING") segment = "primary_choice";
+    else if (step === 4 && phase === "FORCED_TRADEOFF") segment = "forced_tradeoff";
+    else if (step === 5 && phase === "ACTION_DECISION") segment = "action_decision";
+    else if (step === 6 && phase === "DONE") segment = "run_complete";
+    /** Legacy elite save: DONE at step 5 */
+    else if (step === 5 && phase === "DONE") segment = "run_complete";
+    else if (step === 3 && phase === "ESCALATION") segment = "legacy_escalation";
+    return { canRenderScenarioProgressionUi: true, playUiSegment: segment };
+  }, [
+    current?.eliteSetup,
+    arenaPlaySurfaceAllowed,
+    step,
+    phase,
+    effectiveArenaSnapshot,
+    selectedChoiceId,
+    current?.escalationBranches,
+  ]);
+
   const followUpOptionsEn = normalizeFollowUpOptions(choice);
   const followUpOptions =
     locale === "ko" && choice?.followUp?.optionsKo?.length
@@ -702,6 +943,8 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
   }
 
   async function ensureRunId(): Promise<string | null> {
+    if (pendingActionContractRef.current != null) return null;
+    if (reexposureGateSnapshotRef.current != null) return null;
     if (runId) return runId;
     if (!current) return null;
     const result = await createRun(current.scenarioId, locale ?? undefined, {
@@ -739,15 +982,35 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
     setOtherSubmitted(false);
     setFreeResponseFeedback(null);
     setRecallPrompt(null);
-    setPatternContractDeferred(false);
+  }
+
+  /** HARD STOP: server entry shell (re-exposure, forced reset, ACTION_*, NEXT ready w/o scenario) — no `applyCanonicalLobby`. */
+  function applyReexposureHardStop(snapshot: ArenaSessionRouterSnapshot, ctx: "init" | "continue-next" | "reset-run") {
+    reexposureGateSnapshotRef.current = snapshot;
+    setPendingActionContract(null);
+    setArenaServerSnapshot(snapshot);
+    setBindingRuntimeSnapshot(null);
+    setRecallPrompt(null);
+    resetAllLocal();
+    setScenario(null);
+    setPhase("CHOOSING");
+    setStep(2);
+    setScenarioInitError(null);
+    if (ctx === "continue-next") {
+      setCompleteError(null);
+    }
+    console.info("[arena][reexposure-hard-stop]", { context: ctx });
   }
 
   // ── actions ─────────────────────────────────────────────────
-  async function onConfirmChoice() {
-    if (!selectedChoiceId || selectedChoiceId === OTHER_CHOICE_ID || !current) return;
-    const c = current.choices.find((x) => x.choiceId === selectedChoiceId);
+  /** Confirms a primary choice by id (Elite one-tap or legacy Confirm after select). */
+  async function confirmChoiceWithId(choiceIdRaw: string) {
+    if (!choiceIdRaw || choiceIdRaw === OTHER_CHOICE_ID || !current) return;
+    if (!arenaPlaySurfaceAllowed) return;
+    const c = current.choices.find((x) => x.choiceId === choiceIdRaw);
     if (!c) return;
 
+    setSelectedChoiceId(choiceIdRaw);
     setConfirmingChoice(true);
     try {
       const evalResult = evaluateChoice({
@@ -764,45 +1027,133 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
         SYSTEM_MESSAGES.find((m) => m.id === "arch_init")!;
 
       const rid = await ensureRunId();
-      await postArenaEvent({
-        runId: rid, scenarioId: current.scenarioId, step: 2,
-        eventType: "CHOICE_CONFIRMED", choiceId: c.choiceId, xp,
-        deltas: c.hiddenDelta ?? null, meta: { intent: c.intent },
-      });
+      if (!rid) {
+        setConfirmingChoice(false);
+        return;
+      }
+
+      const useBinding =
+        Boolean(current.eliteSetup) &&
+        typeof current.dbScenarioId === "string" &&
+        current.dbScenarioId.trim() !== "" &&
+        typeof c.dbChoiceId === "string" &&
+        c.dbChoiceId.trim() !== "";
+
+      if (current.eliteSetup && isEliteChainScenarioId(current.scenarioId) && !useBinding) {
+        setToast(t.eliteBindingIntegrityError);
+        setSelectedChoiceId(null);
+        return;
+      }
+
+      if (useBinding) {
+        try {
+          const snap = await postArenaChoice({
+            run_id: rid,
+            json_scenario_id: current.scenarioId,
+            db_scenario_id: current.dbScenarioId!,
+            json_choice_id: c.choiceId,
+            db_choice_id: c.dbChoiceId!,
+          });
+          setBindingRuntimeSnapshot(snap);
+          if (!snap.gates.choice_allowed || isArenaActionBlockingRuntimeState(snap.runtime_state)) {
+            return;
+          }
+        } catch (e) {
+          console.warn("[arena] binding primary choice failed", e);
+          setToast(t.eliteRunStepAdvanceError);
+          setSelectedChoiceId(null);
+          setBindingRuntimeSnapshot(null);
+          return;
+        }
+      } else {
+        await postArenaEvent({
+          runId: rid,
+          scenarioId: current.scenarioId,
+          step: 2,
+          eventType: "CHOICE_CONFIRMED",
+          choiceId: c.choiceId,
+          xp,
+          deltas: c.hiddenDelta ?? null,
+          meta: { intent: c.intent },
+        });
+      }
 
       setLastXp(xp);
       setSystemMessage(msg);
-      /** Elite (v2): always enter step 3 under ESCALATION — UI resolves `escalationBranches[primaryChoiceId]` only; no legacy stance path. */
-      const nextPhase: ArenaPhase =
-        current.eliteSetup ? "ESCALATION" : hasEscalationBranchForChoice(current, selectedChoiceId) ? "ESCALATION" : "SHOW_RESULT";
-      setPhase(nextPhase);
-      setStep(3);
-      persist({
-        phase: nextPhase,
-        step: 3,
-        lastXp: xp,
-        lastSystemMessage: msg.id,
-      });
+      /** Elite: POST step 3 immediately, then step 4 UI (no separate escalation screen). */
       if (current.eliteSetup) {
-        const br =
-          selectedChoiceId && current.escalationBranches
-            ? current.escalationBranches[selectedChoiceId]
-            : undefined;
-        console.debug("[arena][elite-confirm]", {
-          scenarioId: current.scenarioId,
-          primaryChoiceId: selectedChoiceId,
-          escalationBranchKey: selectedChoiceId,
-          secondChoicesCount: br?.second_choices?.length ?? 0,
+        try {
+          await arenaFetch("/api/arena/run/step", {
+            json: {
+              runId: rid,
+              step: 3,
+              primaryChoiceId: choiceIdRaw,
+            },
+          });
+          setBindingRuntimeSnapshot(null);
+          setStep(4);
+          setPhase("FORCED_TRADEOFF");
+          persist({
+            phase: "FORCED_TRADEOFF",
+            step: 4,
+            lastXp: xp,
+            lastSystemMessage: msg.id,
+          });
+          console.info("[arena][elite-forced-tradeoff-enter]", {
+            source: "primary-confirm",
+            scenarioId: current.scenarioId,
+            step: 4,
+            phase: "FORCED_TRADEOFF",
+            primaryChoiceId: choiceIdRaw,
+          });
+          const br =
+            choiceIdRaw && current.escalationBranches
+              ? current.escalationBranches[choiceIdRaw]
+              : undefined;
+          console.debug("[arena][elite-confirm]", {
+            scenarioId: current.scenarioId,
+            primaryChoiceId: choiceIdRaw,
+            escalationBranchKey: choiceIdRaw,
+            secondChoicesCount: br?.second_choices?.length ?? 0,
+          });
+        } catch (e) {
+          console.warn("[arena] elite auto step 3 failed", e);
+          setToast(t.eliteRunStepAdvanceError);
+          setSelectedChoiceId(null);
+          setBindingRuntimeSnapshot(null);
+          return;
+        }
+      } else {
+        const nextPhase: ArenaPhase =
+          hasEscalationBranchForChoice(current, choiceIdRaw) ? "ESCALATION" : "SHOW_RESULT";
+        setPhase(nextPhase);
+        setStep(3);
+        persist({
+          phase: nextPhase,
+          step: 3,
+          lastXp: xp,
+          lastSystemMessage: msg.id,
         });
+        setToast(t.scenarioCompletedToast);
       }
-      setToast(t.scenarioCompletedToast);
     } finally {
       setConfirmingChoice(false);
     }
   }
 
+  async function onConfirmChoice() {
+    if (!selectedChoiceId || selectedChoiceId === OTHER_CHOICE_ID) return;
+    await confirmChoiceWithId(selectedChoiceId);
+  }
+
+  /** Elite step 2: one tap — no separate Confirm control. */
+  async function commitElitePrimaryChoice(choiceId: string) {
+    await confirmChoiceWithId(choiceId);
+  }
+
   async function submitOther() {
     if (!current) return;
+    if (!arenaPlaySurfaceAllowed) return;
     setOtherError(null);
     setOtherSubmitting(true);
     try {
@@ -875,13 +1226,25 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
   }
 
   async function acknowledgeEscalation() {
+    if (!arenaPlaySurfaceAllowed) {
+      setToast(t.errorStartRun);
+      throw new Error("surface_blocked");
+    }
     if (!current?.eliteSetup || !runId) {
       setToast(t.errorStartRun);
       throw new Error("run_missing");
     }
     setEscalationAckSubmitting(true);
     try {
-      await arenaFetch("/api/arena/run/step", { json: { runId, step: 3 } });
+      await arenaFetch("/api/arena/run/step", {
+        json: {
+          runId,
+          step: 3,
+          ...(selectedChoiceId && selectedChoiceId !== OTHER_CHOICE_ID
+            ? { primaryChoiceId: selectedChoiceId }
+            : {}),
+        },
+      });
       setStep(4);
       setPhase("FORCED_TRADEOFF");
       persist({ step: 4, phase: "FORCED_TRADEOFF" });
@@ -895,18 +1258,117 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
   }
 
   async function submitSecondChoice(secondChoiceId: string) {
+    if (!arenaPlaySurfaceAllowed) {
+      setToast(t.errorStartRun);
+      throw new Error("surface_blocked");
+    }
     if (!current?.eliteSetup || !runId) {
       setToast(t.errorStartRun);
       throw new Error("run_missing");
     }
+    const branch =
+      selectedChoiceId && selectedChoiceId !== OTHER_CHOICE_ID && current.escalationBranches
+        ? current.escalationBranches[selectedChoiceId]
+        : undefined;
+    const picked = branch?.second_choices.find((x) => x.id === secondChoiceId);
+    const useSecondBinding =
+      typeof current.dbScenarioId === "string" &&
+      current.dbScenarioId.trim() !== "" &&
+      typeof picked?.dbChoiceId === "string" &&
+      picked.dbChoiceId.trim() !== "";
+
+    if (isEliteChainScenarioId(current.scenarioId) && picked && !useSecondBinding) {
+      setToast(t.eliteBindingIntegrityError);
+      throw new Error("binding_integrity");
+    }
+
     setSecondChoiceSubmitting(true);
     try {
+      if (useSecondBinding && picked?.dbChoiceId) {
+        try {
+          const snap = await postArenaChoice({
+            run_id: runId,
+            json_scenario_id: current.scenarioId,
+            db_scenario_id: current.dbScenarioId!,
+            json_choice_id: secondChoiceId,
+            db_choice_id: picked.dbChoiceId,
+            binding_phase: "tradeoff",
+          });
+          setBindingRuntimeSnapshot(snap);
+          if (!snap.gates.choice_allowed || isArenaActionBlockingRuntimeState(snap.runtime_state)) {
+            return;
+          }
+          setBindingRuntimeSnapshot(null);
+        } catch (e) {
+          console.warn("[arena] binding second choice failed", e);
+          setToast(t.eliteRunStepAdvanceError);
+          throw e;
+        }
+      }
+
       await arenaFetch("/api/arena/run/step", {
         json: { runId, step: 4, secondChoiceId },
       });
-      setStep(5);
-      setPhase("SHOW_RESULT");
-      persist({ step: 5, phase: "SHOW_RESULT" });
+
+      const pendingReexposureOutcomeId = reexposurePendingOutcomeIdRef.current;
+      if (pendingReexposureOutcomeId && runId && current?.scenarioId) {
+        reexposurePendingOutcomeIdRef.current = null;
+        try {
+          console.info("[arena][reexposure-validate][client] request", {
+            pendingOutcomeId: pendingReexposureOutcomeId,
+            runId,
+            scenarioId: current.scenarioId,
+          });
+          const vr = await fetch("/api/arena/re-exposure/validate", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              pendingOutcomeId: pendingReexposureOutcomeId,
+              runId,
+              scenarioId: current.scenarioId,
+            }),
+          });
+          const j = (await vr.json().catch(() => ({}))) as {
+            ok?: boolean;
+            validation_result?: string;
+          };
+          console.info("[arena][reexposure-validate][client] response", {
+            ok: vr.ok,
+            status: vr.status,
+            validation_result: j.validation_result,
+          });
+          if (vr.ok && typeof j.validation_result === "string" && j.validation_result !== "") {
+            setLastReexposureValidation(j.validation_result);
+            setToast(
+              locale === "ko"
+                ? `재노출 검증: ${j.validation_result}`
+                : `Re-exposure validation: ${j.validation_result}`,
+            );
+          } else if (!vr.ok) {
+            console.warn("[arena] re-exposure validate failed", j);
+          }
+        } catch (e) {
+          console.warn("[arena] re-exposure validate error", e);
+        }
+      }
+
+      const branchAfter =
+        selectedChoiceId && selectedChoiceId !== OTHER_CHOICE_ID && current.escalationBranches
+          ? current.escalationBranches[selectedChoiceId]
+          : undefined;
+      const hasActionDecision = Boolean(
+        branchAfter?.action_decision?.choices && branchAfter.action_decision.choices.length > 0,
+      );
+      if (hasActionDecision) {
+        setStep(5);
+        setPhase("ACTION_DECISION");
+        persist({ step: 5, phase: "ACTION_DECISION" });
+      } else {
+        setStep(6);
+        setPhase("DONE");
+        persist({ step: 6, phase: "DONE" });
+      }
     } catch (e) {
       console.warn("[arena] second choice step failed", e);
       setToast(t.eliteRunStepAdvanceError);
@@ -916,8 +1378,71 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
     }
   }
 
+  async function submitActionDecision(actionChoiceId: string) {
+    if (!arenaPlaySurfaceAllowed) {
+      setToast(t.errorStartRun);
+      throw new Error("surface_blocked");
+    }
+    if (!current?.eliteSetup || !runId) {
+      setToast(t.errorStartRun);
+      throw new Error("run_missing");
+    }
+    const branch =
+      selectedChoiceId && selectedChoiceId !== OTHER_CHOICE_ID && current.escalationBranches
+        ? current.escalationBranches[selectedChoiceId]
+        : undefined;
+    const picked = branch?.action_decision?.choices.find((x) => x.id === actionChoiceId);
+    const useAdBinding =
+      typeof current.dbScenarioId === "string" &&
+      current.dbScenarioId.trim() !== "" &&
+      typeof picked?.dbChoiceId === "string" &&
+      picked.dbChoiceId.trim() !== "";
+
+    if (isEliteChainScenarioId(current.scenarioId) && picked && !useAdBinding) {
+      setToast(t.eliteBindingIntegrityError);
+      throw new Error("binding_integrity");
+    }
+
+    setActionDecisionSubmitting(true);
+    try {
+      if (useAdBinding && picked?.dbChoiceId) {
+        try {
+          const snap = await postArenaChoice({
+            run_id: runId,
+            json_scenario_id: current.scenarioId,
+            db_scenario_id: current.dbScenarioId!,
+            json_choice_id: actionChoiceId,
+            db_choice_id: picked.dbChoiceId,
+            binding_phase: "action_decision",
+          });
+          setBindingRuntimeSnapshot(snap);
+          if (!snap.gates.choice_allowed || isArenaActionBlockingRuntimeState(snap.runtime_state)) {
+            /** Keep local step; next render uses `arenaActionBlocking` + contract gate — not run-complete. */
+            return;
+          }
+          setBindingRuntimeSnapshot(null);
+        } catch (e) {
+          console.warn("[arena] binding action decision failed", e);
+          setToast(t.eliteRunStepAdvanceError);
+          throw e;
+        }
+      }
+
+      setStep(6);
+      setPhase("DONE");
+      persist({ step: 6, phase: "DONE" });
+    } catch (e) {
+      console.warn("[arena] action decision failed", e);
+      setToast(t.eliteRunStepAdvanceError);
+      throw e;
+    } finally {
+      setActionDecisionSubmitting(false);
+    }
+  }
+
   async function submitReflection(idx: number, text?: string) {
     if (!current) return;
+    if (!arenaPlaySurfaceAllowed) return;
     const trimmed = typeof text === "string" ? text.trim() : "";
     const meaningful = trimmed.length >= MIN_REFLECTION_LENGTH;
     const bonus = meaningful ? REFLECTION_BONUS_XP : 0;
@@ -969,11 +1494,11 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
       }
 
       if (current?.eliteSetup) {
-        setStep(5);
-        setPhase("SHOW_RESULT");
+        setStep(6);
+        setPhase("DONE");
         persist({
-          step: 5,
-          phase: "SHOW_RESULT",
+          step: 6,
+          phase: "DONE",
           reflectionIndex: idx,
           reflectionText: trimmed || undefined,
           reflectionBonusXp: bonus,
@@ -1015,9 +1540,12 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
 
   async function continueNextScenario() {
     if (!current) return;
+    if (pendingActionContractRef.current != null || reexposureGateSnapshotRef.current != null) {
+      setNextScenarioLoading(false);
+      return;
+    }
     setCompleteError(null);
     setNextScenarioLoading(true);
-    clearState();
     const currentRunId = runId;
     let core: CoreXpGetResponse | null = null;
     try {
@@ -1032,12 +1560,17 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
                     (Date.now() / 1000 - new Date(meta.startedAt).getTime() / 1000)
                 )
               : undefined;
-          await arenaFetch("/api/arena/run/complete", {
+          const completeJson = await arenaFetch<Record<string, unknown>>("/api/arena/run/complete", {
             json: {
               runId: currentRunId,
               ...(typeof timeRemaining === "number" && { time_remaining: Math.round(timeRemaining) }),
             },
           });
+          const fromComplete = parseArenaSessionRouterSnapshotFromJson(completeJson);
+          if (fromComplete) setArenaServerSnapshot(fromComplete);
+          clearState();
+          setScenario(null);
+          resetAllLocal();
           runMetaRef.current = null;
           core = await arenaFetch<CoreXpGetResponse>("/api/arena/core-xp").catch(() => null);
           if (core && typeof core.coreXpTotal === "number") {
@@ -1059,17 +1592,50 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
         }
       }
 
-      const nextPack = await fetchSessionNextScenario(locale, pipelineDefault);
-      const next = nextPack.scenario;
+      const nextPack = await fetchArenaSessionRouterPackWithRetry(
+        locale === "ko" ? "ko" : "en",
+        pipelineDefault,
+      );
+      if (nextPack.outcome === "blocked") {
+        reexposureGateSnapshotRef.current = nextPack.snapshot;
+        setPendingActionContract(nextPack.contract);
+        setArenaServerSnapshot(nextPack.snapshot);
+        setScenario(null);
+        setRunId(null);
+        resetAllLocal();
+        setCompleteError(null);
+        console.info("[arena][session-router-blocked]", { context: "continue-next" });
+        return;
+      }
+      const reexposureContinue = reexposureSnapshotFromSessionPack(nextPack);
+      if (reexposureContinue) {
+        applyReexposureHardStop(reexposureContinue, "continue-next");
+        return;
+      }
+      if (nextPack.outcome === "session_shell") {
+        applyReexposureHardStop(nextPack.snapshot, "continue-next");
+        return;
+      }
+      const next = nextPack.outcome === "scenario" ? nextPack.scenario : null;
       if (!next) {
+        setArenaServerSnapshot(null);
         setCompleteError(t.completeErrorPrefix + "no_scenario_available" + t.completeErrorSuffix);
         return;
+      }
+      reexposureGateSnapshotRef.current = null;
+      setPendingActionContract(null);
+      setArenaServerSnapshot(nextPack.outcome === "scenario" ? nextPack.snapshot : null);
+      if (current.eliteSetup) {
+        console.info("[arena][elite-continue-next]", {
+          fromScenarioId: current.scenarioId,
+          toScenarioId: next.scenarioId,
+        });
       }
       setScenario(next);
       setPhase("CHOOSING");
       setStep(2);
       resetAllLocal();
-      setRecallPrompt(nextPack.recallPrompt);
+      setRecallPrompt(nextPack.outcome === "scenario" ? (nextPack.recallPrompt ?? null) : null);
 
       createRun(next.scenarioId, locale ?? undefined, {
         scenario: next,
@@ -1121,23 +1687,163 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
     });
   }
 
+  function retryArenaSession() {
+    setScenarioLoading(true);
+    setPendingActionContract(null);
+    const preserveGetReexposure =
+      reexposureGateSnapshotRef.current?.runtime_state === "REEXPOSURE_DUE" ||
+      arenaServerSnapshot?.runtime_state === "REEXPOSURE_DUE";
+    if (!preserveGetReexposure) {
+      setArenaServerSnapshot(null);
+    }
+    setBindingRuntimeSnapshot(null);
+    setSessionLoadNonce((n) => n + 1);
+  }
+
+  /**
+   * Re-exposure: load canonical scenario via GET `/api/arena/re-exposure/[scenarioId]`, bootstrap a new run,
+   * and keep `pending_outcome_id` until tradeoff (step 4) completes → POST `/api/arena/re-exposure/validate`.
+   * Transitions snapshot to {@link arenaSessionRouterSnapshotScenarioReady} locally until next GET.
+   */
+  async function beginReexposurePlay() {
+    if (pendingActionContractRef.current != null) {
+      setToast(t.eliteRunStepAdvanceError);
+      return;
+    }
+    const shellRef = reexposureGateSnapshotRef.current;
+    if (
+      shellRef != null &&
+      shellRef.runtime_state !== "REEXPOSURE_DUE" &&
+      isArenaExclusiveGateRuntimeState(shellRef.runtime_state)
+    ) {
+      setToast(t.eliteRunStepAdvanceError);
+      return;
+    }
+    /** Ref wins over React state — snapshot may be replaced by local `ARENA_SCENARIO_READY` before tap. */
+    const gateSnap =
+      reexposureGateSnapshotRef.current?.runtime_state === "REEXPOSURE_DUE"
+        ? reexposureGateSnapshotRef.current
+        : arenaServerSnapshot?.runtime_state === "REEXPOSURE_DUE"
+          ? arenaServerSnapshot
+          : null;
+    const sid = gateSnap?.re_exposure?.scenario_id;
+    const pendingId = gateSnap?.re_exposure?.pending_outcome_id;
+    if (!sid || typeof sid !== "string" || sid.trim() === "") {
+      setToast(t.eliteRunStepAdvanceError);
+      return;
+    }
+    console.info("[arena][beginReexposurePlay]", {
+      scenario_id: sid.trim(),
+      pending_outcome_id: typeof pendingId === "string" ? pendingId.trim() : null,
+    });
+    setReexposureEnterLoading(true);
+    try {
+      const res = await fetch(`/api/arena/re-exposure/${encodeURIComponent(sid)}?locale=${locale}`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; scenario?: Scenario; error?: string };
+      if (!res.ok || json.ok !== true || !json.scenario) {
+        setToast(t.eliteRunStepAdvanceError);
+        return;
+      }
+      const next = json.scenario;
+      clearState();
+      resetAllLocal();
+      setRecallPrompt(null);
+      setBindingRuntimeSnapshot(null);
+      setScenario(next);
+      setPhase("CHOOSING");
+      setStep(2);
+      setArenaServerSnapshot(arenaSessionRouterSnapshotScenarioReady());
+      setScenarioInitError(null);
+      const streakInfo = updateStreak();
+      if (streakInfo.message) setSystemMessage(streakInfo.message);
+      const result = await createRun(next.scenarioId, locale ?? undefined, {
+        scenario: next,
+        timeLimitSeconds: ARENA_TIME_LIMIT_SECONDS,
+      });
+      if (result) {
+        setRunId(result.run_id);
+        runMetaRef.current =
+          result.timeLimitSeconds != null && result.timeLimitSeconds > 0
+            ? {
+                runId: result.run_id,
+                startedAt: result.started_at,
+                timeLimitSeconds: result.timeLimitSeconds,
+              }
+            : null;
+        try {
+          await postArenaEvent({
+            runId: result.run_id,
+            scenarioId: next.scenarioId,
+            step: 1,
+            eventType: "SCENARIO_STARTED",
+          });
+        } catch (e) {
+          console.warn("Arena SCENARIO_STARTED event failed (re-exposure)", e);
+        }
+        saveState({
+          version: 1,
+          scenarioId: next.scenarioId,
+          phase: "CHOOSING",
+          step: 2,
+          runId: result.run_id,
+          updatedAtISO: safeNowISO(),
+        });
+        if (typeof pendingId === "string" && pendingId.trim() !== "") {
+          reexposurePendingOutcomeIdRef.current = pendingId.trim();
+        }
+        reexposureGateSnapshotRef.current = null;
+      }
+    } finally {
+      setReexposureEnterLoading(false);
+    }
+  }
+
   async function resetRun() {
+    reexposurePendingOutcomeIdRef.current = null;
+    setLastReexposureValidation(null);
     setResetRunLoading(true);
     clearState();
     try {
-      const nextPack = await fetchSessionNextScenario(locale, pipelineDefault);
-      const next = nextPack.scenario;
+      const nextPack = await fetchArenaSessionRouterPackWithRetry(
+        locale === "ko" ? "ko" : "en",
+        pipelineDefault,
+      );
+      if (nextPack.outcome === "blocked") {
+        reexposureGateSnapshotRef.current = nextPack.snapshot;
+        setPendingActionContract(nextPack.contract);
+        setArenaServerSnapshot(nextPack.snapshot);
+        console.info("[arena][session-router-blocked]", { context: "reset-run" });
+        return;
+      }
+      const reexposureReset = reexposureSnapshotFromSessionPack(nextPack);
+      if (reexposureReset) {
+        applyReexposureHardStop(reexposureReset, "reset-run");
+        return;
+      }
+      if (nextPack.outcome === "session_shell") {
+        applyReexposureHardStop(nextPack.snapshot, "reset-run");
+        return;
+      }
+      const next = nextPack.outcome === "scenario" ? nextPack.scenario : null;
       if (!next) {
+        setPendingActionContract(null);
+        setArenaServerSnapshot(null);
         setScenario(null);
         setRecallPrompt(null);
         setScenarioInitError(t.scenarioNotFound);
         return;
       }
+      reexposureGateSnapshotRef.current = null;
+      setPendingActionContract(null);
+      setArenaServerSnapshot(nextPack.outcome === "scenario" ? nextPack.snapshot : null);
       setScenario(next);
       setPhase("CHOOSING");
       setStep(2);
       resetAllLocal();
-      setRecallPrompt(nextPack.recallPrompt);
+      setRecallPrompt(nextPack.outcome === "scenario" ? (nextPack.recallPrompt ?? null) : null);
       setSystemMessage(SYSTEM_MESSAGES.find((m) => m.id === "arch_init") ?? null);
 
       const result = await createRun(next.scenarioId, locale ?? undefined, {
@@ -1181,77 +1887,6 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
     }
   }
 
-  function handleComplete() {
-    if (isBtyE2eStep6TraceEnabled()) {
-      console.log("[BTY_E2E_STEP6] handleComplete: setStep(7) + setPhase(DONE)", {
-        runId,
-        phaseBefore: phase,
-        stepBefore: step,
-      });
-    } else if (
-      typeof process !== "undefined" &&
-      process.env.NEXT_PUBLIC_DEBUG_ELITE_STEP7_TRANSITION === "1"
-    ) {
-      console.log("[useArenaSession] handleComplete", { runId, phaseBefore: phase, stepBefore: step });
-    }
-    setStep(7);
-    setPhase("DONE");
-    persist({ step: 7, phase: "DONE" });
-  }
-
-  /** Stable identity for `EliteActionContractStep` — avoids `onSubmit` useCallback churn from parent re-renders. */
-  const contractSubmitAdvanceToGateRef = React.useRef<() => void>(() => {});
-  React.useEffect(() => {
-    contractSubmitAdvanceToGateRef.current = () => {
-      setPatternContractDeferred(false);
-      handleComplete();
-    };
-  });
-
-  const contractSubmitAdvanceToGate = React.useCallback(() => {
-    if (isBtyE2eStep6TraceEnabled()) {
-      console.log("[BTY_E2E_STEP6] contractSubmitAdvanceToGate() invoked");
-    } else if (
-      typeof process !== "undefined" &&
-      process.env.NEXT_PUBLIC_DEBUG_ELITE_STEP7_TRANSITION === "1"
-    ) {
-      console.log("[useArenaSession] contractSubmitAdvanceToGate()");
-    }
-    contractSubmitAdvanceToGateRef.current();
-  }, []);
-
-  React.useEffect(() => {
-    if (step !== 7) return;
-    if (isBtyE2eStep6TraceEnabled()) {
-      console.log("[BTY_E2E_STEP6] parent committed step===7", { runId, phase });
-      return;
-    }
-    if (
-      typeof process !== "undefined" &&
-      process.env.NEXT_PUBLIC_DEBUG_ELITE_STEP7_TRANSITION === "1"
-    ) {
-      console.log("[useArenaSession] render with step===7", { runId, phase });
-    }
-  }, [step, runId, phase]);
-
-  function handleSkipFollowUp() {
-    setStep(6);
-    persist({ step: 6 });
-  }
-
-  /** UX_FLOW_LOCK Step 5 → 6 after mirror Continue + acknowledgment_timestamp */
-  function mirrorContinueToContract() {
-    setPatternContractDeferred(false);
-    setStep(6);
-    persist({ step: 6, phase: "SHOW_RESULT" });
-  }
-
-  /** Step 6: POST /api/action-contracts returned `gated: "pattern_threshold"` — continue to gate without a draft contract */
-  function patternThresholdSkippedToGate() {
-    setPatternContractDeferred(true);
-    handleComplete();
-  }
-
   function selectChoice(id: string) {
     setSelectedChoiceId(id);
     setOtherOpen(false);
@@ -1277,6 +1912,57 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
     await arenaFetch("/api/arena/sub-name", { json: { subName: name } });
   }
 
+  React.useEffect(() => {
+    if (!arenaPlaySurfaceAllowed) return;
+    if (!scenario?.eliteSetup || step !== 3 || phase !== "ESCALATION" || !runId) return;
+    if (!selectedChoiceId || selectedChoiceId === OTHER_CHOICE_ID) return;
+    const key = `${runId}:${selectedChoiceId}:resume-step3`;
+    if (eliteResumeEscalationRef.current === key) return;
+    eliteResumeEscalationRef.current = key;
+    let cancelled = false;
+    setEscalationAckSubmitting(true);
+    arenaFetch("/api/arena/run/step", {
+      json: { runId, step: 3, primaryChoiceId: selectedChoiceId },
+    })
+      .then(() => {
+        if (cancelled) return;
+        setStep(4);
+        setPhase("FORCED_TRADEOFF");
+        persist({ step: 4, phase: "FORCED_TRADEOFF" });
+        console.info("[arena][elite-forced-tradeoff-enter]", {
+          source: "resume-auto-step3",
+          scenarioId: scenario?.scenarioId,
+          step: 4,
+          phase: "FORCED_TRADEOFF",
+          primaryChoiceId: selectedChoiceId,
+        });
+      })
+      .catch(() => {
+        eliteResumeEscalationRef.current = null;
+      })
+      .finally(() => {
+        if (!cancelled) setEscalationAckSubmitting(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [arenaPlaySurfaceAllowed, scenario?.eliteSetup, scenario?.scenarioId, step, phase, runId, selectedChoiceId]);
+
+  /** Subtle banner copy — GET session `runtime_state` + human gate reason (render-only). */
+  const arenaRuntimeBanner = React.useMemo(() => {
+    const rs = effectiveArenaSnapshot?.runtime_state;
+    if (rs == null) return null;
+    let gateLabel = t.arenaGateLabelAligning;
+    if (isArenaActionBlockingRuntimeState(rs)) gateLabel = t.arenaGateLabelContract;
+    else if (rs === "REEXPOSURE_DUE") gateLabel = t.arenaGateLabelReexposure;
+    else if (rs === "FORCED_RESET_PENDING") gateLabel = t.arenaGateLabelReset;
+    else if (rs === "NEXT_SCENARIO_READY") gateLabel = t.arenaGateLabelNext;
+    else if (rs === "ARENA_SCENARIO_READY" || rs === "TRADEOFF_ACTIVE" || rs === "ACTION_DECISION_ACTIVE") {
+      gateLabel = t.arenaGateLabelPlay;
+    }
+    return { runtimeState: rs, gateLabel };
+  }, [effectiveArenaSnapshot?.runtime_state, t]);
+
   return {
     locale, t,
     levelChecked, coreXpTotal, tier, requiresBeginnerPath, arenaIdentity,
@@ -1295,16 +1981,25 @@ export function useArenaSession(pipelineDefault: ArenaPipelineDefault = "legacy"
     completeError, toast,
     milestoneModal, closeMilestoneModal,
     runId,
-    onConfirmChoice, submitOther, goToReflection,
-    acknowledgeEscalation, submitSecondChoice,
-    escalationAckSubmitting, secondChoiceSubmitting,
+    onConfirmChoice, commitElitePrimaryChoice, submitOther, goToReflection,
+    acknowledgeEscalation, submitSecondChoice, submitActionDecision,
+    escalationAckSubmitting, secondChoiceSubmitting, actionDecisionSubmitting,
     submitReflection, submitFollowUp,
     continueNextScenario, pause, resetRun,
-    handleComplete, handleSkipFollowUp,
-    mirrorContinueToContract,
-    contractSubmitAdvanceToGate,
-    patternThresholdSkippedToGate,
-    patternContractDeferred,
     onRenameSubName,
+    pendingActionContract,
+    arenaServerSnapshot,
+    bindingRuntimeSnapshot,
+    effectiveArenaSnapshot,
+    arenaActionBlocking,
+    arenaPlaySurfaceAllowed,
+    primaryChoiceInteractive,
+    canRenderScenarioProgressionUi,
+    playUiSegment,
+    retryArenaSession,
+    beginReexposurePlay,
+    reexposureEnterLoading,
+    lastReexposureValidation,
+    arenaRuntimeBanner,
   };
 }

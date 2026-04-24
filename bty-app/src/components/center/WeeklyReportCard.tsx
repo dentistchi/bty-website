@@ -272,7 +272,7 @@ export function WeeklyReportCard({ userId, locale, weekOf: weekOfProp }: WeeklyR
       >
         <div>
           <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.06em" }}>
-            AIR (30d)
+            {b.weeklyReportCardAirTrendCaption}
           </p>
           <AirTrendSparkline dailyAir={data.dailyAir} direction={sparkDirection} height={80} />
         </div>

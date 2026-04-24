@@ -19,6 +19,7 @@ function parseHashParams(hash: string): Record<string, string> {
 
 function AuthCallbackForm() {
   const pathname = usePathname() ?? "";
+  const locale = pathname.startsWith("/ko") ? "ko" : "en";
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<"loading" | "error">("loading");
@@ -37,26 +38,43 @@ function AuthCallbackForm() {
       const code = searchParams.get("code");
       const type = searchParams.get("type");
       const next = searchParams.get("next");
-      const locale = pathname.startsWith("/ko") ? "ko" : "en";
 
       function redirectAfterSession() {
         const locFromPath = pathname.startsWith("/ko") ? "ko" : "en";
         const loc =
           next != null && String(next).trim() !== "" ? inferLocaleFromNextParam(next) : locFromPath;
         const safe = sanitizeNextForRedirect(next, { locale: loc });
-        router.replace(safe);
+        /**
+         * Full navigation (not `router.replace`) so the next request to `/bty-arena` includes auth cookies.
+         * Client-side transitions can fire RSC requests before chunked session cookies are visible to middleware.
+         */
+        if (typeof window !== "undefined") {
+          window.location.assign(safe);
+        } else {
+          router.replace(safe);
+        }
       }
 
       if (code) {
         const { error } = await supabaseClient.auth.exchangeCodeForSession(code);
         if (!mounted) return;
         if (error) {
+          const { data: recovered } = await supabaseClient.auth.getSession();
+          if (recovered.session?.user) {
+            redirectAfterSession();
+            return;
+          }
           setStatus("error");
           setMessage("인증 처리에 실패했습니다. 다시 시도해주세요.");
           return;
         }
+        await supabaseClient.auth.getSession();
         if (type === "recovery") {
-          router.replace(`/${locale}/auth/reset-password`);
+          if (typeof window !== "undefined") {
+            window.location.assign(`/${locale}/auth/reset-password`);
+          } else {
+            router.replace(`/${locale}/auth/reset-password`);
+          }
           return;
         }
         redirectAfterSession();
@@ -76,14 +94,31 @@ function AuthCallbackForm() {
         });
         if (!mounted) return;
         if (error) {
+          const { data: recovered } = await supabaseClient.auth.getSession();
+          if (recovered.session?.user) {
+            redirectAfterSession();
+            return;
+          }
           setStatus("error");
           setMessage("인증 처리에 실패했습니다. 다시 시도해주세요.");
           return;
         }
         if (recoveryType === "recovery") {
-          router.replace(`/${locale}/auth/reset-password`);
+          if (typeof window !== "undefined") {
+            window.location.assign(`/${locale}/auth/reset-password`);
+          } else {
+            router.replace(`/${locale}/auth/reset-password`);
+          }
           return;
         }
+        await supabaseClient.auth.getSession();
+        redirectAfterSession();
+        return;
+      }
+
+      const { data: existing } = await supabaseClient.auth.getSession();
+      if (!mounted) return;
+      if (existing.session?.user) {
         redirectAfterSession();
         return;
       }
@@ -106,11 +141,17 @@ function AuthCallbackForm() {
     );
   }
 
+  const nextParam = searchParams.get("next");
+  const target =
+    nextParam != null && nextParam.trim() !== ""
+      ? `/${locale}/bty/login?next=${encodeURIComponent(nextParam)}`
+      : `/${locale}/bty/login`;
+
   return (
     <div className="min-h-[40vh] flex flex-col items-center justify-center px-4">
       <p className="text-red-600 text-center">{message}</p>
       <Link
-        href="/admin/login"
+        href={target}
         className="mt-4 text-sm text-neutral-600 hover:text-neutral-900 underline"
       >
         로그인으로 돌아가기

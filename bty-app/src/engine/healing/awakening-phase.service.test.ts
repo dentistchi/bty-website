@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { airToBand } from "@/domain/leadership-engine/air";
 import {
   AWAKENING_MILESTONES,
   milestoneSatisfied,
@@ -13,6 +14,18 @@ type CtxPartial = {
 };
 
 function ctx(partial: CtxPartial): MilestoneEvaluationContext {
+  const mergedAir = {
+    computedAt: new Date().toISOString(),
+    dailyAir: [] as readonly number[],
+    rolling7DayAverage: [] as readonly number[],
+    last7DayWindowAvg: 0.5,
+    prior7DayWindowAvg: 0.5,
+    direction: "stable" as const,
+    consecutiveDecliningRollingSteps: 0,
+    warningEmitted: false,
+    ...(partial.air ?? {}),
+  };
+  const last7 = mergedAir.last7DayWindowAvg;
   return {
     stats: {
       playsByFlagType: {},
@@ -24,15 +37,8 @@ function ctx(partial: CtxPartial): MilestoneEvaluationContext {
       ...(partial.stats ?? {}),
     },
     air: {
-      computedAt: new Date().toISOString(),
-      dailyAir: [],
-      rolling7DayAverage: [],
-      last7DayWindowAvg: 0.5,
-      prior7DayWindowAvg: 0.5,
-      direction: "stable",
-      consecutiveDecliningRollingSteps: 0,
-      warningEmitted: false,
-      ...(partial.air ?? {}),
+      ...mergedAir,
+      last7DayWindowBand: airToBand(last7),
     },
     renewalGatePct: partial.renewalGatePct ?? 0,
     mentorMessageCount: partial.mentorMessageCount ?? 0,

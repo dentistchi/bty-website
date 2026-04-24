@@ -1,6 +1,7 @@
 /**
- * Arena runtime scenario payload: **only** the bundled canonical elite dataset (`bty_elite_scenarios_v2.json`
- * via static import in eliteScenariosCanonical.server). `reader` is accepted for API compatibility and ignored for payload resolution.
+ * Arena runtime scenario payload: **only** {@link buildEliteScenarioFromChainWorkspace} (chain S1–S3).
+ * `reader` is accepted for API compatibility and ignored for payload resolution.
+ * POST `/api/arena/choice` additionally enforces {@link eliteChainScenarioBindingIncompleteReason} fail-closed for live binding.
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -9,6 +10,7 @@ import {
   eliteScenarioToScenario,
   getEliteScenarioById,
 } from "@/lib/bty/arena/eliteScenariosCanonical.server";
+import { isEliteChainScenarioId } from "@/lib/bty/arena/postLoginEliteEntry";
 
 /** Prefer service role; else anon — RLS allows select on `public.scenarios` for non-Arena readers. */
 export function getSupabaseScenarioReader(): SupabaseClient | null {
@@ -50,7 +52,7 @@ export function rejectLegacyScenarioPayload(s: Scenario): boolean {
 }
 
 /**
- * Load full {@link Scenario} for Arena from the bundled canonical elite dataset (`bty_elite_scenarios_v2.json`) only.
+ * Load full {@link Scenario} for Arena from chain-projected elite only ({@link getEliteScenarioById}).
  * `reader` is unused (kept for call-site compatibility).
  */
 export async function loadArenaScenarioPayloadFromDb(
@@ -59,9 +61,11 @@ export async function loadArenaScenarioPayloadFromDb(
   locale: "en" | "ko",
 ): Promise<Scenario | null> {
   void _reader;
+  if (!isEliteChainScenarioId(scenarioId)) {
+    return null;
+  }
   try {
     const elite = getEliteScenarioById(scenarioId);
-    if (!elite) return null;
     const scenario = eliteScenarioToScenario(elite, locale);
     if (rejectLegacyScenarioPayload(scenario)) {
       console.error("[arena] legacy_scenario_payload_blocked", {

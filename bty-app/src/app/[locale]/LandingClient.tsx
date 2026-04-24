@@ -3,6 +3,7 @@
 import Link from "next/link";
 import HubTopNav from "@/components/bty/HubTopNav";
 import { ThemeBody } from "@/components/ThemeBody";
+import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 
 type LandingMessages = {
   heroTitle: string;
@@ -27,7 +28,9 @@ type Props = {
 };
 
 export default function LandingClient({ locale, t }: Props) {
-  const arenaHref = `/${locale}/bty-arena`;
+  const loc = locale === "ko" ? "ko" : "en";
+  const { contract: arenaEntry } = useArenaEntryResolution(loc);
+  const arenaHref = arenaEntry.href;
   const foundryHref = `/${locale}/bty`;
   const centerHref = `/${locale}/center`;
 

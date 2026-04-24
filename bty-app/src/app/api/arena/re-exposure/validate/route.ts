@@ -1,11 +1,19 @@
 /**
  * POST `/api/arena/re-exposure/validate` — after re-exposure tradeoff (step 4), compute pattern-shift
- * (`changed` | `unstable` | `no_change`), persist on `arena_pending_outcomes.validation_payload`, then consume the pending row.
+ * (`changed` | `unstable` | `no_change`), persist on `arena_pending_outcomes`, then consume the pending row.
+ * `unstable` / `no_change` may schedule another `arena_pending_outcomes` row (same `source_choice_history_id`, same axis)
+ * with dedupe via `reinforcement_seeded_from_pending_id`. `changed` ends the reinforcement loop (no immediate reschedule).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { markDueOutcomesDelivered } from "@/engine/scenario/delayed-outcome-trigger.service";
 import { computeReexposureValidation } from "@/lib/bty/arena/reexposureValidation.server";
 import type { ReexposureValidationPayload } from "@/lib/bty/arena/reexposureValidation.server";
+import type { ArenaReinforcementLoopJson } from "@/lib/bty/arena/reinforcementLoopSchedule.server";
+import {
+  insertReinforcementDelayedOutcome,
+  loopIterationForPendingRow,
+} from "@/lib/bty/arena/reinforcementLoopSchedule.server";
+import { upsertUserPatternSignatureFromValidation } from "@/lib/bty/arena/patternSignatureUpsert.server";
 import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
@@ -44,7 +52,7 @@ export async function POST(req: NextRequest) {
 
   const { data: pendingRow, error: pErr } = await admin
     .from("arena_pending_outcomes")
-    .select("id, status, source_choice_history_id")
+    .select("id, status, source_choice_history_id, validation_payload, reinforcement_loop")
     .eq("id", pendingOutcomeId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -143,9 +151,53 @@ export async function POST(req: NextRequest) {
     };
   }
 
+  const currentRowIteration = loopIterationForPendingRow(pendingRow as { reinforcement_loop?: unknown });
+  const axis = (payload.after_axis || payload.before_axis || "").trim();
+  const patternFamily = payload.after_pattern_family ?? payload.before_pattern_family ?? null;
+
+  const vr = payload.validation_result;
+
+  console.info("[arena][reexposure-validate]", {
+    user_id: user.id,
+    pending_outcome_id: pendingOutcomeId,
+    pattern_family: patternFamily,
+    axis: axis || null,
+    validation_result: vr,
+    reinforcement_loop_iteration: currentRowIteration,
+  });
+
+  let closingLoop: ArenaReinforcementLoopJson | null = null;
+  if (vr === "changed") {
+    closingLoop = {
+      validation_result: "changed",
+      source_pending_outcome_id: pendingOutcomeId,
+      loop_iteration: currentRowIteration,
+      loop_reason: "loop_satisfied_changed",
+      next_scheduled_for: null,
+      axis,
+      pattern_family: patternFamily,
+      loop_satisfied: true,
+      follow_up_intensity: null,
+    };
+  } else if (vr === "unstable" || vr === "no_change") {
+    closingLoop = {
+      validation_result: vr,
+      source_pending_outcome_id: pendingOutcomeId,
+      loop_iteration: currentRowIteration,
+      loop_reason: "validated_chained_follow_up",
+      next_scheduled_for: null,
+      axis,
+      pattern_family: patternFamily,
+      follow_up_intensity: vr === "no_change" ? "high" : "medium",
+    };
+  }
+
   const { error: upErr } = await admin
     .from("arena_pending_outcomes")
-    .update({ validation_payload: payload as unknown as Record<string, unknown> })
+    .update({
+      validation_payload: payload as unknown as Record<string, unknown>,
+      ...(closingLoop ? { reinforcement_loop: closingLoop as unknown as Record<string, unknown> } : {}),
+    })
     .eq("id", pendingOutcomeId)
     .eq("user_id", user.id)
     .eq("status", "pending");
@@ -156,19 +208,94 @@ export async function POST(req: NextRequest) {
     return out;
   }
 
-  try {
-    await markDueOutcomesDelivered(user.id, [pendingOutcomeId], admin);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "mark_delivered_failed";
-    const out = NextResponse.json({ ok: false, error: msg, validation_payload: payload }, { status: 500 });
-    copyCookiesAndDebug(base, out, req, true);
-    return out;
+  let followUpScheduled = false;
+  let newPendingOutcomeId: string | null = null;
+  let nextScheduledFor: string | null = null;
+
+  if (vr === "unstable" || vr === "no_change") {
+    try {
+      await markDueOutcomesDelivered(user.id, [pendingOutcomeId], admin);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "mark_delivered_failed";
+      const out = NextResponse.json({ ok: false, error: msg, validation_payload: payload }, { status: 500 });
+      copyCookiesAndDebug(base, out, req, true);
+      return out;
+    }
+
+    const nextIter = currentRowIteration + 1;
+    const ins = await insertReinforcementDelayedOutcome(admin, {
+      userId: user.id,
+      closingPendingOutcomeId: pendingOutcomeId,
+      sourceChoiceHistoryId: hid.trim(),
+      validationResult: vr,
+      payload,
+      nextLoopIteration: nextIter,
+    });
+
+    if (!ins.ok) {
+      const out = NextResponse.json(
+        {
+          ok: false,
+          error: ins.error ?? "reinforcement_schedule_failed",
+          validation_payload: payload,
+        },
+        { status: 500 },
+      );
+      copyCookiesAndDebug(base, out, req, true);
+      return out;
+    }
+
+    followUpScheduled = true;
+    newPendingOutcomeId = ins.newPendingId;
+    nextScheduledFor = ins.next_scheduled_for;
+
+    if (nextScheduledFor && closingLoop) {
+      const merged: ArenaReinforcementLoopJson = {
+        ...closingLoop,
+        next_scheduled_for: nextScheduledFor,
+      };
+      await admin
+        .from("arena_pending_outcomes")
+        .update({ reinforcement_loop: merged as unknown as Record<string, unknown> })
+        .eq("id", pendingOutcomeId)
+        .eq("user_id", user.id);
+      closingLoop = merged;
+    }
+  } else {
+    try {
+      await markDueOutcomesDelivered(user.id, [pendingOutcomeId], admin);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "mark_delivered_failed";
+      const out = NextResponse.json({ ok: false, error: msg, validation_payload: payload }, { status: 500 });
+      copyCookiesAndDebug(base, out, req, true);
+      return out;
+    }
+  }
+
+  const signatureWatchpoint =
+    payload.validation_result === "unstable" || payload.validation_result === "no_change"
+      ? nextScheduledFor
+      : null;
+  const sigUp = await upsertUserPatternSignatureFromValidation({
+    admin,
+    userId: user.id,
+    payload,
+    pendingOutcomeId,
+    sourceChoiceHistoryId: hid.trim(),
+    nextWatchpointIso: signatureWatchpoint,
+  });
+  if (!sigUp.ok) {
+    console.warn("[pattern_signature] upsert_failed", { message: sigUp.error });
   }
 
   const out = NextResponse.json({
     ok: true,
     validation_result: payload.validation_result,
     validation_payload: payload,
+    reinforcement_loop: closingLoop,
+    follow_up_scheduled: followUpScheduled,
+    new_pending_outcome_id: newPendingOutcomeId,
+    next_scheduled_for: nextScheduledFor,
   });
   copyCookiesAndDebug(base, out, req, true);
   return out;

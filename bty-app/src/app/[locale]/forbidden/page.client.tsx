@@ -1,8 +1,12 @@
-'use client';
+"use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function ForbiddenPage() {
+  const pathname = usePathname() ?? "";
+  const locale = pathname.startsWith("/ko") ? "ko" : "en";
+
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center px-4">
       <h1 className="text-2xl font-semibold text-neutral-900 mb-2">권한이 없습니다</h1>
@@ -18,7 +22,7 @@ export default function ForbiddenPage() {
           홈으로
         </Link>
         <Link
-          href="/admin/login"
+          href={`/${locale}/admin/login`}
           className="rounded border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
           aria-label="관리자 로그인"
         >

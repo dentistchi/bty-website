@@ -1,0 +1,12 @@
+---
+description: BTY Arena always-on project rules
+globs: ["**/*"]
+alwaysApply: true
+---
+BTY Arena constraints:
+- user_scenario_history is the only source of truth for scenario rotation
+- interpretArenaDecision must remain pure and side-effect free
+- QR validation must route only through /api/qr/validate
+- Migrations must be ordered and idempotent
+- Never regress the existing test baseline
+- ARENA_CANONICAL_CONTRACT.md overrides local assumptions and summaries

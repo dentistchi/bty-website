@@ -25,8 +25,12 @@ export default async function Page({ params }: Props) {
       <div data-testid="my-page-team-screen" className="space-y-4">
         <div data-testid="my-page-tii" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
           <p className="text-sm font-medium text-[#1E2A38]">{m.teamTiiCard}</p>
-          <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums text-[#1E2A38]">
-            0.72
+          <p
+            className="mt-3 text-lg font-medium leading-relaxed text-[#667085]"
+            role="status"
+            aria-label={m.teamTiiPlaceholder}
+          >
+            {m.teamTiiPlaceholder}
           </p>
         </div>
 

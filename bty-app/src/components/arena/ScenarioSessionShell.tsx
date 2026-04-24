@@ -21,6 +21,7 @@ import {
   getArenaPipelineDefaultForClient,
   getArenaSessionRouterPath,
 } from "@/lib/bty/arena/arenaPipelineConfig";
+import { getMessages } from "@/lib/i18n";
 
 export const ARENA_SHELL_LOCALE_KEY = "bty_arena_shell_locale_v1" as const;
 
@@ -516,7 +517,9 @@ export function ScenarioSessionShell({
         >
           <span className="font-semibold text-emerald-300">+{toast.xp} XP</span>
           <span className="mx-2 text-[var(--arena-text-soft)]">·</span>
-          <span className="text-sky-300">AIR Δ {toast.airDelta >= 0 ? "+" : ""}{toast.airDelta.toFixed(3)}</span>
+          <span className="text-sky-300">
+            {getMessages(shellLocale === "ko" ? "ko" : "en").arena.sessionChoiceToastExecutionIntegrity}
+          </span>
         </div>
       ) : null}
 

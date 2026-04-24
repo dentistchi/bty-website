@@ -1,6 +1,10 @@
 # CURSOR TASK BOARD — 2026-03-23
 
+**C3 Arena Phase A (2026-04-10):** re-exposure **`validation_result`** → reinforcement loop (`reinforcement_loop` + `reinforcement_seeded_from_pending_id`); validate route + `reinforcementLoopSchedule.server.ts` + migration `20260410120000` — **작업 완료**
+
 **C5 verify (2026-03-30 · release rollout probe):** `npm run lint` ✓ · Vitest **369 / 2665** ✓ · `npm run build` ✓ · prod smoke **200/401** · deploy **SHA parity unverified** (wrangler vs `e8b848d`) · auth flows **deferred** — **보고 완료**
+
+**C5 (2026-04-10 · My Page pattern signature UX):** `PatternSignaturePanel` — **`myPageStub`** i18n path fix (repeat / shift / confidence labels); Vitest **`MyPageLeadershipConsole.test.tsx`** **11/11** ✓ — **작업 완료**
 
 ## SYSTEM MODE: BEHAVIOR ENGINE BUILD
 
@@ -40,9 +44,10 @@
 ---
 
 #### TASK 2: Delayed Outcome Engine
-- store decisions with delayed consequences
-- inject follow-up scenario after N steps
-- ensure no conflict with session/next
+- [x] 완료 (2026-04-24)
+- scenario JSON `delay_days` + `outcomes[].if.pattern` consumed in scheduler (fallback 7d 유지)
+- memory trigger queue `delayed_outcome` enqueue/consume + processed idempotency 확인
+- `arenaSessionNextCore`와 연동되어 `REEXPOSURE_DUE` + `re_exposure.trigger_*` 반환
 
 ---
 

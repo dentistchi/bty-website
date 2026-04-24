@@ -39,5 +39,6 @@ export async function GET(req: NextRequest) {
     signals: result.data.signals,
     reflections: result.data.reflections,
     open_action_contract: result.data.open_action_contract,
+    pattern_signatures: result.data.pattern_signatures,
   });
 }

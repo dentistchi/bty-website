@@ -109,17 +109,17 @@ describe("air (edges)", () => {
   });
 
   describe("airToBand", () => {
-    it("returns low for air < 0.4", () => {
+    it("returns low for air < 0.5 (LOCKED v2)", () => {
       expect(airToBand(0)).toBe("low");
-      expect(airToBand(0.39)).toBe("low");
+      expect(airToBand(0.49)).toBe("low");
     });
-    it("returns mid for 0.4 <= air < 0.7", () => {
-      expect(airToBand(0.4)).toBe("mid");
+    it("returns mid for 0.5 <= air < 0.8", () => {
       expect(airToBand(0.5)).toBe("mid");
-      expect(airToBand(0.69)).toBe("mid");
+      expect(airToBand(0.65)).toBe("mid");
+      expect(airToBand(0.79)).toBe("mid");
     });
-    it("returns high for air >= 0.7", () => {
-      expect(airToBand(0.7)).toBe("high");
+    it("returns high for air >= 0.8", () => {
+      expect(airToBand(0.8)).toBe("high");
       expect(airToBand(1)).toBe("high");
     });
   });

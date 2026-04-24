@@ -1,11 +1,18 @@
-import type { EscalationBranch, SecondChoice } from "@/domain/arena/scenarios/types";
+import type {
+  ActionDecisionBlock,
+  ActionDecisionChoice,
+  EscalationBranch,
+  SecondChoice,
+} from "@/domain/arena/scenarios/types";
 
 export type HiddenStatKey = "integrity" | "communication" | "insight" | "resilience" | "gratitude";
 
-export type { EscalationBranch, SecondChoice };
+export type { ActionDecisionBlock, ActionDecisionChoice, EscalationBranch, SecondChoice };
 
 export type ScenarioChoice = {
   choiceId: "A" | "B" | "C" | "D";
+  /** Canonical id for Supabase / behavioral engine (JSON binding layer). */
+  dbChoiceId?: string;
   label: string;
   /** Elite v2: optional subcopy from `primaryChoices[].subtext` in bundled JSON (Step 2 only). */
   choiceSubtext?: string;
@@ -46,6 +53,8 @@ export type EliteScenarioSetup = {
 
 export type Scenario = {
   scenarioId: string;
+  /** Canonical id aligned with `arena_runs.scenario_id` / behavioral catalog. */
+  dbScenarioId?: string;
   title: string;
   context: string;
   /** Korean title (optional). When locale is ko, used instead of title. */
@@ -63,10 +72,12 @@ export type Scenario = {
    * `context` remains narrative text for APIs/DB mirror (role + pressure + tradeoff only).
    */
   eliteSetup?: EliteScenarioSetup;
-  /** Optional escalation path after primary choice (steps 3–4 debrief); see `POST /api/arena/run/step`. */
+  /** Optional escalation path after primary choice (steps 3–4); see `POST /api/arena/run/step`. */
   escalationBranches?: Record<string, EscalationBranch>;
   /** Runtime tier (1–5); optional until all payloads carry it. */
   difficulty_level?: 1 | 2 | 3 | 4 | 5;
+  /** Present when payload originated from chain JSON projection (session router snapshot). */
+  source?: "json";
 };
 
 export type ScenarioSubmitPayload = {

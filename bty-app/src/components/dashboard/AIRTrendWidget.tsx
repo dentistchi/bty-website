@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Foundry dashboard — 30-day AIR sparkline, 7-day avg, trend badge, Certified Leader expiry, Realtime `air_trend_warning`.
+ * Foundry dashboard — 30-day AIR sparkline, 7-day **band** (no raw score), trend badge, Certified Leader expiry, Realtime `air_trend_warning`.
  * Data: GET /api/arena/dashboard/air-trend (session user).
  */
 
@@ -17,6 +17,7 @@ import {
   AIR_TREND_WARNING_BROADCAST_EVENT,
 } from "@/lib/bty/arena/air-trend-realtime";
 
+import type { AIRBand } from "@/domain/leadership-engine/air";
 import type { AIRTrend, AIRTrendDirection } from "@/engine/integrity/air-trend.service";
 import type { CertifiedLeaderStatus } from "@/engine/integrity/certified-leader.monitor";
 
@@ -35,6 +36,13 @@ function formatCertCountdown(ms: number, loc: "ko" | "en"): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   if (d > 0) return loc === "ko" ? `${d}일 ${h}시간` : `${d}d ${h}h`;
   return `${pad(h)}:${pad(m)}`;
+}
+
+function airBandLabel(band: AIRBand, loc: "ko" | "en"): string {
+  const b = getMessages(loc).bty;
+  if (band === "low") return b.airBandLow;
+  if (band === "mid") return b.airBandMid;
+  return b.airBandHigh;
 }
 
 function directionBadge(
@@ -175,7 +183,7 @@ export function AIRTrendWidget({ locale }: AIRTrendWidgetProps) {
 
   const { trend, certified } = data;
   const badge = directionBadge(trend.direction, loc);
-  const scorePct = Math.max(0, Math.min(100, Math.round(trend.last7DayWindowAvg * 100)));
+  const bandLine = airBandLabel(trend.last7DayWindowBand, loc);
 
   void tick;
   let certifiedCountdown: string | null = null;
@@ -242,15 +250,16 @@ export function AIRTrendWidget({ locale }: AIRTrendWidgetProps) {
           <p
             style={{
               margin: 0,
-              fontSize: 40,
+              fontSize: 28,
               fontWeight: 800,
-              lineHeight: 1.05,
-              fontVariantNumeric: "tabular-nums",
+              lineHeight: 1.15,
               color: "var(--arena-text, #1e2a38)",
             }}
           >
-            {scorePct}
-            <span style={{ fontSize: 18, fontWeight: 600, marginLeft: 4, opacity: 0.75 }}>%</span>
+            {bandLine}
+          </p>
+          <p style={{ margin: "8px 0 0", fontSize: 11, fontWeight: 500, lineHeight: 1.45, color: "#64748b" }}>
+            {b.airExecutionIntegrityFootnote}
           </p>
         </div>
       </div>

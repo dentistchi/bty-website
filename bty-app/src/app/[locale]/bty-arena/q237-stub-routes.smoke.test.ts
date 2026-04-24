@@ -2,7 +2,14 @@
  * C6 SPRINT 237 — stub route smoke: wireframe, growth, my-page.
  * Renders async RSC pages (en) and checks for stable landmark copy (핵심 문자열).
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 import { renderToString } from "react-dom/server";
 import type { ReactElement } from "react";
 

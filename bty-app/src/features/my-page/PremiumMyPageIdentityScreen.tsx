@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import type { ReflectionEntry } from "@/features/growth/logic/types";
 import { leadershipCoreTraceLabel } from "@/features/my-page/logic";
 import type { LeadershipMetrics, LeadershipState } from "@/features/my-page/logic/types";
+import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
@@ -131,6 +132,15 @@ function FieldRow({ label, value }: { label: string; value: string }) {
       <span className="text-xs uppercase tracking-[0.12em] text-slate-500">{label}</span>
       <span className="text-sm font-medium text-white">{value}</span>
     </div>
+  );
+}
+
+function PatternShiftPlaceholderPanel({ title, body }: { title: string; body: string }) {
+  return (
+    <GlassPanel className="p-5 sm:p-6" data-testid="pattern-shift-placeholder">
+      <SectionLabel>{title}</SectionLabel>
+      <p className="mt-4 text-sm leading-7 text-slate-300">{body}</p>
+    </GlassPanel>
   );
 }
 
@@ -299,6 +309,8 @@ export function PremiumMyPageIdentityScreen({
   const loc = (locale === "ko" ? "ko" : "en") as Locale;
   const t = getMessages(loc).myPageStub;
 
+  const { contract: arenaEntry } = useArenaEntryResolution(loc === "ko" ? "ko" : "en");
+
   const systemNote = useMemo(() => {
     const hasSignals = metrics.signalCount > 0;
     return hasSignals ? t.leadershipSystemNoteBodyActive : t.leadershipSystemNoteBodyDormant;
@@ -358,9 +370,14 @@ export function PremiumMyPageIdentityScreen({
           <StateCard label={t.leadershipAbbrevTii} value={state.tiiLabel} />
           <StateCard label={t.leadershipAbbrevRhythm} value={state.rhythmLabel} />
         </section>
+        <p className="text-center text-[11px] leading-relaxed text-slate-500">{t.leadershipAirExecutionFootnote}</p>
 
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-12">
           <div className="flex flex-col gap-6 xl:col-span-6">
+            <PatternShiftPlaceholderPanel
+              title={t.leadershipPatternShiftSectionTitle}
+              body={t.leadershipPatternShiftPlaceholder}
+            />
             <PatternField
               title={t.leadershipFieldPatternTitle}
               relationalLabel={state.relationalLabel}
@@ -412,7 +429,7 @@ export function PremiumMyPageIdentityScreen({
         <p className="text-center text-[11px] text-slate-500">{t.leadershipSuggestedModuleLine}</p>
         <div className="flex flex-wrap items-center justify-center gap-3 pb-2">
           <Link
-            href={`/${locale}/bty-arena`}
+            href={arenaEntry.href}
             className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-cyan-100/90 transition-colors hover:border-cyan-400/20"
           >
             {t.leadershipLinkArena}

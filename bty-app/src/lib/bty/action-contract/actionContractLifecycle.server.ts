@@ -4,6 +4,11 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isCanonicalPatternFamily, normalizePatternFamilyId } from "@/domain/pattern-family";
+import { queueDeferredOutcomeForArenaRunCompletion } from "@/engine/scenario/delayed-outcome-trigger.service";
+import {
+  loadArenaRunOwnerUserId,
+  logActionContractActorTrace,
+} from "@/lib/bty/action-contract/arenaRunActor.server";
 import { resolveActionContractSpecForPatternFamily } from "@/lib/bty/action-contract/ensureActionContract";
 
 const ENSURE_DRAFT_LOG_PREFIX = "[ensureDraftActionContractWithAdmin]";
@@ -117,10 +122,36 @@ export async function ensureDraftActionContractWithAdmin(
 ): Promise<EnsureDraftActionContractResult> {
   const { userId, sessionId, scenarioId, primaryChoice } = params;
 
+  const runOwnerUserId = await loadArenaRunOwnerUserId(admin, sessionId);
+  if (!runOwnerUserId) {
+    const pg = {
+      supabaseMessage: "arena_runs row not found for sessionId",
+      supabaseCode: null as string | null,
+      supabaseDetails: null as string | null,
+      supabaseHint: null as string | null,
+    };
+    console.error(`${ENSURE_DRAFT_LOG_PREFIX} run_owner_missing`, { userId, sessionId });
+    return {
+      ok: false,
+      error: "load_failed",
+      failedStep: "existing_select",
+      ...pg,
+    };
+  }
+  const actorUserId = runOwnerUserId;
+  if (actorUserId !== userId) {
+    logActionContractActorTrace("ensureDraftActionContractWithAdmin", {
+      incoming_actor_user_id: userId,
+      source_run_id: sessionId,
+      resolved_run_owner_user_id: actorUserId,
+      resolved_auth_user_id: userId,
+    });
+  }
+
   const { data: existing, error: selErr } = await admin
     .from("bty_action_contracts")
     .select("id, status")
-    .eq("user_id", userId)
+    .eq("user_id", actorUserId)
     .eq("session_id", sessionId)
     .maybeSingle();
 
@@ -129,7 +160,7 @@ export async function ensureDraftActionContractWithAdmin(
     console.error(`${ENSURE_DRAFT_LOG_PREFIX} existing_select failed`, {
       failedStep: "existing_select",
       ...pg,
-      userId,
+      userId: actorUserId,
       sessionId,
     });
     return {
@@ -144,7 +175,7 @@ export async function ensureDraftActionContractWithAdmin(
   if (typeof existingId === "string" && existingId.length > 0) {
     logActionContractLifecycle("draft_ensure_existing", {
       contractId: existingId,
-      userId,
+      userId: actorUserId,
       scenarioId,
     });
     return { ok: true, contractId: existingId, created: false };
@@ -161,7 +192,7 @@ export async function ensureDraftActionContractWithAdmin(
   const { data: openRow, error: openErr } = await admin
     .from("bty_action_contracts")
     .select("id, session_id, action_id")
-    .eq("user_id", userId)
+    .eq("user_id", actorUserId)
     .eq("pattern_family", patternFamilyForRow)
     .in("status", ["draft", "committed", "pending", "submitted", "escalated"])
     .maybeSingle();
@@ -170,7 +201,7 @@ export async function ensureDraftActionContractWithAdmin(
     console.error(`${ENSURE_DRAFT_LOG_PREFIX} family_open_select failed`, {
       failedStep: "family_open_select",
       ...pg,
-      userId,
+      userId: actorUserId,
       pattern_family: patternFamilyForRow,
     });
     return {
@@ -186,7 +217,7 @@ export async function ensureDraftActionContractWithAdmin(
     if (isSameArenaSessionContractRow(row, sessionId) && typeof conflictingId === "string" && conflictingId.length > 0) {
       logActionContractLifecycle("draft_ensure_reuse_open_family_same_session", {
         contractId: conflictingId,
-        userId,
+        userId: actorUserId,
         scenarioId,
       });
       return { ok: true, contractId: conflictingId, created: false };
@@ -194,7 +225,7 @@ export async function ensureDraftActionContractWithAdmin(
     const { data: reconcileSession, error: recErr } = await admin
       .from("bty_action_contracts")
       .select("id")
-      .eq("user_id", userId)
+      .eq("user_id", actorUserId)
       .eq("session_id", sessionId)
       .maybeSingle();
     if (recErr) {
@@ -202,7 +233,7 @@ export async function ensureDraftActionContractWithAdmin(
       console.error(`${ENSURE_DRAFT_LOG_PREFIX} reconcile_session_after_family_hit failed`, {
         failedStep: "reconcile_session_select",
         ...pg,
-        userId,
+        userId: actorUserId,
         sessionId,
       });
       return {
@@ -216,7 +247,7 @@ export async function ensureDraftActionContractWithAdmin(
     if (typeof reconciledId === "string" && reconciledId.length > 0) {
       logActionContractLifecycle("draft_ensure_reconcile_session_after_family_hit", {
         contractId: reconciledId,
-        userId,
+        userId: actorUserId,
         scenarioId,
       });
       return { ok: true, contractId: reconciledId, created: false };
@@ -230,7 +261,7 @@ export async function ensureDraftActionContractWithAdmin(
     console.warn(`${ENSURE_DRAFT_LOG_PREFIX} blocked_open_contract_same_family`, {
       failedStep: "open_contract_same_family",
       ...pg,
-      userId,
+      userId: actorUserId,
       pattern_family: patternFamilyForRow,
     });
     return {
@@ -249,8 +280,9 @@ export async function ensureDraftActionContractWithAdmin(
   const { data: inserted, error: insErr } = await admin
     .from("bty_action_contracts")
     .insert({
-      user_id: userId,
+      user_id: actorUserId,
       session_id: sessionId,
+      run_id: sessionId,
       contract_description: spec.description,
       deadline_at: deadlineAt,
       verification_mode: "hybrid",
@@ -272,7 +304,13 @@ export async function ensureDraftActionContractWithAdmin(
 
   if (!insErr && inserted && typeof (inserted as { id?: string }).id === "string") {
     const id = (inserted as { id: string }).id;
-    logActionContractLifecycle("draft_created", { contractId: id, userId, scenarioId });
+    logActionContractActorTrace("ensureDraftActionContractWithAdmin", {
+      incoming_actor_user_id: userId,
+      source_run_id: sessionId,
+      resolved_run_owner_user_id: actorUserId,
+      inserted_bty_action_contracts_user_id: actorUserId,
+    });
+    logActionContractLifecycle("draft_created", { contractId: id, userId: actorUserId, scenarioId });
     return { ok: true, contractId: id, created: true };
   }
 
@@ -281,7 +319,7 @@ export async function ensureDraftActionContractWithAdmin(
     const { data: again } = await admin
       .from("bty_action_contracts")
       .select("id")
-      .eq("user_id", userId)
+      .eq("user_id", actorUserId)
       .eq("session_id", sessionId)
       .maybeSingle();
     const rid = (again as { id?: string } | null)?.id;
@@ -294,7 +332,7 @@ export async function ensureDraftActionContractWithAdmin(
   console.error(`${ENSURE_DRAFT_LOG_PREFIX} insert failed`, {
     failedStep: "insert",
     ...insPg,
-    userId,
+    userId: actorUserId,
     scenarioId,
     sessionId,
     pattern_family: patternFamilyForRow,
@@ -305,4 +343,50 @@ export async function ensureDraftActionContractWithAdmin(
     failedStep: "insert",
     ...insPg,
   };
+}
+
+/**
+ * After QR (or other) verification of real-world execution: mark the linked arena run DONE and queue
+ * deferred re-exposure (`arena_pending_outcomes`) from choice history — same pipeline as {@link scheduleOutcomes}.
+ */
+export async function completeArenaRunAfterContractVerification(
+  admin: SupabaseClient,
+  params: { userId: string; runId: string; verifiedAtIso: string },
+): Promise<{ runUpdated: boolean; deferredQueued: boolean }> {
+  const { userId, runId, verifiedAtIso } = params;
+
+  const { data: existingRun, error: loadErr } = await admin
+    .from("arena_runs")
+    .select("run_id")
+    .eq("run_id", runId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (loadErr || !existingRun) {
+    console.error("[action_contract] completeArenaRunAfterContractVerification missing run", {
+      runId,
+      message: loadErr?.message,
+    });
+    return { runUpdated: false, deferredQueued: false };
+  }
+
+  const { error: upErr } = await admin
+    .from("arena_runs")
+    .update({
+      status: "DONE",
+      completed_at: verifiedAtIso,
+      completion_state: "complete_verified",
+    })
+    .eq("run_id", runId)
+    .eq("user_id", userId);
+
+  if (upErr) {
+    console.error("[action_contract] arena_runs verification completion failed", upErr.message);
+    return { runUpdated: false, deferredQueued: false };
+  }
+
+  console.log("[action_contract]", { op: "arena_run_done_after_contract_verify", userId, runId });
+
+  const { inserted } = await queueDeferredOutcomeForArenaRunCompletion(userId, runId, admin);
+  return { runUpdated: true, deferredQueued: inserted };
 }

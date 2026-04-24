@@ -18,6 +18,12 @@ function resolveDelayedOutcomeDbClient(supabase?: SupabaseClient): SupabaseClien
 
 export const DELAYED_OUTCOME_DELAY_DAYS = 7 as const;
 
+/** Phase A reinforcement reschedule offsets (days). Scheduling logic: `reinforcementLoopSchedule.server`. */
+export {
+  REINFORCEMENT_NO_CHANGE_DELAY_DAYS,
+  REINFORCEMENT_UNSTABLE_DELAY_DAYS,
+} from "@/lib/bty/arena/reinforcementLoopSchedule.server";
+
 export type MentorFlagBucket = "HERO_TRAP" | "INTEGRITY_SLIP" | "CLEAN" | "ROLE_MIRROR";
 
 export type DelayedOutcomeTemplate = {
@@ -148,19 +154,119 @@ function variantIndexFromScenarioType(scenarioType: string): 0 | 1 {
   return h as 0 | 1;
 }
 
+function variantIndexFromPattern(pattern: string): 0 | 1 {
+  const s = pattern.trim();
+  if (s.length === 0) return 0;
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (h + s.charCodeAt(i)) % 2;
+  }
+  return h as 0 | 1;
+}
+
+type ScenarioDelayedOutcomeConfig = {
+  delayDays: number | null;
+  patterns: string[];
+};
+
+function parseScenarioDelayedOutcomeConfigFromBody(body: string): ScenarioDelayedOutcomeConfig {
+  const trimmed = body.trim();
+  if (!trimmed.startsWith("{")) return { delayDays: null, patterns: [] };
+
+  try {
+    const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+    const delayed = parsed.delayed_outcome;
+    if (delayed == null || typeof delayed !== "object" || Array.isArray(delayed)) {
+      return { delayDays: null, patterns: [] };
+    }
+    const d = delayed as Record<string, unknown>;
+    const rawDelay = d.delay_days;
+    const delayDays =
+      typeof rawDelay === "number" && Number.isFinite(rawDelay) && rawDelay > 0
+        ? Math.floor(rawDelay)
+        : null;
+    const rawOutcomes = d.outcomes;
+    const patterns = Array.isArray(rawOutcomes)
+      ? rawOutcomes
+          .map((o) => {
+            if (o == null || typeof o !== "object" || Array.isArray(o)) return null;
+            const ro = o as Record<string, unknown>;
+            const iff = ro.if;
+            if (iff == null || typeof iff !== "object" || Array.isArray(iff)) return null;
+            const pattern = (iff as Record<string, unknown>).pattern;
+            return typeof pattern === "string" && pattern.trim() !== "" ? pattern.trim() : null;
+          })
+          .filter((x): x is string => x != null)
+      : [];
+    return { delayDays, patterns };
+  } catch {
+    return { delayDays: null, patterns: [] };
+  }
+}
+
+async function resolveScenarioDelayedOutcomeConfigForRow(
+  client: SupabaseClient,
+  row: ChoiceHistoryRow,
+): Promise<ScenarioDelayedOutcomeConfig> {
+  const { data } = await client
+    .from("scenarios")
+    .select("body")
+    .eq("id", row.scenario_id)
+    .eq("locale", "en")
+    .maybeSingle();
+  const body = (data as { body?: string } | null)?.body;
+  if (typeof body !== "string" || body.trim() === "") {
+    return { delayDays: null, patterns: [] };
+  }
+  return parseScenarioDelayedOutcomeConfigFromBody(body);
+}
+
+function pickPatternForTemplateBranch(
+  patterns: string[],
+  flagType: string,
+  scenarioType: string,
+): string | null {
+  if (patterns.length === 0) return null;
+  const bucket = normalizeFlagBucket(flagType);
+  const basis = `${bucket}:${scenarioType}`.trim();
+  let h = 0;
+  for (let i = 0; i < basis.length; i++) {
+    h = (h + basis.charCodeAt(i)) % patterns.length;
+  }
+  return patterns[h] ?? null;
+}
+
+function normalizePatternKey(pattern: string): string {
+  return pattern
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 48);
+}
+
 export function pickDelayedOutcomeTemplate(
   flagType: string,
   scenarioType: string,
+  outcomePattern?: string | null,
 ): DelayedOutcomeTemplate {
   const bucket = normalizeFlagBucket(flagType);
   const pair = DELAYED_OUTCOME_TEMPLATES[bucket];
+  if (typeof outcomePattern === "string" && outcomePattern.trim() !== "") {
+    return pair[variantIndexFromPattern(outcomePattern)]!;
+  }
   return pair[variantIndexFromScenarioType(scenarioType)]!;
 }
 
-function choiceTypeKey(flagType: string, scenarioType: string): string {
+function choiceTypeKey(flagType: string, scenarioType: string, outcomePattern?: string | null): string {
   const bucket = normalizeFlagBucket(flagType);
-  const v = variantIndexFromScenarioType(scenarioType);
-  return `delayed_${bucket}_v${v}`;
+  const hasPattern = typeof outcomePattern === "string" && outcomePattern.trim() !== "";
+  const v = hasPattern
+    ? variantIndexFromPattern(outcomePattern as string)
+    : variantIndexFromScenarioType(scenarioType);
+  if (!hasPattern) return `delayed_${bucket}_v${v}`;
+  const key = normalizePatternKey(outcomePattern as string);
+  return key.length > 0 ? `delayed_${bucket}_${key}_v${v}` : `delayed_${bucket}_v${v}`;
 }
 
 function addDaysUtc(iso: string, days: number): string {
@@ -231,9 +337,16 @@ export async function scheduleOutcomes(
   for (const raw of rows) {
     const row = raw as ChoiceHistoryRow;
     const scenarioType = await resolveScenarioTypeForRow(client, row);
-    const tpl = pickDelayedOutcomeTemplate(row.flag_type, scenarioType);
-    const scheduledFor = addDaysUtc(row.played_at, DELAYED_OUTCOME_DELAY_DAYS);
-    const ctKey = choiceTypeKey(row.flag_type, scenarioType);
+    const delayedCfg = await resolveScenarioDelayedOutcomeConfigForRow(client, row);
+    const outcomePattern = pickPatternForTemplateBranch(
+      delayedCfg.patterns,
+      row.flag_type,
+      scenarioType,
+    );
+    const tpl = pickDelayedOutcomeTemplate(row.flag_type, scenarioType, outcomePattern);
+    const delayDays = delayedCfg.delayDays ?? DELAYED_OUTCOME_DELAY_DAYS;
+    const scheduledFor = addDaysUtc(row.played_at, delayDays);
+    const ctKey = choiceTypeKey(row.flag_type, scenarioType, outcomePattern);
 
     const { data: existing } = await client
       .from("arena_pending_outcomes")
@@ -244,7 +357,9 @@ export async function scheduleOutcomes(
 
     if (existing) continue;
 
-    const { error: insErr } = await client.from("arena_pending_outcomes").insert({
+    const { data: insertedPending, error: insErr } = await client
+      .from("arena_pending_outcomes")
+      .insert({
       user_id: userId,
       source_choice_history_id: row.id,
       source_event_id: null,
@@ -253,17 +368,131 @@ export async function scheduleOutcomes(
       outcome_body: `${tpl.bodyKo}\n\n--- EN ---\n${tpl.bodyEn}`,
       status: "pending",
       scheduled_for: scheduledFor,
-    });
+      })
+      .select("id, scheduled_for")
+      .maybeSingle();
 
     if (insErr) {
       if (insErr.code === "23505") continue;
       console.warn("[scheduleOutcomes] insert", insErr.message);
       continue;
     }
+
+    const pendingOutcomeId =
+      insertedPending != null && typeof (insertedPending as { id?: unknown }).id === "string"
+        ? ((insertedPending as { id: string }).id || null)
+        : null;
+
+    // Memory queue trigger for delayed-outcome consumers (separate from pattern-threshold recall path).
+    const { error: qErr } = await client.from("user_memory_trigger_queue").insert({
+      user_id: userId,
+      trigger_type: "delayed_outcome",
+      status: "pending",
+      due_at: scheduledFor,
+      payload: {
+        source_choice_history_id: row.id,
+        ...(pendingOutcomeId ? { pending_outcome_id: pendingOutcomeId } : {}),
+      } as unknown,
+    });
+    if (qErr) {
+      console.warn("[scheduleOutcomes] delayed_outcome_queue", qErr.message);
+    }
     inserted += 1;
   }
 
   return inserted;
+}
+
+/**
+ * When an arena run is marked DONE after action-contract verification, queue the same deferred outcome row
+ * that {@link scheduleOutcomes} would eventually create: `scheduled_for = played_at + 7d` from the latest
+ * `user_scenario_choice_history` row for this run window (played_at >= run.started_at).
+ *
+ * Idempotent via unique `(user_id, source_choice_history_id)` on `arena_pending_outcomes`.
+ * Safe for core_* and elite paths — skips if no matching choice row or row already queued.
+ */
+export async function queueDeferredOutcomeForArenaRunCompletion(
+  userId: string,
+  runId: string,
+  supabase: SupabaseClient,
+): Promise<{ inserted: boolean }> {
+  const client = resolveDelayedOutcomeDbClient(supabase);
+
+  const { data: run, error: runErr } = await client
+    .from("arena_runs")
+    .select("run_id, user_id, scenario_id, started_at")
+    .eq("run_id", runId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (runErr || !run) {
+    console.warn("[queueDeferredOutcomeForArenaRunCompletion] run not found", runErr?.message);
+    return { inserted: false };
+  }
+
+  const scenarioId =
+    typeof (run as { scenario_id?: string }).scenario_id === "string"
+      ? (run as { scenario_id: string }).scenario_id.trim()
+      : "";
+  const startedAt =
+    typeof (run as { started_at?: string }).started_at === "string"
+      ? (run as { started_at: string }).started_at
+      : new Date(0).toISOString();
+
+  if (!scenarioId) return { inserted: false };
+
+  const { data: histRows, error: hErr } = await client
+    .from("user_scenario_choice_history")
+    .select("id, scenario_id, choice_id, flag_type, played_at, scenario_type, outcome_triggered")
+    .eq("user_id", userId)
+    .eq("scenario_id", scenarioId)
+    .gte("played_at", startedAt)
+    .order("played_at", { ascending: false })
+    .limit(1);
+
+  if (hErr || !histRows?.length) {
+    return { inserted: false };
+  }
+
+  const row = histRows[0] as ChoiceHistoryRow;
+  if (row.outcome_triggered === true) {
+    return { inserted: false };
+  }
+
+  const { data: existing } = await client
+    .from("arena_pending_outcomes")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("source_choice_history_id", row.id)
+    .maybeSingle();
+
+  if (existing) return { inserted: false };
+
+  const scenarioType = await resolveScenarioTypeForRow(client, row);
+  const delayedCfg = await resolveScenarioDelayedOutcomeConfigForRow(client, row);
+  const outcomePattern = pickPatternForTemplateBranch(delayedCfg.patterns, row.flag_type, scenarioType);
+  const tpl = pickDelayedOutcomeTemplate(row.flag_type, scenarioType, outcomePattern);
+  const delayDays = delayedCfg.delayDays ?? DELAYED_OUTCOME_DELAY_DAYS;
+  const scheduledFor = addDaysUtc(row.played_at, delayDays);
+  const ctKey = choiceTypeKey(row.flag_type, scenarioType, outcomePattern);
+
+  const { error: insErr } = await client.from("arena_pending_outcomes").insert({
+    user_id: userId,
+    source_choice_history_id: row.id,
+    source_event_id: null,
+    choice_type: ctKey,
+    outcome_title: tpl.titleKo,
+    outcome_body: `${tpl.bodyKo}\n\n--- EN ---\n${tpl.bodyEn}`,
+    status: "pending",
+    scheduled_for: scheduledFor,
+  });
+
+  if (insErr) {
+    if (insErr.code === "23505") return { inserted: false };
+    console.warn("[queueDeferredOutcomeForArenaRunCompletion] insert", insErr.message);
+    return { inserted: false };
+  }
+  return { inserted: true };
 }
 
 function localizePendingRow(
@@ -354,6 +583,66 @@ export async function getDueOutcomes(
   }
 
   return out;
+}
+
+/** First due row: pending outcome → choice history `scenario_id` (GET session `re_exposure` payload). */
+export type FirstDueReexposureMeta = {
+  scenarioId: string | null;
+  pendingOutcomeId: string | null;
+};
+
+/**
+ * Oldest due `arena_pending_outcomes` row for the user, joined to `user_scenario_choice_history` for `scenario_id`.
+ * Used by {@link runArenaSessionNextCore} when emitting `REEXPOSURE_DUE`.
+ */
+export async function fetchFirstDueReexposureMeta(
+  supabase: SupabaseClient,
+  userId: string,
+  now: Date = new Date(),
+): Promise<FirstDueReexposureMeta | null> {
+  const nowIso = now.toISOString();
+  const { data: pending, error } = await supabase
+    .from("arena_pending_outcomes")
+    .select("id, source_choice_history_id")
+    .eq("user_id", userId)
+    .eq("status", "pending")
+    .lte("scheduled_for", nowIso)
+    .order("scheduled_for", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("[fetchFirstDueReexposureMeta] pending query", error.message);
+    return null;
+  }
+  const pendingOutcomeId =
+    pending != null && typeof (pending as { id?: unknown }).id === "string"
+      ? (pending as { id: string }).id
+      : null;
+  const hid =
+    pending != null && typeof (pending as { source_choice_history_id?: unknown }).source_choice_history_id === "string"
+      ? (pending as { source_choice_history_id: string }).source_choice_history_id
+      : null;
+
+  if (!hid) {
+    if (!pendingOutcomeId) return null;
+    return { scenarioId: null, pendingOutcomeId };
+  }
+
+  const { data: hist, error: hErr } = await supabase
+    .from("user_scenario_choice_history")
+    .select("scenario_id")
+    .eq("user_id", userId)
+    .eq("id", hid)
+    .maybeSingle();
+
+  if (hErr) {
+    console.warn("[fetchFirstDueReexposureMeta] history query", hErr.message);
+    return { scenarioId: null, pendingOutcomeId };
+  }
+  const sid = (hist as { scenario_id?: string } | null)?.scenario_id;
+  const scenarioId = typeof sid === "string" && sid.trim() !== "" ? sid.trim() : null;
+  return { scenarioId, pendingOutcomeId };
 }
 
 /**

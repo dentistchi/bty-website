@@ -1,32 +1,31 @@
 /**
- * Resolve a lib {@link Scenario} for Arena UI and submit — catalog, perspective (`pswitch_*`), or mirror pool.
+ * Resolve a lib {@link Scenario} for Arena UI and submit — Elite v2 chain catalog only (bundled dataset).
  */
 
-import { getMirrorScenarioForLocaleSubmit } from "@/engine/perspective-switch/mirror-scenario.service";
-import { getPerspectiveScenarioForSubmit } from "@/engine/scenario/perspective-switch.service";
-import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getSupabaseScenarioReader, loadArenaScenarioPayloadFromDb } from "@/lib/bty/arena/scenarioPayloadFromDb";
 import type { Scenario } from "@/lib/bty/scenario/types";
+import { isEliteChainScenarioId } from "@/lib/bty/arena/postLoginEliteEntry";
 
 /**
- * Catalog + perspective-switch only (no mirror; mirror needs `userId`).
+ * Catalog only (no mirror / perspective / legacy fallbacks).
  * Used by routes that must not read legacy {@link SCENARIOS}.
  */
 export async function resolveArenaScenarioForAnonymousSubmit(
   scenarioId: string,
   locale: "en" | "ko",
 ): Promise<Scenario | null> {
+  if (!isEliteChainScenarioId(scenarioId)) {
+    return null;
+  }
   const reader = getSupabaseScenarioReader();
   if (!reader) {
     console.error(
       "[arena] catalog_unavailable: no Supabase reader (anonymous scenario resolution)",
       { scenarioId, locale },
     );
-  } else {
-    const fromDb = await loadArenaScenarioPayloadFromDb(reader, scenarioId, locale);
-    if (fromDb) return fromDb;
+    return null;
   }
-  return getPerspectiveScenarioForSubmit(scenarioId, locale);
+  return loadArenaScenarioPayloadFromDb(reader, scenarioId, locale);
 }
 
 export async function resolveArenaScenarioForUser(
@@ -34,15 +33,13 @@ export async function resolveArenaScenarioForUser(
   scenarioId: string,
   locale: "en" | "ko",
 ): Promise<Scenario | null> {
-  const reader = getSupabaseScenarioReader();
-  if (reader) {
-    const fromDb = await loadArenaScenarioPayloadFromDb(reader, scenarioId, locale);
-    if (fromDb) return fromDb;
+  void userId;
+  if (!isEliteChainScenarioId(scenarioId)) {
+    return null;
   }
-  const ps = getPerspectiveScenarioForSubmit(scenarioId, locale);
-  if (ps) return ps;
-  const client = await getSupabaseServerClient();
-  const mirror = await getMirrorScenarioForLocaleSubmit(userId, scenarioId, locale, client);
-  if (mirror) return mirror;
-  return null;
+  const reader = getSupabaseScenarioReader();
+  if (!reader) {
+    return null;
+  }
+  return loadArenaScenarioPayloadFromDb(reader, scenarioId, locale);
 }

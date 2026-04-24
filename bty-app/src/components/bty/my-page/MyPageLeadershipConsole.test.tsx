@@ -1,6 +1,15 @@
 /** @vitest-environment jsdom */
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const mockRouterRefresh = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    refresh: mockRouterRefresh,
+  }),
+  usePathname: () => "/en/my-page",
+}));
+
 import { MyPageLeadershipConsole } from "./MyPageLeadershipConsole";
 
 function mockLeadershipState() {
@@ -39,6 +48,7 @@ function mockStatePayload() {
     signals: [],
     reflections: [],
     open_action_contract: null,
+    pattern_signatures: [],
   };
 }
 
@@ -74,6 +84,7 @@ describe("MyPageLeadershipConsole", () => {
 
   beforeEach(() => {
     fetchMock.mockReset();
+    mockRouterRefresh.mockReset();
     vi.stubGlobal("fetch", fetchMock);
   });
 
@@ -334,5 +345,35 @@ describe("MyPageLeadershipConsole", () => {
 
     expect(replaceSpy).toHaveBeenCalled();
     replaceSpy.mockRestore();
+  });
+
+  it("renders PatternSignaturePanel with a real signature row when pattern_signatures is populated", async () => {
+    const payload = {
+      ...mockStatePayload(),
+      pattern_signatures: [
+        {
+          pattern_family: "blame_shift",
+          axis: "Blame vs. Structural Honesty",
+          current_state: "active" as const,
+          repeat_count: 2,
+          last_validation_result: "changed" as const,
+          confidence_score: 0.82,
+          next_watchpoint: null,
+          last_seen_at: "2026-04-10T12:00:00.000Z",
+          first_seen_at: "2026-04-01T00:00:00.000Z",
+        },
+      ],
+    };
+    fetchMock.mockResolvedValue(jsonResponse(payload, 200));
+
+    await act(async () => {
+      render(<MyPageLeadershipConsole locale="en" />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("blame_shift")).toBeTruthy();
+    });
+    expect(screen.getByRole("list")).toBeTruthy();
+    expect(screen.getByText(/Shift: changed/i)).toBeTruthy();
   });
 });

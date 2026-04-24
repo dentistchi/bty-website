@@ -18,9 +18,10 @@ export { ARENA_STEP6_LOCALE };
  * - **`pattern-threshold-gate`** — `elite-action-contract-pattern-threshold-continue` (no draft; continue → execution gate)
  */
 export type EliteStep6PostMirrorOutcome =
+  | "run-complete"
   | "action-contract-form"
   | "pattern-threshold-gate"
-  /** `ElitePostChoiceFlow` shows `elite-v2-runtime-error-*` (no usable `escalationBranches` — legacy stance UI removed). */
+  /** `EliteArenaPostChoiceBlock` shows `elite-v2-runtime-error-*` (no usable `escalationBranches`). */
   | "elite-v2-escalation-blocked"
   /** Step 6 draft POST failed; only returned when {@link NavigateEliteArenaToActionContractOptions.treatStep6InitErrorAsOutcome} is set. */
   | "action-contract-init-error";
@@ -39,23 +40,14 @@ export type NavigateEliteArenaToActionContractOptions = {
 };
 
 /**
- * From `/en/bty-arena` with Elite scenario already loaded: complete steps 2→3→4→5→6.
- * Caller must have passed elite gate (`elite-arena-setup` expected).
+ * From `/en/bty-arena` with Elite scenario already loaded: complete steps 2→3→4, then **`elite-run-complete`** (minimal end screen).
+ * Caller must have passed elite gate (`elite-step2-context` expected).
  *
- * Supports **escalation** (`escalationBranches` + `elite-escalation-step` / `elite-forced-tradeoff-step`). Scenarios
- * without branches no longer render legacy `elite-post-confirm` — `ElitePostChoiceFlow` surfaces
- * `elite-v2-runtime-error-escalation_not_configured` (returns **`elite-v2-escalation-blocked`**).
+ * Supports **escalation** (`escalationBranches`; step 3 API inline → `elite-forced-tradeoff-step`). Scenarios
+ * without branches surface `elite-v2-runtime-error-escalation_not_configured` (**`elite-v2-escalation-blocked`**).
  *
- * ---
- * **Runtime: Step 6 surfaces** (`EliteActionContractStep.tsx`)
- *
- * - `ElitePostChoiceFlow` renders `EliteActionContractStep` when `step === 6`.
- * - While `POST /api/action-contracts` runs: **`elite-action-contract-loading`**.
- * - Success with contract id: **`elite-action-contract`** form.
- * - `gated: "pattern_threshold"`: **`elite-action-contract-pattern-threshold-continue`** (valid outcome — not the form).
- * - Missing `runId` / `primaryChoice` or POST failure: **`elite-action-contract-init-error`** → throws unless
-   *   `treatStep6InitErrorAsOutcome` returns that outcome.
- * - Forced elite fixtures must satisfy **v2 escalation resolution** when using the escalation path (`elite-v2-runtime-error-*` otherwise).
+ * Returns **`run-complete`** when the minimal post-step-4 UI is shown. Legacy mirror / action-contract / execution-gate
+ * steps are no longer in the elite arena client.
  *
  * Debug: `E2E_DEBUG_ELITE_ACTION_NAV=1 npx playwright test …`
  */
@@ -78,42 +70,38 @@ export async function navigateEliteArenaToActionContractStep(
   await expect(page.getByTestId("arena-play-main")).toBeVisible({ timeout: 120_000 });
   await snapshot("wait:after", { wait: "arena-play-main" });
 
-  logEliteNav("wait:before", { wait: "elite-arena-setup", url: page.url() });
-  await expect(page.getByTestId("elite-arena-setup")).toBeVisible({ timeout: 30_000 });
-  await snapshot("wait:after", { wait: "elite-arena-setup" });
+  logEliteNav("wait:before", { wait: "elite-step2-context", url: page.url() });
+  await expect(page.getByTestId("elite-step2-context")).toBeVisible({ timeout: 30_000 });
+  await snapshot("wait:after", { wait: "elite-step2-context" });
 
-  const choiceGroup = page.getByRole("group", { name: /scenario choices/i });
-  await snapshot("click:before", { action: "first-primary-choice-button" });
-  await choiceGroup.locator("button").first().click();
-  await snapshot("click:after", { action: "first-primary-choice-button" });
+  const primaryPick = page.getByTestId("elite-arena-primary-pick");
+  await snapshot("click:before", { action: "elite-primary-one-tap" });
+  await primaryPick.locator("button").first().click();
+  await snapshot("click:after", { action: "elite-primary-one-tap" });
 
-  await snapshot("click:before", { action: "confirm" });
-  await page.getByRole("button", { name: /^confirm$/i }).click();
-  await snapshot("click:after", { action: "confirm" });
-
-  const escalation = page.getByTestId("elite-escalation-step");
+  const tradeoff = page.getByTestId("elite-forced-tradeoff-step");
   const v2EscalationNotConfigured = page.getByTestId("elite-v2-runtime-error-escalation_not_configured");
   const v2MissingBranch = page.getByTestId("elite-v2-runtime-error-missing_escalation_branch");
   const v2InvalidCost = page.getByTestId("elite-v2-runtime-error-invalid_second_choice_cost");
-  const step3Branch = escalation.or(v2EscalationNotConfigured).or(v2MissingBranch).or(v2InvalidCost);
+  const step4Branch = tradeoff.or(v2EscalationNotConfigured).or(v2MissingBranch).or(v2InvalidCost);
 
   if (options?.preStep3BranchSnapshot) {
     await logEliteNavPreStep3BranchSnapshot(page);
   }
 
   logEliteNav("wait:before", {
-    wait: "elite-escalation-step | elite-v2-runtime-error-*",
+    wait: "elite-forced-tradeoff-step | elite-v2-runtime-error-*",
     url: page.url(),
     ...(isE2eDebugEliteActionNav() ? { orderedSignals: await orderedEliteFlowSignals(page) } : {}),
   });
 
   try {
-    await expect(step3Branch).toBeVisible({ timeout: 60_000 });
+    await expect(step4Branch).toBeVisible({ timeout: 90_000 });
   } catch (e) {
-    await logEliteNavStep3BranchWaitFailure(page, "timeout: no step-3 branch (escalation or v2 error)");
+    await logEliteNavStep3BranchWaitFailure(page, "timeout: no second-choice branch (tradeoff or v2 error)");
     throw e;
   }
-  await snapshot("wait:after", { wait: "elite-escalation-step | elite-v2-runtime-error-*" });
+  await snapshot("wait:after", { wait: "elite-forced-tradeoff-step | elite-v2-runtime-error-*" });
 
   const v2VisibleId = await visibleEliteV2RuntimeErrorTestId(page);
   if (v2VisibleId) {
@@ -126,18 +114,14 @@ export async function navigateEliteArenaToActionContractStep(
     return "elite-v2-escalation-blocked";
   }
 
-  if (!(await escalation.isVisible().catch(() => false))) {
-    await logEliteNavStep3BranchWaitFailure(page, "elite step 3: expected elite-escalation-step (v2 error already ruled out)");
+  if (!(await tradeoff.isVisible().catch(() => false))) {
+    await logEliteNavStep3BranchWaitFailure(page, "elite: expected elite-forced-tradeoff-step (v2 error already ruled out)");
     throw new Error(
-      "Elite step 3: expected elite-escalation-step after primary confirm. Legacy elite-post-confirm / elite-post-explain are not used for elite v2.",
+      "Elite: expected elite-forced-tradeoff-step after primary one-tap (step 3 API runs inline).",
     );
   }
 
-  logEliteNav("branch", { path: "escalation+forced-tradeoff" });
-  await snapshot("click:before", { action: "elite-escalation-continue" });
-  await page.getByTestId("elite-escalation-continue").click();
-  await snapshot("click:after", { action: "elite-escalation-continue" });
-
+  logEliteNav("branch", { path: "forced-tradeoff" });
   logEliteNav("wait:before", {
     wait: "elite-forced-tradeoff-step",
     url: page.url(),
@@ -155,95 +139,18 @@ export async function navigateEliteArenaToActionContractStep(
   await snapshot("wait:after", { wait: "elite-forced-tradeoff-Y disabled" });
 
   logEliteNav("wait:before", {
-    wait: "elite-pattern-mirror",
+    wait: "elite-run-complete",
     url: page.url(),
     ...(isE2eDebugEliteActionNav() ? { orderedSignals: await orderedEliteFlowSignals(page) } : {}),
   });
-  await expect(page.getByTestId("elite-pattern-mirror")).toBeVisible({ timeout: 60_000 });
-  await snapshot("wait:after", { wait: "elite-pattern-mirror" });
-
-  const mirrorContinue = page.getByTestId("elite-pattern-mirror").getByRole("button", { name: /^continue$/i });
-  logEliteNav("wait:before", {
-    wait: "mirror continue enabled",
-    url: page.url(),
-    ...(isE2eDebugEliteActionNav() ? { orderedSignals: await orderedEliteFlowSignals(page) } : {}),
-  });
-  await expect(mirrorContinue).toBeEnabled({ timeout: 120_000 });
-  await snapshot("wait:after", { wait: "mirror continue enabled" });
-
-  await snapshot("click:before", { action: "mirror-continue" });
-  await mirrorContinue.click();
-  await snapshot("click:after", { action: "mirror-continue" });
+  await expect(page.getByTestId("elite-run-complete")).toBeVisible({ timeout: 60_000 });
+  await snapshot("wait:after", { wait: "elite-run-complete" });
 
   await assertOptionalLoadingInvariants(page);
   await snapshot("after:assertOptionalLoadingInvariants");
 
-  const loading = page.getByTestId("elite-action-contract-loading");
-  const form = page.getByTestId("elite-action-contract");
-  const patternThreshold = page.getByTestId("elite-action-contract-pattern-threshold-continue");
-  const initError = page.getByTestId("elite-action-contract-init-error");
-
-  try {
-    logEliteNav("wait:before", {
-      wait: "step6: loading | form | pattern-threshold | init-error",
-      url: page.url(),
-      ...(isE2eDebugEliteActionNav() ? { orderedSignals: await orderedEliteFlowSignals(page) } : {}),
-    });
-    await expect(loading.or(form).or(patternThreshold).or(initError)).toBeVisible({ timeout: 90_000 });
-    await snapshot("wait:after", { wait: "step6: first surface" });
-  } catch (e) {
-    await logEliteNavFinalDiagnosis(page, "timeout: no step-6 surface after mirror continue");
-    throw e;
-  }
-
-  if (await loading.isVisible().catch(() => false)) {
-    logEliteNav("step6:loading-visible", { url: page.url() });
-    try {
-      logEliteNav("wait:before", {
-        wait: "step6: resolve loading → form | pattern-threshold | init-error",
-        url: page.url(),
-        ...(isE2eDebugEliteActionNav() ? { orderedSignals: await orderedEliteFlowSignals(page) } : {}),
-      });
-      await expect(form.or(patternThreshold).or(initError)).toBeVisible({ timeout: 90_000 });
-      await snapshot("wait:after", { wait: "step6: resolved from loading" });
-    } catch (e) {
-      await logEliteNavFinalDiagnosis(page, "timeout: loading did not resolve to form | pattern-threshold | init-error");
-      throw e;
-    }
-  }
-
-  if (await initError.isVisible().catch(() => false)) {
-    if (options?.treatStep6InitErrorAsOutcome) {
-      logEliteNav("done", { outcome: "action-contract-init-error", url: page.url() });
-      await snapshot("step6:outcome-init-error");
-      return "action-contract-init-error";
-    }
-    await logEliteNavFinalDiagnosis(page, "elite-action-contract-init-error visible");
-    throw new Error(
-      "Step 6 init error (POST /api/action-contracts failed or missing runId/primaryChoice) — see [e2e-elite-nav] final-diagnosis",
-    );
-  }
-
-  if (await patternThreshold.isVisible().catch(() => false)) {
-    logEliteNav("done", { outcome: "pattern-threshold-gate", url: page.url() });
-    await snapshot("step6:outcome-pattern-threshold");
-    return "pattern-threshold-gate";
-  }
-
-  try {
-    logEliteNav("wait:before", {
-      wait: "elite-action-contract (form)",
-      url: page.url(),
-      ...(isE2eDebugEliteActionNav() ? { orderedSignals: await orderedEliteFlowSignals(page) } : {}),
-    });
-    await expect(form).toBeVisible({ timeout: 15_000 });
-    await snapshot("wait:after", { wait: "elite-action-contract (form)" });
-    logEliteNav("done", { outcome: "action-contract-form", url: page.url() });
-    return "action-contract-form";
-  } catch (e) {
-    await logEliteNavFinalDiagnosis(page, "expected contract form but step 6 surface mismatch");
-    throw e;
-  }
+  logEliteNav("done", { outcome: "run-complete", url: page.url() });
+  return "run-complete";
 }
 
 /** Valid Layer 1 sample (see `layer1Rules.ts`). */

@@ -4,9 +4,9 @@
   "scenarios": [
     {
       "id": "core_01_training_system",
-      "title": "The System Never Trained Them — But We're Blaming Them Anyway",
+      "title": "Write Them Up or Name the System",
       "role": "Regional Director",
-      "pressure": "Two front-desk staff failed Medicaid eligibility verification three times this week. The office manager wants to write them up. You know onboarding was cut from 5 days to 2 due to volume pressure. Corporate is asking for accountability documentation.",
+      "pressure": "Two front-desk staff failed Medicaid eligibility verification three times this week. The office manager wants to write them up. You know onboarding was cut from five days to two because volume pressure was already building, and you accepted that cut at the time. Corporate is now asking for accountability documentation. What you do next will decide whether this becomes an employee failure story or a system failure story that includes you.",
       "tradeoff": "Writing them up protects your metrics and satisfies corporate. Defending them requires you to implicate the system — and your own earlier compliance with the onboarding cut.",
       "bty_tension_axis": "Blame vs. Structural Honesty",
       "action_contract": {
@@ -27,9 +27,31 @@
         "ownership"
       ],
       "difficulty_level": 3,
+      "primaryChoices": [
+        {
+          "id": "A",
+          "label": "Approve the write-up, document the individual mistakes, and keep the system decision out of the report.",
+          "subtext": ""
+        },
+        {
+          "id": "B",
+          "label": "Document both the staff errors and the onboarding cut, then reopen the training expectation with local leadership.",
+          "subtext": ""
+        },
+        {
+          "id": "C",
+          "label": "Stop the write-up process for now and tell the office manager you are naming the onboarding cut as part of the failure.",
+          "subtext": ""
+        },
+        {
+          "id": "D",
+          "label": "Widen ownership: bring another leader, HR, compliance, or a peer into the decision explicitly — now, not after the fact.",
+          "subtext": ""
+        }
+      ],
       "escalationBranches": {
         "A": {
-          "escalation_text": "Immediate fallout: others react to the move you just made. Two front-desk staff failed Medicaid eligibility verification three times this week. The office manager wants to write them up. You know onboarding was cut from 5 days to 2 due to volume pressure. Corporate is asking for accountability documentation.",
+          "escalation_text": "Immediate fallout: others react to the move you just made. Two front-desk staff failed Medicaid eligibility verification three times this week. The office manager wants to write them up. You know onboarding was cut from five days to two because volume pressure was already building, and you accepted that cut at the time. Corporate is now asking for accountability documentation. What you do next will decide whether this becomes an employee failure story or a system failure story that includes you.\n\nA few days later, the story has started to travel. Office leaders are repeating some version of it: either 'people need to be more careful' or 'corporate won't let us tell the truth anyway.' The two staff members have gone quieter. The office manager is watching whether you really intend to let system decisions be named alongside employee mistakes. Without saying it directly, everyone is learning what kind of accountability survives pressure in your region.\n\nThe formal documentation is already in the system. Nothing about this situation can be fully undone now. Some people think you protected the business. Others think you failed the staff. A few leaders are waiting to see whether you will keep naming structural truth when it costs you personally, or whether this was a one-time exception. The event is over, but what it taught the region about you is still unfolding.",
           "pressure_increase": 0.55,
           "second_choices": [
             {
@@ -49,7 +71,7 @@
           ]
         },
         "B": {
-          "escalation_text": "Your stance is visible to people who were not in the room when you decided. Two front-desk staff failed Medicaid eligibility verification three times this week. The office manager wants to write them up. You know onboarding was cut from 5 days to 2 due to volume pressure. Corporate is asking for accountability documentation.",
+          "escalation_text": "Your stance is visible to people who were not in the room when you decided. Two front-desk staff failed Medicaid eligibility verification three times this week. The office manager wants to write them up. You know onboarding was cut from five days to two because volume pressure was already building, and you accepted that cut at the time. Corporate is now asking for accountability documentation. What you do next will decide whether this becomes an employee failure story or a system failure story that includes you.\n\nA few days later, the story has started to travel. Office leaders are repeating some version of it: either 'people need to be more careful' or 'corporate won't let us tell the truth anyway.' The two staff members have gone quieter. The office manager is watching whether you really intend to let system decisions be named alongside employee mistakes. Without saying it directly, everyone is learning what kind of accountability survives pressure in your region.\n\nThe formal documentation is already in the system. Nothing about this situation can be fully undone now. Some people think you protected the business. Others think you failed the staff. A few leaders are waiting to see whether you will keep naming structural truth when it costs you personally, or whether this was a one-time exception. The event is over, but what it taught the region about you is still unfolding.",
           "pressure_increase": 0.6,
           "second_choices": [
             {
@@ -69,7 +91,7 @@
           ]
         },
         "C": {
-          "escalation_text": "Competing priorities collide before you can stabilize the narrative. Two front-desk staff failed Medicaid eligibility verification three times this week. The office manager wants to write them up. You know onboarding was cut from 5 days to 2 due to volume pressure. Corporate is asking for accountability documentation.",
+          "escalation_text": "Competing priorities collide before you can stabilize the narrative. Two front-desk staff failed Medicaid eligibility verification three times this week. The office manager wants to write them up. You know onboarding was cut from five days to two because volume pressure was already building, and you accepted that cut at the time. Corporate is now asking for accountability documentation. What you do next will decide whether this becomes an employee failure story or a system failure story that includes you.\n\nA few days later, the story has started to travel. Office leaders are repeating some version of it: either 'people need to be more careful' or 'corporate won't let us tell the truth anyway.' The two staff members have gone quieter. The office manager is watching whether you really intend to let system decisions be named alongside employee mistakes. Without saying it directly, everyone is learning what kind of accountability survives pressure in your region.\n\nThe formal documentation is already in the system. Nothing about this situation can be fully undone now. Some people think you protected the business. Others think you failed the staff. A few leaders are waiting to see whether you will keep naming structural truth when it costs you personally, or whether this was a one-time exception. The event is over, but what it taught the region about you is still unfolding.",
           "pressure_increase": 0.58,
           "second_choices": [
             {
@@ -89,7 +111,7 @@
           ]
         },
         "D": {
-          "escalation_text": "What you avoided is now the next decision that will not stay private. Two front-desk staff failed Medicaid eligibility verification three times this week. The office manager wants to write them up. You know onboarding was cut from 5 days to 2 due to volume pressure. Corporate is asking for accountability documentation.",
+          "escalation_text": "What you avoided is now the next decision that will not stay private. Two front-desk staff failed Medicaid eligibility verification three times this week. The office manager wants to write them up. You know onboarding was cut from five days to two because volume pressure was already building, and you accepted that cut at the time. Corporate is now asking for accountability documentation. What you do next will decide whether this becomes an employee failure story or a system failure story that includes you.\n\nA few days later, the story has started to travel. Office leaders are repeating some version of it: either 'people need to be more careful' or 'corporate won't let us tell the truth anyway.' The two staff members have gone quieter. The office manager is watching whether you really intend to let system decisions be named alongside employee mistakes. Without saying it directly, everyone is learning what kind of accountability survives pressure in your region.\n\nThe formal documentation is already in the system. Nothing about this situation can be fully undone now. Some people think you protected the business. Others think you failed the staff. A few leaders are waiting to see whether you will keep naming structural truth when it costs you personally, or whether this was a one-time exception. The event is over, but what it taught the region about you is still unfolding.",
           "pressure_increase": 0.62,
           "second_choices": [
             {
@@ -108,29 +130,7 @@
             }
           ]
         }
-      },
-      "primaryChoices": [
-        {
-          "id": "A",
-          "label": "Commit to Blame: put this pole first in what you do next, even if it costs rapport today.",
-          "subtext": ""
-        },
-        {
-          "id": "B",
-          "label": "Commit to Structural Honesty: put this pole first in what you do next, even if it exposes you to pushback.",
-          "subtext": ""
-        },
-        {
-          "id": "C",
-          "label": "Hold the line between them: protect people and timelines while you close information gaps you still have.",
-          "subtext": ""
-        },
-        {
-          "id": "D",
-          "label": "Widen ownership: bring another leader, HR, compliance, or a peer into the decision explicitly — now, not after the fact.",
-          "subtext": ""
-        }
-      ]
+      }
     },
     {
       "id": "core_02_manager_integrity",
@@ -654,22 +654,22 @@
     },
     {
       "id": "core_06_lead_assistant",
-      "title": "The Lead Who Can't Lead",
-      "role": "Clinical Director",
-      "pressure": "Your lead assistant has been with the practice 8 years — pre-DSO. She's beloved by legacy staff but actively resistant to new protocols. New hires follow her informal lead over your written SOPs. She hasn't technically violated policy but she's becoming the real authority in the room.",
-      "tradeoff": "Restructuring her role risks losing her and destabilizing legacy staff relationships. Leaving it alone means your protocols are theater — leadership in name only.",
+      "title": "Lead Assistant Demotion Request",
+      "role": "Clinic Director",
+      "pressure": "Your most trusted lead assistant, who has been a pillar for the team, approaches you to step down. Her performance has noticeably declined lately, and the team senses increasing uncertainty. The way you respond will not only influence this person's path but also impact the clinic’s broader culture of leadership.",
+      "tradeoff": "Accepting her request quickly may protect her well-being while leaving a leadership gap; clarifying structure and expectations may feel cold to someone already strained; waiting to understand more may extend uncertainty for the team.",
       "bty_tension_axis": "Empathy Loyalty vs. Structural Authority",
       "action_contract": {
-        "description": "Reset expectations and accountability for the Lead Assistant role.",
+        "description": "Support the lead assistant with clarity, define what leadership means in this moment, and stabilize how the team interprets the decision.",
         "time_window_hours": 48
       },
       "air_logic": {
-        "success": "Clarify role expectations and adjust structure.",
-        "miss": "Only accommodate individuals or do nothing."
+        "success": "Hold a private decision conversation and follow up with visible expectations for the team.",
+        "miss": "Avoid naming how the move affects authority, protocols, or team trust."
       },
       "forced_reset": {
         "trigger": "avoidance_detected",
-        "action": "Hold a role-redefinition meeting."
+        "action": "Name the team story forming after the decision and reset expectations in one forum."
       },
       "pattern_detection": [
         "avoidance",
@@ -677,102 +677,20 @@
         "empathy_bias"
       ],
       "difficulty_level": 3,
-      "escalationBranches": {
-        "A": {
-          "escalation_text": "Immediate fallout: others react to the move you just made. Your lead assistant has been with the practice 8 years — pre-DSO. She's beloved by legacy staff but actively resistant to new protocols. New hires follow her informal lead over your written SOPs. She hasn't technically violated policy but she's becoming the real authority in the room.",
-          "pressure_increase": 0.55,
-          "second_choices": [
-            {
-              "id": "X",
-              "label": "Protect runway: defer a public stake while you confirm facts, document, and control timing — accepting that the issue stays live.",
-              "cost": "You limit exposure today; the underlying tension remains: Restructuring her role risks losing her and destabilizing legacy staff relationships. Leaving it alone means your protocols are theater — leadership in name only.",
-              "direction": "exit",
-              "pattern_family": "future_deferral"
-            },
-            {
-              "id": "Y",
-              "label": "Engage directly: name the tension with the people involved before the story hardens without you — accepting short-term heat.",
-              "cost": "You invite immediate friction; the same trade-off is still in play: Restructuring her role risks losing her and destabilizing legacy staff relationships. Leaving it alone means your protocols are theater — leadership in name only.",
-              "direction": "entry",
-              "pattern_family": "repair_avoidance"
-            }
-          ]
-        },
-        "B": {
-          "escalation_text": "Your stance is visible to people who were not in the room when you decided. Your lead assistant has been with the practice 8 years — pre-DSO. She's beloved by legacy staff but actively resistant to new protocols. New hires follow her informal lead over your written SOPs. She hasn't technically violated policy but she's becoming the real authority in the room.",
-          "pressure_increase": 0.6,
-          "second_choices": [
-            {
-              "id": "X",
-              "label": "Protect runway: defer a public stake while you confirm facts, document, and control timing — accepting that the issue stays live.",
-              "cost": "You limit exposure today; the underlying tension remains: Restructuring her role risks losing her and destabilizing legacy staff relationships. Leaving it alone means your protocols are theater — leadership in name only.",
-              "direction": "exit",
-              "pattern_family": "future_deferral"
-            },
-            {
-              "id": "Y",
-              "label": "Engage directly: name the tension with the people involved before the story hardens without you — accepting short-term heat.",
-              "cost": "You invite immediate friction; the same trade-off is still in play: Restructuring her role risks losing her and destabilizing legacy staff relationships. Leaving it alone means your protocols are theater — leadership in name only.",
-              "direction": "entry",
-              "pattern_family": "repair_avoidance"
-            }
-          ]
-        },
-        "C": {
-          "escalation_text": "Competing priorities collide before you can stabilize the narrative. Your lead assistant has been with the practice 8 years — pre-DSO. She's beloved by legacy staff but actively resistant to new protocols. New hires follow her informal lead over your written SOPs. She hasn't technically violated policy but she's becoming the real authority in the room.",
-          "pressure_increase": 0.58,
-          "second_choices": [
-            {
-              "id": "X",
-              "label": "Protect runway: defer a public stake while you confirm facts, document, and control timing — accepting that the issue stays live.",
-              "cost": "You limit exposure today; the underlying tension remains: Restructuring her role risks losing her and destabilizing legacy staff relationships. Leaving it alone means your protocols are theater — leadership in name only.",
-              "direction": "exit",
-              "pattern_family": "future_deferral"
-            },
-            {
-              "id": "Y",
-              "label": "Engage directly: name the tension with the people involved before the story hardens without you — accepting short-term heat.",
-              "cost": "You invite immediate friction; the same trade-off is still in play: Restructuring her role risks losing her and destabilizing legacy staff relationships. Leaving it alone means your protocols are theater — leadership in name only.",
-              "direction": "entry",
-              "pattern_family": "repair_avoidance"
-            }
-          ]
-        },
-        "D": {
-          "escalation_text": "What you avoided is now the next decision that will not stay private. Your lead assistant has been with the practice 8 years — pre-DSO. She's beloved by legacy staff but actively resistant to new protocols. New hires follow her informal lead over your written SOPs. She hasn't technically violated policy but she's becoming the real authority in the room.",
-          "pressure_increase": 0.62,
-          "second_choices": [
-            {
-              "id": "X",
-              "label": "Protect runway: defer a public stake while you confirm facts, document, and control timing — accepting that the issue stays live.",
-              "cost": "You limit exposure today; the underlying tension remains: Restructuring her role risks losing her and destabilizing legacy staff relationships. Leaving it alone means your protocols are theater — leadership in name only.",
-              "direction": "exit",
-              "pattern_family": "future_deferral"
-            },
-            {
-              "id": "Y",
-              "label": "Engage directly: name the tension with the people involved before the story hardens without you — accepting short-term heat.",
-              "cost": "You invite immediate friction; the same trade-off is still in play: Restructuring her role risks losing her and destabilizing legacy staff relationships. Leaving it alone means your protocols are theater — leadership in name only.",
-              "direction": "entry",
-              "pattern_family": "repair_avoidance"
-            }
-          ]
-        }
-      },
       "primaryChoices": [
         {
           "id": "A",
-          "label": "Commit to Empathy Loyalty: put this pole first in what you do next, even if it costs rapport today.",
+          "label": "Accept her request immediately, prioritizing her well-being over her position.",
           "subtext": ""
         },
         {
           "id": "B",
-          "label": "Commit to Structural Authority: put this pole first in what you do next, even if it exposes you to pushback.",
+          "label": "Offer a role adjustment but establish clear expectations and performance standards going forward.",
           "subtext": ""
         },
         {
           "id": "C",
-          "label": "Hold the line between them: protect people and timelines while you close information gaps you still have.",
+          "label": "Hold off on deciding and ask for a candid explanation about what has made leading difficult.",
           "subtext": ""
         },
         {
@@ -780,7 +698,89 @@
           "label": "Widen ownership: bring another leader, HR, compliance, or a peer into the decision explicitly — now, not after the fact.",
           "subtext": ""
         }
-      ]
+      ],
+      "escalationBranches": {
+        "A": {
+          "escalation_text": "Immediate fallout: others react to the move you just made. Your most trusted lead assistant, who has been a pillar for the team, approaches you to step down. Her performance has noticeably declined lately, and the team senses increasing uncertainty. The way you respond will not only influence this person's path but also impact the clinic’s broader culture of leadership.\n\nA few days pass. The clinic is quieter, but something has shifted. Conversations feel shorter. You overhear a comment: 'I guess if it gets hard enough, you can just step down.' Some team members seem distant, others are watching you more carefully. Your previous decision is now becoming a story the team is learning from.\n\nThings are not fully repaired. Some trust feels thinner. A few team members still hold back. You sense that your leadership is now being interpreted, not just followed. Nothing is clearly broken, but nothing is fully the same either.",
+          "pressure_increase": 0.55,
+          "second_choices": [
+            {
+              "id": "X",
+              "label": "Protect runway: defer a public stake while you confirm facts, document, and control timing — accepting that the issue stays live.",
+              "cost": "You limit exposure today; the underlying tension remains: Accepting her request quickly may protect her well-being while leaving a leadership gap; clarifying structure and expectations may feel cold to someone already strained; waiting to understand more may extend uncertainty for the team.",
+              "direction": "exit",
+              "pattern_family": "future_deferral"
+            },
+            {
+              "id": "Y",
+              "label": "Engage directly: name the tension with the people involved before the story hardens without you — accepting short-term heat.",
+              "cost": "You invite immediate friction; the same trade-off is still in play: Accepting her request quickly may protect her well-being while leaving a leadership gap; clarifying structure and expectations may feel cold to someone already strained; waiting to understand more may extend uncertainty for the team.",
+              "direction": "entry",
+              "pattern_family": "repair_avoidance"
+            }
+          ]
+        },
+        "B": {
+          "escalation_text": "Your stance is visible to people who were not in the room when you decided. Your most trusted lead assistant, who has been a pillar for the team, approaches you to step down. Her performance has noticeably declined lately, and the team senses increasing uncertainty. The way you respond will not only influence this person's path but also impact the clinic’s broader culture of leadership.\n\nA few days pass. The clinic is quieter, but something has shifted. Conversations feel shorter. You overhear a comment: 'I guess if it gets hard enough, you can just step down.' Some team members seem distant, others are watching you more carefully. Your previous decision is now becoming a story the team is learning from.\n\nThings are not fully repaired. Some trust feels thinner. A few team members still hold back. You sense that your leadership is now being interpreted, not just followed. Nothing is clearly broken, but nothing is fully the same either.",
+          "pressure_increase": 0.6,
+          "second_choices": [
+            {
+              "id": "X",
+              "label": "Protect runway: defer a public stake while you confirm facts, document, and control timing — accepting that the issue stays live.",
+              "cost": "You limit exposure today; the underlying tension remains: Accepting her request quickly may protect her well-being while leaving a leadership gap; clarifying structure and expectations may feel cold to someone already strained; waiting to understand more may extend uncertainty for the team.",
+              "direction": "exit",
+              "pattern_family": "future_deferral"
+            },
+            {
+              "id": "Y",
+              "label": "Engage directly: name the tension with the people involved before the story hardens without you — accepting short-term heat.",
+              "cost": "You invite immediate friction; the same trade-off is still in play: Accepting her request quickly may protect her well-being while leaving a leadership gap; clarifying structure and expectations may feel cold to someone already strained; waiting to understand more may extend uncertainty for the team.",
+              "direction": "entry",
+              "pattern_family": "repair_avoidance"
+            }
+          ]
+        },
+        "C": {
+          "escalation_text": "Competing priorities collide before you can stabilize the narrative. Your most trusted lead assistant, who has been a pillar for the team, approaches you to step down. Her performance has noticeably declined lately, and the team senses increasing uncertainty. The way you respond will not only influence this person's path but also impact the clinic’s broader culture of leadership.\n\nA few days pass. The clinic is quieter, but something has shifted. Conversations feel shorter. You overhear a comment: 'I guess if it gets hard enough, you can just step down.' Some team members seem distant, others are watching you more carefully. Your previous decision is now becoming a story the team is learning from.\n\nThings are not fully repaired. Some trust feels thinner. A few team members still hold back. You sense that your leadership is now being interpreted, not just followed. Nothing is clearly broken, but nothing is fully the same either.",
+          "pressure_increase": 0.58,
+          "second_choices": [
+            {
+              "id": "X",
+              "label": "Protect runway: defer a public stake while you confirm facts, document, and control timing — accepting that the issue stays live.",
+              "cost": "You limit exposure today; the underlying tension remains: Accepting her request quickly may protect her well-being while leaving a leadership gap; clarifying structure and expectations may feel cold to someone already strained; waiting to understand more may extend uncertainty for the team.",
+              "direction": "exit",
+              "pattern_family": "future_deferral"
+            },
+            {
+              "id": "Y",
+              "label": "Engage directly: name the tension with the people involved before the story hardens without you — accepting short-term heat.",
+              "cost": "You invite immediate friction; the same trade-off is still in play: Accepting her request quickly may protect her well-being while leaving a leadership gap; clarifying structure and expectations may feel cold to someone already strained; waiting to understand more may extend uncertainty for the team.",
+              "direction": "entry",
+              "pattern_family": "repair_avoidance"
+            }
+          ]
+        },
+        "D": {
+          "escalation_text": "What you avoided is now the next decision that will not stay private. Your most trusted lead assistant, who has been a pillar for the team, approaches you to step down. Her performance has noticeably declined lately, and the team senses increasing uncertainty. The way you respond will not only influence this person's path but also impact the clinic’s broader culture of leadership.\n\nA few days pass. The clinic is quieter, but something has shifted. Conversations feel shorter. You overhear a comment: 'I guess if it gets hard enough, you can just step down.' Some team members seem distant, others are watching you more carefully. Your previous decision is now becoming a story the team is learning from.\n\nThings are not fully repaired. Some trust feels thinner. A few team members still hold back. You sense that your leadership is now being interpreted, not just followed. Nothing is clearly broken, but nothing is fully the same either.",
+          "pressure_increase": 0.62,
+          "second_choices": [
+            {
+              "id": "X",
+              "label": "Protect runway: defer a public stake while you confirm facts, document, and control timing — accepting that the issue stays live.",
+              "cost": "You limit exposure today; the underlying tension remains: Accepting her request quickly may protect her well-being while leaving a leadership gap; clarifying structure and expectations may feel cold to someone already strained; waiting to understand more may extend uncertainty for the team.",
+              "direction": "exit",
+              "pattern_family": "future_deferral"
+            },
+            {
+              "id": "Y",
+              "label": "Engage directly: name the tension with the people involved before the story hardens without you — accepting short-term heat.",
+              "cost": "You invite immediate friction; the same trade-off is still in play: Accepting her request quickly may protect her well-being while leaving a leadership gap; clarifying structure and expectations may feel cold to someone already strained; waiting to understand more may extend uncertainty for the team.",
+              "direction": "entry",
+              "pattern_family": "repair_avoidance"
+            }
+          ]
+        }
+      }
     },
     {
       "id": "core_07_growth_pressure",
@@ -1304,22 +1304,22 @@
     },
     {
       "id": "core_11_staffing_collapse",
-      "title": "Three Callouts. Full Schedule. No Pool.",
-      "role": "Office Manager",
-      "pressure": "It's Monday morning. Three assistants called out. The schedule is at full Medicaid capacity — 34 patients. Corporate eliminated the float pool last quarter to cut costs. You can't cancel patients without a compliance flag. You can't staff the floor safely.",
-      "tradeoff": "Running the day short-staffed risks patient safety and staff burnout but keeps the compliance record clean. Canceling patients protects care quality but triggers a regional review that could cost you your performance bonus.",
+      "title": "Short-Staffed and Still Open",
+      "role": "Clinic Director",
+      "pressure": "Two assistants called out this morning. The schedule is already full, including procedures that are difficult to reschedule. Your remaining staff is stretched, and patients have been waiting weeks for these appointments. You know running short increases risk, but cancelling creates its own consequences. Everyone is looking at you for a decision, and it has to be made now.",
+      "tradeoff": "Pushing the full schedule protects access and avoids a cascade of cancellations but concentrates risk on a thin team; reducing procedures protects safety but disrupts patients who have already been waiting; pausing operations is honest about limits but triggers cancellations and immediate fallout.",
       "bty_tension_axis": "Operational Compliance vs. Patient Safety Integrity",
       "action_contract": {
-        "description": "Immediately escalate the operational failure to senior leadership and open a discussion on restoring a structural float pool.",
+        "description": "Make a documented staffing and safety decision for the day, communicate trade-offs to patients and staff, and escalate structural risk if limits are breached.",
         "time_window_hours": 24
       },
       "air_logic": {
-        "success": "Report the situation the same day and document the structural issue for leadership.",
-        "miss": "Handle alone with no escalation."
+        "success": "Adjust the schedule for safe operations and record the staffing gap for leadership.",
+        "miss": "Run the day as if staffing were adequate, with no visible risk naming."
       },
       "forced_reset": {
         "trigger": "silent_execution_pattern",
-        "action": "Escalate urgently to leadership."
+        "action": "Pause for safety, reset patient expectations, and escalate the staffing failure."
       },
       "pattern_detection": [
         "self_protection",
@@ -1327,102 +1327,20 @@
         "ownership"
       ],
       "difficulty_level": 3,
-      "escalationBranches": {
-        "A": {
-          "escalation_text": "Immediate fallout: others react to the move you just made. It's Monday morning. Three assistants called out. The schedule is at full Medicaid capacity — 34 patients. Corporate eliminated the float pool last quarter to cut costs. You can't cancel patients without a compliance flag. You can't staff the floor safely.",
-          "pressure_increase": 0.55,
-          "second_choices": [
-            {
-              "id": "X",
-              "label": "Protect runway: defer a public stake while you confirm facts, document, and control timing — accepting that the issue stays live.",
-              "cost": "You limit exposure today; the underlying tension remains: Running the day short-staffed risks patient safety and staff burnout but keeps the compliance record clean. Canceling patients protects care quality but triggers a regional review that could cost you your performance bonus.",
-              "direction": "exit",
-              "pattern_family": "future_deferral"
-            },
-            {
-              "id": "Y",
-              "label": "Engage directly: name the tension with the people involved before the story hardens without you — accepting short-term heat.",
-              "cost": "You invite immediate friction; the same trade-off is still in play: Running the day short-staffed risks patient safety and staff burnout but keeps the compliance record clean. Canceling patients protects care quality but triggers a regional review that could cost you your performance bonus.",
-              "direction": "entry",
-              "pattern_family": "repair_avoidance"
-            }
-          ]
-        },
-        "B": {
-          "escalation_text": "Your stance is visible to people who were not in the room when you decided. It's Monday morning. Three assistants called out. The schedule is at full Medicaid capacity — 34 patients. Corporate eliminated the float pool last quarter to cut costs. You can't cancel patients without a compliance flag. You can't staff the floor safely.",
-          "pressure_increase": 0.6,
-          "second_choices": [
-            {
-              "id": "X",
-              "label": "Protect runway: defer a public stake while you confirm facts, document, and control timing — accepting that the issue stays live.",
-              "cost": "You limit exposure today; the underlying tension remains: Running the day short-staffed risks patient safety and staff burnout but keeps the compliance record clean. Canceling patients protects care quality but triggers a regional review that could cost you your performance bonus.",
-              "direction": "exit",
-              "pattern_family": "future_deferral"
-            },
-            {
-              "id": "Y",
-              "label": "Engage directly: name the tension with the people involved before the story hardens without you — accepting short-term heat.",
-              "cost": "You invite immediate friction; the same trade-off is still in play: Running the day short-staffed risks patient safety and staff burnout but keeps the compliance record clean. Canceling patients protects care quality but triggers a regional review that could cost you your performance bonus.",
-              "direction": "entry",
-              "pattern_family": "repair_avoidance"
-            }
-          ]
-        },
-        "C": {
-          "escalation_text": "Competing priorities collide before you can stabilize the narrative. It's Monday morning. Three assistants called out. The schedule is at full Medicaid capacity — 34 patients. Corporate eliminated the float pool last quarter to cut costs. You can't cancel patients without a compliance flag. You can't staff the floor safely.",
-          "pressure_increase": 0.58,
-          "second_choices": [
-            {
-              "id": "X",
-              "label": "Protect runway: defer a public stake while you confirm facts, document, and control timing — accepting that the issue stays live.",
-              "cost": "You limit exposure today; the underlying tension remains: Running the day short-staffed risks patient safety and staff burnout but keeps the compliance record clean. Canceling patients protects care quality but triggers a regional review that could cost you your performance bonus.",
-              "direction": "exit",
-              "pattern_family": "future_deferral"
-            },
-            {
-              "id": "Y",
-              "label": "Engage directly: name the tension with the people involved before the story hardens without you — accepting short-term heat.",
-              "cost": "You invite immediate friction; the same trade-off is still in play: Running the day short-staffed risks patient safety and staff burnout but keeps the compliance record clean. Canceling patients protects care quality but triggers a regional review that could cost you your performance bonus.",
-              "direction": "entry",
-              "pattern_family": "repair_avoidance"
-            }
-          ]
-        },
-        "D": {
-          "escalation_text": "What you avoided is now the next decision that will not stay private. It's Monday morning. Three assistants called out. The schedule is at full Medicaid capacity — 34 patients. Corporate eliminated the float pool last quarter to cut costs. You can't cancel patients without a compliance flag. You can't staff the floor safely.",
-          "pressure_increase": 0.62,
-          "second_choices": [
-            {
-              "id": "X",
-              "label": "Protect runway: defer a public stake while you confirm facts, document, and control timing — accepting that the issue stays live.",
-              "cost": "You limit exposure today; the underlying tension remains: Running the day short-staffed risks patient safety and staff burnout but keeps the compliance record clean. Canceling patients protects care quality but triggers a regional review that could cost you your performance bonus.",
-              "direction": "exit",
-              "pattern_family": "future_deferral"
-            },
-            {
-              "id": "Y",
-              "label": "Engage directly: name the tension with the people involved before the story hardens without you — accepting short-term heat.",
-              "cost": "You invite immediate friction; the same trade-off is still in play: Running the day short-staffed risks patient safety and staff burnout but keeps the compliance record clean. Canceling patients protects care quality but triggers a regional review that could cost you your performance bonus.",
-              "direction": "entry",
-              "pattern_family": "repair_avoidance"
-            }
-          ]
-        }
-      },
       "primaryChoices": [
         {
           "id": "A",
-          "label": "Commit to Operational Compliance: put this pole first in what you do next, even if it costs rapport today.",
+          "label": "Push forward with the schedule as planned and ask the team to move faster to keep up.",
           "subtext": ""
         },
         {
           "id": "B",
-          "label": "Commit to Patient Safety Integrity: put this pole first in what you do next, even if it exposes you to pushback.",
+          "label": "Adjust the schedule by reducing procedures and redistributing workload to protect basic safety.",
           "subtext": ""
         },
         {
           "id": "C",
-          "label": "Hold the line between them: protect people and timelines while you close information gaps you still have.",
+          "label": "Stop the schedule temporarily and tell patients directly that you cannot safely operate under current staffing.",
           "subtext": ""
         },
         {
@@ -1430,7 +1348,89 @@
           "label": "Widen ownership: bring another leader, HR, compliance, or a peer into the decision explicitly — now, not after the fact.",
           "subtext": ""
         }
-      ]
+      ],
+      "escalationBranches": {
+        "A": {
+          "escalation_text": "Immediate fallout: others react to the move you just made. Two assistants called out this morning. The schedule is already full, including procedures that are difficult to reschedule. Your remaining staff is stretched, and patients have been waiting weeks for these appointments. You know running short increases risk, but cancelling creates its own consequences. Everyone is looking at you for a decision, and it has to be made now.\n\nThe day unfolds under your decision. The team adjusts, but not evenly. Some move faster, some become quieter. A small mistake happens—nothing catastrophic, but noticeable. No one says it directly, but the atmosphere has changed. The team is watching what you prioritize when things are not fully safe, and patients are reacting in ways that reflect your choice.\n\nThe clinic is closed now. Everyone went home, but not in the same way. Some are quiet. Some are tired in a way that is not just physical. No major incident occurred, but something about today will be remembered. The team has learned something about what you protect when things are stretched, and you know you will face this situation again.",
+          "pressure_increase": 0.55,
+          "second_choices": [
+            {
+              "id": "X",
+              "label": "Protect runway: defer a public stake while you confirm facts, document, and control timing — accepting that the issue stays live.",
+              "cost": "You limit exposure today; the underlying tension remains: Pushing the full schedule protects access and avoids a cascade of cancellations but concentrates risk on a thin team; reducing procedures protects safety but disrupts patients who have already been waiting; pausing operations is honest about limits but triggers cancellations and immediate fallout.",
+              "direction": "exit",
+              "pattern_family": "future_deferral"
+            },
+            {
+              "id": "Y",
+              "label": "Engage directly: name the tension with the people involved before the story hardens without you — accepting short-term heat.",
+              "cost": "You invite immediate friction; the same trade-off is still in play: Pushing the full schedule protects access and avoids a cascade of cancellations but concentrates risk on a thin team; reducing procedures protects safety but disrupts patients who have already been waiting; pausing operations is honest about limits but triggers cancellations and immediate fallout.",
+              "direction": "entry",
+              "pattern_family": "repair_avoidance"
+            }
+          ]
+        },
+        "B": {
+          "escalation_text": "Your stance is visible to people who were not in the room when you decided. Two assistants called out this morning. The schedule is already full, including procedures that are difficult to reschedule. Your remaining staff is stretched, and patients have been waiting weeks for these appointments. You know running short increases risk, but cancelling creates its own consequences. Everyone is looking at you for a decision, and it has to be made now.\n\nThe day unfolds under your decision. The team adjusts, but not evenly. Some move faster, some become quieter. A small mistake happens—nothing catastrophic, but noticeable. No one says it directly, but the atmosphere has changed. The team is watching what you prioritize when things are not fully safe, and patients are reacting in ways that reflect your choice.\n\nThe clinic is closed now. Everyone went home, but not in the same way. Some are quiet. Some are tired in a way that is not just physical. No major incident occurred, but something about today will be remembered. The team has learned something about what you protect when things are stretched, and you know you will face this situation again.",
+          "pressure_increase": 0.6,
+          "second_choices": [
+            {
+              "id": "X",
+              "label": "Protect runway: defer a public stake while you confirm facts, document, and control timing — accepting that the issue stays live.",
+              "cost": "You limit exposure today; the underlying tension remains: Pushing the full schedule protects access and avoids a cascade of cancellations but concentrates risk on a thin team; reducing procedures protects safety but disrupts patients who have already been waiting; pausing operations is honest about limits but triggers cancellations and immediate fallout.",
+              "direction": "exit",
+              "pattern_family": "future_deferral"
+            },
+            {
+              "id": "Y",
+              "label": "Engage directly: name the tension with the people involved before the story hardens without you — accepting short-term heat.",
+              "cost": "You invite immediate friction; the same trade-off is still in play: Pushing the full schedule protects access and avoids a cascade of cancellations but concentrates risk on a thin team; reducing procedures protects safety but disrupts patients who have already been waiting; pausing operations is honest about limits but triggers cancellations and immediate fallout.",
+              "direction": "entry",
+              "pattern_family": "repair_avoidance"
+            }
+          ]
+        },
+        "C": {
+          "escalation_text": "Competing priorities collide before you can stabilize the narrative. Two assistants called out this morning. The schedule is already full, including procedures that are difficult to reschedule. Your remaining staff is stretched, and patients have been waiting weeks for these appointments. You know running short increases risk, but cancelling creates its own consequences. Everyone is looking at you for a decision, and it has to be made now.\n\nThe day unfolds under your decision. The team adjusts, but not evenly. Some move faster, some become quieter. A small mistake happens—nothing catastrophic, but noticeable. No one says it directly, but the atmosphere has changed. The team is watching what you prioritize when things are not fully safe, and patients are reacting in ways that reflect your choice.\n\nThe clinic is closed now. Everyone went home, but not in the same way. Some are quiet. Some are tired in a way that is not just physical. No major incident occurred, but something about today will be remembered. The team has learned something about what you protect when things are stretched, and you know you will face this situation again.",
+          "pressure_increase": 0.58,
+          "second_choices": [
+            {
+              "id": "X",
+              "label": "Protect runway: defer a public stake while you confirm facts, document, and control timing — accepting that the issue stays live.",
+              "cost": "You limit exposure today; the underlying tension remains: Pushing the full schedule protects access and avoids a cascade of cancellations but concentrates risk on a thin team; reducing procedures protects safety but disrupts patients who have already been waiting; pausing operations is honest about limits but triggers cancellations and immediate fallout.",
+              "direction": "exit",
+              "pattern_family": "future_deferral"
+            },
+            {
+              "id": "Y",
+              "label": "Engage directly: name the tension with the people involved before the story hardens without you — accepting short-term heat.",
+              "cost": "You invite immediate friction; the same trade-off is still in play: Pushing the full schedule protects access and avoids a cascade of cancellations but concentrates risk on a thin team; reducing procedures protects safety but disrupts patients who have already been waiting; pausing operations is honest about limits but triggers cancellations and immediate fallout.",
+              "direction": "entry",
+              "pattern_family": "repair_avoidance"
+            }
+          ]
+        },
+        "D": {
+          "escalation_text": "What you avoided is now the next decision that will not stay private. Two assistants called out this morning. The schedule is already full, including procedures that are difficult to reschedule. Your remaining staff is stretched, and patients have been waiting weeks for these appointments. You know running short increases risk, but cancelling creates its own consequences. Everyone is looking at you for a decision, and it has to be made now.\n\nThe day unfolds under your decision. The team adjusts, but not evenly. Some move faster, some become quieter. A small mistake happens—nothing catastrophic, but noticeable. No one says it directly, but the atmosphere has changed. The team is watching what you prioritize when things are not fully safe, and patients are reacting in ways that reflect your choice.\n\nThe clinic is closed now. Everyone went home, but not in the same way. Some are quiet. Some are tired in a way that is not just physical. No major incident occurred, but something about today will be remembered. The team has learned something about what you protect when things are stretched, and you know you will face this situation again.",
+          "pressure_increase": 0.62,
+          "second_choices": [
+            {
+              "id": "X",
+              "label": "Protect runway: defer a public stake while you confirm facts, document, and control timing — accepting that the issue stays live.",
+              "cost": "You limit exposure today; the underlying tension remains: Pushing the full schedule protects access and avoids a cascade of cancellations but concentrates risk on a thin team; reducing procedures protects safety but disrupts patients who have already been waiting; pausing operations is honest about limits but triggers cancellations and immediate fallout.",
+              "direction": "exit",
+              "pattern_family": "future_deferral"
+            },
+            {
+              "id": "Y",
+              "label": "Engage directly: name the tension with the people involved before the story hardens without you — accepting short-term heat.",
+              "cost": "You invite immediate friction; the same trade-off is still in play: Pushing the full schedule protects access and avoids a cascade of cancellations but concentrates risk on a thin team; reducing procedures protects safety but disrupts patients who have already been waiting; pausing operations is honest about limits but triggers cancellations and immediate fallout.",
+              "direction": "entry",
+              "pattern_family": "repair_avoidance"
+            }
+          ]
+        }
+      }
     },
     {
       "id": "core_12_medicaid_upcoding",

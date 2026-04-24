@@ -8,6 +8,7 @@ import { LeaderboardRow, UserAvatar, LeaderboardListSkeleton, EmptyState } from 
 import { arenaStableLabel, getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { leaderboardTieRankSuffixDisplayKey } from "@/domain/rules/leaderboardTieBreak";
+import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 
 /**
  * BTY_ARENA_SYSTEM_SPEC §4: 리더보드 팀(역할/지점) 뷰 전환.
@@ -105,6 +106,7 @@ const LB = {
 export default function LeaderboardPage() {
   const params = useParams();
   const locale = typeof params?.locale === "string" && params.locale === "ko" ? "ko" : "en";
+  const { contract: arenaEntry } = useArenaEntryResolution(locale);
   const t = LB[locale];
   const tBty = getMessages(locale).bty;
 
@@ -455,7 +457,7 @@ export default function LeaderboardPage() {
                 message={t.noData}
                 cta={
                   <Link
-                    href={`/${locale}/bty-arena`}
+                    href={arenaEntry.href}
                     style={{
                       padding: "10px 18px",
                       borderRadius: 10,

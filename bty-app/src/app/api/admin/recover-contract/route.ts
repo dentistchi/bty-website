@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { loadArenaRunOwnerUserId, logActionContractActorTrace } from "@/lib/bty/action-contract/arenaRunActor.server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { requireAdminEmail } from "@/lib/authz";
 import { ensureActionContractForArenaRun } from "@/lib/bty/action-contract/ensureActionContractForArenaRun";
@@ -43,6 +44,20 @@ export async function POST(req: NextRequest) {
   }
   if (!scenarioId || typeof scenarioId !== "string") {
     return NextResponse.json({ error: "MISSING_SCENARIO_ID" }, { status: 400 });
+  }
+
+  const runOwner = await loadArenaRunOwnerUserId(admin, runId);
+  logActionContractActorTrace("ensureActionContractWithAdmin", {
+    incoming_actor_user_id: userId,
+    source_run_id: runId,
+    resolved_run_owner_user_id: runOwner,
+    resolved_auth_user_id: userId,
+  });
+  if (!runOwner || runOwner !== userId) {
+    return NextResponse.json(
+      { error: "RUN_USER_MISMATCH", message: "userId must match arena_runs.user_id for runId." },
+      { status: 400 },
+    );
   }
 
   const ensured = await ensureActionContractForArenaRun({

@@ -93,12 +93,14 @@ AIR은 **실행 무결성**을 측정한다.
 - 행동을 반복적으로 회피하면 시스템이 플래그한다.  
   추측이나 주관적 평가가 아니다.
 - **구현**: `src/domain/leadership-engine/air.ts` — `computeAIR`, 가중치(micro_win 1.0, reset 2.0), missed 시 -0.10, 3연속 missed → `integrity_slip`.
+- **밴드 (v2 LOCKED, 노출은 band만):** low **&lt; 0.50** · mid **0.50–0.79** · high **≥ 0.80** — `airToBand`, `AIR_BAND_LOW_MID` / `AIR_BAND_MID_HIGH`. *(구 컷오프 0.4/0.7 폐기.)* 상세: `docs/BTY_AIR_PATTERN_SHIFT_BASELINE_V2.md`.
 
 ---
 
 ## Forced Reset
 
 - 무결성이 임계 이하로 떨어지면 **Reset**이 트리거된다. (슬라이드: 연속 4개 중 2개 critical activation window 미충족 시 트리거.)
+- **AIR 주간 조건 (코드 정합):** 연속 2주 **AIR_7d &lt; 0.80**(high 밴드 미만)일 때 근거 문자열 **`air_7d_below_high_band_two_consecutive_weeks`**. *(구 0.70 기준·구 reason id 폐기.)*
 - **48시간 실행 창**. 영구적으로 무시할 수 없다. 관리자가 취소·면제·연기할 수 없다.
 - **준수 시:** Reset 행동 2배 가중으로 AIR 회복, 운영 모멘텀 회복, 기준 상태로 복귀.
 - **무시 시:** AIR 가속 감쇠, **Leader Certified 즉 박탈**, Mirror(관점 전환) 에스컬레이션.

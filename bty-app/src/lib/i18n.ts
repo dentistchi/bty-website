@@ -49,6 +49,14 @@ export type Messages = {
     runStateAborted: string;
     /** leaderboardTieRankSuffixDisplayKey(true) — 위 행과 동일 주간 XP 동순위 접미 */
     tieRankSuffix: string;
+    /** After scenario choice toast — no raw AIR delta */
+    sessionChoiceToastExecutionIntegrity: string;
+    sessionSummaryExecutionIntegrityHeading: string;
+    sessionSummaryAirBandBefore: string;
+    sessionSummaryAirBandAfter: string;
+    sessionSummaryContextNoteHeading: string;
+    sessionSummaryPatternShiftHeading: string;
+    sessionSummaryPatternShiftPlaceholder: string;
   };
   /** 도메인 reflectTextLengthHintKey → 문구 (Arena 성찰 입력). */
   reflectHints: {
@@ -455,8 +463,15 @@ export type Messages = {
     airTrendWidgetWarningBanner: string;
     airTrendWidgetLoading: string;
     airTrendWidgetError: string;
+    /** AIR band labels (execution integrity); cutoffs 0.50 / 0.80 */
+    airBandLow: string;
+    airBandMid: string;
+    airBandHigh: string;
+    airExecutionIntegrityFootnote: string;
     /** Center WeeklyReportCard — weekly AIR report + phase gates */
     weeklyReportCardRegionAria: string;
+    /** Sparkline caption — execution integrity trend, not Pattern Shift */
+    weeklyReportCardAirTrendCaption: string;
     weeklyReportCardTitle: string;
     weeklyReportCardWeekLabel: string;
     weeklyReportCardCompletionLabel: string;
@@ -1089,6 +1104,12 @@ export type Messages = {
     eliteSetupPressureLabel: string;
     eliteSetupTradeoffLabel: string;
     eliteInitialDecisionHint: string;
+    /** Elite step 2 — one-tap primary pick (no Confirm / Other). */
+    elitePrimaryPickHint: string;
+    /** Narrative block label above `scenario.context` (opening step). */
+    eliteOpeningNarrativeLabel: string;
+    /** One line after run complete — next steps may include action contract (snapshot authority unchanged). */
+    eliteRunCompletePrepareHint: string;
     /** Elite post-choice flow (replaces generic OutputPanel for `eliteSetup` scenarios). */
     elitePostFlowRegionAria: string;
     elitePostConfirmTitle: string;
@@ -1118,14 +1139,69 @@ export type Messages = {
     eliteSituationUpdateHeader: string;
     eliteDecisionRequiredHeader: string;
     eliteRunStepAdvanceError: string;
+    /** Canonical elite chain scenario missing dbScenarioId/dbChoiceId — do not use legacy event path */
+    eliteBindingIntegrityError: string;
     /** Step 4 forced trade-off — label above each option’s cost line */
     eliteForcedTradeoffCostLabel: string;
+    /** Step 5 — real-world action commitment (distinct from situation/tradeoff interpretation) */
+    eliteActionDecisionTitle: string;
+    eliteActionDecisionLead: string;
+    eliteActionDecisionCommitmentLabel: string;
+    eliteActionDecisionRegionAria: string;
     eliteV2ErrorNotConfiguredTitle: string;
     eliteV2ErrorNotConfiguredBody: string;
     eliteV2ErrorMissingBranchTitle: string;
     eliteV2ErrorMissingBranchBody: string;
     eliteV2ErrorInvalidCostTitle: string;
     eliteV2ErrorInvalidCostBody: string;
+    /** Step 4 — primary choice id missing from scenario.choices (desync / bad data) */
+    eliteInvalidPrimaryChoiceTitle: string;
+    eliteInvalidPrimaryChoiceBody: string;
+    /** After step 4 — minimal end-of-run (no mirror/contract/gate) */
+    eliteRunCompleteLine: string;
+    eliteRunCompleteRegionAria: string;
+    eliteRunCompleteLoading: string;
+    /** Primary CTA after run complete — neutral; does not promise next scenario (may sync to ACTION_REQUIRED). */
+    eliteRunCompleteContinueCta: string;
+    /** GET session router 409 `action_contract_pending` — Arena blocked */
+    arenaPendingContractTitle: string;
+    arenaPendingContractLead: string;
+    arenaPendingContractActionLabel: string;
+    arenaPendingContractDeadlineLabel: string;
+    arenaPendingContractVerificationLabel: string;
+    arenaPendingContractRetry: string;
+    /** Primary: open My Page to complete the pending action contract (not Center). */
+    arenaPendingContractMyPageCta: string;
+    arenaPendingContractRegionAria: string;
+    /** Server runtime_state placeholder — forced reset (snapshot-first gate). */
+    arenaSnapshotForcedResetPlaceholder: string;
+    /** FORCED_RESET_PENDING — Center completion required (not Arena). */
+    arenaForcedResetGateTitle: string;
+    arenaForcedResetGateLead: string;
+    arenaForcedResetGoCenterCta: string;
+    /** Server runtime_state placeholder — re-exposure due (snapshot-first gate). */
+    arenaSnapshotReexposurePlaceholder: string;
+    /** Re-exposure gate — title / lead / primary CTA (GET session `REEXPOSURE_DUE`). */
+    arenaReexposureTitle: string;
+    arenaReexposureLead: string;
+    arenaReexposureEnterCta: string;
+    /** Snapshot present but play surface not allowed (sync / non-ready runtime). */
+    arenaSnapshotPlaySurfaceBlockedHint: string;
+    /** Title when play UI is blocked but scenario exists — not a catalog 404. */
+    arenaPlaySurfaceBlockedTitle: string;
+    /** Unified loader — session router / scenario aligning (not an error). */
+    arenaAligningLoaderTitle: string;
+    arenaAligningLoaderLead: string;
+    /** Short labels for {@link ArenaRuntimeStateBanner} gate reason. */
+    arenaGateLabelContract: string;
+    arenaGateLabelReexposure: string;
+    arenaGateLabelReset: string;
+    arenaGateLabelNext: string;
+    arenaGateLabelPlay: string;
+    arenaGateLabelAligning: string;
+    /** `runtime_state` NEXT_SCENARIO_READY — post run/complete, before next GET session resolves. */
+    arenaSnapshotNextScenarioReadyTitle: string;
+    arenaSnapshotNextScenarioReadyHint: string;
     /** Step 6 — Action Contract */
     eliteContractTitle: string;
     eliteContractIntro: string;
@@ -1581,6 +1657,8 @@ export type Messages = {
     progressFootnote: string;
     teamTitle: string;
     teamTiiCard: string;
+    /** Team TII numeric row until Realtime/API wired — do not show fake AIR-like decimals */
+    teamTiiPlaceholder: string;
     teamStatusCard: string;
     teamInnerStatus: string;
     teamStable: string;
@@ -1692,6 +1770,21 @@ export type Messages = {
     leadershipSystemNoteBodyDormant: string;
     leadershipSystemNoteBodyActive: string;
     leadershipAbbrevAir: string;
+    /** AIR row footnote — separates execution integrity from Pattern Shift */
+    leadershipAirExecutionFootnote: string;
+    /** Arena Phase B — pattern signature accumulation (re-exposure / reinforcement) */
+    patternSignatureConsoleTitle: string;
+    patternSignatureConsoleLead: string;
+    patternSignatureConsoleEmpty: string;
+    patternSignatureConsoleAria: string;
+    patternSignatureConfidence: string;
+    patternSignatureRepeat: string;
+    patternSignatureLastShift: string;
+    patternSignatureWatch: string;
+    patternSignatureSeen: string;
+    patternSignatureShiftChanged: string;
+    patternSignatureShiftNoChange: string;
+    patternSignatureShiftUnstable: string;
     leadershipAbbrevTii: string;
     leadershipAbbrevRhythm: string;
     leadershipNextFocusHeading: string;
@@ -1711,6 +1804,8 @@ export type Messages = {
     leadershipNextFocusWithReflectionRegulation: string;
     /** Premium identity console — field sections */
     leadershipFieldPatternTitle: string;
+    leadershipPatternShiftSectionTitle: string;
+    leadershipPatternShiftPlaceholder: string;
     leadershipFieldInfluenceTitle: string;
     leadershipReflectionPanelTitle: string;
     leadershipRowRecentFocus: string;
@@ -1777,6 +1872,14 @@ const ko: Messages = {
     runStateCompleted: "완료",
     runStateAborted: "중단",
     tieRankSuffix: "동순위",
+    sessionChoiceToastExecutionIntegrity: "실행 무결성 신호가 갱신되었습니다.",
+    sessionSummaryExecutionIntegrityHeading: "실행 무결성 (AIR)",
+    sessionSummaryAirBandBefore: "이전 밴드",
+    sessionSummaryAirBandAfter: "이후 밴드",
+    sessionSummaryContextNoteHeading: "세션 노트",
+    sessionSummaryPatternShiftHeading: "패턴 시프트 (행동 검증)",
+    sessionSummaryPatternShiftPlaceholder:
+      "행동 검증용 패턴 시프트 결과는 아직 연결되지 않았습니다. AIR과 별도 지표이며, 데이터가 준비되면 이 영역이 열립니다.",
   },
   reflectHints: {
     reflect_hint_empty: "한 문장이라도 적어 보면 다음 단계로 이어져요.",
@@ -2077,13 +2180,19 @@ const ko: Messages = {
     leStageLoading: "스테이지 요약 불러오는 중…",
     airTrendWidgetRegionAria: "AIR 30일 추세",
     airTrendWidgetTitle: "AIR 추세 (30일)",
-    airTrendWidgetSevenDayLabel: "최근 7일 평균",
-    airTrendWidgetSevenDayAria: "최근 7일 AIR 평균 점수",
+    airTrendWidgetSevenDayLabel: "최근 7일 실행 무결성 밴드",
+    airTrendWidgetSevenDayAria: "최근 7일 AIR 실행 무결성 밴드(저·중·고)",
     airTrendWidgetCertifiedExpiryPrefix: "Certified Leader 만료까지",
     airTrendWidgetWarningBanner: "AIR 롤링 추세가 연속 하락 중입니다. 활동 패턴을 점검해 보세요.",
     airTrendWidgetLoading: "AIR 추세 불러오는 중…",
     airTrendWidgetError: "AIR 추세를 불러오지 못했습니다.",
+    airBandLow: "저밴드",
+    airBandMid: "중밴드",
+    airBandHigh: "고밴드",
+    airExecutionIntegrityFootnote:
+      "AIR는 실행 무결성(선택·완료·검증)만 나타냅니다. 패턴 시프트(행동 변화)와 합치지 않습니다.",
     weeklyReportCardRegionAria: "주간 AIR 리포트",
+    weeklyReportCardAirTrendCaption: "실행 무결성 추세 (30일)",
     weeklyReportCardTitle: "주간 리포트",
     weeklyReportCardWeekLabel: "주간 (UTC 월요일 기준)",
     weeklyReportCardCompletionLabel: "시나리오 완료율",
@@ -2155,7 +2264,7 @@ const ko: Messages = {
     ctaSrOnlyHeading: "진단 후 다음 단계",
   },
   landing: {
-    heroTitle: "Better Than Myself",
+    heroTitle: "어제보다 나은 나",
     heroSubtitle: "오늘 어디로 가볼까요?",
     recommended: "추천",
     arenaTitle: "Arena",
@@ -2680,13 +2789,17 @@ const ko: Messages = {
     eliteSetupPressureLabel: "압박 상황",
     eliteSetupTradeoffLabel: "딜레마",
     eliteInitialDecisionHint:
-      "아래에서 첫 입장을 고른 뒤, 짧은 정리로 입장을 다듬고 실행에 연결합니다.",
-    elitePostFlowRegionAria: "엘리트 시나리오 마무리 단계",
-    elitePostConfirmTitle: "입장이 기록되었습니다",
-    elitePostConfirmLead: "이번 판에서의 작업 입장입니다. 다음으로, 왜 이 쪽인지 한 번만 짚어 봅니다.",
+      "아래에서 옵션 하나를 고르면 실행이 이어집니다.",
+    elitePrimaryPickHint: "옵션 하나를 눌러 첫 결정을 기록합니다.",
+    eliteOpeningNarrativeLabel: "상황",
+    eliteRunCompletePrepareHint:
+      "계속하면 서버와 상태를 맞춥니다. 다음 단계에서 액션 확인이 필요할 수 있으며, 바로 다음 시나리오가 아닐 수 있습니다.",
+    elitePostFlowRegionAria: "엘리트 아레나 — 이후 단계",
+    elitePostConfirmTitle: "첫 선택이 기록되었습니다",
+    elitePostConfirmLead: "이번 판의 첫 선택이 저장되었습니다. 준비되면 계속하세요.",
     elitePostConfirmNext: "계속",
-    elitePostExplainTitle: "왜 이 입장인가요?",
-    elitePostExplainPrompt: "지금 상황에서 이 입장이 의미 있게 느껴지는 이유를 짧게 적어 보세요. (선택)",
+    elitePostExplainTitle: "왜 이 선택인가요?",
+    elitePostExplainPrompt: "지금 상황에서 이 선택이 맞다고 느껴지는 이유를 짧게 적어 보세요. (선택)",
     elitePostExplainOptionalLabel: "한두 문장이면 충분해요",
     elitePostExplainPlaceholder: "예: 팀 신뢰가 먼저라서, 솔직히 말하는 쪽이 맞다고 느꼈어요.",
     elitePostExplainSubmit: "다음 단계로",
@@ -2707,7 +2820,13 @@ const ko: Messages = {
     eliteSituationUpdateHeader: "상황 전개",
     eliteDecisionRequiredHeader: "결정 필요",
     eliteRunStepAdvanceError: "이 단계를 기록하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    eliteBindingIntegrityError:
+      "시나리오 바인딩 정보가 맞지 않습니다. 페이지를 새로고침하거나 아레나를 다시 시작해 주세요.",
     eliteForcedTradeoffCostLabel: "비용",
+    eliteActionDecisionTitle: "실제 행동 결정",
+    eliteActionDecisionLead: "해석이 아니라, 다음 업무 구간에서 실제로 할 일을 고릅니다.",
+    eliteActionDecisionCommitmentLabel: "선택의 의미",
+    eliteActionDecisionRegionAria: "실제 행동 결정",
     eliteV2ErrorNotConfiguredTitle: "에스컬레이션 데이터 없음",
     eliteV2ErrorNotConfiguredBody:
       "이 시나리오에 escalationBranches가 없습니다. 관리자에게 문의하거나 다른 시나리오를 선택하세요.",
@@ -2717,6 +2836,44 @@ const ko: Messages = {
     eliteV2ErrorInvalidCostTitle: "2차 선택 비용 데이터 오류",
     eliteV2ErrorInvalidCostBody:
       "second_choices 항목에 비어 있지 않은 cost가 필요합니다. 시나리오 데이터를 확인하세요.",
+    eliteInvalidPrimaryChoiceTitle: "1차 선택 상태가 시나리오와 맞지 않음",
+    eliteInvalidPrimaryChoiceBody:
+      "저장된 선택 ID가 이 시나리오의 선택 목록에 없습니다. 페이지를 새로고침하거나 아레나를 재시작해 주세요.",
+    eliteRunCompleteLine: "이번 실행을 마쳤습니다.",
+    eliteRunCompleteRegionAria: "실행 완료",
+    eliteRunCompleteLoading: "불러오는 중…",
+    eliteRunCompleteContinueCta: "계속",
+    arenaPendingContractTitle: "진행 중인 액션 계약",
+    arenaPendingContractLead:
+      "마이페이지에서 진행 중인 액션 계약을 마무리하기 전에는 다음 시나리오로 넘어갈 수 없습니다. 아래 내용을 확인한 뒤 마이페이지에서 처리해 주세요.",
+    arenaPendingContractActionLabel: "액션",
+    arenaPendingContractDeadlineLabel: "기한",
+    arenaPendingContractVerificationLabel: "검증 방식",
+    arenaPendingContractRetry: "다시 확인",
+    arenaPendingContractMyPageCta: "마이페이지에서 계속",
+    arenaPendingContractRegionAria: "액션 계약 대기",
+    arenaSnapshotForcedResetPlaceholder: "계정 상태를 동기화하는 중입니다. 잠시 후 다시 시도해 주세요.",
+    arenaForcedResetGateTitle: "센터에서 리셋 단계가 필요합니다",
+    arenaForcedResetGateLead:
+      "아레나는 잠시 멈춥니다. 센터에서 안내에 따라 진행한 뒤 다시 돌아오세요.",
+    arenaForcedResetGoCenterCta: "센터로 이동",
+    arenaSnapshotReexposurePlaceholder: "다음 단계를 준비하는 중입니다. 잠시만 기다려 주세요.",
+    arenaReexposureTitle: "재노출 라운드",
+    arenaReexposureLead:
+      "이전 선택과 연결된 지연 결과가 도착했습니다. 시나리오로 들어가 계속 진행하세요.",
+    arenaReexposureEnterCta: "시나리오로 들어가기",
+    arenaSnapshotPlaySurfaceBlockedHint: "세션 상태를 서버와 맞추는 중입니다. 새로고침하거나 잠시 후 다시 시도해 주세요.",
+    arenaPlaySurfaceBlockedTitle: "플레이 일시 중지",
+    arenaAligningLoaderTitle: "서버와 세션을 맞추는 중",
+    arenaAligningLoaderLead: "잠시만 기다려 주세요. 오류가 아니라 동기화 단계입니다.",
+    arenaGateLabelContract: "액션 계약",
+    arenaGateLabelReexposure: "재노출",
+    arenaGateLabelReset: "리셋",
+    arenaGateLabelNext: "다음 시나리오",
+    arenaGateLabelPlay: "플레이",
+    arenaGateLabelAligning: "동기화",
+    arenaSnapshotNextScenarioReadyTitle: "다음 시나리오 준비됨",
+    arenaSnapshotNextScenarioReadyHint: "세션을 불러오는 중입니다. 잠시만 기다려 주세요.",
     eliteContractTitle: "액션 계약",
     eliteContractIntro:
       "네 가지는 실행 가능한 약속을 고정합니다. 가깝고 구체적일수록 좋습니다. 아래 안내는 형식만 돕고, 사람을 평가하지 않습니다.",
@@ -3127,6 +3284,7 @@ const ko: Messages = {
     progressFootnote: "예시 수치 · 심층 분석·raw 지표는 노출하지 않음",
     teamTitle: "팀",
     teamTiiCard: "팀 무결성 지수 (TII)",
+    teamTiiPlaceholder: "팀 스냅샷 연결 전",
     teamStatusCard: "팀 상태",
     teamInnerStatus: "상태",
     teamStable: "안정",
@@ -3230,7 +3388,22 @@ const ko: Messages = {
     leadershipSystemNoteTitle: "시스템 노트",
     leadershipSystemNoteBodyDormant: "Arena 신호가 쌓이면 리더십 패턴이 형성됩니다.",
     leadershipSystemNoteBodyActive: "Arena 신호가 안정적인 리더십 패턴으로 누적되고 있습니다.",
-    leadershipAbbrevAir: "AIR",
+    leadershipAbbrevAir: "AIR (실행 무결성)",
+    leadershipAirExecutionFootnote:
+      "요약 레이블은 Arena 결정 흔적에서 해석됩니다. 공식 AIR는 리더십 엔진 활성화 창을 사용합니다. 패턴 시프트와 별도입니다.",
+    patternSignatureConsoleTitle: "패턴 서명 (Arena)",
+    patternSignatureConsoleLead:
+      "재노출·강화 루프에서 같은 축으로 누적된 패턴입니다. 점수가 아니라 반복 증거의 요약입니다.",
+    patternSignatureConsoleEmpty: "아직 누적된 패턴 서명이 없습니다. Arena 재노출 검증 후 표시됩니다.",
+    patternSignatureConsoleAria: "Arena 패턴 서명 요약",
+    patternSignatureConfidence: "신뢰도",
+    patternSignatureRepeat: "반복",
+    patternSignatureLastShift: "최근 변화",
+    patternSignatureWatch: "관찰점",
+    patternSignatureSeen: "최근 기록",
+    patternSignatureShiftChanged: "변화",
+    patternSignatureShiftNoChange: "유지",
+    patternSignatureShiftUnstable: "불안정",
     leadershipAbbrevTii: "TII",
     leadershipAbbrevRhythm: "리듬",
     leadershipNextFocusHeading: "다음 포커스",
@@ -3249,7 +3422,10 @@ const ko: Messages = {
     leadershipRecoveryAwarenessDetected: "감지됨",
     leadershipNextFocusWithReflectionRegulation:
       "관계 신호는 강하지만, 운영적 명료성을 다듬는 것이 다음 정밀 가장자리로 남아 있습니다.",
-    leadershipFieldPatternTitle: "패턴 해석",
+    leadershipFieldPatternTitle: "결정 패턴 형태",
+    leadershipPatternShiftSectionTitle: "패턴 시프트 (행동 검증)",
+    leadershipPatternShiftPlaceholder:
+      "pattern_shift_results가 아직 없습니다. 실행 무결성(AIR)과 혼동하지 마세요. 데이터가 연결되면 이 블록이 채워집니다.",
     leadershipFieldInfluenceTitle: "영향",
     leadershipReflectionPanelTitle: "성찰 깊이",
     leadershipRowRecentFocus: "최근 초점",
@@ -3314,6 +3490,14 @@ const en: Messages = {
     runStateCompleted: "Completed",
     runStateAborted: "Aborted",
     tieRankSuffix: "Tied",
+    sessionChoiceToastExecutionIntegrity: "Execution integrity signal updated.",
+    sessionSummaryExecutionIntegrityHeading: "Execution integrity (AIR)",
+    sessionSummaryAirBandBefore: "Previous band",
+    sessionSummaryAirBandAfter: "Current band",
+    sessionSummaryContextNoteHeading: "Session note",
+    sessionSummaryPatternShiftHeading: "Pattern Shift (behavior validation)",
+    sessionSummaryPatternShiftPlaceholder:
+      "Pattern Shift results are not connected yet. This is separate from AIR (execution integrity) and will appear here when pattern_shift_results is available.",
   },
   reflectHints: {
     reflect_hint_empty: "Even one sentence helps you move forward.",
@@ -3614,14 +3798,20 @@ const en: Messages = {
     leStageLoading: "Loading stage summary…",
     airTrendWidgetRegionAria: "AIR 30-day trend",
     airTrendWidgetTitle: "AIR trend (30 days)",
-    airTrendWidgetSevenDayLabel: "Last 7-day average",
-    airTrendWidgetSevenDayAria: "Last 7-day average AIR score",
+    airTrendWidgetSevenDayLabel: "Last 7-day execution integrity band",
+    airTrendWidgetSevenDayAria: "Last 7-day AIR execution integrity band (low, mid, high)",
     airTrendWidgetCertifiedExpiryPrefix: "Certified Leader expires in",
     airTrendWidgetWarningBanner:
       "Your 7-day rolling AIR has declined for several days in a row. Consider reviewing your activation pattern.",
     airTrendWidgetLoading: "Loading AIR trend…",
     airTrendWidgetError: "Could not load AIR trend.",
+    airBandLow: "Low band",
+    airBandMid: "Mid band",
+    airBandHigh: "High band",
+    airExecutionIntegrityFootnote:
+      "AIR reflects execution integrity (selection, completion, verification) only — not Pattern Shift.",
     weeklyReportCardRegionAria: "Weekly AIR report",
+    weeklyReportCardAirTrendCaption: "Execution integrity trend (30d)",
     weeklyReportCardTitle: "Weekly report",
     weeklyReportCardWeekLabel: "Week (UTC Monday)",
     weeklyReportCardCompletionLabel: "Scenario completion",
@@ -3693,7 +3883,7 @@ const en: Messages = {
     ctaSrOnlyHeading: "Next steps after assessment",
   },
   landing: {
-    heroTitle: "Better Than Myself",
+    heroTitle: "Better Than Yesterday",
     heroSubtitle: "Where would you like to go today?",
     recommended: "Recommended",
     arenaTitle: "Arena",
@@ -4219,13 +4409,17 @@ const en: Messages = {
     eliteSetupPressureLabel: "Pressure",
     eliteSetupTradeoffLabel: "The dilemma",
     eliteInitialDecisionHint:
-      "Choose your stance below, then a short debrief connects it to your next move.",
-    elitePostFlowRegionAria: "Elite scenario debrief",
-    elitePostConfirmTitle: "Stance recorded",
-    elitePostConfirmLead: "This is your working stance for this round. Next, name briefly why it fits.",
+      "Pick one option below. Your selection advances the run.",
+    elitePrimaryPickHint: "Tap one option to record your primary decision.",
+    eliteOpeningNarrativeLabel: "Situation",
+    eliteRunCompletePrepareHint:
+      "Continue to sync with the server. You may need to complete an action next—not necessarily the next scenario immediately.",
+    elitePostFlowRegionAria: "Elite arena — follow-on steps",
+    elitePostConfirmTitle: "Primary choice recorded",
+    elitePostConfirmLead: "This round’s primary choice is saved. Continue when ready.",
     elitePostConfirmNext: "Continue",
-    elitePostExplainTitle: "Why this stance?",
-    elitePostExplainPrompt: "In a sentence or two, why does this stance feel right here? (Optional)",
+    elitePostExplainTitle: "Why this choice?",
+    elitePostExplainPrompt: "In a sentence or two, why does this choice fit here? (Optional)",
     elitePostExplainOptionalLabel: "A short note is enough",
     elitePostExplainPlaceholder: "e.g. Credibility matters more than speed right now.",
     elitePostExplainSubmit: "Continue",
@@ -4247,7 +4441,13 @@ const en: Messages = {
     eliteSituationUpdateHeader: "SITUATION UPDATE",
     eliteDecisionRequiredHeader: "DECISION REQUIRED",
     eliteRunStepAdvanceError: "Could not record this step. Please retry in a moment.",
+    eliteBindingIntegrityError:
+      "Scenario binding data is missing or invalid. Refresh the page or restart the arena.",
     eliteForcedTradeoffCostLabel: "COST",
+    eliteActionDecisionTitle: "Action decision",
+    eliteActionDecisionLead: "Not interpretation — what you will actually do next.",
+    eliteActionDecisionCommitmentLabel: "What this means",
+    eliteActionDecisionRegionAria: "Action decision",
     eliteV2ErrorNotConfiguredTitle: "Escalation data missing",
     eliteV2ErrorNotConfiguredBody:
       "This scenario has no escalationBranches configured. Contact support or pick another scenario.",
@@ -4257,6 +4457,43 @@ const en: Messages = {
     eliteV2ErrorInvalidCostTitle: "Invalid second-choice cost",
     eliteV2ErrorInvalidCostBody:
       "Each second_choices item must include a non-empty cost. Check the scenario dataset.",
+    eliteInvalidPrimaryChoiceTitle: "Primary choice out of sync",
+    eliteInvalidPrimaryChoiceBody:
+      "The saved choice id is not in this scenario’s choice list. Refresh the page or restart the arena.",
+    eliteRunCompleteLine: "This run is complete.",
+    eliteRunCompleteRegionAria: "Run complete",
+    eliteRunCompleteLoading: "Loading…",
+    eliteRunCompleteContinueCta: "Continue",
+    arenaPendingContractTitle: "Action contract in progress",
+    arenaPendingContractLead:
+      "You cannot start the next Arena scenario until you finish the open action contract on My Page. Review the details below, complete it there, then try again.",
+    arenaPendingContractActionLabel: "Action",
+    arenaPendingContractDeadlineLabel: "Deadline",
+    arenaPendingContractVerificationLabel: "Verification",
+    arenaPendingContractRetry: "Check again",
+    arenaPendingContractMyPageCta: "Continue on My Page",
+    arenaPendingContractRegionAria: "Action contract pending",
+    arenaSnapshotForcedResetPlaceholder: "Syncing account state. Please try again shortly.",
+    arenaForcedResetGateTitle: "Center step required",
+    arenaForcedResetGateLead: "Arena is paused. Complete the guided step in Center, then return.",
+    arenaForcedResetGoCenterCta: "Open Center",
+    arenaSnapshotReexposurePlaceholder: "Preparing the next step. Please wait.",
+    arenaReexposureTitle: "Re-exposure round",
+    arenaReexposureLead:
+      "A delayed outcome linked to an earlier choice is ready. Enter the scenario to continue.",
+    arenaReexposureEnterCta: "Enter scenario",
+    arenaSnapshotPlaySurfaceBlockedHint: "Aligning your session with the server. Refresh or try again shortly.",
+    arenaPlaySurfaceBlockedTitle: "Play paused",
+    arenaAligningLoaderTitle: "Aligning with the server",
+    arenaAligningLoaderLead: "Please wait — this is synchronization, not an error.",
+    arenaGateLabelContract: "Action contract",
+    arenaGateLabelReexposure: "Re-exposure",
+    arenaGateLabelReset: "Reset",
+    arenaGateLabelNext: "Next scenario",
+    arenaGateLabelPlay: "Play",
+    arenaGateLabelAligning: "Aligning",
+    arenaSnapshotNextScenarioReadyTitle: "Next scenario ready",
+    arenaSnapshotNextScenarioReadyHint: "Loading your next session…",
     eliteContractTitle: "Action Contract",
     eliteContractIntro:
       "These four fields lock a commitment someone could verify. Keep it close, specific, and fair—about the move, not a verdict on anyone’s character.",
@@ -4668,6 +4905,7 @@ const en: Messages = {
     progressFootnote: "Sample values · no deep analytics or raw metrics",
     teamTitle: "Team",
     teamTiiCard: "Team Integrity Score (TII)",
+    teamTiiPlaceholder: "Awaiting team snapshot",
     teamStatusCard: "Team status",
     teamInnerStatus: "Status",
     teamStable: "Stable",
@@ -4771,7 +5009,22 @@ const en: Messages = {
     leadershipSystemNoteTitle: "System Note",
     leadershipSystemNoteBodyDormant: "Arena signals will accumulate into a leadership pattern.",
     leadershipSystemNoteBodyActive: "Arena signals are accumulating into a stable leadership pattern.",
-    leadershipAbbrevAir: "AIR",
+    leadershipAbbrevAir: "AIR (execution integrity)",
+    leadershipAirExecutionFootnote:
+      "This row summarizes Arena decision traces. Formal AIR uses Leadership Engine activation windows. Separate from Pattern Shift.",
+    patternSignatureConsoleTitle: "Pattern signatures (Arena)",
+    patternSignatureConsoleLead:
+      "Accumulated from re-exposure and reinforcement on the same axis — a read-model of repeated evidence, not a score.",
+    patternSignatureConsoleEmpty: "No pattern signatures yet. They appear after Arena re-exposure validation.",
+    patternSignatureConsoleAria: "Arena pattern signature summary",
+    patternSignatureConfidence: "Confidence",
+    patternSignatureRepeat: "Repeat",
+    patternSignatureLastShift: "Last shift",
+    patternSignatureWatch: "Watch",
+    patternSignatureSeen: "Seen",
+    patternSignatureShiftChanged: "Shift: changed",
+    patternSignatureShiftNoChange: "Shift: steady",
+    patternSignatureShiftUnstable: "Shift: unstable",
     leadershipAbbrevTii: "TII",
     leadershipAbbrevRhythm: "Rhythm",
     leadershipNextFocusHeading: "Next focus",
@@ -4790,7 +5043,10 @@ const en: Messages = {
     leadershipRecoveryAwarenessDetected: "Detected",
     leadershipNextFocusWithReflectionRegulation:
       "Operational clarity remains the next refinement edge while relational signal stays strong.",
-    leadershipFieldPatternTitle: "Pattern interpretation",
+    leadershipFieldPatternTitle: "Decision pattern shape",
+    leadershipPatternShiftSectionTitle: "Pattern Shift (behavior validation)",
+    leadershipPatternShiftPlaceholder:
+      "pattern_shift_results is not available yet. Do not read this as AIR. This block will fill in when behavior-validation data is wired.",
     leadershipFieldInfluenceTitle: "Influence",
     leadershipReflectionPanelTitle: "Reflection depth",
     leadershipRowRecentFocus: "Recent focus",

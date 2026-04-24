@@ -4,6 +4,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AIRBand } from "@/domain/leadership-engine/air";
 import type { AIRTrend, AIRTrendDirection } from "@/engine/integrity/air-trend.service";
 import { getAIRTrend } from "@/engine/integrity/air-trend.service";
 import { getBehaviorPatterns, type BehaviorPattern } from "@/engine/integrity/behavior-pattern.service";
@@ -36,6 +37,7 @@ export type IntegrityScoreCardComponentPayload = {
   airTrend: {
     direction: AIRTrendDirection;
     last7DayWindowAvg: number;
+    last7DayWindowBand: AIRBand;
     prior7DayWindowAvg: number;
   };
   lriRaw: number | null;
@@ -215,6 +217,7 @@ function buildPayload(
     airTrend: {
       direction: airTrend.direction,
       last7DayWindowAvg: airTrend.last7DayWindowAvg,
+      last7DayWindowBand: airTrend.last7DayWindowBand,
       prior7DayWindowAvg: airTrend.prior7DayWindowAvg,
     },
     lriRaw,

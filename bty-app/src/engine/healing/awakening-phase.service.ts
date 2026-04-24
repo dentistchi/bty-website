@@ -51,8 +51,8 @@ export function describeMilestoneCondition(
         : `At least ${v} consecutive UTC days with at least one Arena completion`;
     case "air_threshold":
       return loc === "ko"
-        ? `최근 7일 평균 AIR ${v}% 이상`
-        : `7-day average AIR at least ${v}% (0–100)`;
+        ? `최근 7일 실행 무결성(AIR) 평균 ${v}% 이상 (내부 목표치; 밴드와 별도)`
+        : `7-day mean execution integrity (AIR) at least ${v}% on the 0–100 scale (internal target; separate from bands)`;
     case "scenario_count":
       return loc === "ko"
         ? `서로 다른 시나리오 ${v}개 이상 완료`

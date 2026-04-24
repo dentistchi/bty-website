@@ -80,7 +80,7 @@ Leadership Engine 핵심 도메인 (6 모듈 re-export via `index.ts`).
 | `tii.ts` | `TIIInputs`, `computeTII(inputs)` | TII = AIR×0.60 + MWD×0.25 + TSP×0.15. 팀 점수만 공개 |
 | `lri.ts` | `LRIInputs`, `computeLRI(inputs)` | LRI = AIR_14d×0.50 + MWD×0.30 + pulse×0.20. ≥0.80 + no slip → readiness |
 | `certified.ts` | `CertifiedInputs`, `evaluateCertified(inputs)` | AIR_14d ≥ 0.80, MWD ≥ threshold, reset compliance, no integrity_slip 14d |
-| `forced-reset.ts` | `ResetEvalInputs`, `evaluateForcedReset(inputs)` | 4가지 중 2개 충족 → Stage 4 트리거. 최대 48h 지연 가능 |
+| `forced-reset.ts` | `ResetEvalInputs`, `evaluateForcedReset(inputs)` | 4가지 중 2개 충족 → Stage 4 트리거. AIR 주간 조건: **AIR_7d &lt; 0.80** 2주 연속(고밴드 미만), reason **`air_7d_below_high_band_two_consecutive_weeks`**. 최대 48h 지연 가능. *(구 문서의 0.70 컷오프는 폐기.)* |
 
 ### 2-5. `src/domain/foundry/index.ts` (re-export hub)
 

@@ -12,6 +12,7 @@ import { postFoundryProgramProgress } from "@/components/foundry/ProgramRecommen
 import type { DojoSkillArea } from "@/engine/foundry/dojo-assessment.service";
 import { FOUNDRY_EXIT_READY_EVENT, type FoundryExitReadyDetail } from "@/lib/bty/foundry/foundryExitEvents";
 import { getSupabase } from "@/lib/supabase";
+import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
@@ -61,6 +62,8 @@ export type ProgramProgressShellProps = {
 export function ProgramProgressShell({ locale, routeLocale, programId }: ProgramProgressShellProps) {
   const loc = locale === "ko" ? "ko" : "en";
   const b = getMessages(loc).bty;
+  const entryLoc = routeLocale === "ko" ? "ko" : "en";
+  const { contract: arenaEntry } = useArenaEntryResolution(entryLoc);
 
   const [loadErr, setLoadErr] = React.useState<string | null>(null);
   const [shell, setShell] = React.useState<ShellJson | null>(null);
@@ -151,7 +154,7 @@ export function ProgramProgressShell({ locale, routeLocale, programId }: Program
 
   const phaseTag = shell?.catalog.phase_tags?.[0] ?? "—";
   const title = shell?.catalog.title ?? programId;
-  const arenaHref = `/${routeLocale}/bty-arena`;
+  const arenaHref = arenaEntry.href;
   const dojoHref =
     shell?.catalog.skill_area != null
       ? `/${routeLocale}/bty/foundry/dojo-micro?skill_area=${encodeURIComponent(shell.catalog.skill_area)}`

@@ -4,11 +4,16 @@ import React from "react";
 import type { SecondChoice } from "@/lib/bty/scenario/types";
 
 export type EliteForcedTradeoffStepProps = {
-  /** Only `second_choices` from `escalationBranches[primaryChoiceId]` — no reinforcement row, no scenario context. */
+  /** Section label above worsened situation copy (i18n). */
+  situationSectionTitle: string;
+  /** One line from canonical `escalation_text` — worsened situation before second choices. */
+  escalationLine?: string;
+  /** Section label above the second-choice list (i18n). */
+  decisionSectionTitle: string;
+  /** Only `second_choices` from `escalationBranches[primaryChoiceId]`. */
   secondChoices: SecondChoice[];
   costLabel: string;
   difficultyLevel: 1 | 2 | 3 | 4 | 5;
-  headerLabel: string;
   onChoice: (id: string) => void;
   choiceDisabled?: boolean;
 };
@@ -18,10 +23,12 @@ export type EliteForcedTradeoffStepProps = {
  * `cost` is required; parent must validate before render — otherwise this throws in development.
  */
 export function EliteForcedTradeoffStep({
+  situationSectionTitle,
+  escalationLine,
+  decisionSectionTitle,
   secondChoices,
   costLabel,
   difficultyLevel,
-  headerLabel,
   onChoice,
   choiceDisabled = false,
 }: EliteForcedTradeoffStepProps) {
@@ -48,14 +55,22 @@ export function EliteForcedTradeoffStep({
     }
   };
 
+  const line = typeof escalationLine === "string" ? escalationLine.trim() : "";
+
   return (
-    <div
-      data-testid="elite-forced-tradeoff-step"
-      className="mt-4 space-y-4 border-t border-bty-border/60 pt-4"
-      role="region"
-    >
-      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-bty-navy">{headerLabel}</p>
-      <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-1">
+    <div data-testid="elite-forced-tradeoff-step" className="mt-2 space-y-5" role="region">
+      <div className="rounded-2xl border border-bty-border/80 bg-bty-soft/70 p-4 shadow-sm">
+        <p className="m-0 text-[11px] font-bold uppercase tracking-[0.14em] text-bty-navy/75">
+          {situationSectionTitle}
+        </p>
+        {line !== "" ? (
+          <p className="mt-3 m-0 text-base leading-relaxed text-bty-navy whitespace-pre-wrap">{line}</p>
+        ) : null}
+      </div>
+
+      <div>
+        <p className="m-0 text-[11px] font-bold uppercase tracking-[0.14em] text-bty-navy/75">{decisionSectionTitle}</p>
+        <ul className="m-0 mt-3 grid list-none gap-2 p-0 sm:grid-cols-1">
         {secondChoices.map((c) => {
           const isSelected = lockedId === c.id;
           const isDimmed = lockedId != null && !isSelected;
@@ -84,7 +99,8 @@ export function EliteForcedTradeoffStep({
             </li>
           );
         })}
-      </ul>
+        </ul>
+      </div>
     </div>
   );
 }

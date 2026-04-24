@@ -1,26 +1,12 @@
 /**
- * Single entry for Arena next-session routing: {@link checkEjectionCondition} → delayed outcomes flag →
- * **catalog** by default (`ARENA_SESSION_MIRROR_ROTATION_ENABLED` unset/false).
- * When `ARENA_SESSION_MIRROR_ROTATION_ENABLED=1|true`: mod-3 rotation **catalog → mirror → perspective-switch**
- * (when pool / eligibility allow) → {@link selectNextScenario}.
+ * Arena next-session routing: {@link checkEjectionCondition} → delayed outcomes flag →
+ * **catalog only** via {@link selectNextScenario} (Elite v2 chain allowlist; no mirror / perspective / mod-3).
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { checkEjectionCondition } from "@/engine/integration/arena-center-ejection";
-import {
-  getMirrorScenarios,
-  mirrorPoolRowToScenario,
-  MIRROR_SCENARIO_PREFIX,
-  type MirrorScenario,
-} from "@/engine/perspective-switch/mirror-scenario.service";
-import {
-  getNextPerspectiveSwitch,
-  perspectiveSwitchToScenario,
-} from "@/engine/scenario/perspective-switch.service";
+import { MIRROR_SCENARIO_PREFIX, type MirrorScenario } from "@/engine/perspective-switch/mirror-scenario.service";
 import { getDueOutcomes } from "@/engine/scenario/delayed-outcome-trigger.service";
 import {
-  fetchLastServedMirrorScenarioId,
-  fetchPlayedScenarioIds,
   selectNextScenario,
   type ScenarioLocalePreference,
   type SelectNextScenarioOptions,
@@ -30,18 +16,9 @@ import type { Scenario } from "@/lib/bty/scenario/types";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { consumePendingPatternThresholdRecall } from "@/engine/memory/memory-recall-prompt.service";
 
-/** Standard → mirror → perspective-switch; index = `played_scenario_ids.length % 3`. */
-export const ARENA_SESSION_ROTATION_MOD = 3 as const;
-
-/** When false (default), `/api/arena/session/next` uses catalog-only routing; mirror/perspective rotation is off. */
-export function isArenaMirrorRotationEnabled(): boolean {
-  const v = process.env.ARENA_SESSION_MIRROR_ROTATION_ENABLED;
-  return v === "1" || v === "true";
-}
-
 export type ScenarioRouteResult = {
   delayedOutcomePending: boolean;
-  /** `mirror` = pool row; `perspective_switch` = curated pool; `catalog` = DB/static catalog. */
+  /** `mirror` / `perspective_switch` are legacy route labels; runtime always uses `catalog`. */
   route: "mirror" | "perspective_switch" | "catalog";
   scenario: Scenario;
   /** Present when `route === "mirror"` (pool rows for diagnostics / UI). */
@@ -91,7 +68,7 @@ function lastIndexOfMirrorPoolRowInPlayed(played: string[], poolRowUuid: string)
 /**
  * Prefer mirrors not played recently; avoid serving the same mirror again immediately when another pool row exists.
  *
- * @param lastMirrorFromDb — from {@link fetchLastServedMirrorScenarioId} (`arena_events` + choice history). Canonical Arena
+ * @param lastMirrorFromDb — from `fetchLastServedMirrorScenarioId` (`arena_events` + choice history). Canonical Arena
  *   does not append mirror ids to `played`; pass this so immediate-repeat exclusion works.
  */
 export function pickLeastRecentMirror(
@@ -124,10 +101,9 @@ export function pickLeastRecentMirror(
 }
 
 /**
- * Arena next scenario: ejection → due outcomes flag → mod-3 rotation (catalog / mirror / perspective) →
- * {@link selectNextScenario}.
+ * Arena next scenario: ejection → due outcomes flag → catalog {@link selectNextScenario} only.
  *
- * @returns `null` when the user is Arena-ejected; otherwise a routed catalog, mirror, or perspective scenario.
+ * @returns `null` when the user is Arena-ejected; otherwise a catalog scenario.
  */
 export async function getNextScenarioForSession(
   userId: string,
@@ -144,113 +120,14 @@ export async function getNextScenarioForSession(
     return null;
   }
 
-  /** Post-Foundry: catalog-only pick, biased by completed program tag via `preferFlagType`. */
-  if (options?.foundry_return) {
-    const due = await getDueOutcomes(userId, admin ? { locale, supabase: admin } : { locale });
-    const scenario = await selectNextScenario(userId, locale, {
-      ...options,
-      preferFlagType: options.preferFlagType,
-      forceDifficultyTier: options.forceDifficultyTier,
-    });
-    return attachRecallPrompt(userId, locale, scenario, {
-      route: "catalog",
-      scenario,
-      delayedOutcomePending: due.length > 0,
-    });
-  }
-
-  if (!admin) {
-    const due = await getDueOutcomes(userId, { locale });
-    const scenario = await selectNextScenario(userId, locale, options);
-    return attachRecallPrompt(userId, locale, scenario, {
-      route: "catalog",
-      scenario,
-      delayedOutcomePending: due.length > 0,
-    });
-  }
-
-  if (!isArenaMirrorRotationEnabled()) {
-    const due = await getDueOutcomes(userId, { locale, supabase: admin });
-    const scenario = await selectNextScenario(userId, locale, options);
-    return attachRecallPrompt(userId, locale, scenario, {
-      route: "catalog",
-      scenario,
-      delayedOutcomePending: due.length > 0,
-    });
-  }
-
-  const due = await getDueOutcomes(userId, { locale, supabase: admin });
-  const delayedOutcomePending = due.length > 0;
-
-  const [played, lastMirrorFromDb] = await Promise.all([
-    fetchPlayedScenarioIds(userId),
-    fetchLastServedMirrorScenarioId(userId),
-  ]);
-  const sessionSlot = played.length % ARENA_SESSION_ROTATION_MOD;
-
-  const mirrors = await getMirrorScenarios(userId, admin);
-  const poolLen = mirrors.length;
-
-  const catalogFallback = async (): Promise<Scenario> => selectNextScenario(userId, locale, options);
-
-  if (sessionSlot === 0) {
-    const scenario = await catalogFallback();
-    return attachRecallPrompt(userId, locale, scenario, {
-      route: "catalog",
-      scenario,
-      delayedOutcomePending,
-    });
-  }
-
-  if (sessionSlot === 1) {
-    if (poolLen >= 1) {
-      const row = pickLeastRecentMirror(mirrors, played, lastMirrorFromDb);
-      if (process.env.ARENA_MIRROR_PICK_DEBUG === "1") {
-        const resolved = lastMirrorFromDb ?? lastServedMirrorScenarioIdFromPlayed(played);
-        const before = mirrors.map((m) => `${MIRROR_SCENARIO_PREFIX}${m.id}`);
-        let afterIds = before;
-        if (resolved != null && mirrors.length > 1) {
-          const lk = mirrorCanonicalKey(resolved);
-          const filt = mirrors.filter(
-            (m) => mirrorCanonicalKey(`${MIRROR_SCENARIO_PREFIX}${m.id}`) !== lk,
-          );
-          if (filt.length >= 1) afterIds = filt.map((m) => `${MIRROR_SCENARIO_PREFIX}${m.id}`);
-        }
-        console.warn(
-          "[arena] mirror_pick",
-          JSON.stringify({
-            userId,
-            playedTail: played.slice(-15),
-            lastMirrorFromDb,
-            lastMirrorResolved: resolved,
-            candidateIdsBefore: before,
-            candidateIdsAfterExclusion: afterIds,
-            selectedId: `${MIRROR_SCENARIO_PREFIX}${row.id}`,
-          }),
-        );
-      }
-      const scenario = mirrorPoolRowToScenario(row, locale);
-      return attachRecallPrompt(userId, locale, scenario, {
-        route: "mirror",
-        scenario,
-        mirrors,
-        delayedOutcomePending,
-      });
-    }
-    const scenario = await catalogFallback();
-    return attachRecallPrompt(userId, locale, scenario, {
-      route: "catalog",
-      scenario,
-      delayedOutcomePending,
-    });
-  }
-
-  // sessionSlot === 2 — perspective third, then mirror, then catalog
-  const psEntry = await getNextPerspectiveSwitch(userId, admin);
-  const scenario = perspectiveSwitchToScenario(psEntry, locale);
+  const due = await getDueOutcomes(
+    userId,
+    admin ? { locale, supabase: admin } : { locale },
+  );
+  const scenario = await selectNextScenario(userId, locale, options);
   return attachRecallPrompt(userId, locale, scenario, {
-    route: "perspective_switch",
+    route: "catalog",
     scenario,
-    delayedOutcomePending,
+    delayedOutcomePending: due.length > 0,
   });
 }

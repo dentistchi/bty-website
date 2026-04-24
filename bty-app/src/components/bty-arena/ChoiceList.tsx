@@ -12,6 +12,13 @@ export type ChoiceListProps = {
   onSelect: (choiceId: string) => void;
   /** When true, hide internal intent slug (canonical elite / cleaner labels). */
   hideIntentSlug?: boolean;
+  /**
+   * `elite` — Step 2 only: `label` + optional `choiceSubtext`, no intent chrome, arena styling.
+   * `default` — legacy grid with choice id + intent line.
+   */
+  variant?: "default" | "elite";
+  /** Elite: disables all choices while a commit is in flight. */
+  busy?: boolean;
 };
 
 export function ChoiceList({
@@ -20,10 +27,55 @@ export function ChoiceList({
   selectedChoiceId,
   onSelect,
   hideIntentSlug = false,
+  variant = "default",
+  busy = false,
 }: ChoiceListProps) {
   const lang: Locale = locale === "ko" || locale === "en" ? locale : "en";
-  const t = getMessages(lang).arenaRun;
   const isKo = lang === "ko";
+  const isElite = variant === "elite";
+
+  if (isElite) {
+    return (
+      <div
+        data-testid="elite-arena-primary-pick"
+        className="mt-1 grid gap-2"
+        role="group"
+        aria-label={isKo ? "첫 선택" : "Primary decision"}
+      >
+        {choices.map((c) => {
+          const displayLabel = isKo && c.labelKo ? c.labelKo : c.label;
+          const disabled = busy;
+          return (
+            <button
+              key={c.choiceId}
+              type="button"
+              disabled={disabled}
+              onClick={() => onSelect(c.choiceId)}
+              className="rounded-2xl border px-4 py-4 text-left transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+              style={{
+                borderColor: "rgb(15 23 42 / 0.35)",
+                background: "rgb(15 23 42 / 0.06)",
+                color: "var(--arena-text)",
+              }}
+            >
+              <span className="block text-base font-semibold leading-snug">{displayLabel}</span>
+              {c.choiceSubtext != null && c.choiceSubtext.trim() !== "" ? (
+                <span
+                  className="mt-2 block text-sm leading-relaxed opacity-85"
+                  style={{ color: "var(--arena-text-soft)" }}
+                >
+                  {c.choiceSubtext}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  const t = getMessages(lang).arenaRun;
+
   return (
     <div
       style={{ marginTop: 16, display: "grid", gap: 10 }}

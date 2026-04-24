@@ -11,6 +11,7 @@ import {
 } from "@/lib/bty/cookies/authCookies";
 import { getArenaPipelineDefault } from "@/lib/bty/arena/arenaPipelineConfig";
 import { userHasBlockingArenaActionContract } from "@/lib/bty/arena/blockingArenaActionContract";
+import { isPostLoginOnboardingWizardEnabled } from "@/lib/bty/arena/postLoginEliteEntry";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -213,9 +214,8 @@ export async function middleware(req: NextRequest) {
     }
 
     /**
-     * Onboarding gate (see `OnboardingShell`): unauthenticated users are sent to **login** above.
-     * Here: authenticated + `user_onboarding_progress.step_completed < 5` + path is `/bty-arena` | `/bty/foundry` | `/center`
-     * → redirect `/{locale}/onboarding`. Completed onboarding + user on `/onboarding` → `/bty-arena`.
+     * Onboarding gate (see `OnboardingShell`): when `BTY_POST_LOGIN_ONBOARDING_ENABLED=1`.
+     * Default: forced Elite V2 entry — no redirect to `/onboarding` from Arena/Foundry/Center; `/onboarding` → `/bty-arena`.
      */
     const onboardingPath =
       pathname === `/${locale}/onboarding` || pathname.startsWith(`/${locale}/onboarding/`);
@@ -224,7 +224,16 @@ export async function middleware(req: NextRequest) {
       pathname.startsWith(`/${locale}/bty/foundry`) ||
       pathname.startsWith(`/${locale}/center`);
 
-    if (onboardingGated || onboardingPath) {
+    if (!isPostLoginOnboardingWizardEnabled()) {
+      if (onboardingPath) {
+        const jump = NextResponse.redirect(new URL(`/${locale}/bty-arena`, req.url));
+        reassertAuthCookiesPathRoot(req, jump);
+        jump.headers.set("x-mw-hit", "1");
+        jump.headers.set("x-mw-user", "1");
+        jump.headers.set("x-mw-onboarding", "skipped");
+        return jump;
+      }
+    } else if (onboardingGated || onboardingPath) {
       const { data: ob } = await supabase
         .from("user_onboarding_progress")
         .select("step_completed")

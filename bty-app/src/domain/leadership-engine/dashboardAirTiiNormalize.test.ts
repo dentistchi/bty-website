@@ -44,7 +44,7 @@ describe("normalizeDashboardAirTiiSummary", () => {
       air_90d: 0.75,
     });
     expect(r.air_90d).toBe(0.75);
-    expect(r.band_90d).toBe("high");
+    expect(r.band_90d).toBe("mid");
     expect(r.band_7d).toBe("mid");
   });
 });

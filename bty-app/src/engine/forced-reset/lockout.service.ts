@@ -1,7 +1,9 @@
 /**
  * Leadership Engine — AIR-based account lockout (48h Arena block).
- * When AIR (7d) falls below the forced-reset AIR band threshold, user status becomes LOCKED
- * and Arena access is denied until {@link getUnlockAt} time elapses.
+ * When AIR (7d) falls below {@link FORCED_RESET_AIR_7D_THRESHOLD} (high-band floor **0.80**, same as `AIR_BAND_MID_HIGH`),
+ * user status becomes LOCKED until {@link getUnlockAt} elapses.
+ *
+ * **Not** Pattern Shift; execution integrity (AIR) only.
  *
  * Pure orchestration over timestamps + scalars; persistence is caller responsibility.
  */
@@ -9,7 +11,10 @@
 import { FORCED_RESET_AIR_7D_THRESHOLD } from "@/domain/leadership-engine/forced-reset";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
-/** AIR below 60 on 0–100 scale → lockout (normalized 0–1). */
+/**
+ * Legacy weekly-XP / slip gate (0–1 on AIR scale). **Not** the forced-reset high-band floor (0.80).
+ * @see FORCED_RESET_AIR_7D_THRESHOLD for Stage-4 AIR policy messaging.
+ */
 export const AIR_LOCKOUT_THRESHOLD = 0.6 as const;
 
 /** Milliseconds for one lockout window (48 hours). */

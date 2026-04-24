@@ -60,7 +60,7 @@ export function logEliteNav(phase: string, data: Record<string, unknown> = {}): 
   console.log(`[e2e-elite-nav] ${JSON.stringify({ phase, ts: new Date().toISOString(), ...data })}`);
 }
 
-/** Visible `elite-v2-runtime-error-*` testid, if any (ElitePostChoiceFlow when branches missing/invalid). */
+/** Visible `elite-v2-runtime-error-*` testid, if any (EliteArenaPostChoiceBlock when branches missing/invalid). */
 export async function visibleEliteV2RuntimeErrorTestId(page: Page): Promise<string | null> {
   return page.evaluate(() => {
     const main = document.querySelector('[data-testid="arena-play-main"]');

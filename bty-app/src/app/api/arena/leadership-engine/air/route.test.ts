@@ -3,6 +3,13 @@
  */
 import { NextRequest } from "next/server";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+const runForcedResetAfterAirIfStage3 = vi.fn().mockResolvedValue(undefined);
+
+vi.mock("@/lib/bty/leadership-engine/forced-reset-runtime.server", () => ({
+  runForcedResetAfterAirIfStage3: (...args: unknown[]) => runForcedResetAfterAirIfStage3(...args),
+}));
+
 import { GET } from "./route";
 
 const mockRequireUser = vi.fn();
@@ -22,6 +29,7 @@ function makeRequest(): NextRequest {
 describe("GET /api/arena/leadership-engine/air", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    runForcedResetAfterAirIfStage3.mockResolvedValue(undefined);
     mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: {} });
   });
 
@@ -144,5 +152,6 @@ describe("GET /api/arena/leadership-engine/air", () => {
     expect(["low", "mid", "high"]).toContain(data.air_7d.band);
     expect(["low", "mid", "high"]).toContain(data.air_14d.band);
     expect(["low", "mid", "high"]).toContain(data.air_90d.band);
+    expect(runForcedResetAfterAirIfStage3).toHaveBeenCalled();
   });
 });

@@ -26,14 +26,14 @@ function makeRequest(period?: string): NextRequest {
 describe("GET /api/center/resilience", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: { getUser: () => Promise.resolve({ data: { user: null } }) },
     });
     mockParsePeriodDays.mockReturnValue(7);
   });
 
   it("returns 401 when unauthenticated", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: { getUser: () => Promise.resolve({ data: { user: null } }) },
     });
 
@@ -45,7 +45,7 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("returns 401 with error as string", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: { getUser: () => Promise.resolve({ data: { user: null } }) },
     });
     const res = await GET(makeRequest());
@@ -55,7 +55,7 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("returns 401 with JSON body containing only error key", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: { getUser: () => Promise.resolve({ data: { user: null } }) },
     });
     const res = await GET(makeRequest());
@@ -65,7 +65,7 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("does not call parsePeriodDays or getResilienceEntries when unauthenticated", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: { getUser: () => Promise.resolve({ data: { user: null } }) },
     });
 
@@ -76,13 +76,13 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("returns 500 when service returns error", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
       },
     });
-    mockGetResilienceEntries.mockResolvedValue({ ok: false, error: "db_error" });
+    mockGetResilienceEntries.mockResolvedValue(new Error('db_error')).mockResolvedValue({ ok: false, error: "db_error" });
 
     const res = await GET(makeRequest("7"));
     expect(res.status).toBe(500);
@@ -92,13 +92,13 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("returns 500 with JSON body containing only error key", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
       },
     });
-    mockGetResilienceEntries.mockResolvedValue({ ok: false, error: "db_error" });
+    mockGetResilienceEntries.mockResolvedValue(new Error('db_error')).mockResolvedValue({ ok: false, error: "db_error" });
     const res = await GET(makeRequest("7"));
     expect(res.status).toBe(500);
     const data = await res.json();
@@ -106,13 +106,13 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("returns 200 with entries array length >= 0", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
       },
     });
-    mockGetResilienceEntries.mockResolvedValue({ ok: true, entries: [] });
+    mockGetResilienceEntries.mockResolvedValue(new Error('db_error')).mockResolvedValue({ ok: true, entries: [] });
     const res = await GET(makeRequest("7"));
     expect(res.status).toBe(200);
     const data = await res.json();
@@ -121,13 +121,13 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("returns 200 with entries as array", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
       },
     });
-    mockGetResilienceEntries.mockResolvedValue({ ok: true, entries: [] });
+    mockGetResilienceEntries.mockResolvedValue(new Error('db_error')).mockResolvedValue({ ok: true, entries: [] });
     const res = await GET(makeRequest("7"));
     expect(res.status).toBe(200);
     const data = await res.json();
@@ -135,13 +135,13 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("returns 200 with exactly entries key", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
       },
     });
-    mockGetResilienceEntries.mockResolvedValue({ ok: true, entries: [] });
+    mockGetResilienceEntries.mockResolvedValue(new Error('db_error')).mockResolvedValue({ ok: true, entries: [] });
 
     const res = await GET(makeRequest("7"));
     expect(res.status).toBe(200);
@@ -150,13 +150,13 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("returns 200 with empty entries when no history", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
       },
     });
-    mockGetResilienceEntries.mockResolvedValue({ ok: true, entries: [] });
+    mockGetResilienceEntries.mockResolvedValue(new Error('db_error')).mockResolvedValue({ ok: true, entries: [] });
 
     const res = await GET(makeRequest("7"));
     expect(res.status).toBe(200);
@@ -166,13 +166,13 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("returns 200 with entries on success", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
       },
     });
-    mockGetResilienceEntries.mockResolvedValue({
+    mockGetResilienceEntries.mockResolvedValue(new Error('db_error')).mockResolvedValue({
       ok: true,
       entries: [
         { date: "2026-03-10", level: "mid", source: "letter" },
@@ -190,13 +190,13 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("returns 200 with multiple entries when service returns two", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
       },
     });
-    mockGetResilienceEntries.mockResolvedValue({
+    mockGetResilienceEntries.mockResolvedValue(new Error('db_error')).mockResolvedValue({
       ok: true,
       entries: [
         { date: "2026-03-09", level: "low", source: "letter" },
@@ -215,14 +215,14 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("calls getResilienceEntries with periodDays from parsePeriodDays", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
       },
     });
     mockParsePeriodDays.mockReturnValue(14);
-    mockGetResilienceEntries.mockResolvedValue({ ok: true, entries: [] });
+    mockGetResilienceEntries.mockResolvedValue(new Error('db_error')).mockResolvedValue({ ok: true, entries: [] });
 
     await GET(makeRequest("14"));
 
@@ -234,13 +234,13 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("returns 200 when period query is omitted (no parsePeriodDays call)", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
       },
     });
-    mockGetResilienceEntries.mockResolvedValue({ ok: true, entries: [] });
+    mockGetResilienceEntries.mockResolvedValue(new Error('db_error')).mockResolvedValue({ ok: true, entries: [] });
 
     const res = await GET(makeRequest());
     expect(res.status).toBe(200);
@@ -251,14 +251,14 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("returns 200 with content-type application/json on success", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
       },
     });
     mockParsePeriodDays.mockReturnValue(7);
-    mockGetResilienceEntries.mockResolvedValue({ ok: true, entries: [] });
+    mockGetResilienceEntries.mockResolvedValue(new Error('db_error')).mockResolvedValue({ ok: true, entries: [] });
 
     const res = await GET(makeRequest());
     expect(res.status).toBe(200);
@@ -266,7 +266,7 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("returns 500 when getResilienceEntries throws", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
@@ -282,7 +282,7 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("returns 500 with error as string when service throws", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
@@ -308,13 +308,13 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("returns 200 when period query is empty string (omit periodDays)", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
       },
     });
-    mockGetResilienceEntries.mockResolvedValue({ ok: true, entries: [] });
+    mockGetResilienceEntries.mockResolvedValue(new Error('db_error')).mockResolvedValue({ ok: true, entries: [] });
 
     const req = new NextRequest("http://localhost/api/center/resilience?period=");
     const res = await GET(req);
@@ -326,14 +326,14 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("returns 400 INVALID_PERIOD when period is non-empty but invalid (e.g. abc)", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
       },
     });
     mockParsePeriodDays.mockReturnValue(undefined);
-    mockGetResilienceEntries.mockResolvedValue({ ok: true, entries: [] });
+    mockGetResilienceEntries.mockResolvedValue(new Error('db_error')).mockResolvedValue({ ok: true, entries: [] });
 
     const req = new NextRequest("http://localhost/api/center/resilience?period=abc");
     const res = await GET(req);
@@ -344,14 +344,14 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("returns 200 when period is 1 (minimum valid)", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
       },
     });
     mockParsePeriodDays.mockReturnValue(1);
-    mockGetResilienceEntries.mockResolvedValue({ ok: true, entries: [] });
+    mockGetResilienceEntries.mockResolvedValue(new Error('db_error')).mockResolvedValue({ ok: true, entries: [] });
 
     const res = await GET(makeRequest("1"));
     expect(res.status).toBe(200);
@@ -362,14 +362,14 @@ describe("GET /api/center/resilience", () => {
   });
 
   it("returns 200 when period is 365 (maximum valid)", async () => {
-    mockGetSupabaseServerClient.mockResolvedValue({
+    mockGetSupabaseServerClient.mockResolvedValue(new Error('db error')).mockResolvedValue({
       auth: {
         getUser: () =>
           Promise.resolve({ data: { user: { id: "u1" } } }),
       },
     });
     mockParsePeriodDays.mockReturnValue(365);
-    mockGetResilienceEntries.mockResolvedValue({ ok: true, entries: [] });
+    mockGetResilienceEntries.mockResolvedValue(new Error('db_error')).mockResolvedValue({ ok: true, entries: [] });
 
     const res = await GET(makeRequest("365"));
     expect(res.status).toBe(200);

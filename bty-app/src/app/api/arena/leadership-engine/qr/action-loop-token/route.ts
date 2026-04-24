@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logActionContractActorTrace } from "@/lib/bty/action-contract/arenaRunActor.server";
 import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
 import { signArenaActionLoopToken } from "@/lib/bty/leadership-engine/qr/arena-action-loop-token";
 
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
 
   let { data: contract } = await supabase
     .from("bty_action_contracts")
-    .select("id, session_id, status, validation_approved_at, verified_at")
+    .select("id, user_id, session_id, status, validation_approved_at, verified_at")
     .eq("user_id", user.id)
     .eq("session_id", runIdStr)
     .eq("status", "pending")
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
   if (!contract) {
     const second = await supabase
       .from("bty_action_contracts")
-      .select("id, session_id, status, validation_approved_at, verified_at")
+      .select("id, user_id, session_id, status, validation_approved_at, verified_at")
       .eq("user_id", user.id)
       .eq("session_id", runIdStr)
       .eq("status", "approved")
@@ -60,11 +61,25 @@ export async function POST(req: NextRequest) {
     return out;
   }
 
+  const contractUserId = String((contract as { user_id?: string }).user_id ?? "");
+  if (!contractUserId || contractUserId !== user.id) {
+    const out = NextResponse.json({ error: "contract_user_mismatch" }, { status: 403 });
+    copyCookiesAndDebug(base, out, req, true);
+    return out;
+  }
+
+  logActionContractActorTrace("action_loop_token", {
+    incoming_actor_user_id: user.id,
+    source_run_id: runIdStr,
+    resolved_auth_user_id: user.id,
+    contract_user_id: contractUserId,
+  });
+
   let token: string;
   try {
     token = signArenaActionLoopToken({
       sessionId: runIdStr,
-      userId: user.id,
+      userId: contractUserId,
       actionId: `arena_action_loop:${runIdStr}`,
       issuedAt: Date.now(),
       contractId: contract.id,

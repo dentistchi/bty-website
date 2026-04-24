@@ -4,6 +4,7 @@ import {
   arenaScenarioDescriptionLinesFromUnknown,
   arenaScenarioIdFromUnknown,
 } from "@/domain/arena/scenarios";
+import { logActionContractActorTrace } from "@/lib/bty/action-contract/arenaRunActor.server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 
 /**
@@ -39,6 +40,25 @@ export async function POST(req: Request) {
   if (!runId) return NextResponse.json({ error: "runId_required" }, { status: 400 });
   if (!scenarioId) return NextResponse.json({ error: "scenarioId_required" }, { status: 400 });
   if (!eventType) return NextResponse.json({ error: "eventType_required" }, { status: 400 });
+
+  const { data: runActor, error: runActorErr } = await supabase
+    .from("arena_runs")
+    .select("user_id")
+    .eq("run_id", runId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (runActorErr || !runActor) {
+    return NextResponse.json({ error: "run_not_found_or_forbidden" }, { status: 404 });
+  }
+
+  const runOwner = String((runActor as { user_id: string }).user_id);
+  logActionContractActorTrace("arena_event_choice", {
+    incoming_actor_user_id: user.id,
+    source_run_id: runId,
+    resolved_run_owner_user_id: runOwner,
+    resolved_auth_user_id: user.id,
+  });
 
   const { error } = await supabase.from("arena_events").insert({
     run_id: runId,

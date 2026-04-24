@@ -13,6 +13,7 @@ import {
 } from "@/features/growth/logic";
 import type { RecoveryPrompt } from "@/features/growth/logic/recoveryTypes";
 import RecoveryEntryScreen from "@/features/growth/recovery/RecoveryEntryScreen";
+import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 
 /** Recovery entry — API-backed save when signed in; local fallback for guests. */
 export default function GrowthRecoveryPage() {
@@ -21,6 +22,7 @@ export default function GrowthRecoveryPage() {
   const locale = params?.locale === "ko" ? "ko" : "en";
   const loc = locale === "ko" ? "ko" : "en";
   const base = `/${locale}`;
+  const { contract: arenaEntry } = useArenaEntryResolution(loc);
 
   const [mounted, setMounted] = useState(false);
   const [prompt, setPrompt] = useState<RecoveryPrompt | null>(null);
@@ -67,7 +69,7 @@ export default function GrowthRecoveryPage() {
         router.push(`${base}/growth/history`);
       }}
       onReturnToGrowth={() => router.push(`${base}/growth`)}
-      onReturnToArena={() => router.push(`${base}/bty-arena`)}
+      onReturnToArena={() => router.push(arenaEntry.href)}
     />
   );
 }

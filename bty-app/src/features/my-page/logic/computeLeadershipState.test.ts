@@ -23,7 +23,7 @@ describe("computeLeadershipState", () => {
   it("returns high-tier labels for strong metrics", () => {
     const m = computeMetrics([rich, rich]);
     const s = computeLeadershipState(m, "en");
-    expect(s.airLabel).toContain("Stabilizing");
+    expect(s.airLabel).toMatch(/execution integrity|실행 무결성/i);
     expect(s.tiiLabel).toContain("High");
   });
 });

@@ -1,16 +1,22 @@
 /**
- * Leadership Engine — AIR (Action Integrity Rate).
- * Single source: docs/LEADERSHIP_ENGINE_SPEC.md §4. 참조: docs/ROADMAP_Q3_Q4 (AIR API 노출).
+ * Leadership Engine — AIR (Action Integrity Rate) — **LAYER 1 execution integrity only**.
  *
- * Weighted AIR = sum(weight of completed+verified) / sum(weight of chosen)
- *   - micro_win weight = 1.0
- *   - reset weight     = 2.0
+ * Normative bands: **`docs/# BTY ENGINE — FINAL RULESET (v2 LOCKED).md` §3** (and below constants).
+ * Do **not** conflate AIR with **Pattern Shift** (behavior-change layer); see `patternShift.ts`.
  *
- * Penalty: each missed activation window → -0.10 (floor 0).
- * Flag:    3 consecutive missed windows → integrity_slip = true.
+ * Legacy spec cross-ref: `docs/LEADERSHIP_ENGINE_SPEC.md` §4.
  *
- * Rolling windows: 7d, 14d, 90d.
- * All values recalculable from activation + verification logs.
+ * ---
+ * **Official BTY term → persistence used by `GET .../leadership-engine/air` (adapter)**
+ *
+ * | Official (ruleset)     | Current code / tables |
+ * | ---------------------- | ---------------------- |
+ * | Selected actions       | Rows in `le_activation_log` in the rolling window (`chosen_at` in range) |
+ * | Completed + verified   | `completed_at` set **and** latest `le_verification_log.verified === true` for that `activation_id` |
+ * | Normal completion wt 1.0 | `le_activation_log.type !== 'reset'` → domain `ActivationType` `micro_win` |
+ * | Forced reset wt 2.0    | `type === 'reset'` → `ActivationType` `reset` |
+ * | Missed penalty −0.10   | `computeAIR`: each activation past `due_at` with no completion → counts as missed window |
+ * | Missed streak / slip   | `detectIntegritySlip`: 3+ consecutive missed (by `due_at` order) → `integrity_slip` |
  *
  * Pure domain only; no UI, API, or DB.
  */
@@ -28,9 +34,12 @@ export const CONSECUTIVE_MISS_THRESHOLD = 3 as const;
 export const AIR_MIN = 0 as const;
 export const AIR_MAX = 1 as const;
 
-/** 밴드 경계: low < LOW_MID < mid < MID_HIGH < high. 단일 소스. */
-export const AIR_BAND_LOW_MID = 0.4 as const;
-export const AIR_BAND_MID_HIGH = 0.7 as const;
+/**
+ * Band boundaries (LOCKED v2): low below 0.50 · mid 0.50–0.79 · high from 0.80.
+ * `airToBand`: low if air < LOW_MID; mid if air < MID_HIGH; else high.
+ */
+export const AIR_BAND_LOW_MID = 0.5 as const;
+export const AIR_BAND_MID_HIGH = 0.8 as const;
 
 /**
  * Stage 3→4 transition (`stages.air_below_threshold`): AIR strictly below this is “below threshold”

@@ -11,6 +11,7 @@ import {
 import type { ReflectionSeed } from "@/features/growth/logic/buildReflectionSeed";
 import type { ReflectionEntry } from "@/features/growth/logic/types";
 import ReflectionWritingScreen from "@/features/growth/reflection/ReflectionWritingScreen";
+import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 
 /** Structured reflection writing — persists via API (guests: local storage). */
 export default function GrowthReflectionWritePage() {
@@ -18,6 +19,7 @@ export default function GrowthReflectionWritePage() {
   const params = useParams();
   const locale = params?.locale === "ko" ? "ko" : "en";
   const base = `/${locale}`;
+  const { contract: arenaEntry } = useArenaEntryResolution(locale);
 
   const [mounted, setMounted] = useState(false);
   const [seed, setSeed] = useState<ReflectionSeed | null>(null);
@@ -62,7 +64,7 @@ export default function GrowthReflectionWritePage() {
       locale={locale}
       seed={seed}
       onSave={handleSave}
-      onReturnToArena={() => router.push(`${base}/bty-arena`)}
+      onReturnToArena={() => router.push(arenaEntry.href)}
       onViewLeadershipState={() => router.push(`${base}/my-page`)}
     />
   );

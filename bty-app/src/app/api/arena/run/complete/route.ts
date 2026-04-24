@@ -20,6 +20,10 @@ import {
 import { ensureActionContractForArenaRun } from "@/lib/bty/action-contract/ensureActionContractForArenaRun";
 import { resolvePatternFamilyForContractTrigger } from "@/lib/bty/pattern-engine/resolvePatternFamilyForContractTrigger";
 import { syncPatternStatesForUser } from "@/lib/bty/pattern-engine/syncPatternStates";
+import {
+  arenaRouterSnapshotJsonFields,
+  snapshotForNextScenarioReady,
+} from "@/lib/bty/arena/arenaRuntimeSnapshot.server";
 
 /**
  * POST /api/arena/run/complete — 런 종료 + **주간/코어 XP 1회 지급** (멱등).
@@ -135,6 +139,7 @@ export async function POST(req: Request) {
       nbaLogId: null,
       patternFamily,
     });
+    const nextSnap = snapshotForNextScenarioReady();
     return NextResponse.json({
       ok: true,
       runId,
@@ -143,6 +148,7 @@ export async function POST(req: Request) {
       actionContractCreated: ensured.ok && ensured.created,
       contractId: ensured.contractId,
       myPageRefetchRequired: true,
+      ...arenaRouterSnapshotJsonFields(nextSnap),
     });
   }
 
@@ -301,6 +307,7 @@ export async function POST(req: Request) {
     }
   }
 
+  const nextSnap = snapshotForNextScenarioReady();
   return NextResponse.json({
     ok: true,
     runId,
@@ -311,5 +318,6 @@ export async function POST(req: Request) {
     actionContractCreated: ensured.ok && ensured.created,
     contractId: ensured.contractId,
     myPageRefetchRequired: true,
+    ...arenaRouterSnapshotJsonFields(nextSnap),
   });
 }

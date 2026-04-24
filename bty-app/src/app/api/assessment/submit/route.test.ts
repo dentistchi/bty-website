@@ -51,7 +51,7 @@ describe("POST /api/assessment/submit", () => {
   });
 
   it("returns 400 when body is not valid JSON", async () => {
-    mockGetLetterAuth.mockResolvedValue({
+    mockGetLetterAuth.mockResolvedValue(new Error('auth unavailable')).mockResolvedValue({
       supabase: {},
       userId: "u1",
     });
@@ -69,7 +69,7 @@ describe("POST /api/assessment/submit", () => {
   });
 
   it("returns 400 with only error key when body is not valid JSON", async () => {
-    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockGetLetterAuth.mockResolvedValue(new Error('auth unavailable')).mockResolvedValue({ supabase: {}, userId: "u1" });
     const req = new Request("http://localhost/api/assessment/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -82,11 +82,11 @@ describe("POST /api/assessment/submit", () => {
   });
 
   it("returns 400 when service returns validation error", async () => {
-    mockGetLetterAuth.mockResolvedValue({
+    mockGetLetterAuth.mockResolvedValue(new Error('auth unavailable')).mockResolvedValue({
       supabase: {},
       userId: "u1",
     });
-    mockSubmitAssessment.mockResolvedValue({
+    mockSubmitAssessment.mockResolvedValue(new Error('db connection lost')).mockResolvedValue({
       ok: false,
       error: "answers_invalid",
     });
@@ -99,8 +99,8 @@ describe("POST /api/assessment/submit", () => {
   });
 
   it("returns 400 with only error key when no detail", async () => {
-    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
-    mockSubmitAssessment.mockResolvedValue({ ok: false, error: "answers_invalid" });
+    mockGetLetterAuth.mockResolvedValue(new Error('auth unavailable')).mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitAssessment.mockResolvedValue(new Error('db connection lost')).mockResolvedValue({ ok: false, error: "answers_invalid" });
     const res = await POST(makeRequest({ answers: { 1: 3 } }));
     expect(res.status).toBe(400);
     const data = await res.json();
@@ -108,8 +108,8 @@ describe("POST /api/assessment/submit", () => {
   });
 
   it("returns 400 with detail when service returns error and detail", async () => {
-    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
-    mockSubmitAssessment.mockResolvedValue({
+    mockGetLetterAuth.mockResolvedValue(new Error('auth unavailable')).mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitAssessment.mockResolvedValue(new Error('db connection lost')).mockResolvedValue({
       ok: false,
       error: "answers_invalid",
       detail: "Missing keys: 2,3,...,50",
@@ -123,8 +123,8 @@ describe("POST /api/assessment/submit", () => {
   });
 
   it("returns 200 with exactly submissionId, scores, pattern, recommendedTrack keys", async () => {
-    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
-    mockSubmitAssessment.mockResolvedValue({
+    mockGetLetterAuth.mockResolvedValue(new Error('auth unavailable')).mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitAssessment.mockResolvedValue(new Error('db connection lost')).mockResolvedValue({
       ok: true,
       submissionId: "sub-1",
       scores: { core: 20, compassion: 20, stability: 20, growth: 20, social: 20 },
@@ -141,11 +141,11 @@ describe("POST /api/assessment/submit", () => {
   });
 
   it("returns 200 with submissionId, scores, pattern, recommendedTrack on success", async () => {
-    mockGetLetterAuth.mockResolvedValue({
+    mockGetLetterAuth.mockResolvedValue(new Error('auth unavailable')).mockResolvedValue({
       supabase: {},
       userId: "u1",
     });
-    mockSubmitAssessment.mockResolvedValue({
+    mockSubmitAssessment.mockResolvedValue(new Error('db connection lost')).mockResolvedValue({
       ok: true,
       submissionId: "sub-123",
       scores: {
@@ -177,8 +177,8 @@ describe("POST /api/assessment/submit", () => {
   });
 
   it("returns 200 with content-type application/json on success", async () => {
-    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
-    mockSubmitAssessment.mockResolvedValue({
+    mockGetLetterAuth.mockResolvedValue(new Error('auth unavailable')).mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitAssessment.mockResolvedValue(new Error('db connection lost')).mockResolvedValue({
       ok: true,
       submissionId: "sub-1",
       scores: { core: 20, compassion: 20, stability: 20, growth: 20, social: 20 },
@@ -192,11 +192,11 @@ describe("POST /api/assessment/submit", () => {
   });
 
   it("returns 200 when submissionId is null (insert failed)", async () => {
-    mockGetLetterAuth.mockResolvedValue({
+    mockGetLetterAuth.mockResolvedValue(new Error('auth unavailable')).mockResolvedValue({
       supabase: {},
       userId: "u1",
     });
-    mockSubmitAssessment.mockResolvedValue({
+    mockSubmitAssessment.mockResolvedValue(new Error('db connection lost')).mockResolvedValue({
       ok: true,
       submissionId: null,
       scores: {
@@ -220,8 +220,8 @@ describe("POST /api/assessment/submit", () => {
   });
 
   it("returns 200 with recommendedTrack from service when non-default", async () => {
-    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
-    mockSubmitAssessment.mockResolvedValue({
+    mockGetLetterAuth.mockResolvedValue(new Error('auth unavailable')).mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitAssessment.mockResolvedValue(new Error('db connection lost')).mockResolvedValue({
       ok: true,
       submissionId: "sub-1",
       scores: { core: 18, compassion: 28, stability: 20, growth: 22, social: 20 },
@@ -237,8 +237,8 @@ describe("POST /api/assessment/submit", () => {
   });
 
   it("returns 200 and passes through pattern and track from service", async () => {
-    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
-    mockSubmitAssessment.mockResolvedValue({
+    mockGetLetterAuth.mockResolvedValue(new Error('auth unavailable')).mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitAssessment.mockResolvedValue(new Error('db connection lost')).mockResolvedValue({
       ok: true,
       submissionId: "sub-x",
       scores: { core: 20, compassion: 20, stability: 20, growth: 20, social: 20 },
@@ -255,11 +255,11 @@ describe("POST /api/assessment/submit", () => {
 
   it("calls submitAssessment with userId and answers from auth and body", async () => {
     const mockSupabase = {};
-    mockGetLetterAuth.mockResolvedValue({
+    mockGetLetterAuth.mockResolvedValue(new Error('auth unavailable')).mockResolvedValue({
       supabase: mockSupabase,
       userId: "u2",
     });
-    mockSubmitAssessment.mockResolvedValue({
+    mockSubmitAssessment.mockResolvedValue(new Error('db connection lost')).mockResolvedValue({
       ok: true,
       submissionId: "id",
       scores: { core: 0, compassion: 0, stability: 0, growth: 0, social: 0 },
@@ -279,7 +279,7 @@ describe("POST /api/assessment/submit", () => {
   });
 
   it("returns 500 when submitAssessment throws", async () => {
-    mockGetLetterAuth.mockResolvedValue({
+    mockGetLetterAuth.mockResolvedValue(new Error('auth unavailable')).mockResolvedValue({
       supabase: {},
       userId: "u1",
     });
@@ -302,8 +302,8 @@ describe("POST /api/assessment/submit", () => {
   });
 
   it("calls submitAssessment with empty answers when body.answers is omitted", async () => {
-    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
-    mockSubmitAssessment.mockResolvedValue({
+    mockGetLetterAuth.mockResolvedValue(new Error('auth unavailable')).mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitAssessment.mockResolvedValue(new Error('db connection lost')).mockResolvedValue({
       ok: false,
       error: "answers_invalid",
     });

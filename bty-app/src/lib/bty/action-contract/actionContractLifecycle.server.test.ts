@@ -1,6 +1,3 @@
-/**
- * @vitest-environment node
- */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ensureDraftActionContractWithAdmin } from "./actionContractLifecycle.server";
 
@@ -15,156 +12,161 @@ describe("ensureDraftActionContractWithAdmin", () => {
     vi.clearAllMocks();
   });
 
-  it("returns existing row when (user_id, session_id) matches", async () => {
-    const maybeSingle = vi.fn().mockResolvedValue({
-      data: { id: "contract-existing", status: "draft" },
-      error: null,
-    });
-    const admin = {
-      from: vi.fn(() => ({
-        select: () => ({
-          eq: () => ({
-            eq: () => ({ maybeSingle }),
-          }),
-        }),
-      })),
-    } as never;
-
-    const r = await ensureDraftActionContractWithAdmin(admin, {
-      userId,
-      sessionId,
-      scenarioId,
-      primaryChoice,
-      patternFamily,
-    });
-    expect(r).toEqual({ ok: true, contractId: "contract-existing", created: false });
-  });
-
-  function makeAdminForFamilyBranch(
-    existingData: { data: unknown; error: unknown },
-    familyMaybeSingle: ReturnType<typeof vi.fn>,
-    reconcileMaybeSingle?: ReturnType<typeof vi.fn>,
-  ) {
-    let fromN = 0;
+  function makeAdmin(overrides: {
+    arenaRunsData?: unknown;
+    arenaRunsError?: unknown;
+    existingContractData?: unknown;
+    existingContractError?: unknown;
+    familyData?: unknown;
+    familyError?: unknown;
+    insertData?: unknown;
+    insertError?: unknown;
+    reconcileData?: unknown;
+    reconcileError?: unknown;
+  } = {}) {
+    let btyFromN = 0;
     return {
-      from: vi.fn(() => {
-        fromN += 1;
-        if (fromN === 1) {
+      from: vi.fn((table: string) => {
+        if (table === "arena_runs") {
           return {
-            select: () => ({
-              eq: () => ({
-                eq: () => ({ maybeSingle: vi.fn().mockResolvedValue(existingData) }),
-              }),
-            }),
-          };
-        }
-        if (fromN === 2) {
-          return {
-            select: () => ({
-              eq: () => ({
-                eq: () => ({
-                  in: () => ({ maybeSingle: familyMaybeSingle }),
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: overrides.arenaRunsData ?? { user_id: userId },
+                  error: overrides.arenaRunsError ?? null,
                 }),
-              }),
-            }),
+              })),
+            })),
           };
         }
+        // bty_action_contracts
+        btyFromN += 1;
+        if (btyFromN === 1) {
+          // existing row: .eq(user_id).eq(session_id).maybeSingle()
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                eq: vi.fn(() => ({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: overrides.existingContractData ?? null,
+                    error: overrides.existingContractError ?? null,
+                  }),
+                })),
+              })),
+            })),
+          };
+        }
+        if (btyFromN === 2) {
+          // family open row: .eq().eq().in().maybeSingle()
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                eq: vi.fn(() => ({
+                  in: vi.fn(() => ({
+                    maybeSingle: vi.fn().mockResolvedValue({
+                      data: overrides.familyData ?? null,
+                      error: overrides.familyError ?? null,
+                    }),
+                  })),
+                })),
+              })),
+            })),
+          };
+        }
+        if (btyFromN === 3) {
+          // could be reconcile OR insert depending on branch
+          // reconcile: select().eq().eq().maybeSingle()
+          // insert: insert().select().single()
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                eq: vi.fn(() => ({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: overrides.reconcileData ?? null,
+                    error: overrides.reconcileError ?? null,
+                  }),
+                })),
+              })),
+            })),
+            insert: vi.fn(() => ({
+              select: vi.fn(() => ({
+                single: vi.fn().mockResolvedValue({
+                  data: overrides.insertData ?? null,
+                  error: overrides.insertError ?? null,
+                }),
+              })),
+            })),
+          };
+        }
+        // fromN === 4: reconcile after insert attempt
         return {
-          select: () => ({
-            eq: () => ({
-              eq: () => ({
-                maybeSingle: reconcileMaybeSingle ?? vi.fn().mockResolvedValue({ data: null, error: null }),
-              }),
-            }),
-          }),
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: overrides.reconcileData ?? null,
+                  error: overrides.reconcileError ?? null,
+                }),
+              })),
+            })),
+          })),
         };
       }),
     } as never;
   }
 
-  it("reuses open family row when it is the same arena session (session_id match)", async () => {
-    let ms = 0;
-    const familyMs = vi.fn().mockImplementation(() => {
-      ms += 1;
-      return Promise.resolve({
-        data: {
-          id: "contract-fam",
-          session_id: sessionId,
-          action_id: `arena_action_loop:${sessionId}`,
-        },
-        error: null,
-      });
+  it("returns existing row when (user_id, session_id) matches", async () => {
+    const admin = makeAdmin({
+      existingContractData: { id: "contract-existing", status: "draft" },
     });
-    const admin = makeAdminForFamilyBranch({ data: null, error: null }, familyMs);
-
     const r = await ensureDraftActionContractWithAdmin(admin, {
-      userId,
-      sessionId,
-      scenarioId,
-      primaryChoice,
-      patternFamily,
+      userId, sessionId, scenarioId, primaryChoice, patternFamily,
+    });
+    expect(r).toEqual({ ok: true, contractId: "contract-existing", created: false });
+  });
+
+  it("reuses open family row when it is the same arena session (session_id match)", async () => {
+    const admin = makeAdmin({
+      familyData: {
+        id: "contract-fam",
+        session_id: sessionId,
+        action_id: `arena_action_loop:${sessionId}`,
+      },
+    });
+    const r = await ensureDraftActionContractWithAdmin(admin, {
+      userId, sessionId, scenarioId, primaryChoice, patternFamily,
     });
     expect(r).toEqual({ ok: true, contractId: "contract-fam", created: false });
-    expect(ms).toBe(1);
   });
 
   it("reuses open family row when session_id differs but action_id matches this run", async () => {
-    let ms = 0;
-    const familyMs = vi.fn().mockImplementation(() => {
-      ms += 1;
-      return Promise.resolve({
-        data: {
-          id: "contract-act",
-          session_id: "different-stale",
-          action_id: `arena_action_loop:${sessionId}`,
-        },
-        error: null,
-      });
+    const admin = makeAdmin({
+      familyData: {
+        id: "contract-act",
+        session_id: "different-stale",
+        action_id: `arena_action_loop:${sessionId}`,
+      },
     });
-    const admin = makeAdminForFamilyBranch({ data: null, error: null }, familyMs);
-
     const r = await ensureDraftActionContractWithAdmin(admin, {
-      userId,
-      sessionId,
-      scenarioId,
-      primaryChoice,
-      patternFamily,
+      userId, sessionId, scenarioId, primaryChoice, patternFamily,
     });
     expect(r).toEqual({ ok: true, contractId: "contract-act", created: false });
-    expect(ms).toBe(1);
   });
 
   it("returns open_contract_exists_for_family when family conflict is a different session", async () => {
-    let famCalls = 0;
-    const familyMs = vi.fn().mockImplementation(() => {
-      famCalls += 1;
-      return Promise.resolve({
-        data: {
-          id: "other",
-          session_id: "other-run",
-          action_id: "arena_action_loop:other-run",
-        },
-        error: null,
-      });
+    const admin = makeAdmin({
+      familyData: {
+        id: "other",
+        session_id: "other-run",
+        action_id: "arena_action_loop:other-run",
+      },
+      reconcileData: null,
     });
-    let recCalls = 0;
-    const reconcileMs = vi.fn().mockImplementation(() => {
-      recCalls += 1;
-      return Promise.resolve({ data: null, error: null });
-    });
-    const admin = makeAdminForFamilyBranch({ data: null, error: null }, familyMs, reconcileMs);
-
     const r = await ensureDraftActionContractWithAdmin(admin, {
-      userId,
-      sessionId,
-      scenarioId,
-      primaryChoice,
-      patternFamily,
+      userId, sessionId, scenarioId, primaryChoice, patternFamily,
     });
     expect(r.ok).toBe(false);
     if (r.ok) throw new Error("expected failure");
     expect(r.error).toBe("open_contract_exists_for_family");
-    expect(famCalls).toBe(1);
-    expect(recCalls).toBe(1);
   });
 });

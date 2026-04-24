@@ -3,6 +3,8 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { pathnameMatchesArenaEntryHref } from "@/components/bty/navigation/nav-items";
+import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 import { getMessages } from "@/lib/i18n";
 
 function detectLocale(pathname: string): "en" | "ko" {
@@ -11,7 +13,7 @@ function detectLocale(pathname: string): "en" | "ko" {
 }
 
 function isActive(pathname: string, href: string) {
-  return pathname === href || pathname.startsWith(href + "/");
+  return pathnameMatchesArenaEntryHref(pathname, href);
 }
 
 /** Arena 스타일: 메인(/bty)에서는 Arena 강조, 활성 = 둥근 배경+강조색 */
@@ -67,10 +69,11 @@ type Props = { showLogout?: boolean };
 export default function BtyTopNav({ showLogout = true }: Props) {
   const pathname = usePathname() || "/";
   const locale = detectLocale(pathname);
+  const { contract: arenaEntry } = useArenaEntryResolution(locale === "ko" ? "ko" : "en");
+  const arenaHref = arenaEntry.href;
 
   const main = `/${locale}/bty`;
   const dash = `/${locale}/bty/dashboard`;
-  const arena = `/${locale}/bty-arena`;
   const lb = `/${locale}/bty/leaderboard`;
   const logout = `/${locale}/bty/logout?next=/${locale}/bty/login`;
 
@@ -97,7 +100,7 @@ export default function BtyTopNav({ showLogout = true }: Props) {
 
   return (
     <nav style={navStyle.wrap}>
-      {link(arena, "Arena", isMainPage)}
+      {link(arenaHref, "Arena", isMainPage)}
       {link(main, mainLabel)}
       {link(dash, "Dashboard")}
       {link(lb, "Leaderboard")}

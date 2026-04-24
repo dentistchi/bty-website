@@ -2,14 +2,18 @@
 
 /**
  * Post-session overlay: locale-aware title, choice, flag badge, Core/Weekly XP from {@link validateXPAward},
- * AIR before→after, optional {@link getPatternNarrative} line when XP gate fired, CTAs.
+ * AIR execution-integrity **bands** (no raw score), optional session note, Pattern Shift placeholder,
+ * optional {@link getPatternNarrative} line when XP gate fired, CTAs.
  */
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React from "react";
+import { airToBand, type AIRBand } from "@/domain/leadership-engine/air";
 import type { SessionFlagBadgeVariant } from "@/domain/arena/sessionSummary";
 import type { XPAwardResult } from "@/engine/integration/xp-integrity-bridge";
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
 export const NEXT_SCENARIO_REQUESTED_EVENT = "next_scenario_requested" as const;
 
@@ -52,6 +56,13 @@ function xpLine(
         : null;
   if (!r.allowed && blocked) return `${label}: 0 — ${blocked}`;
   return `${label}: +${amt}`;
+}
+
+function airBandCopy(band: AIRBand, loc: Locale): string {
+  const b = getMessages(loc).bty;
+  if (band === "low") return b.airBandLow;
+  if (band === "mid") return b.airBandMid;
+  return b.airBandHigh;
 }
 
 export type SessionSummaryOverlayProps = {
@@ -98,6 +109,8 @@ export function SessionSummaryOverlay({
   className,
 }: SessionSummaryOverlayProps) {
   const router = useRouter();
+  const loc = locale === "ko" ? "ko" : "en";
+  const a = getMessages(loc).arena;
 
   if (!open) return null;
 
@@ -106,17 +119,13 @@ export function SessionSummaryOverlay({
       ? patternNarrativeLine.trim()
       : null;
 
-  const beforePct = Math.min(100, Math.max(0, previousAir * 100));
-  const afterPct = Math.min(100, Math.max(0, newAir * 100));
-  const delta = newAir - previousAir;
+  const beforeBand = airToBand(previousAir);
+  const afterBand = airToBand(newAir);
 
-  const title =
-    locale === "ko" ? "세션 완료" : "Session complete";
+  const title = locale === "ko" ? "세션 완료" : "Session complete";
   const choiceLabel = locale === "ko" ? "선택" : "Choice";
   const coreLbl = locale === "ko" ? "코어 XP" : "Core XP";
   const weekLbl = locale === "ko" ? "주간 XP" : "Weekly XP";
-  const airTitle = locale === "ko" ? "AIR" : "AIR";
-  const patternHdr = locale === "ko" ? "패턴 내레이션" : "Pattern narrative";
   const nextCta = locale === "ko" ? "다음 시나리오" : "Next scenario";
   const foundryCta = locale === "ko" ? "Foundry로 이동" : "Go to Foundry";
   const closeLbl = locale === "ko" ? "닫기" : "Close";
@@ -161,42 +170,35 @@ export function SessionSummaryOverlay({
 
         <div className="mt-4">
           <p className="m-0 mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--arena-text-soft)]">
-            {airTitle} Δ
+            {a.sessionSummaryExecutionIntegrityHeading}
           </p>
-          <div className="flex items-center justify-between gap-2 text-xs text-[var(--arena-text-soft)]">
-            <span>{previousAir.toFixed(3)}</span>
-            <span aria-hidden>→</span>
-            <span>{newAir.toFixed(3)}</span>
+          <div className="flex flex-col gap-1 rounded-xl border border-[var(--arena-text-soft)]/20 bg-[var(--arena-bg,#fff)]/80 p-3 text-sm text-[var(--arena-text)]">
+            <p className="m-0">
+              <span className="text-[var(--arena-text-soft)]">{a.sessionSummaryAirBandBefore}: </span>
+              <span className="font-semibold">{airBandCopy(beforeBand, loc)}</span>
+            </p>
+            <p className="m-0">
+              <span className="text-[var(--arena-text-soft)]">{a.sessionSummaryAirBandAfter}: </span>
+              <span className="font-semibold">{airBandCopy(afterBand, loc)}</span>
+            </p>
           </div>
-          <p className="mt-1 text-xs font-medium text-[var(--arena-text)]">
-            Δ {delta >= 0 ? "+" : ""}
-            {delta.toFixed(3)}
-          </p>
-          <div className="relative mt-2 h-3 w-full overflow-hidden rounded-full bg-[var(--arena-text-soft)]/20">
-            <div
-              className="absolute bottom-0 top-0 w-0.5 bg-[var(--arena-text-soft)]/50"
-              style={{ left: `${beforePct}%` }}
-              title={locale === "ko" ? "이전 AIR" : "Previous AIR"}
-            />
-            <div
-              className="absolute bottom-0 top-0 w-0.5 bg-[var(--arena-accent,#0ea5e9)]"
-              style={{ left: `${afterPct}%` }}
-              title={locale === "ko" ? "이후 AIR" : "After AIR"}
-            />
-            <div
-              className="absolute inset-y-0 left-0 rounded-full bg-[var(--arena-accent,#0ea5e9)]/25"
-              style={{ width: `${afterPct}%` }}
-            />
-          </div>
-          <p className="mt-1 text-[10px] text-[var(--arena-text-soft)]">
-            {locale === "ko" ? "이전" : "Before"} {beforePct.toFixed(0)}% · {locale === "ko" ? "이후" : "After"}{" "}
-            {afterPct.toFixed(0)}%
+          <p className="mt-2 text-[11px] leading-relaxed text-[var(--arena-text-soft)]">
+            {getMessages(loc).bty.airExecutionIntegrityFootnote}
           </p>
         </div>
 
+        <div className="mt-4 rounded-xl border border-slate-200/80 bg-slate-50/90 p-3">
+          <p className="m-0 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+            {a.sessionSummaryPatternShiftHeading}
+          </p>
+          <p className="mt-2 m-0 text-xs leading-relaxed text-slate-600">{a.sessionSummaryPatternShiftPlaceholder}</p>
+        </div>
+
         {narrative ? (
-          <div className="mt-4 rounded-xl border border-amber-200/60 bg-amber-50/80 p-3">
-            <p className="m-0 text-[11px] font-semibold uppercase tracking-wide text-amber-900/80">{patternHdr}</p>
+          <div className="mt-4 rounded-xl border border-[var(--arena-text-soft)]/25 bg-[var(--arena-bg,#fff)]/90 p-3">
+            <p className="m-0 text-[11px] font-semibold uppercase tracking-wide text-[var(--arena-text-soft)]">
+              {a.sessionSummaryContextNoteHeading}
+            </p>
             <p className="mt-1 m-0 text-sm leading-relaxed text-[var(--arena-text)]">{narrative}</p>
           </div>
         ) : null}

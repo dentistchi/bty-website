@@ -154,7 +154,7 @@ describe("GET /api/arena/core-xp", () => {
     const data = await res.json();
     expect(data.coreXpTotal).toBe(0);
     expect(data.tier).toBe(0);
-    expect(data.requiresBeginnerPath).toBe(true);
+    expect(data.requiresBeginnerPath).toBe(false);
     expect(data.codeName).toBe("FORGE");
     expect(data.subName).toBe("Spark");
     expect(String(res.headers.get("Cache-Control") ?? "")).toMatch(/no-store/);

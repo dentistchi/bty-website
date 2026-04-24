@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LangSwitch } from "@/components/LangSwitch";
+import { pathnameMatchesArenaEntryHref } from "@/components/bty/navigation/nav-items";
+import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 import { getMessages } from "@/lib/i18n";
 
 function detectLocale(pathname: string): "en" | "ko" {
@@ -26,8 +28,7 @@ export function detectHubContext(pathname: string, locale: string): HubContext {
 }
 
 function isActivePath(pathname: string, href: string) {
-  if (pathname === href || pathname === href + "/") return true;
-  return pathname.startsWith(href + "/");
+  return pathnameMatchesArenaEntryHref(pathname, href);
 }
 
 const arenaNav = {
@@ -88,7 +89,8 @@ export default function HubTopNav({ theme = "arena", showLangSwitch = false, tra
   const t = getMessages(locale).nav;
 
   const center = `/${locale}/center`;
-  const arena = `/${locale}/bty-arena`;
+  const { contract: arenaEntry } = useArenaEntryResolution(isKo ? "ko" : "en");
+  const arena = arenaEntry.href;
   const foundry = `/${locale}/bty/foundry`;
 
   const primaryActive =
@@ -136,7 +138,7 @@ export default function HubTopNav({ theme = "arena", showLangSwitch = false, tra
 
     let secondary: ReactNode = null;
     if (ctx === "arena") {
-      const m = `/${locale}/bty-arena`;
+      const m = arena;
       const d = `/${locale}/bty/dashboard`;
       const lb = `/${locale}/bty/leaderboard`;
       secondary = (

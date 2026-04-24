@@ -35,19 +35,47 @@ describe("ensureActionContractForArenaRun", () => {
     err.mockRestore();
   });
 
+  function makeFrom(btyFromFn: (n: number) => object) {
+    let arenaRunsN = 0;
+    let btyN = 0;
+    return vi.fn((table: string) => {
+      if (table === "arena_runs") {
+        arenaRunsN += 1;
+        if (arenaRunsN === 1) {
+          // loadArenaRunOwnerUserId
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { user_id: "u1" },
+                  error: null,
+                }),
+              })),
+            })),
+          };
+        }
+        // done count guard
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: vi.fn().mockResolvedValue({ count: 2, error: null }),
+            })),
+          })),
+        };
+      }
+      btyN += 1;
+      return btyFromFn(btyN);
+    });
+  }
+
   it("returns ok:true, created:false when row already exists for user+session", async () => {
     const maybeSingle = vi.fn().mockResolvedValue({
       data: { id: "existing-c", status: "pending" },
       error: null,
     });
-    const from = vi.fn(() => ({
-      select: () => ({
-        eq: () => ({
-          eq: () => ({
-            maybeSingle,
-          }),
-        }),
-      }),
+    const from = makeFrom(() => ({
+      select: () => ({ eq: () => ({ eq: () => ({ maybeSingle }) }) }),
+      insert: () => ({ select: () => ({ single: vi.fn().mockResolvedValue({ data: null, error: null }) }) }),
     }));
     vi.mocked(getSupabaseAdmin).mockReturnValue({ from } as never);
 
@@ -64,40 +92,19 @@ describe("ensureActionContractForArenaRun", () => {
   it("inserts and returns ok:true, created:true with contract id when pattern threshold family is set", async () => {
     const maybeSingleOpen = vi.fn().mockResolvedValue({ data: null, error: null });
     const maybeSingleSession = vi.fn().mockResolvedValue({ data: null, error: null });
-    const singleInsert = vi.fn().mockResolvedValue({
-      data: { id: "new-c" },
-      error: null,
-    });
+    const singleInsert = vi.fn().mockResolvedValue({ data: { id: "new-c" }, error: null });
+
     let selectCall = 0;
-    const from = vi.fn((table: string) => {
-      if (table !== "bty_action_contracts") return {};
-      return {
-        select: () => {
-          selectCall += 1;
-          if (selectCall === 1) {
-            return {
-              eq: () => ({
-                eq: () => ({
-                  in: () => ({ maybeSingle: maybeSingleOpen }),
-                }),
-              }),
-            };
-          }
-          return {
-            eq: () => ({
-              eq: () => ({
-                maybeSingle: maybeSingleSession,
-              }),
-            }),
-          };
-        },
-        insert: () => ({
-          select: () => ({
-            single: singleInsert,
-          }),
-        }),
-      };
-    });
+    const from = makeFrom(() => ({
+      select: () => {
+        selectCall += 1;
+        if (selectCall === 1) {
+          return { eq: () => ({ eq: () => ({ in: () => ({ maybeSingle: maybeSingleOpen }) }) }) };
+        }
+        return { eq: () => ({ eq: () => ({ maybeSingle: maybeSingleSession }) }) };
+      },
+      insert: () => ({ select: () => ({ single: singleInsert }) }),
+    }));
     vi.mocked(getSupabaseAdmin).mockReturnValue({ from } as never);
 
     const r = await ensureActionContractForArenaRun({
@@ -116,36 +123,20 @@ describe("ensureActionContractForArenaRun", () => {
       data: null,
       error: { code: "23505", message: "duplicate" },
     });
-    const maybeSingleSession = vi
-      .fn()
+    const maybeSingleSession = vi.fn()
       .mockResolvedValueOnce({ data: null, error: null })
       .mockResolvedValueOnce({ data: { id: "race-c" }, error: null });
+
     let selectCall = 0;
-    const from = vi.fn(() => ({
+    const from = makeFrom(() => ({
       select: () => {
         selectCall += 1;
         if (selectCall === 1) {
-          return {
-            eq: () => ({
-              eq: () => ({
-                in: () => ({ maybeSingle: maybeSingleOpen }),
-              }),
-            }),
-          };
+          return { eq: () => ({ eq: () => ({ in: () => ({ maybeSingle: maybeSingleOpen }) }) }) };
         }
-        return {
-          eq: () => ({
-            eq: () => ({
-              maybeSingle: maybeSingleSession,
-            }),
-          }),
-        };
+        return { eq: () => ({ eq: () => ({ maybeSingle: maybeSingleSession }) }) };
       },
-      insert: () => ({
-        select: () => ({
-          single: singleInsert,
-        }),
-      }),
+      insert: () => ({ select: () => ({ single: singleInsert }) }),
     }));
     vi.mocked(getSupabaseAdmin).mockReturnValue({ from } as never);
 

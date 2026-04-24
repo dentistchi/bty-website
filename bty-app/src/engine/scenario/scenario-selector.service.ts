@@ -4,7 +4,7 @@
  *
  * Reads `user_scenario_history` (with backfill from `user_scenario_choice_history` when the
  * aggregate array was empty). Catalog metadata and scenario **body** come only from
- * `bty_elite_scenarios.json` ({@link getEliteScenarioCatalogMetas}, {@link loadArenaScenarioPayloadFromDb}).
+ * chain-projected elite ({@link getEliteScenarioCatalogMetas}, {@link loadArenaScenarioPayloadFromDb}).
  */
 
 import type { Scenario } from "@/lib/bty/scenario/types";
@@ -14,6 +14,23 @@ import { isUserArenaEjected } from "@/engine/integration/arena-center-ejection";
 import { isExcludedFromArenaProduction } from "@/engine/scenario/scenario-production-exclusions";
 import { getDifficultyFloor } from "@/engine/scenario/scenario-difficulty-adjuster.service";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import {
+  ELITE_CANONICAL_ENTRY_SCENARIO_ID,
+  isEliteChainScenarioId,
+} from "@/lib/bty/arena/postLoginEliteEntry";
+import { VERTICAL_SLICE_CANONICAL_SCENARIO_ID } from "@/lib/bty/arena/eliteCanonicalRuntimeTruth";
+
+/**
+ * Fresh Arena entry (empty play ∪ served DONE) defaults to {@link ELITE_CANONICAL_ENTRY_SCENARIO_ID} (`core_01_*`).
+ * Optional env overrides for vertical-slice proof / staging — must be an {@link isEliteChainScenarioId} id.
+ */
+function resolveFreshEntryScenarioId(): string {
+  const raw = process.env.BTY_ARENA_VERTICAL_SLICE_ENTRY_SCENARIO_ID?.trim();
+  if (raw && isEliteChainScenarioId(raw)) {
+    return raw;
+  }
+  return ELITE_CANONICAL_ENTRY_SCENARIO_ID;
+}
 
 export type ScenarioLocalePreference = "en" | "ko";
 
@@ -106,7 +123,8 @@ export function playCountsByFlagType(
 
 /**
  * Among candidates, prefer those whose `flag_type` was seen least often in history.
- * Tie-break: uniform random among the minimum-coverage tier (avoids always picking the same id).
+ * Tie-break: lexicographic `scenarioId` (deterministic). Fresh users have empty history so all
+ * flag counts are 0 — random ties previously caused different first scenarios per login.
  */
 export function pickScenarioIdByFlagCoverage(
   candidates: readonly ScenarioMeta[],
@@ -121,9 +139,8 @@ export function pickScenarioIdByFlagCoverage(
     if (n < min) min = n;
   }
   const tier = candidates.filter((c) => (counts.get(c.flag_type) ?? 0) === min);
-  const idx =
-    tier.length <= 1 ? 0 : Math.floor(Math.random() * tier.length);
-  return tier[idx]!;
+  const sorted = [...tier].sort((a, b) => a.scenarioId.localeCompare(b.scenarioId));
+  return sorted[0]!;
 }
 
 /** Played scenario ids for Arena routing (catalog + `mirror:` + `pswitch_`). */
@@ -257,7 +274,13 @@ async function fetchScenarioCatalogFromDb(): Promise<ScenarioMeta[] | null> {
       console.error("[arena] catalog_empty: no elite scenarios after exclusions");
       return null;
     }
-    return dedupeScenarioMetasByLocaleUnion(out);
+    let deduped = dedupeScenarioMetasByLocaleUnion(out);
+    deduped = deduped.filter((m) => isEliteChainScenarioId(m.scenarioId));
+    if (!deduped.length) {
+      console.error("[arena] catalog_empty: elite chain allowlist produced no rows");
+      return null;
+    }
+    return deduped;
   } catch (e) {
     console.error(
       "[arena] catalog_unavailable: elite scenarios file",
@@ -305,16 +328,17 @@ export type SelectNextScenarioOptions = {
    */
   forceDifficultyTier?: ScenarioDifficultyTier;
   /**
-   * When true, {@link getNextScenarioForSession} skips mirror/perspective rotation and picks catalog only
-   * (e.g. return to Arena after Foundry program completion), still honoring `preferFlagType` when set.
+   * When true, biases catalog selection for return from Foundry; routing is always catalog-only.
+   * Still honors `preferFlagType` when set.
    */
   foundry_return?: boolean;
 };
 
 /**
  * Next scenario for an Arena session: exclude played ids, match `locale`, then fill `flag_type` coverage gaps.
- * When the candidate pool is empty (e.g. all scenarios played or tier/pref filter), runs
- * {@link checkAndRotateArchive} once and retries selection.
+ * When every allowlisted Elite scenario has been seen (played ∪ served DONE), **replays** the same Elite pool
+ * instead of returning no candidates.
+ * When the candidate pool is still empty (e.g. tier/pref filter), runs {@link checkAndRotateArchive} once and retries selection.
  */
 export async function selectNextScenario(
   userId: string,
@@ -360,9 +384,16 @@ export async function selectNextScenario(
 
     logSelectNextScenarioPrefilterCounts(catalog, playedSet, locale, attempt);
 
-    const candidates = catalog.filter(
-      (m) => !playedSet.has(m.scenarioId) && isSelectableMeta(m, locale),
-    );
+    const eligibleForLocale = catalog.filter((m) => isSelectableMeta(m, locale));
+    /** Prefer unseen (not in history ∪ served DONE ids); once the Elite allowlist is exhausted, replay the same pool for testing (pattern / contract / QR). */
+    let candidates = eligibleForLocale.filter((m) => !playedSet.has(m.scenarioId));
+    if (candidates.length === 0 && eligibleForLocale.length > 0) {
+      console.info("[arena] elite_catalog_replay", {
+        reason: "elite_allowlist_exhausted",
+        poolSize: eligibleForLocale.length,
+      });
+      candidates = eligibleForLocale;
+    }
 
     const difficultyFloor = await getDifficultyFloor(userId);
     const atOrAboveFloor = candidates.filter((m) => m.difficulty >= difficultyFloor);
@@ -404,6 +435,35 @@ export async function selectNextScenario(
         "no_scenario_available",
         "No candidate scenarios after filters (pool empty).",
       );
+    }
+
+    /** First Arena session with no history: always Elite V2 canonical entry (not a random catalog row). */
+    const isFreshCatalogEntry =
+      playedSet.size === 0 &&
+      !options?.preferFlagType?.trim() &&
+      options?.forceDifficultyTier == null &&
+      !options?.foundry_return;
+
+    if (isFreshCatalogEntry) {
+      const entryId = resolveFreshEntryScenarioId();
+      const pinned = pool.find((m) => m.scenarioId === entryId);
+      if (!pinned) {
+        throw new ScenarioSelectionError(
+          "catalog_unavailable",
+          `Fresh entry requires ${entryId} in catalog.`,
+        );
+      }
+      const scenario = await loadArenaScenarioPayloadFromDb(null, pinned.scenarioId, locale);
+      if (!scenario) {
+        throw new ScenarioSelectionError(
+          "scenario_payload_missing",
+          `Fresh entry payload missing for ${entryId}.`,
+        );
+      }
+      if (entryId === VERTICAL_SLICE_CANONICAL_SCENARIO_ID) {
+        console.info("[arena] fresh_entry_vertical_slice", { entryId });
+      }
+      return scenario;
     }
 
     const meta = pickScenarioIdByFlagCoverage(pool, counts);

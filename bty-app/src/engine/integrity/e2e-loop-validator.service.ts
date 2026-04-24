@@ -21,6 +21,7 @@ import {
   runLoopHealthCheck,
 } from "@/engine/integration/full-loop-validator";
 import { getPromotionReadiness } from "@/engine/integrity/promotion-readiness.service";
+import { consumeDueDelayedOutcomeTriggersForUser } from "@/engine/memory/delayed-outcome-consumer.service";
 import { scheduleOutcomes } from "@/engine/scenario/delayed-outcome-trigger.service";
 import { triggerWeeklyReset } from "@/engine/xp/weekly-xp-reset.service";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
@@ -174,13 +175,18 @@ export async function runExtendedHealthCheck(): Promise<ExtendedHealthReport> {
   // (2) Delayed outcome: scheduleOutcomes (choice-history → arena_pending_outcomes)
   try {
     const n = await scheduleOutcomes(testUserId, admin);
+    const consumed = await consumeDueDelayedOutcomeTriggersForUser({
+      userId: testUserId,
+      supabase: admin,
+      limit: 5,
+    });
     pushExtended(
       extendedChecks,
       runId,
       admin,
       "e2e_delayed_outcome_schedule_choice_path",
       "PASS",
-      `scheduleOutcomes_returned=${n}`,
+      `scheduleOutcomes_returned=${n}; delayed_outcome_consumed=${consumed.consumedCount}`,
     );
   } catch (e) {
     pushExtended(

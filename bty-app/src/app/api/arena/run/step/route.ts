@@ -1,12 +1,103 @@
 import { NextResponse } from "next/server";
 import { arenaRunIdFromUnknown } from "@/domain/arena/scenarios";
-import type { EscalationBranch } from "@/domain/arena/scenarios/types";
+import type { EscalationBranch, SecondChoice } from "@/domain/arena/scenarios/types";
 import { getArenaScenarioForRunStep } from "@/lib/bty/arena/arenaScenarioForRunStep";
+import { ELITE_RUNTIME_COMPAT_VERSION } from "@/lib/bty/arena/eliteRunResumeCompat";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import {
   recordExitSecondChoicePatternSignalV2,
   validateSecondChoicePatternSignalInputV2,
 } from "@/lib/bty/pattern-engine/secondChoicePatternSignalV2";
+
+/** Allowed carry-forward from `arena_runs.meta` only — no unbounded JSON copy. */
+const ARENA_RUN_META_PROGRESS_KEYS = [
+  "elite_runtime_compat",
+  "difficulty_level",
+  "time_remaining",
+  "acknowledged_at",
+] as const;
+
+function mergeAllowedArenaRunProgress(prev: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k of ARENA_RUN_META_PROGRESS_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(prev, k) && prev[k] !== undefined) {
+      out[k] = prev[k];
+    }
+  }
+  return out;
+}
+
+function buildStep3ArenaRunMeta(params: {
+  prev: Record<string, unknown>;
+  primaryId: string;
+  scenarioId: string;
+  branch: EscalationBranch;
+  acknowledgedAt: string;
+  difficultyLevel: number | undefined;
+}): Record<string, unknown> {
+  const { prev, primaryId, scenarioId, branch, acknowledgedAt, difficultyLevel } = params;
+  const m = mergeAllowedArenaRunProgress(prev);
+  m.primary_choice_id = primaryId;
+  m.escalation_branch_key = primaryId;
+  m.escalation_resolved_for_scenario_id = scenarioId;
+  m.difficulty_level = difficultyLevel !== undefined ? difficultyLevel : prev["difficulty_level"];
+  m.escalation_text = branch.escalation_text;
+  m.pressure_increase = branch.pressure_increase;
+  m.escalation_acknowledged_at = acknowledgedAt;
+  m.elite_runtime_compat = ELITE_RUNTIME_COMPAT_VERSION;
+  return m;
+}
+
+function buildStep4ArenaRunMeta(params: {
+  prev: Record<string, unknown>;
+  scenarioId: string;
+  branch: EscalationBranch;
+  branchKey: string;
+  secondId: string;
+  difficultyLevel: number | undefined;
+}): Record<string, unknown> {
+  const { prev, scenarioId, branch, branchKey, secondId, difficultyLevel } = params;
+  const m = mergeAllowedArenaRunProgress(prev);
+  const primaryFromPrev = prev["primary_choice_id"];
+  m.primary_choice_id =
+    typeof primaryFromPrev === "string" && primaryFromPrev.trim() !== ""
+      ? primaryFromPrev.trim()
+      : branchKey;
+  m.escalation_branch_key = branchKey;
+  m.escalation_resolved_for_scenario_id = scenarioId;
+  m.escalation_text = branch.escalation_text;
+  m.pressure_increase = branch.pressure_increase;
+  m.escalation_acknowledged_at = prev["escalation_acknowledged_at"];
+  m.second_choice_id = secondId;
+  m.difficulty_level = difficultyLevel !== undefined ? difficultyLevel : prev["difficulty_level"];
+  m.elite_runtime_compat = ELITE_RUNTIME_COMPAT_VERSION;
+  return m;
+}
+
+function secondChoiceToApiPayload(c: SecondChoice): {
+  id: string;
+  label: string;
+  cost: string;
+  direction: string;
+  pattern_family?: string;
+} {
+  const row: {
+    id: string;
+    label: string;
+    cost: string;
+    direction: string;
+    pattern_family?: string;
+  } = {
+    id: c.id,
+    label: c.label,
+    cost: c.cost,
+    direction: c.direction,
+  };
+  if (typeof c.pattern_family === "string" && c.pattern_family.trim() !== "") {
+    row.pattern_family = c.pattern_family.trim();
+  }
+  return row;
+}
 
 function secondChoicesCostsValid(branch: EscalationBranch): boolean {
   return branch.second_choices.every(
@@ -17,8 +108,8 @@ function secondChoicesCostsValid(branch: EscalationBranch): boolean {
 /**
  * POST /api/arena/run/step — advance run meta for **step 3** (escalation, no user choice) and **step 4** (second choice).
  *
- * - **Step 3:** Applies `escalationBranches[primaryChoiceId]` from the scenario; merges `escalation_text` / tier into `arena_runs.meta`.
- * - **Step 4:** Records `second_choice_id`; v2 pattern signal **only** from `second_choice.direction` / `pattern_family` (exit → tally; entry → no-op).
+ * - **Step 3:** Applies `escalationBranches[primaryChoiceId]` from the scenario; writes explicit escalation fields into `arena_runs.meta` (no blind `prevMeta` merge).
+ * - **Step 4:** Records `second_choice_id`; response body includes canonical `second_choices` from the scenario branch; v2 pattern signal **only** from `second_choice.direction` / `pattern_family`.
  *
  * @contract
  * - **401** `UNAUTHENTICATED`
@@ -26,7 +117,9 @@ function secondChoicesCostsValid(branch: EscalationBranch): boolean {
  *   `missing_escalation_branch` | `invalid_second_choice_cost` | `second_choice_required` | `second_choice_unknown` |
  *   `invalid_second_choice_direction` | `missing_pattern_family` | `invalid_pattern_family`
  * - **404** `RUN_NOT_FOUND`
- * - **200** `{ ok: true, meta: Record<string, unknown> }`
+ * - **409** `escalation_meta_scenario_mismatch` — step 4 only; `meta.escalation_resolved_for_scenario_id` ≠ run `scenario_id`
+ * - **200 step 3:** `{ ok: true, meta: Record<string, unknown> }`
+ * - **200 step 4:** `{ ok: true, step: 4, scenario_id, escalation_branch_key, second_choices, meta: { second_choice_id, difficulty_level, elite_runtime_compat } }`
  */
 export async function POST(req: Request) {
   const supabase = await getSupabaseServerClient();
@@ -58,10 +151,10 @@ export async function POST(req: Request) {
 
   const scenarioId = String((runRow as { scenario_id?: string }).scenario_id ?? "");
   const locale = (runRow as { locale?: string | null }).locale;
-  const prevMeta =
-    (runRow as { meta?: Record<string, unknown> | null }).meta != null &&
-    typeof (runRow as { meta?: unknown }).meta === "object"
-      ? ({ ...(runRow as { meta: Record<string, unknown> }).meta } as Record<string, unknown>)
+  const rawMeta = (runRow as { meta?: unknown }).meta;
+  const prevMeta: Record<string, unknown> =
+    rawMeta != null && typeof rawMeta === "object" && !Array.isArray(rawMeta)
+      ? (rawMeta as Record<string, unknown>)
       : {};
 
   const scenario = getArenaScenarioForRunStep(scenarioId, locale);
@@ -71,19 +164,24 @@ export async function POST(req: Request) {
     if (typeof primaryChoiceIdRaw === "string" && primaryChoiceIdRaw.trim() !== "") {
       return primaryChoiceIdRaw.trim();
     }
-    const fromMeta = prevMeta["primary_choice_id"];
-    if (typeof fromMeta === "string" && fromMeta.trim() !== "") return fromMeta.trim();
-    const { data: ev } = await supabase
+    const { data: evRows } = await supabase
       .from("arena_events")
-      .select("choice_id")
+      .select("choice_id, scenario_id")
       .eq("run_id", runId)
       .eq("step", 2)
+      .eq("event_type", "CHOICE_CONFIRMED")
       .not("choice_id", "is", null)
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const cid = (ev as { choice_id?: string | null } | null)?.choice_id;
-    return typeof cid === "string" && cid.trim() !== "" ? cid.trim() : null;
+      .limit(12);
+    const rows = (evRows ?? []) as Array<{ choice_id?: string | null; scenario_id?: string | null }>;
+    const aligned = rows.find((r) => (r.scenario_id ?? "") === scenarioId);
+    const pick = aligned ?? rows[0];
+    const cid = pick?.choice_id;
+    if (typeof cid === "string" && cid.trim() !== "") return cid.trim();
+
+    const fromMeta = prevMeta["primary_choice_id"];
+    if (typeof fromMeta === "string" && fromMeta.trim() !== "") return fromMeta.trim();
+    return null;
   }
 
   if (step === 3) {
@@ -122,15 +220,14 @@ export async function POST(req: Request) {
 
     const acknowledgedAt = new Date().toISOString();
     const dl = scenario?.difficulty_level;
-    const nextMeta: Record<string, unknown> = {
-      ...prevMeta,
-      primary_choice_id: primaryId,
-      escalation_branch_key: primaryId,
-      difficulty_level: dl ?? prevMeta["difficulty_level"],
-      escalation_text: branch.escalation_text,
-      pressure_increase: branch.pressure_increase,
-      escalation_acknowledged_at: acknowledgedAt,
-    };
+    const nextMeta = buildStep3ArenaRunMeta({
+      prev: prevMeta,
+      primaryId,
+      scenarioId,
+      branch,
+      acknowledgedAt,
+      difficultyLevel: dl,
+    });
 
     const { error: upErr } = await supabase
       .from("arena_runs")
@@ -158,12 +255,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, meta: nextMeta });
   }
 
-  // step === 4
   const secondId =
     typeof secondChoiceIdRaw === "string" && secondChoiceIdRaw.trim() !== ""
       ? secondChoiceIdRaw.trim()
       : null;
   if (!secondId) return NextResponse.json({ error: "second_choice_required" }, { status: 400 });
+
+  const resolvedSnap = prevMeta["escalation_resolved_for_scenario_id"];
+  if (
+    typeof resolvedSnap === "string" &&
+    resolvedSnap.trim() !== "" &&
+    resolvedSnap !== scenarioId
+  ) {
+    return NextResponse.json(
+      {
+        error: "escalation_meta_scenario_mismatch",
+        expectedScenarioId: scenarioId,
+        metaScenarioId: resolvedSnap,
+      },
+      { status: 409 },
+    );
+  }
 
   const branchKeyRaw = prevMeta["escalation_branch_key"] ?? prevMeta["primary_choice_id"];
   const branchKey = typeof branchKeyRaw === "string" ? branchKeyRaw.trim() : "";
@@ -213,12 +325,14 @@ export async function POST(req: Request) {
   });
 
   const dl = scenario?.difficulty_level;
-  const nextMeta: Record<string, unknown> = {
-    ...prevMeta,
-    escalation_branch_key: branchKey,
-    second_choice_id: secondId,
-    difficulty_level: dl ?? prevMeta["difficulty_level"],
-  };
+  const nextMeta = buildStep4ArenaRunMeta({
+    prev: prevMeta,
+    scenarioId,
+    branch,
+    branchKey,
+    secondId,
+    difficultyLevel: dl,
+  });
 
   const { error: upErr } = await supabase
     .from("arena_runs")
@@ -228,6 +342,20 @@ export async function POST(req: Request) {
 
   if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
 
+  const eventMeta: Record<string, unknown> = {
+    second_choice_id: secondId,
+    escalation_branch_key: branchKey,
+    direction: picked.direction,
+  };
+  if (typeof picked.pattern_family === "string" && picked.pattern_family.trim() !== "") {
+    eventMeta.pattern_family = picked.pattern_family.trim();
+  }
+
+  /**
+   * **`SECOND_CHOICE_CONFIRMED`** (here) vs **`BINDING_V1_SECOND`** (`POST /api/arena/choice` with `binding_phase: second`):
+   * - **BINDING_V1_SECOND** — JSON↔DB id binding + behavioral snapshot authority; inserted **before** this handler when the client uses the binding layer.
+   * - **SECOND_CHOICE_CONFIRMED** — run/step orchestration: `arena_runs.meta`, pattern exit signal, canonical `second_choices` response. **Not** a duplicate binding record; both may exist for the same user action (binding first, then this step).
+   */
   await supabase.from("arena_events").insert({
     run_id: runId,
     user_id: user.id,
@@ -235,14 +363,7 @@ export async function POST(req: Request) {
     event_type: "SECOND_CHOICE_CONFIRMED",
     scenario_id: scenarioId,
     choice_id: secondId,
-    meta: {
-      second_choice_id: secondId,
-      escalation_branch_key: branchKey,
-      direction: picked.direction,
-      ...(picked.pattern_family?.trim()
-        ? { pattern_family: picked.pattern_family.trim() }
-        : {}),
-    },
+    meta: eventMeta,
   });
 
   if (picked.direction === "entry") {
@@ -263,5 +384,18 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, meta: nextMeta });
+  const second_choices = branch.second_choices.map(secondChoiceToApiPayload);
+
+  return NextResponse.json({
+    ok: true,
+    step: 4,
+    scenario_id: scenarioId,
+    escalation_branch_key: branchKey,
+    second_choices,
+    meta: {
+      second_choice_id: secondId,
+      difficulty_level: dl ?? null,
+      elite_runtime_compat: ELITE_RUNTIME_COMPAT_VERSION,
+    },
+  });
 }

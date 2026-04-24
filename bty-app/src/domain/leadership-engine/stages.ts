@@ -64,7 +64,7 @@ export const STAGE_TRANSITION_CONTEXTS: readonly StageTransitionContext[] = [
 /**
  * Returns the next stage given current stage and transition context, or null if no transition.
  * Rules (§1): 1 repeat without delegation → 2; 2 repeat without corrective activation → 3;
- * 3 + AIR below threshold → 4 (`air_below_threshold`: align with `air.AIR_THRESHOLD_STAGE_ESCALATION` / low band);
+ * 3 + AIR below threshold → 4 (`air_below_threshold`: align with `air.AIR_THRESHOLD_STAGE_ESCALATION` = low/mid boundary 0.50);
  * Stage 4 completion → 1.
  */
 export function getNextStage(

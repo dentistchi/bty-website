@@ -13,6 +13,10 @@ import {
   isCanonicalPatternFamily,
   normalizePatternFamilyId,
 } from "@/domain/pattern-family";
+import {
+  loadArenaRunOwnerUserId,
+  logActionContractActorTrace,
+} from "@/lib/bty/action-contract/arenaRunActor.server";
 
 /** Bundled elite copy (extend as elite catalog ships). Used by tests + production IDs. */
 export const BUNDLED_ELITE_ACTION_CONTRACT_FIXTURE: Record<
@@ -159,6 +163,24 @@ export async function ensureActionContractWithAdmin(
 }> {
   void params.nbaLogId;
 
+  const runOwnerUserId = await loadArenaRunOwnerUserId(admin, params.runId);
+  if (!runOwnerUserId) {
+    console.error("[ensureActionContract] run_not_found_for_contract", {
+      runId: params.runId,
+      incoming_actor_user_id: params.userId,
+    });
+    return { ok: false, contractId: null, created: false };
+  }
+  const actorUserId = runOwnerUserId;
+  if (actorUserId !== params.userId) {
+    logActionContractActorTrace("ensureActionContractWithAdmin", {
+      incoming_actor_user_id: params.userId,
+      source_run_id: params.runId,
+      resolved_run_owner_user_id: actorUserId,
+      resolved_auth_user_id: params.userId,
+    });
+  }
+
   const normalizedFamily = normalizePatternFamilyId(params.patternFamily ?? null);
   const patternFamilyForRow =
     normalizedFamily && isCanonicalPatternFamily(normalizedFamily) ? normalizedFamily : null;
@@ -167,7 +189,7 @@ export async function ensureActionContractWithAdmin(
     const { data: openRow, error: openErr } = await admin
       .from("bty_action_contracts")
       .select("id")
-      .eq("user_id", params.userId)
+      .eq("user_id", actorUserId)
       .eq("pattern_family", patternFamilyForRow)
       .in("status", ["pending", "submitted", "escalated"])
       .maybeSingle();
@@ -177,7 +199,7 @@ export async function ensureActionContractWithAdmin(
     }
     if (openRow) {
       console.warn("[ensureActionContract] re_trigger_blocked_for_family", {
-        userId: params.userId,
+        userId: actorUserId,
         pattern_family: patternFamilyForRow,
       });
       return { ok: false, contractId: null, created: false };
@@ -187,13 +209,13 @@ export async function ensureActionContractWithAdmin(
   const { data: existing, error: selErr } = await admin
     .from("bty_action_contracts")
     .select("id, status")
-    .eq("user_id", params.userId)
+    .eq("user_id", actorUserId)
     .eq("session_id", params.runId)
     .maybeSingle();
 
   if (selErr) {
     console.error("[ensureActionContract] SELECT_FAILED", {
-      userId: params.userId,
+      userId: actorUserId,
       runId: params.runId,
       error: selErr.message,
     });
@@ -209,6 +231,20 @@ export async function ensureActionContractWithAdmin(
     return { ok: true, contractId: null, created: false };
   }
 
+  /** Product guard: pattern threshold alone is not enough — require at least two completed Arena runs. */
+  const { count: doneArenaRuns, error: doneCntErr } = await admin
+    .from("arena_runs")
+    .select("run_id", { count: "exact", head: true })
+    .eq("user_id", actorUserId)
+    .eq("status", "DONE");
+  if (doneCntErr) {
+    console.error("[ensureActionContract] done_run_count_failed", { error: doneCntErr.message });
+    return { ok: false, contractId: null, created: false };
+  }
+  if ((doneArenaRuns ?? 0) < 2) {
+    return { ok: true, contractId: null, created: false };
+  }
+
   const actionContractSpec = resolveActionContractSpecForPatternFamily(patternFamilyForRow);
 
   const deadlineAt = new Date(
@@ -221,8 +257,9 @@ export async function ensureActionContractWithAdmin(
   const { data: inserted, error: insErr } = await admin
     .from("bty_action_contracts")
     .insert({
-      user_id: params.userId,
+      user_id: actorUserId,
       session_id: params.runId,
+      run_id: params.runId,
       contract_description: actionContractSpec.description,
       deadline_at: deadlineAt,
       verification_mode: "hybrid",
@@ -241,6 +278,12 @@ export async function ensureActionContractWithAdmin(
     .single();
 
   if (!insErr && inserted && typeof (inserted as { id?: string }).id === "string") {
+    logActionContractActorTrace("ensureActionContractWithAdmin", {
+      incoming_actor_user_id: params.userId,
+      source_run_id: params.runId,
+      resolved_run_owner_user_id: actorUserId,
+      inserted_bty_action_contracts_user_id: actorUserId,
+    });
     return {
       ok: true,
       contractId: (inserted as { id: string }).id,
@@ -250,7 +293,7 @@ export async function ensureActionContractWithAdmin(
 
   // Insert may have committed but `.single()` returned no row (client/RLS edge) — reconcile before failing.
   if (!insErr) {
-    const reconciled = await loadContractIdByUserSession(admin, params.userId, params.runId);
+    const reconciled = await loadContractIdByUserSession(admin, actorUserId, params.runId);
     if (reconciled) {
       return { ok: true, contractId: reconciled, created: false };
     }
@@ -258,19 +301,19 @@ export async function ensureActionContractWithAdmin(
 
   const code = (insErr as { code?: string } | null)?.code;
   if (code === "23505") {
-    const rid = await loadContractIdByUserSession(admin, params.userId, params.runId);
+    const rid = await loadContractIdByUserSession(admin, actorUserId, params.runId);
     if (rid) {
       return { ok: true, contractId: rid, created: false };
     }
   }
 
-  const afterError = await loadContractIdByUserSession(admin, params.userId, params.runId);
+  const afterError = await loadContractIdByUserSession(admin, actorUserId, params.runId);
   if (afterError) {
     return { ok: true, contractId: afterError, created: false };
   }
 
   console.error("[ensureActionContract] PERSIST_FAILED", {
-    userId: params.userId,
+    userId: actorUserId,
     runId: params.runId,
     scenarioId: params.scenarioId,
     pattern_family: patternFamilyForRow,

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getActiveBtyNav, getBtyNavItems } from "@/components/bty/navigation/nav-items";
+import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
@@ -24,12 +25,17 @@ export default function BottomNav({
   const pathname = usePathname() ?? "";
   const loc = (locale === "ko" ? "ko" : "en") as Locale;
   const t = getMessages(loc).uxPhase1Stub;
-  const items = getBtyNavItems(locale, {
-    arena: t.bottomNavArena,
-    growth: t.bottomNavGrowth,
-    "my-page": t.bottomNavMyPage,
-  });
-  const active = getActiveBtyNav(pathname);
+  const { contract: arenaEntry } = useArenaEntryResolution(loc);
+  const items = getBtyNavItems(
+    locale,
+    {
+      arena: t.bottomNavArena,
+      growth: t.bottomNavGrowth,
+      "my-page": t.bottomNavMyPage,
+    },
+    arenaEntry.href,
+  );
+  const active = getActiveBtyNav(pathname, locale, arenaEntry.href);
 
   return (
     <nav

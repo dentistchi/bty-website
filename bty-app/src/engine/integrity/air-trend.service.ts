@@ -7,8 +7,10 @@
 
 import {
   computeAIR,
+  airToBand,
   type ActivationRecord,
   type ActivationType,
+  type AIRBand,
 } from "@/domain/leadership-engine";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
@@ -29,6 +31,8 @@ export type AIRTrend = {
   rolling7DayAverage: readonly number[];
   /** Mean of the last 7 calendar days in the window (indices 23–29). */
   last7DayWindowAvg: number;
+  /** {@link airToBand} for {@link last7DayWindowAvg} — UI should prefer this over raw averages. */
+  last7DayWindowBand: AIRBand;
   /** Mean of the 7 days before that (indices 16–22). */
   prior7DayWindowAvg: number;
   direction: AIRTrendDirection;
@@ -172,6 +176,7 @@ function emptyTrend(now: Date): AIRTrend {
     dailyAir: daily,
     rolling7DayAverage: rolling,
     last7DayWindowAvg: 0,
+    last7DayWindowBand: airToBand(0),
     prior7DayWindowAvg: 0,
     direction: "stable",
     consecutiveDecliningRollingSteps: 0,
@@ -255,6 +260,7 @@ export async function getAIRTrend(
     dailyAir,
     rolling7DayAverage,
     last7DayWindowAvg,
+    last7DayWindowBand: airToBand(last7DayWindowAvg),
     prior7DayWindowAvg,
     direction,
     consecutiveDecliningRollingSteps,

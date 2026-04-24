@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getGrowthHistory } from "@/features/growth/api/getGrowthHistory";
 import GrowthHistoryScreen from "@/features/growth/history/GrowthHistoryScreen";
+import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 import { loadSignals } from "@/features/arena/logic";
 import { loadReflections, shouldShowCompoundRecovery } from "@/features/growth/logic";
 import type { ReflectionEntry } from "@/features/growth/logic/types";
@@ -14,6 +15,7 @@ export default function GrowthHistoryPage() {
   const params = useParams();
   const locale = params?.locale === "ko" ? "ko" : "en";
   const base = `/${locale}`;
+  const { contract: arenaEntry } = useArenaEntryResolution(locale);
 
   const [mounted, setMounted] = useState(false);
   const [reflections, setReflections] = useState<ReflectionEntry[]>([]);
@@ -48,7 +50,7 @@ export default function GrowthHistoryPage() {
       recoveryTriggered={recoveryTriggered}
       onOpenLatestReflection={() => router.push(`${base}/growth/reflection`)}
       onOpenRecovery={() => router.push(`${base}/growth/recovery`)}
-      onReturnToArena={() => router.push(`${base}/bty-arena`)}
+      onReturnToArena={() => router.push(arenaEntry.href)}
       onBackToGrowth={() => router.push(`${base}/growth`)}
     />
   );

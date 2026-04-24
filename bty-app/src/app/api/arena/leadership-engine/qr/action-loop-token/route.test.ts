@@ -105,6 +105,7 @@ describe("POST /api/arena/leadership-engine/qr/action-loop-token", () => {
         {
           data: {
             id: "cid-1",
+            user_id: "u1",
             session_id: "run-xyz",
             status: "pending",
           },
@@ -130,6 +131,7 @@ describe("POST /api/arena/leadership-engine/qr/action-loop-token", () => {
         {
           data: {
             id: "cid-1",
+            user_id: "u1",
             session_id: "run-ko",
             status: "pending",
           },
@@ -151,6 +153,7 @@ describe("POST /api/arena/leadership-engine/qr/action-loop-token", () => {
         {
           data: {
             id: "cid-val",
+            user_id: "u1",
             session_id: "run-v",
             status: "approved",
           },

@@ -7,3 +7,10 @@ compatibility_flags = ["nodejs_compat"]
 [assets]
 directory = ".open-next/assets"
 binding = "ASSETS"
+
+# Worker vars: Wrangler deploys from this file; omitting keys here overwrites Dashboard-only values.
+# See ENGINE_ARCHITECTURE_V1.md §6 — Pipeline N entry (`/{locale}/bty-arena`).
+[vars]
+NEXT_PUBLIC_ARENA_PIPELINE_DEFAULT = "new"
+ARENA_PIPELINE_DEFAULT = "new"
+BTY_ARENA_VERTICAL_SLICE_ENTRY_SCENARIO_ID = "OWN-RE-02-R1"

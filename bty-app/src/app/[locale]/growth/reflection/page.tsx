@@ -12,6 +12,7 @@ import {
 } from "@/features/growth/logic";
 import type { ReflectionSeed } from "@/features/growth/logic/buildReflectionSeed";
 import ReflectionEntryScreen from "@/features/growth/reflection/ReflectionEntryScreen";
+import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 
 /** Arena → Growth reflection airlock — latest seed + recovery signal (API; guests fall back to local). */
 export default function GrowthReflectionPage() {
@@ -19,6 +20,7 @@ export default function GrowthReflectionPage() {
   const params = useParams();
   const locale = params?.locale === "ko" ? "ko" : "en";
   const base = `/${locale}`;
+  const { contract: arenaEntry } = useArenaEntryResolution(locale);
 
   const [mounted, setMounted] = useState(false);
   const [seed, setSeed] = useState<ReflectionSeed | null>(null);
@@ -54,7 +56,7 @@ export default function GrowthReflectionPage() {
       recoveryTriggered={recoveryTriggered}
       onOpenReflection={() => router.push(`${base}/growth/reflection/write`)}
       onOpenRecovery={() => router.push(`${base}/growth/recovery`)}
-      onReturnToArena={() => router.push(`${base}/bty-arena`)}
+      onReturnToArena={() => router.push(arenaEntry.href)}
     />
   );
 }

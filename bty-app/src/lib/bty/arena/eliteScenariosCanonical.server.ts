@@ -1,22 +1,30 @@
 /**
- * Arena canonical scenarios: bundled `src/data/bty_elite_scenarios_v2.json` (static import — always in deploy
- * bundle). Legacy `bty_elite_scenarios.json` (v1) is retained unchanged for diff/rollback.
- * Optional `ELITE_SCENARIOS_JSON_PATH` overrides for local/dev only; production should not rely on it.
+ * Arena canonical elite scenarios — **single server source**: chain workspace projection plus
+ * first-class vertical-slice rows (e.g. {@link buildOwnRe02R1EliteScenario}).
+ *
+ * Runtime narrative never comes from `bty_elite_scenarios_v2.json` (that file is a build/sync artifact;
+ * see `npm run sync:elite-from-chain`).
  */
 
-import type { EscalationBranch } from "@/domain/arena/scenarios/types";
+import type { EscalationBranch, SecondChoice } from "@/domain/arena/scenarios/types";
 import type { HiddenStatKey, Scenario, ScenarioChoice } from "@/lib/bty/scenario/types";
+import { assertCanonicalEliteNoLegacyLeak } from "@/lib/bty/arena/canonicalElitePayloadGuard.server";
+import {
+  buildEliteScenarioFromChainWorkspace,
+  CHAIN_WORKSPACE_ELITE_IDS,
+  type ChainWorkspaceEliteId,
+} from "@/lib/bty/arena/chainWorkspaceToEliteScenario.server";
+import { buildOwnRe02R1EliteScenario } from "@/lib/bty/arena/ownRe02R1EliteScenario.server";
+import { isEliteChainScenarioId } from "@/lib/bty/arena/postLoginEliteEntry";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { existsSync, readFileSync } from "fs";
-
-/** Bundled at build time — no `process.cwd()` or relative disk paths in the default path. */
-import bundledEliteJson from "@/data/bty_elite_scenarios_v2.json";
 
 /** v2 Step 2 — primary options; ids must match `escalationBranches` keys for this scenario. */
 export type ElitePrimaryChoiceRow = {
   id: string;
   label: string;
   subtext?: string;
+  /** When set (OWN-RE / binding template), overrides `${scenarioId}:primary:*` ids. */
+  dbChoiceId?: string;
 };
 
 export type EliteScenario = {
@@ -45,18 +53,22 @@ export type EliteDataset = {
 
 let cachedDataset: EliteDataset | null = null;
 
-function parseEliteDataset(raw: unknown): EliteDataset {
-  const parsed = raw as EliteDataset;
-  if (!parsed?.scenarios || !Array.isArray(parsed.scenarios)) {
-    throw new Error("[elite] invalid dataset: missing scenarios[]");
-  }
-  if (parsed.scenarios.length === 0) {
-    throw new Error("[elite] invalid dataset: scenarios[] is empty");
-  }
-  for (const s of parsed.scenarios) {
-    validateEliteScenario(s as EliteScenario);
-  }
-  return parsed;
+function buildCanonicalEliteDataset(): EliteDataset {
+  const chainScenarios: EliteScenario[] = CHAIN_WORKSPACE_ELITE_IDS.map((id) => {
+    const s = buildEliteScenarioFromChainWorkspace(id as ChainWorkspaceEliteId);
+    assertCanonicalEliteNoLegacyLeak(s);
+    validateEliteScenario(s);
+    return s;
+  });
+  const ownRe = buildOwnRe02R1EliteScenario() as EliteScenario;
+  assertCanonicalEliteNoLegacyLeak(ownRe);
+  validateEliteScenario(ownRe);
+  const scenarios = [...chainScenarios, ownRe];
+  return {
+    dataset: "canonical_elite_v2_chain_plus_own_re_02_r1",
+    total: scenarios.length,
+    scenarios,
+  };
 }
 
 /**
@@ -86,79 +98,48 @@ function validateEliteScenario(s: EliteScenario): void {
 }
 
 /**
- * Fail closed at module load when using the default bundled source (no env override).
- * Ensures production never starts with a broken or missing bundle.
+ * Fail closed at module load: chain projection + validation + legacy-leak guard must pass.
  */
-function assertBundledEliteValidAtStartup(): void {
-  if (process.env.ELITE_SCENARIOS_JSON_PATH?.trim()) return;
+function assertChainEliteValidAtStartup(): void {
   try {
-    parseEliteDataset(bundledEliteJson);
+    loadEliteDataset();
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[arena] elite_canonical_load_failed", {
       phase: "module_init",
-      reason: "bundled_bty_elite_scenarios_v2_invalid",
+      reason: "canonical_elite_invalid",
       message: msg,
       legacyFallback: "blocked",
     });
-    throw new Error(`[elite] canonical bundled dataset failed validation: ${msg}`);
+    throw new Error(`[elite] canonical elite dataset failed: ${msg}`);
   }
 }
 
-assertBundledEliteValidAtStartup();
+assertChainEliteValidAtStartup();
 
 /**
- * Load elite dataset: default is static bundled JSON. If `ELITE_SCENARIOS_JSON_PATH` is set, read that
- * file instead (dev/local override only — not required in production).
+ * Cached elite dataset: chain-projected scenarios plus first-class slice rows (e.g. OWN-RE-02-R1).
  */
 export function loadEliteDataset(): EliteDataset {
   if (cachedDataset) return cachedDataset;
-
-  const override = process.env.ELITE_SCENARIOS_JSON_PATH?.trim();
-  if (override) {
-    if (!existsSync(override)) {
-      console.error("[arena] elite_canonical_load_failed", {
-        phase: "override",
-        reason: "ELITE_SCENARIOS_JSON_PATH_file_missing",
-        path: override,
-        legacyFallback: "blocked",
-      });
-      throw new Error(`[elite] ELITE_SCENARIOS_JSON_PATH not found: ${override}`);
-    }
-    try {
-      const raw = readFileSync(override, "utf8");
-      cachedDataset = parseEliteDataset(JSON.parse(raw) as unknown);
-      return cachedDataset;
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      console.error("[arena] elite_canonical_load_failed", {
-        phase: "override",
-        reason: "parse_or_read_failed",
-        path: override,
-        message: msg,
-        legacyFallback: "blocked",
-      });
-      throw e;
-    }
-  }
-
-  try {
-    cachedDataset = parseEliteDataset(bundledEliteJson);
-    return cachedDataset;
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error("[arena] elite_canonical_load_failed", {
-      phase: "bundled",
-      reason: "parse_failed",
-      message: msg,
-      legacyFallback: "blocked",
-    });
-    throw e;
-  }
+  cachedDataset = buildCanonicalEliteDataset();
+  return cachedDataset;
 }
 
-export function getEliteScenarioById(id: string): EliteScenario | undefined {
-  return loadEliteDataset().scenarios.find((s) => s.id === id);
+/**
+ * Strict: allowed elite ids only — {@link buildEliteScenarioFromChainWorkspace}.
+ * @throws Error if `id` is not one of {@link CHAIN_WORKSPACE_ELITE_IDS}
+ */
+export function getEliteScenarioById(id: string): EliteScenario {
+  if (!isEliteChainScenarioId(id)) {
+    throw new Error(`[elite] forbidden_scenario_id: ${id}`);
+  }
+  const ds = loadEliteDataset();
+  const s = ds.scenarios.find((x) => x.id === id);
+  if (!s) {
+    throw new Error(`[elite] invariant: missing canonical scenario for ${id}`);
+  }
+  return s;
 }
 
 function flagTypeFromElite(s: EliteScenario): string {
@@ -180,10 +161,12 @@ function buildChoice(
   label: string,
   intent: string,
   index: number,
+  dbChoiceId: string,
 ): ScenarioChoice {
   const xpBase = 35 + index * 8;
   return {
     choiceId,
+    dbChoiceId,
     label,
     intent,
     xpBase,
@@ -195,9 +178,9 @@ function buildChoice(
       resilience: 0,
       gratitude: 0,
     },
-    result:
-      "Your choice is recorded. Continue building leadership habits in the next interaction.",
-    microInsight: intent ? `Theme: ${intent}` : "Small choices compound into culture.",
+    /** Elite v2 UI does not surface result/microInsight; keep empty so no generic adapter copy can leak into the runtime. */
+    result: "",
+    microInsight: "",
     followUp: { enabled: false },
   };
 }
@@ -211,15 +194,100 @@ function parsePrimaryChoiceId(raw: string): "A" | "B" | "C" | "D" {
 /**
  * Step 2 choices from bundled `primaryChoices` only — same ids used for `escalationBranches[id]` on steps 3–4.
  */
-function choicesFromPrimaryChoicesJson(rows: ElitePrimaryChoiceRow[]): ScenarioChoice[] {
-  return rows.map((row, index) => {
+function choicesFromPrimaryChoicesJson(rows: ElitePrimaryChoiceRow[], eliteScenarioId: string): ScenarioChoice[] {
+  const out: ScenarioChoice[] = [];
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index]!;
     const choiceId = parsePrimaryChoiceId(row.id);
     const label = typeof row.label === "string" ? row.label.trim() : "";
     if (!label) throw new Error(`[elite] empty primaryChoices label for id ${row.id}`);
-    const base = buildChoice(choiceId, label, `primary_${choiceId}`, index);
     const sub = typeof row.subtext === "string" ? row.subtext.trim() : "";
-    return sub !== "" ? { ...base, choiceSubtext: sub } : base;
-  });
+    const dbChoiceId =
+      typeof row.dbChoiceId === "string" && row.dbChoiceId.trim() !== ""
+        ? row.dbChoiceId.trim()
+        : `${eliteScenarioId}:primary:${choiceId}`;
+    const b = buildChoice(choiceId, label, `primary_${choiceId}`, index, dbChoiceId);
+    if (sub === "") {
+      out.push(b);
+    } else {
+      out.push({
+        choiceId: b.choiceId,
+        dbChoiceId: b.dbChoiceId,
+        label: b.label,
+        choiceSubtext: sub,
+        intent: b.intent,
+        xpBase: b.xpBase,
+        difficulty: b.difficulty,
+        hiddenDelta: {
+          integrity: 0,
+          communication: 0,
+          insight: 0,
+          resilience: 0,
+          gratitude: 0,
+        },
+        result: "",
+        microInsight: "",
+        followUp: { enabled: false },
+      });
+    }
+  }
+  return out;
+}
+
+function cloneSecondChoice(sc: SecondChoice): SecondChoice {
+  const o: SecondChoice = {
+    id: sc.id,
+    label: sc.label,
+    cost: sc.cost,
+    direction: sc.direction,
+  };
+  if (typeof sc.pattern_family === "string" && sc.pattern_family.trim() !== "") {
+    o.pattern_family = sc.pattern_family.trim();
+  }
+  return o;
+}
+
+function cloneEscalationBranch(br: EscalationBranch, scenarioIdForDb?: string): EscalationBranch {
+  const second_choices: SecondChoice[] = [];
+  for (const sc of br.second_choices) {
+    const c = cloneSecondChoice(sc);
+    const secondDb =
+      typeof sc.dbChoiceId === "string" && sc.dbChoiceId.trim() !== ""
+        ? sc.dbChoiceId.trim()
+        : scenarioIdForDb != null && scenarioIdForDb.trim() !== ""
+          ? `${scenarioIdForDb}:second:${sc.id}`
+          : undefined;
+    second_choices.push(
+      secondDb != null ? { ...c, dbChoiceId: secondDb } : c,
+    );
+  }
+  const base: EscalationBranch = {
+    escalation_text: br.escalation_text,
+    pressure_increase: br.pressure_increase,
+    second_choices,
+  };
+  const ad = br.action_decision;
+  if (ad != null && Array.isArray(ad.choices) && ad.choices.length > 0) {
+    base.action_decision = {
+      prompt: ad.prompt,
+      ...(typeof ad.promptKo === "string" && ad.promptKo.trim() !== "" ? { promptKo: ad.promptKo.trim() } : {}),
+      choices: ad.choices.map((c) => ({
+        id: c.id,
+        label: c.label,
+        ...(typeof c.commitment === "string" && c.commitment.trim() !== ""
+          ? { commitment: c.commitment.trim() }
+          : {}),
+        ...(c.meaning != null && typeof c.meaning === "object" ? { meaning: c.meaning } : {}),
+        dbChoiceId:
+          typeof c.dbChoiceId === "string" && c.dbChoiceId.trim() !== ""
+            ? c.dbChoiceId.trim()
+            : scenarioIdForDb != null && scenarioIdForDb.trim() !== ""
+              ? `${scenarioIdForDb}:action_decision:${c.id}`
+              : c.dbChoiceId,
+      })),
+    };
+  }
+  return base;
 }
 
 function coachWhatForElite(s: EliteScenario): HiddenStatKey[] {
@@ -235,8 +303,8 @@ function coachWhatForElite(s: EliteScenario): HiddenStatKey[] {
 function inferCoachKeys(s: EliteScenario): NonNullable<Scenario["coachNotes"]> {
   return {
     whatThisTrains: coachWhatForElite(s),
-    whyItMatters:
-      "Elite scenario — practice structural honesty under DSO operational pressure.",
+    /** Scenario-specific only; avoids one generic DSO line for every elite row. */
+    whyItMatters: typeof s.title === "string" && s.title.trim() !== "" ? s.title.trim() : "",
   };
 }
 
@@ -267,15 +335,21 @@ export function eliteScenarioToScenario(s: EliteScenario, _locale: "en" | "ko"):
   let difficulty_level: NonNullable<Scenario["difficulty_level"]> | undefined;
 
   if (hasRowEscalation) {
-    escalationBranches = rowEb as Record<string, EscalationBranch>;
+    const raw = rowEb as Record<string, EscalationBranch>;
+    const eb: Record<string, EscalationBranch> = {};
+    for (const key of Object.keys(raw)) {
+      eb[key] = cloneEscalationBranch(raw[key]!, s.id);
+    }
+    escalationBranches = eb;
     difficulty_level = s.difficulty_level ?? DEFAULT_ELITE_SCENARIO_DIFFICULTY_LEVEL;
   }
 
-  const scenario: Scenario = {
+  const baseScenario: Scenario = {
     scenarioId: s.id,
+    dbScenarioId: s.id,
     title: s.title,
     context: body,
-    choices: choicesFromPrimaryChoicesJson(s.primaryChoices),
+    choices: choicesFromPrimaryChoicesJson(s.primaryChoices, s.id),
     coachNotes: inferCoachKeys(s),
     elite_only: true,
     eliteSetup: {
@@ -283,13 +357,24 @@ export function eliteScenarioToScenario(s: EliteScenario, _locale: "en" | "ko"):
       pressure: s.pressure,
       tradeoff: s.tradeoff,
     },
-    ...(escalationBranches != null &&
-      difficulty_level != null && {
-        escalationBranches,
-        difficulty_level,
-      }),
   };
-  return scenario;
+
+  if (escalationBranches == null || difficulty_level == null) {
+    return baseScenario;
+  }
+
+  return {
+    scenarioId: baseScenario.scenarioId,
+    dbScenarioId: baseScenario.dbScenarioId,
+    title: baseScenario.title,
+    context: baseScenario.context,
+    choices: baseScenario.choices,
+    coachNotes: baseScenario.coachNotes,
+    elite_only: baseScenario.elite_only,
+    eliteSetup: baseScenario.eliteSetup,
+    escalationBranches,
+    difficulty_level,
+  };
 }
 
 /** Catalog metadata for session/next (no DB read). */
@@ -332,20 +417,34 @@ function eliteToDbRows(s: EliteScenario): DbRow[] {
   }));
   const body = scenario.context;
   const now = new Date().toISOString();
-  const base = {
-    id: s.id,
-    title: s.title,
-    body,
-    choices,
-    flag_type: flagTypeFromElite(s),
-    scenario_type: "bty_elite",
-    difficulty: 2,
-    is_beginner: false,
-    updated_at: now,
-  };
+  const id = s.id;
+  const title = s.title;
+  const flag_type = flagTypeFromElite(s);
   return [
-    { locale: "en", ...base },
-    { locale: "ko", ...base },
+    {
+      locale: "en",
+      id,
+      title,
+      body,
+      choices,
+      flag_type,
+      scenario_type: "bty_elite",
+      difficulty: 2,
+      is_beginner: false,
+      updated_at: now,
+    },
+    {
+      locale: "ko",
+      id,
+      title,
+      body,
+      choices,
+      flag_type,
+      scenario_type: "bty_elite",
+      difficulty: 2,
+      is_beginner: false,
+      updated_at: now,
+    },
   ];
 }
 
@@ -364,7 +463,9 @@ export async function upsertEliteCatalogToPublicScenarios(): Promise<{
   const { scenarios } = loadEliteDataset();
   const rows: DbRow[] = [];
   for (const s of scenarios) {
-    rows.push(...eliteToDbRows(s));
+    for (const row of eliteToDbRows(s)) {
+      rows.push(row);
+    }
   }
   const { error } = await admin.from("scenarios").upsert(rows, { onConflict: "locale,id" });
   if (error) return { ok: false, insertedOrUpdated: 0, error: error.message };

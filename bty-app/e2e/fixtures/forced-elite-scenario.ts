@@ -2,12 +2,12 @@
  * Minimal valid `Scenario` for Elite arena (matches `eliteScenarioToScenario` shape for `core_01_training_system`).
  * Used only by Playwright to override session-router JSON — not imported by app code.
  *
- * **Escalation path (default `FORCED_ELITE_SCENARIO`):** `escalationBranches` A/B drive step 3 (`elite-escalation-step`) and
- * step 4 (`elite-forced-tradeoff-step` with `elite-forced-tradeoff-X` / `elite-forced-tradeoff-Y`). Second-choice lock: after
- * one pick, the other option disables (`EliteForcedTradeoffStep`).
+ * **Escalation path (default `FORCED_ELITE_SCENARIO`):** `escalationBranches` A/B; client POSTs step 3 inline, then
+ * `elite-forced-tradeoff-step` (`elite-forced-tradeoff-X` / `elite-forced-tradeoff-Y`). After one pick, the other option
+ * disables (`EliteForcedTradeoffStep`).
  *
  * **No branches:** `FORCED_ELITE_SCENARIO_LEGACY_NO_ESCALATION` omits `escalationBranches`. The app’s
- * `ElitePostChoiceFlow` then shows **`elite-v2-runtime-error-escalation_not_configured`** at step 3 (legacy stance UI
+ * `EliteArenaPostChoiceBlock` then shows **`elite-v2-runtime-error-escalation_not_configured`** after primary (legacy stance UI
  * removed); E2E treats this as `elite-v2-escalation-blocked`.
  */
 import type { EscalationBranch, Scenario } from "../../src/lib/bty/scenario/types";

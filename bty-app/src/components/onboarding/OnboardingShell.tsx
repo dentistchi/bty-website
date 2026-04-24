@@ -3,10 +3,10 @@
 /**
  * Five-step onboarding (client page shell).
  * - **Load:** `GET /api/bty/onboarding/step` → {@link getOnboardingStep}.
- * - **Steps:** top dots — **filled teal** = completed step, **outline** = pending (current = teal ring, future = gray ring). (1) KO/EN · (2) four role cards + level 1–5 · (3) {@link ScenarioCard} + `BEGINNER_SCENARIOS[0]` · (4) AIR SVG arc 0→score **1s ease** · (5) {@link LearningPathWidget} `inlineFourPathPicker` + **시작하기** / Get started.
+ * - **Steps:** top dots — **filled teal** = completed step, **outline** = pending (current = teal ring, future = gray ring). (1) KO/EN · (2) four role cards + level 1–5 · (3) {@link ScenarioCard} + `BEGINNER_SCENARIOS[0]` · (4) AIR execution-integrity **band** meter (no raw score) · (5) {@link LearningPathWidget} `inlineFourPathPicker` + **시작하기** / Get started.
  * - **Advance:** `POST /api/bty/onboarding/step` `{ step, payload }`.
  * - **Back:** browser back suppressed from step 3+ (`popstate`).
- * - **Done:** {@link ONBOARDING_COMPLETE_EVENT} → `/{locale}/bty-arena`.
+ * - **Done:** {@link ONBOARDING_COMPLETE_EVENT} → session-router entry href (see {@link fetchArenaEntryResolutionClient}).
  * - **Middleware:** no session → login; authenticated + `step_completed < 5` on `/bty-arena` · `/bty/foundry` · `/center` → `/{locale}/onboarding` (`src/middleware.ts`).
  */
 
@@ -19,6 +19,9 @@ import { BEGINNER_SCENARIOS } from "@/lib/bty/scenario/beginnerScenarios";
 import type { BeginnerScenario } from "@/lib/bty/scenario/beginnerTypes";
 import type { Scenario as CatalogScenario, ScenarioChoice } from "@/lib/bty/scenario/types";
 import { ARENA_SHELL_LOCALE_KEY } from "@/components/arena/ScenarioSessionShell";
+import type { AIRBand } from "@/domain/leadership-engine/air";
+import { fetchArenaEntryResolutionClient } from "@/lib/bty/arena/fetchArenaEntryResolution.client";
+import { getMessages } from "@/lib/i18n";
 
 export type OnboardingRole = "Individual Contributor" | "Team Lead" | "Manager" | "Executive";
 
@@ -35,7 +38,7 @@ export type OnboardingStepPayload =
   | { locale: "ko" | "en" }
   | { role: OnboardingRole; level: number }
   | { scenarioId: string }
-  | { airScore: number; airMeterPct: number }
+  | { airBand: AIRBand }
   | { confirmed: true };
 
 function beginnerFirstToCatalog(b: BeginnerScenario): CatalogScenario {
@@ -90,13 +93,13 @@ export type OnboardingShellProps = {
 
 const AIR_FILL_MS = 1000 as const;
 
-/** AIR baseline: circular progress using `stroke-dasharray` 0 → score over 1s. */
+/** Band-only meter: fill reflects low/mid/high (symbolic, not raw AIR). */
 function AirSvgMeter({
-  airScore,
   airMeterPct,
+  ariaLabel,
 }: {
-  airScore: number;
   airMeterPct: number;
+  ariaLabel: string;
 }) {
   const size = 168;
   const stroke = 10;
@@ -113,7 +116,7 @@ function AirSvgMeter({
       viewBox={`0 0 ${size} ${size}`}
       className="mx-auto block"
       role="img"
-      aria-label={`AIR ${airScore.toFixed(3)}`}
+      aria-label={ariaLabel}
     >
       <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e2e8f0" strokeWidth={stroke} className="dark:stroke-slate-700" />
       <circle
@@ -145,8 +148,10 @@ export function OnboardingShell({ userId, locale }: OnboardingShellProps) {
   const [role, setRole] = React.useState<OnboardingRole>("Individual Contributor");
   const [level, setLevel] = React.useState(3);
 
-  const [airScore, setAirScore] = React.useState(0.72);
+  const [airBand, setAirBand] = React.useState<AIRBand>("mid");
   const [airMeterPct, setAirMeterPct] = React.useState(0);
+
+  const bandMeterTarget = (band: AIRBand) => (band === "low" ? 38 : band === "mid" ? 62 : 90);
 
   const beginner = React.useMemo(() => beginnerFirstToCatalog(BEGINNER_SCENARIOS[0]!), []);
 
@@ -161,7 +166,8 @@ export function OnboardingShell({ userId, locale }: OnboardingShellProps) {
       }
       setState(json);
       if (json.isComplete || json.nextStep == null) {
-        router.replace(`/${loc}/bty-arena`);
+        const r = await fetchArenaEntryResolutionClient(loc === "ko" ? "ko" : "en");
+        router.replace(r.href);
       }
     } catch {
       setErr(loc === "ko" ? "온보딩 상태를 불러오지 못했습니다." : "Failed to load onboarding.");
@@ -185,10 +191,12 @@ export function OnboardingShell({ userId, locale }: OnboardingShellProps) {
     return () => window.removeEventListener("popstate", trapBack);
   }, [step]);
 
-  /** On {@link ONBOARDING_COMPLETE_EVENT}, navigate to Arena. */
+  /** On {@link ONBOARDING_COMPLETE_EVENT}, navigate to session-resolved Arena entry. */
   React.useEffect(() => {
     const go = () => {
-      router.replace(`/${localeChoice}/bty-arena`);
+      void fetchArenaEntryResolutionClient(localeChoice).then((r) => {
+        router.replace(r.href);
+      });
     };
     window.addEventListener(ONBOARDING_COMPLETE_EVENT, go);
     return () => window.removeEventListener(ONBOARDING_COMPLETE_EVENT, go);
@@ -237,26 +245,28 @@ export function OnboardingShell({ userId, locale }: OnboardingShellProps) {
     fetch("/api/bty/dashboard/integrity", { credentials: "include" })
       .then(async (r) => {
         const j = (await r.json()) as {
-          airTrend?: { last7DayWindowAvg?: number };
+          airTrend?: { last7DayWindowBand?: AIRBand };
           error?: string;
         };
         if (!r.ok || "error" in j) return;
-        const v = Number(j.airTrend?.last7DayWindowAvg);
-        const x = Number.isFinite(v) && v > 0 && v <= 1 ? v : 0.72;
+        const bandRaw = j.airTrend?.last7DayWindowBand;
+        const band: AIRBand =
+          bandRaw === "low" || bandRaw === "mid" || bandRaw === "high" ? bandRaw : "mid";
         if (!alive) return;
-        setAirScore(x);
+        setAirBand(band);
+        const target = bandMeterTarget(band);
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            if (alive) setAirMeterPct(Math.round(x * 100));
+            if (alive) setAirMeterPct(target);
           });
         });
       })
       .catch(() => {
         if (!alive) return;
-        setAirScore(0.72);
+        setAirBand("mid");
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            if (alive) setAirMeterPct(72);
+            if (alive) setAirMeterPct(bandMeterTarget("mid"));
           });
         });
       });
@@ -289,7 +299,7 @@ export function OnboardingShell({ userId, locale }: OnboardingShellProps) {
   };
 
   const onStep4 = async () => {
-    await markStep(4, { airScore, airMeterPct });
+    await markStep(4, { airBand });
   };
 
   const onStep5 = async () => {
@@ -463,14 +473,38 @@ export function OnboardingShell({ userId, locale }: OnboardingShellProps) {
 
           {currentStep === 4 ? (
             <section className="space-y-8">
-              <h1 className="text-center text-2xl font-semibold tracking-tight">AIR</h1>
+              <h1 className="text-center text-2xl font-semibold tracking-tight">
+                {uiLoc === "ko" ? "실행 무결성 (AIR)" : "Execution integrity (AIR)"}
+              </h1>
               <p className="text-center text-sm text-slate-600 dark:text-slate-400">
-                {uiLoc === "ko" ? "기준 AIR 점수 (최근 7일 평균)" : "Baseline AIR (7-day average)"}
+                {uiLoc === "ko"
+                  ? "최근 7일 창의 밴드만 표시합니다. 숫자 점수는 노출하지 않습니다."
+                  : "Showing the last-7-day band only. Raw scores stay private."}
               </p>
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                <AirSvgMeter airScore={airScore} airMeterPct={airMeterPct} />
-                <p className="mt-2 text-center text-3xl font-bold tabular-nums text-teal-700 dark:text-teal-300">
-                  {airScore.toFixed(3)}
+                <AirSvgMeter
+                  airMeterPct={airMeterPct}
+                  ariaLabel={
+                    uiLoc === "ko"
+                      ? `AIR 실행 무결성 밴드: ${getMessages("ko").bty[airBand === "low" ? "airBandLow" : airBand === "mid" ? "airBandMid" : "airBandHigh"]}`
+                      : `AIR execution integrity band: ${getMessages("en").bty[airBand === "low" ? "airBandLow" : airBand === "mid" ? "airBandMid" : "airBandHigh"]}`
+                  }
+                />
+                <p className="mt-3 text-center text-xl font-semibold text-teal-700 dark:text-teal-300">
+                  {uiLoc === "ko"
+                    ? airBand === "low"
+                      ? "저밴드"
+                      : airBand === "mid"
+                        ? "중밴드"
+                        : "고밴드"
+                    : airBand === "low"
+                      ? "Low band"
+                      : airBand === "mid"
+                        ? "Mid band"
+                        : "High band"}
+                </p>
+                <p className="mx-auto mt-2 max-w-sm text-center text-xs text-slate-500 dark:text-slate-400">
+                  {getMessages(uiLoc === "ko" ? "ko" : "en").bty.airExecutionIntegrityFootnote}
                 </p>
               </div>
               <button

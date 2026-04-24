@@ -362,16 +362,23 @@ describe("POST /api/arena/run/complete", () => {
     const data = await res.json();
     const expectedKeys = [
       "actionContractCreated",
+      "action_contract",
       "contractId",
       "coreXp",
       "deltaApplied",
+      "gates",
+      "mode",
       "myPageRefetchRequired",
       "ok",
       "runId",
+      "runtime_state",
+      "state_priority",
       "status",
       "weeklyXp",
     ].sort();
     expect(Object.keys(data).sort()).toEqual(expectedKeys);
+    expect(data.runtime_state).toBe("NEXT_SCENARIO_READY");
+    expect(data.mode).toBe("arena");
     expect(data.actionContractCreated).toBe(false);
     expect(data.myPageRefetchRequired).toBe(true);
   });

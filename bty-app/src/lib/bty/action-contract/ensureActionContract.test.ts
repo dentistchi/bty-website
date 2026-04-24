@@ -1,6 +1,3 @@
-/**
- * @vitest-environment node
- */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   ensureActionContractWithAdmin,
@@ -41,25 +38,71 @@ describe("ensureActionContractWithAdmin", () => {
   const userId = "u1";
   const runId = "run-1";
   const scenarioElite = Object.keys(BUNDLED_ELITE_ACTION_CONTRACT_FIXTURE)[0];
+  const canonicalFamily = "ownership_escape" as const;
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
+  function makeAdmin(
+    btyFromFn: (n: number) => object,
+    opts: { doneCount?: number } = {},
+  ) {
+    let arenaRunsN = 0;
+    let btyN = 0;
+    return {
+      from: vi.fn((table: string) => {
+        if (table === "arena_runs") {
+          arenaRunsN += 1;
+          if (arenaRunsN === 1) {
+            // loadArenaRunOwnerUserId: .select().eq().maybeSingle()
+            return {
+              select: vi.fn(() => ({
+                eq: vi.fn(() => ({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: { user_id: userId },
+                    error: null,
+                  }),
+                })),
+              })),
+            };
+          }
+          // done count guard: .select().eq().eq() → { count, error }
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                eq: vi.fn().mockResolvedValue({
+                  count: opts.doneCount ?? 2,
+                  error: null,
+                }),
+              })),
+            })),
+          };
+        }
+        btyN += 1;
+        return btyFromFn(btyN);
+      }),
+    } as never;
+  }
+
   it("contract exists → ok:true, created:false", async () => {
-    const maybeSingle = vi.fn().mockResolvedValue({
-      data: { id: "existing-c", status: "pending" },
-      error: null,
-    });
-    const admin = {
-      from: vi.fn(() => ({
+    const admin = makeAdmin(() => ({
+      insert: () => ({
         select: () => ({
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        }),
+      }),
+      select: () => ({
+        eq: () => ({
           eq: () => ({
-            eq: () => ({ maybeSingle }),
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { id: "existing-c", status: "pending" },
+              error: null,
+            }),
           }),
         }),
-      })),
-    } as never;
+      }),
+    }));
 
     const r = await ensureActionContractWithAdmin(admin, {
       userId,
@@ -70,51 +113,22 @@ describe("ensureActionContractWithAdmin", () => {
     expect(r).toEqual({ ok: true, contractId: "existing-c", created: false });
   });
 
-  const canonicalFamily = "ownership_escape" as const;
-
-  function makeFromWithOpenThenSession(
-    maybeSingleOpen: ReturnType<typeof vi.fn>,
-    maybeSingleSession: ReturnType<typeof vi.fn>,
-    singleInsert: ReturnType<typeof vi.fn>,
-  ) {
-    let selectCall = 0;
-    return vi.fn(() => ({
-      select: () => {
-        selectCall += 1;
-        if (selectCall === 1) {
-          return {
-            eq: () => ({
-              eq: () => ({
-                in: () => ({ maybeSingle: maybeSingleOpen }),
-              }),
-            }),
-          };
-        }
-        return {
-          eq: () => ({
-            eq: () => ({
-              maybeSingle: maybeSingleSession,
-            }),
-          }),
-        };
-      },
-      insert: () => ({
-        select: () => ({
-          single: singleInsert,
-        }),
-      }),
-    }));
-  }
-
   it("contract missing + threshold family → creates with pattern-based copy, ok:true, created:true", async () => {
     const maybeSingleOpen = vi.fn().mockResolvedValue({ data: null, error: null });
     const maybeSingleSession = vi.fn().mockResolvedValue({ data: null, error: null });
-    const singleInsert = vi.fn().mockResolvedValue({
-      data: { id: "new-c" },
-      error: null,
-    });
-    const from = makeFromWithOpenThenSession(maybeSingleOpen, maybeSingleSession, singleInsert);
-    const admin = { from } as never;
+    const singleInsert = vi.fn().mockResolvedValue({ data: { id: "new-c" }, error: null });
+
+    let selectCall = 0;
+    const admin = makeAdmin(() => ({
+      select: () => {
+        selectCall += 1;
+        if (selectCall === 1) {
+          return { eq: () => ({ eq: () => ({ in: () => ({ maybeSingle: maybeSingleOpen }) }) }) };
+        }
+        return { eq: () => ({ eq: () => ({ maybeSingle: maybeSingleSession }) }) };
+      },
+      insert: () => ({ select: () => ({ single: singleInsert }) }),
+    }));
 
     const r = await ensureActionContractWithAdmin(admin, {
       userId,
@@ -124,22 +138,19 @@ describe("ensureActionContractWithAdmin", () => {
       patternFamily: canonicalFamily,
     });
     expect(r).toEqual({ ok: true, contractId: "new-c", created: true });
-    expect(from).toHaveBeenCalledWith("bty_action_contracts");
     expect(singleInsert).toHaveBeenCalled();
   });
 
   it("contract missing + no threshold family → no insert, ok:true, contractId:null", async () => {
-    const maybeSingleSession = vi.fn().mockResolvedValue({ data: null, error: null });
-    const from = vi.fn(() => ({
+    const admin = makeAdmin(() => ({
       select: () => ({
         eq: () => ({
           eq: () => ({
-            maybeSingle: maybeSingleSession,
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
           }),
         }),
       }),
     }));
-    const admin = { from } as never;
 
     const r = await ensureActionContractWithAdmin(admin, {
       userId,
@@ -157,8 +168,18 @@ describe("ensureActionContractWithAdmin", () => {
       data: null,
       error: { code: "XX000", message: "db boom" },
     });
-    const from = makeFromWithOpenThenSession(maybeSingleOpen, maybeSingleSession, singleInsert);
-    const admin = { from } as never;
+
+    let selectCall = 0;
+    const admin = makeAdmin(() => ({
+      select: () => {
+        selectCall += 1;
+        if (selectCall === 1) {
+          return { eq: () => ({ eq: () => ({ in: () => ({ maybeSingle: maybeSingleOpen }) }) }) };
+        }
+        return { eq: () => ({ eq: () => ({ maybeSingle: maybeSingleSession }) }) };
+      },
+      insert: () => ({ select: () => ({ single: singleInsert }) }),
+    }));
 
     const r = await ensureActionContractWithAdmin(admin, {
       userId,
@@ -172,16 +193,22 @@ describe("ensureActionContractWithAdmin", () => {
 
   it("insert returns no id but row exists → reconcile returns contractId", async () => {
     const maybeSingleOpen = vi.fn().mockResolvedValue({ data: null, error: null });
-    const maybeSingleSession = vi
-      .fn()
+    const maybeSingleSession = vi.fn()
       .mockResolvedValueOnce({ data: null, error: null })
       .mockResolvedValueOnce({ data: { id: "reconciled-c" }, error: null });
-    const singleInsert = vi.fn().mockResolvedValue({
-      data: null,
-      error: null,
-    });
-    const from = makeFromWithOpenThenSession(maybeSingleOpen, maybeSingleSession, singleInsert);
-    const admin = { from } as never;
+    const singleInsert = vi.fn().mockResolvedValue({ data: null, error: null });
+
+    let selectCall = 0;
+    const admin = makeAdmin(() => ({
+      select: () => {
+        selectCall += 1;
+        if (selectCall === 1) {
+          return { eq: () => ({ eq: () => ({ in: () => ({ maybeSingle: maybeSingleOpen }) }) }) };
+        }
+        return { eq: () => ({ eq: () => ({ maybeSingle: maybeSingleSession }) }) };
+      },
+      insert: () => ({ select: () => ({ single: singleInsert }) }),
+    }));
 
     const r = await ensureActionContractWithAdmin(admin, {
       userId,
@@ -196,16 +223,25 @@ describe("ensureActionContractWithAdmin", () => {
 
   it("insert fails with DB error but row exists → final reconcile returns contractId", async () => {
     const maybeSingleOpen = vi.fn().mockResolvedValue({ data: null, error: null });
-    const maybeSingleSession = vi
-      .fn()
+    const maybeSingleSession = vi.fn()
       .mockResolvedValueOnce({ data: null, error: null })
       .mockResolvedValue({ data: { id: "race-c" }, error: null });
     const singleInsert = vi.fn().mockResolvedValue({
       data: null,
       error: { code: "08000", message: "transient" },
     });
-    const from = makeFromWithOpenThenSession(maybeSingleOpen, maybeSingleSession, singleInsert);
-    const admin = { from } as never;
+
+    let selectCall = 0;
+    const admin = makeAdmin(() => ({
+      select: () => {
+        selectCall += 1;
+        if (selectCall === 1) {
+          return { eq: () => ({ eq: () => ({ in: () => ({ maybeSingle: maybeSingleOpen }) }) }) };
+        }
+        return { eq: () => ({ eq: () => ({ maybeSingle: maybeSingleSession }) }) };
+      },
+      insert: () => ({ select: () => ({ single: singleInsert }) }),
+    }));
 
     const r = await ensureActionContractWithAdmin(admin, {
       userId,

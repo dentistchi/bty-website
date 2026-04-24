@@ -11,7 +11,7 @@
  * **`elite-action-contract-pattern-threshold-continue`** (pattern-threshold gate). Both are valid; this suite asserts the
  * branch that actually renders, then either runs the full contract submit flow or continues to **`elite-execution-gate`**.
  *
- * **No-`escalationBranches` fixture:** `ElitePostChoiceFlow` does not render legacy `elite-post-confirm`; it shows
+ * **No-`escalationBranches` fixture:** `EliteArenaPostChoiceBlock` does not render legacy confirm UI; it shows
  * **`elite-v2-runtime-error-escalation_not_configured`**. The legacy test asserts that surface and exits (no mirror/step 6).
  *
  * Debug session-router + gate: `E2E_DEBUG_FORCED_ELITE=1 …`
@@ -83,7 +83,8 @@ async function continuePatternThresholdToExecutionGate(page: Page): Promise<void
 
 test.describe.configure({ mode: "serial" });
 
-test.describe("Arena Step 6 — forced elite (deterministic)", () => {
+/** Elite arena client no longer includes mirror / action contract / execution gate; superseded by run-complete flow. */
+test.describe.skip("Arena Step 6 — forced elite (deterministic)", () => {
   const cleanupUserId = E2E_CONTRACT_USER_IDS.step6Forced;
   const cleanupEmail = E2E_CONTRACT_EMAILS.step6Forced;
 

@@ -1,0 +1,10 @@
+---
+description: Analyze bug root cause before coding
+globs: ["**/*"]
+alwaysApply: false
+---
+When debugging:
+1. Identify root cause first
+2. Do not write code immediately
+3. Ask for missing context if needed
+4. Prefer smallest possible diagnosis scope

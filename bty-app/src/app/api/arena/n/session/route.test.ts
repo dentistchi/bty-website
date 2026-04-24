@@ -30,6 +30,27 @@ vi.mock("@/lib/bty/arena/blockingArenaActionContract", () => ({
   fetchBlockingArenaContractForSession: (...args: unknown[]) => mockFetchBlocking(...args),
 }));
 
+vi.mock("@/engine/scenario/delayed-outcome-trigger.service", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("@/engine/scenario/delayed-outcome-trigger.service")>();
+  return {
+    ...mod,
+    fetchFirstDueReexposureMeta: vi.fn().mockResolvedValue({
+      scenarioId: "core_01_training_system",
+      pendingOutcomeId: "pending-out-1",
+    }),
+  };
+});
+
+const mockGetLeadershipEngineState = vi.fn();
+const mockConsumeDueDelayedOutcomeTriggersForUser = vi.fn();
+vi.mock("@/lib/bty/leadership-engine/state-service", () => ({
+  getLeadershipEngineState: (...args: unknown[]) => mockGetLeadershipEngineState(...args),
+}));
+vi.mock("@/engine/memory/delayed-outcome-consumer.service", () => ({
+  consumeDueDelayedOutcomeTriggersForUser: (...args: unknown[]) =>
+    mockConsumeDueDelayedOutcomeTriggersForUser(...args),
+}));
+
 function makeSupabaseForSessionRouter() {
   const lte = vi.fn().mockResolvedValue({ data: null, error: null });
   const updateChain = { eq: vi.fn().mockReturnThis(), lte };
@@ -52,10 +73,21 @@ describe("GET /api/arena/n/session", () => {
     mockGetArenaPipelineDefault.mockReturnValue("new");
     mockFetchBlocking.mockResolvedValue(null);
     mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: {} });
+    mockGetLeadershipEngineState.mockResolvedValue({
+      currentStage: 1,
+      stageName: "Discover",
+      forcedResetTriggeredAt: null,
+      resetDueAt: null,
+    });
     mockGetNextScenarioForSession.mockResolvedValue({
       scenario: { scenarioId: "s1", title: "T", context: "C", choices: [] },
       route: "catalog",
       delayedOutcomePending: false,
+    });
+    mockConsumeDueDelayedOutcomeTriggersForUser.mockResolvedValue({
+      consumedCount: 0,
+      firstTriggerId: null,
+      triggers: [],
     });
   });
 
@@ -80,5 +112,64 @@ describe("GET /api/arena/n/session", () => {
     const res = await GET(req);
     expect(res.status).toBe(200);
     expect(mockGetNextScenarioForSession).toHaveBeenCalled();
+    const data = await res.json();
+    expect(data.mode).toBe("arena");
+    expect(data.runtime_state).toBe("ARENA_SCENARIO_READY");
+    expect(typeof data.state_priority).toBe("number");
+    expect(data.gates).toEqual({
+      next_allowed: true,
+      choice_allowed: true,
+      qr_allowed: false,
+    });
+    expect(data.action_contract?.exists).toBe(false);
+    expect(data.scenario?.source).toBe("json");
+  });
+
+  it("returns REEXPOSURE_DUE when delayed outcomes pending", async () => {
+    const { from } = makeSupabaseForSessionRouter();
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: { from },
+      base: {},
+    });
+    mockGetNextScenarioForSession.mockResolvedValue({
+      scenario: { scenarioId: "s1", title: "T", context: "C", choices: [] },
+      route: "catalog",
+      delayedOutcomePending: true,
+    });
+    const req = new NextRequest("http://localhost/api/arena/n/session?locale=en");
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.runtime_state).toBe("REEXPOSURE_DUE");
+    expect(data.gates?.choice_allowed).toBe(false);
+    expect(data.scenario).toBeNull();
+    expect(data.re_exposure).toEqual({
+      due: true,
+      scenario_id: "core_01_training_system",
+      pending_outcome_id: "pending-out-1",
+    });
+  });
+
+  it("returns FORCED_RESET_PENDING when LE stage 4 with forced_reset_triggered_at", async () => {
+    const { from } = makeSupabaseForSessionRouter();
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: { from },
+      base: {},
+    });
+    mockGetLeadershipEngineState.mockResolvedValue({
+      currentStage: 4,
+      stageName: "Integrity Reset",
+      forcedResetTriggeredAt: "2026-01-01T00:00:00.000Z",
+      resetDueAt: "2026-01-03T00:00:00.000Z",
+    });
+    const req = new NextRequest("http://localhost/api/arena/n/session?locale=en");
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.runtime_state).toBe("FORCED_RESET_PENDING");
+    expect(data.scenario).toBeNull();
+    expect(mockGetNextScenarioForSession).not.toHaveBeenCalled();
   });
 });

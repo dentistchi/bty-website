@@ -1,3 +1,4 @@
+import { AIR_BAND_LOW_MID, AIR_BAND_MID_HIGH, airToBand } from "@/domain/leadership-engine/air";
 import type { ReflectionEntry } from "@/features/growth/logic/types";
 import type { Locale } from "@/lib/i18n";
 import type { LeadershipMetrics, LeadershipState } from "./types";
@@ -167,18 +168,19 @@ export function computeLeadershipState(
     };
   }
 
+  const airBand = airToBand(metrics.AIR);
   const airLabel =
-    metrics.AIR >= 0.8
+    airBand === "high"
       ? locale === "ko"
-        ? "안정화 인사이트 패턴"
-        : "Stabilizing Insight Pattern"
-      : metrics.AIR >= 0.6
+        ? "실행 무결성 — 고밴드"
+        : "Execution integrity — high band"
+      : airBand === "mid"
         ? locale === "ko"
-          ? "결정 명료도 발전 중"
-          : "Developing Decision Clarity"
+          ? "실행 무결성 — 중밴드"
+          : "Execution integrity — mid band"
         : locale === "ko"
-          ? "초기 결정 패턴"
-          : "Emerging Decision Pattern";
+          ? "실행 무결성 — 저밴드"
+          : "Execution integrity — low band";
 
   const tiiLabel =
     metrics.TII >= 0.8
@@ -217,9 +219,9 @@ export function computeLeadershipState(
     metrics.relationalBias >= metrics.operationalBias ? c.inflTrust : c.inflStructure;
 
   const alignmentTrend =
-    metrics.AIR >= 0.7 && metrics.TII >= 0.7
+    metrics.AIR >= AIR_BAND_MID_HIGH && metrics.TII >= 0.7
       ? c.alignUp
-      : metrics.AIR >= 0.5
+      : metrics.AIR >= AIR_BAND_LOW_MID
         ? c.alignStabilizing
         : c.alignUneven;
 
@@ -233,7 +235,7 @@ export function computeLeadershipState(
         : "Protect relational trust without losing structure.";
 
   const baseNextCue =
-    metrics.AIR >= 0.7
+    metrics.AIR >= AIR_BAND_MID_HIGH
       ? locale === "ko"
         ? "더 높은 압박의 시나리오 주기로 진행해 보세요."
         : "Advance through higher-pressure scenario cycles."
@@ -262,8 +264,11 @@ export function computeLeadershipState(
   let headline = c.identityCalibrating;
   if (reflections.length > 0) {
     headline = c.identityWithReflections;
-  } else if (metrics.AIR >= 0.65 && metrics.TII >= 0.6) headline = c.identityStable;
-  else if (metrics.signalCount >= 1 && (metrics.AIR > 0.45 || metrics.TII > 0.45))
+  } else if (metrics.AIR >= AIR_BAND_MID_HIGH && metrics.TII >= 0.6) headline = c.identityStable;
+  else if (
+    metrics.signalCount >= 1 &&
+    (metrics.AIR >= AIR_BAND_LOW_MID || metrics.TII > 0.45)
+  )
     headline = c.identityEmerging;
 
   return {
