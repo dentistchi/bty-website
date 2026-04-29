@@ -1,0 +1,117 @@
+{
+  "program": "BTY Arena Board",
+  "version": "1.0",
+  "description": "Board/strategic level scenarios. Unlocks after Leader L3 (L3 다음 단계).",
+  "structure": [
+    "macro_environment",
+    "trigger_event",
+    "board_composition",
+    "power_distribution",
+    "motion_proposal",
+    "coalition_options",
+    "vote_scenarios",
+    "five_year_projection",
+    "identity_shift"
+  ],
+  "items": [
+    {
+      "id": "BSM_01",
+      "macro_environment": "DSO consolidation accelerating nationwide. PE valuations peak at 12x EBITDA.",
+      "trigger_event": "PE firm offers to acquire 60% equity stake with 3-year expansion mandate.",
+      "board_composition": "7 founding partners, 3 next-gen partners, 1 independent advisor",
+      "power_distribution": "Founders hold 70% voting power.",
+      "motion_proposal": "Accept majority sale to fund aggressive 3-year expansion.",
+      "coalition_options": [
+        {
+          "coalition": "Founders majority bloc",
+          "argument": "Secure liquidity now while valuation is high."
+        },
+        {
+          "coalition": "Next-gen minority bloc",
+          "argument": "Retain autonomy to build generational institution."
+        }
+      ],
+      "vote_scenarios": [
+        {
+          "result": "Motion passes (PE majority sale)",
+          "outcome": "Capital increases, governance shifts to PE-controlled board seats."
+        },
+        {
+          "result": "Motion fails",
+          "outcome": "Group remains independent, slower expansion trajectory."
+        }
+      ],
+      "five_year_projection": {
+        "if_pass": "Rapid expansion to 35 offices, EBITDA growth, but reduced internal autonomy.",
+        "if_fail": "Organic growth to 22 offices, stronger cultural cohesion."
+      },
+      "identity_shift": "Asset platform vs. generational professional group."
+    },
+    {
+      "id": "BSM_02",
+      "macro_environment": "Internal strategic speed slowing due to equal-vote partner structure.",
+      "trigger_event": "Multiple delayed strategic decisions due to voting deadlock.",
+      "board_composition": "10 equal voting partners.",
+      "power_distribution": "Each partner holds 10%.",
+      "motion_proposal": "Create CEO role with unilateral authority on operational decisions.",
+      "coalition_options": [
+        {
+          "coalition": "Speed Advocates",
+          "argument": "Strategic agility requires centralized authority."
+        },
+        {
+          "coalition": "Equality Bloc",
+          "argument": "Collective ownership prevents power imbalance."
+        }
+      ],
+      "vote_scenarios": [
+        {
+          "result": "CEO structure approved",
+          "outcome": "Strategic speed improves; power asymmetry increases."
+        },
+        {
+          "result": "CEO structure rejected",
+          "outcome": "Shared governance maintained; decision latency persists."
+        }
+      ],
+      "five_year_projection": {
+        "centralized": "Faster expansion, clearer hierarchy.",
+        "collective": "Stable culture, slower pivots."
+      },
+      "identity_shift": "Corporate governance model vs. professional partnership collective."
+    },
+    {
+      "id": "BSM_03",
+      "macro_environment": "Founders nearing retirement phase; next-gen leadership emerging.",
+      "trigger_event": "Two founders signal reduced involvement over next 3 years.",
+      "board_composition": "5 senior founders, 4 mid-career partners, 2 emerging leaders.",
+      "power_distribution": "Founders control 65% voting rights.",
+      "motion_proposal": "Gradual 5-year voting transition to next-generation partners.",
+      "coalition_options": [
+        {
+          "coalition": "Founder Preservation",
+          "argument": "Maintain stability and institutional memory."
+        },
+        {
+          "coalition": "Transition Advocates",
+          "argument": "Early empowerment prevents leadership vacuum."
+        }
+      ],
+      "vote_scenarios": [
+        {
+          "result": "Transition approved",
+          "outcome": "Power redistributed progressively."
+        },
+        {
+          "result": "Transition delayed",
+          "outcome": "Short-term stability, long-term succession shock risk."
+        }
+      ],
+      "five_year_projection": {
+        "approved": "Smooth generational shift.",
+        "delayed": "Potential abrupt leadership crisis."
+      },
+      "identity_shift": "Founder-centric legacy vs. institutional continuity."
+    }
+  ]
+}

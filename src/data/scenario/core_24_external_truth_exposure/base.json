@@ -1,0 +1,64 @@
+{
+  "scenarioId": "core_24_external_truth_exposure",
+  "dbScenarioId": "INCIDENT-03-TRUTH-06",
+
+  "incident": {
+    "incidentId": "incident_03_authority_silence_to_truth_repair",
+    "stage": 6,
+    "axisGroup": "Truth",
+    "axisIndex": 3,
+    "previousScenarioId": "core_23_manager_truth_block",
+    "nextScenarioId": "core_25_forced_repair_conversation",
+    "roleShift": "Office Manager -> Regional Manager",
+    "propagation": {
+      "exitEffect": "The issue is framed as a single complaint, preventing pattern recognition.",
+      "entryEffect": "The pattern is connected across roles, increasing organizational visibility and pressure.",
+      "reExposureNote": "If the user exits here, the same pattern reappears as repeated complaints or audit findings."
+    }
+  },
+
+  "structure": {
+    "primary": [
+      { "choiceId": "A", "dbChoiceId": "INCIDENT-03-TRUTH-06_primary_A" },
+      { "choiceId": "B", "dbChoiceId": "INCIDENT-03-TRUTH-06_primary_B" },
+      { "choiceId": "C", "dbChoiceId": "INCIDENT-03-TRUTH-06_primary_C" },
+      { "choiceId": "D", "dbChoiceId": "INCIDENT-03-TRUTH-06_primary_D" }
+    ],
+    "tradeoff": {
+      "A": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_A_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_A_Y" }
+      ],
+      "B": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_B_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_B_Y" }
+      ],
+      "C": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_C_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_C_Y" }
+      ],
+      "D": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_D_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_D_Y" }
+      ]
+    },
+    "action_decision": {
+      "A_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-03-TRUTH-06_action_A_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-03-TRUTH-06_action_A_X_AD2", "is_action_commitment": false }
+      ],
+      "B_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-03-TRUTH-06_action_B_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-03-TRUTH-06_action_B_X_AD2", "is_action_commitment": false }
+      ],
+      "C_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-03-TRUTH-06_action_C_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-03-TRUTH-06_action_C_X_AD2", "is_action_commitment": false }
+      ],
+      "D_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-03-TRUTH-06_action_D_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-03-TRUTH-06_action_D_X_AD2", "is_action_commitment": false }
+      ]
+    }
+  }
+}

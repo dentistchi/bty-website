@@ -1,0 +1,241 @@
+{
+  "id": "core_16_repair_standard_reset",
+  "title": "그럼 지금 누가 기준을 세울 것인가",
+  "role": "System Actor",
+  "pressure": "사건 이후 미팅이 열린다. 모두가 ‘이제 기준을 맞춰야 한다’고 말한다. 그런데 막상 기준을 구체적으로 정하려는 순간, 방 안의 공기가 바뀐다. 한 의사는 ‘케이스마다 다르다’고 말하고, 다른 사람은 ‘너무 rigid하면 진료가 막힌다’고 한다. 어시스턴트들은 조용하다. 매니저는 동의하는 듯하지만 끝까지 밀어붙이지 않는다. 그때 보인다. 지금까지 기준이 없었던 게 아니라, 기준을 정할 사람이 없었던 것이다.",
+  "time_pressure": "이 미팅 안에서 방향을 정해야 함",
+  "social_pressure": [
+    "동료 반발",
+    "리더의 애매한 태도",
+    "어시스턴트 침묵",
+    "갈등을 피하려는 분위기"
+  ],
+  "risk_layer": [
+    "직접적인 권한 충돌",
+    "관계 악화",
+    "기준을 정한 사람으로 찍히는 부담",
+    "정의했지만 실행되지 않는 실패"
+  ],
+  "tradeoff": "진짜 기준을 세울 것인가 vs 모두가 편한 애매함으로 돌아갈 것인가",
+  "bty_tension_axis": "Clarity vs Social Safety",
+  "difficulty_level": 5,
+  "identity_weight": {
+    "what_this_tests": [
+      "나는 기준을 소비하는 사람인가, 기준을 세우는 사람인가",
+      "갈등이 생겨도 필요한 말을 유지할 수 있는가",
+      "편한 합의보다 실행 가능한 기준을 선택할 수 있는가"
+    ]
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "대화를 넓게 유지하고 구체 기준은 피한다",
+      "subtext": "방 안의 긴장은 줄지만, 아무것도 실제로 정해지지 않는다.",
+      "direction": "exit"
+    },
+    {
+      "id": "B",
+      "label": "지금 이 자리에서 공통 기준을 명확히 정하자고 한다",
+      "subtext": "저항이 생기지만, 반복을 끊을 수 있는 유일한 지점이다.",
+      "direction": "entry"
+    },
+    {
+      "id": "C",
+      "label": "각 provider의 clinical judgment를 존중하자고 한다",
+      "subtext": "자율성은 지키지만, 같은 문제가 다시 생길 가능성이 남는다.",
+      "direction": "exit"
+    },
+    {
+      "id": "D",
+      "label": "기준 논의는 다음 미팅으로 넘긴다",
+      "subtext": "오늘의 충돌은 피하지만, 시스템은 그대로 유지된다.",
+      "direction": "exit"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "대화는 부드럽게 끝난다. 모두가 ‘앞으로 더 잘 맞춰보자’고 말한다. 하지만 누가 어떤 상황에서 어떤 기준을 적용할지는 정해지지 않는다. 미팅은 성공처럼 보이지만, 시스템은 그대로다.",
+      "pressure_increase": 0.7,
+      "intensity": 4,
+      "identity_clash": [
+        "방 분위기는 지켰다",
+        "하지만 기준은 생기지 않았다",
+        "다음 사건이 오면 또 같은 방식으로 흔들릴 것이다"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "좋은 분위기를 유지하고 넘어간다",
+          "direction": "exit",
+          "cost": "편한 모호함이 살아남고, 다음 사건에서도 같은 해석 흔들림을 맞는다."
+        },
+        {
+          "id": "Y",
+          "label": "대화를 멈추고 구체 기준을 다시 요청한다",
+          "direction": "entry",
+          "cost": "미뤄둔 갈등을 다시 들여오되, 근본 불확실성은 줄지 않았을 수 있다."
+        }
+      ],
+      "action_decision": {
+        "prompt": "합의처럼 보이는 것과 기준은 다르다. 무엇을 남길 것인가.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "오늘 논의에서 빠진 최소 기준을 문서로 정리해 다시 제안한다",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "좋은 분위기가 생겼으니 자연스럽게 나아질 거라고 둔다",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "B": {
+      "escalation_text": "기준을 정하자고 말하는 순간, 방 안의 긴장이 올라간다. 누군가 묻는다. ‘그 기준은 누가 정하는데요?’ 다른 사람은 ‘그렇게 하면 clinical judgment가 제한된다’고 말한다. 이제 이건 단순한 기준 논의가 아니다. 권한, 책임, 실행의 문제다.",
+      "pressure_increase": 1,
+      "intensity": 5,
+      "identity_clash": [
+        "기준을 말하면 저항이 생긴다",
+        "말하지 않으면 같은 일이 반복된다",
+        "지금 물러서면 기준은 다시 애매함으로 돌아간다"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "기준은 말하되 적용 방식은 열어둔다",
+          "direction": "exit",
+          "cost": "문서에는 있지만 일상은 여전히 가장 크게 해석하는 사람의 흐름을 탄다."
+        },
+        {
+          "id": "Y",
+          "label": "기준과 적용 방식까지 함께 정의하자고 한다",
+          "direction": "entry",
+          "cost": "집행은 결과와 저항을 이름 붙이며, 부드럽게 미루고 싶던 긴장을 당겨 올린다."
+        }
+      ],
+      "action_decision": {
+        "prompt": "기준은 적용되지 않으면 의견일 뿐이다. 무엇을 실제로 정할 것인가.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "누가, 언제, 어떤 예외 기준으로 적용할지까지 포함한 기준안을 만든다",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "원칙만 합의하고 적용은 각자에게 맡긴다",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "C": {
+      "escalation_text": "각자의 clinical judgment를 존중하자는 말에 방 안은 편해진다. 하지만 바로 그 자율성이 지금의 불일치를 만든 구조였다는 점은 다뤄지지 않는다. autonomy라는 단어가 accountability를 가린다.",
+      "pressure_increase": 0.8,
+      "intensity": 4,
+      "identity_clash": [
+        "자율성은 중요하다",
+        "하지만 지금 문제는 자율성이 아니라 기준 없는 편차다",
+        "공통 기준 없는 자유는 환자에게 다른 현실을 만든다"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "각자 판단을 존중하고 마무리한다",
+          "direction": "exit",
+          "cost": "자율은 존중되지만 환자는 의사마다 다른 기준을 여전히 겪는다."
+        },
+        {
+          "id": "Y",
+          "label": "자율성과 최소 공통 기준을 분리해서 정의한다",
+          "direction": "entry",
+          "cost": "최소 기준은 재량을 줄이고, 강한 임상가에게는 기술의 자유가 줄었다고 느껴질 수 있다."
+        }
+      ],
+      "action_decision": {
+        "prompt": "자율성과 일관성은 어떻게 동시에 존재할 것인가.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "provider autonomy가 허용되는 범위와 반드시 맞춰야 할 최소 기준을 분리한다",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "자율성을 우선하고 편차는 감수한다",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "D": {
+      "escalation_text": "다음 미팅으로 넘기자 방 안의 긴장은 바로 내려간다. 하지만 모두가 안다. 다음 미팅이 오기 전에도 케이스는 계속 들어온다. 기준이 없는 상태에서 또 다른 판단이 내려질 것이다.",
+      "pressure_increase": 0.7,
+      "intensity": 4,
+      "identity_clash": [
+        "오늘의 충돌은 피했다",
+        "하지만 내일부터 다시 같은 판단이 반복된다",
+        "미룬다는 것은 현 기준을 유지한다는 뜻이다"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "다음 미팅까지 기다린다",
+          "direction": "exit",
+          "cost": "지금은 숨이 돌아가지만, 다음 논의 전까지 긴급함은 쌓이고 같은 흔들림이 반복된다."
+        },
+        {
+          "id": "Y",
+          "label": "임시 기준이라도 오늘 정하자고 한다",
+          "direction": "entry",
+          "cost": "오늘 정의를 밀어붙이면 차분히 묶으려던 방의 갈등이 바로 올라간다."
+        }
+      ],
+      "action_decision": {
+        "prompt": "미루는 동안 무엇이 기준으로 작동하는가.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "정식 기준 전까지 적용할 임시 최소 기준을 오늘 정한다",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "다음 논의 전까지 기존 방식대로 간다",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    }
+  }
+}

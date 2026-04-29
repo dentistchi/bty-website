@@ -1,0 +1,157 @@
+/**
+ * GET /api/arena/unlocked-scenarios
+ * Returns track, maxUnlockedLevel, previewLevel, and scenario levels/items the user may access.
+ * Gated by Arena membership approval: only approved arena_membership_requests row is used for tenure.
+ * Pending or no request → membershipPending, empty levels.
+ * Leader with L1+ → staff levels S1–S3 also included (아랫단계 오픈).
+ */
+
+import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { getEffectiveTrack } from "@/lib/bty/arena/program";
+import { loadProgramConfig } from "@/lib/bty/arena/program";
+import type { LevelWithTenure } from "@/lib/bty/arena/program";
+import { getUnlockedContentWindow } from "@/lib/bty/arena/unlock";
+import type { Track } from "@/lib/bty/arena/tenure";
+import { getIsEliteTop5 } from "@/lib/bty/arena/eliteStatus";
+import {
+  ARENA_STAFF_LEVEL_ORDER,
+  arenaTrackLevelOrdering,
+  isArenaProgramLevelUnlockedByMax,
+} from "@/domain/rules/arenaProgramLevelUnlockedByMax";
+import { arenaContentLocaleFromParam } from "@/domain/rules/arenaContentLocaleFromParam";
+
+export async function GET(req: NextRequest) {
+  const locale = arenaContentLocaleFromParam(req.nextUrl.searchParams.get("locale"));
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+
+  const { data: membershipRequest } = await supabase
+    .from("arena_membership_requests")
+    .select("id, job_function, joined_at, leader_started_at, status")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!membershipRequest || membershipRequest.status !== "approved") {
+    const isElite = await getIsEliteTop5(supabase, user.id);
+    return NextResponse.json({
+      ok: true,
+      membershipPending: true,
+      track: "staff",
+      maxUnlockedLevel: null,
+      previewLevel: null,
+      levels: [],
+      l4_access: false,
+      isElite,
+    });
+  }
+
+  // PROJECT_BACKLOG §3: joined_at 없으면 new-joiner로 오인해 staff만 노출되는 것 방지. leader_started_at 또는 과거일 사용.
+  const rawJoined = membershipRequest.joined_at
+    ? new Date(membershipRequest.joined_at)
+    : membershipRequest.leader_started_at
+      ? new Date(membershipRequest.leader_started_at)
+      : new Date(2000, 0, 1);
+  const joinedAt =
+    rawJoined.getTime() && !Number.isNaN(rawJoined.getTime())
+      ? rawJoined.toISOString()
+      : new Date(2000, 0, 1).toISOString();
+  const leaderStartedAt = membershipRequest.leader_started_at
+    ? new Date(membershipRequest.leader_started_at).toISOString()
+    : null;
+  const jobFunction = membershipRequest.job_function ?? null;
+
+  const track = getEffectiveTrack({
+    jobFunction: jobFunction ?? undefined,
+    membershipRole: undefined,
+    joinedAt,
+  }) as Track;
+
+  let l4_access = false;
+  const { data: profile } = await supabase
+    .from("arena_profiles")
+    .select("l4_access")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (profile?.l4_access === true) l4_access = true;
+
+  const { maxUnlockedLevel, previewLevel } = getUnlockedContentWindow({
+    track,
+    user: { joinedAt, leaderStartedAt },
+    now: new Date(),
+    l4Granted: l4_access,
+    jobFunction: jobFunction ?? undefined,
+  });
+
+  const program = loadProgramConfig();
+  const trackConfig = program.tracks.find((t) => t.track === track);
+  if (!trackConfig?.levels?.length) {
+    const isElite = await getIsEliteTop5(supabase, user.id);
+    return NextResponse.json({
+      ok: true,
+      membershipPending: false,
+      track,
+      maxUnlockedLevel,
+      previewLevel,
+      levels: [],
+      l4_access,
+      isElite,
+    });
+  }
+
+  const ordering = arenaTrackLevelOrdering(track);
+  const isElite = await getIsEliteTop5(supabase, user.id);
+  const levels = trackConfig.levels
+    .filter((lvl) =>
+      isArenaProgramLevelUnlockedByMax(lvl.level, maxUnlockedLevel, ordering),
+    )
+    .map((lvl) => {
+      const { items, human_model: _hm, ...rest } = lvl as LevelWithTenure;
+      const displayTitle = locale === "ko" && rest.title_ko ? rest.title_ko : rest.title;
+      const itemsWithEliteOnly = (items ?? []).map((it: unknown) => ({
+        ...(typeof it === "object" && it !== null ? it : {}),
+        elite_only: Boolean((it as { elite_only?: boolean })?.elite_only),
+      }));
+      return { ...rest, items: itemsWithEliteOnly, displayTitle };
+    });
+
+  let finalLevels = levels;
+  const staffOrderStrings = ARENA_STAFF_LEVEL_ORDER as readonly string[];
+  if (
+    track === "leader" &&
+    !staffOrderStrings.includes(maxUnlockedLevel)
+  ) {
+    const leaderMaxIndex = arenaTrackLevelOrdering("leader").indexOf(maxUnlockedLevel);
+    if (leaderMaxIndex >= 0) {
+      const staffConfig = program.tracks.find((t) => t.track === "staff");
+      if (staffConfig?.levels?.length) {
+        const staffLevels = staffConfig.levels
+          .filter((lvl) => staffOrderStrings.includes(lvl.level))
+          .map((lvl) => {
+            const { items, human_model: _hm, ...rest } = lvl as LevelWithTenure;
+            const displayTitle = locale === "ko" && rest.title_ko ? rest.title_ko : rest.title;
+            const itemsWithEliteOnly = (items ?? []).map((it: unknown) => ({
+              ...(typeof it === "object" && it !== null ? it : {}),
+              elite_only: Boolean((it as { elite_only?: boolean })?.elite_only),
+            }));
+            return { ...rest, items: itemsWithEliteOnly, displayTitle };
+          });
+        finalLevels = [...staffLevels, ...levels];
+      }
+    }
+  }
+
+  return NextResponse.json({
+    ok: true,
+    membershipPending: false,
+    track,
+    maxUnlockedLevel,
+    previewLevel,
+    levels: finalLevels,
+    l4_access,
+    isElite,
+  });
+}

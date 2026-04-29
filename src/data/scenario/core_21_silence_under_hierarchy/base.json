@@ -1,0 +1,222 @@
+{
+  "scenarioId": "core_21_identity_integrity_correction",
+  "dbScenarioId": "bty_incident_02_core_21",
+  "incident": {
+    "incidentId": "incident_02",
+    "incidentStage": "system correction after inheritance",
+    "sequencePosition": 21,
+    "previousScenarioId": "core_20_identity_integrity_inheritance",
+    "nextScenarioId": null,
+    "roleShift": "from system inheritance designer to system correction owner",
+    "propagation": {
+      "exitEffect": "The inherited system becomes rigid, selective, or symbolic without correction.",
+      "entryEffect": "The inherited system becomes self-correcting without returning ownership to the original leader.",
+      "reExposureNote": "Correction reveals whether the system can evolve without becoming personal again."
+    },
+    "stage": 21,
+    "axisGroup": "Repair",
+    "axisIndex": 3
+  },
+  "primaryChoices": {
+    "A": {
+      "axis": "system_correction",
+      "direction": "exit",
+      "tradeoff": "control_over_self_correction",
+      "mapsTo": [
+        "A_X",
+        "A_Y"
+      ]
+    },
+    "B": {
+      "axis": "system_correction",
+      "direction": "exit",
+      "tradeoff": "stability_over_precision",
+      "mapsTo": [
+        "B_X",
+        "B_Y"
+      ]
+    },
+    "C": {
+      "axis": "system_correction",
+      "direction": "exit",
+      "tradeoff": "leader_protection_over_system_feedback",
+      "mapsTo": [
+        "C_X",
+        "C_Y"
+      ]
+    },
+    "D": {
+      "axis": "system_correction",
+      "direction": "entry",
+      "tradeoff": "self_correction_over_personal_control",
+      "mapsTo": [
+        "D_X",
+        "D_Y"
+      ]
+    }
+  },
+  "tradeoff": {
+    "A": {
+      "X": "take_back_decision_control",
+      "Y": "correct_without_recentralizing"
+    },
+    "B": {
+      "X": "avoid_destabilizing_successor",
+      "Y": "name_system_distortion"
+    },
+    "C": {
+      "X": "protect_successor_authority",
+      "Y": "create_feedback_loop"
+    },
+    "D": {
+      "X": "one_time_correction",
+      "Y": "install_self_correction_protocol"
+    }
+  },
+  "action_decision_mapping": {
+    "A_X": {
+      "commitmentType": "recentralized_control",
+      "isEntry": false
+    },
+    "A_Y": {
+      "commitmentType": "decentralized_correction",
+      "isEntry": true
+    },
+    "B_X": {
+      "commitmentType": "stability_preservation",
+      "isEntry": false
+    },
+    "B_Y": {
+      "commitmentType": "distortion_identification",
+      "isEntry": true
+    },
+    "C_X": {
+      "commitmentType": "successor_protection",
+      "isEntry": false
+    },
+    "C_Y": {
+      "commitmentType": "system_feedback_loop",
+      "isEntry": true
+    },
+    "D_X": {
+      "commitmentType": "case_specific_correction",
+      "isEntry": false
+    },
+    "D_Y": {
+      "commitmentType": "self_correction_protocol",
+      "isEntry": true
+    }
+  },
+  "structure": {
+    "primary": [
+      {
+        "choiceId": "A",
+        "dbChoiceId": "bty_incident_02_core_21_primary_A_A"
+      },
+      {
+        "choiceId": "B",
+        "dbChoiceId": "bty_incident_02_core_21_primary_B_B"
+      },
+      {
+        "choiceId": "C",
+        "dbChoiceId": "bty_incident_02_core_21_primary_C_C"
+      },
+      {
+        "choiceId": "D",
+        "dbChoiceId": "bty_incident_02_core_21_primary_D_D"
+      }
+    ],
+    "tradeoff": {
+      "A": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "bty_incident_02_core_21_tradeoff_A_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "bty_incident_02_core_21_tradeoff_A_Y"
+        }
+      ],
+      "B": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "bty_incident_02_core_21_tradeoff_B_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "bty_incident_02_core_21_tradeoff_B_Y"
+        }
+      ],
+      "C": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "bty_incident_02_core_21_tradeoff_C_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "bty_incident_02_core_21_tradeoff_C_Y"
+        }
+      ],
+      "D": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "bty_incident_02_core_21_tradeoff_D_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "bty_incident_02_core_21_tradeoff_D_Y"
+        }
+      ]
+    },
+    "action_decision": {
+      "A_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "bty_incident_02_core_21_action_A_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "bty_incident_02_core_21_action_A_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "B_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "bty_incident_02_core_21_action_B_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "bty_incident_02_core_21_action_B_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "C_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "bty_incident_02_core_21_action_C_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "bty_incident_02_core_21_action_C_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "D_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "bty_incident_02_core_21_action_D_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "bty_incident_02_core_21_action_D_X_AD2",
+          "is_action_commitment": false
+        }
+      ]
+    }
+  }
+}

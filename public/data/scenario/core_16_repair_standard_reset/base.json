@@ -1,0 +1,149 @@
+{
+  "scenarioId": "core_16_repair_standard_reset",
+  "dbScenarioId": "INCIDENT-02-INTEGRITY-16",
+  "engineType": "standard_reset_engine",
+  "engineRef": "standard_reset_engine_v1",
+  "incident": {
+    "incidentId": "incident_02_integrity_and_fairness_breakdown",
+    "stage": 7,
+    "axisGroup": "Repair",
+    "axisIndex": 1,
+    "previousScenarioId": "core_15_system_exposure",
+    "nextScenarioId": "core_17_lead_assistant_repair",
+    "roleShift": "Associate Dentist -> System Actor",
+    "propagation": {
+      "exitEffect": "The system continues with temporary fixes but no standard alignment.",
+      "entryEffect": "Clear standards begin to form, allowing consistency to emerge.",
+      "reExposureNote": "If standards are not defined, inconsistency will reappear under pressure."
+    }
+  },
+  "standard_reset_engine": {
+    "type": "standard_definition_under_pressure",
+    "core_loop": [
+      "exposure_event",
+      "recognition_of_failure",
+      "decision_to_define_standard",
+      "resistance_from_system",
+      "implementation_or_collapse"
+    ],
+    "failure_modes": [
+      "avoidance_of_definition",
+      "partial_alignment",
+      "verbal_standard_only",
+      "no_enforcement"
+    ],
+    "success_condition": "clear, observable, enforceable standards are defined and owned"
+  },
+  "structure": {
+    "primary": [
+      {
+        "choiceId": "A",
+        "dbChoiceId": "INCIDENT-02-INTEGRITY-16_primary_A"
+      },
+      {
+        "choiceId": "B",
+        "dbChoiceId": "INCIDENT-02-INTEGRITY-16_primary_B"
+      },
+      {
+        "choiceId": "C",
+        "dbChoiceId": "INCIDENT-02-INTEGRITY-16_primary_C"
+      },
+      {
+        "choiceId": "D",
+        "dbChoiceId": "INCIDENT-02-INTEGRITY-16_primary_D"
+      }
+    ],
+    "tradeoff": {
+      "A": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-16_tradeoff_A_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-16_tradeoff_A_Y"
+        }
+      ],
+      "B": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-16_tradeoff_B_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-16_tradeoff_B_Y"
+        }
+      ],
+      "C": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-16_tradeoff_C_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-16_tradeoff_C_Y"
+        }
+      ],
+      "D": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-16_tradeoff_D_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-16_tradeoff_D_Y"
+        }
+      ]
+    },
+    "action_decision": {
+      "A_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-16_action_A_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-16_action_A_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "B_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-16_action_B_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-16_action_B_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "C_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-16_action_C_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-16_action_C_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "D_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-16_action_D_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-16_action_D_X_AD2",
+          "is_action_commitment": false
+        }
+      ]
+    }
+  }
+}

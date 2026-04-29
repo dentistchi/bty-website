@@ -1,0 +1,128 @@
+import { NextResponse } from "next/server";
+import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import {
+  arenaRunIdFromUnknown,
+  arenaScenarioFromUnknown,
+  arenaScenarioIdFromUnknown,
+} from "@/domain/arena/scenarios";
+
+const FREE_RESPONSE_XP = 25;
+const MAX_RESPONSE_LENGTH = 2000;
+
+const DEFAULT_FEEDBACK_EN = {
+  praise: "You took time to put your response in your own words.",
+  suggestion: "Next time, try linking your idea to the scenario context.",
+};
+const DEFAULT_FEEDBACK_KO = {
+  praise: "직접 문장으로 적어 주셨네요.",
+  suggestion: "다음에는 상황 맥락과 연결해 보세요.",
+};
+function getFeedback(locale: string) {
+  return locale === "ko" ? DEFAULT_FEEDBACK_KO : DEFAULT_FEEDBACK_EN;
+}
+
+/**
+ * POST /api/arena/free-response — optional **`previewScenario`**: **`arenaScenarioFromUnknown`** · **400** `previewScenario_invalid`
+ * (키 존재 시; 비객체·배열·`null`·스칼라 등 파싱 실패).
+ */
+export async function POST(req: Request) {
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
+  }
+
+  const b = body as {
+    runId?: unknown;
+    scenarioId?: unknown;
+    responseText?: unknown;
+    locale?: unknown;
+    previewScenario?: unknown;
+  };
+  if ("previewScenario" in b) {
+    if (arenaScenarioFromUnknown(b.previewScenario) === null) {
+      return NextResponse.json({ error: "previewScenario_invalid" }, { status: 400 });
+    }
+  }
+
+  const runId = arenaRunIdFromUnknown(b.runId);
+  const scenarioId = arenaScenarioIdFromUnknown(b.scenarioId);
+  const rawText = b.responseText;
+  const responseText = typeof rawText === "string" ? rawText.trim() : "";
+  const locale = typeof b.locale === "string" && b.locale === "ko" ? "ko" : "en";
+  const feedback = getFeedback(locale);
+
+  if (!runId) {
+    return NextResponse.json({ error: "runId_required" }, { status: 400 });
+  }
+  if (!scenarioId) {
+    return NextResponse.json({ error: "scenarioId_required" }, { status: 400 });
+  }
+  if (responseText.length === 0) {
+    return NextResponse.json({ error: "responseText_required" }, { status: 400 });
+  }
+  if (responseText.length > MAX_RESPONSE_LENGTH) {
+    return NextResponse.json({ error: "responseText_too_long" }, { status: 400 });
+  }
+
+  const { data: run, error: runErr } = await supabase
+    .from("arena_runs")
+    .select("run_id, user_id, status")
+    .eq("run_id", runId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (runErr) return NextResponse.json({ error: runErr.message }, { status: 500 });
+  if (!run) return NextResponse.json({ error: "RUN_NOT_FOUND" }, { status: 404 });
+
+  const { count, error: countErr } = await supabase
+    .from("arena_events")
+    .select("event_id", { count: "exact", head: true })
+    .eq("run_id", runId)
+    .eq("user_id", user.id)
+    .eq("event_type", "FREE_RESPONSE");
+
+  if (countErr) return NextResponse.json({ error: countErr.message }, { status: 500 });
+  if ((count ?? 0) > 0) {
+    return NextResponse.json({ error: "FREE_RESPONSE_ALREADY_SUBMITTED" }, { status: 409 });
+  }
+
+  const meta = {
+    responseText: responseText.slice(0, 2000),
+    praise: feedback.praise,
+    suggestion: feedback.suggestion,
+  };
+
+  const { error: insErr } = await supabase.from("arena_events").insert({
+    run_id: runId,
+    user_id: user.id,
+    step: 2,
+    event_type: "FREE_RESPONSE",
+    scenario_id: scenarioId,
+    xp: FREE_RESPONSE_XP,
+    meta,
+  });
+
+  if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
+
+  const { error: rpcErr } = await supabase.rpc("increment_arena_xp", {
+    p_user_id: user.id,
+    p_run_id: runId,
+    p_xp: FREE_RESPONSE_XP,
+  });
+
+  if (rpcErr) return NextResponse.json({ error: rpcErr.message }, { status: 500 });
+
+  return NextResponse.json({
+    ok: true,
+    xp: FREE_RESPONSE_XP,
+    feedback,
+  });
+}

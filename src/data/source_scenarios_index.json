@@ -1,0 +1,646 @@
+[
+  {
+    "id": "core_01_training_system",
+    "title": "The System Never Trained Them — But We're Blaming Them Anyway",
+    "role": "Regional Director",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Blame vs. Structural Honesty",
+    "pressure": "Two front-desk staff failed Medicaid eligibility verification three times this week. The office manager wants to write them up. You know onboarding was cut from 5 days to 2 due to volume pressure. Corporate is asking for accountability documentation.",
+    "tradeoff": "Writing them up protects your metrics and satisfies corporate. Defending them requires you to implicate the system — and your own earlier compliance with the onboarding cut.",
+    "pattern_detection": [
+      "blame_shift",
+      "avoidance",
+      "ownership"
+    ]
+  },
+  {
+    "id": "core_02_manager_integrity",
+    "title": "The Manager Who Performs But Doesn't Lead",
+    "role": "Clinical Director",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Performance Loyalty vs. Integrity Enforcement",
+    "pressure": "Your office manager hits every KPI. But three assistants have quietly told you she manipulates schedules to punish people she dislikes. One Medicaid-heavy slot is consistently understaffed on her conflict days. You have no formal complaint — only pattern.",
+    "tradeoff": "Acting on pattern without formal complaint risks being wrong. Waiting for a formal complaint means more patients get substandard care. Either way, you carry the cost.",
+    "pattern_detection": [
+      "avoidance",
+      "integrity",
+      "authority_abuse"
+    ]
+  },
+  {
+    "id": "core_03_medicaid_pressure",
+    "title": "16 Patients Before Noon",
+    "role": "Associate Dentist",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Self-Protection vs. Clinical Ownership",
+    "pressure": "You're seeing 16 Medicaid patients before noon. Charting is falling behind. Your regional director has pushed the scheduling template tighter to hit volume goals. You know the quality of care is degrading. The office manager tells you this is just 'the model.'",
+    "tradeoff": "Saying nothing protects your job. Saying something invites pushback from leadership and potentially brands you as not a 'team player' in a DSO culture that rewards throughput.",
+    "pattern_detection": [
+      "self_protection",
+      "avoidance",
+      "ownership"
+    ]
+  },
+  {
+    "id": "core_04_discount_conflict",
+    "title": "The Discount I Wasn't Supposed to Give",
+    "role": "Associate Dentist",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Clinical Integrity vs. Authority Compliance",
+    "pressure": "A Medicaid patient can't cover their copay. You know a sliding-scale discount exists but the office manager says you need her approval. She's unavailable. The patient is in the chair. You offer the discount anyway. The manager finds out and escalates to regional.",
+    "tradeoff": "You acted with integrity for the patient. But you violated the authority structure. Now regional is asking whether you can follow protocol — and the manager wants a formal note in your file.",
+    "pattern_detection": [
+      "control",
+      "avoidance",
+      "integrity"
+    ]
+  },
+  {
+    "id": "core_05_partner_trust",
+    "title": "The Partner Who Stopped Trusting the DSO",
+    "role": "Regional Director",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Reputation Protection vs. Direct Alignment",
+    "pressure": "A partner dentist is telling staff privately that DSO decisions are 'corporate greed.' Staff morale is splitting along old-practice vs. DSO lines. The partner hasn't violated any contract — but the cultural damage is accelerating. Corporate wants results, not excuses.",
+    "tradeoff": "Confronting the partner risks escalation and potential legal exposure. Ignoring it means you're allowing cultural erosion that will cost you staff and patient retention within 90 days.",
+    "pattern_detection": [
+      "self_protection",
+      "avoidance",
+      "integrity"
+    ]
+  },
+  {
+    "id": "core_06_lead_assistant",
+    "title": "The Lead Who Can't Lead",
+    "role": "Clinical Director",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Empathy Loyalty vs. Structural Authority",
+    "pressure": "Your lead assistant has been with the practice 8 years — pre-DSO. She's beloved by legacy staff but actively resistant to new protocols. New hires follow her informal lead over your written SOPs. She hasn't technically violated policy but she's becoming the real authority in the room.",
+    "tradeoff": "Restructuring her role risks losing her and destabilizing legacy staff relationships. Leaving it alone means your protocols are theater — leadership in name only.",
+    "pattern_detection": [
+      "avoidance",
+      "ownership",
+      "empathy_bias"
+    ]
+  },
+  {
+    "id": "core_07_growth_pressure",
+    "title": "The Number That Requires Breaking the System",
+    "role": "Regional Director",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Short-Term Metric vs. Structural Integrity",
+    "pressure": "Regional is 12% below Q3 target. Corporate has offered a bonus structure if you close the gap by month-end. The only lever left is compressing hygiene appointment slots from 60 to 45 minutes across all Medicaid patients. Your clinical directors are objecting. Legal hasn't signed off.",
+    "tradeoff": "Hitting the number secures bonuses and regional standing. Missing it with integrity intact puts your next performance review at risk — and you know how the DSO treats 'underperforming' regions.",
+    "pattern_detection": [
+      "short_term",
+      "ownership",
+      "pressure_response"
+    ]
+  },
+  {
+    "id": "core_08_partner_behavior",
+    "title": "The Partner Who Contradicts You In Front of Staff",
+    "role": "Regional Director",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Authority Avoidance vs. Leadership Integrity",
+    "pressure": "A partner dentist openly reversed your staffing decision in front of three assistants. He has equity. You have authority. He told the staff 'regional doesn't understand how this office runs.' The team is now watching to see whose word holds.",
+    "tradeoff": "Backing down restores short-term peace but permanently transfers real authority to the partner. Holding your position requires a direct confrontation with someone who has equity leverage and legal standing.",
+    "pattern_detection": [
+      "avoidance",
+      "power_distortion",
+      "integrity"
+    ]
+  },
+  {
+    "id": "core_09_culture_merge",
+    "title": "Two Offices. Two Cultures. One Roof.",
+    "role": "Office Manager",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Conflict Avoidance vs. Cultural Ownership",
+    "pressure": "Your DSO acquired a second location and merged operations under your management. The legacy staff from the acquired office calls your protocols 'corporate nonsense.' They have a peer leader who isn't in management but runs the informal culture. New hires are getting pulled toward the old way.",
+    "tradeoff": "Forcing compliance creates resistance and accelerates turnover. Allowing the dual culture to persist means the DSO's clinical standards are optionally enforced — and you're responsible for what happens next.",
+    "pattern_detection": [
+      "avoidance",
+      "ownership",
+      "conflict_handling"
+    ]
+  },
+  {
+    "id": "core_10_bty_distortion",
+    "title": "BTY As a Slogan, Not a Standard",
+    "role": "Clinical Director",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Cultural Drift vs. Core Integrity",
+    "pressure": "A manager is using 'BTY' language to pressure staff into overtime without pay: 'Be your best means staying until the work is done.' Staff are starting to associate BTY with exploitation. The message is being weaponized and it's spreading to how staff talk about leadership.",
+    "tradeoff": "Correcting the manager publicly damages their authority. Staying silent lets a cultural poison spread through the vocabulary that is supposed to define your leadership identity.",
+    "pattern_detection": [
+      "integrity",
+      "authority_misuse",
+      "cultural_drift"
+    ]
+  },
+  {
+    "id": "core_11_staffing_collapse",
+    "title": "Three Callouts. Full Schedule. No Pool.",
+    "role": "Office Manager",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Operational Compliance vs. Patient Safety Integrity",
+    "pressure": "It's Monday morning. Three assistants called out. The schedule is at full Medicaid capacity — 34 patients. Corporate eliminated the float pool last quarter to cut costs. You can't cancel patients without a compliance flag. You can't staff the floor safely.",
+    "tradeoff": "Running the day short-staffed risks patient safety and staff burnout but keeps the compliance record clean. Canceling patients protects care quality but triggers a regional review that could cost you your performance bonus.",
+    "pattern_detection": [
+      "self_protection",
+      "avoidance",
+      "ownership"
+    ]
+  },
+  {
+    "id": "core_12_medicaid_upcoding",
+    "title": "The Code That Pays More",
+    "role": "Associate Dentist",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Compliance Conformity vs. Clinical Integrity",
+    "pressure": "Your office manager tells you a higher-reimbursing CDT code is 'standard practice here' for a procedure you'd normally code differently. Two other associate dentists use it. The billing coordinator says corporate approves it. You're not certain it's fraudulent — but you're not certain it's clean.",
+    "tradeoff": "Using the code aligns you with your office and protects your relationship with management. Refusing or escalating puts you in direct conflict with a billing culture that may be sanctioned at the regional level.",
+    "pattern_detection": [
+      "conformity",
+      "integrity",
+      "self_protection"
+    ]
+  },
+  {
+    "id": "core_13_regional_favoritism",
+    "title": "The Office That Gets Everything",
+    "role": "Office Manager",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Political Safety vs. Structural Fairness",
+    "pressure": "One office in the region consistently gets first pick of supplies, new equipment, and float staff — it's the regional director's former location. Your Medicaid-heavy office gets leftovers. Staff have noticed. Morale is fraying. You're being asked to hit the same KPIs with inferior resources.",
+    "tradeoff": "Raising the resource inequity issue risks being labeled a complainer by regional. Staying silent means you're managing an unfair system while being evaluated as if it's fair — and your team watches you accept it.",
+    "pattern_detection": [
+      "avoidance",
+      "self_protection",
+      "ownership"
+    ]
+  },
+  {
+    "id": "core_14_exit_interview_truth",
+    "title": "What the Leaving Employee Really Said",
+    "role": "Clinical Director",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Institutional Loyalty vs. Integrity in Documentation",
+    "pressure": "A high-performing hygienist is leaving. In her exit interview she tells you directly: 'The manager retaliates against people who push back.' She doesn't want it on record. HR is asking you for exit summary documentation. The manager is a top performer by every metric.",
+    "tradeoff": "Documenting the feedback honestly puts you in a conflict with a strong manager and HR's instinct to protect high performers. Sanitizing the exit summary buries a retaliation pattern that will produce your next departure.",
+    "pattern_detection": [
+      "integrity",
+      "avoidance",
+      "blame_shift"
+    ]
+  },
+  {
+    "id": "core_15_onboarding_failure",
+    "title": "Day One and Already Behind",
+    "role": "Office Manager",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Blame Efficiency vs. System Accountability",
+    "pressure": "A new dental assistant started Monday. By Wednesday she's already behind on protocol. Your onboarding is a 20-page PDF and a 2-hour shadow shift — the DSO standard. She's not failing because she's incapable. She's failing because the system isn't designed to actually train anyone.",
+    "tradeoff": "Writing her up or letting her go is the path of least resistance. Advocating for a better onboarding structure takes political capital you're not sure you have and adds work to an already overloaded team.",
+    "pattern_detection": [
+      "blame_shift",
+      "ownership",
+      "system_thinking"
+    ]
+  },
+  {
+    "id": "core_16_scaling_speed",
+    "title": "Three New Offices in 90 Days",
+    "role": "Regional Director",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Executive Compliance vs. Operational Truth-Telling",
+    "pressure": "Corporate announced three new office openings in your region over 90 days. You have no additional RD bandwidth. Your current offices are still stabilizing from last quarter's acquisitions. The rollout plan assumes your current team absorbs all onboarding, training, and culture integration. No one asked if it was feasible.",
+    "tradeoff": "Agreeing to the timeline makes you look like a capable regional leader. Flagging structural infeasibility requires you to put in writing that corporate's growth plan is operationally flawed — and they haven't asked for that feedback.",
+    "pattern_detection": [
+      "short_term",
+      "self_protection",
+      "ownership"
+    ]
+  },
+  {
+    "id": "core_17_clinical_autonomy",
+    "title": "The Treatment Plan I Wouldn't Have Recommended",
+    "role": "Associate Dentist",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Peer Loyalty vs. Clinical Honesty",
+    "pressure": "You're seeing a patient who was previously treated by the lead partner. The prior treatment plan is more aggressive and more profitable than you would have recommended. The patient trusts the practice. The plan is legally defensible. But you wouldn't have done it this way.",
+    "tradeoff": "Completing the prior plan keeps the peace and the revenue intact. Revisiting the diagnosis with the patient risks exposing a colleague's decision and creating legal and relational fallout across the practice.",
+    "pattern_detection": [
+      "integrity",
+      "self_protection",
+      "conformity"
+    ]
+  },
+  {
+    "id": "core_18_feedback_retaliation",
+    "title": "After the Honest Answer",
+    "role": "Associate Dentist",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Self-Protection vs. Institutional Courage",
+    "pressure": "In a regional town hall, you gave honest feedback about scheduling pressure. Two weeks later your preferred shift times are gone, your best patient slots were reassigned, and your schedule was quietly restructured. Nothing was said directly. You can't prove it's retaliation. But you know.",
+    "tradeoff": "Raising the retaliation issue requires you to name something unprovable and risk a second, more overt retaliation. Absorbing it silently signals to everyone watching that speaking up has a cost — and teaches the organization what honesty earns.",
+    "pattern_detection": [
+      "self_protection",
+      "integrity",
+      "avoidance"
+    ]
+  },
+  {
+    "id": "core_19_tempo_compliance",
+    "title": "The Hygienist Who Won't Speed Up",
+    "role": "Clinical Director",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Operational Compliance vs. Clinical Excellence Defense",
+    "pressure": "Your most thorough hygienist runs 10-15 minutes over on every Medicaid patient. She documents more, catches more, refers more appropriately. By every clinical quality measure, she's your best. But the schedule model doesn't allow her throughput. The office manager wants her put on a performance plan.",
+    "tradeoff": "Backing the performance plan aligns you with operational metrics. Defending her clinical model requires you to challenge the scheduling template and the manager — and ultimately, the DSO's productivity assumptions.",
+    "pattern_detection": [
+      "conformity",
+      "ownership",
+      "integrity"
+    ]
+  },
+  {
+    "id": "core_20_patient_complaint_suppression",
+    "title": "The Complaint That Didn't Make It to the Form",
+    "role": "Office Manager",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Tenure Loyalty vs. System Integrity",
+    "pressure": "A Medicaid patient complained that she felt rushed and that the dentist didn't explain her treatment. Your front desk coordinator told her 'that's just how it works here' and didn't log a formal complaint. You found out from another patient. The coordinator has been with you for four years.",
+    "tradeoff": "Addressing the coordinator formally risks a loyalty rupture with a long-tenured employee. Not addressing it means your complaint system is now controlled by whoever happens to be at the front desk that day.",
+    "pattern_detection": [
+      "empathy_bias",
+      "integrity",
+      "avoidance"
+    ]
+  },
+  {
+    "id": "core_21_bonus_ethics",
+    "title": "The Bonus That Requires Ignoring a Problem",
+    "role": "Regional Director",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Personal Gain vs. Clinical Accountability",
+    "pressure": "You are $8K away from your quarterly bonus threshold. One lever: approving a scheduling change that your clinical director flagged as increasing patient risk. It's not explicitly prohibited. It's a gray zone. The clinical director has not escalated formally — just flagged verbally.",
+    "tradeoff": "Approving the change gets you the bonus and keeps regional pressure off you. If something goes wrong clinically, the verbal flag gives you no protection. If you don't approve, you miss the number with no guarantee leadership understands why.",
+    "pattern_detection": [
+      "short_term",
+      "integrity",
+      "self_protection"
+    ]
+  },
+  {
+    "id": "core_22_dso_vs_community",
+    "title": "The Community That Knows We Changed",
+    "role": "Office Manager",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Institutional Defense vs. Relational Honesty",
+    "pressure": "Your office served this Medicaid community for 12 years as an independent practice. Since DSO acquisition 18 months ago, long-term patients have noticed: shorter appointments, different dentists every few months, and less personal interaction. A community elder asks you directly: 'What happened to this place?'",
+    "tradeoff": "Defending the DSO model in this moment feels dishonest. Acknowledging the change creates an opening for complaint escalation and possibly community-level reputation damage. There is no answer that costs nothing.",
+    "pattern_detection": [
+      "integrity",
+      "avoidance",
+      "cultural_drift"
+    ]
+  },
+  {
+    "id": "core_23_turnover_spin",
+    "title": "The Turnover Report That Needs a Better Story",
+    "role": "Regional Director",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Reporting Integrity vs. Political Safety",
+    "pressure": "Your region's 90-day turnover is 41%. Corporate is asking for a written explanation. The real causes: aggressive scheduling, manager retaliation culture, and below-market pay. The safe explanation: 'labor market conditions.' Both can be defended. Only one is true.",
+    "tradeoff": "The honest report implicates your management choices and creates accountability pressure. The market-conditions report buys time — but the conditions producing the turnover continue, and the next 90 days will look the same.",
+    "pattern_detection": [
+      "blame_shift",
+      "integrity",
+      "short_term"
+    ]
+  },
+  {
+    "id": "core_24_informal_authority",
+    "title": "The Person Who Actually Runs the Office",
+    "role": "Clinical Director",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Operational Pragmatism vs. Structural Clarity",
+    "pressure": "There is no office manager vacancy on paper. But a senior dental assistant has been unofficially managing scheduling, conflict resolution, and supply orders for three months — filling the gap after the last manager left. She's good at it. She's also started telling other staff what clinical protocol should be.",
+    "tradeoff": "Formalizing her role is operationally rational but creates a precedent about how authority is assigned. Pulling back her informal authority damages morale and removes the only functional manager in the office.",
+    "pattern_detection": [
+      "avoidance",
+      "ownership",
+      "authority_misuse"
+    ]
+  },
+  {
+    "id": "core_25_schedule_override",
+    "title": "The Appointment That Shouldn't Have Been Booked",
+    "role": "Associate Dentist",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Clinical Standard vs. Scheduling Authority",
+    "pressure": "A complex extraction case was booked into a 45-minute slot. You need 90. The schedule was built by the office manager under regional pressure to maximize chair time. You can push through and risk a substandard outcome, or stop, reschedule, and face an angry manager and a gap in today's revenue.",
+    "tradeoff": "Proceeding protects the schedule and avoids conflict. Stopping is clinically correct but puts you in immediate conflict with the office manager and gives regional a metric gap to explain.",
+    "pattern_detection": [
+      "self_protection",
+      "integrity",
+      "pressure_response"
+    ]
+  },
+  {
+    "id": "core_26_dso_promise_gap",
+    "title": "What They Said at Signing vs. What's Happening Now",
+    "role": "Associate Dentist",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Job Security vs. Contractual Integrity",
+    "pressure": "When you joined, you were told: autonomy over treatment planning, 4-day workweeks, and a path to partnership. 14 months in: templates control your treatment plans, you work 5 days, and partnership was quietly removed from your contract renewal. When you ask, you get vague reassurances.",
+    "tradeoff": "Pushing for written clarity risks being seen as 'difficult' and potentially not being renewed. Accepting the vagueness means you're building your career on commitments that are already being walked back.",
+    "pattern_detection": [
+      "self_protection",
+      "integrity",
+      "avoidance"
+    ]
+  },
+  {
+    "id": "core_27_patient_volume_vs_quality",
+    "title": "The Chart That Doesn't Reflect What Happened",
+    "role": "Associate Dentist",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Volume Compliance vs. Legal and Clinical Documentation Integrity",
+    "pressure": "Volume pressure has pushed your charting to shorthand. You know the notes don't fully capture your clinical decision-making. They're not false — but they're not complete. If something goes wrong with a patient, the chart won't protect you. If you start charting fully, your daily volume drops below target.",
+    "tradeoff": "Maintaining the shorthand keeps you at target and out of managerial crosshairs. Completing full charting requires you to either work unpaid overtime or fight for schedule reduction — neither of which has been received well in this DSO.",
+    "pattern_detection": [
+      "self_protection",
+      "integrity",
+      "short_term"
+    ]
+  },
+  {
+    "id": "core_28_kpi_distortion",
+    "title": "The Number That Looks Good and Isn't",
+    "role": "Office Manager",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Metric Performance vs. Data Integrity",
+    "pressure": "Your office's 'patient satisfaction' score is 4.8/5. But you know: your front desk coordinator selectively shares the survey link with patients she thinks will respond positively. Negative experiences — especially Medicaid patients who feel rushed — rarely get the link. The score is technically accurate and operationally fraudulent.",
+    "tradeoff": "Correcting the survey distribution process will tank your score and draw attention. Leaving it in place keeps a metric that makes everyone look good while systematically hiding your most vulnerable patient population's experience.",
+    "pattern_detection": [
+      "integrity",
+      "conformity",
+      "self_protection"
+    ]
+  },
+  {
+    "id": "core_29_regional_pressure_cascade",
+    "title": "The Directive I Know Is Wrong",
+    "role": "Office Manager",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Hierarchical Compliance vs. Clinical Accountability",
+    "pressure": "Your regional director sent a directive to compress all new patient appointments from 90 minutes to 60 minutes to increase new patient volume by 20%. You know from experience this means either rushing the exam or skipping steps. It came as a 'soft mandate' — not a written policy. You're expected to implement it starting Monday.",
+    "tradeoff": "Implementing the change makes you compliant and protects your relationship with regional. Pushing back requires you to go on record against a directive from your direct superior — with no guarantee of backup from clinical leadership.",
+    "pattern_detection": [
+      "avoidance",
+      "integrity",
+      "pressure_response"
+    ]
+  },
+  {
+    "id": "core_30_peer_cover",
+    "title": "What I Know About My Colleague",
+    "role": "Associate Dentist",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Peer Protection vs. Patient Advocacy",
+    "pressure": "You overheard a colleague tell a patient that a procedure was 'necessary' when you believe it wasn't clinically indicated. The patient is already scheduled. Your colleague is well-liked. The procedure is profitable. You have no proof — only your clinical judgment and what you heard.",
+    "tradeoff": "Saying nothing protects the relationship and avoids a conflict you can't fully substantiate. Raising it — even internally — creates a professional confrontation that could split the clinical team and backfire if you can't prove it.",
+    "pattern_detection": [
+      "integrity",
+      "avoidance",
+      "self_protection"
+    ]
+  },
+  {
+    "id": "exp_31_dso_acquisition_resentment",
+    "title": "The Consent That Wasn't Fully Informed",
+    "role": "Associate Dentist",
+    "difficulty_level": 4,
+    "bty_tension_axis": "Patient Autonomy vs. Retroactive Disclosure Risk",
+    "pressure": "A patient signed a consent form before a procedure. During the procedure, you encountered a complication that — had you known it was possible — you would have discussed with her beforehand. The complication is documented in the chart. The patient has not asked about it. The consent form she signed covers the general category of complication but not this specific presentation.",
+    "tradeoff": "Proactively disclosing the complication and the consent gap means initiating a difficult conversation the patient has not requested and may not welcome. Not disclosing means the chart reflects an incomplete informed consent process that the patient is unaware of.",
+    "pattern_detection": [
+      "integrity",
+      "ownership",
+      "repair_avoidance"
+    ]
+  },
+  {
+    "id": "exp_32_manager_as_enforcer",
+    "title": "The Colleague You Are Covering For",
+    "role": "Associate Dentist",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Collegial Protection vs. Operational Integrity",
+    "pressure": "A colleague has been arriving late consistently — often 20 to 40 minutes. You have covered for her twice by adjusting your own schedule. The third time, a patient complained directly to you about the wait. Your colleague has personal circumstances you are aware of. The office manager does not know the pattern.",
+    "tradeoff": "Continuing to cover protects your colleague but makes you complicit in the patient experience gap and the operational deception. Not covering means the pattern surfaces — and your colleague faces consequences you have been protecting her from.",
+    "pattern_detection": [
+      "integrity",
+      "repair_avoidance",
+      "ownership"
+    ]
+  },
+  {
+    "id": "exp_33_policy_without_training",
+    "title": "The Contract You Should Have Read More Carefully",
+    "role": "Associate Dentist",
+    "difficulty_level": 2,
+    "bty_tension_axis": "Comfort of Assumption vs. Informed Decision-Making",
+    "pressure": "You are six months into your DSO contract. You have discovered that a non-compete clause is significantly broader than you understood at signing — it covers a 15-mile radius and 24 months. You are already having doubts about the practice fit. You mentioned the contract terms to a colleague who told you the clause has never been enforced. Legal has not been consulted.",
+    "tradeoff": "Acting on the assumption that the clause is unenforceable means leaving without legal clarity. Getting legal counsel means confronting a contract reality that may limit your options more than you want to acknowledge.",
+    "pattern_detection": [
+      "ownership",
+      "future_deferral",
+      "integrity"
+    ]
+  },
+  {
+    "id": "exp_34_patient_language_barrier",
+    "title": "The Benchmark That Doesn't Fit",
+    "role": "Regional Director",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Population Equity vs. Metric Standardization",
+    "pressure": "Corporate has issued a new productivity benchmark for all offices. Your highest-performing office — in patient outcomes, retention, and staff stability — does not meet the new benchmark because it serves a higher proportion of complex Medicaid cases that require more time per patient. The benchmark was designed for fee-for-service practices. Your office manager is preparing a response and has asked whether you will advocate for an exception.",
+    "tradeoff": "Advocating for an exception means challenging a corporate standard on behalf of one office — and sets a precedent for other exception requests. Not advocating means your best office is measured by a standard it cannot meet due to the population it serves.",
+    "pattern_detection": [
+      "ownership",
+      "integrity",
+      "avoidance"
+    ]
+  },
+  {
+    "id": "exp_35_partner_production_gap",
+    "title": "The Group Chat You Were Not Supposed to See",
+    "role": "Office Manager",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Accidental Knowledge vs. Compliance Obligation",
+    "pressure": "A staff member accidentally adds you to a personal group chat. In it, you see complaints about a colleague — some petty, some concerning. One message includes what appears to be a patient name referenced in a personal context. You are removed from the chat within minutes. No one knows you saw it.",
+    "tradeoff": "Acting on what you saw means using information obtained by accident to initiate a formal process — which may feel like surveillance. Not acting means you are aware of a potential HIPAA concern and have chosen to ignore it because of how you learned about it.",
+    "pattern_detection": [
+      "integrity",
+      "ownership",
+      "avoidance"
+    ]
+  },
+  {
+    "id": "exp_36_training_as_punishment",
+    "title": "The Hours That Don't Count",
+    "role": "Associate Dentist",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Structural Self-Advocacy vs. Cultural Compliance",
+    "pressure": "You have been consistently spending 45 to 60 minutes after your scheduled shift completing charts, reviewing lab results, and handling clinical follow-up. None of this time is tracked or compensated. Your contract specifies compensation for scheduled hours only. Two colleagues do the same and do not raise it. You have calculated that this represents approximately $8,000 in uncompensated labor over six months.",
+    "tradeoff": "Raising the issue means surfacing a compensation concern in a DSO culture where associates are expected to manage their own efficiency. Not raising it means continuing to absorb a structural underpayment you have now quantified.",
+    "pattern_detection": [
+      "ownership",
+      "self_protection",
+      "integrity"
+    ]
+  },
+  {
+    "id": "exp_37_insurance_denial_pressure",
+    "title": "The Patient Who Wants the Wrong Thing",
+    "role": "Associate Dentist",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Clinical Judgment vs. Patient Autonomy",
+    "pressure": "A patient has requested a treatment approach that is within the standard of care but that you believe is clinically suboptimal. She is informed, persistent, and legally entitled to make her own healthcare decisions. You have explained your clinical recommendation twice. She is asking you to proceed with her preferred approach or refer her elsewhere.",
+    "tradeoff": "Proceeding means delivering care you believe is suboptimal while respecting patient autonomy. Referring means you have declined to treat a patient based on a clinical disagreement about an approach that is within the standard of care.",
+    "pattern_detection": [
+      "integrity",
+      "ownership",
+      "repair_avoidance"
+    ]
+  },
+  {
+    "id": "exp_38_departure_timing",
+    "title": "The Code That Gets It Paid",
+    "role": "Treatment Coordinator",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Patient Access vs. Billing Integrity",
+    "pressure": "A treatment is not covered under the patient's insurance using the accurate code. A colleague tells you there is an alternate code that produces the same coverage and is 'commonly used' in this situation. The treatment is clinically appropriate. The alternate code is technically defensible but describes the procedure less precisely. The office has used the alternate code before.",
+    "tradeoff": "Using the accurate code means the patient pays out of pocket for clinically appropriate care. Using the alternate code gets the patient covered but introduces a documentation imprecision that could be characterized as upcoding in a formal audit.",
+    "pattern_detection": [
+      "integrity",
+      "ownership",
+      "explanation_substitution"
+    ]
+  },
+  {
+    "id": "exp_39_performance_review_inflation",
+    "title": "What You Smelled in the Hallway",
+    "role": "Office Manager",
+    "difficulty_level": 5,
+    "bty_tension_axis": "Certainty Standard vs. Patient Safety Obligation",
+    "pressure": "Before an afternoon session, you notice what you believe is the smell of alcohol near a provider. You are not certain. The provider appears functional. No patient complaint has been filed. You have no prior incident with this provider. Reporting based on smell alone — without certainty — may be wrong and will damage a career.",
+    "tradeoff": "Reporting an uncertain concern means potentially triggering a process that harms an innocent person. Not reporting means allowing a provider you cannot confirm is impaired to continue seeing patients.",
+    "pattern_detection": [
+      "ownership",
+      "integrity",
+      "future_deferral"
+    ]
+  },
+  {
+    "id": "exp_40_regional_blame_pass",
+    "title": "The Award That Went to the Wrong Person",
+    "role": "Clinical Director",
+    "difficulty_level": 3,
+    "bty_tension_axis": "Institutional Loyalty vs. Staff Equity Advocacy",
+    "pressure": "Regional announced a staff recognition award. The recipient was selected by regional leadership. You know that another staff member did substantially more of the work being recognized — and that the selected recipient is well-liked by the regional director personally. The overlooked staff member is aware she was not selected. She has not said anything to you but her engagement has dropped visibly.",
+    "tradeoff": "Raising the selection concern risks the relationship with regional and may not change the outcome. Staying quiet means watching a high performer disengage from work she was not recognized for — while someone else receives credit for it.",
+    "pattern_detection": [
+      "integrity",
+      "repair_avoidance",
+      "ownership"
+    ]
+  },
+  {
+    "id": "exp_41_no_show_coverage_lie",
+    "title": "What You Know That They Don't",
+    "role": "Regional Director",
+    "difficulty_level": 4,
+    "bty_tension_axis": "Confidentiality Obligation vs. Staff Trust",
+    "pressure": "You have been informed in a confidential leadership meeting that your region is being considered for consolidation with an adjacent region. No decision has been made. Staff are aware that regional consolidations have occurred elsewhere in the DSO. Several of your office managers have directly asked you whether consolidation is coming. You cannot disclose the confidential information — but you can see the anxiety it is creating.",
+    "tradeoff": "Saying nothing protects the confidential process but allows staff anxiety to grow on information you have that they do not. Signaling anything — even without disclosure — changes the nature of the confidentiality you were asked to maintain.",
+    "pattern_detection": [
+      "integrity",
+      "ownership",
+      "future_deferral"
+    ]
+  },
+  {
+    "id": "exp_42_whistleblower_decision",
+    "title": "The Chart That Tells a Better Story",
+    "role": "Associate Dentist",
+    "difficulty_level": 4,
+    "bty_tension_axis": "Audit Optics vs. Documentation Integrity",
+    "pressure": "After a difficult appointment, your office manager asks you to 'clean up' the chart notes before they are reviewed in a quality audit. The clinical outcome was appropriate. The documentation is accurate but reflects the difficulty of the appointment — patient resistance, multiple attempts, and a technique that was not your first choice. The office manager says the notes 'make it look worse than it was.'",
+    "tradeoff": "Revising the notes to be more favorable makes the chart look cleaner but changes what actually happened. Leaving the notes accurate means a difficult appointment is documented accurately — which is the purpose of the chart.",
+    "pattern_detection": [
+      "integrity",
+      "ownership",
+      "explanation_substitution"
+    ]
+  },
+  {
+    "id": "exp_43_regional_meeting_theater",
+    "title": "The Complaint Against the Person You Hired",
+    "role": "Office Manager",
+    "difficulty_level": 4,
+    "bty_tension_axis": "Prior Knowledge vs. Complaint Integrity",
+    "pressure": "A patient has filed a formal complaint about a front desk staff member you hired and mentored. The complaint describes behavior you have never observed but that is consistent with a pattern two other staff members mentioned to you informally six months ago — which you did not formally investigate. The patient is asking for a response from leadership.",
+    "tradeoff": "Responding fully means acknowledging that informal information existed before the formal complaint and was not investigated. Responding to the complaint in isolation means the investigation is incomplete — and you are concealing prior knowledge.",
+    "pattern_detection": [
+      "integrity",
+      "ownership",
+      "repair_avoidance"
+    ]
+  },
+  {
+    "id": "exp_44_discount_escalation",
+    "title": "The Decision Above Your Pay Grade",
+    "role": "Clinical Director",
+    "difficulty_level": 4,
+    "bty_tension_axis": "Chain of Command Loyalty vs. Patient Outcome Advocacy",
+    "pressure": "A regional policy has been issued that you believe will harm patient outcomes in your office. You have raised it through your direct supervisor and received no response in three weeks. The policy takes effect in two weeks. You have the option to escalate beyond your direct supervisor — to the regional VP — but this is outside the expected chain of command.",
+    "tradeoff": "Escalating beyond your supervisor may resolve the policy concern but will damage the supervisory relationship and signal that you do not trust the chain of command. Not escalating means the policy takes effect having raised a concern that produced no response.",
+    "pattern_detection": [
+      "ownership",
+      "integrity",
+      "future_deferral"
+    ]
+  },
+  {
+    "id": "exp_45_new_grad_sink",
+    "title": "Day 30 and Already Drowning",
+    "role": "Clinical Director",
+    "difficulty_level": 4,
+    "bty_tension_axis": "Operational Inertia vs. Clinical Support Responsibility",
+    "pressure": "A new-grad associate is 30 days in. She came from a program with strong mentorship. Your office has none. She is making clinical decisions she should not be making alone and she knows it. She has not asked for help because the culture signals that asking questions signals weakness. She is one bad case away from a serious error.",
+    "tradeoff": "Setting up a formal mentorship structure takes time you do not have and exposes how long this gap has existed. Waiting for her to surface a problem shifts the cost from operational inconvenience to patient harm — and career damage for a clinician who deserved better support.",
+    "pattern_detection": [
+      "avoidance",
+      "ownership",
+      "system_thinking"
+    ]
+  },
+  {
+    "id": "exp_46_social_media_discipline",
+    "title": "What She Posted Wasn't Wrong. It Was Honest.",
+    "role": "Office Manager",
+    "difficulty_level": 4,
+    "bty_tension_axis": "Institutional Compliance vs. Workforce Dignity",
+    "pressure": "A dental assistant posted on her personal Instagram that 'working in Medicaid dental is exhausting when the system doesn't support you.' She did not name the practice. Regional wants her written up for 'reputational risk.' The post was factually accurate and emotionally honest. Twenty staff members have seen the regional directive.",
+    "tradeoff": "Writing her up protects you with regional and signals compliance. It also teaches every staff member watching that honest expression of burnout — even in personal spaces — carries professional consequences. And you know she is right.",
+    "pattern_detection": [
+      "integrity",
+      "authority_misuse",
+      "self_protection"
+    ]
+  }
+]

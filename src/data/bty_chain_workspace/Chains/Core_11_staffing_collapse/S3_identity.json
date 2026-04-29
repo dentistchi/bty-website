@@ -1,0 +1,52 @@
+{
+  "id": "core_11_s3_identity",
+  "title": "After the Day Ends",
+  "level": 5,
+  "chain_stage": 3,
+  "context": {
+    "role": "Clinic Director",
+    "pressure": "The day is over, but its meaning is not.",
+    "narrative": "The clinic is closed now. Everyone went home, but not in the same way. Some are quiet. Some are tired in a way that is not just physical. No major incident occurred, but something about today will be remembered. The team has learned something about what you protect when things are stretched, and you know you will face this situation again."
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Focus on improving efficiency so the clinic can handle similar days without slowing down.",
+      "archetype": "avoid",
+      "state_impact": {
+        "reputation": 1,
+        "trust": -2,
+        "self_narrative": -2,
+        "courage": -2
+      }
+    },
+    {
+      "id": "B",
+      "label": "Adjust staffing expectations and build buffers into future schedules to reduce similar strain.",
+      "archetype": "structure",
+      "state_impact": {
+        "reputation": 0,
+        "trust": 1,
+        "self_narrative": 1,
+        "courage": 0
+      }
+    },
+    {
+      "id": "C",
+      "label": "Revisit the day openly with the team and name where safety was compromised and where you allowed it.",
+      "archetype": "confront",
+      "state_impact": {
+        "reputation": -1,
+        "trust": 2,
+        "self_narrative": 2,
+        "courage": 2
+      }
+    }
+  ],
+  "questions": {
+    "level_2": "What do you still owe the people who worked under that pressure today?",
+    "level_3": "Where did you allow the standard to bend, and why?",
+    "level_4": "What will your team believe you will tolerate the next time this happens?",
+    "level_5": "When nothing visibly broke, what do you do with what quietly shifted?"
+  }
+}

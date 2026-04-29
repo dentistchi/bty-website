@@ -1,0 +1,66 @@
+{
+  "scenarioId": "core_23_manager_truth_block",
+  "dbScenarioId": "INCIDENT-03-TRUTH-05",
+
+  "incident": {
+    "incidentId": "incident_03_authority_silence_to_truth_repair",
+    "stage": 5,
+    "axisGroup": "Truth",
+    "axisIndex": 2,
+    "previousScenarioId": "core_22_assistant_truth_block",
+    "nextScenarioId": "core_24_external_truth_exposure",
+    "roleShift": "Dental Assistant -> Office Manager",
+    "propagation": {
+      "exitEffect": "The manager keeps the issue framed as attitude or communication style, allowing the authority gap to continue.",
+      "entryEffect": "The manager names the trust and hierarchy issue, increasing short-term discomfort but making the real pattern visible.",
+      "reExposureNote": "If the user exits here, the next scenario should expose the same silence through patient flow, staff turnover, or regional review."
+    }
+  },
+
+  "structure": {
+    "primary": [
+      { "choiceId": "A", "dbChoiceId": "INCIDENT-03-TRUTH-05_primary_A" },
+      { "choiceId": "B", "dbChoiceId": "INCIDENT-03-TRUTH-05_primary_B" },
+      { "choiceId": "C", "dbChoiceId": "INCIDENT-03-TRUTH-05_primary_C" },
+      { "choiceId": "D", "dbChoiceId": "INCIDENT-03-TRUTH-05_primary_D" }
+    ],
+
+    "tradeoff": {
+      "A": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-03-TRUTH-05_tradeoff_A_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-03-TRUTH-05_tradeoff_A_Y" }
+      ],
+      "B": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-03-TRUTH-05_tradeoff_B_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-03-TRUTH-05_tradeoff_B_Y" }
+      ],
+      "C": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-03-TRUTH-05_tradeoff_C_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-03-TRUTH-05_tradeoff_C_Y" }
+      ],
+      "D": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-03-TRUTH-05_tradeoff_D_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-03-TRUTH-05_tradeoff_D_Y" }
+      ]
+    },
+
+    "action_decision": {
+      "A_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-03-TRUTH-05_action_A_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-03-TRUTH-05_action_A_X_AD2", "is_action_commitment": false }
+      ],
+      "B_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-03-TRUTH-05_action_B_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-03-TRUTH-05_action_B_X_AD2", "is_action_commitment": false }
+      ],
+      "C_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-03-TRUTH-05_action_C_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-03-TRUTH-05_action_C_X_AD2", "is_action_commitment": false }
+      ],
+      "D_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-03-TRUTH-05_action_D_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-03-TRUTH-05_action_D_X_AD2", "is_action_commitment": false }
+      ]
+    }
+  }
+}

@@ -1,0 +1,599 @@
+"use client";
+
+/**
+ * 전역 플로팅 챗봇. pathname에 따라 Center/Foundry/Arena 모드로 /api/chat 호출.
+ * CHATBOT_TRAINING_CHECKLIST §2.3: 소개·공간 안내·예시 문구는 i18n chat.* 사용.
+ * - introFoundry / introCenter: 빈 채팅 시 소개 문구.
+ * - spaceHintFoundry / spaceHintCenter: 공간별 한 줄 안내.
+ * - exampleLabel, examplePhrasesFoundry, examplePhrasesCenter: 클릭 가능한 예시 문구 칩.
+ * COMMANDER_BACKLOG_AND_NEXT §2: 전역 플로팅 버튼 비노출. 패널은 open-chatbot 이벤트로만 열림.
+ * 연결 끊김 시: errorMsg(chat.connectionError) + showRetry 시 t.retry 버튼.
+ */
+import { useState, useRef, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { getMessages } from "@/lib/i18n";
+import { fetchJson } from "@/lib/read-json";
+import type { Locale } from "@/lib/i18n";
+import { CardSkeleton } from "@/components/bty-arena";
+import { GuideCharacterAvatar, type GuideAvatarVariant } from "@/components/GuideCharacterAvatar";
+
+type Message = {
+  role: "user" | "assistant";
+  content: string;
+  suggestCenter?: boolean;
+  suggestFoundry?: boolean;
+  suggestMentor?: boolean;
+  mentorPath?: string;
+  usedFallback?: boolean;
+};
+
+const TYPING_TIMEOUT_10S = 10_000;
+const TYPING_TIMEOUT_25S = 25_000;
+
+/** Dr. Chi 플로팅 버튼 노출 경로 (admin·train·bty 로그인 등 제외) */
+function showChatFabForPath(pathname: string): boolean {
+  if (!pathname) return false;
+  if (pathname.includes("/admin")) return false;
+  if (pathname.includes("/train")) return false;
+  if (/\/bty\/(login|forgot-password|logout)(\/|\?|$)/.test(pathname)) return false;
+  if (pathname.includes("/center")) return true;
+  if (pathname.includes("/dear-me")) return true;
+  if (pathname.includes("/assessment")) return true;
+  if (/\/journal(\/|$|\?)/.test(pathname)) return true;
+  if (pathname.includes("/bty-arena")) return true;
+  if (pathname.includes("/bty") && !pathname.includes("/bty-arena")) return true;
+  return false;
+}
+
+export function Chatbot() {
+  const pathname = usePathname() ?? "";
+  const locale: Locale = pathname.startsWith("/en") ? "en" : "ko";
+  /** Foundry(bty)·mentor: 테마/라벨용. 전역 비노출 후 Center·Foundry 등 필요한 경로에만 마운트되므로 early return 제거. */
+  const isBtyPage = pathname.includes("/bty");
+  const i18n = getMessages(locale);
+  const t = i18n.chat;
+  const [open, setOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingText, setTypingText] = useState<string | null>(null);
+  const [showRetry, setShowRetry] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [lastUserMessage, setLastUserMessage] = useState<string | null>(null);
+  const [rememberChat, setRememberChat] = useState(false);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+  const [deletingChat, setDeletingChat] = useState(false);
+  const [userCodeName, setUserCodeName] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const timeout10Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timeout25Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const sessionIdRef = useRef<string | null>(null);
+
+  const clearTimers = useCallback(() => {
+    if (timeout10Ref.current) {
+      clearTimeout(timeout10Ref.current);
+      timeout10Ref.current = null;
+    }
+    if (timeout25Ref.current) {
+      clearTimeout(timeout25Ref.current);
+      timeout25Ref.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages, typingText, errorMsg]);
+
+  useEffect(() => {
+    const openChat = () => setOpen(true);
+    window.addEventListener("open-chatbot", openChat);
+    return () => window.removeEventListener("open-chatbot", openChat);
+  }, []);
+
+  // §6 CENTER_PAGE_IMPROVEMENT_SPEC: /center#open-chat 진입 시 챗 패널 열기
+  useEffect(() => {
+    if (!pathname.includes("/center") || typeof window === "undefined") return;
+    if (window.location.hash !== "#open-chat") return;
+    setOpen(true);
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      if (prefsLoaded) return;
+      try {
+        const prefsRes = await fetch("/api/me/conversation-preferences");
+        setPrefsLoaded(true);
+        if (!prefsRes.ok) return;
+        const prefs = await prefsRes.json();
+        setRememberChat(Boolean(prefs.rememberChat));
+        if (!prefs.rememberChat) return;
+        const convRes = await fetch("/api/me/conversations?channel=chat");
+        if (!convRes.ok) return;
+        const conv = await convRes.json();
+        if (!conv.sessionId || !conv.messages?.length) return;
+        const loaded: Message[] = conv.messages.map((m: { role: string; content: string }) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        }));
+        setChatMessages(loaded);
+        setChatSessionId(conv.sessionId);
+        sessionIdRef.current = conv.sessionId;
+      } catch {
+        setPrefsLoaded(true);
+      }
+    })();
+  }, [open, prefsLoaded]);
+
+  // Phase 4: Code별 가이드 스킨 — bty/mentor에서 사용자 Code 로드
+  useEffect(() => {
+    if (!open || (!pathname.includes("/bty") && !pathname.includes("/mentor"))) return;
+    (async () => {
+      try {
+        const res = await fetch("/api/arena/core-xp", { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const name = data?.codeName;
+        setUserCodeName(typeof name === "string" && name.trim() ? name : null);
+      } catch {
+        setUserCodeName(null);
+      }
+    })();
+  }, [open, pathname]);
+
+  const isMentorPage = pathname.includes("/mentor");
+  const isCenterPage = pathname.includes("/center");
+  const isArenaPage = pathname.includes("/bty-arena");
+  const spaceLabel =
+    locale === "ko"
+      ? isCenterPage
+        ? "Center"
+        : isMentorPage
+          ? "멘토"
+          : isBtyPage
+            ? "Foundry · 연습"
+            : "랜딩"
+      : isCenterPage
+        ? "Center"
+        : isMentorPage
+          ? "Mentor"
+          : isBtyPage
+            ? "Foundry"
+            : "Home";
+  // CHATBOT_TRAINING_CHECKLIST §2.3: 소개 문구·공간 안내 — i18n 사용. 구역별 few-shot: center/foundry/arena.
+  const introMessage = isArenaPage ? t.introArena : isBtyPage ? t.introFoundry : t.introCenter;
+  const spaceHint = isArenaPage ? t.spaceHintArena : isBtyPage ? t.spaceHintFoundry : isCenterPage ? t.spaceHintCenter : null;
+  const examplePhrases = isArenaPage ? t.examplePhrasesArena : isBtyPage ? t.examplePhrasesFoundry : t.examplePhrasesCenter;
+  const guideVariant: GuideAvatarVariant =
+    pathname.includes("/bty") || pathname.includes("/center") ? "warm" : "default";
+
+  const performSend = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed || isTyping) return;
+
+      const sid = sessionIdRef.current ?? crypto.randomUUID();
+      if (!sessionIdRef.current) {
+        sessionIdRef.current = sid;
+        setChatSessionId(sid);
+      }
+
+      setLastUserMessage(trimmed);
+      setInput("");
+      setChatMessages((prev) => [...prev, { role: "user", content: trimmed }]);
+      setIsTyping(true);
+      setTypingText(t.thinking);
+      setShowRetry(false);
+      setErrorMsg(null);
+      clearTimers();
+
+      abortRef.current = new AbortController();
+
+      timeout10Ref.current = setTimeout(() => {
+        setTypingText(t.thinking);
+      }, TYPING_TIMEOUT_10S);
+
+      timeout25Ref.current = setTimeout(() => {
+        setErrorMsg(t.connectionError);
+        setShowRetry(true);
+      }, TYPING_TIMEOUT_25S);
+
+      let hadError = false;
+      let wasAborted = false;
+      try {
+        const mode = pathname.includes("/bty-arena")
+          ? "arena"
+          : pathname.includes("/bty")
+            ? "foundry"
+            : "center";
+        const r = await fetchJson<{
+          message?: string;
+          suggestCenter?: boolean;
+          suggestFoundry?: boolean;
+          suggestMentor?: boolean;
+          mentorPath?: string;
+          usedFallback?: boolean;
+        }>("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: [...chatMessages, { role: "user", content: trimmed }],
+            mode,
+            lang: locale,
+          }),
+          signal: abortRef.current.signal,
+        });
+        const reply =
+          (r.ok ? r.json?.message : null) ||
+          (locale === "ko"
+            ? "말해줘서 고마워요. 여기선 뭐든 괜찮아요."
+            : "Thanks for sharing. You're okay as you are.");
+        const suggestCenter = r.ok && r.json?.suggestCenter === true;
+        const suggestFoundry = r.ok && r.json?.suggestFoundry === true;
+        const suggestMentor = r.ok && r.json?.suggestMentor === true;
+        const mentorPath = r.ok && r.json?.mentorPath ? String(r.json.mentorPath) : undefined;
+        const usedFallback = r.ok && r.json?.usedFallback === true;
+        setChatMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: reply, suggestCenter, suggestFoundry, suggestMentor, mentorPath, usedFallback },
+        ]);
+        if (rememberChat && sid) {
+          try {
+            await fetch("/api/me/conversations", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ channel: "chat", sessionId: sid, role: "user", content: trimmed }),
+            });
+            await fetch("/api/me/conversations", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ channel: "chat", sessionId: sid, role: "assistant", content: reply }),
+            });
+          } catch {
+            // ignore
+          }
+        }
+      } catch (err) {
+        wasAborted = err instanceof Error && err.name === "AbortError";
+        if (!wasAborted) {
+          hadError = true;
+          setErrorMsg(t.connectionError);
+          setShowRetry(true);
+        }
+      } finally {
+        clearTimers();
+        abortRef.current = null;
+        if (!wasAborted) {
+          setIsTyping(false);
+          setTypingText(null);
+          if (!hadError) {
+            setShowRetry(false);
+            setErrorMsg(null);
+          }
+        }
+      }
+    },
+    [isTyping, chatMessages, pathname, locale, t, clearTimers, rememberChat]
+  );
+
+  const send = () => {
+    performSend(input);
+  };
+
+  const retry = () => {
+    if (lastUserMessage) {
+      abortRef.current?.abort();
+      setErrorMsg(null);
+      performSend(lastUserMessage);
+    }
+  };
+
+  const toggleRememberChat = async () => {
+    const next = !rememberChat;
+    setRememberChat(next);
+    try {
+      const r = await fetch("/api/me/conversation-preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rememberChat: next }),
+      });
+      if (!r.ok) setRememberChat(!next);
+    } catch {
+      setRememberChat(!next);
+    }
+  };
+
+  const deleteChatHistory = async () => {
+    if (locale === "ko" && !confirm("저장된 챗 대화 기록을 모두 삭제할까요?")) return;
+    if (locale === "en" && !confirm("Delete all saved chat history?")) return;
+    setDeletingChat(true);
+    try {
+      await fetch("/api/me/conversations?channel=chat", { method: "DELETE" });
+      setChatMessages([]);
+      setChatSessionId(null);
+      sessionIdRef.current = null;
+    } finally {
+      setDeletingChat(false);
+    }
+  };
+
+  const themeColors = isBtyPage
+    ? {
+        button: "bg-foundry-purple hover:bg-foundry-purple-dark text-white",
+        border: "border-foundry-purple-muted",
+        header: "text-foundry-purple-dark",
+        close: "text-foundry-ink-soft hover:text-foundry-ink",
+        userMsg: "bg-foundry-purple text-foundry-white",
+        botMsg: "bg-foundry-purple-muted/50 text-foundry-ink",
+        typing: "bg-foundry-purple-muted/50 text-foundry-ink-soft",
+        input: "border-foundry-purple-muted focus:ring-foundry-purple/30",
+        submit: "bg-foundry-purple text-foundry-white hover:bg-foundry-purple-dark",
+        retry: "text-foundry-purple",
+      }
+    : {
+        button: "bg-dear-sage hover:bg-dear-sage-soft text-white",
+        border: "border-dear-sage/20",
+        header: "text-dear-charcoal",
+        close: "text-dear-charcoal-soft hover:text-dear-charcoal",
+        userMsg: "bg-dear-sage text-white",
+        botMsg: "bg-dear-bg-paper text-dear-charcoal border border-dear-sage/10",
+        typing: "bg-dear-bg-paper text-dear-charcoal-soft border border-dear-sage/10",
+        input: "border-dear-sage/20 focus:ring-dear-sage/30",
+        submit: "bg-dear-sage text-white hover:bg-dear-sage-soft",
+        retry: "text-dear-sage",
+      };
+
+  const showFab = showChatFabForPath(pathname);
+  const fabAria =
+    locale === "ko"
+      ? `${open ? "채팅 닫기" : "Dr. Chi와 말걸기"}`
+      : `${open ? "Close chat" : "Chat with Dr. Chi"}`;
+
+  return (
+    <>
+      {showFab && (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className={cn(
+            "fixed bottom-6 right-6 z-[45] flex h-14 w-14 items-center justify-center rounded-full border-2 shadow-lg transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+            isBtyPage || isArenaPage
+              ? "border-foundry-purple-muted bg-white hover:bg-foundry-purple-muted/20 focus-visible:ring-foundry-purple/40"
+              : "border-dear-sage/40 bg-white hover:bg-dear-sage/10 focus-visible:ring-dear-sage/40"
+          )}
+          aria-label={fabAria}
+          aria-expanded={open}
+        >
+          <GuideCharacterAvatar codeName={userCodeName} variant={guideVariant} size="md" className="pointer-events-none" alt="" />
+        </button>
+      )}
+      {open && (
+        <div
+          className={cn(
+            "fixed bottom-24 right-6 z-40 w-[calc(100vw-3rem)] max-w-md rounded-2xl border",
+            themeColors.border,
+            "bg-white shadow-xl flex flex-col max-h-[70vh] animate-fadeIn"
+          )}
+        >
+          <div className={cn("p-3 border-b", themeColors.border, "flex items-center justify-between gap-2")}>
+            <div className="flex items-center gap-2 min-w-0">
+              <GuideCharacterAvatar codeName={userCodeName} variant={guideVariant} size="sm" className="flex-shrink-0" />
+              <div className="min-w-0 flex flex-col">
+                <span className={cn("text-sm font-medium truncate", themeColors.header)}>Dr. Chi</span>
+                <span className="text-xs opacity-70 truncate">{spaceLabel}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className={cn(themeColors.close, "p-1 transition-colors")}
+              aria-label="Close"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[120px]">
+            {chatMessages.length === 0 && !typingText && !errorMsg && (
+              <div className="space-y-2">
+                <p className={cn("text-sm", isBtyPage || isArenaPage ? "text-foundry-ink-soft" : "text-dear-charcoal-soft")}>{introMessage}</p>
+                {spaceHint && (
+                  <p className={cn("text-xs opacity-80", isBtyPage || isArenaPage ? "text-foundry-ink-soft" : "text-dear-charcoal-soft")}>{spaceHint}</p>
+                )}
+                {(examplePhrases?.length) ? (
+                  <div className="pt-1">
+                    <p className={cn("text-xs opacity-70 mb-1.5", isBtyPage || isArenaPage ? "text-foundry-ink-soft" : "text-dear-charcoal-soft")}>
+                      {t.exampleLabel}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {examplePhrases.map((phrase, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => performSend(phrase)}
+                          className={cn(
+                            "text-left text-xs px-2.5 py-1.5 rounded-lg border transition-colors",
+                            isBtyPage || isArenaPage
+                              ? "border-foundry-purple-muted/60 text-foundry-ink hover:bg-foundry-purple-muted/20"
+                              : "border-dear-sage/30 text-dear-charcoal hover:bg-dear-sage/10"
+                          )}
+                          aria-label={phrase}
+                        >
+                          {phrase}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            )}
+            {chatMessages.map((m, i) => (
+              <div key={i} className={m.role === "user" ? "ml-auto max-w-[85%]" : "max-w-[85%]"}>
+                {m.role === "assistant" && (
+                  <div className="flex items-center gap-2 mb-1">
+                    <GuideCharacterAvatar codeName={userCodeName} variant={guideVariant} size="sm" className="flex-shrink-0" />
+                    <span className="text-xs font-medium opacity-80">Dr. Chi</span>
+                  </div>
+                )}
+                <div
+                  className={cn(
+                    "rounded-xl px-3 py-2 text-sm",
+                    m.role === "user" ? themeColors.userMsg : themeColors.botMsg
+                  )}
+                >
+                  {m.content}
+                </div>
+                {m.role === "assistant" && m.suggestCenter && (
+                  <Link
+                    href={`/${locale}/center`}
+                    className="mt-1.5 inline-block text-sm font-medium underline hover:no-underline"
+                    style={isBtyPage ? { color: "var(--foundry-purple)" } : { color: "var(--dear-sage)" }}
+                    aria-label={locale === "ko" ? "Center로 이동" : "Go to Center"}
+                  >
+                    {locale === "ko" ? "Center로 가기 →" : "Go to Center →"}
+                  </Link>
+                )}
+                {m.role === "assistant" && m.suggestFoundry && !m.suggestMentor && (
+                  <Link
+                    href={`/${locale}/bty`}
+                    className="mt-1.5 inline-block text-sm font-medium underline hover:no-underline"
+                    style={isBtyPage ? { color: "var(--foundry-purple)" } : { color: "var(--dear-sage)" }}
+                    aria-label={locale === "ko" ? "훈련장(Foundry)으로 이동" : "Go to Foundry"}
+                  >
+                    {locale === "ko" ? "Foundry로 가기 →" : "Go to Foundry →"}
+                  </Link>
+                )}
+                {m.role === "assistant" && m.suggestMentor && m.mentorPath && (
+                  <Link
+                    href={m.mentorPath}
+                    className="mt-1.5 inline-block text-sm font-medium underline hover:no-underline"
+                    style={isBtyPage ? { color: "var(--foundry-purple)" } : { color: "var(--dear-sage)" }}
+                    aria-label={locale === "ko" ? "Dr. Chi 멘토 페이지로 이동" : "Go to Dr. Chi Mentor"}
+                  >
+                    {locale === "ko" ? "Dr. Chi 멘토와 깊이 대화하기 →" : "Talk with Dr. Chi Mentor →"}
+                  </Link>
+                )}
+                {m.role === "assistant" && m.usedFallback && (
+                  <p className="mt-1.5 text-xs opacity-70">
+                    {locale === "ko" ? "일시적으로 기본 메시지를 보여드립니다." : "Showing a default message for now."}
+                  </p>
+                )}
+              </div>
+            ))}
+            {typingText && (
+              <>
+                <div className="flex items-center gap-2 mb-1">
+                  <GuideCharacterAvatar codeName={userCodeName} variant={guideVariant} size="sm" className="flex-shrink-0" />
+                  <span className="text-xs font-medium opacity-80">Dr. Chi</span>
+                </div>
+                <div className={cn("rounded-xl px-3 py-2 text-sm w-fit flex items-center gap-0.5", themeColors.typing)}>
+                  <span>{typingText}</span>
+                <span className="chat-typing-dots inline-flex">
+                  <span>.</span>
+                  <span>.</span>
+                  <span>.</span>
+                </span>
+                </div>
+              </>
+            )}
+            {/* COMMANDER_BACKLOG_AND_NEXT §2: 실패·타임아웃 시 안내 문구 + 재시도 버튼 */}
+            {(errorMsg || showRetry) && (
+              <div className="rounded-xl px-3 py-3 text-sm bg-red-50 text-red-700 max-w-[85%] border border-red-100 space-y-2">
+                {errorMsg && <p className="m-0">{errorMsg}</p>}
+                {showRetry && (
+                  <button
+                    type="button"
+                    onClick={retry}
+                    className={cn("font-medium hover:underline", themeColors.retry)}
+                    aria-label={t.retry}
+                  >
+                    {t.retry}
+                  </button>
+                )}
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              send();
+            }}
+            className={cn("p-3 border-t", themeColors.border, "flex gap-2")}
+          >
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={t.placeholder}
+              className={cn(
+                "flex-1 rounded-xl border px-4 py-2 text-sm",
+                themeColors.input,
+                "focus:outline-none focus:ring-2"
+              )}
+            />
+            <button
+              type="submit"
+              disabled={isTyping}
+              className={cn(
+                "px-4 py-2 rounded-xl text-sm font-medium transition-colors",
+                themeColors.submit,
+                "disabled:opacity-50 disabled:cursor-not-allowed"
+              )}
+              aria-label={t.send}
+            >
+              {t.send}
+            </button>
+          </form>
+          {isTyping && (
+            <div
+              className="px-3 pb-3"
+              aria-busy="true"
+              aria-label={locale === "ko" ? "답변 생성 중" : "Generating reply"}
+            >
+              <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
+            </div>
+          )}
+          {prefsLoaded && (
+            <div className={cn("px-3 pb-3 pt-1 border-t", themeColors.border, "flex flex-wrap items-center gap-2 text-xs")}>
+              <label className="flex items-center gap-1.5 cursor-pointer opacity-80">
+                <input
+                  type="checkbox"
+                  checked={rememberChat}
+                  onChange={toggleRememberChat}
+                  className="rounded border-current opacity-70"
+                />
+                <span>{t.rememberConversation}</span>
+              </label>
+              <span className="opacity-50">·</span>
+              <button
+                type="button"
+                onClick={deleteChatHistory}
+                disabled={deletingChat}
+                className={cn("hover:underline disabled:opacity-50", themeColors.retry)}
+                aria-label={t.deleteHistory}
+              >
+                {t.deleteHistory}
+              </button>
+            </div>
+          )}
+          {deletingChat && (
+            <div
+              className="px-3 pb-3"
+              aria-busy="true"
+              aria-label={locale === "ko" ? "대화 기록 삭제 중" : "Deleting chat history"}
+            >
+              <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+}

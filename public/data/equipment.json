@@ -1,0 +1,190 @@
+{
+  "version": "1.0",
+  "items": [
+    {
+      "id": "explorer_standard",
+      "name": "Standard Explorer",
+      "rarity": "common",
+      "slot": "hand_tool",
+      "level": 1,
+      "abilities": ["+5% Diagnosis Accuracy"],
+      "lore": "Essential diagnostic probe for every clinician.",
+      "xp_bonus": "",
+      "iconId": "explorer"
+    },
+    {
+      "id": "probe_standard",
+      "name": "Periodontal Probe",
+      "rarity": "common",
+      "slot": "hand_tool",
+      "level": 1,
+      "abilities": ["+5% Diagnosis Accuracy"],
+      "lore": "Precision probe for pocket depth and assessment.",
+      "xp_bonus": "",
+      "iconId": "probe"
+    },
+    {
+      "id": "dental_mirror_basic",
+      "name": "Dental Mirror",
+      "rarity": "common",
+      "slot": "scanner_tool",
+      "level": 1,
+      "abilities": ["+5% Diagnosis Accuracy"],
+      "lore": "Reflective mirror for visibility in the oral cavity.",
+      "xp_bonus": "",
+      "iconId": "dental_mirror"
+    },
+    {
+      "id": "dental_mirror_premium",
+      "name": "Premium Dental Mirror",
+      "rarity": "rare",
+      "slot": "scanner_tool",
+      "level": 1,
+      "abilities": ["+12% Diagnosis Accuracy"],
+      "lore": "High-clarity mirror for detailed examination.",
+      "xp_bonus": "",
+      "iconId": "dental_mirror_premium"
+    },
+    {
+      "id": "xray_portable",
+      "name": "X-Ray Portable",
+      "rarity": "rare",
+      "slot": "scanner_tool",
+      "level": 1,
+      "abilities": ["+15% Diagnosis Accuracy", "+10% Data Analysis Speed"],
+      "lore": "Portable digital imaging for quick diagnostics.",
+      "xp_bonus": "",
+      "iconId": "xray_portable"
+    },
+    {
+      "id": "magnifier",
+      "name": "Magnifier",
+      "rarity": "common",
+      "slot": "scanner_tool",
+      "level": 1,
+      "abilities": ["+8% Diagnosis Accuracy"],
+      "lore": "Hand-held magnification for fine detail.",
+      "xp_bonus": "",
+      "iconId": "magnifier"
+    },
+    {
+      "id": "loupes_standard",
+      "name": "Dental Loupes",
+      "rarity": "rare",
+      "slot": "wearable",
+      "level": 1,
+      "abilities": ["+12% Diagnosis Accuracy", "+5% Procedure Safety"],
+      "lore": "Ergonomic magnification for extended procedures.",
+      "xp_bonus": "",
+      "iconId": "loupes"
+    },
+    {
+      "id": "scaler_ultrasonic",
+      "name": "Ultrasonic Scaler",
+      "rarity": "rare",
+      "slot": "surgery_tool",
+      "level": 1,
+      "abilities": ["+15% Cleaning Speed"],
+      "lore": "Ultrasonic scaling for efficient debridement.",
+      "xp_bonus": "",
+      "iconId": "scaler"
+    },
+    {
+      "id": "polisher",
+      "name": "Polisher",
+      "rarity": "common",
+      "slot": "surgery_tool",
+      "level": 1,
+      "abilities": ["+8% Cleaning Speed"],
+      "lore": "Prophy polishing for smooth finish.",
+      "xp_bonus": "",
+      "iconId": "polisher"
+    },
+    {
+      "id": "handpiece_pro",
+      "name": "Pro Handpiece",
+      "rarity": "rare",
+      "slot": "surgery_tool",
+      "level": 1,
+      "abilities": ["+12% Treatment Success Rate"],
+      "lore": "Reliable high-speed handpiece for precise preparation.",
+      "xp_bonus": "",
+      "iconId": "handpiece"
+    },
+    {
+      "id": "excavator",
+      "name": "Excavator",
+      "rarity": "common",
+      "slot": "hand_tool",
+      "level": 1,
+      "abilities": ["+5% Treatment Success Rate"],
+      "lore": "Manual excavator for caries removal.",
+      "xp_bonus": "",
+      "iconId": "excavator"
+    },
+    {
+      "id": "curing_light",
+      "name": "Curing Light",
+      "rarity": "rare",
+      "slot": "surgery_tool",
+      "level": 1,
+      "abilities": ["+10% Treatment Success Rate", "+5% Cleaning Speed"],
+      "lore": "LED curing for composite restoration.",
+      "xp_bonus": "",
+      "iconId": "curing_light"
+    },
+    {
+      "id": "goggles_premium",
+      "name": "Premium Goggles",
+      "rarity": "rare",
+      "slot": "wearable",
+      "level": 1,
+      "abilities": ["+10% Procedure Safety"],
+      "lore": "Enhanced protection and clarity.",
+      "xp_bonus": "",
+      "iconId": "goggles_premium"
+    },
+    {
+      "id": "apron",
+      "name": "Procedural Apron",
+      "rarity": "common",
+      "slot": "wearable",
+      "level": 1,
+      "abilities": ["+5% Procedure Safety"],
+      "lore": "Standard barrier protection.",
+      "xp_bonus": "",
+      "iconId": "apron"
+    },
+    {
+      "id": "headlight",
+      "name": "Headlight",
+      "rarity": "rare",
+      "slot": "wearable",
+      "level": 1,
+      "abilities": ["+10% Diagnosis Accuracy", "+5% Procedure Safety"],
+      "lore": "Hands-free illumination for deep field visibility.",
+      "xp_bonus": "",
+      "iconId": "headlight"
+    },
+    {
+      "id": "loupes_neurosight",
+      "name": "NeuroSight Dental Loupes",
+      "rarity": "legendary",
+      "slot": "legendary_slot",
+      "level": 1,
+      "abilities": ["+20% Diagnosis Accuracy", "+10% Treatment Speed"],
+      "lore": "Elite magnification system used by master clinicians.",
+      "xp_bonus": "+5 Core XP per procedure",
+      "iconId": "loupes"
+    }
+  ],
+  "slots": [
+    "hand_tool",
+    "scanner_tool",
+    "surgery_tool",
+    "digital_device",
+    "wearable",
+    "utility",
+    "legendary_slot"
+  ]
+}

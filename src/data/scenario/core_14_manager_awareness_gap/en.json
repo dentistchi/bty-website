@@ -1,0 +1,235 @@
+{
+  "id": "core_14_manager_awareness_gap",
+  "title": "They Are Talking About a Different Reality",
+  "role": "Associate Dentist",
+  "pressure": "In a team meeting, the manager confidently describes the office as consistent, fair, and well-supported. You hear the words clearly. But your daily experience contradicts nearly every part of it. The assistants have already adapted. Silence has already normalized. The inconsistency is no longer subtle — it is structural. And yet, the person responsible for the system is describing something else entirely.",
+  "tradeoff": "Maintain alignment with leadership vs trust your own direct observation",
+  "bty_tension_axis": "Authority vs Reality Integrity",
+  "difficulty_level": 5,
+  "pattern_detection": [
+    "awareness_gap",
+    "perception_split",
+    "authority_bias",
+    "internal_conflict",
+    "reality_suppression"
+  ],
+  "cognitive_dynamics": {
+    "stage_1": "Direct observation of inconsistency",
+    "stage_2": "Hearing conflicting leadership narrative",
+    "stage_3": "Internal dissonance",
+    "stage_4": "Choice: adjust perception vs hold reality",
+    "stage_5": "Identity positioning under authority pressure"
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Assume the manager has information you don’t",
+      "subtext": "Defer to authority to reduce internal conflict",
+      "direction": "exit"
+    },
+    {
+      "id": "B",
+      "label": "Recognize clearly that leadership perception is misaligned with reality",
+      "subtext": "Hold your observation even if it creates tension",
+      "direction": "entry"
+    },
+    {
+      "id": "C",
+      "label": "Question your own judgment",
+      "subtext": "Reduce conflict by doubting yourself",
+      "direction": "exit"
+    },
+    {
+      "id": "D",
+      "label": "Disengage from leadership perspective entirely",
+      "subtext": "Protect your clarity by rejecting their frame",
+      "direction": "exit"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "Deferring to authority immediately reduces tension. But it requires you to override your own repeated observations. Over time, you begin filtering reality through what leadership says instead of what you see.",
+      "pressure_increase": 0.7,
+      "intensity": 4,
+      "identity_clash": [
+        "I’ve seen consistent inconsistency",
+        "Leadership is saying the system works",
+        "If I trust them, I have to ignore what I’ve experienced"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Fully adopt leadership perspective",
+          "direction": "exit",
+          "cost": "You trade lived observation for narrative alignment until inconsistencies feel normal."
+        },
+        {
+          "id": "Y",
+          "label": "Re-compare reality vs narrative explicitly",
+          "direction": "entry",
+          "cost": "You must hold tension while comparing claims to what actually happens in the room."
+        }
+      ],
+      "action_decision": {
+        "prompt": "If authority defines truth, what happens to your observation?",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "List specific mismatches between stated standards and actual behavior",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Accept the narrative and move on",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "B": {
+      "escalation_text": "The moment you accept the gap, the problem changes category. This is no longer about fairness mistakes — it is about a system operating on a false self-understanding. That realization increases pressure, not reduces it.",
+      "pressure_increase": 0.9,
+      "intensity": 5,
+      "identity_clash": [
+        "I see what’s actually happening",
+        "Leadership does not see it the same way",
+        "This means the system cannot correct itself from within"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep this realization internal",
+          "direction": "exit",
+          "cost": "The system keeps a false self-understanding while you carry accurate misalignment alone."
+        },
+        {
+          "id": "Y",
+          "label": "Define the misalignment in concrete structural terms",
+          "direction": "entry",
+          "cost": "Language that maps the gap may land as accusatory or destabilizing to leadership."
+        }
+      ],
+      "action_decision": {
+        "prompt": "If perception is misaligned, what becomes your reference point?",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Map exact differences between policy, messaging, and lived behavior",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Leave it as internal frustration",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "C": {
+      "escalation_text": "Doubting yourself lowers discomfort quickly. But it removes your ability to detect patterns accurately. Over time, your internal compass weakens.",
+      "pressure_increase": 0.6,
+      "intensity": 3,
+      "identity_clash": [
+        "Maybe I’m overreacting",
+        "But I’ve seen repeated patterns",
+        "If I doubt myself, I don’t have to resolve this"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Continue self-doubt",
+          "direction": "exit",
+          "cost": "Self-doubt dulls your mirror; patterns become harder to name with confidence."
+        },
+        {
+          "id": "Y",
+          "label": "Validate your observation with evidence",
+          "direction": "entry",
+          "cost": "Evidence commits you; you can no longer retreat to a comfortable maybe."
+        }
+      ],
+      "action_decision": {
+        "prompt": "What anchors your judgment?",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Document repeated examples of inconsistency",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Let uncertainty dominate",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "D": {
+      "escalation_text": "Rejecting leadership protects your perception, but isolates you from influence. The system continues unchanged, just without your engagement.",
+      "pressure_increase": 0.7,
+      "intensity": 4,
+      "identity_clash": [
+        "They don’t see reality",
+        "I don’t want to align with this",
+        "If I disengage, I lose any ability to affect change"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Fully disengage",
+          "direction": "exit",
+          "cost": "You preserve private clarity but forfeit leverage to influence correction from inside."
+        },
+        {
+          "id": "Y",
+          "label": "Understand how leadership formed their perception",
+          "direction": "entry",
+          "cost": "Reconstructing their lens costs energy and may not close the underlying reality gap."
+        }
+      ],
+      "action_decision": {
+        "prompt": "Is disconnection a solution or avoidance?",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Analyze how leadership conclusions were formed",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Stay detached",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    }
+  }
+}

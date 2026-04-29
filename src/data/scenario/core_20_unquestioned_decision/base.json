@@ -1,0 +1,222 @@
+{
+  "scenarioId": "core_20_identity_integrity_inheritance",
+  "dbScenarioId": "bty_incident_02_core_20",
+  "incident": {
+    "incidentId": "incident_02",
+    "incidentStage": "system inheritance",
+    "sequencePosition": 20,
+    "previousScenarioId": "core_19_identity_integrity_propagation",
+    "nextScenarioId": null,
+    "roleShift": "from system enforcer to system inheritance designer",
+    "propagation": {
+      "exitEffect": "The system depends on the original leader and weakens when authority shifts.",
+      "entryEffect": "The system becomes transferable and survives leadership change.",
+      "reExposureNote": "Inheritance reveals whether integrity is a person, a policy, or an operating system."
+    },
+    "stage": 20,
+    "axisGroup": "Repair",
+    "axisIndex": 2
+  },
+  "primaryChoices": {
+    "A": {
+      "axis": "system_inheritance",
+      "direction": "exit",
+      "tradeoff": "personal_leadership_over_transferable_system",
+      "mapsTo": [
+        "A_X",
+        "A_Y"
+      ]
+    },
+    "B": {
+      "axis": "system_inheritance",
+      "direction": "exit",
+      "tradeoff": "speed_over_successor_alignment",
+      "mapsTo": [
+        "B_X",
+        "B_Y"
+      ]
+    },
+    "C": {
+      "axis": "system_inheritance",
+      "direction": "exit",
+      "tradeoff": "authority_confidence_over_observable_handoff",
+      "mapsTo": [
+        "C_X",
+        "C_Y"
+      ]
+    },
+    "D": {
+      "axis": "system_inheritance",
+      "direction": "entry",
+      "tradeoff": "transferability_over_control",
+      "mapsTo": [
+        "D_X",
+        "D_Y"
+      ]
+    }
+  },
+  "tradeoff": {
+    "A": {
+      "X": "keep_system_person_dependent",
+      "Y": "separate_system_from_person"
+    },
+    "B": {
+      "X": "handoff_through_instruction",
+      "Y": "handoff_through_observed_application"
+    },
+    "C": {
+      "X": "trust_successor_judgment",
+      "Y": "test_successor_under_pressure"
+    },
+    "D": {
+      "X": "document_without_transfer_test",
+      "Y": "install_successor_ownership_check"
+    }
+  },
+  "action_decision_mapping": {
+    "A_X": {
+      "commitmentType": "person_dependent_integrity",
+      "isEntry": false
+    },
+    "A_Y": {
+      "commitmentType": "system_independence",
+      "isEntry": true
+    },
+    "B_X": {
+      "commitmentType": "instruction_based_handoff",
+      "isEntry": false
+    },
+    "B_Y": {
+      "commitmentType": "observed_handoff",
+      "isEntry": true
+    },
+    "C_X": {
+      "commitmentType": "assumed_successor_alignment",
+      "isEntry": false
+    },
+    "C_Y": {
+      "commitmentType": "pressure_tested_successor_alignment",
+      "isEntry": true
+    },
+    "D_X": {
+      "commitmentType": "static_documentation",
+      "isEntry": false
+    },
+    "D_Y": {
+      "commitmentType": "successor_ownership_mechanism",
+      "isEntry": true
+    }
+  },
+  "structure": {
+    "primary": [
+      {
+        "choiceId": "A",
+        "dbChoiceId": "bty_incident_02_core_20_primary_A_A"
+      },
+      {
+        "choiceId": "B",
+        "dbChoiceId": "bty_incident_02_core_20_primary_B_B"
+      },
+      {
+        "choiceId": "C",
+        "dbChoiceId": "bty_incident_02_core_20_primary_C_C"
+      },
+      {
+        "choiceId": "D",
+        "dbChoiceId": "bty_incident_02_core_20_primary_D_D"
+      }
+    ],
+    "tradeoff": {
+      "A": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "bty_incident_02_core_20_tradeoff_A_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "bty_incident_02_core_20_tradeoff_A_Y"
+        }
+      ],
+      "B": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "bty_incident_02_core_20_tradeoff_B_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "bty_incident_02_core_20_tradeoff_B_Y"
+        }
+      ],
+      "C": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "bty_incident_02_core_20_tradeoff_C_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "bty_incident_02_core_20_tradeoff_C_Y"
+        }
+      ],
+      "D": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "bty_incident_02_core_20_tradeoff_D_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "bty_incident_02_core_20_tradeoff_D_Y"
+        }
+      ]
+    },
+    "action_decision": {
+      "A_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "bty_incident_02_core_20_action_A_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "bty_incident_02_core_20_action_A_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "B_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "bty_incident_02_core_20_action_B_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "bty_incident_02_core_20_action_B_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "C_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "bty_incident_02_core_20_action_C_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "bty_incident_02_core_20_action_C_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "D_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "bty_incident_02_core_20_action_D_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "bty_incident_02_core_20_action_D_X_AD2",
+          "is_action_commitment": false
+        }
+      ]
+    }
+  }
+}

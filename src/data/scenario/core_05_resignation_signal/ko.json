@@ -1,0 +1,301 @@
+{
+  "id": "core_05_resignation_signal",
+  "title": "떠나기 전의 신호",
+  "role": "Lead Assistant",
+  "pressure": "어시스턴트 한 명이 새 의사를 계속 떠받치는 데 지쳤고, 다른 곳을 알아볼 수도 있다고 말한다. 그들은 매니저가 듣기는 하지만 아무것도 바뀌지 않는다고 말한다. 오피스는 아직 돌아가지만, 팀은 더 조용해졌고 스스로 나서서 도와주려 하지 않는다.",
+  "tradeoff": "이 말을 burnout으로 보고 하루를 계속 움직일 수도 있고, 더 깊은 trust breakdown에서 나온 resignation signal로 말할 수도 있다.",
+  "bty_tension_axis": "Containment vs Truth",
+  "axis_primary": "Truth",
+  "axis_secondary": ["Ownership", "Conflict", "Accountability"],
+  "difficulty_level": 5,
+  "action_contract": {
+    "description": "resignation signal을 private하게 수습할지, turnover가 시작되기 전에 underlying pattern을 드러낼지 결정한다.",
+    "time_window_hours": 24
+  },
+  "air_logic": {
+    "success": "resignation signal이 충분히 일찍 보이게 되어 개입할 수 있다.",
+    "miss": "그 신호는 burnout으로 normalizing되고, 팀은 exit에 가까워진다."
+  },
+  "forced_reset": {
+    "trigger": "팀원이 아무것도 바뀌지 않아서 떠날 수도 있다고 말한다.",
+    "action": "이것을 개인 감정으로 볼지, 시스템 신호로 볼지 결정해야 한다."
+  },
+  "pattern_detection": [
+    "resignation_signal",
+    "burnout_normalization",
+    "truth_naming",
+    "conflict_avoidance"
+  ],
+  "choices": [
+    {
+      "id": "A",
+      "label": "리더십이 작업 중이니 조금만 버텨달라고 말한다",
+      "subtext": "즉시 escalation하지 않고 안심시킬 수 있다.",
+      "axis": "Time",
+      "direction": "exit",
+      "pattern_family": "burnout_normalization",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-TRUTH-05_primary_A"
+    },
+    {
+      "id": "B",
+      "label": "이것을 resignation signal로 말하고 매니저에게 가져간다",
+      "subtext": "누군가 실제로 떠나기 전에 숨겨진 cost를 보이게 만든다.",
+      "axis": "Truth",
+      "direction": "entry",
+      "pattern_family": "truth_naming",
+      "intensity": 5,
+      "dbChoiceId": "INCIDENT-01-TRUTH-05_primary_B"
+    },
+    {
+      "id": "C",
+      "label": "부담을 줄이기 위해 조용히 스케줄을 조정한다",
+      "subtext": "어려운 대화를 강제하지 않고 즉시 도울 수 있다.",
+      "axis": "Control",
+      "direction": "exit",
+      "pattern_family": "conflict_avoidance",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-TRUTH-05_primary_C"
+    },
+    {
+      "id": "D",
+      "label": "이슈를 올리기 전에 사례를 문서화하라고 말한다",
+      "subtext": "나중에 concern을 더 방어 가능하게 만든다.",
+      "axis": "Documentation",
+      "direction": "exit",
+      "pattern_family": "future_deferral",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-TRUTH-05_primary_D"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "어시스턴트는 고개를 끄덕이지만 더 이상 적극적으로 참여하지 않는다. 작은 문제를 correction하지 않고 요청받은 것만 하기 시작한다. 다른 어시스턴트들도 그것을 보고 자기 에너지를 보호하기 시작한다.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "계속 patience를 권하고 감정 escalation을 피한다",
+          "cost": "supportive하게 들리지만 resignation signal은 더 지하로 내려간다.",
+          "axis": "Time",
+          "direction": "exit",
+          "pattern_family": "burnout_normalization",
+          "dbChoiceId": "INCIDENT-01-TRUTH-05_tradeoff_A_X"
+        },
+        {
+          "id": "Y",
+          "label": "이 말을 warning signal로 다시 보고 pattern을 escalation한다",
+          "cost": "초기 reassurance가 실제 문제를 다루지 못했다는 것을 인정해야 한다.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-TRUTH-05_tradeoff_A_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "해석이 아니라, 다음에 실제로 무엇을 할 것인가.",
+        "context": "어시스턴트는 더 이상 단순히 venting하는 것이 아니다. 행동이 바뀌고 있다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "24시간 안에 매니저에게 이것이 resignation signal이라고 말하고, 그것을 만드는 specific burden을 확인한다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "private warning을 visible intervention으로 바꾸고 있다."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-TRUTH-05_action_A_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "privately 계속 check-in하고 조금 더 시간을 줘보라고 말한다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Time",
+              "direction": "exit",
+              "pattern_family": "burnout_normalization",
+              "description": "신호를 개인 burnout으로 수습하고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-05_action_A_X_AD2"
+          }
+        ]
+      }
+    },
+    "B": {
+      "escalation_text": "이 문제를 매니저에게 가져가자, 매니저는 resignation risk를 말하면 오피스가 불안정해 보일까 걱정한다. 이것이 정말 pattern인지, 아니면 한 어시스턴트가 힘든 한 주를 보내는 것인지 묻는다.",
+      "pressure_increase": 0.7,
+      "intensity": 5,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "메시지를 부드럽게 낮추고 morale concern으로 표현한다",
+          "cost": "리스크는 더 안전하게 들리지만 urgency는 약해진다.",
+          "axis": "Image",
+          "direction": "exit",
+          "pattern_family": "reputation_protection",
+          "dbChoiceId": "INCIDENT-01-TRUTH-05_tradeoff_B_X"
+        },
+        {
+          "id": "Y",
+          "label": "resignation signal을 계속 보이게 두고 workload pattern과 연결한다",
+          "cost": "불편함이 커지고 너무 빨리 escalation한다고 보일 수 있다.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-TRUTH-05_tradeoff_B_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "해석이 아니라, 다음에 실제로 무엇을 할 것인가.",
+        "context": "매니저는 이 이슈가 안전하게 머무를지, 보이게 될지 시험하고 있다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "24시간 안에 resignation signal, workload burden, repeated compromise pattern을 글로 요약한다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "exit가 일어나기 전에 숨겨진 cost를 보이게 만들고 있다."
+            },
+            "intensity": 5,
+            "dbChoiceId": "INCIDENT-01-TRUTH-05_action_B_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "두 번째 어시스턴트가 같은 concern을 말할 때까지 기다렸다가 기록한다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Time",
+              "direction": "exit",
+              "pattern_family": "future_deferral",
+              "description": "패턴이 더 부정하기 어려워질 때까지 visibility를 미루고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-05_action_B_X_AD2"
+          }
+        ]
+      }
+    },
+    "C": {
+      "escalation_text": "스케줄 조정은 이틀 동안 도움이 된다. 하지만 다른 어시스턴트들은 workaround를 알아차리고 왜 진짜 이슈를 다루지 않는지 묻는다. burden은 사라진 것이 아니라 이동한다.",
+      "pressure_increase": 0.5,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "압박을 줄이기 위해 스케줄 조정을 계속 사용한다",
+          "cost": "즉각적인 strain은 줄지만 underlying pattern은 숨겨진다.",
+          "axis": "Control",
+          "direction": "exit",
+          "pattern_family": "conflict_avoidance",
+          "dbChoiceId": "INCIDENT-01-TRUTH-05_tradeoff_C_X"
+        },
+        {
+          "id": "Y",
+          "label": "스케줄 조정은 temporary workaround라고 말하고 실제 이슈를 드러낸다",
+          "cost": "workaround가 solution이 아니었다는 것을 인정해야 한다.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-TRUTH-05_tradeoff_C_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "해석이 아니라, 다음에 실제로 무엇을 할 것인가.",
+        "context": "workaround는 압박을 줄였지만 burden을 다른 사람에게 옮겼다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "24시간 안에 매니저에게 스케줄 변경은 temporary라고 말하고 burden pattern에 대한 reset conversation을 요청한다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "workaround가 repair를 대체하지 못하게 하고 있다."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-TRUTH-05_action_C_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "morale을 모니터링하면서 조용히 스케줄 조정을 계속한다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Control",
+              "direction": "exit",
+              "pattern_family": "conflict_avoidance",
+              "description": "패턴을 피하면서 symptom을 관리하고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-05_action_C_X_AD2"
+          }
+        ]
+      }
+    },
+    "D": {
+      "escalation_text": "어시스턴트는 사례를 문서화하기 시작한다. 하지만 각 note는 떠나는 것만이 이 burden을 멈출 방법이라는 확신을 더 키운다. Documentation이 exit preparation이 된다.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "concern이 완전히 defensible해질 때까지 사례를 계속 모은다",
+          "cost": "case는 더 깔끔해지지만, 사람은 떠날 준비가 더 된다.",
+          "axis": "Documentation",
+          "direction": "exit",
+          "pattern_family": "future_deferral",
+          "dbChoiceId": "INCIDENT-01-TRUTH-05_tradeoff_D_X"
+        },
+        {
+          "id": "Y",
+          "label": "documentation을 gate로 보지 말고 지금 resignation risk를 올린다",
+          "cost": "불완전한 evidence로 행동해야 하고 pushback을 받을 수 있다.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-TRUTH-05_tradeoff_D_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "해석이 아니라, 다음에 실제로 무엇을 할 것인가.",
+        "context": "Documentation은 더 이상 evidence만이 아니다. exit file이 되고 있다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "24시간 안에 현재 사례로 risk를 올리고, 더 많은 documentation 전에 intervention을 요청한다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "evidence collection이 resignation preparation이 되기 전에 행동하고 있다."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-TRUTH-05_action_D_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "매니저를 involve하기 전에 더 많은 사례를 요청한다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Documentation",
+              "direction": "exit",
+              "pattern_family": "future_deferral",
+              "description": "timely intervention보다 defensibility를 선택하고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-05_action_D_X_AD2"
+          }
+        ]
+      }
+    }
+  }
+}

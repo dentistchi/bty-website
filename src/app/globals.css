@@ -1,0 +1,241 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Center — 자존감 회복실 */
+  --dear-bg: #FDFCF8;
+  --dear-bg-paper: #FAF9F5;
+  --dear-charcoal: #333333;
+  --dear-charcoal-soft: #5C5C5C;
+  --dear-sage: #8A9A5B;
+  --dear-terracotta: #E2725B;
+  --dojo-white: #FFFFFF;
+  --dojo-purple: #5B4B8A;
+  --dojo-purple-light: #7B6BA8;
+  --dojo-purple-dark: #4A3D6F;
+  --dojo-ink: #2D2A36;
+  --dojo-ink-soft: #5C5868;
+  /* Foundry (구 Dojo) — 리더십 훈련 영역 */
+  --foundry-white: #FFFFFF;
+  --foundry-purple: #5B4B8A;
+  --foundry-purple-light: #7B6BA8;
+  --foundry-purple-dark: #4A3D6F;
+  --foundry-ink: #2D2A36;
+  --foundry-ink-soft: #5C5868;
+  /* Arena — ARENA_UI_REDESIGN_BRIEF 프롬프트 C (크림·연보라·foundry-purple) */
+  --arena-bg: #F5F0E8;
+  --arena-bg-end: #E8E0F0;
+  --arena-card: #FAFAF8;
+  --arena-accent: var(--foundry-purple);
+  --arena-primary: var(--arena-accent);
+  --arena-text: #2D2A36;
+  --arena-text-soft: #5C5868;
+  /* neutral (공통 테두리/배경) */
+  --neutral-borderBase: #E5E5E5;
+  --neutral-bgBase: #FAFAFA;
+  --neutral-textBase: #1A1A1A;
+  --neutral-textLight: #737373;
+  /* center (Center 톤) */
+  --center-primary: var(--dojo-purple);
+  --center-accent: var(--dojo-purple);
+  --center-bg: var(--dear-bg);
+  --center-text-primary: var(--dear-charcoal);
+  /* foundry primary/accent for Button */
+  --foundry-primary: var(--foundry-purple);
+  --foundry-accent: var(--foundry-purple);
+  --foundry-bg: var(--foundry-white);
+  --foundry-text-primary: var(--foundry-ink);
+  /* Journey Board pastels */
+  --journey-done: #E8D4E4;
+  --journey-done-strong: #D4B8CF;
+  --journey-today: #D4E5D9;
+  --journey-today-strong: #B8D4C0;
+  --journey-locked: #E8E4F2;
+  --sanctuary-cream: #FDF8F3;
+  --sanctuary-blush: #F5E6E0;
+  --sanctuary-sage: #D4E5D9;
+  --sanctuary-text: #5C5348;
+  --sanctuary-text-soft: #8A8176;
+  --sanctuary-flower: #E8B4B8;
+}
+
+/* BTY Arena Design Token (방식 A 수동) — tailwind 토큰 클래스용. .dark는 class 전략 시 사용 */
+:root {
+  --arena-primary: #0C2D48;
+  --arena-accent: #1E90FF;
+  --arena-bg: #F7FAFC;
+  --arena-text-primary: #1A202C;
+  --arena-text-secondary: #4A5568;
+  --foundry-primary: #2D3748;
+  --foundry-accent: #4C51BF;
+  --foundry-bg: #FFFFFF;
+  --foundry-text-primary: #2A2E37;
+  --foundry-text-secondary: #718096;
+  --center-primary: #4A5568;
+  --center-accent: #F6AD55;
+  --center-bg: #FFF8F0;
+  --center-text-primary: #2D3748;
+  --center-text-secondary: #718096;
+  --text-base: #2D3748;
+  --text-light: #718096;
+  --bg-base: #FFFFFF;
+  --border-base: #E2E8F0;
+  /* BTY Phase 1 stubs — docs/BTY_TAILWIND_THEME_TOKENS.md §4 */
+  --bty-bg: #f6f4ee;
+  --bty-surface: #ffffff;
+  --bty-surface-soft: #f1eee6;
+  --bty-text: #1f2937;
+  --bty-text-secondary: #667085;
+  --bty-text-muted: #98a2b3;
+  --bty-brand-navy: #1e2a38;
+  --bty-brand-steel: #405a74;
+  --bty-muted-gold: #b08d57;
+  --bty-soft-bronze: #8b6b4a;
+  --bty-stable: #4d6b57;
+  --bty-warning: #a06a3a;
+  --bty-risk: #8a4d4d;
+  --bty-border: #e7e4dc;
+}
+.dark {
+  --arena-primary: #A3CEF1;
+  --arena-accent: #5AB9EA;
+  --arena-bg: #0F172A;
+  --arena-text-primary: #E2E8F0;
+  --arena-text-secondary: #A0AEC0;
+  --foundry-primary: #CBD5E0;
+  --foundry-accent: #A3A0FB;
+  --foundry-bg: #1A202C;
+  --foundry-text-primary: #E2E8F0;
+  --foundry-text-secondary: #A0AEC0;
+  --center-primary: #CBD5E0;
+  --center-accent: #F6AD55;
+  --center-bg: #2D3748;
+  --center-text-primary: #EDF2F7;
+  --center-text-secondary: #A0AEC0;
+  --text-base: #EDF2F7;
+  --text-light: #A0AEC0;
+  --bg-base: #1A202C;
+  --border-base: #4A5568;
+}
+
+body {
+  min-height: 100vh;
+}
+
+/* Center: 조용한 다락방, 나에게 쓰는 편지 */
+body[data-theme="dear"] {
+  background-color: var(--dear-bg);
+  color: var(--dear-charcoal);
+  background-image:
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(138, 154, 91, 0.06), transparent),
+    radial-gradient(ellipse 80% 50% at 100% 50%, rgba(226, 114, 91, 0.04), transparent);
+}
+
+body[data-theme="sanctuary"] {
+  background: linear-gradient(165deg, var(--sanctuary-cream) 0%, #F5EFE7 50%, #E0EDF5 100%);
+  color: var(--sanctuary-text);
+}
+
+body[data-theme="foundry"],
+body:not([data-theme]) {
+  background: var(--foundry-white);
+  color: var(--foundry-ink);
+}
+
+/* Arena: 크림 → 연한 보라 그라데이션 (bty protected 영역) */
+body[data-theme="arena"],
+.bty-arena-area {
+  background: linear-gradient(180deg, var(--arena-bg) 0%, var(--arena-bg-end) 100%);
+  color: var(--arena-text);
+}
+.bty-arena-area {
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* DESIGN_FIRST_IMPRESSION_BRIEF §4 A: 히어로 블록 (폰트는 B단계에서 .bty-arena-area 폰트 상속) */
+.bty-arena-area .bty-hero-title {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Arena 타이포·여백 (프롬프트 A): 제목 강조, 본문 넉넉한 줄간격 */
+.bty-arena-area h1,
+.bty-arena-area h2 {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.bty-arena-area h1 {
+  font-weight: 800;
+}
+
+/* Arena 네비 링크: hover 시 부드러운 배경 (프롬프트 E) */
+.bty-arena-area .bty-nav-link:hover {
+  background: rgba(91, 75, 138, 0.08);
+}
+.bty-arena-area .bty-nav-link[data-active="true"]:hover {
+  background: var(--foundry-purple-dark);
+}
+
+/* §4 C + 접근성: focus-visible 시 box-shadow 링 (outline 대신, 시인성 유지) */
+.bty-arena-area .bty-nav-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--arena-accent);
+}
+
+/* Arena 영역 포커스 가능 요소 공통 포커스 링 */
+.bty-arena-area a:focus-visible,
+.bty-arena-area button:focus-visible,
+.bty-arena-area input:focus-visible,
+.bty-arena-area select:focus-visible,
+.bty-arena-area [tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--arena-accent);
+}
+
+/* §4 B: 포인트 폰트 — 제목·로고·히어로 (ArenaLayoutShell에서 --font-arena-heading 주입), 크기 1.5rem 이상은 페이지별 유지 */
+.bty-arena-area h1,
+.bty-arena-area h2,
+.bty-arena-area .bty-hero-title,
+.bty-arena-area .bty-arena-logo {
+  font-family: var(--font-arena-heading, inherit), system-ui, sans-serif;
+}
+/* §4 B: 제목 최소 크기 1.5rem (인라인으로 더 크게 준 경우 그대로 유지) */
+.bty-arena-area h1 {
+  font-size: max(1.5rem, 1em);
+}
+.bty-arena-area h2 {
+  font-size: max(1.5rem, 1em);
+}
+
+/* §4 C: 카드 호버 — 살짝 들어올림 + 그림자 강화 */
+.bty-arena-area .bty-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.bty-arena-area .bty-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* §4 C: 버튼 호버 — 밝기/스케일 */
+.bty-arena-area .bty-btn-primary {
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+.bty-arena-area .bty-btn-primary:hover {
+  filter: brightness(1.05);
+  transform: scale(1.02);
+}
+.bty-arena-area .bty-btn-outline {
+  transition: filter 0.15s ease, border-color 0.15s ease;
+}
+.bty-arena-area .bty-btn-outline:hover {
+  filter: brightness(0.98);
+  border-color: var(--arena-accent);
+}
+
+/* DESIGN_FIRST_IMPRESSION_BRIEF §2: 카드형 스켈레톤 로딩 — shimmer 애니메이션 */
+@keyframes bty-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

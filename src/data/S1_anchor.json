@@ -1,0 +1,56 @@
+{
+  "id": "core_06_lead_assistant_S1",
+  "title": "The Lead Wants Out",
+  "level": 2,
+  "chain_stage": 1,
+  "context": {
+    "role": "Clinical Director",
+    "pressure": "Your lead assistant asks to step down after months of visible strain while the rest of the team is already watching whether leadership means anything in this office.",
+    "narrative": "Your lead assistant has been with the practice eight years. She was here before the DSO and still carries the loyalty of the legacy staff. Lately she has been missing details, resisting new protocols, and quietly pulling newer assistants back toward the old way. At the end of the day she closes the door and says, 'I don't want to be Lead anymore. I can't do this role the way you want it done.'"
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Accept the step-down immediately, thank her for being honest, and tell yourself you can deal with the team consequences later.",
+      "archetype": "avoid",
+      "state_impact": {
+        "reputation": -1,
+        "trust": -1,
+        "self_narrative": -1,
+        "courage": -2
+      }
+    },
+    {
+      "id": "B",
+      "label": "Keep the title in place for now, narrow the role, and reset the expectations in writing before making any formal change.",
+      "archetype": "structure",
+      "state_impact": {
+        "reputation": 0,
+        "trust": 0,
+        "self_narrative": 1,
+        "courage": 0
+      }
+    },
+    {
+      "id": "C",
+      "label": "Pause the step-down and ask her to name exactly what has broken in the role, in your leadership, and in her ability to carry it.",
+      "archetype": "confront",
+      "state_impact": {
+        "reputation": -1,
+        "trust": 0,
+        "self_narrative": 1,
+        "courage": 2
+      }
+    }
+  ],
+  "questions": {
+    "level_1": "What are you avoiding by making this easy?",
+    "level_2": "What do you owe this person, given what she has carried here?",
+    "level_3": "Are you protecting a person, a title, or the standard?"
+  },
+  "next_map": {
+    "A": "core_06_lead_assistant_S2",
+    "B": "core_06_lead_assistant_S2",
+    "C": "core_06_lead_assistant_S2"
+  }
+}

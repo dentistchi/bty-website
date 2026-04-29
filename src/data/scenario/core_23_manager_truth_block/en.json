@@ -1,0 +1,310 @@
+{
+  "id": "core_23_manager_truth_block",
+  "title": "The Manager Who Heard Both Sides",
+  "role": "Office Manager",
+  "pressure": "The assistant tells you the doctor no longer trusts them. The doctor says the assistant has become passive and less reliable. Production is still moving, but the room feels tense.",
+  "tradeoff": "Naming the hierarchy and trust issue may upset the doctor. Treating it as a communication issue keeps the day stable.",
+  "bty_tension_axis": "Containment vs Honest Diagnosis",
+  "axis_primary": "Truth",
+  "axis_secondary": ["Authority", "Conflict", "Accountability"],
+  "difficulty_level": 3,
+
+  "action_contract": {
+    "description": "Decide whether to name the trust pattern directly or keep the issue contained as a performance concern.",
+    "time_window_hours": 24
+  },
+
+  "air_logic": {
+    "success": "The real pattern becomes visible before the team adapts around silence.",
+    "miss": "The office keeps functioning while trust continues to deteriorate underneath."
+  },
+
+  "forced_reset": {
+    "trigger": "The assistant stops volunteering information during procedures and the doctor starts bypassing them.",
+    "action": "You must decide whether this is a performance issue or a trust breakdown."
+  },
+
+  "pattern_detection": [
+    "truth_naming",
+    "documentation_sanitization",
+    "conflict_avoidance",
+    "authority_misuse"
+  ],
+
+  "choices": [
+    {
+      "id": "A",
+      "label": "Meet with the doctor and assistant together and name the trust breakdown",
+      "subtext": "This creates immediate discomfort, but it prevents the issue from staying hidden between separate conversations.",
+      "axis": "Truth",
+      "direction": "entry",
+      "pattern_family": "truth_naming",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-03-TRUTH-05_primary_A"
+    },
+    {
+      "id": "B",
+      "label": "Coach the assistant privately to be more proactive",
+      "subtext": "This feels practical because the assistant’s behavior is the most visible part of the issue.",
+      "axis": "Accountability",
+      "direction": "exit",
+      "pattern_family": "explanation_substitution",
+      "intensity": 2,
+      "dbChoiceId": "INCIDENT-03-TRUTH-05_primary_B"
+    },
+    {
+      "id": "C",
+      "label": "Tell the doctor you will monitor the assistant’s performance",
+      "subtext": "This protects the relationship with the doctor and gives you time to gather more evidence.",
+      "axis": "Authority",
+      "direction": "exit",
+      "pattern_family": "documentation_sanitization",
+      "intensity": 2,
+      "dbChoiceId": "INCIDENT-03-TRUTH-05_primary_C"
+    },
+    {
+      "id": "D",
+      "label": "Separate the two more often in the schedule",
+      "subtext": "Reducing contact may keep the day smoother without forcing a difficult conversation.",
+      "axis": "Control",
+      "direction": "exit",
+      "pattern_family": "conflict_avoidance",
+      "intensity": 1,
+      "dbChoiceId": "INCIDENT-03-TRUTH-05_primary_D"
+    }
+  ],
+
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "The doctor asks why this is being framed as a trust issue instead of an assistant performance issue. The assistant becomes quiet because the doctor is in the room.",
+      "pressure_increase": 0.4,
+      "intensity": 3,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Soften the conversation and move back to general communication expectations",
+          "cost": "The meeting stays polite, but the authority gap remains unnamed.",
+          "axis": "Truth",
+          "direction": "exit",
+          "pattern_family": "conflict_avoidance",
+          "dbChoiceId": "INCIDENT-03-TRUTH-05_tradeoff_A_X"
+        },
+        {
+          "id": "Y",
+          "label": "Name the observed pattern without assigning blame",
+          "cost": "Both people may feel exposed, and the doctor may question your neutrality.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-03-TRUTH-05_tradeoff_A_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what you will actually do next.",
+        "context": "The meeting has surfaced tension, but the team is watching whether you will follow through.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, send both people a written summary of the pattern and schedule a 10-minute follow-up",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "You are choosing visible follow-through over indefinite preparation."
+            },
+            "intensity": 3,
+            "dbChoiceId": "INCIDENT-03-TRUTH-05_action_A_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Wait to see whether the conversation improves behavior this week",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Time",
+              "direction": "exit",
+              "pattern_family": "future_deferral",
+              "description": "You are choosing containment and timing over visible follow-through."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-03-TRUTH-05_action_A_X_AD2"
+          }
+        ]
+      }
+    },
+
+    "B": {
+      "escalation_text": "The assistant tries to be more proactive, but the doctor still bypasses them. The assistant now feels the manager has also made it their problem.",
+      "pressure_increase": 0.5,
+      "intensity": 3,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Document the assistant’s passivity as a coaching item",
+          "cost": "The file becomes cleaner, but the trust breakdown is converted into a performance record.",
+          "axis": "Documentation",
+          "direction": "exit",
+          "pattern_family": "documentation_sanitization",
+          "dbChoiceId": "INCIDENT-03-TRUTH-05_tradeoff_B_X"
+        },
+        {
+          "id": "Y",
+          "label": "Reopen the issue as a two-person trust pattern",
+          "cost": "You must acknowledge that your first response may have narrowed the issue too quickly.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-03-TRUTH-05_tradeoff_B_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what you will actually do next.",
+        "context": "Your first response placed more pressure on the assistant. Now the pattern is repeating.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, tell the assistant and doctor you want to revisit the issue as a workflow and trust pattern",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "You are choosing visible follow-through over indefinite preparation."
+            },
+            "intensity": 3,
+            "dbChoiceId": "INCIDENT-03-TRUTH-05_action_B_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Continue tracking whether the assistant improves before involving the doctor",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Accountability",
+              "direction": "exit",
+              "pattern_family": "explanation_substitution",
+              "description": "You are choosing containment and timing over visible follow-through."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-03-TRUTH-05_action_B_X_AD2"
+          }
+        ]
+      }
+    },
+
+    "C": {
+      "escalation_text": "The doctor appreciates your support, but starts sending you small complaints about the assistant. The assistant notices and stops bringing concerns to you.",
+      "pressure_increase": 0.6,
+      "intensity": 3,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep collecting examples before addressing the larger issue",
+          "cost": "The evidence grows, but the assistant experiences the process as one-sided.",
+          "axis": "Time",
+          "direction": "exit",
+          "pattern_family": "future_deferral",
+          "dbChoiceId": "INCIDENT-03-TRUTH-05_tradeoff_C_X"
+        },
+        {
+          "id": "Y",
+          "label": "Tell the doctor the pattern now needs a joint conversation",
+          "cost": "You may lose the doctor’s sense that you are aligned with them.",
+          "axis": "Authority",
+          "direction": "entry",
+          "pattern_family": "authority_exercise",
+          "dbChoiceId": "INCIDENT-03-TRUTH-05_tradeoff_C_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what you will actually do next.",
+        "context": "The doctor now sees you as a safe place to report the assistant, but the assistant is withdrawing.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, stop the one-sided reporting loop and request a joint reset conversation",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Authority",
+              "direction": "entry",
+              "pattern_family": "authority_exercise",
+              "description": "You are choosing visible follow-through over indefinite preparation."
+            },
+            "intensity": 3,
+            "dbChoiceId": "INCIDENT-03-TRUTH-05_action_C_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Keep the reports private until there is a clearer performance trend",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Documentation",
+              "direction": "exit",
+              "pattern_family": "documentation_sanitization",
+              "description": "You are choosing containment and timing over visible follow-through."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-03-TRUTH-05_action_C_X_AD2"
+          }
+        ]
+      }
+    },
+
+    "D": {
+      "escalation_text": "The schedule feels smoother for two days, but the assistant tells another team member they are being pushed out. The doctor says the new arrangement confirms the assistant was the issue.",
+      "pressure_increase": 0.5,
+      "intensity": 3,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep the separation because the immediate conflict has decreased",
+          "cost": "The surface tension drops, but the office learns to solve trust issues by rearranging around them.",
+          "axis": "Control",
+          "direction": "exit",
+          "pattern_family": "control_fixation",
+          "dbChoiceId": "INCIDENT-03-TRUTH-05_tradeoff_D_X"
+        },
+        {
+          "id": "Y",
+          "label": "Reverse the workaround and address the trust issue directly",
+          "cost": "You must explain why the earlier schedule change was not a real solution.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-03-TRUTH-05_tradeoff_D_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what you will actually do next.",
+        "context": "Your workaround reduced friction but increased interpretation on both sides.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, tell both sides the schedule workaround is temporary and set a direct reset conversation",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "You are choosing visible follow-through over indefinite preparation."
+            },
+            "intensity": 3,
+            "dbChoiceId": "INCIDENT-03-TRUTH-05_action_D_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Keep the schedule adjustment and review again after the week ends",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Control",
+              "direction": "exit",
+              "pattern_family": "control_fixation",
+              "description": "You are choosing containment and timing over visible follow-through."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-03-TRUTH-05_action_D_X_AD2"
+          }
+        ]
+      }
+    }
+  }
+}

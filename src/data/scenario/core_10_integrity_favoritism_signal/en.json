@@ -1,0 +1,298 @@
+{
+  "id": "core_10_integrity_favoritism_signal",
+  "title": "Something Feels Off",
+  "role": "Associate Dentist",
+  "pressure": "You begin noticing a subtle but repeated pattern. One doctor consistently receives more favorable scheduling, lighter expectations, and stronger assistant support, while others are held to tighter standards. No one has said anything directly. No policy explains it. When the situation happens, people adjust quietly and move on. At first, it feels like a coincidence. But after seeing it multiple times across different days and situations, it no longer feels random. You are not sure if you should trust what you are seeing or dismiss it.",
+  "tradeoff": "Maintain social alignment or recognize a potential integrity signal.",
+  "bty_tension_axis": "belonging_vs_truth",
+  "axis_primary": "awareness",
+  "axis_secondary": "belonging",
+  "difficulty_level": "final_full_density",
+  "incident": {
+    "incidentId": "incident_02",
+    "incidentStage": "signal detection",
+    "sequencePosition": 10,
+    "previousScenarioId": null,
+    "nextScenarioId": "core_11_selective_standard_escalation",
+    "roleShift": "from neutral participant to pattern observer",
+    "propagation": {
+      "exitEffect": "The signal is dismissed or normalized, reducing future sensitivity to inconsistency.",
+      "entryEffect": "The associate begins recognizing patterns without immediately rationalizing them.",
+      "reExposureNote": "Future scenarios will test whether recognition becomes clarity or fades into normalization."
+    }
+  },
+  "action_contract": {
+    "description": "Capture one observable example of inconsistency before it is rationalized or dismissed.",
+    "time_window_hours": 24
+  },
+  "AIR_logic": {
+    "success": "The associate identifies and records a concrete example instead of keeping a vague impression.",
+    "miss": "The associate dismisses or rationalizes the signal without capturing it."
+  },
+  "forced_reset": {
+    "trigger": "You hear yourself thinking, 'There is probably a reason for this.'",
+    "action": "Pause and ask: 'Would the same situation lead to the same outcome for someone else?'"
+  },
+  "pattern_detection": {
+    "inconsistency_signal": "Initial recognition of unequal patterns.",
+    "rationalization": "Explaining away inconsistency without evidence.",
+    "silence_alignment": "Following the unspoken rule of not questioning.",
+    "truth_recognition": "Allowing the signal to exist without dismissing it."
+  },
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "Once you allow the possibility of inconsistency, you begin noticing more examples. A similar situation happens again with a different staff member. This time, the difference in response is even clearer.",
+      "pressure_increase": "The signal is no longer isolated. It is beginning to look like a pattern.",
+      "intensity": 5,
+      "identity_clash": [
+        "I might be overthinking this",
+        "This is happening more than once",
+        "If I ignore it, I may be missing something important"
+      ],
+      "action_decision": {
+        "prompt": "What will you do within 24 hours so this signal is not lost?",
+        "context": "Signals disappear quickly if they are not captured before rationalization begins.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, write down one specific case: who, what happened, and how the response differed.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Keep it as a general impression without specifics.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep the observation to yourself and move on",
+          "cost": "The signal remains unstructured and easy to dismiss later.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "avoidance_behavior"
+        },
+        {
+          "id": "Y",
+          "label": "Turn the observation into a clear example",
+          "cost": "You can no longer treat it as a vague feeling.",
+          "axis": "awareness",
+          "direction": "entry",
+          "pattern_family": "pattern_capture"
+        }
+      ]
+    },
+    "B": {
+      "escalation_text": "Once you allow the possibility of inconsistency, you begin noticing more examples. A similar situation happens again with a different staff member. This time, the difference in response is even clearer.",
+      "pressure_increase": "The signal is no longer isolated. It is beginning to look like a pattern.",
+      "intensity": 5,
+      "identity_clash": [
+        "I might be overthinking this",
+        "This is happening more than once",
+        "If I ignore it, I may be missing something important"
+      ],
+      "action_decision": {
+        "prompt": "What will you do within 24 hours so this signal is not lost?",
+        "context": "Signals disappear quickly if they are not captured before rationalization begins.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, write down one specific case: who, what happened, and how the response differed.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Keep it as a general impression without specifics.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep the observation to yourself and move on",
+          "cost": "The signal remains unstructured and easy to dismiss later.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "avoidance_behavior"
+        },
+        {
+          "id": "Y",
+          "label": "Turn the observation into a clear example",
+          "cost": "You can no longer treat it as a vague feeling.",
+          "axis": "awareness",
+          "direction": "entry",
+          "pattern_family": "pattern_capture"
+        }
+      ]
+    },
+    "C": {
+      "escalation_text": "Once you allow the possibility of inconsistency, you begin noticing more examples. A similar situation happens again with a different staff member. This time, the difference in response is even clearer.",
+      "pressure_increase": "The signal is no longer isolated. It is beginning to look like a pattern.",
+      "intensity": 5,
+      "identity_clash": [
+        "I might be overthinking this",
+        "This is happening more than once",
+        "If I ignore it, I may be missing something important"
+      ],
+      "action_decision": {
+        "prompt": "What will you do within 24 hours so this signal is not lost?",
+        "context": "Signals disappear quickly if they are not captured before rationalization begins.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, write down one specific case: who, what happened, and how the response differed.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Keep it as a general impression without specifics.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep the observation to yourself and move on",
+          "cost": "The signal remains unstructured and easy to dismiss later.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "avoidance_behavior"
+        },
+        {
+          "id": "Y",
+          "label": "Turn the observation into a clear example",
+          "cost": "You can no longer treat it as a vague feeling.",
+          "axis": "awareness",
+          "direction": "entry",
+          "pattern_family": "pattern_capture"
+        }
+      ]
+    },
+    "D": {
+      "escalation_text": "Once you allow the possibility of inconsistency, you begin noticing more examples. A similar situation happens again with a different staff member. This time, the difference in response is even clearer.",
+      "pressure_increase": "The signal is no longer isolated. It is beginning to look like a pattern.",
+      "intensity": 5,
+      "identity_clash": [
+        "I might be overthinking this",
+        "This is happening more than once",
+        "If I ignore it, I may be missing something important"
+      ],
+      "action_decision": {
+        "prompt": "What will you do within 24 hours so this signal is not lost?",
+        "context": "Signals disappear quickly if they are not captured before rationalization begins.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, write down one specific case: who, what happened, and how the response differed.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Keep it as a general impression without specifics.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep the observation to yourself and move on",
+          "cost": "The signal remains unstructured and easy to dismiss later.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "avoidance_behavior"
+        },
+        {
+          "id": "Y",
+          "label": "Turn the observation into a clear example",
+          "cost": "You can no longer treat it as a vague feeling.",
+          "axis": "awareness",
+          "direction": "entry",
+          "pattern_family": "pattern_capture"
+        }
+      ]
+    }
+  },
+  "ending_identity_choice": {
+    "prompt": "When something feels off, what do you do with the signal?",
+    "choices": [
+      {
+        "id": "SYS1",
+        "label": "Let it fade into the background",
+        "direction": "exit"
+      },
+      {
+        "id": "SYS2",
+        "label": "Hold onto it until it becomes clear",
+        "direction": "entry"
+      }
+    ]
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Ignore the signal and move on",
+      "subtext": "It feels easier because nothing is clearly defined and no one else is reacting.",
+      "axis": "belonging",
+      "direction": "exit",
+      "pattern_family": "rationalization",
+      "intensity": 4
+    },
+    {
+      "id": "B",
+      "label": "Acknowledge internally that this may be inconsistent",
+      "subtext": "It creates discomfort but keeps the signal alive.",
+      "axis": "awareness",
+      "direction": "entry",
+      "pattern_family": "truth_recognition",
+      "intensity": 5
+    },
+    {
+      "id": "C",
+      "label": "Assume there must be a valid explanation",
+      "subtext": "It reduces uncertainty and protects your view of the system.",
+      "axis": "belonging",
+      "direction": "exit",
+      "pattern_family": "rationalization",
+      "intensity": 5
+    },
+    {
+      "id": "D",
+      "label": "Follow the silence and act as if nothing is happening",
+      "subtext": "It aligns you with how everyone else is behaving.",
+      "axis": "belonging",
+      "direction": "exit",
+      "pattern_family": "silence_alignment",
+      "intensity": 5
+    }
+  ],
+  "signal_dynamics": null
+}

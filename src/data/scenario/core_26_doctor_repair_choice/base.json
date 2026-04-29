@@ -1,0 +1,62 @@
+{
+    "scenarioId": "core_26_doctor_repair_choice",
+    "dbScenarioId": "INCIDENT-03-REPAIR-08",
+    "incident": {
+      "incidentId": "incident_03_authority_silence_to_truth_repair",
+      "stage": 8,
+      "axisGroup": "Repair",
+      "axisIndex": 2,
+      "previousScenarioId": "core_25_forced_repair_conversation",
+      "nextScenarioId": "core_27_identity_repair_commitment",
+      "roleShift": "Office Manager -> Associate Dentist",
+      "propagation": {
+        "exitEffect": "The doctor acknowledges surface issues but avoids full ownership, leading to partial compliance without behavior change.",
+        "entryEffect": "The doctor takes visible ownership of the pattern, allowing real trust rebuilding to begin.",
+        "reExposureNote": "If the user exits here, the same hesitation and bypass pattern will return under pressure."
+      }
+    },
+    "structure": {
+      "primary": [
+        { "choiceId": "A", "dbChoiceId": "INCIDENT-03-REPAIR-08_primary_A" },
+        { "choiceId": "B", "dbChoiceId": "INCIDENT-03-REPAIR-08_primary_B" },
+        { "choiceId": "C", "dbChoiceId": "INCIDENT-03-REPAIR-08_primary_C" },
+        { "choiceId": "D", "dbChoiceId": "INCIDENT-03-REPAIR-08_primary_D" }
+      ],
+      "tradeoff": {
+        "A": [
+          { "choiceId": "X", "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_A_X" },
+          { "choiceId": "Y", "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_A_Y" }
+        ],
+        "B": [
+          { "choiceId": "X", "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_B_X" },
+          { "choiceId": "Y", "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_B_Y" }
+        ],
+        "C": [
+          { "choiceId": "X", "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_C_X" },
+          { "choiceId": "Y", "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_C_Y" }
+        ],
+        "D": [
+          { "choiceId": "X", "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_D_X" },
+          { "choiceId": "Y", "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_D_Y" }
+        ]
+      },
+      "action_decision": {
+        "A_X": [
+          { "choiceId": "AD1", "dbChoiceId": "INCIDENT-03-REPAIR-08_action_A_X_AD1", "is_action_commitment": true },
+          { "choiceId": "AD2", "dbChoiceId": "INCIDENT-03-REPAIR-08_action_A_X_AD2", "is_action_commitment": false }
+        ],
+        "B_X": [
+          { "choiceId": "AD1", "dbChoiceId": "INCIDENT-03-REPAIR-08_action_B_X_AD1", "is_action_commitment": true },
+          { "choiceId": "AD2", "dbChoiceId": "INCIDENT-03-REPAIR-08_action_B_X_AD2", "is_action_commitment": false }
+        ],
+        "C_X": [
+          { "choiceId": "AD1", "dbChoiceId": "INCIDENT-03-REPAIR-08_action_C_X_AD1", "is_action_commitment": true },
+          { "choiceId": "AD2", "dbChoiceId": "INCIDENT-03-REPAIR-08_action_C_X_AD2", "is_action_commitment": false }
+        ],
+        "D_X": [
+          { "choiceId": "AD1", "dbChoiceId": "INCIDENT-03-REPAIR-08_action_D_X_AD1", "is_action_commitment": true },
+          { "choiceId": "AD2", "dbChoiceId": "INCIDENT-03-REPAIR-08_action_D_X_AD2", "is_action_commitment": false }
+        ]
+      }
+    }
+  }

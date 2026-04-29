@@ -1,0 +1,301 @@
+{
+  "id": "core_04_manager_neutrality_as_abandonment",
+  "title": "When Neutrality Feels Like Abandonment",
+  "role": "Office Manager",
+  "pressure": "The new doctor is still struggling, assistants are tired of compensating, and the team is waiting to see what you will say. You want to stay fair and avoid blaming anyone too early. But your silence is starting to be interpreted: assistants think you do not support them, and the doctor thinks they are being quietly judged.",
+  "tradeoff": "You can stay neutral to avoid escalation, or name what is happening before neutrality becomes abandonment.",
+  "bty_tension_axis": "Neutrality vs Truth",
+  "axis_primary": "Truth",
+  "axis_secondary": ["Ownership", "Conflict", "Accountability"],
+  "difficulty_level": 5,
+  "action_contract": {
+    "description": "Decide whether to remain neutral or clearly name the pattern affecting the doctor and team.",
+    "time_window_hours": 24
+  },
+  "air_logic": {
+    "success": "Neutrality becomes clarity instead of silence.",
+    "miss": "The team fills your silence with their own interpretation."
+  },
+  "forced_reset": {
+    "trigger": "Both the doctor and assistants begin interpreting your silence as a signal.",
+    "action": "You must decide whether to clarify the pattern or stay neutral."
+  },
+  "pattern_detection": [
+    "neutrality_masking",
+    "conflict_avoidance",
+    "truth_naming",
+    "abandonment_signal"
+  ],
+  "choices": [
+    {
+      "id": "A",
+      "label": "Stay neutral and avoid taking sides",
+      "subtext": "This protects fairness and avoids making the situation more emotional.",
+      "axis": "Conflict",
+      "direction": "exit",
+      "pattern_family": "neutrality_masking",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-TRUTH-04_primary_A"
+    },
+    {
+      "id": "B",
+      "label": "Name the pattern to both the doctor and assistants",
+      "subtext": "This may create discomfort, but it prevents silence from becoming the message.",
+      "axis": "Truth",
+      "direction": "entry",
+      "pattern_family": "truth_naming",
+      "intensity": 5,
+      "dbChoiceId": "INCIDENT-01-TRUTH-04_primary_B"
+    },
+    {
+      "id": "C",
+      "label": "Support the assistants privately without confronting the doctor",
+      "subtext": "This helps the team feel heard while avoiding direct conflict.",
+      "axis": "Support",
+      "direction": "exit",
+      "pattern_family": "conflict_avoidance",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-TRUTH-04_primary_C"
+    },
+    {
+      "id": "D",
+      "label": "Ask clinical leadership to handle the doctor conversation",
+      "subtext": "This keeps the issue in the right clinical lane and protects your role.",
+      "axis": "Authority",
+      "direction": "exit",
+      "pattern_family": "delegation_deflection",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-TRUTH-04_primary_D"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "Because you remain neutral, assistants start saying nothing will change. The doctor notices the distance and becomes more guarded. Your neutrality is no longer seen as fairness; it is read as absence.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Maintain neutrality until emotions settle",
+          "cost": "You avoid immediate conflict, but the silence grows heavier.",
+          "axis": "Time",
+          "direction": "exit",
+          "pattern_family": "neutrality_masking",
+          "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_A_X"
+        },
+        {
+          "id": "Y",
+          "label": "Clarify that neutrality does not mean absence",
+          "cost": "You must step into the tension you were trying to avoid.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_A_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what will you do next?",
+        "context": "Your silence has become part of the conflict.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, send a neutral but explicit message naming the team burden, doctor pressure, and next support step",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "You are turning neutrality into clarity."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-TRUTH-04_action_A_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Wait until the team calms down before saying anything",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Time",
+              "direction": "exit",
+              "pattern_family": "neutrality_masking",
+              "description": "You are allowing silence to continue shaping the story."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-04_action_A_X_AD2"
+          }
+        ]
+      }
+    },
+    "B": {
+      "escalation_text": "When you name the pattern, the assistants say they have been carrying the burden for weeks. The doctor feels exposed and asks whether everyone has been talking about them behind their back.",
+      "pressure_increase": 0.7,
+      "intensity": 5,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Soften the message and move back to general teamwork language",
+          "cost": "The room feels safer, but the actual pattern becomes vague again.",
+          "axis": "Conflict",
+          "direction": "exit",
+          "pattern_family": "conflict_avoidance",
+          "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_B_X"
+        },
+        {
+          "id": "Y",
+          "label": "Hold the frame and separate burden, blame, and support",
+          "cost": "You must manage discomfort from both sides without retreating.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_B_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what will you do next?",
+        "context": "The truth has surfaced, but both sides are reacting to exposure.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, document a reset plan with separate sections for assistant burden, doctor support, and leadership follow-up",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "You are keeping the pattern visible without turning it into blame."
+            },
+            "intensity": 5,
+            "dbChoiceId": "INCIDENT-01-TRUTH-04_action_B_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Let the conversation settle before putting anything in writing",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Time",
+              "direction": "exit",
+              "pattern_family": "future_deferral",
+              "description": "You are delaying visible follow-through after naming the truth."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-04_action_B_X_AD2"
+          }
+        ]
+      }
+    },
+    "C": {
+      "escalation_text": "The assistants feel heard privately, but the doctor senses that the team is aligned against them. Private support starts becoming a side channel.",
+      "pressure_increase": 0.5,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Continue supporting the assistants privately",
+          "cost": "You maintain trust with the team, but deepen the doctor’s isolation.",
+          "axis": "Support",
+          "direction": "exit",
+          "pattern_family": "conflict_avoidance",
+          "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_C_X"
+        },
+        {
+          "id": "Y",
+          "label": "Move the private concern into a shared conversation",
+          "cost": "You may lose the safety of the private channel and create direct tension.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_C_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what will you do next?",
+        "context": "Private support has started becoming a hidden alignment.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, convert the private concerns into a shared reset conversation with clear boundaries",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "You are moving from side-channel support to shared repair."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-TRUTH-04_action_C_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Keep listening privately until the assistants feel ready to speak openly",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Support",
+              "direction": "exit",
+              "pattern_family": "conflict_avoidance",
+              "description": "You are preserving private safety while the hidden split grows."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-04_action_C_X_AD2"
+          }
+        ]
+      }
+    },
+    "D": {
+      "escalation_text": "Clinical leadership agrees to talk to the doctor, but the assistants still experience the daily burden. The doctor sees leadership involvement as escalation and becomes more defensive toward the office team.",
+      "pressure_increase": 0.5,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Let clinical leadership own the conversation fully",
+          "cost": "You keep the clinical lane clean, but the local team dynamic remains unmanaged.",
+          "axis": "Authority",
+          "direction": "exit",
+          "pattern_family": "delegation_deflection",
+          "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_D_X"
+        },
+        {
+          "id": "Y",
+          "label": "Partner with leadership while naming the local team pattern yourself",
+          "cost": "You must step into the issue instead of only routing it upward.",
+          "axis": "Ownership",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_D_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what will you do next?",
+        "context": "Leadership involvement does not replace local truth-telling.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, coordinate with clinical leadership and send the team a local reset plan for communication and support",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "You are using authority support without abandoning local ownership."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-TRUTH-04_action_D_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Wait for clinical leadership to complete the doctor conversation first",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Authority",
+              "direction": "exit",
+              "pattern_family": "delegation_deflection",
+              "description": "You are letting escalation upward substitute for local action."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-04_action_D_X_AD2"
+          }
+        ]
+      }
+    }
+  }
+}

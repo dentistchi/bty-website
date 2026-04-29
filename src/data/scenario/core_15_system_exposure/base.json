@@ -1,0 +1,149 @@
+{
+  "scenarioId": "core_15_system_exposure",
+  "dbScenarioId": "INCIDENT-02-INTEGRITY-15",
+  "engineType": "external_exposure_engine",
+  "engineRef": "external_exposure_engine_v1",
+  "incident": {
+    "incidentId": "incident_02_integrity_and_fairness_breakdown",
+    "stage": 6,
+    "axisGroup": "Integrity",
+    "axisIndex": 6,
+    "previousScenarioId": "core_14_manager_awareness_gap",
+    "nextScenarioId": "core_16_repair_standard_reset",
+    "roleShift": "Associate Dentist -> Associate Dentist",
+    "propagation": {
+      "exitEffect": "The issue is treated as isolated, allowing systemic failure to continue.",
+      "entryEffect": "The exposure is recognized as a systemic consequence, not an isolated mistake.",
+      "reExposureNote": "If minimized, the system continues producing visible failures with increasing frequency."
+    }
+  },
+  "external_exposure_engine": {
+    "type": "system_failure_visibility",
+    "core_loop": [
+      "internal_distortion",
+      "external_event",
+      "visibility_increase",
+      "interpretation_choice",
+      "system_response_or_denial"
+    ],
+    "failure_modes": [
+      "incident_minimization",
+      "blame_shift",
+      "surface_fix",
+      "pattern_avoidance"
+    ],
+    "success_condition": "the user identifies the event as a systemic output rather than an isolated incident"
+  },
+  "structure": {
+    "primary": [
+      {
+        "choiceId": "A",
+        "dbChoiceId": "INCIDENT-02-INTEGRITY-15_primary_A"
+      },
+      {
+        "choiceId": "B",
+        "dbChoiceId": "INCIDENT-02-INTEGRITY-15_primary_B"
+      },
+      {
+        "choiceId": "C",
+        "dbChoiceId": "INCIDENT-02-INTEGRITY-15_primary_C"
+      },
+      {
+        "choiceId": "D",
+        "dbChoiceId": "INCIDENT-02-INTEGRITY-15_primary_D"
+      }
+    ],
+    "tradeoff": {
+      "A": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-15_tradeoff_A_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-15_tradeoff_A_Y"
+        }
+      ],
+      "B": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-15_tradeoff_B_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-15_tradeoff_B_Y"
+        }
+      ],
+      "C": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-15_tradeoff_C_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-15_tradeoff_C_Y"
+        }
+      ],
+      "D": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-15_tradeoff_D_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-15_tradeoff_D_Y"
+        }
+      ]
+    },
+    "action_decision": {
+      "A_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-15_action_A_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-15_action_A_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "B_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-15_action_B_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-15_action_B_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "C_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-15_action_C_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-15_action_C_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "D_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-15_action_D_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-15_action_D_X_AD2",
+          "is_action_commitment": false
+        }
+      ]
+    }
+  }
+}

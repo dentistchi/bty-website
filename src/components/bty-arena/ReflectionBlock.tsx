@@ -1,0 +1,154 @@
+"use client";
+
+import React from "react";
+import { reflectTextLengthHintKey } from "@/domain/rules/reflectTextHint";
+import { REFLECT_USER_TEXT_MAX_CHARS } from "@/lib/bty/arena/reflectLimits";
+import { getMessages, reflectHintLabel } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
+import { CardSkeleton } from "@/components/bty-arena";
+
+export type ReflectionBlockProps = {
+  title?: string;
+  /** When set, show single takeaway prompt + optional input + Next. Meaningful input can grant bonus XP. */
+  reflectionPrompt?: string;
+  options: string[];
+  locale?: Locale | string;
+  /** index and optional reflection text (for bonus XP when meaningful). */
+  onSubmit: (index: number, reflectionText?: string) => void;
+  /** When true, show loading skeleton (e.g. reflection/reflect API in flight). */
+  submitting?: boolean;
+};
+
+export function ReflectionBlock({
+  title,
+  reflectionPrompt,
+  options,
+  locale = "en",
+  onSubmit,
+  submitting = false,
+}: ReflectionBlockProps) {
+  const [inputValue, setInputValue] = React.useState("");
+  const lang: Locale = locale === "ko" || locale === "en" ? locale : "en";
+  const t = getMessages(lang).arenaRun;
+  const displayTitle = title ?? t.reflectionTitle;
+  const nextLabel = t.reflectionNext;
+  const optionalLabel = t.reflectionOptional;
+  const placeholder = t.reflectionPlaceholder;
+  const maxChars = REFLECT_USER_TEXT_MAX_CHARS;
+  const hintKey = reflectTextLengthHintKey(inputValue.length, maxChars);
+  const hintText = reflectHintLabel(lang, hintKey);
+
+  if (submitting) {
+    return (
+      <div style={{ marginTop: 14 }} aria-busy="true" aria-label={t.reflectionBusyAria}>
+        <CardSkeleton showLabel={false} lines={2} style={{ padding: "16px 20px" }} />
+      </div>
+    );
+  }
+
+  if (reflectionPrompt) {
+    return (
+      <div
+        style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}
+        role="region"
+        aria-label={t.reflectionSentenceBlockAria}
+      >
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>{displayTitle}</div>
+        <p style={{ margin: "0 0 12px", lineHeight: 1.5, opacity: 0.9 }}>{reflectionPrompt}</p>
+        <div style={{ marginBottom: 8 }}>
+          <label
+            htmlFor="reflection-optional-input"
+            style={{ display: "block", fontSize: 12, opacity: 0.8, marginBottom: 4 }}
+          >
+            {optionalLabel}
+          </label>
+          <textarea
+            id="reflection-optional-input"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder={placeholder}
+            maxLength={maxChars}
+            rows={4}
+            aria-describedby="reflection-length-hint reflection-char-count"
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 10,
+              border: "1px solid #e5e5e5",
+              fontSize: 14,
+              boxSizing: "border-box",
+              resize: "vertical",
+              minHeight: 88,
+            }}
+          />
+          <div
+            id="reflection-char-count"
+            style={{ fontSize: 11, opacity: 0.65, marginTop: 4 }}
+            aria-live="polite"
+          >
+            {t.reflectionCharCount
+              .replace("{n}", String(inputValue.length))
+              .replace("{max}", String(maxChars))}
+          </div>
+          <p
+            id="reflection-length-hint"
+            role="status"
+            aria-live="polite"
+            style={{
+              margin: "8px 0 0 0",
+              fontSize: 12,
+              lineHeight: 1.45,
+              opacity: 0.88,
+            }}
+            aria-label={t.reflectionLengthHintAria}
+          >
+            {hintText}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onSubmit(0, inputValue.trim())}
+          aria-label={nextLabel}
+          style={{
+            padding: "12px 14px",
+            borderRadius: 12,
+            border: "1px solid #111",
+            background: "white",
+            cursor: "pointer",
+          }}
+        >
+          {nextLabel}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{ marginTop: 14, padding: 14, border: "1px solid #eee", borderRadius: 14 }}
+      role="region"
+      aria-label={t.reflectionChoiceOptionsAria}
+    >
+      <div style={{ fontWeight: 700, marginBottom: 8 }}>{displayTitle}</div>
+      <div style={{ display: "grid", gap: 10 }} role="group" aria-label={t.reflectionChoiceOptionsAria}>
+        {options.map((opt, idx) => (
+          <button
+            key={idx}
+            onClick={() => onSubmit(idx)}
+            aria-label={opt}
+            style={{
+              textAlign: "left",
+              padding: 12,
+              borderRadius: 12,
+              border: "1px solid #e5e5e5",
+              background: "white",
+              cursor: "pointer",
+            }}
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}

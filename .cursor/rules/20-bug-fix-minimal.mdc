@@ -1,0 +1,11 @@
+---
+description: Minimal safe bug fix behavior
+globs: ["**/*"]
+alwaysApply: false
+---
+When fixing bugs:
+- Make the smallest safe change
+- Do not refactor unrelated code
+- Preserve existing logic and naming
+- Prefer changed code blocks over whole-file rewrites
+- If unsure, ask before modifying

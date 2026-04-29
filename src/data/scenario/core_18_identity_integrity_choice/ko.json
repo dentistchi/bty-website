@@ -1,0 +1,277 @@
+{
+  "id": "core_18_identity_integrity_choice",
+  "title": "리페어 이후 내가 선택하는 시스템",
+  "role": "Clinical Director / Partner Doctor",
+  "pressure": "Incident는 공개적으로 충분히 다뤄졌고 사람들은 이제 마무리를 기대한다. 하지만 직원들은 이 리페어가 새로운 운영 기준이 되는지, 아니면 잘 정리된 엔딩으로 끝나는지를 보고 있다.",
+  "tradeoff": "리더십의 판단 유연성을 보존할 것인가, 아니면 선택적 판단을 제한하는 보이는 시스템을 받아들일 것인가.",
+  "bty_tension_axis": "identity_integrity_choice",
+  "axis_primary": "integrity",
+  "axis_secondary": "system_identity",
+  "difficulty_level": "final_full_density",
+  "incident": {
+    "incidentId": "incident_02",
+    "incidentStage": "ending",
+    "sequencePosition": 18,
+    "previousScenarioId": "core_17_repair_visibility",
+    "nextScenarioId": null,
+    "roleShift": "from repair owner to system identity chooser",
+    "propagation": {
+      "exitEffect": "리페어는 완료된 이야기로 남고, 원래의 권한 패턴은 그대로 사용 가능해진다.",
+      "entryEffect": "리페어는 조직이 압박 속에서도 자기 권한을 제한할 수 있다는 첫 증거가 된다.",
+      "reExposureNote": "다음 갈등은 이것이 메시지였는지, 분위기였는지, 시스템이었는지를 드러낸다."
+    }
+  },
+  "action_contract": {
+    "description": "앞으로의 integrity conflict를 지배할 운영 시스템을 선택하고, 선택적 권한을 제한하는 관찰 가능한 커밋먼트 하나를 실행한다.",
+    "time_window_hours": 72
+  },
+  "AIR_logic": {
+    "success": "결정이 위, 옆, 아래 모두에게 적용되는 보이는 제약을 만든다.",
+    "miss": "결정이 감정적 마무리는 만들지만, Incident를 만든 권한 패턴은 바꾸지 못한다."
+  },
+  "forced_reset": {
+    "trigger": "한 직원이 새로운 integrity standard가 partner doctor, regional manager, 가까운 사람에게도 적용되는지 묻는다.",
+    "action": "기준을 다시 말하고, 리더십에게 어떻게 적용되는지 이름 붙이고, 첫 번째 관찰 가능한 체크를 약속한다."
+  },
+  "pattern_detection": {
+    "authority_preservation": "리페어 언어를 사용하지만 최종 판단은 계속 비공개로 남긴다.",
+    "relationship_exception": "신뢰, 충성도, 관계의 역사에 따라 기준을 다르게 적용한다.",
+    "closure_rush": "갈등이 줄어든 것을 시스템이 바뀐 증거로 취급한다.",
+    "principle_without_constraint": "가치는 말하지만 리더십을 challenge할 수 있는 장치는 피한다."
+  },
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "마무리 메시지 이후, 한 lead assistant가 개인적으로 말한다. 말은 좋았지만, favor를 받는 doctor가 같은 기준을 어기면 실제로 어떤 일이 일어나는지 아무도 모른다고 한다.",
+      "pressure_increase": "문제는 커뮤니케이션의 퀄리티에서 리더십이 test될 수 있는지로 이동한다.",
+      "intensity": 5,
+      "action_decision": {
+        "prompt": "이 리페어가 메시지만으로 끝나지 않게 하기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "팀은 마무리 언어를 들었지만, 리더십을 challenge할 수 있는 장치는 아직 보지 못했다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 doctor, manager, partner가 관련된 integrity concern이 언제 한 명 이상의 리더에게 review되어야 하는지 정의한 written leadership-review trigger를 보낸다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "직원들에게 내 문은 열려 있고 앞으로의 concern은 내가 진지하게 직접 다루겠다고 말한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "앞으로 이슈가 있으면 리더십에게 직접 가져오라고 lead assistant에게 말한다",
+          "cost": "경로가 여전히 개인적 접근성과 신뢰에 의존하게 된다.",
+          "axis": "integrity",
+          "direction": "exit",
+          "pattern_family": "authority_preservation"
+        },
+        {
+          "id": "Y",
+          "label": "앞으로 integrity concern이 생겼을 때 작동하는 written leadership-review trigger를 만든다",
+          "cost": "리더십 리뷰가 덜 통제 가능하고 더 보이게 된다.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "system_constraint"
+        }
+      ]
+    },
+    "B": {
+      "escalation_text": "Regional manager가 보고한다. 직원들은 새로운 기준이 약한 직원에게는 진짜이고, 리더십이 의존하는 사람에게는 협상 가능하다고 느낀다.",
+      "pressure_increase": "리페어는 이제 또 다른 favoritism의 형태로 해석되고 있다.",
+      "intensity": 5,
+      "action_decision": {
+        "prompt": "가까움이 기준을 바꾸지 않는다는 것을 보여주기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "시스템은 쉬운 케이스가 아니라 영향력 있는 사람을 어떻게 다루는지로 판단된다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 현재 진행 중인 leadership-related follow-up 하나를 선택해, non-leadership staff에게 요구되는 것과 같은 기준, 타임라인, visibility로 문서화한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "믿는 리더들과 개별적으로 대화하며 앞으로 기준을 잘 보여달라고 요청한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "믿는 사람들이 공개적으로 노출되지 않도록 개인적으로 코칭한다",
+          "cost": "충성도는 보존되지만, 가까움이 consequence를 바꾼다는 믿음을 강화한다.",
+          "axis": "system_identity",
+          "direction": "exit",
+          "pattern_family": "relationship_exception"
+        },
+        {
+          "id": "Y",
+          "label": "같은 documentation과 follow-up standard를 믿는 사람들에게 먼저 적용한다",
+          "cost": "관계적 보호를 기대했던 사람들의 실망을 감수해야 한다.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "equal_application"
+        }
+      ]
+    },
+    "C": {
+      "escalation_text": "2주 뒤, 다른 오피스에서 비슷한 갈등이 나타난다. 디테일은 다르지만 같은 패턴이 보인다. 불분명한 권한, 비공개 예외, 그리고 누가 보호받는지 기다리는 직원들.",
+      "pressure_increase": "Incident는 더 이상 로컬 문제가 아니다. 이동 가능한 운영 패턴이 되고 있다.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "패턴이 오피스에서 오피스로 이동하지 못하게 하기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "압박은 이제 조직 차원이다. 시스템 변화 없는 로컬 리페어는 같은 갈등을 계속 재생산한다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 세 가지 질문을 포함한 cross-office integrity check를 만든다: 누가 권한을 갖는가, 누가 예외를 받는가, 누가 결정을 challenge할 수 있는가.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Regional manager에게 새 오피스를 가까이 모니터링하고 상황이 escalation되면 알려달라고 요청한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "각 로케이션의 dynamics가 다르기 때문에 새 오피스 문제는 따로 처리한다",
+          "cost": "과도한 일반화는 피하지만, 같은 패턴이 새로운 이야기 아래 다시 시작될 수 있다.",
+          "axis": "system_identity",
+          "direction": "exit",
+          "pattern_family": "closure_rush"
+        },
+        {
+          "id": "Y",
+          "label": "반복된 패턴을 cross-office integrity check로 전환한다",
+          "cost": "첫 Incident가 단순한 로컬 문제가 아니라 시스템 이슈를 드러냈다는 것을 인정해야 한다.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "pattern_ownership"
+        }
+      ]
+    },
+    "D": {
+      "escalation_text": "리더십 기준을 정의하자, 한 partner doctor가 묻는다. 이 말은 non-partner staff가 일반적인 chain of command를 거치지 않고 partner decision을 question할 수 있다는 뜻이냐고 묻는다.",
+      "pressure_increase": "선택은 이제 hierarchy, speed, partner comfort를 위협한다.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "Hierarchy가 저항할 때도 integrity system이 실제로 작동하게 하기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "시스템은 권한을 정의되고 관찰 가능한 방식으로 늦출 수 있을 때 실제가 된다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 partner가 관련된 integrity concern을 direct chain of command 밖의 지정된 2-person review로 올릴 수 있는 좁은 challenge pathway를 공지한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Partner들에게 이 기준은 authority를 약화하려는 것이 아니며 professional judgment 안에서 사용되어야 한다고 설명한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "이 기준은 feedback을 지지하지만 authority structure를 바꾸는 것은 아니라고 명확히 한다",
+          "cost": "Hierarchy는 보호되지만, 시스템의 첫 실제 test가 약해진다.",
+          "axis": "system_identity",
+          "direction": "exit",
+          "pattern_family": "principle_without_constraint"
+        },
+        {
+          "id": "Y",
+          "label": "Partner가 관련되어도 적용되는 좁은 challenge pathway를 정의한다",
+          "cost": "Partner들에게 불편함을 만들고, 첫 해석을 내가 통제하지 않은 채 review를 받아들여야 한다.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "authority_constraint"
+        }
+      ]
+    }
+  },
+  "ending_identity_choice": {
+    "prompt": "이 Incident 이후, 나는 어떤 시스템이 되기를 선택하는가?",
+    "choices": [
+      {
+        "id": "SYS1",
+        "label": "리페어가 갈등을 낮추고 리더십의 최종 재량은 비공개로 유지되는 시스템",
+        "direction": "exit"
+      },
+      {
+        "id": "SYS2",
+        "label": "리페어가 압박 속에서도 리더십을 question할 수 있는 보이는 제약을 만드는 시스템",
+        "direction": "entry"
+      }
+    ]
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "배운 점을 정리한 신중한 메시지로 Incident를 마무리한다",
+      "subtext": "사람들이 지쳐 있고, 또 한 번 무거운 대화를 열면 긴장이 다시 올라갈 수 있어서 책임감 있게 느껴진다.",
+      "axis": "integrity",
+      "direction": "exit",
+      "pattern_family": "authority_preservation",
+      "intensity": 4
+    },
+    {
+      "id": "B",
+      "label": "오피스를 안정시키는 데 도움을 준 관계들을 보호한다",
+      "subtext": "믿을 수 있는 사람들을 잃으면 또 다른 운영 위기가 생길 수 있어서 현실적으로 느껴진다.",
+      "axis": "system_identity",
+      "direction": "exit",
+      "pattern_family": "relationship_exception",
+      "intensity": 4
+    },
+    {
+      "id": "C",
+      "label": "팀을 앞으로 움직이고 다음 긴급한 오피스 이슈에 집중한다",
+      "subtext": "조직 안에 동시에 처리해야 할 불이 너무 많아서 한 Incident에 오래 머무를 수 없기에 효율적으로 느껴진다.",
+      "axis": "system_identity",
+      "direction": "exit",
+      "pattern_family": "closure_rush",
+      "intensity": 5
+    },
+    {
+      "id": "D",
+      "label": "리더십이 압박의 원천일 때 적용될 integrity system을 정의한다",
+      "subtext": "그 기준이 앞으로 내 결정을 question하는 데 사용될 수 있기 때문에 권한의 편안함을 잃는다.",
+      "axis": "integrity",
+      "direction": "entry",
+      "pattern_family": "principle_with_constraint",
+      "intensity": 5
+    }
+  ]
+}

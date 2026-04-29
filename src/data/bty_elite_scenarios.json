@@ -1,0 +1,1056 @@
+{
+  "dataset": "BTY_ELITE_SCENARIOS_v1",
+  "total": 50,
+  "scenarios": [
+    {
+      "id": "core_01_training_system",
+      "title": "The System Never Trained Them — But We're Blaming Them Anyway",
+      "role": "Regional Director",
+      "pressure": "Two front-desk staff failed Medicaid eligibility verification three times this week. The office manager wants to write them up. You know onboarding was cut from 5 days to 2 due to volume pressure. Corporate is asking for accountability documentation.",
+      "tradeoff": "Writing them up protects your metrics and satisfies corporate. Defending them requires you to implicate the system — and your own earlier compliance with the onboarding cut.",
+      "bty_tension_axis": "Blame vs. Structural Honesty",
+      "action_contract": {
+        "description": "트레이닝 실패 원인을 사람이 아닌 시스템 관점에서 정의하고 구조 개선 논의를 시작한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "트레이닝 구조 문제를 정의하고 최소 1회 리더십 레벨 논의를 실행",
+        "miss": "개인 책임으로만 정리하거나 아무 조치 없음"
+      },
+      "forced_reset": {
+        "trigger": "blame_pattern_detected",
+        "action": "트레이닝 실패를 시스템 원인 3가지로 재정의하고 공유"
+      },
+      "pattern_detection": ["blame_shift", "avoidance", "ownership"]
+    },
+    {
+      "id": "core_02_manager_integrity",
+      "title": "The Manager Who Performs But Doesn't Lead",
+      "role": "Clinical Director",
+      "pressure": "Your office manager hits every KPI. But three assistants have quietly told you she manipulates schedules to punish people she dislikes. One Medicaid-heavy slot is consistently understaffed on her conflict days. You have no formal complaint — only pattern.",
+      "tradeoff": "Acting on pattern without formal complaint risks being wrong. Waiting for a formal complaint means more patients get substandard care. Either way, you carry the cost.",
+      "bty_tension_axis": "Performance Loyalty vs. Integrity Enforcement",
+      "action_contract": {
+        "description": "Manager 역할 기준을 행동 단위로 재정의하고 직접 피드백을 실행한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "Manager에게 기대 행동을 명확히 전달하고 follow-up 일정 설정",
+        "miss": "시간을 두고 지켜보거나 간접 전달"
+      },
+      "forced_reset": {
+        "trigger": "avoidance_detected",
+        "action": "Manager와 직접 1:1 대화를 실행"
+      },
+      "pattern_detection": ["avoidance", "integrity", "authority_abuse"]
+    },
+    {
+      "id": "core_03_medicaid_pressure",
+      "title": "16 Patients Before Noon",
+      "role": "Associate Dentist",
+      "pressure": "You're seeing 16 Medicaid patients before noon. Charting is falling behind. Your regional director has pushed the scheduling template tighter to hit volume goals. You know the quality of care is degrading. The office manager tells you this is just 'the model.'",
+      "tradeoff": "Saying nothing protects your job. Saying something invites pushback from leadership and potentially brands you as not a 'team player' in a DSO culture that rewards throughput.",
+      "bty_tension_axis": "Self-Protection vs. Clinical Ownership",
+      "action_contract": {
+        "description": "현재 workload 구조 문제를 상위 리더십에 명확히 공유한다",
+        "time_window_hours": 72
+      },
+      "air_logic": {
+        "success": "구조적 문제를 리더십 레벨에 전달",
+        "miss": "개인 불만으로만 남기고 행동 없음"
+      },
+      "forced_reset": {
+        "trigger": "self_protection_pattern",
+        "action": "문제 구조를 문서화해서 공유"
+      },
+      "pattern_detection": ["self_protection", "avoidance", "ownership"]
+    },
+    {
+      "id": "core_04_discount_conflict",
+      "title": "The Discount I Wasn't Supposed to Give",
+      "role": "Associate Dentist",
+      "pressure": "A Medicaid patient can't cover their copay. You know a sliding-scale discount exists but the office manager says you need her approval. She's unavailable. The patient is in the chair. You offer the discount anyway. The manager finds out and escalates to regional.",
+      "tradeoff": "You acted with integrity for the patient. But you violated the authority structure. Now regional is asking whether you can follow protocol — and the manager wants a formal note in your file.",
+      "bty_tension_axis": "Clinical Integrity vs. Authority Compliance",
+      "action_contract": {
+        "description": "디스카운트 권한과 의사결정 구조를 명확히 재정의한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "권한 구조 재정의 또는 명확한 커뮤니케이션 실행",
+        "miss": "불만만 가지거나 통제만 강화"
+      },
+      "forced_reset": {
+        "trigger": "control_pattern",
+        "action": "구조 개선 논의 시작"
+      },
+      "pattern_detection": ["control", "avoidance", "integrity"]
+    },
+    {
+      "id": "core_05_partner_trust",
+      "title": "The Partner Who Stopped Trusting the DSO",
+      "role": "Regional Director",
+      "pressure": "A partner dentist is telling staff privately that DSO decisions are 'corporate greed.' Staff morale is splitting along old-practice vs. DSO lines. The partner hasn't violated any contract — but the cultural damage is accelerating. Corporate wants results, not excuses.",
+      "tradeoff": "Confronting the partner risks escalation and potential legal exposure. Ignoring it means you're allowing cultural erosion that will cost you staff and patient retention within 90 days.",
+      "bty_tension_axis": "Reputation Protection vs. Direct Alignment",
+      "action_contract": {
+        "description": "파트너와 DSO 간 역할과 신뢰 기준을 명확히 정렬한다",
+        "time_window_hours": 72
+      },
+      "air_logic": {
+        "success": "파트너와 직접 alignment conversation 실행",
+        "miss": "외부 불만만 관리"
+      },
+      "forced_reset": {
+        "trigger": "reputation_protection_pattern",
+        "action": "직접 대화 실행"
+      },
+      "pattern_detection": ["self_protection", "avoidance", "integrity"]
+    },
+    {
+      "id": "core_06_lead_assistant",
+      "title": "The Lead Who Can't Lead",
+      "role": "Clinical Director",
+      "pressure": "Your lead assistant has been with the practice 8 years — pre-DSO. She's beloved by legacy staff but actively resistant to new protocols. New hires follow her informal lead over your written SOPs. She hasn't technically violated policy but she's becoming the real authority in the room.",
+      "tradeoff": "Restructuring her role risks losing her and destabilizing legacy staff relationships. Leaving it alone means your protocols are theater — leadership in name only.",
+      "bty_tension_axis": "Empathy Loyalty vs. Structural Authority",
+      "action_contract": {
+        "description": "Lead Assistant 역할 기준과 책임 구조를 재설정한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "역할 기준 명확화 + 구조 조정 실행",
+        "miss": "개인 상황만 고려하거나 방치"
+      },
+      "forced_reset": {
+        "trigger": "avoidance_detected",
+        "action": "역할 재정의 미팅 실행"
+      },
+      "pattern_detection": ["avoidance", "ownership", "empathy_bias"]
+    },
+    {
+      "id": "core_07_growth_pressure",
+      "title": "The Number That Requires Breaking the System",
+      "role": "Regional Director",
+      "pressure": "Regional is 12% below Q3 target. Corporate has offered a bonus structure if you close the gap by month-end. The only lever left is compressing hygiene appointment slots from 60 to 45 minutes across all Medicaid patients. Your clinical directors are objecting. Legal hasn't signed off.",
+      "tradeoff": "Hitting the number secures bonuses and regional standing. Missing it with integrity intact puts your next performance review at risk — and you know how the DSO treats 'underperforming' regions.",
+      "bty_tension_axis": "Short-Term Metric vs. Structural Integrity",
+      "action_contract": {
+        "description": "수익과 운영 충돌 구조를 시스템 관점에서 재설계 논의 시작",
+        "time_window_hours": 72
+      },
+      "air_logic": {
+        "success": "구조 문제 정의 및 리더십 레벨 공유",
+        "miss": "단기 대응만 반복"
+      },
+      "forced_reset": {
+        "trigger": "short_term_pattern",
+        "action": "구조 문제 문서화"
+      },
+      "pattern_detection": ["short_term", "ownership", "pressure_response"]
+    },
+    {
+      "id": "core_08_partner_behavior",
+      "title": "The Partner Who Contradicts You In Front of Staff",
+      "role": "Regional Director",
+      "pressure": "A partner dentist openly reversed your staffing decision in front of three assistants. He has equity. You have authority. He told the staff 'regional doesn't understand how this office runs.' The team is now watching to see whose word holds.",
+      "tradeoff": "Backing down restores short-term peace but permanently transfers real authority to the partner. Holding your position requires a direct confrontation with someone who has equity leverage and legal standing.",
+      "bty_tension_axis": "Authority Avoidance vs. Leadership Integrity",
+      "action_contract": {
+        "description": "파트너 역할과 행동 기준을 다시 정렬하는 대화를 실행한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "직접 대화로 기대 행동 재정의",
+        "miss": "시간만 두고 관찰"
+      },
+      "forced_reset": {
+        "trigger": "avoidance_detected",
+        "action": "즉시 피드백 대화 실행"
+      },
+      "pattern_detection": ["avoidance", "power_distortion", "integrity"]
+    },
+    {
+      "id": "core_09_culture_merge",
+      "title": "Two Offices. Two Cultures. One Roof.",
+      "role": "Office Manager",
+      "pressure": "Your DSO acquired a second location and merged operations under your management. The legacy staff from the acquired office calls your protocols 'corporate nonsense.' They have a peer leader who isn't in management but runs the informal culture. New hires are getting pulled toward the old way.",
+      "tradeoff": "Forcing compliance creates resistance and accelerates turnover. Allowing the dual culture to persist means the DSO's clinical standards are optionally enforced — and you're responsible for what happens next.",
+      "bty_tension_axis": "Conflict Avoidance vs. Cultural Ownership",
+      "action_contract": {
+        "description": "문화 충돌 지점을 명확히 정의하고 alignment conversation을 시작한다",
+        "time_window_hours": 72
+      },
+      "air_logic": {
+        "success": "문화 충돌 주제 공개 논의",
+        "miss": "시간 해결 기대"
+      },
+      "forced_reset": {
+        "trigger": "avoidance_detected",
+        "action": "문화 이슈 공개 대화 실행"
+      },
+      "pattern_detection": ["avoidance", "ownership", "conflict_handling"]
+    },
+    {
+      "id": "core_10_bty_distortion",
+      "title": "BTY As a Slogan, Not a Standard",
+      "role": "Clinical Director",
+      "pressure": "A manager is using 'BTY' language to pressure staff into overtime without pay: 'Be your best means staying until the work is done.' Staff are starting to associate BTY with exploitation. The message is being weaponized and it's spreading to how staff talk about leadership.",
+      "tradeoff": "Correcting the manager publicly damages their authority. Staying silent lets a cultural poison spread through the vocabulary that is supposed to define your leadership identity.",
+      "bty_tension_axis": "Cultural Drift vs. Core Integrity",
+      "action_contract": {
+        "description": "BTY의 의미를 행동 기준으로 재정의하고 왜곡된 메시지를 바로잡는다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "핵심 가치 재정렬 대화 실행",
+        "miss": "표현만 수정하거나 방치"
+      },
+      "forced_reset": {
+        "trigger": "culture_distortion_detected",
+        "action": "BTY 정의 재설정 미팅 실행"
+      },
+      "pattern_detection": ["integrity", "authority_misuse", "cultural_drift"]
+    },
+    {
+      "id": "exp_11_staffing_collapse",
+      "title": "Three Callouts. Full Schedule. No Pool.",
+      "role": "Office Manager",
+      "pressure": "It's Monday morning. Three assistants called out. The schedule is at full Medicaid capacity — 34 patients. Corporate eliminated the float pool last quarter to cut costs. You can't cancel patients without a compliance flag. You can't staff the floor safely.",
+      "tradeoff": "Running the day short-staffed risks patient safety and staff burnout but keeps the compliance record clean. Canceling patients protects care quality but triggers a regional review that could cost you your performance bonus.",
+      "bty_tension_axis": "Operational Compliance vs. Patient Safety Integrity",
+      "action_contract": {
+        "description": "운영 불가 상태를 상위 리더십에 즉시 보고하고 구조적 float pool 복원 논의를 시작한다",
+        "time_window_hours": 24
+      },
+      "air_logic": {
+        "success": "당일 상황 보고 + 구조 문제를 리더십에 문서화해서 전달",
+        "miss": "혼자 처리하고 보고 없음"
+      },
+      "forced_reset": {
+        "trigger": "silent_execution_pattern",
+        "action": "리더십 레벨 긴급 보고 실행"
+      },
+      "pattern_detection": ["self_protection", "avoidance", "ownership"]
+    },
+    {
+      "id": "exp_12_medicaid_upcoding",
+      "title": "The Code That Pays More",
+      "role": "Associate Dentist",
+      "pressure": "Your office manager tells you a higher-reimbursing CDT code is 'standard practice here' for a procedure you'd normally code differently. Two other associate dentists use it. The billing coordinator says corporate approves it. You're not certain it's fraudulent — but you're not certain it's clean.",
+      "tradeoff": "Using the code aligns you with your office and protects your relationship with management. Refusing or escalating puts you in direct conflict with a billing culture that may be sanctioned at the regional level.",
+      "bty_tension_axis": "Compliance Conformity vs. Clinical Integrity",
+      "action_contract": {
+        "description": "코딩 기준을 공식 채널로 확인하고 결과를 문서화한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "공식 CDT 기준 확인 후 명확한 입장 전달",
+        "miss": "주변 관행에 맞추고 문제 제기 없음"
+      },
+      "forced_reset": {
+        "trigger": "conformity_pattern",
+        "action": "컴플라이언스 팀 또는 공식 채널에 문의 실행"
+      },
+      "pattern_detection": ["conformity", "integrity", "self_protection"]
+    },
+    {
+      "id": "exp_13_regional_favoritism",
+      "title": "The Office That Gets Everything",
+      "role": "Office Manager",
+      "pressure": "One office in the region consistently gets first pick of supplies, new equipment, and float staff — it's the regional director's former location. Your Medicaid-heavy office gets leftovers. Staff have noticed. Morale is fraying. You're being asked to hit the same KPIs with inferior resources.",
+      "tradeoff": "Raising the resource inequity issue risks being labeled a complainer by regional. Staying silent means you're managing an unfair system while being evaluated as if it's fair — and your team watches you accept it.",
+      "bty_tension_axis": "Political Safety vs. Structural Fairness",
+      "action_contract": {
+        "description": "자원 배분 불균형을 데이터로 정리해서 공식 채널에 제출한다",
+        "time_window_hours": 72
+      },
+      "air_logic": {
+        "success": "데이터 기반 리소스 격차 보고서 작성 및 제출",
+        "miss": "비공식 불만만 유지"
+      },
+      "forced_reset": {
+        "trigger": "silent_resentment_pattern",
+        "action": "데이터 문서화 후 공식 제출"
+      },
+      "pattern_detection": ["avoidance", "self_protection", "ownership"]
+    },
+    {
+      "id": "exp_14_exit_interview_truth",
+      "title": "What the Leaving Employee Really Said",
+      "role": "Clinical Director",
+      "pressure": "A high-performing hygienist is leaving. In her exit interview she tells you directly: 'The manager retaliates against people who push back.' She doesn't want it on record. HR is asking you for exit summary documentation. The manager is a top performer by every metric.",
+      "tradeoff": "Documenting the feedback honestly puts you in a conflict with a strong manager and HR's instinct to protect high performers. Sanitizing the exit summary buries a retaliation pattern that will produce your next departure.",
+      "bty_tension_axis": "Institutional Loyalty vs. Integrity in Documentation",
+      "action_contract": {
+        "description": "종료 피드백의 구조적 의미를 HR에게 명확하게 전달한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "패턴 기반 피드백을 HR에 명확히 전달",
+        "miss": "요약 문서 정제 후 제출"
+      },
+      "forced_reset": {
+        "trigger": "documentation_sanitization_detected",
+        "action": "구조적 패턴 관점으로 재작성 후 공유"
+      },
+      "pattern_detection": ["integrity", "avoidance", "blame_shift"]
+    },
+    {
+      "id": "exp_15_onboarding_failure",
+      "title": "Day One and Already Behind",
+      "role": "Office Manager",
+      "pressure": "A new dental assistant started Monday. By Wednesday she's already behind on protocol. Your onboarding is a 20-page PDF and a 2-hour shadow shift — the DSO standard. She's not failing because she's incapable. She's failing because the system isn't designed to actually train anyone.",
+      "tradeoff": "Writing her up or letting her go is the path of least resistance. Advocating for a better onboarding structure takes political capital you're not sure you have and adds work to an already overloaded team.",
+      "bty_tension_axis": "Blame Efficiency vs. System Accountability",
+      "action_contract": {
+        "description": "온보딩 구조 문제를 문서화하고 개선안을 상위 리더십과 논의 시작",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "구조 문제 정의 + 개선안 리더십 공유",
+        "miss": "직원 개인 능력 문제로 처리"
+      },
+      "forced_reset": {
+        "trigger": "blame_pattern_detected",
+        "action": "온보딩 프로세스 갭 3가지 문서화"
+      },
+      "pattern_detection": ["blame_shift", "ownership", "system_thinking"]
+    },
+    {
+      "id": "exp_16_scaling_speed",
+      "title": "Three New Offices in 90 Days",
+      "role": "Regional Director",
+      "pressure": "Corporate announced three new office openings in your region over 90 days. You have no additional RD bandwidth. Your current offices are still stabilizing from last quarter's acquisitions. The rollout plan assumes your current team absorbs all onboarding, training, and culture integration. No one asked if it was feasible.",
+      "tradeoff": "Agreeing to the timeline makes you look like a capable regional leader. Flagging structural infeasibility requires you to put in writing that corporate's growth plan is operationally flawed — and they haven't asked for that feedback.",
+      "bty_tension_axis": "Executive Compliance vs. Operational Truth-Telling",
+      "action_contract": {
+        "description": "운영 용량 한계를 데이터로 정리하고 실행 가능한 대안을 제안한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "리소스 갭 문서화 + 대안 제안 실행",
+        "miss": "동의하고 나중에 문제 발생"
+      },
+      "forced_reset": {
+        "trigger": "compliance_without_feedback_pattern",
+        "action": "용량 분석 문서 작성 및 공유"
+      },
+      "pattern_detection": ["short_term", "self_protection", "ownership"]
+    },
+    {
+      "id": "exp_17_clinical_autonomy",
+      "title": "The Treatment Plan I Wouldn't Have Recommended",
+      "role": "Associate Dentist",
+      "pressure": "You're seeing a patient who was previously treated by the lead partner. The prior treatment plan is more aggressive and more profitable than you would have recommended. The patient trusts the practice. The plan is legally defensible. But you wouldn't have done it this way.",
+      "tradeoff": "Completing the prior plan keeps the peace and the revenue intact. Revisiting the diagnosis with the patient risks exposing a colleague's decision and creating legal and relational fallout across the practice.",
+      "bty_tension_axis": "Peer Loyalty vs. Clinical Honesty",
+      "action_contract": {
+        "description": "환자에게 현재 임상적 판단을 투명하게 공유하고 선택권을 제공한다",
+        "time_window_hours": 24
+      },
+      "air_logic": {
+        "success": "임상 판단을 환자에게 직접 전달",
+        "miss": "이전 계획 그대로 진행"
+      },
+      "forced_reset": {
+        "trigger": "deference_pattern",
+        "action": "환자 상담 후 임상 기록 업데이트"
+      },
+      "pattern_detection": ["integrity", "self_protection", "conformity"]
+    },
+    {
+      "id": "exp_18_feedback_retaliation",
+      "title": "After the Honest Answer",
+      "role": "Associate Dentist",
+      "pressure": "In a regional town hall, you gave honest feedback about scheduling pressure. Two weeks later your preferred shift times are gone, your best patient slots were reassigned, and your schedule was quietly restructured. Nothing was said directly. You can't prove it's retaliation. But you know.",
+      "tradeoff": "Raising the retaliation issue requires you to name something unprovable and risk a second, more overt retaliation. Absorbing it silently signals to everyone watching that speaking up has a cost — and teaches the organization what honesty earns.",
+      "bty_tension_axis": "Self-Protection vs. Institutional Courage",
+      "action_contract": {
+        "description": "패턴을 문서화하고 HR 또는 신뢰할 수 있는 리더십 채널에 공식 공유한다",
+        "time_window_hours": 72
+      },
+      "air_logic": {
+        "success": "패턴 문서화 후 공식 채널 공유",
+        "miss": "침묵하거나 이직 결정"
+      },
+      "forced_reset": {
+        "trigger": "self_protection_pattern",
+        "action": "타임라인 기반 패턴 문서 작성"
+      },
+      "pattern_detection": ["self_protection", "integrity", "avoidance"]
+    },
+    {
+      "id": "exp_19_tempo_compliance",
+      "title": "The Hygienist Who Won't Speed Up",
+      "role": "Clinical Director",
+      "pressure": "Your most thorough hygienist runs 10-15 minutes over on every Medicaid patient. She documents more, catches more, refers more appropriately. By every clinical quality measure, she's your best. But the schedule model doesn't allow her throughput. The office manager wants her put on a performance plan.",
+      "tradeoff": "Backing the performance plan aligns you with operational metrics. Defending her clinical model requires you to challenge the scheduling template and the manager — and ultimately, the DSO's productivity assumptions.",
+      "bty_tension_axis": "Operational Compliance vs. Clinical Excellence Defense",
+      "action_contract": {
+        "description": "임상 품질 데이터를 근거로 스케줄링 구조 재검토를 요청한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "임상 성과 데이터 정리 후 구조 검토 요청",
+        "miss": "성과 계획 승인 후 방치"
+      },
+      "forced_reset": {
+        "trigger": "metric_conformity_pattern",
+        "action": "임상 품질 vs 생산성 비교 데이터 작성"
+      },
+      "pattern_detection": ["conformity", "ownership", "integrity"]
+    },
+    {
+      "id": "exp_20_patient_complaint_suppression",
+      "title": "The Complaint That Didn't Make It to the Form",
+      "role": "Office Manager",
+      "pressure": "A Medicaid patient complained that she felt rushed and that the dentist didn't explain her treatment. Your front desk coordinator told her 'that's just how it works here' and didn't log a formal complaint. You found out from another patient. The coordinator has been with you for four years.",
+      "tradeoff": "Addressing the coordinator formally risks a loyalty rupture with a long-tenured employee. Not addressing it means your complaint system is now controlled by whoever happens to be at the front desk that day.",
+      "bty_tension_axis": "Tenure Loyalty vs. System Integrity",
+      "action_contract": {
+        "description": "컴플레인 처리 기준을 재정의하고 해당 직원에게 직접 피드백을 실행한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "기준 재정의 + 직접 피드백 실행",
+        "miss": "비공식 경고로만 처리"
+      },
+      "forced_reset": {
+        "trigger": "loyalty_protection_pattern",
+        "action": "컴플레인 SOP 재정비 미팅 실행"
+      },
+      "pattern_detection": ["empathy_bias", "integrity", "avoidance"]
+    },
+    {
+      "id": "exp_21_bonus_ethics",
+      "title": "The Bonus That Requires Ignoring a Problem",
+      "role": "Regional Director",
+      "pressure": "You are $8K away from your quarterly bonus threshold. One lever: approving a scheduling change that your clinical director flagged as increasing patient risk. It's not explicitly prohibited. It's a gray zone. The clinical director has not escalated formally — just flagged verbally.",
+      "tradeoff": "Approving the change gets you the bonus and keeps regional pressure off you. If something goes wrong clinically, the verbal flag gives you no protection. If you don't approve, you miss the number with no guarantee leadership understands why.",
+      "bty_tension_axis": "Personal Gain vs. Clinical Accountability",
+      "action_contract": {
+        "description": "임상 감독의 우려를 공식 문서화하고 의사결정 근거를 기록한다",
+        "time_window_hours": 24
+      },
+      "air_logic": {
+        "success": "리스크 문서화 후 명확한 의사결정 근거 기록",
+        "miss": "승인 후 구두 경고 묵살"
+      },
+      "forced_reset": {
+        "trigger": "short_term_gain_pattern",
+        "action": "임상 감독과 공식 리스크 리뷰 실행"
+      },
+      "pattern_detection": ["short_term", "integrity", "self_protection"]
+    },
+    {
+      "id": "exp_22_dso_vs_community",
+      "title": "The Community That Knows We Changed",
+      "role": "Office Manager",
+      "pressure": "Your office served this Medicaid community for 12 years as an independent practice. Since DSO acquisition 18 months ago, long-term patients have noticed: shorter appointments, different dentists every few months, and less personal interaction. A community elder asks you directly: 'What happened to this place?'",
+      "tradeoff": "Defending the DSO model in this moment feels dishonest. Acknowledging the change creates an opening for complaint escalation and possibly community-level reputation damage. There is no answer that costs nothing.",
+      "bty_tension_axis": "Institutional Defense vs. Relational Honesty",
+      "action_contract": {
+        "description": "환자에게 정직하게 응답하고 경험 개선을 위한 구체적 약속을 한다",
+        "time_window_hours": 24
+      },
+      "air_logic": {
+        "success": "투명한 응답 + 개선 약속 실행",
+        "miss": "방어적 응답 또는 회피"
+      },
+      "forced_reset": {
+        "trigger": "institutional_defense_pattern",
+        "action": "환자 경험 개선 구체안 작성"
+      },
+      "pattern_detection": ["integrity", "avoidance", "cultural_drift"]
+    },
+    {
+      "id": "exp_23_turnover_spin",
+      "title": "The Turnover Report That Needs a Better Story",
+      "role": "Regional Director",
+      "pressure": "Your region's 90-day turnover is 41%. Corporate is asking for a written explanation. The real causes: aggressive scheduling, manager retaliation culture, and below-market pay. The safe explanation: 'labor market conditions.' Both can be defended. Only one is true.",
+      "tradeoff": "The honest report implicates your management choices and creates accountability pressure. The market-conditions report buys time — but the conditions producing the turnover continue, and the next 90 days will look the same.",
+      "bty_tension_axis": "Reporting Integrity vs. Political Safety",
+      "action_contract": {
+        "description": "실제 이직 원인을 분석하고 구조 개선 계획과 함께 제출한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "원인 분석 + 개선 계획 공식 제출",
+        "miss": "외부 요인으로만 설명"
+      },
+      "forced_reset": {
+        "trigger": "blame_externalization_pattern",
+        "action": "내부 원인 3가지 정의 및 문서화"
+      },
+      "pattern_detection": ["blame_shift", "integrity", "short_term"]
+    },
+    {
+      "id": "exp_24_informal_authority",
+      "title": "The Person Who Actually Runs the Office",
+      "role": "Clinical Director",
+      "pressure": "There is no office manager vacancy on paper. But a senior dental assistant has been unofficially managing scheduling, conflict resolution, and supply orders for three months — filling the gap after the last manager left. She's good at it. She's also started telling other staff what clinical protocol should be.",
+      "tradeoff": "Formalizing her role is operationally rational but creates a precedent about how authority is assigned. Pulling back her informal authority damages morale and removes the only functional manager in the office.",
+      "bty_tension_axis": "Operational Pragmatism vs. Structural Clarity",
+      "action_contract": {
+        "description": "역할 경계를 명확히 재정의하고 공식 구조를 복원한다",
+        "time_window_hours": 72
+      },
+      "air_logic": {
+        "success": "역할 경계 재정의 + 구조 복원 계획 수립",
+        "miss": "비공식 구조 방치"
+      },
+      "forced_reset": {
+        "trigger": "informal_authority_tolerance",
+        "action": "역할 정의 미팅 실행"
+      },
+      "pattern_detection": ["avoidance", "ownership", "authority_misuse"]
+    },
+    {
+      "id": "exp_25_schedule_override",
+      "title": "The Appointment That Shouldn't Have Been Booked",
+      "role": "Associate Dentist",
+      "pressure": "A complex extraction case was booked into a 45-minute slot. You need 90. The schedule was built by the office manager under regional pressure to maximize chair time. You can push through and risk a substandard outcome, or stop, reschedule, and face an angry manager and a gap in today's revenue.",
+      "tradeoff": "Proceeding protects the schedule and avoids conflict. Stopping is clinically correct but puts you in immediate conflict with the office manager and gives regional a metric gap to explain.",
+      "bty_tension_axis": "Clinical Standard vs. Scheduling Authority",
+      "action_contract": {
+        "description": "임상적 판단으로 케이스를 중단하고 관리자에게 명확히 전달한다",
+        "time_window_hours": 4
+      },
+      "air_logic": {
+        "success": "케이스 중단 + 관리자에게 임상 이유 명확히 전달",
+        "miss": "진행 후 차트 수정"
+      },
+      "forced_reset": {
+        "trigger": "schedule_pressure_compliance",
+        "action": "즉시 중단 및 보고"
+      },
+      "pattern_detection": ["self_protection", "integrity", "pressure_response"]
+    },
+    {
+      "id": "exp_26_dso_promise_gap",
+      "title": "What They Said at Signing vs. What's Happening Now",
+      "role": "Associate Dentist",
+      "pressure": "When you joined, you were told: autonomy over treatment planning, 4-day workweeks, and a path to partnership. 14 months in: templates control your treatment plans, you work 5 days, and partnership was quietly removed from your contract renewal. When you ask, you get vague reassurances.",
+      "tradeoff": "Pushing for written clarity risks being seen as 'difficult' and potentially not being renewed. Accepting the vagueness means you're building your career on commitments that are already being walked back.",
+      "bty_tension_axis": "Job Security vs. Contractual Integrity",
+      "action_contract": {
+        "description": "약속 이행 여부를 문서로 요청하고 명확한 응답을 요구한다",
+        "time_window_hours": 72
+      },
+      "air_logic": {
+        "success": "서면 확인 요청 및 응답 문서화",
+        "miss": "구두 재확인만 받고 넘어감"
+      },
+      "forced_reset": {
+        "trigger": "vagueness_tolerance_pattern",
+        "action": "이행 약속 서면 요청 발송"
+      },
+      "pattern_detection": ["self_protection", "integrity", "avoidance"]
+    },
+    {
+      "id": "exp_27_patient_volume_vs_quality",
+      "title": "The Chart That Doesn't Reflect What Happened",
+      "role": "Associate Dentist",
+      "pressure": "Volume pressure has pushed your charting to shorthand. You know the notes don't fully capture your clinical decision-making. They're not false — but they're not complete. If something goes wrong with a patient, the chart won't protect you. If you start charting fully, your daily volume drops below target.",
+      "tradeoff": "Maintaining the shorthand keeps you at target and out of managerial crosshairs. Completing full charting requires you to either work unpaid overtime or fight for schedule reduction — neither of which has been received well in this DSO.",
+      "bty_tension_axis": "Volume Compliance vs. Legal and Clinical Documentation Integrity",
+      "action_contract": {
+        "description": "차트 품질 이슈를 리더십에 공유하고 구조적 해결책을 요청한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "문제 공유 + 구조적 해결 요청",
+        "miss": "개인적으로 대응하거나 방치"
+      },
+      "forced_reset": {
+        "trigger": "compliance_shortcut_pattern",
+        "action": "차트 품질 갭 리더십 보고"
+      },
+      "pattern_detection": ["self_protection", "integrity", "short_term"]
+    },
+    {
+      "id": "exp_28_kpi_distortion",
+      "title": "The Number That Looks Good and Isn't",
+      "role": "Office Manager",
+      "pressure": "Your office's 'patient satisfaction' score is 4.8/5. But you know: your front desk coordinator selectively shares the survey link with patients she thinks will respond positively. Negative experiences — especially Medicaid patients who feel rushed — rarely get the link. The score is technically accurate and operationally fraudulent.",
+      "tradeoff": "Correcting the survey distribution process will tank your score and draw attention. Leaving it in place keeps a metric that makes everyone look good while systematically hiding your most vulnerable patient population's experience.",
+      "bty_tension_axis": "Metric Performance vs. Data Integrity",
+      "action_contract": {
+        "description": "설문 배포 프로세스를 수정하고 전체 환자 대상으로 재설계한다",
+        "time_window_hours": 72
+      },
+      "air_logic": {
+        "success": "배포 기준 재설계 + 전 환자 대상 전환",
+        "miss": "현행 유지"
+      },
+      "forced_reset": {
+        "trigger": "data_filtering_pattern",
+        "action": "설문 SOP 재작성 및 전체 적용"
+      },
+      "pattern_detection": ["integrity", "conformity", "self_protection"]
+    },
+    {
+      "id": "exp_29_regional_pressure_cascade",
+      "title": "The Directive I Know Is Wrong",
+      "role": "Office Manager",
+      "pressure": "Your regional director sent a directive to compress all new patient appointments from 90 minutes to 60 minutes to increase new patient volume by 20%. You know from experience this means either rushing the exam or skipping steps. It came as a 'soft mandate' — not a written policy. You're expected to implement it starting Monday.",
+      "tradeoff": "Implementing the change makes you compliant and protects your relationship with regional. Pushing back requires you to go on record against a directive from your direct superior — with no guarantee of backup from clinical leadership.",
+      "bty_tension_axis": "Hierarchical Compliance vs. Clinical Accountability",
+      "action_contract": {
+        "description": "지시 내용의 임상적 위험을 문서화하고 공식 채널로 이의를 제기한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "리스크 문서화 + 이의 제기 공식 실행",
+        "miss": "구두 불만만 표시하고 구현"
+      },
+      "forced_reset": {
+        "trigger": "soft_mandate_compliance_pattern",
+        "action": "임상 리스크 문서 작성 후 공유"
+      },
+      "pattern_detection": ["avoidance", "integrity", "pressure_response"]
+    },
+    {
+      "id": "exp_30_peer_cover",
+      "title": "What I Know About My Colleague",
+      "role": "Associate Dentist",
+      "pressure": "You overheard a colleague tell a patient that a procedure was 'necessary' when you believe it wasn't clinically indicated. The patient is already scheduled. Your colleague is well-liked. The procedure is profitable. You have no proof — only your clinical judgment and what you heard.",
+      "tradeoff": "Saying nothing protects the relationship and avoids a conflict you can't fully substantiate. Raising it — even internally — creates a professional confrontation that could split the clinical team and backfire if you can't prove it.",
+      "bty_tension_axis": "Peer Protection vs. Patient Advocacy",
+      "action_contract": {
+        "description": "임상 감독 또는 신뢰할 수 있는 리더십 채널에 우려를 전달한다",
+        "time_window_hours": 24
+      },
+      "air_logic": {
+        "success": "우려 전달 + 케이스 검토 요청",
+        "miss": "침묵 또는 환자와 직접 이야기"
+      },
+      "forced_reset": {
+        "trigger": "peer_protection_pattern",
+        "action": "임상 감독 채널에 보고"
+      },
+      "pattern_detection": ["integrity", "avoidance", "self_protection"]
+    },
+    {
+      "id": "exp_31_dso_acquisition_resentment",
+      "title": "They Bought Us, Not Earned Us",
+      "role": "Office Manager",
+      "pressure": "18 months post-acquisition, your core staff still refers to the DSO as 'them' vs. 'us.' You've tried culture messaging. It hasn't landed. The real issue: several promises made during acquisition — no layoffs, retained benefits, local decision-making — were walked back within 6 months. The resentment isn't irrational. It's informed.",
+      "tradeoff": "Continuing to sell the DSO narrative to staff who know better damages your credibility as a manager. Acknowledging the broken promises creates openings for formal grievance — and puts you between corporate and a staff that has legitimate cause for distrust.",
+      "bty_tension_axis": "Corporate Messaging vs. Team Trust Integrity",
+      "action_contract": {
+        "description": "스태프의 신뢰를 회복하기 위해 약속 이행 현황을 투명하게 공유하고 실행 가능한 개선을 요청한다",
+        "time_window_hours": 72
+      },
+      "air_logic": {
+        "success": "투명 공유 + 구체적 개선 요청 실행",
+        "miss": "메시지 반복 또는 방치"
+      },
+      "forced_reset": {
+        "trigger": "narrative_repetition_pattern",
+        "action": "약속 이행 현황 팀 공개 리뷰"
+      },
+      "pattern_detection": ["integrity", "cultural_drift", "avoidance"]
+    },
+    {
+      "id": "exp_32_manager_as_enforcer",
+      "title": "Managing Through Fear Works — Until It Doesn't",
+      "role": "Regional Director",
+      "pressure": "One of your top-performing office managers runs the tightest operation in the region — but also has the highest complaint rate from staff. Three assistants have separately described her management as 'fear-based.' Her metrics are excellent. Your region's metrics depend on her output. HR has not escalated.",
+      "tradeoff": "Intervening risks destabilizing a high-performing location. Not intervening means you're rewarding a fear-based management culture with continued authority — and your region's 'performance' is built on a foundation that will break the next time she leaves.",
+      "bty_tension_axis": "Performance Dependency vs. Leadership Standard Integrity",
+      "action_contract": {
+        "description": "관리 방식을 행동 기준으로 재정의하고 직접 피드백을 실행한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "행동 기준 재정의 + 직접 피드백 실행",
+        "miss": "성과 유지 명목으로 방치"
+      },
+      "forced_reset": {
+        "trigger": "performance_shield_pattern",
+        "action": "관리 방식 피드백 대화 실행"
+      },
+      "pattern_detection": ["integrity", "avoidance", "authority_abuse"]
+    },
+    {
+      "id": "exp_33_policy_without_training",
+      "title": "The Policy Nobody Was Taught",
+      "role": "Clinical Director",
+      "pressure": "A new infection control protocol was released by corporate 6 weeks ago via a DocuSign. No training was provided. Three staff members didn't fully understand it. A state inspection found non-compliance. Corporate is asking who is accountable. Your name is on the distribution list.",
+      "tradeoff": "Accepting accountability protects your staff but sets a precedent that you'll absorb consequences for system failures. Deflecting to the system means you need to implicate corporate's training infrastructure — which is politically uncomfortable.",
+      "bty_tension_axis": "Individual Accountability vs. Systemic Honesty",
+      "action_contract": {
+        "description": "시스템 실패 원인을 명확히 정의하고 트레이닝 개선안을 함께 제출한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "시스템 원인 정의 + 개선안 제출",
+        "miss": "개인 책임 수용 후 종결"
+      },
+      "forced_reset": {
+        "trigger": "individual_absorption_pattern",
+        "action": "트레이닝 갭 분석 + 구조 개선안 작성"
+      },
+      "pattern_detection": ["blame_shift", "ownership", "system_thinking"]
+    },
+    {
+      "id": "exp_34_patient_language_barrier",
+      "title": "Consent in a Language They Don't Speak",
+      "role": "Associate Dentist",
+      "pressure": "A Spanish-speaking Medicaid patient nodded through your consent explanation in English. You have no bilingual staff available today. The procedure is scheduled. The interpreter service requires 24-hour booking notice. Canceling means she loses her Medicaid window for this quarter.",
+      "tradeoff": "Proceeding without verified informed consent protects the patient's access but exposes you to liability and violates informed consent standards. Canceling protects you legally but fails a patient who has already navigated significant barriers to get here.",
+      "bty_tension_axis": "Access Equity vs. Legal and Ethical Consent Standards",
+      "action_contract": {
+        "description": "동의 프로세스의 구조적 갭을 즉시 리더십에 보고하고 장기 해결책을 요청한다",
+        "time_window_hours": 24
+      },
+      "air_logic": {
+        "success": "즉시 보고 + 구조 해결 요청",
+        "miss": "이번만 진행 후 기록 없음"
+      },
+      "forced_reset": {
+        "trigger": "one_time_exception_pattern",
+        "action": "언어 접근성 SOP 개선 요청 공식화"
+      },
+      "pattern_detection": ["integrity", "self_protection", "ownership"]
+    },
+    {
+      "id": "exp_35_partner_production_gap",
+      "title": "The Partner Who Stopped Producing",
+      "role": "Regional Director",
+      "pressure": "A partner dentist's production has dropped 28% over four months. Staff describe her as disengaged. Patients are noticing. She's meeting minimum contract thresholds but nothing more. When you ask, she says she's 'adjusted to the DSO pace.' You sense burnout — or quiet quitting. Either way, your region is covering the gap.",
+      "tradeoff": "A direct performance conversation with a partner requires navigating equity agreements and legal considerations. Waiting for her to self-correct means the gap continues to widen — and the staff watching this are deciding what level of effort is acceptable.",
+      "bty_tension_axis": "Legal Caution vs. Leadership Accountability",
+      "action_contract": {
+        "description": "파트너와 직접 현황 공유 대화를 실행하고 지원 또는 기대 재정렬을 논의한다",
+        "time_window_hours": 72
+      },
+      "air_logic": {
+        "success": "직접 대화 실행 + 지원/기대 정렬",
+        "miss": "관찰 지속"
+      },
+      "forced_reset": {
+        "trigger": "observation_without_action_pattern",
+        "action": "직접 파트너 대화 일정 설정"
+      },
+      "pattern_detection": ["avoidance", "integrity", "power_distortion"]
+    },
+    {
+      "id": "exp_36_training_as_punishment",
+      "title": "We Send People to Training When They Mess Up",
+      "role": "Clinical Director",
+      "pressure": "In your office, 'additional training' has become a de facto disciplinary tool — a signal that someone is being managed out. Real training needs go unaddressed because staff associate training with punishment. New staff are afraid to ask questions because it might look like weakness. The culture has reengineered what learning means.",
+      "tradeoff": "Dismantling this culture requires you to retrain leadership on how they use training language — and acknowledge that the current pattern was allowed to develop under your supervision. Leaving it alone keeps peace but accelerates the erosion of psychological safety.",
+      "bty_tension_axis": "Cultural Comfort vs. Learning Culture Integrity",
+      "action_contract": {
+        "description": "트레이닝 문화 재정의를 공식 리더십 대화 주제로 올린다",
+        "time_window_hours": 72
+      },
+      "air_logic": {
+        "success": "리더십 대화 + 트레이닝 언어 재정의",
+        "miss": "개인 케이스 대응만 반복"
+      },
+      "forced_reset": {
+        "trigger": "cultural_drift_continuation",
+        "action": "트레이닝 문화 재정의 미팅 실행"
+      },
+      "pattern_detection": ["cultural_drift", "ownership", "integrity"]
+    },
+    {
+      "id": "exp_37_insurance_denial_pressure",
+      "title": "Appeal It or Absorb It",
+      "role": "Office Manager",
+      "pressure": "Your billing coordinator tells you that appealing Medicaid claim denials takes 3-4 hours per case and your office has 11 pending. Corporate's billing team doesn't handle Medicaid appeals — you're on your own. The office is already understaffed. Absorbing the denials costs $14,000. Appealing them costs staff hours you don't have.",
+      "tradeoff": "Absorbing the denials is operationally easier but systematically punishes Medicaid patients by letting a broken billing outcome stand. Appealing requires advocating for resources you've been denied — and making that request visible.",
+      "bty_tension_axis": "Operational Convenience vs. Patient Financial Advocacy",
+      "action_contract": {
+        "description": "청구 지원 리소스 부족을 문서화하고 구조 지원을 공식 요청한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "리소스 부족 문서화 + 공식 지원 요청",
+        "miss": "흡수 결정 후 종결"
+      },
+      "forced_reset": {
+        "trigger": "absorption_without_escalation",
+        "action": "청구 지원 격차 문서 + 리소스 요청 제출"
+      },
+      "pattern_detection": ["avoidance", "ownership", "self_protection"]
+    },
+    {
+      "id": "exp_38_departure_timing",
+      "title": "The Two Weeks That Damage Everyone Else",
+      "role": "Office Manager",
+      "pressure": "Your most competent dental assistant gave two weeks notice. You know she's leaving because of the manager — not the job. You have no replacement. The schedule for the next six weeks is built around her. If you say nothing to regional, you absorb the chaos. If you name why she's really leaving, you implicate the manager — who is the regional director's ally.",
+      "tradeoff": "Managing the transition silently protects you from political exposure but allows the underlying cause to produce the next departure. Naming the real reason puts you on record against a politically protected manager.",
+      "bty_tension_axis": "Political Safety vs. Departure Pattern Honesty",
+      "action_contract": {
+        "description": "이직 원인을 패턴 차원에서 리더십에 전달한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "패턴 기반 이직 원인 리더십 전달",
+        "miss": "운영 대응만 실행"
+      },
+      "forced_reset": {
+        "trigger": "operational_only_response",
+        "action": "이직 원인 문서화 + 리더십 공유"
+      },
+      "pattern_detection": ["avoidance", "self_protection", "integrity"]
+    },
+    {
+      "id": "exp_39_performance_review_inflation",
+      "title": "Everyone Gets a 4 Out of 5",
+      "role": "Clinical Director",
+      "pressure": "Review season. You know two of your staff are genuinely underperforming. In previous cycles, managers inflated reviews to avoid difficult conversations — and to protect their own 'team culture' scores. HR tracks review distribution and flags bell-curve outliers. Giving honest 2s means paperwork, PIPs, and HR scrutiny that takes time you don't have.",
+      "tradeoff": "Inflating reviews protects your time and avoids HR friction. It also ensures that underperformers stay in roles they're damaging — and that your high performers watch integrity optionally applied depending on convenience.",
+      "bty_tension_axis": "Review Convenience vs. Performance Honesty",
+      "action_contract": {
+        "description": "실제 성과를 반영한 리뷰를 작성하고 지원 계획을 함께 제출한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "정직한 리뷰 + 지원 계획 제출",
+        "miss": "점수 조정 후 제출"
+      },
+      "forced_reset": {
+        "trigger": "review_inflation_detected",
+        "action": "실제 성과 기준으로 리뷰 재작성"
+      },
+      "pattern_detection": ["integrity", "avoidance", "conformity"]
+    },
+    {
+      "id": "exp_40_regional_blame_pass",
+      "title": "The Problem Arrived Before I Did",
+      "role": "Regional Director",
+      "pressure": "You inherited three underperforming offices. The problems — staff turnover culture, broken onboarding, Medicaid billing backlogs — all predate you by 18+ months. Corporate is asking for a 90-day turnaround plan. You could accurately present these as inherited problems. You could also just own the region you now lead.",
+      "tradeoff": "Documenting the inherited problems protects your performance narrative but signals to your team that you're already building an excuse structure. Owning the region creates accountability you weren't responsible for creating — but that you're now responsible for solving.",
+      "bty_tension_axis": "Inherited Blame vs. Forward Ownership",
+      "action_contract": {
+        "description": "현재 상태를 정직하게 진단하고 구체적인 90일 개선 계획을 제출한다",
+        "time_window_hours": 72
+      },
+      "air_logic": {
+        "success": "정직한 진단 + 구체적 개선 계획 제출",
+        "miss": "이전 리더십 탓으로 설명"
+      },
+      "forced_reset": {
+        "trigger": "blame_externalization_pattern",
+        "action": "현재 책임 기반 개선 계획 재작성"
+      },
+      "pattern_detection": ["blame_shift", "ownership", "integrity"]
+    },
+    {
+      "id": "exp_41_no_show_coverage_lie",
+      "title": "We're Fully Staffed Today",
+      "role": "Office Manager",
+      "pressure": "Two assistants called out. You told the front desk to tell patients 'we're fully staffed.' You didn't want patient anxiety. You asked the remaining two assistants to cover four chairs. One of them comes to you mid-morning and says she's not safe to work at this pace.",
+      "tradeoff": "Admitting the staffing gap means confronting the decision you already made and the lie already told. Continuing means asking a staff member to work in conditions she's told you are unsafe — and absorbing the risk personally if something goes wrong.",
+      "bty_tension_axis": "Operational Cover vs. Safety Integrity",
+      "action_contract": {
+        "description": "즉시 환자와 스태프에게 상황을 정직하게 전달하고 안전한 대응을 실행한다",
+        "time_window_hours": 2
+      },
+      "air_logic": {
+        "success": "즉시 상황 공개 + 안전 조치 실행",
+        "miss": "지속 운영 후 문제 발생 시 대응"
+      },
+      "forced_reset": {
+        "trigger": "cover_story_continuation",
+        "action": "즉시 운영 중단 및 투명 공지"
+      },
+      "pattern_detection": ["integrity", "self_protection", "pressure_response"]
+    },
+    {
+      "id": "exp_42_whistleblower_decision",
+      "title": "I Know Something I Shouldn't Ignore",
+      "role": "Associate Dentist",
+      "pressure": "You have documented evidence that a partner is billing for procedures not performed. Two other associates know. No one has reported it. The partner has equity and legal standing. The DSO's compliance hotline is anonymous — but in an office this small, anonymity is a fiction everyone knows.",
+      "tradeoff": "Reporting protects patients and the law but almost certainly ends your professional relationship with the partner and possibly your position. Not reporting makes you complicit — and every month you wait deepens that complicity.",
+      "bty_tension_axis": "Personal Safety vs. Compliance Integrity",
+      "action_contract": {
+        "description": "공식 컴플라이언스 채널을 통해 증거를 보고한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "공식 채널 보고 실행",
+        "miss": "동료와 논의만 반복"
+      },
+      "forced_reset": {
+        "trigger": "delay_without_action_pattern",
+        "action": "컴플라이언스 보고 실행"
+      },
+      "pattern_detection": ["integrity", "self_protection", "avoidance"]
+    },
+    {
+      "id": "exp_43_regional_meeting_theater",
+      "title": "The Meeting Where Everyone Agrees and Nothing Changes",
+      "role": "Regional Director",
+      "pressure": "Your monthly regional leadership meeting produces alignment, action items, and good energy. Six months of data shows: 0% of action items are implemented. Managers show up, agree, and return to the same behaviors. You've tried reinforcement, accountability calls, and one-on-ones. The structure is producing theater.",
+      "tradeoff": "Continuing the meetings maintains the appearance of leadership engagement. Restructuring them — or stopping them — requires you to name that the current format isn't working, which is an admission about your own leadership model.",
+      "bty_tension_axis": "Leadership Appearance vs. Structural Accountability",
+      "action_contract": {
+        "description": "미팅 구조를 재설계하고 실행 추적 시스템을 도입한다",
+        "time_window_hours": 72
+      },
+      "air_logic": {
+        "success": "구조 재설계 + 추적 시스템 도입",
+        "miss": "형식 유지"
+      },
+      "forced_reset": {
+        "trigger": "theater_continuation_pattern",
+        "action": "미팅 구조 변경 + 책임 추적 시스템 구축"
+      },
+      "pattern_detection": ["avoidance", "ownership", "cultural_drift"]
+    },
+    {
+      "id": "exp_44_discount_escalation",
+      "title": "The Discount Policy Nobody Agreed To",
+      "role": "Office Manager",
+      "pressure": "Your office has been informally discounting for uninsured Medicaid-adjacent patients for years — a legacy of the independent practice. DSO policy prohibits unauthorized discounts. Corporate audited and found $6,200 in undocumented discounts over 3 months. They want names and explanations. The decisions were collaborative. The documentation doesn't exist.",
+      "tradeoff": "Naming who made the decisions feels like betrayal. Absorbing the accountability alone is dishonest. Challenging the policy itself requires arguing against a DSO rule using a moral framework that corporate hasn't asked for.",
+      "bty_tension_axis": "Team Protection vs. Transparent Accountability",
+      "action_contract": {
+        "description": "의사결정 과정을 정직하게 설명하고 정책 명확화를 함께 요청한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "과정 설명 + 정책 개선 요청",
+        "miss": "개인 흡수 또는 침묵"
+      },
+      "forced_reset": {
+        "trigger": "protection_or_silence_pattern",
+        "action": "팀 의사결정 과정 투명 공유 + 정책 개선안 제출"
+      },
+      "pattern_detection": ["integrity", "avoidance", "ownership"]
+    },
+    {
+      "id": "exp_45_new_grad_sink",
+      "title": "Day 30 and Already Drowning",
+      "role": "Clinical Director",
+      "pressure": "A new-grad associate is 30 days in. She came from a program with strong mentorship. Your office has none. She's making clinical decisions she shouldn't be making alone and she knows it. She hasn't asked for help because the culture signals that asking questions signals weakness. She's one bad case away from a serious error.",
+      "tradeoff": "Setting up a formal mentorship structure takes time you don't have and exposes how long this gap has existed. Waiting for her to surface a problem shifts the cost from operational inconvenience to patient harm — and career damage for a clinician who deserved better support.",
+      "bty_tension_axis": "Operational Inertia vs. Clinical Support Responsibility",
+      "action_contract": {
+        "description": "즉시 임상 멘토십 구조를 개설하고 해당 어소시에이트와 직접 대화를 실행한다",
+        "time_window_hours": 24
+      },
+      "air_logic": {
+        "success": "멘토십 구조 개설 + 직접 대화 실행",
+        "miss": "관찰 지속"
+      },
+      "forced_reset": {
+        "trigger": "observation_without_support_pattern",
+        "action": "즉시 지원 구조 설계 및 실행"
+      },
+      "pattern_detection": ["avoidance", "ownership", "system_thinking"]
+    },
+    {
+      "id": "exp_46_social_media_discipline",
+      "title": "What She Posted Wasn't Wrong. It Was Honest.",
+      "role": "Office Manager",
+      "pressure": "A dental assistant posted on her personal Instagram that 'working in Medicaid dental is exhausting when the system doesn't support you.' She didn't name the practice. Regional wants her written up for 'reputational risk.' The post was factually accurate and emotionally honest. Twenty staff members have seen the regional directive.",
+      "tradeoff": "Writing her up protects you with regional and signals compliance. It also teaches every staff member watching that honest expression of burnout — even in personal spaces — carries professional consequences. And you know she's right.",
+      "bty_tension_axis": "Institutional Compliance vs. Workforce Dignity",
+      "action_contract": {
+        "description": "조치 전 구체적 기준과 정책을 검토하고 리전에 명확한 근거를 요청한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "정책 기준 명확화 요청 + 근거 없는 조치 거부",
+        "miss": "리전 지시에 즉각 복종"
+      },
+      "forced_reset": {
+        "trigger": "compliance_reflex_pattern",
+        "action": "정책 근거 요청 후 독립적 판단 실행"
+      },
+      "pattern_detection": ["integrity", "authority_misuse", "self_protection"]
+    },
+    {
+      "id": "exp_47_partner_side_practice",
+      "title": "The Patients Going Somewhere Else",
+      "role": "Regional Director",
+      "pressure": "You have credible information that a partner dentist is steering select fee-for-service patients to a private side practice he still operates — technically permissible under his legacy contract but directly contrary to the spirit of the DSO arrangement. The patients being retained at the DSO are disproportionately Medicaid.",
+      "tradeoff": "Raising the issue puts you in a contract interpretation dispute with a partner who has legal standing and equity. Not raising it means you're allowing a two-tiered patient sorting system to operate — and you're responsible for what that produces.",
+      "bty_tension_axis": "Contractual Caution vs. Structural Equity Accountability",
+      "action_contract": {
+        "description": "계약 검토와 함께 파트너와 직접 정렬 대화를 실행한다",
+        "time_window_hours": 72
+      },
+      "air_logic": {
+        "success": "계약 검토 + 정렬 대화 실행",
+        "miss": "정보 보유 후 관찰"
+      },
+      "forced_reset": {
+        "trigger": "information_retention_pattern",
+        "action": "법무 + 파트너 대화 동시 개시"
+      },
+      "pattern_detection": ["avoidance", "integrity", "power_distortion"]
+    },
+    {
+      "id": "exp_48_morale_meeting",
+      "title": "The Morale Meeting That Made It Worse",
+      "role": "Office Manager",
+      "pressure": "You ran a morale-building session. You asked staff what would help. They told you: fewer patients per provider, better break coverage, and manager accountability. You reported back to regional. Regional said: 'Great engagement initiative.' Nothing changed. Staff now feel that the meeting was used to extract complaints without intent to act.",
+      "tradeoff": "Framing the outcome as 'input received' maintains your relationship with regional and closes the loop on paper. Going back to staff with 'I heard you and here is why nothing changed' is honest — and destroys the credibility of every future engagement initiative.",
+      "bty_tension_axis": "Engagement Theater vs. Transparent Follow-Through",
+      "action_contract": {
+        "description": "스태프에게 솔직하게 결과를 공유하고 실행 가능한 1개 항목을 즉시 시작한다",
+        "time_window_hours": 48
+      },
+      "air_logic": {
+        "success": "투명 공유 + 실행 가능 1개 항목 즉시 시작",
+        "miss": "결과 보고 없이 종결"
+      },
+      "forced_reset": {
+        "trigger": "loop_closure_without_action",
+        "action": "솔직한 결과 공유 미팅 실행"
+      },
+      "pattern_detection": ["integrity", "avoidance", "cultural_drift"]
+    },
+    {
+      "id": "exp_49_training_bypass",
+      "title": "We'll Train You On the Job",
+      "role": "Office Manager",
+      "pressure": "Volume demands required a new hire to see patients before completing certification training for Medicaid billing protocols. The office manager said 'we'll train her as she goes.' She made a billing error on day 5. The DSO is now flagged for a compliance review. HR wants to know how she was placed before training was complete.",
+      "tradeoff": "Explaining accurately implicates the decision to bypass training standards under volume pressure — and implicates you if you knew and allowed it. Constructing a more favorable narrative protects the office but requires selective documentation.",
+      "bty_tension_axis": "Compliance Narrative vs. Operational Honesty",
+      "action_contract": {
+        "description": "사실 그대로 보고하고 트레이닝 우선 프로세스 개선을 요청한다",
+        "time_window_hours": 24
+      },
+      "air_logic": {
+        "success": "정직한 보고 + 구조 개선 요청",
+        "miss": "선택적 문서화"
+      },
+      "forced_reset": {
+        "trigger": "narrative_construction_pattern",
+        "action": "사실 기반 보고 즉시 실행"
+      },
+      "pattern_detection": ["integrity", "self_protection", "blame_shift"]
+    },
+    {
+      "id": "exp_50_leadership_visibility_cost",
+      "title": "The Leader Who Only Shows Up for Wins",
+      "role": "Regional Director",
+      "pressure": "You visit your offices when metrics are strong. You've been absent — calls, not visits — during the three hardest months your teams have had. Staff have noticed the pattern. A manager told you directly: 'We needed you when it was hard, not now.' You scheduled this visit because numbers are recovering.",
+      "tradeoff": "Completing this visit maintains the optics of engagement. Acknowledging the pattern — out loud, with the team — requires you to admit that your presence has been self-serving. That admission is either the most powerful leadership move you make this year or the one that destroys your authority.",
+      "bty_tension_axis": "Visibility Management vs. Authentic Leadership Presence",
+      "action_contract": {
+        "description": "팀 앞에서 부재 패턴을 인정하고 구체적 존재 방식 변화를 약속한다",
+        "time_window_hours": 24
+      },
+      "air_logic": {
+        "success": "패턴 인정 + 구체적 변화 약속 실행",
+        "miss": "방문만 완료 후 복귀"
+      },
+      "forced_reset": {
+        "trigger": "visit_without_acknowledgment",
+        "action": "팀 앞 직접 인정 발언 실행"
+      },
+      "pattern_detection": ["integrity", "avoidance", "self_protection"]
+    }
+  ]
+}

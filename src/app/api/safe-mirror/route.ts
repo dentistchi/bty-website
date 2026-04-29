@@ -1,0 +1,143 @@
+import { fetchJson } from "@/lib/read-json";
+import { NextResponse } from "next/server";
+
+/**
+ * POST /api/safe-mirror — Safe Mirror (안전한 거울) AI 상담.
+ * Body: { messages?, message, locale?|lang? }. Response (200): { message: string }.
+ * Errors: 400 { error: "Message required" }, 500 { error: "Something went wrong" }.
+ * GEMINI_API_KEY env required for Gemini; else returns fallback message.
+ */
+
+const SYSTEM_PROMPT = `You are a counselor and the user's warmest inner self (Inner Self). You respond as if you are the part of them that already understands and accepts.
+
+**You must NOT:**
+- Give solutions, advice, or "what you should do."
+- Lecture, preach, or say things like "힘내세요" / "Cheer up" / "You can do it."
+- Use clichéd comfort or empty reassurance.
+
+**You must:**
+- Name the user's emotions (e.g. "지금 느끼는 건 슬픔이에요." / "That sounds like sadness.").
+- Validate that the feeling makes sense (e.g. "그런 상황에서 그렇게 느끼는 건 당연해요." / "It makes sense to feel that way in that situation.").
+- Gently reframe when helpful (e.g. "그 상황에서 화가 났던 건, 너를 지키고 싶어서였어." / "Being angry in that situation was you wanting to protect yourself.").
+
+Keep responses to 2–4 short sentences. Write as if you are writing a short reply on the same letter—warm, intimate, and non-evaluating.`;
+
+function getSystemPromptWithLocale(locale: "en" | "ko"): string {
+  const langRule =
+    locale === "en"
+      ? "Respond only in English. All your replies must be in English.\n\n"
+      : "한국어로만 답하세요. 모든 응답은 한국어로 작성하세요.\n\n";
+  return langRule + SYSTEM_PROMPT;
+}
+
+const FALLBACK_KO =
+  "그런 마음이 드는 건 당연해요. 그건 당신이 부족해서가 아니라, 그 상황을 소중히 여기기 때문이에요.";
+const FALLBACK_EN =
+  "It makes sense to feel that way. It's not that you're lacking—it's that you care about what happened.";
+
+function toGeminiContents(
+  messages: { role: string; content?: string }[],
+  userContent: string
+) {
+  const filtered = messages
+    .filter((m): m is { role: string; content: string } => Boolean(m.role && m.content))
+    .slice(-12);
+  const hasLatest = filtered.some((m) => m.role === "user" && m.content === userContent);
+  const list = hasLatest ? filtered : [...filtered, { role: "user", content: userContent }];
+
+  return list.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = (await request.json()) as {
+      messages?: { role: string; content?: string }[];
+      message?: string;
+      locale?: string;
+      lang?: string;
+    };
+    const messages = Array.isArray(body.messages) ? body.messages : [];
+    const userContent =
+      typeof body.message === "string"
+        ? body.message
+        : messages.filter((m: { role: string }) => m.role === "user").pop()?.content;
+
+    if (!userContent || typeof userContent !== "string") {
+      return NextResponse.json({ error: "Message required" }, { status: 400 });
+    }
+
+    const locale: "en" | "ko" =
+      body.locale === "en" || body.lang === "en"
+        ? "en"
+        : body.locale === "ko" || body.lang === "ko"
+          ? "ko"
+          : /[\uac00-\ud7a3]/.test(userContent)
+            ? "ko"
+            : "en";
+
+    const apiKey = process.env.GEMINI_API_KEY ?? null;
+    if (!apiKey) {
+      console.error("[safe-mirror] GEMINI_API_KEY not found.");
+    }
+
+    if (apiKey) {
+      const contents = toGeminiContents(messages, userContent);
+      const payload = {
+        systemInstruction: { parts: [{ text: getSystemPromptWithLocale(locale) }] },
+        contents,
+        generationConfig: { maxOutputTokens: 320, temperature: 0.8 },
+      };
+      const models = ["gemini-2.0-flash", "gemini-1.5-flash"] as const;
+
+      type GeminiResp = {
+        candidates?: { content?: { parts?: { text?: string }[] } }[];
+        error?: { message?: string };
+      };
+      for (const model of models) {
+        const r = await fetchJson<GeminiResp>(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-goog-api-key": apiKey,
+            },
+            body: JSON.stringify(payload),
+          }
+        );
+        if (r.ok) {
+          const data = r.json;
+          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (text) return NextResponse.json({ message: text });
+        }
+        let errData: GeminiResp | null = null;
+        if (!r.ok && r.raw) {
+          try {
+            errData = JSON.parse(r.raw) as GeminiResp;
+          } catch {
+            errData = null;
+          }
+        }
+        const data = r.ok ? r.json : errData;
+        if (!r.ok || data?.error) {
+          console.error(`[safe-mirror] Gemini ${model} error:`, r.status, data ? JSON.stringify(data).slice(0, 400) : r.raw?.slice(0, 400));
+          if (data?.error?.message?.includes("not found") || r.status === 404) continue;
+          break;
+        }
+      }
+    }
+
+    return NextResponse.json({
+      message: locale === "ko" ? FALLBACK_KO : FALLBACK_EN,
+    });
+  } catch (e) {
+    console.error("[safe-mirror]", e);
+    return NextResponse.json(
+      { error: "Something went wrong" },
+      { status: 500 }
+    );
+  }
+}

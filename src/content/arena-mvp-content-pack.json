@@ -1,0 +1,268 @@
+{
+  "meta": {
+    "version": "1.0",
+    "created_at": "2026-02-27",
+    "locale": "en",
+    "tone": "non-judgmental, observational",
+    "content_goals": [
+      "Provide a minimal viable content set for BTY Arena: fundamentals, simulations, and recovery check.",
+      "Keep all items short, actionable, and repeatable.",
+      "Use observational language only; avoid emotional or diagnostic labels.",
+      "Align with BTY Arena 7-step simulation and arena program structures."
+    ]
+  },
+  "pack_list": [
+    {
+      "id": "fundamental_arena_1",
+      "title": "Fundamental Arena 1 Set",
+      "intent": "First set of situation–role–option items for staff-level Arena; builds pause-before-react and team-signal reflection."
+    },
+    {
+      "id": "simulation_10",
+      "title": "Simulation 10",
+      "intent": "Ten scenario-based simulations for the 7-step flow; practice observable choices and outcomes without judgment."
+    },
+    {
+      "id": "recovery_quick_check_5",
+      "title": "Recovery Quick Check (5 items)",
+      "intent": "Short, repeatable prompts for post-run or daily recovery; notice and name only, no diagnosis."
+    }
+  ],
+  "fundamental_arena_1": {
+    "set_id": "FA1",
+    "title": "Fundamental Arena 1",
+    "description": "Staff-level situations with clear options and observable outcomes. Use for Arena program level S1 or equivalent.",
+    "structure": ["situation", "role", "options", "immediate_outcome", "team_signal"],
+    "items": [
+      {
+        "id": "FA1-01",
+        "situation": "Patient has been waiting 20 minutes and asks when they will be seen.",
+        "role": "Front Desk",
+        "options": [
+          { "id": "A", "label": "Say you are busy and will be with them soon." },
+          { "id": "B", "label": "Acknowledge the wait and give an estimated time." },
+          { "id": "C", "label": "Say nothing and continue current task." }
+        ],
+        "immediate_outcome": {
+          "A": "Tension may remain; patient may repeat the question.",
+          "B": "Patient often settles; expectation is set.",
+          "C": "Uncertainty may continue; patient may escalate or leave."
+        },
+        "team_signal": "How does our team respond when the schedule is behind?"
+      },
+      {
+        "id": "FA1-02",
+        "situation": "Insurance verification from SSO is delayed and check-in cannot be completed.",
+        "role": "Front",
+        "options": [
+          { "id": "A", "label": "Tell the patient that SSO is slow." },
+          { "id": "B", "label": "Note it internally and inform the office manager." },
+          { "id": "C", "label": "Explain to the patient that verification is in progress and give a short update." }
+        ],
+        "immediate_outcome": {
+          "A": "Blame is placed on another team; patient hears internal conflict.",
+          "B": "Issue is escalated; patient is not yet informed.",
+          "C": "Patient receives a clear, neutral explanation; trust is maintained."
+        },
+        "team_signal": "Where does our team place responsibility when handoffs are delayed?"
+      },
+      {
+        "id": "FA1-03",
+        "situation": "A colleague is upset about a schedule change and speaks sharply.",
+        "role": "Assistant",
+        "options": [
+          { "id": "A", "label": "Respond in kind." },
+          { "id": "B", "label": "Pause, then restate what you heard and ask what they need." },
+          { "id": "C", "label": "Stay silent and walk away." }
+        ],
+        "immediate_outcome": {
+          "A": "Tension can rise; exchange may continue.",
+          "B": "Emotion is named; next step can be chosen.",
+          "C": "Conflict stops for now; the other person may feel unheard."
+        },
+        "team_signal": "How does our team respond when someone is stressed?"
+      },
+      {
+        "id": "FA1-04",
+        "situation": "Patient questions the amount due and says it is higher than expected.",
+        "role": "Admin",
+        "options": [
+          { "id": "A", "label": "Say it is policy." },
+          { "id": "B", "label": "Walk through the breakdown of charges." },
+          { "id": "C", "label": "Send the patient to the office manager immediately." }
+        ],
+        "immediate_outcome": {
+          "A": "Patient may feel dismissed; question may persist.",
+          "B": "Patient can see the basis for the amount; clarity often reduces conflict.",
+          "C": "Responsibility shifts; patient may feel passed around."
+        },
+        "team_signal": "How does our team explain financial information?"
+      },
+      {
+        "id": "FA1-05",
+        "situation": "Two patients are booked in the same slot by mistake.",
+        "role": "Front",
+        "options": [
+          { "id": "A", "label": "Tell one patient they have to reschedule." },
+          { "id": "B", "label": "Check with the clinical lead and then offer options to both." },
+          { "id": "C", "label": "Proceed and hope to fit both in." }
+        ],
+        "immediate_outcome": {
+          "A": "One patient is inconvenienced; no shared ownership.",
+          "B": "Clinical capacity is respected; both patients get a clear path.",
+          "C": "Schedule may become more chaotic; expectations are unclear."
+        },
+        "team_signal": "How does our team correct scheduling errors?"
+      }
+    ]
+  },
+  "simulation_10": {
+    "pack_id": "SIM10",
+    "title": "Simulation 10",
+    "description": "Ten scenarios for the 7-step simulation. Choices and results are described in observable, non-judgmental terms.",
+    "scenarios": [
+      {
+        "scenarioId": "mvp_sim_001",
+        "title": "Patient Declines Treatment After Hearing Cost",
+        "context": "A patient needs recommended treatment. After hearing the cost, they say they cannot do it. You notice concern for their health and a pull to persuade. The moment is whether to push for treatment or slow down and explore what would need to change.",
+        "choices": [
+          { "choiceId": "A", "label": "Emphasize the risks of not treating and recommend they proceed.", "intent": "Clinical push", "xpBase": 40, "difficulty": 1.2, "hiddenDelta": {}, "result": "The patient may feel pressure. Trust may be affected.", "microInsight": "Pushing when cost is the barrier often reduces return." },
+          { "choiceId": "B", "label": "Pause and ask what would need to change for treatment to feel possible.", "intent": "Explore barriers", "xpBase": 85, "difficulty": 0.9, "hiddenDelta": {}, "result": "The patient may share payment or timing concerns. Next steps can be aligned without pressure.", "microInsight": "Asking uncovers the real obstacle." },
+          { "choiceId": "C", "label": "Offer to phase treatment and start with the most critical part.", "intent": "Phased path", "xpBase": 70, "difficulty": 1.0, "hiddenDelta": {}, "result": "The patient may agree to a first phase. Flexibility communicates value.", "microInsight": "Phasing can bridge need and constraints." },
+          { "choiceId": "D", "label": "Give a brochure and suggest they think about it.", "intent": "Defer", "xpBase": 25, "difficulty": 1.3, "hiddenDelta": {}, "result": "The patient may not return. The chance to explore barriers was not taken.", "microInsight": "Deferring rarely builds trust or a path forward." }
+        ]
+      },
+      {
+        "scenarioId": "mvp_sim_002",
+        "title": "Schedule Is Double-Booked",
+        "context": "The schedule shows two high-production procedures at the same time. The day cannot run as planned. You notice stress and a pull to blame the person who booked. The moment is how you address the error—in front of others or in private.",
+        "choices": [
+          { "choiceId": "A", "label": "Ask in front of the team who did the booking.", "intent": "Public correction", "xpBase": 25, "difficulty": 1.5, "hiddenDelta": {}, "result": "The booker may feel shamed. Future errors may be hidden.", "microInsight": "Public blame often reduces reporting." },
+          { "choiceId": "B", "label": "Meet privately with the front desk lead and fix the day together.", "intent": "Private regroup", "xpBase": 80, "difficulty": 1.0, "hiddenDelta": {}, "result": "The day is corrected without shaming. The lead can own the fix. Trust is preserved.", "microInsight": "Private accountability supports systems." },
+          { "choiceId": "C", "label": "Take the heat for the team and say you will manage; discuss later.", "intent": "Shield now", "xpBase": 65, "difficulty": 1.1, "hiddenDelta": {}, "result": "The day runs without public blame. Follow-up is needed to address cause.", "microInsight": "Shielding buys time; follow-up closes the loop." },
+          { "choiceId": "D", "label": "Work through the chaos and avoid the conversation.", "intent": "Avoid", "xpBase": 30, "difficulty": 1.4, "hiddenDelta": {}, "result": "The day is stressful. The same error may repeat.", "microInsight": "Avoiding the conversation avoids the fix." }
+        ]
+      },
+      {
+        "scenarioId": "mvp_sim_003",
+        "title": "Colleague Questions Your Call in Front of the Patient",
+        "context": "A team member disagrees with your clinical judgment and raises it in the room. You notice a pull to assert authority. The moment is whether to correct in front of the patient or keep unity and discuss later.",
+        "choices": [
+          { "choiceId": "A", "label": "Correct the colleague in front of the patient and restate your finding.", "intent": "Public correction", "xpBase": 35, "difficulty": 1.4, "hiddenDelta": {}, "result": "Authority is clear. The patient may sense tension. The colleague may feel diminished.", "microInsight": "Winning in the room can cost cohesion." },
+          { "choiceId": "B", "label": "Acknowledge the question, state your finding briefly, suggest discussing criteria after the visit.", "intent": "Unify in room", "xpBase": 82, "difficulty": 0.95, "hiddenDelta": {}, "result": "The patient sees a unified team. Dialogue is deferred to a better time.", "microInsight": "Unity in the room; alignment in private." },
+          { "choiceId": "C", "label": "Invite their view, then explain your rationale and confirm the plan.", "intent": "Include and lead", "xpBase": 75, "difficulty": 1.0, "hiddenDelta": {}, "result": "The patient sees collaboration. You still own the final call. Trust can grow.", "microInsight": "Including the team can strengthen leadership." },
+          { "choiceId": "D", "label": "Say you will review the chart later and defer.", "intent": "Defer", "xpBase": 28, "difficulty": 1.3, "hiddenDelta": {}, "result": "The patient may lose confidence. The issue is postponed.", "microInsight": "Deferring in the room can look like indecision." }
+        ]
+      },
+      {
+        "scenarioId": "mvp_sim_004",
+        "title": "Manager Pushes for Higher Production",
+        "context": "The manager wants higher daily production and suggests adding cosmetic treatment. You notice discomfort. The moment is whether to state your boundary or avoid the conversation.",
+        "choices": [
+          { "choiceId": "A", "label": "State that you will not recommend treatment that is not clinically indicated.", "intent": "Direct boundary", "xpBase": 70, "difficulty": 1.1, "hiddenDelta": {}, "result": "Your line is clear. The manager may push back or respect it.", "microInsight": "A clear no protects integrity." },
+          { "choiceId": "B", "label": "Schedule a private meeting to discuss mission, metrics, and where you draw the line.", "intent": "Strategy conversation", "xpBase": 85, "difficulty": 0.95, "hiddenDelta": {}, "result": "Space is created to align on values. Metrics can be reframed.", "microInsight": "Mission and metrics can align when discussed." },
+          { "choiceId": "C", "label": "Go along once or twice to keep the peace.", "intent": "Compromise", "xpBase": 45, "difficulty": 1.3, "hiddenDelta": {}, "result": "Short-term peace may blur the line over time.", "microInsight": "Small compromises can normalize pressure." },
+          { "choiceId": "D", "label": "Avoid the manager and focus on your own schedule.", "intent": "Avoid", "xpBase": 25, "difficulty": 1.4, "hiddenDelta": {}, "result": "Tension remains. The conversation is deferred.", "microInsight": "Avoidance does not protect integrity." }
+        ]
+      },
+      {
+        "scenarioId": "mvp_sim_005",
+        "title": "Repeated Sterilization Log Errors",
+        "context": "Logs show repeated sterilization mistakes. A pack failed a check. You notice concern for safety. The moment is whether to discipline first or retrain and add a system check.",
+        "choices": [
+          { "choiceId": "A", "label": "Issue a formal warning and require signed acknowledgment of protocol.", "intent": "Formal discipline", "xpBase": 50, "difficulty": 1.2, "hiddenDelta": {}, "result": "Compliance is emphasized. The person may feel singled out. Future errors may be hidden.", "microInsight": "Discipline alone may not fix system or skill." },
+          { "choiceId": "B", "label": "Schedule retraining and add a double-check step; no public blame.", "intent": "Retrain and systematize", "xpBase": 82, "difficulty": 0.9, "hiddenDelta": {}, "result": "Process is strengthened. Accountability is clear without shaming. Safety can improve.", "microInsight": "Systems and training often reduce errors more than blame." },
+          { "choiceId": "C", "label": "Do sterilization yourself for a period and observe where it breaks down.", "intent": "Hands-on review", "xpBase": 70, "difficulty": 1.0, "hiddenDelta": {}, "result": "You see the workflow and can fix root causes. The assistant sees your commitment.", "microInsight": "Seeing the process reveals gaps." },
+          { "choiceId": "D", "label": "Mention it lightly and hope they improve.", "intent": "Minimize", "xpBase": 20, "difficulty": 1.5, "hiddenDelta": {}, "result": "The person may not take it seriously. Risk remains.", "microInsight": "Minimizing safety issues increases risk." }
+        ]
+      },
+      {
+        "scenarioId": "mvp_sim_006",
+        "title": "Negative Online Review About Wait Time",
+        "context": "A patient left a negative review about waiting. It is public. You notice a pull to defend or correct the details. The moment is how you respond—public reply, private outreach, or no response.",
+        "choices": [
+          { "choiceId": "A", "label": "Reply publicly with an apology and commitment to improve.", "intent": "Public apology", "xpBase": 72, "difficulty": 1.0, "hiddenDelta": {}, "result": "The public sees accountability. The patient may soften. Feedback is acknowledged.", "microInsight": "A thoughtful reply can build trust." },
+          { "choiceId": "B", "label": "Reach out privately first, then post a short public thank-you for feedback.", "intent": "Private then public", "xpBase": 78, "difficulty": 0.95, "hiddenDelta": {}, "result": "The patient may feel heard. The public sees a response. Both channels are used.", "microInsight": "Private contact plus public acknowledgment often works." },
+          { "choiceId": "C", "label": "Post a factual correction to the review.", "intent": "Correct facts", "xpBase": 40, "difficulty": 1.3, "hiddenDelta": {}, "result": "Facts may be clarified. The patient may feel dismissed. Readers may see defensiveness.", "microInsight": "Correcting facts can feel like invalidating experience." },
+          { "choiceId": "D", "label": "Do not respond.", "intent": "No response", "xpBase": 22, "difficulty": 1.4, "hiddenDelta": {}, "result": "The review stands. No signal is sent that feedback matters.", "microInsight": "No response is often read as not caring." }
+        ]
+      },
+      {
+        "scenarioId": "mvp_sim_007",
+        "title": "Patient Asks for a Refund After Completed Treatment",
+        "context": "A patient requests a refund after treatment is complete. Policy does not support it. You notice a pull to say no quickly or to avoid conflict. The moment is how you deliver the boundary and what you offer next.",
+        "choices": [
+          { "choiceId": "A", "label": "State policy: no refunds after treatment.", "intent": "Policy only", "xpBase": 45, "difficulty": 1.2, "hiddenDelta": {}, "result": "The boundary is clear. The patient may feel unheard. Relationship may be damaged.", "microInsight": "Policy alone rarely repairs trust." },
+          { "choiceId": "B", "label": "Acknowledge their request, state the policy, and offer one clear next step (e.g., payment plan, future discount).", "intent": "Boundary plus option", "xpBase": 75, "difficulty": 1.0, "hiddenDelta": {}, "result": "The patient hears the limit and a path forward. Trust has a chance to hold.", "microInsight": "Boundary plus option often preserves relationship." },
+          { "choiceId": "C", "label": "Say you will ask the manager and get back to them.", "intent": "Defer", "xpBase": 50, "difficulty": 1.2, "hiddenDelta": {}, "result": "Expectation may be set that an exception is possible. Clarity is delayed.", "microInsight": "Deferring can raise false hope." },
+          { "choiceId": "D", "label": "Offer a partial refund to avoid conflict.", "intent": "Accommodate", "xpBase": 35, "difficulty": 1.4, "hiddenDelta": {}, "result": "Conflict may be reduced short-term. Policy precedent may be set.", "microInsight": "One exception can become the new norm." }
+        ]
+      },
+      {
+        "scenarioId": "mvp_sim_008",
+        "title": "New Team Member Is Quiet in Meetings",
+        "context": "A new team member rarely speaks in meetings. You notice a pull to call them out or to leave them alone. The moment is whether to create a low-pressure opening or assume they will speak when ready.",
+        "choices": [
+          { "choiceId": "A", "label": "Call on them by name and ask for their view.", "intent": "Direct ask", "xpBase": 55, "difficulty": 1.2, "hiddenDelta": {}, "result": "They may contribute. They may also feel put on the spot.", "microInsight": "Direct ask can help or increase pressure." },
+          { "choiceId": "B", "label": "After the meeting, ask them one-on-one if there is something they would have added.", "intent": "Private invite", "xpBase": 80, "difficulty": 0.9, "hiddenDelta": {}, "result": "They may share in safety. You signal their input matters. No public pressure.", "microInsight": "Private invite often increases future participation." },
+          { "choiceId": "C", "label": "Leave them alone; they will speak when ready.", "intent": "Wait", "xpBase": 45, "difficulty": 1.3, "hiddenDelta": {}, "result": "No pressure is added. They may never feel invited. Norm may stay the same.", "microInsight": "Waiting can be read as not needing their input." },
+          { "choiceId": "D", "label": "Suggest to the group that everyone should speak at least once.", "intent": "Group rule", "xpBase": 60, "difficulty": 1.1, "hiddenDelta": {}, "result": "A norm is set. The new member may comply or feel more pressure.", "microInsight": "Group rules can help or feel generic." }
+        ]
+      },
+      {
+        "scenarioId": "mvp_sim_009",
+        "title": "Supply Order Is Wrong and Affects Tomorrow",
+        "context": "A critical supply order is wrong and will affect tomorrow’s schedule. You notice blame forming. The moment is how you address the error and what you do next.",
+        "choices": [
+          { "choiceId": "A", "label": "Tell the team who made the error and that it must not happen again.", "intent": "Assign blame", "xpBase": 30, "difficulty": 1.5, "hiddenDelta": {}, "result": "Responsibility is assigned. The person may feel shamed. Future errors may be hidden.", "microInsight": "Blame often reduces reporting." },
+          { "choiceId": "B", "label": "Focus on fixing tomorrow: reorder, borrow, or reschedule. Then review the ordering process with the person privately.", "intent": "Fix first, then learn", "xpBase": 82, "difficulty": 0.9, "hiddenDelta": {}, "result": "The day is secured. Learning happens without public shame. Process can improve.", "microInsight": "Fix first, then learn, preserves trust." },
+          { "choiceId": "C", "label": "Take over ordering yourself from now on.", "intent": "Take over", "xpBase": 50, "difficulty": 1.2, "hiddenDelta": {}, "result": "Control increases. The other person loses a chance to learn. Bottleneck is created.", "microInsight": "Taking over can block growth." },
+          { "choiceId": "D", "label": "Hope someone else fixes it.", "intent": "Avoid", "xpBase": 20, "difficulty": 1.5, "hiddenDelta": {}, "result": "Tomorrow may be disrupted. No clear ownership.", "microInsight": "Avoiding leaves the problem unsolved." }
+        ]
+      },
+      {
+        "scenarioId": "mvp_sim_010",
+        "title": "Patient Requests a Different Provider Next Time",
+        "context": "A patient asks to see a different provider at their next visit. You notice a pull to take it personally or to dismiss it. The moment is how you respond and what you do with the information.",
+        "choices": [
+          { "choiceId": "A", "label": "Say that is fine and note it in the chart. Do not ask why.", "intent": "Accommodate only", "xpBase": 55, "difficulty": 1.2, "hiddenDelta": {}, "result": "The request is honored. No feedback is gathered. Chance to learn is missed.", "microInsight": "Accommodating without asking misses data." },
+          { "choiceId": "B", "label": "Honor the request and ask briefly if there is something the team could do better.", "intent": "Accommodate and learn", "xpBase": 78, "difficulty": 0.95, "hiddenDelta": {}, "result": "The patient is respected. Optional feedback is gathered. No pressure.", "microInsight": "Inviting feedback often yields useful information." },
+          { "choiceId": "C", "label": "Ask why; you want to understand.", "intent": "Probe", "xpBase": 60, "difficulty": 1.2, "hiddenDelta": {}, "result": "You may learn. The patient may feel put on the spot or defensive.", "microInsight": "Probing can feel like justification-seeking." },
+          { "choiceId": "D", "label": "Try to change their mind and keep them with you.", "intent": "Persuade", "xpBase": 30, "difficulty": 1.4, "hiddenDelta": {}, "result": "The patient may feel unheard. Trust may drop. They may still leave.", "microInsight": "Persuading against a clear request often backfires." }
+        ]
+      }
+    ]
+  },
+  "recovery_quick_check_5": {
+    "pack_id": "RQC5",
+    "title": "Recovery Quick Check",
+    "description": "Five short, repeatable prompts for after a run or as a daily check. Notice and name only; no diagnosis or emotional labeling.",
+    "items": [
+      {
+        "id": "RQC-01",
+        "prompt": "Notice what you feel in your body right now. Name one sensation (e.g., tightness, warmth, ease) without judging it.",
+        "intent": "Body awareness"
+      },
+      {
+        "id": "RQC-02",
+        "prompt": "Name one thing you did in the last hour that was in your control. Keep it to a single, concrete action.",
+        "intent": "Agency check"
+      },
+      {
+        "id": "RQC-03",
+        "prompt": "Name one thing you would do the same if this situation happened again, and one thing you would do differently. Keep each to one sentence.",
+        "intent": "Repeat and adjust"
+      },
+      {
+        "id": "RQC-04",
+        "prompt": "Notice your next breath. Inhale once, then exhale once. No change needed—just observe.",
+        "intent": "Single-breath pause"
+      },
+      {
+        "id": "RQC-05",
+        "prompt": "Name one small next step you can take in the next 10 minutes. Keep it specific and doable.",
+        "intent": "Next step"
+      }
+    ]
+  }
+}

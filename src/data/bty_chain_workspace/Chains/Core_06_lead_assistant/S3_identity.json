@@ -1,0 +1,52 @@
+{
+  "id": "core_06_s3_identity",
+  "title": "After the Shift",
+  "level": 5,
+  "chain_stage": 3,
+  "context": {
+    "role": "Clinic Director",
+    "pressure": "The situation has not fully recovered, and your leadership identity is now under quiet pressure.",
+    "narrative": "Things are not fully repaired. Some trust feels thinner. A few team members still hold back. You sense that your leadership is now being interpreted, not just followed. Nothing is clearly broken, but nothing is fully the same either."
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Pull back emotionally and focus only on operational execution to avoid further tension.",
+      "archetype": "avoid",
+      "state_impact": {
+        "reputation": -1,
+        "trust": -2,
+        "self_narrative": -2,
+        "courage": -2
+      }
+    },
+    {
+      "id": "B",
+      "label": "Maintain standards consistently and allow time to stabilize the team without forcing conversations.",
+      "archetype": "structure",
+      "state_impact": {
+        "reputation": 0,
+        "trust": 0,
+        "self_narrative": 1,
+        "courage": 0
+      }
+    },
+    {
+      "id": "C",
+      "label": "Re-engage the team directly, even if uncomfortable, and begin rebuilding clarity through honest conversation.",
+      "archetype": "confront",
+      "state_impact": {
+        "reputation": 1,
+        "trust": 2,
+        "self_narrative": 2,
+        "courage": 2
+      }
+    }
+  ],
+  "questions": {
+    "level_2": "What do you still owe this team, even now?",
+    "level_3": "What standard are you still responsible for holding?",
+    "level_4": "What will others learn from how you carry this unresolved moment?",
+    "level_5": "Nothing is fully fixed. Who do you choose to be today?"
+  }
+}

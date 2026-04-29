@@ -1,0 +1,201 @@
+# Center 페이지 개선 명세
+
+**목적**: Center를 "아늑하고 치유받는 방"으로 만들고, 콘텐츠 순서·CTA·그래프·언어를 정리한다.  
+**참고**: FOUNDRY_CENTER_NEXT_CONTENT §2, PageClient 2~5단계 플로우.
+
+---
+
+## 1. 영역별 톤 정책 (확정)
+
+| 영역 | 톤 | 설명 |
+|------|-----|------|
+| **Center** | 아늑함·치유·쉼 | "나는 방에 있다", "몸과 마음이 지쳤는데 이곳은 쉬어가는 곳이다". 편안한 곳. |
+| **Arena** | 게임·플레이 | 시뮬레이션, 선택과 결과, XP·리더보드. |
+| **Foundry** | 배움·연습 | 대시보드, 멘토, 역지사지 연습. 배움이 있는 곳. |
+
+Center 페이지는 위 톤에 맞게 **아늑하고 치유받는 방** 느낌으로 재구성한다.
+
+**반영**: [x] i18n `center.tagline`·`entryIntro`·`heroTitleMain`·`heroTitleAccent` (ko: 아늑한 방·치유받는 방, en: cozy room to rest and heal). PageClient EN/KO 헤더에 hero 타이틀 적용. locale=en 시 모든 Center 문구 영어.
+
+---
+
+## 2. 영어/한국어 진입 플로우 통일
+
+**현상**
+- **영어**: Center 선택 시 Center 메인으로 바로 이동하는데, **전환 중 "기다리는 중"이 한국어로** 노출됨.
+- **한국어**: 진입 시 **먼저 질문이 나오고** 답한 뒤 Center 페이지로 이동. 이 흐름이 더 나음.
+
+**요구**
+- **영어도 한국어와 동일하게**: 진입 시 **먼저 질문** → 답 → Center 메인으로 이동.
+- 전환 중 로딩/대기 문구는 **현재 locale에 맞게** 표시 (영어 선택 시 영어, 한국어 선택 시 한국어).
+
+**수정 포인트**
+- Center 진입 경로(랜딩에서 Center 클릭 시)에서 locale별로 동일한 "질문 먼저" 플로우 적용.
+- 로딩/대기 문구 i18n: `center.loading` 또는 기존 메시지의 locale 분기 확인.
+
+**반영**: [x] EN도 KO와 동일하게 진입 시 intro + Start(질문) → 클릭 후 steps 2–5 → 메인. PageClient `lang === "en"` 분기에서 `!hasStartedCenter`이면 entry 화면 노출. 전환 중 로딩: center/page.tsx Suspense `fallback={<PageLoadingFallback message={t.loading} />}` (t = getMessages(lang).center), AuthGate `loadingMessage={t.loading}`, [locale]/loading.tsx는 LocaleAwareRouteLoading(pathname으로 locale → loading.message/hint). i18n center.loading: ko "잠시만 기다려 주세요.", en "Please wait…". Step 5·메인 뷰에서 Nav 및 SelfEsteemTest/SafeMirror/SmallWinsStack/EmotionalBridge에 `locale={locale}` 사용(영어 진입 시 전부 영어 표시). PageClient Props.locale 타입 "ko"|"en", center page에서 locale 보정 후 전달. npm run lint 통과.
+
+---
+
+## 3. 콘텐츠 순서 변경
+
+**현재**
+- 상단에 50문항(자존감 진단) 관련 진입이 있고, 하단에 자존감 알아보기(5문항)·회복 탄력성 등이 있음.
+
+**요구**
+- **맨 위**: 50문항이 아닌, **자존감 알아보기(5문항)** 먼저 노출.
+- **그 다음**: 문구 **"더 자세한 테스트를 원하시면 클릭하세요"** + 클릭 시 **50문항 질문지**로 이동.
+- 즉, **5문항 → 안내 문구 + 링크 → 50문항** 순서.
+
+**수정 포인트**
+- Center 본문(PageClient 또는 해당 라우트)에서 블록 순서 변경: SelfEsteemTest(5문항) 원래 위치, 자존감 진단(50문항)은 5문항 대답 종료후 팝업 + "더 자세한 테스트를 원하시면 클릭하세요" 문구와 링크로 연결.
+
+**반영**: [x] PageClient에서 블록 순서 5문항 → 안내 문구 + 50문항 링크 → 50문항(assessment) 링크 카드 → SafeMirror 등. (EN/KO·step5·메인 4곳 동일.)
+
+---
+
+## 4. 회복 탄력성 그래프
+
+**현상**
+- "과거"와 "지금"으로 되어 있어, **매일의 5질문 트렉**과 맞지 않음. 매일의 질문에 맞는 궤적이 눈에 보이지 않음.
+
+**요구**
+- 그래프를 **매일의 (5문항) 질문/활동에 맞는 궤적**으로 변경.
+- "과거 vs 지금" 단순 2점이 아니라, **일별(또는 기간별) 트렉**이 보이도록 데이터·UI 수정.
+
+**수정 포인트**
+- ResilienceGraph 컴포넌트 및 관련 API/데이터 소스: 일별(또는 적절한 단위) 시계열로 변경, 시각화가 "매일의 질문/활동"을 반영하도록.
+
+**로컬 확인 (일별 트렉)**  
+1. `cd bty-app && npm run dev` 실행 후 브라우저에서 `http://localhost:3000/ko/center` 또는 `http://localhost:3000/en/center` 접속.  
+2. 로그인된 상태에서 Center 본문을 아래로 스크롤.  
+3. **회복 탄력성** 섹션에서 그래프가 **일별 궤적**(날짜축 + high/mid/low 점/선)으로 나오는지 확인.  
+4. 데이터가 없으면 "아직 궤적이 없어요" 등 빈 상태 문구만 보이면 정상. 데이터가 있으면 여러 날짜 점이 이어진 트렉으로 표시되는지 확인.  
+5. 상세 절차: `docs/LOCAL_TEST.md` § "Center 회복 탄력성 그래프".
+
+---
+
+## 5. CTA 중복 제거 및 재로그인 버그
+
+**현상**
+- "이제 문을 열고 밖으로 나가볼까요?(Go to BTY practice)" 문구와 **클릭 버튼**이 중복됨.
+- "어제보다 나은 연습하러 가기" 등 **맨 밑 요소들**이 모두 **같은 목적지**(Foundry/연습)로 향함.
+- 해당 링크/버튼 클릭 시 **다시 로그인 페이지로 이동**함. (이미 로그인된 상태여서는 안 됨.)
+
+**요구**
+- **하나로 통합**: 같은 목적지로 가는 문구·버튼을 **하나의 CTA**로 정리.
+- 클릭 시 **재로그인 요구하지 않음** (기존 세션 유지, `/bty` 또는 적절한 보호된 경로로 이동).
+
+**수정 포인트**
+- Center 페이지 하단: "문 열고 나가기" / "어제보다 나은 연습하러 가기" 등 동일 목적지 링크를 **단일 CTA**로 통합.
+- 링크가 `/bty/login` 또는 로그인 유도로 가지 않도록 경로·미들웨어 확인 (이미 인증된 사용자는 `/bty` 등으로 직행).
+
+---
+
+## 6. "챗으로 이어하기" 버튼 무반응
+
+**현상**
+- "챗으로 이어하기"를 눌러도 **아무 동작이 없음**.
+
+**요구**
+- 클릭 시 **Center 챗**(또는 정해진 챗 경로)으로 이동하거나, 챗 패널/페이지가 열리도록 수정.
+
+**수정 포인트**
+- 버튼의 `href` 또는 `onClick` 대상 확인: `/${locale}/center` 챗 뷰 또는 전역 챗 열기 등. 라우팅/상태로 챗 UI 노출되도록 처리.
+
+---
+
+## 7. 50문항 UX: 질문 하나하나 정성
+
+**요구**
+- 50문항이 **한 페이지에 쭉 나열**되지 않도록 함.
+- **질문 하나하나**가 정성으로 만들어졌다는 느낌이 들도록 (한 번에 한 문항 또는 소수 문항, 넘기기/진행 방식).
+
+**수정 포인트**
+- 50문항 진입 시: 한 페이지 풀 리스트 대신 **스텝/페이지네이션** 또는 **한 문항(또는 소수)씩** 노출하는 플로우로 변경.
+
+**반영**: [x] `src/app/[locale]/assessment/ui/AssessmentClient.tsx` — 한 문항씩 노출(currentIndex), 진행 표시(progress bar), 이전/다음·결과 보기 버튼. `[locale]/assessment/page.tsx` — locale 전달, 질문 데이터 로드. §7 정성 플로우 완료.
+
+---
+
+## 8. 영어 버전 일관
+
+**요구**
+- Center 포함 **영어 버전은 전부 영어**로 표시. (로딩 문구, 버튼, 안내, 그래프 라벨 등.)
+
+**수정 포인트**
+- i18n 및 컴포넌트에서 `locale === "en"` 일 때 한국어가 나오지 않도록 점검·수정.
+
+**반영**: [x] center·resilience·selfEsteem·safeMirror·smallWins 등 en 메시지 완비. PageClient/center/page.tsx에서 `t`=getMessages(lang).center. SelfEsteemTest·ResilienceGraph·SafeMirror·SmallWinsStack·EmotionalBridge에 locale 전달. resilience.dailyTrajectorySubtitle i18n. generateMetadata·PageLoadingFallback message locale별. [x] npm test 14파일 150통과.
+
+---
+
+## 9. 구현 우선순위 (제안)
+
+| 순서 | 항목 | 비고 | 점검 |
+|------|------|------|------|
+| 1 | CTA 통합 + 재로그인 버그 수정 (§5) | 사용자 경험 직결 | [x] 단일 CTA, href=/${locale}/bty |
+| 2 | "챗으로 이어하기" 동작 수정 (§6) | 버튼 무반응 해소 | [x] open-chatbot dispatch |
+| 3 | 콘텐츠 순서: 5문항 → 안내 → 50문항 (§3) | 정보 구조 정리 | [x] PageClient 블록 순서 |
+| 4 | 영어/한국어 진입 플로우 통일 + 로딩 문구 (§2) | 언어 일관성 | [x] t.loading, locale 전달 |
+| 5 | 회복 탄력성 그래프 매일 트렉 반영 (§4) | 데이터·UI | [x] GET /api/center/resilience, render-only |
+| 6 | 50문항 한 문항씩/정성 플로우 (§7) | UX 개선 | [x] AssessmentClient |
+| 7 | 페이지 톤·비주얼 "아늑한 방" (§1) | 비주얼·카피 | [x] §1·§8 dear·영어 일관 |
+
+**render-only 보완**: Center 컴포넌트는 API/도메인·i18n 값만 표시. ResilienceGraph는 API entries만 사용; PageClient KO 뷰에 `ResilienceGraph`에 `locale={locale}` 전달 적용.
+
+### 9-1. Center API·도메인 완료 상태 (§9 순서 §5~§8 기준)
+
+| § | 항목 | 상태 | API | 도메인 | 비고 |
+|---|------|------|-----|--------|------|
+| **§5** | CTA 통합 + 재로그인 버그 | ✅ | — | `src/domain/center/paths.ts`: CENTER_CTA_PATH, getCenterCtaHref(locale) | 단일 CTA t.ctaToFoundry, href=/${locale}/bty. 미들웨어 302. |
+| **§6** | 챗으로 이어하기 | ✅ | — | `src/domain/center/paths.ts`: CENTER_CHAT_OPEN_EVENT | open-chatbot dispatch, 챗 패널 열림. |
+| **§3** | 콘텐츠 순서 | ✅ | — | — | 5문항 → 안내+50문항 링크 → 50문항 카드 → SafeMirror → SmallWins → ResilienceGraph → EmotionalBridge. |
+| **§2** | EN/KO 플로우 + 로딩 | ✅ | — | — | 질문 먼저, t.loading·locale 전달. |
+| **§4** | 회복 탄력성 그래프 | ✅ | GET /api/center/resilience | `src/domain/center/resilience.ts` | entries만 표시(render-only). energyToLevel, aggregateLetterRowsToDailyEntries. |
+| **§7** | 50문항 정성 | ✅ | — | `src/lib/assessment/score.ts` | AssessmentClient 한 문항씩. |
+| **§1·§8** | 톤·영어 일관 | ✅ | — | — | dear 테마, i18n·locale 전달. |
+
+**§4 (회복 탄력성)**  
+- API: `GET /api/center/resilience` (entries 일별, optional period).  
+- 도메인: `src/domain/center/resilience.ts` (energyToLevel, aggregateLetterRowsToDailyEntries).  
+
+**기타 Center API**  
+- `POST /api/center/letter` — 편지 저장·답장. (도메인 규칙은 letter 본문 검증 등 필요 시 추가.)
+
+**Next steps (§9 점검 후)**  
+- 로컬에서 `/ko/center`, `/en/center` 접속 후 step5·메인 뷰에서 회복 탄력성 그래프 축/라벨이 각 locale에 맞게 나오는지 확인.  
+- SelfEsteemTest 점수/레벨은 현재 클라이언트 계산 후 표시(로컬 5문항 퀴즈). API로 이전 시 별도 API 설계 후 적용 가능.
+
+---
+
+## 10. Cursor별 할일 및 프롬프트 (복사용, 병렬 진행)
+
+**진행 방식**: 아래 라운드별로 각 Cursor에 프롬프트를 복사해 붙여 넣어 동시에 진행. 같은 라운드 안에서는 서로 다른 파일/영역을 건드리므로 병렬 가능.
+
+### 라운드 1 (동시 진행)
+
+| Cursor | 담당 항목 | 복사용 프롬프트 |
+|--------|-----------|------------------|
+| **Cursor 1** | §5 CTA 통합 + 재로그인 버그 | `docs/CENTER_PAGE_IMPROVEMENT_SPEC.md` §5 반영해줘. Center 페이지 하단에서 "문 열고 나가기" / "어제보다 나은 연습하러 가기" 등 같은 목적지(Foundry) 링크를 하나의 CTA로 통합하고, 클릭 시 재로그인 페이지로 가지 않도록 해줘. 이미 인증된 사용자는 /bty 등 보호된 경로로 직행해야 함. 경로·미들웨어·링크 href 확인. |
+| **Cursor 3** | §6 챗으로 이어하기 동작 | `docs/CENTER_PAGE_IMPROVEMENT_SPEC.md` §6 반영해줘. Center 페이지의 "챗으로 이어하기" 버튼이 클릭 시 Center 챗(또는 /center 챗 뷰)으로 이동하거나 챗 UI가 열리도록 수정해줘. 버튼의 href/onClick과 라우팅·상태 확인. |
+| **Cursor 1** 또는 **4** | §3 콘텐츠 순서 | `docs/CENTER_PAGE_IMPROVEMENT_SPEC.md` §3 반영해줘. Center 본문에서 자존감 알아보기(5문항)를 맨 위에, 그 다음 "더 자세한 테스트를 원하시면 클릭하세요" 문구 + 50문항으로 가는 링크, 50문항 블록 순서로 배치해줘. PageClient 또는 해당 Center 라우트 블록 순서 변경. (Cursor 4가 다른 작업 중이면 Cursor 1이 담당 가능.) |
+
+### 라운드 2 (라운드 1 완료 후 동시 진행)
+
+| Cursor | 담당 항목 | 복사용 프롬프트 |
+|--------|-----------|------------------|
+| **Cursor 1** | §2 EN/KO 플로우 + 로딩 문구 | `docs/CENTER_PAGE_IMPROVEMENT_SPEC.md` §2 반영해줘. 영어 진입도 한국어처럼 "질문 먼저 → 답 → Center 메인" 흐름으로 통일하고, 전환 중 로딩/대기 문구는 locale에 맞게(i18n center.loading 또는 기존 메시지 locale 분기) 표시해줘. |
+| **Cursor 3** | §4 회복 탄력성 그래프 | `docs/CENTER_PAGE_IMPROVEMENT_SPEC.md` §4 반영해줘. ResilienceGraph를 "과거/지금" 2점이 아니라 매일의 5문항/활동에 맞는 일별(또는 기간별) 트렉으로 바꿔줘. 관련 API·데이터 소스와 시각화가 매일 질문 궤적을 반영하도록 수정. |
+
+### 라운드 3 (라운드 2 완료 후 동시 진행)
+
+| Cursor | 담당 항목 | 복사용 프롬프트 |
+|--------|-----------|------------------|
+| **Cursor 1** | §7 50문항 정성 플로우 | `docs/CENTER_PAGE_IMPROVEMENT_SPEC.md` §7 반영해줘. 50문항을 한 페이지 풀 리스트 대신 한 문항(또는 소수)씩 스텝/페이지네이션으로 노출하는 플로우로 변경해줘. 질문 하나하나 정성 느낌이 나도록. |
+| **Cursor 3** | §1 + §8 톤·비주얼 + 영어 일관 | `docs/CENTER_PAGE_IMPROVEMENT_SPEC.md` §1·§8 반영해줘. Center 페이지를 "아늑하고 치유받는 방" 톤으로 비주얼·카피 정리하고, locale=en 일 때 로딩·버튼·안내·그래프 라벨 등 모든 문구가 영어로 나오도록 i18n·컴포넌트 점검·수정해줘. |
+
+---
+
+**문서 위치**: `docs/CENTER_PAGE_IMPROVEMENT_SPEC.md`  
+**관련**: `docs/FOUNDRY_CENTER_NEXT_CONTENT.md`, `src/app/[locale]/PageClient.tsx`, Center 라우트·i18n.

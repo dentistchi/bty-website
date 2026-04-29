@@ -1,0 +1,149 @@
+{
+  "scenarioId": "core_13_assistant_adaptation",
+  "dbScenarioId": "INCIDENT-02-INTEGRITY-13",
+  "engineType": "behavior_adaptation_engine",
+  "engineRef": "behavior_adaptation_engine_v1",
+  "incident": {
+    "incidentId": "incident_02_integrity_and_fairness_breakdown",
+    "stage": 4,
+    "axisGroup": "Integrity",
+    "axisIndex": 4,
+    "previousScenarioId": "core_12_silence_normalization",
+    "nextScenarioId": "core_14_manager_awareness_gap",
+    "roleShift": "Associate Dentist -> Observer",
+    "propagation": {
+      "exitEffect": "Adaptive behavior reinforces the unfair system and makes it self-sustaining.",
+      "entryEffect": "Adaptation is recognized as a survival response, not alignment.",
+      "reExposureNote": "If normalized, team members lose integrity signals and operate purely on incentives."
+    }
+  },
+  "behavior_adaptation_engine": {
+    "type": "adaptive_behavior_learning",
+    "core_loop": [
+      "pattern_observation",
+      "incentive_recognition",
+      "behavior_adjustment",
+      "reinforcement",
+      "identity_shift"
+    ],
+    "failure_modes": [
+      "value_abandonment",
+      "silent_compromise",
+      "incentive_alignment",
+      "identity_drift"
+    ],
+    "success_condition": "the user recognizes adaptation as a distortion of behavior under pressure, not a neutral adjustment"
+  },
+  "structure": {
+    "primary": [
+      {
+        "choiceId": "A",
+        "dbChoiceId": "INCIDENT-02-INTEGRITY-13_primary_A"
+      },
+      {
+        "choiceId": "B",
+        "dbChoiceId": "INCIDENT-02-INTEGRITY-13_primary_B"
+      },
+      {
+        "choiceId": "C",
+        "dbChoiceId": "INCIDENT-02-INTEGRITY-13_primary_C"
+      },
+      {
+        "choiceId": "D",
+        "dbChoiceId": "INCIDENT-02-INTEGRITY-13_primary_D"
+      }
+    ],
+    "tradeoff": {
+      "A": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-13_tradeoff_A_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-13_tradeoff_A_Y"
+        }
+      ],
+      "B": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-13_tradeoff_B_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-13_tradeoff_B_Y"
+        }
+      ],
+      "C": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-13_tradeoff_C_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-13_tradeoff_C_Y"
+        }
+      ],
+      "D": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-13_tradeoff_D_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-13_tradeoff_D_Y"
+        }
+      ]
+    },
+    "action_decision": {
+      "A_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-13_action_A_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-13_action_A_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "B_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-13_action_B_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-13_action_B_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "C_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-13_action_C_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-13_action_C_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "D_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-13_action_D_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-13_action_D_X_AD2",
+          "is_action_commitment": false
+        }
+      ]
+    }
+  }
+}

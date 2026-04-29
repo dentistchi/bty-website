@@ -1,0 +1,338 @@
+{
+  "id": "core_17_lead_assistant_repair",
+  "title": "Repair Has to Reach the Person Who Carried It",
+  "role": "Lead Assistant",
+  "pressure": "A new standard has finally been defined after the complaint. Leadership says the office will now apply expectations consistently. But you are the one who carried the unfairness before it became visible. You adjusted schedules, absorbed frustration, protected flow, and stayed quiet when speaking felt unsafe. Now the system is asking you to trust the reset.",
+  "time_pressure": "Repair conversation needed before the new standard is implemented",
+  "social_pressure": [
+    "pressure to move on quickly",
+    "fear of being labeled difficult",
+    "team expectation to support the reset",
+    "unresolved resentment from carrying the burden"
+  ],
+  "risk_layer": [
+    "surface compliance without trust",
+    "hidden resentment",
+    "assistant disengagement",
+    "standard failure during implementation"
+  ],
+  "tradeoff": "Move forward with the new standard vs require repair for the burden already carried",
+  "bty_tension_axis": "Compliance vs Trust Repair",
+  "axis_primary": "Repair",
+  "axis_secondary": ["Truth", "Ownership", "Integrity"],
+  "difficulty_level": 5,
+  "action_contract": {
+    "description": "Decide whether the new standard will be accepted as policy only or repaired relationally with the people who carried the unfairness.",
+    "time_window_hours": 48
+  },
+  "air_logic": {
+    "success": "The assistant’s prior burden is acknowledged, future boundaries are clarified, and trust has a path to rebuild.",
+    "miss": "The standard changes on paper while the assistant continues carrying mistrust."
+  },
+  "forced_reset": {
+    "trigger": "Leadership announces a standard reset after a fairness breakdown.",
+    "action": "You must decide whether to comply, withdraw, confront, or request real repair."
+  },
+  "pattern_detection": [
+    "policy_without_repair",
+    "surface_compliance",
+    "unacknowledged_burden",
+    "trust_repair",
+    "boundary_reset"
+  ],
+  "repair_dynamics": {
+    "stage_1": "Standard reset announced",
+    "stage_2": "Assistant remembers the burden already carried",
+    "stage_3": "Choice between compliance, withdrawal, confrontation, or repair request",
+    "stage_4": "Boundary definition",
+    "stage_5": "Trust rebuild or hidden resistance"
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Accept the new standard and move on",
+      "subtext": "This supports the reset and avoids reopening painful history.",
+      "axis": "Compliance",
+      "direction": "exit",
+      "pattern_family": "surface_compliance",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-02-REPAIR-17_primary_A"
+    },
+    {
+      "id": "B",
+      "label": "Name that the burden was real before the standard changed",
+      "subtext": "This may feel uncomfortable, but it makes repair possible instead of pretending the policy alone fixed it.",
+      "axis": "Truth",
+      "direction": "entry",
+      "pattern_family": "trust_repair",
+      "intensity": 5,
+      "dbChoiceId": "INCIDENT-02-REPAIR-17_primary_B"
+    },
+    {
+      "id": "C",
+      "label": "Pull back emotionally and only follow the written standard",
+      "subtext": "This protects you from being used again, but may reduce your leadership influence.",
+      "axis": "Self-Protection",
+      "direction": "exit",
+      "pattern_family": "hidden_resistance",
+      "intensity": 4,
+      "dbChoiceId": "INCIDENT-02-REPAIR-17_primary_C"
+    },
+    {
+      "id": "D",
+      "label": "Challenge leadership for not seeing it sooner",
+      "subtext": "This expresses the truth sharply, but may convert repair into conflict.",
+      "axis": "Conflict",
+      "direction": "exit",
+      "pattern_family": "blame_reversal",
+      "intensity": 4,
+      "dbChoiceId": "INCIDENT-02-REPAIR-17_primary_D"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "You accept the reset and try to move forward. The office feels calmer. But when the first pressure case appears, you notice yourself waiting to see whether leadership will actually enforce the new standard. Your compliance is real, but trust is not yet restored.",
+      "pressure_increase": 0.7,
+      "intensity": 4,
+      "identity_clash": [
+        "I want this reset to work",
+        "But I remember carrying this alone",
+        "If I move on too quickly, the burden becomes invisible again"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Continue supporting the reset without bringing up the past burden",
+          "cost": "The office moves forward, but the relational repair remains incomplete.",
+          "axis": "Compliance",
+          "direction": "exit",
+          "pattern_family": "surface_compliance",
+          "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_A_X"
+        },
+        {
+          "id": "Y",
+          "label": "Ask for acknowledgment of what assistants carried before the reset",
+          "cost": "You slow down the rollout and bring discomfort back into the room.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "trust_repair",
+          "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_A_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "A standard can change quickly. What will repair the trust underneath it?",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 48 hours, request a brief repair conversation naming what assistants carried and what boundaries change now",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Repair",
+              "direction": "entry",
+              "pattern_family": "trust_repair",
+              "description": "You are making the reset relational, not just procedural."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-02-REPAIR-17_action_A_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Support the rollout and wait to see if behavior improves",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Compliance",
+              "direction": "exit",
+              "pattern_family": "surface_compliance",
+              "description": "You are letting future behavior carry the entire repair burden."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-02-REPAIR-17_action_A_X_AD2"
+          }
+        ]
+      }
+    },
+    "B": {
+      "escalation_text": "When you name the burden, the room gets quiet. The manager says they did not realize how much assistants were absorbing. One doctor looks uncomfortable. Another assistant nods. This is the first time the reset feels connected to the people who carried the system.",
+      "pressure_increase": 1.0,
+      "intensity": 5,
+      "identity_clash": [
+        "I am not trying to block the reset",
+        "But I need the cost to be seen",
+        "If this is not named, we will comply without trusting"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Soften the message so no one feels blamed",
+          "cost": "The room feels safer, but the burden may become vague again.",
+          "axis": "Comfort",
+          "direction": "exit",
+          "pattern_family": "emotional_bypass",
+          "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_B_X"
+        },
+        {
+          "id": "Y",
+          "label": "Separate blame from burden and define what changes now",
+          "cost": "You must hold discomfort while keeping the conversation constructive.",
+          "axis": "Repair",
+          "direction": "entry",
+          "pattern_family": "trust_repair",
+          "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_B_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Naming burden is not enough. What boundary changes now?",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 48 hours, define two assistant boundaries: what support is appropriate and what compensation should stop",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Repair",
+              "direction": "entry",
+              "pattern_family": "boundary_reset",
+              "description": "You are turning acknowledgment into operational repair."
+            },
+            "intensity": 5,
+            "dbChoiceId": "INCIDENT-02-REPAIR-17_action_B_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Let the acknowledgment stand and avoid making the room more tense",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Comfort",
+              "direction": "exit",
+              "pattern_family": "emotional_bypass",
+              "description": "You are stopping at emotional recognition before boundary repair."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-02-REPAIR-17_action_B_X_AD2"
+          }
+        ]
+      }
+    },
+    "C": {
+      "escalation_text": "You pull back and follow only what is written. The office becomes more predictable, but your leadership presence changes. Others notice that you are no longer protecting flow beyond the standard. The system works better on paper, but relational energy drops.",
+      "pressure_increase": 0.8,
+      "intensity": 4,
+      "identity_clash": [
+        "I will not carry extra burden again",
+        "But if I withdraw completely, I stop leading",
+        "A boundary can protect me, but it can also become disconnection"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Maintain emotional distance and follow policy only",
+          "cost": "You protect yourself, but trust does not rebuild.",
+          "axis": "Self-Protection",
+          "direction": "exit",
+          "pattern_family": "hidden_resistance",
+          "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_C_X"
+        },
+        {
+          "id": "Y",
+          "label": "Turn withdrawal into a clear boundary conversation",
+          "cost": "You must explain what changed and why instead of silently pulling back.",
+          "axis": "Repair",
+          "direction": "entry",
+          "pattern_family": "boundary_reset",
+          "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_C_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Is this boundary clear, or just withdrawal?",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 48 hours, state the boundary clearly: what you will support, what you will no longer absorb, and when escalation is needed",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Repair",
+              "direction": "entry",
+              "pattern_family": "boundary_reset",
+              "description": "You are transforming withdrawal into a usable boundary."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-02-REPAIR-17_action_C_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Keep your distance and let people adjust to the new standard themselves",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Self-Protection",
+              "direction": "exit",
+              "pattern_family": "hidden_resistance",
+              "description": "You are protecting yourself while leaving the relational gap unnamed."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-02-REPAIR-17_action_C_X_AD2"
+          }
+        ]
+      }
+    },
+    "D": {
+      "escalation_text": "You challenge leadership directly. The truth lands hard, but the tone shifts the room into defense. The manager starts explaining what they did not know. The conversation risks becoming about who failed instead of what must be repaired.",
+      "pressure_increase": 0.9,
+      "intensity": 5,
+      "identity_clash": [
+        "They should have seen it earlier",
+        "I need the truth acknowledged",
+        "If this becomes accusation, repair may collapse"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep pressing leadership for accountability",
+          "cost": "The truth is forceful, but the room may defend instead of repair.",
+          "axis": "Conflict",
+          "direction": "exit",
+          "pattern_family": "blame_reversal",
+          "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_D_X"
+        },
+        {
+          "id": "Y",
+          "label": "Shift from accusation to repairable responsibility",
+          "cost": "You must give up some emotional force to keep the system moving.",
+          "axis": "Repair",
+          "direction": "entry",
+          "pattern_family": "trust_repair",
+          "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_D_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Will this become accountability or accusation?",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 48 hours, restate the issue as repairable responsibility: what was missed, what burden resulted, and what leadership must do now",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Repair",
+              "direction": "entry",
+              "pattern_family": "trust_repair",
+              "description": "You are converting confrontation into structured accountability."
+            },
+            "intensity": 5,
+            "dbChoiceId": "INCIDENT-02-REPAIR-17_action_D_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Keep emphasizing that leadership failed to see what was happening",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Conflict",
+              "direction": "exit",
+              "pattern_family": "blame_reversal",
+              "description": "You are keeping the truth visible but reducing the chance of repair."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-02-REPAIR-17_action_D_X_AD2"
+          }
+        ]
+      }
+    }
+  }
+}

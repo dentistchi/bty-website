@@ -1,0 +1,320 @@
+{
+  "id": "core_07_repair_conversation",
+  "title": "첫 번째 진짜 리페어 대화",
+  "role": "Office Manager",
+  "pressure": "외부 노출 이후 의사와 어시스턴트를 함께 모았다. 모두 다른 해석을 가지고 있다. 어시스턴트는 부담을 느끼고, 의사는 평가받는 느낌을 받는다. 이 대화는 시스템을 리셋하거나 더 깨뜨릴 수 있다.",
+  "conversation_frame": {
+    "opening_position": "이 대화의 목적을 정의해야 한다.",
+    "frame_options": [
+      "감정 해소",
+      "누가 잘못했는지 정리",
+      "구조 리셋"
+    ],
+    "hidden_risk": "프레임을 정의하지 않으면 가장 강한 해석이 대화를 지배한다."
+  },
+  "tradeoff": "Comfort vs Structural Repair",
+  "bty_tension_axis": "Comfort vs Truth vs Ownership",
+  "difficulty_level": 5,
+  "pattern_detection": [
+    "emotional_release_loop",
+    "truth_avoidance",
+    "defensiveness",
+    "ownership_conflict",
+    "structure_creation"
+  ],
+  "choices": [
+    {
+      "id": "A",
+      "label": "자유롭게 말하게 한다",
+      "subtext": "심리적 안전 우선",
+      "direction": "exit",
+      "pattern_family": "emotional_release_loop"
+    },
+    {
+      "id": "B",
+      "label": "실제로 무슨 일이 있었는지 정의한다",
+      "subtext": "편안함보다 명확함",
+      "direction": "entry",
+      "pattern_family": "truth_naming"
+    },
+    {
+      "id": "C",
+      "label": "앞으로만 보자",
+      "subtext": "과거 회피",
+      "direction": "exit",
+      "pattern_family": "future_deferral"
+    },
+    {
+      "id": "D",
+      "label": "당사자에게 맡긴다",
+      "subtext": "개입 회피",
+      "direction": "exit",
+      "pattern_family": "ownership_transfer"
+    }
+  ],
+  "deep_dynamics": {
+    "stage_1": "발언",
+    "stage_2": "해석 충돌",
+    "stage_3": "감정 반응",
+    "stage_4": "책임 충돌",
+    "stage_5": "구조 형성 또는 붕괴"
+  },
+  "escalationBranches": {
+    "A": {
+      "stage_flow": [
+        "상황 정의",
+        "의사의 방어",
+        "어시스턴트 상호 강화",
+        "진영 분리"
+      ],
+      "interpretation_clash": [
+        "의사: '지원이 부족했다'",
+        "어시스턴트: '우리가 커버하고 있었다'"
+      ],
+      "tension_point": "누가 책임지는가",
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "긴장 완화",
+          "result": "명확성 감소",
+          "direction": "exit",
+          "cost": "대화는 통제된 범위 안에 머물지만, 관계적 간극은 여전히 해소되지 않는다."
+        },
+        {
+          "id": "Y",
+          "label": "시스템과 개인 책임 분리",
+          "result": "구조 시작",
+          "direction": "entry",
+          "cost": "관계 회복이 필요함을 직접 말하면 불편함과 방어 반응을 감수해야 한다."
+        }
+      ],
+      "stage_2_escalation": {
+        "X": {
+          "outcome": "안전하지만 흐려짐",
+          "risk": "각자 해석 유지"
+        },
+        "Y": {
+          "outcome": "긴장 증가, 구조 형성",
+          "risk": "리더십 요구됨"
+        }
+      },
+      "action_decision": {
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "문제, 책임, 다음 행동 명확히 정의",
+            "is_action_commitment": true,
+            "impact": "구조 형성",
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "정리 없이 마무리",
+            "is_action_commitment": false,
+            "impact": "패턴 반복",
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "prompt": "Choose the observable action.",
+        "context": ""
+      },
+      "escalation_text": "Escalation path A for core_07_repair_conversation."
+    },
+    "B": {
+      "stage_flow": [
+        "상황 정의",
+        "의사의 방어",
+        "어시스턴트 상호 강화",
+        "진영 분리"
+      ],
+      "interpretation_clash": [
+        "의사: '지원이 부족했다'",
+        "어시스턴트: '우리가 커버하고 있었다'"
+      ],
+      "tension_point": "누가 책임지는가",
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "긴장 완화",
+          "result": "명확성 감소",
+          "direction": "exit",
+          "cost": "대화는 통제된 범위 안에 머물지만, 관계적 간극은 여전히 해소되지 않는다."
+        },
+        {
+          "id": "Y",
+          "label": "시스템과 개인 책임 분리",
+          "result": "구조 시작",
+          "direction": "entry",
+          "cost": "관계 회복이 필요함을 직접 말하면 불편함과 방어 반응을 감수해야 한다."
+        }
+      ],
+      "stage_2_escalation": {
+        "X": {
+          "outcome": "안전하지만 흐려짐",
+          "risk": "각자 해석 유지"
+        },
+        "Y": {
+          "outcome": "긴장 증가, 구조 형성",
+          "risk": "리더십 요구됨"
+        }
+      },
+      "action_decision": {
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "문제, 책임, 다음 행동 명확히 정의",
+            "is_action_commitment": true,
+            "impact": "구조 형성",
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "정리 없이 마무리",
+            "is_action_commitment": false,
+            "impact": "패턴 반복",
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "prompt": "Choose the observable action.",
+        "context": ""
+      },
+      "escalation_text": "Escalation path B for core_07_repair_conversation."
+    },
+    "C": {
+      "stage_flow": [
+        "상황 정의",
+        "의사의 방어",
+        "어시스턴트 상호 강화",
+        "진영 분리"
+      ],
+      "interpretation_clash": [
+        "의사: '지원이 부족했다'",
+        "어시스턴트: '우리가 커버하고 있었다'"
+      ],
+      "tension_point": "누가 책임지는가",
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "긴장 완화",
+          "result": "명확성 감소",
+          "direction": "exit",
+          "cost": "대화는 통제된 범위 안에 머물지만, 관계적 간극은 여전히 해소되지 않는다."
+        },
+        {
+          "id": "Y",
+          "label": "시스템과 개인 책임 분리",
+          "result": "구조 시작",
+          "direction": "entry",
+          "cost": "관계 회복이 필요함을 직접 말하면 불편함과 방어 반응을 감수해야 한다."
+        }
+      ],
+      "stage_2_escalation": {
+        "X": {
+          "outcome": "안전하지만 흐려짐",
+          "risk": "각자 해석 유지"
+        },
+        "Y": {
+          "outcome": "긴장 증가, 구조 형성",
+          "risk": "리더십 요구됨"
+        }
+      },
+      "action_decision": {
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "문제, 책임, 다음 행동 명확히 정의",
+            "is_action_commitment": true,
+            "impact": "구조 형성",
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "정리 없이 마무리",
+            "is_action_commitment": false,
+            "impact": "패턴 반복",
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "prompt": "Choose the observable action.",
+        "context": ""
+      },
+      "escalation_text": "Escalation path C for core_07_repair_conversation."
+    },
+    "D": {
+      "stage_flow": [
+        "상황 정의",
+        "의사의 방어",
+        "어시스턴트 상호 강화",
+        "진영 분리"
+      ],
+      "interpretation_clash": [
+        "의사: '지원이 부족했다'",
+        "어시스턴트: '우리가 커버하고 있었다'"
+      ],
+      "tension_point": "누가 책임지는가",
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "긴장 완화",
+          "result": "명확성 감소",
+          "direction": "exit",
+          "cost": "대화는 통제된 범위 안에 머물지만, 관계적 간극은 여전히 해소되지 않는다."
+        },
+        {
+          "id": "Y",
+          "label": "시스템과 개인 책임 분리",
+          "result": "구조 시작",
+          "direction": "entry",
+          "cost": "관계 회복이 필요함을 직접 말하면 불편함과 방어 반응을 감수해야 한다."
+        }
+      ],
+      "stage_2_escalation": {
+        "X": {
+          "outcome": "안전하지만 흐려짐",
+          "risk": "각자 해석 유지"
+        },
+        "Y": {
+          "outcome": "긴장 증가, 구조 형성",
+          "risk": "리더십 요구됨"
+        }
+      },
+      "action_decision": {
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "문제, 책임, 다음 행동 명확히 정의",
+            "is_action_commitment": true,
+            "impact": "구조 형성",
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "정리 없이 마무리",
+            "is_action_commitment": false,
+            "impact": "패턴 반복",
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "prompt": "Choose the observable action.",
+        "context": ""
+      },
+      "escalation_text": "Escalation path D for core_07_repair_conversation."
+    }
+  }
+}

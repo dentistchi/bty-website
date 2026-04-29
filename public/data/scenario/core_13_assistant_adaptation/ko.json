@@ -1,0 +1,203 @@
+{
+  "id": "core_13_assistant_adaptation",
+  "title": "이미 적응했다",
+  "role": "Observer",
+  "pressure": "어시스턴트들이 더 이상 반응하지 않는다. 대신 적응했다. 누가 더 유리한지 알고, 그에 맞춰 행동한다. 공정성에 대한 얘기는 사라졌다. 이제 시스템은 예측 가능하다. 하지만 공정하지는 않다.",
+  "tradeoff": "적응 vs 기준 유지",
+  "bty_tension_axis": "Survival vs Principle",
+  "difficulty_level": 5,
+  "pattern_detection": [
+    "behavior_adaptation",
+    "incentive_learning",
+    "silent_alignment",
+    "identity_shift"
+  ],
+  "choices": [
+    {
+      "id": "A",
+      "label": "이걸 정상으로 받아들인다",
+      "direction": "exit"
+    },
+    {
+      "id": "B",
+      "label": "이건 왜곡된 적응이라고 본다",
+      "direction": "entry"
+    },
+    {
+      "id": "C",
+      "label": "효율만 본다",
+      "direction": "exit"
+    },
+    {
+      "id": "D",
+      "label": "중립적으로 본다",
+      "direction": "exit"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "적응은 시스템을 안정시킨다. 대신 공정성은 사라진다.",
+      "pressure_increase": 0.7,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "완전히 받아들인다",
+          "direction": "exit",
+          "cost": "공정성은 루틴 속에서 사라지고, 누가 더 유연함을 얻는지를 중심으로 굴러간다."
+        },
+        {
+          "id": "Y",
+          "label": "이 적응을 다시 본다",
+          "direction": "entry",
+          "cost": "안정된 불공정 균형을 흔들면 어렵거나 순진하다고 보일 수 있다."
+        }
+      ],
+      "action_decision": {
+        "prompt": "적응하면 무엇이 사라지는가",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "적응의 비용을 정의한다",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "그냥 둔다",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "B": {
+      "escalation_text": "이걸 왜곡이라고 보는 순간 바뀐다. 이건 alignment가 아니라 survival이다.",
+      "pressure_increase": 0.8,
+      "intensity": 5,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "혼자만 안다",
+          "direction": "exit",
+          "cost": "정확한 패턴 인식은 나만 안고 가고, 현장은 조용히 적응만 이어간다."
+        },
+        {
+          "id": "Y",
+          "label": "패턴을 명확히 정의한다",
+          "direction": "entry",
+          "cost": "사람들이 크게 말하지 않으며 버텨온 것을 이름 붙이면 압력이 나에게 쏠린다."
+        }
+      ],
+      "action_decision": {
+        "prompt": "그럼 기준은 무엇인가",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "기준 기반 행동을 정의한다",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "정의하지 않는다",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "C": {
+      "escalation_text": "효율은 올라간다. 대신 의미는 사라진다.",
+      "pressure_increase": 0.6,
+      "intensity": 3,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "효율만 유지한다",
+          "direction": "exit",
+          "cost": "처리 속도는 유지되지만 윤리적 드리프트는 의제에서 빠진다."
+        },
+        {
+          "id": "Y",
+          "label": "기준을 다시 가져온다",
+          "direction": "entry",
+          "cost": "목적과 공정을 같은 대화로 끌어들이면 결정이 느려진다."
+        }
+      ],
+      "action_decision": {
+        "prompt": "효율은 무엇을 위한 것인가",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "목적을 정의한다",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "흐름만 본다",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "D": {
+      "escalation_text": "중립은 점점 동조가 된다.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "중립 유지",
+          "direction": "exit",
+          "cost": "입장 없는 관찰은 새 기준에 대한 조용한 동조가 된다."
+        },
+        {
+          "id": "Y",
+          "label": "내 입장을 정한다",
+          "direction": "entry",
+          "cost": "내적 긴장을 감수하고, 기준이 없다고도 말할 수 없게 된다."
+        }
+      ],
+      "action_decision": {
+        "prompt": "중립은 존재하는가",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "내 기준을 정의한다",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "그대로 둔다",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    }
+  }
+}

@@ -1,0 +1,78 @@
+import { SCENARIOS } from "./legacy/bundledScenarios";
+import type { Scenario, ScenarioSubmitPayload, ScenarioSubmitResult } from "./types";
+
+/** Meta phrases used only for design/scoring — never show to user. */
+const META_PHRASES =
+  /(?:hidden risk|integrity trigger|growth opportunity|leadership challenge|decision point)/i;
+
+/**
+ * Strip design/system-only language from context (EN). User sees only situation + emotion;
+ * no "calculation system" (hidden risk, integrity trigger, growth opportunity, etc.).
+ * When locale is ko, use contextKo as-is (no meta phrases); this strip applies to EN context only.
+ */
+export function getContextForUser(context: string): string {
+  let text = context.trim();
+  const stop = /\s+The (hidden risk|integrity trigger|growth opportunity|leadership challenge|decision point)[\s:]/i;
+  const m = text.match(stop);
+  if (m && m.index != null) text = text.slice(0, m.index).trim();
+  const sentences = text.split(/(?<=[.!])\s+/).filter((s) => {
+    const t = s.trim();
+    return t.length > 0 && !META_PHRASES.test(t);
+  });
+  return sentences.join(" ").trim() || text.trim();
+}
+
+export function getScenarioById(id: string): Scenario | undefined {
+  return SCENARIOS.find((s) => s.scenarioId === id);
+}
+
+export function getRandomScenario(excludeIds: string[] = []): Scenario {
+  const pool = SCENARIOS.filter((s) => !excludeIds.includes(s.scenarioId));
+  if (pool.length === 0) return SCENARIOS[0];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+/**
+ * XP: xpEarned = round(xpBase * difficulty). Higher difficulty => higher reward.
+ * When payload.locale === "ko", returns Korean result/microInsight/followUp when available.
+ */
+export function computeResultFromScenario(
+  scenario: Scenario,
+  payload: ScenarioSubmitPayload,
+): ScenarioSubmitResult {
+  const choice = scenario.choices.find((c) => c.choiceId === payload.choiceId);
+  if (!choice) throw new Error("Choice not found");
+
+  const xpEarned = Math.max(0, Math.round(choice.xpBase * choice.difficulty));
+  const isKo = payload.locale === "ko";
+
+  const result = isKo && choice.resultKo ? choice.resultKo : choice.result;
+  const microInsight = isKo && choice.microInsightKo ? choice.microInsightKo : choice.microInsight;
+  const followUp = choice.followUp
+    ? {
+        ...choice.followUp,
+        prompt: isKo && choice.followUp.promptKo ? choice.followUp.promptKo : choice.followUp.prompt,
+        options:
+          isKo && choice.followUp.optionsKo?.length
+            ? choice.followUp.optionsKo
+            : choice.followUp.options ?? [],
+      }
+    : undefined;
+
+  return {
+    ok: true,
+    scenarioId: scenario.scenarioId,
+    choiceId: choice.choiceId,
+    xpEarned,
+    hiddenDelta: choice.hiddenDelta,
+    microInsight,
+    result,
+    followUp,
+  };
+}
+
+export function computeResult(payload: ScenarioSubmitPayload): ScenarioSubmitResult {
+  const scenario = getScenarioById(payload.scenarioId);
+  if (!scenario) throw new Error("Scenario not found");
+  return computeResultFromScenario(scenario, payload);
+}

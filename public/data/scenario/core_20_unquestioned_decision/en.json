@@ -1,0 +1,277 @@
+{
+  "id": "core_20_identity_integrity_inheritance",
+  "title": "When Integrity Must Survive You",
+  "role": "Clinical Director / Partner Doctor",
+  "pressure": "The integrity system has been tested across offices, but now new leaders, partner doctors, and regional managers must carry it without your direct presence. The organization is watching whether the standard belongs to the system or still belongs to you.",
+  "tradeoff": "Keep integrity protected by your personal leadership, or make it transferable enough to survive leadership change.",
+  "bty_tension_axis": "identity_integrity_inheritance",
+  "axis_primary": "integrity",
+  "axis_secondary": "transferability",
+  "difficulty_level": "final_full_density",
+  "incident": {
+    "incidentId": "incident_02",
+    "incidentStage": "system inheritance",
+    "sequencePosition": 20,
+    "previousScenarioId": "core_19_identity_integrity_propagation",
+    "nextScenarioId": null,
+    "roleShift": "from system enforcer to system inheritance designer",
+    "propagation": {
+      "exitEffect": "The integrity system remains dependent on the leader who created it.",
+      "entryEffect": "The integrity system becomes teachable, testable, and transferable.",
+      "reExposureNote": "The next leadership transition will reveal whether this was a person-led standard or a system-owned standard."
+    }
+  },
+  "action_contract": {
+    "description": "Create one observable transfer mechanism that allows another leader to apply the integrity system under pressure without relying on your interpretation.",
+    "time_window_hours": 72
+  },
+  "AIR_logic": {
+    "success": "A successor can apply the integrity system consistently under pressure without private correction from you.",
+    "miss": "The system requires your judgment to interpret, enforce, or protect it."
+  },
+  "forced_reset": {
+    "trigger": "A new leader applies the integrity system differently and says they thought they were following your intent.",
+    "action": "Separate intent from operating standard, compare the decision against defined criteria, and require observable correction."
+  },
+  "pattern_detection": {
+    "person_dependent_integrity": "Integrity appears strong only when the original leader is directly involved.",
+    "instruction_based_handoff": "Explains the standard but does not observe whether it can be applied.",
+    "successor_assumption": "Assumes a new leader understands the system because they agree with the principle.",
+    "documentation_without_ownership": "Creates written material without testing whether another leader can own the decision."
+  },
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "A regional manager delays an integrity decision because the team is waiting for your input. Staff begin saying the system only works when you are involved.",
+      "pressure_increase": "The system is now exposing dependency instead of strength.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours to separate the integrity system from your personal presence?",
+        "context": "The current pattern shows that people may trust you more than they trust the system.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, assign one active integrity decision to a regional manager using written criteria, require their documented decision first, and review only after submission.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Stay closely involved in the current case to make sure the standard is protected.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Step in quickly to prevent the decision from going off track",
+          "cost": "Protects the case but confirms that the system still depends on you.",
+          "axis": "integrity",
+          "direction": "exit",
+          "pattern_family": "person_dependent_integrity"
+        },
+        {
+          "id": "Y",
+          "label": "Require the regional manager to decide using the written criteria before you comment",
+          "cost": "Allows visible discomfort and possible imperfection before correction.",
+          "axis": "transferability",
+          "direction": "entry",
+          "pattern_family": "system_independence"
+        }
+      ]
+    },
+    "B": {
+      "escalation_text": "A new leader repeats the language of the system but applies it as a conversation guideline rather than an enforceable standard.",
+      "pressure_increase": "The handoff has transferred vocabulary without transferring operating behavior.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours to prove that the handoff is behavioral, not verbal?",
+        "context": "A system is not transferred when someone can explain it; it is transferred when they can apply it under pressure.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, schedule a live integrity-case review where the new leader must identify the standard, name the pressure, choose the action, and document the follow-up.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Send a clearer explanation of the system and ask the new leader to review it carefully.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Clarify the concept again and give them more time",
+          "cost": "Extends the gap between understanding and application.",
+          "axis": "transferability",
+          "direction": "exit",
+          "pattern_family": "instruction_based_handoff"
+        },
+        {
+          "id": "Y",
+          "label": "Observe the new leader applying the system to a real case and compare their action to the criteria",
+          "cost": "Creates performance pressure and may reveal that the instruction was insufficient.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "observed_handoff"
+        }
+      ]
+    },
+    "C": {
+      "escalation_text": "The successor agrees with the principle publicly but privately gives an exception to a high-performing doctor to avoid losing them.",
+      "pressure_increase": "Agreement with values has failed under relationship and performance pressure.",
+      "intensity": 7,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours to test successor alignment under real pressure?",
+        "context": "The successor did not reject integrity; they reinterpreted it when a valuable person was involved.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, require the successor to re-document the exception decision against the integrity criteria and identify whether the same decision would apply to a non-favored employee.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Privately coach the successor and encourage stronger consistency next time.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Treat it as a learning moment and preserve the successor’s confidence",
+          "cost": "Protects the successor but weakens the first pressure test.",
+          "axis": "transferability",
+          "direction": "exit",
+          "pattern_family": "successor_assumption"
+        },
+        {
+          "id": "Y",
+          "label": "Require the successor to revisit the decision through the same integrity criteria",
+          "cost": "Creates embarrassment and shows that agreement is not enough.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "pressure_tested_successor_alignment"
+        }
+      ]
+    },
+    "D": {
+      "escalation_text": "During the observed pressure case, the successor follows the checklist but hesitates when the decision creates conflict with a partner doctor.",
+      "pressure_increase": "The system works on paper but now collides with hierarchy.",
+      "intensity": 7,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours to make successor ownership real under hierarchy pressure?",
+        "context": "The handoff is incomplete if the successor can use the system only when authority does not push back.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, have the successor complete the partner-related action step, document the decision trail, and present the outcome in a two-leader review without you taking over.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Allow the successor to consult you before moving forward so the partner conflict is handled carefully.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Let the successor pause and consult you before taking action",
+          "cost": "Reduces risk but keeps final courage centralized in you.",
+          "axis": "transferability",
+          "direction": "exit",
+          "pattern_family": "documentation_without_ownership"
+        },
+        {
+          "id": "Y",
+          "label": "Require the successor to complete the action step with defined support but without transferring ownership back to you",
+          "cost": "Creates visible tension and forces the successor to carry the system in front of authority.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "successor_ownership_mechanism"
+        }
+      ]
+    }
+  },
+  "ending_identity_choice": {
+    "prompt": "When the system must survive without you, what kind of integrity have you built?",
+    "choices": [
+      {
+        "id": "SYS1",
+        "label": "Integrity that remains strongest when the original leader is present",
+        "direction": "exit"
+      },
+      {
+        "id": "SYS2",
+        "label": "Integrity that can be inherited, tested, and carried by another leader",
+        "direction": "entry"
+      }
+    ]
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Continue personally guiding sensitive integrity decisions",
+      "subtext": "It feels safer because the system still produces better outcomes when you stay close to it.",
+      "axis": "integrity",
+      "direction": "exit",
+      "pattern_family": "person_dependent_integrity",
+      "intensity": 5
+    },
+    {
+      "id": "B",
+      "label": "Explain the system clearly to new leaders and let them begin using it",
+      "subtext": "It feels scalable because leaders need room to operate without being over-managed.",
+      "axis": "transferability",
+      "direction": "exit",
+      "pattern_family": "instruction_based_handoff",
+      "intensity": 5
+    },
+    {
+      "id": "C",
+      "label": "Trust successor judgment because they agree with the integrity principle",
+      "subtext": "It feels respectful because testing them too directly may signal distrust.",
+      "axis": "transferability",
+      "direction": "exit",
+      "pattern_family": "successor_assumption",
+      "intensity": 6
+    },
+    {
+      "id": "D",
+      "label": "Require a successor to apply the system in a live pressure case while being observed",
+      "subtext": "It costs comfort because the handoff may expose gaps in both the system and the successor.",
+      "axis": "integrity",
+      "direction": "entry",
+      "pattern_family": "ownership_transfer",
+      "intensity": 6
+    }
+  ]
+}

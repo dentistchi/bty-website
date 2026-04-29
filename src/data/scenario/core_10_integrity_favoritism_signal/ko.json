@@ -1,0 +1,231 @@
+{
+  "id": "core_10_integrity_favoritism_signal",
+  "title": "뭔가 잘못되고 있다",
+  "role": "Associate Dentist",
+  "pressure": "특정 의사에게만 스케줄, 케이스 기대치, 어시스턴트 지원이 반복적으로 더 유리하게 적용되는 것을 본다. 다른 사람들은 더 엄격한 기준을 받는다. 명확히 말된 적은 없지만, 패턴은 분명하다. 문제는 — 아무도 이걸 문제로 다루지 않는다는 것이다.",
+  "tradeoff": "소속감 유지 vs 불편한 진실 인식",
+  "bty_tension_axis": "Belonging vs Truth",
+  "difficulty_level": 4,
+  "pattern_detection": [
+    "inconsistency_signal",
+    "rationalization",
+    "silence_alignment",
+    "truth_recognition"
+  ],
+  "signal_dynamics": {
+    "stage_1": "이상한 패턴을 본다",
+    "stage_2": "불편함이 올라온다",
+    "stage_3": "합리화 vs 인정",
+    "stage_4": "이름 붙이기 vs 넘기기",
+    "stage_5": "정상으로 받아들이거나 끊는다"
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "신경 쓰지 않는다",
+      "subtext": "괜히 문제 만들 필요 없다",
+      "direction": "exit"
+    },
+    {
+      "id": "B",
+      "label": "이건 일관되지 않다고 인정한다",
+      "subtext": "이걸 정상으로 받아들이지 않는다",
+      "direction": "entry"
+    },
+    {
+      "id": "C",
+      "label": "분명 이유가 있을 거라고 생각한다",
+      "subtext": "내가 모르는 사정일 수도 있다",
+      "direction": "exit"
+    },
+    {
+      "id": "D",
+      "label": "다른 사람들처럼 아무 말도 하지 않는다",
+      "subtext": "굳이 튀지 않는다",
+      "direction": "exit"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "그냥 넘기면 당장은 편하다. 하지만 같은 상황이 반복된다. 어느 순간부터는 이게 이상한 건지조차 덜 느껴지기 시작한다.",
+      "pressure_increase": 0.5,
+      "intensity": 3,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "계속 무시한다",
+          "direction": "exit",
+          "cost": "신호는 여전히 구조화되지 않아 나중에 쉽게 무시할 수 있다."
+        },
+        {
+          "id": "Y",
+          "label": "이게 반복되는 패턴인지 다시 본다",
+          "direction": "entry",
+          "cost": "더는 막연한 느낌으로만 두고 넘길 수 없다."
+        }
+      ],
+      "action_decision": {
+        "prompt": "무시하면 결국 뭐가 기준이 되는가",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "과거 케이스를 돌아보며 같은 패턴이 있었는지 확인한다",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "그냥 흐름대로 간다",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "B": {
+      "escalation_text": "이걸 ‘문제’라고 인식하는 순간부터 계속 눈에 들어오기 시작한다. 비슷한 상황들이 이어서 보인다. 불편함은 줄어들지 않고 오히려 커진다.",
+      "pressure_increase": 0.7,
+      "intensity": 4,
+      "identity_clash": [
+        "그냥 넘어가고 싶다",
+        "근데 이건 분명 일관되지 않다",
+        "이걸 무시하면 나도 여기에 포함된다"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "혼자만 알고 있다",
+          "direction": "exit",
+          "cost": "신호는 여전히 구조화되지 않아 나중에 쉽게 무시할 수 있다."
+        },
+        {
+          "id": "Y",
+          "label": "이걸 명확한 패턴으로 정리한다",
+          "direction": "entry",
+          "cost": "더는 막연한 느낌으로만 두고 넘길 수 없다."
+        }
+      ],
+      "action_decision": {
+        "prompt": "느끼는 것과 정의하는 것은 다르다",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "구체적인 사례를 적어서 패턴을 명확히 만든다",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "그냥 느낌으로만 남긴다",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "C": {
+      "escalation_text": "‘이유가 있을 거야’라고 생각하면 마음은 편해진다. 대신 더 이상 확인하지 않게 된다. 그리고 어느 순간부터는 질문 자체를 안 하게 된다.",
+      "pressure_increase": 0.6,
+      "intensity": 3,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "그대로 받아들인다",
+          "direction": "exit",
+          "cost": "신호는 여전히 구조화되지 않아 나중에 쉽게 무시할 수 있다."
+        },
+        {
+          "id": "Y",
+          "label": "진짜 이유가 있는지 확인해본다",
+          "direction": "entry",
+          "cost": "더는 막연한 느낌으로만 두고 넘길 수 없다."
+        }
+      ],
+      "action_decision": {
+        "prompt": "이건 사실인가, 그냥 가정인가",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "케이스를 비교해서 실제로 차이가 있는지 본다",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "확인하지 않고 믿는다",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "D": {
+      "escalation_text": "다 같이 조용하면 이게 문제인지 아닌지 흐려진다. 말하지 않는 분위기 자체가 기준이 된다.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "identity_clash": [
+        "다들 아무 말 안 한다",
+        "근데 나는 이게 이상하다고 느낀다",
+        "나도 그냥 맞추면 편하다"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "계속 맞춘다",
+          "direction": "exit",
+          "cost": "신호는 여전히 구조화되지 않아 나중에 쉽게 무시할 수 있다."
+        },
+        {
+          "id": "Y",
+          "label": "내 기준을 따로 유지한다",
+          "direction": "entry",
+          "cost": "더는 막연한 느낌으로만 두고 넘길 수 없다."
+        }
+      ],
+      "action_decision": {
+        "prompt": "남들이 아니라, 나는 어떤 기준으로 본다",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "공정성에 대한 내 기준을 명확히 정의한다",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "그냥 분위기에 맞춘다",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    }
+  },
+  "axis_primary": null,
+  "axis_secondary": null,
+  "incident": null,
+  "action_contract": null,
+  "AIR_logic": null,
+  "forced_reset": null,
+  "ending_identity_choice": null
+}

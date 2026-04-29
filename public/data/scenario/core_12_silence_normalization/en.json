@@ -1,0 +1,277 @@
+{
+  "id": "core_12_silence_normalization",
+  "title": "No One Says Anything",
+  "role": "Associate Dentist",
+  "pressure": "Everyone in the office has seen the inconsistency. A manager applies one standard to one assistant and a softer standard to someone closer to leadership. The doctors notice. The assistants notice. Even the front desk notices. But no one names it directly. Conversations get lighter when leadership walks by. Small jokes replace direct acknowledgment. People exchange looks, then return to work. The schedule is full, patients are waiting, and speaking up could make you look difficult. The system continues because everyone knows, but no one says anything.",
+  "tradeoff": "Protect personal safety through silence or accept the cost of naming reality.",
+  "bty_tension_axis": "expression_vs_self_preservation",
+  "axis_primary": "truth",
+  "axis_secondary": "belonging",
+  "difficulty_level": "final_full_density",
+  "incident": {
+    "incidentId": "incident_02",
+    "incidentStage": "truth entry",
+    "sequencePosition": 12,
+    "previousScenarioId": "core_11_pattern_visibility",
+    "nextScenarioId": "core_13_cost_of_speaking",
+    "roleShift": "from passive observer to truth participant",
+    "propagation": {
+      "exitEffect": "Silence becomes the accepted office behavior and the inconsistency becomes harder to challenge later.",
+      "entryEffect": "The associate begins separating personal safety from truth responsibility.",
+      "reExposureNote": "Future scenarios will test whether awareness becomes action or remains private discomfort."
+    }
+  },
+  "action_contract": {
+    "description": "Name the role silence is playing in the system and take one observable step that prevents silence from being treated as neutrality.",
+    "time_window_hours": 48
+  },
+  "AIR_logic": {
+    "success": "The associate identifies silence as participation and takes a small, specific, observable action.",
+    "miss": "The associate keeps awareness private and allows silence to remain socially safe."
+  },
+  "forced_reset": {
+    "trigger": "Someone says, 'Everyone knows, but it is not worth getting involved.'",
+    "action": "State what silence is protecting, what it is allowing, and what specific next step you will take."
+  },
+  "pattern_detection": {
+    "silence_normalization": "Repeated silence makes avoidance feel like professionalism.",
+    "avoidance_behavior": "The associate uses busyness, timing, or role boundaries to avoid naming reality.",
+    "group_conformity": "The associate waits for another doctor or senior person to speak first.",
+    "reality_distortion": "The associate begins treating the inconsistent standard as normal office culture."
+  },
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "Your silence blends into everyone else’s silence. Later that week, another assistant receives a harsher correction for a smaller issue. The room gets quiet again. This time, no one even exchanges looks.",
+      "pressure_increase": "Silence is no longer just avoiding conflict; it is becoming the expected office response.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "What will you do within 48 hours so your silence does not become agreement?",
+        "context": "The office is learning that quietness is the safest response to inconsistent standards.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 48 hours, write down two specific examples of inconsistent standards and ask one appropriate leader for a private clarification conversation.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Stay quiet until the issue becomes serious enough that leadership has to address it.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Continue staying silent because speaking now would feel abrupt",
+          "cost": "The longer the silence continues, the harder it becomes to interrupt.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "silence_normalization"
+        },
+        {
+          "id": "Y",
+          "label": "Document the pattern and ask for a private clarification conversation",
+          "cost": "You become visible as someone who noticed the inconsistency.",
+          "axis": "truth",
+          "direction": "entry",
+          "pattern_family": "truth_entry"
+        }
+      ]
+    },
+    "B": {
+      "escalation_text": "Once you recognize silence as part of the system, your position changes. You are no longer simply observing. At lunch, another associate jokes, 'That is just how things work here.' Everyone laughs, but you can feel the joke training the room to accept the pattern.",
+      "pressure_increase": "Private awareness now demands a decision: keep it internal or make reality harder to deny.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "If silence is participation, what role will you choose within 48 hours?",
+        "context": "The issue does not require a dramatic confrontation, but it does require one observable move away from passive agreement.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 48 hours, say to one trusted leader: 'I am noticing that people see the inconsistency but avoid naming it. I do not want my silence to be mistaken for agreement.'",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Keep the insight to yourself and wait for a safer time to say something.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep the awareness internal and avoid creating tension",
+          "cost": "Your clarity does not change the room’s behavior.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "avoidance_behavior"
+        },
+        {
+          "id": "Y",
+          "label": "Clarify your stance in a low-drama but direct way",
+          "cost": "You risk being seen as too serious or difficult.",
+          "axis": "truth",
+          "direction": "entry",
+          "pattern_family": "truth_expression"
+        }
+      ]
+    },
+    "C": {
+      "escalation_text": "You wait for someone senior to speak. The senior doctor stays quiet because they do not want to create conflict with the manager. The manager assumes the doctors are fine with the pattern because no one raises it.",
+      "pressure_increase": "Waiting transfers responsibility upward, but upward silence gives the pattern more authority.",
+      "intensity": 5,
+      "action_decision": {
+        "prompt": "What will you do within 48 hours instead of waiting for someone with more authority?",
+        "context": "You may not own the whole system, but you own whether your silence reinforces it.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 48 hours, identify the one part of the inconsistency you personally observed and bring that specific observation to a senior doctor or manager.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Wait until a partner doctor, senior doctor, or manager decides to address the issue.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep waiting because it is still not your place",
+          "cost": "Your role becomes a reason to avoid responsibility.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "group_conformity"
+        },
+        {
+          "id": "Y",
+          "label": "Take ownership of one small part you can speak to directly",
+          "cost": "You cannot hide behind role hierarchy anymore.",
+          "axis": "truth",
+          "direction": "entry",
+          "pattern_family": "role_ownership"
+        }
+      ]
+    },
+    "D": {
+      "escalation_text": "You begin adjusting to the pattern. The inconsistency bothers you less. A new assistant asks whether the standard is always applied this way, and you hear yourself saying, 'You will get used to it.'",
+      "pressure_increase": "Normalization has moved from internal coping to training someone else to accept the same distortion.",
+      "intensity": 7,
+      "action_decision": {
+        "prompt": "What will you do within 48 hours to stop passing normalization to others?",
+        "context": "The moment you teach someone else to accept distortion, silence becomes propagation.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 48 hours, tell the new assistant: 'I should not have framed it as something to get used to. There is an inconsistency here, and I am going to ask for clarification.'",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Let the new assistant adjust naturally because every office has its own culture.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Continue normalizing it because adapting is necessary",
+          "cost": "You become a carrier of the pattern for new people.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "reality_distortion"
+        },
+        {
+          "id": "Y",
+          "label": "Stop the normalization and name what is actually happening",
+          "cost": "You must reverse something you have already participated in.",
+          "axis": "truth",
+          "direction": "entry",
+          "pattern_family": "reality_reclaiming"
+        }
+      ]
+    }
+  },
+  "ending_identity_choice": {
+    "prompt": "When everyone sees the inconsistency but no one speaks, what does your silence become?",
+    "choices": [
+      {
+        "id": "SYS1",
+        "label": "A way to stay safe while the system continues unchanged",
+        "direction": "exit"
+      },
+      {
+        "id": "SYS2",
+        "label": "A signal you must interrupt before it becomes agreement",
+        "direction": "entry"
+      }
+    ]
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Say nothing and keep working",
+      "subtext": "It feels safe because the schedule is busy and no one has directly asked for your opinion.",
+      "axis": "belonging",
+      "direction": "exit",
+      "pattern_family": "silence_normalization",
+      "intensity": 5
+    },
+    {
+      "id": "B",
+      "label": "Name to yourself that silence is part of the system",
+      "subtext": "It feels honest but still safe because the awareness remains private.",
+      "axis": "truth",
+      "direction": "entry",
+      "pattern_family": "truth_recognition",
+      "intensity": 5
+    },
+    {
+      "id": "C",
+      "label": "Wait for a senior doctor or manager to speak first",
+      "subtext": "It feels appropriate because you are an associate and the issue involves leadership dynamics.",
+      "axis": "belonging",
+      "direction": "exit",
+      "pattern_family": "group_conformity",
+      "intensity": 4
+    },
+    {
+      "id": "D",
+      "label": "Convince yourself this is just how this office works",
+      "subtext": "It reduces internal discomfort and helps you get through the day.",
+      "axis": "truth",
+      "direction": "exit",
+      "pattern_family": "reality_distortion",
+      "intensity": 6
+    }
+  ]
+}

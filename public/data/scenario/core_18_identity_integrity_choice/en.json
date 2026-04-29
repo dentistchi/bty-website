@@ -1,0 +1,277 @@
+{
+  "id": "core_18_identity_integrity_choice",
+  "title": "The System You Choose After Repair",
+  "role": "Clinical Director / Partner Doctor",
+  "pressure": "The incident has been addressed publicly enough that people expect closure, but the staff are watching whether the repair becomes a new operating standard or a polished ending.",
+  "tradeoff": "Preserve authority flexibility or accept a visible system that limits selective judgment.",
+  "bty_tension_axis": "identity_integrity_choice",
+  "axis_primary": "integrity",
+  "axis_secondary": "system_identity",
+  "difficulty_level": "final_full_density",
+  "incident": {
+    "incidentId": "incident_02",
+    "incidentStage": "ending",
+    "sequencePosition": 18,
+    "previousScenarioId": "core_17_repair_visibility",
+    "nextScenarioId": null,
+    "roleShift": "from repair owner to system identity chooser",
+    "propagation": {
+      "exitEffect": "Repair becomes a completed story while the original authority pattern remains available.",
+      "entryEffect": "Repair becomes the first proof that the organization will limit its own power under pressure.",
+      "reExposureNote": "The next conflict will test whether this was a message, a mood, or a system."
+    }
+  },
+  "action_contract": {
+    "description": "Choose the operating system that will govern future integrity conflicts and make one observable commitment that limits selective authority.",
+    "time_window_hours": 72
+  },
+  "AIR_logic": {
+    "success": "The decision creates a visible constraint that applies upward, laterally, and downward.",
+    "miss": "The decision creates emotional closure without changing the authority pattern that produced the incident."
+  },
+  "forced_reset": {
+    "trigger": "A staff member asks whether the new integrity standard applies when a partner doctor, regional manager, or close ally is involved.",
+    "action": "Restate the standard, name how it applies to leadership, and commit to the first observable check."
+  },
+  "pattern_detection": {
+    "authority_preservation": "Uses repair language while keeping final judgment private.",
+    "relationship_exception": "Applies standards differently when trust, loyalty, or history is involved.",
+    "closure_rush": "Treats reduced conflict as proof that the system has changed.",
+    "principle_without_constraint": "States values but avoids a mechanism that can challenge leadership."
+  },
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "After the closing message, a lead assistant says privately that the words were good, but no one knows what will happen when a favored doctor breaks the same standard.",
+      "pressure_increase": "The issue shifts from communication quality to whether leadership can be tested.",
+      "intensity": 5,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours so this does not end as a message-only repair?",
+        "context": "The team has heard closure language, but they have not seen a mechanism that can challenge leadership.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, send a written leadership-review trigger defining when integrity concerns involving doctors, managers, or partners must be reviewed by more than one leader.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Tell staff that your door is open and that you will personally handle future concerns with seriousness.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Tell the lead assistant that future issues can be brought directly to leadership",
+          "cost": "Keeps the pathway dependent on personal access and trust.",
+          "axis": "integrity",
+          "direction": "exit",
+          "pattern_family": "authority_preservation"
+        },
+        {
+          "id": "Y",
+          "label": "Create a written leadership-review trigger for future integrity concerns",
+          "cost": "Makes leadership review less controllable and more visible.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "system_constraint"
+        }
+      ]
+    },
+    "B": {
+      "escalation_text": "A regional manager reports that staff believe the new standard is real for weaker employees but negotiable for people leadership depends on.",
+      "pressure_increase": "The repair is now being interpreted as another form of favoritism.",
+      "intensity": 5,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours to show that closeness does not change the standard?",
+        "context": "The system will be judged by how it treats people with influence, not by how it treats easy cases.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, select one active leadership-related follow-up and document it using the same standard, timeline, and visibility required for non-leadership staff.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Speak individually with trusted leaders and ask them to model the standard going forward.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Privately coach the trusted people so they do not feel publicly exposed",
+          "cost": "Preserves loyalty but reinforces the belief that closeness changes consequences.",
+          "axis": "system_identity",
+          "direction": "exit",
+          "pattern_family": "relationship_exception"
+        },
+        {
+          "id": "Y",
+          "label": "Apply the same documentation and follow-up standard to trusted people first",
+          "cost": "Risks disappointment from people who expected relational protection.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "equal_application"
+        }
+      ]
+    },
+    "C": {
+      "escalation_text": "Two weeks later, a similar conflict appears in another office. The details are different, but the same pattern appears: unclear authority, private exceptions, and staff waiting to see who is protected.",
+      "pressure_increase": "The incident is no longer local; it is becoming a transferable operating pattern.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours to prevent the pattern from traveling office to office?",
+        "context": "The pressure is now organizational. Local repair without system change will keep reproducing the same conflict.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, create a cross-office integrity check with three required questions: who has authority, who receives exceptions, and who can challenge the decision.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Ask the regional manager to monitor the new office closely and notify you if the situation escalates.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Handle the new office separately because every location has different dynamics",
+          "cost": "Avoids overgeneralizing but allows the same pattern to restart under a new story.",
+          "axis": "system_identity",
+          "direction": "exit",
+          "pattern_family": "closure_rush"
+        },
+        {
+          "id": "Y",
+          "label": "Convert the repeated pattern into a cross-office integrity check",
+          "cost": "Requires admitting that the first incident revealed a system issue, not just a local issue.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "pattern_ownership"
+        }
+      ]
+    },
+    "D": {
+      "escalation_text": "Once you define the leadership standard, a partner doctor asks whether this means non-partner staff can question partner decisions without going through the usual chain of command.",
+      "pressure_increase": "The choice now threatens hierarchy, speed, and partner comfort.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours to make the integrity system real when hierarchy resists it?",
+        "context": "The system becomes real only when it can slow down authority in a defined, observable way.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, publish a narrow challenge pathway allowing staff to raise integrity concerns involving partners to a defined two-person review outside the direct chain of command.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Explain to partners that the standard is not meant to undermine authority and should be used with professional judgment.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Clarify that the standard supports feedback but does not change authority structure",
+          "cost": "Protects hierarchy but weakens the first real test of the system.",
+          "axis": "system_identity",
+          "direction": "exit",
+          "pattern_family": "principle_without_constraint"
+        },
+        {
+          "id": "Y",
+          "label": "Define a narrow challenge pathway that applies even when a partner is involved",
+          "cost": "Creates discomfort for partners and requires you to accept review without controlling the first interpretation.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "authority_constraint"
+        }
+      ]
+    }
+  },
+  "ending_identity_choice": {
+    "prompt": "After this incident, which system are you choosing to become?",
+    "choices": [
+      {
+        "id": "SYS1",
+        "label": "A system where repair means conflict is lowered and leadership keeps final discretion private",
+        "direction": "exit"
+      },
+      {
+        "id": "SYS2",
+        "label": "A system where repair creates a visible constraint that can question leadership under pressure",
+        "direction": "entry"
+      }
+    ]
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Close the incident with a careful message about lessons learned",
+      "subtext": "It feels responsible because people are tired and another heavy conversation may reopen tension.",
+      "axis": "integrity",
+      "direction": "exit",
+      "pattern_family": "authority_preservation",
+      "intensity": 4
+    },
+    {
+      "id": "B",
+      "label": "Protect the relationships that helped stabilize the office",
+      "subtext": "It feels practical because losing trusted people could create another operational crisis.",
+      "axis": "system_identity",
+      "direction": "exit",
+      "pattern_family": "relationship_exception",
+      "intensity": 4
+    },
+    {
+      "id": "C",
+      "label": "Move the team forward and focus on the next urgent office issue",
+      "subtext": "It feels efficient because the organization has too many active fires to stay in one incident.",
+      "axis": "system_identity",
+      "direction": "exit",
+      "pattern_family": "closure_rush",
+      "intensity": 5
+    },
+    {
+      "id": "D",
+      "label": "Define the integrity system that will apply when leadership is the pressure source",
+      "subtext": "It costs authority comfort because the standard will be used to question your future decisions.",
+      "axis": "integrity",
+      "direction": "entry",
+      "pattern_family": "principle_with_constraint",
+      "intensity": 5
+    }
+  ]
+}

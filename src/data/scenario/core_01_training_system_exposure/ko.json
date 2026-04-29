@@ -1,0 +1,301 @@
+{
+  "id": "core_01_training_system_exposure",
+  "title": "아직 아무도 소유하지 않은 트레이닝 갭",
+  "role": "Clinical Director",
+  "pressure": "새 Associate Dentist가 바쁜 Medicaid 오피스에서 어려움을 겪고 있다. 스케줄은 꽉 차 있고, 어시스턴트들은 이미 보이지 않게 보완하고 있으며, 오피스 매니저는 그 의사가 아직 독립적으로 움직이지 못한다고 말한다. 이 문제가 의사 개인만의 문제가 아닐 수 있다는 생각이 든다. 트레이닝 시스템이 준비되지 않은 사람을 압박 속으로 보냈을 수 있다.",
+  "tradeoff": "이것을 개인 퍼포먼스 문제로 보고 운영을 계속 유지할 수도 있고, 내가 만든 트레이닝 갭을 시스템 실패로 소유하고 보이는 correction을 시작할 수도 있다.",
+  "bty_tension_axis": "Ownership vs Performance Blame",
+  "axis_primary": "Ownership",
+  "axis_secondary": ["Integrity", "System", "Accountability"],
+  "difficulty_level": 4,
+  "action_contract": {
+    "description": "이 breakdown이 의사 개인에게만 있는지, 아니면 내가 만든 트레이닝 시스템에도 있는지 확인한다.",
+    "time_window_hours": 24
+  },
+  "air_logic": {
+    "success": "팀이 blame으로 전환하기 전에 트레이닝 갭이 드러난다.",
+    "miss": "의사가 문제로 관리되고, 시스템은 같은 갭을 계속 만들어낸다."
+  },
+  "forced_reset": {
+    "trigger": "새 의사가 반복적으로 chairside rescue, assistant correction, schedule protection을 필요로 한다.",
+    "action": "트레이닝 갭을 소유할지, 의사를 퍼포먼스 문제로 볼지 결정해야 한다."
+  },
+  "pattern_detection": [
+    "ownership_avoidance",
+    "performance_blame",
+    "system_thinking",
+    "future_deferral"
+  ],
+  "choices": [
+    {
+      "id": "A",
+      "label": "트레이닝 경로를 리뷰하고 시스템 갭을 말한다",
+      "subtext": "추가 일이 생기고, 리더십이 의사를 너무 빨리 내보냈다는 점이 드러날 수 있다.",
+      "axis": "Ownership",
+      "direction": "entry",
+      "pattern_family": "system_thinking",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_primary_A"
+    },
+    {
+      "id": "B",
+      "label": "의사를 따로 코칭하고 문제를 개인 이슈로 유지한다",
+      "subtext": "직접적이고, 더 큰 시스템 대화를 피할 수 있다.",
+      "axis": "Accountability",
+      "direction": "exit",
+      "pattern_family": "performance_blame",
+      "intensity": 2,
+      "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_primary_B"
+    },
+    {
+      "id": "C",
+      "label": "오피스 매니저에게 더 많은 사례를 모니터링하고 보고하게 한다",
+      "subtext": "개입하기 전에 더 많은 정보를 얻을 수 있다.",
+      "axis": "Time",
+      "direction": "exit",
+      "pattern_family": "future_deferral",
+      "intensity": 2,
+      "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_primary_C"
+    },
+    {
+      "id": "D",
+      "label": "의사가 따라올 때까지 팀에게 support를 요청한다",
+      "subtext": "하루는 계속 돌아가고, 즉각적인 disruption을 피할 수 있다.",
+      "axis": "System",
+      "direction": "exit",
+      "pattern_family": "compensation_loop",
+      "intensity": 2,
+      "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_primary_D"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "트레이닝 갭을 말하자 Regional Manager는 이것이 다른 새 의사들도 너무 빨리 배치되었다는 뜻인지 묻는다. 이슈가 한 오피스를 넘어 확장된다.",
+      "pressure_increase": 0.5,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "리뷰 범위를 이 의사 한 명으로 제한한다",
+          "cost": "노출은 줄어들지만, 시스템 패턴은 검증되지 않은 채 남는다.",
+          "axis": "Control",
+          "direction": "exit",
+          "pattern_family": "ownership_avoidance",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_tradeoff_A_X"
+        },
+        {
+          "id": "Y",
+          "label": "모든 새 의사 트레이닝 프로세스로 리뷰를 확장한다",
+          "cost": "일이 커지고 리더십 책임이 드러난다.",
+          "axis": "Ownership",
+          "direction": "entry",
+          "pattern_family": "system_thinking",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_tradeoff_A_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "해석이 아니라, 다음에 실제로 무엇을 할 것인가.",
+        "context": "이제 이슈는 한 의사만의 문제가 아니다. 시스템이 같은 갭을 반복해서 만들고 있을 수 있다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "24시간 안에 트레이닝 갭을 기록하고 new doctor onboarding checklist 리뷰를 잡는다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "system_thinking",
+              "description": "concern을 보이는 system ownership으로 바꾸고 있다."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_action_A_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "더 많은 사례가 나올 때까지 informal concern으로 둔다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Time",
+              "direction": "exit",
+              "pattern_family": "future_deferral",
+              "description": "패턴이 더 부정하기 어려워질 때까지 system ownership을 미루고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_action_A_X_AD2"
+          }
+        ]
+      }
+    },
+    "B": {
+      "escalation_text": "의사는 개선하려고 하지만 어시스턴트 팀은 setup, pacing, 환자 설명을 계속 correction한다. 이제 팀은 그 의사를 느리고 믿기 어렵다고 표현하기 시작한다.",
+      "pressure_increase": 0.5,
+      "intensity": 3,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "의사 개인 코칭을 늘린다",
+          "cost": "의사는 더 많은 피드백을 받지만, 트레이닝 시스템은 보이지 않는다.",
+          "axis": "Accountability",
+          "direction": "exit",
+          "pattern_family": "performance_blame",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_tradeoff_B_X"
+        },
+        {
+          "id": "Y",
+          "label": "이슈를 training and support gap으로 다시 본다",
+          "cost": "처음 대응이 너무 좁았다는 것을 인정해야 한다.",
+          "axis": "Ownership",
+          "direction": "entry",
+          "pattern_family": "system_thinking",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_tradeoff_B_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "해석이 아니라, 다음에 실제로 무엇을 할 것인가.",
+        "context": "개인 코칭은 팀 부담을 바꾸지 못했다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "24시간 안에 의사와 매니저를 만나 배치 전에 빠졌던 support를 map한다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "system_thinking",
+              "description": "개인 blame에서 system correction으로 이동하고 있다."
+            },
+            "intensity": 3,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_action_B_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "의사 코칭을 계속하고 퍼포먼스가 나아지기를 기다린다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Accountability",
+              "direction": "exit",
+              "pattern_family": "performance_blame",
+              "description": "문제를 개인에게 붙여두고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_action_B_X_AD2"
+          }
+        ]
+      }
+    },
+    "C": {
+      "escalation_text": "매니저는 더 많은 사례를 보낸다. 하지만 리포트는 점점 의사의 실수 중심으로 쌓인다. 의사는 자신이 감시받고 있다고 느끼며 더 방어적으로 변한다.",
+      "pressure_increase": 0.4,
+      "intensity": 3,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "행동하기 전에 사례를 계속 모은다",
+          "cost": "파일은 커지지만, trust는 줄고 시스템은 여전히 검토되지 않는다.",
+          "axis": "Time",
+          "direction": "exit",
+          "pattern_family": "future_deferral",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_tradeoff_C_X"
+        },
+        {
+          "id": "Y",
+          "label": "evidence loop를 멈추고 트레이닝 경로를 리뷰한다",
+          "cost": "더 많은 데이터의 안정감을 내려놓고, 불완전한 그림 위에서 행동해야 한다.",
+          "axis": "Ownership",
+          "direction": "entry",
+          "pattern_family": "system_thinking",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_tradeoff_C_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "해석이 아니라, 다음에 실제로 무엇을 할 것인가.",
+        "context": "모니터링이 training review가 아니라 performance file로 바뀌고 있다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "24시간 안에 사례 수집을 멈추고 의사의 다음 3일 clinical support plan을 만든다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "system_thinking",
+              "description": "모니터링을 support로 바꾸고 있다."
+            },
+            "intensity": 3,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_action_C_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "결정하기 전에 한 주 더 사례를 요청한다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Time",
+              "direction": "exit",
+              "pattern_family": "future_deferral",
+              "description": "더 많은 데이터를 ownership 지연에 사용하고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_action_C_X_AD2"
+          }
+        ]
+      }
+    },
+    "D": {
+      "escalation_text": "팀은 스케줄을 계속 움직인다. 하지만 어시스턴트들은 clinical judgment, patient explanation, setup decision까지 조용히 보완하기 시작한다. 의사는 rescue에 의존하게 된다.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "의사가 속도를 낼 때까지 팀 support에 계속 의존한다",
+          "cost": "하루는 돌아가지만, hidden compensation이 트레이닝 시스템이 된다.",
+          "axis": "System",
+          "direction": "exit",
+          "pattern_family": "compensation_loop",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_tradeoff_D_X"
+        },
+        {
+          "id": "Y",
+          "label": "compensation loop를 말하고 support를 다시 설계한다",
+          "cost": "현재 workaround를 흔들고 구조 부족을 드러내야 한다.",
+          "axis": "Ownership",
+          "direction": "entry",
+          "pattern_family": "system_thinking",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_tradeoff_D_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "해석이 아니라, 다음에 실제로 무엇을 할 것인가.",
+        "context": "팀 support가 보이지 않는 workaround로 바뀌었다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "24시간 안에 assistant가 support할 범위와 doctor가 독립적으로 own해야 할 범위를 정의한다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "system_thinking",
+              "description": "숨겨진 compensation을 보이게 만들고 경계를 정하고 있다."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_action_D_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "의사가 적응하는 동안 팀이 계속 도와주게 둔다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "System",
+              "direction": "exit",
+              "pattern_family": "compensation_loop",
+              "description": "workaround가 normal이 되도록 허용하고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-01_action_D_X_AD2"
+          }
+        ]
+      }
+    }
+  }
+}

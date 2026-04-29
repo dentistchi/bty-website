@@ -1,0 +1,277 @@
+{
+  "id": "core_20_identity_integrity_inheritance",
+  "title": "Integrity가 나 없이도 살아남아야 할 때",
+  "role": "Clinical Director / Partner Doctor",
+  "pressure": "Integrity system은 여러 오피스에서 테스트되었다. 하지만 이제 새로운 리더, partner doctor, regional manager들이 내가 직접 있지 않은 상태에서 그 시스템을 이어가야 한다. 조직은 이 기준이 시스템의 것인지, 아직도 나의 것인지를 보고 있다.",
+  "tradeoff": "내 개인 리더십으로 integrity를 보호할 것인가, 아니면 리더십이 바뀌어도 살아남을 만큼 transferable하게 만들 것인가.",
+  "bty_tension_axis": "identity_integrity_inheritance",
+  "axis_primary": "integrity",
+  "axis_secondary": "transferability",
+  "difficulty_level": "final_full_density",
+  "incident": {
+    "incidentId": "incident_02",
+    "incidentStage": "system inheritance",
+    "sequencePosition": 20,
+    "previousScenarioId": "core_19_identity_integrity_propagation",
+    "nextScenarioId": null,
+    "roleShift": "from system enforcer to system inheritance designer",
+    "propagation": {
+      "exitEffect": "Integrity system은 그것을 만든 리더에게 계속 의존한다.",
+      "entryEffect": "Integrity system은 가르칠 수 있고, 테스트할 수 있고, 넘겨줄 수 있는 시스템이 된다.",
+      "reExposureNote": "다음 리더십 전환은 이것이 사람 중심의 기준이었는지, 시스템이 소유한 기준이었는지를 드러낸다."
+    }
+  },
+  "action_contract": {
+    "description": "다른 리더가 내 해석에 의존하지 않고 압박 속에서 integrity system을 적용할 수 있게 만드는 관찰 가능한 transfer mechanism 하나를 만든다.",
+    "time_window_hours": 72
+  },
+  "AIR_logic": {
+    "success": "후임 리더가 내 비공개 correction 없이도 압박 속에서 integrity system을 일관되게 적용한다.",
+    "miss": "시스템이 해석, enforcement, 보호를 위해 계속 내 판단을 필요로 한다."
+  },
+  "forced_reset": {
+    "trigger": "새 리더가 integrity system을 다르게 적용한 뒤, 본인은 내 의도를 따랐다고 말한다.",
+    "action": "의도와 운영 기준을 분리하고, 결정을 정의된 criteria와 비교한 뒤, 관찰 가능한 correction을 요구한다."
+  },
+  "pattern_detection": {
+    "person_dependent_integrity": "원래 리더가 직접 관여할 때만 integrity가 강하게 보인다.",
+    "instruction_based_handoff": "기준을 설명하지만 실제 적용 가능한지는 관찰하지 않는다.",
+    "successor_assumption": "새 리더가 원칙에 동의한다는 이유로 시스템을 이해했다고 가정한다.",
+    "documentation_without_ownership": "문서는 만들지만 다른 리더가 결정을 소유할 수 있는지는 테스트하지 않는다."
+  },
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "한 regional manager가 integrity decision을 미룬다. 팀은 내 input을 기다리고 있다. 직원들은 시스템이 내가 관여할 때만 작동한다고 말하기 시작한다.",
+      "pressure_increase": "시스템은 강점이 아니라 의존성을 드러내고 있다.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "Integrity system을 내 개인적 presence에서 분리하기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "현재 패턴은 사람들이 시스템보다 나를 더 신뢰하고 있을 수 있음을 보여준다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 active integrity decision 하나를 regional manager에게 배정하고, written criteria에 따라 먼저 documented decision을 제출하게 한 뒤 그 이후에만 review한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "현재 케이스에서 기준이 보호되도록 내가 가까이 관여한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "결정이 틀어지지 않도록 빠르게 개입한다",
+          "cost": "케이스는 보호하지만 시스템이 여전히 나에게 의존한다는 것을 확인시킨다.",
+          "axis": "integrity",
+          "direction": "exit",
+          "pattern_family": "person_dependent_integrity"
+        },
+        {
+          "id": "Y",
+          "label": "내가 comment하기 전에 regional manager가 written criteria로 먼저 결정하게 한다",
+          "cost": "수정 전에 불편함과 불완전함이 보일 수 있다.",
+          "axis": "transferability",
+          "direction": "entry",
+          "pattern_family": "system_independence"
+        }
+      ]
+    },
+    "B": {
+      "escalation_text": "새 리더가 시스템의 언어는 반복하지만, enforceable standard가 아니라 conversation guideline처럼 적용한다.",
+      "pressure_increase": "handoff는 vocabulary는 넘겼지만 operating behavior는 넘기지 못했다.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "handoff가 말이 아니라 행동임을 증명하기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "시스템은 설명할 수 있을 때가 아니라 압박 속에서 적용할 수 있을 때 transfer된다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 live integrity-case review를 잡고, 새 리더가 standard를 식별하고, pressure를 이름 붙이고, action을 선택하고, follow-up을 문서화하게 한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "시스템에 대한 더 명확한 설명을 보내고 새 리더에게 꼼꼼히 review하라고 요청한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "개념을 다시 설명하고 시간을 더 준다",
+          "cost": "이해와 적용 사이의 gap이 더 길어진다.",
+          "axis": "transferability",
+          "direction": "exit",
+          "pattern_family": "instruction_based_handoff"
+        },
+        {
+          "id": "Y",
+          "label": "새 리더가 실제 케이스에 시스템을 적용하는 모습을 관찰하고 criteria와 비교한다",
+          "cost": "성과 압박이 생기고 instruction만으로는 부족했음이 드러날 수 있다.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "observed_handoff"
+        }
+      ]
+    },
+    "C": {
+      "escalation_text": "후임자는 공개적으로 원칙에 동의하지만, 비공개로 high-performing doctor에게 예외를 준다. 그 의사를 잃지 않기 위해서다.",
+      "pressure_increase": "가치에 대한 동의는 관계와 성과 압박 아래에서 실패했다.",
+      "intensity": 7,
+      "action_decision": {
+        "prompt": "실제 압박 속에서 successor alignment를 테스트하기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "후임자는 integrity를 거부한 것이 아니라, 가치 있는 사람이 관련되자 그것을 재해석했다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 후임자가 해당 exception decision을 integrity criteria에 맞춰 다시 문서화하고, 같은 결정이 non-favored employee에게도 적용될지 식별하게 한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "후임자를 비공개로 코칭하고 다음에는 더 일관성 있게 하도록 격려한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "learning moment로 다루고 후임자의 confidence를 보호한다",
+          "cost": "후임자는 보호하지만 첫 pressure test는 약해진다.",
+          "axis": "transferability",
+          "direction": "exit",
+          "pattern_family": "successor_assumption"
+        },
+        {
+          "id": "Y",
+          "label": "후임자가 같은 integrity criteria로 결정을 다시 검토하게 한다",
+          "cost": "민망함이 생기고 동의만으로는 충분하지 않다는 것이 드러난다.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "pressure_tested_successor_alignment"
+        }
+      ]
+    },
+    "D": {
+      "escalation_text": "관찰된 pressure case에서 후임자는 checklist를 따르지만, 결정이 partner doctor와 갈등을 만들자 망설인다.",
+      "pressure_increase": "시스템은 문서상으로는 작동하지만 hierarchy와 충돌하고 있다.",
+      "intensity": 7,
+      "action_decision": {
+        "prompt": "Hierarchy pressure 아래에서 successor ownership을 실제로 만들기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "후임자가 authority의 저항이 없을 때만 시스템을 사용할 수 있다면 handoff는 완료되지 않았다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 후임자가 partner-related action step을 완료하고, decision trail을 문서화하고, 내가 take over하지 않은 상태에서 two-leader review에 outcome을 제시하게 한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "partner conflict가 조심스럽게 다뤄지도록 후임자가 진행 전에 나와 consult하게 한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "후임자가 action 전에 나와 consult하도록 허용한다",
+          "cost": "리스크는 줄지만 최종 courage는 계속 나에게 집중된다.",
+          "axis": "transferability",
+          "direction": "exit",
+          "pattern_family": "documentation_without_ownership"
+        },
+        {
+          "id": "Y",
+          "label": "정의된 support는 제공하되 ownership을 다시 나에게 넘기지 않고 후임자가 action step을 완료하게 한다",
+          "cost": "보이는 긴장이 생기고, 후임자가 authority 앞에서 시스템을 직접 들고 가야 한다.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "successor_ownership_mechanism"
+        }
+      ]
+    }
+  },
+  "ending_identity_choice": {
+    "prompt": "시스템이 나 없이 살아남아야 할 때, 나는 어떤 integrity를 만든 것인가?",
+    "choices": [
+      {
+        "id": "SYS1",
+        "label": "원래 리더가 있을 때 가장 강한 integrity",
+        "direction": "exit"
+      },
+      {
+        "id": "SYS2",
+        "label": "다른 리더가 이어받고, 테스트하고, 들고 갈 수 있는 integrity",
+        "direction": "entry"
+      }
+    ]
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "민감한 integrity decision을 계속 직접 가이드한다",
+      "subtext": "내가 가까이 있을 때 시스템이 더 좋은 결과를 내기 때문에 더 안전하게 느껴진다.",
+      "axis": "integrity",
+      "direction": "exit",
+      "pattern_family": "person_dependent_integrity",
+      "intensity": 5
+    },
+    {
+      "id": "B",
+      "label": "새 리더들에게 시스템을 명확히 설명하고 사용하게 한다",
+      "subtext": "리더들이 over-managed되지 않고 움직일 공간이 필요하기 때문에 scalable하게 느껴진다.",
+      "axis": "transferability",
+      "direction": "exit",
+      "pattern_family": "instruction_based_handoff",
+      "intensity": 5
+    },
+    {
+      "id": "C",
+      "label": "후임자가 integrity principle에 동의하므로 판단을 신뢰한다",
+      "subtext": "너무 직접적으로 테스트하면 불신처럼 보일 수 있어 존중하는 방식처럼 느껴진다.",
+      "axis": "transferability",
+      "direction": "exit",
+      "pattern_family": "successor_assumption",
+      "intensity": 6
+    },
+    {
+      "id": "D",
+      "label": "후임자가 실제 pressure case에서 시스템을 적용하게 하고 그 과정을 관찰한다",
+      "subtext": "handoff가 시스템과 후임자의 gap을 드러낼 수 있기 때문에 불편함이 생긴다.",
+      "axis": "integrity",
+      "direction": "entry",
+      "pattern_family": "ownership_transfer",
+      "intensity": 6
+    }
+  ]
+}

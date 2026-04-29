@@ -1,0 +1,277 @@
+{
+  "id": "core_21_identity_integrity_misuse",
+  "title": "시스템이 잘못 사용되기 시작할 때",
+  "role": "Clinical Director / Partner Doctor",
+  "pressure": "Integrity system은 후임 리더에게 넘어갔고, 이제 그 리더는 시스템의 언어를 사용해 결정을 내리고 있다. 하지만 첫 번째 변형이 나타난다. 시스템은 accountability를 만들기보다 사람을 압박하거나, 리더십의 결정을 정당화하는 도구처럼 사용되기 시작한다.",
+  "tradeoff": "시스템의 권위를 보호하기 위해 변형을 조용히 수정할 것인가, 아니면 시스템이 잘못 사용되고 있음을 공개적으로 교정할 것인가.",
+  "bty_tension_axis": "identity_integrity_misuse",
+  "axis_primary": "integrity",
+  "axis_secondary": "correction",
+  "difficulty_level": "final_full_density",
+  "incident": {
+    "incidentId": "incident_02",
+    "incidentStage": "system misuse correction",
+    "sequencePosition": 21,
+    "previousScenarioId": "core_20_identity_integrity_inheritance",
+    "nextScenarioId": null,
+    "roleShift": "from system inheritance designer to misuse corrector",
+    "propagation": {
+      "exitEffect": "시스템은 리더십 언어로 남지만 실제로는 권한을 보호하는 도구로 변형된다.",
+      "entryEffect": "시스템은 자기 오용까지 교정할 수 있는 살아있는 운영 기준이 된다.",
+      "reExposureNote": "시스템이 강해지는 순간은 성공할 때가 아니라, 잘못 사용될 때 스스로 수정될 수 있을 때다."
+    }
+  },
+  "action_contract": {
+    "description": "후임 리더가 integrity system을 잘못 적용한 첫 사례를 식별하고, 시스템의 권위를 무너뜨리지 않으면서 오용을 관찰 가능하게 교정한다.",
+    "time_window_hours": 72
+  },
+  "AIR_logic": {
+    "success": "시스템의 오용이 개인 공격이 아니라 운영 기준의 drift로 다뤄지고, 교정 기준이 남는다.",
+    "miss": "오용이 조용히 덮이거나, 후임 리더 개인의 문제로 축소되어 시스템 변형이 계속된다."
+  },
+  "forced_reset": {
+    "trigger": "직원이 integrity system이 이제 리더십이 원하는 결론을 밀어붙이는 언어처럼 느껴진다고 말한다.",
+    "action": "사람을 방어하거나 공격하지 않고, 해당 결정을 원래 criteria와 비교해 어디서 변형됐는지 공개적으로 이름 붙인다."
+  },
+  "pattern_detection": {
+    "system_defensiveness": "시스템의 신뢰도를 보호하려고 오용을 조용히 처리한다.",
+    "leader_protection": "후임 리더의 권위가 흔들릴까 봐 잘못된 적용을 명확히 교정하지 않는다.",
+    "tool_distortion": "integrity 언어가 accountability가 아니라 압박과 통제의 도구로 사용된다.",
+    "correction_avoidance": "시스템을 만든 사람으로서의 책임을 피하고, 변형을 개인 스타일 차이로 취급한다."
+  },
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "비공개 조정 이후에도 직원들은 같은 패턴을 본다. 후임 리더는 더 부드러운 언어를 쓰지만, 여전히 integrity system을 근거로 staff에게만 부담을 주고 leadership decision은 review하지 않는다.",
+      "pressure_increase": "비공개 코칭은 행동의 표현만 바꾸었고, 시스템의 방향은 바꾸지 못했다.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "오용이 비공개 코칭으로만 끝나지 않게 하기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "직원들은 후임 리더가 피드백을 받았는지가 아니라, 시스템이 실제로 자기 자신을 교정하는지를 보고 있다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 해당 결정을 원래 integrity criteria와 비교한 correction note를 작성하고, 후임 리더와 함께 팀에 공유한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "후임 리더와 다시 개인적으로 만나 적용 방식을 더 명확히 조정한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "후임 리더에게 한 번 더 개인적으로 피드백한다",
+          "cost": "후임 리더의 체면은 보호되지만 직원들은 correction을 볼 수 없다.",
+          "axis": "correction",
+          "direction": "exit",
+          "pattern_family": "leader_protection"
+        },
+        {
+          "id": "Y",
+          "label": "해당 사례를 criteria 기준으로 다시 review하고 무엇이 잘못 적용됐는지 팀에 공유한다",
+          "cost": "후임 리더가 공개적으로 불편함을 느낄 수 있다.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "visible_correction"
+        }
+      ]
+    },
+    "B": {
+      "escalation_text": "시스템을 방어하는 설명 이후, 직원들은 시스템을 더 신뢰하지 않는다. 오히려 리더십이 만든 시스템은 리더십을 보호하기 위해 해석된다고 느낀다.",
+      "pressure_increase": "시스템 보호가 시스템 불신으로 전환되고 있다.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "시스템 방어가 아니라 시스템 교정으로 전환하기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "신뢰는 시스템이 틀리지 않았다고 주장할 때가 아니라, 틀린 적용을 수정할 때 회복된다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 오용된 decision 하나를 공식적으로 reopen하고, 원래 criteria에 따라 수정된 action과 follow-up owner를 지정한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "시스템의 목적과 원칙을 다시 설명하는 메시지를 보낸다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "시스템의 의도와 원칙을 다시 설명한다",
+          "cost": "의도는 명확해지지만 오용된 실제 결정은 수정되지 않는다.",
+          "axis": "integrity",
+          "direction": "exit",
+          "pattern_family": "system_defensiveness"
+        },
+        {
+          "id": "Y",
+          "label": "시스템의 신뢰도를 보호하기보다 오용된 결정을 먼저 수정한다",
+          "cost": "시스템이 완벽하지 않았음을 인정해야 한다.",
+          "axis": "correction",
+          "direction": "entry",
+          "pattern_family": "system_humility"
+        }
+      ]
+    },
+    "C": {
+      "escalation_text": "관찰하는 동안 다른 리더들도 시스템 언어를 각자 다르게 사용하기 시작한다. 어떤 리더는 accountability로, 어떤 리더는 warning으로, 어떤 리더는 staff control로 사용한다.",
+      "pressure_increase": "오용은 개인 스타일이 아니라 복제 가능한 drift가 되고 있다.",
+      "intensity": 7,
+      "action_decision": {
+        "prompt": "시스템 언어가 리더마다 다르게 변형되지 않게 하기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "시스템은 설명만으로 유지되지 않는다. 오용의 경계가 없으면 가장 강한 리더의 스타일이 기준이 된다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 integrity system misuse boundary를 작성해, 허용되는 적용 3가지와 오용으로 간주되는 적용 3가지를 리더십 팀에 공유한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "리더들이 더 많은 사례를 경험하며 자연스럽게 정렬될 시간을 준다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "리더들이 경험을 통해 정렬될 때까지 더 지켜본다",
+          "cost": "drift가 리더십 문화로 굳어질 수 있다.",
+          "axis": "correction",
+          "direction": "exit",
+          "pattern_family": "correction_avoidance"
+        },
+        {
+          "id": "Y",
+          "label": "허용 가능한 적용과 오용을 구분하는 misuse boundary를 만든다",
+          "cost": "리더들의 자율적 해석을 제한한다.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "boundary_definition"
+        }
+      ]
+    },
+    "D": {
+      "escalation_text": "공개 교정 후, 후임 리더가 말한다. 자신을 support하지 않고 직원들 앞에서 authority를 약하게 만들었다고 느낀다. 일부 partner들도 리더십끼리 먼저 정리했어야 한다고 반응한다.",
+      "pressure_increase": "시스템 교정이 리더십 충성도와 권위 보호의 문제로 바뀐다.",
+      "intensity": 8,
+      "action_decision": {
+        "prompt": "후임 리더를 무너뜨리지 않으면서도 시스템 오용을 교정하기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "이 순간의 목표는 사람을 낮추는 것이 아니라, 누구도 시스템을 자기 권한의 방패로 쓰지 못하게 하는 것이다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 후임 리더와 함께 joint correction statement를 작성해, 리더의 ownership은 인정하되 잘못 적용된 criteria와 수정 action을 명확히 공유한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "후임 리더와 partner들의 불편함을 줄이기 위해 공개 correction의 표현을 완화한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "후임 리더의 authority를 회복하기 위해 correction tone을 낮춘다",
+          "cost": "관계는 회복되지만 오용 교정의 선명함이 약해진다.",
+          "axis": "correction",
+          "direction": "exit",
+          "pattern_family": "leader_protection"
+        },
+        {
+          "id": "Y",
+          "label": "후임 리더를 보호하면서도 correction standard는 유지한다",
+          "cost": "관계적 불편함과 기준의 선명함을 동시에 들고 가야 한다.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "relationally_held_correction"
+        }
+      ]
+    }
+  },
+  "ending_identity_choice": {
+    "prompt": "내가 만든 시스템이 잘못 사용될 때, 나는 어떤 리더로 남을 것인가?",
+    "choices": [
+      {
+        "id": "SYS1",
+        "label": "시스템의 이미지를 보호하기 위해 오용을 조용히 조정하는 리더",
+        "direction": "exit"
+      },
+      {
+        "id": "SYS2",
+        "label": "시스템이 자기 오용까지 교정하도록 만드는 리더",
+        "direction": "entry"
+      }
+    ]
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "후임 리더와 비공개로 이야기해 적용 방식을 조정한다",
+      "subtext": "공개적으로 다루면 후임 리더의 authority가 약해질 수 있어 안정적으로 느껴진다.",
+      "axis": "correction",
+      "direction": "exit",
+      "pattern_family": "leader_protection",
+      "intensity": 5
+    },
+    {
+      "id": "B",
+      "label": "시스템 자체는 맞고 적용만 미숙했다고 설명한다",
+      "subtext": "시스템의 신뢰도를 지켜야 하므로 문제를 제한적으로 다루는 것이 합리적으로 느껴진다.",
+      "axis": "integrity",
+      "direction": "exit",
+      "pattern_family": "system_defensiveness",
+      "intensity": 5
+    },
+    {
+      "id": "C",
+      "label": "각 리더의 스타일 차이로 보고 큰 개입 없이 관찰한다",
+      "subtext": "너무 빨리 개입하면 후임 리더들이 스스로 배울 기회를 잃을 수 있어 성숙한 위임처럼 느껴진다.",
+      "axis": "correction",
+      "direction": "exit",
+      "pattern_family": "correction_avoidance",
+      "intensity": 6
+    },
+    {
+      "id": "D",
+      "label": "시스템이 잘못 사용된 지점을 기준으로 공개 교정한다",
+      "subtext": "후임 리더의 불편함과 시스템 신뢰도 손상을 감수해야 하지만, 오용까지 교정 가능한 기준을 남긴다.",
+      "axis": "integrity",
+      "direction": "entry",
+      "pattern_family": "misuse_correction",
+      "intensity": 7
+    }
+  ]
+}

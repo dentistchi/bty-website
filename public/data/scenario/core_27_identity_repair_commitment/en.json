@@ -1,0 +1,301 @@
+{
+    "id": "core_27_identity_repair_commitment",
+    "title": "What Changes Tomorrow",
+    "role": "Self",
+    "pressure": "You acknowledged that your behavior contributed to hesitation and bypassing. The meeting is over now. No one is forcing the next step, but the next busy clinical moment will test whether anything actually changed.",
+    "tradeoff": "You can convert ownership into visible repeated behavior, or let the insight remain private and fade into intention.",
+    "bty_tension_axis": "Insight vs Observable Change",
+    "axis_primary": "Repair",
+    "axis_secondary": ["Integrity", "Accountability", "Courage"],
+    "difficulty_level": 5,
+    "action_contract": {
+      "description": "Convert ownership into one specific repeated behavior that others can observe.",
+      "time_window_hours": 48
+    },
+    "air_logic": {
+      "success": "The team begins to experience your repair as behavior, not just words.",
+      "miss": "The insight remains internal and the same authority pattern returns under pressure."
+    },
+    "forced_reset": {
+      "trigger": "The next busy clinical or team moment creates the same pressure pattern.",
+      "action": "You must act differently before the team withdraws again."
+    },
+    "pattern_detection": [
+      "future_deferral",
+      "silent_execution",
+      "accountability_system",
+      "identity_commitment"
+    ],
+    "choices": [
+      {
+        "id": "A",
+        "label": "Define one behavior you will repeat and share it with the assistant",
+        "subtext": "This makes the repair visible and gives the team something to watch.",
+        "axis": "Repair",
+        "direction": "entry",
+        "pattern_family": "accountability_system",
+        "intensity": 3,
+        "dbChoiceId": "INCIDENT-03-REPAIR-09_primary_A"
+      },
+      {
+        "id": "B",
+        "label": "Reflect privately on what you learned and move forward",
+        "subtext": "This feels complete without adding more exposure.",
+        "axis": "Integrity",
+        "direction": "exit",
+        "pattern_family": "silent_execution",
+        "intensity": 2,
+        "dbChoiceId": "INCIDENT-03-REPAIR-09_primary_B"
+      },
+      {
+        "id": "C",
+        "label": "Wait for the next similar situation to practice the change",
+        "subtext": "This keeps flexibility and avoids overcommitting too early.",
+        "axis": "Time",
+        "direction": "exit",
+        "pattern_family": "future_deferral",
+        "intensity": 2,
+        "dbChoiceId": "INCIDENT-03-REPAIR-09_primary_C"
+      },
+      {
+        "id": "D",
+        "label": "Ask the manager to watch for improvement instead of naming it to the assistant",
+        "subtext": "This creates some accountability while avoiding direct vulnerability.",
+        "axis": "Accountability",
+        "direction": "exit",
+        "pattern_family": "authority_protection",
+        "intensity": 2,
+        "dbChoiceId": "INCIDENT-03-REPAIR-09_primary_D"
+      }
+    ],
+    "escalationBranches": {
+      "A": {
+        "escalation_text": "When you share the behavior change, the assistant accepts it but does not fully relax. They say they will believe it when they see it during a busy procedure.",
+        "pressure_increase": 0.5,
+        "intensity": 4,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "Explain that trust takes time and leave it there",
+            "cost": "The statement is reasonable, but the repair stays verbal.",
+            "axis": "Time",
+            "direction": "exit",
+            "pattern_family": "future_deferral",
+            "dbChoiceId": "INCIDENT-03-REPAIR-09_tradeoff_A_X"
+          },
+          {
+            "id": "Y",
+            "label": "Turn the behavior into a visible cue for the next procedure",
+            "cost": "You make yourself observable in the exact moment where the pattern used to appear.",
+            "axis": "Repair",
+            "direction": "entry",
+            "pattern_family": "accountability_system",
+            "dbChoiceId": "INCIDENT-03-REPAIR-09_tradeoff_A_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "Not insight — what will be visible tomorrow.",
+          "context": "The assistant is not asking for more words. They are waiting for repeated evidence.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "Before the next procedure, tell the assistant the exact cue you will use to pause and invite input",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Repair",
+                "direction": "entry",
+                "pattern_family": "accountability_system",
+                "description": "You are turning repair into an observable repeatable behavior."
+              },
+              "intensity": 4,
+              "dbChoiceId": "INCIDENT-03-REPAIR-09_action_A_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "Trust that the assistant will notice your improvement naturally over time",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Time",
+                "direction": "exit",
+                "pattern_family": "future_deferral",
+                "description": "You are relying on time instead of visible accountability."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-REPAIR-09_action_A_X_AD2"
+            }
+          ]
+        }
+      },
+      "B": {
+        "escalation_text": "You feel clearer internally, but the next busy procedure moves quickly. The assistant hesitates again because they do not know what changed.",
+        "pressure_increase": 0.5,
+        "intensity": 3,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "Keep adjusting quietly so the change feels natural",
+            "cost": "You avoid attention, but the team has no signal that repair is happening.",
+            "axis": "Integrity",
+            "direction": "exit",
+            "pattern_family": "silent_execution",
+            "dbChoiceId": "INCIDENT-03-REPAIR-09_tradeoff_B_X"
+          },
+          {
+            "id": "Y",
+            "label": "Name one behavior change so the assistant knows what to expect",
+            "cost": "You turn a private insight into visible accountability.",
+            "axis": "Repair",
+            "direction": "entry",
+            "pattern_family": "accountability_system",
+            "dbChoiceId": "INCIDENT-03-REPAIR-09_tradeoff_B_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "Not insight — what will be visible tomorrow.",
+          "context": "Private clarity did not give the assistant a signal they could trust.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "Within 48 hours, state one specific behavior change to the assistant and ask them to flag when you miss it",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Repair",
+                "direction": "entry",
+                "pattern_family": "accountability_system",
+                "description": "You are making private insight visible and measurable."
+              },
+              "intensity": 3,
+              "dbChoiceId": "INCIDENT-03-REPAIR-09_action_B_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "Continue changing quietly without announcing anything",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Integrity",
+                "direction": "exit",
+                "pattern_family": "silent_execution",
+                "description": "You are choosing private improvement without shared accountability."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-REPAIR-09_action_B_X_AD2"
+            }
+          ]
+        }
+      },
+      "C": {
+        "escalation_text": "The next similar situation arrives sooner than expected. Because no behavior was defined beforehand, you react from habit and the assistant goes quiet again.",
+        "pressure_increase": 0.6,
+        "intensity": 4,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "Treat it as a missed attempt and try again next time",
+            "cost": "You preserve flexibility, but the team experiences another repeat of the pattern.",
+            "axis": "Time",
+            "direction": "exit",
+            "pattern_family": "future_deferral",
+            "dbChoiceId": "INCIDENT-03-REPAIR-09_tradeoff_C_X"
+          },
+          {
+            "id": "Y",
+            "label": "Stop and define the behavior before another repeat happens",
+            "cost": "You interrupt momentum and make the pattern visible in real time.",
+            "axis": "Repair",
+            "direction": "entry",
+            "pattern_family": "accountability_system",
+            "dbChoiceId": "INCIDENT-03-REPAIR-09_tradeoff_C_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "Not insight — what will be visible tomorrow.",
+          "context": "Waiting for the next situation allowed habit to lead again.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "Before the next patient block, write and share the exact behavior you will use under pressure",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Repair",
+                "direction": "entry",
+                "pattern_family": "accountability_system",
+                "description": "You are replacing vague intention with a prepared behavior."
+              },
+              "intensity": 4,
+              "dbChoiceId": "INCIDENT-03-REPAIR-09_action_C_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "Keep the lesson in mind and try to catch yourself next time",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Time",
+                "direction": "exit",
+                "pattern_family": "future_deferral",
+                "description": "You are choosing memory over structure."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-REPAIR-09_action_C_X_AD2"
+            }
+          ]
+        }
+      },
+      "D": {
+        "escalation_text": "The manager agrees to observe, but the assistant is not told what will change. The repair becomes something being monitored around them instead of rebuilt with them.",
+        "pressure_increase": 0.5,
+        "intensity": 3,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "Keep the manager as the accountability point",
+            "cost": "You gain oversight, but avoid direct relational repair with the assistant.",
+            "axis": "Accountability",
+            "direction": "exit",
+            "pattern_family": "authority_protection",
+            "dbChoiceId": "INCIDENT-03-REPAIR-09_tradeoff_D_X"
+          },
+          {
+            "id": "Y",
+            "label": "Bring the assistant into the accountability loop directly",
+            "cost": "You make the repair more vulnerable and less controlled.",
+            "axis": "Repair",
+            "direction": "entry",
+            "pattern_family": "accountability_system",
+            "dbChoiceId": "INCIDENT-03-REPAIR-09_tradeoff_D_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "Not insight — what will be visible tomorrow.",
+          "context": "Manager oversight may help, but the person impacted still does not have a visible repair signal.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "Within 48 hours, tell the assistant the behavior you are practicing and ask the manager only to support the follow-through",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Repair",
+                "direction": "entry",
+                "pattern_family": "accountability_system",
+                "description": "You are making accountability relational, not just managerial."
+              },
+              "intensity": 3,
+              "dbChoiceId": "INCIDENT-03-REPAIR-09_action_D_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "Let the manager observe improvement before involving the assistant again",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Accountability",
+                "direction": "exit",
+                "pattern_family": "authority_protection",
+                "description": "You are keeping repair indirect and controlled."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-REPAIR-09_action_D_X_AD2"
+            }
+          ]
+        }
+      }
+    }
+  }

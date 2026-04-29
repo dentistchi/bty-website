@@ -1,0 +1,52 @@
+{
+  "id": "core_01_s3_identity",
+  "title": "After the Documentation Is Filed",
+  "level": 5,
+  "chain_stage": 3,
+  "context": {
+    "role": "Regional Director",
+    "pressure": "The paperwork is done, but the meaning of the event is still alive in the region.",
+    "narrative": "The formal documentation is already in the system. Nothing about this situation can be fully undone now. Some people think you protected the business. Others think you failed the staff. A few leaders are waiting to see whether you will keep naming structural truth when it costs you personally, or whether this was a one-time exception. The event is over, but what it taught the region about you is still unfolding."
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Stop revisiting the issue and focus on cleaner execution so the same failure does not embarrass leadership again.",
+      "archetype": "avoid",
+      "state_impact": {
+        "reputation": 0,
+        "trust": -2,
+        "self_narrative": -2,
+        "courage": -2
+      }
+    },
+    {
+      "id": "B",
+      "label": "Build a formal training review into the next leadership cycle without reopening the emotional conflict around this event.",
+      "archetype": "structure",
+      "state_impact": {
+        "reputation": 1,
+        "trust": 0,
+        "self_narrative": 1,
+        "courage": 0
+      }
+    },
+    {
+      "id": "C",
+      "label": "Re-enter the conversation publicly, name what the region learned from this failure, and include your own role in allowing it.",
+      "archetype": "confront",
+      "state_impact": {
+        "reputation": -1,
+        "trust": 2,
+        "self_narrative": 2,
+        "courage": 2
+      }
+    }
+  ],
+  "questions": {
+    "level_2": "What do you still owe the people who carried the cost of a system decision?",
+    "level_3": "What truth are you still responsible for holding, even after the report is closed?",
+    "level_4": "How will your next move shape what leaders in this region hide or name?",
+    "level_5": "Nothing is fully clean now. Who do you choose to be when the record is already written?"
+  }
+}

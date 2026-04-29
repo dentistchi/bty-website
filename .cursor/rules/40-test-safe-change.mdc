@@ -1,0 +1,10 @@
+---
+description: Test-safe change behavior
+globs: ["**/*"]
+alwaysApply: false
+---
+For code changes in tested areas:
+- Do not break existing tests
+- Prefer minimal change
+- Mention edge cases briefly
+- Preserve business rules over stylistic cleanup

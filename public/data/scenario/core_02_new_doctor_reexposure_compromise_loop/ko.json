@@ -1,0 +1,301 @@
+{
+  "id": "core_02_new_doctor_reexposure_compromise_loop",
+  "title": "트레이닝 받지 못한 타협",
+  "role": "Associate Dentist",
+  "pressure": "이제 독립적으로 진료하고 있다. Medicaid 환자에게 크라운이 필요하지만 보험은 커버하지 않는다. 어시스턴트는 스케줄을 유지하기 위해 filling으로 진행하자고 조용히 제안한다. 당신은 이런 상황을 어떻게 다뤄야 하는지 명확히 트레이닝받은 적이 없다.",
+  "tradeoff": "흐름 vs 기준",
+  "bty_tension_axis": "Integrity vs Adaptation",
+  "axis_primary": "Ownership",
+  "axis_secondary": ["Integrity", "System"],
+  "difficulty_level": 4,
+  "action_contract": {
+    "description": "기존 타협 패턴을 따를지, 자신의 기준을 정의할지 결정한다.",
+    "time_window_hours": 24
+  },
+  "air_logic": {
+    "success": "명확한 치료 기준이 당신의 결정 속에서 보이기 시작한다.",
+    "miss": "케이스마다 다르게 적응하며 inconsistency를 강화한다."
+  },
+  "forced_reset": {
+    "trigger": "같은 보험 제한 상황이 다시 나타난다.",
+    "action": "패턴을 반복할지, 다시 정의할지 선택해야 한다."
+  },
+  "pattern_detection": [
+    "integrity_compromise",
+    "adaptation_loop",
+    "ownership_act",
+    "future_deferral"
+  ],
+  "choices": [
+    {
+      "id": "A",
+      "label": "어시스턴트 제안을 따르고 filling으로 진행한다",
+      "subtext": "갈등 없이 하루 흐름을 유지할 수 있다",
+      "axis": "Integrity",
+      "direction": "exit",
+      "pattern_family": "integrity_compromise",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_primary_A"
+    },
+    {
+      "id": "B",
+      "label": "임상 기준을 설명하고 crown을 추천한다",
+      "subtext": "지연과 긴장이 생길 수 있다",
+      "axis": "Ownership",
+      "direction": "entry",
+      "pattern_family": "ownership_act",
+      "intensity": 4,
+      "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_primary_B"
+    },
+    {
+      "id": "C",
+      "label": "결정을 미루고 재예약한다",
+      "subtext": "지금 어려운 결정을 피할 수 있다",
+      "axis": "Time",
+      "direction": "exit",
+      "pattern_family": "future_deferral",
+      "intensity": 2,
+      "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_primary_C"
+    },
+    {
+      "id": "D",
+      "label": "오피스 매니저에게 보통 어떻게 하는지 묻는다",
+      "subtext": "로컬 practice와 맞출 수 있다",
+      "axis": "Authority",
+      "direction": "exit",
+      "pattern_family": "delegation_deflection",
+      "intensity": 2,
+      "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_primary_D"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "같은 타협이 여러 케이스에서 반복된다. 이제 어시스턴트는 이것을 기본 방식으로 기대하기 시작한다.",
+      "pressure_increase": 0.5,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "같은 방식으로 계속 진행한다",
+          "cost": "낮아진 기준이 normal이 된다",
+          "axis": "Integrity",
+          "direction": "exit",
+          "pattern_family": "integrity_compromise",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_tradeoff_A_X"
+        },
+        {
+          "id": "Y",
+          "label": "멈추고 이 패턴을 질문한다",
+          "cost": "흐름을 끊고 기대치를 흔들어야 한다",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_tradeoff_A_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "다음에 실제로 무엇을 할 것인가.",
+        "context": "타협이 routine이 되고 있다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "패턴을 기록하고 내 치료 기준을 정의한다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "ownership_act",
+              "description": "인식을 정의된 기준으로 바꾸고 있다."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_action_A_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "케이스마다 개별적으로 계속 대응한다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Integrity",
+              "direction": "exit",
+              "pattern_family": "integrity_compromise",
+              "description": "inconsistency를 강화하고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_action_A_X_AD2"
+          }
+        ]
+      }
+    },
+    "B": {
+      "escalation_text": "환자는 비용 때문에 망설이고, 어시스턴트는 스케줄 지연을 걱정한다.",
+      "pressure_increase": 0.5,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "긴장을 줄이기 위해 recommendation을 부드럽게 낮춘다",
+          "cost": "기준이 흐려진다",
+          "axis": "Integrity",
+          "direction": "exit",
+          "pattern_family": "integrity_compromise",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_tradeoff_B_X"
+        },
+        {
+          "id": "Y",
+          "label": "recommendation의 명확성을 유지한다",
+          "cost": "방 안의 긴장을 견뎌야 한다",
+          "axis": "Ownership",
+          "direction": "entry",
+          "pattern_family": "ownership_act",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_tradeoff_B_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "다음에 실제로 무엇을 할 것인가.",
+        "context": "긴장은 있지만 명확성이 필요하다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "치료 rationale을 기록하고 명확히 커뮤니케이션한다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "ownership_act",
+              "description": "압박 속에서도 명확성을 강화하고 있다."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_action_B_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "흐름을 유지하기 위해 설명을 조정한다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Integrity",
+              "direction": "exit",
+              "pattern_family": "integrity_compromise",
+              "description": "명확성을 흐름과 교환하고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_action_B_X_AD2"
+          }
+        ]
+      }
+    },
+    "C": {
+      "escalation_text": "같은 상황이 빠르게 다시 나타난다. 이전에 아무것도 정의하지 않았기 때문에 결정 압박은 더 커진다.",
+      "pressure_increase": 0.6,
+      "intensity": 3,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "다시 결정을 미룬다",
+          "cost": "압박이 누적된다",
+          "axis": "Time",
+          "direction": "exit",
+          "pattern_family": "future_deferral",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_tradeoff_C_X"
+        },
+        {
+          "id": "Y",
+          "label": "지금 결정한다",
+          "cost": "누적된 긴장을 직면해야 한다",
+          "axis": "Ownership",
+          "direction": "entry",
+          "pattern_family": "ownership_act",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_tradeoff_C_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "다음에 실제로 무엇을 할 것인가.",
+        "context": "지연이 압박을 키웠다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "내 결정 기준을 정의하고 기록한다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "ownership_act",
+              "description": "deferral loop를 끝내고 있다."
+            },
+            "intensity": 3,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_action_C_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "다시 미룬다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Time",
+              "direction": "exit",
+              "pattern_family": "future_deferral",
+              "description": "지연을 강화하고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_action_C_X_AD2"
+          }
+        ]
+      }
+    },
+    "D": {
+      "escalation_text": "매니저는 일반적인 답을 주지만 최종 결정은 당신에게 남긴다. 책임은 변하지 않은 채 다시 돌아온다.",
+      "pressure_increase": 0.5,
+      "intensity": 3,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "보통 하는 방식에 따른다",
+          "cost": "inconsistency를 그대로 물려받는다",
+          "axis": "Authority",
+          "direction": "exit",
+          "pattern_family": "delegation_deflection",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_tradeoff_D_X"
+        },
+        {
+          "id": "Y",
+          "label": "내 기준을 정의한다",
+          "cost": "책임을 온전히 가져야 한다",
+          "axis": "Ownership",
+          "direction": "entry",
+          "pattern_family": "ownership_act",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_tradeoff_D_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "다음에 실제로 무엇을 할 것인가.",
+        "context": "결정은 다시 당신의 것이다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "내 치료 기준을 적고 일관되게 적용한다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "ownership_act",
+              "description": "consistency를 만들고 있다."
+            },
+            "intensity": 3,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_action_D_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "기존 패턴을 따른다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Authority",
+              "direction": "exit",
+              "pattern_family": "delegation_deflection",
+              "description": "ownership을 넘기고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_action_D_X_AD2"
+          }
+        ]
+      }
+    }
+  }
+}

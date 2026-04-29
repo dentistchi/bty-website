@@ -1,0 +1,235 @@
+/**
+ * POST /api/chat — BTY 챗봇 API
+ * CHATBOT_TRAINING_CHECKLIST, ROADMAP_NEXT_STEPS § 챗봇 훈련 시기 반영.
+ * 메타 질문·안전 밸브·Foundry 추천 → 고정 응답, 그 외 buildChatMessagesForModel + OpenAI 호출.
+ */
+import { fetchJson } from "@/lib/read-json";
+import { NextResponse } from "next/server";
+import {
+  buildChatMessagesForModel,
+  normalizeMode,
+  getFallbackMessage,
+  isLowSelfEsteemSignal,
+  isFoundryRecommendSignal,
+  getSafetyValveMessage,
+  getFoundryRecommendMessage,
+  detectLang,
+  filterBtyResponse,
+  isMetaQuestion,
+  getMetaReply,
+  getIntroQuestionKind,
+  getIntroReply,
+  type ChatMode,
+  type ChatResponseBody,
+} from "@/lib/bty/chat";
+import { getLastChoiceFlagType } from "@/engine/scenario/scenario-stats.service";
+import { recordActivityXp } from "@/lib/bty/arena/activityXp";
+import { detectEmotionalEventFromText, recordEmotionalEventServer } from "@/lib/bty/emotional-stats";
+import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { recordQualityEventApp } from "@/lib/bty/quality";
+import { checkRateLimit, getClientIdentifier } from "@/lib/rate-limit";
+import { logApiError } from "@/lib/log-api-error";
+import {
+  buildMentorContext,
+  mentorContextToSystemPromptPrefix,
+} from "@/engine/rag/mentor-context.service";
+import { injectExamplesIntoContext } from "@/engine/mentor/mentor-example-bank.service";
+import { expandContextByPhase } from "@/engine/mentor/mentor-rag-expander.service";
+import { getCurrentPhase } from "@/engine/healing/healing-phase.service";
+
+export type { ChatMode } from "@/lib/bty/chat";
+
+const RATE_LIMIT_PER_MINUTE = 60;
+
+async function withFlagType(
+  body: ChatResponseBody,
+  userId: string | undefined,
+): Promise<ChatResponseBody> {
+  if (!userId) return { ...body, flag_type: null };
+  const supabase = await getSupabaseServerClient();
+  const flag_type = await getLastChoiceFlagType(userId, supabase);
+  return { ...body, flag_type };
+}
+
+export async function POST(request: Request) {
+  const id = getClientIdentifier(request);
+  const rate = checkRateLimit(id, RATE_LIMIT_PER_MINUTE);
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfterSeconds: rate.retryAfterSeconds },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } }
+    );
+  }
+
+  try {
+    const supabaseSession = await getSupabaseServerClient();
+    const {
+      data: { user: sessionChatUser },
+    } = await supabaseSession.auth.getUser();
+    const chatUserId = sessionChatUser?.id;
+
+    const body = (await request.json()) as { messages?: { role: string; content: string }[]; mode?: unknown; lang?: string };
+    const messages = Array.isArray(body.messages) ? body.messages : [];
+    const userContent = messages.filter((m) => m.role === "user").pop()?.content;
+    const lang = detectLang(body.lang, userContent ?? "");
+    if (!userContent || typeof userContent !== "string") {
+      return NextResponse.json({ error: "Message required" }, { status: 400 });
+    }
+
+    const mode = normalizeMode(body.mode, userContent) as ChatMode;
+
+    // PROJECT_BACKLOG §9, CHATBOT_TRAINING_CHECKLIST §3: 메타 질문 → 고정 답변
+    if (isMetaQuestion(userContent)) {
+      const message = getMetaReply(lang);
+      return NextResponse.json(
+        await withFlagType({ message, mode } satisfies ChatResponseBody, chatUserId),
+      );
+    }
+
+    // CHATBOT_TRAINING_CHECKLIST §4·ROADMAP: BTY·Foundry·Center 소개 질문 → 고정 답변 (토큰 절약)
+    const introKind = getIntroQuestionKind(userContent);
+    if (introKind) {
+      const message = getIntroReply(introKind, lang);
+      return NextResponse.json(
+        await withFlagType({ message, mode } satisfies ChatResponseBody, chatUserId),
+      );
+    }
+
+    // Phase 1-1: 낮은 자존감 → Center 안전 밸브 (우선)
+    if (isLowSelfEsteemSignal(userContent)) {
+      const message = getSafetyValveMessage(lang);
+      return NextResponse.json(
+        await withFlagType(
+          { message, suggestCenter: true } satisfies Partial<ChatResponseBody>,
+          chatUserId,
+        ),
+      );
+    }
+
+    // Phase 1-2: 학습/연습 필요 → Foundry(멘토·역지사지) 링크 제안 — 전역
+    if (isFoundryRecommendSignal(userContent)) {
+      const message = getFoundryRecommendMessage(lang);
+      return NextResponse.json(
+        await withFlagType(
+          { message, suggestFoundry: true } satisfies Partial<ChatResponseBody>,
+          chatUserId,
+        ),
+      );
+    }
+
+    const supabaseForMentor = await getSupabaseServerClient();
+    const { data: mentorUser } = await supabaseForMentor.auth.getUser();
+    let mentorContextPrefix = "";
+    if (
+      mentorUser?.user?.id &&
+      (mode === "foundry" || mode === "center")
+    ) {
+      const mentorLocale = lang === "ko" ? "ko" : "en";
+      let mentorCtx = await injectExamplesIntoContext(
+        await buildMentorContext(mentorUser.user.id, supabaseForMentor),
+        { locale: mentorLocale, supabase: supabaseForMentor },
+      );
+      if (mode === "foundry") {
+        const phase =
+          mentorCtx.phase ??
+          (await getCurrentPhase(mentorUser.user.id, supabaseForMentor)) ??
+          "ACKNOWLEDGEMENT";
+        mentorCtx = expandContextByPhase(mentorCtx, phase, mentorLocale);
+      }
+      mentorContextPrefix = mentorContextToSystemPromptPrefix(mentorCtx);
+    }
+
+    const messagesForModel = buildChatMessagesForModel(messages, mode, lang, {
+      mentorContextPrefix: mentorContextPrefix || undefined,
+      embedFoundryFewShotInSystem:
+        mode === "foundry" && !!mentorContextPrefix.trim(),
+    });
+    const fallback = getFallbackMessage(mode, lang);
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (apiKey) {
+      type OpenAIChatResp = { choices?: { message?: { content?: string } }[] };
+      const openAiTimeoutMs = 30_000; // COMMANDER_BACKLOG_AND_NEXT §2: 장시간 대기 시 fallback으로 이탈
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), openAiTimeoutMs);
+      let r: { ok: boolean; json?: OpenAIChatResp };
+      try {
+        r = await fetchJson<OpenAIChatResp>("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: messagesForModel,
+            max_tokens: 200, // CHATBOT_TRAINING_CHECKLIST §0 Foundry
+          }),
+          signal: controller.signal,
+        });
+      } catch (err) {
+        const isAbort = err instanceof Error && err.name === "AbortError";
+        r = { ok: false };
+        if (isAbort) recordQualityEventApp({ route: "chat", reason: "timeout", mode, lang });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+      if (r.ok) {
+        const data = r.json;
+        const rawText = data?.choices?.[0]?.message?.content?.trim();
+        if (rawText) {
+          const text = mode === "foundry" ? filterBtyResponse(rawText, lang) : rawText;
+          const supabase = await getSupabaseServerClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user?.id) {
+            recordActivityXp(supabase, user.id, "CHAT_MESSAGE").catch((err) =>
+              console.warn("[chat] recordActivityXp failed", err)
+            );
+            const eventId = detectEmotionalEventFromText(text);
+            if (eventId) {
+              recordEmotionalEventServer(supabase, user.id, eventId, null).catch((err) =>
+                console.warn("[chat] recordEmotionalEvent failed", err)
+              );
+            }
+          }
+          return NextResponse.json(
+            await withFlagType({ message: text, mode } satisfies ChatResponseBody, chatUserId),
+          );
+        }
+        recordQualityEventApp({ route: "chat", reason: "empty_response", mode, lang });
+      } else {
+        recordQualityEventApp({ route: "chat", reason: "fallback", mode, lang });
+      }
+    } else {
+      recordQualityEventApp({ route: "chat", reason: "fallback", mode, lang });
+    }
+
+    const supabase = await getSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id) {
+      recordActivityXp(supabase, user.id, "CHAT_MESSAGE").catch((err) =>
+        console.warn("[chat] recordActivityXp failed", err)
+      );
+      const eventId = detectEmotionalEventFromText(fallback);
+      if (eventId) {
+        recordEmotionalEventServer(supabase, user.id, eventId, null).catch((err) =>
+          console.warn("[chat] recordEmotionalEvent failed", err)
+        );
+      }
+    }
+    return NextResponse.json(
+      await withFlagType(
+        {
+          message: fallback,
+          mode,
+          usedFallback: true,
+        } satisfies ChatResponseBody,
+        chatUserId,
+      ),
+    );
+  } catch (e) {
+    logApiError("chat", 500, e);
+    recordQualityEventApp({ route: "chat", reason: "error" });
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+  }
+}

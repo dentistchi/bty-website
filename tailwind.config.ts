@@ -1,0 +1,158 @@
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+  darkMode: ["class"],
+  content: [
+    "./src/app/**/*.{js,ts,jsx,tsx}",
+    "./src/components/**/*.{js,ts,jsx,tsx}",
+    "./src/pages/**/*.{js,ts,jsx,tsx}",
+    "./src/contexts/**/*.{js,ts,jsx,tsx}",
+    "./stories/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      keyframes: {
+        fadeIn: { "0%": { opacity: "0" }, "100%": { opacity: "1" } },
+        bloom: {
+          "0%": { transform: "scale(0.2)", opacity: "0" },
+          "60%": { transform: "scale(1.1)", opacity: "1" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        "soft-pulse": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.85" },
+        },
+        "bridge-glow": {
+          "0%, 100%": { boxShadow: "0 0 12px rgba(138, 154, 91, 0.25)" },
+          "50%": { boxShadow: "0 0 20px rgba(138, 154, 91, 0.4)" },
+        },
+        "maturity-popup": {
+          "0%": { opacity: "0", transform: "translate(-50%, 8px)" },
+          "15%": { opacity: "1", transform: "translate(-50%, 0)" },
+          "70%": { opacity: "1", transform: "translate(-50%, -4px)" },
+          "100%": { opacity: "0", transform: "translate(-50%, -12px)" },
+        },
+      },
+      animation: {
+        fadeIn: "fadeIn 0.2s ease-out",
+        bloom: "bloom 0.6s ease-out forwards",
+        "soft-pulse": "soft-pulse 2s ease-in-out infinite",
+        "bridge-glow": "bridge-glow 2.5s ease-in-out infinite",
+        "maturity-popup": "maturity-popup 3s ease-out forwards",
+      },
+      colors: {
+        /* Button / UI 톤 (CSS 변수 참조) */
+        arena: {
+          primary: "var(--arena-primary)",
+          accent: "var(--arena-accent)",
+          bg: "var(--arena-bg)",
+          "text-primary": "var(--arena-text-primary)",
+          "text-secondary": "var(--arena-text-secondary)",
+        },
+        foundry: {
+          white: "#FFFFFF",
+          purple: "#5B4B8A",
+          "purple-light": "#7B6BA8",
+          "purple-dark": "#4A3D6F",
+          "purple-muted": "#E8E4F2",
+          ink: "#2D2A36",
+          "ink-soft": "#5C5868",
+          primary: "var(--foundry-primary)",
+          accent: "var(--foundry-accent)",
+          bg: "var(--foundry-bg)",
+          "text-primary": "var(--foundry-text-primary)",
+          "text-secondary": "var(--foundry-text-secondary)",
+        },
+        center: {
+          primary: "var(--center-primary)",
+          accent: "var(--center-accent)",
+          bg: "var(--center-bg)",
+          "text-primary": "var(--center-text-primary)",
+          "text-secondary": "var(--center-text-secondary)",
+        },
+        neutral: {
+          textBase: "var(--text-base)",
+          textLight: "var(--text-light)",
+          bgBase: "var(--bg-base)",
+          borderBase: "var(--border-base)",
+        },
+        dear: {
+          bg: "#FDFCF8",
+          "bg-paper": "#FAF9F5",
+          charcoal: "#333333",
+          "charcoal-soft": "#5C5C5C",
+          sage: "#8A9A5B",
+          "sage-soft": "#A8B87D",
+          terracotta: "#E2725B",
+          "terracotta-soft": "#E89A8A",
+        },
+        mentor: {
+          cream: "#F5F0E8",
+          paper: "#FDFBF7",
+          wood: "#8B7355",
+          "wood-soft": "#A68B6A",
+          ink: "#3D3229",
+          "ink-soft": "#6B5D52",
+        },
+        journey: {
+          done: "#E8D4E4",
+          "done-strong": "#D4B8CF",
+          today: "#D4E5D9",
+          "today-strong": "#B8D4C0",
+          locked: "#E8E4F2",
+        },
+        dojo: {
+          white: "#FFFFFF",
+          purple: "#5B4B8A",
+          "purple-light": "#7B6BA8",
+          "purple-dark": "#4A3D6F",
+          "purple-muted": "#E8E4F2",
+          ink: "#2D2A36",
+          "ink-soft": "#5C5868",
+        },
+        sanctuary: {
+          cream: "#FDF8F3",
+          blush: "#F5E6E0",
+          sage: "#D4E5D9",
+          lavender: "#E8E0F0",
+          peach: "#F0D9D0",
+          mint: "#D8EDE4",
+          sky: "#E0EDF5",
+          sand: "#F5EFE7",
+          text: "#5C5348",
+          "text-soft": "#8A8176",
+          accent: "#C4A77D",
+          flower: "#E8B4B8",
+        },
+        /** Phase 1 wireframe/result/Growth/my-page stubs — BTY_TAILWIND_THEME_TOKENS.md */
+        bty: {
+          bg: "var(--bty-bg)",
+          surface: "var(--bty-surface)",
+          soft: "var(--bty-surface-soft)",
+          text: "var(--bty-text)",
+          secondary: "var(--bty-text-secondary)",
+          muted: "var(--bty-text-muted)",
+          navy: "var(--bty-brand-navy)",
+          steel: "var(--bty-brand-steel)",
+          gold: "var(--bty-muted-gold)",
+          bronze: "var(--bty-soft-bronze)",
+          stable: "var(--bty-stable)",
+          warning: "var(--bty-warning)",
+          risk: "var(--bty-risk)",
+          border: "var(--bty-border)",
+        },
+      },
+      fontFamily: {
+        sans: ["system-ui", "Apple SD Gothic Neo", "Malgun Gothic", "sans-serif"],
+        serif: ["var(--font-serif-kr)", "Georgia", "Batang", "serif"],
+      },
+      boxShadow: {
+        paper: "0 1px 3px rgba(51,51,51,0.06), 0 1px 2px rgba(51,51,51,0.04)",
+        "paper-lg": "0 4px 12px rgba(51,51,51,0.06), 0 2px 4px rgba(51,51,51,0.04)",
+      },
+    },
+  },
+  plugins: [],
+};
+
+export default config;

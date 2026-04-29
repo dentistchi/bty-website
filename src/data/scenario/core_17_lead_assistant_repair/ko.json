@@ -1,0 +1,338 @@
+{
+  "id": "core_17_lead_assistant_repair",
+  "title": "리페어는 실제로 짊어진 사람에게 닿아야 한다",
+  "role": "Lead Assistant",
+  "pressure": "컴플레인 이후 새 기준이 만들어졌다. 리더십은 이제 기대치가 일관되게 적용될 거라고 말한다. 하지만 그 기준이 만들어지기 전까지 불공정을 몸으로 버틴 사람은 당신이다. 스케줄을 조정했고, 불만을 흡수했고, 흐름을 지켰고, 말해도 안전하지 않다고 느껴질 때 침묵했다. 이제 시스템은 당신에게 다시 믿어달라고 한다.",
+  "time_pressure": "새 기준이 실행되기 전에 리페어 대화가 필요함",
+  "social_pressure": [
+    "빨리 넘어가자는 압박",
+    "문제 만드는 사람으로 보일까 하는 두려움",
+    "새 기준을 도와야 한다는 팀 기대",
+    "그동안 짊어진 부담에서 온 남은 분노"
+  ],
+  "risk_layer": [
+    "신뢰 없는 표면적 협조",
+    "숨은 원망",
+    "어시스턴트 disengagement",
+    "실행 단계에서 기준 실패"
+  ],
+  "tradeoff": "새 기준을 받아들이고 넘어갈 것인가 vs 이미 짊어진 부담에 대한 리페어를 요구할 것인가",
+  "bty_tension_axis": "Compliance vs Trust Repair",
+  "axis_primary": "Repair",
+  "axis_secondary": ["Truth", "Ownership", "Integrity"],
+  "difficulty_level": 5,
+  "action_contract": {
+    "description": "새 기준을 단순 policy로 받아들일지, 불공정을 실제로 짊어진 사람들과 관계적으로 repair할지 결정한다.",
+    "time_window_hours": 48
+  },
+  "air_logic": {
+    "success": "어시스턴트가 짊어진 이전 부담이 인정되고, 앞으로의 boundary가 명확해지며, 신뢰 회복의 길이 열린다.",
+    "miss": "기준은 문서상 바뀌지만, 어시스턴트는 계속 불신을 짊어진다."
+  },
+  "forced_reset": {
+    "trigger": "공정성 붕괴 이후 리더십이 기준 리셋을 발표한다.",
+    "action": "협조할지, 물러날지, confront할지, 진짜 리페어를 요청할지 결정해야 한다."
+  },
+  "pattern_detection": [
+    "policy_without_repair",
+    "surface_compliance",
+    "unacknowledged_burden",
+    "trust_repair",
+    "boundary_reset"
+  ],
+  "repair_dynamics": {
+    "stage_1": "기준 리셋 발표",
+    "stage_2": "이미 짊어진 부담을 떠올림",
+    "stage_3": "협조, 철수, confront, repair request 사이의 선택",
+    "stage_4": "boundary 재정의",
+    "stage_5": "신뢰 회복 또는 숨은 저항"
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "새 기준을 받아들이고 넘어간다",
+      "subtext": "리셋을 돕고, 아픈 과거를 다시 열지 않는다.",
+      "axis": "Compliance",
+      "direction": "exit",
+      "pattern_family": "surface_compliance",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-02-REPAIR-17_primary_A"
+    },
+    {
+      "id": "B",
+      "label": "기준이 바뀌기 전의 부담이 실제였다고 말한다",
+      "subtext": "불편하지만 policy가 모든 것을 고친 척하지 않게 만든다.",
+      "axis": "Truth",
+      "direction": "entry",
+      "pattern_family": "trust_repair",
+      "intensity": 5,
+      "dbChoiceId": "INCIDENT-02-REPAIR-17_primary_B"
+    },
+    {
+      "id": "C",
+      "label": "감정적으로 물러나고 문서화된 기준만 따른다",
+      "subtext": "다시 이용당하지 않도록 자신을 보호하지만, lead 영향력은 줄어들 수 있다.",
+      "axis": "Self-Protection",
+      "direction": "exit",
+      "pattern_family": "hidden_resistance",
+      "intensity": 4,
+      "dbChoiceId": "INCIDENT-02-REPAIR-17_primary_C"
+    },
+    {
+      "id": "D",
+      "label": "리더십이 왜 더 일찍 보지 못했는지 문제 삼는다",
+      "subtext": "진실은 강하게 드러나지만, 리페어가 갈등으로 바뀔 수 있다.",
+      "axis": "Conflict",
+      "direction": "exit",
+      "pattern_family": "blame_reversal",
+      "intensity": 4,
+      "dbChoiceId": "INCIDENT-02-REPAIR-17_primary_D"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "리셋을 받아들이고 앞으로 나아가려 한다. 오피스는 잠시 안정된 것처럼 보인다. 하지만 첫 pressure case가 오자, 당신은 리더십이 정말 새 기준을 적용할지 지켜보게 된다. 협조는 하고 있지만 신뢰가 회복된 것은 아니다.",
+      "pressure_increase": 0.7,
+      "intensity": 4,
+      "identity_clash": [
+        "나는 이 리셋이 성공하길 원한다",
+        "하지만 이걸 혼자 짊어졌던 기억이 있다",
+        "너무 빨리 넘어가면 그 부담은 다시 보이지 않게 된다"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "과거 부담은 꺼내지 않고 리셋을 계속 돕는다",
+          "cost": "오피스는 앞으로 가지만 관계적 리페어는 완성되지 않는다.",
+          "axis": "Compliance",
+          "direction": "exit",
+          "pattern_family": "surface_compliance",
+          "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_A_X"
+        },
+        {
+          "id": "Y",
+          "label": "리셋 전 어시스턴트들이 짊어진 것을 인정해달라고 요청한다",
+          "cost": "rollout 속도는 느려지고 불편함이 다시 방 안으로 들어온다.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "trust_repair",
+          "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_A_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "기준은 빨리 바뀔 수 있다. 그 아래의 신뢰는 무엇으로 회복되는가.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "48시간 안에 어시스턴트가 짊어진 것과 앞으로 바뀔 boundary를 말하는 짧은 repair conversation을 요청한다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Repair",
+              "direction": "entry",
+              "pattern_family": "trust_repair",
+              "description": "리셋을 procedure가 아니라 관계적 repair로 만들고 있다."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-02-REPAIR-17_action_A_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "rollout을 돕고 행동이 좋아지는지 지켜본다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Compliance",
+              "direction": "exit",
+              "pattern_family": "surface_compliance",
+              "description": "미래 행동이 모든 repair 부담을 대신해주길 기다리고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-02-REPAIR-17_action_A_X_AD2"
+          }
+        ]
+      }
+    },
+    "B": {
+      "escalation_text": "부담이 실제였다고 말하자 방 안이 조용해진다. 매니저는 어시스턴트들이 얼마나 흡수하고 있었는지 몰랐다고 말한다. 한 의사는 불편해 보인다. 다른 어시스턴트는 고개를 끄덕인다. 처음으로 리셋이 그걸 짊어진 사람에게 연결된다.",
+      "pressure_increase": 1.0,
+      "intensity": 5,
+      "identity_clash": [
+        "나는 리셋을 막으려는 게 아니다",
+        "하지만 그 비용은 보여야 한다",
+        "이게 말해지지 않으면 우리는 신뢰 없이 협조만 하게 된다"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "누구도 blame받지 않도록 메시지를 부드럽게 낮춘다",
+          "cost": "방은 안전해지지만 burden이 다시 흐려질 수 있다.",
+          "axis": "Comfort",
+          "direction": "exit",
+          "pattern_family": "emotional_bypass",
+          "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_B_X"
+        },
+        {
+          "id": "Y",
+          "label": "blame과 burden을 분리하고 이제 무엇이 바뀌는지 정의한다",
+          "cost": "불편함을 유지하면서도 대화를 constructive하게 잡아야 한다.",
+          "axis": "Repair",
+          "direction": "entry",
+          "pattern_family": "trust_repair",
+          "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_B_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "부담을 말하는 것만으로는 부족하다. 이제 어떤 boundary가 바뀌는가.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "48시간 안에 assistant boundary 두 가지를 정의한다: 적절한 support와 중단해야 할 compensation",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Repair",
+              "direction": "entry",
+              "pattern_family": "boundary_reset",
+              "description": "인정을 operational repair로 바꾸고 있다."
+            },
+            "intensity": 5,
+            "dbChoiceId": "INCIDENT-02-REPAIR-17_action_B_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "인정은 되었으니 방을 더 긴장시키지 않고 넘어간다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Comfort",
+              "direction": "exit",
+              "pattern_family": "emotional_bypass",
+              "description": "감정적 인정에서 멈추고 boundary repair로 가지 않는다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-02-REPAIR-17_action_B_X_AD2"
+          }
+        ]
+      }
+    },
+    "C": {
+      "escalation_text": "당신은 물러나서 문서화된 기준만 따른다. 오피스는 더 예측 가능해지지만, 당신의 lead presence는 달라진다. 사람들은 당신이 더 이상 기준 밖의 부담을 떠안지 않는다는 것을 느낀다. 시스템은 종이 위에서 좋아졌지만 관계적 에너지는 떨어진다.",
+      "pressure_increase": 0.8,
+      "intensity": 4,
+      "identity_clash": [
+        "나는 다시 extra burden을 짊어지지 않을 것이다",
+        "하지만 완전히 물러나면 lead하지 않게 된다",
+        "boundary는 나를 지킬 수 있지만 disconnect가 될 수도 있다"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "감정적 거리를 유지하고 policy만 따른다",
+          "cost": "자신은 보호되지만 신뢰는 회복되지 않는다.",
+          "axis": "Self-Protection",
+          "direction": "exit",
+          "pattern_family": "hidden_resistance",
+          "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_C_X"
+        },
+        {
+          "id": "Y",
+          "label": "철수를 명확한 boundary conversation으로 바꾼다",
+          "cost": "조용히 물러나는 대신 무엇이 바뀌었는지 설명해야 한다.",
+          "axis": "Repair",
+          "direction": "entry",
+          "pattern_family": "boundary_reset",
+          "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_C_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "이건 명확한 boundary인가, 아니면 조용한 철수인가.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "48시간 안에 내가 support할 것, 더 이상 흡수하지 않을 것, escalation이 필요한 순간을 명확히 말한다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Repair",
+              "direction": "entry",
+              "pattern_family": "boundary_reset",
+              "description": "철수를 사용할 수 있는 boundary로 전환하고 있다."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-02-REPAIR-17_action_C_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "거리를 유지하고 사람들이 새 기준에 스스로 적응하게 둔다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Self-Protection",
+              "direction": "exit",
+              "pattern_family": "hidden_resistance",
+              "description": "자신을 보호하지만 관계적 gap은 이름 붙이지 않고 둔다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-02-REPAIR-17_action_C_X_AD2"
+          }
+        ]
+      }
+    },
+    "D": {
+      "escalation_text": "리더십을 직접 문제 삼는다. 진실은 강하게 전달된다. 하지만 톤이 바뀌며 방 안은 방어로 이동한다. 매니저는 자신이 몰랐던 이유를 설명하기 시작한다. 대화는 무엇을 repair할지보다 누가 실패했는지로 흐를 위험이 있다.",
+      "pressure_increase": 0.9,
+      "intensity": 5,
+      "identity_clash": [
+        "그들은 더 일찍 봤어야 했다",
+        "나는 이 진실이 인정되길 원한다",
+        "하지만 accusation이 되면 repair는 무너질 수 있다"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "리더십 책임을 계속 강하게 압박한다",
+          "cost": "진실은 선명하지만 방은 repair보다 방어로 갈 수 있다.",
+          "axis": "Conflict",
+          "direction": "exit",
+          "pattern_family": "blame_reversal",
+          "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_D_X"
+        },
+        {
+          "id": "Y",
+          "label": "accusation에서 repairable responsibility로 전환한다",
+          "cost": "시스템을 움직이기 위해 감정적 힘 일부를 내려놓아야 한다.",
+          "axis": "Repair",
+          "direction": "entry",
+          "pattern_family": "trust_repair",
+          "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_D_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "이건 accountability가 될 것인가, accusation이 될 것인가.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "48시간 안에 missed signal, resulting burden, leadership action을 나눈 repairable responsibility로 다시 정리한다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Repair",
+              "direction": "entry",
+              "pattern_family": "trust_repair",
+              "description": "confrontation을 structured accountability로 바꾸고 있다."
+            },
+            "intensity": 5,
+            "dbChoiceId": "INCIDENT-02-REPAIR-17_action_D_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "리더십이 보지 못했다는 점을 계속 강조한다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Conflict",
+              "direction": "exit",
+              "pattern_family": "blame_reversal",
+              "description": "진실은 보이게 하지만 repair 가능성은 낮추고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-02-REPAIR-17_action_D_X_AD2"
+          }
+        ]
+      }
+    }
+  }
+}

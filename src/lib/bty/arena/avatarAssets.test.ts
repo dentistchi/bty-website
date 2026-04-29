@@ -1,0 +1,200 @@
+/**
+ * AVATAR_LAYER_SPEC §2.2 — resolveAvatarUrls, characterAssetMap, outfitAssetMap, accessoryAssetMap 단위 테스트.
+ * 캐릭터·옷 URL은 실제 에셋 파일명 매핑 사용.
+ */
+import { describe, it, expect } from "vitest";
+import {
+  resolveAvatarUrls,
+  characterAssetMap,
+  outfitAssetMap,
+  accessoryAssetMap,
+  type ResolveAvatarUrlsResult,
+} from "./avatarAssets";
+import { OUTFIT_IDS, ACCESSORY_IDS_ALL } from "./avatar-assets.data";
+
+const OUTFIT_URL_PATTERN = /^\/avatars\/outfits\/.+/;
+const ACCESSORY_URL_PATTERN = /^\/avatars\/accessories\/[^/]+\.(svg|png)$/;
+
+/** Snaps to `avatar-assets.json`. */
+const UNIFIED_0 = `outfit_${OUTFIT_IDS[0]}`;
+const UNIFIED_1 = `outfit_${OUTFIT_IDS[1]}`;
+const LEGACY_PRO_0 = `professional_outfit_${OUTFIT_IDS[0]}`;
+const LEGACY_FAN_0 = `fantasy_outfit_${OUTFIT_IDS[0]}`;
+
+describe("avatarAssets", () => {
+  describe("characterAssetMap", () => {
+    it("has entries for all known character keys from AVATAR_CHARACTERS", () => {
+      expect(characterAssetMap["hero_01"]).toBeDefined();
+      expect(characterAssetMap["hero_01"].base.startsWith("/avatars/")).toBe(true);
+      expect(characterAssetMap["mage_02"]).toBeDefined();
+      expect(characterAssetMap["captain_10"]).toBeDefined();
+    });
+
+    it("each entry has base and thumb under /thumbs/", () => {
+      for (const entry of Object.values(characterAssetMap)) {
+        expect(entry.base).toBeTruthy();
+        expect(typeof entry.base).toBe("string");
+        expect(entry.thumb).toMatch(/\/thumbs\/.+\.png$/);
+        expect(entry.thumb).toBeTruthy();
+      }
+    });
+  });
+
+  describe("outfitAssetMap", () => {
+    it("has unified outfit_* and legacy alias keys", () => {
+      expect(outfitAssetMap[UNIFIED_0]).toBeDefined();
+      expect(outfitAssetMap[UNIFIED_1]).toBeDefined();
+      expect(outfitAssetMap[LEGACY_PRO_0]).toBeDefined();
+      expect(outfitAssetMap[LEGACY_FAN_0]).toBeDefined();
+    });
+
+    it("each entry has layer under /avatars/outfits/ and theme", () => {
+      for (const key of Object.keys(outfitAssetMap)) {
+        const entry = outfitAssetMap[key];
+        expect(entry.layer).toMatch(OUTFIT_URL_PATTERN);
+        expect(entry.theme).toBeDefined();
+        expect(["professional", "fantasy"]).toContain(entry.theme);
+      }
+    });
+
+    it("keys cover outfit_{id} and legacy professional_/fantasy_ aliases for OUTFIT_IDS", () => {
+      for (const id of OUTFIT_IDS) {
+        expect(outfitAssetMap[`outfit_${id}`]).toBeDefined();
+        expect(outfitAssetMap[`professional_outfit_${id}`]).toBeDefined();
+        expect(outfitAssetMap[`fantasy_outfit_${id}`]).toBeDefined();
+        expect(outfitAssetMap[`outfit_${id}`].layer.startsWith("/avatars/outfits/")).toBe(true);
+      }
+    });
+  });
+
+  describe("accessoryAssetMap", () => {
+    it("has entry for every ACCESSORY_IDS_ALL id", () => {
+      for (const id of ACCESSORY_IDS_ALL) {
+        expect(accessoryAssetMap[id]).toBeDefined();
+        expect(accessoryAssetMap[id].layer).toBeTruthy();
+      }
+    });
+
+    it("each entry layer matches /avatars/accessories/*.svg or .png", () => {
+      for (const entry of Object.values(accessoryAssetMap)) {
+        expect(entry.layer).toMatch(ACCESSORY_URL_PATTERN);
+        expect(entry.layer.startsWith("/avatars/accessories/")).toBe(true);
+        expect(entry.layer.endsWith(".svg") || entry.layer.endsWith(".png")).toBe(true);
+      }
+    });
+  });
+
+  describe("resolveAvatarUrls", () => {
+    it("returns characterUrl for known characterKey", () => {
+      const r = resolveAvatarUrls({ characterKey: "hero_01" });
+      expect(r.characterUrl).toBeTruthy();
+      expect(r.characterUrl!.startsWith("/avatars/")).toBe(true);
+      expect(r.outfitUrl).toBeNull();
+      expect(r.accessoryUrls).toEqual([]);
+    });
+
+    it("returns null characterUrl for unknown characterKey", () => {
+      const r = resolveAvatarUrls({ characterKey: "unknown_id" });
+      expect(r.characterUrl).toBeNull();
+    });
+
+    it("returns null characterUrl for empty characterKey", () => {
+      const r = resolveAvatarUrls({ characterKey: "" });
+      expect(r.characterUrl).toBeNull();
+    });
+
+    it("trims characterKey", () => {
+      const r = resolveAvatarUrls({ characterKey: "  hero_01  " });
+      expect(r.characterUrl).toBeTruthy();
+      expect(r.characterUrl!.startsWith("/avatars/")).toBe(true);
+    });
+
+    it("returns outfitUrl for known outfitKey under /avatars/outfits/", () => {
+      const r = resolveAvatarUrls({
+        characterKey: "hero_01",
+        outfitKey: UNIFIED_0,
+      });
+      expect(r.characterUrl).toBeTruthy();
+      expect(r.characterUrl!.startsWith("/avatars/")).toBe(true);
+      expect(r.outfitUrl).toMatch(OUTFIT_URL_PATTERN);
+      expect(r.outfitUrl!.startsWith("/avatars/outfits/")).toBe(true);
+    });
+
+    it("uses bodyType-specific outfit filename when bodyType overrides character", () => {
+      const base = resolveAvatarUrls({
+        characterKey: "hero_01",
+        outfitKey: UNIFIED_0,
+      });
+      const withBodyB = resolveAvatarUrls({
+        characterKey: "hero_01",
+        outfitKey: UNIFIED_0,
+        bodyType: "B",
+      });
+      expect(withBodyB.outfitUrl).toContain("/avatars/outfits/");
+      expect(withBodyB.outfitUrl).not.toBe(base.outfitUrl);
+      expect(withBodyB.outfitUrl).toMatch(/_B\.png|%5FB\.png/);
+    });
+
+    it("derives outfit bodyType from characterKey when bodyType prop is omitted", () => {
+      const auto = resolveAvatarUrls({
+        characterKey: "hero_01",
+        outfitKey: UNIFIED_0,
+      });
+      const explicitA = resolveAvatarUrls({
+        characterKey: "hero_01",
+        outfitKey: UNIFIED_0,
+        bodyType: "A",
+      });
+      expect(auto.outfitUrl).toBe(explicitA.outfitUrl);
+      expect(auto.outfitUrl).toMatch(/_A\.png|%5FA\.png/);
+    });
+
+    it("returns null outfitUrl for unknown outfitKey", () => {
+      const r = resolveAvatarUrls({
+        characterKey: "hero_01",
+        outfitKey: "unknown_outfit",
+      });
+      expect(r.outfitUrl).toBeNull();
+    });
+
+    it("returns result shape with accessoryUrls array", () => {
+      const r = resolveAvatarUrls({
+        characterKey: "hero_01",
+        accessoryKeys: [],
+      });
+      expect(r).toMatchObject({
+        characterUrl: expect.any(String),
+        outfitUrl: null,
+        accessoryUrls: [],
+      } as ResolveAvatarUrlsResult);
+    });
+
+    it("useThumb uses 512px thumb URL under /thumbs/", () => {
+      const rBase = resolveAvatarUrls({ characterKey: "hero_01", useThumb: false });
+      const rThumb = resolveAvatarUrls({ characterKey: "hero_01", useThumb: true });
+      expect(rBase.characterUrl).toBe("/avatars/default/characters/hero_01.png");
+      expect(rThumb.characterUrl).toBe("/avatars/default/characters/thumbs/hero_01.png");
+    });
+
+    it("useThumb maps character_11 to artisan_11 in thumbs path", () => {
+      const r = resolveAvatarUrls({ characterKey: "character_11", useThumb: true });
+      expect(r.characterUrl).toBe("/avatars/default/characters/thumbs/artisan_11.png");
+    });
+
+    it("returns accessoryUrls for known accessoryKeys matching /avatars/accessories/*.svg|.png", () => {
+      const r = resolveAvatarUrls({
+        characterKey: "hero_01",
+        accessoryKeys: ["explorer", "weapon"],
+      });
+      expect(r.characterUrl).toBeTruthy();
+      expect(r.characterUrl!.startsWith("/avatars/")).toBe(true);
+      expect(r.accessoryUrls).toHaveLength(2);
+      for (const url of r.accessoryUrls) {
+        expect(url).toMatch(ACCESSORY_URL_PATTERN);
+        expect(url.startsWith("/avatars/accessories/")).toBe(true);
+      }
+      expect(r.accessoryUrls).toContain("/avatars/accessories/explorer.svg");
+      expect(r.accessoryUrls).toContain("/avatars/accessories/weapon.png");
+    });
+  });
+});

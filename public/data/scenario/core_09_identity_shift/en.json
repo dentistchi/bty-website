@@ -1,0 +1,329 @@
+{
+  "id": "core_09_identity_shift",
+  "title": "The Standard You Become",
+  "role": "Self",
+  "pressure": "The repair conversation is over. You acknowledged your impact and the system gap is clearer. But now no one is forcing the next step. The real question is whether this incident becomes a temporary lesson or a personal standard you carry into the next pressured clinical decision.",
+  "tradeoff": "You can treat this as a hard situation you learned from, or convert it into a visible identity standard that changes how you act under pressure.",
+  "bty_tension_axis": "Insight vs Identity",
+  "axis_primary": "Repair",
+  "axis_secondary": ["Integrity", "Ownership", "Courage"],
+  "difficulty_level": 5,
+  "action_contract": {
+    "description": "Convert the incident into one repeatable standard that remains visible under future pressure.",
+    "time_window_hours": 48
+  },
+  "air_logic": {
+    "success": "The incident becomes a behavior standard that others can observe.",
+    "miss": "The incident becomes a lesson you remember but do not reliably act from."
+  },
+  "forced_reset": {
+    "trigger": "The next case creates pressure to compromise, stay silent, or let the team compensate.",
+    "action": "You must decide whether your repaired identity changes your next behavior."
+  },
+  "pattern_detection": [
+    "insight_without_behavior",
+    "identity_commitment",
+    "private_intention",
+    "temporary_compliance",
+    "standard_creation"
+  ],
+  "identity_dynamics": {
+    "stage_1": "Incident reflection",
+    "stage_2": "Discomfort about who you were under pressure",
+    "stage_3": "Choice between lesson and identity",
+    "stage_4": "Standard definition",
+    "stage_5": "Future pressure test"
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Reflect privately and keep the lesson in mind",
+      "subtext": "This feels meaningful without creating more exposure or structure.",
+      "axis": "Integrity",
+      "direction": "exit",
+      "pattern_family": "insight_without_behavior",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-REPAIR-09_primary_A"
+    },
+    {
+      "id": "B",
+      "label": "Define the kind of clinician you will be under pressure",
+      "subtext": "This turns repair into an identity standard that can guide future choices.",
+      "axis": "Repair",
+      "direction": "entry",
+      "pattern_family": "identity_commitment",
+      "intensity": 5,
+      "dbChoiceId": "INCIDENT-01-REPAIR-09_primary_B"
+    },
+    {
+      "id": "C",
+      "label": "Focus on following the new support plan",
+      "subtext": "This keeps change practical and avoids making it personal.",
+      "axis": "System",
+      "direction": "exit",
+      "pattern_family": "temporary_compliance",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-REPAIR-09_primary_C"
+    },
+    {
+      "id": "D",
+      "label": "Wait until the next difficult case to see how you respond",
+      "subtext": "This avoids overcommitting before you know what pressure will look like.",
+      "axis": "Time",
+      "direction": "exit",
+      "pattern_family": "private_intention",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-REPAIR-09_primary_D"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "The reflection feels sincere, but the next busy day arrives quickly. The assistant cannot see what changed because nothing was defined. Under pressure, the old pattern becomes available again.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "identity_clash": [
+        "Self-image: I learned from this.",
+        "Observed behavior: The team cannot see what changed.",
+        "Pressure reality: Undeclared lessons disappear when the schedule gets tight."
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep the lesson private and try to act better next time",
+          "cost": "The intention remains real, but invisible and untested.",
+          "axis": "Integrity",
+          "direction": "exit",
+          "pattern_family": "insight_without_behavior",
+          "dbChoiceId": "INCIDENT-01-REPAIR-09_tradeoff_A_X"
+        },
+        {
+          "id": "Y",
+          "label": "Turn the lesson into a stated behavior standard",
+          "cost": "You make your internal lesson visible and accountable.",
+          "axis": "Repair",
+          "direction": "entry",
+          "pattern_family": "identity_commitment",
+          "dbChoiceId": "INCIDENT-01-REPAIR-09_tradeoff_A_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not reflection — what will become visible?",
+        "context": "A private lesson will not reliably change team experience unless it becomes a behavior standard.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 48 hours, write and share one pressure-standard you will follow in similar clinical cases",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Repair",
+              "direction": "entry",
+              "pattern_family": "identity_commitment",
+              "description": "You are converting private insight into visible identity."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-REPAIR-09_action_A_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Keep the lesson personal and trust yourself to remember it",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Integrity",
+              "direction": "exit",
+              "pattern_family": "insight_without_behavior",
+              "description": "You are relying on memory instead of structure."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-REPAIR-09_action_A_X_AD2"
+          }
+        ]
+      }
+    },
+    "B": {
+      "escalation_text": "When you define the kind of clinician you will be, the statement feels heavier than expected. It is no longer just about this incident. It challenges how you handle production pressure, insurance limitation, patient expectations, and team silence.",
+      "pressure_increase": 0.7,
+      "intensity": 5,
+      "identity_clash": [
+        "Old identity: I adapt to the office reality.",
+        "Emerging identity: I define the standard even when reality pushes back.",
+        "Future test: Will this hold when the schedule, patient, and team all pressure you to compromise?"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep the identity statement broad and flexible",
+          "cost": "It feels safer, but may not guide behavior under pressure.",
+          "axis": "Control",
+          "direction": "exit",
+          "pattern_family": "private_intention",
+          "dbChoiceId": "INCIDENT-01-REPAIR-09_tradeoff_B_X"
+        },
+        {
+          "id": "Y",
+          "label": "Translate the identity into one specific non-negotiable behavior",
+          "cost": "You reduce flexibility and make future inconsistency visible.",
+          "axis": "Repair",
+          "direction": "entry",
+          "pattern_family": "standard_creation",
+          "dbChoiceId": "INCIDENT-01-REPAIR-09_tradeoff_B_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not identity language — what behavior proves it?",
+        "context": "A real identity shift needs a standard that survives future pressure.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 48 hours, define one non-negotiable clinical communication standard and share it with the manager or assistant",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Repair",
+              "direction": "entry",
+              "pattern_family": "standard_creation",
+              "description": "You are turning identity into a testable behavior standard."
+            },
+            "intensity": 5,
+            "dbChoiceId": "INCIDENT-01-REPAIR-09_action_B_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Keep the identity statement internal and apply it case by case",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Control",
+              "direction": "exit",
+              "pattern_family": "private_intention",
+              "description": "You are keeping identity flexible but less observable."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-REPAIR-09_action_B_X_AD2"
+          }
+        ]
+      }
+    },
+    "C": {
+      "escalation_text": "The support plan helps for a while. But when the structure is not present, the old pressure returns. You realize you were following a plan, not yet operating from a standard.",
+      "pressure_increase": 0.5,
+      "intensity": 4,
+      "identity_clash": [
+        "System support: The plan made it easier.",
+        "Personal standard: What do I do when the plan is absent?",
+        "Risk: Compliance can look like growth until pressure returns."
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Continue relying on the support plan",
+          "cost": "You improve inside structure, but may regress without it.",
+          "axis": "System",
+          "direction": "exit",
+          "pattern_family": "temporary_compliance",
+          "dbChoiceId": "INCIDENT-01-REPAIR-09_tradeoff_C_X"
+        },
+        {
+          "id": "Y",
+          "label": "Convert the support plan into your own pressure standard",
+          "cost": "You must own behavior even when the system is imperfect.",
+          "axis": "Ownership",
+          "direction": "entry",
+          "pattern_family": "standard_creation",
+          "dbChoiceId": "INCIDENT-01-REPAIR-09_tradeoff_C_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not compliance — what standard will remain when support is absent?",
+        "context": "The plan helped, but identity shift requires behavior that survives without perfect structure.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 48 hours, extract one personal standard from the support plan and commit to using it without being prompted",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "standard_creation",
+              "description": "You are moving from external support to internal standard."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-REPAIR-09_action_C_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Continue following the support plan as written",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "System",
+              "direction": "exit",
+              "pattern_family": "temporary_compliance",
+              "description": "You are improving while the structure remains present."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-REPAIR-09_action_C_X_AD2"
+          }
+        ]
+      }
+    },
+    "D": {
+      "escalation_text": "The next difficult case arrives faster than expected. Because no standard was named beforehand, you respond from habit. The compromise feels small in the moment, but the identity question returns immediately afterward.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "identity_clash": [
+        "Intention: I will do better next time.",
+        "Habit: Under pressure, I did what was easiest to keep flow.",
+        "Aftermath: I still have not defined who I am in this situation."
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Treat it as another learning moment and try again next time",
+          "cost": "You preserve self-image, but the pattern gets another repetition.",
+          "axis": "Time",
+          "direction": "exit",
+          "pattern_family": "private_intention",
+          "dbChoiceId": "INCIDENT-01-REPAIR-09_tradeoff_D_X"
+        },
+        {
+          "id": "Y",
+          "label": "Stop and define the standard before the next case",
+          "cost": "You must face the gap between intention and behavior.",
+          "axis": "Repair",
+          "direction": "entry",
+          "pattern_family": "standard_creation",
+          "dbChoiceId": "INCIDENT-01-REPAIR-09_tradeoff_D_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not next time — what standard exists before pressure returns?",
+        "context": "Waiting for pressure allowed habit to lead again.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Before the next clinical block, write the standard you will follow when flow and integrity conflict",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Repair",
+              "direction": "entry",
+              "pattern_family": "standard_creation",
+              "description": "You are defining identity before pressure tests it again."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-REPAIR-09_action_D_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Keep the intention in mind and try to catch yourself next time",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Time",
+              "direction": "exit",
+              "pattern_family": "private_intention",
+              "description": "You are relying on future awareness instead of present standard."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-REPAIR-09_action_D_X_AD2"
+          }
+        ]
+      }
+    }
+  }
+}

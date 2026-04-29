@@ -1,0 +1,304 @@
+{
+  "id": "core_02_new_doctor_reexposure_compromise_loop",
+  "title": "The Compromise You Were Not Trained For",
+  "role": "Associate Dentist",
+  "pressure": "You are now working independently. A Medicaid patient needs a crown, but insurance does not cover it. The assistant quietly suggests doing a filling instead to keep the schedule moving. You were never clearly trained on how to handle this situation.",
+  "tradeoff": "Flow vs Standard",
+  "bty_tension_axis": "Integrity vs Adaptation",
+  "axis_primary": "Ownership",
+  "axis_secondary": ["Integrity", "System"],
+  "difficulty_level": 4,
+  "action_contract": {
+    "description": "Decide whether to follow the existing compromise pattern or define your own standard.",
+    "time_window_hours": 24
+  },
+  "air_logic": {
+    "success": "A clear treatment standard becomes visible in your decisions.",
+    "miss": "You adapt case by case and reinforce inconsistency."
+  },
+  "forced_reset": {
+    "trigger": "The same insurance limitation appears again.",
+    "action": "You must choose whether to repeat or redefine the pattern."
+  },
+  "pattern_detection": [
+    "integrity_compromise",
+    "adaptation_loop",
+    "ownership_act",
+    "future_deferral"
+  ],
+  "choices": [
+    {
+      "id": "A",
+      "label": "Follow the assistant suggestion and proceed with filling",
+      "subtext": "Keeps the day moving without conflict",
+      "axis": "Integrity",
+      "direction": "exit",
+      "pattern_family": "integrity_compromise",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_primary_A"
+    },
+    {
+      "id": "B",
+      "label": "Explain the clinical standard and recommend crown",
+      "subtext": "Creates delay and possible tension",
+      "axis": "Ownership",
+      "direction": "entry",
+      "pattern_family": "ownership_act",
+      "intensity": 4,
+      "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_primary_B"
+    },
+    {
+      "id": "C",
+      "label": "Delay the decision and reschedule",
+      "subtext": "Avoids making a difficult call now",
+      "axis": "Time",
+      "direction": "exit",
+      "pattern_family": "future_deferral",
+      "intensity": 2,
+      "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_primary_C"
+    },
+    {
+      "id": "D",
+      "label": "Ask the office manager what is usually done",
+      "subtext": "Aligns with local practice",
+      "axis": "Authority",
+      "direction": "exit",
+      "pattern_family": "delegation_deflection",
+      "intensity": 2,
+      "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_primary_D"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "The same compromise is repeated across multiple cases. The assistant now expects this as the default approach.",
+      "pressure_increase": 0.5,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Continue with the same approach",
+          "cost": "The lowered standard becomes normalized",
+          "axis": "Integrity",
+          "direction": "exit",
+          "pattern_family": "integrity_compromise",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_tradeoff_A_X"
+        },
+        {
+          "id": "Y",
+          "label": "Pause and question the pattern",
+          "cost": "You disrupt the flow and challenge expectations",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_tradeoff_A_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "What will you do next?",
+        "context": "The compromise has become routine.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Document the pattern and define your treatment standard",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "ownership_act",
+              "description": "You are turning awareness into defined standard."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_action_A_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Continue handling cases individually",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Integrity",
+              "direction": "exit",
+              "pattern_family": "integrity_compromise",
+              "description": "You are reinforcing inconsistency."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_action_A_X_AD2"
+          }
+        ]
+      }
+    },
+
+    "B": {
+      "escalation_text": "The patient hesitates due to cost, and the assistant becomes concerned about schedule delays.",
+      "pressure_increase": 0.5,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Soften the recommendation to reduce tension",
+          "cost": "The standard becomes unclear",
+          "axis": "Integrity",
+          "direction": "exit",
+          "pattern_family": "integrity_compromise",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_tradeoff_B_X"
+        },
+        {
+          "id": "Y",
+          "label": "Maintain clarity of recommendation",
+          "cost": "You hold tension in the room",
+          "axis": "Ownership",
+          "direction": "entry",
+          "pattern_family": "ownership_act",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_tradeoff_B_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "What will you do next?",
+        "context": "Tension is present but clarity is needed.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Record the treatment rationale and communicate clearly",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "ownership_act",
+              "description": "You are reinforcing clarity under pressure."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_action_B_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Adjust explanation to maintain flow",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Integrity",
+              "direction": "exit",
+              "pattern_family": "integrity_compromise",
+              "description": "You are trading clarity for flow."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_action_B_X_AD2"
+          }
+        ]
+      }
+    },
+
+    "C": {
+      "escalation_text": "The same situation reappears quickly. The decision pressure increases because nothing was defined earlier.",
+      "pressure_increase": 0.6,
+      "intensity": 3,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Delay again",
+          "cost": "The pressure compounds",
+          "axis": "Time",
+          "direction": "exit",
+          "pattern_family": "future_deferral",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_tradeoff_C_X"
+        },
+        {
+          "id": "Y",
+          "label": "Make a decision now",
+          "cost": "You face accumulated tension",
+          "axis": "Ownership",
+          "direction": "entry",
+          "pattern_family": "ownership_act",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_tradeoff_C_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "What will you do next?",
+        "context": "Delay has increased pressure.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Define and document your decision standard",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "ownership_act",
+              "description": "You are ending the deferral loop."
+            },
+            "intensity": 3,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_action_C_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Postpone again",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Time",
+              "direction": "exit",
+              "pattern_family": "future_deferral",
+              "description": "You are reinforcing delay."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_action_C_X_AD2"
+          }
+        ]
+      }
+    },
+
+    "D": {
+      "escalation_text": "The manager gives a general answer but leaves the final decision to you. The responsibility returns unchanged.",
+      "pressure_increase": 0.5,
+      "intensity": 3,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Follow common practice",
+          "cost": "You inherit inconsistency",
+          "axis": "Authority",
+          "direction": "exit",
+          "pattern_family": "delegation_deflection",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_tradeoff_D_X"
+        },
+        {
+          "id": "Y",
+          "label": "Define your own standard",
+          "cost": "You take full responsibility",
+          "axis": "Ownership",
+          "direction": "entry",
+          "pattern_family": "ownership_act",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_tradeoff_D_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "What will you do next?",
+        "context": "The decision is yours again.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Write your treatment criteria and apply it consistently",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "ownership_act",
+              "description": "You are creating consistency."
+            },
+            "intensity": 3,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_action_D_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Follow existing patterns",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Authority",
+              "direction": "exit",
+              "pattern_family": "delegation_deflection",
+              "description": "You are deferring ownership."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-02_action_D_X_AD2"
+          }
+        ]
+      }
+    }
+  }
+}

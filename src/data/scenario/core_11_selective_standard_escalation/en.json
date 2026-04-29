@@ -1,0 +1,277 @@
+{
+  "id": "core_11_selective_standard_escalation",
+  "title": "This Is Not Neutral",
+  "role": "Associate Dentist",
+  "pressure": "You begin noticing a repeated pattern across different situations. The same behavior leads to different consequences depending on the person. A newer assistant is corrected immediately, while a more favored staff member is given a softer response for a similar issue. A doctor’s delay is overlooked, while another is questioned. At first, it felt like isolated cases. Now it is consistent enough to recognize as a pattern. No one is naming it. The system continues to function, but the standard is no longer stable.",
+  "tradeoff": "Maintain comfort within the system or define your position on fairness.",
+  "bty_tension_axis": "belonging_vs_fairness",
+  "axis_primary": "truth",
+  "axis_secondary": "belonging",
+  "difficulty_level": "final_full_density",
+  "incident": {
+    "incidentId": "incident_02",
+    "incidentStage": "pattern recognition",
+    "sequencePosition": 11,
+    "previousScenarioId": "core_10_initial_inconsistency",
+    "nextScenarioId": "core_12_silence_normalization",
+    "roleShift": "from observer to internal judge",
+    "propagation": {
+      "exitEffect": "The associate adapts to the inconsistency and begins operating within it.",
+      "entryEffect": "The associate defines fairness as a personal standard separate from the system.",
+      "reExposureNote": "Future situations will test whether this definition becomes action or remains internal."
+    }
+  },
+  "action_contract": {
+    "description": "Identify and define one specific inconsistency pattern and translate it into a clear fairness standard.",
+    "time_window_hours": 48
+  },
+  "AIR_logic": {
+    "success": "The associate defines fairness in concrete, observable terms tied to real examples.",
+    "miss": "The associate keeps the judgment vague or adapts behavior without defining a standard."
+  },
+  "forced_reset": {
+    "trigger": "Someone says, 'That’s just how things work here.'",
+    "action": "Compare two similar cases and explicitly state what made the outcomes different."
+  },
+  "pattern_detection": {
+    "selective_enforcement": "Rules are applied differently depending on the person.",
+    "fairness_violation": "Similar actions produce unequal consequences.",
+    "internal_split": "The associate feels tension between what is right and what is accepted.",
+    "silent_resistance": "Disagreement exists but is not expressed or structured."
+  },
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "As you accept the inconsistency, you begin adjusting how you interact with different people. You become more careful with some and more relaxed with others.",
+      "pressure_increase": "Your behavior starts aligning with the inconsistency instead of challenging it.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "What becomes your standard within 48 hours?",
+        "context": "If you do not define it, the system will define it for you.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 48 hours, write two comparable cases and define what equal treatment would look like.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Continue adjusting behavior based on who is involved.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Fully operate within the inconsistent system",
+          "cost": "Your personal standard becomes dependent on the environment.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "system_adaptation"
+        },
+        {
+          "id": "Y",
+          "label": "Pause and define what fairness actually means",
+          "cost": "Creates internal conflict and reduces flexibility.",
+          "axis": "truth",
+          "direction": "entry",
+          "pattern_family": "fairness_definition"
+        }
+      ]
+    },
+    "B": {
+      "escalation_text": "Once you define the pattern as unfair, you begin noticing it more frequently. Situations that previously felt minor now stand out clearly.",
+      "pressure_increase": "Clarity increases tension because the system does not match your standard.",
+      "intensity": 7,
+      "action_decision": {
+        "prompt": "What exactly is unfair?",
+        "context": "A clear definition turns perception into something actionable.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 48 hours, document one repeated inconsistency with names, actions, and outcomes.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Keep it as a general feeling without specifics.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep the definition internal",
+          "cost": "Clarity does not influence behavior or outcomes.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "internalization"
+        },
+        {
+          "id": "Y",
+          "label": "Structure the pattern into clear examples",
+          "cost": "Makes the issue harder to ignore or dismiss.",
+          "axis": "truth",
+          "direction": "entry",
+          "pattern_family": "pattern_structuring"
+        }
+      ]
+    },
+    "C": {
+      "escalation_text": "Detaching helps you function, but you begin noticing that others who stay engaged are shaping the environment more than you are.",
+      "pressure_increase": "Neutrality reduces stress but also reduces influence.",
+      "intensity": 5,
+      "action_decision": {
+        "prompt": "Is detachment neutral within 48 hours?",
+        "context": "Your absence from the issue still shapes the outcome.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 48 hours, define your role in one observed inconsistency.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Continue focusing only on your tasks.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Remain detached",
+          "cost": "You lose the ability to influence the system.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "avoidance_behavior"
+        },
+        {
+          "id": "Y",
+          "label": "Re-engage with a defined position",
+          "cost": "Reintroduces tension and responsibility.",
+          "axis": "truth",
+          "direction": "entry",
+          "pattern_family": "re_engagement"
+        }
+      ]
+    },
+    "D": {
+      "escalation_text": "Your adaptation makes you more effective, but you begin noticing that others are adjusting similarly. The pattern becomes reinforced through behavior.",
+      "pressure_increase": "Success within the system strengthens the inconsistency.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "What defines your integrity within 48 hours?",
+        "context": "Efficiency does not define fairness.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 48 hours, define one personal rule you will follow regardless of who is involved.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Continue adjusting based on incentives.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Optimize further within the system",
+          "cost": "You contribute to maintaining the unfair structure.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "adaptive_alignment"
+        },
+        {
+          "id": "Y",
+          "label": "Separate your personal standard from system incentives",
+          "cost": "May reduce short-term advantage.",
+          "axis": "truth",
+          "direction": "entry",
+          "pattern_family": "standard_separation"
+        }
+      ]
+    }
+  },
+  "ending_identity_choice": {
+    "prompt": "When you clearly see inconsistency, what becomes your role?",
+    "choices": [
+      {
+        "id": "SYS1",
+        "label": "A participant adapting to the system",
+        "direction": "exit"
+      },
+      {
+        "id": "SYS2",
+        "label": "An individual defining a standard within the system",
+        "direction": "entry"
+      }
+    ]
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Accept the inconsistency as part of the system",
+      "subtext": "It feels realistic because challenging it may create unnecessary tension.",
+      "axis": "belonging",
+      "direction": "exit",
+      "pattern_family": "selective_enforcement",
+      "intensity": 5
+    },
+    {
+      "id": "B",
+      "label": "Define clearly that the pattern is unfair",
+      "subtext": "It increases internal tension because it creates a gap between you and the system.",
+      "axis": "truth",
+      "direction": "entry",
+      "pattern_family": "fairness_definition",
+      "intensity": 6
+    },
+    {
+      "id": "C",
+      "label": "Detach emotionally and focus only on your work",
+      "subtext": "It reduces stress and allows you to function without confronting the issue.",
+      "axis": "belonging",
+      "direction": "exit",
+      "pattern_family": "avoidance_behavior",
+      "intensity": 4
+    },
+    {
+      "id": "D",
+      "label": "Adapt your behavior to succeed within the system",
+      "subtext": "It feels strategic because you can avoid negative outcomes.",
+      "axis": "truth",
+      "direction": "exit",
+      "pattern_family": "adaptive_alignment",
+      "intensity": 6
+    }
+  ]
+}

@@ -1,0 +1,293 @@
+{
+    "id": "core_01_problem_framing",
+    "title": "Performance Issue or Early System Signal",
+    "role": "Office Manager",
+    "pressure": "In a busy Medicaid-heavy office, a new assistant has been making repeated small mistakes. Doctors are frustrated, but production remains stable and no formal complaints exist. With rapid expansion and limited training, addressing this as a system issue may expose onboarding gaps and slow operations. It feels easier to treat it as an individual performance issue.",
+    "tradeoff": "Handling this as a performance issue preserves short-term stability. Seeing it as a pattern risks disruption but may prevent future breakdowns.",
+    "bty_tension_axis": "Blame vs Pattern Recognition",
+    "axis_primary": "Axis 1 — Ownership",
+    "axis_secondary": ["Axis 4 — Truth"],
+    "difficulty_level": 3,
+    "action_contract": {
+      "description": "The office manager must make one observable action that either keeps the issue framed as individual performance or surfaces it as an early system pattern.",
+      "time_window_hours": 48
+    },
+    "air_logic": {
+      "success": "The manager identifies whether the repeated errors are isolated or systemic and creates a documented next step within the time window.",
+      "miss": "The manager explains the issue but leaves the pattern untested, undocumented, or transferred to another role."
+    },
+    "forced_reset": {
+      "trigger": "A second doctor reports a similar assistant-related mistake before the first issue is resolved.",
+      "action": "Pause individual blame framing and review whether the same workflow or training gap appears in both cases."
+    },
+    "pattern_detection": [
+      {
+        "family": "blame_shift",
+        "signal": "The issue is narrowed to one person before the repeated pattern is tested."
+      },
+      {
+        "family": "future_deferral",
+        "signal": "More observation is used to delay a clear next step."
+      },
+      {
+        "family": "delegation_deflection",
+        "signal": "Responsibility is moved to the doctor without manager-level visibility."
+      },
+      {
+        "family": "system_thinking",
+        "signal": "Repeated errors are treated as possible onboarding or workflow signals."
+      }
+    ],
+    "choices": [
+      {
+        "id": "A",
+        "label": "Treat it as assistant performance and assign retraining",
+        "subtext": "Keeps operations stable and avoids exposing system gaps.",
+        "axis": "Axis 9 — Accountability",
+        "direction": "exit",
+        "pattern_family": "blame_shift",
+        "intensity": 3
+      },
+      {
+        "id": "B",
+        "label": "Review repeated errors and question the training system",
+        "subtext": "This may expose structural gaps tied to your decisions.",
+        "axis": "Axis 1 — Ownership",
+        "direction": "entry",
+        "pattern_family": "system_thinking",
+        "intensity": 4
+      },
+      {
+        "id": "C",
+        "label": "Ask the doctor to directly manage the assistant",
+        "subtext": "Shifts responsibility downward without expanding the issue.",
+        "axis": "Axis 3 — Authority",
+        "direction": "exit",
+        "pattern_family": "delegation_deflection",
+        "intensity": 3
+      },
+      {
+        "id": "D",
+        "label": "Wait and observe for another week",
+        "subtext": "Avoids making a premature decision.",
+        "axis": "Axis 2 — Time",
+        "direction": "exit",
+        "pattern_family": "future_deferral",
+        "intensity": 2
+      }
+    ],
+    "escalationBranches": {
+      "A": {
+        "escalation_text": "The same mistakes continue across multiple assistants, and doctors begin silently compensating to maintain flow.",
+        "pressure_increase": 0.7,
+        "intensity": 3,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "Continue handling it as individual retraining cases",
+            "cost": "Pattern remains hidden, and pressure shifts to doctors.",
+            "axis": "Axis 9 — Accountability",
+            "direction": "exit",
+            "pattern_family": "blame_shift"
+          },
+          {
+            "id": "Y",
+            "label": "Reconsider whether this is a system-wide issue",
+            "cost": "You must question your original judgment.",
+            "axis": "Axis 4 — Truth",
+            "direction": "entry",
+            "pattern_family": "truth_naming"
+          }
+        ],
+        "action_decision": {
+          "prompt": "Choose the observable action, not the interpretation.",
+          "context": "The issue is now repeating beyond one assistant.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "Within 48 hours, document repeated errors and initiate a training review.",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Axis 1 — Ownership",
+                "direction": "entry",
+                "pattern_family": "ownership_act",
+                "description": "Turns the pattern into a visible management action."
+              },
+              "intensity": 3
+            },
+            {
+              "id": "AD2",
+              "label": "Continue monitoring without formal escalation.",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Axis 2 — Time",
+                "direction": "exit",
+                "pattern_family": "future_deferral",
+                "description": "Keeps the issue informal and delayed."
+              },
+              "intensity": 1
+            }
+          ]
+        }
+      },
+      "B": {
+        "escalation_text": "You begin to see the pattern across staff, but addressing it may expose onboarding and management gaps.",
+        "pressure_increase": 0.6,
+        "intensity": 3,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "Delay formal action until more data is collected",
+            "cost": "You see the issue but do not act.",
+            "axis": "Axis 2 — Time",
+            "direction": "exit",
+            "pattern_family": "future_deferral"
+          },
+          {
+            "id": "Y",
+            "label": "Escalate as a system issue and initiate review",
+            "cost": "You expose operational gaps.",
+            "axis": "Axis 1 — Ownership",
+            "direction": "entry",
+            "pattern_family": "ownership_act"
+          }
+        ],
+        "action_decision": {
+          "prompt": "Choose the observable action, not the interpretation.",
+          "context": "The pattern is visible, but acting on it creates operational cost.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "Within 48 hours, schedule a training system review meeting.",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Axis 1 — Ownership",
+                "direction": "entry",
+                "pattern_family": "ownership_act",
+                "description": "Converts recognition into a scheduled review."
+              },
+              "intensity": 3
+            },
+            {
+              "id": "AD2",
+              "label": "Observe further before escalating.",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Axis 2 — Time",
+                "direction": "exit",
+                "pattern_family": "future_deferral",
+                "description": "Keeps the pattern visible but unactioned."
+              },
+              "intensity": 1
+            }
+          ]
+        }
+      },
+      "C": {
+        "escalation_text": "The doctor begins handling everything independently, increasing frustration and reducing team coordination.",
+        "pressure_increase": 0.8,
+        "intensity": 4,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "Allow the doctor to continue managing the situation",
+            "cost": "You lose visibility of the problem.",
+            "axis": "Axis 3 — Authority",
+            "direction": "exit",
+            "pattern_family": "delegation_deflection"
+          },
+          {
+            "id": "Y",
+            "label": "Re-engage and assess the situation directly",
+            "cost": "You must step back into the issue you delegated.",
+            "axis": "Axis 1 — Ownership",
+            "direction": "entry",
+            "pattern_family": "ownership_act"
+          }
+        ],
+        "action_decision": {
+          "prompt": "Choose the observable action, not the interpretation.",
+          "context": "Team coordination is weakening because ownership was transferred downward.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "Within 24 hours, meet with the doctor to review workflow breakdown.",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Axis 1 — Ownership",
+                "direction": "entry",
+                "pattern_family": "ownership_act",
+                "description": "Restores manager visibility."
+              },
+              "intensity": 3
+            },
+            {
+              "id": "AD2",
+              "label": "Let the doctor continue handling it independently.",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Axis 3 — Authority",
+                "direction": "exit",
+                "pattern_family": "delegation_deflection",
+                "description": "Keeps responsibility outside the manager role."
+              },
+              "intensity": 1
+            }
+          ]
+        }
+      },
+      "D": {
+        "escalation_text": "The same issue continues, and a clinical compromise begins to emerge in treatment decisions.",
+        "pressure_increase": 0.9,
+        "intensity": 4,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "Continue observing without intervention",
+            "cost": "Delay increases downstream impact.",
+            "axis": "Axis 2 — Time",
+            "direction": "exit",
+            "pattern_family": "future_deferral"
+          },
+          {
+            "id": "Y",
+            "label": "Intervene now and define the issue clearly",
+            "cost": "You must act under incomplete information.",
+            "axis": "Axis 1 — Ownership",
+            "direction": "entry",
+            "pattern_family": "ownership_act"
+          }
+        ],
+        "action_decision": {
+          "prompt": "Choose the observable action, not the interpretation.",
+          "context": "The delay is now affecting clinical judgment.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "Within 24 hours, review incidents and define the issue.",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Axis 1 — Ownership",
+                "direction": "entry",
+                "pattern_family": "ownership_act",
+                "description": "Stops delay from becoming silent approval."
+              },
+              "intensity": 3
+            },
+            {
+              "id": "AD2",
+              "label": "Wait for clearer evidence before acting.",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Axis 2 — Time",
+                "direction": "exit",
+                "pattern_family": "future_deferral",
+                "description": "Allows the pattern to continue."
+              },
+              "intensity": 1
+            }
+          ]
+        }
+      }
+    }
+}

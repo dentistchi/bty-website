@@ -1,0 +1,203 @@
+{
+  "id": "core_13_assistant_adaptation",
+  "title": "They’ve Adjusted",
+  "role": "Observer",
+  "pressure": "Assistants are no longer reacting to inconsistency. They are adjusting to it. They anticipate which doctor gets flexibility and change their behavior accordingly. No one talks about fairness anymore. The system is now predictable — but not fair.",
+  "tradeoff": "Adapt vs Maintain Integrity",
+  "bty_tension_axis": "Survival vs Principle",
+  "difficulty_level": 5,
+  "pattern_detection": [
+    "behavior_adaptation",
+    "incentive_learning",
+    "silent_alignment",
+    "identity_shift"
+  ],
+  "choices": [
+    {
+      "id": "A",
+      "label": "Accept adaptation as normal",
+      "direction": "exit"
+    },
+    {
+      "id": "B",
+      "label": "Recognize adaptation as distortion",
+      "direction": "entry"
+    },
+    {
+      "id": "C",
+      "label": "Focus only on efficiency",
+      "direction": "exit"
+    },
+    {
+      "id": "D",
+      "label": "Stay neutral and observe",
+      "direction": "exit"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "Adaptation stabilizes the system. But fairness disappears completely.",
+      "pressure_increase": 0.7,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Fully accept",
+          "direction": "exit",
+          "cost": "Fairness disappears into routine while the team keeps optimizing around who gets flexibility."
+        },
+        {
+          "id": "Y",
+          "label": "Question the adaptation",
+          "direction": "entry",
+          "cost": "You disturb a stable unfair equilibrium and may be seen as difficult or naive."
+        }
+      ],
+      "action_decision": {
+        "prompt": "What is lost when adaptation becomes normal?",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Define the cost of adaptation",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Ignore the cost",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "B": {
+      "escalation_text": "Once you see it as distortion, you realize this is not alignment — it is survival behavior.",
+      "pressure_increase": 0.8,
+      "intensity": 5,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep it internal",
+          "direction": "exit",
+          "cost": "You carry accurate pattern recognition alone while the office keeps adapting without shared accountability."
+        },
+        {
+          "id": "Y",
+          "label": "Define the pattern clearly",
+          "direction": "entry",
+          "cost": "You concentrate pressure by naming what people survived by not naming out loud."
+        }
+      ],
+      "action_decision": {
+        "prompt": "If this is distortion, what defines correct behavior?",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Define integrity-based behavior",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Leave it undefined",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "C": {
+      "escalation_text": "Efficiency improves. But meaning disappears.",
+      "pressure_increase": 0.6,
+      "intensity": 3,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Stay efficiency-focused",
+          "direction": "exit",
+          "cost": "Throughput stays high while ethical drift stays off the agenda."
+        },
+        {
+          "id": "Y",
+          "label": "Reintroduce principle",
+          "direction": "entry",
+          "cost": "You slow decisions by forcing purpose and fairness back into the same conversation."
+        }
+      ],
+      "action_decision": {
+        "prompt": "Efficiency for what?",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Define purpose beyond efficiency",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Optimize only for flow",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "D": {
+      "escalation_text": "Neutral observation slowly becomes passive agreement.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Remain neutral",
+          "direction": "exit",
+          "cost": "Neutrality without a stance becomes silent agreement with the adapted unfair baseline."
+        },
+        {
+          "id": "Y",
+          "label": "Take a position internally",
+          "direction": "entry",
+          "cost": "You accept ongoing inner tension and can no longer pretend you have no standard."
+        }
+      ],
+      "action_decision": {
+        "prompt": "Is neutrality real?",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Define your stance",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Avoid positioning",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    }
+  }
+}
