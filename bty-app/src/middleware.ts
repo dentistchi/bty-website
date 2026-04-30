@@ -82,6 +82,19 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL(`/${locale}/bty-arena`, req.url), 308);
   }
 
+  /**
+   * Legacy/mistyped Center assessment result URL: `/[locale]/result`
+   * Canonical: `/[locale]/assessment/result`
+   *
+   * Implemented in middleware (308) so crawlers/clients get a real redirect — not an HTML shell with meta refresh.
+   */
+  if (
+    locale &&
+    (pathname === `/${locale}/result` || pathname.startsWith(`/${locale}/result/`))
+  ) {
+    return NextResponse.redirect(new URL(`/${locale}/assessment/result` + req.nextUrl.search, req.url), 308);
+  }
+
   /** Legacy Arena UI `/[locale]/arena` → canonical `/[locale]/bty-arena` (308). */
   if (
     locale &&
