@@ -18,7 +18,7 @@ function validAnswers(): Record<string, number> {
   return out;
 }
 
-function makeRequest(body: { answers?: Record<string, number> }): Request {
+function makeRequest(body: { answers?: Record<string, number>; locale?: string }): Request {
   return new Request("http://localhost/api/assessment/submit", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -35,7 +35,7 @@ describe("POST /api/assessment/submit", () => {
   it("returns 401 when unauthenticated", async () => {
     mockGetLetterAuth.mockResolvedValue(null);
 
-    const res = await POST(makeRequest({ answers: validAnswers() }));
+    const res = await POST(makeRequest({ answers: validAnswers(), locale: "ko" }));
     expect(res.status).toBe(401);
     const data = await res.json();
     expect(data.error).toBe("UNAUTHENTICATED");
@@ -44,7 +44,7 @@ describe("POST /api/assessment/submit", () => {
 
   it("returns 401 with JSON body containing only error key", async () => {
     mockGetLetterAuth.mockResolvedValue(null);
-    const res = await POST(makeRequest({ answers: validAnswers() }));
+    const res = await POST(makeRequest({ answers: validAnswers(), locale: "ko" }));
     expect(res.status).toBe(401);
     const data = await res.json();
     expect(Object.keys(data)).toEqual(["error"]);
@@ -132,7 +132,7 @@ describe("POST /api/assessment/submit", () => {
       track: "default",
     });
 
-    const res = await POST(makeRequest({ answers: validAnswers() }));
+    const res = await POST(makeRequest({ answers: validAnswers(), locale: "ko" }));
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(Object.keys(data).sort()).toEqual(
@@ -159,7 +159,7 @@ describe("POST /api/assessment/submit", () => {
       track: "default",
     });
 
-    const res = await POST(makeRequest({ answers: validAnswers() }));
+    const res = await POST(makeRequest({ answers: validAnswers(), locale: "ko" }));
     expect(res.status).toBe(200);
 
     const data = await res.json();
@@ -174,6 +174,8 @@ describe("POST /api/assessment/submit", () => {
     expect(data.pattern).toBe("balanced");
     expect(data.recommendedTrack).toBe("default");
     expect(mockSubmitAssessment).toHaveBeenCalledOnce();
+    const submitted = mockSubmitAssessment.mock.calls[0][1] as { questions: unknown[] };
+    expect(submitted.questions).toHaveLength(50);
   });
 
   it("returns 200 with content-type application/json on success", async () => {
@@ -186,7 +188,7 @@ describe("POST /api/assessment/submit", () => {
       track: "default",
     });
 
-    const res = await POST(makeRequest({ answers: validAnswers() }));
+    const res = await POST(makeRequest({ answers: validAnswers(), locale: "ko" }));
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toMatch(/application\/json/);
   });
@@ -210,7 +212,7 @@ describe("POST /api/assessment/submit", () => {
       track: "default",
     });
 
-    const res = await POST(makeRequest({ answers: validAnswers() }));
+    const res = await POST(makeRequest({ answers: validAnswers(), locale: "ko" }));
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.submissionId).toBeNull();
@@ -229,7 +231,7 @@ describe("POST /api/assessment/submit", () => {
       track: "compassion_path",
     });
 
-    const res = await POST(makeRequest({ answers: validAnswers() }));
+    const res = await POST(makeRequest({ answers: validAnswers(), locale: "ko" }));
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.recommendedTrack).toBe("compassion_path");
@@ -246,7 +248,7 @@ describe("POST /api/assessment/submit", () => {
       track: "growth_path",
     });
 
-    const res = await POST(makeRequest({ answers: validAnswers() }));
+    const res = await POST(makeRequest({ answers: validAnswers(), locale: "ko" }));
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.pattern).toBe("balanced-growth");
@@ -267,7 +269,7 @@ describe("POST /api/assessment/submit", () => {
       track: "y",
     });
 
-    await POST(makeRequest({ answers: validAnswers() }));
+    await POST(makeRequest({ answers: validAnswers(), locale: "ko" }));
 
     expect(mockSubmitAssessment).toHaveBeenCalledOnce();
     const [supabase, input] = mockSubmitAssessment.mock.calls[0];
@@ -285,7 +287,7 @@ describe("POST /api/assessment/submit", () => {
     });
     mockSubmitAssessment.mockRejectedValue(new Error("db connection lost"));
 
-    const res = await POST(makeRequest({ answers: validAnswers() }));
+    const res = await POST(makeRequest({ answers: validAnswers(), locale: "ko" }));
     expect(res.status).toBe(500);
     const data = await res.json();
     expect(data.error).toBe("Something went wrong");
@@ -294,7 +296,7 @@ describe("POST /api/assessment/submit", () => {
   it("returns 500 when getLetterAuth throws", async () => {
     mockGetLetterAuth.mockRejectedValue(new Error("auth unavailable"));
 
-    const res = await POST(makeRequest({ answers: validAnswers() }));
+    const res = await POST(makeRequest({ answers: validAnswers(), locale: "ko" }));
     expect(res.status).toBe(500);
     const data = await res.json();
     expect(data.error).toBe("Something went wrong");

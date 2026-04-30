@@ -1,6 +1,7 @@
 "use client";
 
-import questions from "@/content/assessment/questions.ko.json";
+import questionsKo from "@/content/assessment/questions.ko.json";
+import questionsEn from "@/content/assessment/questions.en.json";
 import { detectPattern, scoreAnswers } from "@/lib/assessment/score";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -194,6 +195,8 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
   const computed = useMemo(() => {
+    const questionBank = (isEn ? questionsEn : questionsKo) as Parameters<typeof scoreAnswers>[0];
+
     const apiRaw = sessionStorage.getItem("assessment.result.v1");
     if (apiRaw) {
       try {
@@ -211,10 +214,10 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
     const raw = sessionStorage.getItem("assessment.answers.v1");
     if (!raw) return null;
     const answers = JSON.parse(raw) as Record<number, number>;
-    const scores = scoreAnswers(questions as Parameters<typeof scoreAnswers>[0], answers);
+    const scores = scoreAnswers(questionBank, answers);
     const pattern = detectPattern(scores);
     return { scores, pattern, fromApi: false };
-  }, []);
+  }, [isEn]);
 
   if (!computed) {
     return (
