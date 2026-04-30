@@ -1,0 +1,81 @@
+{
+  "scenarioId": "core_17_lead_assistant_repair",
+  "dbScenarioId": "INCIDENT-02-REPAIR-17",
+  "engineType": "relationship_repair_engine",
+  "engineRef": "relationship_repair_engine_v1",
+  "incident": {
+    "incidentId": "incident_02_integrity_and_fairness_breakdown",
+    "stage": 8,
+    "axisGroup": "Repair",
+    "axisIndex": 2,
+    "previousScenarioId": "core_16_repair_standard_reset",
+    "nextScenarioId": "core_18_identity_integrity_choice",
+    "roleShift": "System Actor -> Lead Assistant",
+    "propagation": {
+      "exitEffect": "The new standard stays administrative and does not repair the person who adapted to unfairness.",
+      "entryEffect": "The lead assistant experiences repair as recognition, boundary reset, and restored agency.",
+      "reExposureNote": "If skipped, the system may have new standards but the team continues carrying old mistrust."
+    }
+  },
+  "relationship_repair_engine": {
+    "type": "trust_repair_after_fairness_breakdown",
+    "core_loop": [
+      "standard_reset_announced",
+      "past_burden_recognized_or_ignored",
+      "assistant_response",
+      "boundary_redefinition",
+      "trust_rebuild_or_surface_compliance"
+    ],
+    "failure_modes": [
+      "policy_without_repair",
+      "emotional_bypass",
+      "assistant_compliance_without_trust",
+      "unacknowledged_burden"
+    ],
+    "success_condition": "the lead assistant’s past burden is acknowledged and their future role is reset with clear boundaries"
+  },
+  "structure": {
+    "primary": [
+      { "choiceId": "A", "dbChoiceId": "INCIDENT-02-REPAIR-17_primary_A" },
+      { "choiceId": "B", "dbChoiceId": "INCIDENT-02-REPAIR-17_primary_B" },
+      { "choiceId": "C", "dbChoiceId": "INCIDENT-02-REPAIR-17_primary_C" },
+      { "choiceId": "D", "dbChoiceId": "INCIDENT-02-REPAIR-17_primary_D" }
+    ],
+    "tradeoff": {
+      "A": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_A_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_A_Y" }
+      ],
+      "B": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_B_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_B_Y" }
+      ],
+      "C": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_C_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_C_Y" }
+      ],
+      "D": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_D_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-02-REPAIR-17_tradeoff_D_Y" }
+      ]
+    },
+    "action_decision": {
+      "A_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-02-REPAIR-17_action_A_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-02-REPAIR-17_action_A_X_AD2", "is_action_commitment": false }
+      ],
+      "B_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-02-REPAIR-17_action_B_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-02-REPAIR-17_action_B_X_AD2", "is_action_commitment": false }
+      ],
+      "C_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-02-REPAIR-17_action_C_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-02-REPAIR-17_action_C_X_AD2", "is_action_commitment": false }
+      ],
+      "D_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-02-REPAIR-17_action_D_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-02-REPAIR-17_action_D_X_AD2", "is_action_commitment": false }
+      ]
+    }
+  }
+}

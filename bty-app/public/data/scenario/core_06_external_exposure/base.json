@@ -1,0 +1,62 @@
+{
+  "scenarioId": "core_06_external_exposure",
+  "dbScenarioId": "INCIDENT-01-TRUTH-06",
+  "incident": {
+    "incidentId": "incident_01_small_compromise_to_trust_repair",
+    "stage": 6,
+    "axisGroup": "Truth",
+    "axisIndex": 3,
+    "previousScenarioId": "core_05_resignation_signal",
+    "nextScenarioId": "core_07_repair_conversation",
+    "roleShift": "Lead Assistant -> Office Manager",
+    "propagation": {
+      "exitEffect": "External exposure is managed as reputation risk, allowing the internal breakdown to remain uncorrected.",
+      "entryEffect": "External exposure becomes a mirror for the internal system and trust breakdown.",
+      "reExposureNote": "If the user exits here, the same pattern will return through reviews, complaints, turnover, or leadership escalation."
+    }
+  },
+  "structure": {
+    "primary": [
+      { "choiceId": "A", "dbChoiceId": "INCIDENT-01-TRUTH-06_primary_A" },
+      { "choiceId": "B", "dbChoiceId": "INCIDENT-01-TRUTH-06_primary_B" },
+      { "choiceId": "C", "dbChoiceId": "INCIDENT-01-TRUTH-06_primary_C" },
+      { "choiceId": "D", "dbChoiceId": "INCIDENT-01-TRUTH-06_primary_D" }
+    ],
+    "tradeoff": {
+      "A": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-01-TRUTH-06_tradeoff_A_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-01-TRUTH-06_tradeoff_A_Y" }
+      ],
+      "B": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-01-TRUTH-06_tradeoff_B_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-01-TRUTH-06_tradeoff_B_Y" }
+      ],
+      "C": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-01-TRUTH-06_tradeoff_C_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-01-TRUTH-06_tradeoff_C_Y" }
+      ],
+      "D": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-01-TRUTH-06_tradeoff_D_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-01-TRUTH-06_tradeoff_D_Y" }
+      ]
+    },
+    "action_decision": {
+      "A_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-01-TRUTH-06_action_A_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-01-TRUTH-06_action_A_X_AD2", "is_action_commitment": false }
+      ],
+      "B_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-01-TRUTH-06_action_B_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-01-TRUTH-06_action_B_X_AD2", "is_action_commitment": false }
+      ],
+      "C_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-01-TRUTH-06_action_C_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-01-TRUTH-06_action_C_X_AD2", "is_action_commitment": false }
+      ],
+      "D_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-01-TRUTH-06_action_D_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-01-TRUTH-06_action_D_X_AD2", "is_action_commitment": false }
+      ]
+    }
+  }
+}

@@ -1,0 +1,301 @@
+{
+    "id": "core_26_doctor_repair_choice",
+    "title": "무엇을 인정하느냐가 모든 걸 바꾼다",
+    "role": "Associate Dentist",
+    "pressure": "리페어 미팅에서 hesitation과 bypass 패턴이 드러났다. 당신의 행동이 그 패턴에 영향을 줬다는 걸 느낀다. 어시스턴트는 당신이 무엇을 인정하는지 보고 있다.",
+    "tradeoff": "완전한 ownership은 authority를 약하게 느끼게 할 수 있다. 일부만 인정하면 위치는 지킬 수 있지만 패턴은 남는다.",
+    "bty_tension_axis": "Ownership vs Authority 보호",
+    "axis_primary": "Repair",
+    "axis_secondary": ["Integrity", "Authority", "Accountability"],
+    "difficulty_level": 5,
+    "action_contract": {
+      "description": "얼마나 ownership을 취할지, 그것을 얼마나 보이게 할지 결정한다.",
+      "time_window_hours": 24
+    },
+    "air_logic": {
+      "success": "당신의 ownership이 팀의 행동을 바꾼다.",
+      "miss": "말은 전달되지만 행동은 바뀌지 않는다."
+    },
+    "forced_reset": {
+      "trigger": "리페어 미팅에서 당신의 역할이 드러났다.",
+      "action": "무엇을 공개적으로 인정할지 선택해야 한다."
+    },
+    "pattern_detection": [
+      "ownership_avoidance",
+      "authority_protection",
+      "integrity_alignment",
+      "partial_accountability"
+    ],
+    "choices": [
+      {
+        "id": "A",
+        "label": "내 행동이 hesitation과 bypass를 만들었다고 명확히 말한다",
+        "subtext": "authority에는 부담이지만 실제 상황과 일치한다.",
+        "axis": "Repair",
+        "direction": "entry",
+        "pattern_family": "integrity_alignment",
+        "intensity": 3,
+        "dbChoiceId": "INCIDENT-03-REPAIR-08_primary_A"
+      },
+      {
+        "id": "B",
+        "label": "문제를 인정하지만 책임을 나눠서 표현한다",
+        "subtext": "균형 잡힌 느낌이고 위치를 보호할 수 있다.",
+        "axis": "Authority",
+        "direction": "exit",
+        "pattern_family": "authority_protection",
+        "intensity": 2,
+        "dbChoiceId": "INCIDENT-03-REPAIR-08_primary_B"
+      },
+      {
+        "id": "C",
+        "label": "앞으로 어떻게 개선할지에 집중한다",
+        "subtext": "과거에 머무르지 않고 계속 앞으로 간다.",
+        "axis": "Time",
+        "direction": "exit",
+        "pattern_family": "future_deferral",
+        "intensity": 2,
+        "dbChoiceId": "INCIDENT-03-REPAIR-08_primary_C"
+      },
+      {
+        "id": "D",
+        "label": "왜 그렇게 결정했는지 의도를 설명한다",
+        "subtext": "내 관점을 이해시키는 데 도움이 된다.",
+        "axis": "Explanation",
+        "direction": "exit",
+        "pattern_family": "explanation_substitution",
+        "intensity": 2,
+        "dbChoiceId": "INCIDENT-03-REPAIR-08_primary_D"
+      }
+    ],
+    "escalationBranches": {
+      "A": {
+        "escalation_text": "ownership을 말하자 어시스턴트는 놀라면서도 안도하는 표정을 보인다. 방 안은 조용해진다.",
+        "pressure_increase": 0.5,
+        "intensity": 4,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "표현을 줄여서 과한 노출을 피한다",
+            "cost": "통제는 유지되지만 impact는 약해진다.",
+            "axis": "Authority",
+            "direction": "exit",
+            "pattern_family": "authority_protection",
+            "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_A_X"
+          },
+          {
+            "id": "Y",
+            "label": "그 상태를 유지하고 반응을 요청한다",
+            "cost": "노출된 상태를 유지해야 하고 어려운 피드백을 들을 수 있다.",
+            "axis": "Repair",
+            "direction": "entry",
+            "pattern_family": "integrity_alignment",
+            "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_A_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "해석이 아니라 실제 행동이다.",
+          "context": "ownership은 변화를 만들었지만 강화가 필요하다.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "24시간 안에 어시스턴트와 follow-up 하고 반복할 행동 하나를 정의한다",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Repair",
+                "direction": "entry",
+                "pattern_family": "integrity_alignment",
+                "description": "행동으로 ownership을 강화한다."
+              },
+              "intensity": 4,
+              "dbChoiceId": "INCIDENT-03-REPAIR-08_action_A_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "그대로 두고 팀이 변하는지 본다",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Time",
+                "direction": "exit",
+                "pattern_family": "future_deferral",
+                "description": "행동 없이 기다린다."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-REPAIR-08_action_A_X_AD2"
+            }
+          ]
+        }
+      },
+      "B": {
+        "escalation_text": "어시스턴트는 고개를 끄덕이지만 다음 시술에서 hesitation은 그대로다.",
+        "pressure_increase": 0.5,
+        "intensity": 3,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "균형 잡힌 표현을 유지한다",
+            "cost": "authority는 유지되지만 패턴은 흐려진다.",
+            "axis": "Authority",
+            "direction": "exit",
+            "pattern_family": "authority_protection",
+            "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_B_X"
+          },
+          {
+            "id": "Y",
+            "label": "다시 돌아가서 더 명확히 인정한다",
+            "cost": "이전 입장을 바꿔야 한다.",
+            "axis": "Repair",
+            "direction": "entry",
+            "pattern_family": "integrity_alignment",
+            "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_B_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "해석이 아니라 실제 행동이다.",
+          "context": "균형 잡힌 말은 행동을 바꾸지 못했다.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "24시간 안에 어시스턴트에게 내 역할을 다시 명확히 한다",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Repair",
+                "direction": "entry",
+                "pattern_family": "integrity_alignment",
+                "description": "부분적 인정에서 명확한 인정으로 간다."
+              },
+              "intensity": 3,
+              "dbChoiceId": "INCIDENT-03-REPAIR-08_action_B_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "현재 프레임을 유지한다",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Authority",
+                "direction": "exit",
+                "pattern_family": "authority_protection",
+                "description": "균형을 유지한다."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-REPAIR-08_action_B_X_AD2"
+            }
+          ]
+        }
+      },
+      "C": {
+        "escalation_text": "개선 방향에는 동의했지만 바쁜 상황에서 같은 패턴이 다시 나타난다.",
+        "pressure_increase": 0.5,
+        "intensity": 3,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "계속 앞으로 개선에 집중한다",
+            "cost": "속도는 유지되지만 ownership은 없다.",
+            "axis": "Time",
+            "direction": "exit",
+            "pattern_family": "future_deferral",
+            "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_C_X"
+          },
+          {
+            "id": "Y",
+            "label": "멈추고 내 역할을 인정한다",
+            "cost": "속도를 늦추고 과거로 돌아간다.",
+            "axis": "Repair",
+            "direction": "entry",
+            "pattern_family": "integrity_alignment",
+            "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_C_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "해석이 아니라 실제 행동이다.",
+          "context": "forward focus는 행동을 바꾸지 못했다.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "24시간 안에 바꿀 행동 하나를 명확히 전달한다",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Repair",
+                "direction": "entry",
+                "pattern_family": "integrity_alignment",
+                "description": "의도를 행동으로 바꾼다."
+              },
+              "intensity": 3,
+              "dbChoiceId": "INCIDENT-03-REPAIR-08_action_C_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "계속 개선 방향에 집중한다",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Time",
+                "direction": "exit",
+                "pattern_family": "future_deferral",
+                "description": "속도 유지",
+                "intensity": 1
+              },
+              "dbChoiceId": "INCIDENT-03-REPAIR-08_action_C_X_AD2"
+            }
+          ]
+        }
+      },
+      "D": {
+        "escalation_text": "설명은 이해되지만 행동은 바뀌지 않는다.",
+        "pressure_increase": 0.5,
+        "intensity": 3,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "설명을 계속한다",
+            "cost": "이해는 늘지만 행동은 그대로다.",
+            "axis": "Explanation",
+            "direction": "exit",
+            "pattern_family": "explanation_substitution",
+            "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_D_X"
+          },
+          {
+            "id": "Y",
+            "label": "설명에서 ownership으로 바꾼다",
+            "cost": "프레임을 바꿔야 한다.",
+            "axis": "Repair",
+            "direction": "entry",
+            "pattern_family": "integrity_alignment",
+            "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_D_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "해석이 아니라 실제 행동이다.",
+          "context": "설명은 변화를 만들지 못했다.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "24시간 안에 ownership 기반 행동 하나를 전달한다",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Repair",
+                "direction": "entry",
+                "pattern_family": "integrity_alignment",
+                "description": "설명에서 행동으로 이동한다."
+              },
+              "intensity": 3,
+              "dbChoiceId": "INCIDENT-03-REPAIR-08_action_D_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "계속 설명 중심으로 간다",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Explanation",
+                "direction": "exit",
+                "pattern_family": "explanation_substitution",
+                "description": "설명 유지"
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-REPAIR-08_action_D_X_AD2"
+            }
+          ]
+        }
+      }
+    }
+  }

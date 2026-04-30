@@ -10,7 +10,12 @@ type PatternStateRow = {
   user_id: string;
   pattern_family: string;
   window_run_ids: string[];
+  /** Count of distinct runs in window with ≥1 exit signal for this family. */
   family_window_tally: number;
+  /** Count of distinct runs in window with ≥1 entry signal for this family. */
+  entry_count: number;
+  /** Weighted pressure: (exit_count × 2) + entry_count. Used by Integrity Gap trigger. */
+  pressure_score: number;
   updated_at: string;
 };
 
@@ -62,6 +67,8 @@ export async function syncPatternStatesForUser(
         pattern_family,
         window_run_ids: [],
         family_window_tally: 0,
+        entry_count: 0,
+        pressure_score: 0,
         updated_at: new Date().toISOString(),
       });
       if (error) return { ok: false, error: error.message };
@@ -69,35 +76,45 @@ export async function syncPatternStatesForUser(
     return { ok: true };
   }
 
-  const { data: exits, error: sigErr } = await supabase
+  const { data: signals, error: sigErr } = await supabase
     .from("pattern_signals")
-    .select("run_id, pattern_family")
+    .select("run_id, pattern_family, direction")
     .eq("user_id", userId)
-    .eq("direction", "exit")
     .in("run_id", windowRunIds);
 
   if (sigErr) return { ok: false, error: sigErr.message };
 
   const windowSet = new Set(windowRunIds);
   const exitRunsByFamily = new Map<string, Set<string>>();
-  for (const row of exits ?? []) {
+  const entryRunsByFamily = new Map<string, Set<string>>();
+  for (const row of signals ?? []) {
     const runId = (row as { run_id?: string }).run_id;
     const fam = (row as { pattern_family?: string }).pattern_family;
-    if (typeof runId !== "string" || typeof fam !== "string") continue;
+    const dir = (row as { direction?: string }).direction;
+    if (typeof runId !== "string" || typeof fam !== "string" || typeof dir !== "string") continue;
     if (!windowSet.has(runId)) continue;
-    if (!exitRunsByFamily.has(fam)) exitRunsByFamily.set(fam, new Set());
-    exitRunsByFamily.get(fam)!.add(runId);
+    if (dir === "exit") {
+      if (!exitRunsByFamily.has(fam)) exitRunsByFamily.set(fam, new Set());
+      exitRunsByFamily.get(fam)!.add(runId);
+    } else if (dir === "entry") {
+      if (!entryRunsByFamily.has(fam)) entryRunsByFamily.set(fam, new Set());
+      entryRunsByFamily.get(fam)!.add(runId);
+    }
   }
 
   const nowIso = new Date().toISOString();
 
   for (const pattern_family of CANONICAL_PATTERN_FAMILIES) {
-    const tally = exitRunsByFamily.get(pattern_family)?.size ?? 0;
+    const exitCount = exitRunsByFamily.get(pattern_family)?.size ?? 0;
+    const entryCount = entryRunsByFamily.get(pattern_family)?.size ?? 0;
+    const pressureScore = exitCount * 2 + entryCount;
     const { error } = await upsertPatternStateRow(supabase, {
       user_id: userId,
       pattern_family,
       window_run_ids: windowRunIds,
-      family_window_tally: tally,
+      family_window_tally: exitCount,
+      entry_count: entryCount,
+      pressure_score: pressureScore,
       updated_at: nowIso,
     });
     if (error) return { ok: false, error: error.message };

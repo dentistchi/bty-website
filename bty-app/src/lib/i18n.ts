@@ -1143,6 +1143,27 @@ export type Messages = {
     eliteBindingIntegrityError: string;
     /** Step 4 forced trade-off — label above each option’s cost line */
     eliteForcedTradeoffCostLabel: string;
+    /** Tradeoff card — optional line from JSON `stage_2_escalation.outcome` */
+    eliteTradeoffProtectsLabel: string;
+    /** Tradeoff card — optional line from JSON `stage_2_escalation.risk` */
+    eliteTradeoffRisksLabel: string;
+    /** Canonical 3-step flow — copy above primary ChoiceList */
+    arenaFlowPhasePrimaryInstruction: string;
+    /** Canonical 3-step flow — copy above forced tradeoff */
+    arenaFlowPhaseTradeoffInstruction: string;
+    /** Canonical 3-step flow — copy above action decision */
+    arenaFlowPhaseActionDecisionInstruction: string;
+    /** Action decision — badge on AD1-style choice */
+    eliteActionDecisionAdCommitmentBadge: string;
+    /** Action decision — badge on AD2-style choice */
+    eliteActionDecisionAdDeferBadge: string;
+    eliteActionDecisionAd1TraitConcrete: string;
+    eliteActionDecisionAd1TraitTimeBound: string;
+    eliteActionDecisionAd1TraitObservable: string;
+    eliteActionDecisionAd1TraitContractGate: string;
+    eliteActionDecisionAd2TraitDelay: string;
+    eliteActionDecisionAd2TraitNonCommitment: string;
+    eliteActionDecisionAd2TraitNextOrReexposure: string;
     /** Step 5 — real-world action commitment (distinct from situation/tradeoff interpretation) */
     eliteActionDecisionTitle: string;
     eliteActionDecisionLead: string;
@@ -1165,6 +1186,8 @@ export type Messages = {
     eliteRunCompleteContinueCta: string;
     /** GET session router 409 `action_contract_pending` — Arena blocked */
     arenaPendingContractTitle: string;
+    /** Shown only when `runtime_state === ACTION_REQUIRED` — bridges AD1 pick → contract gate */
+    arenaObservableActionConfirmationLead: string;
     arenaPendingContractLead: string;
     arenaPendingContractActionLabel: string;
     arenaPendingContractDeadlineLabel: string;
@@ -1181,10 +1204,19 @@ export type Messages = {
     arenaForcedResetGoCenterCta: string;
     /** Server runtime_state placeholder — re-exposure due (snapshot-first gate). */
     arenaSnapshotReexposurePlaceholder: string;
-    /** Re-exposure gate — title / lead / primary CTA (GET session `REEXPOSURE_DUE`). */
-    arenaReexposureTitle: string;
-    arenaReexposureLead: string;
-    arenaReexposureEnterCta: string;
+    /** Unified `arena.reexposure.*` namespace-aligned keys. */
+    arenaReexposurePanelTitle: string;
+    arenaReexposurePanelDescription: string;
+    arenaReexposurePanelBeginButton: string;
+    arenaReexposureBlockedNextTitleV2: string;
+    arenaReexposureBlockedNextDescriptionV2: string;
+    arenaReexposureBlockedNextButtonV2: string;
+    arenaReexposureInternalStatusInterventionSensitivityUp: string;
+    arenaReexposureValidationChanged: string;
+    arenaReexposureValidationUnstable: string;
+    arenaReexposureValidationNoChange: string;
+    /** Stale re-exposure due flag without pending outcome — recovery refetch (must not deadlock). */
+    arenaReexposureStaleRecoveryMessage: string;
     /** Snapshot present but play surface not allowed (sync / non-ready runtime). */
     arenaSnapshotPlaySurfaceBlockedHint: string;
     /** Title when play UI is blocked but scenario exists — not a catalog 404. */
@@ -1202,6 +1234,10 @@ export type Messages = {
     /** `runtime_state` NEXT_SCENARIO_READY — post run/complete, before next GET session resolves. */
     arenaSnapshotNextScenarioReadyTitle: string;
     arenaSnapshotNextScenarioReadyHint: string;
+    /** After contract execution (QR/submit) — desktop parity with mobile "Execution recorded / Next scenario unlocked". */
+    arenaPostContractNextScenarioTitle: string;
+    arenaPostContractNextScenarioHint: string;
+    arenaContinueToNextScenarioCta: string;
     /** Step 6 — Action Contract */
     eliteContractTitle: string;
     eliteContractIntro: string;
@@ -2823,6 +2859,20 @@ const ko: Messages = {
     eliteBindingIntegrityError:
       "시나리오 바인딩 정보가 맞지 않습니다. 페이지를 새로고침하거나 아레나를 다시 시작해 주세요.",
     eliteForcedTradeoffCostLabel: "비용",
+    eliteTradeoffProtectsLabel: "이 선택이 끌고 가는 방향",
+    eliteTradeoffRisksLabel: "이 선택이 감수하는 리스크",
+    arenaFlowPhasePrimaryInstruction: "먼저, 압박 속에서 어떻게 반응할지 고릅니다.",
+    arenaFlowPhaseTradeoffInstruction: "이제 그 반응의 대가를 직면합니다. 어느 쪽도 공짜가 아닙니다.",
+    arenaFlowPhaseActionDecisionInstruction: "이제 관찰 가능한 행동을 고릅니다. 해석이 아닙니다.",
+    eliteActionDecisionAdCommitmentBadge: "관찰 가능한 실행",
+    eliteActionDecisionAdDeferBadge: "유예·비약정",
+    eliteActionDecisionAd1TraitConcrete: "구체적인 행동(느낌이나 해석만이 아님)",
+    eliteActionDecisionAd1TraitTimeBound: "시간이 정해진 실행(언젠가가 아님)",
+    eliteActionDecisionAd1TraitObservable: "다른 사람이 볼 수 있는 변화",
+    eliteActionDecisionAd1TraitContractGate: "완료해야 진행이 풀립니다 — 계약 단계로 이어집니다",
+    eliteActionDecisionAd2TraitDelay: "오늘 움직임을 고정하지 않고 미룹니다",
+    eliteActionDecisionAd2TraitNonCommitment: "해석을 더 열어 둡니다",
+    eliteActionDecisionAd2TraitNextOrReexposure: "계약 없이 진행할 수 있으며, 다음 시나리오로 가거나 무변화 재노출 리스크가 생길 수 있습니다",
     eliteActionDecisionTitle: "실제 행동 결정",
     eliteActionDecisionLead: "해석이 아니라, 다음 업무 구간에서 실제로 할 일을 고릅니다.",
     eliteActionDecisionCommitmentLabel: "선택의 의미",
@@ -2844,6 +2894,8 @@ const ko: Messages = {
     eliteRunCompleteLoading: "불러오는 중…",
     eliteRunCompleteContinueCta: "계속",
     arenaPendingContractTitle: "진행 중인 액션 계약",
+    arenaObservableActionConfirmationLead:
+      "관찰 가능한 실행을 선택했습니다. 이제 진행은 이행 완료에 달려 있습니다.",
     arenaPendingContractLead:
       "마이페이지에서 진행 중인 액션 계약을 마무리하기 전에는 다음 시나리오로 넘어갈 수 없습니다. 아래 내용을 확인한 뒤 마이페이지에서 처리해 주세요.",
     arenaPendingContractActionLabel: "액션",
@@ -2858,10 +2910,21 @@ const ko: Messages = {
       "아레나는 잠시 멈춥니다. 센터에서 안내에 따라 진행한 뒤 다시 돌아오세요.",
     arenaForcedResetGoCenterCta: "센터로 이동",
     arenaSnapshotReexposurePlaceholder: "다음 단계를 준비하는 중입니다. 잠시만 기다려 주세요.",
-    arenaReexposureTitle: "재노출 라운드",
-    arenaReexposureLead:
+    arenaReexposurePanelTitle: "재노출 라운드",
+    arenaReexposurePanelDescription:
       "이전 선택과 연결된 지연 결과가 도착했습니다. 시나리오로 들어가 계속 진행하세요.",
-    arenaReexposureEnterCta: "시나리오로 들어가기",
+    arenaReexposurePanelBeginButton: "시나리오로 들어가기",
+    arenaReexposureBlockedNextTitleV2: "다음 시나리오 전 패턴 검증이 필요합니다",
+    arenaReexposureBlockedNextDescriptionV2:
+      "재노출은 처벌 단계가 아니라, 같은 축에서 패턴 안정성을 확인하는 검증 단계입니다.",
+    arenaReexposureBlockedNextButtonV2: "다음 시나리오 불러오기",
+    arenaReexposureInternalStatusInterventionSensitivityUp:
+      "패턴 검증 민감도가 조정되었습니다. 같은 축에서 다음 검증을 이어갑니다.",
+    arenaReexposureValidationChanged: "패턴 검증 결과: changed",
+    arenaReexposureValidationUnstable: "패턴 검증 결과: unstable",
+    arenaReexposureValidationNoChange: "패턴 검증 결과: no_change",
+    arenaReexposureStaleRecoveryMessage:
+      "재노출 상태가 만료되었습니다. 다음 시나리오를 다시 불러오는 중입니다.",
     arenaSnapshotPlaySurfaceBlockedHint: "세션 상태를 서버와 맞추는 중입니다. 새로고침하거나 잠시 후 다시 시도해 주세요.",
     arenaPlaySurfaceBlockedTitle: "플레이 일시 중지",
     arenaAligningLoaderTitle: "서버와 세션을 맞추는 중",
@@ -2874,6 +2937,9 @@ const ko: Messages = {
     arenaGateLabelAligning: "동기화",
     arenaSnapshotNextScenarioReadyTitle: "다음 시나리오 준비됨",
     arenaSnapshotNextScenarioReadyHint: "세션을 불러오는 중입니다. 잠시만 기다려 주세요.",
+    arenaPostContractNextScenarioTitle: "실행이 기록되었습니다. 다음 시나리오로 계속하세요.",
+    arenaPostContractNextScenarioHint: "모바일과 동일하게, 제출된 계약은 더 이상 진행을 막지 않습니다.",
+    arenaContinueToNextScenarioCta: "계속",
     eliteContractTitle: "액션 계약",
     eliteContractIntro:
       "네 가지는 실행 가능한 약속을 고정합니다. 가깝고 구체적일수록 좋습니다. 아래 안내는 형식만 돕고, 사람을 평가하지 않습니다.",
@@ -4444,6 +4510,21 @@ const en: Messages = {
     eliteBindingIntegrityError:
       "Scenario binding data is missing or invalid. Refresh the page or restart the arena.",
     eliteForcedTradeoffCostLabel: "COST",
+    eliteTradeoffProtectsLabel: "What this leans toward",
+    eliteTradeoffRisksLabel: "What this risks",
+    arenaFlowPhasePrimaryInstruction: "First, choose how you respond under pressure.",
+    arenaFlowPhaseTradeoffInstruction: "Now face the cost of that response. Neither option is free.",
+    arenaFlowPhaseActionDecisionInstruction: "Now choose the observable action. This is not interpretation.",
+    eliteActionDecisionAdCommitmentBadge: "Observable action",
+    eliteActionDecisionAdDeferBadge: "Delay / non-commitment",
+    eliteActionDecisionAd1TraitConcrete: "A concrete, real-world move (not vibes alone)",
+    eliteActionDecisionAd1TraitTimeBound: "Time-bound — happens in a defined window",
+    eliteActionDecisionAd1TraitObservable: "Observable by others",
+    eliteActionDecisionAd1TraitContractGate: "Progress depends on completing it — opens the action-contract gate",
+    eliteActionDecisionAd2TraitDelay: "Defers locking a move today",
+    eliteActionDecisionAd2TraitNonCommitment: "Keeps interpretation open longer",
+    eliteActionDecisionAd2TraitNextOrReexposure:
+      "May proceed without a contract — next scenario or no-change re-exposure risk",
     eliteActionDecisionTitle: "Action decision",
     eliteActionDecisionLead: "Not interpretation — what you will actually do next.",
     eliteActionDecisionCommitmentLabel: "What this means",
@@ -4465,6 +4546,8 @@ const en: Messages = {
     eliteRunCompleteLoading: "Loading…",
     eliteRunCompleteContinueCta: "Continue",
     arenaPendingContractTitle: "Action contract in progress",
+    arenaObservableActionConfirmationLead:
+      "You chose an observable action. Progress now depends on completing it.",
     arenaPendingContractLead:
       "You cannot start the next Arena scenario until you finish the open action contract on My Page. Review the details below, complete it there, then try again.",
     arenaPendingContractActionLabel: "Action",
@@ -4478,10 +4561,20 @@ const en: Messages = {
     arenaForcedResetGateLead: "Arena is paused. Complete the guided step in Center, then return.",
     arenaForcedResetGoCenterCta: "Open Center",
     arenaSnapshotReexposurePlaceholder: "Preparing the next step. Please wait.",
-    arenaReexposureTitle: "Re-exposure round",
-    arenaReexposureLead:
+    arenaReexposurePanelTitle: "Re-exposure round",
+    arenaReexposurePanelDescription:
       "A delayed outcome linked to an earlier choice is ready. Enter the scenario to continue.",
-    arenaReexposureEnterCta: "Enter scenario",
+    arenaReexposurePanelBeginButton: "Enter scenario",
+    arenaReexposureBlockedNextTitleV2: "Pattern validation is required before the next scenario",
+    arenaReexposureBlockedNextDescriptionV2:
+      "Re-exposure is a validation stage to confirm pattern stability on the same axis, not a punishment step.",
+    arenaReexposureBlockedNextButtonV2: "Load Next Scenario",
+    arenaReexposureInternalStatusInterventionSensitivityUp:
+      "Pattern validation sensitivity is adjusted. The next validation stays on the same axis.",
+    arenaReexposureValidationChanged: "Pattern validation update: changed",
+    arenaReexposureValidationUnstable: "Pattern validation update: unstable",
+    arenaReexposureValidationNoChange: "Pattern validation update: no_change",
+    arenaReexposureStaleRecoveryMessage: "Re-exposure state expired. Refreshing your next scenario.",
     arenaSnapshotPlaySurfaceBlockedHint: "Aligning your session with the server. Refresh or try again shortly.",
     arenaPlaySurfaceBlockedTitle: "Play paused",
     arenaAligningLoaderTitle: "Aligning with the server",
@@ -4494,6 +4587,9 @@ const en: Messages = {
     arenaGateLabelAligning: "Aligning",
     arenaSnapshotNextScenarioReadyTitle: "Next scenario ready",
     arenaSnapshotNextScenarioReadyHint: "Loading your next session…",
+    arenaPostContractNextScenarioTitle: "Execution recorded. Continue to the next scenario.",
+    arenaPostContractNextScenarioHint: "Your submitted contract no longer blocks progression—same as mobile.",
+    arenaContinueToNextScenarioCta: "Continue",
     eliteContractTitle: "Action Contract",
     eliteContractIntro:
       "These four fields lock a commitment someone could verify. Keep it close, specific, and fair—about the move, not a verdict on anyone’s character.",

@@ -11,9 +11,9 @@ import { runForcedResetAfterAirIfStage3 } from "@/lib/bty/leadership-engine/forc
  * → `computeAIRSnapshot` / `airToBand`. Official vocabulary mapping: `domain/leadership-engine/air.ts` file header.
  * **Not** Pattern Shift (behavior layer); no merge with mirror/pattern engines here.
  *
- * Returns AIR score + band for 7d, 14d, 90d. Auth required. UI displays band only (raw score optional per product).
+ * Returns AIR band snapshot for 7d, 14d, 90d. Auth required. Raw AIR score is intentionally hidden in user API responses.
  * **Side effect:** after computing AIR, runs {@link runForcedResetAfterAirIfStage3} (stage 3 → may persist stage 4 per `evaluateForcedReset`).
- * Response (200): { air_7d, air_14d, air_90d } (each: air, missedWindows, integritySlip, band low|mid|high). No rows → 200 with zeros and band low.
+ * Response (200): { air_7d, air_14d, air_90d } (each: missedWindows, integritySlip, band low|mid|high, score_hidden=true).
  * Errors: 401 { error: "UNAUTHENTICATED" }; unhandled DB errors → 500.
  */
 export async function GET(req: NextRequest) {
@@ -28,9 +28,9 @@ export async function GET(req: NextRequest) {
 
   if (!rows?.length) {
     const empty = {
-      air_7d: { air: 0, missedWindows: 0, integritySlip: false, band: "low" as const },
-      air_14d: { air: 0, missedWindows: 0, integritySlip: false, band: "low" as const },
-      air_90d: { air: 0, missedWindows: 0, integritySlip: false, band: "low" as const },
+      air_7d: { missedWindows: 0, integritySlip: false, band: "low" as const, score_hidden: true },
+      air_14d: { missedWindows: 0, integritySlip: false, band: "low" as const, score_hidden: true },
+      air_90d: { missedWindows: 0, integritySlip: false, band: "low" as const, score_hidden: true },
     };
     await runForcedResetAfterAirIfStage3(supabase, user.id, []);
     const res = NextResponse.json(empty);
@@ -67,9 +67,24 @@ export async function GET(req: NextRequest) {
   await runForcedResetAfterAirIfStage3(supabase, user.id, activations);
 
   const res = NextResponse.json({
-    air_7d: { ...snapshot.air_7d, band: airToBand(snapshot.air_7d.air) },
-    air_14d: { ...snapshot.air_14d, band: airToBand(snapshot.air_14d.air) },
-    air_90d: { ...snapshot.air_90d, band: airToBand(snapshot.air_90d.air) },
+    air_7d: {
+      missedWindows: snapshot.air_7d.missedWindows,
+      integritySlip: snapshot.air_7d.integritySlip,
+      band: airToBand(snapshot.air_7d.air),
+      score_hidden: true,
+    },
+    air_14d: {
+      missedWindows: snapshot.air_14d.missedWindows,
+      integritySlip: snapshot.air_14d.integritySlip,
+      band: airToBand(snapshot.air_14d.air),
+      score_hidden: true,
+    },
+    air_90d: {
+      missedWindows: snapshot.air_90d.missedWindows,
+      integritySlip: snapshot.air_90d.integritySlip,
+      band: airToBand(snapshot.air_90d.air),
+      score_hidden: true,
+    },
   });
   copyCookiesAndDebug(base, res, req, true);
   return res;

@@ -11,7 +11,7 @@ import {
   snapshotForScenarioReady,
 } from "@/lib/bty/arena/arenaRuntimeSnapshot.server";
 import { getLeadershipEngineState } from "@/lib/bty/leadership-engine/state-service";
-import { fetchFirstDueReexposureMeta } from "@/engine/scenario/delayed-outcome-trigger.service";
+import { fetchFirstDueNoChangeReexposureMeta } from "@/engine/scenario/delayed-outcome-trigger.service";
 import { consumeDueDelayedOutcomeTriggersForUser } from "@/engine/memory/delayed-outcome-consumer.service";
 
 export type ArenaSessionNextCoreResult =
@@ -44,7 +44,8 @@ export async function runArenaSessionNextCore(params: {
       runId: runIdParam,
     });
 
-    if (blocking) {
+    const blockingStatus = typeof blocking?.status === "string" ? blocking.status.trim().toLowerCase() : null;
+    if (blocking && blockingStatus === "pending") {
       const snap = snapshotForBlockedContract(blocking);
       return {
         status: 409,
@@ -61,6 +62,13 @@ export async function runArenaSessionNextCore(params: {
           scenario: null,
         },
       };
+    }
+    if (blocking && blockingStatus !== "pending") {
+      console.warn("[arena] ignoring non-pending blocking row", {
+        userId,
+        status: blocking.status,
+        contractId: blocking.id,
+      });
     }
 
     void supabase
@@ -126,27 +134,28 @@ export async function runArenaSessionNextCore(params: {
       userId,
       supabase,
     });
-    const delayedOutcomePending =
-      routed.delayedOutcomePending || consumedDelayedOutcomeTriggers.consumedCount > 0;
+    const noChangeReexposureMeta = await fetchFirstDueNoChangeReexposureMeta(supabase, userId);
+    const reexposureShellActive =
+      noChangeReexposureMeta?.pendingOutcomeId != null &&
+      String(noChangeReexposureMeta.pendingOutcomeId).trim() !== "";
     const firstConsumedTrigger = consumedDelayedOutcomeTriggers.triggers[0] ?? null;
 
-    const reExposureMeta = delayedOutcomePending
-      ? await fetchFirstDueReexposureMeta(supabase, userId)
-      : null;
-    const readySnap = delayedOutcomePending
-      ? snapshotForReexposureDue()
-      : snapshotForScenarioReady();
+    const reExposureMeta = reexposureShellActive ? noChangeReexposureMeta : null;
+    const readySnap = reexposureShellActive ? snapshotForReexposureDue() : snapshotForScenarioReady();
     /**
      * While `REEXPOSURE_DUE` is active, do not attach a normal “next catalog” scenario — avoids mixed semantics
      * (snapshot blocks play but body still carried a playable next scenario). Re-exposure play uses
-     * `GET /api/arena/re-exposure/[scenarioId]` after {@link fetchFirstDueReexposureMeta} identifies the source row.
+     * `GET /api/arena/re-exposure/[scenarioId]` after {@link fetchFirstDueNoChangeReexposureMeta} identifies the source row.
      */
+    const isDevOrStaging =
+      process.env.NODE_ENV !== "production" || process.env.BTY_ENV?.trim().toLowerCase() === "staging";
+
     return {
       status: 200,
       body: {
         ok: true,
         ...readySnap,
-        ...(delayedOutcomePending
+        ...(reexposureShellActive
           ? {
               re_exposure: {
                 due: true,
@@ -167,8 +176,21 @@ export async function runArenaSessionNextCore(params: {
               scenarioRoute: routed.route,
               ...(routed.recallPrompt ? { recallPrompt: routed.recallPrompt } : {}),
               ...(routed.route === "mirror" && routed.mirrors ? { mirrors: routed.mirrors } : {}),
+              ...(isDevOrStaging && routed._selectorDebug
+                ? {
+                    _selectorDebug: {
+                      scenarioRoute: routed.route,
+                      selectedScenarioId: routed._selectorDebug.selectedScenarioId ?? null,
+                      reason: routed._selectorDebug.reason ?? null,
+                      skippedPlayedIds: routed._selectorDebug.skippedPlayedIds ?? [],
+                      playedCount: routed._selectorDebug.playedCount ?? 0,
+                      servedCount: routed._selectorDebug.servedCount ?? 0,
+                      candidatePoolSize: routed._selectorDebug.candidatePoolSize ?? null,
+                    },
+                  }
+                : {}),
             }),
-        delayedOutcomePending,
+        delayedOutcomePending: reexposureShellActive,
       },
     };
   } catch (e) {

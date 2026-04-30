@@ -13,13 +13,21 @@ export type MyPageOpenActionContractUi = {
   action_text: string;
   deadline_at: string;
   verification_type: BtyActionContractVerificationMode;
-  display_state: "pending" | "completed" | "missed" | "blocked";
+  display_state:
+    | "action_required"
+    | "action_submitted"
+    | "action_awaiting_verification"
+    | "verified_completed"
+    | "missed"
+    | "blocked"
+    | "pending"
+    | "completed";
   completion_method: "qr" | "link" | null;
   completed_at?: string;
 };
 
 function asVerificationMode(v: string | null | undefined): BtyActionContractVerificationMode {
-  if (v === "qr" || v === "link" || v === "hybrid") return v;
+  if (v === "qr" || v === "link" || v === "hybrid" || v === "self_report") return v;
   return "hybrid";
 }
 
@@ -110,7 +118,10 @@ export async function fetchOpenActionContractForMyPage(
         console.error("[openActionContractForMyPage] awaiting-verify expiry failed", expireErr.message);
       }
     } else {
-      const display_state = toDisplayState("pending", false) as MyPageOpenActionContractUi["display_state"];
+      const display_state = toDisplayState("submitted", false, {
+        validationApprovedAt: String(rowAv.validation_approved_at ?? ""),
+        verifiedAt: rowAv.verified_at != null ? String(rowAv.verified_at) : null,
+      }) as MyPageOpenActionContractUi["display_state"];
       return {
         id: String(rowAv.id),
         session_id: rowAv.session_id != null ? String(rowAv.session_id) : null,
@@ -126,7 +137,7 @@ export async function fetchOpenActionContractForMyPage(
   const { data: terminalRows, error: terminalErr } = await supabase
     .from("bty_action_contracts")
     .select(
-      "id, contract_description, deadline_at, verification_mode, status, completion_method, completed_at, session_id, verified_at",
+      "id, contract_description, deadline_at, verification_mode, status, completion_method, completed_at, session_id, verified_at, validation_approved_at",
     )
     .eq("user_id", userId)
     .in("status", ["approved", "completed", "missed"])
@@ -150,7 +161,11 @@ export async function fetchOpenActionContractForMyPage(
   if (st !== "approved" && st !== "completed" && st !== "missed") return null;
 
   const status = (st === "completed" ? "approved" : st) as BtyActionContractStatus;
-  const display_state = toDisplayState(status, false) as MyPageOpenActionContractUi["display_state"];
+  const display_state = toDisplayState(status, false, {
+    validationApprovedAt:
+      row.validation_approved_at != null ? String(row.validation_approved_at) : null,
+    verifiedAt: row.verified_at != null ? String(row.verified_at) : null,
+  }) as MyPageOpenActionContractUi["display_state"];
 
   return {
     id: String(row.id),

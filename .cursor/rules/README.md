@@ -1,18 +1,24 @@
-# .cursor/rules — 추천 구조
+# Cursor Rules — Legacy (Migrated to Claude Code)
 
-계층·시스템 경계·import 방향용 **추천 규칙 세트** (6개).
+이 폴더의 룰들은 모두 `.claude/`로 마이그레이션됨.
 
-```
-bty-domain-pure-only.mdc
-bty-service-layer.mdc
-bty-api-thin-handler.mdc
-bty-ui-render-only.mdc
-bty-system-boundary.mdc
-bty-import-direction.mdc
-```
+**마이그레이션 일자**: 2026-04-28
+**가이드**: `.claude/migration-notes/MIGRATION_GUIDE.md`
 
-자세한 목표 구조와 매핑은 `docs/architecture/DOMAIN_LAYER_TARGET_MAP.md` 참조.
+## 현재 정책
 
-chat 계층(`src/lib/bty/chat`) 작업 시 추가 적용: **bty-chat-boundary.mdc** (`docs/architecture/CHAT_LAYER_SPEC.md` 연동).
+- **Claude Code** (`claude` CLI) = 메인 도구
+- **Cursor** = 백업 / 가끔 IDE로 사용
+- 새 룰은 `.claude/`에만 추가
+- 이 폴더는 **동결** (수정 금지)
 
-지휘/오케스트레이션 모드: **c1-commander.mdc** (`docs/agent-runtime/C1_MASTER_COMMANDER.md` 연동).
+## ⚠️ 중요
+
+이 폴더의 룰을 수정하면 `.claude/`와 분기됨.
+어느 게 진짜인지 모르게 됨.
+모든 변경은 `.claude/`에서만 하라.
+
+## 한 달 후 (2026-05-28경) 재평가
+
+- Cursor 한 번도 안 썼다면 → 이 폴더 통째로 archive
+- 가끔 썼다면 → 그대로 유지

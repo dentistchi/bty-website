@@ -110,6 +110,8 @@ export function EliteArenaPostChoiceBlock({
         secondChoices={v2.branch.second_choices}
         difficultyLevel={difficultyLevel}
         costLabel={t.eliteForcedTradeoffCostLabel}
+        protectsLabel={t.eliteTradeoffProtectsLabel}
+        risksLabel={t.eliteTradeoffRisksLabel}
         onChoice={(id) => Promise.resolve(onSecondChoice(id))}
         choiceDisabled={secondChoiceSubmitting}
       />

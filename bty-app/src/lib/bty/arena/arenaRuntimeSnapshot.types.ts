@@ -41,6 +41,10 @@ export type ArenaSessionReExposureSlice = {
   due: boolean;
   scenario_id: string | null;
   pending_outcome_id?: string | null;
+  incident_id?: string | null;
+  axis_group?: string | null;
+  axis_index?: number | null;
+  pattern_family?: string | null;
 };
 
 /** Fields attached to 200 / 409 session-router JSON responses. */
@@ -76,6 +80,11 @@ export type ArenaBindingPatternSlice = {
 export type ArenaBindingReExposureSlice = {
   due: boolean;
   scenario_id: string | null;
+  pending_outcome_id?: string | null;
+  incident_id?: string | null;
+  axis_group?: string | null;
+  axis_index?: number | null;
+  pattern_family?: string | null;
 };
 
 /** Canonical snapshot returned by POST `/api/arena/choice` (superset of GET session-router fields). */

@@ -1,0 +1,24 @@
+---
+description: 작업 완료 시 매번 서류(보드·CURRENT_TASK·Release Gate) 반영 필수
+alwaysApply: true
+---
+
+# 작업 완료 시 서류 반영 (매번 필수)
+
+태스크·기능 구현을 **완료한 턴**에서 결과를 채팅에만 남기지 말고 **즉시** 아래 서류에 반영한다.
+
+## 반영할 서류 (repo root docs/)
+
+| 서류 | 반영 내용 |
+|------|------------|
+| **docs/CURSOR_TASK_BOARD.md** | 해당 스프린트(차수) 완료 불릿 추가. 테이블 해당 TASK 행에 [x] 및 "완료." 표기. |
+| **docs/CURRENT_TASK.md** | 상단 근처에 완료한 작업 한 줄 요약 + [x] 완료. 형식 추가. |
+| **docs/BTY_RELEASE_GATE_CHECK.md** | Auth/리셋/리더보드/API/배포 관련 변경 시 해당 섹션·갱신 이력 추가. |
+
+## 규칙
+
+- 같은 턴에서 서류 갱신까지 수행한다. 다음 턴으로 미루지 않는다.
+- 경로는 repo root 기준 (docs/…).
+- C5 검증 완료 시에는 bty-c5-verify.mdc도 참고.
+
+참조: CURSOR_TASK_BOARD.md § "작업 완료 시 서류 반영", CURRENT_TASK.md § 동일

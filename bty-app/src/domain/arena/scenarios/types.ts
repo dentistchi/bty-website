@@ -20,8 +20,14 @@ export type SecondChoice = {
   label: string;
   /** Required — empty string is invalid content. */
   cost: string;
+  /** Optional — merged from JSON `stage_2_escalation[id].outcome` for tradeoff UI. */
+  protects?: string;
+  /** Optional — merged from JSON `stage_2_escalation[id].risk` for tradeoff UI. */
+  risks?: string;
   pattern_family?: string;
   direction: "entry" | "exit";
+  /** Signal strength (1 = mild, 2 = moderate, 3 = high). Used by Immediate trigger and re-exposure intensity comparison. */
+  intensity?: 1 | 2 | 3;
   /** Behavioral engine / binding template id — when set, overrides `${scenarioId}:second:*` in canonical loaders. */
   dbChoiceId?: string;
 };

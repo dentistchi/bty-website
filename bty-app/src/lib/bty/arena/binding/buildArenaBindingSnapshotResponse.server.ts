@@ -115,11 +115,33 @@ export async function buildArenaBindingSnapshotResponse(
       );
     }
     if (blocking) {
+      const st = String(blocking.status ?? "").trim().toLowerCase();
+      // Only `pending` blocks progression. After QR, `submitted`/`escalated` must not loop the same scenario
+      // behind ACTION_SUBMITTED + closed gates (GET session already uses pending-only blocking query).
+      if (st === "pending") {
+        const snap = snapshotForBlockedContract(blocking);
+        return {
+          ...snap,
+          run_id: params.runId,
+          scenario: scenarioSlice,
+          ...bindingExtras,
+        };
+      }
+      if (st === "submitted" || st === "escalated") {
+        const next = snapshotForNextScenarioReady();
+        return {
+          ...next,
+          run_id: params.runId,
+          scenario: scenarioSlice,
+          ...bindingExtras,
+        };
+      }
       const snap = snapshotForBlockedContract(blocking);
       return {
         ...snap,
         run_id: params.runId,
         scenario: scenarioSlice,
+        ...bindingExtras,
       };
     }
     console.error("[arena] binding_snapshot_commitment_without_contract_row", {

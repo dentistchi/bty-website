@@ -58,6 +58,35 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return v != null && typeof v === "object";
 }
 
+/** Non-empty pending outcome id from GET session `re_exposure` slice (snake or camel). */
+export function pendingOutcomeIdFromSessionRouterBody(body: Record<string, unknown>): string | null {
+  const reSlice = body.re_exposure;
+  if (!isRecord(reSlice)) return null;
+  const raw =
+    typeof reSlice.pending_outcome_id === "string"
+      ? reSlice.pending_outcome_id
+      : typeof reSlice.pendingOutcomeId === "string"
+        ? reSlice.pendingOutcomeId
+        : "";
+  const t = raw.trim();
+  return t.length > 0 ? t : null;
+}
+
+/** Re-exposure shell is invalid without a real pending outcome id — must not block catalog progression. */
+export function snapshotQualifiesAsReexposureGate(snap: ArenaSessionRouterSnapshot): boolean {
+  const re = snap.re_exposure;
+  const raw =
+    typeof re?.pending_outcome_id === "string"
+      ? re.pending_outcome_id
+      : re != null && typeof (re as Record<string, unknown>).pendingOutcomeId === "string"
+        ? String((re as Record<string, unknown>).pendingOutcomeId)
+        : "";
+  const pid = raw.trim();
+  if (pid.length === 0) return false;
+  if (snap.runtime_state === "REEXPOSURE_DUE") return true;
+  return snap.runtime_state === "NEXT_SCENARIO_READY" && re?.due === true;
+}
+
 function parsePendingContract(body: Record<string, unknown>): ArenaPendingContractPayload | null {
   const c = body.contract;
   if (!isRecord(c)) return null;
@@ -235,9 +264,15 @@ export function sessionPackRequiresReexposureGate(pack: ArenaSessionRouterPack):
 
 /** Snapshot to store for re-exposure gate + `beginReexposurePlay`, or null if normal play is allowed. */
 export function reexposureSnapshotFromSessionPack(pack: ArenaSessionRouterPack): ArenaSessionRouterSnapshot | null {
-  if (pack.outcome === "reexposure") return pack.snapshot;
-  if (pack.outcome === "session_shell" && pack.snapshot.runtime_state === "REEXPOSURE_DUE") return pack.snapshot;
-  if (pack.outcome === "scenario" && pack.snapshot.runtime_state === "REEXPOSURE_DUE") return pack.snapshot;
+  if (pack.outcome === "reexposure") {
+    return snapshotQualifiesAsReexposureGate(pack.snapshot) ? pack.snapshot : null;
+  }
+  if (pack.outcome === "session_shell" && pack.snapshot.runtime_state === "REEXPOSURE_DUE") {
+    return snapshotQualifiesAsReexposureGate(pack.snapshot) ? pack.snapshot : null;
+  }
+  if (pack.outcome === "scenario" && pack.snapshot.runtime_state === "REEXPOSURE_DUE") {
+    return snapshotQualifiesAsReexposureGate(pack.snapshot) ? pack.snapshot : null;
+  }
   return null;
 }
 
@@ -339,10 +374,11 @@ export async function fetchArenaSessionRouterPack(
     isRecord(reSlice) && typeof (reSlice as Record<string, unknown>).due === "boolean"
       ? (reSlice as Record<string, unknown>).due === true
       : false;
+  const pendingId = pendingOutcomeIdFromSessionRouterBody(data);
   const isReexposureBody =
-    rsRaw === "REEXPOSURE_DUE" ||
-    (data.delayedOutcomePending === true && data.scenario == null) ||
-    (reDue && data.scenario == null);
+    (rsRaw === "REEXPOSURE_DUE" && pendingId != null) ||
+    (data.delayedOutcomePending === true && data.scenario == null && pendingId != null) ||
+    (reDue && data.scenario == null && pendingId != null);
   if (isReexposureBody) {
     return {
       outcome: "reexposure",
@@ -356,6 +392,9 @@ export async function fetchArenaSessionRouterPack(
   if (data.scenario == null) {
     const rsBody = typeof data.runtime_state === "string" ? data.runtime_state : null;
     const rs = rsBody ?? snap.runtime_state;
+    if (rs === "REEXPOSURE_DUE" && pendingOutcomeIdFromSessionRouterBody(data) == null) {
+      return { outcome: "empty" };
+    }
     if (isArenaServerEntryShellRuntimeState(rs)) {
       const parsedAgain = parseArenaSessionRouterSnapshotFromJson(data);
       const shellSnap =

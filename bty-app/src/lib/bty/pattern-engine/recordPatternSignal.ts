@@ -18,6 +18,7 @@ export async function recordPatternSignal(
     patternFamilyRaw: string;
     direction: PatternDirection;
     step: number;
+    intensity?: 1 | 2 | 3;
     payload?: Record<string, unknown>;
   },
 ): Promise<RecordPatternSignalResult> {
@@ -35,6 +36,7 @@ export async function recordPatternSignal(
     pattern_family,
     direction: params.direction,
     step: params.step,
+    intensity: params.intensity ?? null,
     payload: params.payload ?? {},
   });
 

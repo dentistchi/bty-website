@@ -1,0 +1,277 @@
+{
+  "id": "core_21_identity_integrity_correction",
+  "title": "When the System You Built Is Used Wrong",
+  "role": "Clinical Director / Partner Doctor",
+  "pressure": "The integrity system has been handed off, and another leader is now using it. But the system is being applied in a way that looks compliant while creating fear, rigidity, or selective pressure. People are watching whether you take control back, protect the successor, or build correction into the system itself.",
+  "tradeoff": "Correct the misuse personally, or create a correction mechanism that keeps ownership distributed.",
+  "bty_tension_axis": "identity_integrity_correction",
+  "axis_primary": "integrity",
+  "axis_secondary": "self_correction",
+  "difficulty_level": "final_full_density",
+  "incident": {
+    "incidentId": "incident_02",
+    "incidentStage": "system correction after inheritance",
+    "sequencePosition": 21,
+    "previousScenarioId": "core_20_identity_integrity_inheritance",
+    "nextScenarioId": null,
+    "roleShift": "from system inheritance designer to system correction owner",
+    "propagation": {
+      "exitEffect": "The system becomes dependent on your personal correction or the successor’s unchecked interpretation.",
+      "entryEffect": "The system gains a correction loop that does not require ownership to return to you.",
+      "reExposureNote": "The next misuse will reveal whether correction became a system behavior or a leadership rescue."
+    }
+  },
+  "action_contract": {
+    "description": "Respond to a distorted use of the integrity system by creating one observable correction loop that keeps ownership with the operating system, not with personal authority.",
+    "time_window_hours": 72
+  },
+  "AIR_logic": {
+    "success": "The system can identify distortion, correct application, and preserve distributed ownership.",
+    "miss": "The correction either recentralizes control or allows the distorted version to become the new norm."
+  },
+  "forced_reset": {
+    "trigger": "A staff member says the integrity system now feels like a weapon instead of a standard.",
+    "action": "Separate the standard from the distorted application, name the correction pathway, and require a documented re-check."
+  },
+  "pattern_detection": {
+    "recentralized_control": "Takes the decision back personally whenever the system is misused.",
+    "stability_preservation": "Avoids naming distortion because the successor is still new.",
+    "successor_protection": "Protects the new leader’s authority at the cost of system feedback.",
+    "symbolic_correction": "Fixes one case without changing how future distortion is detected."
+  },
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "After you personally correct the decision, staff feel relieved, but the successor stops making independent calls and starts waiting for your interpretation on hard cases.",
+      "pressure_increase": "The correction protected the case but weakened system inheritance.",
+      "intensity": 7,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours to correct the misuse without taking the system back?",
+        "context": "The case was corrected, but the successor now sees you as the final interpreter again.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, assign the successor and one peer leader to re-review the corrected case against the written criteria and document the revised application without you making the final call.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Continue reviewing difficult integrity cases personally until the successor shows stronger judgment.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Stay involved until the successor becomes more consistent",
+          "cost": "Extends dependency and recentralizes courage.",
+          "axis": "self_correction",
+          "direction": "exit",
+          "pattern_family": "recentralized_control"
+        },
+        {
+          "id": "Y",
+          "label": "Move correction back into a defined review process owned by the successor and one peer leader",
+          "cost": "Requires tolerating imperfect correction without taking ownership back.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "decentralized_correction"
+        }
+      ]
+    },
+    "B": {
+      "escalation_text": "Because the distortion was not named, another office copies the successor’s rigid application and staff begin avoiding the integrity pathway unless they feel protected.",
+      "pressure_increase": "A learning gap has become a replicated operating behavior.",
+      "intensity": 7,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours to stop the distorted version from becoming the standard?",
+        "context": "The system is now being copied incorrectly because no one named the difference between the standard and the distortion.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, publish a correction note that defines the specific application error, separates it from the successor personally, and states the correct criteria for future cases.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Send additional examples to leaders and ask them to use better judgment in future cases.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Give leaders more examples so they understand the intended use",
+          "cost": "Adds explanation but still avoids naming the current distortion.",
+          "axis": "self_correction",
+          "direction": "exit",
+          "pattern_family": "stability_preservation"
+        },
+        {
+          "id": "Y",
+          "label": "Name the distortion as a system application error, not a successor failure",
+          "cost": "Creates discomfort but prevents the wrong version from spreading.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "distortion_identification"
+        }
+      ]
+    },
+    "C": {
+      "escalation_text": "Quiet feedback protects the successor, but staff conclude that system feedback only travels upward if leadership approves it first.",
+      "pressure_increase": "The correction path now looks permission-based instead of system-based.",
+      "intensity": 7,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours to make system feedback independent of leader comfort?",
+        "context": "If feedback needs permission, the system cannot correct itself under pressure.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, create a system-application feedback loop where staff can flag distorted use against defined criteria and receive documented review from two leaders.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Continue collecting feedback privately and decide which concerns should be shared with the successor.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep feedback quiet until the successor has more confidence",
+          "cost": "Protects the leader while teaching staff that feedback is conditional.",
+          "axis": "self_correction",
+          "direction": "exit",
+          "pattern_family": "successor_protection"
+        },
+        {
+          "id": "Y",
+          "label": "Create a feedback loop that reviews system application without requiring personal approval",
+          "cost": "Reduces leadership control over what gets surfaced.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "system_feedback_loop"
+        }
+      ]
+    },
+    "D": {
+      "escalation_text": "Once the correction pathway is announced, a partner doctor says the system is becoming too bureaucratic and that leaders will stop making timely decisions if every application can be challenged.",
+      "pressure_increase": "Self-correction now threatens speed, authority comfort, and leadership discretion.",
+      "intensity": 8,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours to keep self-correction real without making the system unusable?",
+        "context": "The correction pathway must be narrow enough to operate and strong enough to challenge distorted authority.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, publish three narrow correction triggers: criteria mismatch, relationship-based exception, and authority-based suppression, with a required two-leader documented review.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Restrict correction requests to cases that senior leadership first agrees are serious enough to review.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Limit the correction pathway to rare cases approved by senior leadership",
+          "cost": "Makes the pathway safer but weakens self-correction.",
+          "axis": "self_correction",
+          "direction": "exit",
+          "pattern_family": "symbolic_correction"
+        },
+        {
+          "id": "Y",
+          "label": "Define narrow criteria for correction while preserving the right to challenge distorted application",
+          "cost": "Requires leaders to accept structured challenge without turning every disagreement into review.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "self_correction_protocol"
+        }
+      ]
+    }
+  },
+  "ending_identity_choice": {
+    "prompt": "When the system is used wrong, what kind of integrity are you choosing?",
+    "choices": [
+      {
+        "id": "SYS1",
+        "label": "Integrity that depends on the original leader to rescue distorted application",
+        "direction": "exit"
+      },
+      {
+        "id": "SYS2",
+        "label": "Integrity that can identify, challenge, and correct its own distortion",
+        "direction": "entry"
+      }
+    ]
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Step in and personally correct the misused decision",
+      "subtext": "It feels necessary because the system may harm trust if the wrong application continues.",
+      "axis": "integrity",
+      "direction": "exit",
+      "pattern_family": "recentralized_control",
+      "intensity": 6
+    },
+    {
+      "id": "B",
+      "label": "Avoid calling it misuse yet because the successor is still learning",
+      "subtext": "It feels stabilizing because naming the distortion too early may weaken the successor.",
+      "axis": "self_correction",
+      "direction": "exit",
+      "pattern_family": "stability_preservation",
+      "intensity": 5
+    },
+    {
+      "id": "C",
+      "label": "Protect the successor’s authority and handle feedback quietly",
+      "subtext": "It feels respectful because public correction may make the handoff look failed.",
+      "axis": "self_correction",
+      "direction": "exit",
+      "pattern_family": "successor_protection",
+      "intensity": 6
+    },
+    {
+      "id": "D",
+      "label": "Create a correction pathway for distorted use of the system",
+      "subtext": "It costs comfort because it allows staff to challenge not only decisions, but also how the system itself is being applied.",
+      "axis": "integrity",
+      "direction": "entry",
+      "pattern_family": "self_correction_protocol",
+      "intensity": 7
+    }
+  ]
+}

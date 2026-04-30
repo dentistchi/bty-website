@@ -1,0 +1,87 @@
+---
+description: Domain layer purity — pure business logic only, no I/O
+paths:
+  - bty-app/src/domain/**
+---
+
+# Domain Purity Rule
+
+`src/domain` 은 **순수 비즈니스 규칙만** 포함한다.
+
+## 허용
+
+- 계산
+- 정책
+- 상태 전이
+- 순수 타입
+- value object
+- domain error
+
+## 금지
+
+- database query
+- supabase client
+- fetch
+- request / response object
+- cookies
+- next.js 의존 코드
+- UI formatting / display string
+
+## Import 규칙
+
+### 허용
+
+- `src/domain` → `src/domain`
+
+### 금지
+
+- `src/domain` → `src/lib`
+- `src/domain` → `src/app`
+- `src/domain` → external service
+
+---
+
+## Examples
+
+```typescript
+// ❌ BAD — side effects in domain
+import { createClient } from '@supabase/supabase-js';
+export function getTier(userId: string) {
+  const { data } = await supabase.from('profiles').select('core_xp').single();
+  return levelToTier(levelFromCoreXp(data.core_xp));
+}
+
+// ✅ GOOD — pure, inputs in / result out
+export function tierFromCoreXp(coreXp: number): Tier {
+  const level = levelFromCoreXp(coreXp);
+  return levelToTier(level);
+}
+```
+
+```typescript
+// ❌ BAD — UI / display in domain
+export const LEVEL_LABEL = 'Level';  // display string
+
+// ✅ GOOD — domain only exposes values and types
+export type Level = number;
+export const MIN_LEVEL = 1;
+export const MAX_LEVEL = 99;
+```
+
+```typescript
+// ✅ GOOD — invariants in types (value object)
+export type CoreXp = number & { readonly __brand: 'CoreXp' };
+export function toCoreXp(n: number): CoreXp {
+  if (n < 0 || !Number.isInteger(n)) throw new Error('Invalid CoreXp');
+  return n as CoreXp;
+}
+```
+
+## Checklist
+
+- [ ] No Supabase, SQL, fetch, request/response, cookies, or Next.js imports
+- [ ] No UI formatting or display strings
+- [ ] Imports only from `src/domain` (no `src/lib`, `src/app`, or external service)
+- [ ] `interpretArenaDecision` if touched: still pure (CRITICAL INVARIANT)
+
+*참조: `docs/architecture/DOMAIN_LAYER_TARGET_MAP.md`*

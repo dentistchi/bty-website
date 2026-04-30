@@ -1,0 +1,40 @@
+---
+description: BTY System Boundary Rule. Arena / Center / Foundry 영역 구분, 자기 영역만 수정.
+alwaysApply: true
+---
+
+# System Boundary Rule
+
+BTY 시스템은 **세 영역**으로 나뉜다.
+
+- **Arena**
+- **Center**
+- **Foundry**
+
+각 시스템은 **자기 영역 코드만** 수정한다.
+
+---
+
+## Arena
+
+- `src/domain/arena`
+- `src/lib/bty/arena`
+- `src/app/[locale]/bty-arena`
+
+## Center
+
+- `src/domain/center`
+- `src/lib/bty/center`
+- `src/app/[locale]/dear-me`
+
+## Foundry
+
+- `src/domain/foundry`
+- `src/lib/bty/foundry`
+- `src/app/[locale]/bty/(protected)`
+
+---
+
+**다른 시스템의 domain 규칙을 직접 수정하지 않는다.**
+
+*참조: `docs/architecture/DOMAIN_LAYER_TARGET_MAP.md`, `docs/architecture/ARCHITECTURE_MAP.md`*

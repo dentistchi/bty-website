@@ -1,0 +1,277 @@
+{
+  "id": "core_19_identity_integrity_propagation",
+  "title": "When the System Starts to Drift",
+  "role": "Clinical Director / Partner Doctor",
+  "pressure": "Weeks after defining the integrity system, operations have normalized. However, subtle variations appear across offices, and no one is certain whether the system is still being applied consistently.",
+  "tradeoff": "Assume the system holds through trust, or actively verify and enforce it under real operational drift.",
+  "bty_tension_axis": "system_integrity_under_drift",
+  "axis_primary": "integrity",
+  "axis_secondary": "consistency",
+  "difficulty_level": "final_full_density",
+  "incident": {
+    "incidentId": "incident_02",
+    "incidentStage": "post-ending propagation",
+    "sequencePosition": 19,
+    "previousScenarioId": "core_18_identity_integrity_choice",
+    "nextScenarioId": null,
+    "roleShift": "from system chooser to system enforcer under drift",
+    "propagation": {
+      "exitEffect": "The system slowly becomes optional and dependent on individual interpretation.",
+      "entryEffect": "The system becomes resilient because it is tested and reinforced under variation.",
+      "reExposureNote": "Drift reveals whether the system exists without direct oversight."
+    }
+  },
+  "action_contract": {
+    "description": "Detect and respond to early system drift with a concrete, observable enforcement mechanism.",
+    "time_window_hours": 72
+  },
+  "AIR_logic": {
+    "success": "System consistency is maintained across offices regardless of local pressure.",
+    "miss": "System becomes interpretive and varies depending on leadership presence."
+  },
+  "forced_reset": {
+    "trigger": "A staff member reports that the integrity system is being applied differently in another office.",
+    "action": "Compare cases, identify deviation, and enforce a unified standard."
+  },
+  "pattern_detection": {
+    "passive_trust": "Assumes system is working without verification.",
+    "localized_system": "Allows each office to reinterpret the system.",
+    "relationship_buffer": "Avoids accountability when relationships are involved.",
+    "drift_normalization": "Treats inconsistency as natural variation instead of system failure."
+  },
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "A second report comes in showing a different office handled a similar integrity issue with a private exception.",
+      "pressure_increase": "The system is now diverging without visibility.",
+      "intensity": 5,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours to confirm whether the system is actually consistent?",
+        "context": "Multiple offices may already be operating under different interpretations.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, request and compare two recent integrity decisions from different offices using the same criteria.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Remind leaders to stay aligned with the system moving forward.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Assume it was a one-time judgment call",
+          "cost": "Allows silent divergence to continue.",
+          "axis": "integrity",
+          "direction": "exit",
+          "pattern_family": "passive_trust"
+        },
+        {
+          "id": "Y",
+          "label": "Request documentation of how the decision was made",
+          "cost": "Introduces scrutiny that may be resisted.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "active_verification"
+        }
+      ]
+    },
+    "B": {
+      "escalation_text": "Offices begin justifying different versions of the system, each claiming their situation is unique.",
+      "pressure_increase": "The system is fragmenting into multiple definitions.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours to prevent system fragmentation?",
+        "context": "Without boundaries, each office becomes its own system.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, publish 3 non-negotiable system rules that apply across all offices.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Encourage offices to use judgment based on their situation.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Accept variation as necessary for flexibility",
+          "cost": "Destroys the concept of a unified system.",
+          "axis": "consistency",
+          "direction": "exit",
+          "pattern_family": "localized_system"
+        },
+        {
+          "id": "Y",
+          "label": "Define non-negotiable elements of the system",
+          "cost": "Limits local autonomy.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "standard_enforcement"
+        }
+      ]
+    },
+    "C": {
+      "escalation_text": "A trusted leader bypasses the system quietly, and staff notice but do not escalate.",
+      "pressure_increase": "Silence becomes a signal that accountability is selective.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours to show accountability is not relationship-dependent?",
+        "context": "The system is tested most when influential people are involved.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, document and apply the same follow-up process to the trusted leader case with visible tracking.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Address the issue privately and move forward.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Handle it privately to preserve trust",
+          "cost": "Reinforces hidden exceptions.",
+          "axis": "integrity",
+          "direction": "exit",
+          "pattern_family": "relationship_buffer"
+        },
+        {
+          "id": "Y",
+          "label": "Apply visible accountability regardless of relationship",
+          "cost": "Creates tension with trusted leaders.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "accountability_application"
+        }
+      ]
+    },
+    "D": {
+      "escalation_text": "Your checks reveal inconsistencies across multiple offices, and leaders begin to feel monitored.",
+      "pressure_increase": "Enforcement creates discomfort and resistance.",
+      "intensity": 7,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours to ensure the system holds without your constant presence?",
+        "context": "A system is real only if it survives without direct oversight.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, implement a monthly cross-office integrity audit comparing decisions and outcomes.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Continue informal monitoring through conversations.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Reduce monitoring to maintain trust",
+          "cost": "Weakens system durability.",
+          "axis": "consistency",
+          "direction": "exit",
+          "pattern_family": "drift_normalization"
+        },
+        {
+          "id": "Y",
+          "label": "Install a recurring drift detection mechanism",
+          "cost": "Creates ongoing pressure and visibility.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "system_reinforcement"
+        }
+      ]
+    }
+  },
+  "ending_identity_choice": {
+    "prompt": "When no one is watching closely, what kind of system are you running?",
+    "choices": [
+      {
+        "id": "SYS1",
+        "label": "A system that depends on trust and varies quietly",
+        "direction": "exit"
+      },
+      {
+        "id": "SYS2",
+        "label": "A system that detects and corrects its own drift",
+        "direction": "entry"
+      }
+    ]
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Trust that the system is being followed without direct checks",
+      "subtext": "It feels efficient because constant verification seems unnecessary if leaders are aligned.",
+      "axis": "integrity",
+      "direction": "exit",
+      "pattern_family": "passive_trust",
+      "intensity": 4
+    },
+    {
+      "id": "B",
+      "label": "Allow each office to adapt the system to their situation",
+      "subtext": "It feels respectful of operational reality since each office faces different pressures.",
+      "axis": "consistency",
+      "direction": "exit",
+      "pattern_family": "localized_system",
+      "intensity": 5
+    },
+    {
+      "id": "C",
+      "label": "Avoid direct enforcement where strong relationships are involved",
+      "subtext": "It feels stabilizing because pushing too hard could damage trust with key people.",
+      "axis": "integrity",
+      "direction": "exit",
+      "pattern_family": "relationship_buffer",
+      "intensity": 5
+    },
+    {
+      "id": "D",
+      "label": "Actively test whether the system holds under variation",
+      "subtext": "It creates friction because it may expose inconsistency and require correction.",
+      "axis": "integrity",
+      "direction": "entry",
+      "pattern_family": "drift_detection",
+      "intensity": 6
+    }
+  ]
+}

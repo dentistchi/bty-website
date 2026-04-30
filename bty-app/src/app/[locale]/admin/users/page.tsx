@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
+
 import { useParams } from "next/navigation";
 import { LoadingFallback, CardSkeleton } from "@/components/bty-arena";
 import { fetchJson } from "@/lib/read-json";
@@ -136,12 +136,7 @@ export default function UsersPage() {
             일반 사용자 계정을 생성, 수정, 삭제할 수 있습니다.
           </p>
         </div>
-        <Link
-          href={`/${locale}/admin/quality`}
-          className="text-sm text-neutral-600 hover:text-neutral-900 underline"
-        >
-          Quality Events로 돌아가기
-        </Link>
+
       </div>
 
       {error && (

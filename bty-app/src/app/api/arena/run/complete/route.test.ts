@@ -37,6 +37,16 @@ vi.mock("@/lib/bty/pattern-engine/resolvePatternFamilyForContractTrigger", () =>
   resolvePatternFamilyForContractTrigger: vi.fn().mockResolvedValue(null),
 }));
 
+vi.mock("@/lib/bty/arena/reflectionRewards.server", () => ({
+  applyArenaRunRewardsOnVerifiedCompletion: vi.fn().mockResolvedValue({
+    ok: true,
+    applied: true,
+    coreXp: 21,
+    weeklyXp: 13,
+    deltaApplied: 13,
+  }),
+}));
+
 const { getSupabaseServerClient } = await import(
   "@/lib/bty/arena/supabaseServer"
 );
@@ -46,6 +56,9 @@ const { applyDirectCoreXp } = await import(
 const { getSupabaseAdmin } = await import("@/lib/supabase-admin");
 const { ensureActionContractForArenaRun } = await import(
   "@/lib/bty/action-contract/ensureActionContractForArenaRun"
+);
+const { applyArenaRunRewardsOnVerifiedCompletion } = await import(
+  "@/lib/bty/arena/reflectionRewards.server"
 );
 
 // ---------------------------------------------------------------------------
@@ -375,6 +388,7 @@ describe("POST /api/arena/run/complete", () => {
       "state_priority",
       "status",
       "weeklyXp",
+      "xpDeferredToContractVerification",
     ].sort();
     expect(Object.keys(data).sort()).toEqual(expectedKeys);
     expect(data.runtime_state).toBe("NEXT_SCENARIO_READY");
@@ -383,19 +397,18 @@ describe("POST /api/arena/run/complete", () => {
     expect(data.myPageRefetchRequired).toBe(true);
   });
 
-  it("calls applyDirectCoreXp with arena core XP", async () => {
+  it("applies run rewards via reflection service for non-contract completion", async () => {
     mockSupabase({ id: "u1" });
-    vi.mocked(applyDirectCoreXp).mockResolvedValue({
-      newCoreTotal: 201,
-    });
 
     await POST(makeRequest({ runId: "run-1" }));
 
-    expect(applyDirectCoreXp).toHaveBeenCalledOnce();
-    const [, userId, coreXp] = vi.mocked(applyDirectCoreXp).mock.calls[0];
-    expect(userId).toBe("u1");
-    expect(typeof coreXp).toBe("number");
-    expect(coreXp).toBeGreaterThanOrEqual(0);
+    expect(applyArenaRunRewardsOnVerifiedCompletion).toHaveBeenCalledOnce();
+    expect(applyArenaRunRewardsOnVerifiedCompletion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u1",
+        run: expect.objectContaining({ run_id: "run-1" }),
+      }),
+    );
   });
 
   it("calls ensureActionContractForArenaRun on first completion with userId, runId, scenarioId", async () => {
@@ -632,6 +645,24 @@ describe("POST /api/arena/run/complete", () => {
     expect(data.ok).toBe(true);
     expect(data.actionContractCreated).toBe(false);
     expect(data.myPageRefetchRequired).toBe(true);
+  });
+
+  it("defers XP when action contract exists (verified stage applies XP)", async () => {
+    mockSupabase({ id: "u1" });
+    vi.mocked(ensureActionContractForArenaRun).mockResolvedValue({
+      ok: true,
+      contractId: "contract-pending-1",
+      created: true,
+    });
+
+    const res = await POST(makeRequest({ runId: "run-1" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.xpDeferredToContractVerification).toBe(true);
+    expect(data.coreXp).toBe(0);
+    expect(data.weeklyXp).toBe(0);
+    expect(data.deltaApplied).toBe(0);
+    expect(applyArenaRunRewardsOnVerifiedCompletion).not.toHaveBeenCalled();
   });
 
   it("returns 404 when run does not exist", async () => {

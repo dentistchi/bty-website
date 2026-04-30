@@ -1,0 +1,277 @@
+{
+  "id": "core_19_identity_integrity_propagation",
+  "title": "시스템이 흔들리기 시작할 때",
+  "role": "Clinical Director / Partner Doctor",
+  "pressure": "Integrity system을 정의한 지 몇 주가 지나고 운영은 안정됐다. 하지만 오피스마다 미묘한 차이가 생기고 있고, 시스템이 여전히 동일하게 적용되는지 확신할 수 없다.",
+  "tradeoff": "시스템이 유지된다고 믿을 것인가, 아니면 실제 운영 속에서 검증하고 강제할 것인가.",
+  "bty_tension_axis": "system_integrity_under_drift",
+  "axis_primary": "integrity",
+  "axis_secondary": "consistency",
+  "difficulty_level": "final_full_density",
+  "incident": {
+    "incidentId": "incident_02",
+    "incidentStage": "post-ending propagation",
+    "sequencePosition": 19,
+    "previousScenarioId": "core_18_identity_integrity_choice",
+    "nextScenarioId": null,
+    "roleShift": "from system chooser to system enforcer under drift",
+    "propagation": {
+      "exitEffect": "시스템은 점점 선택적이 되고 개인 해석에 의존하게 된다.",
+      "entryEffect": "시스템은 변동 속에서도 테스트되며 강화된다.",
+      "reExposureNote": "drift는 리더십이 없을 때 시스템이 존재하는지를 드러낸다."
+    }
+  },
+  "action_contract": {
+    "description": "초기 시스템 drift를 감지하고, 관찰 가능한 enforcement mechanism으로 대응한다.",
+    "time_window_hours": 72
+  },
+  "AIR_logic": {
+    "success": "오피스 간 압박과 상관없이 시스템 일관성이 유지된다.",
+    "miss": "시스템이 해석 기반으로 변하고 리더십 존재 여부에 따라 달라진다."
+  },
+  "forced_reset": {
+    "trigger": "한 직원이 다른 오피스에서 integrity system이 다르게 적용된다고 보고한다.",
+    "action": "사례를 비교하고 deviation을 식별한 뒤, 통일된 기준을 강제한다."
+  },
+  "pattern_detection": {
+    "passive_trust": "검증 없이 시스템이 작동한다고 가정한다.",
+    "localized_system": "각 오피스가 시스템을 재해석하도록 허용한다.",
+    "relationship_buffer": "관계가 개입되면 accountability를 회피한다.",
+    "drift_normalization": "불일치를 시스템 실패가 아니라 자연스러운 variation으로 본다."
+  },
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "두 번째 보고에서, 다른 오피스가 같은 integrity 이슈를 private exception으로 처리한 것이 확인된다.",
+      "pressure_increase": "시스템이 보이지 않게 분기되고 있다.",
+      "intensity": 5,
+      "action_decision": {
+        "prompt": "시스템이 실제로 일관적인지 확인하기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "이미 여러 오피스가 다른 해석으로 운영 중일 수 있다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 서로 다른 오피스의 최근 integrity decision 두 개를 같은 기준으로 비교한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "리더들에게 앞으로 기준을 잘 지켜달라고 리마인드한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "한 번의 판단이라고 가정한다",
+          "cost": "조용한 분기가 계속된다.",
+          "axis": "integrity",
+          "direction": "exit",
+          "pattern_family": "passive_trust"
+        },
+        {
+          "id": "Y",
+          "label": "결정 과정에 대한 documentation을 요청한다",
+          "cost": "저항을 불러올 수 있다.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "active_verification"
+        }
+      ]
+    },
+    "B": {
+      "escalation_text": "오피스마다 자신들의 상황이 특별하다고 주장하며 서로 다른 시스템을 정당화하기 시작한다.",
+      "pressure_increase": "시스템이 여러 개의 정의로 분해된다.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "시스템 분해를 막기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "경계가 없으면 각 오피스는 다른 시스템이 된다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 모든 오피스에 적용되는 3개의 non-negotiable system rule을 발표한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "각 오피스가 상황에 맞게 판단하도록 한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "유연성을 위해 variation을 인정한다",
+          "cost": "통합된 시스템 개념이 사라진다.",
+          "axis": "consistency",
+          "direction": "exit",
+          "pattern_family": "localized_system"
+        },
+        {
+          "id": "Y",
+          "label": "협상 불가능한 시스템 요소를 정의한다",
+          "cost": "로컬 자율성이 제한된다.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "standard_enforcement"
+        }
+      ]
+    },
+    "C": {
+      "escalation_text": "한 trusted leader가 시스템을 조용히 bypass했고, 직원들은 이를 인지하지만 escalate하지 않는다.",
+      "pressure_increase": "침묵이 선택적 accountability의 신호가 된다.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "accountability가 관계에 따라 달라지지 않음을 보여주기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "영향력 있는 사람이 개입될 때 시스템이 가장 크게 테스트된다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 해당 케이스를 동일한 follow-up 프로세스로 문서화하고 visible tracking을 적용한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "비공개로 처리하고 넘어간다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "신뢰를 유지하기 위해 비공개로 처리한다",
+          "cost": "숨겨진 예외를 강화한다.",
+          "axis": "integrity",
+          "direction": "exit",
+          "pattern_family": "relationship_buffer"
+        },
+        {
+          "id": "Y",
+          "label": "관계와 무관하게 보이는 accountability를 적용한다",
+          "cost": "trusted leader와의 긴장이 생긴다.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "accountability_application"
+        }
+      ]
+    },
+    "D": {
+      "escalation_text": "검증 결과 여러 오피스에서 불일치가 발견되고, 리더들은 감시받는 느낌을 받기 시작한다.",
+      "pressure_increase": "enforcement가 불편함과 저항을 만든다.",
+      "intensity": 7,
+      "action_decision": {
+        "prompt": "리더십이 없을 때도 시스템이 유지되게 하기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "시스템은 직접 개입 없이도 유지될 때 실제가 된다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 monthly cross-office integrity audit을 도입해 decision과 결과를 비교한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "대화를 통해 비공식적으로 모니터링을 이어간다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "신뢰를 유지하기 위해 monitoring을 줄인다",
+          "cost": "시스템 내구성이 약해진다.",
+          "axis": "consistency",
+          "direction": "exit",
+          "pattern_family": "drift_normalization"
+        },
+        {
+          "id": "Y",
+          "label": "반복되는 drift detection mechanism을 설치한다",
+          "cost": "지속적인 압박과 가시성이 생긴다.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "system_reinforcement"
+        }
+      ]
+    }
+  },
+  "ending_identity_choice": {
+    "prompt": "아무도 강하게 보고 있지 않을 때, 나는 어떤 시스템을 운영하는가?",
+    "choices": [
+      {
+        "id": "SYS1",
+        "label": "신뢰에 의존하고 조용히 변하는 시스템",
+        "direction": "exit"
+      },
+      {
+        "id": "SYS2",
+        "label": "스스로 drift를 감지하고 교정하는 시스템",
+        "direction": "entry"
+      }
+    ]
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "직접 확인 없이 시스템이 잘 지켜지고 있다고 믿는다",
+      "subtext": "리더들이 정렬되어 있다면 지속적인 검증은 불필요하게 느껴진다.",
+      "axis": "integrity",
+      "direction": "exit",
+      "pattern_family": "passive_trust",
+      "intensity": 4
+    },
+    {
+      "id": "B",
+      "label": "각 오피스가 상황에 맞게 시스템을 조정하도록 둔다",
+      "subtext": "각 오피스마다 압박이 다르기 때문에 현실적이라고 느껴진다.",
+      "axis": "consistency",
+      "direction": "exit",
+      "pattern_family": "localized_system",
+      "intensity": 5
+    },
+    {
+      "id": "C",
+      "label": "강한 관계가 있는 경우 직접적인 enforcement를 피한다",
+      "subtext": "강하게 밀면 중요한 사람들과의 신뢰가 깨질 수 있어 안정적으로 느껴진다.",
+      "axis": "integrity",
+      "direction": "exit",
+      "pattern_family": "relationship_buffer",
+      "intensity": 5
+    },
+    {
+      "id": "D",
+      "label": "시스템이 변동 속에서도 유지되는지 적극적으로 테스트한다",
+      "subtext": "불일치를 드러내고 수정해야 하기 때문에 friction이 생긴다.",
+      "axis": "integrity",
+      "direction": "entry",
+      "pattern_family": "drift_detection",
+      "intensity": 6
+    }
+  ]
+}

@@ -1,0 +1,301 @@
+{
+  "id": "core_05_resignation_signal",
+  "title": "The Signal Before They Leave",
+  "role": "Lead Assistant",
+  "pressure": "One of the assistants tells you they are tired of carrying the new doctor and may start looking elsewhere. They say the manager listens but nothing changes. The office still runs, but the team is quieter and less willing to step in.",
+  "tradeoff": "You can treat the comment as burnout and keep the day moving, or name it as a resignation signal caused by a deeper trust breakdown.",
+  "bty_tension_axis": "Containment vs Truth",
+  "axis_primary": "Truth",
+  "axis_secondary": ["Ownership", "Conflict", "Accountability"],
+  "difficulty_level": 5,
+  "action_contract": {
+    "description": "Decide whether to contain the resignation signal privately or surface the underlying pattern before turnover begins.",
+    "time_window_hours": 24
+  },
+  "air_logic": {
+    "success": "The resignation signal becomes visible early enough to intervene.",
+    "miss": "The signal is normalized as burnout and the team moves closer to exit."
+  },
+  "forced_reset": {
+    "trigger": "A team member says they may leave because nothing is changing.",
+    "action": "You must decide whether to treat it as a personal emotion or a system signal."
+  },
+  "pattern_detection": [
+    "resignation_signal",
+    "burnout_normalization",
+    "truth_naming",
+    "conflict_avoidance"
+  ],
+  "choices": [
+    {
+      "id": "A",
+      "label": "Tell the assistant to hang in there while leadership works on it",
+      "subtext": "This reassures them without escalating the issue immediately.",
+      "axis": "Time",
+      "direction": "exit",
+      "pattern_family": "burnout_normalization",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-TRUTH-05_primary_A"
+    },
+    {
+      "id": "B",
+      "label": "Name this as a resignation signal and bring it to the manager",
+      "subtext": "This makes the hidden cost visible before someone actually leaves.",
+      "axis": "Truth",
+      "direction": "entry",
+      "pattern_family": "truth_naming",
+      "intensity": 5,
+      "dbChoiceId": "INCIDENT-01-TRUTH-05_primary_B"
+    },
+    {
+      "id": "C",
+      "label": "Quietly adjust the schedule to reduce their burden",
+      "subtext": "This helps immediately without forcing a difficult conversation.",
+      "axis": "Control",
+      "direction": "exit",
+      "pattern_family": "conflict_avoidance",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-TRUTH-05_primary_C"
+    },
+    {
+      "id": "D",
+      "label": "Tell the assistant to document examples before raising it",
+      "subtext": "This makes the concern easier to defend later.",
+      "axis": "Documentation",
+      "direction": "exit",
+      "pattern_family": "future_deferral",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-TRUTH-05_primary_D"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "The assistant nods but becomes less engaged. They stop correcting small issues and begin doing only what is asked. Other assistants notice and start protecting their own energy too.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep encouraging patience and avoid escalating emotions",
+          "cost": "You sound supportive, but the resignation signal continues moving underground.",
+          "axis": "Time",
+          "direction": "exit",
+          "pattern_family": "burnout_normalization",
+          "dbChoiceId": "INCIDENT-01-TRUTH-05_tradeoff_A_X"
+        },
+        {
+          "id": "Y",
+          "label": "Reframe the comment as a warning signal and escalate the pattern",
+          "cost": "You must admit the earlier reassurance did not address the real issue.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-TRUTH-05_tradeoff_A_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what will you do next?",
+        "context": "The assistant is no longer just venting. Their behavior is changing.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, tell the manager this is a resignation signal and identify the specific burden driving it",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "You are turning private warning into visible intervention."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-TRUTH-05_action_A_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Keep checking in privately and encourage them to give it more time",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Time",
+              "direction": "exit",
+              "pattern_family": "burnout_normalization",
+              "description": "You are keeping the signal contained as personal burnout."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-05_action_A_X_AD2"
+          }
+        ]
+      }
+    },
+    "B": {
+      "escalation_text": "When you bring it to the manager, they worry that naming resignation risk will make the office look unstable. They ask whether this is really a pattern or just one assistant having a hard week.",
+      "pressure_increase": 0.7,
+      "intensity": 5,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Soften the message and describe it as morale concern",
+          "cost": "The risk sounds safer, but the urgency is diluted.",
+          "axis": "Image",
+          "direction": "exit",
+          "pattern_family": "reputation_protection",
+          "dbChoiceId": "INCIDENT-01-TRUTH-05_tradeoff_B_X"
+        },
+        {
+          "id": "Y",
+          "label": "Keep the resignation signal visible and connect it to the workload pattern",
+          "cost": "You increase discomfort and may be seen as escalating too quickly.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-TRUTH-05_tradeoff_B_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what will you do next?",
+        "context": "The manager is testing whether the issue will stay safe or become visible.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, summarize the resignation signal, workload burden, and repeated compromise pattern in writing",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "You are making the hidden cost visible before exit happens."
+            },
+            "intensity": 5,
+            "dbChoiceId": "INCIDENT-01-TRUTH-05_action_B_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Wait for a second assistant to raise the same concern before writing it down",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Time",
+              "direction": "exit",
+              "pattern_family": "future_deferral",
+              "description": "You are delaying visibility until the pattern becomes harder to deny."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-05_action_B_X_AD2"
+          }
+        ]
+      }
+    },
+    "C": {
+      "escalation_text": "The schedule adjustment helps for two days, but other assistants notice the workaround and ask why the real issue is not being addressed. The burden shifts instead of disappearing.",
+      "pressure_increase": 0.5,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Continue using schedule adjustments to reduce pressure",
+          "cost": "The immediate strain drops, but the underlying pattern remains hidden.",
+          "axis": "Control",
+          "direction": "exit",
+          "pattern_family": "conflict_avoidance",
+          "dbChoiceId": "INCIDENT-01-TRUTH-05_tradeoff_C_X"
+        },
+        {
+          "id": "Y",
+          "label": "Name the schedule adjustment as a temporary workaround and surface the real issue",
+          "cost": "You must admit the workaround was not a solution.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-TRUTH-05_tradeoff_C_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what will you do next?",
+        "context": "The workaround reduced pressure but moved the burden to others.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, tell the manager the schedule change is temporary and request a reset conversation about the burden pattern",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "You are refusing to let a workaround replace repair."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-TRUTH-05_action_C_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Keep adjusting the schedule quietly while monitoring morale",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Control",
+              "direction": "exit",
+              "pattern_family": "conflict_avoidance",
+              "description": "You are managing symptoms while avoiding the pattern."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-05_action_C_X_AD2"
+          }
+        ]
+      }
+    },
+    "D": {
+      "escalation_text": "The assistant starts documenting examples, but each note makes them feel more certain that leaving is the only way to stop carrying the burden. Documentation becomes preparation for exit.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Continue gathering examples until the concern is fully defensible",
+          "cost": "The case becomes cleaner, but the person becomes more ready to leave.",
+          "axis": "Documentation",
+          "direction": "exit",
+          "pattern_family": "future_deferral",
+          "dbChoiceId": "INCIDENT-01-TRUTH-05_tradeoff_D_X"
+        },
+        {
+          "id": "Y",
+          "label": "Stop treating documentation as the gate and raise the resignation risk now",
+          "cost": "You act with incomplete evidence and may face pushback.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-TRUTH-05_tradeoff_D_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what will you do next?",
+        "context": "Documentation is no longer just evidence. It is becoming an exit file.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, raise the risk using current examples and ask for an intervention before more documentation is collected",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "You are acting before evidence collection becomes resignation preparation."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-TRUTH-05_action_D_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Ask for more examples before involving the manager",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Documentation",
+              "direction": "exit",
+              "pattern_family": "future_deferral",
+              "description": "You are choosing defensibility over timely intervention."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-05_action_D_X_AD2"
+          }
+        ]
+      }
+    }
+  }
+}

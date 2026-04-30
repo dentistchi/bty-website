@@ -8,9 +8,9 @@ import { CardSkeleton } from "@/components/bty-arena";
  * Render-only: `data`는 GET /api/arena/leadership-engine/air 응답 그대로 표시. Raw `air`는 표시하지 않고 `band`만.
  */
 export type LeAirSnapshot = {
-  air_7d: { air: number; missedWindows: number; integritySlip: boolean; band: AIRBand };
-  air_14d: { air: number; missedWindows: number; integritySlip: boolean; band: AIRBand };
-  air_90d: { air: number; missedWindows: number; integritySlip: boolean; band: AIRBand };
+  air_7d: { missedWindows: number; integritySlip: boolean; band: AIRBand; score_hidden?: boolean };
+  air_14d: { missedWindows: number; integritySlip: boolean; band: AIRBand; score_hidden?: boolean };
+  air_90d: { missedWindows: number; integritySlip: boolean; band: AIRBand; score_hidden?: boolean };
 };
 
 export type LeAirWidgetLabels = {

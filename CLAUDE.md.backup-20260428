@@ -1,0 +1,115 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Repository Layout
+
+All application code lives in `bty-app/`. Run every command from that directory.
+
+```
+bty-app/
+  src/
+    app/[locale]/      # Locale-aware Next.js pages (KO default, /en for English)
+    app/api/           # Thin API route handlers
+    domain/            # Pure business logic — no DB calls, no side effects
+    engine/            # Stateful orchestration services
+    lib/bty/           # Service layer (arena, pattern, action-contract, leadership, auth, i18n)
+    components/        # React components (RSC for data, client for interactivity)
+  docs/                # Canonical architecture specs — read these before changing engine behaviour
+  e2e/                 # Playwright tests
+```
+
+## Commands
+
+All commands run from `bty-app/`.
+
+```bash
+# Dev
+npm run dev                  # Next.js dev server on port 3001
+
+# Build
+npm run build                # Production build
+npm run build:fast           # Skip source maps (faster)
+npm run cf:build             # Cloudflare Pages build
+
+# Lint
+npm run lint                 # TypeScript type-check (tsc --noEmit)
+npm run lint:eslint          # ESLint
+npm run lint:terminology     # Terminology validator
+
+# Unit tests (Vitest, Node environment)
+npm test                     # All unit tests
+npm run test:watch           # Watch mode
+npm test -- src/path/to/file.test.ts   # Single file
+
+# E2E tests (Playwright)
+npm run test:e2e             # All projects
+npm run test:e2e:bty         # Arena routes only
+npm run test:e2e:ci          # CI mode (chromium, 2 workers, 1 retry)
+```
+
+## Architecture
+
+### Layer Rules (strictly enforced)
+
+Imports flow **downward only**: `domain` ← `engine/lib` ← `api` ← `components`
+
+| Layer | Location | Rule |
+|-------|----------|------|
+| **Domain** | `src/domain/` | Pure functions only. No DB, no side effects. |
+| **Service/Engine** | `src/engine/`, `src/lib/bty/` | Calls domain functions + DB side effects. |
+| **API** | `src/app/api/` | Deserialize → call service → return JSON. No business logic. |
+| **UI** | `src/components/`, `src/app/[locale]/` | Render + hooks only. Data fetching via RSC or service calls. |
+
+### Core Engines
+
+- **Scenario Engine** — selects and routes the next scenario per user, respecting tier/pool rules
+- **Pattern Engine** — records entry/exit signals per family per run (Steps 2–4 only, max 1 per family per run), accumulates rolling window states, fires triggers when thresholds are met
+- **Action Contract Service** — manages 10-field contracts through Layer 1 (structural/Zod) → Layer 2 (semantic/validator) pipeline; statuses: `pending → submitted → approved/rejected/escalated/missed`
+- **Leadership Engine** — tracks role-based distortion (Stage 1–4), computes AIR (Action Integrity Rate) and TII (Team Index), enforces Stage 4 forced-transition rules
+- **Level Engine** — band progression via `consecutive_verified_completions`
+- **Execution Gate** — QR token minting and verification receipts
+
+### Key Invariants (from `.cursorrules` and `docs/`)
+
+- `user_scenario_history` is the sole source of truth for scenario rotation
+- `interpretArenaDecision` must remain a pure function
+- QR validation routes only through `/api/arena/leadership-engine/qr/validate`
+- A run reaches `complete_verified` only when approved + `verified_at` is set
+- Pattern signals: max 1 per family per run; Steps 2–4 only
+- Migrations must be ordered and idempotent
+- `docs/` canonical specs override local assumptions — read them before modifying engine behaviour
+
+### Architecture Docs (read before changing engine behaviour)
+
+- `docs/ENGINE_ARCHITECTURE_V1.md` — schema, service boundaries, data models
+- `docs/LEADERSHIP_ENGINE_SPEC.md` — single authoritative spec for AIR, TII, Stage transitions, Certified/LRI logic
+- `docs/PATTERN_ACTION_MODEL_V1.md` — family definitions, thresholds, validator specs
+- `docs/ARENA_CANONICAL_CONTRACT.md` — contract field spec
+- `docs/ENVIRONMENT.md` — env var single source of truth
+
+## Testing Conventions
+
+| Suffix | Type |
+|--------|------|
+| `.test.ts` / `.test.tsx` | Unit |
+| `.edges.test.ts` | Edge-case unit |
+| `.smoke.test.ts` | Regression/quick validation |
+| `.contract.test.ts` | Integration contract |
+| `.spec.ts` | E2E (Playwright) |
+
+E2E uses 3 isolated auth contracts (default / step6-policy / step6-forced) to avoid 409 conflicts. Auth state stored in `e2e/.auth/`.
+
+## Tech Stack
+
+- **Next.js 15** (App Router, RSC) + **React 19** + **TypeScript 5**
+- **Supabase** (PostgreSQL) — primary database and auth
+- **NextAuth v5** — session management; **Entra ID** for admin RBAC (`BTY_ADMIN_EMAILS`)
+- **Tailwind CSS 3**, Radix UI, Framer Motion
+- **Zod** — validation at system boundaries
+- **Vitest** (unit) + **Playwright** (e2e)
+- **Cloudflare Pages** (opennextjs-cloudflare) — deployment target
+
+## I18n
+
+Routes: `/` and `/bty` (Korean), `/en` and `/en/bty` (English). Locale injected via `[locale]` route param. Static index at `src/lib/i18n.ts`.

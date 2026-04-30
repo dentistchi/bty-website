@@ -1,6 +1,7 @@
 /** Re-export from authz for backward compatibility. */
 export {
   requireUser,
+  requireAdminEmail,
   requireRegionAccess,
   requireAdmin,
   hasRoleAtLeast,

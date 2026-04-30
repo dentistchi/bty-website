@@ -1,17 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { applyDirectCoreXp, applySeasonalXpToCore } from "@/lib/bty/arena/applyCoreXp";
-import { getArenaTodayTotal, capArenaDailyDelta } from "@/lib/bty/arena/activityXp";
-import {
-  getDifficultyBase,
-  computeArenaCoreXp,
-  computeArenaWeeklyXp,
-  streakFactorFromDays,
-  inferDifficultyFromEventSum,
-  parseStoredDifficulty,
-  timeFactorFromRemaining,
-} from "@/lib/bty/arena/arenaLabXp";
+import { applySeasonalXpToCore } from "@/lib/bty/arena/applyCoreXp";
 import {
   getWeekStartUTC,
   REFLECTION_QUEST_TARGET,
@@ -24,6 +14,7 @@ import {
   arenaRouterSnapshotJsonFields,
   snapshotForNextScenarioReady,
 } from "@/lib/bty/arena/arenaRuntimeSnapshot.server";
+import { applyArenaRunRewardsOnVerifiedCompletion } from "@/lib/bty/arena/reflectionRewards.server";
 
 /**
  * POST /api/arena/run/complete — 런 종료 + **주간/코어 XP 1회 지급** (멱등).
@@ -37,6 +28,7 @@ import {
  * - **200 (첫 완료):** `{ ok: true, runId, status: "DONE", deltaApplied, coreXp, weeklyXp, actionContractCreated, myPageRefetchRequired, contractId? }`
  *   — `actionContractCreated` is true only when a **new** contract row was inserted; false if ensure failed after XP (still 200) or row already existed.
  *   — `weeklyXp`/`deltaApplied`는 일일 캡 적용 후 주간 누적에 반영된 값; `coreXp`는 이번 런 코어 가산(영구).
+ *   — `xpDeferredToContractVerification: true` when Action Contract exists for this run; in that case `coreXp=0`, `weeklyXp=0`, `deltaApplied=0` and rewards are applied later at verified completion (`POST /api/arena/leadership-engine/qr/validate`).
  *   — Action Contract: `ensureActionContractForArenaRun` → `public.bty_action_contracts` (idempotent per `user_id`+`session_id`).
  * - **200 (멱등·이중 제출):** `{ ok: true, runId, status: "DONE", idempotent: true, actionContractCreated, contractId, myPageRefetchRequired }` — **`deltaApplied`·`coreXp`·`weeklyXp` 없음**; 항상 `ensureActionContractForArenaRun`로 계약 행 보장(복구).
  * - **500:** `{ error: string }` (DB/XP 적용 실패).
@@ -87,7 +79,6 @@ export async function POST(req: Request) {
   if (!existing) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
   const scenarioId = (existing as { scenario_id?: string }).scenario_id ?? "";
-  const runDifficulty = parseStoredDifficulty((existing as { difficulty?: unknown }).difficulty);
   const runMeta = (
     existing as {
       meta?: {
@@ -152,90 +143,6 @@ export async function POST(req: Request) {
     });
   }
 
-  const { data: evs, error: evErr } = await supabase
-    .from("arena_events")
-    .select("xp, event_type")
-    .eq("user_id", user.id)
-    .eq("run_id", runId);
-
-  if (evErr) return NextResponse.json({ error: evErr.message }, { status: 500 });
-
-  const eventSum = (evs ?? []).reduce((sum, row) => sum + (typeof row.xp === "number" ? row.xp : 0), 0);
-
-  const { data: profileRow } = await supabase
-    .from("arena_profiles")
-    .select("streak")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  const streakDays = Math.max(0, Number((profileRow as { streak?: number } | null)?.streak ?? 0));
-
-  const difficulty = runDifficulty ?? inferDifficultyFromEventSum(eventSum);
-  const xpBase = getDifficultyBase(difficulty);
-  const timeLimit = runMeta?.time_limit;
-  const timeRemaining =
-    typeof bodyTimeRemaining === "number" && Number.isFinite(bodyTimeRemaining)
-      ? bodyTimeRemaining
-      : runMeta?.time_remaining;
-  const timeFactor =
-    typeof timeRemaining === "number" && typeof timeLimit === "number" && timeLimit > 0
-      ? timeFactorFromRemaining(timeRemaining, timeLimit)
-      : 0;
-
-  const arenaInput = {
-    difficulty,
-    xpPrimary: xpBase,
-    xpReinforce: 0,
-    timeFactor: timeFactor > 0 ? timeFactor : undefined,
-    streakFactor: streakFactorFromDays(streakDays),
-  };
-  const arenaCoreXp = computeArenaCoreXp(arenaInput);
-  const arenaWeeklyXp = computeArenaWeeklyXp(arenaInput);
-
-  const todayArenaTotal = await getArenaTodayTotal(supabase, user.id);
-  const deltaCapped = capArenaDailyDelta(arenaWeeklyXp, todayArenaTotal);
-
-  const { data: row, error: rowErr } = await supabase
-    .from("weekly_xp")
-    .select("id, xp_total")
-    .eq("user_id", user.id)
-    .is("league_id", null)
-    .maybeSingle();
-
-  if (rowErr) return NextResponse.json({ error: rowErr.message }, { status: 500 });
-
-  await supabase.rpc("ensure_arena_profile");
-
-  if (!row) {
-    const { error: insErr } = await supabase
-      .from("weekly_xp")
-      .insert({ user_id: user.id, league_id: null, xp_total: deltaCapped });
-
-    if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
-  } else {
-    const nextTotal = (typeof row.xp_total === "number" ? row.xp_total : 0) + deltaCapped;
-    const { error: uErr } = await supabase
-      .from("weekly_xp")
-      .update({ xp_total: nextTotal })
-      .eq("id", row.id);
-
-    if (uErr) return NextResponse.json({ error: uErr.message }, { status: 500 });
-  }
-
-  // Arena: Core from new formula (direct); Weekly already applied above as deltaCapped.
-  const coreResult = await applyDirectCoreXp(supabase, user.id, arenaCoreXp);
-  if ("error" in coreResult) return NextResponse.json({ error: coreResult.error }, { status: 500 });
-
-  const { error: markErr } = await supabase.from("arena_events").insert({
-    user_id: user.id,
-    run_id: runId,
-    event_type: "RUN_COMPLETED_APPLIED",
-    step: 7,
-    scenario_id: scenarioId || "unknown",
-    xp: 0,
-  });
-
-  if (markErr) return NextResponse.json({ error: markErr.message }, { status: 500 });
-
   const adminForContract = getSupabaseAdmin();
   if (!adminForContract) {
     console.error(
@@ -261,12 +168,51 @@ export async function POST(req: Request) {
   });
 
   if (!ensured.ok) {
-    // Intentional: no XP / weekly_xp / RUN_COMPLETED_APPLIED rollback here — core + weekly already committed.
-    // Repair: POST /api/admin/recover-contract or retry complete; see ensureActionContract reconcile + logs.
-    console.error("[run/complete] ensureActionContract failed after XP applied", {
+    console.error("[run/complete] ensureActionContract failed", {
       userId: user.id,
       runId,
       scenarioId,
+    });
+  }
+
+  const isContractGated = Boolean(ensured.contractId);
+  let arenaCoreXp = 0;
+  let deltaCapped = 0;
+  if (!isContractGated) {
+    const rewards = await applyArenaRunRewardsOnVerifiedCompletion({
+      supabase,
+      userId: user.id,
+      run: {
+        run_id: runId,
+        scenario_id: scenarioId || "unknown",
+        difficulty: (existing as { difficulty?: unknown }).difficulty ?? "mid",
+        meta: {
+          time_limit: runMeta?.time_limit,
+          time_remaining:
+            typeof bodyTimeRemaining === "number" && Number.isFinite(bodyTimeRemaining)
+              ? bodyTimeRemaining
+              : runMeta?.time_remaining,
+        },
+      },
+    });
+    if (!rewards.ok) {
+      return NextResponse.json({ error: rewards.error }, { status: 500 });
+    }
+    arenaCoreXp = rewards.coreXp;
+    deltaCapped = rewards.deltaApplied;
+  } else {
+    // Contract-gated runs defer XP to QR verification. Write the sentinel now so repeated
+    // calls to this endpoint take the idempotent early-return path (line ~117) instead of
+    // re-running syncPatternStates + ensureActionContract on every call.
+    await supabase.from("arena_events").insert({
+      user_id: user.id,
+      run_id: runId,
+      event_type: "RUN_COMPLETED_APPLIED",
+      step: 7,
+      scenario_id: scenarioId || "unknown",
+      xp: 0,
+    }).then(({ error }) => {
+      if (error) console.warn("[run/complete] contract-gated sentinel insert failed", { runId, error });
     });
   }
 
@@ -315,6 +261,7 @@ export async function POST(req: Request) {
     deltaApplied: deltaCapped,
     coreXp: arenaCoreXp,
     weeklyXp: deltaCapped,
+    xpDeferredToContractVerification: isContractGated,
     actionContractCreated: ensured.ok && ensured.created,
     contractId: ensured.contractId,
     myPageRefetchRequired: true,

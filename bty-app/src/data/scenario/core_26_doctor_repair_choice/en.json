@@ -1,0 +1,301 @@
+{
+    "id": "core_26_doctor_repair_choice",
+    "title": "What You Admit Changes Everything",
+    "role": "Associate Dentist",
+    "pressure": "The repair meeting exposed the hesitation and bypass pattern. You can feel that your behavior under pressure contributed to it. The assistant is waiting to see what you acknowledge.",
+    "tradeoff": "Taking full ownership may feel like losing authority. Limiting ownership protects your position but may keep the pattern alive.",
+    "bty_tension_axis": "Ownership vs Authority Protection",
+    "axis_primary": "Repair",
+    "axis_secondary": ["Integrity", "Authority", "Accountability"],
+    "difficulty_level": 5,
+    "action_contract": {
+      "description": "Decide how much ownership you will take for the breakdown and how visible that ownership becomes.",
+      "time_window_hours": 24
+    },
+    "air_logic": {
+      "success": "Your ownership changes how the team engages under pressure.",
+      "miss": "The team hears your words but does not change behavior."
+    },
+    "forced_reset": {
+      "trigger": "The repair conversation directly exposed your role in the pattern.",
+      "action": "You must decide what you acknowledge publicly."
+    },
+    "pattern_detection": [
+      "ownership_avoidance",
+      "authority_protection",
+      "integrity_alignment",
+      "partial_accountability"
+    ],
+    "choices": [
+      {
+        "id": "A",
+        "label": "State clearly that your behavior contributed to hesitation and bypassing",
+        "subtext": "This risks your authority but aligns with what actually happened.",
+        "axis": "Repair",
+        "direction": "entry",
+        "pattern_family": "integrity_alignment",
+        "intensity": 3,
+        "dbChoiceId": "INCIDENT-03-REPAIR-08_primary_A"
+      },
+      {
+        "id": "B",
+        "label": "Acknowledge the issue but emphasize shared responsibility",
+        "subtext": "This feels balanced and protects your position.",
+        "axis": "Authority",
+        "direction": "exit",
+        "pattern_family": "authority_protection",
+        "intensity": 2,
+        "dbChoiceId": "INCIDENT-03-REPAIR-08_primary_B"
+      },
+      {
+        "id": "C",
+        "label": "Focus on how the team can improve moving forward",
+        "subtext": "This avoids staying in the past and keeps momentum.",
+        "axis": "Time",
+        "direction": "exit",
+        "pattern_family": "future_deferral",
+        "intensity": 2,
+        "dbChoiceId": "INCIDENT-03-REPAIR-08_primary_C"
+      },
+      {
+        "id": "D",
+        "label": "Explain your intent and why decisions were made quickly",
+        "subtext": "This helps others understand your perspective.",
+        "axis": "Explanation",
+        "direction": "exit",
+        "pattern_family": "explanation_substitution",
+        "intensity": 2,
+        "dbChoiceId": "INCIDENT-03-REPAIR-08_primary_D"
+      }
+    ],
+    "escalationBranches": {
+      "A": {
+        "escalation_text": "When you take ownership, the assistant looks surprised and slightly relieved. The room becomes quiet as others process the shift.",
+        "pressure_increase": 0.5,
+        "intensity": 4,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "Reduce the statement to avoid overexposure",
+            "cost": "You regain control but weaken the impact of your ownership.",
+            "axis": "Authority",
+            "direction": "exit",
+            "pattern_family": "authority_protection",
+            "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_A_X"
+          },
+          {
+            "id": "Y",
+            "label": "Stay with the ownership and invite response",
+            "cost": "You remain exposed and may hear difficult feedback.",
+            "axis": "Repair",
+            "direction": "entry",
+            "pattern_family": "integrity_alignment",
+            "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_A_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "Not intention — what you will do next.",
+          "context": "Your ownership created a shift, but it needs reinforcement.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "Within 24 hours, follow up with the assistant and define one behavior change you will repeat",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Repair",
+                "direction": "entry",
+                "pattern_family": "integrity_alignment",
+                "description": "You are reinforcing ownership with behavior."
+              },
+              "intensity": 4,
+              "dbChoiceId": "INCIDENT-03-REPAIR-08_action_A_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "Let the statement stand and observe whether the team adjusts",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Time",
+                "direction": "exit",
+                "pattern_family": "future_deferral",
+                "description": "You are relying on words without reinforcement."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-REPAIR-08_action_A_X_AD2"
+            }
+          ]
+        }
+      },
+      "B": {
+        "escalation_text": "The assistant nods but does not change behavior in the next procedure. Hesitation continues in subtle ways.",
+        "pressure_increase": 0.5,
+        "intensity": 3,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "Maintain shared responsibility framing",
+            "cost": "You keep authority balance, but the pattern remains unclear.",
+            "axis": "Authority",
+            "direction": "exit",
+            "pattern_family": "authority_protection",
+            "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_B_X"
+          },
+          {
+            "id": "Y",
+            "label": "Revisit and take clearer ownership",
+            "cost": "You must shift your earlier position.",
+            "axis": "Repair",
+            "direction": "entry",
+            "pattern_family": "integrity_alignment",
+            "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_B_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "Not intention — what you will do next.",
+          "context": "Your balanced statement did not change behavior.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "Within 24 hours, clarify your role in the pattern with the assistant",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Repair",
+                "direction": "entry",
+                "pattern_family": "integrity_alignment",
+                "description": "You are increasing clarity after partial ownership."
+              },
+              "intensity": 3,
+              "dbChoiceId": "INCIDENT-03-REPAIR-08_action_B_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "Continue with shared accountability framing",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Authority",
+                "direction": "exit",
+                "pattern_family": "authority_protection",
+                "description": "You are maintaining balance over clarity."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-REPAIR-08_action_B_X_AD2"
+            }
+          ]
+        }
+      },
+      "C": {
+        "escalation_text": "The team agrees on improvements, but the next busy case brings back the same hesitation pattern.",
+        "pressure_increase": 0.5,
+        "intensity": 3,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "Continue focusing on forward improvements",
+            "cost": "You keep momentum but avoid ownership.",
+            "axis": "Time",
+            "direction": "exit",
+            "pattern_family": "future_deferral",
+            "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_C_X"
+          },
+          {
+            "id": "Y",
+            "label": "Pause and acknowledge your role",
+            "cost": "You must slow down and revisit the past.",
+            "axis": "Repair",
+            "direction": "entry",
+            "pattern_family": "integrity_alignment",
+            "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_C_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "Not intention — what you will do next.",
+          "context": "Forward focus did not change behavior under pressure.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "Within 24 hours, identify and communicate one behavior you will change",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Repair",
+                "direction": "entry",
+                "pattern_family": "integrity_alignment",
+                "description": "You are shifting from intention to action."
+              },
+              "intensity": 3,
+              "dbChoiceId": "INCIDENT-03-REPAIR-08_action_C_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "Continue focusing on workflow improvements",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Time",
+                "direction": "exit",
+                "pattern_family": "future_deferral",
+                "description": "You are maintaining forward motion without ownership."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-REPAIR-08_action_C_X_AD2"
+            }
+          ]
+        }
+      },
+      "D": {
+        "escalation_text": "Your explanation is understood, but the assistant still hesitates. The behavior pattern does not shift.",
+        "pressure_increase": 0.5,
+        "intensity": 3,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "Continue explaining decisions",
+            "cost": "Understanding increases, but behavior does not.",
+            "axis": "Explanation",
+            "direction": "exit",
+            "pattern_family": "explanation_substitution",
+            "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_D_X"
+          },
+          {
+            "id": "Y",
+            "label": "Shift from explanation to ownership",
+            "cost": "You must change your framing.",
+            "axis": "Repair",
+            "direction": "entry",
+            "pattern_family": "integrity_alignment",
+            "dbChoiceId": "INCIDENT-03-REPAIR-08_tradeoff_D_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "Not intention — what you will do next.",
+          "context": "Explanation did not change behavior.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "Within 24 hours, communicate one ownership-based change",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Repair",
+                "direction": "entry",
+                "pattern_family": "integrity_alignment",
+                "description": "You are moving from explanation to action."
+              },
+              "intensity": 3,
+              "dbChoiceId": "INCIDENT-03-REPAIR-08_action_D_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "Continue explaining reasoning during procedures",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Explanation",
+                "direction": "exit",
+                "pattern_family": "explanation_substitution",
+                "description": "You are staying in explanation mode."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-REPAIR-08_action_D_X_AD2"
+            }
+          ]
+        }
+      }
+    }
+  }

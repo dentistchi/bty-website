@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseScenarioReader, loadArenaScenarioPayloadFromDb } from "@/lib/bty/arena/scenarioPayloadFromDb";
 import { isEliteCanonicalRuntimeScenarioId } from "@/lib/bty/arena/eliteCanonicalRuntimeTruth";
+import { eliteScenarioToScenario, getEliteScenarioById } from "@/lib/bty/arena/eliteScenariosCanonical.server";
 import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
-/**
- * GET `/api/arena/re-exposure/[scenarioId]` — playable {@link Scenario} for a **due** delayed outcome
- * tied to this `scenario_id` in `user_scenario_choice_history`. Canonical loader only (elite chain).
- */
+/** GET `/api/arena/re-exposure/[scenarioId]` — playable scenario for a due re-exposure outcome. */
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ scenarioId: string }> },
@@ -71,16 +69,15 @@ export async function GET(
     return out;
   }
 
-  if (!isEliteCanonicalRuntimeScenarioId(scenarioId)) {
-    const out = NextResponse.json({ ok: false, error: "reexposure_elite_chain_only" }, { status: 400 });
-    copyCookiesAndDebug(base, out, req, true);
-    return out;
-  }
-
   const reader = getSupabaseScenarioReader();
-  const scenario = await loadArenaScenarioPayloadFromDb(reader, scenarioId, locale);
+  const canonicalScenario = await loadArenaScenarioPayloadFromDb(reader, scenarioId, locale);
+  const scenario =
+    canonicalScenario ??
+    (isEliteCanonicalRuntimeScenarioId(scenarioId)
+      ? eliteScenarioToScenario(getEliteScenarioById(scenarioId), locale)
+      : null);
   if (!scenario) {
-    const out = NextResponse.json({ ok: false, error: "scenario_payload_unavailable" }, { status: 404 });
+    const out = NextResponse.json({ ok: false, error: "reexposure_scenario_not_found" }, { status: 404 });
     copyCookiesAndDebug(base, out, req, true);
     return out;
   }

@@ -5,15 +5,42 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "./route";
 
 const mockGetSupabaseServerClient = vi.fn();
+const mockAccrueNoChangeRisk = vi.fn();
+const mockNormalizeScenarioDecisionEventUser = vi.fn();
+const mockGetScenarioByDbId = vi.fn();
 
 vi.mock("@/lib/bty/arena/supabaseServer", () => ({
   getSupabaseServerClient: (...args: unknown[]) =>
     mockGetSupabaseServerClient(...args),
 }));
 
+vi.mock("@/lib/bty/arena/noChangeRisk.server", () => ({
+  accrueNoChangeRisk: (...args: unknown[]) => mockAccrueNoChangeRisk(...args),
+  normalizeScenarioDecisionEventUser: (...args: unknown[]) =>
+    mockNormalizeScenarioDecisionEventUser(...args),
+}));
+
+vi.mock("@/data/scenario", () => ({
+  getScenarioByDbId: (...args: unknown[]) => mockGetScenarioByDbId(...args),
+}));
+
 describe("POST /api/arena/event", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockNormalizeScenarioDecisionEventUser.mockImplementation((input: unknown, userId: string) => {
+      if (input == null || typeof input !== "object" || Array.isArray(input)) return null;
+      return { ...(input as Record<string, unknown>), userId };
+    });
+    mockGetScenarioByDbId.mockReturnValue({
+      incidentId: "incident_01",
+      axisGroup: "Ownership",
+      axisIndex: 1,
+    });
+    mockAccrueNoChangeRisk.mockResolvedValue({
+      reExposureDueCandidate: false,
+      interventionSensitivityCandidate: false,
+      riskCount: 1,
+    });
   });
 
   it("returns 401 when unauthenticated", async () => {
@@ -312,5 +339,40 @@ describe("POST /api/arena/event", () => {
     const res = await POST(req);
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("eventType_required");
+  });
+
+  it("returns 422 and skips risk accrual when JSON decision has unresolved dbScenarioId binding", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }),
+      },
+    });
+    mockGetScenarioByDbId.mockReturnValueOnce(null);
+    const req = new Request("http://localhost/api/arena/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: "run-1",
+        scenarioId: "core_01",
+        eventType: "JSON_SCENARIO_DECISION_COMPLETED",
+        meta: {
+          scenarioDecisionEvent: {
+            dbScenarioId: "INVALID-DB-SCENARIO-ID",
+            scenarioId: "core_01",
+            incidentId: "unknown_incident",
+            axisGroup: "unknown_axis",
+            axisIndex: 999,
+            secondPatternFamily: "avoidance",
+            actionChoiceId: "AD2",
+            actionDbChoiceId: "db-ad2",
+            isActionCommitment: false,
+          },
+        },
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(422);
+    expect((await res.json()).error).toBe("action_decision_scenario_binding_unresolved");
+    expect(mockAccrueNoChangeRisk).not.toHaveBeenCalled();
   });
 });

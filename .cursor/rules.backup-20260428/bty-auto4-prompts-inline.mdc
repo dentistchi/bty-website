@@ -1,0 +1,15 @@
+---
+description: splint 10·AUTO4·C1–C5 프롬프트 요청 시 AUTO4_PROMPTS.md를 읽고 응답에 복사 문장 포함
+alwaysApply: true
+---
+
+# AUTO4 프롬프트 인라인 표시
+
+**splint 10** 실행 후, 또는 사용자가 **AUTO4**, **C1–C5 프롬프트**, **복사 문장** 등을 요청하면:
+
+1. **반드시** `docs/agent-runtime/AUTO4_PROMPTS.md` 를 읽고
+2. C1·C2·C3·C4·C5용 **복사용 문장 블록**을 응답 본문에 **그대로 인라인**으로 넣어 준다.
+
+사용자가 별도로 파일을 열지 않아도, 채팅 응답만으로 각 Cursor에 붙여 넣을 수 있게 한다.
+
+*출처: docs/agent-runtime/SPLINT_10_PROCEDURE.md 3단계, docs/agent-runtime/AUTO4_PROMPTS.md*

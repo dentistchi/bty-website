@@ -1,0 +1,301 @@
+{
+  "id": "core_25_forced_repair_conversation",
+  "title": "The Meeting You Cannot Avoid",
+  "role": "Office Manager",
+  "pressure": "Regional has asked for a documented repair conversation between the doctor and assistant. The patient complaint made the pattern visible. Both people know something is wrong, but neither has named the trust breakdown directly.",
+  "tradeoff": "You can keep the meeting controlled and safe, or let it become real enough to create discomfort.",
+  "bty_tension_axis": "Repair vs Image Protection",
+  "axis_primary": "Repair",
+  "axis_secondary": ["Truth", "Conflict", "Authority"],
+  "difficulty_level": 4,
+  "action_contract": {
+    "description": "Facilitate a repair conversation that either names the trust breakdown or contains it as a communication issue.",
+    "time_window_hours": 24
+  },
+  "air_logic": {
+    "success": "The real breakdown is acknowledged and a reset becomes possible.",
+    "miss": "The meeting is completed, but the same pattern continues under a cleaner surface."
+  },
+  "forced_reset": {
+    "trigger": "Regional requires a documented repair conversation after the external complaint exposed the pattern.",
+    "action": "You must lead the meeting and decide how real the conversation becomes."
+  },
+  "pattern_detection": [
+    "repair_avoidance",
+    "reputation_protection",
+    "truth_naming",
+    "conflict_avoidance"
+  ],
+  "choices": [
+    {
+      "id": "A",
+      "label": "Open the meeting by naming the trust breakdown directly",
+      "subtext": "This creates immediate discomfort, but it aligns the room around the real issue.",
+      "axis": "Repair",
+      "direction": "entry",
+      "pattern_family": "trust_repair",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-03-REPAIR-07_primary_A"
+    },
+    {
+      "id": "B",
+      "label": "Frame the meeting around communication improvement",
+      "subtext": "This keeps the tone positive and avoids putting anyone on the defensive.",
+      "axis": "Image",
+      "direction": "exit",
+      "pattern_family": "reputation_protection",
+      "intensity": 2,
+      "dbChoiceId": "INCIDENT-03-REPAIR-07_primary_B"
+    },
+    {
+      "id": "C",
+      "label": "Ask each person to share their perspective separately first",
+      "subtext": "This feels structured and safer because it reduces direct tension.",
+      "axis": "Control",
+      "direction": "exit",
+      "pattern_family": "conflict_avoidance",
+      "intensity": 2,
+      "dbChoiceId": "INCIDENT-03-REPAIR-07_primary_C"
+    },
+    {
+      "id": "D",
+      "label": "Focus the meeting on future workflow instead of past tension",
+      "subtext": "This moves the team forward without reopening what happened.",
+      "axis": "Time",
+      "direction": "exit",
+      "pattern_family": "future_deferral",
+      "intensity": 2,
+      "dbChoiceId": "INCIDENT-03-REPAIR-07_primary_D"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "When you name the trust breakdown, the doctor says the assistant’s inconsistency created the problem. The assistant becomes quiet and watches whether you will soften the issue.",
+      "pressure_increase": 0.5,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Soften the wording and return to general communication expectations",
+          "cost": "The meeting feels safer, but the trust issue becomes vague again.",
+          "axis": "Conflict",
+          "direction": "exit",
+          "pattern_family": "repair_avoidance",
+          "dbChoiceId": "INCIDENT-03-REPAIR-07_tradeoff_A_X"
+        },
+        {
+          "id": "Y",
+          "label": "Hold the frame and separate impact from blame",
+          "cost": "The room stays uncomfortable, and the doctor may feel challenged.",
+          "axis": "Repair",
+          "direction": "entry",
+          "pattern_family": "trust_repair",
+          "dbChoiceId": "INCIDENT-03-REPAIR-07_tradeoff_A_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what you will actually do next.",
+        "context": "The trust issue has been named, but the room is testing whether you will keep it visible.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, send a written repair summary naming the trust pattern, agreed behavior changes, and follow-up date",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Repair",
+              "direction": "entry",
+              "pattern_family": "trust_repair",
+              "description": "You are choosing visible repair follow-through."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-03-REPAIR-07_action_A_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Let the conversation settle and check informally later in the week",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Time",
+              "direction": "exit",
+              "pattern_family": "future_deferral",
+              "description": "You are choosing informal delay over visible repair."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-03-REPAIR-07_action_A_X_AD2"
+          }
+        ]
+      }
+    },
+    "B": {
+      "escalation_text": "The meeting stays positive, but the assistant later tells another team member that the real issue was avoided. The doctor believes the conversation confirmed this was only a communication problem.",
+      "pressure_increase": 0.5,
+      "intensity": 3,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep the communication frame because the meeting stayed calm",
+          "cost": "The surface tone improves, but the assistant experiences the repair as performative.",
+          "axis": "Image",
+          "direction": "exit",
+          "pattern_family": "reputation_protection",
+          "dbChoiceId": "INCIDENT-03-REPAIR-07_tradeoff_B_X"
+        },
+        {
+          "id": "Y",
+          "label": "Reopen the conversation and name the trust issue directly",
+          "cost": "You must acknowledge that the first meeting stayed too safe.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-03-REPAIR-07_tradeoff_B_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what you will actually do next.",
+        "context": "The meeting was calm, but the underlying pattern was not repaired.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, schedule a second 15-minute reset and state that the trust issue needs to be named",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "You are choosing a second, more honest repair attempt."
+            },
+            "intensity": 3,
+            "dbChoiceId": "INCIDENT-03-REPAIR-07_action_B_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Keep coaching both sides on clearer communication over the next week",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Image",
+              "direction": "exit",
+              "pattern_family": "reputation_protection",
+              "description": "You are choosing surface improvement over pattern repair."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-03-REPAIR-07_action_B_X_AD2"
+          }
+        ]
+      }
+    },
+    "C": {
+      "escalation_text": "Separate conversations give you more information, but each person adjusts their story. When they come together, both avoid saying what they said privately.",
+      "pressure_increase": 0.4,
+      "intensity": 3,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Continue separate conversations until both people feel safer",
+          "cost": "You reduce confrontation, but you become the container for a truth they never share directly.",
+          "axis": "Control",
+          "direction": "exit",
+          "pattern_family": "conflict_avoidance",
+          "dbChoiceId": "INCIDENT-03-REPAIR-07_tradeoff_C_X"
+        },
+        {
+          "id": "Y",
+          "label": "Bring both people back together and name the gap between private and shared versions",
+          "cost": "You expose the avoidance pattern and may lose the safety of private trust.",
+          "axis": "Repair",
+          "direction": "entry",
+          "pattern_family": "trust_repair",
+          "dbChoiceId": "INCIDENT-03-REPAIR-07_tradeoff_C_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what you will actually do next.",
+        "context": "Private conversations revealed more truth than the shared conversation.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, hold a joint reset and ask each person to name one private concern in the room",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Repair",
+              "direction": "entry",
+              "pattern_family": "trust_repair",
+              "description": "You are choosing direct repair over managed safety."
+            },
+            "intensity": 3,
+            "dbChoiceId": "INCIDENT-03-REPAIR-07_action_C_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Keep working with each person separately until they are ready",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Control",
+              "direction": "exit",
+              "pattern_family": "conflict_avoidance",
+              "description": "You are choosing continued containment over direct repair."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-03-REPAIR-07_action_C_X_AD2"
+          }
+        ]
+      }
+    },
+    "D": {
+      "escalation_text": "The future workflow plan is clear, but the next busy day brings back the same pattern. The assistant hesitates again, and the doctor bypasses them again.",
+      "pressure_increase": 0.5,
+      "intensity": 3,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Refine the workflow plan and add clearer role expectations",
+          "cost": "The process improves, but the relational breakdown remains untouched.",
+          "axis": "Time",
+          "direction": "exit",
+          "pattern_family": "future_deferral",
+          "dbChoiceId": "INCIDENT-03-REPAIR-07_tradeoff_D_X"
+        },
+        {
+          "id": "Y",
+          "label": "Pause the workflow discussion and address the trust breakdown directly",
+          "cost": "You must admit the first meeting solved the wrong layer.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-03-REPAIR-07_tradeoff_D_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what you will actually do next.",
+        "context": "The workflow plan did not change the behavior under pressure.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, schedule a repair follow-up focused specifically on trust, hesitation, and bypassing",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "You are choosing to address the layer that workflow did not reach."
+            },
+            "intensity": 3,
+            "dbChoiceId": "INCIDENT-03-REPAIR-07_action_D_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Give the new workflow more time before reopening the conversation",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Time",
+              "direction": "exit",
+              "pattern_family": "future_deferral",
+              "description": "You are choosing more time over immediate repair."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-03-REPAIR-07_action_D_X_AD2"
+          }
+        ]
+      }
+    }
+  }
+}

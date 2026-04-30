@@ -11,7 +11,7 @@ NEXTAUTH_SECRET=
 
 # Admin Access Control
 # Comma-separated list of allowed admin emails
-BTY_ADMIN_EMAILS=
+BTY_ADMIN_EMAILS=ywamer2022@gmail.com
 
 # Supabase Configuration
 # Service role key must never be exposed to client; only used in server routes

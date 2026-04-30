@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { AuthGate } from "@/components/AuthGate";
 import { EmotionalBridge } from "@/components/EmotionalBridge";
-import HubTopNav from "@/components/bty/HubTopNav";
 import { ResilienceGraph } from "@/components/ResilienceGraph";
 import { SafeMirror } from "@/components/SafeMirror";
 import { SelfEsteemTest } from "@/components/SelfEsteemTest";
@@ -176,7 +175,6 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
             <ThemeBody theme="sanctuary" />
             <main className="min-h-screen" aria-label={t.mainAriaLabel}>
               <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
-                <HubTopNav theme="dear" showLangSwitch />
                 <header className="text-center mb-10">
                   <h1 className="text-2xl sm:text-3xl font-medium text-sanctuary-text mb-2">
                     {t.heroTitleMain ?? t.title},{` `}
@@ -209,7 +207,6 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
             <ThemeBody theme="sanctuary" />
             <main className="min-h-screen" aria-label={t.mainAriaLabel}>
               <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
-                <HubTopNav theme="dear" showLangSwitch />
                 <header className="text-center mb-10 pt-4">
                   <h1 className="text-2xl sm:text-3xl font-medium text-sanctuary-text">
                     {t.title}
@@ -354,7 +351,6 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
             <ThemeBody theme="sanctuary" />
             <main className="min-h-screen" aria-label={t.mainAriaLabel}>
               <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
-                <HubTopNav theme="dear" showLangSwitch />
                 <header className="text-center mb-10 pt-4">
                   <h1 className="text-2xl sm:text-3xl font-medium text-sanctuary-text">
                     {t.heroTitleMain ?? t.title}{` `}
@@ -428,7 +424,6 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
           <ThemeBody theme="sanctuary" />
           <main className="min-h-screen" aria-label={t.mainAriaLabel}>
             <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
-              <HubTopNav theme="dear" showLangSwitch />
               <header className="text-center mb-10">
                 <h1 className="text-2xl sm:text-3xl font-medium text-sanctuary-text mb-2">
                   {t.heroTitleMain ?? t.title}{` `}
@@ -485,7 +480,6 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
           <ThemeBody theme="dear" />
           <main className="min-h-screen" aria-label={t.mainAriaLabel}>
             <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
-              <HubTopNav theme="dear" showLangSwitch />
               <header className="text-center mb-14 sm:mb-16 pt-4">
                 <h1 className="font-serif text-3xl sm:text-4xl md:text-[2.75rem] font-medium text-dear-charcoal tracking-tight leading-tight">
                   {t.heroTitleMain ?? "Center,"}
@@ -522,7 +516,6 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
         <ThemeBody theme="dear" />
         <main className="min-h-screen" aria-label={lang === "ko" ? "Center 나에게 쓰는 편지" : "Center letter to yourself"}>
           <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
-            <HubTopNav theme="dear" showLangSwitch />
             <header className="text-center mb-10 pt-4">
               <h1 className="font-serif text-2xl sm:text-3xl font-medium text-dear-charcoal">
                 {t.heroTitleMain ?? "Center,"} <span className="text-dear-sage">{t.heroTitleAccent ?? "I'm listening."}</span>
@@ -746,7 +739,6 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
         <ThemeBody theme="dear" />
         <main className="min-h-screen" aria-label={t.mainAriaLabel}>
           <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
-            <HubTopNav theme="dear" showLangSwitch />
             <header className="text-center mb-14 sm:mb-16 pt-4">
               <h1 className="font-serif text-3xl sm:text-4xl md:text-[2.75rem] font-medium text-dear-charcoal tracking-tight leading-tight">
                 {t.heroTitleMain ?? "Center,"}

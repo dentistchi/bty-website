@@ -1,0 +1,277 @@
+{
+  "id": "core_22_identity_integrity_scaling_pressure",
+  "title": "The System Under Growth Pressure",
+  "role": "Clinical Director / Partner Doctor",
+  "pressure": "The organization is expanding rapidly. New offices, new staff, and new leaders are being added faster than they can be fully trained. Different offices begin applying the system differently under real-world pressure. The question is no longer whether the system works, but whether it survives growth.",
+  "tradeoff": "Maintain growth speed by allowing flexibility, or maintain system integrity by enforcing consistency under pressure.",
+  "bty_tension_axis": "scaling_integrity",
+  "axis_primary": "integrity",
+  "axis_secondary": "scalability",
+  "difficulty_level": "final_full_density",
+  "incident": {
+    "incidentId": "incident_02",
+    "incidentStage": "scaling pressure",
+    "sequencePosition": 22,
+    "previousScenarioId": "core_21_identity_integrity_misuse",
+    "nextScenarioId": null,
+    "roleShift": "from misuse corrector to system scaler under growth pressure",
+    "propagation": {
+      "exitEffect": "The system becomes inconsistent across offices and dependent on local interpretation.",
+      "entryEffect": "The system operates uniformly regardless of office, leader, or pressure level.",
+      "reExposureNote": "Scaling repeatedly exposes whether standards are preserved or adapted."
+    }
+  },
+  "action_contract": {
+    "description": "Create one observable control that ensures the integrity system operates consistently across all offices during rapid expansion.",
+    "time_window_hours": 72
+  },
+  "AIR_logic": {
+    "success": "The same decision standard is applied across offices regardless of growth pressure.",
+    "miss": "Different offices apply different interpretations of the system."
+  },
+  "forced_reset": {
+    "trigger": "A new office justifies a different decision by saying their situation is unique.",
+    "action": "Compare the decision against the defined standard, not the situation, and identify deviation."
+  },
+  "pattern_detection": {
+    "growth_justification": "Uses growth pressure to justify weakening standards.",
+    "exception_normalization": "Repeated exceptions become the new standard.",
+    "leader_variability": "System changes depending on who is leading.",
+    "scaling_blindness": "Fails to detect system drift during expansion."
+  },
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "Offices that loosen standards begin outperforming others, and their approach starts spreading.",
+      "pressure_increase": "Speed begins replacing standard as the benchmark.",
+      "intensity": 7,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours to prevent speed from replacing the standard?",
+        "context": "Faster but inconsistent practices are spreading across offices.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, compare two high-speed offices and two standard-compliant offices and publish the deviation.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Allow performance to stabilize before enforcing standards.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep the faster approach because it produces results",
+          "cost": "Incorrect standards become normalized through success.",
+          "axis": "scalability",
+          "direction": "exit",
+          "pattern_family": "growth_justification"
+        },
+        {
+          "id": "Y",
+          "label": "Re-evaluate performance using standard adherence instead of speed",
+          "cost": "May reduce short-term performance metrics.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "standard_enforcement"
+        }
+      ]
+    },
+    "B": {
+      "escalation_text": "Staff transferring between offices experience confusion due to inconsistent standards.",
+      "pressure_increase": "Location becomes the defining rule instead of the system.",
+      "intensity": 7,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours to prevent fragmentation across offices?",
+        "context": "Employees now experience different systems depending on location.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, define and distribute three non-negotiable integrity constraints across all offices.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Allow offices to gradually align based on their own conditions.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Accept differences between offices",
+          "cost": "Destroys organizational consistency.",
+          "axis": "scalability",
+          "direction": "exit",
+          "pattern_family": "exception_normalization"
+        },
+        {
+          "id": "Y",
+          "label": "Define non-negotiable standards across all offices",
+          "cost": "Creates resistance from local teams.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "constraint_definition"
+        }
+      ]
+    },
+    "C": {
+      "escalation_text": "Offices with strong leaders perform well, while others begin failing to apply the system.",
+      "pressure_increase": "Results are now determined by individuals rather than the system.",
+      "intensity": 7,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours to ensure the system does not depend on individual leaders?",
+        "context": "Performance gaps are now explained by leadership differences.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, implement a standardized integrity decision flow required across all offices.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Focus on upgrading leadership strength in weaker offices.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Assign stronger leaders to weaker offices",
+          "cost": "Shifts the problem from system to people.",
+          "axis": "integrity",
+          "direction": "exit",
+          "pattern_family": "leader_variability"
+        },
+        {
+          "id": "Y",
+          "label": "Create a system that works regardless of leader strength",
+          "cost": "Reduces leader autonomy.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "system_reliability"
+        }
+      ]
+    },
+    "D": {
+      "escalation_text": "Leaders push back, saying system constraints are slowing them down and making operations harder.",
+      "pressure_increase": "Growth speed and system consistency are now in direct conflict.",
+      "intensity": 8,
+      "action_decision": {
+        "prompt": "What will you do within 72 hours to maintain system integrity under growth pressure?",
+        "context": "Leaders want speed, but the system requires consistency.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 72 hours, redesign one constraint-driven process to reduce execution time without removing the constraint.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Relax certain constraints to ease operational pressure.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Loosen constraints to maintain speed",
+          "cost": "Breaks system consistency.",
+          "axis": "scalability",
+          "direction": "exit",
+          "pattern_family": "growth_justification"
+        },
+        {
+          "id": "Y",
+          "label": "Maintain constraints and improve execution efficiency",
+          "cost": "Requires short-term discomfort.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "controlled_scaling"
+        }
+      ]
+    }
+  },
+  "ending_identity_choice": {
+    "prompt": "When growth accelerates, what kind of system are you running?",
+    "choices": [
+      {
+        "id": "SYS1",
+        "label": "A system that adapts its standards to maintain speed",
+        "direction": "exit"
+      },
+      {
+        "id": "SYS2",
+        "label": "A system that maintains its standards regardless of growth pressure",
+        "direction": "entry"
+      }
+    ]
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Allow flexibility to maintain growth speed",
+      "subtext": "It feels necessary because strict alignment may slow down expansion.",
+      "axis": "scalability",
+      "direction": "exit",
+      "pattern_family": "growth_justification",
+      "intensity": 6
+    },
+    {
+      "id": "B",
+      "label": "Let each office adapt the system to their situation",
+      "subtext": "It feels practical because each office operates under different constraints.",
+      "axis": "scalability",
+      "direction": "exit",
+      "pattern_family": "exception_normalization",
+      "intensity": 6
+    },
+    {
+      "id": "C",
+      "label": "Rely on strong leaders to apply the system correctly",
+      "subtext": "It feels efficient because strong individuals can compensate for system gaps.",
+      "axis": "integrity",
+      "direction": "exit",
+      "pattern_family": "leader_variability",
+      "intensity": 6
+    },
+    {
+      "id": "D",
+      "label": "Install system constraints that hold under growth pressure",
+      "subtext": "It creates friction but preserves consistency across the organization.",
+      "axis": "integrity",
+      "direction": "entry",
+      "pattern_family": "scaling_control",
+      "intensity": 7
+    }
+  ]
+}

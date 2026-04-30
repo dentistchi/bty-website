@@ -1,0 +1,301 @@
+{
+    "id": "core_24_external_truth_exposure",
+    "title": "더 이상 무시할 수 없는 패턴",
+    "role": "Regional Manager",
+    "pressure": "환자 컴플레인에는 혼란, 일관되지 않은 설명, 그리고 치료 중 스탭의 hesitation이 언급되어 있다. 최근 어시스턴트의 concern과 완전히 맞지 않았던 오피스 매니저 리포트도 떠오른다. 신호들이 서로 연결되기 시작한다.",
+    "tradeoff": "이것을 하나의 컴플레인으로 처리하면 안정성을 지킬 수 있다. 신호들을 연결하면 팀과 오피스 전반의 더 큰 문제가 드러난다.",
+    "bty_tension_axis": "케이스 수습 vs 구조적 진실",
+    "axis_primary": "Truth",
+    "axis_secondary": ["System", "Authority", "Accountability"],
+    "difficulty_level": 4,
+    "action_contract": {
+      "description": "컴플레인을 단일 케이스로 수습할지, 더 큰 패턴으로 연결할지 결정한다.",
+      "time_window_hours": 48
+    },
+    "air_logic": {
+      "success": "반복 컴플레인이나 퇴사 신호로 커지기 전에 패턴이 드러난다.",
+      "miss": "문제는 수습된 것처럼 보이지만, 같은 침묵 패턴은 아래에서 계속된다."
+    },
+    "forced_reset": {
+      "trigger": "컴플레인, 스탭 concern, 매니저 리포트가 같은 breakdown을 가리킨다.",
+      "action": "이것이 단일 케이스인지 구조적 신호인지 선택해야 한다."
+    },
+    "pattern_detection": [
+      "system_thinking",
+      "self_protection",
+      "documentation_sanitization",
+      "explanation_substitution"
+    ],
+    "choices": [
+      {
+        "id": "A",
+        "label": "여러 오피스의 신호를 연결해 패턴을 확인한다",
+        "subtext": "즉시 범위가 넓어지고 visibility가 올라간다.",
+        "axis": "Truth",
+        "direction": "entry",
+        "pattern_family": "system_thinking",
+        "intensity": 3,
+        "dbChoiceId": "INCIDENT-03-TRUTH-06_primary_A"
+      },
+      {
+        "id": "B",
+        "label": "이것을 단일 오피스 컴플레인으로 처리한다",
+        "subtext": "문제가 관리 가능한 범위 안에 머문다.",
+        "axis": "Control",
+        "direction": "exit",
+        "pattern_family": "self_protection",
+        "intensity": 2,
+        "dbChoiceId": "INCIDENT-03-TRUTH-06_primary_B"
+      },
+      {
+        "id": "C",
+        "label": "조치 전에 자세한 리포트를 요청한다",
+        "subtext": "구조적이고 방어 가능한 방식처럼 느껴진다.",
+        "axis": "Documentation",
+        "direction": "exit",
+        "pattern_family": "documentation_sanitization",
+        "intensity": 2,
+        "dbChoiceId": "INCIDENT-03-TRUTH-06_primary_C"
+      },
+      {
+        "id": "D",
+        "label": "의사의 환자 커뮤니케이션만 코칭한다",
+        "subtext": "범위를 넓히지 않고 눈에 보이는 증상만 다룬다.",
+        "axis": "Accountability",
+        "direction": "exit",
+        "pattern_family": "explanation_substitution",
+        "intensity": 2,
+        "dbChoiceId": "INCIDENT-03-TRUTH-06_primary_D"
+      }
+    ],
+    "escalationBranches": {
+      "A": {
+        "escalation_text": "신호들을 연결하기 시작하자 오피스 매니저는 이것이 오피스를 불안정하게 보이게 만들 수 있다고 말한다. 의사는 컴플레인이 과장되고 있다고 말한다.",
+        "pressure_increase": 0.5,
+        "intensity": 4,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "범위를 줄이고 이 오피스 안에서만 리뷰한다",
+            "cost": "압박은 낮아지지만, 더 큰 패턴은 검증되지 않은 채 남는다.",
+            "axis": "Control",
+            "direction": "exit",
+            "pattern_family": "self_protection",
+            "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_A_X"
+          },
+          {
+            "id": "Y",
+            "label": "저항이 있어도 패턴 리뷰를 계속한다",
+            "cost": "visibility가 올라가고 오피스 팀과 갈등이 생길 수 있다.",
+            "axis": "Truth",
+            "direction": "entry",
+            "pattern_family": "system_thinking",
+            "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_A_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "해석이 아니라, 실제로 다음에 무엇을 할 것인가.",
+          "context": "패턴은 행동할 만큼 드러났지만, 오피스는 escalation에 저항하고 있다.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "48시간 안에 cross-office review를 시작하고 관련 매니저들에게 패턴을 공유한다",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "System",
+                "direction": "entry",
+                "pattern_family": "system_thinking",
+                "description": "보이는 시스템 레벨 행동을 선택하고 있다."
+              },
+              "intensity": 4,
+              "dbChoiceId": "INCIDENT-03-TRUTH-06_action_A_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "다른 컴플레인이 패턴을 확인해줄 때까지 informal review로 둔다",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Time",
+                "direction": "exit",
+                "pattern_family": "future_deferral",
+                "description": "escalation보다 지연을 선택하고 있다."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-TRUTH-06_action_A_X_AD2"
+            }
+          ]
+        }
+      },
+      "B": {
+        "escalation_text": "다른 오피스에서도 비슷한 hesitation과 handoff 혼란이 포함된 컴플레인이 들어온다. 매니저들은 escalation 없이 각자 로컬에서 문제를 처리하기 시작한다.",
+        "pressure_increase": 0.6,
+        "intensity": 4,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "각 케이스를 계속 독립적으로 처리한다",
+            "cost": "통제감은 유지되지만, 패턴은 조용히 퍼진다.",
+            "axis": "Control",
+            "direction": "exit",
+            "pattern_family": "self_protection",
+            "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_B_X"
+          },
+          {
+            "id": "Y",
+            "label": "케이스들을 다시 보고 오피스 간 패턴을 연결한다",
+            "cost": "초기 수습 결정이 visibility를 늦췄다는 것을 인정해야 한다.",
+            "axis": "Truth",
+            "direction": "entry",
+            "pattern_family": "system_thinking",
+            "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_B_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "해석이 아니라, 실제로 다음에 무엇을 할 것인가.",
+          "context": "이제 문제는 여러 location에서 나타나고 있다.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "48시간 안에 cross-office review를 시작하고 패턴 findings를 공유한다",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "System",
+                "direction": "entry",
+                "pattern_family": "system_thinking",
+                "description": "보이는 시스템 레벨 행동을 선택하고 있다."
+              },
+              "intensity": 4,
+              "dbChoiceId": "INCIDENT-03-TRUTH-06_action_B_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "개별 케이스들을 계속 모니터링한다",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Time",
+                "direction": "exit",
+                "pattern_family": "future_deferral",
+                "description": "escalation보다 지연을 선택하고 있다."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-TRUTH-06_action_B_X_AD2"
+            }
+          ]
+        }
+      },
+      "C": {
+        "escalation_text": "작성된 리포트는 깔끔하고 사실 중심이다. 하지만 어시스턴트의 hesitation과 의사의 authority pattern은 빠져 있다. 이제 컴플레인은 documentation issue처럼 보인다.",
+        "pressure_increase": 0.5,
+        "intensity": 3,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "리포트를 받아들이고 complaint loop를 닫는다",
+            "cost": "파일은 깔끔하지만, 실제 패턴은 시야에서 부드럽게 사라진다.",
+            "axis": "Documentation",
+            "direction": "exit",
+            "pattern_family": "documentation_sanitization",
+            "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_C_X"
+          },
+          {
+            "id": "Y",
+            "label": "작성된 리포트 너머의 패턴 리뷰를 요청한다",
+            "cost": "깔끔한 버전에 도전해야 하고, 매니저와 불편함이 생길 수 있다.",
+            "axis": "Truth",
+            "direction": "entry",
+            "pattern_family": "system_thinking",
+            "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_C_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "해석이 아니라, 실제로 다음에 무엇을 할 것인가.",
+          "context": "리포트는 정리되어 있지만, 사람 사이의 패턴은 제거되었을 수 있다.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "48시간 안에 hesitation, handoff, authority pattern 중심의 follow-up review를 요청한다",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Truth",
+                "direction": "entry",
+                "pattern_family": "system_thinking",
+                "description": "깔끔한 documentation보다 패턴 visibility를 선택하고 있다."
+              },
+              "intensity": 3,
+              "dbChoiceId": "INCIDENT-03-TRUTH-06_action_C_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "리포트를 파일에 넣고 추가 컴플레인이 들어올 때만 다시 본다",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Documentation",
+                "direction": "exit",
+                "pattern_family": "documentation_sanitization",
+                "description": "패턴 노출보다 깨끗한 기록을 선택하고 있다."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-TRUTH-06_action_C_X_AD2"
+            }
+          ]
+        }
+      },
+      "D": {
+        "escalation_text": "의사는 며칠 동안 환자 설명을 더 잘한다. 하지만 스탭의 hesitation은 그대로다. 어시스턴트 팀은 의사가 빠르게 움직일 때 여전히 먼저 말하지 않는다.",
+        "pressure_increase": 0.5,
+        "intensity": 3,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "의사의 커뮤니케이션 코칭을 계속한다",
+            "cost": "눈에 보이는 증상은 좋아지지만, 팀의 침묵은 남는다.",
+            "axis": "Accountability",
+            "direction": "exit",
+            "pattern_family": "explanation_substitution",
+            "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_D_X"
+          },
+          {
+            "id": "Y",
+            "label": "팀 hesitation과 hierarchy까지 포함해 이슈를 확장한다",
+            "cost": "코칭에서 구조적 진실로 넘어가며 불편함이 커진다.",
+            "axis": "Truth",
+            "direction": "entry",
+            "pattern_family": "truth_naming",
+            "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_D_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "해석이 아니라, 실제로 다음에 무엇을 할 것인가.",
+          "context": "환자 커뮤니케이션은 나아졌지만, 근본적인 침묵은 바뀌지 않았다.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "48시간 안에 hesitation, handoff clarity, authority pressure에 대한 team-level review를 연다",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Truth",
+                "direction": "entry",
+                "pattern_family": "truth_naming",
+                "description": "더 깊은 패턴을 말하는 선택을 하고 있다."
+              },
+              "intensity": 3,
+              "dbChoiceId": "INCIDENT-03-TRUTH-06_action_D_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "의사 코칭을 유지하고 팀이 조정되는지 관찰한다",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Time",
+                "direction": "exit",
+                "pattern_family": "future_deferral",
+                "description": "구조적 개입보다 관찰을 선택하고 있다."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-TRUTH-06_action_D_X_AD2"
+            }
+          ]
+        }
+      }
+    }
+  }

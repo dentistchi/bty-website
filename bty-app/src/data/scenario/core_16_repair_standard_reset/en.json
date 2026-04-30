@@ -1,0 +1,226 @@
+{
+  "id": "core_16_repair_standard_reset",
+  "title": "Then Define It — For Real",
+  "role": "System Actor",
+  "pressure": "After the incident, a meeting is called. Everyone agrees ‘something needs to change’ — but the moment you try to define a real standard, resistance appears immediately. One doctor says, “Every case is different.” Another says, “We can’t make rigid rules.” Assistants stay silent. The manager hesitates. You realize — no one has ever actually committed to a shared standard before.",
+  "time_pressure": "Decision must be made in this meeting",
+  "social_pressure": [
+    "peer resistance",
+    "authority hesitation",
+    "team silence",
+    "fear of conflict"
+  ],
+  "risk_layer": [
+    "open disagreement",
+    "loss of popularity",
+    "authority pushback",
+    "implementation failure"
+  ],
+  "tradeoff": "Create enforceable standards vs maintain comfortable ambiguity",
+  "bty_tension_axis": "Clarity vs Social Stability",
+  "difficulty_level": 5,
+  "identity_weight": {
+    "what_this_tests": [
+      "Do you define standards or follow them?",
+      "Can you hold tension without collapsing?",
+      "Will you accept short-term conflict for long-term integrity?"
+    ]
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Keep discussion general",
+      "subtext": "Avoid conflict, stay aligned",
+      "direction": "exit"
+    },
+    {
+      "id": "B",
+      "label": "Push for a clear, shared standard now",
+      "subtext": "Force clarity despite resistance",
+      "direction": "entry"
+    },
+    {
+      "id": "C",
+      "label": "Let each provider define their own approach",
+      "subtext": "Preserve autonomy",
+      "direction": "exit"
+    },
+    {
+      "id": "D",
+      "label": "Delay decision to a later time",
+      "subtext": "Reduce immediate tension",
+      "direction": "exit"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "The meeting ends with vague agreement. Everyone feels better. Nothing changes.",
+      "pressure_increase": 0.6,
+      "intensity": 3,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Maintain ambiguity",
+          "direction": "exit",
+          "cost": "Comfortable ambiguity survives; the next incident meets the same interpretive drift."
+        },
+        {
+          "id": "Y",
+          "label": "Reopen discussion later with specifics",
+          "direction": "entry",
+          "cost": "You reintroduce the conflict you deferred without having reduced the underlying uncertainty."
+        }
+      ],
+      "action_decision": {
+        "prompt": "What happens next time?",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Prepare concrete standard proposal",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Let it evolve naturally",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "B": {
+      "escalation_text": "The moment you push for clarity, resistance becomes explicit. One doctor challenges you directly: “Who decides what’s correct?” The room gets quieter. This is no longer about standards — this is about authority.",
+      "pressure_increase": 1,
+      "intensity": 5,
+      "identity_clash": [
+        "If I push, I create conflict",
+        "If I don’t, nothing changes",
+        "This is no longer theoretical"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Define standard but leave enforcement unclear",
+          "direction": "exit",
+          "cost": "Words exist on paper while day-to-day behavior still follows whoever interprets loudest."
+        },
+        {
+          "id": "Y",
+          "label": "Define AND commit to enforcement",
+          "direction": "entry",
+          "cost": "Enforcement names consequences and surfaces resistance you hoped to soften or postpone."
+        }
+      ],
+      "action_decision": {
+        "prompt": "A standard without enforcement is not a standard",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Define specific, observable, enforceable criteria (who, when, how)",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Leave it as agreement without accountability",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "C": {
+      "escalation_text": "Autonomy reduces friction now, but guarantees inconsistency later.",
+      "pressure_increase": 0.8,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Accept variation",
+          "direction": "exit",
+          "cost": "Autonomy feels respectful while patients still encounter different standards by provider."
+        },
+        {
+          "id": "Y",
+          "label": "Introduce minimum shared standard",
+          "direction": "entry",
+          "cost": "Minimum standards limit discretion and can feel like a loss of craft freedom to strong clinicians."
+        }
+      ],
+      "action_decision": {
+        "prompt": "Where does consistency come from?",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Define minimum non-negotiable criteria",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Allow full discretion",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "D": {
+      "escalation_text": "Delay dissolves tension — and guarantees repetition.",
+      "pressure_increase": 0.7,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Delay again",
+          "direction": "exit",
+          "cost": "Relief now buys repetition; urgency compounds before the next scheduled conversation."
+        },
+        {
+          "id": "Y",
+          "label": "Force definition now",
+          "direction": "entry",
+          "cost": "Forcing definition now spikes conflict in the room you were trying to keep calm."
+        }
+      ],
+      "action_decision": {
+        "prompt": "If not now, when?",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Set immediate standard definition session",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Postpone indefinitely",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    }
+  }
+}

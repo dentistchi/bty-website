@@ -1,5 +1,6 @@
 import ScreenShell from "@/components/bty/layout/ScreenShell";
 import { BtyMyPageTabs } from "@/components/bty/navigation/BtyMyPageTabs";
+import { DashboardBackLink } from "@/components/bty/navigation/DashboardBackLink";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
@@ -18,6 +19,7 @@ export default async function Page({ params }: Props) {
       title={m.myPageShellProgressTitle}
       subtitle={m.myPageShellProgressSubtitle}
     >
+      <DashboardBackLink locale={locale} />
       <div className="mb-5">
         <BtyMyPageTabs locale={locale} />
       </div>

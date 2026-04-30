@@ -325,6 +325,8 @@ describe("delayed outcome e2e", () => {
     const scheduled = await scheduleOutcomes("u1", supabase);
     expect(scheduled).toBe(1);
     expect(arenaPendingOutcomes.length).toBe(1);
+    /** {@link fetchFirstDueNoChangeReexposureMeta} gates GET session REEXPOSURE_DUE — align fixture with no-change queue. */
+    arenaPendingOutcomes[0]!.choice_type = "no_change_reexposure";
     expect(triggerQueue.length).toBe(1);
     expect(triggerQueue[0]?.trigger_type).toBe("delayed_outcome");
 
@@ -350,6 +352,8 @@ describe("delayed outcome e2e", () => {
     );
 
     expect(triggerQueue[0]?.status).toBe("processed");
+    /** Simulate delivery/consumption of the pending row so a follow-up GET returns catalog (trigger idempotency is the focus). */
+    arenaPendingOutcomes[0]!.status = "consumed";
 
     // Retry does not re-consume processed trigger.
     const second = await runArenaSessionNextCore({

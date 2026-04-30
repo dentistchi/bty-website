@@ -1,6 +1,6 @@
-name = "bty-website"
+name = "bty-arena-staging"
 main = ".open-next/worker.js"
-compatibility_date = "2025-01-01"
+compatibility_date = "2026-04-26"
 
 compatibility_flags = ["nodejs_compat"]
 
@@ -13,4 +13,10 @@ binding = "ASSETS"
 [vars]
 NEXT_PUBLIC_ARENA_PIPELINE_DEFAULT = "new"
 ARENA_PIPELINE_DEFAULT = "new"
-BTY_ARENA_VERTICAL_SLICE_ENTRY_SCENARIO_ID = "OWN-RE-02-R1"
+BTY_ARENA_VERTICAL_SLICE_ENTRY_SCENARIO_ID = "core_01_training_system_exposure"
+BTY_ENV = "staging"
+BTY_WORKER_NAME = "bty-arena-staging"
+BTY_DEPLOY_VERSION = "2026-04-27-api-version-endpoint-v1"
+BTY_BUILD_TIME = "2026-04-27T18:21:00Z"
+BTY_APP_VERSION = "0.1.0"
+BTY_ADMIN_EMAILS = "ywamer2022@gmail.com"

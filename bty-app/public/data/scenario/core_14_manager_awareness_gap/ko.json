@@ -1,0 +1,230 @@
+{
+  "id": "core_14_manager_awareness_gap",
+  "title": "같은 얘기를 하고 있는 게 아니다",
+  "role": "Associate Dentist",
+  "pressure": "미팅에서 매니저는 시스템이 공정하고 잘 돌아간다고 말한다. 단정적이고 확신에 차 있다. 하지만 내가 매일 보는 현실은 그 설명과 맞지 않는다. 어시스턴트들은 이미 적응했고, 침묵은 이미 기본이 됐다. 이건 더 이상 애매한 문제가 아니다. 구조다. 그런데 시스템을 책임지는 사람은 전혀 다른 이야기를 하고 있다.",
+  "tradeoff": "리더에 맞출 것인가 vs 내가 본 현실을 기준으로 둘 것인가",
+  "bty_tension_axis": "Authority vs Reality",
+  "difficulty_level": 5,
+  "pattern_detection": [
+    "awareness_gap",
+    "perception_split",
+    "authority_bias",
+    "internal_conflict",
+    "reality_suppression"
+  ],
+  "cognitive_dynamics": {
+    "stage_1": "현실을 직접 본다",
+    "stage_2": "다른 설명을 듣는다",
+    "stage_3": "내부 충돌 발생",
+    "stage_4": "현실을 바꿀지, 인식을 바꿀지 선택",
+    "stage_5": "내 기준이 어디에 놓이는지 결정"
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "매니저가 더 많은 정보를 알고 있다고 본다",
+      "subtext": "갈등을 줄이기 위해 판단을 위로 넘긴다",
+      "direction": "exit"
+    },
+    {
+      "id": "B",
+      "label": "인식 자체가 어긋나 있다고 본다",
+      "subtext": "불편해도 내가 본 현실을 유지한다",
+      "direction": "entry"
+    },
+    {
+      "id": "C",
+      "label": "내 판단을 의심한다",
+      "subtext": "갈등을 줄이기 위해 스스로를 낮춘다",
+      "direction": "exit"
+    },
+    {
+      "id": "D",
+      "label": "리더 시각을 아예 배제한다",
+      "subtext": "내 인식을 지키기 위해 거리를 둔다",
+      "direction": "exit"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "믿으면 편해진다. 대신 내가 반복해서 본 현실을 지워야 한다. 점점 나는 ‘보는 것’이 아니라 ‘듣는 것’ 기준으로 판단하게 된다.",
+      "pressure_increase": 0.7,
+      "intensity": 4,
+      "identity_clash": [
+        "나는 계속 불일치를 봤다",
+        "리더는 문제 없다고 말한다",
+        "그걸 믿으려면 내가 본 걸 부정해야 한다"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "완전히 따른다",
+          "direction": "exit",
+          "cost": "살아온 관찰을 내려놓고 말에 맞추다 보면 불일치가 정상처럼 느껴진다."
+        },
+        {
+          "id": "Y",
+          "label": "현실과 말을 다시 비교한다",
+          "direction": "entry",
+          "cost": "주장과 현장에서 실제로 일어난 일을 견주며 긴장을 붙들어야 한다."
+        }
+      ],
+      "action_decision": {
+        "prompt": "누가 기준을 만든다",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "말과 실제 행동의 차이를 구체적으로 정리한다",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "설명을 그대로 따른다",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "B": {
+      "escalation_text": "이걸 인정하는 순간 문제가 바뀐다. 이건 단순 불공정이 아니라, 시스템이 현실을 잘못 이해하고 있는 상태다. 그래서 스스로 수정되지 않는다.",
+      "pressure_increase": 0.9,
+      "intensity": 5,
+      "identity_clash": [
+        "나는 실제를 보고 있다",
+        "리더는 다르게 보고 있다",
+        "이 상태면 시스템은 스스로 고쳐지지 않는다"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "혼자만 안다",
+          "direction": "exit",
+          "cost": "시스템은 잘못된 자기 이해를 유지하고, 정확한 어긋남은 나만 짊어진다."
+        },
+        {
+          "id": "Y",
+          "label": "이걸 구조로 정리한다",
+          "direction": "entry",
+          "cost": "간극을 짚는 말은 비난이나 불안정으로 받아들여질 수 있다."
+        }
+      ],
+      "action_decision": {
+        "prompt": "그럼 무엇이 기준이 되는가",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "정책, 말, 실제 행동의 차이를 구조화한다",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "그냥 불편함으로 둔다",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "C": {
+      "escalation_text": "스스로 의심하면 편해진다. 대신 방향을 잃는다. 점점 판단을 못 하게 된다.",
+      "pressure_increase": 0.6,
+      "intensity": 3,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "계속 의심한다",
+          "direction": "exit",
+          "cost": "자기 의심은 거울을 흐리게 해 패턴을 자신 있게 말하기 어렵게 만든다."
+        },
+        {
+          "id": "Y",
+          "label": "확인해서 정리한다",
+          "direction": "entry",
+          "cost": "증거는 나를 묶는다. 편한 ‘모르겠다’로는 더는 물러날 수 없다."
+        }
+      ],
+      "action_decision": {
+        "prompt": "무엇이 기준을 만든다",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "반복된 사례를 기록한다",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "불확실한 상태로 둔다",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "D": {
+      "escalation_text": "무시하면 명확해진다. 대신 영향력이 사라진다. 시스템은 그대로 간다.",
+      "pressure_increase": 0.7,
+      "intensity": 4,
+      "identity_clash": [
+        "리더는 현실을 못 본다",
+        "나는 이걸 따르기 싫다",
+        "근데 빠지면 아무것도 바뀌지 않는다"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "완전히 분리한다",
+          "direction": "exit",
+          "cost": "안의 명료함은 지키지만, 안에서 바꿀 영향력은 잃는다."
+        },
+        {
+          "id": "Y",
+          "label": "왜 그렇게 보는지 분석한다",
+          "direction": "entry",
+          "cost": "그들의 렌즈를 재구성하려면 에너지가 들고, 근본 간극이 닫힌다는 보장은 없다."
+        }
+      ],
+      "action_decision": {
+        "prompt": "거리는 해결인가",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "리더 인식이 만들어진 과정을 분석한다",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "계속 떨어져 있다",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    }
+  }
+}

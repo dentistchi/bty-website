@@ -12,28 +12,13 @@ export type BlockingArenaContractRow = {
 
 /**
  * `ENGINE_ARCHITECTURE_V1.md` §6.3 — open pipeline contracts that block new Arena play.
- * `submitted` / `escalated` (any), or `pending` with `deadline_at` in the future.
+ * ACTION_REQUIRED is reserved for `pending` contracts only.
  */
 export async function fetchBlockingArenaContractForSession(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<BlockingArenaContractRow | null> {
   const nowIso = new Date().toISOString();
-
-  const { data: openSe, error: errSe } = await supabase
-    .from("bty_action_contracts")
-    .select("id, contract_description, deadline_at, verification_mode, created_at, status")
-    .eq("user_id", userId)
-    .in("status", ["submitted", "escalated"])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (errSe) {
-    console.error("[arena] blocking contract query (submitted/escalated)", errSe.message);
-  } else if (openSe) {
-    return openSe as BlockingArenaContractRow;
-  }
 
   const { data: openPending, error: errP } = await supabase
     .from("bty_action_contracts")
@@ -53,25 +38,7 @@ export async function fetchBlockingArenaContractForSession(
   if (openPending) {
     return openPending as BlockingArenaContractRow;
   }
-
-  const { data: awaitingVerify, error: errV } = await supabase
-    .from("bty_action_contracts")
-    .select("id, contract_description, deadline_at, verification_mode, created_at, status")
-    .eq("user_id", userId)
-    .eq("status", "approved")
-    .not("validation_approved_at", "is", null)
-    .is("verified_at", null)
-    .gt("deadline_at", nowIso)
-    .order("deadline_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (errV) {
-    console.error("[arena] blocking contract query (awaiting verify)", errV.message);
-    return null;
-  }
-
-  return awaitingVerify ? (awaitingVerify as BlockingArenaContractRow) : null;
+  return null;
 }
 
 /**

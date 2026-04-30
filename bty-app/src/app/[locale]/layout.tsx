@@ -4,6 +4,7 @@ import { Chatbot } from "@/components/Chatbot";
 import { Comeback } from "@/components/Comeback";
 import { LocaleLayoutHeader } from "@/components/LocaleLayoutHeader";
 import { SkipToMainContent, MAIN_CONTENT_ID } from "@/components/SkipToMainContent";
+import { AuthErrorRedirect } from "@/components/AuthErrorRedirect";
 import type { Locale } from "@/lib/i18n";
 
 type Props = { children: ReactNode; params: Promise<{ locale: string }> };
@@ -23,6 +24,7 @@ export default async function LocaleLayout({ children, params }: Props) {
   }
   return (
     <>
+      <AuthErrorRedirect />
       <SkipToMainContent locale={locale as Locale} />
       <LocaleLayoutHeader />
       <main id={MAIN_CONTENT_ID}>{children}</main>

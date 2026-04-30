@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
+
 import { useParams } from "next/navigation";
 import { LoadingFallback } from "@/components/bty-arena";
 
@@ -128,12 +128,7 @@ export default function AdminSqlMigrationsPage() {
           <h1 className="text-2xl font-semibold text-neutral-900">{t.title}</h1>
           <p className="mt-1 text-sm text-neutral-600">{t.subtitle}</p>
         </div>
-        <Link
-          href={`/${locale}/admin/debug`}
-          className="text-sm text-neutral-600 underline hover:text-neutral-900"
-        >
-          {t.debugLink}
-        </Link>
+
       </div>
 
       {loading && (
@@ -196,17 +191,7 @@ export default function AdminSqlMigrationsPage() {
         <p className="text-sm text-neutral-600">{t.noFiles}</p>
       )}
 
-      <div className="mt-6 rounded border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
-        <p>
-          <Link href={`/${locale}/admin/arena-membership`} className="underline hover:text-neutral-900">
-            {locale === "ko" ? "Arena 멤버십 승인" : "Arena membership"}
-          </Link>
-          {" · "}
-          <Link href={`/${locale}/admin/quality`} className="underline hover:text-neutral-900">
-            Quality
-          </Link>
-        </p>
-      </div>
+
     </main>
   );
 }

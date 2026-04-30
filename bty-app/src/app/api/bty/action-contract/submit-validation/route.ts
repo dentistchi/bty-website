@@ -58,7 +58,9 @@ export async function POST(req: NextRequest) {
 
   const { data: contract, error: loadErr } = await supabase
     .from("bty_action_contracts")
-    .select("id, user_id, status, pattern_family, arena_scenario_id, session_id, run_id")
+    .select(
+      "id, user_id, status, pattern_family, arena_scenario_id, session_id, run_id, verification_type, details",
+    )
     .eq("id", contractId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -254,19 +256,40 @@ export async function POST(req: NextRequest) {
   }
 
   const nowIso = new Date().toISOString();
+  const verificationType =
+    typeof (contract as { verification_type?: unknown }).verification_type === "string"
+      ? String((contract as { verification_type?: string }).verification_type)
+      : "";
+  const details =
+    typeof (contract as { details?: unknown }).details === "object" &&
+    (contract as { details?: unknown }).details != null
+      ? ((contract as { details: Record<string, unknown> }).details ?? {})
+      : {};
+  const selfReportAutoApprove = details.self_report_auto_approve === true;
+  const canSelfReportAutoApprove =
+    verificationType === "self_report" && selfReportAutoApprove === true;
 
   if (evalResult.outcome === "approve") {
-    // Do not set verified_at here: execution gate / QR sets it after witness verify (see qr/validate).
-    // DB must allow approved + validation_approved_at + verified_at null — migration
-    // 20260431290000_bty_action_contracts_approved_constraint_validator_alignment.sql (and 20260431250000).
-    const approvePatch = {
-      status: "approved" as const,
-      validation_approved_at: nowIso,
-      escalated_at: null as null,
-    };
-    console.log("[submit-validation] approve update payload", {
+    const approvePatch: Record<string, unknown> = canSelfReportAutoApprove
+      ? {
+          status: "approved",
+          validation_approved_at: nowIso,
+          verified_at: nowIso,
+          completed_at: nowIso,
+          escalated_at: null,
+        }
+      : {
+          // Canonical separation: evidence submission remains ACTION_SUBMITTED,
+          // approval metadata marks ACTION_AWAITING_VERIFICATION.
+          status: "submitted",
+          validation_approved_at: nowIso,
+          escalated_at: null,
+        };
+    console.log("[submit-validation] approve transition payload", {
       contractId,
       userId: user.id,
+      verificationType,
+      selfReportAutoApprove: canSelfReportAutoApprove,
       patch: approvePatch,
     });
     logActionContractActorTrace("approve_action_contract", {
@@ -284,7 +307,7 @@ export async function POST(req: NextRequest) {
       .eq("id", contractId)
       .eq("user_id", user.id);
     if (apErr) {
-      console.error("[submit-validation] approve failed", {
+      console.error("[submit-validation] approve transition failed", {
         contractId,
         userId: user.id,
         message: apErr.message,

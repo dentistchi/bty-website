@@ -10,6 +10,7 @@ import {
   selectNextScenario,
   type ScenarioLocalePreference,
   type SelectNextScenarioOptions,
+  type SelectorDebugOut,
 } from "@/engine/scenario/scenario-selector.service";
 import type { ArenaRecallPrompt } from "@/lib/bty/arena/memoryRecallPrompt.types";
 import type { Scenario } from "@/lib/bty/scenario/types";
@@ -25,6 +26,8 @@ export type ScenarioRouteResult = {
   mirrors?: MirrorScenario[];
   /** Memory Engine: pattern-threshold recall copy for this scenario (consumed from trigger queue). */
   recallPrompt?: ArenaRecallPrompt | null;
+  /** Staging/dev only — filled when `options._debugOut` is provided to `getNextScenarioForSession`. */
+  _selectorDebug?: SelectorDebugOut;
 };
 
 async function attachRecallPrompt(
@@ -124,10 +127,12 @@ export async function getNextScenarioForSession(
     userId,
     admin ? { locale, supabase: admin } : { locale },
   );
-  const scenario = await selectNextScenario(userId, locale, options);
+  const selectorDebug: SelectorDebugOut = {};
+  const scenario = await selectNextScenario(userId, locale, { ...options, _debugOut: selectorDebug });
   return attachRecallPrompt(userId, locale, scenario, {
     route: "catalog",
     scenario,
     delayedOutcomePending: due.length > 0,
+    _selectorDebug: selectorDebug,
   });
 }

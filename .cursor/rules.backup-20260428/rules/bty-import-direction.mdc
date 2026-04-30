@@ -1,0 +1,33 @@
+---
+description: BTY Import Direction Rule. 의존 방향 UI→API→Service→Domain 만 허용.
+alwaysApply: true
+---
+
+# Import Direction Rule
+
+의존 방향은 **항상 아래와 같다.**
+
+```text
+UI
+↓
+API
+↓
+Service
+↓
+Domain
+```
+
+## 허용
+
+- UI → API, Service, Domain (필요 시)
+- API → Service, Domain
+- Service → Domain
+
+## 금지
+
+- domain → lib
+- domain → api
+- domain → ui
+- lib → ui
+
+*참조: `docs/architecture/DOMAIN_LAYER_TARGET_MAP.md`*

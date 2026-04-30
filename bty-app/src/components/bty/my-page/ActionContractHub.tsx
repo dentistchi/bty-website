@@ -8,8 +8,16 @@ export interface ActionContractHubProps {
     id: string;
     action_text: string;
     deadline_at: string;
-    verification_type: "qr" | "link" | "hybrid";
-    display_state: "pending" | "completed" | "missed" | "blocked";
+    verification_type: "qr" | "link" | "hybrid" | "self_report";
+    display_state:
+      | "action_required"
+      | "action_submitted"
+      | "action_awaiting_verification"
+      | "verified_completed"
+      | "missed"
+      | "blocked"
+      | "pending"
+      | "completed";
     completion_method: "qr" | "link" | null;
     completed_at?: string | null;
   } | null;
@@ -41,14 +49,20 @@ export function ActionContractHub({
   const loc = (locale === "ko" ? "ko" : "en") as Locale;
   const t = getMessages(loc).actionContract;
 
-  if (contract.display_state === "pending" || contract.display_state === "blocked") {
+  if (
+    contract.display_state === "action_required" ||
+    contract.display_state === "blocked" ||
+    contract.display_state === "pending"
+  ) {
     return (
       <div
         id="bty-action-contract-hub"
         tabIndex={-1}
         className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-white/10 dark:bg-white/[0.05] md:p-6"
       >
-        <p className="mb-2 text-xs uppercase tracking-widest text-cyan-700 dark:text-cyan-100/60">{t.pendingTitle}</p>
+        <p className="mb-2 text-xs uppercase tracking-widest text-cyan-700 dark:text-cyan-100/60">
+          {contract.display_state === "blocked" ? "Action Required (Blocked)" : "Action Required"}
+        </p>
         <p className="mb-1 text-sm text-gray-900 dark:text-white/80">{t.pendingBody}</p>
         <p className="mb-4 text-sm text-gray-700 dark:text-white/60">{contract.action_text}</p>
         <p className="mb-4 text-xs text-gray-500 dark:text-white/40">
@@ -58,7 +72,11 @@ export function ActionContractHub({
           {(contract.verification_type === "qr" || contract.verification_type === "hybrid") && (
             <button
               type="button"
-              onClick={onRequestQr}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onRequestQr();
+              }}
               className="rounded-lg bg-cyan-100 px-4 py-2 text-sm text-cyan-700 transition-colors hover:bg-cyan-200 dark:bg-cyan-500/20 dark:text-cyan-100 dark:hover:bg-cyan-500/30"
             >
               {t.btnQr}
@@ -67,7 +85,11 @@ export function ActionContractHub({
           {(contract.verification_type === "link" || contract.verification_type === "hybrid") && (
             <button
               type="button"
-              onClick={onRequestSecureLink}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onRequestSecureLink();
+              }}
               className="rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-200 dark:bg-white/10 dark:text-white/70 dark:hover:bg-white/20"
             >
               {t.btnLink}
@@ -78,7 +100,41 @@ export function ActionContractHub({
     );
   }
 
-  if (contract.display_state === "completed") {
+  if (contract.display_state === "action_submitted") {
+    return (
+      <div
+        id="bty-action-contract-hub"
+        tabIndex={-1}
+        className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-300/20 dark:bg-amber-500/[0.08] md:p-6"
+      >
+        <p className="mb-2 text-xs uppercase tracking-widest text-amber-700 dark:text-amber-100/70">
+          Evidence Submitted
+        </p>
+        <p className="text-sm text-amber-900/90 dark:text-amber-50/80">
+          Your evidence is recorded. Verification is processing.
+        </p>
+      </div>
+    );
+  }
+
+  if (contract.display_state === "action_awaiting_verification") {
+    return (
+      <div
+        id="bty-action-contract-hub"
+        tabIndex={-1}
+        className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 dark:border-indigo-300/20 dark:bg-indigo-500/[0.08] md:p-6"
+      >
+        <p className="mb-2 text-xs uppercase tracking-widest text-indigo-700 dark:text-indigo-100/70">
+          Awaiting Verification
+        </p>
+        <p className="text-sm text-indigo-900/90 dark:text-indigo-50/80">
+          Evidence is approved and waiting for verification completion.
+        </p>
+      </div>
+    );
+  }
+
+  if (contract.display_state === "verified_completed" || contract.display_state === "completed") {
     return (
       <div
         id="bty-action-contract-hub"

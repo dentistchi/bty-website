@@ -4,32 +4,27 @@
  *
  * Reads `user_scenario_history` (with backfill from `user_scenario_choice_history` when the
  * aggregate array was empty). Catalog metadata and scenario **body** come only from
- * chain-projected elite ({@link getEliteScenarioCatalogMetas}, {@link loadArenaScenarioPayloadFromDb}).
+ * canonical `src/data/scenario` registry ({@link loadArenaScenarioPayloadFromDb}).
  */
 
 import type { Scenario } from "@/lib/bty/scenario/types";
-import { getEliteScenarioCatalogMetas } from "@/lib/bty/arena/eliteScenariosCanonical.server";
+import { getScenarioByDbId, getScenarioById, scenarioList } from "@/data/scenario";
 import { loadArenaScenarioPayloadFromDb } from "@/lib/bty/arena/scenarioPayloadFromDb";
 import { isUserArenaEjected } from "@/engine/integration/arena-center-ejection";
 import { isExcludedFromArenaProduction } from "@/engine/scenario/scenario-production-exclusions";
 import { getDifficultyFloor } from "@/engine/scenario/scenario-difficulty-adjuster.service";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import {
-  ELITE_CANONICAL_ENTRY_SCENARIO_ID,
-  isEliteChainScenarioId,
-} from "@/lib/bty/arena/postLoginEliteEntry";
-import { VERTICAL_SLICE_CANONICAL_SCENARIO_ID } from "@/lib/bty/arena/eliteCanonicalRuntimeTruth";
 
 /**
- * Fresh Arena entry (empty play ∪ served DONE) defaults to {@link ELITE_CANONICAL_ENTRY_SCENARIO_ID} (`core_01_*`).
- * Optional env overrides for vertical-slice proof / staging — must be an {@link isEliteChainScenarioId} id.
+ * Fresh Arena entry (empty play ∪ served DONE) defaults to the first canonical 27-core scenario folder id.
+ * Optional env override is allowed only when the id exists in canonical `scenarioList`.
  */
 function resolveFreshEntryScenarioId(): string {
   const raw = process.env.BTY_ARENA_VERTICAL_SLICE_ENTRY_SCENARIO_ID?.trim();
-  if (raw && isEliteChainScenarioId(raw)) {
+  if (raw && scenarioList.includes(raw as (typeof scenarioList)[number])) {
     return raw;
   }
-  return ELITE_CANONICAL_ENTRY_SCENARIO_ID;
+  return scenarioList[0];
 }
 
 export type ScenarioLocalePreference = "en" | "ko";
@@ -157,7 +152,9 @@ export async function fetchPlayedScenarioIds(userId: string): Promise<string[]> 
   if (error) return [];
   const raw = (data as { played_scenario_ids?: unknown } | null)?.played_scenario_ids;
   if (Array.isArray(raw) && raw.length > 0) {
-    return raw.filter((x): x is string => typeof x === "string");
+    return raw
+      .filter((x): x is string => typeof x === "string")
+      .map((id) => getScenarioByDbId(id, "en")?.scenarioId ?? id);
   }
 
   const { data: rows, error: chErr } = await admin
@@ -169,7 +166,8 @@ export async function fetchPlayedScenarioIds(userId: string): Promise<string[]> 
   if (chErr || !rows?.length) return [];
   return rows
     .map((r) => (r as { scenario_id?: string }).scenario_id)
-    .filter((x): x is string => typeof x === "string");
+    .filter((x): x is string => typeof x === "string")
+    .map((id) => getScenarioByDbId(id, "en")?.scenarioId ?? id);
 }
 
 const MIRROR_SCENARIO_ID_PREFIX = "mirror:" as const;
@@ -253,14 +251,20 @@ function dedupeScenarioMetasByLocaleUnion(rows: ScenarioMeta[]): ScenarioMeta[] 
   return [...map.values()];
 }
 
-/**
- * Metadata from `bty_elite_scenarios.json` only. Returns `null` if the file cannot be loaded.
- */
 async function fetchScenarioCatalogFromDb(): Promise<ScenarioMeta[] | null> {
   try {
-    const raw = getEliteScenarioCatalogMetas();
     const out: ScenarioMeta[] = [];
-    for (const row of raw) {
+    for (const scenarioId of scenarioList) {
+      const runtime = getScenarioById(scenarioId, "en");
+      if (!runtime) continue;
+      const flagType = `${runtime.incidentId}:${runtime.axisGroup}:${runtime.axisIndex}`;
+      const row = {
+        scenarioId,
+        flag_type: flagType,
+        locale: "both" as const,
+        difficulty: 2 as const,
+        scenario_type: "canonical_json",
+      };
       if (isExcludedFromArenaProduction(row.scenarioId, row.scenario_type)) continue;
       out.push({
         scenarioId: row.scenarioId,
@@ -271,19 +275,18 @@ async function fetchScenarioCatalogFromDb(): Promise<ScenarioMeta[] | null> {
       });
     }
     if (!out.length) {
-      console.error("[arena] catalog_empty: no elite scenarios after exclusions");
+      console.error("[arena] catalog_empty: no canonical scenarios after exclusions");
       return null;
     }
-    let deduped = dedupeScenarioMetasByLocaleUnion(out);
-    deduped = deduped.filter((m) => isEliteChainScenarioId(m.scenarioId));
+    const deduped = dedupeScenarioMetasByLocaleUnion(out);
     if (!deduped.length) {
-      console.error("[arena] catalog_empty: elite chain allowlist produced no rows");
+      console.error("[arena] catalog_empty: canonical allowlist produced no rows");
       return null;
     }
     return deduped;
   } catch (e) {
     console.error(
-      "[arena] catalog_unavailable: elite scenarios file",
+      "[arena] catalog_unavailable: canonical scenario registry",
       e instanceof Error ? e.message : e,
     );
     return null;
@@ -332,6 +335,18 @@ export type SelectNextScenarioOptions = {
    * Still honors `preferFlagType` when set.
    */
   foundry_return?: boolean;
+  /** When provided, selector fills this object with debug info (staging/dev only). */
+  _debugOut?: SelectorDebugOut;
+};
+
+/** Staging/dev only — selector introspection for diagnosing unexpected scenario choices. */
+export type SelectorDebugOut = {
+  selectedScenarioId?: string;
+  reason?: string;
+  playedCount?: number;
+  servedCount?: number;
+  skippedPlayedIds?: string[];
+  candidatePoolSize?: number;
 };
 
 /**
@@ -355,7 +370,7 @@ export async function selectNextScenario(
   const rawCatalog = await fetchScenarioCatalogFromDb();
   if (rawCatalog == null || rawCatalog.length === 0) {
     console.error(
-      "[arena] catalog_unavailable: elite scenarios (bty_elite_scenarios.json) missing or empty",
+      "[arena] catalog_unavailable: canonical scenarios missing or empty",
     );
     throw new ScenarioSelectionError(
       "catalog_unavailable",
@@ -377,19 +392,26 @@ export async function selectNextScenario(
 
   for (let attempt = 0; attempt < 2; attempt++) {
     const played = await fetchPlayedScenarioIds(userId);
-    const served = options?.servedArenaScenarioIds ?? [];
+    const served = (options?.servedArenaScenarioIds ?? []).map(
+      (id) => getScenarioByDbId(id, "en")?.scenarioId ?? id,
+    );
     const playedSet = new Set<string>([...played, ...served]);
+    if (options?._debugOut) {
+      options._debugOut.playedCount = played.length;
+      options._debugOut.servedCount = served.length;
+      options._debugOut.skippedPlayedIds = [...playedSet];
+    }
 
     const counts = playCountsByFlagType(played, (id) => flagLookupFromCatalog.get(id));
 
     logSelectNextScenarioPrefilterCounts(catalog, playedSet, locale, attempt);
 
     const eligibleForLocale = catalog.filter((m) => isSelectableMeta(m, locale));
-    /** Prefer unseen (not in history ∪ served DONE ids); once the Elite allowlist is exhausted, replay the same pool for testing (pattern / contract / QR). */
+    /** Prefer unseen (not in history ∪ served DONE ids); once exhausted, replay the same canonical pool. */
     let candidates = eligibleForLocale.filter((m) => !playedSet.has(m.scenarioId));
     if (candidates.length === 0 && eligibleForLocale.length > 0) {
-      console.info("[arena] elite_catalog_replay", {
-        reason: "elite_allowlist_exhausted",
+      console.info("[arena] canonical_catalog_replay", {
+        reason: "canonical_allowlist_exhausted",
         poolSize: eligibleForLocale.length,
       });
       candidates = eligibleForLocale;
@@ -437,12 +459,16 @@ export async function selectNextScenario(
       );
     }
 
-    /** First Arena session with no history: always Elite V2 canonical entry (not a random catalog row). */
+    /** First Arena session with no history: always canonical entry (not a random catalog row). */
     const isFreshCatalogEntry =
       playedSet.size === 0 &&
       !options?.preferFlagType?.trim() &&
       options?.forceDifficultyTier == null &&
       !options?.foundry_return;
+
+    if (options?._debugOut) {
+      options._debugOut.candidatePoolSize = pool.length;
+    }
 
     if (isFreshCatalogEntry) {
       const entryId = resolveFreshEntryScenarioId();
@@ -460,13 +486,18 @@ export async function selectNextScenario(
           `Fresh entry payload missing for ${entryId}.`,
         );
       }
-      if (entryId === VERTICAL_SLICE_CANONICAL_SCENARIO_ID) {
-        console.info("[arena] fresh_entry_vertical_slice", { entryId });
+      if (options?._debugOut) {
+        options._debugOut.selectedScenarioId = pinned.scenarioId;
+        options._debugOut.reason = "fresh_entry_pinned";
       }
       return scenario;
     }
 
     const meta = pickScenarioIdByFlagCoverage(pool, counts);
+    if (options?._debugOut) {
+      options._debugOut.selectedScenarioId = meta.scenarioId;
+      options._debugOut.reason = "coverage_gap";
+    }
 
     const scenario = await loadArenaScenarioPayloadFromDb(null, meta.scenarioId, locale);
     if (!scenario) {

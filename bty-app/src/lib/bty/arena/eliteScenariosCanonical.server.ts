@@ -8,6 +8,7 @@
 
 import type { EscalationBranch, SecondChoice } from "@/domain/arena/scenarios/types";
 import type { HiddenStatKey, Scenario, ScenarioChoice } from "@/lib/bty/scenario/types";
+import { getScenarioById, scenarioList } from "@/data/scenario";
 import { assertCanonicalEliteNoLegacyLeak } from "@/lib/bty/arena/canonicalElitePayloadGuard.server";
 import {
   buildEliteScenarioFromChainWorkspace,
@@ -17,6 +18,13 @@ import {
 import { buildOwnRe02R1EliteScenario } from "@/lib/bty/arena/ownRe02R1EliteScenario.server";
 import { isEliteChainScenarioId } from "@/lib/bty/arena/postLoginEliteEntry";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+
+type CanonicalBinding = {
+  dbScenarioId: string;
+  primaryDbByChoiceId: Map<string, string>;
+  tradeoffDbByPrimarySecond: Map<string, string>;
+  actionDbByPrimarySecondAction: Map<string, string>;
+};
 
 /** v2 Step 2 — primary options; ids must match `escalationBranches` keys for this scenario. */
 export type ElitePrimaryChoiceRow = {
@@ -185,6 +193,48 @@ function buildChoice(
   };
 }
 
+function resolveCanonicalBindingForEliteId(eliteScenarioId: string): CanonicalBinding | null {
+  const m = /^core_(\d{2})_/.exec(eliteScenarioId);
+  if (!m) return null;
+  const ordinalPrefix = `core_${m[1]}_`;
+  const folderId = scenarioList.find((id) => id.startsWith(ordinalPrefix));
+  if (!folderId) return null;
+  const runtime = getScenarioById(folderId, "en");
+  if (!runtime) return null;
+
+  const primaryDbByChoiceId = new Map<string, string>();
+  for (const row of runtime.base.structure.primary ?? []) {
+    if (typeof row.choiceId === "string" && typeof row.dbChoiceId === "string" && row.dbChoiceId.trim() !== "") {
+      primaryDbByChoiceId.set(row.choiceId, row.dbChoiceId.trim());
+    }
+  }
+
+  const tradeoffDbByPrimarySecond = new Map<string, string>();
+  for (const [primaryId, rows] of Object.entries(runtime.base.structure.tradeoff ?? {})) {
+    for (const row of rows ?? []) {
+      if (typeof row.choiceId === "string" && typeof row.dbChoiceId === "string" && row.dbChoiceId.trim() !== "") {
+        tradeoffDbByPrimarySecond.set(`${primaryId}_${row.choiceId}`, row.dbChoiceId.trim());
+      }
+    }
+  }
+
+  const actionDbByPrimarySecondAction = new Map<string, string>();
+  for (const [branchKey, rows] of Object.entries(runtime.base.structure.action_decision ?? {})) {
+    for (const row of rows ?? []) {
+      if (typeof row.choiceId === "string" && typeof row.dbChoiceId === "string" && row.dbChoiceId.trim() !== "") {
+        actionDbByPrimarySecondAction.set(`${branchKey}_${row.choiceId}`, row.dbChoiceId.trim());
+      }
+    }
+  }
+
+  return {
+    dbScenarioId: runtime.dbScenarioId,
+    primaryDbByChoiceId,
+    tradeoffDbByPrimarySecond,
+    actionDbByPrimarySecondAction,
+  };
+}
+
 function parsePrimaryChoiceId(raw: string): "A" | "B" | "C" | "D" {
   const id = String(raw).trim();
   if (id === "A" || id === "B" || id === "C" || id === "D") return id;
@@ -194,7 +244,11 @@ function parsePrimaryChoiceId(raw: string): "A" | "B" | "C" | "D" {
 /**
  * Step 2 choices from bundled `primaryChoices` only — same ids used for `escalationBranches[id]` on steps 3–4.
  */
-function choicesFromPrimaryChoicesJson(rows: ElitePrimaryChoiceRow[], eliteScenarioId: string): ScenarioChoice[] {
+function choicesFromPrimaryChoicesJson(
+  rows: ElitePrimaryChoiceRow[],
+  eliteScenarioId: string,
+  primaryDbByChoiceId?: Map<string, string>,
+): ScenarioChoice[] {
   const out: ScenarioChoice[] = [];
   for (let index = 0; index < rows.length; index += 1) {
     const row = rows[index]!;
@@ -203,9 +257,10 @@ function choicesFromPrimaryChoicesJson(rows: ElitePrimaryChoiceRow[], eliteScena
     if (!label) throw new Error(`[elite] empty primaryChoices label for id ${row.id}`);
     const sub = typeof row.subtext === "string" ? row.subtext.trim() : "";
     const dbChoiceId =
-      typeof row.dbChoiceId === "string" && row.dbChoiceId.trim() !== ""
+      primaryDbByChoiceId?.get(choiceId) ??
+      (typeof row.dbChoiceId === "string" && row.dbChoiceId.trim() !== ""
         ? row.dbChoiceId.trim()
-        : `${eliteScenarioId}:primary:${choiceId}`;
+        : `${eliteScenarioId}:primary:${choiceId}`);
     const b = buildChoice(choiceId, label, `primary_${choiceId}`, index, dbChoiceId);
     if (sub === "") {
       out.push(b);
@@ -247,16 +302,23 @@ function cloneSecondChoice(sc: SecondChoice): SecondChoice {
   return o;
 }
 
-function cloneEscalationBranch(br: EscalationBranch, scenarioIdForDb?: string): EscalationBranch {
+function cloneEscalationBranch(
+  primaryChoiceId: string,
+  br: EscalationBranch,
+  scenarioIdForDb?: string,
+  tradeoffDbByPrimarySecond?: Map<string, string>,
+  actionDbByPrimarySecondAction?: Map<string, string>,
+): EscalationBranch {
   const second_choices: SecondChoice[] = [];
   for (const sc of br.second_choices) {
     const c = cloneSecondChoice(sc);
     const secondDb =
-      typeof sc.dbChoiceId === "string" && sc.dbChoiceId.trim() !== ""
+      tradeoffDbByPrimarySecond?.get(`${primaryChoiceId}_${sc.id}`) ??
+      (typeof sc.dbChoiceId === "string" && sc.dbChoiceId.trim() !== ""
         ? sc.dbChoiceId.trim()
         : scenarioIdForDb != null && scenarioIdForDb.trim() !== ""
           ? `${scenarioIdForDb}:second:${sc.id}`
-          : undefined;
+          : undefined);
     second_choices.push(
       secondDb != null ? { ...c, dbChoiceId: secondDb } : c,
     );
@@ -279,11 +341,13 @@ function cloneEscalationBranch(br: EscalationBranch, scenarioIdForDb?: string): 
           : {}),
         ...(c.meaning != null && typeof c.meaning === "object" ? { meaning: c.meaning } : {}),
         dbChoiceId:
-          typeof c.dbChoiceId === "string" && c.dbChoiceId.trim() !== ""
+          actionDbByPrimarySecondAction?.get(`${primaryChoiceId}_X_${c.id}`) ??
+          actionDbByPrimarySecondAction?.get(`${primaryChoiceId}_Y_${c.id}`) ??
+          (typeof c.dbChoiceId === "string" && c.dbChoiceId.trim() !== ""
             ? c.dbChoiceId.trim()
             : scenarioIdForDb != null && scenarioIdForDb.trim() !== ""
               ? `${scenarioIdForDb}:action_decision:${c.id}`
-              : c.dbChoiceId,
+              : c.dbChoiceId),
       })),
     };
   }
@@ -323,6 +387,7 @@ const DEFAULT_ELITE_SCENARIO_DIFFICULTY_LEVEL = 3 as NonNullable<Scenario["diffi
  */
 export function eliteScenarioToScenario(s: EliteScenario, _locale: "en" | "ko"): Scenario {
   const body = buildEliteNarrativeBody(s);
+  const canonicalBinding = resolveCanonicalBindingForEliteId(s.id);
 
   const rowEb = s.escalationBranches;
   const hasRowEscalation =
@@ -338,7 +403,13 @@ export function eliteScenarioToScenario(s: EliteScenario, _locale: "en" | "ko"):
     const raw = rowEb as Record<string, EscalationBranch>;
     const eb: Record<string, EscalationBranch> = {};
     for (const key of Object.keys(raw)) {
-      eb[key] = cloneEscalationBranch(raw[key]!, s.id);
+      eb[key] = cloneEscalationBranch(
+        key,
+        raw[key]!,
+        s.id,
+        canonicalBinding?.tradeoffDbByPrimarySecond,
+        canonicalBinding?.actionDbByPrimarySecondAction,
+      );
     }
     escalationBranches = eb;
     difficulty_level = s.difficulty_level ?? DEFAULT_ELITE_SCENARIO_DIFFICULTY_LEVEL;
@@ -346,10 +417,14 @@ export function eliteScenarioToScenario(s: EliteScenario, _locale: "en" | "ko"):
 
   const baseScenario: Scenario = {
     scenarioId: s.id,
-    dbScenarioId: s.id,
+    dbScenarioId: canonicalBinding?.dbScenarioId ?? s.id,
     title: s.title,
     context: body,
-    choices: choicesFromPrimaryChoicesJson(s.primaryChoices, s.id),
+    choices: choicesFromPrimaryChoicesJson(
+      s.primaryChoices,
+      s.id,
+      canonicalBinding?.primaryDbByChoiceId,
+    ),
     coachNotes: inferCoachKeys(s),
     elite_only: true,
     eliteSetup: {

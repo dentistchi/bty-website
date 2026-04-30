@@ -6,6 +6,10 @@ import { spawnSync } from "node:child_process";
 import * as path from "node:path";
 
 export default async function globalSetup(): Promise<void> {
+  if (process.env.PLAYWRIGHT_SKIP_GLOBAL_SETUP === "1") {
+    console.log("[e2e-global-setup] SKIP — PLAYWRIGHT_SKIP_GLOBAL_SETUP=1 (no DB seed)");
+    return;
+  }
   const root = path.resolve(__dirname, "..");
   console.log("[e2e-global-setup] START — seedThreeContractUsers (npm run e2e:seed-three-contract-users)");
   console.log("[e2e-global-setup] cwd:", root);

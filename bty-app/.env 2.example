@@ -19,7 +19,7 @@ AZURE_AD_CLIENT_SECRET=
 AZURE_AD_TENANT_ID=
 NEXTAUTH_URL=http://localhost:3001
 NEXTAUTH_SECRET=
-BTY_ADMIN_EMAILS=admin@example.com
+BTY_ADMIN_EMAILS=ywamer2022@gmail.com
 
 # 상대 사이트 URL (다른 사이트에서도 로그인 링크용)
 NEXT_PUBLIC_TODAY_ME_URL=http://localhost:3000

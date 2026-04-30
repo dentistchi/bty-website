@@ -46,10 +46,16 @@ function metaPatternFamily(m: Record<string, unknown> | null | undefined): strin
   return raw !== "" ? raw : null;
 }
 
+function metaIntensity(m: Record<string, unknown> | null | undefined): 1 | 2 | 3 | null {
+  const v = m && typeof m.intensity === "number" ? m.intensity : null;
+  if (v === 1 || v === 2 || v === 3) return v;
+  return null;
+}
+
 export async function fetchSecondChoiceConfirmedRow(
   supabase: SupabaseClient,
   runId: string,
-): Promise<{ choice_id: string; direction: "entry" | "exit"; pattern_family: string | null } | null> {
+): Promise<{ choice_id: string; direction: "entry" | "exit"; pattern_family: string | null; intensity: 1 | 2 | 3 | null } | null> {
   const { data, error } = await supabase
     .from("arena_events")
     .select("choice_id, meta")
@@ -71,6 +77,7 @@ export async function fetchSecondChoiceConfirmedRow(
     choice_id: choiceId,
     direction,
     pattern_family: metaPatternFamily(meta),
+    intensity: metaIntensity(meta),
   };
 }
 
@@ -294,11 +301,16 @@ export async function computeReexposureValidation(params: {
   });
 
   const reentryAsEntry = priorEv.direction === "exit" && afterEv.direction === "entry";
+  // intensity decrease: prior had a value AND after is strictly lower
+  const priorIntensity = priorEv.intensity;
+  const afterIntensity = afterEv.intensity;
+  const intensityDecreased =
+    priorIntensity != null && afterIntensity != null && afterIntensity < priorIntensity;
   const band = patternShiftBandFromReexposure({
     reentryAsEntry,
     priorExitPatternKey: priorKey,
     afterExitPatternKey: afterKey,
-    intensityDecreased: false,
+    intensityDecreased,
   });
 
   const recorded_at = new Date().toISOString();

@@ -43,8 +43,8 @@ export function ArenaRunHistory({ locale }: ArenaRunHistoryProps) {
   const [error, setError] = useState<string | null>(null);
   const [sessionHint, setSessionHint] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
-  /** §4 기본 노출, 접기 가능 */
-  const [collapsed, setCollapsed] = useState(false);
+  /** 기본 접힘 — 보고 싶을 때만 펼침 */
+  const [collapsed, setCollapsed] = useState(true);
   const lang = locale === "ko" ? "ko" : "en";
   const t = getMessages(lang).arenaRun;
   const isKo = locale === "ko";

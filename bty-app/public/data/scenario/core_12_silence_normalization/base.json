@@ -1,0 +1,149 @@
+{
+  "scenarioId": "core_12_silence_normalization",
+  "dbScenarioId": "INCIDENT-02-INTEGRITY-12",
+  "engineType": "silence_normalization_engine",
+  "engineRef": "silence_normalization_engine_v1",
+  "incident": {
+    "incidentId": "incident_02_integrity_and_fairness_breakdown",
+    "stage": 3,
+    "axisGroup": "Integrity",
+    "axisIndex": 3,
+    "previousScenarioId": "core_11_selective_standard_escalation",
+    "nextScenarioId": "core_13_assistant_adaptation",
+    "roleShift": "Associate Dentist -> Associate Dentist",
+    "propagation": {
+      "exitEffect": "Silence becomes the default behavior, reinforcing the unfair system.",
+      "entryEffect": "Silence is recognized as an active part of the problem, not neutrality.",
+      "reExposureNote": "If normalized, this leads to disengagement, quiet quitting, and hidden resistance."
+    }
+  },
+  "silence_normalization_engine": {
+    "type": "silence_reinforcement",
+    "core_loop": [
+      "problem_recognition",
+      "expression_suppression",
+      "social_feedback",
+      "silence_reinforcement",
+      "reality_distortion"
+    ],
+    "failure_modes": [
+      "self_silencing",
+      "false_neutrality",
+      "social_conformity",
+      "internal_resignation"
+    ],
+    "success_condition": "the user recognizes silence as participation, not neutrality"
+  },
+  "structure": {
+    "primary": [
+      {
+        "choiceId": "A",
+        "dbChoiceId": "INCIDENT-02-INTEGRITY-12_primary_A"
+      },
+      {
+        "choiceId": "B",
+        "dbChoiceId": "INCIDENT-02-INTEGRITY-12_primary_B"
+      },
+      {
+        "choiceId": "C",
+        "dbChoiceId": "INCIDENT-02-INTEGRITY-12_primary_C"
+      },
+      {
+        "choiceId": "D",
+        "dbChoiceId": "INCIDENT-02-INTEGRITY-12_primary_D"
+      }
+    ],
+    "tradeoff": {
+      "A": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-12_tradeoff_A_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-12_tradeoff_A_Y"
+        }
+      ],
+      "B": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-12_tradeoff_B_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-12_tradeoff_B_Y"
+        }
+      ],
+      "C": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-12_tradeoff_C_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-12_tradeoff_C_Y"
+        }
+      ],
+      "D": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-12_tradeoff_D_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-12_tradeoff_D_Y"
+        }
+      ]
+    },
+    "action_decision": {
+      "A_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-12_action_A_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-12_action_A_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "B_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-12_action_B_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-12_action_B_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "C_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-12_action_C_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-12_action_C_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "D_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-12_action_D_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-INTEGRITY-12_action_D_X_AD2",
+          "is_action_commitment": false
+        }
+      ]
+    }
+  }
+}

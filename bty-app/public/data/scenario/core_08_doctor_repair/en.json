@@ -1,0 +1,329 @@
+{
+  "id": "core_08_doctor_repair",
+  "title": "Where Responsibility Lands",
+  "role": "Associate Dentist",
+  "pressure": "After the repair conversation, attention shifts toward you. Assistants expect acknowledgment. The manager is watching whether you can own impact without collapsing into shame or defending every decision. You also know the system did not fully prepare or support you. The room is no longer only asking what happened. It is asking where responsibility belongs.",
+  "tradeoff": "You can protect yourself by explaining the system context, or you can acknowledge your impact while still naming the system gap accurately.",
+  "bty_tension_axis": "Self-Protection vs Accurate Ownership",
+  "axis_primary": "Repair",
+  "axis_secondary": ["Ownership", "Integrity", "Truth"],
+  "difficulty_level": 5,
+  "action_contract": {
+    "description": "Decide how to respond when responsibility moves from the system conversation to your personal impact.",
+    "time_window_hours": 24
+  },
+  "air_logic": {
+    "success": "Responsibility is separated accurately: what you own, what the system owns, and what the team must change.",
+    "miss": "Responsibility collapses into defensiveness, silence, or distorted self-blame."
+  },
+  "forced_reset": {
+    "trigger": "The repair conversation turns toward your behavior and its impact on assistants and patient flow.",
+    "action": "You must decide whether to defend, avoid, over-own, or clarify responsibility."
+  },
+  "pattern_detection": [
+    "defensiveness",
+    "blame_shift",
+    "over_ownership",
+    "ownership_clarity",
+    "system_vs_individual_confusion"
+  ],
+  "responsibility_dynamics": {
+    "stage_1": "Responsibility pressure",
+    "stage_2": "Internal justification vs external expectation",
+    "stage_3": "Verbal response",
+    "stage_4": "Team interpretation",
+    "stage_5": "Trust shift or collapse"
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Explain that the system did not support you properly",
+      "subtext": "Your context is real, and you do not want the whole problem placed on you.",
+      "axis": "Truth",
+      "direction": "exit",
+      "pattern_family": "blame_shift",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-REPAIR-08_primary_A"
+    },
+    {
+      "id": "B",
+      "label": "Acknowledge the impact your behavior had on the assistants",
+      "subtext": "This may feel vulnerable, but it gives the team a real repair signal.",
+      "axis": "Repair",
+      "direction": "entry",
+      "pattern_family": "ownership_clarity",
+      "intensity": 5,
+      "dbChoiceId": "INCIDENT-01-REPAIR-08_primary_B"
+    },
+    {
+      "id": "C",
+      "label": "Stay quiet and let the manager continue facilitating",
+      "subtext": "This avoids saying the wrong thing while emotions are high.",
+      "axis": "Conflict",
+      "direction": "exit",
+      "pattern_family": "silence_avoidance",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-REPAIR-08_primary_C"
+    },
+    {
+      "id": "D",
+      "label": "Take full responsibility for everything that happened",
+      "subtext": "This may calm the room quickly and show humility.",
+      "axis": "Accountability",
+      "direction": "exit",
+      "pattern_family": "over_ownership",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-REPAIR-08_primary_D"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "When you explain the lack of support, the assistants hear it as dismissal. The manager recognizes some truth in what you are saying, but the room starts moving away from repair and back toward who caused the problem.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "interpretation_clash": [
+        "Doctor: The system did not set me up to succeed.",
+        "Assistants: You are avoiding the impact on us.",
+        "Manager: Both are true, but the conversation is losing repair structure."
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Continue explaining the support gap",
+          "cost": "Your context becomes clearer, but the team experiences it as defensiveness.",
+          "axis": "Truth",
+          "direction": "exit",
+          "pattern_family": "blame_shift",
+          "dbChoiceId": "INCIDENT-01-REPAIR-08_tradeoff_A_X"
+        },
+        {
+          "id": "Y",
+          "label": "Separate system context from personal impact",
+          "cost": "You must hold two truths without using one to cancel the other.",
+          "axis": "Repair",
+          "direction": "entry",
+          "pattern_family": "ownership_clarity",
+          "dbChoiceId": "INCIDENT-01-REPAIR-08_tradeoff_A_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not explanation — what ownership will become visible?",
+        "context": "Your context is valid, but the team still needs acknowledgment of impact.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, state what support was missing and one specific impact you own with a behavior change",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Repair",
+              "direction": "entry",
+              "pattern_family": "ownership_clarity",
+              "description": "You are separating system failure from personal impact."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-REPAIR-08_action_A_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Continue clarifying why the situation was difficult for you",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Truth",
+              "direction": "exit",
+              "pattern_family": "blame_shift",
+              "description": "You are keeping context visible while impact remains unowned."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-REPAIR-08_action_A_X_AD2"
+          }
+        ]
+      }
+    },
+    "B": {
+      "escalation_text": "When you acknowledge impact, the assistants soften but do not fully trust it yet. The manager sees a repair opening, but the room waits to see whether your ownership will become specific or stay general.",
+      "pressure_increase": 0.7,
+      "intensity": 5,
+      "interpretation_clash": [
+        "Doctor: I can see how my behavior affected you.",
+        "Assistants: Is this real change or just a meeting statement?",
+        "Manager: This needs to become observable behavior."
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep the acknowledgment general",
+          "cost": "The room feels better, but the repair signal stays weak.",
+          "axis": "Comfort",
+          "direction": "exit",
+          "pattern_family": "emotional_release_loop",
+          "dbChoiceId": "INCIDENT-01-REPAIR-08_tradeoff_B_X"
+        },
+        {
+          "id": "Y",
+          "label": "Define the specific behavior you will change",
+          "cost": "You make your future behavior observable and accountable.",
+          "axis": "Repair",
+          "direction": "entry",
+          "pattern_family": "ownership_clarity",
+          "dbChoiceId": "INCIDENT-01-REPAIR-08_tradeoff_B_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not acknowledgment — what will change?",
+        "context": "The team heard ownership, but trust requires a visible next behavior.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, name one clinical communication behavior you will repeat and ask the assistant to flag it if you miss it",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Repair",
+              "direction": "entry",
+              "pattern_family": "ownership_clarity",
+              "description": "You are converting acknowledgment into measurable repair."
+            },
+            "intensity": 5,
+            "dbChoiceId": "INCIDENT-01-REPAIR-08_action_B_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Let the acknowledgment stand and trust that the team will feel the difference",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Comfort",
+              "direction": "exit",
+              "pattern_family": "emotional_release_loop",
+              "description": "You are relying on the emotional moment instead of structure."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-REPAIR-08_action_B_X_AD2"
+          }
+        ]
+      }
+    },
+    "C": {
+      "escalation_text": "Your silence creates space, but the team fills it with interpretation. Assistants wonder whether you are avoiding responsibility. The manager tries to continue, but the room can feel that you have not entered the repair.",
+      "pressure_increase": 0.5,
+      "intensity": 4,
+      "interpretation_clash": [
+        "Doctor: I do not want to make this worse.",
+        "Assistants: Silence means nothing is changing.",
+        "Manager: Facilitation cannot replace the doctor’s own response."
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Continue staying quiet and let the manager guide the room",
+          "cost": "You avoid escalation, but ambiguity grows around your responsibility.",
+          "axis": "Conflict",
+          "direction": "exit",
+          "pattern_family": "silence_avoidance",
+          "dbChoiceId": "INCIDENT-01-REPAIR-08_tradeoff_C_X"
+        },
+        {
+          "id": "Y",
+          "label": "Enter the conversation with a clear ownership statement",
+          "cost": "You may raise tension, but you stop the room from interpreting your silence.",
+          "axis": "Repair",
+          "direction": "entry",
+          "pattern_family": "ownership_clarity",
+          "dbChoiceId": "INCIDENT-01-REPAIR-08_tradeoff_C_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not silence — what will become clear?",
+        "context": "The room needs to hear what you own directly from you.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Before the meeting ends, state one impact you own and one behavior you will change",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Repair",
+              "direction": "entry",
+              "pattern_family": "ownership_clarity",
+              "description": "You are replacing ambiguity with direct repair."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-REPAIR-08_action_C_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Wait until emotions settle before saying more",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Conflict",
+              "direction": "exit",
+              "pattern_family": "silence_avoidance",
+              "description": "You are letting silence continue shaping the interpretation."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-REPAIR-08_action_C_X_AD2"
+          }
+        ]
+      }
+    },
+    "D": {
+      "escalation_text": "Taking full responsibility brings temporary relief, but the manager notices that the training gap and workload design disappear from the conversation. Assistants feel heard, but the system issue is now hidden under your apology.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "interpretation_clash": [
+        "Doctor: I will take responsibility for all of it.",
+        "Assistants: Finally, someone is acknowledging the burden.",
+        "Manager: This may be too simple and may hide the system problem."
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Maintain full personal responsibility to keep the room calm",
+          "cost": "The room stabilizes, but the system failure disappears.",
+          "axis": "Accountability",
+          "direction": "exit",
+          "pattern_family": "over_ownership",
+          "dbChoiceId": "INCIDENT-01-REPAIR-08_tradeoff_D_X"
+        },
+        {
+          "id": "Y",
+          "label": "Clarify what you own and what the system must repair",
+          "cost": "You reintroduce complexity after the room started to settle.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "ownership_clarity",
+          "dbChoiceId": "INCIDENT-01-REPAIR-08_tradeoff_D_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not apology — what responsibility is accurate?",
+        "context": "Full blame may feel humble, but it can distort repair by hiding the system gap.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, clarify your personal impact, the missing support, and the shared repair steps in writing",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "ownership_clarity",
+              "description": "You are making responsibility accurate instead of total."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-REPAIR-08_action_D_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Keep the apology broad and avoid complicating the moment",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Accountability",
+              "direction": "exit",
+              "pattern_family": "over_ownership",
+              "description": "You are using broad responsibility to preserve calm while the system issue disappears."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-REPAIR-08_action_D_X_AD2"
+          }
+        ]
+      }
+    }
+  }
+}

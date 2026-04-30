@@ -1,0 +1,222 @@
+{
+  "scenarioId": "core_19_identity_integrity_propagation",
+  "dbScenarioId": "bty_incident_02_core_19",
+  "incident": {
+    "incidentId": "incident_02",
+    "incidentStage": "post-ending propagation",
+    "sequencePosition": 19,
+    "previousScenarioId": "core_18_identity_integrity_choice",
+    "nextScenarioId": null,
+    "roleShift": "from system chooser to system enforcer under drift",
+    "propagation": {
+      "exitEffect": "The selected system weakens over time and reverts to informal authority patterns.",
+      "entryEffect": "The selected system is stress-tested and reinforced under real operational drift.",
+      "reExposureNote": "Drift will reveal whether the system survives without constant leadership attention."
+    },
+    "stage": 19,
+    "axisGroup": "Repair",
+    "axisIndex": 1
+  },
+  "primaryChoices": {
+    "A": {
+      "axis": "system_integrity",
+      "direction": "exit",
+      "tradeoff": "trust_over_verification",
+      "mapsTo": [
+        "A_X",
+        "A_Y"
+      ]
+    },
+    "B": {
+      "axis": "system_integrity",
+      "direction": "exit",
+      "tradeoff": "local_flexibility_over_consistency",
+      "mapsTo": [
+        "B_X",
+        "B_Y"
+      ]
+    },
+    "C": {
+      "axis": "system_integrity",
+      "direction": "exit",
+      "tradeoff": "relationship_comfort_over_accountability",
+      "mapsTo": [
+        "C_X",
+        "C_Y"
+      ]
+    },
+    "D": {
+      "axis": "system_integrity",
+      "direction": "entry",
+      "tradeoff": "consistency_over_convenience",
+      "mapsTo": [
+        "D_X",
+        "D_Y"
+      ]
+    }
+  },
+  "tradeoff": {
+    "A": {
+      "X": "assume_system_holds",
+      "Y": "verify_system_application"
+    },
+    "B": {
+      "X": "allow_local_adaptation",
+      "Y": "enforce_cross_office_standard"
+    },
+    "C": {
+      "X": "avoid_direct_accountability",
+      "Y": "apply_accountability_under_relationship"
+    },
+    "D": {
+      "X": "soft_monitoring",
+      "Y": "install_drift_detection"
+    }
+  },
+  "action_decision_mapping": {
+    "A_X": {
+      "commitmentType": "passive_trust",
+      "isEntry": false
+    },
+    "A_Y": {
+      "commitmentType": "active_verification",
+      "isEntry": true
+    },
+    "B_X": {
+      "commitmentType": "local_variation",
+      "isEntry": false
+    },
+    "B_Y": {
+      "commitmentType": "standard_enforcement",
+      "isEntry": true
+    },
+    "C_X": {
+      "commitmentType": "relationship_preservation",
+      "isEntry": false
+    },
+    "C_Y": {
+      "commitmentType": "accountability_application",
+      "isEntry": true
+    },
+    "D_X": {
+      "commitmentType": "light_tracking",
+      "isEntry": false
+    },
+    "D_Y": {
+      "commitmentType": "system_reinforcement",
+      "isEntry": true
+    }
+  },
+  "structure": {
+    "primary": [
+      {
+        "choiceId": "A",
+        "dbChoiceId": "bty_incident_02_core_19_primary_A_A"
+      },
+      {
+        "choiceId": "B",
+        "dbChoiceId": "bty_incident_02_core_19_primary_B_B"
+      },
+      {
+        "choiceId": "C",
+        "dbChoiceId": "bty_incident_02_core_19_primary_C_C"
+      },
+      {
+        "choiceId": "D",
+        "dbChoiceId": "bty_incident_02_core_19_primary_D_D"
+      }
+    ],
+    "tradeoff": {
+      "A": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "bty_incident_02_core_19_tradeoff_A_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "bty_incident_02_core_19_tradeoff_A_Y"
+        }
+      ],
+      "B": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "bty_incident_02_core_19_tradeoff_B_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "bty_incident_02_core_19_tradeoff_B_Y"
+        }
+      ],
+      "C": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "bty_incident_02_core_19_tradeoff_C_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "bty_incident_02_core_19_tradeoff_C_Y"
+        }
+      ],
+      "D": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "bty_incident_02_core_19_tradeoff_D_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "bty_incident_02_core_19_tradeoff_D_Y"
+        }
+      ]
+    },
+    "action_decision": {
+      "A_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "bty_incident_02_core_19_action_A_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "bty_incident_02_core_19_action_A_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "B_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "bty_incident_02_core_19_action_B_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "bty_incident_02_core_19_action_B_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "C_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "bty_incident_02_core_19_action_C_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "bty_incident_02_core_19_action_C_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "D_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "bty_incident_02_core_19_action_D_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "bty_incident_02_core_19_action_D_X_AD2",
+          "is_action_commitment": false
+        }
+      ]
+    }
+  }
+}

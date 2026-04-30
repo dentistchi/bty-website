@@ -71,9 +71,9 @@ function AuthCallbackForm() {
         await supabaseClient.auth.getSession();
         if (type === "recovery") {
           if (typeof window !== "undefined") {
-            window.location.assign(`/${locale}/auth/reset-password`);
+            window.location.assign(`/${locale}/reset-password`);
           } else {
-            router.replace(`/${locale}/auth/reset-password`);
+            router.replace(`/${locale}/reset-password`);
           }
           return;
         }
@@ -105,9 +105,9 @@ function AuthCallbackForm() {
         }
         if (recoveryType === "recovery") {
           if (typeof window !== "undefined") {
-            window.location.assign(`/${locale}/auth/reset-password`);
+            window.location.assign(`/${locale}/reset-password`);
           } else {
-            router.replace(`/${locale}/auth/reset-password`);
+            router.replace(`/${locale}/reset-password`);
           }
           return;
         }

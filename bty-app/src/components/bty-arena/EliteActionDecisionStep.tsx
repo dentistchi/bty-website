@@ -67,6 +67,7 @@ export function EliteActionDecisionStep({
             const isDimmed = lockedId != null && !isSelected;
             const commitment =
               typeof c.commitment === "string" && c.commitment.trim() !== "" ? c.commitment.trim() : null;
+            const isCommitmentPath = c.meaning?.is_action_commitment === true;
             return (
               <li key={c.id}>
                 <button
@@ -76,14 +77,44 @@ export function EliteActionDecisionStep({
                   disabled={choiceDisabled || (lockedId != null && !isSelected)}
                   className={[
                     "w-full rounded-3xl border-2 px-5 py-4 text-left transition-[opacity,box-shadow] duration-200",
-                    "border-[var(--arena-accent)]/35 bg-bty-surface/95",
+                    isCommitmentPath
+                      ? "border-emerald-600/40 bg-emerald-50/40"
+                      : "border-slate-400/45 bg-slate-50/80",
                     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--arena-accent)]/50",
                     "hover:border-[var(--arena-accent)]/55",
                     isDimmed ? "opacity-45" : "opacity-100",
                     isSelected ? "ring-2 ring-[var(--arena-accent)]/45" : "",
                   ].join(" ")}
                 >
-                  <span className="block text-[15px] font-semibold leading-snug text-bty-navy">{c.label}</span>
+                  <span
+                    className={[
+                      "inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]",
+                      isCommitmentPath ? "bg-emerald-700 text-white" : "bg-slate-600 text-white",
+                    ].join(" ")}
+                    data-testid={`elite-action-decision-kind-${c.id}`}
+                  >
+                    {isCommitmentPath ? t.eliteActionDecisionAdCommitmentBadge : t.eliteActionDecisionAdDeferBadge}
+                  </span>
+                  <span className="mt-2 block text-[15px] font-semibold leading-snug text-bty-navy">{c.label}</span>
+                  <ul
+                    className="m-0 mt-2 list-disc space-y-1 pl-4 text-xs leading-snug text-bty-navy/88"
+                    data-testid={`elite-action-decision-traits-${c.id}`}
+                  >
+                    {isCommitmentPath ? (
+                      <>
+                        <li>{t.eliteActionDecisionAd1TraitConcrete}</li>
+                        <li>{t.eliteActionDecisionAd1TraitTimeBound}</li>
+                        <li>{t.eliteActionDecisionAd1TraitObservable}</li>
+                        <li>{t.eliteActionDecisionAd1TraitContractGate}</li>
+                      </>
+                    ) : (
+                      <>
+                        <li>{t.eliteActionDecisionAd2TraitDelay}</li>
+                        <li>{t.eliteActionDecisionAd2TraitNonCommitment}</li>
+                        <li>{t.eliteActionDecisionAd2TraitNextOrReexposure}</li>
+                      </>
+                    )}
+                  </ul>
                   {commitment ? (
                     <span className="mt-2 block text-xs font-medium uppercase tracking-wide text-bty-secondary">
                       {t.eliteActionDecisionCommitmentLabel}

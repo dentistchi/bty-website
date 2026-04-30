@@ -36,10 +36,14 @@ function isPublicPath(pathname: string) {
     if (pathname === `/${locale}` || pathname === `/${locale}/`) return true;
     if (pathname === `/${locale}/center` || pathname === `/${locale}/center/`) return true;
     if (pathname === `/${locale}/admin/login`) return true;
+    if (pathname === `/${locale}/dev/scenario-preview`) return true;
     if (pathname === `/${locale}/bty/login`) return true;
-    /** OAuth return: session is created client-side on this page (`exchangeCodeForSession` / hash tokens). Must not require auth. */
+    if (pathname === `/${locale}/bty/forgot-password`) return true;
+    /** OAuth return + password reset: session is created client-side on these pages. Must not require auth. */
     if (pathname === `/${locale}/auth/callback` || pathname.startsWith(`/${locale}/auth/callback/`))
       return true;
+    if (pathname === `/${locale}/auth/reset-password`) return true;
+    if (pathname === `/${locale}/reset-password`) return true;
     if (pathname === `/${locale}/bty/logout`) return true;
     /** Leaderboard: API serves public overall view when cookies missing (Workers/Edge). Page load must not force login. */
     if (
@@ -163,6 +167,16 @@ export async function middleware(req: NextRequest) {
   }
 
   if (isPublicPath(pathname)) return NextResponse.next();
+
+  // DEV ONLY: scenario runtime testing bypass
+  if (
+    process.env.NODE_ENV !== "production" &&
+    process.env.NEXT_PUBLIC_BTY_DEV_BYPASS_AUTH === "true" &&
+    locale &&
+    (pathname === `/${locale}/bty-arena` || pathname.startsWith(`/${locale}/bty-arena/`))
+  ) {
+    return NextResponse.next();
+  }
 
   const res = NextResponse.next();
 

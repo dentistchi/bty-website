@@ -39,6 +39,15 @@ const ADMIN_EMAIL_SET = new Set(
   ADMIN_EMAILS_RAW.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
 );
 
+function logAdminAllowlistDebug(email: string, matched: boolean) {
+  if (process.env.NODE_ENV !== "development") return;
+  console.info("[admin-auth][requireAdminEmail] allowlist check", {
+    userEmail: email,
+    parsedAdminEmails: Array.from(ADMIN_EMAIL_SET),
+    allowlistMatched: matched,
+  });
+}
+
 /**
  * Admin-only by email allowlist (BTY_ADMIN_EMAILS).
  * If BTY_ADMIN_EMAILS is not set, any authenticated user is allowed (dev-friendly).
@@ -47,9 +56,15 @@ export async function requireAdminEmail(req: NextRequest) {
   const u = await requireUser(req);
   if (!u.ok) return u;
 
-  if (ADMIN_EMAIL_SET.size === 0) return u;
   const email = (u.user.email ?? "").toLowerCase();
-  if (email && ADMIN_EMAIL_SET.has(email)) return u;
+  if (ADMIN_EMAIL_SET.size === 0) {
+    logAdminAllowlistDebug(email, true);
+    return u;
+  }
+
+  const matched = Boolean(email) && ADMIN_EMAIL_SET.has(email);
+  logAdminAllowlistDebug(email, matched);
+  if (matched) return u;
   return { ok: false as const, status: 403, error: "Forbidden: Admin access required" };
 }
 

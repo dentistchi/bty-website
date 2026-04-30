@@ -1,4 +1,3 @@
-import { getArenaPipelineDefault } from "@/lib/bty/arena/arenaPipelineConfig";
 import BtyArenaRunPageClient from "./BtyArenaRunPageClient";
 
 /**
@@ -6,6 +5,5 @@ import BtyArenaRunPageClient from "./BtyArenaRunPageClient";
  * (`/api/arena/session/next` when `ARENA_PIPELINE_DEFAULT=legacy`, `/api/arena/n/session` when `new`).
  */
 export default function BtyArenaPage() {
-  const pipelineDefault = getArenaPipelineDefault();
-  return <BtyArenaRunPageClient pipelineDefault={pipelineDefault} />;
+  return <BtyArenaRunPageClient pipelineDefault="new" />;
 }

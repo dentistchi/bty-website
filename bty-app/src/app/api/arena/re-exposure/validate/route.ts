@@ -2,7 +2,7 @@
  * POST `/api/arena/re-exposure/validate` — after re-exposure tradeoff (step 4), compute pattern-shift
  * (`changed` | `unstable` | `no_change`), persist on `arena_pending_outcomes`, then consume the pending row.
  * `unstable` / `no_change` may schedule another `arena_pending_outcomes` row (same `source_choice_history_id`, same axis)
- * with dedupe via `reinforcement_seeded_from_pending_id`. `changed` ends the reinforcement loop (no immediate reschedule).
+ * with dedupe via `validation_payload.reinforcement_seeded_from_pending_id`. `changed` ends the reinforcement loop (no immediate reschedule).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { markDueOutcomesDelivered } from "@/engine/scenario/delayed-outcome-trigger.service";
@@ -14,10 +14,24 @@ import {
   loopIterationForPendingRow,
 } from "@/lib/bty/arena/reinforcementLoopSchedule.server";
 import { upsertUserPatternSignatureFromValidation } from "@/lib/bty/arena/patternSignatureUpsert.server";
+import { applyReexposureOutcomeReflection } from "@/lib/bty/arena/reflectionRewards.server";
 import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { getScenarioByDbId, getScenarioById } from "@/data/scenario";
 
 export const runtime = "nodejs";
+
+function sameCanonicalScenario(params: { expectedScenarioId: string; actualRunScenarioId: string }): boolean {
+  const expected = params.expectedScenarioId.trim();
+  const actual = params.actualRunScenarioId.trim();
+  if (!expected || !actual) return false;
+  if (expected === actual) return true;
+  const fromActualDb = getScenarioByDbId(actual, "en");
+  if (fromActualDb?.scenarioId === expected) return true;
+  const fromExpectedJson = getScenarioById(expected, "en");
+  if (fromExpectedJson?.dbScenarioId === actual) return true;
+  return false;
+}
 
 export async function POST(req: NextRequest) {
   const { user, base, supabase } = await requireUser(req);
@@ -52,7 +66,7 @@ export async function POST(req: NextRequest) {
 
   const { data: pendingRow, error: pErr } = await admin
     .from("arena_pending_outcomes")
-    .select("id, status, source_choice_history_id, validation_payload, reinforcement_loop")
+    .select("id, status, source_choice_history_id, validation_payload")
     .eq("id", pendingOutcomeId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -114,8 +128,31 @@ export async function POST(req: NextRequest) {
     typeof (runRow as { scenario_id?: string } | null)?.scenario_id === "string"
       ? (runRow as { scenario_id: string }).scenario_id.trim()
       : "";
-  if (!runRow || !runScenarioId || runScenarioId !== sidFromHistory) {
-    const out = NextResponse.json({ ok: false, error: "run_scenario_mismatch" }, { status: 403 });
+  if (!runRow || !runScenarioId || !sameCanonicalScenario({ expectedScenarioId: sidFromHistory, actualRunScenarioId: runScenarioId })) {
+    const pendingValidationPayload =
+      pendingRow != null &&
+      typeof (pendingRow as { validation_payload?: unknown }).validation_payload === "object" &&
+      (pendingRow as { validation_payload?: unknown }).validation_payload != null &&
+      !Array.isArray((pendingRow as { validation_payload?: unknown }).validation_payload)
+        ? ((pendingRow as { validation_payload: Record<string, unknown> }).validation_payload as Record<string, unknown>)
+        : null;
+    const priorRunId =
+      pendingValidationPayload != null && typeof pendingValidationPayload.prior_run_id === "string"
+        ? pendingValidationPayload.prior_run_id
+        : null;
+    const out = NextResponse.json(
+      {
+        ok: false,
+        error: "run_scenario_mismatch",
+        expectedScenarioId: sidFromHistory || null,
+        actualRunScenarioId: runScenarioId || null,
+        pendingOutcomeId,
+        priorRunId,
+        reexposureRunId: runId,
+        scenarioIdFromPayload: scenarioIdClaim,
+      },
+      { status: 403 },
+    );
     copyCookiesAndDebug(base, out, req, true);
     return out;
   }
@@ -151,7 +188,9 @@ export async function POST(req: NextRequest) {
     };
   }
 
-  const currentRowIteration = loopIterationForPendingRow(pendingRow as { reinforcement_loop?: unknown });
+  const currentRowIteration = loopIterationForPendingRow(
+    pendingRow as { validation_payload?: unknown; reinforcement_loop?: unknown },
+  );
   const axis = (payload.after_axis || payload.before_axis || "").trim();
   const patternFamily = payload.after_pattern_family ?? payload.before_pattern_family ?? null;
 
@@ -195,8 +234,10 @@ export async function POST(req: NextRequest) {
   const { error: upErr } = await admin
     .from("arena_pending_outcomes")
     .update({
-      validation_payload: payload as unknown as Record<string, unknown>,
-      ...(closingLoop ? { reinforcement_loop: closingLoop as unknown as Record<string, unknown> } : {}),
+      validation_payload: {
+        ...(payload as unknown as Record<string, unknown>),
+        ...(closingLoop ? { reinforcement_loop: closingLoop } : {}),
+      } as unknown as Record<string, unknown>,
     })
     .eq("id", pendingOutcomeId)
     .eq("user_id", user.id)
@@ -256,7 +297,12 @@ export async function POST(req: NextRequest) {
       };
       await admin
         .from("arena_pending_outcomes")
-        .update({ reinforcement_loop: merged as unknown as Record<string, unknown> })
+        .update({
+          validation_payload: {
+            ...(payload as unknown as Record<string, unknown>),
+            reinforcement_loop: merged,
+          } as unknown as Record<string, unknown>,
+        })
         .eq("id", pendingOutcomeId)
         .eq("user_id", user.id);
       closingLoop = merged;
@@ -288,14 +334,42 @@ export async function POST(req: NextRequest) {
     console.warn("[pattern_signature] upsert_failed", { message: sigUp.error });
   }
 
+  const reflection = await applyReexposureOutcomeReflection({
+    supabase: admin,
+    userId: user.id,
+    runId,
+    scenarioId: sidFromHistory,
+    validationResult: payload.validation_result,
+  });
+  if (!reflection.ok) {
+    const out = NextResponse.json(
+      {
+        ok: false,
+        error: reflection.error,
+        validation_payload: payload,
+      },
+      { status: 500 },
+    );
+    copyCookiesAndDebug(base, out, req, true);
+    return out;
+  }
+
   const out = NextResponse.json({
     ok: true,
     validation_result: payload.validation_result,
+    next_runtime_state: payload.validation_result === "changed" ? "NEXT_SCENARIO_READY" : "REEXPOSURE_DUE",
+    re_exposure_clear_candidate: payload.validation_result === "changed",
+    intervention_sensitivity_up: payload.validation_result === "no_change",
     validation_payload: payload,
     reinforcement_loop: closingLoop,
     follow_up_scheduled: followUpScheduled,
     new_pending_outcome_id: newPendingOutcomeId,
     next_scheduled_for: nextScheduledFor,
+    reflection: {
+      applied: reflection.applied,
+      core_xp: reflection.coreXp,
+      weekly_xp: reflection.weeklyXp,
+    },
   });
   copyCookiesAndDebug(base, out, req, true);
   return out;

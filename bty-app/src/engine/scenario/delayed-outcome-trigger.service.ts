@@ -646,6 +646,61 @@ export async function fetchFirstDueReexposureMeta(
 }
 
 /**
+ * Oldest **due** `no_change_reexposure` pending row only — Arena GET session must not emit `REEXPOSURE_DUE` for
+ * unrelated delayed rows or consumed memory triggers without this queue row ({@link runArenaSessionNextCore}).
+ */
+export async function fetchFirstDueNoChangeReexposureMeta(
+  supabase: SupabaseClient,
+  userId: string,
+  now: Date = new Date(),
+): Promise<FirstDueReexposureMeta | null> {
+  const nowIso = now.toISOString();
+  const { data: pending, error } = await supabase
+    .from("arena_pending_outcomes")
+    .select("id, source_choice_history_id")
+    .eq("user_id", userId)
+    .eq("status", "pending")
+    .eq("choice_type", "no_change_reexposure")
+    .lte("scheduled_for", nowIso)
+    .order("scheduled_for", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("[fetchFirstDueNoChangeReexposureMeta] pending query", error.message);
+    return null;
+  }
+  const pendingOutcomeId =
+    pending != null && typeof (pending as { id?: unknown }).id === "string"
+      ? (pending as { id: string }).id
+      : null;
+  const hid =
+    pending != null && typeof (pending as { source_choice_history_id?: unknown }).source_choice_history_id === "string"
+      ? (pending as { source_choice_history_id: string }).source_choice_history_id
+      : null;
+
+  if (!hid) {
+    if (!pendingOutcomeId) return null;
+    return { scenarioId: null, pendingOutcomeId };
+  }
+
+  const { data: hist, error: hErr } = await supabase
+    .from("user_scenario_choice_history")
+    .select("scenario_id")
+    .eq("user_id", userId)
+    .eq("id", hid)
+    .maybeSingle();
+
+  if (hErr) {
+    console.warn("[fetchFirstDueNoChangeReexposureMeta] history query", hErr.message);
+    return { scenarioId: null, pendingOutcomeId };
+  }
+  const sid = (hist as { scenario_id?: string } | null)?.scenario_id;
+  const scenarioId = typeof sid === "string" && sid.trim() !== "" ? sid.trim() : null;
+  return { scenarioId, pendingOutcomeId };
+}
+
+/**
  * After UI/session delivers outcomes: mark pending rows consumed and `outcome_triggered` on history.
  */
 export async function markDueOutcomesDelivered(

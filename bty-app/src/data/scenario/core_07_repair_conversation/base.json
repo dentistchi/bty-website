@@ -1,0 +1,178 @@
+{
+  "scenarioId": "core_07_repair_conversation",
+  "dbScenarioId": "INCIDENT-01-REPAIR-07",
+  "incident": {
+    "incidentId": "incident_01_small_compromise_to_trust_repair",
+    "stage": 7,
+    "axisGroup": "Repair",
+    "axisIndex": 1,
+    "previousScenarioId": "core_06_external_exposure",
+    "nextScenarioId": "core_08_doctor_repair",
+    "roleShift": "Office Manager -> Office Manager",
+    "propagation": {
+      "exitEffect": "Conversation releases tension but preserves underlying pattern.",
+      "entryEffect": "Conversation defines shared reality and initiates structural repair.",
+      "reExposureNote": "If failed, the issue reappears as repeated conflict, disengagement, or silent resistance."
+    }
+  },
+  "conversation_engine": {
+    "type": "repair_conversation",
+    "core_loop": [
+      "frame_setting",
+      "truth_emergence",
+      "interpretation_clash",
+      "ownership_conflict",
+      "structure_resolution"
+    ]
+  },
+  "conversation_frame_rules": {
+    "must_define_frame": true,
+    "frame_types": [
+      "emotional_processing",
+      "blame_resolution",
+      "structural_repair"
+    ],
+    "failure_condition": "frame_not_defined"
+  },
+  "interpretation_dynamics": {
+    "trigger": "multiple perspectives collide",
+    "risk": "dominant narrative overrides others",
+    "repair_condition": "explicit perspective separation"
+  },
+  "ownership_model": {
+    "types": [
+      "individual",
+      "system"
+    ],
+    "failure_modes": [
+      "blame_shift",
+      "over_ownership",
+      "avoidance"
+    ],
+    "success_condition": "accurate responsibility distribution"
+  },
+  "repair_outcome": {
+    "success": [
+      "shared reality defined",
+      "roles clarified",
+      "next actions assigned"
+    ],
+    "failure": [
+      "emotional release only",
+      "no structural change",
+      "interpretation divergence"
+    ]
+  },
+  "structure": {
+    "primary": [
+      {
+        "choiceId": "A",
+        "dbChoiceId": "INCIDENT-01-REPAIR-07_primary_A"
+      },
+      {
+        "choiceId": "B",
+        "dbChoiceId": "INCIDENT-01-REPAIR-07_primary_B"
+      },
+      {
+        "choiceId": "C",
+        "dbChoiceId": "INCIDENT-01-REPAIR-07_primary_C"
+      },
+      {
+        "choiceId": "D",
+        "dbChoiceId": "INCIDENT-01-REPAIR-07_primary_D"
+      }
+    ],
+    "tradeoff": {
+      "A": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-01-REPAIR-07_tradeoff_A_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-01-REPAIR-07_tradeoff_A_Y"
+        }
+      ],
+      "B": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-01-REPAIR-07_tradeoff_B_Y"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-01-REPAIR-07_tradeoff_B_Y"
+        }
+      ],
+      "C": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-01-REPAIR-07_tradeoff_C_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-01-REPAIR-07_tradeoff_C_Y"
+        }
+      ],
+      "D": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-01-REPAIR-07_tradeoff_D_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-01-REPAIR-07_tradeoff_D_Y"
+        }
+      ]
+    },
+    "action_decision": {
+      "A_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-01-REPAIR-07_action_A_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-01-REPAIR-07_action_A_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "B_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-01-REPAIR-07_action_B_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-01-REPAIR-07_action_B_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "C_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-01-REPAIR-07_action_C_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-01-REPAIR-07_action_C_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "D_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-01-REPAIR-07_action_D_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-01-REPAIR-07_action_D_X_AD2",
+          "is_action_commitment": false
+        }
+      ]
+    }
+  }
+}

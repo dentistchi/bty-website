@@ -12,7 +12,7 @@ export const REINFORCEMENT_UNSTABLE_DELAY_DAYS = 5;
 /** Stronger follow-up — same axis, pattern stuck (higher sensitivity / sooner). */
 export const REINFORCEMENT_NO_CHANGE_DELAY_DAYS = 3;
 
-/** Durable JSON for `arena_pending_outcomes.reinforcement_loop` (closure row or newly scheduled row). */
+/** Durable JSON stored in `arena_pending_outcomes.validation_payload.reinforcement_loop`. */
 export type ArenaReinforcementLoopJson = {
   validation_result: PatternShiftBand;
   /** Pending row that was validated (the event source); same as seed FK on follow-up rows. */
@@ -30,9 +30,14 @@ export type ArenaReinforcementLoopJson = {
   loop_satisfied?: boolean;
 };
 
-/** Iteration stamped on `arena_pending_outcomes.reinforcement_loop` when the row is created (follow-up chain). */
-export function loopIterationForPendingRow(row: { reinforcement_loop?: unknown }): number {
-  const j = row.reinforcement_loop;
+/** Iteration stamped in `validation_payload.reinforcement_loop` when follow-up rows are chained. */
+export function loopIterationForPendingRow(row: { validation_payload?: unknown; reinforcement_loop?: unknown }): number {
+  const vp = row.validation_payload;
+  const fromPayload =
+    vp && typeof vp === "object" && !Array.isArray(vp)
+      ? (vp as { reinforcement_loop?: unknown }).reinforcement_loop
+      : undefined;
+  const j = fromPayload ?? row.reinforcement_loop;
   if (
     j &&
     typeof j === "object" &&
@@ -85,7 +90,8 @@ function reinforcementCopy(params: {
 
 /**
  * After validation payload is computed: insert follow-up pending row (caller consumed closing row already).
- * Idempotent via unique (user_id, reinforcement_seeded_from_pending_id).
+ * Idempotent by scanning existing pending rows with the same `source_choice_history_id` and
+ * `validation_payload.reinforcement_seeded_from_pending_id`.
  */
 export async function insertReinforcementDelayedOutcome(
   admin: SupabaseClient,
@@ -103,14 +109,28 @@ export async function insertReinforcementDelayedOutcome(
   next_scheduled_for: string | null;
   error?: string;
 }> {
-  const { data: dup } = await admin
+  const { data: dupRows } = await admin
     .from("arena_pending_outcomes")
-    .select("id")
+    .select("id, validation_payload")
     .eq("user_id", params.userId)
-    .eq("reinforcement_seeded_from_pending_id", params.closingPendingOutcomeId)
-    .maybeSingle();
+    .eq("status", "pending")
+    .eq("source_choice_history_id", params.sourceChoiceHistoryId);
+  const dup = (dupRows ?? []).find((row) => {
+    const vp =
+      row != null &&
+      typeof (row as { validation_payload?: unknown }).validation_payload === "object" &&
+      (row as { validation_payload?: unknown }).validation_payload != null &&
+      !Array.isArray((row as { validation_payload?: unknown }).validation_payload)
+        ? ((row as { validation_payload: Record<string, unknown> }).validation_payload as Record<string, unknown>)
+        : null;
+    return (
+      vp != null &&
+      typeof vp.reinforcement_seeded_from_pending_id === "string" &&
+      vp.reinforcement_seeded_from_pending_id === params.closingPendingOutcomeId
+    );
+  }) as { id?: string } | undefined;
 
-  if (dup?.id) {
+  if (dup?.id && typeof dup.id === "string") {
     const { data: row } = await admin
       .from("arena_pending_outcomes")
       .select("scheduled_for")
@@ -163,23 +183,40 @@ export async function insertReinforcementDelayedOutcome(
       outcome_body: copy.outcome_body,
       status: "pending",
       scheduled_for: scheduledFor,
-      reinforcement_seeded_from_pending_id: params.closingPendingOutcomeId,
-      reinforcement_loop: loopMeta as unknown as Record<string, unknown>,
+      validation_payload: {
+        scenario_id: params.payload.scenario_id,
+        reinforcement_seeded_from_pending_id: params.closingPendingOutcomeId,
+        reinforcement_loop: loopMeta,
+      } as unknown as Record<string, unknown>,
     })
     .select("id")
     .single();
 
   if (error) {
     if (error.code === "23505") {
-      const { data: again } = await admin
+      const { data: againRows } = await admin
         .from("arena_pending_outcomes")
-        .select("id")
+        .select("id, validation_payload")
         .eq("user_id", params.userId)
-        .eq("reinforcement_seeded_from_pending_id", params.closingPendingOutcomeId)
-        .maybeSingle();
+        .eq("status", "pending")
+        .eq("source_choice_history_id", params.sourceChoiceHistoryId);
+      const again = (againRows ?? []).find((row) => {
+        const vp =
+          row != null &&
+          typeof (row as { validation_payload?: unknown }).validation_payload === "object" &&
+          (row as { validation_payload?: unknown }).validation_payload != null &&
+          !Array.isArray((row as { validation_payload?: unknown }).validation_payload)
+            ? ((row as { validation_payload: Record<string, unknown> }).validation_payload as Record<string, unknown>)
+            : null;
+        return (
+          vp != null &&
+          typeof vp.reinforcement_seeded_from_pending_id === "string" &&
+          vp.reinforcement_seeded_from_pending_id === params.closingPendingOutcomeId
+        );
+      }) as { id?: string } | undefined;
       return {
         ok: true,
-        newPendingId: (again?.id as string) ?? null,
+        newPendingId: typeof again?.id === "string" ? again.id : null,
         next_scheduled_for: scheduledFor,
       };
     }

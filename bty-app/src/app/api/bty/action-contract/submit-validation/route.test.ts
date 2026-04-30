@@ -35,16 +35,39 @@ const FORBIDDEN_RATIONALE_KEYS = [
   "confidence",
 ];
 
-function makeSupabaseForContract(status: "pending" | "rejected" = "pending") {
+function makeSupabaseForContract(
+  status: "pending" | "rejected" = "pending",
+  options?: {
+    verification_type?: string;
+    details?: Record<string, unknown> | null;
+    onUpdate?: (payload: Record<string, unknown>) => void;
+  },
+) {
   const contractRow = {
     id: "contract-1",
     user_id: "user-1",
     status,
     pattern_family: null as string | null,
     arena_scenario_id: "sc1",
+    session_id: "run-1",
+    verification_type: options?.verification_type ?? "hybrid",
+    details: options?.details ?? null,
   };
   return {
     from: vi.fn((table: string) => {
+      if (table === "arena_runs") {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () =>
+                Promise.resolve({
+                  data: { user_id: "user-1" },
+                  error: null,
+                }),
+            }),
+          }),
+        };
+      }
       if (table !== "bty_action_contracts") {
         return {};
       }
@@ -56,9 +79,12 @@ function makeSupabaseForContract(status: "pending" | "rejected" = "pending") {
             }),
           }),
         }),
-        update: () => ({
+        update: (payload: Record<string, unknown>) => ({
           eq: () => ({
-            eq: () => Promise.resolve({ error: null }),
+            eq: () => {
+              options?.onUpdate?.(payload);
+              return Promise.resolve({ error: null });
+            },
           }),
         }),
       };
@@ -229,5 +255,94 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     for (const k of FORBIDDEN_RATIONALE_KEYS) {
       expect(data).not.toHaveProperty(k);
     }
+  });
+
+  it("sets submitted status first and does not complete on approve unless self_report auto-approve enabled", async () => {
+    const updates: Record<string, unknown>[] = [];
+    mockRequireUser.mockResolvedValue({
+      user: { id: "user-1" },
+      supabase: makeSupabaseForContract("pending", {
+        verification_type: "hybrid",
+        details: {},
+        onUpdate: (payload) => updates.push(payload),
+      }),
+      base: {},
+    });
+    vi.spyOn(validation, "evaluateActionContractPayload").mockResolvedValue({
+      outcome: "approve",
+      layer1Errors: [],
+      layer2Criteria: {
+        re_entry_direction: { outcome: "pass", confidence: 0.9 },
+        external_measurability: { outcome: "pass", confidence: 0.9 },
+        non_cosmetic: { outcome: "pass", confidence: 0.9 },
+      },
+      modelId: "gpt-4o-mini",
+      layer2TechnicalError: null,
+    });
+
+    const res = await POST(
+      makeRequest({
+        contractId: "contract-1",
+        who: "Alex Kim",
+        what: "Submit evidence",
+        when: "2026-04-15 15:00",
+        how: "Attach files",
+        raw_text: "Full raw text for audit purposes here.",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).outcome).toBe("approve");
+    expect(updates[0]).toMatchObject({ status: "submitted", submitted_at: expect.any(String) });
+    expect(updates[1]).toMatchObject({
+      status: "submitted",
+      validation_approved_at: expect.any(String),
+    });
+    expect(updates[1]).not.toHaveProperty("verified_at");
+    expect(updates[1]).not.toHaveProperty("completed_at");
+  });
+
+  it("auto-approves and completes for self_report with self_report_auto_approve=true", async () => {
+    const updates: Record<string, unknown>[] = [];
+    mockRequireUser.mockResolvedValue({
+      user: { id: "user-1" },
+      supabase: makeSupabaseForContract("pending", {
+        verification_type: "self_report",
+        details: { self_report_auto_approve: true },
+        onUpdate: (payload) => updates.push(payload),
+      }),
+      base: {},
+    });
+    vi.spyOn(validation, "evaluateActionContractPayload").mockResolvedValue({
+      outcome: "approve",
+      layer1Errors: [],
+      layer2Criteria: {
+        re_entry_direction: { outcome: "pass", confidence: 0.9 },
+        external_measurability: { outcome: "pass", confidence: 0.9 },
+        non_cosmetic: { outcome: "pass", confidence: 0.9 },
+      },
+      modelId: "gpt-4o-mini",
+      layer2TechnicalError: null,
+    });
+
+    const res = await POST(
+      makeRequest({
+        contractId: "contract-1",
+        who: "Alex Kim",
+        what: "Self report completion",
+        when: "2026-04-15 15:00",
+        how: "Submit report",
+        raw_text: "Raw evidence",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).outcome).toBe("approve");
+    expect(updates[1]).toMatchObject({
+      status: "approved",
+      validation_approved_at: expect.any(String),
+      verified_at: expect.any(String),
+      completed_at: expect.any(String),
+    });
   });
 });

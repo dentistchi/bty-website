@@ -1,0 +1,79 @@
+---
+description: 
+globs: "**/supabase/migrations/*.sql"
+alwaysApply: false
+---
+
+# BTY Data Rules — Supabase/Postgres
+
+**One-line rule:** Core XP and Weekly XP storage MUST remain clearly separated (tables/columns/names); never mix or reuse weekly XP for league/season logic.
+
+---
+
+## Must
+
+- **Separate Core XP and Weekly XP** in schema: distinct tables or columns, unambiguous names (e.g. `core_xp`, `weekly_xp`; tables like `arena_core_xp_ledger` vs `arena_weekly_xp_ledger`).
+- **Prefer append-only ledgers** for XP changes when possible (insert-only events; aggregates/snapshots derived elsewhere).
+- **Migrations safe and idempotent** where possible: `IF NOT EXISTS` for objects, safe `ALTER` patterns (e.g. add column with `IF NOT EXISTS` or backfill before NOT NULL).
+- **Indexes for hot paths:**
+  - Leaderboard weekly window (e.g. `(league_id, week_id)` or `(week_id, league_id)` for weekly ranking).
+  - Lookups by `user_id`, `league_id`, `week_id` as used by APIs.
+- **Integrity constraints** (FK, UNIQUE, CHECK) with a short rationale in comments.
+
+---
+
+## Forbidden
+
+- **No UI code, no domain computations** in migrations or SQL (no `levelFromXp`, no ranking/sort logic in DB).
+- **Avoid triggers for business rules** unless explicitly requested (prefer app/engine writes and idempotent migrations).
+
+---
+
+## Required Output for Migrations
+
+For any migration touching Arena XP/league/week data, provide:
+
+1. **Migration path + full SQL**  
+   - Sequential, idempotent steps (e.g. create table if not exists, add column if not exists, create index if not exists).
+2. **One-line rule statement**  
+   - Preserve: "Core XP vs Weekly XP separation" (and any new invariant).
+3. **Test plan**
+   - **EXPLAIN plan:** Run `EXPLAIN (ANALYZE)` for hot queries (e.g. weekly leaderboard, user core XP lookup).
+   - **Sample queries:** e.g. weekly leaderboard by `league_id`/`week_id`, user core XP lookup.
+   - **Rollback note:** Reversible steps (e.g. `DROP INDEX IF EXISTS`, `ALTER ... DROP COLUMN`) or backup/restore.
+
+---
+
+## Examples
+
+```sql
+-- ✅ GOOD — clear separation, append-only ledger
+CREATE TABLE IF NOT EXISTS arena_core_xp_ledger (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id),
+  delta int NOT NULL CHECK (delta <> 0),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS arena_weekly_xp_ledger (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id),
+  week_id text NOT NULL,
+  delta int NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Hot path indexes
+CREATE INDEX IF NOT EXISTS idx_core_xp_ledger_user_id ON arena_core_xp_ledger(user_id);
+CREATE INDEX IF NOT EXISTS idx_weekly_xp_ledger_week_user ON arena_weekly_xp_ledger(week_id, user_id);
+```
+
+```sql
+-- ❌ BAD — mixing weekly and core in one column, or naming that implies one source for both
+CREATE TABLE xp_ledger ( user_id uuid, xp int, week_id text );  -- ambiguous
+```
+
+```sql
+-- ✅ GOOD — idempotent alter
+ALTER TABLE arena_memberships
+  ADD COLUMN IF NOT EXISTS core_xp_total int NOT NULL DEFAULT 0;
+```

@@ -18,7 +18,32 @@ export function mergeLeadershipReflectionLayer(
 ): LeadershipState {
   const list = reflections ?? loadReflections();
   if (list.length === 0) {
-    return base;
+    // Derive fallback labels from arena signals when no Growth reflections exist yet.
+    if (signals.length === 0) return base;
+    const t = getMessages(locale).myPageStub;
+    const ux = getMessages(locale).uxPhase1Stub;
+    const depthLabel =
+      signals.length < 3
+        ? t.leadershipReflectionDepthEarly
+        : signals.length < 8
+          ? t.leadershipReflectionDepthActive
+          : t.leadershipReflectionDepthDeepening;
+    const { relationalBias, operationalBias, emotionalRegulation } = metrics;
+    const maxBias = Math.max(relationalBias, operationalBias, emotionalRegulation);
+    const recentFocusLabel =
+      maxBias === relationalBias
+        ? ux.growthReflectionFocusTrust
+        : maxBias === operationalBias
+          ? ux.growthReflectionFocusClarity
+          : maxBias === emotionalRegulation
+            ? ux.growthReflectionFocusRegulation
+            : ux.growthReflectionFocusAlignment;
+    return {
+      ...base,
+      reflectionDepthLabel: depthLabel,
+      reflectionIntegrationLabel: t.leadershipReflectionIntegrationForming,
+      recentFocusLabel,
+    };
   }
 
   const t = getMessages(locale).myPageStub;

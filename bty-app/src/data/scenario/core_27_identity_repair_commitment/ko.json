@@ -1,0 +1,301 @@
+{
+    "id": "core_27_identity_repair_commitment",
+    "title": "내일 무엇이 바뀌는가",
+    "role": "Self",
+    "pressure": "당신은 자신의 행동이 hesitation과 bypassing에 영향을 줬다는 것을 인정했다. 미팅은 끝났다. 이제 아무도 다음 행동을 강제하지 않는다. 하지만 다음 바쁜 임상 순간이 실제로 무엇이 바뀌었는지 시험할 것이다.",
+    "tradeoff": "ownership을 눈에 보이는 반복 행동으로 바꿀 수도 있고, insight를 혼자만 가진 채 intention으로 사라지게 둘 수도 있다.",
+    "bty_tension_axis": "인식 vs 관찰 가능한 변화",
+    "axis_primary": "Repair",
+    "axis_secondary": ["Integrity", "Accountability", "Courage"],
+    "difficulty_level": 5,
+    "action_contract": {
+      "description": "ownership을 다른 사람이 관찰할 수 있는 하나의 반복 행동으로 바꾼다.",
+      "time_window_hours": 48
+    },
+    "air_logic": {
+      "success": "팀은 당신의 리페어를 말이 아니라 행동으로 경험하기 시작한다.",
+      "miss": "insight는 내부에만 남고, 같은 authority pattern은 압박 속에서 다시 돌아온다."
+    },
+    "forced_reset": {
+      "trigger": "다음 바쁜 임상 또는 팀 상황이 같은 압박 패턴을 만든다.",
+      "action": "팀이 다시 물러나기 전에 다르게 행동해야 한다."
+    },
+    "pattern_detection": [
+      "future_deferral",
+      "silent_execution",
+      "accountability_system",
+      "identity_commitment"
+    ],
+    "choices": [
+      {
+        "id": "A",
+        "label": "반복할 행동 하나를 정하고 어시스턴트에게 공유한다",
+        "subtext": "리페어가 보이게 되고, 팀이 확인할 수 있는 기준이 생긴다.",
+        "axis": "Repair",
+        "direction": "entry",
+        "pattern_family": "accountability_system",
+        "intensity": 3,
+        "dbChoiceId": "INCIDENT-03-REPAIR-09_primary_A"
+      },
+      {
+        "id": "B",
+        "label": "배운 것을 혼자 정리하고 앞으로 나아간다",
+        "subtext": "더 노출하지 않아도 마무리된 느낌이 든다.",
+        "axis": "Integrity",
+        "direction": "exit",
+        "pattern_family": "silent_execution",
+        "intensity": 2,
+        "dbChoiceId": "INCIDENT-03-REPAIR-09_primary_B"
+      },
+      {
+        "id": "C",
+        "label": "다음 비슷한 상황에서 변화를 연습한다",
+        "subtext": "유연성을 유지하고 너무 일찍 약속하지 않는다.",
+        "axis": "Time",
+        "direction": "exit",
+        "pattern_family": "future_deferral",
+        "intensity": 2,
+        "dbChoiceId": "INCIDENT-03-REPAIR-09_primary_C"
+      },
+      {
+        "id": "D",
+        "label": "어시스턴트에게 직접 말하지 않고 매니저에게 개선을 봐달라고 한다",
+        "subtext": "직접 vulnerability는 피하면서도 어느 정도 accountability를 만든다.",
+        "axis": "Accountability",
+        "direction": "exit",
+        "pattern_family": "authority_protection",
+        "intensity": 2,
+        "dbChoiceId": "INCIDENT-03-REPAIR-09_primary_D"
+      }
+    ],
+    "escalationBranches": {
+      "A": {
+        "escalation_text": "행동 변화를 공유하자 어시스턴트는 받아들이지만 완전히 긴장을 풀지는 않는다. 바쁜 시술 중에 실제로 보이면 믿겠다고 말한다.",
+        "pressure_increase": 0.5,
+        "intensity": 4,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "신뢰에는 시간이 걸린다고 설명하고 거기서 멈춘다",
+            "cost": "말은 합리적이지만, 리페어는 여전히 verbal한 상태에 머문다.",
+            "axis": "Time",
+            "direction": "exit",
+            "pattern_family": "future_deferral",
+            "dbChoiceId": "INCIDENT-03-REPAIR-09_tradeoff_A_X"
+          },
+          {
+            "id": "Y",
+            "label": "다음 시술에서 보일 수 있는 cue로 행동을 바꾼다",
+            "cost": "예전 패턴이 나타나던 정확한 순간에 스스로를 관찰 가능하게 만든다.",
+            "axis": "Repair",
+            "direction": "entry",
+            "pattern_family": "accountability_system",
+            "dbChoiceId": "INCIDENT-03-REPAIR-09_tradeoff_A_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "인식이 아니라, 내일 무엇이 보일 것인가.",
+          "context": "어시스턴트는 더 많은 말을 원하는 것이 아니다. 반복되는 증거를 기다리고 있다.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "다음 시술 전에, 멈추고 input을 요청할 정확한 cue를 어시스턴트에게 말한다",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Repair",
+                "direction": "entry",
+                "pattern_family": "accountability_system",
+                "description": "리페어를 관찰 가능한 반복 행동으로 바꾸고 있다."
+              },
+              "intensity": 4,
+              "dbChoiceId": "INCIDENT-03-REPAIR-09_action_A_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "시간이 지나면 어시스턴트가 자연스럽게 개선을 알아차릴 것이라 믿는다",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Time",
+                "direction": "exit",
+                "pattern_family": "future_deferral",
+                "description": "보이는 accountability 대신 시간을 믿고 있다."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-REPAIR-09_action_A_X_AD2"
+            }
+          ]
+        }
+      },
+      "B": {
+        "escalation_text": "당신은 내부적으로 더 명확해졌다고 느낀다. 하지만 다음 바쁜 시술은 빠르게 흘러간다. 어시스턴트는 무엇이 바뀌었는지 모르기 때문에 다시 hesitation을 보인다.",
+        "pressure_increase": 0.5,
+        "intensity": 3,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "변화가 자연스럽게 느껴지도록 조용히 조정한다",
+            "cost": "주목은 피하지만, 팀은 리페어가 일어나고 있다는 신호를 받지 못한다.",
+            "axis": "Integrity",
+            "direction": "exit",
+            "pattern_family": "silent_execution",
+            "dbChoiceId": "INCIDENT-03-REPAIR-09_tradeoff_B_X"
+          },
+          {
+            "id": "Y",
+            "label": "어시스턴트가 무엇을 기대해야 하는지 알 수 있도록 행동 변화 하나를 말한다",
+            "cost": "혼자만의 insight를 보이는 accountability로 바꾼다.",
+            "axis": "Repair",
+            "direction": "entry",
+            "pattern_family": "accountability_system",
+            "dbChoiceId": "INCIDENT-03-REPAIR-09_tradeoff_B_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "인식이 아니라, 내일 무엇이 보일 것인가.",
+          "context": "혼자만의 명확함은 어시스턴트가 믿을 수 있는 신호를 주지 못했다.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "48시간 안에 어시스턴트에게 구체적인 행동 변화 하나를 말하고, 놓치면 알려달라고 요청한다",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Repair",
+                "direction": "entry",
+                "pattern_family": "accountability_system",
+                "description": "개인 insight를 보이고 측정 가능한 것으로 만들고 있다."
+              },
+              "intensity": 3,
+              "dbChoiceId": "INCIDENT-03-REPAIR-09_action_B_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "아무 말 없이 조용히 계속 바꿔간다",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Integrity",
+                "direction": "exit",
+                "pattern_family": "silent_execution",
+                "description": "공유된 accountability 없이 개인적 개선을 선택하고 있다."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-REPAIR-09_action_B_X_AD2"
+            }
+          ]
+        }
+      },
+      "C": {
+        "escalation_text": "다음 비슷한 상황은 예상보다 빨리 온다. 미리 정의한 행동이 없었기 때문에 습관대로 반응하고, 어시스턴트는 다시 조용해진다.",
+        "pressure_increase": 0.6,
+        "intensity": 4,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "missed attempt로 받아들이고 다음에 다시 해본다",
+            "cost": "유연성은 유지되지만, 팀은 같은 패턴이 한 번 더 반복되는 것을 경험한다.",
+            "axis": "Time",
+            "direction": "exit",
+            "pattern_family": "future_deferral",
+            "dbChoiceId": "INCIDENT-03-REPAIR-09_tradeoff_C_X"
+          },
+          {
+            "id": "Y",
+            "label": "다시 반복되기 전에 멈추고 행동을 정의한다",
+            "cost": "흐름을 끊고, 패턴을 실시간으로 보이게 만든다.",
+            "axis": "Repair",
+            "direction": "entry",
+            "pattern_family": "accountability_system",
+            "dbChoiceId": "INCIDENT-03-REPAIR-09_tradeoff_C_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "인식이 아니라, 내일 무엇이 보일 것인가.",
+          "context": "다음 상황을 기다렸더니 다시 습관이 앞섰다.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "다음 patient block 전에, 압박 상황에서 사용할 정확한 행동을 적고 공유한다",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Repair",
+                "direction": "entry",
+                "pattern_family": "accountability_system",
+                "description": "흐릿한 intention을 준비된 행동으로 바꾸고 있다."
+              },
+              "intensity": 4,
+              "dbChoiceId": "INCIDENT-03-REPAIR-09_action_C_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "배운 것을 기억하고 다음에는 스스로 잡아내려 한다",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Time",
+                "direction": "exit",
+                "pattern_family": "future_deferral",
+                "description": "구조 대신 기억을 선택하고 있다."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-REPAIR-09_action_C_X_AD2"
+            }
+          ]
+        }
+      },
+      "D": {
+        "escalation_text": "매니저는 관찰하겠다고 한다. 하지만 어시스턴트는 무엇이 바뀔지 듣지 못했다. 리페어는 어시스턴트와 함께 다시 만드는 것이 아니라, 주변에서 모니터링되는 일이 된다.",
+        "pressure_increase": 0.5,
+        "intensity": 3,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "매니저를 accountability point로 유지한다",
+            "cost": "oversight는 생기지만, 어시스턴트와의 직접적인 관계 리페어는 피한다.",
+            "axis": "Accountability",
+            "direction": "exit",
+            "pattern_family": "authority_protection",
+            "dbChoiceId": "INCIDENT-03-REPAIR-09_tradeoff_D_X"
+          },
+          {
+            "id": "Y",
+            "label": "어시스턴트를 accountability loop에 직접 포함한다",
+            "cost": "리페어가 더 vulnerable해지고 덜 통제 가능해진다.",
+            "axis": "Repair",
+            "direction": "entry",
+            "pattern_family": "accountability_system",
+            "dbChoiceId": "INCIDENT-03-REPAIR-09_tradeoff_D_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "인식이 아니라, 내일 무엇이 보일 것인가.",
+          "context": "매니저 oversight는 도움이 될 수 있지만, 실제 영향을 받은 사람에게는 아직 보이는 repair signal이 없다.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "48시간 안에 어시스턴트에게 연습할 행동을 말하고, 매니저에게는 follow-through만 support하게 한다",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Repair",
+                "direction": "entry",
+                "pattern_family": "accountability_system",
+                "description": "accountability를 managerial이 아니라 relational하게 만들고 있다."
+              },
+              "intensity": 3,
+              "dbChoiceId": "INCIDENT-03-REPAIR-09_action_D_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "어시스턴트를 다시 포함하기 전에 매니저가 improvement를 먼저 관찰하게 한다",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Accountability",
+                "direction": "exit",
+                "pattern_family": "authority_protection",
+                "description": "리페어를 간접적이고 통제된 상태로 유지하고 있다."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-REPAIR-09_action_D_X_AD2"
+            }
+          ]
+        }
+      }
+    }
+  }

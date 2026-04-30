@@ -1,0 +1,329 @@
+{
+  "id": "core_09_identity_shift",
+  "title": "내가 되어가는 기준",
+  "role": "Self",
+  "pressure": "리페어 대화는 끝났다. 당신은 자신의 impact를 인정했고, 시스템 갭도 더 명확해졌다. 하지만 이제 아무도 다음 행동을 강제하지 않는다. 진짜 질문은 이 사건이 일시적인 배움으로 끝나는지, 아니면 다음 압박 상황에서도 들고 갈 개인 기준이 되는지다.",
+  "tradeoff": "이 일을 어려운 상황에서 배운 교훈으로 남길 수도 있고, 압박 속에서도 행동을 바꾸는 보이는 정체성 기준으로 전환할 수도 있다.",
+  "bty_tension_axis": "Insight vs Identity",
+  "axis_primary": "Repair",
+  "axis_secondary": ["Integrity", "Ownership", "Courage"],
+  "difficulty_level": 5,
+  "action_contract": {
+    "description": "이 사건을 미래 압박 속에서도 보이는 하나의 반복 가능한 기준으로 전환한다.",
+    "time_window_hours": 48
+  },
+  "air_logic": {
+    "success": "이 사건은 다른 사람이 관찰할 수 있는 행동 기준이 된다.",
+    "miss": "이 사건은 기억은 하지만 안정적으로 행동으로 이어지지 않는 교훈으로 남는다."
+  },
+  "forced_reset": {
+    "trigger": "다음 케이스에서 타협하거나, 침묵하거나, 팀이 보완하게 둘 압박이 생긴다.",
+    "action": "repair된 정체성이 다음 행동을 바꾸는지 결정해야 한다."
+  },
+  "pattern_detection": [
+    "insight_without_behavior",
+    "identity_commitment",
+    "private_intention",
+    "temporary_compliance",
+    "standard_creation"
+  ],
+  "identity_dynamics": {
+    "stage_1": "사건 회고",
+    "stage_2": "압박 속의 나에 대한 불편함",
+    "stage_3": "교훈과 정체성 사이의 선택",
+    "stage_4": "기준 정의",
+    "stage_5": "미래 압박 테스트"
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "혼자 돌아보고 교훈으로 기억한다",
+      "subtext": "더 드러내거나 구조화하지 않아도 의미 있게 느껴진다.",
+      "axis": "Integrity",
+      "direction": "exit",
+      "pattern_family": "insight_without_behavior",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-REPAIR-09_primary_A"
+    },
+    {
+      "id": "B",
+      "label": "압박 속에서 나는 어떤 clinician일지 정의한다",
+      "subtext": "리페어를 미래 선택을 이끄는 정체성 기준으로 바꾼다.",
+      "axis": "Repair",
+      "direction": "entry",
+      "pattern_family": "identity_commitment",
+      "intensity": 5,
+      "dbChoiceId": "INCIDENT-01-REPAIR-09_primary_B"
+    },
+    {
+      "id": "C",
+      "label": "새 support plan을 잘 따르는 데 집중한다",
+      "subtext": "변화를 실용적으로 유지하고 너무 개인적인 문제로 만들지 않는다.",
+      "axis": "System",
+      "direction": "exit",
+      "pattern_family": "temporary_compliance",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-REPAIR-09_primary_C"
+    },
+    {
+      "id": "D",
+      "label": "다음 어려운 케이스가 왔을 때 내가 어떻게 반응하는지 본다",
+      "subtext": "압박이 어떤 모습일지 알기 전에는 과하게 약속하지 않는다.",
+      "axis": "Time",
+      "direction": "exit",
+      "pattern_family": "private_intention",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-REPAIR-09_primary_D"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "돌아봄은 진심처럼 느껴진다. 하지만 다음 바쁜 날은 빠르게 온다. 아무것도 정의되지 않았기 때문에 어시스턴트는 무엇이 바뀌었는지 볼 수 없다. 압박 속에서 예전 패턴은 다시 선택 가능해진다.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "identity_clash": [
+        "자기 이미지: 나는 이 일에서 배웠다.",
+        "관찰된 행동: 팀은 무엇이 바뀌었는지 볼 수 없다.",
+        "압박 현실: 선언되지 않은 교훈은 스케줄이 빡빡해질 때 사라진다."
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "교훈을 private하게 유지하고 다음에는 더 잘하려고 한다",
+          "cost": "의도는 진짜지만, 보이지 않고 테스트되지 않는다.",
+          "axis": "Integrity",
+          "direction": "exit",
+          "pattern_family": "insight_without_behavior",
+          "dbChoiceId": "INCIDENT-01-REPAIR-09_tradeoff_A_X"
+        },
+        {
+          "id": "Y",
+          "label": "교훈을 말로 정의된 행동 기준으로 바꾼다",
+          "cost": "내부 교훈을 보이고 accountable하게 만든다.",
+          "axis": "Repair",
+          "direction": "entry",
+          "pattern_family": "identity_commitment",
+          "dbChoiceId": "INCIDENT-01-REPAIR-09_tradeoff_A_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "회고가 아니라, 무엇이 보이게 될 것인가.",
+        "context": "private lesson은 행동 기준이 되지 않으면 팀 경험을 안정적으로 바꾸지 못한다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "48시간 안에 비슷한 임상 상황에서 따를 pressure-standard 하나를 쓰고 공유한다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Repair",
+              "direction": "entry",
+              "pattern_family": "identity_commitment",
+              "description": "private insight를 보이는 identity로 바꾸고 있다."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-REPAIR-09_action_A_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "교훈을 개인적으로 간직하고 내가 기억할 것이라고 믿는다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Integrity",
+              "direction": "exit",
+              "pattern_family": "insight_without_behavior",
+              "description": "구조 대신 기억에 의존하고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-REPAIR-09_action_A_X_AD2"
+          }
+        ]
+      }
+    },
+    "B": {
+      "escalation_text": "내가 어떤 clinician이 될지 정의하자, 그 말은 예상보다 무겁게 느껴진다. 이것은 더 이상 이 사건 하나에 대한 문제가 아니다. production pressure, insurance limitation, patient expectation, team silence를 어떻게 다룰 것인지까지 건드린다.",
+      "pressure_increase": 0.7,
+      "intensity": 5,
+      "identity_clash": [
+        "예전 정체성: 나는 오피스 현실에 맞춰 적응한다.",
+        "새 정체성: 현실이 압박해도 기준을 정의한다.",
+        "미래 테스트: 스케줄, 환자, 팀이 모두 타협을 압박할 때도 유지될 것인가?"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "정체성 문장을 넓고 유연하게 유지한다",
+          "cost": "더 안전하게 느껴지지만 압박 속 행동을 이끌지 못할 수 있다.",
+          "axis": "Control",
+          "direction": "exit",
+          "pattern_family": "private_intention",
+          "dbChoiceId": "INCIDENT-01-REPAIR-09_tradeoff_B_X"
+        },
+        {
+          "id": "Y",
+          "label": "정체성을 하나의 구체적인 non-negotiable behavior로 번역한다",
+          "cost": "유연성은 줄고, 미래 inconsistency가 보이게 된다.",
+          "axis": "Repair",
+          "direction": "entry",
+          "pattern_family": "standard_creation",
+          "dbChoiceId": "INCIDENT-01-REPAIR-09_tradeoff_B_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "정체성 언어가 아니라, 어떤 행동이 그것을 증명하는가.",
+        "context": "진짜 identity shift에는 미래 압박을 견디는 기준이 필요하다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "48시간 안에 하나의 non-negotiable clinical communication standard를 정의하고 매니저나 어시스턴트와 공유한다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Repair",
+              "direction": "entry",
+              "pattern_family": "standard_creation",
+              "description": "정체성을 테스트 가능한 행동 기준으로 바꾸고 있다."
+            },
+            "intensity": 5,
+            "dbChoiceId": "INCIDENT-01-REPAIR-09_action_B_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "정체성 문장은 내부에 두고 케이스마다 적용한다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Control",
+              "direction": "exit",
+              "pattern_family": "private_intention",
+              "description": "정체성을 유연하게 유지하지만 덜 관찰 가능하게 두고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-REPAIR-09_action_B_X_AD2"
+          }
+        ]
+      }
+    },
+    "C": {
+      "escalation_text": "support plan은 한동안 도움이 된다. 하지만 구조가 없는 상황이 오자 예전 압박이 돌아온다. 당신은 자신이 아직 기준으로 움직이는 것이 아니라 plan을 따르고 있었다는 것을 깨닫는다.",
+      "pressure_increase": 0.5,
+      "intensity": 4,
+      "identity_clash": [
+        "시스템 support: plan이 쉽게 만들어줬다.",
+        "개인 기준: plan이 없을 때 나는 무엇을 하는가?",
+        "리스크: compliance는 압박이 돌아오기 전까지 growth처럼 보일 수 있다."
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "support plan에 계속 의존한다",
+          "cost": "구조 안에서는 좋아지지만, 구조가 없으면 돌아갈 수 있다.",
+          "axis": "System",
+          "direction": "exit",
+          "pattern_family": "temporary_compliance",
+          "dbChoiceId": "INCIDENT-01-REPAIR-09_tradeoff_C_X"
+        },
+        {
+          "id": "Y",
+          "label": "support plan을 나의 pressure standard로 전환한다",
+          "cost": "시스템이 완벽하지 않아도 내 행동을 own해야 한다.",
+          "axis": "Ownership",
+          "direction": "entry",
+          "pattern_family": "standard_creation",
+          "dbChoiceId": "INCIDENT-01-REPAIR-09_tradeoff_C_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "compliance가 아니라, support가 없을 때 무엇이 남는가.",
+        "context": "plan은 도움이 되었지만, identity shift는 완벽한 구조 없이도 살아남는 행동이 필요하다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "48시간 안에 support plan에서 개인 기준 하나를 뽑아 prompt 없이도 사용할 것을 commit한다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "standard_creation",
+              "description": "외부 support에서 내부 기준으로 이동하고 있다."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-REPAIR-09_action_C_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "작성된 support plan을 계속 따른다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "System",
+              "direction": "exit",
+              "pattern_family": "temporary_compliance",
+              "description": "구조가 있는 동안 개선되고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-REPAIR-09_action_C_X_AD2"
+          }
+        ]
+      }
+    },
+    "D": {
+      "escalation_text": "다음 어려운 케이스는 예상보다 빨리 온다. 미리 정의된 기준이 없었기 때문에 당신은 습관대로 반응한다. 그 순간의 타협은 작게 느껴지지만, 이후 정체성 질문이 바로 돌아온다.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "identity_clash": [
+        "의도: 다음에는 더 잘할 것이다.",
+        "습관: 압박 속에서 흐름을 유지하기 쉬운 선택을 했다.",
+        "이후: 나는 아직 이 상황에서 내가 누구인지 정의하지 않았다."
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "또 하나의 learning moment로 보고 다음에 다시 시도한다",
+          "cost": "자기 이미지는 유지되지만, 패턴은 한 번 더 반복된다.",
+          "axis": "Time",
+          "direction": "exit",
+          "pattern_family": "private_intention",
+          "dbChoiceId": "INCIDENT-01-REPAIR-09_tradeoff_D_X"
+        },
+        {
+          "id": "Y",
+          "label": "다음 케이스 전에 멈추고 기준을 정의한다",
+          "cost": "의도와 행동 사이의 gap을 직면해야 한다.",
+          "axis": "Repair",
+          "direction": "entry",
+          "pattern_family": "standard_creation",
+          "dbChoiceId": "INCIDENT-01-REPAIR-09_tradeoff_D_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "다음번이 아니라, 압박이 돌아오기 전에 어떤 기준이 존재하는가.",
+        "context": "압박을 기다렸더니 다시 습관이 앞섰다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "다음 clinical block 전에 flow와 integrity가 충돌할 때 따를 기준을 쓴다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Repair",
+              "direction": "entry",
+              "pattern_family": "standard_creation",
+              "description": "압박이 다시 테스트하기 전에 정체성을 정의하고 있다."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-REPAIR-09_action_D_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "의도를 기억하고 다음에는 스스로 잡아내려고 한다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Time",
+              "direction": "exit",
+              "pattern_family": "private_intention",
+              "description": "현재 기준 대신 미래 awareness에 의존하고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-REPAIR-09_action_D_X_AD2"
+          }
+        ]
+      }
+    }
+  }
+}

@@ -7,10 +7,26 @@ import type { ArenaPendingContractPayload } from "@/lib/bty/arena/arenaSessionRo
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
-function GenericBlockedState({ snapshot }: { snapshot: ArenaSessionRouterSnapshot }) {
+function GenericBlockedState({
+  snapshot,
+  locale,
+}: {
+  snapshot: ArenaSessionRouterSnapshot;
+  locale: Locale | string;
+}) {
+  const lang: Locale = locale === "ko" || locale === "en" ? locale : "en";
+  const t = getMessages(lang).arenaRun;
   const rs = snapshot.runtime_state;
   return (
     <div data-testid="arena-blocked-generic" className="rounded-2xl border border-bty-border bg-bty-surface/90 p-4 text-sm text-bty-navy">
+      {rs === "ACTION_REQUIRED" ? (
+        <p
+          data-testid="arena-observable-action-confirmation"
+          className="m-0 mb-3 rounded-lg border border-emerald-200/90 bg-emerald-50/80 px-3 py-2 text-sm leading-relaxed text-emerald-950/95"
+        >
+          {t.arenaObservableActionConfirmationLead}
+        </p>
+      ) : null}
       <p className="m-0 font-medium">Session blocked</p>
       <p className="mt-1 m-0 text-bty-navy/80">{rs}</p>
     </div>
@@ -66,17 +82,23 @@ export function ArenaBlockedSurface({
           <ArenaPendingContractGate
             locale={locale}
             contract={pendingContract}
+            runtimeState={
+              rs === "ACTION_REQUIRED" || rs === "ACTION_SUBMITTED" || rs === "ACTION_AWAITING_VERIFICATION"
+                ? rs
+                : null
+            }
+            qrAllowed={snapshot.gates?.qr_allowed === true}
             onRetry={onRetrySession ?? (() => {})}
             retryLoading={retryLoading}
           />
         );
       }
-      return <GenericBlockedState snapshot={snapshot} />;
+      return <GenericBlockedState snapshot={snapshot} locale={locale} />;
     case "FORCED_RESET_PENDING":
       return <ForcedResetGateStub locale={locale} />;
     case "REEXPOSURE_DUE":
       return <ReExposureGateStub locale={locale} />;
     default:
-      return <GenericBlockedState snapshot={snapshot} />;
+      return <GenericBlockedState snapshot={snapshot} locale={locale} />;
   }
 }

@@ -32,7 +32,7 @@ vi.mock("@/lib/bty/arena/blockingArenaActionContract", () => ({
 
 const mockGetLeadershipEngineState = vi.fn();
 const mockConsumeDueDelayedOutcomeTriggersForUser = vi.fn();
-const mockFetchFirstDueReexposureMeta = vi.fn();
+const mockFetchFirstDueNoChangeReexposureMeta = vi.fn();
 vi.mock("@/lib/bty/leadership-engine/state-service", () => ({
   getLeadershipEngineState: (...args: unknown[]) => mockGetLeadershipEngineState(...args),
 }));
@@ -43,7 +43,7 @@ vi.mock("@/engine/memory/delayed-outcome-consumer.service", () => ({
 }));
 
 vi.mock("@/engine/scenario/delayed-outcome-trigger.service", () => ({
-  fetchFirstDueReexposureMeta: (...args: unknown[]) => mockFetchFirstDueReexposureMeta(...args),
+  fetchFirstDueNoChangeReexposureMeta: (...args: unknown[]) => mockFetchFirstDueNoChangeReexposureMeta(...args),
 }));
 
 function makeSupabaseForSessionRouter() {
@@ -94,7 +94,7 @@ describe("GET /api/arena/session/next", () => {
       firstTriggerId: null,
       triggers: [],
     });
-    mockFetchFirstDueReexposureMeta.mockResolvedValue(null);
+    mockFetchFirstDueNoChangeReexposureMeta.mockResolvedValue(null);
   });
 
   it("returns 401 when unauthenticated", async () => {
@@ -211,7 +211,7 @@ describe("GET /api/arena/session/next", () => {
         },
       ],
     });
-    mockFetchFirstDueReexposureMeta.mockResolvedValue({
+    mockFetchFirstDueNoChangeReexposureMeta.mockResolvedValue({
       scenarioId: "SCN_PT_0001",
       pendingOutcomeId: "po1",
     });
@@ -236,6 +236,40 @@ describe("GET /api/arena/session/next", () => {
       userId: "u1",
       supabase: { from },
     });
+  });
+
+  it("does not emit REEXPOSURE_DUE when memory trigger consumed but no no_change_reexposure pending row", async () => {
+    const { from } = makeSupabaseForSessionRouter();
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: { from },
+      base: {},
+    });
+    mockGetNextScenarioForSession.mockResolvedValue({
+      scenario: { scenarioId: "s1", title: "T", context: "C", choices: [] },
+      route: "catalog",
+      delayedOutcomePending: false,
+    });
+    mockConsumeDueDelayedOutcomeTriggersForUser.mockResolvedValue({
+      consumedCount: 1,
+      firstTriggerId: "dq1",
+      triggers: [
+        {
+          triggerId: "dq1",
+          dueAt: "2026-01-01T00:00:00.000Z",
+          payload: { pending_outcome_id: "po1", source_choice_history_id: "h1" },
+        },
+      ],
+    });
+    mockFetchFirstDueNoChangeReexposureMeta.mockResolvedValue(null);
+
+    const req = new NextRequest("http://localhost/api/arena/session/next?locale=en");
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.delayedOutcomePending).toBe(false);
+    expect(data.runtime_state).toBe("ARENA_SCENARIO_READY");
+    expect(data.scenario?.scenarioId).toBe("s1");
   });
 
   it("queries arena_runs with status DONE when building served scenario exclusion", async () => {

@@ -9,12 +9,27 @@ export type ArenaChoiceRequest = {
   db_scenario_id: string;
   json_choice_id: string;
   db_choice_id: string;
+  primary_choice_id?: string;
+  parent_choice_id?: string;
+  second_choice_id?: string;
   /**
    * `primary` | `tradeoff` (alias `second`) | `action_decision`.
    * Tradeoff = forced second tier; action_decision = third commitment choice (after tradeoff).
    */
   binding_phase?: "primary" | "second" | "tradeoff" | "action_decision";
 };
+
+export class ArenaChoiceHttpError extends Error {
+  status: number;
+  snapshot: ArenaBindingRuntimeSnapshot | null;
+
+  constructor(message: string, status: number, snapshot: ArenaBindingRuntimeSnapshot | null) {
+    super(message);
+    this.name = "ArenaChoiceHttpError";
+    this.status = status;
+    this.snapshot = snapshot;
+  }
+}
 
 export async function postArenaChoice(payload: ArenaChoiceRequest): Promise<ArenaBindingRuntimeSnapshot> {
   const res = await fetch("/api/arena/choice", {
@@ -34,7 +49,8 @@ export async function postArenaChoice(payload: ArenaChoiceRequest): Promise<Aren
         : typeof data?.message === "string"
           ? data.message
           : "arena_choice_failed";
-    throw new Error(err);
+    const snap = data ? parseArenaBindingRuntimeSnapshotFromJson(data) : null;
+    throw new ArenaChoiceHttpError(err, res.status, snap);
   }
 
   const snap = parseArenaBindingRuntimeSnapshotFromJson(data);

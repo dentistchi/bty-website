@@ -1,0 +1,301 @@
+{
+  "id": "core_03_training_failure_hidden_as_performance_issue",
+  "title": "When the System Becomes the Doctor’s Problem",
+  "role": "Office Manager",
+  "pressure": "The new doctor continues to struggle. Assistants are compensating, patients are delayed, and complaints are increasing. The team is starting to describe the doctor as slow and difficult. No one is talking about the training gap anymore.",
+  "tradeoff": "You can keep the office stable by treating this as a doctor performance issue, or you can name the system gap before the doctor becomes the problem.",
+  "bty_tension_axis": "Blame vs System Awareness",
+  "axis_primary": "Ownership",
+  "axis_secondary": ["Truth", "Integrity", "System"],
+  "difficulty_level": 5,
+  "action_contract": {
+    "description": "Decide whether to frame the issue as a doctor performance problem or a system failure.",
+    "time_window_hours": 24
+  },
+  "air_logic": {
+    "success": "The system gap is named before blame solidifies.",
+    "miss": "The doctor becomes labeled as the problem while the training failure disappears."
+  },
+  "forced_reset": {
+    "trigger": "Team frustration is repeatedly expressed about the doctor.",
+    "action": "You must define what the problem actually is."
+  },
+  "pattern_detection": [
+    "performance_blame",
+    "system_erasure",
+    "truth_naming",
+    "neutrality_masking"
+  ],
+  "choices": [
+    {
+      "id": "A",
+      "label": "Address the doctor’s performance directly",
+      "subtext": "This feels practical because the doctor’s behavior is the most visible problem.",
+      "axis": "Accountability",
+      "direction": "exit",
+      "pattern_family": "performance_blame",
+      "intensity": 4,
+      "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_primary_A"
+    },
+    {
+      "id": "B",
+      "label": "Name the training gap to the team",
+      "subtext": "This shifts the conversation away from the individual and toward the system.",
+      "axis": "Truth",
+      "direction": "entry",
+      "pattern_family": "truth_naming",
+      "intensity": 5,
+      "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_primary_B"
+    },
+    {
+      "id": "C",
+      "label": "Wait and observe whether performance improves",
+      "subtext": "This avoids premature judgment and gives the doctor more time.",
+      "axis": "Time",
+      "direction": "exit",
+      "pattern_family": "future_deferral",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_primary_C"
+    },
+    {
+      "id": "D",
+      "label": "Stay neutral and let clinical leadership decide",
+      "subtext": "This protects your role and avoids taking sides too early.",
+      "axis": "Authority",
+      "direction": "exit",
+      "pattern_family": "neutrality_masking",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_primary_D"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "The doctor becomes more defensive. Assistants feel validated in their frustration, and the label begins to stick. The conversation is now about whether this doctor can keep up.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Increase performance monitoring",
+          "cost": "You create a cleaner record, but reinforce the blame loop.",
+          "axis": "Accountability",
+          "direction": "exit",
+          "pattern_family": "performance_blame",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_tradeoff_A_X"
+        },
+        {
+          "id": "Y",
+          "label": "Re-examine the training and support context",
+          "cost": "You must shift your original framing and expose the system layer.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_tradeoff_A_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what will you do next?",
+        "context": "The performance label is forming and may become hard to reverse.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, review the doctor’s training timeline and support structure before adding performance documentation",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "system_thinking",
+              "description": "You are interrupting blame formation with system review."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_action_A_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Continue performance tracking and collect more examples",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Accountability",
+              "direction": "exit",
+              "pattern_family": "performance_blame",
+              "description": "You are solidifying the individual label."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_action_A_X_AD2"
+          }
+        ]
+      }
+    },
+    "B": {
+      "escalation_text": "When you name the training gap, some assistants push back and say the doctor still needs to be accountable. Clinical leadership asks whether you are excusing poor performance.",
+      "pressure_increase": 0.7,
+      "intensity": 5,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Balance the message by returning focus to the doctor’s performance",
+          "cost": "You reduce resistance, but the system gap becomes secondary again.",
+          "axis": "Accountability",
+          "direction": "exit",
+          "pattern_family": "performance_blame",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_tradeoff_B_X"
+        },
+        {
+          "id": "Y",
+          "label": "Hold both truths: the doctor is accountable and the system gap is real",
+          "cost": "You must tolerate tension from both the team and leadership.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_tradeoff_B_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what will you do next?",
+        "context": "The team is testing whether system ownership means removing individual accountability.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, write a two-part reset: what the doctor owns and what the training system must repair",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "You are keeping accountability and system ownership visible together."
+            },
+            "intensity": 5,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_action_B_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Let clinical leadership handle the performance side first",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Authority",
+              "direction": "exit",
+              "pattern_family": "neutrality_masking",
+              "description": "You are letting authority narrow the issue back to performance."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_action_B_X_AD2"
+          }
+        ]
+      }
+    },
+    "C": {
+      "escalation_text": "While you wait, the team’s story hardens. Assistants start avoiding the doctor, and small mistakes are interpreted as proof that the doctor is the issue.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep observing until there is clearer evidence",
+          "cost": "You avoid premature action, but the informal narrative becomes the evidence.",
+          "axis": "Time",
+          "direction": "exit",
+          "pattern_family": "future_deferral",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_tradeoff_C_X"
+        },
+        {
+          "id": "Y",
+          "label": "Interrupt the informal narrative and review the system gap",
+          "cost": "You act before all evidence is complete and may be seen as disrupting the team’s momentum.",
+          "axis": "Ownership",
+          "direction": "entry",
+          "pattern_family": "system_thinking",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_tradeoff_C_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what will you do next?",
+        "context": "Waiting has allowed the team narrative to become stronger than the original facts.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, pause informal commentary and schedule a structured review of training, support, and performance facts",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "system_thinking",
+              "description": "You are replacing informal blame with structured review."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_action_C_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Wait one more week to see whether the doctor stabilizes",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Time",
+              "direction": "exit",
+              "pattern_family": "future_deferral",
+              "description": "You are giving the narrative more time to harden."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_action_C_X_AD2"
+          }
+        ]
+      }
+    },
+    "D": {
+      "escalation_text": "Because you stay neutral, both sides fill the silence. Assistants assume you agree the doctor is the problem. Clinical leadership assumes the office is handling it locally.",
+      "pressure_increase": 0.5,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Maintain neutrality until leadership gives direction",
+          "cost": "You protect your position, but your silence is interpreted as agreement.",
+          "axis": "Authority",
+          "direction": "exit",
+          "pattern_family": "neutrality_masking",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_tradeoff_D_X"
+        },
+        {
+          "id": "Y",
+          "label": "Clarify that neutrality does not mean ignoring the system gap",
+          "cost": "You step out of safety and name what others are avoiding.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_tradeoff_D_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what will you do next?",
+        "context": "Your silence has become part of the story.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, send leadership a neutral but explicit summary separating training gap, team burden, and doctor performance",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "You are using neutrality to clarify, not disappear."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_action_D_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Wait for clinical leadership to define the issue first",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Authority",
+              "direction": "exit",
+              "pattern_family": "neutrality_masking",
+              "description": "You are allowing authority to define the narrative."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-OWNERSHIP-03_action_D_X_AD2"
+          }
+        ]
+      }
+    }
+  }
+}

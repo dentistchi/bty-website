@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/require-admin";
+import { requireAdminEmail } from "@/lib/require-admin";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
 
 // GET: List all users. Scope: ?orgId= & regionId= (minRole: regional_manager)
 export async function GET(req: NextRequest) {
-  const auth = await requireAdmin(req, { minRole: "regional_manager" });
+  const auth = await requireAdminEmail(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const supabase = getSupabaseAdmin();
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
 
 // POST: Create new user. Scope: ?orgId= & regionId= (minRole: regional_manager)
 export async function POST(req: NextRequest) {
-  const auth = await requireAdmin(req, { minRole: "regional_manager" });
+  const auth = await requireAdminEmail(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const body = await req.json().catch(() => ({}));
 
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
 
 // DELETE: Delete user. Scope: ?orgId= & regionId=
 export async function DELETE(req: NextRequest) {
-  const auth = await requireAdmin(req, { minRole: "regional_manager" });
+  const auth = await requireAdminEmail(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const supabase = getSupabaseAdmin();
@@ -132,7 +132,7 @@ export async function DELETE(req: NextRequest) {
 
 // PATCH: Update user password. Scope: ?orgId= & regionId=
 export async function PATCH(req: NextRequest) {
-  const auth = await requireAdmin(req, { minRole: "regional_manager" });
+  const auth = await requireAdminEmail(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const body = await req.json().catch(() => ({}));
 

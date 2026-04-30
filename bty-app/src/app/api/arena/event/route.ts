@@ -5,7 +5,12 @@ import {
   arenaScenarioIdFromUnknown,
 } from "@/domain/arena/scenarios";
 import { logActionContractActorTrace } from "@/lib/bty/action-contract/arenaRunActor.server";
+import {
+  accrueNoChangeRisk,
+  normalizeScenarioDecisionEventUser,
+} from "@/lib/bty/arena/noChangeRisk.server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { getScenarioByDbId } from "@/data/scenario";
 
 /**
  * POST /api/arena/event
@@ -35,11 +40,48 @@ export async function POST(req: Request) {
   const followUpIndex = typeof body?.followUpIndex === "number" ? body.followUpIndex : null;
   const xp = Number(body?.xp ?? 0);
   const deltas = body?.deltas ?? null;
-  const meta = body?.meta ?? null;
+  let meta = body?.meta ?? null;
 
   if (!runId) return NextResponse.json({ error: "runId_required" }, { status: 400 });
   if (!scenarioId) return NextResponse.json({ error: "scenarioId_required" }, { status: 400 });
   if (!eventType) return NextResponse.json({ error: "eventType_required" }, { status: 400 });
+
+  let reExposureDueCandidate = false;
+  if (meta != null && typeof meta === "object" && !Array.isArray(meta)) {
+    const m = meta as Record<string, unknown>;
+    const sde = m["scenarioDecisionEvent"];
+    const normalized = normalizeScenarioDecisionEventUser(sde, user.id);
+    if (normalized) {
+      const isActionCommitment = normalized.isActionCommitment === true;
+      const nextMeta: Record<string, unknown> = {
+        ...m,
+        scenarioDecisionEvent: normalized,
+        action_contract_candidate: isActionCommitment,
+      };
+      if (!isActionCommitment && eventType === "JSON_SCENARIO_DECISION_COMPLETED") {
+        const mappedScenario = getScenarioByDbId(normalized.dbScenarioId ?? "", "en");
+        if (!mappedScenario) {
+          return NextResponse.json(
+            { error: "action_decision_scenario_binding_unresolved" },
+            { status: 422 },
+          );
+        }
+        const eventForAccrual = {
+          ...normalized,
+          incidentId: mappedScenario.incidentId,
+          axisGroup: mappedScenario.axisGroup,
+          axisIndex: mappedScenario.axisIndex,
+        };
+        const risk = await accrueNoChangeRisk(supabase, eventForAccrual);
+        reExposureDueCandidate = risk.reExposureDueCandidate;
+        nextMeta.no_change_risk_accrued = true;
+        nextMeta.no_change_risk_count = risk.riskCount;
+        nextMeta.re_exposure_due_candidate = risk.reExposureDueCandidate;
+        nextMeta.intervention_sensitivity_candidate = risk.interventionSensitivityCandidate;
+      }
+      meta = nextMeta;
+    }
+  }
 
   const { data: runActor, error: runActorErr } = await supabase
     .from("arena_runs")
@@ -104,5 +146,5 @@ export async function POST(req: Request) {
     });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, reExposureDueCandidate });
 }

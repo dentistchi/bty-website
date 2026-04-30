@@ -2,7 +2,7 @@
 
 import { QRCodeSVG } from "qrcode.react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { computeMetrics, loadSignals } from "@/features/arena/logic";
 import { loadReflections } from "@/features/growth/logic/reflectionStorage";
 import type { ReflectionEntry } from "@/features/growth/logic/types";
@@ -13,7 +13,11 @@ import { MyPageLeadershipScreen } from "@/features/my-page/MyPageLeadershipScree
 import { ActionContractHub } from "@/components/bty/my-page/ActionContractHub";
 import { PatternSignaturePanel } from "@/components/bty/my-page/PatternSignaturePanel";
 import { PostCompletionSheet } from "@/components/bty/my-page/PostCompletionSheet";
-import { dispatchArenaEntryResolutionInvalidate } from "@/lib/bty/arena/arenaEntryResolutionInvalidate";
+import {
+  BTY_ACTION_CONTRACT_UPDATED_STORAGE_KEY,
+  dispatchArenaEntryResolutionInvalidate,
+  dispatchBtyActionContractUpdated,
+} from "@/lib/bty/arena/arenaEntryResolutionInvalidate";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
@@ -60,6 +64,7 @@ export function MyPageLeadershipConsole({
   const [secureLinkUrl, setSecureLinkUrl] = useState<string | null>(null);
   const [showPostCompletion, setShowPostCompletion] = useState(false);
   const [completionNarrativeState, setCompletionNarrativeState] = useState<string | null>(null);
+  const lastSyncAtRef = useRef(0);
 
   useEffect(() => {
     setLocalSignals(loadSignals());
@@ -154,13 +159,40 @@ export function MyPageLeadershipConsole({
   }, [load, routerRefresh]);
 
   useEffect(() => {
-    const onFocus = () => void load();
+    if (typeof window === "undefined") return;
+    const syncCooldownMs = 1500;
+    const syncNow = (source: "focus" | "visibility" | "storage") => {
+      const now = Date.now();
+      if (now - lastSyncAtRef.current < syncCooldownMs) return;
+      lastSyncAtRef.current = now;
+      console.info("[BTY SYNC] visibility/focus refetch", { source });
+      void load().then(() => {
+        console.info("[BTY SYNC] session refetch complete", { source });
+        dispatchArenaEntryResolutionInvalidate();
+        routerRefresh();
+      });
+    };
+    const onFocus = () => syncNow("focus");
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") syncNow("visibility");
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== BTY_ACTION_CONTRACT_UPDATED_STORAGE_KEY) return;
+      syncNow("storage");
+    };
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [load]);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [load, routerRefresh]);
 
   useEffect(() => {
     if (!actionLoopQrCompletion?.success) return;
+    dispatchBtyActionContractUpdated();
     setShowPostCompletion(true);
     setCompletionNarrativeState(actionLoopQrCompletion.narrativeState ?? null);
     setQrPanelOpen(false);
@@ -205,6 +237,7 @@ export function MyPageLeadershipConsole({
         };
 
         if (data.ok || data.success) {
+          dispatchBtyActionContractUpdated();
           setShowPostCompletion(true);
           if (data.narrativeState) {
             setCompletionNarrativeState(data.narrativeState);
@@ -231,19 +264,37 @@ export function MyPageLeadershipConsole({
 
   const handleRequestQr = useCallback(async () => {
     const contract = serverPack?.open_action_contract;
-    const runId = contract?.session_id?.trim();
-    if (!contract || !runId) {
-      console.warn("[handleRequestQr] no contract or session_id", { contract });
+    if (!contract) {
+      console.warn("[handleRequestQr] no contract", { contract: null });
       return;
     }
+    const runId = contract?.session_id?.trim();
+    const contractId = typeof contract.id === "string" ? contract.id.trim() : "";
+    if (!runId && !contractId) {
+      console.warn("[handleRequestQr] no contract identifiers", { contract });
+      return;
+    }
+    setQrPanelOpen(false);
+    setQrUrl(null);
     try {
       const res = await fetch("/api/arena/leadership-engine/qr/action-loop-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ runId }),
+        body: JSON.stringify({
+          ...(runId ? { runId } : {}),
+          ...(contractId ? { contractId } : {}),
+        }),
       });
       if (!res.ok) return;
-      const data = (await res.json()) as { token?: string };
+      const data = (await res.json()) as { token?: string; qrUrl?: string; url?: string };
+      const returnedQrUrl =
+        (typeof data.qrUrl === "string" && data.qrUrl.trim() !== "" ? data.qrUrl.trim() : "") ||
+        (typeof data.url === "string" && data.url.trim() !== "" ? data.url.trim() : "");
+      if (returnedQrUrl) {
+        setQrUrl(returnedQrUrl);
+        setQrPanelOpen(true);
+        return;
+      }
       const token = data.token;
       if (!token || typeof window === "undefined") return;
       const locSeg = locale === "ko" ? "ko" : "en";
@@ -355,12 +406,19 @@ export function MyPageLeadershipConsole({
       {qrPanelOpen && qrUrl && (
         <div className="flex flex-col items-center gap-4 rounded-xl border border-gray-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.05]">
           <QRCodeSVG
+            key={qrUrl}
             value={qrUrl}
             size={200}
             bgColor="#ffffff"
             fgColor="#1a1a1a"
             level="M"
           />
+          <pre
+            data-testid="qr-debug-value"
+            className="max-w-full overflow-x-auto whitespace-pre-wrap break-all rounded-md bg-black/5 px-2 py-1 text-[11px] text-black/70 dark:bg-white/10 dark:text-white/70"
+          >
+            {qrUrl}
+          </pre>
           <button
             type="button"
             onClick={() => setQrPanelOpen(false)}

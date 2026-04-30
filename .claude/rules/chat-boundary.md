@@ -1,0 +1,32 @@
+---
+description: Chat layer boundaries — shared common only, no cross-system imports
+paths:
+  - bty-app/src/lib/bty/chat/**
+---
+
+# Chat Boundary Rule
+
+`src/lib/bty/chat` 의 경계와 import 방향을 지킨다.
+
+*참조: `docs/architecture/CHAT_LAYER_SPEC.md`*
+
+## 규칙 (4항)
+
+1. **`src/lib/bty/chat/shared` 는 공통 런타임만 포함한다.**
+   Arena/Center/Foundry 전용 tone, few-shot, guard, retriever는 shared에 두지 않는다.
+
+2. **Arena/Center/Foundry 전용 tone, few-shot, guard, retriever는 각 시스템 하위 폴더에 둔다.**
+   `chat/arena`, `chat/center`, `chat/foundry` 에만 둔다.
+
+3. **한 시스템의 chat 모듈이 다른 시스템의 chat 모듈을 직접 import 하면 안 된다.**
+   arena → center, center → foundry, foundry → arena 등 상호 import 금지.
+
+4. **mode 판정은 shared 에서만 수행한다.**
+   `resolveChatMode.ts` 등 mode 해석은 `chat/shared` 에만 둔다. mode별 행동은 각 시스템 폴더에서만 처리한다.
+
+## 추천 import 방향
+
+| 허용 | 금지 |
+|------|------|
+| shared → arena / center / foundry | arena ↔ center ↔ foundry |
+| arena / center / foundry → shared | |

@@ -1,0 +1,277 @@
+{
+  "id": "core_22_identity_integrity_scaling_pressure",
+  "title": "성장 속에서도 무너지지 않는 시스템",
+  "role": "Clinical Director / Partner Doctor",
+  "pressure": "오피스 확장이 빠르게 진행되고 있다. 새로운 직원, 새로운 리더, 새로운 지역이 동시에 늘어나고 있다. 트레이닝은 부족하고, 각 오피스는 바쁜 스케줄과 다른 현실 속에서 시스템을 다르게 적용하기 시작한다. 이제 문제는 개별 케이스가 아니라 ‘성장 속에서 기준이 유지되는가’로 바뀐다.  [oai_citation:0‡치과 오피스 상황.txt](sediment://file_00000000208871fd99ddb908a5d5e18a)",
+  "tradeoff": "성장 속도를 유지하기 위해 기준을 유연하게 둘 것인가, 아니면 기준을 유지하기 위해 성장의 불편함을 감수할 것인가.",
+  "bty_tension_axis": "scaling_integrity",
+  "axis_primary": "integrity",
+  "axis_secondary": "scalability",
+  "difficulty_level": "final_full_density",
+  "incident": {
+    "incidentId": "incident_02",
+    "incidentStage": "scaling pressure",
+    "sequencePosition": 22,
+    "previousScenarioId": "core_21_identity_integrity_misuse",
+    "nextScenarioId": null,
+    "roleShift": "from misuse corrector to system scaler under growth pressure",
+    "propagation": {
+      "exitEffect": "시스템은 오피스마다 다르게 해석되며, 조직은 하나의 기준이 아닌 여러 기준으로 움직이게 된다.",
+      "entryEffect": "시스템은 어떤 오피스, 어떤 리더, 어떤 상황에서도 동일하게 작동하는 구조로 강화된다.",
+      "reExposureNote": "확장은 항상 시스템의 약한 지점을 드러낸다. 기준이 유지되지 않으면 반복적으로 무너진다."
+    }
+  },
+  "action_contract": {
+    "description": "성장 환경에서도 integrity system이 동일하게 작동하도록 만드는 하나의 observable scaling control을 만든다.",
+    "time_window_hours": 72
+  },
+  "AIR_logic": {
+    "success": "새로운 오피스와 리더에서도 동일한 기준이 재현된다.",
+    "miss": "시스템이 각 오피스 상황에 따라 다르게 적용된다."
+  },
+  "forced_reset": {
+    "trigger": "새로운 오피스에서 기존 기준과 다른 방식으로 decision이 내려지고, 그 이유가 ‘현실이 다르기 때문’이라고 설명된다.",
+    "action": "상황이 아니라 기준을 기준으로 비교하고, deviation을 명확히 정의한다."
+  },
+  "pattern_detection": {
+    "growth_justification": "성장을 이유로 기준 완화를 정당화한다.",
+    "exception_normalization": "예외가 반복되며 새로운 기준처럼 굳어진다.",
+    "leader_variability": "리더에 따라 시스템이 다르게 적용된다.",
+    "scaling_blindness": "확장 속에서 시스템 drift를 인지하지 못한다."
+  },
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "몇 개의 오피스에서 기준이 완화된 채 운영되기 시작하고, 그 방식이 더 빠르게 돌아간다는 이유로 다른 오피스도 따라하기 시작한다.",
+      "pressure_increase": "속도가 기준을 대체하기 시작한다.",
+      "intensity": 7,
+      "action_decision": {
+        "prompt": "속도가 기준을 대체하지 않게 하기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "빠른 방식이 조직 전체로 퍼지기 시작했다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 빠르게 운영되는 오피스 2곳과 기준대로 운영되는 오피스 2곳을 비교해 deviation을 공개한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "성과를 유지하면서 점진적으로 기준을 맞추기로 한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "성과가 나오기 때문에 일단 유지한다",
+          "cost": "잘못된 기준이 성공 사례로 굳어진다.",
+          "axis": "scalability",
+          "direction": "exit",
+          "pattern_family": "growth_justification"
+        },
+        {
+          "id": "Y",
+          "label": "속도가 아닌 기준으로 다시 비교한다",
+          "cost": "단기 성과를 포기해야 할 수 있다.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "standard_enforcement"
+        }
+      ]
+    },
+    "B": {
+      "escalation_text": "각 오피스가 다른 기준을 사용하면서 직원들이 다른 오피스로 이동할 때 혼란이 발생한다.",
+      "pressure_increase": "시스템이 아니라 위치가 기준이 된다.",
+      "intensity": 7,
+      "action_decision": {
+        "prompt": "오피스마다 다른 시스템이 되지 않게 하기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "이동하는 직원이 기준의 차이를 체감하기 시작했다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 모든 오피스에 공통 적용되는 3가지 핵심 integrity constraint를 정의하고 배포한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "각 오피스의 상황을 존중하며 점진적으로 정렬한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "각 오피스의 차이를 인정한다",
+          "cost": "조직 전체의 일관성이 무너진다.",
+          "axis": "scalability",
+          "direction": "exit",
+          "pattern_family": "exception_normalization"
+        },
+        {
+          "id": "Y",
+          "label": "모든 오피스에 동일하게 적용되는 핵심 기준을 정의한다",
+          "cost": "현장의 반발이 생길 수 있다.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "constraint_definition"
+        }
+      ]
+    },
+    "C": {
+      "escalation_text": "강한 리더가 있는 오피스는 잘 돌아가지만, 그렇지 않은 오피스에서는 시스템이 무너지기 시작한다.",
+      "pressure_increase": "시스템이 아니라 사람이 결과를 결정한다.",
+      "intensity": 7,
+      "action_decision": {
+        "prompt": "리더에 따라 시스템이 달라지지 않게 하기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "오피스 간 격차가 리더 역량으로 설명되기 시작했다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 모든 리더가 동일하게 따라야 하는 integrity decision flow를 정의하고 적용한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "각 오피스에 더 강한 리더를 배치하는 방향으로 해결한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "더 강한 리더를 배치한다",
+          "cost": "시스템 문제를 사람 문제로 치환한다.",
+          "axis": "integrity",
+          "direction": "exit",
+          "pattern_family": "leader_variability"
+        },
+        {
+          "id": "Y",
+          "label": "리더가 바뀌어도 동일하게 작동하는 구조를 만든다",
+          "cost": "기존 리더들의 자율성이 줄어든다.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "system_reliability"
+        }
+      ]
+    },
+    "D": {
+      "escalation_text": "시스템 constraint를 도입하자 일부 리더들이 속도가 느려지고 현장이 힘들어진다고 반발한다.",
+      "pressure_increase": "성장과 기준이 직접 충돌한다.",
+      "intensity": 8,
+      "action_decision": {
+        "prompt": "성장 압박 속에서도 시스템을 유지하기 위해 72시간 안에 무엇을 할 것인가?",
+        "context": "리더들은 속도를 원하고, 시스템은 일관성을 요구한다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "72시간 안에 constraint는 유지한 채, 적용 시간을 줄일 수 있는 프로세스 개선안을 설계하고 테스트한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "현장의 부담을 줄이기 위해 일부 기준을 완화한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "속도를 위해 constraint를 일부 완화한다",
+          "cost": "시스템의 일관성이 깨진다.",
+          "axis": "scalability",
+          "direction": "exit",
+          "pattern_family": "growth_justification"
+        },
+        {
+          "id": "Y",
+          "label": "constraint를 유지하면서 적용 방식을 개선한다",
+          "cost": "단기적인 불편함을 감수해야 한다.",
+          "axis": "integrity",
+          "direction": "entry",
+          "pattern_family": "controlled_scaling"
+        }
+      ]
+    }
+  },
+  "ending_identity_choice": {
+    "prompt": "조직이 빠르게 커질 때, 나는 어떤 시스템을 선택하는가?",
+    "choices": [
+      {
+        "id": "SYS1",
+        "label": "성장을 위해 기준이 유연해지는 시스템",
+        "direction": "exit"
+      },
+      {
+        "id": "SYS2",
+        "label": "성장 속에서도 동일하게 작동하는 시스템",
+        "direction": "entry"
+      }
+    ]
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "성장 속도를 유지하기 위해 기준 적용을 일부 유연하게 둔다",
+      "subtext": "지금은 속도가 중요하기 때문에 완벽한 정렬은 나중에 해도 된다고 느껴진다.",
+      "axis": "scalability",
+      "direction": "exit",
+      "pattern_family": "growth_justification",
+      "intensity": 6
+    },
+    {
+      "id": "B",
+      "label": "각 오피스가 현실에 맞게 시스템을 적용하도록 둔다",
+      "subtext": "현장을 존중하는 것이 더 현실적인 운영이라고 느껴진다.",
+      "axis": "scalability",
+      "direction": "exit",
+      "pattern_family": "exception_normalization",
+      "intensity": 6
+    },
+    {
+      "id": "C",
+      "label": "강한 리더들이 시스템을 잘 적용할 것이라고 믿는다",
+      "subtext": "사람이 결국 시스템보다 중요하다고 느껴진다.",
+      "axis": "integrity",
+      "direction": "exit",
+      "pattern_family": "leader_variability",
+      "intensity": 6
+    },
+    {
+      "id": "D",
+      "label": "성장 속에서도 동일하게 작동하는 시스템 constraint를 만든다",
+      "subtext": "성장 속도를 늦출 수 있지만, 시스템을 유지할 수 있다.",
+      "axis": "integrity",
+      "direction": "entry",
+      "pattern_family": "scaling_control",
+      "intensity": 7
+    }
+  ]
+}

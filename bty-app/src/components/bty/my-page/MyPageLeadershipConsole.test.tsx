@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { BTY_ACTION_CONTRACT_UPDATED_STORAGE_KEY } from "@/lib/bty/arena/arenaEntryResolutionInvalidate";
 
 const mockRouterRefresh = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -8,6 +9,10 @@ vi.mock("next/navigation", () => ({
     refresh: mockRouterRefresh,
   }),
   usePathname: () => "/en/my-page",
+}));
+
+vi.mock("qrcode.react", () => ({
+  QRCodeSVG: ({ value }: { value: string }) => <div data-testid="qr-code-mock" data-value={value} />,
 }));
 
 import { MyPageLeadershipConsole } from "./MyPageLeadershipConsole";
@@ -165,7 +170,7 @@ describe("MyPageLeadershipConsole", () => {
     });
   });
 
-  it("handleRequestQr POSTs action-loop-token when open_action_contract has session_id", async () => {
+  it("handleRequestQr POSTs action-loop-token with contractId and runId when both exist", async () => {
     const payload = mockStatePayloadWithQrContract({ session_id: "run-xyz" });
     fetchMock.mockResolvedValue(jsonResponse(payload, 200));
 
@@ -187,12 +192,103 @@ describe("MyPageLeadershipConsole", () => {
     expect(qrPost).toBeDefined();
     expect(qrPost?.[1]).toMatchObject({
       method: "POST",
-      body: JSON.stringify({ runId: "run-xyz" }),
+      body: JSON.stringify({ runId: "run-xyz", contractId: "ac1" }),
     });
   });
 
-  it("handleRequestQr returns early when session_id missing (warn, no QR token fetch)", async () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  it("uses qrUrl from token response as QRCode value", async () => {
+    const payload = mockStatePayloadWithQrContract({ session_id: "run-xyz" });
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      const s = typeof url === "string" ? url : String(url);
+      if (s.includes("/api/bty/my-page/state")) {
+        return Promise.resolve(jsonResponse(payload, 200));
+      }
+      if (s.includes("/api/arena/leadership-engine/qr/action-loop-token")) {
+        return Promise.resolve(
+          jsonResponse(
+            {
+              ok: true,
+              contractId: "ac1",
+              runId: "run-xyz",
+              qrUrl:
+                "https://bty-arena-staging.ywamer2022.workers.dev/en/my-page?arena_action_loop=commit&aalo=qr-from-server",
+              token: "aalo1.fallback",
+              url: "https://bty-website.ywamer2022.workers.dev/en/my-page?arena_action_loop=commit&aalo=legacy",
+            },
+            200,
+          ),
+        );
+      }
+      return Promise.resolve(jsonResponse({}, 200));
+    });
+
+    await act(async () => {
+      render(<MyPageLeadershipConsole locale="en" />);
+    });
+
+    await waitFor(() => {
+      screen.getByRole("button", { name: /complete by qr/i });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /complete by qr/i }));
+    });
+
+    const qrNode = screen.getByTestId("qr-code-mock");
+    expect(qrNode.getAttribute("data-value")).toContain("bty-arena-staging.ywamer2022.workers.dev");
+    expect(qrNode.getAttribute("data-value")).not.toContain("bty-website.ywamer2022.workers.dev");
+    expect(qrNode.getAttribute("data-value")).toContain("arena_action_loop=commit");
+    expect(screen.getByTestId("qr-debug-value").textContent).toContain(
+      "bty-arena-staging.ywamer2022.workers.dev",
+    );
+  });
+
+  it("rerenders QR value when token response qrUrl changes", async () => {
+    const payload = mockStatePayloadWithQrContract({ session_id: "run-xyz" });
+    let tokenCall = 0;
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      const s = typeof url === "string" ? url : String(url);
+      if (s.includes("/api/bty/my-page/state")) {
+        return Promise.resolve(jsonResponse(payload, 200));
+      }
+      if (s.includes("/api/arena/leadership-engine/qr/action-loop-token")) {
+        tokenCall += 1;
+        const suffix = tokenCall === 1 ? "first-token" : "second-token";
+        return Promise.resolve(
+          jsonResponse(
+            {
+              ok: true,
+              contractId: "ac1",
+              runId: "run-xyz",
+              qrUrl: `https://bty-arena-staging.ywamer2022.workers.dev/en/my-page?arena_action_loop=commit&aalo=${suffix}`,
+            },
+            200,
+          ),
+        );
+      }
+      return Promise.resolve(jsonResponse({}, 200));
+    });
+
+    await act(async () => {
+      render(<MyPageLeadershipConsole locale="en" />);
+    });
+
+    await waitFor(() => {
+      screen.getByRole("button", { name: /complete by qr/i });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /complete by qr/i }));
+    });
+    expect(screen.getByTestId("qr-code-mock").getAttribute("data-value")).toContain("first-token");
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /complete by qr/i }));
+    });
+    expect(screen.getByTestId("qr-code-mock").getAttribute("data-value")).toContain("second-token");
+  });
+
+  it("handleRequestQr POSTs action-loop-token with contractId when session_id is missing", async () => {
     const payload = mockStatePayloadWithQrContract({ session_id: null });
     fetchMock.mockResolvedValue(jsonResponse(payload, 200));
 
@@ -204,21 +300,18 @@ describe("MyPageLeadershipConsole", () => {
       screen.getByRole("button", { name: /complete by qr/i });
     });
 
-    const callsBeforeClick = fetchMock.mock.calls.length;
-
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /complete by qr/i }));
     });
 
-    expect(warnSpy).toHaveBeenCalledWith("[handleRequestQr] no contract or session_id", {
-      contract: payload.open_action_contract,
-    });
     const qrPosts = fetchMock.mock.calls.filter(
       (c) => typeof c[0] === "string" && c[0].includes("/api/arena/leadership-engine/qr/action-loop-token"),
     );
-    expect(qrPosts).toHaveLength(0);
-    expect(fetchMock.mock.calls.length).toBe(callsBeforeClick);
-    warnSpy.mockRestore();
+    expect(qrPosts).toHaveLength(1);
+    expect(qrPosts[0]?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({ contractId: "ac1" }),
+    });
   });
 
   it("handleRequestQr uses contract from server after deferred load (serverPack not stale)", async () => {
@@ -256,7 +349,7 @@ describe("MyPageLeadershipConsole", () => {
     );
     expect(qrPost?.[1]).toMatchObject({
       method: "POST",
-      body: JSON.stringify({ runId: "run-deferred" }),
+      body: JSON.stringify({ runId: "run-deferred", contractId: "ac1" }),
     });
   });
 
@@ -274,6 +367,52 @@ describe("MyPageLeadershipConsole", () => {
       expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2);
     });
     expect(sessionStorage.getItem("bty_mypage_refetch_required")).toBeNull();
+  });
+
+  it("focus/visible/storage triggers throttled refetch", async () => {
+    let now = 1_000;
+    const nowSpy = vi.spyOn(Date, "now").mockImplementation(() => now);
+    const payload = mockStatePayload();
+    fetchMock.mockResolvedValue(jsonResponse(payload, 200));
+
+    await act(async () => {
+      render(<MyPageLeadershipConsole locale="en" />);
+    });
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some((c) => String(c[0]).includes("/api/bty/my-page/state")),
+      ).toBe(true);
+    });
+    const initialCount = fetchMock.mock.calls.length;
+
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      document.dispatchEvent(new Event("visibilitychange"));
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: BTY_ACTION_CONTRACT_UPDATED_STORAGE_KEY,
+          newValue: String(now),
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.length).toBeGreaterThan(initialCount);
+    });
+    const afterBurst = fetchMock.mock.calls.length;
+
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(fetchMock.mock.calls.length).toBe(afterBurst);
+
+    await act(async () => {
+      now += 1600;
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(afterBurst);
+    nowSpy.mockRestore();
   });
 
   it("actionLoopQrCompletion success shows PostCompletionSheet, refetches state, strips URL params", async () => {

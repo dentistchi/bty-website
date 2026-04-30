@@ -50,7 +50,7 @@ describe("GET /api/arena/leadership-engine/air", () => {
     expect(typeof data.error).toBe("string");
   });
 
-  it("returns 200 with air_7d.air as number", async () => {
+  it("returns 200 with AIR score hidden from user payload", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
       supabase: {
@@ -64,7 +64,8 @@ describe("GET /api/arena/leadership-engine/air", () => {
     const res = await GET(makeRequest());
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(typeof data.air_7d.air).toBe("number");
+    expect(data.air_7d.score_hidden).toBe(true);
+    expect("air" in data.air_7d).toBe(false);
   });
 
   it("returns 200 with content-type application/json", async () => {
@@ -98,9 +99,9 @@ describe("GET /api/arena/leadership-engine/air", () => {
     const res = await GET(makeRequest());
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data.air_7d).toEqual({ air: 0, missedWindows: 0, integritySlip: false, band: "low" });
-    expect(data.air_14d).toEqual({ air: 0, missedWindows: 0, integritySlip: false, band: "low" });
-    expect(data.air_90d).toEqual({ air: 0, missedWindows: 0, integritySlip: false, band: "low" });
+    expect(data.air_7d).toEqual({ missedWindows: 0, integritySlip: false, band: "low", score_hidden: true });
+    expect(data.air_14d).toEqual({ missedWindows: 0, integritySlip: false, band: "low", score_hidden: true });
+    expect(data.air_90d).toEqual({ missedWindows: 0, integritySlip: false, band: "low", score_hidden: true });
   });
 
   it("returns 200 with air snapshot when activations exist", async () => {
@@ -148,7 +149,8 @@ describe("GET /api/arena/leadership-engine/air", () => {
     expect(data.air_7d).toBeDefined();
     expect(data.air_14d).toBeDefined();
     expect(data.air_90d).toBeDefined();
-    expect(typeof data.air_7d.air).toBe("number");
+    expect(data.air_7d.score_hidden).toBe(true);
+    expect("air" in data.air_7d).toBe(false);
     expect(["low", "mid", "high"]).toContain(data.air_7d.band);
     expect(["low", "mid", "high"]).toContain(data.air_14d.band);
     expect(["low", "mid", "high"]).toContain(data.air_90d.band);

@@ -57,6 +57,15 @@ create index if not exists arena_leagues_status_idx on public.arena_leagues(stat
 -- 3) weekly_xp — comments and indexes for leaderboard / duplicate prevention
 --    Requires weekly_xp to exist (e.g. from docs/supabase/001_weekly_xp.sql or ONE_BLOCK).
 -- -----------------------------------------------------------------------------
+create table if not exists public.weekly_xp (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  league_id uuid not null references public.arena_leagues(id) on delete cascade,
+  xp_total integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, league_id)
+);
+
 comment on table public.weekly_xp is 'Seasonal (competition) XP per user per league. One row per (user_id, league_id); prevents duplicate league entries. Leaderboard reads from here only.';
 comment on column public.weekly_xp.user_id is 'References auth.users. One row per user when league_id IS NULL (global pool).';
 comment on column public.weekly_xp.league_id is 'NULL = global/current pool; non-NULL = this league. Unique with user_id to prevent duplicate entries.';

@@ -1,0 +1,301 @@
+{
+  "id": "core_04_manager_neutrality_as_abandonment",
+  "title": "중립이 버림받음처럼 느껴지는 순간",
+  "role": "Office Manager",
+  "pressure": "새 의사는 아직 어려움을 겪고 있고, 어시스턴트들은 계속 보완하는 데 지쳐 있다. 팀은 당신이 무엇을 말할지 기다리고 있다. 당신은 공정하고 싶고, 너무 빨리 누군가를 blame하고 싶지 않다. 하지만 당신의 침묵이 해석되기 시작한다. 어시스턴트들은 당신이 자신들을 지지하지 않는다고 느끼고, 의사는 조용히 평가받고 있다고 느낀다.",
+  "tradeoff": "escalation을 피하기 위해 중립을 유지할 수도 있고, 중립이 버림받음처럼 해석되기 전에 지금 일어나고 있는 패턴을 말할 수도 있다.",
+  "bty_tension_axis": "Neutrality vs Truth",
+  "axis_primary": "Truth",
+  "axis_secondary": ["Ownership", "Conflict", "Accountability"],
+  "difficulty_level": 5,
+  "action_contract": {
+    "description": "중립을 유지할지, 의사와 팀에게 영향을 주고 있는 패턴을 명확히 말할지 결정한다.",
+    "time_window_hours": 24
+  },
+  "air_logic": {
+    "success": "중립이 침묵이 아니라 clarity가 된다.",
+    "miss": "팀은 당신의 침묵을 각자의 방식으로 해석한다."
+  },
+  "forced_reset": {
+    "trigger": "의사와 어시스턴트 모두 당신의 침묵을 하나의 신호로 해석하기 시작한다.",
+    "action": "패턴을 명확히 할지, 중립을 유지할지 결정해야 한다."
+  },
+  "pattern_detection": [
+    "neutrality_masking",
+    "conflict_avoidance",
+    "truth_naming",
+    "abandonment_signal"
+  ],
+  "choices": [
+    {
+      "id": "A",
+      "label": "중립을 유지하고 어느 편도 들지 않는다",
+      "subtext": "공정함을 지키고 상황을 더 감정적으로 만들지 않는다.",
+      "axis": "Conflict",
+      "direction": "exit",
+      "pattern_family": "neutrality_masking",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-TRUTH-04_primary_A"
+    },
+    {
+      "id": "B",
+      "label": "의사와 어시스턴트 모두에게 패턴을 말한다",
+      "subtext": "불편함은 생기지만 침묵이 메시지가 되는 것을 막는다.",
+      "axis": "Truth",
+      "direction": "entry",
+      "pattern_family": "truth_naming",
+      "intensity": 5,
+      "dbChoiceId": "INCIDENT-01-TRUTH-04_primary_B"
+    },
+    {
+      "id": "C",
+      "label": "의사를 직접 confront하지 않고 어시스턴트를 따로 support한다",
+      "subtext": "팀이 들렸다고 느끼게 하면서 직접 갈등은 피할 수 있다.",
+      "axis": "Support",
+      "direction": "exit",
+      "pattern_family": "conflict_avoidance",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-TRUTH-04_primary_C"
+    },
+    {
+      "id": "D",
+      "label": "clinical leadership에게 의사와의 대화를 맡긴다",
+      "subtext": "이슈를 clinical lane에 두고 내 역할을 보호한다.",
+      "axis": "Authority",
+      "direction": "exit",
+      "pattern_family": "delegation_deflection",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-TRUTH-04_primary_D"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "당신이 중립을 유지하자 어시스턴트들은 아무것도 바뀌지 않을 것이라고 말하기 시작한다. 의사는 거리감을 느끼고 더 조심스러워진다. 이제 당신의 중립은 공정함이 아니라 부재로 읽힌다.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "감정이 가라앉을 때까지 중립을 유지한다",
+          "cost": "즉각적인 갈등은 피하지만 침묵은 더 무거워진다.",
+          "axis": "Time",
+          "direction": "exit",
+          "pattern_family": "neutrality_masking",
+          "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_A_X"
+        },
+        {
+          "id": "Y",
+          "label": "중립이 부재를 의미하지 않는다고 명확히 한다",
+          "cost": "피하려 했던 긴장 안으로 들어가야 한다.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_A_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "해석이 아니라, 다음에 실제로 무엇을 할 것인가.",
+        "context": "당신의 침묵이 갈등의 일부가 되었다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "24시간 안에 team burden, doctor pressure, next support step을 명확히 구분한 neutral but explicit message를 보낸다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "중립을 clarity로 바꾸고 있다."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-TRUTH-04_action_A_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "팀이 진정될 때까지 아무 말도 하지 않고 기다린다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Time",
+              "direction": "exit",
+              "pattern_family": "neutrality_masking",
+              "description": "침묵이 계속 이야기를 만들게 두고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-04_action_A_X_AD2"
+          }
+        ]
+      }
+    },
+    "B": {
+      "escalation_text": "패턴을 말하자 어시스턴트들은 몇 주 동안 자신들이 부담을 떠안았다고 말한다. 의사는 자신이 노출되었다고 느끼며 모두가 뒤에서 자신에 대해 이야기하고 있었던 것인지 묻는다.",
+      "pressure_increase": 0.7,
+      "intensity": 5,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "메시지를 부드럽게 낮추고 일반적인 teamwork language로 돌아간다",
+          "cost": "방 안은 더 안전해지지만 실제 패턴은 다시 흐려진다.",
+          "axis": "Conflict",
+          "direction": "exit",
+          "pattern_family": "conflict_avoidance",
+          "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_B_X"
+        },
+        {
+          "id": "Y",
+          "label": "프레임을 유지하고 burden, blame, support를 분리한다",
+          "cost": "양쪽의 불편함을 관리하면서 물러서지 않아야 한다.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_B_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "해석이 아니라, 다음에 실제로 무엇을 할 것인가.",
+        "context": "truth가 드러났지만 양쪽 모두 노출에 반응하고 있다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "24시간 안에 assistant burden, doctor support, leadership follow-up을 분리한 reset plan을 문서화한다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "패턴을 blame으로 바꾸지 않고 보이게 유지하고 있다."
+            },
+            "intensity": 5,
+            "dbChoiceId": "INCIDENT-01-TRUTH-04_action_B_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "무언가를 글로 남기기 전에 대화가 가라앉기를 기다린다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Time",
+              "direction": "exit",
+              "pattern_family": "future_deferral",
+              "description": "truth를 말한 뒤 visible follow-through를 미루고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-04_action_B_X_AD2"
+          }
+        ]
+      }
+    },
+    "C": {
+      "escalation_text": "어시스턴트들은 privately 들렸다고 느낀다. 하지만 의사는 팀이 자신에게 맞서 aligned 되어 있다고 느낀다. private support가 side channel이 되기 시작한다.",
+      "pressure_increase": 0.5,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "어시스턴트들을 계속 따로 support한다",
+          "cost": "팀과의 trust는 유지되지만 의사의 isolation은 깊어진다.",
+          "axis": "Support",
+          "direction": "exit",
+          "pattern_family": "conflict_avoidance",
+          "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_C_X"
+        },
+        {
+          "id": "Y",
+          "label": "private concern을 shared conversation으로 옮긴다",
+          "cost": "private channel의 안전함을 잃고 직접 긴장이 생길 수 있다.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_C_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "해석이 아니라, 다음에 실제로 무엇을 할 것인가.",
+        "context": "private support가 hidden alignment로 바뀌기 시작했다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "24시간 안에 private concerns를 clear boundaries가 있는 shared reset conversation으로 전환한다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "side-channel support에서 shared repair로 이동하고 있다."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-TRUTH-04_action_C_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "어시스턴트들이 공개적으로 말할 준비가 될 때까지 privately 계속 듣는다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Support",
+              "direction": "exit",
+              "pattern_family": "conflict_avoidance",
+              "description": "private safety는 유지하지만 hidden split은 커지게 두고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-04_action_C_X_AD2"
+          }
+        ]
+      }
+    },
+    "D": {
+      "escalation_text": "Clinical leadership은 의사와 이야기하겠다고 한다. 하지만 어시스턴트들은 여전히 매일의 부담을 경험한다. 의사는 leadership involvement를 escalation으로 받아들이고 오피스 팀에게 더 방어적으로 변한다.",
+      "pressure_increase": 0.5,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "clinical leadership이 대화를 완전히 own하게 둔다",
+          "cost": "clinical lane은 깨끗하게 유지되지만 local team dynamic은 관리되지 않는다.",
+          "axis": "Authority",
+          "direction": "exit",
+          "pattern_family": "delegation_deflection",
+          "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_D_X"
+        },
+        {
+          "id": "Y",
+          "label": "leadership과 협력하되 local team pattern은 내가 직접 말한다",
+          "cost": "이슈를 위로만 넘기지 않고 직접 들어가야 한다.",
+          "axis": "Ownership",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_D_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "해석이 아니라, 다음에 실제로 무엇을 할 것인가.",
+        "context": "leadership involvement가 local truth-telling을 대신하지는 않는다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "24시간 안에 clinical leadership과 조율하고 communication과 support에 대한 local reset plan을 팀에 보낸다",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "authority support를 사용하지만 local ownership은 버리지 않고 있다."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-TRUTH-04_action_D_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "clinical leadership이 의사와의 대화를 끝낼 때까지 기다린다",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Authority",
+              "direction": "exit",
+              "pattern_family": "delegation_deflection",
+              "description": "위로 escalation하는 것을 local action의 대체물로 사용하고 있다."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-04_action_D_X_AD2"
+          }
+        ]
+      }
+    }
+  }
+}

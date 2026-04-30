@@ -1,0 +1,320 @@
+{
+  "id": "core_07_repair_conversation",
+  "title": "The First Real Repair Conversation",
+  "role": "Office Manager",
+  "pressure": "You bring the doctor and assistants together after external exposure. Everyone carries a different interpretation. Assistants feel overburdened, the doctor feels judged, and trust is fragile. This is the first moment where the system can either reset or fracture further.",
+  "conversation_frame": {
+    "opening_position": "You must define what this conversation is for.",
+    "frame_options": [
+      "Emotional processing",
+      "Blame resolution",
+      "Structural reset"
+    ],
+    "hidden_risk": "If the frame is not defined, the loudest interpretation will take over."
+  },
+  "tradeoff": "Comfort vs Structural Repair",
+  "bty_tension_axis": "Comfort vs Truth vs Ownership",
+  "difficulty_level": 5,
+  "pattern_detection": [
+    "emotional_release_loop",
+    "truth_avoidance",
+    "defensiveness",
+    "ownership_conflict",
+    "structure_creation"
+  ],
+  "choices": [
+    {
+      "id": "A",
+      "label": "Let everyone speak freely",
+      "subtext": "Psychological safety first",
+      "direction": "exit",
+      "pattern_family": "emotional_release_loop"
+    },
+    {
+      "id": "B",
+      "label": "Define what actually happened",
+      "subtext": "Clarity before comfort",
+      "direction": "entry",
+      "pattern_family": "truth_naming"
+    },
+    {
+      "id": "C",
+      "label": "Focus only on moving forward",
+      "subtext": "Avoid past conflict",
+      "direction": "exit",
+      "pattern_family": "future_deferral"
+    },
+    {
+      "id": "D",
+      "label": "Let them resolve it themselves",
+      "subtext": "Avoid over-control",
+      "direction": "exit",
+      "pattern_family": "ownership_transfer"
+    }
+  ],
+  "deep_dynamics": {
+    "stage_1": "Statement",
+    "stage_2": "Interpretation Clash",
+    "stage_3": "Emotional Reaction",
+    "stage_4": "Ownership Conflict",
+    "stage_5": "Structure Formation or Collapse"
+  },
+  "escalationBranches": {
+    "A": {
+      "stage_flow": [
+        "You define what happened",
+        "Doctor reacts defensively",
+        "Assistants validate each other",
+        "Room splits into sides"
+      ],
+      "interpretation_clash": [
+        "Doctor: 'I wasn’t supported properly'",
+        "Assistants: 'We were covering for you'"
+      ],
+      "tension_point": "Who owns the problem?",
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Reduce tension and balance both sides",
+          "result": "Clarity weakens",
+          "direction": "exit",
+          "cost": "The conversation remains contained, but the relational gap stays unaddressed."
+        },
+        {
+          "id": "Y",
+          "label": "Separate system failure from individual blame",
+          "result": "Structure begins forming",
+          "direction": "entry",
+          "cost": "You risk discomfort and defensiveness by naming the repair need directly."
+        }
+      ],
+      "stage_2_escalation": {
+        "X": {
+          "outcome": "Conversation becomes safer but loses definition",
+          "risk": "Everyone leaves with their own version"
+        },
+        "Y": {
+          "outcome": "Tension increases but roles become clearer",
+          "risk": "Requires strong facilitation"
+        }
+      },
+      "action_decision": {
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Define system issue, role responsibility, and next step clearly",
+            "is_action_commitment": true,
+            "impact": "Structure created",
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Let conversation settle without defining structure",
+            "is_action_commitment": false,
+            "impact": "Pattern repeats",
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "prompt": "Choose the observable action.",
+        "context": ""
+      },
+      "escalation_text": "Escalation path A for core_07_repair_conversation."
+    },
+    "B": {
+      "stage_flow": [
+        "You define what happened",
+        "Doctor reacts defensively",
+        "Assistants validate each other",
+        "Room splits into sides"
+      ],
+      "interpretation_clash": [
+        "Doctor: 'I wasn’t supported properly'",
+        "Assistants: 'We were covering for you'"
+      ],
+      "tension_point": "Who owns the problem?",
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Reduce tension and balance both sides",
+          "result": "Clarity weakens",
+          "direction": "exit",
+          "cost": "The conversation remains contained, but the relational gap stays unaddressed."
+        },
+        {
+          "id": "Y",
+          "label": "Separate system failure from individual blame",
+          "result": "Structure begins forming",
+          "direction": "entry",
+          "cost": "You risk discomfort and defensiveness by naming the repair need directly."
+        }
+      ],
+      "stage_2_escalation": {
+        "X": {
+          "outcome": "Conversation becomes safer but loses definition",
+          "risk": "Everyone leaves with their own version"
+        },
+        "Y": {
+          "outcome": "Tension increases but roles become clearer",
+          "risk": "Requires strong facilitation"
+        }
+      },
+      "action_decision": {
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Define system issue, role responsibility, and next step clearly",
+            "is_action_commitment": true,
+            "impact": "Structure created",
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Let conversation settle without defining structure",
+            "is_action_commitment": false,
+            "impact": "Pattern repeats",
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "prompt": "Choose the observable action.",
+        "context": ""
+      },
+      "escalation_text": "Escalation path B for core_07_repair_conversation."
+    },
+    "C": {
+      "stage_flow": [
+        "You define what happened",
+        "Doctor reacts defensively",
+        "Assistants validate each other",
+        "Room splits into sides"
+      ],
+      "interpretation_clash": [
+        "Doctor: 'I wasn’t supported properly'",
+        "Assistants: 'We were covering for you'"
+      ],
+      "tension_point": "Who owns the problem?",
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Reduce tension and balance both sides",
+          "result": "Clarity weakens",
+          "direction": "exit",
+          "cost": "The conversation remains contained, but the relational gap stays unaddressed."
+        },
+        {
+          "id": "Y",
+          "label": "Separate system failure from individual blame",
+          "result": "Structure begins forming",
+          "direction": "entry",
+          "cost": "You risk discomfort and defensiveness by naming the repair need directly."
+        }
+      ],
+      "stage_2_escalation": {
+        "X": {
+          "outcome": "Conversation becomes safer but loses definition",
+          "risk": "Everyone leaves with their own version"
+        },
+        "Y": {
+          "outcome": "Tension increases but roles become clearer",
+          "risk": "Requires strong facilitation"
+        }
+      },
+      "action_decision": {
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Define system issue, role responsibility, and next step clearly",
+            "is_action_commitment": true,
+            "impact": "Structure created",
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Let conversation settle without defining structure",
+            "is_action_commitment": false,
+            "impact": "Pattern repeats",
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "prompt": "Choose the observable action.",
+        "context": ""
+      },
+      "escalation_text": "Escalation path C for core_07_repair_conversation."
+    },
+    "D": {
+      "stage_flow": [
+        "You define what happened",
+        "Doctor reacts defensively",
+        "Assistants validate each other",
+        "Room splits into sides"
+      ],
+      "interpretation_clash": [
+        "Doctor: 'I wasn’t supported properly'",
+        "Assistants: 'We were covering for you'"
+      ],
+      "tension_point": "Who owns the problem?",
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Reduce tension and balance both sides",
+          "result": "Clarity weakens",
+          "direction": "exit",
+          "cost": "The conversation remains contained, but the relational gap stays unaddressed."
+        },
+        {
+          "id": "Y",
+          "label": "Separate system failure from individual blame",
+          "result": "Structure begins forming",
+          "direction": "entry",
+          "cost": "You risk discomfort and defensiveness by naming the repair need directly."
+        }
+      ],
+      "stage_2_escalation": {
+        "X": {
+          "outcome": "Conversation becomes safer but loses definition",
+          "risk": "Everyone leaves with their own version"
+        },
+        "Y": {
+          "outcome": "Tension increases but roles become clearer",
+          "risk": "Requires strong facilitation"
+        }
+      },
+      "action_decision": {
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Define system issue, role responsibility, and next step clearly",
+            "is_action_commitment": true,
+            "impact": "Structure created",
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Let conversation settle without defining structure",
+            "is_action_commitment": false,
+            "impact": "Pattern repeats",
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "prompt": "Choose the observable action.",
+        "context": ""
+      },
+      "escalation_text": "Escalation path D for core_07_repair_conversation."
+    }
+  }
+}

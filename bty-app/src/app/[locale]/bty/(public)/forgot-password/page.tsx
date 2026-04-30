@@ -29,7 +29,7 @@ export default function ForgotPasswordClient() {
     setLoading(true);
     try {
       const supabase = getSupabase();
-      const redirectTo = `${typeof window !== "undefined" ? window.location.origin : ""}/${locale}/auth/reset-password`;
+      const redirectTo = `${typeof window !== "undefined" ? window.location.origin : ""}/en/reset-password`;
       const { error: err } = await supabase.auth.resetPasswordForEmail(em, { redirectTo });
       if (err) throw err;
       setSent(true);

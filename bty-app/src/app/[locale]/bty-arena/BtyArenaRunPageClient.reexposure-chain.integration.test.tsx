@@ -26,6 +26,15 @@ const REX_SCENARIO_ID = "reexposure_ix_non_chain";
 const PENDING_OUTCOME_ID = "pend-c5-chain-1";
 const RUN_ID = "run-c5-rex-1";
 
+type ValidateResponseShape = {
+  ok: true;
+  validation_result: "changed" | "unstable" | "no_change";
+  next_runtime_state?: "NEXT_SCENARIO_READY" | "REEXPOSURE_DUE";
+  re_exposure_clear_candidate?: boolean;
+  intervention_sensitivity_up?: boolean;
+  validation_payload?: Record<string, unknown>;
+};
+
 function jsonRes(data: unknown, status = 200): Response {
   const body = JSON.stringify(data);
   return {
@@ -54,6 +63,10 @@ const sessionReexposureBody = {
     due: true,
     scenario_id: REX_SCENARIO_ID,
     pending_outcome_id: PENDING_OUTCOME_ID,
+    incident_id: "INCIDENT-C5-CHAIN-1",
+    axis_group: "OWN",
+    axis_index: 1,
+    pattern_family: "deflection",
   },
 };
 
@@ -114,8 +127,17 @@ const mockEliteScenario: Scenario = {
 
 describe("BtyArenaRunPageClient — re-exposure → validate client chain", () => {
   const fetchMock = vi.fn();
+  let validateResponse: ValidateResponseShape;
 
   beforeEach(() => {
+    validateResponse = {
+      ok: true,
+      validation_result: "changed",
+      next_runtime_state: "NEXT_SCENARIO_READY",
+      re_exposure_clear_candidate: true,
+      intervention_sensitivity_up: false,
+      validation_payload: { validation_result: "changed" },
+    };
     vi.stubEnv("NEXT_PUBLIC_ARENA_PIPELINE_DEFAULT", "new");
     localStorage.clear();
     fetchMock.mockImplementation((input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -163,13 +185,7 @@ describe("BtyArenaRunPageClient — re-exposure → validate client chain", () =
       }
 
       if (url.includes("/api/arena/re-exposure/validate") && method === "POST") {
-        return Promise.resolve(
-          jsonRes({
-            ok: true,
-            validation_result: "changed",
-            validation_payload: { validation_result: "changed" },
-          }),
-        );
+        return Promise.resolve(jsonRes(validateResponse));
       }
 
       if (url.includes("/api/arena/lab/usage")) {
@@ -272,5 +288,7 @@ describe("BtyArenaRunPageClient — re-exposure → validate client chain", () =
     expect(body.pendingOutcomeId).toBe(PENDING_OUTCOME_ID);
     expect(body.runId).toBe(RUN_ID);
     expect(body.scenarioId).toBe(REX_SCENARIO_ID);
+    expect(screen.queryByTestId("arena-play-snapshot-reexposure")).toBeNull();
   });
+
 });

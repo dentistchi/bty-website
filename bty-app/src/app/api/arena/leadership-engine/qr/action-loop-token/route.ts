@@ -1,13 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logActionContractActorTrace } from "@/lib/bty/action-contract/arenaRunActor.server";
 import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
-import { signArenaActionLoopToken } from "@/lib/bty/leadership-engine/qr/arena-action-loop-token";
+import {
+  ARENA_ACTION_LOOP_TOKEN_MAX_AGE_MS,
+  signArenaActionLoopToken,
+} from "@/lib/bty/leadership-engine/qr/arena-action-loop-token";
 
 export const runtime = "nodejs";
 
+type ActionContractTokenRow = {
+  id: string;
+  user_id: string;
+  session_id?: string | null;
+  run_id?: string | null;
+  arena_session_id?: string | null;
+  status?: string | null;
+  validation_approved_at?: string | null;
+  verified_at?: string | null;
+};
+
 /**
  * POST /api/arena/leadership-engine/qr/action-loop-token
- * Body: { runId: string } — Arena run id tied to pending `bty_action_contracts.session_id`.
+ * Body: { runId?: string; contractId?: string } — resolve pending contract by session_id(run) or contract id.
  * Returns { token, url } for QR / deep link (My Page commit flow).
  */
 export async function POST(req: NextRequest) {
@@ -23,54 +37,93 @@ export async function POST(req: NextRequest) {
     return out;
   }
 
-  const runId = typeof body === "object" && body !== null && "runId" in body
-    ? (body as { runId?: unknown }).runId
-    : undefined;
-  const runIdStr = typeof runId === "string" ? runId.trim() : "";
+  const runIdInput =
+    typeof body === "object" && body !== null && "runId" in body
+      ? (body as { runId?: unknown }).runId
+      : undefined;
+  const contractIdInput =
+    typeof body === "object" && body !== null && "contractId" in body
+      ? (body as { contractId?: unknown }).contractId
+      : undefined;
+  const runIdStr = typeof runIdInput === "string" ? runIdInput.trim() : "";
+  const contractIdStr = typeof contractIdInput === "string" ? contractIdInput.trim() : "";
 
-  if (!runIdStr) {
-    const out = NextResponse.json({ error: "missing_run_id" }, { status: 400 });
+  if (!runIdStr && !contractIdStr) {
+    const out = NextResponse.json({ error: "missing_run_or_contract_id" }, { status: 400 });
     copyCookiesAndDebug(base, out, req, true);
     return out;
   }
 
-  let { data: contract } = await supabase
-    .from("bty_action_contracts")
-    .select("id, user_id, session_id, status, validation_approved_at, verified_at")
-    .eq("user_id", user.id)
-    .eq("session_id", runIdStr)
-    .eq("status", "pending")
-    .maybeSingle();
-
-  if (!contract) {
-    const second = await supabase
+  let contract: ActionContractTokenRow | null = null;
+  if (contractIdStr) {
+    const byId = await supabase
       .from("bty_action_contracts")
-      .select("id, user_id, session_id, status, validation_approved_at, verified_at")
+      .select("id, user_id, session_id, run_id, status, validation_approved_at, verified_at")
+      .eq("id", contractIdStr)
+      .maybeSingle();
+    contract = (byId.data as ActionContractTokenRow | null) ?? null;
+    if (!contract) {
+      const out = NextResponse.json({ error: "contract_not_found" }, { status: 404 });
+      copyCookiesAndDebug(base, out, req, true);
+      return out;
+    }
+  } else {
+    let byRun = await supabase
+      .from("bty_action_contracts")
+      .select("id, user_id, session_id, run_id, status, validation_approved_at, verified_at")
       .eq("user_id", user.id)
       .eq("session_id", runIdStr)
-      .eq("status", "approved")
-      .not("validation_approved_at", "is", null)
-      .is("verified_at", null)
+      .in("status", ["pending"])
       .maybeSingle();
-    contract = second.data;
+
+    if (!byRun.data) {
+      byRun = await supabase
+        .from("bty_action_contracts")
+        .select("id, user_id, session_id, run_id, status, validation_approved_at, verified_at")
+        .eq("user_id", user.id)
+        .eq("session_id", runIdStr)
+        .eq("status", "approved")
+        .not("validation_approved_at", "is", null)
+        .is("verified_at", null)
+        .maybeSingle();
+    }
+    contract = (byRun.data as ActionContractTokenRow | null) ?? null;
+    if (!contract) {
+      const out = NextResponse.json({ error: "no_pending_contract" }, { status: 409 });
+      copyCookiesAndDebug(base, out, req, true);
+      return out;
+    }
   }
 
-  if (!contract) {
-    const out = NextResponse.json({ error: "no_pending_contract" }, { status: 409 });
-    copyCookiesAndDebug(base, out, req, true);
-    return out;
-  }
-
-  const contractUserId = String((contract as { user_id?: string }).user_id ?? "");
+  const contractUserId = String(contract.user_id ?? "");
   if (!contractUserId || contractUserId !== user.id) {
     const out = NextResponse.json({ error: "contract_user_mismatch" }, { status: 403 });
     copyCookiesAndDebug(base, out, req, true);
     return out;
   }
 
+  const status = String(contract.status ?? "");
+  const approvedAwaiting =
+    (status === "approved" || status === "submitted") &&
+    contract.validation_approved_at != null &&
+    contract.verified_at == null;
+  if (status !== "pending" && !approvedAwaiting) {
+    const out = NextResponse.json({ error: "contract_not_pending" }, { status: 409 });
+    copyCookiesAndDebug(base, out, req, true);
+    return out;
+  }
+
+  const resolvedRunId =
+    String(contract.session_id ?? "").trim() ||
+    String(contract.arena_session_id ?? "").trim() ||
+    String(contract.run_id ?? "").trim() ||
+    runIdStr ||
+    null;
+  const tokenSessionId = resolvedRunId ?? `contract:${contract.id}`;
+
   logActionContractActorTrace("action_loop_token", {
     incoming_actor_user_id: user.id,
-    source_run_id: runIdStr,
+    source_run_id: tokenSessionId,
     resolved_auth_user_id: user.id,
     contract_user_id: contractUserId,
   });
@@ -78,9 +131,9 @@ export async function POST(req: NextRequest) {
   let token: string;
   try {
     token = signArenaActionLoopToken({
-      sessionId: runIdStr,
+      sessionId: tokenSessionId,
       userId: contractUserId,
-      actionId: `arena_action_loop:${runIdStr}`,
+      actionId: resolvedRunId ? `arena_action_loop:${resolvedRunId}` : `arena_action_loop:contract:${contract.id}`,
       issuedAt: Date.now(),
       contractId: contract.id,
     });
@@ -90,7 +143,7 @@ export async function POST(req: NextRequest) {
       {
         error: err instanceof Error ? err.message : String(err),
         stack: err instanceof Error ? err.stack : undefined,
-        runId: runIdStr,
+        runId: tokenSessionId,
         userId: user.id,
         hasSecret: !!process.env.ARENA_ACTION_LOOP_QR_SECRET,
         hasCronSecret: !!process.env.CRON_SECRET,
@@ -110,7 +163,16 @@ export async function POST(req: NextRequest) {
     `?arena_action_loop=commit` +
     `&aalo=${encodeURIComponent(token)}`;
 
-  const res = NextResponse.json({ token, url });
+  const expiresAt = new Date(Date.now() + ARENA_ACTION_LOOP_TOKEN_MAX_AGE_MS).toISOString();
+  const res = NextResponse.json({
+    ok: true,
+    token,
+    url,
+    qrUrl: url,
+    contractId: contract.id,
+    runId: resolvedRunId,
+    expiresAt,
+  });
   copyCookiesAndDebug(base, res, req, true);
   return res;
 }

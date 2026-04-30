@@ -30,14 +30,12 @@ vi.mock("@/lib/bty/arena/blockingArenaActionContract", () => ({
   fetchBlockingArenaContractForSession: (...args: unknown[]) => mockFetchBlocking(...args),
 }));
 
+const mockFetchFirstDueNoChangeReexposureMeta = vi.fn();
 vi.mock("@/engine/scenario/delayed-outcome-trigger.service", async (importOriginal) => {
   const mod = await importOriginal<typeof import("@/engine/scenario/delayed-outcome-trigger.service")>();
   return {
     ...mod,
-    fetchFirstDueReexposureMeta: vi.fn().mockResolvedValue({
-      scenarioId: "core_01_training_system",
-      pendingOutcomeId: "pending-out-1",
-    }),
+    fetchFirstDueNoChangeReexposureMeta: (...args: unknown[]) => mockFetchFirstDueNoChangeReexposureMeta(...args),
   };
 });
 
@@ -89,6 +87,7 @@ describe("GET /api/arena/n/session", () => {
       firstTriggerId: null,
       triggers: [],
     });
+    mockFetchFirstDueNoChangeReexposureMeta.mockResolvedValue(null);
   });
 
   it("returns 403 when ARENA_PIPELINE_DEFAULT=legacy", async () => {
@@ -125,12 +124,39 @@ describe("GET /api/arena/n/session", () => {
     expect(data.scenario?.source).toBe("json");
   });
 
+  it("does not return 409 when blocking row status is submitted", async () => {
+    const { from } = makeSupabaseForSessionRouter();
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: { from },
+      base: {},
+    });
+    mockFetchBlocking.mockResolvedValue({
+      id: "c1",
+      contract_description: "already submitted",
+      deadline_at: new Date(Date.now() + 60_000).toISOString(),
+      verification_mode: "qr",
+      created_at: new Date().toISOString(),
+      status: "submitted",
+    });
+    const req = new NextRequest("http://localhost/api/arena/n/session?locale=en");
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.error).not.toBe("action_contract_pending");
+    expect(data.runtime_state).toBe("ARENA_SCENARIO_READY");
+  });
+
   it("returns REEXPOSURE_DUE when delayed outcomes pending", async () => {
     const { from } = makeSupabaseForSessionRouter();
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
       supabase: { from },
       base: {},
+    });
+    mockFetchFirstDueNoChangeReexposureMeta.mockResolvedValue({
+      scenarioId: "core_01_training_system",
+      pendingOutcomeId: "pending-out-1",
     });
     mockGetNextScenarioForSession.mockResolvedValue({
       scenario: { scenarioId: "s1", title: "T", context: "C", choices: [] },
@@ -149,6 +175,28 @@ describe("GET /api/arena/n/session", () => {
       scenario_id: "core_01_training_system",
       pending_outcome_id: "pending-out-1",
     });
+  });
+
+  it("returns catalog scenario when router reports delayed pending but no no_change_reexposure row", async () => {
+    const { from } = makeSupabaseForSessionRouter();
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: { from },
+      base: {},
+    });
+    mockGetNextScenarioForSession.mockResolvedValue({
+      scenario: { scenarioId: "s1", title: "T", context: "C", choices: [] },
+      route: "catalog",
+      delayedOutcomePending: true,
+    });
+    mockFetchFirstDueNoChangeReexposureMeta.mockResolvedValue(null);
+    const req = new NextRequest("http://localhost/api/arena/n/session?locale=en");
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.runtime_state).toBe("ARENA_SCENARIO_READY");
+    expect(data.delayedOutcomePending).toBe(false);
+    expect(data.scenario?.scenarioId).toBe("s1");
   });
 
   it("returns FORCED_RESET_PENDING when LE stage 4 with forced_reset_triggered_at", async () => {

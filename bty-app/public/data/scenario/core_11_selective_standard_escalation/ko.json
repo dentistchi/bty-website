@@ -1,0 +1,277 @@
+{
+  "id": "core_11_selective_standard_escalation",
+  "title": "이건 중립이 아니다",
+  "role": "Associate Dentist",
+  "pressure": "이제 패턴이 보이기 시작한다. 같은 행동인데 사람에 따라 결과가 다르다. 어떤 assistant는 바로 지적받고, 어떤 assistant는 넘어간다. 어떤 doctor는 delay가 문제되지 않고, 어떤 doctor는 질문을 받는다. 처음에는 우연처럼 보였지만, 이제는 반복된다. 누구도 이것을 명확하게 말하지 않는다. 시스템은 돌아가지만, 기준은 흔들리고 있다.",
+  "tradeoff": "편안함을 유지할 것인가, 공정성에 대한 나의 기준을 정의할 것인가.",
+  "bty_tension_axis": "belonging_vs_fairness",
+  "axis_primary": "truth",
+  "axis_secondary": "belonging",
+  "difficulty_level": "final_full_density",
+  "incident": {
+    "incidentId": "incident_02",
+    "incidentStage": "pattern recognition",
+    "sequencePosition": 11,
+    "previousScenarioId": "core_10_initial_inconsistency",
+    "nextScenarioId": "core_12_silence_normalization",
+    "roleShift": "from observer to internal judge",
+    "propagation": {
+      "exitEffect": "associate는 시스템에 적응하기 시작한다.",
+      "entryEffect": "associate는 시스템과 분리된 개인 기준을 만든다.",
+      "reExposureNote": "이 기준이 행동으로 이어질지 계속 테스트된다."
+    }
+  },
+  "action_contract": {
+    "description": "하나의 불일치 패턴을 명확히 정의하고 공정성 기준으로 변환한다.",
+    "time_window_hours": 48
+  },
+  "AIR_logic": {
+    "success": "공정성이 구체적인 사례로 정의된다.",
+    "miss": "막연한 불만으로 남는다."
+  },
+  "forced_reset": {
+    "trigger": "누군가 '여긴 원래 그래'라고 말한다.",
+    "action": "두 사례를 비교해 왜 결과가 달랐는지 말한다."
+  },
+  "pattern_detection": {
+    "selective_enforcement": "사람에 따라 기준이 다르게 적용된다.",
+    "fairness_violation": "같은 행동이 다른 결과를 만든다.",
+    "internal_split": "내 기준과 시스템 사이의 긴장",
+    "silent_resistance": "불만은 있지만 구조화되지 않는다."
+  },
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "당신은 사람에 따라 다르게 행동하기 시작한다.",
+      "pressure_increase": "기준이 아니라 상황이 행동을 결정한다.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "나의 기준은 무엇인가?",
+        "context": "정의하지 않으면 시스템이 대신 정의한다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "48시간 안에 두 사례를 비교해 공정 기준을 정의한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "그때그때 맞춰 행동한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "완전히 적응한다",
+          "cost": "내 기준이 사라진다.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "system_adaptation"
+        },
+        {
+          "id": "Y",
+          "label": "공정성을 다시 정의한다",
+          "cost": "내부 갈등 증가",
+          "axis": "truth",
+          "direction": "entry",
+          "pattern_family": "fairness_definition"
+        }
+      ]
+    },
+    "B": {
+      "escalation_text": "당신은 사람에 따라 다르게 행동하기 시작한다.",
+      "pressure_increase": "기준이 아니라 상황이 행동을 결정한다.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "나의 기준은 무엇인가?",
+        "context": "정의하지 않으면 시스템이 대신 정의한다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "48시간 안에 두 사례를 비교해 공정 기준을 정의한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "그때그때 맞춰 행동한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "완전히 적응한다",
+          "cost": "내 기준이 사라진다.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "system_adaptation"
+        },
+        {
+          "id": "Y",
+          "label": "공정성을 다시 정의한다",
+          "cost": "내부 갈등 증가",
+          "axis": "truth",
+          "direction": "entry",
+          "pattern_family": "fairness_definition"
+        }
+      ]
+    },
+    "C": {
+      "escalation_text": "당신은 사람에 따라 다르게 행동하기 시작한다.",
+      "pressure_increase": "기준이 아니라 상황이 행동을 결정한다.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "나의 기준은 무엇인가?",
+        "context": "정의하지 않으면 시스템이 대신 정의한다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "48시간 안에 두 사례를 비교해 공정 기준을 정의한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "그때그때 맞춰 행동한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "완전히 적응한다",
+          "cost": "내 기준이 사라진다.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "system_adaptation"
+        },
+        {
+          "id": "Y",
+          "label": "공정성을 다시 정의한다",
+          "cost": "내부 갈등 증가",
+          "axis": "truth",
+          "direction": "entry",
+          "pattern_family": "fairness_definition"
+        }
+      ]
+    },
+    "D": {
+      "escalation_text": "당신은 사람에 따라 다르게 행동하기 시작한다.",
+      "pressure_increase": "기준이 아니라 상황이 행동을 결정한다.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "나의 기준은 무엇인가?",
+        "context": "정의하지 않으면 시스템이 대신 정의한다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "48시간 안에 두 사례를 비교해 공정 기준을 정의한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "그때그때 맞춰 행동한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "완전히 적응한다",
+          "cost": "내 기준이 사라진다.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "system_adaptation"
+        },
+        {
+          "id": "Y",
+          "label": "공정성을 다시 정의한다",
+          "cost": "내부 갈등 증가",
+          "axis": "truth",
+          "direction": "entry",
+          "pattern_family": "fairness_definition"
+        }
+      ]
+    }
+  },
+  "ending_identity_choice": {
+    "prompt": "불일치를 봤을 때 나는 어떤 사람이 되는가?",
+    "choices": [
+      {
+        "id": "SYS1",
+        "label": "시스템에 적응하는 사람",
+        "direction": "exit"
+      },
+      {
+        "id": "SYS2",
+        "label": "기준을 정의하는 사람",
+        "direction": "entry"
+      }
+    ]
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "현실로 받아들인다",
+      "subtext": "갈등을 피할 수 있다.",
+      "axis": "belonging",
+      "direction": "exit",
+      "pattern_family": "selective_enforcement",
+      "intensity": 5
+    },
+    {
+      "id": "B",
+      "label": "명확히 불공정하다고 정의한다",
+      "subtext": "내부 긴장이 증가한다.",
+      "axis": "truth",
+      "direction": "entry",
+      "pattern_family": "fairness_definition",
+      "intensity": 6
+    },
+    {
+      "id": "C",
+      "label": "감정을 분리하고 일만 한다",
+      "subtext": "스트레스가 줄어든다.",
+      "axis": "belonging",
+      "direction": "exit",
+      "pattern_family": "avoidance_behavior",
+      "intensity": 4
+    },
+    {
+      "id": "D",
+      "label": "시스템에 맞게 행동을 조정한다",
+      "subtext": "효율적으로 느껴진다.",
+      "axis": "truth",
+      "direction": "exit",
+      "pattern_family": "adaptive_alignment",
+      "intensity": 6
+    }
+  ]
+}

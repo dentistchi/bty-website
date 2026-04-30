@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, Fragment } from "react";
-import Link from "next/link";
+
 import { useParams } from "next/navigation";
 import { fetchJson } from "@/lib/read-json";
 import { safeParse } from "@/lib/safeParse";
@@ -221,12 +221,7 @@ export default function DebugPage() {
           <h1 className="text-2xl font-semibold text-neutral-900">{t.title}</h1>
           <p className="mt-1 text-sm text-neutral-600">{t.subtitle}</p>
         </div>
-        <Link
-          href={`/${locale}/admin/quality`}
-          className="text-sm text-neutral-600 hover:text-neutral-900 underline"
-        >
-          {t.qualityNav}
-        </Link>
+
       </div>
 
       <div className="space-y-6">

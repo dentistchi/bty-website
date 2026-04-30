@@ -1,0 +1,150 @@
+{
+  "scenarioId": "core_18_identity_integrity_choice",
+  "dbScenarioId": "INCIDENT-02-REPAIR-18",
+  "engineType": "identity_integrity_engine",
+  "engineRef": "identity_integrity_engine_v1",
+  "incident": {
+    "incidentId": "incident_02_integrity_and_fairness_breakdown",
+    "stage": 9,
+    "axisGroup": "Repair",
+    "axisIndex": 3,
+    "previousScenarioId": "core_17_lead_assistant_repair",
+    "nextScenarioId": null,
+    "roleShift": "Lead Assistant -> Self",
+    "propagation": {
+      "exitEffect": "The repair remains procedural and the user adapts to the system without defining an integrity identity.",
+      "entryEffect": "The user converts the fairness breakdown into a personal integrity standard for future system pressure.",
+      "reExposureNote": "If avoided, the same pattern returns as quiet adaptation, selective silence, or identity drift under unfair systems."
+    }
+  },
+  "identity_integrity_engine": {
+    "type": "identity_choice_after_fairness_breakdown",
+    "core_loop": [
+      "system_repair_attempted",
+      "personal_cost_remembered",
+      "identity_pressure",
+      "integrity_standard_definition",
+      "future_system_test"
+    ],
+    "failure_modes": [
+      "procedural_compliance",
+      "private_cynicism",
+      "adaptive_silence",
+      "identity_drift",
+      "values_without_behavior"
+    ],
+    "success_condition": "the user defines a visible integrity standard that survives future unfairness, silence, and social pressure"
+  },
+  "structure": {
+    "primary": [
+      {
+        "choiceId": "A",
+        "dbChoiceId": "INCIDENT-02-REPAIR-18_primary_A"
+      },
+      {
+        "choiceId": "B",
+        "dbChoiceId": "INCIDENT-02-REPAIR-18_primary_B"
+      },
+      {
+        "choiceId": "C",
+        "dbChoiceId": "INCIDENT-02-REPAIR-18_primary_C"
+      },
+      {
+        "choiceId": "D",
+        "dbChoiceId": "INCIDENT-02-REPAIR-18_primary_D"
+      }
+    ],
+    "tradeoff": {
+      "A": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-REPAIR-18_tradeoff_A_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-REPAIR-18_tradeoff_A_Y"
+        }
+      ],
+      "B": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-REPAIR-18_tradeoff_B_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-REPAIR-18_tradeoff_B_Y"
+        }
+      ],
+      "C": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-REPAIR-18_tradeoff_C_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-REPAIR-18_tradeoff_C_Y"
+        }
+      ],
+      "D": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "INCIDENT-02-REPAIR-18_tradeoff_D_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "INCIDENT-02-REPAIR-18_tradeoff_D_Y"
+        }
+      ]
+    },
+    "action_decision": {
+      "A_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-REPAIR-18_action_A_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-REPAIR-18_action_A_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "B_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-REPAIR-18_action_B_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-REPAIR-18_action_B_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "C_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-REPAIR-18_action_C_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-REPAIR-18_action_C_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "D_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "INCIDENT-02-REPAIR-18_action_D_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "INCIDENT-02-REPAIR-18_action_D_X_AD2",
+          "is_action_commitment": false
+        }
+      ]
+    }
+  }
+}

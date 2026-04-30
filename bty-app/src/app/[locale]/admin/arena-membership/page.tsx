@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, Fragment } from "react";
-import Link from "next/link";
+
 import { useParams } from "next/navigation";
 import { EmptyState, LoadingFallback, CardSkeleton } from "@/components/bty-arena";
 import { getMessages } from "@/lib/i18n";
@@ -85,9 +85,7 @@ export default function AdminArenaMembershipPage() {
             pending 요청을 검토한 뒤 승인합니다. 승인 시 해당 유저의 tenure(입사일·리더시작일)가 반영됩니다.
           </p>
         </div>
-        <Link href={`${a}/debug`} className="text-sm text-neutral-600 underline hover:text-neutral-900">
-          디버깅
-        </Link>
+
       </div>
 
       <div className="rounded border border-neutral-200 bg-white p-6 shadow-sm">
@@ -161,33 +159,7 @@ export default function AdminArenaMembershipPage() {
         )}
       </div>
 
-      <div className="mt-4 rounded border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
-        <p>
-          <Link href={`${a}/users`} className="hover:text-neutral-900 underline">
-            사용자 관리
-          </Link>
-          {" · "}
-          <Link href={`${a}/organizations`} className="hover:text-neutral-900 underline">
-            조직
-          </Link>
-          {" · "}
-          <Link href={`${a}/arena-membership`} className="hover:text-neutral-900 underline">
-            Arena 멤버십 승인
-          </Link>
-          {" · "}
-          <Link href={`${a}/sql-migrations`} className="hover:text-neutral-900 underline">
-            SQL 복사
-          </Link>
-          {" · "}
-          <Link href={`${a}/debug`} className="hover:text-neutral-900 underline">
-            디버깅
-          </Link>
-          {" · "}
-          <Link href={`${a}/quality`} className="hover:text-neutral-900 underline">
-            Quality
-          </Link>
-        </p>
-      </div>
+
     </main>
   );
 }

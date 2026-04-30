@@ -1,0 +1,277 @@
+{
+  "id": "core_12_silence_normalization",
+  "title": "아무도 말하지 않는다",
+  "role": "Associate Dentist",
+  "pressure": "오피스 안의 모든 사람이 그 불일치를 이미 보고 있다. 어떤 assistant에게는 엄격한 기준이 적용되고, 리더십과 가까운 사람에게는 더 느슨한 기준이 적용된다. doctor들도 알고 있고, assistant들도 알고 있고, front desk도 안다. 하지만 아무도 직접적으로 말하지 않는다. 리더십이 지나가면 대화의 톤이 가벼워지고, 농담으로 흐려진다. 서로 눈치를 주고받지만 다시 일로 돌아간다. 스케줄은 꽉 차 있고, 환자는 기다리고 있으며, 말을 꺼내는 순간 ‘어려운 사람’으로 보일 수 있다. 모두가 알고 있지만 아무도 말하지 않기 때문에 시스템은 그대로 유지된다.",
+  "tradeoff": "침묵으로 안전을 지킬 것인가, 현실을 말하는 비용을 감수할 것인가.",
+  "bty_tension_axis": "expression_vs_self_preservation",
+  "axis_primary": "truth",
+  "axis_secondary": "belonging",
+  "difficulty_level": "final_full_density",
+  "incident": {
+    "incidentId": "incident_02",
+    "incidentStage": "truth entry",
+    "sequencePosition": 12,
+    "previousScenarioId": "core_11_pattern_visibility",
+    "nextScenarioId": "core_13_cost_of_speaking",
+    "roleShift": "from passive observer to truth participant",
+    "propagation": {
+      "exitEffect": "침묵이 오피스의 기본 행동으로 자리 잡고, 불일치는 점점 더 말하기 어려운 것이 된다.",
+      "entryEffect": "associate는 개인의 안전과 진실에 대한 책임을 분리하기 시작한다.",
+      "reExposureNote": "이후 상황들은 이 인식이 행동으로 이어지는지, 아니면 불편한 자각으로 남는지를 반복적으로 드러낸다."
+    }
+  },
+  "action_contract": {
+    "description": "침묵이 시스템에서 어떤 역할을 하는지 명확히 하고, 침묵이 중립이 아님을 보여주는 하나의 관찰 가능한 행동을 취한다.",
+    "time_window_hours": 48
+  },
+  "AIR_logic": {
+    "success": "associate가 침묵을 참여로 인식하고, 작지만 구체적인 행동을 취한다.",
+    "miss": "인식은 생겼지만 행동으로 이어지지 않고, 침묵이 계속 안전한 선택으로 유지된다."
+  },
+  "forced_reset": {
+    "trigger": "누군가 '다들 알지만 굳이 건드릴 필요는 없잖아'라고 말한다.",
+    "action": "침묵이 무엇을 보호하고 무엇을 허용하는지 말하고, 내가 취할 다음 행동을 구체적으로 정의한다."
+  },
+  "pattern_detection": {
+    "silence_normalization": "반복된 침묵이 회피를 프로페셔널함처럼 보이게 만든다.",
+    "avoidance_behavior": "바쁨, 타이밍, 역할을 이유로 현실을 말하는 것을 미룬다.",
+    "group_conformity": "다른 doctor나 senior가 먼저 말하기를 기다린다.",
+    "reality_distortion": "불일치를 ‘이 오피스는 원래 이런 곳’으로 받아들이기 시작한다."
+  },
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "당신의 침묵은 다른 사람들의 침묵과 섞인다. 며칠 뒤, 더 작은 실수에 대해 더 강한 피드백을 받는 assistant가 나온다. 이번에는 아무도 눈치도 주고받지 않는다.",
+      "pressure_increase": "침묵은 이제 선택이 아니라 기본 반응이 된다.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "침묵이 동의가 되지 않게 하기 위해 48시간 안에 무엇을 할 것인가?",
+        "context": "오피스는 점점 ‘조용한 것’이 안전하다는 신호를 학습하고 있다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "48시간 안에 두 가지 구체적인 불일치 사례를 정리하고, 한 명의 리더에게 private clarification을 요청한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "문제가 더 커질 때까지 기다린다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "지금 말하면 더 어색해질 것 같으니 계속 침묵한다",
+          "cost": "시간이 지날수록 말을 꺼내기 더 어려워진다.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "silence_normalization"
+        },
+        {
+          "id": "Y",
+          "label": "패턴을 정리하고 private하게 clarification을 요청한다",
+          "cost": "불일치를 본 사람으로 드러난다.",
+          "axis": "truth",
+          "direction": "entry",
+          "pattern_family": "truth_entry"
+        }
+      ]
+    },
+    "B": {
+      "escalation_text": "침묵이 시스템이라는 것을 인식하는 순간, 당신의 위치가 바뀐다. 점심시간에 다른 associate가 '여긴 원래 그래'라고 농담한다. 웃음 속에서 그 말이 기준처럼 자리 잡는다.",
+      "pressure_increase": "이제 선택해야 한다. 내부에 남길 것인가, 외부로 드러낼 것인가.",
+      "intensity": 6,
+      "action_decision": {
+        "prompt": "침묵이 참여라면, 48시간 안에 나는 어떤 역할을 선택할 것인가?",
+        "context": "드라마틱한 confrontation이 아니라, 작은 방향 전환이 필요한 순간이다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "48시간 안에 신뢰하는 리더 한 명에게 '이 침묵이 동의처럼 보일까봐 나는 말을 해야 할 것 같다'라고 전달한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "더 안전한 타이밍이 올 때까지 기다린다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "불편하지만 그냥 넘긴다",
+          "cost": "인식은 있지만 행동은 없다.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "avoidance_behavior"
+        },
+        {
+          "id": "Y",
+          "label": "가볍지만 명확하게 입장을 말한다",
+          "cost": "분위기를 깨는 사람으로 보일 수 있다.",
+          "axis": "truth",
+          "direction": "entry",
+          "pattern_family": "truth_expression"
+        }
+      ]
+    },
+    "C": {
+      "escalation_text": "senior는 manager와의 갈등을 피하려고 말하지 않는다. manager는 doctor들이 괜찮다고 생각한다고 가정한다.",
+      "pressure_increase": "위로 넘긴 책임이 다시 아래로 돌아온다.",
+      "intensity": 5,
+      "action_decision": {
+        "prompt": "기다리는 대신 48시간 안에 무엇을 할 것인가?",
+        "context": "전체를 바꾸지 못해도, 내가 본 사실은 말할 수 있다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "48시간 안에 내가 직접 본 한 가지 사례를 특정해서 senior나 manager에게 전달한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "위에서 해결되기를 계속 기다린다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "그래도 내 역할이 아니라고 생각한다",
+          "cost": "역할이 책임 회피의 이유가 된다.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "group_conformity"
+        },
+        {
+          "id": "Y",
+          "label": "내가 직접 본 부분 하나에 대해서만 말한다",
+          "cost": "더 이상 숨을 수 없다.",
+          "axis": "truth",
+          "direction": "entry",
+          "pattern_family": "role_ownership"
+        }
+      ]
+    },
+    "D": {
+      "escalation_text": "적응이 시작된다. 불편함이 줄어든다. 새로운 assistant가 묻는다. '이게 원래 이렇게 하는 건가요?' 그리고 당신은 말한다. '적응하면 괜찮아요.'",
+      "pressure_increase": "이제 당신이 패턴을 전달하는 사람이 된다.",
+      "intensity": 7,
+      "action_decision": {
+        "prompt": "왜곡을 전달하지 않기 위해 48시간 안에 무엇을 할 것인가?",
+        "context": "지금 이 순간이 다음 사람의 기준이 된다.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "48시간 안에 해당 assistant에게 다시 가서 '적응 문제가 아니라 기준이 불일치한 부분이 있다'고 정정하고 clarification을 요청하겠다고 말한다.",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "시간이 지나면 자연스럽게 이해할 것이라 생각한다.",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ]
+      },
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "적응이 필요하다고 계속 말한다",
+          "cost": "패턴을 다음 사람에게 넘긴다.",
+          "axis": "belonging",
+          "direction": "exit",
+          "pattern_family": "reality_distortion"
+        },
+        {
+          "id": "Y",
+          "label": "방금 말한 것을 수정한다",
+          "cost": "이미 한 말을 뒤집어야 한다.",
+          "axis": "truth",
+          "direction": "entry",
+          "pattern_family": "reality_reclaiming"
+        }
+      ]
+    }
+  },
+  "ending_identity_choice": {
+    "prompt": "모두가 알고 있지만 아무도 말하지 않을 때, 나의 침묵은 무엇이 되는가?",
+    "choices": [
+      {
+        "id": "SYS1",
+        "label": "시스템을 유지시키는 안전한 선택",
+        "direction": "exit"
+      },
+      {
+        "id": "SYS2",
+        "label": "동의가 되기 전에 끊어야 하는 신호",
+        "direction": "entry"
+      }
+    ]
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "아무 말도 하지 않고 일을 계속한다",
+      "subtext": "바쁘고 누구도 직접 의견을 묻지 않았기 때문에 안전하게 느껴진다.",
+      "axis": "belonging",
+      "direction": "exit",
+      "pattern_family": "silence_normalization",
+      "intensity": 5
+    },
+    {
+      "id": "B",
+      "label": "침묵이 시스템의 일부라는 것을 스스로 인정한다",
+      "subtext": "정직하지만 여전히 안전하다. 아직 밖으로 드러나지 않는다.",
+      "axis": "truth",
+      "direction": "entry",
+      "pattern_family": "truth_recognition",
+      "intensity": 5
+    },
+    {
+      "id": "C",
+      "label": "senior doctor나 manager가 먼저 말하기를 기다린다",
+      "subtext": "associate로서 적절한 태도처럼 느껴진다.",
+      "axis": "belonging",
+      "direction": "exit",
+      "pattern_family": "group_conformity",
+      "intensity": 4
+    },
+    {
+      "id": "D",
+      "label": "이건 원래 이런 곳이라고 스스로 납득한다",
+      "subtext": "불편함이 줄어들고 하루를 버티기 쉬워진다.",
+      "axis": "truth",
+      "direction": "exit",
+      "pattern_family": "reality_distortion",
+      "intensity": 6
+    }
+  ]
+}

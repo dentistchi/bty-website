@@ -1,0 +1,239 @@
+{
+  "id": "core_15_system_exposure",
+  "title": "This Can’t Stay Internal",
+  "role": "Associate Dentist",
+  "pressure": "A patient files a formal complaint. They explicitly point out that two doctors recommended completely different treatments for the same condition. The patient questions the integrity of the entire office. This is no longer internal inconsistency — this is external credibility damage. The case may escalate beyond the office if not handled correctly.",
+  "time_pressure": "Immediate response required (same day)",
+  "risk_layer": [
+    "patient trust breakdown",
+    "legal exposure",
+    "reputation damage",
+    "team credibility collapse"
+  ],
+  "tradeoff": "Protect the office vs face the truth of the system",
+  "bty_tension_axis": "Reputation vs Integrity",
+  "difficulty_level": 5,
+  "pattern_detection": [
+    "system_exposure",
+    "inconsistency_visible",
+    "external_risk",
+    "accountability_conflict"
+  ],
+  "decision_context": {
+    "what_changed": "The issue is now visible to the outside",
+    "what_is_at_stake": "Trust, liability, and long-term credibility",
+    "what_is_no_longer_possible": "Treating this as internal noise"
+  },
+  "choices": [
+    {
+      "id": "A",
+      "label": "Frame it as a misunderstanding",
+      "subtext": "Protect the office narrative",
+      "direction": "exit"
+    },
+    {
+      "id": "B",
+      "label": "Acknowledge inconsistency as a system issue",
+      "subtext": "Risk exposure to preserve integrity",
+      "direction": "entry"
+    },
+    {
+      "id": "C",
+      "label": "Focus on resolving the patient only",
+      "subtext": "Contain the situation quickly",
+      "direction": "exit"
+    },
+    {
+      "id": "D",
+      "label": "Identify a responsible individual",
+      "subtext": "Create closure through accountability",
+      "direction": "exit"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "Calling it a misunderstanding reduces immediate pressure. But the inconsistency remains unaddressed. If another case surfaces, the explanation becomes less credible.",
+      "pressure_increase": 0.8,
+      "intensity": 4,
+      "identity_clash": [
+        "We need to protect the office",
+        "But the inconsistency is real",
+        "If we deny it, we are reinforcing it"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Maintain the narrative",
+          "direction": "exit",
+          "cost": "Short-term credibility holds while inconsistent practice stays invisible until the next complaint surfaces."
+        },
+        {
+          "id": "Y",
+          "label": "Re-examine internal consistency",
+          "direction": "entry",
+          "cost": "You invite internal scrutiny that may surface uncomfortable truths before the organization feels ready."
+        }
+      ],
+      "action_decision": {
+        "prompt": "If this repeats, what breaks first?",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Audit similar treatment decisions across providers",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Close this case as isolated",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "B": {
+      "escalation_text": "Acknowledging the issue increases short-term risk. It may expose internal inconsistency. But it is the only path that allows structural correction.",
+      "pressure_increase": 1,
+      "intensity": 5,
+      "identity_clash": [
+        "This could damage the office",
+        "But this is the real issue",
+        "If we don’t face it now, it will escalate again"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep acknowledgment internal",
+          "direction": "exit",
+          "cost": "You absorb reputational risk privately while patients and staff still see mixed external signals."
+        },
+        {
+          "id": "Y",
+          "label": "Define and escalate system inconsistency",
+          "direction": "entry",
+          "cost": "You widen visibility of dysfunction and may accelerate scrutiny before mitigation plans exist."
+        }
+      ],
+      "action_decision": {
+        "prompt": "If this is systemic, what must change?",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Map treatment decision inconsistencies across providers",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Handle case without system review",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "C": {
+      "escalation_text": "The patient may be satisfied, but the system remains unchanged. The same issue is likely to reappear with another patient.",
+      "pressure_increase": 0.7,
+      "intensity": 3,
+      "identity_clash": [
+        "We solved the immediate problem",
+        "But nothing actually changed",
+        "This will likely happen again"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Prioritize resolution speed",
+          "direction": "exit",
+          "cost": "The patient quiets down while the system that produced divergent treatment plans stays unchanged."
+        },
+        {
+          "id": "Y",
+          "label": "Investigate root cause",
+          "direction": "entry",
+          "cost": "You slow closure under urgency and must justify why depth matters before people want a simple ending."
+        }
+      ],
+      "action_decision": {
+        "prompt": "Is resolution the same as correction?",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Analyze decision patterns behind the case",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Move on after resolution",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    },
+    "D": {
+      "escalation_text": "Assigning blame creates immediate clarity. But it simplifies a systemic issue into an individual error.",
+      "pressure_increase": 0.8,
+      "intensity": 4,
+      "identity_clash": [
+        "Someone needs to be accountable",
+        "But this pattern existed before this case",
+        "Blame may hide the real issue"
+      ],
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Hold individual responsible",
+          "direction": "exit",
+          "cost": "Closure is fast; systemic contributors stay unnamed and the pattern can repeat with a new face."
+        },
+        {
+          "id": "Y",
+          "label": "Separate system vs individual factors",
+          "direction": "entry",
+          "cost": "Shared analysis takes time and can frustrate stakeholders who want a single named culprit now."
+        }
+      ],
+      "action_decision": {
+        "prompt": "What actually produced this outcome?",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Analyze systemic vs individual contribution",
+            "is_action_commitment": true,
+            "meaning": {
+              "is_action_commitment": true
+            }
+          },
+          {
+            "id": "AD2",
+            "label": "Close with individual accountability",
+            "is_action_commitment": false,
+            "meaning": {
+              "is_action_commitment": false
+            }
+          }
+        ],
+        "context": ""
+      }
+    }
+  }
+}

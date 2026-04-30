@@ -1,0 +1,222 @@
+{
+  "scenarioId": "core_22_identity_integrity_scaling_pressure",
+  "dbScenarioId": "bty_incident_02_core_22",
+  "incident": {
+    "incidentId": "incident_02",
+    "incidentStage": "scaling pressure",
+    "sequencePosition": 22,
+    "previousScenarioId": "core_21_identity_integrity_misuse",
+    "nextScenarioId": null,
+    "roleShift": "from misuse corrector to system scaler under growth pressure",
+    "propagation": {
+      "exitEffect": "The system becomes selectively applied under growth pressure.",
+      "entryEffect": "The system operates consistently regardless of growth speed.",
+      "reExposureNote": "Growth continuously tests whether standards are preserved or negotiated."
+    },
+    "stage": 22,
+    "axisGroup": "Repair",
+    "axisIndex": 4
+  },
+  "primaryChoices": {
+    "A": {
+      "axis": "scaling_integrity",
+      "direction": "exit",
+      "tradeoff": "growth_speed_over_standard_consistency",
+      "mapsTo": [
+        "A_X",
+        "A_Y"
+      ]
+    },
+    "B": {
+      "axis": "scaling_integrity",
+      "direction": "exit",
+      "tradeoff": "operational_flexibility_over_system_discipline",
+      "mapsTo": [
+        "B_X",
+        "B_Y"
+      ]
+    },
+    "C": {
+      "axis": "scaling_integrity",
+      "direction": "exit",
+      "tradeoff": "leader_capacity_over_system_reliability",
+      "mapsTo": [
+        "C_X",
+        "C_Y"
+      ]
+    },
+    "D": {
+      "axis": "scaling_integrity",
+      "direction": "entry",
+      "tradeoff": "system_reliability_over_growth_comfort",
+      "mapsTo": [
+        "D_X",
+        "D_Y"
+      ]
+    }
+  },
+  "tradeoff": {
+    "A": {
+      "X": "prioritize_growth_execution",
+      "Y": "enforce_standard_under_growth"
+    },
+    "B": {
+      "X": "allow_operational_exceptions",
+      "Y": "define_scaling_constraints"
+    },
+    "C": {
+      "X": "depend_on_strong_leaders",
+      "Y": "reduce_leader_dependency"
+    },
+    "D": {
+      "X": "monitor_scaling_informally",
+      "Y": "install_scaling_control_system"
+    }
+  },
+  "action_decision_mapping": {
+    "A_X": {
+      "commitmentType": "growth_priority",
+      "isEntry": false
+    },
+    "A_Y": {
+      "commitmentType": "standard_enforcement_under_growth",
+      "isEntry": true
+    },
+    "B_X": {
+      "commitmentType": "exception_tolerance",
+      "isEntry": false
+    },
+    "B_Y": {
+      "commitmentType": "constraint_definition",
+      "isEntry": true
+    },
+    "C_X": {
+      "commitmentType": "leader_dependence",
+      "isEntry": false
+    },
+    "C_Y": {
+      "commitmentType": "system_reliability",
+      "isEntry": true
+    },
+    "D_X": {
+      "commitmentType": "informal_scaling",
+      "isEntry": false
+    },
+    "D_Y": {
+      "commitmentType": "controlled_scaling_system",
+      "isEntry": true
+    }
+  },
+  "structure": {
+    "primary": [
+      {
+        "choiceId": "A",
+        "dbChoiceId": "bty_incident_02_core_22_primary_A_A"
+      },
+      {
+        "choiceId": "B",
+        "dbChoiceId": "bty_incident_02_core_22_primary_B_B"
+      },
+      {
+        "choiceId": "C",
+        "dbChoiceId": "bty_incident_02_core_22_primary_C_C"
+      },
+      {
+        "choiceId": "D",
+        "dbChoiceId": "bty_incident_02_core_22_primary_D_D"
+      }
+    ],
+    "tradeoff": {
+      "A": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "bty_incident_02_core_22_tradeoff_A_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "bty_incident_02_core_22_tradeoff_A_Y"
+        }
+      ],
+      "B": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "bty_incident_02_core_22_tradeoff_B_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "bty_incident_02_core_22_tradeoff_B_Y"
+        }
+      ],
+      "C": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "bty_incident_02_core_22_tradeoff_C_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "bty_incident_02_core_22_tradeoff_C_Y"
+        }
+      ],
+      "D": [
+        {
+          "choiceId": "X",
+          "dbChoiceId": "bty_incident_02_core_22_tradeoff_D_X"
+        },
+        {
+          "choiceId": "Y",
+          "dbChoiceId": "bty_incident_02_core_22_tradeoff_D_Y"
+        }
+      ]
+    },
+    "action_decision": {
+      "A_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "bty_incident_02_core_22_action_A_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "bty_incident_02_core_22_action_A_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "B_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "bty_incident_02_core_22_action_B_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "bty_incident_02_core_22_action_B_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "C_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "bty_incident_02_core_22_action_C_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "bty_incident_02_core_22_action_C_X_AD2",
+          "is_action_commitment": false
+        }
+      ],
+      "D_X": [
+        {
+          "choiceId": "AD1",
+          "dbChoiceId": "bty_incident_02_core_22_action_D_X_AD1",
+          "is_action_commitment": true
+        },
+        {
+          "choiceId": "AD2",
+          "dbChoiceId": "bty_incident_02_core_22_action_D_X_AD2",
+          "is_action_commitment": false
+        }
+      ]
+    }
+  }
+}

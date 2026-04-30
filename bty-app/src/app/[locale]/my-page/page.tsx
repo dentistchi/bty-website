@@ -2,6 +2,7 @@ import Link from "next/link";
 import ScreenShell from "@/components/bty/layout/ScreenShell";
 import { MyPageLeadershipConsole } from "@/components/bty/my-page/MyPageLeadershipConsole";
 import { BtyMyPageTabs } from "@/components/bty/navigation/BtyMyPageTabs";
+import { DashboardBackLink } from "@/components/bty/navigation/DashboardBackLink";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
@@ -39,6 +40,7 @@ export default async function Page({ params, searchParams }: Props) {
       title={m.myPageShellOverviewTitle}
       subtitle={m.myPageShellOverviewSubtitle}
     >
+      <DashboardBackLink locale={locale} />
       <div className="mb-5">
         <BtyMyPageTabs locale={locale} />
       </div>

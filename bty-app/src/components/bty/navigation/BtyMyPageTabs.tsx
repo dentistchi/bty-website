@@ -34,7 +34,11 @@ export function BtyMyPageTabs({ locale }: Props) {
       href: `${base}/leader`,
       active: pathname === `${base}/leader`,
     },
-    { label: t.myPageTabAccount, disabled: true },
+    {
+      label: t.myPageTabAccount,
+      href: `${base}/account`,
+      active: pathname === `${base}/account`,
+    },
   ];
 
   return <TabPills items={items} aria-label={t.myPageTabsAria} />;

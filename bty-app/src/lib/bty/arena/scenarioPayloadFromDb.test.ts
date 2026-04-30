@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { isLegacyScenarioDbBody, rejectLegacyScenarioPayload } from "./scenarioPayloadFromDb";
+import {
+  isLegacyScenarioDbBody,
+  loadArenaScenarioPayloadFromDb,
+  rejectLegacyScenarioPayload,
+} from "./scenarioPayloadFromDb";
 import type { Scenario } from "@/lib/bty/scenario/types";
 
 describe("isLegacyScenarioDbBody", () => {
@@ -41,5 +45,30 @@ describe("rejectLegacyScenarioPayload", () => {
       ],
     };
     expect(rejectLegacyScenarioPayload(bad)).toBe(true);
+  });
+});
+
+describe("loadArenaScenarioPayloadFromDb canonical source", () => {
+  it("loads core_01 from src/data/scenario canonical registry", async () => {
+    const scenario = await loadArenaScenarioPayloadFromDb(
+      null,
+      "core_01_training_system_exposure",
+      "en",
+    );
+    expect(scenario).not.toBeNull();
+    expect(scenario?.title).toBe("Performance Issue or Early System Signal");
+    expect(scenario?.title).not.toBe("Write Them Up or Name the System");
+    expect(scenario?.dbScenarioId).toBe("INCIDENT-01-OWN-01");
+  });
+
+  it("inlines stage_2_escalation into tradeoff second_choices protects/risks for core_07", async () => {
+    const scenario = await loadArenaScenarioPayloadFromDb(null, "core_07_repair_conversation", "en");
+    expect(scenario).not.toBeNull();
+    const branch = scenario?.escalationBranches?.A;
+    const x = branch?.second_choices?.find((c) => c.id === "X");
+    expect(x?.cost?.trim().length).toBeGreaterThan(0);
+    expect(x?.protects).toBe("Conversation becomes safer but loses definition");
+    expect(x?.risks).toBe("Everyone leaves with their own version");
+    expect(branch && "stage_2_escalation" in branch ? (branch as { stage_2_escalation?: unknown }).stage_2_escalation : undefined).toBeUndefined();
   });
 });

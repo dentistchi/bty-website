@@ -1,0 +1,301 @@
+{
+  "id": "core_06_external_exposure",
+  "title": "When It Leaves the Room",
+  "role": "Office Manager",
+  "pressure": "A patient leaves a negative review mentioning inconsistent treatment explanations, staff hesitation, and a disorganized visit. Internally, you know this reflects the unresolved tension around the new doctor, assistant burden, and unclear standards. The issue is no longer contained inside the office.",
+  "tradeoff": "You can manage the review as reputation risk, or use the external exposure to reveal the internal pattern.",
+  "bty_tension_axis": "Reputation Protection vs Structural Truth",
+  "axis_primary": "Truth",
+  "axis_secondary": ["Ownership", "Integrity", "Accountability"],
+  "difficulty_level": 5,
+  "action_contract": {
+    "description": "Decide whether to contain the external complaint or use it to surface the internal breakdown.",
+    "time_window_hours": 24
+  },
+  "air_logic": {
+    "success": "External feedback becomes a mirror for internal correction.",
+    "miss": "The complaint is handled as optics while the same pattern continues."
+  },
+  "forced_reset": {
+    "trigger": "A public review reflects internal inconsistency, hesitation, and unclear team alignment.",
+    "action": "You must decide what the review actually represents."
+  },
+  "pattern_detection": [
+    "reputation_protection",
+    "system_exposure",
+    "truth_naming",
+    "delegation_deflection"
+  ],
+  "choices": [
+    {
+      "id": "A",
+      "label": "Respond publicly and protect the office reputation",
+      "subtext": "This controls perception quickly and keeps the issue from spreading.",
+      "axis": "Reputation",
+      "direction": "exit",
+      "pattern_family": "reputation_protection",
+      "intensity": 4,
+      "dbChoiceId": "INCIDENT-01-TRUTH-06_primary_A"
+    },
+    {
+      "id": "B",
+      "label": "Use the review to trigger an internal pattern discussion",
+      "subtext": "This shifts the focus from optics to what actually happened.",
+      "axis": "Truth",
+      "direction": "entry",
+      "pattern_family": "truth_naming",
+      "intensity": 5,
+      "dbChoiceId": "INCIDENT-01-TRUTH-06_primary_B"
+    },
+    {
+      "id": "C",
+      "label": "Handle the complaint quietly without involving the full team",
+      "subtext": "This avoids embarrassment and keeps the office from becoming defensive.",
+      "axis": "Control",
+      "direction": "exit",
+      "pattern_family": "conflict_avoidance",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-TRUTH-06_primary_C"
+    },
+    {
+      "id": "D",
+      "label": "Escalate the review to regional or corporate leadership",
+      "subtext": "This puts the issue in the proper channel and protects your local role.",
+      "axis": "Authority",
+      "direction": "exit",
+      "pattern_family": "delegation_deflection",
+      "intensity": 3,
+      "dbChoiceId": "INCIDENT-01-TRUTH-06_primary_D"
+    }
+  ],
+  "escalationBranches": {
+    "A": {
+      "escalation_text": "The public response is polished, but internally nothing changes. Staff begin treating reviews as something to manage rather than something to learn from.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Continue managing reviews as isolated reputation events",
+          "cost": "The office looks responsive, but the internal pattern remains untouched.",
+          "axis": "Reputation",
+          "direction": "exit",
+          "pattern_family": "reputation_protection",
+          "dbChoiceId": "INCIDENT-01-TRUTH-06_tradeoff_A_X"
+        },
+        {
+          "id": "Y",
+          "label": "Reframe the review as a signal of internal breakdown",
+          "cost": "You must admit the review may be pointing to real inconsistency.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-TRUTH-06_tradeoff_A_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what will you do next?",
+        "context": "The review has been answered externally, but the internal cause remains unresolved.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, document recurring review themes and connect them to workflow, training, and trust patterns",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "system_exposure",
+              "description": "You are turning external feedback into system insight."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-TRUTH-06_action_A_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Continue responding to reviews one by one",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Reputation",
+              "direction": "exit",
+              "pattern_family": "reputation_protection",
+              "description": "You are treating public signals as isolated reputation events."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-06_action_A_X_AD2"
+          }
+        ]
+      }
+    },
+    "B": {
+      "escalation_text": "When you bring the review into internal discussion, the team feels exposed. Some staff become defensive, while others are relieved that the hidden tension is finally visible.",
+      "pressure_increase": 0.7,
+      "intensity": 5,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Soften the message to reduce team defensiveness",
+          "cost": "The room feels safer, but the review loses its power as a mirror.",
+          "axis": "Conflict",
+          "direction": "exit",
+          "pattern_family": "conflict_avoidance",
+          "dbChoiceId": "INCIDENT-01-TRUTH-06_tradeoff_B_X"
+        },
+        {
+          "id": "Y",
+          "label": "Hold the reality of the feedback without turning it into blame",
+          "cost": "You must sustain discomfort while keeping the pattern visible.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-TRUTH-06_tradeoff_B_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what will you do next?",
+        "context": "The truth is visible, but the team is reacting to exposure.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, create a team review connecting patient feedback to workflow breakdown, doctor support, and assistant burden",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "system_exposure",
+              "description": "You are connecting the external signal to the internal system."
+            },
+            "intensity": 5,
+            "dbChoiceId": "INCIDENT-01-TRUTH-06_action_B_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Acknowledge the review once and move on to avoid defensiveness",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Conflict",
+              "direction": "exit",
+              "pattern_family": "conflict_avoidance",
+              "description": "You are avoiding sustained discomfort after the truth appears."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-06_action_B_X_AD2"
+          }
+        ]
+      }
+    },
+    "C": {
+      "escalation_text": "The complaint is handled quietly, but the team hears about it anyway. Because no one explains the pattern, people fill the silence with blame and self-protection.",
+      "pressure_increase": 0.6,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Keep the complaint contained to avoid embarrassment",
+          "cost": "You reduce exposure, but the silence creates more interpretation.",
+          "axis": "Control",
+          "direction": "exit",
+          "pattern_family": "conflict_avoidance",
+          "dbChoiceId": "INCIDENT-01-TRUTH-06_tradeoff_C_X"
+        },
+        {
+          "id": "Y",
+          "label": "Bring the complaint into a controlled team reset",
+          "cost": "You expose the issue you were trying to contain.",
+          "axis": "Truth",
+          "direction": "entry",
+          "pattern_family": "truth_naming",
+          "dbChoiceId": "INCIDENT-01-TRUTH-06_tradeoff_C_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what will you do next?",
+        "context": "Containment failed because the team is already interpreting the complaint.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, hold a brief team reset naming the complaint themes without blaming any one person",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Truth",
+              "direction": "entry",
+              "pattern_family": "truth_naming",
+              "description": "You are replacing rumor with structured truth."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-TRUTH-06_action_C_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Keep the complaint private and address only those directly involved",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Control",
+              "direction": "exit",
+              "pattern_family": "conflict_avoidance",
+              "description": "You are choosing containment while the team fills the gap themselves."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-06_action_C_X_AD2"
+          }
+        ]
+      }
+    },
+    "D": {
+      "escalation_text": "Regional asks for details. The issue now looks bigger than one review, but the local team feels like the office is being reported instead of supported.",
+      "pressure_increase": 0.5,
+      "intensity": 4,
+      "second_choices": [
+        {
+          "id": "X",
+          "label": "Let regional handle the investigation",
+          "cost": "You follow the channel, but local ownership weakens.",
+          "axis": "Authority",
+          "direction": "exit",
+          "pattern_family": "delegation_deflection",
+          "dbChoiceId": "INCIDENT-01-TRUTH-06_tradeoff_D_X"
+        },
+        {
+          "id": "Y",
+          "label": "Partner with regional while owning the local reset",
+          "cost": "You must stay visible locally instead of just escalating upward.",
+          "axis": "Ownership",
+          "direction": "entry",
+          "pattern_family": "system_exposure",
+          "dbChoiceId": "INCIDENT-01-TRUTH-06_tradeoff_D_Y"
+        }
+      ],
+      "action_decision": {
+        "prompt": "Not interpretation — what will you do next?",
+        "context": "Escalation upward does not replace local ownership.",
+        "choices": [
+          {
+            "id": "AD1",
+            "label": "Within 24 hours, send regional a pattern summary and also schedule a local reset with the doctor and assistants",
+            "meaning": {
+              "is_action_commitment": true,
+              "axis": "Ownership",
+              "direction": "entry",
+              "pattern_family": "system_exposure",
+              "description": "You are combining leadership visibility with local repair."
+            },
+            "intensity": 4,
+            "dbChoiceId": "INCIDENT-01-TRUTH-06_action_D_X_AD1"
+          },
+          {
+            "id": "AD2",
+            "label": "Wait for regional direction before addressing the team again",
+            "meaning": {
+              "is_action_commitment": false,
+              "axis": "Authority",
+              "direction": "exit",
+              "pattern_family": "delegation_deflection",
+              "description": "You are letting escalation upward substitute for local action."
+            },
+            "intensity": 1,
+            "dbChoiceId": "INCIDENT-01-TRUTH-06_action_D_X_AD2"
+          }
+        ]
+      }
+    }
+  }
+}

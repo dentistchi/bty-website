@@ -1,0 +1,62 @@
+{
+  "scenarioId": "core_04_manager_neutrality_as_abandonment",
+  "dbScenarioId": "INCIDENT-01-TRUTH-04",
+  "incident": {
+    "incidentId": "incident_01_small_compromise_to_trust_repair",
+    "stage": 4,
+    "axisGroup": "Truth",
+    "axisIndex": 1,
+    "previousScenarioId": "core_03_training_failure_hidden_as_performance_issue",
+    "nextScenarioId": "core_05_resignation_signal",
+    "roleShift": "Office Manager -> Office Manager",
+    "propagation": {
+      "exitEffect": "The manager's neutrality is experienced as abandonment, allowing the doctor and assistants to interpret silence as permission.",
+      "entryEffect": "The manager names the hidden pattern and prevents silence from becoming the office norm.",
+      "reExposureNote": "If the user exits here, the same silence will reappear as resignation signals, assistant withdrawal, or doctor defensiveness."
+    }
+  },
+  "structure": {
+    "primary": [
+      { "choiceId": "A", "dbChoiceId": "INCIDENT-01-TRUTH-04_primary_A" },
+      { "choiceId": "B", "dbChoiceId": "INCIDENT-01-TRUTH-04_primary_B" },
+      { "choiceId": "C", "dbChoiceId": "INCIDENT-01-TRUTH-04_primary_C" },
+      { "choiceId": "D", "dbChoiceId": "INCIDENT-01-TRUTH-04_primary_D" }
+    ],
+    "tradeoff": {
+      "A": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_A_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_A_Y" }
+      ],
+      "B": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_B_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_B_Y" }
+      ],
+      "C": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_C_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_C_Y" }
+      ],
+      "D": [
+        { "choiceId": "X", "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_D_X" },
+        { "choiceId": "Y", "dbChoiceId": "INCIDENT-01-TRUTH-04_tradeoff_D_Y" }
+      ]
+    },
+    "action_decision": {
+      "A_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-01-TRUTH-04_action_A_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-01-TRUTH-04_action_A_X_AD2", "is_action_commitment": false }
+      ],
+      "B_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-01-TRUTH-04_action_B_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-01-TRUTH-04_action_B_X_AD2", "is_action_commitment": false }
+      ],
+      "C_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-01-TRUTH-04_action_C_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-01-TRUTH-04_action_C_X_AD2", "is_action_commitment": false }
+      ],
+      "D_X": [
+        { "choiceId": "AD1", "dbChoiceId": "INCIDENT-01-TRUTH-04_action_D_X_AD1", "is_action_commitment": true },
+        { "choiceId": "AD2", "dbChoiceId": "INCIDENT-01-TRUTH-04_action_D_X_AD2", "is_action_commitment": false }
+      ]
+    }
+  }
+}

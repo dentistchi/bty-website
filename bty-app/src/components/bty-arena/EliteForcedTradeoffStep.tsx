@@ -13,6 +13,10 @@ export type EliteForcedTradeoffStepProps = {
   /** Only `second_choices` from `escalationBranches[primaryChoiceId]`. */
   secondChoices: SecondChoice[];
   costLabel: string;
+  /** Label for optional `protects` line (merged from JSON `stage_2_escalation`). */
+  protectsLabel: string;
+  /** Label for optional `risks` line. */
+  risksLabel: string;
   difficultyLevel: 1 | 2 | 3 | 4 | 5;
   onChoice: (id: string) => void;
   choiceDisabled?: boolean;
@@ -28,6 +32,8 @@ export function EliteForcedTradeoffStep({
   decisionSectionTitle,
   secondChoices,
   costLabel,
+  protectsLabel,
+  risksLabel,
   difficultyLevel,
   onChoice,
   choiceDisabled = false,
@@ -74,6 +80,8 @@ export function EliteForcedTradeoffStep({
         {secondChoices.map((c) => {
           const isSelected = lockedId === c.id;
           const isDimmed = lockedId != null && !isSelected;
+          const protects = typeof c.protects === "string" ? c.protects.trim() : "";
+          const risks = typeof c.risks === "string" ? c.risks.trim() : "";
           return (
             <li key={c.id}>
               <button
@@ -91,10 +99,36 @@ export function EliteForcedTradeoffStep({
                 style={{ backgroundColor: `rgb(255 255 255 / ${1 - tierAlpha * 0.25})` }}
               >
                 <span className="block text-base font-semibold leading-snug text-bty-navy">{c.label}</span>
-                <span className="mt-3 block text-[11px] font-bold uppercase tracking-[0.14em] text-bty-navy">
-                  {costLabel}
-                </span>
-                <span className="mt-1 block text-sm font-semibold leading-relaxed text-bty-navy">{c.cost}</span>
+                <div
+                  className="mt-3 rounded-xl border-l-4 border-amber-500/90 bg-amber-50/80 px-3 py-2.5 shadow-inner"
+                  data-testid={`elite-tradeoff-cost-block-${c.id}`}
+                >
+                  <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-amber-950/80">
+                    {costLabel}
+                  </span>
+                  <span
+                    className="mt-1 block text-sm font-semibold leading-relaxed text-amber-950"
+                    data-testid={`elite-tradeoff-cost-${c.id}`}
+                  >
+                    {c.cost}
+                  </span>
+                </div>
+                {protects !== "" ? (
+                  <div className="mt-3 rounded-lg border border-emerald-200/90 bg-emerald-50/70 px-3 py-2">
+                    <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-900/75">
+                      {protectsLabel}
+                    </span>
+                    <span className="mt-1 block text-sm leading-snug text-emerald-950/90">{protects}</span>
+                  </div>
+                ) : null}
+                {risks !== "" ? (
+                  <div className="mt-2 rounded-lg border border-rose-200/90 bg-rose-50/70 px-3 py-2">
+                    <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-rose-900/75">
+                      {risksLabel}
+                    </span>
+                    <span className="mt-1 block text-sm leading-snug text-rose-950/90">{risks}</span>
+                  </div>
+                ) : null}
               </button>
             </li>
           );

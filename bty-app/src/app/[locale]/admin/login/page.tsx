@@ -39,7 +39,8 @@ export default function AdminLoginPage() {
       return;
     }
 
-    window.location.replace(`/${locale}/bty`);
+    const next = new URLSearchParams(window.location.search).get("next");
+    window.location.replace(next ?? `/${locale}/admin/debug`);
   }
 
   return (

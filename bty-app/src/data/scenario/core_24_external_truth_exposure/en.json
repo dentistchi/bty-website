@@ -1,0 +1,301 @@
+{
+    "id": "core_24_external_truth_exposure",
+    "title": "The Pattern You Can No Longer Ignore",
+    "role": "Regional Manager",
+    "pressure": "A patient complaint mentions confusion, inconsistent instructions, and staff hesitation during treatment. You also remember a recent assistant concern and an office manager report that did not fully align. The signals are starting to connect.",
+    "tradeoff": "Treating this as one complaint protects stability. Connecting the signals exposes a broader issue across teams and offices.",
+    "bty_tension_axis": "Case Containment vs Structural Truth",
+    "axis_primary": "Truth",
+    "axis_secondary": ["System", "Authority", "Accountability"],
+    "difficulty_level": 4,
+    "action_contract": {
+      "description": "Decide whether to contain the complaint or connect it to a broader pattern.",
+      "time_window_hours": 48
+    },
+    "air_logic": {
+      "success": "The pattern becomes visible before it turns into repeated complaints or turnover.",
+      "miss": "The issue stays contained, but the same silence pattern continues underneath."
+    },
+    "forced_reset": {
+      "trigger": "A complaint, staff concern, and manager report point toward the same breakdown.",
+      "action": "You must decide whether this is a single case or a structural signal."
+    },
+    "pattern_detection": [
+      "system_thinking",
+      "self_protection",
+      "documentation_sanitization",
+      "explanation_substitution"
+    ],
+    "choices": [
+      {
+        "id": "A",
+        "label": "Connect signals across offices and identify the pattern",
+        "subtext": "This expands scope and increases visibility immediately.",
+        "axis": "Truth",
+        "direction": "entry",
+        "pattern_family": "system_thinking",
+        "intensity": 3,
+        "dbChoiceId": "INCIDENT-03-TRUTH-06_primary_A"
+      },
+      {
+        "id": "B",
+        "label": "Handle this as a single office complaint",
+        "subtext": "This keeps the issue contained and manageable.",
+        "axis": "Control",
+        "direction": "exit",
+        "pattern_family": "self_protection",
+        "intensity": 2,
+        "dbChoiceId": "INCIDENT-03-TRUTH-06_primary_B"
+      },
+      {
+        "id": "C",
+        "label": "Request a detailed report before taking action",
+        "subtext": "This feels structured and defensible.",
+        "axis": "Documentation",
+        "direction": "exit",
+        "pattern_family": "documentation_sanitization",
+        "intensity": 2,
+        "dbChoiceId": "INCIDENT-03-TRUTH-06_primary_C"
+      },
+      {
+        "id": "D",
+        "label": "Coach the doctor on patient communication only",
+        "subtext": "This targets the visible symptom without expanding the scope.",
+        "axis": "Accountability",
+        "direction": "exit",
+        "pattern_family": "explanation_substitution",
+        "intensity": 2,
+        "dbChoiceId": "INCIDENT-03-TRUTH-06_primary_D"
+      }
+    ],
+    "escalationBranches": {
+      "A": {
+        "escalation_text": "When you begin connecting the signals, the office manager says this may make the office look unstable. The doctor says the complaint is being exaggerated.",
+        "pressure_increase": 0.5,
+        "intensity": 4,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "Reduce the scope and keep the review limited to this office",
+            "cost": "The pressure drops, but the broader pattern remains untested.",
+            "axis": "Control",
+            "direction": "exit",
+            "pattern_family": "self_protection",
+            "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_A_X"
+          },
+          {
+            "id": "Y",
+            "label": "Continue the pattern review despite resistance",
+            "cost": "You increase visibility and may create conflict with the office team.",
+            "axis": "Truth",
+            "direction": "entry",
+            "pattern_family": "system_thinking",
+            "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_A_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "Not interpretation — what you will actually do next.",
+          "context": "The pattern is visible enough to act, but the office is resisting escalation.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "Within 48 hours, start a cross-office review and share the pattern with the relevant managers",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "System",
+                "direction": "entry",
+                "pattern_family": "system_thinking",
+                "description": "You are choosing visible system-level action."
+              },
+              "intensity": 4,
+              "dbChoiceId": "INCIDENT-03-TRUTH-06_action_A_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "Keep the review informal until another complaint confirms the pattern",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Time",
+                "direction": "exit",
+                "pattern_family": "future_deferral",
+                "description": "You are choosing delay over escalation."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-TRUTH-06_action_A_X_AD2"
+            }
+          ]
+        }
+      },
+      "B": {
+        "escalation_text": "Another complaint appears from a different office with similar hesitation and unclear handoff patterns. Managers begin handling issues locally without escalating them.",
+        "pressure_increase": 0.6,
+        "intensity": 4,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "Continue handling each case independently",
+            "cost": "You maintain control, but the pattern spreads quietly.",
+            "axis": "Control",
+            "direction": "exit",
+            "pattern_family": "self_protection",
+            "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_B_X"
+          },
+          {
+            "id": "Y",
+            "label": "Reassess and connect the cases across offices",
+            "cost": "You must acknowledge that earlier containment delayed visibility.",
+            "axis": "Truth",
+            "direction": "entry",
+            "pattern_family": "system_thinking",
+            "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_B_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "Not interpretation — what you will actually do next.",
+          "context": "The issue is now appearing in multiple locations.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "Within 48 hours, initiate a cross-office review and share pattern findings",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "System",
+                "direction": "entry",
+                "pattern_family": "system_thinking",
+                "description": "You are choosing visible system-level action."
+              },
+              "intensity": 4,
+              "dbChoiceId": "INCIDENT-03-TRUTH-06_action_B_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "Continue monitoring individual cases",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Time",
+                "direction": "exit",
+                "pattern_family": "future_deferral",
+                "description": "You are choosing delay over escalation."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-TRUTH-06_action_B_X_AD2"
+            }
+          ]
+        }
+      },
+      "C": {
+        "escalation_text": "The written report is clean and factual, but it removes the assistant’s hesitation and the doctor’s authority pattern. The complaint now looks like a documentation issue.",
+        "pressure_increase": 0.5,
+        "intensity": 3,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "Accept the report and close the complaint loop",
+            "cost": "The file is clean, but the real pattern is softened out of view.",
+            "axis": "Documentation",
+            "direction": "exit",
+            "pattern_family": "documentation_sanitization",
+            "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_C_X"
+          },
+          {
+            "id": "Y",
+            "label": "Ask for a pattern review beyond the written report",
+            "cost": "You challenge the clean version and may create discomfort with the manager.",
+            "axis": "Truth",
+            "direction": "entry",
+            "pattern_family": "system_thinking",
+            "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_C_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "Not interpretation — what you will actually do next.",
+          "context": "The report is organized, but the human pattern may have been removed.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "Within 48 hours, request a follow-up review focused on hesitation, handoff, and authority patterns",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Truth",
+                "direction": "entry",
+                "pattern_family": "system_thinking",
+                "description": "You are choosing pattern visibility over clean documentation."
+              },
+              "intensity": 3,
+              "dbChoiceId": "INCIDENT-03-TRUTH-06_action_C_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "File the report and revisit only if another complaint comes in",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Documentation",
+                "direction": "exit",
+                "pattern_family": "documentation_sanitization",
+                "description": "You are choosing a clean record over pattern exposure."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-TRUTH-06_action_C_X_AD2"
+            }
+          ]
+        }
+      },
+      "D": {
+        "escalation_text": "The doctor improves patient explanations for a few days, but staff hesitation remains. The assistant team still avoids speaking up when the doctor moves quickly.",
+        "pressure_increase": 0.5,
+        "intensity": 3,
+        "second_choices": [
+          {
+            "id": "X",
+            "label": "Continue coaching the doctor on communication",
+            "cost": "The visible symptom improves, but the team silence remains.",
+            "axis": "Accountability",
+            "direction": "exit",
+            "pattern_family": "explanation_substitution",
+            "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_D_X"
+          },
+          {
+            "id": "Y",
+            "label": "Expand the issue to include team hesitation and hierarchy",
+            "cost": "You move from coaching into structural truth, which raises discomfort.",
+            "axis": "Truth",
+            "direction": "entry",
+            "pattern_family": "truth_naming",
+            "dbChoiceId": "INCIDENT-03-TRUTH-06_tradeoff_D_Y"
+          }
+        ],
+        "action_decision": {
+          "prompt": "Not interpretation — what you will actually do next.",
+          "context": "Patient communication improved, but the underlying silence did not change.",
+          "choices": [
+            {
+              "id": "AD1",
+              "label": "Within 48 hours, open a team-level review on hesitation, handoff clarity, and authority pressure",
+              "meaning": {
+                "is_action_commitment": true,
+                "axis": "Truth",
+                "direction": "entry",
+                "pattern_family": "truth_naming",
+                "description": "You are choosing to name the deeper pattern."
+              },
+              "intensity": 3,
+              "dbChoiceId": "INCIDENT-03-TRUTH-06_action_D_X_AD1"
+            },
+            {
+              "id": "AD2",
+              "label": "Keep coaching the doctor and observe whether the team adjusts",
+              "meaning": {
+                "is_action_commitment": false,
+                "axis": "Time",
+                "direction": "exit",
+                "pattern_family": "future_deferral",
+                "description": "You are choosing observation over structural intervention."
+              },
+              "intensity": 1,
+              "dbChoiceId": "INCIDENT-03-TRUTH-06_action_D_X_AD2"
+            }
+          ]
+        }
+      }
+    }
+  }

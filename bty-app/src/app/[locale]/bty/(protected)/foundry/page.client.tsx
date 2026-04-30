@@ -28,7 +28,7 @@ export default function FoundryHubClient({
 
   const features: { icon: string; title: string; desc: string; href: string }[] = [
     {
-      icon: "📋",
+      icon: "🎯",
       title: isKo ? "Dojo 50문항" : "Dojo 50 Questions",
       desc: isKo ? "오늘의 나를 진단하는 50문항 테스트" : "50-question self-assessment for today",
       href: `/${locale}/bty/dojo`,
@@ -40,19 +40,19 @@ export default function FoundryHubClient({
       href: `/${locale}/bty/integrity`,
     },
     {
-      icon: "🧑‍⚕️",
+      icon: "💬",
       title: isKo ? "Dr. Chi 멘토" : "Dr. Chi Mentor",
       desc: isKo ? "AI 멘토와 1:1 성장 대화" : "1:1 growth conversation with AI mentor",
       href: `/${locale}/bty/mentor`,
     },
     {
-      icon: "📊",
+      icon: "📈",
       title: isKo ? "대시보드" : "Dashboard",
       desc: isKo ? "나의 성장 기록과 통계" : "Your growth records and stats",
       href: `/${locale}/bty/dashboard`,
     },
     {
-      icon: "⭐",
+      icon: "🏆",
       title: "Elite",
       desc: isKo ? "Elite 전용 콘텐츠" : "Elite-exclusive content",
       href: `/${locale}/bty/elite`,
