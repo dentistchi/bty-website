@@ -35,6 +35,8 @@ function isPublicPath(pathname: string) {
   if (locale) {
     if (pathname === `/${locale}` || pathname === `/${locale}/`) return true;
     if (pathname === `/${locale}/center` || pathname === `/${locale}/center/`) return true;
+    /** Dear Me letter writer: auth handled by AuthGate in component. Never block at middleware. */
+    if (pathname === `/${locale}/dear-me` || pathname === `/${locale}/dear-me/`) return true;
     /** Center 50-item assessment + results: must be reachable without Foundry login. */
     if (pathname === `/${locale}/assessment` || pathname.startsWith(`/${locale}/assessment/`))
       return true;

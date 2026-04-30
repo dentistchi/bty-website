@@ -20,7 +20,7 @@ function phaseActionHref(id: HealingJourneyPhaseId, locale: string): string {
     case 1: return `/${locale}/assessment`;
     case 2: return `/${locale}/dear-me`;
     case 3:
-    case 4: return `/${locale}/bty/healing/awakening`;
+    case 4: return `/${locale}/bty/healing`;
     default: return `/${locale}/center`;
   }
 }
