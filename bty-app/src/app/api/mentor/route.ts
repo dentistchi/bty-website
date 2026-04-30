@@ -1,4 +1,5 @@
 import { fetchJson } from "@/lib/read-json";
+import { getLlmEndpoint, isLlmAvailable } from "@/lib/llm";
 import { NextResponse } from "next/server";
 import { DR_CHI_PHILOSOPHY, DR_CHI_FEW_SHOT_EXAMPLES } from "@/lib/bty/mentor/drChiCharacter";
 import {
@@ -144,18 +145,18 @@ export async function POST(request: Request) {
       });
     }
 
-    const openaiKey = process.env.OPENAI_API_KEY;
-    if (openaiKey) {
+    if (isLlmAvailable()) {
+      const llm = getLlmEndpoint();
       const openaiMessages = buildOpenAIMessages(messages, userContent, lang);
       type OpenAIChatResp = { choices?: { message?: { content?: string } }[] };
-      const r = await fetchJson<OpenAIChatResp>("https://api.openai.com/v1/chat/completions", {
+      const r = await fetchJson<OpenAIChatResp>(llm.url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${openaiKey}`,
+          Authorization: `Bearer ${llm.apiKey}`,
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model: llm.model,
           messages: openaiMessages,
           max_tokens: 400,
         }),
