@@ -292,7 +292,14 @@ function DrChiQuickChat({ locale, isKo }: { locale: string; isKo: boolean }) {
               {isKo ? "전송" : "Send"}
             </button>
           </div>
-          <div className="mt-2 text-right">
+          <div className="mt-2 flex items-center justify-between flex-wrap gap-2">
+            <Link
+              href={`/${locale}/bty-arena/quick`}
+              className="text-xs font-medium text-[var(--arena-accent)] border border-[var(--arena-accent)]/30 rounded-lg px-2.5 py-1 hover:bg-[var(--arena-accent)]/5 transition-colors"
+              aria-label={isKo ? "이 상황을 Arena Quick Mode로 가져가기" : "Take this to Arena Quick Mode"}
+            >
+              {isKo ? "이 상황을 Arena로 가져가기 →" : "Take this to Arena →"}
+            </Link>
             <Link
               href={`/${locale}/bty/mentor`}
               className="text-xs text-[var(--arena-accent)] hover:underline"
@@ -332,21 +339,9 @@ export default function FoundryHubClient({
 
   const features: { icon: string; title: string; desc: string; href: string }[] = [
     {
-      icon: "🎯",
-      title: isKo ? "Dojo 50문항" : "Dojo 50 Questions",
-      desc: isKo ? "오늘의 나를 진단하는 50문항 테스트" : "50-question self-assessment for today",
-      href: `/${locale}/bty/dojo`,
-    },
-    {
-      icon: "🪞",
-      title: isKo ? "역지사지 연습" : "Integrity Mirror",
-      desc: isKo ? "갈등 상황을 상대 입장에서 돌려보기" : "See conflicts from the other side",
-      href: `/${locale}/bty/integrity`,
-    },
-    {
       icon: "💬",
       title: isKo ? "Dr. Chi 전체 대화" : "Dr. Chi (full)",
-      desc: isKo ? "AI 멘토와 1:1 심층 성장 대화" : "In-depth 1:1 growth conversation",
+      desc: isKo ? "AI 멘토와 1:1 리더십 코칭" : "1:1 leadership coaching with Dr. Chi",
       href: `/${locale}/bty/mentor`,
     },
     {

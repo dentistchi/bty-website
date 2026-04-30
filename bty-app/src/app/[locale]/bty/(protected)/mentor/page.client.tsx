@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
-import { EmotionalStatsPhrases } from "@/components/bty/EmotionalStatsPhrases";
 import { GuideCharacterAvatar } from "@/components/GuideCharacterAvatar";
 import { ThemeBody } from "@/components/ThemeBody";
 import { CardSkeleton, LoadingFallback } from "@/components/bty-arena";
@@ -15,23 +14,11 @@ import MentorConversationHistory from "./MentorConversationHistory";
 
 const CENTER_URL = process.env.NEXT_PUBLIC_CENTER_URL ?? (typeof window !== "undefined" ? `${window.location.origin}/center` : "");
 
-type TopicId = "clinical" | "patient" | "team" | "financial" | "selflove";
-
-const TOPICS_KO: { id: TopicId; label: string; subtitle: string }[] = [
-  { id: "clinical", label: "Clinical Skills", subtitle: "임상 기술" },
-  { id: "patient", label: "Patient Management", subtitle: "환자 관리" },
-  { id: "team", label: "Team Relations", subtitle: "팀 관계" },
-  { id: "financial", label: "Financial Advice", subtitle: "재무 조언" },
-  { id: "selflove", label: "Self-Love", subtitle: "자기 사랑" },
-];
-
-const TOPICS_EN: { id: TopicId; label: string; subtitle: string }[] = [
-  { id: "clinical", label: "Clinical Skills", subtitle: "Procedures & confidence" },
-  { id: "patient", label: "Patient Management", subtitle: "Communication & boundaries" },
-  { id: "team", label: "Team Relations", subtitle: "Conflict & leadership" },
-  { id: "financial", label: "Financial Advice", subtitle: "Practice & personal" },
-  { id: "selflove", label: "Self-Love", subtitle: "Burnout & self-care" },
-];
+// Free-form leadership coach — no topic pre-selection
+const DR_CHI_OPENING = {
+  ko: "어떤 리더십 상황에 대해 이야기할까요? 팀, 의사결정, 갈등 — 무엇이든 편하게 말씀해 주세요.",
+  en: "What's on your mind today? Team dynamics, decision-making, conflict — anything goes.",
+};
 
 type Message = {
   role: "user" | "chi";
@@ -39,74 +26,50 @@ type Message = {
   safetyValve?: boolean;
 };
 
-const DR_CHI_OPENINGS_KO: Record<TopicId, string> = {
-  clinical: "요즘 환자 보면서 뭐가 제일 힘드신가요?",
-  patient: "환자 관리할 때 어떤 순간이 가장 막막하신가요?",
-  team: "팀 안에서 요즘 어떤 게 가장 고민이신가요?",
-  financial: "재무 쪽에서 어떤 게 가장 부담되시나요?",
-  selflove: "요즘 자기 자신에게 어떤 느낌이 드시나요?",
-};
-
-const DR_CHI_OPENINGS_EN: Record<TopicId, string> = {
-  clinical: "What’s been the hardest part lately when seeing patients?",
-  patient: "When do you feel most stuck in patient management?",
-  team: "What’s weighing on you most in your team right now?",
-  financial: "What feels most stressful about finances at the moment?",
-  selflove: "How have you been feeling about yourself lately?",
-};
-
 const MENTOR_UI = {
   ko: {
     slogan: "서재에서 차 한 잔 마시며 대화해요.",
-    topicPrompt: "오늘 어떤 주제로 대화해볼까요?",
     rememberLabel: "대화 기억하기 (다음 로그인 시 이어보기)",
     deleteHistory: "기록 삭제",
     deleting: "삭제 중…",
-    eliteBadge: "상위 5%",
     eliteMentorBadge: "Elite 멘토",
-    selectOtherTopic: "다른 주제 선택하기",
+    eliteBadge: "상위 5%",
     endConversation: "대화 끝내기",
     placeholder: "말씀해 주세요...",
     send: "전송",
     conversationEnded: "대화가 끝났습니다.",
     conversationEndedSub: "오늘 대화 잘 마무리하셨어요. 필요할 때 다시 찾아오세요.",
-    goOtherTopic: "다른 주제로",
+    newConversation: "새 대화 시작",
     goFoundry: "훈련장으로 나가기",
     thinking: "생각하고 있어요…",
     centerLink: "Center에서 마음 돌보기 →",
     toFoundry: "훈련장으로",
-    toIntegrity: "역지사지 시뮬레이터",
-    goodbyeReply: "오늘 대화 잘 마무리하셨어요. 필요할 때 다시 찾아오세요.",
+    toDashboard: "대시보드",
     seeYouNext: "다음에 또 만나요",
-    goToMain: "메인으로",
-    /** Elite 1:1 멘토 대화 신청 플로우 진입 (Elite만 노출) */
-    eliteRequestCta: "1:1 대화 신청 (Elite)",
+    eliteRequestCta: "1:1 세션 신청 (Elite)",
+    goodbyeReply: "오늘 대화 잘 마무리하셨어요. 필요할 때 다시 찾아오세요.",
   },
   en: {
-    slogan: "Let’s talk over a cup of tea in the study.",
-    topicPrompt: "What would you like to talk about today?",
+    slogan: "Let's talk over a cup of tea in the study.",
     rememberLabel: "Remember conversation (resume next login)",
     deleteHistory: "Delete history",
     deleting: "Deleting…",
-    eliteBadge: "Top 5%",
     eliteMentorBadge: "Elite Mentor",
-    selectOtherTopic: "Select another topic",
+    eliteBadge: "Top 5%",
     endConversation: "End conversation",
     placeholder: "Type your message...",
     send: "Send",
     conversationEnded: "Conversation ended.",
-    conversationEndedSub: "You’ve wrapped up well today. Come back whenever you need.",
-    goOtherTopic: "Another topic",
+    conversationEndedSub: "You've wrapped up well today. Come back whenever you need.",
+    newConversation: "Start new conversation",
     goFoundry: "Back to Foundry",
     thinking: "Thinking…",
     centerLink: "Take care of yourself on Center →",
     toFoundry: "Foundry",
-    toIntegrity: "Integrity simulator",
-    goodbyeReply: "Thanks for the conversation today. Come back whenever you need.",
+    toDashboard: "Dashboard",
     seeYouNext: "See you next time",
-    goToMain: "Go to Main",
-    /** Elite 1:1 mentor session request flow (shown only for Elite) */
     eliteRequestCta: "Request 1:1 session (Elite)",
+    goodbyeReply: "Thanks for the conversation today. Come back whenever you need.",
   },
 } as const;
 
@@ -128,9 +91,10 @@ export default function MentorPage() {
   const isEn = locale === "en";
   const t = MENTOR_UI[locale];
   const tMentorPage = getMessages(locale).mentorPage;
-  const TOPICS = isEn ? TOPICS_EN : TOPICS_KO;
 
-  const [topic, setTopic] = useState<TopicId | null>(null);
+  // Fixed leadership topic — no UI selector
+  const topic = "leadership";
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -145,20 +109,16 @@ export default function MentorPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const openingMessage: Message = { role: "chi", text: DR_CHI_OPENING[locale] };
+
   const saveMessage = useCallback(
     async (role: "user" | "assistant", content: string) => {
-      if (!rememberMentor || !sessionId || !topic) return;
+      if (!rememberMentor || !sessionId) return;
       try {
         await fetch("/api/me/conversations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            channel: "mentor",
-            sessionId,
-            topic,
-            role,
-            content,
-          }),
+          body: JSON.stringify({ channel: "mentor", sessionId, topic, role, content }),
         });
       } catch {
         // ignore
@@ -171,6 +131,7 @@ export default function MentorPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Load prefs + elite status
   useEffect(() => {
     (async () => {
       try {
@@ -197,28 +158,42 @@ export default function MentorPage() {
     })();
   }, []);
 
+  // Restore saved conversation or show opening message
   useEffect(() => {
-    if (!prefsLoaded || !rememberMentor) return;
-    (async () => {
-      try {
-        const r = await fetch("/api/me/conversations?channel=mentor");
-        if (!r.ok) return;
-        const data = await r.json();
-        if (!data.sessionId || !data.messages?.length) return;
-        const t = (data.topic && TOPICS.some((x) => x.id === data.topic)) ? data.topic as TopicId : null;
-        if (!t) return;
-        setSessionId(data.sessionId);
-        setTopic(t);
-        setMessages(
-          data.messages.map((m: { role: string; content: string }) => ({
-            role: m.role === "assistant" ? "chi" : "user",
-            text: m.content,
-          }))
-        );
-      } catch {
-        // ignore
-      }
-    })();
+    if (!prefsLoaded) return;
+
+    if (rememberMentor) {
+      (async () => {
+        try {
+          const r = await fetch("/api/me/conversations?channel=mentor");
+          if (!r.ok) {
+            setMessages([openingMessage]);
+            setSessionId(generateSessionId());
+            return;
+          }
+          const data = await r.json();
+          if (!data.sessionId || !data.messages?.length) {
+            setMessages([openingMessage]);
+            setSessionId(generateSessionId());
+            return;
+          }
+          setSessionId(data.sessionId);
+          setMessages(
+            data.messages.map((m: { role: string; content: string }) => ({
+              role: m.role === "assistant" ? "chi" : "user",
+              text: m.content,
+            }))
+          );
+        } catch {
+          setMessages([openingMessage]);
+          setSessionId(generateSessionId());
+        }
+      })();
+    } else {
+      setMessages([openingMessage]);
+      setSessionId(generateSessionId());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefsLoaded, rememberMentor]);
 
   const clearInputCompletely = useCallback(() => {
@@ -250,65 +225,43 @@ export default function MentorPage() {
     }
 
     setSending(true);
-
     try {
       const history = [...messages, { role: "user" as const, text }];
       const r = await fetchJson<{ message?: string; safety_valve?: boolean }>("/api/mentor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topic: topic ?? "clinical",
+          topic,
           message: text,
           messages: history.map((m) => ({ role: m.role, content: m.text })),
           lang: locale,
         }),
       });
-
       const fallbackReply = isEn ? "Could you say a bit more so we can talk about it?" : "무슨 말씀인지 다시 해주실래요?";
       const reply = typeof r.json?.message === "string" ? r.json.message : fallbackReply;
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "chi",
-          text: reply,
-          safetyValve: Boolean(r.json?.safety_valve),
-        },
-      ]);
+      setMessages((prev) => [...prev, { role: "chi", text: reply, safetyValve: Boolean(r.json?.safety_valve) }]);
       await saveMessage("user", text);
       await saveMessage("assistant", reply);
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "chi",
-          text: isEn ? "Connection was unstable. Please resubmit." : "연결이 잠깐 불안정했네요. 다시 말해주실래요?",
-        },
-      ]);
+      setMessages((prev) => [...prev, {
+        role: "chi",
+        text: isEn ? "Connection was unstable. Please resubmit." : "연결이 잠깐 불안정했네요. 다시 말해주실래요?",
+      }]);
     } finally {
       setSending(false);
     }
   };
 
-  const startTopic = (topicId: TopicId) => {
+  const resetConversation = () => {
     clearInputCompletely();
-    setTopic(topicId);
-    setSessionId(generateSessionId());
     setConversationEnded(false);
-    const opening = isEn ? DR_CHI_OPENINGS_EN[topicId] : DR_CHI_OPENINGS_KO[topicId];
-    setMessages([{ role: "chi", text: opening }]);
+    setMessages([openingMessage]);
+    setSessionId(generateSessionId());
   };
 
   const endConversation = () => {
     clearInputCompletely();
     setConversationEnded(true);
-  };
-
-  const goToTopicSelection = () => {
-    clearInputCompletely();
-    setConversationEnded(false);
-    setTopic(null);
-    setMessages([]);
-    setSessionId(null);
   };
 
   const toggleRemember = async () => {
@@ -330,9 +283,7 @@ export default function MentorPage() {
     setDeleting(true);
     try {
       await fetch("/api/me/conversations?channel=mentor", { method: "DELETE" });
-      setTopic(null);
-      setMessages([]);
-      setSessionId(null);
+      resetConversation();
     } finally {
       setDeleting(false);
     }
@@ -344,23 +295,12 @@ export default function MentorPage() {
         <ThemeBody theme="foundry" />
         <main
           className="min-h-screen"
-          style={{
-            background: "linear-gradient(180deg, #F5F0E8 0%, #EDE6DB 50%, #E8DFD2 100%)",
-          }}
+          style={{ background: "linear-gradient(180deg, #F5F0E8 0%, #EDE6DB 50%, #E8DFD2 100%)" }}
           aria-label={tMentorPage.pageMainLandmarkAria}
         >
           <div className="max-w-2xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
-            <div
-              style={{ flex: 1, paddingTop: 48 }}
-              aria-busy="true"
-              aria-label={isEn ? "Loading…" : "불러오는 중…"}
-            >
-              <LoadingFallback
-                icon="⏳"
-                message={isEn ? "Loading…" : "불러오는 중…"}
-                withSkeleton
-                style={{ flex: 1, paddingTop: 48 }}
-              />
+            <div style={{ flex: 1, paddingTop: 48 }} aria-busy="true">
+              <LoadingFallback icon="⏳" message={isEn ? "Loading…" : "불러오는 중…"} withSkeleton style={{ flex: 1, paddingTop: 48 }} />
             </div>
           </div>
         </main>
@@ -373,31 +313,28 @@ export default function MentorPage() {
       <ThemeBody theme="foundry" />
       <main
         className="min-h-screen"
-        style={{
-          background: "linear-gradient(180deg, #F5F0E8 0%, #EDE6DB 50%, #E8DFD2 100%)",
-        }}
+        style={{ background: "linear-gradient(180deg, #F5F0E8 0%, #EDE6DB 50%, #E8DFD2 100%)" }}
         aria-label={tMentorPage.pageMainLandmarkAria}
       >
         <div className="max-w-2xl mx-auto px-4 py-6 sm:py-10 min-h-screen flex flex-col">
           <header className="text-center mb-8">
             <div className="flex flex-col items-center gap-3">
-              <GuideCharacterAvatar codeName={userCodeName} variant="warm" size="lg" alt="Dr. Chi" className="flex-shrink-0" />
-              <h1
-                className="text-2xl sm:text-3xl font-semibold text-mentor-ink"
-                style={{ fontFamily: "Georgia, serif" }}
-              >
+              <div className="relative">
+                <GuideCharacterAvatar codeName={userCodeName} variant="warm" size="lg" alt="Dr. Chi" className="flex-shrink-0" />
+                {isElite && (
+                  <span
+                    className="absolute -top-1 -right-1 inline-flex items-center rounded-full bg-mentor-wood/20 px-2 py-0.5 text-[10px] font-medium text-mentor-wood border border-mentor-wood-soft/40"
+                    title={t.eliteBadge}
+                  >
+                    {t.eliteMentorBadge}
+                  </span>
+                )}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-semibold text-mentor-ink" style={{ fontFamily: "Georgia, serif" }}>
                 Dr. Chi&apos;s Mentor
-              {/* PHASE_4_ELITE_5_PERCENT_SPEC §9: Elite 멘토 배지 — render-only. isElite from GET /api/me/elite only. */}
-              {isElite && (
-                <span className="ml-2 inline-flex items-center rounded-full bg-mentor-wood/20 px-2.5 py-0.5 text-xs font-medium text-mentor-wood border border-mentor-wood-soft/40" title={t.eliteBadge}>
-                  {t.eliteMentorBadge}
-                </span>
-              )}
-            </h1>
+              </h1>
             </div>
-            <p className="text-mentor-ink-soft mt-1 text-sm">
-              {t.slogan}
-            </p>
+            <p className="text-mentor-ink-soft mt-1 text-sm">{t.slogan}</p>
             {prefsLoaded && (
               <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm" role="group" aria-label={isEn ? "Conversation settings" : "대화 설정"}>
                 <label className="flex items-center gap-2 text-mentor-ink-soft cursor-pointer">
@@ -421,279 +358,170 @@ export default function MentorPage() {
               </div>
             )}
             {deleting && (
-              <div
-                className="mt-3"
-                aria-busy="true"
-                aria-label={isEn ? "Deleting conversation history" : "대화 기록 삭제 중"}
-              >
+              <div className="mt-3" aria-busy="true">
                 <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />
               </div>
             )}
           </header>
 
-          {!topic ? (
-            <div className="flex-1" role="region" aria-labelledby="mentor-topic-heading">
-              <p id="mentor-topic-heading" className="text-center text-mentor-ink-soft text-sm mb-6">
-                {t.topicPrompt}
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2" role="group" aria-label={tMentorPage.topicChoiceGroupAria}>
-                {TOPICS.map((x) => (
-                  <button
-                    key={x.id}
-                    type="button"
-                    onClick={() => startTopic(x.id)}
-                    aria-label={`${x.label}, ${x.subtitle}`}
-                    className={cn(
-                      "rounded-2xl border border-mentor-wood-soft/30 p-5 sm:p-6 text-left",
-                      "bg-mentor-paper/80 hover:bg-mentor-paper",
-                      "shadow-sm hover:shadow-md transition-all",
-                      "focus:outline-none focus:ring-2 focus:ring-mentor-wood-soft/40"
-                    )}
-                  >
-                    <span
-                      className="font-medium text-mentor-ink block"
-                      style={{ fontFamily: "Georgia, serif" }}
-                    >
-                      {x.label}
-                    </span>
-                    <span className="text-xs text-mentor-ink-soft mt-0.5 block">
-                      {x.subtitle}
-                    </span>
-                  </button>
-                ))}
-              </div>
-              <div className="mt-8 text-center">
-                <Link
-                  href={`/${locale}/bty`}
-                  className={cn(
-                    "inline-flex items-center rounded-xl px-5 py-3 text-sm font-medium",
-                    "bg-mentor-wood/10 text-mentor-wood border border-mentor-wood-soft/40",
-                    "hover:bg-mentor-wood/20 transition-colors"
-                  )}
-                  aria-label={t.goToMain}
+          {/* Chat area — always shown, no topic gate */}
+          <div className={cn(
+            "flex-1 rounded-2xl border border-mentor-wood-soft/20",
+            "bg-mentor-paper/90 shadow-lg overflow-hidden flex flex-col"
+          )}>
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 min-h-[280px]" role="log" aria-live="polite" aria-label={isEn ? "Conversation messages" : "대화 내용"}>
+              {messages.map((m, i) => (
+                <div
+                  key={i}
+                  role="article"
+                  aria-label={m.role === "user" ? (isEn ? "Your message" : "내 메시지") : (isEn ? "Dr. Chi reply" : "Dr. Chi 답장")}
+                  className={cn("flex gap-3", m.role === "user" ? "justify-end" : "justify-start")}
                 >
-                  {t.goToMain}
-                </Link>
-                {isElite && (
-                  <>
-                    <span className="mx-3 text-mentor-ink-soft">·</span>
-                    <Link
-                      href={`/${locale}/bty/elite`}
-                      className={cn(
-                        "inline-flex items-center rounded-xl px-5 py-3 text-sm font-medium",
-                        "bg-mentor-wood/10 text-mentor-wood border border-mentor-wood-soft/40",
-                        "hover:bg-mentor-wood/20 transition-colors"
-                      )}
-                      aria-label={t.eliteRequestCta}
-                    >
-                      {t.eliteRequestCta}
-                    </Link>
-                  </>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div
-              className={cn(
-                "flex-1 rounded-2xl border border-mentor-wood-soft/20",
-                "bg-mentor-paper/90 shadow-lg overflow-hidden flex flex-col"
+                  {m.role === "chi" && (
+                    <GuideCharacterAvatar codeName={userCodeName} variant="warm" size="sm" alt="Dr. Chi" className="flex-shrink-0 mt-0.5" />
+                  )}
+                  <div className={cn(
+                    "max-w-[88%] rounded-xl px-5 py-4 text-sm leading-relaxed",
+                    m.role === "user"
+                      ? "bg-mentor-wood/10 text-mentor-ink border border-mentor-wood-soft/20 rounded-br-sm"
+                      : "bg-white/70 text-mentor-ink border-l-4 border-mentor-wood-soft/50 rounded-bl-sm"
+                  )}>
+                    {m.role === "chi" && (
+                      <span className="text-xs font-medium text-mentor-wood block mb-1.5" style={{ fontFamily: "Georgia, serif" }}>
+                        Dr. Chi
+                      </span>
+                    )}
+                    <p className="whitespace-pre-wrap">{m.text}</p>
+                    {m.safetyValve && (
+                      <a
+                        href={CENTER_URL.startsWith("http") ? CENTER_URL : `/${pathname.split("/")[1]}/center`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(
+                          "inline-flex items-center gap-2 mt-4 px-4 py-2.5 rounded-xl",
+                          "bg-dear-sage/20 text-dear-charcoal border border-dear-sage/40",
+                          "hover:bg-dear-sage/30 transition-colors font-medium text-sm"
+                        )}
+                        aria-label={t.centerLink}
+                      >
+                        {t.centerLink}
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {sending && (
+                <div className="flex gap-3 justify-start items-start">
+                  <GuideCharacterAvatar codeName={userCodeName} variant="warm" size="sm" alt="Dr. Chi" className="flex-shrink-0 mt-0.5" />
+                  <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 20px", maxWidth: 220 }} />
+                </div>
               )}
-            >
-              <div className="p-4 border-b border-mentor-wood-soft/20 bg-white/30" role="region" aria-label={isEn ? "Conversation header" : "대화 헤더"}>
-                <p className="text-sm text-mentor-ink-soft">
-                  {TOPICS.find((x) => x.id === topic)?.label} · {TOPICS.find((x) => x.id === topic)?.subtitle}
+              <div ref={bottomRef} />
+            </div>
+
+            {conversationEnded ? (
+              <div className="p-6 border-t border-mentor-wood-soft/20 bg-mentor-paper/50 text-center" role="region" aria-labelledby="mentor-conversation-ended-heading">
+                <p id="mentor-conversation-ended-heading" className="text-mentor-ink font-medium mb-4" style={{ fontFamily: "Georgia, serif" }}>
+                  {t.conversationEnded}
                 </p>
-                <div className="flex flex-wrap items-center gap-3 mt-1">
+                <p className="text-sm text-mentor-ink-soft mb-5">{t.conversationEndedSub}</p>
+                <div className="flex flex-wrap justify-center gap-3">
                   <button
                     type="button"
-                    onClick={() => {
-                      clearInputCompletely();
-                      setConversationEnded(false);
-                      setTopic(null);
-                      setMessages([]);
-                      setSessionId(null);
-                    }}
-                    className="text-xs text-mentor-wood hover:underline"
-                    aria-label={t.selectOtherTopic}
-                  >
-                    {t.selectOtherTopic}
-                  </button>
-                  {!conversationEnded && (
-                    <button
-                      type="button"
-                      onClick={endConversation}
-                      className="text-xs text-mentor-ink-soft hover:text-mentor-wood hover:underline"
-                      aria-label={t.endConversation}
-                    >
-                      {t.endConversation}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 min-h-[280px]" role="region" aria-label={isEn ? "Conversation messages" : "대화 내용"}>
-                {messages.map((m, i) => (
-                  <div
-                    key={i}
-                    role="article"
-                    aria-label={m.role === "user" ? (isEn ? "Your message" : "내 메시지") : (isEn ? "Dr. Chi reply" : "Dr. Chi 답장")}
+                    onClick={resetConversation}
                     className={cn(
-                      "flex gap-3",
-                      m.role === "user" ? "justify-end" : "justify-start"
+                      "rounded-xl px-5 py-3 text-sm font-medium",
+                      "bg-mentor-wood/10 text-mentor-wood border border-mentor-wood-soft/40",
+                      "hover:bg-mentor-wood/20 transition-colors"
                     )}
+                    aria-label={t.newConversation}
                   >
-                    {m.role === "chi" && (
-                      <GuideCharacterAvatar codeName={userCodeName} variant="warm" size="sm" alt="Dr. Chi" className="flex-shrink-0 mt-0.5" />
+                    {t.newConversation}
+                  </button>
+                  <Link
+                    href={`/${locale}/bty`}
+                    className={cn(
+                      "rounded-xl px-5 py-3 text-sm font-medium inline-block",
+                      "bg-mentor-wood text-white hover:bg-mentor-wood-soft transition-colors"
                     )}
-                    <div
-                      className={cn(
-                        "max-w-[88%] rounded-xl px-5 py-4 text-sm leading-relaxed",
-                        m.role === "user"
-                          ? "bg-mentor-wood/10 text-mentor-ink border border-mentor-wood-soft/20 rounded-br-sm"
-                          : "bg-white/70 text-mentor-ink border-l-4 border-mentor-wood-soft/50 rounded-bl-sm"
-                      )}
-                    >
-                      {m.role === "chi" && (
-                        <span
-                          className="text-xs font-medium text-mentor-wood block mb-1.5"
-                          style={{ fontFamily: "Georgia, serif" }}
-                        >
-                          Dr. Chi
-                        </span>
-                      )}
-                      <p className="whitespace-pre-wrap">{m.text}</p>
-                      {m.safetyValve && (
-                        <a
-                      href={CENTER_URL.startsWith("http") ? CENTER_URL : `/${pathname.split("/")[1]}/center`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={cn(
-                            "inline-flex items-center gap-2 mt-4 px-4 py-2.5 rounded-xl",
-                            "bg-dear-sage/20 text-dear-charcoal border border-dear-sage/40",
-                            "hover:bg-dear-sage/30 transition-colors font-medium text-sm"
-                          )}
-                          aria-label={t.centerLink}
-                        >
-                          {t.centerLink}
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {sending && (
-                  <div className="flex gap-3 justify-start items-start">
-                    <GuideCharacterAvatar codeName={userCodeName} variant="warm" size="sm" alt="Dr. Chi" className="flex-shrink-0 mt-0.5" />
-                    <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 20px", maxWidth: 220 }} />
-                  </div>
-                )}
-                <div ref={bottomRef} />
+                    aria-label={t.goFoundry}
+                  >
+                    {t.goFoundry}
+                  </Link>
+                </div>
               </div>
-
-              {conversationEnded ? (
-                <div className="p-6 border-t border-mentor-wood-soft/20 bg-mentor-paper/50 text-center" role="region" aria-labelledby="mentor-conversation-ended-heading">
-                  <p id="mentor-conversation-ended-heading" className="text-mentor-ink font-medium mb-4" style={{ fontFamily: "Georgia, serif" }}>
-                    {t.conversationEnded}
-                  </p>
-                  <p className="text-sm text-mentor-ink-soft mb-5">
-                    {t.conversationEndedSub}
-                  </p>
-                  <div className="flex flex-wrap justify-center gap-3">
-                    <button
-                      type="button"
-                      onClick={goToTopicSelection}
-                      className={cn(
-                        "rounded-xl px-5 py-3 text-sm font-medium",
-                        "bg-mentor-wood/10 text-mentor-wood border border-mentor-wood-soft/40",
-                        "hover:bg-mentor-wood/20 transition-colors"
-                      )}
-                      aria-label={t.goOtherTopic}
-                    >
-                      {t.goOtherTopic}
-                    </button>
-                    <Link
-                      href={`/${locale}/bty`}
-                      className={cn(
-                        "rounded-xl px-5 py-3 text-sm font-medium inline-block",
-                        "bg-mentor-wood text-white hover:bg-mentor-wood-soft",
-                        "transition-colors"
-                      )}
-                      aria-label={t.goFoundry}
-                    >
-                      {t.goFoundry}
-                    </Link>
-                  </div>
+            ) : (
+              <div className="p-4 border-t border-mentor-wood-soft/20 bg-white/30" role="group" aria-label={isEn ? "Message input" : "메시지 입력"}>
+                <div className="flex gap-2">
+                  <input
+                    key={`mentor-input-${inputKey}`}
+                    ref={inputRef}
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); }
+                    }}
+                    placeholder={t.placeholder}
+                    aria-label={t.placeholder}
+                    className={cn(
+                      "flex-1 rounded-xl px-4 py-3 text-sm",
+                      "border border-mentor-wood-soft/30 bg-white",
+                      "placeholder:text-mentor-ink-soft/60",
+                      "focus:outline-none focus:ring-2 focus:ring-mentor-wood-soft/30 focus:border-mentor-wood-soft"
+                    )}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void send()}
+                    disabled={!input.trim() || sending}
+                    className={cn(
+                      "rounded-xl px-5 py-3 font-medium text-sm",
+                      "bg-mentor-wood text-white hover:bg-mentor-wood-soft",
+                      "disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    )}
+                    aria-label={t.send}
+                  >
+                    {t.send}
+                  </button>
                 </div>
-              ) : (
-                <div className="p-4 border-t border-mentor-wood-soft/20 bg-white/30" role="group" aria-label={isEn ? "Message input" : "메시지 입력"}>
-                  <div className="flex gap-2">
-                    <input
-                      key={`mentor-input-${inputKey}`}
-                      ref={inputRef}
-                      type="text"
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          send();
-                        }
-                      }}
-                      placeholder={t.placeholder}
-                      aria-label={t.placeholder}
-                      className={cn(
-                        "flex-1 rounded-xl px-4 py-3 text-sm",
-                        "border border-mentor-wood-soft/30 bg-white",
-                        "placeholder:text-mentor-ink-soft/60",
-                        "focus:outline-none focus:ring-2 focus:ring-mentor-wood-soft/30 focus:border-mentor-wood-soft"
-                      )}
-                    />
-                    <button
-                      type="button"
-                      onClick={send}
-                      disabled={!input.trim() || sending}
-                      className={cn(
-                        "rounded-xl px-5 py-3 font-medium text-sm",
-                        "bg-mentor-wood text-white hover:bg-mentor-wood-soft",
-                        "disabled:opacity-50 disabled:cursor-not-allowed",
-                        "transition-colors"
-                      )}
-                      aria-label={t.send}
-                    >
-                      {t.send}
-                    </button>
-                  </div>
-                  <p className="mt-2 text-center text-xs text-mentor-ink-soft">
-                    {t.seeYouNext}
-                    <span className="mx-1.5">·</span>
-                    <button
-                      type="button"
-                      onClick={goToTopicSelection}
-                      className="text-mentor-wood hover:underline font-medium"
-                      aria-label={t.endConversation}
-                    >
-                      {t.endConversation}
-                    </button>
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+                <p className="mt-2 text-center text-xs text-mentor-ink-soft">
+                  {t.seeYouNext}
+                  <span className="mx-1.5">·</span>
+                  <button
+                    type="button"
+                    onClick={endConversation}
+                    className="text-mentor-wood hover:underline font-medium"
+                    aria-label={t.endConversation}
+                  >
+                    {t.endConversation}
+                  </button>
+                </p>
+              </div>
+            )}
+          </div>
 
           <MentorConversationHistory
             locale={locale as "ko" | "en"}
-            topicLabels={Object.fromEntries(TOPICS.map((x) => [x.id, x.label]))}
+            topicLabels={{ leadership: isEn ? "Leadership Coaching" : "리더십 코칭" }}
           />
-          <div className="mt-6 pt-4 border-t border-mentor-wood-soft/20">
-            <EmotionalStatsPhrases />
-          </div>
+
           <footer className="mt-4 text-center text-sm text-mentor-ink-soft space-x-3">
             <Link href={`/${locale}/bty`} className="text-mentor-wood hover:underline" aria-label={isEn ? "Go to Foundry" : "훈련장으로 가기"}>
               {t.toFoundry}
             </Link>
             <span>·</span>
-            <Link href={`/${locale}/bty/integrity`} className="text-mentor-wood hover:underline" aria-label={isEn ? "Go to Integrity simulator" : "역지사지 시뮬레이터로 가기"}>
-              {t.toIntegrity}
+            <Link href={`/${locale}/bty/dashboard`} className="text-mentor-wood hover:underline" aria-label={isEn ? "Dashboard" : "대시보드"}>
+              {t.toDashboard}
             </Link>
+            {isElite && (
+              <>
+                <span>·</span>
+                <Link href={`/${locale}/bty/elite`} className="text-mentor-wood hover:underline font-medium" aria-label={t.eliteRequestCta}>
+                  {t.eliteRequestCta}
+                </Link>
+              </>
+            )}
           </footer>
         </div>
       </main>

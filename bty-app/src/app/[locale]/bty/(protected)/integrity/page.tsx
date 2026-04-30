@@ -1,13 +1,8 @@
-import { Suspense } from "react";
-import ClientPage from "./page.client";
-import { PageLoadingFallback } from "@/components/bty-arena";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default function Page() {
-  return (
-    <Suspense fallback={<PageLoadingFallback />}>
-      <ClientPage />
-    </Suspense>
-  );
+export default async function Page({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  redirect(`/${locale}/bty`);
 }
