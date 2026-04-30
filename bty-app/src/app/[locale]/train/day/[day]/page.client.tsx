@@ -44,7 +44,16 @@ export default function TrainDayPage() {
     <div style={{ display: "grid", gridTemplateColumns: "360px 1fr 420px", height: "100vh" }}>
       {/* LEFT: Sidebar */}
       <aside style={{ borderRight: "1px solid #eee", padding: 16, overflow: "auto" }} role="navigation" aria-label={t.dayListLabel}>
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>{t.title}</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <div style={{ fontWeight: 700 }}>{t.title}</div>
+          <a
+            href={`/${locale}/center`}
+            style={{ fontSize: 12, color: "#64748b", textDecoration: "none", opacity: 0.8 }}
+            aria-label={locale === "ko" ? "Center로 돌아가기" : "Back to Center"}
+          >
+            ← {locale === "ko" ? "Center" : "Center"}
+          </a>
+        </div>
         <div style={{ opacity: 0.7, marginBottom: 16 }}>
           Unlocked today: Day {progress?.todayUnlockedDay ?? 1}
         </div>

@@ -25,10 +25,13 @@ type LetterItem = {
   created_at: string;
 };
 
+/** Fields match /api/assessment/submissions response shape (camelCase from service mapper). */
 type AssessmentItem = {
-  pattern_key: string | null;
-  recommended_track: string | null;
-  created_at: string;
+  id: string;
+  scores: Record<string, number>;
+  pattern: string;
+  track: string;
+  createdAt: string;
 };
 
 type ResilienceEntry = {
@@ -50,7 +53,7 @@ function StageContextCard({ stage, isKo }: { stage: StageState; isKo: boolean })
       </div>
       <div className="text-sm font-medium text-dear-charcoal">{stage.stageName}</div>
       {isStage3 && (
-        <p className="text-xs text-dear-charcoal-soft mt-1 opacity-80">
+        <p className="text-xs text-dear-charcoal-soft mt-1 opacity-80 m-0">
           {isKo
             ? "재정비가 필요한 시점이에요. Center가 도와드릴게요."
             : "A good time to reflect and reset. Center is here."}
@@ -121,8 +124,9 @@ function DearMeCard({
   );
 }
 
-function ResilienceCard({ entries, isKo }: { entries: ResilienceEntry[]; isKo: boolean }) {
-  const last7 = entries.slice(-7);
+function ResilienceCard({ entries, locale, isKo }: { entries: ResilienceEntry[]; locale: string; isKo: boolean }) {
+  const last30 = entries.slice(-30);
+  const last7 = last30.slice(-7);
 
   function dotColor(level: "high" | "mid" | "low"): string {
     if (level === "high") return "#14b8a6";
@@ -130,37 +134,89 @@ function ResilienceCard({ entries, isKo }: { entries: ResilienceEntry[]; isKo: b
     return "#ef4444";
   }
 
+  function levelLabel(level: "high" | "mid" | "low"): string {
+    if (isKo) return level === "high" ? "높음" : level === "mid" ? "보통" : "낮음";
+    return level;
+  }
+
+  const avgLevel: "high" | "mid" | "low" | null = (() => {
+    if (last7.length === 0) return null;
+    const score = last7.reduce((s, e) => s + (e.level === "high" ? 3 : e.level === "mid" ? 2 : 1), 0) / last7.length;
+    if (score >= 2.5) return "high";
+    if (score >= 1.5) return "mid";
+    return "low";
+  })();
+
+  const trend: "up" | "flat" | "down" | null = (() => {
+    if (last7.length < 4) return null;
+    const half = Math.floor(last7.length / 2);
+    const firstHalf = last7.slice(0, half);
+    const secondHalf = last7.slice(half);
+    const avg = (arr: ResilienceEntry[]) =>
+      arr.reduce((s, e) => s + (e.level === "high" ? 3 : e.level === "mid" ? 2 : 1), 0) / arr.length;
+    const diff = avg(secondHalf) - avg(firstHalf);
+    if (diff > 0.3) return "up";
+    if (diff < -0.3) return "down";
+    return "flat";
+  })();
+
   return (
     <div
       className="rounded-xl border border-dear-sage/20 bg-dear-sage/5 px-4 py-3"
       role="region"
       aria-label={isKo ? "에너지 기록" : "Energy log"}
     >
-      <div className="text-sm font-semibold text-dear-charcoal mb-2">
-        {isKo ? "에너지 기록" : "Energy log"}
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-sm font-semibold text-dear-charcoal">
+          {isKo ? "에너지 기록" : "Energy log"}
+        </div>
+        <Link
+          href={`/${locale}/dear-me`}
+          className="text-xs font-medium text-dear-sage hover:text-dear-charcoal transition-colors rounded-lg border border-dear-sage/30 bg-dear-sage/5 px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dear-sage"
+          aria-label={isKo ? "편지 쓰기" : "Write a letter"}
+        >
+          {isKo ? "+ 기록" : "+ Log"}
+        </Link>
       </div>
       {last7.length > 0 ? (
-        <div
-          className="flex gap-2 items-center flex-wrap"
-          role="list"
-          aria-label={isKo ? "최근 7일 에너지" : "Last 7 days energy"}
-        >
-          {last7.map((entry) => (
-            <div
-              key={entry.date}
-              role="listitem"
-              title={`${entry.date}: ${entry.level}`}
-              aria-label={`${entry.date}: ${entry.level}`}
-              style={{
-                width: 14,
-                height: 14,
-                borderRadius: "50%",
-                background: dotColor(entry.level),
-                flexShrink: 0,
-              }}
-            />
-          ))}
-        </div>
+        <>
+          <div
+            className="flex gap-2 items-end flex-wrap mb-2"
+            role="list"
+            aria-label={isKo ? "최근 7일 에너지" : "Last 7 days energy"}
+          >
+            {last7.map((entry) => (
+              <div
+                key={entry.date}
+                role="listitem"
+                title={`${entry.date}: ${levelLabel(entry.level)}`}
+                aria-label={`${entry.date}: ${levelLabel(entry.level)}`}
+                style={{
+                  width: 14,
+                  height: 14,
+                  borderRadius: "50%",
+                  background: dotColor(entry.level),
+                  flexShrink: 0,
+                }}
+              />
+            ))}
+          </div>
+          <div className="flex items-center gap-3 mt-1">
+            {avgLevel && (
+              <span className="text-xs text-dear-charcoal-soft">
+                {isKo ? "7일 평균" : "7-day avg"}: <span style={{ color: dotColor(avgLevel), fontWeight: 600 }}>{levelLabel(avgLevel)}</span>
+              </span>
+            )}
+            {trend && (
+              <span className="text-xs text-dear-charcoal-soft">
+                {trend === "up" ? (isKo ? "↑ 개선 중" : "↑ improving") : trend === "down" ? (isKo ? "↓ 주의 필요" : "↓ declining") : (isKo ? "→ 안정" : "→ stable")}
+              </span>
+            )}
+            <span className="text-xs text-dear-charcoal-soft opacity-60">
+              {isKo ? `${last30.length}일 기록` : `${last30.length} days logged`}
+            </span>
+          </div>
+        </>
       ) : (
         <p className="text-sm text-dear-charcoal-soft m-0">
           {isKo ? "아직 기록이 없어요." : "No entries yet."}
@@ -168,8 +224,8 @@ function ResilienceCard({ entries, isKo }: { entries: ResilienceEntry[]; isKo: b
       )}
       <p className="text-xs text-dear-charcoal-soft mt-2 opacity-70 m-0">
         {isKo
-          ? "편지를 쓰면 에너지가 기록돼요."
-          : "Energy is logged when you write a letter."}
+          ? "편지를 쓸 때 에너지(1-5)를 입력하면 기록돼요."
+          : "Energy is logged when you write a letter with an energy rating."}
       </p>
     </div>
   );
@@ -184,11 +240,9 @@ function AssessmentCard({
   locale: string;
   isKo: boolean;
 }) {
-  const result = assessment
-    ? (assessment.recommended_track ?? assessment.pattern_key ?? null)
-    : null;
+  const result = assessment ? (assessment.track ?? assessment.pattern ?? null) : null;
   const dateStr = assessment
-    ? new Date(assessment.created_at).toLocaleDateString(isKo ? "ko-KR" : "en-US", {
+    ? new Date(assessment.createdAt).toLocaleDateString(isKo ? "ko-KR" : "en-US", {
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -203,7 +257,7 @@ function AssessmentCard({
     >
       <div className="flex items-center justify-between mb-2">
         <div className="text-sm font-semibold text-dear-charcoal">
-          {isKo ? "자존감 진단" : "Self-esteem assessment"}
+          {isKo ? "자존감 진단 (50문항)" : "Self-esteem assessment (50)"}
         </div>
         <Link
           href={`/${locale}/assessment`}
@@ -214,20 +268,26 @@ function AssessmentCard({
         </Link>
       </div>
       {result ? (
-        <>
+        <div className="space-y-1">
           <p className="text-sm text-dear-charcoal font-medium m-0">{result}</p>
           {dateStr && (
-            <time
-              className="text-xs text-dear-charcoal-soft mt-1 block"
-              dateTime={assessment!.created_at}
-            >
+            <time className="text-xs text-dear-charcoal-soft block" dateTime={assessment!.createdAt}>
               {dateStr}
             </time>
           )}
-        </>
+          <Link
+            href={`/${locale}/assessment/result`}
+            className="text-xs text-dear-sage hover:underline block mt-1"
+            aria-label={isKo ? "상세 결과 보기" : "View detailed results"}
+          >
+            {isKo ? "상세 결과 보기 →" : "View detailed results →"}
+          </Link>
+        </div>
       ) : (
         <p className="text-sm text-dear-charcoal-soft m-0">
-          {isKo ? "아직 진단 기록이 없어요." : "No assessment yet."}
+          {isKo
+            ? "아직 진단 기록이 없어요. 진단을 완료하면 결과가 여기에 표시됩니다."
+            : "No assessment yet. Complete one to see your results here."}
         </p>
       )}
     </div>
@@ -316,7 +376,7 @@ export default function CenterPageClient({ locale }: { locale: string }) {
               {stage && <StageContextCard stage={stage} isKo={isKo} />}
               <HealingPhaseTracker locale={lang} />
               <DearMeCard letter={letters[0] ?? null} locale={locale} isKo={isKo} />
-              <ResilienceCard entries={resilience} isKo={isKo} />
+              <ResilienceCard entries={resilience} locale={locale} isKo={isKo} />
               <AssessmentCard assessment={submissions[0] ?? null} locale={locale} isKo={isKo} />
             </div>
           )}

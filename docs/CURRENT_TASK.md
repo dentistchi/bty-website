@@ -1,5 +1,7 @@
 # CURRENT TASK — 2026-03-23
 
+- [x] 2026-04-30 — **Center 후속 UX 보강(진단 기록 필드 매핑/상세결과 링크, Healing CTA 링크, 에너지 기록 요약, 28일 프로그램 Center 복귀 링크) + staging 배포** — `CenterPageClient`에서 assessment 응답 필드를 camelCase(`pattern/track/createdAt`)로 정합화하고 `상세 결과 보기` 링크를 추가, `HealingPhaseTracker` 활성 단계별 CTA(`/assessment`, `/dear-me`, `/bty/healing/awakening`)를 연결, 에너지 카드에 7일 평균/트렌드/30일 총 기록을 노출, `train/day/[day]/page.client.tsx` 사이드바에 `← Center` 링크를 추가. 배포 완료: `bty-arena-staging` Worker version `92be1e4f-dc96-4c6d-a30f-5b3cbeb1efda`. **작업 완료**
+
 - [x] 2026-04-30 — **Center 허브 UI 전환(Forced Reset/Normal 모드 분기) + staging 배포** — `src/app/[locale]/center/page.tsx`가 `CenterPageClient`를 사용하도록 교체되고, 새 `src/app/[locale]/center/CenterPageClient.tsx`에서 Stage 4(또는 `forcedResetTriggeredAt`)는 `ForcedResetUX` 전용 화면으로 Arena 이동을 차단, Stage 1~3은 Stage 컨텍스트/Healing tracker/Dear Me/Resilience/Assessment 카드 허브를 렌더링. 배포 완료: `bty-arena-staging` Worker version `3750ced8-6f08-424b-83d9-8a99f76dc5d1`. **작업 완료**
 
 - [x] 2026-04-27 — **`NEXT_SCENARIO_READY + next_allowed` Continue 루프(`run/complete` 반복) 차단** — 원인: `useArenaSession.continueNextScenario()`가 이미 `NEXT_SCENARIO_READY`인 스냅샷에서도 `POST /api/arena/run/complete`를 선호해 같은 완료 호출이 반복될 수 있었음. 수정: `effectiveSnapshot.runtime_state==="NEXT_SCENARIO_READY"` + `gates.next_allowed===true`면 `run/complete`를 스킵하고 세션 라우터 fetch로 바로 전환(로컬 run/state 정리 유지). 검증: `BtyArenaRunPageClient.snapshot-gates.test.tsx` PASS, `npm run build && npm run cf:build && npm run cf:deploy` PASS. **staging Worker version `d75f668f-448f-4508-9c50-02e82cfce1a1`**. **작업 완료**
