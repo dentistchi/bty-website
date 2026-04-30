@@ -35,6 +35,11 @@ function isPublicPath(pathname: string) {
   if (locale) {
     if (pathname === `/${locale}` || pathname === `/${locale}/`) return true;
     if (pathname === `/${locale}/center` || pathname === `/${locale}/center/`) return true;
+    /** Center 50-item assessment + results: must be reachable without Foundry login. */
+    if (pathname === `/${locale}/assessment` || pathname.startsWith(`/${locale}/assessment/`))
+      return true;
+    /** Legacy typo: `/[locale]/result` → handled by app route redirect to `/[locale]/assessment/result`. */
+    if (pathname === `/${locale}/result` || pathname.startsWith(`/${locale}/result/`)) return true;
     if (pathname === `/${locale}/admin/login`) return true;
     if (pathname === `/${locale}/dev/scenario-preview`) return true;
     if (pathname === `/${locale}/bty/login`) return true;
