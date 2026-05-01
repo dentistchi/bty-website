@@ -196,7 +196,7 @@ export default function QuickModePageClient({ locale }: Props) {
                 {t.actionLabel}
               </label>
               <textarea
-                className="w-full rounded-xl border border-[var(--arena-accent)]/20 bg-[var(--arena-surface,#1a1a2e)] px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--arena-accent)]/40 placeholder:text-[var(--arena-text)]/30"
+                className="w-full rounded-xl border border-[var(--arena-accent)]/20 bg-[var(--arena-surface,#1a1a2e)] px-4 py-3 text-sm text-[var(--arena-text)] resize-none focus:outline-none focus:ring-2 focus:ring-[var(--arena-accent)]/40 placeholder:text-[var(--arena-text)]/30"
                 rows={4}
                 placeholder={t.actionPlaceholder}
                 value={actionText}

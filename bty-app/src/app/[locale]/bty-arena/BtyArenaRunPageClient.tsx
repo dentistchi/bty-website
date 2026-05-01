@@ -11,7 +11,6 @@ import {
   LoadingFallback,
   ArenaToast,
   ArenaRunHistory,
-  LabUsageStrip,
   ChoiceList,
   EliteArenaStep2Context,
   EliteArenaPostChoiceBlock,
@@ -1003,7 +1002,6 @@ export default function BtyArenaRunPageClient({
                   gateLabel={s.arenaRuntimeBanner.gateLabel}
                 />
               ) : null}
-              <LabUsageStrip locale={locale} />
               <div>
                 <ArenaHeader
                   locale={locale}
@@ -1295,7 +1293,6 @@ export default function BtyArenaRunPageClient({
                 gateLabel={s.arenaRuntimeBanner.gateLabel}
               />
             ) : null}
-            <LabUsageStrip locale={locale} />
             <div>
               {s.playUiSegment === "primary_choice" && s.recallPrompt && !s.scenario.eliteSetup && (
                 <div

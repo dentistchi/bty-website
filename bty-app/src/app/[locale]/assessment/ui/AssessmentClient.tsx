@@ -138,7 +138,12 @@ export default function AssessmentClient({
             <button
               key={v}
               type="button"
-              onClick={() => setAnswer(currentQuestion.id, v)}
+              onClick={() => {
+                setAnswer(currentQuestion.id, v);
+                if (!isLast) {
+                  setTimeout(() => setCurrentIndex((i) => i + 1), 280);
+                }
+              }}
               aria-label={likertLabels[v - 1]}
               className={`rounded-xl px-3 py-3 sm:py-4 text-sm font-medium border-2 transition-colors ${
                 currentAnswer === v
