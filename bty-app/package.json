@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "prebuild": "node scripts/check-env.mjs",
-    "build": "npm run prebuild && NODE_OPTIONS='--max-old-space-size=4096' next build",
-    "build:local": "npm run prebuild && NODE_OPTIONS='--max-old-space-size=4096' next build",
-    "build:fast": "npm run prebuild && SKIP_SOURCE_MAPS=1 NODE_OPTIONS='--max-old-space-size=4096' next build",
+    "build": "npm run prebuild && NODE_OPTIONS='--no-network-family-autoselection --max-old-space-size=4096' next build",
+    "build:local": "npm run prebuild && NODE_OPTIONS='--no-network-family-autoselection --max-old-space-size=4096' next build",
+    "build:fast": "npm run prebuild && SKIP_SOURCE_MAPS=1 NODE_OPTIONS='--no-network-family-autoselection --max-old-space-size=4096' next build",
     "opennext:build": "opennextjs-cloudflare build",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare preview",
