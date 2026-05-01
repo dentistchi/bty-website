@@ -1,5 +1,5 @@
 import { fetchJson } from "@/lib/read-json";
-import { getLlmEndpoint, isLlmAvailable } from "@/lib/llm";
+import { getLlmEndpoint, getLlmExtraOptions, isLlmAvailable } from "@/lib/llm";
 import { NextResponse } from "next/server";
 import { DR_CHI_PHILOSOPHY, DR_CHI_FEW_SHOT_EXAMPLES } from "@/lib/bty/mentor/drChiCharacter";
 import {
@@ -158,7 +158,10 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           model: llm.model,
           messages: openaiMessages,
+          temperature: 0.7,
+          top_p: 0.9,
           max_tokens: 400,
+          ...getLlmExtraOptions(),
         }),
       });
       if (r.ok) {

@@ -4,7 +4,7 @@
  * 메타 질문·안전 밸브·Foundry 추천 → 고정 응답, 그 외 buildChatMessagesForModel + OpenAI 호출.
  */
 import { fetchJson } from "@/lib/read-json";
-import { getLlmEndpoint, isLlmAvailable } from "@/lib/llm";
+import { getLlmEndpoint, getLlmExtraOptions, isLlmAvailable } from "@/lib/llm";
 import { NextResponse } from "next/server";
 import {
   buildChatMessagesForModel,
@@ -164,7 +164,9 @@ export async function POST(request: Request) {
           body: JSON.stringify({
             model: llm.model,
             messages: messagesForModel,
+            temperature: 0.7,
             max_tokens: 200, // CHATBOT_TRAINING_CHECKLIST §0 Foundry
+            ...getLlmExtraOptions(),
           }),
           signal: controller.signal,
         });

@@ -18,7 +18,7 @@ export function getLlmEndpoint(overrideModel?: string): LlmEndpoint {
     return {
       url: baseUrl.replace(/\/$/, "") + "/chat/completions",
       apiKey: process.env.LLM_API_KEY ?? "ollama",
-      model: overrideModel ?? process.env.LLM_MODEL ?? "gemma4",
+      model: overrideModel ?? process.env.LLM_MODEL ?? "gemma4:31b",
       isLocal: true,
     };
   }
@@ -32,4 +32,12 @@ export function getLlmEndpoint(overrideModel?: string): LlmEndpoint {
 
 export function isLlmAvailable(): boolean {
   return !!(process.env.LLM_BASE_URL || process.env.OPENAI_API_KEY);
+}
+
+/** Ollama 전용 추가 파라미터. LLM_BASE_URL 미설정 시 빈 객체 반환 (OpenAI 호환). */
+export function getLlmExtraOptions(): Record<string, unknown> {
+  if (process.env.LLM_BASE_URL) {
+    return { reasoning_effort: "none" };
+  }
+  return {};
 }
