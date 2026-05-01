@@ -4,7 +4,7 @@
 
 // ⚠️ 중요: 여기에 실제 Google AI Studio API 키를 넣으세요
 // https://aistudio.google.com/apikey 에서 발급받을 수 있습니다
-const GEMINI_API_KEY = "AIzaSyBcI1sIDeK1fhamHGXh1F1I5veYuO2_WV0";  // 👈 여기를 실제 API 키로 교체하세요!
+const GEMINI_API_KEY = "YOUR_GEMINI_KEY_HERE";  // 👈 여기를 실제 API 키로 교체하세요!
 
 // ✅ 2026년 최신 모델 사용
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
