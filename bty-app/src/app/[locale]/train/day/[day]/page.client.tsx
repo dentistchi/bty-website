@@ -7,124 +7,6 @@ import { getMessages } from "@/lib/i18n";
 
 import TRAIN_EN from "@/content/train-28days.en.json";
 
-type ChatMsg = { role: "user" | "assistant"; content: string };
-
-function CoachChat({ day, locale }: { day: number; locale: string }) {
-  const isKo = locale === "ko";
-  const [msgs, setMsgs] = React.useState<ChatMsg[]>([]);
-  const [input, setInput] = React.useState("");
-  const [sending, setSending] = React.useState(false);
-  const listRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [msgs]);
-
-  const send = React.useCallback(async () => {
-    const text = input.trim();
-    if (!text || sending) return;
-    const next: ChatMsg[] = [...msgs, { role: "user", content: text }];
-    setMsgs(next);
-    setInput("");
-    setSending(true);
-    try {
-      const systemContext = `Day ${day} of a 28-day self-esteem training program. Help the user apply today's lesson in the smallest, most practical way.`;
-      const r = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          messages: [
-            { role: "system", content: systemContext },
-            ...next.map((m) => ({ role: m.role, content: m.content })),
-          ],
-          mode: "center",
-          lang: isKo ? "ko" : "en",
-        }),
-      });
-      const data: { message?: string; error?: string } = await r.json().catch(() => ({}));
-      const reply = data.message ?? (isKo ? "잠시 후 다시 시도해 주세요." : "Try again in a moment.");
-      setMsgs((prev) => [...prev, { role: "assistant", content: reply }]);
-    } catch {
-      setMsgs((prev) => [...prev, { role: "assistant", content: isKo ? "연결에 실패했어요." : "Connection failed." }]);
-    } finally {
-      setSending(false);
-    }
-  }, [input, msgs, sending, day, isKo]);
-
-  const onKey = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); }
-  };
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div style={{ fontWeight: 700, marginBottom: 6 }}>
-        {isKo ? "코치 대화" : "Coach chat"}
-      </div>
-      <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 10 }}>
-        {isKo ? `Day ${day} 레슨을 오늘 실천하려면 어떻게 할까요?` : `How can you apply Day ${day}'s lesson today?`}
-      </div>
-      <div
-        ref={listRef}
-        style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, marginBottom: 10, minHeight: 120, maxHeight: 320 }}
-        role="log"
-        aria-label={isKo ? "코치 대화 내역" : "Coach conversation"}
-        aria-live="polite"
-      >
-        {msgs.length === 0 && (
-          <div style={{ opacity: 0.5, fontSize: 13 }}>
-            {isKo
-              ? `"Day ${day}: 오늘 가장 작은 10분 실천을 도와줘."`
-              : `"Day ${day}: Help me do the smallest 10-minute version of today's practice."`}
-          </div>
-        )}
-        {msgs.map((m, i) => (
-          <div
-            key={i}
-            style={{
-              alignSelf: m.role === "user" ? "flex-end" : "flex-start",
-              maxWidth: "85%",
-              padding: "8px 12px",
-              borderRadius: 12,
-              background: m.role === "user" ? "#1e40af" : "#f3f4f6",
-              color: m.role === "user" ? "white" : "#111",
-              fontSize: 13,
-              lineHeight: 1.5,
-            }}
-          >
-            {m.content}
-          </div>
-        ))}
-        {sending && (
-          <div style={{ alignSelf: "flex-start", opacity: 0.5, fontSize: 13 }}>
-            {isKo ? "답변 생성 중…" : "Thinking…"}
-          </div>
-        )}
-      </div>
-      <div style={{ display: "flex", gap: 6 }}>
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={onKey}
-          placeholder={isKo ? "메시지 입력…" : "Type a message…"}
-          rows={2}
-          style={{ flex: 1, borderRadius: 8, border: "1px solid #ddd", padding: "6px 10px", fontSize: 13, resize: "none" }}
-          aria-label={isKo ? "코치에게 메시지 입력" : "Message to coach"}
-        />
-        <button
-          type="button"
-          onClick={() => void send()}
-          disabled={!input.trim() || sending}
-          style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #ddd", cursor: "pointer", fontSize: 13, opacity: !input.trim() || sending ? 0.5 : 1 }}
-          aria-label={isKo ? "전송" : "Send"}
-        >
-          {isKo ? "전송" : "Send"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function clampDay(n: number) {
   if (!Number.isFinite(n)) return 1;
   return Math.min(28, Math.max(1, n));
@@ -162,16 +44,7 @@ export default function TrainDayPage() {
     <div style={{ display: "grid", gridTemplateColumns: "360px 1fr 420px", height: "100vh" }}>
       {/* LEFT: Sidebar */}
       <aside style={{ borderRight: "1px solid #eee", padding: 16, overflow: "auto" }} role="navigation" aria-label={t.dayListLabel}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-          <div style={{ fontWeight: 700 }}>{t.title}</div>
-          <a
-            href={`/${locale}/center`}
-            style={{ fontSize: 12, color: "#64748b", textDecoration: "none", opacity: 0.8 }}
-            aria-label={locale === "ko" ? "Center로 돌아가기" : "Back to Center"}
-          >
-            ← {locale === "ko" ? "Center" : "Center"}
-          </a>
-        </div>
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>{t.title}</div>
         <div style={{ opacity: 0.7, marginBottom: 16 }}>
           Unlocked today: Day {progress?.todayUnlockedDay ?? 1}
         </div>
@@ -297,8 +170,14 @@ export default function TrainDayPage() {
         </div>
 
         {!showCompletionSummary ? (
-          <div role="region" aria-label={t.coachChatLabel} style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-            <CoachChat day={day} locale={locale} />
+          <div role="region" aria-label={t.coachChatLabel}>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>Coach chat</div>
+            <div style={{ opacity: 0.7, marginBottom: 12 }}>
+              (placeholder) Later: inject lesson context + store conversation.
+            </div>
+            <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 12 }}>
+              Prompt idea: &quot;Today is Day {day}. Help me do the smallest 10-minute version of the practice.&quot;
+            </div>
           </div>
         ) : (
           <div role="region" aria-label={t.completionSummaryLabel}>

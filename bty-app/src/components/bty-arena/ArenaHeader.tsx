@@ -101,8 +101,8 @@ export function ArenaHeader({
                 <AvatarComposite
                   size={36}
                   characterUrl={resolvedAvatar.characterUrl}
-                  outfitUrl={undefined}
-                  accessoryUrls={[]}
+                  outfitUrl={resolvedAvatar.outfitUrl ?? undefined}
+                  accessoryUrls={resolvedAvatar.accessoryUrls}
                   alt=""
                 />
               ) : (

@@ -329,8 +329,8 @@ export default function DashboardClient() {
                       <AvatarComposite
                         size={72}
                         characterUrl={dashboardResolvedAvatar.characterUrl}
-                        outfitUrl={undefined}
-                        accessoryUrls={[]}
+                        outfitUrl={dashboardResolvedAvatar.outfitUrl ?? undefined}
+                        accessoryUrls={dashboardResolvedAvatar.accessoryUrls}
                         alt=""
                       />
                     ) : (

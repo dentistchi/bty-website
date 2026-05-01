@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import HubTopNav from "@/components/bty/HubTopNav";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
@@ -18,10 +18,9 @@ export default function AssessmentClient({
   locale = "ko",
 }: {
   questions: Question[];
-  locale?: Locale;
+  locale?: string;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -55,7 +54,7 @@ export default function AssessmentClient({
         const res = await fetch("/api/assessment/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ answers: finalAnswers, locale }),
+          body: JSON.stringify({ answers: finalAnswers }),
         });
         if (res.ok) {
           const data = await res.json();
@@ -66,9 +65,7 @@ export default function AssessmentClient({
       } finally {
         setSubmitting(false);
       }
-      const seg = pathname.split("/").filter(Boolean);
-      const routeLocale = seg[0] === "en" || seg[0] === "ko" ? seg[0] : locale;
-      router.push(`/${routeLocale}/assessment/result`);
+      router.push("./result");
       return;
     }
     setCurrentIndex((i) => i + 1);
@@ -138,12 +135,7 @@ export default function AssessmentClient({
             <button
               key={v}
               type="button"
-              onClick={() => {
-                setAnswer(currentQuestion.id, v);
-                if (!isLast) {
-                  setTimeout(() => setCurrentIndex((i) => i + 1), 280);
-                }
-              }}
+              onClick={() => setAnswer(currentQuestion.id, v)}
               aria-label={likertLabels[v - 1]}
               className={`rounded-xl px-3 py-3 sm:py-4 text-sm font-medium border-2 transition-colors ${
                 currentAnswer === v

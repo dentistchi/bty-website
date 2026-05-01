@@ -1,4 +1,4 @@
-export type BtyNavKey = "center" | "arena" | "my-page";
+export type BtyNavKey = "arena" | "growth" | "my-page";
 
 export type BtyNavItem = {
   key: BtyNavKey;
@@ -24,8 +24,8 @@ export function getBtyNavItems(
 ): BtyNavItem[] {
   const base = `/${locale}`;
   return [
-    { key: "center", label: labels.center, href: `${base}/center` },
     { key: "arena", label: labels.arena, href: arenaHrefOverride ?? `${base}/bty-arena` },
+    { key: "growth", label: labels.growth, href: `${base}/growth` },
     { key: "my-page", label: labels["my-page"], href: `${base}/my-page` },
   ];
 }
@@ -38,8 +38,11 @@ export function getBtyNavItems(
 export function getActiveBtyNav(pathname: string, locale: string, arenaEntryHref: string): BtyNavKey {
   const p = pathname || "";
   if (p.includes("/my-page")) return "my-page";
-  if (p.includes("/center") || p.includes("/dear-me") || p.includes("/assessment") || p.includes("/journal")) {
-    return "center";
+  if (
+    p.includes("/growth") ||
+    /\/bty\/(dojo|integrity|mentor)(\/|$|\?)/.test(p)
+  ) {
+    return "growth";
   }
   if (pathnameMatchesArenaEntryHref(p, arenaEntryHref)) return "arena";
   if (p.includes("/bty-arena")) return "arena";

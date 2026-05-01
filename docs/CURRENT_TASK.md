@@ -1,5 +1,9 @@
 # CURRENT TASK — 2026-03-23
 
+- [x] 2026-05-01 — **Working-tree 일괄 배포 (Cursor)** — `RUN_COMPLETE_CONTRACT_QUEUED` sentinel 분리 / `QUICK_MODE_COMPLETE` ActivityType 추가 / scenario-stats 중복 키 제거 / 테스트 3개 수정 포함. Worker Version **`c5eb8bdb-7c1f-4048-ab1a-a16abfa4157b`**. ⚠️ 미커밋 — 외부 레포 commit 권장. **작업 완료**
+
+- [x] 2026-05-01 — **`SUPABASE_SERVICE_ROLE_KEY` wrangler secret 빈값 → QR validate `server_config_error` 500 수정** — `wrangler secret list`로 키 존재 확인 후 `/api/debug` → `hasServiceRole: false` 확인. `.env.local` JWT 값으로 `wrangler secret put SUPABASE_SERVICE_ROLE_KEY` 재설정. 재확인: `hasServiceRole: true`, validate route `contract_not_found`(409, Supabase 연결 정상). Issue A `server_config_error` 완전 해소. 코드 변경 없음; Worker Version **`7be041a7-5acd-46ad-ac56-e93d1b249fc6`**(기존 빌드 유지). **작업 완료**
+
 - [x] 2026-04-30 — **허브 네비 단일 row(Center|Arena|…)+ Quick textarea 글자색+자가진단 280ms 자동 다음+Healing 액트 UX+i18n+멘토 데이터셋 규칙 + staging 배포** — Git `35127e3`. Worker version `e972d34e-d8c5-4984-a990-0e66ec54c443`. **작업 완료**
 
 - [x] 2026-04-30 — **LLM `gemma4:31b` 기본 + `getLlmExtraOptions()` + chat/mentor `temperature`/`top_p` + 빌드 IPv4(`package.json`)** — Git `907662b`, `ab02980` 푸시. 에이전트 환경에서 OpenNext 빌드까지 성공, Wrangler는 Cloudflare 인증 타임아웃으로 배포 미완 — 로컬에서 `npm run deploy` 실행 필요. **코드 완료**
@@ -204,7 +208,7 @@ BTY 시스템은 다음 단계로 전환됨:
 - [x] 2026-03-24 — C3 **TS6053 cold tsc + Action Loop tests** — `bty-app/scripts/ensure-next-types-stub.mjs` + `lint` runs `tsc --noEmit`; `src/domain/leadership-engine/action-loop/action-loop.test.ts` (band/slip/stagnation/idempotency/expiry/DLQ) — vitest ✓
 - [x] Arena release gate automation — `bty-app/scripts/arena-release-gate.sh`, `npm run verify:arena-release-gate`, `.github/workflows/arena-release-gate.yml` — **작업 완료**
 - [x] 2026-03-24 — C5 `self-healing-ci.sh` PASS (368 files / 2660 tests, build ✓) + docs sync — **작업 완료**
-- [x] 2026-03-25 — Arena release **final signoff** recorded: `BASE_URL=https://bty-website.ywamer2022.workers.dev`, run `23525350606`, artifact `arena-release-gate-evidence` — **작업 완료**
+- [x] 2026-03-25 — Arena release **final signoff** recorded: `BASE_URL=https://bty-arena-staging.ywamer2022.workers.dev`, run `23525350606`, artifact `arena-release-gate-evidence` — **작업 완료**
 
 ### Arena
 - [x] 2026-03-25 — C3 **Arena scenario fallback** — `selectNextScenario`: primary → archive → replay (deterministic) → relaxed tier/pref → locale-union static match → explicit `SCENARIOS` row · Vitest `scenario-selector.fallback.test` + `empty-catalog.test` · `npm test` ✓

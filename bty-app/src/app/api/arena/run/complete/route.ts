@@ -103,13 +103,15 @@ export async function POST(req: Request) {
     if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
   }
 
-  // Spec 9-1 B: Apply XP to weekly_xp ONCE per run (idempotent via RUN_COMPLETED_APPLIED)
+  // Spec 9-1 B: Apply XP to weekly_xp ONCE per run (idempotent via RUN_COMPLETED_APPLIED).
+  // Also catches RUN_COMPLETE_CONTRACT_QUEUED (written below when isContractGated=true) so
+  // repeated calls to this endpoint skip re-running syncPatternStates + ensureActionContract.
   const { data: applied, error: appliedErr } = await supabase
     .from("arena_events")
     .select("event_id")
     .eq("user_id", user.id)
     .eq("run_id", runId)
-    .eq("event_type", "RUN_COMPLETED_APPLIED")
+    .in("event_type", ["RUN_COMPLETED_APPLIED", "RUN_COMPLETE_CONTRACT_QUEUED"])
     .limit(1);
 
   if (appliedErr) return NextResponse.json({ error: appliedErr.message }, { status: 500 });
@@ -201,13 +203,15 @@ export async function POST(req: Request) {
     arenaCoreXp = rewards.coreXp;
     deltaCapped = rewards.deltaApplied;
   } else {
-    // Contract-gated runs defer XP to QR verification. Write the sentinel now so repeated
-    // calls to this endpoint take the idempotent early-return path (line ~117) instead of
+    // Contract-gated runs defer XP to QR verification. Write a distinct sentinel so repeated
+    // calls to this endpoint take the idempotent early-return path above instead of
     // re-running syncPatternStates + ensureActionContract on every call.
+    // Must NOT be RUN_COMPLETED_APPLIED so applyArenaRunRewardsOnVerifiedCompletion
+    // (called by qr/validate) can still apply XP on verified completion.
     await supabase.from("arena_events").insert({
       user_id: user.id,
       run_id: runId,
-      event_type: "RUN_COMPLETED_APPLIED",
+      event_type: "RUN_COMPLETE_CONTRACT_QUEUED",
       step: 7,
       scenario_id: scenarioId || "unknown",
       xp: 0,

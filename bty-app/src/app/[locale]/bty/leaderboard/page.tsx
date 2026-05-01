@@ -331,7 +331,7 @@ export default function LeaderboardPage() {
                   </span>
                   <UserAvatar
                     avatarUrl={c.avatarUrl}
-                    avatarLayers={c.avatarLayers ? { characterImageUrl: c.avatarLayers.characterImageUrl, outfitImageUrl: null } : undefined}
+                    avatarLayers={c.avatarLayers}
                     initials={c.codeName.slice(0, 2).toUpperCase()}
                     size="sm"
                   />

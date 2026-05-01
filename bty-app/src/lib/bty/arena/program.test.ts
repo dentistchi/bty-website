@@ -157,7 +157,10 @@ describe("program", () => {
 
   describe("getMaxUnlockedLevel", () => {
     it("staff track: returns S1 when tenure 0", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-01"));
       expect(getMaxUnlockedLevel({ track: "staff", joinedAt: "2026-03-01" })).toBe("S1");
+      vi.useRealTimers();
     });
 
     it("staff track: returns higher level when tenure meets min_tenure_months", () => {

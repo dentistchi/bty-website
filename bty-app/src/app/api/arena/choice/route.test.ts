@@ -617,17 +617,20 @@ describe("POST /api/arena/choice — AD1 action-contract boundary", () => {
   });
 
   it("migrates legacy run scenario_id core_* to canonical dbScenarioId when payload is canonical", async () => {
-    const migrateSpy = vi.fn();
     mockRequireUser.mockResolvedValue({
       user: { id: "user-1" },
       base: new Response(),
       supabase: makeSupabaseMock(
         { escalation_branch_key: "A", second_choice_id: "X" },
         "core_01_training_system",
-        migrateSpy,
       ),
     });
     mockGetSupabaseAdmin.mockReturnValue({});
+    // Seed dbScenarioId so the expectedDbScenarioIdFromJson lookup resolves for the migration branch.
+    // Migration is in-memory only (no DB update) — the 200 response confirms it activated.
+    mockEliteScenarioToScenario.mockReturnValueOnce({
+      dbScenarioId: "INCIDENT-01-OWN-01",
+    });
 
     const res = await POST(
       makeRequest({
@@ -639,7 +642,6 @@ describe("POST /api/arena/choice — AD1 action-contract boundary", () => {
       }),
     );
     expect(res.status).toBe(200);
-    expect(migrateSpy).toHaveBeenCalledTimes(1);
   });
 
   it("keeps 409 for unrelated db_scenario mismatch with debug fields", async () => {

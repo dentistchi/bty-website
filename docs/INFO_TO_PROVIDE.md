@@ -13,7 +13,7 @@
 
 ## 2. 어디서 발생하는지
 
-- **URL**: 지금 보고 있는 주소 (예: `https://bty-website.ywamer2022.workers.dev/en/bty/leaderboard`)
+- **URL**: 지금 보고 있는 주소 (예: `https://bty-arena-staging.ywamer2022.workers.dev/en/bty/leaderboard`)
 - **언어**: en(메인) / ko(보조) 중 어떤 사이트에서인지
 - **화면/기능**: Dashboard / Arena / Leaderboard / 로그인 / 로그아웃 등
 

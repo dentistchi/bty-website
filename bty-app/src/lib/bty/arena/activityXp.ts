@@ -38,8 +38,7 @@ export type ActivityType = "MENTOR_MESSAGE" | "CHAT_MESSAGE" | "QUICK_MODE_COMPL
 const ACTIVITY_XP: Record<ActivityType, number> = {
   MENTOR_MESSAGE: 5,
   CHAT_MESSAGE: 5,
-  /** Quick Mode action-completed: reduced reward per spec (≈0.3× weekly, 0.2× core vs full Arena). */
-  QUICK_MODE_COMPLETE: 8,
+  QUICK_MODE_COMPLETE: 5,
 };
 
 /**

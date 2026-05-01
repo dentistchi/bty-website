@@ -4,7 +4,6 @@
  * 메타 질문·안전 밸브·Foundry 추천 → 고정 응답, 그 외 buildChatMessagesForModel + OpenAI 호출.
  */
 import { fetchJson } from "@/lib/read-json";
-import { getLlmEndpoint, getLlmExtraOptions, isLlmAvailable } from "@/lib/llm";
 import { NextResponse } from "next/server";
 import {
   buildChatMessagesForModel,
@@ -147,26 +146,24 @@ export async function POST(request: Request) {
     });
     const fallback = getFallbackMessage(mode, lang);
 
-    if (isLlmAvailable()) {
-      const llm = getLlmEndpoint();
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (apiKey) {
       type OpenAIChatResp = { choices?: { message?: { content?: string } }[] };
       const openAiTimeoutMs = 30_000; // COMMANDER_BACKLOG_AND_NEXT §2: 장시간 대기 시 fallback으로 이탈
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), openAiTimeoutMs);
       let r: { ok: boolean; json?: OpenAIChatResp };
       try {
-        r = await fetchJson<OpenAIChatResp>(llm.url, {
+        r = await fetchJson<OpenAIChatResp>("https://api.openai.com/v1/chat/completions", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${llm.apiKey}`,
+            Authorization: `Bearer ${apiKey}`,
           },
           body: JSON.stringify({
-            model: llm.model,
+            model: "gpt-4o-mini",
             messages: messagesForModel,
-            temperature: 0.7,
             max_tokens: 200, // CHATBOT_TRAINING_CHECKLIST §0 Foundry
-            ...getLlmExtraOptions(),
           }),
           signal: controller.signal,
         });

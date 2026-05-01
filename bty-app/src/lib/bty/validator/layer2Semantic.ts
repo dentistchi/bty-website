@@ -2,10 +2,10 @@
  * VALIDATOR_ARCHITECTURE_V1 §3 — semantic evaluation; temperature 0.2; no user identity in payload.
  */
 import { fetchJson } from "@/lib/read-json";
-import { getLlmEndpoint, isLlmAvailable } from "@/lib/llm";
 import type { Layer2ModelResult, PatternContextForModel } from "./types";
 import { VALIDATOR_CONFIDENCE_THRESHOLD } from "./routeLayer2Outcome";
 
+const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_MODEL = "gpt-4o-mini";
 const TEMPERATURE = 0.2;
 
@@ -63,13 +63,12 @@ export async function runLayer2Semantic(input: Layer2SemanticInput): Promise<{
   result: Layer2ModelResult;
   modelId: string;
 } | { ok: false; error: string }> {
-  if (!isLlmAvailable()) {
-    return { ok: false, error: "missing_llm_config" };
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey?.trim()) {
+    return { ok: false, error: "missing_openai_key" };
   }
-  const llm = getLlmEndpoint(
-    (process.env.BTY_VALIDATOR_OPENAI_MODEL ?? "").trim() || undefined
-  );
-  const model = llm.model || DEFAULT_MODEL;
+
+  const model = (process.env.BTY_VALIDATOR_OPENAI_MODEL ?? DEFAULT_MODEL).trim() || DEFAULT_MODEL;
 
   const systemPrompt = [
     "You are a contract semantic validator for structured action commitments.",
@@ -101,11 +100,11 @@ export async function runLayer2Semantic(input: Layer2SemanticInput): Promise<{
     },
   };
 
-  const r = await fetchJson<OpenAIChatResp>(llm.url, {
+  const r = await fetchJson<OpenAIChatResp>(OPENAI_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${llm.apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model,

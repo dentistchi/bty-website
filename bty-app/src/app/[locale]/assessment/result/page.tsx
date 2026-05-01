@@ -1,4 +1,4 @@
-import ResultClient from "./ui/ResultClient";
+import ResultClient from "../ui/ResultClient";
 
 export const dynamic = "force-dynamic";
 

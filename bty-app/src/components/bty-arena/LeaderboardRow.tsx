@@ -110,7 +110,7 @@ export function LeaderboardRow({
           <AvatarComposite
             size={34}
             characterUrl={avatarLayers.characterImageUrl}
-            outfitUrl={undefined}
+            outfitUrl={avatarLayers.outfitImageUrl ?? undefined}
             accessoryUrls={[]}
             alt={displayName}
           />

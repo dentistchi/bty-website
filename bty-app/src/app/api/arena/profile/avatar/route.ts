@@ -67,9 +67,8 @@ export async function GET(req: NextRequest) {
           characterLocked: (p.avatar_character_locked as boolean) === true,
         },
         allowed: {
-          outfits: [],
+          outfits: getUnifiedOutfitManifestAllowed(),
           accessorySlots: accessorySlotsFromTier(tier),
-          accessories: [],
         },
       };
       const out = NextResponse.json(res);

@@ -89,22 +89,23 @@ export default function TrainShell({ children }: { children: React.ReactNode }) 
     [refreshProgress]
   );
 
-  // 5) 완료 요약 — /api/train/completion-pack 호출
+  // 5) 완료 요약(지금은 더미 → 나중에 LLM)
   const generateCompletionSummary = React.useCallback(
-    ({ day }: { day: number; lessonText: string }) => {
-      setCompletionSummary(null);
-      getJson(`/api/train/completion-pack?day=${day}`)
-        .then(({ ok, json }) => {
-          if (ok && json?.pack) {
-            const pack = json.pack as { summary?: string[]; questions?: string[]; day?: number };
-            setCompletionSummary({
-              title: `Day ${pack.day ?? day} — Completion Summary`,
-              bullets: pack.summary ?? [],
-              questions: pack.questions ?? [],
-            });
-          }
-        })
-        .catch(() => { /* optional — stay silent on failure */ });
+    ({ day, lessonText }: { day: number; lessonText: string }) => {
+      const excerpt = lessonText?.slice(0, 180).trim();
+      setCompletionSummary({
+        title: `Day ${day} — Completion Summary`,
+        bullets: [
+          "You showed up today. That's the win.",
+          excerpt ? `Key theme: ${excerpt}${excerpt.length >= 180 ? "…" : ""}` : "Key theme captured from today's lesson.",
+          "Keep it small. Repeat tomorrow.",
+        ],
+        questions: [
+          "What was the smallest moment you noticed the old pattern today?",
+          "If a friend had the same day, what would you say to them (1 sentence)?",
+          "What's one 5-minute action you can repeat tomorrow morning?",
+        ],
+      });
     },
     []
   );

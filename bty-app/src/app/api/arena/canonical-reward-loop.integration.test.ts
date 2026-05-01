@@ -146,13 +146,17 @@ function createSupabaseState() {
 
   const makeBuilder = (table: string) => {
     let filters: Record<string, unknown> = {};
+    let inFilters: Record<string, unknown[]> = {};
     const self = {
       select: (_cols?: string, _opts?: unknown) => self,
       eq: (k: string, v: unknown) => {
         filters[k] = v;
         return self;
       },
-      in: (_k: string, _v: unknown[]) => self,
+      in: (k: string, v: unknown[]) => {
+        inFilters[k] = v;
+        return self;
+      },
       not: (_k: string, _o: string, _v: unknown) => self,
       is: (_k: string, _v: unknown) => self,
       gte: (_k: string, _v: unknown) => self,
@@ -218,6 +222,16 @@ function createSupabaseState() {
         return { data: null, error: null };
       },
       then: (ok: (v: unknown) => unknown, fail?: (e: unknown) => unknown) => {
+        if (table === "arena_events" && inFilters.event_type) {
+          const types = inFilters.event_type as string[];
+          const data = state.arenaEvents.filter(
+            (e) =>
+              e.user_id === filters.user_id &&
+              e.run_id === filters.run_id &&
+              types.includes(e.event_type as string),
+          );
+          return Promise.resolve({ data, error: null }).then(ok, fail);
+        }
         if (table === "arena_events" && filters.event_type === "RUN_COMPLETED_APPLIED") {
           const data = state.arenaEvents.filter(
             (e) =>

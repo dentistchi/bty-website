@@ -25,21 +25,6 @@ type AwakeningApi = {
 
 const ACT_IDS = [1, 2, 3] as const;
 
-const ACT_DESCRIPTIONS: Record<number, { ko: string; en: string }> = {
-  1: {
-    ko: "진단과 편지를 쓰며 쌓아온 자기 이해를 바탕으로, '나는 어떻게 변했는가?'를 조용히 돌아봅니다. 성찰의 공간에 머무세요.",
-    en: "Drawing on the self-understanding you've built through your assessment and letter, quietly ask yourself: 'How have I changed?' Stay in this space of reflection.",
-  },
-  2: {
-    ko: "변화를 인정합니다. 과거의 나와 지금의 나 사이에 다리를 놓고, 새로운 자신으로의 전환을 내면에서 선언합니다.",
-    en: "Acknowledge the change. Build a bridge between who you were and who you are now, and declare this transition to yourself.",
-  },
-  3: {
-    ko: "여정의 완성입니다. 깨어난 자신을 온전히 받아들이세요. 이 선언이 다음 장의 시작점이 됩니다.",
-    en: "The journey is complete. Fully embrace your awakened self. This declaration becomes the starting point of your next chapter.",
-  },
-};
-
 export function AwakeningActsTrack({ locale }: { locale: string }) {
   const lang = (locale === "ko" ? "ko" : "en") as Locale;
   const th = getMessages(lang).healing;
@@ -203,41 +188,28 @@ export function AwakeningActsTrack({ locale }: { locale: string }) {
             </div>
           </div>
           <ul
-            className="mt-3 grid grid-cols-1 gap-3"
+            className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3"
             role="list"
             aria-label={th.awakeningActsGridAria}
           >
             {ACT_IDS.map((id) => {
               const name = actsMap[String(id)] ?? `Act ${id}`;
               const done = completed.has(id);
-              const isNext = id === nextAct;
               const completedArr = Array.from(completed) as AwakeningActId[];
               const lockKey = healingAwakeningActLockReasonDisplayKey(id, completedArr);
-              const showBlocked = !done && lockKey != null && !isNext;
-              const desc = ACT_DESCRIPTIONS[id];
+              const showBlocked = !done && lockKey != null && id !== nextAct;
               return (
                 <li
                   key={id}
-                  className={`flex flex-col rounded-xl border px-3 py-4 shadow-sm ${
-                    done
-                      ? "border-green-200 bg-green-50/60"
-                      : isNext
-                        ? "border-[var(--arena-accent)]/40 bg-[var(--arena-accent)]/5"
-                        : "border-bty-border bg-bty-bg opacity-60"
-                  }`}
+                  className="flex flex-col rounded-xl border border-bty-border bg-bty-bg px-3 py-3 text-center shadow-sm"
                 >
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-bty-muted">
                     {th.awakeningActNumberLabel.replace("{n}", String(id))}
                   </span>
                   <span className="mt-1 text-sm font-semibold leading-tight text-bty-text">{name}</span>
-                  <span className={`mt-1.5 text-[11px] font-medium ${done ? "text-green-700" : isNext ? "text-[var(--arena-accent)]" : "text-bty-muted"}`}>
-                    {done ? th.awakeningActDone : isNext ? (lang === "ko" ? "다음 순서" : "Up next") : th.awakeningActOpen}
+                  <span className="mt-2 text-xs text-bty-secondary">
+                    {done ? th.awakeningActDone : th.awakeningActOpen}
                   </span>
-                  {desc && (
-                    <p className="mt-2 text-xs leading-relaxed text-bty-secondary">
-                      {lang === "ko" ? desc.ko : desc.en}
-                    </p>
-                  )}
                   {showBlocked && lockKey && (
                     <span
                       className="mt-2 text-[11px] leading-snug text-amber-900/90"

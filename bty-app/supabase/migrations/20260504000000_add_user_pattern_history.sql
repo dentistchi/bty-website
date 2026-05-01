@@ -30,6 +30,10 @@ CREATE INDEX IF NOT EXISTS idx_uph_pattern_lookup
 -- RLS
 ALTER TABLE public.user_pattern_history ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "user_pattern_history_own_read"    ON public.user_pattern_history;
+DROP POLICY IF EXISTS "user_pattern_history_own_insert"  ON public.user_pattern_history;
+DROP POLICY IF EXISTS "user_pattern_history_service_all" ON public.user_pattern_history;
+
 CREATE POLICY "user_pattern_history_own_read"
   ON public.user_pattern_history FOR SELECT
   USING (auth.uid() = user_id);

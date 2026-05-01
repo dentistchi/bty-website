@@ -136,36 +136,42 @@ export default function HubTopNav({ theme = "arena", showLangSwitch = false, tra
       );
     };
 
-    const dash = `/${locale}/bty/dashboard`;
-    const lb = `/${locale}/bty/leaderboard`;
-    const myPage = `/${locale}/my-page`;
-    const myAccount = `/${locale}/my-page/account`;
-    const mainHref = `/${locale}/bty-arena`;
+    let secondary: ReactNode = null;
+    if (ctx === "arena") {
+      const m = arena;
+      const d = `/${locale}/bty/dashboard`;
+      const lb = `/${locale}/bty/leaderboard`;
+      secondary = (
+        <div style={arenaNav.wrap} className="bty-hub-secondary mt-1" aria-label={isKo ? "아레나 하위 메뉴" : "Arena sub navigation"}>
+          {pill(m, L.main, isActivePath(pathname, m))}
+          {pill(d, L.dashboard, isActivePath(pathname, d))}
+          {pill(lb, L.leaderboard, isActivePath(pathname, lb))}
+        </div>
+      );
+    } else if (ctx === "foundry") {
+      const routes = [
+        [`/${locale}/bty/foundry`, L.main],
+        [`/${locale}/bty/dashboard`, L.dashboard],
+        [`/${locale}/bty/dojo`, L.dojo],
+        [`/${locale}/bty/integrity`, L.integrity],
+        [`/${locale}/bty/mentor`, L.mentor],
+        [`/${locale}/bty/elite`, L.elite],
+        [`/${locale}/bty/leaderboard`, L.leaderboard],
+      ] as const;
+      secondary = (
+        <div style={arenaNav.wrap} className="bty-hub-secondary mt-1" aria-label={isKo ? "훈련장 하위 메뉴" : "Foundry sub navigation"}>
+          {routes.map(([href, label]) => pill(href, label, isActivePath(pathname, href)))}
+        </div>
+      );
+    }
 
     return (
       <div className="flex flex-col items-end min-w-0 w-full sm:w-auto">
-        <div className="flex flex-wrap items-center gap-1 sm:gap-2 justify-end w-full">
-          {/* Brand */}
-          <Link
-            href={mainHref}
-            style={{ ...arenaNav.primary, fontWeight: 800, letterSpacing: "-0.02em" }}
-            className="bty-brand-link mr-1"
-          >
-            <span style={{ fontWeight: 400 }}>bty</span>ARENA
-          </Link>
-          <span style={{ color: "var(--arena-text-soft)", opacity: 0.3 }}>|</span>
-          {/* Hub + extended nav */}
-          <div style={arenaNav.wrap} className="bty-hub-primary justify-end" aria-label={isKo ? "주요 메뉴" : "Main navigation"}>
-            {hubPill(center, "Center", "center")}
-            {hubPill(arena, "Arena", "arena")}
-            {hubPill(foundry, "Foundry", "foundry")}
-          </div>
-          <span style={{ color: "var(--arena-text-soft)", opacity: 0.3 }}>|</span>
-          <div style={arenaNav.wrap}>
-            {pill(dash, "Dashboard", isActivePath(pathname, dash))}
-            {pill(lb, "Leaderboard", isActivePath(pathname, lb))}
-            {pill(myPage, "My Page", isActivePath(pathname, myPage) && !isActivePath(pathname, myAccount))}
-            {pill(myAccount, "My Account", isActivePath(pathname, myAccount))}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-end w-full">
+          <div style={arenaNav.wrap} className="bty-hub-primary justify-end" aria-label={isKo ? "허브 이동" : "Hub navigation"}>
+            {hubPill(center, t.center, "center")}
+            {hubPill(arena, t.arena, "arena")}
+            {hubPill(foundry, isKo ? "훈련장" : "Foundry", "foundry")}
           </div>
           {trailing ? (
             <span className="flex shrink-0 items-center gap-3 border-l border-[var(--arena-text-soft)]/30 pl-3 ml-1">
@@ -173,6 +179,7 @@ export default function HubTopNav({ theme = "arena", showLangSwitch = false, tra
             </span>
           ) : null}
         </div>
+        {secondary ? <div className="w-full flex justify-end sm:justify-end mt-1">{secondary}</div> : null}
       </div>
     );
   }
