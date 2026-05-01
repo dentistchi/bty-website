@@ -1,5 +1,7 @@
 # CURRENT TASK — 2026-03-23
 
+- [x] 2026-04-30 — **LLM `gemma4:31b` 기본 + `getLlmExtraOptions()` + chat/mentor `temperature`/`top_p` + 빌드 IPv4(`package.json`)** — Git `907662b`, `ab02980` 푸시. 에이전트 환경에서 OpenNext 빌드까지 성공, Wrangler는 Cloudflare 인증 타임아웃으로 배포 미완 — 로컬에서 `npm run deploy` 실행 필요. **코드 완료**
+
 - [x] 2026-04-30 — **Arena Quick Decision(Phase 2b/2c): API `/api/arena/quick/*` + `ArenaEntryClient` + `/bty-arena/quick` UI + `user_pattern_history` migration + `QUICK_MODE_COMPLETE` XP + staging 배포** — Full Arena는 `BtyArenaRunPageClient`/`pipelineDefault="new"` 그대로. Git `a49acf9`. staging Worker version `7b07ff85-5179-4fab-a584-bbb969619819`. **작업 완료**
 
 - [x] 2026-04-30 — **Healing Phase 3/4 CTA 경로 수정(`/bty/healing`) + dear-me public-path 방어 + staging 재배포** — `HealingPhaseTracker`의 3~4단계 CTA를 `/${locale}/bty/healing/awakening`에서 `/${locale}/bty/healing`으로 변경해 30일/세션 게이트가 있는 Second Awakening 의식 페이지로 강제 진입되던 문제를 해소. 이제 사용자 동선은 Healing 허브의 `AwakeningActsTrack`에서 `Record Next Act`를 통해 `POST /api/bty/healing/progress { actId: 1 }`를 바로 수행. 추가로 `middleware.ts` `isPublicPath`에 `/${locale}/dear-me`를 명시해 인증/리디렉트 간섭을 방지. 배포 완료: `bty-arena-staging` Worker version `f4320d0b-3023-471c-bad6-faf07ef731a8`. **작업 완료**
