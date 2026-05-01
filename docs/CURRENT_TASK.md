@@ -1,5 +1,7 @@
 # CURRENT TASK — 2026-03-23
 
+- [x] 2026-04-30 — **허브 네비 단일 row(Center|Arena|…)+ Quick textarea 글자색+자가진단 280ms 자동 다음+Healing 액트 UX+i18n+멘토 데이터셋 규칙 + staging 배포** — Git `35127e3`. Worker version `e972d34e-d8c5-4984-a990-0e66ec54c443`. **작업 완료**
+
 - [x] 2026-04-30 — **LLM `gemma4:31b` 기본 + `getLlmExtraOptions()` + chat/mentor `temperature`/`top_p` + 빌드 IPv4(`package.json`)** — Git `907662b`, `ab02980` 푸시. 에이전트 환경에서 OpenNext 빌드까지 성공, Wrangler는 Cloudflare 인증 타임아웃으로 배포 미완 — 로컬에서 `npm run deploy` 실행 필요. **코드 완료**
 
 - [x] 2026-04-30 — **Arena Quick Decision(Phase 2b/2c): API `/api/arena/quick/*` + `ArenaEntryClient` + `/bty-arena/quick` UI + `user_pattern_history` migration + `QUICK_MODE_COMPLETE` XP + staging 배포** — Full Arena는 `BtyArenaRunPageClient`/`pipelineDefault="new"` 그대로. Git `a49acf9`. staging Worker version `7b07ff85-5179-4fab-a584-bbb969619819`. **작업 완료**
