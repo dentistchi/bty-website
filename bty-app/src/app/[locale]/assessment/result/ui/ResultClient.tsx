@@ -1,6 +1,7 @@
 "use client";
 
-import questions from "@/content/assessment/questions.ko.json";
+import questionsKo from "@/content/assessment/questions.ko.json";
+import questionsEn from "@/content/assessment/questions.en.json";
 import { detectPattern, scoreAnswers } from "@/lib/assessment/score";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -17,10 +18,10 @@ type ApiResult = {
 
 type SubmissionHistoryItem = {
   id: string;
-  scores_json: Record<string, number> | null;
-  pattern_key: string | null;
-  recommended_track: string | null;
-  created_at: string;
+  scores: Record<string, number> | null;
+  pattern: string | null;
+  track: string | null;
+  createdAt: string;
 };
 
 /** Pure-SVG radar (spider) chart. No external libs. */
@@ -194,6 +195,8 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
   const computed = useMemo(() => {
+    const questionBank = (isEn ? questionsEn : questionsKo) as Parameters<typeof scoreAnswers>[0];
+
     const apiRaw = sessionStorage.getItem("assessment.result.v1");
     if (apiRaw) {
       try {
@@ -211,10 +214,10 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
     const raw = sessionStorage.getItem("assessment.answers.v1");
     if (!raw) return null;
     const answers = JSON.parse(raw) as Record<number, number>;
-    const scores = scoreAnswers(questions as Parameters<typeof scoreAnswers>[0], answers);
+    const scores = scoreAnswers(questionBank, answers);
     const pattern = detectPattern(scores);
     return { scores, pattern, fromApi: false };
-  }, []);
+  }, [isEn]);
 
   if (!computed) {
     return (
@@ -241,8 +244,8 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
   const tAR = getMessages(loc).assessmentResult;
   const dimLabels = dojoT.dimensionLabels;
   const prevScores =
-    !historyLoading && history.length >= 2 && history[1]?.scores_json
-      ? history[1].scores_json
+    !historyLoading && history.length >= 2 && history[1]?.scores
+      ? history[1].scores
       : null;
 
   return (
@@ -386,25 +389,25 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
         {!historyLoading && !historyError && history.length > 0 && (
           <ul className="space-y-3" role="list" aria-label={isEn ? "Previous assessment results" : "이전 진단 결과 목록"}>
             {history.map((item) => {
-              const date = new Date(item.created_at);
+              const date = new Date(item.createdAt);
               const dateStr = date.toLocaleDateString(isEn ? "en-US" : "ko-KR", {
                 year: "numeric", month: "short", day: "numeric",
               });
               return (
-                <li key={item.id} className="border rounded-xl p-4 bg-white" aria-label={isEn ? `Assessment ${dateStr}${item.recommended_track ? `, ${item.recommended_track}` : ""}` : `진단 ${dateStr}${item.recommended_track ? `, ${item.recommended_track}` : ""}`}>
+                <li key={item.id} className="border rounded-xl p-4 bg-white" aria-label={isEn ? `Assessment ${dateStr}${item.track ? `, ${item.track}` : ""}` : `진단 ${dateStr}${item.track ? `, ${item.track}` : ""}`}>
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <time className="text-xs text-gray-500" dateTime={item.created_at}>
+                    <time className="text-xs text-gray-500" dateTime={item.createdAt}>
                       {dateStr}
                     </time>
-                    {item.recommended_track && (
+                    {item.track && (
                       <span className="text-xs font-medium text-gray-700">
-                        {isEn ? "Track" : "트랙"}: {item.recommended_track}
+                        {isEn ? "Track" : "트랙"}: {item.track}
                       </span>
                     )}
                   </div>
-                  {item.pattern_key && (
+                  {item.pattern && (
                     <p className="text-sm text-gray-800 font-medium m-0">
-                      {isEn ? "Pattern" : "패턴"}: {item.pattern_key}
+                      {isEn ? "Pattern" : "패턴"}: {item.pattern}
                     </p>
                   )}
                 </li>

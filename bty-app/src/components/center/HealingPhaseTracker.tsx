@@ -8,11 +8,32 @@
  */
 
 import React from "react";
+import Link from "next/link";
 import type { HealingJourneyPhaseId } from "@/domain/center/healingPhase";
 import { HEALING_JOURNEY_PHASE_IDS } from "@/domain/center/healingPhase";
 import { DEAR_ME_SUBMITTED_EVENT } from "@/lib/bty/center/dearMeEvents";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
+
+function phaseActionHref(id: HealingJourneyPhaseId, locale: string): string {
+  switch (id) {
+    case 1: return `/${locale}/assessment`;
+    case 2: return `/${locale}/dear-me`;
+    case 3:
+    case 4: return `/${locale}/bty/healing`;
+    default: return `/${locale}/center`;
+  }
+}
+
+function phaseActionLabel(id: HealingJourneyPhaseId, isKo: boolean): string {
+  switch (id) {
+    case 1: return isKo ? "진단하기 →" : "Take assessment →";
+    case 2: return isKo ? "편지 쓰기 →" : "Write a letter →";
+    case 3:
+    case 4: return isKo ? "Awakening 기록하기 →" : "Log awakening act →";
+    default: return "";
+  }
+}
 
 export const HEALING_PHASE_ADVANCED_EVENT = "phase_advanced" as const;
 
@@ -273,6 +294,25 @@ export function HealingPhaseTracker({ locale, userId }: HealingPhaseTrackerProps
                 <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "#475569" }}>{prompt}</p>
                 {done ? (
                   <span style={{ fontSize: 11, color: "#16a34a", fontWeight: 600 }}>✓</span>
+                ) : null}
+                {isActive && !done ? (
+                  <div style={{ marginTop: 8 }}>
+                    <Link
+                      href={phaseActionHref(id, loc)}
+                      style={{
+                        display: "inline-block",
+                        padding: "5px 12px",
+                        borderRadius: 8,
+                        border: "1px solid #3b82f6",
+                        color: "#2563eb",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        textDecoration: "none",
+                      }}
+                    >
+                      {phaseActionLabel(id, loc === "ko")}
+                    </Link>
+                  </div>
                 ) : null}
               </div>
             </li>

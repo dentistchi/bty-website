@@ -7,10 +7,11 @@ import { NextResponse } from "next/server";
 import { getLetterAuth, submitAssessment } from "@/lib/bty/center";
 import { logApiError } from "@/lib/log-api-error";
 import questionsKo from "@/content/assessment/questions.ko.json";
+import questionsEn from "@/content/assessment/questions.en.json";
 
 export const runtime = "nodejs";
 
-const questions = questionsKo as { id: number; dimension: string; text: string; reverse: boolean }[];
+type AssessmentQuestionJson = { id: number; dimension: string; text: string; reverse: boolean };
 
 /** POST 200: 제출 결과 (submissionId는 insert 실패 시 null) */
 export type AssessmentSubmitPostResponse = {
@@ -42,7 +43,7 @@ export async function POST(request: Request): Promise<
       );
     }
 
-    let body: { answers?: Record<string, number> };
+    let body: { answers?: Record<string, number>; locale?: string };
     try {
       body = await request.json();
     } catch {
@@ -51,6 +52,9 @@ export async function POST(request: Request): Promise<
         { status: 400 }
       );
     }
+
+    const lang = body.locale === "ko" ? "ko" : "en";
+    const questions = (lang === "ko" ? questionsKo : questionsEn) as AssessmentQuestionJson[];
 
     const result = await submitAssessment(auth.supabase, {
       userId: auth.userId,
