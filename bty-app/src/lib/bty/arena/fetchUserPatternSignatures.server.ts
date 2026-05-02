@@ -11,6 +11,7 @@ export async function fetchUserPatternSignaturesForMyPage(
       "pattern_family, axis, current_state, repeat_count, last_validation_result, confidence_score, next_watchpoint, last_seen_at, first_seen_at",
     )
     .eq("user_id", userId)
+    .in("current_state", ["active", "unstable"])
     .order("last_seen_at", { ascending: false })
     .limit(24);
 

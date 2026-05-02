@@ -1,0 +1,13 @@
+export { buildArchetypeFingerprint, FINGERPRINT_VERSION } from "./fingerprint";
+export type { AxisVector, FingerprintInput } from "./fingerprint";
+export { buildFingerprintInput } from "./buildFingerprintInput";
+export { selectArchetype, SelectorInvariantError } from "./selector";
+export type { SelectedArchetype } from "./selector";
+export { checkTransitionEligibility } from "./transition";
+export type { TransitionCheckResult } from "./transition";
+export { resolveArchetypeForUser, ArchetypeLockExhaustedError } from "./lockService";
+export type { ResolveArchetypeResult, ArchetypeLockRow } from "./lockService";
+export { RULE_REGISTRY } from "./rules";
+export type { ArchetypeRule, ArchetypeClass } from "./rules";
+export { isEarnedNamingEligible, ENTRY_THRESHOLD, EXIT_THRESHOLD } from "./earnedNaming";
+export type { EvidenceContext, EarnedNamingResult, PatternFormingResolution } from "./earnedNaming";
