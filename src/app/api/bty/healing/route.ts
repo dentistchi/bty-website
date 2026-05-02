@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import {
   AWAKENING_ACT_NAMES,
+  HEALING_PHASE_I_LABEL,
   HEALING_PHASE_II_LABEL,
   HEALING_PHASE_RING_TYPE,
   healingAwakeningProgressPercent,
@@ -36,12 +37,20 @@ export async function GET(req: NextRequest) {
     const nextId = nextHealingAwakeningActAfter(completed);
     const nextName = nextId != null ? AWAKENING_ACT_NAMES[nextId] : null;
 
-    const phase: HealingPhaseLabel = HEALING_PHASE_II_LABEL;
+    const { data: milestone } = await supabase
+      .from("user_healing_milestones")
+      .select("second_awakening_completed_at")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const isPhaseII = !!(milestone as { second_awakening_completed_at: string | null } | null)
+      ?.second_awakening_completed_at;
+
+    const phase: HealingPhaseLabel = isPhaseII ? HEALING_PHASE_II_LABEL : HEALING_PHASE_I_LABEL;
     const res = NextResponse.json({
       ok: true,
       phase,
       content: {
-        ringType: HEALING_PHASE_RING_TYPE,
+        ringType: isPhaseII ? HEALING_PHASE_RING_TYPE : null,
       },
       awakeningProgress: {
         progressPercent: healingAwakeningProgressPercent(completed),

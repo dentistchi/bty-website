@@ -7,6 +7,7 @@ import type { Locale } from "@/lib/i18n";
 import { AuthGate } from "@/components/AuthGate";
 import { ThemeBody } from "@/components/ThemeBody";
 import { CardSkeleton, EmptyState } from "@/components/bty-arena";
+import { DEAR_ME_SUBMITTED_EVENT } from "@/lib/bty/center/dearMeEvents";
 
 /** API 응답 계약(UI 기대). replyMessage (dear-me/letter). */
 type DearMeLetterResponse = { replyMessage?: string; reply?: string; replyText?: string; error?: string };
@@ -65,6 +66,9 @@ export default function DearMeClient({ locale }: { locale: string }) {
       }
       const replyText = data.replyMessage ?? data.reply ?? data.replyText ?? null;
       setReply(replyText);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent(DEAR_ME_SUBMITTED_EVENT));
+      }
       fetchHistory();
     } catch {
       setError(lang === "ko" ? "연결에 실패했어요. 잠시 후 다시 시도해 주세요." : "Connection failed. Please resubmit.");

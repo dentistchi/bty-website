@@ -29,9 +29,9 @@ export default function BottomNav({
   const items = getBtyNavItems(
     locale,
     {
-      arena: t.bottomNavArena,
-      growth: t.bottomNavGrowth,
-      "my-page": t.bottomNavMyPage,
+      center: "Center",
+      arena: "btyARENA",
+      "my-page": "My Page",
     },
     arenaEntry.href,
   );

@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { LangSwitch } from "@/components/LangSwitch";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import HubTopNav from "@/components/bty/HubTopNav";
 
 /**
- * Center 공통 레이아웃: ArenaLayoutShell과 동일한 구조 — "BTY Center" 로고 + 스티키 헤더.
+ * Center 공통 레이아웃: ArenaLayoutShell과 동일한 구조 — btyARENA 로고 + 스티키 헤더.
  * /[locale]/center, /[locale]/dear-me, /[locale]/assessment 에서 사용.
  */
-export function CenterLayoutShell({ children }: { children: ReactNode }) {
+export function CenterLayoutShell({ children, locale }: { children: ReactNode; locale?: string }) {
+  const brandHref = locale ? `/${locale}` : "/en";
   return (
     <div className="bty-center-area" data-theme="dear">
       <header
@@ -15,12 +17,13 @@ export function CenterLayoutShell({ children }: { children: ReactNode }) {
         style={{ background: "rgba(245, 240, 232, 0.92)" }}
       >
         <div className="max-w-6xl mx-auto px-4 py-2 min-h-12 flex flex-wrap items-start justify-between gap-x-4 gap-y-2 shrink-0">
-          <span
-            className="font-semibold text-[var(--arena-text)] pt-1 shrink-0"
-            style={{ letterSpacing: "0.02em" }}
+          <Link
+            href={brandHref}
+            className="pt-1 shrink-0"
+            style={{ fontWeight: 800, fontSize: "0.9375rem", letterSpacing: "-0.02em", textDecoration: "none", color: "var(--arena-text)" }}
           >
-            BTY Center
-          </span>
+            <span style={{ fontWeight: 400 }}>bty</span>ARENA
+          </Link>
           <HubTopNav
             trailing={
               <>

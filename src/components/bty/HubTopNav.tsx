@@ -136,42 +136,26 @@ export default function HubTopNav({ theme = "arena", showLangSwitch = false, tra
       );
     };
 
-    let secondary: ReactNode = null;
-    if (ctx === "arena") {
-      const m = arena;
-      const d = `/${locale}/bty/dashboard`;
-      const lb = `/${locale}/bty/leaderboard`;
-      secondary = (
-        <div style={arenaNav.wrap} className="bty-hub-secondary mt-1" aria-label={isKo ? "아레나 하위 메뉴" : "Arena sub navigation"}>
-          {pill(m, L.main, isActivePath(pathname, m))}
-          {pill(d, L.dashboard, isActivePath(pathname, d))}
-          {pill(lb, L.leaderboard, isActivePath(pathname, lb))}
-        </div>
-      );
-    } else if (ctx === "foundry") {
-      const routes = [
-        [`/${locale}/bty/foundry`, L.main],
-        [`/${locale}/bty/dashboard`, L.dashboard],
-        [`/${locale}/bty/dojo`, L.dojo],
-        [`/${locale}/bty/integrity`, L.integrity],
-        [`/${locale}/bty/mentor`, L.mentor],
-        [`/${locale}/bty/elite`, L.elite],
-        [`/${locale}/bty/leaderboard`, L.leaderboard],
-      ] as const;
-      secondary = (
-        <div style={arenaNav.wrap} className="bty-hub-secondary mt-1" aria-label={isKo ? "훈련장 하위 메뉴" : "Foundry sub navigation"}>
-          {routes.map(([href, label]) => pill(href, label, isActivePath(pathname, href)))}
-        </div>
-      );
-    }
+    const dash = `/${locale}/bty/dashboard`;
+    const lb = `/${locale}/bty/leaderboard`;
+    const myPage = `/${locale}/my-page`;
+    const myAccount = `/${locale}/my-page/account`;
 
     return (
       <div className="flex flex-col items-end min-w-0 w-full sm:w-auto">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-end w-full">
-          <div style={arenaNav.wrap} className="bty-hub-primary justify-end" aria-label={isKo ? "허브 이동" : "Hub navigation"}>
-            {hubPill(center, t.center, "center")}
-            {hubPill(arena, t.arena, "arena")}
-            {hubPill(foundry, isKo ? "훈련장" : "Foundry", "foundry")}
+        <div className="flex flex-wrap items-center gap-1 sm:gap-2 justify-end w-full">
+          {/* Hub + extended nav */}
+          <div style={arenaNav.wrap} className="bty-hub-primary justify-end" aria-label="Main navigation">
+            {hubPill(center, "Center", "center")}
+            {hubPill(arena, "Arena", "arena")}
+            {hubPill(foundry, "Foundry", "foundry")}
+          </div>
+          <span style={{ color: "var(--arena-text-soft)", opacity: 0.3 }}>|</span>
+          <div style={arenaNav.wrap}>
+            {pill(dash, "Dashboard", isActivePath(pathname, dash))}
+            {pill(lb, "Leaderboard", isActivePath(pathname, lb))}
+            {pill(myPage, "My Page", isActivePath(pathname, myPage) && !isActivePath(pathname, myAccount))}
+            {pill(myAccount, "My Account", isActivePath(pathname, myAccount))}
           </div>
           {trailing ? (
             <span className="flex shrink-0 items-center gap-3 border-l border-[var(--arena-text-soft)]/30 pl-3 ml-1">
@@ -179,60 +163,57 @@ export default function HubTopNav({ theme = "arena", showLangSwitch = false, tra
             </span>
           ) : null}
         </div>
-        {secondary ? <div className="w-full flex justify-end sm:justify-end mt-1">{secondary}</div> : null}
       </div>
     );
   }
 
-  /* dear theme: Center / Arena / Foundry + optional second row + Lang */
-  const muted = "text-dear-charcoal-soft hover:underline";
-  const activeDear = "font-medium text-dear-charcoal underline";
-  const hubLink = (href: string, label: string, hub: "center" | "arena" | "foundry") => (
+  /* dear theme: same pill structure as arena theme but for landing/center-adjacent pages */
+  const pill2 = (href: string, label: string, active: boolean) => (
     <Link
       key={href}
       href={href}
-      className={primaryActive === hub ? activeDear : muted}
-      aria-current={primaryActive === hub ? "page" : undefined}
+      style={active ? arenaNav.active : arenaNav.link}
+      className="bty-hub-sub-link"
     >
       {label}
     </Link>
   );
 
-  const subLink = (href: string, label: string) => {
-    const on = isActivePath(pathname, href);
+  const hubPill2 = (href: string, label: string, hub: "center" | "arena" | "foundry") => {
+    const active = primaryActive === hub;
     return (
-      <Link key={href} href={href} className={on ? activeDear : muted} aria-current={on ? "page" : undefined}>
+      <Link key={href} href={href} style={active ? arenaNav.primaryActive : arenaNav.primary} className="bty-hub-primary-link">
         {label}
       </Link>
     );
   };
 
-  let secondRow: ReactNode = null;
-  if (ctx === "center") {
-    secondRow = (
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm mt-2" aria-label={isKo ? "센터 메뉴" : "Center menu"}>
-        {subLink(center, L.main)}
-        {subLink(`/${locale}/assessment`, L.assessment)}
-        {subLink(`/${locale}/dear-me`, L.dearMe)}
-        {subLink(`/${locale}/journal`, L.journal)}
-      </div>
-    );
-  }
+  const dash2 = `/${locale}/bty/dashboard`;
+  const lb2 = `/${locale}/bty/leaderboard`;
+  const myPage2 = `/${locale}/my-page`;
+  const myAccount2 = `/${locale}/my-page/account`;
 
   return (
-    <nav className="w-full" aria-label={isKo ? "주요 메뉴" : "Main navigation"}>
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm">
-        {hubLink(center, t.center, "center")}
-        {hubLink(arena, t.arena, "arena")}
-        {hubLink(foundry, isKo ? "훈련장" : "Foundry", "foundry")}
+    <div className="flex flex-col items-end min-w-0 w-full sm:w-auto">
+      <div className="flex flex-wrap items-center gap-1 sm:gap-2 justify-end w-full">
+        <div style={arenaNav.wrap} className="bty-hub-primary justify-end" aria-label="Main navigation">
+          {hubPill2(center, "Center", "center")}
+          {hubPill2(arena, "Arena", "arena")}
+          {hubPill2(foundry, "Foundry", "foundry")}
+        </div>
+        <span style={{ color: "var(--arena-text-soft)", opacity: 0.3 }}>|</span>
+        <div style={arenaNav.wrap}>
+          {pill2(dash2, "Dashboard", isActivePath(pathname, dash2))}
+          {pill2(lb2, "Leaderboard", isActivePath(pathname, lb2))}
+          {pill2(myPage2, "My Page", isActivePath(pathname, myPage2) && !isActivePath(pathname, myAccount2))}
+          {pill2(myAccount2, "My Account", isActivePath(pathname, myAccount2))}
+        </div>
         {showLangSwitch && (
-          <>
-            <span className="text-dear-charcoal-soft/60">|</span>
+          <span className="flex shrink-0 items-center gap-3 border-l border-[var(--arena-text-soft)]/30 pl-3 ml-1">
             <LangSwitch />
-          </>
+          </span>
         )}
       </div>
-      {secondRow}
-    </nav>
+    </div>
   );
 }

@@ -55,31 +55,24 @@ export default async function Page({ params, searchParams }: Props) {
 
       <p className="mt-4 px-1 text-center text-xs text-[#98A2B3]">
         <Link
-          href={`/${locale}/bty/dashboard`}
+          href={`/${locale}/center`}
           className="underline-offset-2 hover:text-[#405A74] hover:underline"
         >
-          {m.myPageAccountLink}
+          Center
         </Link>
         {" · "}
         <Link
-          href={`/${locale}/my-page/progress`}
+          href={`/${locale}/bty-arena`}
           className="underline-offset-2 hover:text-[#405A74] hover:underline"
         >
-          {m.myPageTabProgress}
+          Arena
         </Link>
         {" · "}
         <Link
-          href={`/${locale}/my-page/team`}
+          href={`/${locale}/bty/foundry`}
           className="underline-offset-2 hover:text-[#405A74] hover:underline"
         >
-          {m.myPageTabTeam}
-        </Link>
-        {" · "}
-        <Link
-          href={`/${locale}/my-page/leader`}
-          className="underline-offset-2 hover:text-[#405A74] hover:underline"
-        >
-          {m.myPageTabLeader}
+          Foundry
         </Link>
       </p>
     </ScreenShell>

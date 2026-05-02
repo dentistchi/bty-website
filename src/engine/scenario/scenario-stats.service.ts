@@ -110,9 +110,12 @@ export async function getScenarioStats(
 
   if (rows.length === 0) {
     return {
-      ...emptyStats(locale),
+      playsByFlagType: {},
+      uniqueScenariosPlayed: 0,
       totalAvailableInLocale,
       completionRate: 0,
+      streakDaysUtc: 0,
+      locale,
     };
   }
 

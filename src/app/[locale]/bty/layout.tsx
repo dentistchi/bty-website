@@ -17,8 +17,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * Foundry 레이아웃: /en/bty, /ko/bty 하위. Chatbot은 상위 [locale]/layout 에서 1회 마운트.
  */
 export default async function BtyRootLayout({ children, params }: Props) {
+  const locale = (await params)?.locale ?? "en";
   return (
-    <ArenaLayoutShell>
+    <ArenaLayoutShell locale={locale}>
       {children}
     </ArenaLayoutShell>
   );

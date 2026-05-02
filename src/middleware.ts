@@ -35,6 +35,13 @@ function isPublicPath(pathname: string) {
   if (locale) {
     if (pathname === `/${locale}` || pathname === `/${locale}/`) return true;
     if (pathname === `/${locale}/center` || pathname === `/${locale}/center/`) return true;
+    /** Dear Me letter writer: auth handled by AuthGate in component. Never block at middleware. */
+    if (pathname === `/${locale}/dear-me` || pathname === `/${locale}/dear-me/`) return true;
+    /** Center 50-item assessment + results: must be reachable without Foundry login. */
+    if (pathname === `/${locale}/assessment` || pathname.startsWith(`/${locale}/assessment/`))
+      return true;
+    /** Legacy typo: `/[locale]/result` → handled by app route redirect to `/[locale]/assessment/result`. */
+    if (pathname === `/${locale}/result` || pathname.startsWith(`/${locale}/result/`)) return true;
     if (pathname === `/${locale}/admin/login`) return true;
     if (pathname === `/${locale}/dev/scenario-preview`) return true;
     if (pathname === `/${locale}/bty/login`) return true;
@@ -65,9 +72,6 @@ export async function middleware(req: NextRequest) {
   }
 
   const locale = getLocale(pathname);
-  if (locale && (pathname === `/${locale}/dear-me` || pathname === `/${locale}/dear-me/`)) {
-    return NextResponse.redirect(new URL(`/${locale}/center`, req.url), 308);
-  }
 
   /** Canonical Arena play is `/[locale]/bty-arena`; alias `/bty-arena/run` must not serve a cached shell without session/next. */
   if (
@@ -75,6 +79,19 @@ export async function middleware(req: NextRequest) {
     (pathname === `/${locale}/bty-arena/run` || pathname === `/${locale}/bty-arena/run/`)
   ) {
     return NextResponse.redirect(new URL(`/${locale}/bty-arena`, req.url), 308);
+  }
+
+  /**
+   * Legacy/mistyped Center assessment result URL: `/[locale]/result`
+   * Canonical: `/[locale]/assessment/result`
+   *
+   * Implemented in middleware (308) so crawlers/clients get a real redirect — not an HTML shell with meta refresh.
+   */
+  if (
+    locale &&
+    (pathname === `/${locale}/result` || pathname.startsWith(`/${locale}/result/`))
+  ) {
+    return NextResponse.redirect(new URL(`/${locale}/assessment/result` + req.nextUrl.search, req.url), 308);
   }
 
   /** Legacy Arena UI `/[locale]/arena` → canonical `/[locale]/bty-arena` (308). */

@@ -417,28 +417,12 @@ export function PremiumMyPageIdentityScreen({
           </div>
         </section>
 
-        <NextFocusCommand
-          nextFocus={state.nextFocus}
-          nextCue={state.nextCue}
-          suggestedRoute={suggestedRoute}
-          labelNext={t.leadershipNextFocusHeading}
-          labelCue={t.leadershipDevelopmentCueHeading}
-          labelRoute={t.leadershipSuggestedRouteHeading}
-        />
-
-        <p className="text-center text-[11px] text-slate-500">{t.leadershipSuggestedModuleLine}</p>
         <div className="flex flex-wrap items-center justify-center gap-3 pb-2">
           <Link
             href={arenaEntry.href}
             className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-cyan-100/90 transition-colors hover:border-cyan-400/20"
           >
             {t.leadershipLinkArena}
-          </Link>
-          <Link
-            href={`/${locale}/growth`}
-            className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-cyan-100/90 transition-colors hover:border-cyan-400/20"
-          >
-            {t.leadershipLinkGrowth}
           </Link>
         </div>
       </div>

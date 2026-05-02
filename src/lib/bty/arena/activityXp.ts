@@ -33,11 +33,12 @@ export function capArenaDailyDelta(delta: number, todayTotalTowardCap: number): 
   return Math.max(0, Math.min(delta, ARENA_DAILY_XP_CAP - todayTotalTowardCap));
 }
 
-export type ActivityType = "MENTOR_MESSAGE" | "CHAT_MESSAGE";
+export type ActivityType = "MENTOR_MESSAGE" | "CHAT_MESSAGE" | "QUICK_MODE_COMPLETE";
 
 const ACTIVITY_XP: Record<ActivityType, number> = {
   MENTOR_MESSAGE: 5,
   CHAT_MESSAGE: 5,
+  QUICK_MODE_COMPLETE: 5,
 };
 
 /**

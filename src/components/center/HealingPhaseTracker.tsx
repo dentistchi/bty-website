@@ -8,11 +8,32 @@
  */
 
 import React from "react";
+import Link from "next/link";
 import type { HealingJourneyPhaseId } from "@/domain/center/healingPhase";
 import { HEALING_JOURNEY_PHASE_IDS } from "@/domain/center/healingPhase";
 import { DEAR_ME_SUBMITTED_EVENT } from "@/lib/bty/center/dearMeEvents";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
+
+function phaseActionHref(id: HealingJourneyPhaseId, locale: string): string {
+  switch (id) {
+    case 1: return `/${locale}/assessment`;
+    case 2: return `/${locale}/dear-me`;
+    case 3:
+    case 4: return `/${locale}/bty/healing`;
+    default: return `/${locale}/center`;
+  }
+}
+
+function phaseActionLabel(id: HealingJourneyPhaseId, isKo: boolean): string {
+  switch (id) {
+    case 1: return isKo ? "진단하기 →" : "Take assessment →";
+    case 2: return isKo ? "편지 쓰기 →" : "Write a letter →";
+    case 3:
+    case 4: return isKo ? "Awakening 기록하기 →" : "Log awakening act →";
+    default: return "";
+  }
+}
 
 export const HEALING_PHASE_ADVANCED_EVENT = "phase_advanced" as const;
 
@@ -240,9 +261,9 @@ export function HealingPhaseTracker({ locale, userId }: HealingPhaseTrackerProps
                     fontSize: 13,
                     fontWeight: 700,
                     flexShrink: 0,
-                    border: `2px solid ${isActive ? "#2563eb" : done ? "#16a34a" : "#cbd5e1"}`,
-                    background: isActive ? "#eff6ff" : done ? "#f0fdf4" : "#f8fafc",
-                    color: isActive ? "#1d4ed8" : done ? "#15803d" : "#64748b",
+                    border: `2px solid ${done ? "#16a34a" : isActive ? "#2563eb" : "#cbd5e1"}`,
+                    background: done ? "#f0fdf4" : isActive ? "#eff6ff" : "#f8fafc",
+                    color: done ? "#15803d" : isActive ? "#1d4ed8" : "#64748b",
                   }}
                 >
                   {id}
@@ -274,6 +295,43 @@ export function HealingPhaseTracker({ locale, userId }: HealingPhaseTrackerProps
                 {done ? (
                   <span style={{ fontSize: 11, color: "#16a34a", fontWeight: 600 }}>✓</span>
                 ) : null}
+                {isActive && !done ? (
+                  <div style={{ marginTop: 8 }}>
+                    <Link
+                      href={phaseActionHref(id, loc)}
+                      style={{
+                        display: "inline-block",
+                        padding: "5px 12px",
+                        borderRadius: 8,
+                        border: "1px solid #3b82f6",
+                        color: "#2563eb",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        textDecoration: "none",
+                      }}
+                    >
+                      {phaseActionLabel(id, loc === "ko")}
+                    </Link>
+                  </div>
+                ) : done && id >= 3 ? (
+                  <div style={{ marginTop: 6 }}>
+                    <Link
+                      href={phaseActionHref(id, loc)}
+                      style={{
+                        display: "inline-block",
+                        padding: "4px 10px",
+                        borderRadius: 8,
+                        border: "1px solid #94a3b8",
+                        color: "#64748b",
+                        fontSize: 12,
+                        fontWeight: 500,
+                        textDecoration: "none",
+                      }}
+                    >
+                      Healing Hub →
+                    </Link>
+                  </div>
+                ) : null}
               </div>
             </li>
           );
@@ -292,6 +350,44 @@ export function HealingPhaseTracker({ locale, userId }: HealingPhaseTrackerProps
           >
             {advancing ? t.healingPhaseAdvancing : t.healingPhaseAdvanceCta}
           </button>
+        </div>
+      ) : null}
+
+      {Boolean(phaseComplete["4"]) && !canAdvance ? (
+        <div
+          style={{
+            marginTop: 20,
+            padding: "12px 16px",
+            borderRadius: 8,
+            border: "1px solid #86efac",
+            background: "#f0fdf4",
+          }}
+          role="status"
+          aria-live="polite"
+        >
+          <p style={{ fontWeight: 600, color: "#15803d", margin: "0 0 6px", fontSize: 14 }}>
+            {loc === "ko" ? "치유 여정 완료" : "Healing journey complete"}
+          </p>
+          <p style={{ fontSize: 13, color: "#166534", margin: "0 0 12px" }}>
+            {loc === "ko"
+              ? "모든 단계를 마쳤습니다. Arena로 돌아가실 수 있어요."
+              : "All phases complete. You can return to Arena."}
+          </p>
+          <Link
+            href={`/${loc}/bty-arena`}
+            style={{
+              display: "inline-block",
+              padding: "6px 14px",
+              borderRadius: 8,
+              border: "1px solid #16a34a",
+              color: "#15803d",
+              fontSize: 13,
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            {loc === "ko" ? "Arena로 돌아가기" : "Return to Arena"}
+          </Link>
         </div>
       ) : null}
     </section>

@@ -2685,9 +2685,9 @@ const ko: Messages = {
     healingPhasePrompt2:
       "Dear Me 편지로 감정과 생각을 말로 옮겨 성찰을 깊게 하세요. (진단 1회 + 편지 1통 이상)",
     healingPhasePrompt3:
-      "Awakening 첫 액트를 기록해 새로운 통합로로 나아가세요. (진단·편지 + 액트 1 완료)",
+      "Healing 허브에서 '다음 액트 기록' 버튼을 눌러 첫 번째 성찰 의식(Reflection Chamber)을 완료하세요.",
     healingPhasePrompt4:
-      "Awakening 세 액트를 모두 기록해 여정을 갱신하고 마무리하세요. (액트 1·2·3 완료)",
+      "Healing 허브에서 나머지 두 액트(Transition · Awakening)를 순서대로 기록해 여정을 마무리하세요.",
     healingPhaseAdvanceCta: "다음 단계로 진행",
     healingPhaseAdvancing: "진행 중…",
     healingPhaseTrackerLoadError: "단계 정보를 불러오지 못했어요.",
@@ -3015,9 +3015,9 @@ const ko: Messages = {
     profileMainRegionAria: "프로필 · 표시 이름 및 아바타 설정",
   },
   uxPhase1Stub: {
-    bottomNavArena: "Arena",
-    bottomNavGrowth: "성장",
-    bottomNavMyPage: "마이",
+    bottomNavArena: "btyARENA",
+    bottomNavGrowth: "Growth",
+    bottomNavMyPage: "My Page",
     growthTitle: "성장",
     growthSubtitle: "해석 · 회복",
     growthLead: "내면 상태를 다시 세웁니다.",
@@ -4335,9 +4335,9 @@ const en: Messages = {
     healingPhasePrompt2:
       "Write a Dear Me letter to reflect in words. (Assessment + at least one letter.)",
     healingPhasePrompt3:
-      "Record Awakening act 1 to move toward re-integration. (Assessment, letter + act 1.)",
+      "Go to the Healing hub and tap 'Record Next Act' to complete the first ritual — Reflection Chamber.",
     healingPhasePrompt4:
-      "Record all three Awakening acts to renew and close the arc. (Acts 1, 2, 3 complete.)",
+      "Go to the Healing hub and record the remaining two acts — Transition, then Awakening — in order.",
     healingPhaseAdvanceCta: "Continue to next phase",
     healingPhaseAdvancing: "Continuing…",
     healingPhaseTrackerLoadError: "Could not load phase information.",

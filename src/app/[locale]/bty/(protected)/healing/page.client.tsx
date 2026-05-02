@@ -155,7 +155,7 @@ export default function HealingPageClient({ locale }: Props) {
                 style={{
                   height: "100%",
                   width: `${pct}%`,
-                  background: "var(--arena-accent, #7c6b9a)",
+                  background: awakeningProgress?.allActsComplete ? "#16a34a" : "var(--arena-accent, #7c6b9a)",
                   borderRadius: 6,
                 }}
               />

@@ -28,18 +28,6 @@ export default function FoundryHubClient({
 
   const features: { icon: string; title: string; desc: string; href: string }[] = [
     {
-      icon: "🎯",
-      title: isKo ? "Dojo 50문항" : "Dojo 50 Questions",
-      desc: isKo ? "오늘의 나를 진단하는 50문항 테스트" : "50-question self-assessment for today",
-      href: `/${locale}/bty/dojo`,
-    },
-    {
-      icon: "🪞",
-      title: isKo ? "역지사지 연습" : "Integrity Mirror",
-      desc: isKo ? "갈등 상황을 상대 입장에서 돌려보기" : "See conflicts from the other side",
-      href: `/${locale}/bty/integrity`,
-    },
-    {
       icon: "💬",
       title: isKo ? "Dr. Chi 멘토" : "Dr. Chi Mentor",
       desc: isKo ? "AI 멘토와 1:1 성장 대화" : "1:1 growth conversation with AI mentor",

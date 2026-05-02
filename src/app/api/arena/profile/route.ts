@@ -61,6 +61,7 @@ export async function PATCH(req: NextRequest) {
     avatarSelectedOutfitId?: string | null;
     avatarAccessoryIds?: string[] | null;
     display_name?: string | null;
+    sub_name?: string | null;
   };
   try {
     body = await req.json();
@@ -184,6 +185,33 @@ export async function PATCH(req: NextRequest) {
       return out;
     }
     updates.display_name = result.sanitized;
+  }
+
+  if (body.sub_name !== undefined) {
+    const { tierFromCoreXp, codeIndexFromTier } = await import("@/lib/bty/arena/codes");
+    const { data: snRow } = await supabase
+      .from("arena_profiles")
+      .select("core_xp_total, code_index, sub_name_renamed_in_code, sub_name_renamed_at_code_index")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const snXp = (snRow as { core_xp_total?: number } | null)?.core_xp_total ?? 0;
+    const snTier = tierFromCoreXp(snXp);
+    const snCodeIndex = (snRow as { code_index?: number } | null)?.code_index ?? codeIndexFromTier(snTier);
+    const renamedInCode = (snRow as { sub_name_renamed_in_code?: boolean } | null)?.sub_name_renamed_in_code === true;
+    const renamedAtCodeIndex = (snRow as { sub_name_renamed_at_code_index?: number | null } | null)?.sub_name_renamed_at_code_index ?? null;
+    const canRename = snTier >= 25 && snCodeIndex < 6 &&
+      (renamedAtCodeIndex === null ? !renamedInCode : snCodeIndex > renamedAtCodeIndex);
+    if (!canRename && body.sub_name !== null) {
+      const out = NextResponse.json({ error: "SUB_NAME_RENAME_NOT_AVAILABLE" }, { status: 403 });
+      copyCookiesAndDebug(base, out, req, true);
+      return out;
+    }
+    const raw = body.sub_name;
+    updates.sub_name = raw === null ? null : (typeof raw === "string" ? raw.trim().slice(0, 20) || null : null);
+    if (updates.sub_name !== null) {
+      updates.sub_name_renamed_in_code = true;
+      updates.sub_name_renamed_at_code_index = snCodeIndex;
+    }
   }
 
   const semanticKeys = Object.keys(updates).filter((k) => k !== "updated_at");
