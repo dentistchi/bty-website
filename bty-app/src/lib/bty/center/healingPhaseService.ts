@@ -108,6 +108,23 @@ export async function getHealingPhaseTrackerState(
   };
 }
 
+/**
+ * Resets the Center healing journey to Phase 1. Called when Arena ejects the user to Center again.
+ */
+export async function resetHealingJourney(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<{ ok: true } | { error: string }> {
+  const { error } = await supabase
+    .from("user_center_healing_journey")
+    .upsert(
+      { user_id: userId, active_phase: 1, updated_at: new Date().toISOString() },
+      { onConflict: "user_id" }
+    );
+  if (error) return { error: error.message };
+  return { ok: true };
+}
+
 export async function advanceHealingPhase(
   supabase: SupabaseClient,
   userId: string
