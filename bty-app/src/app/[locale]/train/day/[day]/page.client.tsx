@@ -43,7 +43,7 @@ function CoachChat({ day, locale }: { day: number; locale: string }) {
         }),
       });
       const data: { message?: string; error?: string } = await r.json().catch(() => ({}));
-      const reply = data.message ?? (isKo ? "잠시 후 다시 시도해 주세요." : "Try again in a moment.");
+      const reply = data.message ?? (isKo ? "잠시 후 다시 시도해 주세요." : "Refresh in a moment.");
       setMsgs((prev) => [...prev, { role: "assistant", content: reply }]);
     } catch {
       setMsgs((prev) => [...prev, { role: "assistant", content: isKo ? "연결에 실패했어요." : "Connection failed." }]);

@@ -47,8 +47,8 @@ const copy = {
     newRound: "Start again",
     toFullArena: "Go to Full Arena",
     toArena: "Back to Arena",
-    error: "Failed to load scenario. Please try again.",
-    retry: "Try again",
+    error: "Failed to load scenario. Please refresh.",
+    retry: "Refresh",
   },
 };
 
