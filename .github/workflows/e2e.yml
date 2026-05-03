@@ -82,13 +82,8 @@ jobs:
             echo "Missing secret: E2E_PASSWORD"
             exit 1
           fi
-          if [ -z "${E2E_COMEBACK_EMAIL:-}" ]; then
-            echo "Missing secret: E2E_COMEBACK_EMAIL"
-            exit 1
-          fi
-          if [ -z "${E2E_COMEBACK_PASSWORD:-}" ]; then
-            echo "Missing secret: E2E_COMEBACK_PASSWORD"
-            exit 1
+          if [ -z "${E2E_COMEBACK_EMAIL:-}" ] || [ -z "${E2E_COMEBACK_PASSWORD:-}" ]; then
+            echo "::warning::E2E_COMEBACK_EMAIL or E2E_COMEBACK_PASSWORD missing — comeback specs will be skipped"
           fi
           if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ]; then
             echo "Missing secret: NEXT_PUBLIC_SUPABASE_URL"
@@ -134,11 +129,17 @@ jobs:
           fi
 
           npm run e2e:seed-default-journey
-          npm run e2e:seed-comeback
           npm run e2e:seed-fixture-user
           npm run e2e:auth
-          npm run e2e:auth:comeback
-          npm run test:e2e:ci
+
+          if [ -n "${E2E_COMEBACK_EMAIL:-}" ] && [ -n "${E2E_COMEBACK_PASSWORD:-}" ]; then
+            npm run e2e:seed-comeback
+            npm run e2e:auth:comeback
+            npm run test:e2e:ci
+          else
+            echo "Skipping comeback specs (E2E_COMEBACK_EMAIL / E2E_COMEBACK_PASSWORD not set)"
+            npx playwright test --project=chromium --reporter=line --workers=2 --retries=1
+          fi
 
       - name: Upload Playwright report
         if: always()
