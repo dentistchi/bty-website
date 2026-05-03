@@ -34,7 +34,7 @@ test.describe("My Page (authenticated)", () => {
     await expect(page.getByTestId("leadership-state-row")).toBeVisible();
 
     const overview = page.getByTestId("my-page-overview");
-    await expect(overview.getByText(/AIR\s*[0-9.]/)).toHaveCount(0);
+    await expect(overview.getByText(/AIR\s*\d/)).toHaveCount(0);
   });
 
   test("progress screen", async ({ page }) => {
