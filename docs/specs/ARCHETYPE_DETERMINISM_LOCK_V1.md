@@ -454,7 +454,75 @@ Enforcement: `npm run lint:archetype-isolation`
 
 | ID | 항목 | 우선순위 |
 |---|---|---|
-| AL17-0 | **user_pattern_signatures 생성 파이프라인 조사** — Pipeline N의 signature INSERT 단계가 운영에서 작동 안 함. 코드 추적 → 결함 식별 → fix 또는 대안 결정 (§10 AL15-CLOSURE 참조) | **Critical** |
+| AL17-0 | **BINDING_V1_SECOND 메타 결함 → signature pipeline 복구** — 근본 원인 확정, C2 PASS, C3 구현 대기 (§10 AL17-0 상세 참조) | **Critical** |
+
+#### AL17-0 상세: Pipeline N 결함 — 근본 원인, 검증, fix 계획
+
+**조사 완료일**: 2026-05-03  
+**C2 Spec Guard**: PASS (4/4, 조건 1개)
+
+##### 근본 원인
+
+2026-04-26 canonical hard cut 이후 `choice/route.ts`가 tradeoff 단계의 event를 `BINDING_V1_SECOND`로 기록하지만, 해당 event의 `meta`에 `direction`과 `pattern_family`가 포함되지 않음.
+
+```
+사용자 tradeoff 선택
+  → choice/route.ts: BINDING_V1_SECOND event 삽입 (meta: direction/pattern_family 없음)
+  → re-exposure/validate/route.ts → reexposureValidation.server.ts
+  → fetchSecondChoiceConfirmedRow: event_type='SECOND_CHOICE_CONFIRMED' 쿼리
+  → 결과: null (SECOND_CHOICE_CONFIRMED는 legacy run/step에서만 생성)
+  → after_pattern_family: null
+  → upsertUserPatternSignatureFromValidation: 조건 미충족 → 조용한 early return
+  → user_pattern_signatures: INSERT 없음 (운영 전체 total_rows=0)
+```
+
+**레거시 이벤트 생성 위치** (`run/step/route.ts` line 363):
+```typescript
+insertEventType = "SECOND_CHOICE_CONFIRMED";
+meta: { second_choice_id, escalation_branch_key, direction, pattern_family }
+```
+→ 이 라우트는 2026-04-26 hard cut으로 제거됨.
+
+**현재 생성 위치** (`choice/route.ts` ~line 544):
+```typescript
+insertEventType = "BINDING_V1_SECOND";
+meta: { /* direction, pattern_family 없음 */ }
+```
+→ `picked` 객체는 line 516에서 이미 조회되어 `picked.direction` 접근 가능하나 meta에 포함되지 않음.
+
+##### C2 Spec Guard 검증 결과 (PASS 4/4)
+
+| # | 검증 항목 | 결과 |
+|---|---|---|
+| 1 | `direction` 도메인 = "entry"\|"exit" 한정 (null·undefined 포함 0 인스턴스) | **PASS with 조건**: `direction`이 undefined일 경우 warn log 추가 필수 |
+| 2 | `pattern_family` 도메인 = 시나리오 파일 기반 ~100+ 패밀리 (5개 canonical에 한정 아님) | **PASS** |
+| 3 | 레거시 `SECOND_CHOICE_CONFIRMED` + 신규 `BINDING_V1_SECOND` 혼용 안전 (created_at desc 정렬) | **PASS** |
+| 4 | `binding_phase==="tradeoff"` 조건이 Phase 1 fix 범위로 충분함 | **PASS** |
+
+**도메인 정정 (AL-1.5 Commander 오류)**:  
+`user_pattern_signatures` 테이블은 5개 canonical pattern families만 수용한다고 가정했으나, 실제로는 시나리오 데이터 기반 ~100+ 패밀리 전체를 수용함.  
+Canonical 5개(`ownership_escape`, `repair_avoidance`, `explanation_substitution`, `delegation_deflection`, `future_deferral`)는 action contract subset에 한정.  
+`normalizePatternFamilyId`는 "explanation" alias만 정규화하며, 5개로 필터링하지 않음.
+
+##### Invariants (이 fix로 확립)
+
+1. `BINDING_V1_SECOND` event의 `binding_phase === "tradeoff"` 경우 `meta.direction`과 `meta.pattern_family`가 **반드시** 포함되어야 함.
+2. `direction`이 undefined일 경우 event를 삽입하기 **전에** `console.warn("[choice][tradeoff] direction undefined")` 기록 필수.
+3. `fetchSecondChoiceConfirmedRow`는 `SECOND_CHOICE_CONFIRMED`와 `BINDING_V1_SECOND` 두 event type을 모두 처리해야 함 (레거시 호환성).
+4. `patternSignatureUpsert.server.ts`의 silent early return에는 warn log가 수반되어야 함.
+
+##### Fix 범위 (C3 구현 대상)
+
+**File 1** — `bty-app/src/app/api/arena/choice/route.ts` (~2–3줄)  
+tradeoff block에서 `picked.direction`과 `picked.pattern_family`를 캡처하여 event meta에 추가 + undefined 경우 warn log.
+
+**File 2** — `bty-app/src/lib/bty/arena/reexposureValidation.server.ts` line 64 (~1줄)  
+`.eq("event_type", "SECOND_CHOICE_CONFIRMED")` → `.in("event_type", ["SECOND_CHOICE_CONFIRMED", "BINDING_V1_SECOND"])`
+
+**File 3** — `bty-app/src/lib/bty/arena/patternSignatureUpsert.server.ts` line 34 (~1줄)  
+silent early return 직전에 `console.warn("[pattern_signature][skip]", { patternKey, axis, userId })` 추가.
+
+**총 변경**: ~5–8줄, 3개 파일, 신규 테이블/마이그레이션 없음.
 
 **Priority 2 (post-signature-fix):** Original AL-1.7 items
 

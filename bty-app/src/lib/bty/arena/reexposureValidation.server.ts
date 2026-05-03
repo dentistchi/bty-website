@@ -61,7 +61,7 @@ export async function fetchSecondChoiceConfirmedRow(
     .select("choice_id, meta")
     .eq("run_id", runId)
     .eq("step", 4)
-    .eq("event_type", "SECOND_CHOICE_CONFIRMED")
+    .in("event_type", ["SECOND_CHOICE_CONFIRMED", "BINDING_V1_SECOND"])
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();

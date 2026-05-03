@@ -32,6 +32,7 @@ export async function upsertUserPatternSignatureFromValidation(params: {
   const famRaw = params.payload.after_pattern_family ?? params.payload.before_pattern_family;
   const patternKey = normalizeFamilyKey(famRaw);
   if (!patternKey || !axis) {
+    console.warn("[pattern_signature][skip]", { patternKey, axis, userId: params.userId });
     return { ok: true };
   }
 

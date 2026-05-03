@@ -65,7 +65,7 @@ type BindingScenarioLib = {
     hiddenDelta?: Record<string, unknown>;
   }>;
   escalationBranches?: Record<string, {
-    second_choices?: Array<{ id: string; dbChoiceId?: string; pattern_family?: string }>;
+    second_choices?: Array<{ id: string; dbChoiceId?: string; pattern_family?: string; direction?: "entry" | "exit" }>;
     action_decision?: {
       choices: Array<{ id: string; dbChoiceId?: string; meaning?: { is_action_commitment?: boolean } }>;
     };
@@ -498,6 +498,8 @@ export async function POST(req: NextRequest) {
   }
 
   let tradeoffLeadsToActionDecision = false;
+  let tradeoffDirection: string | undefined;
+  let tradeoffPatternFamily: string | undefined;
 
   if (binding_phase === "tradeoff") {
     const branchKeyRaw =
@@ -538,6 +540,11 @@ export async function POST(req: NextRequest) {
       );
       copyCookiesAndDebug(base, out, req, true);
       return out;
+    }
+    tradeoffDirection = picked.direction;
+    tradeoffPatternFamily = picked.pattern_family;
+    if (!tradeoffDirection) {
+      console.warn("[choice][tradeoff] direction undefined", { json_choice_id, branchKey });
     }
     insertStep = 4;
     /** Distinct from `SECOND_CHOICE_CONFIRMED` in `POST /api/arena/run/step` — see comment there. */
@@ -764,6 +771,9 @@ export async function POST(req: NextRequest) {
       db_scenario_id,
       json_choice_id,
       db_choice_id,
+      ...(binding_phase === "tradeoff" && tradeoffDirection
+        ? { direction: tradeoffDirection, pattern_family: tradeoffPatternFamily }
+        : {}),
       ...(binding_phase === "action_decision" && actionDecisionOutcome
         ? { action_decision_outcome: actionDecisionOutcome }
         : {}),
