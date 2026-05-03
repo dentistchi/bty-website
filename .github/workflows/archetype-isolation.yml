@@ -1,0 +1,51 @@
+# Archetype Determinism Lock — enforcement gates.
+# Spec: docs/specs/ARCHETYPE_DETERMINISM_LOCK_V1.md §4.2
+#
+# Layer 1 (isolation): no LLM client imports in archetype/
+# Layer 2 (spec drift): threshold values, STILLWATER conditions, A0 gate placement
+# Layer 3 (tests): integration + unit tests for archetype/ path
+
+name: Archetype determinism gates
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "bty-app/src/lib/bty/archetype/**"
+      - "bty-app/src/__tests__/archetype/**"
+      - "bty-app/scripts/archetype-*.mjs"
+      - ".github/workflows/archetype-isolation.yml"
+  pull_request:
+    paths:
+      - "bty-app/src/lib/bty/archetype/**"
+      - "bty-app/src/__tests__/archetype/**"
+      - "bty-app/scripts/archetype-*.mjs"
+      - ".github/workflows/archetype-isolation.yml"
+
+jobs:
+  archetype-gates:
+    name: Archetype enforcement (L1 isolation + L2 spec drift + L3 tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: bty-app
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: bty-app/package-lock.json
+
+      - run: npm ci
+
+      - name: L1 — no LLM imports in archetype/
+        run: node scripts/archetype-isolation-check.mjs
+
+      - name: L2 — spec drift check (thresholds, STILLWATER, A0 gate)
+        run: node scripts/archetype-spec-drift-check.mjs
+
+      - name: L3 — archetype unit + integration tests
+        run: npm test -- src/lib/bty/archetype/ src/__tests__/archetype/
