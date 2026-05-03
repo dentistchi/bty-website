@@ -127,9 +127,7 @@ export function AvatarComposite({
     inset: 0,
     width: "100%",
     height: "100%",
-    objectFit: "cover",
-    transformOrigin: "50% 25%",
-    transform: "scale(2.4)",
+    objectFit: "contain",
   };
 
   if (!characterUrl?.trim() || characterFailed) {
