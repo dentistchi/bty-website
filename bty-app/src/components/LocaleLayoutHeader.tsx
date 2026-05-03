@@ -12,7 +12,10 @@ import { LangSwitch } from "@/components/LangSwitch";
 export function LocaleLayoutHeader() {
   const pathname = usePathname() ?? "";
   const isArenaArea = /^\/(en|ko)\/(bty\/|bty-arena)/.test(pathname);
-  if (isArenaArea) return null;
+  const isCenterArea = /^\/(en|ko)\/(center|dear-me|assessment|journal)(\/|$)/.test(pathname);
+  const isMyPageArea = /^\/(en|ko)\/my-page/.test(pathname);
+  const isLandingPage = /^\/(en|ko)\/?$/.test(pathname);
+  if (isArenaArea || isCenterArea || isMyPageArea || isLandingPage) return null;
   return (
     <div className="fixed top-2 right-2 z-[9998]">
       <Suspense fallback={<span className="px-2 py-1 text-sm text-gray-400">…</span>}>

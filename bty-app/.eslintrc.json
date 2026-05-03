@@ -1,3 +1,30 @@
 {
-  "extends": ["next/core-web-vitals"]
+  "extends": ["next/core-web-vitals"],
+  "overrides": [
+    {
+      "files": ["src/lib/bty/archetype/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["anthropic", "@anthropic-ai/*"],
+                "message": "Archetype determinism: LLM clients forbidden in archetype/. AI runs only in expression layer (description/mythos), never in selector/rules/fingerprint/transition. Spec: docs/specs/ARCHETYPE_DETERMINISM_LOCK_V1.md"
+              },
+              {
+                "group": ["openai", "@ai-sdk/*", "cohere-ai", "@mistralai/*"],
+                "message": "Archetype determinism: LLM clients forbidden in archetype/. Spec: docs/specs/ARCHETYPE_DETERMINISM_LOCK_V1.md"
+              },
+              {
+                "group": ["@/lib/llm", "@/lib/llm/*"],
+                "message": "Archetype determinism: internal LLM wrappers forbidden in archetype/. Spec: docs/specs/ARCHETYPE_DETERMINISM_LOCK_V1.md"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }
+

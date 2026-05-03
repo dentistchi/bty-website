@@ -22,6 +22,28 @@ export function stageNumberFromCoreXp(coreXp: number): number {
   return Math.min(STAGE_NUMBER_MAX, Math.floor(safe / CORE_XP_PER_STAGE_STEP) + 1);
 }
 
+// BTY non-uniform stage boundaries (Stage 6 = 500–699, Stage 7 = 700+)
+const BTY_STAGE_ENTRIES = [
+  { minXp: 700, stageNumber: 7, label: "STAGE 7: CODELESS ZONE" },
+  { minXp: 500, stageNumber: 6, label: "STAGE 6: ARCHITECT" },
+  { minXp: 400, stageNumber: 5, label: "STAGE 5: NOVA" },
+  { minXp: 300, stageNumber: 4, label: "STAGE 4: ASCEND" },
+  { minXp: 200, stageNumber: 3, label: "STAGE 3: FRAME" },
+  { minXp: 100, stageNumber: 2, label: "STAGE 2: PULSE" },
+  { minXp: 0, stageNumber: 1, label: "STAGE 1: FORGE" },
+] as const;
+
+export type BtyStageEntry = { stageNumber: number; label: string };
+
+/** Stage number + label from Core XP using BTY non-uniform boundaries. */
+export function btyStageFromCoreXp(coreXp: number): BtyStageEntry {
+  const safe = Math.max(0, Math.floor(coreXp));
+  for (const entry of BTY_STAGE_ENTRIES) {
+    if (safe >= entry.minXp) return { stageNumber: entry.stageNumber, label: entry.label };
+  }
+  return { stageNumber: 1, label: "STAGE 1: FORGE" };
+}
+
 /** Default sub name for code and sub-tier; null for CODELESS ZONE. */
 export function defaultSubName(codeIndex: CodeIndex, subTierGroup: SubTierGroup): string | null {
   const row = SUB_NAMES[codeIndex];

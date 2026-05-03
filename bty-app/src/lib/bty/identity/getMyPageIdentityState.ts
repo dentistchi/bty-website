@@ -11,6 +11,7 @@ import {
 } from "@/lib/bty/my-page/openActionContractForMyPage";
 import { fetchUserPatternSignaturesForMyPage } from "@/lib/bty/arena/fetchUserPatternSignatures.server";
 import type { UserPatternSignaturePublic } from "@/lib/bty/arena/patternSignature.types";
+import { buildFingerprintInput, resolveArchetypeForUser } from "@/lib/bty/archetype";
 import { fetchSignalsAndReflections } from "./fetchIdentityRows";
 
 export type MyPageIdentityPayload = {
@@ -42,22 +43,54 @@ export async function getMyPageIdentityState(
 
   const { signals, reflections } = bundle;
 
-  const { count: recoveryCount, error: recErr } = await supabase
-    .from("bty_recovery_entries")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId);
+  const [recoveryRes, sigBundle, openContract, membershipRes] = await Promise.all([
+    supabase
+      .from("bty_recovery_entries")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId),
+    fetchUserPatternSignaturesForMyPage(supabase, userId),
+    fetchOpenActionContractForMyPage(supabase, userId),
+    supabase
+      .from("arena_memberships")
+      .select("core_xp")
+      .eq("user_id", userId)
+      .maybeSingle(),
+  ]);
 
-  if (recErr) return { ok: false, message: recErr.message };
+  if (recoveryRes.error) return { ok: false, message: recoveryRes.error.message };
+  if (!sigBundle.ok) return { ok: false, message: sigBundle.message };
+
+  const coreXp = (membershipRes.data as { core_xp?: number } | null)?.core_xp ?? 0;
+
+  const [scenariosRes, contractsRes] = await Promise.all([
+    supabase
+      .from("user_scenario_choice_history")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId),
+    supabase
+      .from("bty_action_contracts")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("status", "approved"),
+  ]);
+
+  const fingerprintInput = buildFingerprintInput(
+    signals,
+    sigBundle.rows,
+    scenariosRes.count ?? 0,
+    contractsRes.count ?? 0,
+  );
+
+  const archetypeResult = await resolveArchetypeForUser(supabase, userId, fingerprintInput);
+  const codeNameOverride =
+    archetypeResult.ok && archetypeResult.source !== "pattern_forming"
+      ? archetypeResult.archetypeName
+      : undefined;
 
   const metrics = computeMetrics(signals);
-  const base = computeLeadershipState(metrics, locale, reflections);
+  const base = computeLeadershipState(metrics, locale, reflections, { codeNameOverride, coreXp });
   const leadershipState = mergeLeadershipReflectionLayer(base, metrics, signals, locale, reflections);
   const recoveryTriggered = shouldShowCompoundRecovery(signals, reflections);
-
-  const open_action_contract = await fetchOpenActionContractForMyPage(supabase, userId);
-
-  const sigBundle = await fetchUserPatternSignaturesForMyPage(supabase, userId);
-  if (!sigBundle.ok) return { ok: false, message: sigBundle.message };
 
   return {
     ok: true,
@@ -65,10 +98,10 @@ export async function getMyPageIdentityState(
       metrics,
       leadershipState,
       recoveryTriggered,
-      recoveryEntryCount: recoveryCount ?? 0,
+      recoveryEntryCount: recoveryRes.count ?? 0,
       signals,
       reflections,
-      open_action_contract,
+      open_action_contract: openContract,
       pattern_signatures: sigBundle.rows,
     },
   };

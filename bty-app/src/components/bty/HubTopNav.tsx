@@ -140,22 +140,12 @@ export default function HubTopNav({ theme = "arena", showLangSwitch = false, tra
     const lb = `/${locale}/bty/leaderboard`;
     const myPage = `/${locale}/my-page`;
     const myAccount = `/${locale}/my-page/account`;
-    const mainHref = `/${locale}/bty-arena`;
 
     return (
       <div className="flex flex-col items-end min-w-0 w-full sm:w-auto">
         <div className="flex flex-wrap items-center gap-1 sm:gap-2 justify-end w-full">
-          {/* Brand */}
-          <Link
-            href={mainHref}
-            style={{ ...arenaNav.primary, fontWeight: 800, letterSpacing: "-0.02em" }}
-            className="bty-brand-link mr-1"
-          >
-            <span style={{ fontWeight: 400 }}>bty</span>ARENA
-          </Link>
-          <span style={{ color: "var(--arena-text-soft)", opacity: 0.3 }}>|</span>
           {/* Hub + extended nav */}
-          <div style={arenaNav.wrap} className="bty-hub-primary justify-end" aria-label={isKo ? "주요 메뉴" : "Main navigation"}>
+          <div style={arenaNav.wrap} className="bty-hub-primary justify-end" aria-label="Main navigation">
             {hubPill(center, "Center", "center")}
             {hubPill(arena, "Arena", "arena")}
             {hubPill(foundry, "Foundry", "foundry")}
@@ -177,55 +167,53 @@ export default function HubTopNav({ theme = "arena", showLangSwitch = false, tra
     );
   }
 
-  /* dear theme: Center / Arena / Foundry + optional second row + Lang */
-  const muted = "text-dear-charcoal-soft hover:underline";
-  const activeDear = "font-medium text-dear-charcoal underline";
-  const hubLink = (href: string, label: string, hub: "center" | "arena" | "foundry") => (
+  /* dear theme: same pill structure as arena theme but for landing/center-adjacent pages */
+  const pill2 = (href: string, label: string, active: boolean) => (
     <Link
       key={href}
       href={href}
-      className={primaryActive === hub ? activeDear : muted}
-      aria-current={primaryActive === hub ? "page" : undefined}
+      style={active ? arenaNav.active : arenaNav.link}
+      className="bty-hub-sub-link"
     >
       {label}
     </Link>
   );
 
-  const subLink = (href: string, label: string) => {
-    const on = isActivePath(pathname, href);
+  const hubPill2 = (href: string, label: string, hub: "center" | "arena" | "foundry") => {
+    const active = primaryActive === hub;
     return (
-      <Link key={href} href={href} className={on ? activeDear : muted} aria-current={on ? "page" : undefined}>
+      <Link key={href} href={href} style={active ? arenaNav.primaryActive : arenaNav.primary} className="bty-hub-primary-link">
         {label}
       </Link>
     );
   };
 
-  let secondRow: ReactNode = null;
-  if (ctx === "center") {
-    secondRow = (
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm mt-2" aria-label={isKo ? "센터 메뉴" : "Center menu"}>
-        {subLink(center, L.main)}
-        {subLink(`/${locale}/assessment`, L.assessment)}
-        {subLink(`/${locale}/dear-me`, L.dearMe)}
-        {subLink(`/${locale}/journal`, L.journal)}
-      </div>
-    );
-  }
+  const dash2 = `/${locale}/bty/dashboard`;
+  const lb2 = `/${locale}/bty/leaderboard`;
+  const myPage2 = `/${locale}/my-page`;
+  const myAccount2 = `/${locale}/my-page/account`;
 
   return (
-    <nav className="w-full" aria-label={isKo ? "주요 메뉴" : "Main navigation"}>
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm">
-        {hubLink(center, t.center, "center")}
-        {hubLink(arena, t.arena, "arena")}
-        {hubLink(foundry, isKo ? "훈련장" : "Foundry", "foundry")}
+    <div className="flex flex-col items-end min-w-0 w-full sm:w-auto">
+      <div className="flex flex-wrap items-center gap-1 sm:gap-2 justify-end w-full">
+        <div style={arenaNav.wrap} className="bty-hub-primary justify-end" aria-label="Main navigation">
+          {hubPill2(center, "Center", "center")}
+          {hubPill2(arena, "Arena", "arena")}
+          {hubPill2(foundry, "Foundry", "foundry")}
+        </div>
+        <span style={{ color: "var(--arena-text-soft)", opacity: 0.3 }}>|</span>
+        <div style={arenaNav.wrap}>
+          {pill2(dash2, "Dashboard", isActivePath(pathname, dash2))}
+          {pill2(lb2, "Leaderboard", isActivePath(pathname, lb2))}
+          {pill2(myPage2, "My Page", isActivePath(pathname, myPage2) && !isActivePath(pathname, myAccount2))}
+          {pill2(myAccount2, "My Account", isActivePath(pathname, myAccount2))}
+        </div>
         {showLangSwitch && (
-          <>
-            <span className="text-dear-charcoal-soft/60">|</span>
+          <span className="flex shrink-0 items-center gap-3 border-l border-[var(--arena-text-soft)]/30 pl-3 ml-1">
             <LangSwitch />
-          </>
+          </span>
         )}
       </div>
-      {secondRow}
-    </nav>
+    </div>
   );
 }

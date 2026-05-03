@@ -354,7 +354,7 @@ export default function CenterPageClient({ locale }: { locale: string }) {
           ) : isForcedReset ? (
             <div className="space-y-6">
               <header className="text-center">
-                <h1 className="text-2xl font-medium text-dear-charcoal mb-2">BTY Center</h1>
+                <h1 className="text-2xl font-medium text-dear-charcoal mb-2">bty Center</h1>
                 <p className="text-dear-charcoal-soft text-sm leading-relaxed max-w-sm mx-auto">
                   {isKo
                     ? "지금은 잠시 쉬어가는 시간이 필요해요. 아래 과정을 마치면 다시 Arena로 돌아갈 수 있어요."
@@ -366,7 +366,7 @@ export default function CenterPageClient({ locale }: { locale: string }) {
           ) : (
             <div className="space-y-6">
               <header>
-                <h1 className="text-2xl font-medium text-dear-charcoal">BTY Center</h1>
+                <h1 className="text-2xl font-medium text-dear-charcoal">bty Center</h1>
                 <p className="text-dear-charcoal-soft text-sm mt-1">
                   {isKo
                     ? "회복과 재정비의 공간이에요."

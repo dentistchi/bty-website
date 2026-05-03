@@ -4,14 +4,13 @@ import { LangSwitch } from "@/components/LangSwitch";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import HubTopNav from "@/components/bty/HubTopNav";
 
-/**
- * Center 공통 레이아웃: ArenaLayoutShell과 동일한 구조 — btyARENA 로고 + 스티키 헤더.
- * /[locale]/center, /[locale]/dear-me, /[locale]/assessment 에서 사용.
- */
-export function CenterLayoutShell({ children, locale }: { children: ReactNode; locale?: string }) {
-  const brandHref = locale ? `/${locale}` : "/en";
+type Props = { children: ReactNode; params: Promise<{ locale: string }> };
+
+export default async function MyPageLayout({ children, params }: Props) {
+  const { locale } = await params;
+  const brandHref = `/${locale}`;
   return (
-    <div className="bty-center-area" data-theme="dear">
+    <div data-theme="arena">
       <header
         className="sticky top-0 z-20 backdrop-blur border-b border-[var(--arena-bg-end)]"
         style={{ background: "rgba(245, 240, 232, 0.92)" }}
@@ -20,7 +19,7 @@ export function CenterLayoutShell({ children, locale }: { children: ReactNode; l
           <Link
             href={brandHref}
             className="pt-1 shrink-0"
-            style={{ fontWeight: 800, fontSize: "0.9375rem", letterSpacing: "-0.02em", textDecoration: "none", color: "var(--arena-text)" }}
+            style={{ fontWeight: 800, fontSize: "0.9375rem", letterSpacing: "-0.02em", textDecoration: "none", color: "var(--arena-text, #1E2A38)" }}
           >
             <span style={{ fontWeight: 400 }}>bty</span>ARENA
           </Link>
@@ -34,8 +33,7 @@ export function CenterLayoutShell({ children, locale }: { children: ReactNode; l
           />
         </div>
       </header>
-
-      <div className="max-w-3xl mx-auto px-4 py-8">{children}</div>
+      {children}
     </div>
   );
 }

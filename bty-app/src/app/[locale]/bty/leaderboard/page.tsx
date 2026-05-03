@@ -48,31 +48,31 @@ type LeaderboardRes = {
 
 const LB = {
   ko: {
-    title: "리더보드",
-    slogan: "함께 달리는 동료들.",
-    subtitle: "티어 · 코드명 · 주간 XP",
-    yourRank: "내 순위",
-    loading: "로딩 중…",
-    failed: "불러오기 실패",
-    tier: "티어",
-    weeklyXp: "주간 XP",
-    noData: "아직 주간 XP 기록이 없어요. Arena에서 첫 시나리오를 시작해 보세요.",
-    noDataCta: "Arena에서 시나리오 시작하기",
-    notOnBoard: "아직 리더보드에 없어요. Arena에서 시나리오를 끝까지 플레이한 뒤 「다음 시나리오」 버튼을 눌러 주세요.",
-    notOnBoardHint: "캐릭터(코드명) 저장만으로는 리더보드에 올라가지 않아요.",
-    statusNoRow: "저장된 주간 XP: 없음 (시나리오 완료 후 「다음 시나리오」를 눌렀는지 확인하세요)",
-    statusHasRow: "저장된 주간 XP:",
-    championsTitle: "이번 주 챔피언",
+    title: "Leaderboard",
+    slogan: "Running together.",
+    subtitle: "Tier · Code · Weekly XP",
+    yourRank: "Your rank",
+    loading: "Loading…",
+    failed: "Failed",
+    tier: "Tier",
+    weeklyXp: "Weekly XP",
+    noData: "No data yet. Play Arena to generate weekly XP.",
+    noDataCta: "Start a scenario in Arena",
+    notOnBoard: "You're not on the leaderboard yet. Finish an Arena scenario and click \"Next scenario\" to appear.",
+    notOnBoardHint: "Saving your character (code name) alone does not add you to the leaderboard.",
+    statusNoRow: "Saved weekly XP: none (did you click \"Next scenario\" after finishing?)",
+    statusHasRow: "Saved weekly XP:",
+    championsTitle: "This week's champions",
     champion: "Champion",
     runnerUp: "Runner-up",
-    tabOverall: "전체",
-    tabRole: "역할",
-    tabOffice: "지점",
-    scopeRole: "역할",
-    scopeOffice: "지점",
-    scopeUnavailable: "역할·지점 정보가 없어 이 뷰를 사용할 수 없어요.",
-    weekResetLabel: "이번 주 리셋 일시",
-    retryAriaLabel: "리더보드 다시 불러오기",
+    tabOverall: "Overall",
+    tabRole: "Role",
+    tabOffice: "Office",
+    scopeRole: "Role",
+    scopeOffice: "Office",
+    scopeUnavailable: "No role or office context for this view.",
+    weekResetLabel: "Weekly reset",
+    retryAriaLabel: "Reload leaderboard",
   },
   en: {
     title: "Leaderboard",
@@ -177,9 +177,7 @@ export default function LeaderboardPage() {
               color: "#713f12",
             }}
           >
-            {locale === "ko"
-              ? "공개 순위만 보이는 중이에요. 내 순위·역할·지점 뷰를 쓰려면 bty에서 로그인한 뒤 다시 열어 주세요."
-              : "Showing public rankings only. Sign in from bty home to see your rank and Role/Office views."}
+            {"Showing public rankings only. Sign in from bty home to see your rank and Role/Office views."}
           </div>
         )}
         {/* API 응답의 주간 경계 값만 표시(UI에서 계산 금지) */}
@@ -203,7 +201,7 @@ export default function LeaderboardPage() {
             flexWrap: "wrap",
           }}
           role="group"
-          aria-label={locale === "ko" ? "리더보드 뷰 전환" : "Leaderboard view scope"}
+          aria-label="Leaderboard view scope"
         >
           {(["overall", "role", "office"] as const).map((s) => (
             <button
@@ -215,13 +213,9 @@ export default function LeaderboardPage() {
                 setScope(s);
               }}
               aria-label={
-                s === "overall"
-                  ? (locale === "ko" ? "리더보드 전체 보기" : "View leaderboard overall")
-                  : s === "role"
-                    ? (locale === "ko" ? "리더보드 역할별 보기" : "View leaderboard by role")
-                    : locale === "ko"
-                      ? "리더보드 지점별 보기"
-                      : "View leaderboard by office"
+                s === "overall" ? "View leaderboard overall"
+                  : s === "role" ? "View leaderboard by role"
+                  : "View leaderboard by office"
               }
               aria-pressed={scope === s}
               style={{

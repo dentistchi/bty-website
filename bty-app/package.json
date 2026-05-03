@@ -18,6 +18,7 @@
     "lint": "tsc --noEmit",
     "lint:ux-flow-gb09": "node scripts/ux-flow-lock-gb09-sweep.mjs",
     "lint:terminology": "node scripts/terminology-lint.mjs",
+    "lint:archetype-isolation": "node scripts/archetype-isolation-check.mjs",
     "lint:eslint": "next lint",
     "extract:questions": "node scripts/extract-questions.mjs",
     "test": "vitest run",

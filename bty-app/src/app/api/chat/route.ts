@@ -3,8 +3,7 @@
  * CHATBOT_TRAINING_CHECKLIST, ROADMAP_NEXT_STEPS § 챗봇 훈련 시기 반영.
  * 메타 질문·안전 밸브·Foundry 추천 → 고정 응답, 그 외 buildChatMessagesForModel + OpenAI 호출.
  */
-import { fetchJson } from "@/lib/read-json";
-import { getLlmEndpoint, getLlmExtraOptions, isLlmAvailable } from "@/lib/llm";
+import { getLlmClient, getLlmModel, isLlmAvailable } from "@/lib/bty/llm/client";
 import { NextResponse } from "next/server";
 import {
   buildChatMessagesForModel,
@@ -148,38 +147,22 @@ export async function POST(request: Request) {
     const fallback = getFallbackMessage(mode, lang);
 
     if (isLlmAvailable()) {
-      const llm = getLlmEndpoint();
-      type OpenAIChatResp = { choices?: { message?: { content?: string } }[] };
+      const client = getLlmClient();
+      const model = getLlmModel();
       const openAiTimeoutMs = 30_000; // COMMANDER_BACKLOG_AND_NEXT §2: 장시간 대기 시 fallback으로 이탈
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), openAiTimeoutMs);
-      let r: { ok: boolean; json?: OpenAIChatResp };
       try {
-        r = await fetchJson<OpenAIChatResp>(llm.url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${llm.apiKey}`,
-          },
-          body: JSON.stringify({
-            model: llm.model,
+        const completion = await client.chat.completions.create(
+          {
+            model,
             messages: messagesForModel,
             temperature: 0.7,
             max_tokens: 200, // CHATBOT_TRAINING_CHECKLIST §0 Foundry
-            ...getLlmExtraOptions(),
-          }),
-          signal: controller.signal,
-        });
-      } catch (err) {
-        const isAbort = err instanceof Error && err.name === "AbortError";
-        r = { ok: false };
-        if (isAbort) recordQualityEventApp({ route: "chat", reason: "timeout", mode, lang });
-      } finally {
-        clearTimeout(timeoutId);
-      }
-      if (r.ok) {
-        const data = r.json;
-        const rawText = data?.choices?.[0]?.message?.content?.trim();
+          },
+          { signal: controller.signal },
+        );
+        const rawText = completion.choices[0]?.message?.content?.trim();
         if (rawText) {
           const text = mode === "foundry" ? filterBtyResponse(rawText, lang) : rawText;
           const supabase = await getSupabaseServerClient();
@@ -200,8 +183,12 @@ export async function POST(request: Request) {
           );
         }
         recordQualityEventApp({ route: "chat", reason: "empty_response", mode, lang });
-      } else {
-        recordQualityEventApp({ route: "chat", reason: "fallback", mode, lang });
+      } catch (err) {
+        const isAbort = err instanceof Error && err.name === "AbortError";
+        if (isAbort) recordQualityEventApp({ route: "chat", reason: "timeout", mode, lang });
+        else recordQualityEventApp({ route: "chat", reason: "fallback", mode, lang });
+      } finally {
+        clearTimeout(timeoutId);
       }
     } else {
       recordQualityEventApp({ route: "chat", reason: "fallback", mode, lang });

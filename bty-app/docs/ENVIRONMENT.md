@@ -21,6 +21,12 @@
   - 서버에서 "관리 권한"이 필요한 작업이 있을 때만 사용
   - 일반 로그인/세션용으로는 사용하지 않는 것을 기본으로 유지
 
+### LLM endpoint (서버 전용 — 선택)
+- `LLM_BASE_URL` — 설정 시 OpenAI 기본 URL 대신 사용. 예: `http://100.109.32.24:11434/v1` (로컬 Ollama)
+- `LLM_MODEL` — 사용할 모델명. 미설정 시 `gpt-4o-mini`. 예: `gemma3:27b`
+- `LLM_API_KEY` — 미설정 시 `OPENAI_API_KEY`로 폴백. Ollama는 임의 값(예: `ollama`)
+- `OPENAI_API_KEY` — `LLM_BASE_URL` 미설정 시 필수. Cloudflare Workers staging/prod에 secret으로 주입.
+
 ---
 
 ## 3) Where to set (권장 운영)
@@ -32,6 +38,14 @@
 ### Cloudflare Workers
 - Worker 환경변수(Production/Preview 분리 가능)
 - 값 변경 시: "새 배포 이후에만" 반영되는지(캐시/미스매치) 확인
+
+### Cloudflare Workers (staging/prod) 챗봇 활성화
+- `OPENAI_API_KEY`를 wrangler secret으로 주입:
+  ```bash
+  cd bty-app
+  npx wrangler secret put OPENAI_API_KEY --config wrangler.toml
+  ```
+- `LLM_BASE_URL`은 staging/prod에 설정하지 않음 (로컬 Ollama는 Cloudflare에서 도달 불가).
 
 ---
 

@@ -34,9 +34,18 @@ vi.mock("@/lib/bty/emotional-stats", () => ({
 vi.mock("@/lib/bty/quality", () => ({ recordQualityEventApp: vi.fn() }));
 vi.mock("@/lib/log-api-error", () => ({ logApiError: vi.fn() }));
 
-const mockFetchJson = vi.fn();
-vi.mock("@/lib/read-json", () => ({
-  fetchJson: (url: string, init?: RequestInit) => mockFetchJson(url, init),
+// LLM client mock — default: unavailable (returns fallback). Override per-test in describe blocks.
+const { mockCreate, mockIsLlmAvailable } = vi.hoisted(() => ({
+  mockCreate: vi.fn(),
+  mockIsLlmAvailable: vi.fn().mockReturnValue(false),
+}));
+
+vi.mock("@/lib/bty/llm/client", () => ({
+  isLlmAvailable: () => mockIsLlmAvailable(),
+  getLlmClient: vi.fn(() => ({
+    chat: { completions: { create: mockCreate } },
+  })),
+  getLlmModel: vi.fn().mockReturnValue("gpt-4o-mini"),
 }));
 
 function request(body: unknown, headers?: Record<string, string>): Request {
@@ -50,6 +59,8 @@ function request(body: unknown, headers?: Record<string, string>): Request {
 describe("POST /api/mentor", () => {
   beforeEach(() => {
     mockCheckRateLimit.mockReturnValue({ allowed: true, retryAfterSeconds: 60 });
+    mockIsLlmAvailable.mockReturnValue(false);
+    mockCreate.mockReset();
   });
 
   it("returns 400 when message is missing", async () => {
@@ -191,31 +202,21 @@ describe("POST /api/mentor", () => {
     const MOCKED_REPLY = "Mocked mentor reply for tests.";
 
     beforeEach(() => {
-      mockFetchJson.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: {
-          choices: [{ message: { content: MOCKED_REPLY } }],
-        },
+      mockIsLlmAvailable.mockReturnValue(true);
+      mockCreate.mockResolvedValue({
+        choices: [{ message: { content: MOCKED_REPLY } }],
       });
     });
 
-    it("POST with message + OPENAI_API_KEY uses mocked fetchJson and returns mocked message", async () => {
-      const orig = process.env.OPENAI_API_KEY;
-      process.env.OPENAI_API_KEY = "test-key";
-      try {
-        const req = request({ message: "What is leadership?", lang: "en" });
-        const res = await POST(req);
-        expect(res.status).toBe(200);
-        const data = await res.json();
-        expect(data.message).toBe(MOCKED_REPLY);
-        expect(mockFetchJson).toHaveBeenCalled();
-        const [url] = mockFetchJson.mock.calls[0] ?? [];
-        expect(url).toContain("openai.com");
-      } finally {
-        if (orig !== undefined) process.env.OPENAI_API_KEY = orig;
-        else delete process.env.OPENAI_API_KEY;
-      }
+    it("POST with message + OPENAI_API_KEY uses mocked client and returns mocked message", async () => {
+      const req = request({ message: "What is leadership?", lang: "en" });
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.message).toBe(MOCKED_REPLY);
+      expect(mockCreate).toHaveBeenCalled();
+      const [params] = mockCreate.mock.calls[0] ?? [];
+      expect(params?.model).toBe("gpt-4o-mini");
     });
 
     it("request body with messages[] and lang=ko yields 200 and JSON with message", async () => {
@@ -266,24 +267,18 @@ describe("POST /api/mentor", () => {
       expect(data.error).toBe("Message required");
     });
 
-    it("returns 200 with usedFallback when OPENAI returns not ok", async () => {
-      const orig = process.env.OPENAI_API_KEY;
-      process.env.OPENAI_API_KEY = "test-key";
-      mockFetchJson.mockResolvedValueOnce({ ok: false, status: 500, json: null });
-      try {
-        const res = await POST(
-          request({ message: "Normal question", lang: "en" })
-        );
-        expect(res.status).toBe(200);
-        const data = await res.json();
-        expect(data.message).toBeDefined();
-        expect(typeof data.message).toBe("string");
-        expect(data.message.length).toBeGreaterThan(0);
-        expect(data.usedFallback).toBe(true);
-      } finally {
-        if (orig !== undefined) process.env.OPENAI_API_KEY = orig;
-        else delete process.env.OPENAI_API_KEY;
-      }
+    it("returns 200 with usedFallback when LLM throws an error", async () => {
+      mockIsLlmAvailable.mockReturnValueOnce(true);
+      mockCreate.mockRejectedValueOnce(new Error("Network error"));
+      const res = await POST(
+        request({ message: "Normal question", lang: "en" })
+      );
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.message).toBeDefined();
+      expect(typeof data.message).toBe("string");
+      expect(data.message.length).toBeGreaterThan(0);
+      expect(data.usedFallback).toBe(true);
     });
   });
 });

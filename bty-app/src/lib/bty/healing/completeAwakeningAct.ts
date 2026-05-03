@@ -54,6 +54,23 @@ export async function completeHealingAwakeningAct(
   }
 
   const next = [...completed, actId].sort((a, b) => a - b) as AwakeningActId[];
+
+  if (next.length === 3) {
+    const { data: existing } = await supabase
+      .from("user_healing_milestones")
+      .select("second_awakening_completed_at")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const alreadySet = !!(existing as { second_awakening_completed_at: string | null } | null)
+      ?.second_awakening_completed_at;
+    if (!alreadySet) {
+      await supabase.from("user_healing_milestones").upsert(
+        { user_id: userId, second_awakening_completed_at: new Date().toISOString() },
+        { onConflict: "user_id" }
+      );
+    }
+  }
+
   return { ok: true, completedActs: next };
 }
 

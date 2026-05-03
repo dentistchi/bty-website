@@ -1428,6 +1428,19 @@ export default function BtyArenaRunPageClient({
                     s.scenario.escalationBranches?.[s.selectedChoiceId]?.action_decision != null
                   ) && <ArenaBindingError reason={t.eliteBindingIntegrityError} />}
 
+                {s.playUiSegment === "legacy_escalation" && (
+                  <div data-testid="elite-legacy-escalation" className="space-y-3">
+                    <p className="m-0 text-[11px] font-bold uppercase tracking-[0.14em] text-bty-navy/70">
+                      {t.arenaFlowPhaseTradeoffInstruction}
+                    </p>
+                    <p className="m-0 text-sm leading-relaxed text-bty-navy/80">
+                      {(s.selectedChoiceId &&
+                        s.scenario.escalationBranches?.[s.selectedChoiceId]?.escalation_text) ||
+                        ""}
+                    </p>
+                  </div>
+                )}
+
                 {(s.playUiSegment === "forced_tradeoff" || s.playUiSegment === "run_complete") && (
                   <EliteArenaPostChoiceBlock
                     key={`${s.scenario.scenarioId}-${s.playUiSegment}-${s.selectedChoiceId ?? "done"}`}

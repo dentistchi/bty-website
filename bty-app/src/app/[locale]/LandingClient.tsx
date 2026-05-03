@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import HubTopNav from "@/components/bty/HubTopNav";
+import { LangSwitch } from "@/components/LangSwitch";
 import { ThemeBody } from "@/components/ThemeBody";
 import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 
@@ -42,7 +43,15 @@ export default function LandingClient({ locale, t }: Props) {
         aria-label={t.landingHubMainRegionAria}
       >
         <div className="max-w-2xl mx-auto px-4 py-10 sm:py-14">
-          <HubTopNav theme="dear" showLangSwitch />
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
+            <Link
+              href={`/${locale}`}
+              style={{ fontWeight: 800, fontSize: "0.9375rem", letterSpacing: "-0.02em", textDecoration: "none", color: "var(--arena-text, #1E2A38)" }}
+            >
+              <span style={{ fontWeight: 400 }}>bty</span>ARENA
+            </Link>
+            <HubTopNav theme="dear" showLangSwitch />
+          </div>
 
           <header className="text-center mb-14 sm:mb-20 pt-6">
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#3D3A36] tracking-tight leading-tight">
