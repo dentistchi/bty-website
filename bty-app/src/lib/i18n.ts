@@ -5142,7 +5142,7 @@ const en: Messages = {
     leadershipFieldPatternTitle: "Decision pattern shape",
     leadershipPatternShiftSectionTitle: "Pattern Shift (behavior validation)",
     leadershipPatternShiftPlaceholder:
-      "pattern_shift_results is not available yet. Do not read this as AIR. This block will fill in when behavior-validation data is wired.",
+      "pattern_shift_results is not available yet. Do not read this as an AIR metric — it will fill in when behavior-validation data is wired.",
     leadershipFieldInfluenceTitle: "Influence",
     leadershipReflectionPanelTitle: "Reflection depth",
     leadershipRowRecentFocus: "Recent focus",
