@@ -36,10 +36,7 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-<<<<<<< HEAD
-=======
       # Cleanup API + next dev: same Bearer as bty-app/src/app/api/test/cleanup-action-contracts (see docs/CI_SECRETS_CRON_E2E.md)
->>>>>>> 94f9049 (fix(ci): wire cron and e2e cleanup secrets)
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
       E2E_TEST_CLEANUP_SECRET: ${{ secrets.E2E_TEST_CLEANUP_SECRET || secrets.CRON_SECRET }}
 
@@ -93,7 +90,6 @@ jobs:
             echo "Missing secret: E2E_COMEBACK_PASSWORD"
             exit 1
           fi
-<<<<<<< HEAD
           if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ]; then
             echo "Missing secret: NEXT_PUBLIC_SUPABASE_URL"
             exit 1
@@ -107,26 +103,12 @@ jobs:
             exit 1
           fi
           if [ -z "${CRON_SECRET:-}" ] && [ -z "${E2E_TEST_CLEANUP_SECRET:-}" ]; then
-=======
-<<<<<<< HEAD
-          if [ -z "$CRON_SECRET" ] && [ -z "$E2E_TEST_CLEANUP_SECRET" ]; then
->>>>>>> d49b8aa (fix(ci): wire cron and e2e cleanup secrets)
-            echo "Missing secret: CRON_SECRET or E2E_TEST_CLEANUP_SECRET"
-            exit 1
-          fi
-=======
-          if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
-            echo "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY (required for e2e:seed-fixture-user)"
-            exit 1
-          fi
-          if [ -z "${CRON_SECRET:-}" ] && [ -z "${E2E_TEST_CLEANUP_SECRET:-}" ]; then
             echo "Missing cleanup secret: set CRON_SECRET and/or E2E_TEST_CLEANUP_SECRET (see docs/CI_SECRETS_CRON_E2E.md). Playwright + next dev must match the server."
             exit 1
           fi
 
       - name: Verify E2E_EMAIL matches fixture user (seedFixtureUser)
         run: npm run e2e:verify-fixture-email
->>>>>>> 94f9049 (fix(ci): wire cron and e2e cleanup secrets)
 
       - name: Run E2E suite
         shell: bash
@@ -134,18 +116,8 @@ jobs:
           NEXT_TELEMETRY_DISABLED: "1"
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           E2E_TEST_CLEANUP_SECRET: ${{ secrets.E2E_TEST_CLEANUP_SECRET || secrets.CRON_SECRET }}
-<<<<<<< HEAD
-        run: |
-<<<<<<< HEAD
-          set -euo pipefail
-
-=======
-          set -e
-=======
->>>>>>> 94f9049 (fix(ci): wire cron and e2e cleanup secrets)
         run: |
           set -e
->>>>>>> d49b8aa (fix(ci): wire cron and e2e cleanup secrets)
           if [[ "$BASE_URL" == *"127.0.0.1"* ]] || [[ "$BASE_URL" == *"localhost"* ]]; then
             echo "Starting Next.js dev (log: /tmp/next-dev.log) ..."
             NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=4096" npm run dev -- -H 127.0.0.1 -p 3000 > /tmp/next-dev.log 2>&1 &
