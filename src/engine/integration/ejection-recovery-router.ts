@@ -11,6 +11,7 @@ import { getPhaseDiagnosticPrompts } from "@/engine/healing/healing-content.serv
 import { getCurrentPhase, type HealingPhase } from "@/engine/healing/healing-phase.service";
 import { routeHealingToFoundry } from "@/engine/integration/center-foundry-router";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { resetHealingJourney } from "@/lib/bty/center/healingPhaseService";
 
 export type EjectionLifecycleEvent = "EJECTED" | "LIFTED";
 
@@ -86,6 +87,9 @@ export async function handleEjectionLifecycle(
     const phase = await ensureAcknowledgementPhaseIfMissing(userId, client);
     const prompts = getPhaseDiagnosticPrompts(phase);
     await emitRecoveryPrompts({ userId, phase, prompts });
+    await resetHealingJourney(client, userId).catch((err) =>
+      console.warn("[handleEjectionLifecycle] resetHealingJourney", err),
+    );
     return;
   }
 
