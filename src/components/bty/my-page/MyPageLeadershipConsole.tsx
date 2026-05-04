@@ -390,9 +390,16 @@ export function MyPageLeadershipConsole({
       )}
 
       {secureLinkUrl && (
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-          <p className="mb-2 text-xs text-white/50">{tAction.completeByQrLink}</p>
-          <p className="select-all break-all text-xs text-cyan-600 dark:text-cyan-300/70">{secureLinkUrl}</p>
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+          <p className="mb-2 text-xs text-gray-600 dark:text-white/50">{tAction.completeByQrLink}</p>
+          <a
+            href={secureLinkUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="select-all break-all text-xs text-cyan-700 underline underline-offset-2 hover:text-cyan-900 dark:text-cyan-300/70 dark:hover:text-cyan-200"
+          >
+            {secureLinkUrl}
+          </a>
         </div>
       )}
 
@@ -422,7 +429,7 @@ export function MyPageLeadershipConsole({
           <button
             type="button"
             onClick={() => setQrPanelOpen(false)}
-            className="text-xs text-white/40 hover:text-white/70"
+            className="text-xs text-gray-500 hover:text-gray-800 dark:text-white/40 dark:hover:text-white/70"
           >
             {tAction.dismiss}
           </button>
