@@ -34,7 +34,6 @@ function isPublicPath(pathname: string) {
   const locale = getLocale(pathname);
   if (locale) {
     if (pathname === `/${locale}` || pathname === `/${locale}/`) return true;
-    if (pathname === `/${locale}/center` || pathname === `/${locale}/center/`) return true;
     /** Dear Me letter writer: auth handled by AuthGate in component. Never block at middleware. */
     if (pathname === `/${locale}/dear-me` || pathname === `/${locale}/dear-me/`) return true;
     /** Center 50-item assessment + results: must be reachable without Foundry login. */
@@ -52,12 +51,6 @@ function isPublicPath(pathname: string) {
     if (pathname === `/${locale}/auth/reset-password`) return true;
     if (pathname === `/${locale}/reset-password`) return true;
     if (pathname === `/${locale}/bty/logout`) return true;
-    /** Leaderboard: API serves public overall view when cookies missing (Workers/Edge). Page load must not force login. */
-    if (
-      pathname === `/${locale}/bty/leaderboard` ||
-      pathname.startsWith(`/${locale}/bty/leaderboard/`)
-    )
-      return true;
   }
 
   return false;
