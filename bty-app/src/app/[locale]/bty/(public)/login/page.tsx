@@ -13,10 +13,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const isKo = locale === "ko";
   return {
-    title: isKo ? "로그인 · BTY Arena" : "Sign in · BTY Arena",
+    title: isKo ? "로그인 · bty arena" : "Sign in · bty arena",
     description: isKo
-      ? "BTY Arena 계정으로 로그인합니다."
-      : "Sign in to your BTY Arena account.",
+      ? "bty arena 계정으로 로그인합니다."
+      : "Sign in to your bty arena account.",
   };
 }
 

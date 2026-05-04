@@ -40,5 +40,6 @@ export async function GET(req: NextRequest) {
     reflections: result.data.reflections,
     open_action_contract: result.data.open_action_contract,
     pattern_signatures: result.data.pattern_signatures,
+    core_xp: result.data.core_xp,
   });
 }

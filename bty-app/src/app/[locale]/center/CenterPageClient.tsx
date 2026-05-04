@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { AuthGate } from "@/components/AuthGate";
 import { ThemeBody } from "@/components/ThemeBody";
 import { CardSkeleton } from "@/components/bty-arena";
 import { ForcedResetUX } from "@/components/center/ForcedResetUX";
@@ -342,7 +341,7 @@ export default function CenterPageClient({ locale }: { locale: string }) {
     stage != null && (stage.currentStage === 4 || stage.forcedResetTriggeredAt != null);
 
   return (
-    <AuthGate loadingMessage={t.loading}>
+    <>
       <ThemeBody theme="dear" />
       <main className="min-h-screen" aria-label={t.centerSuspenseMainRegionAria}>
         <div className="max-w-xl mx-auto px-4 py-8 sm:py-12">
@@ -382,6 +381,6 @@ export default function CenterPageClient({ locale }: { locale: string }) {
           )}
         </div>
       </main>
-    </AuthGate>
+    </>
   );
 }

@@ -59,6 +59,7 @@ export function MyPageLeadershipConsole({
   const [serverPack, setServerPack] = useState<MyPageStateResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [weeklyXp, setWeeklyXp] = useState<number | null>(null);
   const [qrPanelOpen, setQrPanelOpen] = useState(false);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [secureLinkUrl, setSecureLinkUrl] = useState<string | null>(null);
@@ -74,6 +75,10 @@ export function MyPageLeadershipConsole({
   const load = useCallback(async () => {
     setLoadError(false);
     setIsLoading(true);
+    void fetch("/api/arena/weekly-xp", { method: "GET", cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<{ xpTotal?: number }>) : null))
+      .then((d) => { if (d != null) setWeeklyXp(d.xpTotal ?? 0); })
+      .catch(() => { /* silent */ });
     try {
       const locParam = locale === "ko" ? "ko" : "en";
       const url = `/api/bty/my-page/state?locale=${encodeURIComponent(locParam)}`;
@@ -366,6 +371,34 @@ export function MyPageLeadershipConsole({
       data-loading={isLoading ? "true" : "false"}
       data-load-error={loadError ? "true" : "false"}
     >
+      {/* XP Summary */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-[#E8E3D8] bg-white px-4 py-4 shadow-sm text-center">
+          <p className="text-[11px] font-medium uppercase tracking-widest text-[#667085] mb-1">
+            {loc === "ko" ? "코어 XP" : "Core XP"}
+          </p>
+          {isLoading || !mounted ? (
+            <div className="mx-auto h-8 w-16 animate-pulse rounded-lg bg-[#E8E3D8]" />
+          ) : (
+            <p className="text-3xl font-bold tabular-nums text-[#1E2A38]">
+              {serverPack?.core_xp ?? 0}
+            </p>
+          )}
+        </div>
+        <div className="rounded-2xl border border-[#E8E3D8] bg-white px-4 py-4 shadow-sm text-center">
+          <p className="text-[11px] font-medium uppercase tracking-widest text-[#667085] mb-1">
+            {loc === "ko" ? "주간 XP" : "Weekly XP"}
+          </p>
+          {isLoading || !mounted ? (
+            <div className="mx-auto h-8 w-16 animate-pulse rounded-lg bg-[#E8E3D8]" />
+          ) : (
+            <p className="text-3xl font-bold tabular-nums text-[#1E2A38]">
+              {weeklyXp ?? 0}
+            </p>
+          )}
+        </div>
+      </div>
+
       {/* Action Contract Hub */}
       {isLoading ? (
         <div className="h-20 animate-pulse rounded-xl bg-white/5" />

@@ -27,6 +27,8 @@ export type MyPageIdentityPayload = {
   open_action_contract: MyPageOpenActionContractUi | null;
   /** Arena Phase B — aggregated pattern signatures (re-exposure / reinforcement), newest first. */
   pattern_signatures: UserPatternSignaturePublic[];
+  /** Permanent lifetime XP from arena_memberships. */
+  core_xp: number;
 };
 
 /**
@@ -103,6 +105,7 @@ export async function getMyPageIdentityState(
       reflections,
       open_action_contract: openContract,
       pattern_signatures: sigBundle.rows,
+      core_xp: coreXp,
     },
   };
 }

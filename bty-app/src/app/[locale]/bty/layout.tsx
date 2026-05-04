@@ -8,8 +8,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = (await params)?.locale ?? "en";
   const isKo = locale === "ko";
   return {
-    title: isKo ? "bty | BTY Arena" : "bty | BTY Arena",
-    openGraph: { title: isKo ? "bty | BTY Arena" : "bty | BTY Arena" },
+    title: isKo ? "bty | bty arena" : "bty | bty arena",
+    openGraph: { title: isKo ? "bty | bty arena" : "bty | bty arena" },
   };
 }
 
