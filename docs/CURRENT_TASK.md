@@ -1,6 +1,6 @@
 # CURRENT TASK — 2026-03-23
 
-- [x] 2026-05-04 — **AL-1.8-E partial LIVE — My Page UI contrast + layout reorder.** 3 commits (`5c3fbf1` secure link + dismiss / `6ce36e1` JSX reorder QR/secure-link 위로 / `d9e6fff` PatternSignaturePanel 전체 contrast). Worker `73a88260` (2 commits live, `d9e6fff` 다음 deploy 대기). PatternSignaturePanel 23 lines 1:1 light/dark variant. **잔여**: AL-1.8-E full (secure link `?arena_action_loop=commit` flow token validation + UI feedback). **신규 backlog**: AL-1.8-F WIP test mock interference. **완료(partial)**
+- [x] 2026-05-04 — **AL-1.8-E partial LIVE — My Page UI contrast + layout reorder.** 3 commits 모두 live: `5c3fbf1` (secure link + dismiss) → `6ce36e1` (JSX reorder) → `d9e6fff` (PatternSignaturePanel 전체 contrast). Final worker `c89d6eab-44d0-4586-99f4-da5cfecbaebd` (deploy chain: `600e919a` → `73a88260` → `c89d6eab`). PatternSignaturePanel 23 lines 1:1 light/dark variant. **잔여**: AL-1.8-E full (secure link `?arena_action_loop=commit` flow token validation + UI feedback). **신규 backlog**: AL-1.8-F WIP test mock interference. **완료(partial)**
 
 - [x] 2026-05-04 — **AL-1.8-D LIVE — Reinforcement choice_type filter expansion.** `1c91674` on top of `885ded1`/`cf240c4`. Worker `d56e6cb7`. 1줄 fix (`delayed-outcome-trigger.service.ts:663`) → reinforcement loop iter2+ follow-up이 `REEXPOSURE_DUE` 셸로 자동 발화. Test: 10/10 + 1/1 + 55/55. Live: iter3 truth_naming row UI 셸 진입 + SQL detect. RELEASE_LOG 2026-05-04 AL-1.8-D entry. **다음: AL-1.8-E (QR display) 또는 AL-1.8-C (dead column cleanup). 완료**
 

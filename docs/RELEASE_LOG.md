@@ -4,8 +4,12 @@
 
 ## 2026-05-04 — AL-1.8-E partial LIVE (My Page UI contrast + layout reorder)
 
-**Worker version**: `73a88260-3907-4c8e-b134-1ece7055b789` (2번째 deploy `600e919a-...` 후 추가 fix 누적)
-**Latest commit (post-deploy)**: `d9e6fff` — PatternSignaturePanel contrast fix (deploy 후 추가, 다음 deploy 대기)
+**Final worker version**: `c89d6eab-44d0-4586-99f4-da5cfecbaebd` (3 commits 모두 live)
+**Deploy chain**:
+- `600e919a-b72b-4164-9545-e8af668e4793` — `5c3fbf1` (secure link + dismiss contrast)
+- `73a88260-3907-4c8e-b134-1ece7055b789` — `6ce36e1` 추가 (JSX reorder)
+- `c89d6eab-44d0-4586-99f4-da5cfecbaebd` — `d9e6fff` 추가 (PatternSignaturePanel contrast)
+
 **HEAD chain**: `d9e6fff` → `6ce36e1` → `5c3fbf1` → `1c91674` AL-1.8-D → `885ded1` AL-1.8-A → `cf240c4` AL-1.7
 **Deploy mode**: dirty tree (single-env standard)
 
@@ -35,7 +39,7 @@
 ### Live verification
 - Worker `600e919a` deploy 후: secure link clickable + cyan, layout 정렬 정상 ✅
 - Worker `73a88260` deploy 후: 위 + reorder 효과 (QR/secure link가 버튼 직후 표시) ✅
-- `d9e6fff` PatternSignaturePanel fix는 다음 deploy 대기 (Hanbit 신호 시 진행)
+- Worker `c89d6eab` deploy 후: 위 + PatternSignaturePanel light-mode contrast (제목/lead/배지/카드/메트릭/confidence bar/footer 전체 가시성 확보) ✅
 
 ### 발견된 부수 이슈
 
