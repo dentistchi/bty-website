@@ -2,6 +2,58 @@
 
 ---
 
+## 2026-05-04 — AL-1.8-E partial LIVE (My Page UI contrast + layout reorder)
+
+**Worker version**: `73a88260-3907-4c8e-b134-1ece7055b789` (2번째 deploy `600e919a-...` 후 추가 fix 누적)
+**Latest commit (post-deploy)**: `d9e6fff` — PatternSignaturePanel contrast fix (deploy 후 추가, 다음 deploy 대기)
+**HEAD chain**: `d9e6fff` → `6ce36e1` → `5c3fbf1` → `1c91674` AL-1.8-D → `885ded1` AL-1.8-A → `cf240c4` AL-1.7
+**Deploy mode**: dirty tree (single-env standard)
+
+### Sprint scope
+**Hanbit 보고**: My Page에서 "QR code/secure link 흰색 배경에 흰색 글씨 거의 안 보임" + "Pattern Signatures 흰색 글씨" + "QR이 화면 한참 밑에 생성됨, Core/Weekly XP 바로 밑에 와야 함"
+
+→ AL-1.8-E partial = **frontend UI contrast + layout** 영역만 fix. QR/secure link 백엔드 (token 발급, secure-link API) 정상 작동 — frontend 렌더링 문제만 처리. Action Contract `commit` flow의 token validation/UI feedback은 별도 backlog (AL-1.8-E full).
+
+### Code changes (3 commits, 4 files)
+
+**`5c3fbf1` — secure link 클릭 가능 + dismiss 버튼 contrast**:
+- `MyPageLeadershipConsole.tsx:431-441`: secure link container styling을 light/dark variant로 분리
+- secure link 텍스트 `<p>` → `<a href={secureLinkUrl} target="_blank" rel="noopener noreferrer">` (underline + cyan-700 + hover)
+- `dismiss button:464`: `text-white/40` → `text-gray-500 dark:text-white/40`
+
+**`6ce36e1` — JSX rendering order reorder**:
+- Before: ActionContractHub → PatternSignaturePanel → secureLink → PostCompletionSheet → QRPanel → LeadershipScreen
+- After: ActionContractHub → **QRPanel → secureLink** → PostCompletionSheet → PatternSignaturePanel → LeadershipScreen
+- "Complete by QR / secure link" 버튼 클릭 시 결과 패널이 버튼 직후 visual proximity로 표시 (이전엔 Pattern Signatures 한참 밑)
+- "QR code는 Core xp/weekly xp 바로 밑에 생성되어야 함" 요구사항 충족
+
+**`d9e6fff` — PatternSignaturePanel 전체 contrast (deploy 후 추가)**:
+- 23 lines 1:1 replacement: 모든 `text-white/*` `border-white/*` `bg-white/*` 클래스에 light mode variant 추가
+- stateBadgeClass: resolved/improving/unstable/active 4종 모두 light variant
+- Confidence bar: `bg-cyan-400/55` → `bg-cyan-500 dark:bg-cyan-400/55` (light에서 진한 cyan으로 가시성 확보)
+
+### Live verification
+- Worker `600e919a` deploy 후: secure link clickable + cyan, layout 정렬 정상 ✅
+- Worker `73a88260` deploy 후: 위 + reorder 효과 (QR/secure link가 버튼 직후 표시) ✅
+- `d9e6fff` PatternSignaturePanel fix는 다음 deploy 대기 (Hanbit 신호 시 진행)
+
+### 발견된 부수 이슈
+
+**AL-1.8-F (P2)** — WIP test mock interference:
+- `MyPageLeadershipConsole`의 WIP `void fetch("/api/arena/core-xp", ...)`가 `MyPageLeadershipConsole.test.tsx > 401 → retry → setServerPack on success` 테스트 깨뜨림
+- 격리 검증: HEAD only 14/14 PASS, HEAD+WIP only 13/14 (1 fail), HEAD+WIP+QR fix 13/14 (동일 — 제 변경 무관)
+- 원인: WIP 추가 fetch가 `fetchMock.mockResolvedValueOnce` 순차 mock 소비 순서 변경
+- Fix 후보: (a) test mock URL-aware로 변경, (b) `void fetch` 호출 위치를 별도 useEffect로 분리, (c) 테스트가 fake timer 환경에서 명시 await
+- AL-1.8-E partial fix와 무관, WIP commit 시 함께 다룰 backlog
+
+### Next backlog 갱신
+- ~~AL-1.8-D~~ ✅ LIVE (2026-05-04)
+- **AL-1.8-E** (P1, partial): UI contrast/layout 완료. **Full 잔여**: secure link 클릭 시 새 탭 commit flow의 token validation + UI feedback 디버깅 (`?arena_action_loop=commit&aalo=...` 처리)
+- **AL-1.8-F** (P2, 신규): WIP test mock interference (위 참조)
+- AL-1.8-C (P2): top-level reinforcement column dead state cleanup
+
+---
+
 ## 2026-05-04 — AL-1.8-D LIVE (Reinforcement filter expansion)
 
 **Worker version**: `d56e6cb7-6706-42ad-a247-6c37d3e82cca`
