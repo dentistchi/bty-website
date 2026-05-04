@@ -655,12 +655,16 @@ export async function fetchFirstDueNoChangeReexposureMeta(
   now: Date = new Date(),
 ): Promise<FirstDueReexposureMeta | null> {
   const nowIso = now.toISOString();
+  // AL-1.8-D: include reinforcement loop follow-up rows so iter2+ also emits REEXPOSURE_DUE.
+  // Reinforcement choice_type pattern (from reinforcementLoopSchedule.server.ts:83):
+  //   `reinforcement_${intensity}_iter${N}_${family}` — matched via PostgREST `like.reinforcement*`.
+  // Pending reinforcement_*_pattern rows (운영 누적, 2026-05-04) are picked up by this filter expansion.
   const { data: pending, error } = await supabase
     .from("arena_pending_outcomes")
     .select("id, source_choice_history_id")
     .eq("user_id", userId)
     .eq("status", "pending")
-    .eq("choice_type", "no_change_reexposure")
+    .or("choice_type.eq.no_change_reexposure,choice_type.like.reinforcement*")
     .lte("scheduled_for", nowIso)
     .order("scheduled_for", { ascending: true })
     .limit(1)

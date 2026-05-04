@@ -95,10 +95,27 @@ function makeSupabaseForDelayedOutcomeE2E() {
 
   function queryRowsByFilters<T extends Record<string, unknown>>(
     rows: T[],
-    filters: Array<{ op: "eq" | "lte"; col: string; value: unknown }>,
+    filters: Array<{ op: "eq" | "lte" | "or"; col: string; value: unknown }>,
   ): T[] {
     return rows.filter((r) =>
       filters.every((f) => {
+        if (f.op === "or") {
+          // PostgREST or filter, e.g. "choice_type.eq.no_change_reexposure,choice_type.like.reinforcement*".
+          const filterStr = String(f.value);
+          const parts = filterStr.split(",");
+          return parts.some((p) => {
+            const m = p.match(/^([\w_]+)\.(eq|like)\.(.+)$/);
+            if (!m) return false;
+            const [, col, op, value] = m;
+            const cell = r[col];
+            if (op === "eq") return cell === value;
+            if (op === "like" && typeof cell === "string") {
+              const re = new RegExp("^" + value.replace(/\*/g, ".*") + "$");
+              return re.test(cell);
+            }
+            return false;
+          });
+        }
         const val = r[f.col];
         if (f.op === "eq") return val === f.value;
         if (f.op === "lte") {
@@ -111,7 +128,7 @@ function makeSupabaseForDelayedOutcomeE2E() {
   }
 
   function makeSelectBuilder(table: string, rows: Record<string, unknown>[]) {
-    const filters: Array<{ op: "eq" | "lte"; col: string; value: unknown }> = [];
+    const filters: Array<{ op: "eq" | "lte" | "or"; col: string; value: unknown }> = [];
     let _limit = 1000;
     let _orderCol = "";
     let _ascending = true;
@@ -127,6 +144,13 @@ function makeSupabaseForDelayedOutcomeE2E() {
       },
       lte(col: string, value: unknown) {
         filters.push({ op: "lte", col, value });
+        return this;
+      },
+      or(filterStr: string) {
+        // PostgREST .or() — supported clauses: `col.eq.value`, `col.like.pattern*` (* → SQL %).
+        // AL-1.8-D: fetchFirstDueNoChangeReexposureMeta uses
+        //   `choice_type.eq.no_change_reexposure,choice_type.like.reinforcement*`.
+        filters.push({ op: "or", col: "_or", value: filterStr });
         return this;
       },
       order(col: string, opts?: { ascending?: boolean }) {
