@@ -378,38 +378,7 @@ export function MyPageLeadershipConsole({
         />
       )}
 
-      {!isLoading && (
-        <PatternSignaturePanel
-          locale={locale}
-          rows={serverPack?.pattern_signatures}
-          title={t.patternSignatureConsoleTitle}
-          lead={t.patternSignatureConsoleLead}
-          empty={t.patternSignatureConsoleEmpty}
-          regionAria={t.patternSignatureConsoleAria}
-        />
-      )}
-
-      {secureLinkUrl && (
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-white/10 dark:bg-white/[0.03]">
-          <p className="mb-2 text-xs text-gray-600 dark:text-white/50">{tAction.completeByQrLink}</p>
-          <a
-            href={secureLinkUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="select-all break-all text-xs text-cyan-700 underline underline-offset-2 hover:text-cyan-900 dark:text-cyan-300/70 dark:hover:text-cyan-200"
-          >
-            {secureLinkUrl}
-          </a>
-        </div>
-      )}
-
-      <PostCompletionSheet
-        open={showPostCompletion}
-        onClose={() => setShowPostCompletion(false)}
-        locale={locale}
-        narrative={completionNarrativeState}
-      />
-
+      {/* QR Panel — Action Contract Hub 버튼 클릭 결과를 바로 표시 (visual proximity to trigger). */}
       {qrPanelOpen && qrUrl && (
         <div className="flex flex-col items-center gap-4 rounded-xl border border-gray-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.05]">
           <QRCodeSVG
@@ -434,6 +403,39 @@ export function MyPageLeadershipConsole({
             {tAction.dismiss}
           </button>
         </div>
+      )}
+
+      {/* Secure link URL — Action Contract Hub 버튼 클릭 결과를 바로 표시 (visual proximity to trigger). */}
+      {secureLinkUrl && (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+          <p className="mb-2 text-xs text-gray-600 dark:text-white/50">{tAction.completeByQrLink}</p>
+          <a
+            href={secureLinkUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="select-all break-all text-xs text-cyan-700 underline underline-offset-2 hover:text-cyan-900 dark:text-cyan-300/70 dark:hover:text-cyan-200"
+          >
+            {secureLinkUrl}
+          </a>
+        </div>
+      )}
+
+      <PostCompletionSheet
+        open={showPostCompletion}
+        onClose={() => setShowPostCompletion(false)}
+        locale={locale}
+        narrative={completionNarrativeState}
+      />
+
+      {!isLoading && (
+        <PatternSignaturePanel
+          locale={locale}
+          rows={serverPack?.pattern_signatures}
+          title={t.patternSignatureConsoleTitle}
+          lead={t.patternSignatureConsoleLead}
+          empty={t.patternSignatureConsoleEmpty}
+          regionAria={t.patternSignatureConsoleAria}
+        />
       )}
 
       <MyPageLeadershipScreen
