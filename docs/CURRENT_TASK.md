@@ -1,5 +1,9 @@
 # CURRENT TASK — 2026-03-23
 
+- [x] 2026-05-04 — **AL-1.8-D LIVE — Reinforcement choice_type filter expansion.** `1c91674` on top of `885ded1`/`cf240c4`. Worker `d56e6cb7`. 1줄 fix (`delayed-outcome-trigger.service.ts:663`) → reinforcement loop iter2+ follow-up이 `REEXPOSURE_DUE` 셸로 자동 발화. Test: 10/10 + 1/1 + 55/55. Live: iter3 truth_naming row UI 셸 진입 + SQL detect. RELEASE_LOG 2026-05-04 AL-1.8-D entry. **다음: AL-1.8-E (QR display) 또는 AL-1.8-C (dead column cleanup). 완료**
+
+- [x] 2026-05-04 — **AL-1.7 + AL-1.8-A LIVE — G1~G7 staging 검증 완료.** AL-1.7 hold 해제 후 staging 검증 → AL-1.8-A G6 RC2 wiring fix → 이중 사용자/시나리오 검증 통과. Worker `27a8f394` (AL-1.7만, 11:55 PT) → `256e2184` (AL-1.7+AL-1.8-A, 14:13 PT). HEAD `885ded1` on `cf240c4`. 마이그레이션 `20260410120000_arena_pending_outcomes_reinforcement_loop.sql` 직접 적용. AL-1.8-D/E/C 후속 backlog 등록. RELEASE_LOG.md 2026-05-04 entry 참조. **완료**
+
 - [x] 2026-05-03 — **[P0] AL-1.8 7-step Elite Chain UI 조립 완료** — `page.tsx` → `ArenaEntryClient`(모드 선택 랜딩) 연결. `BtyArenaRunPageClient.tsx`에 `legacy_escalation` 렌더러 추가. 전체 INCIDENT-* 시나리오 데이터(escalationBranches.A/B/C/D: escalation_text+second_choices+action_decision) 검증 완료. Pipeline L(legacy)에서 `eliteSetup`+`escalationBranches` 정상 로딩 확인. 미커밋 파일 목록: `ArenaEntryClient.tsx`, `quick/page.tsx`, `quick/page.client.tsx`, `quickModeService.ts`, `api/arena/quick/` 3개 라우트. **UI 조립 완료 — commit + E2E 플레이 테스트 필요**
 
 - [x] 2026-05-03 — **AL-1.7 Phase 1 C3 구현 완료 — Pipeline N BINDING_V1_SECOND 메타 결함 수정** — 3파일 수정: (1) `choice/route.ts`: `tradeoffDirection`/`tradeoffPatternFamily` 캡처 + event meta 주입 + undefined warn; (2) `reexposureValidation.server.ts` line 64: `.eq("SECOND_CHOICE_CONFIRMED")` → `.in(["SECOND_CHOICE_CONFIRMED", "BINDING_V1_SECOND"])`; (3) `patternSignatureUpsert.server.ts`: silent early return 직전 warn log 추가. 타입 오류 0, 회귀 0. Spec `docs/specs/ARCHETYPE_DETERMINISM_LOCK_V1.md` §10 AL17-0 확장 기재 완료. **완료**
