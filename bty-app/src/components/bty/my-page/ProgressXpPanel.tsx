@@ -14,29 +14,21 @@ export function ProgressXpPanel({ locale }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    const locParam = locale === "ko" ? "ko" : "en";
 
-    Promise.all([
-      fetch(`/api/bty/my-page/state?locale=${encodeURIComponent(locParam)}`, {
-        method: "GET",
-        cache: "no-store",
-      })
-        .then((r) => (r.ok ? (r.json() as Promise<{ core_xp?: number }>) : null))
-        .catch(() => null),
-      fetch("/api/arena/weekly-xp", { method: "GET", cache: "no-store" })
-        .then((r) => (r.ok ? (r.json() as Promise<{ xpTotal?: number }>) : null))
-        .catch(() => null),
-    ]).then(([state, weekly]) => {
-      if (cancelled) return;
-      setCoreXp(state?.core_xp ?? 0);
-      setWeeklyXp(weekly?.xpTotal ?? 0);
-      setLoaded(true);
-    });
+    fetch("/api/arena/core-xp", { method: "GET", cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<{ coreXpTotal?: number; seasonalXpTotal?: number }>) : null))
+      .catch(() => null)
+      .then((d) => {
+        if (cancelled) return;
+        setCoreXp(d?.coreXpTotal ?? 0);
+        setWeeklyXp(d?.seasonalXpTotal ?? 0);
+        setLoaded(true);
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [locale]);
+  }, []);
 
   return (
     <div data-testid="my-page-progress-screen" className="space-y-4">

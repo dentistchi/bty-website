@@ -59,6 +59,7 @@ export function MyPageLeadershipConsole({
   const [serverPack, setServerPack] = useState<MyPageStateResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [coreXp, setCoreXp] = useState<number | null>(null);
   const [weeklyXp, setWeeklyXp] = useState<number | null>(null);
   const [qrPanelOpen, setQrPanelOpen] = useState(false);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
@@ -75,9 +76,14 @@ export function MyPageLeadershipConsole({
   const load = useCallback(async () => {
     setLoadError(false);
     setIsLoading(true);
-    void fetch("/api/arena/weekly-xp", { method: "GET", cache: "no-store" })
-      .then((r) => (r.ok ? (r.json() as Promise<{ xpTotal?: number }>) : null))
-      .then((d) => { if (d != null) setWeeklyXp(d.xpTotal ?? 0); })
+    void fetch("/api/arena/core-xp", { method: "GET", cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<{ coreXpTotal?: number; seasonalXpTotal?: number }>) : null))
+      .then((d) => {
+        if (d != null) {
+          setCoreXp(d.coreXpTotal ?? 0);
+          setWeeklyXp(d.seasonalXpTotal ?? 0);
+        }
+      })
       .catch(() => { /* silent */ });
     try {
       const locParam = locale === "ko" ? "ko" : "en";
@@ -377,11 +383,11 @@ export function MyPageLeadershipConsole({
           <p className="text-[11px] font-medium uppercase tracking-widest text-[#667085] mb-1">
             {loc === "ko" ? "코어 XP" : "Core XP"}
           </p>
-          {isLoading || !mounted ? (
+          {coreXp == null || !mounted ? (
             <div className="mx-auto h-8 w-16 animate-pulse rounded-lg bg-[#E8E3D8]" />
           ) : (
             <p className="text-3xl font-bold tabular-nums text-[#1E2A38]">
-              {serverPack?.core_xp ?? 0}
+              {coreXp}
             </p>
           )}
         </div>
@@ -389,11 +395,11 @@ export function MyPageLeadershipConsole({
           <p className="text-[11px] font-medium uppercase tracking-widest text-[#667085] mb-1">
             {loc === "ko" ? "주간 XP" : "Weekly XP"}
           </p>
-          {isLoading || !mounted ? (
+          {weeklyXp == null || !mounted ? (
             <div className="mx-auto h-8 w-16 animate-pulse rounded-lg bg-[#E8E3D8]" />
           ) : (
             <p className="text-3xl font-bold tabular-nums text-[#1E2A38]">
-              {weeklyXp ?? 0}
+              {weeklyXp}
             </p>
           )}
         </div>

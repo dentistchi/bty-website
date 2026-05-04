@@ -12,7 +12,6 @@ export type MyPageStateResponse = {
   reflections: ReflectionEntry[];
   open_action_contract: MyPageOpenActionContractUi | null;
   pattern_signatures: UserPatternSignaturePublic[];
-  core_xp: number;
 };
 
 export async function getMyPageState(locale: string): Promise<MyPageStateResponse> {

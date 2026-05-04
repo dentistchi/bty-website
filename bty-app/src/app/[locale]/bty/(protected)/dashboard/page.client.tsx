@@ -347,9 +347,6 @@ export default function DashboardClient() {
                   <div className="min-w-0 flex-1 space-y-1">
                     <p className="text-base font-semibold text-bty-navy">{core.codeName}</p>
                     <p className="text-sm text-bty-secondary">{core.subName}</p>
-                    {dashboardSummary?.recommendation?.nextAction && (
-                      <p className="text-sm text-bty-muted">{dashboardSummary.recommendation.nextAction}</p>
-                    )}
                   </div>
                 </div>
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row">
