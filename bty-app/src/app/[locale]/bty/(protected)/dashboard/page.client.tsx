@@ -366,10 +366,12 @@ export default function DashboardClient() {
                 </p>
                 {leStageSummary && (
                   <p className="text-sm text-bty-secondary">
-                    {leStageSummary.stageName}
-                    {typeof leStageSummary.progressPercent === "number"
-                      ? ` · ${Math.round(leStageSummary.progressPercent)}%`
+                    {typeof leStageSummary.currentStage === "number"
+                      ? (locale === "ko"
+                          ? `${leStageSummary.currentStage}단계 / 4 · `
+                          : `Stage ${leStageSummary.currentStage} of 4 · `)
                       : ""}
+                    {leStageSummary.stageName}
                   </p>
                 )}
                 <p className="text-xs text-bty-muted">

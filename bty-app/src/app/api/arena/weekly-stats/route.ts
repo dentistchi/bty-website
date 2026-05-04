@@ -44,11 +44,22 @@ export async function GET() {
   }
   const weekMaxDailyXp = Object.values(dailySums).length > 0 ? Math.max(...Object.values(dailySums)) : 0;
 
+  // Build a 7-day series ending at "today" (UTC) so UI can render a consistent bar chart.
+  const dailyXpSeries: Array<{ date: string; xp: number }> = [];
+  const todayUtc = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(todayUtc);
+    d.setUTCDate(d.getUTCDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    dailyXpSeries.push({ date: key, xp: dailySums[key] ?? 0 });
+  }
+
   return NextResponse.json({
     reflectionCount: reflectionCount ?? 0,
     reflectionTarget: REFLECTION_QUEST_TARGET,
     reflectionQuestClaimed: !!claim,
     weekStartISO: weekStartISO,
     weekMaxDailyXp,
+    dailyXpSeries,
   });
 }
