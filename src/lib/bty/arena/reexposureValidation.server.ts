@@ -52,10 +52,15 @@ function metaIntensity(m: Record<string, unknown> | null | undefined): 1 | 2 | 3
   return null;
 }
 
+function metaAxis(m: Record<string, unknown> | null | undefined): string | null {
+  const a = m && typeof m.axis === "string" ? m.axis.trim() : "";
+  return a !== "" ? a : null;
+}
+
 export async function fetchSecondChoiceConfirmedRow(
   supabase: SupabaseClient,
   runId: string,
-): Promise<{ choice_id: string; direction: "entry" | "exit"; pattern_family: string | null; intensity: 1 | 2 | 3 | null } | null> {
+): Promise<{ choice_id: string; direction: "entry" | "exit"; pattern_family: string | null; axis: string | null; intensity: 1 | 2 | 3 | null } | null> {
   const { data, error } = await supabase
     .from("arena_events")
     .select("choice_id, meta")
@@ -77,6 +82,7 @@ export async function fetchSecondChoiceConfirmedRow(
     choice_id: choiceId,
     direction,
     pattern_family: metaPatternFamily(meta),
+    axis: metaAxis(meta),
     intensity: metaIntensity(meta),
   };
 }
@@ -190,22 +196,28 @@ export async function computeReexposureValidation(params: {
     reexposureRunId: params.reexposureRunId,
   });
 
-  let elite;
+  // Chain registry lookup: succeed-path keeps current behavior. On failure, fall through to
+  // BINDING_V1_SECOND meta-driven axis (live scenarios outside CHAIN_WORKSPACE_ELITE_IDS).
+  let elite: ReturnType<typeof getEliteScenarioById> | null = null;
   try {
     elite = getEliteScenarioById(params.scenarioId);
   } catch {
-    return { ok: false, error: "elite_scenario_unknown", fallback_result: "unstable" };
+    elite = null;
   }
-  const axis = typeof elite.bty_tension_axis === "string" ? elite.bty_tension_axis.trim() : "";
-  if (!axis) {
-    return { ok: false, error: "elite_axis_missing", fallback_result: "unstable" };
-  }
+  const eliteAxis = elite && typeof elite.bty_tension_axis === "string" ? elite.bty_tension_axis.trim() : "";
 
   const afterEv = await fetchSecondChoiceConfirmedRow(params.supabase, params.reexposureRunId);
   const afterSig =
     afterEv?.direction === "exit"
       ? await fetchExitPatternSignalForRun(params.supabase, params.reexposureRunId)
       : null;
+
+  // Axis precedence: chain registry (canonical) → after-run BINDING_V1_SECOND meta → "" (unstable fallback).
+  // Prior-run axis is filled later from priorEv when available; no extra DB roundtrip here.
+  const axis = eliteAxis || afterEv?.axis || "";
+  if (!axis) {
+    return { ok: false, error: "elite_axis_missing", fallback_result: "unstable" };
+  }
 
   if (!afterEv) {
     const recorded_at = new Date().toISOString();

@@ -26,6 +26,8 @@ export type SecondChoice = {
   risks?: string;
   pattern_family?: string;
   direction: "entry" | "exit";
+  /** BTY tension axis label from scenario JSON (e.g. "Accountability", "Truth"). Used by re-exposure validation when chain registry lookup fails. */
+  axis?: string;
   /** Signal strength (1 = mild, 2 = moderate, 3 = high). Used by Immediate trigger and re-exposure intensity comparison. */
   intensity?: 1 | 2 | 3;
   /** Behavioral engine / binding template id — when set, overrides `${scenarioId}:second:*` in canonical loaders. */
