@@ -30,6 +30,14 @@ export default function ArenaEntryClient({ locale }: Props) {
   const t = isKo ? copy.ko : copy.en;
   const [mode, setMode] = useState<"select" | "full">("select");
 
+  function handleFullArena() {
+    // Clear persisted run state so the flow always starts from step 2 (primary_choice).
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("btyArenaState:v1");
+    }
+    setMode("full");
+  }
+
   if (mode === "full") {
     return <BtyArenaRunPageClient pipelineDefault="new" />;
   }
@@ -44,7 +52,7 @@ export default function ArenaEntryClient({ locale }: Props) {
         <div className="flex flex-col gap-3">
           {/* Full Arena */}
           <button
-            onClick={() => setMode("full")}
+            onClick={handleFullArena}
             className="w-full rounded-2xl border border-[var(--arena-accent)]/40 bg-[var(--arena-accent)]/5 hover:bg-[var(--arena-accent)]/10 px-5 py-4 text-left transition-colors group"
           >
             <p className="font-semibold text-[var(--arena-accent)] group-hover:underline">

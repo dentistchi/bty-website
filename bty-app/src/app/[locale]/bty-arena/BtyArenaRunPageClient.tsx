@@ -1429,7 +1429,7 @@ export default function BtyArenaRunPageClient({
                   ) && <ArenaBindingError reason={t.eliteBindingIntegrityError} />}
 
                 {s.playUiSegment === "legacy_escalation" && (
-                  <div data-testid="elite-legacy-escalation" className="space-y-3">
+                  <div data-testid="elite-legacy-escalation" className="space-y-4">
                     <p className="m-0 text-[11px] font-bold uppercase tracking-[0.14em] text-bty-navy/70">
                       {t.arenaFlowPhaseTradeoffInstruction}
                     </p>
@@ -1438,6 +1438,16 @@ export default function BtyArenaRunPageClient({
                         s.scenario.escalationBranches?.[s.selectedChoiceId]?.escalation_text) ||
                         ""}
                     </p>
+                    <button
+                      type="button"
+                      disabled={s.escalationAckSubmitting}
+                      onClick={() => void s.acknowledgeEscalation()}
+                      className="mt-2 w-full rounded-2xl border border-bty-navy/30 bg-bty-navy/5 px-4 py-3 text-sm font-semibold text-bty-navy transition-opacity hover:bg-bty-navy/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {s.escalationAckSubmitting
+                        ? (locale === "ko" ? "진행 중…" : "Loading…")
+                        : (locale === "ko" ? "다음 단계로 →" : "Continue →")}
+                    </button>
                   </div>
                 )}
 
