@@ -1801,7 +1801,8 @@ export type Messages = {
     leadershipLinkArena: string;
     leadershipLinkGrowth: string;
     leadershipCoreTrace: string;
-    leadershipIdentityEyebrow: string;
+    leadershipArchetypeEyebrow: string;
+    leadershipArchetypeSubtext: string;
     leadershipSystemNoteTitle: string;
     leadershipSystemNoteBodyDormant: string;
     leadershipSystemNoteBodyActive: string;
@@ -3035,7 +3036,7 @@ const ko: Messages = {
     wireframeCtaRegionAria: "시나리오 런 진입 — 이어하기 또는 새로 시작",
     wireframeBottomNavAria: "BTY 앱 하단 탭 — Arena·성장·마이",
     weeklySnapshotRegionAria: "주간 순위 요약 예시",
-    wireframeScreenTitle: "BTY Arena",
+    wireframeScreenTitle: "bty arena",
     wireframeScreenSubtitle: "와이어 · Phase 1",
     wireframeSystemReady: "시스템 준비 완료.",
     wireframePlayGame: "플레이",
@@ -3071,7 +3072,7 @@ const ko: Messages = {
     resultShareCta: "완료 한 줄 복사",
     resultShareCopied: "복사했어요.",
     resultShareFailed: "복사하지 못했어요.",
-    resultShareClipboardLine: "BTY Arena에서 시나리오 런을 완료했습니다.",
+    resultShareClipboardLine: "bty arena에서 시나리오 런을 완료했습니다.",
     resultNextActionsRegionAria: "런 완료 후 다음 행동",
     resultNextScenarioSectionLabel: "권장 다음 행동",
     resultNextScenarioCta: "다음 시나리오",
@@ -3456,7 +3457,8 @@ const ko: Messages = {
     leadershipLinkArena: "Arena로",
     leadershipLinkGrowth: "Growth 반성",
     leadershipCoreTrace: "코어 궤적",
-    leadershipIdentityEyebrow: "리더십 아이덴티티",
+    leadershipArchetypeEyebrow: "리더십 아키타입",
+    leadershipArchetypeSubtext: "당신의 결정이 보여주는 리더십 패턴입니다.",
     leadershipSystemNoteTitle: "시스템 노트",
     leadershipSystemNoteBodyDormant: "Arena 신호가 쌓이면 리더십 패턴이 형성됩니다.",
     leadershipSystemNoteBodyActive: "Arena 신호가 안정적인 리더십 패턴으로 누적되고 있습니다.",
@@ -3960,7 +3962,7 @@ const en: Messages = {
     ctaSrOnlyHeading: "Next steps after assessment",
   },
   landing: {
-    heroTitle: "Better Than Yesterday",
+    heroTitle: "bty",
     heroSubtitle: "Where would you like to go today?",
     recommended: "Recommended",
     arenaTitle: "Arena",
@@ -4560,14 +4562,14 @@ const en: Messages = {
     arenaObservableActionConfirmationLead:
       "You chose an observable action. Progress now depends on completing it.",
     arenaPendingContractLead:
-      "You cannot start the next Arena scenario until you finish the open action contract on My Page. Review the details below, complete it there, then try again.",
+      "You cannot start the next Arena scenario until you finish the open action contract on My Page. Review the details below, complete it there, then return.",
     arenaPendingContractActionLabel: "Action",
     arenaPendingContractDeadlineLabel: "Deadline",
     arenaPendingContractVerificationLabel: "Verification",
     arenaPendingContractRetry: "Check again",
     arenaPendingContractMyPageCta: "Continue on My Page",
     arenaPendingContractRegionAria: "Action contract pending",
-    arenaSnapshotForcedResetPlaceholder: "Syncing account state. Please try again shortly.",
+    arenaSnapshotForcedResetPlaceholder: "Syncing account state. Please refresh shortly.",
     arenaForcedResetGateTitle: "Center step required",
     arenaForcedResetGateLead: "Arena is paused. Complete the guided step in Center, then return.",
     arenaForcedResetGoCenterCta: "Open Center",
@@ -4586,7 +4588,7 @@ const en: Messages = {
     arenaReexposureValidationUnstable: "Pattern validation update: unstable",
     arenaReexposureValidationNoChange: "Pattern validation update: no_change",
     arenaReexposureStaleRecoveryMessage: "Re-exposure state expired. Refreshing your next scenario.",
-    arenaSnapshotPlaySurfaceBlockedHint: "Aligning your session with the server. Refresh or try again shortly.",
+    arenaSnapshotPlaySurfaceBlockedHint: "Aligning your session with the server. Refresh shortly.",
     arenaPlaySurfaceBlockedTitle: "Play paused",
     arenaAligningLoaderTitle: "Aligning with the server",
     arenaAligningLoaderLead: "Please wait — this is synchronization, not an error.",
@@ -4690,7 +4692,7 @@ const en: Messages = {
     wireframeCtaRegionAria: "Scenario run entry — continue or start new",
     wireframeBottomNavAria: "BTY app tab bar — Arena, Growth, My Page",
     weeklySnapshotRegionAria: "Weekly rank snapshot sample",
-    wireframeScreenTitle: "BTY Arena",
+    wireframeScreenTitle: "bty arena",
     wireframeScreenSubtitle: "Wireframe · Phase 1",
     wireframeSystemReady: "System ready.",
     wireframePlayGame: "Play Game",
@@ -5112,7 +5114,8 @@ const en: Messages = {
     leadershipLinkArena: "Open Arena",
     leadershipLinkGrowth: "Growth reflection",
     leadershipCoreTrace: "Core trace",
-    leadershipIdentityEyebrow: "Leadership Identity",
+    leadershipArchetypeEyebrow: "LEADERSHIP ARCHETYPE",
+    leadershipArchetypeSubtext: "The pattern your decisions reveal.",
     leadershipSystemNoteTitle: "System Note",
     leadershipSystemNoteBodyDormant: "Arena signals will accumulate into a leadership pattern.",
     leadershipSystemNoteBodyActive: "Arena signals are accumulating into a stable leadership pattern.",
@@ -5153,7 +5156,7 @@ const en: Messages = {
     leadershipFieldPatternTitle: "Decision pattern shape",
     leadershipPatternShiftSectionTitle: "Pattern Shift (behavior validation)",
     leadershipPatternShiftPlaceholder:
-      "pattern_shift_results is not available yet. Do not read this as AIR. This block will fill in when behavior-validation data is wired.",
+      "pattern_shift_results is not available yet. Do not read this as an AIR metric — it will fill in when behavior-validation data is wired.",
     leadershipFieldInfluenceTitle: "Influence",
     leadershipReflectionPanelTitle: "Reflection depth",
     leadershipRowRecentFocus: "Recent focus",

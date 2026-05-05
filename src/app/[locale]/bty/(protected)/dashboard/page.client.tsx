@@ -271,7 +271,11 @@ export default function DashboardClient() {
     return weeklyCompetitionStageBandCopy(localeTyped, key);
   }, [weekly, localeTyped]);
 
-  const identityTitle = locale === "ko" ? "정체성" : "Identity";
+  const identityTitle = locale === "ko" ? "단계 정체성" : "Stage Identity";
+  const identitySubtext =
+    locale === "ko"
+      ? "Core XP 여정에서의 현재 단계입니다."
+      : "Your milestone in Core XP progression.";
   const progressTitle = locale === "ko" ? "진행" : "Progress";
   const teamTitle = locale === "ko" ? "팀" : "Team";
 
@@ -320,6 +324,12 @@ export default function DashboardClient() {
           {!loading && !error && core && (
             <>
               <InfoCard title={identityTitle}>
+                <p
+                  data-testid="dashboard-stage-identity-subtext"
+                  className="mb-3 text-xs leading-5 text-bty-secondary"
+                >
+                  {identitySubtext}
+                </p>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                   <div
                     className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-full shadow-md ring-2 ring-bty-border/50 bg-bty-soft"
@@ -347,9 +357,6 @@ export default function DashboardClient() {
                   <div className="min-w-0 flex-1 space-y-1">
                     <p className="text-base font-semibold text-bty-navy">{core.codeName}</p>
                     <p className="text-sm text-bty-secondary">{core.subName}</p>
-                    {dashboardSummary?.recommendation?.nextAction && (
-                      <p className="text-sm text-bty-muted">{dashboardSummary.recommendation.nextAction}</p>
-                    )}
                   </div>
                 </div>
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row">
@@ -369,10 +376,12 @@ export default function DashboardClient() {
                 </p>
                 {leStageSummary && (
                   <p className="text-sm text-bty-secondary">
-                    {leStageSummary.stageName}
-                    {typeof leStageSummary.progressPercent === "number"
-                      ? ` · ${Math.round(leStageSummary.progressPercent)}%`
+                    {typeof leStageSummary.currentStage === "number"
+                      ? (locale === "ko"
+                          ? `${leStageSummary.currentStage}단계 / 4 · `
+                          : `Stage ${leStageSummary.currentStage} of 4 · `)
                       : ""}
+                    {leStageSummary.stageName}
                   </p>
                 )}
                 <p className="text-xs text-bty-muted">

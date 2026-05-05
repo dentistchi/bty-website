@@ -72,6 +72,7 @@ function IdentityHero({
   coreTraceCaption,
   coreTraceLabel,
   identityEyebrow,
+  identitySubtext,
 }: {
   codeName: string;
   stage: string;
@@ -81,12 +82,19 @@ function IdentityHero({
   coreTraceCaption: string;
   coreTraceLabel: string;
   identityEyebrow: string;
+  identitySubtext: string;
 }) {
   return (
     <GlassPanel className="p-6 sm:p-8" data-testid="identity-hero">
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-6">
         <div className="min-w-0 lg:col-span-8">
           <SectionLabel>{identityEyebrow}</SectionLabel>
+          <p
+            data-testid="my-page-archetype-subtext"
+            className="mt-1 break-words text-xs leading-5 text-slate-400"
+          >
+            {identitySubtext}
+          </p>
           <h1
             data-testid="my-page-code-name"
             className="mt-3 break-words text-3xl font-semibold tracking-tight text-white md:text-4xl lg:text-5xl"
@@ -362,7 +370,8 @@ export function PremiumMyPageIdentityScreen({
           systemNoteTitle={t.leadershipSystemNoteTitle}
           coreTraceCaption={t.leadershipCoreTrace}
           coreTraceLabel={coreTrace}
-          identityEyebrow={t.leadershipIdentityEyebrow}
+          identityEyebrow={t.leadershipArchetypeEyebrow}
+          identitySubtext={t.leadershipArchetypeSubtext}
         />
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-3" data-testid="leadership-state-row">
