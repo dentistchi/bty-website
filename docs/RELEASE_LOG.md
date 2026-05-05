@@ -2,15 +2,16 @@
 
 ---
 
-## 2026-05-04 — AL-1.8-E partial LIVE (My Page UI contrast + layout reorder)
+## 2026-05-04 — AL-1.8-E partial LIVE (My Page UI contrast + layout reorder + overflow fix)
 
-**Final worker version**: `c89d6eab-44d0-4586-99f4-da5cfecbaebd` (3 commits 모두 live)
+**Final worker version**: `55fd3759-e021-4064-acbf-f40306991a9c` (4 commits 모두 live)
 **Deploy chain**:
 - `600e919a-b72b-4164-9545-e8af668e4793` — `5c3fbf1` (secure link + dismiss contrast)
 - `73a88260-3907-4c8e-b134-1ece7055b789` — `6ce36e1` 추가 (JSX reorder)
 - `c89d6eab-44d0-4586-99f4-da5cfecbaebd` — `d9e6fff` 추가 (PatternSignaturePanel contrast)
+- `55fd3759-e021-4064-acbf-f40306991a9c` — `834d582` 추가 (Identity Hero + state cards overflow fix)
 
-**HEAD chain**: `d9e6fff` → `6ce36e1` → `5c3fbf1` → `1c91674` AL-1.8-D → `885ded1` AL-1.8-A → `cf240c4` AL-1.7
+**HEAD chain**: `834d582` → `d9e6fff` → `6ce36e1` → `5c3fbf1` → `1c91674` AL-1.8-D → `885ded1` AL-1.8-A → `cf240c4` AL-1.7
 **Deploy mode**: dirty tree (single-env standard)
 
 ### Sprint scope
@@ -18,7 +19,7 @@
 
 → AL-1.8-E partial = **frontend UI contrast + layout** 영역만 fix. QR/secure link 백엔드 (token 발급, secure-link API) 정상 작동 — frontend 렌더링 문제만 처리. Action Contract `commit` flow의 token validation/UI feedback은 별도 backlog (AL-1.8-E full).
 
-### Code changes (3 commits, 4 files)
+### Code changes (4 commits, 5 files)
 
 **`5c3fbf1` — secure link 클릭 가능 + dismiss 버튼 contrast**:
 - `MyPageLeadershipConsole.tsx:431-441`: secure link container styling을 light/dark variant로 분리
@@ -36,10 +37,19 @@
 - stateBadgeClass: resolved/improving/unstable/active 4종 모두 light variant
 - Confidence bar: `bg-cyan-400/55` → `bg-cyan-500 dark:bg-cyan-400/55` (light에서 진한 cyan으로 가시성 확보)
 
+**`834d582` — Identity Hero + state cards overflow fix**:
+- `PremiumMyPageIdentityScreen.tsx` (10/+ 10/−):
+  - Identity Hero grid 자식들: `min-w-0` 추가 (flex/grid item 자연 shrink 허용)
+  - codeName / stage / headline / coreTrace / systemNote: `break-words` 추가 (단어 단위 wrap)
+  - AIR/TII/RHYTHM 행: `sm:grid-cols-3` → **`md:grid-cols-3`** (640px → 768px breakpoint 상향, 좁은 viewport는 1-column 유지)
+  - StateCard: `min-w-0` + value `break-words` (overflow 방지)
+- Hanbit 보고: 좁은 viewport에서 "Leadership pattern is emerging from recent decisions." 한 단어씩 깨짐 + ST circle/SYSTEM NOTE overlap + AIR/TII/RHYTHM 박스 밖 텍스트 overflow 해결
+
 ### Live verification
 - Worker `600e919a` deploy 후: secure link clickable + cyan, layout 정렬 정상 ✅
 - Worker `73a88260` deploy 후: 위 + reorder 효과 (QR/secure link가 버튼 직후 표시) ✅
 - Worker `c89d6eab` deploy 후: 위 + PatternSignaturePanel light-mode contrast (제목/lead/배지/카드/메트릭/confidence bar/footer 전체 가시성 확보) ✅
+- Worker `55fd3759` deploy 후: 위 + Identity Hero `min-w-0` + `break-words` 가드, AIR/TII/RHYTHM grid breakpoint `sm` → `md` 상향 + StateCard `min-w-0` + value `break-words` (좁은 viewport에서 글자 깨짐 + 박스 overflow 해결) ✅
 
 ### 발견된 부수 이슈
 
