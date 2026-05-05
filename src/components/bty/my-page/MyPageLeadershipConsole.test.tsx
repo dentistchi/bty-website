@@ -121,9 +121,18 @@ describe("MyPageLeadershipConsole", () => {
   it("401 → retry → setServerPack on success", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const payload = mockStatePayload();
-    fetchMock
-      .mockResolvedValueOnce(jsonResponse({ error: "UNAUTHENTICATED" }, 401))
-      .mockResolvedValueOnce(jsonResponse(payload, 200));
+    let stateCallCount = 0;
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      const s = typeof url === "string" ? url : String(url);
+      if (s.includes("/api/bty/my-page/state")) {
+        stateCallCount += 1;
+        if (stateCallCount === 1) {
+          return Promise.resolve(jsonResponse({ error: "UNAUTHENTICATED" }, 401));
+        }
+        return Promise.resolve(jsonResponse(payload, 200));
+      }
+      return Promise.resolve(jsonResponse({}, 200));
+    });
 
     await act(async () => {
       render(<MyPageLeadershipConsole locale="en" />);
@@ -136,7 +145,7 @@ describe("MyPageLeadershipConsole", () => {
     await waitFor(() => {
       expect(screen.getByTestId("my-page-code-name").textContent).toBe("Test");
     });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(stateCallCount).toBe(2);
   });
 
   it("401 → retry fails → loadError", async () => {
