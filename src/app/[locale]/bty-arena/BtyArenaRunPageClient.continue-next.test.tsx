@@ -240,10 +240,20 @@ describe("BtyArenaRunPageClient — continueNextScenario clears bindingRuntimeSn
       ).toBeTruthy();
     }, { timeout: 3000 });
 
-    // Submit primary choice → TRADEOFF_ACTIVE binding
+    // Submit primary choice → ESCALATION (step 3) screen
     const primaryRegion = screen.getByTestId("elite-arena-primary-pick");
     await act(async () => {
       fireEvent.click(primaryRegion.querySelectorAll("button")[0]!);
+    });
+
+    // Acknowledge ESCALATION → FORCED_TRADEOFF (step 4)
+    await waitFor(() => {
+      expect(screen.getByTestId("elite-legacy-escalation")).toBeTruthy();
+    }, { timeout: 3000 });
+    await act(async () => {
+      const escalation = screen.getByTestId("elite-legacy-escalation");
+      const ackButton = escalation.querySelector("button");
+      fireEvent.click(ackButton!);
     });
 
     // Wait for tradeoff to appear

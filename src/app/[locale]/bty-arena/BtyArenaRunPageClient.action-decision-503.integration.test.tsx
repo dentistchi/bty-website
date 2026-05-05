@@ -266,6 +266,15 @@ describe("BtyArenaRunPageClient — AD1 503 snapshot integration", () => {
     });
 
     await waitFor(() => {
+      expect(screen.getByTestId("elite-legacy-escalation")).toBeTruthy();
+    });
+    await act(async () => {
+      const escalation = screen.getByTestId("elite-legacy-escalation");
+      const ackButton = escalation.querySelector("button");
+      fireEvent.click(ackButton!);
+    });
+
+    await waitFor(() => {
       expect(screen.getByTestId("elite-forced-tradeoff-X")).toBeTruthy();
     });
 
