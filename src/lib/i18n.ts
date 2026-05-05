@@ -1872,6 +1872,12 @@ export type Messages = {
     expiredShort: string;
     completeByQrLink: string;
     dismiss: string;
+    /** AL-1.8-E full: secure link auto-commit visibility banners. */
+    validating: string;
+    validationSuccess: string;
+    validationFailed: string;
+    validationExpired: string;
+    validationUnauthenticated: string;
   };
 };
 
@@ -3520,6 +3526,11 @@ const ko: Messages = {
     expiredShort: "만료됨",
     completeByQrLink: "아래 링크로 완료하세요 (복사해 사용할 수 있습니다).",
     dismiss: "닫기",
+    validating: "보안 링크 확인 중…",
+    validationSuccess: "행동 약속이 등록됐습니다.",
+    validationFailed: "확인에 실패했습니다. 다시 시도해 주세요.",
+    validationExpired: "보안 링크가 만료됐습니다. 새 링크를 요청해 주세요.",
+    validationUnauthenticated: "로그인이 필요합니다.",
   },
 };
 
@@ -5172,6 +5183,11 @@ const en: Messages = {
     expiredShort: "expired",
     completeByQrLink: "Complete using the link below (copy as needed).",
     dismiss: "Close",
+    validating: "Verifying secure link…",
+    validationSuccess: "Action committed successfully.",
+    validationFailed: "Validation failed. Please try again.",
+    validationExpired: "Secure link expired. Request a new one.",
+    validationUnauthenticated: "Please log in to continue.",
   },
 };
 

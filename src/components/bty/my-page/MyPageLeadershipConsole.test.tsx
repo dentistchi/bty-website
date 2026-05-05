@@ -486,6 +486,126 @@ describe("MyPageLeadershipConsole", () => {
     replaceSpy.mockRestore();
   });
 
+  /**
+   * AL-1.8-E full: secure link auto-commit visibility banner state machine.
+   * Tests cover 4 non-success branches (pending/expired/error/unauthenticated)
+   * + crosscheck that success path now also sets banner to "success".
+   */
+  it("shows success banner when validate returns ok=true (AL-1.8-E full)", async () => {
+    const payload = mockStatePayloadWithQrContract();
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      const s = typeof url === "string" ? url : String(url);
+      if (s.includes("/api/bty/my-page/state")) return Promise.resolve(jsonResponse(payload, 200));
+      if (s.includes("/api/arena/leadership-engine/qr/validate")) {
+        return Promise.resolve(jsonResponse({ ok: true }, 200));
+      }
+      return Promise.reject(new Error(`unexpected fetch: ${s}`));
+    });
+    vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
+
+    await act(async () => {
+      render(<MyPageLeadershipConsole locale="en" arenaActionLoopParam="commit" aaloParam="t" />);
+    });
+
+    await waitFor(() => {
+      const banner = screen.getByTestId("action-loop-validation-banner");
+      expect(banner.getAttribute("data-status")).toBe("success");
+    });
+  });
+
+  it("shows expired banner when validate returns 422 (AL-1.8-E full)", async () => {
+    const payload = mockStatePayloadWithQrContract();
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      const s = typeof url === "string" ? url : String(url);
+      if (s.includes("/api/bty/my-page/state")) return Promise.resolve(jsonResponse(payload, 200));
+      if (s.includes("/api/arena/leadership-engine/qr/validate")) {
+        return Promise.resolve({
+          ok: false,
+          status: 422,
+          json: () => Promise.resolve({ error: "token_expired" }),
+          text: () => Promise.resolve("token_expired"),
+        } as Response);
+      }
+      return Promise.reject(new Error(`unexpected fetch: ${s}`));
+    });
+
+    await act(async () => {
+      render(<MyPageLeadershipConsole locale="en" arenaActionLoopParam="commit" aaloParam="t" />);
+    });
+
+    await waitFor(() => {
+      const banner = screen.getByTestId("action-loop-validation-banner");
+      expect(banner.getAttribute("data-status")).toBe("expired");
+    });
+  });
+
+  it("shows unauthenticated banner when validate returns 401 (AL-1.8-E full)", async () => {
+    const payload = mockStatePayloadWithQrContract();
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      const s = typeof url === "string" ? url : String(url);
+      if (s.includes("/api/bty/my-page/state")) return Promise.resolve(jsonResponse(payload, 200));
+      if (s.includes("/api/arena/leadership-engine/qr/validate")) {
+        return Promise.resolve({
+          ok: false,
+          status: 401,
+          json: () => Promise.resolve({ error: "unauthenticated" }),
+          text: () => Promise.resolve("unauthenticated"),
+        } as Response);
+      }
+      return Promise.reject(new Error(`unexpected fetch: ${s}`));
+    });
+
+    await act(async () => {
+      render(<MyPageLeadershipConsole locale="en" arenaActionLoopParam="commit" aaloParam="t" />);
+    });
+
+    await waitFor(() => {
+      const banner = screen.getByTestId("action-loop-validation-banner");
+      expect(banner.getAttribute("data-status")).toBe("unauthenticated");
+    });
+  });
+
+  it("shows error banner when validate returns 500 (AL-1.8-E full)", async () => {
+    const payload = mockStatePayloadWithQrContract();
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      const s = typeof url === "string" ? url : String(url);
+      if (s.includes("/api/bty/my-page/state")) return Promise.resolve(jsonResponse(payload, 200));
+      if (s.includes("/api/arena/leadership-engine/qr/validate")) {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          json: () => Promise.resolve({ error: "server_error" }),
+          text: () => Promise.resolve("server_error"),
+        } as Response);
+      }
+      return Promise.reject(new Error(`unexpected fetch: ${s}`));
+    });
+
+    await act(async () => {
+      render(<MyPageLeadershipConsole locale="en" arenaActionLoopParam="commit" aaloParam="t" />);
+    });
+
+    await waitFor(() => {
+      const banner = screen.getByTestId("action-loop-validation-banner");
+      expect(banner.getAttribute("data-status")).toBe("error");
+    });
+  });
+
+  it("hides banner when arenaActionLoopParam is absent (idle state, AL-1.8-E full)", async () => {
+    const payload = mockStatePayload();
+    fetchMock.mockResolvedValue(jsonResponse(payload, 200));
+
+    await act(async () => {
+      render(<MyPageLeadershipConsole locale="en" />);
+    });
+
+    // Wait for component mount to complete; verify banner does not appear.
+    await waitFor(() => {
+      expect(screen.getByTestId("my-page-code-name").textContent).toBeTruthy();
+    });
+    expect(screen.queryByTestId("action-loop-validation-banner")).toBeNull();
+  });
+
   it("renders PatternSignaturePanel with a real signature row when pattern_signatures is populated", async () => {
     const payload = {
       ...mockStatePayload(),

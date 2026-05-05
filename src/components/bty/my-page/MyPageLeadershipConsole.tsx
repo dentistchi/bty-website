@@ -59,11 +59,17 @@ export function MyPageLeadershipConsole({
   const [serverPack, setServerPack] = useState<MyPageStateResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [coreXp, setCoreXp] = useState<number | null>(null);
+  const [weeklyXp, setWeeklyXp] = useState<number | null>(null);
   const [qrPanelOpen, setQrPanelOpen] = useState(false);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [secureLinkUrl, setSecureLinkUrl] = useState<string | null>(null);
   const [showPostCompletion, setShowPostCompletion] = useState(false);
   const [completionNarrativeState, setCompletionNarrativeState] = useState<string | null>(null);
+  /** AL-1.8-E full: secure link auto-commit visibility — banner state machine. */
+  const [validationStatus, setValidationStatus] = useState<
+    "idle" | "pending" | "success" | "error" | "expired" | "unauthenticated"
+  >("idle");
   const lastSyncAtRef = useRef(0);
 
   useEffect(() => {
@@ -74,6 +80,15 @@ export function MyPageLeadershipConsole({
   const load = useCallback(async () => {
     setLoadError(false);
     setIsLoading(true);
+    void fetch("/api/arena/core-xp", { method: "GET", cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<{ coreXpTotal?: number; seasonalXpTotal?: number }>) : null))
+      .then((d) => {
+        if (d != null) {
+          setCoreXp(d.coreXpTotal ?? 0);
+          setWeeklyXp(d.seasonalXpTotal ?? 0);
+        }
+      })
+      .catch(() => { /* silent */ });
     try {
       const locParam = locale === "ko" ? "ko" : "en";
       const url = `/api/bty/my-page/state?locale=${encodeURIComponent(locParam)}`;
@@ -215,6 +230,7 @@ export function MyPageLeadershipConsole({
     if (arenaActionLoopParam !== "commit" || !aaloParam) return;
 
     const validate = async () => {
+      setValidationStatus("pending");
       try {
         const res = await fetch("/api/arena/leadership-engine/qr/validate", {
           method: "POST",
@@ -226,7 +242,15 @@ export function MyPageLeadershipConsole({
         });
 
         if (!res.ok) {
-          console.error("[QR validate] failed", res.status, await res.text());
+          const bodyText = await res.text();
+          console.warn("[QR validate] non-OK", res.status, bodyText);
+          if (res.status === 401) {
+            setValidationStatus("unauthenticated");
+          } else if (res.status === 422) {
+            setValidationStatus("expired");
+          } else {
+            setValidationStatus("error");
+          }
           return;
         }
 
@@ -237,6 +261,7 @@ export function MyPageLeadershipConsole({
         };
 
         if (data.ok || data.success) {
+          setValidationStatus("success");
           dispatchBtyActionContractUpdated();
           setShowPostCompletion(true);
           if (data.narrativeState) {
@@ -253,9 +278,13 @@ export function MyPageLeadershipConsole({
             url.searchParams.delete("aalo");
             window.history.replaceState({}, "", url.toString());
           }
+        } else {
+          // 200 but ok/success absent — treat as soft error (token recognized but commit refused).
+          setValidationStatus("error");
         }
       } catch (err) {
-        console.error("[QR validate] error", err);
+        console.warn("[QR validate] error", err);
+        setValidationStatus("error");
       }
     };
 
@@ -366,6 +395,34 @@ export function MyPageLeadershipConsole({
       data-loading={isLoading ? "true" : "false"}
       data-load-error={loadError ? "true" : "false"}
     >
+      {/* XP Summary */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-[#E8E3D8] bg-white px-4 py-4 shadow-sm text-center">
+          <p className="text-[11px] font-medium uppercase tracking-widest text-[#667085] mb-1">
+            {loc === "ko" ? "코어 XP" : "Core XP"}
+          </p>
+          {coreXp == null || !mounted ? (
+            <div className="mx-auto h-8 w-16 animate-pulse rounded-lg bg-[#E8E3D8]" />
+          ) : (
+            <p className="text-3xl font-bold tabular-nums text-[#1E2A38]">
+              {coreXp}
+            </p>
+          )}
+        </div>
+        <div className="rounded-2xl border border-[#E8E3D8] bg-white px-4 py-4 shadow-sm text-center">
+          <p className="text-[11px] font-medium uppercase tracking-widest text-[#667085] mb-1">
+            {loc === "ko" ? "주간 XP" : "Weekly XP"}
+          </p>
+          {weeklyXp == null || !mounted ? (
+            <div className="mx-auto h-8 w-16 animate-pulse rounded-lg bg-[#E8E3D8]" />
+          ) : (
+            <p className="text-3xl font-bold tabular-nums text-[#1E2A38]">
+              {weeklyXp}
+            </p>
+          )}
+        </div>
+      </div>
+
       {/* Action Contract Hub */}
       {isLoading ? (
         <div className="h-20 animate-pulse rounded-xl bg-white/5" />
@@ -376,6 +433,46 @@ export function MyPageLeadershipConsole({
           onRequestQr={handleRequestQr}
           onRequestSecureLink={handleRequestSecureLink}
         />
+      )}
+
+      {/* AL-1.8-E full: secure link auto-commit visibility banner. Inline + persistent (success는 modal에 추가) */}
+      {validationStatus !== "idle" && (
+        <div
+          data-testid="action-loop-validation-banner"
+          data-status={validationStatus}
+          role={validationStatus === "error" || validationStatus === "expired" || validationStatus === "unauthenticated" ? "alert" : "status"}
+          aria-live="polite"
+          className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium ${
+            validationStatus === "pending"
+              ? "border-gray-300 bg-gray-50 text-gray-700 dark:border-white/15 dark:bg-white/[0.04] dark:text-white/75"
+              : validationStatus === "success"
+                ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-200"
+                : validationStatus === "expired"
+                  ? "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-200"
+                  : "border-red-300 bg-red-50 text-red-800 dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-200"
+          }`}
+        >
+          {validationStatus === "pending" ? (
+            <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
+          ) : null}
+          <span className="flex-1">
+            {validationStatus === "pending" && tAction.validating}
+            {validationStatus === "success" && tAction.validationSuccess}
+            {validationStatus === "expired" && tAction.validationExpired}
+            {validationStatus === "unauthenticated" && tAction.validationUnauthenticated}
+            {validationStatus === "error" && tAction.validationFailed}
+          </span>
+          {validationStatus !== "pending" ? (
+            <button
+              type="button"
+              onClick={() => setValidationStatus("idle")}
+              className="text-xs font-medium opacity-70 hover:opacity-100"
+              aria-label={tAction.dismiss}
+            >
+              ✕
+            </button>
+          ) : null}
+        </div>
       )}
 
       {/* QR Panel — Action Contract Hub 버튼 클릭 결과를 바로 표시 (visual proximity to trigger). */}
