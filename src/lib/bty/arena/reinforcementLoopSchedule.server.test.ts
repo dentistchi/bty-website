@@ -9,11 +9,13 @@ import {
 describe("reinforcementLoopSchedule", () => {
   it("loopIterationForPendingRow defaults to 1", () => {
     expect(loopIterationForPendingRow({})).toBe(1);
-    expect(loopIterationForPendingRow({ reinforcement_loop: null })).toBe(1);
+    expect(loopIterationForPendingRow({ validation_payload: { reinforcement_loop: null } })).toBe(1);
   });
 
   it("loopIterationForPendingRow reads loop_iteration", () => {
-    expect(loopIterationForPendingRow({ reinforcement_loop: { loop_iteration: 3 } })).toBe(3);
+    expect(
+      loopIterationForPendingRow({ validation_payload: { reinforcement_loop: { loop_iteration: 3 } } }),
+    ).toBe(3);
   });
 
   it("exposes reschedule day offsets (unstable medium / no_change stronger-sooner)", () => {
