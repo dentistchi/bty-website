@@ -2,6 +2,66 @@
 
 ---
 
+## 2026-05-04 — AL-1.8-E full LIVE (Secure link auto-commit visibility banner)
+
+**Worker version**: `1ca9f98b-8482-4b56-b910-3246ef035897`
+**HEAD**: `33e8283` AL-1.8-E full on top of AL-1.8-E partial chain
+**Deploy mode**: dirty tree (single-env standard)
+
+### Sprint scope
+**Inventory 결과 (메모리 #9 적용)**: AL-1.8-E full handler 인프라(`MyPageLeadershipConsole.tsx:225-274` useEffect + qr/validate endpoint + cross-tab dispatch + PostCompletionSheet modal)는 **이미 구현되어 있었음**. 진짜 결손은 **user-perceivable feedback** — failure path는 console.error만, success는 modal 일시 표시 후 사라짐, pending state 0.
+
+→ AL-1.8-E full = "feature 추가"가 아닌 "visibility 보강". sprint scope 재정의 case.
+
+### Code changes (1 commit, 3 files, 235 insertions)
+
+**`33e8283`** — Inline 5-state banner + i18n + tests:
+- `MyPageLeadershipConsole.tsx` (+99/-2):
+  - `validationStatus` state (`idle/pending/success/error/expired/unauthenticated`)
+  - validate handler 보강: HTTP status별 분기 (401→unauthenticated, 422→expired, !ok→error, ok+success→success), pending 진입 시 setStatus
+  - Inline banner JSX (`data-testid="action-loop-validation-banner"`): role=alert/status, aria-live=polite, color-coded (gray pending / emerald success / amber expired / red error+unauthenticated), spinner, dismiss button
+- `i18n.ts` (+16): 5 keys × 2 locales (validating, validationSuccess, validationFailed, validationExpired, validationUnauthenticated)
+- `MyPageLeadershipConsole.test.tsx` (+120): 5 신규 테스트 (success/expired/unauthenticated/error/idle)
+
+### Live verification (4 gates, 모두 PASS)
+
+**V1 Success path** ✅:
+- "Complete by secure link" 클릭 → 새 탭에서 URL navigate → pending banner (gray + spinner + "Verifying secure link…") 잠깐 → success banner (emerald + "Action committed successfully." + ✕)
+- 동시에 PostCompletionSheet modal: "EXECUTION RECORDED. Next scenario unlocked."
+- 스크린샷 확인됨
+
+**V1.5 SQL contract status** ✅:
+```sql
+SELECT id, status, submitted_at, deadline_at, pattern_family
+FROM bty_action_contracts WHERE id = '6728c029-b853-4ea1-b8ef-3c8c9c1c27ab';
+```
+결과: `status='submitted'`, `submitted_at=2026-05-04 21:21:25.001-07` (tail의 `[qr/validate] pending->submitted transition complete` 시각과 정확히 일치).
+
+**V2 Failure path** ✅:
+- 가짜 token URL 새 탭 hard load → pending → unauthenticated banner (red + "Please log in to continue." + ✕) 시각 확인
+- 401 분기 정상
+
+**V3 3-signal crosscheck (memory #12)** ✅:
+- Deploy Version ID: `1ca9f98b` (deploy 출력 직접 확인)
+- git log HEAD: `33e8283`
+- Live runtime: `[qr/validate] pending->submitted transition complete { contractId: '6728c029-...', finalStatus: 'submitted', submittedAt: '2026-05-04T21:21:25.001-07:00' }`
+
+### 7-step canonical loop product identity 의미
+
+Step 5 (Action/QR/Contract) → Step 6 (Re-exposure) 전환 과정에서 **사용자가 시스템의 검증 결과를 명확히 인지**하는 마지막 layer 완성. "행동을 시키는 시스템 ❌ / 행동하게 되는 상태를 만드는 시스템 ⭕" identity의 두 번째 측면 강화.
+
+### Test status
+
+- 신규 5건 (banner state machine) PASS
+- 기존 13건 PASS, 1건 fail은 WIP-induced (`MyPageLeadershipConsole.test.tsx > 401 → retry → setServerPack`) — AL-1.8-F backlog, AL-1.8-E full 변경과 무관
+
+### Next backlog 갱신
+- ~~AL-1.8-E full~~ ✅ LIVE (2026-05-04)
+- **AL-1.8-F** (P2): WIP test mock interference (1 test fail, MyPageLeadershipConsole core-xp fetch가 retry test 깨뜨림)
+- **AL-1.8-C** (P2): top-level reinforcement column dead state cleanup
+
+---
+
 ## 2026-05-04 — AL-1.8-E partial LIVE (My Page UI contrast + layout reorder + overflow fix)
 
 **Final worker version**: `55fd3759-e021-4064-acbf-f40306991a9c` (4 commits 모두 live)
