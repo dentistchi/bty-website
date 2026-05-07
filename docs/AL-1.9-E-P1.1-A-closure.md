@@ -25,6 +25,7 @@
 | D-sub1 | refactor | `aea73d2` | `affb20f` |
 | D-sub2 | suppression coverage | `91ba61a` | `56591f5` |
 | D-sub3 | test + closure | `b91d893` | `6a458b0` |
+| Deploy | staging worker | working tree (dirty-tree pattern) | worker `964c3911` (2026-05-07) |
 
 ---
 
@@ -51,6 +52,32 @@
 - tsc baseline 14 unchanged
 - D-sub1 + D-sub2 baseline tests 모두 re-run green (helper 5/5 + regression 5/5)
 - Mock pattern: `vi.mock` module-level (helper + selector + admin + caller dependencies), `expect.objectContaining({ servedArenaScenarioIds: [...] })` assertion. Reference: `user-scenario-played-append.service.test.ts` caller-layer mock convention.
+
+### Deploy + DB-Verify (post-964c3911, 2026-05-07)
+
+**Deploy**: 2026-05-07T12:56:20Z, worker `964c3911-3610-4bc7-ab2d-b4fe8eda7881` (replaces `5aebbe79-d698-4463-ab89-0d5b511ba4ef`). URL `https://bty-arena-staging.ywamer2022.workers.dev`.
+
+**Build**: `npm run deploy` = prebuild + cf:build + cf:deploy. Bundle 26727.28 KiB / gzip 4089.34 KiB. Worker startup 32 ms. 1 new asset (BUILD_ID).
+
+**Pre-deploy state**:
+- Inner repo HEAD: `aa5cd07` (D-sub1 from prior cycle, by Hanbit)
+- Working tree: D-sub2 (3 router callers modified) + D-sub3 (3 test files untracked) + ~108 other WIP files (i18n / avatar / Quick Mode / archetype, mostly already-deployed via prior cycles per single-env dirty-tree pattern)
+- Pre-deploy 13/13 tests green (5 D-sub1 helper unit + 8 D-sub3 wiring integration)
+- `.env.local` cleanup: skipped per (a-modified) decision — middleware NODE_ENV guard tree-shakes BYPASS_AUTH branch in production build, prior 4 deploys empirical evidence (1ca9f98b/bb1479c6/c79c4432/5aebbe79 all shipped with same .env.local content + functional)
+
+**4-signal verify**:
+| # | Signal | Evidence |
+|---|---|---|
+| 1 | Version ID | `964c3911-3610-4bc7-ab2d-b4fe8eda7881` (wrangler versions list 2026-05-07T12:56:20Z, ywamer2022@gmail.com) |
+| 2 | Worker live | HTTP 200 on `/api/version`, JSON response valid (URL responding) |
+| 3 | Bundle code | `handler.mjs` 4× `servedArenaScenarioIds` references + 5 chunks contain D-sub2 wiring (helper + 3 caller). Minified sample: `servedArenaScenarioIds:p}` followed by `if(null===q)return{status:403` (arenaSessionNextCore + selector wiring). |
+| 4 | DB baseline preservation | Q3 ywamer played_scenario_ids = `["core_02_new_doctor_reexposure_compromise_loop", "core_03_training_failure_hidden_as_performance_issue"]` (count=2) — exact match with memory L484 (`5aebbe79` baseline). P5-A.2 cold-start archive intact, redeploy 무회귀. |
+
+**Signal 5 (runtime trace) deferred**: Q1 (test user 38ce28d2 arena_runs) shows 0 post-deploy activity (all 20 rows from 2026-05-04, in_window=false). Q2 corrected (arena_events post-deploy timestamp filter) returned 0 rows. **Expected** — fresh deploy, no organic user activity yet. P1.1-A 3 router caller path runtime verify pending natural user trigger or manual smoke. Not deploy gate (P1.1-A is coverage extension of already-verified main mechanism — Pipeline N rotation engine via P1+P5-A+P5-A.2 from `5aebbe79`).
+
+**Q2 schema-drift incidental**: R3 inventory Section 8 의 Q2 SQL draft 가 `arena_events.payload->>'scenario_id'` 사용했으나 actual schema 는 `scenario_id` 직접 column ([20260222_000001_arena_core.sql:46](../bty-app/supabase/migrations/20260222_000001_arena_core.sql)). Single-signal violation case 추가 — `feedback_execution_claim_observable_artifact.md` invariant 의 data layer 적용. Memory 갱신 시 invariant 강화 항목.
+
+**P1.1-A operational closure verdict**: Deploy + 4-signal verify confirmed. AL-1.9-E sprint family closure status (memory L470-552 lock) maintained + extended to 3 router caller path coverage. Cycle natural closure 가능 frame.
 
 ---
 
