@@ -24,9 +24,7 @@
 | (cross-ref) | P1.3 closure | — | `824a494` |
 | D-sub1 | refactor | `aea73d2` | `affb20f` |
 | D-sub2 | suppression coverage | `91ba61a` | `56591f5` |
-| D-sub3 (test) | safety net | `b91d893` | — |
-| D-sub3 (closure) | docs | — | `<outer-pending>` |
-| D-sub3 (hash backfill) | follow-up | — | `<followup-pending>` |
+| D-sub3 | test + closure | `b91d893` | `6a458b0` |
 
 ---
 
