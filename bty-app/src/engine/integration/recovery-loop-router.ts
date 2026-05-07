@@ -21,6 +21,7 @@ import { getScenarioStats } from "@/engine/scenario/scenario-stats.service";
 import type { ScenarioLocalePreference } from "@/engine/scenario/scenario-selector.service";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { CENTER_CHAT_OPEN_EVENT, getDearMeHref } from "@/domain/center/paths";
+import { fetchRecentServedScenarioIds } from "@/lib/bty/arena/fetchRecentServedScenarioIds";
 
 export type RecoveryTaskAssignedPayload = {
   event: "recovery_task_assigned";
@@ -142,8 +143,10 @@ export async function handleSlipRecovery(
       return route;
     }
     case "scenario_retry": {
+      const servedIds = admin ? await fetchRecentServedScenarioIds(admin, userId) : [];
       const scenarioRoute = await getNextScenarioForSession(userId, locale, {
         preferFlagType: POST_SESSION_INTEGRITY_SLIP_FLAG,
+        servedArenaScenarioIds: servedIds,
       });
       const route: RecoveryRoute = {
         kind: "scenario_retry",
