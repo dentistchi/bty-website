@@ -32,7 +32,7 @@ vi.mock("@/engine/scenario/delayed-outcome-trigger.service", () => ({
 }));
 
 const mockInsertReinforcementDelayedOutcome = vi.fn();
-const mockLoopIterationForPendingRow = vi.fn(() => 1);
+const mockLoopIterationForPendingRow = vi.fn((..._args: unknown[]) => 1);
 vi.mock("@/lib/bty/arena/reinforcementLoopSchedule.server", () => ({
   insertReinforcementDelayedOutcome: (...args: unknown[]) =>
     mockInsertReinforcementDelayedOutcome.apply(null, args),
