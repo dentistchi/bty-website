@@ -163,13 +163,13 @@ describe("ArenaReexposurePanel", () => {
   });
 
   it("shows loading reason while delayed outcomes request is pending", async () => {
-    let resolveFetch: ((v: unknown) => void) | null = null;
+    const fetchControl: { resolve: ((v: unknown) => void) | null } = { resolve: null };
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation(
         () =>
           new Promise((resolve) => {
-            resolveFetch = resolve;
+            fetchControl.resolve = resolve;
           }),
       ),
     );
@@ -188,7 +188,7 @@ describe("ArenaReexposurePanel", () => {
       expect(screen.getByTestId("reexposure-disabled-reason").textContent).toContain("loading");
     });
 
-    resolveFetch?.({
+    fetchControl.resolve?.({
       ok: true,
       json: () => Promise.resolve({ ok: true, outcomes: [] }),
     });
