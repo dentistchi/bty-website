@@ -355,11 +355,7 @@ describe("POST /api/arena/choice — AD1 action-contract boundary", () => {
       base: new Response(),
       supabase: makeSupabaseMock({ escalation_branch_key: "A", second_choice_id: "X" }),
     });
-    mockGetSupabaseAdmin.mockReturnValue(
-      makeSupabaseMock({}, "INCIDENT-01-OWN-01", undefined, (payload) => {
-        pendingInsertPayload = payload;
-      }),
-    );
+    mockGetSupabaseAdmin.mockReturnValue(makeSupabaseMock({}, "INCIDENT-01-OWN-01"));
     mockBuildSnapshot.mockResolvedValueOnce({
       mode: "arena",
       runtime_state: "NEXT_SCENARIO_READY",
@@ -382,7 +378,7 @@ describe("POST /api/arena/choice — AD1 action-contract boundary", () => {
   });
 
   it("promotes AD2 threshold to REEXPOSURE_DUE with pending_outcome_id and json scenario id", async () => {
-    let pendingInsertPayload: Record<string, unknown> | null = null;
+    const captured: { payload: Record<string, unknown> | null } = { payload: null };
     mockRequireUser.mockResolvedValue({
       user: { id: "user-1" },
       base: new Response(),
@@ -391,13 +387,13 @@ describe("POST /api/arena/choice — AD1 action-contract boundary", () => {
         "INCIDENT-01-OWN-01",
         undefined,
         (payload) => {
-          pendingInsertPayload = payload;
+          captured.payload = payload;
         },
       ),
     });
     mockGetSupabaseAdmin.mockReturnValue(
       makeSupabaseMock({}, "INCIDENT-01-OWN-01", undefined, (payload) => {
-        pendingInsertPayload = payload;
+        captured.payload = payload;
       }),
     );
     mockAccrueNoChangeRisk.mockResolvedValueOnce({ reExposureDueCandidate: true });
@@ -422,11 +418,11 @@ describe("POST /api/arena/choice — AD1 action-contract boundary", () => {
     const reExposure = json.re_exposure as Record<string, unknown>;
     expect(reExposure.scenario_id).toBe("core_01");
     expect(reExposure.pending_outcome_id).toBe("pend-1");
-    expect(pendingInsertPayload?.choice_type).toBe("no_change_reexposure");
-    expect(pendingInsertPayload?.status).toBe("pending");
-    expect(typeof pendingInsertPayload?.scheduled_for).toBe("string");
-    expect((pendingInsertPayload?.outcome_title as string) ?? "").toBe("Re-exposure round");
-    expect(pendingInsertPayload?.validation_payload).toBeTruthy();
+    expect(captured.payload?.choice_type).toBe("no_change_reexposure");
+    expect(captured.payload?.status).toBe("pending");
+    expect(typeof captured.payload?.scheduled_for).toBe("string");
+    expect((captured.payload?.outcome_title as string) ?? "").toBe("Re-exposure round");
+    expect(captured.payload?.validation_payload).toBeTruthy();
     expect(mockEnsureContract).not.toHaveBeenCalled();
   });
 
