@@ -3,6 +3,7 @@ import { STAGE_4 } from "@/domain/leadership-engine/stages";
 import { getNextScenarioForSession } from "@/engine/integration/scenario-type-router";
 import { ScenarioSelectionError, type ScenarioLocalePreference } from "@/engine/scenario/scenario-selector.service";
 import { fetchBlockingArenaContractForSession } from "@/lib/bty/arena/blockingArenaActionContract";
+import { fetchRecentServedScenarioIds } from "@/lib/bty/arena/fetchRecentServedScenarioIds";
 import {
   scenarioWithJsonSource,
   snapshotForBlockedContract,
@@ -100,12 +101,7 @@ export async function runArenaSessionNextCore(params: {
       });
     }
 
-    const servedIds = await supabase
-      .from("arena_runs")
-      .select("scenario_id")
-      .eq("user_id", userId)
-      .eq("status", "DONE")
-      .then((r) => r.data?.map((x) => x.scenario_id).filter((id): id is string => typeof id === "string") ?? []);
+    const servedIds = await fetchRecentServedScenarioIds(supabase, userId);
 
     /**
      * NEXT_SCENARIO_READY (GET) — not emitted here.
