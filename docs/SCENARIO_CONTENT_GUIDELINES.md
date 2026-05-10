@@ -84,3 +84,52 @@
 ---
 
 *Last aligned with: `scenarioNumericStructure`, `schema.validator.ts` (Zod), `interpretArenaDecision`, `leadershipSignal.mapToLeadershipSignal`.*
+
+---
+
+## Lock 5 Semantic Boundary — 4-tier classification (AL-2-E Ψ-1 Step 2)
+
+**Authority**: Hanbit Commander (semantic anchor: `lock5_semantic_boundary`)
+**Issued**: 2026-05-10 (AL-2-E Phase 1 Lock 5 spec 보강)
+**Full spec**: [LOCK_5_SEMANTIC_BOUNDARY_SPEC.md](./LOCK_5_SEMANTIC_BOUNDARY_SPEC.md)
+
+The 9 [DEFERRED_NO_CITATION] field categories from AL-2-E Phase 1 Area 4 are now classified per the 4-tier system below. Apply when editing scenario JSON.
+
+### 4-tier summary
+
+| tier | meaning | mutation policy |
+|---|---|---|
+| **FORBIDDEN** | structural / referential integrity field | NEVER edit during Lock 5 freeze |
+| **RISKY** | semantic-decision field | Commander pre-approval required |
+| **CONDITIONAL** | classification depends on edit content | follow sub-rule |
+| **SAFE** | typo / grammar / locale phrasing / clarity edit | routine maintenance allowed |
+
+### Per-category classification (9 categories)
+
+| field | tier |
+|---|---|
+| primary choice text (`choices[*].label`) | RISKY |
+| escalation text (`escalationBranches[*].escalation_text`) | RISKY |
+| second-choice text (`escalationBranches[*].second_choices[*].label`) | RISKY |
+| action_decision text (`escalationBranches[*].action_decision.{prompt, choices[].label}`) | **FORBIDDEN** |
+| title / body / pressure narrative (en/ko `title`, `pressure`) | **CONDITIONAL** (pressure shift → RISKY; else SAFE) |
+| `bty_tension_axis` phrasing edit (same category — NOT literal re-tag) | RISKY |
+| `dbChoiceId` literal value | **FORBIDDEN** |
+| `next_map` / `incident.{previousScenarioId, nextScenarioId}` | **FORBIDDEN** |
+| `incident.propagation.{exitEffect, entryEffect, reExposureNote}` text | RISKY |
+
+→ tier breakdown: 3 FORBIDDEN · 5 RISKY · 1 CONDITIONAL · SAFE (cross-cutting edit class)
+
+### 5-invariants pre-mutation check (MANDATORY before ANY scenario JSON edit)
+
+| # | invariant | verification |
+|---:|---|---|
+| 1 | `FINGERPRINT_VERSION = 1` | Lock 6 carry-forward; no version bump |
+| 2 | alias dictionary 59 entries | `bty-app/src/domain/pattern-family.ts:26-118` count = 59 |
+| 3 | Lock 7 raw passthrough | `buildFingerprintInput.ts` raw `patternFamilies.map(...)` preserved |
+| 4 | Lock 4 active baseline = QUIETFLAME 1 (38ce28d2) | `bty_archetype_naming_locks` 1 active row |
+| 5 | R3.5.2 closure | `normalizePatternFamilyId` applied at activePatterns Set construction |
+
+**FAIL on any invariant** → mutation forbidden until restored or Commander explicitly authorizes (boundary discussion, separate Council session).
+
+→ Full classification rationale, CONDITIONAL sub-rules, mutation procedure, and Phase 2 entry conditions: see [LOCK_5_SEMANTIC_BOUNDARY_SPEC.md](./LOCK_5_SEMANTIC_BOUNDARY_SPEC.md).
