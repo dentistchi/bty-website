@@ -1,0 +1,244 @@
+scenario_id,category,classification,rationale,escalation_required,cross_reference
+core_01_training_system_exposure,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_01_training_system_exposure,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_01_training_system_exposure,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (8 commitment / 8 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism. ⚠ OUTLIER: 16 total action_decision choices (standard = 8); architectural variant — escalation_required,YES,Lock 5 §2 (#4) + §2.1
+core_01_training_system_exposure,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_01_training_system_exposure,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Ownership axis at stage 1; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_01_training_system_exposure,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_01_training_system_exposure,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_01_training_system_exposure,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If avoided here, the same issue will return as a higher-cost clinical compromise.'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_01_training_system_exposure,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_02_new_doctor_reexposure_compromise_loop,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_02_new_doctor_reexposure_compromise_loop,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_02_new_doctor_reexposure_compromise_loop,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_02_new_doctor_reexposure_compromise_loop,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_02_new_doctor_reexposure_compromise_loop,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Ownership axis at stage 2; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_02_new_doctor_reexposure_compromise_loop,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_02_new_doctor_reexposure_compromise_loop,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_02_new_doctor_reexposure_compromise_loop,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If the user exits here, the same compromise will repeat as normalized workflow.'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_02_new_doctor_reexposure_compromise_loop,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_03_training_failure_hidden_as_performance_issue,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_03_training_failure_hidden_as_performance_issue,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_03_training_failure_hidden_as_performance_issue,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_03_training_failure_hidden_as_performance_issue,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_03_training_failure_hidden_as_performance_issue,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Ownership axis at stage 3; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_03_training_failure_hidden_as_performance_issue,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_03_training_failure_hidden_as_performance_issue,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_03_training_failure_hidden_as_performance_issue,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If the user exits here, the same pattern will repeat with every new doctor.'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_03_training_failure_hidden_as_performance_issue,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_04_manager_neutrality_as_abandonment,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_04_manager_neutrality_as_abandonment,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_04_manager_neutrality_as_abandonment,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_04_manager_neutrality_as_abandonment,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_04_manager_neutrality_as_abandonment,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Truth axis at stage 4; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_04_manager_neutrality_as_abandonment,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_04_manager_neutrality_as_abandonment,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_04_manager_neutrality_as_abandonment,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If the user exits here, the same silence will reappear as resignation signals, assistant withdrawal,...'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_04_manager_neutrality_as_abandonment,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_05_resignation_signal,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_05_resignation_signal,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_05_resignation_signal,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_05_resignation_signal,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_05_resignation_signal,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Truth axis at stage 5; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_05_resignation_signal,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_05_resignation_signal,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_05_resignation_signal,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If the user exits here, the same signal will return as turnover, disengagement, or public complaint.'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_05_resignation_signal,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_06_external_exposure,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_06_external_exposure,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_06_external_exposure,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_06_external_exposure,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_06_external_exposure,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Truth axis at stage 6; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_06_external_exposure,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_06_external_exposure,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_06_external_exposure,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If the user exits here, the same pattern will return through reviews, complaints, turnover, or leade...'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_06_external_exposure,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_07_repair_conversation,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_07_repair_conversation,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_07_repair_conversation,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_07_repair_conversation,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_07_repair_conversation,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Repair axis at stage 7; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_07_repair_conversation,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_07_repair_conversation,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_07_repair_conversation,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If failed, the issue reappears as repeated conflict, disengagement, or silent resistance.'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_07_repair_conversation,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_08_doctor_repair,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_08_doctor_repair,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_08_doctor_repair,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_08_doctor_repair,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_08_doctor_repair,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Repair axis at stage 8; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_08_doctor_repair,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_08_doctor_repair,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_08_doctor_repair,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If avoided here, the issue will return as a personal identity conflict about consistency and integri...'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_08_doctor_repair,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_09_identity_shift,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_09_identity_shift,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_09_identity_shift,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_09_identity_shift,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_09_identity_shift,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Repair axis at stage 9; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_09_identity_shift,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_09_identity_shift,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_09_identity_shift,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If avoided here, the same compromise returns under production pressure, insurance limitation, or tea...'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_09_identity_shift,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_10_integrity_favoritism_signal,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_10_integrity_favoritism_signal,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_10_integrity_favoritism_signal,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_10_integrity_favoritism_signal,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_10_integrity_favoritism_signal,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Integrity axis at stage 1; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_10_integrity_favoritism_signal,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_10_integrity_favoritism_signal,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_10_integrity_favoritism_signal,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If ignored, this grows into selective enforcement, resentment, and cultural decay.'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_10_integrity_favoritism_signal,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_11_selective_standard_escalation,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_11_selective_standard_escalation,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_11_selective_standard_escalation,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_11_selective_standard_escalation,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_11_selective_standard_escalation,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Integrity axis at stage 2; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_11_selective_standard_escalation,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_11_selective_standard_escalation,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_11_selective_standard_escalation,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If not addressed, this evolves into resentment, disengagement, and hidden resistance.'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_11_selective_standard_escalation,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_12_silence_normalization,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_12_silence_normalization,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_12_silence_normalization,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_12_silence_normalization,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_12_silence_normalization,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Integrity axis at stage 3; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_12_silence_normalization,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_12_silence_normalization,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_12_silence_normalization,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If normalized, this leads to disengagement, quiet quitting, and hidden resistance.'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_12_silence_normalization,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_13_assistant_adaptation,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_13_assistant_adaptation,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_13_assistant_adaptation,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_13_assistant_adaptation,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_13_assistant_adaptation,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Integrity axis at stage 4; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_13_assistant_adaptation,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_13_assistant_adaptation,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_13_assistant_adaptation,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If normalized, team members lose integrity signals and operate purely on incentives.'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_13_assistant_adaptation,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_14_manager_awareness_gap,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_14_manager_awareness_gap,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_14_manager_awareness_gap,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_14_manager_awareness_gap,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_14_manager_awareness_gap,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Integrity axis at stage 5; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_14_manager_awareness_gap,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_14_manager_awareness_gap,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_14_manager_awareness_gap,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If unaddressed, the system continues to operate on a false understanding of itself.'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_14_manager_awareness_gap,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_15_system_exposure,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_15_system_exposure,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_15_system_exposure,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_15_system_exposure,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_15_system_exposure,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Integrity axis at stage 6; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_15_system_exposure,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_15_system_exposure,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_15_system_exposure,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If minimized, the system continues producing visible failures with increasing frequency.'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_15_system_exposure,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_16_repair_standard_reset,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_16_repair_standard_reset,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_16_repair_standard_reset,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_16_repair_standard_reset,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_16_repair_standard_reset,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Repair axis at stage 7; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_16_repair_standard_reset,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_16_repair_standard_reset,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_16_repair_standard_reset,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If standards are not defined, inconsistency will reappear under pressure.'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_16_repair_standard_reset,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_17_lead_assistant_repair,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_17_lead_assistant_repair,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_17_lead_assistant_repair,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_17_lead_assistant_repair,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_17_lead_assistant_repair,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Repair axis at stage 8; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_17_lead_assistant_repair,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_17_lead_assistant_repair,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_17_lead_assistant_repair,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If skipped, the system may have new standards but the team continues carrying old mistrust.'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_17_lead_assistant_repair,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_18_identity_integrity_choice,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_18_identity_integrity_choice,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_18_identity_integrity_choice,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_18_identity_integrity_choice,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_18_identity_integrity_choice,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Repair axis at stage 9; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_18_identity_integrity_choice,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_18_identity_integrity_choice,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_18_identity_integrity_choice,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If avoided, the same pattern returns as quiet adaptation, selective silence, or identity drift under...'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_18_identity_integrity_choice,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_19_authority_signal,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_19_authority_signal,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_19_authority_signal,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_19_authority_signal,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_19_authority_signal,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Repair axis at stage 19; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_19_authority_signal,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_19_authority_signal,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_19_authority_signal,propagation text,RISKY,RISKY — propagation governs identity drift via reExposureNote ('Drift will reveal whether the system survives without constant leadership attention.'); mutation can shift re-exposure trigger semantic,NO,Lock 5 §2 (#9) + §6.2.e
+core_19_authority_signal,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_20_unquestioned_decision,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_20_unquestioned_decision,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_20_unquestioned_decision,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_20_unquestioned_decision,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_20_unquestioned_decision,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Repair axis at stage 20; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_20_unquestioned_decision,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_20_unquestioned_decision,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_20_unquestioned_decision,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('Inheritance reveals whether integrity is a person, a policy, or an operating system.'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_20_unquestioned_decision,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_21_silence_under_hierarchy,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_21_silence_under_hierarchy,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_21_silence_under_hierarchy,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_21_silence_under_hierarchy,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_21_silence_under_hierarchy,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Repair axis at stage 21; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_21_silence_under_hierarchy,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_21_silence_under_hierarchy,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_21_silence_under_hierarchy,propagation text,RISKY,RISKY — propagation governs identity drift via reExposureNote ('Correction reveals whether the system can evolve without becoming personal again.'); mutation can shift re-exposure trigger semantic,NO,Lock 5 §2 (#9) + §6.2.e
+core_21_silence_under_hierarchy,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_22_assistant_truth_block,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_22_assistant_truth_block,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_22_assistant_truth_block,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_22_assistant_truth_block,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_22_assistant_truth_block,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Repair axis at stage 22; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_22_assistant_truth_block,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_22_assistant_truth_block,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_22_assistant_truth_block,propagation text,RISKY,RISKY — propagation governs identity drift via reExposureNote ('Growth continuously tests whether standards are preserved or negotiated.'); mutation can shift re-exposure trigger semantic,NO,Lock 5 §2 (#9) + §6.2.e
+core_22_assistant_truth_block,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_23_manager_truth_block,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_23_manager_truth_block,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_23_manager_truth_block,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_23_manager_truth_block,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_23_manager_truth_block,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Truth axis at stage 5; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_23_manager_truth_block,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_23_manager_truth_block,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_23_manager_truth_block,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If the user exits here, the next scenario should expose the same silence through patient flow, staff...'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_23_manager_truth_block,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_24_external_truth_exposure,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_24_external_truth_exposure,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_24_external_truth_exposure,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_24_external_truth_exposure,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_24_external_truth_exposure,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Truth axis at stage 6; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_24_external_truth_exposure,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_24_external_truth_exposure,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_24_external_truth_exposure,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If the user exits here, the same pattern reappears as repeated complaints or audit findings.'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_24_external_truth_exposure,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_25_forced_repair_conversation,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_25_forced_repair_conversation,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_25_forced_repair_conversation,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_25_forced_repair_conversation,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_25_forced_repair_conversation,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Repair axis at stage 7; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_25_forced_repair_conversation,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_25_forced_repair_conversation,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_25_forced_repair_conversation,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If the user exits here, the same pattern returns as partial compliance, staff withdrawal, or repeate...'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_25_forced_repair_conversation,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_26_doctor_repair_choice,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_26_doctor_repair_choice,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_26_doctor_repair_choice,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_26_doctor_repair_choice,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_26_doctor_repair_choice,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Repair axis at stage 8; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_26_doctor_repair_choice,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_26_doctor_repair_choice,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_26_doctor_repair_choice,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If the user exits here, the same hesitation and bypass pattern will return under pressure.'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_26_doctor_repair_choice,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
+core_27_identity_repair_commitment,dbChoiceId,FORBIDDEN,Lock 5 spec §2 (#7) — DB referential integrity; mutation breaks bty_arena_signals binding,NO,Lock 5 §2
+core_27_identity_repair_commitment,next_map,FORBIDDEN,Lock 5 spec §2 (#8) — state-machine graph; mutation breaks scenario rotation chain,NO,Lock 5 §2
+core_27_identity_repair_commitment,action_decision text,FORBIDDEN,FORBIDDEN — commitment/avoidance binding (4 commitment / 4 avoidance) ties to is_action_commitment exit gate; semantic mutation breaks state-transition determinism,YES,Lock 5 §2 (#4) + §2.1
+core_27_identity_repair_commitment,primary choice text,RISKY,Lock 5 spec §2 (#1) — decision-surface; wording shift can alter user interpretation of pattern direction,NO,Lock 5 §2
+core_27_identity_repair_commitment,escalation text,RISKY,RISKY — escalation defines tradeoff framing for Repair axis at stage 9; wording shift alters semantic weight of escalation_text per branch,NO,Lock 5 §2
+core_27_identity_repair_commitment,second-choice text,RISKY,Lock 5 spec §2 (#3) — second-choice carries tradeoff resolution semantic,NO,Lock 5 §2
+core_27_identity_repair_commitment,bty_tension_axis phrasing,RISKY,Lock 5 spec §2 (#6) — phrasing edit allowed; literal re-tag remains FORBIDDEN per Lock 5 Phase 1 cite,NO,Lock 5 §2
+core_27_identity_repair_commitment,propagation text,RISKY,"RISKY — propagation governs identity drift via reExposureNote ('If the user exits here, the same authority and hesitation pattern will reappear in the next high-pre...'); mutation can shift re-exposure trigger semantic",NO,Lock 5 §2 (#9) + §6.2.e
+core_27_identity_repair_commitment,title-body,CONDITIONAL,Lock 5 spec §2.2 — pressure shift → RISKY; non-pressure clarity edit → SAFE,NO,Lock 5 §2.2
