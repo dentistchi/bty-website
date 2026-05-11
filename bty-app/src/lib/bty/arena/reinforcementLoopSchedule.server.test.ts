@@ -23,7 +23,7 @@ describe("reinforcementLoopSchedule", () => {
   });
 
   it("stores reinforcement_seeded_from_pending_id inside validation_payload only", async () => {
-    let insertedPayload: Record<string, unknown> | null = null;
+    const captured: { payload: Record<string, unknown> | null } = { payload: null };
     const admin = {
       from: (table: string) => {
         if (table !== "arena_pending_outcomes") {
@@ -38,7 +38,7 @@ describe("reinforcementLoopSchedule", () => {
             }),
           }),
           insert: (payload: Record<string, unknown>) => {
-            insertedPayload = payload;
+            captured.payload = payload;
             return {
               select: () => ({
                 single: async () => ({ data: { id: "follow-up-1" }, error: null }),
@@ -58,12 +58,12 @@ describe("reinforcementLoopSchedule", () => {
         scenario_id: "core_01_training_system_exposure",
         before_axis: "Blame vs. Structural Honesty",
         before_pattern_family: "blame_shift",
-        before_second_choice_direction: "X",
+        before_second_choice_direction: "entry",
         before_exit_pattern_key: "k1",
-        action_decision_commitment: "AD2",
+        action_decision_commitment: "avoid",
         after_axis: "Blame vs. Structural Honesty",
         after_pattern_family: "blame_shift",
-        after_second_choice_direction: "Y",
+        after_second_choice_direction: "exit",
         after_exit_pattern_key: "k2",
         validation_result: "unstable",
         axis_guard: "same_axis_ok",
@@ -75,9 +75,9 @@ describe("reinforcementLoopSchedule", () => {
     });
 
     expect(result.ok).toBe(true);
-    const vp = (insertedPayload?.validation_payload ?? null) as Record<string, unknown> | null;
+    const vp = (captured.payload?.validation_payload ?? null) as Record<string, unknown> | null;
     expect(vp).toBeTruthy();
     expect(vp?.reinforcement_seeded_from_pending_id).toBe("pending-close-1");
-    expect(insertedPayload?.reinforcement_seeded_from_pending_id).toBeUndefined();
+    expect(captured.payload?.reinforcement_seeded_from_pending_id).toBeUndefined();
   });
 });

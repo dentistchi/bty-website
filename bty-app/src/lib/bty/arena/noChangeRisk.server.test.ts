@@ -9,8 +9,8 @@ function makeSupabaseMock(initialRiskCount = 0) {
     data: initialRiskCount > 0 ? { id: "r1", risk_count: initialRiskCount } : null,
     error: null,
   }));
-  const update = vi.fn(() => ({ eq: vi.fn(async () => ({ error: null })) }));
-  const insert = vi.fn(async () => ({ error: null }));
+  const update = vi.fn((..._args: unknown[]) => ({ eq: vi.fn(async () => ({ error: null })) }));
+  const insert = vi.fn(async (..._args: unknown[]) => ({ error: null }));
   const select = vi.fn((cols: string) => {
     const q: Record<string, unknown> = {};
     q.eq = vi.fn(() => q);
