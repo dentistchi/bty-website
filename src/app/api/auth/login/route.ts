@@ -8,6 +8,7 @@ import {
   writeSupabaseAuthCookies,
 } from "@/lib/bty/cookies/authCookies";
 import { mergeCookiesForRouteHandler } from "@/lib/supabase/route-client";
+import { rateLimitKV, getCfClientIp } from "@/lib/rate-limit";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -16,6 +17,26 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function POST(req: NextRequest) {
+  const ip = getCfClientIp(req);
+  const rl = await rateLimitKV({
+    endpoint: "login",
+    identifier: ip,
+    limit: 5,
+    windowSeconds: 900,
+  });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      {
+        error: "Too many login attempts. Please try again later.",
+        retryAfterSeconds: rl.retryAfterSeconds,
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rl.retryAfterSeconds) },
+      }
+    );
+  }
+
   try {
     if (!url || !key) {
       console.error("[auth/login] Missing env: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY");

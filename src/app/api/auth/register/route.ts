@@ -1,10 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
+import { rateLimitKV, getCfClientIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function POST(req: NextRequest) {
+  const ip = getCfClientIp(req);
+  const rl = await rateLimitKV({
+    endpoint: "register",
+    identifier: ip,
+    limit: 3,
+    windowSeconds: 3600,
+  });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      {
+        error: "Too many registration attempts. Please try again later.",
+        retryAfterSeconds: rl.retryAfterSeconds,
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rl.retryAfterSeconds) },
+      }
+    );
+  }
+
   try {
     const supabase = await getSupabaseServer();
 

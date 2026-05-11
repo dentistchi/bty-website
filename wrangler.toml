@@ -20,3 +20,7 @@ BTY_DEPLOY_VERSION = "2026-04-27-api-version-endpoint-v1"
 BTY_BUILD_TIME = "2026-04-27T18:21:00Z"
 BTY_APP_VERSION = "0.1.0"
 BTY_ADMIN_EMAILS = "ywamer2022@gmail.com"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "e24ac026c3664c8497927c27d0b11c98"
