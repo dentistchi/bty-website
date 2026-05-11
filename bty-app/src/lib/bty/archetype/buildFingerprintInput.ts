@@ -1,3 +1,4 @@
+import { normalizePatternFamilyId } from "@/domain/pattern-family";
 import { computeMetrics } from "@/features/arena/logic";
 import type { ArenaSignal } from "@/features/my-page/logic/types";
 import type { UserPatternSignaturePublic } from "@/lib/bty/arena/patternSignature.types";
@@ -20,22 +21,27 @@ export function buildFingerprintInput(
   const metrics = computeMetrics(signals);
   const { AIR, TII, relationalBias, operationalBias, emotionalRegulation } = metrics;
 
-  const activePatterns = new Set(patterns.map((p) => p.pattern_family.toLowerCase()));
+  // AL-2-D-P0: alias-aware activePatterns Set (R3.5.2 closure).
+  // Resolves aliases to canonical via normalizePatternFamilyId so pen() lookups
+  // hit canonical literals. Falls back to raw lowercased value for unknown families.
+  const activePatterns = new Set(
+    patterns.map((p) => (normalizePatternFamilyId(p.pattern_family) ?? p.pattern_family).toLowerCase()),
+  );
   const pen = (family: string, base: number) =>
     activePatterns.has(family) ? Math.max(0, base - 0.3) : base;
 
   const axisVector: AxisVector = {
     ownership: pen("ownership_escape", relationalBias),
     time: pen("future_deferral", emotionalRegulation),
-    authority: operationalBias,
-    truth: AIR,
+    authority: pen("authority_protection", operationalBias),
+    truth: pen("truth_naming", AIR),
     repair: pen("repair_avoidance", TII),
     conflict: pen("delegation_deflection", operationalBias),
-    integrity: TII,
-    visibility: relationalBias,
+    integrity: pen("integrity_compromise", TII),
+    visibility: pen("reputation_protection", relationalBias),
     accountability: pen("explanation_substitution", AIR),
     courage: emotionalRegulation,
-    control: operationalBias,
+    control: pen("self_protection", operationalBias),
     identity: TII,
   };
 
