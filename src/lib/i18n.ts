@@ -1801,8 +1801,7 @@ export type Messages = {
     leadershipLinkArena: string;
     leadershipLinkGrowth: string;
     leadershipCoreTrace: string;
-    leadershipArchetypeEyebrow: string;
-    leadershipArchetypeSubtext: string;
+    leadershipIdentityEyebrow: string;
     leadershipSystemNoteTitle: string;
     leadershipSystemNoteBodyDormant: string;
     leadershipSystemNoteBodyActive: string;
@@ -1873,12 +1872,21 @@ export type Messages = {
     expiredShort: string;
     completeByQrLink: string;
     dismiss: string;
-    /** AL-1.8-E full: secure link auto-commit visibility banners. */
-    validating: string;
-    validationSuccess: string;
-    validationFailed: string;
-    validationExpired: string;
-    validationUnauthenticated: string;
+  };
+  legal: {
+    accept: {
+      title: string;
+      placeholder_notice: string;
+      section_heading: string;
+      checkbox_label: string;
+      submit_button: string;
+      submitting: string;
+      error_required: string;
+      error_network: string;
+      error_server: string;
+      error_rate_limit: string;
+      success_message: string;
+    };
   };
 };
 
@@ -3457,8 +3465,7 @@ const ko: Messages = {
     leadershipLinkArena: "Arena로",
     leadershipLinkGrowth: "Growth 반성",
     leadershipCoreTrace: "코어 궤적",
-    leadershipArchetypeEyebrow: "리더십 아키타입",
-    leadershipArchetypeSubtext: "당신의 결정이 보여주는 리더십 패턴입니다.",
+    leadershipIdentityEyebrow: "리더십 아이덴티티",
     leadershipSystemNoteTitle: "시스템 노트",
     leadershipSystemNoteBodyDormant: "Arena 신호가 쌓이면 리더십 패턴이 형성됩니다.",
     leadershipSystemNoteBodyActive: "Arena 신호가 안정적인 리더십 패턴으로 누적되고 있습니다.",
@@ -3528,11 +3535,21 @@ const ko: Messages = {
     expiredShort: "만료됨",
     completeByQrLink: "아래 링크로 완료하세요 (복사해 사용할 수 있습니다).",
     dismiss: "닫기",
-    validating: "보안 링크 확인 중…",
-    validationSuccess: "행동 약속이 등록됐습니다.",
-    validationFailed: "확인에 실패했습니다. 다시 시도해 주세요.",
-    validationExpired: "보안 링크가 만료됐습니다. 새 링크를 요청해 주세요.",
-    validationUnauthenticated: "로그인이 필요합니다.",
+  },
+  legal: {
+    accept: {
+      title: "[KO_PENDING] Terms of Service & Privacy Policy",
+      placeholder_notice: "[KO_PENDING] Legal text under review.",
+      section_heading: "[KO_PENDING] Pending Legal Review",
+      checkbox_label: "[KO_PENDING] I acknowledge that I am reviewing a placeholder consent form.",
+      submit_button: "[KO_PENDING] Accept & Continue",
+      submitting: "[KO_PENDING] Saving...",
+      error_required: "[KO_PENDING] Please check the box to continue",
+      error_network: "[KO_PENDING] Connection error. Please try again.",
+      error_server: "[KO_PENDING] Something went wrong. Please try again.",
+      error_rate_limit: "[KO_PENDING] Too many attempts. Please wait a few minutes.",
+      success_message: "[KO_PENDING] Thank you. Redirecting...",
+    },
   },
 };
 
@@ -5114,8 +5131,7 @@ const en: Messages = {
     leadershipLinkArena: "Open Arena",
     leadershipLinkGrowth: "Growth reflection",
     leadershipCoreTrace: "Core trace",
-    leadershipArchetypeEyebrow: "LEADERSHIP ARCHETYPE",
-    leadershipArchetypeSubtext: "The pattern your decisions reveal.",
+    leadershipIdentityEyebrow: "Leadership Identity",
     leadershipSystemNoteTitle: "System Note",
     leadershipSystemNoteBodyDormant: "Arena signals will accumulate into a leadership pattern.",
     leadershipSystemNoteBodyActive: "Arena signals are accumulating into a stable leadership pattern.",
@@ -5186,11 +5202,23 @@ const en: Messages = {
     expiredShort: "expired",
     completeByQrLink: "Complete using the link below (copy as needed).",
     dismiss: "Close",
-    validating: "Verifying secure link…",
-    validationSuccess: "Action committed successfully.",
-    validationFailed: "Validation failed. Please try again.",
-    validationExpired: "Secure link expired. Request a new one.",
-    validationUnauthenticated: "Please log in to continue.",
+  },
+  legal: {
+    accept: {
+      title: "Terms of Service & Privacy Policy",
+      placeholder_notice:
+        "[PLACEHOLDER] The final legal text is being prepared by attorneys and will replace this notice before public launch. Internal cohort acceptance proceeds with this placeholder.",
+      section_heading: "Pending Legal Review",
+      checkbox_label:
+        "I acknowledge that I am reviewing a placeholder consent form. I agree to provide consent in good faith for internal testing, understanding that the final Terms of Service and Privacy Policy will be presented before public launch.",
+      submit_button: "Accept & Continue",
+      submitting: "Saving...",
+      error_required: "Please check the box to continue",
+      error_network: "Connection error. Please try again.",
+      error_server: "Something went wrong. Please try again.",
+      error_rate_limit: "Too many attempts. Please wait a few minutes.",
+      success_message: "Thank you. Redirecting...",
+    },
   },
 };
 

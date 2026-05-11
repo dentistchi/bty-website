@@ -19,6 +19,36 @@ const hasSupabase = Boolean(url && key);
 
 const LOCALES = ["en", "ko"] as const;
 
+/**
+ * AL-LAUNCH-D3 consent gate (placeholder infra):
+ * Block protected pages until `arena_profiles.consent_version` is set.
+ * Defensive API list — current matcher excludes /api/*, but listed for
+ * safety if matcher expands later.
+ */
+const CONSENT_BYPASS_PATHS = new Set<string>([
+  "/api/auth/login",
+  "/api/auth/register",
+  "/api/auth/send-reset-email",
+  "/api/auth/callback",
+  "/api/auth/after-login",
+  "/api/auth/session",
+  "/api/version",
+  "/api/debug",
+  "/api/legal/accept",
+]);
+
+const CONSENT_BYPASS_PATTERNS = [
+  /^\/(en|ko)\/legal\//,
+  /^\/_next\//,
+  /^\/favicon/,
+  /\.(png|jpe?g|gif|svg|ico|css|js|woff2?|webp)$/,
+];
+
+export function isConsentBypassed(pathname: string): boolean {
+  if (CONSENT_BYPASS_PATHS.has(pathname)) return true;
+  return CONSENT_BYPASS_PATTERNS.some((p) => p.test(pathname));
+}
+
 function getLocale(pathname: string): (typeof LOCALES)[number] | null {
   if (pathname.startsWith("/en") || pathname === "/en") return "en";
   if (pathname.startsWith("/ko") || pathname === "/ko") return "ko";
@@ -34,7 +64,6 @@ function isPublicPath(pathname: string) {
   const locale = getLocale(pathname);
   if (locale) {
     if (pathname === `/${locale}` || pathname === `/${locale}/`) return true;
-    if (pathname === `/${locale}/center` || pathname === `/${locale}/center/`) return true;
     /** Dear Me letter writer: auth handled by AuthGate in component. Never block at middleware. */
     if (pathname === `/${locale}/dear-me` || pathname === `/${locale}/dear-me/`) return true;
     /** Center 50-item assessment + results: must be reachable without Foundry login. */
@@ -52,12 +81,6 @@ function isPublicPath(pathname: string) {
     if (pathname === `/${locale}/auth/reset-password`) return true;
     if (pathname === `/${locale}/reset-password`) return true;
     if (pathname === `/${locale}/bty/logout`) return true;
-    /** Leaderboard: API serves public overall view when cookies missing (Workers/Edge). Page load must not force login. */
-    if (
-      pathname === `/${locale}/bty/leaderboard` ||
-      pathname.startsWith(`/${locale}/bty/leaderboard/`)
-    )
-      return true;
   }
 
   return false;
@@ -289,6 +312,25 @@ export async function middleware(req: NextRequest) {
         jump.headers.set("x-mw-user", "1");
         jump.headers.set("x-mw-onboarding", "done");
         return jump;
+      }
+    }
+
+    if (!isConsentBypassed(pathname)) {
+      const { data: prof } = await supabase
+        .from("arena_profiles")
+        .select("consent_version")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!prof?.consent_version) {
+        const acceptUrl = new URL(`/${locale}/legal/accept`, req.url);
+        acceptUrl.searchParams.set("return", pathname + req.nextUrl.search);
+        const redirect = NextResponse.redirect(acceptUrl, 307);
+        reassertAuthCookiesPathRoot(req, redirect);
+        redirect.headers.set("x-mw-hit", "1");
+        redirect.headers.set("x-mw-user", "1");
+        redirect.headers.set("x-mw-consent", "required");
+        return redirect;
       }
     }
 
