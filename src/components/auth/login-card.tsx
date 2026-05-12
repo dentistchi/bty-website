@@ -25,7 +25,7 @@ type LoginCardProps = {
 
 const C = {
   ko: {
-    headline: "BTY에 오신 것을 환영합니다",
+    headline: "bty에 오신 것을 환영합니다",
     sub:
       "치과 리더십·훈련을 위한 공간입니다. 아래 방법 중 하나로 계속하시면, 처음 오신 분은 자동으로 시작할 수 있어요.",
     accountHint:
@@ -56,7 +56,7 @@ const C = {
     cookieNote: "세션은 안전한 쿠키로 유지됩니다. 로그인 후 이동할 수 있습니다.",
   },
   en: {
-    headline: "Welcome to BTY",
+    headline: "Welcome to bty",
     sub:
       "A calm space for dental leadership and practice training. Pick an option below—if you’re new here, you can get started in the same step.",
     accountHint:
