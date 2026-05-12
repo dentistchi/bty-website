@@ -137,7 +137,7 @@ function createSupabaseState() {
       },
     ] as Row[],
     pendingOutcomes: [
-      { id: "po1", user_id: "u1", status: "pending", source_choice_history_id: "h1" },
+      { id: "po1", user_id: "u1", status: "pending", source_choice_history_id: "h1", reinforcement_loop: null },
     ] as Row[],
     choiceHistory: [{ id: "h1", user_id: "u1", scenario_id: "sc1" }] as Row[],
     leActivationLog: [] as Row[],
@@ -429,6 +429,7 @@ describe("canonical reward loop integration", () => {
       ...state.pendingOutcomes[0],
       status: "pending",
       validation_payload: null,
+      reinforcement_loop: null,
     };
 
     // 3b) unstable -> partial reward + follow-up scheduling
@@ -473,6 +474,7 @@ describe("canonical reward loop integration", () => {
       ...state.pendingOutcomes[0],
       status: "pending",
       validation_payload: null,
+      reinforcement_loop: null,
     };
 
     // 3c) no_change -> follow-up + weekly +1 / core +0
