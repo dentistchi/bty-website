@@ -65,7 +65,7 @@ type BindingScenarioLib = {
     hiddenDelta?: Record<string, unknown>;
   }>;
   escalationBranches?: Record<string, {
-    second_choices?: Array<{ id: string; dbChoiceId?: string; pattern_family?: string; direction?: "entry" | "exit" }>;
+    second_choices?: Array<{ id: string; dbChoiceId?: string; pattern_family?: string; direction?: "entry" | "exit"; axis?: string }>;
     action_decision?: {
       choices: Array<{ id: string; dbChoiceId?: string; meaning?: { is_action_commitment?: boolean } }>;
     };
@@ -500,6 +500,7 @@ export async function POST(req: NextRequest) {
   let tradeoffLeadsToActionDecision = false;
   let tradeoffDirection: string | undefined;
   let tradeoffPatternFamily: string | undefined;
+  let tradeoffAxis: string | undefined;
 
   if (binding_phase === "tradeoff") {
     const branchKeyRaw =
@@ -543,6 +544,7 @@ export async function POST(req: NextRequest) {
     }
     tradeoffDirection = picked.direction;
     tradeoffPatternFamily = picked.pattern_family;
+    tradeoffAxis = typeof picked.axis === "string" && picked.axis.trim() !== "" ? picked.axis.trim() : undefined;
     if (!tradeoffDirection) {
       console.warn("[choice][tradeoff] direction undefined", { json_choice_id, branchKey });
     }
@@ -772,7 +774,11 @@ export async function POST(req: NextRequest) {
       json_choice_id,
       db_choice_id,
       ...(binding_phase === "tradeoff" && tradeoffDirection
-        ? { direction: tradeoffDirection, pattern_family: tradeoffPatternFamily }
+        ? {
+            direction: tradeoffDirection,
+            pattern_family: tradeoffPatternFamily,
+            ...(tradeoffAxis ? { axis: tradeoffAxis } : {}),
+          }
         : {}),
       ...(binding_phase === "action_decision" && actionDecisionOutcome
         ? { action_decision_outcome: actionDecisionOutcome }
