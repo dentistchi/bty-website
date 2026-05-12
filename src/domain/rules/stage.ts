@@ -22,6 +22,21 @@ export function stageNumberFromCoreXp(coreXp: number): number {
   return Math.min(STAGE_NUMBER_MAX, Math.floor(safe / CORE_XP_PER_STAGE_STEP) + 1);
 }
 
+export type BtyStageEntry = { stageNumber: number; label: string };
+
+/**
+ * Stage number + label from Core XP using tier-based mapping (1000 XP per code).
+ * Aligns with `/api/arena/core-xp` codeName (CODE_NAMES[codeIndexFromTier(tierFromCoreXp(coreXp))])
+ * so dashboard and my-page show the same code identity.
+ */
+export function btyStageFromCoreXp(coreXp: number): BtyStageEntry {
+  const tier = tierFromCoreXp(coreXp);
+  const codeIndex = codeIndexFromTier(tier);
+  const stageNumber = codeIndex + 1;
+  const codeName = codeNameFromIndex(codeIndex);
+  return { stageNumber, label: `STAGE ${stageNumber}: ${codeName}` };
+}
+
 /** Default sub name for code and sub-tier; null for CODELESS ZONE. */
 export function defaultSubName(codeIndex: CodeIndex, subTierGroup: SubTierGroup): string | null {
   const row = SUB_NAMES[codeIndex];
