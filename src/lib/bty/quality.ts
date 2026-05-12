@@ -2,6 +2,7 @@
  * Send quality events from bty-app (chat/mentor) to bty-ai-core for Admin Quality dashboard.
  * Fire-and-forget; failures are logged but do not affect the user response.
  */
+import { getLlmModel } from "@/lib/bty/llm/client";
 
 const BTY_AI_URL = process.env.NEXT_PUBLIC_BTY_AI_URL || "";
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
@@ -56,7 +57,7 @@ export function recordQualityEventApp(payload: RecordQualityPayload): void {
     issues,
     severity,
     route: "app" as const,
-    model_version: "gpt-4o-mini",
+    model_version: getLlmModel(),
   };
 
   fetch(`${BTY_AI_URL}/api/quality/event`, {
