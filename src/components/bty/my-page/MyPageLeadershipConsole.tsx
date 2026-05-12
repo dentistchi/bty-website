@@ -66,10 +66,6 @@ export function MyPageLeadershipConsole({
   const [secureLinkUrl, setSecureLinkUrl] = useState<string | null>(null);
   const [showPostCompletion, setShowPostCompletion] = useState(false);
   const [completionNarrativeState, setCompletionNarrativeState] = useState<string | null>(null);
-  /** AL-1.8-E full: secure link auto-commit visibility — banner state machine. */
-  const [validationStatus, setValidationStatus] = useState<
-    "idle" | "pending" | "success" | "error" | "expired" | "unauthenticated"
-  >("idle");
   const lastSyncAtRef = useRef(0);
 
   useEffect(() => {
@@ -230,7 +226,6 @@ export function MyPageLeadershipConsole({
     if (arenaActionLoopParam !== "commit" || !aaloParam) return;
 
     const validate = async () => {
-      setValidationStatus("pending");
       try {
         const res = await fetch("/api/arena/leadership-engine/qr/validate", {
           method: "POST",
@@ -242,15 +237,7 @@ export function MyPageLeadershipConsole({
         });
 
         if (!res.ok) {
-          const bodyText = await res.text();
-          console.warn("[QR validate] non-OK", res.status, bodyText);
-          if (res.status === 401) {
-            setValidationStatus("unauthenticated");
-          } else if (res.status === 422) {
-            setValidationStatus("expired");
-          } else {
-            setValidationStatus("error");
-          }
+          console.error("[QR validate] failed", res.status, await res.text());
           return;
         }
 
@@ -261,7 +248,6 @@ export function MyPageLeadershipConsole({
         };
 
         if (data.ok || data.success) {
-          setValidationStatus("success");
           dispatchBtyActionContractUpdated();
           setShowPostCompletion(true);
           if (data.narrativeState) {
@@ -278,13 +264,9 @@ export function MyPageLeadershipConsole({
             url.searchParams.delete("aalo");
             window.history.replaceState({}, "", url.toString());
           }
-        } else {
-          // 200 but ok/success absent — treat as soft error (token recognized but commit refused).
-          setValidationStatus("error");
         }
       } catch (err) {
-        console.warn("[QR validate] error", err);
-        setValidationStatus("error");
+        console.error("[QR validate] error", err);
       }
     };
 
@@ -435,47 +417,31 @@ export function MyPageLeadershipConsole({
         />
       )}
 
-      {/* AL-1.8-E full: secure link auto-commit visibility banner. Inline + persistent (success는 modal에 추가) */}
-      {validationStatus !== "idle" && (
-        <div
-          data-testid="action-loop-validation-banner"
-          data-status={validationStatus}
-          role={validationStatus === "error" || validationStatus === "expired" || validationStatus === "unauthenticated" ? "alert" : "status"}
-          aria-live="polite"
-          className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium ${
-            validationStatus === "pending"
-              ? "border-gray-300 bg-gray-50 text-gray-700 dark:border-white/15 dark:bg-white/[0.04] dark:text-white/75"
-              : validationStatus === "success"
-                ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-200"
-                : validationStatus === "expired"
-                  ? "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-200"
-                  : "border-red-300 bg-red-50 text-red-800 dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-200"
-          }`}
-        >
-          {validationStatus === "pending" ? (
-            <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
-          ) : null}
-          <span className="flex-1">
-            {validationStatus === "pending" && tAction.validating}
-            {validationStatus === "success" && tAction.validationSuccess}
-            {validationStatus === "expired" && tAction.validationExpired}
-            {validationStatus === "unauthenticated" && tAction.validationUnauthenticated}
-            {validationStatus === "error" && tAction.validationFailed}
-          </span>
-          {validationStatus !== "pending" ? (
-            <button
-              type="button"
-              onClick={() => setValidationStatus("idle")}
-              className="text-xs font-medium opacity-70 hover:opacity-100"
-              aria-label={tAction.dismiss}
-            >
-              ✕
-            </button>
-          ) : null}
+      {!isLoading && (
+        <PatternSignaturePanel
+          locale={locale}
+          rows={serverPack?.pattern_signatures}
+          title={t.patternSignatureConsoleTitle}
+          lead={t.patternSignatureConsoleLead}
+          empty={t.patternSignatureConsoleEmpty}
+          regionAria={t.patternSignatureConsoleAria}
+        />
+      )}
+
+      {secureLinkUrl && (
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          <p className="mb-2 text-xs text-white/50">{tAction.completeByQrLink}</p>
+          <p className="select-all break-all text-xs text-cyan-600 dark:text-cyan-300/70">{secureLinkUrl}</p>
         </div>
       )}
 
-      {/* QR Panel — Action Contract Hub 버튼 클릭 결과를 바로 표시 (visual proximity to trigger). */}
+      <PostCompletionSheet
+        open={showPostCompletion}
+        onClose={() => setShowPostCompletion(false)}
+        locale={locale}
+        narrative={completionNarrativeState}
+      />
+
       {qrPanelOpen && qrUrl && (
         <div className="flex flex-col items-center gap-4 rounded-xl border border-gray-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.05]">
           <QRCodeSVG
@@ -495,44 +461,11 @@ export function MyPageLeadershipConsole({
           <button
             type="button"
             onClick={() => setQrPanelOpen(false)}
-            className="text-xs text-gray-500 hover:text-gray-800 dark:text-white/40 dark:hover:text-white/70"
+            className="text-xs text-white/40 hover:text-white/70"
           >
             {tAction.dismiss}
           </button>
         </div>
-      )}
-
-      {/* Secure link URL — Action Contract Hub 버튼 클릭 결과를 바로 표시 (visual proximity to trigger). */}
-      {secureLinkUrl && (
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-white/10 dark:bg-white/[0.03]">
-          <p className="mb-2 text-xs text-gray-600 dark:text-white/50">{tAction.completeByQrLink}</p>
-          <a
-            href={secureLinkUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="select-all break-all text-xs text-cyan-700 underline underline-offset-2 hover:text-cyan-900 dark:text-cyan-300/70 dark:hover:text-cyan-200"
-          >
-            {secureLinkUrl}
-          </a>
-        </div>
-      )}
-
-      <PostCompletionSheet
-        open={showPostCompletion}
-        onClose={() => setShowPostCompletion(false)}
-        locale={locale}
-        narrative={completionNarrativeState}
-      />
-
-      {!isLoading && (
-        <PatternSignaturePanel
-          locale={locale}
-          rows={serverPack?.pattern_signatures}
-          title={t.patternSignatureConsoleTitle}
-          lead={t.patternSignatureConsoleLead}
-          empty={t.patternSignatureConsoleEmpty}
-          regionAria={t.patternSignatureConsoleAria}
-        />
       )}
 
       <MyPageLeadershipScreen
