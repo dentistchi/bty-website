@@ -38,7 +38,7 @@ export function getBtyNavItems(
 export function getActiveBtyNav(pathname: string, locale: string, arenaEntryHref: string): BtyNavKey {
   const p = pathname || "";
   if (p.includes("/my-page")) return "my-page";
-  if (p.includes("/center") || p.includes("/dear-me") || p.includes("/assessment") || p.includes("/journal")) {
+  if (p.includes("/center") || p.includes("/assessment") || p.includes("/journal")) {
     return "center";
   }
   if (pathnameMatchesArenaEntryHref(p, arenaEntryHref)) return "arena";

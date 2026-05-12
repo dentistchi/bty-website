@@ -137,7 +137,7 @@ export default function ArenaShellLayout({ locale, className }: ArenaShellLayout
           <h1 className="m-0 text-lg font-semibold text-[var(--arena-text)]">{title}</h1>
           <p className="mt-2 text-sm leading-relaxed">{body}</p>
           <Link
-            href={`/${locale}/dear-me`}
+            href={`/${locale}/center`}
             className="mt-4 inline-flex rounded-lg border border-[var(--arena-accent)]/40 bg-[var(--arena-accent)]/15 px-4 py-2.5 text-sm font-semibold text-[var(--arena-accent)]"
           >
             {cta}
