@@ -96,7 +96,7 @@ function DearMeCard({
           {isKo ? "나에게 쓰는 편지" : "Dear Me"}
         </div>
         <Link
-          href={`/${locale}/dear-me`}
+          href={`/${locale}/center`}
           className="text-xs font-medium text-dear-sage hover:text-dear-charcoal transition-colors rounded-lg border border-dear-sage/30 bg-dear-sage/5 px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dear-sage"
           aria-label={isKo ? "편지 쓰기" : "Write a letter"}
         >
@@ -170,7 +170,7 @@ function ResilienceCard({ entries, locale, isKo }: { entries: ResilienceEntry[];
           {isKo ? "에너지 기록" : "Energy log"}
         </div>
         <Link
-          href={`/${locale}/dear-me`}
+          href={`/${locale}/center`}
           className="text-xs font-medium text-dear-sage hover:text-dear-charcoal transition-colors rounded-lg border border-dear-sage/30 bg-dear-sage/5 px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dear-sage"
           aria-label={isKo ? "편지 쓰기" : "Write a letter"}
         >
