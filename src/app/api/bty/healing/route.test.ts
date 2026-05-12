@@ -25,10 +25,6 @@ function supabaseActs(rows: { act_id: number }[]) {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
     order: vi.fn().mockResolvedValue({ data: rows, error: null }),
-    maybeSingle: vi.fn().mockResolvedValue({
-      data: { second_awakening_completed_at: "2026-01-01T00:00:00Z" },
-      error: null,
-    }),
   };
   return { from: vi.fn(() => chain) };
 }

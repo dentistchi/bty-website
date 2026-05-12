@@ -22,7 +22,6 @@ function supabaseActsEmpty() {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
     order: vi.fn().mockResolvedValue({ data: [], error: null }),
-    maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
   };
   return { from: vi.fn(() => chain) };
 }
