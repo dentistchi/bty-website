@@ -1,9 +1,9 @@
-import BtyArenaRunPageClient from "./BtyArenaRunPageClient";
+import ArenaEntryClient from "./ArenaEntryClient";
 
-/**
- * Canonical Arena route: `useArenaSession` + `POST /api/arena/run` + session router
- * (`/api/arena/session/next` when `ARENA_PIPELINE_DEFAULT=legacy`, `/api/arena/n/session` when `new`).
- */
-export default function BtyArenaPage() {
-  return <BtyArenaRunPageClient pipelineDefault="new" />;
+/** Arena landing: mode select (Full Arena 7-step / Quick Decision). */
+type Props = { params: Promise<{ locale: string }> };
+
+export default async function BtyArenaPage({ params }: Props) {
+  const { locale } = await params;
+  return <ArenaEntryClient locale={locale} />;
 }
