@@ -120,6 +120,7 @@ export function AvatarComposite({
     overflow: "hidden",
     position: "relative",
     flexShrink: 0,
+    backgroundColor: "#f5f5f5",
   };
   const layerStyle: React.CSSProperties = {
     position: "absolute",
