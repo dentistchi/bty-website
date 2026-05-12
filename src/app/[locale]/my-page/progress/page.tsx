@@ -1,6 +1,7 @@
 import ScreenShell from "@/components/bty/layout/ScreenShell";
 import { BtyMyPageTabs } from "@/components/bty/navigation/BtyMyPageTabs";
 import { DashboardBackLink } from "@/components/bty/navigation/DashboardBackLink";
+import { ProgressXpPanel } from "@/components/bty/my-page/ProgressXpPanel";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
@@ -24,44 +25,9 @@ export default async function Page({ params }: Props) {
         <BtyMyPageTabs locale={locale} />
       </div>
 
-      <div data-testid="my-page-progress-screen" className="space-y-4">
-        <div data-testid="my-page-core-xp" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-[#1E2A38]">{m.coreXp}</p>
-          <div className="mt-3 flex items-center justify-between text-sm">
-            <span className="text-[#667085]">{m.coreXp}</span>
-            <span className="font-semibold tabular-nums text-[#1E2A38]">320</span>
-          </div>
-          <div className="mt-3 border-t border-[#EEE7DA] pt-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-[#667085]">
-              {m.myPageProgressMovement}
-            </p>
-            <p className="mt-1 text-sm font-semibold text-[#1E2A38]">{m.progressStage}</p>
-          </div>
-        </div>
+      <ProgressXpPanel locale={loc} />
 
-        <div data-testid="my-page-weekly-xp" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-[#1E2A38]">{m.weeklyXp}</p>
-          <div className="mt-3 flex items-center justify-between text-sm">
-            <span className="text-[#667085]">{m.weeklyXp}</span>
-            <span className="font-semibold tabular-nums text-[#1E2A38]">140</span>
-          </div>
-        </div>
-
-        <div data-testid="my-page-streak" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-[#1E2A38]">{m.streak}</p>
-          <div className="mt-3 flex items-center justify-between text-sm">
-            <span className="text-[#667085]">{m.streak}</span>
-            <span className="font-semibold text-[#1E2A38]">{m.progressStreakVal}</span>
-          </div>
-        </div>
-
-        <div data-testid="my-page-system-note" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-[#1E2A38]">{m.systemMsg}</p>
-          <p className="mt-2 text-sm leading-6 text-[#667085]">{m.progressSystemLine}</p>
-        </div>
-
-        <p className="px-1 text-xs leading-relaxed text-[#98A2B3]">{m.progressFootnote}</p>
-      </div>
+      <p className="px-1 text-xs leading-relaxed text-[#98A2B3]">{m.progressFootnote}</p>
     </ScreenShell>
   );
 }
