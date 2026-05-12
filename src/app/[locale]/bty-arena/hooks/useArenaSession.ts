@@ -1300,24 +1300,32 @@ const eb =
       setSystemMessage(msg);
       /** Canonical JSON runtime must not call legacy `/api/arena/run/step`. */
       const useLegacyRunStepApi = current.eliteSetup && !isCanonicalJsonRuntimeScenario(current);
-      void useLegacyRunStepApi; // step 3 API call deferred to acknowledgeEscalation
-      /** Elite: show escalation text as step 3 before advancing to forced tradeoff (step 4). */
+      /** Elite/legacy: POST step 3 immediately, then step 4 UI (no separate escalation screen). */
       if (current.eliteSetup) {
         try {
+          if (useLegacyRunStepApi) {
+            await arenaFetch("/api/arena/run/step", {
+              json: {
+                runId: rid,
+                step: 3,
+                primaryChoiceId: choiceIdRaw,
+              },
+            });
+          }
           setBindingRuntimeSnapshot(null);
-          setStep(3);
-          setPhase("ESCALATION");
+          setStep(4);
+          setPhase("FORCED_TRADEOFF");
           persist({
-            phase: "ESCALATION",
-            step: 3,
+            phase: "FORCED_TRADEOFF",
+            step: 4,
             lastXp: xp,
             lastSystemMessage: msg.id,
           });
-          console.info("[arena][elite-escalation-enter]", {
+          console.info("[arena][elite-forced-tradeoff-enter]", {
             source: "primary-confirm",
             scenarioId: current.scenarioId,
-            step: 3,
-            phase: "ESCALATION",
+            step: 4,
+            phase: "FORCED_TRADEOFF",
             primaryChoiceId: choiceIdRaw,
           });
           const br =
