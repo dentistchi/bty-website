@@ -21,6 +21,7 @@ import { getPromotionReadiness, type PromotionReadiness } from "@/engine/integri
 import { getScenarioStats, type ScenarioStats } from "@/engine/scenario/scenario-stats.service";
 import type { ScenarioLocalePreference } from "@/engine/scenario/scenario-selector.service";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { fetchRecentServedScenarioIds } from "@/lib/bty/arena/fetchRecentServedScenarioIds";
 
 export type FoundryExitReadyPayload = {
   event: "foundry_exit_ready";
@@ -153,8 +154,10 @@ export async function handleFoundryCompletion(
   const programRow = admin ? await fetchProgramRow(programId, admin) : null;
   const preferFlag = preferFlagTypeFromProgram(programRow);
 
+  const servedIds = admin ? await fetchRecentServedScenarioIds(admin, userId) : [];
   const nextScenarioRoute = await getNextScenarioForSession(userId, locale, {
     foundry_return: true,
+    servedArenaScenarioIds: servedIds,
     ...(preferFlag ? { preferFlagType: preferFlag } : {}),
   });
 

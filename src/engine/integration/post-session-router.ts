@@ -12,6 +12,7 @@ import { getAIRTrend } from "@/engine/integrity/air-trend.service";
 import { getRecommendations, type ProgramRecommendation } from "@/engine/foundry/program-recommender.service";
 import { getNextScenarioForSession } from "@/engine/integration/scenario-type-router";
 import { type ScenarioLocalePreference } from "@/engine/scenario/scenario-selector.service";
+import { fetchRecentServedScenarioIds } from "@/lib/bty/arena/fetchRecentServedScenarioIds";
 
 /** DB / catalog `flag_type` for integrity-slip recovery scenarios. */
 export const POST_SESSION_INTEGRITY_SLIP_FLAG = "INTEGRITY_SLIP" as const;
@@ -81,9 +82,11 @@ export async function routePostSession(
     const negativeAir = outcome.airDelta < 0;
     recoveryBiasApplied = negativeAir;
 
+    const servedIds = await fetchRecentServedScenarioIds(client, userId);
     const routed = await getNextScenarioForSession(userId, outcome.locale, {
       preferFlagType: negativeAir ? POST_SESSION_INTEGRITY_SLIP_FLAG : undefined,
       forceDifficultyTier: airTrendWarningActive ? 1 : undefined,
+      servedArenaScenarioIds: servedIds,
     });
     nextScenario = routed?.scenario ?? null;
   }
