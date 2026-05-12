@@ -1,0 +1,393 @@
+# VRS-1 — Visual Refresh Sprint #1
+
+**Status**: PLANNED (Phase 0 decisions locked, Stage A dispatch pending)
+**Started**: 2026-05-11
+**Target close**: TBD (estimated 4-6 weeks)
+**Sprint head author**: Hanbit (Commander) with C1 (Anthropic conversational memory)
+**Supersedes**: cream / foundry-purple token system
+**Preserves**: AL-2-D-P1 V=1 freeze + worker e9e179ed (runtime invariant)
+
+---
+
+## 0. Sprint Definition
+
+**What this sprint is**:
+A deliberate, full visual refresh of the BTY product. The 5 prototype screens (Lobby / Play / Resolve / Foundry Home / Center Home) become the **official BTY design system**. cream / foundry-purple are deprecated and removed.
+
+**What this sprint is NOT**:
+- NOT a runtime change. AL-2-D-P1 freeze and worker e9e179ed are preserved.
+- NOT a feature addition. No new product capabilities.
+- NOT a behavioral change. Same 7-step canonical, same scenario flow, same hidden stats logic.
+
+**Why now**:
+Decision 2026-05-11: cream + foundry-purple were placeholder tones. The 5 prototypes built through claude.ai/design represent BTY's actual design intent. Product identity stalled while two design systems coexist; this sprint resolves it.
+
+---
+
+## 1. Phase 0 — Locked Decisions
+
+| # | Decision | Locked answer | Implication |
+|---|---|---|---|
+| 1 | `arena/` vs `bty-arena/` canonical | **`bty-arena/` canonical**, `arena/` → `bty-arena/` migration | ~30-50 import path changes, see Stage B' |
+| 2 | Play/Resolve screen duplication | **`bty-arena/ArenaMissionPlayScreen.tsx` canonical**, features = thin wrapper | `data-testid="arena-play-main"` explicit preservation |
+| 3 | Center route location | **`[locale]/center/` only**, `dear-me/` deleted immediately | A1 work, ~5-10 files |
+| 4 | cyan-teal: new tokens vs full replacement | **Full replacement** of cream/foundry-purple with prototype tone system | Stage B + D, all cream-using screens visually change |
+
+**Decision 4 method** (Hanbit clarification 2026-05-11):
+cream/foundry-purple sources are NOT inventoried. Instead, Tailwind config + globals.css drop these tokens in Stage B. Build/typescript errors then auto-surface all usage sites. Stage D walks the error list and applies cyan-teal tone screen by screen. No separate inventory step.
+
+---
+
+## 2. Sprint Structure (7 Stages)
+
+```
+A   →   B   →   B'  →   C   →   D   →   D-cutover   →   E
+```
+
+| Stage | Focus | Risk | Est |
+|---|---|---|---|
+| **A** | Pre-flight cleanup (dear-me delete + Play/Resolve dedup) | Low | 1-2 days |
+| **B** | New token system (cyan + warm + amber), cream/purple deleted | Medium | 2-3 days |
+| **B'** | bty-arena directory migration (#1) | Medium | 2-3 days |
+| **C** | 5 prototype integration (Lobby/Play/Resolve/Foundry/Center) | Medium-High | 1-2 weeks |
+| **D** | Build-error-driven cream replacement (compile-driven walk) | Medium | 1-2 weeks |
+| **D-cutover** | Production cutover (big bang) + Tailwind cleanup | High | 1-2 days |
+| **E** | E2E + Chromatic visual regression | Low | 2-3 days |
+
+**Total estimate**: 4-6 weeks single-commander pace.
+
+---
+
+## 3. Stage Details
+
+### Stage A — Pre-flight cleanup
+
+**A1. Delete `dear-me/` route**
+- Remove `bty-app/src/app/[locale]/dear-me/` entirely
+- Remove all imports/links referencing `dear-me`
+- Add temporary middleware redirect `/dear-me → /center` (optional, for external link safety)
+- Update or delete `docs/DOJO_DEAR_ME_*.md` (rename to CENTER_* or remove if superseded)
+- **Verification**: `grep -r "dear-me" bty-app/src/` returns 0 matches
+
+**A2. Play/Resolve dedup**
+- Declare `src/components/bty-arena/ArenaMissionPlayScreen.tsx` as canonical Play screen
+- Reduce `src/features/arena/play/page.tsx` to a thin wrapper (data fetch + `<ArenaMissionPlayScreen />`)
+- Explicitly preserve `<div data-testid="arena-play-main">` inside ArenaMissionPlayScreen
+- Same pattern for Resolve if `ArenaResolveScreen.tsx` already canonical
+- **Verification**: e2e `bty-loop` project passes (`arena-enter` → `primary-A` → `reinforce-X` → `resolve-decision` chain intact)
+
+**Closure criteria for Stage A**:
+- `grep -r "dear-me" bty-app/src/` = 0
+- `npm run build` passes
+- e2e `bty-loop` passes
+- No new files outside `src/app/[locale]/center/` or `src/features/arena/`
+
+---
+
+### Stage B — Token system definition
+
+**B-1. Update `tailwind.config.ts`**
+Drop:
+```ts
+cream: '...',
+'foundry-purple': '...',
+// any other cream/purple-family tokens
+```
+Add the 5-screen prototype tokens (locked names below).
+
+**B-2. Update `bty-app/src/app/globals.css`**
+Drop cream/foundry-purple CSS variables.
+Add the prototype token system:
+
+```css
+:root {
+  /* Base tokens — shared across Arena + Foundry + Center */
+  --bg-0: #04070f;
+  --bg-1: #070b18;
+  --bg-2: #0b1124;
+  --bg-3: #101a36;
+  --line:   rgba(160, 185, 230, 0.08);
+  --line-2: rgba(160, 185, 230, 0.14);
+  --line-3: rgba(160, 185, 230, 0.22);
+  --ink-0: #eef2fb;
+  --ink-1: #c4ccdd;
+  --ink-2: #8b95ad;
+  --ink-3: #5b6585;
+  --ink-4: #3d4663;
+
+  /* Arena world — cyan signal */
+  --cyan:      #67d7d0;
+  --cyan-soft: #8ee6df;
+  --cyan-dim:  rgba(103, 215, 208, 0.55);
+  --cyan-fog:  rgba(103, 215, 208, 0.10);
+
+  /* Foundry hazard signal — amber */
+  --amber:     #c9a36a;
+  --amber-dim: rgba(201, 163, 106, 0.6);
+
+  /* Center sub-theme — warm */
+  --warm:       #d4a574;
+  --warm-soft:  #e8c9a3;
+  --warm-dim:   rgba(212, 165, 116, 0.5);
+  --warm-fog:   rgba(212, 165, 116, 0.08);
+  --warm-mist:  rgba(212, 165, 116, 0.12);
+
+  /* Center motion */
+  --motion-slow: 600ms;
+  --motion-glow: 6s;
+}
+```
+
+**B-3. Add font imports** to root layout or globals.css:
+- Space Grotesk (400, 500, 600) — Arena display
+- Inter (300, 400, 500, 600) — body
+- JetBrains Mono (400, 500) — uppercase tracked labels
+- EB Garamond (400, 500, italic 400) — Center display
+
+**Expected outcome**: `npm run build` **fails** with TypeScript/Tailwind errors at every cream/foundry-purple usage site. This is the inventory mechanism (per Phase 0 #4 method).
+
+**B-4. Capture error list**
+Run `npm run build 2>&1 | tee tmp/cream_usage_sites.txt`
+This file becomes Stage D's work queue.
+
+**Closure criteria for Stage B**:
+- Tailwind config has new tokens, lacks cream/purple
+- globals.css has new CSS variables
+- Font imports added
+- `tmp/cream_usage_sites.txt` exists with build error list
+- **Build is intentionally broken at this point** — this is expected, not a regression
+
+---
+
+### Stage B' — bty-arena directory migration
+
+**B'-1. Move directory contents**
+```bash
+git mv src/components/arena/* src/components/bty-arena/
+rmdir src/components/arena
+```
+
+**B'-2. Replace all imports**
+Find: `from "@/components/arena/`
+Replace: `from "@/components/bty-arena/`
+
+**B'-3. Remove re-export stubs**
+Any file in `bty-arena/` that was a simple re-export is now the real file. Delete duplicate stub files.
+
+**B'-4. Verify with build error count**
+Build errors should be approximately equal to Stage B's count (B's errors persist, no new ones from B').
+
+**Closure criteria for Stage B'**:
+- `src/components/arena/` does not exist
+- `grep -rn "components/arena/" bty-app/src/` returns 0 matches
+- Build error count unchanged from end of Stage B
+
+---
+
+### Stage C — 5 prototype integration
+
+This is the largest stage. Split into 5 sub-stages, one per screen.
+
+**C-1. Lobby (`/[locale]/bty-arena/page.tsx`)**
+- Inline JSX from prototype HTML → `src/components/bty-arena/ArenaLobbyScreen.tsx`
+- Extract sub-components: ArenaHeroCard (reuse existing), ActiveScenarioCard, ReflectionPromptCard, StatusCapsule, AmbientFooter, ArenaWordmark
+- Extend ArenaTopBar props: `state?: "STANDBY" | "LIVE" | "REVIEW" | "SAFE"`
+- Wire to existing data sources (no API changes)
+- Preserve test ids: `arena-enter`, `arena-resume`, `arena-lobby-screen`
+
+**C-2. Play (`/[locale]/bty-arena/play/page.tsx`)**
+- Update `ArenaMissionPlayScreen.tsx` to prototype design
+- Sub-components: VisualPanel/ArenaSceneCanvas, DecisionPanel, PrimaryCard (with `primary-A/B/C` test ids), ReinforcementCard (`reinforce-X/Y`), HiddenStatRow (reuse existing)
+- Preserve `data-testid="arena-play-main"`
+
+**C-3. Resolve (`/[locale]/bty-arena/play/resolve/page.tsx`)**
+- Update `ArenaResolveScreen.tsx` to prototype design
+- Reuse existing: SealedDecisionCard, SystemInterpretation (extract from inline JSX), HiddenStatAftermath, OutcomeVisualPanel
+- New: ResolveActions extraction
+- Preserve test ids: `resolve-decision`, `review-reflection`, `continue-arena`, `return-arena`, `arena-resolve-screen`
+
+**C-4. Foundry Home (`/[locale]/bty/page.tsx` or `/foundry/page.tsx`)**
+- Route location **TBD** — confirm with Hanbit before C-4 dispatch
+- 7 new components: FoundryHeader, PatternRadar, TrendStream, StatsDirection, DecisionReplayStrip, InsightCardsPreview, QuietCenterSuggestion
+- Location: `src/components/foundry/`
+- Wire to existing `GET /api/trends`, `GET /api/insights`, `POST /api/trigger/center`
+
+**C-5. Center Home (`/[locale]/center/page.tsx`)**
+- 3 new components: CenterBreathCircle, CenterWelcomeBreath, CenterDoor
+- Reuse existing: CenterSafeMirror, ResilienceGraph, center_letters table integration
+- Location: `src/components/center/`
+- Wire to existing `POST /api/center/letter`, `GET /api/center/resilience`
+
+**Closure criteria for Stage C**:
+- All 5 prototype screens render in product
+- Each screen passes its prototype audit (token alignment, color purity, state markers, anti-patterns)
+- e2e `bty-loop` still passes
+- Build error count: only cream/purple-related errors remain (Stage D queue)
+
+---
+
+### Stage D — Build-error-driven cream replacement
+
+Walk `tmp/cream_usage_sites.txt` from Stage B. For each error site:
+1. Identify the screen (e.g., My Page, Settings, Auth, Onboarding)
+2. Apply cyan-teal tone using the same token system
+3. Decide per-screen which sub-theme (Arena cyan, Foundry, or Center warm) fits the screen's purpose
+4. Verify build error reduces by 1+
+
+This stage finishes when `npm run build` succeeds with no cream/purple references anywhere.
+
+**Decision rule for tone assignment**:
+- Identity / decision-making / action screens → Arena cyan
+- Analysis / pattern / progression screens → Foundry cyan (same base, may add amber for hazard signals)
+- Recovery / reflection / letter screens → Center warm
+- Auth / settings / generic chrome → Arena cyan (neutral default)
+
+**Closure criteria for Stage D**:
+- `npm run build` exits 0
+- `grep -rn "cream\|foundry-purple\|bg-cream\|text-cream" bty-app/src/` = 0
+- `tmp/cream_usage_sites.txt` deleted (no longer needed)
+
+---
+
+### Stage D-cutover — Production big bang
+
+**Pre-cutover checklist**:
+1. All Stage A-D closed
+2. e2e `bty-loop` passes locally
+3. `.env.local` dev-only vars commented (per memory #3)
+4. `git status` reviewed for dirty tree (per memory #10)
+5. Active worker URL confirmed: `bty-arena-staging.ywamer2022.workers.dev`
+
+**Cutover sequence**:
+1. `npm run cf:build` (verify production bundle builds)
+2. `npm run deploy` (deploys to bty-arena-staging worker)
+3. Record Version ID from deploy output (per memory #11)
+4. `git log HEAD` capture
+5. Smoke test in production: Arena flow + Center flow + Foundry flow
+6. Update Lock 4 active baseline if needed
+
+**Rollback plan**:
+If smoke test fails: `wrangler rollback` to previous Version ID. cream/purple system can be restored from git history at Stage A's HEAD commit.
+
+---
+
+### Stage E — Validation
+
+**E-1. E2E regression**
+- Run full `e2e/bty/**` suite
+- Required green: arena flow, growth flow, full loop spec
+
+**E-2. Chromatic visual regression**
+- New baseline captured (cyan-teal era)
+- All prior cream-era baselines deprecated
+
+**E-3. Sprint closure report**
+Posted to outer repo at `docs/CURRENT_TASK.md` and `docs/CURSOR_TASK_BOARD.md`.
+
+**Closure criteria for VRS-1**:
+- All 7 stages closed
+- E2E green
+- Production worker shows cyan-teal design system
+- AL-2-D-P1 freeze preserved (Lock 4 baseline QUIETFLAME unchanged)
+- Memory updated with VRS-1 closure entry
+
+---
+
+## 4. Guards (apply to every dispatch in this sprint)
+
+**G1 — Runtime invariant**
+Touched files must NOT include: `src/data/scenario/`, `src/lib/bty/runtime/`, `src/app/api/arena/runtime/`, `wrangler.toml`. Any change to these breaks AL-2-D-P1 freeze and requires explicit override.
+
+**G2 — Memory hot files**
+Do NOT touch unless explicitly scoped: `src/lib/llm.ts`, `getMyPageIdentityState.ts`, `next-env.mjs`. Per memory items #3, #10, #30.
+
+**G3 — Test id preservation**
+Every component touched by Stage C MUST preserve its test ids. New components MAY add test ids but must not remove existing ones. List per memory #10 codebase verification.
+
+**G4 — Inventory-first**
+No spec, dispatch, or commit without inventory step. Per memory items #8, #15, #20. Minimum signals required: (a) memory/spec, (b) code/runtime refs, (c) actual serving/data path.
+
+**G5 — Single-signal verification ban**
+For any deploy state question: 3 cross-signals required (Version ID + git log HEAD + actual code execution). Per memory #11.
+
+**G6 — Token system completeness**
+Stage B must define ALL 25 tokens (12 base + 4 cyan + 2 amber + 5 warm + 2 motion). No partial token sets.
+
+**G7 — Commander wording runtime qualification**
+Per memory #18. No bare "메모리 반영 완료" / "commit 완료" — always qualify which runtime (Anthropic conversational / Hanbit harness / outer repo / sandbox).
+
+---
+
+## 5. Agent Roles (Cursor multi-agent workflow)
+
+Per memory: BTY operates with C1-C5 specialized Cursor agents. For VRS-1:
+
+| Agent | Responsibility |
+|---|---|
+| **C1 (Commander)** | Hanbit + Anthropic conversational memory. Stage dispatch authoring. |
+| **C2 (Spec Guard)** | Content / philosophy / tone preservation. Reviews dispatch before issuance. |
+| **C3 (Domain/API/Engine)** | Stage A (dear-me deletion logic), Stage B' (directory migration), Stage C wiring to APIs |
+| **C4 (UI/Rendering)** | Stage B (token system), Stage C (component extraction), Stage D (cream replacement) |
+| **C5 (Integration/QA/Audit)** | Verification at every stage closure. Cross-runtime checks. E2E + Chromatic. |
+
+**Critical rule**: C5 MUST verify every C3/C4 change before closing any stage. Per memory `multi-agent Commander workflow`.
+
+---
+
+## 6. Open Decisions (deferred to dispatch time)
+
+These are NOT blocking sprint start but need answers before specific stages:
+
+| # | Decision | Required by | Default |
+|---|---|---|---|
+| OD-1 | Foundry route: `/bty` or `/foundry`? | Stage C-4 dispatch | `/[locale]/foundry/` (cleaner) |
+| OD-2 | Migration redirect for `/dear-me`? | Stage A-1 dispatch | Yes, 301 redirect for 30 days |
+| OD-3 | Foundry sub-screens (4) in VRS-1 or VRS-2? | Stage C-4 dispatch | VRS-2 (Home only in VRS-1) |
+| OD-4 | Center sub-screens (Letter writer, etc) in VRS-1 or VRS-2? | Stage C-5 dispatch | VRS-2 (Home only in VRS-1) |
+| OD-5 | Landing page in VRS-1 or VRS-2? | Stage C completion | VRS-2 (separate sprint) |
+| OD-6 | i18n key strategy for new screens (reuse existing keys or new keys?) | Stage C dispatch | Reuse where matching, new where novel |
+
+---
+
+## 7. Backlog (post-VRS-1)
+
+Carry-forward items not in scope:
+
+- **HK6** Schema migration (from AL-2-D-P1 backlog)
+- **HK7** @/lib/llm phantom (from reproducibility threat disciplines)
+- **HK8** outer-inner git sync (from repo state)
+- **HK9** orphan docs (from memory #30)
+- **AL-1.8-G** codename mismatch NOVA vs QUIETFLAME (from AL-1.8 era)
+- **AL-1.8-C P2** dead column (from AL-1.8 era)
+- **VRS-2** Landing page + Foundry/Center sub-screens (per OD-3, OD-4, OD-5)
+- **VRS-3** (future) — additional design system refinements
+
+---
+
+## 8. Closure Report Template
+
+When VRS-1 closes, Anthropic conversational memory entry:
+
+```
+[vrs1_close] VRS-1 closed YYYY-MM-DD. cream/foundry-purple deprecated.
+Prototype 5 screens (Lobby/Play/Resolve/Foundry/Center) now official BTY
+design system. Tokens: 12 base + 4 cyan + 2 amber + 5 warm + 2 motion.
+Worker {HASH}. Tests {N/M}. AL-2-D-P1 freeze preserved. Open: VRS-2 backlog
+(landing, sub-screens). Outer commit {HASH}.
+```
+
+---
+
+## 9. References
+
+- 5 prototype HTML files: `/mnt/user-data/uploads/BTY_Arena_-_Lobby_Screen.html`, `BTY_Arena_-_Play_Screen.html`, `BTY_Arena_-_Resolve_Screen.html`, `BTY_Arena_-_Foundry_Home.html`, `BTY_Center_-_Home.html`
+- 3 spec documents: `BTY_ARENA_LOBBY_SCREEN_UI_SPEC.md`, `BTY_ARENA_FOUNDRY_HOME_UI_SPEC.md`, `BTY_ARENA_CENTER_HOME_UI_SPEC.md`
+- 5 cursor prompts: `lobby_prompt.md`, `resolve_prompt.md`, `foundry_home_prompt.md`, `center_home_prompt.md`
+- Verification result from Cursor: see Hanbit's 2026-05-11 message (28 component map)
+- Codebase verification prompt: `codebase_verification_prompt.md`
+
+---
+
+*Sprint head document — VRS-1.*
+*Author: Hanbit (Commander) + C1 (Anthropic conversational memory).*
+*Status: Phase 0 locked, Stage A dispatch pending.*
