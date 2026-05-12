@@ -40,3 +40,7 @@ e2e/.auth/user.json
 .env.local
 .env.local.*
 *.save
+
+# macOS auto-generated screenshots
+Screenshot *.png
+**/Screenshot *.png
