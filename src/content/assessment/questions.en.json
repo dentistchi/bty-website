@@ -1,0 +1,302 @@
+[
+  {
+    "id": 1,
+    "dimension": "core",
+    "text": "I feel I am a person of worth, at least on an equal basis with others.",
+    "reverse": false
+  },
+  {
+    "id": 2,
+    "dimension": "core",
+    "text": "I feel that I have a number of good qualities.",
+    "reverse": false
+  },
+  {
+    "id": 3,
+    "dimension": "core",
+    "text": "All in all, I am inclined to feel that I am a failure.",
+    "reverse": true
+  },
+  {
+    "id": 4,
+    "dimension": "core",
+    "text": "I am able to do things as well as most other people.",
+    "reverse": false
+  },
+  {
+    "id": 5,
+    "dimension": "core",
+    "text": "I feel I do not have much to be proud of.",
+    "reverse": true
+  },
+  {
+    "id": 6,
+    "dimension": "core",
+    "text": "I take a positive attitude toward myself.",
+    "reverse": false
+  },
+  {
+    "id": 7,
+    "dimension": "core",
+    "text": "On the whole, I am satisfied with myself.",
+    "reverse": false
+  },
+  {
+    "id": 8,
+    "dimension": "core",
+    "text": "I wish I could have more respect for myself.",
+    "reverse": true
+  },
+  {
+    "id": 9,
+    "dimension": "core",
+    "text": "I certainly feel useless at times.",
+    "reverse": true
+  },
+  {
+    "id": 10,
+    "dimension": "core",
+    "text": "At times I think I am no good at all.",
+    "reverse": true
+  },
+  {
+    "id": 11,
+    "dimension": "compassion",
+    "text": "When I make a mistake, I treat myself kindly.",
+    "reverse": false
+  },
+  {
+    "id": 12,
+    "dimension": "compassion",
+    "text": "When I’m struggling, I comfort myself with warmth.",
+    "reverse": false
+  },
+  {
+    "id": 13,
+    "dimension": "compassion",
+    "text": "When I think about my flaws, I feel disconnected from others.",
+    "reverse": true
+  },
+  {
+    "id": 14,
+    "dimension": "compassion",
+    "text": "When painful feelings arise, I can observe them as they are.",
+    "reverse": false
+  },
+  {
+    "id": 15,
+    "dimension": "compassion",
+    "text": "When I fail, I criticize myself harshly.",
+    "reverse": true
+  },
+  {
+    "id": 16,
+    "dimension": "compassion",
+    "text": "I understand that everyone sometimes feels inadequate.",
+    "reverse": false
+  },
+  {
+    "id": 17,
+    "dimension": "compassion",
+    "text": "I am my own biggest supporter.",
+    "reverse": false
+  },
+  {
+    "id": 18,
+    "dimension": "compassion",
+    "text": "When I feel upset, I tell myself, “It’s okay.”",
+    "reverse": false
+  },
+  {
+    "id": 19,
+    "dimension": "compassion",
+    "text": "My problems feel like mine alone, and that makes me lonely.",
+    "reverse": true
+  },
+  {
+    "id": 20,
+    "dimension": "compassion",
+    "text": "In hard times, I give myself what I need.",
+    "reverse": false
+  },
+  {
+    "id": 21,
+    "dimension": "stability",
+    "text": "I only feel valuable when I succeed.",
+    "reverse": true
+  },
+  {
+    "id": 22,
+    "dimension": "stability",
+    "text": "I only feel good when someone praises me.",
+    "reverse": true
+  },
+  {
+    "id": 23,
+    "dimension": "stability",
+    "text": "Even if I fail, my worth does not change.",
+    "reverse": false
+  },
+  {
+    "id": 24,
+    "dimension": "stability",
+    "text": "I am precious regardless of my appearance or abilities.",
+    "reverse": false
+  },
+  {
+    "id": 25,
+    "dimension": "stability",
+    "text": "Other people’s evaluations shake my self-esteem a lot.",
+    "reverse": true
+  },
+  {
+    "id": 26,
+    "dimension": "stability",
+    "text": "I am valuable simply by existing, no matter what I do.",
+    "reverse": false
+  },
+  {
+    "id": 27,
+    "dimension": "stability",
+    "text": "If I don’t get good results, I feel worthless.",
+    "reverse": true
+  },
+  {
+    "id": 28,
+    "dimension": "stability",
+    "text": "My worth is separate from my achievements.",
+    "reverse": false
+  },
+  {
+    "id": 29,
+    "dimension": "stability",
+    "text": "Whenever I’m compared to someone, my sense of value wavers.",
+    "reverse": true
+  },
+  {
+    "id": 30,
+    "dimension": "stability",
+    "text": "I am enough as I am.",
+    "reverse": false
+  },
+  {
+    "id": 31,
+    "dimension": "growth",
+    "text": "My abilities can improve with effort.",
+    "reverse": false
+  },
+  {
+    "id": 32,
+    "dimension": "growth",
+    "text": "Failure is a learning opportunity for me.",
+    "reverse": false
+  },
+  {
+    "id": 33,
+    "dimension": "growth",
+    "text": "My intelligence is fixed and I can’t really change it.",
+    "reverse": true
+  },
+  {
+    "id": 34,
+    "dimension": "growth",
+    "text": "Difficult tasks help me grow.",
+    "reverse": false
+  },
+  {
+    "id": 35,
+    "dimension": "growth",
+    "text": "I am someone who keeps developing.",
+    "reverse": false
+  },
+  {
+    "id": 36,
+    "dimension": "growth",
+    "text": "I enjoy the process of learning something new.",
+    "reverse": false
+  },
+  {
+    "id": 37,
+    "dimension": "growth",
+    "text": "Criticism is information that helps me become better.",
+    "reverse": false
+  },
+  {
+    "id": 38,
+    "dimension": "growth",
+    "text": "My personality is almost impossible to change.",
+    "reverse": true
+  },
+  {
+    "id": 39,
+    "dimension": "growth",
+    "text": "Mistakes are evidence of my growth.",
+    "reverse": false
+  },
+  {
+    "id": 40,
+    "dimension": "growth",
+    "text": "A year from now, I will be better than I am today.",
+    "reverse": false
+  },
+  {
+    "id": 41,
+    "dimension": "social",
+    "text": "I feel comfortable being with other people.",
+    "reverse": false
+  },
+  {
+    "id": 42,
+    "dimension": "social",
+    "text": "I worry that people may not like me.",
+    "reverse": true
+  },
+  {
+    "id": 43,
+    "dimension": "social",
+    "text": "I can express my opinions confidently.",
+    "reverse": false
+  },
+  {
+    "id": 44,
+    "dimension": "social",
+    "text": "It’s hard to be myself in front of others.",
+    "reverse": true
+  },
+  {
+    "id": 45,
+    "dimension": "social",
+    "text": "In relationships, I feel my worth is recognized.",
+    "reverse": false
+  },
+  {
+    "id": 46,
+    "dimension": "social",
+    "text": "I feel like I am a burden to others.",
+    "reverse": true
+  },
+  {
+    "id": 47,
+    "dimension": "social",
+    "text": "If people knew the real me, they would be disappointed.",
+    "reverse": true
+  },
+  {
+    "id": 48,
+    "dimension": "social",
+    "text": "I feel assertive in my relationships with others.",
+    "reverse": false
+  },
+  {
+    "id": 49,
+    "dimension": "social",
+    "text": "Even when I’m alone, I believe I’m still a good person.",
+    "reverse": false
+  },
+  {
+    "id": 50,
+    "dimension": "social",
+    "text": "I am worthy of love.",
+    "reverse": false
+  }
+]
