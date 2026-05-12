@@ -1873,6 +1873,21 @@ export type Messages = {
     completeByQrLink: string;
     dismiss: string;
   };
+  legal: {
+    accept: {
+      title: string;
+      placeholder_notice: string;
+      section_heading: string;
+      checkbox_label: string;
+      submit_button: string;
+      submitting: string;
+      error_required: string;
+      error_network: string;
+      error_server: string;
+      error_rate_limit: string;
+      success_message: string;
+    };
+  };
 };
 
 const ko: Messages = {
@@ -3520,6 +3535,21 @@ const ko: Messages = {
     expiredShort: "만료됨",
     completeByQrLink: "아래 링크로 완료하세요 (복사해 사용할 수 있습니다).",
     dismiss: "닫기",
+  },
+  legal: {
+    accept: {
+      title: "[KO_PENDING] Terms of Service & Privacy Policy",
+      placeholder_notice: "[KO_PENDING] Legal text under review.",
+      section_heading: "[KO_PENDING] Pending Legal Review",
+      checkbox_label: "[KO_PENDING] I acknowledge that I am reviewing a placeholder consent form.",
+      submit_button: "[KO_PENDING] Accept & Continue",
+      submitting: "[KO_PENDING] Saving...",
+      error_required: "[KO_PENDING] Please check the box to continue",
+      error_network: "[KO_PENDING] Connection error. Please try again.",
+      error_server: "[KO_PENDING] Something went wrong. Please try again.",
+      error_rate_limit: "[KO_PENDING] Too many attempts. Please wait a few minutes.",
+      success_message: "[KO_PENDING] Thank you. Redirecting...",
+    },
   },
 };
 
@@ -5172,6 +5202,23 @@ const en: Messages = {
     expiredShort: "expired",
     completeByQrLink: "Complete using the link below (copy as needed).",
     dismiss: "Close",
+  },
+  legal: {
+    accept: {
+      title: "Terms of Service & Privacy Policy",
+      placeholder_notice:
+        "[PLACEHOLDER] The final legal text is being prepared by attorneys and will replace this notice before public launch. Internal cohort acceptance proceeds with this placeholder.",
+      section_heading: "Pending Legal Review",
+      checkbox_label:
+        "I acknowledge that I am reviewing a placeholder consent form. I agree to provide consent in good faith for internal testing, understanding that the final Terms of Service and Privacy Policy will be presented before public launch.",
+      submit_button: "Accept & Continue",
+      submitting: "Saving...",
+      error_required: "Please check the box to continue",
+      error_network: "Connection error. Please try again.",
+      error_server: "Something went wrong. Please try again.",
+      error_rate_limit: "Too many attempts. Please wait a few minutes.",
+      success_message: "Thank you. Redirecting...",
+    },
   },
 };
 
