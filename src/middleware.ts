@@ -64,8 +64,6 @@ function isPublicPath(pathname: string) {
   const locale = getLocale(pathname);
   if (locale) {
     if (pathname === `/${locale}` || pathname === `/${locale}/`) return true;
-    /** Dear Me letter writer: auth handled by AuthGate in component. Never block at middleware. */
-    if (pathname === `/${locale}/dear-me` || pathname === `/${locale}/dear-me/`) return true;
     /** Center 50-item assessment + results: must be reachable without Foundry login. */
     if (pathname === `/${locale}/assessment` || pathname.startsWith(`/${locale}/assessment/`))
       return true;
@@ -130,6 +128,21 @@ export async function middleware(req: NextRequest) {
         : `/${locale}/bty-arena${rest}`;
     const dest = new URL(targetPath + req.nextUrl.search, req.url);
     return NextResponse.redirect(dest, 308);
+  }
+
+  /** VRS-1-A1: deprecated `/[locale]/dear-me` → canonical `/[locale]/center` (301). */
+  if (
+    locale &&
+    (pathname === `/${locale}/dear-me` ||
+      pathname.startsWith(`/${locale}/dear-me/`))
+  ) {
+    const rest = pathname.slice(`/${locale}/dear-me`.length);
+    const targetPath =
+      rest === "" || rest === "/"
+        ? `/${locale}/center`
+        : `/${locale}/center${rest}`;
+    const dest = new URL(targetPath + req.nextUrl.search, req.url);
+    return NextResponse.redirect(dest, 301);
   }
 
   if (!locale) {
