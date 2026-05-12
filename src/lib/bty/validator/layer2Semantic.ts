@@ -1,17 +1,12 @@
 /**
  * VALIDATOR_ARCHITECTURE_V1 §3 — semantic evaluation; temperature 0.2; no user identity in payload.
  */
-import { fetchJson } from "@/lib/read-json";
-import { getLlmEndpoint, isLlmAvailable } from "@/lib/llm";
+import { getLlmClient, getLlmModel, isLlmAvailable } from "@/lib/bty/llm/client";
 import type { Layer2ModelResult, PatternContextForModel } from "./types";
 import { VALIDATOR_CONFIDENCE_THRESHOLD } from "./routeLayer2Outcome";
 
 const DEFAULT_MODEL = "gpt-4o-mini";
 const TEMPERATURE = 0.2;
-
-type OpenAIChatResp = {
-  choices?: { message?: { content?: string | null } }[];
-};
 
 function clamp01(n: number): number {
   if (!Number.isFinite(n)) return 0;
@@ -66,10 +61,10 @@ export async function runLayer2Semantic(input: Layer2SemanticInput): Promise<{
   if (!isLlmAvailable()) {
     return { ok: false, error: "missing_llm_config" };
   }
-  const llm = getLlmEndpoint(
-    (process.env.BTY_VALIDATOR_OPENAI_MODEL ?? "").trim() || undefined
-  );
-  const model = llm.model || DEFAULT_MODEL;
+  const model =
+    (process.env.BTY_VALIDATOR_OPENAI_MODEL ?? "").trim() ||
+    getLlmModel() ||
+    DEFAULT_MODEL;
 
   const systemPrompt = [
     "You are a contract semantic validator for structured action commitments.",
@@ -101,13 +96,9 @@ export async function runLayer2Semantic(input: Layer2SemanticInput): Promise<{
     },
   };
 
-  const r = await fetchJson<OpenAIChatResp>(llm.url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${llm.apiKey}`,
-    },
-    body: JSON.stringify({
+  try {
+    const client = getLlmClient();
+    const completion = await client.chat.completions.create({
       model,
       temperature: TEMPERATURE,
       response_format: { type: "json_object" },
@@ -118,20 +109,16 @@ export async function runLayer2Semantic(input: Layer2SemanticInput): Promise<{
           content: JSON.stringify(userPayload),
         },
       ],
-    }),
-  });
-
-  if (!r.ok) {
+    });
+    const content = completion.choices[0]?.message?.content?.trim() ?? "";
+    const parsed = parseLayer2Json(content);
+    if (!parsed) {
+      return { ok: false, error: "openai_invalid_json" };
+    }
+    return { ok: true, result: parsed, modelId: model };
+  } catch {
     return { ok: false, error: "openai_request_failed" };
   }
-
-  const content = r.json?.choices?.[0]?.message?.content?.trim() ?? "";
-  const parsed = parseLayer2Json(content);
-  if (!parsed) {
-    return { ok: false, error: "openai_invalid_json" };
-  }
-
-  return { ok: true, result: parsed, modelId: model };
 }
 
 export const VALIDATOR_MODEL_TEMPERATURE = TEMPERATURE;
