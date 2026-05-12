@@ -39,7 +39,6 @@ function showChatFabForPath(pathname: string): boolean {
   if (pathname.includes("/train")) return false;
   if (/\/bty\/(login|forgot-password|logout)(\/|\?|$)/.test(pathname)) return false;
   if (pathname.includes("/center")) return true;
-  if (pathname.includes("/dear-me")) return true;
   if (pathname.includes("/assessment")) return true;
   if (/\/journal(\/|$|\?)/.test(pathname)) return true;
   if (pathname.includes("/bty-arena")) return true;

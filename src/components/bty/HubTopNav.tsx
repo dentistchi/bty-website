@@ -17,7 +17,7 @@ export type HubContext = "arena" | "center" | "foundry" | "none";
 export function detectHubContext(pathname: string, locale: string): HubContext {
   if (pathname.includes("/bty-arena")) return "arena";
   if (
-    new RegExp(`/${locale}/(center|dear-me|assessment|journal)(/|$)`).test(pathname)
+    new RegExp(`/${locale}/(center|assessment|journal)(/|$)`).test(pathname)
   ) {
     return "center";
   }

@@ -155,7 +155,7 @@ export default function LocaleLandingPage({ locale, lang, pathname, t }: Props) 
             ) : (
               <p className={`text-sm ${themeC.soft} m-0`}>
                 {lang === "ko" ? "아직 편지가 없어요. " : "No letters yet. "}
-<Link href={`/${locale}/dear-me`} className={themeC.link} aria-label={lang === "ko" ? "편지 쓰러 가기" : "Write a letter"}>
+<Link href={`/${locale}/center`} className={themeC.link} aria-label={lang === "ko" ? "편지 쓰러 가기" : "Write a letter"}>
                 {lang === "ko" ? "편지 쓰러 가기" : "Write a letter"}
               </Link>
               </p>
