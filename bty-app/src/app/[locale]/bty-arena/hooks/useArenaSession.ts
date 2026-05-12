@@ -53,16 +53,16 @@ import { pushSignalIfNew } from "@/features/arena/logic/signalStorage";
 // ── exported types ──────────────────────────────────────────────
 export type ArenaPhase =
   | "CHOOSING"
-  | "ESCALATION"
   | "FORCED_TRADEOFF"
   | "ACTION_DECISION"
   | "SHOW_RESULT"
   | "FOLLOW_UP"
   | "DONE";
 /**
- * Client step index for the BTY Arena UI. Elite: 3 = escalation, 4 = tradeoff, 5 = action decision, 6 = run complete.
+ * Client step index for the BTY Arena UI. Elite: 4 = tradeoff, 5 = action decision, 6 = run complete.
  * `POST /api/arena/run/step` covers steps 3–4; internal step 5 marks end-of-run before POST run/complete (not a snapshot label).
- * Phases `ESCALATION` / `FORCED_TRADEOFF` align with steps 3–4 when `scenario.escalationBranches` is present.
+ * Phase `FORCED_TRADEOFF` aligns with step 4 when `scenario.escalationBranches` is present.
+ * `escalation_text` is rendered inside the `forced_tradeoff` segment (single display surface).
  */
 export type ArenaStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -72,8 +72,7 @@ export type ArenaPlayUiSegment =
   | "primary_choice"
   | "forced_tradeoff"
   | "action_decision"
-  | "run_complete"
-  | "legacy_escalation";
+  | "run_complete";
 
 export type MilestoneModalState = {
   milestone: 25 | 50 | 75;
@@ -320,7 +319,6 @@ function normalizeFollowUpOptions(choice: { followUp?: { options?: string[] } } 
 function stepFromPhase(phase: ArenaPhase): ArenaStep {
   switch (phase) {
     case "CHOOSING": return 2;
-    case "ESCALATION": return 3;
     case "FORCED_TRADEOFF": return 4;
     case "ACTION_DECISION": return 5;
     case "SHOW_RESULT": return 3;
@@ -679,7 +677,7 @@ export function useArenaSession(_pipelineFromServer?: ArenaPipelineDefault) {
     startedAt: string;
     timeLimitSeconds: number;
   } | null>(null);
-  /** Legacy save: elite step 3 + ESCALATION — auto-POST step 3 once to reach second-choice screen. */
+  /** Legacy save normalize: stale elite step 3 + ESCALATION local state is normalized to step 4 + FORCED_TRADEOFF without API call. */
   const eliteResumeEscalationRef = React.useRef<string | null>(null);
 
   // Toast auto-dismiss
@@ -1112,7 +1110,9 @@ const eb =
     else if (step === 6 && phase === "DONE") segment = "run_complete";
     /** Legacy elite save: DONE at step 5 */
     else if (step === 5 && phase === "DONE") segment = "run_complete";
-    else if (step === 3 && phase === "ESCALATION") segment = "legacy_escalation";
+    /** Stale save safety net (pre-consolidation): step=3 + phase="ESCALATION" renders as forced_tradeoff
+     *  for the one frame before the auto-bridge (see effect below) converts state to step=4 + FORCED_TRADEOFF. */
+    else if (step === 3 && (phase as string) === "ESCALATION") segment = "forced_tradeoff";
     return { canRenderScenarioProgressionUi: true, playUiSegment: segment };
   }, [
     current?.eliteSetup,
@@ -1300,24 +1300,32 @@ const eb =
       setSystemMessage(msg);
       /** Canonical JSON runtime must not call legacy `/api/arena/run/step`. */
       const useLegacyRunStepApi = current.eliteSetup && !isCanonicalJsonRuntimeScenario(current);
-      void useLegacyRunStepApi; // step 3 API call deferred to acknowledgeEscalation
-      /** Elite: show escalation text as step 3 before advancing to forced tradeoff (step 4). */
+      /** Elite/legacy: POST step 3 immediately, then step 4 UI (no separate escalation screen). */
       if (current.eliteSetup) {
         try {
+          if (useLegacyRunStepApi) {
+            await arenaFetch("/api/arena/run/step", {
+              json: {
+                runId: rid,
+                step: 3,
+                primaryChoiceId: choiceIdRaw,
+              },
+            });
+          }
           setBindingRuntimeSnapshot(null);
-          setStep(3);
-          setPhase("ESCALATION");
+          setStep(4);
+          setPhase("FORCED_TRADEOFF");
           persist({
-            phase: "ESCALATION",
-            step: 3,
+            phase: "FORCED_TRADEOFF",
+            step: 4,
             lastXp: xp,
             lastSystemMessage: msg.id,
           });
-          console.info("[arena][elite-escalation-enter]", {
+          console.info("[arena][elite-forced-tradeoff-enter]", {
             source: "primary-confirm",
             scenarioId: current.scenarioId,
-            step: 3,
-            phase: "ESCALATION",
+            step: 4,
+            phase: "FORCED_TRADEOFF",
             primaryChoiceId: choiceIdRaw,
           });
           const br =
@@ -1338,13 +1346,14 @@ const eb =
           return;
         }
       } else {
-        const nextPhase: ArenaPhase =
-          hasEscalationBranchForChoice(current, choiceIdRaw) ? "ESCALATION" : "SHOW_RESULT";
+        const goForcedTradeoff = hasEscalationBranchForChoice(current, choiceIdRaw);
+        const nextPhase: ArenaPhase = goForcedTradeoff ? "FORCED_TRADEOFF" : "SHOW_RESULT";
+        const nextStep: ArenaStep = goForcedTradeoff ? 4 : 3;
         setPhase(nextPhase);
-        setStep(3);
+        setStep(nextStep);
         persist({
           phase: nextPhase,
-          step: 3,
+          step: nextStep,
           lastXp: xp,
           lastSystemMessage: msg.id,
         });
@@ -1437,40 +1446,6 @@ const eb =
   function goToReflection() {
     setStep(4);
     persist({ step: 4 });
-  }
-
-  async function acknowledgeEscalation() {
-    if (!arenaPlaySurfaceAllowed) {
-      setToast(t.errorStartRun);
-      throw new Error("surface_blocked");
-    }
-    if (!current?.eliteSetup || !runId) {
-      setToast(t.errorStartRun);
-      throw new Error("run_missing");
-    }
-    setEscalationAckSubmitting(true);
-    try {
-      if (!isCanonicalJsonRuntimeScenario(current)) {
-        await arenaFetch("/api/arena/run/step", {
-          json: {
-            runId,
-            step: 3,
-            ...(selectedChoiceId && selectedChoiceId !== OTHER_CHOICE_ID
-              ? { primaryChoiceId: selectedChoiceId }
-              : {}),
-          },
-        });
-      }
-      setStep(4);
-      setPhase("FORCED_TRADEOFF");
-      persist({ step: 4, phase: "FORCED_TRADEOFF" });
-    } catch (e) {
-      console.warn("[arena] escalation acknowledge failed", e);
-      setToast(t.eliteRunStepAdvanceError);
-      throw e;
-    } finally {
-      setEscalationAckSubmitting(false);
-    }
   }
 
   async function submitSecondChoice(secondChoiceId: string) {
@@ -2392,39 +2367,25 @@ const eb =
 
   React.useEffect(() => {
     if (!arenaPlaySurfaceAllowed) return;
-    if (!scenario?.eliteSetup || step !== 3 || phase !== "ESCALATION" || !runId) return;
+    /** Stale runtime safety: localStorage-hydrated state may still carry step=3 + phase="ESCALATION"
+     *  from pre-consolidation saves. Canonical post-β': step=4 + FORCED_TRADEOFF. Normalize locally
+     *  without an API call — server-side step≥3 is already recorded; only client surface needs sync. */
+    if (!scenario?.eliteSetup || step !== 3 || (phase as string) !== "ESCALATION" || !runId) return;
     if (isCanonicalJsonRuntimeScenario(scenario)) return;
     if (!selectedChoiceId || selectedChoiceId === OTHER_CHOICE_ID) return;
     const key = `${runId}:${selectedChoiceId}:resume-step3`;
     if (eliteResumeEscalationRef.current === key) return;
     eliteResumeEscalationRef.current = key;
-    let cancelled = false;
-    setEscalationAckSubmitting(true);
-    arenaFetch("/api/arena/run/step", {
-      json: { runId, step: 3, primaryChoiceId: selectedChoiceId },
-    })
-      .then(() => {
-        if (cancelled) return;
-        setStep(4);
-        setPhase("FORCED_TRADEOFF");
-        persist({ step: 4, phase: "FORCED_TRADEOFF" });
-        console.info("[arena][elite-forced-tradeoff-enter]", {
-          source: "resume-auto-step3",
-          scenarioId: scenario?.scenarioId,
-          step: 4,
-          phase: "FORCED_TRADEOFF",
-          primaryChoiceId: selectedChoiceId,
-        });
-      })
-      .catch(() => {
-        eliteResumeEscalationRef.current = null;
-      })
-      .finally(() => {
-        if (!cancelled) setEscalationAckSubmitting(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+    setStep(4);
+    setPhase("FORCED_TRADEOFF");
+    persist({ step: 4, phase: "FORCED_TRADEOFF" });
+    console.info("[arena][stale-escalation-normalize]", {
+      source: "resume-step3",
+      scenarioId: scenario?.scenarioId,
+      step: 4,
+      phase: "FORCED_TRADEOFF",
+      primaryChoiceId: selectedChoiceId,
+    });
   }, [arenaPlaySurfaceAllowed, scenario?.eliteSetup, scenario?.scenarioId, step, phase, runId, selectedChoiceId]);
 
   /** Subtle banner copy — GET session `runtime_state` + human gate reason (render-only). */
@@ -2461,7 +2422,7 @@ const eb =
     milestoneModal, closeMilestoneModal,
     runId,
     onConfirmChoice, commitElitePrimaryChoice, submitOther, goToReflection,
-    acknowledgeEscalation, submitSecondChoice, submitActionDecision,
+    submitSecondChoice, submitActionDecision,
     escalationAckSubmitting, secondChoiceSubmitting, actionDecisionSubmitting,
     submitReflection, submitFollowUp,
     continueNextScenario, pause, resetRun,
