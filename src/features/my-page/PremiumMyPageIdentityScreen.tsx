@@ -72,7 +72,6 @@ function IdentityHero({
   coreTraceCaption,
   coreTraceLabel,
   identityEyebrow,
-  identitySubtext,
 }: {
   codeName: string;
   stage: string;
@@ -82,42 +81,35 @@ function IdentityHero({
   coreTraceCaption: string;
   coreTraceLabel: string;
   identityEyebrow: string;
-  identitySubtext: string;
 }) {
   return (
     <GlassPanel className="p-6 sm:p-8" data-testid="identity-hero">
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-6">
-        <div className="min-w-0 lg:col-span-8">
+        <div className="lg:col-span-8">
           <SectionLabel>{identityEyebrow}</SectionLabel>
-          <p
-            data-testid="my-page-archetype-subtext"
-            className="mt-1 break-words text-xs leading-5 text-slate-400"
-          >
-            {identitySubtext}
-          </p>
           <h1
             data-testid="my-page-code-name"
-            className="mt-3 break-words text-3xl font-semibold tracking-tight text-white md:text-4xl lg:text-5xl"
+            className="mt-3 text-3xl font-semibold tracking-tight text-white md:text-4xl lg:text-5xl"
           >
             {codeName}
           </h1>
-          <p data-testid="my-page-stage" className="mt-2 break-words text-sm uppercase tracking-[0.18em] text-slate-400">
+          <p data-testid="my-page-stage" className="mt-2 text-sm uppercase tracking-[0.18em] text-slate-400">
             {stage}
           </p>
-          <p className="mt-5 max-w-3xl break-words text-sm leading-7 text-slate-300 md:text-base">{headline}</p>
-          <p className="mt-4 break-words text-[11px] uppercase tracking-[0.2em] text-slate-500">
+          <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 md:text-base">{headline}</p>
+          <p className="mt-4 text-[11px] uppercase tracking-[0.2em] text-slate-500">
             {coreTraceCaption}{" "}
             <span className="font-medium text-slate-400">{coreTraceLabel}</span>
           </p>
         </div>
 
-        <div className="flex min-w-0 flex-col items-stretch gap-6 lg:col-span-4 lg:items-end">
+        <div className="flex flex-col items-stretch gap-6 lg:col-span-4 lg:items-end">
           <div className="flex w-full justify-end">
             <MiniCrest codeName={codeName} />
           </div>
           <div className="w-full rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.06] px-4 py-4">
             <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-100/70">{systemNoteTitle}</div>
-            <p className="mt-2 break-words text-sm leading-6 text-slate-300">{systemNote}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-300">{systemNote}</p>
           </div>
         </div>
       </div>
@@ -127,9 +119,9 @@ function IdentityHero({
 
 function StateCard({ label, value }: { label: string; value: string }) {
   return (
-    <GlassPanel className="p-5 min-w-0">
+    <GlassPanel className="p-5">
       <SectionLabel>{label}</SectionLabel>
-      <div className="mt-3 break-words text-base font-semibold leading-7 text-white sm:text-lg">{value}</div>
+      <div className="mt-3 text-base font-semibold leading-7 text-white sm:text-lg">{value}</div>
     </GlassPanel>
   );
 }
@@ -370,11 +362,10 @@ export function PremiumMyPageIdentityScreen({
           systemNoteTitle={t.leadershipSystemNoteTitle}
           coreTraceCaption={t.leadershipCoreTrace}
           coreTraceLabel={coreTrace}
-          identityEyebrow={t.leadershipArchetypeEyebrow}
-          identitySubtext={t.leadershipArchetypeSubtext}
+          identityEyebrow={t.leadershipIdentityEyebrow}
         />
 
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-3" data-testid="leadership-state-row">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-3" data-testid="leadership-state-row">
           <StateCard label={t.leadershipAbbrevAir} value={state.airLabel} />
           <StateCard label={t.leadershipAbbrevTii} value={state.tiiLabel} />
           <StateCard label={t.leadershipAbbrevRhythm} value={state.rhythmLabel} />
