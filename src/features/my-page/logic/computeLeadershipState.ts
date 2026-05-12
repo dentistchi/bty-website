@@ -1,10 +1,11 @@
 import { AIR_BAND_LOW_MID, AIR_BAND_MID_HIGH, airToBand } from "@/domain/leadership-engine/air";
+import { btyStageFromCoreXp } from "@/domain/rules/stage";
 import type { ReflectionEntry } from "@/features/growth/logic/types";
 import type { Locale } from "@/lib/i18n";
 import type { LeadershipMetrics, LeadershipState } from "./types";
 
-const CODE_NAME = "STILLWATER";
-const STAGE = "STAGE 1: FORGE";
+const DEFAULT_CODE_NAME = "STILLWATER";
+const DEFAULT_STAGE = "STAGE 1: FORGE";
 
 type Copy = {
   dormantAir: string;
@@ -146,13 +147,17 @@ export function computeLeadershipState(
   metrics: LeadershipMetrics,
   locale: Locale,
   reflections: ReflectionEntry[] = [],
+  opts?: { codeNameOverride?: string; coreXp?: number },
 ): LeadershipState {
   const c = L(locale);
+  const codeName = opts?.codeNameOverride ?? DEFAULT_CODE_NAME;
+  const stage =
+    opts?.coreXp != null ? btyStageFromCoreXp(opts.coreXp).label : DEFAULT_STAGE;
 
   if (metrics.signalCount === 0) {
     return {
-      codeName: CODE_NAME,
-      stage: STAGE,
+      codeName,
+      stage,
       headline: c.identityNoSignals,
       airLabel: c.dormantAir,
       tiiLabel: c.dormantTii,
@@ -272,8 +277,8 @@ export function computeLeadershipState(
     headline = c.identityEmerging;
 
   return {
-    codeName: CODE_NAME,
-    stage: STAGE,
+    codeName,
+    stage,
     headline,
     airLabel,
     tiiLabel,
