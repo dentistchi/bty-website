@@ -271,11 +271,7 @@ export default function DashboardClient() {
     return weeklyCompetitionStageBandCopy(localeTyped, key);
   }, [weekly, localeTyped]);
 
-  const identityTitle = locale === "ko" ? "단계 정체성" : "Stage Identity";
-  const identitySubtext =
-    locale === "ko"
-      ? "Core XP 여정에서의 현재 단계입니다."
-      : "Your milestone in Core XP progression.";
+  const identityTitle = locale === "ko" ? "정체성" : "Identity";
   const progressTitle = locale === "ko" ? "진행" : "Progress";
   const teamTitle = locale === "ko" ? "팀" : "Team";
 
@@ -324,12 +320,6 @@ export default function DashboardClient() {
           {!loading && !error && core && (
             <>
               <InfoCard title={identityTitle}>
-                <p
-                  data-testid="dashboard-stage-identity-subtext"
-                  className="mb-3 text-xs leading-5 text-bty-secondary"
-                >
-                  {identitySubtext}
-                </p>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                   <div
                     className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-full shadow-md ring-2 ring-bty-border/50 bg-bty-soft"
