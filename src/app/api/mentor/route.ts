@@ -1,5 +1,4 @@
-import { fetchJson } from "@/lib/read-json";
-import { getLlmEndpoint, getLlmExtraOptions, isLlmAvailable } from "@/lib/llm";
+import { getLlmClient, getLlmModel, isLlmAvailable } from "@/lib/bty/llm/client";
 import { NextResponse } from "next/server";
 import { DR_CHI_PHILOSOPHY, DR_CHI_FEW_SHOT_EXAMPLES } from "@/lib/bty/mentor/drChiCharacter";
 import {
@@ -146,26 +145,18 @@ export async function POST(request: Request) {
     }
 
     if (isLlmAvailable()) {
-      const llm = getLlmEndpoint();
+      const client = getLlmClient();
+      const model = getLlmModel();
       const openaiMessages = buildOpenAIMessages(messages, userContent, lang);
-      type OpenAIChatResp = { choices?: { message?: { content?: string } }[] };
-      const r = await fetchJson<OpenAIChatResp>(llm.url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${llm.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: llm.model,
+      try {
+        const completion = await client.chat.completions.create({
+          model,
           messages: openaiMessages,
           temperature: 0.7,
           top_p: 0.9,
           max_tokens: 400,
-          ...getLlmExtraOptions(),
-        }),
-      });
-      if (r.ok) {
-        const text = r.json?.choices?.[0]?.message?.content?.trim();
+        });
+        const text = completion.choices[0]?.message?.content?.trim();
         if (text) {
           const triggeredValve = isLowSelfEsteemSignal(text) || /Center|center\.pages|잠시 쉬고/i.test(text);
           const supabase = await getSupabaseServerClient();
@@ -187,12 +178,12 @@ export async function POST(request: Request) {
           });
         }
         recordQualityEventApp({ route: "mentor", reason: "empty_response", lang });
+      } catch {
+        recordQualityEventApp({ route: "mentor", reason: "fallback", lang });
+      }
     } else {
       recordQualityEventApp({ route: "mentor", reason: "fallback", lang });
     }
-  } else {
-    recordQualityEventApp({ route: "mentor", reason: "fallback", lang });
-  }
 
   const fallback = getMentorFallbackMessage(lang);
   console.warn("[mentor] OpenAI unreachable — using fallback. Set OPENAI_API_KEY in .env.local");
