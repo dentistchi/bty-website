@@ -11,6 +11,7 @@
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare preview",
     "cf:deploy": "opennextjs-cloudflare deploy",
+    "cf-types": "wrangler types",
     "deploy": "npm run prebuild && opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "dev": "next dev",
     "clean": "rm -rf .next",
