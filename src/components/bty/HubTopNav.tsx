@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LangSwitch } from "@/components/LangSwitch";
 import { pathnameMatchesArenaEntryHref } from "@/components/bty/navigation/nav-items";
+import { useForcedResetActive } from "@/components/bty/navigation/useForcedResetActive";
 import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 import { getMessages } from "@/lib/i18n";
 
@@ -96,6 +97,16 @@ export default function HubTopNav({ theme = "arena", showLangSwitch = false, tra
   const primaryActive =
     ctx === "center" ? "center" : ctx === "arena" ? "arena" : ctx === "foundry" ? "foundry" : null;
 
+  /**
+   * v1.1.1 §5.5.2 + §8-7: FORCED_RESET sub-mode suppresses sibling navigation
+   * (Arena pill, Foundry pill, sub-pills, divider). Center pill stays (user IS
+   * allowed on Center). `trailing` (LangSwitch + LogoutButton) stays untouched —
+   * language flip + logout are not surface escapes. Middleware 2C-1 (`d0d763c7`)
+   * already redirects URL access; this nav suppression closes the §8-Open #2 gap
+   * (b) at the UI level so sibling pills aren't visible to click in the first place.
+   */
+  const forcedResetActive = useForcedResetActive();
+
   const L = {
     main: isKo ? "메인" : "Main",
     dashboard: "Dashboard",
@@ -147,16 +158,24 @@ export default function HubTopNav({ theme = "arena", showLangSwitch = false, tra
           {/* Hub + extended nav */}
           <div style={arenaNav.wrap} className="bty-hub-primary justify-end" aria-label="Main navigation">
             {hubPill(center, "Center", "center")}
-            {hubPill(arena, "Arena", "arena")}
-            {hubPill(foundry, "Foundry", "foundry")}
+            {forcedResetActive ? null : (
+              <>
+                {hubPill(arena, "Arena", "arena")}
+                {hubPill(foundry, "Foundry", "foundry")}
+              </>
+            )}
           </div>
-          <span style={{ color: "var(--arena-text-soft)", opacity: 0.3 }}>|</span>
-          <div style={arenaNav.wrap}>
-            {pill(dash, "Dashboard", isActivePath(pathname, dash))}
-            {pill(lb, "Leaderboard", isActivePath(pathname, lb))}
-            {pill(myPage, "My Page", isActivePath(pathname, myPage) && !isActivePath(pathname, myAccount))}
-            {pill(myAccount, "My Account", isActivePath(pathname, myAccount))}
-          </div>
+          {forcedResetActive ? null : (
+            <>
+              <span style={{ color: "var(--arena-text-soft)", opacity: 0.3 }}>|</span>
+              <div style={arenaNav.wrap}>
+                {pill(dash, "Dashboard", isActivePath(pathname, dash))}
+                {pill(lb, "Leaderboard", isActivePath(pathname, lb))}
+                {pill(myPage, "My Page", isActivePath(pathname, myPage) && !isActivePath(pathname, myAccount))}
+                {pill(myAccount, "My Account", isActivePath(pathname, myAccount))}
+              </div>
+            </>
+          )}
           {trailing ? (
             <span className="flex shrink-0 items-center gap-3 border-l border-[var(--arena-text-soft)]/30 pl-3 ml-1">
               {trailing}
@@ -198,16 +217,24 @@ export default function HubTopNav({ theme = "arena", showLangSwitch = false, tra
       <div className="flex flex-wrap items-center gap-1 sm:gap-2 justify-end w-full">
         <div style={arenaNav.wrap} className="bty-hub-primary justify-end" aria-label="Main navigation">
           {hubPill2(center, "Center", "center")}
-          {hubPill2(arena, "Arena", "arena")}
-          {hubPill2(foundry, "Foundry", "foundry")}
+          {forcedResetActive ? null : (
+            <>
+              {hubPill2(arena, "Arena", "arena")}
+              {hubPill2(foundry, "Foundry", "foundry")}
+            </>
+          )}
         </div>
-        <span style={{ color: "var(--arena-text-soft)", opacity: 0.3 }}>|</span>
-        <div style={arenaNav.wrap}>
-          {pill2(dash2, "Dashboard", isActivePath(pathname, dash2))}
-          {pill2(lb2, "Leaderboard", isActivePath(pathname, lb2))}
-          {pill2(myPage2, "My Page", isActivePath(pathname, myPage2) && !isActivePath(pathname, myAccount2))}
-          {pill2(myAccount2, "My Account", isActivePath(pathname, myAccount2))}
-        </div>
+        {forcedResetActive ? null : (
+          <>
+            <span style={{ color: "var(--arena-text-soft)", opacity: 0.3 }}>|</span>
+            <div style={arenaNav.wrap}>
+              {pill2(dash2, "Dashboard", isActivePath(pathname, dash2))}
+              {pill2(lb2, "Leaderboard", isActivePath(pathname, lb2))}
+              {pill2(myPage2, "My Page", isActivePath(pathname, myPage2) && !isActivePath(pathname, myAccount2))}
+              {pill2(myAccount2, "My Account", isActivePath(pathname, myAccount2))}
+            </div>
+          </>
+        )}
         {showLangSwitch && (
           <span className="flex shrink-0 items-center gap-3 border-l border-[var(--arena-text-soft)]/30 pl-3 ml-1">
             <LangSwitch />

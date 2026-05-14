@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { pathnameMatchesArenaEntryHref } from "@/components/bty/navigation/nav-items";
+import { useForcedResetActive } from "@/components/bty/navigation/useForcedResetActive";
 import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
@@ -29,6 +30,8 @@ export function Nav({
   const rest = pathname.slice(pathname.startsWith("/en") ? 3 : 3) || "/";
   const toggleHref = pathname.startsWith("/en") ? `/ko${rest}` : `/en${rest}`;
   const navAriaLabel = locale === "ko" ? "주요 메뉴" : "Main navigation";
+  /** v1.1.1 §5.5.2 + §8-7: FORCED_RESET sub-mode → suppress sibling nav (Foundry / Arena / language toggle). Center stays. */
+  const forcedResetActive = useForcedResetActive();
   return (
     <nav className="flex items-center justify-center gap-4 py-3 text-sm flex-wrap" aria-label={navAriaLabel}>
       <Link
@@ -38,28 +41,32 @@ export function Nav({
       >
         {t.center}
       </Link>
-      <Link
-        href={`/${locale}/bty`}
-        className={isBty ? "font-medium underline" : cn(muted, "hover:underline")}
-        aria-label={locale === "ko" ? "훈련장(Foundry)으로 이동" : "Go to Foundry"}
-      >
-        {t.bty}
-      </Link>
-      <Link
-        href={arenaEntry.href}
-        className={arenaLinkActive ? "font-medium underline" : cn(muted, "hover:underline")}
-        aria-label={locale === "ko" ? "아레나로 이동" : "Go to Arena"}
-      >
-        {t.arena}
-      </Link>
-      <span className={mutedDivider}>|</span>
-      <Link
-        href={toggleHref}
-        className={cn(muted, "hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2", isDear ? "focus-visible:ring-dear-sage" : "focus-visible:ring-foundry-purple")}
-        aria-label={locale === "en" ? t.ko : t.en}
-      >
-        {locale === "en" ? t.ko : t.en}
-      </Link>
+      {forcedResetActive ? null : (
+        <>
+          <Link
+            href={`/${locale}/bty`}
+            className={isBty ? "font-medium underline" : cn(muted, "hover:underline")}
+            aria-label={locale === "ko" ? "훈련장(Foundry)으로 이동" : "Go to Foundry"}
+          >
+            {t.bty}
+          </Link>
+          <Link
+            href={arenaEntry.href}
+            className={arenaLinkActive ? "font-medium underline" : cn(muted, "hover:underline")}
+            aria-label={locale === "ko" ? "아레나로 이동" : "Go to Arena"}
+          >
+            {t.arena}
+          </Link>
+          <span className={mutedDivider}>|</span>
+          <Link
+            href={toggleHref}
+            className={cn(muted, "hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2", isDear ? "focus-visible:ring-dear-sage" : "focus-visible:ring-foundry-purple")}
+            aria-label={locale === "en" ? t.ko : t.en}
+          >
+            {locale === "en" ? t.ko : t.en}
+          </Link>
+        </>
+      )}
     </nav>
   );
 }
