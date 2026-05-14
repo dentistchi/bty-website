@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
-import BtyArenaRunPageClient from "./BtyArenaRunPageClient";
+import { useRouter } from "next/navigation";
 
 const copy = {
   ko: {
@@ -28,18 +28,14 @@ interface Props {
 export default function ArenaEntryClient({ locale }: Props) {
   const isKo = locale !== "en";
   const t = isKo ? copy.ko : copy.en;
-  const [mode, setMode] = useState<"select" | "full">("select");
+  const router = useRouter();
 
   function handleFullArena() {
     // Clear persisted run state so the flow always starts from step 2 (primary_choice).
     if (typeof window !== "undefined") {
       localStorage.removeItem("btyArenaState:v1");
     }
-    setMode("full");
-  }
-
-  if (mode === "full") {
-    return <BtyArenaRunPageClient pipelineDefault="new" />;
+    router.push(`/${locale}/bty-arena/play`);
   }
 
   const quickHref = `/${locale}/bty-arena/quick`;

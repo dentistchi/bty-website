@@ -1,9 +1,9 @@
-import { redirect } from "next/navigation";
+import BtyArenaRunPageClient from "../BtyArenaRunPageClient";
 
 type Props = { params: Promise<{ locale: string }> };
 
-/** Legacy mission play — canonical Arena is `/bty-arena`. */
-export default async function BtyArenaMissionPlayRedirect({ params }: Props) {
-  const { locale } = await params;
-  redirect(`/${locale}/bty-arena`);
+/** Arena Play surface — in-scenario triad (PRIMARY_CHOICE → TRADEOFF → ACTION_DECISION) per v1.1 §5.2. Entered from Lobby (/bty-arena) via Full Arena navigation. */
+export default async function ArenaPlayPage({ params }: Props) {
+  await params;
+  return <BtyArenaRunPageClient pipelineDefault="new" />;
 }
