@@ -47,7 +47,7 @@ import {
 } from "@/lib/bty/arena/arenaEntryResolutionInvalidate";
 import { isEliteChainScenarioId } from "@/lib/bty/arena/postLoginEliteEntry";
 import { ArenaChoiceHttpError, postArenaChoice } from "@/lib/bty/arena/binding/postArenaChoice";
-import { getScenarioById } from "@/data/scenario";
+import { getScenarioById, type RuntimeFlowContext } from "@/data/scenario";
 import { pushSignalIfNew } from "@/features/arena/logic/signalStorage";
 
 // ── exported types ──────────────────────────────────────────────
@@ -166,6 +166,20 @@ type SavedArenaState = {
   reflectionBonusXp?: number;
   otherSubmitted?: boolean;
   freeResponseFeedback?: { praise: string; suggestion: string } | null;
+
+  // Sub-phase 2B addition (Stage 2 step 2 Resolve route): JSON-engine dev-path state
+  // for cross-route survivability when the line-618 inline rendering relocates to
+  // ArenaResolveClient in sub-phase 2D. Until 2D wires the writes, these fields
+  // default to undefined on load — equivalent to fresh state, no migration needed.
+  // No runtimeSchemaVersion bump: missing fields parse as undefined and pass
+  // loadState()'s existing guards.
+  jsonFlow?: RuntimeFlowContext | null;
+  jsonEngineState?: "ACTION_REQUIRED" | "NEXT_SCENARIO_READY" | null;
+  jsonSelectedPrimary?: string | null;
+  jsonSelectedTradeoff?: string | null;
+  jsonSelectedActionDecision?: string | null;
+  jsonReExposureDueCandidate?: boolean | null;
+  jsonNoChangeRisk?: string | null;
 };
 
 // ── constants ───────────────────────────────────────────────────
