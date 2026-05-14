@@ -1,9 +1,24 @@
-# BTY_ARENA_SEMANTIC_LOCKING_TABLE_v1
+# BTY_ARENA_SEMANTIC_LOCKING_TABLE_v1.1
 
 **Status:** Stage 0 산출물. Cursor 코드화 진입 전 semantic gate.
 **Authority precedence:** Server `ArenaRuntimeStateId` > Client `jsonFlow.state` > UI surface.
 **Frozen decisions:** Commander 결정값 6개 (본 문서 §3). 변경 시 v2 필요.
 **Source files:** `arenaRuntimeSnapshot.types.ts:9` (server gate), `data/scenario/index.ts:500` (client UI state).
+
+---
+
+## 0. Changelog (v1 → v1.1)
+
+v1.1은 Stage 1 proposal phase에서 표면화된 ambiguity 중 v1 자체 결함 5건을 정정. 신규 결정 없음, 기존 의도 명료화만.
+
+| 정정 | v1 문제 | v1.1 조치 |
+|---|---|---|
+| **C-A3** | §10은 "D1을 Stage 1 entry에 결정"하라 했고 §9-D1은 "Lobby 코드화 시(Stage 2) 결정"이라 함 — timing 모순 | §9-D1 기준으로 통일. D1은 **Stage 2 Lobby 코드화 시 결정**. §10은 "D1 flag 표기"로 약화 (결정 아님) |
+| **C-A4** | §11이 Stage 2 순서를 "권장"으로 표기 | Commander가 lock 확정함. §11에서 **LOCKED**로 변경 |
+| **C-A5 + C-A9** | §2 Authority가 단일 컬럼 — REEXPOSURE_DUE의 server-trigger/client-render 2-layer 표현 불가 | §2 Authority를 **Trigger Authority / Render Authority 2-컬럼**으로 분리 |
+| **C-A8** | §12 끝 self-location이 `bty-app/docs/...`로 stale (실제는 outer `docs/`) | 실제 outer 경로로 수정 |
+
+A1(Hub 정체)·A2(HK6)·A6(NEXT_SCENARIO 분리)·A7(Foundry shape)은 v1 결함 아님 — Stage 1 매핑 doc에서 처리. A2는 Cursor 코드 검증으로 closed (no impact).
 
 ---
 
@@ -20,33 +35,41 @@ BTY UI는 flow UX가 아닌 **interruption UX**다. 핵심 invariant:
 
 ## 2. Runtime State ↔ Surface Mapping
 
-| # | Runtime State | Authority | Surface | UI Mode | Lock | Progression CTA |
-|---|---|---|---|---|---|---|
-| 1 | `PRIMARY_CHOICE_ACTIVE` | client (`jsonFlow.state`) | **Play** | choice cards 활성 | unlocked | choice 선택 → Tradeoff |
-| 2 | `TRADEOFF_ACTIVE` | client | **Play** | tradeoff panel | unlocked | tradeoff 확정 → Action Decision |
-| 3 | `ACTION_DECISION_ACTIVE` | client | **Play** | action decision panel (AD2 포함) | unlocked | decision 제출 → ACTION_REQUIRED 전이 |
-| 4 | `ACTION_REQUIRED` | **server gate** | **Resolve** | execution gateway (QR/contract entry) | **LOCKED** | QR 생성 / contract bind 외 진행 불가 |
-| 5 | `ACTION_SUBMITTED` | server gate | **Resolve** | "executed, awaiting verification" | **LOCKED** | approver 대기, 유저 행동 없음 |
-| 6 | `AWAITING_VERIFICATION` | server gate | **Resolve** | approver scan/eval surface | **LOCKED** | approver 외 유저는 wait |
-| 7 | `REEXPOSURE_DUE` | server gate | **Play (re-exposure mode)** | scenario re-fires, primary choice 재제시 | unlocked | 새 primary choice |
-| 8 | `FORCED_RESET_PENDING` | server gate | **Center** | hard interrupt, 다른 surface 접근 차단 | **HARD LOCKED** | compliance task 완료만 unlock |
-| 9 | `NEXT_SCENARIO_READY` | server gate | **Lobby** or **Hub** | next scenario CTA | unlocked | enter → 새 Play |
-| 10 | `ARENA_SCENARIO_READY` | server gate | **Lobby** | first scenario CTA | unlocked | enter → Play |
+**v1.1 변경:** Authority 컬럼을 2개로 분리 (C-A5/C-A9). 대부분 행은 Trigger=Render지만, REEXPOSURE_DUE만 다름 — server gate가 mode를 trigger하고, Play surface(client)가 mode를 render. 이게 FD-4의 정확한 의미.
 
-**Mapping note:** Foundry는 본 lifecycle의 일부가 아니라 **analysis surface** (별도 navigation). FORCED_RESET이 활성일 때 Foundry 접근 차단 여부는 §5.3 참조.
+| # | Runtime State | Trigger Authority | Render Authority | Surface | UI Mode | Lock | Progression CTA |
+|---|---|---|---|---|---|---|---|
+| 1 | `PRIMARY_CHOICE_ACTIVE` | client (`jsonFlow.state`) | client (Play) | **Play** | choice cards 활성 | unlocked | choice 선택 → Tradeoff |
+| 2 | `TRADEOFF_ACTIVE` | client | client (Play) | **Play** | tradeoff panel | unlocked | tradeoff 확정 → Action Decision |
+| 3 | `ACTION_DECISION_ACTIVE` | client | client (Play) | **Play** | action decision panel (AD2 포함) | unlocked | decision 제출 → ACTION_REQUIRED 전이 |
+| 4 | `ACTION_REQUIRED` | **server gate** | server gate (Resolve) | **Resolve** | execution gateway (QR/contract entry) | **LOCKED** | QR 생성 / contract bind 외 진행 불가 |
+| 5 | `ACTION_SUBMITTED` | server gate | server gate (Resolve) | **Resolve** | "executed, awaiting verification" | **LOCKED** | approver 대기, 유저 행동 없음 |
+| 6 | `AWAITING_VERIFICATION` | server gate | server gate (Resolve) | **Resolve** | approver scan/eval surface | **LOCKED** | approver 외 유저는 wait |
+| 7 | `REEXPOSURE_DUE` | **server gate** | **client (Play re-exposure mode)** | **Play (re-exposure mode)** | scenario re-fires, primary choice 재제시 | unlocked | 새 primary choice |
+| 8 | `FORCED_RESET_PENDING` | server gate | server gate (Center) | **Center** | hard interrupt, 다른 surface 접근 차단 | **HARD LOCKED** | compliance task 완료만 unlock |
+| 9 | `NEXT_SCENARIO_READY` | server gate | server gate (Lobby/Hub) | **Lobby** or **Hub** | next scenario CTA | unlocked | enter → 새 Play |
+| 10 | `ARENA_SCENARIO_READY` | server gate | server gate (Lobby) | **Lobby** | first scenario CTA | unlocked | enter → Play |
+
+**Authority 2-layer 해석 (C-A5/C-A9):**
+- **Trigger Authority** = 어느 layer가 이 state로의 진입을 결정하는가
+- **Render Authority** = 어느 layer가 이 state의 UI를 그리는가
+- 행 7 REEXPOSURE_DUE만 둘이 갈림: server gate가 re-exposure를 trigger → client Play가 re-exposure mode로 render. FD-4 "Play의 re-exposure mode flag"의 정확한 메커니즘.
+- 나머지 9개 행은 Trigger=Render (단일 layer).
+
+**Mapping note:** Foundry는 본 lifecycle의 일부가 아니라 **analysis surface** (별도 navigation). FORCED_RESET이 활성일 때 Foundry 접근 차단 여부는 §5.4 참조.
 
 ---
 
 ## 3. Commander Frozen Decisions (v1 lock)
 
-본 결정값은 v1에서 고정. 변경 시 v2 문서 필요.
+본 결정값은 v1에서 고정. 변경 시 v2 문서 필요. (v1.1에서 변경 없음.)
 
 | ID | Decision | Lock value |
 |---|---|---|
 | **FD-1** | ACTION_DECISION_ACTIVE의 home surface | **Play** (Resolve 아님) |
 | **FD-2** | ACTION_REQUIRED의 home surface | **Resolve** as execution gateway |
 | **FD-3** | ACTION_SUBMITTED / AWAITING_VERIFICATION | **Resolve locked state** (별도 surface 아님) |
-| **FD-4** | REEXPOSURE_DUE의 surface | **Play의 re-exposure mode** (overlay 아님, mode flag) |
+| **FD-4** | REEXPOSURE_DUE의 surface | **Play의 re-exposure mode** (overlay 아님, mode flag). server trigger / client render — §2 참조. |
 | **FD-5** | FORCED_RESET_PENDING | **Center hard interrupt** (modal 아님, full redirect) |
 | **FD-6** | Resolve semantic identity | **Action Gate**, not feedback screen. 이름은 Resolve 유지하되 의미 잠금. |
 
@@ -97,7 +120,7 @@ BTY UI는 flow UX가 아닌 **interruption UX**다. 핵심 invariant:
 
 ### 5.2 Play
 - **역할:** in-scenario interaction. PRIMARY_CHOICE → TRADEOFF → ACTION_DECISION 3-state container.
-- **추가 mode:** REEXPOSURE_DUE 시 re-exposure mode flag로 동일 surface 재사용.
+- **추가 mode:** REEXPOSURE_DUE 시 re-exposure mode flag로 동일 surface 재사용. server gate가 trigger, Play가 render (§2 참조).
 - **금지:** ACTION_REQUIRED 이후 상태 렌더링 (Resolve 영역).
 
 ### 5.3 Resolve — **Action Gate (FD-6)**
@@ -111,7 +134,7 @@ BTY UI는 flow UX가 아닌 **interruption UX**다. 핵심 invariant:
 
 ### 5.4 Foundry
 - **역할:** analysis surface (pattern, trend, AIR, leadership engine).
-- **lifecycle 외부:** runtime state machine과 독립. 다만 FORCED_RESET_PENDING 시 접근 차단 (HARD LOCKED 규칙).
+- **lifecycle 외부:** runtime state machine과 독립. 10개 runtime state를 직접 render하지 않음. 다만 FORCED_RESET_PENDING 시 접근 차단 (HARD LOCKED 규칙의 secondary block).
 - **금지:** in-scenario interaction (Play/Resolve 영역).
 
 ### 5.5 Center — **interrupt surface (FD-5)**
@@ -122,7 +145,8 @@ BTY UI는 flow UX가 아닌 **interruption UX**다. 핵심 invariant:
 
 ### 5.6 Hub
 - **역할:** scenario 간 transition surface. NEXT_SCENARIO_READY CTA 노출.
-- **Lobby와의 차이:** Lobby는 첫 entry, Hub는 scenario 완료 후 transition. 통합 검토 가능 (별도 결정).
+- **Lobby와의 차이:** Lobby는 첫 entry (ARENA_SCENARIO_READY), Hub는 scenario 완료 후 transition (NEXT_SCENARIO_READY). temporal 구분.
+- **D1 open:** Lobby와 Hub 통합 여부는 §9-D1 deferred. Stage 2 Lobby 코드화 시 결정.
 
 ---
 
@@ -167,6 +191,8 @@ Play surface
 └─ mode: "re-exposure" → REEXPOSURE_DUE
 ```
 
+**Authority (v1.1 명시):** server gate가 REEXPOSURE_DUE를 trigger → Play surface가 re-exposure mode로 render. §2 행 7의 Trigger/Render 분리가 이것.
+
 ### 7.2 Re-exposure mode 시 차이
 
 - scenario header에 "다시 한 번" 류 표식 (단, "다시 시도"는 금지 — choice 재선택 frame이 됨)
@@ -184,26 +210,26 @@ Play surface
 
 ## 8. Cursor 코드화 전 금지 조건
 
-본 표 v1 lock 이후 코드화 진입 시 다음 위반 자동 reject:
+본 표 lock 이후 코드화 진입 시 다음 위반 자동 reject:
 
 1. **Authority violation:** server gate state를 client가 override하는 코드
 2. **Surface invariant violation:** Play에 Resolve state 렌더링, 그 역
 3. **Lock bypass:** LOCKED 상태에서 progression CTA 활성화
 4. **FD-6 violation:** Resolve를 feedback screen / score reveal로 표현
 5. **FD-5 violation:** Center를 일반 menu / dashboard로 표현
-6. **FD-4 violation:** REEXPOSURE_DUE를 별도 surface로 분리
+6. **FD-4 violation:** REEXPOSURE_DUE를 별도 surface로 분리 (server trigger / client Play render 모델 위반 포함)
 7. **HARD LOCKED bypass:** FORCED_RESET_PENDING 시 Center 외 surface 접근 가능
 8. **Skip CTA:** "skip" / "continue anyway" / "next" 류 LOCKED 우회 CTA 도입
 
 ---
 
-## 9. v1 미해결 항목 (deferred to v2)
+## 9. 미해결 항목 (deferred to v2)
 
-본 v1에서 잠그지 않은 항목 — 코드화 중 결정 가능, 단 결정 시 v2 업데이트:
+본 문서에서 잠그지 않은 항목 — 코드화 중 결정 가능, 단 결정 시 v2 업데이트:
 
 | # | Deferred item | 결정 시점 |
 |---|---|---|
-| D1 | Lobby ↔ Hub 통합 여부 | Lobby surface 코드화 시 |
+| D1 | Lobby ↔ Hub 통합 여부 | **Stage 2 Lobby surface 코드화 시** (C-A3 통일 기준) |
 | D2 | Foundry FORCED_RESET 접근 차단 UI 표현 | Center 코드화 시 |
 | D3 | Resolve 내 micro-feedback 허용 범위 (XP 표시 등) | Resolve 코드화 시 |
 | D4 | Re-exposure mode header 정확한 문구 | Play 코드화 시 |
@@ -214,39 +240,39 @@ Play surface
 
 ## 10. Stage 1 진입 조건
 
-본 v1 lock 후 Stage 1 (Figma Frame ID 매핑) 진입 시:
+본 문서 lock 후 Stage 1 (Figma Frame ID 매핑) 진입 시:
 
-- 각 Figma frame (Lobby / Play / Resolve / Foundry / Center / Hub) 상단에 본 표 §2 매핑을 주석으로 명시
-- ios-frame.jsx 같은 공통 컴포넌트는 어느 surface state에서 사용되는지 명시
-- Hub surface가 Lobby와 통합되는지 별도 유지되는지 D1 결정
+- 6개 Claude design surface (Lobby / Play / Resolve / Foundry / Center / Hub-candidate)는 design-tool 산출물 — 코드 파일 아님. Stage 1 = standalone 매핑 문서.
+- 매핑 문서는 §2 매핑을 frame별로 명시 (table + per-surface detail).
+- ios-frame.jsx 등 공통 wrapper는 codebase에 아직 없음 — Stage 2 구현 제약으로 기록.
+- **Hub 정체(D1)는 Stage 1에서 결정하지 않음** — flag만 표기. 결정은 Stage 2 Lobby 코드화 시 (C-A3).
 
 ## 11. Stage 2 진입 조건
 
 - Stage 1 frame mapping 완료
 - Cursor dispatch 시 본 표 §8 금지 조건 8개를 lint rule로 명시
-- 코드화 순서: BTY_ARENA_FIGMA_CODE_MAPPING.md §13 (Lobby → Play+Resolve → Foundry → Center → Chat → Error/A11y)
-- 단, §13 순서 수정 가능: **Lobby → Resolve (execution gateway, 가장 위험) → Play → Center → Foundry → Hub** 권장 — Resolve가 lock invariant 위반 위험이 가장 높으므로 일찍 검증.
+- **코드화 순서 — LOCKED (C-A4, Commander 확정):**
+  **Lobby → Resolve → Play → Center → Foundry → Hub**
+  근거: Lobby가 entry reference point를 고정, Resolve가 lock-invariant 위반 위험이 가장 높아 조기 검증.
+  (이전 참조: `BTY_ARENA_FIGMA_CODE_MAPPING.md §13`의 순서는 본 LOCKED 순서로 대체됨.)
 
 ---
 
 ## 12. Memory 반영 요청 사항
 
-본 v1 closure 시 Anthropic conversational memory에 추가 권장:
+본 문서 closure 시 Anthropic conversational memory 갱신 권장 (이미 memory #19 반영됨 — v1.1 정정 사항 추가 권장):
 
 ```
-[semantic_locking_v1] BTY_ARENA_SEMANTIC_LOCKING_TABLE_v1 frozen 2026-05-13.
-6 Commander decisions locked (FD-1~FD-6). Resolve = Action Gate (not feedback).
-Center = system interrupt (not safe room). REEXPOSURE_DUE = Play mode flag.
-10 runtime states mapped to 6 surfaces with 3 lock grades.
-8 prohibitions for Stage 2 code dispatch.
-6 deferred items (D1-D6) for v2.
-Source: arenaRuntimeSnapshot.types.ts:9 + data/scenario/index.ts:500.
+[semantic_locking_v1] v1.1 정정 2026-05-13: §2 Authority 2-layer 분리
+(Trigger/Render), D1 timing을 Stage 2 Lobby 코드화로 통일, Stage 2 순서
+LOCKED 확정, self-location outer 경로로 수정. FD-1~6 변경 없음.
 ```
 
 ---
 
-**문서 위치:** `bty-app/docs/BTY_ARENA_SEMANTIC_LOCKING_TABLE_v1.md` (권장 outer repo 이관 경로)
+**문서 위치:** `docs/BTY_ARENA_SEMANTIC_LOCKING_TABLE_v1.1.md` (outer repo)
+**이전 버전:** `docs/BTY_ARENA_SEMANTIC_LOCKING_TABLE_v1.md` (outer commit 6fc83bf) — v1.1로 supersede
 **참조:** `BTY_ARENA_FIGMA_CODE_MAPPING.md`, `BTY_ARENA_VISUAL_BEHAVIOR_SPEC.md`, `BTY_Arena_-_QR_Action_System_Product_Spec_v1`
-**다음 단계:** Stage 1 — Figma Frame ID Mapping
+**다음 단계:** Stage 1 — Figma Frame ID Mapping (매핑 문서 authoring)
 **작성자:** Commander (Hanbit) + C1 (Anthropic conversational memory)
-**Status:** v1 frozen, awaiting Stage 1 dispatch
+**Status:** v1.1 frozen, Stage 1 매핑 문서 authoring 대기
