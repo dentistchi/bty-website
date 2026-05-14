@@ -44,3 +44,9 @@ e2e/.auth/user.json
 # macOS auto-generated screenshots
 Screenshot *.png
 **/Screenshot *.png
+
+# .env secrets — root-cause fix per INNER_PUSH_POLICY stash probe (2026-05-14)
+.env
+.env.*
+!.env.example
+.env.bak.*
