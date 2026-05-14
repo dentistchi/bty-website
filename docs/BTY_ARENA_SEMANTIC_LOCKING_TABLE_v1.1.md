@@ -1,13 +1,14 @@
-# BTY_ARENA_SEMANTIC_LOCKING_TABLE_v1.1
+# BTY_ARENA_SEMANTIC_LOCKING_TABLE_v1.1.1
 
 **Status:** Stage 0 산출물. Cursor 코드화 진입 전 semantic gate.
 **Authority precedence:** Server `ArenaRuntimeStateId` > Client `jsonFlow.state` > UI surface.
 **Frozen decisions:** Commander 결정값 6개 (본 문서 §3). 변경 시 v2 필요.
 **Source files:** `arenaRuntimeSnapshot.types.ts:9` (server gate), `data/scenario/index.ts:500` (client UI state).
+**Filename note:** in-document version marker is **v1.1.1**; filename remains `BTY_ARENA_SEMANTIC_LOCKING_TABLE_v1.1.md` per the Stage 0 `ba1d375` filename-stability lesson — renaming the file would break every cross-doc reference.
 
 ---
 
-## 0. Changelog (v1 → v1.1)
+## 0. Changelog (v1 → v1.1.1)
 
 v1.1은 Stage 1 proposal phase에서 표면화된 ambiguity 중 v1 자체 결함 5건을 정정. 신규 결정 없음, 기존 의도 명료화만.
 
@@ -19,6 +20,16 @@ v1.1은 Stage 1 proposal phase에서 표면화된 ambiguity 중 v1 자체 결함
 | **C-A8** | §12 끝 self-location이 `bty-app/docs/...`로 stale (실제는 outer `docs/`) | 실제 outer 경로로 수정 |
 
 A1(Hub 정체)·A2(HK6)·A6(NEXT_SCENARIO 분리)·A7(Foundry shape)은 v1 결함 아님 — Stage 1 매핑 doc에서 처리. A2는 Cursor 코드 검증으로 closed (no impact).
+
+### v1.1 → v1.1.1 (2026-05-14)
+
+v1.1.1은 Stage 2 step 4 (Center) 코드화 entry 시점에 표면화된 §5.5 outlier framing을 정정. 신규 결정 없음, scope 정확화만.
+
+| 정정 | v1.1 문제 | v1.1.1 조치 |
+|---|---|---|
+| **§5.5 / §8-5 scope** | §5.5는 Center 전체를 "system interrupt surface (FD-5)" / "safe room 아님"으로 표기, §8-5는 menu/dashboard 표현 전면 금지. 그러나 4개 FINAL LOCKED 문서 (`BTY_ARENA_VISUAL_BEHAVIOR_SPEC.md` Screens 9-13, `BTY_CURSOR_MASTER_PROMPT.md` Recovery layer, `BTY_MASTER_BUILD_V1.md` §6, `LEADERSHIP_ENGINE_SPEC.md` §5) + 라이브 제품 (`/center` route가 Dear-Me / Resilience / Self-esteem / Healing Phase Tracker 통합 surface)이 Center = recovery surface (default) + FORCED_RESET sub-mode (override)임을 일관되게 정의. §5.5는 outlier. | §5.5를 default recovery surface + FORCED_RESET override sub-mode 2-mode 구조로 재정의. §8-5 prohibition은 sub-mode scope로 한정. §6 prohibition/requirement는 sub-mode scope로 한정 (§6.2/§6.3 header reframe + §6 top-level scope clarifier 추가). §2 row 8 / §3 FD-5 / §8-7 변경 없음 (이미 sub-mode-scoped). Commander decision 2026-05-14, Center Stage 2 step 4 sub-phase 2A → 2B. |
+
+**v1.1.1에서 변경 없음:** FD-1~FD-6 frozen decisions, §2 runtime state ↔ surface mapping rows, §8 prohibition list semantics (1/2/3/4/6/7/8 동일; 5만 scope 정확화), §11 Stage 2 LOCKED order.
 
 ---
 
@@ -137,11 +148,43 @@ BTY UI는 flow UX가 아닌 **interruption UX**다. 핵심 invariant:
 - **lifecycle 외부:** runtime state machine과 독립. 10개 runtime state를 직접 render하지 않음. 다만 FORCED_RESET_PENDING 시 접근 차단 (HARD LOCKED 규칙의 secondary block).
 - **금지:** in-scenario interaction (Play/Resolve 영역).
 
-### 5.5 Center — **interrupt surface (FD-5)**
-- **역할:** FORCED_RESET_PENDING 시 full redirect. compliance task surface.
-- **접근 경로:** server gate 강제 (유저 자발 navigation 아님).
-- **포함:** reset weight task (2x), 48h lockout window, compliance verification.
-- **금지:** Center를 일반 menu / recovery dashboard로 표현. **"safe room"이 아닌 "system friction"**.
+### 5.5 Center — **recovery surface (default) + FORCED_RESET override sub-mode**
+
+**v1.1.1 정정:** v1.1 원문은 Center 전체를 "interrupt surface (FD-5)"로 framing했으나, 4개 FINAL LOCKED 문서 + 라이브 제품의 일관된 product loop과 충돌함. v1.1.1은 Center를 default recovery surface + FORCED_RESET override sub-mode 2-mode 구조로 재정의. FD-5 자체는 변경 없음 — sub-mode 활성 시에만 적용됨이 명확화됨.
+
+#### 5.5.1 기본 mode (default — recovery surface)
+
+- **역할:** product loop의 회복 layer. "행동 유도 → 분석 → 회복" 공간 구조의 회복 phase.
+- **포함:** Safe Mirror (1-2줄 reflection 입력), Small Wins Tile, Self-esteem Check (0-100 slider), Tiny Recovery Curve, Healing Phase Tracker, Dear Me letters.
+- **접근 경로:** 사용자 자발 navigation 허용 (top-nav `/center` entry, HubTopNav, BottomNav). Foundry/Arena와 sibling.
+- **톤:** calm, warm, structured, non-judgmental. "safe", "쉼", "회복", "재정비" 어휘 허용.
+- **금지 (default mode):** 별도 §8 위반 사항 없음. §5.5.2 sub-mode override가 아닌 한 self-reflection navigation은 정상.
+- **근거 (4-doc consensus):**
+  - `BTY_ARENA_VISUAL_BEHAVIOR_SPEC.md` §1.4 (Center block table: One Liner "You are safe here." / Safe Mirror / Small Wins Tile / Self-esteem Indicator / Tiny Recovery Curve) + §1.5 Screens 9-13 (Center Entry / Safe Mirror / Small Wins Capture / Self-esteem Check / Center Mini Recovery) + §1.6 Flow (Center Entry → Safe Mirror / Small Wins → Mini Recovery → Back to Arena) + §3 톤 (Center: Calm, Warm — 정서 안정 — Warm pastels). 본 문서가 default recovery surface 정체성의 1차 근거.
+  - `BTY_CURSOR_MASTER_PROMPT.md` Layer table ("Recovery — protection") + Feel ("Recovery — structured reset, not failure") + Recovery section ("calm structured reset, not shame; short prompt: pressure pattern → what must reset → re-entry commitment"). Recovery layer의 tone과 protection 의도를 정의.
+  - `BTY_MASTER_BUILD_V1.md` §1 Product Definition ("Recovery — Protection") + §2 Core Loop (Arena → Reflection → Recovery (if needed) → My Page → next Arena cycle) + §6 Screen Roles ("Recovery — Pressure reset, short re-entry fields, return to Growth / Arena"). Recovery를 4 product area 중 protection layer로 명시.
+  - `LEADERSHIP_ENGINE_SPEC.md` §5 Reset 강제 조건 (Module 3) — Stage4 forced reset은 deterministic 강제 sub-mode임을 engine layer에서 정의. Stage1~3는 일반 stage로 default recovery layer가 정상 작동. Stage4만 sub-mode가 override.
+
+- **Route lineage note (v1.1.1 추가, per Commander):** 초기 spec (`BTY_CURSOR_MASTER_PROMPT.md`, `BTY_MASTER_BUILD_V1.md`)은 Recovery를 `/[locale]/growth/recovery`에 배치했으나, 라이브 제품이 Recovery + Dear-Me를 `/[locale]/center`로 통합 (`bty-app/src/middleware.ts:133-146`의 `/[locale]/dear-me` → `/[locale]/center` 301 alias). **`/center`가 canonical recovery route.** 위 두 문서의 `/growth/recovery` 참조는 historical — 라이브 제품과의 route 불일치는 spec lineage 흔적이며 v1.1.1에서 사실관계로 기록됨 (별도 v2 정정 대상 아님; 4-doc은 모두 tone/purpose 일관, route만 통합 이전 표기).
+
+#### 5.5.2 FORCED_RESET_PENDING sub-mode (override — system friction, FD-5)
+
+- **활성 조건:** server gate가 Stage4 forced reset을 trigger (per `LEADERSHIP_ENGINE_SPEC.md` §5 — `stage3_selected_count >= 2`, AIR_7d < 0.80 2주 연속, `no_qr_verification_days >= 7`, TSP 추세 2주 연속 음수 중 2개 이상). `user.current_stage = Stage4` AND `forced_reset_triggered_at != null`.
+- **역할:** **system friction** — execution gateway가 아닌 system interrupt. default recovery surface는 가려지고 hard-interrupt sub-mode가 활성.
+- **FD-5 (full redirect, modal 아님):** server gate 강제 redirect. 자발 navigation 불가. `bty-app/src/middleware.ts` enforcement (Stage 2 step 4 sub-phase 2C 작업 대상).
+- **HARD LOCKED (§8-7):** Center 외 surface (Arena / Foundry / 기타) 접근 차단. top-nav sibling Links suppress, browser back 차단.
+- **포함 (compliance task surface):**
+  - reset 사유 명시 (어떤 pattern_family / 어떤 axis)
+  - compliance task 명시 (reset activation weight = 2.0 per `LEADERSHIP_ENGINE_SPEC.md` §4)
+  - 48h lockout window (countdown UI)
+  - completion verification surface (activation completed + verified per `LEADERSHIP_ENGINE_SPEC.md` §5)
+- **금지 (sub-mode):**
+  - default recovery surface UI (Safe Mirror / Small Wins / Self-esteem Check / Healing Phase Tracker / Dear Me letters) — sub-mode 중 숨김
+  - "괜찮아요" / "쉬어가세요" 류 emotional safe-room 톤 — system friction에 맞지 않음
+  - skip / dismiss / "compliance task 회피" 류 CTA (§8-8)
+  - 다른 surface navigation (§8-7 — HARD LOCKED)
+- **종료 조건:** activation completed + verified → `current_stage = Stage1`, `forced_reset_triggered_at = null` → default recovery surface 복귀.
+- **§6 (Center interrupt 조건 상세)는 본 sub-mode에만 적용** (§6 top-level scope clarifier 참조).
 
 ### 5.6 Hub
 - **역할:** scenario 간 transition surface. NEXT_SCENARIO_READY CTA 노출.
@@ -150,30 +193,35 @@ BTY UI는 flow UX가 아닌 **interruption UX**다. 핵심 invariant:
 
 ---
 
-## 6. Center interrupt 조건 (FD-5 상세)
+## 6. Center FORCED_RESET sub-mode 상세 (FD-5)
+
+**Scope clarifier (v1.1.1):** §6 전체는 §5.5 의 FORCED_RESET sub-mode 에 적용. Default recovery mode 는 §6 prohibition 대상이 아님 — Safe Mirror / Small Wins / Self-esteem Check / Healing Phase Tracker / Dear Me letters 등 default mode UI는 정상이며 calm·warm tone + 자발 navigation 허용 (§5.5.1 참조).
 
 ### 6.1 Trigger 조건
 
-Center로 forced redirect되는 server-side trigger:
+FORCED_RESET sub-mode 활성 (server gate가 Stage4 forced reset trigger)되는 server-side 조건:
 
 - AIR threshold 미달 (<80%, integrity slip flag)
 - ACTION_REQUIRED 미실행 48h 경과
 - 동일 pattern_family 반복 (no_change 누적)
 - (TBD) reinforcement 패턴 cap 초과
 
-### 6.2 Center 내 UI 금지 사항
+(상세 engine 조건은 `LEADERSHIP_ENGINE_SPEC.md` §5 참조 — `stage3_selected_count >= 2`, AIR_7d high 밴드 미만 2주 연속, `no_qr_verification_days >= 7`, TSP 추세 2주 연속 음수 중 2개 이상.)
 
-- "괜찮아요" / "쉬어가세요" 류 emotional safe room 톤
+### 6.2 FORCED_RESET sub-mode 내 UI 금지 사항
+
+- "괜찮아요" / "쉬어가세요" 류 emotional safe room 톤 — sub-mode는 system friction
 - skip / dismiss 버튼
-- 다른 surface로의 일반 navigation
+- 다른 surface로의 일반 navigation (§8-7 HARD LOCKED bypass와 일치)
 - compliance task 회피 경로
+- default recovery surface UI (Safe Mirror / Small Wins / Self-esteem / Healing Phase / Dear Me) — sub-mode 중에는 가려져야 함
 
-### 6.3 Center 내 UI 필수 사항
+### 6.3 FORCED_RESET sub-mode 내 UI 필수 사항
 
 - 현재 reset 사유 명시 (어떤 pattern / 어떤 axis)
-- compliance task 명시 (2x weight)
-- 완료 검증 surface
-- (선택) 48h lockout timer
+- compliance task 명시 (reset activation weight = 2.0 per `LEADERSHIP_ENGINE_SPEC.md` §4)
+- 완료 검증 surface (activation completed + verified per `LEADERSHIP_ENGINE_SPEC.md` §5)
+- (선택) 48h lockout timer (countdown UI)
 
 ---
 
@@ -216,7 +264,7 @@ Play surface
 2. **Surface invariant violation:** Play에 Resolve state 렌더링, 그 역
 3. **Lock bypass:** LOCKED 상태에서 progression CTA 활성화
 4. **FD-6 violation:** Resolve를 feedback screen / score reveal로 표현
-5. **FD-5 violation:** Center를 일반 menu / dashboard로 표현
+5. **FD-5 violation (sub-mode scope, v1.1.1 정정):** FORCED_RESET sub-mode 활성 시 Center를 일반 menu / dashboard / safe-room 톤으로 표현 — sub-mode는 system friction. (Default recovery mode 에는 §5.5.1 에 따라 menu/dashboard pattern + calm·warm 톤이 허용됨 — 이는 v1.1.1 violation 아님.)
 6. **FD-4 violation:** REEXPOSURE_DUE를 별도 surface로 분리 (server trigger / client Play render 모델 위반 포함)
 7. **HARD LOCKED bypass:** FORCED_RESET_PENDING 시 Center 외 surface 접근 가능
 8. **Skip CTA:** "skip" / "continue anyway" / "next" 류 LOCKED 우회 CTA 도입
@@ -266,6 +314,16 @@ Play surface
 [semantic_locking_v1] v1.1 정정 2026-05-13: §2 Authority 2-layer 분리
 (Trigger/Render), D1 timing을 Stage 2 Lobby 코드화로 통일, Stage 2 순서
 LOCKED 확정, self-location outer 경로로 수정. FD-1~6 변경 없음.
+
+[semantic_locking_v1] v1.1.1 정정 2026-05-14: §5.5/§8-5 scope 정확화 —
+Center = recovery surface (default, §5.5.1) + FORCED_RESET override sub-mode
+(§5.5.2). §6 prohibitions/requirements는 sub-mode scope로 한정 (§6.2/§6.3
+header reframe + §6 top-level scope clarifier). §2 row 8 / §3 FD-5 / §8-7
+변경 없음. 4-doc consensus (VISUAL_BEHAVIOR_SPEC §1.4-§1.5 Screens 9-13,
+CURSOR_MASTER_PROMPT Recovery layer, MASTER_BUILD_V1 §6, LEADERSHIP_ENGINE_SPEC
+§5) + 라이브 제품(/center route)과의 reconciliation. /dear-me → /center
+301 alias로 인한 route lineage 명시 (`bty-app/src/middleware.ts:133-146`).
+FD-1~6 변경 없음.
 ```
 
 ---
@@ -275,4 +333,4 @@ LOCKED 확정, self-location outer 경로로 수정. FD-1~6 변경 없음.
 **참조:** `BTY_ARENA_FIGMA_CODE_MAPPING.md`, `BTY_ARENA_VISUAL_BEHAVIOR_SPEC.md`, `BTY_Arena_-_QR_Action_System_Product_Spec_v1`
 **다음 단계:** Stage 1 — Figma Frame ID Mapping (매핑 문서 authoring)
 **작성자:** Commander (Hanbit) + C1 (Anthropic conversational memory)
-**Status:** v1.1 frozen, Stage 1 매핑 문서 authoring 대기
+**Status:** v1.1.1 frozen (Center §5.5/§8-5/§6 scope 정확화, 2026-05-14, Stage 2 step 4 sub-phase 2B).
