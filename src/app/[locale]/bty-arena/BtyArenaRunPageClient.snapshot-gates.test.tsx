@@ -1,7 +1,12 @@
 /** @vitest-environment jsdom */
 /**
- * P5 — BtyArenaRunPageClient shell ordering: contract / forced-reset / re-exposure / next-ready
- * beat local scenario progression. Mocks {@link useArenaSession} only.
+ * P5 — shell ordering across the Play and Resolve routes.
+ *
+ * Sub-phase 2C migration: ACTION_REQUIRED / ACTION_SUBMITTED gate sections (P5 A, P5 D)
+ * render `ArenaResolveClient` directly (component-level, per Q-2B-4) since the Resolve
+ * Action Gate now lives at `/play/resolve`. The Play-state sections (forced reset,
+ * re-exposure, NEXT_SCENARIO_READY, internal status) keep rendering BtyArenaRunPageClient
+ * because those shells still live on `/play`. Mocks {@link useArenaSession} only.
  */
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -11,12 +16,20 @@ import type { ArenaSessionRouterSnapshot } from "@/lib/bty/arena/arenaRuntimeSna
 import { getMessages } from "@/lib/i18n";
 
 const mockUseArenaSession = vi.fn();
+const mockRouterReplace = vi.fn();
 
 vi.mock("./hooks/useArenaSession", () => ({
   useArenaSession: () => mockUseArenaSession(),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: mockRouterReplace, push: vi.fn(), prefetch: vi.fn() }),
+  useParams: () => ({ locale: "en" }),
+  usePathname: () => "/en/bty-arena/play/resolve",
+}));
+
 import BtyArenaRunPageClient from "./BtyArenaRunPageClient";
+import ArenaResolveClient from "./play/resolve/ArenaResolveClient";
 
 function baseSnapshot(rs: ArenaSessionRouterSnapshot["runtime_state"]): ArenaSessionRouterSnapshot {
   return {
@@ -118,11 +131,20 @@ function sessionBase() {
 afterEach(() => {
   cleanup();
   mockUseArenaSession.mockReset();
+  mockRouterReplace.mockReset();
   vi.unstubAllGlobals();
 });
 
-describe("P5 A — blocking contract gate renders; progression / next-scenario shells do not", () => {
-  it("renders pending contract shell, not main play or next-scenario-ready", () => {
+/**
+ * P5 A — Resolve route Action Gate (ACTION_REQUIRED).
+ *
+ * Sub-phase 2C migration: renders `ArenaResolveClient` directly (the new production
+ * Resolve surface at `/play/resolve`). Before 2B these scenarios rendered through
+ * BtyArenaRunPageClient and asserted `arena-play-main-pending-contract`; after 2B the
+ * Resolve surface emits `arena-resolve-main-pending-contract`.
+ */
+describe("P5 A — blocking contract gate renders on Resolve route (ArenaResolveClient)", () => {
+  it("renders Resolve pending-contract shell for ACTION_REQUIRED snapshot", () => {
     mockUseArenaSession.mockReturnValue({
       ...sessionBase(),
       arenaActionBlocking: true,
@@ -130,10 +152,11 @@ describe("P5 A — blocking contract gate renders; progression / next-scenario s
       canRenderScenarioProgressionUi: false,
       arenaServerSnapshot: baseSnapshot("ACTION_REQUIRED"),
     });
-    render(<BtyArenaRunPageClient />);
-    expect(screen.getByTestId("arena-play-main-pending-contract")).toBeTruthy();
+    render(<ArenaResolveClient locale="en" />);
+    expect(screen.getByTestId("arena-resolve-main-pending-contract")).toBeTruthy();
     expect(screen.queryByTestId("arena-play-main")).toBeNull();
     expect(screen.queryByTestId("arena-play-snapshot-next-scenario-ready")).toBeNull();
+    expect(mockRouterReplace).not.toHaveBeenCalled();
   });
 
   it("starts QR flow from ACTION_REQUIRED gate without retry-session fetch path", () => {
@@ -151,7 +174,7 @@ describe("P5 A — blocking contract gate renders; progression / next-scenario s
       retryArenaSession: onRetry,
       startPendingContractQrFlow: onQr,
     });
-    render(<BtyArenaRunPageClient />);
+    render(<ArenaResolveClient locale="en" />);
     const qrBtn = screen.getByTestId("arena-pending-contract-complete-by-qr");
     expect(qrBtn).toBeTruthy();
     (qrBtn as HTMLButtonElement).click();
@@ -172,7 +195,7 @@ describe("P5 A — blocking contract gate renders; progression / next-scenario s
       },
       retryArenaSession: onRetry,
     });
-    render(<BtyArenaRunPageClient />);
+    render(<ArenaResolveClient locale="en" />);
     const refreshBtn = screen.getByTestId("arena-pending-contract-refresh-status");
     fireEvent.click(refreshBtn);
     expect(onRetry).toHaveBeenCalledTimes(1);
@@ -307,19 +330,24 @@ describe("P5 C — re-exposure shell beats progression", () => {
   });
 });
 
-describe("P5 D — local DONE cannot beat server blocking (contract branch first)", () => {
-  it("shows contract gate even if canRenderScenarioProgressionUi is true in mock (stale local)", () => {
+/**
+ * P5 D — local DONE cannot beat server blocking. Migrated to ArenaResolveClient in 2C
+ * (ACTION_SUBMITTED is a Resolve runtime state; the Action Gate now lives on `/play/resolve`).
+ */
+describe("P5 D — Resolve gate beats stale local DONE on ACTION_SUBMITTED (ArenaResolveClient)", () => {
+  it("shows Resolve contract gate even if canRenderScenarioProgressionUi is true in mock (stale local)", () => {
     mockUseArenaSession.mockReturnValue({
       ...sessionBase(),
       arenaActionBlocking: true,
-      /** Intentionally inconsistent: simulates stale client view — page must still gate. */
+      /** Intentionally inconsistent: simulates stale client view — Resolve surface must still gate. */
       canRenderScenarioProgressionUi: true,
       arenaPlaySurfaceAllowed: false,
       arenaServerSnapshot: baseSnapshot("ACTION_SUBMITTED"),
     });
-    render(<BtyArenaRunPageClient />);
-    expect(screen.getByTestId("arena-play-main-pending-contract")).toBeTruthy();
+    render(<ArenaResolveClient locale="en" />);
+    expect(screen.getByTestId("arena-resolve-main-pending-contract")).toBeTruthy();
     expect(screen.queryByTestId("arena-play-main")).toBeNull();
+    expect(mockRouterReplace).not.toHaveBeenCalled();
   });
 });
 

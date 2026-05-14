@@ -26,9 +26,22 @@ test.describe("Arena deprecated path redirects", () => {
     await expect(page).toHaveURL(canonicalArenaUrlPattern("en"), { timeout: 15_000 });
   });
 
-  test("deprecated play/resolve path → canonical Arena", async ({ page }) => {
+  /**
+   * Sub-phase 2C: `/play/resolve` is **no longer deprecated** — it is the production
+   * Resolve surface (`ArenaResolveClient`) per Stage 2 step 2 sub-phase 2B (FD-6 / v1.1 §5.3).
+   * Final URL must NOT match canonical Arena hub. With no active Resolve state for the
+   * default contract user, `ArenaResolveClient` client-redirects to `/[locale]/bty-arena/play`
+   * (Play surface). If the user has a blocking action contract, middleware redirects to
+   * `/[locale]/bty?arena_contract=resolve` instead. Either destination is acceptable;
+   * canonical Arena hub (`/[locale]/bty-arena` exact) is not.
+   */
+  test("play/resolve path loads Resolve surface (not deprecated)", async ({ page }) => {
     await page.goto("/en/bty-arena/play/resolve", { waitUntil: "commit" });
-    await expect(page).toHaveURL(canonicalArenaUrlPattern("en"), { timeout: 15_000 });
+    await expect(page).not.toHaveURL(canonicalArenaUrlPattern("en"), { timeout: 15_000 });
+    await expect(page).toHaveURL(
+      /\/en\/(bty-arena\/play(\/resolve)?|bty(\?|$))/,
+      { timeout: 15_000 },
+    );
   });
 
   /**
