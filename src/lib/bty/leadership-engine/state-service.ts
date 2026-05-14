@@ -38,6 +38,34 @@ export type LeadershipEngineStateClient = any;
 const DEFAULT_STAGE: Stage = STAGE_1;
 
 /**
+ * FD-5 enforcement helper — true when the user is currently in a FORCED_RESET
+ * sub-mode (per `BTY_ARENA_SEMANTIC_LOCKING_TABLE_v1.1.md` v1.1.1 §5.5.2 +
+ * `LEADERSHIP_ENGINE_SPEC.md` §5). Read-only; pairs with the middleware
+ * full-redirect at `src/middleware.ts`. Mirrors the error-handling shape of
+ * `userHasBlockingArenaActionContract` — on db error or missing row, returns
+ * `false` (open-on-failure: do not lock the user out due to transient read
+ * failure; the helper is a gate, not a deny-default).
+ */
+export async function userHasForcedResetPending(
+  supabase: LeadershipEngineStateClient,
+  userId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select("forced_reset_triggered_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[leadership-engine] forced-reset query", error.message);
+    return false;
+  }
+
+  const row = data as Pick<LeadershipEngineStateRow, "forced_reset_triggered_at"> | null;
+  return row?.forced_reset_triggered_at != null;
+}
+
+/**
  * Fetches current stage for user. Returns default Stage 1 if no row.
  * When current stage is 4 and forced reset was triggered, returns resetDueAt (triggeredAt + 48h).
  */

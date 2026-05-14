@@ -11,6 +11,7 @@ import {
 } from "@/lib/bty/cookies/authCookies";
 import { getArenaPipelineDefault } from "@/lib/bty/arena/arenaPipelineConfig";
 import { userHasBlockingArenaActionContract } from "@/lib/bty/arena/blockingArenaActionContract";
+import { userHasForcedResetPending } from "@/lib/bty/leadership-engine/state-service";
 import { isPostLoginOnboardingWizardEnabled } from "@/lib/bty/arena/postLoginEliteEntry";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -343,6 +344,38 @@ export async function middleware(req: NextRequest) {
         redirect.headers.set("x-mw-hit", "1");
         redirect.headers.set("x-mw-user", "1");
         redirect.headers.set("x-mw-consent", "required");
+        return redirect;
+      }
+    }
+
+    /**
+     * `BTY_ARENA_SEMANTIC_LOCKING_TABLE_v1.1.md` v1.1.1 §5.5.2 + FD-5 + §8-7 —
+     * FORCED_RESET_PENDING sub-mode: full redirect to /center (HARD LOCKED).
+     *
+     * Source scope: `/[locale]/bty-arena/*` (v1.1.1 §2 row 8) + `/[locale]/bty/foundry/*`
+     * (v1.1.1 §5.4 secondary block). `/center` itself is excluded to avoid loops;
+     * `/api/*` is already excluded by the early-return at L61; `/bty/login` is
+     * excluded by being outside the matched scope.
+     *
+     * Precedence: this check is BEFORE the LOCKED `userHasBlockingArenaActionContract`
+     * block below — HARD LOCKED (§4.1: Center 외 모든 surface 접근 금지) outranks
+     * LOCKED (다른 화면 진입은 허용). If both are true, the user goes to /center.
+     */
+    if (
+      locale &&
+      (pathname === `/${locale}/bty-arena` ||
+        pathname.startsWith(`/${locale}/bty-arena/`) ||
+        pathname === `/${locale}/bty/foundry` ||
+        pathname.startsWith(`/${locale}/bty/foundry/`))
+    ) {
+      const forcedReset = await userHasForcedResetPending(supabase, user.id);
+      if (forcedReset) {
+        const dest = new URL(`/${locale}/center`, req.url);
+        const redirect = NextResponse.redirect(dest, 307);
+        reassertAuthCookiesPathRoot(req, redirect);
+        redirect.headers.set("x-mw-hit", "1");
+        redirect.headers.set("x-mw-user", "1");
+        redirect.headers.set("x-forced-reset", "redirect");
         return redirect;
       }
     }
