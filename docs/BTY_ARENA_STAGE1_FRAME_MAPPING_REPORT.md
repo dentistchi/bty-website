@@ -1,6 +1,6 @@
 # BTY Arena — Stage 1 Figma Frame ID Mapping Report
 
-**Authority:** [`docs/BTY_ARENA_SEMANTIC_LOCKING_TABLE_v1.1.md`](BTY_ARENA_SEMANTIC_LOCKING_TABLE_v1.1.md) — outer commits `ba1d375` (initial v1.1 add) → `db97c55` (A3/A4/A5/A8/A9 content corrections applied).
+**Authority:** [`docs/BTY_ARENA_SEMANTIC_LOCKING_TABLE_v1.1.md`](BTY_ARENA_SEMANTIC_LOCKING_TABLE_v1.1.md) — outer commit `db97c55` (authoritative v1.1). Note: `ba1d375` committed the v1 file under a v1.1 filename in error; `db97c55` fully superseded it with the correct v1.1 content.
 **Supersedes:** v1 reference points (`6fc83bf`). Cite v1.1 only from this point forward.
 **Status:** Stage 1 mapping. Source surfaces = Claude design tool artifacts (not codebase files). Output = this standalone documentation. **Code untouched.**
 **Date:** 2026-05-14.
@@ -219,7 +219,7 @@ Stage 2 implementation may begin once **all** of the following are satisfied. Th
 
 ## 7. Provenance footer
 
-- **Authority spec:** v1.1 @ outer `db97c55` (current content; superseding `ba1d375` placeholder add). Cite v1.1 only — v1 (`6fc83bf`) is superseded per Commander.
+- **Authority spec:** v1.1 @ outer `db97c55` (authoritative content). `ba1d375` was a filename-error commit (v1 content under v1.1 name), fully superseded by `db97c55`. Cite v1.1 only — v1 (`6fc83bf`) is superseded per Commander.
 - **HK8 invariants:** 5 outer leaks (4M `bty-app/src/features/my-page/logic/computeLeadershipState.ts`, `bty-app/src/lib/bty/center/letterService.ts`, `bty-app/src/lib/bty/identity/getMyPageIdentityState.ts`, `bty-app/src/lib/bty/validator/layer2Semantic.ts` + 1D `bty-app/src/lib/llm.ts`) preserved unchanged by this task.
 - **AL-2-D-P1 freeze:** `src/data/scenario/`, `src/lib/bty/runtime/`, `wrangler.toml` untouched.
 - **Mutation scope of Stage 1:** this file (new) + `docs/CURSOR_TASK_BOARD.md` (one row add) + `docs/CURRENT_TASK.md` (one row add). Three files, all in outer `docs/`. Single commit.
