@@ -1,12 +1,20 @@
 /** @vitest-environment jsdom */
 /**
- * P5 — shell ordering across the Play and Resolve routes.
+ * P5 — shell ordering across the Play / Resolve / Lobby routes.
  *
- * Sub-phase 2C migration: ACTION_REQUIRED / ACTION_SUBMITTED gate sections (P5 A, P5 D)
- * render `ArenaResolveClient` directly (component-level, per Q-2B-4) since the Resolve
- * Action Gate now lives at `/play/resolve`. The Play-state sections (forced reset,
- * re-exposure, NEXT_SCENARIO_READY, internal status) keep rendering BtyArenaRunPageClient
- * because those shells still live on `/play`. Mocks {@link useArenaSession} only.
+ * Sub-phase 2C migration:
+ * - **P5 A / P5 D** (ACTION_REQUIRED / ACTION_SUBMITTED) render `ArenaResolveClient` directly
+ *   per the Resolve route separation (Stage 2 step 2 sub-phase 2C, Q-2B-4).
+ * - **P5 E** (NEXT_SCENARIO_READY) renders `ArenaEntryClient` directly per the D1-b decision
+ *   (Stage 2 step 6 sub-phase 2C). Lobby (`/[locale]/bty-arena`) now owns NEXT_SCENARIO_READY
+ *   rendering with `arena-lobby-snapshot-*` testids. A thin coexistence smoke at the end of
+ *   P5 E confirms BtyArenaRunPageClient.tsx:1067-1167 still renders the legacy Play-side
+ *   `arena-play-snapshot-*` testids during the 2B→2D window; 2D removes both the block and
+ *   the smoke test.
+ * - **P5 B / P5 C / P5 F** (forced reset / re-exposure / internal status copy) keep rendering
+ *   BtyArenaRunPageClient — those shells still live on `/play`.
+ *
+ * Mocks {@link useArenaSession} only.
  */
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -17,19 +25,21 @@ import { getMessages } from "@/lib/i18n";
 
 const mockUseArenaSession = vi.fn();
 const mockRouterReplace = vi.fn();
+const mockRouterPush = vi.fn();
 
 vi.mock("./hooks/useArenaSession", () => ({
   useArenaSession: () => mockUseArenaSession(),
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: mockRouterReplace, push: vi.fn(), prefetch: vi.fn() }),
+  useRouter: () => ({ replace: mockRouterReplace, push: mockRouterPush, prefetch: vi.fn() }),
   useParams: () => ({ locale: "en" }),
   usePathname: () => "/en/bty-arena/play/resolve",
 }));
 
 import BtyArenaRunPageClient from "./BtyArenaRunPageClient";
 import ArenaResolveClient from "./play/resolve/ArenaResolveClient";
+import ArenaEntryClient from "./ArenaEntryClient";
 
 function baseSnapshot(rs: ArenaSessionRouterSnapshot["runtime_state"]): ArenaSessionRouterSnapshot {
   return {
@@ -132,6 +142,7 @@ afterEach(() => {
   cleanup();
   mockUseArenaSession.mockReset();
   mockRouterReplace.mockReset();
+  mockRouterPush.mockReset();
   vi.unstubAllGlobals();
 });
 
@@ -351,7 +362,18 @@ describe("P5 D — Resolve gate beats stale local DONE on ACTION_SUBMITTED (Aren
   });
 });
 
-describe("P5 E — NEXT_SCENARIO_READY defensive block rules", () => {
+/**
+ * P5 E — NEXT_SCENARIO_READY shell rules.
+ *
+ * Sub-phase 2C migration (Stage 2 step 6, D1-b): Lobby (`ArenaEntryClient`) now owns
+ * NEXT_SCENARIO_READY rendering with `arena-lobby-snapshot-*` testids. These 7 tests
+ * migrated from rendering `BtyArenaRunPageClient` + asserting `arena-play-snapshot-*`
+ * (pre-2C) to rendering `ArenaEntryClient` + asserting `arena-lobby-snapshot-*`
+ * (post-2C). A thin coexistence smoke after these 7 confirms BtyArenaRunPageClient
+ * still emits the legacy testids during 2B→2D; 2D removes both the L1067-1167 Play
+ * block and the smoke test together.
+ */
+describe("P5 E — NEXT_SCENARIO_READY defensive block rules (Lobby — ArenaEntryClient)", () => {
   it("renders NEXT_SCENARIO_READY shell when contract/re-exposure blockers are absent", () => {
     const nextReady = {
       ...baseSnapshot("NEXT_SCENARIO_READY"),
@@ -366,6 +388,7 @@ describe("P5 E — NEXT_SCENARIO_READY defensive block rules", () => {
     };
     mockUseArenaSession.mockReturnValue({
       ...sessionBase(),
+      t: getMessages("en").arenaRun,
       arenaServerSnapshot: nextReady,
       effectiveArenaSnapshot: nextReady,
       arenaActionBlocking: false,
@@ -373,8 +396,8 @@ describe("P5 E — NEXT_SCENARIO_READY defensive block rules", () => {
       runId: null,
       phase: "CHOOSING",
     });
-    render(<BtyArenaRunPageClient />);
-    expect(screen.getByTestId("arena-play-snapshot-next-scenario-ready")).toBeTruthy();
+    render(<ArenaEntryClient locale="en" />);
+    expect(screen.getByTestId("arena-lobby-snapshot-next-scenario-ready")).toBeTruthy();
   });
 
   it("blocks NEXT_SCENARIO_READY when action contract is still pending (not submitted/approved/completed)", () => {
@@ -395,12 +418,12 @@ describe("P5 E — NEXT_SCENARIO_READY defensive block rules", () => {
       effectiveArenaSnapshot: nextReady,
       arenaActionBlocking: false,
     });
-    render(<BtyArenaRunPageClient />);
-    expect(screen.getByTestId("arena-play-snapshot-next-scenario-blocked")).toBeTruthy();
-    expect(screen.queryByTestId("arena-play-snapshot-next-scenario-ready")).toBeNull();
+    render(<ArenaEntryClient locale="en" />);
+    expect(screen.getByTestId("arena-lobby-snapshot-next-scenario-blocked")).toBeTruthy();
+    expect(screen.queryByTestId("arena-lobby-snapshot-next-scenario-ready")).toBeNull();
   });
 
-  it("allows NEXT_SCENARIO_READY when contract is submitted (MVP progression after QR)", () => {
+  it("allows NEXT_SCENARIO_READY when contract is submitted (MVP progression after QR); Continue navigates to /play", async () => {
     const nextReady = {
       ...baseSnapshot("NEXT_SCENARIO_READY"),
       action_contract: {
@@ -411,6 +434,7 @@ describe("P5 E — NEXT_SCENARIO_READY defensive block rules", () => {
         deadline_at: new Date().toISOString(),
       },
     };
+    const mockContinue = vi.fn().mockResolvedValue(undefined);
     mockUseArenaSession.mockReturnValue({
       ...sessionBase(),
       t: getMessages("en").arenaRun,
@@ -424,14 +448,23 @@ describe("P5 E — NEXT_SCENARIO_READY defensive block rules", () => {
       effectiveArenaSnapshot: nextReady,
       arenaActionBlocking: false,
       nextScenarioLoading: false,
+      continueNextScenario: mockContinue,
     });
-    render(<BtyArenaRunPageClient />);
-    expect(screen.getByTestId("arena-play-snapshot-next-scenario-ready")).toBeTruthy();
-    expect(screen.queryByTestId("arena-play-snapshot-next-scenario-blocked")).toBeNull();
-    expect(screen.getByTestId("arena-next-scenario-continue")).toBeTruthy();
+    render(<ArenaEntryClient locale="en" />);
+    expect(screen.getByTestId("arena-lobby-snapshot-next-scenario-ready")).toBeTruthy();
+    expect(screen.queryByTestId("arena-lobby-snapshot-next-scenario-blocked")).toBeNull();
+    const continueBtn = screen.getByTestId("arena-lobby-next-scenario-continue");
+    expect(continueBtn).toBeTruthy();
+
+    /** 2B-introduced navigation handoff: await continueNextScenario() → router.push to /play. */
+    fireEvent.click(continueBtn);
+    await waitFor(() => {
+      expect(mockContinue).toHaveBeenCalledTimes(1);
+      expect(mockRouterPush).toHaveBeenCalledWith("/en/bty-arena/play");
+    });
   });
 
-  it("NEXT_SCENARIO_READY + next_allowed never shows Play paused when elite mid-run would previously fall through", () => {
+  it("NEXT_SCENARIO_READY + next_allowed renders Lobby ready shell, not mode-select (elite mid-run state)", () => {
     const nextReady = {
       ...baseSnapshot("NEXT_SCENARIO_READY"),
       gates: { next_allowed: true, choice_allowed: false, qr_allowed: false },
@@ -444,14 +477,12 @@ describe("P5 E — NEXT_SCENARIO_READY defensive block rules", () => {
       },
       re_exposure: { due: false as const, scenario_id: null },
     };
-    const en = getMessages("en").arenaRun;
     mockUseArenaSession.mockReturnValue({
       ...sessionBase(),
-      t: en,
+      t: getMessages("en").arenaRun,
       arenaServerSnapshot: nextReady,
       effectiveArenaSnapshot: nextReady,
       arenaActionBlocking: false,
-      /** Matches hook when snapshot is NEXT_SCENARIO_READY — play surface disallowed. */
       arenaPlaySurfaceAllowed: false,
       canRenderScenarioProgressionUi: false,
       playUiSegment: "action_decision" as const,
@@ -462,14 +493,15 @@ describe("P5 E — NEXT_SCENARIO_READY defensive block rules", () => {
       pendingActionContract: null,
       nextScenarioLoading: false,
     });
-    render(<BtyArenaRunPageClient />);
-    expect(screen.getByTestId("arena-play-snapshot-next-scenario-ready")).toBeTruthy();
-    expect(screen.getByTestId("arena-next-scenario-continue")).toBeTruthy();
-    expect(screen.queryByTestId("arena-play-snapshot-play-surface-blocked")).toBeNull();
-    expect(screen.queryByText(en.arenaPlaySurfaceBlockedTitle)).toBeNull();
+    render(<ArenaEntryClient locale="en" />);
+    expect(screen.getByTestId("arena-lobby-snapshot-next-scenario-ready")).toBeTruthy();
+    expect(screen.getByTestId("arena-lobby-next-scenario-continue")).toBeTruthy();
+    /** Mode-select gate (default Lobby UI) must NOT appear when next-ready shell is active. */
+    expect(screen.queryByText("Full Arena")).toBeNull();
+    expect(screen.queryByText("Quick Decision")).toBeNull();
   });
 
-  it("NEXT_SCENARIO_READY + next_allowed beats Play paused even with canRender false + stale local mismatch signals", () => {
+  it("NEXT_SCENARIO_READY + next_allowed renders Lobby ready shell even with canRender false + stale local mismatch (phase=DONE)", () => {
     const nextReady = {
       ...baseSnapshot("NEXT_SCENARIO_READY"),
       gates: { next_allowed: true, choice_allowed: false, qr_allowed: false },
@@ -482,10 +514,9 @@ describe("P5 E — NEXT_SCENARIO_READY defensive block rules", () => {
       },
       re_exposure: { due: false as const, scenario_id: null },
     };
-    const en = getMessages("en").arenaRun;
     mockUseArenaSession.mockReturnValue({
       ...sessionBase(),
-      t: en,
+      t: getMessages("en").arenaRun,
       arenaServerSnapshot: nextReady,
       effectiveArenaSnapshot: nextReady,
       arenaActionBlocking: false,
@@ -499,13 +530,12 @@ describe("P5 E — NEXT_SCENARIO_READY defensive block rules", () => {
       pendingActionContract: null,
       nextScenarioLoading: false,
     });
-    render(<BtyArenaRunPageClient />);
-    expect(screen.getByTestId("arena-play-snapshot-next-scenario-ready")).toBeTruthy();
-    expect(screen.queryByTestId("arena-play-snapshot-play-surface-blocked")).toBeNull();
-    expect(screen.queryByText(en.arenaPlaySurfaceBlockedTitle)).toBeNull();
+    render(<ArenaEntryClient locale="en" />);
+    expect(screen.getByTestId("arena-lobby-snapshot-next-scenario-ready")).toBeTruthy();
+    expect(screen.queryByText("Full Arena")).toBeNull();
   });
 
-  it("renders re-exposure panel when NEXT_SCENARIO_READY still carries due re-exposure", () => {
+  it("renders re-exposure panel when NEXT_SCENARIO_READY still carries due re-exposure (precedence over canonical CTA)", () => {
     const nextReadyWithReexposure = {
       ...baseSnapshot("NEXT_SCENARIO_READY"),
       action_contract: {
@@ -519,17 +549,18 @@ describe("P5 E — NEXT_SCENARIO_READY defensive block rules", () => {
     };
     mockUseArenaSession.mockReturnValue({
       ...sessionBase(),
+      t: getMessages("en").arenaRun,
       arenaServerSnapshot: nextReadyWithReexposure,
       effectiveArenaSnapshot: nextReadyWithReexposure,
       arenaActionBlocking: false,
     });
-    render(<BtyArenaRunPageClient />);
-    expect(screen.getByTestId("arena-play-snapshot-reexposure")).toBeTruthy();
-    expect(screen.queryByTestId("arena-play-snapshot-next-scenario-ready")).toBeNull();
-    expect(screen.queryByTestId("arena-play-snapshot-next-scenario-blocked")).toBeNull();
+    render(<ArenaEntryClient locale="en" />);
+    expect(screen.getByTestId("arena-lobby-snapshot-reexposure")).toBeTruthy();
+    expect(screen.queryByTestId("arena-lobby-snapshot-next-scenario-ready")).toBeNull();
+    expect(screen.queryByTestId("arena-lobby-snapshot-next-scenario-blocked")).toBeNull();
   });
 
-  it("does not let due re-exposure hijack normal next-scenario intent", () => {
+  it("playContext === next_scenario + due re-exposure → next-scenario wins (re-exposure does NOT hijack)", () => {
     const nextReadyWithReexposure = {
       ...baseSnapshot("NEXT_SCENARIO_READY"),
       action_contract: {
@@ -543,6 +574,7 @@ describe("P5 E — NEXT_SCENARIO_READY defensive block rules", () => {
     };
     mockUseArenaSession.mockReturnValue({
       ...sessionBase(),
+      t: getMessages("en").arenaRun,
       playContext: "next_scenario" as const,
       arenaServerSnapshot: nextReadyWithReexposure,
       effectiveArenaSnapshot: nextReadyWithReexposure,
@@ -551,9 +583,64 @@ describe("P5 E — NEXT_SCENARIO_READY defensive block rules", () => {
       runId: null,
       phase: "CHOOSING",
     });
+    render(<ArenaEntryClient locale="en" />);
+    expect(screen.queryByTestId("arena-lobby-snapshot-reexposure")).toBeNull();
+    expect(screen.getByTestId("arena-lobby-snapshot-next-scenario-ready")).toBeTruthy();
+  });
+});
+
+/**
+ * Coexistence smoke for the 2B→2D window — `BtyArenaRunPageClient.tsx:1067-1167` still
+ * renders NEXT_SCENARIO_READY on `/play` while Lobby's new render coexists. 2D removes
+ * both the L1067-1167 block AND this smoke describe together.
+ */
+describe("P5 E coexistence — BtyArenaRunPageClient still renders NEXT_SCENARIO_READY on /play (pending 2D removal)", () => {
+  it("BtyArenaRunPageClient still emits arena-play-snapshot-next-scenario-ready for canonical NEXT_SCENARIO_READY (2D will remove)", () => {
+    const nextReady = {
+      ...baseSnapshot("NEXT_SCENARIO_READY"),
+      action_contract: {
+        exists: false,
+        id: null,
+        status: null,
+        verification_type: null,
+        deadline_at: null,
+      },
+      re_exposure: { due: false as const, scenario_id: null },
+    };
+    mockUseArenaSession.mockReturnValue({
+      ...sessionBase(),
+      t: getMessages("en").arenaRun,
+      arenaServerSnapshot: nextReady,
+      effectiveArenaSnapshot: nextReady,
+      arenaActionBlocking: false,
+      scenario: null,
+      runId: null,
+      phase: "CHOOSING",
+    });
     render(<BtyArenaRunPageClient />);
-    expect(screen.queryByTestId("arena-play-snapshot-reexposure")).toBeNull();
     expect(screen.getByTestId("arena-play-snapshot-next-scenario-ready")).toBeTruthy();
+  });
+
+  it("BtyArenaRunPageClient still emits arena-play-snapshot-next-scenario-blocked when contract is pending (2D will remove)", () => {
+    const nextReady = {
+      ...baseSnapshot("NEXT_SCENARIO_READY"),
+      action_contract: {
+        exists: true,
+        id: "c1",
+        status: "pending",
+        verification_type: "hybrid",
+        deadline_at: new Date().toISOString(),
+      },
+    };
+    mockUseArenaSession.mockReturnValue({
+      ...sessionBase(),
+      t: getMessages("en").arenaRun,
+      arenaServerSnapshot: nextReady,
+      effectiveArenaSnapshot: nextReady,
+      arenaActionBlocking: false,
+    });
+    render(<BtyArenaRunPageClient />);
+    expect(screen.getByTestId("arena-play-snapshot-next-scenario-blocked")).toBeTruthy();
   });
 });
 
