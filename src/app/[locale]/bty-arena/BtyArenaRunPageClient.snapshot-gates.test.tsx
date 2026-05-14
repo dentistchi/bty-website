@@ -590,59 +590,12 @@ describe("P5 E — NEXT_SCENARIO_READY defensive block rules (Lobby — ArenaEnt
 });
 
 /**
- * Coexistence smoke for the 2B→2D window — `BtyArenaRunPageClient.tsx:1067-1167` still
- * renders NEXT_SCENARIO_READY on `/play` while Lobby's new render coexists. 2D removes
- * both the L1067-1167 block AND this smoke describe together.
+ * Coexistence smoke describe removed in Stage 2 step 6 sub-phase 2D — the L1067-1167
+ * NEXT_SCENARIO_READY block in `BtyArenaRunPageClient.tsx` was removed in the same
+ * commit, completing the 2C TASK 2 (a) lifecycle (smoke + block removed together).
+ * NEXT_SCENARIO_READY now renders exclusively on Lobby via `ArenaEntryClient`; the
+ * P5 E describe above is the canonical test pin.
  */
-describe("P5 E coexistence — BtyArenaRunPageClient still renders NEXT_SCENARIO_READY on /play (pending 2D removal)", () => {
-  it("BtyArenaRunPageClient still emits arena-play-snapshot-next-scenario-ready for canonical NEXT_SCENARIO_READY (2D will remove)", () => {
-    const nextReady = {
-      ...baseSnapshot("NEXT_SCENARIO_READY"),
-      action_contract: {
-        exists: false,
-        id: null,
-        status: null,
-        verification_type: null,
-        deadline_at: null,
-      },
-      re_exposure: { due: false as const, scenario_id: null },
-    };
-    mockUseArenaSession.mockReturnValue({
-      ...sessionBase(),
-      t: getMessages("en").arenaRun,
-      arenaServerSnapshot: nextReady,
-      effectiveArenaSnapshot: nextReady,
-      arenaActionBlocking: false,
-      scenario: null,
-      runId: null,
-      phase: "CHOOSING",
-    });
-    render(<BtyArenaRunPageClient />);
-    expect(screen.getByTestId("arena-play-snapshot-next-scenario-ready")).toBeTruthy();
-  });
-
-  it("BtyArenaRunPageClient still emits arena-play-snapshot-next-scenario-blocked when contract is pending (2D will remove)", () => {
-    const nextReady = {
-      ...baseSnapshot("NEXT_SCENARIO_READY"),
-      action_contract: {
-        exists: true,
-        id: "c1",
-        status: "pending",
-        verification_type: "hybrid",
-        deadline_at: new Date().toISOString(),
-      },
-    };
-    mockUseArenaSession.mockReturnValue({
-      ...sessionBase(),
-      t: getMessages("en").arenaRun,
-      arenaServerSnapshot: nextReady,
-      effectiveArenaSnapshot: nextReady,
-      arenaActionBlocking: false,
-    });
-    render(<BtyArenaRunPageClient />);
-    expect(screen.getByTestId("arena-play-snapshot-next-scenario-blocked")).toBeTruthy();
-  });
-});
 
 describe("P5 F — re-exposure internal status copy", () => {
   it("shows internal status copy when intervention sensitivity is up", () => {

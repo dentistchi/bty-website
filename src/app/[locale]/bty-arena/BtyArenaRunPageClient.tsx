@@ -79,6 +79,8 @@ export default function BtyArenaRunPageClient({
   const router = useRouter();
   /** One-shot guard: fire Resolve-route push on the false→true transition of arenaActionBlocking. */
   const resolveNavigationFiredRef = React.useRef(false);
+  /** One-shot guard: fire Lobby-route push on the false→true transition into NEXT_SCENARIO_READY. */
+  const nextScenarioNavigationFiredRef = React.useRef(false);
 
   const [selectedJsonScenarioId, setSelectedJsonScenarioId] = React.useState<string>(
     "core_04_manager_neutrality_as_abandonment",
@@ -506,6 +508,38 @@ export default function BtyArenaRunPageClient({
     }
     resolveNavigationFiredRef.current = false;
   }, [s.arenaActionBlocking, localeNorm, router]);
+
+  /**
+   * Lobby-route navigation (Stage 2 step 6 sub-phase 2D; v1.1.1 §5.6 / Commander D1-b 2026-05-14).
+   *
+   * Per D1-b, Lobby (`/[locale]/bty-arena`) owns NEXT_SCENARIO_READY (the inter-scenario
+   * transition surface — formerly rendered inline at L1067-1167 here). When the session
+   * snapshot reports NEXT_SCENARIO_READY on the Play route, push the user to Lobby. The
+   * one-shot ref guards against repeat pushes during the same NEXT_SCENARIO_READY entry;
+   * exiting the state resets the guard so a future re-entry navigates again.
+   *
+   * Coordination with sibling navigation effects:
+   * - **ACTION_REQUIRED** (above) watches `s.arenaActionBlocking` and pushes to /play/resolve.
+   * - **FORCED_RESET_PENDING** is handled by the middleware (2C-1, `d0d763c7`) at the route
+   *   layer with a 307 to /center; the inline gate-page at L1031-1066 is a coexistence fallback.
+   * - These three are mutually exclusive — `runtime_state` is a single string at any moment.
+   */
+  React.useEffect(() => {
+    const isNextScenarioReady =
+      (s.effectiveArenaSnapshot ?? s.arenaServerSnapshot)?.runtime_state === "NEXT_SCENARIO_READY";
+    if (isNextScenarioReady) {
+      if (nextScenarioNavigationFiredRef.current) return;
+      nextScenarioNavigationFiredRef.current = true;
+      router.push(`/${localeNorm}/bty-arena`);
+      return;
+    }
+    nextScenarioNavigationFiredRef.current = false;
+  }, [
+    s.effectiveArenaSnapshot?.runtime_state,
+    s.arenaServerSnapshot?.runtime_state,
+    localeNorm,
+    router,
+  ]);
 
   const tLoading = getMessages(locale === "ko" ? "ko" : "en").loading;
   const devRuntimeBannerTestId = process.env.NODE_ENV !== "production";
@@ -1064,106 +1098,21 @@ export default function BtyArenaRunPageClient({
     );
   }
 
+  /**
+   * NEXT_SCENARIO_READY is a Lobby-domain state (v1.1.1 §5.6 + Commander D1-b 2026-05-14).
+   * The relocated render lives in `ArenaEntryClient` at `/[locale]/bty-arena`. The useEffect
+   * at the top of this component pushes to the Lobby route on `NEXT_SCENARIO_READY` entry;
+   * render null in the meantime to avoid flashing the Play surface during the transition.
+   *
+   * Sub-branch dispositions (formerly L1067-1167 — re-exposure-precedence / contract-blocked /
+   * canonical next-CTA) are reproduced verbatim in `ArenaEntryClient` with `arena-lobby-snapshot-*`
+   * testids; the Continue handler there awaits `s.continueNextScenario()` then router.push to
+   * `/play` so the state machine handles the post-transition scenario rendering.
+   *
+   * §8-Open #1 (from Play closure §5.1) RESOLVED here: this client renders zero Lobby-domain states.
+   */
   if (gateSnapshot?.runtime_state === "NEXT_SCENARIO_READY") {
-    const actionStatus = gateSnapshot.action_contract?.status ?? null;
-    const actionStatusLc = typeof actionStatus === "string" ? actionStatus.trim().toLowerCase() : "";
-    /** Submitted/escalated contracts are not a permanent block on "Load next" (MVP aligns with QR success copy). */
-    const hasBlockingContractForNext =
-      gateSnapshot.action_contract?.exists === true &&
-      actionStatusLc !== "approved" &&
-      actionStatusLc !== "completed" &&
-      actionStatusLc !== "submitted" &&
-      actionStatusLc !== "escalated";
-    const hasPendingReexposure =
-      gateSnapshot.re_exposure?.due === true &&
-      s.playContext !== "next_scenario" &&
-      snapshotQualifiesAsReexposureGate(gateSnapshot);
-    if (hasPendingReexposure) {
-      return (
-        <ScreenShell locale={locale} fullWidth contentClassName="pb-24" mainAriaLabel={t.arenaRunPageMainRegionAria}>
-          <div data-testid="arena-play-snapshot-reexposure" className="mx-auto max-w-lg px-2">
-            <ArenaReexposurePanel
-              locale={locale}
-              reexposureScenarioId={gateSnapshot.re_exposure?.scenario_id}
-              pendingOutcomeId={gateSnapshot.re_exposure?.pending_outcome_id}
-              onEnterScenario={s.beginReexposurePlay}
-              enterLoading={s.reexposureEnterLoading}
-            />
-            {reexposureInternalStatusCopy ? (
-              <p
-                data-testid="arena-reexposure-internal-status"
-                className="mt-3 rounded-xl border border-bty-border/60 bg-bty-surface/80 px-3 py-2 text-xs text-bty-secondary"
-              >
-                {reexposureInternalStatusCopy}
-              </p>
-            ) : null}
-          </div>
-        </ScreenShell>
-      );
-    }
-    if (hasBlockingContractForNext) {
-      return (
-        <ScreenShell locale={locale} fullWidth contentClassName="pb-24" mainAriaLabel={t.arenaRunPageMainRegionAria}>
-          <div data-testid="arena-play-snapshot-next-scenario-blocked" className="mx-auto max-w-lg px-2">
-            <EmptyState
-              icon="📋"
-              message={t.arenaPlaySurfaceBlockedTitle}
-              hint={t.arenaSnapshotPlaySurfaceBlockedHint}
-            />
-          </div>
-        </ScreenShell>
-      );
-    }
-    /**
-     * When `gates.next_allowed`, always show the next-ready / Continue shell — never fall through to
-     * `canRenderScenarioProgressionUi` (Play paused): `NEXT_SCENARIO_READY` sets `arenaPlaySurfaceAllowed` false
-     * in `useArenaSession`, so mid-run “fall through to main play” was unreachable and surfaced Play paused.
-     */
-    const nextUnlocked = gateSnapshot.gates?.next_allowed === true;
-    /** Legacy: allow fall-through to main elite wrap-up only when next is not explicitly unlocked. */
-    const midRunEliteNextReady =
-      Boolean(s.scenario?.eliteSetup) &&
-      Boolean(s.runId) &&
-      (s.phase === "DONE" || s.phase === "ACTION_DECISION");
-    if (nextUnlocked || !midRunEliteNextReady) {
-      return (
-        <ScreenShell locale={locale} fullWidth contentClassName="pb-24" mainAriaLabel={t.arenaRunPageMainRegionAria}>
-          <div data-testid="arena-play-snapshot-next-scenario-ready" className="mx-auto max-w-lg px-2">
-            {s.arenaRuntimeBanner ? (
-              <ArenaRuntimeStateBanner
-                devTestId={devRuntimeBannerTestId}
-                runtimeState={s.arenaRuntimeBanner.runtimeState}
-                gateLabel={s.arenaRuntimeBanner.gateLabel}
-              />
-            ) : null}
-            <div className="rounded-2xl border border-bty-border bg-bty-surface p-4 shadow-sm">
-              <EmptyState
-                icon="📋"
-                message={t.arenaPostContractNextScenarioTitle}
-                hint={s.nextScenarioLoading ? t.arenaSnapshotNextScenarioReadyHint : t.arenaPostContractNextScenarioHint}
-              />
-              {s.nextScenarioLoading ? (
-                <div className="mt-4" aria-busy="true" aria-label={t.preparingNewScenarioAria}>
-                  <CardSkeleton lines={2} showLabel={false} />
-                </div>
-              ) : (
-                <div className="mt-4">
-                  <button
-                    type="button"
-                    data-testid="arena-next-scenario-continue"
-                    onClick={() => void Promise.resolve(s.continueNextScenario())}
-                    className="inline-flex min-h-[44px] w-full items-center justify-center rounded-2xl px-5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95"
-                    style={{ background: "var(--arena-accent, #5b8fa8)" }}
-                  >
-                    {t.arenaContinueToNextScenarioCta}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </ScreenShell>
-      );
-    }
+    return null;
   }
 
   /**

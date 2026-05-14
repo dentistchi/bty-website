@@ -14,11 +14,12 @@ import { ARENA_SESSION_MODE } from "@/lib/bty/arena/arenaRuntimeSnapshot.types";
 import type { Scenario } from "@/lib/bty/scenario/types";
 
 const mockGetScenarioById = vi.fn();
+const mockRouterPush = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ locale: "en" }),
   usePathname: () => "/en/bty-arena",
-  useRouter: () => ({ replace: vi.fn(), push: vi.fn(), prefetch: vi.fn() }),
+  useRouter: () => ({ replace: vi.fn(), push: mockRouterPush, prefetch: vi.fn() }),
 }));
 
 vi.mock("@/data/scenario", async (importOriginal) => {
@@ -225,6 +226,7 @@ describe("BtyArenaRunPageClient — continueNextScenario clears bindingRuntimeSn
     cleanup();
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
+    mockRouterPush.mockReset();
   });
 
   it("shows new scenario title after Continue click (bindingRuntimeSnapshot cleared)", async () => {
@@ -256,22 +258,25 @@ describe("BtyArenaRunPageClient — continueNextScenario clears bindingRuntimeSn
       fireEvent.click(screen.getByTestId("elite-forced-tradeoff-sec1"));
     });
 
-    // Continue button should appear
+    /**
+     * Stage 2 step 6 sub-phase 2D re-point (D1-b): after the second choice POST returns
+     * NEXT_SCENARIO_READY, BtyArenaRunPageClient's new navigation useEffect pushes to
+     * `/en/bty-arena` (Lobby), and the L1067-1167 inline block now early-returns null.
+     * The Continue button (`arena-next-scenario-continue`) no longer renders on
+     * BtyArenaRunPageClient; it lives on `ArenaEntryClient` as `arena-lobby-next-scenario-continue`.
+     * The post-Continue scenario re-load is now a cross-route flow (Lobby Continue →
+     * `s.continueNextScenario()` → `router.push('/en/bty-arena/play')`) not testable
+     * from a BtyArenaRunPageClient-only jsdom render. Mirrors Resolve 2D-1's `action-decision-503`
+     * re-point pattern: assert the handoff navigation fires, drop the post-Continue render
+     * assertion (now belongs to Lobby tests at `ArenaEntryClient.test.tsx`).
+     */
     await waitFor(() => {
-      expect(screen.getByTestId("arena-next-scenario-continue")).toBeTruthy();
+      expect(mockRouterPush).toHaveBeenCalledWith("/en/bty-arena");
     }, { timeout: 3000 });
 
-    // Click Continue — triggers continueNextScenario()
-    await act(async () => {
-      fireEvent.click(screen.getByTestId("arena-next-scenario-continue"));
-    });
-
-    // NEW scenario title must appear — verifies bindingRuntimeSnapshot is cleared
-    await waitFor(() => {
-      expect(screen.getByText(NEXT_SCENARIO_TITLE)).toBeTruthy();
-    }, { timeout: 3000 });
-
-    // The Continue screen must no longer be shown
+    // Legacy in-place Continue + new-scenario-title testids must no longer appear on Play.
+    expect(screen.queryByTestId("arena-next-scenario-continue")).toBeNull();
     expect(screen.queryByTestId("arena-play-snapshot-next-scenario-ready")).toBeNull();
+    expect(screen.queryByText(NEXT_SCENARIO_TITLE)).toBeNull();
   });
 });
