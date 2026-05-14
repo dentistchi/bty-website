@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArenaHeader,
   TierMilestoneModal,
@@ -14,8 +15,6 @@ import {
   ChoiceList,
   EliteArenaStep2Context,
   EliteArenaPostChoiceBlock,
-  ArenaPendingContractGate,
-  ArenaBlockedSurface,
   ArenaReexposurePanel,
   EliteActionDecisionStep,
   ArenaBindingError,
@@ -77,6 +76,9 @@ export default function BtyArenaRunPageClient({
   /** Prop ignored for routing — `useArenaSession` uses `getArenaPipelineDefaultForClient()` only. */
   const s = useArenaSession(pipelineDefault);
   const { locale, t } = s;
+  const router = useRouter();
+  /** One-shot guard: fire Resolve-route push on the false→true transition of arenaActionBlocking. */
+  const resolveNavigationFiredRef = React.useRef(false);
 
   const [selectedJsonScenarioId, setSelectedJsonScenarioId] = React.useState<string>(
     "core_04_manager_neutrality_as_abandonment",
@@ -481,6 +483,29 @@ export default function BtyArenaRunPageClient({
       s.recoverStaleReexposureShell();
     })();
   }, [staleReexposureRecoveryActive, localeNorm, s]);
+
+  /**
+   * Resolve-route navigation (Stage 2 step 2 sub-phase 2D-1; v1.1 §5.3 / FD-6).
+   *
+   * The production Action Gate (ACTION_REQUIRED / ACTION_SUBMITTED /
+   * ACTION_AWAITING_VERIFICATION) lives at `/[locale]/bty-arena/play/resolve` via
+   * `ArenaResolveClient`. When the session hook reports `arenaActionBlocking` on
+   * the Play route, push the user to the Resolve route. The one-shot ref guards
+   * against repeat pushes during the same Resolve-domain entry; exiting the
+   * domain resets the guard so a future re-entry navigates again.
+   *
+   * The JSON-engine dev path tracks its own `jsonEngineState` and is intentionally
+   * unaffected — it remains inline until sub-phase 2D-2 relocates it.
+   */
+  React.useEffect(() => {
+    if (s.arenaActionBlocking) {
+      if (resolveNavigationFiredRef.current) return;
+      resolveNavigationFiredRef.current = true;
+      router.push(`/${localeNorm}/bty-arena/play/resolve`);
+      return;
+    }
+    resolveNavigationFiredRef.current = false;
+  }, [s.arenaActionBlocking, localeNorm, router]);
 
   const tLoading = getMessages(locale === "ko" ? "ko" : "en").loading;
   const devRuntimeBannerTestId = process.env.NODE_ENV !== "production";
@@ -984,85 +1009,23 @@ export default function BtyArenaRunPageClient({
     );
   }
 
-  // Snapshot-first (outranks local uiStep): ACTION_* → FORCED_RESET → NEXT_SCENARIO_READY → then elite uiStep.
+  /**
+   * Resolve states (ACTION_REQUIRED / ACTION_SUBMITTED / ACTION_AWAITING_VERIFICATION)
+   * are handled by `ArenaResolveClient` at `/[locale]/bty-arena/play/resolve`
+   * (sub-phase 2D-1; v1.1 §5.3 / FD-6). The useEffect at the top of this component
+   * pushes to the Resolve route on `arenaActionBlocking` entry; render null in the
+   * meantime to avoid flashing the Play surface during the transition.
+   *
+   * The null-snapshot edge case (`arenaActionBlocking` true with no `gateSnapshot`)
+   * intentionally has no inline fallback — `ArenaResolveClient` redirects to `/play`
+   * for that case per the ITEM 2 judgment pinned by
+   * `ArenaResolveClient.empty-state-edge-case.test.tsx`.
+   *
+   * Snapshot-first priority preserved: this check still runs before FORCED_RESET /
+   * NEXT_SCENARIO_READY / elite play uiStep.
+   */
   if (s.arenaActionBlocking) {
-    return (
-      <>
-        <ScreenShell locale={locale} fullWidth contentClassName="pb-24" mainAriaLabel={t.arenaRunPageMainRegionAria}>
-          <div className="bty-arena-page-root mx-auto flex max-w-[1200px] flex-col gap-6 px-4 lg:flex-row lg:gap-6">
-            <div
-              data-testid="arena-play-main-pending-contract"
-              className="flex min-w-0 flex-1 flex-col"
-              style={{ maxWidth: 860, margin: "0 auto", width: "100%" }}
-            >
-              {s.arenaRuntimeBanner ? (
-                <ArenaRuntimeStateBanner
-                  devTestId={devRuntimeBannerTestId}
-                  runtimeState={s.arenaRuntimeBanner.runtimeState}
-                  gateLabel={s.arenaRuntimeBanner.gateLabel}
-                />
-              ) : null}
-
-              <div>
-                <ArenaHeader
-                  locale={locale}
-                  step={s.step}
-                  phase={s.phase}
-                  runId={s.runId}
-                  onPause={s.pause}
-                  onReset={s.resetRun}
-                  showPause={false}
-                  identity={s.arenaIdentity}
-                />
-                {s.pendingActionContract ? (
-                  <ArenaPendingContractGate
-                    locale={locale}
-                    contract={s.pendingActionContract}
-                    runtimeState={
-                      gateSnapshot?.runtime_state === "ACTION_REQUIRED" ||
-                      gateSnapshot?.runtime_state === "ACTION_SUBMITTED" ||
-                      gateSnapshot?.runtime_state === "ACTION_AWAITING_VERIFICATION"
-                        ? gateSnapshot.runtime_state
-                        : null
-                    }
-                    onRetry={s.retryArenaSession}
-                    retryLoading={s.scenarioLoading}
-                    qrAllowed={gateSnapshot?.gates.qr_allowed === true}
-                    onCompleteByQr={s.startPendingContractQrFlow}
-                    qrLoading={s.pendingContractQrLoading}
-                  />
-                ) : gateSnapshot ? (
-                  <ArenaBlockedSurface
-                    snapshot={gateSnapshot}
-                    locale={locale}
-                    pendingContract={null}
-                    onRetrySession={s.retryArenaSession}
-                    retryLoading={s.scenarioLoading}
-                  />
-                ) : (
-                  <div data-testid="arena-play-action-block-no-contract-payload" className="mt-4">
-                    <EmptyState
-                      icon="📋"
-                      message={t.arenaRunErrorTitle}
-                      hint={t.arenaRunErrorDescription}
-                    />
-                  </div>
-                )}
-              </div>
-              <ArenaRunHistory locale={locale} />
-            </div>
-            <aside
-              aria-label={t.liveRanking}
-              style={{ width: 280, flexShrink: 0, paddingTop: 32 }}
-              className="hidden lg:block"
-            >
-              <ArenaRankingSidebar locale={locale} />
-            </aside>
-          </div>
-        </ScreenShell>
-        {s.toast && <ArenaToast message={s.toast} />}
-      </>
-    );
+    return null;
   }
 
   if (gateSnapshot?.runtime_state === "FORCED_RESET_PENDING") {

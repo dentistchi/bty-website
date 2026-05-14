@@ -13,6 +13,20 @@ vi.mock("@/lib/bty/scenario/browserLoader", () => ({
   loadScenario: (...args: unknown[]) => mockLoadScenario(...args),
 }));
 
+/**
+ * Stage 2 step 2 sub-phase 2D-1: BtyArenaRunPageClient now calls `useRouter()` for
+ * Resolve-route navigation on `arenaActionBlocking`. JSON-engine tests don't trip that
+ * branch (they exercise `jsonEngineState`, not the production snapshot path), but the
+ * hook still mounts, so an app-router mock is required to keep these tests runnable.
+ * Test assertions (JSON-engine testids on BtyArenaRunPageClient) are unchanged — that
+ * relocation lands in sub-phase 2D-2.
+ */
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn(), prefetch: vi.fn() }),
+  useParams: () => ({ locale: "en" }),
+  usePathname: () => "/en/bty-arena",
+}));
+
 import BtyArenaRunPageClient from "./BtyArenaRunPageClient";
 
 const scenario = {
