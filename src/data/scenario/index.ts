@@ -539,22 +539,6 @@ function getBaseDbChoiceId(
   return mapping?.dbChoiceId ?? fallback ?? "";
 }
 
-export const patternFamilyCompatibilityMap: Record<string, string> = {
-  ownership_act: "ownership_claim",
-  system_thinking: "accountability_system",
-  blame_shift: "accountability_deflection",
-  truth_naming: "truth_naming",
-  future_deferral: "future_deferral",
-  delegation_deflection: "delegation_deflection",
-  integrity_compromise: "integrity_compromise",
-  repair_avoidance: "repair_avoidance",
-  courage_act: "courage_act",
-  control_fixation: "control_fixation",
-  self_protection: "identity_drift",
-  explanation_substitution: "explanation_substitution",
-  conflict_avoidance: "conflict_avoidance",
-};
-
 export const allScenarioBundles: ScenarioBundle[] = [
   ...Object.values(scenarioRegistry.incident_01_small_compromise_to_trust_repair),
   ...Object.values(scenarioRegistry.incident_02_authority_integrity_breakdown),
