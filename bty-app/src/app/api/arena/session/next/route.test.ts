@@ -55,8 +55,9 @@ function makeSupabaseForSessionRouter() {
   updateChain.eq.mockReturnValue(updateChain);
   const update = vi.fn().mockReturnValue(updateChain);
 
-  const arenaRunsStatusEq = vi.fn().mockResolvedValue({ data: [], error: null });
-  const arenaRunsUserIdEq = vi.fn().mockReturnValue({ eq: arenaRunsStatusEq });
+  const arenaRunsStatusGte = vi.fn().mockResolvedValue({ data: [], error: null });
+  const arenaRunsStatusIn = vi.fn().mockReturnValue({ gte: arenaRunsStatusGte });
+  const arenaRunsUserIdEq = vi.fn().mockReturnValue({ in: arenaRunsStatusIn });
   const arenaRunsSelect = vi.fn().mockReturnValue({ eq: arenaRunsUserIdEq });
 
   const from = vi.fn((table: string) => {
@@ -69,7 +70,7 @@ function makeSupabaseForSessionRouter() {
     return { select: vi.fn() };
   });
 
-  return { from, lte, arenaRunsUserIdEq, arenaRunsStatusEq };
+  return { from, lte, arenaRunsUserIdEq, arenaRunsStatusIn };
 }
 
 describe("GET /api/arena/session/next", () => {
@@ -272,8 +273,8 @@ describe("GET /api/arena/session/next", () => {
     expect(data.scenario?.scenarioId).toBe("s1");
   });
 
-  it("queries arena_runs with status DONE when building served scenario exclusion", async () => {
-    const { from, arenaRunsUserIdEq, arenaRunsStatusEq } = makeSupabaseForSessionRouter();
+  it("queries arena_runs with served-suppression statuses when building served scenario exclusion", async () => {
+    const { from, arenaRunsUserIdEq, arenaRunsStatusIn } = makeSupabaseForSessionRouter();
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
       supabase: { from },
@@ -284,6 +285,6 @@ describe("GET /api/arena/session/next", () => {
     await GET(req);
 
     expect(arenaRunsUserIdEq).toHaveBeenCalledWith("user_id", "u1");
-    expect(arenaRunsStatusEq).toHaveBeenCalledWith("status", "DONE");
+    expect(arenaRunsStatusIn).toHaveBeenCalledWith("status", ["DONE", "IN_PROGRESS", "ABANDONED"]);
   });
 });
