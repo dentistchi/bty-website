@@ -139,32 +139,43 @@ Action Decision 단계의 모든 선택은 암묵적으로 Axis 12를 통과한�
 
 ## pattern_family 전체 매핑 테이블
 
+> **구현 상태 범례**: ✅ canonical (`CANONICAL_PATTERN_FAMILIES`) · 🟡 alias-layer 또는 scenario-resident (canonical 아님, footnote 참조) · ❌ clean 미구현
+
 | pattern_family | 방향 | Core Axis | 구현 상태 |
 |---|---|---|---|
 | `ownership_claim` | entry | Axis 1 Ownership | ❌ |
 | `ownership_escape` | exit | Axis 1 Ownership | ✅ |
 | `present_action` | entry | Axis 2 Time | ❌ |
 | `future_deferral` | exit | Axis 2 Time | ✅ |
-| `authority_exercise` | entry | Axis 3 Authority | ❌ |
+| `authority_exercise` | entry | Axis 3 Authority | 🟡 |
 | `delegation_deflection` | exit | Axis 3 Authority | ✅ |
-| `truth_naming` | entry | Axis 4 Truth | ❌ |
+| `truth_naming` | entry | Axis 4 Truth | 🟡 |
 | `explanation_substitution` | exit | Axis 4 Truth | ✅ |
 | `repair_initiation` | entry | Axis 5 Repair | ❌ |
 | `repair_avoidance` | exit | Axis 5 Repair | ✅ |
 | `conflict_engagement` | entry | Axis 6 Conflict | ❌ |
-| `conflict_avoidance` | exit | Axis 6 Conflict | ❌ |
+| `conflict_avoidance` | exit | Axis 6 Conflict | 🟡 |
 | `integrity_hold` | entry | Axis 7 Integrity | ❌ |
-| `integrity_compromise` | exit | Axis 7 Integrity | ❌ |
+| `integrity_compromise` | exit | Axis 7 Integrity | 🟡 |
 | `visibility_disclosure` | entry | Axis 8 Visibility | ❌ |
 | `visibility_suppression` | exit | Axis 8 Visibility | ❌ |
-| `accountability_system` | entry | Axis 9 Accountability | ❌ |
+| `accountability_system` | entry | Axis 9 Accountability | 🟡 |
 | `accountability_deflection` | exit | Axis 9 Accountability | ❌ |
 | `courage_act` | entry | Axis 10 Courage/Risk | ❌ |
 | `risk_aversion` | exit | Axis 10 Courage/Risk | ❌ |
 | `control_discernment` | entry | Axis 11 Control | ❌ |
-| `control_fixation` | exit | Axis 11 Control | ❌ |
+| `control_fixation` | exit | Axis 11 Control | 🟡 |
 | `identity_hold` | entry | Axis 12 Identity | ❌ |
-| `identity_drift` | exit | Axis 12 Identity | ❌ |
+| `identity_drift` | exit | Axis 12 Identity | 🟡 |
+
+**🟡 7건 상세** (α-0.5 doc-reconciliation, 2026-05-15 — α-0 STEP 1 실측):
+- `authority_exercise` — alias key → `authority_protection`
+- `conflict_avoidance` — alias key → `delegation_deflection`
+- `control_fixation` — alias key → `self_protection`
+- `truth_naming` — NEW_AXIS anchor (alias target 9건)
+- `integrity_compromise` — NEW_AXIS anchor (alias target 12건)
+- `accountability_system` — scenario JSON literal; `AL-2-D-P1-R3-HK-deprecate-low-row-status.md` #12 참조
+- `identity_drift` — scenario JSON literal (구 `patternFamilyCompatibilityMap` target였으나 HK2 영역 1 (inner 52d628c6) compatibilityMap 삭제 후에도 scenario JSON literal 잔존)
 
 ---
 
