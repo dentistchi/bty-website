@@ -1411,8 +1411,6 @@ export type Messages = {
     /** `/[locale]/growth/loading` Suspense `<main>` 라벨 */
     growthRouteSuspenseMainRegionAria: string;
     arenaHubTitle: string;
-    /** 허브 ScreenShell 메인 타이틀 (짧게; 카드에서 이어하기/준비 문구 구분) */
-    arenaHubShellTitle: string;
     arenaHubSubtitle: string;
     arenaHubReadyTitle: string;
     arenaHubReadyBody: string;
@@ -3118,7 +3116,6 @@ const ko: Messages = {
     growthJourneyLandmarkAria: "28일 Journey 보드",
     growthRouteSuspenseMainRegionAria: "오늘의 성장 — 불러오는 중",
     arenaHubTitle: "아레나를 이어갑니다.",
-    arenaHubShellTitle: "아레나",
     arenaHubSubtitle: "판단·반복·압박 훈련은 이 공간에 있습니다.",
     arenaHubReadyTitle: "시스템 준비",
     arenaHubReadyBody: "마지막 시뮬을 이어가거나 새 시나리오를 시작할 수 있어요.",
@@ -4783,7 +4780,6 @@ const en: Messages = {
     growthJourneyLandmarkAria: "28-day Journey board",
     growthRouteSuspenseMainRegionAria: "Growth — loading",
     arenaHubTitle: "Continue your Arena.",
-    arenaHubShellTitle: "Arena",
     arenaHubSubtitle: "Decision, repetition, and pressure training live here.",
     arenaHubReadyTitle: "System ready",
     arenaHubReadyBody: "Resume your last simulation or begin a new scenario.",
