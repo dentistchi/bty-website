@@ -312,8 +312,12 @@ function makeSupabaseForDelayedOutcomeE2E() {
             return {
               eq() {
                 return {
-                  eq() {
-                    return Promise.resolve({ data: [], error: null });
+                  in() {
+                    return {
+                      gte() {
+                        return Promise.resolve({ data: [], error: null });
+                      },
+                    };
                   },
                 };
               },

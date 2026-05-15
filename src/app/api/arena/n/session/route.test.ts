@@ -54,8 +54,9 @@ function makeSupabaseForSessionRouter() {
   const updateChain = { eq: vi.fn().mockReturnThis(), lte };
   updateChain.eq.mockReturnValue(updateChain);
   const update = vi.fn().mockReturnValue(updateChain);
-  const arenaRunsStatusEq = vi.fn().mockResolvedValue({ data: [], error: null });
-  const arenaRunsUserIdEq = vi.fn().mockReturnValue({ eq: arenaRunsStatusEq });
+  const arenaRunsStatusGte = vi.fn().mockResolvedValue({ data: [], error: null });
+  const arenaRunsStatusIn = vi.fn().mockReturnValue({ gte: arenaRunsStatusGte });
+  const arenaRunsUserIdEq = vi.fn().mockReturnValue({ in: arenaRunsStatusIn });
   const arenaRunsSelect = vi.fn().mockReturnValue({ eq: arenaRunsUserIdEq });
   const from = vi.fn((table: string) => {
     if (table === "bty_action_contracts") return { update };
