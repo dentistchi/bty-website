@@ -5,11 +5,17 @@ import type { Scenario } from "@/lib/bty/scenario/types";
 import { ARENA_SESSION_MODE } from "@/lib/bty/arena/arenaRuntimeSnapshot.types";
 
 const mockGetScenarioById = vi.fn();
+const mockRouterPush = vi.fn();
+const mockRouterReplace = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ locale: "en" }),
-  usePathname: () => "/en/bty-arena",
-  useRouter: () => ({ replace: vi.fn(), push: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => "/en/bty-arena/play",
+  useRouter: () => ({
+    replace: mockRouterReplace,
+    push: mockRouterPush,
+    prefetch: vi.fn(),
+  }),
 }));
 
 vi.mock("@/data/scenario", async (importOriginal) => {
@@ -245,9 +251,21 @@ describe("BtyArenaRunPageClient — AD1 503 snapshot integration", () => {
     cleanup();
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
+    mockRouterPush.mockReset();
+    mockRouterReplace.mockReset();
   });
 
-  it("keeps ACTION_REQUIRED blocked shell from 503 error-body snapshot and does not show next-ready shell", async () => {
+  /**
+   * Stage 2 step 2 sub-phase 2D-1 re-point: the production Resolve render branch was
+   * removed from BtyArenaRunPageClient. On the AD1 503 → ACTION_REQUIRED transition,
+   * BtyArenaRunPageClient now fires `router.push('/en/bty-arena/play/resolve')` (handled
+   * by `ArenaResolveClient`) and returns `null` while navigating — no longer rendering
+   * `arena-play-main-pending-contract` inline. The end-state assertion below reflects
+   * that real new behavior: navigation fires, the legacy inline gate testid is absent,
+   * and the Play surface stops rendering. Pre-transition assertions (primary / tradeoff
+   * / AD1 click → API contract) are unchanged.
+   */
+  it("on AD1 503 → ACTION_REQUIRED, navigates to /play/resolve and unmounts the Play surface (no inline next-ready/blocked shell)", async () => {
     await act(async () => {
       render(<BtyArenaRunPageClient />);
     });
@@ -289,13 +307,20 @@ describe("BtyArenaRunPageClient — AD1 503 snapshot integration", () => {
       fireEvent.click(screen.getByTestId("elite-action-decision-AD1"));
     });
 
+    /**
+     * 2D-1: the ACTION_REQUIRED transition triggers `router.push` to the Resolve
+     * route. The Action Gate (`ArenaPendingContractGate`) is no longer rendered
+     * inline by BtyArenaRunPageClient — `ArenaResolveClient` owns it at /play/resolve.
+     */
     await waitFor(() => {
-      expect(screen.getByTestId("arena-play-main-pending-contract")).toBeTruthy();
+      expect(mockRouterPush).toHaveBeenCalledWith("/en/bty-arena/play/resolve");
     });
 
-    expect(screen.getByTestId("arena-observable-action-confirmation").textContent).toContain(
-      "You chose an observable action. Progress now depends on completing it.",
-    );
+    /** Legacy inline-gate testids must no longer appear on the Play surface after 2D-1. */
+    expect(screen.queryByTestId("arena-play-main-pending-contract")).toBeNull();
+    expect(screen.queryByTestId("arena-observable-action-confirmation")).toBeNull();
+    /** Play surface itself unmounts (component returns null while navigating). */
+    expect(screen.queryByTestId("arena-play-main")).toBeNull();
 
     const ad1ChoicePosts = fetchMock.mock.calls.filter(
       (c) =>

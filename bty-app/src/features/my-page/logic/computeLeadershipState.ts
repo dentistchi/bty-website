@@ -4,7 +4,7 @@ import type { ReflectionEntry } from "@/features/growth/logic/types";
 import type { Locale } from "@/lib/i18n";
 import type { LeadershipMetrics, LeadershipState } from "./types";
 
-const DEFAULT_CODE_NAME = "STILLWATER";
+const DEFAULT_CODE_NAME = "QUIETFLAME";
 const DEFAULT_STAGE = "STAGE 1: FORGE";
 
 type Copy = {

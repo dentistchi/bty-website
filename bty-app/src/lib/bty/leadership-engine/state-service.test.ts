@@ -1,9 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   getLeadershipEngineState,
   applyStageTransition,
   triggerForcedResetToStage4,
   resetStateTransitionHandler,
+  userHasForcedResetPending,
   type LeadershipEngineStateClient,
 } from "./state-service";
 
@@ -150,5 +151,57 @@ describe("resetStateTransitionHandler", () => {
     });
     expect(result.triggered).toBe(false);
     expect(result.currentStage).toBe(1);
+  });
+});
+
+/**
+ * Stage 2 step 4 sub-phase 2C-1 — FD-5 enforcement helper for middleware
+ * full-redirect to /center when `forced_reset_triggered_at` is non-null.
+ * Mirrors `userHasBlockingArenaActionContract` shape (boolean wrapper +
+ * open-on-failure error handling).
+ */
+describe("userHasForcedResetPending", () => {
+  it("returns true when forced_reset_triggered_at is set", async () => {
+    const client = mockClient(4, "2026-05-14T00:00:00Z");
+    expect(await userHasForcedResetPending(client, "u1")).toBe(true);
+  });
+
+  it("returns false when forced_reset_triggered_at is null", async () => {
+    const client = mockClient(1, null);
+    expect(await userHasForcedResetPending(client, "u1")).toBe(false);
+  });
+
+  it("returns false when no row exists for the user (default state)", async () => {
+    const client = mockClient(null);
+    expect(await userHasForcedResetPending(client, "u1")).toBe(false);
+  });
+
+  it("returns false on db error (open-on-failure; matches userHasBlockingArenaActionContract)", async () => {
+    const errClient: LeadershipEngineStateClient = {
+      from() {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  maybeSingle: () =>
+                    Promise.resolve({ data: null, error: { message: "boom" } }),
+                };
+              },
+            };
+          },
+        };
+      },
+    } as LeadershipEngineStateClient;
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(await userHasForcedResetPending(errClient, "u1")).toBe(false);
+      expect(errSpy).toHaveBeenCalledWith(
+        "[leadership-engine] forced-reset query",
+        "boom",
+      );
+    } finally {
+      errSpy.mockRestore();
+    }
   });
 });

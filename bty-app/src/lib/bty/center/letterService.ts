@@ -13,7 +13,7 @@ import {
   type LetterWithReply,
 } from "@/domain/center/letter";
 import { fetchJson } from "@/lib/read-json";
-import { getLlmEndpoint, isLlmAvailable } from "@/lib/llm";
+import { getLlmClient, getLlmModel, isLlmAvailable } from "@/lib/bty/llm/client";
 import { buildChatMessagesForModel, getFallbackMessage } from "@/lib/bty/chat";
 
 const MAX_LETTER_LENGTH = 2000;
@@ -31,33 +31,28 @@ function getDearMeReplyTemplate(lang: LetterLocale): string {
 
 async function getDearMeReplyLlm(letterText: string, lang: LetterLocale): Promise<string | null> {
   if (!isLlmAvailable()) return null;
-  const llm = getLlmEndpoint();
 
   const systemPrompt =
     lang === "en"
       ? "You are Dr. Chi in 'Dear Me' mode. The user wrote a short letter to themselves. Reply in 1 to 3 short sentences only. Tone: warm, no blame, validate feelings, gentle encouragement. Do not give advice or solutions. Respond only in English."
       : "당신은 Dear Me 모드의 Dr. Chi입니다. 사용자가 나에게 쓰는 짧은 편지를 보냈습니다. 1~3문장으로만 답하세요. 톤: 따뜻하고, 비판 없이, 감정을 인정하고, 다정한 격려. 조언이나 해결책을 주지 마세요. 반드시 한국어로만 답하세요.";
 
-  type OpenAIChatResp = { choices?: { message?: { content?: string } }[] };
-  const r = await fetchJson<OpenAIChatResp>(llm.url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${llm.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: llm.model,
+  try {
+    const client = getLlmClient();
+    const model = getLlmModel();
+    const completion = await client.chat.completions.create({
+      model,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: letterText },
       ],
       max_tokens: 150,
-    }),
-  });
-
-  if (!r.ok) return null;
-  const text = r.json?.choices?.[0]?.message?.content?.trim();
-  return text && text.length > 0 ? text : null;
+    });
+    const text = completion.choices[0]?.message?.content?.trim();
+    return text && text.length > 0 ? text : null;
+  } catch {
+    return null;
+  }
 }
 
 export type SubmitLetterInput = {

@@ -43,7 +43,7 @@ export async function getMyPageIdentityState(
 
   const { signals, reflections } = bundle;
 
-  const [recoveryRes, sigBundle, openContract, membershipRes] = await Promise.all([
+  const [recoveryRes, sigBundle, openContract, profileRes] = await Promise.all([
     supabase
       .from("bty_recovery_entries")
       .select("id", { count: "exact", head: true })
@@ -51,8 +51,8 @@ export async function getMyPageIdentityState(
     fetchUserPatternSignaturesForMyPage(supabase, userId),
     fetchOpenActionContractForMyPage(supabase, userId),
     supabase
-      .from("arena_memberships")
-      .select("core_xp")
+      .from("arena_profiles")
+      .select("core_xp_total")
       .eq("user_id", userId)
       .maybeSingle(),
   ]);
@@ -60,7 +60,7 @@ export async function getMyPageIdentityState(
   if (recoveryRes.error) return { ok: false, message: recoveryRes.error.message };
   if (!sigBundle.ok) return { ok: false, message: sigBundle.message };
 
-  const coreXp = (membershipRes.data as { core_xp?: number } | null)?.core_xp ?? 0;
+  const coreXp = (profileRes.data as { core_xp_total?: number } | null)?.core_xp_total ?? 0;
 
   const [scenariosRes, contractsRes] = await Promise.all([
     supabase

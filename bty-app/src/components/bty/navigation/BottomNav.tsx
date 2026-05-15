@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getActiveBtyNav, getBtyNavItems } from "@/components/bty/navigation/nav-items";
+import { useForcedResetActive } from "@/components/bty/navigation/useForcedResetActive";
 import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
@@ -37,13 +38,24 @@ export default function BottomNav({
   );
   const active = getActiveBtyNav(pathname, locale, arenaEntry.href);
 
+  /**
+   * v1.1.1 §5.5.2 + §8-7: FORCED_RESET sub-mode → render Center tab only,
+   * full-width. Arena (btyARENA) and My Page tabs suppressed (not-rendered)
+   * because they are §5.4 secondary-block / non-Center surfaces the user is
+   * not allowed to access. Middleware 2C-1 already redirects Arena URLs;
+   * this closes the §8-Open #2 gap (b) so the tabs aren't visible to click.
+   */
+  const forcedResetActive = useForcedResetActive();
+  const visibleItems = forcedResetActive ? items.filter((it) => it.key === "center") : items;
+  const gridColsClass = forcedResetActive ? "grid-cols-1" : "grid-cols-3";
+
   return (
     <nav
       className={`fixed bottom-0 left-0 right-0 z-[40] border-t border-[#E8E3D8] bg-[#FFFCF7]/95 px-2 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm ${className}`}
       aria-label={ariaLabel}
     >
-      <div className="mx-auto grid max-w-md grid-cols-3 gap-2">
-        {items.map((item) => {
+      <div className={`mx-auto grid max-w-md ${gridColsClass} gap-2`}>
+        {visibleItems.map((item) => {
           const isActive = item.key === active;
           return (
             <Link
