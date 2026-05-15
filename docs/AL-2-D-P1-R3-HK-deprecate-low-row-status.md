@@ -76,6 +76,11 @@ Status determination rule (read-only verification): for each row, run `grep -rn 
 | 47 | `system_feedback_loop` | 1 | <C5 inventory에서 확인> | no | no | unhandled |
 | 48 | `system_humility` | 1 | <C5 inventory에서 확인> | no | no | unhandled |
 
+> **Row #12 (`accountability_system`) — RECLASSIFIED (α-1c, 2026-05-15):**
+> LIVE — scenario-resident entry family.
+> Observed in core_27 ko/en (20 occurrences).
+> Previous classification conflated Accountability entry semantics with Truth exit semantics.
+
 [D-P1.R3-HK.A2.1] aggregate_status: 37/37 = unhandled. 0/37 = deleted. 0/37 = soft-marked.
 
 [D-P1.R3-HK.A2.2] sampled_verification_count: 20/37 directly verified by `grep -rn "\b<family>\b" bty-app/src/` per [§2.1](#§2.1) below; 17/37 carry `<C5 inventory에서 확인>` marker pending the same grep verification. Per Guard 6, the unverified rows are explicitly marked rather than inferred.
