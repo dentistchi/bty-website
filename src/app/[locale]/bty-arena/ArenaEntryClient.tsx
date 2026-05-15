@@ -11,6 +11,7 @@ import {
 } from "@/components/bty-arena";
 import ScreenShell from "@/components/bty/layout/ScreenShell";
 import { snapshotQualifiesAsReexposureGate } from "@/lib/bty/arena/arenaSessionRouterClient";
+import type { Locale } from "@/lib/i18n";
 import { useArenaSession } from "./hooks/useArenaSession";
 
 const copy = {
@@ -61,6 +62,7 @@ interface Props {
 export default function ArenaEntryClient({ locale }: Props) {
   const isKo = locale !== "en";
   const tStatic = isKo ? copy.ko : copy.en;
+  const localeNorm: Locale = locale === "ko" ? "ko" : "en";
   const router = useRouter();
   const s = useArenaSession();
 
@@ -120,7 +122,7 @@ export default function ArenaEntryClient({ locale }: Props) {
         <ScreenShell locale={locale} fullWidth contentClassName="pb-24" mainAriaLabel={t.arenaRunPageMainRegionAria}>
           <div data-testid="arena-lobby-snapshot-reexposure" className="mx-auto max-w-lg px-2">
             <ArenaReexposurePanel
-              locale={locale}
+              locale={localeNorm}
               reexposureScenarioId={gateSnapshot.re_exposure?.scenario_id}
               pendingOutcomeId={gateSnapshot.re_exposure?.pending_outcome_id}
               onEnterScenario={s.beginReexposurePlay}

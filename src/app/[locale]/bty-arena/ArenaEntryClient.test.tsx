@@ -171,10 +171,10 @@ describe("ArenaEntryClient — default mode-select gate (no NEXT_SCENARIO_READY)
     expect(screen.queryByTestId("arena-lobby-snapshot-next-scenario-ready")).toBeNull();
   });
 
-  it("renders mode-select when runtime_state is PRIMARY_CHOICE_ACTIVE (Play state — Lobby ignores)", () => {
+  it("renders mode-select when runtime_state is ARENA_SCENARIO_READY (non-NEXT_SCENARIO_READY — falls through to mode-select)", () => {
     mockUseArenaSession.mockReturnValue({
       ...sessionBase(),
-      arenaServerSnapshot: baseSnapshot("PRIMARY_CHOICE_ACTIVE"),
+      arenaServerSnapshot: baseSnapshot("ARENA_SCENARIO_READY"),
     });
     render(<ArenaEntryClient locale="en" />);
     expect(screen.getByText("Full Arena")).toBeTruthy();
