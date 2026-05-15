@@ -175,6 +175,7 @@ Action Decision 단계의 모든 선택은 암묵적으로 Axis 12를 통과한�
 - `truth_naming` — NEW_AXIS anchor (alias target 9건)
 - `integrity_compromise` — NEW_AXIS anchor (alias target 12건)
 - `accountability_system` — scenario JSON literal; `AL-2-D-P1-R3-HK-deprecate-low-row-status.md` #12 참조
+  - NOTE: core_27 ko/en scenario JSON tags this family under `axis: Repair` (20 occurrences, direction: entry). Doc authority assigns this family to Axis 9 Accountability. Cross-axis coupling vs axis misassignment — resolution deferred to 12-Axis runtime semantics review track.
 - `identity_drift` — scenario JSON literal (구 `patternFamilyCompatibilityMap` target였으나 HK2 영역 1 (inner 52d628c6) compatibilityMap 삭제 후에도 scenario JSON literal 잔존)
 
 ---
