@@ -180,6 +180,23 @@ Action Decision 단계의 모든 선택은 암묵적으로 Axis 12를 통과한�
 
 ---
 
+## §NOTES — Drift & Deferral
+
+Drift / deferral notes affecting this document. Both notes below are discoverable together; neither grants axis remapping authority.
+
+**α-1c Task B (2026-05-15) — `accountability_system` axis drift:** see the inline NOTE under `accountability_system` in **🟡 7건 상세** above. core_27 ko/en scenario JSON tags the family `axis: Repair` while doc authority assigns Axis 9 Accountability — deferred to the 12-Axis runtime semantics review track.
+
+**HK2-R2 (2026-05-15) — systemic vocabulary drift:**
+
+NOTE (HK2-R2 / 2026-05-15):
+Scenario-resident axis tags outside the current 12-axis canon were identified during HK2-R2 audit:
+Comfort, belonging, transferability, consistency, awareness, self_correction, correction, and <none>.
+These represent runtime vocabulary drift and/or unresolved semantic mappings.
+Resolution deferred to the 12-Axis runtime semantics review track.
+No axis remapping authority is granted by this note.
+
+---
+
 ## 시나리오 설계 원칙
 
 **Primary Choice (4개)**: 행동이어야 함. 각 선택이 다른 축의 패턴을 유발. 정답 없음.
