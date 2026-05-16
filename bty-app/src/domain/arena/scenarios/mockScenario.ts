@@ -272,6 +272,6 @@ export function getScenarioById(
  */
 export const DEFAULT_ARENA_MISSION_TOP_BAR = {
   level: "LEVEL 21",
-  codename: "STILLWATER",
+  codename: "",
   progress: 63,
 } as const;
