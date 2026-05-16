@@ -189,7 +189,7 @@ export async function POST(req: NextRequest) {
   }
 
   const currentRowIteration = loopIterationForPendingRow(
-    pendingRow as { validation_payload?: unknown; reinforcement_loop?: unknown },
+    pendingRow as { validation_payload?: unknown },
   );
   const axis = (payload.after_axis || payload.before_axis || "").trim();
   const patternFamily = payload.after_pattern_family ?? payload.before_pattern_family ?? null;
