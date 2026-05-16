@@ -156,3 +156,50 @@ ranges, not measurement execution.
 
 This document records what the review covers and who owns each workstream. It does not
 design or recommend any change to the 12-Axis runtime semantics.
+
+---
+
+## WS-1 Measurement (Evidence-Only)
+Provenance measurement of the two cross-axis pen() mappings in buildFingerprintInput.ts
+axisVector (L39 conflict ← delegation_deflection, L42 accountability ←
+explanation_substitution). No divergence character decided; this is Verdict input.
+
+### Provenance
+- Both lines reached their current form in commit 52f784c9 (2026-05-02, outer authoritative
+  history). The inner repo history is flattened by the 2026-05-14 filter-repo rewrite.
+- At introduction, the code canonical model already treated delegation_deflection as the
+  conflict-axis family and explanation_substitution as the accountability-axis family —
+  pattern-family.ts carries explicit comments to this effect, and buildFingerprintInput.ts
+  is consistent with pattern-family.ts. Code internal self-consistency confirmed: this is
+  not a single-file cross-map.
+- The doc-named same-axis families (conflict_avoidance, accountability_deflection) are not
+  independent canonical families: conflict_avoidance is an alias, accountability_deflection
+  is absent from pattern-family.ts at introduction and now.
+- Design-intent for the axis assignment is not stated in buildFingerprintInput.ts inline
+  comments; pattern-family.ts carries a code-layer axis↔family declaration; specs confirm
+  the family ids as canonical but do not name an axis.
+
+### Nature of the divergence
+- The divergence is a doc↔code axis-assignment divergence: the 24-row table assigns
+  delegation_deflection to Axis 3 (Authority) and explanation_substitution to Axis 4
+  (Truth), while the code assigns them to the conflict and accountability axes.
+  "Cross-axis" is a relative label measured against the 24-row table.
+
+### Fingerprint impact (S-A / S-B)
+- pen() wiring (L39/L42) is an S-B surface — it produces live axisVector numeric values.
+- doc-table conformity is an S-A surface.
+- doc relabel does not reach runtime delta: relabelling the 24-row table leaves axisVector
+  unchanged. Only a change to the code wiring alters axisVector (S-B).
+- Downstream: conflict and accountability axes are both RULE_REGISTRY rule inputs; the
+  penalty reaches ruleMatches/ruleScore, confined to the archetype subsystem (per R2-a
+  Phase 2 — leaderboard / XP unaffected).
+
+### Invariant preservation
+- Collision ZERO: invariant #28 (accountability_system is a scenario-JSON literal on a
+  separate layer; the axisVector field name "accountability" is an incidental lexical
+  overlap), the 24-row table / CANONICAL_PATTERN_FAMILIES / RULE_REGISTRY (untouched by a
+  wiring change), 7-step canonical.
+- FINGERPRINT_VERSION = a potential collision surface only if the code wiring (S-B) is
+  changed. Lock 7 = an adjacent surface (same file), not a confirmed collision.
+
+WS-1 provenance measurement-complete. No mutation, no canonicalization, no proposal.
