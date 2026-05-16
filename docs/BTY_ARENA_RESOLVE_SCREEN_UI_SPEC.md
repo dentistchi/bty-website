@@ -1,5 +1,17 @@
 # BTY Arena — Result / Resolve Screen UI SPEC **(FINAL LOCKED)**
 
+> NOTE (DOC-DRIFT-CLEANUP / 2026-05-15):
+> Component-name bindings in this spec (ArenaResolveScreen, OutcomeVisualPanel,
+> SealedDecisionCard, references to ArenaPlayScreen) were removed by
+> STABILIZATION-1a–1c (commits 41c2d2c6 / 4f6ca523 / 2d939540). The sample
+> TopBar codename "STILLWATER" was neutralized in 36912cd2.
+> The design intent (dark simulation tone, 2-column layout, hidden-stats
+> philosophy, 1+1 choice model) remains valid. The route
+> /[locale]/bty-arena/play/resolve is live, now served by ArenaResolveClient.
+> Spec retained for design intent; component-name mapping is stale.
+
+---
+
 **용도**: Arena **플레이 직후** 나타나는 Result/Resolve 화면을 잠그는 Cursor 실행용 명세.  
 **구현 라우트 (프로토타입)**: `/[locale]/bty-arena/play/resolve` — 컴포넌트 `src/components/bty-arena/ArenaResolveScreen.tsx`.  
 **(기존 밝은 톤 스텁)** `/[locale]/bty-arena/result` 는 별도(ScreenShell) 유지.

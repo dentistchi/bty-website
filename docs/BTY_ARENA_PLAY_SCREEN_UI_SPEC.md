@@ -1,5 +1,15 @@
 # BTY Arena — Play Screen UI SPEC **(FINAL LOCKED)**
 
+> NOTE (DOC-DRIFT-CLEANUP / 2026-05-15):
+> Component-name bindings in this spec (ArenaPlayScreen, HiddenStatRow) were
+> removed by STABILIZATION-1a–1c (commits 41c2d2c6 / 4f6ca523 / 2d939540).
+> The sample TopBar codename "STILLWATER" was neutralized in 36912cd2.
+> The §A design philosophy and layout intent remain valid. The route
+> /[locale]/bty-arena/play is live, now served by BtyArenaRunPageClient.
+> Spec retained for design intent; component-name mapping is stale.
+
+---
+
 **용도**: BTY Arena **첫 인상·플레이 UI**를 잠그는 Cursor 실행용 명세. “예쁜 화면”이 아니라 **제품 철학·구조가 드러나는** 단일 기준 문서.  
 **대상 라우트**: `/[locale]/bty-arena/play`
 
