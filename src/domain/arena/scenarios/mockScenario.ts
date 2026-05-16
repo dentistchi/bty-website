@@ -266,12 +266,3 @@ export function getScenarioById(
   if (id !== patientComplaintScenario.id) return null;
   return locale === "ko" ? patientComplaintScenarioKo : patientComplaintScenario;
 }
-
-/**
- * TopBar extras not yet on ArenaScenario — use with loaded scenario until schema extends.
- */
-export const DEFAULT_ARENA_MISSION_TOP_BAR = {
-  level: "LEVEL 21",
-  codename: "",
-  progress: 63,
-} as const;

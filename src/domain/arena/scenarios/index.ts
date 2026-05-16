@@ -144,7 +144,6 @@ export {
 export type { ArenaMissionOutcomeKeyParts } from "./arenaMissionOutcomeKey";
 export type { ArenaMissionContentLocale } from "./mockScenario";
 export {
-  DEFAULT_ARENA_MISSION_TOP_BAR,
   getScenarioById,
   MOCK_SCENARIO,
   MOCK_SCENARIO_ID,
