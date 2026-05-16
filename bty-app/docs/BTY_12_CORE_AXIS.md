@@ -206,6 +206,33 @@ Confirmed candidate surfaces:
 No semantic corrections were applied in R1.
 R2 required for any canonical reinterpretation.
 
+## R2-a Inventory Findings (Evidence-Only)
+Phase 1 inventory of R1 divergence candidates #3 and #2. Outer-repo basis. No semantic
+authority decided; four-measurement freeze observed.
+
+### #3 — runtime anchors authority_protection / self_protection / reputation_protection
+- Not in CANONICAL_PATTERN_FAMILIES (5). Exist only as PATTERN_FAMILY_ALIAS values +
+  pen() string-literal args in buildFingerprintInput.ts (axes authority/visibility/control).
+- pen() consumes all three via flat activePatterns membership check; entry/exit direction
+  not distinguished. Consumption site = fingerprint axisVector derivation (downstream of
+  pattern recording), not entry/exit signal recording.
+- BTY_12_CORE_AXIS.md exact-string search: authority_protection + self_protection appear
+  ONLY in the 🟡 alias detail footnote (L172/L174) as alias resolution targets; absent
+  from the 24-row table. reputation_protection = ZERO mention document-wide.
+
+### #2 — courage / identity raw-direct (pen()-bypass)
+- buildFingerprintInput axisVector: courage = emotionalRegulation, identity = TII —
+  the only 2 of 12 axes not wrapped in pen(). Raw metrics from computeMetrics.
+- No explicit design-intent statement found for the raw-direct path: zero in code
+  comments, zero in LEADERSHIP_ENGINE_SPEC.md / PATTERN_ACTION_MODEL_V1.md. Doc lists
+  courage exit risk_aversion (❌) + identity exit identity_drift (🟡) — exit anchors
+  unimplemented. Absence of design-intent documentation does not by itself establish
+  accidental runtime behavior; intent remains unrecorded, not disproven.
+- identity dual status: independent-axis half is reflected (standalone field = raw TII);
+  meta-axis half is NOT — no cross-axis aggregation exists in the build/fingerprint path.
+
+No canonical reinterpretation applied. Inputs for R2-a Phase 2 only.
+
 ---
 
 ## 시나리오 설계 원칙
