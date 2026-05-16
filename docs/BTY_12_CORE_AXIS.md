@@ -233,6 +233,50 @@ authority decided; four-measurement freeze observed.
 
 No canonical reinterpretation applied. Inputs for R2-a Phase 2 only.
 
+## R2-a Phase 2 Measurement (Evidence-Only)
+Phase 2 measurement of R1 divergence candidates #3 and #2. Outer-repo basis.
+Four-measurement set complete (provenance / dependency surface / fingerprint impact /
+invariant preservation). No canonical authority decided; R2-a batch a closes as
+measurement-complete. Closure means the divergence is sufficiently explained without
+canonical reinterpretation — not that every divergence is resolved.
+
+### Dependency surface
+- axisVector (buildFingerprintInput, 12 fields) feeds only the archetype subsystem:
+  inputHash → bty_archetype_naming_locks, selectArchetype, checkTransitionEligibility.
+  leaderboard / Weekly-Core XP / leadership-state values derive from computeMetrics on a
+  separate path and do not consume axisVector.
+- #3 axes (authority / visibility / control) and #2 axes (courage / identity) are all
+  used as RULE_REGISTRY rule inputs.
+
+### #3 — runtime anchors (doc-canonical surface)
+- Registering or removing the 3 anchors in the 24-row table or in the code-side canonical
+  constant produces zero change to axisVector derivation. Runtime numeric delta = 0
+  confirmed. This is an S-A (semantic / documentation) surface only; S-B (runtime numeric)
+  is not touched. "Registration is not wiring" — pen() hardcodes one exit family per axis
+  independently of the doc table.
+- Note: the PATTERN_FAMILY_ALIAS map is a distinct, S-B-relevant surface (it governs
+  whether a user pattern normalizes onto an anchor); separate from doc-table registration.
+- The divergence is sufficiently explained as a documentation-lag surface.
+
+### #2 — courage / identity raw-direct
+- courage pen()-transition: exit anchor risk_aversion is unimplemented; the transition is
+  currently non-meaningful (penalty would never fire).
+- identity pen()-transition: exit anchor identity_drift exists as a scenario-JSON literal;
+  the transition is conditional / partial (fires only when identity_drift is present in a
+  user signature).
+- Actual numeric delta is S-B-conditional — dependent on pattern-family derivation of the
+  anchor.
+
+### Invariant preservation
+- Collision ZERO: accountability_system axis (axis-disjoint from #3/#2), 7-step canonical,
+  identity meta-axis descriptive statement (doc↔runtime gap, S-A-resident — §NOTES grants
+  no axis remapping authority, so no invariant is violated).
+- Surface (not confirmed collision): Lock 7 raw passthrough = LOW / adjacent surface,
+  #2 only. Lock 5 scenario-JSON freeze = conditional surface, #2(b) only.
+
+R2-a batch a residue is an architecture-level question, deferred to a future 12-Axis
+architecture review or an R2-b successor. No mutation performed in R2-a batch a.
+
 ---
 
 ## 시나리오 설계 원칙
