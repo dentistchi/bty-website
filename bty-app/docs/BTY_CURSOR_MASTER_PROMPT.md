@@ -1,5 +1,14 @@
 # Cursor Master Prompt — BTY Full Product Loop
 
+> NOTE (DOC-DRIFT-CLEANUP / 2026-05-15):
+> The "Shared UI" component list (ArenaTopBar, ArenaSystemLog, GlassPanel,
+> DecisionCard, SealedDecisionCard, HiddenStatRow) was removed by
+> STABILIZATION-1c (commit 2d939540). This prompt is retained for design
+> philosophy and build-instruction intent; the named prototype components
+> no longer exist in the codebase.
+
+---
+
 > **Purpose:** Single operational baseline so implementation stays aligned from **Arena → Reflection → Recovery → My Page → API → E2E** without drifting product philosophy.  
 > **How to use:** Paste into Cursor when onboarding a new session, scoping a large change, or auditing alignment.
 
