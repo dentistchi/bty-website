@@ -195,6 +195,17 @@ These represent runtime vocabulary drift and/or unresolved semantic mappings.
 Resolution deferred to the 12-Axis runtime semantics review track.
 No axis remapping authority is granted by this note.
 
+## R1 Inventory Findings (Evidence-Only)
+This review measured semantic/runtime divergence surfaces without redefining canonical semantics.
+Confirmed candidate surfaces:
+- doc 24-row ↔ runtime 10-family reduction
+- cross-axis runtime mappings
+- runtime-only anchors
+- pattern drift expansion beyond §NOTES
+- accountability_system placement divergence
+No semantic corrections were applied in R1.
+R2 required for any canonical reinterpretation.
+
 ---
 
 ## 시나리오 설계 원칙
