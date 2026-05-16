@@ -31,13 +31,12 @@ export type ArenaReinforcementLoopJson = {
 };
 
 /** Iteration stamped in `validation_payload.reinforcement_loop` when follow-up rows are chained. */
-export function loopIterationForPendingRow(row: { validation_payload?: unknown; reinforcement_loop?: unknown }): number {
+export function loopIterationForPendingRow(row: { validation_payload?: unknown }): number {
   const vp = row.validation_payload;
-  const fromPayload =
+  const j =
     vp && typeof vp === "object" && !Array.isArray(vp)
       ? (vp as { reinforcement_loop?: unknown }).reinforcement_loop
       : undefined;
-  const j = fromPayload ?? row.reinforcement_loop;
   if (
     j &&
     typeof j === "object" &&
