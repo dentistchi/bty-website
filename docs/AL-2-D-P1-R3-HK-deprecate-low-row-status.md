@@ -36,6 +36,19 @@ Status taxonomy (from dispatch):
 
 Status determination rule (read-only verification): for each row, run `grep -rn "\bROW\b" bty-app/src/` and inspect (a) presence in scenario JSON, (b) presence in `PATTERN_FAMILY_ALIAS`, (c) any `deprecated` flag or comment annotation.
 
+> **HK2-R2 SYSTEMIC FINDING**
+> This table was originally interpreted as a low-value / dormant semantic inventory.
+> HK2-R2 audit (2026-05-15) established:
+> - ORPHAN rows: 0
+> - MATCH rows: 1
+> - MISMATCH-LIVE rows: 26
+> - MISMATCH-AXIS rows: 9 (+4 secondary)
+>
+> Result:
+> The table does not primarily represent dormant semantics.
+> It represents live scenario-resident families classified without runtime residency verification.
+> Future semantic subtraction / deprecation decisions MUST require residency validation against actual scenario JSON/runtime paths before classification.
+
 | # | pattern_family | freq (per source) | scenario_data_presence | alias_dict_presence | soft_mark_presence | status |
 |--:|---|--:|---|---|---|---|
 | 12 | `accountability_system` | 18 | yes (sampled grep src_hits=21 incl. scenario JSON files) | no | no | unhandled |
@@ -80,6 +93,114 @@ Status determination rule (read-only verification): for each row, run `grep -rn 
 > LIVE — scenario-resident entry family.
 > Observed in core_27 ko/en (20 occurrences).
 > Previous classification conflated Accountability entry semantics with Truth exit semantics.
+
+### §2-α-1c-B Batched Live Family Reclassification (α-1c-B / HK2-R2, 2026-05-15)
+
+HK2-R2 audit identified 26 MISMATCH-LIVE rows in the §2 table — the same anti-pattern as Row #12, at systemic scale. The §2 table rows are preserved verbatim (no deletion, no status-column edit); each row below carries a reclassification annotation per the α-1c #12 pattern. The 1 MATCH row (#21) and the 9 MISMATCH-AXIS rows are out of scope for this sprint (MISMATCH-AXIS rows route to the 12-Axis NOTE sprint).
+
+> **Row #13 (`standard_creation`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (12 occurrences, axis: Repair ×8 / Ownership ×4 (inconsistent)).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #14 (`fairness_definition`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (7 occurrences, axis: truth).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #20 (`pattern_capture`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (4 occurrences, axis: awareness (non-canon)).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #22 (`standard_enforcement`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (4 occurrences, axis: integrity).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #25 (`active_verification`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (2 occurrences, axis: integrity).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #26 (`constraint_definition`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (2 occurrences, axis: integrity).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #27 (`controlled_scaling`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (2 occurrences, axis: integrity).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #28 (`drift_detection`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (2 occurrences, axis: integrity).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #29 (`equal_application`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (2 occurrences, axis: integrity).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #30 (`observed_handoff`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (2 occurrences, axis: integrity).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #31 (`pattern_ownership`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (2 occurrences, axis: integrity).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #32 (`pressure_tested_successor_alignment`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (2 occurrences, axis: integrity).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #33 (`principle_with_constraint`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (2 occurrences, axis: integrity).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #34 (`scaling_control`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (2 occurrences, axis: integrity).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #35 (`self_correction_protocol`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (2 occurrences, axis: integrity).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #36 (`successor_ownership_mechanism`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (2 occurrences, axis: integrity).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #37 (`system_constraint`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (2 occurrences, axis: integrity).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #38 (`system_independence`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (2 occurrences, axis: transferability (non-canon)).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #39 (`system_reinforcement`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (2 occurrences, axis: integrity).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #40 (`system_reliability`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (2 occurrences, axis: integrity).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #41 (`decentralized_correction`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (1 occurrence, axis: integrity).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #43 (`pattern_structuring`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (1 occurrence, axis: truth).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #44 (`relationally_held_correction`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (1 occurrence, axis: integrity).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #45 (`standard_separation`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (1 occurrence, axis: truth).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #47 (`system_feedback_loop`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (1 occurrence, axis: integrity).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
+
+> **Row #48 (`system_humility`) — RECLASSIFIED (α-1c-B / HK2-R2, 2026-05-15):**
+> LIVE — scenario-resident entry family (1 occurrence, axis: correction (non-canon)).
+> Previous classification ("DEPRECATE LOW / unhandled") applied without scenario-residency verification.
 
 [D-P1.R3-HK.A2.1] aggregate_status: 37/37 = unhandled. 0/37 = deleted. 0/37 = soft-marked.
 
