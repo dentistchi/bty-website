@@ -67,5 +67,3 @@ export { ArenaReexposurePanel } from "./ArenaReexposurePanel";
 export type { ArenaReexposurePanelProps } from "./ArenaReexposurePanel";
 export type { ArenaRunHistoryProps } from "./ArenaRunHistory";
 export { LabUsageStrip } from "./LabUsageStrip";
-export { default as ArenaResolveSessionScreen } from "./ArenaResolveSessionScreen";
-export { default as ArenaLobbyScreen, type ArenaLobbyScreenProps } from "@/features/arena/lobby/ArenaLobbyScreen";
