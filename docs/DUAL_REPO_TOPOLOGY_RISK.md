@@ -169,3 +169,54 @@ of scope for this track.
 This document makes the topology explainable. It does not design, recommend, or prioritize
 any change to the topology. Any structural change is a separate decision with its own
 authorization and its own blast-radius measurement.
+
+---
+
+## 8. Inner push topology — operating policy (NORMATIVE)
+
+Established by the queue #6 STEP 0 corroboration (2026-05-17). This section records the
+**operating policy** for the existing topology measured in §2–§5. It designs no topology
+change and selects none of the §5 candidates — it is consistent with §7.
+
+**Measured state at policy time** (queue #6 STEP 0): inner HEAD `7ff03ced` on branch
+`inner-main`; `origin/inner-main` = `a916c66f` (inner HEAD is **15 ahead / 0 behind** — a
+clean fast-forward); `7ff03ced` is contained in no remote branch; outer HEAD `ab1906c` =
+`origin/main`. Outer `bty-app/` ↔ inner blob comparison: **0 same-path blob mismatches**
+(full content parity). The one outer-only file inside the prefix is
+`bty-app/tsconfig 2.tsbuildinfo` — already recorded in §2/T2 and T3.
+
+1. **Inner content publication path.** Inner content is published to the shared remote
+   via the outer repository's `origin/main` `bty-app/` subtree. When the outer repository
+   is pushed to `origin/main`, the full co-tracked inner content reaches the remote.
+
+2. **Inner-`main`-ref publication ≠ content publication.** Pushing the inner `inner-main`
+   ref to `origin/inner-main` publishes inner *ref history* (commit messages, authorship,
+   branch advance) — a separate artifact from content publication. Content is published
+   by clause 1 independently of the inner ref.
+
+3. **Inner upstream unset = manual-push-only posture.** No inner branch has a configured
+   upstream (§3/T5). The queue #6 STEP 0 measurement assesses this — **as an estimate,
+   not an assertion** — as an intended manual-push-only posture: it keeps the disjoint
+   inner history from auto-entangling with `origin/main`.
+
+4. **`origin/inner-main` lag is content-safe.** As long as the outer `bty-app/` mirror's
+   blob parity holds (clause 7), `origin/inner-main` being stale relative to inner HEAD is
+   a *tolerated* state, not a broken one — the inner content is recoverable from
+   `origin/main`'s `bty-app/` subtree regardless of the inner ref's lag.
+
+5. **Inner push is not required for content.** While the outer `bty-app/` mirror is
+   content-complete, no inner push is required for inner content availability on the
+   remote.
+
+6. **When an inner push is permitted.** An inner push (e.g. `inner-main` →
+   `origin/inner-main`) may be used for inner ref-history synchronization, **under
+   explicit infra approval only**. It is not required for content integrity. At policy
+   time the `inner-main` → `origin/inner-main` distance is a clean fast-forward —
+   low-risk but optional.
+
+7. **Blob parity is the premise.** Clauses 4 and 5 depend on the outer `bty-app/` ↔ inner
+   blob parity. If that parity breaks (e.g. a co-track mirroring omission), the
+   content-safe premise is void and the situation requires separate review.
+
+This policy operates the topology as measured; per §7, topology risk existence does not
+imply topology rewrite necessity, and no §5 candidate is selected here.

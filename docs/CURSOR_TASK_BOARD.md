@@ -37,6 +37,7 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 5. line 148 numeric reconciliation (depends on #3 — **now unblocked**, #3 CLOSED 2026-05-17)
    — **RETIRED 2026-05-17 — signal-only / uncorroborated / no target surface found.** Introduced in `76099e0` forward-planning ledger transcription; never code/doc-corroborated. queue #5 STEP 0 confirmed "line 148" resolves to no file — no numeric reconciliation surface exists in repo state. Retired without a mutation target; **not** resolved by inference. (Original item text above preserved verbatim.)
 6. inner push topology (Platform/Infra Mode)
+   — **CLOSED 2026-05-17 — disposition (a) policy doc-only closure.** queue #6 STEP 0 measured the topology: inner content is already published to the shared remote via the outer `bty-app/` co-track on `origin/main` (full blob parity — 0 same-path mismatches); the `inner-main` ref is intentionally manual-push-only (upstream unset — estimate); the `origin/inner-main` lag (`a916c66f`, 15 behind inner HEAD `7ff03ced`) is content-safe. Policy articulated as [`docs/DUAL_REPO_TOPOLOGY_RISK.md`](DUAL_REPO_TOPOLOGY_RISK.md) §8 (NORMATIVE, 7 clauses). No inner push / upstream / remote mutation performed. **⚠️ Deferred Queue now fully complete — #1–#6 all CLOSED/RETIRED.** Carry-forward beyond the queue (separate runtime/schema lanes, unchanged): `RESULT_ORIGIN_CLOSURE_SPEC.md` §5.3 representation-collapse remediation; §7.4 dormant-(b)-ingress governance handling; the WS-1 24-row relabel residue (`bty-app/docs/BTY_12_CORE_AXIS.md`).
 
 ---
 
