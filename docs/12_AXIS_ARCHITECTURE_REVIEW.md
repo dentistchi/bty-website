@@ -55,7 +55,7 @@ Runtime semantics surfaces not touched during Phase 1, with the protection basis
 |---------|----------|------------------|
 | pen() wiring + axisVector 12 fields | `buildFingerprintInput.ts:30-46` | Lock 7 (`patternFamilies` field) |
 | axisVector values / inputHash | `buildFingerprintInput.ts`, `fingerprint.ts:53-78` | FINGERPRINT_VERSION freeze (5-invariant #1) |
-| canonical 24-row table | `BTY_12_CORE_AXIS.md:144-169` | R2 freeze; §NOTES "no axis remapping authority" |
+| canonical 24-row table | `bty-app/docs/BTY_12_CORE_AXIS.md:144-169` | R2 freeze; §NOTES "no axis remapping authority" |
 | `CANONICAL_PATTERN_FAMILIES` | `pattern-family.ts:5-11` | `ENGINE_ARCHITECTURE_V1.md §5`, `PATTERN_ACTION_MODEL_V1.md §2` |
 | `PATTERN_FAMILY_ALIAS` | `pattern-family.ts:26-118` | SCENARIO_CONTENT_GUIDELINES 5-invariant #2 |
 | `RULE_REGISTRY` | `rules.ts:19-78` | Archetype Determinism Lock v1 |
@@ -86,7 +86,7 @@ steps were read-only; the freeze boundary was not crossed.
 ### WS-2 — courage / identity pattern-runtime non-linkage (R2-a residue #2)
 - **Status: measurement-complete / reuse-only.** Measured under R2-a Phase 2 (provenance,
   dependency surface, fingerprint impact, invariant preservation) and recorded in
-  `BTY_12_CORE_AXIS.md §NOTES`. This track holds ownership for the residue; the R2-a
+  `bty-app/docs/BTY_12_CORE_AXIS.md §NOTES`. This track holds ownership for the residue; the R2-a
   Phase 2 measurement output is reused and is not re-measured.
 - **Location.** `buildFingerprintInput.ts:43` `courage: emotionalRegulation`, `:45`
   `identity: TII` (pen()-bypass).
@@ -109,8 +109,8 @@ steps were read-only; the freeze boundary was not crossed.
 ### WS-5 — accountability_system doc conflict (former R2-b #5)
 - **Location.** `core_27_identity_repair_commitment/{ko,en}.json` tags
   `pattern_family: "accountability_system"` with `"axis": "Repair"`, while
-  `BTY_12_CORE_AXIS.md:162` assigns `accountability_system` to Axis 9 Accountability. The
-  conflict is documented in `BTY_12_CORE_AXIS.md §NOTES` (α-1c Task B) and the 🟡 detail.
+  `bty-app/docs/BTY_12_CORE_AXIS.md:162` assigns `accountability_system` to Axis 9 Accountability. The
+  conflict is documented in `bty-app/docs/BTY_12_CORE_AXIS.md §NOTES` (α-1c Task B) and the 🟡 detail.
 - **R2-a coverage.** Not measured under R2-a; the conflict's existence is recorded in
   §NOTES.
 - **Dependency.** Sub-case of WS-4. Coupled to invariant #28 (`accountability_system`
