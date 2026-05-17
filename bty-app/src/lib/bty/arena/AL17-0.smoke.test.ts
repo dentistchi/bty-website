@@ -32,6 +32,7 @@ describe("AL17-0 Item 4 — patternSignatureUpsert skip warn", () => {
       prior_run_id: null,
       reexposure_run_id: "run-1",
       recorded_at: new Date().toISOString(),
+      result_origin: "computed",
     };
 
     const result = await upsertUserPatternSignatureFromValidation({

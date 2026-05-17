@@ -74,6 +74,7 @@ export async function upsertUserPatternSignatureFromValidation(params: {
 
   const step = applyPatternSignatureTransition(prev, {
     validation_result: params.payload.validation_result,
+    result_origin: params.payload.result_origin,
   });
 
   const nowIso = new Date().toISOString();
