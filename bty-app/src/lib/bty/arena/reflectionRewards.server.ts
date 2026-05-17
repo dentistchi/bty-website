@@ -196,12 +196,15 @@ export async function applyReexposureOutcomeReflection(params: {
   }
 
   const nowIso = new Date().toISOString();
+  // §5.3: tag the activation with result_origin at insert time so a fallback
+  // (insufficient_signal) is distinguishable from a genuine computed micro_win.
   const { data: activation, error: actErr } = await supabase
     .from("le_activation_log")
     .insert({
       user_id: userId,
       session_id: runId,
       type: "micro_win",
+      result_origin: resultOrigin,
       weight: 1.0,
       chosen_at: nowIso,
       due_at: nowIso,
