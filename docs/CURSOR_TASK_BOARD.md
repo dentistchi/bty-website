@@ -29,12 +29,16 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 2. **reinforcement + AIR semantics**
    - reinforcement delay policy
    - ~~AIR footprint intent vs defect~~ — **RESOLVED 2026-05-17** (`RESULT_ORIGIN_CLOSURE_SPEC.md` §5 NORMATIVE — semantic over-collapse)
-   - insufficient_signal escalation semantics
+   - ~~insufficient_signal escalation semantics~~ — **RESOLVED 2026-05-17** (`RESULT_ORIGIN_CLOSURE_SPEC.md` §7 NORMATIVE — (a) partially legitimate / indiscriminate / gated, (b) latent governance hazard)
    - loop containment ↔ integrity-metrics boundary
 3. runtime label terminology
 4. 12-Axis drift surfaces
 5. line 148 numeric reconciliation (depends on #3)
 6. inner push topology (Platform/Infra Mode)
+
+---
+
+**[x] Lane #2 (reinforcement + AIR semantics) / insufficient_signal escalation semantics CLOSED (2026-05-17):** Escalation legitimacy judged and articulated as `RESULT_ORIGIN_CLOSURE_SPEC.md` §7 (NORMATIVE). **STEP 0 / 0.1** (read-only corroboration, commit 0): Stage-3 entry trigger, forced-reset 4-input aggregation (`stage3SelectedCountIn14d` hardcoded `0` → effective 2-of-3), escalation-local attribution survivability (no `result_origin` field anywhere in the escalation path), and the second Stage-4 ingress `getNextStage(STAGE_3,"air_below_threshold")` via `POST /transition` — measured **dormant** (no in-repo caller; the `0.50` constant has no runtime comparison site). **STEP 1**: §7 NORMATIVE — **(a)** active ingress (`evaluateForcedReset`, 2-of-3, `0.80`) = partially legitimate / structurally indiscriminate / aggregation-gated (over-broad, not catastrophic, never single-trigger); **(b)** dormant ingress (`air_below_threshold`, single-signal, `0.50`) = **latent governance hazard** (not a defect today; activation changes escalation authority semantics → governance review REQUIRED before activation). §7.1–§7.6 appended; §1–§6 untouched. doc-only, runtime/schema/test 0. **Commit**: outer `3e6dc6f` (spec §7) + this ledger commit. **Next**: lane #2 remaining sub-items.
 
 ---
 
