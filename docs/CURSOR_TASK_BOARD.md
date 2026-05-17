@@ -34,6 +34,7 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 3. ~~runtime label terminology~~ — **CLOSED 2026-05-17** (STEP 0 / 0.1 / 1; spec [`docs/RUNTIME_LABEL_TERMINOLOGY_SPEC.md`](RUNTIME_LABEL_TERMINOLOGY_SPEC.md), outer `b43edfd`).
 4. 12-Axis drift surfaces
 5. line 148 numeric reconciliation (depends on #3 — **now unblocked**, #3 CLOSED 2026-05-17)
+   — **RETIRED 2026-05-17 — signal-only / uncorroborated / no target surface found.** Introduced in `76099e0` forward-planning ledger transcription; never code/doc-corroborated. queue #5 STEP 0 confirmed "line 148" resolves to no file — no numeric reconciliation surface exists in repo state. Retired without a mutation target; **not** resolved by inference. (Original item text above preserved verbatim.)
 6. inner push topology (Platform/Infra Mode)
 
 ---
