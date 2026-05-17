@@ -203,3 +203,59 @@ explanation_substitution). No divergence character decided; this is Verdict inpu
   changed. Lock 7 = an adjacent surface (same file), not a confirmed collision.
 
 WS-1 provenance measurement-complete. No mutation, no canonicalization, no proposal.
+
+---
+
+## WS-4 / WS-5 Measurement (Evidence-Only)
+Taxonomy measurement of scenario-JSON axis-tag drift (WS-4) and the accountability_system
+case (WS-5, a WS-4 sub-case). No divergence character decided; this is Verdict input.
+
+### WS-4 — drift taxonomy
+- Scenario JSON corpus: 27 directories (core_01–27), 81 files. The "axis" tag appears at
+  choice-level and step-level.
+- Three observed groups: ~21 genuine non-canonical labels, 2 case-variant labels
+  (lowercase integrity / truth), 5 format-variant labels ("Axis N — Name").
+- Among the ~21 genuine non-canonical labels, 4 are lexically close to a code anchor or
+  family (Self-Protection / Explanation / Reputation / Compliance); ~17 have no lexical
+  correspondent in the 12 canonical axes or code anchors.
+- Case variants are file-consistent: no within-file mixing of integrity/Integrity or
+  truth/Truth. The variation is between authoring batches, not within a file.
+- Format variants originate in the initial commit (fa0b86d6) and appear in
+  core_01 (en.json uses "Axis N — Name", ko.json uses bare canonical names).
+- Higher taxonomy count is recorded as a measured fact; it is not read as a defect.
+
+### WS-4 — runtime reach
+- buildFingerprintInput does not read p.axis; it consumes pattern_family only. The
+  scenario-JSON axis tag reaches pen() / axisVector / fingerprint / archetype with zero
+  reach. Axis tag changes do not currently affect fingerprint/archetype runtime.
+- The axis tag is runtime-carried (binding snapshot → DB pattern_signatures → fetch) and
+  is read by the re-exposure same-axis guard, which compares strings for equality. The
+  guard depends on label self-consistency, not on canonical membership — the label value
+  does not change guard correctness.
+- The axis tag is therefore runtime-neutral for both fingerprint and the re-exposure
+  guard. This is an S-A (semantic / documentation) surface.
+
+### WS-5 — accountability_system
+- accountability_system appears in core_27 only (2 files), as a pattern_family literal
+  18 times; all 18 instances carry axis: "Repair".
+- WS-5 is a 2-party divergence: scenario JSON axis "Repair" vs the doc 24-row table
+  (Axis 9, Accountability). No code-canonical anchor currently exists for
+  accountability_system (it is absent from pattern-family.ts), so the 3-party
+  (code / doc / wiring) frame used for WS-1 does not fully apply.
+- accountability_system is a non-pen()-matching literal; its axisVector contribution is
+  zero.
+- invariant #28 (accountability_system KEEP) is INTACT — the literal is preserved
+  (18 occurrences). This measurement is read-only and does not touch the #28 freeze.
+
+### Invariant preservation
+- Lock 5 (scenario-JSON freeze) is a potential mutation-sensitive surface — the axis tag
+  is scenario-JSON content. No collision is active; Phase 2B performs no scenario-JSON
+  edit.
+- Collision ZERO: FINGERPRINT_VERSION (axis tag does not reach fingerprint), Lock 7,
+  pen() wiring, the 24-row table, CANONICAL_PATTERN_FAMILIES, the alias map, RULE_REGISTRY.
+- invariant #28 is an adjacent surface for WS-5 (a hypothetical axis-tag change is not the
+  removal of the family literal), not a confirmed collision.
+
+WS-1 / WS-2 / WS-4 / WS-5 measurement is complete. The 12-Axis Architecture Review is at
+a measurement-complete pause; the Verdict phase is not entered. No mutation, no
+canonicalization, no proposal.
