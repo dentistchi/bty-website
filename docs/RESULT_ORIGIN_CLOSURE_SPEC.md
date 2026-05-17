@@ -314,6 +314,22 @@ Governance handling of the (b) ingress — explicit deactivation, an added aggre
 gate, or documented deprecation — is a separate track requiring separate approval. §7
 fixes the latent hazard as NORMATIVE; it records this candidate without recommending it.
 
+**Containment record (B-1b — applied).** One form of the §7.6 explicit-deactivation
+candidate has been applied. By measurement (STEP 0 corroboration) the (b) ingress was
+dormant — `air_below_threshold` registered in `VALID_CONTEXTS`, the `getNextStage`
+Stage-3→4 mapping present, the `POST /transition` route ingress present, the `0.50`
+constant defined — with **no active production caller** and **no server-side AIR
+measurement**, while the authenticated `POST /transition` path was nonetheless
+theoretically reachable by a client. The applied remediation is **containment-only**: the
+route returns a deterministic `4xx` when `context === "air_below_threshold"`. No runtime
+AIR comparison was added — `AIR_THRESHOLD_STAGE_ESCALATION` (`0.50`) gains no comparison
+site; `getNextStage` and the `air.ts` constants are unchanged; `air_below_threshold`
+remains a domain `StageTransitionContext`, so the domain↔route asymmetry is deliberate.
+This is **not a governance-triggering mutation** under §7.4 — it does not activate the
+(b) ingress, it closes the route to it. Adding an AIR comparison gate that would give the
+`0.50` constant a runtime comparison site (the "B-2" form) is **out of scope here** and
+remains a separate track requiring the §7.4 governance review.
+
 ---
 
 ## §8 Loop containment ↔ integrity metrics boundary

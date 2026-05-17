@@ -82,6 +82,19 @@ describe("POST /api/arena/leadership-engine/transition", () => {
     expect(mockApplyStageTransition).not.toHaveBeenCalled();
   });
 
+  it("returns 403 and rejects the dormant air_below_threshold ingress (§7.4(b) containment)", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: {},
+      base: {},
+    });
+    const res = await POST(makePostRequest({ context: "air_below_threshold" }));
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toBe("CONTEXT_DORMANT_INGRESS_CLOSED");
+    expect(mockApplyStageTransition).not.toHaveBeenCalled();
+  });
+
   it("returns 200 with applied and currentStage when context valid", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
