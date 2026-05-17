@@ -185,6 +185,8 @@ export async function POST(req: NextRequest) {
       prior_run_id: null,
       reexposure_run_id: runId,
       recorded_at,
+      result_origin: "insufficient_signal",
+      insufficient_signal_reason: computed.error,
     };
   }
 
@@ -340,6 +342,7 @@ export async function POST(req: NextRequest) {
     runId,
     scenarioId: sidFromHistory,
     validationResult: payload.validation_result,
+    resultOrigin: payload.result_origin,
   });
   if (!reflection.ok) {
     const out = NextResponse.json(

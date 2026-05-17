@@ -6,7 +6,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { PatternShiftBand } from "@/domain/leadership-engine/patternShift";
+import type { PatternShiftBand, ValidationResultOrigin } from "@/domain/leadership-engine/patternShift";
 import { patternShiftBandFromReexposure } from "@/domain/leadership-engine/patternShift";
 import { getEliteScenarioById } from "@/lib/bty/arena/eliteScenariosCanonical.server";
 
@@ -28,6 +28,14 @@ export type ReexposureValidationPayload = {
   prior_run_id: string | null;
   reexposure_run_id: string;
   recorded_at: string;
+  /**
+   * Provenance of `validation_result`. `"computed"` for an operational band;
+   * `"insufficient_signal"` when a fallback path produced the value without the
+   * band judgement (input absent). See {@link ValidationResultOrigin}.
+   */
+  result_origin: ValidationResultOrigin;
+  /** Set only when `result_origin === "insufficient_signal"`: which input was absent. */
+  insufficient_signal_reason?: string;
 };
 
 type SecondChoiceEventRow = {
@@ -239,6 +247,8 @@ export async function computeReexposureValidation(params: {
         prior_run_id: priorRunId,
         reexposure_run_id: params.reexposureRunId,
         recorded_at,
+        result_origin: "insufficient_signal",
+        insufficient_signal_reason: "after_second_choice_missing",
       },
     };
   }
@@ -270,6 +280,8 @@ export async function computeReexposureValidation(params: {
         prior_run_id: null,
         reexposure_run_id: params.reexposureRunId,
         recorded_at,
+        result_origin: "insufficient_signal",
+        insufficient_signal_reason: "no_prior_run",
       },
     };
   }
@@ -301,6 +313,8 @@ export async function computeReexposureValidation(params: {
         prior_run_id: priorRunId,
         reexposure_run_id: params.reexposureRunId,
         recorded_at,
+        result_origin: "insufficient_signal",
+        insufficient_signal_reason: "prior_second_choice_missing",
       },
     };
   }
@@ -344,6 +358,7 @@ export async function computeReexposureValidation(params: {
       prior_run_id: priorRunId,
       reexposure_run_id: params.reexposureRunId,
       recorded_at,
+      result_origin: "computed",
     },
   };
 }

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { PatternShiftBand } from "@/domain/leadership-engine/patternShift";
+import type { PatternShiftBand, ValidationResultOrigin } from "@/domain/leadership-engine/patternShift";
 import { applyDirectCoreXp } from "@/lib/bty/arena/applyCoreXp";
 import { getArenaTodayTotal, capArenaDailyDelta } from "@/lib/bty/arena/activityXp";
 import {
@@ -164,8 +164,10 @@ export async function applyReexposureOutcomeReflection(params: {
   runId: string;
   scenarioId: string;
   validationResult: PatternShiftBand;
+  /** Provenance of `validationResult` — see {@link ValidationResultOrigin}. */
+  resultOrigin: ValidationResultOrigin;
 }): Promise<RewardApplyResult> {
-  const { supabase, userId, runId, scenarioId, validationResult } = params;
+  const { supabase, userId, runId, scenarioId, validationResult, resultOrigin } = params;
 
   const profileByOutcome: Record<
     PatternShiftBand,
@@ -175,7 +177,14 @@ export async function applyReexposureOutcomeReflection(params: {
     unstable: { coreXp: 5, weeklyXp: 3, verified: true },
     no_change: { coreXp: 0, weeklyXp: 1, verified: false },
   };
-  const outcome = profileByOutcome[validationResult];
+  // Insufficient-signal (fallback) results are not measured behaviour evidence:
+  // no validation XP, not a verified outcome. The validation event is still logged
+  // (le_activation_log / le_verification_log / arena_events) for traceability, but
+  // with verified=false and xp=0. Computed bands keep their reward profile.
+  const outcome =
+    resultOrigin === "insufficient_signal"
+      ? { coreXp: 0, weeklyXp: 0, verified: false }
+      : profileByOutcome[validationResult];
 
   if (outcome.weeklyXp > 0) {
     const weekly = await upsertWeeklyXp(supabase, userId, outcome.weeklyXp);

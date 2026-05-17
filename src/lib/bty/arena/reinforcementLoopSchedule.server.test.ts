@@ -72,6 +72,7 @@ describe("reinforcementLoopSchedule", () => {
         prior_run_id: "run-1",
         reexposure_run_id: "run-2",
         recorded_at: new Date().toISOString(),
+        result_origin: "computed",
       },
       nextLoopIteration: 2,
     });

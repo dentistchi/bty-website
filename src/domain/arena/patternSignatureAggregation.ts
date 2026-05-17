@@ -7,7 +7,7 @@
  * @see docs — reinforcement loop closes on `changed`; follow-ups on `unstable` / `no_change`.
  */
 
-import type { PatternShiftBand } from "@/domain/leadership-engine/patternShift";
+import type { PatternShiftBand, ValidationResultOrigin } from "@/domain/leadership-engine/patternShift";
 
 /** Stored on `user_pattern_signatures.current_state`. */
 export type PatternSignatureAggregateState = "active" | "unstable" | "improving" | "resolved";
@@ -21,6 +21,13 @@ export type PatternSignaturePrevSnapshot = {
 
 export type PatternSignatureEvent = {
   validation_result: PatternShiftBand;
+  /**
+   * Provenance of `validation_result`. When `"insufficient_signal"` the event is a
+   * fallback collapse (a required input was absent) and must NOT raise confidence or
+   * repeat evidence. Absent or `"computed"` → operational band; existing transitions
+   * apply unchanged.
+   */
+  result_origin?: ValidationResultOrigin;
 };
 
 function clamp01(n: number): number {
@@ -39,12 +46,36 @@ function clamp01(n: number): number {
  * - `changed` while `improving` → `resolved`.
  * - `changed` while `resolved` → back to `improving` (signature re-engaged).
  * - From `resolved`, `unstable` / `no_change` → `unstable` / `active` (reappearance).
+ * - **Insufficient-signal events** (fallback collapse, input absent) hold the
+ *   aggregate: no confidence gain, no repeat increment, never unstable evidence;
+ *   a first-ever signal seeds a neutral `active` row.
  */
 export function applyPatternSignatureTransition(
   prev: PatternSignaturePrevSnapshot | null,
   event: PatternSignatureEvent,
 ): Omit<PatternSignaturePrevSnapshot, "repeat_count"> & { repeat_count_delta: number } {
   const vr = event.validation_result;
+
+  // Insufficient-signal (fallback) events carry no measured behaviour evidence.
+  // Hold the aggregate — no confidence gain, no repeat increment, never treated as
+  // computed `unstable` evidence. A first-ever signal seeds a neutral row so the
+  // (pattern × axis) is on record without implying a measured shift.
+  if (event.result_origin === "insufficient_signal") {
+    if (prev == null) {
+      return {
+        current_state: "active",
+        repeat_count_delta: 1,
+        confidence_score: clamp01(0.32),
+        lifetime_changed_count: 0,
+      };
+    }
+    return {
+      current_state: prev.current_state,
+      repeat_count_delta: 0,
+      confidence_score: prev.confidence_score,
+      lifetime_changed_count: prev.lifetime_changed_count,
+    };
+  }
 
   if (prev == null) {
     const baseConf = 0.32;

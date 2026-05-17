@@ -12,6 +12,18 @@
 export type PatternShiftBand = "changed" | "unstable" | "no_change";
 
 /**
+ * Provenance of a re-exposure `validation_result`.
+ *
+ * - `"computed"` — produced by {@link patternShiftBandFromReexposure} from measured
+ *   before/after signals (an operational band judgement).
+ * - `"insufficient_signal"` — fallback collapse: a required input was absent, so the
+ *   band judgement could not run. The stored band stays a {@link PatternShiftBand}
+ *   value (no new band is introduced); this metadata records that the value is NOT
+ *   measured behaviour evidence and must not feed confidence / repeat / verified XP.
+ */
+export type ValidationResultOrigin = "computed" | "insufficient_signal";
+
+/**
  * Classify Pattern Shift from re-exposure comparison (locked rules §4).
  *
  * - exit → **entry** ⇒ `changed`
