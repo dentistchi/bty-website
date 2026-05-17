@@ -370,3 +370,71 @@ a prohibition.
 The Deferred Queue *reinforcement delay policy* track may proceed under the §8.3 guarantee
 without an AIR-legitimacy review, applying the §8.4 boundary self-check. §8 canonicalizes
 the boundary and makes no further recommendation.
+
+---
+
+## §9 Reinforcement cadence legitimacy
+
+### §9.1 Scope (NORMATIVE)
+
+§9 governs the legitimacy of the reinforcement loop's **cadence** — delay, iteration,
+retry, and recurrence. This is a layer distinct from §5 (AIR footprint), §7 (escalation),
+and §8 (containment boundary): §9 fixes reinforcement-cadence semantics. Per §8.5, this
+track proceeds under the §8.3 guarantee without reopening §5 or §7; §8.3 and §8.5 are
+cited, not redefined.
+
+### §9.2 Cadence topology (NORMATIVE — measured)
+
+From the reinforcement delay policy STEP 0 corroboration:
+
+- **Delay is band-driven, not iteration-driven** — `no_change` → 3 days, `unstable` → 5
+  days (`REINFORCEMENT_NO_CHANGE_DELAY_DAYS = 3`, `REINFORCEMENT_UNSTABLE_DELAY_DAYS = 5`).
+  Flat per band.
+- **The iteration number is cosmetic only** — it affects copy text (`${loopIteration}차`)
+  and has no effect on timing. The cadence neither diminishes nor intensifies with
+  iteration.
+- **Iteration cap** = `REINFORCEMENT_LOOP_ITERATION_CAP = 3` — per chain: an initial row
+  plus at most two chained follow-ups.
+- **Retry is pull-based** (`getDueOutcomes` surfaces a due pending row on the user's next
+  session activity) — not cron-pushed.
+
+### §9.3 Judgment — bounded reinforcement, legitimate (NORMATIVE)
+
+The reinforcement cadence is **bounded reinforcement** and is **legitimate**. The judgment
+is resolved in three layers:
+
+- **(per-chain) Structurally bounded.** Cap = 3; a guaranteed minimum spacing of ≥ 3 days
+  (`no_change`) / ≥ 5 days (`unstable`) between follow-ups; no system-initiated retry;
+  pull-based surfacing. The loop advances only on a re-exposure validation `POST`. Five
+  prevention guards: the cap constant, `reinforcementCapReached`, the `&& !capReached`
+  insert gate, idempotency dedup (plus `23505` handling), and pull-based surfacing.
+- **(aggregate) The aggregate upper bound is not system-fixed.** Total reinforcement load
+  scales with the number of user-initiated parallel chains — a new scenario run is a new
+  `source_choice_history_id`, hence a new chain with a fresh cap budget; it does not reset
+  an existing chain's cap. This load growth is **user-initiated**, not system-coercive
+  retry: the agent increasing the load is the user, not the system.
+- **(abandonment) No escalation on non-response.** If the user does not respond to a
+  scheduled reinforcement, the absence of a validation `POST` yields zero new rows, zero
+  iteration increment, and zero intensity escalation. The same pending row re-surfaces via
+  `getDueOutcomes` on each session-route entry — a UX-level recurrence, not the creation
+  of new pressure. (The `isMissed` / AIR consequence of abandonment is the §8-decoupled
+  integrity-metric side and is outside §9.)
+
+### §9.4 Classification disposition (NORMATIVE)
+
+- **bounded reinforcement** — **CORROBORATED** (§9.3).
+- **coercive recurrence** — **REBUTTED.** Its only supporting fact (the same row
+  re-surfacing on abandonment) is UX-level recurrence; with iteration-independent
+  intensity, the cap, ≥3d spacing, and zero new rows on abandonment, it does not reach a
+  coercive classification.
+- **unbounded retry pressure** — **REBUTTED.** Every chain is cap-bounded and there is no
+  system-initiated retry; parallel chains are user-initiated.
+- **diminishing cadence** — **CONTRADICTED.** Delay is flat per band and iteration-
+  independent.
+
+### §9.5 Boundary note (NORMATIVE)
+
+The §9 judgment is confined to cadence legitimacy. The integrity-metric consequences of
+abandonment (`isMissed` / AIR drag) are handled in §5 / §8; §9 does not reopen that
+boundary. A future track that changes the cadence is subject to the §8.4 boundary
+self-check.
