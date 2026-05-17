@@ -142,8 +142,8 @@ Pattern Shift answers:
 
 ### Persistence (implementation scope)
 
-- **`pattern_shift_results`** (or equivalent table/API): **not implemented** — no canonical persistence yet.
-- **Domain hook:** `patternShift.ts` (`patternShiftBandFromReexposure`, etc.) is **ready** for a future classifier + storage integration.
+- **`pattern_shift_results`** dedicated table/API: **not implemented** — the band is persisted on `arena_pending_outcomes.validation_payload` (JSONB), not a dedicated table.
+- **Domain hook:** `patternShift.ts` (`patternShiftBandFromReexposure`) is **runtime-connected** — invoked by `POST /api/arena/re-exposure/validate` via `computeReexposureValidation`.
 
 ### Implementation status (post–C3 baseline)
 
@@ -152,8 +152,8 @@ Pattern Shift answers:
 | AIR math (`computeAIR`, penalties, slip) | **Implemented** |
 | AIR band (`airToBand`, 0.50 / 0.80 edges) | **Implemented** |
 | Forced reset (incl. `air_7d_below_high_band_two_consecutive_weeks`) | **Implemented** |
-| Pattern Shift domain hook | **Implemented** (no merge into AIR) |
-| `pattern_shift_results` persistence / public API | **Pending** |
+| Pattern Shift band classifier (`patternShiftBandFromReexposure`) | **Implemented & runtime-connected** (no merge into AIR) |
+| `pattern_shift_results` dedicated table / public API | **Not implemented** — band persisted via `arena_pending_outcomes.validation_payload` |
 
 ---
 

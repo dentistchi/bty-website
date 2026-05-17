@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PatternShiftBand } from "@/domain/leadership-engine/patternShift";
 import { applyDirectCoreXp } from "@/lib/bty/arena/applyCoreXp";
 import { getArenaTodayTotal, capArenaDailyDelta } from "@/lib/bty/arena/activityXp";
 import {
@@ -162,12 +163,12 @@ export async function applyReexposureOutcomeReflection(params: {
   userId: string;
   runId: string;
   scenarioId: string;
-  validationResult: "changed" | "unstable" | "no_change";
+  validationResult: PatternShiftBand;
 }): Promise<RewardApplyResult> {
   const { supabase, userId, runId, scenarioId, validationResult } = params;
 
   const profileByOutcome: Record<
-    "changed" | "unstable" | "no_change",
+    PatternShiftBand,
     { coreXp: number; weeklyXp: number; verified: boolean }
   > = {
     changed: { coreXp: 12, weeklyXp: 8, verified: true },

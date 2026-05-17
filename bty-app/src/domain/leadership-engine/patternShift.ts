@@ -3,9 +3,10 @@
  *
  * **Not AIR.** Measures whether decision patterns change after re-exposure, not whether actions were executed.
  *
- * **Persistence gap:** There is no `pattern_shift_results` table or API wire-up yet. This module is the **minimal
- * integration point**: when re-exposure outcomes are stored, map them through `patternShiftBandFromReexposure`
- * and expose `pattern_shift_band` to clients from that pipeline only.
+ * **Runtime-connected:** `patternShiftBandFromReexposure` is invoked by `POST /api/arena/re-exposure/validate`
+ * (via `computeReexposureValidation`). The resulting band (`changed` | `unstable` | `no_change`) is persisted on
+ * `arena_pending_outcomes.validation_payload` (JSONB); there is no dedicated `pattern_shift_results` table.
+ * `PatternShiftBand` is the canonical runtime vocabulary for this band — import it; do not re-declare the union.
  */
 
 export type PatternShiftBand = "changed" | "unstable" | "no_change";

@@ -43,8 +43,8 @@ Pattern Shift **must never** be merged into AIR scoring or band logic.
 
 ## `pattern_shift_results` persistence
 
-- **Storage / API:** **Not implemented** — no canonical table or public API yet.
-- **Domain hook:** **`patternShiftBandFromReexposure`** (and related types) in `patternShift.ts` — ready for a future classifier + persistence integration.
+- **Storage / API:** No dedicated `pattern_shift_results` table or public API — the band is persisted on `arena_pending_outcomes.validation_payload` (JSONB).
+- **Domain hook:** **`patternShiftBandFromReexposure`** (and `PatternShiftBand`) in `patternShift.ts` — runtime-connected via `POST /api/arena/re-exposure/validate` (`computeReexposureValidation`).
 
 ---
 
@@ -55,8 +55,8 @@ Pattern Shift **must never** be merged into AIR scoring or band logic.
 | **AIR math** | **Implemented** | `computeAIR`, weights, missed penalty, `integrity_slip` — `air.ts` |
 | **AIR band** | **Implemented** | `airToBand`, API exposes `band` — `GET .../leadership-engine/air` |
 | **Forced reset** | **Implemented** | `evaluateForcedReset`, reasons include `air_7d_below_high_band_two_consecutive_weeks`; lockout wiring `engine/forced-reset/lockout.service.ts` |
-| **Pattern Shift hook** | **Implemented (domain only)** | `patternShift.ts`; no merge into AIR |
-| **`pattern_shift_results` persistence/API** | **Pending** | Integrate when re-exposure storage ships |
+| **Pattern Shift hook** | **Implemented & runtime-connected** | `patternShift.ts` wired via `re-exposure/validate`; no merge into AIR |
+| **`pattern_shift_results` dedicated table/API** | **Not implemented** | band persisted via `arena_pending_outcomes.validation_payload` |
 
 ---
 
