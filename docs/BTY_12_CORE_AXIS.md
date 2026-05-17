@@ -148,9 +148,9 @@ Action Decision 단계의 모든 선택은 암묵적으로 Axis 12를 통과한�
 | `present_action` | entry | Axis 2 Time | ❌ |
 | `future_deferral` | exit | Axis 2 Time | ✅ |
 | `authority_exercise` | entry | Axis 3 Authority | 🟡 |
-| `delegation_deflection` | exit | Axis 3 Authority | ✅ |
+| `delegation_deflection` | exit | Axis 3 Authority (runtime pen() consumes as Axis 6 Conflict) | ✅ |
 | `truth_naming` | entry | Axis 4 Truth | 🟡 |
-| `explanation_substitution` | exit | Axis 4 Truth | ✅ |
+| `explanation_substitution` | exit | Axis 4 Truth (runtime pen() consumes as Axis 9 Accountability) | ✅ |
 | `repair_initiation` | entry | Axis 5 Repair | ❌ |
 | `repair_avoidance` | exit | Axis 5 Repair | ✅ |
 | `conflict_engagement` | entry | Axis 6 Conflict | ❌ |
