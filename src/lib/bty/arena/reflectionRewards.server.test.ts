@@ -2,7 +2,9 @@
  * Re-exposure reflection rewards — `result_origin` gating (Route B governance).
  *
  * Proves: an `insufficient_signal` (fallback collapse) result grants no validation XP
- * and is logged as NOT verified; a `computed` band keeps its existing reward profile.
+ * and is logged as NOT verified; a `computed` band keeps its existing reward profile;
+ * and (§5.3) the le_activation_log row preserves `result_origin` so a fallback
+ * activation is distinguishable from a genuine computed micro_win.
  */
 import { describe, it, expect, vi } from "vitest";
 import { applyReexposureOutcomeReflection } from "./reflectionRewards.server";
@@ -59,6 +61,8 @@ describe("applyReexposureOutcomeReflection — result_origin gating", () => {
     // the validation event is still logged, but not as verified evidence
     expect(captures.le_verification_log?.[0]?.verified).toBe(false);
     expect(captures.arena_events?.[0]?.xp).toBe(0);
+    // §5.3: the activation row preserves result_origin (no representation collapse)
+    expect(captures.le_activation_log?.[0]?.result_origin).toBe("insufficient_signal");
   });
 
   it("computed unstable: keeps reward profile (5 core / 3 weekly, verified)", async () => {
@@ -74,5 +78,7 @@ describe("applyReexposureOutcomeReflection — result_origin gating", () => {
     expect(result).toMatchObject({ ok: true, coreXp: 5, weeklyXp: 3 });
     expect(captures.le_verification_log?.[0]?.verified).toBe(true);
     expect(captures.arena_events?.[0]?.xp).toBe(3);
+    // §5.3: a computed activation is tagged distinctly from a fallback
+    expect(captures.le_activation_log?.[0]?.result_origin).toBe("computed");
   });
 });
