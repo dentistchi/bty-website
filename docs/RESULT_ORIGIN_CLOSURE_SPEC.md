@@ -313,3 +313,60 @@ statement holds **only while (b) remains inactive**.
 Governance handling of the (b) ingress — explicit deactivation, an added aggregation
 gate, or documented deprecation — is a separate track requiring separate approval. §7
 fixes the latent hazard as NORMATIVE; it records this candidate without recommending it.
+
+---
+
+## §8 Loop containment ↔ integrity metrics boundary
+
+### §8.1 Scope (NORMATIVE)
+
+§8 governs the coupling relationship between the reinforcement loop **containment**
+subsystem and the **integrity metric** subsystem (AIR / forced-reset). This is a layer
+distinct from §5 (AIR footprint) and §7 (escalation legitimacy): §8 fixes system-coupling
+semantics. §8 cites §5 and §7 and does not redefine them.
+
+### §8.2 Measured decoupling (NORMATIVE — measured)
+
+From lane #2 STEP 0 PHASE 5 corroboration:
+
+- **Shared mutable state / table = 0.** Reinforcement containment operates on
+  `arena_pending_outcomes.validation_payload.reinforcement_loop` / loop-iteration state;
+  the integrity metrics operate on `le_activation_log` / AIR aggregation. The two
+  persistence stores are disjoint.
+- **The cap does not gate the AIR footprint emit.** `applyReexposureOutcomeReflection`
+  (which emits the `le_activation_log` `micro_win`) is called unconditionally, outside the
+  `capReached` branch; only the follow-up reinforcement insert is gated `&& !capReached`.
+- **Shared points are limited to** (1) a common trigger event — the re-exposure validate
+  `POST` — and (2) a shared *read* of `payload.validation_result`. Neither is shared
+  mutable authority state: a shared trigger and a shared read only.
+- **Classification: functionally decoupled.**
+
+### §8.3 Normative guarantee — governance isolation
+
+A shared trigger event is **not** a shared authority graph. A mutation that changes
+reinforcement containment (loop iteration cap tuning, recurrence pacing, containment
+heuristics) does **not** implicitly change `le_activation_log` / AIR aggregation /
+forced-reset / escalation semantics. The converse also holds.
+
+Therefore a reinforcement-containment track may proceed **without reopening** AIR
+legitimacy (§5) or escalation legitimacy (§7) — provided the change does not cross the
+§8.4 boundary.
+
+### §8.4 Boundary condition (NORMATIVE)
+
+The §8.3 isolation holds only while both of the following hold:
+
+- The reinforcement-containment change does not touch the `le_activation_log` emit path —
+  the call site or call condition of `applyReexposureOutcomeReflection`.
+- The change does not convert the `payload.validation_result` read into a write, and does
+  not introduce new shared mutable state between the two subsystems.
+
+A change that crosses this boundary is outside §8 isolation and is subject to AIR /
+escalation impact review. This condition is a self-check criterion for future tracks, not
+a prohibition.
+
+### §8.5 Future track relationship (record only)
+
+The Deferred Queue *reinforcement delay policy* track may proceed under the §8.3 guarantee
+without an AIR-legitimacy review, applying the §8.4 boundary self-check. §8 canonicalizes
+the boundary and makes no further recommendation.
