@@ -23,7 +23,7 @@ Short mapping for operators and implementers.
 | Official BTY term | Current code / data |
 | ----------------- | ------------------- |
 | Pattern Shift band (`changed` / `unstable` / `no_change`) | `patternShiftBandFromReexposure` in `src/domain/leadership-engine/patternShift.ts` |
-| `pattern_shift_results` (persistence) | **Not implemented** — no table/API yet; classifier is the integration point for future re-exposure storage |
+| `pattern_shift_results` (persistence) | No dedicated table/API — band persisted on `arena_pending_outcomes.validation_payload` (JSONB) by `POST /api/arena/re-exposure/validate` |
 
 ## Forced reset (related to AIR band, not Pattern Shift)
 
@@ -49,5 +49,5 @@ Short mapping for operators and implementers.
 | AIR math | Implemented (`air.ts`) |
 | AIR band | Implemented (`airToBand`, LE air API) |
 | Forced reset (incl. `air_7d_below_high_band_two_consecutive_weeks`) | Implemented (`forced-reset.ts`, lockout service) |
-| Pattern Shift hook | Implemented domain-only (`patternShift.ts`) — **not** merged into AIR |
-| `pattern_shift_results` persistence / API | **Pending** |
+| Pattern Shift hook | Implemented & runtime-connected (`patternShift.ts` via `re-exposure/validate`) — **not** merged into AIR |
+| `pattern_shift_results` dedicated table / API | Not implemented — band persisted via `arena_pending_outcomes.validation_payload` |
