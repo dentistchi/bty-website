@@ -21,6 +21,25 @@ Sprint family closure (5 sprints, 6 commits, code mutation 0):
 - 12-Axis NOTE (`ef74926d` + `5c9618a`): 13 axis-drift rows deferred
 - PHASE3-GATE-1 (`9e21fb5`): residency procedure codified
 
+## Deferred Queue
+
+Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-planning lanes.
+
+1. ~~result_origin closure authoring~~ — **CLOSED 2026-05-17** (STEP 0 / 0.5 / 1; spec [`docs/RESULT_ORIGIN_CLOSURE_SPEC.md`](RESULT_ORIGIN_CLOSURE_SPEC.md), outer `8512f52`).
+2. **reinforcement + AIR semantics**
+   - reinforcement delay policy
+   - AIR footprint intent vs defect — `RESULT_ORIGIN_CLOSURE_SPEC.md` §5 `[OPEN]`
+   - insufficient_signal escalation semantics
+   - loop containment ↔ integrity-metrics boundary
+3. runtime label terminology
+4. 12-Axis drift surfaces
+5. line 148 numeric reconciliation (depends on #3)
+6. inner push topology (Platform/Infra Mode)
+
+---
+
+**[x] Track 1-C / result_origin closure authoring (STEP 0 / 0.5 / 1) CLOSED (2026-05-17):** `result_origin` (`computed` | `insufficient_signal`) XP/verified closure semantics fixed as a normative spec. **STEP 0** — re-baselined corroboration; measured the result_origin code path (5 set-sites / 2 files — `reexposureValidation.server.ts:250/283/316/361` + `route.ts:189`), re-confirmed no prior spec (MISSING, not CONTRADICT); read-only, commit 0. **STEP 0.5** — AIR footprint semantic classification; VERDICT: the unconditional `le_activation_log` `micro_win` activation emitted for `insufficient_signal` is **grade D (conditional)** — for LE Stage-3 users a contributory (2-of-4, never sole) forced-reset escalation input, and it dilutes AIR/LRI/TII downward; sign is anti-reward (AIR drag), **not a reward leak**; read-only, commit 0. **STEP 1** — [`docs/RESULT_ORIGIN_CLOSURE_SPEC.md`](RESULT_ORIGIN_CLOSURE_SPEC.md) authored (normative); closure invariant `insufficient_signal ⟹ coreXp=0 ∧ weeklyXp=0 ∧ verified=false` (total XP zero = distinguishing invariant; `verified=false` necessary-not-sufficient — computed `no_change` is also `verified=false`); single enforcement point `reflectionRewards.server.ts:185-186`; doc-only. **Commit**: outer `8512f52` (UNPUBLISHED — `origin/main` at `39b545f`). **Carried [OPEN — separate track]**: (a) AIR footprint intent-vs-defect (spec §5) → *reinforcement + AIR semantics* deferred lane (queue #2); (b) `PatternSignatureEvent.result_origin` optional-field absent-as-`computed` legality (spec §6). **Next**: publication (separate track); see Deferred Queue.
+
 ---
 
 **[x] Track 1-C / STEP 4 — Reinforcement Loop Iteration Cap CLOSED (committed); outer UNPUBLISHED (2026-05-17) — retroactively ledgered, doc-only reconciliation:** The reinforcement re-exposure loop previously rescheduled `unstable`/`no_change` follow-ups indefinitely — only a `changed` band ended the loop. **Change**: `REINFORCEMENT_LOOP_ITERATION_CAP=3` (`bty-app/src/lib/bty/arena/reinforcementLoopSchedule.server.ts:19`) + `reinforcementCapReached()` predicate (`:63`); at the cap iteration `unstable`/`no_change` ends the loop (`loop_reason "loop_ended_iteration_cap"`, no follow-up scheduled, `next_runtime_state` terminal `NEXT_SCENARIO_READY` instead of `REEXPOSURE_DUE`). 4 files (`reinforcementLoopSchedule.server.ts` + re-exposure `validate/route.ts` + their two test files), **SQL/migration 0, config 0**. **`result_origin` surface NON-CONTACT** — STEP 4 diff touches no `result_origin`/`insufficient_signal`/`verified`/XP line (STEP 0 corroboration REPORT R4). Tests 14/14 green on fresh tree (R7). **Commit**: outer `5e9362e` / inner `7ff03ced` (logically identical co-track pair). **⚠️ outer `5e9362e` is UNPUBLISHED** — `origin/main` still at `39b545f`, outer `ahead=1`; publication is a **separate track**, not decided by this ledger-backfill step. STEP 4 was committed without a ledger entry at commit time — this is the retroactive backfill (sanctioned commit, Commander-approved). **Next**: publication decision for `5e9362e` (separate track).
