@@ -1,5 +1,7 @@
 # BTY_ARENA_SEMANTIC_LOCKING_TABLE_v1
 
+> **Superseded:** 본 문서는 BTY_ARENA_SEMANTIC_LOCKING_TABLE_v1.1.md (v1.1.1 정정 corpus)로 supersede됨. 현행 권위는 v1.1.
+
 **Status:** Stage 0 산출물. Cursor 코드화 진입 전 semantic gate.
 **Authority precedence:** Server `ArenaRuntimeStateId` > Client `jsonFlow.state` > UI surface.
 **Frozen decisions:** Commander 결정값 6개 (본 문서 §3). 변경 시 v2 필요.

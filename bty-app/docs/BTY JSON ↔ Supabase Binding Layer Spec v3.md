@@ -73,7 +73,7 @@ Scenario → Primary → Tradeoff → Action Decision → Action → Re-exposure
 
 4. 최종 Runtime State
 
-BTY Arena의 최종 상태기계는 아래와 같다.
+BTY Arena의 runtime 진행은 아래와 같다. 단, 이 표기는 run 내부의 진행 순서를 나타내며, 말미의 REEXPOSURE_DUE / NEXT_SCENARIO_READY / FORCED_RESET_PENDING은 저장되는 상태값이 아니다 — 이들은 GET session-router가 매 tick 파생하는 상호배타 snapshot label로, 우선순위 게이트에 의해 선택되며 서로 선형 successor 관계가 아니다.
 
 SCENARIO_READY
 → PRIMARY_CHOICE_ACTIVE
@@ -82,14 +82,18 @@ SCENARIO_READY
 → ACTION_REQUIRED
 → ACTION_SUBMITTED
 → ACTION_AWAITING_VERIFICATION
-→ REEXPOSURE_DUE
-→ NEXT_SCENARIO_READY
-→ FORCED_RESET
+
+REEXPOSURE_DUE
+NEXT_SCENARIO_READY
+FORCED_RESET
+(위 3개는 파생 snapshot label — 선형 체인 아님)
 
 
 ⸻
 
 5. 상태 의미 정의
+
+아래 REEXPOSURE_DUE / NEXT_SCENARIO_READY / FORCED_RESET_PENDING은 persist되는 상태가 아니라 GET이 매 tick 파생하는 snapshot label이다. '…필요한 조건' / '…가능한 조건'으로 읽는다.
 
 SCENARIO_READY
 
@@ -125,15 +129,15 @@ ACTION_AWAITING_VERIFICATION
 
 REEXPOSURE_DUE
 
-행동 후 재노출 검증 시나리오가 필요한 상태
+행동 후 재노출 검증 시나리오가 필요한 조건
 
 NEXT_SCENARIO_READY
 
-다음 일반 시나리오로 진행 가능한 상태
+다음 일반 시나리오로 진행 가능한 조건
 
 FORCED_RESET
 
-무결성 붕괴 또는 감정 붕괴로 Center 강제 이동이 필요한 상태
+무결성 붕괴 또는 감정 붕괴로 Center 강제 이동이 필요한 조건
 
 ⸻
 

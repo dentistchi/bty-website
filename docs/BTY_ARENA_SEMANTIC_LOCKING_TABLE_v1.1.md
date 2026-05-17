@@ -117,9 +117,11 @@ BTY UI는 flow UX가 아닌 **interruption UX**다. 핵심 invariant:
 | ACTION_SUBMITTED | AWAITING_VERIFICATION | actor 제출 |
 | AWAITING_VERIFICATION | (approve 분기) | approver 평가 |
 | (validation) | REEXPOSURE_DUE | no_change / reinforcement 판정 |
-| (validation) | FORCED_RESET_PENDING | integrity slip threshold 초과 |
-| FORCED_RESET_PENDING | NEXT_SCENARIO_READY | compliance task 완료 |
+| (validation 결과 → le_activation_log/le_verification_log 기록 → computeAIR → evaluateForcedReset) | FORCED_RESET_PENDING (파생 label) | AIR 등 forced reset 평가 조건 충족 시. validation이 직접 전이시키지 않음 — /air route·cron에서 비동기 평가 |
+| FORCED_RESET_PENDING | (forced reset 종료) | compliance task 완료 시 current_stage→Stage1, forced_reset_triggered_at=null. NEXT_SCENARIO_READY로의 전이가 아님 (GET 미발행) |
 | NEXT_SCENARIO_READY | PRIMARY_CHOICE_ACTIVE | next scenario enter |
+
+> **Note:** 본 표의 라벨은 저장 상태가 아닌 GET 파생 snapshot label이며, 행은 우선순위 게이트 관계를 요약한다 — 선형 state transition이 아니다.
 
 ---
 
@@ -145,7 +147,7 @@ BTY UI는 flow UX가 아닌 **interruption UX**다. 핵심 invariant:
 
 ### 5.4 Foundry
 - **역할:** analysis surface (pattern, trend, AIR, leadership engine).
-- **lifecycle 외부:** runtime state machine과 독립. 10개 runtime state를 직접 render하지 않음. 다만 FORCED_RESET_PENDING 시 접근 차단 (HARD LOCKED 규칙의 secondary block).
+- **lifecycle 외부:** runtime label 집합과 독립. 개별 runtime snapshot label을 직접 render하지 않음. 다만 FORCED_RESET_PENDING 시 접근 차단 (HARD LOCKED 규칙의 secondary block).
 - **금지:** in-scenario interaction (Play/Resolve 영역).
 
 ### 5.5 Center — **recovery surface (default) + FORCED_RESET override sub-mode**
