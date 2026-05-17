@@ -31,10 +31,14 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
    - ~~AIR footprint intent vs defect~~ — **RESOLVED 2026-05-17** (`RESULT_ORIGIN_CLOSURE_SPEC.md` §5 NORMATIVE — semantic over-collapse)
    - ~~insufficient_signal escalation semantics~~ — **RESOLVED 2026-05-17** (`RESULT_ORIGIN_CLOSURE_SPEC.md` §7 NORMATIVE — (a) partially legitimate / indiscriminate / gated, (b) latent governance hazard)
    - ~~loop containment ↔ integrity-metrics boundary~~ — **RESOLVED 2026-05-17** (`RESULT_ORIGIN_CLOSURE_SPEC.md` §8 NORMATIVE — functionally decoupled; governance-isolation guarantee)
-3. runtime label terminology
+3. ~~runtime label terminology~~ — **CLOSED 2026-05-17** (STEP 0 / 0.1 / 1; spec [`docs/RUNTIME_LABEL_TERMINOLOGY_SPEC.md`](RUNTIME_LABEL_TERMINOLOGY_SPEC.md), outer `b43edfd`).
 4. 12-Axis drift surfaces
-5. line 148 numeric reconciliation (depends on #3)
+5. line 148 numeric reconciliation (depends on #3 — **now unblocked**, #3 CLOSED 2026-05-17)
 6. inner push topology (Platform/Infra Mode)
+
+---
+
+**[x] Queue #3 (runtime label terminology) CLOSED (2026-05-17):** Runtime label terminology judged and articulated as the new normative spec [`docs/RUNTIME_LABEL_TERMINOLOGY_SPEC.md`](RUNTIME_LABEL_TERMINOLOGY_SPEC.md). **STEP 0 (Layer A)**: server `ArenaRuntimeStateId` (9 labels, all per-request derived; `runtime_state` not a DB column) + client `RuntimeFlowState` (6 labels, in-memory FSM); 4 identical-string labels across two unshared types; "state" naming drift on the type/field surface. **STEP 0.1 (Layer B)**: code routing vocabulary (`route` union, `catalog`, "Elite v2 chain allowlist" vs "canonical allowlist" variance, `useLegacyRunStepApi`/`isCanonicalJsonRuntimeScenario`); 4 dispatch signal-paths code-absent → signal-only; cross-layer "runtime" overload (moderate). **STEP 1**: §1–§8 NORMATIVE — every candidate classified **doc-articulation sufficient**; **rename NOT required**, 0 code identifiers changed; signal-only vocabulary recorded as code-uncorroborated. Terminology closed; §8 conditional escape only. doc-only — runtime/schema/test 0, code-identifier change 0. **Commit**: outer `b43edfd` (spec) + this ledger commit. **Next**: Deferred Queue #4 — 12-Axis drift surfaces; #5 (line 148 reconciliation) now unblocked.
 
 ---
 
