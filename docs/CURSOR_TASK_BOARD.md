@@ -30,11 +30,15 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
    - reinforcement delay policy
    - ~~AIR footprint intent vs defect~~ — **RESOLVED 2026-05-17** (`RESULT_ORIGIN_CLOSURE_SPEC.md` §5 NORMATIVE — semantic over-collapse)
    - ~~insufficient_signal escalation semantics~~ — **RESOLVED 2026-05-17** (`RESULT_ORIGIN_CLOSURE_SPEC.md` §7 NORMATIVE — (a) partially legitimate / indiscriminate / gated, (b) latent governance hazard)
-   - loop containment ↔ integrity-metrics boundary
+   - ~~loop containment ↔ integrity-metrics boundary~~ — **RESOLVED 2026-05-17** (`RESULT_ORIGIN_CLOSURE_SPEC.md` §8 NORMATIVE — functionally decoupled; governance-isolation guarantee)
 3. runtime label terminology
 4. 12-Axis drift surfaces
 5. line 148 numeric reconciliation (depends on #3)
 6. inner push topology (Platform/Infra Mode)
+
+---
+
+**[x] Lane #2 (reinforcement + AIR semantics) / loop containment ↔ integrity-metrics boundary CLOSED (2026-05-17):** Canonicalizes the functional decoupling from lane #2 STEP 0 PHASE 5 as `RESULT_ORIGIN_CLOSURE_SPEC.md` §8 (NORMATIVE). No separate corroboration STEP — PHASE 5 reused under an escape-hatch check (`1235124..HEAD` touched zero non-`.md` files → corroboration authoritative). **§8**: reinforcement loop containment and integrity metrics (AIR/forced-reset) are **functionally decoupled** — 0 shared mutable state (disjoint persistence), the cap does not gate the `le_activation_log` AIR footprint emit, shared points are only a common trigger and a shared `payload.validation_result` read. **§8.3 governance-isolation guarantee**: a reinforcement-containment mutation does not implicitly change AIR/escalation semantics → containment tracks proceed without reopening §5/§7, subject to the §8.4 boundary self-check. §8.1–§8.5 appended; §1–§7 untouched. doc-only, runtime/schema/test 0. **Commit**: outer `f8d5097` (spec §8) + this ledger commit. **Next**: lane #2 remaining sub-item — *reinforcement delay policy*.
 
 ---
 
