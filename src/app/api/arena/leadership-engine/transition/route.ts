@@ -40,6 +40,19 @@ export async function POST(req: NextRequest) {
     return out;
   }
 
+  // §7.4(b) containment: `air_below_threshold` is a dormant Stage-4 escalation ingress
+  // (no in-repo caller, no server-side AIR measurement). Reject it at the route while
+  // leaving the domain transition context intact — see docs/RESULT_ORIGIN_CLOSURE_SPEC.md
+  // §7.6. Re-enabling with an AIR comparison gate (B-2) requires separate governance review.
+  if (raw === "air_below_threshold") {
+    const out = NextResponse.json(
+      { error: "CONTEXT_DORMANT_INGRESS_CLOSED" },
+      { status: 403 }
+    );
+    copyCookiesAndDebug(base, out, req, true);
+    return out;
+  }
+
   const context = raw as StageTransitionContext;
   const result = await applyStageTransition(supabase, user.id, context);
 
