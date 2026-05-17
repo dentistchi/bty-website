@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  REINFORCEMENT_LOOP_ITERATION_CAP,
   REINFORCEMENT_NO_CHANGE_DELAY_DAYS,
   REINFORCEMENT_UNSTABLE_DELAY_DAYS,
   insertReinforcementDelayedOutcome,
   loopIterationForPendingRow,
+  reinforcementCapReached,
 } from "./reinforcementLoopSchedule.server";
 
 describe("reinforcementLoopSchedule", () => {
@@ -22,6 +24,16 @@ describe("reinforcementLoopSchedule", () => {
     expect(REINFORCEMENT_UNSTABLE_DELAY_DAYS).toBe(5);
     expect(REINFORCEMENT_NO_CHANGE_DELAY_DAYS).toBe(3);
     expect(REINFORCEMENT_NO_CHANGE_DELAY_DAYS).toBeLessThan(REINFORCEMENT_UNSTABLE_DELAY_DAYS);
+  });
+
+  it("reinforcementCapReached: loop ends at iteration cap (N=3)", () => {
+    expect(REINFORCEMENT_LOOP_ITERATION_CAP).toBe(3);
+    // below cap → loop continues (follow-up may schedule)
+    expect(reinforcementCapReached(1)).toBe(false);
+    expect(reinforcementCapReached(2)).toBe(false);
+    // at / past cap → loop ends, no further follow-up
+    expect(reinforcementCapReached(3)).toBe(true);
+    expect(reinforcementCapReached(4)).toBe(true);
   });
 
   it("stores reinforcement_seeded_from_pending_id inside validation_payload only", async () => {
