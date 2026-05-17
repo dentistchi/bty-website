@@ -23,6 +23,10 @@ Sprint family closure (5 sprints, 6 commits, code mutation 0):
 
 ---
 
+**[x] Track 1-C / STEP 2 — Fallback Insufficient-Signal Metadata (Route B) CLOSED + PUBLISHED (2026-05-16):** Runtime Evolution Session governance mutation — separates operational `unstable` (a measured pattern-shift band) from input-absent fallback collapse, which previously both produced the same `unstable` value. **Change**: `validation_payload.result_origin` JSONB metadata (`computed` | `insufficient_signal`) tags every re-exposure validation result; the four fallback collapse sites in `bty-app/src/lib/bty/arena/reexposureValidation.server.ts` are tagged `insufficient_signal` (discarded `elite_axis_missing` preserved as `insufficient_signal_reason`). `insufficient_signal` is excluded from analytics confidence/repeat evidence (`patternSignatureAggregation` holds the aggregate — no confidence gain, no repeat increment) and from verified XP (`reflectionRewards` → `verified:false`, XP 0). Band values (`changed`/`unstable`/`no_change`) unchanged; `PatternShiftBand` remains 3 values; **DB migration 0** (additive JSONB key, no CHECK constraint change). 11-file co-track commit (6 source + 5 test), lint + 36 tests green. **Baseline**: outer `998ba8d4` (= `origin/main`) / inner `65902fac` (local-only, `inner-main` upstream unset). **Publication corroboration**: the formal POST-PUSH REPORT for the STEP 2 outer push was missing from the C3 tracking path; `origin/main = 998ba8d4` is corroborated by Commander direct measurement (`git rev-parse origin/main`) — recorded here so publication provenance is not re-doubted next session. **Deferred**: reinforcement delay policy change, UI surfacing of `result_origin`. **Next**: Track 1-C / STEP 3 — re-exposure evolution (or Commander-designated track); STEP 3 not started in this step.
+
+---
+
 **[x] HK10–HK17 namespace CLOSED (2026-05-16) — NON-CANONICAL DEBRIS, carry-forward 금지:** see [`docs/closures/HK_NONCANONICAL_DEBRIS_CLOSURE.md`](closures/HK_NONCANONICAL_DEBRIS_CLOSURE.md)
 
 ---
