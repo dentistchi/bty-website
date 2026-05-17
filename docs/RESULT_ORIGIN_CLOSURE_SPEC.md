@@ -239,3 +239,77 @@ punitive defect).
 aggregate row with `repeat_count_delta: 1` (`patternSignatureAggregation.ts:67`) despite
 the general "no repeat increment" rule for `insufficient_signal`; this is the row seed,
 not repeat evidence. Analytics-side only; no XP/verified impact.
+
+---
+
+## §7 Escalation legitimacy
+
+### §7.1 Scope (NORMATIVE)
+
+§7 governs the legitimacy of the path by which an `insufficient_signal` fallback can
+contribute to LE Stage-4 escalation. This is a layer distinct from §5: §5 judges the
+legitimacy of the AIR **drag**; §7 judges the **authority consequence** — escalation. §7
+cites §4 and §5 and does not redefine them.
+
+### §7.2 Two Stage-4 ingress paths (NORMATIVE — measured)
+
+Stage 4 has two code-level ingress paths (STEP 0 / STEP 0.1 corroboration):
+
+- **(a) ACTIVE** — `evaluateForcedReset` → `triggerForcedResetToStage4`. Two-of-three
+  effective aggregation (`evaluateForcedReset` requires `reasons.length >= 2`;
+  `stage3SelectedCountIn14d` is hardcoded `0`, leaving three live inputs); threshold
+  `FORCED_RESET_AIR_7D_THRESHOLD = 0.80` on AIR_7d; invoked as a `GET /air` side effect
+  (`runForcedResetAfterAirIfStage3`), Stage-3 gated.
+- **(b) DORMANT** — `getNextStage(STAGE_3, "air_below_threshold")` → `STAGE_4`, via
+  `POST /api/arena/leadership-engine/transition`. `getNextStage` is a pure switch (no
+  aggregation). Threshold constant `AIR_THRESHOLD_STAGE_ESCALATION = 0.50`. No in-repo
+  caller supplies the `air_below_threshold` context, and the `0.50` constant has no
+  runtime comparison site — the path is dormant.
+
+### §7.3 Judgment — (a) active ingress (NORMATIVE)
+
+The (a) ingress is **partially legitimate / structurally indiscriminate /
+aggregation-gated**.
+
+- The fallback AIR drag participates in the `air7dBelow70ForTwoConsecutiveWeeks` input.
+  A system-absence fallback drags AIR identically to a behavioral-absence fallback — the
+  escalation path cannot distinguish them (structurally indiscriminate; the §5.3
+  representation collapse, cited).
+- It is nonetheless aggregation-gated: `evaluateForcedReset` requires two of three
+  effective inputs, and the whole evaluation is Stage-3 gated. The fallback reaches only
+  one of the three inputs, so it is **never a single-trigger escalation** on (a).
+- It is over-broad but **not a catastrophic punitive defect** — the footprint is
+  anti-reward only, with no XP leak (§5.1, cited; the §4 invariant holds).
+
+Conclusion: on the (a) ingress the §5 "semantic over-collapse" judgment re-appears at the
+escalation layer — the drag's over-collapse is transmitted indiscriminately, but
+aggregation and Stage-3 gating bound the blast radius.
+
+### §7.4 Judgment — (b) dormant ingress = latent governance hazard (NORMATIVE)
+
+The (b) ingress has **no effect on current runtime legitimacy — it is not a defect
+today.** But it is, by measurement, a complete latent path: the context is registered in
+`VALID_CONTEXTS`, the `getNextStage` Stage mapping exists, the `POST /transition` route
+ingress exists, the topology is single-signal, and the `0.50` constant is defined — only
+activation (a caller) is missing.
+
+If activated, (b) introduces a **single-signal Stage-4 escalation path** whose authority
+character differs from (a)'s two-of-N aggregation and gating.
+
+**NORMATIVE.** Any change that activates the (b) ingress — adding a caller that supplies
+the `air_below_threshold` context, or giving the `0.50` constant a runtime comparison
+site — is **not innocuous wiring**; it is a change to escalation authority semantics. A
+governance review is **REQUIRED before** such activation.
+
+### §7.5 Single-trigger characterization — boundary (NORMATIVE)
+
+The "never single-trigger / two-of-N" characterization is valid for ingress (a) and is
+true in the current runtime. Ingress (b) is structurally single-signal but dormant;
+therefore no single-trigger Stage-4 escalation occurs in the current runtime. This
+statement holds **only while (b) remains inactive**.
+
+### §7.6 Future track (record only — not a recommendation)
+
+Governance handling of the (b) ingress — explicit deactivation, an added aggregation
+gate, or documented deprecation — is a separate track requiring separate approval. §7
+fixes the latent hazard as NORMATIVE; it records this candidate without recommending it.
