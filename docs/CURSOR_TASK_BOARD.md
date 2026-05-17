@@ -26,8 +26,8 @@ Sprint family closure (5 sprints, 6 commits, code mutation 0):
 Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-planning lanes.
 
 1. ~~result_origin closure authoring~~ — **CLOSED 2026-05-17** (STEP 0 / 0.5 / 1; spec [`docs/RESULT_ORIGIN_CLOSURE_SPEC.md`](RESULT_ORIGIN_CLOSURE_SPEC.md), outer `8512f52`).
-2. **reinforcement + AIR semantics**
-   - reinforcement delay policy
+2. ~~reinforcement + AIR semantics~~ — **CLOSED 2026-05-17** (lane #2 complete; spec §5 / §7 / §8 / §9)
+   - ~~reinforcement delay policy~~ — **RESOLVED 2026-05-17** (`RESULT_ORIGIN_CLOSURE_SPEC.md` §9 NORMATIVE — bounded reinforcement, legitimate)
    - ~~AIR footprint intent vs defect~~ — **RESOLVED 2026-05-17** (`RESULT_ORIGIN_CLOSURE_SPEC.md` §5 NORMATIVE — semantic over-collapse)
    - ~~insufficient_signal escalation semantics~~ — **RESOLVED 2026-05-17** (`RESULT_ORIGIN_CLOSURE_SPEC.md` §7 NORMATIVE — (a) partially legitimate / indiscriminate / gated, (b) latent governance hazard)
    - ~~loop containment ↔ integrity-metrics boundary~~ — **RESOLVED 2026-05-17** (`RESULT_ORIGIN_CLOSURE_SPEC.md` §8 NORMATIVE — functionally decoupled; governance-isolation guarantee)
@@ -35,6 +35,10 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 4. 12-Axis drift surfaces
 5. line 148 numeric reconciliation (depends on #3)
 6. inner push topology (Platform/Infra Mode)
+
+---
+
+**[x] Lane #2 (reinforcement + AIR semantics) / reinforcement delay policy CLOSED (2026-05-17) — ⚠️ lane #2 fully complete:** Reinforcement cadence legitimacy judged and articulated as `RESULT_ORIGIN_CLOSURE_SPEC.md` §9 (NORMATIVE). **STEP 0** (read-only corroboration, commit 0): cadence topology — delay band-driven (`no_change` 3d / `unstable` 5d), iteration cosmetic-only, cap = 3 per chain, retry pull-based (`getDueOutcomes`, not cron). **STEP 1**: §9 NORMATIVE — **bounded reinforcement, legitimate**, three-layer — (per-chain) structurally bounded (cap = 3 + ≥3d/≥5d spacing + 5 prevention guards); (aggregate) user-initiated, not system-coercive; (abandonment) zero new pressure. bounded reinforcement CORROBORATED; coercive recurrence / unbounded retry REBUTTED; diminishing cadence CONTRADICTED. §9.1–§9.5 appended; §1–§8 untouched. doc-only, runtime/schema/test 0. **Commit**: outer `b1bb130` (spec §9) + this ledger commit. **⚠️ lane #2 fully CLOSED** — §5/§7/§8/§9 all resolved. **Publication held** — push not performed; outer `ahead=2` pending Commander review. **Next**: Deferred Queue #3 — runtime label terminology.
 
 ---
 
