@@ -12,6 +12,7 @@ import type { ArenaReinforcementLoopJson } from "@/lib/bty/arena/reinforcementLo
 import {
   insertReinforcementDelayedOutcome,
   loopIterationForPendingRow,
+  reinforcementCapReached,
 } from "@/lib/bty/arena/reinforcementLoopSchedule.server";
 import { upsertUserPatternSignatureFromValidation } from "@/lib/bty/arena/patternSignatureUpsert.server";
 import { applyReexposureOutcomeReflection } from "@/lib/bty/arena/reflectionRewards.server";
@@ -197,6 +198,9 @@ export async function POST(req: NextRequest) {
   const patternFamily = payload.after_pattern_family ?? payload.before_pattern_family ?? null;
 
   const vr = payload.validation_result;
+  /** Loop ceiling: at the cap iteration, `unstable` / `no_change` ends the loop with no further follow-up. */
+  const capReached =
+    (vr === "unstable" || vr === "no_change") && reinforcementCapReached(currentRowIteration);
 
   console.info("[arena][reexposure-validate]", {
     user_id: user.id,
@@ -221,16 +225,28 @@ export async function POST(req: NextRequest) {
       follow_up_intensity: null,
     };
   } else if (vr === "unstable" || vr === "no_change") {
-    closingLoop = {
-      validation_result: vr,
-      source_pending_outcome_id: pendingOutcomeId,
-      loop_iteration: currentRowIteration,
-      loop_reason: "validated_chained_follow_up",
-      next_scheduled_for: null,
-      axis,
-      pattern_family: patternFamily,
-      follow_up_intensity: vr === "no_change" ? "high" : "medium",
-    };
+    closingLoop = capReached
+      ? {
+          validation_result: vr,
+          source_pending_outcome_id: pendingOutcomeId,
+          loop_iteration: currentRowIteration,
+          loop_reason: "loop_ended_iteration_cap",
+          next_scheduled_for: null,
+          axis,
+          pattern_family: patternFamily,
+          loop_satisfied: true,
+          follow_up_intensity: null,
+        }
+      : {
+          validation_result: vr,
+          source_pending_outcome_id: pendingOutcomeId,
+          loop_iteration: currentRowIteration,
+          loop_reason: "validated_chained_follow_up",
+          next_scheduled_for: null,
+          axis,
+          pattern_family: patternFamily,
+          follow_up_intensity: vr === "no_change" ? "high" : "medium",
+        };
   }
 
   const { error: upErr } = await admin
@@ -255,7 +271,7 @@ export async function POST(req: NextRequest) {
   let newPendingOutcomeId: string | null = null;
   let nextScheduledFor: string | null = null;
 
-  if (vr === "unstable" || vr === "no_change") {
+  if ((vr === "unstable" || vr === "no_change") && !capReached) {
     try {
       await markDueOutcomesDelivered(user.id, [pendingOutcomeId], admin);
     } catch (e) {
@@ -360,7 +376,8 @@ export async function POST(req: NextRequest) {
   const out = NextResponse.json({
     ok: true,
     validation_result: payload.validation_result,
-    next_runtime_state: payload.validation_result === "changed" ? "NEXT_SCENARIO_READY" : "REEXPOSURE_DUE",
+    next_runtime_state:
+      payload.validation_result === "changed" || capReached ? "NEXT_SCENARIO_READY" : "REEXPOSURE_DUE",
     re_exposure_clear_candidate: payload.validation_result === "changed",
     intervention_sensitivity_up: payload.validation_result === "no_change",
     validation_payload: payload,

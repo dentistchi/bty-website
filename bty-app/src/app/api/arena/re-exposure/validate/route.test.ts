@@ -37,6 +37,10 @@ vi.mock("@/lib/bty/arena/reinforcementLoopSchedule.server", () => ({
   insertReinforcementDelayedOutcome: (...args: unknown[]) =>
     mockInsertReinforcementDelayedOutcome.apply(null, args),
   loopIterationForPendingRow: (...args: unknown[]) => mockLoopIterationForPendingRow.apply(null, args),
+  // Cap value mirrored from REINFORCEMENT_LOOP_ITERATION_CAP=3; real function verified in
+  // reinforcementLoopSchedule.server.test.ts. Derives from iteration so cap branch is driven
+  // by mockLoopIterationForPendingRow.
+  reinforcementCapReached: (n: number) => n >= 3,
 }));
 
 const mockApplyReexposureOutcomeReflection = vi.fn();
@@ -574,5 +578,56 @@ describe("POST /api/arena/re-exposure/validate — C5 chain proof", () => {
         validationResult: "no_change",
       }),
     );
+  });
+
+  it("no_change at iteration cap ends loop — consumes pending, no follow-up scheduled", async () => {
+    mockLoopIterationForPendingRow.mockReturnValue(3);
+    // this file's beforeEach does not clear mocks; scope the call-count assertion to this test
+    mockInsertReinforcementDelayedOutcome.mockClear();
+    mockCompute.mockResolvedValueOnce({
+      ok: true,
+      payload: {
+        scenario_id: SCENARIO_ID,
+        before_axis: "Blame vs. Structural Honesty",
+        before_pattern_family: "blame_shift",
+        before_second_choice_direction: "exit" as const,
+        before_exit_pattern_key: "blame_shift|x",
+        action_decision_commitment: "commit" as const,
+        after_axis: "Blame vs. Structural Honesty",
+        after_pattern_family: "blame_shift",
+        after_second_choice_direction: "exit" as const,
+        after_exit_pattern_key: "blame_shift|x",
+        validation_result: "no_change" as const,
+        axis_guard: "same_axis_ok" as const,
+        prior_run_id: "prior-run-cap",
+        reexposure_run_id: RUN_ID,
+        recorded_at: "2026-04-10T12:00:00.000Z",
+      },
+    });
+
+    const res = await POST(
+      makeRequest({ pendingOutcomeId: PENDING_ID, runId: RUN_ID, scenarioId: SCENARIO_ID }) as import("next/server").NextRequest,
+    );
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as {
+      follow_up_scheduled?: boolean;
+      new_pending_outcome_id?: string | null;
+      next_scheduled_for?: string | null;
+      validation_result?: string;
+      next_runtime_state?: string;
+    };
+    expect(json.validation_result).toBe("no_change");
+    // cap reached: loop ends, no further re-exposure scheduled → next state is terminal, not REEXPOSURE_DUE
+    expect(json.next_runtime_state).toBe("NEXT_SCENARIO_READY");
+    expect(json.follow_up_scheduled).toBe(false);
+    expect(json.new_pending_outcome_id).toBeNull();
+    expect(json.next_scheduled_for).toBeNull();
+    expect(mockInsertReinforcementDelayedOutcome).not.toHaveBeenCalled();
+    expect(mockMarkDue).toHaveBeenCalledWith(USER_ID, [PENDING_ID], expect.anything());
+    const vpWithLoop = validationUpdatePayload?.validation_payload as
+      | { reinforcement_loop?: { loop_reason?: string; loop_satisfied?: boolean } }
+      | undefined;
+    expect(vpWithLoop?.reinforcement_loop?.loop_reason).toBe("loop_ended_iteration_cap");
+    expect(vpWithLoop?.reinforcement_loop?.loop_satisfied).toBe(true);
   });
 });

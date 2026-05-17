@@ -11,6 +11,12 @@ import type { ReexposureValidationPayload } from "@/lib/bty/arena/reexposureVali
 export const REINFORCEMENT_UNSTABLE_DELAY_DAYS = 5;
 /** Stronger follow-up — same axis, pattern stuck (higher sensitivity / sooner). */
 export const REINFORCEMENT_NO_CHANGE_DELAY_DAYS = 3;
+/**
+ * Reinforcement loop iteration ceiling. A pending row whose current `loop_iteration` has reached this
+ * value ends the loop — no further follow-up is scheduled even when the band is `unstable` / `no_change`.
+ * N=3 → initial row + 2 chained follow-ups (max 3 reinforcement rows per source).
+ */
+export const REINFORCEMENT_LOOP_ITERATION_CAP = 3;
 
 /** Durable JSON stored in `arena_pending_outcomes.validation_payload.reinforcement_loop`. */
 export type ArenaReinforcementLoopJson = {
@@ -22,7 +28,8 @@ export type ArenaReinforcementLoopJson = {
     | "reinforcement_unstable_same_axis"
     | "reinforcement_no_change_same_axis"
     | "loop_satisfied_changed"
-    | "validated_chained_follow_up";
+    | "validated_chained_follow_up"
+    | "loop_ended_iteration_cap";
   next_scheduled_for: string | null;
   axis: string;
   pattern_family: string | null;
@@ -47,6 +54,14 @@ export function loopIterationForPendingRow(row: { validation_payload?: unknown }
     return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
   }
   return 1;
+}
+
+/**
+ * True when a pending row's current loop iteration has reached {@link REINFORCEMENT_LOOP_ITERATION_CAP} —
+ * the reinforcement loop must end here (no further follow-up scheduled) regardless of validation band.
+ */
+export function reinforcementCapReached(currentLoopIteration: number): boolean {
+  return currentLoopIteration >= REINFORCEMENT_LOOP_ITERATION_CAP;
 }
 
 function addDaysFromNow(days: number): string {
