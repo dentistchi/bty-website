@@ -28,13 +28,17 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 1. ~~result_origin closure authoring~~ — **CLOSED 2026-05-17** (STEP 0 / 0.5 / 1; spec [`docs/RESULT_ORIGIN_CLOSURE_SPEC.md`](RESULT_ORIGIN_CLOSURE_SPEC.md), outer `8512f52`).
 2. **reinforcement + AIR semantics**
    - reinforcement delay policy
-   - AIR footprint intent vs defect — `RESULT_ORIGIN_CLOSURE_SPEC.md` §5 `[OPEN]`
+   - ~~AIR footprint intent vs defect~~ — **RESOLVED 2026-05-17** (`RESULT_ORIGIN_CLOSURE_SPEC.md` §5 NORMATIVE — semantic over-collapse)
    - insufficient_signal escalation semantics
    - loop containment ↔ integrity-metrics boundary
 3. runtime label terminology
 4. 12-Axis drift surfaces
 5. line 148 numeric reconciliation (depends on #3)
 6. inner push topology (Platform/Infra Mode)
+
+---
+
+**[x] Lane #2 (reinforcement + AIR semantics) / STEP 1 — AIR footprint intent/defect judgment CLOSED (2026-05-17):** Closes `RESULT_ORIGIN_CLOSURE_SPEC.md` §5 `[OPEN]` with a NORMATIVE judgment. **STEP 0** (read-only corroboration, commit 0): 4-trigger upstream attribution + reinforcement/AIR 1-hop adjacency + drag-propagation chain — the four `insufficient_signal` triggers have heterogeneous attribution (user-action / runtime-sequencing / pipeline-data / registry-mixed), `result_origin` lost at hop 1 (`le_activation_log` has no `result_origin` column), forced-reset 2-of-4 contributory (never sole, Stage-3 gated), loop-cap ↔ AIR decoupled. **STEP 1**: §5 NORMATIVE judgment — the AIR drag is **"semantic over-collapse"**, partially legitimate (behavioral absence) / partially over-broad (system absence), **not a catastrophic punitive defect**; §5.1–§5.6 added; §1–§4 untouched; §4 invariant cited not redefined; doc-only, runtime/schema/test 0. **Commit**: outer `78587c6` (spec) + this ledger commit. **Next**: lane #2 remaining sub-items; §5.3 representation-collapse remediation = separate runtime/schema track.
 
 ---
 
