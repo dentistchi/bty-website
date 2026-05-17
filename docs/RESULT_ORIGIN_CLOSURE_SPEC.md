@@ -161,10 +161,66 @@ activation-log path.
 **Sign.** This footprint moves AIR **downward**; it is anti-reward (an integrity-score
 drag), not a reward leak. This document does not characterize it as a reward leak.
 
-> **[OPEN — separate track]** Whether the AIR footprint is intended integrity-metric
-> behaviour or a fallback-penalty defect is outside this document's scope. STEP 0.5
-> classified it as grade D (conditional latent escalation input). The intent/defect
-> determination and any remediation are a separate-track decision.
+### §5.1 Judgment (NORMATIVE)
+
+The AIR drag caused by an `insufficient_signal` `micro_win` activation is **partially
+legitimate / partially over-broad** — classified **semantic over-collapse**. It is **not**
+a catastrophic punitive defect.
+
+Basis (all from STEP 0 corroboration measurement):
+
+- The escalation effect is gated on LE Stage 3 (`runForcedResetAfterAirIfStage3`).
+- It is never a single-trigger escalation: `evaluateForcedReset` requires two of four
+  reasons, and `insufficient_signal` can influence at most one
+  (`air7dBelow70ForTwoConsecutiveWeeks`).
+- The footprint is anti-reward only (an AIR drag); there is no XP leak — the §4 invariant
+  `insufficient_signal ⟹ coreXp=0 ∧ weeklyXp=0 ∧ verified=false` holds (cited from §4, not
+  redefined here).
+
+### §5.2 Trigger attribution heterogeneity (NORMATIVE)
+
+The four `insufficient_signal` triggers do not share one semantics (STEP 0 PHASE 1
+attribution table):
+
+- **Legitimate drag** — absence attributable to a behavioral / verification gap:
+  - `after_second_choice_missing` — carries a user-action component; recoverable.
+- **Over-broad drag** — absence attributable to system / data / sequencing:
+  - `no_prior_run` — runtime sequencing absence.
+  - `prior_second_choice_missing` — pipeline / data absence.
+  - `elite_axis_missing` — registry-dependent / mixed dependency; not a user action.
+
+The proposition "a fallback is always user failure" is therefore **false**.
+
+### §5.3 Representation collapse (NORMATIVE)
+
+Trigger attribution is heterogeneous (§5.2), but `le_activation_log` has no `result_origin`
+column, so the AIR graph processes every fallback activation as one identical penalty
+footprint. The distinction is lost at hop 1 — the `le_activation_log` insert
+(`reflectionRewards.server.ts:199-211`) — and is permanently absent at every downstream hop
+(STEP 0 PHASE 3 drag chain). Independent of intent, the system's inability to preserve the
+distinction is a **representation defect**.
+
+### §5.4 AIR drag legitimacy boundary (NORMATIVE)
+
+- **Legitimate:** a fallback with a user-action component / a verification-incomplete
+  behavioral absence / a recoverable engagement failure.
+- **Over-broad:** treating runtime-sequencing absence, pipeline/data absence, and
+  registry-dependent absence under the same penalty footprint.
+
+### §5.5 behavioral absence vs system absence (NORMATIVE term)
+
+- **behavioral absence** — a gap in user action or verification; the AIR drag is
+  legitimate.
+- **system absence** — a gap in sequencing, pipeline, or registry; the AIR drag is
+  over-broad.
+
+### §5.6 Future mutation track (record only — not a recommendation)
+
+Resolving the §5.3 representation collapse would require preserving `result_origin` on
+`le_activation_log`, or an AIR carve-out for `insufficient_signal` activations. Any such
+runtime / schema mutation is **out of scope here** and requires a separate track with
+separate approval. This paragraph records the candidate; it is neither a recommendation
+nor a proposal.
 
 ---
 
@@ -175,7 +231,9 @@ drag), not a reward leak. This document does not characterize it as a reward lea
 > equivalent to `computed`. Whether absent-as-`computed` is spec-legal back-compat or
 > should be tightened is undecided.
 
-> **[OPEN]** AIR footprint intent vs defect — see §5.
+**Resolved.** AIR footprint intent vs defect — closed by §5 (NORMATIVE judgment:
+semantic over-collapse — partially legitimate / partially over-broad; not a catastrophic
+punitive defect).
 
 **Non-authoritative note.** A first-ever `insufficient_signal` event seeds a neutral
 aggregate row with `repeat_count_delta: 1` (`patternSignatureAggregation.ts:67`) despite
