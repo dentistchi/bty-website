@@ -50,3 +50,6 @@ Screenshot *.png
 .env.*
 !.env.example
 .env.bak.*
+
+# Supabase CLI link artifacts — environment-specific, not tracked
+supabase/.temp/
