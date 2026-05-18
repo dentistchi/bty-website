@@ -37,31 +37,16 @@ async function upsertWeeklyXp(
   userId: string,
   delta: number,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { data: row, error: rowErr } = await supabase
-    .from("weekly_xp")
-    .select("id, xp_total")
-    .eq("user_id", userId)
-    .is("league_id", null)
-    .maybeSingle();
-  if (rowErr) return { ok: false, error: rowErr.message };
-
-  if (!row) {
-    const { error: insErr } = await supabase
-      .from("weekly_xp")
-      .insert({ user_id: userId, league_id: null, xp_total: delta });
-    if (insErr) return { ok: false, error: insErr.message };
-    return { ok: true };
-  }
-
-  const nextTotal =
-    (typeof (row as { xp_total?: number }).xp_total === "number"
-      ? (row as { xp_total: number }).xp_total
-      : 0) + delta;
-  const { error: upErr } = await supabase
-    .from("weekly_xp")
-    .update({ xp_total: nextTotal })
-    .eq("id", (row as { id: string }).id);
-  if (upErr) return { ok: false, error: upErr.message };
+  // Atomic weekly_xp increment (UPSERT) — prevents read-modify-write lost writes.
+  // This path is always the global pool (league_id IS NULL). Shared by
+  // applyArenaRunRewardsOnVerifiedCompletion (main QR-verified completion) and
+  // applyReexposureOutcomeReflection.
+  const { error } = await supabase.rpc("increment_weekly_xp", {
+    p_user_id: userId,
+    p_league_id: null,
+    p_delta: delta,
+  });
+  if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
 

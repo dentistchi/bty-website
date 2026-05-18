@@ -238,15 +238,15 @@ export async function POST(req: Request) {
       .eq("quest_type", "reflection")
       .maybeSingle();
     if (!existingClaim) {
-      const { data: wxRow } = await supabase
-        .from("weekly_xp")
-        .select("id, xp_total")
-        .eq("user_id", user.id)
-        .is("league_id", null)
-        .maybeSingle();
-      if (wxRow) {
-        const newTotal = (typeof (wxRow as { xp_total?: number }).xp_total === "number" ? (wxRow as { xp_total: number }).xp_total : 0) + REFLECTION_QUEST_BONUS_XP;
-        await supabase.from("weekly_xp").update({ xp_total: newTotal }).eq("id", (wxRow as { id: string }).id);
+      // Atomic weekly_xp increment (UPSERT) — prevents read-modify-write lost writes.
+      // UPSERT also applies the bonus when no weekly_xp row exists yet (the prior
+      // `if (wxRow)` guard silently dropped the bonus in that case).
+      const { error: bonusErr } = await supabase.rpc("increment_weekly_xp", {
+        p_user_id: user.id,
+        p_league_id: null,
+        p_delta: REFLECTION_QUEST_BONUS_XP,
+      });
+      if (!bonusErr) {
         await applySeasonalXpToCore(supabase, user.id, REFLECTION_QUEST_BONUS_XP);
       }
       await supabase.from("arena_weekly_quest_claims").insert({
