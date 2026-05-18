@@ -40,6 +40,11 @@ function makeSupabase(): { supabase: unknown; captures: Captures } {
       };
       return api;
     },
+    // weekly_xp writes route through the atomic increment_weekly_xp RPC.
+    rpc: (fn: string, args?: Record<string, unknown>) => {
+      (captures.__rpc ??= []).push({ fn, ...(args ?? {}) });
+      return Promise.resolve({ data: null, error: null });
+    },
   };
   return { supabase, captures };
 }
@@ -56,8 +61,9 @@ describe("applyReexposureOutcomeReflection — result_origin gating", () => {
       resultOrigin: "insufficient_signal",
     });
     expect(result).toMatchObject({ ok: true, coreXp: 0, weeklyXp: 0 });
-    // weeklyXp 0 → upsert skipped entirely (weekly_xp table never touched)
+    // weeklyXp 0 → upsert skipped entirely (weekly_xp untouched, no increment RPC)
     expect(captures.weekly_xp).toBeUndefined();
+    expect((captures.__rpc ?? []).some((c) => c.fn === "increment_weekly_xp")).toBe(false);
     // the validation event is still logged, but not as verified evidence
     expect(captures.le_verification_log?.[0]?.verified).toBe(false);
     expect(captures.arena_events?.[0]?.xp).toBe(0);
@@ -76,6 +82,15 @@ describe("applyReexposureOutcomeReflection — result_origin gating", () => {
       resultOrigin: "computed",
     });
     expect(result).toMatchObject({ ok: true, coreXp: 5, weeklyXp: 3 });
+    // weekly_xp write goes through the atomic increment_weekly_xp RPC, not a
+    // read-modify-write select+update.
+    expect(captures.weekly_xp).toBeUndefined();
+    expect(captures.__rpc?.find((c) => c.fn === "increment_weekly_xp")).toEqual({
+      fn: "increment_weekly_xp",
+      p_user_id: "u1",
+      p_league_id: null,
+      p_delta: 3,
+    });
     expect(captures.le_verification_log?.[0]?.verified).toBe(true);
     expect(captures.arena_events?.[0]?.xp).toBe(3);
     // §5.3: a computed activation is tagged distinctly from a fallback

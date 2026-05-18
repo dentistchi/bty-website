@@ -75,17 +75,13 @@ export async function POST(req: Request) {
 
   const beginnerSeasonalXp = 30;
   await supabase.rpc("ensure_arena_profile");
-  const { data: wRow } = await supabase
-    .from("weekly_xp")
-    .select("id, xp_total")
-    .eq("user_id", user.id)
-    .is("league_id", null)
-    .maybeSingle();
-  if (wRow) {
-    await supabase.from("weekly_xp").update({ xp_total: (Number(wRow.xp_total) || 0) + beginnerSeasonalXp }).eq("id", wRow.id);
-  } else {
-    await supabase.from("weekly_xp").insert({ user_id: user.id, league_id: null, xp_total: beginnerSeasonalXp });
-  }
+  // Atomic weekly_xp increment (UPSERT) — prevents read-modify-write lost writes.
+  const { error: wxErr } = await supabase.rpc("increment_weekly_xp", {
+    p_user_id: user.id,
+    p_league_id: null,
+    p_delta: beginnerSeasonalXp,
+  });
+  if (wxErr) console.warn("[beginner-complete] weekly_xp increment failed", wxErr.message);
   const coreResult = await applySeasonalXpToCore(supabase, user.id, beginnerSeasonalXp);
   if ("error" in coreResult) {
     // log but don't fail the request

@@ -81,24 +81,13 @@ export async function recordActivityXp(
   const league = await getActiveLeague(supabase, getSupabaseAdmin());
   const leagueId: string | null = league?.league_id ?? null;
 
-  let wxQ = supabase.from("weekly_xp").select("id, xp_total").eq("user_id", userId);
-  if (leagueId) wxQ = wxQ.eq("league_id", leagueId);
-  else wxQ = wxQ.is("league_id", null);
-  const { data: wxRow, error: rowErr } = await wxQ.maybeSingle();
-  if (rowErr) return { ok: false, error: rowErr.message };
-
-  if (!wxRow) {
-    const { error: insWx } = await supabase.from("weekly_xp").insert({
-      user_id: userId,
-      league_id: leagueId,
-      xp_total: deltaCapped,
-    });
-    if (insWx) return { ok: false, error: insWx.message };
-  } else {
-    const nextTotal = (typeof (wxRow as { xp_total?: number }).xp_total === "number" ? (wxRow as { xp_total: number }).xp_total : 0) + deltaCapped;
-    const { error: uErr } = await supabase.from("weekly_xp").update({ xp_total: nextTotal }).eq("id", (wxRow as { id: number }).id);
-    if (uErr) return { ok: false, error: uErr.message };
-  }
+  // Atomic weekly_xp increment (UPSERT) — prevents read-modify-write lost writes.
+  const { error: wxErr } = await supabase.rpc("increment_weekly_xp", {
+    p_user_id: userId,
+    p_league_id: leagueId,
+    p_delta: deltaCapped,
+  });
+  if (wxErr) return { ok: false, error: wxErr.message };
 
   const coreResult = await applySeasonalXpToCore(supabase, userId, deltaCapped);
   if ("error" in coreResult) return { ok: false, error: coreResult.error };
