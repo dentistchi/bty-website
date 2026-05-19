@@ -380,16 +380,24 @@ export async function middleware(req: NextRequest) {
       }
     }
 
-    /** `ENGINE_ARCHITECTURE_V1.md` §6.3 — Pipeline N: open contract → My Page resolution (307). */
+    /**
+     * Pipeline N: open Action contract → canonical validation surface (307).
+     * The blocking contract gates Arena play; send the user to the resolve
+     * surface (`ArenaResolveClient` → `ArenaActionValidationForm`). The resolve
+     * path itself is excluded from the match so the redirect terminates there
+     * (no loop). See MVP-PRE-DIAG-11/12.
+     */
+    const arenaResolvePath = `/${locale}/bty-arena/play/resolve`;
     if (
       getArenaPipelineDefault() === "new" &&
       locale &&
-      (pathname === `/${locale}/bty-arena` || pathname.startsWith(`/${locale}/bty-arena/`))
+      (pathname === `/${locale}/bty-arena` || pathname.startsWith(`/${locale}/bty-arena/`)) &&
+      pathname !== arenaResolvePath &&
+      !pathname.startsWith(`${arenaResolvePath}/`)
     ) {
       const blocking = await userHasBlockingArenaActionContract(supabase, user.id);
       if (blocking) {
-        const dest = new URL(`/${locale}/bty`, req.url);
-        dest.searchParams.set("arena_contract", "resolve");
+        const dest = new URL(arenaResolvePath, req.url);
         const redirect = NextResponse.redirect(dest, 307);
         reassertAuthCookiesPathRoot(req, redirect);
         redirect.headers.set("x-mw-hit", "1");
