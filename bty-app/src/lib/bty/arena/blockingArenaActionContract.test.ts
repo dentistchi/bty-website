@@ -7,6 +7,7 @@ import {
 type QueryChain = {
   select: ReturnType<typeof vi.fn>;
   eq: ReturnType<typeof vi.fn>;
+  in: ReturnType<typeof vi.fn>;
   gt: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
   limit: ReturnType<typeof vi.fn>;
@@ -17,6 +18,7 @@ function makeSupabaseMock(row: Record<string, unknown> | null) {
   const chain: QueryChain = {
     select: vi.fn(),
     eq: vi.fn(),
+    in: vi.fn(),
     gt: vi.fn(),
     order: vi.fn(),
     limit: vi.fn(),
@@ -24,6 +26,7 @@ function makeSupabaseMock(row: Record<string, unknown> | null) {
   };
   chain.select.mockReturnValue(chain);
   chain.eq.mockReturnValue(chain);
+  chain.in.mockReturnValue(chain);
   chain.gt.mockReturnValue(chain);
   chain.order.mockReturnValue(chain);
   chain.limit.mockReturnValue(chain);
@@ -51,13 +54,20 @@ describe("blockingArenaActionContract", () => {
     expect(row?.id).toBe("c1");
   });
 
-  it("queries pending status only for ACTION_REQUIRED gate", async () => {
+  it("queries the four unresolved Action statuses for the blocking gate", async () => {
+    // MVP-FIX-ACTION-DEMO-01 (B-1): canonical "No Action → No Progression" —
+    // pending/submitted/rejected/escalated all block. approved/missed don't.
     const { supabase, chain } = makeSupabaseMock(null);
     await fetchBlockingArenaContractForSession(
       supabase as Parameters<typeof fetchBlockingArenaContractForSession>[0],
       "u1",
     );
-    expect(chain.eq).toHaveBeenCalledWith("status", "pending");
+    expect(chain.in).toHaveBeenCalledWith("status", [
+      "pending",
+      "submitted",
+      "rejected",
+      "escalated",
+    ]);
     expect(chain.gt).toHaveBeenCalled();
   });
 

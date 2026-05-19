@@ -46,7 +46,14 @@ export async function runArenaSessionNextCore(params: {
     });
 
     const blockingStatus = typeof blocking?.status === "string" ? blocking.status.trim().toLowerCase() : null;
-    if (blocking && blockingStatus === "pending") {
+    // MVP-FIX-ACTION-DEMO-01 (B-2): the blocking-fetch (B-1) now returns any
+    // unresolved Action status. Gate 409 on all of them so submitted /
+    // rejected / escalated also block next-scenario progression, not only
+    // pending. The mapper (runtimeStateFromBlockingContract) maps these to
+    // ACTION_REQUIRED / ACTION_SUBMITTED, which the resolve surface and
+    // middleware Pipeline-N gate already handle.
+    const BLOCKING_STATUSES = ["pending", "submitted", "rejected", "escalated"] as const;
+    if (blocking && blockingStatus != null && BLOCKING_STATUSES.includes(blockingStatus as typeof BLOCKING_STATUSES[number])) {
       const snap = snapshotForBlockedContract(blocking);
       return {
         status: 409,
@@ -64,8 +71,8 @@ export async function runArenaSessionNextCore(params: {
         },
       };
     }
-    if (blocking && blockingStatus !== "pending") {
-      console.warn("[arena] ignoring non-pending blocking row", {
+    if (blocking && (blockingStatus == null || !BLOCKING_STATUSES.includes(blockingStatus as typeof BLOCKING_STATUSES[number]))) {
+      console.warn("[arena] ignoring non-blocking row returned by blocking-fetch", {
         userId,
         status: blocking.status,
         contractId: blocking.id,

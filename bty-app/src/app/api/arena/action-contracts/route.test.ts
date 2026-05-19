@@ -84,14 +84,17 @@ describe("POST /api/arena/action-contracts", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ id: "contract-1", status: "pending" });
     expect(from).toHaveBeenCalledWith("bty_action_contracts");
+    // MVP-FIX-ACTION-DEMO-01 (A-1): demo-track contracts default to
+    // verification_mode=self_report and embed self_report_auto_approve in
+    // details so submit-validation skips Layer 2.
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({
       user_id: "u1",
       contract_description: body.what,
       deadline_at: expect.any(String),
-      verification_mode: "hybrid",
+      verification_mode: "self_report",
       status: "pending",
       required: true,
-      details: body,
+      details: { ...body, self_report_auto_approve: true },
       source: "json_dev_runtime",
     }));
     expect(select).toHaveBeenCalledWith("id,status");

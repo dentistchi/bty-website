@@ -57,8 +57,10 @@ export async function POST(request: NextRequest) {
       action_type: "json_dev_action_contract",
       mode: "arena",
 
-      verification_type: "hybrid",
-      verification_mode: "hybrid",
+      // MVP-FIX-ACTION-DEMO-01 (A-1): demo track verification — self_report
+      // with auto_approve flag in details so submit-validation skips Layer 2.
+      verification_type: "self_report",
+      verification_mode: "self_report",
       weight: 1,
       reset_eligible: false,
       le_activation_type: "micro_win",
@@ -74,7 +76,7 @@ export async function POST(request: NextRequest) {
       primary_choice_id: payload.selected_primary,
 
       source: "json_dev_runtime",
-      details: payload,
+      details: { ...payload, self_report_auto_approve: true },
 
       contract_description: payload.what,
       who: payload.who,

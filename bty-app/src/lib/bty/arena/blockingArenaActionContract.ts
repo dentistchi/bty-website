@@ -20,11 +20,15 @@ export async function fetchBlockingArenaContractForSession(
 ): Promise<BlockingArenaContractRow | null> {
   const nowIso = new Date().toISOString();
 
+  // MVP-FIX-ACTION-DEMO-01 (B-1): canonical "No Action → No Progression".
+  // Block on all unresolved Action statuses, not pending alone. approved
+  // (verified_at NOT NULL enforced by CHECK) and missed are resolved, not
+  // blocking. draft/committed are not in the CHECK enum, never persisted.
   const { data: openPending, error: errP } = await supabase
     .from("bty_action_contracts")
     .select("id, contract_description, deadline_at, verification_mode, created_at, status")
     .eq("user_id", userId)
-    .eq("status", "pending")
+    .in("status", ["pending", "submitted", "rejected", "escalated"])
     .gt("deadline_at", nowIso)
     .order("deadline_at", { ascending: false })
     .limit(1)

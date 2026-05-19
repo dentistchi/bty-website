@@ -3,6 +3,8 @@ import { logActionContractActorTrace } from "@/lib/bty/action-contract/arenaRunA
 import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { evaluateActionContractPayload } from "@/lib/bty/validator/runActionContractValidation";
+import type { ValidationEvaluationResult } from "@/lib/bty/validator/runActionContractValidation";
+import { runAllLayer1Rules } from "@/lib/bty/validator/layer1Rules";
 import { normalizePatternFamilyId } from "@/domain/pattern-family";
 
 export const runtime = "nodejs";
@@ -171,7 +173,15 @@ export async function POST(req: NextRequest) {
     effectiveStatus = "committed";
   }
 
-  if (effectiveStatus !== "pending" && effectiveStatus !== "rejected" && effectiveStatus !== "committed") {
+  // MVP-FIX-ACTION-DEMO-01 (A-3): escalated also allowed for resubmit — works
+  // together with B-1 (blocking-fetch surfaces escalated) so users can self-
+  // resolve via the validation form instead of waiting on the 72h cron.
+  if (
+    effectiveStatus !== "pending" &&
+    effectiveStatus !== "rejected" &&
+    effectiveStatus !== "committed" &&
+    effectiveStatus !== "escalated"
+  ) {
     const out = NextResponse.json({ error: "contract_not_submittable", status: st }, { status: 409 });
     copyCookiesAndDebug(base, out, req, true);
     return out;
@@ -209,14 +219,50 @@ export async function POST(req: NextRequest) {
     return out;
   }
 
-  const evalResult = await evaluateActionContractPayload({
-    who,
-    what,
-    how,
-    when,
-    rawText,
-    patternFamily: patternFamilyNorm,
-  });
+  // MVP-FIX-ACTION-DEMO-01 (A-2): demo-track contracts (verification_type=
+  // self_report + details.self_report_auto_approve=true) skip Layer 2, so
+  // staging's non-deterministic AI cannot stall the run with escalate.
+  // Layer 1 (structural — empty fields, format) still runs for both paths.
+  const verificationType =
+    typeof (contract as { verification_type?: unknown }).verification_type === "string"
+      ? String((contract as { verification_type?: string }).verification_type)
+      : "";
+  const details =
+    typeof (contract as { details?: unknown }).details === "object" &&
+    (contract as { details?: unknown }).details != null
+      ? ((contract as { details: Record<string, unknown> }).details ?? {})
+      : {};
+  const selfReportAutoApprove = details.self_report_auto_approve === true;
+  const canSelfReportAutoApprove =
+    verificationType === "self_report" && selfReportAutoApprove === true;
+
+  const evalResult: ValidationEvaluationResult = canSelfReportAutoApprove
+    ? (() => {
+        const layer1Errors = runAllLayer1Rules({ who, what, how, when, rawText });
+        return layer1Errors.length > 0
+          ? {
+              outcome: "revise" as const,
+              layer1Errors,
+              layer2Criteria: null,
+              modelId: null,
+              layer2TechnicalError: null,
+            }
+          : {
+              outcome: "approve" as const,
+              layer1Errors: [],
+              layer2Criteria: null,
+              modelId: null,
+              layer2TechnicalError: null,
+            };
+      })()
+    : await evaluateActionContractPayload({
+        who,
+        what,
+        how,
+        when,
+        rawText,
+        patternFamily: patternFamilyNorm,
+      });
 
   const admin = getSupabaseAdmin();
 
@@ -255,19 +301,9 @@ export async function POST(req: NextRequest) {
     return out;
   }
 
+  // verificationType / canSelfReportAutoApprove are computed earlier
+  // (MVP-FIX-ACTION-DEMO-01 A-2) and remain in scope here.
   const nowIso = new Date().toISOString();
-  const verificationType =
-    typeof (contract as { verification_type?: unknown }).verification_type === "string"
-      ? String((contract as { verification_type?: string }).verification_type)
-      : "";
-  const details =
-    typeof (contract as { details?: unknown }).details === "object" &&
-    (contract as { details?: unknown }).details != null
-      ? ((contract as { details: Record<string, unknown> }).details ?? {})
-      : {};
-  const selfReportAutoApprove = details.self_report_auto_approve === true;
-  const canSelfReportAutoApprove =
-    verificationType === "self_report" && selfReportAutoApprove === true;
 
   if (evalResult.outcome === "approve") {
     const approvePatch: Record<string, unknown> = canSelfReportAutoApprove
