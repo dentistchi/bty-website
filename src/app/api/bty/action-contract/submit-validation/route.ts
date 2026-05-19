@@ -6,6 +6,16 @@ import { evaluateActionContractPayload } from "@/lib/bty/validator/runActionCont
 import type { ValidationEvaluationResult } from "@/lib/bty/validator/runActionContractValidation";
 import { runAllLayer1Rules } from "@/lib/bty/validator/layer1Rules";
 import { normalizePatternFamilyId } from "@/domain/pattern-family";
+// MVP-FIX-ACTION-DEMO-05 (B): demo auto-approve must also complete the
+// arena_run and award XP. We inline the same 4 calls qr/validate uses in
+// its awaitingVerification branch (route.ts L218-259) — kept inline rather
+// than extracted so qr/validate's branch stays untouched.
+import { completeArenaRunAfterContractVerification } from "@/lib/bty/action-contract/actionContractLifecycle.server";
+import { onArenaRunCompleteVerified } from "@/lib/bty/level-engine/arenaLevelRecords";
+import {
+  applyArenaRunRewardsOnVerifiedCompletion,
+  reflectContractVerificationToAir,
+} from "@/lib/bty/arena/reflectionRewards.server";
 
 export const runtime = "nodejs";
 
@@ -61,7 +71,10 @@ export async function POST(req: NextRequest) {
   const { data: contract, error: loadErr } = await supabase
     .from("bty_action_contracts")
     .select(
-      "id, user_id, status, pattern_family, arena_scenario_id, session_id, run_id, verification_type, details",
+      // MVP-FIX-ACTION-DEMO-05 (B): le_activation_type/weight/chosen_at/
+      // deadline_at added to feed the inlined run-completion + AIR reflection
+      // calls in the canSelfReportAutoApprove auto-approve branch.
+      "id, user_id, status, pattern_family, arena_scenario_id, session_id, run_id, verification_type, details, le_activation_type, weight, chosen_at, deadline_at",
     )
     .eq("id", contractId)
     .eq("user_id", user.id)
@@ -375,6 +388,75 @@ export async function POST(req: NextRequest) {
         if (ridErr) {
           console.warn("[submit-validation] run_id backfill skipped", ridErr.message);
         }
+      }
+    }
+
+    // MVP-FIX-ACTION-DEMO-05 (B): demo auto-approve must also complete the
+    // arena_run and award XP. Mirrors qr/validate's awaitingVerification
+    // branch (route.ts L218-259) verbatim — kept inline to preserve that
+    // branch (INVARIANT 3). Only runs in the canSelfReportAutoApprove path;
+    // the standard non-auto branch (status='submitted') still requires a
+    // separate qr/validate witness pass.
+    if (canSelfReportAutoApprove) {
+      const c = contract as Record<string, unknown>;
+      const runIdFromContract =
+        typeof c.run_id === "string" && c.run_id.trim() !== "" ? c.run_id.trim() : "";
+      const sessionIdFromContract =
+        typeof c.session_id === "string" && c.session_id.trim() !== ""
+          ? c.session_id.trim()
+          : "";
+      const resolvedRunId =
+        runIdFromContract || sessionIdFromContract || sessionIdRaw || null;
+
+      if (admin && resolvedRunId) {
+        const finalized = await completeArenaRunAfterContractVerification(admin, {
+          userId: user.id,
+          runId: resolvedRunId,
+          verifiedAtIso: nowIso,
+        });
+        if (!finalized.runUpdated) {
+          console.error(
+            "[submit-validation] arena_runs completion after contract verify failed",
+          );
+        }
+
+        const levelRes = await onArenaRunCompleteVerified(admin, user.id);
+        if (!levelRes.ok) {
+          console.error("[submit-validation] level record update failed", levelRes.error);
+        }
+
+        const reward = await applyArenaRunRewardsOnVerifiedCompletion({
+          supabase: admin,
+          userId: user.id,
+          run: {
+            run_id: resolvedRunId,
+            scenario_id:
+              typeof c.arena_scenario_id === "string" ? c.arena_scenario_id : null,
+          },
+        });
+        if (!reward.ok) {
+          console.error("[submit-validation] deferred run reward apply failed", reward.error);
+        }
+
+        const airReflection = await reflectContractVerificationToAir({
+          supabase: admin,
+          userId: user.id,
+          runId: resolvedRunId,
+          verifiedAtIso: nowIso,
+          activationType:
+            typeof c.le_activation_type === "string" ? c.le_activation_type : null,
+          weight: typeof c.weight === "number" ? c.weight : null,
+          chosenAtIso: typeof c.chosen_at === "string" ? c.chosen_at : null,
+          dueAtIso: typeof c.deadline_at === "string" ? c.deadline_at : null,
+        });
+        if (!airReflection.ok) {
+          console.error("[submit-validation] AIR reflection failed", airReflection.error);
+        }
+      } else {
+        console.error(
+          "[submit-validation] auto-approve run completion skipped — admin or runId missing",
+          { hasAdmin: !!admin, resolvedRunId },
+        );
       }
     }
 

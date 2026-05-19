@@ -6,6 +6,7 @@
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as validation from "@/lib/bty/validator/runActionContractValidation";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { POST } from "./route";
 
 const mockRequireUser = vi.fn();
@@ -20,6 +21,42 @@ vi.mock("@/lib/supabase/route-client", () => ({
 
 vi.mock("@/lib/supabase-admin", () => ({
   getSupabaseAdmin: vi.fn(() => null),
+}));
+
+// MVP-FIX-ACTION-DEMO-05 (B): the auto-approve branch now inlines qr/validate's
+// run-completion + reward + AIR reflection calls. Mock the four modules so the
+// auto-approve test can verify they fire (and assertions are not weakened).
+// vi.hoisted is required so the mock fns exist when the hoisted vi.mock
+// factories run during module loading.
+const {
+  mockCompleteArenaRunAfterContractVerification,
+  mockOnArenaRunCompleteVerified,
+  mockApplyArenaRunRewardsOnVerifiedCompletion,
+  mockReflectContractVerificationToAir,
+} = vi.hoisted(() => ({
+  mockCompleteArenaRunAfterContractVerification: vi
+    .fn()
+    .mockResolvedValue({ runUpdated: true, deferredQueued: false }),
+  mockOnArenaRunCompleteVerified: vi.fn().mockResolvedValue({ ok: true }),
+  mockApplyArenaRunRewardsOnVerifiedCompletion: vi
+    .fn()
+    .mockResolvedValue({ ok: true, applied: true, coreXp: 12, weeklyXp: 8, deltaApplied: 8 }),
+  mockReflectContractVerificationToAir: vi.fn().mockResolvedValue({ ok: true }),
+}));
+
+vi.mock("@/lib/bty/action-contract/actionContractLifecycle.server", () => ({
+  completeArenaRunAfterContractVerification: (...args: unknown[]) =>
+    mockCompleteArenaRunAfterContractVerification(...args),
+}));
+vi.mock("@/lib/bty/level-engine/arenaLevelRecords", () => ({
+  onArenaRunCompleteVerified: (...args: unknown[]) =>
+    mockOnArenaRunCompleteVerified(...args),
+}));
+vi.mock("@/lib/bty/arena/reflectionRewards.server", () => ({
+  applyArenaRunRewardsOnVerifiedCompletion: (...args: unknown[]) =>
+    mockApplyArenaRunRewardsOnVerifiedCompletion(...args),
+  reflectContractVerificationToAir: (...args: unknown[]) =>
+    mockReflectContractVerificationToAir(...args),
 }));
 
 /** Keys that must never appear in terminal outcomes (rationale / internal evaluation leakage). */
@@ -307,6 +344,43 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     // 'self_attest' (admitted by CHECK enum); the flag name inside `details`
     // is intentionally preserved as `self_report_auto_approve` until the
     // post-demo label cleanup.
+    // MVP-FIX-ACTION-DEMO-05 (B): admin must be non-null for the inlined
+    // run-completion + XP wiring to fire — override the getSupabaseAdmin
+    // mock for this one test. The fake admin only needs a `.from()` chain
+    // that resolves cleanly (the run_id backfill block uses it); the four
+    // lifecycle/level/reward/AIR functions are module-mocked above and
+    // don't actually touch admin.
+    // Generic chainable fake covering admin.from(X).{update|insert|eq...}
+    // patterns used by run_id backfill and logEvaluation. Each terminal
+    // resolves to {error: null}; intermediate chain methods return self.
+    const makeFakeAdmin = () => {
+      const chain: Record<string, unknown> = {};
+      const terminal = Promise.resolve({ error: null });
+      chain.update = vi.fn().mockReturnValue(chain);
+      chain.insert = vi.fn().mockReturnValue(terminal);
+      chain.eq = vi.fn().mockImplementation(() => chain);
+      chain.then = (resolve: (v: { error: null }) => unknown) =>
+        terminal.then(resolve);
+      return { from: vi.fn().mockReturnValue(chain) };
+    };
+    const fakeAdmin = makeFakeAdmin();
+    vi.mocked(getSupabaseAdmin).mockReturnValueOnce(
+      fakeAdmin as unknown as ReturnType<typeof getSupabaseAdmin>,
+    );
+    // afterEach(restoreAllMocks) wipes the hoisted impls — re-set here per test.
+    mockCompleteArenaRunAfterContractVerification.mockResolvedValue({
+      runUpdated: true,
+      deferredQueued: false,
+    });
+    mockOnArenaRunCompleteVerified.mockResolvedValue({ ok: true });
+    mockApplyArenaRunRewardsOnVerifiedCompletion.mockResolvedValue({
+      ok: true,
+      applied: true,
+      coreXp: 12,
+      weeklyXp: 8,
+      deltaApplied: 8,
+    });
+    mockReflectContractVerificationToAir.mockResolvedValue({ ok: true });
     const updates: Record<string, unknown>[] = [];
     mockRequireUser.mockResolvedValue({
       user: { id: "user-1" },
@@ -348,5 +422,13 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
       verified_at: expect.any(String),
       completed_at: expect.any(String),
     });
+    // MVP-FIX-ACTION-DEMO-05 (B): demo auto-approve must also drive run
+    // completion and XP — the four lifecycle/level/reward/AIR calls should
+    // fire exactly once each, mirroring qr/validate's awaitingVerification
+    // branch. Assertions added (not weakened).
+    expect(mockCompleteArenaRunAfterContractVerification).toHaveBeenCalledTimes(1);
+    expect(mockOnArenaRunCompleteVerified).toHaveBeenCalledTimes(1);
+    expect(mockApplyArenaRunRewardsOnVerifiedCompletion).toHaveBeenCalledTimes(1);
+    expect(mockReflectContractVerificationToAir).toHaveBeenCalledTimes(1);
   });
 });
