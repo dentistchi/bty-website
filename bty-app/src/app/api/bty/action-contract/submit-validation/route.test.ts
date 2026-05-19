@@ -302,12 +302,16 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     expect(updates[1]).not.toHaveProperty("completed_at");
   });
 
-  it("auto-approves and completes for self_report with self_report_auto_approve=true", async () => {
+  it("auto-approves and completes for self_attest with self_report_auto_approve=true", async () => {
+    // MVP-FIX-ACTION-DEMO-03 (A'): demo signal is verification_type=
+    // 'self_attest' (admitted by CHECK enum); the flag name inside `details`
+    // is intentionally preserved as `self_report_auto_approve` until the
+    // post-demo label cleanup.
     const updates: Record<string, unknown>[] = [];
     mockRequireUser.mockResolvedValue({
       user: { id: "user-1" },
       supabase: makeSupabaseForContract("pending", {
-        verification_type: "self_report",
+        verification_type: "self_attest",
         details: { self_report_auto_approve: true },
         onUpdate: (payload) => updates.push(payload),
       }),
