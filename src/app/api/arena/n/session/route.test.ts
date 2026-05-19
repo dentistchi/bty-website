@@ -125,7 +125,10 @@ describe("GET /api/arena/n/session", () => {
     expect(data.scenario?.source).toBe("json");
   });
 
-  it("does not return 409 when blocking row status is submitted", async () => {
+  it("returns 409 when blocking row status is submitted (canonical: No Action → No Progression)", async () => {
+    // MVP-FIX-ACTION-DEMO-01 (B-2): submitted / rejected / escalated also
+    // gate next-scenario progression — not only pending. Previously this test
+    // asserted submitted should NOT block; the new canonical blocks it.
     const { from } = makeSupabaseForSessionRouter();
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
@@ -142,10 +145,9 @@ describe("GET /api/arena/n/session", () => {
     });
     const req = new NextRequest("http://localhost/api/arena/n/session?locale=en");
     const res = await GET(req);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(409);
     const data = await res.json();
-    expect(data.error).not.toBe("action_contract_pending");
-    expect(data.runtime_state).toBe("ARENA_SCENARIO_READY");
+    expect(data.error).toBe("action_contract_pending");
   });
 
   it("returns REEXPOSURE_DUE when delayed outcomes pending", async () => {

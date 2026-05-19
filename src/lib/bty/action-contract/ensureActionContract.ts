@@ -262,17 +262,22 @@ export async function ensureActionContractWithAdmin(
       run_id: params.runId,
       contract_description: actionContractSpec.description,
       deadline_at: deadlineAt,
-      verification_mode: "hybrid",
+      // MVP-FIX-ACTION-DEMO-01 (A-1): demo track — verification_type
+      // self_report + details.self_report_auto_approve so submit-validation
+      // skips Layer 2 (see route.ts A-2 branch). Pairs with the run-completion
+      // contract created here.
+      verification_mode: "self_report",
       status: "pending",
       required: false,
       action_id: actionId,
       action_type: "arena_run_completion",
       le_activation_type: "micro_win",
-      verification_type: "hybrid",
+      verification_type: "self_report",
       weight: 1.0,
       mode: "arena",
       chosen_at: chosenAt,
       pattern_family: patternFamilyForRow,
+      details: { self_report_auto_approve: true },
     })
     .select("id")
     .single();
