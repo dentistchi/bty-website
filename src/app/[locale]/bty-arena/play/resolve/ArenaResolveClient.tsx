@@ -4,6 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import {
   ArenaHeader,
+  ArenaActionValidationForm,
   ArenaPendingContractGate,
   ArenaBlockedSurface,
   ArenaRuntimeStateBanner,
@@ -43,6 +44,13 @@ export default function ArenaResolveClient({ locale }: Props) {
 
   const gateSnapshot = s.effectiveArenaSnapshot ?? s.arenaServerSnapshot;
   const runtimeState = gateSnapshot?.runtime_state ?? null;
+
+  // MVP-FIX-ACTION-01 (scope A): once submit-validation returns "approve",
+  // flip from the validation form to the QR gate client-side. A session
+  // refetch is intentionally NOT triggered — it would not re-surface the
+  // now-`submitted` contract (blocking-fetch is pending-only, DIAG-07) and
+  // would redirect away from this surface.
+  const [validationApproved, setValidationApproved] = React.useState(false);
 
   const isResolveState =
     runtimeState === "ACTION_REQUIRED" ||
@@ -124,16 +132,27 @@ export default function ArenaResolveClient({ locale }: Props) {
                 identity={s.arenaIdentity}
               />
               {s.pendingActionContract ? (
-                <ArenaPendingContractGate
-                  locale={locale}
-                  contract={s.pendingActionContract}
-                  runtimeState={runtimeState}
-                  onRetry={s.retryArenaSession}
-                  retryLoading={s.scenarioLoading}
-                  qrAllowed={gateSnapshot.gates?.qr_allowed === true}
-                  onCompleteByQr={s.startPendingContractQrFlow}
-                  qrLoading={s.pendingContractQrLoading}
-                />
+                runtimeState === "ACTION_REQUIRED" && !validationApproved ? (
+                  // Canonical: action validation precedes the QR gate.
+                  <ArenaActionValidationForm
+                    locale={locale}
+                    contractId={s.pendingActionContract.id}
+                    onApproved={() => setValidationApproved(true)}
+                  />
+                ) : (
+                  <ArenaPendingContractGate
+                    locale={locale}
+                    contract={s.pendingActionContract}
+                    runtimeState={
+                      validationApproved ? "ACTION_AWAITING_VERIFICATION" : runtimeState
+                    }
+                    onRetry={s.retryArenaSession}
+                    retryLoading={s.scenarioLoading}
+                    qrAllowed={gateSnapshot.gates?.qr_allowed === true}
+                    onCompleteByQr={s.startPendingContractQrFlow}
+                    qrLoading={s.pendingContractQrLoading}
+                  />
+                )
               ) : (
                 <ArenaBlockedSurface
                   snapshot={gateSnapshot}

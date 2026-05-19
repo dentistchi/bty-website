@@ -140,61 +140,30 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (pendingForCommit) {
-    const submittedAt = new Date().toISOString();
-    const { data: updated, error: upErr } = await adminClient
-      .from("bty_action_contracts")
-      .update({
-        status: "submitted",
-        submitted_at: submittedAt,
-      })
-      .eq("id", contractId)
-      .eq("user_id", userId)
-      .eq("status", "pending")
-      .select("id, status, submitted_at, verified_at")
-      .maybeSingle();
-
-    if (upErr || !updated || updated.status !== "submitted") {
-      console.error("[qr/validate] pending->submitted transition failed", {
+  // MVP-FIX-ACTION-01 (#3) — canonical: a QR scan does NOT complete the action.
+  // A contract that has not passed validation (validation_approved_at == null)
+  // is reported as ACTION_REQUIRED honestly — no auto pending->submitted
+  // promotion, no NEXT_SCENARIO_READY. Run completion + XP happen ONLY in the
+  // awaitingVerification branch below, after submit-validation has set
+  // validation_approved_at.
+  if (pendingForCommit || submittedAwaitingApproval) {
+    console.info("[qr/validate] validation not approved — refusing completion", {
+      contractId,
+      status: row.status,
+    });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "action_validation_required",
+        runtime_state: "ACTION_REQUIRED",
         contractId,
-        error: upErr?.message ?? null,
-        updatedStatus: updated?.status ?? null,
-      });
-      return NextResponse.json({ ok: false, error: "contract_update_failed" }, { status: 500 });
-    }
-    console.info("[qr/validate] pending->submitted transition complete", {
-      contractId,
-      finalStatus: updated.status,
-      submittedAt: updated.submitted_at ?? null,
-    });
-
-    return NextResponse.json({
-      ok: true,
-      userId,
-      sessionId: resolvedRunId,
-      contractId,
-      status: "submitted",
-      runtime_state: "NEXT_SCENARIO_READY",
-      gates: { next_allowed: true, choice_allowed: false, qr_allowed: false },
-      clientScanAtIso: typeof body.clientScanAtIso === "string" ? body.clientScanAtIso : null,
-    });
+      },
+      { status: 409 },
+    );
   }
 
-  if (!submittedAwaitingApproval && !awaitingVerification) {
+  if (!awaitingVerification) {
     return NextResponse.json({ ok: false, error: "contract_not_pending" }, { status: 409 });
-  }
-
-  if (submittedAwaitingApproval) {
-    return NextResponse.json({
-      ok: true,
-      userId,
-      sessionId: resolvedRunId,
-      contractId,
-      status: "submitted",
-      runtime_state: "NEXT_SCENARIO_READY",
-      gates: { next_allowed: true, choice_allowed: false, qr_allowed: false },
-      clientScanAtIso: typeof body.clientScanAtIso === "string" ? body.clientScanAtIso : null,
-    });
   }
 
   const verifiedAt = new Date().toISOString();

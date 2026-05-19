@@ -60,6 +60,8 @@ export { RunDetailView } from "./RunDetailView";
 export { ArenaRunHistory } from "./ArenaRunHistory";
 export { ArenaPendingContractGate } from "./ArenaPendingContractGate";
 export type { ArenaPendingContractGateProps } from "./ArenaPendingContractGate";
+export { ArenaActionValidationForm } from "./ArenaActionValidationForm";
+export type { ArenaActionValidationFormProps } from "./ArenaActionValidationForm";
 export { ArenaBindingError } from "./ArenaBindingError";
 export { ArenaBlockedSurface } from "./ArenaBlockedSurface";
 export type { ArenaBlockedSurfaceProps } from "./ArenaBlockedSurface";

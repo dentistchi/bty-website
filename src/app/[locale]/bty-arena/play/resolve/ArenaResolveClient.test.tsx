@@ -87,14 +87,16 @@ afterEach(() => {
 });
 
 describe("ArenaResolveClient — active Resolve states render Action Gate", () => {
-  it("renders ArenaPendingContractGate for ACTION_REQUIRED", () => {
+  it("renders the action validation form for ACTION_REQUIRED", () => {
     mockUseArenaSession.mockReturnValue({
       ...sessionBase(),
       arenaServerSnapshot: baseSnapshot("ACTION_REQUIRED"),
     });
     render(<ArenaResolveClient locale="en" />);
     expect(screen.getByTestId("arena-resolve-main-pending-contract")).toBeTruthy();
-    expect(screen.getByTestId("arena-pending-action-contract-gate")).toBeTruthy();
+    // Canonical (MVP-FIX-ACTION-01): ACTION_REQUIRED gates on validation,
+    // not the QR contract gate.
+    expect(screen.getByTestId("arena-action-validation-form")).toBeTruthy();
     expect(mockRouterReplace).not.toHaveBeenCalled();
   });
 
