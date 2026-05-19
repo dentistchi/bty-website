@@ -3,13 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockRequireUser = vi.fn();
 const mockRateLimitKV = vi.fn();
-const mockUpdate = vi.fn();
+const mockUpsert = vi.fn();
 const mockInsert = vi.fn();
 const mockSupabaseFrom = vi.fn((table: string) => {
   if (table === "arena_profiles") {
+    // route.ts performs: .upsert(payload, { onConflict }).select(cols)
     return {
-      update: (vals: unknown) => ({
-        eq: (_col: string, _val: unknown) => mockUpdate(vals),
+      upsert: (vals: unknown, _opts: unknown) => ({
+        select: (_cols?: string) => mockUpsert(vals),
       }),
     };
   }
@@ -56,7 +57,15 @@ beforeEach(() => {
     base: NextResponse.json({ ok: true }, { status: 200 }),
     error: null,
   });
-  mockUpdate.mockResolvedValue({ error: null });
+  // Success path: upsert returns the persisted row so route.ts can confirm
+  // consent_version landed before answering ok:true. Derive from payload so
+  // the returned consent_version always matches what each test sent.
+  mockUpsert.mockImplementation((vals: { user_id?: string; consent_version?: string }) =>
+    Promise.resolve({
+      data: [{ user_id: vals.user_id, consent_version: vals.consent_version }],
+      error: null,
+    }),
+  );
   mockInsert.mockResolvedValue({ error: null });
 });
 
@@ -110,8 +119,8 @@ describe("/api/legal/accept POST", () => {
     expect(body.error).toBe("invalid_consent_locale");
   });
 
-  it("returns 500 when UPDATE fails", async () => {
-    mockUpdate.mockResolvedValueOnce({ error: { message: "db down" } });
+  it("returns 500 when UPSERT fails", async () => {
+    mockUpsert.mockResolvedValueOnce({ data: null, error: { message: "db down" } });
     const POST = await loadPost();
     const res = await POST(
       reqWithBody({ consent_version: "2026-05-pending-v1", consent_locale: "en-US" }),
@@ -128,7 +137,7 @@ describe("/api/legal/accept POST", () => {
     const body = (await res.json()) as { ok?: boolean; consent_version?: string };
     expect(body.ok).toBe(true);
     expect(body.consent_version).toBe("2026-05-pending-v1");
-    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockUpsert).toHaveBeenCalledTimes(1);
     expect(mockInsert).toHaveBeenCalledTimes(1);
     const insertArg = mockInsert.mock.calls[0]?.[0] as {
       consent_type?: string;
@@ -143,7 +152,7 @@ describe("/api/legal/accept POST", () => {
     expect(insertArg.ip_address).toBe("1.2.3.4");
   });
 
-  it("returns 200 even when audit INSERT fails (UPDATE is primary)", async () => {
+  it("returns 200 even when audit INSERT fails (UPSERT is primary)", async () => {
     mockInsert.mockResolvedValueOnce({ error: { message: "audit failed" } });
     const POST = await loadPost();
     const res = await POST(
