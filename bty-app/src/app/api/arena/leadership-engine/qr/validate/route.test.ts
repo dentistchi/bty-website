@@ -318,7 +318,7 @@ describe("POST /api/arena/leadership-engine/qr/validate", () => {
     expect(mockReflectContractVerificationToAir).toHaveBeenCalledTimes(1);
   });
 
-  it("moves pending contract to submitted on commit token", async () => {
+  it("refuses a pending (unvalidated) contract — QR scan does not complete the action", async () => {
     adminFrom.mockImplementation((table: string) => {
       if (table === "arena_runs") {
         return {
@@ -389,10 +389,9 @@ describe("POST /api/arena/leadership-engine/qr/validate", () => {
       contractId: "c1",
     });
     const res = await POST(req({ arenaActionLoopToken: token }));
-    expect(res.status).toBe(200);
-    const data = (await res.json()) as { status: string; runtime_state: string };
-    expect(data.status).toBe("submitted");
-    expect(data.runtime_state).toBe("NEXT_SCENARIO_READY");
-    expect((data as { gates?: { next_allowed?: boolean } }).gates?.next_allowed).toBe(true);
+    expect(res.status).toBe(409);
+    const data = (await res.json()) as { error: string; runtime_state: string };
+    expect(data.error).toBe("action_validation_required");
+    expect(data.runtime_state).toBe("ACTION_REQUIRED");
   });
 });

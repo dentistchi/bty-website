@@ -170,7 +170,7 @@ describe("P5 A — blocking contract gate renders on Resolve route (ArenaResolve
     expect(mockRouterReplace).not.toHaveBeenCalled();
   });
 
-  it("starts QR flow from ACTION_REQUIRED gate without retry-session fetch path", () => {
+  it("starts QR flow from ACTION_SUBMITTED gate without retry-session fetch path", () => {
     const onRetry = vi.fn();
     const onQr = vi.fn();
     mockUseArenaSession.mockReturnValue({
@@ -179,7 +179,7 @@ describe("P5 A — blocking contract gate renders on Resolve route (ArenaResolve
       arenaPlaySurfaceAllowed: false,
       canRenderScenarioProgressionUi: false,
       arenaServerSnapshot: {
-        ...baseSnapshot("ACTION_REQUIRED"),
+        ...baseSnapshot("ACTION_SUBMITTED"),
         gates: { next_allowed: false, choice_allowed: false, qr_allowed: true },
       },
       retryArenaSession: onRetry,
@@ -201,7 +201,7 @@ describe("P5 A — blocking contract gate renders on Resolve route (ArenaResolve
       arenaPlaySurfaceAllowed: false,
       canRenderScenarioProgressionUi: false,
       arenaServerSnapshot: {
-        ...baseSnapshot("ACTION_REQUIRED"),
+        ...baseSnapshot("ACTION_SUBMITTED"),
         gates: { next_allowed: false, choice_allowed: false, qr_allowed: true },
       },
       retryArenaSession: onRetry,
