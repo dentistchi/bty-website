@@ -84,14 +84,16 @@ describe("POST /api/arena/action-contracts", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ id: "contract-1", status: "pending" });
     expect(from).toHaveBeenCalledWith("bty_action_contracts");
-    // MVP-FIX-ACTION-DEMO-01 (A-1): demo-track contracts default to
-    // verification_mode=self_report and embed self_report_auto_approve in
-    // details so submit-validation skips Layer 2.
+    // MVP-FIX-ACTION-DEMO-03 (A'): demo-track contracts —
+    // verification_type='self_attest' (admitted by CHECK enum),
+    // verification_mode='hybrid' (mode CHECK admits only qr/link/hybrid),
+    // self_report_auto_approve flag carried in details. The skip-Layer-2
+    // branch now keys on verification_type==='self_attest'.
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({
       user_id: "u1",
       contract_description: body.what,
       deadline_at: expect.any(String),
-      verification_mode: "self_report",
+      verification_mode: "hybrid",
       status: "pending",
       required: true,
       details: { ...body, self_report_auto_approve: true },

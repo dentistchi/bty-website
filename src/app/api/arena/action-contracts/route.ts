@@ -57,10 +57,12 @@ export async function POST(request: NextRequest) {
       action_type: "json_dev_action_contract",
       mode: "arena",
 
-      // MVP-FIX-ACTION-DEMO-01 (A-1): demo track verification — self_report
-      // with auto_approve flag in details so submit-validation skips Layer 2.
-      verification_type: "self_report",
-      verification_mode: "self_report",
+      // MVP-FIX-ACTION-DEMO-03 (A'): CHECK-correct demo track —
+      // verification_type='self_attest' (admitted by type CHECK enum),
+      // verification_mode='hybrid' (mode CHECK does not admit self_attest;
+      // hybrid keeps CHECK satisfied with no code branch effect).
+      verification_type: "self_attest",
+      verification_mode: "hybrid",
       weight: 1,
       reset_eligible: false,
       le_activation_type: "micro_win",

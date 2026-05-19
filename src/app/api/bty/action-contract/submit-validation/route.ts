@@ -233,8 +233,12 @@ export async function POST(req: NextRequest) {
       ? ((contract as { details: Record<string, unknown> }).details ?? {})
       : {};
   const selfReportAutoApprove = details.self_report_auto_approve === true;
+  // MVP-FIX-ACTION-DEMO-03 (A'): the demo track signal is
+  // verification_type='self_attest' (CHECK-admitted; mode 'hybrid' keeps the
+  // mode CHECK satisfied). Variable / flag names retain the "self_report"
+  // wording — post-demo cleanup will normalize the label.
   const canSelfReportAutoApprove =
-    verificationType === "self_report" && selfReportAutoApprove === true;
+    verificationType === "self_attest" && selfReportAutoApprove === true;
 
   const evalResult: ValidationEvaluationResult = canSelfReportAutoApprove
     ? (() => {
