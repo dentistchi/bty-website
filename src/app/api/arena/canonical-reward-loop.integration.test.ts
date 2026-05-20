@@ -77,6 +77,7 @@ vi.mock("@/engine/scenario/delayed-outcome-trigger.service", () => ({
 const mockInsertReinforcementDelayedOutcome = vi.fn();
 vi.mock("@/lib/bty/arena/reinforcementLoopSchedule.server", () => ({
   loopIterationForPendingRow: vi.fn(() => 1),
+  reinforcementCapReached: vi.fn(() => false),
   insertReinforcementDelayedOutcome: (...args: unknown[]) =>
     mockInsertReinforcementDelayedOutcome(...args),
 }));
@@ -85,11 +86,14 @@ vi.mock("@/lib/bty/arena/patternSignatureUpsert.server", () => ({
 }));
 
 const adminFrom = vi.fn();
-let adminRpc: (() => Promise<{ error: null }>) | null = null;
+let adminRpc:
+  | ((fn?: string, args?: Record<string, unknown>) => Promise<{ error: null }>)
+  | null = null;
 vi.mock("@supabase/supabase-js", () => ({
   createClient: vi.fn(() => ({
     from: adminFrom,
-    rpc: () => (adminRpc ? adminRpc() : Promise.resolve({ error: null })),
+    rpc: (fn: string, args?: Record<string, unknown>) =>
+      adminRpc ? adminRpc(fn, args) : Promise.resolve({ error: null }),
   })),
 }));
 
@@ -333,7 +337,32 @@ describe("canonical reward loop integration", () => {
     mockGetSupabaseServerClient.mockResolvedValue(client);
     mockGetSupabaseAdmin.mockReturnValue(client as never);
     adminFrom.mockImplementation((table: string) => client.from(table));
-    adminRpc = async () => ({ error: null });
+    adminRpc = async (fn?: string, args?: Record<string, unknown>) => {
+      if (fn === "increment_weekly_xp") {
+        const uid = args?.p_user_id as string | undefined;
+        const lid = (args?.p_league_id ?? null) as string | null;
+        const delta = Number(args?.p_delta ?? 0);
+        if (uid && delta !== 0) {
+          const idx = state.weeklyXp.findIndex(
+            (r) => r.user_id === uid && (r.league_id ?? null) === lid,
+          );
+          if (idx >= 0) {
+            state.weeklyXp[idx] = {
+              ...state.weeklyXp[idx],
+              xp_total: Number(state.weeklyXp[idx].xp_total ?? 0) + delta,
+            };
+          } else {
+            state.weeklyXp.push({
+              id: `wx${state.weeklyXp.length + 1}`,
+              user_id: uid,
+              league_id: lid,
+              xp_total: delta,
+            });
+          }
+        }
+      }
+      return { error: null };
+    };
     mockEnsureActionContractForArenaRun.mockResolvedValue({
       ok: true,
       created: true,
