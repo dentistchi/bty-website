@@ -138,12 +138,31 @@ function makeRequest(body: unknown): NextRequest {
 }
 
 describe("POST /api/bty/action-contract/submit-validation", () => {
+  // STAB-01-P1: per-test env state save/restore. The 4-AND gate at
+  // route.ts L253-282 reads process.env.SELF_REPORT_AUTO_APPROVE and
+  // process.env.BTY_ENV; tests that mutate either must restore them so
+  // global env does not leak across cases (MUT-2.5).
+  let originalSelfReportAutoApprove: string | undefined;
+  let originalBtyEnv: string | undefined;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    originalSelfReportAutoApprove = process.env.SELF_REPORT_AUTO_APPROVE;
+    originalBtyEnv = process.env.BTY_ENV;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    if (originalSelfReportAutoApprove === undefined) {
+      delete process.env.SELF_REPORT_AUTO_APPROVE;
+    } else {
+      process.env.SELF_REPORT_AUTO_APPROVE = originalSelfReportAutoApprove;
+    }
+    if (originalBtyEnv === undefined) {
+      delete process.env.BTY_ENV;
+    } else {
+      process.env.BTY_ENV = originalBtyEnv;
+    }
   });
 
   it("G-B06: returns multiple Layer 1 errors simultaneously (single response)", async () => {
@@ -344,6 +363,11 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     // 'self_attest' (admitted by CHECK enum); the flag name inside `details`
     // is intentionally preserved as `self_report_auto_approve` until the
     // post-demo label cleanup.
+    // STAB-01-P1: the 4-AND gate also requires worker-level env conditions
+    // (SELF_REPORT_AUTO_APPROVE="true" + BTY_ENV="staging"). Set both for
+    // this positive case to satisfy the extended gate.
+    process.env.SELF_REPORT_AUTO_APPROVE = "true";
+    process.env.BTY_ENV = "staging";
     // MVP-FIX-ACTION-DEMO-05 (B): admin must be non-null for the inlined
     // run-completion + XP wiring to fire — override the getSupabaseAdmin
     // mock for this one test. The fake admin only needs a `.from()` chain
@@ -430,5 +454,154 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     expect(mockOnArenaRunCompleteVerified).toHaveBeenCalledTimes(1);
     expect(mockApplyArenaRunRewardsOnVerifiedCompletion).toHaveBeenCalledTimes(1);
     expect(mockReflectContractVerificationToAir).toHaveBeenCalledTimes(1);
+  });
+
+  // STAB-01-P1 negative case #1: missing env flag.
+  // Contract-level signals alone (self_attest + details.self_report_auto_approve=true)
+  // are no longer sufficient under the 4-AND gate. Without
+  // SELF_REPORT_AUTO_APPROVE="true" in process.env, the route must fall
+  // through to evaluateActionContractPayload (Layer 2).
+  it("does NOT auto-approve when SELF_REPORT_AUTO_APPROVE env flag is unset", async () => {
+    delete process.env.SELF_REPORT_AUTO_APPROVE;
+    process.env.BTY_ENV = "staging";
+
+    const updates: Record<string, unknown>[] = [];
+    mockRequireUser.mockResolvedValue({
+      user: { id: "user-1" },
+      supabase: makeSupabaseForContract("pending", {
+        verification_type: "self_attest",
+        details: { self_report_auto_approve: true },
+        onUpdate: (payload) => updates.push(payload),
+      }),
+      base: {},
+    });
+    const evalSpy = vi
+      .spyOn(validation, "evaluateActionContractPayload")
+      .mockResolvedValue({
+        outcome: "escalate",
+        layer1Errors: [],
+        layer2Criteria: null,
+        modelId: null,
+        layer2TechnicalError: null,
+      });
+
+    const res = await POST(
+      makeRequest({
+        contractId: "contract-1",
+        who: "Alex Kim",
+        what: "Self report completion",
+        when: "2026-04-15 15:00",
+        how: "Submit report",
+        raw_text: "Raw evidence",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).outcome).toBe("escalate");
+    expect(evalSpy).toHaveBeenCalledTimes(1);
+    const last = updates[updates.length - 1];
+    expect(last).toMatchObject({
+      status: "escalated",
+      escalated_at: expect.any(String),
+    });
+  });
+
+  // STAB-01-P1 negative case #2: production env (D2 enforcement).
+  // Even when SELF_REPORT_AUTO_APPROVE="true" leaks somehow, BTY_ENV must
+  // also normalize to "staging" for the gate to satisfy. Production worker
+  // (BTY_ENV="production") never auto-approves.
+  it("does NOT auto-approve when BTY_ENV is production even if SELF_REPORT_AUTO_APPROVE is true", async () => {
+    process.env.SELF_REPORT_AUTO_APPROVE = "true";
+    process.env.BTY_ENV = "production";
+
+    const updates: Record<string, unknown>[] = [];
+    mockRequireUser.mockResolvedValue({
+      user: { id: "user-1" },
+      supabase: makeSupabaseForContract("pending", {
+        verification_type: "self_attest",
+        details: { self_report_auto_approve: true },
+        onUpdate: (payload) => updates.push(payload),
+      }),
+      base: {},
+    });
+    const evalSpy = vi
+      .spyOn(validation, "evaluateActionContractPayload")
+      .mockResolvedValue({
+        outcome: "escalate",
+        layer1Errors: [],
+        layer2Criteria: null,
+        modelId: null,
+        layer2TechnicalError: null,
+      });
+
+    const res = await POST(
+      makeRequest({
+        contractId: "contract-1",
+        who: "Alex Kim",
+        what: "Self report completion",
+        when: "2026-04-15 15:00",
+        how: "Submit report",
+        raw_text: "Raw evidence",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).outcome).toBe("escalate");
+    expect(evalSpy).toHaveBeenCalledTimes(1);
+    const last = updates[updates.length - 1];
+    expect(last).toMatchObject({
+      status: "escalated",
+      escalated_at: expect.any(String),
+    });
+  });
+
+  // STAB-01-P1 negative case #3: verification_type mismatch.
+  // The contract-level verification_type AND-term in the 4-AND gate
+  // preserves D3 — only self_attest contracts qualify. external_witness
+  // (and any non-self_attest mode) continues to route through Layer 2 /
+  // QR witness verification regardless of the env flag.
+  it("does NOT auto-approve when verification_type is external_witness regardless of env flag", async () => {
+    process.env.SELF_REPORT_AUTO_APPROVE = "true";
+    process.env.BTY_ENV = "staging";
+
+    const updates: Record<string, unknown>[] = [];
+    mockRequireUser.mockResolvedValue({
+      user: { id: "user-1" },
+      supabase: makeSupabaseForContract("pending", {
+        verification_type: "external_witness",
+        details: { self_report_auto_approve: true },
+        onUpdate: (payload) => updates.push(payload),
+      }),
+      base: {},
+    });
+    const evalSpy = vi
+      .spyOn(validation, "evaluateActionContractPayload")
+      .mockResolvedValue({
+        outcome: "escalate",
+        layer1Errors: [],
+        layer2Criteria: null,
+        modelId: null,
+        layer2TechnicalError: null,
+      });
+
+    const res = await POST(
+      makeRequest({
+        contractId: "contract-1",
+        who: "Alex Kim",
+        what: "External witness verification path",
+        when: "2026-04-15 15:00",
+        how: "Witness signs receipt",
+        raw_text: "Raw evidence",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).outcome).toBe("escalate");
+    expect(evalSpy).toHaveBeenCalledTimes(1);
+    const last = updates[updates.length - 1];
+    expect(last).toMatchObject({
+      status: "escalated",
+      escalated_at: expect.any(String),
+    });
   });
 });
