@@ -1,5 +1,7 @@
 # CURRENT TASK — 2026-03-23
 
+**STAB-01-P1**: [x] **완료.** Self-report auto-approve 4-AND gate landed (2026-05-20). submit-validation route: 2-AND → 4-AND (adds `env.SELF_REPORT_AUTO_APPROVE='true'` + `env.BTY_ENV='staging'` terms). wrangler.toml `[vars]` +1 line; staging-only scope enforced by file-level `name="bty-arena-staging"` + code-level BTY_ENV AND-term (D5 option α). D3/D4 preserved. Baseline 3296 → 3299/0/6, tsc clean. Staging deploy Version `84ba771b-fb74-458e-ba54-7f2b94043245`. Inner `72a38bf2`, outer leak-integration `0b12c9b`. VG-5 demo-lifecycle smoke classifier-deferred (Commander interactive); VG-6 production leak DEFERRED (prod worker config external). Push to origin pending Commander VG-5 confirmation.
+
 ## Current governance mode
 
 **Procedure-enforced semantic mutation validation.**
