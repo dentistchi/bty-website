@@ -236,6 +236,15 @@ export async function POST(req: NextRequest) {
   // self_report + details.self_report_auto_approve=true) skip Layer 2, so
   // staging's non-deterministic AI cannot stall the run with escalate.
   // Layer 1 (structural — empty fields, format) still runs for both paths.
+  // STAB-01-P1 (Commander 2026-05-20, A2 option α): the 2-AND gate is
+  // extended to a 4-AND gate. The original two contract-level conditions
+  // (verification_type='self_attest' + details.self_report_auto_approve=true)
+  // remain in place; two worker-level env conditions are AND-ed in as
+  // defense-in-depth. Layer 2 architecture preserved (D3). wrangler.toml
+  // topology NOT restructured — staging-only scope enforced by file-level
+  // `name = "bty-arena-staging"` binding plus the code-level BTY_ENV AND-
+  // term below (D5). Production worker config is external and never reads
+  // SELF_REPORT_AUTO_APPROVE.
   const verificationType =
     typeof (contract as { verification_type?: unknown }).verification_type === "string"
       ? String((contract as { verification_type?: string }).verification_type)
@@ -250,8 +259,15 @@ export async function POST(req: NextRequest) {
   // verification_type='self_attest' (CHECK-admitted; mode 'hybrid' keeps the
   // mode CHECK satisfied). Variable / flag names retain the "self_report"
   // wording — post-demo cleanup will normalize the label.
+  const isStagingWorker =
+    process.env.BTY_ENV?.trim().toLowerCase() === "staging";
+  const envAutoApprove =
+    process.env.SELF_REPORT_AUTO_APPROVE === "true";
   const canSelfReportAutoApprove =
-    verificationType === "self_attest" && selfReportAutoApprove === true;
+    verificationType === "self_attest" &&
+    selfReportAutoApprove === true &&
+    envAutoApprove === true &&
+    isStagingWorker === true;
 
   const evalResult: ValidationEvaluationResult = canSelfReportAutoApprove
     ? (() => {
