@@ -117,13 +117,30 @@ export function playCountsByFlagType(
 }
 
 /**
+ * djb2 string hash → uint32. Seeds the deterministic tie-break in
+ * {@link pickScenarioIdByFlagCoverage} so the lex-first lock-in observed in REPLAY
+ * exhaustion paths (STAB-06-P0D-A) rotates per `(userId, UTC date)`.
+ */
+function djb2Hash(seed: string): number {
+  let h = 5381;
+  for (let i = 0; i < seed.length; i++) {
+    h = ((h << 5) + h + seed.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
+/**
  * Among candidates, prefer those whose `flag_type` was seen least often in history.
- * Tie-break: lexicographic `scenarioId` (deterministic). Fresh users have empty history so all
- * flag counts are 0 — random ties previously caused different first scenarios per login.
+ * Tie-break: when `tieBreakSeed` is provided, pick by `djb2(seed) mod tier.length` over the
+ * lex-sorted tier — stable per seed, rotates across seeds (STAB-06-P0D-A: removes
+ * `scenarioList[0]` lock-in in REPLAY exhaustion paths). Without a seed, falls back to
+ * lex-first for backward compatibility. Fresh users have empty history so all flag counts
+ * are 0 — random ties previously caused different first scenarios per login.
  */
 export function pickScenarioIdByFlagCoverage(
   candidates: readonly ScenarioMeta[],
   counts: ReadonlyMap<string, number>,
+  tieBreakSeed?: string,
 ): ScenarioMeta {
   if (candidates.length === 0) {
     throw new ScenarioSelectionError("no_scenario_available", "No candidate scenarios after filters.");
@@ -135,6 +152,10 @@ export function pickScenarioIdByFlagCoverage(
   }
   const tier = candidates.filter((c) => (counts.get(c.flag_type) ?? 0) === min);
   const sorted = [...tier].sort((a, b) => a.scenarioId.localeCompare(b.scenarioId));
+  if (tieBreakSeed && sorted.length > 1) {
+    const idx = djb2Hash(tieBreakSeed) % sorted.length;
+    return sorted[idx]!;
+  }
   return sorted[0]!;
 }
 
@@ -493,7 +514,8 @@ export async function selectNextScenario(
       return scenario;
     }
 
-    const meta = pickScenarioIdByFlagCoverage(pool, counts);
+    const tieBreakSeed = `${userId}:${new Date().toISOString().slice(0, 10)}`;
+    const meta = pickScenarioIdByFlagCoverage(pool, counts, tieBreakSeed);
     if (options?._debugOut) {
       options._debugOut.selectedScenarioId = meta.scenarioId;
       options._debugOut.reason = "coverage_gap";
