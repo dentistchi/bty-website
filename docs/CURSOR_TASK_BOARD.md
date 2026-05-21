@@ -41,6 +41,97 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## STAB-05-P0[ABCD] — Runtime Completion Integrity Audit: Inventory Certified
+
+**Status:** CLOSED / INVENTORY CERTIFIED
+**Date:** 2026-05-21 (D-9 from 2026-05-30 launch)
+**Anchor:** inner c3f933c6 / outer post-STAB-05 closure commit (see git log on main) / staging Version a27781f5-e709-4660-bd07-1d11a72d60d7 (canonical anchor preserved)
+**Baseline:** 3303 passed / 0 failed / 6 skipped (unchanged — no code mutation occurred)
+
+### Doctrine
+
+STAB-05 did not identify a single root cause by design.
+
+It completed relational topology inventory and preserved all hypotheses without selection.
+
+No mutation, no code inspection, no fix proposal.
+
+### Archive Summary (top-of-mind, 5 findings)
+
+1. arena_runs completion topology is not table-local only.
+2. status/completion_state divergence exists and repeats as a dual-field pattern (also present in arena_pending_outcomes status × consumed_at).
+3. User lineage is material: orphan / test / synthetic / admin-pattern users are present in the data.
+4. arena_events is a real progression surface with monotonic event/run gradient (IN_PROGRESS 1.78 → ABANDONED 3.00 → DONE 4.71).
+5. arena_pending_outcomes is a separate lifecycle surface, not joined to arena_events via source_event_id.
+
+### Composite Topology Shape (Commander-locked finding)
+
+> Runtime completion integrity issue is composite:
+> table-local + user-lineage-local + event-surface distributed.
+
+These three shapes are not mutually exclusive. The data supports surfaces of all three. No single shape explains all observations.
+
+### Phase Sequence
+
+- **P0A — DB Status Census:** 5 hypotheses enumerated (H1-H5). 828 arena_runs / 3 status values (IN_PROGRESS 492, DONE 287, ABANDONED 49).
+- **P0B — Extended DB Census:** dual-field divergence localized (83 rows DONE×in_progress + 1 row inverse), pipeline all legacy (828/828), hanbitchi 9 temporal clusters identified. D1-D4 added.
+- **P0C — Final DB Census:** orphan user `85bd8f1f-...` (49 ABANDONED + 31 divergence rows, identity-table absent). 23 arena-related tables inventoried. arena_events 2.87x event-per-run ratio. D5-D8 added.
+- **P0D — Orphan + Event Surface Census:** 11 distinct user_ids total in 828 runs; 3 synthetic UUIDs (b0000000-...-e201/202/203); FK on arena_runs.user_id confirmed; arena_events events/run monotonic gradient; arena_pending_outcomes lifecycle surface with self-divergence (status × consumed_at). D9-D12 added. H6, H7 emerged.
+
+### Hypotheses Preserved (No Selection)
+
+- H1: abandonment without ABANDONED status (narrowed to single orphan user / 21-day window)
+- H2: parallel run permission (mechanism uninspected)
+- H3a: pipeline column divergence in arena_runs (narrowed: all production rows legacy)
+- H3b: parallel runtime materialization in arena_events (narrowed: surface monotonic with progression)
+- H4: multi-field status divergence (narrowed: pattern is table-systemic, repeats across arena_runs + arena_pending_outcomes)
+- H5: test/dev/synthetic accumulation (narrowed: 4+ test-pattern users in cohort)
+- H6: outcome-driven divergence (alive with connection topology re-questioned)
+- H7: reinforcement loop chain divergence (alive from schema inventory)
+
+### Distinction Surfaces Accumulated
+
+D1-D12 across 4 phases. Full enumeration in conversation history. Surfaces materially narrowed without selection.
+
+### Structural Findings (S1-S11)
+
+Including: FK constraint presence, CHECK constraints on completion_state and pipeline, RUN_COMPLETED_APPLIED count (239) ≠ DONE count (287), arena_pending_outcomes not connected to arena_events via source_event_id, public.users contains password column (security inventory observation).
+
+### Decision Rationale (D-9 closure framing)
+
+STAB-05 is not a "fixed" phase — it is a "topology map established" phase. Further inspection (code paths, root cause selection, fix proposal) deferred. Closure at this depth was Commander decision:
+
+- Sufficient signal for next backlog item (dashboard dual-surface branching) without further STAB-05 depth
+- Deeper inspection would shift from inventory to fix temptation
+- D-9 launch posture requires observation-grade artifacts, not implementation-grade fixes for non-blocker findings
+
+### Stabilization Chain (narrative continuation)
+
+- STAB-01-P1: SELF_REPORT_AUTO_APPROVE 4-AND gate
+- STAB-02-P1: core_xp_ledger ARENA insert
+- STAB-03-A-P1: snapshot column-mapping correction
+- STAB-04-P0: rollback survivability certification (PARTIALLY CERTIFIED, governance success)
+- **STAB-05-P0[ABCD]: runtime completion topology audit (CLOSED, INVENTORY CERTIFIED, no code touched)**
+
+D-9 chain extended. Launch posture: strong + topology-mapped.
+
+### Operational Lessons (ledger archive only, memory deferred per Commander)
+
+1. Inventory-first doctrine prevents premature causality lock — 4-phase audit preserved 7 alive hypotheses without scoring.
+2. 4-tier response structure (Observed / Possible / Distinguishing surface / Not yet inspected) maintained across 32+ queries; constraint not violated.
+3. SQL provisional queries based on assumed column names must NOT execute before schema discovery — multiple Wave 1 errors in P0D from this pattern.
+4. Composite topology shapes are valid findings; "single root cause" is not a required output.
+5. DB census without auth schema reads (PII-restricted) successfully produced identity inventory via `profiles`, `bty_profiles`, `arena_profiles`, `users` (public schema).
+6. arena_pending_outcomes is structurally a separate lifecycle table from arena_events — bridge hypothesis (source_event_id) does NOT join in current data.
+
+### Memory consolidation status: DEFERRED
+
+Per Commander 2026-05-21 directive: context entropy management priority over memory accumulation. STAB-05 findings preserved in this ledger entry only.
+
+Candidate for future memory promotion (currently deferred): "Runtime completion topology is composite, not single-table."
+
+---
+
 ## STAB-04-P0 — Semantic Rollback Integrity Certification
 
 **Status:** PARTIALLY CERTIFIED — governance success (not incomplete execution)
