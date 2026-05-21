@@ -41,6 +41,22 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## STAB-06-P0D — Outer Leak-Integration: scenario-selector
+
+**Status:** CLOSED / OUTER MIRROR RECONCILED
+**Date:** 2026-05-21
+**Header:** [stab_06_p0d outer leak-integration 2026-05-21]
+
+scenario-selector.service.ts brought into outer mirror. Inner blob 2ab5779a now reflected in outer. Selector seed update `${userId}:${UTC date}:${served.length}` certified live both repos.
+
+**Technical anchors:**
+- Inner closure commits: `88c15287` (STAB-06-P0D-A: djb2Hash + tieBreakSeed `${userId}:${UTC date}`), `b2d3f08a` (STAB-06-P0D-A2: seed += `:${served.length}`, GET rotation).
+- Worker live: `110fa9aa` → `db0dbfa1` (P0D-A2 deploy, smoke 3x PASS at prior closure).
+- Outer leak duration: bridge between inner P0D closure and STAB-06-FIX-03 outer closure phase.
+- Outer integration: outer `bty-app/` prefix sync, blob `6af2eb6d` → `2ab5779a` (this commit).
+
+---
+
 ## STAB-05-P0[ABCD] — Runtime Completion Integrity Audit: Inventory Certified
 
 **Status:** CLOSED / INVENTORY CERTIFIED
