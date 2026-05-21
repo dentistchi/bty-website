@@ -2080,6 +2080,16 @@ const eb =
         url?: string;
         error?: string;
       };
+      if (res.status === 409 && json.error === "contract_not_pending") {
+        console.info("[arena][pending-contract-qr] contract_not_pending — clearing stale ref", {
+          runId: runId ?? null,
+          contractId: contract.id,
+        });
+        setPendingActionContract(null);
+        retryArenaSession();
+        setToast(t.eliteRunStepAdvanceError);
+        return;
+      }
       if (!res.ok || typeof json.url !== "string" || json.url.trim() === "") {
         console.warn("[arena][pending-contract-qr] token request failed", {
           status: res.status,
