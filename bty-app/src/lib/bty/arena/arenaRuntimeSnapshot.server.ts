@@ -58,7 +58,12 @@ export function actionContractSnapshotFromBlocking(row: BlockingArenaContractRow
     exists: true,
     id: row.id,
     status: row.status,
-    verification_type: row.verification_mode,
+    // STAB-03-A-P1: sourced from canonical verification_type column.
+    // Legacy verification_mode column held 'hybrid' for CHECK workaround
+    // (admits qr/link/hybrid only); verification_type column holds the
+    // demo-fix value 'self_attest' (admits qr/link/hybrid/self_attest/...).
+    // Per MVP-FIX-ACTION-DEMO-03 (A') commits 86ba195d / b2c0ca5a / c727284a.
+    verification_type: row.verification_type,
     deadline_at: row.deadline_at,
   };
 }

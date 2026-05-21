@@ -6,6 +6,7 @@ export type BlockingArenaContractRow = {
   contract_description: string;
   deadline_at: string;
   verification_mode: string;
+  verification_type: string;
   created_at: string;
   status: string;
 };
@@ -26,7 +27,7 @@ export async function fetchBlockingArenaContractForSession(
   // blocking. draft/committed are not in the CHECK enum, never persisted.
   const { data: openPending, error: errP } = await supabase
     .from("bty_action_contracts")
-    .select("id, contract_description, deadline_at, verification_mode, created_at, status")
+    .select("id, contract_description, deadline_at, verification_mode, verification_type, created_at, status")
     .eq("user_id", userId)
     .in("status", ["pending", "submitted", "rejected", "escalated"])
     .gt("deadline_at", nowIso)
@@ -58,7 +59,7 @@ export async function fetchBlockingContractRowByContractId(
   if (!cid) return null;
   const { data, error } = await supabase
     .from("bty_action_contracts")
-    .select("id, contract_description, deadline_at, verification_mode, created_at, status")
+    .select("id, contract_description, deadline_at, verification_mode, verification_type, created_at, status")
     .eq("user_id", userId)
     .eq("id", cid)
     .maybeSingle();
