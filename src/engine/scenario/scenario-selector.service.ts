@@ -514,7 +514,7 @@ export async function selectNextScenario(
       return scenario;
     }
 
-    const tieBreakSeed = `${userId}:${new Date().toISOString().slice(0, 10)}`;
+    const tieBreakSeed = `${userId}:${new Date().toISOString().slice(0, 10)}:${served.length}`;
     const meta = pickScenarioIdByFlagCoverage(pool, counts, tieBreakSeed);
     if (options?._debugOut) {
       options._debugOut.selectedScenarioId = meta.scenarioId;
