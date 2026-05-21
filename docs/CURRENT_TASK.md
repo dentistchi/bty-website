@@ -1,3 +1,42 @@
+## Current Status (post-STAB-04-P0)
+
+**Closed:** STAB-01-P1, STAB-02-P1, STAB-03-A-P1, STAB-04-P0 (PARTIALLY CERTIFIED — governance success)
+**P0 count:** 0
+**Baseline:** 3303 passed / 0 failed / 6 skipped @ inner c3f933c6 / outer post-STAB-04-P0 closure commit (see git log on main) / staging a27781f5-e709-4660-bd07-1d11a72d60d7
+**Canonical operational anchor:** `a27781f5-e709-4660-bd07-1d11a72d60d7` = canonical rollback-safe stabilization anchor
+**D-9 posture:** launch-survivable; stabilization chain complete
+
+## Active Backlog (priority-ranked, Commander directive 2026-05-21)
+
+**HIGH priority (D-9 ~ launch):**
+- stale IN_PROGRESS arena runs accumulation (pilot UX / runtime drift risk; hanbitchi single-account observed 14 IN_PROGRESS / 6 DONE across 20 most recent runs)
+- dashboard dual-surface state branching (`ACTION_AWAITING_VERIFICATION` on action contract card vs `EXECUTION_RECORDED` on dashboard, parallel rendering observed during STAB-04 R1.3)
+
+**MEDIUM priority (pre-launch decision):**
+- Supabase NANO tier capacity review for 20-user pilot
+
+**Post-launch hardening:**
+- R2 DB constraint round-trip execution (when staging DB provisioned)
+- R3 combined disaster scenario rehearsal
+- Layer2 escalation fix (external_witness/hybrid path)
+- arena_runs.total_xp dead column
+- Lab path 0 rows investigation
+- BTY_DEPLOY_VERSION auto-bump
+- weekly-reset cron activation (per MUT-21B F3-α)
+- eslint ajv schema (pre-existing latent)
+- 12-axis review (separate track)
+- VRS-1 UI redesign (post-launch only)
+
+## Operating Doctrine (D-9 ~ D-Day)
+
+- No new features. No new branching. No new verification modes.
+- Allowed: wedge removal, UX seam removal, observability, rollback rehearsal, deterministic success reinforcement.
+- Cultural baseline: inventory-first, minimum-surface, baseline-preserving, rollback-aware.
+- **STAB-04 doctrine:** rollback boundaries preserve semantic runtime continuity → incident response foundation.
+- **Canonical anchor lock:** `a27781f5` is the operational reference point for "known-good rollback-safe state" until a new stabilization anchor is explicitly declared.
+
+---
+
 # CURRENT TASK — 2026-03-23
 
 **STAB-03-A-P1**: [x] **완료.** Snapshot column-mapping correction landed (2026-05-21). `BlockingArenaContractRow` + SELECT clauses gain `verification_type`; `arenaRuntimeSnapshot.server.ts:61` + `arenaSessionNextCore.ts:66` source from `row.verification_type` (was `row.verification_mode`). Per STAB-03-P0 inventory verdict (iii) — UI display bug, not routing; DB write paths already correct since 2026-05-19 `c727284a`. D2 preserved (arena gate path only; `openActionContractForMyPage.ts` parallel surface UNTOUCHED). D3 preserved (no new state/UI/schema/migration/verification_type values). Baseline 3303 → 3303/0/6 (±0), tsc clean. Staging deploy Version `a27781f5-e709-4660-bd07-1d11a72d60d7`. Inner `c3f933c6`, outer leak-integration `2c53cf7`. VG-5 PASS (Commander hanbitchi rehearsal): label="self_attest" + contract `a44af95c` approved + `core_xp_ledger` id=8 source_type='ARENA' + refresh→200. STAB-01-P1 + STAB-02-P1 + STAB-03-A-P1 all working in single user cycle. D4: refresh-bypass reclassified as expected progression behavior; STAB-03-B deferred.

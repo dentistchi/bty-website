@@ -41,6 +41,95 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## STAB-04-P0 — Semantic Rollback Integrity Certification
+
+**Status:** PARTIALLY CERTIFIED — governance success (not incomplete execution)
+**Date:** 2026-05-21 (D-9 from 2026-05-30 launch)
+**Anchor:** inner c3f933c6 / outer post-STAB-04-P0 closure commit (see git log on main) / staging Version a27781f5-e709-4660-bd07-1d11a72d60d7 (canonical anchor restored)
+**Baseline:** 3303 passed / 0 failed / 6 skipped (unchanged across dispatch)
+
+### Doctrine
+
+STAB-04 proved that rollback boundaries preserve semantic runtime continuity across worker deployments. This is the foundation of launch-and-beyond incident response doctrine.
+
+Canonical binding integrity takes precedence over smoke throughput.
+
+Post-closure operational anchor: `a27781f5-e709-4660-bd07-1d11a72d60d7` = canonical rollback-safe stabilization anchor.
+
+### R1 — Worker Rollback Round Trip: CERTIFIED
+
+- pre_version_id: `a27781f5-e709-4660-bd07-1d11a72d60d7`
+- rollback_target: `8ed84aaa-3577-4587-8ebb-458cc416e63d` (STAB-02-P1)
+- restore_target: `a27781f5-e709-4660-bd07-1d11a72d60d7` (canonical anchor)
+- T_pure_rollback_roundtrip: < 1 minute (operational feasibility verified)
+
+**Semantic continuity evidence:**
+- Smoke A at 8ed84aaa: verification label `"hybrid"` (legacy `verification_mode` column)
+- Smoke B at a27781f5: verification label `"self_attest"` (canonical `verification_type` column)
+- Label diff `"hybrid"` → `"self_attest"` proves legacy/canonical mapping paths both alive at runtime; STAB-03-A-P1 binding integrity preserved across rollback boundary.
+
+**Gates:**
+- R1-G1 smoke completion both states: PASS
+- R1-G2 XP increment both states (STAB-02-P1 boundary survival): PASS
+- R1-G3 label diff legacy→canonical: PASS (verbatim evidence above)
+- R1-G4 operational feasibility <5min: PASS
+- R1-G5 inner repo baseline re-confirmation 3303/0/6: PASS
+
+### R2 — DB Constraint Round Trip: EXECUTION DEFERRED
+
+DB constraint round-trip execution deferred due to shared production substrate topology.
+
+**Discovery (mid-dispatch):** Supabase project topology is single-project (`dentistchi's Project`, AWS us-east-1, NANO tier). No staging/production DB separation exists. `core_xp_ledger_user_source_uq` DROP/CREATE operates on production substrate.
+
+**Governance decision:** STAB-04 frozen mutation rule ("No schema expansion during STAB-04. Only rollback integrity validation allowed.") plus the role of `core_xp_ledger` as XP identity continuity substrate makes single-project DROP/CREATE rehearsal a governance violation. Defer to post-launch hardening when staging DB is provisioned.
+
+**Procedure (documented for future execution):**
+- R2.1 BEFORE snapshot: arena_count, source_type distribution, duplicate count, indexdef verbatim
+- R2.2 `DROP INDEX IF EXISTS public.core_xp_ledger_user_source_uq`
+- R2.3 mid-state verification (index absent in pg_indexes)
+- R2.4 `CREATE UNIQUE INDEX IF NOT EXISTS core_xp_ledger_user_source_uq ON public.core_xp_ledger (user_id, source_type, source_id) WHERE source_id IS NOT NULL`
+- R2.5 AFTER snapshot (re-run Q1-Q4 verbatim)
+- Gates: arena_count delta 0, source_type distribution row-identical, duplicate_count after=0, indexdef predicate `WHERE source_id IS NOT NULL` preserved
+
+### R3 — Combined Disaster: PROCEDURE DOCUMENTED, NOT EXECUTED
+
+Scenario: Worker = latest, DB = pre-STAB-02-P1 state.
+
+Procedure:
+1. Detection: `23505` violation on ARENA insert OR no ARENA rows landing in core_xp_ledger.
+2. Decision tree: DB drift → re-apply STAB-02-P1 migration then verify worker; Worker drift → rollback worker then verify DB constraint compatibility.
+3. Recovery anchor: `a27781f5` + STAB-02-P1 migration applied = canonical pair.
+4. Never destroy data to "match" a rolled-back code state. Forward-fix only.
+
+Filed to post-launch hardening backlog alongside R2.
+
+### Canonical Anchor Restored
+
+staging Version after dispatch: `a27781f5-e709-4660-bd07-1d11a72d60d7`
+
+### Operational Lessons (memory consolidation candidates)
+
+1. wrangler rollback requires full UUID; short ID rejected by Cloudflare API.
+2. `wrangler deployments list` outputs oldest-first; use `tail` or `jq` for re-runnable scripts.
+3. classifier shared-staging block is governance, not failure; Commander manual surface is designed escape valve.
+4. **Worker staging ≠ DB staging.** Supabase project topology is single-project; all DB-touching dispatches must treat Supabase mutations as production-effective regardless of Worker environment target.
+5. R1-G5 vitest gate is "inner repo baseline re-confirmation," not "post-rollback staging code verification" — dispatch wording must distinguish.
+6. Dispatch shell blocks for Commander paste must omit zsh-incompatible comments (`#`).
+7. Claude Code context after classifier veto does not include subsequent Commander manual surface actions; C3 must inject "previous turn progress summary" in follow-up dispatches.
+8. Smoke verification step instruction should prioritize UI label observation over DevTools when label is visibly rendered.
+9. Ledger closure dispatch must inspect actual ledger files first to learn existing entry conventions; dispatch formatting is subordinate to ledger continuity.
+
+### Stabilization Chain (narrative completion)
+
+- STAB-01-P1: SELF_REPORT_AUTO_APPROVE 4-AND gate (self_attest stabilization)
+- STAB-02-P1: core_xp_ledger ARENA insert (XP boundary)
+- STAB-03-A-P1: snapshot column-mapping correction (canonical mapping)
+- **STAB-04-P0: rollback survivability certification (this entry)**
+
+D-9 chain complete. Launch posture: strong.
+
+---
+
 **[x] STAB-03-A-P1 snapshot column-mapping correction landed (2026-05-21):** [SNAPSHOT+UI-DISPLAY+DEPLOY] STAB-03-P0 inventory verdict (iii) — UI-render-bug, not routing. DB has `verification_type='self_attest'` for all demo contracts since 2026-05-19 `c727284a` (MVP-FIX-ACTION-DEMO-03 A' series); UI label "hybrid" came from snapshot/payload fields named `verification_type` that read the LEGACY column `verification_mode` (CHECK workaround, always `'hybrid'`). Engine correctness unaffected — fix = rename source column at snapshot mapping layer. **Mutations** (MUT-1/2/3/4): (1) `src/lib/bty/arena/blockingArenaActionContract.ts` — `BlockingArenaContractRow` type gains `verification_type: string` (line 9); both SELECT clauses (`fetchBlockingArenaContractForSession` line 30, `fetchBlockingContractRowByContractId` line 62) include `verification_type`. (2) `src/lib/bty/arena/arenaRuntimeSnapshot.server.ts:61` `actionContractSnapshotFromBlocking` sources `verification_type: row.verification_type` (was `row.verification_mode`) + 5-line STAB-03-A-P1 rationale comment. (3) `src/lib/bty/arena/arenaSessionNextCore.ts:66` 409 body composer sources `verification_type: blocking.verification_type` + same comment. (4) `src/app/api/arena/session/next/route.test.ts:122,143` fixture adds `verification_type: "self_attest"` stub; assertion updated to expect `pending.verification_type`. **D3 preserved:** no new UI, no new selector, no schema changes, no migration, no new runtime states, no new verification_type values. **D2 preserved:** arena gate path only — `openActionContractForMyPage.ts` parallel surface UNTOUCHED (STAB-03-A.2 if needed post-rehearsal). **Baseline:** 3303 → 3303 passed / 0 failed / 6 skipped (±0). `tsc --noEmit` clean. **PMG-3 staging DB scan** (Commander 2026-05-21 SQL paste): all 5 post-`c727284a` contracts have `verification_type='self_attest'`; 5/19 hybrid trio (`d92a91fa`/`fc379c38`/`c814ba6f`) + `2b89c045` are pre-demo-fix historical rows. No post-fix hybrid rows; A2 informational only, no backfill required. **Staging deploy:** `bty-arena-staging` Version **`a27781f5-e709-4660-bd07-1d11a72d60d7`**. /api/version → `{"app":"bty-arena","env":"staging","worker":"bty-arena-staging"}` confirms runtime alive on the new Version. **VG-5 rehearsal PASS** (Commander hanbitchi uid `52e543cc-fa69-44e1-a33c-0389f5d52bff`, 2026-05-21): (a) "Verification: self_attest" label confirmed via image capture; (b) contract `a44af95c` `status='approved'` with all 3 timestamps NOT NULL, `escalated_at=null`; (c) `core_xp_ledger` row id=8 `delta_xp=10` `source_type='ARENA'` `source_id` matches run_id `87ab2b4d`; (d) subsequent `/api/arena/n/session` returns 200 with new scenario (not 409). STAB-01-P1 + STAB-02-P1 + STAB-03-A-P1 all working in single user cycle. **VG-6 DB cross-check PASS** (Commander 2026-05-21): rehearsal contract written with `verification_type='self_attest'` + `verification_mode='hybrid'` confirming canonical column population intact. **Commits:** inner `c3f933c6`, outer leak-integration `2c53cf7`, outer ledger this commit. **D4 reclassification:** refresh-bypass behavior (binding-snapshot vs session-router status-filter asymmetry for approved rows) reclassified as expected progression behavior per Commander 2026-05-21; STAB-03-B deferred unless post-α rehearsal shows user confusion sufficient to threaten deterministic demo flow. **Rollback:** `wrangler rollback 8ed84aaa-3577-4587-8ebb-458cc416e63d` (prior = STAB-02-P1) + `git revert c3f933c6` (inner) + `git revert 2c53cf7` (outer leak-integration) + this ledger revert. No DB changes to roll back. **Next:** STAB-03-A.2 (My Page parallel surface) if needed; STAB-03-B (binding-snapshot approved arm) if D4 reverses.
 
 ---
