@@ -120,6 +120,7 @@ describe("GET /api/arena/session/next", () => {
       contract_description: "Do the thing",
       deadline_at: new Date(Date.now() + 60_000).toISOString(),
       verification_mode: "hybrid",
+      verification_type: "self_attest",
       created_at: new Date().toISOString(),
       status: "pending",
     };
@@ -140,7 +141,9 @@ describe("GET /api/arena/session/next", () => {
       id: pending.id,
       action_text: pending.contract_description,
       deadline_at: pending.deadline_at,
-      verification_type: pending.verification_mode,
+      // STAB-03-A-P1: composer now sources from canonical verification_type column,
+      // not legacy verification_mode (CHECK workaround).
+      verification_type: pending.verification_type,
       created_at: pending.created_at,
     });
     expect(data.mode).toBe("arena");
