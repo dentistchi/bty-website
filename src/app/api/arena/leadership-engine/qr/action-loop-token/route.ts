@@ -108,7 +108,15 @@ export async function POST(req: NextRequest) {
     contract.validation_approved_at != null &&
     contract.verified_at == null;
   if (status !== "pending" && !approvedAwaiting) {
-    const out = NextResponse.json({ error: "contract_not_pending" }, { status: 409 });
+    const isTerminal = contract.verified_at != null;
+    const out = NextResponse.json(
+      {
+        error: "contract_not_pending",
+        contract_state: isTerminal ? "terminal" : "awaiting_qr",
+        verified_at: contract.verified_at ?? null,
+      },
+      { status: 409 },
+    );
     copyCookiesAndDebug(base, out, req, true);
     return out;
   }

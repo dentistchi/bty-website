@@ -40,8 +40,35 @@ export function runtimeStateFromBlockingContract(row: BlockingArenaContractRow):
   return "ACTION_REQUIRED";
 }
 
-export function gatesForBlockedContract(): ArenaSessionGates {
-  return { next_allowed: false, choice_allowed: false, qr_allowed: true };
+/**
+ * STAB-06-FIX-03 (A2/U5): QR is offered only while the contract still needs a witness.
+ * `pending` → QR mints the witness loop. `approved`/`submitted` with validation done but
+ * `verified_at` not yet set → still awaiting QR. A terminal contract (`verified_at` present,
+ * or any other status) returns false so the gate never offers QR for a finished contract.
+ */
+function qrAllowedForContract(row: {
+  status?: unknown;
+  validation_approved_at?: unknown;
+  verified_at?: unknown;
+}): boolean {
+  const st = String(row.status ?? "").toLowerCase();
+  if (st === "pending") return true;
+  if (
+    (st === "approved" || st === "submitted") &&
+    row.validation_approved_at != null &&
+    row.verified_at == null
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function gatesForBlockedContract(row: {
+  status?: unknown;
+  validation_approved_at?: unknown;
+  verified_at?: unknown;
+}): ArenaSessionGates {
+  return { next_allowed: false, choice_allowed: false, qr_allowed: qrAllowedForContract(row) };
 }
 
 export function gatesForScenarioReady(): ArenaSessionGates {
@@ -88,7 +115,7 @@ export function snapshotForBlockedContract(row: BlockingArenaContractRow): Arena
     mode: ARENA_SESSION_MODE,
     runtime_state: rs,
     state_priority: statePriorityForRuntime(rs),
-    gates: gatesForBlockedContract(),
+    gates: gatesForBlockedContract(row),
     action_contract: actionContractSnapshotFromBlocking(row),
   };
 }
