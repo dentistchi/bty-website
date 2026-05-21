@@ -134,6 +134,36 @@ export async function applyArenaRunRewardsOnVerifiedCompletion(params: {
   const core = await applyDirectCoreXp(supabase, userId, arenaCoreXp);
   if ("error" in core) return { ok: false, error: core.error };
 
+  // STAB-02-P1: Arena run reward → core_xp_ledger audit row.
+  // applyDirectCoreXp updates arena_profiles.core_xp_total but does not
+  // write core_xp_ledger. The Arena-side ledger row is inserted here at
+  // the caller so applyDirectCoreXp stays untouched (Lab path also calls
+  // applyDirectCoreXp via awardLabXP and already writes its own ledger
+  // row at lab-xp.service.ts:77; confining the insert here avoids any
+  // double-insert across the two callers). Idempotency is enforced by
+  // the partial unique index core_xp_ledger_user_source_uq
+  // (user_id, source_type, source_id) — retries surface Postgres
+  // error code 23505 which is treated as benign (ON CONFLICT DO NOTHING
+  // semantics). arena_profiles.core_xp_total remains the authoritative
+  // lifetime total; the ledger is audit-only, so a non-23505 failure
+  // is logged but not thrown — the user's XP state is already correct.
+  if (arenaCoreXp > 0) {
+    const { error: ledgerErr } = await supabase.from("core_xp_ledger").insert({
+      user_id: userId,
+      delta_xp: arenaCoreXp,
+      source_type: "ARENA",
+      source_id: run.run_id,
+    });
+    if (ledgerErr && ledgerErr.code !== "23505") {
+      console.warn("[reflectionRewards] core_xp_ledger insert non-fatal failure", {
+        userId,
+        runId: run.run_id,
+        code: ledgerErr.code,
+        message: ledgerErr.message,
+      });
+    }
+  }
+
   return {
     ok: true,
     applied: true,
