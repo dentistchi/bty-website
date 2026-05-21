@@ -611,6 +611,13 @@ export function useArenaSession(_pipelineFromServer?: ArenaPipelineDefault) {
   React.useEffect(() => {
     pendingActionContractRef.current = pendingActionContract;
   }, [pendingActionContract]);
+  /**
+   * STAB-06-FIX-03 (U7): a self-attest contract reached terminal state (verified +
+   * run complete). Single source of truth for the completion surface — set on submit
+   * auto-approve (U2) or QR 409 `contract_not_pending`, cleared only by the explicit
+   * "Next scenario" CTA via {@link clearPendingContractAndReload}. No auto-progression.
+   */
+  const [actionTerminalCompletion, setActionTerminalCompletion] = React.useState(false);
   /** Server session-router snapshot (authoritative over local step/phase when conflict). */
   const [arenaServerSnapshot, setArenaServerSnapshot] = React.useState<ArenaSessionRouterSnapshot | null>(null);
   /** POST `/api/arena/choice` binding snapshot — merged with session snapshot for live gating. */
@@ -2054,6 +2061,17 @@ const eb =
     retryArenaSession({ force: true });
   }
 
+  /**
+   * STAB-06-FIX-03 (U7): explicit, user-initiated advance from the terminal completion
+   * surface. Clears the completion flag + stale contract ref, then refetches the session.
+   * This is the ONLY reconcile path out of `actionTerminalCompletion` — never automatic.
+   */
+  function clearPendingContractAndReload() {
+    setActionTerminalCompletion(false);
+    setPendingActionContract(null);
+    retryArenaSession();
+  }
+
   async function startPendingContractQrFlow() {
     const contract = pendingActionContractRef.current;
     if (!contract) {
@@ -2081,13 +2099,14 @@ const eb =
         error?: string;
       };
       if (res.status === 409 && json.error === "contract_not_pending") {
-        console.info("[arena][pending-contract-qr] contract_not_pending — clearing stale ref", {
+        console.info("[arena][pending-contract-qr] contract_not_pending — surfacing terminal completion", {
           runId: runId ?? null,
           contractId: contract.id,
+          contractState: (json as { contract_state?: string }).contract_state ?? null,
         });
-        setPendingActionContract(null);
-        retryArenaSession();
-        setToast(t.eliteRunStepAdvanceError);
+        // STAB-06-FIX-03 (U7): no auto retry. Surface terminal completion;
+        // reconcile only on the explicit "Next scenario" CTA.
+        setActionTerminalCompletion(true);
         return;
       }
       if (!res.ok || typeof json.url !== "string" || json.url.trim() === "") {
@@ -2464,6 +2483,9 @@ const eb =
     recoverStaleReexposureShell,
     startPendingContractQrFlow,
     pendingContractQrLoading,
+    actionTerminalCompletion,
+    setActionTerminalCompletion,
+    clearPendingContractAndReload,
     beginReexposurePlay,
     reexposureEnterLoading,
     lastReexposureValidation,

@@ -477,7 +477,13 @@ export async function POST(req: NextRequest) {
     }
 
     await logEvaluation(null);
-    const out = NextResponse.json({ outcome: "approve" });
+    // STAB-06-FIX-03 (U1): terminal discriminator so the client distinguishes
+    // auto-approve (verified, run complete — no QR) from awaiting-QR-witness.
+    const out = NextResponse.json({
+      outcome: "approve",
+      contract_state: canSelfReportAutoApprove ? "terminal" : "awaiting_qr",
+      verified_at: canSelfReportAutoApprove ? nowIso : null,
+    });
     copyCookiesAndDebug(base, out, req, true);
     return out;
   }

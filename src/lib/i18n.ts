@@ -1196,6 +1196,10 @@ export type Messages = {
     /** Primary: open My Page to complete the pending action contract (not Center). */
     arenaPendingContractMyPageCta: string;
     arenaPendingContractRegionAria: string;
+    /** STAB-06-FIX-03 (U3): terminal completion surface for self-attest auto-approved actions. */
+    arenaActionCompletedTitle: string;
+    arenaActionCompletedLead: string;
+    arenaActionCompletedNextCta: string;
     /** Server runtime_state placeholder — forced reset (snapshot-first gate). */
     arenaSnapshotForcedResetPlaceholder: string;
     /** FORCED_RESET_PENDING — Center completion required (not Arena). */
@@ -2917,6 +2921,9 @@ const ko: Messages = {
     arenaPendingContractRetry: "다시 확인",
     arenaPendingContractMyPageCta: "마이페이지에서 계속",
     arenaPendingContractRegionAria: "액션 계약 대기",
+    arenaActionCompletedTitle: "행동 보고됨",
+    arenaActionCompletedLead: "XP가 반영되었습니다.",
+    arenaActionCompletedNextCta: "다음 시나리오로",
     arenaSnapshotForcedResetPlaceholder: "계정 상태를 동기화하는 중입니다. 잠시 후 다시 시도해 주세요.",
     arenaForcedResetGateTitle: "센터에서 리셋 단계가 필요합니다",
     arenaForcedResetGateLead:
@@ -4583,6 +4590,9 @@ const en: Messages = {
     arenaPendingContractRetry: "Check again",
     arenaPendingContractMyPageCta: "Continue on My Page",
     arenaPendingContractRegionAria: "Action contract pending",
+    arenaActionCompletedTitle: "Action reported",
+    arenaActionCompletedLead: "Your XP has been applied.",
+    arenaActionCompletedNextCta: "Next scenario",
     arenaSnapshotForcedResetPlaceholder: "Syncing account state. Please refresh shortly.",
     arenaForcedResetGateTitle: "Center step required",
     arenaForcedResetGateLead: "Arena is paused. Complete the guided step in Center, then return.",
