@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       // verification_type='self_attest' (admitted by type CHECK enum),
       // verification_mode='hybrid' (mode CHECK does not admit self_attest;
       // hybrid keeps CHECK satisfied with no code branch effect).
-      verification_type: "qr",
+      verification_type: "self_attest",
       verification_mode: "hybrid",
       weight: 1,
       reset_eligible: false,
