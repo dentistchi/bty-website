@@ -62,6 +62,8 @@ export { ArenaPendingContractGate } from "./ArenaPendingContractGate";
 export type { ArenaPendingContractGateProps } from "./ArenaPendingContractGate";
 export { ArenaActionValidationForm } from "./ArenaActionValidationForm";
 export type { ArenaActionValidationFormProps } from "./ArenaActionValidationForm";
+export { ArenaActionCompleted } from "./ArenaActionCompleted";
+export type { ArenaActionCompletedProps } from "./ArenaActionCompleted";
 export { ArenaBindingError } from "./ArenaBindingError";
 export { ArenaBlockedSurface } from "./ArenaBlockedSurface";
 export type { ArenaBlockedSurfaceProps } from "./ArenaBlockedSurface";

@@ -145,6 +145,8 @@ describe("GET /api/arena/session/next", () => {
       // not legacy verification_mode (CHECK workaround).
       verification_type: pending.verification_type,
       created_at: pending.created_at,
+      // STAB-06-FIX-03 (A1/U4): verified_at now propagated on the 409 wire (null when unset).
+      verified_at: null,
     });
     expect(data.mode).toBe("arena");
     expect(data.runtime_state).toBe("ACTION_REQUIRED");

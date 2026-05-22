@@ -70,6 +70,7 @@ export async function runArenaSessionNextCore(params: {
             // Per MVP-FIX-ACTION-DEMO-03 (A') commits 86ba195d / b2c0ca5a / c727284a.
             verification_type: blocking.verification_type,
             created_at: blocking.created_at,
+            verified_at: blocking.verified_at ?? null,
           },
           ...snap,
           scenario: null,

@@ -35,6 +35,7 @@ export type ArenaPendingContractPayload = {
   deadline_at: string;
   verification_type: string;
   created_at: string;
+  verified_at: string | null;
 };
 
 export type ArenaSessionRouterPack =
@@ -95,8 +96,9 @@ function parsePendingContract(body: Record<string, unknown>): ArenaPendingContra
   const deadline_at = typeof c.deadline_at === "string" ? c.deadline_at : "";
   const verification_type = typeof c.verification_type === "string" ? c.verification_type : "";
   const created_at = typeof c.created_at === "string" ? c.created_at : "";
+  const verified_at = typeof c.verified_at === "string" ? c.verified_at : null;
   if (!id || !action_text) return null;
-  return { id, action_text, deadline_at, verification_type, created_at };
+  return { id, action_text, deadline_at, verification_type, created_at, verified_at };
 }
 
 const RUNTIME_STATES: readonly ArenaRuntimeStateId[] = [

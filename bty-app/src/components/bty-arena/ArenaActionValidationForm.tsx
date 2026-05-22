@@ -32,8 +32,12 @@ export type ArenaActionValidationFormProps = {
   locale: Locale | string;
   /** `bty_action_contracts.id` — from the blocking contract payload. */
   contractId: string;
-  /** Called once submit-validation returns outcome "approve". */
-  onApproved: () => void;
+  /**
+   * Called once submit-validation returns outcome "approve".
+   * STAB-06-FIX-03 (U2): `terminal` = self-attest auto-approved (verified, run complete);
+   * absent/false = awaiting QR witness. `verifiedAt` is the server timestamp when terminal.
+   */
+  onApproved: (info?: { terminal: boolean; verifiedAt: string | null }) => void;
 };
 
 const COPY = {
@@ -118,6 +122,8 @@ export function ArenaActionValidationForm({
         outcome?: SubmitOutcome;
         layer1_errors?: Layer1Error[];
         error?: string;
+        contract_state?: string;
+        verified_at?: string | null;
       } | null;
 
       if (!res.ok || !data) {
@@ -125,7 +131,10 @@ export function ArenaActionValidationForm({
         return;
       }
       if (data.outcome === "approve") {
-        onApproved();
+        onApproved({
+          terminal: data.contract_state === "terminal",
+          verifiedAt: typeof data.verified_at === "string" ? data.verified_at : null,
+        });
         return;
       }
       if (data.outcome === "revise") {

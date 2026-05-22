@@ -228,8 +228,13 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
 
     expect(res.status).toBe(200);
     const data = (await res.json()) as Record<string, unknown>;
-    expect(Object.keys(data)).toEqual(["outcome"]);
+    // STAB-06-FIX-03 (U1): approve now carries lifecycle discriminators
+    // (contract_state / verified_at) — non-auto path is awaiting_qr. These are
+    // not validator rationale; the forbidden-rationale guarantee below is unchanged.
+    expect(Object.keys(data).sort()).toEqual(["contract_state", "outcome", "verified_at"]);
     expect(data.outcome).toBe("approve");
+    expect(data.contract_state).toBe("awaiting_qr");
+    expect(data.verified_at).toBeNull();
     for (const k of FORBIDDEN_RATIONALE_KEYS) {
       expect(data).not.toHaveProperty(k);
     }
@@ -439,7 +444,11 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     );
 
     expect(res.status).toBe(200);
-    expect((await res.json()).outcome).toBe("approve");
+    const approveBody = (await res.json()) as Record<string, unknown>;
+    expect(approveBody.outcome).toBe("approve");
+    // STAB-06-FIX-03 (U1): auto-approve path is terminal — verified_at echoed back.
+    expect(approveBody.contract_state).toBe("terminal");
+    expect(typeof approveBody.verified_at).toBe("string");
     expect(updates[1]).toMatchObject({
       status: "approved",
       validation_approved_at: expect.any(String),

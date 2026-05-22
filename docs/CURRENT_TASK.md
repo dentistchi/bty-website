@@ -1,8 +1,11 @@
-## Current Status (post-STAB-05 closure)
+## Current Status (post-STAB-06-FIX-03 closure)
 
-**Closed:** STAB-01-P1, STAB-02-P1, STAB-03-A-P1, STAB-04-P0 (PARTIALLY CERTIFIED — governance success), STAB-05-P0[ABCD] (INVENTORY CERTIFIED — no code touched)
-**P0 count:** 0
-**Baseline:** 3303 passed / 0 failed / 6 skipped @ inner c3f933c6 / outer post-STAB-05 closure commit (see git log on main) / staging a27781f5-e709-4660-bd07-1d11a72d60d7
+**Closed:** STAB-01-P1, STAB-02-P1, STAB-03-A-P1, STAB-04-P0 (PARTIALLY CERTIFIED — governance success), STAB-05-P0[ABCD] (INVENTORY CERTIFIED — no code touched), STAB-06-P0D (OUTER MIRROR RECONCILED), STAB-06-FIX-03 (self-attest completion UX certified)
+**Active P0:** STAB-07-P0 — Verification Mode Integrity (Hardcoded Subset Bridge); OPEN, awaiting Commander scenario classification
+**P0 count:** 1
+**Baseline:** 3307 passed / 0 failed / 6 skipped @ inner `4ae97ea8` / outer STAB-06-FIX-03 closure commit (see git log on main) / staging Version `4bf3ba18-89e5-4e6a-b34c-934ba963943f`
+**Remotes:** origin/inner-main `4ae97ea8` (unchanged through this dispatch) · origin/main = STAB-06-FIX-03 closure commit (see git log on main)
+**Working tree:** clean (post-STAB-06-FIX-03 dispatch)
 **Canonical operational anchor:** `a27781f5-e709-4660-bd07-1d11a72d60d7` = canonical rollback-safe stabilization anchor
 **D-9 posture:** launch-survivable; stabilization chain complete; runtime topology mapped
 
@@ -48,6 +51,10 @@
 ---
 
 # CURRENT TASK — 2026-03-23
+
+**STAB-06-FIX-03**: [x] **완료.** Self-attest completion UX certified (2026-05-21). Restored honest self-attest completion flow: completion is shown explicitly, stale QR gates suppressed, progression resumes only through a user-visible Next Scenario CTA. Track A (inner `ae76092b`): U4 verified_at/validation_approved_at wire propagation (BlockingArenaContractRow + select lists + ArenaPendingContractPayload + parsePendingContract) + U5 qr_allowed terminal-state gating (gatesForBlockedContract row-arg, qrAllowedForContract helper) + U6 action-loop-token 409 enrichment (contract_state discriminator + verified_at). Track B (inner `4ae97ea8`): U1 submit-validation contract_state (terminal|awaiting_qr) + U2 hook-owned actionTerminalCompletion + redirect-OUT effect gating + U3 new ArenaActionCompleted component + 3 i18n keys en/ko (arenaActionCompletedTitle/Lead/NextCta) + U7 FIX-02 auto-retry removed, hook-exported clearPendingContractAndReload as user-CTA trigger (single source of truth = hook). BTY principle restored: "I acted → recognized → I choose to continue". Smoke: 3-scenario hanbitchi browser run PASS (all contract_state:"terminal", completion screen rendered, no blank QR window, explicit Next CTA). Baseline 3303 → 3307/0/6 (+4 ArenaActionCompleted tests), tsc clean. Staging Version `4bf3ba18-89e5-4e6a-b34c-934ba963943f`. Inner `4ae97ea8` on `ae76092b`, pushed to origin/inner-main; outer closure commit (this commit, see git log on main). STAB-06 surfaced verification-mode architecture gap (contracts hardcoded self_attest + auto-approve true) → promoted to STAB-07-P0.
+
+**STAB-07-P0**: ACTIVE (NEW P0, 2026-05-21). Verification Mode Integrity — Hardcoded Subset Bridge. Surfaced by STAB-06-FIX-03 closure smoke; pre-audit VERDICT: ABSENT. Three contract-creation paths hardcode verification_type:"self_attest" + details.self_report_auto_approve:true unconditionally (ensureActionContract.ts:280 run-completion, eliteBindingActionCommitment.server.ts:201 Elite AD1-commit, action-contracts/route.ts:64 json_dev_runtime). No solo/relational classification in scenario metadata; no DB CHECK on verification_type (text NOT NULL only). Commander direction: (1) classify canonical scenarios solo/self_attest vs relational/QR-witness; (2) temporary hardcoded scenario-ID classification at the 3 paths (minimal patch); (3) defer schema/metadata work to post-launch STAB-07 phases. Awaiting Commander scenario classification sheet.
 
 **STAB-03-A-P1**: [x] **완료.** Snapshot column-mapping correction landed (2026-05-21). `BlockingArenaContractRow` + SELECT clauses gain `verification_type`; `arenaRuntimeSnapshot.server.ts:61` + `arenaSessionNextCore.ts:66` source from `row.verification_type` (was `row.verification_mode`). Per STAB-03-P0 inventory verdict (iii) — UI display bug, not routing; DB write paths already correct since 2026-05-19 `c727284a`. D2 preserved (arena gate path only; `openActionContractForMyPage.ts` parallel surface UNTOUCHED). D3 preserved (no new state/UI/schema/migration/verification_type values). Baseline 3303 → 3303/0/6 (±0), tsc clean. Staging deploy Version `a27781f5-e709-4660-bd07-1d11a72d60d7`. Inner `c3f933c6`, outer leak-integration `2c53cf7`. VG-5 PASS (Commander hanbitchi rehearsal): label="self_attest" + contract `a44af95c` approved + `core_xp_ledger` id=8 source_type='ARENA' + refresh→200. STAB-01-P1 + STAB-02-P1 + STAB-03-A-P1 all working in single user cycle. D4: refresh-bypass reclassified as expected progression behavior; STAB-03-B deferred.
 

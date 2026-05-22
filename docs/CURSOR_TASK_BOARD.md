@@ -41,6 +41,54 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## STAB-06-FIX-03 — Self-Attest Completion UX Certified
+
+**Status:** CLOSED
+**Date:** 2026-05-21
+**Header:** [stab_06_fix_03 CLOSED 2026-05-21]
+
+STAB-06-FIX-03 restored honest self-attest completion flow: the system now shows completion explicitly, suppresses stale QR gates, and resumes progression only through a user-visible Next Scenario CTA.
+
+STAB-06 also surfaced a higher-order verification-mode architecture gap: all current action contracts are hardcoded as self_attest with auto-approve seeded true. This is not closed in STAB-06 and is promoted to STAB-07.
+
+Inner: `4ae97ea8` (Track B) on top of `ae76092b` (Track A), pushed to origin/inner-main.
+Worker: Version `4bf3ba18-89e5-4e6a-b34c-934ba963943f`, staging URL bty-arena-staging.ywamer2022.workers.dev.
+Track A scope: U4 (verified_at + validation_approved_at wire propagation through BlockingArenaContractRow + select lists + ArenaPendingContractPayload + parsePendingContract) + U5 (qr_allowed terminal-state gating: gatesForBlockedContract now row-arg, qrAllowedForContract helper enforces pending OR submitted/approved+awaiting-QR-only) + U6 (action-loop-token 409 enrichment: contract_state discriminator + verified_at).
+Track B scope: U1 (submit-validation response contract_state: terminal | awaiting_qr) + U2 (form onApproved info-arg + ArenaResolveClient hook-owned actionTerminalCompletion + redirect-OUT effect gating) + U3 (new ArenaActionCompleted component + 3 i18n keys en/ko: arenaActionCompletedTitle/Lead/NextCta) + U7 (FIX-02 auto-retryArenaSession removed; hook-exported clearPendingContractAndReload as user-CTA trigger; single source of truth = hook).
+
+BTY principle restored: "I acted → recognized → I choose to continue" flow on self_attest completion.
+Smoke: 3-scenario hanbitchi browser run PASS — all 3 returned contract_state:"terminal", completion screen rendered, no blank QR window, explicit Next CTA observed.
+Baseline: vitest 3307/0/6 (3303 baseline + 4 new ArenaActionCompleted tests). lint PASS (tsc --noEmit clean).
+
+Doctrine carryforward: hook-owned single source of truth for completion state (prevents stale-surface duplication); redirect-OUT effects must gate on terminal completion to prevent premature snapshot transitions; defense-in-depth (server qr_allowed conditionalization + client completion-screen routing) shipped together via Track split.
+
+---
+
+## STAB-07-P0 — Verification Mode Integrity: Hardcoded Subset Bridge
+
+**Status:** OPEN (BACKLOG → ACTIVE)
+**Date:** 2026-05-21
+**Header:** [stab_07_p0 OPEN 2026-05-21]
+
+Surfaced by STAB-06-FIX-03 closure smoke (3 scenarios, all returned contract_state:"terminal"). STAB-07-P0 pre-audit (read-only) confirmed VERDICT: ABSENT.
+
+Three contract-creation paths hardcode verification_type:"self_attest" + details.self_report_auto_approve:true unconditionally:
+- ensureActionContract.ts:280 (run-completion path)
+- eliteBindingActionCommitment.server.ts:201 (Elite AD1-commit path)
+- action-contracts/route.ts:64 (json_dev_runtime path)
+
+No solo/relational classification in scenario metadata. No DB CHECK on verification_type (text NOT NULL only).
+Existing verification-method fragments (UI type "qr"|"link"|"hybrid"|"self_report", DB verification_mode CHECK) classify HOW to verify, not WHETHER action is solo or relational.
+
+Commander direction:
+1. Classify canonical scenarios solo/self_attest vs relational/QR-witness (Commander content judgment).
+2. Apply temporary hardcoded scenario-ID classification at the 3 paths (minimal code patch).
+3. Defer architectural scenario-metadata/schema work to post-launch STAB-07 phases.
+
+Anchors: prior STEP 0/0.5/1 EXIT REPORTs (in conversation log) document mechanism + gap details.
+
+---
+
 ## STAB-06-P0D — Outer Leak-Integration: scenario-selector
 
 **Status:** CLOSED / OUTER MIRROR RECONCILED

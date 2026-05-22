@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   ArenaHeader,
   ArenaActionValidationForm,
+  ArenaActionCompleted,
   ArenaPendingContractGate,
   ArenaBlockedSurface,
   ArenaRuntimeStateBanner,
@@ -45,11 +46,13 @@ export default function ArenaResolveClient({ locale }: Props) {
   const gateSnapshot = s.effectiveArenaSnapshot ?? s.arenaServerSnapshot;
   const runtimeState = gateSnapshot?.runtime_state ?? null;
 
-  // MVP-FIX-ACTION-01 (scope A): once submit-validation returns "approve",
-  // flip from the validation form to the QR gate client-side. A session
-  // refetch is intentionally NOT triggered — it would not re-surface the
-  // now-`submitted` contract (blocking-fetch is pending-only, DIAG-07) and
-  // would redirect away from this surface.
+  // MVP-FIX-ACTION-01 (scope A): on `awaiting_qr` approve, flip from the validation
+  // form to the QR gate client-side. No session refetch — it would not re-surface the
+  // now-`submitted` contract (blocking-fetch is pending-only, DIAG-07) and would redirect
+  // away from this surface.
+  // STAB-06-FIX-03 (U2): on `terminal` approve (self-attest auto-approved + verified), the
+  // hook-owned `actionTerminalCompletion` renders ArenaActionCompleted; reconcile happens
+  // only on the explicit "Next scenario" CTA via clearPendingContractAndReload.
   const [validationApproved, setValidationApproved] = React.useState(false);
 
   const isResolveState =
@@ -62,6 +65,9 @@ export default function ArenaResolveClient({ locale }: Props) {
   // In-app navigation INTO this route from /bty-arena/play is wired in 2D.
   React.useEffect(() => {
     if (s.scenarioLoading) return; // wait for hydration
+    // STAB-06-FIX-03 (U2/5g): while the terminal completion screen is shown, stay put —
+    // the user advances only via the explicit "Next scenario" CTA, never an auto-redirect.
+    if (s.actionTerminalCompletion) return;
     if (isResolveState) return; // stay on Resolve surface
 
     if (runtimeState === "FORCED_RESET_PENDING") {
@@ -73,7 +79,7 @@ export default function ArenaResolveClient({ locale }: Props) {
     // REEXPOSURE_DUE is a Play-mode flag (v1.1 FD-4), rendered by Play surface.
     // No-gate / unknown state → canonical Play entry as graceful fallback.
     router.replace(`/${locale}/bty-arena/play`);
-  }, [s.scenarioLoading, isResolveState, runtimeState, router, locale]);
+  }, [s.scenarioLoading, s.actionTerminalCompletion, isResolveState, runtimeState, router, locale]);
 
   // Initial-hydration loading: render a minimal placeholder until useArenaSession
   // resolves. Avoids flicker between fresh-state and hydrated-state renders.
@@ -87,6 +93,28 @@ export default function ArenaResolveClient({ locale }: Props) {
       >
         <div data-testid="arena-resolve-loading" className="mx-auto max-w-lg px-2" aria-busy="true">
           <p className="m-0 text-sm text-bty-navy/70">…</p>
+        </div>
+      </ScreenShell>
+    );
+  }
+
+  // STAB-06-FIX-03 (U2/U3): terminal completion surface (self-attest auto-approved +
+  // verified). Rendered from the hook-owned flag — independent of the snapshot, so a
+  // background refetch can't short-circuit it. Advances only via the explicit CTA.
+  if (s.actionTerminalCompletion) {
+    return (
+      <ScreenShell
+        locale={locale}
+        fullWidth
+        contentClassName="pb-24"
+        mainAriaLabel={t.arenaRunPageMainRegionAria}
+      >
+        <div className="mx-auto max-w-lg px-2">
+          <ArenaActionCompleted
+            locale={locale}
+            onNext={() => s.clearPendingContractAndReload()}
+            nextLoading={s.scenarioLoading}
+          />
         </div>
       </ScreenShell>
     );
@@ -137,7 +165,15 @@ export default function ArenaResolveClient({ locale }: Props) {
                   <ArenaActionValidationForm
                     locale={locale}
                     contractId={s.pendingActionContract.id}
-                    onApproved={() => setValidationApproved(true)}
+                    onApproved={(info) => {
+                      // STAB-06-FIX-03 (U2): terminal → hook-owned completion flag
+                      // (single source of truth). awaiting_qr → existing QR-gate flip.
+                      if (info?.terminal) {
+                        s.setActionTerminalCompletion(true);
+                      } else {
+                        setValidationApproved(true);
+                      }
+                    }}
                   />
                 ) : (
                   <ArenaPendingContractGate
