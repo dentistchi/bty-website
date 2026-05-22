@@ -41,6 +41,56 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## STAB-07-P0 ROLLBACK
+
+[stab_07_p0 ROLLED_BACK 2026-05-22]
+
+STAB-07-P0 Lane 1 (universal QR verification, inner `7ca96ae7` + outer `c6159ab`) was reverted after staging smoke surfaced a pre-existing UX gap that blocks user recovery.
+
+Gap discovered (verified at inner HEAD `7ca96ae7`):
+- Lane 1 stopped staging auto-approve, so real Layer 2 ran on every submit.
+- Layer 2 returned `escalate` for the Commander's first smoke statement → contract `status="escalated"`.
+- Escalated contracts have NO user-facing revise surface: `ArenaResolveClient.tsx:163-191` renders `ArenaActionValidationForm` only when `runtime_state="ACTION_REQUIRED" && !validationApproved`; escalated maps to `runtime_state="ACTION_SUBMITTED"` (`runtimeStateFromBlockingContract`) → falls through to `ArenaPendingContractGate`. And `qrAllowedForContract` returns false for escalated (`validation_approved_at` null) → the gate shows **neither a revise form NOR a QR button**.
+- Cron auto-reset is unscheduled (T1: `wrangler.toml` has no `[triggers]`/crons) → no background recovery.
+- Escalated is blocking (T2: `BLOCKING_STATUSES` includes "escalated") → user cannot start a new scenario.
+- Result: hanbitchi was permanently stuck on staging.
+
+Rollback restores the staging auto-approve path (`BTY_ENV="staging"` 4-AND gate condition 1 matches "self_attest" again). The rollback does not change production behavior (auto-approve is staging-only). **NOTE:** the escalate→no-revise-UI gap is **latent in production independent of Lane 1** — production self_attest contracts already route through Layer 2 (no auto-approve in prod) and can escalate into the same dead-end. STAB-08 Scope C is therefore launch-blocking for any production launch where contracts hit Layer 2.
+
+Reverted commits:
+  Inner: `7ca96ae7` (Lane 1) reverted via `f71c0616` (pushed to origin/inner-main)
+  Outer: `c6159ab` (closure) reverted via `bae3322` — also deleted `docs/STAB-07-P0-SCENARIO-INVENTORY.md` (recoverable: `git show c6159ab:docs/STAB-07-P0-SCENARIO-INVENTORY.md`)
+Worker redeployed: Version `844990c0-5be3-4235-9a02-e6acb541d99f` (staging, reverted code). lint PASS, vitest 3307/0/6.
+
+STAB-07-P0 RE-OPENED. Re-design must include the escalated revise UI as part of the universal QR ship.
+
+---
+
+## STAB-08 — My Page Action State + Escalation Recovery (SCOPE EXPANDED)
+
+[stab_08 OPEN 2026-05-22, scope expanded; LAUNCH-BLOCKING for STAB-07-P0 re-attempt]
+
+Scope A — My Page blind spot for escalated/submitted contracts (surfaced by STAB-07-P0 smoke triage):
+  `openActionContractForMyPage` queries `pending` / `approved`+awaiting_qr / `in(approved,completed,missed)` only; escalated/submitted match none → My Page falls back to history and surfaces a stale completed banner + that contract's XP, masking the current state.
+
+Scope B — Escalation recovery cron not scheduled (surfaced by retry-prep):
+  `action-contract-escalation-expire/route.ts` resets escalated→pending after `expires_at`, but `wrangler.toml` has no `[triggers]`/crons → not auto-invoked. (Also: the open `bty_action_contract_escalations` row is never closed on self-resolve — no UPDATE in submit-validation/qr-validate/lifecycle.)
+
+Scope C — Escalated contract revise UI missing (surfaced by this rollback; VERIFIED):
+  `ArenaResolveClient.tsx:163-191` renders the form only for `runtime_state="ACTION_REQUIRED"`; escalated→`"ACTION_SUBMITTED"`→`ArenaPendingContractGate`, and `qr_allowed=false` for escalated → no form, no QR. Server-side resubmit IS allowed (`submit-validation/route.ts:189-200`) but the client provides no surface to invoke it.
+
+STAB-08 is now a launch-blocking dependency for the STAB-07-P0 re-attempt.
+
+---
+
+## C3 INVENTORY MISS (post-mortem note)
+
+The STAB-06-FIX-03 traces and the STAB-07-P0 traces verified the SERVER-SIDE resubmit allowance for escalated (`submit-validation/route.ts:189-200`) but did NOT inspect `ArenaResolveClient`'s render branches for `runtime_state="ACTION_SUBMITTED"` + `status="escalated"`. Server acceptance and UI exposure are independent properties.
+
+Discipline reinforcement: when verifying a recovery path is "code-allowed," also verify the user-facing UI provides a surface to invoke it. A path the server accepts but the client never renders is functionally a dead-end.
+
+---
+
 ## STAB-06-FIX-03 — Self-Attest Completion UX Certified
 
 **Status:** CLOSED
