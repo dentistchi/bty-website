@@ -46,6 +46,13 @@ export default function ArenaResolveClient({ locale }: Props) {
   const gateSnapshot = s.effectiveArenaSnapshot ?? s.arenaServerSnapshot;
   const runtimeState = gateSnapshot?.runtime_state ?? null;
 
+  // STAB-08 Scope C: an escalated contract maps to ACTION_SUBMITTED
+  // (arenaRuntimeSnapshot.server.ts runtimeStateFromBlockingContract) yet the
+  // submit-validation route permits resubmit (route.ts §A-3). Surface the validation
+  // form so the user can self-resolve instead of dead-ending in the pending gate.
+  // Keyed on the server-emitted snapshot status — no snapshot logic change (inventory §D).
+  const escalatedReviseAllowed = gateSnapshot?.action_contract?.status === "escalated";
+
   // MVP-FIX-ACTION-01 (scope A): on `awaiting_qr` approve, flip from the validation
   // form to the QR gate client-side. No session refetch — it would not re-surface the
   // now-`submitted` contract (blocking-fetch is pending-only, DIAG-07) and would redirect
@@ -160,21 +167,38 @@ export default function ArenaResolveClient({ locale }: Props) {
                 identity={s.arenaIdentity}
               />
               {s.pendingActionContract ? (
-                runtimeState === "ACTION_REQUIRED" && !validationApproved ? (
+                (runtimeState === "ACTION_REQUIRED" || escalatedReviseAllowed) &&
+                !validationApproved ? (
                   // Canonical: action validation precedes the QR gate.
-                  <ArenaActionValidationForm
-                    locale={locale}
-                    contractId={s.pendingActionContract.id}
-                    onApproved={(info) => {
-                      // STAB-06-FIX-03 (U2): terminal → hook-owned completion flag
-                      // (single source of truth). awaiting_qr → existing QR-gate flip.
-                      if (info?.terminal) {
-                        s.setActionTerminalCompletion(true);
-                      } else {
-                        setValidationApproved(true);
-                      }
-                    }}
-                  />
+                  // STAB-08 Scope C: escalated contracts (status='escalated' → runtime
+                  // ACTION_SUBMITTED) reuse the same validation form to self-resolve via
+                  // resubmit, instead of dead-ending in ArenaPendingContractGate.
+                  <>
+                    {escalatedReviseAllowed ? (
+                      <p
+                        data-testid="arena-resolve-escalated-revise-notice"
+                        role="status"
+                        className="mt-[18px] mb-[-6px] rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-relaxed text-amber-900"
+                      >
+                        {locale === "ko"
+                          ? "이전 진술이 검증 기준을 통과하지 못했습니다. 수정해 다시 제출해 주세요."
+                          : "Your previous statement didn't meet the validation threshold. Revise and resubmit."}
+                      </p>
+                    ) : null}
+                    <ArenaActionValidationForm
+                      locale={locale}
+                      contractId={s.pendingActionContract.id}
+                      onApproved={(info) => {
+                        // STAB-06-FIX-03 (U2): terminal → hook-owned completion flag
+                        // (single source of truth). awaiting_qr → existing QR-gate flip.
+                        if (info?.terminal) {
+                          s.setActionTerminalCompletion(true);
+                        } else {
+                          setValidationApproved(true);
+                        }
+                      }}
+                    />
+                  </>
                 ) : (
                   <ArenaPendingContractGate
                     locale={locale}
