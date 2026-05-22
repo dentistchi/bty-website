@@ -41,6 +41,61 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## STAB-08 Scope C — Escalated Contract Revise UI: CLOSED
+
+**Status:** CLOSED (Scope C only; Scope A/B remain backlog)
+**Date:** 2026-05-22
+**Header:** [stab_08 Scope C CLOSED 2026-05-22; Scope A/B backlog]
+
+STAB-08 Scope C surfaces the escalated-contract revise path on the Arena Resolve
+surface. An escalated contract maps to runtime_state="ACTION_SUBMITTED"
+(runtimeStateFromBlockingContract) with qr_allowed=false, so ArenaResolveClient
+previously rendered only ArenaPendingContractGate — no revise CTA — even though
+submit-validation/route.ts:189-200 already accepts an escalated resubmit. Scope C
+adds a client-side branch keyed on the server-emitted action_contract.status==="escalated"
+that reuses ArenaActionValidationForm verbatim, preceded by a distinct escalation
+notice. Pure UI surfacing — no snapshot, API, Scope A/B, cron, or form-component change.
+
+CORRECTION to the ROLLBACK reading: the "permanently stuck" framing was a UI misread,
+not a runtime failure. The server already supported escalated resubmit; Scope C surfaces
+the form backing it. Layer 1/2 `revise` responses are expected validation outcomes, not
+dead-end regressions. The Scope C launch-blocker noted in STAB-07-P0 ROLLBACK is cleared.
+
+File: src/app/[locale]/bty-arena/play/resolve/ArenaResolveClient.tsx (single file —
+  L54 derived `escalatedReviseAllowed`; L170 branch condition; L177-184 escalation notice).
+Inner: `3e63a5da` on inner-main (local; co-track mirror authoritative on origin/main).
+Outer co-track: `c9ce8c2` on main (bty-app/ leak-integration of the code).
+Worker: Version `5a544379-3c15-44c5-a5d4-b0eaf4685562`, staging (supersedes `844990c0`).
+Baseline: vitest 3307 → 3310 / 0 / 6 (+3 ArenaResolveClient.escalated-revise tests).
+  lint PASS (tsc --noEmit clean).
+Smoke: seed contract `e4632681` (hanbitchi) → escalated; DB-verified transition
+  escalated → submitted → pending after Commander browser resubmit (×2); revise notice
+  + validation form render confirmed by Commander; submit-validation accepted the escalated
+  resubmit (verification_type=qr → no staging auto-approve; Layer 1 revise (R1/R2/R4
+  validation on insufficient input — expected) → re-edit → Layer 2 → "sent for review"
+  → pending (re-editable)). Worker Version 5a544379.
+
+Canonical anchor UNCHANGED: `a27781f5-e709-4660-bd07-1d11a72d60d7` remains the rollback-safe
+stabilization anchor. STAB-08 Scope C is forward progress, NOT a new rollback anchor; 5a544379
+is the current staging version, not a rollback target.
+
+Inventory artifact: docs/STAB-08-SCOPE-C-INVENTORY.md (committed in this closure as
+  historical inspection artifact).
+
+Backlog (NOT closed by Scope C):
+- Scope A — My Page action-state blind spot (openActionContractForMyPage excludes
+  escalated/submitted) — post-launch backlog.
+- Scope B — Escalation recovery cron not scheduled (wrangler.toml no [triggers]; open
+  bty_action_contract_escalations row never closed on self-resolve) — post-launch backlog.
+- Cleanup endpoint hardening — /api/test/cleanup-action-contracts has no Cloudflare-effective
+  env guard (VERCEL_ENV check inert on Workers); add BTY_ENV positive assertion — post-launch.
+
+Forward hook: STAB-07-P0 redispatch now UNBLOCKED (escalated revise UI shipped); follows as a
+separate lane. STAB-07-P0 scenario-classification inventory (STAB-07-P0-SCENARIO-INVENTORY.md,
+recoverable at c6159ab) restoration deferred to that lane.
+
+---
+
 ## STAB-07-P0 ROLLBACK
 
 [stab_07_p0 ROLLED_BACK 2026-05-22]
@@ -64,11 +119,13 @@ Worker redeployed: Version `844990c0-5be3-4235-9a02-e6acb541d99f` (staging, reve
 
 STAB-07-P0 RE-OPENED. Re-design must include the escalated revise UI as part of the universal QR ship.
 
+> Annotation (2026-05-22): Scope C resolved — see STAB-08 Scope C CLOSED entry; STAB-07-P0 redispatch unblocked.
+
 ---
 
 ## STAB-08 — My Page Action State + Escalation Recovery (SCOPE EXPANDED)
 
-[stab_08 OPEN 2026-05-22, scope expanded; LAUNCH-BLOCKING for STAB-07-P0 re-attempt]
+[stab_08 OPEN 2026-05-22, scope expanded; LAUNCH-BLOCKING for STAB-07-P0 re-attempt] → Scope C CLOSED 2026-05-22 (see top); Scope A/B remain backlog.
 
 Scope A — My Page blind spot for escalated/submitted contracts (surfaced by STAB-07-P0 smoke triage):
   `openActionContractForMyPage` queries `pending` / `approved`+awaiting_qr / `in(approved,completed,missed)` only; escalated/submitted match none → My Page falls back to history and surfaces a stale completed banner + that contract's XP, masking the current state.

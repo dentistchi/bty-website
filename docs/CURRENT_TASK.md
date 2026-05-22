@@ -1,9 +1,9 @@
 ## Current Status (post-STAB-07-P0 Lane 1 ROLLBACK)
 
-**Closed:** STAB-01-P1, STAB-02-P1, STAB-03-A-P1, STAB-04-P0 (PARTIALLY CERTIFIED — governance success), STAB-05-P0[ABCD] (INVENTORY CERTIFIED — no code touched), STAB-06-P0D (OUTER MIRROR RECONCILED), STAB-06-FIX-03 (self-attest completion UX certified)
-**Active P0:** STAB-07-P0 (RE-OPENED — universal QR Lane 1 rolled back; re-design must include escalated revise UI) · STAB-08 (My Page action-state + escalation recovery + revise UI; LAUNCH-BLOCKING dependency for STAB-07-P0 re-attempt)
+**Closed:** STAB-01-P1, STAB-02-P1, STAB-03-A-P1, STAB-04-P0 (PARTIALLY CERTIFIED — governance success), STAB-05-P0[ABCD] (INVENTORY CERTIFIED — no code touched), STAB-06-P0D (OUTER MIRROR RECONCILED), STAB-06-FIX-03 (self-attest completion UX certified), STAB-08 Scope C (escalated revise UI surfaced)
+**Active P0:** STAB-07-P0 (RE-OPENED — universal QR Lane 1 rolled back; re-design must include escalated revise UI) · STAB-08 (Scope C closed; Scope A/B backlog — post-launch)
 **P0 count:** 2
-**Baseline:** 3307 passed / 0 failed / 6 skipped @ inner `f71c0616` (Lane 1 revert) / outer rollback-ledger commit (see git log on main) / staging Version `844990c0-5be3-4235-9a02-e6acb541d99f`
+**Baseline:** 3310 / 0 / 6 @ inner `3e63a5da` / outer `c9ce8c2` / staging Version `5a544379-3c15-44c5-a5d4-b0eaf4685562`
 **Remotes:** origin/inner-main `f71c0616` · origin/main = rollback-ledger commit (see git log on main)
 **Working tree:** clean (post-rollback dispatch)
 **Canonical operational anchor:** `a27781f5-e709-4660-bd07-1d11a72d60d7` = canonical rollback-safe stabilization anchor
@@ -51,6 +51,8 @@
 ---
 
 # CURRENT TASK — 2026-03-23
+
+**STAB-08 Scope C**: [x] **완료.** Escalated-contract revise UI surfaced on Arena Resolve (2026-05-22). ArenaResolveClient now renders ArenaActionValidationForm (+ escalation notice) for status="escalated" (runtime ACTION_SUBMITTED, qr_allowed=false) instead of the dead-end PendingGate; reuses the form verbatim, keyed on server-emitted action_contract.status. Server already allowed escalated resubmit (submit-validation:189-200) — Scope C is pure UI surfacing. Single file (L54/L170/L177-184). Inner `3e63a5da` (inner-main, local), outer co-track `c9ce8c2`, closure ledger this commit. Worker Version `5a544379` (supersedes `844990c0`). Baseline 3307→3310/0/6 (+3 tests), tsc clean. Smoke: seed e4632681 → escalated; DB-verified escalated→submitted→pending after browser resubmit; revise notice + form confirmed; Layer 1 revise (R1/R2/R4 — expected) → re-edit → Layer 2 → "sent for review" → pending (re-editable). CORRECTION: "stuck" was a UI misread, not runtime failure. Scope A/B + cleanup-endpoint hardening remain post-launch backlog. Canonical anchor `a27781f5` unchanged. STAB-07-P0 redispatch unblocked.
 
 **STAB-07-P0 ROLLBACK**: Lane 1 (universal QR, inner `7ca96ae7` + outer `c6159ab`) **REVERTED 2026-05-22.** Staging smoke surfaced a blocking gap: when Layer 2 escalates a submission, the contract becomes `status="escalated"` but `ArenaResolveClient` renders no revise form for it (form only on `ACTION_REQUIRED`; escalated→`ACTION_SUBMITTED`→gate with `qr_allowed=false`) → user permanently stuck (escalated blocks per T2; expire cron unscheduled per T1). Reverted: inner `f71c0616` (→origin/inner-main), outer `bae3322` (also deleted the inventory sheet). Worker redeployed `844990c0-5be3-4235-9a02-e6acb541d99f` (staging auto-approve restored). lint PASS, vitest 3307/0/6. STAB-07-P0 RE-OPENED; STAB-08 expanded (Scope C: escalated revise UI) → launch-blocking for the re-attempt. NOTE: the escalate→no-revise-UI gap is latent in production too (prod self_attest already routes through Layer 2). C3 inventory miss logged (server resubmit allowance verified, client render exposure was not).
 
