@@ -1,11 +1,11 @@
-## Current Status (post-STAB-06-FIX-03 closure)
+## Current Status (post-STAB-07-P0 closure)
 
-**Closed:** STAB-01-P1, STAB-02-P1, STAB-03-A-P1, STAB-04-P0 (PARTIALLY CERTIFIED — governance success), STAB-05-P0[ABCD] (INVENTORY CERTIFIED — no code touched), STAB-06-P0D (OUTER MIRROR RECONCILED), STAB-06-FIX-03 (self-attest completion UX certified)
-**Active P0:** STAB-07-P0 — Verification Mode Integrity (Hardcoded Subset Bridge); OPEN, awaiting Commander scenario classification
+**Closed:** STAB-01-P1, STAB-02-P1, STAB-03-A-P1, STAB-04-P0 (PARTIALLY CERTIFIED — governance success), STAB-05-P0[ABCD] (INVENTORY CERTIFIED — no code touched), STAB-06-P0D (OUTER MIRROR RECONCILED), STAB-06-FIX-03 (self-attest completion UX certified), STAB-07-P0 (universal QR verification + staging-production alignment)
+**Active P0:** STAB-07-P1 — Behavioral Re-exposure Wiring on Completion Path; OPEN, launch-observation-informed priority
 **P0 count:** 1
-**Baseline:** 3307 passed / 0 failed / 6 skipped @ inner `4ae97ea8` / outer STAB-06-FIX-03 closure commit (see git log on main) / staging Version `4bf3ba18-89e5-4e6a-b34c-934ba963943f`
-**Remotes:** origin/inner-main `4ae97ea8` (unchanged through this dispatch) · origin/main = STAB-06-FIX-03 closure commit (see git log on main)
-**Working tree:** clean (post-STAB-06-FIX-03 dispatch)
+**Baseline:** 3307 passed / 0 failed / 6 skipped @ inner `7ca96ae7` / outer STAB-07-P0 closure commit (see git log on main) / staging Version `a1b3ab70-e29d-4478-9e72-861d83df6346`
+**Remotes:** origin/inner-main `7ca96ae7` · origin/main = STAB-07-P0 closure commit (see git log on main)
+**Working tree:** clean (post-STAB-07-P0 dispatch)
 **Canonical operational anchor:** `a27781f5-e709-4660-bd07-1d11a72d60d7` = canonical rollback-safe stabilization anchor
 **D-9 posture:** launch-survivable; stabilization chain complete; runtime topology mapped
 
@@ -51,6 +51,10 @@
 ---
 
 # CURRENT TASK — 2026-03-23
+
+**STAB-07-P0**: [x] **완료.** Universal QR verification shipped (2026-05-22). The 3 contract creation paths now emit `verification_type:"qr"` instead of literal `"self_attest"` (`src/lib/bty/action-contract/ensureActionContract.ts:280`, `src/lib/bty/arena/eliteBindingActionCommitment.server.ts:201`, `src/app/api/arena/action-contracts/route.ts:64`). Aligns staging with production: auto-approve was staging-only (BTY_ENV gate); prod self_attest already routed through Layer 2 + QR. self_attest preserved as ACTION TYPE (possibly internal), NOT a verification bypass — QR required universally; Actor ≠ Approver. Gate: lint PASS, vitest 3307/0/6 (net-zero, no assertion changes), cf:build PASS. Inner `7ca96ae7` on `4ae97ea8` → origin/inner-main; outer closure commit (this commit, see git log on main). Worker Version `a1b3ab70-e29d-4478-9e72-861d83df6346` (staging; OPENAI_API_KEY confirmed via Dashboard 2026-05-22 — production LLM env still to confirm). Inventory sheet: 27 core uniformly relational_qr_witness; Catalog B deferred. Staging smoke deferred to Commander manual run (resolves post-verify UI-unblock unknown). STAB-07-P1 promoted.
+
+**STAB-07-P1**: ACTIVE (NEW P0, 2026-05-22). Behavioral Re-exposure Wiring on Completion Path. Lane 2 trace (READ-ONLY): `computeReexposureValidation` (reexposureValidation.server.ts:191-364) is wired only to the avoidance path (choice/route.ts:686); the committed-action/QR path emits only narrative `delayed_*` outcomes (queueDeferredOutcomeForArenaRunCompletion), not `no_change_reexposure` → no completion-triggered behavioral re-exposure. Gap: "BTY as action engine" vs "scenario completion game." Commander: launch cohort (5/30, 20 users) observation informs priority; wiring designed post-launch.
 
 **STAB-06-FIX-03**: [x] **완료.** Self-attest completion UX certified (2026-05-21). Restored honest self-attest completion flow: completion is shown explicitly, stale QR gates suppressed, progression resumes only through a user-visible Next Scenario CTA. Track A (inner `ae76092b`): U4 verified_at/validation_approved_at wire propagation (BlockingArenaContractRow + select lists + ArenaPendingContractPayload + parsePendingContract) + U5 qr_allowed terminal-state gating (gatesForBlockedContract row-arg, qrAllowedForContract helper) + U6 action-loop-token 409 enrichment (contract_state discriminator + verified_at). Track B (inner `4ae97ea8`): U1 submit-validation contract_state (terminal|awaiting_qr) + U2 hook-owned actionTerminalCompletion + redirect-OUT effect gating + U3 new ArenaActionCompleted component + 3 i18n keys en/ko (arenaActionCompletedTitle/Lead/NextCta) + U7 FIX-02 auto-retry removed, hook-exported clearPendingContractAndReload as user-CTA trigger (single source of truth = hook). BTY principle restored: "I acted → recognized → I choose to continue". Smoke: 3-scenario hanbitchi browser run PASS (all contract_state:"terminal", completion screen rendered, no blank QR window, explicit Next CTA). Baseline 3303 → 3307/0/6 (+4 ArenaActionCompleted tests), tsc clean. Staging Version `4bf3ba18-89e5-4e6a-b34c-934ba963943f`. Inner `4ae97ea8` on `ae76092b`, pushed to origin/inner-main; outer closure commit (this commit, see git log on main). STAB-06 surfaced verification-mode architecture gap (contracts hardcoded self_attest + auto-approve true) → promoted to STAB-07-P0.
 

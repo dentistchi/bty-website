@@ -41,6 +41,60 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## STAB-07-P0 — Universal QR Verification + Data Honesty + Staging-Production Alignment
+
+**Status:** CLOSED (supersedes the OPEN STAB-07-P0 entry below)
+**Date:** 2026-05-22
+**Header:** [stab_07_p0 CLOSED 2026-05-22]
+
+STAB-07-P0 ships universal QR verification by patching the 3 contract creation paths to emit verification_type:"qr" instead of the literal "self_attest". The change aligns staging behavior with production (which already requires Layer 2 + QR; staging was masked by the BTY_ENV="staging" auto-approve gate).
+
+Commander principle locked: self_attest is preserved as an ACTION TYPE (the content the user commits to, possibly internal). QR is the verification mode required universally. The two concepts are orthogonal: a user may commit to a "self-attest action" (e.g., an internal decision) and still must explain it to a witness and receive a QR scan. Actor ≠ Approver universally.
+
+Inner: Lane 1 commit `7ca96ae7` on top of `4ae97ea8` (pushed to origin/inner-main).
+Worker: Version `a1b3ab70-e29d-4478-9e72-861d83df6346`, staging.
+Patched paths (verified, not memory anchors):
+  - src/lib/bty/action-contract/ensureActionContract.ts:280
+  - src/lib/bty/arena/eliteBindingActionCommitment.server.ts:201
+  - src/app/api/arena/action-contracts/route.ts:64
+
+Layer 2 dependency: staging worker has OPENAI_API_KEY (Commander Dashboard verification 2026-05-22). Production worker LLM env requires separate confirmation before production launch.
+
+Gate: lint PASS (tsc --noEmit), vitest 3307/0/6 (net-zero — no test assertions broke), cf:build PASS.
+Inventory sheet: 27 core scenarios uniformly classified relational_qr_witness via top-of-file decision header. Catalog B (Elite-4) deferred to separate lane.
+Smoke: deferred to Commander manual run on staging (PHASE 11 procedure) — resolves the post-verify UI-unblock unknown (event-driven focus/visibility/storage resync, no polling).
+
+---
+
+## STAB-07-P1 — Behavioral Re-exposure Wiring on Completion Path
+
+**Status:** OPEN (BACKLOG → ACTIVE)
+**Date:** 2026-05-22
+**Header:** [stab_07_p1 OPEN 2026-05-22]
+
+Surfaced by STAB-07-P0 Lane 2 trace (READ-ONLY). The behavioral re-exposure engine (`computeReexposureValidation`, src/lib/bty/arena/reexposureValidation.server.ts:191-364) exists and is wired only to the avoidance path (src/app/api/arena/choice/route.ts:686 `!isCommit && mappedScenario` gate, via `accrueNoChangeRisk` + the `no_change_reexposure` pending-outcome create).
+
+The committed-action path (whether self_attest auto-approve or universal QR) does NOT generate `no_change_reexposure` triggers. It generates only narrative `delayed_*` outcomes via `queueDeferredOutcomeForArenaRunCompletion` (src/lib/bty/action-contract/actionContractLifecycle.server.ts:390), which do not feed REEXPOSURE_DUE.
+
+Effect: "user reports action, system trusts the report or QR, then never re-exposes the user to the same-axis pressure to verify whether the reported action produced behavioral change." This is the precise gap between "BTY as action engine" vs "BTY as scenario completion game."
+
+Commander direction: launch cohort observation (5/30, 20 users) will inform STAB-07-P1 priority. Wiring options to be designed post-launch.
+
+(Provenance note: the function name `ensureNoChangeReexposurePendingOutcome` cited in earlier dispatch context has no definition at inner HEAD `7ca96ae7`; the wired avoidance trigger is `accrueNoChangeRisk` plus the no_change_reexposure pending-outcome insert at choice/route.ts. Recorded as observed, not asserted.)
+
+---
+
+### Path / Memory accuracy note (2026-05-22)
+
+Dispatches must verify actual repo paths via view/grep before issuing executable instructions; memory anchors are inspection prompts, not implementation evidence. Memory drift observed this sprint (verified at inner HEAD `7ca96ae7`):
+  - Memory referenced `src/lib/llm.ts` → actual `src/lib/bty/llm/client.ts` (tracked)
+  - Memory referenced `src/lib/bty/arena/ensureActionContract.ts` → actual `src/lib/bty/action-contract/ensureActionContract.ts`
+  - Memory referenced `src/app/api/bty/action-contract/route.ts` → actual `src/app/api/arena/action-contracts/route.ts`
+
+Memory patch block written separately (Commander to apply in next memory-writable session).
+
+---
+
 ## STAB-06-FIX-03 — Self-Attest Completion UX Certified
 
 **Status:** CLOSED
