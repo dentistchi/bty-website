@@ -102,4 +102,25 @@ describe("POST /api/arena/action-contracts", () => {
     expect(select).toHaveBeenCalledWith("id,status");
     expect(single).toHaveBeenCalledOnce();
   });
+
+  // STAB-07-P0 (LIVE branch): the json-dev creation path now emits
+  // verification_type:"qr" (universal QR). verification_mode stays "hybrid".
+  it("STAB-07-P0: json-dev creation emits verification_type:\"qr\" (universal QR)", async () => {
+    const single = vi.fn().mockResolvedValue({
+      data: { id: "contract-1", status: "pending" },
+      error: null,
+    });
+    const select = vi.fn().mockReturnValue({ single });
+    const insert = vi.fn().mockReturnValue({ select });
+    const from = vi.fn().mockReturnValue({ insert });
+    const supabase = { from };
+    mockRequireUser.mockResolvedValue({ user: { id: "u1" }, supabase, base: {} });
+
+    const res = await POST(makeRequest(JSON.stringify(validPayload())));
+
+    expect(res.status).toBe(200);
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({ verification_type: "qr", verification_mode: "hybrid" }),
+    );
+  });
 });
