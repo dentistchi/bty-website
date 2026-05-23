@@ -1,13 +1,13 @@
-## Current Status (post-STAB-07-P0 Lane 1 ROLLBACK)
+## Current Status (post-STAB-07-P0 Lane 1 SHIPPED — Phase 0C v2 LIVE)
 
-**Closed:** STAB-01-P1, STAB-02-P1, STAB-03-A-P1, STAB-04-P0 (PARTIALLY CERTIFIED — governance success), STAB-05-P0[ABCD] (INVENTORY CERTIFIED — no code touched), STAB-06-P0D (OUTER MIRROR RECONCILED), STAB-06-FIX-03 (self-attest completion UX certified), STAB-08 Scope C (escalated revise UI surfaced)
-**Active P0:** STAB-07-P0 (RE-OPENED — universal QR Lane 1 rolled back; re-design must include escalated revise UI) · STAB-08 (Scope C closed; Scope A/B backlog — post-launch)
-**P0 count:** 2
-**Baseline:** 3310 / 0 / 6 @ inner `3e63a5da` / outer `c9ce8c2` / staging Version `5a544379-3c15-44c5-a5d4-b0eaf4685562`
-**Remotes:** origin/inner-main `f71c0616` · origin/main = rollback-ledger commit (see git log on main)
-**Working tree:** clean (post-rollback dispatch)
-**Canonical operational anchor:** `a27781f5-e709-4660-bd07-1d11a72d60d7` = canonical rollback-safe stabilization anchor
-**D-9 posture:** launch-survivable; stabilization chain complete; runtime topology mapped
+**Closed:** STAB-01-P1, STAB-02-P1, STAB-03-A-P1, STAB-04-P0 (PARTIALLY CERTIFIED — governance success), STAB-05-P0[ABCD] (INVENTORY CERTIFIED — no code touched), STAB-06-P0D (OUTER MIRROR RECONCILED), STAB-06-FIX-03 (self-attest completion UX certified), STAB-08 Scope C (escalated revise UI surfaced), **STAB-07-P0 (universal QR Lane 1 SHIPPED — verification_type self_attest→qr on all 3 creation paths; LIVE branch; pending launch-eve gate)**
+**Active P0:** STAB-08 (Scope C closed; Scope A/B backlog — post-launch)
+**P0 count:** 1
+**Baseline:** 3314 / 0 / 6 @ inner `35013b74` (code `baf5f210`) / outer `25f0af02` (code `ee0edb18`) / staging Version `6528ecf2-f0e0-4a8c-8996-f2b58bcd4b45`
+**Remotes:** origin/inner-main (inner-main local `35013b74`, manual-push-only) · origin/main = Phase 0C v2 closure (this entry + `ee0edb18`/`25f0af02`, pushed Stage 7); Phase 0B restore `9e53574` already published
+**Working tree:** clean (Phase 0C v2 closure)
+**Canonical operational anchor:** `a27781f5-e709-4660-bd07-1d11a72d60d7` = canonical rollback-safe stabilization anchor (UNCHANGED; rollback via wrangler version restore)
+**D-9 posture:** launch-survivable; universal QR live on staging (smoke verified: qr→escalated→Scope C revise UI); pending launch-eve verification gate (Phase 0C v2 Stage 8 spec)
 
 ## Active Backlog (priority-ranked, Commander directive 2026-05-21)
 

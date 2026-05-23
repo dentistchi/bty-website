@@ -41,6 +41,25 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## STAB-07-P0 — Universal QR Lane 1: CLOSED
+
+**Status:** CLOSED (Phase 0C v2, LIVE branch) — pending launch-eve verification gate (Stage 8 spec)
+**Date:** 2026-05-22
+**Header:** [stab_07_p0 CLOSED 2026-05-22] L1 universal-QR swap shipped.
+
+Universal-QR Lane 1 shipped: `verification_type` `self_attest`→`qr` on all 3 contract-creation paths — `route.ts:64` (json-dev), `ensureActionContract.ts:280`, `eliteBindingActionCommitment.server.ts:201`. Branch **LIVE** per Commander decision (json-dev is configuration-live via `ARENA_PIPELINE_DEFAULT="new"`; universal-QR α = all 27 core uniform). Creation-side only — existing rows preserved.
+
+- **Commits:** inner code `baf5f210` + tests `35013b74`; outer co-track code `ee0edb18` + tests `25f0af02`; inventory sheet restore `9e53574` (Phase 0B). Code blobs byte-identical to the original `7ca96ae7` Lane 1 attempt.
+- **Tests:** baseline 3310→**3314** (+4 qr-flow cases: json-dev emits qr; submit-validation no-auto-approve / Layer 2 pass→awaiting_qr / fail→escalated), `tsc` clean.
+- **Deploy:** staging Worker Version `6528ecf2-f0e0-4a8c-8996-f2b58bcd4b45` (2026-05-23T01:28Z). Rollback targets preserved: `5a544379` (prev) / anchor `a27781f5` (UNTOUCHED).
+- **Live smoke:** test-user arena run → new contract `verification_type=qr`, `status=escalated` (Layer 2 ran; NOT auto-approved); Scope C escalated-revise UI rendered ("sent for review / revise and resubmit"). DB immutability verified — pre-existing `self_attest` count unchanged (28); only new row emits qr.
+- **Consumption pre-wired:** submit-validation auto-approve gate keys on `verification_type==='self_attest'` (qr bypasses → Layer 2); `qr/validate` witness route; 72h escalation cron (escalated→pending SLA); Scope C revise UI (ArenaResolveClient L54/170/177-184).
+- **Phase chain:** 0A retro (root cause = missing escalated UI, fixed by Scope C) → 0B inventory restore (α confirmed) → 0C v1 AMBIGUOUS-STOP (json-dev live-but-minimal: 4 contracts/1 user) → 0C v2 LIVE.
+- **Pending:** launch-eve verification gate (D-1/D-0). **Rollback:** `wrangler rollback` to `5a544379` (fast) or anchor `a27781f5` (deep) + `git revert ee0edb18`/`baf5f210`; Scope C and sheet `9e53574` stay.
+- **Stale-by-design comments** (optional follow-up): route.ts:60-63 + route.test.ts:87-91 still describe old `self_attest`.
+
+---
+
 ## STAB-08 Scope C — Escalated Contract Revise UI: CLOSED
 
 **Status:** CLOSED (Scope C only; Scope A/B remain backlog)
