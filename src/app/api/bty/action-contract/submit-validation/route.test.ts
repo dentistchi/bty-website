@@ -613,4 +613,136 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
       escalated_at: expect.any(String),
     });
   });
+
+  // ── STAB-07-P0 universal-QR flow (verification_type="qr") ─────────────────
+  // The LIVE-branch swap makes the 3 creation paths emit verification_type:"qr".
+  // qr behaves like external_witness in the 4-AND auto-approve gate (only
+  // self_attest qualifies), so qr contracts always route through Layer 2 and
+  // reach awaiting_qr (Layer 2 pass) or escalated (Layer 2 fail) — never terminal.
+  it("STAB-07-P0: qr does NOT auto-approve even with SELF_REPORT_AUTO_APPROVE=true (Layer 2 invoked, awaiting_qr not terminal)", async () => {
+    process.env.SELF_REPORT_AUTO_APPROVE = "true";
+    process.env.BTY_ENV = "staging";
+
+    mockRequireUser.mockResolvedValue({
+      user: { id: "user-1" },
+      supabase: makeSupabaseForContract("pending", {
+        verification_type: "qr",
+        details: { self_report_auto_approve: true },
+      }),
+      base: {},
+    });
+    const evalSpy = vi
+      .spyOn(validation, "evaluateActionContractPayload")
+      .mockResolvedValue({
+        outcome: "approve",
+        layer1Errors: [],
+        layer2Criteria: {
+          re_entry_direction: { outcome: "pass", confidence: 0.9 },
+          external_measurability: { outcome: "pass", confidence: 0.9 },
+          non_cosmetic: { outcome: "pass", confidence: 0.9 },
+        },
+        modelId: "gpt-4o-mini",
+        layer2TechnicalError: null,
+      });
+
+    const res = await POST(
+      makeRequest({
+        contractId: "contract-1",
+        who: "Alex Kim",
+        what: "Universal QR verification path",
+        when: "2026-04-15 15:00",
+        how: "Witness scans the QR receipt after the action",
+        raw_text: "Raw evidence for the qr-gated contract.",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as Record<string, unknown>;
+    // qr is not self_attest → 4-AND gate fails → Layer 2 runs (auto-approve skipped).
+    expect(evalSpy).toHaveBeenCalledTimes(1);
+    expect(data.outcome).toBe("approve");
+    expect(data.contract_state).toBe("awaiting_qr");
+    expect(data.contract_state).not.toBe("terminal");
+  });
+
+  it("STAB-07-P0: qr Layer 2 pass → awaiting_qr (verified_at null)", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "user-1" },
+      supabase: makeSupabaseForContract("pending", {
+        verification_type: "qr",
+        details: { self_report_auto_approve: true },
+      }),
+      base: {},
+    });
+    vi.spyOn(validation, "evaluateActionContractPayload").mockResolvedValue({
+      outcome: "approve",
+      layer1Errors: [],
+      layer2Criteria: {
+        re_entry_direction: { outcome: "pass", confidence: 0.9 },
+        external_measurability: { outcome: "pass", confidence: 0.9 },
+        non_cosmetic: { outcome: "pass", confidence: 0.9 },
+      },
+      modelId: "gpt-4o-mini",
+      layer2TechnicalError: null,
+    });
+
+    const res = await POST(
+      makeRequest({
+        contractId: "contract-1",
+        who: "Alex Kim",
+        what: "Schedule a 1:1 with the team lead to review the timeline",
+        when: "2026-04-15 15:00",
+        how: "Send a calendar invite with agenda bullets and confirm attendance by reply",
+        raw_text: "Full raw text for audit purposes here.",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as Record<string, unknown>;
+    expect(data.outcome).toBe("approve");
+    expect(data.contract_state).toBe("awaiting_qr");
+    expect(data.verified_at).toBeNull();
+  });
+
+  it("STAB-07-P0: qr Layer 2 fail → escalated", async () => {
+    const updates: Record<string, unknown>[] = [];
+    mockRequireUser.mockResolvedValue({
+      user: { id: "user-1" },
+      supabase: makeSupabaseForContract("pending", {
+        verification_type: "qr",
+        details: { self_report_auto_approve: true },
+        onUpdate: (payload) => updates.push(payload),
+      }),
+      base: {},
+    });
+    const evalSpy = vi
+      .spyOn(validation, "evaluateActionContractPayload")
+      .mockResolvedValue({
+        outcome: "escalate",
+        layer1Errors: [],
+        layer2Criteria: null,
+        modelId: null,
+        layer2TechnicalError: null,
+      });
+
+    const res = await POST(
+      makeRequest({
+        contractId: "contract-1",
+        who: "Alex Kim",
+        what: "Universal QR verification path",
+        when: "2026-04-15 15:00",
+        how: "Witness scans the QR receipt after the action",
+        raw_text: "Raw evidence for the qr-gated contract.",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).outcome).toBe("escalate");
+    expect(evalSpy).toHaveBeenCalledTimes(1);
+    const last = updates[updates.length - 1];
+    expect(last).toMatchObject({
+      status: "escalated",
+      escalated_at: expect.any(String),
+    });
+  });
 });
