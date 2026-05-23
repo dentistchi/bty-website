@@ -198,7 +198,7 @@ export async function ensureEliteBindingActionCommitmentContract(
     action_id: actionId,
     action_type: "arena_run_completion",
     le_activation_type: "micro_win",
-    verification_type: "self_attest",
+    verification_type: "qr",
     weight: 1.0,
     mode: "arena",
     chosen_at: chosenAt,
