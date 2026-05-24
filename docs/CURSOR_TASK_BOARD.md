@@ -41,6 +41,14 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## PUSH AUTHORITY MODEL — LOCKED
+
+**Status**: GOVERNANCE MODEL LOCKED · **Date**: 2026-05-24 · **Class**: release governance, time-anchored · **Lifetime**: D-9 → D-0 freeze window · **Governance record**: `docs/PUSH_AUTHORITY_MODEL_D9.md`
+
+Push Authority Model authored, corroborated against Stage A inventory, and verbatim locked. Defines read-only-only commit class, fixture seed/clean DB-mutation classification, and per-anchor authority gates; current 5-ahead state remains HOLD under the locked D-9 freeze model.
+
+---
+
 ## Q-GEN STEP 0 — CONSTITUTIONAL CLOSURE
 
 **Status**: FORMALLY CLOSED · **Date**: 2026-05-24 · **Lane class**: forensic, mutation-zero · **Constitutional record**: `docs/Q-GEN_STEP_0_CLOSURE.md`
