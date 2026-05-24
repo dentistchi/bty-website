@@ -41,6 +41,14 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## Q-GEN STEP 0 — CONSTITUTIONAL CLOSURE
+
+**Status**: FORMALLY CLOSED · **Date**: 2026-05-24 · **Lane class**: forensic, mutation-zero · **Constitutional record**: `docs/Q-GEN_STEP_0_CLOSURE.md`
+
+Five-cycle corroborated forensic lane formally closed with mutation 0. Lever α/β/γ remains HOLD; constitutional authority resides in the closure document and no implementation authority follows without a separately opened lane.
+
+---
+
 ## STAB-07-P0 — Universal QR Lane 1: CLOSED
 
 **Status:** CLOSED (Phase 0C v2, LIVE branch) — pending launch-eve verification gate (Stage 8 spec)
