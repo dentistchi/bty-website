@@ -260,6 +260,25 @@ and does not affect push authority under §3.1.
 → Separate forensic lane candidate: "Unpushed migration applied-state
 verification."
 
+### §6.1 Resolution — Migration Applied-State Forensic (D-6, 2026-05-24)
+
+Stage A read-only forensic (mutation 0) on `fa80de1` + `500b64e`:
+
+| Migration | file in `migrations/` | unpushed commit | on `origin/main` | DB applied |
+|---|---|---|---|---|
+| `20260524000000_l15b_audit_columns_isolate.sql` (fa80de1) | YES | YES | NO | **YES** |
+| `20260524000001_l15c_escalations_user_id.sql` (500b64e) | YES | YES | NO | **YES** |
+
+**Tracking table queried**: `supabase_migrations.schema_migrations` (remote, project `mveycersmqfiuddslnrj`) via `supabase migration list`. Query succeeded; both versions recorded applied (2026-05-24 00:00:00 / 00:00:01).
+
+**Determination**: DB applied-state is ahead of `origin/main` for both migrations. Pattern is consistent with file-header self-declaration ("Apply path: Commander SQL Editor (out-of-band) … history marked via `supabase migration repair --status applied`"). No unknown drift, no silent failure, no partial apply.
+
+**Outstanding state (not a defect)**: DB-ahead-of-git asymmetry persists until push gate satisfied. Single-developer / single-Supabase environment → no immediate risk. Push auto-resolves the asymmetry.
+
+**Out-of-scope surface (deferred)**: File headers reference `escalated_at / resolution` orphan columns ("out-of-band history drift") and "F2 (L1.6) reclassified to MVP product policy question". Both align with Memory #20 lever α/β/γ HOLD (post-launch governance cycle). Not part of §6.1 closure.
+
+**§6.1 status**: **RESOLVED at forensic level**. Push of `fa80de1` + `500b64e` will close the git-side asymmetry; gate evaluation belongs to §3.1 (not §6.1).
+
 ### 6.2 Worker ↔ git correspondence (A4)
 
 The active Worker version `b159f11f` carries no git-commit metadata
