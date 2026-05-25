@@ -4,6 +4,9 @@
 Files placed here are intentionally excluded from the migration run and tracked
 for later, deliberate application.
 
+> **Note:** For migrations that were *applied then reverted* (different
+> semantics — forward path is DROP, not return), see `../migrations-reverted/`.
+
 ## Currently held
 
 | File | version | What it does |
