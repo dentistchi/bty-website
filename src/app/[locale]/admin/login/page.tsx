@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
     }
 
     const next = new URLSearchParams(window.location.search).get("next");
-    window.location.replace(next ?? `/${locale}/admin/debug`);
+    window.location.replace(next ?? `/${locale}/admin/arena-membership`);
   }
 
   return (
