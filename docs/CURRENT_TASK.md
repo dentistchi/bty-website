@@ -1,4 +1,9 @@
-## Current Status (post-STAB-07-P0 Lane 1 SHIPPED — Phase 0C v2 LIVE)
+## Current Status (D-4 morning CLOSED — 2026-05-26; launch ~2026-05-30)
+
+**Active head (D-4 / 2026-05-26):** inner `82c7d59f` · outer `c57f8ca7` · worker live `47dca7a4` (D-5 closure deploy; unchanged at D-4) · **Push:** HELD · **Deploy:** HELD · **Next:** D-3 (2026-05-27) — regression sweep + Lane 6 (handbook, Commander lane) parallel.
+**Working tree:** clean (both repos; this outer ledger commit pending).
+
+_Lines below are preserved from the STAB-07-P0 / Phase 0C v2 era — no updated test-baseline or P0 inventory was supplied for D-4, so they are left as historical context rather than fabricated._
 
 **Closed:** STAB-01-P1, STAB-02-P1, STAB-03-A-P1, STAB-04-P0 (PARTIALLY CERTIFIED — governance success), STAB-05-P0[ABCD] (INVENTORY CERTIFIED — no code touched), STAB-06-P0D (OUTER MIRROR RECONCILED), STAB-06-FIX-03 (self-attest completion UX certified), STAB-08 Scope C (escalated revise UI surfaced), **STAB-07-P0 (universal QR Lane 1 SHIPPED — verification_type self_attest→qr on all 3 creation paths; LIVE branch; pending launch-eve gate)**
 **Active P0:** STAB-08 (Scope C closed; Scope A/B backlog — post-launch)
@@ -37,6 +42,10 @@
 - pg_constraint deep dive for FK target + CHECK clauses (STAB-05 deferred)
 - user_scenario_choice_history table inventory (STAB-05 deferred)
 - bty_arena_signals table inventory (STAB-05 deferred)
+- wrangler 4.85.0 → 4.94.0 upgrade (D-4 addition)
+- LEGAL_FOLLOWUP_001 — cross-border data transfer review (Korean workforce / OpenAI US-based processor) (D-4 addition; see `LEGAL_FOLLOWUPS.md`)
+- pending-v1 historical staging rows preservation (D-4 addition)
+- Future consent revision: re-acceptance flow + version enforcement policy (D-4 addition)
 
 ## Operating Doctrine (D-9 → D-Day)
 
@@ -51,6 +60,8 @@
 ---
 
 # CURRENT TASK — 2026-03-23
+
+**[D-4 morning launch-prep closure]**: [x] **완료.** D-4 (2026-05-26) launch-prep lanes closed; push + deploy HELD. **Closed:** Lane 5 EN consent (active-truth vendor disclosure — Cloudflare/Supabase/OpenAI; Anthropic excluded per Phase 1 Provider Verify) · Lane 5 KO consent (legal-equivalent; Commander-locked 4 edits: 진료실 팀 / PHI+identifiable / 전송 / 동의합니다) · CONSENT_VERSION `2026-05-pending-v1` → `2026-05-v1` · #26 PatternSignaturePanel contrast (1.04:1→14.5:1 AA) · #23 LocaleLayoutHeader `isAdminArea` LangSwitch dedup · Phase 5 smoke-step2d (`51a162ff`) DELETE (cascade 0; pure auth artifact; preserve cohort hanbitchi `52e543cc` / chihanbit7 `9587a44e` / ywamer2022 `ee9d2075` verified) · `LEGAL_FOLLOWUPS.md` init (cross-border transfer flag). **Diagnostics:** chihanbit7 = `likely_real_user` (PRESERVE; 5 IN_PROGRESS = intentional inspection); Provider Verify = BTY runtime OpenAI-only (Anthropic 0 paths, Gemini keyless, self-hosted inactive); arena_runs schema validated (7 drift catches → memory #22). **Heads:** Phase 2 inner `7afd272a` / outer `a6790c53` → Phase 2.5 inner `82c7d59f` / outer `c57f8ca7` (committed 2026-05-25 ~22:00 PDT). **Worker:** `47dca7a4` (D-5 closure deploy; unchanged). **Push:** HELD · **Deploy:** HELD. Outer-only ledger (no inner commit). Memory edits #6/#16/#19/#22. **Next:** D-3 (2026-05-27) — regression sweep + Lane 6 parallel.
 
 **STAB-08 Scope C**: [x] **완료.** Escalated-contract revise UI surfaced on Arena Resolve (2026-05-22). ArenaResolveClient now renders ArenaActionValidationForm (+ escalation notice) for status="escalated" (runtime ACTION_SUBMITTED, qr_allowed=false) instead of the dead-end PendingGate; reuses the form verbatim, keyed on server-emitted action_contract.status. Server already allowed escalated resubmit (submit-validation:189-200) — Scope C is pure UI surfacing. Single file (L54/L170/L177-184). Inner `3e63a5da` (inner-main, local), outer co-track `c9ce8c2`, closure ledger this commit. Worker Version `5a544379` (supersedes `844990c0`). Baseline 3307→3310/0/6 (+3 tests), tsc clean. Smoke: seed e4632681 → escalated; DB-verified escalated→submitted→pending after browser resubmit; revise notice + form confirmed; Layer 1 revise (R1/R2/R4 — expected) → re-edit → Layer 2 → "sent for review" → pending (re-editable). CORRECTION: "stuck" was a UI misread, not runtime failure. Scope A/B + cleanup-endpoint hardening remain post-launch backlog. Canonical anchor `a27781f5` unchanged. STAB-07-P0 redispatch unblocked.
 

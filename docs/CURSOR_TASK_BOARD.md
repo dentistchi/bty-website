@@ -41,6 +41,38 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## D-4 MORNING — LAUNCH-PREP CLOSURE (Lane 5 consent · #26 · #23 · Phase 5)
+
+**Status:** CLOSED · **Date:** 2026-05-26 (D-4 morning session; underlying commits landed 2026-05-25 ~22:00 PDT / D-5 evening) · **Class:** launch prep, push-held, outer-ledger-only · **Launch:** ~2026-05-30
+**Header:** [D-4 morning CLOSED 2026-05-26] Lane 5 EN/KO consent + CONSENT_VERSION bump + #26 contrast + #23 LangSwitch dedup + Phase 5 cleanup.
+
+D-4 morning launch-prep lanes closed; push + deploy HELD per the launch_runway freeze. The code already landed as the Phase 2 / Phase 2.5 co-track pairs (see chain below); this is the outer ledger closure only — no inner commit (`docs/CURSOR_TASK_BOARD.md` ledger topology, outer real file; the `bty-app/docs/` symlink is untouched).
+
+**Closed lanes:**
+- **Lane 5 EN consent** — active-truth vendor disclosure (Cloudflare / Supabase / OpenAI; Anthropic excluded per Phase 1 Provider Verify).
+- **Lane 5 KO consent** — legal-equivalent Korean; Commander-locked 4 edits (진료실 팀 / PHI+identifiable / 전송 wording / 동의합니다).
+- **CONSENT_VERSION** — `2026-05-pending-v1` → `2026-05-v1`.
+- **#26** — PatternSignaturePanel light-theme contrast fix (1.04:1 → 14.5:1, AA pass).
+- **#23** — LocaleLayoutHeader `isAdminArea` guard (LangSwitch dedup on `/admin/*`).
+- **Phase 5 cleanup** — smoke-step2d (`51a162ff`) DELETE (cascade 0 rows — pure auth artifact); preserve cohort verified (hanbitchi `52e543cc`, chihanbit7 `9587a44e`, ywamer2022 `ee9d2075`).
+- **LEGAL_FOLLOWUPS.md** created (cross-border transfer flag).
+
+**Diagnostic findings (closure):**
+- chihanbit7 classification: `likely_real_user` (Commander variant); 5 IN_PROGRESS runs = intentional inspection artifacts, NOT a launch blocker.
+- arena_runs schema validated: 7 column-name drifts surfaced (memory #22 reinforced with specifics).
+- Provider Verify: BTY runtime = OpenAI only (Anthropic 0 code paths; Gemini wired but keyless; self-hosted inactive).
+
+**Commit chain:**
+- Phase 2 (Lane 5 + #26 + #23): inner `7afd272a` / outer `a6790c53` — 2026-05-25 22:02 PDT.
+- Phase 2.5 (KO consent + CONSENT_VERSION bump): inner `82c7d59f` / outer `c57f8ca7` — 2026-05-25 22:14 PDT.
+- Phase 5: DB DELETE only (no commit).
+- **Push:** HELD (launch_runway D-3/D-2 final-push window).
+- **Deploy:** NOT EXECUTED — worker live remains `47dca7a4` (the D-5 closure deploy; unchanged at D-4).
+
+**Memory edits this session:** #6 (two-layer state machine — 9 canonical states locked) · #16 (D-5→D-4 transition, closed lanes + queue) · #19 (wrangler 4.85.0+ `versions list` ASC sort) · #22 (db_cleanup_discipline — 7 schema drifts + cascade trace + preserve defaults).
+
+---
+
 ## PUSH AUTHORITY MODEL — LOCKED
 
 **Status**: GOVERNANCE MODEL LOCKED · **Date**: 2026-05-24 · **Class**: release governance, time-anchored · **Lifetime**: D-9 → D-0 freeze window · **Governance record**: `docs/PUSH_AUTHORITY_MODEL_D9.md`
