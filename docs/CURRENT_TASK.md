@@ -1,7 +1,9 @@
-## Current Status (D-4 evening — Lane 3 + Lane 6 CLOSED — 2026-05-26; launch ~2026-05-30)
+## Current Status (D-7 evening — Lane 7 QR-gate regression CLOSED — 2026-05-26; launch shift → ~2026-06-02)
 
-**Active head (D-4 / 2026-05-26):** inner `fee5d29d` (unchanged) · outer `6038eed` → this Lane 6 ledger commit · worker live `47dca7a4` (unchanged) · **Baseline:** 3364/0/6 · **Push:** HELD (inner ahead 19 · outer ahead 21 → 22 after this commit) · **Deploy:** HELD · **Next:** D-3 (2026-05-27) — regression sweep, baseline 3364 (Lane 6 handbook addendum v2 closed; awaiting Lawyer Input #2, Commander side).
-**Working tree:** clean (both repos; this outer Lane 6 ledger commit pending).
+**Active head (D-7 / 2026-05-26):** inner `90e5c13a` (Layer 1) · outer `5fa80b8` → this Lane 7 closure commit · worker live `47dca7a4` (regression still live until D-1 deploy) · **Baseline:** 3372/0/6 · **Push:** HELD (inner ahead 21 · outer ahead 24 → 25 after this commit) · **Deploy:** HELD pre-D-1 (6/01) · **Next:** D-6 (2026-05-27) — regression sweep buffer.
+**Working tree:** clean (both repos; this outer Lane 7 ledger commit pending).
+
+**Lane 7 (QR gate regression) CLOSED:** Layer 1 revert (verification_type `qr`→`self_attest`; inner `90e5c13a` / outer `5fa80b8`) + Layer 2 `ACTION_ESCALATED` full wiring (inner `ba89565a` / outer `ae60617`) + Commander SQL hotfix (contract `fe71287c`, user unblocked). Release Gate D-1 6/01 batch entry added (QR/verification gate). Universal QR consumption-side completion deferred post-launch. Launch shift: 5/30 = presentation only → D-0 = 6/02. Commander-side remaining (off-repo): Lawyer Input #2 cover note + send v2 handbook (strike "Drafting notes" first).
 
 _Lines below are preserved from the STAB-07-P0 / Phase 0C v2 era — no updated test-baseline or P0 inventory was supplied for D-4, so they are left as historical context rather than fabricated._
 

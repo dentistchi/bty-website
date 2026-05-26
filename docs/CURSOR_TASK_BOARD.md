@@ -41,6 +41,40 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## D-7 LANE 7 — QR GATE REGRESSION FIX (H1 + H3)
+
+**Status:** CLOSED (code fix + SQL hotfix complete; push HELD pre-D-1 = 6/01) · **Date:** 2026-05-26 (D-7, post-Lane-6) · **Class:** launch-blocker resolved · **Launch shift:** 5/30 → 6/02 (5/30 presentation only)
+**Header:** [D-7 Lane 7 CLOSED 2026-05-26] QR-GATE-REGRESSION incident — two independent layers (H1 WRITE regression + H3 runtime collapse) fixed across inner + outer; SQL hotfix unblocked the triggering user. Outer-only ledger closure (no inner change).
+
+**Trigger:** user-facing deadlock on contract `fe71287c-5875-4f66-b576-b5bbed7f4c03`.
+
+**Diagnostic:** QR-GATE-DIAG (Phase 1 row inspection, Phase 2 Track A+B, Track C code trace 2026-05-26).
+
+**Root cause — two independent layers:**
+- **H1 — WRITE regression (`baf5f210`, 2026-05-22, STAB-07-P0 L1):** 3 creation sites changed `verification_type` `self_attest`→`qr`, but `submit-validation` route.ts:267 4-AND gate first condition still requires `verification_type==='self_attest'`. Auto-approve path permanently dead → every contract falls through to non-deterministic Layer 2. The `baf5f210` commit message + the prior Release Gate entry claimed "consumption pipeline pre-wired (submit-validation gate, …)" — Track C confirmed this was **false for the gate** (commit-message corroboration gap).
+- **H3 — runtime collapse:** `arenaRuntimeSnapshot.server.ts` collapsed `escalated`→`ACTION_SUBMITTED` and `qrAllowedForContract` had no escalated branch → escalated contracts had every gate false, no forward path. Independent of H1: production never auto-approves (`BTY_ENV` gate, submit-validation L246-247), so this deadlock hit every escalation regardless of `verification_type`.
+
+**Decisions (Commander):**
+- **Layer 1 (A2):** revert 3 WRITE sites `qr`→`self_attest`. Universal QR remains a deferred direction; consumption side (qr token mint, validate route, escalated recovery) requires separate verification before re-introduction.
+- **Layer 2 (B2+B1, fully wired):** distinct `ACTION_ESCALATED` runtime state across all consumer surfaces (union + blocking-array + guard + priority 96 + mapping + qrAllowed + destination router + parse-allow + ArenaBlockedSurface + ArenaPendingContractGate + ArenaResolveClient `isResolveState`) + `qrAllowed` escalated case (`escalated AND verified_at IS NULL → true`).
+- **SQL hotfix (Commander-run):** contract `fe71287c` → `status=approved` (+ validation_approved_at / verified_at / completed_at); escalation row → `status=resolved`, `resolution=secondary_approve`; audit breadcrumbs in `details.hotfix` + `escalations.reviewer_notes`. (Recorded as Commander action; not Claude-verified — DB read was access-blocked.)
+
+**Commits (push HELD):**
+- Layer 2: inner `fee5d29d` → `ba89565a` / outer `56adb8b` → `ae60617`. Files: `arenaRuntimeSnapshot.types.ts`, `arenaRuntimeSnapshot.server.ts`, `arenaRuntimeSnapshot.server.test.ts` (NEW, 8 cases), `arenaRuntimeDestination.ts`, `arenaSessionRouterClient.ts`, `ArenaBlockedSurface.tsx`, `ArenaPendingContractGate.tsx`, `src/app/[locale]/bty-arena/play/resolve/ArenaResolveClient.tsx`, `ArenaResolveClient.escalated-revise.test.tsx`.
+- Layer 1: inner `ba89565a` → `90e5c13a` / outer `ae60617` → `5fa80b8`. Files: `action-contracts/route.ts`, `ensureActionContract.ts`, `eliteBindingActionCommitment.server.ts`, `action-contracts/route.test.ts`.
+
+**Baseline:** 3364/0/6 → 3372/0/6 (Layer 2 +8 tests; Layer 1 in-place test update, count unchanged). **tsc:** PASS (clean exit 0).
+
+**Push status:** HELD pre-D-1 (6/01). **Worker:** `47dca7a4` (regression still live until D-1 deploy).
+
+**D-1 deploy mandate:** Layer 2 = primary launch-safety dependency (production never auto-approves; Layer 2 is the only forward exit for escalated state). Layer 1 restores normal staging posture but does not change production semantics. Release Gate entry added (QR/verification gate touched per release-safety.md).
+
+**Production effect when deployed (D-1 6/01):** staging → self_attest + 4-AND gate → auto-approve resumes; production → BTY_ENV gate skips auto-approve → Layer 2 → escalate possible → `ACTION_ESCALATED` + `qr_allowed=true` → forward QR exit. No 72h deadlock, no silent breakage.
+
+**Lessons:** (1) commit-message / Release-Gate claim ≠ code reality — require producer+consumer+gate three-way verification before release confidence; (2) `\s`-based git-grep can return false-empty — use fixed-string fallback; (3) smallest-diff vs domain-correctness tension — full ACTION_ESCALATED wiring (Option B) chosen over the 1-line concession.
+
+---
+
 ## D-4 LANE 6 — HANDBOOK ADDENDUM v2 FINAL DRAFT (Commander lane)
 
 **Status:** CLOSED (artifact persisted, awaiting Lawyer Input #2) · **Date:** 2026-05-26 (D-4 evening) · **Class:** legal artifact, outer-ledger closure, docs-only · **Launch:** ~2026-05-30
