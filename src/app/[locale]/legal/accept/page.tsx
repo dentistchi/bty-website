@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getMessages, type Locale } from "@/lib/i18n";
+import { type Locale } from "@/lib/i18n";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { AcceptClient } from "./AcceptClient";
 
@@ -14,7 +14,6 @@ export default async function LegalAcceptPage({
 }) {
   const { locale } = await params;
   const { return: returnUrl } = await searchParams;
-  const m = getMessages(locale);
 
   const supabase = await getSupabaseServer();
   const {
@@ -143,14 +142,101 @@ export default async function LegalAcceptPage({
             </section>
           </article>
         ) : (
-          <>
-            <h1 className="text-2xl font-semibold mb-2">{m.legal.accept.title}</h1>
-            <p className="text-sm text-amber-700 bg-amber-50 p-3 rounded mb-6">
-              {m.legal.accept.placeholder_notice}
-            </p>
+          <article className="space-y-5 text-[#1E2A38]">
+            <h1 className="text-2xl font-semibold">bty 안내 및 동의</h1>
 
-            <div className="text-sm text-gray-700 mb-6">{m.legal.accept.section_heading}</div>
-          </>
+            <section className="space-y-2">
+              <h2 className="text-lg font-semibold">bty란</h2>
+              <p className="text-sm leading-relaxed">
+                bty는 치과 진료실 팀을 위한 훈련 도구입니다. 실제 진료 환경에서 마주칠 수 있는 상황을
+                통해 리더십, 의사결정, 그리고 정직성과 관련된 역량을 연습할 수 있도록 돕습니다.
+                시나리오를 마주하고, 선택하고, 결과를 돌아보는 과정에서 사용자의 행동 패턴이 시간에
+                따라 발전합니다.
+              </p>
+            </section>
+
+            <section className="space-y-2">
+              <h2 className="text-lg font-semibold">수집하는 정보</h2>
+              <p className="text-sm leading-relaxed">bty 사용 시 다음 정보가 수집됩니다.</p>
+              <ul className="list-disc space-y-1 pl-5 text-sm leading-relaxed">
+                <li>
+                  <strong>계정 정보</strong> — 이름, 직장 이메일, 진료실 내 역할
+                </li>
+                <li>
+                  <strong>훈련 활동</strong> — 참여한 시나리오, 선택한 응답, 작성한 성찰 내용, 그리고
+                  시간에 따른 패턴 변화
+                </li>
+                <li>
+                  <strong>기술 정보</strong> — 보안 및 안정성을 위한 브라우저 종류, IP 주소 등
+                  일반적인 기술 데이터
+                </li>
+              </ul>
+            </section>
+
+            <section className="space-y-2">
+              <h2 className="text-lg font-semibold">환자 정보 관련 주의</h2>
+              <p className="text-sm leading-relaxed">
+                훈련 성찰이나 채팅 메시지에 환자 이름, 환자 식별 정보 또는 보호 대상 건강정보(PHI)를
+                포함하지 마십시오. bty는 진료기록 시스템이 아니며, 사용자가 입력한 성찰 내용은 아래에
+                명시된 AI 서비스로 전송되어 처리될 수 있습니다.
+              </p>
+            </section>
+
+            <section className="space-y-2">
+              <h2 className="text-lg font-semibold">수집 목적</h2>
+              <p className="text-sm leading-relaxed">
+                훈련 활동 정보는 사용자의 성장에 맞게 시나리오를 조정하고, 진료팀 전체의 패턴을
+                이해하는 데 사용됩니다.
+              </p>
+            </section>
+
+            <section className="space-y-2">
+              <h2 className="text-lg font-semibold">bty 운영에 사용되는 서비스</h2>
+              <p className="text-sm leading-relaxed">
+                bty는 다음 서비스를 통해 운영됩니다. 각 서비스는 자체 개인정보 처리 방침에 따라 사용자
+                정보를 다룹니다.
+              </p>
+              <ul className="list-disc space-y-1 pl-5 text-sm leading-relaxed">
+                <li>
+                  <strong>Cloudflare</strong> — bty 애플리케이션 호스팅
+                </li>
+                <li>
+                  <strong>Supabase</strong> — 계정 및 훈련 기록 저장
+                </li>
+                <li>
+                  <strong>OpenAI</strong> — 채팅, 멘토 기능, 그리고 훈련 관련 AI 기능 지원
+                </li>
+              </ul>
+              <p className="text-sm leading-relaxed">
+                성찰을 작성하거나 채팅 기능을 사용할 때, 입력하신 내용은 위 AI 서비스로 전송되어
+                처리될 수 있습니다.
+              </p>
+            </section>
+
+            <section className="space-y-2">
+              <h2 className="text-lg font-semibold">중요 사항</h2>
+              <ul className="list-disc space-y-1 pl-5 text-sm leading-relaxed">
+                <li>
+                  bty는 업무 환경의 일부입니다. 진료실의 직원 핸드북에 bty가 사용자의 역할에 어떻게
+                  포함되는지 안내되어 있습니다.
+                </li>
+                <li>문의 사항이 있을 경우 진료실 관리자에게 연락하십시오.</li>
+                <li>계정 정보의 삭제는 진료실 관리자를 통해 요청하실 수 있습니다.</li>
+              </ul>
+            </section>
+
+            <section className="space-y-2">
+              <h2 className="text-lg font-semibold">동의</h2>
+              <p className="text-sm leading-relaxed">
+                <strong>동의합니다</strong> 버튼을 누르시면 다음 내용에 동의하는 것으로 간주됩니다.
+              </p>
+              <ul className="list-disc space-y-1 pl-5 text-sm leading-relaxed">
+                <li>본 안내를 읽으셨습니다</li>
+                <li>bty가 업무 훈련의 일부임을 이해하셨습니다</li>
+                <li>위에 설명된 내용에 따라 bty가 정보를 수집하고 사용하는 것에 동의하셨습니다</li>
+              </ul>
+            </section>
+          </article>
         )}
 
         <div className="mt-6">
