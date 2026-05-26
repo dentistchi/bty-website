@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { localeToBcp47 } from "@/lib/i18n/bcp47";
 
-const CONSENT_VERSION = "2026-05-pending-v1";
+const CONSENT_VERSION = "2026-05-v1";
 
 export function AcceptClient({ locale, returnUrl }: { locale: Locale; returnUrl: string }) {
   const m = getMessages(locale);
