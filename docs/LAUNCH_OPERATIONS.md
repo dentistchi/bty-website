@@ -61,6 +61,7 @@ Default locale is **EN**. Middleware is path-based; no Accept-Language negotiati
 | 9587a44e | chihanbit7@gmail.com | Commander variant (tier 0) |
 | 2322beb7 | ddshanbit@gmail.com | Commander variant (tier 0) |
 | 85bd8f1f | hanbitdds@gmail.com | Commander variant |
+| e9eded1c | aidencool0929@gmail.com | Commander Google variant (dormant, single-session 2026-04-06) |
 
 E2E fixtures + recall-test accounts: not user-facing. External approved users: 0 (organic post-launch).
 

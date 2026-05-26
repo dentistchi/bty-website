@@ -119,7 +119,27 @@ function looksLikeE164(phone: string): boolean {
   return digits.length >= 8 && digits.length <= 15;
 }
 
+/**
+ * Public auth providers — Commander launch lock (D-1, 2026-05-29): default to
+ * Google only. Microsoft (azure) + Phone OTP code paths below are retained
+ * intact but hidden unless explicitly enabled via NEXT_PUBLIC_BTY_AUTH_PROVIDERS
+ * (comma list, e.g. "google,microsoft,phone"). Read per-render so the flag is
+ * pickup-able in tests; Next inlines the NEXT_PUBLIC_* literal at build time.
+ */
+function enabledProviders(): { google: boolean; microsoft: boolean; phone: boolean } {
+  const list = (process.env.NEXT_PUBLIC_BTY_AUTH_PROVIDERS || "google")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return {
+    google: list.includes("google"),
+    microsoft: list.includes("microsoft"),
+    phone: list.includes("phone"),
+  };
+}
+
 export default function LoginCard({ locale, nextPath, initialError }: LoginCardProps) {
+  const { google: showGoogle, microsoft: showMicrosoft, phone: showPhone } = enabledProviders();
   const t = C[locale];
   const [phase, setPhase] = useState<LoginAuthPhase>("initial");
   const [oauthProvider, setOauthProvider] = useState<"google" | "azure" | null>(null);
@@ -273,27 +293,31 @@ export default function LoginCard({ locale, nextPath, initialError }: LoginCardP
       </header>
 
       <div className="flex flex-col gap-3">
-        <button
-          type="button"
-          disabled={primaryDisabled}
-          onClick={() => onOAuth("google")}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white px-4 py-3 text-sm font-medium text-slate-900 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-          aria-busy={oauthBusy && oauthProvider === "google"}
-        >
-          <span className="font-semibold">{t.continueGoogle}</span>
-        </button>
+        {showGoogle && (
+          <button
+            type="button"
+            disabled={primaryDisabled}
+            onClick={() => onOAuth("google")}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white px-4 py-3 text-sm font-medium text-slate-900 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+            aria-busy={oauthBusy && oauthProvider === "google"}
+          >
+            <span className="font-semibold">{t.continueGoogle}</span>
+          </button>
+        )}
 
-        <button
-          type="button"
-          disabled={primaryDisabled}
-          onClick={() => onOAuth("azure")}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-          aria-busy={oauthBusy && oauthProvider === "azure"}
-        >
-          <span>{t.continueMicrosoft}</span>
-        </button>
+        {showMicrosoft && (
+          <button
+            type="button"
+            disabled={primaryDisabled}
+            onClick={() => onOAuth("azure")}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            aria-busy={oauthBusy && oauthProvider === "azure"}
+          >
+            <span>{t.continueMicrosoft}</span>
+          </button>
+        )}
 
-        {!showPhonePanel ? (
+        {showPhone && !showPhonePanel ? (
           <button
             type="button"
             disabled={primaryDisabled}
@@ -315,7 +339,7 @@ export default function LoginCard({ locale, nextPath, initialError }: LoginCardP
         </p>
       ) : null}
 
-      {showPhonePanel ? (
+      {showPhone && showPhonePanel ? (
         <section className="mt-6 rounded-2xl border border-white/10 bg-slate-900/40 p-4" aria-labelledby="phone-login-title">
           <h2 id="phone-login-title" className="text-sm font-medium text-slate-200">
             {t.phoneSectionTitle}

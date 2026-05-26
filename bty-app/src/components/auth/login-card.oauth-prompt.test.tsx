@@ -20,11 +20,15 @@ import LoginCard from "./login-card";
 afterEach(() => {
   cleanup();
   mockSignInWithOAuth.mockClear();
+  delete process.env.NEXT_PUBLIC_BTY_AUTH_PROVIDERS;
 });
 
 describe("LoginCard — OAuth prompt", () => {
-  it("Continue with Google passes prompt=select_account", async () => {
+  it("Continue with Google passes prompt=select_account (and is the only provider by default)", async () => {
     render(<LoginCard locale="en" nextPath="/en/bty" />);
+    // Default (no env): Google only — Microsoft + Phone hidden.
+    expect(screen.queryByText("Continue with Microsoft")).toBeNull();
+    expect(screen.queryByText("Continue with Phone")).toBeNull();
     fireEvent.click(screen.getByText("Continue with Google"));
     await waitFor(() => {
       expect(mockSignInWithOAuth).toHaveBeenCalledWith(
@@ -38,7 +42,8 @@ describe("LoginCard — OAuth prompt", () => {
     });
   });
 
-  it("Continue with Microsoft (azure) also forces the account chooser", async () => {
+  it("with NEXT_PUBLIC_BTY_AUTH_PROVIDERS='google,microsoft': Microsoft (azure) visible + forces the account chooser", async () => {
+    process.env.NEXT_PUBLIC_BTY_AUTH_PROVIDERS = "google,microsoft";
     render(<LoginCard locale="en" nextPath="/en/bty" />);
     fireEvent.click(screen.getByText("Continue with Microsoft"));
     await waitFor(() => {
@@ -51,5 +56,12 @@ describe("LoginCard — OAuth prompt", () => {
         })
       );
     });
+  });
+
+  it("with NEXT_PUBLIC_BTY_AUTH_PROVIDERS='phone': Phone OTP entry visible, Google hidden", () => {
+    process.env.NEXT_PUBLIC_BTY_AUTH_PROVIDERS = "phone";
+    render(<LoginCard locale="en" nextPath="/en/bty" />);
+    expect(screen.getByText("Continue with Phone")).toBeTruthy();
+    expect(screen.queryByText("Continue with Google")).toBeNull();
   });
 });
