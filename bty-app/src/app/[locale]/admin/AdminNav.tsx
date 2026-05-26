@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LangSwitch } from "@/components/LangSwitch";
+import LogoutButton from "@/components/auth/LogoutButton";
 
 const NAV_ITEMS = [
   { key: "debug",               label: "Debug" },
@@ -41,8 +42,10 @@ export default function AdminNav({ locale }: { locale: string }) {
             </Link>
           );
         })}
-        <span className="ml-auto flex shrink-0 items-center border-l border-neutral-200 pl-3">
+        <span className="ml-auto flex shrink-0 items-center gap-2 border-l border-neutral-200 pl-3">
           <LangSwitch />
+          {/* #21: admin nav had no logout; reuses the fixed LogoutButton handler. */}
+          <LogoutButton />
         </span>
       </div>
     </nav>

@@ -10,9 +10,17 @@ export function LogoutButton() {
   const locale: Locale = pathname.startsWith("/ko") ? "ko" : "en";
   const label = getMessages(locale).logout;
 
-  const onLogout = useCallback(() => {
-    const next = encodeURIComponent(`/${locale}/bty`);
-    window.location.assign(`/${locale}/bty/logout?next=${next}`);
+  const onLogout = useCallback(async () => {
+    // #20: revoke the Supabase session server-side (auth.signOut) + clear cookies.
+    // The old `/bty/logout` path only expired cookies, leaving the Supabase
+    // session live so the next OAuth click silently re-authenticated.
+    try {
+      await fetch(`/api/auth/logout`, { method: "POST", credentials: "include" });
+    } catch {
+      // Network failure: still navigate to the login page (cookies may persist;
+      // surfaced to the user as a logged-out screen rather than a hang).
+    }
+    window.location.assign(`/${locale}/bty/login`);
   }, [locale]);
 
   return (

@@ -160,6 +160,9 @@ export default function LoginCard({ locale, nextPath, initialError }: LoginCardP
           options: {
             redirectTo,
             skipBrowserRedirect: false,
+            // #20: force the IdP account chooser. Without this, an active Google/
+            // Microsoft SSO session re-authenticates silently right after logout.
+            queryParams: { prompt: "select_account" },
           },
         });
         if (oauthError) {

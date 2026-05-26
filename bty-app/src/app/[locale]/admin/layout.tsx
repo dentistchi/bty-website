@@ -27,14 +27,18 @@ export default async function AdminLayout({ children, params }: Props) {
   const { locale } = await params;
   const base = `/${locale}/admin`;
 
+  // Admin auth is OAuth-only via /bty/login. We must NOT redirect to
+  // `${base}/login`: that route is itself under this layout, so a logged-out
+  // user would be redirected to a page that re-runs this gate → infinite loop
+  // (#19). Send no-session users to the working OAuth login instead.
   const supabase = await getSupabaseServerReadonly();
   if (!supabase) {
-    redirect(`${base}/login`);
+    redirect(`/${locale}/bty/login`);
   }
 
   const { data } = await supabase.auth.getUser();
   if (!data.user) {
-    redirect(`${base}/login?next=${encodeURIComponent(base)}`);
+    redirect(`/${locale}/bty/login?next=${encodeURIComponent(base)}`);
   }
 
   const email = (data.user.email ?? "").toLowerCase();
@@ -42,7 +46,9 @@ export default async function AdminLayout({ children, params }: Props) {
     const matched = Boolean(email) && ADMIN_EMAIL_SET.has(email);
     logAdminAllowlistDebug(email, matched);
     if (!matched) {
-      redirect(`${base}/login?next=${base}&error=forbidden`);
+      // Authenticated but not an admin → access denied page (not /admin/login,
+      // which would re-loop this gate). Same #19 loop class.
+      redirect(`/${locale}/forbidden`);
     }
   } else {
     logAdminAllowlistDebug(email, true);
