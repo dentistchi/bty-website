@@ -73,6 +73,14 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 **Lessons:** (1) commit-message / Release-Gate claim ≠ code reality — require producer+consumer+gate three-way verification before release confidence; (2) `\s`-based git-grep can return false-empty — use fixed-string fallback; (3) smallest-diff vs domain-correctness tension — full ACTION_ESCALATED wiring (Option B) chosen over the 1-line concession.
 
+**VERIFICATION (post-deploy + live, 2026-05-26 evening) — incident FULLY CLOSED:**
+- **Released early (D-7, not the planned D-1):** Commander explicit decision due to active production deadlock on the organic-user path. Process gates all passed (baseline 3372/0/6 · tsc clean · Release Gate entry · rollback anchors); release-safety is process-enforced, not calendar-enforced.
+- **Deploy (Claude-verified, 3-way):** worker `47dca7a4` → `20f15258-a2e6-465e-8b39-450eaf47f6fe` — deploy stdout + `wrangler versions list` + live `/api/version` probe all agree.
+- **Push (Claude-verified):** inner `f71c0616..90e5c13a` → origin/inner-main; outer `ed2fed3..3f92e66` → origin/main (full 25-commit held aggregate, incl. Lane 3 auth surface + LRI/Certified spec doc `2faa66d`).
+- **Browser flow (Commander-reported, not Claude-verified):** fresh contract `ea20f335-be9c-4fd6-9f1b-0e18601d3354` (hanbitchi, `core_07_repair_conversation`) → `verification_type='self_attest'`, `status='approved'`, `validation_approved_at` 15:44:10, auto-approved in ~41s; no escalation / no QR step / no deadlock.
+- **SQL hotfix (Commander-run, not Claude-verified):** `fe71287c` (chihanbit7) resolved `secondary_approve` 14:29:05; `b76b1da3` (hanbitchi) resolved 15:38:47 (2 escalation rows both resolved).
+- **Runtime-model correction:** the D-1 prediction lines above ("production never auto-approves") are **superseded by live reality** — there is no separate production worker; the single live worker `bty-arena-staging` is staging-configured (`BTY_ENV="staging"` + `SELF_REPORT_AUTO_APPROVE="true"`, confirmed in deploy binding output), so the 4-AND auto-approve gate **fires** and Layer 1's self_attest revert resolves the deadlock at source. Layer 2 `ACTION_ESCALATED` is the safety net for genuine escalations. Claude memory model updated (`bty_prod_worker_absent_single_db`). Production-tier worker separation = deferred architectural item, not current state.
+
 ---
 
 ## D-4 LANE 6 — HANDBOOK ADDENDUM v2 FINAL DRAFT (Commander lane)

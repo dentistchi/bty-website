@@ -1,9 +1,18 @@
-## Current Status (D-7 evening — Lane 7 QR-gate regression CLOSED — 2026-05-26; launch shift → ~2026-06-02)
+## Current Status (D-7 evening — Lane 3+5+6+7 CLOSED, deploy verified LIVE — 2026-05-26; launch D-0 = 2026-06-02)
 
-**Active head (D-7 / 2026-05-26):** inner `90e5c13a` (Layer 1) · outer `5fa80b8` → this Lane 7 closure commit · worker live `47dca7a4` (regression still live until D-1 deploy) · **Baseline:** 3372/0/6 · **Push:** HELD (inner ahead 21 · outer ahead 24 → 25 after this commit) · **Deploy:** HELD pre-D-1 (6/01) · **Next:** D-6 (2026-05-27) — regression sweep buffer.
-**Working tree:** clean (both repos; this outer Lane 7 ledger commit pending).
+**Active head (D-7 / 2026-05-26):** inner `90e5c13a` (pushed, ahead 0) · outer `3f92e66` → this verification ledger commit (ahead 0 → 1, accompanies next push cycle) · **worker live `20f15258-a2e6-465e-8b39-450eaf47f6fe`** (was `47dca7a4`) · **Baseline:** 3372/0/6 · **tsc:** PASS · **Push:** DONE (D-7 emergency, full 25-commit aggregate) · **Deploy:** DONE (D-7) · **Next:** D-6 (2026-05-27) regression sweep buffer.
+**Working tree:** clean (both repos).
 
-**Lane 7 (QR gate regression) CLOSED:** Layer 1 revert (verification_type `qr`→`self_attest`; inner `90e5c13a` / outer `5fa80b8`) + Layer 2 `ACTION_ESCALATED` full wiring (inner `ba89565a` / outer `ae60617`) + Commander SQL hotfix (contract `fe71287c`, user unblocked). Release Gate D-1 6/01 batch entry added (QR/verification gate). Universal QR consumption-side completion deferred post-launch. Launch shift: 5/30 = presentation only → D-0 = 6/02. Commander-side remaining (off-repo): Lawyer Input #2 cover note + send v2 handbook (strike "Drafting notes" first).
+**Lane 7 QR-gate regression — FULLY CLOSED + LIVE:** Layer 1 (verification_type `qr`→`self_attest`, inner `90e5c13a`) + Layer 2 (`ACTION_ESCALATED` full wiring, inner `ba89565a`) deployed on worker `20f15258`. **Claude-verified:** 3-way deploy + push. **Commander-reported (no Claude DB/browser access):** fresh contract `ea20f335` auto-approved as `self_attest` (~41s, no escalate); SQL hotfix resolved `fe71287c` (14:29:05) + `b76b1da3` (15:38:47). **Runtime-model correction:** live worker is staging-configured → 4-AND auto-approve fires (no separate prod worker; the earlier "production never auto-approves" framing is superseded).
+
+**Post-launch backlog (new, from D-7 incident):**
+1. **Duplicate escalation idempotency** — `b76b1da3` reportedly produced 2 escalation rows (one timestamped ~5s before contract.submitted_at). Investigate duplicate-invocation in the submit-validation escalation insert (route.ts:511-537). Severity low (Layer 2 covers the user-facing deadlock regardless of row count); schema-integrity concern. [Commander-reported, not Claude-verified.]
+2. **`/api/version` BTY_DEPLOY_VERSION auto-bump** — build-time inline env var, currently stale (`2026-04-27...`), does not move with deploy → never use as a deploy signal. Not a D-0 blocker.
+3. **Stale IN_PROGRESS arena_runs cleanup** — dangling runs reportedly observed (`core_05_resignation_signal`, `core_25_forced_repair_conversation`, `core_07_repair_conversation`), current_step=0 / meta=null; extends the STAB-05 backlog item. [Commander-reported.]
+4. **Universal QR consumption-side completion** — Lane 7 Layer 1 deferred direction (A2 revert). Re-introduction requires producer+consumer+gate three-way verification; scope: qr token mint + validate route + escalated recovery + OAuth first-contract path.
+
+**Commander-side remaining (off-repo):** Lawyer Input #2 cover note + send handbook v2 (strike "Drafting notes" first); optional KO mirror.
+**Open governance items (existing):** LRI/Certified admin lane; STAB-07 P0 deferred levers; B2 `ACTION_ESCALATED` additional consumer audits if more surfaces found post-launch.
 
 _Lines below are preserved from the STAB-07-P0 / Phase 0C v2 era — no updated test-baseline or P0 inventory was supplied for D-4, so they are left as historical context rather than fabricated._
 
