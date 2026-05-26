@@ -76,6 +76,7 @@ export function ArenaBlockedSurface({
   switch (rs) {
     case "ACTION_REQUIRED":
     case "ACTION_SUBMITTED":
+    case "ACTION_ESCALATED":
     case "ACTION_AWAITING_VERIFICATION":
       if (pendingContract) {
         return (
@@ -83,7 +84,10 @@ export function ArenaBlockedSurface({
             locale={locale}
             contract={pendingContract}
             runtimeState={
-              rs === "ACTION_REQUIRED" || rs === "ACTION_SUBMITTED" || rs === "ACTION_AWAITING_VERIFICATION"
+              rs === "ACTION_REQUIRED" ||
+              rs === "ACTION_SUBMITTED" ||
+              rs === "ACTION_ESCALATED" ||
+              rs === "ACTION_AWAITING_VERIFICATION"
                 ? rs
                 : null
             }

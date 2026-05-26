@@ -12,6 +12,8 @@ export function statePriorityForRuntime(id: ArenaRuntimeStateId): number {
   switch (id) {
     case "ACTION_AWAITING_VERIFICATION":
       return 100;
+    case "ACTION_ESCALATED":
+      return 96;
     case "ACTION_SUBMITTED":
       return 95;
     case "ACTION_REQUIRED":
@@ -36,7 +38,10 @@ export function statePriorityForRuntime(id: ArenaRuntimeStateId): number {
 export function runtimeStateFromBlockingContract(row: BlockingArenaContractRow): ArenaRuntimeStateId {
   const st = String(row.status ?? "").toLowerCase();
   if (st === "approved") return "ACTION_AWAITING_VERIFICATION";
-  if (st === "submitted" || st === "escalated") return "ACTION_SUBMITTED";
+  // H3 circuit breaker (2026-05-26): escalated gets a distinct runtime state so the
+  // resolve surface can offer a forward exit instead of collapsing into ACTION_SUBMITTED.
+  if (st === "escalated") return "ACTION_ESCALATED";
+  if (st === "submitted") return "ACTION_SUBMITTED";
   return "ACTION_REQUIRED";
 }
 
@@ -45,6 +50,10 @@ export function runtimeStateFromBlockingContract(row: BlockingArenaContractRow):
  * `pending` → QR mints the witness loop. `approved`/`submitted` with validation done but
  * `verified_at` not yet set → still awaiting QR. A terminal contract (`verified_at` present,
  * or any other status) returns false so the gate never offers QR for a finished contract.
+ * H3 circuit breaker (2026-05-26): `escalated` with no `verified_at` yet → QR allowed, so an
+ * escalated contract has a forward exit instead of dead-ending (only prior exits were the 72h
+ * expiry cron or a re-escalating revise loop). Production never auto-approves, so escalation is
+ * the default Layer 2 outcome at launch — this exit is required independent of the verification_type fix.
  */
 function qrAllowedForContract(row: {
   status?: unknown;
@@ -53,6 +62,7 @@ function qrAllowedForContract(row: {
 }): boolean {
   const st = String(row.status ?? "").toLowerCase();
   if (st === "pending") return true;
+  if (st === "escalated" && row.verified_at == null) return true;
   if (
     (st === "approved" || st === "submitted") &&
     row.validation_approved_at != null &&

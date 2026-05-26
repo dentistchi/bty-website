@@ -9,6 +9,8 @@ export const ARENA_SESSION_MODE = "arena" as const;
 export type ArenaRuntimeStateId =
   | "ACTION_REQUIRED"
   | "ACTION_SUBMITTED"
+  /** Layer 2 validation escalated to human review; contract still open (verified_at null). Forward exit via QR / revise-resubmit. */
+  | "ACTION_ESCALATED"
   | "ACTION_AWAITING_VERIFICATION"
   | "ARENA_SCENARIO_READY"
   /** Elite: after primary binding — forced tradeoff tier is active (not Action Decision yet). */
@@ -99,14 +101,18 @@ export type ArenaBindingRuntimeSnapshot = ArenaSessionRouterSnapshot & {
 export const ARENA_ACTION_BLOCKING_RUNTIME_STATES: readonly ArenaRuntimeStateId[] = [
   "ACTION_REQUIRED",
   "ACTION_SUBMITTED",
+  "ACTION_ESCALATED",
   "ACTION_AWAITING_VERIFICATION",
 ] as const;
 
 export function isArenaActionBlockingRuntimeState(
   s: string | null | undefined,
-): s is "ACTION_REQUIRED" | "ACTION_SUBMITTED" | "ACTION_AWAITING_VERIFICATION" {
+): s is "ACTION_REQUIRED" | "ACTION_SUBMITTED" | "ACTION_ESCALATED" | "ACTION_AWAITING_VERIFICATION" {
   return (
-    s === "ACTION_REQUIRED" || s === "ACTION_SUBMITTED" || s === "ACTION_AWAITING_VERIFICATION"
+    s === "ACTION_REQUIRED" ||
+    s === "ACTION_SUBMITTED" ||
+    s === "ACTION_ESCALATED" ||
+    s === "ACTION_AWAITING_VERIFICATION"
   );
 }
 

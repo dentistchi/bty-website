@@ -18,6 +18,7 @@ export function arenaRuntimeDestinationFromRuntimeState(
   switch (runtimeState) {
     case "ACTION_REQUIRED":
     case "ACTION_SUBMITTED":
+    case "ACTION_ESCALATED":
     case "ACTION_AWAITING_VERIFICATION":
       return "arena_contract_gate";
     case "FORCED_RESET_PENDING":

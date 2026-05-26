@@ -65,6 +65,7 @@ export default function ArenaResolveClient({ locale }: Props) {
   const isResolveState =
     runtimeState === "ACTION_REQUIRED" ||
     runtimeState === "ACTION_SUBMITTED" ||
+    runtimeState === "ACTION_ESCALATED" ||
     runtimeState === "ACTION_AWAITING_VERIFICATION";
 
   // Navigation OUT — when the active state is outside the Resolve domain,
