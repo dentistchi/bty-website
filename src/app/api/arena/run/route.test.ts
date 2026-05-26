@@ -19,6 +19,21 @@ function makeRequest(body: object = {}): Request {
   });
 }
 
+/** from() mock: approved membership for the S2 gate + caller-supplied arena_runs insert chain. */
+function memberAwareFrom(runsInsert: unknown) {
+  return vi.fn((table: string) =>
+    table === "arena_membership_requests"
+      ? {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: { status: "approved" }, error: null }),
+            }),
+          }),
+        }
+      : { insert: runsInsert },
+  );
+}
+
 describe("POST /api/arena/run", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -99,9 +114,7 @@ describe("POST /api/arena/run", () => {
     mockGetSupabaseServerClient.mockResolvedValue({
       auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
       rpc: vi.fn().mockResolvedValue({ error: null }),
-      from: vi.fn().mockReturnValue({
-        insert: mockInsert,
-      }),
+      from: memberAwareFrom(mockInsert),
     });
 
     const res = await POST(makeRequest({ scenarioId: "  trimmed-id  " }));
@@ -134,11 +147,9 @@ describe("POST /api/arena/run", () => {
     mockGetSupabaseServerClient.mockResolvedValue({
       auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
       rpc: vi.fn().mockResolvedValue({ error: null }),
-      from: vi.fn().mockReturnValue({
-        insert: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({ single: mockSingle }),
-        }),
-      }),
+      from: memberAwareFrom(
+        vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single: mockSingle }) }),
+      ),
     });
     const res = await POST(makeRequest({ scenarioId: "s1" }));
     expect(res.status).toBe(200);
@@ -153,11 +164,9 @@ describe("POST /api/arena/run", () => {
     mockGetSupabaseServerClient.mockResolvedValue({
       auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
       rpc: vi.fn().mockResolvedValue({ error: null }),
-      from: vi.fn().mockReturnValue({
-        insert: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({ single: mockSingle }),
-        }),
-      }),
+      from: memberAwareFrom(
+        vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single: mockSingle }) }),
+      ),
     });
 
     const res = await POST(makeRequest({ scenarioId: "s1" }));
@@ -168,5 +177,19 @@ describe("POST /api/arena/run", () => {
     expect(data.run).toHaveProperty("scenario_id");
     expect(data.run).toHaveProperty("started_at");
     expect(data.run).toHaveProperty("status");
+  });
+
+  it("returns 403 MEMBERSHIP_REQUIRED when membership is not approved", async () => {
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+      from: vi.fn(() => ({
+        select: () => ({
+          eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }),
+        }),
+      })),
+    });
+    const res = await POST(makeRequest({ scenarioId: "s1" }));
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe("MEMBERSHIP_REQUIRED");
   });
 });

@@ -12,9 +12,15 @@ vi.mock("@/lib/bty/arena/supabaseServer", () => ({
     mockGetSupabaseServerClient(...args),
 }));
 
+const mockRequireApprovedMembership = vi.fn();
+vi.mock("@/lib/bty/arena/requireApprovedMembership", () => ({
+  requireApprovedMembership: (...args: unknown[]) => mockRequireApprovedMembership(...args),
+}));
+
 describe("POST /api/arena/beginner-run", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRequireApprovedMembership.mockResolvedValue({ approved: true });
   });
 
   it("returns 401 when unauthenticated", async () => {
@@ -129,5 +135,27 @@ describe("POST /api/arena/beginner-run", () => {
     expect(mockInsert).toHaveBeenCalledWith(
       expect.objectContaining({ scenario_id: "b-sc" }),
     );
+  });
+
+  it("returns 403 MEMBERSHIP_REQUIRED when membership is not approved", async () => {
+    mockRequireApprovedMembership.mockResolvedValue({
+      approved: false,
+      status: 403,
+      error: "MEMBERSHIP_REQUIRED",
+      reason: "no_request",
+    });
+    mockGetSupabaseServerClient.mockResolvedValue({
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+      rpc: vi.fn().mockResolvedValue({ error: null }),
+      from: vi.fn(),
+    });
+    const req = new Request("http://localhost/api/arena/beginner-run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scenarioId: "b-sc" }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe("MEMBERSHIP_REQUIRED");
   });
 });

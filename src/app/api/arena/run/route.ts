@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { arenaScenarioIdFromUnknown } from "@/domain/arena/scenarios";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { requireApprovedMembership } from "@/lib/bty/arena/requireApprovedMembership";
 
 /**
  * POST /api/arena/run — Arena 시나리오 런 시작 (`arena_runs` insert, `ensure_arena_profile` RPC).
@@ -29,6 +30,10 @@ export async function POST(req: Request) {
   const difficulty = body?.difficulty != null ? String(body.difficulty) : null;
   const meta = body?.meta != null && typeof body.meta === "object" ? body.meta : null;
   if (!scenarioId) return NextResponse.json({ error: "scenarioId_required" }, { status: 400 });
+
+  // S2 Arena-entry gate (single source of truth — see requireApprovedMembership).
+  const gate = await requireApprovedMembership(supabase, user.id);
+  if (!gate.approved) return NextResponse.json({ error: gate.error }, { status: gate.status });
 
   await supabase.rpc("ensure_arena_profile");
 

@@ -49,6 +49,11 @@ vi.mock("@/engine/memory/delayed-outcome-consumer.service", () => ({
     mockConsumeDueDelayedOutcomeTriggersForUser(...args),
 }));
 
+const mockRequireApprovedMembership = vi.fn();
+vi.mock("@/lib/bty/arena/requireApprovedMembership", () => ({
+  requireApprovedMembership: (...args: unknown[]) => mockRequireApprovedMembership(...args),
+}));
+
 function makeSupabaseForSessionRouter() {
   const lte = vi.fn().mockResolvedValue({ data: null, error: null });
   const updateChain = { eq: vi.fn().mockReturnThis(), lte };
@@ -69,6 +74,7 @@ function makeSupabaseForSessionRouter() {
 describe("GET /api/arena/n/session", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRequireApprovedMembership.mockResolvedValue({ approved: true });
     mockGetArenaPipelineDefault.mockReturnValue("new");
     mockFetchBlocking.mockResolvedValue(null);
     mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: {} });
@@ -123,6 +129,20 @@ describe("GET /api/arena/n/session", () => {
     });
     expect(data.action_contract?.exists).toBe(false);
     expect(data.scenario?.source).toBe("json");
+  });
+
+  it("returns 403 MEMBERSHIP_REQUIRED when membership is not approved", async () => {
+    mockRequireApprovedMembership.mockResolvedValue({
+      approved: false,
+      status: 403,
+      error: "MEMBERSHIP_REQUIRED",
+      reason: "no_request",
+    });
+    mockRequireUser.mockResolvedValue({ user: { id: "u1" }, supabase: {}, base: {} });
+    const req = new NextRequest("http://localhost/api/arena/n/session?locale=en");
+    const res = await GET(req);
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe("MEMBERSHIP_REQUIRED");
   });
 
   it("returns 409 when blocking row status is submitted (canonical: No Action → No Progression)", async () => {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { runArenaSessionNextCore } from "@/lib/bty/arena/arenaSessionNextCore";
 import { getArenaPipelineDefault } from "@/lib/bty/arena/arenaPipelineConfig";
 import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { requireApprovedMembership } from "@/lib/bty/arena/requireApprovedMembership";
 
 export const runtime = "nodejs";
 
@@ -19,6 +20,14 @@ export async function GET(req: NextRequest) {
 
   const { user, base, supabase } = await requireUser(req);
   if (!user) return unauthenticated(req, base);
+
+  // S2 Arena-entry gate (defensive — this route 410s under Pipeline N; gate covers a legacy-pipeline flip).
+  const gate = await requireApprovedMembership(supabase, user.id);
+  if (!gate.approved) {
+    const res = NextResponse.json({ error: gate.error }, { status: gate.status });
+    copyCookiesAndDebug(base, res, req, true);
+    return res;
+  }
 
   const raw = req.nextUrl.searchParams.get("locale");
   const locale = raw === "ko" ? "ko" : "en";
