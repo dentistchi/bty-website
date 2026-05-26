@@ -22,6 +22,8 @@ OAuth is the only sanctioned auth entry. Self-registration (email/password) is *
 
 Both env vars are absent in production (verified). To temporarily re-enable for testing, set BOTH (not one).
 
+Supabase email confirmation is ON (verified 2026-05-26 via Dashboard). This serves as a third defense layer: any account created via signUp must confirm email before sign-in.
+
 ## Access gates
 
 All surfaces require sign-in. Beyond that:
@@ -46,7 +48,7 @@ Default locale is **EN**. Middleware is path-based; no Accept-Language negotiati
 
 - Admin = membership in `BTY_ADMIN_EMAILS` env allowlist (`lib/authz.ts`)
 - `approved_by` populated with admin email (lowercased)
-- **Critical**: if `BTY_ADMIN_EMAILS` is unset, any authenticated user can approve membership (`authz.ts:53` dev fallback). Env var is confirmed set on `bty-arena-staging` worker.
+- **Critical**: if `BTY_ADMIN_EMAILS` is unset, any authenticated user can approve membership (`authz.ts:53` dev fallback). Env var is verified set on `bty-arena-staging` worker (repo-level: `wrangler.toml` `[vars]` binding present since initial commit + Dashboard-side confirmation, 2026-05-26).
 - No per-practice/tenant admin concept — single global allowlist
 
 ## Production users (snapshot 2026-05-26)
@@ -89,3 +91,19 @@ E2E fixtures + recall-test accounts: not user-facing. External approved users: 0
 - R2/R3 rollback integrity certification
 - 12-axis architecture review deferred items
 - Lane 6 (employee handbook addendum) — Commander own lane
+
+## Verification provenance (D-4 2026-05-26)
+
+Items verified this session:
+
+- Auth surface two-layer disable: Claude Code session commit `8822e4e9`
+- Wrangler env vars absent (`BTY_ALLOW_SELF_REGISTER`, `NEXT_PUBLIC_BTY_ALLOW_SELF_REGISTER`): `wrangler.toml` grep
+- `BTY_ADMIN_EMAILS`: repo-VERIFIED (`authz.ts` + `wrangler.toml` `[vars]` binding) + runtime-VERIFIED (Cloudflare Dashboard check by Commander)
+- Supabase email confirmation: ON (Commander Dashboard check)
+- Worker live version `47dca7a4`: `wrangler versions list`
+- Rollback anchor `a27781f5`: release-gate doc + wrangler history
+
+Items pending Commander DB-side verify (non-blocking):
+
+- Production users table 3 UID prefixes (`38ce28d2`/ikendo1, `2322beb7`/ddshanbit, `85bd8f1f`/hanbitdds) — Commander own accounts per Commander assertion
+- Tier semantics empirical validation (hanbitchi `distinct_scenarios_done=17` vs `tier=27` cumulative interpretation) — repo not the authority on this; DB query results 2026-05-26 confirm relationship
