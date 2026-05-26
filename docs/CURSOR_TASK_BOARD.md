@@ -41,6 +41,42 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## D-4 AFTERNOON — LAUNCH-OPS HARDENING (auth surface · LAUNCH_OPS · verify chain)
+
+**Status:** CLOSED · **Date:** 2026-05-26 (D-4 afternoon) · **Class:** launch-ops hardening, push-held, outer-ledger-only · **Launch:** ~2026-05-30
+**Header:** [D-4 afternoon CLOSED 2026-05-26] OAuth-only auth surface enforcement + LAUNCH_OPERATIONS.md + admin/email-confirm verify chain.
+
+**Closed lanes:**
+- Launch model corrected (memory #16): organic **OAuth + admin-approve**, NOT a 20-user pre-planned invite cohort.
+- **Auth surface 3-layer defense**: AuthGate UI toggle (env flag `NEXT_PUBLIC_BTY_ALLOW_SELF_REGISTER`) + `/api/auth/register` backend 410 guard (`BTY_ALLOW_SELF_REGISTER`) + Supabase email confirmation ON.
+- **`BTY_ADMIN_EMAILS` verify**: repo (`authz.ts` + `wrangler.toml` `[vars]` since `fa0b86d6`) + runtime (Cloudflare Dashboard).
+- **Supabase email confirmation**: ON verified (Dashboard).
+- **Locale operational protocol**: EN default; Commander shares `/ko/*` links for KO audience.
+- **`LAUNCH_OPERATIONS.md`** created + provenance upgrade.
+- **`LEGAL_FOLLOWUPS.md`** date drift fixed (D-4 = 2026-05-26).
+
+**Diagnostic findings** _(DB-side items per Commander Dashboard / query, 2026-05-26; not Claude-witnessed)_:
+- chihanbit7 5 IN_PROGRESS runs = intentional inspection artifacts.
+- 16 `auth.users` in DB; 3 approved (all Commander variants); 0 external approved.
+- hanbitchi `tier=27` = cumulative DONE-runs counter (valid; not a discrete enum).
+- LLM provider: OpenAI only (Anthropic 0 paths; Gemini wired but keyless; self-hosted inactive).
+- 7+ schema drifts surfaced and corrected (memory #22).
+
+**Commit chain (outer-only this afternoon):**
+- `884a261`: auth surface hardening co-track (mirrors inner `8822e4e9`).
+- `d86fcd7`: `LAUNCH_OPERATIONS.md` create.
+- `59e6a7e`: `LAUNCH_OPERATIONS.md` provenance upgrade.
+- (this commit): closure micros — LEGAL date drift + this ledger block.
+
+**Inner commit chain:** `8822e4e9` — auth surface hardening (AuthGate + register guard). No further inner commits this afternoon.
+
+- **Push:** HELD (outer ahead 19 after this commit; inner `inner-main` manual-push-only).
+- **Deploy:** NOT EXECUTED — worker live `47dca7a4` (unchanged).
+
+**Memory edits this session:** #6 (9 canonical runtime states) · #16 (D-4 afternoon launch model corrected) · #19 (wrangler ASC sort) · #22 (db_cleanup_discipline — 7 schema drifts + hanbitchi/chihanbit7 PRESERVE).
+
+---
+
 ## D-4 MORNING — LAUNCH-PREP CLOSURE (Lane 5 consent · #26 · #23 · Phase 5)
 
 **Status:** CLOSED · **Date:** 2026-05-26 (D-4 morning session; underlying commits landed 2026-05-25 ~22:00 PDT / D-5 evening) · **Class:** launch prep, push-held, outer-ledger-only · **Launch:** ~2026-05-30
