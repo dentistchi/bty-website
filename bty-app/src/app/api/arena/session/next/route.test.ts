@@ -46,6 +46,11 @@ vi.mock("@/engine/scenario/delayed-outcome-trigger.service", () => ({
   fetchFirstDueNoChangeReexposureMeta: (...args: unknown[]) => mockFetchFirstDueNoChangeReexposureMeta(...args),
 }));
 
+const mockRequireApprovedMembership = vi.fn();
+vi.mock("@/lib/bty/arena/requireApprovedMembership", () => ({
+  requireApprovedMembership: (...args: unknown[]) => mockRequireApprovedMembership(...args),
+}));
+
 function makeSupabaseForSessionRouter() {
   const lte = vi.fn().mockResolvedValue({ data: null, error: null });
   const updateChain = {
@@ -76,6 +81,7 @@ function makeSupabaseForSessionRouter() {
 describe("GET /api/arena/session/next", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRequireApprovedMembership.mockResolvedValue({ approved: true });
     mockGetArenaPipelineDefault.mockReturnValue("legacy");
     mockFetchBlocking.mockResolvedValue(null);
     mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: {} });
@@ -291,5 +297,19 @@ describe("GET /api/arena/session/next", () => {
 
     expect(arenaRunsUserIdEq).toHaveBeenCalledWith("user_id", "u1");
     expect(arenaRunsStatusIn).toHaveBeenCalledWith("status", ["DONE", "IN_PROGRESS", "ABANDONED"]);
+  });
+
+  it("returns 403 MEMBERSHIP_REQUIRED when membership is not approved", async () => {
+    mockRequireApprovedMembership.mockResolvedValue({
+      approved: false,
+      status: 403,
+      error: "MEMBERSHIP_REQUIRED",
+      reason: "no_request",
+    });
+    mockRequireUser.mockResolvedValue({ user: { id: "u1" }, supabase: {}, base: {} });
+    const req = new NextRequest("http://localhost/api/arena/session/next?locale=en");
+    const res = await GET(req);
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe("MEMBERSHIP_REQUIRED");
   });
 });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireApprovedMembership } from "@/lib/bty/arena/requireApprovedMembership";
 import { selectAndRecordQuickScenario } from "@/lib/bty/arena/quickModeService";
 import type { ScenarioLocalePreference } from "@/engine/scenario/scenario-selector.service";
 
@@ -9,6 +10,14 @@ export const runtime = "nodejs";
 export async function POST(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);
   if (!user) return unauthenticated(req, base);
+
+  // S2 Arena-entry gate (Quick mode serves a scenario without a run → gate here).
+  const gate = await requireApprovedMembership(supabase, user.id);
+  if (!gate.approved) {
+    const out = NextResponse.json({ error: gate.error }, { status: gate.status });
+    copyCookiesAndDebug(base, out, req, false);
+    return out;
+  }
 
   const body = await req.json().catch(() => ({}));
   const locale: ScenarioLocalePreference = body?.locale === "ko" ? "ko" : "en";

@@ -13,6 +13,22 @@ import type { WeeklyCompetitionStageTierBandDisplayLabelKey } from "@/domain/rul
 export type Locale = "ko" | "en";
 
 export type Messages = {
+  /** Lane 2: team-membership submission form + S2 arena-entry gate. KO values are TODO_KO placeholders (translation fast-follow). */
+  membership: {
+    form: {
+      title: string;
+      intro: string;
+      jobFunction: { label: string; staff: string; leader: string };
+      joinedAt: { label: string };
+      leaderStartedAt: { label: string; hint: string };
+      submit: string;
+      submitting: string;
+      errorGeneric: string;
+      success: string;
+    };
+    status: { pending: string; approved: string; approvedOn: string };
+    gate: { redirectCopy: string };
+  };
   /** §2: 전환 중 로딩 문구 (locale별) */
   loading: { message: string; hint: string; localeRouteSuspenseMainRegionAria: string };
   nav: { center: string; bty: string; arena: string; en: string; ko: string; skipToMainContent: string };
@@ -1893,6 +1909,33 @@ export type Messages = {
 };
 
 const ko: Messages = {
+  // KO membership copy: EN fallback until the KO translation lane lands.
+  // Convention: untranslated KO == EN verbatim; track remaining work via ko-vs-en git diff.
+  membership: {
+    form: {
+      title: "Team membership",
+      intro:
+        "Submit your team membership request. An admin reviews and approves it before you can enter the Arena.",
+      jobFunction: { label: "Role", staff: "Staff", leader: "Leader" },
+      joinedAt: { label: "Join date" },
+      leaderStartedAt: {
+        label: "Leadership start date",
+        hint: "Required when your role is Leader.",
+      },
+      submit: "Submit request",
+      submitting: "Submitting…",
+      errorGeneric: "Something went wrong. Please try again.",
+      success: "Submitted. Awaiting admin approval.",
+    },
+    status: {
+      pending: "Your membership request is pending admin approval.",
+      approved: "Your team membership is approved.",
+      approvedOn: "Approved on",
+    },
+    gate: {
+      redirectCopy: "Membership required. Submit your team membership request to continue.",
+    },
+  },
   loading: {
     message: "잠시만 기다려 주세요.",
     hint: "첫 로딩은 1–2분 걸릴 수 있어요.",
@@ -3558,6 +3601,31 @@ const ko: Messages = {
 };
 
 const en: Messages = {
+  membership: {
+    form: {
+      title: "Team membership",
+      intro:
+        "Submit your team membership request. An admin reviews and approves it before you can enter the Arena.",
+      jobFunction: { label: "Role", staff: "Staff", leader: "Leader" },
+      joinedAt: { label: "Join date" },
+      leaderStartedAt: {
+        label: "Leadership start date",
+        hint: "Required when your role is Leader.",
+      },
+      submit: "Submit request",
+      submitting: "Submitting…",
+      errorGeneric: "Something went wrong. Please try again.",
+      success: "Submitted. Awaiting admin approval.",
+    },
+    status: {
+      pending: "Your membership request is pending admin approval.",
+      approved: "Your team membership is approved.",
+      approvedOn: "Approved on",
+    },
+    gate: {
+      redirectCopy: "Membership required. Submit your team membership request to continue.",
+    },
+  },
   loading: {
     message: "Please wait…",
     hint: "First load may take 1–2 minutes.",
