@@ -41,6 +41,33 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## D-4 LANE 6 — HANDBOOK ADDENDUM v2 FINAL DRAFT (Commander lane)
+
+**Status:** CLOSED (artifact persisted, awaiting Lawyer Input #2) · **Date:** 2026-05-26 (D-4 evening) · **Class:** legal artifact, outer-ledger closure, docs-only · **Launch:** ~2026-05-30
+**Header:** [D-4 Lane 6 CLOSED 2026-05-26] btyARENA employee handbook addendum v2 FINAL DRAFT persisted at [`docs/legal/HANDBOOK_ADDENDUM_2026-05-v2.md`](legal/HANDBOOK_ADDENDUM_2026-05-v2.md) (Lawyer Input #2 source). Outer-only ledger closure — no inner commit per ledger cotrack symlink topology.
+
+**Decisions locked this chat:**
+- Q1 (BTY data in performance review): role-definition framing — BTY informs, organization decides; not a sole or automatic determinant.
+- Q2/Q3 (allowed aggregate surfaces / min team size): disposed — not in handbook scope; belongs in internal data governance doc.
+- Q4 (Manager QR authority): A — handbook discloses scope ("authorized team-development, QR, or behavioral reinforcement workflows"), mechanics suppressed.
+- Q5 (persist in repo): YES — this commit.
+
+**Key architecture:**
+- §3.2 three-layer role (Measurement / Evidence / Decision).
+- §3.3 sole-or-automatic-determinant exclusion (anchor sentence).
+- §3.4 three-layer visibility (Participant / Manager / Enterprise-Admin).
+- §3.5 role-based visibility framing (replaces v1 "minimize re-identification" privacy posture).
+
+**Disclosure posture:** aligned with Lane 5 consent doc `2026-05-v1` (active-truth).
+
+**Next:** Lawyer Input #2 cover note (Commander side, separate channel).
+
+- **Push:** HELD pre-D-1 (inner ahead 19 / outer ahead 21; this ledger commit → outer ahead 22). Lane 3 + Lane 6 both pending.
+- **Baseline:** `3364/0/6` (unchanged — docs-only commit, no code).
+- **Deploy:** NOT EXECUTED — worker live `47dca7a4` unchanged.
+
+---
+
 ## D-4 LANE 3 — ONE CLEAN PUBLIC ENTRY DOOR (executed early)
 
 **Status:** CLOSED (push/deploy HELD) · **Date:** 2026-05-26 (D-4; pulled forward from D-1 runway) · **Class:** launch surface, push-held, outer-ledger closure · **Launch:** ~2026-05-30

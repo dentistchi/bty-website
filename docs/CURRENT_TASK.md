@@ -1,7 +1,7 @@
-## Current Status (D-4 morning + afternoon + Lane 3 CLOSED — 2026-05-26; launch ~2026-05-30)
+## Current Status (D-4 evening — Lane 3 + Lane 6 CLOSED — 2026-05-26; launch ~2026-05-30)
 
-**Active head (D-4 / 2026-05-26):** inner `fee5d29d` · outer `8179606` → this ledger commit · worker live `47dca7a4` (unchanged) · **Baseline:** 3364/0/6 · **Push:** HELD (inner ahead 19 · outer ahead 20 → 21 after this commit) · **Deploy:** HELD · **Next:** D-3 (2026-05-27) — regression sweep + Lane 6 (handbook, Commander lane) parallel.
-**Working tree:** clean (both repos; this outer ledger commit pending).
+**Active head (D-4 / 2026-05-26):** inner `fee5d29d` (unchanged) · outer `6038eed` → this Lane 6 ledger commit · worker live `47dca7a4` (unchanged) · **Baseline:** 3364/0/6 · **Push:** HELD (inner ahead 19 · outer ahead 21 → 22 after this commit) · **Deploy:** HELD · **Next:** D-3 (2026-05-27) — regression sweep, baseline 3364 (Lane 6 handbook addendum v2 closed; awaiting Lawyer Input #2, Commander side).
+**Working tree:** clean (both repos; this outer Lane 6 ledger commit pending).
 
 _Lines below are preserved from the STAB-07-P0 / Phase 0C v2 era — no updated test-baseline or P0 inventory was supplied for D-4, so they are left as historical context rather than fabricated._
 
