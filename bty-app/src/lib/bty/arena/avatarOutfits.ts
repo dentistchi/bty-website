@@ -507,6 +507,15 @@ export function resolveDisplayAvatarLayers(
     return { characterImageUrl: customAvatarUrl.trim(), outfitImageUrl: null };
   }
 
+  // Lane 7: require an explicit avatar choice. With no character, no selected
+  // outfit, and no theme, fall through would assign the level-based outfit
+  // (e.g. basic clinic scrubs) as a clothed default. Instead return empty so
+  // the UI shows its initials placeholder until the user picks. Applies to all
+  // unselected users (no grandfathering).
+  if (!avatarCharacterId && !avatarSelectedOutfitId && !avatarOutfitTheme) {
+    return { characterImageUrl: null, outfitImageUrl: null };
+  }
+
   const outfit =
     avatarSelectedOutfitId != null
       ? getOutfitById(avatarOutfitTheme, avatarSelectedOutfitId)
