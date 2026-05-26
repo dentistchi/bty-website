@@ -1,56 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { cn } from "@/lib/utils";
 import { getMessages } from "@/lib/i18n";
 import { LoadingFallback } from "@/components/bty-arena";
 
 /**
- * BTY launch security: OAuth-only auth model — the email/password
- * self-registration UI is hidden unless explicitly enabled. Default off
- * (NEXT_PUBLIC_BTY_ALLOW_SELF_REGISTER unset in prod). Backend `/api/auth/register`
- * carries an independent guard (defense in depth).
- * Last reviewed 2026-05-26 (D-4) per Commander auth intent lock.
+ * BTY launch security: OAuth-only public auth surface (Commander intent lock).
+ * Anonymous users get a single inline CTA → `/[locale]/bty/login` (the OAuth
+ * login surface owned by login-card.tsx). The inline email/password form was
+ * removed at D-1 (2026-05-29); `/api/auth/login` is retained ONLY for
+ * `/admin/login`, which is a separate page that does not mount AuthGate.
+ * Last reviewed 2026-05-29 (D-1) per Commander auth intent lock.
  */
-const ALLOW_SELF_REGISTER =
-  process.env.NEXT_PUBLIC_BTY_ALLOW_SELF_REGISTER === "true";
+const CTA_COPY = {
+  ko: {
+    title: "로그인이 필요해요",
+    sub: "Center와 bty는 하나의 계정으로 이용해요.",
+    cta: "Google로 계속하기",
+  },
+  en: {
+    title: "Please sign in",
+    sub: "Center and bty share one account.",
+    cta: "Continue with Google",
+  },
+} as const;
 
 /** §9: loadingMessage 없으면 pathname으로 locale 추론 후 getMessages(locale).loading.message 사용. */
 export function AuthGate({
   children,
   loadingMessage,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   /** Optional: e.g. t.loading.message for locale-aware "Please wait…" / "잠시만 기다려 주세요." */
   loadingMessage?: string;
 }) {
   const pathname = usePathname() ?? "";
   const locale = pathname.startsWith("/ko") ? "ko" : "en";
   const fallbackMessage = getMessages(locale).loading.message;
-  const { user, loading, login, register, error, clearError } = useAuth();
-
-  const [isRegister, setIsRegister] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    clearError();
-
-    console.log("login clicked");
-
-    try {
-      if (isRegister && ALLOW_SELF_REGISTER) await register(email, password);
-      else await login(email, password);
-
-      console.log("login ok, redirecting...");
-      window.location.assign("/bty"); // ✅ 결정타
-    } catch (err) {
-      // error state는 login/register 내부에서 setError 하거나 throw 메세지로 처리
-    }
-  };
+  const { user, loading } = useAuth();
 
   if (loading) {
     const msg = loadingMessage ?? fallbackMessage;
@@ -66,72 +56,21 @@ export function AuthGate({
   }
 
   if (!user) {
+    const c = CTA_COPY[locale];
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-sm rounded-2xl border border-foundry-purple-muted bg-foundry-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-foundry-purple-dark">
-            {isRegister ? "회원가입" : "로그인"}
-          </h2>
-          <p className="text-sm text-foundry-ink-soft mt-1">
-            Center와 bty는 하나의 계정으로 이용해요.
-          </p>
+          <h2 className="text-lg font-semibold text-foundry-purple-dark">{c.title}</h2>
+          <p className="text-sm text-foundry-ink-soft mt-1">{c.sub}</p>
 
-          <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="이메일"
-              required
-              className={cn(
-                "w-full rounded-xl border border-foundry-purple-muted px-4 py-3",
-                "focus:outline-none focus:ring-2 focus:ring-foundry-purple/30"
-              )}
-            />
-
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="비밀번호 (6자 이상)"
-              required
-              minLength={6}
-              className={cn(
-                "w-full rounded-xl border border-foundry-purple-muted px-4 py-3",
-                "focus:outline-none focus:ring-2 focus:ring-foundry-purple/30"
-              )}
-            />
-
-            {error && (
-              <p className="text-sm text-red-600" role="alert">
-                {error}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              aria-label={isRegister ? "회원가입 제출" : "로그인 제출"}
-              className={cn(
-                "w-full py-3 rounded-xl font-medium",
-                "bg-foundry-purple text-foundry-white hover:bg-foundry-purple-dark"
-              )}
-            >
-              {isRegister ? "회원가입" : "로그인"}
-            </button>
-
-            {/* OAuth-only enforcement (2026-05-26, D-4): self-register toggle
-                hidden unless NEXT_PUBLIC_BTY_ALLOW_SELF_REGISTER === "true". */}
-            {ALLOW_SELF_REGISTER && (
-              <button
-                type="button"
-                onClick={() => setIsRegister((v) => !v)}
-                className="w-full text-sm text-foundry-ink-soft underline underline-offset-2"
-                aria-label={isRegister ? "이미 계정이 있어요 (로그인)" : "계정이 없어요 (회원가입)"}
-              >
-                {isRegister ? "이미 계정이 있어요 (로그인)" : "계정이 없어요 (회원가입)"}
-              </button>
-            )}
-          </form>
+          <Link
+            href={`/${locale}/bty/login?next=/${locale}/bty`}
+            aria-label={c.cta}
+            data-testid="authgate-login-cta"
+            className="mt-4 flex w-full items-center justify-center py-3 rounded-xl font-medium bg-foundry-purple text-foundry-white hover:bg-foundry-purple-dark"
+          >
+            {c.cta}
+          </Link>
         </div>
       </div>
     );
