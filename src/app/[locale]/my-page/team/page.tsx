@@ -1,16 +1,38 @@
+import { redirect } from "next/navigation";
 import ScreenShell from "@/components/bty/layout/ScreenShell";
 import { BtyMyPageTabs } from "@/components/bty/navigation/BtyMyPageTabs";
 import { DashboardBackLink } from "@/components/bty/navigation/DashboardBackLink";
+import TeamMembershipForm, {
+  type TeamMembershipRequest,
+} from "@/components/bty/membership/TeamMembershipForm";
+import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
 type Props = { params: Promise<{ locale: string }> };
 
-/** Team — TII·상태·추세·순위 (팀 단위만). */
+export const dynamic = "force-dynamic";
+
+/** Team — membership submission (S2: profile → admin approve → Arena access). */
 export default async function Page({ params }: Props) {
   const { locale } = await params;
   const loc = (locale === "ko" ? "ko" : "en") as Locale;
   const m = getMessages(loc).myPageStub;
+
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(`/${locale}/bty/login`);
+
+  // Server-fetch the caller's membership (RLS self-read returns only their row).
+  // On query error → treat as no row (the form renders; the POST is safe to re-submit).
+  const { data } = await supabase
+    .from("arena_membership_requests")
+    .select("job_function, joined_at, leader_started_at, status, approved_at")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const initialRequest = (data as TeamMembershipRequest | null) ?? null;
 
   return (
     <ScreenShell
@@ -24,38 +46,7 @@ export default async function Page({ params }: Props) {
         <BtyMyPageTabs locale={locale} />
       </div>
 
-      <div data-testid="my-page-team-screen" className="space-y-4">
-        <div data-testid="my-page-tii" className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-[#1E2A38]">{m.teamTiiCard}</p>
-          <p
-            className="mt-3 text-lg font-medium leading-relaxed text-[#667085]"
-            role="status"
-            aria-label={m.teamTiiPlaceholder}
-          >
-            {m.teamTiiPlaceholder}
-          </p>
-        </div>
-
-        <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
-          <div data-testid="my-page-team-status" className="flex items-center justify-between text-sm">
-            <span className="text-[#667085]">{m.teamInnerStatus}</span>
-            <span className="font-semibold text-[#1E2A38]">{m.teamStable}</span>
-          </div>
-          <div data-testid="my-page-team-trend" className="mt-3 flex items-center justify-between text-sm">
-            <span className="text-[#667085]">{m.teamInnerTrend}</span>
-            <span className="font-semibold text-[#1E2A38]">{m.teamTrendVal}</span>
-          </div>
-          <div data-testid="my-page-team-rank" className="mt-3 flex items-center justify-between text-sm">
-            <span className="text-[#667085]">{m.teamRankCaption}</span>
-            <span className="font-semibold tabular-nums text-[#1E2A38]">{m.teamRankLine}</span>
-          </div>
-        </div>
-
-        <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-[#1E2A38]">{m.myPageTeamNoteHeading}</p>
-          <p className="mt-2 text-sm leading-6 text-[#667085]">{m.teamFooter}</p>
-        </div>
-      </div>
+      <TeamMembershipForm locale={loc} initialRequest={initialRequest} />
     </ScreenShell>
   );
 }
