@@ -41,6 +41,47 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## D-4 LANE 3 — ONE CLEAN PUBLIC ENTRY DOOR (executed early)
+
+**Status:** CLOSED (push/deploy HELD) · **Date:** 2026-05-26 (D-4; pulled forward from D-1 runway) · **Class:** launch surface, push-held, outer-ledger closure · **Launch:** ~2026-05-30
+**Header:** [D-4 Lane 3 CLOSED 2026-05-26] OAuth single public entry door — AuthGate inline Google CTA + login-card provider feature flag. Implementation already landed (inner `fee5d29d` / outer `8179606`); this is the outer-ledger closure block (no inner commit).
+
+**Why pulled forward:** today's auth-surface diagnostic surfaced `/api/auth/register` was LIVE (not vestigial) and the landing AuthGate still rendered an email/pw login form, so the D-1 "one clean entry door" work was executed same day. Commander locked the decisions 2026-05-26 (D-4 morning); push/deploy held per launch_runway.
+
+**Closed:**
+- `AuthGate.tsx`: email/pw form removed → inline **"Continue with Google"** CTA (ko: "Google로 계속하기") → `/[locale]/bty/login?next=/[locale]/bty`.
+- `login-card.tsx` (real path `src/components/auth/login-card.tsx`): `NEXT_PUBLIC_BTY_AUTH_PROVIDERS` feature flag (default `google`); Microsoft + Phone OTP code retained, hidden by default; `signInWithOAuth`/`signInWithOtp`/`verifyOtp` paths intact.
+- `AuthGate.cta.test.tsx` new (5 tests).
+- `login-card.oauth-prompt.test.tsx` +1 scenario (env-driven provider visibility).
+- `LAUNCH_OPERATIONS.md` production-users table: `aidencool0929` (`e9eded1c`) row added — Commander Google variant, dormant single-session 2026-04-06.
+
+**Commander-locked decisions:**
+- Inline CTA (not auto-redirect) — agency + zero-flash.
+- Post-login `next` default `/${locale}/bty` (middleware convention).
+- `/api/auth/login` retained for `/admin/login` backend (untouched).
+- Google-only public provider for launch; feature flag allows future expansion.
+- Microsoft + Phone OTP gated, not deleted.
+
+**Commit chain:**
+- Inner: `8822e4e9` → `fee5d29d` (4 files, +199/−117).
+- Outer: `7124183` → `8179606` (5 files = 4 co-track + LAUNCH_OPERATIONS, +200/−117).
+- Outer this commit: `8179606` → (Lane 3 closure ledger).
+
+**Verification:** baseline `3358/0/6` → `3364/0/6` (+6 new tests); tsc clean.
+
+- **Push:** HELD (inner ahead 19 / outer ahead 20; this ledger commit → outer ahead 21).
+- **Deploy:** NOT EXECUTED — worker live `47dca7a4` unchanged.
+
+**Provenance / Claude Code disclosed deviations (4):**
+- Path drift surfaced: `src/components/auth/login-card.tsx` (not `src/components/login-card.tsx`) — memory #21 reinforced.
+- Per-render provider flag (not module-scope const) for vitest testability — prod-identical (Next inlines `NEXT_PUBLIC_*` literals at build).
+- CTA copy ko-localized to match login-card convention.
+- Ledger closure intentionally authored by C3 (per memory #25 — implementation dispatch does not silently author its own closure).
+
+**Deviations from Commander-locked plan:** none beyond the 4 disclosed above.
+
+---
+
 ## D-4 AFTERNOON — LAUNCH-OPS HARDENING (auth surface · LAUNCH_OPS · verify chain)
 
 **Status:** CLOSED · **Date:** 2026-05-26 (D-4 afternoon) · **Class:** launch-ops hardening, push-held, outer-ledger-only · **Launch:** ~2026-05-30
