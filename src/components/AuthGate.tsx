@@ -7,6 +7,16 @@ import { cn } from "@/lib/utils";
 import { getMessages } from "@/lib/i18n";
 import { LoadingFallback } from "@/components/bty-arena";
 
+/**
+ * BTY launch security: OAuth-only auth model — the email/password
+ * self-registration UI is hidden unless explicitly enabled. Default off
+ * (NEXT_PUBLIC_BTY_ALLOW_SELF_REGISTER unset in prod). Backend `/api/auth/register`
+ * carries an independent guard (defense in depth).
+ * Last reviewed 2026-05-26 (D-4) per Commander auth intent lock.
+ */
+const ALLOW_SELF_REGISTER =
+  process.env.NEXT_PUBLIC_BTY_ALLOW_SELF_REGISTER === "true";
+
 /** §9: loadingMessage 없으면 pathname으로 locale 추론 후 getMessages(locale).loading.message 사용. */
 export function AuthGate({
   children,
@@ -32,7 +42,7 @@ export function AuthGate({
     console.log("login clicked");
 
     try {
-      if (isRegister) await register(email, password);
+      if (isRegister && ALLOW_SELF_REGISTER) await register(email, password);
       else await login(email, password);
 
       console.log("login ok, redirecting...");
@@ -109,14 +119,18 @@ export function AuthGate({
               {isRegister ? "회원가입" : "로그인"}
             </button>
 
-            <button
-              type="button"
-              onClick={() => setIsRegister((v) => !v)}
-              className="w-full text-sm text-foundry-ink-soft underline underline-offset-2"
-              aria-label={isRegister ? "이미 계정이 있어요 (로그인)" : "계정이 없어요 (회원가입)"}
-            >
-              {isRegister ? "이미 계정이 있어요 (로그인)" : "계정이 없어요 (회원가입)"}
-            </button>
+            {/* OAuth-only enforcement (2026-05-26, D-4): self-register toggle
+                hidden unless NEXT_PUBLIC_BTY_ALLOW_SELF_REGISTER === "true". */}
+            {ALLOW_SELF_REGISTER && (
+              <button
+                type="button"
+                onClick={() => setIsRegister((v) => !v)}
+                className="w-full text-sm text-foundry-ink-soft underline underline-offset-2"
+                aria-label={isRegister ? "이미 계정이 있어요 (로그인)" : "계정이 없어요 (회원가입)"}
+              >
+                {isRegister ? "이미 계정이 있어요 (로그인)" : "계정이 없어요 (회원가입)"}
+              </button>
+            )}
           </form>
         </div>
       </div>

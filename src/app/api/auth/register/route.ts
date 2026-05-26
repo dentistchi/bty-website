@@ -6,6 +6,20 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function POST(req: NextRequest) {
+  // BTY launch security: OAuth-only auth model.
+  // Self-registration disabled in production environments.
+  // Last reviewed 2026-05-26 (D-4) per Commander auth intent lock.
+  const ALLOW_SELF_REGISTER = process.env.BTY_ALLOW_SELF_REGISTER === "true";
+  if (!ALLOW_SELF_REGISTER) {
+    return NextResponse.json(
+      {
+        error: "self_registration_disabled",
+        message: "Self-registration is not available. Please sign in with Google.",
+      },
+      { status: 410 }
+    );
+  }
+
   const ip = getCfClientIp(req);
   const rl = await rateLimitKV({
     endpoint: "register",
