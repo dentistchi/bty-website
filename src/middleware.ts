@@ -13,6 +13,7 @@ import { getArenaPipelineDefault } from "@/lib/bty/arena/arenaPipelineConfig";
 import { userHasBlockingArenaActionContract } from "@/lib/bty/arena/blockingArenaActionContract";
 import { userHasForcedResetPending } from "@/lib/bty/leadership-engine/state-service";
 import { isPostLoginOnboardingWizardEnabled } from "@/lib/bty/arena/postLoginEliteEntry";
+import { requireApprovedMembership } from "@/lib/bty/arena/requireApprovedMembership";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -376,6 +377,29 @@ export async function middleware(req: NextRequest) {
         redirect.headers.set("x-mw-hit", "1");
         redirect.headers.set("x-mw-user", "1");
         redirect.headers.set("x-forced-reset", "redirect");
+        return redirect;
+      }
+    }
+
+    /**
+     * S2 Arena-entry gate: Arena play requires an approved `arena_membership_requests`
+     * row. Unapproved (no row / pending / rejected) → submit at `/[locale]/my-page/team`.
+     * Scoped to `/[locale]/bty-arena/*` only (Foundry/Center are not membership-gated).
+     * Shares the single-source `requireApprovedMembership` helper with the API entry
+     * points (defense-in-depth). Runs after consent + forced-reset; precedes the contract gate.
+     */
+    if (
+      locale &&
+      (pathname === `/${locale}/bty-arena` || pathname.startsWith(`/${locale}/bty-arena/`))
+    ) {
+      const membershipGate = await requireApprovedMembership(supabase, user.id);
+      if (!membershipGate.approved) {
+        const dest = new URL(`/${locale}/my-page/team`, req.url);
+        const redirect = NextResponse.redirect(dest, 307);
+        reassertAuthCookiesPathRoot(req, redirect);
+        redirect.headers.set("x-mw-hit", "1");
+        redirect.headers.set("x-mw-user", "1");
+        redirect.headers.set("x-arena-membership", "required");
         return redirect;
       }
     }
