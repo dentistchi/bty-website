@@ -103,9 +103,12 @@ describe("POST /api/arena/action-contracts", () => {
     expect(single).toHaveBeenCalledOnce();
   });
 
-  // STAB-07-P0 (LIVE branch): the json-dev creation path now emits
-  // verification_type:"qr" (universal QR). verification_mode stays "hybrid".
-  it("STAB-07-P0: json-dev creation emits verification_type:\"qr\" (universal QR)", async () => {
+  // LAYER-1-FIX (2026-05-26, A2): universal QR reverted — the json-dev creation
+  // path emits verification_type:"self_attest" again so the submit-validation
+  // 4-AND auto-approve gate (keyed on 'self_attest') re-engages. verification_mode
+  // stays "hybrid". Universal QR is a deferred direction pending consumption-side
+  // wiring; see QR-GATE-DIAG-TRACK-C.
+  it("LAYER-1-FIX: json-dev creation emits verification_type:\"self_attest\" (universal QR reverted)", async () => {
     const single = vi.fn().mockResolvedValue({
       data: { id: "contract-1", status: "pending" },
       error: null,
@@ -120,7 +123,7 @@ describe("POST /api/arena/action-contracts", () => {
 
     expect(res.status).toBe(200);
     expect(insert).toHaveBeenCalledWith(
-      expect.objectContaining({ verification_type: "qr", verification_mode: "hybrid" }),
+      expect.objectContaining({ verification_type: "self_attest", verification_mode: "hybrid" }),
     );
   });
 });
