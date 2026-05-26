@@ -104,6 +104,7 @@ function parsePendingContract(body: Record<string, unknown>): ArenaPendingContra
 const RUNTIME_STATES: readonly ArenaRuntimeStateId[] = [
   "ACTION_REQUIRED",
   "ACTION_SUBMITTED",
+  "ACTION_ESCALATED",
   "ACTION_AWAITING_VERIFICATION",
   "ARENA_SCENARIO_READY",
   "TRADEOFF_ACTIVE",

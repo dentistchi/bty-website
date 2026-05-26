@@ -2,11 +2,14 @@
 /**
  * STAB-08 Scope C — escalated-revise branch on the Resolve surface.
  *
- * An escalated contract maps to runtime_state ACTION_SUBMITTED
- * (arenaRuntimeSnapshot.server.ts runtimeStateFromBlockingContract) but the
+ * An escalated contract maps to runtime_state ACTION_ESCALATED
+ * (arenaRuntimeSnapshot.server.ts runtimeStateFromBlockingContract; H3 fix
+ * 2026-05-26 — previously collapsed to ACTION_SUBMITTED) but the
  * submit-validation route permits resubmit (route.ts §A-3). ArenaResolveClient
  * therefore surfaces the reused ArenaActionValidationForm — preceded by an
  * escalation notice — instead of dead-ending in ArenaPendingContractGate.
+ * The revise branch keys on action_contract.status === "escalated", so it is
+ * independent of the runtime-state label.
  *
  * The validation form is mocked here to capture the props the parent binds
  * (contract id) without driving its async submit; the form's own behavior is
@@ -116,10 +119,10 @@ afterEach(() => {
 });
 
 describe("ArenaResolveClient — STAB-08 Scope C escalated-revise branch", () => {
-  it("surfaces the validation form + escalation notice and binds the contract id for an escalated contract (ACTION_SUBMITTED)", () => {
+  it("surfaces the validation form + escalation notice and binds the contract id for an escalated contract (ACTION_ESCALATED)", () => {
     mockUseArenaSession.mockReturnValue({
       ...sessionBase(),
-      arenaServerSnapshot: snapshotWithStatus("ACTION_SUBMITTED", "escalated"),
+      arenaServerSnapshot: snapshotWithStatus("ACTION_ESCALATED", "escalated"),
     });
     render(<ArenaResolveClient locale="en" />);
     // Form branch wins over the pending gate for escalated; notice precedes it.

@@ -9,7 +9,7 @@ import type { Locale } from "@/lib/i18n";
 export type ArenaPendingContractGateProps = {
   locale: Locale | string;
   contract: ArenaPendingContractPayload;
-  runtimeState?: "ACTION_REQUIRED" | "ACTION_SUBMITTED" | "ACTION_AWAITING_VERIFICATION" | null;
+  runtimeState?: "ACTION_REQUIRED" | "ACTION_SUBMITTED" | "ACTION_ESCALATED" | "ACTION_AWAITING_VERIFICATION" | null;
   onRetry: () => void;
   retryLoading?: boolean;
   qrAllowed?: boolean;
@@ -46,15 +46,19 @@ export function ArenaPendingContractGate({
   const canonicalLabel =
     runtimeState === "ACTION_SUBMITTED"
       ? "ACTION_SUBMITTED"
-      : runtimeState === "ACTION_AWAITING_VERIFICATION"
-        ? "ACTION_AWAITING_VERIFICATION"
-        : "ACTION_REQUIRED";
+      : runtimeState === "ACTION_ESCALATED"
+        ? "ACTION_ESCALATED"
+        : runtimeState === "ACTION_AWAITING_VERIFICATION"
+          ? "ACTION_AWAITING_VERIFICATION"
+          : "ACTION_REQUIRED";
   const canonicalLead =
     runtimeState === "ACTION_SUBMITTED"
       ? "Evidence submitted. Verification is still required before next scenario."
-      : runtimeState === "ACTION_AWAITING_VERIFICATION"
-        ? "Awaiting verification completion before next scenario."
-        : t.arenaPendingContractLead;
+      : runtimeState === "ACTION_ESCALATED"
+        ? "Validation was escalated for review. Complete verification by QR, or revise and resubmit."
+        : runtimeState === "ACTION_AWAITING_VERIFICATION"
+          ? "Awaiting verification completion before next scenario."
+          : t.arenaPendingContractLead;
 
   return (
     <div
