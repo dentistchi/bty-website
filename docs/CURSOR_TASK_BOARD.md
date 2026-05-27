@@ -81,6 +81,11 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 - **SQL hotfix (Commander-run, not Claude-verified):** `fe71287c` (chihanbit7) resolved `secondary_approve` 14:29:05; `b76b1da3` (hanbitchi) resolved 15:38:47 (2 escalation rows both resolved).
 - **Runtime-model correction:** the D-1 prediction lines above ("production never auto-approves") are **superseded by live reality** — there is no separate production worker; the single live worker `bty-arena-staging` is staging-configured (`BTY_ENV="staging"` + `SELF_REPORT_AUTO_APPROVE="true"`, confirmed in deploy binding output), so the 4-AND auto-approve gate **fires** and Layer 1's self_attest revert resolves the deadlock at source. Layer 2 `ACTION_ESCALATED` is the safety net for genuine escalations. Claude memory model updated (`bty_prod_worker_absent_single_db`). Production-tier worker separation = deferred architectural item, not current state.
 
+**D-6 cleanup sweep (2026-05-26 evening, post-LANE-7-VERIFIED-UPDATE) — Commander-run + reported, NOT Claude-verified (no DB access):**
+- Six pre-deploy QR-gate-regression artifacts manually approved and unblocked: `e4632681` (STAB-08 smoke seed), `1ba8b194`, `c52628f0`, `9df071f9`, `38d9e485`, `aaa3a010`. Four related escalation rows resolved (38d9e485, 9df071f9 [duplicate-pair], aaa3a010); the remaining three are orphan-pattern with no escalation child row.
+- No external organic users affected — affected rows were Commander variant accounts (`52e543cc`, `38ce28d2`, `ee9d2075`, `9587a44e`), the STAB-08 smoke seed, or known internal test IDs only. Executed row-by-row in Supabase SQL Editor; results paste-verified by Commander.
+- **Operational note (Commander-reported):** a bulk `UPDATE … WHERE id IN (…)` inside a BEGIN/COMMIT block silently failed (verify SELECT showed pre-update state; constraint/trigger dumps showed no obstruction); row-by-row single-statement UPDATEs succeeded for all 6. Recorded as a hotfix-discipline backlog item (CURRENT_TASK #7).
+
 ---
 
 ## D-4 LANE 6 — HANDBOOK ADDENDUM v2 FINAL DRAFT (Commander lane)
