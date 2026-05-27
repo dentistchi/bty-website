@@ -41,6 +41,35 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## D-6 — QR VERIFICATION ARCHITECTURE v1 · L1 DB MIGRATION CLOSE
+
+**Status:** CLOSED (5 migrations applied + verified + pushed) · **Date:** 2026-05-27 (D-6) · **Class:** schema migration, inner + outer published · **Launch:** 2026-06-02 (D-0)
+**Header:** [D-6 L1 CLOSE 2026-05-27] QR Verification Architecture v1 Layer 1 DB migration applied to production + committed/pushed inner `d9443b84` / outer `b21c47f0`. 5 migration files (column add, log extension, legacy stamp, CHECK constraints, type-CHECK correction). All STEP 2 (9 tests) + §3.4 FK VALIDATE PASS. Schema ready for L2.
+
+**Migration files (5, 010000–010400):**
+- `010000` `bty_action_contracts` — +5 columns + 2 indexes
+- `010100` `le_verification_log` — +7 columns + FK NOT VALID + 2 indexes
+- `010200` legacy stamp UPDATE — 133 rows → `legacy_self_attest` (drift-safe `WHERE tier IS NULL AND confidence IS NULL`)
+- `010300` 6 CHECK constraints — 4 on contracts + 2 on log (DO $$ idempotent wrappers)
+- `010400` drop stale prefixed `bty_action_contracts_verification_type_check` (L1 correction patch)
+
+**Production state (post-migration):**
+- `bty_action_contracts`: 133 rows, all stamped `legacy_self_attest` (Commander D2 preservation — XP/AIR preserved, no rollback); +3 new CHECK (tier / status / confidence)
+- `verification_type` CHECK replaced & expanded 8 → 11 values (3 new canonical + 8 legacy; old prefixed constraint dropped via `010400`)
+- `le_verification_log`: 51 rows, +7 columns, FK VALIDATED + enforcing (`convalidated=true`), +2 indexes, +2 CHECK
+
+**Verification:** STEP 1A / 1B / 1C / 1D / 1D-corr ALL PASS · STEP 2 (9 tests) PASS · §3.4 FK VALIDATE PASS (convalidated=true, enforcing confirmed).
+
+**Commits (pushed):** inner `d9443b84` → origin/inner-main · outer `b21c47f0` → origin/main (mirror). 6 files each (5 migrations + .gitignore), 297 insertions.
+
+**Authority:** Spec [`docs/QR_VERIFICATION_ARCHITECTURE_V1.md`](QR_VERIFICATION_ARCHITECTURE_V1.md) (Locked v1) · Plan [`docs/L1_MIGRATION_PLAN.md`](L1_MIGRATION_PLAN.md) (Locked v1.3). Memory ref: #26 bty_qr_arch_v1_LOCKED, #27 lock-and-dispatch sequencing.
+
+**Deferred (separate dispatches):** Plan §5.1 footnote (DROP referenced unprefixed `verification_type_check`; actual prod name was prefixed — patched via `010400`, doc footnote pending) · migration-file LF copy-friendly-header housekeeping.
+
+**Next:** L2 contract creation rewrite (4 WRITE sites).
+
+---
+
 ## D-7 LANE 7 — QR GATE REGRESSION FIX (H1 + H3)
 
 **Status:** CLOSED (code fix + SQL hotfix complete; push HELD pre-D-1 = 6/01) · **Date:** 2026-05-26 (D-7, post-Lane-6) · **Class:** launch-blocker resolved · **Launch shift:** 5/30 → 6/02 (5/30 presentation only)

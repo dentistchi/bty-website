@@ -1,3 +1,25 @@
+## QR Verification Architecture v1 — L0 / L1 CLOSED (D-6 · 2026-05-27)
+
+**Active head (D-6 / 2026-05-27):** inner `d9443b84` (L1 close, pushed origin/inner-main) · outer `b21c47f0` (mirror, pushed origin/main) + this ledger commit. **Working tree:** clean (both repos).
+
+**L1 DB Migration**: [x] **완료.** 5 migrations applied to production + verified + pushed (inner `d9443b84` / outer `b21c47f0`). 133 `bty_action_contracts` stamped `legacy_self_attest`; 51 `le_verification_log` rows FK VALIDATED + enforcing. STEP 2 (9 tests) + §3.4 FK VALIDATE ALL PASS. `verification_type` CHECK expanded 8 → 11 values. Schema ready for L2.
+
+**L0–L9 layer checklist (QR Verification Architecture v1):**
+- [x] L0 spec lock (`QR_VERIFICATION_ARCHITECTURE_V1.md`, Locked v1, 2026-05-27)
+- [x] L1 DB migration (5 files incl. correction patch, ALL PASS, 2026-05-27, inner `d9443b84`)
+- [ ] L2 contract creation rewrite (4 WRITE sites)
+- [ ] L3 token payload extension
+- [ ] L4 validate route tier-aware enforcement ★ critical
+- [ ] L5 Layer 2 verification_type-aware
+- [ ] L6 STAB-01 4-AND gate removal
+- [ ] L7 AD2 non_event_confirmed path
+- [ ] L8 legacy contract disposition (8 hotfix + 41 pattern_family)
+- [ ] L9 UI tier-aware messaging
+
+**Deferred (separate dispatches):** Plan §5.1 footnote correction · migration-file LF header housekeeping · L2 entry (after Commander review).
+
+---
+
 ## Current Status (D-7 evening — Lane 3+5+6+7 CLOSED, deploy verified LIVE — 2026-05-26; launch D-0 = 2026-06-02)
 
 **Active head (D-7 / 2026-05-26):** inner `90e5c13a` (pushed, ahead 0) · outer `3f92e66` → this verification ledger commit (ahead 0 → 1, accompanies next push cycle) · **worker live `20f15258-a2e6-465e-8b39-450eaf47f6fe`** (was `47dca7a4`) · **Baseline:** 3372/0/6 · **tsc:** PASS · **Push:** DONE (D-7 emergency, full 25-commit aggregate) · **Deploy:** DONE (D-7) · **Next:** D-6 (2026-05-27) regression sweep buffer.
