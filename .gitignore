@@ -53,3 +53,6 @@ Screenshot *.png
 
 # Supabase CLI link artifacts — environment-specific, not tracked
 supabase/.temp/
+
+# Local scratch (STEP 0 capture, ad-hoc inventory dumps) — never committed
+tmp/
