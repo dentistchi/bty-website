@@ -1,6 +1,6 @@
 # L5+L6 Re-scope — QR Issuance Alignment Plan
 
-**Status:** Locked v0.2 — Commander approved (review 8.8/10 → 4 fixes + 3 Q answers applied)
+**Status:** Locked v0.3 — Commander approved (v0.2 + Component 5 binding surface QR gate alignment)
 **Lane:** L5 (Layer 2 advisory) + L6 (canonical auto-approve removal) re-scoped under Spec v2 §3.5
 **Authored:** 2026-05-28 by C3 (Claude), non-mutating dispatch author
 **Executor:** Claude Code (VSCode), sole mutation runner
@@ -38,6 +38,20 @@ longer reach terminal without a QR scan. qr/validate becomes the sole approved-s
 escalate/reject no longer set blocking statuses. Layer 2 verdict recorded as
 `le_verification_log.verification_confidence` metadata. Structurally removes the
 escalate dead-end (Lane 7 H1 deadlock).
+
+**Component 5 — Binding surface QR gate alignment (added 2026-05-28, STEP 0.5b).**
+The POST /api/arena/choice binding builder (buildArenaBindingSnapshotResponse.server.ts
+action_decision phase, L117-145) has a second progression model that advances
+submitted/escalated contracts to NEXT_SCENARIO_READY (next_allowed=true) WITHOUT a QR
+scan — defeating "QR scan = sole gate" on that surface. STEP 0.5b confirmed this is
+provable (GET blocks all 4 statuses; binding advances submitted/escalated; the builder's
+"GET is pending-only" comment is demonstrably false). C1+C4 make ALL canonical
+post-submit contracts `submitted`, turning this edge-case leak into a load-bearing
+bypass covering every canonical contract. Fix (Commander 2026-05-28, option b): collapse
+the entire L117-145 status-branching to a single `snapshotForBlockedContract(blocking)`
+call, so the binding surface consumes the SAME shared blocking helper as GET session.
+This makes "QR = sole gate" a system invariant (both surfaces, one helper), not a
+per-surface patch. Commander directive: "QR sole gate는 surface 단위가 아니라 system invariant다."
 
 ### 1.3 Emergent (no standalone build)
 
@@ -209,6 +223,62 @@ re-promote Layer 2 to content gate once LLM reliability is verified (needs lever
 
 ---
 
+## 4b. Component 5 — Binding Surface QR Gate Alignment
+
+### 4b.1 File
+`src/lib/bty/arena/buildArenaBindingSnapshotResponse.server.ts` (path per STEP 0.5b;
+verify before edit)
+
+### 4b.2 The divergence (STEP 0.5b confirmed)
+
+action_decision phase, L117-145, current status-branching:
+| status | snapshot fn | runtime_state | next_allowed | qr_allowed |
+|---|---|---|---|---|
+| pending (L121) | snapshotForBlockedContract | ACTION_REQUIRED | false | true |
+| **submitted (L130)** | **snapshotForNextScenarioReady** | **NEXT_SCENARIO_READY** | **true** | **false** ← VIOLATION |
+| **escalated (L130)** | **snapshotForNextScenarioReady** | **NEXT_SCENARIO_READY** | **true** | **false** ← VIOLATION |
+| approved (L139 fallthrough) | snapshotForBlockedContract | ACTION_AWAITING_VERIFICATION | false | true |
+| rejected (L139 fallthrough) | snapshotForBlockedContract | ACTION_REQUIRED | false | false |
+
+The submitted/escalated branch (L130-138) keys only on status — never reads verified_at
+or validation_approved_at — so an unscanned submitted contract advances. GET session
+(arenaSessionNextCore.ts:55, BLOCKING_STATUSES = 4 values) correctly blocks all 4.
+
+### 4b.3 Edit specification (option b — full collapse, Commander 2026-05-28)
+
+Collapse the entire L117-145 `if (blocking) { ...status-branching... }` block to a single
+call:
+```typescript
+// All blocking statuses [pending, submitted, rejected, escalated] route through the
+// SAME shared blocking helper as GET session (arenaSessionNextCore). QR scan is the
+// sole progression gate — system invariant across all surfaces (Commander 2026-05-28).
+if (blocking) {
+  return snapshotForBlockedContract(blocking);
+}
+```
+(Adapt to actual return/assignment shape in the file. The point: submitted/escalated no
+longer get the NEXT_SCENARIO_READY special-case; they fall to the same
+runtimeStateFromBlockingContract mapping GET uses → submitted→ACTION_SUBMITTED,
+escalated→ACTION_ESCALATED, both with next_allowed=false, qr_allowed=true.)
+
+Also DELETE the false comment (L119-120): "Only pending blocks progression… (GET session
+already uses pending-only blocking query)." Replace with the system-invariant rationale.
+
+### 4b.4 Constraints (Commander minimal-change)
+- ACTION_ESCALATED enum RETAIN (no enum change)
+- H3 breaker KEEP
+- writer-only collapse (C4) unaffected
+- Pure change: binding surface consumes the existing shared snapshotForBlockedContract.
+  NO new helper. NO logic beyond removing the submitted/escalated outlier branch.
+
+### 4b.5 Why this is in-scope (not L4)
+C1+C4 make every canonical post-submit contract `submitted`. Without 4b, every canonical
+contract would advance on the binding surface without a scan — a known, broadened
+gate-bypass. Shipping C1+C4 without 4b ships the bypass. The fix is minimal (collapse to
+existing helper) and independent of submit-validation edits.
+
+---
+
 ## 5. STEP Plan (lock cycle)
 
 ```
@@ -216,7 +286,8 @@ STEP 0   inventory — DONE (this plan is its output)
 STEP 0.5 runtime state-map inventory (Risk 3 — REQUIRED before STEP 1)
 STEP 1A  Component 1 — canonical auto-approve removal
 STEP 1B  Component 4 — Layer 2 advisory
-         (1A + 1B same file region — combined edit dispatch per Commander Q1)
+STEP 1C  Component 5 — binding surface QR gate alignment (full collapse to shared helper)
+         (1A + 1B + 1C combined edit dispatch per Commander Q1 — 3 files)
 STEP 2   test suite — rewrite + add advisory tests, vitest + tsc
 STEP 3   atomic commit + push + Commander deploy + post-deploy probes
 STEP 4   ledger update
@@ -260,6 +331,9 @@ migrations rule: never regress baseline):
 - MyPageLeadershipConsole.test.tsx
 - action-loop-token/route.test.ts
 - canonical-reward-loop.integration.test.ts (terminal flow)
+- action-contract-loop.test.ts:43-68 (Component 5 — enshrines the binding violation
+  "submitted contract → NEXT_SCENARIO_READY"; rewrite to expect ACTION_SUBMITTED +
+  next_allowed=false; the approved test L70-93 stays valid; +1 escalated variant if present)
 
 New tests required:
 - "canonical mvp_open contract → submitted + validation_approved_at + verified_at null (NOT terminal)"
@@ -286,22 +360,26 @@ Post-deploy probes:
   confirm:
   ```json
   {
-    "runtime_state": "ACTION_AWAITING_VERIFICATION",
+    "runtime_state": "ACTION_SUBMITTED",
     "gates": { "qr_allowed": true, "next_allowed": false }
   }
   ```
+  (Corrected per STEP 0.5: canonical contract post-submit-validation has status='submitted'
+  → ACTION_SUBMITTED, NOT ACTION_AWAITING_VERIFICATION. The latter requires status='approved'
+  which only occurs after a QR scan, at which point the contract is no longer blocking.
+  Gates expectation unchanged.)
   Rationale: `verified_at == null` at DB level does NOT prove the QR actually surfaced
   in the UI. Per BTY invariant "snapshot > uiStep", the runtime snapshot is the
-  authoritative surface signal. The original symptom (Commander's "QR 안보임") is a
-  snapshot/surface issue — Probe 1 (DB) is necessary but not sufficient; Probe 1B
-  (snapshot gates) proves QR is offered. (Exact runtime_state literal confirmed in
-  STEP 0.5.)
+  authoritative surface signal.
 - Probe 2: QR scan (qr/validate) → verified_at set → progression unlocked (next_allowed=true).
 - Probe 3: legacy contract → still auto-approves (canLegacyAutoApprove).
 - Probe 4: Layer 2 escalate case → contract reaches submitted (not escalated dead-end);
   Layer 2 semantic confidence='medium' in validation metadata; carried to
   le_verification_log.verification_confidence only after scan (Risk 1 two-phase).
 - Probe 5: no escalation spike / no deadlock.
+- **Probe 6 (Component 5):** POST /api/arena/choice binding surface — submitted canonical
+  contract → ACTION_SUBMITTED + next_allowed=false (NOT NEXT_SCENARIO_READY). Confirms
+  the binding surface now respects the QR gate (system invariant across GET + POST).
 
 ★ Probe 1 + 1B together = regression-fix proof: the original symptom ("QR 안보임")
 must be resolved — canonical contracts now surface QR (snapshot qr_allowed=true)
@@ -323,6 +401,7 @@ instead of terminal "Action reported".
 | H8 | Test baseline regressed (deleted not rewritten) | HALT |
 | H9 | Probe 1 still shows terminal/no-QR for canonical | HALT, fix incomplete |
 | H10 | Inner push to origin/main | HALT (memory #9) |
+| H11 | binding builder modified beyond submitted/escalated→blocked collapse | HALT (Component 5 minimal-change) |
 
 ---
 
@@ -364,3 +443,4 @@ instead of terminal "Action reported".
 |---|---|---|---|
 | 2026-05-28 | Draft | STEP 0 inventory → lane plan. Components 1+4 build, 2+3 emergent. Decisions a/b/A baked in. | C3 (Claude) |
 | 2026-05-28 | **Locked v0.2** | Commander review 8.8/10. 4 fixes: (R1) le_verification_log write timing — two-phase validation-metadata-at-submit / verification-confidence-at-scan, D1 boundary restored; (R2) "same progression class, distinct confidence semantics" wording; (R3) STEP 0.5 runtime state-map inventory added (required before STEP 1); (R4) Probe 1B runtime snapshot qr_allowed surfaced. Q1 combined / Q2 keep escalation audit / Q3 "Layer 2 semantic confidence" naming. | C3 + Commander |
+| 2026-05-28 | **Locked v0.3** | STEP 0.5b found POST /api/arena/choice binding surface advances submitted/escalated to NEXT_SCENARIO_READY without QR scan (provable: GET blocks 4 statuses, builder comment false). C1+C4 make all canonical contracts submitted → leak becomes load-bearing. Added Component 5: collapse buildArenaBindingSnapshotResponse L117-145 to shared snapshotForBlockedContract (option b, full DRY). STEP 1 now 3 files (C1+C4+C5). H11 added. Probe 1B literal corrected ACTION_AWAITING_VERIFICATION→ACTION_SUBMITTED. Probe 6 added. Commander: 'QR sole gate는 system invariant'. | C3 + Commander |
