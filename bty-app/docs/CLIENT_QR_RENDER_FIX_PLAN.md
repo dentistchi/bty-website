@@ -1,6 +1,6 @@
 # Client QR Render Fix — Lane Plan
 
-**Status:** Locked v1 — Commander approved 2026-05-28
+**Status:** Locked v1.1 — Commander approved 2026-05-28 (v1 amendment: §3.2 props + H4 refinement)
 
 **Commander lock statement (verbatim):**
 > Approved:
@@ -97,15 +97,23 @@ L5+L6 (CLOSED — server invariant)
 
 ### 3.2 Shared component spec — `<ActionLoopQrPanel>`
 
-Props:
+Props (amended v1.1, Commander 2026-05-28 H4 catch):
 ```typescript
 type ActionLoopQrPanelProps = {
   url: string;            // commit deep-link URL (the QR payload)
   onDismiss: () => void;  // panel close handler
-  // Optional: any tier-specific copy (mvp_open: "Have anyone scan", member_only: "Have a btyARENA user scan", etc.)
-  // Tier label is OPTIONAL — keep this lane render-pure; tier UX can be deferred or minimal.
+  locale: string;         // i18n parameter for source parity (getMessages(locale).actionContract.dismiss)
 };
 ```
+
+**locale rationale (v1.1):** STEP 1A H4 catch revealed the source MyPage dismiss button
+renders `getMessages(loc).actionContract.dismiss` ("닫기"/"Close"). Faithful extraction
+(plan §3.6 verbatim render parity) requires preserving that i18n binding. `locale` is
+NOT business/state coupling — it is a pure i18n parameter, sibling arena components
+universally take `locale`. Replacing the localized dismiss with `×` icon would be
+redesign, not extraction, and would break visual+i18n parity. The original §3.2 prop
+cap missed this because STEP 0 inventory captured render structure but not the i18n
+binding. v1.1 amendment restores extraction faithfulness.
 
 Render (extracted verbatim from MyPage L445-468):
 - `<QRCodeSVG value={url} size={200} />` (from `qrcode.react ^4.2.0`)
@@ -141,8 +149,8 @@ NO `window.location.assign`. NO `router.push`. The button click renders, does no
 
 ArenaPendingContractGate.tsx:100-113 button (`data-testid="arena-pending-contract-complete-by-qr"`):
 - onClick still calls `onCompleteByQr()` → `startPendingContractQrFlow` → mints + sets state
-- Adjacent (or modal) render: `<ActionLoopQrPanel url={pendingContractQrUrl} onDismiss={...} />`
-  conditionally rendered when `pendingContractQrOpen === true`
+- Adjacent (or modal) render: `<ActionLoopQrPanel url={pendingContractQrUrl} onDismiss={...} locale={locale} />`
+  conditionally rendered when `pendingContractQrOpen === true`. (v1.1: pass locale — Arena resolve surface already receives locale per route convention.)
 
 ArenaResolveClient.tsx:213: wire the new state through (mirroring how MyPage wires
 qrUrl/qrPanelOpen). Pass to ArenaPendingContractGate as props if that's the existing
@@ -151,7 +159,7 @@ convention.
 ### 3.5 Consumer B — MyPage refactor (DRY)
 
 MyPageLeadershipConsole.tsx:
-- Replace inline `QRCodeSVG` block (L445-468) with `<ActionLoopQrPanel url={qrUrl} onDismiss={() => setQrPanelOpen(false)} />`
+- Replace inline `QRCodeSVG` block (L445-468) with `<ActionLoopQrPanel url={qrUrl} onDismiss={() => setQrPanelOpen(false)} locale={loc} />` (v1.1: pass loc — already in scope at MyPage via getMessages call site)
 - handleRequestQr (L276-318) UNCHANGED — it already does mint + setQrUrl + setQrPanelOpen
 - aalo auto-commit useEffect (L225-274) UNCHANGED — that's the witness path (separate from QR render); L4 handles self-scan enforcement
 
@@ -262,7 +270,7 @@ fires until an external scan happens. Confirms render ≠ commit.
 | H1 | STEP 0 file/line refs differ | HALT, report |
 | H2 | startPendingContractQrFlow modified beyond render-state swap | HALT |
 | H3 | tsc error | HALT |
-| H4 | Shared component coupling exceeds props (url, onDismiss) | HALT (scope creep) |
+| H4 | Shared component extraction introduces business/state coupling or non-render-parity props beyond minimum (pure render/i18n params required for source parity, such as `locale`, are allowed — v1.1 refinement) | HALT |
 | H5 | aalo useEffect modified | HALT (L4 scope) |
 | H6 | qr/validate route touched | HALT (L4 scope) |
 | H7 | window.location.assign still present in startPendingContractQrFlow | HALT (fix incomplete) |
@@ -289,3 +297,4 @@ fires until an external scan happens. Confirms render ≠ commit.
 |---|---|---|---|
 | 2026-05-28 | Draft v0.1 | STEP 0 inventory → lane plan. Single shared component (A), separate lane (b), L4 sequential (I). Open items deferred to lock review. | C3 (Claude) |
 | 2026-05-28 | **Locked v1** | Commander approved: shared ActionLoopQrPanel, STEP 1 staged 1A→1B→1C→1D, tier copy deferred, qr-debug-value retained for STEP 1, L4 sequential, f214cdcc preserved. Core principle: "BTY는 '선택'이 아니라 '행동 완료'로 닫히는 시스템이고, QR은 진행 제한의 실행 게이트다." | C3 + Commander |
+| 2026-05-28 | **Locked v1.1** | STEP 1A H4 catch (correct halt): MyPage dismiss uses `getMessages(loc).actionContract.dismiss` ("닫기"/"Close"). Faithful extraction needs locale. §3.2 props amended to (url, onDismiss, locale). §3.4/§3.5 consumer call sites updated. H4 refined: pure render/i18n params required for source parity (e.g. locale) are allowed; business/state coupling stays banned. Commander principle: "UI는 서버 의미를 만들지 않고 snapshot을 렌더해야 하며, JSON/표현 계층과 판단 계층은 분리되어야 한다." locale is presentation-layer parity. | C3 + Commander |
