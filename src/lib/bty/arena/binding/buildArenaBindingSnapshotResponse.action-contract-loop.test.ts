@@ -40,7 +40,11 @@ describe("buildArenaBindingSnapshotResponse — AD1 action contract loop", () =>
     expect(snap.action_contract.exists).toBe(true);
   });
 
-  it("submitted contract (by id) unlocks NEXT_SCENARIO_READY — no ACTION_SUBMITTED loop after QR", async () => {
+  it("submitted contract (by id) blocks at ACTION_SUBMITTED until QR scan (system invariant w/ GET session)", async () => {
+    // Component 5 (spec v2 §3.5): the binding surface routes ALL blocking statuses through
+    // the shared snapshotForBlockedContract — the same model as GET session. A submitted
+    // (validation_approved, not yet scanned) contract must NOT advance to NEXT_SCENARIO_READY;
+    // QR scan is the sole progression gate across surfaces.
     fetchBlockingArenaContractForSession.mockResolvedValueOnce(null);
     fetchBlockingContractRowByContractId.mockResolvedValueOnce({
       id: "ac-2",
@@ -49,6 +53,8 @@ describe("buildArenaBindingSnapshotResponse — AD1 action contract loop", () =>
       verification_mode: "hybrid",
       created_at: "2026-04-26T00:00:00.000Z",
       status: "submitted",
+      validation_approved_at: "2026-04-26T00:01:00.000Z",
+      verified_at: null,
     });
     const snap = await buildArenaBindingSnapshotResponse(supabaseStub, "u1", {
       runId: "run-1",
@@ -61,10 +67,10 @@ describe("buildArenaBindingSnapshotResponse — AD1 action contract loop", () =>
       actionDecisionOutcome: "commitment_contract",
       commitmentContractId: "ac-2",
     });
-    expect(snap.runtime_state).toBe("NEXT_SCENARIO_READY");
-    expect(snap.gates.next_allowed).toBe(true);
-    expect(snap.gates.choice_allowed).toBe(false);
-    expect(snap.action_contract.exists).toBe(false);
+    expect(snap.runtime_state).toBe("ACTION_SUBMITTED");
+    expect(snap.gates.next_allowed).toBe(false);
+    expect(snap.gates.qr_allowed).toBe(true);
+    expect(snap.action_contract.exists).toBe(true);
   });
 
   it("approved+awaiting verification contract maps to ACTION_AWAITING_VERIFICATION", async () => {

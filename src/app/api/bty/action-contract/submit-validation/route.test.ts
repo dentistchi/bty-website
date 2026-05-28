@@ -246,7 +246,7 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     }
   });
 
-  it("G-B07: reject response contains only outcome", async () => {
+  it("G-B07: reject response carries flow-control fields only (no rationale)", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "user-1" },
       supabase: makeSupabaseForContract("pending"),
@@ -278,14 +278,18 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
 
     expect(res.status).toBe(200);
     const data = (await res.json()) as Record<string, unknown>;
-    expect(Object.keys(data)).toEqual(["outcome"]);
+    // Advisory landing (spec v2 §3.5): reject is no longer a dead-end — it carries the same
+    // flow-control fields as approve (awaiting_qr progression class). Still no rationale keys.
+    expect(Object.keys(data).sort()).toEqual(["contract_state", "outcome", "verified_at"]);
     expect(data.outcome).toBe("reject");
+    expect(data.contract_state).toBe("awaiting_qr");
+    expect(data.verified_at).toBeNull();
     for (const k of FORBIDDEN_RATIONALE_KEYS) {
       expect(data).not.toHaveProperty(k);
     }
   });
 
-  it("G-B07: escalate response contains only outcome", async () => {
+  it("G-B07: escalate response carries flow-control fields only (no rationale)", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "user-1" },
       supabase: makeSupabaseForContract("pending"),
@@ -317,8 +321,12 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
 
     expect(res.status).toBe(200);
     const data = (await res.json()) as Record<string, unknown>;
-    expect(Object.keys(data)).toEqual(["outcome"]);
+    // Advisory landing (spec v2 §3.5): escalate no longer blocks — it carries the same
+    // flow-control fields as approve (awaiting_qr progression class). Still no rationale keys.
+    expect(Object.keys(data).sort()).toEqual(["contract_state", "outcome", "verified_at"]);
     expect(data.outcome).toBe("escalate");
+    expect(data.contract_state).toBe("awaiting_qr");
+    expect(data.verified_at).toBeNull();
     for (const k of FORBIDDEN_RATIONALE_KEYS) {
       expect(data).not.toHaveProperty(k);
     }
@@ -369,11 +377,12 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     expect(updates[1]).not.toHaveProperty("completed_at");
   });
 
-  it("L6 canonical: mvp_open + pending + flag + env auto-approves to terminal", async () => {
-    // L6 dual-path gate, canonical branch: verification_tier='mvp_open' +
-    // verification_status='pending' + details.self_report_auto_approve=true,
-    // AND the two STAB-01 env terms (SELF_REPORT_AUTO_APPROVE="true" +
-    // BTY_ENV="staging"). All satisfied → terminal auto-approve.
+  it("L6 canonical: mvp_open + flag + env does NOT auto-approve (canonical removed) → awaiting_qr", async () => {
+    // Spec v2 §3.5(B): canonical mvp_open auto-approve is REMOVED. Even with
+    // verification_tier='mvp_open' + details.self_report_auto_approve=true AND both STAB-01
+    // env terms satisfied, a canonical contract runs the evaluator and lands on
+    // submitted + validation_approved_at (verified_at null → awaiting_qr → QR scan gates).
+    // It does NOT complete inline; the four lifecycle/level/reward/AIR calls do NOT fire.
     process.env.SELF_REPORT_AUTO_APPROVE = "true";
     process.env.BTY_ENV = "staging";
     // MVP-FIX-ACTION-DEMO-05 (B): admin must be non-null for the inlined
@@ -451,23 +460,21 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     expect(res.status).toBe(200);
     const approveBody = (await res.json()) as Record<string, unknown>;
     expect(approveBody.outcome).toBe("approve");
-    // STAB-06-FIX-03 (U1): auto-approve path is terminal — verified_at echoed back.
-    expect(approveBody.contract_state).toBe("terminal");
-    expect(typeof approveBody.verified_at).toBe("string");
+    // Canonical mvp_open is now awaiting_qr (NOT terminal) — verified_at null.
+    expect(approveBody.contract_state).toBe("awaiting_qr");
+    expect(approveBody.verified_at).toBeNull();
     expect(updates[1]).toMatchObject({
-      status: "approved",
+      status: "submitted",
       validation_approved_at: expect.any(String),
-      verified_at: expect.any(String),
-      completed_at: expect.any(String),
     });
-    // MVP-FIX-ACTION-DEMO-05 (B): demo auto-approve must also drive run
-    // completion and XP — the four lifecycle/level/reward/AIR calls should
-    // fire exactly once each, mirroring qr/validate's awaitingVerification
-    // branch. Assertions added (not weakened).
-    expect(mockCompleteArenaRunAfterContractVerification).toHaveBeenCalledTimes(1);
-    expect(mockOnArenaRunCompleteVerified).toHaveBeenCalledTimes(1);
-    expect(mockApplyArenaRunRewardsOnVerifiedCompletion).toHaveBeenCalledTimes(1);
-    expect(mockReflectContractVerificationToAir).toHaveBeenCalledTimes(1);
+    expect(updates[1]).not.toHaveProperty("verified_at");
+    expect(updates[1]).not.toHaveProperty("completed_at");
+    // Canonical contracts do NOT complete inline — qr/validate (scan) is the sole completion
+    // path (spec v2 §3.5(B)). The four lifecycle/level/reward/AIR calls must NOT fire at submit.
+    expect(mockCompleteArenaRunAfterContractVerification).not.toHaveBeenCalled();
+    expect(mockOnArenaRunCompleteVerified).not.toHaveBeenCalled();
+    expect(mockApplyArenaRunRewardsOnVerifiedCompletion).not.toHaveBeenCalled();
+    expect(mockReflectContractVerificationToAir).not.toHaveBeenCalled();
   });
 
   it("L6 legacy: legacy_self_attest + self_attest + pending + env auto-approves to terminal", async () => {
@@ -697,10 +704,14 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     expect((await res.json()).outcome).toBe("escalate");
     expect(evalSpy).toHaveBeenCalledTimes(1);
     const last = updates[updates.length - 1];
+    // Advisory landing (spec v2 §3.5): escalate no longer writes a blocking 'escalated'
+    // status — it lands on the same submitted + validation_approved_at progression class as
+    // approve (verified_at null → QR scan gates). Not auto-approved (not terminal).
     expect(last).toMatchObject({
-      status: "escalated",
-      escalated_at: expect.any(String),
+      status: "submitted",
+      validation_approved_at: expect.any(String),
     });
+    expect(last).not.toHaveProperty("verified_at");
   });
 
   // STAB-01 negative case #2: production env (D2 enforcement).
@@ -748,10 +759,14 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     expect((await res.json()).outcome).toBe("escalate");
     expect(evalSpy).toHaveBeenCalledTimes(1);
     const last = updates[updates.length - 1];
+    // Advisory landing (spec v2 §3.5): escalate no longer writes a blocking 'escalated'
+    // status — it lands on the same submitted + validation_approved_at progression class as
+    // approve (verified_at null → QR scan gates). Not auto-approved (not terminal).
     expect(last).toMatchObject({
-      status: "escalated",
-      escalated_at: expect.any(String),
+      status: "submitted",
+      validation_approved_at: expect.any(String),
     });
+    expect(last).not.toHaveProperty("verified_at");
   });
 
   // STAB-01 negative case #3: tier exclusion (Tier 2/3).
@@ -799,10 +814,14 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     expect((await res.json()).outcome).toBe("escalate");
     expect(evalSpy).toHaveBeenCalledTimes(1);
     const last = updates[updates.length - 1];
+    // Advisory landing (spec v2 §3.5): escalate no longer writes a blocking 'escalated'
+    // status — it lands on the same submitted + validation_approved_at progression class as
+    // approve (verified_at null → QR scan gates). Not auto-approved (not terminal).
     expect(last).toMatchObject({
-      status: "escalated",
-      escalated_at: expect.any(String),
+      status: "submitted",
+      validation_approved_at: expect.any(String),
     });
+    expect(last).not.toHaveProperty("verified_at");
   });
 
   // ── qr-typed contracts under the L6 tier gate (verification_type="qr") ────
@@ -895,7 +914,7 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     expect(data.verified_at).toBeNull();
   });
 
-  it("STAB-07-P0: qr Layer 2 fail → escalated", async () => {
+  it("STAB-07-P0: qr Layer 2 fail → submitted (advisory, not escalated dead-end)", async () => {
     const updates: Record<string, unknown>[] = [];
     mockRequireUser.mockResolvedValue({
       user: { id: "user-1" },
@@ -931,9 +950,143 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     expect((await res.json()).outcome).toBe("escalate");
     expect(evalSpy).toHaveBeenCalledTimes(1);
     const last = updates[updates.length - 1];
+    // Advisory landing (spec v2 §3.5): escalate no longer writes a blocking 'escalated'
+    // status — it lands on the same submitted + validation_approved_at progression class as
+    // approve (verified_at null → QR scan gates). Not auto-approved (not terminal).
     expect(last).toMatchObject({
-      status: "escalated",
-      escalated_at: expect.any(String),
+      status: "submitted",
+      validation_approved_at: expect.any(String),
     });
+    expect(last).not.toHaveProperty("verified_at");
+  });
+
+  it("escalate inserts an audit escalation row while the contract lands submitted (Q2 advisory, not blocking)", async () => {
+    // Q2: escalate keeps writing bty_action_contract_escalations for audit, but the contract
+    // lands `submitted` (advisory) — the row is informational (X-3), not a blocking gate.
+    process.env.SELF_REPORT_AUTO_APPROVE = "true";
+    process.env.BTY_ENV = "staging";
+    const insertTables: string[] = [];
+    const makeRecordingAdmin = () => {
+      const makeChain = (table: string) => {
+        const chain: Record<string, unknown> = {};
+        const terminal = Promise.resolve({ error: null });
+        chain.update = vi.fn().mockReturnValue(chain);
+        chain.insert = vi.fn().mockImplementation(() => {
+          insertTables.push(table);
+          return terminal;
+        });
+        chain.eq = vi.fn().mockImplementation(() => chain);
+        chain.then = (resolve: (v: { error: null }) => unknown) => terminal.then(resolve);
+        return chain;
+      };
+      return { from: vi.fn().mockImplementation((table: string) => makeChain(table)) };
+    };
+    vi.mocked(getSupabaseAdmin).mockReturnValueOnce(
+      makeRecordingAdmin() as unknown as ReturnType<typeof getSupabaseAdmin>,
+    );
+    const updates: Record<string, unknown>[] = [];
+    mockRequireUser.mockResolvedValue({
+      user: { id: "user-1" },
+      supabase: makeSupabaseForContract("pending", {
+        verification_type: "action_completed",
+        verification_tier: "mvp_open",
+        verification_status: "pending",
+        details: { self_report_auto_approve: true },
+        onUpdate: (payload) => updates.push(payload),
+      }),
+      base: {},
+    });
+    vi.spyOn(validation, "evaluateActionContractPayload").mockResolvedValue({
+      outcome: "escalate",
+      layer1Errors: [],
+      layer2Criteria: null,
+      modelId: null,
+      layer2TechnicalError: "layer2_timeout",
+    });
+
+    const res = await POST(
+      makeRequest({
+        contractId: "contract-1",
+        who: "Alex Kim",
+        what: "Self report completion",
+        when: "2026-04-15 15:00",
+        how: "Submit report",
+        raw_text: "Raw evidence",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).outcome).toBe("escalate");
+    const last = updates[updates.length - 1];
+    expect(last).toMatchObject({ status: "submitted", validation_approved_at: expect.any(String) });
+    expect(last).not.toHaveProperty("verified_at");
+    expect(insertTables).toContain("bty_action_contract_escalations");
+  });
+
+  it("does NOT write le_verification_log at submit (two-phase D1 boundary)", async () => {
+    // Spec D1: le_verification_log is the verification-event log. At submit time no
+    // verification event exists (contract is submitted, not verified), so submit-validation
+    // must never touch le_verification_log — the scan path (qr/validate) owns that write.
+    process.env.SELF_REPORT_AUTO_APPROVE = "true";
+    process.env.BTY_ENV = "staging";
+    const fromTables: string[] = [];
+    const makeRecordingAdmin = () => {
+      const makeChain = () => {
+        const chain: Record<string, unknown> = {};
+        const terminal = Promise.resolve({ error: null });
+        chain.update = vi.fn().mockReturnValue(chain);
+        chain.insert = vi.fn().mockReturnValue(terminal);
+        chain.eq = vi.fn().mockImplementation(() => chain);
+        chain.then = (resolve: (v: { error: null }) => unknown) => terminal.then(resolve);
+        return chain;
+      };
+      return {
+        from: vi.fn().mockImplementation((table: string) => {
+          fromTables.push(table);
+          return makeChain();
+        }),
+      };
+    };
+    vi.mocked(getSupabaseAdmin).mockReturnValueOnce(
+      makeRecordingAdmin() as unknown as ReturnType<typeof getSupabaseAdmin>,
+    );
+    mockRequireUser.mockResolvedValue({
+      user: { id: "user-1" },
+      supabase: makeSupabaseForContract("pending", {
+        verification_type: "action_completed",
+        verification_tier: "mvp_open",
+        verification_status: "pending",
+        details: { self_report_auto_approve: true },
+      }),
+      base: {},
+    });
+    vi.spyOn(validation, "evaluateActionContractPayload").mockResolvedValue({
+      outcome: "approve",
+      layer1Errors: [],
+      layer2Criteria: {
+        re_entry_direction: { outcome: "pass", confidence: 0.9 },
+        external_measurability: { outcome: "pass", confidence: 0.9 },
+        non_cosmetic: { outcome: "pass", confidence: 0.9 },
+      },
+      modelId: "gpt-4o-mini",
+      layer2TechnicalError: null,
+    });
+
+    const res = await POST(
+      makeRequest({
+        contractId: "contract-1",
+        who: "Alex Kim",
+        what: "Self report completion",
+        when: "2026-04-15 15:00",
+        how: "Submit report",
+        raw_text: "Raw evidence",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    // The route never touches le_verification_log directly, and the AIR reflection that
+    // would write it must not fire for a canonical contract (scan-side carry-through only).
+    expect(fromTables).not.toContain("le_verification_log");
+    expect(mockReflectContractVerificationToAir).not.toHaveBeenCalled();
   });
 });

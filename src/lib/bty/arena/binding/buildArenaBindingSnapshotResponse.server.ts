@@ -115,27 +115,11 @@ export async function buildArenaBindingSnapshotResponse(
       );
     }
     if (blocking) {
-      const st = String(blocking.status ?? "").trim().toLowerCase();
-      // Only `pending` blocks progression. After QR, `submitted`/`escalated` must not loop the same scenario
-      // behind ACTION_SUBMITTED + closed gates (GET session already uses pending-only blocking query).
-      if (st === "pending") {
-        const snap = snapshotForBlockedContract(blocking);
-        return {
-          ...snap,
-          run_id: params.runId,
-          scenario: scenarioSlice,
-          ...bindingExtras,
-        };
-      }
-      if (st === "submitted" || st === "escalated") {
-        const next = snapshotForNextScenarioReady();
-        return {
-          ...next,
-          run_id: params.runId,
-          scenario: scenarioSlice,
-          ...bindingExtras,
-        };
-      }
+      // All blocking statuses [pending, submitted, rejected, escalated] route through the
+      // shared snapshotForBlockedContract — the same model as GET session
+      // (arenaSessionNextCore). QR scan is the sole progression gate, a system invariant
+      // across surfaces (Commander 2026-05-28). submitted→ACTION_SUBMITTED,
+      // escalated→ACTION_ESCALATED, both with next_allowed=false + qr_allowed=true.
       const snap = snapshotForBlockedContract(blocking);
       return {
         ...snap,

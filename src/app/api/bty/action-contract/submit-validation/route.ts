@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     .select(
       // MVP-FIX-ACTION-DEMO-05 (B): le_activation_type/weight/chosen_at/
       // deadline_at added to feed the inlined run-completion + AIR reflection
-      // calls in the canSelfReportAutoApprove auto-approve branch.
+      // calls in the canLegacyAutoApprove (legacy auto-approve) branch.
       "id, user_id, status, pattern_family, arena_scenario_id, session_id, run_id, verification_type, verification_tier, verification_status, details, le_activation_type, weight, chosen_at, deadline_at",
     )
     .eq("id", contractId)
@@ -232,19 +232,12 @@ export async function POST(req: NextRequest) {
     return out;
   }
 
-  // MVP-FIX-ACTION-DEMO-01 (A-2): demo-track contracts (verification_type=
-  // self_report + details.self_report_auto_approve=true) skip Layer 2, so
-  // staging's non-deterministic AI cannot stall the run with escalate.
-  // Layer 1 (structural — empty fields, format) still runs for both paths.
-  // STAB-01-P1 (Commander 2026-05-20, A2 option α): the 2-AND gate is
-  // extended to a 4-AND gate. The original two contract-level conditions
-  // (verification_type='self_attest' + details.self_report_auto_approve=true)
-  // remain in place; two worker-level env conditions are AND-ed in as
-  // defense-in-depth. Layer 2 architecture preserved (D3). wrangler.toml
-  // topology NOT restructured — staging-only scope enforced by file-level
-  // `name = "bty-arena-staging"` binding plus the code-level BTY_ENV AND-
-  // term below (D5). Production worker config is external and never reads
-  // SELF_REPORT_AUTO_APPROVE.
+  // L5+L6 lane (spec v2 §3.5): canonical mvp_open auto-approve REMOVED — QR scan is the
+  // sole progression gate. Canonical contracts always run Layer 1 (structural gate) +
+  // Layer 2 (advisory; never blocks). The ONLY remaining auto-approve is the
+  // legacy_self_attest arm (canLegacyAutoApprove) below, retained for in-flight legacy
+  // contracts and staging-gated by the STAB-01 4-AND env terms (BTY_ENV +
+  // SELF_REPORT_AUTO_APPROVE). TODO[L8-cleanup]: remove after L8 legacy disposition.
   const verificationType =
     typeof (contract as { verification_type?: unknown }).verification_type === "string"
       ? String((contract as { verification_type?: string }).verification_type)
@@ -257,37 +250,23 @@ export async function POST(req: NextRequest) {
     typeof (contract as { verification_status?: unknown }).verification_status === "string"
       ? String((contract as { verification_status?: string }).verification_status)
       : "";
-  const details =
-    typeof (contract as { details?: unknown }).details === "object" &&
-    (contract as { details?: unknown }).details != null
-      ? ((contract as { details: Record<string, unknown> }).details ?? {})
-      : {};
-  const selfReportAutoApprove = details.self_report_auto_approve === true;
-  // L6 gate (QR_VERIFICATION_ARCHITECTURE_V1 §2.3; L6_GATE_REWRITE_PLAN §3.5):
-  // auto-approve keys on verification TIER (enforcement strength), not the legacy
-  // verification_type literal. mvp_open = launch "soft enforcement" posture; the two
-  // env terms below are the STAB-01 4-AND defense and gate both paths to staging only.
-  // (self_report wording retained in var/flag names — label cleanup is future.)
   const isStagingWorker =
     process.env.BTY_ENV?.trim().toLowerCase() === "staging";
   const envAutoApprove =
     process.env.SELF_REPORT_AUTO_APPROVE === "true";
-  const canSelfReportAutoApprove =
-    (
-      // Canonical path (post-L2 contracts).
-      (verificationTier === "mvp_open" &&
-        verificationStatus === "pending" &&
-        selfReportAutoApprove === true) ||
-      // Legacy protection path (pre-L2 contracts).
-      // TODO[L8-cleanup]: Remove this OR branch after legacy disposition complete.
-      (verificationTier === "legacy_self_attest" &&
-        verificationType === "self_attest" &&
-        verificationStatus === "pending")
-    ) &&
+  // Canonical mvp_open auto-approve REMOVED (spec v2 §3.5(B)): canonical contracts always
+  // run the evaluator and land on submitted + validation_approved_at (verified_at null →
+  // QR offered → qr/validate scan sets verified_at). Only the legacy_self_attest arm
+  // remains, staging-gated by the STAB-01 4-AND env terms.
+  // TODO[L8-cleanup]: Remove this entire gate after L8 legacy disposition.
+  const canLegacyAutoApprove =
+    verificationTier === "legacy_self_attest" &&
+    verificationType === "self_attest" &&
+    verificationStatus === "pending" &&
     envAutoApprove === true && // STAB-01 4-AND defense (env)
     isStagingWorker === true; // STAB-01 4-AND defense (env)
 
-  const evalResult: ValidationEvaluationResult = canSelfReportAutoApprove
+  const evalResult: ValidationEvaluationResult = canLegacyAutoApprove
     ? (() => {
         const layer1Errors = runAllLayer1Rules({ who, what, how, when, rawText });
         return layer1Errors.length > 0
@@ -352,197 +331,165 @@ export async function POST(req: NextRequest) {
     return out;
   }
 
-  // verificationType / canSelfReportAutoApprove are computed earlier
-  // (MVP-FIX-ACTION-DEMO-01 A-2) and remain in scope here.
+  // verificationType / canLegacyAutoApprove are computed earlier and remain in scope here.
   const nowIso = new Date().toISOString();
 
-  if (evalResult.outcome === "approve") {
-    const approvePatch: Record<string, unknown> = canSelfReportAutoApprove
-      ? {
-          status: "approved",
-          validation_approved_at: nowIso,
-          verified_at: nowIso,
-          completed_at: nowIso,
-          escalated_at: null,
-        }
-      : {
-          // Canonical separation: evidence submission remains ACTION_SUBMITTED,
-          // approval metadata marks ACTION_AWAITING_VERIFICATION.
-          status: "submitted",
-          validation_approved_at: nowIso,
-          escalated_at: null,
-        };
-    console.log("[submit-validation] approve transition payload", {
-      contractId,
-      userId: user.id,
-      verificationType,
-      selfReportAutoApprove: canSelfReportAutoApprove,
-      patch: approvePatch,
-    });
-    logActionContractActorTrace("approve_action_contract", {
-      incoming_actor_user_id: user.id,
-      source_run_id: sessionIdRaw || null,
-      resolved_run_owner_user_id: resolvedRunOwner,
-      resolved_auth_user_id: user.id,
-      contract_user_id: contractUserId,
-      inserted_bty_action_contracts_user_id: contractUserId,
-    });
+  // Layer 2 is ADVISORY (spec v2 §3.5(C), X-2). The `revise` outcome (Layer 1 structural
+  // gate) already returned above. The remaining outcomes — approve / escalate / reject —
+  // all converge on the SAME progression class: canonical contracts land on
+  // `submitted` + validation_approved_at (verified_at null → QR offered → qr/validate scan
+  // is the sole verified_at setter), and the legacy auto-approve path (canLegacyAutoApprove)
+  // still completes terminally inline. The Layer 2 verdict differs only as semantic
+  // confidence (approve→high / escalate→medium / reject→low). That is validation metadata
+  // captured by the existing `outcome` column in bty_action_contract_validator_evaluations
+  // (logEvaluation). It is NOT written to le_verification_log here — no verification event
+  // occurs at submit time (spec D1); the scan-side carry-through to
+  // le_verification_log.verification_confidence is qr/validate's responsibility.
+  const layer2SemanticConfidence: "high" | "medium" | "low" =
+    evalResult.outcome === "approve" ? "high" : evalResult.outcome === "escalate" ? "medium" : "low";
 
-    const { error: apErr } = await supabase
-      .from("bty_action_contracts")
-      .update(approvePatch)
-      .eq("id", contractId)
-      .eq("user_id", user.id);
-    if (apErr) {
-      console.error("[submit-validation] approve transition failed", {
-        contractId,
-        userId: user.id,
-        message: apErr.message,
-        code: (apErr as { code?: string }).code,
-        details: (apErr as { details?: string }).details,
-        hint: (apErr as { hint?: string }).hint,
-      });
-      const out = NextResponse.json({ error: "update_failed" }, { status: 500 });
-      copyCookiesAndDebug(base, out, req, true);
-      return out;
-    }
-
-    // Backfill run_id for older rows (session_id is the arena run id); execution verification + run DONE happen in QR validate.
-    if (admin && sessionIdRaw !== "") {
-      const hasRunId =
-        contract != null &&
-        typeof (contract as { run_id?: string | null }).run_id === "string" &&
-        String((contract as { run_id?: string | null }).run_id).trim() !== "";
-      if (!hasRunId) {
-        const { error: ridErr } = await admin
-          .from("bty_action_contracts")
-          .update({ run_id: sessionIdRaw })
-          .eq("id", contractId)
-          .eq("user_id", user.id);
-        if (ridErr) {
-          console.warn("[submit-validation] run_id backfill skipped", ridErr.message);
-        }
+  const approvePatch: Record<string, unknown> = canLegacyAutoApprove
+    ? {
+        status: "approved",
+        validation_approved_at: nowIso,
+        verified_at: nowIso,
+        completed_at: nowIso,
+        escalated_at: null,
       }
-    }
+    : {
+        // Canonical: evidence submission lands ACTION_SUBMITTED. QR scan (qr/validate) is the
+        // sole verified_at setter; the Layer 2 verdict is advisory and never blocks progression.
+        status: "submitted",
+        validation_approved_at: nowIso,
+        escalated_at: null,
+      };
+  console.log("[submit-validation] advisory landing payload", {
+    contractId,
+    userId: user.id,
+    verificationType,
+    outcome: evalResult.outcome,
+    layer2SemanticConfidence,
+    legacyAutoApprove: canLegacyAutoApprove,
+    patch: approvePatch,
+  });
+  logActionContractActorTrace("approve_action_contract", {
+    incoming_actor_user_id: user.id,
+    source_run_id: sessionIdRaw || null,
+    resolved_run_owner_user_id: resolvedRunOwner,
+    resolved_auth_user_id: user.id,
+    contract_user_id: contractUserId,
+    inserted_bty_action_contracts_user_id: contractUserId,
+  });
 
-    // MVP-FIX-ACTION-DEMO-05 (B): demo auto-approve must also complete the
-    // arena_run and award XP. Mirrors qr/validate's awaitingVerification
-    // branch (route.ts L218-259) verbatim — kept inline to preserve that
-    // branch (INVARIANT 3). Only runs in the canSelfReportAutoApprove path;
-    // the standard non-auto branch (status='submitted') still requires a
-    // separate qr/validate witness pass.
-    if (canSelfReportAutoApprove) {
-      const c = contract as Record<string, unknown>;
-      const runIdFromContract =
-        typeof c.run_id === "string" && c.run_id.trim() !== "" ? c.run_id.trim() : "";
-      const sessionIdFromContract =
-        typeof c.session_id === "string" && c.session_id.trim() !== ""
-          ? c.session_id.trim()
-          : "";
-      const resolvedRunId =
-        runIdFromContract || sessionIdFromContract || sessionIdRaw || null;
-
-      if (admin && resolvedRunId) {
-        const finalized = await completeArenaRunAfterContractVerification(admin, {
-          userId: user.id,
-          runId: resolvedRunId,
-          verifiedAtIso: nowIso,
-        });
-        if (!finalized.runUpdated) {
-          console.error(
-            "[submit-validation] arena_runs completion after contract verify failed",
-          );
-        }
-
-        const levelRes = await onArenaRunCompleteVerified(admin, user.id);
-        if (!levelRes.ok) {
-          console.error("[submit-validation] level record update failed", levelRes.error);
-        }
-
-        const reward = await applyArenaRunRewardsOnVerifiedCompletion({
-          supabase: admin,
-          userId: user.id,
-          run: {
-            run_id: resolvedRunId,
-            scenario_id:
-              typeof c.arena_scenario_id === "string" ? c.arena_scenario_id : null,
-          },
-        });
-        if (!reward.ok) {
-          console.error("[submit-validation] deferred run reward apply failed", reward.error);
-        }
-
-        const airReflection = await reflectContractVerificationToAir({
-          supabase: admin,
-          userId: user.id,
-          runId: resolvedRunId,
-          verifiedAtIso: nowIso,
-          activationType:
-            typeof c.le_activation_type === "string" ? c.le_activation_type : null,
-          weight: typeof c.weight === "number" ? c.weight : null,
-          chosenAtIso: typeof c.chosen_at === "string" ? c.chosen_at : null,
-          dueAtIso: typeof c.deadline_at === "string" ? c.deadline_at : null,
-        });
-        if (!airReflection.ok) {
-          console.error("[submit-validation] AIR reflection failed", airReflection.error);
-        }
-      } else {
-        console.error(
-          "[submit-validation] auto-approve run completion skipped — admin or runId missing",
-          { hasAdmin: !!admin, resolvedRunId },
-        );
-      }
-    }
-
-    await logEvaluation(null);
-    // STAB-06-FIX-03 (U1): terminal discriminator so the client distinguishes
-    // auto-approve (verified, run complete — no QR) from awaiting-QR-witness.
-    const out = NextResponse.json({
-      outcome: "approve",
-      contract_state: canSelfReportAutoApprove ? "terminal" : "awaiting_qr",
-      verified_at: canSelfReportAutoApprove ? nowIso : null,
-    });
-    copyCookiesAndDebug(base, out, req, true);
-    return out;
-  }
-
-  if (evalResult.outcome === "reject") {
-    const { error: rjErr } = await supabase
-      .from("bty_action_contracts")
-      .update({ status: "rejected" })
-      .eq("id", contractId)
-      .eq("user_id", user.id);
-    if (rjErr) {
-      console.error("[submit-validation] reject failed", rjErr.message);
-      const out = NextResponse.json({ error: "update_failed" }, { status: 500 });
-      copyCookiesAndDebug(base, out, req, true);
-      return out;
-    }
-    await logEvaluation(null);
-    const out = NextResponse.json({ outcome: "reject" });
-    copyCookiesAndDebug(base, out, req, true);
-    return out;
-  }
-
-  // escalate (including Layer 2 technical failure → defer to human)
-  const expiresAt = new Date(Date.now() + MS_72H).toISOString();
-  const { error: esErr } = await supabase
+  const { error: apErr } = await supabase
     .from("bty_action_contracts")
-    .update({
-      status: "escalated",
-      escalated_at: nowIso,
-    })
+    .update(approvePatch)
     .eq("id", contractId)
     .eq("user_id", user.id);
-
-  if (esErr) {
-    console.error("[submit-validation] escalate status failed", esErr.message);
+  if (apErr) {
+    console.error("[submit-validation] advisory landing transition failed", {
+      contractId,
+      userId: user.id,
+      message: apErr.message,
+      code: (apErr as { code?: string }).code,
+      details: (apErr as { details?: string }).details,
+      hint: (apErr as { hint?: string }).hint,
+    });
     const out = NextResponse.json({ error: "update_failed" }, { status: 500 });
     copyCookiesAndDebug(base, out, req, true);
     return out;
   }
 
-  if (admin) {
+  // Backfill run_id for older rows (session_id is the arena run id) so qr/validate can
+  // resolve the run; execution verification + run DONE happen in qr/validate.
+  if (admin && sessionIdRaw !== "") {
+    const hasRunId =
+      contract != null &&
+      typeof (contract as { run_id?: string | null }).run_id === "string" &&
+      String((contract as { run_id?: string | null }).run_id).trim() !== "";
+    if (!hasRunId) {
+      const { error: ridErr } = await admin
+        .from("bty_action_contracts")
+        .update({ run_id: sessionIdRaw })
+        .eq("id", contractId)
+        .eq("user_id", user.id);
+      if (ridErr) {
+        console.warn("[submit-validation] run_id backfill skipped", ridErr.message);
+      }
+    }
+  }
+
+  // Legacy auto-approve completes the arena_run + awards XP inline (mirrors qr/validate's
+  // awaitingVerification branch, route.ts L187-228; INVARIANT 3). Canonical contracts do
+  // NOT complete here — qr/validate (scan) is the sole completion path (spec v2 §3.5(B)).
+  if (canLegacyAutoApprove) {
+    const c = contract as Record<string, unknown>;
+    const runIdFromContract =
+      typeof c.run_id === "string" && c.run_id.trim() !== "" ? c.run_id.trim() : "";
+    const sessionIdFromContract =
+      typeof c.session_id === "string" && c.session_id.trim() !== ""
+        ? c.session_id.trim()
+        : "";
+    const resolvedRunId =
+      runIdFromContract || sessionIdFromContract || sessionIdRaw || null;
+
+    if (admin && resolvedRunId) {
+      const finalized = await completeArenaRunAfterContractVerification(admin, {
+        userId: user.id,
+        runId: resolvedRunId,
+        verifiedAtIso: nowIso,
+      });
+      if (!finalized.runUpdated) {
+        console.error(
+          "[submit-validation] arena_runs completion after contract verify failed",
+        );
+      }
+
+      const levelRes = await onArenaRunCompleteVerified(admin, user.id);
+      if (!levelRes.ok) {
+        console.error("[submit-validation] level record update failed", levelRes.error);
+      }
+
+      const reward = await applyArenaRunRewardsOnVerifiedCompletion({
+        supabase: admin,
+        userId: user.id,
+        run: {
+          run_id: resolvedRunId,
+          scenario_id:
+            typeof c.arena_scenario_id === "string" ? c.arena_scenario_id : null,
+        },
+      });
+      if (!reward.ok) {
+        console.error("[submit-validation] deferred run reward apply failed", reward.error);
+      }
+
+      const airReflection = await reflectContractVerificationToAir({
+        supabase: admin,
+        userId: user.id,
+        runId: resolvedRunId,
+        verifiedAtIso: nowIso,
+        activationType:
+          typeof c.le_activation_type === "string" ? c.le_activation_type : null,
+        weight: typeof c.weight === "number" ? c.weight : null,
+        chosenAtIso: typeof c.chosen_at === "string" ? c.chosen_at : null,
+        dueAtIso: typeof c.deadline_at === "string" ? c.deadline_at : null,
+      });
+      if (!airReflection.ok) {
+        console.error("[submit-validation] AIR reflection failed", airReflection.error);
+      }
+    } else {
+      console.error(
+        "[submit-validation] legacy auto-approve run completion skipped — admin or runId missing",
+        { hasAdmin: !!admin, resolvedRunId },
+      );
+    }
+  }
+
+  // escalate keeps an audit escalation row (Q2: advisory record, no longer a blocking
+  // dead-end). The contract status stays `submitted` above — this row is informational
+  // (valuable for the future X-3 content gate), not a progression block.
+  if (evalResult.outcome === "escalate" && admin) {
+    const expiresAt = new Date(Date.now() + MS_72H).toISOString();
     const { error: escInsErr } = await admin.from("bty_action_contract_escalations").insert({
       contract_id: contractId,
       user_id: user.id,
@@ -554,9 +501,18 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  await logEvaluation(evalResult.layer2TechnicalError);
+  // Layer 2 technical failure (escalate path) is preserved as internal_notes; other
+  // outcomes pass null. Semantic confidence is captured by `outcome` in validator_evaluations.
+  await logEvaluation(evalResult.outcome === "escalate" ? evalResult.layer2TechnicalError : null);
 
-  const out = NextResponse.json({ outcome: "escalate" });
+  // Response stays minimal (VALIDATOR_ARCHITECTURE_V1 §5 — no rationale leakage): outcome +
+  // flow-control fields only. The Layer 2 semantic confidence is NOT exposed here — it is
+  // server-side validation metadata, captured via `outcome` in validator_evaluations.
+  const out = NextResponse.json({
+    outcome: evalResult.outcome,
+    contract_state: canLegacyAutoApprove ? "terminal" : "awaiting_qr",
+    verified_at: canLegacyAutoApprove ? nowIso : null,
+  });
   copyCookiesAndDebug(base, out, req, true);
   return out;
 }
