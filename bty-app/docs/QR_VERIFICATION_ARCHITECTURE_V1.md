@@ -1,16 +1,31 @@
-# QR Verification Architecture v1
+# QR Verification Architecture v2
 
-**Status:** Locked v1 — Commander approved
-**Authored:** 2026-05-27 by C3 (Claude), non-mutating dispatch author
-**Implementation lanes:** L1–L9 (see `docs/UNIVERSAL_QR_ARCHITECTURE_RECOVERY_PLAN.md`)
-**Decisions baked in:** Commander 2026-05-27 (D1 / D2 / D3)
-**Code baseline:** inner HEAD `90e5c13a`
+**Status:** Locked v2 — Commander approved (2026-05-28, progression model added to v1)
+**Authored:** 2026-05-27 by C3 (Claude); v2 progression model 2026-05-28
+**Implementation lanes:** L1–L9 + QR Issuance Alignment (new, see §3.5)
+**Decisions baked in:** Commander 2026-05-27 (D1/D2/D3) + 2026-05-28 (progression model X-2, QR scan sole gate)
+**Code baseline:** inner HEAD `7e3cd8cb` (post L2+L6 bundle)
 
 ---
 
 ## 1. Executive Summary
 
 이 문서는 BTY Arena의 QR 기반 행동 검증(action verification) 아키텍처를 정의한다. 본 spec은 **정의(definition)** 만 다루며, 구현은 L1–L9 lane으로 분리된다.
+
+### Locked principles (Commander 2026-05-27)
+
+본 spec lock으로 다음 5개 원칙이 고정된다. L1–L9 어떤 lane도 이 원칙을 무효화할 수 없다.
+
+1. **Actor ≠ Approver is a production invariant.** Self-attestation은 production 검증으로 인정되지 않는다.
+2. **`le_verification_log` is the verification source of truth.** Audit trail은 log table에 두고 `bty_action_contracts`에는 derived state만 둔다.
+3. **`mvp_open` is the launch posture of Relational QR**, not a separate QR Type.
+4. **Legacy XP/AIR is preserved** (no rollback). 단 relational verification badge에서는 isolation된다.
+5. **Self-scan is hard-blocked from Tier 2 onward.** Tier 1 (mvp_open)은 record + flag, no hard block.
+6. **QR scan is the sole progression gate (Commander 2026-05-28).** 모든 tier에서 3-of-same-axis trigger 시 QR이 **반드시 생성**되고, 다음 시나리오 진행은 **QR scan을 통해서만** 일어난다. self-report auto-approve 경로는 production에서 금지된다 (verified_at을 QR scan 없이 inline set하는 모든 경로 제거). Tier는 QR 생성 여부가 아니라 **scan 권한 범위**만 결정한다. (v2 추가 — STAB-01-P1 auto-approve 우회책이 본 spec의 progression model과 발산했던 것을 교정.)
+
+본 6원칙은 BTY Constitution v1 ("No Action → No Progression", "Leader = Decision + Action Completion")과 정합하며, Leadership Engine의 "Execution → Relational Verification → XP" 흐름과 일치한다.
+
+---
 
 핵심 변경 3가지:
 
@@ -150,15 +165,53 @@ Product Spec §13 Key Insight:
 > "BTY는 MVP에서 사람을 막는 시스템이 아니라 행동 루프를 여는 시스템으로 시작한다. 하지만 architecture는 처음부터 Tier 2/3 strict invariant를 품고 간다. 즉, MVP는 open, engine은 strict-ready."
 
 mvp_open이 invariant I1을 위반하지 않는 이유:
-- mvp_open에서 verification은 **여전히 외부 witness를 가정**하나 enforcement만 soft (record + flag, no block)
-- `self_scan_suspected=true`인 record는 product 차원에서 **검증으로 카운트하지 않음** (relational_verified = false)
+- mvp_open record는 **strict external-witness proof를 주장하지 않음**. Confidence-tagged adoption record로 분류됨. enforcement는 soft (record + flag, no block)
+- `self_scan_suspected=true`인 record는 product 차원에서 **relational verification으로 카운트하지 않음** (`relational_verified` = false)
 - Strict invariant I1은 tier transition 후 자동 활성화
+
+**"soft enforcement"의 정확한 의미 (v2 명확화, Commander 2026-05-28).** mvp_open의 "soft"는 다음 두 가지만을 의미한다:
+1. **Scan 권한이 open** — 누구나 QR을 scan할 수 있다 (member_only/manager_only는 scan 권한 제한).
+2. **Self-scan을 hard-block하지 않음** — self-scan 의심 시 `self_scan_suspected=true` flag + confidence 강등만, 진행 차단 없음.
+
+"soft"는 **QR 생성을 생략한다는 의미가 절대 아니다.** mvp_open에서도 3-of-same-axis trigger 시 QR이 반드시 생성되고, 진행은 QR scan을 통해서만 일어난다 (Locked principle 6). self-report로 QR scan 없이 verified_at을 받는 경로는 production 금지다. 이전 STAB-01-P1 auto-approve 구현은 "soft = no QR"로 잘못 해석된 우회책이었으며, 본 v2가 이를 교정한다.
+
+### 3.5 Progression Model — QR generation, QR scan gate, Layer 2 role (v2, Commander 2026-05-28)
+
+본 section은 "행동이 어떻게 검증되어 다음 시나리오로 진행하는가"의 canonical model을 정의한다. 이것이 BTY 7-step loop의 5단계(QR/Contract)의 정합 동작이다.
+
+**(A) QR generation trigger — 모든 tier 공통.**
+
+12-axis 중 동일 계열(same pattern family) 답이 3회 누적되면(3-of-same-axis, THRESHOLD=3 / WINDOW=7) action contract가 생성되고, **그와 함께 QR이 반드시 생성된다.** 이 trigger는 tier와 무관하다. mvp_open / member_only / manager_only 모두 QR을 생성한다. Tier는 생성된 QR을 **누가 scan할 수 있는가**(scan 권한 범위)만 결정한다 (§4.1–4.3).
+
+| Tier | QR 생성 | Scan 권한 | 진행 트리거 |
+|---|---|---|---|
+| `mvp_open` | 항상 | 누구나 (optional auth) | QR scan |
+| `member_only` | 항상 | 인증된 btyARENA user만 | QR scan |
+| `manager_only` | 항상 (매니저가 특정 이벤트 QR 생성 가능) | 지정 매니저만 | QR scan |
+
+**(B) Progression gate = QR scan only.**
+
+다음 시나리오 진행은 **QR scan을 통한 completion verification**으로만 일어난다. QR이 scan되면 `le_verification_log`에 verification event가 기록되고 `verified_at`이 set되며, 그때 진행이 열린다. 이것이 Constitution v1 "사람은 타인의 검증이 있을 때 행동한다"의 코드 구현이다 (completion = 외부 관찰자의 scan).
+
+**self-report auto-approve는 production에서 금지된다.** QR scan 없이 `verified_at`을 inline set하는 모든 경로(이전 STAB-01-P1 `canSelfReportAutoApprove` 분기 포함)는 제거 대상이다. 이는 Locked principle 6의 직접 구현이다.
+
+**(C) Layer 2 (LLM semantic content evaluation)의 역할 — 2단계 격상 모델.**
+
+Layer 2는 action 내용의 **품질**(re_entry_direction / external_measurability / non_cosmetic)을 평가하는 LLM evaluator다. 이는 QR scan이 검증하는 **완료**(completion)와는 다른 축이다. Layer 2 = content quality, QR = completion proof.
+
+- **MVP 단계 — (X-2) Layer 2 = advisory.** Layer 2는 contract 제출 시 호출되어 3 criteria를 평가하되, **진행 gate가 아니다.** 평가 결과는 `le_verification_log`의 confidence metadata(low/medium/high)로 기록되어 `relational_verified` 판정 및 AIR(adoption) 가중치에 반영된다. Layer 2의 escalate/reject는 **진행을 막지 않는다.** 따라서 LLM 비결정성/실패로 인한 escalate dead-end(Lane 7 H1 deadlock)가 구조적으로 제거된다. 나쁜 content는 차단되는 것이 아니라 낮은 confidence로 tag되어 leadership index 기여가 줄어든다.
+
+- **Post-launch 격상 경로 — (X-3) Layer 2 = content gate.** LLM 신뢰성이 충분히 검증된 후, Layer 2를 content gate로 격상할 수 있다(content 통과 + QR scan 둘 다 필요). 격상 시 escalate 재진입 경로 / LLM 실패 fallback / confidence 임계값 tuning(Q-GEN STEP 0 levers α/β/γ) 설계가 선행되어야 한다. (X-2)는 (X-3)의 안전한 전 단계이며, MVP는 (X-2)로 진행한다.
+
+**Lane 매핑.** 본 progression model의 코드 구현은 별도 lane(QR Issuance Alignment)에서 다룬다: (1) self-report auto-approve 제거, (2) 3-of-axis → QR 생성 wiring, (3) QR scan → progression gate, (4) Layer 2 advisory化. L2+L6 bundle(canonical stamp + tier gate)은 이 model의 전제이며 유지된다.
 
 ---
 
 ## 4. Tier-Aware Verification Architecture
 
 ### 4.1 Tier 1 — `mvp_open`
+
+**핵심 정의.** In mvp_open, the system records a verification event but does not claim strict external-witness proof. It is an adoption-phase verification record with confidence metadata. 즉 mvp_open은 strict proof가 아니라 confidence-tagged verification record다. Invariant I1의 strict enforcement는 tier 2/3에서만 활성화된다.
 
 **적용 시점.** Launch D-0 (6/02) ~ D-30 (~7/02). 정확한 cutover 일자는 Open Question §10-2.
 
@@ -590,8 +643,12 @@ L5에서 system prompt가 확장된다. 기존 contract의 Layer 2 재평가는 
 
 ### 9.2 Tier별 reflection 강도 결정
 
+> **AIR reflection in mvp_open is product-adoption-weighted, not proof-strength-weighted.**
+
+MVP launch window 동안 BTY는 "완벽한 증명(proof)"보다 "행동 루프 형성(adoption)"을 우선한다. 따라서 mvp_open tier에서 captured된 verification record는 confidence가 낮더라도 AIR에 반영된다. Strict proof-weighted reflection은 tier 2/3 cutover 후 활성화된다.
+
 **Default (D-0 launch):** 모든 tier (mvp_open / member_only / manager_only)에서 verified contract는 AIR에 reflect됨. 단:
-- mvp_open + `self_scan_suspected=true` + `confidence='low'` 의 경우에도 reflect (Commander posture: "MVP는 행동 루프를 여는 것이 우선")
+- mvp_open + `self_scan_suspected=true` + `confidence='low'` 의 경우에도 reflect (adoption-weighted posture)
 - `legacy_self_attest`는 이미 reflected 상태 유지, 새로운 reflect 없음
 
 **Strict-mode 이후 (re-evaluation):** Tier 1 record에서 `self_scan_suspected=true`인 row를 retroactively AIR에서 제외할지 여부는 D-30 cutover 시점 product 결정 (Open Question §10-2).
@@ -699,6 +756,8 @@ Tier 3 `event.designated_managers` 데이터의 source는 어디?
 | 일자 | 변경 | 작성 |
 |---|---|---|
 | 2026-05-27 | Draft v1 — D1/D2/D3 lock 후 초안 | C3 (Claude) |
+| 2026-05-27 | **Locked v1** — Commander approved. 3 fixes applied (Status 문구 / mvp_open 정밀화 / AIR product-adoption-weighted 강화). 5 locked principles formalized in §1. | C3 + Commander |
+| 2026-05-28 | **Locked v2** — Commander approved. Progression model 명문화: (6th locked principle) QR scan = sole progression gate, self-report auto-approve 금지; §3.4 "soft enforcement" 의미 정정 (scan 권한 + self-scan flag, QR 생성 생략 아님); §3.5 신규 (QR generation trigger 모든 tier 공통 / QR scan gate / Layer 2 (X-2) advisory MVP + (X-3) gate post-launch 격상). STAB-01-P1 auto-approve 우회책이 spec progression model과 발산했던 것을 교정. | C3 + Commander |
 
 ---
 
