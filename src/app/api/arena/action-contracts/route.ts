@@ -20,6 +20,33 @@ const actionContractSchema = z.object({
   evidence: z.string().min(1),
 });
 
+/**
+ * Best-effort actor device fingerprint (spec §4.1 — self-scan suspicion signal, not a
+ * security identifier). Hashes available client-hint headers; null when none present.
+ * Full capture (accept-language, IP subnet) is wired at L4 validate; this is the
+ * contract-creation-time snapshot only. Uses the global Web Crypto SHA-256 (same idiom
+ * as lib/rate-limit.ts and lib/bty/archetype/fingerprint.ts) — no new dependency.
+ */
+async function computeActorDeviceFingerprintHash(
+  request: NextRequest,
+): Promise<string | null> {
+  const components = [
+    request.headers.get("user-agent"),
+    request.headers.get("sec-ch-ua"),
+    request.headers.get("sec-ch-ua-platform"),
+    request.headers.get("sec-ch-ua-mobile"),
+  ].filter((v): v is string => typeof v === "string" && v.length > 0);
+
+  if (components.length === 0) return null;
+
+  const buf = new TextEncoder().encode(components.join("|"));
+  const digest = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 32);
+}
+
 export async function POST(request: NextRequest) {
   const { user, supabase, base } = await requireUser(request);
   if (!user) return unauthenticated(request, base);
@@ -48,6 +75,8 @@ export async function POST(request: NextRequest) {
 
   const payload = parsed.data;
 
+  const actorDeviceFingerprintHash = await computeActorDeviceFingerprintHash(request);
+
   const { data, error } = await supabase
     .from("bty_action_contracts")
     .insert({
@@ -57,11 +86,16 @@ export async function POST(request: NextRequest) {
       action_type: "json_dev_action_contract",
       mode: "arena",
 
-      // MVP-FIX-ACTION-DEMO-03 (A'): CHECK-correct demo track —
-      // verification_type='self_attest' (admitted by type CHECK enum),
-      // verification_mode='hybrid' (mode CHECK does not admit self_attest;
-      // hybrid keeps CHECK satisfied with no code branch effect).
-      verification_type: "self_attest",
+      // L2 canonical verification stamp (QR_VERIFICATION_ARCHITECTURE_V1 §6.1, §2.1):
+      // new contracts carry the canonical verification_type plus explicit
+      // verification_status (Invariant 1) and verification_tier (Invariant 3).
+      // actor_device_fingerprint_hash is best-effort (null when no client hints).
+      // verification_mode stays 'hybrid' (mode CHECK does not admit the canonical
+      // type values; hybrid keeps the CHECK satisfied with no code branch effect).
+      verification_type: "action_completed",
+      verification_status: "pending",
+      verification_tier: "mvp_open",
+      actor_device_fingerprint_hash: actorDeviceFingerprintHash,
       verification_mode: "hybrid",
       weight: 1,
       reset_eligible: false,

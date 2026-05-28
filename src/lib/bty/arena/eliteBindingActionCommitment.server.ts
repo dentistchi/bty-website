@@ -178,14 +178,13 @@ export async function ensureEliteBindingActionCommitmentContract(
   const deadlineAt = new Date(Date.now() + resolvedHours * 60 * 60 * 1000).toISOString();
   const chosenAt = new Date().toISOString();
   const actionId = `arena_action_loop:${runId}`;
-  // MVP-FIX-ACTION-DEMO-05 (A): demo track — verification_type 'self_attest'
-  // (admitted by CHECK enum; no other code branches rely on it, so it is a
-  // side-effect-free demo signal), verification_mode stays 'hybrid' (mode
-  // CHECK enum excludes self_attest). The self_report_auto_approve flag in
-  // details triggers submit-validation's Layer 2 skip (the flag name is
-  // intentionally preserved — post-demo label cleanup). This is the Elite
-  // binding (AD1 commit) contract path; ensureActionContract.ts is the
-  // run-completion path with the same defaults.
+  // L2 canonical verification stamp (QR_VERIFICATION_ARCHITECTURE_V1 §6.1, §2.1):
+  // canonical verification_type + explicit verification_status (Invariant 1) +
+  // verification_tier (Invariant 3). verification_mode stays 'hybrid' (mode CHECK
+  // excludes the canonical type values). self_report_auto_approve flag preserved in
+  // details. This is the Elite binding (AD1 commit) contract path; ensureActionContract.ts
+  // is the run-completion path with the same canonical defaults. actor_device_fingerprint_hash
+  // omitted (admin client, no request) — NULL-able, L4 wires full capture.
   const insertPayload = {
     user_id: actorUserId,
     session_id: runId,
@@ -198,7 +197,9 @@ export async function ensureEliteBindingActionCommitmentContract(
     action_id: actionId,
     action_type: "arena_run_completion",
     le_activation_type: "micro_win",
-    verification_type: "self_attest",
+    verification_type: "action_completed",
+    verification_status: "pending",
+    verification_tier: "mvp_open",
     weight: 1.0,
     mode: "arena",
     chosen_at: chosenAt,

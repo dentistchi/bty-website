@@ -262,22 +262,21 @@ export async function ensureActionContractWithAdmin(
       run_id: params.runId,
       contract_description: actionContractSpec.description,
       deadline_at: deadlineAt,
-      // MVP-FIX-ACTION-DEMO-03 (A'): CHECK-correct demo track —
-      // verification_type='self_attest' (within the type enum; no code
-      // branches on self_attest, so it functions as a demo signal label),
-      // verification_mode='hybrid' (the type enum admits self_attest but the
-      // mode enum does not — hybrid keeps CHECK satisfied and matches the
-      // pre-existing 94 contracts). The submit-validation skip branch is now
-      // keyed on verification_type==='self_attest'. The
-      // self_report_auto_approve flag name is intentionally preserved as
-      // post-demo cleanup; only the column enum value changed.
+      // verification_mode stays 'hybrid' (the mode CHECK does not admit the canonical
+      // verification_type values; hybrid keeps the CHECK satisfied with no branch effect).
+      // (self_report_auto_approve flag name preserved — post-demo label cleanup is future.)
       verification_mode: "hybrid",
       status: "pending",
       required: false,
       action_id: actionId,
       action_type: "arena_run_completion",
       le_activation_type: "micro_win",
-      verification_type: "self_attest",
+      // L2 canonical verification stamp (QR_VERIFICATION_ARCHITECTURE_V1 §6.1, §2.1):
+      // canonical type + explicit status (Invariant 1) + tier (Invariant 3).
+      // actor_device_fingerprint_hash omitted (admin client, no request) — NULL-able, L4 wires.
+      verification_type: "action_completed",
+      verification_status: "pending",
+      verification_tier: "mvp_open",
       weight: 1.0,
       mode: "arena",
       chosen_at: chosenAt,
