@@ -1,3 +1,27 @@
+## L5+L6 QR Issuance Alignment — CLOSED (server invariant) (D-5 · 2026-05-28)
+
+**Active head (D-5 / 2026-05-28):** inner `f214cdcc` (L5+L6 STEP 3, pushed origin/inner-main) · outer `c6b1c4a` (mirror, pushed origin/main) + this ledger commit. **Cloudflare Version:** `d6ab7835-275d-4b81-a927-577e5e38615d`. **Working tree:** clean (both repos).
+
+**L5+L6 (server-side)**: [x] **완료.** QR scan = sole progression gate. C1 canonical auto-approve removed (legacy OR retained, `canLegacyAutoApprove`, `TODO[L8-cleanup]`); C4 Layer 2 advisory X-2 (escalate/reject → `submitted` progression class, escalations audit kept per Q2, confidence server-side per spec §5); C5 binding surface collapsed to shared `snapshotForBlockedContract` (system invariant across GET+POST). Tests 3378/0/6; `tsc` clean. inner `f214cdcc` / outer `c6b1c4a` / Cloudflare `d6ab7835`.
+
+**L0–L9 layer checklist (updated):**
+- [x] L0 spec lock — v2 (§3.5 progression model) @ `d07a47ba`
+- [x] L1 DB migration (5 files, 2026-05-27, inner `d9443b84`)
+- [x] L2 contract creation (canonical stamp — L2+L6 bundle, inner `7e3cd8cb`)
+- [ ] L3 token payload extension (tier metadata)
+- [ ] L4 validate route tier-aware + self-scan hole + `verification_confidence` write ★ critical
+- [x] L5 Layer 2 advisory (X-2) — this lane (inner `f214cdcc`)
+- [x] L6 canonical auto-approve removal — this lane (legacy OR retained; inner `f214cdcc`)
+- [ ] L7 AD2 non_event_confirmed path
+- [ ] L8 legacy contract disposition + legacy OR removal
+- [ ] L9 UI tier-aware messaging
+
+**★ Open item (forward fix, NO rollback):** client `startPendingContractQrFlow` (`useArenaSession.ts:2122`) self-navigates the actor to the commit deep-link → `MyPageLeadershipConsole.tsx:225-237` auto-commits via `qr/validate` → `verified_at` set with no QR rendered (Probe 1 / contract `87d92b73`). Server L5+L6 is correct; this is a pre-existing client path exposed by removing auto-approve. `qr/validate` self-scan-hole closure deferred to L4.
+
+**Next:** Client QR Render Fix STEP 0 (render QR for external scan) → STEP 1-3 → L4 (server self-scan hardening + `verification_confidence`).
+
+---
+
 ## QR Verification Architecture v1 — L0 / L1 CLOSED (D-6 · 2026-05-27)
 
 **Active head (D-6 / 2026-05-27):** inner `d9443b84` (L1 close, pushed origin/inner-main) · outer `b21c47f0` (mirror, pushed origin/main) + this ledger commit. **Working tree:** clean (both repos).

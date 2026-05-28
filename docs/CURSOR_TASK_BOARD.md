@@ -41,6 +41,30 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## D-5 — L5+L6 QR ISSUANCE ALIGNMENT · CLOSED (server invariant)
+
+**Status:** CLOSED (server-side complete; client follow-up lane queued) · **Date:** 2026-05-28 (D-5) · **Class:** code mutation (3 prod files + 2 test), inner + outer published + deployed · **Launch:** 2026-06-02 (D-0)
+**Header:** [D-5 L5+L6 CLOSE 2026-05-28] QR scan = sole progression gate. Canonical `mvp_open` self-report auto-approve removed; Layer 2 advisory (X-2); binding surface collapsed to the shared blocking helper. Server invariant achieved across submit-validation + GET + POST surfaces. inner `f214cdcc` / outer `c6b1c4a` / Cloudflare Version `d6ab7835-275d-4b81-a927-577e5e38615d`.
+
+**Authority:** Spec [`docs/QR_VERIFICATION_ARCHITECTURE_V1.md`](QR_VERIFICATION_ARCHITECTURE_V1.md) (Locked v2) §3.5 @ inner `d07a47ba` · Plan [`docs/L5_L6_QR_ISSUANCE_ALIGNMENT_PLAN.md`](L5_L6_QR_ISSUANCE_ALIGNMENT_PLAN.md) (Locked v0.3) @ `2b7b6aa4`.
+
+**What shipped (3 components):**
+- **C1 — canonical auto-approve removed** (`submit-validation/route.ts`): canonical `mvp_open` no longer auto-approves; lands `submitted` + `validation_approved_at`, `verified_at` NULL → QR offered → `qr/validate` scan sets `verified_at`. Gate renamed `canSelfReportAutoApprove`→`canLegacyAutoApprove`; legacy `legacy_self_attest` OR **retained** (decision 4A, `TODO[L8-cleanup]`); INVARIANT-3 inline completion gated to legacy.
+- **C4 — Layer 2 advisory (X-2)**: `escalate`/`reject` no longer write blocking statuses — all three Layer 2 outcomes collapse to the `submitted` progression class. `bty_action_contract_escalations` audit row **kept** (Q2, non-blocking). Layer 2 semantic confidence (approve→high / escalate→medium / reject→low) is **outcome-derived server-side, NOT in the response** (spec §5 no-rationale). Structurally removes the escalate dead-end (Lane 7 H1).
+- **C5 — binding surface** (`buildArenaBindingSnapshotResponse.server.ts`): `action_decision` status-branching collapsed to a single `snapshotForBlockedContract(blocking)` — GET + POST surfaces now consume the **same** blocking helper. submitted/escalated block at `ACTION_SUBMITTED`/`ACTION_ESCALATED` until QR scan. "QR = sole gate" is a system invariant across surfaces.
+
+**Server invariant achieved:** canonical contracts land `submitted` + `verified_at` NULL; `qr/validate` is the sole `bty_action_contracts.verified_at` writer; binding + GET surfaces consume the same blocking helper. Constraints honored: `ACTION_ESCALATED` enum retained, H3 breaker kept, writer-only collapse, `qr/validate` untouched (scan-side = L4), legacy OR preserved.
+
+**Tests:** 3378 passed / 0 failed / 6 skipped (9 rewritten + 2 new: escalation audit Q2, D1 boundary). `tsc --noEmit` clean. Pre-existing eslint ajv crash — backlog (not a gate).
+
+**★ OPEN ITEM (post-deploy Probe 1 finding — separate forward lane, NO rollback):** Probe 1 showed canonical contract `87d92b73` reached `status='approved'` + `verified_at` SET with **no QR rendered**. Read-only re-inventory verdict: **L5+L6 server is correct** (canonical → awaiting_qr; `verified_at` set by the legitimate `qr/validate`). Root cause is a **pre-existing client self-completion path** that auto-approve had been masking — `startPendingContractQrFlow` (`useArenaSession.ts:2122`) does `window.location.assign(commitURL)` → self-navigates the actor to `/my-page?arena_action_loop=commit&aalo=…` → `MyPageLeadershipConsole.tsx:225-237` auto-POSTs the actor's own token to `qr/validate` → `verified_at` set, no QR shown. Disposition: **forward fix in a new Client QR Render Fix lane** (render the QR for an external scan instead of self-navigating); `qr/validate` self-scan-hole closure deferred to **L4** (tier-aware hardening). **No rollback of `f214cdcc`** (would restore the auto-approve bypass). `verification_confidence` scan-side write also deferred to L4 (spec §6.1 met at L4).
+
+**Decisions baked (Commander 2026-05-28):** a/b/A · Q1/Q2/Q3 · (X-2) MVP advisory / X-3 post-launch content gate · "QR sole gate = system invariant". Memory ref: #15 ledger topology, #26 spec v2, #27 lock-and-dispatch sequencing.
+
+**Next:** Client QR Render Fix — STEP 0 inventory → STEP 1-3 → then L4 (tier-aware validate route + self-scan hole + `verification_confidence` write).
+
+---
+
 ## D-6 — QR VERIFICATION ARCHITECTURE v1 · L1 DB MIGRATION CLOSE
 
 **Status:** CLOSED (5 migrations applied + verified + pushed) · **Date:** 2026-05-27 (D-6) · **Class:** schema migration, inner + outer published · **Launch:** 2026-06-02 (D-0)
