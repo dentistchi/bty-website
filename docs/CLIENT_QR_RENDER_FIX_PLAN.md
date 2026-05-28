@@ -1,6 +1,6 @@
 # Client QR Render Fix — Lane Plan
 
-**Status:** Locked v1.1 — Commander approved 2026-05-28 (v1 amendment: §3.2 props + H4 refinement)
+**Status:** Locked v1.2 — Commander approved 2026-05-28 (v1.1 + §3.1 path reconciliation from STEP 1B H1 catch)
 
 **Commander lock statement (verbatim):**
 > Approved:
@@ -87,13 +87,13 @@ L5+L6 (CLOSED — server invariant)
 ### 3.1 Files involved
 | Role | File | Change |
 |---|---|---|
-| NEW shared component | `<ActionLoopQrPanel>` (path TBD STEP 1 — likely `src/components/arena/` or `src/components/qr/`) | CREATE (extract from MyPage L445-468) |
-| Producer (Arena resolve) | `src/lib/bty/arena/useArenaSession.ts:2075-2129` (startPendingContractQrFlow) | replace self-navigate with render-state expose |
-| Consumer A (Arena gate button) | `src/components/.../ArenaPendingContractGate.tsx:100-113` | button surfaces shared QR panel |
-| Consumer A (Arena resolve client) | `src/components/.../ArenaResolveClient.tsx:213` | wire shared QR panel into resolve surface |
-| Consumer B (MyPage refactor) | `MyPageLeadershipConsole.tsx:276-318,445-468` | consume shared component instead of inline QRCodeSVG |
+| NEW shared component | `src/components/arena/ActionLoopQrPanel.tsx` (STEP 1A confirmed) | CREATE (extract from MyPage L445-468) |
+| Producer (Arena hook) | `src/app/[locale]/bty-arena/hooks/useArenaSession.ts:2075-2129` (startPendingContractQrFlow) | replace self-navigate with render-state expose |
+| Consumer A (Arena gate button) | `src/components/bty-arena/ArenaPendingContractGate.tsx:100-113` | button surfaces shared QR panel |
+| Consumer A (Arena resolve client) | `src/app/[locale]/bty-arena/play/resolve/ArenaResolveClient.tsx:213` | wire shared QR panel into resolve surface |
+| Consumer B (MyPage refactor) | `src/components/bty/my-page/MyPageLeadershipConsole.tsx:276-318,445-468` | consume shared component instead of inline QRCodeSVG |
 
-(Exact component path + line refs verified in STEP 1 PART A. Allow drift report; minimal-change principle.)
+(All paths verified at HEAD 294d7a0c via STEP 1A inventory + STEP 1B H1 reconciliation. v1.2 amendment corrects directory/layer drift in v1.1 §3.1 — v1.1 inferred service-layer paths; STEP 1B H1 verified the producer is the UI-layer hook. Function-body line refs unchanged.)
 
 ### 3.2 Shared component spec — `<ActionLoopQrPanel>`
 
@@ -284,7 +284,7 @@ fires until an external scan happens. Confirms render ≠ commit.
 
 ## 8. Open Items for Commander (none blocking lock)
 
-1. **Shared component path** — `src/components/arena/ActionLoopQrPanel.tsx` vs `src/components/qr/ActionLoopQrPanel.tsx`. STEP 1A decision; codebase convention guides.
+1. ~~**Shared component path** — `src/components/arena/ActionLoopQrPanel.tsx` vs `src/components/qr/ActionLoopQrPanel.tsx`. STEP 1A decision; codebase convention guides.~~ ✓ Resolved STEP 1A: `src/components/arena/` (qr/ absent, arena/ established).
 2. **Tier-specific copy in `<ActionLoopQrPanel>`** — optional label "Have anyone scan" (mvp_open) vs "Have a btyARENA user scan" (member_only). Defer if not in MVP scope; lane keeps render-pure.
 3. **`<pre data-testid="qr-debug-value">` selectable URL** — minor manual self-vector. Keep for STEP 1 (test continuity); revisit in L4 or later.
 4. **Sub-staging of STEP 1** — 1A→1B→1C→1D as one combined dispatch (L2+L6 pattern) or staged (L5+L6 pattern). Commander preference.
@@ -298,3 +298,4 @@ fires until an external scan happens. Confirms render ≠ commit.
 | 2026-05-28 | Draft v0.1 | STEP 0 inventory → lane plan. Single shared component (A), separate lane (b), L4 sequential (I). Open items deferred to lock review. | C3 (Claude) |
 | 2026-05-28 | **Locked v1** | Commander approved: shared ActionLoopQrPanel, STEP 1 staged 1A→1B→1C→1D, tier copy deferred, qr-debug-value retained for STEP 1, L4 sequential, f214cdcc preserved. Core principle: "BTY는 '선택'이 아니라 '행동 완료'로 닫히는 시스템이고, QR은 진행 제한의 실행 게이트다." | C3 + Commander |
 | 2026-05-28 | **Locked v1.1** | STEP 1A H4 catch (correct halt): MyPage dismiss uses `getMessages(loc).actionContract.dismiss` ("닫기"/"Close"). Faithful extraction needs locale. §3.2 props amended to (url, onDismiss, locale). §3.4/§3.5 consumer call sites updated. H4 refined: pure render/i18n params required for source parity (e.g. locale) are allowed; business/state coupling stays banned. Commander principle: "UI는 서버 의미를 만들지 않고 snapshot을 렌더해야 하며, JSON/표현 계층과 판단 계층은 분리되어야 한다." locale is presentation-layer parity. | C3 + Commander |
+| 2026-05-28 | **Locked v1.2** | STEP 1B H1 catch (correct halt): §3.1 producer path `src/lib/bty/arena/useArenaSession.ts` (service layer) does not exist; verified actual is UI-layer hook `src/app/[locale]/bty-arena/hooks/useArenaSession.ts` (browser-only `window.location` → correct layer). §3.1 reconciled to 5 verified-at-294d7a0c paths; function-body line refs unchanged. Open Item #1 closed (STEP 1A → arena/). Lesson: STEP 0 captures file:line but §3.1 had to infer directories — future amendments anchor §3.1 to verbatim STEP 0 paths or mark "TBD verified in STEP 1 PART A". | C3 + Commander |
