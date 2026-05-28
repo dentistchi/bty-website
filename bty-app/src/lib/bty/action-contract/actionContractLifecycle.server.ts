@@ -291,7 +291,17 @@ export async function ensureDraftActionContractWithAdmin(
       action_id: actionId,
       action_type: "arena_run_completion",
       le_activation_type: "micro_win",
-      verification_type: "hybrid",
+      // L2 canonical verification stamp (QR_VERIFICATION_ARCHITECTURE_V1 §2.1):
+      // hybrid → canonical action_completed (Site 4 is the lone divergent legacy value).
+      // verification_status='pending' is the verification field — distinct from the
+      // lifecycle status='draft' above; both coexist. verification_tier='mvp_open'
+      // (Invariant 3). §3.4 α: this draft-lifecycle path intentionally does NOT stamp
+      // details.self_report_auto_approve — draft contracts are excluded from auto-approve
+      // until they transition out of draft (future lane). actor_device_fingerprint_hash
+      // omitted (admin client) — NULL-able, L4 wires capture.
+      verification_type: "action_completed",
+      verification_status: "pending",
+      verification_tier: "mvp_open",
       weight: 1.0,
       mode: "arena",
       chosen_at: chosenAt,

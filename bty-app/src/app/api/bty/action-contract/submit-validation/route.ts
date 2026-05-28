@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
       // MVP-FIX-ACTION-DEMO-05 (B): le_activation_type/weight/chosen_at/
       // deadline_at added to feed the inlined run-completion + AIR reflection
       // calls in the canSelfReportAutoApprove auto-approve branch.
-      "id, user_id, status, pattern_family, arena_scenario_id, session_id, run_id, verification_type, details, le_activation_type, weight, chosen_at, deadline_at",
+      "id, user_id, status, pattern_family, arena_scenario_id, session_id, run_id, verification_type, verification_tier, verification_status, details, le_activation_type, weight, chosen_at, deadline_at",
     )
     .eq("id", contractId)
     .eq("user_id", user.id)
@@ -249,25 +249,43 @@ export async function POST(req: NextRequest) {
     typeof (contract as { verification_type?: unknown }).verification_type === "string"
       ? String((contract as { verification_type?: string }).verification_type)
       : "";
+  const verificationTier =
+    typeof (contract as { verification_tier?: unknown }).verification_tier === "string"
+      ? String((contract as { verification_tier?: string }).verification_tier)
+      : "";
+  const verificationStatus =
+    typeof (contract as { verification_status?: unknown }).verification_status === "string"
+      ? String((contract as { verification_status?: string }).verification_status)
+      : "";
   const details =
     typeof (contract as { details?: unknown }).details === "object" &&
     (contract as { details?: unknown }).details != null
       ? ((contract as { details: Record<string, unknown> }).details ?? {})
       : {};
   const selfReportAutoApprove = details.self_report_auto_approve === true;
-  // MVP-FIX-ACTION-DEMO-03 (A'): the demo track signal is
-  // verification_type='self_attest' (CHECK-admitted; mode 'hybrid' keeps the
-  // mode CHECK satisfied). Variable / flag names retain the "self_report"
-  // wording — post-demo cleanup will normalize the label.
+  // L6 gate (QR_VERIFICATION_ARCHITECTURE_V1 §2.3; L6_GATE_REWRITE_PLAN §3.5):
+  // auto-approve keys on verification TIER (enforcement strength), not the legacy
+  // verification_type literal. mvp_open = launch "soft enforcement" posture; the two
+  // env terms below are the STAB-01 4-AND defense and gate both paths to staging only.
+  // (self_report wording retained in var/flag names — label cleanup is future.)
   const isStagingWorker =
     process.env.BTY_ENV?.trim().toLowerCase() === "staging";
   const envAutoApprove =
     process.env.SELF_REPORT_AUTO_APPROVE === "true";
   const canSelfReportAutoApprove =
-    verificationType === "self_attest" &&
-    selfReportAutoApprove === true &&
-    envAutoApprove === true &&
-    isStagingWorker === true;
+    (
+      // Canonical path (post-L2 contracts).
+      (verificationTier === "mvp_open" &&
+        verificationStatus === "pending" &&
+        selfReportAutoApprove === true) ||
+      // Legacy protection path (pre-L2 contracts).
+      // TODO[L8-cleanup]: Remove this OR branch after legacy disposition complete.
+      (verificationTier === "legacy_self_attest" &&
+        verificationType === "self_attest" &&
+        verificationStatus === "pending")
+    ) &&
+    envAutoApprove === true && // STAB-01 4-AND defense (env)
+    isStagingWorker === true; // STAB-01 4-AND defense (env)
 
   const evalResult: ValidationEvaluationResult = canSelfReportAutoApprove
     ? (() => {

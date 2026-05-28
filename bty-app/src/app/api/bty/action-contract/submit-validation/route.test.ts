@@ -76,6 +76,8 @@ function makeSupabaseForContract(
   status: "pending" | "rejected" = "pending",
   options?: {
     verification_type?: string;
+    verification_tier?: string | null;
+    verification_status?: string | null;
     details?: Record<string, unknown> | null;
     onUpdate?: (payload: Record<string, unknown>) => void;
   },
@@ -88,6 +90,10 @@ function makeSupabaseForContract(
     arena_scenario_id: "sc1",
     session_id: "run-1",
     verification_type: options?.verification_type ?? "hybrid",
+    // L6 dual-path gate reads these; default null so contracts without an explicit
+    // tier/status fall through to Layer 2 (non-auto) unless a test sets them.
+    verification_tier: options?.verification_tier ?? null,
+    verification_status: options?.verification_status ?? null,
     details: options?.details ?? null,
   };
   return {
@@ -363,14 +369,11 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     expect(updates[1]).not.toHaveProperty("completed_at");
   });
 
-  it("auto-approves and completes for self_attest with self_report_auto_approve=true", async () => {
-    // MVP-FIX-ACTION-DEMO-03 (A'): demo signal is verification_type=
-    // 'self_attest' (admitted by CHECK enum); the flag name inside `details`
-    // is intentionally preserved as `self_report_auto_approve` until the
-    // post-demo label cleanup.
-    // STAB-01-P1: the 4-AND gate also requires worker-level env conditions
-    // (SELF_REPORT_AUTO_APPROVE="true" + BTY_ENV="staging"). Set both for
-    // this positive case to satisfy the extended gate.
+  it("L6 canonical: mvp_open + pending + flag + env auto-approves to terminal", async () => {
+    // L6 dual-path gate, canonical branch: verification_tier='mvp_open' +
+    // verification_status='pending' + details.self_report_auto_approve=true,
+    // AND the two STAB-01 env terms (SELF_REPORT_AUTO_APPROVE="true" +
+    // BTY_ENV="staging"). All satisfied → terminal auto-approve.
     process.env.SELF_REPORT_AUTO_APPROVE = "true";
     process.env.BTY_ENV = "staging";
     // MVP-FIX-ACTION-DEMO-05 (B): admin must be non-null for the inlined
@@ -414,7 +417,9 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "user-1" },
       supabase: makeSupabaseForContract("pending", {
-        verification_type: "self_attest",
+        verification_type: "action_completed",
+        verification_tier: "mvp_open",
+        verification_status: "pending",
         details: { self_report_auto_approve: true },
         onUpdate: (payload) => updates.push(payload),
       }),
@@ -465,12 +470,193 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     expect(mockReflectContractVerificationToAir).toHaveBeenCalledTimes(1);
   });
 
-  // STAB-01-P1 negative case #1: missing env flag.
-  // Contract-level signals alone (self_attest + details.self_report_auto_approve=true)
-  // are no longer sufficient under the 4-AND gate. Without
-  // SELF_REPORT_AUTO_APPROVE="true" in process.env, the route must fall
+  it("L6 legacy: legacy_self_attest + self_attest + pending + env auto-approves to terminal", async () => {
+    // Legacy protection OR-branch (pre-L2 contracts). TODO[L8-cleanup] removes this path.
+    process.env.SELF_REPORT_AUTO_APPROVE = "true";
+    process.env.BTY_ENV = "staging";
+    const makeFakeAdmin = () => {
+      const chain: Record<string, unknown> = {};
+      const terminal = Promise.resolve({ error: null });
+      chain.update = vi.fn().mockReturnValue(chain);
+      chain.insert = vi.fn().mockReturnValue(terminal);
+      chain.eq = vi.fn().mockImplementation(() => chain);
+      chain.then = (resolve: (v: { error: null }) => unknown) => terminal.then(resolve);
+      return { from: vi.fn().mockReturnValue(chain) };
+    };
+    vi.mocked(getSupabaseAdmin).mockReturnValueOnce(
+      makeFakeAdmin() as unknown as ReturnType<typeof getSupabaseAdmin>,
+    );
+    mockCompleteArenaRunAfterContractVerification.mockResolvedValue({
+      runUpdated: true,
+      deferredQueued: false,
+    });
+    mockOnArenaRunCompleteVerified.mockResolvedValue({ ok: true });
+    mockApplyArenaRunRewardsOnVerifiedCompletion.mockResolvedValue({
+      ok: true,
+      applied: true,
+      coreXp: 12,
+      weeklyXp: 8,
+      deltaApplied: 8,
+    });
+    mockReflectContractVerificationToAir.mockResolvedValue({ ok: true });
+    mockRequireUser.mockResolvedValue({
+      user: { id: "user-1" },
+      supabase: makeSupabaseForContract("pending", {
+        verification_type: "self_attest",
+        verification_tier: "legacy_self_attest",
+        verification_status: "pending",
+        details: { self_report_auto_approve: true },
+      }),
+      base: {},
+    });
+    vi.spyOn(validation, "evaluateActionContractPayload").mockResolvedValue({
+      outcome: "approve",
+      layer1Errors: [],
+      layer2Criteria: {
+        re_entry_direction: { outcome: "pass", confidence: 0.9 },
+        external_measurability: { outcome: "pass", confidence: 0.9 },
+        non_cosmetic: { outcome: "pass", confidence: 0.9 },
+      },
+      modelId: "gpt-4o-mini",
+      layer2TechnicalError: null,
+    });
+
+    const res = await POST(
+      makeRequest({
+        contractId: "contract-1",
+        who: "Alex Kim",
+        what: "Legacy self-attest completion",
+        when: "2026-04-15 15:00",
+        how: "Submit report",
+        raw_text: "Raw evidence",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.outcome).toBe("approve");
+    expect(body.contract_state).toBe("terminal");
+  });
+
+  it("L6: mvp_open + pending + env but NO self_report flag does NOT auto-approve (Site 4 draft α)", async () => {
+    // Site 4 (draft-lifecycle) omits details.self_report_auto_approve (Commander §3.4 α).
+    // The canonical path requires the flag → falls through to Layer 2.
+    process.env.SELF_REPORT_AUTO_APPROVE = "true";
+    process.env.BTY_ENV = "staging";
+    mockRequireUser.mockResolvedValue({
+      user: { id: "user-1" },
+      supabase: makeSupabaseForContract("pending", {
+        verification_type: "action_completed",
+        verification_tier: "mvp_open",
+        verification_status: "pending",
+        details: {},
+      }),
+      base: {},
+    });
+    const evalSpy = vi.spyOn(validation, "evaluateActionContractPayload").mockResolvedValue({
+      outcome: "escalate",
+      layer1Errors: [],
+      layer2Criteria: null,
+      modelId: null,
+      layer2TechnicalError: null,
+    });
+
+    const res = await POST(
+      makeRequest({
+        contractId: "contract-1",
+        who: "Alex Kim",
+        what: "Draft path, no auto-approve flag",
+        when: "2026-04-15 15:00",
+        how: "Submit report",
+        raw_text: "Raw evidence",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).outcome).toBe("escalate");
+    expect(evalSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("L6: mvp_open + flag + env but verification_status NOT pending does NOT re-auto-approve", async () => {
+    // Already-verified contract (verification_status='verified') must not re-auto-approve.
+    process.env.SELF_REPORT_AUTO_APPROVE = "true";
+    process.env.BTY_ENV = "staging";
+    mockRequireUser.mockResolvedValue({
+      user: { id: "user-1" },
+      supabase: makeSupabaseForContract("pending", {
+        verification_type: "action_completed",
+        verification_tier: "mvp_open",
+        verification_status: "verified",
+        details: { self_report_auto_approve: true },
+      }),
+      base: {},
+    });
+    const evalSpy = vi.spyOn(validation, "evaluateActionContractPayload").mockResolvedValue({
+      outcome: "escalate",
+      layer1Errors: [],
+      layer2Criteria: null,
+      modelId: null,
+      layer2TechnicalError: null,
+    });
+
+    const res = await POST(
+      makeRequest({
+        contractId: "contract-1",
+        who: "Alex Kim",
+        what: "Already verified contract",
+        when: "2026-04-15 15:00",
+        how: "Submit report",
+        raw_text: "Raw evidence",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).outcome).toBe("escalate");
+    expect(evalSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("L6: legacy_self_attest + type=hybrid + pending does NOT auto-approve (legacy path requires self_attest)", async () => {
+    process.env.SELF_REPORT_AUTO_APPROVE = "true";
+    process.env.BTY_ENV = "staging";
+    mockRequireUser.mockResolvedValue({
+      user: { id: "user-1" },
+      supabase: makeSupabaseForContract("pending", {
+        verification_type: "hybrid",
+        verification_tier: "legacy_self_attest",
+        verification_status: "pending",
+        details: { self_report_auto_approve: true },
+      }),
+      base: {},
+    });
+    const evalSpy = vi.spyOn(validation, "evaluateActionContractPayload").mockResolvedValue({
+      outcome: "escalate",
+      layer1Errors: [],
+      layer2Criteria: null,
+      modelId: null,
+      layer2TechnicalError: null,
+    });
+
+    const res = await POST(
+      makeRequest({
+        contractId: "contract-1",
+        who: "Alex Kim",
+        what: "Legacy hybrid contract",
+        when: "2026-04-15 15:00",
+        how: "Submit report",
+        raw_text: "Raw evidence",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).outcome).toBe("escalate");
+    expect(evalSpy).toHaveBeenCalledTimes(1);
+  });
+
+  // STAB-01 negative case #1: missing env flag (defense-in-depth).
+  // A fully-qualified canonical contract (mvp_open + pending + flag) must still
+  // NOT auto-approve when SELF_REPORT_AUTO_APPROVE is unset — the route falls
   // through to evaluateActionContractPayload (Layer 2).
-  it("does NOT auto-approve when SELF_REPORT_AUTO_APPROVE env flag is unset", async () => {
+  it("does NOT auto-approve when SELF_REPORT_AUTO_APPROVE env flag is unset (STAB-01 defense)", async () => {
     delete process.env.SELF_REPORT_AUTO_APPROVE;
     process.env.BTY_ENV = "staging";
 
@@ -478,7 +664,9 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "user-1" },
       supabase: makeSupabaseForContract("pending", {
-        verification_type: "self_attest",
+        verification_type: "action_completed",
+        verification_tier: "mvp_open",
+        verification_status: "pending",
         details: { self_report_auto_approve: true },
         onUpdate: (payload) => updates.push(payload),
       }),
@@ -515,10 +703,10 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     });
   });
 
-  // STAB-01-P1 negative case #2: production env (D2 enforcement).
-  // Even when SELF_REPORT_AUTO_APPROVE="true" leaks somehow, BTY_ENV must
-  // also normalize to "staging" for the gate to satisfy. Production worker
-  // (BTY_ENV="production") never auto-approves.
+  // STAB-01 negative case #2: production env (D2 enforcement).
+  // Even with SELF_REPORT_AUTO_APPROVE="true" and a fully-qualified canonical
+  // contract, BTY_ENV must normalize to "staging" for the gate to satisfy.
+  // Production worker (BTY_ENV="production") never auto-approves.
   it("does NOT auto-approve when BTY_ENV is production even if SELF_REPORT_AUTO_APPROVE is true", async () => {
     process.env.SELF_REPORT_AUTO_APPROVE = "true";
     process.env.BTY_ENV = "production";
@@ -527,7 +715,9 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "user-1" },
       supabase: makeSupabaseForContract("pending", {
-        verification_type: "self_attest",
+        verification_type: "action_completed",
+        verification_tier: "mvp_open",
+        verification_status: "pending",
         details: { self_report_auto_approve: true },
         onUpdate: (payload) => updates.push(payload),
       }),
@@ -564,12 +754,11 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     });
   });
 
-  // STAB-01-P1 negative case #3: verification_type mismatch.
-  // The contract-level verification_type AND-term in the 4-AND gate
-  // preserves D3 — only self_attest contracts qualify. external_witness
-  // (and any non-self_attest mode) continues to route through Layer 2 /
-  // QR witness verification regardless of the env flag.
-  it("does NOT auto-approve when verification_type is external_witness regardless of env flag", async () => {
+  // STAB-01 negative case #3: tier exclusion (Tier 2/3).
+  // The L6 gate keys on verification_tier. member_only / manager_only contracts
+  // require an external witness and never auto-approve — they route through
+  // Layer 2 / QR witness verification regardless of the env terms or the flag.
+  it("does NOT auto-approve member_only tier (Tier 2/3 excluded) regardless of env flag", async () => {
     process.env.SELF_REPORT_AUTO_APPROVE = "true";
     process.env.BTY_ENV = "staging";
 
@@ -577,7 +766,9 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "user-1" },
       supabase: makeSupabaseForContract("pending", {
-        verification_type: "external_witness",
+        verification_type: "action_completed",
+        verification_tier: "member_only",
+        verification_status: "pending",
         details: { self_report_auto_approve: true },
         onUpdate: (payload) => updates.push(payload),
       }),
@@ -614,11 +805,11 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
     });
   });
 
-  // ── STAB-07-P0 universal-QR flow (verification_type="qr") ─────────────────
-  // The LIVE-branch swap makes the 3 creation paths emit verification_type:"qr".
-  // qr behaves like external_witness in the 4-AND auto-approve gate (only
-  // self_attest qualifies), so qr contracts always route through Layer 2 and
-  // reach awaiting_qr (Layer 2 pass) or escalated (Layer 2 fail) — never terminal.
+  // ── qr-typed contracts under the L6 tier gate (verification_type="qr") ────
+  // A qr-typed contract carries no auto-approve tier (neither mvp_open nor the
+  // legacy_self_attest + self_attest legacy pair), so the L6 dual-path gate never
+  // matches → qr contracts always route through Layer 2 and reach awaiting_qr
+  // (Layer 2 pass) or escalated (Layer 2 fail) — never terminal.
   it("STAB-07-P0: qr does NOT auto-approve even with SELF_REPORT_AUTO_APPROVE=true (Layer 2 invoked, awaiting_qr not terminal)", async () => {
     process.env.SELF_REPORT_AUTO_APPROVE = "true";
     process.env.BTY_ENV = "staging";
@@ -658,7 +849,7 @@ describe("POST /api/bty/action-contract/submit-validation", () => {
 
     expect(res.status).toBe(200);
     const data = (await res.json()) as Record<string, unknown>;
-    // qr is not self_attest → 4-AND gate fails → Layer 2 runs (auto-approve skipped).
+    // qr carries no auto-approve tier → L6 gate fails → Layer 2 runs (auto-approve skipped).
     expect(evalSpy).toHaveBeenCalledTimes(1);
     expect(data.outcome).toBe("approve");
     expect(data.contract_state).toBe("awaiting_qr");
