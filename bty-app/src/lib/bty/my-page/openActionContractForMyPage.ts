@@ -96,7 +96,7 @@ export async function fetchOpenActionContractForMyPage(
       "id, contract_description, deadline_at, verification_mode, status, completion_method, completed_at, required, session_id, validation_approved_at, verified_at",
     )
     .eq("user_id", userId)
-    .eq("status", "approved")
+    .in("status", ["approved", "submitted"])
     .not("validation_approved_at", "is", null)
     .is("verified_at", null)
     .order("deadline_at", { ascending: false })
@@ -113,7 +113,7 @@ export async function fetchOpenActionContractForMyPage(
         .from("bty_action_contracts")
         .update({ status: "missed" })
         .eq("id", String(rowAv.id))
-        .eq("status", "approved");
+        .in("status", ["approved", "submitted"]);
       if (expireErr) {
         console.error("[openActionContractForMyPage] awaiting-verify expiry failed", expireErr.message);
       }
