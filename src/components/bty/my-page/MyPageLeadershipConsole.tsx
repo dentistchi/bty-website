@@ -1,6 +1,5 @@
 "use client";
 
-import { QRCodeSVG } from "qrcode.react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { computeMetrics, loadSignals } from "@/features/arena/logic";
@@ -13,6 +12,7 @@ import { MyPageLeadershipScreen } from "@/features/my-page/MyPageLeadershipScree
 import { ActionContractHub } from "@/components/bty/my-page/ActionContractHub";
 import { PatternSignaturePanel } from "@/components/bty/my-page/PatternSignaturePanel";
 import { PostCompletionSheet } from "@/components/bty/my-page/PostCompletionSheet";
+import { ActionLoopQrPanel } from "@/components/arena/ActionLoopQrPanel";
 import {
   BTY_ACTION_CONTRACT_UPDATED_STORAGE_KEY,
   dispatchArenaEntryResolutionInvalidate,
@@ -443,29 +443,11 @@ export function MyPageLeadershipConsole({
       />
 
       {qrPanelOpen && qrUrl && (
-        <div className="flex flex-col items-center gap-4 rounded-xl border border-gray-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.05]">
-          <QRCodeSVG
-            key={qrUrl}
-            value={qrUrl}
-            size={200}
-            bgColor="#ffffff"
-            fgColor="#1a1a1a"
-            level="M"
-          />
-          <pre
-            data-testid="qr-debug-value"
-            className="max-w-full overflow-x-auto whitespace-pre-wrap break-all rounded-md bg-black/5 px-2 py-1 text-[11px] text-black/70 dark:bg-white/10 dark:text-white/70"
-          >
-            {qrUrl}
-          </pre>
-          <button
-            type="button"
-            onClick={() => setQrPanelOpen(false)}
-            className="text-xs text-white/40 hover:text-white/70"
-          >
-            {tAction.dismiss}
-          </button>
-        </div>
+        <ActionLoopQrPanel
+          url={qrUrl}
+          onDismiss={() => setQrPanelOpen(false)}
+          locale={loc}
+        />
       )}
 
       <MyPageLeadershipScreen
