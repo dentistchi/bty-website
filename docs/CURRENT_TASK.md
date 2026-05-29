@@ -1,3 +1,20 @@
+## arena_level_records drift — RESOLVED DB-side (column-name mismatch, no repo commit) (D-4 · 2026-05-29)
+
+**Active head (D-4 / 2026-05-29):** no code commit (DB-only hotfix); worker `44751b0b-6ad7-4ddf-aff2-2102d94c8385` unchanged (already expected the code column names). Commander SQL hotfix applied out-of-band. **Working tree:** clean (both repos); the staged STEP-1 migration file was discarded.
+
+**arena_level_records drift**: [x] **완료 (DB-side).** Symptom: `qr/validate` level record update failed at runtime ("column does not exist") → `consecutive_verified_completions` never incremented = **band progression silently stalled** (verify / run-done / XP / AIR all succeeded). **Root cause:** the live table diverged from the CREATE TABLE migration (`20260431240000`) — the real column was **`last_evaluated_at` (DB)** vs **`last_evaluation_at` (code-expected)**; a column-NAME mismatch, not a simple absence. Further divergence noted: PK `id` (DB) vs `user_id` (migration), `integer` vs `smallint`, default `'L'` vs `'mid'` — the table was created **outside the migration path**. **Fix (Commander SQL hotfix, no redeploy):** (1) ADD COLUMN `last_band_change_at` (genuinely absent); (2) a combined `ADD COLUMN IF NOT EXISTS` attempt **created** `last_evaluation_at` as a NEW column → duplicate (`last_evaluated_at` + `last_evaluation_at` coexisting); (3) diagnosed as a name mismatch — confirmed `last_evaluated_at` all-NULL → `DROP COLUMN last_evaluated_at`; (4) table column names now match the code; verified via `information_schema`. **Verified GREEN (Commander tail 9:08:45):** `qr/validate` → `awaitingVerification:true` → `arena_run_done_after_contract_verify`; "level record update failed" gone.
+
+**Closure 판정:** level_records drift RESOLVED DB-side (runtime green). Repo-migration realignment deferred (separate, post-launch).
+
+**Lesson (recorded):** prescribing "add the missing column" **without `information_schema` ground-truth** nearly worsened a column-NAME mismatch into a **duplicate column** — `ADD COLUMN IF NOT EXISTS` does not match a differently-named existing column, it creates a new one. **Verify the real schema, then mutate.** (The earlier STEP-0 diagnosis inferred absence from the runtime error alone; the live-schema query was the missing step.)
+
+**Carry-forward (updated):**
+- **★ arena_level_records repo-migration realignment** [post-launch] — the live DB differs from the CREATE TABLE migration (column names / PK / types / defaults). A separate alignment migration must reconcile the repo to the actual DB state. **Do NOT edit the original CREATE TABLE (`20260431240000`)** — forward alignment migration only. The discarded STEP-1 file (single-column, didn't reflect this divergence) is not a usable base.
+- **★ 안2-B (multi-QR session surface)** [Commander launch target] + **★ #1 scan-confirmation UI** (bundle).
+- EN T3 (28일 train body KO, score.ts, root layout lang, not-found, train/28days, auth callback:168).
+
+---
+
 ## QR Verification Session 안2-A (surface) + 안2-A2 (placement) — CLOSED (single-QR normalized) (D-4 · 2026-05-29)
 
 **Active head (D-4 / 2026-05-29):** 안2-A inner `ec360b6c` / outer `559fb9e`; 안2-A2 inner `4cd22ca4` / outer `8c4ee32` + this ledger commit. **Cloudflare Version:** `44751b0b-6ad7-4ddf-aff2-2102d94c8385` (active 100%, deployments-list cross-verified). **Working tree:** clean (both repos).

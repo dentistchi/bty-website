@@ -41,6 +41,34 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## D-4 — arena_level_records DRIFT · RESOLVED DB-SIDE (column-name mismatch, no repo commit)
+
+**Status:** RESOLVED DB-side (runtime green); repo-migration realignment deferred · **Date:** 2026-05-29 (D-4) · **Class:** DB-only Commander SQL hotfix (no code commit, no redeploy) · **Launch:** 2026-06-02 (D-0)
+**Header:** [D-4 arena_level_records DRIFT RESOLVED DB-SIDE 2026-05-29] qr/validate level update no longer fails; band progression unblocked. Live table diverged from CREATE TABLE migration (real col `last_evaluated_at` vs code `last_evaluation_at`). Worker `44751b0b` unchanged (DB caught up to code). Staged STEP-1 migration discarded.
+
+**Symptom:** `qr/validate` level record update failed at runtime ("column does not exist") → `consecutive_verified_completions` never incremented = band progression silently stalled; verify/run-done/XP/AIR unaffected.
+
+**Root cause:** live `arena_level_records` created **outside the migration path** — diverges from CREATE TABLE `20260431240000`: real column `last_evaluated_at` vs code-expected `last_evaluation_at` (name mismatch, not absence); also PK `id` vs `user_id`, `integer` vs `smallint`, default `'L'` vs `'mid'`.
+
+**Fix (Commander SQL hotfix, no redeploy — worker already expects code names):**
+1. ADD COLUMN `last_band_change_at` (genuinely absent).
+2. Combined `ADD COLUMN IF NOT EXISTS` attempt **created** `last_evaluation_at` new → duplicate with `last_evaluated_at`.
+3. Diagnosed name mismatch; `last_evaluated_at` all-NULL confirmed → `DROP COLUMN last_evaluated_at`.
+4. Column names now match code; `information_schema` verified.
+
+**Verified (Commander tail 9:08:45):** qr/validate `awaitingVerification:true` → `arena_run_done_after_contract_verify`; "level record update failed" gone.
+
+**Lesson:** prescribing "add missing column" without `information_schema` ground-truth nearly turned a column-NAME mismatch into a duplicate column (`ADD COLUMN IF NOT EXISTS` can't match a differently-named column). Verify-real-schema-then-mutate.
+
+**Closure verdict:** RESOLVED DB-side; repo-migration realignment = separate post-launch.
+
+**Carry-forward:**
+- **★ arena_level_records repo-migration realignment** [post-launch] — reconcile repo migration to actual DB (names/PK/types/defaults); forward alignment migration only, NOT editing `20260431240000`. Discarded STEP-1 file unusable as base.
+- **★ 안2-B multi-QR session surface** [launch] + **★ #1 scan-confirmation UI** (bundle).
+- EN T3 (28일 train body KO, score.ts, root layout lang, not-found, train/28days, auth callback:168).
+
+---
+
 ## D-4 — QR VERIFICATION SESSION 안2-A (SURFACE) + 안2-A2 (PLACEMENT) · CLOSED (single-QR normalized)
 
 **Status:** CLOSED (안2-A + 안2-A2) · **Date:** 2026-05-29 (D-4) · **Class:** code mutation (2 lib/UI files + 1 test), inner + outer published + deployed · **Launch:** 2026-06-02 (D-0)
