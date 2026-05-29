@@ -41,6 +41,31 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## D-4 — QR RE-EXPOSURE 안1 + P1 FULL-LOOP · CLOSED (post-approve re-exposure + external-scan closure)
+
+**Status:** CLOSED (안1 + P1 동시) · **Date:** 2026-05-29 (D-4) · **Class:** code mutation (1 UI file, additive), inner + outer published + deployed · **Launch:** 2026-06-02 (D-0)
+**Header:** [D-4 QR RE-EXPOSURE 안1 + P1 CLOSE 2026-05-29] ActionContractHub awaiting-verification card gained a QR re-exposure button (post-approve dead-end fixed); P1 full external-scan loop runtime-proven incl. logged-out bypass. inner `6ea159e7` (parent `c11ee4b8`) / outer `53062f8` (parent `5436efe`) / Cloudflare active `8416ba48-5256-454a-bd36-a0875cc9e603` (supersedes Scanner `fc03cbb5`).
+
+**What shipped (안1, STEP 1 atomic 1-file):**
+- **ActionContractHub `action_awaiting_verification` branch** (`src/components/bty/my-page/ActionContractHub.tsx`, +15 additive): QR button gated `verification_type ∈ {qr, hybrid}`, `onClick → onRequestQr()` (reuses existing prop — no new wiring) → `handleRequestQr` → mint `approvedAwaiting` branch → `ActionLoopQrPanel` re-opens. On-demand re-mint (token stateless, contract row is source; no URL persistence). Reused existing i18n `btnQr`. Existing "Awaiting Verification" copy kept (additive only).
+
+**Verify (Claude-verified):** `tsc --noEmit` exit 0; vitest 3392 passed / 0 failed / 6 skipped.
+
+**Runtime (Claude-verified via wrangler tail + Commander-observed UI):**
+- **P-안1 (Commander-observed):** "Complete by QR" button renders on the awaiting card (absent pre-deploy).
+- **P1 Scan A (Claude tail, 5:25/5:29, logged-in):** `qr/validate` → `awaitingVerification: true` → `arena_run_done_after_contract_verify` (verified_at write path).
+- **P1 Scan B (Claude tail, 5:37, LOGGED-OUT):** deep-link `/my-page?arena_action_loop=commit&aalo=… Ok` while plain my-page/center/bty-arena/foundry/leaderboard/my-page-subpaths all → `login?next=` at the same instant → logged-out middleware isolation definitively proven; `qr/validate` reached; contract `19b508d0` `approved`/`awaitingVerification:false` → re-write skipped (double-verify gate).
+
+**Closure verdict:** 안1 CLOSE + P1 CLOSE (동시).
+
+**Carry-forward:**
+- **★ Scan-confirmation UI absent [NEW, launch UX]:** logged-out scanner gets no verification-result feedback on `/my-page` (page blank — logged-out data correctly empty). Needs scan success / already-verified / failure screen.
+- **★ `arena_level_records.last_band_change_at` absent [NEW, migration drift]:** `qr/validate` level update failed (`column … does not exist`, Claude tail 5:25/5:29/5:37); verify/run-done OK, level/band partial fail. Migration-first.
+- 안2 multi-QR (concurrent unverified contracts surface) — post-launch.
+- EN T3 backlog (28일 train body KO, score.ts domain KO, root layout lang, not-found, train/28days, auth callback:168).
+
+---
+
 ## D-4 — SCANNER PUBLIC ACCESS FIX · CLOSED (middleware exception · A)
 
 **Status:** CLOSED (middleware exception lane — A) · **Date:** 2026-05-29 (D-4) · **Class:** code mutation (1 prod file + 1 test), inner + outer published · **Launch:** 2026-06-02 (D-0)

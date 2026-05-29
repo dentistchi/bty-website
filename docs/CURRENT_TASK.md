@@ -1,3 +1,24 @@
+## QR Re-exposure 안1 + P1 Full-Loop — CLOSED (post-approve re-exposure + external-scan closure) (D-4 · 2026-05-29)
+
+**Active head (D-4 / 2026-05-29):** inner `6ea159e7` (안1 STEP 1 atomic 1-file, parent `c11ee4b8`, pushed origin/inner-main) · outer `53062f8` (mirror, parent `5436efe`, pushed origin/main) + this ledger commit. **Cloudflare Version:** `8416ba48-5256-454a-bd36-a0875cc9e603` (active deployment, Claude-read via `wrangler deployments list`; supersedes Scanner `fc03cbb5`). **Working tree:** clean (both repos).
+
+**QR Re-exposure 안1**: [x] **완료.** ActionContractHub `action_awaiting_verification` card gained a QR re-exposure button (gated `verification_type ∈ {qr, hybrid}`, reuses existing `onRequestQr` → `handleRequestQr` → mint `approvedAwaiting` branch → `ActionLoopQrPanel` re-opens). Fixes the post-approve dead-end: the QR was ephemeral `useState` (lost on navigation) and the awaiting card had no re-exposure entry point. On-demand re-mint (token stateless, contract row is source); no URL persistence; reused existing i18n `btnQr`; additive 1-file. **Claude-verified:** `tsc` 0, vitest 3392/0 failed. **Commander-observed:** "Complete by QR" button now renders on the awaiting card (absent pre-deploy). inner `6ea159e7` / outer `53062f8` / Cloudflare `8416ba48`.
+
+**P1 Full-Loop closure**: [x] **완료.** Action→QR→External-Scan→Verification→Progression proven end-to-end at runtime. **Claude-verified (wrangler tail capture):**
+- **Scan A (5:25:34 / 5:29:38, logged-in):** `POST qr/validate` → `[qr/validate] contract status before transition { awaitingVerification: true }` → `arena_run_done_after_contract_verify` (verified_at write path).
+- **Scan B (5:37:30, LOGGED-OUT, deep-link):** `GET /my-page?arena_action_loop=commit&aalo=… → Ok` while at the same instant plain `/my-page`, `/center`, `/bty-arena`, `/bty/foundry`, `/bty/leaderboard`, `/my-page/{progress,team,leader,account}` all → `…/bty/login?next=…`. **Only the 3-condition deep-link bypassed** = logged-out middleware isolation definitively proven. `POST qr/validate` reached; contract `19b508d0` status `approved` / `awaitingVerification: false` → re-write skipped = double-verify-prevention gate working.
+- Combined: full progression chain + logged-out bypass runtime-proven.
+
+**Closure 판정:** 안1 CLOSE + P1 CLOSE (동시).
+
+**Carry-forward:**
+- **★ Scan-confirmation UI absent [NEW, launch UX]:** a logged-out scanner landing on `/my-page` gets no verification-result feedback (the page is empty — logged-out my-page data is correctly blank). Witness-experience gap; needs a scan success / already-verified / failure result screen.
+- **★ `arena_level_records.last_band_change_at` column absent [NEW, migration drift]:** `qr/validate` level update failed — tail (5:25/5:29/5:37) logs `column arena_level_records.last_band_change_at does not exist` (Claude-verified). verify + run-done succeeded; level/band update partially failed. Migration-first invariant.
+- 안2 multi-QR (concurrent unverified contracts) — post-launch.
+- EN T3 backlog (28일 train body KO, score.ts domain KO, root layout lang, not-found, train/28days, auth callback:168).
+
+---
+
 ## Scanner Public Access Fix — CLOSED (middleware exception · A) (D-4 · 2026-05-29)
 
 **Active head (D-4 / 2026-05-29):** inner `c11ee4b8` (STEP 3 atomic 2-file, parent `2bf81b5e`, pushed origin/inner-main) · outer `d0844f9` (mirror, parent `5fd52b0`, pushed origin/main) + this ledger commit. **Cloudflare Version:** `fc03cbb5-a87b-492b-a4d0-cd11a5459c07` (Commander-provided; no Claude deploy access). **Working tree:** clean (both repos).
