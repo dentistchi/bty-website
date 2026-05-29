@@ -3,7 +3,7 @@
 import questionsKo from "@/content/assessment/questions.ko.json";
 import questionsEn from "@/content/assessment/questions.en.json";
 import { detectPattern, scoreAnswers } from "@/lib/assessment/score";
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { CardSkeleton, EmptyState } from "@/components/bty-arena";
 import HubTopNav from "@/components/bty/HubTopNav";
@@ -14,6 +14,12 @@ type ApiResult = {
   scores: Record<string, number>;
   pattern: string;
   recommendedTrack: string;
+};
+
+type ComputedResult = {
+  scores: Record<string, number>;
+  pattern: { track: string; reasons: string[] };
+  fromApi: boolean;
 };
 
 type SubmissionHistoryItem = {
@@ -194,7 +200,13 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
 
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
-  const computed = useMemo(() => {
+  const [computed, setComputed] = useState<ComputedResult | null>(null);
+  const [computing, setComputing] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setComputing(true);
+
     const questionBank = (isEn ? questionsEn : questionsKo) as Parameters<typeof scoreAnswers>[0];
 
     const apiRaw = sessionStorage.getItem("assessment.result.v1");
@@ -202,22 +214,52 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
       try {
         const api = JSON.parse(apiRaw) as ApiResult;
         if (api.scores && api.pattern) {
-          return {
-            scores: api.scores,
-            pattern: { track: api.recommendedTrack, reasons: [] as string[] },
-            fromApi: true,
-          };
+          if (!cancelled) {
+            setComputed({
+              scores: api.scores,
+              pattern: { track: api.recommendedTrack, reasons: [] as string[] },
+              fromApi: true,
+            });
+            setComputing(false);
+          }
+          return;
         }
       } catch { /* fallback below */ }
     }
 
-    const raw = sessionStorage.getItem("assessment.answers.v1");
-    if (!raw) return null;
-    const answers = JSON.parse(raw) as Record<number, number>;
-    const scores = scoreAnswers(questionBank, answers);
-    const pattern = detectPattern(scores);
-    return { scores, pattern, fromApi: false };
+    try {
+      const raw = sessionStorage.getItem("assessment.answers.v1");
+      if (!raw) {
+        if (!cancelled) { setComputed(null); setComputing(false); }
+        return;
+      }
+      const answers = JSON.parse(raw) as Record<number, number>;
+      const scores = scoreAnswers(questionBank, answers);
+      const pattern = detectPattern(scores);
+      if (!cancelled) { setComputed({ scores, pattern, fromApi: false }); setComputing(false); }
+    } catch {
+      if (!cancelled) { setComputed(null); setComputing(false); }
+    }
+
+    return () => { cancelled = true; };
   }, [isEn]);
+
+  if (computing) {
+    return (
+      <div
+        className="max-w-3xl mx-auto px-6 py-10"
+        role="main"
+        aria-busy="true"
+        aria-label={isEn ? "Loading result…" : "결과 불러오는 중…"}
+      >
+        <div className="mb-6">
+          <HubTopNav theme="dear" showLangSwitch />
+        </div>
+        <CardSkeleton showLabel lines={2} style={{ padding: "16px 20px", marginBottom: 12 }} />
+        <CardSkeleton showLabel={false} lines={3} style={{ padding: "16px 20px" }} />
+      </div>
+    );
+  }
 
   if (!computed) {
     return (

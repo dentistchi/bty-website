@@ -35,7 +35,7 @@ export default function BtyAuthGuard({ children }: { children: React.ReactNode }
   if (!ready) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-sm opacity-70">세션 확인 중…</div>
+        <div className="text-sm opacity-70">{locale === "ko" ? "세션 확인 중…" : "Checking session…"}</div>
       </div>
     );
   }
