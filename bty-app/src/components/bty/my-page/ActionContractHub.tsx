@@ -130,6 +130,21 @@ export function ActionContractHub({
         <p className="text-sm text-indigo-900/90 dark:text-indigo-50/80">
           Evidence is approved and waiting for verification completion.
         </p>
+        {(contract.verification_type === "qr" || contract.verification_type === "hybrid") && (
+          <div className="mt-4 flex flex-col gap-2 md:flex-row md:gap-3">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onRequestQr();
+              }}
+              className="rounded-lg bg-cyan-100 px-4 py-2 text-sm text-cyan-700 transition-colors hover:bg-cyan-200 dark:bg-cyan-500/20 dark:text-cyan-100 dark:hover:bg-cyan-500/30"
+            >
+              {t.btnQr}
+            </button>
+          </div>
+        )}
       </div>
     );
   }
