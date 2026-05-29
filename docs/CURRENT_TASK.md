@@ -1,3 +1,11 @@
+## Client QR Render Fix — CLOSED (UI invariant) (D-5 · 2026-05-28)
+
+**Active head (D-5 / 2026-05-28):** inner `5a0174b4` (STEP 3 atomic 6-file, pushed origin/inner-main) · outer `f767e04` (mirror, pushed origin/main) + this ledger commit. **Cloudflare Version:** `9df62778-5afa-4777-8a2a-2b1e30b8a194`. **Working tree:** clean (both repos).
+
+**Client QR Render Fix (UI-side)**: [x] **완료.** External-witness QR now renders instead of self-navigating the actor's browser to the commit deep-link. One shared `<ActionLoopQrPanel>` (props `url`/`onDismiss`/`locale`) consumed by both Arena resolve and My Page = UI system invariant. 1A new component / 1B `useArenaSession` self-nav (`window.location.assign`) removed → state exposure / 1C `ArenaResolveClient` wiring / 1D MyPage DRY refactor. With L5+L6 C5 server invariant, Spec v2 §3.5 realized at both layers. Probes 1+2+3 GREEN (Cloudflare `9df62778`). Tests 3386/0/6 (+8); `tsc` clean. inner `5a0174b4` / outer `f767e04`. **Open:** (i) qr-debug-value URL-hide micro NEXT; (ii) manual self-vector → L4. **Next:** URL-hide micro → L4 STEP 0 (tier-aware `qr/validate` self-scan hardening + `verification_confidence` write).
+
+---
+
 ## L5+L6 QR Issuance Alignment — CLOSED (server invariant) (D-5 · 2026-05-28)
 
 **Active head (D-5 / 2026-05-28):** inner `f214cdcc` (L5+L6 STEP 3, pushed origin/inner-main) · outer `c6b1c4a` (mirror, pushed origin/main) + this ledger commit. **Cloudflare Version:** `d6ab7835-275d-4b81-a927-577e5e38615d`. **Working tree:** clean (both repos).

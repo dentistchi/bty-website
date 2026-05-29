@@ -41,6 +41,46 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## D-5 — CLIENT QR RENDER FIX · CLOSED (UI invariant)
+
+**Status:** CLOSED (UI-side invariant achieved; URL-hide micro + L4 queued) · **Date:** 2026-05-28 (D-5) · **Class:** code mutation (4 prod files + 2 test), inner + outer published + deployed · **Launch:** 2026-06-02 (D-0)
+**Header:** [D-5 CLIENT QR RENDER FIX CLOSE 2026-05-28] External-witness QR now renders instead of self-navigating the actor's browser to the commit deep-link. One shared `<ActionLoopQrPanel>` consumed by Arena resolve + My Page = UI system invariant. Combined with L5+L6 C5 server invariant, Spec v2 §3.5 is fully realized at both layers. inner `5a0174b4` / outer `f767e04` / Cloudflare Version `9df62778-5afa-4777-8a2a-2b1e30b8a194`.
+
+**Authority:** Spec [`docs/QR_VERIFICATION_ARCHITECTURE_V1.md`](QR_VERIFICATION_ARCHITECTURE_V1.md) (Locked v2) §3.5 @ `d07a47ba` · Plan [`docs/CLIENT_QR_RENDER_FIX_PLAN.md`](CLIENT_QR_RENDER_FIX_PLAN.md) (Locked v1.2, 301 lines) @ `9e4313c3`.
+
+**What shipped (4-stage, atomic 6-file commit):**
+- **1A — shared `<ActionLoopQrPanel>`** (NEW `src/components/arena/ActionLoopQrPanel.tsx`, 41 lines): pure render component, props `(url, onDismiss, locale)`. `locale` added per v1.1 H4 amendment (i18n parity for `getMessages(locale).actionContract.dismiss` "닫기"/"Close"; presentation-layer param, NOT business coupling). Verbatim render parity with the MyPage block it replaces.
+- **1B — producer migration** (`useArenaSession.startPendingContractQrFlow`): removed the single `window.location.assign(json.url)` self-nav at L2122; replaced with state exposure (`pendingContractQrUrl` / `pendingContractQrOpen` / `setPendingContractQrOpen`). 409 terminal + error branches UNCHANGED.
+- **1C — Consumer A** (`ArenaResolveClient`): consumes new state + imports shared component + conditional render adjacent to `ArenaPendingContractGate`. Gate UNCHANGED (presentational button only).
+- **1D — Consumer B DRY** (`MyPageLeadershipConsole`): removed inline `QRCodeSVG` + `qrcode.react` import; consumes shared component. `handleRequestQr` / aalo useEffect / qr state lifecycle UNCHANGED.
+
+**UI system invariant achieved:** both awaiting-QR surfaces (Arena resolve + My Page) route through one shared `<ActionLoopQrPanel>` = one render contract. With L5+L6 C5 (one shared blocking helper for GET+POST server invariant), Spec v2 §3.5 progression model is now realized at BOTH server and UI layers. The only `window.location.assign` self-nav vector is removed.
+
+**Tests:** 3386 passed / 0 failed / 6 skipped (+8 from baseline: 5 ActionLoopQrPanel + 3 ArenaResolveClient). No rewrites needed — the MyPage module-level `qrcode.react` mock + `qr-debug-value` assertions are transparent through the shared component (proof 1D preserved semantics). `tsc --noEmit` clean; eslint ajv crash pre-existing (backlog, not a gate).
+
+**Probes (Commander active test 2026-05-28, Cloudflare `9df62778`):**
+- **★ Probe 1 (CLOSURE GATE) GREEN:** actor clicks "complete by QR" → QR image renders on screen; browser URL stays on `/bty-arena/play/resolve/` (no self-navigate to `/my-page?...aalo=`). Directly resolves Commander's original "QR 안보임" symptom.
+- **★ Probe 2 (CLOSURE GATE) GREEN:** fresh-session canonical contract render leaves `verified_at` NULL (render ≠ commit). [Pre-fresh-session DB row `9651cf9b` showed `verified_at` SET ~99s post-validation — a STALE BUNDLE still running the old `window.location.assign` before hard reload, NOT `9df62778` behavior. Confirmed by Commander hard-reset + fresh-session re-run = green.]
+- **Probe 3 (external witness) GREEN:** Commander confirmed the external-scan path completes the loop.
+
+**Cross-cycle provenance lessons (6 recorded this lane):**
+1. plan amendment dispatch must carry inline body or surgical patch — not instructions only (L5+L6 v0.3, this lane v1.1/v1.2).
+2. surgical patch = fenced **Old/New** blocks (unambiguous bytes, not description format).
+3. predictions are layout-independent — string presence ✓, line count = derived metric.
+4. line-count mismatch resolved by Commander, never by padding (self-authoring forbidden); content = authority (v1.2 ratified 301 lines).
+5. plan §3.1 file table anchors to STEP 0 verbatim paths; inferred directories forbidden — mark "TBD verified in STEP 1 PART A".
+6. (NEW) deploy-probe stale-bundle pattern — Cloudflare Workers update immediately but client tabs hold old JS; probes need hard reload / fresh session. Probe timestamps suspiciously close to deploy = stale-bundle suspect.
+
+**★ OPEN ITEMS (post-lane, separate work):**
+- **(i) qr-debug-value URL exposure** — selectable commit URL below the QR; intentional §1.4 testability retention through STEP 1. Disposition: micro-task to hide (sr-only / dev-only flag), NEXT immediately after this ledger.
+- **(ii) Manual self-vector** — actor opening the commit URL in their own browser still auto-commits (pre-L4 baseline; Probe 6 documented intentional). Disposition: **L4** server-side tier-aware self-scan hardening + `verification_confidence` write to `le_verification_log` (spec §6.1).
+
+**Decisions baked (Commander 2026-05-28):** (A) shared component · (b) separate "Client QR Render Fix" lane · (I) L4 sequential · v1.1 H4 amendment (locale prop) · v1.2 §3.1 path reconciliation. Core principle: "BTY는 '선택'이 아니라 '행동 완료'로 닫히는 시스템이고, QR은 진행 제한의 실행 게이트다." — now realized at both server and UI layers. Memory ref: #15 ledger topology, #26 spec v2, #27 sequencing.
+
+**Next:** qr-debug-value URL-hide micro-task → L4 STEP 0 inventory → L4 lane (tier-aware `qr/validate` self-scan hardening + `verification_confidence` write).
+
+---
+
 ## D-5 — L5+L6 QR ISSUANCE ALIGNMENT · CLOSED (server invariant)
 
 **Status:** CLOSED (server-side complete; client follow-up lane queued) · **Date:** 2026-05-28 (D-5) · **Class:** code mutation (3 prod files + 2 test), inner + outer published + deployed · **Launch:** 2026-06-02 (D-0)
