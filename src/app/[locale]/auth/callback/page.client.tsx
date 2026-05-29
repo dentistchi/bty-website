@@ -136,7 +136,7 @@ function AuthCallbackForm() {
   if (status === "loading") {
     return (
       <div className="min-h-[40vh] flex items-center justify-center px-4">
-        <p className="text-neutral-600">인증 처리 중...</p>
+        <p className="text-neutral-600">{locale === "ko" ? "인증 처리 중..." : "Signing you in..."}</p>
       </div>
     );
   }
