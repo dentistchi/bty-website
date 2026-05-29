@@ -223,6 +223,15 @@ export async function middleware(req: NextRequest) {
 
   if (isPublicPath(pathname)) return NextResponse.next();
 
+  const isAaloPublicScan =
+    /^\/(en|ko)\/my-page$/.test(pathname) &&
+    req.nextUrl.searchParams.get("arena_action_loop") === "commit" &&
+    req.nextUrl.searchParams.has("aalo");
+
+  if (isAaloPublicScan) {
+    return NextResponse.next();
+  }
+
   // DEV ONLY: scenario runtime testing bypass
   if (
     process.env.NODE_ENV !== "production" &&
