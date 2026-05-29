@@ -67,6 +67,12 @@ export function MyPageLeadershipConsole({
   const [showPostCompletion, setShowPostCompletion] = useState(false);
   const [completionNarrativeState, setCompletionNarrativeState] = useState<string | null>(null);
   const lastSyncAtRef = useRef(0);
+  const qrPanelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!qrPanelOpen) return;
+    qrPanelRef.current?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+  }, [qrPanelOpen]);
 
   useEffect(() => {
     setLocalSignals(loadSignals());
@@ -417,6 +423,16 @@ export function MyPageLeadershipConsole({
         />
       )}
 
+      {qrPanelOpen && qrUrl && (
+        <div ref={qrPanelRef}>
+          <ActionLoopQrPanel
+            url={qrUrl}
+            onDismiss={() => setQrPanelOpen(false)}
+            locale={loc}
+          />
+        </div>
+      )}
+
       {!isLoading && (
         <PatternSignaturePanel
           locale={locale}
@@ -441,14 +457,6 @@ export function MyPageLeadershipConsole({
         locale={locale}
         narrative={completionNarrativeState}
       />
-
-      {qrPanelOpen && qrUrl && (
-        <ActionLoopQrPanel
-          url={qrUrl}
-          onDismiss={() => setQrPanelOpen(false)}
-          locale={loc}
-        />
-      )}
 
       <MyPageLeadershipScreen
         locale={locale}
