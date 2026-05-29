@@ -11,6 +11,7 @@ export type MyPageStateResponse = {
   signals: ArenaSignal[];
   reflections: ReflectionEntry[];
   open_action_contract: MyPageOpenActionContractUi | null;
+  awaiting_verification_contracts: MyPageOpenActionContractUi[];
   pattern_signatures: UserPatternSignaturePublic[];
 };
 

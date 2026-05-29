@@ -6,6 +6,7 @@ import { computeLeadershipState, mergeLeadershipReflectionLayer } from "@/featur
 import type { ArenaSignal, LeadershipMetrics, LeadershipState } from "@/features/my-page/logic/types";
 import type { Locale } from "@/lib/i18n";
 import {
+  fetchAwaitingVerificationContractsForMyPage,
   fetchOpenActionContractForMyPage,
   type MyPageOpenActionContractUi,
 } from "@/lib/bty/my-page/openActionContractForMyPage";
@@ -25,6 +26,8 @@ export type MyPageIdentityPayload = {
   reflections: ReflectionEntry[];
   /** Open or latest terminal action contract for Action Contract Hub (server-derived). */
   open_action_contract: MyPageOpenActionContractUi | null;
+  /** 안2-B: all awaiting-verification contracts (plural owner QR list). */
+  awaiting_verification_contracts: MyPageOpenActionContractUi[];
   /** Arena Phase B — aggregated pattern signatures (re-exposure / reinforcement), newest first. */
   pattern_signatures: UserPatternSignaturePublic[];
 };
@@ -43,13 +46,14 @@ export async function getMyPageIdentityState(
 
   const { signals, reflections } = bundle;
 
-  const [recoveryRes, sigBundle, openContract, profileRes] = await Promise.all([
+  const [recoveryRes, sigBundle, openContract, awaitingContracts, profileRes] = await Promise.all([
     supabase
       .from("bty_recovery_entries")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId),
     fetchUserPatternSignaturesForMyPage(supabase, userId),
     fetchOpenActionContractForMyPage(supabase, userId),
+    fetchAwaitingVerificationContractsForMyPage(supabase, userId),
     supabase
       .from("arena_profiles")
       .select("core_xp_total")
@@ -102,6 +106,7 @@ export async function getMyPageIdentityState(
       signals,
       reflections,
       open_action_contract: openContract,
+      awaiting_verification_contracts: awaitingContracts,
       pattern_signatures: sigBundle.rows,
     },
   };

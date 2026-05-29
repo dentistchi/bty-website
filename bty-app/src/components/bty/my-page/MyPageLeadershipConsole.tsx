@@ -13,6 +13,7 @@ import { ActionContractHub } from "@/components/bty/my-page/ActionContractHub";
 import { PatternSignaturePanel } from "@/components/bty/my-page/PatternSignaturePanel";
 import { PostCompletionSheet } from "@/components/bty/my-page/PostCompletionSheet";
 import { ActionLoopQrPanel } from "@/components/arena/ActionLoopQrPanel";
+import { AwaitingQrList } from "@/components/bty/my-page/AwaitingQrList";
 import {
   BTY_ACTION_CONTRACT_UPDATED_STORAGE_KEY,
   dispatchArenaEntryResolutionInvalidate,
@@ -66,6 +67,7 @@ export function MyPageLeadershipConsole({
   const [secureLinkUrl, setSecureLinkUrl] = useState<string | null>(null);
   const [showPostCompletion, setShowPostCompletion] = useState(false);
   const [completionNarrativeState, setCompletionNarrativeState] = useState<string | null>(null);
+  const [scanResult, setScanResult] = useState<"verified" | "already" | "failed" | null>(null);
   const lastSyncAtRef = useRef(0);
   const qrPanelRef = useRef<HTMLDivElement>(null);
 
@@ -243,7 +245,16 @@ export function MyPageLeadershipConsole({
         });
 
         if (!res.ok) {
-          console.error("[QR validate] failed", res.status, await res.text());
+          const errData = (await res.json().catch(() => ({}))) as {
+            error?: string;
+            verified_at?: string | null;
+          };
+          console.error("[QR validate] failed", res.status, errData?.error ?? "");
+          setScanResult(
+            errData?.error === "contract_not_pending" || errData?.verified_at != null
+              ? "already"
+              : "failed",
+          );
           return;
         }
 
@@ -254,6 +265,7 @@ export function MyPageLeadershipConsole({
         };
 
         if (data.ok || data.success) {
+          setScanResult("verified");
           dispatchBtyActionContractUpdated();
           setShowPostCompletion(true);
           if (data.narrativeState) {
@@ -323,6 +335,30 @@ export function MyPageLeadershipConsole({
     }
   }, [serverPack, locale]);
 
+  const handleRequestQrForContract = useCallback(async (contractId: string) => {
+    if (!contractId) return;
+    setQrPanelOpen(false);
+    setQrUrl(null);
+    try {
+      const res = await fetch("/api/arena/leadership-engine/qr/action-loop-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contractId }),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { token?: string; qrUrl?: string; url?: string };
+      const returnedQrUrl =
+        (typeof data.qrUrl === "string" && data.qrUrl.trim() !== "" ? data.qrUrl.trim() : "") ||
+        (typeof data.url === "string" && data.url.trim() !== "" ? data.url.trim() : "");
+      if (returnedQrUrl) {
+        setQrUrl(returnedQrUrl);
+        setQrPanelOpen(true);
+      }
+    } catch {
+      // silent — user can retry
+    }
+  }, []);
+
   const handleRequestSecureLink = useCallback(async () => {
     const contract = serverPack?.open_action_contract;
     if (!contract) return;
@@ -383,6 +419,26 @@ export function MyPageLeadershipConsole({
       data-loading={isLoading ? "true" : "false"}
       data-load-error={loadError ? "true" : "false"}
     >
+      {scanResult && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`rounded-xl border p-4 text-sm ${
+            scanResult === "verified"
+              ? "border-green-300 bg-green-50 text-green-800 dark:border-green-300/20 dark:bg-green-500/[0.08] dark:text-green-100"
+              : scanResult === "already"
+                ? "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-300/20 dark:bg-amber-500/[0.08] dark:text-amber-100"
+                : "border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-300/20 dark:bg-rose-500/[0.08] dark:text-rose-100"
+          }`}
+        >
+          {scanResult === "verified"
+            ? tAction.scanVerified
+            : scanResult === "already"
+              ? tAction.scanAlready
+              : tAction.scanFailed}
+        </div>
+      )}
+
       {/* XP Summary */}
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-2xl border border-[#E8E3D8] bg-white px-4 py-4 shadow-sm text-center">
@@ -431,6 +487,16 @@ export function MyPageLeadershipConsole({
             locale={loc}
           />
         </div>
+      )}
+
+      {!isLoading && serverPack?.awaiting_verification_contracts && (
+        <AwaitingQrList
+          contracts={serverPack.awaiting_verification_contracts.filter(
+            (c) => c.id !== serverPack.open_action_contract?.id,
+          )}
+          locale={locale}
+          onShowQr={handleRequestQrForContract}
+        />
       )}
 
       {!isLoading && (

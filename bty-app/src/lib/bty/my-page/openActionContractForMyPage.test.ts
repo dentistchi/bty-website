@@ -9,7 +9,10 @@
  */
 import { describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { fetchOpenActionContractForMyPage } from "./openActionContractForMyPage";
+import {
+  fetchAwaitingVerificationContractsForMyPage,
+  fetchOpenActionContractForMyPage,
+} from "./openActionContractForMyPage";
 
 type QueryRec = { calls: Array<[string, unknown[]]>; status?: string; statusIn?: string[] };
 type Resolve = (rec: QueryRec) => { data: unknown; error: unknown };
@@ -125,5 +128,87 @@ describe("fetchOpenActionContractForMyPage — awaiting surface (안2-A)", () =>
     expect(awaiting!.calls).toContainEqual(["in", ["status", ["approved", "submitted"]]]);
     expect(awaiting!.calls).toContainEqual(["not", ["validation_approved_at", "is", null]]);
     expect(awaiting!.calls).toContainEqual(["is", ["verified_at", null]]);
+  });
+});
+
+const PAST = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+function awaitingRow(over: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id: "c1",
+    contract_description: "Run the 1:1",
+    deadline_at: FUTURE,
+    verification_mode: "qr",
+    verification_type: "action_completed",
+    verification_tier: "mvp_open",
+    status: "submitted",
+    session_id: "run-1",
+    run_id: "run-1",
+    arena_scenario_id: "sc1",
+    source: "arena_run_completion",
+    validation_approved_at: "2026-05-29T00:00:00.000Z",
+    verified_at: null,
+    ...over,
+  };
+}
+
+describe("fetchAwaitingVerificationContractsForMyPage — plural owner list (안2-B)", () => {
+  it("includes a submitted + validation-approved + unverified contract (action_awaiting_verification)", async () => {
+    const { client } = makeSupabase(() => ({
+      data: [awaitingRow({ id: "sub-1", status: "submitted" })],
+      error: null,
+    }));
+    const rows = await fetchAwaitingVerificationContractsForMyPage(client, "user-1");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.id).toBe("sub-1");
+    expect(rows[0]?.display_state).toBe("action_awaiting_verification");
+    expect(rows[0]?.verification_tier).toBe("mvp_open");
+    expect(rows[0]?.source).toBe("arena_run_completion");
+    expect(rows[0]?.action_text).toBe("Run the 1:1");
+  });
+
+  it("includes an approved + validation-approved + unverified contract", async () => {
+    const { client } = makeSupabase(() => ({
+      data: [awaitingRow({ id: "app-1", status: "approved", verification_tier: "manager_only" })],
+      error: null,
+    }));
+    const rows = await fetchAwaitingVerificationContractsForMyPage(client, "user-1");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.id).toBe("app-1");
+    expect(rows[0]?.display_state).toBe("action_awaiting_verification");
+    expect(rows[0]?.verification_tier).toBe("manager_only");
+  });
+
+  it("returns all rows (no limit), preserving query order (deadline desc)", async () => {
+    const { client } = makeSupabase(() => ({
+      data: [
+        awaitingRow({ id: "a" }),
+        awaitingRow({ id: "b", deadline_at: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString() }),
+        awaitingRow({ id: "c", deadline_at: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString() }),
+      ],
+      error: null,
+    }));
+    const rows = await fetchAwaitingVerificationContractsForMyPage(client, "user-1");
+    expect(rows.map((r) => r.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("filters out past-deadline rows (JS), keeps future ones", async () => {
+    const { client } = makeSupabase(() => ({
+      data: [awaitingRow({ id: "future" }), awaitingRow({ id: "expired", deadline_at: PAST })],
+      error: null,
+    }));
+    const rows = await fetchAwaitingVerificationContractsForMyPage(client, "user-1");
+    expect(rows.map((r) => r.id)).toEqual(["future"]);
+  });
+
+  // Gates (verified_at set / validation_approved_at null) are enforced query-side,
+  // so they are asserted via the built query (a non-matching row never reaches the fn).
+  it("builds the gate query: status in [approved,submitted] + validation_approved not null + verified_at null", async () => {
+    const { client, queries } = makeSupabase(() => ({ data: [], error: null }));
+    const rows = await fetchAwaitingVerificationContractsForMyPage(client, "user-1");
+    expect(rows).toEqual([]);
+    expect(queries[0]!.calls).toContainEqual(["in", ["status", ["approved", "submitted"]]]);
+    expect(queries[0]!.calls).toContainEqual(["not", ["validation_approved_at", "is", null]]);
+    expect(queries[0]!.calls).toContainEqual(["is", ["verified_at", null]]);
   });
 });
