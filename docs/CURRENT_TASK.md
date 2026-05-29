@@ -1,3 +1,17 @@
+## Scanner Public Access Fix — CLOSED (middleware exception · A) (D-4 · 2026-05-29)
+
+**Active head (D-4 / 2026-05-29):** inner `c11ee4b8` (STEP 3 atomic 2-file, parent `2bf81b5e`, pushed origin/inner-main) · outer `d0844f9` (mirror, parent `5fd52b0`, pushed origin/main) + this ledger commit. **Cloudflare Version:** `fc03cbb5-a87b-492b-a4d0-cd11a5459c07` (Commander-provided; no Claude deploy access). **Working tree:** clean (both repos).
+
+**Scanner Public Access Fix (middleware)**: [x] **완료.** Restores mvp_open principle 5 (scanner identification: anyone / optional auth). Narrow middleware exception — a logged-out scanner reaching `/{locale}/my-page?arena_action_loop=commit&aalo=<token>` deep-link is allowed through ONLY when all 3 conditions hold simultaneously (path == `/{locale}/my-page` AND `arena_action_loop=commit` AND `aalo` present). `isPublicPath`/auth/consent/matcher untouched; subpath + any missing-condition case still hits the 307 login wall. **Claude-verified:** `middleware.ts` +9/-0 + new `middleware.aalo-public-scan.test.ts` (6 assertions); `tsc --noEmit` exit 0; vitest 3392 passed / 0 failed / 6 skipped (+1 test file); targeted middleware unit 6/6. **Commander-verified (no Claude DB/deploy access) — Probe P2 (release safety) RUNTIME GREEN:** logged-out general my-page → 307 login wall held (tail). Bypass correctness corroborated by unit 6/6 + provenance URL-format match (mint `action-loop-token/route.ts:172`) + secret `ARENA_ACTION_LOOP_QR_SECRET` present + mint Ok (tail 4:45:16) + `validation_approved_at` SET (tail 4:45:11). inner `c11ee4b8` / outer `d0844f9` / Cloudflare `fc03cbb5`.
+
+**Closure 판정:** middleware exception lane CLOSE (A).
+
+**Carry-forward (separate lanes):**
+- **P1 full-loop end-to-end** (`qr/validate` → `verified_at`) belongs to the validate-route domain — split out, not part of the middleware exception lane.
+- **★ QR Verification Session gap = launch blocker (new lane):** after `approve_action_contract` the contract maps to `action_awaiting_verification` (`toDisplayState` `approved`→awaiting), which `ActionContractHub` renders as a button-less card — no Request/Show-QR action — and the QR panel is ephemeral client state (`qrPanelOpen`/`qrUrl` reset on mount) → **no re-exposure path** once approved. Multi-QR (re-issue) also unsupported.
+
+---
+
 ## Client QR Render Fix — CLOSED (UI invariant) (D-5 · 2026-05-28)
 
 **Active head (D-5 / 2026-05-28):** inner `5a0174b4` (STEP 3 atomic 6-file, pushed origin/inner-main) · outer `f767e04` (mirror, pushed origin/main) + this ledger commit. **Cloudflare Version:** `9df62778-5afa-4777-8a2a-2b1e30b8a194`. **Working tree:** clean (both repos).

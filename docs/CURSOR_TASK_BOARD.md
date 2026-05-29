@@ -41,6 +41,27 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## D-4 — SCANNER PUBLIC ACCESS FIX · CLOSED (middleware exception · A)
+
+**Status:** CLOSED (middleware exception lane — A) · **Date:** 2026-05-29 (D-4) · **Class:** code mutation (1 prod file + 1 test), inner + outer published · **Launch:** 2026-06-02 (D-0)
+**Header:** [D-4 SCANNER PUBLIC ACCESS FIX CLOSE 2026-05-29] Restores mvp_open principle 5 (scanner identification: anyone / optional auth). A logged-out scanner reaching `/{locale}/my-page?arena_action_loop=commit&aalo=<token>` is allowed through ONLY when 3 conditions hold (path == my-page AND `arena_action_loop=commit` AND `aalo` present); `isPublicPath`/auth/consent/matcher untouched. inner `c11ee4b8` (parent `2bf81b5e`) / outer `d0844f9` (parent `5fd52b0`) / Cloudflare Version `fc03cbb5-a87b-492b-a4d0-cd11a5459c07`.
+
+**What shipped (STEP 3 atomic 2-file commit):**
+- **middleware narrow exception** (`src/middleware.ts`, +9/-0): after `isPublicPath`, a 3-AND guard (`/^\/(en|ko)\/my-page$/` anchored + `arena_action_loop=commit` + `aalo` present) returns `NextResponse.next()`. Anchored regex → subpaths do not leak the bypass.
+- **test** (NEW `src/middleware.aalo-public-scan.test.ts`, 6 assertions): 3-condition allow, general my-page wall, each missing-condition wall, anchored-subpath wall, ko parity. Logged-out simulated via `getUser → user:null` mock (mirrors existing membership-gate test infra).
+
+**Verify (Claude-verified):** `tsc --noEmit` exit 0; vitest 3392 passed / 0 failed / 6 skipped (+1 test file); targeted middleware unit 6/6.
+
+**Probe (Commander-verified, no Claude DB/deploy access):** **P2 (release safety) RUNTIME GREEN** — logged-out general `/my-page` → 307 login wall held (tail evidence). Bypass correctness corroborated by: unit 6/6 + provenance URL-format match (mint route `action-loop-token/route.ts:172`) + secret `ARENA_ACTION_LOOP_QR_SECRET` present + mint Ok (tail 4:45:16) + `validation_approved_at` SET (tail 4:45:11).
+
+**Closure verdict:** middleware exception lane CLOSE (A).
+
+**Carry-forward (separate lanes):**
+- **P1 full-loop end-to-end** (`qr/validate` → `verified_at`) = validate-route domain; split out.
+- **★ QR Verification Session gap = launch blocker (new lane):** post-`approve_action_contract` the contract maps to `action_awaiting_verification` (`toDisplayState` `approved`→awaiting), which `ActionContractHub` renders as a button-less card — no Request/Show-QR action; the QR panel is ephemeral (`qrPanelOpen`/`qrUrl` reset on mount) → no re-exposure path. Multi-QR (re-issue) also unsupported.
+
+---
+
 ## D-5 — CLIENT QR RENDER FIX · CLOSED (UI invariant)
 
 **Status:** CLOSED (UI-side invariant achieved; URL-hide micro + L4 queued) · **Date:** 2026-05-28 (D-5) · **Class:** code mutation (4 prod files + 2 test), inner + outer published + deployed · **Launch:** 2026-06-02 (D-0)
