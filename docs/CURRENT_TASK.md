@@ -1,3 +1,24 @@
+## QR Verification Session 안2-B (multi-QR list, dormant-by-data) + #1 (scanner banner, active) — CLOSED (D-4 · 2026-05-29)
+
+**Active head (D-4 / 2026-05-29):** inner `702a9e3d` (parent `4cd22ca4`) · outer `b3479b8` (parent `32298aa`) + this ledger commit. **Cloudflare Version:** `5d0624d9-701e-401b-84cd-4842295395cb` (active 100%, deployments-list cross-verified). **Working tree:** clean (both repos).
+
+**안2-B + #1**: [x] **완료.** Shipped: plural `fetchAwaitingVerificationContractsForMyPage` (status in [approved,submitted] + validation_approved + verified_at null, no limit) + state-route field `awaiting_verification_contracts[]` (type + identity payload Promise.all + route assembly) + `AwaitingQrList` component (per-item action_text/deadline/source + personal|manager tier label + per-item Show QR) + `handleRequestQrForContract(contractId)` (mints by contract, reuses the hoisted shared `ActionLoopQrPanel`, last-click-wins) + logged-out scanner confirmation banner. 8 files +313/-3, additive (singular Hub + 안2-A surface untouched). **Claude-verified:** `tsc` 0, vitest 3400/0/6 (+5 plural-fetch regression). inner `702a9e3d` / outer `b3479b8` / Cloudflare `5d0624d9`.
+
+**#1 scanner banner = ACTIVE (Commander 실증):** logged-out re-scan of a deep-link → "This action is already verified" banner (was a blank page = witness gap). ✓verified / already / failed (action_validation_required / run_actor_token_mismatch / contract_not_pending) all supported.
+
+**안2-B multi-list = DORMANT BY DATA (not a defect):** singular and plural fetches draw from the **same** awaiting set (identical filters), and the system holds **≤1 unverified contract at a time** — the `blocked_by_open_contract` invariant (status ∈ pending/submitted/rejected/escalated is blocking → middleware gates new Arena runs) prevents concurrent personal contracts, and **no `manager_only` producer exists** (all 4 creation sites hardcode `verification_tier="mvp_open"`; `manager_only` appears only in the AwaitingQrList consumer). With 1 awaiting contract = the Hub's `open_action_contract`, the dedup (`c.id !== open_action_contract?.id`) empties the list → `AwaitingQrList` returns null. Code correct + forward-ready; the data condition (2+ concurrent unverified) is structurally unreachable today. Regression 0.
+
+**Launch decision:** the single-contract path (안2-A Hub + single QR + 안1 re-exposure + P1 loop) suffices for launch. The 안2-B list auto-activates once manager issuance exists.
+
+**Closure 판정:** 안2-B CLOSE (dormant-by-data, forward-ready) + #1 CLOSE (active).
+
+**Carry-forward (updated):**
+- **★ Manager QR issuance** (`manager_only` `verification_tier` producer side) = the trigger that activates the 안2-B multi-list. Currently all 4 creation sites stamp `mvp_open`. Post-launch.
+- **★ Owner realtime ✓** (owner My Page auto-refresh on scan) — post-launch.
+- verified-history list / analytics / `arena_level_records` repo-migration realignment / EN T3 (28일 train body KO first).
+
+---
+
 ## arena_level_records drift — RESOLVED DB-side (column-name mismatch, no repo commit) (D-4 · 2026-05-29)
 
 **Active head (D-4 / 2026-05-29):** no code commit (DB-only hotfix); worker `44751b0b-6ad7-4ddf-aff2-2102d94c8385` unchanged (already expected the code column names). Commander SQL hotfix applied out-of-band. **Working tree:** clean (both repos); the staged STEP-1 migration file was discarded.

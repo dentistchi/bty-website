@@ -41,6 +41,34 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## D-4 — QR VERIFICATION SESSION 안2-B (multi-QR, dormant) + #1 (scanner banner, active) · CLOSED
+
+**Status:** CLOSED — #1 active, 안2-B dormant-by-data (forward-ready) · **Date:** 2026-05-29 (D-4) · **Class:** code mutation (7 lib/UI/route + 1 test), inner + outer published + deployed · **Launch:** 2026-06-02 (D-0)
+**Header:** [D-4 안2-B + #1 CLOSE 2026-05-29] Owner multi-QR awaiting list + logged-out scanner confirmation banner. #1 active (witness gap closed); 안2-B list dormant by data (≤1 unverified contract, no manager producer). inner `702a9e3d` (parent `4cd22ca4`) / outer `b3479b8` (parent `32298aa`) / Cloudflare active `5d0624d9-701e-401b-84cd-4842295395cb`.
+
+**What shipped (8 files, +313/-3, additive):**
+- plural `fetchAwaitingVerificationContractsForMyPage` (no limit; same awaiting filters as singular) + state-route `awaiting_verification_contracts[]` (type/payload/assembly).
+- `AwaitingQrList` (NEW): per-item action_text/deadline/source + personal|manager tier label + per-item Show QR; dedups the Hub contract; empty → null.
+- `handleRequestQrForContract(contractId)` → shared hoisted `ActionLoopQrPanel` (last-click-wins).
+- logged-out scanner banner (✓verified / already / failed) + 6 bilingual i18n keys.
+
+**Verify (Claude-verified):** `tsc` exit 0; vitest 3400 passed / 0 failed / 6 skipped (+5 plural-fetch regression).
+
+**#1 scanner banner — ACTIVE (Commander-verified):** logged-out re-scan → "already verified" banner (was blank page); ✓/already/failed all supported.
+
+**안2-B multi-list — DORMANT BY DATA (not a defect):** singular + plural pull the same awaiting set; ≤1 unverified contract at a time (`blocked_by_open_contract` invariant blocks concurrent personal; no `manager_only` producer — 4 creation sites all `mvp_open`). Dedup empties the 1-item list → null. Correct + forward-ready; 2+ concurrent unverified is structurally unreachable today. Singular Hub / 안2-A untouched; regression 0.
+
+**Launch decision:** single-contract path (안2-A Hub + single QR + 안1 + P1) suffices; 안2-B auto-activates on manager issuance.
+
+**Closure verdict:** 안2-B CLOSE (dormant-by-data) + #1 CLOSE (active).
+
+**Carry-forward:**
+- **★ Manager QR issuance** (`manager_only` producer) = activates 안2-B multi-list. Post-launch.
+- **★ Owner realtime ✓** (My Page auto-refresh on scan). Post-launch.
+- verified-history / analytics / `arena_level_records` repo-migration realignment / EN T3.
+
+---
+
 ## D-4 — arena_level_records DRIFT · RESOLVED DB-SIDE (column-name mismatch, no repo commit)
 
 **Status:** RESOLVED DB-side (runtime green); repo-migration realignment deferred · **Date:** 2026-05-29 (D-4) · **Class:** DB-only Commander SQL hotfix (no code commit, no redeploy) · **Launch:** 2026-06-02 (D-0)
