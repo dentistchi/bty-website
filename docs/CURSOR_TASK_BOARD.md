@@ -41,6 +41,35 @@ Commander-confirmed order. Item 1 closed 2026-05-17; items 2–6 are forward-pla
 
 ---
 
+## D-4 — QR VERIFICATION SESSION 안2-A (SURFACE) + 안2-A2 (PLACEMENT) · CLOSED (single-QR normalized)
+
+**Status:** CLOSED (안2-A + 안2-A2) · **Date:** 2026-05-29 (D-4) · **Class:** code mutation (2 lib/UI files + 1 test), inner + outer published + deployed · **Launch:** 2026-06-02 (D-0)
+**Header:** [D-4 안2-A SURFACE + 안2-A2 PLACEMENT CLOSE 2026-05-29] Canonical submitted contracts now surface on the awaiting card (resurrecting the 안1 Complete-by-QR button); QR panel hoisted under the button + auto-scroll. 안2-A inner `ec360b6c`/outer `559fb9e`; 안2-A2 inner `4cd22ca4`/outer `8c4ee32`; Cloudflare active `44751b0b-6ad7-4ddf-aff2-2102d94c8385`.
+
+**What shipped:**
+- **안2-A surface fix** (`openActionContractForMyPage.ts`, 2 lines): awaiting select + expiry sub-branch `.eq(status,approved)` → `.in(status,[approved,submitted])`. Gate (`validation_approved_at` not null, `verified_at` null) preserved; terminal query untouched; display unchanged. + regression test (3 cases).
+- **안2-A2 placement fix** (`MyPageLeadershipConsole.tsx`, +16/-8): hoist `ActionLoopQrPanel` to directly under `ActionContractHub` (wrapped in ref) + `useEffect` `scrollIntoView` on open (optional-chained for jsdom safety). Sibling order + mint/validate/panel logic unchanged.
+
+**Root cause (안2-A):** submit-validation canonical path → `status=submitted`+validation_approved+unverified; awaiting query matched `approved` only → submitted invisible → stale terminal "Execution recorded/Next scenario unlocked" surfaced + 안1 button inert.
+
+**Verify (Claude-verified):** `tsc --noEmit` exit 0; vitest 3395 passed / 0 failed / 6 skipped (+3 regression).
+
+**Probe (Commander-verified):** awaiting card + "Complete by QR" shows (안2-A); click → QR under button + auto-scroll (안2-A2); stale "Execution recorded" removed.
+
+**Corrections recorded:**
+- `action_completed` = canonical QR-eligible type (~all arena contracts); button gate reads `verification_mode`="hybrid" → not a type mismatch. The "hide QR for action_completed" direction was wrong (would break QR flow) — avoided.
+- 안1 (awaiting-card QR button, `6ea159e7`/`8416ba48`) was inert alone (awaiting query dropped `submitted`); 안2-A makes it effective.
+
+**Closure verdict:** 안2-A + 안2-A2 CLOSE.
+
+**Carry-forward:**
+- **★ 안2-B multi-QR session surface** [Commander launch target] — plural unverified-QR list + personal/manager (`verification_tier`) split + per-item QR. New plural fetch + state-route field + list component.
+- **★ #1 scan-confirmation UI** — logged-out scanner validate-result block; bundle with 안2-B.
+- **★ `arena_level_records.last_band_change_at` drift** — qr/validate level update runtime fail (verify/run-done OK); migration-first.
+- EN T3 (28일 train body KO, score.ts, root layout lang, not-found, train/28days, auth callback:168).
+
+---
+
 ## D-4 — QR RE-EXPOSURE 안1 + P1 FULL-LOOP · CLOSED (post-approve re-exposure + external-scan closure)
 
 **Status:** CLOSED (안1 + P1 동시) · **Date:** 2026-05-29 (D-4) · **Class:** code mutation (1 UI file, additive), inner + outer published + deployed · **Launch:** 2026-06-02 (D-0)

@@ -1,3 +1,27 @@
+## QR Verification Session 안2-A (surface) + 안2-A2 (placement) — CLOSED (single-QR normalized) (D-4 · 2026-05-29)
+
+**Active head (D-4 / 2026-05-29):** 안2-A inner `ec360b6c` / outer `559fb9e`; 안2-A2 inner `4cd22ca4` / outer `8c4ee32` + this ledger commit. **Cloudflare Version:** `44751b0b-6ad7-4ddf-aff2-2102d94c8385` (active 100%, deployments-list cross-verified). **Working tree:** clean (both repos).
+
+**안2-A (surface bug)**: [x] **완료.** `openActionContractForMyPage` awaiting query + expiry sub-branch: `.eq("status","approved")` → `.in("status",["approved","submitted"])`. Canonical submit-validation leaves the contract at `status=submitted` + `validation_approved_at` set + `verified_at` null, but the awaiting query matched `approved` only → the submitted contract was invisible → an older verified contract surfaced via the terminal query as **"Execution recorded / Next scenario unlocked"** (stale) + the 안1 button was unreachable (inert). Gate preserved (`validation_approved_at` not null, `verified_at` null); terminal query untouched; `toDisplayState` unchanged. Regression test (3 cases: submitted surfaces over stale terminal / approved+verified still terminal / awaiting query-build assertion). **Claude-verified:** `tsc` 0, vitest 3395/0/6 (+3). inner `ec360b6c` / outer `559fb9e`.
+
+**안2-A2 (placement bug)**: [x] **완료.** `ActionLoopQrPanel` rendered 3 sections below the button (under `PostCompletionSheet`) → on mobile it appeared off-fold → "QR 안 나옴" perception **though mint returned 200** (tail-confirmed). Hoisted the panel directly under `ActionContractHub` + `useEffect` `scrollIntoView` on `qrPanelOpen` open (optional-chained `?.scrollIntoView?.()` for jsdom/absent-method safety). Sibling order (PatternSignature/secure-link/PostCompletionSheet) preserved; mint/validate/panel logic + state wiring unchanged. **Claude-verified:** `tsc` 0, vitest 3395/0/6. inner `4cd22ca4` / outer `8c4ee32`.
+
+**Probe GREEN (Commander):** awaiting card "AWAITING VERIFICATION" + "Complete by QR" button shows (안2-A) → click → QR appears directly under the button + auto-scrolls into view (안2-A2); stale "Execution recorded" gone.
+
+**Closure 판정:** 안2-A + 안2-A2 CLOSE (single-QR flow normalized).
+
+**Re-evaluation / corrections:**
+- **`action_completed` red-herring resolved:** `verification_type="action_completed"` is the **canonical QR-eligible** type for ~all arena contracts (paired `verification_mode="hybrid"`). The button gate reads `verification_mode` (hard-set "hybrid") → passes — **not** a type mismatch. Hiding QR for `action_completed` would have broken the entire QR flow (wrong direction, avoided).
+- **안1 re-evaluated as inert-until-안2-A:** the 안1 awaiting-card QR button (`6ea159e7`, deployed `8416ba48`) was unreachable on its own because the awaiting query dropped `submitted` contracts; 안2-A is what surfaces the card and makes 안1 effective. 안1-alone deploy had no runtime effect.
+
+**Carry-forward (updated):**
+- **★ 안2-B (multi-QR session surface)** [Commander launch target] — My Page list of multiple unverified QRs + personal/manager split (`verification_tier`: mvp_open/manager_only) + per-item action_text/deadline/source + per-item QR. New plural fetch + state-route field + list component.
+- **★ #1 scan-confirmation UI** — logged-out scanner my-page landing needs a validate-result block (✓verified / already / failed). Same console/lifecycle as 안2-B → bundle recommended.
+- **★ `arena_level_records.last_band_change_at` column drift** — `qr/validate` level update fails at runtime (verify/run-done succeed). Migration-first.
+- EN T3 (28일 train body KO, score.ts domain KO, root layout lang, not-found, train/28days, auth callback:168).
+
+---
+
 ## QR Re-exposure 안1 + P1 Full-Loop — CLOSED (post-approve re-exposure + external-scan closure) (D-4 · 2026-05-29)
 
 **Active head (D-4 / 2026-05-29):** inner `6ea159e7` (안1 STEP 1 atomic 1-file, parent `c11ee4b8`, pushed origin/inner-main) · outer `53062f8` (mirror, parent `5436efe`, pushed origin/main) + this ledger commit. **Cloudflare Version:** `8416ba48-5256-454a-bd36-a0875cc9e603` (active deployment, Claude-read via `wrangler deployments list`; supersedes Scanner `fc03cbb5`). **Working tree:** clean (both repos).
