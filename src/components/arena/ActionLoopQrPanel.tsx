@@ -23,10 +23,7 @@ export function ActionLoopQrPanel({ url, onDismiss, locale }: ActionLoopQrPanelP
         fgColor="#1a1a1a"
         level="M"
       />
-      <pre
-        data-testid="qr-debug-value"
-        className="max-w-full overflow-x-auto whitespace-pre-wrap break-all rounded-md bg-black/5 px-2 py-1 text-[11px] text-black/70 dark:bg-white/10 dark:text-white/70"
-      >
+      <pre data-testid="qr-debug-value" className="sr-only">
         {url}
       </pre>
       <button
