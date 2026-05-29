@@ -24,6 +24,9 @@ export type MyPageOpenActionContractUi = {
     | "completed";
   completion_method: "qr" | "link" | null;
   completed_at?: string;
+  /** 안2-B plural list only; undefined for the singular hub contract. */
+  verification_tier?: string | null;
+  source?: string | null;
 };
 
 function asVerificationMode(v: string | null | undefined): BtyActionContractVerificationMode {
@@ -177,4 +180,57 @@ export async function fetchOpenActionContractForMyPage(
     completion_method: asCompletionMethod(row.completion_method as string),
     completed_at: row.completed_at != null ? String(row.completed_at) : undefined,
   };
+}
+
+/**
+ * 안2-B: all awaiting-verification contracts for a user (plural; owner QR session list).
+ * status approved|submitted + validation_approved_at set + verified_at null. No limit.
+ * Additive sibling to {@link fetchOpenActionContractForMyPage} (singular); does not alter it.
+ * Read-only: past-deadline rows are filtered out in JS (no inline status mutation here).
+ */
+export async function fetchAwaitingVerificationContractsForMyPage(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<MyPageOpenActionContractUi[]> {
+  const nowMs = Date.now();
+  const { data, error } = await supabase
+    .from("bty_action_contracts")
+    .select(
+      "id, contract_description, deadline_at, verification_mode, verification_type, verification_tier, status, session_id, run_id, arena_scenario_id, source, validation_approved_at, verified_at",
+    )
+    .eq("user_id", userId)
+    .in("status", ["approved", "submitted"])
+    .not("validation_approved_at", "is", null)
+    .is("verified_at", null)
+    .order("deadline_at", { ascending: false });
+
+  if (error || !data) return [];
+
+  return (data as Array<Record<string, unknown>>)
+    .filter((row) => {
+      const deadlineMs = Date.parse(String(row.deadline_at ?? ""));
+      return Number.isFinite(deadlineMs) && deadlineMs > nowMs;
+    })
+    .map((row) => {
+      const display_state = toDisplayState(
+        String(row.status ?? "submitted") as BtyActionContractStatus,
+        false,
+        {
+          validationApprovedAt:
+            row.validation_approved_at != null ? String(row.validation_approved_at) : null,
+          verifiedAt: row.verified_at != null ? String(row.verified_at) : null,
+        },
+      ) as MyPageOpenActionContractUi["display_state"];
+      return {
+        id: String(row.id),
+        session_id: row.session_id != null ? String(row.session_id) : null,
+        action_text: String(row.contract_description ?? ""),
+        deadline_at: String(row.deadline_at),
+        verification_type: asVerificationMode(row.verification_mode as string),
+        display_state,
+        completion_method: null,
+        verification_tier: row.verification_tier != null ? String(row.verification_tier) : null,
+        source: row.source != null ? String(row.source) : null,
+      } satisfies MyPageOpenActionContractUi;
+    });
 }

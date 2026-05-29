@@ -1890,6 +1890,12 @@ export type Messages = {
     expiredShort: string;
     completeByQrLink: string;
     dismiss: string;
+    awaitingListTitle: string;
+    tierPersonal: string;
+    tierManager: string;
+    scanVerified: string;
+    scanAlready: string;
+    scanFailed: string;
   };
   legal: {
     accept: {
@@ -3582,6 +3588,12 @@ const ko: Messages = {
     expiredShort: "만료됨",
     completeByQrLink: "아래 링크로 완료하세요 (복사해 사용할 수 있습니다).",
     dismiss: "닫기",
+    awaitingListTitle: "QR 인증 대기 중인 실행",
+    tierPersonal: "개인",
+    tierManager: "매니저",
+    scanVerified: "✓ 인증이 완료되었습니다.",
+    scanAlready: "이미 인증된 실행입니다.",
+    scanFailed: "인증에 실패했습니다. 다시 시도해 주세요.",
   },
   legal: {
     accept: {
@@ -5276,6 +5288,12 @@ const en: Messages = {
     expiredShort: "expired",
     completeByQrLink: "Complete using the link below (copy as needed).",
     dismiss: "Close",
+    awaitingListTitle: "Actions awaiting QR verification",
+    tierPersonal: "Personal",
+    tierManager: "Manager",
+    scanVerified: "✓ Verification complete.",
+    scanAlready: "This action is already verified.",
+    scanFailed: "Verification failed. Please try again.",
   },
   legal: {
     accept: {
