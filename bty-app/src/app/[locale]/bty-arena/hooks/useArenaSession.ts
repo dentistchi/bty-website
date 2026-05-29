@@ -594,6 +594,8 @@ export function useArenaSession(_pipelineFromServer?: ArenaPipelineDefault) {
   const [resetRunLoading, setResetRunLoading] = React.useState(false);
   const [reexposureEnterLoading, setReexposureEnterLoading] = React.useState(false);
   const [pendingContractQrLoading, setPendingContractQrLoading] = React.useState(false);
+  const [pendingContractQrUrl, setPendingContractQrUrl] = React.useState<string | null>(null);
+  const [pendingContractQrOpen, setPendingContractQrOpen] = React.useState(false);
   const [playContext, setPlayContext] = React.useState<ArenaPlayContext>("normal");
   /** Set when entering re-exposure play from `REEXPOSURE_DUE`; consumed after POST `/api/arena/re-exposure/validate`. */
   const reexposurePendingOutcomeIdRef = React.useRef<string | null>(null);
@@ -2119,7 +2121,8 @@ const eb =
         setToast(t.eliteRunStepAdvanceError);
         return;
       }
-      window.location.assign(json.url);
+      setPendingContractQrUrl(json.url);
+      setPendingContractQrOpen(true);
     } catch (e) {
       console.warn("[arena][pending-contract-qr] token request failed", e);
       setToast(t.eliteRunStepAdvanceError);
@@ -2483,6 +2486,9 @@ const eb =
     recoverStaleReexposureShell,
     startPendingContractQrFlow,
     pendingContractQrLoading,
+    pendingContractQrUrl,
+    pendingContractQrOpen,
+    setPendingContractQrOpen,
     actionTerminalCompletion,
     setActionTerminalCompletion,
     clearPendingContractAndReload,

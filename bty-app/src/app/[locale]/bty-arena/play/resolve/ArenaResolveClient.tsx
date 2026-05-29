@@ -13,6 +13,7 @@ import {
   ArenaRankingSidebar,
   ArenaRunHistory,
 } from "@/components/bty-arena";
+import { ActionLoopQrPanel } from "@/components/arena/ActionLoopQrPanel";
 import ScreenShell from "@/components/bty/layout/ScreenShell";
 import { arenaEntryHrefForDestination } from "@/lib/bty/arena/arenaRuntimeDestination";
 import { useArenaSession } from "../../hooks/useArenaSession";
@@ -201,18 +202,27 @@ export default function ArenaResolveClient({ locale }: Props) {
                     />
                   </>
                 ) : (
-                  <ArenaPendingContractGate
-                    locale={locale}
-                    contract={s.pendingActionContract}
-                    runtimeState={
-                      validationApproved ? "ACTION_AWAITING_VERIFICATION" : runtimeState
-                    }
-                    onRetry={s.retryArenaSession}
-                    retryLoading={s.scenarioLoading}
-                    qrAllowed={gateSnapshot.gates?.qr_allowed === true}
-                    onCompleteByQr={s.startPendingContractQrFlow}
-                    qrLoading={s.pendingContractQrLoading}
-                  />
+                  <>
+                    <ArenaPendingContractGate
+                      locale={locale}
+                      contract={s.pendingActionContract}
+                      runtimeState={
+                        validationApproved ? "ACTION_AWAITING_VERIFICATION" : runtimeState
+                      }
+                      onRetry={s.retryArenaSession}
+                      retryLoading={s.scenarioLoading}
+                      qrAllowed={gateSnapshot.gates?.qr_allowed === true}
+                      onCompleteByQr={s.startPendingContractQrFlow}
+                      qrLoading={s.pendingContractQrLoading}
+                    />
+                    {s.pendingContractQrOpen && s.pendingContractQrUrl ? (
+                      <ActionLoopQrPanel
+                        url={s.pendingContractQrUrl}
+                        onDismiss={() => s.setPendingContractQrOpen(false)}
+                        locale={locale}
+                      />
+                    ) : null}
+                  </>
                 )
               ) : (
                 <ArenaBlockedSurface

@@ -32,6 +32,10 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/en/bty-arena/play/resolve",
 }));
 
+vi.mock("qrcode.react", () => ({
+  QRCodeSVG: ({ value }: { value: string }) => <div data-testid="qr-code-mock" data-value={value} />,
+}));
+
 import ArenaResolveClient from "./ArenaResolveClient";
 
 function baseSnapshot(rs: ArenaSessionRouterSnapshot["runtime_state"]): ArenaSessionRouterSnapshot {
@@ -74,6 +78,9 @@ function sessionBase() {
     retryArenaSession: noop,
     startPendingContractQrFlow: noop,
     pendingContractQrLoading: false,
+    pendingContractQrUrl: null as string | null,
+    pendingContractQrOpen: false,
+    setPendingContractQrOpen: noop,
     toast: null as string | null,
     arenaServerSnapshot: null as ArenaSessionRouterSnapshot | null,
     effectiveArenaSnapshot: null as ArenaSessionRouterSnapshot | null,
@@ -198,5 +205,54 @@ describe("ArenaResolveClient — hydration / loading", () => {
     render(<ArenaResolveClient locale="en" />);
     expect(screen.getByTestId("arena-resolve-loading")).toBeTruthy();
     expect(mockRouterReplace).not.toHaveBeenCalled();
+  });
+});
+
+describe("ArenaResolveClient — QR panel (Client QR Render Fix)", () => {
+  const QR_URL =
+    "https://bty-arena-staging.ywamer2022.workers.dev/en/my-page?arena_action_loop=commit&aalo=tok-1";
+
+  it("renders ActionLoopQrPanel when pendingContractQrOpen and url are set", () => {
+    mockUseArenaSession.mockReturnValue({
+      ...sessionBase(),
+      arenaServerSnapshot: baseSnapshot("ACTION_SUBMITTED"),
+      pendingContractQrOpen: true,
+      pendingContractQrUrl: QR_URL,
+    });
+    render(<ArenaResolveClient locale="en" />);
+    expect(screen.getByTestId("qr-debug-value").textContent).toContain(QR_URL);
+    expect(screen.getByTestId("qr-code-mock").getAttribute("data-value")).toBe(QR_URL);
+  });
+
+  it("does not render the QR panel when pendingContractQrOpen is false", () => {
+    mockUseArenaSession.mockReturnValue({
+      ...sessionBase(),
+      arenaServerSnapshot: baseSnapshot("ACTION_SUBMITTED"),
+      pendingContractQrOpen: false,
+      pendingContractQrUrl: QR_URL,
+    });
+    render(<ArenaResolveClient locale="en" />);
+    expect(screen.queryByTestId("qr-debug-value")).toBeNull();
+  });
+
+  it("rendering the QR panel does not navigate or auto-POST to qr/validate (render is not commit)", () => {
+    const fetchSpy = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchSpy);
+    mockUseArenaSession.mockReturnValue({
+      ...sessionBase(),
+      arenaServerSnapshot: baseSnapshot("ACTION_SUBMITTED"),
+      pendingContractQrOpen: true,
+      pendingContractQrUrl: QR_URL,
+    });
+    render(<ArenaResolveClient locale="en" />);
+    expect(screen.getByTestId("qr-debug-value")).toBeTruthy();
+    // The QR panel is pure render: it must NOT trigger the commit POST. Other
+    // mount-time data fetches (leaderboard / next-session) are unrelated and allowed.
+    const postedToValidate = fetchSpy.mock.calls.some(
+      ([input]) => typeof input === "string" && input.includes("/qr/validate"),
+    );
+    expect(postedToValidate).toBe(false);
+    expect(mockRouterReplace).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 });
