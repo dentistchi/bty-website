@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useTrain } from "@/contexts/TrainContext";
 import { getMessages } from "@/lib/i18n";
 
-import TRAIN_EN from "@/content/train-28days.en.json";
+import TRAIN_BILINGUAL from "@/content/train-28days.en-base.json";
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
@@ -145,10 +145,15 @@ export default function TrainDayPage() {
     generateCompletionSummary,
   } = useTrain();
 
-  const lesson = (TRAIN_EN as Record<string, { raw?: string; title?: string; sections?: Record<string, string>; date?: string }>)?.[String(day)];
+  type LocStr = { en?: string; ko?: string };
+  type BiDay = { day?: number; sourceDate?: string; title?: LocStr; sections?: Record<string, LocStr>; raw?: LocStr };
+  const pick = (x?: LocStr): string => x?.[locale] ?? x?.en ?? x?.ko ?? "";
+  const lesson = (TRAIN_BILINGUAL as { days: Record<string, BiDay> }).days?.[String(day)];
+  const lessonTitle = pick(lesson?.title);
+  const lessonDate = lesson?.sourceDate ?? "";
   const lessonText =
-    lesson?.raw ||
-    [lesson?.title, ...Object.entries(lesson?.sections ?? {}).map(([k, v]) => `${k}\n${v}`)].join("\n\n");
+    pick(lesson?.raw) ||
+    [lessonTitle, ...Object.entries(lesson?.sections ?? {}).map(([k, v]) => `${k}\n${pick(v)}`)].join("\n\n");
 
   const isUnlocked = day <= (progress?.todayUnlockedDay ?? 1);
   const isCompleted = (progress?.completedDays ?? []).includes(day);
@@ -211,9 +216,9 @@ export default function TrainDayPage() {
 
       {/* CENTER: Lesson */}
       <main style={{ padding: 24, overflow: "auto" }} aria-label={t.lessonLabel}>
-        <div style={{ opacity: 0.6, marginBottom: 6 }}>{lesson?.date ?? ""}</div>
+        <div style={{ opacity: 0.6, marginBottom: 6 }}>{lessonDate}</div>
         <h1 style={{ margin: 0, marginBottom: 8 }}>Day {day}</h1>
-        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 18 }}>{lesson?.title ?? ""}</div>
+        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 18 }}>{lessonTitle}</div>
 
         {!isUnlocked && (
           <div style={{ padding: 14, border: "1px solid #eee", borderRadius: 12, marginBottom: 18 }} role="status" aria-label={t.lockedLabel}>

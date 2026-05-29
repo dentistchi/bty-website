@@ -1,3 +1,23 @@
+## EN T3 — 28-day train body wired to bilingual EN/KO source (locale pick) — CLOSED (D-4 · 2026-05-29)
+
+**Active head (D-4 / 2026-05-29):** inner `8584bca3` (parent `702a9e3d`) · outer (this ledger commit, parent `1bdd5d5`). **Cloudflare Version:** last known `5d0624d9-701e-401b-84cd-4842295395cb` UNCHANGED — **deploy deferred (B)**; no deploy executed for this lane, so this change ships with the next deploy. **Working tree:** clean after commit (both repos).
+
+**EN T3 (train body)**: [x] **완료 (코드, 배포 보류).** Symptom: EN launch but `/[locale]/train/day/[day]` lesson body rendered entirely in Korean (buttons/labels were EN via i18n; only the lesson body leaked KO). **Root cause:** `page.client.tsx:8` imported flat `@/content/train-28days.en.json` (filename-only EN; payload all-KO, md5-identical to the KO base `train-28days.json`), and `:148` looked it up locale-agnostically (`raw: string`, no `{en,ko}`, no locale branch). A v2 bilingual source existed (`content/train-28days.en-base.json`, `{meta, days{title/sections/raw: {en,ko}}}`) but was an orphan — the resolver `getDayContent` (reads the `data/` copy) had zero consumers. Cursor had populated 28-day EN translations into `content/train-28days.en-base.json` (en field), ko preserved — verified 28/28 genuine EN. **Fix (2 files, +211/-206):** (1) `content/train-28days.en-base.json` — 28-day EN translations (Cursor-authored, in-place; ko preserved). (2) `page.client.tsx` — import `@/content/train-28days.en-base.json`; add `LocStr`/`BiDay` types + `pick(x)=x[locale]??x.en??x.ko`; resolve title/raw/sections by locale; `date`←`sourceDate`. Now `/en` renders English, `/ko` renders Korean (new locale branch for lesson body). **Claude-verified:** `tsc` 0, `npm run lint` 0, vitest 3400/0/6 (no regression). inner `8584bca3`.
+
+**Cleanup:** removed orphan duplicate `src/data/train-28days. bilingual.json` (untracked, literal-space filename, byte-identical EN to `content/en-base.json`; never imported).
+
+**Deploy decision (B):** not deployed standalone. `702a9e3d..8584bca3` = this train commit only; ships with next deploy bundle. `.env.local` dev-vars already all-commented (no pre-deploy edit needed). worker `5d0624d9` unchanged.
+
+**Closure 판정:** EN T3 train-body CLOSE (code green, deploy deferred).
+
+**Carry-forward (updated):**
+- **★ Deploy** EN train body with next bundle — `.env.local` dev-vars already commented; standard cf:build→wrangler→3-way verify.
+- Orphan/legacy cleanup [post-launch, after import verification]: `data/train-28days.en-base.json` + `getDayContent`/`trainContent.ts` dead path + `content/train-28days.en.json` + possible KO base cleanup if no active import remains.
+- EN T3 나머지: score.ts domain KO (domain-purity), root layout `lang="ko"` SSR default, not-found.tsx KO, train/28days hub KO, auth callback:168, app/page.client.tsx /app nav KO.
+- (carry from prior) Manager QR issuance, Owner realtime ✓, arena_level_records repo-migration realignment, verified-history/analytics.
+
+---
+
 ## QR Verification Session 안2-B (multi-QR list, dormant-by-data) + #1 (scanner banner, active) — CLOSED (D-4 · 2026-05-29)
 
 **Active head (D-4 / 2026-05-29):** inner `702a9e3d` (parent `4cd22ca4`) · outer `b3479b8` (parent `32298aa`) + this ledger commit. **Cloudflare Version:** `5d0624d9-701e-401b-84cd-4842295395cb` (active 100%, deployments-list cross-verified). **Working tree:** clean (both repos).
