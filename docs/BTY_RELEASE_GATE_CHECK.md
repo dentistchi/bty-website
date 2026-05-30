@@ -5159,3 +5159,20 @@ es |
   prod 도메인 향해 로컬 logged-in 직접관측 불가.
 - out-of-scope: lint:eslint ajv defaultMeta error pre-existing, A1 무관.
 - inner 576f43b3 / outer (this commit).
+
+
+---
+
+**[B DEPLOY · train EN body + A1 · 5d0624d9→8b698d79]** (2026-05-30)
+- Deploy: npm run cf:deploy (deploy-only, no rebuild — STEP1 dev-endpoint
+  gated bundle shipped verbatim). worker-only (no migration). bindings preserved.
+- Pre-deploy gates: build exit 0; .env/.env.local dev-vars all commented;
+  .open-next bundle scan — only pre-existing admin-route localhost fallback
+  (carry-forward, not in delta). delta = train+A1, 4 files.
+- 3-way: (1) 8b698d79 active 100% (2) inner 576f43b3 (3) live SSR.
+- CLAUDE-VERIFIED (live curl): A1 SSR lang per-locale correct; auth redirect
+  +next= unchanged.
+- COMMANDER-CONFIRMED (logged-in browser/screenshot): /en/train logged-in
+  EN render + A1 protected-page lang=en. closes both prior A1/train deferrals.
+- Carry-forward: admin/quality route localhost:4000 fallback (pre-existing,
+  not in delta); /api/version static BTY_DEPLOY_VERSION not bumped per deploy.

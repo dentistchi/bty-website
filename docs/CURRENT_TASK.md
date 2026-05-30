@@ -1,3 +1,29 @@
+## B Deploy — train EN body + A1 LIVE — CLOSED (날짜 2026-05-30)
+- 배포: cf:deploy (deploy-only, STEP1-gated 번들 그대로, 재빌드 없음).
+  Worker 5d0624d9 → 8b698d79-689d-4f94-945c-26b8d5a66a40 (active 100%).
+  rollback anchor: 5d0624d9.
+- 내용: train EN body(8584bca3) + A1 root <html lang>(576f43b3), 4파일.
+  migration 없음 (worker-only deploy). binding drift 없음.
+- 3-way verify: (1) active version 8b698d79 (deployments+versions list 일치)
+  (2) git HEAD inner 576f43b3/outer 243a214 (3) 런타임 SSR 실측.
+- A1 LIVE-VERIFIED: /ko→lang=ko, /en→lang=en, protected logged-out 307→
+  locale-correct login(en), 양방향 cross-check. logged-in /en/train 화면
+  EN 확인(스크린샷) → A1 deferred(logged-in SSR lang) CLOSED.
+- train EN body LIVE: logged-in /en/train/day/1 본문 EN 확인(스크린샷,
+  "Start Noticing Self-Criticism" 등). curl은 auth-gate라 inconclusive였으나
+  logged-in 화면으로 직접 확인.
+- auth smoke: logged-out redirect+next= 보존 불변, 회귀 없음.
+- carry-forward:
+  · src/app/api/admin/quality/[[...path]]/route.ts:6 — NEXT_PUBLIC_BTY_AI_URL
+    || "http://localhost:4000" source fallback. admin-only RBAC, fa0b86d6부터
+    live, train+A1 delta 무관. prod 실호출 여부 확인 후 hardening/제거 검토.
+  · /api/version이 배포 시 BTY_DEPLOY_VERSION/BUILD_TIME(2026-04-27 static)
+    안 bump → single live-state signal 신뢰 불가 invariant 재확인. SSR 거동이
+    진짜 런타임 증거. 배포 버전 echo하도록 개선 검토(post).
+- 발표 수요일 연기 → D-freeze 압박 해제.
+
+---
+
 ## A1 root <html lang> SSR locale — CLOSED (D-4 · 2026-05-29)
 - 증상: root layout이 SSR HTML에 lang="ko" 하드코딩. /en도 hydration 전까지
   lang="ko" → SEO/크롤러/스크린리더 pre-hydration KO 오인. SetLocale client
