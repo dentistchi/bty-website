@@ -39,7 +39,7 @@ export default function TrainSidebar({
     setBusy(true);
     setToast(null);
     try {
-      const r = await fetchJson<{ ok?: boolean; error?: string }>("/api/train/complete", {
+      const r = await fetchJson<{ ok?: boolean; error?: string }>("/api/train/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ day: currentDay }),
