@@ -1,3 +1,36 @@
+## assessment 50문항 게이트 (race + 미완제출 + 4xx 노출) — CLOSED (2026-05-30)
+- 증상: 50문항 자존감 진단 제출이 "answers_count_mismatch: expected 50, got 31"
+  400으로 거부 → "No result found / Go to assessment" fallback. 28일 train은
+  이 진단 통과 후 진입하는 게이트라, 진단 실패 시 train day(mark-complete)까지
+  도달 불가. (train mark-complete 코드는 assessment와 독립 — 별개 게이트 문제.)
+- 근본원인(L2-0 진단):
+  · race(B): AssessmentClient 옵션 onClick auto-advance setTimeout(280ms) +
+    bottom Next + goPrev 세 nav 경로가 advance 가드 없음 → 빠른/중복 클릭 시
+    setCurrentIndex 다중 큐잉 → 문항 skip → 미답 → answeredCount<50.
+    회귀 아님(a746c07a부터 잠재, 타이밍 의존). 데이터 정상(en/ko 둘 다 50).
+  · 미완제출(A): canSubmit(answeredCount===total) 계산되나 미사용(dead code).
+    submit 버튼 disabled={!canGoNext}로 현재 문항만 확인 → 미완 payload 서버 도달.
+  · silent(C): res.ok 실패해도 무조건 result push → 무효 데이터 client 오결과.
+- 수정(코드 1파일 AssessmentClient.tsx, 서버 strict-50 보존):
+  · B: 세 nav 경로 단일 autoAdvanceTimeoutRef 공유·상호 clear + unmount cleanup
+    → pending advance 최대 1개, skip 구조적 불가.
+  · A: 버튼 disabled isLast 분기(!canSubmit) + handler answeredCount!==total
+    가드(서버 호출 전) + N/total 미완 안내.
+  · C: 4xx(validation 거부)는 push 차단 + submitError alert(mismatch 친화 안내).
+    5xx/network는 의도된 오프라인 client 채점 fallback 보존(result/ResultClient
+    client-side scoring) — push 유지.
+- test: AssessmentClient.test.tsx 신규 5케이스(완주/race/미완/4xx/5xx-fallback).
+  race 가드(B)와 5xx fallback 보존(C)이 회귀 lock.
+- 검증: tsc 0 / lint 0 / vitest 3398/0/6 (3393 +5 신규).
+- 효과: 정상 사용자 50문항 완주→제출 / 빠른클릭 skip 불가 / 미완 submit 차단+안내
+  / 4xx 노출 / 5xx fallback 보존.
+- 배포: 코드 inner 8bfe4588. deploy 별도(다음).
+- carry-forward: (이전) train_day_completions CREATE TABLE drift / CoachChatPane
+  non-contiguous semantic. (신규 없음 — 이 lane은 단일 파일 클로즈.)
+- inner 8bfe4588 / outer <이 커밋>.
+
+---
+
 ## 28일 train day-completion 루프 수정 — CLOSED (2026-05-30)
 - 증상: /train/day/[day]에서 "Mark today as complete" 눌러도 무반응,
   완료 피드백/완료표시 없음. "Completion summary: No summary yet" 유지.

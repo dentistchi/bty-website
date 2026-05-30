@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import HubTopNav from "@/components/bty/HubTopNav";
 import { getMessages } from "@/lib/i18n";
@@ -25,9 +25,17 @@ export default function AssessmentClient({
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const autoAdvanceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const total = questions.length;
   const isEn = locale === "en";
   const likertLabels = isEn ? LIKERT_EN : LIKERT_KO;
+
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
+    };
+  }, []);
 
   const currentQuestion = questions[currentIndex];
   const currentAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
@@ -41,16 +49,27 @@ export default function AssessmentClient({
   }
 
   function goPrev() {
+    if (autoAdvanceTimeoutRef.current) {
+      clearTimeout(autoAdvanceTimeoutRef.current);
+      autoAdvanceTimeoutRef.current = null;
+    }
     if (currentIndex > 0) setCurrentIndex((i) => i - 1);
   }
 
   async function goNext() {
     if (!canGoNext || submitting) return;
+    if (autoAdvanceTimeoutRef.current) {
+      clearTimeout(autoAdvanceTimeoutRef.current);
+      autoAdvanceTimeoutRef.current = null;
+    }
     if (isLast) {
+      // 2겹 방어: UI disabled 우회/race 대비 — 미완이면 서버 호출 안 함.
+      if (answeredCount !== total) return;
       const finalAnswers = { ...answers, [currentQuestion.id]: currentAnswer };
       sessionStorage.setItem("assessment.answers.v1", JSON.stringify(finalAnswers));
 
       setSubmitting(true);
+      setSubmitError(null);
       try {
         const res = await fetch("/api/assessment/submit", {
           method: "POST",
@@ -60,9 +79,29 @@ export default function AssessmentClient({
         if (res.ok) {
           const data = await res.json();
           sessionStorage.setItem("assessment.result.v1", JSON.stringify(data));
+        } else if (res.status >= 400 && res.status < 500) {
+          // 4xx: validation 거부 (answers_count_mismatch 등). 무효 데이터로 client
+          // 오결과를 silent 표시하지 않도록 push 차단 + 원인 안내.
+          let serverMsg: string | null = null;
+          try {
+            serverMsg = ((await res.json()) as { error?: string })?.error ?? null;
+          } catch { /* body 파싱 실패 — 일반 메시지로 */ }
+          setSubmitError(
+            serverMsg?.includes("answers_count_mismatch")
+              ? isEn
+                ? `Please answer all ${total} questions before submitting (${answeredCount}/${total}).`
+                : `제출 전 ${total}문항을 모두 답해 주세요 (${answeredCount}/${total}).`
+              : isEn
+                ? "Submission could not be validated. Please try again."
+                : "제출 검증에 실패했어요. 다시 시도해 주세요."
+          );
+          setSubmitting(false);
+          return; // 4xx만 push 차단. 5xx/network는 아래 기존 fallback 유지.
         }
+        // 5xx (res.ok=false & status>=500)는 위 4xx 분기에 안 걸림 → 아래 push로
+        // 진행 → result 페이지가 answers.v1 client-side 채점(기존 오프라인 fallback).
       } catch {
-        // API 실패 시 sessionStorage fallback (기존 로직으로 결과 계산)
+        // 네트워크 실패 → 기존 fallback (result 페이지 client 채점) 유지.
       } finally {
         setSubmitting(false);
       }
@@ -141,7 +180,11 @@ export default function AssessmentClient({
               onClick={() => {
                 setAnswer(currentQuestion.id, v);
                 if (!isLast) {
-                  setTimeout(() => setCurrentIndex((i) => i + 1), 280);
+                  if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
+                  autoAdvanceTimeoutRef.current = setTimeout(() => {
+                    setCurrentIndex((i) => i + 1);
+                    autoAdvanceTimeoutRef.current = null;
+                  }, 280);
                 }
               }}
               aria-label={likertLabels[v - 1]}
@@ -171,7 +214,7 @@ export default function AssessmentClient({
         <button
           type="button"
           onClick={goNext}
-          disabled={!canGoNext || submitting}
+          disabled={(isLast ? !canSubmit : !canGoNext) || submitting}
           className="rounded-xl px-5 py-2.5 font-medium bg-[var(--arena-accent)] text-white disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
           aria-label={isLast ? (isEn ? "See result" : "결과 보기") : isEn ? "Next question" : "다음 문항"}
         >
@@ -180,6 +223,18 @@ export default function AssessmentClient({
       </div>
       {submitting && (
         <p className="mt-3 text-xs text-center text-[var(--arena-text-soft)]" role="status" aria-live="polite" aria-label={isEn ? "Submitting assessment" : "진단 제출 중"}>{isEn ? "Submitting…" : "제출 중…"}</p>
+      )}
+      {isLast && !canSubmit && !submitting && (
+        <p className="mt-3 text-xs text-center text-[var(--arena-text-soft)]" role="status" aria-live="polite">
+          {isEn
+            ? `Answer all ${total} questions to see your result (${answeredCount}/${total} answered).`
+            : `결과를 보려면 ${total}문항을 모두 답해 주세요 (${answeredCount}/${total} 완료).`}
+        </p>
+      )}
+      {submitError && !submitting && (
+        <p className="mt-3 text-xs text-center text-red-600" role="alert" aria-live="assertive">
+          {submitError}
+        </p>
       )}
 
       <p className="mt-6 text-xs text-center text-[var(--arena-text-soft)]" role="note" aria-label={isEn ? "Assessment note" : "진단 안내"}>
