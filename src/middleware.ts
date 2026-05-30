@@ -95,6 +95,8 @@ export async function middleware(req: NextRequest) {
   }
 
   const locale = getLocale(pathname);
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-locale", locale ?? "ko");
 
   /** Canonical Arena play is `/[locale]/bty-arena`; alias `/bty-arena/run` must not serve a cached shell without session/next. */
   if (
@@ -156,7 +158,7 @@ export async function middleware(req: NextRequest) {
     ) {
       return NextResponse.redirect(new URL(`/en${pathname}`, req.url), 307);
     }
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   if (pathname === `/${locale}/bty/logout`) {
@@ -180,7 +182,7 @@ export async function middleware(req: NextRequest) {
   // Authenticated user requesting login page → 302 to /bty (no cookie config change)
   if (locale && pathname === `/${locale}/bty/login` && hasSupabase) {
     try {
-      const resLogin = NextResponse.next();
+      const resLogin = NextResponse.next({ request: { headers: requestHeaders } });
       const supabase = createServerClient(url!, key!, {
         cookies: {
           getAll() {
@@ -221,7 +223,7 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  if (isPublicPath(pathname)) return NextResponse.next();
+  if (isPublicPath(pathname)) return NextResponse.next({ request: { headers: requestHeaders } });
 
   const isAaloPublicScan =
     /^\/(en|ko)\/my-page$/.test(pathname) &&
@@ -229,7 +231,7 @@ export async function middleware(req: NextRequest) {
     req.nextUrl.searchParams.has("aalo");
 
   if (isAaloPublicScan) {
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   // DEV ONLY: scenario runtime testing bypass
@@ -239,10 +241,10 @@ export async function middleware(req: NextRequest) {
     locale &&
     (pathname === `/${locale}/bty-arena` || pathname.startsWith(`/${locale}/bty-arena/`))
   ) {
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  const res = NextResponse.next();
+  const res = NextResponse.next({ request: { headers: requestHeaders } });
 
   if (!hasSupabase) {
     return res;

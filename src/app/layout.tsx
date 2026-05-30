@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Noto_Serif_KR } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SetLocale } from "@/components/SetLocale";
@@ -16,11 +17,12 @@ export const metadata: Metadata = {
   description: "자존감 회복실. 평가와 조언 없이, 심리적 안전과 자기 수용을 위한 공간.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const locale = (await headers()).get("x-locale") ?? "ko";
   return (
-    <html lang="ko">
+    <html lang={locale}>
       <body className={`font-sans antialiased min-h-screen ${notoSerifKr.variable}`}>
         <AuthProvider>
           <SetLocale />
