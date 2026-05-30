@@ -22,7 +22,7 @@ async function postJson(url: string, body: unknown) {
 
 function mapApiProgressToTrainProgress(json: Record<string, unknown>): TrainProgress {
   const lastCompletedDay = Number(json.lastCompletedDay ?? 0);
-  const completedDays = Array.from({ length: lastCompletedDay }, (_, i) => i + 1);
+  const completedDays = Array.isArray(json.completedDays) ? json.completedDays.map(Number) : [];
   const todayUnlockedDay = Number(json.unlockedMaxDay ?? 1);
   return {
     ok: true,
@@ -79,7 +79,7 @@ export default function TrainShell({ children }: { children: React.ReactNode }) 
     async (day: number) => {
       setShowCompletionSummary(true);
 
-      const { ok, json } = await postJson("/api/train/complete", { day });
+      const { ok, json } = await postJson("/api/train/completions", { day });
       if (!ok || !json?.ok) {
         await refreshProgress();
         return;

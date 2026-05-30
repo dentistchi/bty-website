@@ -50,6 +50,26 @@ describe("POST /api/train/completions", () => {
     expect(data.error).toBe("invalid day");
   });
 
+  it("returns 400 when day is not a number", async () => {
+    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+
+    const res = await POST(makeRequest({ day: "abc" }));
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.ok).toBe(false);
+    expect(data.error).toBe("invalid day");
+  });
+
+  it("returns 400 when day is out of range (29)", async () => {
+    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+
+    const res = await POST(makeRequest({ day: 29 }));
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.ok).toBe(false);
+    expect(data.error).toBe("invalid day");
+  });
+
   it("returns 503 when admin client not configured", async () => {
     mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
     mockGetSupabaseAdmin.mockReturnValue(null);

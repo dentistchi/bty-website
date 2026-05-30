@@ -1,3 +1,41 @@
+## 28일 train day-completion 루프 수정 — CLOSED (2026-05-30)
+- 증상: /train/day/[day]에서 "Mark today as complete" 눌러도 무반응,
+  완료 피드백/완료표시 없음. "Completion summary: No summary yet" 유지.
+- 근본원인(3고리 끊김, STEP0+0b 진단):
+  (c) UI가 stub /api/train/complete(단수, write 없음) 호출. canonical write
+      /api/train/completions(복수)는 orphan(caller 0).
+  (f) /api/train/progress read가 completedDays=[] 하드코딩, auth 없음.
+  (e) revalidate는 정상이나 read가 []만 줘서 isCompleted 영원히 false.
+- 테이블: train_day_completions가 실 DB에 이미 존재(STEP2b 직접 조회 —
+  컬럼 user_id/day(1-28 CHECK)/completed_at, PK(user_id,day), RLS own-row
+  전부 코드 가정과 일치, row_count=1). 마이그레이션 불필요. repo CREATE TABLE
+  부재는 drift(arena_level_records 패턴) — carry-forward.
+- 수정(코드만, migration 0):
+  · 5-1: UI 2곳(TrainShell:82, TrainSidebar:42) URL /complete→/completions.
+  · 5-2: 단수 stub route+test 삭제, 단수 day-validation edge(비숫자/상한29)를
+         completions test로 흡수(+2, 8→10케이스).
+  · 6-1: progress route auth(getAuthUserFromRequest) + admin SELECT
+         (.eq user_id, RLS우회 client 보안필터) + completedDays 실배열
+         + lastCompletedDay=max. logged-out=hasSession:false(401 아님, B:i).
+         unlock(todayUnlockedDay=1) 보존(C:P, 범위 밖).
+  · 6-1b: progress test 7케이스 재작성(1,2,3 / non-contiguous 1,3 / no rows
+          / logged-out / DB error / admin null / shape). non-contiguous 배열 lock.
+  · 6-2: TrainShell 매핑 completedDays 직접 사용([1..N] 재생성 제거).
+         lastCompletedDay/todayUnlockedDay 파생 보존(CoachChatPane:63 등 소비처).
+- 검증: tsc 0 / lint 0 / vitest 3393/0/6 (3400 −8 단수 +2 보강 −8 progress구 +7 신규).
+- 효과: mark-complete→/completions upsert→/progress SELECT→실배열→매핑 직접
+  →isCompleted 정확→revalidate→화면 반영. non-contiguous gap-fill 버그도 해소.
+- carry-forward:
+  · train_day_completions CREATE TABLE 마이그레이션 부재(실 DB엔 존재) —
+    repo drift 정합. forward-only doc migration 또는 ledger 기록(STEP1a draft
+    준비됨). arena_level_records 패턴. 런타임 blocker 아님.
+  · CoachChatPane:63 lastCompletedDay>=day로 summary 가용 판단 — non-contiguous
+    semantic 별개(이번 범위 밖). 검토 후속.
+- 배포: 코드 inner c24bc4b4. deploy는 STEP 8(cf:deploy) 별도. 발표 수요일.
+- inner c24bc4b4 / outer <이 커밋>.
+
+---
+
 ## B Deploy — train EN body + A1 LIVE — CLOSED (날짜 2026-05-30)
 - 배포: cf:deploy (deploy-only, STEP1-gated 번들 그대로, 재빌드 없음).
   Worker 5d0624d9 → 8b698d79-689d-4f94-945c-26b8d5a66a40 (active 100%).
