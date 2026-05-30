@@ -1,3 +1,28 @@
+## A1 root <html lang> SSR locale — CLOSED (D-4 · 2026-05-29)
+- 증상: root layout이 SSR HTML에 lang="ko" 하드코딩. /en도 hydration 전까지
+  lang="ko" → SEO/크롤러/스크린리더 pre-hydration KO 오인. SetLocale client
+  useEffect(hydration 후 patch)만 보정 → SSR 미해결.
+- 근본원인: root layout.tsx:23이 [locale] segment 밖이라 locale 미인지.
+  middleware getLocale은 response header에만 (Server Component 못 읽음).
+- 수정(Option A-full): middleware가 getLocale(pathname) 결과를 forward REQUEST
+  header `x-locale`로 주입 (NextResponse.next({request:{headers:requestHeaders}})),
+  L97 locale 단일 재사용, content-serving 6 exit 전부. root layout async →
+  (await headers()).get('x-locale') ?? 'ko' → <html lang={locale}>.
+- 범위: #2 resLogin / #6 res = createServerClient cookie writer 응답 라인,
+  ADDITIVE header-forward ONLY (cookie/setAll/session/redirect/matcher 불변).
+  release-gate-touching.
+- 검증: tsc 0 / lint(tsc) 0 / vitest 3400/0/6. SSR raw curl /ko→ko,
+  /en·protected /en/*→en (logged-out 307→locale-correct login, lang 양방향
+  cross-check). auth smoke: logged-out redirect+next= 보존 불변.
+  logged-in SSR lang = #2 resLogin 동일 메커니즘으로 structurally-inferred
+  (로컬 OAuth가 prod redirect라 직접관측 불가, browser-confirm B-lane defer).
+  cookie persistence = setAll 미접촉, diff 보장.
+- out-of-scope 관측: lint:eslint ajv defaultMeta 에러 pre-existing
+  (next lint deprecation path), A1 무관.
+- inner 576f43b3 / outer (this ledger commit).
+
+---
+
 ## EN T3 — 28-day train body wired to bilingual EN/KO source (locale pick) — CLOSED (D-4 · 2026-05-29)
 
 **Active head (D-4 / 2026-05-29):** inner `8584bca3` (parent `702a9e3d`) · outer (this ledger commit, parent `1bdd5d5`). **Cloudflare Version:** last known `5d0624d9-701e-401b-84cd-4842295395cb` UNCHANGED — **deploy deferred (B)**; no deploy executed for this lane, so this change ships with the next deploy. **Working tree:** clean after commit (both repos).

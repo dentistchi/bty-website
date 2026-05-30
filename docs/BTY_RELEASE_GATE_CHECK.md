@@ -5138,3 +5138,24 @@ es |
 **CI GATE: PASS.**  
 **Auto 4**: First Task DOCS. TASK 1 [UI] 로딩/스켈레톤 1곳 보강 (3차) C4. 보드 상단 신규 배치 5건 완료.  
 **Release Gate**: Auth/Reset/Leaderboard/XP/API 변경 없음. **PASS.**
+
+
+---
+
+**[A1 · root <html lang> SSR locale forward]** (D-4 · 2026-05-29)
+- Scope: src/middleware.ts (x-locale request-header forward, 6 exits) +
+  src/app/layout.tsx (async, <html lang={locale}>).
+  release-gate-touching: #2 resLogin / #6 res (createServerClient response
+  lines) — ADDITIVE next() arg only; cookie/setAll/session/redirect unchanged.
+- Gates: tsc 0 / lint(tsc) 0 / vitest 3400/0/6.
+- CLAUDE-VERIFIED (raw SSR curl, pre-hydration): /ko→lang=ko, /en→lang=en,
+  protected /en/* logged-out 307→locale-correct login lang=en (양방향
+  cross-check /ko/bty/login→ko, /en/bty/login→en). auth-smoke: logged-out
+  protected→login redirect + next= param 보존 불변.
+- NOT-CLAUDE-VERIFIED (structurally-inferred; browser-confirm deferred to
+  B-lane 배포 후): logged-in protected SSR lang — #6 res = verified #2 resLogin
+  identical requestHeaders/forward (차이=cookie binding, lang 무관).
+  cookie persistence — diff setAll 미접촉으로 불변. 로컬 OAuth redirect가
+  prod 도메인 향해 로컬 logged-in 직접관측 불가.
+- out-of-scope: lint:eslint ajv defaultMeta error pre-existing, A1 무관.
+- inner 576f43b3 / outer (this commit).
