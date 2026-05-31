@@ -43,10 +43,10 @@ export default function UsersPage() {
         setUsers(r.json?.users ?? []);
       } else {
         const errObj = safeParse<{ error?: string }>(r.raw);
-        setError(errObj?.error ?? r.raw?.slice(0, 200) ?? "사용자 목록을 불러올 수 없습니다.");
+        setError(errObj?.error ?? r.raw?.slice(0, 200) ?? t.errLoadList);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "네트워크 오류");
+      setError(e instanceof Error ? e.message : t.networkError);
     } finally {
       setLoading(false);
     }
@@ -59,7 +59,7 @@ export default function UsersPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createEmail || !createPassword || createPassword.length < 6) {
-      setError("이메일과 비밀번호(6자 이상)를 입력해주세요.");
+      setError(t.validateCreate);
       return;
     }
     setCreating(true);
@@ -77,17 +77,17 @@ export default function UsersPage() {
         await fetchUsers();
       } else {
         const errObj = safeParse<{ error?: string }>(r.raw);
-        setError(errObj?.error ?? r.raw?.slice(0, 200) ?? "사용자 생성에 실패했습니다.");
+        setError(errObj?.error ?? r.raw?.slice(0, 200) ?? t.errCreateFailed);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "네트워크 오류");
+      setError(e instanceof Error ? e.message : t.networkError);
     } finally {
       setCreating(false);
     }
   };
 
   const handleDelete = async (userId: string, email: string) => {
-    if (!confirm(`정말로 ${email} 사용자를 삭제하시겠습니까?`)) return;
+    if (!confirm(t.deleteConfirm.replace("{email}", email))) return;
     setError(null);
     try {
       const r = await fetchJson<{ error?: string }>(`/api/admin/users?id=${userId}`, { method: "DELETE" });
@@ -95,16 +95,16 @@ export default function UsersPage() {
         await fetchUsers();
       } else {
         const errObj = safeParse<{ error?: string }>(r.raw);
-        setError(errObj?.error ?? r.raw?.slice(0, 200) ?? "사용자 삭제에 실패했습니다.");
+        setError(errObj?.error ?? r.raw?.slice(0, 200) ?? t.errDeleteFailed);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "네트워크 오류");
+      setError(e instanceof Error ? e.message : t.networkError);
     }
   };
 
   const handleUpdatePassword = async (userId: string) => {
     if (!newPassword || newPassword.length < 6) {
-      setError("비밀번호는 6자 이상이어야 합니다.");
+      setError(t.validatePassword);
       return;
     }
     setError(null);
@@ -117,13 +117,13 @@ export default function UsersPage() {
       if (r.ok) {
         setEditingUserId(null);
         setNewPassword("");
-        alert("비밀번호가 변경되었습니다.");
+        alert(t.passwordChanged);
       } else {
         const errObj = safeParse<{ error?: string }>(r.raw);
-        setError(errObj?.error ?? r.raw?.slice(0, 200) ?? "비밀번호 변경에 실패했습니다.");
+        setError(errObj?.error ?? r.raw?.slice(0, 200) ?? t.errPasswordFailed);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "네트워크 오류");
+      setError(e instanceof Error ? e.message : t.networkError);
     }
   };
 
@@ -131,9 +131,9 @@ export default function UsersPage() {
     <main className="container mx-auto max-w-4xl px-4 py-8" aria-label={t.mainRegionAria}>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-neutral-900">사용자 관리</h1>
+          <h1 className="text-2xl font-semibold text-neutral-900">{t.title}</h1>
           <p className="mt-1 text-sm text-neutral-600">
-            일반 사용자 계정을 생성, 수정, 삭제할 수 있습니다.
+            {t.description}
           </p>
         </div>
 
@@ -150,9 +150,9 @@ export default function UsersPage() {
           type="button"
           onClick={() => setShowCreateForm(!showCreateForm)}
           className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
-          aria-label={showCreateForm ? "취소" : "새 사용자 생성"}
+          aria-label={showCreateForm ? t.cancel : t.createUser}
         >
-          {showCreateForm ? "취소" : "+ 새 사용자 생성"}
+          {showCreateForm ? t.cancel : `+ ${t.createUser}`}
         </button>
       </div>
 
@@ -161,10 +161,10 @@ export default function UsersPage() {
           onSubmit={handleCreate}
           className="mb-6 rounded border border-neutral-200 bg-white p-4 shadow-sm"
         >
-          <h2 className="mb-3 text-lg font-medium text-neutral-900">새 사용자 생성</h2>
+          <h2 className="mb-3 text-lg font-medium text-neutral-900">{t.createFormTitle}</h2>
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-neutral-700">이메일</label>
+              <label className="block text-sm font-medium text-neutral-700">{t.labelEmail}</label>
               <input
                 type="email"
                 value={createEmail}
@@ -175,13 +175,13 @@ export default function UsersPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700">비밀번호</label>
+              <label className="block text-sm font-medium text-neutral-700">{t.labelPassword}</label>
               <input
                 type="password"
                 value={createPassword}
                 onChange={(e) => setCreatePassword(e.target.value)}
                 className="mt-1 w-full rounded border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
-                placeholder="6자 이상"
+                placeholder={t.passwordPlaceholder}
                 minLength={6}
                 required
               />
@@ -190,9 +190,9 @@ export default function UsersPage() {
               type="submit"
               disabled={creating}
               className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
-              aria-label={creating ? "생성 중..." : "새 사용자 생성"}
+              aria-label={creating ? t.creating : t.createUser}
             >
-              {creating ? "생성 중..." : "생성"}
+              {creating ? t.creating : t.create}
             </button>
           </div>
           {creating && (
@@ -212,7 +212,7 @@ export default function UsersPage() {
         />
       ) : users.length === 0 ? (
         <div className="rounded border border-neutral-200 bg-white p-8 text-center text-neutral-600">
-          등록된 사용자가 없습니다.
+          {t.emptyUsers}
         </div>
       ) : (
         <div className="overflow-hidden rounded border border-neutral-200 bg-white shadow-sm">
@@ -220,13 +220,13 @@ export default function UsersPage() {
             <thead className="bg-neutral-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-700">
-                  이메일
+                  {t.labelEmail}
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-700">
-                  생성일
+                  {t.colCreatedAt}
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-neutral-700">
-                  작업
+                  {t.colActions}
                 </th>
               </tr>
             </thead>
@@ -235,7 +235,7 @@ export default function UsersPage() {
                 <tr key={user.id} className="hover:bg-neutral-50">
                   <td className="px-4 py-3 text-sm text-neutral-900">{user.email}</td>
                   <td className="px-4 py-3 text-sm text-neutral-600">
-                    {new Date(user.createdAt).toLocaleString("ko-KR")}
+                    {new Date(user.createdAt).toLocaleString(locale === "en" ? "en-US" : "ko-KR")}
                   </td>
                   <td className="px-4 py-3 text-right text-sm">
                     {editingUserId === user.id ? (
@@ -244,7 +244,7 @@ export default function UsersPage() {
                           type="password"
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
-                          placeholder="새 비밀번호"
+                          placeholder={t.newPasswordPlaceholder}
                           className="rounded border border-neutral-300 px-2 py-1 text-xs focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
                           minLength={6}
                         />
@@ -253,7 +253,7 @@ export default function UsersPage() {
                           onClick={() => handleUpdatePassword(user.id)}
                           className="rounded bg-neutral-900 px-2 py-1 text-xs text-white hover:bg-neutral-800"
                         >
-                          저장
+                          {t.save}
                         </button>
                         <button
                           type="button"
@@ -263,7 +263,7 @@ export default function UsersPage() {
                           }}
                           className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-100"
                         >
-                          취소
+                          {t.cancel}
                         </button>
                       </div>
                     ) : (
@@ -272,16 +272,16 @@ export default function UsersPage() {
                           type="button"
                           onClick={() => setEditingUserId(user.id)}
                           className="text-xs text-neutral-600 hover:text-neutral-900 underline"
-                          aria-label="비밀번호 변경"
+                          aria-label={t.changePassword}
                         >
-                          비밀번호 변경
+                          {t.changePassword}
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(user.id, user.email)}
                           className="text-xs text-red-600 hover:text-red-800 underline"
                         >
-                          삭제
+                          {t.delete}
                         </button>
                       </div>
                     )}
@@ -294,10 +294,10 @@ export default function UsersPage() {
       )}
 
       <div className="mt-6 rounded border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
-        <p className="font-semibold mb-1">⚠️ 참고사항</p>
+        <p className="font-semibold mb-1">{t.noteTitle}</p>
         <ul className="list-disc list-inside space-y-1 text-xs">
-          <li>사용자 관리는 Supabase Auth를 사용합니다.</li>
-          <li>목록·생성·삭제·비밀번호 변경은 Supabase 대시보드에서도 가능합니다.</li>
+          <li>{t.note1}</li>
+          <li>{t.note2}</li>
         </ul>
       </div>
     </main>

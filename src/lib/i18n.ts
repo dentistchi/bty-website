@@ -872,6 +872,35 @@ export type Messages = {
   adminUsers: {
     /** Admin users page `<main>` landmark (ko/en). */
     mainRegionAria: string;
+    networkError: string;
+    errLoadList: string;
+    errCreateFailed: string;
+    errDeleteFailed: string;
+    errPasswordFailed: string;
+    validateCreate: string;
+    validatePassword: string;
+    deleteConfirm: string;
+    passwordChanged: string;
+    title: string;
+    description: string;
+    cancel: string;
+    createUser: string;
+    createFormTitle: string;
+    labelEmail: string;
+    labelPassword: string;
+    passwordPlaceholder: string;
+    creating: string;
+    create: string;
+    emptyUsers: string;
+    colCreatedAt: string;
+    colActions: string;
+    newPasswordPlaceholder: string;
+    save: string;
+    changePassword: string;
+    delete: string;
+    noteTitle: string;
+    note1: string;
+    note2: string;
   };
   /** Admin: Quality Events 허브(stub). render-only. */
   adminQuality: {
@@ -2761,6 +2790,35 @@ const ko: Messages = {
   },
   adminUsers: {
     mainRegionAria: "사용자 계정 — 관리",
+    networkError: "네트워크 오류",
+    errLoadList: "사용자 목록을 불러올 수 없습니다.",
+    errCreateFailed: "사용자 생성에 실패했습니다.",
+    errDeleteFailed: "사용자 삭제에 실패했습니다.",
+    errPasswordFailed: "비밀번호 변경에 실패했습니다.",
+    validateCreate: "이메일과 비밀번호(6자 이상)를 입력해주세요.",
+    validatePassword: "비밀번호는 6자 이상이어야 합니다.",
+    deleteConfirm: "정말로 {email} 사용자를 삭제하시겠습니까? 계정과 관련 데이터가 모두 삭제되며 되돌릴 수 없습니다.",
+    passwordChanged: "비밀번호가 변경되었습니다.",
+    title: "사용자 관리",
+    description: "일반 사용자 계정을 생성, 수정, 삭제할 수 있습니다.",
+    cancel: "취소",
+    createUser: "새 사용자 생성",
+    createFormTitle: "새 사용자 생성",
+    labelEmail: "이메일",
+    labelPassword: "비밀번호",
+    passwordPlaceholder: "6자 이상",
+    creating: "생성 중…",
+    create: "생성",
+    emptyUsers: "등록된 사용자가 없습니다.",
+    colCreatedAt: "생성일",
+    colActions: "작업",
+    newPasswordPlaceholder: "새 비밀번호",
+    save: "저장",
+    changePassword: "비밀번호 변경",
+    delete: "삭제",
+    noteTitle: "⚠️ 참고사항",
+    note1: "사용자 관리는 Supabase Auth를 사용합니다.",
+    note2: "목록·생성·삭제·비밀번호 변경은 Supabase 대시보드에서도 가능합니다.",
   },
   adminQuality: {
     mainRegionAria: "품질 이벤트 — 관리",
@@ -4534,6 +4592,35 @@ const en: Messages = {
   },
   adminUsers: {
     mainRegionAria: "User accounts — admin",
+    networkError: "Network error",
+    errLoadList: "Could not load the user list.",
+    errCreateFailed: "Failed to create user.",
+    errDeleteFailed: "Failed to delete user.",
+    errPasswordFailed: "Failed to change password.",
+    validateCreate: "Enter an email and a password (6+ characters).",
+    validatePassword: "Password must be at least 6 characters.",
+    deleteConfirm: "Delete user {email}? Their account and all related data will be removed and this cannot be undone.",
+    passwordChanged: "Password changed.",
+    title: "User management",
+    description: "Create, edit, and delete regular user accounts.",
+    cancel: "Cancel",
+    createUser: "Create user",
+    createFormTitle: "Create new user",
+    labelEmail: "Email",
+    labelPassword: "Password",
+    passwordPlaceholder: "6+ characters",
+    creating: "Creating…",
+    create: "Create",
+    emptyUsers: "No users registered.",
+    colCreatedAt: "Created",
+    colActions: "Actions",
+    newPasswordPlaceholder: "New password",
+    save: "Save",
+    changePassword: "Change password",
+    delete: "Delete",
+    noteTitle: "⚠️ Notes",
+    note1: "User management uses Supabase Auth.",
+    note2: "List, create, delete, and password change are also available in the Supabase dashboard.",
   },
   adminQuality: {
     mainRegionAria: "Quality events — admin",
