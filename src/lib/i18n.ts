@@ -842,6 +842,17 @@ export type Messages = {
   adminArenaMembership: {
     /** Admin arena-membership page `<main>` landmark (ko/en). */
     mainRegionAria: string;
+    title: string;
+    description: string;
+    emptyNoPending: string;
+    colJobFunction: string;
+    colJoinedAt: string;
+    colLeaderStartedAt: string;
+    colRequestedAt: string;
+    colActions: string;
+    approving: string;
+    approve: string;
+    approveAria: string;
   };
   /** Admin 로그인 (세션 쿠키). render-only. */
   adminLogin: {
@@ -2650,6 +2661,18 @@ const ko: Messages = {
   },
   adminArenaMembership: {
     mainRegionAria: "Arena 멤버십 승인 — 관리",
+    title: "Arena 멤버십 승인",
+    description:
+      "pending 요청을 검토한 뒤 승인합니다. 승인 시 해당 유저의 tenure(입사일·리더시작일)가 반영됩니다.",
+    emptyNoPending: "대기 중인 요청이 없습니다.",
+    colJobFunction: "직군",
+    colJoinedAt: "입사일",
+    colLeaderStartedAt: "리더시작일",
+    colRequestedAt: "요청일",
+    colActions: "동작",
+    approving: "처리 중…",
+    approve: "승인",
+    approveAria: "멤버십 승인",
   },
   adminLogin: {
     mainRegionAria: "관리자 로그인",
@@ -4347,6 +4370,18 @@ const en: Messages = {
   },
   adminArenaMembership: {
     mainRegionAria: "Arena membership approval — admin",
+    title: "Arena membership approval",
+    description:
+      "Review pending requests, then approve. On approval, the user's tenure (join date / leadership start date) is applied.",
+    emptyNoPending: "No pending requests.",
+    colJobFunction: "Job function",
+    colJoinedAt: "Joined",
+    colLeaderStartedAt: "Leadership start",
+    colRequestedAt: "Requested",
+    colActions: "Actions",
+    approving: "Processing…",
+    approve: "Approve",
+    approveAria: "Approve membership",
   },
   adminLogin: {
     mainRegionAria: "Admin sign-in",

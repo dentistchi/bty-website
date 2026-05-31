@@ -80,9 +80,9 @@ export default function AdminArenaMembershipPage() {
     <main className="container mx-auto max-w-4xl px-4 py-8" aria-label={t.mainRegionAria}>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-neutral-900">Arena 멤버십 승인</h1>
+          <h1 className="text-2xl font-semibold text-neutral-900">{t.title}</h1>
           <p className="mt-1 text-sm text-neutral-600">
-            pending 요청을 검토한 뒤 승인합니다. 승인 시 해당 유저의 tenure(입사일·리더시작일)가 반영됩니다.
+            {t.description}
           </p>
         </div>
 
@@ -104,7 +104,7 @@ export default function AdminArenaMembershipPage() {
         {!loading && requests.length === 0 && !error && (
           <EmptyState
             icon="📋"
-            message="대기 중인 요청이 없습니다."
+            message={t.emptyNoPending}
             style={{ padding: "32px 20px" }}
           />
         )}
@@ -115,11 +115,11 @@ export default function AdminArenaMembershipPage() {
                 <tr className="border-b border-neutral-200">
                   <th className="pb-2 pr-4 font-medium">ID</th>
                   <th className="pb-2 pr-4 font-medium">user_id</th>
-                  <th className="pb-2 pr-4 font-medium">직군</th>
-                  <th className="pb-2 pr-4 font-medium">입사일</th>
-                  <th className="pb-2 pr-4 font-medium">리더시작일</th>
-                  <th className="pb-2 pr-4 font-medium">요청일</th>
-                  <th className="pb-2 font-medium">동작</th>
+                  <th className="pb-2 pr-4 font-medium">{t.colJobFunction}</th>
+                  <th className="pb-2 pr-4 font-medium">{t.colJoinedAt}</th>
+                  <th className="pb-2 pr-4 font-medium">{t.colLeaderStartedAt}</th>
+                  <th className="pb-2 pr-4 font-medium">{t.colRequestedAt}</th>
+                  <th className="pb-2 font-medium">{t.colActions}</th>
                 </tr>
               </thead>
               <tbody>
@@ -138,9 +138,9 @@ export default function AdminArenaMembershipPage() {
                           disabled={approvingId === row.id}
                           onClick={() => approve(row.id)}
                           className="rounded bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50 hover:bg-neutral-700"
-                          aria-label={approvingId === row.id ? "처리 중…" : "멤버십 승인"}
+                          aria-label={approvingId === row.id ? t.approving : t.approveAria}
                         >
-                          {approvingId === row.id ? "처리 중…" : "승인"}
+                          {approvingId === row.id ? t.approving : t.approve}
                         </button>
                       </td>
                     </tr>
