@@ -293,6 +293,54 @@ function AssessmentCard({
   );
 }
 
+function TrainProgressCard({
+  data,
+  locale,
+  isKo,
+}: {
+  data: { lastCompletedDay: number; hasSession: boolean } | null;
+  locale: string;
+  isKo: boolean;
+}) {
+  if (!data || !data.hasSession) return null;
+  const lcd = Math.max(0, Math.min(28, data.lastCompletedDay || 0));
+  const done = lcd >= 28;
+  const n = Math.max(1, Math.min(28, lcd + 1));
+  const href = `/${locale}/train/day/${n}`;
+  const allHref = `/${locale}/train/28days`;
+  const title =
+    lcd === 0
+      ? isKo
+        ? "28일 프로그램이 기다리고 있어요. 오늘 Day 1부터 시작해볼까요?"
+        : "Your 28-day program is ready. Shall we begin with Day 1 today?"
+      : done
+      ? isKo
+        ? "28일, 끝까지 해냈어요. 축하해요 🎉"
+        : "You completed all 28 days. Congratulations 🎉"
+      : isKo
+      ? `28일 프로그램 진행 중이에요 · 오늘은 Day ${n}, 준비됐나요? (${lcd}/28 완료)`
+      : `You're on your 28-day program · Today is Day ${n}. Ready? (${lcd}/28 done)`;
+  return (
+    <div
+      role="region"
+      aria-label={isKo ? "28일 프로그램 진행" : "28-day program progress"}
+      className="rounded-xl border border-dear-sage/20 bg-dear-sage/5 px-4 py-3"
+    >
+      <p className="text-sm text-dear-charcoal m-0">{title}</p>
+      {!done && (
+        <div className="mt-2 flex items-center gap-3">
+          <a href={href} className="text-sm font-medium text-dear-sage underline">
+            {isKo ? `Day ${n} 하러 가기` : `Go to Day ${n}`}
+          </a>
+          <a href={allHref} className="text-xs text-dear-charcoal-soft underline">
+            {isKo ? "전체 보기" : "View all"}
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CenterPageClient({ locale }: { locale: string }) {
   const lang = (locale === "ko" ? "ko" : "en") as Locale;
   const t = getMessages(lang).center;
@@ -303,6 +351,7 @@ export default function CenterPageClient({ locale }: { locale: string }) {
   const [letters, setLetters] = useState<LetterItem[]>([]);
   const [submissions, setSubmissions] = useState<AssessmentItem[]>([]);
   const [resilience, setResilience] = useState<ResilienceEntry[]>([]);
+  const [trainProgress, setTrainProgress] = useState<{ lastCompletedDay: number; hasSession: boolean } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -319,8 +368,11 @@ export default function CenterPageClient({ locale }: { locale: string }) {
       fetch("/api/center/resilience?period=30", { credentials: "include" })
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
+      fetch("/api/train/progress", { credentials: "include" })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null),
     ])
-      .then(([stageData, lettersData, assessmentData, resilienceData]) => {
+      .then(([stageData, lettersData, assessmentData, resilienceData, trainData]) => {
         if (cancelled) return;
         if (stageData) setStage(stageData as StageState);
         if (Array.isArray(lettersData?.letters)) setLetters(lettersData.letters as LetterItem[]);
@@ -328,6 +380,11 @@ export default function CenterPageClient({ locale }: { locale: string }) {
           setSubmissions(assessmentData.submissions as AssessmentItem[]);
         if (Array.isArray(resilienceData?.entries))
           setResilience(resilienceData.entries as ResilienceEntry[]);
+        setTrainProgress(
+          trainData
+            ? { lastCompletedDay: Number(trainData.lastCompletedDay ?? 0), hasSession: !!trainData.hasSession }
+            : null
+        );
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -377,6 +434,7 @@ export default function CenterPageClient({ locale }: { locale: string }) {
               <DearMeCard letter={letters[0] ?? null} locale={locale} isKo={isKo} />
               <ResilienceCard entries={resilience} locale={locale} isKo={isKo} />
               <AssessmentCard assessment={submissions[0] ?? null} locale={locale} isKo={isKo} />
+              <TrainProgressCard data={trainProgress} locale={locale} isKo={isKo} />
             </div>
           )}
         </div>
