@@ -1,16 +1,9 @@
-import TrainDayClient from "@/components/train/TrainDayClient";
-import { getMessages } from "@/lib/i18n";
-import type { Locale } from "@/lib/i18n";
+import { redirect } from "next/navigation";
 
 type DayParams = { locale: string; day: string };
 
+// legacy 라우트: 정본 /train/day/[day]로 흡수 (TrainDayClient는 빈 스텁이라 콘텐츠 손실 0).
 export default async function Page({ params }: { params: Promise<DayParams> }) {
   const { locale, day } = await params;
-  const lang = (locale === "ko" ? "ko" : "en") as Locale;
-  const t = getMessages(lang).train;
-  return (
-    <main className="space-y-4" aria-label={t.track28DayMainRegionAria}>
-      <TrainDayClient day={day} />
-    </main>
-  );
+  redirect(`/${locale}/train/day/${day}`);
 }

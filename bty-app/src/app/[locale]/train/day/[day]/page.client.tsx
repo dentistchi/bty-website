@@ -222,7 +222,7 @@ export default function TrainDayPage() {
 
         {!isUnlocked && (
           <div style={{ padding: 14, border: "1px solid #eee", borderRadius: 12, marginBottom: 18 }} role="status" aria-label={t.lockedLabel}>
-            Locked until tomorrow 5am (and previous day completion).
+            Complete the previous day to unlock this one.
           </div>
         )}
 

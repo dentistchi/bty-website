@@ -1,3 +1,13 @@
+## L-SG train server guard + 라우트 정본 통합 — CLOSED (2026-05-30)
+
+- 문제: day 라우트 2개 병존(/train/day=정본 real content, /train/28days/day=빈 스텁 <div>Day:N</div>), server 게이팅 0 → URL 직타로 잠긴 day/스텁 접근 가능.
+- 결정(경로2): 정본=/train/day/[day]. legacy /train/28days/day → 정본 redirect. 잠긴 day 진입 → /{locale}/train/28days 보드 redirect.
+- 변경 3파일: (1) day/[day]/page.tsx server 승격 — getUser→admin completions 조회→getUnlockedDayFromCompletions(L-3A 헬퍼 재사용)→day>todayUnlockedDay면 보드 redirect, 통과시 client 본체. (2) 28days/day/page.tsx redirect-only(TrainDayClient import 제거). (3) page.client.tsx:225 카피 드리프트 정정(구 morning-gate "Locked until 5am"→완료체인 "Complete the previous day…").
+- guard 헬퍼 단일(getUnlockedDayFromCompletions): Center 카드·client 게이트·server guard 동일 진척 모델. client 본체/useTrain provider(layout TrainShell) 무변경. fail-open(user/admin 미구성시 스킵, progress route 관용 동일).
+- gate: tsc 0(Promise<params> Next15 정합) / lint 0 / vitest 3398/0/6. guard·redirect=server component, vitest 미도달 → 배포후 브라우저 실측이 런타임 권위. inner-main: 976030bd
+- 범위 밖/격리: TrainDayClient.tsx 미사용 잔존(별 정리 lane), page.client.tsx 파일 전체 i18n 미적용(영문 inline, 한글 누수=기존상태), morning-gate/startDateISO/residency(post-launch), strict fail-close guard.
+
+---
 ## L-3A train unlock 영구 과잉잠금 해소 — CLOSED (2026-05-30)
 
 - 증상: progress route todayUnlockedDay=1 하드코딩 → Day1 완료해도 Day2 영구 잠금(과잉). 정답 엔진(getDayLockState)은 dead code였음.
