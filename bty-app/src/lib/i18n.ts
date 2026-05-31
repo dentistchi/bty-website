@@ -826,6 +826,19 @@ export type Messages = {
     airBandHigh: string;
     airBandMid: string;
     airBandLow: string;
+    glAir: string;
+    glDoneCriteriaLabel: string;
+    glDoneCriteria: string;
+    glIntegritySlip: string;
+    glTsp: string;
+    glMwd: string;
+    glMwdWindow: string;
+    glStageCertifiedLabel: string;
+    glStageCertifiedBody: string;
+    glStageLriLabel: string;
+    glStageLriBody: string;
+    glStageResetLabel: string;
+    glStageResetBody: string;
   };
   /** Admin: 멘토 신청 큐·승인 UI. API 응답만 표시(render-only). */
     mentorRequestAdmin: {
@@ -2686,6 +2699,22 @@ const ko: Messages = {
     airBandHigh: "High",
     airBandMid: "Mid",
     airBandLow: "Low",
+    glAir: "= 완료된 행동 ÷ 선택된 행동 (draft 제외)",
+    glDoneCriteriaLabel: "완료 기준",
+    glDoneCriteria: ": approved / completed / DONE, 또는 verified_at 있음",
+    glIntegritySlip: ": 3회 연속 미완료 발생 횟수",
+    glTsp: ": TSP (주간 설문 점수)",
+    glMwd: ": 최소 1개의 Micro Win 완료가 있는 고유 날짜 수",
+    glMwdWindow: ": 최근 7일 / 14일 기준",
+    glStageCertifiedLabel: "Certified Leader",
+    glStageCertifiedBody:
+      ": 4개 조건 충족 시 인증 — 14일 AIR ≥ 80%, MWD 기준 이상, 강제 리셋 준수, 14일 내 integrity_slip 없음. 분기·주간 재평가로 갱신되며 조건 미충족 시 자동 해제(별도 박탈 절차 없이 재계산). Arena Elite(주간 상위 5%)와는 별개 개념.",
+    glStageLriLabel: "LRI",
+    glStageLriBody:
+      ": 비(非)리더 준비도 측정. (14일 AIR × 50%) + (MWD × 30%) + (pulse × 20%). LRI ≥ 0.80 + integrity_slip 없음 → readiness. (팀 지표 TII 60/25/15와 다름.)",
+    glStageResetLabel: "Forced Reset",
+    glStageResetBody:
+      ": Stage 4(무결성 리셋) 강제 트리거 — 다음 중 2개 이상 충족 시: 14일 내 Stage 3 2회 선택 · AIR_7d 2주 연속 80% 미만 · 7일간 QR 인증 없음 · TSP 2주 연속 하락. 최대 48시간 지연 가능(영구 무시 불가), 완료 시 Stage 1 복귀.",
   },
   mentorRequestAdmin: {
     mainRegionAria: "멘토 신청 승인 — 관리",
@@ -4426,6 +4455,22 @@ const en: Messages = {
     airBandHigh: "High",
     airBandMid: "Mid",
     airBandLow: "Low",
+    glAir: "= completed actions ÷ selected actions (excluding draft)",
+    glDoneCriteriaLabel: "Done criteria",
+    glDoneCriteria: ": approved / completed / DONE, or verified_at present",
+    glIntegritySlip: ": 3 consecutive missed windows",
+    glTsp: ": TSP (weekly survey score)",
+    glMwd: ": count of unique days with at least one completed Micro Win",
+    glMwdWindow: ": last 7 days / 14 days",
+    glStageCertifiedLabel: "Certified Leader",
+    glStageCertifiedBody:
+      ": certified when all 4 gates pass — 14-day AIR ≥ 80%, MWD at/above threshold, reset compliance met, no integrity_slip in 14 days. Re-evaluated quarterly and weekly; auto-cleared when any gate fails (recomputed — no separate revocation step). Distinct from Arena Elite (weekly top 5%).",
+    glStageLriLabel: "LRI",
+    glStageLriBody:
+      ": non-leader readiness. (14-day AIR × 50%) + (MWD × 30%) + (pulse × 20%). LRI ≥ 0.80 and no integrity_slip → readiness. (Differs from the team metric TII at 60/25/15.)",
+    glStageResetLabel: "Forced Reset",
+    glStageResetBody:
+      ": Stage 4 (Integrity Reset) forced trigger — fires when any two hold: Stage 3 selected twice in 14 days · AIR_7d below 80% for 2 consecutive weeks · no QR verification for 7 days · TSP declining for 2 consecutive weeks. May be delayed up to 48h (not permanently dismissable); returns to Stage 1 on completion.",
   },
   mentorRequestAdmin: {
     mainRegionAria: "Mentor request approval — admin",

@@ -1,3 +1,13 @@
+## M-4 leadership-metrics glossary 현지화 + Stage 탭 legend 신규 — CLOSED (2026-05-31)
+
+- 문제: M-3에서 defer한 glossary 6줄(air/tii/mwd 탭)이 KO-only(TODO 주석). 또 Stage 탭은 legend 부재 → Certified/Leader Track/Forced Reset 컬럼 설명 없음.
+- 변경(2파일, +59/-7): i18n.ts leadershipMetricsAdmin ns +16키(type/ko/en 3앵커). glossary 6줄 coarse 현지화(gl*: <strong>토큰은 JSX 리터럴 유지, body만 키화; KO label "완료 기준"만 glDoneCriteriaLabel; line 241 "Team Shift Pulse"→"TSP" 확장 안 함). Stage 탭 신규 legend 3항목(glStage{Certified,Lri,Reset}{Label,Body}) — 코드 기준 검증 copy: certified.ts 4-gate+분기/주간 재평가+revoke부재+Elite와 별개, lri.ts 50/30/20(TII 60/25/15와 구분), forced-reset.ts 2-of-4 트리거+48h. page.tsx TODO(i18n) 제거 + Stage legend 블록(air legend 패턴 복제). 
+- gate: tsc 0 / terminology 13→13(무회귀; 신규 EN legend prose lock 미저촉). UI render-only.
+- inner-main: 19a63c61
+- 후속(미적용) admin i18n 잔여 2페이지: quality(~14+ko-KR date 1), users(~33+ko-KR date 1).
+- 참고: certified.ts:6 "Certified ≠ Arena Elite" + revoke는 스케줄 재평가 재계산(별도 transition 없음) — legend에 반영.
+
+---
 ## M-3 leadership-metrics admin i18n 현지화 + AIR-band 용어충돌 해소 — CLOSED (2026-05-31)
 
 - 문제: /admin/leadership-metrics가 getMessages 미사용·전부 bare KO(~35 문자열) + ko-KR 날짜 5곳 하드코딩 → /en에서도 한글·KO 날짜. 구조상 메인+4 서브컴포넌트(AirTable/StageView/MWDTable/TIITable)가 data prop만 받아 main의 t 도달 불가. 추가로 airBadgeLabel "Certified" 배지가 air≥0.8만으로 4-gate certified.ts와 괴리(용어충돌).

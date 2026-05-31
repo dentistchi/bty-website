@@ -227,24 +227,31 @@ export default function LeadershipMetricsPage() {
         </>
       )}
 
-      {/* Legend — TODO(i18n): glossary copy below is still KO-only (deferred from leadershipMetricsAdmin migration) */}
+      {/* Legend */}
       {tab === "air" && !loading && (
         <div className="mt-6 rounded border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs text-neutral-500 space-y-1">
-          <p><strong>AIR</strong> = 완료된 행동 ÷ 선택된 행동 (draft 제외)</p>
-          <p><strong>완료 기준</strong>: approved / completed / DONE, 또는 verified_at 있음</p>
-          <p><strong>Integrity Slip</strong>: 3회 연속 미완료 발생 횟수</p>
+          <p><strong>AIR</strong> {t.glAir}</p>
+          <p><strong>{t.glDoneCriteriaLabel}</strong>{t.glDoneCriteria}</p>
+          <p><strong>Integrity Slip</strong>{t.glIntegritySlip}</p>
+        </div>
+      )}
+      {tab === "stage" && !loading && (
+        <div className="mt-6 rounded border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs text-neutral-500 space-y-1">
+          <p><strong>{t.glStageCertifiedLabel}</strong>{t.glStageCertifiedBody}</p>
+          <p><strong>{t.glStageLriLabel}</strong>{t.glStageLriBody}</p>
+          <p><strong>{t.glStageResetLabel}</strong>{t.glStageResetBody}</p>
         </div>
       )}
       {tab === "tii" && !loading && (
         <div className="mt-6 rounded border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs text-neutral-500 space-y-1">
           <p><strong>TII</strong> = avg_air × 0.60 + avg_mwd_normalized × 0.25 + tsp_normalized × 0.15</p>
-          <p><strong>TSP</strong>: Team Shift Pulse (주간 설문 점수)</p>
+          <p><strong>TSP</strong>{t.glTsp}</p>
         </div>
       )}
       {tab === "mwd" && !loading && (
         <div className="mt-6 rounded border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs text-neutral-500 space-y-1">
-          <p><strong>MWD</strong>: 최소 1개의 Micro Win 완료가 있는 고유 날짜 수</p>
-          <p><strong>7d / 14d</strong>: 최근 7일 / 14일 기준</p>
+          <p><strong>MWD</strong>{t.glMwd}</p>
+          <p><strong>7d / 14d</strong>{t.glMwdWindow}</p>
         </div>
       )}
     </main>
