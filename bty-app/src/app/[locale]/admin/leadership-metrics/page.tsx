@@ -1,11 +1,17 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useParams } from "next/navigation";
 import type { LeadershipMetricsResponse, UserAirRow } from "@/app/api/admin/leadership-metrics/route";
 import type { StageMetricsResponse, UserStageRow } from "@/app/api/admin/leadership-metrics/stage/route";
 import type { MWDMetricsResponse, UserMWDRow } from "@/app/api/admin/leadership-metrics/mwd/route";
 import type { TIIMetricsResponse, TeamTIIRow } from "@/app/api/admin/leadership-metrics/tii/route";
 import { LoadingFallback } from "@/components/bty-arena";
+import { getMessages } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
+
+/** Date/time locale for toLocale*; admin UI follows route locale. */
+const dateLoc = (locale: Locale) => (locale === "en" ? "en-US" : "ko-KR");
 
 // ---------------------------------------------------------------------------
 // AIR helpers
@@ -20,10 +26,13 @@ function airBadgeColor(air: number) {
   if (air >= 0.5) return "bg-amber-100 text-amber-800";
   return "bg-red-100 text-red-800";
 }
-function airBadgeLabel(air: number) {
-  if (air >= 0.8) return "Certified";
-  if (air >= 0.5) return "Active";
-  return "At Risk";
+function airBadgeLabel(
+  air: number,
+  t: { airBandHigh: string; airBandMid: string; airBandLow: string }
+) {
+  if (air >= 0.8) return t.airBandHigh;
+  if (air >= 0.5) return t.airBandMid;
+  return t.airBandLow;
 }
 
 // ---------------------------------------------------------------------------
@@ -62,6 +71,9 @@ const TABS: { key: Tab; label: string; desc: string }[] = [
 // Component
 // ---------------------------------------------------------------------------
 export default function LeadershipMetricsPage() {
+  const params = useParams();
+  const locale = (typeof params?.locale === "string" ? params.locale : "en") as Locale;
+  const t = getMessages(locale).leadershipMetricsAdmin;
   const [tab, setTab] = useState<Tab>("air");
 
   const [airData, setAirData] = useState<LeadershipMetricsResponse | null>(null);
@@ -72,7 +84,7 @@ export default function LeadershipMetricsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (t: Tab) => {
+  const load = useCallback(async (tabKey: Tab) => {
     setLoading(true);
     setError(null);
     try {
@@ -82,23 +94,23 @@ export default function LeadershipMetricsPage() {
         mwd:   "/api/admin/leadership-metrics/mwd",
         tii:   "/api/admin/leadership-metrics/tii",
       };
-      const res = await fetch(urlMap[t], { cache: "no-store" });
+      const res = await fetch(urlMap[tabKey], { cache: "no-store" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: string };
         setError(body.error ?? `HTTP ${res.status}`);
         return;
       }
       const data = await res.json();
-      if (t === "air")   setAirData(data as LeadershipMetricsResponse);
-      if (t === "stage") setStageData(data as StageMetricsResponse);
-      if (t === "mwd")   setMwdData(data as MWDMetricsResponse);
-      if (t === "tii")   setTiiData(data as TIIMetricsResponse);
+      if (tabKey === "air")   setAirData(data as LeadershipMetricsResponse);
+      if (tabKey === "stage") setStageData(data as StageMetricsResponse);
+      if (tabKey === "mwd")   setMwdData(data as MWDMetricsResponse);
+      if (tabKey === "tii")   setTiiData(data as TIIMetricsResponse);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "네트워크 오류");
+      setError(e instanceof Error ? e.message : t.networkError);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   // Load on mount and on tab switch (only if not already loaded)
   useEffect(() => {
@@ -128,11 +140,11 @@ export default function LeadershipMetricsPage() {
       {/* Header */}
       <div className="mb-5 flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-neutral-900">리더십 지표</h1>
+          <h1 className="text-2xl font-semibold text-neutral-900">{t.title}</h1>
           <p className="mt-1 text-sm text-neutral-500">{activeTab.desc}</p>
           {computedAt && (
             <p className="mt-0.5 text-xs text-neutral-400">
-              계산: {new Date(computedAt).toLocaleString("ko-KR")}
+              {t.computedPrefix} {new Date(computedAt).toLocaleString(dateLoc(locale))}
             </p>
           )}
         </div>
@@ -142,7 +154,7 @@ export default function LeadershipMetricsPage() {
           disabled={loading}
           className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
         >
-          새로고침
+          {t.refresh}
         </button>
       </div>
 
@@ -176,7 +188,7 @@ export default function LeadershipMetricsPage() {
 
       {/* Tab content */}
       {loading ? (
-        <LoadingFallback icon="📊" message="데이터 로드 중..." withSkeleton style={{ padding: "32px 20px" }} />
+        <LoadingFallback icon="📊" message={t.loading} withSkeleton style={{ padding: "32px 20px" }} />
       ) : (
         <>
           {/* AIR tab */}
@@ -201,21 +213,21 @@ export default function LeadershipMetricsPage() {
 
           {/* Empty states */}
           {!loading && !error && tab === "air" && airData?.rows.length === 0 && (
-            <EmptyState message="Action Contract 데이터가 없습니다." />
+            <EmptyState message={t.emptyAir} />
           )}
           {!loading && !error && tab === "stage" && stageData?.rows.length === 0 && (
-            <EmptyState message="Leadership Engine State 데이터가 없습니다." />
+            <EmptyState message={t.emptyStage} />
           )}
           {!loading && !error && tab === "mwd" && mwdData?.rows.length === 0 && (
-            <EmptyState message="Micro Win 활성화 데이터가 없습니다." />
+            <EmptyState message={t.emptyMwd} />
           )}
           {!loading && !error && tab === "tii" && tiiData?.rows.length === 0 && (
-            <EmptyState message="TII 스냅샷 데이터가 없습니다." />
+            <EmptyState message={t.emptyTii} />
           )}
         </>
       )}
 
-      {/* Legend */}
+      {/* Legend — TODO(i18n): glossary copy below is still KO-only (deferred from leadershipMetricsAdmin migration) */}
       {tab === "air" && !loading && (
         <div className="mt-6 rounded border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs text-neutral-500 space-y-1">
           <p><strong>AIR</strong> = 완료된 행동 ÷ 선택된 행동 (draft 제외)</p>
@@ -252,18 +264,21 @@ function EmptyState({ message }: { message: string }) {
 }
 
 function AirTable({ rows }: { rows: UserAirRow[] }) {
+  const params = useParams();
+  const locale = (typeof params?.locale === "string" ? params.locale : "en") as Locale;
+  const t = getMessages(locale).leadershipMetricsAdmin;
   return (
     <div className="overflow-hidden rounded border border-neutral-200 bg-white shadow-sm">
       <table className="w-full text-sm">
         <thead className="bg-neutral-50">
           <tr>
-            <Th align="left">이메일</Th>
-            <Th align="center">상태</Th>
+            <Th align="left">{t.colEmail}</Th>
+            <Th align="center">{t.colStatus}</Th>
             <Th align="right">AIR</Th>
-            <Th align="right">완료 / 선택</Th>
-            <Th align="right">미완료</Th>
+            <Th align="right">{t.colDoneSelected}</Th>
+            <Th align="right">{t.colIncomplete}</Th>
             <Th align="right">Integrity Slip</Th>
-            <Th align="right">마지막 활동</Th>
+            <Th align="right">{t.colLastActivity}</Th>
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-100">
@@ -272,7 +287,7 @@ function AirTable({ rows }: { rows: UserAirRow[] }) {
               <td className="px-4 py-3 font-mono text-xs text-neutral-900">{row.email}</td>
               <td className="px-4 py-3 text-center">
                 <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${airBadgeColor(row.air)}`}>
-                  {airBadgeLabel(row.air)}
+                  {airBadgeLabel(row.air, t)}
                 </span>
               </td>
               <td className={`px-4 py-3 text-right tabular-nums ${airColor(row.air)}`}>
@@ -288,7 +303,7 @@ function AirTable({ rows }: { rows: UserAirRow[] }) {
                 {row.integritySlips > 0 ? <span className="text-red-700 font-semibold">{row.integritySlips}</span> : <span className="text-neutral-400">—</span>}
               </td>
               <td className="px-4 py-3 text-right text-xs text-neutral-500">
-                {row.lastActivity ? new Date(row.lastActivity).toLocaleDateString("ko-KR") : "—"}
+                {row.lastActivity ? new Date(row.lastActivity).toLocaleDateString(dateLoc(locale)) : "—"}
               </td>
             </tr>
           ))}
@@ -299,6 +314,9 @@ function AirTable({ rows }: { rows: UserAirRow[] }) {
 }
 
 function StageView({ data }: { data: StageMetricsResponse }) {
+  const params = useParams();
+  const locale = (typeof params?.locale === "string" ? params.locale : "en") as Locale;
+  const t = getMessages(locale).leadershipMetricsAdmin;
   return (
     <div className="space-y-4">
       {/* Distribution summary */}
@@ -315,10 +333,10 @@ function StageView({ data }: { data: StageMetricsResponse }) {
         <table className="w-full text-sm">
           <thead className="bg-neutral-50">
             <tr>
-              <Th align="left">이메일</Th>
+              <Th align="left">{t.colEmail}</Th>
               <Th align="center">Stage</Th>
-              <Th align="right">Stage 진입</Th>
-              <Th align="right">경과일</Th>
+              <Th align="right">{t.colStageEntry}</Th>
+              <Th align="right">{t.colDaysElapsed}</Th>
               <Th align="center">Forced Reset</Th>
               <Th align="center">Leader Track</Th>
             </tr>
@@ -333,14 +351,14 @@ function StageView({ data }: { data: StageMetricsResponse }) {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right text-xs text-neutral-500">
-                  {row.stageEnteredAt ? new Date(row.stageEnteredAt).toLocaleDateString("ko-KR") : "—"}
+                  {row.stageEnteredAt ? new Date(row.stageEnteredAt).toLocaleDateString(dateLoc(locale)) : "—"}
                 </td>
                 <td className="px-4 py-3 text-right tabular-nums text-neutral-700">
-                  {row.daysInStage}일
+                  {row.daysInStage}{t.daysSuffix}
                 </td>
                 <td className="px-4 py-3 text-center">
                   {row.forcedReset ? (
-                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">리셋</span>
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">{t.resetBadge}</span>
                   ) : (
                     <span className="text-neutral-300">—</span>
                   )}
@@ -362,17 +380,20 @@ function StageView({ data }: { data: StageMetricsResponse }) {
 }
 
 function MWDTable({ rows }: { rows: UserMWDRow[] }) {
+  const params = useParams();
+  const locale = (typeof params?.locale === "string" ? params.locale : "en") as Locale;
+  const t = getMessages(locale).leadershipMetricsAdmin;
   return (
     <div className="overflow-hidden rounded border border-neutral-200 bg-white shadow-sm">
       <table className="w-full text-sm">
         <thead className="bg-neutral-50">
           <tr>
-            <Th align="left">이메일</Th>
-            <Th align="right">MWD 7일</Th>
-            <Th align="right">MWD 14일</Th>
-            <Th align="right">완료 / 전체</Th>
-            <Th align="right">완료율</Th>
-            <Th align="right">마지막 활동</Th>
+            <Th align="left">{t.colEmail}</Th>
+            <Th align="right">{t.colMwd7}</Th>
+            <Th align="right">{t.colMwd14}</Th>
+            <Th align="right">{t.colDoneTotal}</Th>
+            <Th align="right">{t.colCompletionRate}</Th>
+            <Th align="right">{t.colLastActivity}</Th>
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-100">
@@ -395,7 +416,7 @@ function MWDTable({ rows }: { rows: UserMWDRow[] }) {
                 {row.totalActivations === 0 ? "—" : `${(row.completionRate * 100).toFixed(0)}%`}
               </td>
               <td className="px-4 py-3 text-right text-xs text-neutral-500">
-                {row.lastActivityAt ? new Date(row.lastActivityAt).toLocaleDateString("ko-KR") : "—"}
+                {row.lastActivityAt ? new Date(row.lastActivityAt).toLocaleDateString(dateLoc(locale)) : "—"}
               </td>
             </tr>
           ))}
@@ -406,21 +427,24 @@ function MWDTable({ rows }: { rows: UserMWDRow[] }) {
 }
 
 function TIITable({ rows }: { rows: TeamTIIRow[] }) {
+  const params = useParams();
+  const locale = (typeof params?.locale === "string" ? params.locale : "en") as Locale;
+  const t = getMessages(locale).leadershipMetricsAdmin;
   if (rows.length === 0) {
-    return <EmptyState message="team_weekly_metrics 스냅샷 데이터가 없습니다." />;
+    return <EmptyState message={t.emptyTeamWeekly} />;
   }
   return (
     <div className="overflow-hidden rounded border border-neutral-200 bg-white shadow-sm">
       <table className="w-full text-sm">
         <thead className="bg-neutral-50">
           <tr>
-            <Th align="left">리그 / 팀</Th>
+            <Th align="left">{t.colLeagueTeam}</Th>
             <Th align="right">TII</Th>
             <Th align="right">Avg AIR</Th>
             <Th align="right">Avg MWD</Th>
             <Th align="right">TSP</Th>
-            <Th align="right">구성원</Th>
-            <Th align="right">기준 주</Th>
+            <Th align="right">{t.colMembers}</Th>
+            <Th align="right">{t.colBaseWeek}</Th>
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-100">
@@ -444,7 +468,7 @@ function TIITable({ rows }: { rows: TeamTIIRow[] }) {
               </td>
               <td className="px-4 py-3 text-right tabular-nums text-neutral-700">{row.memberCount}</td>
               <td className="px-4 py-3 text-right text-xs text-neutral-500">
-                {row.weekStart ? new Date(row.weekStart).toLocaleDateString("ko-KR") : "—"}
+                {row.weekStart ? new Date(row.weekStart).toLocaleDateString(dateLoc(locale)) : "—"}
               </td>
             </tr>
           ))}

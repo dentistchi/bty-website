@@ -795,6 +795,38 @@ export type Messages = {
     badgesSectionTitle: string;
     tableColActions: string;
   };
+  /** Admin: 리더십 지표 대시보드(AIR/Stage/MWD/TII 탭). render-only. */
+  leadershipMetricsAdmin: {
+    networkError: string;
+    title: string;
+    computedPrefix: string;
+    refresh: string;
+    loading: string;
+    emptyAir: string;
+    emptyStage: string;
+    emptyMwd: string;
+    emptyTii: string;
+    emptyTeamWeekly: string;
+    colEmail: string;
+    colStatus: string;
+    colDoneSelected: string;
+    colIncomplete: string;
+    colLastActivity: string;
+    colStageEntry: string;
+    colDaysElapsed: string;
+    colMwd7: string;
+    colMwd14: string;
+    colDoneTotal: string;
+    colCompletionRate: string;
+    colLeagueTeam: string;
+    colMembers: string;
+    colBaseWeek: string;
+    resetBadge: string;
+    daysSuffix: string;
+    airBandHigh: string;
+    airBandMid: string;
+    airBandLow: string;
+  };
   /** Admin: 멘토 신청 큐·승인 UI. API 응답만 표시(render-only). */
     mentorRequestAdmin: {
     /** Admin mentor-requests page `<main>` landmark (ko/en). */
@@ -2624,6 +2656,37 @@ const ko: Messages = {
     badgesSectionTitle: "증정 배지",
     tableColActions: "동작",
   },
+  leadershipMetricsAdmin: {
+    networkError: "네트워크 오류",
+    title: "리더십 지표",
+    computedPrefix: "계산:",
+    refresh: "새로고침",
+    loading: "데이터 로드 중…",
+    emptyAir: "Action Contract 데이터가 없습니다.",
+    emptyStage: "Leadership Engine State 데이터가 없습니다.",
+    emptyMwd: "Micro Win 활성화 데이터가 없습니다.",
+    emptyTii: "TII 스냅샷 데이터가 없습니다.",
+    emptyTeamWeekly: "team_weekly_metrics 스냅샷 데이터가 없습니다.",
+    colEmail: "이메일",
+    colStatus: "상태",
+    colDoneSelected: "완료 / 선택",
+    colIncomplete: "미완료",
+    colLastActivity: "마지막 활동",
+    colStageEntry: "Stage 진입",
+    colDaysElapsed: "경과일",
+    colMwd7: "MWD 7일",
+    colMwd14: "MWD 14일",
+    colDoneTotal: "완료 / 전체",
+    colCompletionRate: "완료율",
+    colLeagueTeam: "리그 / 팀",
+    colMembers: "구성원",
+    colBaseWeek: "기준 주",
+    resetBadge: "리셋",
+    daysSuffix: "일",
+    airBandHigh: "High",
+    airBandMid: "Mid",
+    airBandLow: "Low",
+  },
   mentorRequestAdmin: {
     mainRegionAria: "멘토 신청 승인 — 관리",
     title: "멘토 대화 신청 승인",
@@ -4332,6 +4395,37 @@ const en: Messages = {
       "You're in the top 5% on the weekly leaderboard. Here you can access Elite-only content.",
     badgesSectionTitle: "Badges",
     tableColActions: "Actions",
+  },
+  leadershipMetricsAdmin: {
+    networkError: "Network error",
+    title: "Leadership Metrics",
+    computedPrefix: "Computed:",
+    refresh: "Refresh",
+    loading: "Loading data…",
+    emptyAir: "No Action Contract data.",
+    emptyStage: "No Leadership Engine State data.",
+    emptyMwd: "No Micro Win activation data.",
+    emptyTii: "No TII snapshot data.",
+    emptyTeamWeekly: "No team_weekly_metrics snapshot data.",
+    colEmail: "Email",
+    colStatus: "Status",
+    colDoneSelected: "Done / Selected",
+    colIncomplete: "Incomplete",
+    colLastActivity: "Last activity",
+    colStageEntry: "Stage entry",
+    colDaysElapsed: "Days elapsed",
+    colMwd7: "MWD 7d",
+    colMwd14: "MWD 14d",
+    colDoneTotal: "Done / Total",
+    colCompletionRate: "Completion rate",
+    colLeagueTeam: "League / Team",
+    colMembers: "Members",
+    colBaseWeek: "Base week",
+    resetBadge: "Reset",
+    daysSuffix: "d",
+    airBandHigh: "High",
+    airBandMid: "Mid",
+    airBandLow: "Low",
   },
   mentorRequestAdmin: {
     mainRegionAria: "Mentor request approval — admin",

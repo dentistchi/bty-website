@@ -1,3 +1,13 @@
+## M-3 leadership-metrics admin i18n 현지화 + AIR-band 용어충돌 해소 — CLOSED (2026-05-31)
+
+- 문제: /admin/leadership-metrics가 getMessages 미사용·전부 bare KO(~35 문자열) + ko-KR 날짜 5곳 하드코딩 → /en에서도 한글·KO 날짜. 구조상 메인+4 서브컴포넌트(AirTable/StageView/MWDTable/TIITable)가 data prop만 받아 main의 t 도달 불가. 추가로 airBadgeLabel "Certified" 배지가 air≥0.8만으로 4-gate certified.ts와 괴리(용어충돌).
+- 변경(2파일, +164/-46): i18n.ts에 leadershipMetricsAdmin ns 신규 29키(type/ko/en 3앵커, +94). page.tsx는 (B)per-component useParams로 메인+4서브 각각 locale/t 도출. 날짜 5곳 dateLoc(locale) 헬퍼로 로케일화. {n}일→{n}{daysSuffix}(일/d). load 콜백 t:Tab 파라미터를 tabKey로 개명(i18n t 섀도 회피). **AIR 배지 Certified/Active/At Risk → High/Mid/Low(ko=en 중립)로 개명하여 용어충돌 코드에서 제거.** glossary 6줄은 TODO(i18n) 주석 달고 KO 유지(defer).
+- gate: tsc 0 / terminology 13→13(무회귀). UI render-only.
+- inner-main: 3128e71d
+- 후속(미적용) admin i18n 잔여 2페이지: quality(~14+ko-KR date 1), users(~33+ko-KR date 1). + leadership-metrics glossary 6줄(TODO).
+- 별건 잔존: certified revoke(박탈) 메커니즘 부재(stateless recompute) — M-2 기록 참조.
+
+---
 ## M-2 arena-membership admin i18n 현지화 — CLOSED (2026-05-31)
 
 - 문제: /admin/arena-membership 페이지가 getMessages(adminArenaMembership) 스캐폴딩 보유하나 mainRegionAria 단일 키만 사용 → h1·설명·테이블 헤더(직군/입사일/리더시작일/요청일/동작)·빈 상태·승인 버튼 등 10개 렌더 문자열이 하드코딩 KO. /en에서도 한글 노출(부분 현지화 gap). 주의: 리터럴 카운트 audit가 sql-migrations(로컬 ko/en dict=현지화 완료)를 오탐, 이 페이지군을 과소평가 → EN-branch 유무로 재감사 후 확정.
