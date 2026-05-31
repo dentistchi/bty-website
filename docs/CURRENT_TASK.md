@@ -5,6 +5,7 @@
 - CenterPageClient.tsx 단일 파일: trainProgress state + /api/train/progress fetch(Promise.all append) + TrainProgressCard(정상 분기, isForcedReset 제외, hasSession 가드).
 - CTA: /${locale}/train/day/${N} 직행 + /train/28days 보조. i18n inline 삼항(i18n.ts 미터치). 토큰 dear-charcoal 정합.
 - gate: tsc 0 / lint 0 / vitest 3398/0/6(회귀 0). UI-only, release-gate 비대상.
+- (후속 L-1) TrainProgressCard를 정상 분기 최상단(header 직후)으로 이동 — 발견성. gate green(tsc/lint/vitest 3398/0/6, 회귀 0, net 0). inner 20aba618. deploy는 L-3 unlock 게이팅과 묶어 1회 배포 보류(현 live cb48d307 = 카드 최하단).
 - inner-main: 830f7220
 - 범위 밖(격리): 달력기반 N, unlock 엔진 배선(getUnlockedDayCount 미연결), per-user 시작일 residency, journey/growth post-launch quarantine, per-day 완료 모먼트.
 
