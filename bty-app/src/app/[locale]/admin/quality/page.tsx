@@ -66,11 +66,11 @@ export default function AdminQualityPage() {
       setSummary(sumData);
       setHealth(healthData);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "네트워크 오류");
+      setError(e instanceof Error ? e.message : t.networkError);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -79,7 +79,7 @@ export default function AdminQualityPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-neutral-900">Admin Quality</h1>
-          <p className="mt-1 text-sm text-neutral-600">Quality Events 대시보드</p>
+          <p className="mt-1 text-sm text-neutral-600">{t.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -88,7 +88,7 @@ export default function AdminQualityPage() {
             disabled={loading}
             className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
           >
-            새로고침
+            {t.refresh}
           </button>
 
         </div>
@@ -101,7 +101,7 @@ export default function AdminQualityPage() {
       )}
 
       {loading ? (
-        <LoadingFallback icon="📋" message="품질 데이터 로드 중..." withSkeleton style={{ padding: "32px 20px" }} />
+        <LoadingFallback icon="📋" message={t.loading} withSkeleton style={{ padding: "32px 20px" }} />
       ) : (
         <div className="space-y-6">
           {/* Health status */}
@@ -109,17 +109,17 @@ export default function AdminQualityPage() {
             <div className="flex items-center gap-3 rounded border border-neutral-200 bg-white px-4 py-3 shadow-sm">
               <span className={`h-2.5 w-2.5 rounded-full ${health.db_ok ? "bg-emerald-500" : "bg-red-400"}`} />
               <span className="text-sm text-neutral-700">
-                DB: {health.db_ok ? "정상" : "연결 안됨"}
+                DB: {health.db_ok ? t.dbOk : t.dbDown}
               </span>
               <span className="text-sm text-neutral-400">|</span>
               <span className="text-sm text-neutral-700">
-                30일 이벤트: <strong>{health.total_events_30d}</strong>
+                {t.events30dPrefix} <strong>{health.total_events_30d}</strong>
               </span>
               {health.latest_event_at && (
                 <>
                   <span className="text-sm text-neutral-400">|</span>
                   <span className="text-xs text-neutral-500">
-                    마지막: {new Date(health.latest_event_at).toLocaleString("ko-KR")}
+                    {t.lastPrefix} {new Date(health.latest_event_at).toLocaleString(locale === "en" ? "en-US" : "ko-KR")}
                   </span>
                 </>
               )}
@@ -132,19 +132,19 @@ export default function AdminQualityPage() {
           {/* Summary overview */}
           <div className="rounded border border-neutral-200 bg-white p-6 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-medium text-neutral-900">이벤트 요약</h2>
+              <h2 className="text-lg font-medium text-neutral-900">{t.summaryTitle}</h2>
               {summary?.window && (
-                <span className="text-xs text-neutral-400">기간: {summary.window}</span>
+                <span className="text-xs text-neutral-400">{t.windowPrefix} {summary.window}</span>
               )}
             </div>
 
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <span className="text-sm text-neutral-700 font-medium">
-                총 이벤트: <strong>{summary?.total_events ?? 0}</strong>
+                {t.totalEventsPrefix} <strong>{summary?.total_events ?? 0}</strong>
               </span>
               {summary?.avg_css != null && (
                 <span className="text-sm text-neutral-500">
-                  평균 CSS: {(summary.avg_css * 100).toFixed(1)}%
+                  {t.avgCssPrefix} {(summary.avg_css * 100).toFixed(1)}%
                 </span>
               )}
             </div>
@@ -159,7 +159,7 @@ export default function AdminQualityPage() {
 
             {(summary?.total_events ?? 0) === 0 && (
               <p className="mt-4 text-sm text-neutral-400">
-                이벤트 데이터가 없습니다. bty-ai-core 백엔드 연동 후 표시됩니다.
+                {t.emptyEvents}
               </p>
             )}
           </div>
@@ -167,7 +167,7 @@ export default function AdminQualityPage() {
           {/* Top signatures */}
           {(summary?.top_signatures?.length ?? 0) > 0 && (
             <div className="rounded border border-neutral-200 bg-white p-6 shadow-sm">
-              <h2 className="mb-3 text-lg font-medium text-neutral-900">주요 이슈 시그니처</h2>
+              <h2 className="mb-3 text-lg font-medium text-neutral-900">{t.topSignaturesTitle}</h2>
               <ul className="space-y-1">
                 {summary!.top_signatures.map((sig, i) => (
                   <li key={i} className="flex items-center gap-2 text-sm text-neutral-700">
@@ -183,10 +183,10 @@ export default function AdminQualityPage() {
           {summary && ["route", "role", "intent"].map((key) => {
             const items = summary.breakdown[key as keyof typeof summary.breakdown] ?? [];
             if (items.length === 0) return null;
-            const labels: Record<string, string> = { route: "라우트별", role: "역할별", intent: "의도별" };
+            const labels: Record<string, string> = { route: t.breakdownRoute, role: t.breakdownRole, intent: t.breakdownIntent };
             return (
               <div key={key} className="rounded border border-neutral-200 bg-white p-6 shadow-sm">
-                <h2 className="mb-3 text-lg font-medium text-neutral-900">{labels[key]} 분포</h2>
+                <h2 className="mb-3 text-lg font-medium text-neutral-900">{labels[key]}</h2>
                 <table className="w-full text-sm">
                   <tbody className="divide-y divide-neutral-100">
                     {items.map((item) => (

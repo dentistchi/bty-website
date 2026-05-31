@@ -877,6 +877,23 @@ export type Messages = {
   adminQuality: {
     /** Admin quality page `<main>` landmark (ko/en). */
     mainRegionAria: string;
+    networkError: string;
+    subtitle: string;
+    refresh: string;
+    loading: string;
+    dbOk: string;
+    dbDown: string;
+    lastPrefix: string;
+    events30dPrefix: string;
+    summaryTitle: string;
+    windowPrefix: string;
+    totalEventsPrefix: string;
+    avgCssPrefix: string;
+    emptyEvents: string;
+    topSignaturesTitle: string;
+    breakdownRoute: string;
+    breakdownRole: string;
+    breakdownIntent: string;
   };
   /** Admin: 조직 목록(API만). render-only. */
   adminOrganizations: {
@@ -2747,6 +2764,23 @@ const ko: Messages = {
   },
   adminQuality: {
     mainRegionAria: "품질 이벤트 — 관리",
+    networkError: "네트워크 오류",
+    subtitle: "Quality Events 대시보드",
+    refresh: "새로고침",
+    loading: "품질 데이터 로드 중…",
+    dbOk: "정상",
+    dbDown: "연결 안됨",
+    lastPrefix: "마지막:",
+    events30dPrefix: "30일 이벤트:",
+    summaryTitle: "이벤트 요약",
+    windowPrefix: "기간:",
+    totalEventsPrefix: "총 이벤트:",
+    avgCssPrefix: "평균 CSS:",
+    emptyEvents: "이벤트 데이터가 없습니다. bty-ai-core 백엔드 연동 후 표시됩니다.",
+    topSignaturesTitle: "주요 이슈 시그니처",
+    breakdownRoute: "라우트별 분포",
+    breakdownRole: "역할별 분포",
+    breakdownIntent: "의도별 분포",
   },
   adminOrganizations: {
     mainRegionAria: "조직 목록 — 관리",
@@ -4503,6 +4537,23 @@ const en: Messages = {
   },
   adminQuality: {
     mainRegionAria: "Quality events — admin",
+    networkError: "Network error",
+    subtitle: "Quality Events dashboard",
+    refresh: "Refresh",
+    loading: "Loading quality data…",
+    dbOk: "Connected",
+    dbDown: "Disconnected",
+    lastPrefix: "Last:",
+    events30dPrefix: "30-day events:",
+    summaryTitle: "Event summary",
+    windowPrefix: "Window:",
+    totalEventsPrefix: "Total events:",
+    avgCssPrefix: "Avg CSS:",
+    emptyEvents: "No event data. Shown once the bty-ai-core backend is connected.",
+    topSignaturesTitle: "Top issue signatures",
+    breakdownRoute: "Route distribution",
+    breakdownRole: "Role distribution",
+    breakdownIntent: "Intent distribution",
   },
   adminOrganizations: {
     mainRegionAria: "Organizations — admin",

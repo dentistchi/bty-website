@@ -1,3 +1,12 @@
+## M-5 quality admin i18n 현지화 — CLOSED (2026-05-31)
+
+- 문제: /admin/quality가 getMessages(adminQuality) 스캐폴딩 보유하나 mainRegionAria 단일 키만 사용 → subtitle·refresh·loading·DB상태·요약/시그니처/breakdown 헤더 등 18개 렌더 문자열 하드코딩 KO + ko-KR 날짜 1곳. /en에서도 한글·KO 날짜. (리터럴 grep가 inline JSX로 쪼개진 "30일 이벤트:<strong>" 등 4건 + standalone "새로고침" 누락 → full-read로 보강, 최종 17 신규키.)
+- 변경(2파일, +67/-16): i18n.ts adminQuality ns +17키(type/ko/en 3앵커). page.tsx 18개 bare-KO 렌더 → t.*. breakdown route/role/intent는 full-phrase 키(어순 회피, suffix-concat 안 함). dbOk/dbDown=Connected/Disconnected. line122 날짜 locale 조건부(en-US/ko-KR). load useCallback deps에 t 추가. SeverityBadge High/Med/Low는 EN 유지(용어충돌 없음).
+- gate: tsc 0(ko/en parity 강제) / terminology 13→13(무회귀). UI render-only.
+- inner-main: d1b01fa1
+- 후속(미적용) admin i18n 잔여 1페이지: users(~33+ko-KR date 1) — 마지막.
+
+---
 ## M-4 leadership-metrics glossary 현지화 + Stage 탭 legend 신규 — CLOSED (2026-05-31)
 
 - 문제: M-3에서 defer한 glossary 6줄(air/tii/mwd 탭)이 KO-only(TODO 주석). 또 Stage 탭은 legend 부재 → Certified/Leader Track/Forced Reset 컬럼 설명 없음.
