@@ -1,3 +1,14 @@
+## #3 Center 진행 동선 — TrainProgressCard — CLOSED (2026-05-30)
+
+- canonical 28일 계통 = **train** (4-signal 만장일치: assessment CTA→/train/start, hub push→/train/28days, 오늘자 2커밋 active, journey/growth 4/29 동결 dead 의심).
+- 해석 = **진척기반(A)**: N = clamp(lastCompletedDay+1, 1, 28). todayUnlockedDay(하드코딩=1) 미사용.
+- CenterPageClient.tsx 단일 파일: trainProgress state + /api/train/progress fetch(Promise.all append) + TrainProgressCard(정상 분기, isForcedReset 제외, hasSession 가드).
+- CTA: /${locale}/train/day/${N} 직행 + /train/28days 보조. i18n inline 삼항(i18n.ts 미터치). 토큰 dear-charcoal 정합.
+- gate: tsc 0 / lint 0 / vitest 3398/0/6(회귀 0). UI-only, release-gate 비대상.
+- inner-main: 830f7220
+- 범위 밖(격리): 달력기반 N, unlock 엔진 배선(getUnlockedDayCount 미연결), per-user 시작일 residency, journey/growth post-launch quarantine, per-day 완료 모먼트.
+
+---
 ## mark-complete 루프 end-to-end LIVE-VERIFIED — CLOSED (2026-05-31)
 - 3 lane이 엮여 mark-complete 무반응 버그 최종 해결, logged-in 실측 통과.
 - 체인: (1) train completion 루프 배선(UI→/completions, progress read,
