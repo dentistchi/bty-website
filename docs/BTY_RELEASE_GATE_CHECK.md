@@ -5188,3 +5188,9 @@ es |
 - NOT-CLAUDE-VERIFIED (logged-in 실측, 배포 후 = 이 수정의 핵심 검증):
   logged-in progress hasSession:true + 실 completedDays / mark-complete write
   통과(401 아님) / row +1. DevTools progress hasSession 확인.
+
+**[TRAIN-AUTH LIVE-VERIFIED]** (2026-05-31)
+- [TRAIN-AUTH] (2026-05-30)의 NOT-CLAUDE-VERIFIED 항목 closed.
+- COMMANDER-CONFIRMED (logged-in, staging c691da24): /api/train/progress
+  hasSession:true + completedDays:[1] + lastCompletedDay:1. mark-complete
+  completions 200 + DB row + progress 반영. "not ready" 해소.

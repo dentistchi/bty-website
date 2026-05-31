@@ -1,3 +1,24 @@
+## mark-complete 루프 end-to-end LIVE-VERIFIED — CLOSED (2026-05-31)
+- 3 lane이 엮여 mark-complete 무반응 버그 최종 해결, logged-in 실측 통과.
+- 체인: (1) train completion 루프 배선(UI→/completions, progress read,
+  매핑 직접) (2) train_day_completions 테이블 실존 확인(STEP2b, migration 불요)
+  (3) assessment 50문항 게이트 수정(race+canSubmit+4xx — train 진입 선행조건)
+  (4) train auth chunked-cookie 수정(SSR client — logged-in hasSession).
+- LIVE 실측(staging c691da24, logged-in): /api/train/progress
+  {ok:true, hasSession:true, lastCompletedDay:1, completedDays:[1]}.
+  mark-complete 클릭→completions 200→DB 저장→progress SELECT 반영.
+  "Train progress not ready" 해소, 완료 표시 전환 확인.
+- 닫힌 deferred: 이전 train/A1 lane의 logged-in SSR + 이 lane의 NOT-CLAUDE-VERIFIED
+  (RELEASE_GATE_CHECK [TRAIN-AUTH] logged-in 항목) 전부 live-verified.
+- 라이브 worker: c691da24 (mark-complete + assessment + auth-fix 3 lane).
+- 잔여(별개 lane): #3 Center 진행 동선 UI(assessment 후 매번 안 거치고 진행 중
+  28일로 직접 — completion 데이터 이제 실DB 조회 가능하니 구현 가능).
+- carry-forward: auth-server.ts 수동 파서 chunk 버그(train만 우회) / admin/quality
+  localhost fallback / /api/version stale / CoachChatPane non-contiguous /
+  logged-out /en 한글 fallback shell(EN T3 계열).
+
+---
+
 ## train auth chunked-cookie 수정 (SSR client 전환) — CLOSED (2026-05-30)
 - 증상: logged-in인데 train day 페이지 "Train progress not ready"
   (/api/train/progress 200 hasSession:false). mark-complete 도달 불가.
