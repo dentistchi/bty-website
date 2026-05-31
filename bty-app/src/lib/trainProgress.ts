@@ -13,6 +13,15 @@ export function getUnlockedDayCount(now = new Date()) {
   return clampDay(diffDays + 1);
 }
 
+/**
+ * 완료 체인 기반 unlock (옵션 A): 마지막 완료 Day +1 을 오픈.
+ * 달력/morning-gate 무시 — 전날 완료 시 다음 Day 즉시 개방. lcd=0 → 1.
+ */
+export function getUnlockedDayFromCompletions(lastCompletedDay: number): number {
+  const lcd = Number.isFinite(lastCompletedDay) ? Math.floor(lastCompletedDay) : 0;
+  return clampDay(lcd + 1);
+}
+
 const OPEN_HOUR = 5;
 
 function startOfUnlockDayLocal(completedAtISO: string) {

@@ -117,8 +117,9 @@ describe("GET /api/train/progress", () => {
     const data = await res.json();
     expect(typeof data.startDateISO).toBe("string");
     expect(data.startDateISO.length).toBeGreaterThan(0);
-    expect(data.todayUnlockedDay).toBe(1);
-    expect(data.unlockedMaxDay).toBe(1);
+    // completion-chain (옵션 A): lastCompletedDay=1 → 다음 Day(2) 개방
+    expect(data.todayUnlockedDay).toBe(2);
+    expect(data.unlockedMaxDay).toBe(2);
     expect(Object.keys(data).sort()).toEqual(
       [
         "completedDays",

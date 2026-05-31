@@ -1,3 +1,13 @@
+## L-3A train unlock 영구 과잉잠금 해소 — CLOSED (2026-05-30)
+
+- 증상: progress route todayUnlockedDay=1 하드코딩 → Day1 완료해도 Day2 영구 잠금(과잉). 정답 엔진(getDayLockState)은 dead code였음.
+- 결정: 옵션 A(completion-chain). N = clamp(lastCompletedDay+1, 1, 28). morning-gate/calendar/per-user 시작일 전부 회피(post-launch).
+- 변경 3파일: trainProgress.ts getUnlockedDayFromCompletions 헬퍼(domain, clampDay 재사용) + progress/route.ts 하드코딩 제거·배선 + route.test.ts 기대값(day1→2). scalar 계약 보존 → 클라/TrainShell/CenterPageClient/사이드바 무변경.
+- api-handler thin 복구(하드코딩=1이 위반이었음). startDateISO·SELECT·getDayLockState 미터치.
+- gate: tsc 0 / lint 0 / vitest 3398/0/6 (progress test 7/7). inner-main: d91c511a
+- 범위 밖(별 lane/격리): server-side 진입 guard(URL 직타 차단, page.tsx server 승격 필요 — 다음 lane), morning-gate(익일05:00, TZ·CF Worker UTC 위험), per-user 시작일 residency, getDayLockState 배선, 28days/day 라우트 이원화.
+
+---
 ## #3 Center 진행 동선 — TrainProgressCard — CLOSED (2026-05-30)
 
 - canonical 28일 계통 = **train** (4-signal 만장일치: assessment CTA→/train/start, hub push→/train/28days, 오늘자 2커밋 active, journey/growth 4/29 동결 dead 의심).
