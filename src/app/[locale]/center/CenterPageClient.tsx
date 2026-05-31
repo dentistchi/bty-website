@@ -429,12 +429,12 @@ export default function CenterPageClient({ locale }: { locale: string }) {
                     : "Your space for reflection and reset."}
                 </p>
               </header>
+              <TrainProgressCard data={trainProgress} locale={locale} isKo={isKo} />
               {stage && <StageContextCard stage={stage} isKo={isKo} />}
               <HealingPhaseTracker locale={lang} />
               <DearMeCard letter={letters[0] ?? null} locale={locale} isKo={isKo} />
               <ResilienceCard entries={resilience} locale={locale} isKo={isKo} />
               <AssessmentCard assessment={submissions[0] ?? null} locale={locale} isKo={isKo} />
-              <TrainProgressCard data={trainProgress} locale={locale} isKo={isKo} />
             </div>
           )}
         </div>
