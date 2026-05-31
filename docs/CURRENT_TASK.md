@@ -1,3 +1,14 @@
+## M-6 users admin i18n 현지화 + cascade-정확 삭제경고 — CLOSED (2026-05-31) · **admin i18n sweep 완료**
+
+- 문제: /admin/users가 getMessages(adminUsers) 스캐폴딩 보유하나 mainRegionAria 단일 키만 사용 → 35개 렌더 KO(에러/검증 메시지·confirm/alert·폼 라벨·테이블 헤더·참고사항) + ko-KR 날짜 1곳. /en에서도 한글. 파괴적 동작(삭제 confirm, 비번변경 alert) 카피 포함.
+- 변경(2파일, +123/-36): i18n.ts adminUsers ns +29키(type/ko/en 3앵커). page.tsx 35개 bare-KO → t.*. deleteConfirm는 {email} placeholder + `.replace("{email}", email)`(confirm 문자열). date locale 조건부. fetchUsers는 컴포넌트 함수(useCallback 아님)라 t closure OK.
+- **deleteConfirm cascade 강화**: 최초 "no cascade" 진단은 **오진**(좁은 same-line uppercase grep로 FK 1건만 검출). 재조사(case-insensitive) 결과 auth.users FK ~94건 중 대다수 `on delete cascade`(arena_ledgers/integrity_submissions/user_program_progress 등), 소수 `set null`(verifier_id·leader_approver_id 등 audit 컬럼). 즉 deleteUser → DB cascade로 관련 데이터 삭제 확정. 카피 "계정과 관련 데이터가 모두 삭제되며 되돌릴 수 없습니다 / account and all related data will be removed and this cannot be undone"로 강화(grounded: cascade FK + hard auth.admin.deleteUser). **단, 검증은 마이그레이션 grep 기반 — 라이브 확정은 pg_constraint.confdeltype 조회 권장(후속 ALTER DROP CONSTRAINT 미반영 가능).**
+- gate: tsc 0(ko/en parity) / terminology 13→13(무회귀). UI render-only.
+- inner-main: 104f2944
+- **admin i18n sweep 종료**: arena-membership(M-2)·leadership-metrics+glossary/Stage legend(M-3/M-4)·quality(M-5)·users(M-6) 4페이지 전부 현지화. sql-migrations·debug는 로컬 ko/en dict로 기존 현지화 완료, organizations·login·index·mentor-requests는 이미 getMessages. 잔여 admin 현지화 gap 없음.
+- 별건 잔존(미적용): #2 requireAdminEmail fail-open · #3 getIsEliteTop5 500-cap+tie-break · #4 mentor-requests route.ts scope=all stale doc · certified revoke=스케줄 재평가 재계산 · next-lint(ajv) 환경 크래시·deprecated · AdminHeader.tsx dead(importer 0).
+
+---
 ## M-5 quality admin i18n 현지화 — CLOSED (2026-05-31)
 
 - 문제: /admin/quality가 getMessages(adminQuality) 스캐폴딩 보유하나 mainRegionAria 단일 키만 사용 → subtitle·refresh·loading·DB상태·요약/시그니처/breakdown 헤더 등 18개 렌더 문자열 하드코딩 KO + ko-KR 날짜 1곳. /en에서도 한글·KO 날짜. (리터럴 grep가 inline JSX로 쪼개진 "30일 이벤트:<strong>" 등 4건 + standalone "새로고침" 누락 → full-read로 보강, 최종 17 신규키.)
