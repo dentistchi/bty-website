@@ -1,3 +1,12 @@
+## L-4c train 본문 절대날짜 제거 — CLOSED (2026-05-30)
+
+- 문제: day 본문 prose에 PDF 달력 절대날짜+요일("February 9, 2026 (Monday)") 박힘. L-4a 라벨 제거 후에도 본문에 잔존(Day4 화면 "February 10, 2026 (Tuesday)" 노출). 진척기반 모델과 모순.
+- residency 확정: 사용자 가시 날짜 = 정본 content/train-28days.en-base.json raw line[1] 1벌뿐. completion-pack(sections 4키만, 날짜 0) + trainContent/CoachChatPane(sections만+orphan) 둘 다 날짜 미출력 → 정본 1벌로 100% 커버.
+- 변경(정본 1파일): 28days × raw.en/raw.ko 날짜 line strip(en28+ko28=56). python 멱등 스크립트, day count 28 보존, JSON valid. diff 56/56(escape \n 단일줄 in-place, surgical). sourceDate/title/sections 무변경.
+- gate: V0 JSON무결(날짜 잔존 0) + tsc 0 / lint 0 / vitest 3398/0/6. inner-main: fd040210
+- 잔여(별 cleanup lane, post-launch, residency 진단됨): content/train-28days.json(completion-pack 소스, date 필드 ISO·미출력), data/train-28days.en-base.json(trainContent·orphan 소비), content/train-28days.en.json(orphan dead), CoachChatPane.tsx/TrainSidebar.tsx/TrainDayClient.tsx(orphan dead code), dead 날짜엔진(getDayLockState/getUnlockedDayCount-eligibility 의존).
+
+---
 ## L-4a train day 절대날짜 라벨 제거 — CLOSED (2026-05-30)
 
 - 문제: day 콘텐츠에 PDF 달력 스냅샷(2026-02-07~03-05) 절대날짜 하드코딩. 진척기반(option A)에서 unlock은 달력 분리했으나 표시 날짜는 고정 → 오늘 진입자가 "2026-02-07" 봄(드리프트).
