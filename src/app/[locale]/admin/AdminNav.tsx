@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { key: "users",               label: "Users" },
   { key: "organizations",       label: "Orgs" },
   { key: "arena-membership",    label: "Membership" },
+  { key: "mentor-requests",     label: "멘토 신청" },
   { key: "sql-migrations",      label: "SQL" },
 ];
 
