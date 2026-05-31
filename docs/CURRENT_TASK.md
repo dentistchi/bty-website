@@ -1,3 +1,12 @@
+## L-5 TrainProgressCard 진척 카운터 제거 — CLOSED (2026-05-31)
+
+- 문제: 진행중 카피 "(N/28 done)"/"(N/28 완료)" 카운터가 날짜("4월 28일")로 오독 → "4/1 시작?" 계산 모순. 진척기반·L-4 calendar 제거 맥락과 충돌.
+- 변경(CenterPageClient.tsx 2 토큰): 진행중 분기 ko/en 카피에서 카운터 토큰만 제거(앞 공백 포함). "오늘은 Day N, 준비됐나요?"/"Today is Day N. Ready?"는 유지(Commander 확인). lcd 변수는 L307/308/312 사용 → 유지.
+- 미시작/완주 카피 무관(카운터 없음). 링크/다른 카드/props 무변경.
+- gate: tsc 0 / lint 0 / vitest 3398/0/6. UI-only. inner-main: 7b8a7bd7
+- 누적: STEP1(카드)+L-1(최상단)+L-3A(unlock 완료체인)+L-SG(server guard+라우트통합)+L-4a(라벨날짜)+L-4c(본문날짜)+L-5(카운터). Commander 스크린샷 증상 전부 해소.
+
+---
 ## L-4c train 본문 절대날짜 제거 — CLOSED (2026-05-30)
 
 - 문제: day 본문 prose에 PDF 달력 절대날짜+요일("February 9, 2026 (Monday)") 박힘. L-4a 라벨 제거 후에도 본문에 잔존(Day4 화면 "February 10, 2026 (Tuesday)" 노출). 진척기반 모델과 모순.
