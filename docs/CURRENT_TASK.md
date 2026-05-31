@@ -1,3 +1,11 @@
+## L-4a train day 절대날짜 라벨 제거 — CLOSED (2026-05-30)
+
+- 문제: day 콘텐츠에 PDF 달력 스냅샷(2026-02-07~03-05) 절대날짜 하드코딩. 진척기반(option A)에서 unlock은 달력 분리했으나 표시 날짜는 고정 → 오늘 진입자가 "2026-02-07" 봄(드리프트).
+- 변경(page.client.tsx 2줄 삭제): L219 sourceDate 라벨 div + L153 dead 변수 lessonDate 제거. main 최상단이 곧장 h1 Day N. 절대날짜 라벨 소멸.
+- gate: tsc 0 / lint 0 / vitest 3398/0/6. UI-only(표시 삭제), 데이터/모듈 미삭제. inner-main: c8d14a0c
+- 잔여(L-4c cleanup lane, post-launch, residency 진단 선행 필수): 본문 prose 날짜("2026년 02월 08일 (Sunday)" 28일×ko/en JSON 마이그레이션), ruleNote(dead-via-orphan, TrainSidebar:86), TrainSidebar.tsx(orphan), TrainDayClient.tsx(28days/day redirect후 미사용), 콘텐츠 JSON 4벌 중복 정본화, dead 날짜엔진(getDayLockState 진짜dead/getUnlockedDayCount는 eligibility 의존-구분필요).
+
+---
 ## L-SG train server guard + 라우트 정본 통합 — CLOSED (2026-05-30)
 
 - 문제: day 라우트 2개 병존(/train/day=정본 real content, /train/28days/day=빈 스텁 <div>Day:N</div>), server 게이팅 0 → URL 직타로 잠긴 day/스텁 접근 가능.

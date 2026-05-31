@@ -150,7 +150,6 @@ export default function TrainDayPage() {
   const pick = (x?: LocStr): string => x?.[locale] ?? x?.en ?? x?.ko ?? "";
   const lesson = (TRAIN_BILINGUAL as { days: Record<string, BiDay> }).days?.[String(day)];
   const lessonTitle = pick(lesson?.title);
-  const lessonDate = lesson?.sourceDate ?? "";
   const lessonText =
     pick(lesson?.raw) ||
     [lessonTitle, ...Object.entries(lesson?.sections ?? {}).map(([k, v]) => `${k}\n${pick(v)}`)].join("\n\n");
@@ -216,7 +215,6 @@ export default function TrainDayPage() {
 
       {/* CENTER: Lesson */}
       <main style={{ padding: 24, overflow: "auto" }} aria-label={t.lessonLabel}>
-        <div style={{ opacity: 0.6, marginBottom: 6 }}>{lessonDate}</div>
         <h1 style={{ margin: 0, marginBottom: 8 }}>Day {day}</h1>
         <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 18 }}>{lessonTitle}</div>
 
