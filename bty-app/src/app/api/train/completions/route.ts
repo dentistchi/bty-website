@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
-import { getAuthUserFromRequest } from "@/lib/auth-server";
+import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export async function POST(request: Request) {
-  const user = await getAuthUserFromRequest(request);
-  if (!user) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  // 앱 표준 SSR client로 쿠키 세션 해석 (chunked sb-*-auth-token 포함; 수동 파서 미사용)
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.id) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
   const body = await request.json().catch(() => ({}));
   const day = Number(body?.day);

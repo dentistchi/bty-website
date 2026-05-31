@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuthUserFromRequest } from "@/lib/auth-server";
+import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
@@ -17,7 +17,7 @@ function noStore(res: NextResponse) {
  * Returns progress pack: startDateISO, lastCompletedDay, completedDays, todayUnlockedDay, unlockedMaxDay.
  * Response (200): { ok, hasSession, startDateISO, lastCompletedDay, completedDays, todayUnlockedDay, unlockedMaxDay }.
  */
-export async function GET(request: Request) {
+export async function GET() {
   // ✅ 임시: startDateISO를 "오늘"로 (Day 1이 오늘이 되게)
   const today = new Date();
   const yyyy = today.getFullYear();
@@ -29,8 +29,12 @@ export async function GET(request: Request) {
   const todayUnlockedDay = 1;
 
   // 로그아웃 상태: 401 아님 — hasSession:false + 빈 진행상황 (클라이언트가 hasSession 체크)
-  const user = await getAuthUserFromRequest(request);
-  if (!user) {
+  // 앱 표준 SSR client로 쿠키 세션 해석 (chunked sb-*-auth-token 포함; 수동 파서 미사용)
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.id) {
     return noStore(
       NextResponse.json(
         {

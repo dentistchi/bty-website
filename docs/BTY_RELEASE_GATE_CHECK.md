@@ -5176,3 +5176,15 @@ es |
   EN render + A1 protected-page lang=en. closes both prior A1/train deferrals.
 - Carry-forward: admin/quality route localhost:4000 fallback (pre-existing,
   not in delta); /api/version static BTY_DEPLOY_VERSION not bumped per deploy.
+
+**[TRAIN-AUTH · chunked-cookie SSR client 전환]** (2026-05-30)
+- Scope: train progress+completions auth helper 전환
+  (getAuthUserFromRequest → getSupabaseServerClient). release-gate-touching.
+  SELECT/upsert/응답/분기 보존, auth 메커니즘만 교체.
+- Root cause: train만 수동 쿠키 파서 → chunked sb-*-auth-token 미인식 →
+  logged-in hasSession:false. 앱 전역은 SSR client(chunk 자동 재조립).
+- Gates: tsc 0 / lint 0 / vitest 3398/0/6 (progress 7 + completions 9 SSR mock).
+- CLAUDE-VERIFIED: logged-out progress 200 hasSession:false (자동, 거동 불변).
+- NOT-CLAUDE-VERIFIED (logged-in 실측, 배포 후 = 이 수정의 핵심 검증):
+  logged-in progress hasSession:true + 실 completedDays / mark-complete write
+  통과(401 아님) / row +1. DevTools progress hasSession 확인.

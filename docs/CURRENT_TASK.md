@@ -1,3 +1,27 @@
+## train auth chunked-cookie 수정 (SSR client 전환) — CLOSED (2026-05-30)
+- 증상: logged-in인데 train day 페이지 "Train progress not ready"
+  (/api/train/progress 200 hasSession:false). mark-complete 도달 불가.
+- 근본원인(AD 진단): train만 getAuthUserFromRequest 수동 쿠키 파서 사용
+  (find includes("-auth-token=")) → Supabase chunked 쿠키
+  sb-<ref>-auth-token.0/.1 미인식 → token null → logged-out 분기.
+  앱 전역(assessment/arena 46라우트)은 SSR client(@supabase/ssr,
+  cookieStore.getAll())로 chunk 자동 재조립 → 정상. train만 비대칭.
+  read(progress)+write(completions) 둘 다 같은 파서 게이트 → train 기능
+  전체 logged-in 무력. STEP9 live verify는 logged-out만 봐서 미검출.
+- 수정(A: SSR client 표준 수렴): train 2라우트를 getSupabaseServerClient()
+  .auth.getUser()로 (token 미전달 → 어댑터가 chunk 재조립). progress GET()
+  (request 불필요), completions POST(request) 유지(body). SELECT/upsert/응답
+  /503·500·401 분기 전부 보존 — auth 메커니즘만 교체.
+- test: progress 7 + completions 9, SSR client mock으로 재작성.
+- 검증: tsc 0 / lint 0 / vitest 3398/0/6.
+- carry-forward: auth-server.ts getAccessTokenFromCookieHeader 수동 파서의
+  chunk 미지원 버그는 미수정(train만 국소 전환). 다른 소비처가 같은 버그
+  겪으면 광역 수정(전역 SSR client 통일) 검토.
+- 배포: 코드 inner 880dbf4e. deploy 별도(다음). logged-in 실측이 핵심 검증.
+- inner 880dbf4e / outer <이 커밋>.
+
+---
+
 ## assessment 50문항 게이트 (race + 미완제출 + 4xx 노출) — CLOSED (2026-05-30)
 - 증상: 50문항 자존감 진단 제출이 "answers_count_mismatch: expected 50, got 31"
   400으로 거부 → "No result found / Go to assessment" fallback. 28일 train은

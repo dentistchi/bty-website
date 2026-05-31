@@ -5,18 +5,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "./route";
 
-const mockGetAuthUserFromRequest = vi.fn();
+const mockGetUser = vi.fn();
 const mockGetSupabaseAdmin = vi.fn();
-vi.mock("@/lib/auth-server", () => ({
-  getAuthUserFromRequest: (...args: unknown[]) => mockGetAuthUserFromRequest(...args),
+vi.mock("@/lib/bty/arena/supabaseServer", () => ({
+  getSupabaseServerClient: async () => ({ auth: { getUser: mockGetUser } }),
 }));
 vi.mock("@/lib/supabase-admin", () => ({
   getSupabaseAdmin: () => mockGetSupabaseAdmin(),
 }));
-
-function makeRequest(): Request {
-  return new Request("http://localhost/api/train/progress");
-}
 
 /** Build an admin client whose SELECT chain resolves to { data, error }. */
 function adminWith(result: { data: { day: number }[] | null; error: unknown }) {
@@ -34,7 +30,7 @@ function adminWith(result: { data: { day: number }[] | null; error: unknown }) {
 describe("GET /api/train/progress", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } } });
     mockGetSupabaseAdmin.mockReturnValue(adminWith({ data: [], error: null }));
   });
 
@@ -43,7 +39,7 @@ describe("GET /api/train/progress", () => {
       adminWith({ data: [{ day: 1 }, { day: 2 }, { day: 3 }], error: null })
     );
 
-    const res = await GET(makeRequest());
+    const res = await GET();
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.ok).toBe(true);
@@ -57,7 +53,7 @@ describe("GET /api/train/progress", () => {
       adminWith({ data: [{ day: 1 }, { day: 3 }], error: null })
     );
 
-    const res = await GET(makeRequest());
+    const res = await GET();
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.completedDays).toEqual([1, 3]);
@@ -67,7 +63,7 @@ describe("GET /api/train/progress", () => {
   it("returns empty progress when no rows", async () => {
     mockGetSupabaseAdmin.mockReturnValue(adminWith({ data: [], error: null }));
 
-    const res = await GET(makeRequest());
+    const res = await GET();
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.hasSession).toBe(true);
@@ -76,9 +72,9 @@ describe("GET /api/train/progress", () => {
   });
 
   it("returns hasSession:false (not 401) when logged out", async () => {
-    mockGetAuthUserFromRequest.mockResolvedValue(null);
+    mockGetUser.mockResolvedValue({ data: { user: null } });
 
-    const res = await GET(makeRequest());
+    const res = await GET();
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.ok).toBe(true);
@@ -93,7 +89,7 @@ describe("GET /api/train/progress", () => {
       adminWith({ data: null, error: { message: "db down" } })
     );
 
-    const res = await GET(makeRequest());
+    const res = await GET();
     expect(res.status).toBe(500);
     const data = await res.json();
     expect(data.ok).toBe(false);
@@ -102,7 +98,7 @@ describe("GET /api/train/progress", () => {
   it("returns 503 when admin client not configured", async () => {
     mockGetSupabaseAdmin.mockReturnValue(null);
 
-    const res = await GET(makeRequest());
+    const res = await GET();
     expect(res.status).toBe(503);
     const data = await res.json();
     expect(data.ok).toBe(false);
@@ -112,7 +108,7 @@ describe("GET /api/train/progress", () => {
   it("sets Cache-Control no-store and Vary Cookie, returns expected keys", async () => {
     mockGetSupabaseAdmin.mockReturnValue(adminWith({ data: [{ day: 1 }], error: null }));
 
-    const res = await GET(makeRequest());
+    const res = await GET();
     expect(res.status).toBe(200);
     expect(res.headers.get("Cache-Control")).toContain("no-store");
     expect(res.headers.get("Vary")).toBe("Cookie");
