@@ -1,3 +1,12 @@
+## M-1 AdminNav 멘토 신청 큐 링크 추가 — CLOSED (2026-05-31)
+
+- 문제: 멘토 승인 큐(/admin/mentor-requests) 페이지·API·PATCH 전부 정상이나, 마운트되는 AdminNav의 NAV_ITEMS에 항목 없음. 링크 보유 컴포넌트 AdminHeader.tsx는 importer 0(dead) → 큐가 URL 직접입력 외 도달 불가(승인 절반 미발견).
+- 변경(AdminNav.tsx 1줄): NAV_ITEMS에 `{ key: "mentor-requests", label: "멘토 신청" }` 추가(arena-membership 뒤). href는 `/${locale}/admin/${key}` 순수 매핑 → 기존 page.tsx로 해소. active 하이라이트 세그먼트 충돌 없음.
+- gate: tsc 0 / terminology 13→13(무회귀, stash 증명) / next-lint 환경 크래시(ajv, 변경무관·repo-wide). UI render-only.
+- inner-main: 883332d9
+- 잔여(미적용, 동일 recon에서 도출): #2 requireAdminEmail fail-open(authz.ts+admin/layout.tsx, env 미설정 시 노출) · #3 getIsEliteTop5 500-cap denominator+tie-break 부재 · #4 route.ts scope=all stale doc comment.
+
+---
 ## L-5 TrainProgressCard 진척 카운터 제거 — CLOSED (2026-05-31)
 
 - 문제: 진행중 카피 "(N/28 done)"/"(N/28 완료)" 카운터가 날짜("4월 28일")로 오독 → "4/1 시작?" 계산 모순. 진척기반·L-4 calendar 제거 맥락과 충돌.
