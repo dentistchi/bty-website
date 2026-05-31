@@ -1,3 +1,13 @@
+## M-2 arena-membership admin i18n 현지화 — CLOSED (2026-05-31)
+
+- 문제: /admin/arena-membership 페이지가 getMessages(adminArenaMembership) 스캐폴딩 보유하나 mainRegionAria 단일 키만 사용 → h1·설명·테이블 헤더(직군/입사일/리더시작일/요청일/동작)·빈 상태·승인 버튼 등 10개 렌더 문자열이 하드코딩 KO. /en에서도 한글 노출(부분 현지화 gap). 주의: 리터럴 카운트 audit가 sql-migrations(로컬 ko/en dict=현지화 완료)를 오탐, 이 페이지군을 과소평가 → EN-branch 유무로 재감사 후 확정.
+- 변경(2파일): i18n.ts adminArenaMembership ns에 11키 추가(type+ko+en 3앵커, Messages 타입이 parity 강제) + page.tsx 10개 bare-KO 렌더를 t.<key>로 교체. line-103 dev 주석 KO는 비렌더라 유지.
+- gate: tsc 0 / terminology 13→13(무회귀; pending·tenure 문자열 lock 미저촉). UI render-only.
+- inner-main: 16697f77
+- 후속(미적용) admin i18n 잔여 3페이지: quality(~14+ko-KR date 1), users(~33+date 1), leadership-metrics(~35 bare+ko-KR date 5·4 서브컴포넌트 threading 필요).
+- 별건 발견(미적용): LRI=0.50·AIR_14d+0.30·MWD+0.20·pulse([lri.ts](../bty-app/src/domain/leadership-engine/lri.ts), TII 60/25/15·readiness_score 50/20/30와 구분). certified.ts 4-gate(AIR_14d≥0.80·MWD·reset-compliance·no-slip)지만 **revoke(박탈) 메커니즘 부재**(stateless recompute) + leadership-metrics page.tsx:24 "Certified" 배지가 air≥0.8만으로 certified.ts와 괴리(오라벨).
+
+---
 ## M-1 AdminNav 멘토 신청 큐 링크 추가 — CLOSED (2026-05-31)
 
 - 문제: 멘토 승인 큐(/admin/mentor-requests) 페이지·API·PATCH 전부 정상이나, 마운트되는 AdminNav의 NAV_ITEMS에 항목 없음. 링크 보유 컴포넌트 AdminHeader.tsx는 importer 0(dead) → 큐가 URL 직접입력 외 도달 불가(승인 절반 미발견).
