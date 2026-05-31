@@ -4,10 +4,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "./route";
 
-const mockGetAuthUserFromRequest = vi.fn();
+const mockGetUser = vi.fn();
 const mockGetSupabaseAdmin = vi.fn();
-vi.mock("@/lib/auth-server", () => ({
-  getAuthUserFromRequest: (...args: unknown[]) => mockGetAuthUserFromRequest(...args),
+vi.mock("@/lib/bty/arena/supabaseServer", () => ({
+  getSupabaseServerClient: async () => ({ auth: { getUser: mockGetUser } }),
 }));
 vi.mock("@/lib/supabase-admin", () => ({
   getSupabaseAdmin: () => mockGetSupabaseAdmin(),
@@ -30,7 +30,7 @@ describe("POST /api/train/completions", () => {
   });
 
   it("returns 401 when unauthenticated", async () => {
-    mockGetAuthUserFromRequest.mockResolvedValue(null);
+    mockGetUser.mockResolvedValue({ data: { user: null } });
 
     const res = await POST(makeRequest({ day: 1 }));
     expect(res.status).toBe(401);
@@ -41,7 +41,7 @@ describe("POST /api/train/completions", () => {
   });
 
   it("returns 400 when day is invalid", async () => {
-    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } } });
 
     const res = await POST(makeRequest({ day: 0 }));
     expect(res.status).toBe(400);
@@ -51,7 +51,7 @@ describe("POST /api/train/completions", () => {
   });
 
   it("returns 400 when day is not a number", async () => {
-    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } } });
 
     const res = await POST(makeRequest({ day: "abc" }));
     expect(res.status).toBe(400);
@@ -61,7 +61,7 @@ describe("POST /api/train/completions", () => {
   });
 
   it("returns 400 when day is out of range (29)", async () => {
-    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } } });
 
     const res = await POST(makeRequest({ day: 29 }));
     expect(res.status).toBe(400);
@@ -71,7 +71,7 @@ describe("POST /api/train/completions", () => {
   });
 
   it("returns 503 when admin client not configured", async () => {
-    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } } });
     mockGetSupabaseAdmin.mockReturnValue(null);
 
     const res = await POST(makeRequest({ day: 1 }));
@@ -82,7 +82,7 @@ describe("POST /api/train/completions", () => {
   });
 
   it("returns 200 with exactly ok key", async () => {
-    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } } });
 
     const res = await POST(makeRequest({ day: 1 }));
     expect(res.status).toBe(200);
@@ -92,7 +92,7 @@ describe("POST /api/train/completions", () => {
   });
 
   it("returns 200 with ok true when authenticated and day valid", async () => {
-    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } } });
 
     const res = await POST(makeRequest({ day: 1 }));
     expect(res.status).toBe(200);
@@ -101,7 +101,7 @@ describe("POST /api/train/completions", () => {
   });
 
   it("returns 200 with content-type application/json on success", async () => {
-    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } } });
 
     const res = await POST(makeRequest({ day: 3 }));
     expect(res.status).toBe(200);
@@ -111,7 +111,7 @@ describe("POST /api/train/completions", () => {
   });
 
   it("rejects when upsert rejects", async () => {
-    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u1" } } });
     mockGetSupabaseAdmin.mockReturnValue({
       from: () => ({
         upsert: () => Promise.reject(new Error("db constraint")),
