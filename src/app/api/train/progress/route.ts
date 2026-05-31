@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { getUnlockedDayFromCompletions } from "@/lib/trainProgress";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,9 +26,6 @@ export async function GET() {
   const dd = String(today.getDate()).padStart(2, "0");
   const startDateISO = `${yyyy}-${mm}-${dd}`;
 
-  // ✅ 규칙 반영(임시): 오늘은 Day1만 오픈 (보존 — unlock 계산 연결은 범위 밖)
-  const todayUnlockedDay = 1;
-
   // 로그아웃 상태: 401 아님 — hasSession:false + 빈 진행상황 (클라이언트가 hasSession 체크)
   // 앱 표준 SSR client로 쿠키 세션 해석 (chunked sb-*-auth-token 포함; 수동 파서 미사용)
   const supabase = await getSupabaseServerClient();
@@ -35,6 +33,7 @@ export async function GET() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user?.id) {
+    const todayUnlockedDay = getUnlockedDayFromCompletions(0);
     return noStore(
       NextResponse.json(
         {
@@ -76,6 +75,7 @@ export async function GET() {
     .map((r) => Number((r as { day: number }).day))
     .sort((a, b) => a - b);
   const lastCompletedDay = completedDays.length ? Math.max(...completedDays) : 0;
+  const todayUnlockedDay = getUnlockedDayFromCompletions(lastCompletedDay);
 
   return noStore(
     NextResponse.json(
