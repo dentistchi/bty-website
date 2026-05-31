@@ -318,8 +318,8 @@ function TrainProgressCard({
         ? "28일, 끝까지 해냈어요. 축하해요 🎉"
         : "You completed all 28 days. Congratulations 🎉"
       : isKo
-      ? `28일 프로그램 진행 중이에요 · 오늘은 Day ${n}, 준비됐나요? (${lcd}/28 완료)`
-      : `You're on your 28-day program · Today is Day ${n}. Ready? (${lcd}/28 done)`;
+      ? `28일 프로그램 진행 중이에요 · 오늘은 Day ${n}, 준비됐나요?`
+      : `You're on your 28-day program · Today is Day ${n}. Ready?`;
   return (
     <div
       role="region"
