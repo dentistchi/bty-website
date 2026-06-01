@@ -1,3 +1,8 @@
+## LRI/Certified — Strategy B console mount (B-2, 2026-06-01)
+- MyPageLeadershipConsole(확정 완료 종단, my-page?arena_contract=resolve): /api/arena/pulse/pending fetch(mount) -> pendingPulseRunId && !pulseDismissed 조건부 ArenaPulsePrompt 마운트. onSubmit -> POST/api/arena/pulse{session_id:pendingPulseRunId}(same-origin 쿠키) + pulseDismissed(세션 즉시 숨김), onSkip -> dismiss. (a) hide-on-both. dedup = 서버 absence(다음 /pending 제외), 클라 가드/null-runId edge 없음.
+- test-fix(엄격 scope): "401 retry fails -> loadError" brittle mockResolvedValueOnce 2-entry queue -> URL-aware mockImplementation(형제 line~120 패턴 미러). 신규 /pending = 3번째 fetch라 2-entry queue exhaust -> undefined.then crash 노출. 프로덕션 정상(fetch는 항상 Promise), test-mock brittleness만. state 401 유지(loadError assertion 보존), 나머지 benign 200. 타 테스트/프로덕션 무변.
+- ArenaPulsePrompt 무변(6/6). verify GREEN: tsc 0, ArenaPulsePrompt 6/6, MyPageLeadershipConsole 14/14, terminology=13. Next: B-3 arena 2 mount revert.
+
 ## LRI/Certified — Strategy B pending-pulse endpoint (B-1, 2026-06-01)
 - GET /api/arena/pulse/pending: user-session client(weekly-stats 미러), arena_runs status=DONE(completed_at desc limit 5) ∖ le_pulse_log.session_id -> computePendingPulseRun -> { pendingPulseRunId }. surface-agnostic capture(Strategy B): 서버 absence = dedup, client guard/null-runId edge 소멸.
 - pure computePendingPulseRun(doneRunsDesc, pulsedRunIds) = DESC 첫 미평가(recent-5 윈도우), pending-pulse.test.ts 5 cases.
