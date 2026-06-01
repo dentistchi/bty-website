@@ -1,3 +1,8 @@
+## LRI/Certified admin surface — DESIGN LOCKED (2026-05-31)
+- Commander LOCK 수령. P-A pulse(세션 종단 1-5 self-rating, 14d rolling -> pulse_norm) + le_pulse_log 단일 migration 승인.
+- canonical getLRI = B(spec-formula). A 격리. LRI pending-until-real-pulse, no fake/2-term.
+- 설계 단일기준: docs/LRI_CERTIFIED_ADMIN_SURFACE_DESIGN_V1.md. migration application gated.
+
 ## M-6 users admin i18n 현지화 + cascade-정확 삭제경고 — CLOSED (2026-05-31) · **admin i18n sweep 완료**
 
 - 문제: /admin/users가 getMessages(adminUsers) 스캐폴딩 보유하나 mainRegionAria 단일 키만 사용 → 35개 렌더 KO(에러/검증 메시지·confirm/alert·폼 라벨·테이블 헤더·참고사항) + ko-KR 날짜 1곳. /en에서도 한글. 파괴적 동작(삭제 confirm, 비번변경 alert) 카피 포함.
