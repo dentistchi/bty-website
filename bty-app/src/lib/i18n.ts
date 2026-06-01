@@ -1318,6 +1318,11 @@ export type Messages = {
     arenaActionCompletedTitle: string;
     arenaActionCompletedLead: string;
     arenaActionCompletedNextCta: string;
+    arenaPulseQuestion: string;
+    arenaPulseLow: string;
+    arenaPulseHigh: string;
+    arenaPulseSkipCta: string;
+    arenaPulseThanks: string;
     /** Server runtime_state placeholder — forced reset (snapshot-first gate). */
     arenaSnapshotForcedResetPlaceholder: string;
     /** FORCED_RESET_PENDING — Center completion required (not Arena). */
@@ -3180,6 +3185,11 @@ const ko: Messages = {
     arenaActionCompletedTitle: "행동 보고됨",
     arenaActionCompletedLead: "XP가 반영되었습니다.",
     arenaActionCompletedNextCta: "다음 시나리오로",
+    arenaPulseQuestion: "이번 상황에서 나는 책임을 회피하지 않고 감당하려고 했는가?",
+    arenaPulseLow: "전혀 아니다",
+    arenaPulseHigh: "매우 그렇다",
+    arenaPulseSkipCta: "나중에",
+    arenaPulseThanks: "기록되었습니다.",
     arenaSnapshotForcedResetPlaceholder: "계정 상태를 동기화하는 중입니다. 잠시 후 다시 시도해 주세요.",
     arenaForcedResetGateTitle: "센터에서 리셋 단계가 필요합니다",
     arenaForcedResetGateLead:
@@ -4985,6 +4995,11 @@ const en: Messages = {
     arenaActionCompletedTitle: "Action reported",
     arenaActionCompletedLead: "Your XP has been applied.",
     arenaActionCompletedNextCta: "Next scenario",
+    arenaPulseQuestion: "In this situation, did I try to take responsibility without avoiding it?",
+    arenaPulseLow: "Not at all",
+    arenaPulseHigh: "Fully",
+    arenaPulseSkipCta: "Skip",
+    arenaPulseThanks: "Recorded.",
     arenaSnapshotForcedResetPlaceholder: "Syncing account state. Please refresh shortly.",
     arenaForcedResetGateTitle: "Center step required",
     arenaForcedResetGateLead: "Arena is paused. Complete the guided step in Center, then return.",

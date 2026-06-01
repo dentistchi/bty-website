@@ -1,3 +1,11 @@
+## LRI/Certified — step 3b ArenaActionCompleted pulse wiring CLOSED (2026-05-31)
+- ArenaPulsePrompt.tsx (render-only, placement B): 1-5 + Low/High anchor + t.submit 재사용 + skip, submitted->arenaPulseThanks. i18n arenaRun ns 5키 x3블록(type/KO/EN) 동기. ArenaPulsePrompt.test.tsx 6 cases.
+- ArenaResolveClient 종단(:130) 마운트 + page-owned arenaFetch fire-and-forget(void, no await) + session_id: s.runId ?? null. POST 소유=page(레이어 규칙: 공유 컴포넌트 ArenaActionCompleted 무손).
+- pulse guard = runId-keyed (NOT boolean): clearPendingContractAndReload(useArenaSession.ts:2071) = soft reset(setActionTerminalCompletion(false)+retryArenaSession, no remount/nav) -> ResolveClient가 시나리오 전반 persist -> boolean이면 2nd+ 시나리오 프롬프트 억제됨. submitted = (s.runId != null && pulsedRunId === s.runId) -> run 변경 시 재출현, once-per-run.
+- verify GREEN: tsc 0, vitest 6/6, terminology=13 무회귀(pulse hit 0).
+- DEFERRED step7: 첫 RLS-own LE insert 런타임 통과 = post-deploy 브라우저 실측. quick/beginner/session-shell = action-loop 부재 out-of-scope(LRI pending 정직).
+- step 3 (3a+3b) CLOSED. Next: step 4 buildCertifiedInputs + buildLRIInputs.
+
 ## LRI/Certified — step 3a POST /api/arena/pulse CLOSED (2026-05-31)
 - POST /api/arena/pulse: getSupabaseServerClient + auth.getUser (user-session client, RLS insert_own). idiom-a inline guard(typeof number + Number.isInteger + 1..5) -> INVALID_PULSE_VALUE 400. session_id string|null coercion. insert { user_id, pulse_value, session_id } -> 500 error.message / {ok:true} 200. No Zod(단일 bounded smallint, DB CHECK backstop). No synthetic default/auto-fill(DESIGN 2/8).
 - route.test.ts 11 cases(401/INVALID_JSON/INVALID_PULSE_VALUE missing+[0,6,3.5,"3"]/200 insert-shape/session_id passthrough/non-string->null/500). verify GREEN: vitest 11/11, tsc 0, terminology=13 무회귀.
