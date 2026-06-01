@@ -1,3 +1,9 @@
+## LRI/Certified — step 3a POST /api/arena/pulse CLOSED (2026-05-31)
+- POST /api/arena/pulse: getSupabaseServerClient + auth.getUser (user-session client, RLS insert_own). idiom-a inline guard(typeof number + Number.isInteger + 1..5) -> INVALID_PULSE_VALUE 400. session_id string|null coercion. insert { user_id, pulse_value, session_id } -> 500 error.message / {ok:true} 200. No Zod(단일 bounded smallint, DB CHECK backstop). No synthetic default/auto-fill(DESIGN 2/8).
+- route.test.ts 11 cases(401/INVALID_JSON/INVALID_PULSE_VALUE missing+[0,6,3.5,"3"]/200 insert-shape/session_id passthrough/non-string->null/500). verify GREEN: vitest 11/11, tsc 0, terminology=13 무회귀.
+- DEFERRED: LE 테이블 첫 RLS-own user-insert 런타임 통과 확인 = step 7 post-deploy 브라우저/curl 실측(tsc green != RLS 통과).
+- Next: step 3b ArenaActionCompleted UI wiring (skippable prompt + POST 1회).
+
 ## LRI/Certified — step 2 pulse.ts domain CLOSED (2026-05-31)
 - computePulse14d(records, asOf) -> { pulseNorm, hasPulse }. 14d rolling mean(pulse_value) -> normalizePersonalPulse(lri.ts:55, 재사용·신규정의 없음). empty/all-out/future -> { 0, false } = LRI pending 신호(2항 붕괴 금지, DESIGN 2/8).
 - PulseRecord = minimal { pulse_value, created_at } (ActivationRecord 7필드 재사용 기각). barrel export * from "./pulse" (domain/index.ts).
