@@ -5,6 +5,7 @@ TRANSITION PLAN v1.1 — execution-pending (NOT complete). execution=Commander �
 - 호환성 PASS: supabase-js 2.95.3 / ssr 0.5.2, 코드 시그니처 변경 0, 값 교체만. 수동 Authorization/apikey 주입처 0(H/I) → 신형 키 Bearer 제약 무영향.
 - 키 이름: 유지(값만 교체) 확정 → Claude Code 0-mutation.
 - 주입 surface=4: (1) local bty-app/.env.local (2) Worker runtime secret SERVICE_ROLE (3) CF Dashboard build env NEXT_PUBLIC_ANON(번들 인라인) (4) GitHub repo secrets(e2e.yml, arena-release-gate.yml). J 스윕(커밋 legacy JWT 값) 종결 → surface 5 부재 확정.
+- [S1 closed] 키 신규 발급 불필요 — publishable=default, secret target=bty_supabase_service_prod_202606(노출이력 0, 신규 prod 키) 확정. 단 secret 키 service_role_rotated_2026_05_01 존재(정체 미상, repo 배선 0, Dashboard last-used 미표시) → 미배선 단정 금지, 판정 S7로 이연(트래픽 한 바퀴서 5월 키 잔존 호출 0 확인). S8 disable 대상은 legacy anon/service_role 한정 → 5월 키 미지가 S8 안전성에 무영향.
 - 단계: S1 발급 → S2 로컬 리허설 → S3 runtime secret put → S4 CF build env 교체 → S5 풀 재빌드+재배포(3-way + worker.js mtime 신선도 gate) → S6 런타임 3검증(login/admin/RLS) → S6.5 CI secret 회전 + arena-release-gate green → S7 last-used clear 관찰(트래픽+CI 한 바퀴, residual=0) → S8 legacy disable(종착, re-enable 롤백 가능).
 - 비가역 지점: S8 전까지 없음.
 
