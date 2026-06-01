@@ -1,3 +1,10 @@
+## LRI/Certified — step 3b-fix pulse capture coverage (2026-06-01)
+- ROOT CAUSE: step3b가 pulse를 actionTerminalCompletion(ArenaResolveClient 409-edge sub-path)에만 마운트 -> normal completion(NEXT_SCENARIO_READY -> ArenaEntryClient "Execution recorded")이 우회 -> 대부분 유저 pulse 미수집 -> LRI 영구 pending. runtime 실측이 포착. capture-point recon gap(single render-site는 맞았으나 common completion 종단 미추적).
+- FIX: ArenaEntryClient NEXT_SCENARIO_READY 카드에 ArenaPulsePrompt 마운트 추가(common completion 종단). s.runId = 방금 완료 run(Continue 클릭 전, Q4 attribution 정확). runId-keyed guard(pulsedRunId===s.runId) once-per-run + dual-mount dedup(ArenaResolveClient 마운트 유지). 컴포넌트/POST/route/도메인/assembler/admin UI 전부 재사용(무변), 14줄 wiring만.
+- verify GREEN: tsc 0, vitest 6/6(ArenaPulsePrompt 무변 무회귀), terminology=13.
+- 잔존: My Page PostCompletionSheet(secondary resolve 경로) pulse 미마운트 = follow-on 백로그. SELF_REPORT_AUTO_APPROVE=true 잔존(의도와 어긋남 의심) = 별 확인.
+- DEFERRED step7-재: 재deploy + normal completion서 pulse 렌더 + 제출 200 + le_pulse_log row 실측.
+
 ## LRI/Certified — step 6 admin UI 컬럼 CLOSED (모든 build step done, 2026-05-31)
 - AirTable(page.tsx:273) +2 컬럼 끝 append(Last activity 다음): LRI(헤더 glStageLriLabel 재사용, 값 lriPending||null?"—":toFixed(2)) + Certified(헤더 colCertified 신규, 배지 colCertifiedYes/No + reasonsMissing raw codes title tooltip).
 - i18n leadershipMetricsAdmin ns 신규 3키 x3블록(colCertified/Yes/No). LRI 헤더 = M-4 glStageLriLabel 재사용(reinvent 0). badge = 기존 클래스 차용(emerald high / neutral STAGE_COLORS[1], 신규 스타일 0). reason = raw code(매핑키 0).
