@@ -1,3 +1,7 @@
+## LRI/Certified — step 1 le_pulse_log migration recorded (2026-05-31)
+- le_pulse_log applied in prod (empty). 구조(cols / FK on delete cascade / RLS-own / CHECK 1..5 / user_created_idx)는 Commander의 READ-ONLY DB 쿼리(information_schema / pg_constraint / pg_class)로 live 대조 검증됨 — executor는 live DB 직접 관측 안 함. repo<->DB drift 해소용 documenting migration commit (create-if-not-exists + drop-policy-if-exists guard = 재적용 시 no-op).
+- File: bty-app/supabase/migrations/20260531000000_le_pulse_log.sql. 적용 재실행 불요. Next: step 2 pulse.ts domain.
+
 ## LRI/Certified admin surface — DESIGN LOCKED (2026-05-31)
 - Commander LOCK 수령. P-A pulse(세션 종단 1-5 self-rating, 14d rolling -> pulse_norm) + le_pulse_log 단일 migration 승인.
 - canonical getLRI = B(spec-formula). A 격리. LRI pending-until-real-pulse, no fake/2-term.
