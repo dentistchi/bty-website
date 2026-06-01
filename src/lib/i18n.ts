@@ -834,6 +834,9 @@ export type Messages = {
     glMwd: string;
     glMwdWindow: string;
     glStageCertifiedLabel: string;
+    colCertified: string;
+    colCertifiedYes: string;
+    colCertifiedNo: string;
     glStageCertifiedBody: string;
     glStageLriLabel: string;
     glStageLriBody: string;
@@ -2758,6 +2761,9 @@ const ko: Messages = {
     glMwd: ": 최소 1개의 Micro Win 완료가 있는 고유 날짜 수",
     glMwdWindow: ": 최근 7일 / 14일 기준",
     glStageCertifiedLabel: "Certified Leader",
+    colCertified: "인증",
+    colCertifiedYes: "인증",
+    colCertifiedNo: "미달",
     glStageCertifiedBody:
       ": 4개 조건 충족 시 인증 — 14일 AIR ≥ 80%, MWD 기준 이상, 강제 리셋 준수, 14일 내 integrity_slip 없음. 분기·주간 재평가로 갱신되며 조건 미충족 시 자동 해제(별도 박탈 절차 없이 재계산). Arena Elite(주간 상위 5%)와는 별개 개념.",
     glStageLriLabel: "LRI",
@@ -4565,6 +4571,9 @@ const en: Messages = {
     glMwd: ": count of unique days with at least one completed Micro Win",
     glMwdWindow: ": last 7 days / 14 days",
     glStageCertifiedLabel: "Certified Leader",
+    colCertified: "Certified",
+    colCertifiedYes: "Certified",
+    colCertifiedNo: "Not yet",
     glStageCertifiedBody:
       ": certified when all 4 gates pass — 14-day AIR ≥ 80%, MWD at/above threshold, reset compliance met, no integrity_slip in 14 days. Re-evaluated quarterly and weekly; auto-cleared when any gate fails (recomputed — no separate revocation step). Distinct from Arena Elite (weekly top 5%).",
     glStageLriLabel: "LRI",
