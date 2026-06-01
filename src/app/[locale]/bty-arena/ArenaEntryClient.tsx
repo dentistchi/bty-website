@@ -13,6 +13,8 @@ import ScreenShell from "@/components/bty/layout/ScreenShell";
 import { snapshotQualifiesAsReexposureGate } from "@/lib/bty/arena/arenaSessionRouterClient";
 import type { Locale } from "@/lib/i18n";
 import { useArenaSession } from "./hooks/useArenaSession";
+import ArenaPulsePrompt from "@/components/bty-arena/ArenaPulsePrompt";
+import { arenaFetch } from "@/lib/http/arenaFetch";
 
 const copy = {
   ko: {
@@ -65,6 +67,7 @@ export default function ArenaEntryClient({ locale }: Props) {
   const localeNorm: Locale = locale === "ko" ? "ko" : "en";
   const router = useRouter();
   const s = useArenaSession();
+  const [pulsedRunId, setPulsedRunId] = React.useState<string | null>(null);
 
   const gateSnapshot = s.effectiveArenaSnapshot ?? s.arenaServerSnapshot;
   const runtimeState = gateSnapshot?.runtime_state ?? null;
@@ -199,6 +202,17 @@ export default function ArenaEntryClient({ locale }: Props) {
                   </button>
                 </div>
               )}
+              <ArenaPulsePrompt
+                locale={locale}
+                submitted={s.runId != null && pulsedRunId === s.runId}
+                onSubmit={(v) => {
+                  setPulsedRunId(s.runId ?? null);
+                  void arenaFetch("/api/arena/pulse", {
+                    json: { pulse_value: v, session_id: s.runId ?? null },
+                  });
+                }}
+                onSkip={() => setPulsedRunId(s.runId ?? null)}
+              />
             </div>
           </div>
         </ScreenShell>
