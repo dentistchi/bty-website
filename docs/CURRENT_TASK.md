@@ -1,3 +1,9 @@
+## LRI/Certified — Strategy B pending-pulse endpoint (B-1, 2026-06-01)
+- GET /api/arena/pulse/pending: user-session client(weekly-stats 미러), arena_runs status=DONE(completed_at desc limit 5) ∖ le_pulse_log.session_id -> computePendingPulseRun -> { pendingPulseRunId }. surface-agnostic capture(Strategy B): 서버 absence = dedup, client guard/null-runId edge 소멸.
+- pure computePendingPulseRun(doneRunsDesc, pulsedRunIds) = DESC 첫 미평가(recent-5 윈도우), pending-pulse.test.ts 5 cases.
+- 배경: pulse capture surface 3회 miss(actionTerminalCompletion edge / NEXT_SCENARIO_READY ArenaEntryClient / 실제 종단=My Page). mount-on-screen 추상화 폐기 -> server-signal. capture-point-common-path 교훈.
+- verify GREEN: tsc 0, vitest 5/5, terminology=13. route I/O 미테스트 -> step7 런타임. Next: B-2 console mount + B-3 arena revert.
+
 ## LRI/Certified — step 3b-fix pulse capture coverage (2026-06-01)
 - ROOT CAUSE: step3b가 pulse를 actionTerminalCompletion(ArenaResolveClient 409-edge sub-path)에만 마운트 -> normal completion(NEXT_SCENARIO_READY -> ArenaEntryClient "Execution recorded")이 우회 -> 대부분 유저 pulse 미수집 -> LRI 영구 pending. runtime 실측이 포착. capture-point recon gap(single render-site는 맞았으나 common completion 종단 미추적).
 - FIX: ArenaEntryClient NEXT_SCENARIO_READY 카드에 ArenaPulsePrompt 마운트 추가(common completion 종단). s.runId = 방금 완료 run(Continue 클릭 전, Q4 attribution 정확). runId-keyed guard(pulsedRunId===s.runId) once-per-run + dual-mount dedup(ArenaResolveClient 마운트 유지). 컴포넌트/POST/route/도메인/assembler/admin UI 전부 재사용(무변), 14줄 wiring만.
