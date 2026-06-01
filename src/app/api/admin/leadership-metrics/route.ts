@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminEmail } from "@/lib/require-admin";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { certifiedStatus } from "@/domain/leadership-engine/certified";
+import { computeLRI } from "@/domain/leadership-engine/lri";
+import { buildCertifiedInputs } from "@/lib/bty/leadership-engine/certified-inputs.server";
+import { buildLRIInputs } from "@/lib/bty/leadership-engine/lri-inputs.server";
 
 export const runtime = "nodejs";
 
@@ -21,6 +25,10 @@ export type UserAirRow = {
   air: number;         // 0–1
   integritySlips: number; // runs of 3+ consecutive misses
   lastActivity: string | null; // ISO of most recent chosen_at
+  certified: boolean;
+  certifiedReasonsMissing: string[];
+  lri: number | null;
+  lriPending: boolean;
 };
 
 export type LeadershipMetricsResponse = {
@@ -103,62 +111,76 @@ export async function GET(req: NextRequest) {
       (authData.users ?? []).map((u) => [u.id, u.email ?? u.id]),
     );
 
-    // Compute AIR per user.
-    const rows: UserAirRow[] = [];
-    for (const [userId, userContracts] of byUser.entries()) {
-      const selected = userContracts.filter((c) => SELECTED_STATUSES.has(c.status));
-      const completed = selected.filter(
-        (c) =>
-          COMPLETED_STATUSES.has(c.status) ||
-          (c.verified_at != null && c.verified_at !== ""),
-      );
-      const missed = selected.filter((c) => MISSED_STATUSES.has(c.status));
+    // Compute AIR per user. Shared reference instant so all users use the same
+    // 14d window boundary (no per-user clock skew).
+    const asOf = new Date();
+    const rows: UserAirRow[] = await Promise.all(
+      Array.from(byUser.entries()).map(async ([userId, userContracts]) => {
+        const selected = userContracts.filter((c) => SELECTED_STATUSES.has(c.status));
+        const completed = selected.filter(
+          (c) =>
+            COMPLETED_STATUSES.has(c.status) ||
+            (c.verified_at != null && c.verified_at !== ""),
+        );
+        const missed = selected.filter((c) => MISSED_STATUSES.has(c.status));
 
-      // Also auto-mark contracts past deadline with no completion as missed.
-      const now = Date.now();
-      const autoMissed = selected.filter(
-        (c) =>
-          !COMPLETED_STATUSES.has(c.status) &&
-          !MISSED_STATUSES.has(c.status) &&
-          c.deadline_at != null &&
-          Date.parse(c.deadline_at) < now,
-      );
+        // Also auto-mark contracts past deadline with no completion as missed.
+        const now = Date.now();
+        const autoMissed = selected.filter(
+          (c) =>
+            !COMPLETED_STATUSES.has(c.status) &&
+            !MISSED_STATUSES.has(c.status) &&
+            c.deadline_at != null &&
+            Date.parse(c.deadline_at) < now,
+        );
 
-      const totalSelected = selected.length;
-      const totalCompleted = completed.length;
-      const totalMissed = missed.length + autoMissed.length;
+        const totalSelected = selected.length;
+        const totalCompleted = completed.length;
+        const totalMissed = missed.length + autoMissed.length;
 
-      const air = totalSelected === 0 ? 0 : totalCompleted / totalSelected;
+        const air = totalSelected === 0 ? 0 : totalCompleted / totalSelected;
 
-      // Integrity slips: order chronologically by chosen_at.
-      const orderedStatuses = selected
-        .slice()
-        .sort((a, b) => {
-          const ta = a.chosen_at ? Date.parse(a.chosen_at) : 0;
-          const tb = b.chosen_at ? Date.parse(b.chosen_at) : 0;
-          return ta - tb;
-        })
-        .map((c) => (MISSED_STATUSES.has(c.status) || autoMissed.includes(c) ? "missed" : c.status));
+        // Integrity slips: order chronologically by chosen_at.
+        const orderedStatuses = selected
+          .slice()
+          .sort((a, b) => {
+            const ta = a.chosen_at ? Date.parse(a.chosen_at) : 0;
+            const tb = b.chosen_at ? Date.parse(b.chosen_at) : 0;
+            return ta - tb;
+          })
+          .map((c) => (MISSED_STATUSES.has(c.status) || autoMissed.includes(c) ? "missed" : c.status));
 
-      const integritySlips = computeIntegritySlips(orderedStatuses);
+        const integritySlips = computeIntegritySlips(orderedStatuses);
 
-      const lastChosen = selected
-        .map((c) => c.chosen_at)
-        .filter(Boolean)
-        .sort()
-        .at(-1) ?? null;
+        const lastChosen = selected
+          .map((c) => c.chosen_at)
+          .filter(Boolean)
+          .sort()
+          .at(-1) ?? null;
 
-      rows.push({
-        userId,
-        email: emailMap.get(userId) ?? userId,
-        total: totalSelected,
-        completed: totalCompleted,
-        missed: totalMissed,
-        air,
-        integritySlips,
-        lastActivity: lastChosen,
-      });
-    }
+        // Certified + LRI (option (a): two I/O wrappers; shared asOf).
+        // Pending branch owned here (not via getLRI(B)): pending → lri null.
+        const certInputs = await buildCertifiedInputs(supabase, userId, asOf);
+        const cert = certifiedStatus(certInputs);
+        const lriR = await buildLRIInputs(supabase, userId, asOf);
+        const lri = lriR.pending ? null : computeLRI(lriR.inputs).lri;
+
+        return {
+          userId,
+          email: emailMap.get(userId) ?? userId,
+          total: totalSelected,
+          completed: totalCompleted,
+          missed: totalMissed,
+          air,
+          integritySlips,
+          lastActivity: lastChosen,
+          certified: cert.current,
+          certifiedReasonsMissing: cert.reasons_missing,
+          lri,
+          lriPending: lriR.pending,
+        };
+      }),
+    );
 
     // Sort by AIR descending.
     rows.sort((a, b) => b.air - a.air || b.completed - a.completed);
