@@ -1,3 +1,11 @@
+## LRI/Certified — step 4a buildCertifiedInputs CLOSED (2026-05-31)
+- certified-inputs.server.ts: pure computeCertifiedInputs(activations, resetState, now) + thin I/O buildCertifiedInputs(supabase, userId, now). pure/IO split (forced-reset precedent). 2 fetch(loadActivationRecordsForUser + getLeadershipEngineState), MWD는 동일 activations 파생(별 fetch 0).
+- Seam 1 MWD: count(micro_win && verified && completed_at in 14d)/14, anchored completed_at(AIR chosen_at와 의도적 상이). 미검증/reset-type/윈도우밖/null-completed 제외.
+- Seam 2 resetComplianceMet: current-pending-honored(§4 amendment) — triggered==null->true / now<=resetDueAt(+48h)->true / overdue|dueNull->false. 90d-letter underivable(erase-on-clear, audit table backlog).
+- air14d/noIntegritySlip = computeAIR(14d) passthrough. certifiedStatus가 mwd14d>=threshold raw 비교(normalizeMWD는 LRI 경로 전용).
+- computeCertifiedInputs.test.ts 7 cases(mock 0, forced-reset 패턴). verify GREEN: tsc 0, vitest 7/7, terminology=13.
+- buildCertifiedInputs I/O = 미테스트 -> step7 런타임. Next: 4b buildLRIInputs.
+
 ## LRI/Certified — pulse contract pulseNorm->pulseMean (seam 3, 2026-05-31)
 - computePulse14d 반환 { pulseNorm } -> { pulseMean } (raw 1..5 mean, 0 when empty). normalizePersonalPulse import 제거 — 정규화는 computeLRI 단일 소유(lri.ts:71), double-normalize 방지(buildLRIInputs가 pulseMean을 raw personalResponsibilityPulse로 전달).
 - pulse.test.ts 9 케이스 raw 기대값 전환. pulseNorm 소비처 0(self-contained).
