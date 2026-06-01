@@ -37,6 +37,24 @@ function mwd14dRate(activations: ActivationRecord[], now: Date): number {
   return completedVerified / MWD_WINDOW_DAYS;
 }
 
+/**
+ * Shared 14d activation-derived gating fields for Certified AND LRI.
+ * Single source so seam-1 MWD rule + AIR 14d window cannot diverge between the two
+ * promotion-gating metrics. air14d/noIntegritySlip via computeAIR(chosen_at anchor);
+ * mwd14d via mwd14dRate(completed_at anchor, verified+/14).
+ */
+export function activationDerived14d(
+  activations: ActivationRecord[],
+  now: Date,
+): { air14d: number; mwd14d: number; noIntegritySlipIn14d: boolean } {
+  const air = computeAIR(activations, "14d", now);
+  return {
+    air14d: air.air,
+    mwd14d: mwd14dRate(activations, now),
+    noIntegritySlipIn14d: !air.integritySlip,
+  };
+}
+
 function resetComplianceMet(reset: CertifiedResetState, now: Date): boolean {
   if (reset.forcedResetTriggeredAt == null) return true;
   if (reset.resetDueAt == null) return false;
@@ -48,12 +66,12 @@ export function computeCertifiedInputs(
   resetState: CertifiedResetState,
   now: Date,
 ): CertifiedInputs {
-  const air = computeAIR(activations, "14d", now);
+  const d = activationDerived14d(activations, now);
   return {
-    air14d: air.air,
-    mwd14d: mwd14dRate(activations, now),
+    air14d: d.air14d,
+    mwd14d: d.mwd14d,
     resetComplianceMet: resetComplianceMet(resetState, now),
-    noIntegritySlipIn14d: !air.integritySlip,
+    noIntegritySlipIn14d: d.noIntegritySlipIn14d,
   };
 }
 

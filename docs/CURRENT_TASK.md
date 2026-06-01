@@ -1,3 +1,11 @@
+## LRI/Certified — step 4b buildLRIInputs CLOSED (step 4 done, 2026-05-31)
+- lri-inputs.server.ts: pure computeLRIInputs(activations, pulseRows, now) -> LRIInputsResult + thin I/O buildLRIInputs. 2 fetch(loadActivationRecordsForUser + le_pulse_log inline select, reader 선례 0).
+- DRY (ii): activationDerived14d(activations, now) -> { air14d, mwd14d, noIntegritySlipIn14d } = Certified/LRI 단일 소스(certified-inputs.server.ts에서 추출·export). seam-1 MWD rule + AIR 14d 윈도우 두 지표 간 drift 불가. 4a 7 test 무회귀 = 추출 behavior-identical.
+- seam 3: personalResponsibilityPulse = pulseMean(raw 1..5), computeLRI 단일 정규화(mean(2,4)->3 not 0.5, single 5->5 not 1 검증).
+- pending(design §3): hasPulse=false -> { pending: true }, 2항 붕괴 없음. union = { pending:true } | { pending:false; inputs }. 분기 소유 = step5 route(r.pending ? null : computeLRI(r.inputs)); getLRI(B) 미경유(GetLRIInputs union 아님 + computeLRI 무조건 호출).
+- circular import 0(lri-inputs -> certified-inputs 단방향). verify GREEN: tsc 0, vitest 11/11(4a 7 무회귀 + 4b 4), terminology=13.
+- buildLRIInputs I/O = 미테스트 -> step7 런타임. step 4(4-shared+4a+4b) CLOSED. Next: step 5 route 확장.
+
 ## LRI/Certified — step 4a buildCertifiedInputs CLOSED (2026-05-31)
 - certified-inputs.server.ts: pure computeCertifiedInputs(activations, resetState, now) + thin I/O buildCertifiedInputs(supabase, userId, now). pure/IO split (forced-reset precedent). 2 fetch(loadActivationRecordsForUser + getLeadershipEngineState), MWD는 동일 activations 파생(별 fetch 0).
 - Seam 1 MWD: count(micro_win && verified && completed_at in 14d)/14, anchored completed_at(AIR chosen_at와 의도적 상이). 미검증/reset-type/윈도우밖/null-completed 제외.
