@@ -1,3 +1,18 @@
+## LRI/Certified admin surface — LANE CLOSED (2026-06-01)
+- end-to-end 라이브 증명 완결(deploy adb4b06a): QR 완료 -> My Page pulse 프롬프트(ActionContractHub 인근) -> 제출 -> le_pulse_log row -> computePulse14d(pulseMean) -> buildCertified/LRIInputs(shared activationDerived14d) -> admin route -> AirTable LRI 0.95/Certified 렌더. dedup(서버 absence, 제출 run anti-join 제외 DB 확인) + strict(.limit 1, 1완료=1프롬프트) 작동.
+- 빌드 경로: step1 le_pulse_log migration / step2 pulse.ts / step3 POST+ArenaPulsePrompt / step4 input-assembly(seam1 verified-MWD/14, seam2 reset current-pending-honored, seam3 single-normalize) / step5 admin route(Promise.all, route-owned pending union) / step6 AirTable 컬럼.
+- pulse capture: 3회 surface miss(actionTerminalCompletion edge / NEXT_SCENARIO_READY / 실제=My Page) 후 Strategy B(server-signal /api/arena/pulse/pending, surface-agnostic) 채택. arena 2 mount revert. 교훈=capture-point recon은 common runtime completion surface 추적 필수, green static != feature fires.
+- security rotation(R-now): OPENAI_API_KEY(구키 revoke) + ARENA_ACTION_LOOP_QR_SECRET(rotate) 완료. CRON_SECRET=prod 미바인딩 미회전.
+- D-0 정직(§8): pulse 없는 fresh leader -> LRI pending/"—", Certified 미달. backfill/fake 0.
+
+## BACKLOG (post-launch)
+- [HIGH security] Supabase API Key Modernization: legacy service_role/anon(transcript 노출분) 무효화 미완. sb_publishable/sb_secret 전환 -> client 호환 -> env 전환 -> deploy -> legacy disable.
+- My Page PostCompletionSheet 외 secondary resolve 경로 pulse coverage(현 ActionContractHub 인근 마운트가 dominant, secondary는 옵션).
+- SELF_REPORT_AUTO_APPROVE=true 잔존(wrangler.toml:23) vs submit-validation 주석(canonical auto-approve 제거) = vestigial/의도외 prod-on 의심, 별 확인.
+- forced-reset audit table(resetComplianceMet 90d-letter 복원, §4).
+- A getLRI + recomputeAndPersistLRI(caller 0) + leadership_readiness_index(빈+cron 부재) 제거 검토.
+- buildCertified/LRIInputs + pending route I/O wrapper 단위테스트(현 런타임만).
+
 ## LRI/Certified — Strategy B refine: strict + 위치 (B-refine, 2026-06-01)
 - strict: pending route .limit(5)->.limit(1). most-recent-1만 평가(과거 미평가 DONE 소급 안 함) -> 1완료=1프롬프트, 연속 프롬프트 제거. computePendingPulseRun/test 무변(일반형 1-element 동작).
 - 위치: ArenaPulsePrompt 마운트 standalone(@543) -> ActionContractHub 직후(@498) 이동. 조건 pendingPulseRunId && !pulseDismissed 독립 형제(hub 삼항 밖, 무중첩). 16+/16- pure move.
