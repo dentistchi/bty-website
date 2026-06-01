@@ -1,3 +1,9 @@
+## LRI/Certified — Strategy B refine: strict + 위치 (B-refine, 2026-06-01)
+- strict: pending route .limit(5)->.limit(1). most-recent-1만 평가(과거 미평가 DONE 소급 안 함) -> 1완료=1프롬프트, 연속 프롬프트 제거. computePendingPulseRun/test 무변(일반형 1-element 동작).
+- 위치: ArenaPulsePrompt 마운트 standalone(@543) -> ActionContractHub 직후(@498) 이동. 조건 pendingPulseRunId && !pulseDismissed 독립 형제(hub 삼항 밖, 무중첩). 16+/16- pure move.
+- walk-through 확정(deploy e45bd6c8): pulse 렌더+제출 200+le_pulse_log row+dedup 정상(제출 run anti-join 제외 DB 확인)+admin LRI 0.95 산출 = end-to-end 라이브. #4 "안 사라짐"=(나) 이전 미평가 run 회수(정상)였고 strict로 정리.
+- verify GREEN: tsc 0, pending-pulse 5/5, ArenaPulsePrompt 6/6, MyPageConsole 14/14, terminology=13. Next: 재deploy + strict/위치 실측.
+
 ## LRI/Certified — Strategy B arena mount revert (B-3, 2026-06-01)
 - ArenaResolveClient + ArenaEntryClient pulse 마운트 제거(각 import 2 + state 1 + mount 1 = 6 순수 제거, 28 del/0 ins). Strategy B 일원화(My Page console 단일 capture) -> arena 2 mount = dead wiring 정리. 양 파일 pre-pulse 상태 복원, 로직 변경 0(ArenaResolve+Entry test 22/22 무회귀).
 - arenaFetch 양쪽 pulse-only(ARC:135/AEC:210 단일)라 import 제거 안전. ArenaPulsePrompt 컴포넌트/barrel 무변(My Page console이 사용).

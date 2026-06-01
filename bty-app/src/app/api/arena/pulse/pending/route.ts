@@ -25,7 +25,7 @@ export async function GET() {
     .eq("user_id", user.id)
     .eq("status", "DONE")
     .order("completed_at", { ascending: false })
-    .limit(5);
+    .limit(1);
   if (runErr) {
     return NextResponse.json({ error: runErr.message }, { status: 500 });
   }
