@@ -495,6 +495,22 @@ export function MyPageLeadershipConsole({
         />
       )}
 
+      {pendingPulseRunId && !pulseDismissed && (
+        <ArenaPulsePrompt
+          locale={locale}
+          submitted={false}
+          onSubmit={(v) => {
+            setPulseDismissed(true);
+            void fetch("/api/arena/pulse", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ pulse_value: v, session_id: pendingPulseRunId }),
+            });
+          }}
+          onSkip={() => setPulseDismissed(true)}
+        />
+      )}
+
       {qrPanelOpen && qrUrl && (
         <div ref={qrPanelRef}>
           <ActionLoopQrPanel
@@ -539,22 +555,6 @@ export function MyPageLeadershipConsole({
         locale={locale}
         narrative={completionNarrativeState}
       />
-
-      {pendingPulseRunId && !pulseDismissed && (
-        <ArenaPulsePrompt
-          locale={locale}
-          submitted={false}
-          onSubmit={(v) => {
-            setPulseDismissed(true);
-            void fetch("/api/arena/pulse", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ pulse_value: v, session_id: pendingPulseRunId }),
-            });
-          }}
-          onSkip={() => setPulseDismissed(true)}
-        />
-      )}
 
       <MyPageLeadershipScreen
         locale={locale}
