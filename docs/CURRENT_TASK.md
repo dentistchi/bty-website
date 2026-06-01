@@ -1,3 +1,8 @@
+## LRI/Certified — pulse contract pulseNorm->pulseMean (seam 3, 2026-05-31)
+- computePulse14d 반환 { pulseNorm } -> { pulseMean } (raw 1..5 mean, 0 when empty). normalizePersonalPulse import 제거 — 정규화는 computeLRI 단일 소유(lri.ts:71), double-normalize 방지(buildLRIInputs가 pulseMean을 raw personalResponsibilityPulse로 전달).
+- pulse.test.ts 9 케이스 raw 기대값 전환. pulseNorm 소비처 0(self-contained).
+- verify GREEN: tsc 0, vitest 9/9, terminology=13. Next: 4a buildCertifiedInputs.
+
 ## LRI/Certified — step 3b ArenaActionCompleted pulse wiring CLOSED (2026-05-31)
 - ArenaPulsePrompt.tsx (render-only, placement B): 1-5 + Low/High anchor + t.submit 재사용 + skip, submitted->arenaPulseThanks. i18n arenaRun ns 5키 x3블록(type/KO/EN) 동기. ArenaPulsePrompt.test.tsx 6 cases.
 - ArenaResolveClient 종단(:130) 마운트 + page-owned arenaFetch fire-and-forget(void, no await) + session_id: s.runId ?? null. POST 소유=page(레이어 규칙: 공유 컴포넌트 ArenaActionCompleted 무손).

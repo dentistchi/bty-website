@@ -1,13 +1,12 @@
 /**
  * personal_responsibility_pulse — P-A capture aggregation (domain, pure).
  * Source: le_pulse_log (1..5 session/action-loop terminal self-rating).
- * LRI 0.20 term = 14-day rolling mean of pulse_value, normalized 0..1.
- * Reuses normalizePersonalPulse (lri.ts:55) — no new normalize fn.
- * Empty 14d window -> { pulseNorm: 0, hasPulse: false } = LRI-pending signal
+ * LRI 0.20 term raw source = 14-day rolling mean of pulse_value (1..5).
+ * Normalization is computeLRI's job (lri.ts:71) — pulse.ts returns raw mean to
+ * avoid double-normalize (seam 3). buildLRIInputs passes pulseMean as raw input.
+ * Empty 14d window -> { pulseMean: 0, hasPulse: false } = LRI-pending signal
  * (DESIGN_V1 sections 2/8; mirrors computeAIR empty -> 0 at air.ts:162-164).
  */
-import { normalizePersonalPulse } from "./lri";
-
 const MS_PER_DAY = 86_400_000;
 const PULSE_WINDOW_DAYS = 14;
 
@@ -17,7 +16,7 @@ export interface PulseRecord {
 }
 
 export interface Pulse14dResult {
-  pulseNorm: number; // 0..1
+  pulseMean: number; // raw 1..5 mean (0 when empty); computeLRI normalizes once
   hasPulse: boolean; // false -> LRI pending; do NOT collapse to 2-term
 }
 
@@ -32,9 +31,9 @@ export function computePulse14d(
     return t >= cutoff && t <= asOfMs;
   });
   if (inWindow.length === 0) {
-    return { pulseNorm: 0, hasPulse: false };
+    return { pulseMean: 0, hasPulse: false };
   }
   const mean =
     inWindow.reduce((sum, r) => sum + r.pulse_value, 0) / inWindow.length;
-  return { pulseNorm: normalizePersonalPulse(mean), hasPulse: true };
+  return { pulseMean: mean, hasPulse: true };
 }
