@@ -12,6 +12,7 @@ import { MyPageLeadershipScreen } from "@/features/my-page/MyPageLeadershipScree
 import { ActionContractHub } from "@/components/bty/my-page/ActionContractHub";
 import { PatternSignaturePanel } from "@/components/bty/my-page/PatternSignaturePanel";
 import { PostCompletionSheet } from "@/components/bty/my-page/PostCompletionSheet";
+import ArenaPulsePrompt from "@/components/bty-arena/ArenaPulsePrompt";
 import { ActionLoopQrPanel } from "@/components/arena/ActionLoopQrPanel";
 import { AwaitingQrList } from "@/components/bty/my-page/AwaitingQrList";
 import {
@@ -68,6 +69,8 @@ export function MyPageLeadershipConsole({
   const [showPostCompletion, setShowPostCompletion] = useState(false);
   const [completionNarrativeState, setCompletionNarrativeState] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<"verified" | "already" | "failed" | null>(null);
+  const [pendingPulseRunId, setPendingPulseRunId] = useState<string | null>(null);
+  const [pulseDismissed, setPulseDismissed] = useState(false);
   const lastSyncAtRef = useRef(0);
   const qrPanelRef = useRef<HTMLDivElement>(null);
 
@@ -79,6 +82,19 @@ export function MyPageLeadershipConsole({
   useEffect(() => {
     setLocalSignals(loadSignals());
     setLocalReflections(loadReflections());
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/arena/pulse/pending")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (active && d) setPendingPulseRunId(d.pendingPulseRunId ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, []);
 
   const load = useCallback(async () => {
@@ -523,6 +539,22 @@ export function MyPageLeadershipConsole({
         locale={locale}
         narrative={completionNarrativeState}
       />
+
+      {pendingPulseRunId && !pulseDismissed && (
+        <ArenaPulsePrompt
+          locale={locale}
+          submitted={false}
+          onSubmit={(v) => {
+            setPulseDismissed(true);
+            void fetch("/api/arena/pulse", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ pulse_value: v, session_id: pendingPulseRunId }),
+            });
+          }}
+          onSkip={() => setPulseDismissed(true)}
+        />
+      )}
 
       <MyPageLeadershipScreen
         locale={locale}

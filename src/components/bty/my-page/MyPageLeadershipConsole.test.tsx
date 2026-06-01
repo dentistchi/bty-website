@@ -159,9 +159,12 @@ describe("MyPageLeadershipConsole", () => {
 
   it("401 → retry fails → loadError", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    fetchMock
-      .mockResolvedValueOnce(jsonResponse({ error: "UNAUTHENTICATED" }, 401))
-      .mockResolvedValueOnce(jsonResponse({ error: "UNAUTHENTICATED" }, 401));
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      if (String(url).includes("/api/bty/my-page/state")) {
+        return Promise.resolve(jsonResponse({ error: "UNAUTHENTICATED" }, 401));
+      }
+      return Promise.resolve(jsonResponse({}, 200));
+    });
 
     await act(async () => {
       render(<MyPageLeadershipConsole locale="en" />);
