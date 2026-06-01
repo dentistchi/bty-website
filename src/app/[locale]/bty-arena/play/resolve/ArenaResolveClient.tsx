@@ -17,8 +17,6 @@ import { ActionLoopQrPanel } from "@/components/arena/ActionLoopQrPanel";
 import ScreenShell from "@/components/bty/layout/ScreenShell";
 import { arenaEntryHrefForDestination } from "@/lib/bty/arena/arenaRuntimeDestination";
 import { useArenaSession } from "../../hooks/useArenaSession";
-import ArenaPulsePrompt from "@/components/bty-arena/ArenaPulsePrompt";
-import { arenaFetch } from "@/lib/http/arenaFetch";
 
 /**
  * Arena Resolve surface — Action Gate (v1.1 §5.3 / FD-6).
@@ -64,7 +62,6 @@ export default function ArenaResolveClient({ locale }: Props) {
   // hook-owned `actionTerminalCompletion` renders ArenaActionCompleted; reconcile happens
   // only on the explicit "Next scenario" CTA via clearPendingContractAndReload.
   const [validationApproved, setValidationApproved] = React.useState(false);
-  const [pulsedRunId, setPulsedRunId] = React.useState<string | null>(null);
 
   const isResolveState =
     runtimeState === "ACTION_REQUIRED" ||
@@ -126,17 +123,6 @@ export default function ArenaResolveClient({ locale }: Props) {
             locale={locale}
             onNext={() => s.clearPendingContractAndReload()}
             nextLoading={s.scenarioLoading}
-          />
-          <ArenaPulsePrompt
-            locale={locale}
-            submitted={s.runId != null && pulsedRunId === s.runId}
-            onSubmit={(v) => {
-              setPulsedRunId(s.runId ?? null);
-              void arenaFetch("/api/arena/pulse", {
-                json: { pulse_value: v, session_id: s.runId ?? null },
-              });
-            }}
-            onSkip={() => setPulsedRunId(s.runId ?? null)}
           />
         </div>
       </ScreenShell>
