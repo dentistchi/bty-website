@@ -1,3 +1,9 @@
+## LRI/Certified — step 2 pulse.ts domain CLOSED (2026-05-31)
+- computePulse14d(records, asOf) -> { pulseNorm, hasPulse }. 14d rolling mean(pulse_value) -> normalizePersonalPulse(lri.ts:55, 재사용·신규정의 없음). empty/all-out/future -> { 0, false } = LRI pending 신호(2항 붕괴 금지, DESIGN 2/8).
+- PulseRecord = minimal { pulse_value, created_at } (ActivationRecord 7필드 재사용 기각). barrel export * from "./pulse" (domain/index.ts).
+- verify GREEN: vitest 9/9, tsc exit 0, terminology=13 무회귀(pulse hit 0). inner pair commit.
+- errata(lane-close batch): DESIGN_V1 2의 normalizePersonalPulse citation :37 -> :55 (:37은 LRIInputs 필드, 함수는 :55).
+
 ## LRI/Certified — step 1 le_pulse_log migration recorded (2026-05-31)
 - le_pulse_log applied in prod (empty). 구조(cols / FK on delete cascade / RLS-own / CHECK 1..5 / user_created_idx)는 Commander의 READ-ONLY DB 쿼리(information_schema / pg_constraint / pg_class)로 live 대조 검증됨 — executor는 live DB 직접 관측 안 함. repo<->DB drift 해소용 documenting migration commit (create-if-not-exists + drop-policy-if-exists guard = 재적용 시 no-op).
 - File: bty-app/supabase/migrations/20260531000000_le_pulse_log.sql. 적용 재실행 불요. Next: step 2 pulse.ts domain.

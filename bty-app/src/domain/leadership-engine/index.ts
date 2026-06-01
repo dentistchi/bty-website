@@ -14,3 +14,5 @@ export * from "./dashboardAirTiiNormalize";
 export * from "./forced-reset";
 export * from "./certified";
 export * from "./lri";
+
+export * from "./pulse";
