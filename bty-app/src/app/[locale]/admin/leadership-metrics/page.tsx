@@ -286,6 +286,8 @@ function AirTable({ rows }: { rows: UserAirRow[] }) {
             <Th align="right">{t.colIncomplete}</Th>
             <Th align="right">Integrity Slip</Th>
             <Th align="right">{t.colLastActivity}</Th>
+            <Th align="right">{t.glStageLriLabel}</Th>
+            <Th align="center">{t.colCertified}</Th>
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-100">
@@ -311,6 +313,17 @@ function AirTable({ rows }: { rows: UserAirRow[] }) {
               </td>
               <td className="px-4 py-3 text-right text-xs text-neutral-500">
                 {row.lastActivity ? new Date(row.lastActivity).toLocaleDateString(dateLoc(locale)) : "—"}
+              </td>
+              <td className="px-4 py-3 text-right tabular-nums text-neutral-700">
+                {row.lriPending || row.lri === null ? <span className="text-neutral-400">—</span> : row.lri.toFixed(2)}
+              </td>
+              <td className="px-4 py-3 text-center">
+                <span
+                  className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${row.certified ? "bg-emerald-100 text-emerald-800" : "bg-neutral-100 text-neutral-700"}`}
+                  title={row.certifiedReasonsMissing.join(", ")}
+                >
+                  {row.certified ? t.colCertifiedYes : t.colCertifiedNo}
+                </span>
               </td>
             </tr>
           ))}

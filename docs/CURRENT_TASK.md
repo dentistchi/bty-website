@@ -1,3 +1,10 @@
+## LRI/Certified — step 6 admin UI 컬럼 CLOSED (모든 build step done, 2026-05-31)
+- AirTable(page.tsx:273) +2 컬럼 끝 append(Last activity 다음): LRI(헤더 glStageLriLabel 재사용, 값 lriPending||null?"—":toFixed(2)) + Certified(헤더 colCertified 신규, 배지 colCertifiedYes/No + reasonsMissing raw codes title tooltip).
+- i18n leadershipMetricsAdmin ns 신규 3키 x3블록(colCertified/Yes/No). LRI 헤더 = M-4 glStageLriLabel 재사용(reinvent 0). badge = 기존 클래스 차용(emerald high / neutral STAGE_COLORS[1], 신규 스타일 0). reason = raw code(매핑키 0).
+- 22+/0- pure-additive(기존 키/셀 무변). collision(glStageCertifiedLabel KO/EN 동일) = glMwdWindow locale-specific anchor로 해소. UserAirRow = route import(step5 확장형, drift 0).
+- LRI 값 admin-only(requireAdminEmail), end-user 비공개 유지(spec §7B). verify GREEN: tsc 0, terminology=13.
+- 모든 build step(1-6) CLOSED. Next: step 7 redeploy + 3-way verify (deferred RLS-own insert 첫 런타임 증명 + P-A->LRI 전체 경로 브라우저 실측).
+
 ## LRI/Certified — step 5 admin route 확장 CLOSED (2026-05-31)
 - admin/leadership-metrics/route.ts: per-user 루프 -> Promise.all(byUser.entries().map async). UserAirRow +4(certified/certifiedReasonsMissing/lri/lriPending). const asOf=new Date() 루프 전 1회 공유(20명 동일 instant, 14d 윈도우 clock-skew 0).
 - 합류 (a) two-wrappers: buildCertifiedInputs->certifiedStatus(cert.current/reasons_missing) + buildLRIInputs->(pending? null : computeLRI(inputs).lri). pending 분기 route-owned, getLRI(B) 미경유(step4 lock). domain-direct 양쪽 대칭.
