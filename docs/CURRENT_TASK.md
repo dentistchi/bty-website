@@ -1,3 +1,11 @@
+## LRI/Certified — step 5 admin route 확장 CLOSED (2026-05-31)
+- admin/leadership-metrics/route.ts: per-user 루프 -> Promise.all(byUser.entries().map async). UserAirRow +4(certified/certifiedReasonsMissing/lri/lriPending). const asOf=new Date() 루프 전 1회 공유(20명 동일 instant, 14d 윈도우 clock-skew 0).
+- 합류 (a) two-wrappers: buildCertifiedInputs->certifiedStatus(cert.current/reasons_missing) + buildLRIInputs->(pending? null : computeLRI(inputs).lri). pending 분기 route-owned, getLRI(B) 미경유(step4 lock). domain-direct 양쪽 대칭.
+- cohort=compute-for-all(§5 literal join the loop; leader framing=의미지 행필터 아님). is_leader_track 필터 미도입(role 컬럼 부재 + 무해 admin surface).
+- 기존 in-memory 계산(selected/completed/missed/air lifetime/integritySlips/lastActivity) byte-identical(diff -w 입증, 56-=re-indent only). 정렬 air desc = Promise.all 후.
+- KNOWN-LIMITATION(§6): 행 키 = bty_action_contracts -> LE activations 있으나 contract 없는 leader 미표시. 행 소스 변경 = 별 lane.
+- verify GREEN: tsc 0, vitest 241/241(27파일 무회귀), terminology=13. route per-user assembly = I/O 미테스트(선례 0, heavy mock 회피) -> step7 런타임 실측. Next: step 6 UI 컬럼.
+
 ## LRI/Certified — step 4b buildLRIInputs CLOSED (step 4 done, 2026-05-31)
 - lri-inputs.server.ts: pure computeLRIInputs(activations, pulseRows, now) -> LRIInputsResult + thin I/O buildLRIInputs. 2 fetch(loadActivationRecordsForUser + le_pulse_log inline select, reader 선례 0).
 - DRY (ii): activationDerived14d(activations, now) -> { air14d, mwd14d, noIntegritySlipIn14d } = Certified/LRI 단일 소스(certified-inputs.server.ts에서 추출·export). seam-1 MWD rule + AIR 14d 윈도우 두 지표 간 drift 불가. 4a 7 test 무회귀 = 추출 behavior-identical.
