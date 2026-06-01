@@ -1,3 +1,13 @@
+## 2026-06-01 — [PLAN] Supabase Key Modernization (HIGH, post-launch)
+TRANSITION PLAN v1.1 — execution-pending (NOT complete). execution=Commander 직접, Claude Code 0-mutation.
+- Trigger: .env.local full-cat 사고로 prod secret transcript 노출분 중 회전 보류 2개(SUPABASE_SERVICE_ROLE_KEY + NEXT_PUBLIC_SUPABASE_ANON_KEY) = legacy JWT-signed 독립 회전 불가 → 현재도 prod valid = 살아있는 노출.
+- 경로: legacy JWT anon/service_role → 신형 sb_publishable_*/sb_secret_* 병행 전환 후 legacy disable.
+- 호환성 PASS: supabase-js 2.95.3 / ssr 0.5.2, 코드 시그니처 변경 0, 값 교체만. 수동 Authorization/apikey 주입처 0(H/I) → 신형 키 Bearer 제약 무영향.
+- 키 이름: 유지(값만 교체) 확정 → Claude Code 0-mutation.
+- 주입 surface=4: (1) local bty-app/.env.local (2) Worker runtime secret SERVICE_ROLE (3) CF Dashboard build env NEXT_PUBLIC_ANON(번들 인라인) (4) GitHub repo secrets(e2e.yml, arena-release-gate.yml). J 스윕(커밋 legacy JWT 값) 종결 → surface 5 부재 확정.
+- 단계: S1 발급 → S2 로컬 리허설 → S3 runtime secret put → S4 CF build env 교체 → S5 풀 재빌드+재배포(3-way + worker.js mtime 신선도 gate) → S6 런타임 3검증(login/admin/RLS) → S6.5 CI secret 회전 + arena-release-gate green → S7 last-used clear 관찰(트래픽+CI 한 바퀴, residual=0) → S8 legacy disable(종착, re-enable 롤백 가능).
+- 비가역 지점: S8 전까지 없음.
+
 ## LRI/Certified admin surface — LANE CLOSED (2026-06-01)
 - end-to-end 라이브 증명 완결(deploy adb4b06a): QR 완료 -> My Page pulse 프롬프트(ActionContractHub 인근) -> 제출 -> le_pulse_log row -> computePulse14d(pulseMean) -> buildCertified/LRIInputs(shared activationDerived14d) -> admin route -> AirTable LRI 0.95/Certified 렌더. dedup(서버 absence, 제출 run anti-join 제외 DB 확인) + strict(.limit 1, 1완료=1프롬프트) 작동.
 - 빌드 경로: step1 le_pulse_log migration / step2 pulse.ts / step3 POST+ArenaPulsePrompt / step4 input-assembly(seam1 verified-MWD/14, seam2 reset current-pending-honored, seam3 single-normalize) / step5 admin route(Promise.all, route-owned pending union) / step6 AirTable 컬럼.
