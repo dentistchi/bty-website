@@ -1,3 +1,8 @@
+## LRI/Certified — Strategy B arena mount revert (B-3, 2026-06-01)
+- ArenaResolveClient + ArenaEntryClient pulse 마운트 제거(각 import 2 + state 1 + mount 1 = 6 순수 제거, 28 del/0 ins). Strategy B 일원화(My Page console 단일 capture) -> arena 2 mount = dead wiring 정리. 양 파일 pre-pulse 상태 복원, 로직 변경 0(ArenaResolve+Entry test 22/22 무회귀).
+- arenaFetch 양쪽 pulse-only(ARC:135/AEC:210 단일)라 import 제거 안전. ArenaPulsePrompt 컴포넌트/barrel 무변(My Page console이 사용).
+- verify GREEN: tsc 0, ArenaPulsePrompt 6/6, ArenaResolve+Entry 22/22, terminology=13. Strategy B 코드 완결(B-1 endpoint + B-2 console mount + B-3 revert). Next: 재deploy + 런타임 증명.
+
 ## LRI/Certified — Strategy B console mount (B-2, 2026-06-01)
 - MyPageLeadershipConsole(확정 완료 종단, my-page?arena_contract=resolve): /api/arena/pulse/pending fetch(mount) -> pendingPulseRunId && !pulseDismissed 조건부 ArenaPulsePrompt 마운트. onSubmit -> POST/api/arena/pulse{session_id:pendingPulseRunId}(same-origin 쿠키) + pulseDismissed(세션 즉시 숨김), onSkip -> dismiss. (a) hide-on-both. dedup = 서버 absence(다음 /pending 제외), 클라 가드/null-runId edge 없음.
 - test-fix(엄격 scope): "401 retry fails -> loadError" brittle mockResolvedValueOnce 2-entry queue -> URL-aware mockImplementation(형제 line~120 패턴 미러). 신규 /pending = 3번째 fetch라 2-entry queue exhaust -> undefined.then crash 노출. 프로덕션 정상(fetch는 항상 Promise), test-mock brittleness만. state 401 유지(loadError assertion 보존), 나머지 benign 200. 타 테스트/프로덕션 무변.
