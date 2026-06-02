@@ -19,13 +19,10 @@ export default async function AccountPage({ params }: Props) {
 
   const labels = {
     title: isKo ? "계정 설정" : "Account Settings",
-    subtitle: isKo ? "프로필, 언어, 비밀번호 설정" : "Profile, language, and password settings",
+    subtitle: isKo ? "프로필, 언어 설정" : "Profile and language settings",
     profileSection: isKo ? "프로필" : "Profile",
     profileLink: isKo ? "프로필 편집" : "Edit Profile",
     avatarLink: isKo ? "아바타 설정" : "Avatar Settings",
-    securitySection: isKo ? "보안" : "Security",
-    passwordDesc: isKo ? "비밀번호 변경은 이메일 재설정 링크를 통해 진행합니다." : "Password changes are handled via email reset link.",
-    passwordResetCta: isKo ? "재설정 이메일 보내기" : "Send reset email",
     langSection: isKo ? "언어" : "Language",
     langKo: "한국어",
     langEn: "English",

@@ -7,9 +7,6 @@ type Labels = {
   profileSection: string;
   profileLink: string;
   avatarLink: string;
-  securitySection: string;
-  passwordDesc: string;
-  passwordResetCta: string;
   langSection: string;
   langKo: string;
   langEn: string;
@@ -20,9 +17,6 @@ type Props = { locale: string; labels: Labels };
 
 export default function AccountPageClient({ locale, labels }: Props) {
   const [email, setEmail] = useState<string | null>(null);
-  const [resetSent, setResetSent] = useState(false);
-  const [resetError, setResetError] = useState<string | null>(null);
-  const [resetLoading, setResetLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/arena/session/next", { credentials: "include" })
@@ -32,30 +26,6 @@ export default function AccountPageClient({ locale, labels }: Props) {
       })
       .catch(() => {});
   }, []);
-
-  async function sendResetEmail() {
-    if (!email || resetLoading) return;
-    setResetLoading(true);
-    setResetError(null);
-    try {
-      const res = await fetch("/api/auth/send-reset-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-        credentials: "include",
-      });
-      if (res.ok) {
-        setResetSent(true);
-      } else {
-        const d = await res.json().catch(() => ({}));
-        setResetError((d as { error?: string }).error ?? "Failed to send");
-      }
-    } catch {
-      setResetError("Failed to send");
-    } finally {
-      setResetLoading(false);
-    }
-  }
 
   const isKo = locale === "ko";
   const otherLocale = isKo ? "en" : "ko";
@@ -120,29 +90,6 @@ export default function AccountPageClient({ locale, labels }: Props) {
             </Link>
           )}
         </div>
-      </div>
-
-      {/* Security section */}
-      <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">
-        <p className="mb-2 text-sm font-medium uppercase tracking-wide text-[#667085]">
-          {labels.securitySection}
-        </p>
-        <p className="text-sm leading-relaxed text-[#667085] mb-3">{labels.passwordDesc}</p>
-        {resetSent ? (
-          <p className="text-sm text-green-700">{locale === "ko" ? "재설정 이메일을 보냈습니다. 받은 편지함을 확인해 주세요." : "Reset email sent. Check your inbox."}</p>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={() => void sendResetEmail()}
-              disabled={!email || resetLoading}
-              className="rounded-xl px-4 py-2 text-sm font-medium border border-[#E8E3D8] bg-[#F6F4EE] text-[#1E2A38] hover:bg-[#eeeae0] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {resetLoading ? "Sending…" : labels.passwordResetCta}
-            </button>
-            {resetError && <p className="mt-2 text-xs text-red-600">{resetError}</p>}
-          </>
-        )}
       </div>
 
       {/* Sign out */}
