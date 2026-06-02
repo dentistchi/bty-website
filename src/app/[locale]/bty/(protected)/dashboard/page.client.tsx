@@ -360,10 +360,7 @@ export default function DashboardClient() {
               </InfoCard>
 
               <InfoCard title={progressTitle}>
-                <p className="text-sm leading-relaxed text-bty-text">
-                  {weeklyBandCopy ??
-                    (locale === "ko" ? "주간 경쟁 상태를 불러오는 중입니다." : "Loading weekly competition context…")}
-                </p>
+                {/* Weekly tier band copy hidden (G-DC-19): no Bronze/Silver/Gold/Platinum surface. Computation retained for revert. */}
                 {leStageSummary && (
                   <p className="text-sm text-bty-secondary">
                     {typeof leStageSummary.currentStage === "number"

@@ -8,8 +8,10 @@ export interface LeaderboardRowProps {
   rank: number;
   /** Code name only (no real name). */
   codeName: string;
-  /** Sub name (optional). Shown as "codeName · subName" when present. */
+  /** Sub name (optional). Shown on the secondary line when present. */
   subName?: string | null;
+  /** User display name (optional). Shown as "codeName-userDisplayName" on the name line when present. */
+  userDisplayName?: string | null;
   /** Weekly XP value (rendered as-is from API). */
   weeklyXp: number;
   /** Lifetime Core XP (optional; shown under weekly when set — ordering still weekly-only). */
@@ -36,6 +38,7 @@ export function LeaderboardRow({
   rank,
   codeName,
   subName,
+  userDisplayName,
   weeklyXp,
   coreXpTotal,
   avatarUrl,
@@ -45,7 +48,7 @@ export function LeaderboardRow({
   locale,
   tieRankSuffix,
 }: LeaderboardRowProps) {
-  const displayName = subName ? `${codeName} · ${subName}` : codeName;
+  const nameLine = userDisplayName ? `${codeName}-${userDisplayName}` : codeName;
   const initials = codeName.slice(0, 2).toUpperCase();
   const formattedXp =
     typeof locale === "string"
@@ -66,8 +69,8 @@ export function LeaderboardRow({
   const coreAria =
     formattedCore != null ? (isKo ? `, Core XP ${formattedCore}` : `, Core XP ${formattedCore}`) : "";
   const rowAriaLabel = isKo
-    ? `순위 ${rank}${tieAria}, ${displayName}${tierBit}, 주간 XP ${formattedXp}${coreAria}${isMe ? ", 나" : ""}`
-    : `Rank ${rank}${tieAria}, ${displayName}${tierBit}, ${formattedXp} Weekly XP${coreAria}${isMe ? ", You" : ""}`;
+    ? `순위 ${rank}${tieAria}, ${nameLine}${tierBit}, 주간 XP ${formattedXp}${coreAria}${isMe ? ", 나" : ""}`
+    : `Rank ${rank}${tieAria}, ${nameLine}${tierBit}, ${formattedXp} Weekly XP${coreAria}${isMe ? ", You" : ""}`;
   const statsGroupAria = isKo ? "주간 XP 및 티어" : "Weekly XP and tier";
   return (
     <div
@@ -112,14 +115,14 @@ export function LeaderboardRow({
             characterUrl={avatarLayers.characterImageUrl}
             outfitUrl={undefined}
             accessoryUrls={[]}
-            alt={displayName}
+            alt={nameLine}
           />
         ) : (
           <UserAvatar avatarUrl={avatarUrl} initials={initials} size="sm" />
         )}
         <div>
-          <div style={{ fontWeight: 800, fontSize: 16 }}>{displayName}</div>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>{tier ?? "Code Name"}</div>
+          <div style={{ fontWeight: 800, fontSize: 16 }}>{nameLine}</div>
+          <div style={{ fontSize: 12, opacity: 0.7 }}>{subName ?? ""}</div>
         </div>
       </div>
       <div role="group" aria-label={statsGroupAria} style={{ textAlign: "right" }}>

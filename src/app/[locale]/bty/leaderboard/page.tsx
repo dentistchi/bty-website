@@ -20,6 +20,7 @@ type Row = {
   rank: number;
   codeName: string;
   subName: string;
+  displayName?: string | null;
   xpTotal: number;
   avatarUrl?: string | null;
   avatarLayers?: { characterImageUrl: string | null; outfitImageUrl: string | null } | null;
@@ -298,7 +299,7 @@ export default function LeaderboardPage() {
           <div role="list" aria-label={locale === "ko" ? "챔피언·러너업 목록" : "Champions and runners-up list"} style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
             {(data?.champions ?? []).map((c, i) => {
               const label = i === 0 ? t.champion : t.runnerUp;
-              const name = c.subName ? `${c.codeName} · ${c.subName}` : c.codeName;
+              const name = c.displayName ? `${c.codeName}-${c.displayName}` : c.codeName;
               return (
                 <div
                   key={c.rank}
@@ -332,7 +333,7 @@ export default function LeaderboardPage() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>{name}</div>
                     <div style={{ fontSize: 12, opacity: 0.75 }}>
-                      {c.tier ? `${c.tier} · ${c.xpTotal} XP` : `${c.xpTotal} XP`}
+                      {c.subName ? `${c.subName} · ${c.xpTotal} XP` : `${c.xpTotal} XP`}
                     </div>
                   </div>
                 </div>
@@ -434,6 +435,7 @@ export default function LeaderboardPage() {
                 rank={r.rank}
                 codeName={r.codeName}
                 subName={r.subName}
+                userDisplayName={r.displayName}
                 weeklyXp={r.xpTotal}
                 avatarUrl={r.avatarUrl}
                 avatarLayers={r.avatarLayers}

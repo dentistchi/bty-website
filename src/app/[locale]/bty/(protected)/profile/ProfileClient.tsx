@@ -11,6 +11,8 @@ import { CardSkeleton, LoadingFallback } from "@/components/bty-arena";
 import { getMessages } from "@/lib/i18n";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 import type { CoreXpGetResponse } from "@/lib/bty/arena/coreXpApi";
+import { SUBNAME_RENAME_ENABLED } from "@/lib/bty/arena/featureFlags";
+import { DISPLAY_NAME_MAX_LENGTH } from "@/lib/bty/arena/profileDisplayName";
 
 type ProfileRes = {
   profile?: { display_name?: string | null };
@@ -152,6 +154,7 @@ export default function ProfileClient() {
   const coreXpTotal = coreXp?.coreXpTotal ?? 0;
   const stageNumber = Math.min(7, Math.floor(coreXpTotal / 100) + 1);
   const subNameRenameAvailable = coreXp?.subNameRenameAvailable === true;
+  const displayNameChangeAvailable = coreXp?.displayNameChangeAvailable === true;
 
   return (
     <ScreenShell locale={locale} title={t.title} fullWidth contentClassName="pb-28 px-4" mainAriaLabel={t.profileMainRegionAria}>
@@ -207,7 +210,7 @@ export default function ProfileClient() {
                   <p className="text-[10px] text-bty-secondary">{isKo ? "서브네임" : "Sub Name"}</p>
                   <p className="text-sm font-medium text-bty-text">{subName || "—"}</p>
                 </div>
-                {subNameRenameAvailable && !subNameSaved && (
+                {SUBNAME_RENAME_ENABLED && subNameRenameAvailable && !subNameSaved && (
                   <span className="rounded-full bg-bty-steel/15 px-2 py-0.5 text-[10px] font-semibold text-bty-steel">
                     {isKo ? "변경 가능" : "Rename available"}
                   </span>
@@ -219,7 +222,7 @@ export default function ProfileClient() {
                 )}
               </div>
 
-              {subNameRenameAvailable && !subNameSaved && (
+              {SUBNAME_RENAME_ENABLED && subNameRenameAvailable && !subNameSaved && (
                 <div className="mt-2 space-y-2">
                   <input
                     type="text"
@@ -262,19 +265,25 @@ export default function ProfileClient() {
           <input
             id="profile-display-name"
             type="text"
-            maxLength={65}
+            maxLength={DISPLAY_NAME_MAX_LENGTH}
             placeholder={t.displayNamePlaceholder}
             value={draftDisplayName}
             onChange={(e) => setDraftDisplayName(e.target.value)}
-            className="w-full rounded-xl border border-bty-border bg-bty-surface px-3 py-2 text-sm text-bty-text outline-none focus:border-bty-steel focus:ring-2 focus:ring-bty-steel/25"
+            disabled={!displayNameChangeAvailable}
+            className="w-full rounded-xl border border-bty-border bg-bty-surface px-3 py-2 text-sm text-bty-text outline-none focus:border-bty-steel focus:ring-2 focus:ring-bty-steel/25 disabled:opacity-60 disabled:cursor-not-allowed"
             aria-describedby={saveError ? "profile-save-error" : undefined}
           />
+          {!displayNameChangeAvailable && (
+            <p className="mt-2 text-xs text-bty-secondary">
+              {isKo ? "다음 코드에서 변경 가능합니다." : "You can change this in the next code."}
+            </p>
+          )}
           {saveError && (
             <p id="profile-save-error" className="mt-2 text-sm text-bty-risk">
               {saveError}
             </p>
           )}
-          {dirty && (
+          {displayNameChangeAvailable && dirty && (
             <div className="mt-3 flex flex-col gap-2">
               <PrimaryButton type="button" onClick={handleSave} disabled={saving} className="max-w-xs">
                 {saving ? t.saving : t.save}

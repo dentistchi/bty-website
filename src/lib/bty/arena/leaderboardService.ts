@@ -38,6 +38,7 @@ export type NormalizedProfile = {
   core_xp_total: number;
   code_index: number;
   sub_name: string | null;
+  display_name: string | null;
   avatar_url: string | null;
   avatar_character_id: string | null;
   avatar_outfit_theme: "professional" | "fantasy" | null;
@@ -53,6 +54,7 @@ export type LeaderboardRow = {
   rank: number;
   codeName: string;
   subName: string;
+  displayName: string | null;
   xpTotal: number;
   avatarUrl: string;
   avatarLayers?: { characterImageUrl: string | null; outfitImageUrl: string | null };
@@ -187,6 +189,7 @@ type ProfileRow = {
   core_xp_total?: number;
   code_index?: number;
   sub_name?: string | null;
+  display_name?: string | null;
   avatar_url?: string | null;
   avatar_character_id?: string | null;
   avatar_outfit_theme?: "professional" | "fantasy" | null;
@@ -195,9 +198,9 @@ type ProfileRow = {
 };
 
 const PROFILE_SELECT =
-  "user_id, core_xp_total, code_index, sub_name, avatar_url, avatar_character_id, avatar_outfit_theme, avatar_selected_outfit_id, avatar_accessory_ids";
+  "user_id, core_xp_total, code_index, sub_name, display_name, avatar_url, avatar_character_id, avatar_outfit_theme, avatar_selected_outfit_id, avatar_accessory_ids";
 const PROFILE_SELECT_LEGACY =
-  "user_id, core_xp_total, code_index, sub_name, avatar_url, avatar_character_id, avatar_outfit_theme, avatar_selected_outfit_id";
+  "user_id, core_xp_total, code_index, sub_name, display_name, avatar_url, avatar_character_id, avatar_outfit_theme, avatar_selected_outfit_id";
 
 function normalizeProfile(p: ProfileRow): NormalizedProfile {
   const theme =
@@ -211,6 +214,7 @@ function normalizeProfile(p: ProfileRow): NormalizedProfile {
     core_xp_total: Number(p.core_xp_total ?? 0),
     code_index: Math.min(6, Math.max(0, Number(p.code_index ?? 0))),
     sub_name: p.sub_name ?? null,
+    display_name: p.display_name ?? null,
     avatar_url: p.avatar_url ?? null,
     avatar_character_id: p.avatar_character_id ?? null,
     avatar_outfit_theme: theme,
@@ -309,6 +313,7 @@ export function buildLeaderboardRows(
     const codeIndex = (prof?.code_index ?? codeIndexFromTier(tier)) as CodeIndex;
     const subTierGroup = subTierGroupFromTier(tier);
     const customSubName = prof?.sub_name ?? null;
+    const displayName = (prof?.display_name as string | null) ?? null;
     const codeName = CODE_NAMES[codeIndex];
     const subName = resolveSubName(codeIndex, subTierGroup, customSubName);
     const levelId = tierToDisplayLevelId(tier);
@@ -329,6 +334,7 @@ export function buildLeaderboardRows(
       rank: idx + 1,
       codeName,
       subName,
+      displayName,
       xpTotal,
       avatarUrl,
       avatarLayers,
