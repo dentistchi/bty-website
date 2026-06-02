@@ -12,6 +12,9 @@ TRANSITION PLAN v1.1 — execution-pending (NOT complete). execution=Commander �
 - [S5 EXECUTED+verified] 로컬 빌드+배포 → publishable ANON prod 번들 인라인 live. active 100% = fd9aa5dd(deployments list 검증, 2026-06-02T03:01:08Z deployment; versions-list 추측 아님). 3-way: active fd9aa5dd ↔ inner HEAD 2770600b ↔ worker.js mtime 03:00:51Z빌드→03:01:05Z업로드→03:01:08Z deploy 정합, 신선도 PASS. → login/anon prod 신형 publishable 발효.
 - [S6 reported·미검증] executor 브라우저 관측으로 (a)login/(b)admin/(c)RLS 3검증 PASS 보고 — 관측 아티팩트 미전달, 검증수준=executor self-report(Claude Code 미검증). 아티팩트 수령 시 승격.
 - [anomaly] S3 이후 미상 Secret Change 3건(deployments list 확정): 67c275ee@2026-06-01T19:03:46Z, 8da7124e@19:03:48Z, b936f458@23:01:43Z (b10d3980@15:14=S3 설명됨). secret 이름 인벤토리 불변(3개) → 신규 키 아님·기존 값 재-put 추정; 정체·사유 미보고 → S7 residual서 규명.
+- [S6.5 키검증 PASS·gate red 무관] arena-release-gate.yml 트리거: step0 seedFixtureUser 성공 = 신형 sb_secret service-role 쓰기 PASS + step1 login HTTP 200+Set-Cookie 코드단언 = 신형 publishable PASS. gate full-green은 step2 GET /api/arena/session/next 410 arena_session_next_deprecated(Pipeline N run/start·run/step 이관; stale smoke script, 키 무관)로 BLOCKED → ARENA_RELEASE_GATE_AUTHENTICATED artifact 미생성. 키-검증 목적 충족, 410=회귀 아님 → S7/S8 비차단.
+- [S6(a) login 증거 승격] 직전 "executor 브라우저 관측·미검증" → "CI 코드단언(arena-release-gate.sh step1: 200+Set-Cookie)"로 승격. (b)admin·(c)RLS는 여전히 executor 보고(미검증).
+- [stale backlog·키레인 밖] arena-release-gate.sh step2 + auto-loaded release-safety.md "Release Gate Contract"가 둘 다 deprecated /api/arena/session/next 참조 → Pipeline N(run/start+run/step)로 갱신 필요. 별도 코드/문서 작업.
 - 단계: S1 발급 → S2 로컬 리허설 → S3 runtime secret put → S4 CF build env 교체 → S5 풀 재빌드+재배포(3-way + worker.js mtime 신선도 gate) → S6 런타임 3검증(login/admin/RLS) → S6.5 CI secret 회전 + arena-release-gate green → S7 last-used clear 관찰(트래픽+CI 한 바퀴, residual=0) → S8 legacy disable(종착, re-enable 롤백 가능).
 - 비가역 지점: S8 전까지 없음.
 
