@@ -6,6 +6,8 @@ TRANSITION PLAN v1.1 — execution-pending (NOT complete). execution=Commander �
 - 키 이름: 유지(값만 교체) 확정 → Claude Code 0-mutation.
 - 주입 surface=4: (1) local bty-app/.env.local (2) Worker runtime secret SERVICE_ROLE (3) CF Dashboard build env NEXT_PUBLIC_ANON(번들 인라인) (4) GitHub repo secrets(e2e.yml, arena-release-gate.yml). J 스윕(커밋 legacy JWT 값) 종결 → surface 5 부재 확정.
 - [S1 closed] 키 신규 발급 불필요 — publishable=default, secret target=bty_supabase_service_prod_202606(노출이력 0, 신규 prod 키) 확정. 단 secret 키 service_role_rotated_2026_05_01 존재(정체 미상, repo 배선 0, Dashboard last-used 미표시) → 미배선 단정 금지, 판정 S7로 이연(트래픽 한 바퀴서 5월 키 잔존 호출 0 확인). S8 disable 대상은 legacy anon/service_role 한정 → 5월 키 미지가 S8 안전성에 무영향.
+- [S2 skipped] 로컬 리허설 불가(OAuth prod 리다이렉트) → prod 직행 채택. 안전망=S3 후 prod admin-read 사후검증 + 롤백 anchor 확보. (a)login·(c)RLS 전체검증 S6 이연.
+- [S3 EXECUTED] runtime SUPABASE_SERVICE_ROLE_KEY → 신형 sb_secret(bty_supabase_service_prod_202606) 교체 @Version b10d3980(Source=Secret Change, 2026-06-01T15:14:33Z, active 100%; 직전=4d656747=롤백 target; deployments list 자가검증). admin-read 고리: admin organizations UI 페이지 정상 렌더 + rows=2(Washington Group/btyDENTAL-Washington) 관측(executor 보고, HTTP status raw 미수령—페이지 렌더로 대체 판정) → 올바른 키가 올바른 이름에 주입 확정. 잔여: S4 build-inline ANON + S5 재배포 미수행 → publishable/login 경로 아직 legacy 병행 유효.
 - 단계: S1 발급 → S2 로컬 리허설 → S3 runtime secret put → S4 CF build env 교체 → S5 풀 재빌드+재배포(3-way + worker.js mtime 신선도 gate) → S6 런타임 3검증(login/admin/RLS) → S6.5 CI secret 회전 + arena-release-gate green → S7 last-used clear 관찰(트래픽+CI 한 바퀴, residual=0) → S8 legacy disable(종착, re-enable 롤백 가능).
 - 비가역 지점: S8 전까지 없음.
 
