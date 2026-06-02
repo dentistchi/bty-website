@@ -170,6 +170,7 @@ describe("GET /api/arena/core-xp", () => {
       "codeName",
       "coreXpTotal",
       "currentOutfit",
+      "displayNameChangeAvailable",
       "requiresBeginnerPath",
       "seasonalXpTotal",
       "subName",

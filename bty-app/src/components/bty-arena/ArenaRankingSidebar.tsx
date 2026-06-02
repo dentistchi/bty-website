@@ -8,6 +8,7 @@ type Row = {
   rank: number;
   codeName: string;
   subName?: string | null;
+  displayName?: string | null;
   xpTotal: number;
   avatarUrl?: string | null;
   avatarLayers?: { characterImageUrl: string | null; outfitImageUrl: string | null } | null;
@@ -222,6 +223,7 @@ export function ArenaRankingSidebar({ locale }: ArenaRankingSidebarProps) {
                     rank={r.rank}
                     codeName={r.codeName}
                     subName={r.subName}
+                    userDisplayName={r.displayName}
                     weeklyXp={r.xpTotal}
                     avatarUrl={r.avatarUrl}
                     avatarLayers={r.avatarLayers}

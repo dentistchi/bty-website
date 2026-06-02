@@ -184,7 +184,27 @@ export async function PATCH(req: NextRequest) {
       copyCookiesAndDebug(base, out, req, true);
       return out;
     }
-    updates.display_name = result.sanitized;
+    if (result.sanitized != null) {
+      const { tierFromCoreXp, codeIndexFromTier } = await import("@/lib/bty/arena/codes");
+      const { data: dnRow } = await supabase
+        .from("arena_profiles")
+        .select("core_xp_total, code_index, display_name_changed_at_code_index")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const dnXp = (dnRow as { core_xp_total?: number } | null)?.core_xp_total ?? 0;
+      const dnCodeIndex = Math.min(6, Math.max(0, Number((dnRow as { code_index?: number } | null)?.code_index ?? codeIndexFromTier(tierFromCoreXp(dnXp)))));
+      const dnLastAt = (dnRow as { display_name_changed_at_code_index?: number | null } | null)?.display_name_changed_at_code_index ?? null;
+      const dnAllowed = dnLastAt == null || dnCodeIndex > dnLastAt;
+      if (!dnAllowed) {
+        const out = NextResponse.json({ error: "DISPLAY_NAME_LOCKED" }, { status: 403 });
+        copyCookiesAndDebug(base, out, req, true);
+        return out;
+      }
+      updates.display_name = result.sanitized;
+      updates.display_name_changed_at_code_index = dnCodeIndex;
+    } else {
+      updates.display_name = result.sanitized;
+    }
   }
 
   if (body.sub_name !== undefined) {

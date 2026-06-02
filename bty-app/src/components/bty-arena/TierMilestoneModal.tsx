@@ -2,6 +2,7 @@
 
 import React from "react";
 import { CardSkeleton } from "./CardSkeleton";
+import { SUBNAME_RENAME_ENABLED } from "@/lib/bty/arena/featureFlags";
 
 export type TierMilestone = 25 | 50 | 75;
 
@@ -42,7 +43,7 @@ export function TierMilestoneModal({
     }
   };
 
-  const showRename = milestone === 25 && subNameRenameAvailable && onRename;
+  const showRename = SUBNAME_RENAME_ENABLED && milestone === 25 && subNameRenameAvailable && onRename;
 
   return (
     <div

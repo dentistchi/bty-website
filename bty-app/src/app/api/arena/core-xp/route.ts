@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
   if (!user) return unauthenticated(req, base);
 
   const fullSelect =
-    "user_id, core_xp_total, code_index, sub_name, sub_name_renamed_in_code, sub_name_renamed_at_code_index, code_hidden, avatar_url, avatar_character_id, avatar_character_locked, avatar_outfit_theme, avatar_selected_outfit_id, l4_access";
+    "user_id, core_xp_total, code_index, sub_name, sub_name_renamed_in_code, sub_name_renamed_at_code_index, display_name_changed_at_code_index, code_hidden, avatar_url, avatar_character_id, avatar_character_locked, avatar_outfit_theme, avatar_selected_outfit_id, l4_access";
   let row: Record<string, unknown> | null = null;
   let selectError: { message: string } | null = null;
 
@@ -118,6 +118,9 @@ export async function GET(req: NextRequest) {
       return codeIndex > lastAt;
     })();
 
+  const dnLastAt = (row as { display_name_changed_at_code_index?: number | null } | null)?.display_name_changed_at_code_index ?? null;
+  const displayNameChangeAvailable = dnLastAt == null || codeIndex > dnLastAt;
+
   const beginnerGate = isPostLoginOnboardingWizardEnabled();
 
   if (!row) {
@@ -131,6 +134,7 @@ export async function GET(req: NextRequest) {
       seasonalXpTotal: 0,
       codeHidden: false,
       subNameRenameAvailable: false,
+      displayNameChangeAvailable: true,
       avatarUrl: null,
       avatarCharacterId: null,
       avatarCharacterLocked: false,
@@ -232,6 +236,7 @@ export async function GET(req: NextRequest) {
     seasonalXpTotal,
     codeHidden: coreXpTotal >= 700,
     subNameRenameAvailable: Boolean(subNameRenameAvailable),
+    displayNameChangeAvailable,
     avatarUrl,
     avatarCharacterId,
     avatarCharacterLocked,

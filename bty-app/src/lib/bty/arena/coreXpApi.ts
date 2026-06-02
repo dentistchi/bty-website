@@ -23,6 +23,8 @@ export type CoreXpGetResponse = {
   seasonalXpTotal: number;
   codeHidden: boolean;
   subNameRenameAvailable: boolean;
+  /** Per-code display_name gate: true when NULL or current code_index > stored. Opens at code entry (no tier floor). */
+  displayNameChangeAvailable: boolean;
   avatarUrl: string | null;
   avatarCharacterId: string | null;
   avatarCharacterLocked: boolean;
