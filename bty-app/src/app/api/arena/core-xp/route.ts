@@ -205,7 +205,13 @@ export async function GET(req: NextRequest) {
       const character = getAvatarCharacter(avatarCharacterId);
       if (character?.imageUrl) avatarUrl = character.imageUrl;
     }
-    if (!avatarUrl && outfit.imageUrl) avatarUrl = outfit.imageUrl;
+    // Lane 7: only fall back to the level-based outfit when the user has made an
+    // explicit avatar choice. With no character/outfit/theme, leave avatarUrl null
+    // so the UI renders initials instead of the clothed default (basic scrubs).
+    const hasAvatarSelection = Boolean(
+      avatarCharacterId || avatarSelectedOutfitId || avatarOutfitTheme
+    );
+    if (!avatarUrl && outfit.imageUrl && hasAvatarSelection) avatarUrl = outfit.imageUrl;
   }
 
   // Same level band as currentOutfit (maxUnlockedLevel), not tierToDisplayLevelId(tier) — keeps layer URLs aligned with outfit/accessory rows.

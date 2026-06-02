@@ -1,3 +1,28 @@
+## 2026-06-02 — [Bug 3] avatar no-selection guard (unselected→initials, not scrubs) — DEPLOYED + smoke 4/4
+- 4 files (inner `f4f371c9`): `resolveDisplayAvatarUrl`에 Lane 7 미선택 guard 추가(sibling `resolveDisplayAvatarLayers` 패턴 미러) — char/outfit/theme 모두 null → `return null`(이니셜). core-xp/route.ts:208 `avatarUrl` outfit fallback을 `hasAvatarSelection`로 게이트(DB-row `?? null` 변수, 미선택=null). edges:112 `not.toBeNull`→`toBeNull`(테스트명 일치); +5 resolveDisplayAvatarUrl no-selection case.
+- 봉쇄: 미선택 row-exists 유저가 레벨 기본 옷(scrubs) 대신 이니셜. Bug 2(fresh empty equip) 동반 해소(같은 fail-safe 경로).
+- verify: tsc 0 / terminology 13(+0) / vitest no-selection 10·edges 15·core-xp 13·leaderboard 9 green.
+- deploy: `rm -rf .open-next && npm run deploy` → Worker `3f9a1f02-24e5-4737-9ebc-d68f87672a7a` (deployments active 100% 21:36:33Z = stdout; worker.js mtime 21:36:12Z fresh; prior b2a4abc8). 3-way PASS.
+- smoke 4/4 (Commander 브라우저): 미선택 row→이니셜 / 선택 유저→옷 그대로 / fresh !row→이니셜 / 3-surface 일관. observed.
+
+## 2026-06-02 — [SECURITY] REVOKE anon EXECUTE on 6 SECURITY DEFINER funcs — advisor WARN — APPLIED to prod
+- Migration `bty-app/supabase/migrations/20260602000002_revoke_anon_execute_definer_funcs.sql` 적용 완료 (6 × `DO $$` to_regprocedure 가드 + GRANT-then-REVOKE).
+- 봉쇄: DEFINER 함수가 caller RLS 우회 → anon EXECUTE(직접+PUBLIC)면 미인증자가 XP 조작/profile/season RPC 직접 호출 = 권한상승.
+- caller 분류(코드 검증, 전부 auth-gated): authenticated 4 (`increment_arena_xp`/`increment_weekly_xp`/`ensure_arena_profile`/`consume_lab_attempt`) + service_role 2 (`run_season_carryover`/`get_leaderboard_profiles`).
+- fix: 4개 → GRANT TO authenticated,service_role 후 REVOKE FROM anon,PUBLIC; 2개 → GRANT TO service_role 후 REVOKE FROM anon,authenticated,PUBLIC.
+- **★ GRANT-then-REVOKE**: 관측상 접근이 PUBLIC 경유 → bare REVOKE FROM PUBLIC이 authenticated/service_role까지 끊을 위험 → 명시 GRANT 선행으로 ACL 구조 무관 안전. grant-only, XP 로직/불변식 무변경.
+- verify: db push `Finished`(0 error) / migration list 동기화 / ACL-after = pg_proc proacl 재쿼리 Commander 전달(anon 6개 제거 / authenticated 4 유지 / service_role 2 단독).
+- PENDING: 코어루프 smoke(RLS smoke와 합침) — authenticated XP 정상이면 REVOKE+RLS 둘 다 무영향. NOTE: leaderboard security_definer_view = Commander가 이미 drop(view_count=0).
+
+## 2026-06-02 — [SECURITY] RLS enable — advisor `rls_disabled_in_public` ERROR 16 tables — APPLIED to prod
+- Migration `bty-app/supabase/migrations/20260602000000_rls_enable_advisor_error_16_tables.sql` 적용 완료 (16 × `ALTER TABLE IF EXISTS … ENABLE ROW LEVEL SECURITY`, policy 0 = RLS-only default-deny).
+- 분류(코드 검증): ACTIVE 3 (`bty_action_contract_escalations`/`_validator_evaluations`/`scenario_pool_health_snapshots`, 전부 service_role → RLS bypass → 앱 무영향) + ORPHAN 13 (코드 0-ref; `qr_tokens` 포함).
+- **장부 정비**(db push가 migration-history divergence로 차단됨): remote-only signup 3건(`20260525000000/001/002`, `migrations-reverted/`에 park) → `repair --status reverted`; out-of-band 적용된 QR v1 5건(`20260527010000~010400`)+le_pulse(`20260531000000`) → **관측 게이트 통과 후**(Commander 대시보드 A=10컬럼∧B=4제약∧C=0; le_pulse_log 테이블 `inspect db table-stats`로 4 rows 관측) `repair --status applied` → `db push`로 `20260602000000` 1건만 적용.
+- **★ out-of-band 드리프트**: advisor 16개 중 14개가 repo 마이그레이션에 생성 이력 없음 = 히스토리 밖 생성. 이번에 양방향 divergence 정비.
+- **★ `qr_tokens` = 실데이터 1 row + seq scan** 있는 실 테이블이 RLS-off였음(앱 코드 0-ref인데 토큰 노출) → 봉쇄.
+- verify: db push `Finished`(에러 0) / `migration list` 20260602000000 local+remote 동기화 / advisor-after 동치 = `pg_class.relrowsecurity` 쿼리 Commander 전달(기대 16×true).
+- PENDING: 코어루프 smoke(ACTIVE 3 무영향 실증) 보류 — 다음 코어루프 시 섞어 확인. NEXT: `security_definer_view`(arena_profiles_leaderboard_public) + WARN(anon increment_xp) 별도.
+
 ## 2026-06-02 — [HOTFIX] Center 28-day assessment gate + public result locale CTA (Bug 1 + 1b) — DEPLOYED
 - Bug 1: Center "28일 프로그램 ready/Day 1" 카드가 50문항 assessment 완료와 무관하게 모든 로그인 유저에게 노출(`/api/train/progress` hasSession = auth-presence only, no assessment gate; CenterPageClient가 assessment submissions를 이미 fetch하나 TrainProgressCard에 미전달). FIX: TrainProgressCard에 `hasAssessment` prop(`submissions.length>0`, 기 fetch 신호 재사용·신규 fetch 0) — submission 없으면 28-day 카드 대신 "먼저 50문항 진단 완료" + `/${locale}/assessment` 링크 카드. fail-safe: submissions=[] 기본 → prompt(false-ready 불가).
 - Bug 1b: (public)/assessment/result CTA `href="/en/train/start"` 하드코딩 → 한국어 유저도 /en/ 진입. FIX: `` `/${lang}/train/start` ``. 교정(directive `/${locale}` 오류 정정): (public) 그룹엔 locale route param 부재 → 변수는 `lang`(client state); 타깃은 `[locale]/train/start` 존재 → locale-prefix 유지(bare `/train/start`는 404). localized ResultClient.tsx:390(`/${loc}/train/day/1`)는 이미 옳음 → 무수정.
