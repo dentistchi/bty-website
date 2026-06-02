@@ -78,7 +78,7 @@ export default function AssessmentResultPage() {
 
       <div className="flex gap-3">
         <Link
-          href="/en/train/start"
+          href={`/${lang}/train/start`}
           className="rounded-xl px-5 py-2 bg-black text-white inline-block"
         >
           {lang === "en" ? "Start 28-Day Journey" : "28일 여정 시작하기"}

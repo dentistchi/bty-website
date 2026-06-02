@@ -1,3 +1,12 @@
+## 2026-06-02 — [HOTFIX] Center 28-day assessment gate + public result locale CTA (Bug 1 + 1b) — DEPLOYED
+- Bug 1: Center "28일 프로그램 ready/Day 1" 카드가 50문항 assessment 완료와 무관하게 모든 로그인 유저에게 노출(`/api/train/progress` hasSession = auth-presence only, no assessment gate; CenterPageClient가 assessment submissions를 이미 fetch하나 TrainProgressCard에 미전달). FIX: TrainProgressCard에 `hasAssessment` prop(`submissions.length>0`, 기 fetch 신호 재사용·신규 fetch 0) — submission 없으면 28-day 카드 대신 "먼저 50문항 진단 완료" + `/${locale}/assessment` 링크 카드. fail-safe: submissions=[] 기본 → prompt(false-ready 불가).
+- Bug 1b: (public)/assessment/result CTA `href="/en/train/start"` 하드코딩 → 한국어 유저도 /en/ 진입. FIX: `` `/${lang}/train/start` ``. 교정(directive `/${locale}` 오류 정정): (public) 그룹엔 locale route param 부재 → 변수는 `lang`(client state); 타깃은 `[locale]/train/start` 존재 → locale-prefix 유지(bare `/train/start`는 404). localized ResultClient.tsx:390(`/${loc}/train/day/1`)는 이미 옳음 → 무수정.
+- layer: UI render-only 준수(기 fetch 신호로 표현 분기, 비즈룰 계산 0, 신규 fetch 0).
+- verify HARD(Claude): tsc 0 / terminology 13(신규 bilingual 문자열 +0) / inner commit `9825a1aa`(inner-main, 2 files +34/-2) / 배포 active `b2a4abc8`(deployments list 최신 100%, created 2026-06-02T16:35:08Z) / **3-way PASS**: active b2a4abc8 ↔ inner HEAD 9825a1aa ↔ worker.js mtime 16:34:46Z(now 16:36, ~75s window) / 배포 매니페스트 = center+result 2 청크(정확히 수정 2파일) / **라이브 워커 grep**(둘 다 http 200): result `/en/train/start`=0 + `concat(lang,"/train/start")` present, center 게이트 문자열 present.
+- verify PENDING(executor attest): 런타임 브라우저 4항목 — (1)신규 무submission→50Q카드 (2)기존 submission→28-day 카드 그대로 (3)KO public result→/ko/train/start 클릭 (4)9단계 회귀. 코드는 라이브 검증됨, 인증/localStorage 세션 브라우저 관측만 미실시(Claude headless auth 불가). diff가 Center + (public) result 한정 → arena 9-step flow 코드 무접촉 → 회귀 위험 inspection상 ~0.
+- 미push: inner 9825a1aa 로컬 commit(배포는 working-tree 빌드라 prod 라이브와 무관); origin push 미요청 → 보류(follow-up).
+- Bug 2(fresh-user avatar 빈 equip) = backlog 유지, 무수정(intent fork: gate-required 확정은 Bug 1 한정).
+
 ## 2026-06-01 — [PLAN] Supabase Key Modernization (HIGH, post-launch)
 TRANSITION PLAN v1.1 — execution-pending (NOT complete). execution=Commander 직접, Claude Code 0-mutation.
 - Trigger: .env.local full-cat 사고로 prod secret transcript 노출분 중 회전 보류 2개(SUPABASE_SERVICE_ROLE_KEY + NEXT_PUBLIC_SUPABASE_ANON_KEY) = legacy JWT-signed 독립 회전 불가 → 현재도 prod valid = 살아있는 노출.
