@@ -295,14 +295,41 @@ function AssessmentCard({
 
 function TrainProgressCard({
   data,
+  hasAssessment,
   locale,
   isKo,
 }: {
   data: { lastCompletedDay: number; hasSession: boolean } | null;
+  hasAssessment: boolean;
   locale: string;
   isKo: boolean;
 }) {
   if (!data || !data.hasSession) return null;
+  // Bug 1 gate: the 28-day program requires a completed 50-question assessment.
+  // No submission yet → prompt the assessment instead of the "program ready" card.
+  if (!hasAssessment) {
+    return (
+      <div
+        role="region"
+        aria-label={isKo ? "진단 먼저 완료" : "Complete assessment first"}
+        className="rounded-xl border border-dear-sage/20 bg-dear-sage/5 px-4 py-3"
+      >
+        <p className="text-sm text-dear-charcoal m-0">
+          {isKo
+            ? "28일 프로그램을 시작하려면 먼저 50문항 진단을 완료하세요."
+            : "Complete the 50-question assessment first to begin your 28-day program."}
+        </p>
+        <div className="mt-2">
+          <a
+            href={`/${locale}/assessment`}
+            className="text-sm font-medium text-dear-sage underline"
+          >
+            {isKo ? "50문항 진단 하러 가기" : "Take the 50-question assessment"}
+          </a>
+        </div>
+      </div>
+    );
+  }
   const lcd = Math.max(0, Math.min(28, data.lastCompletedDay || 0));
   const done = lcd >= 28;
   const n = Math.max(1, Math.min(28, lcd + 1));
@@ -429,7 +456,12 @@ export default function CenterPageClient({ locale }: { locale: string }) {
                     : "Your space for reflection and reset."}
                 </p>
               </header>
-              <TrainProgressCard data={trainProgress} locale={locale} isKo={isKo} />
+              <TrainProgressCard
+                data={trainProgress}
+                hasAssessment={submissions.length > 0}
+                locale={locale}
+                isKo={isKo}
+              />
               {stage && <StageContextCard stage={stage} isKo={isKo} />}
               <HealingPhaseTracker locale={lang} />
               <DearMeCard letter={letters[0] ?? null} locale={locale} isKo={isKo} />
