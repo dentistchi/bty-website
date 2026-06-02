@@ -5,7 +5,7 @@
  * of falling through to the level-based outfit (basic clinic scrubs).
  */
 import { describe, it, expect } from "vitest";
-import { resolveDisplayAvatarLayers } from "./avatarOutfits";
+import { resolveDisplayAvatarLayers, resolveDisplayAvatarUrl } from "./avatarOutfits";
 
 describe("resolveDisplayAvatarLayers — Lane 7 no-selection guard", () => {
   it("returns empty layers when the user has no character, outfit, or theme", () => {
@@ -61,5 +61,62 @@ describe("resolveDisplayAvatarLayers — Lane 7 no-selection guard", () => {
       avatarSelectedOutfitId: null,
     });
     expect(out.characterImageUrl).toBeTruthy();
+  });
+});
+
+describe("resolveDisplayAvatarUrl — Lane 7 no-selection guard", () => {
+  it("returns null when the user has no character, outfit, or theme", () => {
+    const url = resolveDisplayAvatarUrl({
+      customAvatarUrl: null,
+      avatarCharacterId: null,
+      avatarOutfitTheme: null,
+      levelId: "S1",
+      avatarSelectedOutfitId: null,
+    });
+    expect(url).toBeNull();
+  });
+
+  it("still returns null at a higher level when nothing is selected (no grandfathering)", () => {
+    const url = resolveDisplayAvatarUrl({
+      customAvatarUrl: null,
+      avatarCharacterId: null,
+      avatarOutfitTheme: null,
+      levelId: "L4",
+      avatarSelectedOutfitId: null,
+    });
+    expect(url).toBeNull();
+  });
+
+  it("honors a custom avatar url (guard does not apply)", () => {
+    const url = resolveDisplayAvatarUrl({
+      customAvatarUrl: "https://cdn.example/me.png",
+      avatarCharacterId: null,
+      avatarOutfitTheme: null,
+      levelId: "S1",
+      avatarSelectedOutfitId: null,
+    });
+    expect(url).toBe("https://cdn.example/me.png");
+  });
+
+  it("resolves an avatar once the user picks a character (not bare)", () => {
+    const url = resolveDisplayAvatarUrl({
+      customAvatarUrl: null,
+      avatarCharacterId: "hero_01",
+      avatarOutfitTheme: null,
+      levelId: "S1",
+      avatarSelectedOutfitId: null,
+    });
+    expect(url).toBeTruthy();
+  });
+
+  it("resolves the level outfit once the user picks a theme (not bare)", () => {
+    const url = resolveDisplayAvatarUrl({
+      customAvatarUrl: null,
+      avatarCharacterId: null,
+      avatarOutfitTheme: "professional",
+      levelId: "S1",
+      avatarSelectedOutfitId: null,
+    });
+    expect(url).toBeTruthy();
   });
 });

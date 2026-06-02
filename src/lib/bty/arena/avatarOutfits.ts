@@ -562,6 +562,14 @@ export function resolveDisplayAvatarUrl(options: ResolveDisplayAvatarOptions): s
   const { customAvatarUrl, avatarCharacterId, avatarOutfitTheme, levelId, avatarSelectedOutfitId } = options;
   if (customAvatarUrl && customAvatarUrl.trim()) return customAvatarUrl.trim();
 
+  // Lane 7: require an explicit avatar choice (parity with
+  // resolveDisplayAvatarLayers). With no character, no selected outfit, and no
+  // theme, return null so the UI shows its initials placeholder instead of the
+  // level-based clothed default (basic clinic scrubs). No grandfathering.
+  if (!avatarCharacterId && !avatarSelectedOutfitId && !avatarOutfitTheme) {
+    return null;
+  }
+
   const outfit =
     avatarSelectedOutfitId != null
       ? getOutfitById(avatarOutfitTheme, avatarSelectedOutfitId)

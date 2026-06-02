@@ -109,7 +109,7 @@ describe("avatarOutfits (edges)", () => {
         avatarOutfitTheme: null,
         levelId: "S1",
       });
-      expect(url).not.toBeNull();
+      expect(url).toBeNull();
     });
   });
 });
