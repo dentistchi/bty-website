@@ -14,11 +14,12 @@
 | bty-app/docs/CURRENT_TASK.md | docs/CURRENT_TASK.md |
 | bty-app/docs/NEXT_BACKLOG_AUTO4.md | docs/NEXT_BACKLOG_AUTO4.md |
 | bty-app/docs/NEXT_PROJECT_RECOMMENDED.md | docs/NEXT_PROJECT_RECOMMENDED.md |
-| bty-app/docs/BTY_RELEASE_GATE_CHECK.md | docs/BTY_RELEASE_GATE_CHECK.md |
 | bty-app/docs/architecture/* | docs/architecture/* |
 | bty-app/docs/plans/* | docs/plans/* |
 | bty-app/docs/specs/* | docs/specs/* |
 | bty-app/docs/execution/* | docs/execution/* |
+
+> **BTY_RELEASE_GATE_CHECK 예외 (G-DC-25/26 확인):** `bty-app/docs/BTY_RELEASE_GATE_CHECK.md` ↔ `docs/BTY_RELEASE_GATE_CHECK.md` 는 **basename만 같은 별개 문서**였음 — inner는 auth-contract CI 사인오프 **절차 spec**, outer는 **배포 결과 로그**. **병합 금지.** inner 문서는 충돌 해소를 위해 `bty-app/docs/ARENA_RELEASE_GATE_PROCEDURE.md` 로 rename됨. 이 표·아래 일괄 치환에서 BTY_RELEASE_GATE_CHECK 항목은 **잔재 아님 → 제거**.
 
 **점검**: `.cursor/rules/` 아래 모든 `.mdc`에서 위 "기존 경로"가 있으면 "새 경로"로 수정.
 
@@ -29,7 +30,7 @@
 **검사 명령** (프로젝트 루트에서):
 
 ```bash
-grep -R "bty-app/docs/CURSOR_TASK_BOARD\|bty-app/docs/CURRENT_TASK\|bty-app/docs/NEXT_BACKLOG_AUTO4\|bty-app/docs/NEXT_PROJECT_RECOMMENDED\|bty-app/docs/BTY_RELEASE_GATE_CHECK" .cursor .github scripts docs bty-app 2>/dev/null
+grep -R "bty-app/docs/CURSOR_TASK_BOARD\|bty-app/docs/CURRENT_TASK\|bty-app/docs/NEXT_BACKLOG_AUTO4\|bty-app/docs/NEXT_PROJECT_RECOMMENDED" .cursor .github scripts docs bty-app 2>/dev/null
 ```
 
 - **0건**이면 통과.  
@@ -57,7 +58,6 @@ grep -rl "bty-app/docs/CURSOR_TASK_BOARD.md" .cursor .github scripts docs bty-ap
 grep -rl "bty-app/docs/CURRENT_TASK.md" .cursor .github scripts docs bty-app 2>/dev/null | xargs -I{} sed -i '' 's#bty-app/docs/CURRENT_TASK.md#docs/CURRENT_TASK.md#g' {}
 grep -rl "bty-app/docs/NEXT_BACKLOG_AUTO4.md" .cursor .github scripts docs bty-app 2>/dev/null | xargs -I{} sed -i '' 's#bty-app/docs/NEXT_BACKLOG_AUTO4.md#docs/NEXT_BACKLOG_AUTO4.md#g' {}
 grep -rl "bty-app/docs/NEXT_PROJECT_RECOMMENDED.md" .cursor .github scripts docs bty-app 2>/dev/null | xargs -I{} sed -i '' 's#bty-app/docs/NEXT_PROJECT_RECOMMENDED.md#docs/NEXT_PROJECT_RECOMMENDED.md#g' {}
-grep -rl "bty-app/docs/BTY_RELEASE_GATE_CHECK.md" .cursor .github scripts docs bty-app 2>/dev/null | xargs -I{} sed -i '' 's#bty-app/docs/BTY_RELEASE_GATE_CHECK.md#docs/BTY_RELEASE_GATE_CHECK.md#g' {}
 ```
 
 ---

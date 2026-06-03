@@ -2,7 +2,7 @@
 
 > **Production, Arena, and release gate** use the **monorepo root** app: [`../../bty-app`](../../bty-app) (Supabase cookie session, `requireUser`, `/api/arena/session/next`).  
 > **Deploy:** `cd ../../bty-app && npm run deploy` — not this directory.  
-> **Auth contract:** [`../../bty-app/docs/BTY_RELEASE_GATE_CHECK.md`](../../bty-app/docs/BTY_RELEASE_GATE_CHECK.md).  
+> **Auth contract:** [`../../bty-app/docs/ARENA_RELEASE_GATE_PROCEDURE.md`](../../bty-app/docs/ARENA_RELEASE_GATE_PROCEDURE.md).  
 > `npm run deploy` / `preview` / `pages:build` here are **blocked** (`scripts/deploy-blocked.mjs`).
 
 ---
