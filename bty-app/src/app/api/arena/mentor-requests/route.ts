@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminEmail } from "@/lib/authz";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { fetchFullNameMap } from "@/lib/bty/arena/fullNameMap.server";
 
 export const runtime = "nodejs";
 
@@ -39,27 +40,30 @@ export async function GET(req: NextRequest) {
     .limit(listAll ? 100 : 500);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const list = (rows ?? []) as Array<{
+    id: string;
+    user_id: string;
+    status: string;
+    message: string | null;
+    mentor_id: string;
+    created_at: string;
+    updated_at?: string;
+    responded_at?: string | null;
+  }>;
+  const fullNameMap = await fetchFullNameMap(admin, list.map((r) => r.user_id));
+
   return NextResponse.json({
-    queue: (rows ?? []).map(
-      (r: {
-        id: string;
-        user_id: string;
-        status: string;
-        message: string | null;
-        mentor_id: string;
-        created_at: string;
-        updated_at?: string;
-        responded_at?: string | null;
-      }) => ({
-        id: r.id,
-        userId: r.user_id,
-        status: r.status,
-        message: r.message ?? undefined,
-        mentorId: r.mentor_id,
-        createdAt: r.created_at,
-        updatedAt: r.updated_at,
-        respondedAt: r.responded_at ?? undefined,
-      }),
-    ),
+    queue: list.map((r) => ({
+      id: r.id,
+      userId: r.user_id,
+      fullName: fullNameMap.get(r.user_id) ?? null,
+      status: r.status,
+      message: r.message ?? undefined,
+      mentorId: r.mentor_id,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+      respondedAt: r.responded_at ?? undefined,
+    })),
   });
 }

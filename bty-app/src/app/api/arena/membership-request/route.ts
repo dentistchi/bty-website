@@ -1,12 +1,14 @@
 /**
  * GET: 현재 유저의 Arena 멤버십 요청 1건 (pending/approved 구분용).
- * POST: 멤버십 요청 제출 — job_function, joined_at, leader_started_at(optional), status=pending 저장 후 이메일 알림.
+ * POST: 멤버십 요청 제출 — full_name, job_function, joined_at, leader_started_at(optional), status=pending 저장 후 이메일 알림.
+ *        full_name 은 arena_membership_requests(이력) + arena_profiles(권위) 둘 다 기록. 검증 실패 시 422.
  * - Optional **submitted_at** (키가 있을 때만): **`arenaIsoTimestampFromUnknown`** — 실패 시 **400** `submitted_at_invalid`.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { notifyMembershipRequestPending } from "@/lib/bty/arena/notifyMembershipRequest";
+import { validateFullName } from "@/lib/bty/arena/profileFullName";
 import {
   arenaIsoDateOnlyFromUnknown,
   arenaIsoTimestampFromUnknown,
@@ -37,6 +39,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
 
   let body: {
+    full_name?: string;
     job_function?: string;
     joined_at?: string;
     leader_started_at?: string | null;
@@ -61,6 +64,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const nameResult = validateFullName(body.full_name);
+  if (!nameResult.valid) {
+    return NextResponse.json({ error: nameResult.error ?? "INVALID_FULL_NAME" }, { status: 422 });
+  }
+  const full_name = nameResult.sanitized;
+
   const job_function = typeof body.job_function === "string" ? body.job_function.trim() : "";
   const joined_at = arenaIsoDateOnlyFromUnknown(body.joined_at);
   const leader_started_at =
@@ -68,13 +77,14 @@ export async function POST(req: NextRequest) {
       ? null
       : arenaIsoDateOnlyFromUnknown(body.leader_started_at);
 
-  if (!job_function || !joined_at) {
-    return NextResponse.json({ error: "MISSING_FIELDS", message: "job_function and joined_at are required" }, { status: 400 });
+  if (!full_name || !job_function || !joined_at) {
+    return NextResponse.json({ error: "MISSING_FIELDS", message: "full_name, job_function and joined_at are required" }, { status: 400 });
   }
 
   const now = new Date().toISOString();
   const row = {
     user_id: user.id,
+    full_name,
     job_function,
     joined_at,
     leader_started_at,
@@ -107,6 +117,11 @@ export async function POST(req: NextRequest) {
     });
     if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
+
+  // Mirror full_name to arena_profiles (authoritative source admin screens read).
+  // ensure_arena_profile creates the profile row if it does not yet exist.
+  await supabase.rpc("ensure_arena_profile");
+  await supabase.from("arena_profiles").update({ full_name }).eq("user_id", user.id);
 
   await notifyMembershipRequestPending({
     userEmail: user.email ?? "",

@@ -10,6 +10,7 @@ import type { Locale } from "@/lib/i18n";
 type RequestRow = {
   id: number;
   user_id: string;
+  fullName?: string | null;
   job_function: string;
   joined_at: string;
   leader_started_at: string | null;
@@ -127,7 +128,7 @@ export default function AdminArenaMembershipPage() {
                   <Fragment key={row.id}>
                     <tr className="border-b border-neutral-100">
                       <td className="py-2 pr-4">{row.id}</td>
-                      <td className="py-2 pr-4 font-mono text-xs">{row.user_id}</td>
+                      <td className={`py-2 pr-4 text-xs ${row.fullName ? "" : "font-mono"}`}>{row.fullName ?? row.user_id}</td>
                       <td className="py-2 pr-4">{row.job_function}</td>
                       <td className="py-2 pr-4">{row.joined_at}</td>
                       <td className="py-2 pr-4">{row.leader_started_at ?? "—"}</td>

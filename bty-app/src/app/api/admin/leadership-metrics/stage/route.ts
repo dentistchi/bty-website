@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminEmail } from "@/lib/require-admin";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { fetchFullNameMap } from "@/lib/bty/arena/fullNameMap.server";
 
 export const runtime = "nodejs";
 
 export type UserStageRow = {
   userId: string;
   email: string;
+  fullName: string | null;
   stage: number;
   stageLabel: string;
   stageEnteredAt: string | null;
@@ -48,6 +50,10 @@ export async function GET(req: NextRequest) {
     const emailMap = new Map<string, string>(
       (authData.users ?? []).map((u) => [u.id, u.email ?? u.id]),
     );
+    const fullNameMap = await fetchFullNameMap(
+      supabase,
+      (states ?? []).map((s) => s.user_id),
+    );
 
     const now = Date.now();
     const rows: UserStageRow[] = (states ?? []).map((s) => {
@@ -56,6 +62,7 @@ export async function GET(req: NextRequest) {
       return {
         userId: s.user_id,
         email: emailMap.get(s.user_id) ?? s.user_id,
+        fullName: fullNameMap.get(s.user_id) ?? null,
         stage: s.current_stage ?? 1,
         stageLabel: STAGE_LABELS[s.current_stage ?? 1] ?? `Stage ${s.current_stage}`,
         stageEnteredAt: s.stage_entered_at ?? null,

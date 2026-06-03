@@ -5,6 +5,7 @@ import { certifiedStatus } from "@/domain/leadership-engine/certified";
 import { computeLRI } from "@/domain/leadership-engine/lri";
 import { buildCertifiedInputs } from "@/lib/bty/leadership-engine/certified-inputs.server";
 import { buildLRIInputs } from "@/lib/bty/leadership-engine/lri-inputs.server";
+import { fetchFullNameMap } from "@/lib/bty/arena/fullNameMap.server";
 
 export const runtime = "nodejs";
 
@@ -19,6 +20,7 @@ type ContractRow = {
 export type UserAirRow = {
   userId: string;
   email: string;
+  fullName: string | null;
   total: number;       // contracts that left draft (selected)
   completed: number;   // approved / verified
   missed: number;      // missed / expired past deadline
@@ -110,6 +112,7 @@ export async function GET(req: NextRequest) {
     const emailMap = new Map<string, string>(
       (authData.users ?? []).map((u) => [u.id, u.email ?? u.id]),
     );
+    const fullNameMap = await fetchFullNameMap(supabase, Array.from(byUser.keys()));
 
     // Compute AIR per user. Shared reference instant so all users use the same
     // 14d window boundary (no per-user clock skew).
@@ -168,6 +171,7 @@ export async function GET(req: NextRequest) {
         return {
           userId,
           email: emailMap.get(userId) ?? userId,
+          fullName: fullNameMap.get(userId) ?? null,
           total: totalSelected,
           completed: totalCompleted,
           missed: totalMissed,

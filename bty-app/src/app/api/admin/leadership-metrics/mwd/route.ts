@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminEmail } from "@/lib/require-admin";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { fetchFullNameMap } from "@/lib/bty/arena/fullNameMap.server";
 
 export const runtime = "nodejs";
 
 export type UserMWDRow = {
   userId: string;
   email: string;
+  fullName: string | null;
   mwd7d: number;
   mwd14d: number;
   totalActivations: number;
@@ -50,6 +52,8 @@ export async function GET(req: NextRequest) {
       byUser.set(row.user_id, list);
     }
 
+    const fullNameMap = await fetchFullNameMap(supabase, Array.from(byUser.keys()));
+
     const now = Date.now();
     const cutoff7d = now - 7 * 86_400_000;
     const cutoff14d = now - 14 * 86_400_000;
@@ -79,6 +83,7 @@ export async function GET(req: NextRequest) {
       rows.push({
         userId,
         email: emailMap.get(userId) ?? userId,
+        fullName: fullNameMap.get(userId) ?? null,
         mwd7d: days7d.size,
         mwd14d: days14d.size,
         totalActivations: total,

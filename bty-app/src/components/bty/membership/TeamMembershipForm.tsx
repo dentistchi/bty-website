@@ -37,6 +37,7 @@ const INPUT =
 export default function TeamMembershipForm({ locale, initialRequest }: Props) {
   const t = getMessages(locale).membership;
 
+  const [fullName, setFullName] = useState("");
   const [jobFunction, setJobFunction] = useState<JobFunction>("staff");
   const [joinedAt, setJoinedAt] = useState("");
   const [leaderStartedAt, setLeaderStartedAt] = useState("");
@@ -87,6 +88,10 @@ export default function TeamMembershipForm({ locale, initialRequest }: Props) {
     if (submitting) return;
     setError(null);
 
+    if (!fullName.trim()) {
+      setError(t.form.fullName.label);
+      return;
+    }
     if (!joinedAt) {
       setError(t.form.joinedAt.label);
       return;
@@ -103,6 +108,7 @@ export default function TeamMembershipForm({ locale, initialRequest }: Props) {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
+          full_name: fullName.trim(),
           job_function: jobFunction,
           joined_at: joinedAt,
           leader_started_at: isLeader ? leaderStartedAt : null,
@@ -126,6 +132,21 @@ export default function TeamMembershipForm({ locale, initialRequest }: Props) {
       <div>
         <p className="text-sm font-medium text-[#1E2A38]">{t.form.title}</p>
         <p className="mt-1 text-sm leading-relaxed text-[#667085]">{t.form.intro}</p>
+      </div>
+
+      <div>
+        <label htmlFor="membership-full-name" className="block text-xs font-medium text-[#667085]">
+          {t.form.fullName.label}
+        </label>
+        <input
+          id="membership-full-name"
+          type="text"
+          required
+          maxLength={120}
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          className={INPUT}
+        />
       </div>
 
       <fieldset>

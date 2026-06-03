@@ -293,7 +293,7 @@ function AirTable({ rows }: { rows: UserAirRow[] }) {
         <tbody className="divide-y divide-neutral-100">
           {rows.map((row) => (
             <tr key={row.userId} className="hover:bg-neutral-50">
-              <td className="px-4 py-3 font-mono text-xs text-neutral-900">{row.email}</td>
+              <td className={`px-4 py-3 text-xs text-neutral-900 ${row.fullName ? "" : "font-mono"}`}>{row.fullName ?? row.email}</td>
               <td className="px-4 py-3 text-center">
                 <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${airBadgeColor(row.air)}`}>
                   {airBadgeLabel(row.air, t)}
@@ -364,7 +364,7 @@ function StageView({ data }: { data: StageMetricsResponse }) {
           <tbody className="divide-y divide-neutral-100">
             {data.rows.map((row: UserStageRow) => (
               <tr key={row.userId} className="hover:bg-neutral-50">
-                <td className="px-4 py-3 font-mono text-xs text-neutral-900">{row.email}</td>
+                <td className={`px-4 py-3 text-xs text-neutral-900 ${row.fullName ? "" : "font-mono"}`}>{row.fullName ?? row.email}</td>
                 <td className="px-4 py-3 text-center">
                   <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STAGE_COLORS[row.stage]}`}>
                     Stage {row.stage} · {row.stageLabel}
@@ -419,7 +419,7 @@ function MWDTable({ rows }: { rows: UserMWDRow[] }) {
         <tbody className="divide-y divide-neutral-100">
           {rows.map((row: UserMWDRow) => (
             <tr key={row.userId} className="hover:bg-neutral-50">
-              <td className="px-4 py-3 font-mono text-xs text-neutral-900">{row.email}</td>
+              <td className={`px-4 py-3 text-xs text-neutral-900 ${row.fullName ? "" : "font-mono"}`}>{row.fullName ?? row.email}</td>
               <td className="px-4 py-3 text-right tabular-nums text-neutral-700 font-semibold">
                 {row.mwd7d}
               </td>
