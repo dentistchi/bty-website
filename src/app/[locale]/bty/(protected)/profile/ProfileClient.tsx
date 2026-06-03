@@ -13,6 +13,7 @@ import { arenaFetch } from "@/lib/http/arenaFetch";
 import type { CoreXpGetResponse } from "@/lib/bty/arena/coreXpApi";
 import { SUBNAME_RENAME_ENABLED } from "@/lib/bty/arena/featureFlags";
 import { DISPLAY_NAME_MAX_LENGTH } from "@/lib/bty/arena/profileDisplayName";
+import { codeBadgeSrcByName } from "@/lib/bty/arena/codeBadge";
 
 type ProfileRes = {
   profile?: { display_name?: string | null };
@@ -177,6 +178,15 @@ export default function ProfileClient() {
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs text-bty-secondary">{isKo ? "코드네임" : "Code Name"}</span>
                 <div className="flex items-center gap-2">
+                  {codeBadgeSrcByName(codeName) && (
+                    <img
+                      src={codeBadgeSrcByName(codeName)!}
+                      alt={codeName}
+                      width={64}
+                      height={64}
+                      className="h-16 w-16 shrink-0 object-contain"
+                    />
+                  )}
                   <span className="rounded-md bg-bty-navy/10 px-3 py-1 text-sm font-bold tracking-widest text-bty-navy">
                     {codeName}
                   </span>
