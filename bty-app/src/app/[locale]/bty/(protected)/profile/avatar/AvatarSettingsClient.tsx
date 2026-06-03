@@ -20,6 +20,9 @@ import { getMessages } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 
+/** MVP (G-DC-22): outfit selection globally locked; flip to true to re-enable selection. */
+const OUTFIT_SELECTION_OPEN = false;
+
 export default function AvatarSettingsClient() {
   const params = useParams();
   const locale = typeof params?.locale === "string" && params.locale === "ko" ? "ko" : "en";
@@ -287,35 +290,43 @@ export default function AvatarSettingsClient() {
 
         {/* Outfits — ALL shown, locked = semi-transparent */}
         <InfoCard title={isKo ? "의상" : "Outfits"}>
-          <p className="mb-3 text-sm text-bty-secondary">
+          <p className="mb-1 text-sm text-bty-secondary">
             {isKo
               ? "진행에 따라 의상이 해금됩니다. 🔒 표시는 아직 획득하지 못한 의상입니다."
               : "Outfits unlock as you progress. 🔒 items haven't been earned yet."}
+          </p>
+          <p className="mb-3 text-sm font-medium text-bty-steel">
+            {isKo
+              ? "곧 제공 — 선택은 추후 열립니다."
+              : "Coming soon — selection opens later."}
           </p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {OUTFIT_OPTIONS_ALL.map((o) => {
               const outfitKey = `outfit_${o.outfitId}`;
               const unlocked = unlockedOutfitKeys.has(outfitKey);
-              const selected = unlocked && draftOutfitKey === outfitKey;
+              // MVP (G-DC-22): outfit selection is globally locked. No tile is interactive
+              // and the save path (setDraftOutfitKey / avatar_selected_outfit_id) is never called.
+              const interactive = OUTFIT_SELECTION_OPEN && unlocked;
+              const selected = interactive && draftOutfitKey === outfitKey;
               return (
                 <button
                   key={outfitKey}
                   type="button"
-                  disabled={!unlocked}
-                  onClick={() => unlocked && setDraftOutfitKey(outfitKey)}
-                  aria-label={unlocked
+                  disabled={!interactive}
+                  onClick={interactive ? () => setDraftOutfitKey(outfitKey) : undefined}
+                  aria-label={interactive
                     ? (selected ? `${o.outfitLabel}, ${isKo ? "선택됨" : "selected"}` : o.outfitLabel)
                     : `${o.outfitLabel} (${isKo ? "잠금" : "locked"})`}
                   className={cn(
                     "relative flex flex-col items-center rounded-xl border p-2 transition",
-                    unlocked
+                    interactive
                       ? selected
                         ? "border-bty-steel bg-bty-steel/10 ring-2 ring-bty-steel/40"
                         : "border-bty-border hover:border-bty-steel/40 cursor-pointer"
                       : "border-bty-border/40 opacity-40 cursor-not-allowed"
                   )}
                 >
-                  {!unlocked && (
+                  {!interactive && (
                     <span className="absolute right-1.5 top-1.5 text-[10px]">🔒</span>
                   )}
                   <div className="h-20 w-full overflow-hidden rounded-lg bg-bty-soft/60 flex items-center justify-center">

@@ -14,6 +14,7 @@ import { weeklyCompetitionStageTierBandDisplayLabelKey } from "@/domain/rules/we
 import { calculateTier } from "@/domain/rules/weeklyXp";
 import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
 import { getAccessoryImageUrl } from "@/lib/bty/arena/avatarOutfits";
+import { codeBadgeSrcByName } from "@/lib/bty/arena/codeBadge";
 import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 
 type WeeklyXpRes = { weekStartISO?: string | null; weekEndISO?: string | null; xpTotal: number; count?: number };
@@ -344,6 +345,15 @@ export default function DashboardClient() {
                       </div>
                     )}
                   </div>
+                  {core.codeName && codeBadgeSrcByName(core.codeName) && (
+                    <img
+                      src={codeBadgeSrcByName(core.codeName)!}
+                      alt={core.codeName}
+                      width={56}
+                      height={56}
+                      className="h-14 w-14 shrink-0 object-contain"
+                    />
+                  )}
                   <div className="min-w-0 flex-1 space-y-1">
                     <p className="text-base font-semibold text-bty-navy">{core.codeName}</p>
                     <p className="text-sm text-bty-secondary">{core.subName}</p>
