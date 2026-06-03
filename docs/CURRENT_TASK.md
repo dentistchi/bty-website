@@ -1,3 +1,30 @@
+## 2026-06-03 — SESSION STATUS — 오늘 4 lane 전부 closed
+- 활성 작업 없음 — G-DC-19 / G-DC-21 / G-DC-22 / G-DC-23 전부 DEPLOYED + closed.
+- 다음: 금요일 2026-06-05 파일럿 20명 등록.
+
+## 2026-06-03 — [G-DC-23] full_name 멤버십 폼 + admin 표시 — DEPLOYED + 3-way PASS
+- 본명(full_name, admin 식별용) end-to-end 추가 — display_name(공개 닉네임)과 별개. 멤버십 폼에 필수 이름칸(max 120, 신규 순수헬퍼 `validateFullName`).
+- POST membership-request: `arena_membership_requests`(이력) + `arena_profiles`(권위, `ensure_arena_profile` RPC→UPDATE) 둘 다 저장, 검증 실패 422.
+- admin 3화면(리더십지표 AIR/Stage/MWD·멤버십·멘토신청): 공용 `fetchFullNameMap`(arena_profiles IN 조회)로 full_name 표시, 미설정 시 email/uuid 폴백(이름이면 font-mono 제거).
+- migration `20260603000000_arena_full_name.sql`(arena_profiles.full_name + arena_membership_requests.full_name, ADD COLUMN IF NOT EXISTS). `repair --status applied` → list local+remote synced(db push 없음).
+- verify: tsc clean / vitest 3445(=baseline; mentor mock +`.in()`, 폼 success/5xx 테스트 +이름 입력).
+- deploy: `rm -rf .open-next` + cf:build + cf:deploy → Worker `5deb597c-c53a-4dee-85b3-23bd6346684b`. 3-way PASS(active==5deb597c / inner a021e846 + outer 03959b5 / admin API 401=route-load healthy, not 500).
+- 잔여: 컬럼 firing 런타임 실증(authed 신청→admin 이름) = Commander live-verify; route.test happy-path 200 미커버(기존 갭).
+
+## 2026-06-03 — [G-DC-22] 코드 뱃지 7종 + 아웃핏 잠금 — DEPLOYED + 3-way PASS
+- 코드 뱃지(forge/pulse/frame/ascend/nova/architect/codeless) CODE IDENTITY(64px)·dashboard IDENTITY(56px) 카드 표시 — 신규 `codeBadgeSrcByName`(codeName→`/badge/<name>.png`, null→미표시).
+- 옛 `badge_*_icon.png` 5개 제거, `public/badge/` 소문자 정규명 통일(2회 HALT: pulse/nova 부재 → `Ascend.png`/`cordless.png` 오타 → Commander 7개 재공급).
+- 아웃핏 전면 잠금(`OUTFIT_SELECTION_OPEN=false`, 저장 경로 미호출) + "곧 제공 / Coming soon" 인라인.
+- verify: tsc clean / vitest 3445. deploy: Worker `1bc056f3-c49f-4d4d-b8d6-4bc7f2c64bdb`. 3-way PASS(inner ab88a43d + outer fcbf524 / 뱃지 7종 200 incl ascend·codeless / 옛 자산 404).
+
+## 2026-06-03 — [G-DC-21] 비밀번호 재설정 UI 제거 — DEPLOYED
+- Account SECURITY 카드(reset-email UI) 제거 — Google OAuth 전용, 사이트 비번 없음. `send-reset-email/route.ts`는 dead code 잔존(후속 cleanup).
+- inner `4251e6b1`(오늘 배포 worker 1bc056f3/5deb597c의 git-ancestor → 라이브). Commander 보고: SECURITY 카드 부재.
+
+## 2026-06-03 — [G-DC-19] 리더보드 display_name + weekly tier 숨김 + 코드당 개명 게이트 — DEPLOYED
+- 리더보드 이름줄 `CODE-displayName`; weekly tier(Bronze/Silver/Gold) 숨김(계산 유지). display_name 코드당 1회 게이트(migration `20260602223038` — arena_profiles.display_name_changed_at_code_index); sub-name 개명 UI 닫음(`SUBNAME_RENAME_ENABLED=false`).
+- inner `99129251`(오늘 배포 worker의 git-ancestor → 라이브). Commander 보고: display name 변경 검증, 3-way PASS.
+
 ## 2026-06-02 — [Bug 3] avatar no-selection guard (unselected→initials, not scrubs) — DEPLOYED + smoke 4/4
 - 4 files (inner `f4f371c9`): `resolveDisplayAvatarUrl`에 Lane 7 미선택 guard 추가(sibling `resolveDisplayAvatarLayers` 패턴 미러) — char/outfit/theme 모두 null → `return null`(이니셜). core-xp/route.ts:208 `avatarUrl` outfit fallback을 `hasAvatarSelection`로 게이트(DB-row `?? null` 변수, 미선택=null). edges:112 `not.toBeNull`→`toBeNull`(테스트명 일치); +5 resolveDisplayAvatarUrl no-selection case.
 - 봉쇄: 미선택 row-exists 유저가 레벨 기본 옷(scrubs) 대신 이니셜. Bug 2(fresh empty equip) 동반 해소(같은 fail-safe 경로).
