@@ -98,7 +98,7 @@ with_administrative_ack: <operator to fill>
 
 **Required secrets:** **`E2E_EMAIL`**, **`E2E_PASSWORD`** must authenticate against **that same origin** (`POST /api/auth/login` → **200**). If login returns **401** `Invalid login credentials`, update secrets or use credentials that exist on the target Supabase project.
 
-**Auth contract (Commander / C5 — authoritative):** Full QA criteria and blocking rules: **`bty-app/docs/BTY_RELEASE_GATE_CHECK.md`** § **Auth contract**. In short: valid login **200**; response includes **`Set-Cookie`**; authenticated **`GET /api/arena/session/next?locale=en`** succeeds (**200**, `ok: true`); **no** in-memory-only auth on **production** or **release-gate** path; **demo-auth** or test bypass in prod → **blocking**. **`bty-app/scripts/arena-release-gate.sh`** enforces **Set-Cookie** + **session/next** after login.
+**Auth contract (Commander / C5 — authoritative):** Full QA criteria and blocking rules: **`bty-app/docs/ARENA_RELEASE_GATE_PROCEDURE.md`** § **Auth contract**. In short: valid login **200**; response includes **`Set-Cookie`**; authenticated **`GET /api/arena/session/next?locale=en`** succeeds (**200**, `ok: true`); **no** in-memory-only auth on **production** or **release-gate** path; **demo-auth** or test bypass in prod → **blocking**. **`bty-app/scripts/arena-release-gate.sh`** enforces **Set-Cookie** + **session/next** after login.
 
 **Status:** **PASS**
 
