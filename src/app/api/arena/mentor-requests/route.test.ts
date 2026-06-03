@@ -61,6 +61,7 @@ describe("GET /api/arena/mentor-requests", () => {
     mockGetSupabaseAdmin.mockReturnValue({
       from: () => ({
         select: () => ({
+          in: () => Promise.resolve({ data: [], error: null }),
           eq: () => ({
             order: () => ({
               limit: () =>
@@ -100,6 +101,7 @@ describe("GET /api/arena/mentor-requests", () => {
     mockGetSupabaseAdmin.mockReturnValue({
       from: () => ({
         select: () => ({
+          in: () => Promise.resolve({ data: [], error: null }),
           order: () => ({
             limit: () =>
               Promise.resolve({
@@ -140,6 +142,7 @@ describe("GET /api/arena/mentor-requests", () => {
     mockGetSupabaseAdmin.mockReturnValue({
       from: () => ({
         select: () => ({
+          in: () => Promise.resolve({ data: [], error: null }),
           eq: () => ({
             order: () => ({
               limit: () =>

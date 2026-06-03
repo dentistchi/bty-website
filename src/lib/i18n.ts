@@ -18,6 +18,7 @@ export type Messages = {
     form: {
       title: string;
       intro: string;
+      fullName: { label: string };
       jobFunction: { label: string; staff: string; leader: string };
       joinedAt: { label: string };
       leaderStartedAt: { label: string; hint: string };
@@ -2032,6 +2033,7 @@ const ko: Messages = {
       title: "Team membership",
       intro:
         "Submit your team membership request. An admin reviews and approves it before you can enter the Arena.",
+      fullName: { label: "이름" },
       jobFunction: { label: "Role", staff: "Staff", leader: "Leader" },
       joinedAt: { label: "Join date" },
       leaderStartedAt: {
@@ -3841,6 +3843,7 @@ const en: Messages = {
       title: "Team membership",
       intro:
         "Submit your team membership request. An admin reviews and approves it before you can enter the Arena.",
+      fullName: { label: "Full name" },
       jobFunction: { label: "Role", staff: "Staff", leader: "Leader" },
       joinedAt: { label: "Join date" },
       leaderStartedAt: {

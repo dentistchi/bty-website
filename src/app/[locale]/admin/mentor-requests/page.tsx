@@ -14,6 +14,7 @@ import type { Locale } from "@/lib/i18n";
 type QueueItem = {
   id: string;
   userId: string;
+  fullName?: string | null;
   status: string;
   message?: string;
   mentorId: string;
@@ -145,8 +146,8 @@ export default function AdminMentorRequestsPage() {
                 {queue.map((row) => (
                   <Fragment key={row.id}>
                     <tr className="border-b border-neutral-100">
-                      <th scope="row" className="py-2 pr-4 text-left font-mono text-xs font-normal">
-                        {row.userId}
+                      <th scope="row" className={`py-2 pr-4 text-left text-xs font-normal ${row.fullName ? "" : "font-mono"}`}>
+                        {row.fullName ?? row.userId}
                       </th>
                       <td className="py-2 pr-4">{row.createdAt.slice(0, 19).replace("T", " ")}</td>
                       <td className="py-2 pr-4">{statusLabel(row.status)}</td>

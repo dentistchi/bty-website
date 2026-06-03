@@ -35,6 +35,7 @@ describe("TeamMembershipForm", () => {
   it("shows the success state after a 200 submit", async () => {
     mockFetch(200, { ok: true, status: "pending" });
     render(<TeamMembershipForm locale="en" initialRequest={null} />);
+    fireEvent.change(screen.getByLabelText(/Full name/i), { target: { value: "Jane Doe" } });
     fireEvent.change(screen.getByLabelText(/Join date/i), { target: { value: "2024-01-01" } });
     fireEvent.submit(screen.getByTestId("membership-form"));
     await waitFor(() => expect(screen.getByTestId("membership-success")).toBeTruthy());
@@ -47,6 +48,7 @@ describe("TeamMembershipForm", () => {
   it("shows an error and no success on a 5xx submit failure", async () => {
     mockFetch(500, { error: "boom" });
     render(<TeamMembershipForm locale="en" initialRequest={null} />);
+    fireEvent.change(screen.getByLabelText(/Full name/i), { target: { value: "Jane Doe" } });
     fireEvent.change(screen.getByLabelText(/Join date/i), { target: { value: "2024-01-01" } });
     fireEvent.submit(screen.getByTestId("membership-form"));
     await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
