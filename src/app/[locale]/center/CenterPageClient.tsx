@@ -165,17 +165,10 @@ function ResilienceCard({ entries, locale, isKo }: { entries: ResilienceEntry[];
       role="region"
       aria-label={isKo ? "에너지 기록" : "Energy log"}
     >
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center mb-2">
         <div className="text-sm font-semibold text-dear-charcoal">
           {isKo ? "에너지 기록" : "Energy log"}
         </div>
-        <Link
-          href={`/${locale}/center`}
-          className="text-xs font-medium text-dear-sage hover:text-dear-charcoal transition-colors rounded-lg border border-dear-sage/30 bg-dear-sage/5 px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dear-sage"
-          aria-label={isKo ? "에너지 기록 추가" : "Add energy log"}
-        >
-          {isKo ? "+ 기록" : "+ Log"}
-        </Link>
       </div>
       {last7.length > 0 ? (
         <>
