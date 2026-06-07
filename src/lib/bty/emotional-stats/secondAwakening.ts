@@ -9,8 +9,8 @@ import type { CoreStatId } from "./coreStats";
 import { getUnlockedAdvancedStats } from "./unlock";
 import type { UserCoreValues } from "./unlock";
 
-const REQUIRED_DAY = 30;
-const REQUIRED_MIN_SESSIONS = 10;
+export const REQUIRED_DAY = 30;
+export const REQUIRED_MIN_SESSIONS = 10;
 
 export interface SecondAwakeningRitual {
   act1: {
