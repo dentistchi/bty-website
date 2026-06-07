@@ -16,10 +16,12 @@ export {
   submitLetter,
   submitCenterLetter,
   getLetterHistory,
+  getLetterCalendar,
   type SubmitLetterInput,
   type SubmitLetterResult,
   type SubmitCenterLetterInput,
   type SubmitCenterLetterResult,
+  type LetterCalendarEntry,
 } from "./letterService";
 
 export {
