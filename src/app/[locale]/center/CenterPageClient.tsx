@@ -65,10 +65,12 @@ function StageContextCard({ stage, isKo }: { stage: StageState; isKo: boolean })
 
 function DearMeCard({
   letter,
+  locale,
   isKo,
   onWrite,
 }: {
   letter: LetterItem | null;
+  locale: string;
   isKo: boolean;
   onWrite: () => void;
 }) {
@@ -96,14 +98,23 @@ function DearMeCard({
         <div className="text-sm font-semibold text-dear-charcoal">
           {isKo ? "나에게 쓰는 편지" : "Dear Me"}
         </div>
-        <button
-          type="button"
-          onClick={onWrite}
-          className="text-xs font-medium text-dear-sage hover:text-dear-charcoal transition-colors rounded-lg border border-dear-sage/30 bg-dear-sage/5 px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dear-sage"
-          aria-label={isKo ? "편지 쓰기" : "Write a letter"}
-        >
-          {isKo ? "편지 쓰기" : "Write a letter"}
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/${locale}/center/letters`}
+            className="text-xs font-medium text-dear-charcoal-soft hover:text-dear-charcoal transition-colors rounded-lg px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dear-sage"
+            aria-label={isKo ? "보낸 편지 이력 보기" : "View letter history"}
+          >
+            {isKo ? "이력 보기" : "History"}
+          </Link>
+          <button
+            type="button"
+            onClick={onWrite}
+            className="text-xs font-medium text-dear-sage hover:text-dear-charcoal transition-colors rounded-lg border border-dear-sage/30 bg-dear-sage/5 px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dear-sage"
+            aria-label={isKo ? "편지 쓰기" : "Write a letter"}
+          >
+            {isKo ? "편지 쓰기" : "Write a letter"}
+          </button>
+        </div>
       </div>
       {excerpt ? (
         <>
@@ -615,6 +626,7 @@ export default function CenterPageClient({ locale }: { locale: string }) {
               <HealingPhaseTracker locale={lang} />
               <DearMeCard
                 letter={letters[0] ?? null}
+                locale={locale}
                 isKo={isKo}
                 onWrite={() => setComposerOpen(true)}
               />
