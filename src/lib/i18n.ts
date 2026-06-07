@@ -4020,7 +4020,7 @@ const en: Messages = {
   },
   bty: {
     title: "bty",
-    tagline: "Practice. Integrity & Better Than Myself.",
+    tagline: "Gratitude. Integrity & Better Than Yesterday.",
     linkToCenter: "Go to Center",
     entryIntro: "Dashboard, mentor, integrity practice. Choose what to work on.",
     startCta: "Start",
