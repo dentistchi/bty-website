@@ -13,8 +13,8 @@ const notoSerifKr = Noto_Serif_KR({
 });
 
 export const metadata: Metadata = {
-  title: "Center — 나에게 쓰는 편지",
-  description: "자존감 회복실. 평가와 조언 없이, 심리적 안전과 자기 수용을 위한 공간.",
+  title: "btyARENA — Better Than Yesterday",
+  description: "A leadership training arena where everyday decisions become better than yesterday.",
 };
 
 export default async function RootLayout({
