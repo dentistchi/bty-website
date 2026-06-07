@@ -163,7 +163,7 @@ export default function TrainDayPage() {
   }, [day, lessonText, generateCompletionSummary, markTodayComplete]);
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "360px 1fr 420px", height: "100vh" }}>
+    <div className="grid grid-cols-1 min-h-screen md:h-screen md:grid-cols-[360px_1fr_420px]">
       {/* LEFT: Sidebar */}
       <aside style={{ borderRight: "1px solid #eee", padding: 16, overflow: "auto" }} role="navigation" aria-label={t.dayListLabel}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
