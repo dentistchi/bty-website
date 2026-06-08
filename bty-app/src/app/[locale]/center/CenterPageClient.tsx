@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ThemeBody } from "@/components/ThemeBody";
 import { CardSkeleton } from "@/components/bty-arena";
@@ -8,6 +8,7 @@ import { ForcedResetUX } from "@/components/center/ForcedResetUX";
 import { HealingPhaseTracker } from "@/components/center/HealingPhaseTracker";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
+import { DEAR_ME_SUBMITTED_EVENT } from "@/lib/bty/center/dearMeEvents";
 
 type StageState = {
   currentStage: number;
@@ -66,10 +67,12 @@ function DearMeCard({
   letter,
   locale,
   isKo,
+  onWrite,
 }: {
   letter: LetterItem | null;
   locale: string;
   isKo: boolean;
+  onWrite: () => void;
 }) {
   const excerpt =
     letter
@@ -95,13 +98,23 @@ function DearMeCard({
         <div className="text-sm font-semibold text-dear-charcoal">
           {isKo ? "나에게 쓰는 편지" : "Dear Me"}
         </div>
-        <Link
-          href={`/${locale}/center`}
-          className="text-xs font-medium text-dear-sage hover:text-dear-charcoal transition-colors rounded-lg border border-dear-sage/30 bg-dear-sage/5 px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dear-sage"
-          aria-label={isKo ? "편지 쓰기" : "Write a letter"}
-        >
-          {isKo ? "편지 쓰기" : "Write a letter"}
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/${locale}/center/letters`}
+            className="text-xs font-medium text-dear-charcoal-soft hover:text-dear-charcoal transition-colors rounded-lg px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dear-sage"
+            aria-label={isKo ? "보낸 편지 이력 보기" : "View letter history"}
+          >
+            {isKo ? "이력 보기" : "History"}
+          </Link>
+          <button
+            type="button"
+            onClick={onWrite}
+            className="text-xs font-medium text-dear-sage hover:text-dear-charcoal transition-colors rounded-lg border border-dear-sage/30 bg-dear-sage/5 px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dear-sage"
+            aria-label={isKo ? "편지 쓰기" : "Write a letter"}
+          >
+            {isKo ? "편지 쓰기" : "Write a letter"}
+          </button>
+        </div>
       </div>
       {excerpt ? (
         <>
@@ -165,17 +178,10 @@ function ResilienceCard({ entries, locale, isKo }: { entries: ResilienceEntry[];
       role="region"
       aria-label={isKo ? "에너지 기록" : "Energy log"}
     >
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center mb-2">
         <div className="text-sm font-semibold text-dear-charcoal">
           {isKo ? "에너지 기록" : "Energy log"}
         </div>
-        <Link
-          href={`/${locale}/center`}
-          className="text-xs font-medium text-dear-sage hover:text-dear-charcoal transition-colors rounded-lg border border-dear-sage/30 bg-dear-sage/5 px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dear-sage"
-          aria-label={isKo ? "편지 쓰기" : "Write a letter"}
-        >
-          {isKo ? "+ 기록" : "+ Log"}
-        </Link>
       </div>
       {last7.length > 0 ? (
         <>
@@ -368,6 +374,149 @@ function TrainProgressCard({
   );
 }
 
+/**
+ * Inline Dear Me letter composer (modal). Core lifted from the retired
+ * /[locale]/dear-me route (deleted 05140389): textarea → POST /api/dear-me/letter
+ * → reply display. Reply text is template-generated server-side
+ * (letterService.getDearMeReplyTemplate); no phantom llm dependency. Page chrome
+ * (AuthGate/ThemeBody) intentionally omitted — already applied by CenterPageClient.
+ */
+function DearMeComposerModal({
+  lang,
+  isKo,
+  onClose,
+  onSubmitted,
+}: {
+  lang: Locale;
+  isKo: boolean;
+  onClose: () => void;
+  onSubmitted: () => void;
+}) {
+  const t = getMessages(lang).center;
+  const [letterBody, setLetterBody] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [reply, setReply] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit() {
+    const trimmed = letterBody.trim();
+    if (!trimmed || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/dear-me/letter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ letterText: trimmed, lang }),
+        credentials: "include",
+      });
+      const data: { replyMessage?: string; reply?: string; replyText?: string; error?: string } =
+        await r.json().catch(() => ({}));
+      if (data.error) {
+        setError(data.error);
+        return;
+      }
+      setReply(data.replyMessage ?? data.reply ?? data.replyText ?? null);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent(DEAR_ME_SUBMITTED_EVENT));
+      }
+      onSubmitted();
+    } catch {
+      setError(isKo ? "연결에 실패했어요. 잠시 후 다시 시도해 주세요." : "Connection failed. Please resubmit.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={isKo ? "나에게 쓰는 편지" : "Dear Me"}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md max-h-[85vh] overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold text-dear-charcoal m-0">
+            {isKo ? "나에게 쓰는 편지" : "Dear Me"}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={isKo ? "닫기" : "Close"}
+            className="text-dear-charcoal-soft hover:text-dear-charcoal rounded-lg px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dear-sage"
+          >
+            ✕
+          </button>
+        </div>
+
+        {!reply ? (
+          <div className="space-y-4">
+            <p className="text-sm text-dear-charcoal-soft m-0">{t.letterPrompt}</p>
+            <textarea
+              value={letterBody}
+              onChange={(e) => setLetterBody(e.target.value)}
+              placeholder={t.letterPlaceholder}
+              rows={6}
+              className="w-full rounded-xl border border-dear-sage/30 bg-white/80 px-4 py-3 text-dear-charcoal placeholder:text-dear-charcoal-soft/60 resize-y"
+              aria-label={t.letterPlaceholder}
+            />
+            {error && (
+              <p className="text-red-600 text-sm m-0" role="alert">{error}</p>
+            )}
+            <button
+              type="button"
+              disabled={!letterBody.trim() || submitting}
+              onClick={handleSubmit}
+              className="w-full rounded-2xl border border-dear-sage/30 bg-dear-sage/5 py-3 text-center hover:bg-dear-sage/10 transition-colors font-medium text-dear-charcoal disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-dear-sage"
+              aria-busy={submitting}
+              aria-label={t.submitLetter}
+            >
+              {submitting ? t.sendingLetter : t.submitLetter}
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-dear-sage/20 bg-dear-sage/5 px-4 py-3 text-center">
+              <p className="font-medium text-dear-charcoal m-0">{t.completedTitle}</p>
+              <p className="mt-1 text-sm text-dear-charcoal-soft m-0">{t.completedSub}</p>
+            </div>
+            <div className="rounded-2xl border border-dear-sage/30 bg-dear-sage/5 p-4 text-dear-charcoal whitespace-pre-wrap">
+              {reply}
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setReply(null);
+                  setLetterBody("");
+                  setError(null);
+                }}
+                className="flex-1 rounded-2xl border border-dear-sage/30 bg-dear-sage/5 py-3 px-5 text-center hover:bg-dear-sage/10 transition-colors font-medium text-dear-charcoal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-dear-sage"
+                aria-label={isKo ? "편지 다시 쓰기" : "Write letter again"}
+              >
+                {isKo ? "다시 쓰기" : "Write again"}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 rounded-2xl border border-dear-sage/30 bg-dear-sage/5 py-3 px-5 text-center hover:bg-dear-sage/10 transition-colors font-medium text-dear-charcoal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-dear-sage"
+                aria-label={isKo ? "닫기" : "Close"}
+              >
+                {isKo ? "닫기" : "Close"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function CenterPageClient({ locale }: { locale: string }) {
   const lang = (locale === "ko" ? "ko" : "en") as Locale;
   const t = getMessages(lang).center;
@@ -379,6 +528,17 @@ export default function CenterPageClient({ locale }: { locale: string }) {
   const [submissions, setSubmissions] = useState<AssessmentItem[]>([]);
   const [resilience, setResilience] = useState<ResilienceEntry[]>([]);
   const [trainProgress, setTrainProgress] = useState<{ lastCompletedDay: number; hasSession: boolean } | null>(null);
+  const [composerOpen, setComposerOpen] = useState(false);
+
+  const refreshLetters = useCallback(async () => {
+    try {
+      const r = await fetch("/api/dear-me/letters", { credentials: "include" });
+      const data = r.ok ? await r.json().catch(() => null) : null;
+      if (Array.isArray(data?.letters)) setLetters(data.letters as LetterItem[]);
+    } catch {
+      /* keep existing letters on failure */
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -462,15 +622,37 @@ export default function CenterPageClient({ locale }: { locale: string }) {
                 locale={locale}
                 isKo={isKo}
               />
-              {stage && <StageContextCard stage={stage} isKo={isKo} />}
-              <HealingPhaseTracker locale={lang} />
-              <DearMeCard letter={letters[0] ?? null} locale={locale} isKo={isKo} />
+              <section
+                role="region"
+                aria-label={t.currentStateTitle}
+                className="rounded-xl border border-dear-sage/20 bg-dear-sage/5 px-4 py-3 space-y-3"
+              >
+                <h2 className="text-sm font-semibold text-dear-charcoal m-0">
+                  {t.currentStateTitle}
+                </h2>
+                {stage && <StageContextCard stage={stage} isKo={isKo} />}
+                <HealingPhaseTracker locale={lang} embedded />
+              </section>
+              <DearMeCard
+                letter={letters[0] ?? null}
+                locale={locale}
+                isKo={isKo}
+                onWrite={() => setComposerOpen(true)}
+              />
               <ResilienceCard entries={resilience} locale={locale} isKo={isKo} />
               <AssessmentCard assessment={submissions[0] ?? null} locale={locale} isKo={isKo} />
             </div>
           )}
         </div>
       </main>
+      {composerOpen && (
+        <DearMeComposerModal
+          lang={lang}
+          isKo={isKo}
+          onClose={() => setComposerOpen(false)}
+          onSubmitted={refreshLetters}
+        />
+      )}
     </>
   );
 }

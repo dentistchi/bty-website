@@ -1,3 +1,11 @@
+## 2026-06-08 — [IA-B1 결정2] Center A+B → Current State 보조카드 통합 (display-only) — COMMITTED · 미deploy(HALT)
+- CenterPageClient.tsx `StageContextCard`+`HealingPhaseTracker` → 단일 "Current State" shell. `HealingPhaseTracker embedded?:boolean`(default false, non-breaking, 유일 사용처=Center). TrainProgressCard(hero/1차CTA, 현재 link-styled) 위계 유지. **fetch 미병합**(STEP0 cross-system 거부 채택 — Stage=Arena `/api/arena/leadership-engine/state`, healing=Center `/api/bty/healing/phase-tracker` 별도 유지). Stage=read-only 투영 확정(freeze intact).
+- i18n `currentStateTitle` KO 현재 상태 / EN Current State.
+- verify: tsc 0 / terminology 13(신규 0, 금지어 0) / vitest 신규실패 0(기존 baseline 7-fail awakening·healing route 대조로 닫힘 — 본 변경과 무관, 심볼 격리 확인).
+- freeze 미접촉: leadership-engine route/service·domain, /api/train/progress, /api/bty/healing/phase-tracker 0 byte.
+- commit: inner-main `4e6a636e`(3 files) + outer main(이 커밋: 같은 3 미러 + ledger). inner push `4b1553af..4e6a636e`. **미deploy(HALT)**. outer stale backlog 7개+untracked 3개 미스테이지(기존 drift, 본 closure 무관).
+- Authority `docs/plans/IA_RESTRUCTURE_PLAN.md` @ bf558d85. 다음 B2(Awakening gate=train 완주, distinct day==28 · 기존 server eligibility 정합).
+
 ## 2026-06-08 — [A. Awakening 카피 중립화] 임계 수치 노출 제거 — DEPLOYED Version 872ed80f + 3교차 PASS
 - 게이트 임계(30일/10세션)·진행수치(userDay/sessionCount)를 모든 UI 표면에서 제거, 게이트 존재만 알림. **카피만 — 게이트 로직 미접촉(② 보류), REQUIRED_DAY/MIN_SESSIONS 불변 = freeze-safe.**
 - (1) healing/awakening/page.client.tsx: 해금조건 중립화 + 진행수치 블록 삭제 + 제목 "30일" 제거. (2) i18n awakeningActsTriggerLine ko/en 중립화 + AwakeningActsTrack 치환·미사용 상수 정리. Center intro(2918) 숫자 없음 → 미접촉.

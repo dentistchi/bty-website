@@ -95,9 +95,15 @@ export type HealingPhaseTrackerProps = {
   locale: Locale | string;
   /** Optional; included in `phase_advanced` detail when provided. */
   userId?: string;
+  /**
+   * When true, renders without its own card chrome (border/bg/padding/maxWidth)
+   * so it can sit inside a shared "Current State" card shell. Default false
+   * preserves the standalone bordered section — non-breaking for all callers.
+   */
+  embedded?: boolean;
 };
 
-export function HealingPhaseTracker({ locale, userId }: HealingPhaseTrackerProps) {
+export function HealingPhaseTracker({ locale, userId, embedded = false }: HealingPhaseTrackerProps) {
   const loc = locale === "ko" ? "ko" : "en";
   const t = getMessages(loc).healing;
 
@@ -207,13 +213,17 @@ export function HealingPhaseTracker({ locale, userId }: HealingPhaseTrackerProps
     <section
       role="region"
       aria-label={t.healingPhaseTrackerRegionAria}
-      style={{
-        maxWidth: 480,
-        padding: "16px",
-        borderRadius: 12,
-        border: "1px solid #e2e8f0",
-        background: "#fff",
-      }}
+      style={
+        embedded
+          ? { maxWidth: "100%", padding: 0, border: "none", background: "transparent" }
+          : {
+              maxWidth: 480,
+              padding: "16px",
+              borderRadius: 12,
+              border: "1px solid #e2e8f0",
+              background: "#fff",
+            }
+      }
     >
       <h2 style={{ margin: "0 0 16px", fontSize: 18, fontWeight: 700 }}>{t.healingPhaseTrackerTitle}</h2>
 

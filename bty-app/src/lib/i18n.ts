@@ -220,6 +220,8 @@ export type Messages = {
     centerSuspenseMainRegionAria: string;
     /** `/[locale]/center` `error.tsx` 경계 `<main>` 라벨 */
     centerErrorMainRegionAria: string;
+    /** `/[locale]/center` 보조 "Current State" 통합 카드 타이틀 (Stage 투영 + 치유 단계) */
+    currentStateTitle: string;
     /** 강제 리셋(Stage 4) · 48h 잠금 UX */
     forcedResetRegionAria: string;
     forcedResetBannerTitle: string;
@@ -2206,6 +2208,7 @@ const ko: Messages = {
     dearMeErrorMainRegionAria: "Dear Me — 오류",
     centerSuspenseMainRegionAria: "Center — 불러오는 중",
     centerErrorMainRegionAria: "Center — 오류",
+    currentStateTitle: "현재 상태",
     forcedResetRegionAria: "무결성 리셋 — 잠금·진단·복귀",
     forcedResetBannerTitle: "Arena는 무결성 리셋 기간 동안 잠겨 있어요.",
     forcedResetCountdownLive: "잠금 해제까지 남은 시간",
@@ -4022,6 +4025,7 @@ const en: Messages = {
     dearMeErrorMainRegionAria: "Dear Me — error",
     centerSuspenseMainRegionAria: "Center — loading",
     centerErrorMainRegionAria: "Center — error",
+    currentStateTitle: "Current State",
     forcedResetRegionAria: "Integrity reset — lockout, diagnostics, return",
     forcedResetBannerTitle: "Arena is locked during the integrity reset window.",
     forcedResetCountdownLive: "Time remaining until unlock",
