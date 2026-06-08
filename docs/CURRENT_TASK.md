@@ -1,4 +1,4 @@
-## 2026-06-08 — [A. Awakening 카피 중립화] 임계 수치 노출 제거 — COMMITTED (inner+outer), HALT-before-deploy
+## 2026-06-08 — [A. Awakening 카피 중립화] 임계 수치 노출 제거 — DEPLOYED Version 872ed80f + 3교차 PASS
 - 게이트 임계(30일/10세션)·진행수치(userDay/sessionCount)를 모든 UI 표면에서 제거, 게이트 존재만 알림. **카피만 — 게이트 로직 미접촉(② 보류), REQUIRED_DAY/MIN_SESSIONS 불변 = freeze-safe.**
 - (1) healing/awakening/page.client.tsx: 해금조건 중립화 + 진행수치 블록 삭제 + 제목 "30일" 제거. (2) i18n awakeningActsTriggerLine ko/en 중립화 + AwakeningActsTrack 치환·미사용 상수 정리. Center intro(2918) 숫자 없음 → 미접촉.
 - verify: tsc 0 / terminology 13(+0, 금지어 0) / 편집표면 30·10·userDay·sessionCount·{day}·{sessions} 노출 0.
