@@ -2939,7 +2939,7 @@ const ko: Messages = {
     stubRenderOnlyNote: "표시값은 API 응답이며, UI에서 단계를 계산하지 않습니다.",
     awakeningActsTrackTitle: "Awakening 액트 (서버 기록)",
     awakeningActsTrackRegionAria: "Awakening 액트 목록 및 완료 기록",
-    awakeningActsTriggerLine: "{day}일·세션 {sessions}회 이후 의식 해금(서버 트리거 정보).",
+    awakeningActsTriggerLine: "여정을 더 쌓으면 의식이 해금돼요.",
     awakeningActDone: "기록됨",
     awakeningActOpen: "미기록",
     awakeningRecordNextCta: "다음 액트 완료 기록",
@@ -4756,8 +4756,7 @@ const en: Messages = {
     stubRenderOnlyNote: "Values come from the API; the UI does not compute phase.",
     awakeningActsTrackTitle: "Awakening acts (server record)",
     awakeningActsTrackRegionAria: "Awakening act list and completion record",
-    awakeningActsTriggerLine:
-      "Ritual unlocks after {day} days and {sessions} sessions (server trigger info).",
+    awakeningActsTriggerLine: "The ritual unlocks as you progress.",
     awakeningActDone: "Recorded",
     awakeningActOpen: "Not yet recorded",
     awakeningRecordNextCta: "Record next act complete",
