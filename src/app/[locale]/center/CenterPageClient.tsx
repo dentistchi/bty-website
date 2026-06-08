@@ -622,8 +622,17 @@ export default function CenterPageClient({ locale }: { locale: string }) {
                 locale={locale}
                 isKo={isKo}
               />
-              {stage && <StageContextCard stage={stage} isKo={isKo} />}
-              <HealingPhaseTracker locale={lang} />
+              <section
+                role="region"
+                aria-label={t.currentStateTitle}
+                className="rounded-xl border border-dear-sage/20 bg-dear-sage/5 px-4 py-3 space-y-3"
+              >
+                <h2 className="text-sm font-semibold text-dear-charcoal m-0">
+                  {t.currentStateTitle}
+                </h2>
+                {stage && <StageContextCard stage={stage} isKo={isKo} />}
+                <HealingPhaseTracker locale={lang} embedded />
+              </section>
               <DearMeCard
                 letter={letters[0] ?? null}
                 locale={locale}
