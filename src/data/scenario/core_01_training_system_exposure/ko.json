@@ -270,7 +270,7 @@
         "choices": [
           {
             "id": "AD1",
-            "label": "24시간 안에 assistant가 support할 범위와 doctor가 독립적으로 own해야 할 범위를 정의한다",
+            "label": "24시간 안에 assistant가 support할 범위와 doctor가 독립적으로 책임져야 할 범위를 정의한다",
             "meaning": {
               "is_action_commitment": true,
               "axis": "Ownership",

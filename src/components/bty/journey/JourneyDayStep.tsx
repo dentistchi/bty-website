@@ -22,6 +22,7 @@ export default function JourneyDayStep({
   lockMessage,
 }: JourneyDayStepProps) {
   const disabled = submitting || completeDisabled;
+  const bodyLines = body.split("\n").map((line) => line.trim()).filter(Boolean);
 
   return (
     <div data-testid="journey-day-step" className="min-h-screen bg-[#F6F4EE] px-4 py-6 pb-28 text-[#1F2937]">
@@ -41,9 +42,20 @@ export default function JourneyDayStep({
           <h1 data-testid="journey-day-title" className="text-2xl font-semibold tracking-tight text-[#1E2A38] sm:text-3xl">
             {title}
           </h1>
-          <p data-testid="journey-day-body" className="whitespace-pre-line text-sm leading-6 text-[#667085]">
-            {body}
-          </p>
+          {bodyLines.length > 1 ? (
+            <ul
+              data-testid="journey-day-body"
+              className="list-disc space-y-1 pl-5 text-sm leading-6 text-[#667085]"
+            >
+              {bodyLines.map((line, index) => (
+                <li key={index}>{line}</li>
+              ))}
+            </ul>
+          ) : (
+            <p data-testid="journey-day-body" className="whitespace-pre-line text-sm leading-6 text-[#667085]">
+              {body}
+            </p>
+          )}
         </div>
 
         <div className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm">

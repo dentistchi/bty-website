@@ -50,7 +50,7 @@
         "choices": [
           {
             "id": "AD1",
-            "label": "48시간 안에 두 사례를 비교해 공정 기준을 정의한다.",
+            "label": "48시간 안에 두 사례를 비교해 공정 기준을 정의한다",
             "is_action_commitment": true,
             "meaning": {
               "is_action_commitment": true
@@ -58,7 +58,7 @@
           },
           {
             "id": "AD2",
-            "label": "그때그때 맞춰 행동한다.",
+            "label": "그때그때 맞춰 행동한다",
             "is_action_commitment": false,
             "meaning": {
               "is_action_commitment": false
@@ -95,7 +95,7 @@
         "choices": [
           {
             "id": "AD1",
-            "label": "48시간 안에 두 사례를 비교해 공정 기준을 정의한다.",
+            "label": "48시간 안에 두 사례를 비교해 공정 기준을 정의한다",
             "is_action_commitment": true,
             "meaning": {
               "is_action_commitment": true
@@ -103,7 +103,7 @@
           },
           {
             "id": "AD2",
-            "label": "그때그때 맞춰 행동한다.",
+            "label": "그때그때 맞춰 행동한다",
             "is_action_commitment": false,
             "meaning": {
               "is_action_commitment": false
@@ -140,7 +140,7 @@
         "choices": [
           {
             "id": "AD1",
-            "label": "48시간 안에 두 사례를 비교해 공정 기준을 정의한다.",
+            "label": "48시간 안에 두 사례를 비교해 공정 기준을 정의한다",
             "is_action_commitment": true,
             "meaning": {
               "is_action_commitment": true
@@ -148,7 +148,7 @@
           },
           {
             "id": "AD2",
-            "label": "그때그때 맞춰 행동한다.",
+            "label": "그때그때 맞춰 행동한다",
             "is_action_commitment": false,
             "meaning": {
               "is_action_commitment": false
@@ -185,7 +185,7 @@
         "choices": [
           {
             "id": "AD1",
-            "label": "48시간 안에 두 사례를 비교해 공정 기준을 정의한다.",
+            "label": "48시간 안에 두 사례를 비교해 공정 기준을 정의한다",
             "is_action_commitment": true,
             "meaning": {
               "is_action_commitment": true
@@ -193,7 +193,7 @@
           },
           {
             "id": "AD2",
-            "label": "그때그때 맞춰 행동한다.",
+            "label": "그때그때 맞춰 행동한다",
             "is_action_commitment": false,
             "meaning": {
               "is_action_commitment": false
