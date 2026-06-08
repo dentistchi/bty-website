@@ -1,3 +1,10 @@
+## 2026-06-08 — [A. Awakening 카피 중립화] 임계 수치 노출 제거 — COMMITTED (inner+outer), HALT-before-deploy
+- 게이트 임계(30일/10세션)·진행수치(userDay/sessionCount)를 모든 UI 표면에서 제거, 게이트 존재만 알림. **카피만 — 게이트 로직 미접촉(② 보류), REQUIRED_DAY/MIN_SESSIONS 불변 = freeze-safe.**
+- (1) healing/awakening/page.client.tsx: 해금조건 중립화 + 진행수치 블록 삭제 + 제목 "30일" 제거. (2) i18n awakeningActsTriggerLine ko/en 중립화 + AwakeningActsTrack 치환·미사용 상수 정리. Center intro(2918) 숫자 없음 → 미접촉.
+- verify: tsc 0 / terminology 13(+0, 금지어 0) / 편집표면 30·10·userDay·sessionCount·{day}·{sessions} 노출 0.
+- commit: inner-main `4b1553af`(3 files +6/-16) + outer main(이 커밋). **미push·미deploy**. outer stale backlog 미스테이지.
+- **freeze 사이클 종료**: A-1/B-1/D1/D2/Awakening 가드+중립화 처리 완료. **D1=CLOSED**(low-traffic). freeze후 트랙(미착수): ①Awakening 게이트 재설계(나) ②IA 4겹 정리 ③Growth 허브 위치 ④온보딩 ⑤2b splitter ⑥Phase 5(reword, HALT 2건).
+
 ## 2026-06-08 — [Awakening 가드 + D2 KO 접기] eligibility 버튼 가드 + 접기 임계 locale-aware — DEPLOYED Version 1c843f24 + 3교차 PASS
 - (1) Awakening "저장 실패" 오해 = NOT_ELIGIBLE 403(day30+10세션 게이트)이 generic 토스트로 표출. Cycle1: GET /api/bty/awakening에 `eligible:boolean` 노출(getSecondAwakening 위임=POST 게이트 동일 소스, 수치 비노출). Cycle2: AwakeningActsTrack 비자격 버튼 가드(`eligible===false`, undefined=기존 동작) + 중립 안내, 403 사전 차단(500/네트워크 토스트 보존, i18n 미접촉).
 - (2) D2 KO 접기 미표시 = 단일 800 임계 × 한글 밀도. train page.client 임계 `ko 450/en 800` locale-aware + cut 하한 `*0.25`(EN 200 불변/KO 113). KO >450 24일 토글 회복, 최단 4일만 숨김. EN 회귀 0.

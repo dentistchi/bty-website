@@ -192,6 +192,13 @@ export type Messages = {
     letterHistoryLoading: string;
     letterHistoryReplied: string;
     letterHistoryNoReply: string;
+    /** Letter calendar (이력 화면) */
+    calendarTitle: string;
+    calendarPrevMonth: string;
+    calendarNextMonth: string;
+    calendarWeekdays: string[];
+    calendarMonths: string[];
+    calendarSelectedEmpty: string;
     /** DearMeComposer — bty center API, 100–1000자 */
     dearMeComposerRegionAria: string;
     dearMeComposerCharCount: string;
@@ -2179,6 +2186,12 @@ const ko: Messages = {
     letterHistoryLoading: "편지 이력을 불러오는 중…",
     letterHistoryReplied: "답장 있음",
     letterHistoryNoReply: "답장 없음",
+    calendarTitle: "편지 캘린더",
+    calendarPrevMonth: "이전 달",
+    calendarNextMonth: "다음 달",
+    calendarWeekdays: ["일", "월", "화", "수", "목", "금", "토"],
+    calendarMonths: ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"],
+    calendarSelectedEmpty: "이 날엔 편지가 없어요.",
     dearMeComposerRegionAria: "Dear Me 편지 작성",
     dearMeComposerCharCount: "{n} / 최소 100 · 최대 1000",
     dearMeComposerSubmit: "편지 보내기",
@@ -2926,7 +2939,7 @@ const ko: Messages = {
     stubRenderOnlyNote: "표시값은 API 응답이며, UI에서 단계를 계산하지 않습니다.",
     awakeningActsTrackTitle: "Awakening 액트 (서버 기록)",
     awakeningActsTrackRegionAria: "Awakening 액트 목록 및 완료 기록",
-    awakeningActsTriggerLine: "{day}일·세션 {sessions}회 이후 의식 해금(서버 트리거 정보).",
+    awakeningActsTriggerLine: "여정을 더 쌓으면 의식이 해금돼요.",
     awakeningActDone: "기록됨",
     awakeningActOpen: "미기록",
     awakeningRecordNextCta: "다음 액트 완료 기록",
@@ -3989,6 +4002,12 @@ const en: Messages = {
     letterHistoryLoading: "Loading letter history…",
     letterHistoryReplied: "Replied",
     letterHistoryNoReply: "No reply",
+    calendarTitle: "Letter calendar",
+    calendarPrevMonth: "Previous month",
+    calendarNextMonth: "Next month",
+    calendarWeekdays: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    calendarMonths: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    calendarSelectedEmpty: "No letter on this day.",
     dearMeComposerRegionAria: "Dear Me letter composer",
     dearMeComposerCharCount: "{n} / min 100 · max 1000",
     dearMeComposerSubmit: "Send letter",
@@ -4020,7 +4039,7 @@ const en: Messages = {
   },
   bty: {
     title: "bty",
-    tagline: "Practice. Integrity & Better Than Myself.",
+    tagline: "Gratitude. Integrity & Better Than Yesterday.",
     linkToCenter: "Go to Center",
     entryIntro: "Dashboard, mentor, integrity practice. Choose what to work on.",
     startCta: "Start",
@@ -4737,8 +4756,7 @@ const en: Messages = {
     stubRenderOnlyNote: "Values come from the API; the UI does not compute phase.",
     awakeningActsTrackTitle: "Awakening acts (server record)",
     awakeningActsTrackRegionAria: "Awakening act list and completion record",
-    awakeningActsTriggerLine:
-      "Ritual unlocks after {day} days and {sessions} sessions (server trigger info).",
+    awakeningActsTriggerLine: "The ritual unlocks as you progress.",
     awakeningActDone: "Recorded",
     awakeningActOpen: "Not yet recorded",
     awakeningRecordNextCta: "Record next act complete",

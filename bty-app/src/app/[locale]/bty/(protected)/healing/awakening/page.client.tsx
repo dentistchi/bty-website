@@ -166,13 +166,8 @@ export default function SecondAwakeningPageClient() {
               </h1>
               <p className="text-foundry-ink-soft text-sm mb-4">
                 {locale === "ko"
-                  ? "30일 훈련과 최소 10회 세션 후 이 의식이 열립니다."
-                  : "This ritual unlocks after 30 days and at least 10 sessions."}
-              </p>
-              <p className="text-foundry-ink-soft/80 text-xs mb-8">
-                {locale === "ko"
-                  ? `현재: ${data.userDay}일, ${data.sessionCount}회 세션`
-                  : `Current: ${data.userDay} days, ${data.sessionCount} sessions`}
+                  ? "여정을 더 쌓으면 이 의식이 열려요."
+                  : "This ritual opens as you continue your journey."}
               </p>
               <Link
                 href={basePath}
@@ -204,7 +199,7 @@ export default function SecondAwakeningPageClient() {
               {locale === "ko" ? "Second Awakening" : "Second Awakening"}
             </h1>
             <p className="text-foundry-ink-soft mt-1 text-sm">
-              {locale === "ko" ? "30일, 당신의 성장을 돌아보는 의식" : "A 30-day ritual to reflect on your growth"}
+              {locale === "ko" ? "당신의 성장을 돌아보는 의식" : "A ritual to reflect on your growth."}
             </p>
           </header>
 

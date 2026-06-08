@@ -87,8 +87,6 @@ export function AwakeningActsTrack({ locale }: { locale: string }) {
   );
   const nextAct = ACT_IDS.find((id) => !completed.has(id)) ?? null;
   const actsMap = data?.acts ?? {};
-  const day = data?.trigger?.day ?? 30;
-  const sessions = data?.trigger?.requires_min_sessions ?? 10;
 
   async function recordNext() {
     if (nextAct == null || posting || data?.eligible === false) return;
@@ -159,9 +157,7 @@ export function AwakeningActsTrack({ locale }: { locale: string }) {
         {th.awakeningActsTrackTitle}
       </h2>
       <p className="mt-1 text-xs text-bty-secondary">
-        {th.awakeningActsTriggerLine
-          .replace("{day}", String(day))
-          .replace("{sessions}", String(sessions))}
+        {th.awakeningActsTriggerLine}
       </p>
 
       {loading && (
