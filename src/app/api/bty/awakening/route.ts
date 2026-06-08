@@ -2,7 +2,7 @@
  * GET /api/bty/awakening — Q4 Awakening (액트 이름·day_based 트리거).
  *
  * @contract
- * - **200:** `{ ok: true, acts: Record<actId, name>, trigger: { type: "day_based", day, requires_min_sessions }, completedActs: number[] }` — `completedActs`는 DB 기록만(오름차순).
+ * - **200:** `{ ok: true, acts: Record<actId, name>, eligible: boolean, trigger: { type: "day_based", day, requires_min_sessions }, completedActs: number[] }` — `completedActs`는 DB 기록만(오름차순). `eligible`은 `getSecondAwakening` 권위 소스(POST 게이트와 동일 함수); 유저 진행 수치(userDay/sessionCount)는 비노출.
  *   **`acts`:** 도메인 고정 **3개** 액트명(`AWAKENING_ACT_NAMES`); **빈 배열 미반환**. (비자격·진행 전에도 동일 목록.)
  * - **401:** `{ error: "UNAUTHENTICATED" }` — 무세션 시 **acts 미수신**.
  * - **404:** 본 경로 미발생. **액트별:** `GET /api/bty/awakening/acts/[actId]` 에서 잘못된 actId → `ACT_NOT_FOUND` 404.
@@ -17,6 +17,7 @@ import {
 } from "@/domain/healing";
 import { btyErrorResponse } from "../errors";
 import { getUserCompletedAwakeningActs } from "@/lib/bty/healing/getUserCompletedAwakeningActs";
+import { getSecondAwakening } from "@/lib/bty/emotional-stats/secondAwakening";
 
 export async function GET(req: NextRequest) {
   const { user, supabase, base } = await requireUser(req);
@@ -28,9 +29,12 @@ export async function GET(req: NextRequest) {
       return btyErrorResponse(500, "INTERNAL_ERROR", progress.error);
     }
 
+    const awakening = await getSecondAwakening(supabase, user.id);
+
     const res = NextResponse.json({
       ok: true,
       acts: AWAKENING_ACT_NAMES,
+      eligible: awakening.eligible,
       trigger: {
         type: "day_based" as const,
         day: AWAKENING_TRIGGER_DAY,
