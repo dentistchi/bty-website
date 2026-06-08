@@ -19,6 +19,7 @@ import type { Locale } from "@/lib/i18n";
 type AwakeningApi = {
   ok?: boolean;
   acts?: Record<string, string>;
+  eligible?: boolean;
   trigger?: { day?: number; requires_min_sessions?: number };
   completedActs?: number[];
 };
@@ -90,7 +91,7 @@ export function AwakeningActsTrack({ locale }: { locale: string }) {
   const sessions = data?.trigger?.requires_min_sessions ?? 10;
 
   async function recordNext() {
-    if (nextAct == null || posting) return;
+    if (nextAct == null || posting || data?.eligible === false) return;
     setPathBlockedHint(null);
     setPosting(true);
     try {
@@ -267,11 +268,16 @@ export function AwakeningActsTrack({ locale }: { locale: string }) {
             <button
               type="button"
               className="mt-4 rounded-xl border border-bty-border bg-bty-soft px-4 py-2 text-sm font-semibold text-bty-text transition-colors hover:bg-bty-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bty-steel disabled:opacity-50"
-              disabled={posting}
+              disabled={posting || data?.eligible === false}
               onClick={recordNext}
             >
               {posting ? th.loading : th.awakeningRecordNextCta}
             </button>
+          )}
+          {nextAct != null && data?.eligible === false && (
+            <p className="mt-2 text-sm text-bty-secondary" role="status">
+              {lang === "ko" ? "아직 이 단계에 도달하지 않았어요" : "You haven't reached this stage yet."}
+            </p>
           )}
           {pathBlockedHint != null && pathBlockedHint !== "" && (
             <p className="mt-2 text-sm text-amber-900/95" role="status">

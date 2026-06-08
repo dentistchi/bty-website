@@ -169,12 +169,18 @@ export default function TrainDayPage() {
         </p>
       ));
 
-  const LESSON_COLLAPSE_AT = 800;
+  // Locale-aware collapse threshold: Korean is ~2x denser per char, so the same
+  // content yields far fewer chars in KO — a single 800 threshold hid the toggle on
+  // ~24 KO days. KO uses a lower threshold; EN unchanged (no regression).
+  const LESSON_COLLAPSE_AT = locale === "ko" ? 450 : 800;
   const lessonBody = lessonText || "Lesson content missing.";
   const lessonIsLong = lessonBody.length > LESSON_COLLAPSE_AT;
   const lessonBreakAt = lessonBody.lastIndexOf("\n", LESSON_COLLAPSE_AT);
+  // Minimum head before a clean paragraph break is used; scales with the threshold
+  // (EN 800→200 unchanged, KO 450→~113) so the collapsed head stays proportionate.
+  const lessonMinHead = Math.round(LESSON_COLLAPSE_AT * 0.25);
   const lessonCutIndex = lessonIsLong
-    ? lessonBreakAt > 200
+    ? lessonBreakAt > lessonMinHead
       ? lessonBreakAt
       : LESSON_COLLAPSE_AT
     : lessonBody.length;

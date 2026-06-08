@@ -1,3 +1,9 @@
+## 2026-06-08 — [Awakening 가드 + D2 KO 접기] eligibility 버튼 가드 + 접기 임계 locale-aware — COMMITTED (inner+outer), HALT-before-deploy
+- (1) Awakening "저장 실패" 오해 = NOT_ELIGIBLE 403(day30+10세션 게이트)이 generic 토스트로 표출. Cycle1: GET /api/bty/awakening에 `eligible:boolean` 노출(getSecondAwakening 위임=POST 게이트 동일 소스, 수치 비노출). Cycle2: AwakeningActsTrack 비자격 버튼 가드(`eligible===false`, undefined=기존 동작) + 중립 안내, 403 사전 차단(500/네트워크 토스트 보존, i18n 미접촉).
+- (2) D2 KO 접기 미표시 = 단일 800 임계 × 한글 밀도. train page.client 임계 `ko 450/en 800` locale-aware + cut 하한 `*0.25`(EN 200 불변/KO 113). KO >450 24일 토글 회복, 최단 4일만 숨김. EN 회귀 0.
+- render-only 준수, 측정/XP/순서 무변경. verify: tsc 0 / terminology 13(+0, 금지어 0) / KO Day4=572>450 보임.
+- commit: inner-main `344ffc70`(3 files +21/-5) + outer main(이 커밋: 같은 3 미러 + ledger). **미push·미deploy** — Cycle2 가드는 Cycle1 배포 선행 시 작동, 미배포 시 undefined→기존 동작. outer stale backlog 10개 미스테이지. ※디스패치 "KO Day5=748"은 EN 길이 혼동(실 KO=420) 정정.
+
 ## 2026-06-08 — [A-1+B-1+D1+D2] 시나리오 텍스트 정리 + 루트404 EN + journey 리스트 + train 가독성 — COMMITTED (inner+outer), HALT-before-deploy
 - A-1 무해 텍스트 6건 중 **4건 적용**(frozen 불변): core_22 citation 잔재 제거 / core_11 AD 라벨 마침표 16건 정규화 / core_01 "own해야 할"→"책임져야 할" / core_03 미번역 "two-part " 제거. **2건 HALT**(후보 제시): core_13-EN 과단축, core_03-EN "two-part reset" — Commander 결정 대기.
 - B-1: not-found.tsx 루트 404 EN화(metadata/h1/본문/Log in/Dashboard, "홈 (KO)" 셀렉터 유지). D1: JourneyDayStep 다줄 body→ul/li(1줄→p 폴백). D2: train raw 가독성(문단여백/800자 details 접기/✅완료·🔒잠김/eyebrow·h1) presentation-only, raw 유지.
