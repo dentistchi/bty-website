@@ -1,5 +1,9 @@
 /**
- * Second Awakening (30-day ritual) — eligibility and ritual payload.
+ * Second Awakening — eligibility and ritual payload.
+ * 결정3 / B2: eligibility gate = train 완주 (distinct day == 28). The legacy
+ * 30-day / 10-session trigger (REQUIRED_DAY / REQUIRED_MIN_SESSIONS) is retired
+ * from the eligibility calc; userDay / sessionCount are still computed and
+ * returned for display compatibility.
  * Ref: docs/specs/healing-coaching-spec-v3.json second_awakening_event.
  */
 
@@ -8,9 +12,10 @@ import { CORE_STATS } from "./coreStats";
 import type { CoreStatId } from "./coreStats";
 import { getUnlockedAdvancedStats } from "./unlock";
 import type { UserCoreValues } from "./unlock";
+import { getTrainDistinctCompletedDayCount } from "@/lib/bty/healing/getTrainDistinctCompletedDayCount";
 
-const REQUIRED_DAY = 30;
-const REQUIRED_MIN_SESSIONS = 10;
+/** 결정3 / B2: train 완주 = 28 distinct completed days. */
+export const TRAIN_REQUIRED_DISTINCT_DAYS = 28;
 
 export interface SecondAwakeningRitual {
   act1: {
@@ -75,12 +80,15 @@ export async function getSecondAwakening(
 
   const completed = !!(milestone as { second_awakening_completed_at: string | null } | null)
     ?.second_awakening_completed_at;
-  const eligible =
-    !completed && userDay >= REQUIRED_DAY && completedCount >= REQUIRED_MIN_SESSIONS;
+
+  // 결정3 / B2: eligibility = train 완주 (distinct completed day count == 28).
+  // DISTINCT count, NOT max(day). userDay / sessionCount above remain for display.
+  const trainDistinct = await getTrainDistinctCompletedDayCount(supabase, userId);
+  const eligible = !completed && trainDistinct === TRAIN_REQUIRED_DISTINCT_DAYS;
 
   if (!eligible || completed) {
     return {
-      eligible: !!(!completed && userDay >= REQUIRED_DAY && completedCount >= REQUIRED_MIN_SESSIONS),
+      eligible,
       completed,
       userDay,
       sessionCount: completedCount,

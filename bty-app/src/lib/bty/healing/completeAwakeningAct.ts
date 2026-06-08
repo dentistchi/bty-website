@@ -5,10 +5,11 @@ import {
   nextHealingAwakeningActAfter,
   type AwakeningActId,
 } from "@/domain/healing";
+import { getSecondAwakening } from "@/lib/bty/emotional-stats/secondAwakening";
 
 export type CompleteAwakeningActApiResult =
   | { ok: true; completedActs: AwakeningActId[] }
-  | { status: 400 | 409 | 500; error: string };
+  | { status: 400 | 403 | 409 | 500; error: string };
 
 /**
  * Record one Healing/Awakening act completion (DB + domain order).
@@ -38,6 +39,17 @@ export async function completeHealingAwakeningAct(
   }
   if (!canCompleteHealingAwakeningAct(actId, completed)) {
     return { status: 400, error: "ACT_PREREQUISITE" };
+  }
+
+  // Second Awakening eligibility gate (server-side enforcement; UI-only gate was
+  // bypassable via direct POST). 결정3 / B2: gate = train 완주 (distinct day == 28),
+  // sourced from getSecondAwakening().eligible. Re-insert is blocked by the PK
+  // (user_id, act_id) per migration 20260317120000. Forward-only: existing rows
+  // are unaffected because the gate runs immediately before insert. 403
+  // NOT_ELIGIBLE response contract preserved (UI response unchanged).
+  const awakening = await getSecondAwakening(supabase, userId);
+  if (!awakening.eligible) {
+    return { status: 403, error: "NOT_ELIGIBLE" };
   }
 
   const { error: insErr } = await supabase.from("user_healing_awakening_acts").insert({

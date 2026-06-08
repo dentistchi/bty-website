@@ -6,25 +6,71 @@ function mockSupabase(chain: {
   selectRows?: { act_id: number }[];
   selectError?: { message: string };
   insertError?: { message: string };
+  /** Second Awakening gate (getSecondAwakening) = train 완주, distinct day == 28. Default: eligible. */
+  eligible?: boolean;
 }): SupabaseClient {
+  const eligible = chain.eligible ?? true;
+  // 결정3 / B2: eligibility driven by DISTINCT train_day_completions count == 28.
+  const trainDays = eligible ? Array.from({ length: 28 }, (_, i) => i + 1) : [];
+  // userDay / sessionCount are display-only now; keep plausible values.
+  const firstStartedAt = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString();
+  const sessionCount = 12;
+
   const from = vi.fn((table: string) => {
-    if (table !== "user_healing_awakening_acts") throw new Error("unexpected table");
-    return {
-      select: () => ({
-        eq: () => ({
-          order: () =>
-            Promise.resolve({
-              data: chain.selectRows ?? [],
-              error: chain.selectError ?? null,
-            }),
+    if (table === "user_healing_awakening_acts") {
+      return {
+        select: () => ({
+          eq: () => ({
+            order: () =>
+              Promise.resolve({
+                data: chain.selectRows ?? [],
+                error: chain.selectError ?? null,
+              }),
+          }),
         }),
-      }),
-      insert: () =>
-        Promise.resolve({
-          data: null,
-          error: chain.insertError ?? null,
+        insert: () =>
+          Promise.resolve({ data: null, error: chain.insertError ?? null }),
+      };
+    }
+    if (table === "train_day_completions") {
+      return {
+        select: () => ({
+          eq: () => Promise.resolve({ data: trainDays.map((d) => ({ day: d })), error: null }),
         }),
-    };
+      };
+    }
+    // getSecondAwakening reads below (eligibility gate). All read-only.
+    if (table === "emotional_sessions") {
+      return {
+        select: (_cols: string, opts?: { count?: string; head?: boolean }) =>
+          opts?.count
+            ? { eq: () => Promise.resolve({ count: sessionCount, error: null }) }
+            : {
+                eq: () => ({
+                  order: () => ({
+                    limit: () => ({
+                      maybeSingle: () =>
+                        Promise.resolve({
+                          data: firstStartedAt ? { started_at: firstStartedAt } : null,
+                          error: null,
+                        }),
+                    }),
+                  }),
+                }),
+              },
+      };
+    }
+    if (table === "user_healing_milestones") {
+      return {
+        select: () => ({
+          eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }),
+        }),
+      };
+    }
+    if (table === "user_emotional_stats" || table === "emotional_events") {
+      return { select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) };
+    }
+    throw new Error("unexpected table: " + table);
   });
   return { from } as unknown as SupabaseClient;
 }
@@ -52,6 +98,15 @@ describe("completeHealingAwakeningAct", () => {
   it("200 after act 1", async () => {
     const r = await completeHealingAwakeningAct(mockSupabase({ selectRows: [] }), "u1", 1);
     expect(r).toMatchObject({ ok: true, completedActs: [1] });
+  });
+
+  it("403 NOT_ELIGIBLE when train 완주 gate unmet (distinct day < 28)", async () => {
+    const r = await completeHealingAwakeningAct(
+      mockSupabase({ selectRows: [], eligible: false }),
+      "u1",
+      1
+    );
+    expect(r).toEqual({ status: 403, error: "NOT_ELIGIBLE" });
   });
 });
 

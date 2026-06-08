@@ -1,3 +1,12 @@
+## 2026-06-08 — [IA-B2 결정3] Awakening 자격 = train 28 distinct 완주 (REPLACE/S-WIDE) — COMMITTED · 미deploy(HALT)
+- `getSecondAwakening` eligible를 emotional_sessions(30일/10세션) → `train_day_completions` distinct day==28로 교체. `completedDays.length`(max 아님 — [1,2,28]=3 테스트로 증명).
+- 신규 read-only accessor `getTrainDistinctCompletedDayCount`(lib/bty/healing, user RLS own-row policy 20260315000001 근거 → user client로 자기 행 읽기 정상). display·gate single truth. userDay/sessionCount 호환 유지(display-only), 5 소비처 non-breaking. `REQUIRED_DAY/MIN_SESSIONS` 제거(zero-ref). 403 NOT_ELIGIBLE contract 보존(UI 응답 불변). grandfather 부재 확정(STEP0b, G1 무동작). freeze(엔진/healing progression/train startDateISO temp hack) 미접촉.
+- gate: tsc 0 / terminology 13(신규 0) / vitest 신규실패 0(기존 baseline 7-fail awakening·healing mock-chain 대조 — 본 변경과 무관, upstream 격리; 내 touched test 12 pass).
+- commit: inner-main `6f202281`(5 files: 소스 2 + 신규 accessor 1 + 테스트 2) + outer main(이 커밋: 동일 미러 + ledger). inner push `4e6a636e..6f202281`. **미deploy(B1+B2 묶음 HALT)**. outer stale backlog(B2 무관) 미스테이지.
+- Authority `docs/plans/IA_RESTRUCTURE_PLAN.md` @ bf558d85. 다음: B3(journey+Growth 제거, 흡수/이사 선행) 또는 B1+B2 staging deploy.
+- [정정] B1 ledger의 "stale backlog 7개" → **8개** (PHILOSOPHY_LOCK_V1.md 누락, grep filter가 가림). substance 불변, 정수만 정정.
+- [backlog 신규] (1) `domain/healing.ts:192 isSecondAwakeningEligible` = 옛 30/10 parallel def, dormant(index.test.ts만 소비) — wire 전 제거/통일. (2) `bty/awakening` GET trigger display `{day:30, requires_min_sessions:10}` train-28 대비 stale — 의미 동기화.
+
 ## 2026-06-08 — [IA-B1 결정2] Center A+B → Current State 보조카드 통합 (display-only) — COMMITTED · 미deploy(HALT)
 - CenterPageClient.tsx `StageContextCard`+`HealingPhaseTracker` → 단일 "Current State" shell. `HealingPhaseTracker embedded?:boolean`(default false, non-breaking, 유일 사용처=Center). TrainProgressCard(hero/1차CTA, 현재 link-styled) 위계 유지. **fetch 미병합**(STEP0 cross-system 거부 채택 — Stage=Arena `/api/arena/leadership-engine/state`, healing=Center `/api/bty/healing/phase-tracker` 별도 유지). Stage=read-only 투영 확정(freeze intact).
 - i18n `currentStateTitle` KO 현재 상태 / EN Current State.
