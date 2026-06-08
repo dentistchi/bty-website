@@ -157,13 +157,37 @@ export default function TrainDayPage() {
   const isUnlocked = day <= (progress?.todayUnlockedDay ?? 1);
   const isCompleted = (progress?.completedDays ?? []).includes(day);
 
+  // Presentation-only readability helpers (no source/shape change — still renders raw blob).
+  const renderParagraphs = (text: string): React.ReactNode[] =>
+    text
+      .split(/\n{2,}/)
+      .map((p) => p.replace(/\s+$/u, ""))
+      .filter((p) => p.length > 0)
+      .map((p, index) => (
+        <p key={index} style={{ whiteSpace: "pre-wrap", margin: 0, marginBottom: 14 }}>
+          {p}
+        </p>
+      ));
+
+  const LESSON_COLLAPSE_AT = 800;
+  const lessonBody = lessonText || "Lesson content missing.";
+  const lessonIsLong = lessonBody.length > LESSON_COLLAPSE_AT;
+  const lessonBreakAt = lessonBody.lastIndexOf("\n", LESSON_COLLAPSE_AT);
+  const lessonCutIndex = lessonIsLong
+    ? lessonBreakAt > 200
+      ? lessonBreakAt
+      : LESSON_COLLAPSE_AT
+    : lessonBody.length;
+  const lessonHead = lessonBody.slice(0, lessonCutIndex);
+  const lessonTail = lessonBody.slice(lessonCutIndex);
+
   const onClickComplete = React.useCallback(() => {
     generateCompletionSummary({ day, lessonText: lessonText ?? "" });
     markTodayComplete(day);
   }, [day, lessonText, generateCompletionSummary, markTodayComplete]);
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "360px 1fr 420px", height: "100vh" }}>
+    <div className="grid grid-cols-1 min-h-screen md:h-screen md:grid-cols-[360px_1fr_420px]">
       {/* LEFT: Sidebar */}
       <aside style={{ borderRight: "1px solid #eee", padding: 16, overflow: "auto" }} role="navigation" aria-label={t.dayListLabel}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
@@ -206,7 +230,19 @@ export default function TrainDayPage() {
                 }}
               >
                 <span>Day {d}</span>
-                <span>{completed ? "✅" : unlocked ? "" : "🔒"}</span>
+                <span style={{ fontSize: 12, color: "#64748b", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  {completed ? (
+                    <>
+                      <span aria-hidden="true">✅</span> {locale === "ko" ? "완료" : "Done"}
+                    </>
+                  ) : unlocked ? (
+                    ""
+                  ) : (
+                    <>
+                      <span aria-hidden="true">🔒</span> {locale === "ko" ? "잠김" : "Locked"}
+                    </>
+                  )}
+                </span>
               </a>
             );
           })}
@@ -215,8 +251,10 @@ export default function TrainDayPage() {
 
       {/* CENTER: Lesson */}
       <main style={{ padding: 24, overflow: "auto" }} aria-label={t.lessonLabel}>
-        <h1 style={{ margin: 0, marginBottom: 8 }}>Day {day}</h1>
-        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 18 }}>{lessonTitle}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b", marginBottom: 6 }}>
+          Day {day}
+        </div>
+        <h1 style={{ margin: 0, marginBottom: 20, fontSize: 24, fontWeight: 700, lineHeight: 1.3 }}>{lessonTitle}</h1>
 
         {!isUnlocked && (
           <div style={{ padding: 14, border: "1px solid #eee", borderRadius: 12, marginBottom: 18 }} role="status" aria-label={t.lockedLabel}>
@@ -259,8 +297,26 @@ export default function TrainDayPage() {
           </button>
         </div>
 
-        <article style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
-          {lessonText || "Lesson content missing."}
+        <article style={{ lineHeight: 1.7 }}>
+          {renderParagraphs(lessonHead)}
+          {lessonIsLong && (
+            <>
+              <style>{`
+                .lesson-more > summary { cursor: pointer; list-style: none; color: #2563eb; font-size: 14px; padding: 6px 0; }
+                .lesson-more > summary::-webkit-details-marker { display: none; }
+                .lesson-more > summary .lesson-more-hide { display: none; }
+                .lesson-more[open] > summary .lesson-more-show { display: none; }
+                .lesson-more[open] > summary .lesson-more-hide { display: inline; }
+              `}</style>
+              <details className="lesson-more">
+                <summary>
+                  <span className="lesson-more-show">{locale === "ko" ? "더 보기" : "Show more"}</span>
+                  <span className="lesson-more-hide">{locale === "ko" ? "접기" : "Show less"}</span>
+                </summary>
+                <div style={{ marginTop: 14 }}>{renderParagraphs(lessonTail)}</div>
+              </details>
+            </>
+          )}
         </article>
       </main>
 

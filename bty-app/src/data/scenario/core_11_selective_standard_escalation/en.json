@@ -50,7 +50,7 @@
         "choices": [
           {
             "id": "AD1",
-            "label": "Within 48 hours, write two comparable cases and define what equal treatment would look like.",
+            "label": "Within 48 hours, write two comparable cases and define what equal treatment would look like",
             "is_action_commitment": true,
             "meaning": {
               "is_action_commitment": true
@@ -58,7 +58,7 @@
           },
           {
             "id": "AD2",
-            "label": "Continue adjusting behavior based on who is involved.",
+            "label": "Continue adjusting behavior based on who is involved",
             "is_action_commitment": false,
             "meaning": {
               "is_action_commitment": false
@@ -95,7 +95,7 @@
         "choices": [
           {
             "id": "AD1",
-            "label": "Within 48 hours, document one repeated inconsistency with names, actions, and outcomes.",
+            "label": "Within 48 hours, document one repeated inconsistency with names, actions, and outcomes",
             "is_action_commitment": true,
             "meaning": {
               "is_action_commitment": true
@@ -103,7 +103,7 @@
           },
           {
             "id": "AD2",
-            "label": "Keep it as a general feeling without specifics.",
+            "label": "Keep it as a general feeling without specifics",
             "is_action_commitment": false,
             "meaning": {
               "is_action_commitment": false
@@ -140,7 +140,7 @@
         "choices": [
           {
             "id": "AD1",
-            "label": "Within 48 hours, define your role in one observed inconsistency.",
+            "label": "Within 48 hours, define your role in one observed inconsistency",
             "is_action_commitment": true,
             "meaning": {
               "is_action_commitment": true
@@ -148,7 +148,7 @@
           },
           {
             "id": "AD2",
-            "label": "Continue focusing only on your tasks.",
+            "label": "Continue focusing only on your tasks",
             "is_action_commitment": false,
             "meaning": {
               "is_action_commitment": false
@@ -185,7 +185,7 @@
         "choices": [
           {
             "id": "AD1",
-            "label": "Within 48 hours, define one personal rule you will follow regardless of who is involved.",
+            "label": "Within 48 hours, define one personal rule you will follow regardless of who is involved",
             "is_action_commitment": true,
             "meaning": {
               "is_action_commitment": true
@@ -193,7 +193,7 @@
           },
           {
             "id": "AD2",
-            "label": "Continue adjusting based on incentives.",
+            "label": "Continue adjusting based on incentives",
             "is_action_commitment": false,
             "meaning": {
               "is_action_commitment": false

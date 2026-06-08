@@ -1,3 +1,10 @@
+## 2026-06-08 — [A-1+B-1+D1+D2] 시나리오 텍스트 정리 + 루트404 EN + journey 리스트 + train 가독성 — COMMITTED (inner+outer), HALT-before-deploy
+- A-1 무해 텍스트 6건 중 **4건 적용**(frozen 불변): core_22 citation 잔재 제거 / core_11 AD 라벨 마침표 16건 정규화 / core_01 "own해야 할"→"책임져야 할" / core_03 미번역 "two-part " 제거. **2건 HALT**(후보 제시): core_13-EN 과단축, core_03-EN "two-part reset" — Commander 결정 대기.
+- B-1: not-found.tsx 루트 404 EN화(metadata/h1/본문/Log in/Dashboard, "홈 (KO)" 셀렉터 유지). D1: JourneyDayStep 다줄 body→ul/li(1줄→p 폴백). D2: train raw 가독성(문단여백/800자 details 접기/✅완료·🔒잠김/eyebrow·h1) presentation-only, raw 유지.
+- B-2 폐기: BtyAuthGuard.tsx(orphan, 미마운트) 편집 git checkout 되돌림.
+- verify: tsc 0 / terminology 13(+0, 금지어 0) / scenario json 5 valid / frozen diff 0.
+- commit: inner-main `7228bf15`(8 files +101/-33) + outer main(이 커밋: 같은 8 미러 + ledger). **미push·미deploy** — 빌드타임 정적 import라 deploy 전 staging 미반영; D1/D2 auth-gated 육안은 배포+OAuth 필요. outer 무관 backlog 10개 미스테이지(WIP 차단). push/deploy=Commander 승인 후 별 dispatch.
+
 ## 2026-06-03 — SESSION STATUS — 오늘 4 lane 전부 closed
 - 활성 작업 없음 — G-DC-19 / G-DC-21 / G-DC-22 / G-DC-23 전부 DEPLOYED + closed.
 - 다음: 금요일 2026-06-05 파일럿 20명 등록.

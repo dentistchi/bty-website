@@ -156,7 +156,7 @@
         "choices": [
           {
             "id": "AD1",
-            "label": "24시간 안에 doctor가 own할 부분과 training system이 repair할 부분을 나눈 two-part reset을 작성한다",
+            "label": "24시간 안에 doctor가 own할 부분과 training system이 repair할 부분을 나눈 reset을 작성한다",
             "meaning": {
               "is_action_commitment": true,
               "axis": "Truth",
