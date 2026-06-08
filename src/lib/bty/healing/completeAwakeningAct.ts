@@ -5,11 +5,7 @@ import {
   nextHealingAwakeningActAfter,
   type AwakeningActId,
 } from "@/domain/healing";
-import {
-  getSecondAwakening,
-  REQUIRED_DAY,
-  REQUIRED_MIN_SESSIONS,
-} from "@/lib/bty/emotional-stats/secondAwakening";
+import { getSecondAwakening } from "@/lib/bty/emotional-stats/secondAwakening";
 
 export type CompleteAwakeningActApiResult =
   | { ok: true; completedActs: AwakeningActId[] }
@@ -46,12 +42,13 @@ export async function completeHealingAwakeningAct(
   }
 
   // Second Awakening eligibility gate (server-side enforcement; UI-only gate was
-  // bypassable via direct POST). Checks the 30-day / 10-session trigger only —
-  // `completed` is intentionally ignored; re-insert is blocked by the PK
+  // bypassable via direct POST). 결정3 / B2: gate = train 완주 (distinct day == 28),
+  // sourced from getSecondAwakening().eligible. Re-insert is blocked by the PK
   // (user_id, act_id) per migration 20260317120000. Forward-only: existing rows
-  // are unaffected because the gate runs immediately before insert.
+  // are unaffected because the gate runs immediately before insert. 403
+  // NOT_ELIGIBLE response contract preserved (UI response unchanged).
   const awakening = await getSecondAwakening(supabase, userId);
-  if (awakening.userDay < REQUIRED_DAY || awakening.sessionCount < REQUIRED_MIN_SESSIONS) {
+  if (!awakening.eligible) {
     return { status: 403, error: "NOT_ELIGIBLE" };
   }
 

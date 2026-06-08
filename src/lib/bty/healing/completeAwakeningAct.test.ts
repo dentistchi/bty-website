@@ -6,14 +6,15 @@ function mockSupabase(chain: {
   selectRows?: { act_id: number }[];
   selectError?: { message: string };
   insertError?: { message: string };
-  /** Second Awakening gate inputs (getSecondAwakening). Default: eligible. */
+  /** Second Awakening gate (getSecondAwakening) = train 완주, distinct day == 28. Default: eligible. */
   eligible?: boolean;
 }): SupabaseClient {
   const eligible = chain.eligible ?? true;
-  const firstStartedAt = eligible
-    ? new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString()
-    : null;
-  const sessionCount = eligible ? 12 : 0;
+  // 결정3 / B2: eligibility driven by DISTINCT train_day_completions count == 28.
+  const trainDays = eligible ? Array.from({ length: 28 }, (_, i) => i + 1) : [];
+  // userDay / sessionCount are display-only now; keep plausible values.
+  const firstStartedAt = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString();
+  const sessionCount = 12;
 
   const from = vi.fn((table: string) => {
     if (table === "user_healing_awakening_acts") {
@@ -29,6 +30,13 @@ function mockSupabase(chain: {
         }),
         insert: () =>
           Promise.resolve({ data: null, error: chain.insertError ?? null }),
+      };
+    }
+    if (table === "train_day_completions") {
+      return {
+        select: () => ({
+          eq: () => Promise.resolve({ data: trainDays.map((d) => ({ day: d })), error: null }),
+        }),
       };
     }
     // getSecondAwakening reads below (eligibility gate). All read-only.
@@ -92,7 +100,7 @@ describe("completeHealingAwakeningAct", () => {
     expect(r).toMatchObject({ ok: true, completedActs: [1] });
   });
 
-  it("403 NOT_ELIGIBLE when 30-day/10-session gate unmet", async () => {
+  it("403 NOT_ELIGIBLE when train 완주 gate unmet (distinct day < 28)", async () => {
     const r = await completeHealingAwakeningAct(
       mockSupabase({ selectRows: [], eligible: false }),
       "u1",
