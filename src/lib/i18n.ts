@@ -1542,8 +1542,6 @@ export type Messages = {
     growthNavIntegrityLine: string;
     growthNavGuidanceTitle: string;
     growthNavGuidanceLine: string;
-    growthNavJourneyTitle: string;
-    growthNavJourneyLine: string;
     growthNavReflectionTitle: string;
     growthNavReflectionLine: string;
     growthBackToGrowth: string;
@@ -1676,8 +1674,6 @@ export type Messages = {
     growthCardIntegrityDesc: string;
     growthCardGuidanceTitle: string;
     growthCardGuidanceDesc: string;
-    growthCardJourneyTitle: string;
-    growthCardJourneyDesc: string;
     /** Arena → Growth reflection entry */
     growthReflectionRegionAria: string;
     growthReflectionEyebrow: string;
@@ -3405,8 +3401,6 @@ const ko: Messages = {
     growthNavIntegrityLine: "상대 시선에서 상황 보기",
     growthNavGuidanceTitle: "Guidance",
     growthNavGuidanceLine: "결정 패턴 되돌아보기",
-    growthNavJourneyTitle: "Journey",
-    growthNavJourneyLine: "28일 회복 루프 — 오늘 경로부터 이어가기",
     growthNavReflectionTitle: "Reflection",
     growthNavReflectionLine: "내면 목소리 안정화 (Dear Me)",
     growthBackToGrowth: "성장으로 돌아가기",
@@ -3501,8 +3495,6 @@ const ko: Messages = {
     growthCardIntegrityDesc: "상대 시선에서 상황을 봅니다",
     growthCardGuidanceTitle: "Guidance",
     growthCardGuidanceDesc: "결정 패턴을 되돌아봅니다",
-    growthCardJourneyTitle: "Journey",
-    growthCardJourneyDesc: "28일 회복 경로를 이어갑니다",
     growthReflectionRegionAria: "Arena에서 이어진 성찰 진입",
     growthReflectionEyebrow: "연결된 성찰",
     growthReflectionTitle: "직전 결정에서 이어지는 질문",
@@ -5223,8 +5215,6 @@ const en: Messages = {
     growthNavIntegrityLine: "See the situation from the other side",
     growthNavGuidanceTitle: "Guidance",
     growthNavGuidanceLine: "Review your decision patterns",
-    growthNavJourneyTitle: "Journey",
-    growthNavJourneyLine: "28-day recovery loop—continue from your current day",
     growthNavReflectionTitle: "Reflection",
     growthNavReflectionLine: "Stabilize your inner voice (Dear Me)",
     growthBackToGrowth: "Back to Growth",
@@ -5320,8 +5310,6 @@ const en: Messages = {
     growthCardIntegrityDesc: "See the situation from the other side",
     growthCardGuidanceTitle: "Guidance",
     growthCardGuidanceDesc: "Review your decision patterns",
-    growthCardJourneyTitle: "Journey",
-    growthCardJourneyDesc: "Continue your 28-day recovery path",
     growthReflectionRegionAria: "Reflection entry from Arena",
     growthReflectionEyebrow: "Linked reflection",
     growthReflectionTitle: "A question from your last decision",
