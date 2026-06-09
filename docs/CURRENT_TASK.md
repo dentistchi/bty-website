@@ -1,3 +1,12 @@
+## 2026-06-09 — [IA-CENTER-FINAL] Center 2축 마감 — Healing 접힘(F1b) + Energy log 제거 + Invalid Date fix — COMMITTED · 미deploy(HALT)
+- (B4 deploy `d5501a5e` 육안서 B1 병합 미완 발견 → 마감.) **F1**: `HealingPhaseTracker` compact prop(default false, non-breaking) — Current State 활성 phase 1줄 + `[Open Healing]`/bty/healing. full stepper/per-phase CTA 제거(Center embedded만, 타 consumer 0). **phase 계산 미접촉**(fetch activePhase read, advance=/bty/healing).
+- **F2**: Energy log(`ResilienceCard`) surface 제거 — API(`/api/center/resilience`)+`ResilienceGraph`(landing×4) 유지, energy 데이터 결합 0(Dear Me composer는 energy 미사용). **F3**: Invalid Date — `DearMeCard`/`LetterItem` `created_at`→`createdAt`(API=createdAt, LettersClient 정상). dead `/dear-me` link 소멸(compact가 case2 bypass).
+- **Center 최종형 달성**: Current State(Stage badge + Healing 접힘 + Open Healing) → Dear Me{Write,History} → Assessment. **freeze 0**(전부 display-layer).
+- [backlog] HealingPhaseTracker full-mode 코드 unreferenced 잔존(non-breaking, 나중 prune). orphan i18n(B4e-2b ~93키) 여전 backlog(harmless, 분리).
+- gate: tsc 0 / terminology 13 / vitest 3412(신규실패 0, baseline 7).
+- commit: inner-main `01b0dd79`(CenterPageClient + HealingPhaseTracker) + outer main(이 커밋: 미러 + ledger). inner push `c01ebb43..01b0dd79`. **Deploy 미실행(별도 인가)**. 다음 deploy(display 변경).
+- Authority plan 결정2 보강.
+
 ## 2026-06-09 — [IA-B4e-2] /growth atomic teardown — 비가역 33 delete + barrel prune + q237 sever · ✅ IA-B4 본체 제거 완료(i18n B4e-2b 잔여) — COMMITTED · 미deploy(HALT)
 - 33 삭제: hub+alias3+reflection(+write)+history+recovery 라우트10/Screen10/helper7/API6. **/growth dir 소멸.** barrel `index.ts` prune split 1:1(REMOVE 제거/PRESERVE 유지, dangling 0). q237 `../growth/page` import+it sever(URL-grep 놓침→tsc 발견, observation>inference, wireframe/my-page 유지).
 - 🔴 **PRESERVE intact**: features/growth 잔존 = README/`getLatestReflectionSeed`/gate3(`checkRecoveryTrigger`/`recoveryCompoundSignal`/`recoveryTypes`)/seed(`buildReflectionSeed`)/`reflectionStorage`/`computeGrowthHistory`/types/index. api/bty/growth=`seeds/latest`만. my-page/Arena/Dear Me 미접촉.

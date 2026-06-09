@@ -101,9 +101,15 @@ export type HealingPhaseTrackerProps = {
    * preserves the standalone bordered section — non-breaking for all callers.
    */
   embedded?: boolean;
+  /**
+   * IA-CENTER-FINAL: render a 1-line active-phase summary + "Open Healing" link
+   * instead of the full 4-step stepper (Center 2축 final form). Display-only —
+   * reads the fetched activePhase; phase calc/advance untouched.
+   */
+  compact?: boolean;
 };
 
-export function HealingPhaseTracker({ locale, userId, embedded = false }: HealingPhaseTrackerProps) {
+export function HealingPhaseTracker({ locale, userId, embedded = false, compact = false }: HealingPhaseTrackerProps) {
   const loc = locale === "ko" ? "ko" : "en";
   const t = getMessages(loc).healing;
 
@@ -208,6 +214,32 @@ export function HealingPhaseTracker({ locale, userId, embedded = false }: Healin
           .replace(/\{l\}/g, String(sum.dearMeLetterCount))
           .replace(/\{aw\}/g, String(sum.awakeningActsCompleted))
       : null;
+
+  // IA-CENTER-FINAL: compact summary for the Center "Current State" card — active phase + Open Healing link.
+  // The full 4-step stepper + per-phase CTAs (incl. the now-removed /dear-me link) are not rendered here.
+  if (compact) {
+    return (
+      <div role="region" aria-label={t.healingPhaseTrackerRegionAria}>
+        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "#475569" }}>
+          {t.healingPhaseTrackerTitle}:{" "}
+          <span style={{ fontWeight: 600, color: "#0f172a" }}>{stepTitle(t, activePhase)}</span>
+        </p>
+        <Link
+          href={`/${loc}/bty/healing`}
+          style={{
+            display: "inline-block",
+            marginTop: 6,
+            fontSize: 12,
+            fontWeight: 600,
+            color: "#2563eb",
+            textDecoration: "none",
+          }}
+        >
+          {loc === "ko" ? "치유 허브 열기 →" : "Open Healing →"}
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <section
