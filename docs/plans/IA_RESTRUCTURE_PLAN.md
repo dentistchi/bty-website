@@ -15,7 +15,7 @@
    - C = `TrainProgressCard` (28일) → 절대 주인공 · 1차 CTA.
    - A (`HealingPhaseTracker` 4단계, 측정무관 독립트랙) + B (Stage 뱃지 "Leadership Withdrawal", Arena Leadership Engine Stage **read-only 투영**) → 보조 **"Current State"** 단일 카드로 통합.
    - Stage 산출 엔진 = freeze. Badge = display-only projection.
-   - Center 최종형 (IA-B4 종착): **Day Hero(train) + Current State + Dear Me** 2축. Dear Me = Write + History(canonical 기록). Reflection 카드·Energy Log surface 별도 신설 안 함. 작성=흐름 안, 회고=Center.
+   - Center 최종형 (IA-B4 종착): **Day Hero(train) + Current State + Dear Me** 2축. Dear Me = Write + History(canonical 기록). History = free letter(body) + Train day_reflection(Q/A set) shape 분기 통합 표시. Reflection 카드·Energy Log surface 별도 신설 안 함. 작성=흐름 안, 회고=Center.
 3. **Awakening 게이트 = train 완주** (distinct day == 28). 기존 server-side eligibility (day30 + 10 sessions, `NOT_ELIGIBLE` 403)와 정합.
 4. **Growth 해체 — STEP0 inventory로 footprint 교정 (2026-06-08).**
    당초 lock = "alias 3 + history → Center" (inventory 전 작성, 과소).
@@ -33,13 +33,22 @@
 5. **무게중심 = Arena.** 제품 중심 = Arena (리더십 시뮬레이션, 측정 엔진).
    로그인 랜딩 = `/bty-arena` 유지. train/Center/Awakening = 보조 자기인식·훈련 라인.
    → 결정1~4는 전부 "Arena 중심 하의 보조 라인 정리"다.
-6. **Dear Me = Canonical Self-Reflection Layer (방향 lock, 2026-06-08).**
+6. **Dear Me = Canonical Self-Reflection Layer (방향 lock + 형태 C2 확정, 2026-06-09).**
    **Dear Me is the canonical self-reflection layer.**
    **All self-reflection artifacts eventually converge into Dear Me.**
-   Future entries may originate from: **Train · Arena · Center.** Entries should be **source-aware.**
-   Candidate metadata: `source` / `day` / `prompt` / `seed_id`.
-   파생 작업 (IA-B4 범위 아님, 각자 별도 inventory + design — 이름만, 설계 없음):
-   Train Capture · Dear Me 통합 화면(Calendar/List/Search/Entry) · source-aware schema(현 dear_me_letters에서 진화) · AI Summary · Pattern Review · Unified History · legacy reflection migration · 28-day content rewrite("종이와 펜"→Dear Me). 전부 결정6 Lane.
+   **Dear Me is one experience, not necessarily one database shape.**
+   Future entries originate from **Train · Arena · Center**, source-aware. Candidate metadata: `source` / `day` / `prompt` / `seed_id` / `responses`.
+
+   **형태 확정 = C2 Day Reflection Set (모델 B, 28일 전체).** (A형 본문하단 단일 composer = Unit1 deployed ffe9777e, 과도기 → C2로 진화.)
+   🔴 **UX lock: Each Train Day has one Dear Me Reflection. It may contain zero or more guided questions, but it always ends with one integrated reflection.**
+   (각 Train Day = 1 Dear Me Reflection. 안내 질문 0개 이상, 항상 통합 성찰 1개로 마무리.)
+
+   **도출 모델** (UX에서 도출 — 거꾸로 아님): `dear_me_letters` + `responses jsonb` + `type='day_reflection'` + `source='train'`. responses = `{ title, questions:[{q,a}...], finalReflection }`. 저장 = `upsert(user_id, day, source)`. free letter(body shape) 공존 = **one table, multi-shape**. engine reader(slip-recovery/recommender `.eq type='letter'`)가 day_reflection 자동 제외(오염 0).
+   **Tier 1/2/3 폐기** — `questions.length` 0~N으로 통일(분류 불필요).
+
+   **엔진/콘텐츠 분리:** 엔진(스키마+폼 TrainDayReflectionSet+write upsert+History shape 분기 — 코드, 28일 지원, Day 수 무관) + 콘텐츠(Day별 질문 세트, 점진 authoring, 5 Day 파일럿 검증 → 28일).
+
+   파생 작업 (각자 별도 inventory/design — 결정6 Lane): Dear Me 통합 화면(Calendar/Search) · AI Summary · Pattern Review · Unified History · legacy reflection migration. Unit2 28-day content rewrite("종이와 펜"→Dear Me) = C2 질문 세트 authoring으로 흡수.
 
 ## Deployment sequence (흡수/이사 먼저, 제거 마지막)
 **원칙:** 보조 라인의 가치(mission/reflection UX, history)를 train/Center로 먼저 흡수·이사한 뒤에만 원본 라우트를 제거한다. **흡수/이사 = 제거의 선행 의존성.**
@@ -68,6 +77,7 @@
 - Runtime 검증 = deploy 후 staging URL only (localhost auth-gated 육안 불가).
 
 ## STEP0 correction log
+- [2026-06-09 DECISION6-C2 형태 확정] Dear Me 형태 A→C2 재정의. Unit1(A형 본문하단 composer, deployed ffe9777e)에서 실사용 발견: reflection이 prompt 컨텍스트 없이 body만 History 노출(질문≠답 분리). C2-STEP0/UX 설계로 형태 확정 = Day Reflection Set(모델 B, 28일 전체). UX lock: "각 Train Day = 1 Dear Me Reflection, 질문 0~N + 통합 성찰 1." 도출 모델 = dear_me_letters + responses jsonb + type='day_reflection' + upsert(user,day,source); free letter와 one-table multi-shape(engine reader type='letter' 필터로 오염 0). Tier 1/2/3 폐기(questions.length 통일). 엔진(코드, 28일)/콘텐츠(질문세트, 점진) 분리. Unit2 카피 = C2 흡수. [backlog] Train Day panel UX(모바일 토글 active 피드백/scrollIntoView + completion summary empty-state); two-endpoint split(/api/dear-me/letter canonical vs /api/bty/center/dear-me legacy = 후속 결정6 lane); HealingPhaseTracker full-mode dead code prune; orphan i18n(B4e-2b ~93키).
 - [2026-06-08 IA-B4cd-ABSORB-STEP0] (1) 흡수 무게중심-safe: seed producer(Arena)→bty_reflection_seeds, consumer(my-page)→localStorage, 흡수 대상(bty_reflection_entries)은 history UI만 read — Arena/my-page 미접촉. (2) Recovery = re-entry gate/state(my-page 공유), journal 아님 → disposition(gate 보존, UI만 제거). (3) dear_me_letters = letter 전용 스키마(type/seed_id 없음) → additive 확장 필요 = 결정6 기반. (4) d-move 폐기, Reflection→Dear Me 흡수(형태2/2b). [backlog] reflection dual-store 단절: write→DB(bty_reflection_entries) vs my-page read→localStorage(bty-reflections), pre-existing, 흡수 무관, IA 후 reconcile.
 - [2026-06-08 IA-B4-STEP0] Plan correction discovery (2건). (1) features/growth seed = Arena+my-page 공유 load-bearing infra(31파일), Growth-private 아님 — 보존 mandatory. (2) Arena airlock(reviewReflection) = DEAD(caller 0), STEP0-B3 "live" 오류 교정. B4 decisions: d-move(reflection family→Center) / b-stay(seed 제자리 문서화) / e-remove(hub 404). freeze 무관.
 - [2026-06-08 IA-B3-STEP0] Plan correction discovery. 결정4 footprint 과소 판명 — reflection/recovery/Arena airlock(`useArenaSession.ts:199`)/features/growth seed 모듈이 lock에 누락. B3(journey only) / B4(remaining) 분리 확정. B3a 흡수 = near-noop(train이 journey day UX 이미 subsume). freeze 의존 0 확인(STEP0 [E]).
