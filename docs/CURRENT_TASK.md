@@ -1,3 +1,12 @@
+## 2026-06-09 — [IA-B4e-2] /growth atomic teardown — 비가역 33 delete + barrel prune + q237 sever · ✅ IA-B4 본체 제거 완료(i18n B4e-2b 잔여) — COMMITTED · 미deploy(HALT)
+- 33 삭제: hub+alias3+reflection(+write)+history+recovery 라우트10/Screen10/helper7/API6. **/growth dir 소멸.** barrel `index.ts` prune split 1:1(REMOVE 제거/PRESERVE 유지, dangling 0). q237 `../growth/page` import+it sever(URL-grep 놓침→tsc 발견, observation>inference, wireframe/my-page 유지).
+- 🔴 **PRESERVE intact**: features/growth 잔존 = README/`getLatestReflectionSeed`/gate3(`checkRecoveryTrigger`/`recoveryCompoundSignal`/`recoveryTypes`)/seed(`buildReflectionSeed`)/`reflectionStorage`/`computeGrowthHistory`/types/index. api/bty/growth=`seeds/latest`만. my-page/Arena/Dear Me 미접촉.
+- ⚠️ **[B4e-2b 잔여]** i18n orphan sweep(48키/144line) defer — harmless(tsc 0, 소비파일 삭제됨). 제거 경계: `growthCard*`/`Nav*`/`Hub*`/`BackToGrowth`/`RouteLoading`/`Reflection*` 제거, **`growthReflectionFocus{Trust,Clarity,Regulation,Alignment}` 보존**(my-page mergeLeadershipReflection, type 1695-1698/ko 3518-3521/en 5333-5336). 가역, deploy 전 처리 예정.
+- **[B4 종합]** B4b(`53580ab9`) seed infra doc, B4c 흡수(`552fef8c`/`853083b2`/`c3d281d2`), B4d(`d1eb3c8b`) recovery gate PRESERVE, B4a(B4e fold), B4e-1(`7a7b09f6`) sever+B4f, B4e-2(this) atomic delete. **Growth 해체 완료.**
+- gate: tsc 0 / terminology 13 / vitest 3412(신규실패 0, baseline 7, q237 stub −1).
+- commit: inner-main `c01ebb43`(33 D + barrel + q237) + outer main(이 커밋: 미러 + ledger). inner push `7a7b09f6..c01ebb43`. **Deploy 미실행(B4e-2b 후 B4 묶음)**. 다음 B4e-2b(i18n) → B4 deploy.
+- Authority `docs/plans/IA_RESTRUCTURE_PLAN.md` @ d8585dd7.
+
 ## 2026-06-09 — [IA-B4e-1] /growth sever — deletion-enabler만(가역) + B4f airlock fold — COMMITTED · 미deploy(HALT)
 - airlock(B4f): `useArenaSession` reviewReflection 제거(dead 0 callers) + unused router import. sprint252 smoke 삭제(GrowthPage import). e2e sever: recovery-flow.spec 삭제, guards.spec `/growth/reflection/write` 테스트만 제거(arena guard 유지) — Unit B(chromium-comeback) 무관, bty-loop project.
 - ⚠️ **[범위 교정 — tsc-ordering]** barrel prune + i18n sweep을 B4e-1→B4e-2 이동: REMOVE UI(growth recovery/reflection/history)가 barrel(`@/features/growth/logic`) 경유 import + hub가 `growthCard*` i18n 소비 → 아직 존재하는 파일이 소비하므로 "먼저 sever" 불가, 삭제와 atomic. tsc 0 gate가 강제 드러냄(observation>inference). my-page `mergeLeadershipReflection`이 `growthReflectionFocus{Trust,Clarity,Regulation,Alignment}` 사용 → B4e-2 sweep서 PRESERVE.

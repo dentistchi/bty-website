@@ -14,7 +14,6 @@ import { renderToString } from "react-dom/server";
 import type { ReactElement } from "react";
 
 import WireframePage from "./wireframe/page";
-import GrowthPage from "../growth/page";
 import MyPagePage from "../my-page/page";
 
 function smokeHtml(el: ReactElement): string {
@@ -31,15 +30,6 @@ describe("stub routes smoke (237)", () => {
     expect(html).toMatch(/Play Game|System ready/i);
     expect(html).toMatch(/Continue/i);
     expect(html).toMatch(/region|aria-label/i);
-  });
-
-  it("/[locale]/growth renders key strings", async () => {
-    const el = (await GrowthPage({
-      params: Promise.resolve({ locale: "en" }),
-    })) as ReactElement;
-    const html = smokeHtml(el);
-    expect(html.length).toBeGreaterThan(100);
-    expect(html).toMatch(/Growth|Dojo 50|Foundry/i);
   });
 
   it("/[locale]/my-page renders key strings", async () => {
