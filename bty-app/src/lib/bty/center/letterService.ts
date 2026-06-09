@@ -60,6 +60,10 @@ export type SubmitLetterInput = {
   body: string;
   locale?: LetterLocale | string;
   useLlm?: boolean;
+  /** IA-B4c: 'reflection' marks a seed-prompted Dear Me entry; default 'letter' (non-breaking). */
+  type?: "letter" | "reflection";
+  /** IA-B4c: bty_reflection_seeds.id when type='reflection'. */
+  seedId?: string;
 };
 
 export type SubmitLetterResult =
@@ -101,6 +105,8 @@ export async function submitLetter(
       locale: lang,
       body: letterText,
       reply,
+      type: input.type ?? "letter",
+      seed_id: input.seedId ?? null,
     })
     .select("id")
     .single();
@@ -236,4 +242,39 @@ export async function getLetterHistory(
   );
 
   return { ok: true, letters };
+}
+
+/** Calendar entry: date + reply presence only (body excluded for lightweight load). */
+export type LetterCalendarEntry = { id: string; date: string; hasReply: boolean };
+
+/**
+ * Fetch letter dates for the calendar view, newest first. Excludes body/reply
+ * text — only id, created_at, and whether a reply exists. Index-backed by
+ * dear_me_letters_user_created_idx (user_id, created_at desc).
+ */
+export async function getLetterCalendar(
+  supabase: SupabaseClient,
+  userId: string,
+  limit = 365
+): Promise<{ ok: true; entries: LetterCalendarEntry[] } | { ok: false; error: string }> {
+  const { data, error } = await supabase
+    .from("dear_me_letters")
+    .select("id, created_at, reply")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  const entries: LetterCalendarEntry[] = (data ?? []).map(
+    (r: { id: string; created_at: string; reply: string | null }) => ({
+      id: r.id,
+      date: r.created_at,
+      hasReply: r.reply != null && r.reply !== "",
+    })
+  );
+
+  return { ok: true, entries };
 }

@@ -1,3 +1,12 @@
+## 2026-06-09 — [IA-B4c-2] reflection write plumbing (type/seedId, capable-but-unwired) — COMMITTED · 미deploy(HALT)
+- `letterService` submitLetter: `SubmitLetterInput` += type?/seedId?; INSERT `type ?? 'letter'` / `seed_id ?? null`(기존 letter write 비파괴). `api/dear-me/letter` type/seedId 수용(미지정 시 letter default).
+- `DearMeComposerModal`: seed 처리 능력(seed ? reflection : letter) 유지하되 **CenterPageClient 진입점 없음 → 항상 letter 모드(capable-but-unwired)**. AMEND로 reflection CTA/card/prompt 제거.
+- **reflection = entry 속성(type/seed_id), UI surface 아님.** 사용자는 "Write"만(결정6 + Center 2축: Current State + Dear Me{Write,History}). reflection 진입점 0.
+- B4c-1 필터 발효 시점(reflection row 생성 경로 도입 — schema→API→service 준비 완료, reader letter-scoped 보호됨). freeze/healing/bounce-back/lib-utils 미접촉.
+- gate: tsc 0 / terminology 13 / vitest 신규실패 0(baseline 7), dear-me/letter route 21/21(+2 reflection 케이스).
+- commit: inner-main `853083b2`(4 files) + outer main(이 커밋: 미러 + ledger). inner push `552fef8c..853083b2`. **Deploy 미실행(B4c-3 묶음)**. 다음 B4c-3(Center 2축: /center/letters show-all type-aware + Dear Me Write가 seed를 entry 속성으로 자연 wire).
+- Authority `docs/plans/IA_RESTRUCTURE_PLAN.md` @ d8585dd7.
+
 ## 2026-06-09 — [IA-B4c-1] Dear Me 흡수 기반: type/seed_id additive 스키마 + reader letter-only 필터 (형태2/2b) — COMMITTED · 미deploy(HALT)
 - migration `20260609000000` dear_me_letters에 `type`(default 'letter' NOT NULL, check letter|reflection) + `seed_id`(uuid nullable, no FK). production 적용 확인: 컬럼 2개 + 기존 8 letter 전부 type='letter' 무손상, repair 동기(local+remote applied).
 - companion 필터: `slip-recovery` verifyReflectionLetterDone + `dear-me-recommender` fetchLetterStats(count/last) `.eq type='letter'` — reflection false-positive/inflate 차단. 로직 불변(현재 reflection row 0 → dormant-correct).

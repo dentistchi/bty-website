@@ -16,6 +16,8 @@ function makeRequest(body: {
   letterText?: string;
   lang?: string;
   useLlm?: boolean;
+  type?: string;
+  seedId?: string;
 }): NextRequest {
   return new Request("http://localhost/api/dear-me/letter", {
     method: "POST",
@@ -270,5 +272,28 @@ describe("POST /api/dear-me/letter", () => {
     expect(mockSubmitLetter).toHaveBeenCalledOnce();
     const [, input] = mockSubmitLetter.mock.calls[0];
     expect(input.useLlm).toBe(true);
+  });
+
+  // IA-B4c: reflection write path
+  it("defaults type='letter' and no seedId when not specified (non-breaking)", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitLetter.mockResolvedValue({ ok: true, letterId: "l1", reply: "OK" });
+
+    await POST(makeRequest({ letterText: "Hello" }));
+
+    const [, input] = mockSubmitLetter.mock.calls[0];
+    expect(input.type).toBe("letter");
+    expect(input.seedId).toBeUndefined();
+  });
+
+  it("passes type='reflection' + seedId when requested", async () => {
+    mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
+    mockSubmitLetter.mockResolvedValue({ ok: true, letterId: "r1", reply: "OK" });
+
+    await POST(makeRequest({ letterText: "A reflection", type: "reflection", seedId: "seed-1" }));
+
+    const [, input] = mockSubmitLetter.mock.calls[0];
+    expect(input.type).toBe("reflection");
+    expect(input.seedId).toBe("seed-1");
   });
 });
