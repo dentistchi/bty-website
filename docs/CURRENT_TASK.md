@@ -1,3 +1,8 @@
+## 2026-06-09 — [DECISION6-C2-1] Day Reflection 스키마 — responses jsonb + type day_reflection + unique + RLS UPDATE — C2 엔진 1/4 — COMMITTED · 미deploy(HALT)
+- **[CLOSED]** migration 20260609000002: Unit1 QA train 2건 삭제(id 명시, 비가역) + responses jsonb(additive) + type CHECK 확장(day_reflection) + unique(user_id,day,source) + RLS UPDATE own. production 검증 a-f PASS: train 0, 잔여 center reflection(080edaee) day NULL unique-safe, 9 center letter 무손상. one-table multi-shape(free letter body / day_reflection responses).
+- **[unique 전략]** 결정1=A(Unit1 train 2건 삭제, QA), 결정2=unique+upsert+RLS UPDATE 신설. center day NULL = NULL DISTINCT라 unique 무관.
+- Gate: SQL Editor 적용 + repair 동기(20260609000002 local+remote applied). Authority @ plan 848fd69. Inner `56b6adaf`. Deploy 미실행(C2 엔진 묶음). 다음 C2-2(폼 TrainDayReflectionSet, Day4 질문세트로 검증).
+
 ## 2026-06-09 — [DECISION6-TRAIN-CAPTURE-Unit1] Train Day Dear Me capture + source/day/prompt 메타 (형태 A) — 결정6 첫 구현 — COMMITTED · 미deploy(HALT)
 - **[CLOSED]** migration 20260609000001 dear_me_letters += source(default 'center' check train|arena|center) + day(int null) + prompt(text null). production 적용: 기존 9 letter source='center' 무손상, repair 동기(local+remote applied). write 경로 submitLetter/api += source/day/prompt(default 비파괴). TrainDayCapture.tsx(가벼운 신규 컴포넌트) Train Day `<article>` 아래, POST /api/dear-me/letter {type:'reflection',source:'train',day,prompt:''}. DearMeComposer 재사용 안 함(무거움/wrong endpoint).
 - 🔴 **기록≠완료 LOCK**: capture가 markTodayComplete/completion 게이트/completions 미접촉, 자체 Save+POST 독립, 실패가 completion 무관. renderer 미변경(raw 유지, additive). freeze(측정/healing/train 진행) 미접촉.
