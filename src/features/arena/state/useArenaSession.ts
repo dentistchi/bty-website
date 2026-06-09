@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import type { ArenaScenario, ResolveOutcome } from "@/domain/arena/scenarios";
 import { getArenaOutcomeKey, getScenarioById, patientComplaintScenario } from "@/domain/arena/scenarios";
 import type { ArenaMissionSession } from "./arena-session.types";
@@ -59,10 +59,8 @@ function persistToStorage(s: ArenaMissionSession) {
 }
 
 export function useArenaSession() {
-  const router = useRouter();
   const params = useParams();
   const locale = params?.locale === "ko" ? "ko" : "en";
-  const base = `/${locale}`;
 
   const [session, setSession] = useState<ArenaMissionSession | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -195,10 +193,6 @@ export function useArenaSession() {
     applySession(fresh);
   }, [applySession]);
 
-  const reviewReflection = useCallback(() => {
-    router.push(`${base}/growth/reflection`);
-  }, [router, base]);
-
   return {
     hydrated,
     session,
@@ -215,6 +209,5 @@ export function useArenaSession() {
     continueArena,
     returnToLobby,
     resetSession,
-    reviewReflection,
   };
 }
