@@ -1,3 +1,11 @@
+## 2026-06-08 — [IA-B3c-1a] journey 외부 live 참조 4건 sever (가역, 삭제 전 단계, S-PHASED) — COMMITTED · 미deploy(HALT)
+- `growth/page.tsx` journey 카드 제거(integrity/guidance/history 보존). `sprint252` smoke `/growth/journey` present 단언 제거(i18n-keys/dojo/root-policy 보존). `q235` mixed journey/profile만 제거(me/elite 보존). `q4` mixed journey/entries만 제거(center/letter+resilience 보존).
+- 정의 파일 미삭제(STEP1b). **ZERO-REF: 외부 live journey 참조 0 확인** → STEP1b 삭제 안전 전제 확보. bounce-back/bty_profiles 컬럼/lib-utils/freeze 미접촉.
+- gate: tsc 0 / terminology 13(신규 0) / vitest 신규실패 0(baseline 7), severed 보존분 6/6 green(vitest 3443→3442 = sprint252 ko-journey-present 1블록 의도 제거).
+- commit: inner-main `abab5421`(4 files) + outer main(이 커밋: 미러 + ledger). inner push `5d8e49d1..abab5421`. **미deploy(B3 묶음)**. 다음 B3c-1b(journey 정의 파일 삭제 — 비가역).
+- Authority `docs/plans/IA_RESTRUCTURE_PLAN.md` @ 32f9d6fd.
+- [STEP1b 의존 메모] orphan i18n `growthCardJourneyTitle/Desc`·`growthNavJourneyTitle` 잔존 — `sprint252` i18n-keys 블록이 아직 `growthNavJourneyTitle`/`growthCardJourneyDesc` non-empty 단언 중. STEP1b서 키 sweep + 해당 단언 prune 동시에(분리 시 smoke 깨짐).
+
 ## 2026-06-08 — [IA-B3b] 글로벌 Comeback resume target journey→train (b-keep-clean, S-PHASED) — COMMITTED · 미deploy(HALT)
 - `onResumeJourney` `/growth/journey` → `/train/day/${todayUnlockedDay}`, fallback `/train`. fetch `/api/train/progress`는 modal 표시 후 click handler 내만(mount fetch 0, 글로벌 폭증 회피).
 - localStorage 3일 감지(lib/utils)·`recordBounceBack` POST·`bounce_back_count` 유지(b-keep). 카피 `comebackResumeJourneyCta` "여정 이어가기/Resume Journey" → "훈련 이어가기/Resume Training". `comebackTitle/Body` generic(회복 루프/recovery path) 불변. freeze/lib-utils/bounce-back route/schema 미접촉.

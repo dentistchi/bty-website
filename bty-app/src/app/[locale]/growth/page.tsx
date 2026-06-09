@@ -39,12 +39,6 @@ export default async function GrowthPage({ params }: Props) {
       "data-testid": "growth-guidance-card",
     },
     {
-      href: `${base}/growth/journey`,
-      title: t.growthCardJourneyTitle,
-      description: t.growthCardJourneyDesc,
-      "data-testid": "growth-journey-card",
-    },
-    {
       href: `${base}/growth/history`,
       title: t.growthCardHistoryTitle,
       description: t.growthCardHistoryDesc,
