@@ -64,6 +64,12 @@ export type SubmitLetterInput = {
   type?: "letter" | "reflection";
   /** IA-B4c: bty_reflection_seeds.id when type='reflection'. */
   seedId?: string;
+  /** DECISION6: capture origin; default 'center' (non-breaking). */
+  source?: "train" | "arena" | "center";
+  /** DECISION6: train Day number when source='train'. */
+  day?: number;
+  /** DECISION6: capture seed/prompt text shown to the user (optional). */
+  prompt?: string;
 };
 
 export type SubmitLetterResult =
@@ -107,6 +113,9 @@ export async function submitLetter(
       reply,
       type: input.type ?? "letter",
       seed_id: input.seedId ?? null,
+      source: input.source ?? "center",
+      day: input.day ?? null,
+      prompt: input.prompt ?? null,
     })
     .select("id")
     .single();

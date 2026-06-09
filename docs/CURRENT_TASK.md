@@ -1,3 +1,10 @@
+## 2026-06-09 — [DECISION6-TRAIN-CAPTURE-Unit1] Train Day Dear Me capture + source/day/prompt 메타 (형태 A) — 결정6 첫 구현 — COMMITTED · 미deploy(HALT)
+- **[CLOSED]** migration 20260609000001 dear_me_letters += source(default 'center' check train|arena|center) + day(int null) + prompt(text null). production 적용: 기존 9 letter source='center' 무손상, repair 동기(local+remote applied). write 경로 submitLetter/api += source/day/prompt(default 비파괴). TrainDayCapture.tsx(가벼운 신규 컴포넌트) Train Day `<article>` 아래, POST /api/dear-me/letter {type:'reflection',source:'train',day,prompt:''}. DearMeComposer 재사용 안 함(무거움/wrong endpoint).
+- 🔴 **기록≠완료 LOCK**: capture가 markTodayComplete/completion 게이트/completions 미접촉, 자체 Save+POST 독립, 실패가 completion 무관. renderer 미변경(raw 유지, additive). freeze(측정/healing/train 진행) 미접촉.
+- **[형태 A 선택]** C(inline per-section)는 raw→sections renderer un-flatten 필요 → 나중 renderer refactor lane. A=본문 아래, renderer 무변경, 모바일 자연.
+- **[backlog]** two-endpoint split: /api/dear-me/letter(canonical, Train 사용) vs /api/bty/center/dear-me(legacy center) — endpoint 통일 = 후속 결정6 lane. prompt 자동주입(현재 빈 문자열) = 후속.
+- gate: tsc 0 / terminology 13 / vitest 36 신규0(type/seed 비파괴 포함). Authority @ 결정6. Inner `f65d2c61`. SQL=SQL Editor 직접(db push 금지). Deploy 미실행. 다음 Unit2(5 Day 콘텐츠 카피 rewrite) 또는 deploy.
+
 ## 2026-06-09 — [IA-CENTER-FINAL] Center 2축 마감 — Healing 접힘(F1b) + Energy log 제거 + Invalid Date fix — COMMITTED · 미deploy(HALT)
 - (B4 deploy `d5501a5e` 육안서 B1 병합 미완 발견 → 마감.) **F1**: `HealingPhaseTracker` compact prop(default false, non-breaking) — Current State 활성 phase 1줄 + `[Open Healing]`/bty/healing. full stepper/per-phase CTA 제거(Center embedded만, 타 consumer 0). **phase 계산 미접촉**(fetch activePhase read, advance=/bty/healing).
 - **F2**: Energy log(`ResilienceCard`) surface 제거 — API(`/api/center/resilience`)+`ResilienceGraph`(landing×4) 유지, energy 데이터 결합 0(Dear Me composer는 energy 미사용). **F3**: Invalid Date — `DearMeCard`/`LetterItem` `created_at`→`createdAt`(API=createdAt, LettersClient 정상). dead `/dear-me` link 소멸(compact가 case2 bypass).

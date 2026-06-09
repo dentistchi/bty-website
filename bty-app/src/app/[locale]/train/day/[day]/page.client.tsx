@@ -4,6 +4,7 @@ import * as React from "react";
 import { useParams } from "next/navigation";
 import { useTrain } from "@/contexts/TrainContext";
 import { getMessages } from "@/lib/i18n";
+import TrainDayCapture from "@/components/train/TrainDayCapture";
 
 import TRAIN_BILINGUAL from "@/content/train-28days.en-base.json";
 
@@ -324,6 +325,10 @@ export default function TrainDayPage() {
             </>
           )}
         </article>
+
+        {/* DECISION6 (형태 A): Dear Me capture — additive, below lesson. Independent of
+            markTodayComplete / the completion gate (기록 ≠ 완료). renderer unchanged. */}
+        <TrainDayCapture day={day} locale={locale} />
       </main>
 
       {/* RIGHT: Chat / Completion Summary */}
