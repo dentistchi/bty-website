@@ -1,3 +1,11 @@
+## 2026-06-09 — [IA-B4d] recovery gate PRESERVE lock (삭제 0, Approach B/b2 마커) — COMMITTED · 미deploy(HALT)
+- gate 3파일(`checkRecoveryTrigger`/`recoveryCompoundSignal`/`recoveryTypes`, `features/growth/logic`) 상단 PRESERVE 마커. gate=pure(signals+reflections), my-page(`getMyPageIdentityState`) live 소비, recovery UI/write 독립 → growth UI 제거 생존. b-stay 보존.
+- **[B4e 제거 대상 fold]** recovery UI/write: `/growth/recovery` route + `RecoveryEntryScreen` + `saveRecoveryEntry` + `/api/bty/growth/recovery` + orphan helpers(`buildRecoveryPrompt`/`buildRecoveryEntry`/`recoveryStorage`). cross-link(reflection:58/history:52 `onOpenRecovery`)은 B4e에서 reflection/history와 atomic 제거 → sever 불필요. `bty_recovery_entries` = dead table 예정(no drop).
+- **[B4e PRESERVE]** gate 3파일 + my-page recovery awareness path.
+- gate: tsc 0 / terminology 13 / vitest 신규실패 0(baseline 7). 삭제 0, recovery UI/route/write 미접촉(B4e atomic).
+- commit: inner-main `d1eb3c8b`(3 gate 파일 주석) + outer main(이 커밋: 미러 + ledger). inner push `c3d281d2..d1eb3c8b`. **Deploy 미실행(B4 묶음)**. 다음 B4a(alias 3 + hub 카드).
+- Authority `docs/plans/IA_RESTRUCTURE_PLAN.md` @ d8585dd7.
+
 ## 2026-06-09 — [IA-B4c-3] Dear Me Write seed wire (dismissable) — 흡수(B4c) UI 완료 · ✅ B4c 전체 완료 — COMMITTED · 미deploy(HALT)
 - composer seed wire: `getLatestReflectionSeed` → dismissable prompt(`seed && !promptDismissed ? reflection : letter`). 자유 letter 항상 가능(강제 아님, 설문지화 방지). 진입점 "Write" 하나, CTA/메뉴 0. reflection = entry 속성이지 surface 아님. U1-a 표시 미변경(show-all 이미 작동). **Center = Current State + Dear Me{Write,History} 2축 달성.** freeze/Arena producer 미접촉.
 - gate: tsc 0 / terminology 13 / vitest 신규실패 0(baseline 7), `dear-me/letter` route.test 21/21(POST shape 커버). [optional backlog] composer dismissable RTL 컴포넌트 테스트 부재 — 데이터 계약은 route.test 커버, UI 인터랙션 미커버.
