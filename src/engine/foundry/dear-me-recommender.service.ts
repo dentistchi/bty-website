@@ -41,7 +41,8 @@ async function fetchLetterStats(
   const { count, error: cErr } = await client
     .from("dear_me_letters")
     .select("id", { count: "exact", head: true })
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .eq("type", "letter"); // IA-B4c: cadence letterCount counts letters only, not reflection-type entries
 
   if (cErr) throw new Error(cErr.message);
 
@@ -49,6 +50,7 @@ async function fetchLetterStats(
     .from("dear_me_letters")
     .select("created_at")
     .eq("user_id", userId)
+    .eq("type", "letter") // IA-B4c: lastWrittenAt reflects letters only, not reflection-type entries
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
