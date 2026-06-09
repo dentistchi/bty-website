@@ -16,7 +16,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    let body: { letterText?: unknown; lang?: string; useLlm?: boolean; type?: string; seedId?: unknown };
+    let body: {
+      letterText?: unknown;
+      lang?: string;
+      useLlm?: boolean;
+      type?: string;
+      seedId?: unknown;
+      source?: string;
+      day?: unknown;
+      prompt?: unknown;
+    };
     try {
       body = (await req.json()) as {
         letterText?: unknown;
@@ -24,6 +33,9 @@ export async function POST(req: NextRequest) {
         useLlm?: boolean;
         type?: string;
         seedId?: unknown;
+        source?: string;
+        day?: unknown;
+        prompt?: unknown;
       };
     } catch {
       return NextResponse.json({ error: "missing_text" }, { status: 400 });
@@ -40,6 +52,11 @@ export async function POST(req: NextRequest) {
       // IA-B4c: 'reflection' only when explicitly requested; otherwise 'letter' (non-breaking).
       type: body.type === "reflection" ? "reflection" : "letter",
       seedId: typeof body.seedId === "string" ? body.seedId : undefined,
+      // DECISION6: source-aware capture; default 'center' when unspecified (non-breaking).
+      source:
+        body.source === "train" || body.source === "arena" ? body.source : undefined,
+      day: typeof body.day === "number" && Number.isFinite(body.day) ? body.day : undefined,
+      prompt: typeof body.prompt === "string" ? body.prompt : undefined,
     });
 
     if (!result.ok) {
