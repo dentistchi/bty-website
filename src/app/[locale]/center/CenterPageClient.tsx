@@ -9,6 +9,8 @@ import { HealingPhaseTracker } from "@/components/center/HealingPhaseTracker";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { DEAR_ME_SUBMITTED_EVENT } from "@/lib/bty/center/dearMeEvents";
+// IA-B4c: ReflectionSeed type kept for the composer's seed-capable (but currently unwired) reflection mode.
+import type { ReflectionSeed } from "@/features/growth/logic/buildReflectionSeed";
 
 type StageState = {
   currentStage: number;
@@ -384,11 +386,14 @@ function TrainProgressCard({
 function DearMeComposerModal({
   lang,
   isKo,
+  seed,
   onClose,
   onSubmitted,
 }: {
   lang: Locale;
   isKo: boolean;
+  /** IA-B4c: when present, opens in seed-prompted reflection mode (saves type='reflection'). */
+  seed?: ReflectionSeed | null;
   onClose: () => void;
   onSubmitted: () => void;
 }) {
@@ -407,7 +412,11 @@ function DearMeComposerModal({
       const r = await fetch("/api/dear-me/letter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ letterText: trimmed, lang }),
+        body: JSON.stringify(
+          seed
+            ? { letterText: trimmed, lang, type: "reflection", seedId: seed.id }
+            : { letterText: trimmed, lang }
+        ),
         credentials: "include",
       });
       const data: { replyMessage?: string; reply?: string; replyText?: string; error?: string } =
@@ -456,7 +465,14 @@ function DearMeComposerModal({
 
         {!reply ? (
           <div className="space-y-4">
-            <p className="text-sm text-dear-charcoal-soft m-0">{t.letterPrompt}</p>
+            {seed ? (
+              <div className="rounded-xl border border-dear-sage/20 bg-dear-sage/5 px-3 py-2">
+                <p className="text-xs font-medium text-dear-charcoal m-0">{seed.promptTitle}</p>
+                <p className="text-sm text-dear-charcoal-soft mt-1 m-0">{seed.promptBody}</p>
+              </div>
+            ) : (
+              <p className="text-sm text-dear-charcoal-soft m-0">{t.letterPrompt}</p>
+            )}
             <textarea
               value={letterBody}
               onChange={(e) => setLetterBody(e.target.value)}

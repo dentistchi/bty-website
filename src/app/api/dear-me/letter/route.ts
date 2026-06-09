@@ -16,9 +16,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    let body: { letterText?: unknown; lang?: string; useLlm?: boolean };
+    let body: { letterText?: unknown; lang?: string; useLlm?: boolean; type?: string; seedId?: unknown };
     try {
-      body = (await req.json()) as { letterText?: unknown; lang?: string; useLlm?: boolean };
+      body = (await req.json()) as {
+        letterText?: unknown;
+        lang?: string;
+        useLlm?: boolean;
+        type?: string;
+        seedId?: unknown;
+      };
     } catch {
       return NextResponse.json({ error: "missing_text" }, { status: 400 });
     }
@@ -31,6 +37,9 @@ export async function POST(req: NextRequest) {
       body: letterText,
       locale: body.lang,
       useLlm: body.useLlm === true,
+      // IA-B4c: 'reflection' only when explicitly requested; otherwise 'letter' (non-breaking).
+      type: body.type === "reflection" ? "reflection" : "letter",
+      seedId: typeof body.seedId === "string" ? body.seedId : undefined,
     });
 
     if (!result.ok) {

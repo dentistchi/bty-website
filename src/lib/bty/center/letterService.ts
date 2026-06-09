@@ -60,6 +60,10 @@ export type SubmitLetterInput = {
   body: string;
   locale?: LetterLocale | string;
   useLlm?: boolean;
+  /** IA-B4c: 'reflection' marks a seed-prompted Dear Me entry; default 'letter' (non-breaking). */
+  type?: "letter" | "reflection";
+  /** IA-B4c: bty_reflection_seeds.id when type='reflection'. */
+  seedId?: string;
 };
 
 export type SubmitLetterResult =
@@ -101,6 +105,8 @@ export async function submitLetter(
       locale: lang,
       body: letterText,
       reply,
+      type: input.type ?? "letter",
+      seed_id: input.seedId ?? null,
     })
     .select("id")
     .single();
