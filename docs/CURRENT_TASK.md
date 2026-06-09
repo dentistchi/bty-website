@@ -1,3 +1,11 @@
+## 2026-06-08 — [IA-B3c R1 Unit A] orphaned journey-content.ts 삭제 — COMMITTED · 미deploy(HALT)
+- `src/lib/journey-content.ts`(DayContent/JOURNEY_DAYS) 삭제. consumer 0(MissionCard 삭제로 orphan; `trainContent.getDayContent`는 substring false-match로 확인). journey 데이터 완전 소거(코드+i18n+data).
+- dangling 0, tsc source 0, vitest 신규실패 0(baseline 7), terminology 13. git add 명시 path(blanket `-A` 금지 — STEP1b recovery 교훈).
+- commit: inner-main `7eb80d1c`(D 1파일) + outer main(이 커밋: 미러 + ledger). inner push `aa19f88f..7eb80d1c`. Authority @ 32f9d6fd. **미deploy(B3 묶음)**.
+- **[Unit B OPEN — 별도 lane]** comeback-E2E 서브시스템 decommission: `e2e/journey.spec.ts` + `e2e/auth-comeback.setup.ts` + `scripts/e2e-seed-default-journey-profile.mjs` + `playwright.config.ts`(chromium-comeback/setup-comeback projects, comebackAuthFile) + `package.json`(e2e:seed-default-journey, e2e:auth:comeback, test:e2e:ci `--project=chromium-comeback`) + `.github/workflows/e2e.yml`(L131/136-138). CI/release surface — 자체 STEP0(CI 매핑) 필요. 현재 dormant(E2E_COMEBACK_EMAIL 게이트, unset이면 skip) → B1~B3c deploy 무영향. 시점 미정(B4 전후 또는 독립).
+- [backlog 유지] flag#2 q235/q4 stale JSDoc·파일명(cosmetic, 파일명 rename=import 영향 주의).
+- [다음] B1~B3c 묶음 deploy → 육안 → B4 STEP0.
+
 ## 2026-06-08 — [IA-B3c-1b] journey 정의 삭제 (비가역, S-PHASED) — COMMITTED · 미deploy(HALT) — ✅ IA-B3 전체 완료
 - 삭제 17파일: routes(2)/bty.journey(6)/components.journey(3, dead MissionCard 포함)/lib.bty.journey(2)/api.journey.profile+entries(route+test 4). 보존: `api/journey/bounce-back`(Comeback b-keep), `bty_profiles` 컬럼(schema 무변경), `lib/utils`.
 - journey i18n 키 12줄 sweep(growthNav/CardJourney* + Line), sprint252 dangling 단언 prune. **ZERO-REF dangling 0**(외부 live 0 위 삭제).
