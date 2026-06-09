@@ -208,6 +208,7 @@ async function verifyReflectionLetterDone(
     .from("dear_me_letters")
     .select("id")
     .eq("user_id", userId)
+    .eq("type", "letter") // IA-B4c: integrity completion counts Dear Me letters only, not reflection-type entries
     .gte("created_at", sinceIso)
     .limit(1)
     .maybeSingle();

@@ -1,3 +1,11 @@
+## 2026-06-09 — [IA-B4c-1] Dear Me 흡수 기반: type/seed_id additive 스키마 + reader letter-only 필터 (형태2/2b) — COMMITTED · 미deploy(HALT)
+- migration `20260609000000` dear_me_letters에 `type`(default 'letter' NOT NULL, check letter|reflection) + `seed_id`(uuid nullable, no FK). production 적용 확인: 컬럼 2개 + 기존 8 letter 전부 type='letter' 무손상, repair 동기(local+remote applied).
+- companion 필터: `slip-recovery` verifyReflectionLetterDone + `dear-me-recommender` fetchLetterStats(count/last) `.eq type='letter'` — reflection false-positive/inflate 차단. 로직 불변(현재 reflection row 0 → dormant-correct).
+- **불변식**: reader 보호 먼저, reflection write는 B4c-2. freeze(Stage/AIR/TII)·healing·bounce-back·lib-utils 미접촉.
+- gate: tsc 0 / terminology 13 / vitest 신규실패 0(baseline 7), recovery-loop integration 3/3.
+- commit: inner-main `552fef8c`(SQL new + 2 engine service) + outer main(이 커밋: 미러 + ledger). inner push `53580ab9..552fef8c`. SQL = SQL Editor 직접 실행(db push 금지). **Deploy 미실행(B4c-2/3 묶음)**. 다음 B4c-2(reflection write → Dear Me typed entry).
+- Authority `docs/plans/IA_RESTRUCTURE_PLAN.md` @ d8585dd7.
+
 ## 2026-06-08 — [IA-B4b] features/growth = shared reflection-seed infra 명시 (b-stay, doc-only) — COMMITTED · 미deploy(HALT)
 - 흡수/이사-first 체인 시작. README 신설: PRODUCER Arena(`arena/signals/route.ts:32` → `lib/bty/identity/saveArenaSignalWithSeed.ts:49` → `buildReflectionSeed`), CONSUMER my-page(`MyPageLeadershipConsole.tsx:84` / `mergeLeadershipReflection.ts:19`), CONSUMER Center(post-B4). `buildReflectionSeed.ts:22` 정의, 상단 1줄 포인터 주석. naive 삭제 금지 경고.
 - b-stay = seed 코드/import 무변경. "growth" misnomer 안정화. doc-only.
