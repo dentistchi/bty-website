@@ -1,3 +1,11 @@
+## 2026-06-09 — [IA-B4c-3] Dear Me Write seed wire (dismissable) — 흡수(B4c) UI 완료 · ✅ B4c 전체 완료 — COMMITTED · 미deploy(HALT)
+- composer seed wire: `getLatestReflectionSeed` → dismissable prompt(`seed && !promptDismissed ? reflection : letter`). 자유 letter 항상 가능(강제 아님, 설문지화 방지). 진입점 "Write" 하나, CTA/메뉴 0. reflection = entry 속성이지 surface 아님. U1-a 표시 미변경(show-all 이미 작동). **Center = Current State + Dear Me{Write,History} 2축 달성.** freeze/Arena producer 미접촉.
+- gate: tsc 0 / terminology 13 / vitest 신규실패 0(baseline 7), `dear-me/letter` route.test 21/21(POST shape 커버). [optional backlog] composer dismissable RTL 컴포넌트 테스트 부재 — 데이터 계약은 route.test 커버, UI 인터랙션 미커버.
+- **[B4c 종합]** B4c-1 스키마+필터(`552fef8c`), B4c-2 write plumbing(`853083b2`), B4c-3 seed wire(`c3d281d2`). 형태2/2b 흡수 완료.
+- ⚠️ **[형태2/2b trade-off — 결정6 legacy lane]** 흡수 = 구조화 reflection(`bty_reflection_entries`: seed_id/scenario_id/focus/prompt/cue/answer_1-3/commitment) → 단일 body(`dear_me_letters` type='reflection') 평탄화. identity/my-page reflection 패널(`fetchIdentityRows`, LIVE)은 신규 reflection 못 받음(old 구조화만 유지). 결정6에서 구조 복원/reconcile.
+- commit: inner-main `c3d281d2`(CenterPageClient.tsx) + outer main(이 커밋: 미러 + ledger). inner push `853083b2..c3d281d2`. **Deploy 미실행(B4 묶음)**. 다음 B4d(recovery disposition: gate 보존, standalone UI/route 제거).
+- Authority `docs/plans/IA_RESTRUCTURE_PLAN.md` @ d8585dd7.
+
 ## 2026-06-09 — [IA-B4c-2] reflection write plumbing (type/seedId, capable-but-unwired) — COMMITTED · 미deploy(HALT)
 - `letterService` submitLetter: `SubmitLetterInput` += type?/seedId?; INSERT `type ?? 'letter'` / `seed_id ?? null`(기존 letter write 비파괴). `api/dear-me/letter` type/seedId 수용(미지정 시 letter default).
 - `DearMeComposerModal`: seed 처리 능력(seed ? reflection : letter) 유지하되 **CenterPageClient 진입점 없음 → 항상 letter 모드(capable-but-unwired)**. AMEND로 reflection CTA/card/prompt 제거.
