@@ -20,13 +20,11 @@ describe("SPRINT 252 Growth·Journey·Comeback regression (C5)", () => {
       expect(t.comebackBody.trim()).not.toHaveLength(0);
       expect(t.comebackResumeJourneyCta.trim()).not.toHaveLength(0);
       expect(t.comebackNotNowCta.trim()).not.toHaveLength(0);
-      expect(t.growthNavJourneyTitle.trim()).not.toHaveLength(0);
       expect(t.growthNavDojoTitle.trim()).not.toHaveLength(0);
       expect(t.growthNavIntegrityTitle.trim()).not.toHaveLength(0);
       expect(t.growthNavGuidanceTitle.trim()).not.toHaveLength(0);
       expect(t.growthBackToGrowth.trim()).not.toHaveLength(0);
       expect(t.growthHubHeadline.trim()).not.toHaveLength(0);
-      expect(t.growthCardJourneyDesc.trim()).not.toHaveLength(0);
     }
   });
 

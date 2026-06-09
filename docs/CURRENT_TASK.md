@@ -1,3 +1,13 @@
+## 2026-06-08 — [IA-B3c-1b] journey 정의 삭제 (비가역, S-PHASED) — COMMITTED · 미deploy(HALT) — ✅ IA-B3 전체 완료
+- 삭제 17파일: routes(2)/bty.journey(6)/components.journey(3, dead MissionCard 포함)/lib.bty.journey(2)/api.journey.profile+entries(route+test 4). 보존: `api/journey/bounce-back`(Comeback b-keep), `bty_profiles` 컬럼(schema 무변경), `lib/utils`.
+- journey i18n 키 12줄 sweep(growthNav/CardJourney* + Line), sprint252 dangling 단언 prune. **ZERO-REF dangling 0**(외부 live 0 위 삭제).
+- gate: tsc 0(source; `.next/types` stale는 deploy 빌드가 regenerate)/terminology 13/vitest 신규실패 0(baseline 7), test −28=삭제된 journey route-test(신규fail 아님), 보존 테스트(me/elite·center/letter·resilience·sprint252) 6/6 green.
+- commit: inner-main `aa19f88f`(17 D + 2 M) + outer main(이 커밋: 미러 삭제+수정 + ledger). inner push `abab5421..aa19f88f`. STEP1a sever(`abab5421`)와 분리 단독 commit. **미deploy(B3 묶음)**.
+- Authority `docs/plans/IA_RESTRUCTURE_PLAN.md` @ 32f9d6fd.
+- **[IA-B3 종합]** B3a=no-op(train이 journey day UX subsume), B3b=Comeback repoint journey→train(`5d8e49d1`), B3c=sever(`abab5421`)+delete(`aa19f88f`). Deploy 미실행 — B1~B3c 묶음 staging 대기.
+- [backlog 추가] flag#2: q235/q4 테스트 stale JSDoc 헤더+파일명("journey") — cosmetic, IA 후 rename/comment cleanup(파일명 rename = import 경로 영향 주의).
+- [다음] B1~B3c 묶음 deploy → 육안(journey 404 정상화/Comeback→train/Center·Awakening 회귀 0) → B4(remaining Growth) STEP0.
+
 ## 2026-06-08 — [IA-B3c-1a] journey 외부 live 참조 4건 sever (가역, 삭제 전 단계, S-PHASED) — COMMITTED · 미deploy(HALT)
 - `growth/page.tsx` journey 카드 제거(integrity/guidance/history 보존). `sprint252` smoke `/growth/journey` present 단언 제거(i18n-keys/dojo/root-policy 보존). `q235` mixed journey/profile만 제거(me/elite 보존). `q4` mixed journey/entries만 제거(center/letter+resilience 보존).
 - 정의 파일 미삭제(STEP1b). **ZERO-REF: 외부 live journey 참조 0 확인** → STEP1b 삭제 안전 전제 확보. bounce-back/bty_profiles 컬럼/lib-utils/freeze 미접촉.
