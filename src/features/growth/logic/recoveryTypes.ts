@@ -1,3 +1,5 @@
+// IA-B4d PRESERVE: shared recovery gate infra used by My Page.
+// Do not delete during Growth UI removal.
 /** Recovery layer — re-entry gate, not failure state. */
 
 export type RecoveryPromptReason = "low-regulation" | "repeated-friction" | "pressure-accumulation";
