@@ -3397,7 +3397,7 @@ const ko: Messages = {
     comebackTitle: "다시 만나서 반가워요",
     comebackBody:
       "잠시 쉬어간 것으로 보여요. 부담 없이, 지금 이어가던 회복 루프를 계속할 수 있어요.",
-    comebackResumeJourneyCta: "여정 이어가기",
+    comebackResumeJourneyCta: "훈련 이어가기",
     comebackNotNowCta: "나중에",
     growthNavDojoTitle: "Dojo",
     growthNavDojoLine: "지금 상태를 가늠하는 50문항",
@@ -5215,7 +5215,7 @@ const en: Messages = {
     comebackTitle: "Welcome back",
     comebackBody:
       "It looks like you stepped away for a few days. Whenever you’re ready, you can continue your recovery path—no pressure.",
-    comebackResumeJourneyCta: "Resume Journey",
+    comebackResumeJourneyCta: "Resume Training",
     comebackNotNowCta: "Not now",
     growthNavDojoTitle: "Dojo",
     growthNavDojoLine: "50-question snapshot of where you are",
