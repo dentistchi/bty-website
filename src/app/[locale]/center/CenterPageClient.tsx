@@ -9,7 +9,8 @@ import { HealingPhaseTracker } from "@/components/center/HealingPhaseTracker";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { DEAR_ME_SUBMITTED_EVENT } from "@/lib/bty/center/dearMeEvents";
-// IA-B4c: ReflectionSeed type kept for the composer's seed-capable (but currently unwired) reflection mode.
+// IA-B4c-3: latest Arena reflection seed prefills the Dear Me composer as dismissable context (no separate entry/CTA).
+import { getLatestReflectionSeed } from "@/features/growth/api/getLatestReflectionSeed";
 import type { ReflectionSeed } from "@/features/growth/logic/buildReflectionSeed";
 
 type StageState = {
@@ -402,6 +403,8 @@ function DearMeComposerModal({
   const [submitting, setSubmitting] = useState(false);
   const [reply, setReply] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // IA-B4c-3: seed prompt is dismissable context, never forced. Dismissed (or no seed) → free letter (type='letter').
+  const [promptDismissed, setPromptDismissed] = useState(false);
 
   async function handleSubmit() {
     const trimmed = letterBody.trim();
@@ -413,7 +416,8 @@ function DearMeComposerModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
-          seed
+          // Reflection only when the seed prompt is present AND not dismissed; otherwise a free letter.
+          seed && !promptDismissed
             ? { letterText: trimmed, lang, type: "reflection", seedId: seed.id }
             : { letterText: trimmed, lang }
         ),
@@ -465,9 +469,19 @@ function DearMeComposerModal({
 
         {!reply ? (
           <div className="space-y-4">
-            {seed ? (
+            {seed && !promptDismissed ? (
               <div className="rounded-xl border border-dear-sage/20 bg-dear-sage/5 px-3 py-2">
-                <p className="text-xs font-medium text-dear-charcoal m-0">{seed.promptTitle}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-xs font-medium text-dear-charcoal m-0">{seed.promptTitle}</p>
+                  <button
+                    type="button"
+                    onClick={() => setPromptDismissed(true)}
+                    aria-label={isKo ? "프롬프트 닫고 자유롭게 쓰기" : "Dismiss prompt and write freely"}
+                    className="shrink-0 text-xs leading-none text-dear-charcoal-soft hover:text-dear-charcoal rounded px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dear-sage"
+                  >
+                    ✕
+                  </button>
+                </div>
                 <p className="text-sm text-dear-charcoal-soft mt-1 m-0">{seed.promptBody}</p>
               </div>
             ) : (
@@ -545,6 +559,8 @@ export default function CenterPageClient({ locale }: { locale: string }) {
   const [resilience, setResilience] = useState<ResilienceEntry[]>([]);
   const [trainProgress, setTrainProgress] = useState<{ lastCompletedDay: number; hasSession: boolean } | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
+  // IA-B4c-3: latest reflection seed (read-only); prefills the composer as dismissable context. No separate entry point.
+  const [latestSeed, setLatestSeed] = useState<ReflectionSeed | null>(null);
 
   const refreshLetters = useCallback(async () => {
     try {
@@ -591,6 +607,21 @@ export default function CenterPageClient({ locale }: { locale: string }) {
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // IA-B4c-3: fetch latest Arena reflection seed (read-only; prefills the Dear Me composer as dismissable context).
+  useEffect(() => {
+    let cancelled = false;
+    getLatestReflectionSeed()
+      .then((s) => {
+        if (!cancelled) setLatestSeed(s);
+      })
+      .catch(() => {
+        if (!cancelled) setLatestSeed(null);
       });
     return () => {
       cancelled = true;
@@ -665,6 +696,7 @@ export default function CenterPageClient({ locale }: { locale: string }) {
         <DearMeComposerModal
           lang={lang}
           isKo={isKo}
+          seed={latestSeed}
           onClose={() => setComposerOpen(false)}
           onSubmitted={refreshLetters}
         />
