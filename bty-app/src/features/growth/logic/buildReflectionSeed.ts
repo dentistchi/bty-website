@@ -1,3 +1,4 @@
+// shared infra; see features/growth/README.md (do not delete with Growth UI)
 import type { ArenaSignal } from "@/features/my-page/logic/types";
 
 export type ReflectionFocus = "clarity" | "trust" | "regulation" | "alignment";

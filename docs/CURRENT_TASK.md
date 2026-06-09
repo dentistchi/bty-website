@@ -1,3 +1,11 @@
+## 2026-06-08 — [IA-B4b] features/growth = shared reflection-seed infra 명시 (b-stay, doc-only) — COMMITTED · 미deploy(HALT)
+- 흡수/이사-first 체인 시작. README 신설: PRODUCER Arena(`arena/signals/route.ts:32` → `lib/bty/identity/saveArenaSignalWithSeed.ts:49` → `buildReflectionSeed`), CONSUMER my-page(`MyPageLeadershipConsole.tsx:84` / `mergeLeadershipReflection.ts:19`), CONSUMER Center(post-B4). `buildReflectionSeed.ts:22` 정의, 상단 1줄 포인터 주석. naive 삭제 금지 경고.
+- b-stay = seed 코드/import 무변경. "growth" misnomer 안정화. doc-only.
+- [메모] seed 파이프가 `features/growth` + `lib/bty/identity` 양쪽 — 미래 re-home 시 양쪽 고려(b-stay라 IA-B4 범위 밖).
+- gate: tsc 0 / terminology 13 / vitest 신규실패 0(baseline 7).
+- commit: inner-main `53580ab9`(README new + buildReflectionSeed.ts 1줄) + outer main(이 커밋: 미러 + ledger). inner push `7eb80d1c..53580ab9`. **미deploy**. 다음 B4c+B4d-move(Center reflection surface 이사).
+- Authority `docs/plans/IA_RESTRUCTURE_PLAN.md` @ 8b14d13c.
+
 ## 2026-06-08 — [IA-B3c R1 Unit A] orphaned journey-content.ts 삭제 — COMMITTED · 미deploy(HALT)
 - `src/lib/journey-content.ts`(DayContent/JOURNEY_DAYS) 삭제. consumer 0(MissionCard 삭제로 orphan; `trainContent.getDayContent`는 substring false-match로 확인). journey 데이터 완전 소거(코드+i18n+data).
 - dangling 0, tsc source 0, vitest 신규실패 0(baseline 7), terminology 13. git add 명시 path(blanket `-A` 금지 — STEP1b recovery 교훈).
