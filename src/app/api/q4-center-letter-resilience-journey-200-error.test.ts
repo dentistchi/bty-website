@@ -39,14 +39,13 @@ vi.mock("@/lib/log-api-error", () => ({
 
 const { POST: postLetter } = await import("./center/letter/route");
 const { GET: getResilience } = await import("./center/resilience/route");
-const { GET: getJourneyEntries } = await import("./journey/entries/route");
 
-describe("Q4 center/letter · resilience · journey/entries — 200·에러", () => {
+describe("Q4 center/letter · resilience — 200·에러", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("letter 200, resilience 200, journey 503 when admin missing", async () => {
+  it("letter 200, resilience 200", async () => {
     mockGetLetterAuth.mockResolvedValue({ supabase: {}, userId: "u1" });
     mockSubmitCenterLetter.mockResolvedValue({
       ok: true,
@@ -81,14 +80,5 @@ describe("Q4 center/letter · resilience · journey/entries — 200·에러", ()
     expect(r2.status).toBe(200);
     const j2 = await r2.json();
     expect(j2.entries).toEqual([]);
-
-    mockGetAuthUserFromRequest.mockResolvedValue({ id: "u1" });
-    mockGetSupabaseAdmin.mockReturnValue(null);
-    const r3 = await getJourneyEntries(
-      new Request("http://localhost/api/journey/entries", { method: "GET" }),
-    );
-    expect(r3.status).toBe(503);
-    const j3 = await r3.json();
-    expect(j3.error).toBe("Database not configured");
   });
 });

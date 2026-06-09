@@ -30,25 +30,15 @@ describe("SPRINT 252 Growth·Journey·Comeback regression (C5)", () => {
     }
   });
 
-  it("/en/growth RSC: Journey + Growth-scoped card hrefs; Dojo before Journey", async () => {
+  it("/en/growth RSC: Growth-scoped card hrefs (journey retired in B3c)", async () => {
     const el = (await GrowthPage({
       params: Promise.resolve({ locale: "en" }),
     })) as ReactElement;
     const html = renderToString(el);
     expect(html.length).toBeGreaterThan(200);
-    expect(html).toContain("/en/growth/journey");
     expect(html).toContain("/en/growth/dojo");
     expect(html).toContain("/en/growth/integrity");
     expect(html).toContain("/en/growth/guidance");
-    expect(html.indexOf("/en/growth/dojo")).toBeLessThan(html.indexOf("/en/growth/journey"));
-  });
-
-  it("/ko/growth RSC: /ko/growth/journey present", async () => {
-    const el = (await GrowthPage({
-      params: Promise.resolve({ locale: "ko" }),
-    })) as ReactElement;
-    const html = renderToString(el);
-    expect(html).toContain("/ko/growth/journey");
   });
 
   it("policy: root bty-arena/page.tsx does not reference Growth Journey route or JourneyBoard", () => {
