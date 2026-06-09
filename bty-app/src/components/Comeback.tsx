@@ -77,7 +77,22 @@ export function Comeback() {
   const onResumeJourney = useCallback(async () => {
     await recordBounceBack();
     dismiss();
-    router.push(`/${locale}/growth/journey`);
+    // B3b: repoint comeback to train (journey retired). Resume at today's
+    // unlocked train day; fall back to the train landing on any failure.
+    // Fetch lives in this click handler — only runs after the modal is shown
+    // AND the user opts to resume (never on mount).
+    let target = `/${locale}/train`;
+    try {
+      const r = await fetch("/api/train/progress", { credentials: "include" });
+      const data = r.ok ? await r.json().catch(() => null) : null;
+      const day = Number(data?.todayUnlockedDay);
+      if (Number.isFinite(day) && day >= 1) {
+        target = `/${locale}/train/day/${day}`;
+      }
+    } catch {
+      // keep /train fallback
+    }
+    router.push(target);
   }, [dismiss, router, locale]);
 
   const onNotNow = useCallback(() => {

@@ -1,3 +1,12 @@
+## 2026-06-08 — [IA-B3b] 글로벌 Comeback resume target journey→train (b-keep-clean, S-PHASED) — COMMITTED · 미deploy(HALT)
+- `onResumeJourney` `/growth/journey` → `/train/day/${todayUnlockedDay}`, fallback `/train`. fetch `/api/train/progress`는 modal 표시 후 click handler 내만(mount fetch 0, 글로벌 폭증 회피).
+- localStorage 3일 감지(lib/utils)·`recordBounceBack` POST·`bounce_back_count` 유지(b-keep). 카피 `comebackResumeJourneyCta` "여정 이어가기/Resume Journey" → "훈련 이어가기/Resume Training". `comebackTitle/Body` generic(회복 루프/recovery path) 불변. freeze/lib-utils/bounce-back route/schema 미접촉.
+- gate: tsc 0 / terminology 13(신규 0) / vitest 신규실패 0(baseline 7 awakening·healing mock-chain) / journey·comeback regression smoke 4/4 PASS.
+- commit: inner-main `5d8e49d1`(2 files: Comeback.tsx, i18n.ts) + outer main(이 커밋: 미러 + ledger). inner push `6f202281..5d8e49d1`. **미deploy(B3c까지 묶음)**. 다음 B3c(journey route/component/api/lib 제거 + dead MissionCard 정리).
+- Authority `docs/plans/IA_RESTRUCTURE_PLAN.md` @ 32f9d6fd.
+- [backlog 추가] Dear Me card `/center` "Invalid Date" 표시(letter 날짜 파싱 추정). IA-B3 scope 밖, IA 후 독립 fix.
+- [관찰 메모] `bounce_back_count`: B3c 후 write-only(live display 0, orphaned JourneyBoard만 표시했음). keep 결정(retention 분석용). display 부활은 B4 Center 검토.
+
 ## 2026-06-08 — [IA-B2 결정3] Awakening 자격 = train 28 distinct 완주 (REPLACE/S-WIDE) — COMMITTED · 미deploy(HALT)
 - `getSecondAwakening` eligible를 emotional_sessions(30일/10세션) → `train_day_completions` distinct day==28로 교체. `completedDays.length`(max 아님 — [1,2,28]=3 테스트로 증명).
 - 신규 read-only accessor `getTrainDistinctCompletedDayCount`(lib/bty/healing, user RLS own-row policy 20260315000001 근거 → user client로 자기 행 읽기 정상). display·gate single truth. userDay/sessionCount 호환 유지(display-only), 5 소비처 non-breaking. `REQUIRED_DAY/MIN_SESSIONS` 제거(zero-ref). 403 NOT_ELIGIBLE contract 보존(UI 응답 불변). grandfather 부재 확정(STEP0b, G1 무동작). freeze(엔진/healing progression/train startDateISO temp hack) 미접촉.
