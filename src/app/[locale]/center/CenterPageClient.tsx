@@ -25,7 +25,8 @@ type LetterItem = {
   body: string;
   reply: string | null;
   locale: string;
-  created_at: string;
+  // IA-CENTER-FINAL: /api/dear-me/letters returns camelCase `createdAt` (was read as created_at → Invalid Date).
+  createdAt: string;
 };
 
 /** Fields match /api/assessment/submissions response shape (camelCase from service mapper). */
@@ -35,12 +36,6 @@ type AssessmentItem = {
   pattern: string;
   track: string;
   createdAt: string;
-};
-
-type ResilienceEntry = {
-  date: string;
-  level: "high" | "mid" | "low";
-  source: string;
 };
 
 function StageContextCard({ stage, isKo }: { stage: StageState; isKo: boolean }) {
@@ -84,7 +79,7 @@ function DearMeCard({
         : letter.body
       : null;
   const dateStr = letter
-    ? new Date(letter.created_at).toLocaleDateString(isKo ? "ko-KR" : "en-US", {
+    ? new Date(letter.createdAt).toLocaleDateString(isKo ? "ko-KR" : "en-US", {
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -123,7 +118,7 @@ function DearMeCard({
         <>
           <p className="text-sm text-dear-charcoal leading-relaxed m-0">{excerpt}</p>
           {dateStr && (
-            <time className="text-xs text-dear-charcoal-soft mt-1 block" dateTime={letter!.created_at}>
+            <time className="text-xs text-dear-charcoal-soft mt-1 block" dateTime={letter!.createdAt}>
               {dateStr}
             </time>
           )}
@@ -135,106 +130,6 @@ function DearMeCard({
             : "No letters yet. Write what's on your mind."}
         </p>
       )}
-    </div>
-  );
-}
-
-function ResilienceCard({ entries, locale, isKo }: { entries: ResilienceEntry[]; locale: string; isKo: boolean }) {
-  const last30 = entries.slice(-30);
-  const last7 = last30.slice(-7);
-
-  function dotColor(level: "high" | "mid" | "low"): string {
-    if (level === "high") return "#14b8a6";
-    if (level === "mid") return "#f59e0b";
-    return "#ef4444";
-  }
-
-  function levelLabel(level: "high" | "mid" | "low"): string {
-    if (isKo) return level === "high" ? "높음" : level === "mid" ? "보통" : "낮음";
-    return level;
-  }
-
-  const avgLevel: "high" | "mid" | "low" | null = (() => {
-    if (last7.length === 0) return null;
-    const score = last7.reduce((s, e) => s + (e.level === "high" ? 3 : e.level === "mid" ? 2 : 1), 0) / last7.length;
-    if (score >= 2.5) return "high";
-    if (score >= 1.5) return "mid";
-    return "low";
-  })();
-
-  const trend: "up" | "flat" | "down" | null = (() => {
-    if (last7.length < 4) return null;
-    const half = Math.floor(last7.length / 2);
-    const firstHalf = last7.slice(0, half);
-    const secondHalf = last7.slice(half);
-    const avg = (arr: ResilienceEntry[]) =>
-      arr.reduce((s, e) => s + (e.level === "high" ? 3 : e.level === "mid" ? 2 : 1), 0) / arr.length;
-    const diff = avg(secondHalf) - avg(firstHalf);
-    if (diff > 0.3) return "up";
-    if (diff < -0.3) return "down";
-    return "flat";
-  })();
-
-  return (
-    <div
-      className="rounded-xl border border-dear-sage/20 bg-dear-sage/5 px-4 py-3"
-      role="region"
-      aria-label={isKo ? "에너지 기록" : "Energy log"}
-    >
-      <div className="flex items-center mb-2">
-        <div className="text-sm font-semibold text-dear-charcoal">
-          {isKo ? "에너지 기록" : "Energy log"}
-        </div>
-      </div>
-      {last7.length > 0 ? (
-        <>
-          <div
-            className="flex gap-2 items-end flex-wrap mb-2"
-            role="list"
-            aria-label={isKo ? "최근 7일 에너지" : "Last 7 days energy"}
-          >
-            {last7.map((entry) => (
-              <div
-                key={entry.date}
-                role="listitem"
-                title={`${entry.date}: ${levelLabel(entry.level)}`}
-                aria-label={`${entry.date}: ${levelLabel(entry.level)}`}
-                style={{
-                  width: 14,
-                  height: 14,
-                  borderRadius: "50%",
-                  background: dotColor(entry.level),
-                  flexShrink: 0,
-                }}
-              />
-            ))}
-          </div>
-          <div className="flex items-center gap-3 mt-1">
-            {avgLevel && (
-              <span className="text-xs text-dear-charcoal-soft">
-                {isKo ? "7일 평균" : "7-day avg"}: <span style={{ color: dotColor(avgLevel), fontWeight: 600 }}>{levelLabel(avgLevel)}</span>
-              </span>
-            )}
-            {trend && (
-              <span className="text-xs text-dear-charcoal-soft">
-                {trend === "up" ? (isKo ? "↑ 개선 중" : "↑ improving") : trend === "down" ? (isKo ? "↓ 주의 필요" : "↓ declining") : (isKo ? "→ 안정" : "→ stable")}
-              </span>
-            )}
-            <span className="text-xs text-dear-charcoal-soft opacity-60">
-              {isKo ? `${last30.length}일 기록` : `${last30.length} days logged`}
-            </span>
-          </div>
-        </>
-      ) : (
-        <p className="text-sm text-dear-charcoal-soft m-0">
-          {isKo ? "아직 기록이 없어요." : "No entries yet."}
-        </p>
-      )}
-      <p className="text-xs text-dear-charcoal-soft mt-2 opacity-70 m-0">
-        {isKo
-          ? "편지를 쓸 때 에너지(1-5)를 입력하면 기록돼요."
-          : "Energy is logged when you write a letter with an energy rating."}
-      </p>
     </div>
   );
 }
@@ -556,7 +451,6 @@ export default function CenterPageClient({ locale }: { locale: string }) {
   const [stage, setStage] = useState<StageState | null>(null);
   const [letters, setLetters] = useState<LetterItem[]>([]);
   const [submissions, setSubmissions] = useState<AssessmentItem[]>([]);
-  const [resilience, setResilience] = useState<ResilienceEntry[]>([]);
   const [trainProgress, setTrainProgress] = useState<{ lastCompletedDay: number; hasSession: boolean } | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   // IA-B4c-3: latest reflection seed (read-only); prefills the composer as dismissable context. No separate entry point.
@@ -584,21 +478,16 @@ export default function CenterPageClient({ locale }: { locale: string }) {
       fetch("/api/assessment/submissions", { credentials: "include" })
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
-      fetch("/api/center/resilience?period=30", { credentials: "include" })
-        .then((r) => (r.ok ? r.json() : null))
-        .catch(() => null),
       fetch("/api/train/progress", { credentials: "include" })
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
     ])
-      .then(([stageData, lettersData, assessmentData, resilienceData, trainData]) => {
+      .then(([stageData, lettersData, assessmentData, trainData]) => {
         if (cancelled) return;
         if (stageData) setStage(stageData as StageState);
         if (Array.isArray(lettersData?.letters)) setLetters(lettersData.letters as LetterItem[]);
         if (Array.isArray(assessmentData?.submissions))
           setSubmissions(assessmentData.submissions as AssessmentItem[]);
-        if (Array.isArray(resilienceData?.entries))
-          setResilience(resilienceData.entries as ResilienceEntry[]);
         setTrainProgress(
           trainData
             ? { lastCompletedDay: Number(trainData.lastCompletedDay ?? 0), hasSession: !!trainData.hasSession }
@@ -678,7 +567,7 @@ export default function CenterPageClient({ locale }: { locale: string }) {
                   {t.currentStateTitle}
                 </h2>
                 {stage && <StageContextCard stage={stage} isKo={isKo} />}
-                <HealingPhaseTracker locale={lang} embedded />
+                <HealingPhaseTracker locale={lang} embedded compact />
               </section>
               <DearMeCard
                 letter={letters[0] ?? null}
@@ -686,7 +575,6 @@ export default function CenterPageClient({ locale }: { locale: string }) {
                 isKo={isKo}
                 onWrite={() => setComposerOpen(true)}
               />
-              <ResilienceCard entries={resilience} locale={locale} isKo={isKo} />
               <AssessmentCard assessment={submissions[0] ?? null} locale={locale} isKo={isKo} />
             </div>
           )}
