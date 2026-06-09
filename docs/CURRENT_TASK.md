@@ -1,3 +1,12 @@
+## 2026-06-09 — [IA-B4e-1] /growth sever — deletion-enabler만(가역) + B4f airlock fold — COMMITTED · 미deploy(HALT)
+- airlock(B4f): `useArenaSession` reviewReflection 제거(dead 0 callers) + unused router import. sprint252 smoke 삭제(GrowthPage import). e2e sever: recovery-flow.spec 삭제, guards.spec `/growth/reflection/write` 테스트만 제거(arena guard 유지) — Unit B(chromium-comeback) 무관, bty-loop project.
+- ⚠️ **[범위 교정 — tsc-ordering]** barrel prune + i18n sweep을 B4e-1→B4e-2 이동: REMOVE UI(growth recovery/reflection/history)가 barrel(`@/features/growth/logic`) 경유 import + hub가 `growthCard*` i18n 소비 → 아직 존재하는 파일이 소비하므로 "먼저 sever" 불가, 삭제와 atomic. tsc 0 gate가 강제 드러냄(observation>inference). my-page `mergeLeadershipReflection`이 `growthReflectionFocus{Trust,Clarity,Regulation,Alignment}` 사용 → B4e-2 sweep서 PRESERVE.
+- **ZERO-REF: /growth 외부-live ref 0**(REMOVE 내부 hub card/cross-link/API + Unit B journey e2e만 잔류) → B4e-2 비가역 삭제 안전 게이트 충족. PRESERVE(gate3/seed/my-page/Dear Me/seeds-latest) 미접촉.
+- [relocate 판단] sprint252의 bty-arena policy 단언(`bty-arena/page.tsx`에 growth/journey·JourneyBoard 미참조 검증) = growth-independent. journey 이미 제거라 redundant 또는 bty-arena smoke로 relocate — Commander 판단(미실행).
+- gate: tsc 0 / terminology 13 / vitest 3413(신규실패 0, baseline 7, sprint252 3 의도 감소).
+- commit: inner-main `7a7b09f6`(M2: useArenaSession, guards.spec + D2: sprint252, recovery-flow.spec) + outer main(이 커밋: 미러 + ledger). inner push `d1eb3c8b..7a7b09f6`. **Deploy 미실행(B4 묶음)**. 다음 B4e-2(atomic delete + barrel prune + i18n sweep, 비가역).
+- Authority `docs/plans/IA_RESTRUCTURE_PLAN.md` @ d8585dd7.
+
 ## 2026-06-09 — [IA-B4d] recovery gate PRESERVE lock (삭제 0, Approach B/b2 마커) — COMMITTED · 미deploy(HALT)
 - gate 3파일(`checkRecoveryTrigger`/`recoveryCompoundSignal`/`recoveryTypes`, `features/growth/logic`) 상단 PRESERVE 마커. gate=pure(signals+reflections), my-page(`getMyPageIdentityState`) live 소비, recovery UI/write 독립 → growth UI 제거 생존. b-stay 보존.
 - **[B4e 제거 대상 fold]** recovery UI/write: `/growth/recovery` route + `RecoveryEntryScreen` + `saveRecoveryEntry` + `/api/bty/growth/recovery` + orphan helpers(`buildRecoveryPrompt`/`buildRecoveryEntry`/`recoveryStorage`). cross-link(reflection:58/history:52 `onOpenRecovery`)은 B4e에서 reflection/history와 atomic 제거 → sever 불필요. `bty_recovery_entries` = dead table 예정(no drop).
