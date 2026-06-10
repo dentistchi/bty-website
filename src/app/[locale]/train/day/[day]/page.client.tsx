@@ -207,9 +207,17 @@ export default function TrainDayPage() {
             ← {locale === "ko" ? "Center" : "Center"}
           </a>
         </div>
-        <div style={{ opacity: 0.7, marginBottom: 16 }}>
+        <div style={{ opacity: 0.7, marginBottom: 8 }}>
           Unlocked today: Day {progress?.todayUnlockedDay ?? 1}
         </div>
+        {/* DECISION6 C2-5: review past Dear Me reflections (full History; Day-anchor jump = backlog). */}
+        <a
+          href={`/${locale}/center/letters`}
+          style={{ display: "inline-block", marginBottom: 16, fontSize: 12, color: "#0f766e", textDecoration: "none" }}
+          aria-label={locale === "ko" ? "지난 Dear Me 기록 복습" : "Review past Dear Me entries"}
+        >
+          {locale === "ko" ? "지난 reflection 복습 →" : "Review past reflections →"}
+        </a>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => {

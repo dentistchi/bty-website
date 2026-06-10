@@ -46,10 +46,44 @@ export default function TrainDayReflectionSet({
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(false);
+
+  // Prefill from the existing saved reflection when the form opens, so a partial
+  // re-edit does not overwrite prior answers (responses is upserted whole).
+  // Match saved answers to the current asset questions by question text; saved
+  // questions no longer in the asset are dropped (will not be re-saved).
+  React.useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/dear-me/day-reflection?day=${day}`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { responses?: { questions?: { q: string; a: string }[]; finalReflection?: string } | null } | null) => {
+        if (cancelled) return;
+        const resp = data?.responses;
+        if (resp) {
+          const answerMap: Record<string, string> = {};
+          (resp.questions ?? []).forEach((qa) => {
+            if (qa && typeof qa.q === "string") answerMap[qa.q] = typeof qa.a === "string" ? qa.a : "";
+          });
+          setAnswers(questionPrompts.map((q) => answerMap[q] ?? ""));
+          setFinalReflection(resp.finalReflection ?? "");
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // questionPrompts is stable per `day`; excluded to avoid a refetch loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, day]);
 
   const hasContent =
     finalReflection.trim().length > 0 || answers.some((a) => a.trim().length > 0);
-  const canSave = hasContent && !saving;
+  const canSave = hasContent && !saving && !loading;
 
   const setAnswer = (i: number, v: string) => {
     setAnswers((prev) => {
@@ -127,7 +161,9 @@ export default function TrainDayReflectionSet({
         <div style={{ borderRadius: 16, border: "1px solid #e2e8f0", padding: 16, maxWidth: 560 }}>
           <div style={{ fontWeight: 700, marginBottom: 4, fontSize: 16 }}>{title}</div>
           <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 14 }}>
-            {isKo ? "하나의 성찰로 마무리해요. 빈 칸은 비워둬도 괜찮아요." : "End with one reflection. Blank fields are fine."}
+            {loading
+              ? isKo ? "이전 기록을 불러오는 중…" : "Loading your previous entry…"
+              : isKo ? "하나의 성찰로 마무리해요. 빈 칸은 비워둬도 괜찮아요." : "End with one reflection. Blank fields are fine."}
           </div>
 
           {questionPrompts.map((q, i) => (
@@ -142,6 +178,7 @@ export default function TrainDayReflectionSet({
                 id={`dr-q-${day}-${i}`}
                 value={answers[i] ?? ""}
                 onChange={(e) => setAnswer(i, e.target.value)}
+                disabled={loading}
                 rows={2}
                 style={{ ...inputStyle, minHeight: 56 }}
               />
@@ -162,6 +199,7 @@ export default function TrainDayReflectionSet({
                 setFinalReflection(e.target.value);
                 if (saved) setSaved(false);
               }}
+              disabled={loading}
               rows={5}
               placeholder={isKo ? "여기에 통합 성찰을 적어보세요…" : "Write your integrated reflection here…"}
               style={{ ...inputStyle, minHeight: 110 }}
