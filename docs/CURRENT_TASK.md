@@ -1,3 +1,11 @@
+## 2026-06-10 — [LANE-A-1] QA Day preview gate (admin-only, fail-closed) — COMMITTED · 미deploy·미push
+- **[CLOSED]** 22-Day 콘텐츠 authoring(A-2/A-3) 시 잠긴 Day를 unlock-gate 없이 열기 위한 admin preview. `train/day/[day]/page.tsx`(서버 RSC 게이트)에 `?preview=1` + admin-email allowlist(`BTY_ADMIN_EMAILS`, **non-empty 필수**) → 잠긴 Day의 **redirect만 skip**. `train_day_completions` 무변경(read-only `.select`만), 렌더 콘텐츠 동일(day-keyed/gate-independent). searchParams prop 추가 + user.email 소문자 비교.
+- 🔴 **fail-closed 6-case 입증:** admin+?preview=1+locked→렌더(의도) / non-admin+?preview=1→**REDIRECT**(critical) / no-param→REDIRECT / empty-allowlist→**REDIRECT**(critical, open-to-all 차단) / unauth→layout 로그인 리다이렉트 / 완료상태 mutation 0. 서버사이드 게이트라 브라우저서 우회 불가.
+- **Infra Mode 무관:** middleware/lib-auth/rbac/authz 무접촉. **substitution:** `getAdminEmails()`가 rbac.ts에서 미export(module-private) + "no rbac edit" 제약 → page.tsx 내 동일 allowlist read 인라인(env `BTY_ADMIN_EMAILS`, 동일 split/trim/lowercase/filter). rbac.ts 무변경.
+- gate tsc 0 / lint:terminology 13(+0). Inner-main `debd1ada`(1 file) + outer main 미러. **미배포·미push**(A lane mid).
+- ⚠️ **BACKLOG(신규, LOW):** DRY divergence — 인라인 allowlist 정규화가 rbac.ts `getAdminEmails`와 중복(현재 byte-identical). 향후 `getAdminEmails` export로 reconcile(= rbac.ts 터치 authorization 필요).
+- [visual] admin/non-admin 양쪽 ?preview=1 동작(admin=잠긴 Day 열림, non-admin=리다이렉트) = A 배포 후 Commander staging 확인. **목적: A-2/A-3 22-Day authoring gate-free QA 언락.**
+
 ## 2026-06-10 — [LANE-B-2] DEPLOYED — History day-anchor deep-link (B-2-1 consumer + B-2-2 producer) — staging Version `bdcb3154` + 3-way PASS
 - **[DEPLOYED]** B-2 lane(B-2-1 consumer: `LettersClient` `?day=N` → day_reflection(item.day===N) 검색·날짜 pre-select·expand·scroll / B-2-2 producer: Train review-link href `+?day=${day}`) staging 배포 완료. **end-to-end day-anchor deep-link LIVE.** (본 entry가 하위 B-2-1/B-2-2 `미deploy·미push` 항목 상태를 supersede; 하위는 history로 보존.)
 - **Push:** origin/inner-main `be63f934..62468eba` (inner-main only, origin/main 미접촉) · origin/main `ecb8157..b4bbe82` (outer ledger). **Deploy:** `rm -rf .open-next` → prebuild(check-env 0) → cf:build(0) → cf:deploy(0) → Worker **bty-arena-staging** Version **`bdcb3154-8491-454a-a127-c9033d50dd2c`** (production-effective; 단일 공유 백엔드, 별도 prod worker 부재).
