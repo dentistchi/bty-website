@@ -1,3 +1,11 @@
+## 2026-06-10 — [LANE-B-2-2] Train review-link day-anchor (producer) — CLOSES B-2 — COMMITTED · 미deploy·미push(B-2 deploy dispatch 대기)
+- **[CLOSED]** Train "지난 reflection 복습" 링크가 History를 해당 Day로 deep-link하도록 producer 절반 완료. `train/day/[day]/page.client.tsx` review-link href `/${locale}/center/letters` → `/${locale}/center/letters?day=${day}` (`day`=clampDay 라우트 파라미터 :138, 항상 유효 1~28 → href well-formed). :250 주석 갱신("Day-anchor jump = backlog" → deep-link 설명). 2줄(href+주석)만 변경.
+- **end-to-end deep-link 완성:** producer `?day=N` ↔ consumer(B-2-1) `useSearchParams`→day_reflection(item.day===N) 검색→날짜 pre-select+expand+scroll. day_reflection 없으면 graceful no-op(정상 리스트).
+- freeze: B-1 코드(① order 클래스 / ② completion 생성 effect / ③a 토글 active / ③b scroll effect) 같은 파일이나 **무접촉** · 링크 가시 텍스트 무변경 · LettersClient/API/route/service/schema/dead-component 무접촉. gate tsc 0 / lint:terminology 13(+0). Inner-main `62468eba`(1 file) + outer main 미러. **미배포·미push**.
+- **B-2 lane 커밋셋(로컬, 미push):** B-2-1 consumer `1d4f9402`/`8f2a386` · B-2-2 producer `62468eba`/`<this outer>`. push+deploy = 별도 B-2 deploy dispatch.
+- ⚠️ **carried backlog:** History deep-link ↔ `getLetterHistory limit=20` — 타겟이 최근 20편지보다 오래되면 no-op(앵커 안 됨). LOW(현재) → 트리거 시 MED. 향후 pagination/day-targeted fetch.
+- [visual] (Commander ee9d2075, auth-gated) **PENDING:** Train→리뷰링크 탭→History가 해당 Day reflection으로 캘린더 선택+expand+scroll.
+
 ## 2026-06-10 — [LANE-B-2-1] History day-anchor deep-link (consumer) — COMMITTED · 미deploy·미push
 - **[CLOSED]** Train "지난 reflection 복습" 링크가 날짜-무차별 캘린더 리스트로만 가던 문제의 consumer 절반. `center/letters/LettersClient.tsx`에 `useSearchParams` `?day=N` 추가 → letters 로드 후 `day_reflection`(item.day===N) 타겟 검색 → 날짜 pre-select(`setSelectedDate(dayKey(target.createdAt))`, (나)-2) + expand(`setExpandedId`) + scroll. 스크롤 = ③b 이디엄(reduced-motion + `block:"start"`), **mobile 가드 없음 → desktop+mobile 모두**((나)-1). row에 `id={letter-${id}}` 단일 attr 추가(유일한 마크업 변경).
 - 🔴 async ordering(MED 리스크) 종결: **결정적 2-effect** — deep-link effect [loading,letters,dayParam]가 타겟 확정+`pendingScrollIdRef` 큐잉, scroll effect [visible]가 `visible.some(id)` + `getElementById` **이중 가드**로 row가 실제 DOM에 존재하는 렌더에서만 1회 스크롤(미존재 시 무해 리턴·재시도). **fire-once** `didDeepLinkRef`(dayParam별) → 재fetch/재렌더 스크롤 안 함, 유저 조작 미충돌. `?day` 없으면 기존 동작 완전 동일.
