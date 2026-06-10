@@ -316,7 +316,14 @@ export default function TrainDayPage() {
             type="button"
             onClick={() => setShowCompletionSummary(false)}
             aria-label={t.coachChatLabel}
-            style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #ddd" }}
+            aria-pressed={!showCompletionSummary}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 10,
+              border: "1px solid #ddd",
+              background: showCompletionSummary ? "white" : "black",
+              color: showCompletionSummary ? "black" : "white",
+            }}
           >
             {locale === "ko" ? "코치 대화" : "Coach chat"}
           </button>
@@ -324,7 +331,14 @@ export default function TrainDayPage() {
             type="button"
             onClick={() => setShowCompletionSummary(true)}
             aria-label={t.completionSummaryLabel}
-            style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #ddd" }}
+            aria-pressed={showCompletionSummary}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 10,
+              border: "1px solid #ddd",
+              background: showCompletionSummary ? "black" : "white",
+              color: showCompletionSummary ? "white" : "black",
+            }}
           >
             {locale === "ko" ? "완료 요약" : "Completion summary"}
           </button>
