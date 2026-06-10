@@ -1,6 +1,6 @@
-## 2026-06-10 — [DECISION6-C2-4] 5 Day reflection 질문 세트 (Day 1/12/24/25/28) — 콘텐츠 파일럿 — COMMITTED · deploy 인가대기(HALT)
+## 2026-06-10 — [DECISION6-C2-4] 5 Day reflection 질문 세트 (Day 1/12/24/25/28) — 콘텐츠 파일럿 — COMMITTED · DEPLOYED `e0b95a45`
 - **[CLOSED]** reflection-questions.json += Day 1/12/24/25/28 (title/questions/finalPrompt ko/en). Day4 불변. 커버리지 6/28(나머지 22 open-only, 점진). BTY voice(Dr. Chi 검토): 자기비난 금지/의미 탐색/다음 한 걸음/Q=재료 Final=통합. Day1↔Day28 수미상관(나에게 건네는 말). 흐름 알아차림(1)→이해(12)→준비(24)→습관(25)→통합(28).
-- asset-only(코드 0), 폼 static import 자동 인식. gate JSON valid/tsc0/vitest76 신규0/term13. Authority @ plan 848fd69. Inner `39067723`. Deploy = 인가 후(Version UUID 후속). e2e: Day 1/12/24/25/28 질문 렌더 + 저장(Commander 육안).
+- asset-only(코드 0), 폼 static import 자동 인식. gate JSON valid/tsc0/vitest76 신규0/term13. Authority @ plan 848fd69. Inner `39067723`. **Deploy staging Version `e0b95a45` (2026-06-10T15:18Z).** 3-way: versions tail=e0b95a45 / build source=39067723 / live literal PASS(train/day chunk Day12 "실망시키고 싶지 않" + Day28 "걸어온 나" + Day24 "편이 되어주고 싶나요"). e2e: Day 1/12/24/25/28 질문 렌더 + 저장(Commander 육안).
 - [backlog] reflection-questions.json 나머지 22 Day 점진 authoring.
 
 ## 2026-06-10 — [DECISION6-C2-5] Day Reflection 폼 prefill (재편집 데이터 손실 버그 fix) — COMMITTED · DEPLOYED `e4dfd8ca`
