@@ -103,3 +103,42 @@ export async function submitDayReflection(
 
   return { ok: true, letterId: upserted?.id ?? null };
 }
+
+export type GetDayReflectionInput = {
+  userId: string;
+  day: number;
+  source?: "train" | "arena" | "center";
+};
+
+/**
+ * Fetch the existing Day Reflection Set for (user, day, source) — used to prefill
+ * the form on re-edit so a partial save does not overwrite prior answers. Returns
+ * null when none exists. RLS SELECT(own) gates access; userId filter is explicit
+ * (admin client not used here — caller passes the authed user's client).
+ */
+export async function getDayReflection(
+  supabase: SupabaseClient,
+  input: GetDayReflectionInput,
+): Promise<{ ok: true; responses: DayReflectionResponses | null } | { ok: false; error: string }> {
+  const day = Number(input.day);
+  if (!Number.isFinite(day) || day < 1 || day > 28) {
+    return { ok: false, error: "invalid_day" };
+  }
+  const source = input.source === "arena" || input.source === "center" ? input.source : "train";
+
+  const { data, error } = await supabase
+    .from("dear_me_letters")
+    .select("responses")
+    .eq("user_id", input.userId)
+    .eq("day", day)
+    .eq("source", source)
+    .eq("type", "day_reflection")
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  const responses = (data?.responses ?? null) as DayReflectionResponses | null;
+  return { ok: true, responses };
+}

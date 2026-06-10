@@ -26,8 +26,10 @@ export {
 
 export {
   submitDayReflection,
+  getDayReflection,
   type SubmitDayReflectionInput,
   type SubmitDayReflectionResult,
+  type GetDayReflectionInput,
   type DayReflectionResponses,
   type DayReflectionQA,
 } from "./dayReflectionService";
