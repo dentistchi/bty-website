@@ -1,6 +1,6 @@
-## 2026-06-10 — [DECISION6-C2-5] Day Reflection 폼 prefill (재편집 데이터 손실 버그 fix) — COMMITTED · deploy 인가대기(HALT)
+## 2026-06-10 — [DECISION6-C2-5] Day Reflection 폼 prefill (재편집 데이터 손실 버그 fix) — COMMITTED · DEPLOYED `e4dfd8ca`
 - **[CLOSED]** 버그: 재편집 빈 폼 → 일부 입력+Save → 통째 upsert가 기존 답 덮어씀(손실). 근본=prefill 부재. fix: GET ?day=N + getDayReflection(maybeSingle user/day/train/day_reflection, RLS SELECT own) + 폼 useEffect prefill(q 문자열 매칭 answerMap[q], unmatched saved q drop, 로딩 disabled 깜빡임 방지, deps [open,day]). POST/submitDayReflection 통째 upsert **미변경**(prefill로 전 답 폼 존재 → Q2만 수정해도 Q1/Q3 보존, merge 불필요). 복습 링크 사이드바→/center/letters fold.
-- freeze(completion/markTodayComplete/측정/healing 미접촉, GET=read-only). gate tsc0/vitest76 신규0/term13. Authority @ plan 848fd69. Inner `00ab3a4d`. Deploy = 인가 후(Version UUID 후속). e2e: Q1A/Q2B/Q3C→Q2만 수정→Q1A/Q2'/Q3C 보존(Commander 육안).
+- freeze(completion/markTodayComplete/측정/healing 미접촉, GET=read-only). gate tsc0/vitest76 신규0/term13. Authority @ plan 848fd69. Inner `00ab3a4d`. **Deploy staging Version `e4dfd8ca` (2026-06-10T13:18Z).** 3-way: versions tail=e4dfd8ca / build source=00ab3a4d / live literal PASS(train/day chunk "이전 기록을 불러오는 중" prefill loading + "지난 reflection 복습" link + "day-reflection?day=" GET path). e2e: Q1A/Q2B/Q3C→Q2만 수정→Q1A/Q2'/Q3C 보존(Commander 육안).
 - [backlog] 🔴 28일 재수강 충돌(unique(user,day,source) → 재수강 시 옛 답 prefill, 회차 키 미설계, LOW post-MVP), Day-anchor 점프, History 개별 수정/삭제[B], 질문별 개별저장[C] prefill후 재판단, getDayReflection/GET·POST route 테스트, TrainDayCapture.tsx prune.
 
 ## 2026-06-09 — [DECISION6-C2-3] History shape 분기 (day_reflection Q/A 카드) — C2 엔진 3/4 — COMMITTED · DEPLOYED `b967d7bd`
