@@ -211,6 +211,25 @@ export default function TrainDayPage() {
     generateCompletionSummary({ day, lessonText: lessonText ?? "" });
   }, [showCompletionSummary, completionSummary, day, lessonText, generateCompletionSummary]);
 
+  // ③b: scroll the RIGHT Coach/Completion <aside> into view when the toggle changes
+  // on mobile. One ref/effect covers both the center buttons AND the right-aside pills
+  // because both drive showCompletionSummary. `didMountRef` skips the first run so page
+  // load never auto-scrolls; the media query gates to the single-column stack only, so
+  // desktop md+ (three-column) never auto-scrolls.
+  const panelAsideRef = React.useRef<HTMLElement | null>(null);
+  const didMountRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+    if (typeof window === "undefined") return;
+    // Tailwind md = 768px (no screens override) → mobile single-column active at ≤767px.
+    if (!window.matchMedia("(max-width: 767px)").matches) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    panelAsideRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  }, [showCompletionSummary]);
+
   return (
     <div className="grid grid-cols-1 min-h-screen md:h-screen md:grid-cols-[360px_1fr_420px]">
       {/* LEFT: Sidebar */}
@@ -373,7 +392,7 @@ export default function TrainDayPage() {
       </main>
 
       {/* RIGHT: Chat / Completion Summary */}
-      <aside className="order-2 md:order-3" role="region" aria-label={t.sidebarPanelLabel} style={{ borderLeft: "1px solid #eee", padding: 16, overflow: "auto" }}>
+      <aside ref={panelAsideRef} className="order-2 md:order-3" role="region" aria-label={t.sidebarPanelLabel} style={{ borderLeft: "1px solid #eee", padding: 16, overflow: "auto" }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <button
             type="button"
