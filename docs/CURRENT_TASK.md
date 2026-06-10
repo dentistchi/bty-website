@@ -1,3 +1,8 @@
+## 2026-06-10 — [DECISION6-C2-4] 5 Day reflection 질문 세트 (Day 1/12/24/25/28) — 콘텐츠 파일럿 — COMMITTED · deploy 인가대기(HALT)
+- **[CLOSED]** reflection-questions.json += Day 1/12/24/25/28 (title/questions/finalPrompt ko/en). Day4 불변. 커버리지 6/28(나머지 22 open-only, 점진). BTY voice(Dr. Chi 검토): 자기비난 금지/의미 탐색/다음 한 걸음/Q=재료 Final=통합. Day1↔Day28 수미상관(나에게 건네는 말). 흐름 알아차림(1)→이해(12)→준비(24)→습관(25)→통합(28).
+- asset-only(코드 0), 폼 static import 자동 인식. gate JSON valid/tsc0/vitest76 신규0/term13. Authority @ plan 848fd69. Inner `39067723`. Deploy = 인가 후(Version UUID 후속). e2e: Day 1/12/24/25/28 질문 렌더 + 저장(Commander 육안).
+- [backlog] reflection-questions.json 나머지 22 Day 점진 authoring.
+
 ## 2026-06-10 — [DECISION6-C2-5] Day Reflection 폼 prefill (재편집 데이터 손실 버그 fix) — COMMITTED · DEPLOYED `e4dfd8ca`
 - **[CLOSED]** 버그: 재편집 빈 폼 → 일부 입력+Save → 통째 upsert가 기존 답 덮어씀(손실). 근본=prefill 부재. fix: GET ?day=N + getDayReflection(maybeSingle user/day/train/day_reflection, RLS SELECT own) + 폼 useEffect prefill(q 문자열 매칭 answerMap[q], unmatched saved q drop, 로딩 disabled 깜빡임 방지, deps [open,day]). POST/submitDayReflection 통째 upsert **미변경**(prefill로 전 답 폼 존재 → Q2만 수정해도 Q1/Q3 보존, merge 불필요). 복습 링크 사이드바→/center/letters fold.
 - freeze(completion/markTodayComplete/측정/healing 미접촉, GET=read-only). gate tsc0/vitest76 신규0/term13. Authority @ plan 848fd69. Inner `00ab3a4d`. **Deploy staging Version `e4dfd8ca` (2026-06-10T13:18Z).** 3-way: versions tail=e4dfd8ca / build source=00ab3a4d / live literal PASS(train/day chunk "이전 기록을 불러오는 중" prefill loading + "지난 reflection 복습" link + "day-reflection?day=" GET path). e2e: Q1A/Q2B/Q3C→Q2만 수정→Q1A/Q2'/Q3C 보존(Commander 육안).

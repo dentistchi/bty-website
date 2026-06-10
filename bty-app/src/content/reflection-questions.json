@@ -7,5 +7,49 @@
       { "en": "What would someone who cares about me say?", "ko": "나를 진심으로 아끼는 사람이라면 내게 뭐라고 말해줄까요?" }
     ],
     "finalPrompt": { "en": "What phrase do I want to carry with me today?", "ko": "오늘 내가 마음에 품고 가고 싶은 문장은 무엇인가요?" }
+  },
+  "1": {
+    "title": { "en": "Notice How I Speak to Myself", "ko": "나에게 건네는 말 알아차리기" },
+    "questions": [
+      { "en": "What did I say to myself today when something went wrong?", "ko": "오늘 무언가 어긋났을 때, 나는 나에게 어떤 말을 건넸나요?" },
+      { "en": "If a close friend had spoken to themselves that way, what would I have wanted to tell them?", "ko": "가까운 친구가 자신에게 그렇게 말했다면, 나는 그 친구에게 무슨 말을 해주고 싶었을까요?" }
+    ],
+    "finalPrompt": { "en": "What words do I most want to offer myself, right now, today?", "ko": "오늘의 나에게, 지금 가장 건네주고 싶은 말은 무엇인가요?" }
+  },
+  "12": {
+    "title": { "en": "Understand the Pressure to Be Perfect", "ko": "완벽해야 한다는 마음 들여다보기" },
+    "questions": [
+      { "en": "Whose expectations was I most afraid of letting down?", "ko": "나는 누구의 기대를 실망시키고 싶지 않았나요?" },
+      { "en": "Has the pressure to be perfect ever protected me — and what has it quietly taken away?", "ko": "완벽해야 한다는 마음이 나를 지켜준 적도 있나요? 그리고 그것이 조용히 빼앗아간 것은 무엇인가요?" },
+      { "en": "If it were okay not to be perfect, what would I let myself do?", "ko": "완벽하지 않아도 괜찮다면, 나는 나에게 무엇을 허락하고 싶나요?" }
+    ],
+    "finalPrompt": { "en": "What do I want to carry forward, now that I see where this pressure came from?", "ko": "이 마음이 어디서 왔는지 알게 된 지금, 나는 무엇을 품고 나아가고 싶나요?" }
+  },
+  "24": {
+    "title": { "en": "Prepare to Be on My Own Side", "ko": "힘든 날에도 내 편이 되어주기" },
+    "questions": [
+      { "en": "How do I usually know a hard day is coming — what are my earliest signals?", "ko": "힘든 날이 다가올 때, 나는 보통 어떻게 알아차리나요? 가장 먼저 오는 신호는 무엇인가요?" },
+      { "en": "When that day comes, what kind of care do I most want to give myself?", "ko": "그런 날이 오면, 나는 나에게 어떤 돌봄을 가장 건네고 싶나요?" },
+      { "en": "Who or what can I turn to when I need help holding myself up?", "ko": "스스로를 지탱하기 힘들 때, 나는 누구에게 또는 무엇에 기댈 수 있을까요?" }
+    ],
+    "finalPrompt": { "en": "Even when the next hard day comes, whose side do I want to be on for myself?", "ko": "다음에 힘든 날이 찾아오더라도, 나는 나의 어떤 편이 되어주고 싶나요?" }
+  },
+  "25": {
+    "title": { "en": "Make Self-Compassion a Daily Habit", "ko": "자기자비를 매일의 습관으로" },
+    "questions": [
+      { "en": "Looking back over these days, which practices actually helped me feel kinder to myself?", "ko": "지난 날들을 돌아보면, 어떤 연습이 나에게 정말로 더 다정해지도록 도와주었나요?" },
+      { "en": "What small routine could I keep, even on my busiest days?", "ko": "아무리 바쁜 날에도 이어갈 수 있는 작은 루틴은 무엇일까요?" },
+      { "en": "When I miss a day, what would I want to tell myself instead of giving up?", "ko": "하루를 놓쳤을 때, 포기하는 대신 나에게 어떤 말을 건네고 싶나요?" }
+    ],
+    "finalPrompt": { "en": "What is the one routine I want to make truly my own?", "ko": "내가 진짜 나의 것으로 만들고 싶은 하나의 루틴은 무엇인가요?" }
+  },
+  "28": {
+    "title": { "en": "Honor the 28-Day Journey", "ko": "28일의 여정을 마음에 새기기" },
+    "questions": [
+      { "en": "Compared to 28 days ago, how has the way I speak to myself changed?", "ko": "28일 전과 비교하면, 나에게 건네는 말은 어떻게 달라졌나요?" },
+      { "en": "Which moment from these 28 days am I most grateful to remember?", "ko": "이 28일 동안, 내가 가장 고맙게 기억하고 싶은 순간은 언제인가요?" },
+      { "en": "What has this journey shown me about being on my own side?", "ko": "이 여정은 내 편이 되어준다는 것에 대해, 나에게 무엇을 보여주었나요?" }
+    ],
+    "finalPrompt": { "en": "To the me who has walked all this way — what do I most want to say, right now?", "ko": "여기까지 걸어온 나에게, 지금 가장 들려주고 싶은 말은 무엇인가요?" }
   }
 }
