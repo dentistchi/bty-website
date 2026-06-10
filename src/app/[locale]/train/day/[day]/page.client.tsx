@@ -214,7 +214,7 @@ export default function TrainDayPage() {
   return (
     <div className="grid grid-cols-1 min-h-screen md:h-screen md:grid-cols-[360px_1fr_420px]">
       {/* LEFT: Sidebar */}
-      <aside style={{ borderRight: "1px solid #eee", padding: 16, overflow: "auto" }} role="navigation" aria-label={t.dayListLabel}>
+      <aside className="order-3 md:order-1" style={{ borderRight: "1px solid #eee", padding: 16, overflow: "auto" }} role="navigation" aria-label={t.dayListLabel}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
           <div style={{ fontWeight: 700 }}>{t.title}</div>
           <a
@@ -283,7 +283,7 @@ export default function TrainDayPage() {
       </aside>
 
       {/* CENTER: Lesson */}
-      <main style={{ padding: 24, overflow: "auto" }} aria-label={t.lessonLabel}>
+      <main className="order-1 md:order-2" style={{ padding: 24, overflow: "auto" }} aria-label={t.lessonLabel}>
         <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b", marginBottom: 6 }}>
           Day {day}
         </div>
@@ -359,7 +359,7 @@ export default function TrainDayPage() {
       </main>
 
       {/* RIGHT: Chat / Completion Summary */}
-      <aside role="region" aria-label={t.sidebarPanelLabel} style={{ borderLeft: "1px solid #eee", padding: 16, overflow: "auto" }}>
+      <aside className="order-2 md:order-3" role="region" aria-label={t.sidebarPanelLabel} style={{ borderLeft: "1px solid #eee", padding: 16, overflow: "auto" }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <button
             type="button"
