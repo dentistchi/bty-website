@@ -16,11 +16,21 @@ export {
   submitLetter,
   submitCenterLetter,
   getLetterHistory,
+  getLetterCalendar,
   type SubmitLetterInput,
   type SubmitLetterResult,
   type SubmitCenterLetterInput,
   type SubmitCenterLetterResult,
+  type LetterCalendarEntry,
 } from "./letterService";
+
+export {
+  submitDayReflection,
+  type SubmitDayReflectionInput,
+  type SubmitDayReflectionResult,
+  type DayReflectionResponses,
+  type DayReflectionQA,
+} from "./dayReflectionService";
 
 export {
   submitAssessment,

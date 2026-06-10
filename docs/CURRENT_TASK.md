@@ -1,3 +1,7 @@
+## 2026-06-09 — [DECISION6-C2-2] TrainDayReflectionSet 폼 + day_reflection upsert + Day4 pilot — C2 엔진 2/4 — COMMITTED · 미deploy(HALT)
+- **[CLOSED]** universal 폼(질문0~N + 통합1, partial, 질문0=open-only A형 흡수), page.client L331 TrainDayCapture 대체. submitDayReflection upsert ON CONFLICT(user,day,source) — C2-1 unique/RLS 활용, submitLetter clean 분리. reflection-questions.json Day4 pilot ko/en. 기록≠완료(completion 독립 POST), renderer raw 유지(슬롯만 교체).
+- Gate: tsc 0 / vitest 76 신규0 / terminology 13. Authority @ plan 848fd69. Inner `3f292dd9`. 🔴 Deploy 보류(C2-3 History 묶음). [backlog] day-reflection route 테스트, TrainDayCapture.tsx prune. 다음 C2-3(History shape 분기 — getLetterHistory select += type/day/responses, LettersClient day_reflection Q/A 카드).
+
 ## 2026-06-09 — [DECISION6-C2-1] Day Reflection 스키마 — responses jsonb + type day_reflection + unique + RLS UPDATE — C2 엔진 1/4 — COMMITTED · 미deploy(HALT)
 - **[CLOSED]** migration 20260609000002: Unit1 QA train 2건 삭제(id 명시, 비가역) + responses jsonb(additive) + type CHECK 확장(day_reflection) + unique(user_id,day,source) + RLS UPDATE own. production 검증 a-f PASS: train 0, 잔여 center reflection(080edaee) day NULL unique-safe, 9 center letter 무손상. one-table multi-shape(free letter body / day_reflection responses).
 - **[unique 전략]** 결정1=A(Unit1 train 2건 삭제, QA), 결정2=unique+upsert+RLS UPDATE 신설. center day NULL = NULL DISTINCT라 unique 무관.
