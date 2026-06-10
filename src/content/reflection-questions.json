@@ -1,0 +1,11 @@
+{
+  "4": {
+    "title": { "en": "Create Self-Compassion Phrases", "ko": "나에게 건네는 따뜻한 문장 만들기" },
+    "questions": [
+      { "en": "What words do I want to hear when things are hardest?", "ko": "가장 힘든 순간, 나는 어떤 말을 듣고 싶나요?" },
+      { "en": "What would I say to a close friend in the same situation?", "ko": "같은 상황에 있는 가까운 친구에게 나는 뭐라고 말해줄까요?" },
+      { "en": "What would someone who cares about me say?", "ko": "나를 진심으로 아끼는 사람이라면 내게 뭐라고 말해줄까요?" }
+    ],
+    "finalPrompt": { "en": "What phrase do I want to carry with me today?", "ko": "오늘 내가 마음에 품고 가고 싶은 문장은 무엇인가요?" }
+  }
+}

@@ -25,6 +25,14 @@ export {
 } from "./letterService";
 
 export {
+  submitDayReflection,
+  type SubmitDayReflectionInput,
+  type SubmitDayReflectionResult,
+  type DayReflectionResponses,
+  type DayReflectionQA,
+} from "./dayReflectionService";
+
+export {
   submitAssessment,
   getAssessmentHistory,
   type SubmitAssessmentInput,
