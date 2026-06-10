@@ -188,10 +188,28 @@ export default function TrainDayPage() {
   const lessonHead = lessonBody.slice(0, lessonCutIndex);
   const lessonTail = lessonBody.slice(lessonCutIndex);
 
+  // ②-full: remember which day's summary we've already requested, so the
+  // Completion panel generates once and toggling Coach↔Completion never re-fires.
+  const summaryRequestedRef = React.useRef<number | null>(null);
+
   const onClickComplete = React.useCallback(() => {
+    summaryRequestedRef.current = day;
     generateCompletionSummary({ day, lessonText: lessonText ?? "" });
     markTodayComplete(day);
   }, [day, lessonText, generateCompletionSummary, markTodayComplete]);
+
+  // ②-full: on-demand generation when the Completion panel is opened/selected.
+  // Guards (per dispatch): do nothing if a summary already exists, or if one was
+  // already requested for this day (covers the in-flight / already-attempted case).
+  // Deterministic and local — reuses the existing completion-pack path; adds no
+  // server mutation. Fails soft: on failure the panel keeps its empty-state copy.
+  React.useEffect(() => {
+    if (!showCompletionSummary) return;
+    if (completionSummary) return;
+    if (summaryRequestedRef.current === day) return;
+    summaryRequestedRef.current = day;
+    generateCompletionSummary({ day, lessonText: lessonText ?? "" });
+  }, [showCompletionSummary, completionSummary, day, lessonText, generateCompletionSummary]);
 
   return (
     <div className="grid grid-cols-1 min-h-screen md:h-screen md:grid-cols-[360px_1fr_420px]">
@@ -384,7 +402,7 @@ export default function TrainDayPage() {
             <div style={{ fontWeight: 700, marginBottom: 6 }}>Completion summary</div>
             {!completionSummary ? (
               <div style={{ opacity: 0.7 }} role="status" aria-label={locale === "ko" ? "완료 요약 없음" : "No completion summary yet"}>
-                No summary yet. Click &quot;Mark today as complete&quot; (or we can generate on demand).
+                {locale === "ko" ? "아직 완료 요약이 없습니다." : "No completion summary yet."}
               </div>
             ) : (
               <div style={{ display: "grid", gap: 12 }}>
