@@ -1,7 +1,7 @@
-## 2026-06-09 — [DECISION6-C2-3] History shape 분기 (day_reflection Q/A 카드) — C2 엔진 3/4 — COMMITTED · deploy 인가대기(HALT)
+## 2026-06-09 — [DECISION6-C2-3] History shape 분기 (day_reflection Q/A 카드) — C2 엔진 3/4 — COMMITTED · DEPLOYED `b967d7bd`
 - **[CLOSED]** getLetterHistory select += type/day/responses(calendar 미접촉, 자동 dot). domain pure DayReflectionResponses + LetterWithReply optional 확장(비파괴), dayReflectionService 로컬타입→domain import+re-export. LettersClient day_reflection → "Day N 성찰"+title+Q/A(빈답 스킵)+Final 강조, reply 뱃지 숨김. letter 미변경. title=locale baked(C2-2 저장형태).
 - display-only freeze, engine reader(type='letter') 자동 제외 불변. gate tsc0/vitest210 신규0/term13. Authority @ plan 848fd69. Inner `a7d1269b`.
-- 🔴 **Deploy = C2-2(3f292dd9)+C2-3 묶음, Commander 인가 후 실행 — Version UUID/Day4 e2e 후속 기록.** [backlog] day-reflection route 테스트, TrainDayCapture.tsx prune. 다음 C2-4(reflection-questions.json Day4→28 콘텐츠 점진).
+- **Deploy = C2-2(3f292dd9)+C2-3(a7d1269b) 묶음, staging Version `b967d7bd` (2026-06-10T05:21Z).** 3-way: versions tail=b967d7bd / build source=a7d1269b / live literal PASS(center/letters chunk "오늘의 성찰" + train/day chunk Day4 질문 "가장 힘든 순간"+finalPrompt "마음에 품고"). Day4 e2e(폼 입력→Save→History→재편집 upsert) = Commander 육안(auth-gated). [backlog] day-reflection route 테스트, TrainDayCapture.tsx prune. 다음 C2-4(reflection-questions.json Day4→28 콘텐츠 점진).
 
 ## 2026-06-09 — [DECISION6-C2-2] TrainDayReflectionSet 폼 + day_reflection upsert + Day4 pilot — C2 엔진 2/4 — COMMITTED · 미deploy(HALT)
 - **[CLOSED]** universal 폼(질문0~N + 통합1, partial, 질문0=open-only A형 흡수), page.client L331 TrainDayCapture 대체. submitDayReflection upsert ON CONFLICT(user,day,source) — C2-1 unique/RLS 활용, submitLetter clean 분리. reflection-questions.json Day4 pilot ko/en. 기록≠완료(completion 독립 POST), renderer raw 유지(슬롯만 교체).
