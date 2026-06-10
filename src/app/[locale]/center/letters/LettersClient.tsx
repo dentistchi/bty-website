@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { LetterCalendar, type LetterCalendarDay } from "@/components/center/LetterCalendar";
@@ -48,6 +49,12 @@ export default function LettersClient({ locale }: { locale: string }) {
   const [error, setError] = React.useState<string | null>(null);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
 
+  // B-2-1: deep-link param + fire-once / pending-scroll refs.
+  const searchParams = useSearchParams();
+  const dayParam = searchParams.get("day");
+  const didDeepLinkRef = React.useRef<string | null>(null);
+  const pendingScrollIdRef = React.useRef<string | null>(null);
+
   React.useEffect(() => {
     let cancelled = false;
     Promise.all([
@@ -72,9 +79,41 @@ export default function LettersClient({ locale }: { locale: string }) {
     };
   }, [t.letterHistoryError]);
 
+  // B-2-1: History day-anchor deep-link (?day=N). After letters load, find the matching
+  // day_reflection, pre-select its date (calendar/list align), expand it, and queue a
+  // scroll. Fire-once per dayParam (didDeepLinkRef) so re-fetches/re-renders never fight
+  // the user; re-anchors only if dayParam itself changes.
+  React.useEffect(() => {
+    if (loading) return;
+    if (dayParam == null) return;
+    const n = Number(dayParam);
+    if (Number.isNaN(n)) return;
+    if (didDeepLinkRef.current === dayParam) return;
+    const target = letters.find((l) => l.type === "day_reflection" && l.day === n);
+    if (!target) return; // unknown/absent day → no-op (a later load may still anchor)
+    didDeepLinkRef.current = dayParam;
+    setSelectedDate(dayKey(target.createdAt)); // (나)-2 pre-select
+    setExpandedId(target.id);
+    pendingScrollIdRef.current = target.id;
+  }, [loading, letters, dayParam]);
+
   const visible = selectedDate
     ? letters.filter((l) => dayKey(l.createdAt) === selectedDate)
     : letters;
+
+  // B-2-1: scroll the anchored row into view on the render where it actually exists
+  // (after the selectedDate filter above includes it) — guarded by visible.some so it
+  // never scrolls to a not-yet-mounted row; clears the pending ref to fire exactly once.
+  React.useEffect(() => {
+    const id = pendingScrollIdRef.current;
+    if (!id || typeof window === "undefined") return;
+    if (!visible.some((l) => l.id === id)) return; // target not yet rendered
+    const el = document.getElementById(`letter-${id}`);
+    if (!el) return;
+    pendingScrollIdRef.current = null;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
+  }, [visible]);
 
   function formatDate(iso: string): string {
     return new Date(iso).toLocaleDateString(isKo ? "ko-KR" : "en-US", {
@@ -153,6 +192,7 @@ export default function LettersClient({ locale }: { locale: string }) {
                     return (
                       <li
                         key={item.id}
+                        id={`letter-${item.id}`}
                         className="rounded-2xl border border-dear-sage/20 bg-dear-sage/5 overflow-hidden"
                       >
                         <button
