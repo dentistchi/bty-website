@@ -11,15 +11,14 @@
  * No LLM reply is generated for a reflection set.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { LetterLocale } from "@/domain/center/letter";
+import type {
+  LetterLocale,
+  DayReflectionQA,
+  DayReflectionResponses,
+} from "@/domain/center/letter";
 
-export type DayReflectionQA = { q: string; a: string };
-
-export type DayReflectionResponses = {
-  title: string;
-  questions: DayReflectionQA[];
-  finalReflection: string;
-};
+// Re-export for the center barrel / API consumers (canonical defs live in domain).
+export type { DayReflectionQA, DayReflectionResponses };
 
 export type SubmitDayReflectionInput = {
   userId: string;

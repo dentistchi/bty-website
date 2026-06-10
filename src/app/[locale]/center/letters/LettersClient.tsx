@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { LetterCalendar, type LetterCalendarDay } from "@/components/center/LetterCalendar";
+import type { DayReflectionResponses } from "@/domain/center/letter";
 
 type LetterItem = {
   id: string;
@@ -12,6 +13,10 @@ type LetterItem = {
   reply: string | null;
   locale: string;
   createdAt: string;
+  // DECISION6 C2: day_reflection shape (optional — legacy letters omit these).
+  type?: "letter" | "reflection" | "day_reflection";
+  day?: number | null;
+  responses?: DayReflectionResponses | null;
 };
 
 /** Local YYYY-MM-DD key (matches LetterCalendar's day matching). */
@@ -139,6 +144,10 @@ export default function LettersClient({ locale }: { locale: string }) {
                 <ul className="space-y-3 list-none p-0 m-0" role="list">
                   {visible.map((item) => {
                     const isOpen = expandedId === item.id;
+                    const isReflection = item.type === "day_reflection";
+                    const answeredQuestions = isReflection
+                      ? (item.responses?.questions ?? []).filter((qa) => qa.a.trim().length > 0)
+                      : [];
                     const excerpt =
                       item.body.length > 80 ? item.body.slice(0, 80) + "…" : item.body;
                     return (
@@ -156,14 +165,25 @@ export default function LettersClient({ locale }: { locale: string }) {
                             <time className="text-xs text-dear-charcoal-soft" dateTime={item.createdAt}>
                               {formatDate(item.createdAt)}
                             </time>
-                            <span
-                              className={`text-xs font-medium ${
-                                item.reply ? "text-dear-charcoal" : "text-dear-charcoal-soft/60"
-                              }`}
-                            >
-                              {item.reply ? t.letterHistoryReplied : t.letterHistoryNoReply}
-                            </span>
+                            {isReflection ? (
+                              <span className="text-xs font-medium text-dear-sage">
+                                {isKo ? `Day ${item.day} 성찰` : `Day ${item.day} reflection`}
+                              </span>
+                            ) : (
+                              <span
+                                className={`text-xs font-medium ${
+                                  item.reply ? "text-dear-charcoal" : "text-dear-charcoal-soft/60"
+                                }`}
+                              >
+                                {item.reply ? t.letterHistoryReplied : t.letterHistoryNoReply}
+                              </span>
+                            )}
                           </div>
+                          {isReflection && item.responses?.title && (
+                            <p className="text-sm font-semibold text-dear-charcoal m-0 mb-0.5">
+                              {item.responses.title}
+                            </p>
+                          )}
                           {!isOpen && (
                             <p className="text-sm text-dear-charcoal leading-relaxed m-0">{excerpt}</p>
                           )}
@@ -171,23 +191,48 @@ export default function LettersClient({ locale }: { locale: string }) {
 
                         {isOpen && (
                           <div className="px-4 pb-4 space-y-3">
-                            <div>
-                              <div className="text-xs font-medium text-dear-charcoal-soft mb-1">
-                                {isKo ? "편지" : "Letter"}
-                              </div>
-                              <p className="text-sm text-dear-charcoal leading-relaxed whitespace-pre-wrap m-0">
-                                {item.body}
-                              </p>
-                            </div>
-                            {item.reply && (
-                              <div className="border-t border-dear-sage/20 pt-3">
-                                <div className="text-xs font-medium text-dear-charcoal-soft mb-1">
-                                  {t.replyStepTitle}
+                            {isReflection ? (
+                              <>
+                                {answeredQuestions.map((qa, i) => (
+                                  <div key={i}>
+                                    <div className="text-xs font-medium text-dear-charcoal-soft mb-1">
+                                      {qa.q}
+                                    </div>
+                                    <p className="text-sm text-dear-charcoal leading-relaxed whitespace-pre-wrap m-0">
+                                      {qa.a}
+                                    </p>
+                                  </div>
+                                ))}
+                                <div className="border-t border-dear-sage/20 pt-3">
+                                  <div className="text-xs font-medium text-dear-charcoal-soft mb-1">
+                                    {isKo ? "오늘의 성찰" : "Today's reflection"}
+                                  </div>
+                                  <p className="text-sm font-medium text-dear-charcoal leading-relaxed whitespace-pre-wrap m-0">
+                                    {item.responses?.finalReflection || item.body}
+                                  </p>
                                 </div>
-                                <p className="text-sm text-dear-charcoal leading-relaxed whitespace-pre-wrap m-0">
-                                  {item.reply}
-                                </p>
-                              </div>
+                              </>
+                            ) : (
+                              <>
+                                <div>
+                                  <div className="text-xs font-medium text-dear-charcoal-soft mb-1">
+                                    {isKo ? "편지" : "Letter"}
+                                  </div>
+                                  <p className="text-sm text-dear-charcoal leading-relaxed whitespace-pre-wrap m-0">
+                                    {item.body}
+                                  </p>
+                                </div>
+                                {item.reply && (
+                                  <div className="border-t border-dear-sage/20 pt-3">
+                                    <div className="text-xs font-medium text-dear-charcoal-soft mb-1">
+                                      {t.replyStepTitle}
+                                    </div>
+                                    <p className="text-sm text-dear-charcoal leading-relaxed whitespace-pre-wrap m-0">
+                                      {item.reply}
+                                    </p>
+                                  </div>
+                                )}
+                              </>
                             )}
                           </div>
                         )}

@@ -12,12 +12,32 @@ export type LetterSubmission = {
   userId: string;
 };
 
+/** DECISION6 C2: one Q/A pair within a Day Reflection Set. */
+export type DayReflectionQA = { q: string; a: string };
+
+/**
+ * DECISION6 C2: stored shape of a day_reflection's `responses` jsonb.
+ * Strings are already locale-selected at save time (form picks ko/en before
+ * submitting) — no locale resolution needed at read/render time.
+ */
+export type DayReflectionResponses = {
+  title: string;
+  questions: DayReflectionQA[];
+  finalReflection: string;
+};
+
 export type LetterWithReply = {
   id: string;
   body: string;
   reply: string | null;
   locale: LetterLocale;
   createdAt: string;
+  /** DECISION6 C2: 'day_reflection' carries `responses`; legacy letters = 'letter' (optional, non-breaking). */
+  type?: "letter" | "reflection" | "day_reflection";
+  /** DECISION6 C2: train Day number when type='day_reflection'. */
+  day?: number | null;
+  /** DECISION6 C2: structured Q/A set when type='day_reflection'; null otherwise. */
+  responses?: DayReflectionResponses | null;
 };
 
 /** 편지 본문 최대 길이(자). API·검증 단일 소스. */

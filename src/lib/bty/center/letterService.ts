@@ -11,6 +11,7 @@ import {
   validateLetterBody,
   type LetterLocale,
   type LetterWithReply,
+  type DayReflectionResponses,
 } from "@/domain/center/letter";
 import { fetchJson } from "@/lib/read-json";
 import { getLlmClient, getLlmModel, isLlmAvailable } from "@/lib/bty/llm/client";
@@ -231,7 +232,7 @@ export async function getLetterHistory(
 ): Promise<{ ok: true; letters: LetterWithReply[] } | { ok: false; error: string }> {
   const { data, error } = await supabase
     .from("dear_me_letters")
-    .select("id, locale, body, reply, created_at")
+    .select("id, locale, body, reply, created_at, type, day, responses")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -241,12 +242,27 @@ export async function getLetterHistory(
   }
 
   const letters: LetterWithReply[] = (data ?? []).map(
-    (r: { id: string; locale: string; body: string; reply: string | null; created_at: string }) => ({
+    (r: {
+      id: string;
+      locale: string;
+      body: string;
+      reply: string | null;
+      created_at: string;
+      type?: string | null;
+      day?: number | null;
+      responses?: DayReflectionResponses | null;
+    }) => ({
       id: r.id,
       body: r.body,
       reply: r.reply,
       locale: (r.locale === "en" ? "en" : "ko") as LetterLocale,
       createdAt: r.created_at,
+      type: (r.type === "reflection" || r.type === "day_reflection" ? r.type : "letter") as
+        | "letter"
+        | "reflection"
+        | "day_reflection",
+      day: r.day ?? null,
+      responses: r.responses ?? null,
     })
   );
 
