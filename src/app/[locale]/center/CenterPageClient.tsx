@@ -260,7 +260,10 @@ function TrainProgressCard({
       <p className="text-sm text-dear-charcoal m-0">{title}</p>
       {!done && (
         <div className="mt-2 flex items-center gap-3">
-          <a href={href} className="text-sm font-medium text-dear-sage underline">
+          <a
+            href={href}
+            className="inline-flex items-center rounded-xl bg-dear-sage px-4 py-2.5 text-sm font-medium text-white hover:bg-dear-sage-soft transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-dear-sage"
+          >
             {isKo ? `Day ${n} 하러 가기` : `Go to Day ${n}`}
           </a>
           <a href={allHref} className="text-xs text-dear-charcoal-soft underline">
