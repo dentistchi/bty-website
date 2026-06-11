@@ -177,7 +177,7 @@ export default function HubTopNav({ theme = "arena", showLangSwitch = false, tra
             </>
           )}
           {trailing ? (
-            <span className="flex shrink-0 items-center gap-3 border-l border-[var(--arena-text-soft)]/30 pl-3 ml-1">
+            <span className="flex shrink-0 items-center gap-3 basis-full justify-end sm:basis-auto border-l-0 sm:border-l border-[var(--arena-text-soft)]/30 pl-0 sm:pl-3 ml-0 sm:ml-1 mt-2 sm:mt-0">
               {trailing}
             </span>
           ) : null}
