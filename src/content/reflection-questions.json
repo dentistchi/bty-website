@@ -51,5 +51,50 @@
       { "en": "What has this journey shown me about being on my own side?", "ko": "이 여정은 내 편이 되어준다는 것에 대해, 나에게 무엇을 보여주었나요?" }
     ],
     "finalPrompt": { "en": "To the me who has walked all this way — what do I most want to say, right now?", "ko": "여기까지 걸어온 나에게, 지금 가장 들려주고 싶은 말은 무엇인가요?" }
+  },
+  "2": {
+    "title": { "en": "Name the Pattern, Not Me", "ko": "패턴과 나를 떼어 보기" },
+    "questions": [
+      { "en": "When that familiar critical voice showed up today, what exactly did it say?", "ko": "오늘 그 익숙한 비판의 목소리가 찾아왔을 때, 그것은 정확히 뭐라고 말했나?" },
+      { "en": "If that voice is just one habit I've practiced for years — not the truth of who I am — how does it look from here?", "ko": "그 목소리가 진실이 아니라 오래 연습해 온 하나의 습관일 뿐이라면, 지금 그것은 어떻게 달리 보이나?" },
+      { "en": "Knowing this pattern isn't all of me, what room do I want to give myself right now?", "ko": "이 패턴이 내 전부가 아님을 아는 지금, 나 자신에게 어떤 여백을 내어주고 싶은가?" }
+    ],
+    "finalPrompt": { "en": "Now that I can see the pattern instead of blaming myself, what do I want to hold onto today?", "ko": "나를 탓하는 대신 패턴을 볼 수 있게 된 지금, 오늘 내가 붙들고 싶은 것은 무엇인가?" }
+  },
+  "3": {
+    "title": { "en": "Meet Myself with Kindness", "ko": "나를 다정함으로 마주하기" },
+    "questions": [
+      { "en": "When I was hard on myself today, what was the tone of voice I used?", "ko": "오늘 내가 나에게 가혹했던 순간, 나는 어떤 말투를 썼나?" },
+      { "en": "If someone I care about had spoken to themselves that way, what would I have wanted them to hear instead?", "ko": "내가 아끼는 누군가가 자신에게 그렇게 말했다면, 나는 그 사람이 대신 어떤 말을 듣길 바랐을까?" },
+      { "en": "What is it like to let those same words land on me right now?", "ko": "바로 그 말을 지금 나 자신이 받아들인다면, 그것은 어떤 느낌인가?" }
+    ],
+    "finalPrompt": { "en": "When I speak to myself with the kindness I'd give a friend, what feels different — and what do I want to keep close today?", "ko": "친구에게 건넬 다정함으로 나에게 말할 때 무엇이 달라지며, 오늘 나는 그중 무엇을 곁에 두고 싶은가?" }
+  },
+  "5": {
+    "title": { "en": "Begin the Day with Kindness", "ko": "다정함으로 하루 시작하기" },
+    "questions": [
+      { "en": "What was the very first thing I said to myself when I woke up today?", "ko": "오늘 잠에서 깨었을 때, 내가 나에게 건넨 첫 마디는 무엇이었나?" },
+      { "en": "If I could meet the morning already believing I'm enough for this day, how would that first moment feel?", "ko": "이 하루에도 내가 충분하다고 이미 믿으며 아침을 맞는다면, 그 첫 순간은 어떤 느낌일까?" },
+      { "en": "What kind of beginning do I want to offer myself, before the day asks anything of me?", "ko": "하루가 내게 무언가를 요구하기 전에, 나는 나에게 어떤 시작을 선물하고 싶은가?" }
+    ],
+    "finalPrompt": { "en": "When I open the day with kindness toward myself, what kind of day does that beginning make possible — right now, today?", "ko": "하루를 나를 향한 다정함으로 열 때, 그 시작은 어떤 하루를 가능하게 하는가 — 지금, 오늘?" }
+  },
+  "6": {
+    "title": { "en": "Close the Day with Care", "ko": "하루를 다정함으로 닫기" },
+    "questions": [
+      { "en": "Looking back on today, which moment still feels heavy as the day ends?", "ko": "오늘을 돌아볼 때, 하루를 닫는 지금까지도 여전히 무겁게 남은 순간은 무엇인가?" },
+      { "en": "If I let that moment be met with care instead of judgment, what would I want to say to myself about it?", "ko": "그 순간을 비판이 아니라 다정함으로 마주하게 둔다면, 나는 그것에 대해 나에게 무어라 말해주고 싶은가?" },
+      { "en": "As I close this day, what do I want to leave behind, and what do I want to carry into rest?", "ko": "이 하루를 닫으며, 나는 무엇을 내려놓고 무엇을 안고 쉼으로 들어가고 싶은가?" }
+    ],
+    "finalPrompt": { "en": "When I end the day with self-compassion rather than self-criticism, what does that leave with me tonight?", "ko": "하루를 자기비판이 아니라 자기자비로 닫을 때, 그것은 오늘 밤 내게 무엇을 남기는가?" }
+  },
+  "7": {
+    "title": { "en": "Notice What's Begun to Shift", "ko": "달라지기 시작한 것을 알아차리기" },
+    "questions": [
+      { "en": "Over these first days, when did I first catch myself speaking to myself a little differently?", "ko": "지난 며칠 동안, 내가 나에게 조금 다르게 말하고 있음을 처음 알아차린 순간은 언제였나?" },
+      { "en": "Even if the shift feels small, what have I begun to notice that I couldn't quite see a week ago?", "ko": "그 변화가 작게 느껴지더라도, 일주일 전에는 잘 보이지 않던 무엇을 나는 알아차리기 시작했나?" },
+      { "en": "What do I want to celebrate in myself — not for how much has changed, but for staying with this at all?", "ko": "나는 나의 무엇을 축하해주고 싶은가 — 얼마나 달라졌는지가 아니라, 이 길에 머물러 온 그 자체를?" }
+    ],
+    "finalPrompt": { "en": "As I close this first week, what do I want to gently carry with me into the days ahead?", "ko": "이 첫 주를 닫으며, 나는 무엇을 다정히 안고 앞으로의 날들로 들어가고 싶은가?" }
   }
 }
