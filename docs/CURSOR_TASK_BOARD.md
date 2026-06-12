@@ -1,5 +1,10 @@
 # CURSOR TASK BOARD — 2026-03-23
 
+**[x] B1-Decision2-Vacuous — DONE (2026-06-12):** [DOCS] IA Decision 2 이미 구현. Current State card(StageContextCard inline + HealingPhaseTracker) live-compose, Train first-position+filled CTA로 시각1순위. 근거정정: stage=phantom 아님, wrong-name grep miss(B3 실제부재와 구별). code 0 mutation. inner 6a2ce4e IA_CANONICAL_REALITY.md 기록.
+  - BACKLOG: explicit Train hero / double-shell de-nest (optional polish, parked).
+
+---
+
 **[x] B3-IA-Phantom-Cleanup + OUTER-RECOVERY — DONE (2026-06-12):** [DOCS] removal lane 폐기→doc-correction. D1/D4 wrong-tree supersede, GROWTH stale banner(both branches), 신규 IA_CANONICAL_REALITY.md. production 0 mutation. features/growth 보호, Comeback KEEP-parked. editable outer 확보(/Dev/btytrainingcenter-OUTER), bty-website-clean WIP→wip/clean-rescue-20260612 @ bdd2ced9 보존. inner 1f11b81 + outer fa685762.
   - BACKLOG: Comeback micro-decision / WIP remote push(auth 선결) / committer identity as-is / outer ledger flow 복구 완료.
 
