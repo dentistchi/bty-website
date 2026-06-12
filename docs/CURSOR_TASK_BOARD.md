@@ -1,5 +1,10 @@
 # CURSOR TASK BOARD — 2026-03-23
 
+**[x] C2-3-Done-Vacuous — DONE (2026-06-12):** [DOCS] Train Day Reflection History branching 이미 구현·배포. LettersClient.tsx day_reflection 분기, 4 confirmations 코드 해소(Q/A·Final·빈답변·title). 메모리 drift 정정: L331→L391, deploy-held=거짓(이미 배포), branching=Center letters History. code 0 mutation. inner 4831a62.
+  - BACKLOG: TrainDayCapture.tsx orphan prune (별도 source dispatch) / legacy reflection rows 무해.
+
+---
+
 **[x] B1-Decision2-Vacuous — DONE (2026-06-12):** [DOCS] IA Decision 2 이미 구현. Current State card(StageContextCard inline + HealingPhaseTracker) live-compose, Train first-position+filled CTA로 시각1순위. 근거정정: stage=phantom 아님, wrong-name grep miss(B3 실제부재와 구별). code 0 mutation. inner 6a2ce4e IA_CANONICAL_REALITY.md 기록.
   - BACKLOG: explicit Train hero / double-shell de-nest (optional polish, parked).
 
