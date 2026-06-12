@@ -1,3 +1,16 @@
+**2026-06-12 · Action Contract Reminder v1 — D5 트리거 와이어링 완료 (가동)**
+
+in-app reminder 파이프라인 5면 전부 닫힘. 리마인더 hourly 실가동 시작.
+채널 = **in-app only** (user_notifications + NotificationBell). 앱 다운로드/전화번호 불요 — 접속 유저 대상. SMS/PWA/네이티브 push는 미착수 별도 트랙.
+
+- 소스: inner-main 5111fa5 (route singular src/app/api/cron/action-contract-reminder, status=pending only, claim-then-notify at-most-once).
+- 배포: prod worker Version 6c01a10e (GET 405 + 401 가드 검증; route 실립 확정).
+- DB: migration 20260612000000 last_reminder_sent_at — 라이브 ALTER(Commander SQL Editor) + schema_migrations repair insert 완료.
+- 트리거: OUTER main c5b13763, .github/workflows/action-contract-reminder-cron.yml — active (gh id 295012016), hourly "0 * * * *" + workflow_dispatch. escalation 템플릿 복제(URL path singular만 교체, schedule/secret/가드 byte-parity).
+- **잔여 미검증 1건:** CRON_SECRET 정합 = 첫 정각 스케줄 자연 실행에서 확정 예정. 200=정합(T-6h 매칭자 실발송), 401=repo Secret 불일치(Actions 로그 식별). repo Secrets DEPLOY_URL/CRON_SECRET = escalation 공용(설정 개연 높음, 미설정 시 exit 1 안전실패).
+
+**v1 종료. 채널 확장(SMS phone 캡처+TCPA / PWA / 네이티브 push 스토어 심사)은 AIR 효과 확인 후 별도 워크스트림 판단.**
+
 **2026-06-12 · Action Contract Reminder v1 (inner 5111fa5)**
 
 T-6h pending nudge 커밋. canonical 소스 = inner-main @ 5111fa5.
