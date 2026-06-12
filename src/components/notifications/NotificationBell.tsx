@@ -28,6 +28,7 @@ const TYPE_DOT_BG: Record<NotificationType, string> = {
   elite_spec_nominated: "#7c3aed",
   resilience_milestone_reached: "#e9967a",
   weekly_report_ready: "#94a3b8",
+  action_contract_reminder: "#2563eb",
 };
 
 function TypeDot({ type }: { type: NotificationType }) {
