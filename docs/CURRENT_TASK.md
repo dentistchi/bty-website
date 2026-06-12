@@ -1,3 +1,18 @@
+**2026-06-12 · Action Contract Reminder v1 (inner 5111fa5)**
+
+T-6h pending nudge 커밋. canonical 소스 = inner-main @ 5111fa5.
+outer bty-app/ source mirror = **N/A** (inner-main canonical, outer bty-app/ divergent 카피 — 자동전파 메커니즘 부재 확인). outer 산출물 = 본 ledger only.
+
+- **status = pending only** (submitted 회수 — D1 scope drift 정정; submitted actor는 approver 대기라 "complete" nudge 부적합).
+- **claim-then-notify (at-most-once)** — 중복 알림 방지 우선. 알림 실패 시 silent-drop 가능(의도), v2 reminder_attempts/log로 at-least-once 보완 예정.
+- route 경로 **singular**: src/app/api/cron/action-contract-reminder. (plural 디스패치 라벨 드리프트 있었으나 아티팩트 singular = authority.)
+- notification type = action_contract_reminder. user_notifications body 컬럼 부재 → title_ko/en 단독 운반.
+- migration 20260612000000_bty_action_contracts_last_reminder_sent_at: 라이브 ALTER = Commander SQL Editor 직접 실행 + schema_migrations repair insert 완료. db push 미사용.
+- 게이트: npm run lint (tsc --noEmit) exit 0 / lint:terminology 13 (≤13 baseline, 변경분 0).
+- 4파일: migration(NEW) / cron route singular(NEW) / notification-router.service(mod) / NotificationBell(mod, tsc-forced exhaustive Record).
+
+**미해결 — D5 트리거 와이어링:** .github/workflows reminder 워크플로 부재 → route 배포돼도 스케줄러 미호출 = 영구 미발화. STEP 2 별도: OUTER .github/workflows 확인 → reminder 워크플로 신설(singular URL, hourly 0 * * * *, CRON_SECRET 헤더 = escalation-cron.yml 템플릿).
+
 **[2026-06-12] C2-3-Done-Vacuous — Train Day Reflection History branching 이미 구현·배포, code 0 mutation.** read-only reality inventory(STEP0/0b)로 C2-3 충족 확정. History branching=완료(center/letters/LettersClient.tsx: type union :18 day_reflection, 분기 :186 isReflection, render :222/:236-253; backing domain/center/letter.ts + dayReflectionService.ts). 4 pending confirmations 전부 코드 해소: Q label+answer(:236-243 map qa.q+qa.a) / Final emphasis(:245-253 divider+heading+font-medium, finalReflection||body) / 빈답변 filter(:188 qa.a.trim().length>0) / title(:222-224 responses?.title). stub 없음, bilingual 완비. ⚠️ 메모리 drift 정정 3건: (1) 렌더 위치 page.client L331→실제 L391(TrainDayReflectionSet, import :7, 단일 train page). (2) deploy-held=거짓 — C2-2/C2-3 이미 배포(HEAD 6a2ce4e==origin/inner-main 당시, held 없음). (3) branching 위치=Center letters History(center/letters/LettersClient.tsx), 메모리 미특정. 교훈(B1 동형): 결론 DONE 맞으나 메모리 좌표 부정확, 코드가 진실. 산출: inner-main 4831a62 IA_CANONICAL_REALITY.md C2-3 섹션 append(drift 정정 durable). GATE: docs-only, tsc N/A, src CLEAN. BACKLOG: TrainDayCapture.tsx orphan prune(5축 검증 ref 0, render swap L391) — 별도 source mutation / legacy type:'reflection' DB rows 무해(History 양쪽 처리, 정리 불요).
 
 **[2026-06-12] B1-Decision2-Vacuous — IA Decision 2(Center display) 이미 구현, code 0 mutation.** read-only inventory(STEP0/0b/0c)로 Decision 2 충족 확정. Unified Current State card(CenterPageClient.tsx:566–573)가 두 half live-compose: Stage half=StageContextCard(inline 정의 :41, live stage 데이터 useState:454+fetch:490, stageName 실표시+stage-3 nudge, forced-reset gating:524 구동=load-bearing, stub 아님) + Healing half=HealingPhaseTracker(embedded compact :573, 4-stage, IA-CENTER-FINAL). Train primary CTA=충족(B1-2=(b) 시각1순위 해석: first-position :558 + 유일 filled CTA bg-dear-sage; assessment/letters=outline chip 하위 weight, 단 전부 존치=load-bearing surface 보호). ⚠️ 근거 정정: B1-1 초기 "Arena Stage=phantom→DROP" 근거 오류(결론만 맞음). 실제 stage 존재(StageContextCard), STEP0 "NONE"=wrong-name grep miss(inline 정의라 git ls-files grep 놓침). 정확판정="이미 구현되어 신규작업 불요"(NOT 부재). B3 growth/journey(실제 부재)와 구별 — 교훈: 이름추정 단일 grep NONE≠부재. DO NOT TOUCH 준수: src 무변경, load-bearing surfaces(assessment/letters/reflection) 보호. 산출: inner-main 6a2ce4e IA_CANONICAL_REALITY.md B1/D2 섹션 append(근거정정 durable 기록). GATE: docs-only, tsc N/A, src CLEAN. BACKLOG: explicit Train hero / Current State double-shell de-nest(:567 outer + :45 inner 동일 shell 중첩) — optional polish, IA 요구 아님, parked.
