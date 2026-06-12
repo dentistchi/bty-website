@@ -1,5 +1,10 @@
 # CURSOR TASK BOARD — 2026-03-23
 
+**[x] B3-IA-Phantom-Cleanup + OUTER-RECOVERY — DONE (2026-06-12):** [DOCS] removal lane 폐기→doc-correction. D1/D4 wrong-tree supersede, GROWTH stale banner(both branches), 신규 IA_CANONICAL_REALITY.md. production 0 mutation. features/growth 보호, Comeback KEEP-parked. editable outer 확보(/Dev/btytrainingcenter-OUTER), bty-website-clean WIP→wip/clean-rescue-20260612 @ bdd2ced9 보존. inner 1f11b81 + outer fa685762.
+  - BACKLOG: Comeback micro-decision / WIP remote push(auth 선결) / committer identity as-is / outer ledger flow 복구 완료.
+
+---
+
 **[x] A. Awakening 임계 수치 노출 중립화 — DEPLOYED Version 872ed80f + 3교차 PASS (2026-06-08):** (Push: inner `344ffc70..4b1553af`/outer `884b482..82d820c` synced 0/0. Deploy Worker bty-arena-staging Version `872ed80f-4b07-469b-b5d8-74cc7a96bd48`. 3교차: active==872ed80f / HEAD 4b1553af / live literal[awakening 청크 "여정을 더 쌓으면 이 의식이 열려요"·"as you continue your journey"·"당신의 성장을 돌아보는 의식" + 30/10/userDay 부재, healing 청크 {day}/{sessions}/30/10 부재, 404 EN]. ※ritual act1 "세션 수:N"(page:217)은 자격통과자 의식 콘텐츠로 스코프 외 잔존. 육안 미수행=auth-gated+OAuth, Commander 로그인 필요.) [UI/카피] (다-중립 후속) Awakening 게이트 임계(30일/10세션)·진행수치(userDay/sessionCount)를 **모든 UI 표면에서 제거**, 게이트 존재만 알림. **카피만 — 게이트 로직(secondAwakening.ts/completeAwakeningAct.ts) 절대 미접촉(② 보류)**, REQUIRED_DAY/MIN_SESSIONS 불변 = measurement freeze-safe. (1) `healing/awakening/page.client.tsx`: 해금조건("30일 훈련과 최소 10회 세션…"→"여정을 더 쌓으면 이 의식이 열려요."/"This ritual opens as you continue your journey."), **진행수치 `<p>`(현재 X일/Y세션) 블록 삭제**, 제목("30일, …"→"당신의 성장을 돌아보는 의식"/"A ritual to reflect on your growth."). (2) `i18n.ts` awakeningActsTriggerLine ko(2942)/en(4760): "{day}일·세션 {sessions}회 이후…"→"여정을 더 쌓으면 의식이 해금돼요."/"The ritual unlocks as you progress." + `AwakeningActsTrack.tsx` 치환(.replace {day}/{sessions}) 제거 + 미사용 `day`/`sessions` 상수 정리. Center intro(i18n:2918)는 숫자 미포함 → 미접촉. **Verify:** tsc 0 / lint:terminology 13(+0, 금지어 0) / 편집표면 30·10·userDay·sessionCount·{day}·{sessions} 노출 0. **Commit:** inner-main `4b1553af`(3 files +6/-16) + outer main(이 커밋: 같은 3 미러 + ledger). **미배포·미push** (빌드타임 정적 import·컴포넌트 → deploy 전 staging 미반영). outer stale backlog 미스테이지.
 
 ---
