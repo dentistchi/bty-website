@@ -1,3 +1,18 @@
+> ⚠️ SUPERSEDED — D1/D4 WRONG-TREE / NOT EXECUTABLE (2026-06-12, B3-REBASE / OUTER-RECOVERY)
+> canonical tree = btytrainingcenter-INNER (inner-main). 본 D1/D4 는 non-canonical/decoy 트리
+> (bty-website/bty-app, bty/journey/page.tsx 보유) 형상 기준 — production inner-main 미반영.
+> 실측(STEP0-R, read-only):
+>  - growth/journey PAGE: inner-main 부재. journey = API-only(api/journey/bounce-back),
+>    유일 caller = Comeback.tsx:20. "4 entries" = 0.
+>  - growth HUB page: 부재. dismantle 대상 없음.
+>  - features/growth: 공유 LOAD-BEARING infra(Center+My Page+identity+letterService 의존).
+>    반드시 SURVIVE. 삭제 금지.
+>  - redirect alias: integrity→/bty 1개뿐.
+>  - reflection board → Center: 완료(Center가 getLatestReflectionSeed import, :511 호출). no-op.
+>  - Comeback: 전역 re-engagement modal(time-based, layout.tsx:32). journey 잔재 아님. PARKED, KEEP.
+> production code removal 미실행. canonical reality = inner-main docs/IA_CANONICAL_REALITY.md.
+> D1/D4 를 기재대로 실행하지 말 것.
+
 # IA_RESTRUCTURE_PLAN.md — btyARENA Information Architecture (MVP-active)
 
 ## Scope & freeze boundary

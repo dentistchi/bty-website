@@ -1,3 +1,7 @@
+> ⚠️ STALE — C5-era artifact (Cursor C1–C5 retired 2026-05-18). B3-REBASE 2026-06-12.
+> 본 route 모델은 canonical inner-main 과 불일치. 실행 authority 로 사용 금지.
+> 현행 IA reality = (inner-main) docs/IA_CANONICAL_REALITY.md 참조.
+
 # Growth · Journey · Arena — Route map (C5 IA lock)
 
 ## Principles
