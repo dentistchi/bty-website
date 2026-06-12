@@ -59,3 +59,32 @@
 - explicit Train hero (공유 sage shell 탈피, 카드 elevation).
 - Current State double-shell de-nesting (outer :567 + inner StageContextCard :45 동일 shell 중첩, 무해).
 - 둘 다 신규 product 욕구, B1 완수 조건 아님.
+
+## C2-3 / Train Day Reflection — History shape branching (2026-06-12, DONE / already-shipped)
+
+판정: code 0 mutation. C2-3은 canonical inner-main 에 이미 구현·배포됨(HEAD 6a2ce4e == origin/inner-main).
+
+- **History branching** = 완료. src/app/[locale]/center/letters/LettersClient.tsx:
+  - type union(:18) day_reflection 포함, responses: DayReflectionResponses 타입.
+  - 분기(:186) isReflection = item.type==="day_reflection" → Q/A view vs letter view.
+  - backing: domain/center/letter.ts, dayReflectionService.ts.
+- **4 pending confirmations = 전부 코드로 해소**(STEP0b 본문 확인):
+  1. Q label+answer: :236-243 answeredQuestions.map → qa.q(label) + qa.a(answer, whitespace-pre-wrap).
+  2. Final reflection emphasis: :245-253 border-t divider + "오늘의 성찰/Today's reflection" + font-medium, finalReflection||body fallback.
+  3. 빈 답변 처리: :188 filter(qa => qa.a.trim().length > 0) — blank 답변 render 전 제거.
+  4. reflection title: :222-224 isReflection && responses?.title → collapsed header semibold.
+  - stub 신호 없음. bilingual strings 완비.
+
+### ⚠️ 메모리 drift 정정 (중요 — 미래 세션 오독 방지)
+- **렌더 위치**: 메모리 "page.client L331" → 실제 **page.client.tsx:391** (TrainDayReflectionSet, import :7).
+  train/day/[day]/page.client.tsx 단일 렌더, 타 4 train page 무참조.
+- **deploy-held = 거짓**: 메모리 "Deploy held pending C2-3" 였으나 C2-2/C2-3 **이미 배포**
+  (HEAD 6a2ce4e == origin/inner-main, held state 없음). C2-2 committed 후 실제 pushed 됨.
+- **branching 위치**: 메모리 "History shape branching"(파일 미특정) → 실제 **Center letters History**
+  (center/letters/LettersClient.tsx). Train Day reflection 이 Center letters History 에서 분기.
+- 교훈(B1 동형): 결론(DONE) 맞으나 메모리 좌표 부정확. 코드가 진실.
+
+### Backlog
+- TrainDayCapture.tsx = orphan(5축 검증: dynamic/lazy/barrel/test/string ref 0, render swap L391).
+  prune 대상 — 별도 source mutation dispatch.
+- legacy type:'reflection' DB rows 잔존 가능(구 TrainDayCapture 경로). History 양쪽 처리하므로 무해, 데이터 정리 불요.
