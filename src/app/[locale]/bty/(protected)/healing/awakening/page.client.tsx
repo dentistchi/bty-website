@@ -166,19 +166,18 @@ export default function SecondAwakeningPageClient() {
               </h1>
               <p className="text-foundry-ink-soft text-sm mb-4">
                 {locale === "ko"
-                  ? "여정을 더 쌓으면 이 의식이 열려요."
-                  : "This ritual opens as you continue your journey."}
+                  ? "이 의식은 28일 훈련을 완주하면 열려요. 매일의 기록이 충분히 쌓이면, 다음 문이 자연스럽게 열립니다."
+                  : "This ritual opens once you complete the 28-day training. As your daily records gather, the next door opens naturally."}
               </p>
               <Link
-                href={basePath}
+                href={`/${locale}/train/28days`}
                 className={cn(
-                  "rounded-xl px-6 py-3 font-medium",
-                  "border border-foundry-purple-muted text-foundry-purple",
-                  "hover:bg-foundry-purple/10 transition-colors"
+                  "rounded-xl px-6 py-3 font-medium text-white",
+                  "bg-foundry-purple hover:bg-foundry-purple-dark transition-colors"
                 )}
-                aria-label={locale === "ko" ? "Foundry로 이동" : "Go to Foundry"}
+                aria-label={locale === "ko" ? "28일 훈련으로 가기" : "Go to the 28-day training"}
               >
-                {locale === "ko" ? "Foundry로" : "To Foundry"}
+                {locale === "ko" ? "28일 훈련으로 가기" : "Go to the 28-day training"}
               </Link>
             </div>
           </div>
