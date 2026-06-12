@@ -65,7 +65,6 @@ export function MyPageLeadershipConsole({
   const [weeklyXp, setWeeklyXp] = useState<number | null>(null);
   const [qrPanelOpen, setQrPanelOpen] = useState(false);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
-  const [secureLinkUrl, setSecureLinkUrl] = useState<string | null>(null);
   const [showPostCompletion, setShowPostCompletion] = useState(false);
   const [completionNarrativeState, setCompletionNarrativeState] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<"verified" | "already" | "failed" | null>(null);
@@ -375,35 +374,6 @@ export function MyPageLeadershipConsole({
     }
   }, []);
 
-  const handleRequestSecureLink = useCallback(async () => {
-    const contract = serverPack?.open_action_contract;
-    if (!contract) return;
-    try {
-      const res = await fetch("/api/arena/action-contract/secure-link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...(contract.session_id ? { run_id: contract.session_id } : {}),
-          locale: locale === "ko" ? "ko" : "en",
-        }),
-      });
-      if (!res.ok) return;
-      const data = (await res.json()) as { url?: string };
-      const rel = data.url;
-      if (!rel) {
-        setSecureLinkUrl(null);
-        return;
-      }
-      if (rel.startsWith("/") && typeof window !== "undefined") {
-        setSecureLinkUrl(`${window.location.origin}${rel}`);
-      } else {
-        setSecureLinkUrl(rel);
-      }
-    } catch {
-      // silent
-    }
-  }, [serverPack, locale]);
-
   const metrics = useMemo(() => {
     if (serverPack) {
       const m = serverPack.metrics;
@@ -491,7 +461,6 @@ export function MyPageLeadershipConsole({
           contract={serverPack?.open_action_contract ?? null}
           locale={locale}
           onRequestQr={handleRequestQr}
-          onRequestSecureLink={handleRequestSecureLink}
         />
       )}
 
@@ -540,13 +509,6 @@ export function MyPageLeadershipConsole({
           empty={t.patternSignatureConsoleEmpty}
           regionAria={t.patternSignatureConsoleAria}
         />
-      )}
-
-      {secureLinkUrl && (
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-          <p className="mb-2 text-xs text-white/50">{tAction.completeByQrLink}</p>
-          <p className="select-all break-all text-xs text-cyan-600 dark:text-cyan-300/70">{secureLinkUrl}</p>
-        </div>
       )}
 
       <PostCompletionSheet

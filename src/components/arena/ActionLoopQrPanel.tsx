@@ -15,6 +15,9 @@ export function ActionLoopQrPanel({ url, onDismiss, locale }: ActionLoopQrPanelP
   const tAction = getMessages(loc).actionContract;
   return (
     <div className="flex flex-col items-center gap-4 rounded-xl border border-gray-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.05]">
+      <p className="max-w-xs whitespace-pre-line text-center text-sm text-gray-700 dark:text-white/70">
+        {tAction.qrWitnessNotice}
+      </p>
       <QRCodeSVG
         key={url}
         value={url}
