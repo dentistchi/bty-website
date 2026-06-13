@@ -11,7 +11,7 @@ export default function Track28Home() {
   const t = getMessages(locale as Locale).train;
 
   return (
-    <main className="space-y-4" aria-label={t.track28HubMainRegionAria}>
+    <main className="p-6 space-y-4" aria-label={t.track28HubMainRegionAria}>
       <h1 className="text-2xl font-semibold">{t.title}</h1>
       <p className="opacity-70">
         {t.journeyStartIntro}
