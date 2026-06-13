@@ -181,6 +181,85 @@ function parseLessonSections(text: string): LessonSegment[] {
   return segments;
 }
 
+// Single-color outline glyph per section label (currentColor, inherits header
+// weight/size). Switch keyed on the raw label literals (en+ko); "Today's small
+// win" uses the straight ' U+0027 as embedded in raw. Unmatched label → null
+// (header renders text-only, graceful). No external icon lib / webfont.
+function SectionIcon({ label }: { label: string }) {
+  const common = {
+    width: 16,
+    height: 16,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.75,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true as const,
+  };
+  switch (label.trim()) {
+    case "Morning ritual":
+    case "아침 의식":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" />
+        </svg>
+      );
+    case "Core practice":
+    case "핵심 실천":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="9" />
+          <circle cx="12" cy="12" r="5" />
+          <circle cx="12" cy="12" r="1.2" />
+        </svg>
+      );
+    case "Why it works":
+    case "왜 효과가 있을까?":
+      return (
+        <svg {...common}>
+          <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3Z" />
+        </svg>
+      );
+    case "Expected resistance":
+    case "예상되는 저항":
+      return (
+        <svg {...common}>
+          <path d="M10.3 4.3 2.5 18a1.5 1.5 0 0 0 1.3 2.2h16.4a1.5 1.5 0 0 0 1.3-2.2L13.7 4.3a1.5 1.5 0 0 0-2.6 0Z" />
+          <path d="M12 10v4M12 17.5v.01" />
+        </svg>
+      );
+    case "Breakthrough strategy":
+    case "돌파 전략":
+      return (
+        <svg {...common}>
+          <path d="M12 2c2.5 2 4 5 4 8.5 0 1.8-.4 3.3-1 4.5H9c-.6-1.2-1-2.7-1-4.5C8 7 9.5 4 12 2Z" />
+          <path d="M9 15c-1.5.8-2.5 2.3-2.5 4 1.2 0 2.3-.5 3-1.3M15 15c1.5.8 2.5 2.3 2.5 4-1.2 0-2.3-.5-3-1.3" />
+          <path d="M10.5 20.5c0 .8.7 1.5 1.5 1.5s1.5-.7 1.5-1.5" />
+          <circle cx="12" cy="9.5" r="1.3" />
+        </svg>
+      );
+    case "Evening reflection":
+    case "저녁 성찰":
+      return (
+        <svg {...common}>
+          <path d="M19 14.8A8 8 0 0 1 9.2 5a7 7 0 1 0 9.8 9.8Z" />
+        </svg>
+      );
+    case "Today's small win":
+    case "오늘의 작은 승리":
+      return (
+        <svg {...common}>
+          <path d="M4 20 8.5 8l7.5 7.5L4 20Z" />
+          <path d="M14 8.5 15.5 7M17 11l1.8-.6M13 5l.5-2M19 6l1.5-1.2M18.5 14.5 21 15" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
 export default function TrainDayPage() {
   const params = useParams<{ locale?: string; day: string }>();
   const locale = (params?.locale === "ko" ? "ko" : "en") as "ko" | "en";
@@ -229,9 +308,17 @@ export default function TrainDayPage() {
       seg.kind === "header" ? (
         <div
           key={`h-${i}`}
-          style={{ fontWeight: 500, marginTop: i === 0 ? 0 : 24, marginBottom: 8 }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontWeight: 500,
+            marginTop: i === 0 ? 0 : 24,
+            marginBottom: 8,
+          }}
         >
-          {seg.label}
+          <SectionIcon label={seg.label} />
+          <span>{seg.label}</span>
         </div>
       ) : (
         <React.Fragment key={`b-${i}`}>{renderParagraphs(seg.text)}</React.Fragment>
