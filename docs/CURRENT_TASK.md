@@ -1,10 +1,22 @@
+**2026-06-12 · STAB-A1 — Validate-action 폼소실 fix (merge-landed, deploy-pending)**
+
+탭 전환 시 Validate action 폼(Who/What/Result) 입력 소실. root = useState-only draft + syncSessionGate의 visibility resync가 contract를 null화 → 부모 조건부 언마운트. fix = sessionStorage draft 미러링(`ArenaActionValidationForm.tsx`, +46/-3). STEP 0b로 C2/C3 전제(동일 unresolved → 동일 contractId) 확정: `ensureActionContractWithAdmin` lookup-first 멱등(user_id+session_id, status 무관), resync 409가 동일 pending 행 반환 → 동일 sessionStorage key 복원.
+
+- **merge**: `fix/form-persist` → `inner-main` --no-ff @ `47140f41cc42e3eb9d1c21c2c6858250e684518d` (부모 `7234abdc` + `eb85302`)
+- **gate**: tsc --noEmit exit 0 / lint:terminology 13 (baseline, A1 신규 0)
+- **push**: inner-main only, `origin/inner-main` == `47140f41`
+- **deploy**: NOT DONE — 별도 go, 3-way freshness git HEAD 기준 = `47140f41`
+- **outer mirror**: ledger-only (bty-app/ 미러 미접촉, drift는 stash@{0} 보존 → mirror-sync 트랙 이월)
+- **A1b dirty 가드**: cause-layer 후속 티켓 분리 (syncSessionGate 입력 중 무가드 null화 자체는 불변; eb85302는 effect-layer 회복 보정)
+- **canonical 정정**: outer mutation authority = M5(`/Users/hanbit/Dev/btytrainingcenter`)로 통일. MacBook Air / `btytrainingcenter-OUTER`는 더 이상 outer mutation authority 아님.
+
 **2026-06-12 · QR-only Witness Hotfix — secure-link UI 제거 + QR 증인 안내 (live d358b520)**
 
 inner-main 7234abd → live Version d358b520 (3-way PASS + i18n 청크 byte-identical). pure 7234abd 빌드(A1-free).
 - **UI-only**: ActionContractHub/MyPageLeadershipConsole에서 secure-link 버튼·state(`secureLinkUrl`)·handler(`handleRequestSecureLink`) 제거 — route(`/api/arena/action-contract/secure-link`)·shared token 모듈(`signArenaActionLoopToken`) **무접촉**. ActionLoopQrPanel에 `qrWitnessNotice`(ko/en, `whitespace-pre-line` 3문장) 추가. `btnQr` "Complete by QR"→"Show QR for verification". dead i18n(`btnLink`/`completeByQrLink`, 사용처 0) prune.
 - **DB·백엔드 무변경**: `verification_mode`('hybrid' 유지; mode CHECK는 'qr','link','hybrid' 허용)·`verification_type`('action_completed' 분류)·migration·mint/validate 경로 전부 무접촉.
 - **진단(root cause)**: 이용자 "Can't Complete" = **시스템 정상, UX 안내 갭**. 라이브 실측: validation_approved_at 채워짐 + run owner==contract owner(ee9d2075) + deadline 미래 + mint 토큰 payload 정합 + 해당 유저 과거 QR 완료 7회 verified=true → 파이프라인 end-to-end 정상. 막힘 실체 = QR이 "본인 완료 화면"으로 오독되나 실제론 **증인 스캔 검증**(Actor≠Approver, self-completion 미지원). validate는 URL-open(스캔) 구동, le_verification_log 실패 row 0.
-- **A1 lane 분리 격리**: form-persist(syncSessionGate focus/visibility resync 폼소실 복원, sessionStorage 미러)는 `fix/form-persist @ eb85302`로 격리 — 본 배포·inner-main **미포함**(merge-base 비조상 확인).
+- **A1 lane 분리 격리**: form-persist(syncSessionGate focus/visibility resync 폼소실 복원, sessionStorage 미러)는 `fix/form-persist @ eb85302`로 격리됐고, 본 QR-hotfix 배포는 A1-free 빌드였음. 이후 inner-main 머지 완료(`47140f41`, --no-ff) — closure는 최상단 STAB-A1 entry 참조.
 - **held C2-2/C2-3 무접촉**: reflection 기능(TrainDayReflectionSet/day-reflection/reflection-questions)은 a42956b부터 이미 live, 본 hotfix 무영향(diff 0).
 - **3-way**: a) Version `d358b520` (wrangler tail) / b) HEAD `7234abd` (provenance) / c) live chunk `7618-0d7e4fa62a784aa6.js`에서 secure-link 리터럴 4종(btnLink/completeByQrLink/"Complete by secure link"/"보안 링크로 완료") **0건** + positive "Show QR for verification" 1건; i18n 청크 disk==live byte-identical. cf:deploy=upload-only(cf:build 미재실행, worktree clean drift-guard). **GATE**: tsc exit 0 / lint:terminology 13(baseline, 신규 0). inner-main `7234abd`(pushed) + outer ledger `<this outer>`.
 
