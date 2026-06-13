@@ -1,3 +1,12 @@
+**2026-06-13 · BTY Canon Sync Rule v1.0 LOCK (docs/BTY_CANON_SYNC_RULE.md 생성)**
+
+KO Canon(BTY_CANON.md) ↔ EN Edition(BTY_CANON.en.md) edition-sync 거버넌스를 독립 문서로 고정. EN 헤더·ledger에 흩어져 있던 "KO 우선" 규칙을 트리거·상태·해소순서·개정규칙까지 명문화. 코드/배포 mutation 아님 — outer docs/ 전용. 본 엔트리는 문서 Amendment Rule("explicit ledger entry" 요구) 충족분.
+- 경로: docs/BTY_CANON_SYNC_RULE.md (6 섹션: Scope/Authority/Sync Trigger/Sync States/Resolution Order/Amendment Rule)
+- 직교 명시: edition-sync(KO↔EN)만 관할, repository-sync(outer↔inner)는 HK8_OUTER_INNER_SYNC_POLICY_CLOSURE.md 유지 — 혼동 차단
+- 상태 모델: SYNCED / STALE(=sync debt, not authority conflict) / DIVERGED(→KO interpretation governs→EN 정정→SYNCED); Only KO may declare EN stale
+- actor: Commander initiates review / Claude Code executes approved mutations
+- 경계: "may define canon synchronization, may not redefine canon authority" — 권위 재정의 금지 자기제약
+
 **2026-06-13 · BTY Canon English Edition LOCK (docs/BTY_CANON.en.md 생성)**
 
 KO Canon(BTY_CANON.md, 140ce35)의 영어판을 Canonical Edition으로 저작·고정. 번역이 아니라 영어권 독자가 동일 무게로 읽도록 재저작 — Q1~Q5 섹션별 Lock(Commander 문장 단위 판정). KO = Canonical Authority, EN = Canonical Edition; 충돌 시 KO 우선(헤더 명시). 코드/배포 mutation 아님 — outer docs/ 전용.
