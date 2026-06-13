@@ -17,7 +17,7 @@ export default function Track28Home() {
         {t.journeyStartIntro}
       </p>
       <div className="rounded-lg border p-4">
-        <Link className="underline" href={`/${locale}/train/28days/day/1`} aria-label={t.journeyStartDay1Aria}>
+        <Link className="underline" href={`/${locale}/train/day/1`} aria-label={t.journeyStartDay1Aria}>
           {t.journeyStartDay1Link}
         </Link>
       </div>
