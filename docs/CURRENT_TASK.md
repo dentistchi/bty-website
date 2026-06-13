@@ -1,3 +1,12 @@
+**2026-06-13 · BTY Canon English Edition LOCK (docs/BTY_CANON.en.md 생성)**
+
+KO Canon(BTY_CANON.md, 140ce35)의 영어판을 Canonical Edition으로 저작·고정. 번역이 아니라 영어권 독자가 동일 무게로 읽도록 재저작 — Q1~Q5 섹션별 Lock(Commander 문장 단위 판정). KO = Canonical Authority, EN = Canonical Edition; 충돌 시 KO 우선(헤더 명시). 코드/배포 mutation 아님 — outer docs/ 전용.
+- 경로: docs/BTY_CANON.en.md (KO와 동일 베이스 + .en locale suffix)
+- 권위: EN 헤더에 "Korean edition governs on divergence" 박음 → dual-canon 방지, EN stale = sync debt only
+- 핵심 발명 문장: "The more power they hold, the smaller they make themselves." (KO "권력이 커질수록 자신이 작아지는 사람" — 능동태로 약함 오독 차단, power=weight 철학은 "Power is weight, not privilege."로 흡수)
+- 용어 LOCK 정합: change in choice ≠ behavior change / confirmed(Q3) vs verified(QR) vs measure(AIR) 영역 분리
+- 후속(별도 트랙): KO 수정 시 EN sync 규칙 / MASTER_PLAN·ENGINE_BRIEF 포인터 reconcile
+
 **2026-06-13 · BTY Canon v1.1 LOCK (docs/BTY_CANON.md 생성)**
 
 조직 정체성 정본(Identity Layer)을 단일 문서로 고정. Source Map 4묶음(Constitution·코어밸류·Behavioral Spec v1·측정지표들 + Integrity Engine/Architecture PDF) 출처 검증 후, 5 Question 구조로 KO 단일 정본 저작. 코드/배포 mutation 아님 — outer docs/ 전용.
