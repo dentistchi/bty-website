@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { Locale } from "@/lib/i18n";
+import { readActionDraft, writeActionDraft, clearActionDraft } from "./actionDraft";
 
 /**
  * Action Contract validation screen (MVP-FIX-ACTION-01, Path B / scope A).
@@ -76,44 +77,6 @@ const COPY = {
     errorMsg: "검증을 완료하지 못했습니다. 다시 시도해 주세요.",
   },
 } as const;
-
-/**
- * STAB-A1-DRAFT: who/what/result live in component state only, and the form is
- * unmounted on every focus/visibility resync (useArenaSession `syncSessionGate`)
- * while the contract gate is active — so a tab switch silently wiped in-progress
- * text. We mirror the three fields to one sessionStorage key per contract so the
- * remount restores them. SSR/Worker-safe via `typeof window` guards; the parse is
- * guarded so a malformed value falls back to the no-draft path (never throws in render).
- */
-const DRAFT_KEY_PREFIX = "bty-arena-action-draft:";
-
-type ActionDraft = { who: string; what: string; result: string };
-
-function readActionDraft(contractId: string): ActionDraft | null {
-  if (typeof window === "undefined") return null;
-  const raw = window.sessionStorage.getItem(`${DRAFT_KEY_PREFIX}${contractId}`);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as Partial<ActionDraft>;
-    return {
-      who: typeof parsed.who === "string" ? parsed.who : "",
-      what: typeof parsed.what === "string" ? parsed.what : "",
-      result: typeof parsed.result === "string" ? parsed.result : "",
-    };
-  } catch {
-    return null;
-  }
-}
-
-function writeActionDraft(contractId: string, draft: ActionDraft): void {
-  if (typeof window === "undefined") return;
-  window.sessionStorage.setItem(`${DRAFT_KEY_PREFIX}${contractId}`, JSON.stringify(draft));
-}
-
-function clearActionDraft(contractId: string): void {
-  if (typeof window === "undefined") return;
-  window.sessionStorage.removeItem(`${DRAFT_KEY_PREFIX}${contractId}`);
-}
 
 export function ArenaActionValidationForm({
   locale,
