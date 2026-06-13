@@ -5,8 +5,8 @@
 - **merge**: `fix/form-persist` → `inner-main` --no-ff @ `47140f41cc42e3eb9d1c21c2c6858250e684518d` (부모 `7234abdc` + `eb85302`)
 - **gate**: tsc --noEmit exit 0 / lint:terminology 13 (baseline, A1 신규 0)
 - **push**: inner-main only, `origin/inner-main` == `47140f41`
-- **deploy**: NOT DONE — 별도 go, 3-way freshness git HEAD 기준 = `47140f41`
-- **outer mirror**: ledger-only (bty-app/ 미러 미접촉, drift는 stash@{0} 보존 → mirror-sync 트랙 이월)
+- **deploy**: DEPLOYED @ Version `cfc79c43-7cc3-4a14-b6e1-be4080ab1d40` (2026-06-13T05:25Z, active 100%). 3-way 확정: (a) cf:deploy UUID 신규 == versions list tail 최신. (b) git HEAD `47140f41`. (c) live chunk `1220-8394ad095ee3977b.js` (HTTP 200, 107,187 B, SHA256 `04a4d9e625d43c46facca521f2f36bb517cf06a78007205e86b3102eaec37edb`) = 로컬 .open-next 빌드와 `cmp` IDENTICAL, `bty-arena-action-draft:` 리터럴 count=1. worker.js mtime ≥ commit epoch (UTC/PDT 정합: deploy 05:25Z == local 22:25 PDT ≈ worker.js mtime). (BTY_DEPLOY_VERSION stale 2026-04-27이라 cf:deploy UUID가 정본.)
+- **outer mirror**: ledger-only 확정 (메모리 #15 정합 — bty-app/ 미러 = 영구 non-canonical noise, canonical = inner `47140f41`). ⚠️ FOOTGUN: inner와 outer가 동일 물리파일 공유(inode 12580789, 양 repo 추적). outer의 stash pop/apply/checkout = inner working tree 직격 오염(2026-06-12 PHASE 1 near-miss 원인). stash@{0}(inner@47140f41 미러분, A1 포함)는 **NEVER POP/APPLY/DROP — 영구 보존**. mirror drift는 동기화하지 않고 non-canonical로 수용. inner working tree를 47140f41에서 벗어나게 하는 outer mutation 금지.
 - **A1b dirty 가드**: cause-layer 후속 티켓 분리 (syncSessionGate 입력 중 무가드 null화 자체는 불변; eb85302는 effect-layer 회복 보정)
 - **canonical 정정**: outer mutation authority = M5(`/Users/hanbit/Dev/btytrainingcenter`)로 통일. MacBook Air / `btytrainingcenter-OUTER`는 더 이상 outer mutation authority 아님.
 
