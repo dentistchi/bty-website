@@ -1,3 +1,11 @@
+**2026-06-13 · BTY Canon v1.1 LOCK (docs/BTY_CANON.md 생성)**
+
+조직 정체성 정본(Identity Layer)을 단일 문서로 고정. Source Map 4묶음(Constitution·코어밸류·Behavioral Spec v1·측정지표들 + Integrity Engine/Architecture PDF) 출처 검증 후, 5 Question 구조로 KO 단일 정본 저작. 코드/배포 mutation 아님 — outer docs/ 전용.
+- 경로: docs/BTY_CANON.md (영구 주소, 버전은 파일 내부 헤더 관리)
+- 권위 모델: Option A (Identity Apex + Authority Map) — 5개 기존 권위문서와 계층 분리, supersede 아닌 좌표 선언
+- 충돌 해소(lock): 루프=7-Step / Integrity=실행-under-pressure 主 / Definition·Ideal 계층분리 / "Better Than Yourself" 폐기
+- 후속(별도 트랙): MASTER_PLAN·ENGINE_BRIEF 포인터 (이번 범위 밖)
+
 **2026-06-13 · 28-Day 레슨/허브 표시 레이어 + nav 크래시 수정 (live 29cf5f27 / 95a74134 / fd5d789d / ae43c973 / bace9183)**
 
 베타 테스터 피드백("레슨이 한눈에 안 들어옴" + "Awakening 미완료 에러")에서 출발한 28-day 훈련 표시 레이어 5-increment 묶음. 레슨 섹션 헤더 위계(C1 간격 + C2 SVG 아이콘), /train/28days 허브 카피 i18n화(C-EXT), 그리고 "Awakening 에러" 신고의 실제 원인 격리·수정(#8b nav 크래시 + 패딩). 전부 표시 레이어/네비게이션, 엔진·데이터·스키마 무접촉. C1/C2는 직전 세션 라이브였으나 ledger 미정정분으로 본 엔트리에 함께 기록.
