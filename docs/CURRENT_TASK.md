@@ -1,3 +1,14 @@
+**2026-06-13 · A1b — Arena action form 모바일 visibilitychange 언마운트 cause-layer fix (live 7891c17e)**
+
+STAB-A1(effect-layer, sessionStorage 복원)의 cause-layer 후속. cause = syncSessionGate가 focus/visibility/storage resync 시 `setPendingActionContract(null)`을 무가드 실행 → 부모(`ArenaResolveClient.tsx`) 조건부 언마운트 → 모바일 앱전환(visibilitychange)마다 폼 소실. fix = 폼 dirty(non-empty draft) 동안 게이트 **전체** early-return → 폼 유지; sessionStorage는 단독 회복 경로의 백스톱으로 강등.
+
+- **메커니즘**: draft 헬퍼를 `actionDraft.ts` 공유 모듈로 verbatim 추출(behavior drift 0, 단일 소비자) + `hasNonEmptyActionDraft`(필드 content 검사 — draft useEffect가 빈 폼도 키를 쓰므로 "키 존재 ≠ dirty" 함정 회피). 가드 = `useArenaSession.ts` syncSessionGate 최상단 `if (pendingActionContract && hasNonEmptyActionDraft(id)) return;` (null화만 skip 시 nonce++/refetch가 contract를 재churn → 게이트 전체 early-return). 3파일(actionDraft.ts 신규 + form 헬퍼 이전 + hook import/가드).
+- **tradeoff #4 (수용)**: cross-tab QR 완료(storage 이벤트)가 타 탭 입력 중 skip — 제출/clear 후 다음 게이트에서 resync. 신규 파일 헤더 + 가드 주석 + commit message 3곳 명시.
+- **gate**: tsc --noEmit exit 0 / lint:terminology 13 (baseline, A1b 신규 0; clean build 전·후 불변).
+- **push**: inner-main only, `origin/inner-main` == `647ee8b8` (origin main 비접촉).
+- **deploy**: DEPLOYED @ Version `7891c17e-fa22-4382-be40-f5ef6bda4040` (2026-06-13T11:28Z, active 100%; 이전 live `cfc79c43` → `7891c17e`). 3-way 확정: (a) cf:deploy UUID == versions list tail 최신 == deployments active 100%. (b) git HEAD `647ee8b8`. (c) live chunk `1220-fead90ed93006988.js` (HTTP 200, 107,452 B, SHA256 `b930cbb2ab1848c5c47ee7a5b039f3e759a6e6940a5f050fc5fe62918d81dd68`) = 로컬 .open-next 빌드와 byte-identical, `bty-arena-action-draft:` 리터럴 count=1. clean build(rm -rf .open-next → cf:build, deploy-only 아님 — stale 번들 footgun 회피). (BTY_DEPLOY_VERSION stale 2026-04-27이라 cf:deploy UUID가 정본.)
+- **outer mirror**: ledger-only. inner `47140f41` → `647ee8b8` 전진으로 bty-app/ 미러 drift 13건 = 영구 non-canonical 수용(inode 12580789 공유 footgun 원칙대로 outer는 비접촉, stash@{0} NEVER POP 불변). 본 항목 = outer ledger `<this outer>`.
+
 **2026-06-12 · STAB-A1 — Validate-action 폼소실 fix (merge-landed, deploy-pending)**
 
 탭 전환 시 Validate action 폼(Who/What/Result) 입력 소실. root = useState-only draft + syncSessionGate의 visibility resync가 contract를 null화 → 부모 조건부 언마운트. fix = sessionStorage draft 미러링(`ArenaActionValidationForm.tsx`, +46/-3). STEP 0b로 C2/C3 전제(동일 unresolved → 동일 contractId) 확정: `ensureActionContractWithAdmin` lookup-first 멱등(user_id+session_id, status 무관), resync 409가 동일 pending 행 반환 → 동일 sessionStorage key 복원.
