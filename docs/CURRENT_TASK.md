@@ -1,3 +1,20 @@
+**2026-06-13 · 28-Day 레슨/허브 표시 레이어 + nav 크래시 수정 (live 29cf5f27 / 95a74134 / fd5d789d / ae43c973 / bace9183)**
+
+베타 테스터 피드백("레슨이 한눈에 안 들어옴" + "Awakening 미완료 에러")에서 출발한 28-day 훈련 표시 레이어 5-increment 묶음. 레슨 섹션 헤더 위계(C1 간격 + C2 SVG 아이콘), /train/28days 허브 카피 i18n화(C-EXT), 그리고 "Awakening 에러" 신고의 실제 원인 격리·수정(#8b nav 크래시 + 패딩). 전부 표시 레이어/네비게이션, 엔진·데이터·스키마 무접촉. C1/C2는 직전 세션 라이브였으나 ledger 미정정분으로 본 엔트리에 함께 기록.
+
+- **C1 — 섹션 헤더 간격** (inner 3b22e6e9 → live 29cf5f27): day/[day]/page.client.tsx에서 raw 본문을 라벨 경계로 파싱(parseLessonSections), 헤더 div marginTop/Bottom(24/8). 7개 섹션 라벨(아침 의식/핵심 실천/왜 효과/예상 저항/돌파 전략/저녁 성찰/작은 승리).
+- **C2 — 섹션 헤더 아이콘** (inner 95d89178 → live 95a74134): SectionIcon 인라인 SVG 7종(currentColor, 16px, viewBox 0 0 24 24), label switch. 외부 아이콘 라이브러리 없음.
+- **C-EXT — 허브 카피 i18n** (inner 0046b9c3 → live fd5d789d): /train/28days 스텁의 하드코딩 한글-반말 3카피 → 기존 t.title + journeyStart* 키 재사용(EN 분기 + 해요체). EN 로케일 한글 누출 + 톤 불일치 해소. 신규 키 0.
+- **#8b — nav 크래시(#310)** (inner 320161ec → live ae43c973): "Day 1 시작하기" href를 /train/28days/day/1 → /train/day/1 직행화. 원 신고("Awakening 미완료 에러")는 재분류 — 실제는 2-hop redirect 전이 중 React #310(hook-tree 불일치). awakening/progress-null 무관. /train/day/1 직접 진입 정상 cross-check로 확정. redirect 스텁 inbound 0 무해 잔존.
+- **pad — 좌측 정렬** (inner f47d4039 → live bace9183): /train/28days main에 p-6 추가(형제 train/start 패턴 일치). 콘텐츠 좌우 여백 확보.
+- **gate**: 전 increment tsc --noEmit 0 / lint:terminology 13 불변.
+- **push**: inner-main → origin/inner-main (== f47d4039), origin main 비접촉.
+- **deploy**: 각 rm -rf .open-next && cf:build → 3-way freshness(Version active 100% / HEAD / 28days chunk byte-identity). staging Version-line: … → fd5d789d → ae43c973 → bace9183 누적.
+- **outer mirror**: bty-app/ 미러 비스테이징, 본 ledger = outer docs-only.
+- **outer ledger commit**: <this outer>.
+
+**결산: 28-day 표시 레이어 5종 라이브, #8(awakening 에러 신고) RESOLVED — 카피(C-EXT) + nav 크래시(#8b) 분해·해소. C1/C2 ledger 정정 동시 완료.**
+
 **2026-06-13 · A1b — Arena action form 모바일 visibilitychange 언마운트 cause-layer fix (live 7891c17e)**
 
 STAB-A1(effect-layer, sessionStorage 복원)의 cause-layer 후속. cause = syncSessionGate가 focus/visibility/storage resync 시 `setPendingActionContract(null)`을 무가드 실행 → 부모(`ArenaResolveClient.tsx`) 조건부 언마운트 → 모바일 앱전환(visibilitychange)마다 폼 소실. fix = 폼 dirty(non-empty draft) 동안 게이트 **전체** early-return → 폼 유지; sessionStorage는 단독 회복 경로의 백스톱으로 강등.
