@@ -1,3 +1,13 @@
+**2026-06-12 · QR-only Witness Hotfix — secure-link UI 제거 + QR 증인 안내 (live d358b520)**
+
+inner-main 7234abd → live Version d358b520 (3-way PASS + i18n 청크 byte-identical). pure 7234abd 빌드(A1-free).
+- **UI-only**: ActionContractHub/MyPageLeadershipConsole에서 secure-link 버튼·state(`secureLinkUrl`)·handler(`handleRequestSecureLink`) 제거 — route(`/api/arena/action-contract/secure-link`)·shared token 모듈(`signArenaActionLoopToken`) **무접촉**. ActionLoopQrPanel에 `qrWitnessNotice`(ko/en, `whitespace-pre-line` 3문장) 추가. `btnQr` "Complete by QR"→"Show QR for verification". dead i18n(`btnLink`/`completeByQrLink`, 사용처 0) prune.
+- **DB·백엔드 무변경**: `verification_mode`('hybrid' 유지; mode CHECK는 'qr','link','hybrid' 허용)·`verification_type`('action_completed' 분류)·migration·mint/validate 경로 전부 무접촉.
+- **진단(root cause)**: 이용자 "Can't Complete" = **시스템 정상, UX 안내 갭**. 라이브 실측: validation_approved_at 채워짐 + run owner==contract owner(ee9d2075) + deadline 미래 + mint 토큰 payload 정합 + 해당 유저 과거 QR 완료 7회 verified=true → 파이프라인 end-to-end 정상. 막힘 실체 = QR이 "본인 완료 화면"으로 오독되나 실제론 **증인 스캔 검증**(Actor≠Approver, self-completion 미지원). validate는 URL-open(스캔) 구동, le_verification_log 실패 row 0.
+- **A1 lane 분리 격리**: form-persist(syncSessionGate focus/visibility resync 폼소실 복원, sessionStorage 미러)는 `fix/form-persist @ eb85302`로 격리 — 본 배포·inner-main **미포함**(merge-base 비조상 확인).
+- **held C2-2/C2-3 무접촉**: reflection 기능(TrainDayReflectionSet/day-reflection/reflection-questions)은 a42956b부터 이미 live, 본 hotfix 무영향(diff 0).
+- **3-way**: a) Version `d358b520` (wrangler tail) / b) HEAD `7234abd` (provenance) / c) live chunk `7618-0d7e4fa62a784aa6.js`에서 secure-link 리터럴 4종(btnLink/completeByQrLink/"Complete by secure link"/"보안 링크로 완료") **0건** + positive "Show QR for verification" 1건; i18n 청크 disk==live byte-identical. cf:deploy=upload-only(cf:build 미재실행, worktree clean drift-guard). **GATE**: tsc exit 0 / lint:terminology 13(baseline, 신규 0). inner-main `7234abd`(pushed) + outer ledger `<this outer>`.
+
 **2026-06-12 · Action Contract Reminder v1 — D5 트리거 와이어링 완료 (가동)**
 
 in-app reminder 파이프라인 5면 전부 닫힘. 리마인더 hourly 실가동 시작.
