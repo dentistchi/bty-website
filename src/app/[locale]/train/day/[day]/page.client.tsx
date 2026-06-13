@@ -131,6 +131,56 @@ function clampDay(n: number) {
   return Math.min(28, Math.max(1, n));
 }
 
+// Raw section-label literals (source of truth = raw blob, not meta.sectionLabels).
+// en uses the actual embedded run "Today's small win" (straight ' U+0027), not
+// meta.en "Small win". `note` is excluded — it never appears as a raw heading line.
+const SECTION_LABELS = new Set<string>([
+  "Morning ritual",
+  "Core practice",
+  "Why it works",
+  "Expected resistance",
+  "Breakthrough strategy",
+  "Evening reflection",
+  "Today's small win",
+  "아침 의식",
+  "핵심 실천",
+  "왜 효과가 있을까?",
+  "예상되는 저항",
+  "돌파 전략",
+  "저녁 성찰",
+  "오늘의 작은 승리",
+]);
+
+type LessonSegment =
+  | { kind: "header"; label: string }
+  | { kind: "body"; text: string };
+
+// Splits the raw lesson blob into header/body segments at label-line boundaries
+// (trim-only match against SECTION_LABELS). No content mutation: label text is
+// surfaced as a header, body lines keep their original newlines so the existing
+// renderParagraphs (\n{2,} → <p>) handles them identically. Zero label matches →
+// a single body segment (= current flat render).
+function parseLessonSections(text: string): LessonSegment[] {
+  const segments: LessonSegment[] = [];
+  let buffer: string[] = [];
+  const flush = () => {
+    if (buffer.length > 0) {
+      segments.push({ kind: "body", text: buffer.join("\n") });
+      buffer = [];
+    }
+  };
+  for (const line of text.split("\n")) {
+    if (SECTION_LABELS.has(line.trim())) {
+      flush();
+      segments.push({ kind: "header", label: line.trim() });
+    } else {
+      buffer.push(line);
+    }
+  }
+  flush();
+  return segments;
+}
+
 export default function TrainDayPage() {
   const params = useParams<{ locale?: string; day: string }>();
   const locale = (params?.locale === "ko" ? "ko" : "en") as "ko" | "en";
@@ -169,6 +219,24 @@ export default function TrainDayPage() {
           {p}
         </p>
       ));
+
+  // Section-aware render: label lines become headers (weight + spacing only —
+  // no accent/icon/uppercase; that is increment 2), body segments reuse
+  // renderParagraphs. Applied per collapse slice so the char-index collapse
+  // (lessonHead/lessonTail) is untouched.
+  const renderSections = (slice: string): React.ReactNode[] =>
+    parseLessonSections(slice).map((seg, i) =>
+      seg.kind === "header" ? (
+        <div
+          key={`h-${i}`}
+          style={{ fontWeight: 500, marginTop: i === 0 ? 0 : 24, marginBottom: 8 }}
+        >
+          {seg.label}
+        </div>
+      ) : (
+        <React.Fragment key={`b-${i}`}>{renderParagraphs(seg.text)}</React.Fragment>
+      )
+    );
 
   // Locale-aware collapse threshold: Korean is ~2x denser per char, so the same
   // content yields far fewer chars in KO — a single 800 threshold hid the toggle on
@@ -364,7 +432,7 @@ export default function TrainDayPage() {
         </div>
 
         <article style={{ lineHeight: 1.7 }}>
-          {renderParagraphs(lessonHead)}
+          {renderSections(lessonHead)}
           {lessonIsLong && (
             <>
               <style>{`
@@ -379,7 +447,7 @@ export default function TrainDayPage() {
                   <span className="lesson-more-show">{locale === "ko" ? "더 보기" : "Show more"}</span>
                   <span className="lesson-more-hide">{locale === "ko" ? "접기" : "Show less"}</span>
                 </summary>
-                <div style={{ marginTop: 14 }}>{renderParagraphs(lessonTail)}</div>
+                <div style={{ marginTop: 14 }}>{renderSections(lessonTail)}</div>
               </details>
             </>
           )}
