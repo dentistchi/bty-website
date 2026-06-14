@@ -1,3 +1,12 @@
+**2026-06-14 · BTY_CHARACTER_AXIS_GOVERNANCE_LOCK.md v1.0 materialized (Avatar ≠ Axis ≠ Axis Actor lock)**
+
+Character/Axis 아키텍처 3-레이어 분리 거버넌스를 outer docs/에 고정(transcription-only, Commander-approved body verbatim). 코드/배포 mutation 아님 — outer docs/ 전용 단일 파일.
+- Locks: LOCK-1/2/3 + LOCK-D-FIELD 고정; AxisVector(12) = Layer 1 substrate; live path = pattern_family → normalizePatternFamilyId → AxisVector; legacy `axis` non-canonical(삭제/부활 out of scope)
+- 근거: STEP 0 / 0B / 0C read-only 인벤토리(HEAD cdf028ff); 69 CLAIMED / 42 UNCLAIMED, 5-vs-10 canonical split, courage/identity 비-pattern 파생
+- Downstream(미락, 순서만): coverage table → unclaimed-42 decision → Canon body(Commander authorship)
+- Gate 1-8 PASS; byte-identical(cmp exit 0); 단일 파일 materialize
+- Commit: <this outer> (push 전 placeholder, 미backfill)
+
 **2026-06-14 · RANKING-#7a Live-ranking XP 클리핑 fix (LeaderboardRow.tsx)**
 
 live-ranking 사이드바 우측 XP 그룹 미표시 버그 해소. 긴 이름이 행을 카드 overflow:hidden 밖으로 밀어 XP 은닉 → flexbox-truncation 4링크 폐쇄(외곽 행/좌측 그룹 minWidth:0, 이름 라인 ellipsis, XP flexShrink:0). UI-render-only.
