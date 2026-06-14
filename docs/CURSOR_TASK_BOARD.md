@@ -1,5 +1,9 @@
 # CURSOR TASK BOARD — 2026-03-23
 
+**[x] RANKING-#7a Live-ranking XP 클리핑 — DEPLOYED 1dada5f6 + 육안 PASS (2026-06-14):** [UI] live-ranking 사이드바 행 우측 XP 그룹 통째 미표시 — 긴 codeName-userDisplayName이 행을 카드 overflow:hidden 밖으로 밀어 XP 은닉. flexbox-truncation 4링크 폐쇄: 외곽 행(grid item) minWidth:0 + 좌측 그룹 minWidth:0 + 이름 라인 overflow/ellipsis/nowrap + XP 그룹 flexShrink:0. **교훈:** flex:1은 오버플로에 inert(기각), 외곽 행 minWidth:0이 실제 필요(육안 확정). **Verify:** tsc 0 / lint:terminology 13(+0) / UI-render-only(XP·순위 무변). **Deploy:** npm run deploy → Worker bty-arena-staging Version 1dada5f6-6595-4cda-9f06-77146d56ba43, 3-way PASS(active==1dada5f6 / 청크 1220-a577aaa2 textOverflow / mtime fresh). **육안:** Incognito+Disable cache — XP 전 행 표시·이름 ellipsis·isMe 보더 무손상. **Commit:** inner-main cdf028ff(단일 파일 +5/-4), push HOLD(launch 런웨이). outer mirror 미스테이지(bty-app/ 25 divergence).
+
+---
+
 **[x] C2-3-Done-Vacuous — DONE (2026-06-12):** [DOCS] Train Day Reflection History branching 이미 구현·배포. LettersClient.tsx day_reflection 분기, 4 confirmations 코드 해소(Q/A·Final·빈답변·title). 메모리 drift 정정: L331→L391, deploy-held=거짓(이미 배포), branching=Center letters History. code 0 mutation. inner 4831a62.
   - BACKLOG: TrainDayCapture.tsx orphan prune (별도 source dispatch) / legacy reflection rows 무해.
 

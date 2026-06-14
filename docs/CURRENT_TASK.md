@@ -1,3 +1,11 @@
+**2026-06-14 · RANKING-#7a Live-ranking XP 클리핑 fix (LeaderboardRow.tsx)**
+
+live-ranking 사이드바 우측 XP 그룹 미표시 버그 해소. 긴 이름이 행을 카드 overflow:hidden 밖으로 밀어 XP 은닉 → flexbox-truncation 4링크 폐쇄(외곽 행/좌측 그룹 minWidth:0, 이름 라인 ellipsis, XP flexShrink:0). UI-render-only.
+- Deploy: Worker bty-arena-staging Version 1dada5f6, 3-way PASS, Incognito 육안 XP 복구 확인
+- Verify: tsc 0 / lint:terminology 13(+0) / XP·순위·시즌 로직 무접촉
+- Commit: inner-main cdf028ff(단일 파일), push HOLD
+- 교훈: flex:1 inert 기각 / 외곽 행 minWidth:0 실제 필요(관찰이 추론 정정)
+
 **2026-06-13 · BTY Canon Sync Rule v1.0 LOCK (docs/BTY_CANON_SYNC_RULE.md 생성)**
 
 KO Canon(BTY_CANON.md) ↔ EN Edition(BTY_CANON.en.md) edition-sync 거버넌스를 독립 문서로 고정. EN 헤더·ledger에 흩어져 있던 "KO 우선" 규칙을 트리거·상태·해소순서·개정규칙까지 명문화. 코드/배포 mutation 아님 — outer docs/ 전용. 본 엔트리는 문서 Amendment Rule("explicit ledger entry" 요구) 충족분.
