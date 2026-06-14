@@ -1,3 +1,13 @@
+**2026-06-14 · BTY_PATTERN_FAMILY_AXISVECTOR_COVERAGE_LOCK.md v1.0 materialized (DOC-ONLY)**
+
+pattern_family → normalizePatternFamilyId → AxisVector(12) 커버리지를 outer docs/에 고정(transcription-only, Commander-approved body verbatim). 코드/데이터/fingerprint mutation 아님 — outer docs/ 전용 단일 파일.
+- 111 distinct = 69 claimed + 42 unclaimed (Group A 26 keep-unclaimed / Group B 12 keep-unclaimed / Group C 4 retire-canonical-only); 전부 doc-only
+- NEW CLAIM = 0 · NEW ALIAS = 0 · CODE IMPACT = 0 · FINGERPRINT IMPACT = 0 (pattern-family.ts·PATTERN_FAMILY_ALIAS·buildFingerprintInput·scenario data 무접촉); retire ≠ 런타임 삭제/데이터 마이그레이션/코드 제거
+- 근거: STEP 0C/0D read-only 인벤토리(HEAD cdf028ff); §C verdict = Commander Phase 2; STEP 0D는 신규 축 미발견 — 기존 69-claimed 경계 유지 확인
+- Governance parent: BTY_CHARACTER_AXIS_GOVERNANCE_LOCK.md v1.0 (b6c72bd)
+- Gate 1-9 PASS; byte-identical(cmp exit 0); 단일 파일 materialize
+- Commit: <this outer> (push 전 placeholder, 미backfill)
+
 **2026-06-14 · BTY_CHARACTER_AXIS_GOVERNANCE_LOCK.md v1.0 materialized (Avatar ≠ Axis ≠ Axis Actor lock)**
 
 Character/Axis 아키텍처 3-레이어 분리 거버넌스를 outer docs/에 고정(transcription-only, Commander-approved body verbatim). 코드/배포 mutation 아님 — outer docs/ 전용 단일 파일.
