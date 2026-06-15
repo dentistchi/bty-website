@@ -193,7 +193,7 @@ export default function LeadershipMetricsPage() {
         <>
           {/* AIR tab */}
           {tab === "air" && airData && (
-            <AirTable rows={airData.rows} />
+            <AirTable rows={airData.rows} onReload={() => load("air")} />
           )}
 
           {/* Stage tab */}
@@ -270,12 +270,42 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
-function AirTable({ rows }: { rows: UserAirRow[] }) {
+function AirTable({ rows, onReload }: { rows: UserAirRow[]; onReload: () => void }) {
   const params = useParams();
   const locale = (typeof params?.locale === "string" ? params.locale : "en") as Locale;
   const t = getMessages(locale).leadershipMetricsAdmin;
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [approveError, setApproveError] = useState<string | null>(null);
+
+  // M2: POST approve-leader-track; reason/error surfaced as-is, reload on success (P-6).
+  const approve = async (userId: string) => {
+    setApprovingId(userId);
+    setApproveError(null);
+    try {
+      const r = await fetch("/api/admin/leadership-engine/approve-leader-track", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      const data = (await r.json().catch(() => ({}))) as { ok?: boolean; reason?: string; error?: string };
+      if (r.ok && data.ok) {
+        onReload();
+      } else {
+        setApproveError(data.reason ?? data.error ?? `HTTP ${r.status}`);
+      }
+    } catch (e) {
+      setApproveError(e instanceof Error ? e.message : t.networkError);
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
   return (
     <div className="overflow-hidden rounded border border-neutral-200 bg-white shadow-sm">
+      {approveError && (
+        <div className="border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">{approveError}</div>
+      )}
       <table className="w-full text-sm">
         <thead className="bg-neutral-50">
           <tr>
@@ -288,6 +318,7 @@ function AirTable({ rows }: { rows: UserAirRow[] }) {
             <Th align="right">{t.colLastActivity}</Th>
             <Th align="right">{t.glStageLriLabel}</Th>
             <Th align="center">{t.colCertified}</Th>
+            <Th align="center">Leader Track</Th>
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-100">
@@ -324,6 +355,22 @@ function AirTable({ rows }: { rows: UserAirRow[] }) {
                 >
                   {row.certified ? t.colCertifiedYes : t.colCertifiedNo}
                 </span>
+              </td>
+              <td className="px-4 py-3 text-center">
+                {row.is_leader_track ? (
+                  <span className="inline-block rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800">Leader</span>
+                ) : row.readiness_flag ? (
+                  <button
+                    type="button"
+                    disabled={approvingId === row.userId}
+                    onClick={() => approve(row.userId)}
+                    className="rounded bg-neutral-900 px-2 py-1 text-xs font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
+                  >
+                    {approvingId === row.userId ? "…" : "Approve"}
+                  </button>
+                ) : (
+                  <span className="text-neutral-300">—</span>
+                )}
               </td>
             </tr>
           ))}

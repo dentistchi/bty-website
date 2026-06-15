@@ -31,6 +31,8 @@ export type UserAirRow = {
   certifiedReasonsMissing: string[];
   lri: number | null;
   lriPending: boolean;
+  readiness_flag: boolean;   // seam-B': candidate LRI readiness (admin-only; not raw LRI)
+  is_leader_track: boolean;  // seam-B': already promoted to leader track
 };
 
 export type LeadershipMetricsResponse = {
@@ -114,6 +116,17 @@ export async function GET(req: NextRequest) {
     );
     const fullNameMap = await fetchFullNameMap(supabase, Array.from(byUser.keys()));
 
+    // seam-B': leader-track flag per user (admin-only state, not raw LRI).
+    const { data: leaderStates } = await supabase
+      .from("leadership_engine_state")
+      .select("user_id, is_leader_track");
+    const leaderTrackMap = new Map<string, boolean>(
+      (leaderStates ?? []).map((r) => [
+        (r as { user_id: string }).user_id,
+        (r as { is_leader_track: boolean }).is_leader_track === true,
+      ]),
+    );
+
     // Compute AIR per user. Shared reference instant so all users use the same
     // 14d window boundary (no per-user clock skew).
     const asOf = new Date();
@@ -166,7 +179,9 @@ export async function GET(req: NextRequest) {
         const certInputs = await buildCertifiedInputs(supabase, userId, asOf);
         const cert = certifiedStatus(certInputs);
         const lriR = await buildLRIInputs(supabase, userId, asOf);
-        const lri = lriR.pending ? null : computeLRI(lriR.inputs).lri;
+        const lriResult = lriR.pending ? null : computeLRI(lriR.inputs);
+        const lri = lriResult ? lriResult.lri : null;
+        const readiness_flag = lriResult ? lriResult.readiness_flag : false;
 
         return {
           userId,
@@ -182,6 +197,8 @@ export async function GET(req: NextRequest) {
           certifiedReasonsMissing: cert.reasons_missing,
           lri,
           lriPending: lriR.pending,
+          readiness_flag,
+          is_leader_track: leaderTrackMap.get(userId) ?? false,
         };
       }),
     );
