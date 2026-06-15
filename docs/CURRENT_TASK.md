@@ -1,3 +1,15 @@
+**2026-06-15 · #1 F10 override reconciliation — My-Page Identity 슬롯 = Code (FORGE), not Archetype**
+
+My-Page "Leadership Identity" 슬롯이 Archetype 계열(override `archetypeName` / fallback `QUIETFLAME`)을 렌더하던 live 위반을 해소. BTY_AVATAR_IDENTITY_LOCK §1 (Identity Anchor=Code) 시행. mutation = `getMyPageIdentityState.ts` 단독(Opt A, computeLeadershipState 본체·DEFAULT_CODE_NAME 상수 무수정).
+- **Identity 슬롯 = Code (FORGE-series), single source = `arena_profiles.code_index`** (/api/arena/core-xp 와 동일 진실원; `code_index ?? codeIndexFromTier(tierFromCoreXp(coreXp))` → `CODE_NAMES[clamp]`). Profile==Dashboard==My-Page 교차정합 확인.
+- E1 override 분기 제거 · E2 Code 산출+prop 전달 · E3 prop 항상 set → `QUIETFLAME` DEFAULT 도달 불가.
+- **Archetype(State) 보존**: `resolveArchetypeForUser` 호출 유지(계산+naming-lock persistence) — Archetype 표시 surface 는 #2/#4 후행.
+- **RISK-R1a**: `DEFAULT_CODE_NAME="QUIETFLAME"` 상수 잔존(computeLeadershipState.ts:7) — unreachable·non-live, 후행 정리 backlog.
+- **FLAG-A**: Code stage(1/7) ≠ Leadership stage(3/4) = 의도된 분리(별개 축), 위반 아님.
+- R1 report: 두 개의 7 분리 ENFORCED(live 위반 0). R2 report: STAT substrate UNTOUCHED(surfacing-only). 정적 게이트 PASS(tsc 0 / terminology 13·신규0 / vitest 8/8).
+- 3-way PASS: deploy Version `146dccd7-e6c9-4cab-93e1-dffc275590dd`(staging bty-arena-staging) · git HEAD `b58f747` · live "FORGE" @ /my-page.
+- Commit: b58f747 (단독 파일, +17/−8; outer origin/main d2a648f..b58f747 pushed)
+
 **2026-06-15 · BTY_AVATAR_IDENTITY_LOCK.md materialized (governance lock, Identity≠State)**
 
 Avatar/Archetype 거버넌스 락을 outer docs/에 고정(create-only, semantic lock only — 코드/데이터/배포 mutation 아님). RISK-1 트랙 결정분; baseline outer 0096f8c (BTY_AXIS_CANON v1.2 ARCHETYPE BASELINE 상속).
