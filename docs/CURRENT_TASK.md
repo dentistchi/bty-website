@@ -1,3 +1,9 @@
+**2026-06-15 · #4 Evidence(AIR/LRI/Leader) surface 측정 CLOSED + INTEGRITY_EVIDENCE_INTENT.md 고정**
+
+#3 Evidence surface 측정 + #4 mount trace (read-only). live Evidence surfaces = **락§2 UPHELD** (AIR=band-only / LRI raw=admin-gated requireAdminEmail / Leader=role-assignment status), 위반 A/B/C/D 전부 N. **IntegrityScoreCardWidget = MOUNT 0**(player route reverse-unreachable 증명 — 유일 importer WeeklyReportCard 가 orphan in-degree 0; dynamic/lazy/barrel 0), **LeadershipEngineWidget = MOUNT 0**(importer 0). 두 위젯 = compute/exists only, player surface 0.
+- fact 고정 + 조건부 가드: `docs/INTEGRITY_EVIDENCE_INTENT.md` (49L, time-scoped, BTY_AVATAR_IDENTITY_LOCK §2 종속). **조건부 가드**: IntegrityScoreCard 표시(grade letter A–D + composite delta ±N.N)는 graded-score 형태로 §2 "구축 단정" 경계 근접 → 미래 player mount 시 §2 band화/disclosure-scope 가드 선결, grade+delta 그대로 노출 금지.
+- 3층 경계 분리 유지(Identity=Code / State=Pattern Sig / Evidence=AIR·LRI·Leader). 현재 dead = 의도된 비노출(영구 금지 아님). 코드/surface/runtime 변경 0 · 락/canon 무수정. Commit: 285886a (doc 단독, +49; outer origin/main f0bf7ee..285886a pushed).
+
 **2026-06-15 · #2 Archetype/State surface 측정 CLOSED + ARCHETYPE_SURFACE_INTENT.md 고정**
 
 #2 read-only inventory 결과 = **위반 0 · gap 1**. State surface(PATTERN SIGNATURES / Leader)는 위반 A/B/C 전부 clean(관찰·상태·준비도 어조, Code-정체성 미주입, 단일 소스). Archetype rollup(7 STILLWATER) = **live surface 0** (resolveArchetypeForUser 계산+naming-lock persist 만, 렌더 0; /api/bty/archetype DEAD=의도). FLAG-A = Code stage(1/7, coreXp) ≠ Leadership stage(1–4, AIR/TII) 의도된 분리, source 분리 확인.
