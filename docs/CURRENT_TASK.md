@@ -1,3 +1,10 @@
+**2026-06-15 · #5 Copy↔data 계열 정합 측정 CLOSED + PROFILE_SURFACE_ALIGNMENT_INTENT.md 고정**
+
+#5 카피↔렌더 데이터 계열 정합 측정 (read-only, ko/en, 6 surface: Profile·Dashboard·My-Page·Leaderboard·Arena Lobby·Guide). 결과 = **위반 A/B/C/D 전부 N**. Identity 라벨("Leadership Identity"/"리더십 아이덴티티")→FORGE(Code) wire 정합(#1 무회귀); State 카피=관찰형(Confidence/Watch/Shift, "리더십 패턴 형성·누적" 과정형); archetype/"유형"/"leadership type" 고정정체성 카피 0; ko/en parity(characterLocked "Code 진화"/"Code evolution" 등) 유지.
+- fact 고정: `docs/PROFILE_SURFACE_ALIGNMENT_INTENT.md` (34L, time-scoped, BTY_AVATAR_IDENTITY_LOCK 종속) — Profile Surface Alignment UPHELD · Identity=Code maintained · Identity≠State maintained · ko/en parity · 위반 0.
+- **WATCH (non-blocking)**: profileIdentitySubline en "Your identity" vs ko "표시되는 이름" — 둘 다 데이터=FORGE, semantic mismatch 0, mutation 불요; 후속 카피 개선 후보(en→name/Code 정렬)로만 기록.
+- 코드/카피/surface/runtime 변경 0 · 락/canon 무수정. Commit: fe34d01 (doc 단독, +34; outer origin/main 2e1bafd..fe34d01 pushed).
+
 **2026-06-15 · #4 Evidence(AIR/LRI/Leader) surface 측정 CLOSED + INTEGRITY_EVIDENCE_INTENT.md 고정**
 
 #3 Evidence surface 측정 + #4 mount trace (read-only). live Evidence surfaces = **락§2 UPHELD** (AIR=band-only / LRI raw=admin-gated requireAdminEmail / Leader=role-assignment status), 위반 A/B/C/D 전부 N. **IntegrityScoreCardWidget = MOUNT 0**(player route reverse-unreachable 증명 — 유일 importer WeeklyReportCard 가 orphan in-degree 0; dynamic/lazy/barrel 0), **LeadershipEngineWidget = MOUNT 0**(importer 0). 두 위젯 = compute/exists only, player surface 0.
