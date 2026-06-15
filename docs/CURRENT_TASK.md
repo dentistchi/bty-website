@@ -1,3 +1,14 @@
+**2026-06-14 · BTY_AXIS_CANON.md v1.0 materialized (12 axis meaning canon)**
+
+Layer 1 12축(AxisVector)의 의미 Canon을 outer docs/에 고정(transcription-only, Commander-approved body verbatim). 이미 잠긴 substrate를 설명할 뿐 생성하지 않음 — 코드/데이터/배포 mutation 아님, outer docs/ 전용 단일 파일.
+- 경로: docs/BTY_AXIS_CANON.md (+285); 구조 §0 Provenance / §1 Substrate Declaration / §2 Honesty Block(§2.1–§2.4) / §3 Per-Axis Canon(12축) / §4 Parking(§4-P1)
+- 축 구성: pattern-derived 10 + metric-derived 2(courage ← emotionalRegulation, identity ← TII) = 12; 8 strong + 2 weak(visibility·control) + 2 none(pattern)
+- canonical-5 ⊆ trigger-10 (action-contract 영속 자격 부분집합; 영속 ≠ fingerprint firing); 현재 구현 ≠ 영구 정의, Canon > 구현
+- Inherits: BTY_CHARACTER_AXIS_GOVERNANCE_LOCK.md §3.4 · BTY_PATTERN_FAMILY_AXISVECTOR_COVERAGE_LOCK.md
+- STEP 0-b 실측 = α (Coverage Lock §D = pattern-10-then-metric-2 그룹핑, 세 문서 순서 정합, §4-P2 불요); Gate 1-7 PASS (G3 expected 17 정정 = §2.x 4 + 축 12 + §4-P1 1), byte-identical
+- Canon commit: 344f8a3 (단일 파일, +285)
+- Commit: <this outer> (push 전 placeholder, 미backfill)
+
 **2026-06-14 · BTY_PATTERN_FAMILY_AXISVECTOR_COVERAGE_LOCK.md v1.0 materialized (DOC-ONLY)**
 
 pattern_family → normalizePatternFamilyId → AxisVector(12) 커버리지를 outer docs/에 고정(transcription-only, Commander-approved body verbatim). 코드/데이터/fingerprint mutation 아님 — outer docs/ 전용 단일 파일.
