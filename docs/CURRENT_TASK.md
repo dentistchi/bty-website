@@ -1,3 +1,10 @@
+**2026-06-15 · ★ AVATAR_MAPPING_TRACK CLOSED — #3 residency + #6 scenario CLOSED (SCENARIO_AND_RESIDENCY_INTENT.md)**
+
+#3 Code-name residency (상속 close — #1/#3/#5 에서 상속, 독립 측정 부재 명시): 6 surface(Profile/Dashboard/Leaderboard/Arena/Guide/My-Page) 전부 FORGE(Code) resolve, Archetype residency 0. #6 Scenario narrative (81 JSON, 27 cores × base/en/ko): UPHELD — archetype refs 0, Code refs 0, 모든 "you are X" = behavior-observation/NPC 대사/scene narration(고정정체성 분류 0), ko/en 대칭.
+- fact 고정 + 종료 봉인: `docs/SCENARIO_AND_RESIDENCY_INTENT.md` (49L, time-scoped). identity 용어 주석: scenario 제목 "identity"(core_09/18/27)=서사 주제 ≠ Code construct, 다른 층위.
+- **★ AVATAR_MAPPING_TRACK = CLOSED.** Identity≠State 4-layer 입증: L1 Identity=Code(#1 b58f747) · L2 State=Pattern Signatures(#2 a70ba21) · L3 Evidence=AIR/LRI/Leader(#4 285886a) · L4 Narrative=Observation(#6) + Surface/Copy(#5 fe34d01). 코드·문서·카피·서사 전 층위 유지 입증.
+- 코드/scenario/surface/runtime 변경 0 · 락/canon 무수정. Commit: 2c18f6f (doc 단독, +49; outer origin/main 13a4978..2c18f6f pushed).
+
 **2026-06-15 · #5 Copy↔data 계열 정합 측정 CLOSED + PROFILE_SURFACE_ALIGNMENT_INTENT.md 고정**
 
 #5 카피↔렌더 데이터 계열 정합 측정 (read-only, ko/en, 6 surface: Profile·Dashboard·My-Page·Leaderboard·Arena Lobby·Guide). 결과 = **위반 A/B/C/D 전부 N**. Identity 라벨("Leadership Identity"/"리더십 아이덴티티")→FORGE(Code) wire 정합(#1 무회귀); State 카피=관찰형(Confidence/Watch/Shift, "리더십 패턴 형성·누적" 과정형); archetype/"유형"/"leadership type" 고정정체성 카피 0; ko/en parity(characterLocked "Code 진화"/"Code evolution" 등) 유지.
