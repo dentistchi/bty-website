@@ -1,3 +1,10 @@
+**2026-06-15 · #2 Archetype/State surface 측정 CLOSED + ARCHETYPE_SURFACE_INTENT.md 고정**
+
+#2 read-only inventory 결과 = **위반 0 · gap 1**. State surface(PATTERN SIGNATURES / Leader)는 위반 A/B/C 전부 clean(관찰·상태·준비도 어조, Code-정체성 미주입, 단일 소스). Archetype rollup(7 STILLWATER) = **live surface 0** (resolveArchetypeForUser 계산+naming-lock persist 만, 렌더 0; /api/bty/archetype DEAD=의도). FLAG-A = Code stage(1/7, coreXp) ≠ Leadership stage(1–4, AIR/TII) 의도된 분리, source 분리 확인.
+- fact 고정: `docs/ARCHETYPE_SURFACE_INTENT.md` (43L, time-scoped, BTY_AVATAR_IDENTITY_LOCK 종속) — Pattern Signatures=Canonical State Surface · Archetype Rollup=Compute/Persist Only · Dead Transport=Intended · Identity≠State 3층(Code/Pattern Signatures/AIR·LRI) · Non-goal("Archetype Rollup is NOT a missing feature; absence intentional").
+- 신설 판정(측정 결론): pattern-level 의도 → PATTERN SIGNATURES 충분, #2 surface 신설 불요; archetype-rollup 표시 의도면 net-new(위반-B 가드 선결). 측정은 gap 만 확정, 의도 미결정.
+- 코드/surface/runtime 변경 0 · 락/canon 무수정. Commit: a70ba21 (doc 단독, +43; outer origin/main 4eb1363..a70ba21 pushed).
+
 **2026-06-15 · #1 F10 override reconciliation — My-Page Identity 슬롯 = Code (FORGE), not Archetype**
 
 My-Page "Leadership Identity" 슬롯이 Archetype 계열(override `archetypeName` / fallback `QUIETFLAME`)을 렌더하던 live 위반을 해소. BTY_AVATAR_IDENTITY_LOCK §1 (Identity Anchor=Code) 시행. mutation = `getMyPageIdentityState.ts` 단독(Opt A, computeLeadershipState 본체·DEFAULT_CODE_NAME 상수 무수정).
