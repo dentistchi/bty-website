@@ -1,3 +1,14 @@
+**2026-06-15 · BTY_AVATAR_IDENTITY_LOCK.md materialized (governance lock, Identity≠State)**
+
+Avatar/Archetype 거버넌스 락을 outer docs/에 고정(create-only, semantic lock only — 코드/데이터/배포 mutation 아님). RISK-1 트랙 결정분; baseline outer 0096f8c (BTY_AXIS_CANON v1.2 ARCHETYPE BASELINE 상속).
+- 경로: docs/BTY_AVATAR_IDENTITY_LOCK.md (+63); 구조 §0 Provenance / §1 LOCK(3문장)+Commander Meaning(verbatim 8줄, blockquote) / §2 Evidence Layer=AIR·LRI(role-assignment only) / §3 Effects on prior risks / §4 OPEN / §5 Time-scoped honesty
+- LOCK 3: Identity Anchor=Code(avatar=Code progression) · State Layer=Archetype(non-identity, axis-derived, recompute) · Identity≠State
+- §3: persistence NOT PROVEN → load-bearing 해제(Archetype=State, pin 불요); OBS-1(10/12, ownership·time 미커버) → avatar 무관화, 잔존은 archetype surface만 상속
+- §4 OPEN(→#3 Avatar Mapping Track): F10 override reconciliation(현재 archetypeName→codeNameOverride→computeLeadershipState Code-name slot, getMyPageIdentityState.ts:89-95) · dashboard surface · code-name display residency · AIR/LRI presentation 위치 · Profile Surface alignment · Future Narrative/Scenario Copy alignment
+- STEP 0 4/4 PASS(HEAD=0096f8c, 파일 부재, F10 byte 일치, target-isolation); VERIFY 4/4 PASS(단독 파일, HEAD 한 칸 전진, 구조 일치, verbatim 마지막 줄 1 hit); 3-way freshness 일치
+- #3 미개시(이 락은 #3 선행물); 의미 본문 Commander verbatim, 재해석 0
+- Commit: d0ec17c (단일 파일, +63; outer origin/main 0096f8c..d0ec17c pushed)
+
 **2026-06-14 · BTY_AXIS_CANON.md v1.0 materialized (12 axis meaning canon)**
 
 Layer 1 12축(AxisVector)의 의미 Canon을 outer docs/에 고정(transcription-only, Commander-approved body verbatim). 이미 잠긴 substrate를 설명할 뿐 생성하지 않음 — 코드/데이터/배포 mutation 아님, outer docs/ 전용 단일 파일.
