@@ -1,5 +1,9 @@
 # CURSOR TASK BOARD — 2026-03-23
 
+**[x] MIRROR_PAIR_CANON — CLOSED (2026-06-15):** [DOCS] 첫 순수 의미-저작 canon 생성 — `docs/MIRROR_PAIR_CANON.md` (Axis Relationship Layer, explanation-only, ≠ Axis Definition). 본문 = Mirror Pair 01~04 **Commander verbatim** (01 Ownership↔Accountability / 02 Repair↔Conflict / 03 Authority↔Control / 04 Authority↔Visibility); 의미 저작 = Commander 100%, 이 chat = Arbiter(정합 검증 only). **검증:** STEP 0 PASS(HEAD==origin/main dc7e1c2 / BTY_AXIS_CANON v1.0·v1.1 byte-identical) → C-1 모순 0·C-2 substrate-재정의 0·대비-호명 유지·Authority §3 단일정의↔03/04 일관 drift 0. **Pair 03 개정 1회:** 초안 Control="실행 역량"이 §3 Control(self-protection→trust) 정의역과 C-1 불일치 → HALT → Commander revise(붙듦/내려놓음/신뢰 framing) → 재대조 PASS. net-new(락 상속 0), `AXIS_CANON_BODY_CLOSE.md` §3 이관 트랙 충족, canon/lock 본문 무수정·새 조항 0. **Gate:** lint:terminology 13(+0) / forbidden-token 0 / doc-only / 런타임 무변경(3-way 불요). **Commit:** outer docs 단독, **자가 push 금지 준수 → push HELD**(Commander/인가 런타임 이관). inner 무접촉.
+
+---
+
 **[x] RANKING-#7a Live-ranking XP 클리핑 — DEPLOYED 1dada5f6 + 육안 PASS (2026-06-14):** [UI] live-ranking 사이드바 행 우측 XP 그룹 통째 미표시 — 긴 codeName-userDisplayName이 행을 카드 overflow:hidden 밖으로 밀어 XP 은닉. flexbox-truncation 4링크 폐쇄: 외곽 행(grid item) minWidth:0 + 좌측 그룹 minWidth:0 + 이름 라인 overflow/ellipsis/nowrap + XP 그룹 flexShrink:0. **교훈:** flex:1은 오버플로에 inert(기각), 외곽 행 minWidth:0이 실제 필요(육안 확정). **Verify:** tsc 0 / lint:terminology 13(+0) / UI-render-only(XP·순위 무변). **Deploy:** npm run deploy → Worker bty-arena-staging Version 1dada5f6-6595-4cda-9f06-77146d56ba43, 3-way PASS(active==1dada5f6 / 청크 1220-a577aaa2 textOverflow / mtime fresh). **육안:** Incognito+Disable cache — XP 전 행 표시·이름 ellipsis·isMe 보더 무손상. **Commit:** inner-main cdf028ff(단일 파일 +5/-4), push HOLD(launch 런웨이). outer mirror 미스테이지(bty-app/ 25 divergence).
 
 ---
