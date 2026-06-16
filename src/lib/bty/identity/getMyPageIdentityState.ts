@@ -13,6 +13,8 @@ import {
 import { fetchUserPatternSignaturesForMyPage } from "@/lib/bty/arena/fetchUserPatternSignatures.server";
 import type { UserPatternSignaturePublic } from "@/lib/bty/arena/patternSignature.types";
 import { buildFingerprintInput, resolveArchetypeForUser } from "@/lib/bty/archetype";
+import { CODE_NAMES } from "@/domain/constants";
+import { tierFromCoreXp, codeIndexFromTier } from "@/domain/rules/level-tier";
 import { fetchSignalsAndReflections } from "./fetchIdentityRows";
 
 export type MyPageIdentityPayload = {
@@ -56,7 +58,7 @@ export async function getMyPageIdentityState(
     fetchAwaitingVerificationContractsForMyPage(supabase, userId),
     supabase
       .from("arena_profiles")
-      .select("core_xp_total")
+      .select("core_xp_total, code_index")
       .eq("user_id", userId)
       .maybeSingle(),
   ]);
@@ -64,7 +66,8 @@ export async function getMyPageIdentityState(
   if (recoveryRes.error) return { ok: false, message: recoveryRes.error.message };
   if (!sigBundle.ok) return { ok: false, message: sigBundle.message };
 
-  const coreXp = (profileRes.data as { core_xp_total?: number } | null)?.core_xp_total ?? 0;
+  const profileRow = profileRes.data as { core_xp_total?: number; code_index?: number } | null;
+  const coreXp = profileRow?.core_xp_total ?? 0;
 
   const [scenariosRes, contractsRes] = await Promise.all([
     supabase
@@ -85,14 +88,20 @@ export async function getMyPageIdentityState(
     contractsRes.count ?? 0,
   );
 
-  const archetypeResult = await resolveArchetypeForUser(supabase, userId, fingerprintInput);
-  const codeNameOverride =
-    archetypeResult.ok && archetypeResult.source !== "pattern_forming"
-      ? archetypeResult.archetypeName
-      : undefined;
+  // Archetype computation + naming-lock persistence preserved (State pipeline; surfaced via #2/#4
+  // tracks, not the Identity slot). Result intentionally not consumed for the Identity code name.
+  await resolveArchetypeForUser(supabase, userId, fingerprintInput);
+
+  // Identity slot renders the user's Code (FORGE-series), single source = arena_profiles.code_index
+  // (identical truth source to /api/arena/core-xp). BTY_AVATAR_IDENTITY_LOCK §1: Identity Anchor = Code.
+  const codeIndex =
+    typeof profileRow?.code_index === "number"
+      ? profileRow.code_index
+      : codeIndexFromTier(tierFromCoreXp(coreXp));
+  const codeName = CODE_NAMES[Math.min(6, Math.max(0, codeIndex))];
 
   const metrics = computeMetrics(signals);
-  const base = computeLeadershipState(metrics, locale, reflections, { codeNameOverride, coreXp });
+  const base = computeLeadershipState(metrics, locale, reflections, { codeNameOverride: codeName, coreXp });
   const leadershipState = mergeLeadershipReflectionLayer(base, metrics, signals, locale, reflections);
   const recoveryTriggered = shouldShowCompoundRecovery(signals, reflections);
 
