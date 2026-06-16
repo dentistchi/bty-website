@@ -1,15 +1,22 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { Noto_Serif_KR } from "next/font/google";
+import localFont from "next/font/local";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SetLocale } from "@/components/SetLocale";
 import "./globals.css";
 
-const notoSerifKr = Noto_Serif_KR({
-  weight: ["400", "500", "600"],
-  subsets: ["latin"],
+// FONT_VENDOR_A: self-hosted latin-subset Noto Serif KR (was the Google font loader).
+// Removes Cloudflare/OpenNext build-time fetch to fonts.gstatic.com (ETIMEDOUT risk).
+const notoSerifKr = localFont({
+  src: [
+    { path: "./fonts/noto-serif-kr-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/noto-serif-kr-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/noto-serif-kr-latin-600-normal.woff2", weight: "600", style: "normal" },
+  ],
   display: "swap",
   variable: "--font-serif-kr",
+  fallback: ["Georgia", "Batang", "serif"],
+  adjustFontFallback: "Times New Roman",
 });
 
 export const metadata: Metadata = {

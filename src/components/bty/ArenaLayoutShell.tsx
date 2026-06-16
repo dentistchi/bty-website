@@ -1,16 +1,23 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Noto_Sans_KR } from "next/font/google";
+import localFont from "next/font/local";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { LangSwitch } from "@/components/LangSwitch";
 import HubTopNav from "@/components/bty/HubTopNav";
 
-/** DESIGN_FIRST_IMPRESSION_BRIEF §4 B: 제목·로고용 포인트 폰트 (Arena 영역만) */
-const notoSansKr = Noto_Sans_KR({
-  weight: ["600", "700", "800"],
-  subsets: ["latin"],
+/** DESIGN_FIRST_IMPRESSION_BRIEF §4 B: 제목·로고용 포인트 폰트 (Arena 영역만)
+ * FONT_VENDOR_A: self-hosted latin-subset Noto Sans KR (was the Google font loader).
+ * Removes Cloudflare/OpenNext build-time fetch to fonts.gstatic.com (ETIMEDOUT risk). */
+const notoSansKr = localFont({
+  src: [
+    { path: "../../app/fonts/noto-sans-kr-latin-600-normal.woff2", weight: "600", style: "normal" },
+    { path: "../../app/fonts/noto-sans-kr-latin-700-normal.woff2", weight: "700", style: "normal" },
+    { path: "../../app/fonts/noto-sans-kr-latin-800-normal.woff2", weight: "800", style: "normal" },
+  ],
   display: "swap",
   variable: "--font-arena-heading",
+  fallback: ["system-ui", "Apple SD Gothic Neo", "Malgun Gothic", "sans-serif"],
+  adjustFontFallback: "Arial",
 });
 
 /**
