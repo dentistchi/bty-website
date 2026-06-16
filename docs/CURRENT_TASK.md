@@ -1,3 +1,12 @@
+**2026-06-16 · ☑ BTY_AVATAR_PLATFORM_ARCHITECTURE_v1 RELOCATED to root docs/ (governance/architecture canon peer — NOT a re-lock)**
+
+`BTY_AVATAR_PLATFORM_ARCHITECTURE_v1.md`를 outer-root `docs/`로 이동 — axis-canon governance peer topology에 정렬(outer-root-only, 6개 axis governance docs와 동일: BTY_AXIS_CANON / v1_1_ADDENDUM / v1_2_ARCHETYPE_BASELINE / CHARACTER_AXIS_GOVERNANCE_LOCK / PATTERN_FAMILY_AXISVECTOR_COVERAGE_LOCK / AXIS_CANON_BODY_CLOSE). co-track 단일 inode라 outer `git mv`가 물리 파일을 bty-app/ 밖으로 빼냄 → inner-main에서도 제거. **content 무변경 / lock 유지(LOCKED v1.0) / `<this outer>` placeholder verbatim / blob `9f9f917d` 보존 = re-lock 아님.** docs-only / no deploy.
+- inner commit SHA = **b5d67ff3** (inner-main, single deletion `docs/BTY_AVATAR_PLATFORM_ARCHITECTURE_v1.md`; `6d1bf5fa..b5d67ff3` FF push, force 0). 이제 inner-main / bty-app subtree에서 부재.
+- outer commit SHA = **<this outer>** (rename `bty-app/docs/… → docs/…` + 본 ledger; blob 동일 9f9f917d, R rename detection).
+- end-state: avatar canon = outer-root `docs/BTY_AVATAR_PLATFORM_ARCHITECTURE_v1.md` 단일 위치(axis peer 동형). CLAUDE.md "architecture→root docs/" 규약과도 정렬 — 직전 arbitration NOTE 해소.
+
+---
+
 **2026-06-16 · ★ BTY Avatar Platform Architecture v1 LOCKED — 6-class taxonomy / Layer 0–3 stack (post-launch architecture track)**
 
 BTY Avatar Platform Architecture를 `bty-app/docs/BTY_AVATAR_PLATFORM_ARCHITECTURE_v1.md`로 신규 작성·LOCK(v1.0, Commander-approved). 6-class character taxonomy(USER_AVATAR · COMPANION · AXIS_AVATAR · NPC · TODAY_ME · RECOVERY_COMPANION), Layer 0–3 stack(LOCK-0 = Leadership/Routing engine가 Avatar 계층 위 · "avatar가 엔진 삼키기" 방지 불변), Axis Canon deferral(§5 — RESERVED 7종 rules.ts archetype 충돌 회피), Today Me = Self Reflection Mirror(사용자 분신 아님). docs-only / app·runtime·Rive·assets·Supabase·UI 무변경 / no deploy.
