@@ -56,3 +56,6 @@ supabase/.temp/
 
 # Local scratch (STEP 0 capture, ad-hoc inventory dumps) — never committed
 tmp/
+
+# --- BTY hygiene: launch media (inert, not build-referenced) ---
+assets/
