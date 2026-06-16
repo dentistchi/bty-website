@@ -1,3 +1,16 @@
+**2026-06-16 · ★ BTY_COMPANION_ONTOLOGY_v1 v1.0 LOCKED (Dr. Chi ontology 골격 — outer-root docs/ governance peer)**
+
+`BTY_COMPANION_ONTOLOGY_v1.md`를 DRAFT-1 → **v1.0 LOCKED** 승격, outer-root `docs/`에 commit (axis-canon governance peer, inner 부재 = 정상 peer 토폴로지). §1~§5 골격 결정 수록:
+- **§1 Identity** = 단일 Companion = **Dr. Chi** (세 얼굴 = Foundry full / Arena 과묵 / Center 회복; ontology 단일·runtime 모듈 격리·교차 import 금지). Surface naming: Foundry만 "Dr. Chi" 노출, Arena·Center 무명(RESERVED 명명충돌 회피).
+- **§2 Mode** = 3-mode Arena/Center/Foundry (실측 확인; `resolveChatMode` = aspirational spec, grep miss). 교차 import 엄금.
+- **§3 Role×Mode** = Arena **Observer**(비춘다) / Center **Safety Floor Companion**(곁에 있다) / Foundry **Mentor**(질문한다) — 비중첩 3 동사, 강도 사다리 아님.
+- **§5 Three Faces** (CLOSED) = 어휘뿐 아니라 **아키텍처 종류가 다름**: Companion **State-Driven**(AIR-band) / Observer **Position-Driven**(patternShift band) / Mentor **Persona-Driven**(substrate 없음, 존재론 우선). intervention level 직접 비교 금지.
+- **§4 Intervention** = **RESERVED** (다음 트랙, 별도 문서; §5가 입력).
+- 승격 scope = 헤더/상태 라벨만 (line1 title + 상태블록 + 구분 line + 권위 상태 line244). §1~§5/실측/부채 본문 변경 0. line5 "phantom" = 용어 정의(권위진술 아님), 유지.
+- 실측 근거 = STEP A/A-2 (READ-ONLY) 표 수록; Commit 필드 placeholder `<this outer>`. inner-main / bty-app mirror 미접촉 (governance canon = outer-root docs/ ONLY).
+
+---
+
 **2026-06-16 · ☑ BTY_AVATAR_PLATFORM_ARCHITECTURE_v1 RELOCATED to root docs/ (governance/architecture canon peer — NOT a re-lock)**
 
 `BTY_AVATAR_PLATFORM_ARCHITECTURE_v1.md`를 outer-root `docs/`로 이동 — axis-canon governance peer topology에 정렬(outer-root-only, 6개 axis governance docs와 동일: BTY_AXIS_CANON / v1_1_ADDENDUM / v1_2_ARCHETYPE_BASELINE / CHARACTER_AXIS_GOVERNANCE_LOCK / PATTERN_FAMILY_AXISVECTOR_COVERAGE_LOCK / AXIS_CANON_BODY_CLOSE). co-track 단일 inode라 outer `git mv`가 물리 파일을 bty-app/ 밖으로 빼냄 → inner-main에서도 제거. **content 무변경 / lock 유지(LOCKED v1.0) / `<this outer>` placeholder verbatim / blob `9f9f917d` 보존 = re-lock 아님.** docs-only / no deploy.
