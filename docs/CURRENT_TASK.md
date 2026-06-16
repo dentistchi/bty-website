@@ -1,3 +1,18 @@
+**2026-06-15 · ★ FONT_VENDOR_A DEPLOY CLOSED (PATH B / font-only cherry-pick) — Version 54c5e7de live, ETIMEDOUT 근원 입증 제거**
+
+FONT_VENDOR_A self-host를 **font-only**로 prod 배포 완료. #1 FORGE(getMyPageIdentityState be41e00e / 2b572a71)는 **의도적 미선적**(Commander DECISION B).
+- **배포 산출**: deploy **Version ID `54c5e7de-e378-48c9-897f-5d0b1dab12b8`** (bty-arena-staging, 직전 87209a26 대체). 3-way freshness 일치: versions tail=54c5e7de · provenance=cherry-pick **bc22464d**(font commit **e952ec40** → live base **69d2a01c**, 8 font-only) · LIVE CSS가 로컬 `/_next/static/media/*-s.p.woff2` 참조(gstatic/googleapis 0), 벤더 woff2 HTTP 200·19356B(noto-serif-400 byte 일치).
+- **GATE 2 diff proof**: `69d2a01c..bc22464d` = 정확히 8 font 파일. getMyPageIdentityState 부재 · 2b572a71 ancestry FALSE · migration 0 · Center Letters/LRI/reminder/actionDraft 0.
+- **GATE 5 strong-proof (가설 입증)**: root-free DNS-block harness(self-test 가로채기 확인: gstatic/googleapis→ENOTFOUND, npm passthrough) 하에 **standalone `next build` 성공**(✓ Compiled 8.5s, 295/295 static pages, 폰트 CDN 차단에도 빌드 완료) → 빌드 외부 fetch 의존 **제거 입증**. 번들 grep: 벤더 폰트 6/6 emit·app font-manifest 로컬 media, CDN 참조 0(잔존 2건은 `next/dist/compiled/@next/font/dist/google/` 프레임워크 lib 死코드 — 모든 Next 앱 동봉, 미호출, GATE5 차단빌드로 입증).
+- **격리**: ephemeral inner worktree @69d2a01c + cherry-pick e952ec40, `--skipNextBuild` 불가(standalone 미생성)로 full opennext build 산출 → block-built .next 패키징. cherry-pick **bc22464d 미push**(teardown으로 GC). main/inner-main/outer 무변경(inner e952ec40 / outer bd0d598 / origin/inner-main e952ec40).
+- NOTE: GATE4 `--skipNextBuild` 실패는 직접 `next build`가 opennext standalone output 미생성 탓(ENOENT pages-manifest) — full opennext build로 우회. build script `NODE_OPTIONS` inline이 내부 next build의 --require clobber → strong-proof는 별도 standalone next build로 수행(정답).
+
+**2026-06-15 · ⚠ #1 FORGE getMyPageIdentityState — canon inner-main 커밋, font-only 배포에서 의도적 미선적 (DEFERRED, not a bug)**
+
+#1 FORGE Identity-slot 렌더(getMyPageIdentityState **be41e00e** / inner commit **2b572a71**)는 canonical inner-main(e952ec40)에 정식 커밋되어 있으나, 본 font-only 배포(54c5e7de, base 69d2a01c)에서 **고의 제외**. 현재 live(54c5e7de)는 base 69d2a01c의 getMyPageIdentityState=**ac98e00f**(pre-#1) 유지 — #1은 **아직 prod 미반영**. **차후 inner-main(e952ec40 이상) 배포 시 #1이 자동 선적됨 → 그 배포 전에 product sign-off 필수.** 의도적 deferral이며 결함 아님. (이전 "live 이미 be41e00e" 가정은 정정됨: 87209a26이 69d2a01c clean-worktree 빌드였기 때문.)
+
+---
+
 **2026-06-15 · ★ FONT_VENDOR_A — next/font/google → next/font/local 自가호스트 (Cloudflare 빌드 ETIMEDOUT 영구 제거)**
 
 Cloudflare/OpenNext `next build`의 빌드 타임 외부 폰트 fetch(`fonts.gstatic.com`) 제거 — `next/font/google` 2개 import를 `next/font/local` + 벤더 woff2로 교체.
