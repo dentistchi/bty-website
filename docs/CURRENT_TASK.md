@@ -1,3 +1,13 @@
+**2026-06-16 · ★ BTY Avatar Platform Architecture v1 LOCKED — 6-class taxonomy / Layer 0–3 stack (post-launch architecture track)**
+
+BTY Avatar Platform Architecture를 `bty-app/docs/BTY_AVATAR_PLATFORM_ARCHITECTURE_v1.md`로 신규 작성·LOCK(v1.0, Commander-approved). 6-class character taxonomy(USER_AVATAR · COMPANION · AXIS_AVATAR · NPC · TODAY_ME · RECOVERY_COMPANION), Layer 0–3 stack(LOCK-0 = Leadership/Routing engine가 Avatar 계층 위 · "avatar가 엔진 삼키기" 방지 불변), Axis Canon deferral(§5 — RESERVED 7종 rules.ts archetype 충돌 회피), Today Me = Self Reflection Mirror(사용자 분신 아님). docs-only / app·runtime·Rive·assets·Supabase·UI 무변경 / no deploy.
+- inner commit SHA = **6d1bf5fa** (inner-main, `docs: lock BTY Avatar Platform Architecture v1.0`, staged set = 단일 docs 파일; `b017fdfb..6d1bf5fa` FF push, force 0)
+- outer commit SHA = **<this outer>** (mirror+ledger; bty-app/docs/... co-track 동일 inode 13544138 → inner와 byte-identical blob, outer는 add+본 ledger만)
+- status = FINAL DRAFT(rev.3) → **LOCKED v1.0**; Commit 필드는 `<this outer>` placeholder 유지(pre-push backfill 안 함, convention).
+- NOTE: 배치=bty-app/docs(sibling AVATAR_LAYER_SPEC.md·MY_PAGE_IDENTITY_CONSOLE_V1.md와 동일 위치, Commander 명시 경로). CLAUDE.md "architecture→root docs/" 규약과 괴리 → arbitration 대상으로 보고.
+
+---
+
 **2026-06-16 · ☑ HYGIENE — local video assets gitignored (inner+outer mirror, no deploy)**
 
 inner working tree에 untracked로 쌓여있던 launch media `assets/`(~200MB, 98MB `0528.MOV` 포함, build 미참조·next.config 무참조)를 `.gitignore`에 append-only로 등록. `**/.DS_Store`는 기존 line 23 `.DS_Store`(전 depth 커버)와 중복이라 **제외**, `assets/` 단일 라인만 추가.
