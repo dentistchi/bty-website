@@ -1,3 +1,16 @@
+**2026-06-15 · ★ LRI/Certified leader-track approve — DEPLOYED 87209a26 (clean worktree 69d2a01c)**
+
+#4 INTEGRITY_EVIDENCE 후속 mutation 트랙. 선행 측정(존재≠reachable≠live)으로 HTTP gap 1건만 확정 → 최소 표면 mutation.
+- **M1** `POST /api/admin/leadership-engine/approve-leader-track` (신규 route) — `requireAdminEmail` gate, body `{userId}`, `approveLeaderTrack` 위임(canApproveLeaderTrack 내부 certified gate 상속, 발명 0), reason→status(409/403/500) 매핑.
+- **M2** leadership-metrics admin page approve 버튼 — `readiness_flag && !is_leader_track` 분기 노출, 성공 시 `load("air")` 재조회(기존 membership-approve 패턴).
+- **seam-A** approverId = operating admin id(auth.user.id) → admin∧certified 이중 게이트. **self≠other 가드 없음(코드상 self-approve 미차단)** — 검증서 ee9d2075 self-promote **성공 확인**(정책 노출, 향후 가드 추가/유지 = product 판정).
+- **seam-B'** admin leadership-metrics GET 응답에 `readiness_flag`+`is_leader_track` 노출 — **admin-only(raw LRI 아님)**, `leadership_engine_state` batch.
+- **무수정**: approveLeaderTrack/canApproveLeaderTrack/computeLRI/certifiedStatus(입기만) · GET certified(arena live) · 전용 GET admin/lri(불신설) · LRI formula · Certified rule · IntegrityScoreCard mount · player surface · admin tab.
+- **player-leak 검증(이중)**: static-structural 0(2필드·route·UI 전부 admin-gated, player/arena grep 0) **+ LIVE 0**(center/arena/my-page screenshot 육안 — live 확인, static으로 축소 안 함).
+- **메모리 정정 3건**: (1) GET admin/lri = gap 아님(leadership-metrics 집계로 admin-served) (2) GET certified = gap 아님(arena/leadership-engine/certified live+reachable) (3) admin tab = **8 not 4**(AdminNav 실측).
+- **3-track combined deploy** 87209a26: #7a(cdf028ff ancestor, LeaderboardRow XP clipping fix)+FORGE live, #1(getMyPageIdentityState **uncommitted** → INNER_OUTER_SYNC_REPAIR 후속). 3-way verdict PASS(HEAD 69d2a01c + Version 87209a26 + live visual, 독립 일치).
+- **Static**: tsc 0 / lint:terminology 13(+0) / 50 targeted tests pass. **Push**: inner f47d4039→69d2a01c FF(cdf028ff #7a + 69d2a01c, force 0, #1 제외) → origin/inner-main. outer ledger = 본 항목.
+
 **2026-06-15 · 12_AXIS_CANON_BODY CLOSED — 저작 대상 부재 확정 (AXIS_CANON_BODY_CLOSE.md)**
 
 12-Axis 본문 트랙 = CLOSED. **발견(FLAG)**: §3 Per-Axis 본문 12/12 = v1.0(344f8a3)에 이미 resident·잠김, 빈 슬롯 0 → 신규 저작 대상 부재. 3자 정합 측정(락§1 ↔ 코드 axisVector ↔ Commander 12축): **집합 완전 일치**, 순서 2-transposition({accountability↔visibility}, {control↔courage}) = 락§1/§3 pattern-grouped vs 코드/Commander fingerprint, 둘 다 valid(v1.0 §0 명시 "doc convention ≠ fingerprint order"), 위반 아님. canonical-5 EXACTLY 5 ⊆ trigger-10, metric-2=courage/identity.
