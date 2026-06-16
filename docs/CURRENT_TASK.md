@@ -1,3 +1,11 @@
+**2026-06-16 · ☑ HYGIENE — local video assets gitignored (inner+outer mirror, no deploy)**
+
+inner working tree에 untracked로 쌓여있던 launch media `assets/`(~200MB, 98MB `0528.MOV` 포함, build 미참조·next.config 무참조)를 `.gitignore`에 append-only로 등록. `**/.DS_Store`는 기존 line 23 `.DS_Store`(전 depth 커버)와 중복이라 **제외**, `assets/` 단일 라인만 추가.
+- inner commit SHA = **b017fdfb** (inner-main, `chore: ignore local video assets`, staged set = .gitignore 단일)
+- outer commit SHA = **<this outer>** (mirror+ledger; bty-app/.gitignore는 co-track 동일 inode라 file-level no-op, add만)
+- scope = hygiene-only / ignored `assets/` / **no docs/video decision** (docs/video/*.md는 NOT ignored 보존, Commander 미결) / no cleanup(.DS_Store·worktree·media 삭제 0) / **no deploy**(git push만, CF 무관)
+- #1 FORGE(54c5e7de base 69d2a01c pre-#1) 무영향 — 본 커밋은 .gitignore-only, shippable code 0.
+
 **2026-06-15 · ★ FONT_VENDOR_A DEPLOY CLOSED (PATH B / font-only cherry-pick) — Version 54c5e7de live, ETIMEDOUT 근원 입증 제거**
 
 FONT_VENDOR_A self-host를 **font-only**로 prod 배포 완료. #1 FORGE(getMyPageIdentityState be41e00e / 2b572a71)는 **의도적 미선적**(Commander DECISION B).
