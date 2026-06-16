@@ -1,3 +1,13 @@
+**2026-06-15 · ★ INNER_OUTER_SYNC_REPAIR — #1 getMyPageIdentityState topology 역전 해소 (forward commit, 신규변경 0)**
+
+#1 getMyPageIdentityState topology 역전 해소 — outer `b58f747` led, inner lagged; forward commit으로 inner HEAD가 `be41e00e`를 따라잡음. 신규 변경 0, deploy 0, live 이미 `be41e00e`.
+- **STEP 0 3자 정합 확인**(outer commit / inner dirty / live 동일 blob): outer `b58f747`:file = outer HEAD `fc31881`:file = working-tree = `be41e00e` (byte-identical, 단일 inode 13026585 co-track). inner HEAD `69d2a01c`:file = `ac98e00f` = outer pre-#1 parent `b3479b8`:file (pre-change baseline 일치). dual-version 0.
+- **provenance**: `b58f747` = outer-native commit("fix(my-page): Identity slot renders Code…"), origin/main에 이미 push됨. inner→outer leak-integrate 경로 **아님**; `--all --grep`로 inner 측 #1 commit 0 확인 → 정상 co-track 역방향(outer led / inner lagged dirty)이었음.
+- **repair**: inner add 경로-스코프 1파일(`src/lib/bty/identity/getMyPageIdentityState.ts`, add -A 금지, untracked `assets/`·`docs/video/` 제외) → inner commit `2b572a71`(blob `be41e00e`) → `git push origin inner-main` FF(`69d2a01c..2b572a71`, force 0, origin/main 미접촉). **deploy 안 함**(live 이미 `be41e00e`, commit은 inner HEAD 위치만 이동).
+- outer ledger = 본 항목.
+
+---
+
 **2026-06-15 · ★ LRI/Certified leader-track approve — DEPLOYED 87209a26 (clean worktree 69d2a01c)**
 
 #4 INTEGRITY_EVIDENCE 후속 mutation 트랙. 선행 측정(존재≠reachable≠live)으로 HTTP gap 1건만 확정 → 최소 표면 mutation.
