@@ -1,3 +1,15 @@
+**2026-06-15 · ★ FONT_VENDOR_A — next/font/google → next/font/local 自가호스트 (Cloudflare 빌드 ETIMEDOUT 영구 제거)**
+
+Cloudflare/OpenNext `next build`의 빌드 타임 외부 폰트 fetch(`fonts.gstatic.com`) 제거 — `next/font/google` 2개 import를 `next/font/local` + 벤더 woff2로 교체.
+- **대상 2 import**: `src/app/layout.tsx`(Noto Serif KR, `--font-serif-kr`, 400/500/600) · `src/components/bty/ArenaLayoutShell.tsx`(Noto Sans KR, `--font-arena-heading`, 600/700/800). **둘 다 변수명·weight·`display:"swap"` 보존**.
+- **에셋**: `bty-app/src/app/fonts/` 6 woff2 신규(latin subset only, 한글 subset 제외 — STEP 0 parity 고정). 출처 = **fontsource unpack**(npm @fontsource/noto-serif-kr+noto-sans-kr, /private/tmp 언팩, bty-app/package.json 무변경, Google CDN 미접촉).
+- **fallback 복제**: serif `adjustFontFallback:"Times New Roman"`+`["Georgia","Batang","serif"]` / sans `adjustFontFallback:"Arial"`+system-ui stack(globals §4 B·tailwind sans 대응).
+- **무변경 입증**: `.variable` 주입 2곳(body/bty-arena-area div) · `font-serif` consumer 9곳 · tailwind.config.ts:147 · globals.css:202 전부 미수정. STEP 0 divergence 0(3rd import 0 / .gitignore fonts 미제외 / 빌드캐시 248 hashed woff2는 매핑 모호로 미사용).
+- **Done gate**: `grep next/font/google` 0 · `tsc --noEmit` exit 0 · `lint:terminology` 13(=baseline, 신규 0, 전부 미변경 i18n.ts). **build/deploy = 별도 Commander go(본 dispatch 범위 밖)**.
+- **Refs**: inner **e952ec40**→origin/inner-main FF(`2b572a71..e952ec40`, 경로-스코프 8파일, 기존 dirty 미번들). outer mirror+ledger = 본 항목.
+
+---
+
 **2026-06-15 · ★ INNER_OUTER_SYNC_REPAIR — #1 getMyPageIdentityState topology 역전 해소 (forward commit, 신규변경 0)**
 
 #1 getMyPageIdentityState topology 역전 해소 — outer `b58f747` led, inner lagged; forward commit으로 inner HEAD가 `be41e00e`를 따라잡음. 신규 변경 0, deploy 0, live 이미 `be41e00e`.
