@@ -1,3 +1,15 @@
+**2026-06-16 · ☑ IA-B1 decision-2 재정합 — phantom 어휘 폐기 (governance only, 0 mutation)**
+
+이번 트랙 STEP 0 ledger 실측 결과, IA-B1 decision-2(Center Current State display)는 이미 구현·배포·종결됨을 재확인. 본 엔트리는 신규 mutation/작업 아님. 코드 0, deploy 0. 이번 트랙의 유일 산출물 = decision-2 locked 언어에 잔존하던 phantom 어휘 폐기 (Commander D1/D2).
+- 기존 종결 재확인: 6-08 Current State 그룹핑 COMMITTED (inner-main 01b0dd79 + outer); 6-11 Train CTA primary filled DEPLOYED (staging 7a68136d, 3-way PASS); 6-12 line 292 "B1-Decision2-Vacuous = 이미 구현, 0 mutation" 종결.
+- D1 phantom 어휘 폐기: "4-stage progression UI" / "Stage badge" 어휘 폐기. Center에 시각 progression stepper 부재 — StageContextCard=Leadership Stage1–4 1줄텍스트; HealingPhaseTracker 4-step stepper는 compact로 Center 미렌더; badge grep referent 0.
+- D1 정정 언어: Current State 정렬 = 신규 stepper 이동 아님. 이미 존재하는 카드 (CenterPageClient.tsx:564-574) 내 2 resident(StageContextCard + HealingPhaseTracker-compact)의 Opt-A 공유 카드 chrome 그룹핑 — 이는 6-08 01b0dd79로 이미 실현됨. 컴포넌트 흡수✗ stepper복원✗ badge신설✗ compact해제✗.
+- D2 CTA 어휘 확정: Center primary recovery action = /[locale]/train/day/N (TrainProgressCard, 현위치 유지, reorder 0). /bty Foundry door = B1 primary CTA 아님. getCenterCtaHref(/bty)=PageClient 전용, Center 미소비.
+- SUPERSEDE: line 417 "Stage badge" 어휘는 본 엔트리로 superseded. ※ 과거 엔트리(line 417 등) 원문은 편집하지 않음 — reverse-chrono prepend supersede only, history rewrite ✗.
+- status: IA-B1 트랙 CLOSED (vacuous re-discovery + 어휘 정정). 신규 mutation 트랙 없음. outer commit SHA = **<this outer>** (push 전 미백필, line 28 convention 준수).
+
+---
+
 **2026-06-16 · ★ BTY_COMPANION_ONTOLOGY_v1 v1.0 LOCKED (Dr. Chi ontology 골격 — outer-root docs/ governance peer)**
 
 `BTY_COMPANION_ONTOLOGY_v1.md`를 DRAFT-1 → **v1.0 LOCKED** 승격, outer-root `docs/`에 commit (axis-canon governance peer, inner 부재 = 정상 peer 토폴로지). §1~§5 골격 결정 수록:
