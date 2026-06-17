@@ -1,3 +1,15 @@
+**2026-06-16 · ☑ #7a CLOSED — XP clipping 280px 미재현 (governance only, 0 mutation)**
+
+#7a(Ranking Sidebar XP clipping)는 STEP 0b computed-overflow 실측 결과 현 코드에서 재현 실패. 추가 mutation 불필요. git 무흔적(코드 0) → 재진입 방지 위해 본 판정만 기록.
+
+- 실측(STEP 0b): 280px 고정 sidebar mount(BtyArenaRunPageClient.tsx:1367 / ArenaResolveClient.tsx:241)에서 XP stats 가용폭 124px vs intrinsic ~100px(7자리) → weekly XP 자릿수로 overflow 불가. clip 임계 ~9자리(불가능).
+- 실제 truncate = codeName/nameLine ellipsis (LeaderboardRow.tsx:125, by design) — XP 아님.
+- epistemic 경계: "버그 없음" 아님 = "현 버전 재현 실패". 과거 수정 완료 추정, 추가 작업 불요.
+- scope 판정: sidebar-scoped 선호 / 풀 리더보드(maxWidth:860) 무관 / XP 의미·계산 무접촉.
+- status: #7a CLOSED (vacuous). 향후 동명 트랙 재진입 시 본 엔트리 참조 — 이미 닫힘.
+
+---
+
 **2026-06-16 · ☑ IA-B1 decision-2 재정합 — phantom 어휘 폐기 (governance only, 0 mutation)**
 
 이번 트랙 STEP 0 ledger 실측 결과, IA-B1 decision-2(Center Current State display)는 이미 구현·배포·종결됨을 재확인. 본 엔트리는 신규 mutation/작업 아님. 코드 0, deploy 0. 이번 트랙의 유일 산출물 = decision-2 locked 언어에 잔존하던 phantom 어휘 폐기 (Commander D1/D2).
