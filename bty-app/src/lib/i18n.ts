@@ -2000,11 +2000,10 @@ export type Messages = {
     missedTitle: string;
     missedBody: string;
     btnQr: string;
-    btnLink: string;
     expiresIn: string;
     /** Shown when deadline is in the past (formatDeadline). */
     expiredShort: string;
-    completeByQrLink: string;
+    qrWitnessNotice: string;
     dismiss: string;
     awaitingListTitle: string;
     tierPersonal: string;
@@ -3815,11 +3814,10 @@ const ko: Messages = {
     completedBody: "다음 시나리오가 열렸습니다.",
     missedTitle: "실행 기간이 종료되었습니다.",
     missedBody: "다음 시나리오로 계속 진행할 수 있습니다.",
-    btnQr: "QR로 완료",
-    btnLink: "보안 링크로 완료",
+    btnQr: "검증용 QR 보기",
     expiresIn: "만료까지",
     expiredShort: "만료됨",
-    completeByQrLink: "아래 링크로 완료하세요 (복사해 사용할 수 있습니다).",
+    qrWitnessNotice: "이 QR은 본인이 완료하는 화면이 아닙니다.\n실제 행동을 확인할 수 있는 동료, 매니저 또는 어시스턴트에게 보여주세요.\n상대가 QR을 스캔하면 행동이 검증되고 완료됩니다.",
     dismiss: "닫기",
     awaitingListTitle: "QR 인증 대기 중인 실행",
     tierPersonal: "개인",
@@ -5631,11 +5629,10 @@ const en: Messages = {
     completedBody: "Next scenario unlocked.",
     missedTitle: "Action window closed.",
     missedBody: "You can continue to your next scenario.",
-    btnQr: "Complete by QR",
-    btnLink: "Complete by secure link",
+    btnQr: "Show QR for verification",
     expiresIn: "Expires in",
     expiredShort: "expired",
-    completeByQrLink: "Complete using the link below (copy as needed).",
+    qrWitnessNotice: "This QR is not for you to complete yourself.\nShow it to a colleague, manager, or assistant who can verify the action.\nOnce they scan the QR code, your action will be verified and completed.",
     dismiss: "Close",
     awaitingListTitle: "Actions awaiting QR verification",
     tierPersonal: "Personal",

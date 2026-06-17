@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     copyCookiesAndDebug(base, res, req, true);
     return res;
   }
-  const failure = result as { status: 400 | 409 | 500; error: string };
+  const failure = result as { status: 400 | 403 | 409 | 500; error: string };
   const res = NextResponse.json({ error: failure.error }, { status: failure.status });
   copyCookiesAndDebug(base, res, req, true);
   return res;

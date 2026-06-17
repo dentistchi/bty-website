@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { Locale } from "@/lib/i18n";
+import { readActionDraft, writeActionDraft, clearActionDraft } from "./actionDraft";
 
 /**
  * Action Contract validation screen (MVP-FIX-ACTION-01, Path B / scope A).
@@ -85,12 +86,16 @@ export function ArenaActionValidationForm({
   const lang: "ko" | "en" = locale === "ko" ? "ko" : "en";
   const c = COPY[lang];
 
-  const [who, setWho] = React.useState("");
-  const [what, setWhat] = React.useState("");
-  const [result, setResult] = React.useState("");
+  const [who, setWho] = React.useState(() => readActionDraft(contractId)?.who ?? "");
+  const [what, setWhat] = React.useState(() => readActionDraft(contractId)?.what ?? "");
+  const [result, setResult] = React.useState(() => readActionDraft(contractId)?.result ?? "");
   const [submitting, setSubmitting] = React.useState(false);
   const [layer1Errors, setLayer1Errors] = React.useState<Layer1Error[]>([]);
   const [banner, setBanner] = React.useState<Banner>(null);
+
+  React.useEffect(() => {
+    writeActionDraft(contractId, { who, what, result });
+  }, [contractId, who, what, result]);
 
   const handleSubmit = React.useCallback(async () => {
     const w = who.trim();
@@ -131,6 +136,7 @@ export function ArenaActionValidationForm({
         return;
       }
       if (data.outcome === "approve") {
+        clearActionDraft(contractId);
         onApproved({
           terminal: data.contract_state === "terminal",
           verifiedAt: typeof data.verified_at === "string" ? data.verified_at : null,

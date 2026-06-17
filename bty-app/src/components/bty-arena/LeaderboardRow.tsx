@@ -81,13 +81,14 @@ export function LeaderboardRow({
         justifyContent: "space-between",
         alignItems: "center",
         gap: 12,
+        minWidth: 0,
         padding: 14,
         borderRadius: 14,
         border: isMe ? "2px solid var(--arena-accent)" : "1px solid color-mix(in srgb, var(--arena-text-soft) 25%, transparent)",
         background: isMe ? "color-mix(in srgb, var(--arena-accent) 8%, transparent)" : undefined,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
         <div
         style={{
           minWidth: 34,
@@ -120,12 +121,12 @@ export function LeaderboardRow({
         ) : (
           <UserAvatar avatarUrl={avatarUrl} initials={initials} size="sm" />
         )}
-        <div>
-          <div style={{ fontWeight: 800, fontSize: 16 }}>{nameLine}</div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 800, fontSize: 16, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nameLine}</div>
           <div style={{ fontSize: 12, opacity: 0.7 }}>{subName ?? ""}</div>
         </div>
       </div>
-      <div role="group" aria-label={statsGroupAria} style={{ textAlign: "right" }}>
+      <div role="group" aria-label={statsGroupAria} style={{ textAlign: "right", flexShrink: 0 }}>
         <div style={{ fontWeight: 900, fontSize: 18 }}>{formattedXp}</div>
         <div style={{ fontSize: 12, opacity: 0.7 }}>{isKo ? "주간 XP" : "Weekly XP"}</div>
         {formattedCore != null ? (

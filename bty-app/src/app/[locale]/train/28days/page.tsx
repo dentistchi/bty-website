@@ -11,14 +11,14 @@ export default function Track28Home() {
   const t = getMessages(locale as Locale).train;
 
   return (
-    <main className="space-y-4" aria-label={t.track28HubMainRegionAria}>
-      <h1 className="text-2xl font-semibold">28일 훈련</h1>
+    <main className="p-6 space-y-4" aria-label={t.track28HubMainRegionAria}>
+      <h1 className="text-2xl font-semibold">{t.title}</h1>
       <p className="opacity-70">
-        왼쪽에서 Day를 선택하면 레슨이 가운데에 뜨고, 오른쪽에서 코치 챗으로 질문/동기부여를 받을 수 있어.
+        {t.journeyStartIntro}
       </p>
       <div className="rounded-lg border p-4">
-        <Link className="underline" href={`/${locale}/train/28days/day/1`} aria-label={locale === "ko" ? "Day 1 시작하기" : "Start Day 1"}>
-          Day 1 시작하기
+        <Link className="underline" href={`/${locale}/train/day/1`} aria-label={t.journeyStartDay1Aria}>
+          {t.journeyStartDay1Link}
         </Link>
       </div>
     </main>

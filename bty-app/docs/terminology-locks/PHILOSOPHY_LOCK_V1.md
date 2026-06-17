@@ -1,6 +1,6 @@
 ## [LOCKED] Section 1 — BTY Identity
 
-BTY = Better Than Myself (not "Better Than You," not "Better Than Yesterday")
+BTY = Better Than Yesterday (not "Better Than Myself," not "Better Than You")
 
 BTY is a behavioral pattern detection and action enforcement system
 
@@ -52,7 +52,7 @@ UI, copy, and engine logic must all enforce the same felt experience
 
 | Term | Locked Definition | Forbidden Substitutions |
 | --- | --- | --- |
-| BTY | Better Than Myself | Better Than You, Better Than Yesterday |
+| BTY | Better Than Yesterday | Better Than Myself, Better Than You |
 | Action | Behavior producing measurable external change | Task, habit, step, activity |
 | Positive | Moves toward action / into system | Good, correct, optimal |
 | Negative | Blocks action / exits system | Bad, wrong, failure |

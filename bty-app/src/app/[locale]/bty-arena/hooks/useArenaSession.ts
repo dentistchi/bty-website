@@ -45,6 +45,7 @@ import {
   ARENA_ENTRY_RESOLUTION_INVALIDATE_EVENT,
   BTY_ACTION_CONTRACT_UPDATED_STORAGE_KEY,
 } from "@/lib/bty/arena/arenaEntryResolutionInvalidate";
+import { hasNonEmptyActionDraft } from "@/components/bty-arena/actionDraft";
 import { isEliteChainScenarioId } from "@/lib/bty/arena/postLoginEliteEntry";
 import { ArenaChoiceHttpError, postArenaChoice } from "@/lib/bty/arena/binding/postArenaChoice";
 import { getScenarioById, type RuntimeFlowContext } from "@/data/scenario";
@@ -648,6 +649,15 @@ export function useArenaSession(_pipelineFromServer?: ArenaPipelineDefault) {
     if (!shouldAutoSync) return;
     const cooldownMs = 1500;
     const syncSessionGate = (source: "focus" | "visibility" | "storage") => {
+      // A1b dirty-draft guard — full early-return.
+      // null화만 skip하면 nonce++/refetch가 contract를 재churn시키므로
+      // 게이트 전체 early-return. cross-tab QR stale 수용(ledger flag).
+      if (
+        pendingActionContract &&
+        hasNonEmptyActionDraft(pendingActionContract.id)
+      ) {
+        return;
+      }
       const now = Date.now();
       if (now - sessionResyncLastAtRef.current < cooldownMs) return;
       sessionResyncLastAtRef.current = now;

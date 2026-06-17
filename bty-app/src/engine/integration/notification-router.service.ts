@@ -28,6 +28,7 @@ export const NOTIFICATION_TYPES = [
   "avatar_tier_upgraded",
   "resilience_milestone_reached",
   "weekly_report_ready",
+  "action_contract_reminder",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -49,6 +50,10 @@ const TITLES: Record<NotificationType, { ko: string; en: string }> = {
   avatar_tier_upgraded: { ko: "아바타 레벨 업", en: "Avatar tier up" },
   resilience_milestone_reached: { ko: "회복력 마일스톤 달성", en: "Resilience milestone reached" },
   weekly_report_ready: { ko: "주간 리포트 준비됨", en: "Weekly report ready" },
+  action_contract_reminder: {
+    ko: "선택한 행동 시간이 다가오고 있습니다",
+    en: "Your action deadline is coming up",
+  },
 };
 
 let listenersRegistered = false;
