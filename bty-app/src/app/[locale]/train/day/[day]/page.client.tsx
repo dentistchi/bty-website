@@ -402,15 +402,8 @@ export default function TrainDayPage() {
         <div style={{ opacity: 0.7, marginBottom: 8 }}>
           Unlocked today: Day {progress?.todayUnlockedDay ?? 1}
         </div>
-        {/* DECISION6 C2-5 + B-2: review past Dear Me reflections; ?day deep-links History to this day's reflection (pre-select/expand/scroll). */}
-        <a
-          href={`/${locale}/center/letters?day=${day}`}
-          style={{ display: "inline-block", marginBottom: 16, fontSize: 12, color: "#0f766e", textDecoration: "none" }}
-          aria-label={locale === "ko" ? "지난 Dear Me 기록 복습" : "Review past Dear Me entries"}
-        >
-          {locale === "ko" ? "지난 reflection 복습 →" : "Review past reflections →"}
-        </a>
-
+        {/* DECISION6 C2-5 + B-2: "Review past reflections" link relocated next to the
+            Dear Me button inside TrainDayReflectionSet (MIDDLE column). */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => {
             const unlocked = d <= (progress?.todayUnlockedDay ?? 1);

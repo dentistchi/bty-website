@@ -128,13 +128,25 @@ export default function LettersClient({ locale }: { locale: string }) {
       <div className="max-w-xl mx-auto px-4 py-8 sm:py-12 space-y-6">
         <header className="flex items-center justify-between">
           <h1 className="text-2xl font-medium text-dear-charcoal m-0">{t.letterHistoryTitle}</h1>
-          <Link
-            href={`/${locale}/center`}
-            className="text-xs font-medium text-dear-sage hover:text-dear-charcoal transition-colors rounded-lg border border-dear-sage/30 bg-dear-sage/5 px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dear-sage"
-            aria-label={isKo ? "Center로 돌아가기" : "Back to Center"}
-          >
-            ← Center
-          </Link>
+          <div className="flex items-center gap-2">
+            {/* B-2-1: program-return link — only when arrived via ?day=N deep-link. Primary return (left). */}
+            {dayParam && /^\d+$/.test(dayParam) && (
+              <Link
+                href={`/${locale}/train/day/${dayParam}`}
+                className="text-xs font-medium text-dear-sage hover:text-dear-charcoal transition-colors rounded-lg border border-dear-sage/30 bg-dear-sage/5 px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dear-sage"
+                aria-label={isKo ? `${dayParam}일차로 돌아가기` : `Back to Day ${dayParam}`}
+              >
+                ← Day {dayParam}
+              </Link>
+            )}
+            <Link
+              href={`/${locale}/center`}
+              className="text-xs font-medium text-dear-sage hover:text-dear-charcoal transition-colors rounded-lg border border-dear-sage/30 bg-dear-sage/5 px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dear-sage"
+              aria-label={isKo ? "Center로 돌아가기" : "Back to Center"}
+            >
+              ← Center
+            </Link>
+          </div>
         </header>
 
         {loading ? (

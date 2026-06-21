@@ -141,22 +141,32 @@ export default function TrainDayReflectionSet({
       style={{ marginTop: 28, paddingTop: 20, borderTop: "1px solid #eee" }}
     >
       {!open ? (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          style={{
-            padding: "10px 16px",
-            borderRadius: 10,
-            border: "1px solid #0d9488",
-            background: "white",
-            color: "#0f766e",
-            fontWeight: 600,
-            cursor: "pointer",
-            fontSize: 14,
-          }}
-        >
-          {isKo ? "✎ 오늘의 Dear Me 성찰" : "✎ Today's Dear Me reflection"}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            style={{
+              padding: "10px 16px",
+              borderRadius: 10,
+              border: "1px solid #0d9488",
+              background: "white",
+              color: "#0f766e",
+              fontWeight: 600,
+              cursor: "pointer",
+              fontSize: 14,
+            }}
+          >
+            {isKo ? "✎ 오늘의 Dear Me 성찰" : "✎ Today's Dear Me reflection"}
+          </button>
+          {/* DECISION6 C2-5 + B-2: relocated from LEFT sidebar; ?day deep-links History. */}
+          <a
+            href={`/${locale}/center/letters?day=${day}`}
+            style={{ fontSize: 12, color: "#0f766e", textDecoration: "none" }}
+            aria-label={isKo ? "지난 Dear Me 기록 복습" : "Review past Dear Me entries"}
+          >
+            {isKo ? "지난 reflection 복습 →" : "Review past reflections →"}
+          </a>
+        </div>
       ) : (
         <div style={{ borderRadius: 16, border: "1px solid #e2e8f0", padding: 16, maxWidth: 560 }}>
           <div style={{ fontWeight: 700, marginBottom: 4, fontSize: 16 }}>{title}</div>
