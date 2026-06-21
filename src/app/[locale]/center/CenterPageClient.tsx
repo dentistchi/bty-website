@@ -238,7 +238,6 @@ function TrainProgressCard({
   const done = lcd >= 28;
   const n = Math.max(1, Math.min(28, lcd + 1));
   const href = `/${locale}/train/day/${n}`;
-  const allHref = `/${locale}/train/28days`;
   const title =
     lcd === 0
       ? isKo
@@ -266,7 +265,7 @@ function TrainProgressCard({
           >
             {isKo ? `Day ${n} 하러 가기` : `Go to Day ${n}`}
           </a>
-          <a href={allHref} className="text-xs text-dear-charcoal-soft underline">
+          <a href={href} className="text-xs text-dear-charcoal-soft underline">
             {isKo ? "전체 보기" : "View all"}
           </a>
         </div>
@@ -274,7 +273,7 @@ function TrainProgressCard({
       {done && (
         <div className="mt-2">
           <a
-            href={allHref}
+            href={`/${locale}/train/day/1`}
             className="text-xs text-dear-charcoal-soft underline"
             aria-label={isKo ? "28일 프로그램 다시 둘러보기" : "Review your 28 days"}
           >
