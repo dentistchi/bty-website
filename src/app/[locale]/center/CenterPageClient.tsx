@@ -271,6 +271,17 @@ function TrainProgressCard({
           </a>
         </div>
       )}
+      {done && (
+        <div className="mt-2">
+          <a
+            href={allHref}
+            className="text-xs text-dear-charcoal-soft underline"
+            aria-label={isKo ? "28일 프로그램 다시 둘러보기" : "Review your 28 days"}
+          >
+            {isKo ? "28일 다시 둘러보기" : "Review your 28 days"}
+          </a>
+        </div>
+      )}
     </div>
   );
 }
