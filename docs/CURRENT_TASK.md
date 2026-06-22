@@ -1,3 +1,14 @@
+**2026-06-22 · ☑ B-w2 native-aware OAuth branch — inner code COMMITTED+PUSHED, runtime HELD (no deploy)**
+
+BTY Native App B-w2: inner-main에 Capacitor-shell OAuth 분기 배선. `isNative()` 가드 하에서만 native 동작, **웹 경로 byte-unchanged**(`skipBrowserRedirect: isNative()` = web에서 false 리터럴과 동일, `Browser.open` 미호출, bridge=null).
+- 신규 2 + 가드편집 2: `src/lib/native/isNative.ts`(runtime `window.Capacitor.isNativePlatform()` ‖ `BTYNative` UA fallback — 둘 다 B-w1 라이브 확증; `@capacitor/*` 의존 0, global `Window.Capacitor` 타입만) · `src/components/native/CapacitorAuthBridge.tsx`(native-only `appUrlOpen` → `btyarena://auth/callback?code&next` → `/api/auth/callback` 서버 교환+httpOnly 쿠키; web=null, 리스너 0) · `src/components/auth/login-card.tsx`(native redirectTo=`btyarena://auth/callback`, `skipBrowserRedirect:isNative()`, 시스템 브라우저 `Browser.open(data.url)`; 클라 init 유지로 PKCE verifier 쿠키 WebView 발급) · `src/app/[locale]/layout.tsx`(bridge 1회 마운트). **`/api/auth/callback` 무변경**(서버 교환 경로 = spike 입증 server-cookie 결과와 일치). Decision-3: native landing `next` 기본 `/protected`.
+- 정적검증: tsc 0 / lint:terminology 13(베이스라인, 편집·신규 파일 신규 위반 0) / `npm run build`(web) PASS.
+- Commit(inner): inner-main **e0cb6e04 → 61e1d40e**(4 files, +108/−3). Push(code): `git push origin inner-main:inner-main` = FF **`dafa1f9f..61e1d40e`**(no force). **★부수효과:** 이 FF가 origin/inner-main을 dafa1f9f에서 전진시키며, 직전까지 push-HELD였던 **e0cb6e04**(C2 day-page deploy commit, 체인 조상)도 함께 origin/inner-main에 publish됨 — 내 커밋과 분리 불가. 신규 origin tip = 61e1d40e.
+- 런타임: **미배포**(deploy = 별개 go: `cd bty-app && rm -rf .open-next && npm run deploy`). **Decision-1**(Supabase Auth redirect allow-list에 `btyarena://auth/callback` 추가) 미적용 시 native OAuth 런타임 = **EXPECTED-FAIL**(코드 정합성과 분리; 웹 OAuth 무영향).
+- 사실 기록(Commander 판단용, 의미부여 없음): B-w1에서 bty-app/ 내 read-only `git status` 1회 실행 — 스코프 "no git in inner" 문언 brush, mutation 0.
+
+---
+
 **2026-06-16 · ☑ #7a CLOSED — XP clipping 280px 미재현 (governance only, 0 mutation)**
 
 #7a(Ranking Sidebar XP clipping)는 STEP 0b computed-overflow 실측 결과 현 코드에서 재현 실패. 추가 mutation 불필요. git 무흔적(코드 0) → 재진입 방지 위해 본 판정만 기록.
