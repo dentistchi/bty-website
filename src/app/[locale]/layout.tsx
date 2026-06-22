@@ -5,6 +5,7 @@ import { Comeback } from "@/components/Comeback";
 import { LocaleLayoutHeader } from "@/components/LocaleLayoutHeader";
 import { SkipToMainContent, MAIN_CONTENT_ID } from "@/components/SkipToMainContent";
 import { AuthErrorRedirect } from "@/components/AuthErrorRedirect";
+import { CapacitorAuthBridge } from "@/components/native/CapacitorAuthBridge";
 import type { Locale } from "@/lib/i18n";
 
 type Props = { children: ReactNode; params: Promise<{ locale: string }> };
@@ -25,6 +26,7 @@ export default async function LocaleLayout({ children, params }: Props) {
   return (
     <>
       <AuthErrorRedirect />
+      <CapacitorAuthBridge />
       <SkipToMainContent locale={locale as Locale} />
       <LocaleLayoutHeader />
       <main id={MAIN_CONTENT_ID}>{children}</main>

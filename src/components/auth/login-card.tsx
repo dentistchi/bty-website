@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getSupabase, supabase as supabaseMaybe } from "@/lib/supabase";
+import { isNative } from "@/lib/native/isNative";
 
 export type LoginCardLocale = "en" | "ko";
 
@@ -99,8 +100,11 @@ function safeOrigin(): string {
  * (PKCE + Microsoft/Azure edge cases). The `/api/auth/callback` route is server-only and only sees query params.
  */
 function buildOAuthRedirectTo(locale: LoginCardLocale, nextPath: string): string {
-  const origin = safeOrigin();
   const next = encodeURIComponent(nextPath);
+  // Native shell: return through the custom scheme so the system browser hands
+  // the deep link back to the app (the WebView cannot complete Google OAuth).
+  if (isNative()) return `btyarena://auth/callback?next=${next}`;
+  const origin = safeOrigin();
   return `${origin}/${locale}/auth/callback?next=${next}`;
 }
 
@@ -175,11 +179,13 @@ export default function LoginCard({ locale, nextPath, initialError }: LoginCardP
       try {
         const supabase = getSupabase();
         const redirectTo = buildOAuthRedirectTo(locale, nextPath);
-        const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
           provider,
           options: {
             redirectTo,
-            skipBrowserRedirect: false,
+            // Native: keep the WebView put and open the authorize URL in the
+            // system browser below. Web: false (unchanged) → in-page redirect.
+            skipBrowserRedirect: isNative(),
             // #20: force the IdP account chooser. Without this, an active Google/
             // Microsoft SSO session re-authenticates silently right after logout.
             queryParams: { prompt: "select_account" },
@@ -190,6 +196,12 @@ export default function LoginCard({ locale, nextPath, initialError }: LoginCardP
           setError(userFacingOauthOrOtpError(oauthError.message, t));
           setOauthProvider(null);
           return;
+        }
+        // Native-only: the client init above minted the PKCE verifier cookie in
+        // the WebView; now hand the authorize URL to the system browser via the
+        // shell bridge. No-op on web (isNative() false, data.url unused).
+        if (isNative() && data?.url) {
+          await window.Capacitor?.Plugins?.Browser?.open({ url: data.url });
         }
       } catch (e) {
         setPhase("error");
