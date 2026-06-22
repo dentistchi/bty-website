@@ -1,3 +1,15 @@
+**2026-06-22 · ◐ B-w3 wrapper plugin fix + native OAuth E2E — INIT HALF PASS / RETURN LEG HOLD (Supabase Site-URL fallback)**
+
+BTY Native App B-w3 (wrapper-only; inner UNTOUCHED 61e1d40e; deploy 06af1777 live). Corrects the B-w2 inventory error that ASSUMED `@capacitor/browser` lived in the shell — live runtime disproved it (`Plugins.Browser=undefined`), B-w3 fixed it wrapper-side.
+- **Wrapper fix:** `~/Dev/bty-native-app` `npm install @capacitor/app@8.1.0 @capacitor/browser@8.0.3` + `npx cap sync ios`(2 plugins linked) + rebuild. Live LLDB proof on running shell: `Plugins.App=object` + `Plugins.Browser=object` (were undefined; PluginKeys += Browser,App), `isNative()=true`, UA carries `BTYNative`.
+- **Inner code verdict:** B-w2 native-aware OAuth branch confirmed **CORRECT and live** — captured `Browser.open` data.url = `…redirect_to=btyarena://auth/callback?next=%2Fprotected`; client PKCE init minted `sb-mveycersmqfiuddslnrj-auth-token-code-verifier` cookie in WebView; system browser (SFSafariViewController) opened. `/api/auth/initiate` correctly **ABSENT** (init is client-side by design).
+- **Init half: PASS** — system browser (NOT embedded WebView: ✕+accounts.google.com chrome) → Google consent "continue to mveycersmqfiuddslnrj.supabase.co" → verifier cookie present → correct `redirect_to`. E2E driven via LLDB `evaluateJavaScript` (sim GUI tap synth blocked); Google login completed by Commander.
+- **Return leg: HOLD** — after Commander Google login, system browser landed on **https Site URL** (bty-arena-staging.ywamer2022.workers.dev landing), NOT `btyarena://` → Supabase fell back to Site URL → `appUrlOpen` never fired → `/api/auth/callback` **never hit worker** (wrangler tail confirmed) → no httpOnly session → app WebView stayed `/en/bty/login` unauth.
+- **Open diagnosis:** allow-list NOW shows `btyarena://auth/callback**` (wildcard) present; uncertain whether present at B-w3 run time. **Next step = ONE return-leg re-verification.** If Site-URL fallback persists with wildcard confirmed present → root cause = SFSafariViewController custom-scheme return limit → swap `@capacitor/browser` → ASWebAuthenticationSession-based plugin (handles callback scheme natively).
+- Fact note (Commander-record, no editorializing): B-w1 ran one read-only `git status` inside bty-app/ though its scope said no-git-in-inner; mutation 0.
+
+---
+
 **2026-06-22 · ☑ B-w2 native-aware OAuth branch — inner code COMMITTED+PUSHED, runtime HELD (no deploy)**
 
 BTY Native App B-w2: inner-main에 Capacitor-shell OAuth 분기 배선. `isNative()` 가드 하에서만 native 동작, **웹 경로 byte-unchanged**(`skipBrowserRedirect: isNative()` = web에서 false 리터럴과 동일, `Browser.open` 미호출, bridge=null).
