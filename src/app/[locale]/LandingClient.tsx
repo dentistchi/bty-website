@@ -46,8 +46,10 @@ export default function LandingClient({ locale, t }: Props) {
           <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
             <Link
               href={`/${locale}`}
+              className="inline-flex items-center gap-1.5"
               style={{ fontWeight: 800, fontSize: "0.9375rem", letterSpacing: "-0.02em", textDecoration: "none", color: "var(--arena-text, #1E2A38)" }}
             >
+              <img src="/brand/bty-knot-transparent-navy.svg" alt="" aria-hidden="true" width={20} height={20} className="h-5 w-5 shrink-0" />
               <span style={{ fontWeight: 400 }}>bty</span>ARENA
             </Link>
             <HubTopNav theme="dear" showLangSwitch />
