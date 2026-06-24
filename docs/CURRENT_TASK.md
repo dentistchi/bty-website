@@ -1,3 +1,16 @@
+**2026-06-24 · ☑ BUILD 6 — Reality Event Engine Slice 2a — Event creation route — COMMITTED+PUSHED, no deploy**
+
+Reality Event Engine Slice 2a committed: Event creation route (**`POST /api/bty/events`**) — **leader-track gate** + **approved-member gate** + **`bty_events` insert (service-role after gates)** + **Event QR token signing (`btyev1` family)**. Auth/gate order: `requireUser` (401) → `requireApprovedMembership` (403 `MEMBERSHIP_REQUIRED`) → `isLeaderTrack` (403 `LEADER_TRACK_REQUIRED`) → input validation (400) → service-role insert → sign token. Validation: `title`/`event_type` non-empty, `xp_value` int 10–100 (mirrors DB check), `valid_until` parseable+future. Response `{ event, token, qrUrl }`.
+- **3 new files:** `src/lib/bty/event-qr/event-qr-token.ts` (sign+verify, `btyev1`), `src/lib/bty/event-qr/isLeaderTrack.ts` (reusable leader-track read, fails closed, service-role), `src/app/api/bty/events/route.ts`.
+- **Event token = separate `event-qr-token.ts` (`btyev1` prefix); Action QR (`aalo1`) UNTOUCHED;** crypto ~30 lines **intentionally duplicated**, shared-primitive extraction **deferred** (Commander-accepted trade-off to avoid modifying the Action file).
+- **Scope: create only** — NO scan route / NO participation insert / NO XP / NO `activity_xp_events` write / NO UI / NO org-TII / NO schema migration / NO deploy. `verifyEventQrToken` defined but unconsumed this slice.
+- **`qrUrl` is a forward-reference** (`/{locale}/bty/events/scan?ev=…`) — the scan endpoint is **Slice 2b, not built**.
+- **Gates:** tsc **0** / terminology **13 / baseline 13 / +0** (no new-file violations).
+- **Commit (inner):** inner-main **3135f300 → `e2f1f796`** (3 files). **Push:** `origin inner-main:inner-main` FF **`3135f300..e2f1f796`** (no force, remote==local).
+- **Slice 1 tables** (`bty_events`/`bty_event_participation`) **already applied to production** (`mveycersmqfiuddslnrj`); this route writes to `bty_events` but the **route is unshipped (no deploy)**.
+
+---
+
 **2026-06-24 · ☑ BUILD 5 — Event QR Slice 1 migration FILE committed+pushed — SCHEMA NOT APPLIED**
 
 Event QR Slice 1 migration file committed (`20260624000000_bty_events_slice1.sql`): **`bty_events`** + **`bty_event_participation`**, `xp_value` **10–100 DB check**, `status` **active/cancelled** check, **unique(event_id, user_id)**, `xp_awarded` snapshot, `activity_xp_event_id` **FK→activity_xp_events** (on delete set null), **RLS** (events `select using(true)` / participation `select own`; **write = service-role** via route gate).
