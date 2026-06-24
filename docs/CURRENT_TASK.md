@@ -1,3 +1,16 @@
+**2026-06-24 · ☑ BUILD 3 — pending list home-actionable filter — COMMITTED+PUSHED, no deploy**
+
+The `/bty` home Pending list now displays **actionable items only**. Frontend display-only filter; `PendingActionList.tsx` only.
+- **Predicate:** `status !== "missed" AND new Date(deadline_at).getTime() >= Date.now()` — on top of the endpoint's existing `verified_at IS NULL`. **`rejected` INCLUDED** (only `missed` excluded by status); excludes recorded-missed + past-deadline (the fix for the 13 stale "Expires in expired" cards). Filter placed right after the loading guard; `count`/EmptyState/map all derive from the filtered `actionable` array (empty-after-filter → existing EmptyState).
+- **Display-only — zombies remain:** expired/missed contracts are **NOT swept** — they stay in `bty_action_contracts` with their server-side status (no sweep, no status mutation, no cron). They are merely hidden from the home list. **DB lifecycle cleanup of stale past-deadline rows = separate future track.**
+- **Deadline copy:** existing `{expiresIn} {formatDeadline}` ("Expires in {time}") kept — only future-deadline rows render now, so it reads correctly; the standalone "Expired" copy is **moot** (no expired row reaches render) and was NOT added. `formatDeadline` helper left as-is (defensive). Timezone-safe: ISO `deadline_at` → epoch-ms vs `Date.now()` (both UTC).
+- **Untouched:** endpoint, My Page, `ActionContractHub`, `AwaitingQrList`, DB, PHASE II ring.
+- **Gates:** tsc **0** / `lint:terminology` **13 / baseline 13 / +0**. 1 file, +12/−2.
+- **Commit (inner):** inner-main **9bdb35a1 → f9a63046** (1 file). **Push:** `git push origin inner-main:inner-main` FF **`9bdb35a1..f9a63046`** (no force, remote==local).
+- **Deploy:** NOT performed — staging still **`6a5bb4ef`** (BUILD 1+2). Filter goes live on the next deploy go.
+
+---
+
 **2026-06-24 · ☑ BUILD 2 — pending action list on /bty hub (first visible UI slice) — COMMITTED+PUSHED, no deploy**
 
 First visible UI slice of the action-centric home — a Pending Action list mounted on the `/bty` hub, consuming the BUILD 1 endpoint.
