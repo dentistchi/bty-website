@@ -1,3 +1,14 @@
+**2026-06-24 · ☑ BUILD 5 — Event QR Slice 1 migration FILE committed+pushed — SCHEMA NOT APPLIED**
+
+Event QR Slice 1 migration file committed (`20260624000000_bty_events_slice1.sql`): **`bty_events`** + **`bty_event_participation`**, `xp_value` **10–100 DB check**, `status` **active/cancelled** check, **unique(event_id, user_id)**, `xp_awarded` snapshot, `activity_xp_event_id` **FK→activity_xp_events** (on delete set null), **RLS** (events `select using(true)` / participation `select own`; **write = service-role** via route gate).
+- **Inner commit:** inner-main **9dc320cf → `3135f300`** (1 file). **Push:** `git push origin inner-main:inner-main` FF **`9dc320cf..3135f300`** (no force, remote==local).
+- **⚠️ SCHEMA NOT APPLIED yet** — file only; **apply = separate Commander-GO dispatch** (production-effective: single shared Supabase backs all workers; snapshot before/after + rollback path required).
+- **Slice 1 scope:** NO org/TII (deferred → later nullable ALTER ADD once org model measured), **NO routes yet** (later slices).
+- **Event QR = second official QR family** — validate invariant **expanded** (separate Event validate route, NOT Action `/qr/validate` overload); awards **core XP / avatar only**, **no band progression** / `consecutive_verified_completions` linkage.
+- **Apply path (NOT run):** `cd bty-app && npm run db:push` (or Dashboard SQL Editor). **Deploy:** none.
+
+---
+
 **2026-06-24 · ☑ BUILD 4 — PHASE II ring shrink (collision fix) — COMMITTED+PUSHED, no deploy**
 
 PHASE II ring **shrunk 56→40px** (+ `text-xs`→`text-[10px]`) to resolve the collision with the "Today's growth" label on the `/bty` hub. `PhaseIIRing.tsx` only.
