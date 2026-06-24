@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { EmotionalStatsPhrases } from "@/components/bty/EmotionalStatsPhrases";
+import { PendingActionList } from "@/components/bty/PendingActionList";
 import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
@@ -128,6 +129,10 @@ export default function BtyIndexPage({ locale, t }: Props) {
               : "Weekly rankings and teammate avatars."}
           </p>
         </nav>
+
+        <div className="mt-10">
+          <PendingActionList />
+        </div>
 
         <div className="mt-10">
           <EmotionalStatsPhrases />

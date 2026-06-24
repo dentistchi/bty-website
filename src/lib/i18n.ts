@@ -2006,6 +2006,13 @@ export type Messages = {
     qrWitnessNotice: string;
     dismiss: string;
     awaitingListTitle: string;
+    /** Pending Action list (/bty hub slice) — list title, empty/error, status badges. */
+    pendingListTitle: string;
+    pendingEmptyMessage: string;
+    pendingErrorMessage: string;
+    badgeQrRequired: string;
+    badgeAwaitingVerification: string;
+    badgeInProgress: string;
     tierPersonal: string;
     tierManager: string;
     scanVerified: string;
@@ -3820,6 +3827,12 @@ const ko: Messages = {
     qrWitnessNotice: "이 QR은 본인이 완료하는 화면이 아닙니다.\n실제 행동을 확인할 수 있는 동료, 매니저 또는 어시스턴트에게 보여주세요.\n상대가 QR을 스캔하면 행동이 검증되고 완료됩니다.",
     dismiss: "닫기",
     awaitingListTitle: "QR 인증 대기 중인 실행",
+    pendingListTitle: "내가 해야 할 행동",
+    pendingEmptyMessage: "지금 처리할 행동이 없어요.",
+    pendingErrorMessage: "행동 목록을 불러오지 못했어요.",
+    badgeQrRequired: "QR 필요",
+    badgeAwaitingVerification: "검증 대기",
+    badgeInProgress: "진행 중",
     tierPersonal: "개인",
     tierManager: "매니저",
     scanVerified: "✓ 인증이 완료되었습니다.",
@@ -5635,6 +5648,12 @@ const en: Messages = {
     qrWitnessNotice: "This QR is not for you to complete yourself.\nShow it to a colleague, manager, or assistant who can verify the action.\nOnce they scan the QR code, your action will be verified and completed.",
     dismiss: "Close",
     awaitingListTitle: "Actions awaiting QR verification",
+    pendingListTitle: "My actions to complete",
+    pendingEmptyMessage: "No pending actions right now.",
+    pendingErrorMessage: "Couldn't load your actions.",
+    badgeQrRequired: "QR needed",
+    badgeAwaitingVerification: "Awaiting verification",
+    badgeInProgress: "In progress",
     tierPersonal: "Personal",
     tierManager: "Manager",
     scanVerified: "✓ Verification complete.",
