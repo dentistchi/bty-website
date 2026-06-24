@@ -1,3 +1,15 @@
+**2026-06-23 · ☑ Phase 1.1 login glyph polish (transparent-gold) — COMMITTED+PUSHED, no deploy**
+
+E1 decision (b): login card knot swapped gold-on-navy → floating transparent-gold. Single `<img src>` mutation; metadataBase deferred (E2 (b), custom-domain decision).
+- **Swap:** `src/components/auth/login-card.tsx` ONE line — `src="/brand/bty-knot-gold.svg"` → `src="/brand/bty-knot-transparent-gold.svg"` (already-staged Phase 1 asset, verified transparent: `rect fill="none"`, 0× `#0B1F3A`, 3× gold `#C9A66B`). width/height(56) / class(`rounded-2xl`) / alt / aria-hidden UNCHANGED — knot now floats on the slate-950 card, no navy tile. No asset regenerated.
+- **Untouched (scope lock):** metadataBase, layout.tsx, favicon/icon/apple-icon/OG/twitter assets, header/footer/landing, auth/cookie/middleware, OAuth button/form. Diff-verified empty across those paths.
+- **Verify:** tsc 0 / `lint:terminology` 13 (+0; asset-path swap, no user-facing text) / diff = single line (blob `96aef59e → 3252848b`).
+- **Commit (inner):** inner-main **50257189 → 79e001ab** (1 file, 1 line). **Push:** `git push origin inner-main:inner-main` FF **`50257189..79e001ab`** (no force).
+- **Deploy:** 미수행 (별개 go). Floating-knot glyph live only post-deploy. NOTE: Phase 1 WAS deployed earlier (Version **`ef50077a`**, 2026-06-24) → current LIVE still shows the gold-on-navy tile glyph; Phase 1.1 transparent-gold supersedes on next deploy.
+- **E2:** metadataBase remains unset by decision — OG/twitter image meta emit `http://localhost:3000/…` base live (confirmed at ef50077a); deferred to custom-domain decision, NOT fixed here.
+
+---
+
 **2026-06-23 · ☑ Phase 1 BTY knot brand assets (inner web) — COMMITTED+PUSHED, no deploy**
 
 BTY brand integration Phase 1: knot favicon/icon/OG + login glyph wired into inner-main. Scope = brand assets + metadata + ONE login glyph; NO header/footer/landing (Phase 2), NO auth/cookie/middleware.
