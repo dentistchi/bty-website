@@ -299,6 +299,15 @@ export default function LoginCard({ locale, nextPath, initialError }: LoginCardP
       data-testid="login-card"
     >
       <header className="mb-6 text-center sm:text-left">
+        {/* Phase 1 brand: gold knot glyph (gold-on-navy master) above the headline. Additive, decorative — headline text carries the accessible brand name. */}
+        <img
+          src="/brand/bty-knot-gold.svg"
+          alt=""
+          aria-hidden="true"
+          width={56}
+          height={56}
+          className="mb-4 inline-block h-14 w-14 rounded-2xl"
+        />
         <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">{t.headline}</h1>
         <p className="mt-2 text-sm leading-relaxed text-slate-400">{t.sub}</p>
         <p className="mt-3 text-xs leading-relaxed text-slate-500">{t.accountHint}</p>
