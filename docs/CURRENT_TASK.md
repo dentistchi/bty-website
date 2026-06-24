@@ -1,3 +1,15 @@
+**2026-06-23 · ☑ Phase 1 BTY knot brand assets (inner web) — COMMITTED+PUSHED, no deploy**
+
+BTY brand integration Phase 1: knot favicon/icon/OG + login glyph wired into inner-main. Scope = brand assets + metadata + ONE login glyph; NO header/footer/landing (Phase 2), NO auth/cookie/middleware.
+- **Assets (exact bytes, no re-rasterize):** source `/Users/hanbit/Dev/_bty_phase1_assets/` (12 files, all sizes + SHA-256 verified vs spec). `public/favicon.ico` replaced (multi-res 16=white hi-contrast / 32-48=gold, 15086B). Next 15 app-convention: `src/app/icon.png`(←icon-512, 17297B) · `apple-icon.png`(←180, 5646B) · `opengraph-image.png`(40998B) · `twitter-image.png`(40998B). Login glyph source `public/brand/bty-knot-gold.svg`(4043B); 4 variant SVG (mono-black/white, transparent-gold/navy) staged in `public/brand/` for Phase 2 — NOT wired.
+- **Login glyph (only code change):** `src/components/auth/login-card.tsx` +9 lines — gold knot `<img>` above the locale headline (additive; decorative `alt="" aria-hidden`; slate-950 dark card; OAuth button/form/auth logic untouched). `src/app/layout.tsx` UNCHANGED — app-convention auto-wires icon/apple-icon/OG/twitter; title/description preserved, no `icons:` field needed (no duplication).
+- **Verify:** tsc 0 / `lint:terminology` 13 (baseline "try again" set, +0 new) / `npm run build` PASS — route table emits static `/icon.png` · `/apple-icon.png` · `/opengraph-image.png` · `/twitter-image.png` + `.next` `.meta` descriptors (= convention wired). eslint = `ignoreDuringBuilds:true` by design (next.config.js:6-7; env Node 24 vs `.nvmrc` 20 → known ajv crash, pre-existing, gate lint = `tsc --noEmit`).
+- **Commit (inner):** inner-main **61e1d40e → 50257189** (11 files, +79; 9 add + favicon binary + login-card mod). **Push (code):** `git push origin inner-main:inner-main` = FF **`61e1d40e..50257189`** (no force). Remote ls-remote == 50257189.
+- **Deploy:** 미수행 (별개 go: `cd bty-app && rm -rf .open-next && npm run deploy`). Favicon/OG/login glyph go live only post-deploy.
+- **HOLD:** `metadataBase` unset (pre-existing — wasn't set before either). OG/twitter wire fine but absolute-URL base resolves at deploy origin; recommend setting canonical public origin in a follow-up (unlisted domain decision — not invented here). Observation (not a deviation): Gold master includes a navy tile, so the login glyph renders as a rounded navy badge with gold knot per dispatch instruction; if a tile-less mark is wanted later, swap the Phase-2 TransparentGold variant.
+
+---
+
 **2026-06-22 · ◐ B-w3 wrapper plugin fix + native OAuth E2E — INIT HALF PASS / RETURN LEG HOLD (Supabase Site-URL fallback)**
 
 BTY Native App B-w3 (wrapper-only; inner UNTOUCHED 61e1d40e; deploy 06af1777 live). Corrects the B-w2 inventory error that ASSUMED `@capacitor/browser` lived in the shell — live runtime disproved it (`Plugins.Browser=undefined`), B-w3 fixed it wrapper-side.
