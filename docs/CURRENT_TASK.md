@@ -1,3 +1,17 @@
+**2026-06-24 · ☑ BUILD 4 — PHASE II ring shrink (collision fix) — COMMITTED+PUSHED, no deploy**
+
+PHASE II ring **shrunk 56→40px** (+ `text-xs`→`text-[10px]`) to resolve the collision with the "Today's growth" label on the `/bty` hub. `PhaseIIRing.tsx` only.
+- **Change:** inline `style` `width/height: 56`→`40`; className text size `text-xs`→`text-[10px]`. All other props unchanged (`RING_COLOR`, `borderColor`, `opacity: 0.9`, rounded-full/border-2/uppercase/tracking, `title`/`aria-label="Phase II"`, the "Phase II" text, doc comment).
+- **Signal preserved:** the ring is an intentional **Second Awakening** signal (`HEALING_COACHING_SPEC_V3 §9`) — **shrunk, NOT removed**; still rendered under `{phase === "II" && <PhaseIIRing />}`. Parent `gap-2` in `EmotionalStatsPhrases.tsx` **unchanged**.
+- **Pre-existing defect:** `PhaseIIRing.tsx` (`fa0b86d6`, 2026-04-29) and `EmotionalStatsPhrases.tsx` (`a746c07a`, 2026-05-01) both predate the Slice A chain — collision was **not** deploy-introduced.
+- **Untouched:** `EmotionalStatsPhrases`, `PendingActionList`, My Page, Comeback, IA.
+- **Pixel-fit pending visual:** 40 vs 36/44, and whether `text-[10px]` fits "PHASE II" cleanly inside the 40px ring, verified visually post-deploy (first estimate).
+- **Gates:** tsc **0** / `lint:terminology` **13 / baseline 13 / +0**. 1 file, 2 lines.
+- **Commit (inner):** inner-main **f9a63046 → 9dc320cf** (1 file). **Push:** `git push origin inner-main:inner-main` FF **`f9a63046..9dc320cf`** (no force, remote==local).
+- **Deploy:** NOT performed — staging still **`82e22c34`** (BUILD 1+2+3 live). Ring shrink goes live on the next deploy go.
+
+---
+
 **2026-06-24 · ☑ BUILD 3 — pending list home-actionable filter — COMMITTED+PUSHED, no deploy**
 
 The `/bty` home Pending list now displays **actionable items only**. Frontend display-only filter; `PendingActionList.tsx` only.
