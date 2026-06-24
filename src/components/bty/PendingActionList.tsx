@@ -111,7 +111,18 @@ export function PendingActionList() {
 
   if (loading) return <CardSkeleton lines={2} showLabel={true} />;
 
-  const count = contracts?.length ?? 0;
+  /**
+   * Home-actionable filter (display-only — no endpoint/DB change). The endpoint
+   * already enforces `verified_at IS NULL`; here we additionally drop recorded
+   * `missed` rows and past-deadline rows (expired-but-not-yet-swept, since the
+   * endpoint is side-effect-free) so the hub shows only items still the user's
+   * to-do. `rejected` is intentionally KEPT — only `missed` is excluded by status.
+   * `deadline_at` is an ISO string → epoch-ms compare against Date.now() (UTC-safe).
+   */
+  const actionable = (contracts ?? []).filter(
+    (c) => c.status !== "missed" && new Date(c.deadline_at).getTime() >= Date.now(),
+  );
+  const count = actionable.length;
 
   return (
     <section aria-label={t.pendingListTitle}>
@@ -122,7 +133,7 @@ export function PendingActionList() {
       )}
       {!error && count > 0 && (
         <ul className="space-y-2">
-          {contracts!.map((c) => {
+          {actionable.map((c) => {
             const badge = badgeFor(c.status, c.verification_type, t);
             return (
               <li
