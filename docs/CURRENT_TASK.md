@@ -1,3 +1,15 @@
+**2026-06-24 · ☑ BUILD 1 — pending action contracts endpoint — COMMITTED+PUSHED, no deploy**
+
+First mutation after an extended read-only IA / action-loop / aggregation-shape measurement sequence. New read-only endpoint as the foundational data layer for an action-centric "Today" home (slice A).
+- **Endpoint:** `GET /api/arena/action-contracts/pending` — user-wide, **side-effect-free** (pure `select`; no status transition, no session/next call, no expired→missed write). Filter `user_id = caller AND verified_at IS NULL`. **User-scoped** Supabase client (requireUser) — NO service-role (RLS + explicit user_id both apply).
+- **Shape:** `{ contracts: [...] }`, 7-field minimum each — `id, status, action_text (alias of contract_description), deadline_at, verification_type, session_id, created_at`. Exposes canonical `verification_type` (NOT the `verification_mode` 'hybrid' channel). `session_id` IS the run id (no separate `run_id` column). Order: `deadline_at ASC, created_at DESC`.
+- **Measure-first:** confirmed action col = `contract_description`; `session_id`=arena run id; `requireUser` user-scoped pattern (mirrors `by-session` sibling); `verified_at IS NULL` broader than `BLOCKING_STATUSES` (pending/submitted/rejected/escalated). **A user-wide pending list was confirmed ABSENT prior to this** (prior sources were per-session lookups or POST-create).
+- **Gates:** tsc **0** / `lint:terminology` **13 / baseline 13 / +0**. Single new file, 65 insertions, 0 existing files modified.
+- **Commit (inner):** inner-main **00e9bad1 → a9431f97** (1 new file). **Push:** `git push origin inner-main:inner-main` FF **`00e9bad1..a9431f97`** (no force, remote==local).
+- **Deploy:** NOT performed — staging still at **`b84fab2a`** (Phase 1.1 + 2A). Endpoint goes live on the next deploy go.
+
+---
+
 **2026-06-24 · ☑ Phase 2A header glyph (4-slot) — CLOSED, COMMITTED+PUSHED, no deploy**
 
 Phase 2A CLOSED: transparent-navy BTY knot glyph added to the 4 header wordmark slots; text wordmark preserved (NOT replaced).
