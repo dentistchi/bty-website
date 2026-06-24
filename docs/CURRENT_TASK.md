@@ -1,3 +1,15 @@
+**2026-06-24 · ☑ Phase 2A header glyph (4-slot) — CLOSED, COMMITTED+PUSHED, no deploy**
+
+Phase 2A CLOSED: transparent-navy BTY knot glyph added to the 4 header wordmark slots; text wordmark preserved (NOT replaced).
+- **4 slots (decorative glyph + preserved text):** `ArenaLayoutShell.tsx` · `CenterLayoutShell.tsx` · `my-page/layout.tsx` · `LandingClient.tsx` (Landing TOPBAR wordmark, NOT hero). Each: Link gains `inline-flex items-center gap-1.5`; first child `<img src="/brand/bty-knot-transparent-navy.svg" alt="" aria-hidden="true" width={20} height={20} className="h-5 w-5 shrink-0" />` (navy knot glyph) before the byte-identical `<span fontWeight:400>bty</span>ARENA`. Light/cream header bg → navy glyph contrasts; decorative aria-hidden, text remains the accessible name.
+- **Untouched:** footer, landing hero (h1/copy), metadataBase, favicon/icon/OG/twitter, auth/cookie/middleware, no BrandWordmark component. Asset NOT regenerated (staged Phase 1).
+- **Verify:** classifier recovered (after a transient outage that held the gate) → tsc **0** / `lint:terminology` **13 / baseline 13 / +0**. Diff = 4 files, +8/−3, text preserved.
+- **Commit (inner):** inner-main **79e001ab → 00e9bad1** ("Phase 2A logo icon surface close", 4 files). **Push:** `git push origin inner-main:inner-main` FF **`79e001ab..00e9bad1`** (no force; remote == local).
+- **Deploy:** NOT performed (별개 go). Phase 2A header glyphs bundle with Phase 1.1 login transparent-gold on the next deploy.
+- **Note:** `CURSOR_TASK_BOARD.md` filename intentionally UNCHANGED (rename = separate governance track).
+
+---
+
 **2026-06-23 · ☑ Phase 1.1 login glyph polish (transparent-gold) — COMMITTED+PUSHED, no deploy**
 
 E1 decision (b): login card knot swapped gold-on-navy → floating transparent-gold. Single `<img src>` mutation; metadataBase deferred (E2 (b), custom-domain decision).
