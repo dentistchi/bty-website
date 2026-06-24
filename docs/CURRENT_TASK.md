@@ -1,3 +1,16 @@
+**2026-06-24 · ☑ BUILD 2 — pending action list on /bty hub (first visible UI slice) — COMMITTED+PUSHED, no deploy**
+
+First visible UI slice of the action-centric home — a Pending Action list mounted on the `/bty` hub, consuming the BUILD 1 endpoint.
+- **Component:** NEW `src/components/bty/PendingActionList.tsx` — self-fetching client component (mirrors `EmotionalStatsPhrases` pattern: `useEffect` + `useParams` locale, loading/error/empty). Consumes **`GET /api/arena/action-contracts/pending`** (endpoint `a9431f97`). Renders per contract: `action_text`, status badge, `expiresIn`+`formatDeadline`. Cards **display-only** this slice (no chevron/onClick/Link — detail/continue nav = later slice).
+- **Badge mapping (frontend-only, no `display_state`):** 3 badges — **QR needed** (`verification_type ∈ {qr,hybrid,qr_peer,qr_system,qr_location}`, regardless of status) · **Awaiting verification** (non-QR + status ∈ {submitted,approved,escalated}) · **In progress** (everything else, incl. draft/committed/pending/rejected/missed). "재노출 예정" (REEXPOSURE_DUE) + expired/redo badge **deferred** — no data source on this endpoint / later track.
+- **Mount:** `bty/(protected)/page.client.tsx` — **addition** of `<PendingActionList />` in a `mt-10` div ABOVE `<EmotionalStatsPhrases />`; existing hub content untouched. My Page contract surfaces (`AwaitingQrList`/`ActionContractHub`) untouched — duplication = later IA track.
+- **i18n:** 6 keys ×3 blocks in `actionContract` namespace (`pendingListTitle`=KO "내가 해야 할 행동"/EN "My actions to complete", `pendingEmptyMessage`, `pendingErrorMessage`, `badgeQrRequired/AwaitingVerification/InProgress`). Token convention: card chrome `--arena-*` vars; status accents raw-Tailwind (amber/blue/emerald) per `ActionContractHub` precedent. No new token system.
+- **Gates:** tsc **0** / `lint:terminology` **13 / baseline 13 / +0**. 3 files, +176 (1 new + 2 edits), 0 unrelated files.
+- **Commit (inner):** inner-main **a9431f97 → 9bdb35a1** (incl. BUILD 2b refinement: simplified badge mapping, title copy). **Push:** `git push origin inner-main:inner-main` FF **`a9431f97..9bdb35a1`** (no force, remote==local).
+- **Deploy:** NOT performed — staging still **`b84fab2a`** (Phase 1.1+2A). BUILD 1 endpoint + this UI both unshipped; next deploy bundles both.
+
+---
+
 **2026-06-24 · ☑ BUILD 1 — pending action contracts endpoint — COMMITTED+PUSHED, no deploy**
 
 First mutation after an extended read-only IA / action-loop / aggregation-shape measurement sequence. New read-only endpoint as the foundational data layer for an action-centric "Today" home (slice A).
