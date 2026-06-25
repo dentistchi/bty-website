@@ -1,3 +1,13 @@
+**2026-06-24 · ☑ Gate ③-pre — Slice 2b RPC applied + PUBLIC-EXECUTE security incident CLOSED (commit + ledger)**
+
+**2026-06-24 — Slice 2b RPC applied + PUBLIC-EXECUTE security incident CLOSED.** Gate ②: `20260624000100`(`bty_event_scan_award`) production(`mveycersmqfiuddslnrj`)에 apply+verify(signature exact, security definer, owner postgres). Gate ②-HOTFIX: apply 직후 runtime ACL 실측에서 PUBLIC EXECUTE 기본 부여 발견 — `security definer`+RLS-bypass fn이 anon key로 `POST /rest/v1/rpc/bty_event_scan_award` 직접 호출 가능 → route gate(requireApprovedMembership·event-live·`p_xp=event.xp_value`) 전부 우회 → 임의 user 무한 Core XP inflation(우리가 unique로 막은 구멍의 우회문). `20260624000200`로 `revoke execute … from public, anon, authenticated` apply+verify(anon=false ∧ authenticated=false ∧ service_role=true; proacl `{postgres=X, service_role=X}`). exploit 닫힘, route service-role 경로 무손상.
+
+**2026-06-24 — DURABLE RULE(canon).** `SECURITY DEFINER` + owner postgres + RLS-bypass function은 Postgres가 PUBLIC EXECUTE를 **기본 부여**한다. "GRANT 안 함" ≠ "service-role only". service-role-only는 **REVOKE EXECUTE FROM public, anon, authenticated**로만 성립. 향후 모든 Reality-award definer fn = revoke 필수. 교훈: runtime ACL 실측이 보안 추론 위 권위("verify-then-no-op", catalog가 권위) — 이번에 commit-message/추론(=service-role only 가정)이 stale, runtime이 진실이었다.
+
+**상태:** migration `20260624000100`+`20260624000200` 둘 다 live+verified. 코드(scan route·RPC file·reproject·vitest 5/5) inner `00149be5` pushed; `000200` inner `639cf85a` pushed. **un-deployed** — 다음 = generate+scan staging deploy → E2E(별도 deploy GO). slice-1 테이블/unique = 기존 live(2a). org/TII·Action QR·UI 무변경.
+
+---
+
 **2026-06-24 · ☑ Gate ① — Reality Event Engine Slice 2b — co-track commit + ledger (Root Rule / SDK-contract canon)**
 
 **2026-06-24 — Reality Event Engine Slice 2b CLOSED (구현·자체검증, commit 단계).** `POST /api/bty/events/scan` + RPC `bty_event_scan_award`(migration `20260624000100`, file-only·apply-pending) + `reprojectCoreDerivedFields` + vitest 5/5. Flow: requireUser → requireApprovedMembership → verifyEventQrToken(btyev1) → SELECT bty_events → cancelled(409)/valid_until(410 DB재읽기) → INSERT participation(service-role) → 23505→200 already_scanned / fresh→RPC-atomic core add → 200. Hard constraints 전수 통과(Action QR 무수정·bty_events schema 무수정·org/TII 0·UI 0·member-only·non-approved XP 0·one-user-per-event). isLeaderTrack drop(생성 전용). security definer + service-role only, no GRANT(self-grant 구멍 차단).
