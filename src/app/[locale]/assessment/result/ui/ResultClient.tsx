@@ -280,8 +280,23 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
     );
   }
 
-  const { scores, pattern } = computed;
+  const { scores } = computed;
   const loc = (isEn ? "en" : "ko") as Locale;
+  // Observational state copy (Commander). Today's state + 28-day companionship —
+  // no type/track label, no identity ("당신은 ~") framing, no judgment verbs.
+  const observation = isEn
+    ? [
+        "We saw you today.",
+        "It's not that something is wrong with you.",
+        "Today, we noticed a part of you that could use some recovery.",
+        "Over the next 28 days, we'll see together whether that change actually takes place.",
+      ]
+    : [
+        "오늘의 당신을 보았습니다.",
+        "당신에게 문제가 있는 것이 아닙니다.",
+        "지금의 당신에게는 회복이 필요한 부분이 보였습니다.",
+        "앞으로 28일 동안 그 변화가 실제로 일어나는지 함께 확인해 보겠습니다.",
+      ];
   const dojoT = getMessages(loc).dojoResult;
   const tAR = getMessages(loc).assessmentResult;
   const dimLabels = dojoT.dimensionLabels;
@@ -367,13 +382,13 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
       <div
         className="mt-6 border rounded-2xl p-5 bg-white"
         role="region"
-        aria-label={isEn ? "Recommended track" : "권장 트랙"}
+        aria-label={isEn ? "Today's observation" : "오늘의 관찰"}
       >
-        <div className="text-sm text-gray-500 mb-1">{isEn ? "Recommended track" : "권장 트랙"}</div>
-        <div className="text-xl font-semibold mb-2">{pattern.track}</div>
-        <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1" aria-label={isEn ? "Reasons" : "이유"}>
-          {pattern.reasons.map((r, i) => <li key={i}>{r}</li>)}
-        </ul>
+        <div className="space-y-2 text-base text-gray-800 leading-relaxed">
+          {observation.map((line, i) => (
+            <p key={i} className="m-0">{line}</p>
+          ))}
+        </div>
       </div>
       </section>
 
@@ -389,9 +404,9 @@ export default function ResultClient({ locale = "ko" }: { locale?: string }) {
         <Link
           href={`/${loc}/train/day/1`}
           className="px-5 py-2 rounded-lg bg-black text-white"
-          aria-label={tAR.start28ProgramCta}
+          aria-label={isEn ? "Start Day 1" : "Day 1 시작"}
         >
-          {tAR.start28ProgramCta}
+          {isEn ? "Start Day 1" : "Day 1 시작"}
         </Link>
         <Link
           href="../assessment"
