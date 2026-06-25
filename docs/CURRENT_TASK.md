@@ -1,3 +1,27 @@
+**2026-06-25 — MVE D1 CLOSE (assessment result observational copy).** Assessment 결과 화면을 track 추천(Stability First 라벨)에서 관찰형 카피로 교체. dojo/result(dead surface)에 단 D1 placeholder는 git restore로 되돌림 — Reality 측정으로 Dojo=assessment 중복·dojo/result 미도달 확인됨. 진짜 경로 = assessment/result(살아있는 경로). 시스템 층(scores/radar/Change-from-previous) 무손상. staging Version 81b5501c, 3-check(카피 표시·점수 무손상·Day1 도달) 통과. ResultClient.tsx commit(inner-main 3a58bdb9), inner-main push. Carry-forward: pattern.reasons/detectPattern computed-but-unrendered (Observed-but-unauthoritative, 정리 패스 대상); Dojo 코드 전체 삭제 보류.
+
+**2026-06-25 · ☑ Architecture Freeze Rule — Product-Driven phase declared**
+
+**2026-06-25 — Architecture Phase CLOSED.** Implementation Rules §0: Architecture Freeze Rule(고정 OS 목록, Think→ADR→Code→Evidence, Product-Driven 성공 기준). Project State에 phase 선언. Onboarding/Constitution/cursorrules/CLAUDE 동기화. **새 Canon 금지·기본=코드만.** 다음 주제=Verified Learning Engine UX(문서 아님).
+
+**2026-06-25 · ☑ BTY doc OS — Last Resort Principle locked**
+
+**2026-06-25 — 문서 아키텍처 동결 + 운영 원칙 확정.** "새 문서는 마지막 수단" — Constitution/Boot/기존 ADR로 설명 가능하면 코드만. ADR=새 Why만, State/Roadmap=가변, Ledger=History vs ADR=Knowledge. 설계는 코드 위에서 끝; 증거는 실행 앱. 다음 주인공=Learning Engine(문서 아님).
+
+**2026-06-25 · ☑ BTY AI OS v1.2 — ADR layer + 60-second Self Test gate**
+
+**2026-06-25 — Decision Records(ADR) 계층 추가.** `docs/decisions/` — ADR-001~005(Core XP Root, Event Engine/200-benign, Verified Learning contract, SECURITY DEFINER revoke, Evidence vs Verification). 읽기 순서: …Implementation Rules → **ADR** → Code. Onboarding Part D: 60초 설명 테스트(QR/XP/Avatar/Learning/Scenario 금지). ADR = append-only, Ledger와 분리.
+
+**2026-06-25 · ☑ BTY AI OS v1.1 — read order + Roadmap split + Self Test LOCK**
+
+**2026-06-25 — AI OS 구조 확정.** 읽기 순서: Onboarding → **Constitution**(믿을 것) → **Boot**(생각법) → Project State → **Product Roadmap**(신규 분리) → Implementation Rules. Constitution·Boot = **LOCKED BIOS**(스프린트별 수정 금지). 가변 문서 = Project State + Roadmap만. Onboarding에 Self Test(8개 오해 ❌) + 3문장 canonical answer + "AI 교육이 아니라 BTY 파괴 방지" 목적 명시.
+
+**2026-06-25 · ☑ BTY AI Onboarding System — BOOT + Constitution + Project State + Implementation Rules + Onboarding index**
+
+**2026-06-25 — AI BIOS established.** Five permanent docs: `docs/BTY_AI_BOOT.md`(철학·사고), `docs/BTY_PRODUCT_CONSTITUTION.md`(영구 법), `docs/BTY_PROJECT_STATE.md`(현재 위치), `docs/BTY_IMPLEMENTATION_RULES.md`(안전 구현), `docs/BTY_AI_ONBOARDING.md`(읽기 순서). 설계 단계 종료·제품 우선순위(Learning Engine→TODAY→Event UI→Avatar→TII) 반영. `CLAUDE.md`·`.cursorrules` 진입점 연결.
+
+---
+
 **2026-06-24 · ☑ Gate ③-pre — Slice 2b RPC applied + PUBLIC-EXECUTE security incident CLOSED (commit + ledger)**
 
 **2026-06-24 — Slice 2b RPC applied + PUBLIC-EXECUTE security incident CLOSED.** Gate ②: `20260624000100`(`bty_event_scan_award`) production(`mveycersmqfiuddslnrj`)에 apply+verify(signature exact, security definer, owner postgres). Gate ②-HOTFIX: apply 직후 runtime ACL 실측에서 PUBLIC EXECUTE 기본 부여 발견 — `security definer`+RLS-bypass fn이 anon key로 `POST /rest/v1/rpc/bty_event_scan_award` 직접 호출 가능 → route gate(requireApprovedMembership·event-live·`p_xp=event.xp_value`) 전부 우회 → 임의 user 무한 Core XP inflation(우리가 unique로 막은 구멍의 우회문). `20260624000200`로 `revoke execute … from public, anon, authenticated` apply+verify(anon=false ∧ authenticated=false ∧ service_role=true; proacl `{postgres=X, service_role=X}`). exploit 닫힘, route service-role 경로 무손상.
