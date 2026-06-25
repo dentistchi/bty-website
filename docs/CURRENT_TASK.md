@@ -1,3 +1,19 @@
+**2026-06-24 · ☑ Gate ① — Reality Event Engine Slice 2b — co-track commit + ledger (Root Rule / SDK-contract canon)**
+
+**2026-06-24 — Reality Event Engine Slice 2b CLOSED (구현·자체검증, commit 단계).** `POST /api/bty/events/scan` + RPC `bty_event_scan_award`(migration `20260624000100`, file-only·apply-pending) + `reprojectCoreDerivedFields` + vitest 5/5. Flow: requireUser → requireApprovedMembership → verifyEventQrToken(btyev1) → SELECT bty_events → cancelled(409)/valid_until(410 DB재읽기) → INSERT participation(service-role) → 23505→200 already_scanned / fresh→RPC-atomic core add → 200. Hard constraints 전수 통과(Action QR 무수정·bty_events schema 무수정·org/TII 0·UI 0·member-only·non-approved XP 0·one-user-per-event). isLeaderTrack drop(생성 전용). security definer + service-role only, no GRANT(self-grant 구멍 차단).
+
+**2026-06-24 — Award 형태(2b).** RPC-atomic increment of `core_xp_total`(insert+core add 단일 tx; award 실패=insert 롤백). derived reprojection = post-tx best-effort, self-healing(transient 실패가 XP 손실 아님). `applyDirectCoreXp` increment-half = RPC 이주, recompute-half만 미러.
+
+**2026-06-24 — Core XP 권위 + Reality Engine SDK 계약(canon).** Core XP의 권위 = RPC tx가 반환한 `new_core_xp`. 모든 파생 계산은 그 값을 입력으로만 사용. 재조회·재계산 금지. 공통 계약: `award() → returns new_core_xp → reproject(new_core_xp)`. Action·Event·Learning·Mission·Volunteer = 동일 인터페이스. award=Core 확정(RPC-atomic), reproject=확정값 투영(계산 아님).
+
+**2026-06-24 — Reality Engine 책임 경계(canon).** Reality Engine은 성장을 계산하지 않는다. 검증하고 Core XP를 제출한다. 성장 계산은 Core XP 이후에만 일어난다.
+
+**2026-06-24 — Root Rule(canon, slice 위).** Verified Reality → `applyDirectCoreXp()` 등가(=RPC-atomic) → Core XP → {Avatar·Identity·TII·Leaderboard·Season·Weekly·Code·Level} = 전부 파생 View. Core XP = Root, 나머지 = derived. D1 = Direct Core XP 확정(철학: 현실이 Arena를 키운다). `activity_xp_event_id` NULL 잔존(미래 연결 가능, shared schema 무수정).
+
+**2026-06-24 — slice-1 runtime catalog 실측(stale 교정).** commit `3135f300` 메시지 "not yet applied" = known-stale. runtime 실측: `bty_event_participation_unique` UNIQUE `(event_id,user_id)` + pkey **live**. slice-1 테이블/제약 = applied. unique = Reality Engine 무결성 핵심 장치(no-cap direct-Core의 dup-inflation 차단점).
+
+---
+
 **2026-06-24 · ☑ BUILD 6 — Reality Event Engine Slice 2a — Event creation route — COMMITTED+PUSHED, no deploy**
 
 Reality Event Engine Slice 2a committed: Event creation route (**`POST /api/bty/events`**) — **leader-track gate** + **approved-member gate** + **`bty_events` insert (service-role after gates)** + **Event QR token signing (`btyev1` family)**. Auth/gate order: `requireUser` (401) → `requireApprovedMembership` (403 `MEMBERSHIP_REQUIRED`) → `isLeaderTrack` (403 `LEADER_TRACK_REQUIRED`) → input validation (400) → service-role insert → sign token. Validation: `title`/`event_type` non-empty, `xp_value` int 10–100 (mirrors DB check), `valid_until` parseable+future. Response `{ event, token, qrUrl }`.
