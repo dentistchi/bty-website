@@ -1,0 +1,123 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
+import { requireApprovedMembership } from "@/lib/bty/arena/requireApprovedMembership";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { verifyEventQrToken } from "@/lib/bty/event-qr/event-qr-token";
+import { reprojectCoreDerivedFields } from "@/lib/bty/event-qr/reprojectCoreDerivedFields";
+
+export const runtime = "nodejs";
+
+/**
+ * POST /api/bty/events/scan — Reality Event scan + Core XP award (Slice 2b).
+ *
+ * An approved member scans a Reality Event QR (`btyev1` token) and is awarded the
+ * event's Core XP exactly once. Mirrors the 2a creation route's gate order but
+ * drops the leader-track gate (creation-only) — any approved member may scan.
+ *
+ * Auth/gate order: requireUser (401) → approved member (403) → body { token } (400)
+ * → verifyEventQrToken (401) → DB event guard (404 / 409 cancelled / 410 expired)
+ * → atomic scan-award RPC → response.
+ *
+ * The participation insert and the permanent Core XP add are bound atomically by
+ * the `bty_event_scan_award` Postgres function (idempotent via
+ * unique(event_id, user_id)). Derived projections (tier/code/sub_name/avatar) are
+ * recomputed best-effort after the RPC — see `reprojectCoreDerivedFields`. This
+ * route does NOT touch the Action QR family, activity_xp_events, weekly XP,
+ * leaderboard, band, or org/TII.
+ *
+ * Body: { token: string }
+ */
+export async function POST(req: NextRequest) {
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ ok: false, error: "UNAUTHENTICATED" }, { status: 401 });
+
+  // Approved-member gate (RLS self-read). Leader-track is creation-only — not here.
+  const gate = await requireApprovedMembership(supabase, user.id);
+  if (!gate.approved) {
+    return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
+  }
+
+  const body = await req.json().catch(() => ({}));
+  const token = typeof body?.token === "string" ? body.token.trim() : "";
+  if (!token) return NextResponse.json({ ok: false, error: "token_required" }, { status: 400 });
+
+  // Token-layer verification (HMAC + payload + exp). Reasons: expired /
+  // bad_signature / invalid_token / invalid_payload / server_misconfigured.
+  const verified = verifyEventQrToken(token);
+  if (!verified.ok) {
+    return NextResponse.json({ ok: false, error: verified.reason }, { status: 401 });
+  }
+  const eventId = verified.payload.eventId; // camelCase from the token payload.
+
+  // Service-role client — participation insert / Core XP add go through the RPC
+  // (no RLS insert policy on bty_event_participation).
+  const admin = getSupabaseAdmin();
+  if (!admin) {
+    return NextResponse.json({ ok: false, error: "ADMIN_CLIENT_UNAVAILABLE" }, { status: 503 });
+  }
+
+  // DB-authority event guard. Double-checks status/expiry against live data —
+  // defends against clock skew / a tampered-but-unexpired token. The token's own
+  // exp is already enforced by verifyEventQrToken above.
+  const { data: event, error: evErr } = await admin
+    .from("bty_events")
+    .select("id, title, event_type, xp_value, valid_until, status")
+    .eq("id", eventId)
+    .maybeSingle();
+  if (evErr) return NextResponse.json({ ok: false, error: "event_lookup_failed" }, { status: 500 });
+  if (!event) return NextResponse.json({ ok: false, error: "event_not_found" }, { status: 404 });
+
+  if (event.status === "cancelled") {
+    return NextResponse.json({ ok: false, error: "event_cancelled" }, { status: 409 });
+  }
+  if (new Date(event.valid_until).getTime() <= Date.now()) {
+    return NextResponse.json({ ok: false, error: "event_expired" }, { status: 410 });
+  }
+
+  // Atomic: insert participation + add permanent Core XP in one transaction.
+  // Idempotent — a duplicate scan returns already_scanned with no XP.
+  const { data: rpcData, error: rpcErr } = await admin.rpc("bty_event_scan_award", {
+    p_event_id: eventId,
+    p_user_id: user.id,
+    p_xp: event.xp_value,
+  });
+  if (rpcErr) {
+    return NextResponse.json({ ok: false, error: "scan_award_failed" }, { status: 500 });
+  }
+  const result = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+  if (!result) {
+    return NextResponse.json({ ok: false, error: "scan_award_failed" }, { status: 500 });
+  }
+
+  // Duplicate scan — benign, no XP (D2 shape).
+  if (result.already_scanned) {
+    return NextResponse.json({ ok: true, already_scanned: true, xp_awarded: 0 });
+  }
+
+  const newCoreTotal = Number(result.new_core_xp ?? 0);
+  const xpAwarded = typeof result.xp_awarded === "number" ? result.xp_awarded : event.xp_value;
+
+  // Best-effort derived projection — non-fatal: the permanent Core XP is already
+  // atomically committed by the RPC, so a projection failure self-heals later.
+  await reprojectCoreDerivedFields(admin, user.id, newCoreTotal, xpAwarded).catch((err) =>
+    console.warn("[events/scan] core derived reprojection non-fatal failure", err),
+  );
+
+  return NextResponse.json({
+    ok: true,
+    already_scanned: false,
+    xp_awarded: xpAwarded,
+    event: {
+      id: event.id,
+      title: event.title,
+      event_type: event.event_type,
+      xp_value: event.xp_value,
+      valid_until: event.valid_until,
+      status: event.status,
+    },
+    newCoreTotal,
+  });
+}
