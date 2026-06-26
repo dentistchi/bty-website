@@ -3827,8 +3827,8 @@ const ko: Messages = {
   actionContract: {
     pendingTitle: "대기 중인 실행",
     pendingBody: "다음 실행이 준비되었습니다.",
-    completedTitle: "실행이 기록되었습니다.",
-    completedBody: "다음 시나리오가 열렸습니다.",
+    completedTitle: "완료된 약속",
+    completedBody: "이 약속은 확인되었습니다.",
     missedTitle: "실행 기간이 종료되었습니다.",
     missedBody: "다음 시나리오로 계속 진행할 수 있습니다.",
     btnQr: "검증용 QR 보기",
@@ -5658,8 +5658,8 @@ const en: Messages = {
   actionContract: {
     pendingTitle: "Pending action",
     pendingBody: "Your next action is ready.",
-    completedTitle: "Execution recorded.",
-    completedBody: "Next scenario unlocked.",
+    completedTitle: "Completed Promise",
+    completedBody: "This promise has been confirmed.",
     missedTitle: "Action window closed.",
     missedBody: "You can continue to your next scenario.",
     btnQr: "Show QR for verification",
