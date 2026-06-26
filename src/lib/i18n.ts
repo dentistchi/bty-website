@@ -2026,7 +2026,6 @@ export type Messages = {
     witnessLoadFailed: string;
     witnessSelfBlocked: string;
     actorCompletedTitle: string;
-    actorCompletedBody: string;
     actorReflectionPrompt: string;
     actorContinueCta: string;
   };
@@ -3857,7 +3856,6 @@ const ko: Messages = {
     witnessLoadFailed: "행동을 불러오지 못했습니다. 링크를 다시 확인해 주세요.",
     witnessSelfBlocked: "이 행동은 다른 사람이 확인해야 합니다. 동료, 매니저, 또는 함께한 사람에게 QR을 보여주세요.",
     actorCompletedTitle: "오늘 하나는 실제로 해냈습니다.",
-    actorCompletedBody: "방금 확인된 행동이 오늘의 성장에 더해졌습니다.",
     actorReflectionPrompt: "실제로 해보니 어땠나요?",
     actorContinueCta: "내일 다시 이어가기",
   },
@@ -5690,7 +5688,6 @@ const en: Messages = {
     witnessSelfBlocked:
       "This action needs someone else to confirm it. Please show this QR to a teammate, manager, or someone who witnessed the action.",
     actorCompletedTitle: "You completed one real action today.",
-    actorCompletedBody: "The action you completed is now part of today's growth.",
     actorReflectionPrompt: "How did it feel to actually do it?",
     actorContinueCta: "Continue Tomorrow",
   },
