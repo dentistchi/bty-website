@@ -27,7 +27,13 @@ import type { Locale } from "@/lib/i18n";
 export type ActionLoopQrCompletion = {
   success: boolean;
   narrativeState?: string | null;
+  /** D2 actor-return: the just-completed contract (for re-show + one-time localStorage guard). */
+  contractId?: string;
+  contractDescription?: string | null;
 };
+
+/** localStorage one-time dismissal key (contract id only — never stores PII / promise text). */
+const actorSeenKey = (contractId: string) => `bty_d2_actor_seen_${contractId}`;
 
 type Props = {
   locale: string;
@@ -67,7 +73,15 @@ export function MyPageLeadershipConsole({
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [showPostCompletion, setShowPostCompletion] = useState(false);
   const [completionNarrativeState, setCompletionNarrativeState] = useState<string | null>(null);
-  const [scanResult, setScanResult] = useState<"verified" | "already" | "failed" | null>(null);
+  const [actorCompletedContractId, setActorCompletedContractId] = useState<string | null>(null);
+  const [actorCompletedDescription, setActorCompletedDescription] = useState<string | null>(null);
+  const [scanResult, setScanResult] = useState<
+    "verified" | "already" | "failed" | "self_blocked" | null
+  >(null);
+  // MVE-D2 Phase 2 (Ruling 3): witness pre-confirm — load the promised action, then a human confirms.
+  const [witnessDescription, setWitnessDescription] = useState<string | null>(null);
+  const [witnessLoadFailed, setWitnessLoadFailed] = useState(false);
+  const [witnessConfirming, setWitnessConfirming] = useState(false);
   const [pendingPulseRunId, setPendingPulseRunId] = useState<string | null>(null);
   const [pulseDismissed, setPulseDismissed] = useState(false);
   const lastSyncAtRef = useRef(0);
@@ -224,17 +238,40 @@ export function MyPageLeadershipConsole({
     };
   }, [load, routerRefresh]);
 
+  // D2 actor-return: server detects the latest completed contract and passes it here.
+  // Show the completion sheet ONCE per contract (localStorage guard, contract id only).
+  // No load()/routerRefresh() here — the server page already rendered fresh, and refreshing
+  // on a per-render prop object would loop. Witness mode never reaches this (server passes
+  // null in witness mode AND the witness branch early-returns before this surface mounts).
+  const actorCompletedId = actionLoopQrCompletion?.success
+    ? actionLoopQrCompletion.contractId ?? null
+    : null;
   useEffect(() => {
-    if (!actionLoopQrCompletion?.success) return;
-    dispatchBtyActionContractUpdated();
+    if (!actorCompletedId) return;
+    if (typeof window !== "undefined") {
+      try {
+        if (window.localStorage.getItem(actorSeenKey(actorCompletedId))) return;
+      } catch {
+        // localStorage unavailable — fail open (show once this session).
+      }
+    }
+    setActorCompletedContractId(actorCompletedId);
+    setActorCompletedDescription(actionLoopQrCompletion?.contractDescription ?? null);
+    setCompletionNarrativeState(actionLoopQrCompletion?.narrativeState ?? null);
     setShowPostCompletion(true);
-    setCompletionNarrativeState(actionLoopQrCompletion.narrativeState ?? null);
-    setQrPanelOpen(false);
-    void load().then(() => {
-      dispatchArenaEntryResolutionInvalidate();
-      routerRefresh();
-    });
-  }, [actionLoopQrCompletion, load, routerRefresh]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actorCompletedId]);
+
+  const handleActorSheetClose = useCallback(() => {
+    if (actorCompletedContractId && typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(actorSeenKey(actorCompletedContractId), "1");
+      } catch {
+        // ignore — best-effort one-time guard
+      }
+    }
+    setShowPostCompletion(false);
+  }, [actorCompletedContractId]);
 
   useEffect(() => {
     if (!actionLoopQrCompletion?.success) return;
@@ -245,66 +282,97 @@ export function MyPageLeadershipConsole({
     window.history.replaceState({}, "", url.toString());
   }, [actionLoopQrCompletion]);
 
+  // Ruling 3: do NOT auto-validate. Load the promised action so the witness can
+  // see it, then a human presses Confirm (handleWitnessConfirm) to validate.
   useEffect(() => {
     if (arenaActionLoopParam !== "commit" || !aaloParam) return;
-
-    const validate = async () => {
+    if (scanResult) return;
+    let active = true;
+    void (async () => {
       try {
-        const res = await fetch("/api/arena/leadership-engine/qr/validate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            arenaActionLoopToken: aaloParam,
-            clientScanAtIso: new Date().toISOString(),
-          }),
-        });
-
+        const res = await fetch(
+          `/api/arena/action-contract/by-token?aalo=${encodeURIComponent(aaloParam)}`,
+        );
         if (!res.ok) {
-          const errData = (await res.json().catch(() => ({}))) as {
-            error?: string;
-            verified_at?: string | null;
-          };
-          console.error("[QR validate] failed", res.status, errData?.error ?? "");
-          setScanResult(
-            errData?.error === "contract_not_pending" || errData?.verified_at != null
-              ? "already"
-              : "failed",
-          );
+          if (active) setWitnessLoadFailed(true);
           return;
         }
-
-        const data = (await res.json()) as {
-          ok?: boolean;
-          success?: boolean;
-          narrativeState?: string | null;
-        };
-
-        if (data.ok || data.success) {
-          setScanResult("verified");
-          dispatchBtyActionContractUpdated();
-          setShowPostCompletion(true);
-          if (data.narrativeState) {
-            setCompletionNarrativeState(data.narrativeState);
-          }
-          setQrPanelOpen(false);
-          void load().then(() => {
-            dispatchArenaEntryResolutionInvalidate();
-            routerRefresh();
-          });
-          if (typeof window !== "undefined") {
-            const url = new URL(window.location.href);
-            url.searchParams.delete("arena_action_loop");
-            url.searchParams.delete("aalo");
-            window.history.replaceState({}, "", url.toString());
-          }
-        }
-      } catch (err) {
-        console.error("[QR validate] error", err);
+        const data = (await res.json()) as { ok?: boolean; contractDescription?: string };
+        if (!active) return;
+        if (data.ok) setWitnessDescription(data.contractDescription ?? "");
+        else setWitnessLoadFailed(true);
+      } catch {
+        if (active) setWitnessLoadFailed(true);
       }
+    })();
+    return () => {
+      active = false;
     };
+  }, [arenaActionLoopParam, aaloParam, scanResult]);
 
-    void validate();
-  }, [arenaActionLoopParam, aaloParam, load, routerRefresh]);
+  const handleWitnessConfirm = useCallback(async () => {
+    if (!aaloParam || witnessConfirming) return;
+    setWitnessConfirming(true);
+    try {
+      const res = await fetch("/api/arena/leadership-engine/qr/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          arenaActionLoopToken: aaloParam,
+          clientScanAtIso: new Date().toISOString(),
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          verified_at?: string | null;
+        };
+        console.error("[QR validate] failed", res.status, errData?.error ?? "");
+        // self_witness_blocked is an intentional integrity rule, NOT a failure —
+        // show neutral guidance to find another witness, never "try again".
+        setScanResult(
+          errData?.error === "self_witness_blocked"
+            ? "self_blocked"
+            : errData?.error === "contract_not_pending" || errData?.verified_at != null
+              ? "already"
+              : "failed",
+        );
+        return;
+      }
+
+      const data = (await res.json()) as {
+        ok?: boolean;
+        success?: boolean;
+        narrativeState?: string | null;
+      };
+
+      if (data.ok || data.success) {
+        setScanResult("verified");
+        dispatchBtyActionContractUpdated();
+        setShowPostCompletion(true);
+        if (data.narrativeState) {
+          setCompletionNarrativeState(data.narrativeState);
+        }
+        setQrPanelOpen(false);
+        void load().then(() => {
+          dispatchArenaEntryResolutionInvalidate();
+          routerRefresh();
+        });
+        if (typeof window !== "undefined") {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("arena_action_loop");
+          url.searchParams.delete("aalo");
+          window.history.replaceState({}, "", url.toString());
+        }
+      }
+    } catch (err) {
+      console.error("[QR validate] error", err);
+      setScanResult("failed");
+    } finally {
+      setWitnessConfirming(false);
+    }
+  }, [aaloParam, witnessConfirming, load, routerRefresh]);
 
   const handleRequestQr = useCallback(async () => {
     const contract = serverPack?.open_action_contract;
@@ -395,6 +463,81 @@ export function MyPageLeadershipConsole({
   }, [serverPack, metrics, loc, localSignals, localReflections]);
 
   const reflectionsForUi = serverPack?.reflections ?? localReflections;
+
+  // MVE-D2 Phase 2 (Ruling 3) — Witness pre-confirm screen.
+  // Order: 1) 오늘의 약속  2) 행동  3) 사람의 확인 [확인하기]. No system-first headline;
+  // a person confirms the actor's real action before it counts.
+  const isWitnessMode = arenaActionLoopParam === "commit" && !!aaloParam;
+  if (isWitnessMode) {
+    return (
+      <section
+        data-testid="witness-confirm"
+        role="region"
+        aria-label={tAction.witnessPromiseTitle}
+        className="mx-auto max-w-md space-y-4"
+      >
+        {scanResult === "verified" ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-2xl border border-green-300 bg-green-50 p-6 text-center text-sm text-green-800 dark:border-green-300/20 dark:bg-green-500/[0.08] dark:text-green-100"
+          >
+            {tAction.witnessConfirmSuccess}
+          </div>
+        ) : scanResult === "already" ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-2xl border border-amber-300 bg-amber-50 p-6 text-center text-sm text-amber-800 dark:border-amber-300/20 dark:bg-amber-500/[0.08] dark:text-amber-100"
+          >
+            {tAction.scanAlready}
+          </div>
+        ) : scanResult === "self_blocked" ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-2xl border border-[#D6CFC0] bg-[#FAF8F3] p-6 text-center text-sm leading-relaxed text-[#5A4A2F] dark:border-amber-300/20 dark:bg-amber-500/[0.06] dark:text-amber-100"
+          >
+            {tAction.witnessSelfBlocked}
+          </div>
+        ) : scanResult === "failed" ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-2xl border border-rose-300 bg-rose-50 p-6 text-center text-sm text-rose-800 dark:border-rose-300/20 dark:bg-rose-500/[0.08] dark:text-rose-100"
+          >
+            {tAction.scanFailed}
+          </div>
+        ) : witnessLoadFailed ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-2xl border border-rose-300 bg-rose-50 p-6 text-center text-sm text-rose-800 dark:border-rose-300/20 dark:bg-rose-500/[0.08] dark:text-rose-100"
+          >
+            {tAction.witnessLoadFailed}
+          </div>
+        ) : (
+          <div className="space-y-5 rounded-2xl border border-[#E8E3D8] bg-white p-6 text-center shadow-sm">
+            <p className="text-[11px] font-medium uppercase tracking-widest text-[#667085]">
+              {tAction.witnessPromiseTitle}
+            </p>
+            <p className="text-lg font-semibold leading-relaxed text-[#1E2A38]">
+              {witnessDescription ?? "…"}
+            </p>
+            <p className="text-sm text-[#475467]">{tAction.witnessConfirmQuestion}</p>
+            <button
+              type="button"
+              onClick={handleWitnessConfirm}
+              disabled={witnessConfirming || witnessDescription === null}
+              className="w-full rounded-xl bg-[#1E2A38] px-4 py-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {witnessConfirming ? tAction.witnessConfirming : tAction.witnessConfirmCta}
+            </button>
+          </div>
+        )}
+      </section>
+    );
+  }
 
   return (
     <section
@@ -513,8 +656,9 @@ export function MyPageLeadershipConsole({
 
       <PostCompletionSheet
         open={showPostCompletion}
-        onClose={() => setShowPostCompletion(false)}
+        onClose={handleActorSheetClose}
         locale={locale}
+        contractDescription={actorCompletedDescription}
         narrative={completionNarrativeState}
       />
 

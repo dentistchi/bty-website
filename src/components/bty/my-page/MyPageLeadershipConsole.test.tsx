@@ -91,6 +91,11 @@ describe("MyPageLeadershipConsole", () => {
     fetchMock.mockReset();
     mockRouterRefresh.mockReset();
     vi.stubGlobal("fetch", fetchMock);
+    try {
+      window.localStorage.clear();
+    } catch {
+      /* jsdom */
+    }
   });
 
   afterEach(() => {
@@ -436,17 +441,19 @@ describe("MyPageLeadershipConsole", () => {
     nowSpy.mockRestore();
   });
 
-  it("actionLoopQrCompletion success shows PostCompletionSheet, refetches state, strips URL params", async () => {
+  it("actor return (D2): shows completion sheet with actor copy + completed action + reflection prompt", async () => {
     const payload = mockStatePayload();
     fetchMock.mockResolvedValue(jsonResponse(payload, 200));
-
-    const replaceSpy = vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
 
     await act(async () => {
       render(
         <MyPageLeadershipConsole
           locale="en"
-          actionLoopQrCompletion={{ success: true, narrativeState: "Great job." }}
+          actionLoopQrCompletion={{
+            success: true,
+            contractId: "c1",
+            contractDescription: "Call the family before noon",
+          }}
         />,
       );
     });
@@ -454,22 +461,104 @@ describe("MyPageLeadershipConsole", () => {
     await waitFor(() => {
       expect(screen.getByTestId("post-completion-sheet")).toBeTruthy();
     });
-
-    expect(screen.getByText("Great job.")).toBeTruthy();
-
-    const stateFetches = fetchMock.mock.calls.filter(
-      (c) => typeof c[0] === "string" && (c[0] as string).includes("/api/bty/my-page/state"),
-    );
-    expect(stateFetches.length).toBeGreaterThanOrEqual(2);
-
-    expect(replaceSpy).toHaveBeenCalled();
-    replaceSpy.mockRestore();
+    // Approved actor copy — not "Execution recorded / Next scenario unlocked".
+    expect(screen.getByText("You completed one real action today.")).toBeTruthy();
+    expect(screen.getByText("Call the family before noon")).toBeTruthy();
+    expect(screen.getByText("How did it feel to actually do it?")).toBeTruthy();
+    expect(screen.queryByText("Execution recorded.")).toBeNull();
+    expect(screen.queryByText("Next scenario unlocked.")).toBeNull();
+    // Reflection input is display-only (present, no submit wiring).
+    expect(screen.getByTestId("actor-reflection-input")).toBeTruthy();
   });
 
-  it("client QR validate: commit + aalo POSTs validate and opens PostCompletionSheet on ok", async () => {
+  it("actor return (D2): one-time guard — dismiss stores localStorage key (contract id only), refresh does not re-show", async () => {
+    const payload = mockStatePayload();
+    fetchMock.mockResolvedValue(jsonResponse(payload, 200));
+
+    const { unmount } = render(
+      <MyPageLeadershipConsole
+        locale="en"
+        actionLoopQrCompletion={{ success: true, contractId: "c1", contractDescription: "Do the thing" }}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId("post-completion-sheet")).toBeTruthy());
+
+    fireEvent.click(screen.getByText("Continue Tomorrow"));
+
+    // localStorage holds only the contract-id-based key, no description / reflection text.
+    expect(window.localStorage.getItem("bty_d2_actor_seen_c1")).toBe("1");
+    expect(window.localStorage.getItem("bty_d2_actor_seen_c1")).not.toContain("Do the thing");
+    unmount();
+    cleanup();
+
+    // Re-mount (refresh) for the same contract → sheet must NOT show again.
+    await act(async () => {
+      render(
+        <MyPageLeadershipConsole
+          locale="en"
+          actionLoopQrCompletion={{ success: true, contractId: "c1", contractDescription: "Do the thing" }}
+        />,
+      );
+    });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(screen.queryByTestId("post-completion-sheet")).toBeNull();
+  });
+
+  it("actor return (D2): a different completed contract shows a fresh sheet", async () => {
+    const payload = mockStatePayload();
+    fetchMock.mockResolvedValue(jsonResponse(payload, 200));
+    window.localStorage.setItem("bty_d2_actor_seen_c1", "1");
+
+    await act(async () => {
+      render(
+        <MyPageLeadershipConsole
+          locale="en"
+          actionLoopQrCompletion={{ success: true, contractId: "c2", contractDescription: "A new action" }}
+        />,
+      );
+    });
+    await waitFor(() => expect(screen.getByTestId("post-completion-sheet")).toBeTruthy());
+    expect(screen.getByText("A new action")).toBeTruthy();
+  });
+
+  it("witness mode isolation: PostCompletionSheet never mounts in witness mode (count = 0)", async () => {
     const payload = mockStatePayload();
     fetchMock.mockImplementation((url: RequestInfo | URL) => {
       const s = typeof url === "string" ? url : String(url);
+      if (s.includes("/api/arena/action-contract/by-token")) {
+        return Promise.resolve(jsonResponse({ ok: true, contractDescription: "x", status: "submitted" }, 200));
+      }
+      return Promise.resolve(jsonResponse(payload, 200));
+    });
+
+    // Even if a completion prop is (defensively) passed, witness mode must early-return.
+    await act(async () => {
+      render(
+        <MyPageLeadershipConsole
+          locale="en"
+          arenaActionLoopParam="commit"
+          aaloParam="token-from-url"
+          actionLoopQrCompletion={{ success: true, contractId: "c9", contractDescription: "should not show" }}
+        />,
+      );
+    });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(screen.queryByTestId("post-completion-sheet")).toBeNull();
+    expect(screen.queryByText("You completed one real action today.")).toBeNull();
+  });
+
+  it("witness pre-confirm (Ruling 3): shows the action, validates only after a human Confirm, then shows confirmed copy", async () => {
+    const payload = mockStatePayload();
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      const s = typeof url === "string" ? url : String(url);
+      if (s.includes("/api/arena/action-contract/by-token")) {
+        return Promise.resolve(
+          jsonResponse(
+            { ok: true, contractDescription: "Call the family before noon", status: "submitted" },
+            200,
+          ),
+        );
+      }
       if (s.includes("/api/bty/my-page/state")) {
         return Promise.resolve(jsonResponse(payload, 200));
       }
@@ -491,6 +580,20 @@ describe("MyPageLeadershipConsole", () => {
       );
     });
 
+    // The promised action is shown (ordered under "Today's Promise") and validate has NOT fired yet.
+    await waitFor(() => {
+      expect(screen.getByText("Call the family before noon")).toBeTruthy();
+    });
+    expect(screen.getByText("Today's Promise")).toBeTruthy();
+    expect(
+      fetchMock.mock.calls.some((c) =>
+        String(c[0]).includes("/api/arena/leadership-engine/qr/validate"),
+      ),
+    ).toBe(false);
+
+    // A human confirms → only now does validate fire.
+    fireEvent.click(screen.getByText("Confirm"));
+
     await waitFor(() => {
       expect(
         fetchMock.mock.calls.some((c) =>
@@ -500,11 +603,53 @@ describe("MyPageLeadershipConsole", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId("post-completion-sheet")).toBeTruthy();
+      expect(
+        screen.getByText("Confirmed. This action is now part of today's growth."),
+      ).toBeTruthy();
     });
 
     expect(replaceSpy).toHaveBeenCalled();
     replaceSpy.mockRestore();
+  });
+
+  it("self-witness 409 shows neutral integrity copy (not a failure / not 'try again')", async () => {
+    const payload = mockStatePayload();
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      const s = typeof url === "string" ? url : String(url);
+      if (s.includes("/api/arena/action-contract/by-token")) {
+        return Promise.resolve(
+          jsonResponse({ ok: true, contractDescription: "Call the family before noon", status: "submitted" }, 200),
+        );
+      }
+      if (s.includes("/api/bty/my-page/state")) {
+        return Promise.resolve(jsonResponse(payload, 200));
+      }
+      if (s.includes("/api/arena/leadership-engine/qr/validate")) {
+        return Promise.resolve(jsonResponse({ ok: false, error: "self_witness_blocked" }, 409));
+      }
+      return Promise.reject(new Error(`unexpected fetch: ${s}`));
+    });
+
+    await act(async () => {
+      render(
+        <MyPageLeadershipConsole locale="en" arenaActionLoopParam="commit" aaloParam="token-from-url" />,
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Call the family before noon")).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText("Confirm"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "This action needs someone else to confirm it. Please show this QR to a teammate, manager, or someone who witnessed the action.",
+        ),
+      ).toBeTruthy();
+    });
+    // Must NOT show the generic failure / "try again" copy.
+    expect(screen.queryByText("Verification failed. Please try again.")).toBeNull();
   });
 
   it("renders PatternSignaturePanel with a real signature row when pattern_signatures is populated", async () => {

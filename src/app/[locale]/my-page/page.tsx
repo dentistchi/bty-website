@@ -1,6 +1,11 @@
 import Link from "next/link";
 import ScreenShell from "@/components/bty/layout/ScreenShell";
-import { MyPageLeadershipConsole } from "@/components/bty/my-page/MyPageLeadershipConsole";
+import {
+  MyPageLeadershipConsole,
+  type ActionLoopQrCompletion,
+} from "@/components/bty/my-page/MyPageLeadershipConsole";
+import { getLatestCompletedActionContract } from "@/lib/bty/action-contract/getLatestCompletedActionContract";
+import { createSupabaseRouteClient } from "@/lib/supabase/server";
 import { BtyMyPageTabs } from "@/components/bty/navigation/BtyMyPageTabs";
 import { DashboardBackLink } from "@/components/bty/navigation/DashboardBackLink";
 import { getMessages } from "@/lib/i18n";
@@ -33,6 +38,32 @@ export default async function Page({ params, searchParams }: Props) {
   const aalo = firstSearchParam(sp?.aalo);
   const actionContractResolveFocus = firstSearchParam(sp?.arena_contract) === "resolve";
 
+  // D2 actor-return: detect the actor's latest completed action so they can see
+  // "I actually did something today." Witness-mode isolation: when this page is the
+  // public QR witness landing (`arena_action_loop=commit`), do NOT compute or pass any
+  // actor completion — the completion sheet must never fire in witness mode.
+  let actorCompletion: ActionLoopQrCompletion | null = null;
+  if (arenaActionLoop !== "commit") {
+    try {
+      const supabase = await createSupabaseRouteClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        const latest = await getLatestCompletedActionContract(supabase, user.id);
+        if (latest) {
+          actorCompletion = {
+            success: true,
+            contractId: latest.id,
+            contractDescription: latest.contractDescription,
+          };
+        }
+      }
+    } catch {
+      actorCompletion = null;
+    }
+  }
+
   return (
     <ScreenShell
       locale={locale}
@@ -47,7 +78,7 @@ export default async function Page({ params, searchParams }: Props) {
 
       <MyPageLeadershipConsole
         locale={locale}
-        actionLoopQrCompletion={null}
+        actionLoopQrCompletion={actorCompletion}
         arenaActionLoopParam={arenaActionLoop ?? null}
         aaloParam={aalo ?? null}
         actionContractResolveFocus={actionContractResolveFocus}

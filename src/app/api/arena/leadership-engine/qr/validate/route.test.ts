@@ -33,6 +33,12 @@ vi.mock("@supabase/supabase-js", () => ({
   })),
 }));
 
+// MVE-D2 Phase 1: optional scanner identity. Default = guest witness (no session).
+const mockRequireUser = vi.fn().mockResolvedValue({ user: null });
+vi.mock("@/lib/supabase/route-client", () => ({
+  requireUser: (...args: unknown[]) => mockRequireUser(...args),
+}));
+
 describe("POST /api/arena/leadership-engine/qr/validate", () => {
   const contractRow = {
     id: "c1",
@@ -228,6 +234,35 @@ describe("POST /api/arena/leadership-engine/qr/validate", () => {
     const data = (await res.json()) as { ok: boolean; userId: string };
     expect(data.ok).toBe(true);
     expect(data.userId).toBe("owner");
+  });
+
+  it("409 self_witness_blocked when an authenticated scanner IS the actor", async () => {
+    // Ruling 1: a logged-in session that matches the actor (token.userId) cannot self-witness.
+    mockRequireUser.mockResolvedValueOnce({ user: { id: "owner" } });
+    const token = signArenaActionLoopToken({
+      sessionId: "run1",
+      userId: "owner",
+      actionId: "arena_action_loop:run1",
+      issuedAt: Date.now(),
+      contractId: "c1",
+    });
+    const res = await POST(req({ arenaActionLoopToken: token }));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe("self_witness_blocked");
+  });
+
+  it("allows a different authenticated witness (scanner !== actor) — guest-equivalent path", async () => {
+    mockRequireUser.mockResolvedValueOnce({ user: { id: "some-other-member" } });
+    const token = signArenaActionLoopToken({
+      sessionId: "run1",
+      userId: "owner",
+      actionId: "arena_action_loop:run1",
+      issuedAt: Date.now(),
+      contractId: "c1",
+    });
+    const res = await POST(req({ arenaActionLoopToken: token }));
+    expect(res.status).toBe(200);
+    expect((await res.json()).ok).toBe(true);
   });
 
   it("finalizes submitted+validation_approved_at+verified_at=null contracts", async () => {

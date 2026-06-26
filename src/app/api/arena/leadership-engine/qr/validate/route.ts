@@ -4,6 +4,7 @@ import { completeArenaRunAfterContractVerification } from "@/lib/bty/action-cont
 import { logActionContractActorTrace } from "@/lib/bty/action-contract/arenaRunActor.server";
 import { verifyArenaActionLoopToken } from "@/lib/bty/leadership-engine/qr/arena-action-loop-token";
 import { onArenaRunCompleteVerified } from "@/lib/bty/level-engine/arenaLevelRecords";
+import { requireUser } from "@/lib/supabase/route-client";
 import {
   applyArenaRunRewardsOnVerifiedCompletion,
   reflectContractVerificationToAir,
@@ -43,6 +44,26 @@ export async function POST(req: NextRequest) {
       sessionId,
     });
     return NextResponse.json({ ok: false, error: "missing_contract_id" }, { status: 422 });
+  }
+
+  // MVE-D2 Phase 1 — Ruling 1 (HYBRID witness): scanner identity is best-effort, optional.
+  // Witness = a person; account = a *signal*, not a requirement. Guest (unauthenticated) witness
+  // stays fully valid (honor-based) — we never call requireUser as a gate. We only *read* an
+  // optional session: failure for any reason (guest, or unit-test context without request scope)
+  // degrades silently to guest. A logged-in scanner who IS the actor is HARD-blocked: actor
+  // identity == token.userId == contract.user_id (the row is fetched `.eq("user_id", userId)`),
+  // separate from the actor↔run-owner binding below.
+  // NOTE: scanner_user_id is NOT persisted to le_verification_log — that table's effective schema
+  // has no scanner column (MVE-D2 STEP 0 / P0-4). Recording is HELD pending a Commander schema call.
+  let scannerUserId: string | null = null;
+  try {
+    const { user: scanner } = await requireUser(req);
+    scannerUserId = scanner?.id ?? null;
+  } catch {
+    scannerUserId = null;
+  }
+  if (scannerUserId != null && scannerUserId === userId) {
+    return NextResponse.json({ ok: false, error: "self_witness_blocked" }, { status: 409 });
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "";
