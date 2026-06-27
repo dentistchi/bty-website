@@ -47,23 +47,24 @@ BTY의 톤:
 ### Brand / Arena
 
 ```text
---bty-brand-navy: #1E2A38
+--bty-brand-navy: #0B1F3A
 --bty-brand-steel: #405A74
 ```
 
 ### Prestige / Identity
 
 ```text
---bty-muted-gold: #B08D57
+--bty-muted-gold: #C9A66B
 --bty-soft-bronze: #8B6B4A
 ```
 
 ### Status
 
 ```text
---bty-stable: #4D6B57
---bty-warning: #A06A3A
---bty-risk: #8A4D4D
+--bty-action: #2563EB
+--bty-stable: #16A34A
+--bty-warning: #F59E0B
+--bty-risk: #DC2626
 ```
 
 ---
@@ -106,15 +107,16 @@ BTY의 톤:
   --bty-text-secondary: #667085;
   --bty-text-muted: #98A2B3;
 
-  --bty-brand-navy: #1E2A38;
+  --bty-brand-navy: #0B1F3A;
   --bty-brand-steel: #405A74;
 
-  --bty-muted-gold: #B08D57;
+  --bty-muted-gold: #C9A66B;
   --bty-soft-bronze: #8B6B4A;
 
-  --bty-stable: #4D6B57;
-  --bty-warning: #A06A3A;
-  --bty-risk: #8A4D4D;
+  --bty-action: #2563EB;
+  --bty-stable: #16A34A;
+  --bty-warning: #F59E0B;
+  --bty-risk: #DC2626;
 }
 ```
 
