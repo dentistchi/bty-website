@@ -88,13 +88,14 @@
   --bty-text: #1f2937;
   --bty-text-secondary: #667085;
   --bty-text-muted: #98a2b3;
-  --bty-brand-navy: #1e2a38;
+  --bty-brand-navy: #0B1F3A;
   --bty-brand-steel: #405a74;
-  --bty-muted-gold: #b08d57;
+  --bty-muted-gold: #C9A66B;
   --bty-soft-bronze: #8b6b4a;
-  --bty-stable: #4d6b57;
-  --bty-warning: #a06a3a;
-  --bty-risk: #8a4d4d;
+  --bty-action: #2563EB;
+  --bty-stable: #16A34A;
+  --bty-warning: #F59E0B;
+  --bty-risk: #DC2626;
   --bty-border: #e7e4dc;
 }
 .dark {
