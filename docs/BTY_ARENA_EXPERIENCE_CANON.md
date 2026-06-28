@@ -1,8 +1,8 @@
 # BTY_ARENA_EXPERIENCE_CANON.md (v1)
 
 > Document Class: Experience Canon
-> Status: PROPOSED
-> Authority: PENDING_BOUNDARY_REVIEW
+> Status: LOCKED
+> Authority: Commander
 > Provenance: Measured Product Canon
 
 *Arena가 사용자에게 남겨야 하는 경험을, 측정된 실재 위에서 정의하는 규범.*
