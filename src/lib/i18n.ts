@@ -45,6 +45,15 @@ export type Messages = {
     airBandUnknown: string;
     streakLabel: string;
     stageLabel: string;
+    /** D4 ritual-first — greeting (real name or omitted), promise language, card hierarchy. */
+    greetingNamed: string;
+    greetingPlain: string;
+    promiseLine: string;
+    companionCardTitle: string;
+    choiceWaiting: string;
+    behaviorTitle: string;
+    behaviorWaiting: string;
+    growthTitle: string;
   };
   /** Lane 2: team-membership submission form + S2 arena-entry gate. KO values are TODO_KO placeholders (translation fast-follow). */
   membership: {
@@ -2110,6 +2119,14 @@ const ko: Messages = {
     airBandUnknown: "—",
     streakLabel: "{n}일 연속",
     stageLabel: "{n}단계 / 4 · {name}",
+    greetingNamed: "좋은 아침입니다, {name}님.",
+    greetingPlain: "좋은 아침입니다.",
+    promiseLine: "오늘은 하나의 약속이 있습니다.",
+    companionCardTitle: "오늘의 동행",
+    choiceWaiting: "하나의 선택이 당신을 기다립니다.",
+    behaviorTitle: "오늘의 행동",
+    behaviorWaiting: "기다리는 중",
+    growthTitle: "성장",
   },
   // KO membership copy: EN fallback until the KO translation lane lands.
   // Convention: untranslated KO == EN verbatim; track remaining work via ko-vs-en git diff.
@@ -3971,6 +3988,14 @@ const en: Messages = {
     airBandUnknown: "—",
     streakLabel: "{n}-day streak",
     stageLabel: "Stage {n} of 4 · {name}",
+    greetingNamed: "Good morning, {name}.",
+    greetingPlain: "Good morning.",
+    promiseLine: "Today has one promise.",
+    companionCardTitle: "Today with you",
+    choiceWaiting: "One choice is waiting for you.",
+    behaviorTitle: "Today's action",
+    behaviorWaiting: "Waiting",
+    growthTitle: "Growth",
   },
   membership: {
     form: {

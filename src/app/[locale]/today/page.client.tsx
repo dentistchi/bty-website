@@ -7,6 +7,7 @@ import ScreenShell from "@/components/bty/layout/ScreenShell";
 import { InfoCard } from "@/components/bty/ui/InfoCard";
 import { CardSkeleton, AvatarComposite, UserAvatar } from "@/components/bty-arena";
 import { arenaFetch } from "@/lib/http/arenaFetch";
+import { supabase } from "@/lib/supabase";
 import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
 import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 import { getMessages, type Locale } from "@/lib/i18n";
@@ -56,6 +57,9 @@ export default function TodayHomeClient() {
   const [airBand, setAirBand] = React.useState<AirBand | null>(null);
   const [pending, setPending] = React.useState<PendingContract | null>(null);
   const [streak, setStreak] = React.useState<number>(0);
+  // Real name only — read from the browser session's user_metadata. Null → greeting omits the name
+  // (no fake / no email exposure). Companion stays "Dr. Chi"; greeting uses the *user's* name only.
+  const [displayName, setDisplayName] = React.useState<string | null>(null);
 
   const mounted = React.useRef(true);
   React.useEffect(() => {
@@ -63,6 +67,19 @@ export default function TodayHomeClient() {
     return () => {
       mounted.current = false;
     };
+  }, []);
+
+  React.useEffect(() => {
+    if (!supabase) return;
+    supabase.auth
+      .getUser()
+      .then(({ data }) => {
+        if (!mounted.current) return;
+        const meta = data?.user?.user_metadata as { full_name?: string; name?: string } | undefined;
+        const n = meta?.full_name ?? meta?.name ?? null;
+        setDisplayName(typeof n === "string" && n.trim() !== "" ? n.trim() : null);
+      })
+      .catch(() => {});
   }, []);
 
   const load = React.useCallback(async () => {
@@ -90,9 +107,7 @@ export default function TodayHomeClient() {
     void load();
   }, [load]);
 
-  // Avatar — character base only (canonical dashboard/ArenaHeader pattern: outfitUrl=undefined,
-  // accessoryUrls=[]). The full-body outfit PNG misaligns in a small round crop. No assets →
-  // UserAvatar initials, no fake image.
+  // Avatar — character base only (canonical dashboard/ArenaHeader pattern). No assets → initials.
   const displayAvatarUrl =
     core?.avatarUrl ?? getAvatarCharacter(core?.avatarCharacterId)?.imageUrl ?? null;
   const characterUrl = React.useMemo(() => {
@@ -107,7 +122,7 @@ export default function TodayHomeClient() {
   const stageBarPct =
     typeof stage?.progressPercent === "number" ? Math.max(0, Math.min(100, stage.progressPercent)) : 0;
 
-  // AIR magnitude (neutral) — Low/Mid/High → 1/2/3 gold segments. No moral (green/red) color, no %.
+  // AIR magnitude (neutral) — Low/Mid/High → 1/2/3 gold segments. No moral color, no %.
   const airLevel = airBand === "high" ? 3 : airBand === "mid" ? 2 : airBand === "low" ? 1 : 0;
   const airBandLabel =
     airBand === "high"
@@ -118,8 +133,8 @@ export default function TodayHomeClient() {
           ? t.airBandLow
           : t.airBandUnknown;
 
+  const greeting = displayName ? t.greetingNamed.replace("{name}", displayName) : t.greetingPlain;
   const beginHref = pending ? `/${locale}/my-page?arena_contract=resolve` : arenaEntry.href;
-  // Gold CTA — gold bg with navy ink (readable on gold; the one navy text kept on dark surface).
   const goldCta =
     "inline-flex w-full items-center justify-center rounded-2xl bg-bty-gold px-4 py-3.5 " +
     "text-center text-sm font-semibold text-bty-navy outline-none transition-opacity " +
@@ -129,8 +144,9 @@ export default function TodayHomeClient() {
     <ScreenShell
       locale={locale}
       eyebrow={t.eyebrow}
-      title={t.title}
-      mainAriaLabel={t.title}
+      title={greeting}
+      subtitle={t.promiseLine}
+      mainAriaLabel={greeting}
       contentClassName="pb-28"
       surface="navy"
     >
@@ -143,8 +159,8 @@ export default function TodayHomeClient() {
           </>
         ) : (
           <>
-            {/* ProfileCard — avatar (live) + Core XP (live) + Stage progress (live) + Companion (◐). Dark panel. */}
-            <InfoCard title={t.profileTitle} tone="panel" className="shadow-lg">
+            {/* 2. Companion — emotional center: avatar + Dr.Chi voice (promise language). XP demoted to Growth. */}
+            <InfoCard title={t.companionCardTitle} tone="panel" className="shadow-lg">
               <div className="flex items-center gap-4">
                 <div
                   className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-white/10 ring-2 ring-white/15"
@@ -169,19 +185,52 @@ export default function TodayHomeClient() {
                     </div>
                   )}
                 </div>
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-sm text-white/60">{t.coreXpLabel}</span>
-                    <span className="text-2xl font-semibold text-white">
-                      {coreXp.toLocaleString()}
-                    </span>
-                  </div>
-                  {identitySub ? <p className="text-sm text-white/60">{identitySub}</p> : null}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-white">{t.companionName}</p>
+                  <p className="mt-0.5 text-sm text-white/70">{t.companionLine}</p>
                 </div>
               </div>
+            </InfoCard>
 
-              {/* Stage progress (live) — label when stage present, else honest level stub. Bar = server progressPercent. */}
+            {/* 3. Today's Choice — pending action-contract (live) + Begin CTA (gold). */}
+            <InfoCard title={t.situationTitle} tone="panel" className="shadow-lg">
+              {pending ? (
+                <p className="text-sm text-white/90">{pending.action_text}</p>
+              ) : (
+                <p className="text-sm text-white/70">{t.choiceWaiting}</p>
+              )}
               <div className="mt-3">
+                <Link href={beginHref} className={goldCta}>
+                  {t.beginCta}
+                </Link>
+              </div>
+            </InfoCard>
+
+            {/* 4. Behavior Status — promise marker ○ (waiting). Rendered only when a promise is open. NO ✓ (D5). */}
+            {pending ? (
+              <InfoCard title={t.behaviorTitle} tone="panel" className="shadow-lg">
+                <div className="flex items-center gap-3">
+                  <span
+                    className="inline-block h-4 w-4 shrink-0 rounded-full border-2 border-white/40"
+                    aria-hidden
+                  />
+                  <span className="text-sm text-white/90">{t.behaviorWaiting}</span>
+                </div>
+              </InfoCard>
+            ) : null}
+
+            {/* 5. Growth — XP / Core XP / Stage (real values, demoted behind the ritual). */}
+            <InfoCard title={t.growthTitle} tone="panel" className="shadow-lg">
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm text-white/60">{t.pointsLabel}</span>
+                <span className="text-lg font-semibold text-white">+{xpToday.toLocaleString()}</span>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm text-white/60">{t.coreXpLabel}</span>
+                <span className="text-lg font-semibold text-white">{coreXp.toLocaleString()}</span>
+              </div>
+              {identitySub ? <p className="text-xs text-white/50">{identitySub}</p> : null}
+              <div className="mt-1">
                 {stage?.stageName ? (
                   <p className="text-xs text-white/60">
                     {t.stageLabel
@@ -198,38 +247,9 @@ export default function TodayHomeClient() {
                   />
                 </div>
               </div>
-
-              {/* Companion (static ◐) */}
-              <p className="mt-3 rounded-xl bg-white/10 px-3 py-2 text-sm text-white/90">
-                <span className="font-medium text-white">{t.companionName}</span>
-                {" · "}
-                {t.companionLine}
-              </p>
             </InfoCard>
 
-            {/* 오늘의 선택 — pending action-contract (live) + Begin CTA (gold). Dark panel. */}
-            <InfoCard title={t.situationTitle} tone="panel" className="shadow-lg">
-              {pending ? (
-                <p className="text-sm text-white/90">{pending.action_text}</p>
-              ) : (
-                <p className="text-sm text-white/60">{t.situationEmpty}</p>
-              )}
-              <div className="mt-3">
-                <Link href={beginHref} className={goldCta}>
-                  {t.beginCta}
-                </Link>
-              </div>
-            </InfoCard>
-
-            {/* 오늘의 포인트 — today-xp (live). Dark panel. */}
-            <InfoCard title={t.pointsTitle} tone="panel" className="shadow-lg">
-              <div className="flex items-baseline justify-between">
-                <span className="text-sm text-white/60">{t.pointsLabel}</span>
-                <span className="text-2xl font-semibold text-white">+{xpToday.toLocaleString()}</span>
-              </div>
-            </InfoCard>
-
-            {/* AIR 요약 — band + neutral magnitude (live, no %, no moral color) + streak (◐). Dark panel. */}
+            {/* 6. AIR — band + neutral magnitude (live, no %, no moral color) + streak (◐). */}
             <InfoCard title={t.airTitle} tone="panel" className="shadow-lg">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-white/60">{t.airLabel}</span>
