@@ -30,9 +30,11 @@ export default function BottomNav({
   const items = getBtyNavItems(
     locale,
     {
+      home: "Home",
+      arena: "Arena",
+      foundry: "Foundry",
       center: "Center",
-      arena: "btyARENA",
-      "my-page": "My Page",
+      "my-page": "Profile",
     },
     arenaEntry.href,
   );
@@ -47,24 +49,24 @@ export default function BottomNav({
    */
   const forcedResetActive = useForcedResetActive();
   const visibleItems = forcedResetActive ? items.filter((it) => it.key === "center") : items;
-  const gridColsClass = forcedResetActive ? "grid-cols-1" : "grid-cols-3";
+  const gridColsClass = forcedResetActive ? "grid-cols-1" : "grid-cols-5";
 
   return (
     <nav
-      className={`fixed bottom-0 left-0 right-0 z-[40] border-t border-[#E8E3D8] bg-[#FFFCF7]/95 px-2 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm ${className}`}
+      className={`fixed bottom-0 left-0 right-0 z-[40] border-t border-bty-border bg-bty-surface/95 px-2 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm ${className}`}
       aria-label={ariaLabel}
     >
-      <div className={`mx-auto grid max-w-md ${gridColsClass} gap-2`}>
+      <div className={`mx-auto grid max-w-md ${gridColsClass} gap-1.5`}>
         {visibleItems.map((item) => {
           const isActive = item.key === active;
           return (
             <Link
               key={item.key}
               href={item.href}
-              className={`rounded-2xl px-3 py-3 text-center text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B08D57]/40 focus-visible:ring-offset-2 ${
+              className={`rounded-2xl px-2 py-3 text-center text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bty-gold/40 focus-visible:ring-offset-2 ${
                 isActive
-                  ? "bg-[#1E2A38] text-white shadow-sm"
-                  : "bg-white text-[#667085] hover:bg-[#F6F4EE]"
+                  ? "bg-bty-navy text-white shadow-sm"
+                  : "bg-white text-bty-secondary hover:bg-bty-bg"
               }`}
               aria-current={isActive ? "page" : undefined}
             >

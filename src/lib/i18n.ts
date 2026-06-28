@@ -26,6 +26,24 @@ export type Messages = {
     reflectionPlaceholder: string;
     beginButton: string;
     beginConfirmation: string;
+    /** D3-1 home surface — live tiles + labeled stubs. */
+    profileTitle: string;
+    coreXpLabel: string;
+    levelStub: string;
+    companionName: string;
+    companionLine: string;
+    situationTitle: string;
+    situationEmpty: string;
+    beginCta: string;
+    pointsTitle: string;
+    pointsLabel: string;
+    airTitle: string;
+    airLabel: string;
+    airBandLow: string;
+    airBandMid: string;
+    airBandHigh: string;
+    airBandUnknown: string;
+    streakLabel: string;
   };
   /** Lane 2: team-membership submission form + S2 arena-entry gate. KO values are TODO_KO placeholders (translation fast-follow). */
   membership: {
@@ -2073,6 +2091,23 @@ const ko: Messages = {
     reflectionPlaceholder: "오늘 밤, 돌아보는 시간을 가져요.",
     beginButton: "오늘 시작하기",
     beginConfirmation: "오늘이 시작되었습니다. 그 순간이 오면 다시 돌아오세요.",
+    profileTitle: "정체성",
+    coreXpLabel: "코어 XP",
+    levelStub: "레벨·아키타입 곧 공개",
+    companionName: "Dr. Chi",
+    companionLine: "오늘 한 걸음이면 충분합니다.",
+    situationTitle: "오늘의 상황",
+    situationEmpty: "지금은 대기 중인 행동이 없습니다.",
+    beginCta: "시작하기",
+    pointsTitle: "오늘 포인트",
+    pointsLabel: "획득",
+    airTitle: "실행 신뢰도",
+    airLabel: "AIR",
+    airBandLow: "낮음",
+    airBandMid: "중간",
+    airBandHigh: "높음",
+    airBandUnknown: "—",
+    streakLabel: "{n}일 연속",
   },
   // KO membership copy: EN fallback until the KO translation lane lands.
   // Convention: untranslated KO == EN verbatim; track remaining work via ko-vs-en git diff.
@@ -3916,6 +3951,23 @@ const en: Messages = {
     reflectionPlaceholder: "Tonight, a moment to look back.",
     beginButton: "Begin today",
     beginConfirmation: "Today is open. Come back when the moment comes.",
+    profileTitle: "Identity",
+    coreXpLabel: "Core XP",
+    levelStub: "Level & archetype — coming soon",
+    companionName: "Dr. Chi",
+    companionLine: "One honest step today is enough.",
+    situationTitle: "Today's focus",
+    situationEmpty: "No open action right now.",
+    beginCta: "Begin",
+    pointsTitle: "Today's points",
+    pointsLabel: "Earned",
+    airTitle: "Execution integrity",
+    airLabel: "AIR",
+    airBandLow: "Low",
+    airBandMid: "Mid",
+    airBandHigh: "High",
+    airBandUnknown: "—",
+    streakLabel: "{n}-day streak",
   },
   membership: {
     form: {

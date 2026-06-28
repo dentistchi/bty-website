@@ -1,4 +1,4 @@
-export type BtyNavKey = "center" | "arena" | "my-page";
+export type BtyNavKey = "home" | "arena" | "foundry" | "center" | "my-page";
 
 export type BtyNavItem = {
   key: BtyNavKey;
@@ -15,6 +15,10 @@ export function pathnameMatchesArenaEntryHref(pathname: string, arenaEntryHref: 
 }
 
 /**
+ * 5-tab order (image brand): Home · Arena · Foundry · Center · Profile.
+ * `home` → `/today` (Daily OS home surface); `foundry` → `/bty/foundry` (route-group
+ * `(protected)` is not in the URL). `my-page` keeps its key; label renders as "Profile".
+ *
  * @param arenaHrefOverride — from GET session-router snapshot (see {@link useArenaEntryResolution}); defaults to `/[locale]/bty-arena`.
  */
 export function getBtyNavItems(
@@ -24,8 +28,10 @@ export function getBtyNavItems(
 ): BtyNavItem[] {
   const base = `/${locale}`;
   return [
-    { key: "center", label: labels.center, href: `${base}/center` },
+    { key: "home", label: labels.home, href: `${base}/today` },
     { key: "arena", label: labels.arena, href: arenaHrefOverride ?? `${base}/bty-arena` },
+    { key: "foundry", label: labels.foundry, href: `${base}/bty/foundry` },
+    { key: "center", label: labels.center, href: `${base}/center` },
     { key: "my-page", label: labels["my-page"], href: `${base}/my-page` },
   ];
 }
@@ -34,10 +40,14 @@ export function getBtyNavItems(
  * Bottom tabs: which item is “current”. Uses snapshot-driven `arenaEntryHref` so the Arena tab can match `/center`
  * (forced reset) or `/my-page` (action contract) without implying `/bty-arena` play when the user is elsewhere.
  * Fallback `/bty-arena` prefix keeps legacy paths aligned when href is the Arena shell.
+ * `home` (`/today`) and `foundry` (`/foundry`) are matched before the Arena fallthrough; neither path
+ * overlaps `/my-page`, `/center`, or `/bty-arena`, so ordering is collision-free.
  */
 export function getActiveBtyNav(pathname: string, locale: string, arenaEntryHref: string): BtyNavKey {
   const p = pathname || "";
   if (p.includes("/my-page")) return "my-page";
+  if (p.includes("/foundry")) return "foundry";
+  if (p.includes("/today")) return "home";
   if (p.includes("/center") || p.includes("/assessment") || p.includes("/journal")) {
     return "center";
   }
