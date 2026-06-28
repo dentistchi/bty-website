@@ -129,6 +129,7 @@ const config: Config = {
           bg: "var(--bty-bg)",
           surface: "var(--bty-surface)",
           soft: "var(--bty-surface-soft)",
+          panel: "var(--bty-panel)",
           text: "var(--bty-text)",
           secondary: "var(--bty-text-secondary)",
           muted: "var(--bty-text-muted)",

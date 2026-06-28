@@ -8,7 +8,6 @@ import { InfoCard } from "@/components/bty/ui/InfoCard";
 import { CardSkeleton, AvatarComposite, UserAvatar } from "@/components/bty-arena";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
-import { getAccessoryImageUrl } from "@/lib/bty/arena/avatarOutfits";
 import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 import { getMessages, type Locale } from "@/lib/i18n";
 
@@ -21,8 +20,6 @@ type CoreXpRes = {
   avatarUrl?: string | null;
   avatarCharacterId?: string | null;
   avatarCharacterImageUrl?: string | null;
-  avatarOutfitImageUrl?: string | null;
-  currentOutfit?: { accessoryIds?: string[] };
 };
 type TodayXpRes = { xpToday: number };
 type AirBand = "low" | "mid" | "high";
@@ -93,19 +90,14 @@ export default function TodayHomeClient() {
     void load();
   }, [load]);
 
-  // Avatar — real assets only (mirror dashboard resolve). No assets → UserAvatar initials, no fake image.
+  // Avatar — character base only (canonical dashboard/ArenaHeader pattern: outfitUrl=undefined,
+  // accessoryUrls=[]). The full-body outfit PNG misaligns in a small round crop. No assets →
+  // UserAvatar initials, no fake image.
   const displayAvatarUrl =
     core?.avatarUrl ?? getAvatarCharacter(core?.avatarCharacterId)?.imageUrl ?? null;
-  const resolvedAvatar = React.useMemo(() => {
-    if (!core) return null;
-    const characterUrl =
-      typeof core.avatarCharacterImageUrl === "string" && core.avatarCharacterImageUrl.trim() !== ""
-        ? core.avatarCharacterImageUrl.trim()
-        : null;
-    const accessoryUrls = (core.currentOutfit?.accessoryIds ?? [])
-      .map((id) => getAccessoryImageUrl(id))
-      .filter((u): u is string => typeof u === "string" && u.trim() !== "");
-    return { characterUrl, accessoryUrls };
+  const characterUrl = React.useMemo(() => {
+    const c = core?.avatarCharacterImageUrl;
+    return typeof c === "string" && c.trim() !== "" ? c.trim() : null;
   }, [core]);
 
   const coreXp = core?.coreXpTotal ?? 0;
@@ -127,6 +119,7 @@ export default function TodayHomeClient() {
           : t.airBandUnknown;
 
   const beginHref = pending ? `/${locale}/my-page?arena_contract=resolve` : arenaEntry.href;
+  // Gold CTA — gold bg with navy ink (readable on gold; the one navy text kept on dark surface).
   const goldCta =
     "inline-flex w-full items-center justify-center rounded-2xl bg-bty-gold px-4 py-3.5 " +
     "text-center text-sm font-semibold text-bty-navy outline-none transition-opacity " +
@@ -150,18 +143,18 @@ export default function TodayHomeClient() {
           </>
         ) : (
           <>
-            {/* ProfileCard — avatar (live) + Core XP (live) + Stage progress (live) + Companion (◐) */}
-            <InfoCard title={t.profileTitle} className="shadow-lg">
+            {/* ProfileCard — avatar (live) + Core XP (live) + Stage progress (live) + Companion (◐). Dark panel. */}
+            <InfoCard title={t.profileTitle} tone="panel" className="shadow-lg">
               <div className="flex items-center gap-4">
                 <div
-                  className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-bty-soft ring-2 ring-bty-border/60"
+                  className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-white/10 ring-2 ring-white/15"
                   aria-hidden
                 >
-                  {resolvedAvatar?.characterUrl ? (
+                  {characterUrl ? (
                     <AvatarComposite
                       size={64}
-                      characterUrl={resolvedAvatar.characterUrl}
-                      outfitUrl={core?.avatarOutfitImageUrl ?? undefined}
+                      characterUrl={characterUrl}
+                      outfitUrl={undefined}
                       accessoryUrls={[]}
                       alt=""
                     />
@@ -178,27 +171,27 @@ export default function TodayHomeClient() {
                 </div>
                 <div className="min-w-0 flex-1 space-y-0.5">
                   <div className="flex items-baseline justify-between">
-                    <span className="text-sm text-bty-secondary">{t.coreXpLabel}</span>
-                    <span className="text-2xl font-semibold text-bty-navy">
+                    <span className="text-sm text-white/60">{t.coreXpLabel}</span>
+                    <span className="text-2xl font-semibold text-white">
                       {coreXp.toLocaleString()}
                     </span>
                   </div>
-                  {identitySub ? <p className="text-sm text-bty-secondary">{identitySub}</p> : null}
+                  {identitySub ? <p className="text-sm text-white/60">{identitySub}</p> : null}
                 </div>
               </div>
 
               {/* Stage progress (live) — label when stage present, else honest level stub. Bar = server progressPercent. */}
               <div className="mt-3">
                 {stage?.stageName ? (
-                  <p className="text-xs text-bty-secondary">
+                  <p className="text-xs text-white/60">
                     {t.stageLabel
                       .replace("{n}", String(stage.currentStage ?? ""))
                       .replace("{name}", stage.stageName)}
                   </p>
                 ) : (
-                  <p className="text-xs text-bty-muted">{t.levelStub}</p>
+                  <p className="text-xs text-white/40">{t.levelStub}</p>
                 )}
-                <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-bty-soft">
+                <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-white/10">
                   <div
                     className="h-full rounded-full bg-bty-gold"
                     style={{ width: `${stageBarPct}%` }}
@@ -207,19 +200,19 @@ export default function TodayHomeClient() {
               </div>
 
               {/* Companion (static ◐) */}
-              <p className="mt-3 rounded-xl bg-bty-soft px-3 py-2 text-sm text-bty-text">
-                <span className="font-medium text-bty-navy">{t.companionName}</span>
+              <p className="mt-3 rounded-xl bg-white/10 px-3 py-2 text-sm text-white/90">
+                <span className="font-medium text-white">{t.companionName}</span>
                 {" · "}
                 {t.companionLine}
               </p>
             </InfoCard>
 
-            {/* 오늘의 선택 — pending action-contract (live) + Begin CTA (gold) */}
-            <InfoCard title={t.situationTitle} className="shadow-lg">
+            {/* 오늘의 선택 — pending action-contract (live) + Begin CTA (gold). Dark panel. */}
+            <InfoCard title={t.situationTitle} tone="panel" className="shadow-lg">
               {pending ? (
-                <p className="text-sm text-bty-text">{pending.action_text}</p>
+                <p className="text-sm text-white/90">{pending.action_text}</p>
               ) : (
-                <p className="text-sm text-bty-secondary">{t.situationEmpty}</p>
+                <p className="text-sm text-white/60">{t.situationEmpty}</p>
               )}
               <div className="mt-3">
                 <Link href={beginHref} className={goldCta}>
@@ -228,33 +221,31 @@ export default function TodayHomeClient() {
               </div>
             </InfoCard>
 
-            {/* 오늘의 포인트 — today-xp (live) */}
-            <InfoCard title={t.pointsTitle} className="shadow-lg">
+            {/* 오늘의 포인트 — today-xp (live). Dark panel. */}
+            <InfoCard title={t.pointsTitle} tone="panel" className="shadow-lg">
               <div className="flex items-baseline justify-between">
-                <span className="text-sm text-bty-secondary">{t.pointsLabel}</span>
-                <span className="text-2xl font-semibold text-bty-navy">
-                  +{xpToday.toLocaleString()}
-                </span>
+                <span className="text-sm text-white/60">{t.pointsLabel}</span>
+                <span className="text-2xl font-semibold text-white">+{xpToday.toLocaleString()}</span>
               </div>
             </InfoCard>
 
-            {/* AIR 요약 — band + neutral magnitude (live, no %, no moral color) + streak (◐) */}
-            <InfoCard title={t.airTitle} className="shadow-lg">
+            {/* AIR 요약 — band + neutral magnitude (live, no %, no moral color) + streak (◐). Dark panel. */}
+            <InfoCard title={t.airTitle} tone="panel" className="shadow-lg">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-bty-secondary">{t.airLabel}</span>
+                <span className="text-sm text-white/60">{t.airLabel}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-base font-semibold text-bty-navy">{airBandLabel}</span>
+                  <span className="text-base font-semibold text-white">{airBandLabel}</span>
                   <span className="flex gap-1" aria-hidden>
                     {[1, 2, 3].map((i) => (
                       <span
                         key={i}
-                        className={`h-1.5 w-5 rounded-full ${i <= airLevel ? "bg-bty-gold" : "bg-bty-soft"}`}
+                        className={`h-1.5 w-5 rounded-full ${i <= airLevel ? "bg-bty-gold" : "bg-white/10"}`}
                       />
                     ))}
                   </span>
                 </div>
               </div>
-              <p className="text-xs text-bty-muted">{t.streakLabel.replace("{n}", String(streak))}</p>
+              <p className="text-xs text-white/40">{t.streakLabel.replace("{n}", String(streak))}</p>
             </InfoCard>
           </>
         )}

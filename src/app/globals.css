@@ -85,6 +85,8 @@
   --bty-bg: #f6f4ee;
   --bty-surface: #ffffff;
   --bty-surface-soft: #f1eee6;
+  /* Elevated dark panel — sits above brand-navy bg (#0B1F3A) for premium/native card layering (today surface). */
+  --bty-panel: #11294A;
   --bty-text: #1f2937;
   --bty-text-secondary: #667085;
   --bty-text-muted: #98a2b3;

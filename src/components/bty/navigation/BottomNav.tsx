@@ -2,11 +2,38 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { getActiveBtyNav, getBtyNavItems } from "@/components/bty/navigation/nav-items";
+import { getActiveBtyNav, getBtyNavItems, type BtyNavKey } from "@/components/bty/navigation/nav-items";
 import { useForcedResetActive } from "@/components/bty/navigation/useForcedResetActive";
 import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
+
+/** Inline tab glyphs (no icon-lib dependency). 18px, `currentColor` stroke so the Link tints them. */
+const NAV_ICON_PATHS: Record<BtyNavKey, string> = {
+  home: "M3 10.5 12 4l9 6.5M5 9.5V20h14V9.5",
+  arena: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 4v0",
+  foundry: "M14 3l-1 7h5l-9 11 1-8H5l9-10Z",
+  center: "M12 21s-7-4.6-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.4-7 10-7 10Z",
+  "my-page": "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0",
+};
+
+function NavIcon({ navKey }: { navKey: BtyNavKey }) {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d={NAV_ICON_PATHS[navKey]} />
+    </svg>
+  );
+}
 
 export type BottomNavProps = {
   locale: string;
@@ -63,14 +90,17 @@ export default function BottomNav({
             <Link
               key={item.key}
               href={item.href}
-              className={`rounded-2xl px-2 py-3 text-center text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bty-gold/40 focus-visible:ring-offset-2 ${
+              className={`flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-center text-[11px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bty-gold/40 focus-visible:ring-offset-2 ${
                 isActive
                   ? "bg-bty-navy text-white shadow-sm"
                   : "bg-white text-bty-secondary hover:bg-bty-bg"
               }`}
               aria-current={isActive ? "page" : undefined}
             >
-              {item.label}
+              <span className={isActive ? "text-bty-gold" : ""}>
+                <NavIcon navKey={item.key} />
+              </span>
+              <span>{item.label}</span>
             </Link>
           );
         })}
