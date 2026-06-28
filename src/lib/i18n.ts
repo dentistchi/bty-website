@@ -44,6 +44,7 @@ export type Messages = {
     airBandHigh: string;
     airBandUnknown: string;
     streakLabel: string;
+    stageLabel: string;
   };
   /** Lane 2: team-membership submission form + S2 arena-entry gate. KO values are TODO_KO placeholders (translation fast-follow). */
   membership: {
@@ -2108,6 +2109,7 @@ const ko: Messages = {
     airBandHigh: "높음",
     airBandUnknown: "—",
     streakLabel: "{n}일 연속",
+    stageLabel: "{n}단계 / 4 · {name}",
   },
   // KO membership copy: EN fallback until the KO translation lane lands.
   // Convention: untranslated KO == EN verbatim; track remaining work via ko-vs-en git diff.
@@ -3968,6 +3970,7 @@ const en: Messages = {
     airBandHigh: "High",
     airBandUnknown: "—",
     streakLabel: "{n}-day streak",
+    stageLabel: "Stage {n} of 4 · {name}",
   },
   membership: {
     form: {

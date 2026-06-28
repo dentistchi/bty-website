@@ -5,18 +5,32 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import ScreenShell from "@/components/bty/layout/ScreenShell";
 import { InfoCard } from "@/components/bty/ui/InfoCard";
-import { CardSkeleton } from "@/components/bty-arena";
+import { CardSkeleton, AvatarComposite, UserAvatar } from "@/components/bty-arena";
 import { arenaFetch } from "@/lib/http/arenaFetch";
+import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
+import { getAccessoryImageUrl } from "@/lib/bty/arena/avatarOutfits";
 import { useArenaEntryResolution } from "@/lib/bty/arena/useArenaEntryResolution";
 import { getMessages, type Locale } from "@/lib/i18n";
 
 // Live read shapes — match the canonical /api/arena/* responses (PHASE 0 measured).
-type CoreXpRes = { coreXpTotal: number; tier?: number; codeName?: string; subName?: string };
+type CoreXpRes = {
+  coreXpTotal: number;
+  tier?: number;
+  codeName?: string;
+  subName?: string;
+  avatarUrl?: string | null;
+  avatarCharacterId?: string | null;
+  avatarCharacterImageUrl?: string | null;
+  avatarOutfitImageUrl?: string | null;
+  currentOutfit?: { accessoryIds?: string[] };
+};
 type TodayXpRes = { xpToday: number };
 type AirBand = "low" | "mid" | "high";
 type AirRes = { air_7d?: { band?: AirBand; missedWindows?: number; integritySlip?: boolean } };
 type PendingContract = { id: string; action_text: string; deadline_at: string | null };
 type PendingRes = { contracts?: PendingContract[] };
+// Leadership stage progress — server-computed `progressPercent` (never derived from XP in UI).
+type StageSummaryRes = { currentStage?: number; stageName?: string; progressPercent?: number };
 
 // Client-local streak (no server engine) — same key the dashboard uses. Labeled stub.
 const STREAK_KEY = "btyArenaStreak:v1";
@@ -39,8 +53,8 @@ export default function TodayHomeClient() {
   const { contract: arenaEntry } = useArenaEntryResolution(loc);
 
   const [loading, setLoading] = React.useState(true);
-  const [coreXp, setCoreXp] = React.useState<number>(0);
-  const [identity, setIdentity] = React.useState<{ codeName?: string; subName?: string }>({});
+  const [core, setCore] = React.useState<CoreXpRes | null>(null);
+  const [stage, setStage] = React.useState<StageSummaryRes | null>(null);
   const [xpToday, setXpToday] = React.useState<number>(0);
   const [airBand, setAirBand] = React.useState<AirBand | null>(null);
   const [pending, setPending] = React.useState<PendingContract | null>(null);
@@ -57,15 +71,18 @@ export default function TodayHomeClient() {
   const load = React.useCallback(async () => {
     setLoading(true);
     setStreak(readLocalStreak());
-    const [core, today, air, pend] = await Promise.all([
-      arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => ({ coreXpTotal: 0 } as CoreXpRes)),
+    const [coreRes, today, air, pend, stageRes] = await Promise.all([
+      arenaFetch<CoreXpRes>("/api/arena/core-xp").catch(() => ({ coreXpTotal: 0 }) as CoreXpRes),
       arenaFetch<TodayXpRes>("/api/arena/today-xp").catch(() => ({ xpToday: 0 })),
       arenaFetch<AirRes>("/api/arena/leadership-engine/air").catch(() => ({}) as AirRes),
       arenaFetch<PendingRes>("/api/arena/action-contracts/pending").catch(() => ({ contracts: [] })),
+      arenaFetch<StageSummaryRes>("/api/arena/leadership-engine/stage-summary").catch(
+        () => ({}) as StageSummaryRes,
+      ),
     ]);
     if (!mounted.current) return;
-    setCoreXp(core?.coreXpTotal ?? 0);
-    setIdentity({ codeName: core?.codeName, subName: core?.subName });
+    setCore(coreRes ?? null);
+    setStage(stageRes ?? null);
     setXpToday(today?.xpToday ?? 0);
     setAirBand(air?.air_7d?.band ?? null);
     setPending((pend?.contracts ?? [])[0] ?? null);
@@ -76,6 +93,30 @@ export default function TodayHomeClient() {
     void load();
   }, [load]);
 
+  // Avatar — real assets only (mirror dashboard resolve). No assets → UserAvatar initials, no fake image.
+  const displayAvatarUrl =
+    core?.avatarUrl ?? getAvatarCharacter(core?.avatarCharacterId)?.imageUrl ?? null;
+  const resolvedAvatar = React.useMemo(() => {
+    if (!core) return null;
+    const characterUrl =
+      typeof core.avatarCharacterImageUrl === "string" && core.avatarCharacterImageUrl.trim() !== ""
+        ? core.avatarCharacterImageUrl.trim()
+        : null;
+    const accessoryUrls = (core.currentOutfit?.accessoryIds ?? [])
+      .map((id) => getAccessoryImageUrl(id))
+      .filter((u): u is string => typeof u === "string" && u.trim() !== "");
+    return { characterUrl, accessoryUrls };
+  }, [core]);
+
+  const coreXp = core?.coreXpTotal ?? 0;
+  const identitySub = [core?.codeName, core?.subName].filter(Boolean).join(" · ");
+
+  // Stage progress — render server `progressPercent` only; clamp is a render guard, not computation.
+  const stageBarPct =
+    typeof stage?.progressPercent === "number" ? Math.max(0, Math.min(100, stage.progressPercent)) : 0;
+
+  // AIR magnitude (neutral) — Low/Mid/High → 1/2/3 gold segments. No moral (green/red) color, no %.
+  const airLevel = airBand === "high" ? 3 : airBand === "mid" ? 2 : airBand === "low" ? 1 : 0;
   const airBandLabel =
     airBand === "high"
       ? t.airBandHigh
@@ -85,10 +126,6 @@ export default function TodayHomeClient() {
           ? t.airBandLow
           : t.airBandUnknown;
 
-  const identitySub = [identity.codeName, identity.subName].filter(Boolean).join(" · ");
-
-  // Begin CTA — gold token, navy ink. Routes to the pending action-contract resolve
-  // surface when one is open, else to the resolved Arena entry.
   const beginHref = pending ? `/${locale}/my-page?arena_contract=resolve` : arenaEntry.href;
   const goldCta =
     "inline-flex w-full items-center justify-center rounded-2xl bg-bty-gold px-4 py-3.5 " +
@@ -113,24 +150,71 @@ export default function TodayHomeClient() {
           </>
         ) : (
           <>
-            {/* ProfileCard — Core XP (live) + Companion (static ◐) + level/archetype (stub ◐) */}
+            {/* ProfileCard — avatar (live) + Core XP (live) + Stage progress (live) + Companion (◐) */}
             <InfoCard title={t.profileTitle} className="shadow-lg">
-              <div className="flex items-baseline justify-between">
-                <span className="text-sm text-bty-secondary">{t.coreXpLabel}</span>
-                <span className="text-2xl font-semibold text-bty-navy">
-                  {coreXp.toLocaleString()}
-                </span>
+              <div className="flex items-center gap-4">
+                <div
+                  className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-bty-soft ring-2 ring-bty-border/60"
+                  aria-hidden
+                >
+                  {resolvedAvatar?.characterUrl ? (
+                    <AvatarComposite
+                      size={64}
+                      characterUrl={resolvedAvatar.characterUrl}
+                      outfitUrl={core?.avatarOutfitImageUrl ?? undefined}
+                      accessoryUrls={[]}
+                      alt=""
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <UserAvatar
+                        avatarUrl={displayAvatarUrl}
+                        initials={core?.codeName?.slice(0, 2)}
+                        alt=""
+                        size="lg"
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-sm text-bty-secondary">{t.coreXpLabel}</span>
+                    <span className="text-2xl font-semibold text-bty-navy">
+                      {coreXp.toLocaleString()}
+                    </span>
+                  </div>
+                  {identitySub ? <p className="text-sm text-bty-secondary">{identitySub}</p> : null}
+                </div>
               </div>
-              {identitySub ? <p className="text-sm text-bty-secondary">{identitySub}</p> : null}
-              <p className="text-xs text-bty-muted">{t.levelStub}</p>
-              <p className="mt-2 rounded-xl bg-bty-soft px-3 py-2 text-sm text-bty-text">
+
+              {/* Stage progress (live) — label when stage present, else honest level stub. Bar = server progressPercent. */}
+              <div className="mt-3">
+                {stage?.stageName ? (
+                  <p className="text-xs text-bty-secondary">
+                    {t.stageLabel
+                      .replace("{n}", String(stage.currentStage ?? ""))
+                      .replace("{name}", stage.stageName)}
+                  </p>
+                ) : (
+                  <p className="text-xs text-bty-muted">{t.levelStub}</p>
+                )}
+                <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-bty-soft">
+                  <div
+                    className="h-full rounded-full bg-bty-gold"
+                    style={{ width: `${stageBarPct}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Companion (static ◐) */}
+              <p className="mt-3 rounded-xl bg-bty-soft px-3 py-2 text-sm text-bty-text">
                 <span className="font-medium text-bty-navy">{t.companionName}</span>
                 {" · "}
                 {t.companionLine}
               </p>
             </InfoCard>
 
-            {/* 오늘의 상황 — pending action-contract (live) + Begin CTA (gold) */}
+            {/* 오늘의 선택 — pending action-contract (live) + Begin CTA (gold) */}
             <InfoCard title={t.situationTitle} className="shadow-lg">
               {pending ? (
                 <p className="text-sm text-bty-text">{pending.action_text}</p>
@@ -144,7 +228,7 @@ export default function TodayHomeClient() {
               </div>
             </InfoCard>
 
-            {/* 오늘 포인트 — today-xp (live) */}
+            {/* 오늘의 포인트 — today-xp (live) */}
             <InfoCard title={t.pointsTitle} className="shadow-lg">
               <div className="flex items-baseline justify-between">
                 <span className="text-sm text-bty-secondary">{t.pointsLabel}</span>
@@ -154,11 +238,21 @@ export default function TodayHomeClient() {
               </div>
             </InfoCard>
 
-            {/* AIR 요약 — band only (live, no %) + streak (◐ client-local) */}
+            {/* AIR 요약 — band + neutral magnitude (live, no %, no moral color) + streak (◐) */}
             <InfoCard title={t.airTitle} className="shadow-lg">
-              <div className="flex items-baseline justify-between">
+              <div className="flex items-center justify-between">
                 <span className="text-sm text-bty-secondary">{t.airLabel}</span>
-                <span className="text-base font-semibold text-bty-navy">{airBandLabel}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-semibold text-bty-navy">{airBandLabel}</span>
+                  <span className="flex gap-1" aria-hidden>
+                    {[1, 2, 3].map((i) => (
+                      <span
+                        key={i}
+                        className={`h-1.5 w-5 rounded-full ${i <= airLevel ? "bg-bty-gold" : "bg-bty-soft"}`}
+                      />
+                    ))}
+                  </span>
+                </div>
               </div>
               <p className="text-xs text-bty-muted">{t.streakLabel.replace("{n}", String(streak))}</p>
             </InfoCard>
