@@ -13,6 +13,20 @@ import type { WeeklyCompetitionStageTierBandDisplayLabelKey } from "@/domain/rul
 export type Locale = "ko" | "en";
 
 export type Messages = {
+  /** D3-0 Slice 1: BTY Daily OS "Today" static surface. First fold = Direction; status fields are static placeholders (no data wiring this slice). */
+  today: {
+    eyebrow: string;
+    title: string;
+    greeting: string;
+    nowReserved: string;
+    todayLabel: string;
+    promise: string;
+    journeyPlaceholder: string;
+    pendingPlaceholder: string;
+    reflectionPlaceholder: string;
+    beginButton: string;
+    beginConfirmation: string;
+  };
   /** Lane 2: team-membership submission form + S2 arena-entry gate. KO values are TODO_KO placeholders (translation fast-follow). */
   membership: {
     form: {
@@ -2047,6 +2061,19 @@ export type Messages = {
 };
 
 const ko: Messages = {
+  today: {
+    eyebrow: "BTY 데일리",
+    title: "오늘 무엇을 품으시겠어요?",
+    greeting: "좋은 아침입니다.",
+    nowReserved: "예약됨",
+    todayLabel: "오늘의 초점",
+    promise: "오늘은 한 가지만 품으세요. 나머지는 기다려도 됩니다.",
+    journeyPlaceholder: "당신의 길, 곧 공개됩니다.",
+    pendingPlaceholder: "진행 중인 항목이 여기에 표시됩니다.",
+    reflectionPlaceholder: "오늘 밤, 돌아보는 시간을 가져요.",
+    beginButton: "오늘 시작하기",
+    beginConfirmation: "오늘이 시작되었습니다. 그 순간이 오면 다시 돌아오세요.",
+  },
   // KO membership copy: EN fallback until the KO translation lane lands.
   // Convention: untranslated KO == EN verbatim; track remaining work via ko-vs-en git diff.
   membership: {
@@ -3877,6 +3904,19 @@ const ko: Messages = {
 };
 
 const en: Messages = {
+  today: {
+    eyebrow: "BTY Daily",
+    title: "What will you carry today?",
+    greeting: "Good morning.",
+    nowReserved: "Reserved",
+    todayLabel: "Day in focus",
+    promise: "Carry one thing today. Let the rest wait.",
+    journeyPlaceholder: "Your path, coming soon.",
+    pendingPlaceholder: "Your open items will live here.",
+    reflectionPlaceholder: "Tonight, a moment to look back.",
+    beginButton: "Begin today",
+    beginConfirmation: "Today is open. Come back when the moment comes.",
+  },
   membership: {
     form: {
       title: "Team membership",
