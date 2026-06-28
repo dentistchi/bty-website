@@ -102,6 +102,7 @@ export default function TodayHomeClient() {
       title={t.title}
       mainAriaLabel={t.title}
       contentClassName="pb-28"
+      surface="navy"
     >
       <div className="space-y-4">
         {loading ? (
@@ -113,7 +114,7 @@ export default function TodayHomeClient() {
         ) : (
           <>
             {/* ProfileCard — Core XP (live) + Companion (static ◐) + level/archetype (stub ◐) */}
-            <InfoCard title={t.profileTitle}>
+            <InfoCard title={t.profileTitle} className="shadow-lg">
               <div className="flex items-baseline justify-between">
                 <span className="text-sm text-bty-secondary">{t.coreXpLabel}</span>
                 <span className="text-2xl font-semibold text-bty-navy">
@@ -130,7 +131,7 @@ export default function TodayHomeClient() {
             </InfoCard>
 
             {/* 오늘의 상황 — pending action-contract (live) + Begin CTA (gold) */}
-            <InfoCard title={t.situationTitle}>
+            <InfoCard title={t.situationTitle} className="shadow-lg">
               {pending ? (
                 <p className="text-sm text-bty-text">{pending.action_text}</p>
               ) : (
@@ -144,7 +145,7 @@ export default function TodayHomeClient() {
             </InfoCard>
 
             {/* 오늘 포인트 — today-xp (live) */}
-            <InfoCard title={t.pointsTitle}>
+            <InfoCard title={t.pointsTitle} className="shadow-lg">
               <div className="flex items-baseline justify-between">
                 <span className="text-sm text-bty-secondary">{t.pointsLabel}</span>
                 <span className="text-2xl font-semibold text-bty-navy">
@@ -154,7 +155,7 @@ export default function TodayHomeClient() {
             </InfoCard>
 
             {/* AIR 요약 — band only (live, no %) + streak (◐ client-local) */}
-            <InfoCard title={t.airTitle}>
+            <InfoCard title={t.airTitle} className="shadow-lg">
               <div className="flex items-baseline justify-between">
                 <span className="text-sm text-bty-secondary">{t.airLabel}</span>
                 <span className="text-base font-semibold text-bty-navy">{airBandLabel}</span>

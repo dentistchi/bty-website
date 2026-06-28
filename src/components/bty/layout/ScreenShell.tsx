@@ -17,6 +17,8 @@ export type ScreenShellProps = {
   mainAriaLabel?: string;
   /** 있으면 `BottomNav`에 전달 (경로별 하단 탭 랜드마크) */
   bottomNavAriaLabel?: string;
+  /** 배경 변형. 기본 `"default"`(크림 #F6F4EE, 전역 21화면 불변). `"navy"`는 today 한정 brand navy 배경. */
+  surface?: "default" | "navy";
 };
 
 /**
@@ -34,25 +36,41 @@ export default function ScreenShell({
   fullWidth = false,
   mainAriaLabel,
   bottomNavAriaLabel,
+  surface = "default",
 }: ScreenShellProps) {
   const container = fullWidth
     ? `mx-auto w-full max-w-full px-0 py-6 ${contentClassName}`
     : `mx-auto max-w-md px-4 py-6 ${contentClassName}`;
+  const isNavy = surface === "navy";
   return (
-    <div className="min-h-screen bg-[#F6F4EE] text-[#1F2937]">
+    <div
+      className={`min-h-screen ${isNavy ? "bg-bty-navy text-white" : "bg-[#F6F4EE] text-[#1F2937]"}`}
+    >
       <div className={container}>
         {eyebrow || title || subtitle ? (
           <header className="mb-5 space-y-2">
             {eyebrow ? (
-              <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#667085]">
+              <p
+                className={`text-sm font-medium uppercase tracking-[0.18em] ${
+                  isNavy ? "text-white/70" : "text-[#667085]"
+                }`}
+              >
                 {eyebrow}
               </p>
             ) : null}
             {title ? (
-              <h1 className="text-3xl font-semibold tracking-tight text-[#1E2A38]">{title}</h1>
+              <h1
+                className={`text-3xl font-semibold tracking-tight ${
+                  isNavy ? "text-white" : "text-[#1E2A38]"
+                }`}
+              >
+                {title}
+              </h1>
             ) : null}
             {subtitle ? (
-              <p className="text-sm leading-6 text-[#667085]">{subtitle}</p>
+              <p className={`text-sm leading-6 ${isNavy ? "text-white/70" : "text-[#667085]"}`}>
+                {subtitle}
+              </p>
             ) : null}
           </header>
         ) : null}
