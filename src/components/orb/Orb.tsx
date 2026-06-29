@@ -146,9 +146,9 @@ export function Orb({
   // (v3 over-flattened). Higher peak opacity, radii stay WIDE (mass, not a point).
   // Volume still from edge darkening.
   const coreColor = alpha(lighten(baseTok, 18), 46);
-  const warmColor = alpha(lighten(baseTok, 16), 66); // v3.3: peak +1 notch (wide profile kept)
+  const warmColor = alpha(lighten(baseTok, 16), 74); // v3.4: peak +1 more notch (wide profile kept)
   const ambColor = alpha(lighten(baseTok, 7), 38);
-  const touchColor = alpha(lighten(baseTok, 24), 58); // v3.3: near-side directional +1 notch
+  const touchColor = alpha(lighten(baseTok, 24), 66); // v3.4: near-side directional +1 more notch
   const baseCenter = lighten(baseTok, 8); // gently filled inside, still not a highlight
   const rimColor = darken(baseTok, 38); // soft closure (no near-black)
   const pulseColor = lighten(baseTok, 40);
