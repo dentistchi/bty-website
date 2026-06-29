@@ -73,6 +73,8 @@ function isPublicPath(pathname: string) {
     if (pathname === `/${locale}/result` || pathname.startsWith(`/${locale}/result/`)) return true;
     if (pathname === `/${locale}/admin/login`) return true;
     if (pathname === `/${locale}/dev/scenario-preview`) return true;
+    /** P0 Orb Sensory Test — dev-only, frontend-only, auth-free preview. */
+    if (pathname === `/${locale}/dev/orb`) return true;
     if (pathname === `/${locale}/bty/login`) return true;
     if (pathname === `/${locale}/bty/forgot-password`) return true;
     /** OAuth return + password reset: session is created client-side on these pages. Must not require auth. */

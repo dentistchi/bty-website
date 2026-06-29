@@ -99,6 +99,31 @@
   --bty-warning: #F59E0B;
   --bty-risk: #DC2626;
   --bty-border: #e7e4dc;
+
+  /* ─────────────────────────────────────────────────────────────
+   * Product A · Spine v1 — P0a presentation tokens (NET-NEW).
+   * PRESENTATION ONLY. No mount, no DB, no day logic.
+   * Hex below are LOCKED real values (#30), baked — not placeholders.
+   *
+   * ⚠ VERIFY-BLOCKED (Brand/Discovery): the reused anchors do NOT match
+   *   the cited lock (#30: navy #1B2A47 / gold #E7C36B). Repo truth is
+   *   --bty-brand-navy #0B1F3A / --bty-muted-gold #C9A66B. Per VERIFY,
+   *   app-wide tokens are NOT auto-changed (side-effect risk); Brand &
+   *   Discovery await Commander decision and are intentionally left
+   *   pointing at the repo vars until then. DO NOT DEPLOY with these two
+   *   unresolved.
+   * ───────────────────────────────────────────────────────────── */
+  --bty-spine-brand:     var(--bty-brand-navy);  /* ⚠ VERIFY-BLOCKED — resolves to repo #0B1F3A, not lock #1B2A47 */
+  --bty-spine-discovery: var(--bty-muted-gold);  /* ⚠ VERIFY-BLOCKED — resolves to repo #C9A66B, not lock #E7C36B */
+  --bty-spine-ritual:    #A6542A; /* Warm Ember (locked #30 — == orb-evening) */
+  --bty-spine-chronicle: #ECE3CF; /* Warm Ivory (locked #30) */
+
+  /* Orb time-shift: morning Amber → touch Golden → evening Ember → Remembrance/Chronicle Warm Ivory */
+  --bty-orb-morning:     #BD8348; /* Amber  (locked #30) */
+  --bty-orb-touch:       #E3A25A; /* Golden (locked #30) */
+  --bty-orb-evening:     #A6542A; /* Ember  (locked #30) */
+  --bty-orb-chronicle:   #ECE3CF; /* Warm Ivory (locked #30) */
+  --bty-orb-remembrance: var(--bty-spine-chronicle); /* Warm Ivory — REUSE chronicle (#ECE3CF) */
 }
 .dark {
   --arena-primary: #A3CEF1;
