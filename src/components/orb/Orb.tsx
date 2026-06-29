@@ -79,11 +79,11 @@ const now = (): number =>
 
 const CENTER = 50;
 const REST_Y = 46;
-const MAX_DISP = 6; // ≈ radius(50) * 0.12 — density never reaches the finger
+const MAX_DISP = 7; // ≈ radius(50) * 0.14 — density leans but never reaches the finger
 
 const BREATH_PERIOD_MS = 5200; // slow — noticed only after watching a while
 const DWELL_FULL_MS = 3000; // ~3s ease-in accumulation (waking, never a snap)
-const ONSET_MS = 120; // sense → perceive: no field flow for the first ~120ms
+const ONSET_MS = 70; // sense → perceive: brief no-flow window (not dead, not instant)
 const SETTLE_MIN_MS = 600;
 const SETTLE_MAX_MS = 2200; // deep hold → density slowly disperses back
 
@@ -140,13 +140,14 @@ export function Orb({
   const pulseSeq = React.useRef(0);
 
   const baseTok = baseTokenFor(mode);
-  // Distributed luminance — NO bulb. Several wide, low-opacity warm fields; the
-  // sum reads as inner warmth with no perceptible point. Volume = edge darkening.
-  const coreColor = alpha(lighten(baseTok, 16), 34);
-  const warmColor = alpha(lighten(baseTok, 11), 40);
-  const ambColor = alpha(lighten(baseTok, 5), 34);
-  const touchColor = alpha(lighten(baseTok, 20), 30);
-  const baseCenter = lighten(baseTok, 4); // barely — not a highlight
+  // Distributed luminance — NO bulb, but the warm MASS must be perceptibly filled
+  // (v3 over-flattened). Higher peak opacity, radii stay WIDE (mass, not a point).
+  // Volume still from edge darkening.
+  const coreColor = alpha(lighten(baseTok, 18), 46);
+  const warmColor = alpha(lighten(baseTok, 16), 58); // peak ↑ (perceptible), wide
+  const ambColor = alpha(lighten(baseTok, 7), 38);
+  const touchColor = alpha(lighten(baseTok, 24), 42); // brighter directional warmth
+  const baseCenter = lighten(baseTok, 8); // gently filled inside, still not a highlight
   const rimColor = darken(baseTok, 38); // soft closure (no near-black)
   const pulseColor = lighten(baseTok, 40);
 
@@ -196,10 +197,11 @@ export function Orb({
         }
         // wide radii; energy fills warm/ambient (accumulation), breathing swells
         // gently (+~20% vs prior). Softness via spread, never blur.
-        el.style.setProperty("--core-r", `${44 + breath * 6}%`);
-        el.style.setProperty("--warm-r", `${52 + energy * 22 + breath * 3}%`);
-        el.style.setProperty("--amb-r", `${66 + energy * 12}%`);
-        el.style.setProperty("--touch-r", `${28 + energy * 8}%`);
+        // dwell visibly fills the warmth (0→3s perceptible); breathing on top.
+        el.style.setProperty("--core-r", `${44 + energy * 6 + breath * 6}%`);
+        el.style.setProperty("--warm-r", `${52 + energy * 30 + breath * 3}%`);
+        el.style.setProperty("--amb-r", `${66 + energy * 16}%`);
+        el.style.setProperty("--touch-r", `${28 + energy * 14}%`);
       }
       rafRef.current = requestAnimationFrame(tick);
     };
