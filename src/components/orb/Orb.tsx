@@ -201,7 +201,9 @@ export function Orb({
         el.style.setProperty("--core-r", `${44 + g * 10 + breath * 6}%`);
         el.style.setProperty("--warm-r", `${52 + g * 40 + breath * 3}%`);
         el.style.setProperty("--amb-r", `${66 + g * 22}%`);
-        el.style.setProperty("--touch-r", `${28 + gTrail * 20}%`);
+        // v3.6: near-side gather fill +1 notch (gain 20→30) — brighter at the HOLD
+        // ceiling only; idle (gTrail=0) stays 28% = unchanged. Wider, not a hotspot.
+        el.style.setProperty("--touch-r", `${28 + gTrail * 30}%`);
       }
       rafRef.current = requestAnimationFrame(tick);
     };
