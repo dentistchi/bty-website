@@ -1,20 +1,25 @@
 "use client";
 
 /**
- * Orb — Product A · Spine v1 presentation primitive (P0b · v2 form+touch,
- * dwell state-binding fix).
+ * Orb — Product A · Spine v1 presentation primitive (P0b · single-light + stroke
+ * + callout-block).
  *
- * The "heart" of the ritual: a VOLUMETRIC sphere that breathes from within and
- * responds to sustained contact. PRESENTATION ONLY — does NOT mount itself,
- * persist, read the clock for a "day", or call any API/DB. Colour is driven
- * entirely by the P0a `--bty-orb-*` tokens; every gradient stop is render-time
- * DERIVED via color-mix (no new tokens).
+ * The "heart" of the ritual: a VOLUMETRIC sphere with ONE internal light. There
+ * is no second overlay disk — contact is expressed only by the body's internal
+ * light origin LEANING toward the contact point (clamped well inside the
+ * silhouette, so no half-moon / hard second edge ever forms). The silhouette is
+ * fixed; only the inner light moves. Limb darkening is constant (rim always
+ * deep; the core merely relocates and brightens). Soft falloff only — no rings.
+ *
+ * PRESENTATION ONLY — does NOT mount itself, persist, read the clock for a
+ * "day", or call any API/DB. Colour is driven entirely by the P0a `--bty-orb-*`
+ * tokens; every gradient stop is render-time DERIVED via color-mix (no new
+ * tokens).
  *
  * Touch energy (glow + swell) is driven by PRESS STATE + DWELL ELAPSED in the
- * rAF loop — never a fixed timer/keyframe. While held it eases up to a ceiling
- * and STAYS (no auto-decay). Rebound happens ONLY on release, with settle +
- * after-heat length PROPORTIONAL to how deep the swell got (short tap = shallow
- * = quick; long hold = deep = slow + long after-glow). Rebound curve is ease-out.
+ * rAF loop. Stroking only moves the light origin — it never resets/reduces
+ * dwell. Rebound runs ONLY on pointer up/cancel (proportional ease-out). Pointer
+ * is captured on down so a stroke that briefly leaves the bounds does not cut.
  *
  * ╔═══════════════════════════════════════════════════════════════════════╗
  * ║  #배타성 LOCK — HAPTIC EXCLUSIVITY (P0c, locked canon)                  ║
@@ -28,7 +33,7 @@
  */
 
 import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 export type OrbMode = "morning" | "evening";
 
@@ -80,15 +85,29 @@ const now = (): number =>
   typeof performance !== "undefined" ? performance.now() : 0;
 
 const DEFAULT_LX = 50;
-const DEFAULT_LY = 42; // core sits centre ~ slightly up
+const DEFAULT_LY = 42; // core sits centre ~ slightly up (rest)
+const CENTER = 50;
+const MAX_DISP = 15; // ≈ radius(50) * 0.3 — light stays well inside the silhouette
 
-const BREATH_PERIOD_MS = 4200; // #1 breathing cadence
+const BREATH_PERIOD_MS = 4200;
 const DWELL_FULL_MS = 1100; // press duration to reach full swell ceiling
 const SETTLE_MIN_MS = 320; // shallow tap → quick settle
 const SETTLE_MAX_MS = 1450; // deep hold → slow settle + long after-heat
 
-type Ripple = { id: number; x: number; y: number };
 type ReleaseState = { active: boolean; from: number; startTs: number; settleMs: number };
+
+/** Clamp a contact point to a light-origin that never leaves the inner body. */
+function clampLean(x: number, y: number): { x: number; y: number } {
+  let dx = x - CENTER;
+  let dy = y - CENTER;
+  const len = Math.hypot(dx, dy);
+  if (len > MAX_DISP) {
+    const s = MAX_DISP / len;
+    dx *= s;
+    dy *= s;
+  }
+  return { x: CENTER + dx, y: CENTER + dy };
+}
 
 export function Orb({
   mode,
@@ -103,14 +122,11 @@ export function Orb({
   const rafRef = React.useRef<number | null>(null);
 
   // Touch energy is ref-driven (no React state) so the rAF loop owns it and it
-  // never rebounds on a fixed timer.
+  // never rebounds on a fixed timer or on a stroke move.
   const pressedRef = React.useRef(false);
   const pressStartRef = React.useRef(0);
   const intensityRef = React.useRef(0); // current displayed 0..1
   const releaseRef = React.useRef<ReleaseState>({ active: false, from: 0, startTs: 0, settleMs: 0 });
-
-  const [ripples, setRipples] = React.useState<Ripple[]>([]);
-  const rippleSeq = React.useRef(0);
 
   const baseTok = baseTokenFor(mode);
   const coreColor = lighten(baseTok, 26);
@@ -119,25 +135,24 @@ export function Orb({
   const emberBright = lighten(baseTok, 44);
   const emberMid = lighten(baseTok, 10);
   const atmoColor = darken(baseTok, 10);
-  const flareColor = "var(--bty-orb-touch)";
 
-  // Single rAF loop: light-follow (--lx/--ly) + dwell-driven energy
-  // (--core-op / --core-scale). Writes CSS vars only — no per-frame re-render.
+  // Single rAF loop: light-origin follow (--lx/--ly, clamped inside) + dwell-
+  // driven energy (--core-op / --core-scale). Writes CSS vars only.
   React.useEffect(() => {
     const tick = () => {
       const t = now();
 
-      // --- light position: ease toward target (stroke-follow / ease-out home) ---
+      // light origin: ease toward (clamped) target — lean on press, home on release.
       const cur = curRef.current;
       const tgt = targetRef.current;
       cur.x += (tgt.x - cur.x) * 0.2;
       cur.y += (tgt.y - cur.y) * 0.2;
 
-      // --- energy: pressed → ease-up & hold; released → proportional ease-out ---
+      // energy: pressed → ease-up & HOLD (position-independent); released → ease-out.
       let intensity: number;
       if (pressedRef.current) {
         const dwell = clamp01((t - pressStartRef.current) / DWELL_FULL_MS);
-        intensity = easeOutCubic(dwell); // rises, then HOLDS at ceiling (no decay)
+        intensity = easeOutCubic(dwell);
       } else if (releaseRef.current.active) {
         const r = releaseRef.current;
         const rt = (t - r.startTs) / r.settleMs;
@@ -145,7 +160,7 @@ export function Orb({
           intensity = 0;
           r.active = false;
         } else {
-          intensity = r.from * (1 - easeOutCubic(rt)); // ease-out down (not clipped)
+          intensity = r.from * (1 - easeOutCubic(rt));
         }
       } else {
         intensity = 0;
@@ -153,7 +168,7 @@ export function Orb({
       intensityRef.current = intensity;
 
       // breathing (#1) — full at rest, damped as energy rises so a held orb
-      // stays steady and never appears to rebound while pressed.
+      // stays steady (no apparent rebound while pressed).
       const breath = Math.sin((t / BREATH_PERIOD_MS) * Math.PI * 2);
       const damp = 1 - 0.85 * intensity;
       const coreOp = clamp01(0.8 + 0.2 * intensity + breath * 0.12 * damp);
@@ -180,42 +195,33 @@ export function Orb({
     const r = el.getBoundingClientRect();
     const x = ((clientX - r.left) / r.width) * 100;
     const y = ((clientY - r.top) / r.height) * 100;
-    const c = (v: number) => Math.max(0, Math.min(100, v));
-    return { x: c(x), y: c(y) };
-  }, []);
-
-  const spawnRipple = React.useCallback((x: number, y: number) => {
-    rippleSeq.current += 1;
-    const id = rippleSeq.current;
-    setRipples((prev) => [...prev, { id, x, y }]);
+    return { x, y };
   }, []);
 
   // Contact arrival — the only place haptic fires (#배타성 LOCK).
   const beginPress = React.useCallback(
-    (x: number, y: number) => {
+    (originX: number, originY: number) => {
       // Continue dwell from any residual intensity (no dip on quick re-press).
       const t0 = invEaseOutCubic(clamp01(intensityRef.current));
       pressStartRef.current = now() - t0 * DWELL_FULL_MS;
       pressedRef.current = true;
       releaseRef.current.active = false;
-      targetRef.current = { x, y };
-      spawnRipple(x, y);
+      targetRef.current = { x: originX, y: originY };
       if (enableHaptic) triggerOrbHaptic();
       onTouch?.();
     },
-    [enableHaptic, onTouch, spawnRipple]
+    [enableHaptic, onTouch]
   );
 
   const release = React.useCallback(() => {
-    if (!pressedRef.current && !releaseRef.current.active) return;
-    if (!pressedRef.current) return; // already releasing
+    if (!pressedRef.current) return; // only a real press rebounds
     pressedRef.current = false;
     const from = intensityRef.current;
-    // proportionality: deeper swell → slower settle + longer after-heat.
     releaseRef.current = {
       active: true,
       from,
       startTs: now(),
+      // proportionality: deeper swell → slower settle + longer after-heat.
       settleMs: SETTLE_MIN_MS + from * (SETTLE_MAX_MS - SETTLE_MIN_MS),
     };
     targetRef.current = { x: DEFAULT_LX, y: DEFAULT_LY }; // ease-out home
@@ -225,7 +231,8 @@ export function Orb({
     (e: React.PointerEvent<HTMLDivElement>) => {
       e.currentTarget.setPointerCapture?.(e.pointerId);
       const p = toLocal(e.clientX, e.clientY);
-      beginPress(p.x, p.y);
+      const o = clampLean(p.x, p.y);
+      beginPress(o.x, o.y);
     },
     [beginPress, toLocal]
   );
@@ -233,23 +240,24 @@ export function Orb({
   const onPointerMove = React.useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (!pressedRef.current) return;
-      // No haptic on move. rAF loop throttles the visual follow.
-      targetRef.current = toLocal(e.clientX, e.clientY);
+      // POSITION ONLY — never touches dwell/intensity/pressStart, never rebounds.
+      const p = toLocal(e.clientX, e.clientY);
+      targetRef.current = clampLean(p.x, p.y);
     },
     [toLocal]
   );
 
-  const onKeyActivate = React.useCallback(
+  const onKeyDownActivate = React.useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (e.key !== "Enter" && e.key !== " ") return;
       e.preventDefault();
-      if (e.repeat) return; // hold key = sustained dwell, single arrival
+      if (e.repeat) return; // held key = sustained dwell, single arrival
       beginPress(DEFAULT_LX, DEFAULT_LY);
     },
     [beginPress]
   );
 
-  const onKeyUp = React.useCallback(
+  const onKeyUpRelease = React.useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (e.key !== "Enter" && e.key !== " ") return;
       release();
@@ -268,13 +276,16 @@ export function Orb({
       role="button"
       tabIndex={0}
       aria-label={ariaLabel ?? (mode === "morning" ? "Morning orb" : "Evening orb")}
+      draggable={false}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={release}
       onPointerCancel={release}
-      onPointerLeave={release}
-      onKeyDown={onKeyActivate}
-      onKeyUp={onKeyUp}
+      // NOTE: pointer is captured on down; onPointerLeave is intentionally NOT a
+      // release so a stroke that briefly leaves the bounds is not cut off.
+      onKeyDown={onKeyDownActivate}
+      onKeyUp={onKeyUpRelease}
+      onContextMenu={(e) => e.preventDefault()}
       style={{
         position: "relative",
         width: size,
@@ -288,6 +299,10 @@ export function Orb({
         WebkitUserSelect: "none",
         WebkitTapHighlightColor: "transparent",
         outline: "none",
+        // long-press copy/callout + drag suppression
+        ["WebkitTouchCallout" as string]: "none",
+        ["WebkitUserDrag" as string]: "none",
+        // light position + energy (updated by rAF)
         ["--lx" as string]: `${DEFAULT_LX}%`,
         ["--ly" as string]: `${DEFAULT_LY}%`,
         ["--core-op" as string]: "0.8",
@@ -307,7 +322,7 @@ export function Orb({
         }}
       />
 
-      {/* Body — limb-darkened sphere; inset shadow deepens the rim to seat it.
+      {/* Body — fixed silhouette, limb-darkened; inset shadow deepens the rim.
           Subtle always-on breathing scale = life (#1), independent of touch. */}
       <motion.span
         aria-hidden
@@ -322,9 +337,8 @@ export function Orb({
         }}
       />
 
-      {/* Core ember — energy driven by dwell state via CSS vars (rAF). Light
-          comes from WITHIN; opacity/scale rise & hold while pressed, ease-out
-          only on release. */}
+      {/* The ONE internal light core — same origin as the body gradient, so the
+          orb has a single light that leans/brightens. Soft falloff, no ring. */}
       <span
         aria-hidden
         style={{
@@ -340,35 +354,6 @@ export function Orb({
           willChange: "opacity, transform",
         }}
       />
-
-      {/* Contact flare — expands from the touch point. */}
-      <AnimatePresence>
-        {ripples.map((r) => (
-          <motion.span
-            key={r.id}
-            aria-hidden
-            initial={{ scale: 0.35, opacity: 0.5 }}
-            animate={{ scale: 2.3, opacity: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.9, ease: "easeOut" }}
-            onAnimationComplete={() =>
-              setRipples((prev) => prev.filter((x) => x.id !== r.id))
-            }
-            style={{
-              position: "absolute",
-              left: `${r.x}%`,
-              top: `${r.y}%`,
-              width: size * 0.42,
-              height: size * 0.42,
-              marginLeft: -(size * 0.42) / 2,
-              marginTop: -(size * 0.42) / 2,
-              borderRadius: "9999px",
-              border: `2px solid ${flareColor}`,
-              pointerEvents: "none",
-            }}
-          />
-        ))}
-      </AnimatePresence>
     </div>
   );
 }
