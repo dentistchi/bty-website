@@ -79,7 +79,9 @@ const now = (): number =>
 
 const CENTER = 50;
 const REST_Y = 46;
-const MAX_DISP = 7; // ≈ radius(50) * 0.14 — density leans but never reaches the finger
+const MAX_DISP = 13; // ≈ radius(50) * 0.26 — the warm MASS visibly gathers toward the
+// hand. Flashlight is avoided by a SOFT, BROAD profile (wide radii), not by limiting
+// displacement: the brightest region leans directionally but never narrows to a pinpoint.
 
 const BREATH_PERIOD_MS = 5200; // slow — noticed only after watching a while
 const DWELL_FULL_MS = 3000; // ~3s ease-in accumulation (waking, never a snap)
@@ -91,10 +93,10 @@ const SETTLE_MAX_MS = 2200; // deep hold → density slowly disperses back
 // OWN speed + displacement → composite density FLOWS (no single layer is the
 // star, none is a moving point). Edge is fully static (limb darkening = volume).
 const LAYERS = [
-  { key: "core", lean: 0.1, lerp: 0.02 }, // centre of mass — barely moves
-  { key: "warm", lean: 1.0, lerp: 0.12 }, // body heat — leans most, quickest
-  { key: "amb", lean: 0.45, lerp: 0.045 }, // depth — slow
-  { key: "touch", lean: 1.0, lerp: 0.06 }, // hand-weighted — arrives latest
+  { key: "core", lean: 0.12, lerp: 0.02 }, // centre of mass — barely moves
+  { key: "warm", lean: 1.0, lerp: 0.22 }, // body heat — gathers FAST & visibly (~150-250ms)
+  { key: "amb", lean: 0.5, lerp: 0.09 }, // depth — mid
+  { key: "touch", lean: 1.0, lerp: 0.06 }, // the ONE trailing liquid layer — arrives latest
 ] as const;
 type LayerKey = (typeof LAYERS)[number]["key"];
 
@@ -146,7 +148,7 @@ export function Orb({
   const coreColor = alpha(lighten(baseTok, 18), 46);
   const warmColor = alpha(lighten(baseTok, 16), 58); // peak ↑ (perceptible), wide
   const ambColor = alpha(lighten(baseTok, 7), 38);
-  const touchColor = alpha(lighten(baseTok, 24), 42); // brighter directional warmth
+  const touchColor = alpha(lighten(baseTok, 24), 50); // directional warmth — near-side pop
   const baseCenter = lighten(baseTok, 8); // gently filled inside, still not a highlight
   const rimColor = darken(baseTok, 38); // soft closure (no near-black)
   const pulseColor = lighten(baseTok, 40);
@@ -197,11 +199,11 @@ export function Orb({
         }
         // wide radii; energy fills warm/ambient (accumulation), breathing swells
         // gently (+~20% vs prior). Softness via spread, never blur.
-        // dwell visibly fills the warmth (0→3s perceptible); breathing on top.
-        el.style.setProperty("--core-r", `${44 + energy * 6 + breath * 6}%`);
-        el.style.setProperty("--warm-r", `${52 + energy * 30 + breath * 3}%`);
-        el.style.setProperty("--amb-r", `${66 + energy * 16}%`);
-        el.style.setProperty("--touch-r", `${28 + energy * 14}%`);
+        // dwell visibly fills the warmth (0→3s clearly seen); breathing on top.
+        el.style.setProperty("--core-r", `${44 + energy * 10 + breath * 6}%`);
+        el.style.setProperty("--warm-r", `${52 + energy * 40 + breath * 3}%`);
+        el.style.setProperty("--amb-r", `${66 + energy * 22}%`);
+        el.style.setProperty("--touch-r", `${28 + energy * 20}%`);
       }
       rafRef.current = requestAnimationFrame(tick);
     };
