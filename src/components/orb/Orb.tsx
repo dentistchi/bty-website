@@ -1,21 +1,21 @@
 "use client";
 
 /**
- * Orb — Product A · Spine v1 presentation primitive (P0b · Living Response v3.5,
- * weighted gather physics).
+ * Orb — Product A · Spine v1 presentation primitive (P0b · v3.10, light-breathing).
  *
- * Model: warm light is spread evenly through the orb; touch is a gravity well at
- * the fingertip that GATHERS the density toward it. Far = slow, nearer = faster,
- * gathered = brighter; not all of it can arrive, so it settles at a ceiling.
- * Lift → it slowly disperses back. The motion subject is the field DENSITY, not
- * a highlight; a single progress value `g` (0→1) drives gather + fill + bright.
+ * Model: warm light spread through translucent matter; touch is a gravity well at
+ * the fingertip that GATHERS density toward it (weighted, accelerating). The orb
+ * is ALIVE from within — at rest the inner light drifts and pulses irregularly
+ * (not the outer boundary, which is fixed). One progress value `g` (0→1) drives
+ * gather + fill + near-side brightness.
  *
  * ── HARD CONSTRAINT (squircle/UI-regression guard, highest priority) ─────────
  * - NO particles/dots as real elements — density via gradients only.
  * - All inner light = comma-stacked radial-gradient(circle …) (≤5) on the body
  *   element's SINGLE background. NO child light layer, NO transform on the light,
  *   NO filter:blur on the light. Softness = wide stop spreads, never blur.
- * - body: border-radius:50%; overflow:hidden. Every gradient uses 'circle'.
+ * - body: border-radius:50%; overflow:hidden; NO transform (boundary fixed).
+ *   Every gradient uses 'circle'.
  *
  * PRESENTATION ONLY — no mount, persist, clock/day, or API/DB. Colour is
  * render-time DERIVED from the P0a `--bty-orb-*` tokens via color-mix.
@@ -74,40 +74,32 @@ const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
 const clamp01 = (v: number): number => Math.max(0, Math.min(1, v));
 const now = (): number =>
   typeof performance !== "undefined" ? performance.now() : 0;
+/** Two incommensurate sines → irregular, non-repeating organic signal in ~[-1,1]. */
+function organic(t: number, pa: number, pb: number, ph: number): number {
+  return (Math.sin((t / pa) * Math.PI * 2) + 0.6 * Math.sin((t / pb) * Math.PI * 2 + ph)) / 1.6;
+}
 
 const CENTER = 50;
 const REST_Y = 46;
 const MAX_DISP = 13; // ≈ radius(50) * 0.26 — gather displacement cap (no flashlight)
+const DRIFT_MAX = 3; // ≈ radius(50) * 0.06 — idle light drift (overpowered by gather)
 
-const BREATH_PERIOD_MS = 5200; // slow, independent heartbeat
-const ONSET_MS = 70; // brief sense beat before the gather begins
-
-// Weighted gather: g self-accelerates (slow → fast) while held, caps at 1
-// (ceiling), then holds. dg/dt = K·(BASE + g) → reaches ~ceiling in ~2.5s.
-const GATHER_K = 0.85; // per second
+// Weighted gather: g self-accelerates (slow → fast) while held, caps at 1.
+const GATHER_K = 0.85;
 const GATHER_BASE = 0.15;
-const TRAIL_LERP = 0.06; // trailing layer follows g laggier (liquid separation)
-const OFFSET_LERP = 0.2; // direction smoothing (not the weight — g is the weight)
-const RELEASE_BASE_MS = 1300; // disperse slightly slower than it gathered
+const TRAIL_LERP = 0.06;
+const OFFSET_LERP = 0.2;
+const RELEASE_BASE_MS = 1300;
 const RELEASE_SCALE_MS = 2200;
+const ONSET_MS = 70;
 
-// v3.7/3.8 — two INDEPENDENT levers (flip either back without touching the other).
-const A_PULSE_VISIBLE = true; // A: pulse visibility +1 (peak opacity + stroke)
-const B_PRESS_GIVE = true; // B: micro press-give flinch (snail's-eye, not a button)
-const GIVE_MAX = 0.012; // ≤1.2% inward — a flinch, never a sustained depress (v3.7 depth)
-// v3.9 ASYMMETRIC curve = life: sharp reflexive contract → very slow recovery (~15×).
-// Give runs its own timeline (independent of hold): contract→recover completes ONCE even
-// while the finger stays down (habituation = life), while gather/warmth keeps building.
-const GIVE_CONTRACT_MS = 60; // 탁 — sharper snap in (ease-out)
-const GIVE_RECOVER_MS = 900; // 스르르 — much slower melt to baseline (15× contract)
+const A_PULSE_VISIBLE = true; // pulse visibility (v3.7) — kept
 
-// Each layer leans toward the finger by lean·g (Warm/Touch carry the gather;
-// Core barely moves = centre of mass; Edge static). Touch uses gTrail (latest).
 const LAYERS = [
-  { key: "core", lean: 0.12, useTrail: false },
-  { key: "warm", lean: 1.0, useTrail: false },
-  { key: "amb", lean: 0.5, useTrail: false },
-  { key: "touch", lean: 1.0, useTrail: true },
+  { key: "core", lean: 0.12, useTrail: false, drift: 0.25 },
+  { key: "warm", lean: 1.0, useTrail: false, drift: 1.0 },
+  { key: "amb", lean: 0.5, useTrail: false, drift: 0.8 },
+  { key: "touch", lean: 1.0, useTrail: true, drift: 0 }, // directional only
 ] as const;
 type LayerKey = (typeof LAYERS)[number]["key"];
 
@@ -133,24 +125,21 @@ export function Orb({
   ariaLabel,
 }: OrbProps): React.ReactElement {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
-  const targetOffRef = React.useRef({ x: 0, y: 0 }); // finger offset from centre
-  const dispOffRef = React.useRef({ x: 0, y: 0 }); // smoothed displayed offset
+  const targetOffRef = React.useRef({ x: 0, y: 0 });
+  const dispOffRef = React.useRef({ x: 0, y: 0 });
   const rafRef = React.useRef<number | null>(null);
   const lastTsRef = React.useRef(0);
 
   const pressedRef = React.useRef(false);
   const pressTsRef = React.useRef(0);
-  const gRef = React.useRef(0); // gather progress 0..1 (gather + fill + brightness)
+  const gRef = React.useRef(0);
   const gTrailRef = React.useRef(0);
-  const giveStartRef = React.useRef(-1); // B: flinch start timestamp (-1 = inactive)
   const releaseRef = React.useRef<ReleaseState>({ active: false, from: 0, startTs: 0, settleMs: 0 });
 
-  // Reaction pulse — separate layer, concentric from centre, removed on end.
   const [pulses, setPulses] = React.useState<number[]>([]);
   const pulseSeq = React.useRef(0);
 
   const baseTok = baseTokenFor(mode);
-  // v3.4 luminance levels (peak held; the RAMP now comes from g, not opacity).
   const coreColor = alpha(lighten(baseTok, 18), 46);
   const warmColor = alpha(lighten(baseTok, 16), 74);
   const ambColor = alpha(lighten(baseTok, 7), 38);
@@ -164,16 +153,13 @@ export function Orb({
       const t = now();
       let dt = lastTsRef.current ? (t - lastTsRef.current) / 1000 : 0.016;
       lastTsRef.current = t;
-      if (dt > 0.05) dt = 0.05; // clamp after tab-away
+      if (dt > 0.05) dt = 0.05;
 
-      // direction smoothing (the *weight/timing* is g, not this)
       const off = dispOffRef.current;
       const tgt = targetOffRef.current;
       off.x += (tgt.x - off.x) * OFFSET_LERP;
       off.y += (tgt.y - off.y) * OFFSET_LERP;
 
-      // gather progress g: self-accelerating ease-in while held (after onset),
-      // caps at ceiling; proportional ease-out on release (a touch slower).
       let g = gRef.current;
       if (pressedRef.current) {
         if (t - pressTsRef.current >= ONSET_MS) {
@@ -193,44 +179,34 @@ export function Orb({
         g = 0;
       }
       gRef.current = g;
-      // trailing layer lags g (one layer never quite keeps up → liquid)
       gTrailRef.current += (g - gTrailRef.current) * TRAIL_LERP;
       const gTrail = gTrailRef.current;
 
-      const breath = Math.sin((t / BREATH_PERIOD_MS) * Math.PI * 2);
-
-      // B (v3.8): asymmetric press-give — fast contract, slow recover, one-shot.
-      let give = 0;
-      if (B_PRESS_GIVE && giveStartRef.current >= 0) {
-        const e = t - giveStartRef.current;
-        if (e < GIVE_CONTRACT_MS) {
-          give = GIVE_MAX * easeOutCubic(e / GIVE_CONTRACT_MS); // 탁 in
-        } else if (e < GIVE_CONTRACT_MS + GIVE_RECOVER_MS) {
-          give = GIVE_MAX * (1 - easeOutCubic((e - GIVE_CONTRACT_MS) / GIVE_RECOVER_MS)); // 스르르 out
-        } else {
-          giveStartRef.current = -1; // settled to baseline (even while still held)
-        }
-      }
+      // v3.10 — LIFE lives in the light, not the boundary. Irregular (multi-sine)
+      // drift of the inner light + slow irregular brightness pulse. At idle this is
+      // the only motion; on touch the gather overpowers the drift.
+      const driftAx = organic(t, 7300, 11900, 0.5) * DRIFT_MAX;
+      const driftAy = organic(t, 9700, 13300, 2.2) * DRIFT_MAX;
+      const driftBx = organic(t, 8900, 15100, 1.3) * DRIFT_MAX;
+      const driftBy = organic(t, 6700, 12700, 3.0) * DRIFT_MAX;
+      const breath = organic(t, 4800, 7700, 1.1); // slow irregular light pulse
 
       const el = containerRef.current;
       if (el) {
         for (const layer of LAYERS) {
           const gg = layer.useTrail ? gTrail : g;
-          const cx = CENTER + off.x * layer.lean * gg;
-          const cy = REST_Y + off.y * layer.lean * gg;
+          // warm uses driftA, ambient uses driftB, core a small share of driftA.
+          const dx = layer.key === "amb" ? driftBx : driftAx;
+          const dy = layer.key === "amb" ? driftBy : driftAy;
+          const cx = CENTER + off.x * layer.lean * gg + dx * layer.drift;
+          const cy = REST_Y + off.y * layer.lean * gg + dy * layer.drift;
           el.style.setProperty(`--${layer.key}-x`, `${cx}%`);
           el.style.setProperty(`--${layer.key}-y`, `${cy}%`);
         }
-        // fill ramps with g (gather → brighter near-side); breathing on top.
-        el.style.setProperty("--core-r", `${44 + g * 10 + breath * 6}%`);
+        el.style.setProperty("--core-r", `${44 + g * 10 + breath * 8}%`);
         el.style.setProperty("--warm-r", `${52 + g * 40 + breath * 3}%`);
         el.style.setProperty("--amb-r", `${66 + g * 22}%`);
-        // v3.6: near-side gather fill +1 notch (gain 20→30) — brighter at the HOLD
-        // ceiling only; idle (gTrail=0) stays 28% = unchanged. Wider, not a hotspot.
         el.style.setProperty("--touch-r", `${28 + gTrail * 30}%`);
-        // B: whole-sphere micro give (uniform scale on body = squircle-safe).
-        el.style.setProperty("--give-scale", `${1 - give}`);
-        el.style.setProperty("--give-dark", `${GIVE_MAX > 0 ? give / GIVE_MAX : 0}`);
       }
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -258,9 +234,8 @@ export function Orb({
     (offset: { x: number; y: number }) => {
       pressTsRef.current = now();
       pressedRef.current = true;
-      releaseRef.current.active = false; // g continues from its current value
+      releaseRef.current.active = false;
       targetOffRef.current = offset;
-      if (B_PRESS_GIVE) giveStartRef.current = now(); // trigger the flinch (one-shot)
       spawnPulse();
       if (enableHaptic) triggerOrbHaptic();
       onTouch?.();
@@ -276,7 +251,6 @@ export function Orb({
       active: true,
       from,
       startTs: now(),
-      // disperse time ∝ how far it gathered (deeper → slower scatter).
       settleMs: RELEASE_BASE_MS + from * RELEASE_SCALE_MS,
     };
   }, []);
@@ -293,7 +267,6 @@ export function Orb({
   const onPointerMove = React.useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (!pressedRef.current) return;
-      // DIRECTION ONLY — magnitude/timing is g. Never touches g here.
       const p = toLocal(e.clientX, e.clientY);
       targetOffRef.current = clampLeanOffset(p.x, p.y);
     },
@@ -318,7 +291,6 @@ export function Orb({
     [release]
   );
 
-  // Five comma-stacked radial-gradients on ONE background. Wide, soft fields.
   const orbBody = [
     `radial-gradient(circle at var(--touch-x,50%) var(--touch-y,46%), ${touchColor} 0%, transparent var(--touch-r,28%))`,
     `radial-gradient(circle at var(--core-x,50%) var(--core-y,46%), ${coreColor} 0%, transparent var(--core-r,44%))`,
@@ -326,7 +298,6 @@ export function Orb({
     `radial-gradient(circle at var(--amb-x,50%) var(--amb-y,46%), ${ambColor} 0%, transparent var(--amb-r,66%))`,
     `radial-gradient(circle at 50% 50%, ${baseCenter} 0%, ${baseTok} 58%, ${rimColor} 100%)`,
   ].join(", ");
-  // A: pulse visibility — slightly thicker stroke + higher peak opacity (1-shot kept).
   const pulseRing = Math.max(2, Math.round(size * (A_PULSE_VISIBLE ? 0.018 : 0.012)));
   const pulsePeak = A_PULSE_VISIBLE ? 0.3 : 0.22;
 
@@ -341,7 +312,6 @@ export function Orb({
       onPointerMove={onPointerMove}
       onPointerUp={release}
       onPointerCancel={release}
-      // pointer captured on down; onPointerLeave is intentionally NOT a release.
       onKeyDown={onKeyDownActivate}
       onKeyUp={onKeyUpRelease}
       onContextMenu={(e) => e.preventDefault()}
@@ -372,13 +342,11 @@ export function Orb({
         ["--warm-r" as string]: "52%",
         ["--amb-r" as string]: "66%",
         ["--touch-r" as string]: "28%",
-        ["--give-scale" as string]: "1",
-        ["--give-dark" as string]: "0",
       }}
     >
-      {/* Body — the sphere IS the volumetric field: ONE element, five stacked
-          radial-gradients, no child layer, no transform, no blur. Diagonal
-          stays a true circle. */}
+      {/* Body — fixed silhouette (NO transform). The sphere IS the volumetric
+          field: ONE element, five stacked radial-gradients, no child layer, no
+          blur. Diagonal stays a true circle. */}
       <span
         aria-hidden
         style={{
@@ -387,10 +355,7 @@ export function Orb({
           borderRadius: "50%",
           overflow: "hidden",
           background: orbBody,
-          // B: uniform scale on the body (the clipped circle itself) → squircle-safe.
-          // rim shadow deepens slightly during the give (pressed-material cue).
-          transform: "scale(var(--give-scale, 1))",
-          boxShadow: `inset 0 0 calc(${Math.round(size * 0.16)}px + var(--give-dark, 0) * ${Math.round(size * 0.05)}px) color-mix(in srgb, black 32%, transparent)`,
+          boxShadow: `inset 0 0 ${Math.round(size * 0.16)}px color-mix(in srgb, black 32%, transparent)`,
         }}
       />
 
