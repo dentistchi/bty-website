@@ -1,33 +1,32 @@
 "use client";
 
 /**
- * Orb — Product A · Spine v1 presentation primitive (P0b · Volumetric Light v2).
+ * Orb — Product A · Spine v1 presentation primitive (P0b · Living Response v3).
  *
- * The orb is not a painted disc — it is translucent warm MATTER with light
- * everywhere inside it. Touch does not move a highlight; it REARRANGES the
- * internal energy distribution. It responds, but is not dragged ("influence a
- * living thing, gently" — it answers without obeying).
+ * "Don't animate the light — animate the LIFE inside the orb." The animated
+ * subject is the energy FIELD DENSITY, not a highlight position. Touch
+ * redistributes internal density toward the hand; any visible brightness is just
+ * where density briefly gathered. There is NO bulb — luminance is spread across
+ * several wide, low-opacity gradients so the user never perceives a "centre".
  *
- * ── HARD CONSTRAINT (squircle-regression guard, highest priority) ────────────
- * ALL inner light is comma-stacked radial-gradient(circle …) layers on the body
- * element's SINGLE background. NO child light div/pseudo, NO transform on the
- * light, NO filter:blur on the light. (Any one of those makes a transformed/
- * blurred box escape the rounded clip → diagonal bleed = squircle. That is the
- * exact bug we removed.) Softness comes from wide gradient stop spreads, never
- * blur. Body: border-radius:50%; overflow:hidden. Every gradient uses 'circle'.
+ * ── HARD CONSTRAINT (squircle/UI-regression guard, highest priority) ─────────
+ * - NO particles/dots as real elements (no dot/sprite/particle div/canvas). The
+ *   field is gradient-density flow ONLY. "If you can see particles, it failed —
+ *   it should only be felt."
+ * - All inner light = comma-stacked radial-gradient(circle …) layers (≤5) on the
+ *   body element's SINGLE background. NO child light layer, NO transform on the
+ *   light, NO filter:blur on the light. Softness = wide stop spreads, never blur.
+ * - body: border-radius:50%; overflow:hidden. Every gradient uses 'circle'.
  *
  * PRESENTATION ONLY — no mount, no persist, no clock/day, no API/DB. Colour is
- * render-time DERIVED from the P0a `--bty-orb-*` tokens via color-mix (no new
- * tokens).
+ * render-time DERIVED from the P0a `--bty-orb-*` tokens via color-mix.
  *
  * ╔═══════════════════════════════════════════════════════════════════════╗
  * ║  #배타성 LOCK — HAPTIC EXCLUSIVITY (P0c, locked canon)                  ║
  * ║                                                                         ║
  * ║  `navigator.vibrate()` / any haptic call is permitted ONLY inside this  ║
- * ║  Orb component. It is FORBIDDEN on buttons, toasts, notifications, XP    ║
- * ║  events, or anywhere else. The single sanctioned call site is            ║
- * ║  `triggerOrbHaptic()` below — do not add a second. Haptic fires ONCE on  ║
- * ║  contact ARRIVAL only (never on move/stroke/dwell/release).              ║
+ * ║  Orb component. The single sanctioned call site is `triggerOrbHaptic()` ║
+ * ║  below — do not add a second. Haptic fires ONCE on contact ARRIVAL.     ║
  * ╚═══════════════════════════════════════════════════════════════════════╝
  */
 
@@ -52,11 +51,7 @@ export interface OrbProps {
   ariaLabel?: string;
 }
 
-/**
- * The sole sanctioned haptic call site in the entire app (#배타성 LOCK).
- * Guarded by capability + the SSR boundary. No-op where unsupported
- * (e.g. iOS Safari does not implement the Vibration API → silent, visual only).
- */
+/** The sole sanctioned haptic call site in the entire app (#배타성 LOCK). */
 function triggerOrbHaptic(): void {
   if (typeof navigator === "undefined") return;
   if (typeof navigator.vibrate !== "function") return;
@@ -72,7 +67,7 @@ function lighten(token: string, pct: number): string {
 function darken(token: string, pct: number): string {
   return `color-mix(in srgb, black ${pct}%, ${token})`;
 }
-/** Translucent version of a colour (for stacked light layers). */
+/** Translucent version of a colour (literal alpha — no var). */
 function alpha(color: string, pct: number): string {
   return `color-mix(in srgb, ${color} ${pct}%, transparent)`;
 }
@@ -84,28 +79,27 @@ const now = (): number =>
 
 const CENTER = 50;
 const REST_Y = 46;
-const MAX_DISP = 6; // ≈ radius(50) * 0.12 — light never reaches the finger
+const MAX_DISP = 6; // ≈ radius(50) * 0.12 — density never reaches the finger
 
-const BREATH_PERIOD_MS = 5200; // slow — "noticed only after watching a while"
-const DWELL_FULL_MS = 1500; // ease-in accumulation to full awakening
-const SETTLE_MIN_MS = 400;
-const SETTLE_MAX_MS = 1700; // deep hold → slow fade + long after-glow
+const BREATH_PERIOD_MS = 5200; // slow — noticed only after watching a while
+const DWELL_FULL_MS = 3000; // ~3s ease-in accumulation (waking, never a snap)
+const ONSET_MS = 120; // sense → perceive: no field flow for the first ~120ms
+const SETTLE_MIN_MS = 600;
+const SETTLE_MAX_MS = 2200; // deep hold → density slowly disperses back
 
-// Five volumetric layers. Each center approaches the finger target with its own
-// lean (how far it shifts) and lerp (how fast) → the energy MASS rearranges,
-// liquid-like, never one synchronized highlight. Core barely moves (centre of
-// mass); Warm Mass + Touch carry the shift; Edge is fully static (limb dark).
+// Five density layers (single background). Each center approaches the hand at its
+// OWN speed + displacement → composite density FLOWS (no single layer is the
+// star, none is a moving point). Edge is fully static (limb darkening = volume).
 const LAYERS = [
-  { key: "core", lean: 0.12, lerp: 0.025 },
-  { key: "warm", lean: 1.0, lerp: 0.12 },
-  { key: "amb", lean: 0.45, lerp: 0.05 },
-  { key: "touch", lean: 1.0, lerp: 0.1 },
+  { key: "core", lean: 0.1, lerp: 0.02 }, // centre of mass — barely moves
+  { key: "warm", lean: 1.0, lerp: 0.12 }, // body heat — leans most, quickest
+  { key: "amb", lean: 0.45, lerp: 0.045 }, // depth — slow
+  { key: "touch", lean: 1.0, lerp: 0.06 }, // hand-weighted — arrives latest
 ] as const;
 type LayerKey = (typeof LAYERS)[number]["key"];
 
 type ReleaseState = { active: boolean; from: number; startTs: number; settleMs: number };
 
-/** Clamp a contact point to an offset that only leans slightly from centre. */
 function clampLean(x: number, y: number): { x: number; y: number } {
   let dx = x - CENTER;
   let dy = y - CENTER;
@@ -136,7 +130,8 @@ export function Orb({
   const rafRef = React.useRef<number | null>(null);
 
   const pressedRef = React.useRef(false);
-  const pressStartRef = React.useRef(0);
+  const pressTsRef = React.useRef(0); // real arrival time (for onset delay)
+  const dwellStartRef = React.useRef(0); // accumulation clock (offset for re-press)
   const energyRef = React.useRef(0);
   const releaseRef = React.useRef<ReleaseState>({ active: false, from: 0, startTs: 0, settleMs: 0 });
 
@@ -145,29 +140,34 @@ export function Orb({
   const pulseSeq = React.useRef(0);
 
   const baseTok = baseTokenFor(mode);
-  // Stacked light colours (translucent) + opaque limb-darkened base.
-  const touchColor = alpha(lighten(baseTok, 34), 48);
-  const coreColor = alpha(lighten(baseTok, 30), 80);
-  const warmColor = alpha(lighten(baseTok, 15), 62);
-  const ambColor = alpha(baseTok, 52);
-  const baseCenter = lighten(baseTok, 6);
+  // Distributed luminance — NO bulb. Several wide, low-opacity warm fields; the
+  // sum reads as inner warmth with no perceptible point. Volume = edge darkening.
+  const coreColor = alpha(lighten(baseTok, 16), 34);
+  const warmColor = alpha(lighten(baseTok, 11), 40);
+  const ambColor = alpha(lighten(baseTok, 5), 34);
+  const touchColor = alpha(lighten(baseTok, 20), 30);
+  const baseCenter = lighten(baseTok, 4); // barely — not a highlight
   const rimColor = darken(baseTok, 38); // soft closure (no near-black)
-  const pulseColor = lighten(baseTok, 42);
+  const pulseColor = lighten(baseTok, 40);
 
-  // Single rAF loop: per-layer centers lerp toward the finger target at their own
-  // rates (liquid), and energy/breathing drive layer radii (accumulation + life).
+  // rAF loop: per-layer density centers flow toward the hand (each its own lag);
+  // energy (accumulation) + breathing (independent, always on) drive radii.
   React.useEffect(() => {
     const tick = () => {
       const t = now();
-      const ox = targetRef.current.x - CENTER; // clamped finger offset
-      const oy = targetRef.current.y - CENTER;
 
-      // energy: ease-IN accumulation while held (HOLDS at ceiling, position-
-      // independent); proportional ease-OUT only on release.
+      // onset: for the first ~120ms of a press the field does NOT flow yet.
+      const onset = pressedRef.current && t - pressTsRef.current < ONSET_MS;
+      const aim = onset ? { x: CENTER, y: REST_Y } : targetRef.current;
+      const ox = aim.x - CENTER;
+      const oy = aim.y - CENTER;
+
+      // energy: ease-in accumulation while held (HOLDS at ceiling, position-
+      // independent); proportional ease-out on release.
       let energy: number;
       if (pressedRef.current) {
-        const dwell = clamp01((t - pressStartRef.current) / DWELL_FULL_MS);
-        energy = dwell * dwell; // ease-in — "waking something up"
+        const dwell = clamp01((t - dwellStartRef.current) / DWELL_FULL_MS);
+        energy = Math.pow(dwell, 1.5); // gentle ease-in — waking, not switching on
       } else if (releaseRef.current.active) {
         const r = releaseRef.current;
         const rt = (t - r.startTs) / r.settleMs;
@@ -182,26 +182,24 @@ export function Orb({
       }
       energyRef.current = energy;
 
+      // breathing — INDEPENDENT of touch, never stops; dwell adds on top.
       const breath = Math.sin((t / BREATH_PERIOD_MS) * Math.PI * 2);
 
       const el = containerRef.current;
       if (el) {
-        // each layer drifts toward its own leaned target at its own speed
         for (const layer of LAYERS) {
           const p = posRef.current[layer.key];
-          const tx = CENTER + ox * layer.lean;
-          const ty = CENTER + oy * layer.lean;
-          p.x += (tx - p.x) * layer.lerp;
-          p.y += (ty - p.y) * layer.lerp;
+          p.x += (CENTER + ox * layer.lean - p.x) * layer.lerp;
+          p.y += (CENTER + oy * layer.lean - p.y) * layer.lerp;
           el.style.setProperty(`--${layer.key}-x`, `${p.x}%`);
           el.style.setProperty(`--${layer.key}-y`, `${p.y}%`);
         }
-        // radii: energy fills the warm mass / ambient (accumulation); breathing
-        // gently swells the core (life). Softness = wide spreads, never blur.
-        el.style.setProperty("--core-r", `${27 + breath * 5}%`);
-        el.style.setProperty("--warm-r", `${50 + energy * 24 + breath * 2.5}%`);
-        el.style.setProperty("--amb-r", `${62 + energy * 14}%`);
-        el.style.setProperty("--touch-r", `${18 + energy * 8}%`);
+        // wide radii; energy fills warm/ambient (accumulation), breathing swells
+        // gently (+~20% vs prior). Softness via spread, never blur.
+        el.style.setProperty("--core-r", `${44 + breath * 6}%`);
+        el.style.setProperty("--warm-r", `${52 + energy * 22 + breath * 3}%`);
+        el.style.setProperty("--amb-r", `${66 + energy * 12}%`);
+        el.style.setProperty("--touch-r", `${28 + energy * 8}%`);
       }
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -227,9 +225,11 @@ export function Orb({
   // Contact arrival — the only place haptic fires AND the only place a pulse spawns.
   const beginPress = React.useCallback(
     (origin: { x: number; y: number }) => {
+      const t = now();
       // continue accumulation from residual energy (no dip on quick re-press).
-      const t0 = Math.sqrt(clamp01(energyRef.current)); // inverse of ease-in (t^2)
-      pressStartRef.current = now() - t0 * DWELL_FULL_MS;
+      const t0 = Math.pow(clamp01(energyRef.current), 1 / 1.5); // inverse of dwell^1.5
+      dwellStartRef.current = t - t0 * DWELL_FULL_MS;
+      pressTsRef.current = t;
       pressedRef.current = true;
       releaseRef.current.active = false;
       targetRef.current = origin;
@@ -290,14 +290,14 @@ export function Orb({
     [release]
   );
 
-  // Five comma-stacked radial-gradients on ONE background. Order = top→bottom:
-  // Touch / Core / Warm Mass / Ambient / Edge(opaque limb-darkened base).
+  // Five comma-stacked radial-gradients on ONE background (no bulb): wide, low-
+  // opacity warm fields over an opaque limb-darkened base. Order top→bottom.
   const orbBody = [
-    `radial-gradient(circle at var(--touch-x,50%) var(--touch-y,46%), ${touchColor} 0%, transparent var(--touch-r,18%))`,
-    `radial-gradient(circle at var(--core-x,50%) var(--core-y,46%), ${coreColor} 0%, transparent var(--core-r,27%))`,
-    `radial-gradient(circle at var(--warm-x,50%) var(--warm-y,46%), ${warmColor} 0%, transparent var(--warm-r,50%))`,
-    `radial-gradient(circle at var(--amb-x,50%) var(--amb-y,46%), ${ambColor} 0%, transparent var(--amb-r,62%))`,
-    `radial-gradient(circle at 50% 50%, ${baseCenter} 0%, ${baseTok} 55%, ${rimColor} 100%)`,
+    `radial-gradient(circle at var(--touch-x,50%) var(--touch-y,46%), ${touchColor} 0%, transparent var(--touch-r,28%))`,
+    `radial-gradient(circle at var(--core-x,50%) var(--core-y,46%), ${coreColor} 0%, transparent var(--core-r,44%))`,
+    `radial-gradient(circle at var(--warm-x,50%) var(--warm-y,46%), ${warmColor} 0%, transparent var(--warm-r,52%))`,
+    `radial-gradient(circle at var(--amb-x,50%) var(--amb-y,46%), ${ambColor} 0%, transparent var(--amb-r,66%))`,
+    `radial-gradient(circle at 50% 50%, ${baseCenter} 0%, ${baseTok} 58%, ${rimColor} 100%)`,
   ].join(", ");
   const pulseRing = Math.max(2, Math.round(size * 0.012));
 
@@ -331,7 +331,6 @@ export function Orb({
         outline: "none",
         ["WebkitTouchCallout" as string]: "none",
         ["WebkitUserDrag" as string]: "none",
-        // layer centers + radii (updated by rAF)
         ["--core-x" as string]: "50%",
         ["--core-y" as string]: `${REST_Y}%`,
         ["--warm-x" as string]: "50%",
@@ -340,15 +339,15 @@ export function Orb({
         ["--amb-y" as string]: `${REST_Y}%`,
         ["--touch-x" as string]: "50%",
         ["--touch-y" as string]: `${REST_Y}%`,
-        ["--core-r" as string]: "27%",
-        ["--warm-r" as string]: "50%",
-        ["--amb-r" as string]: "62%",
-        ["--touch-r" as string]: "18%",
+        ["--core-r" as string]: "44%",
+        ["--warm-r" as string]: "52%",
+        ["--amb-r" as string]: "66%",
+        ["--touch-r" as string]: "28%",
       }}
     >
-      {/* Body — the sphere IS the volumetric light: ONE element, five stacked
-          radial-gradients, no child layer, no transform, no blur. border-radius
-          + overflow:hidden close the silhouette; the diagonal stays a true circle. */}
+      {/* Body — the sphere IS the volumetric field: ONE element, five stacked
+          radial-gradients, no child layer, no transform, no blur. The diagonal
+          stays a true circle. */}
       <span
         aria-hidden
         style={{
@@ -367,7 +366,7 @@ export function Orb({
         <motion.span
           key={id}
           aria-hidden
-          initial={{ scale: 1, opacity: 0.24 }}
+          initial={{ scale: 1, opacity: 0.22 }}
           animate={{ scale: 1.5, opacity: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
           onAnimationComplete={() => setPulses((prev) => prev.filter((x) => x !== id))}
