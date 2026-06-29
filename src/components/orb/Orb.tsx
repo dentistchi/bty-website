@@ -95,9 +95,11 @@ const RELEASE_SCALE_MS = 2200;
 const A_PULSE_VISIBLE = true; // A: pulse visibility +1 (peak opacity + stroke)
 const B_PRESS_GIVE = true; // B: micro press-give flinch (snail's-eye, not a button)
 const GIVE_MAX = 0.012; // ≤1.2% inward — a flinch, never a sustained depress (v3.7 depth)
-// v3.8 ASYMMETRIC curve = life: fast reflexive contract → slow eased recovery (~7.5×).
-const GIVE_CONTRACT_MS = 100; // 탁 — fast in (ease-out)
-const GIVE_RECOVER_MS = 750; // 스르르 — slow melt back to baseline (ease-out)
+// v3.9 ASYMMETRIC curve = life: sharp reflexive contract → very slow recovery (~15×).
+// Give runs its own timeline (independent of hold): contract→recover completes ONCE even
+// while the finger stays down (habituation = life), while gather/warmth keeps building.
+const GIVE_CONTRACT_MS = 60; // 탁 — sharper snap in (ease-out)
+const GIVE_RECOVER_MS = 900; // 스르르 — much slower melt to baseline (15× contract)
 
 // Each layer leans toward the finger by lean·g (Warm/Touch carry the gather;
 // Core barely moves = centre of mass; Edge static). Touch uses gTrail (latest).
