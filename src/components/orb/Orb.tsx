@@ -1,24 +1,24 @@
 "use client";
 
 /**
- * Orb — Product A · Spine v1 presentation primitive (P0b · single-background
- * inner light, no separate light layer).
+ * Orb — Product A · Spine v1 presentation primitive (P0b · Volumetric Light v2).
  *
- * The "heart" of the ritual: a VOLUMETRIC sphere whose inner light IS the body's
- * own radial-gradient background — there is NO separate light blob/div/pseudo.
- * (A transformed/blurred child escapes border-radius clipping and bleeds square
- * corners diagonally; painting the sphere itself avoids that entirely.) The
- * light moves and swells only by updating CSS vars on the gradient — never a
- * transform layer, never blur.
+ * The orb is not a painted disc — it is translucent warm MATTER with light
+ * everywhere inside it. Touch does not move a highlight; it REARRANGES the
+ * internal energy distribution. It responds, but is not dragged ("influence a
+ * living thing, gently" — it answers without obeying).
  *
- * PRESENTATION ONLY — does NOT mount itself, persist, read the clock for a
- * "day", or call any API/DB. Colour is render-time DERIVED from the P0a
- * `--bty-orb-*` tokens via color-mix (no new tokens).
+ * ── HARD CONSTRAINT (squircle-regression guard, highest priority) ────────────
+ * ALL inner light is comma-stacked radial-gradient(circle …) layers on the body
+ * element's SINGLE background. NO child light div/pseudo, NO transform on the
+ * light, NO filter:blur on the light. (Any one of those makes a transformed/
+ * blurred box escape the rounded clip → diagonal bleed = squircle. That is the
+ * exact bug we removed.) Softness comes from wide gradient stop spreads, never
+ * blur. Body: border-radius:50%; overflow:hidden. Every gradient uses 'circle'.
  *
- * Touch energy is driven by PRESS STATE + DWELL ELAPSED in the rAF loop, applied
- * to the gradient stop positions (swell). Stroking only moves the light origin —
- * never resets dwell. Rebound runs ONLY on pointer up/cancel (proportional). The
- * reaction pulse is a SEPARATE layer (not clipped to the body), once per arrival.
+ * PRESENTATION ONLY — no mount, no persist, no clock/day, no API/DB. Colour is
+ * render-time DERIVED from the P0a `--bty-orb-*` tokens via color-mix (no new
+ * tokens).
  *
  * ╔═══════════════════════════════════════════════════════════════════════╗
  * ║  #배타성 LOCK — HAPTIC EXCLUSIVITY (P0c, locked canon)                  ║
@@ -60,50 +60,52 @@ export interface OrbProps {
 function triggerOrbHaptic(): void {
   if (typeof navigator === "undefined") return;
   if (typeof navigator.vibrate !== "function") return;
-  // A soft, single pulse — the orb's "answer" to a touch, not an alert.
   navigator.vibrate(18);
 }
 
-/** Baseline body colour token for a mode. */
 function baseTokenFor(mode: OrbMode): string {
   return mode === "morning" ? "var(--bty-orb-morning)" : "var(--bty-orb-evening)";
 }
-
-/** Render-time derivations (lighten/darken) from the base orb token — no new named tokens. */
 function lighten(token: string, pct: number): string {
   return `color-mix(in srgb, white ${pct}%, ${token})`;
 }
 function darken(token: string, pct: number): string {
   return `color-mix(in srgb, black ${pct}%, ${token})`;
 }
+/** Translucent version of a colour (for stacked light layers). */
+function alpha(color: string, pct: number): string {
+  return `color-mix(in srgb, ${color} ${pct}%, transparent)`;
+}
 
 const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
-const invEaseOutCubic = (y: number): number => 1 - Math.pow(1 - y, 1 / 3);
 const clamp01 = (v: number): number => Math.max(0, Math.min(1, v));
 const now = (): number =>
   typeof performance !== "undefined" ? performance.now() : 0;
 
-const DEFAULT_LX = 50;
-const DEFAULT_LY = 46; // light sits centre ~ a touch up (rest)
 const CENTER = 50;
-const MAX_DISP = 6; // ≈ radius(50) * 0.12 — warmth leans, not a spotlight that tracks
-const FOLLOW_LERP = 0.1; // light lags the finger (~120–220ms feel) — alive, not instant
+const REST_Y = 46;
+const MAX_DISP = 6; // ≈ radius(50) * 0.12 — light never reaches the finger
 
-const BREATH_PERIOD_MS = 4200;
-const DWELL_FULL_MS = 1100; // press duration to reach full swell ceiling
-const SETTLE_MIN_MS = 320; // shallow tap → quick settle
-const SETTLE_MAX_MS = 1450; // deep hold → slow settle + long after-heat
+const BREATH_PERIOD_MS = 5200; // slow — "noticed only after watching a while"
+const DWELL_FULL_MS = 1500; // ease-in accumulation to full awakening
+const SETTLE_MIN_MS = 400;
+const SETTLE_MAX_MS = 1700; // deep hold → slow fade + long after-glow
 
-// Gradient stop positions (percent) — a BROAD soft warm centre (not a point),
-// swell expands the bright inner region.
-const S1_REST = 30; // widened warm centre (was 18) → diffuse, not a hotspot
-const S2_REST = 60;
-const S1_GAIN = 8; // held → ~38
-const S2_GAIN = 12; // held → ~72
+// Five volumetric layers. Each center approaches the finger target with its own
+// lean (how far it shifts) and lerp (how fast) → the energy MASS rearranges,
+// liquid-like, never one synchronized highlight. Core barely moves (centre of
+// mass); Warm Mass + Touch carry the shift; Edge is fully static (limb dark).
+const LAYERS = [
+  { key: "core", lean: 0.12, lerp: 0.025 },
+  { key: "warm", lean: 1.0, lerp: 0.12 },
+  { key: "amb", lean: 0.45, lerp: 0.05 },
+  { key: "touch", lean: 1.0, lerp: 0.1 },
+] as const;
+type LayerKey = (typeof LAYERS)[number]["key"];
 
 type ReleaseState = { active: boolean; from: number; startTs: number; settleMs: number };
 
-/** Clamp a contact point to a light-origin that only leans slightly from centre. */
+/** Clamp a contact point to an offset that only leans slightly from centre. */
 function clampLean(x: number, y: number): { x: number; y: number } {
   let dx = x - CENTER;
   let dy = y - CENTER;
@@ -124,72 +126,82 @@ export function Orb({
   ariaLabel,
 }: OrbProps): React.ReactElement {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
-  const targetRef = React.useRef({ x: DEFAULT_LX, y: DEFAULT_LY });
-  const curRef = React.useRef({ x: DEFAULT_LX, y: DEFAULT_LY });
+  const targetRef = React.useRef({ x: CENTER, y: REST_Y });
+  const posRef = React.useRef<Record<LayerKey, { x: number; y: number }>>({
+    core: { x: CENTER, y: REST_Y },
+    warm: { x: CENTER, y: REST_Y },
+    amb: { x: CENTER, y: REST_Y },
+    touch: { x: CENTER, y: REST_Y },
+  });
   const rafRef = React.useRef<number | null>(null);
 
   const pressedRef = React.useRef(false);
   const pressStartRef = React.useRef(0);
-  const intensityRef = React.useRef(0);
+  const energyRef = React.useRef(0);
   const releaseRef = React.useRef<ReleaseState>({ active: false, from: 0, startTs: 0, settleMs: 0 });
 
-  // Reaction pulses — one per arrival, concentric from centre, removed on end.
+  // Reaction pulse — separate layer, concentric from centre, removed on end.
   const [pulses, setPulses] = React.useState<number[]>([]);
   const pulseSeq = React.useRef(0);
 
   const baseTok = baseTokenFor(mode);
-  // Softer, not brighter — a warm centre, not a button. Rim lightened so the
-  // ball stops reading "heavy"; depth kept (core still clearly above rim).
-  const highlight = lighten(baseTok, 30); // gentle peak (was 40)
-  const midColor = lighten(baseTok, 13);
-  const rimColor = darken(baseTok, 40); // softer closure (was 50; no near-black)
+  // Stacked light colours (translucent) + opaque limb-darkened base.
+  const touchColor = alpha(lighten(baseTok, 34), 48);
+  const coreColor = alpha(lighten(baseTok, 30), 80);
+  const warmColor = alpha(lighten(baseTok, 15), 62);
+  const ambColor = alpha(baseTok, 52);
+  const baseCenter = lighten(baseTok, 6);
+  const rimColor = darken(baseTok, 38); // soft closure (no near-black)
   const pulseColor = lighten(baseTok, 42);
 
-  // Single rAF loop: light-origin (--lx/--ly) + swell as gradient stops
-  // (--s1/--s2). All inner light lives in the body background — no extra layer.
+  // Single rAF loop: per-layer centers lerp toward the finger target at their own
+  // rates (liquid), and energy/breathing drive layer radii (accumulation + life).
   React.useEffect(() => {
     const tick = () => {
       const t = now();
+      const ox = targetRef.current.x - CENTER; // clamped finger offset
+      const oy = targetRef.current.y - CENTER;
 
-      // Light lags the finger: --lx/--ly are NEVER set directly on move — only
-      // the target is updated there; here we lerp toward it (hand first, warmth
-      // trails). Dwell swell is independent of this lag (position only).
-      const cur = curRef.current;
-      const tgt = targetRef.current;
-      cur.x += (tgt.x - cur.x) * FOLLOW_LERP;
-      cur.y += (tgt.y - cur.y) * FOLLOW_LERP;
-
-      let intensity: number;
+      // energy: ease-IN accumulation while held (HOLDS at ceiling, position-
+      // independent); proportional ease-OUT only on release.
+      let energy: number;
       if (pressedRef.current) {
         const dwell = clamp01((t - pressStartRef.current) / DWELL_FULL_MS);
-        intensity = easeOutCubic(dwell);
+        energy = dwell * dwell; // ease-in — "waking something up"
       } else if (releaseRef.current.active) {
         const r = releaseRef.current;
         const rt = (t - r.startTs) / r.settleMs;
         if (rt >= 1) {
-          intensity = 0;
+          energy = 0;
           r.active = false;
         } else {
-          intensity = r.from * (1 - easeOutCubic(rt));
+          energy = r.from * (1 - easeOutCubic(rt));
         }
       } else {
-        intensity = 0;
+        energy = 0;
       }
-      intensityRef.current = intensity;
+      energyRef.current = energy;
 
-      // breathing (#1) — gentle stop oscillation, damped as energy rises so a
-      // held orb stays steady.
       const breath = Math.sin((t / BREATH_PERIOD_MS) * Math.PI * 2);
-      const damp = 1 - 0.85 * intensity;
-      const s1 = S1_REST + intensity * S1_GAIN + breath * 1.5 * damp;
-      const s2 = S2_REST + intensity * S2_GAIN + breath * 3 * damp;
 
       const el = containerRef.current;
       if (el) {
-        el.style.setProperty("--lx", `${cur.x}%`);
-        el.style.setProperty("--ly", `${cur.y}%`);
-        el.style.setProperty("--s1", `${s1}%`);
-        el.style.setProperty("--s2", `${s2}%`);
+        // each layer drifts toward its own leaned target at its own speed
+        for (const layer of LAYERS) {
+          const p = posRef.current[layer.key];
+          const tx = CENTER + ox * layer.lean;
+          const ty = CENTER + oy * layer.lean;
+          p.x += (tx - p.x) * layer.lerp;
+          p.y += (ty - p.y) * layer.lerp;
+          el.style.setProperty(`--${layer.key}-x`, `${p.x}%`);
+          el.style.setProperty(`--${layer.key}-y`, `${p.y}%`);
+        }
+        // radii: energy fills the warm mass / ambient (accumulation); breathing
+        // gently swells the core (life). Softness = wide spreads, never blur.
+        el.style.setProperty("--core-r", `${27 + breath * 5}%`);
+        el.style.setProperty("--warm-r", `${50 + energy * 24 + breath * 2.5}%`);
+        el.style.setProperty("--amb-r", `${62 + energy * 14}%`);
+        el.style.setProperty("--touch-r", `${18 + energy * 8}%`);
       }
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -201,11 +213,9 @@ export function Orb({
 
   const toLocal = React.useCallback((clientX: number, clientY: number) => {
     const el = containerRef.current;
-    if (!el) return { x: DEFAULT_LX, y: DEFAULT_LY };
+    if (!el) return { x: CENTER, y: REST_Y };
     const r = el.getBoundingClientRect();
-    const x = ((clientX - r.left) / r.width) * 100;
-    const y = ((clientY - r.top) / r.height) * 100;
-    return { x, y };
+    return { x: ((clientX - r.left) / r.width) * 100, y: ((clientY - r.top) / r.height) * 100 };
   }, []);
 
   const spawnPulse = React.useCallback(() => {
@@ -216,12 +226,13 @@ export function Orb({
 
   // Contact arrival — the only place haptic fires AND the only place a pulse spawns.
   const beginPress = React.useCallback(
-    (originX: number, originY: number) => {
-      const t0 = invEaseOutCubic(clamp01(intensityRef.current));
+    (origin: { x: number; y: number }) => {
+      // continue accumulation from residual energy (no dip on quick re-press).
+      const t0 = Math.sqrt(clamp01(energyRef.current)); // inverse of ease-in (t^2)
       pressStartRef.current = now() - t0 * DWELL_FULL_MS;
       pressedRef.current = true;
       releaseRef.current.active = false;
-      targetRef.current = { x: originX, y: originY };
+      targetRef.current = origin;
       spawnPulse();
       if (enableHaptic) triggerOrbHaptic();
       onTouch?.();
@@ -232,22 +243,21 @@ export function Orb({
   const release = React.useCallback(() => {
     if (!pressedRef.current) return;
     pressedRef.current = false;
-    const from = intensityRef.current;
+    const from = energyRef.current;
     releaseRef.current = {
       active: true,
       from,
       startTs: now(),
       settleMs: SETTLE_MIN_MS + from * (SETTLE_MAX_MS - SETTLE_MIN_MS),
     };
-    targetRef.current = { x: DEFAULT_LX, y: DEFAULT_LY };
+    targetRef.current = { x: CENTER, y: REST_Y };
   }, []);
 
   const onPointerDown = React.useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       e.currentTarget.setPointerCapture?.(e.pointerId);
       const p = toLocal(e.clientX, e.clientY);
-      const o = clampLean(p.x, p.y);
-      beginPress(o.x, o.y);
+      beginPress(clampLean(p.x, p.y));
     },
     [beginPress, toLocal]
   );
@@ -255,7 +265,7 @@ export function Orb({
   const onPointerMove = React.useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (!pressedRef.current) return;
-      // POSITION ONLY — never touches dwell/intensity, never spawns a pulse.
+      // POSITION ONLY — target updated; centers lag in rAF. Never touches energy.
       const p = toLocal(e.clientX, e.clientY);
       targetRef.current = clampLean(p.x, p.y);
     },
@@ -267,7 +277,7 @@ export function Orb({
       if (e.key !== "Enter" && e.key !== " ") return;
       e.preventDefault();
       if (e.repeat) return;
-      beginPress(DEFAULT_LX, DEFAULT_LY);
+      beginPress({ x: CENTER, y: REST_Y });
     },
     [beginPress]
   );
@@ -280,10 +290,15 @@ export function Orb({
     [release]
   );
 
-  // 'circle' keyword is REQUIRED (ellipse would distort); stops close to dark at 100%.
-  const orbBody =
-    `radial-gradient(circle at var(--lx, 50%) var(--ly, 46%), ` +
-    `${highlight} 0%, ${midColor} var(--s1, 30%), ${baseTok} var(--s2, 60%), ${rimColor} 100%)`;
+  // Five comma-stacked radial-gradients on ONE background. Order = top→bottom:
+  // Touch / Core / Warm Mass / Ambient / Edge(opaque limb-darkened base).
+  const orbBody = [
+    `radial-gradient(circle at var(--touch-x,50%) var(--touch-y,46%), ${touchColor} 0%, transparent var(--touch-r,18%))`,
+    `radial-gradient(circle at var(--core-x,50%) var(--core-y,46%), ${coreColor} 0%, transparent var(--core-r,27%))`,
+    `radial-gradient(circle at var(--warm-x,50%) var(--warm-y,46%), ${warmColor} 0%, transparent var(--warm-r,50%))`,
+    `radial-gradient(circle at var(--amb-x,50%) var(--amb-y,46%), ${ambColor} 0%, transparent var(--amb-r,62%))`,
+    `radial-gradient(circle at 50% 50%, ${baseCenter} 0%, ${baseTok} 55%, ${rimColor} 100%)`,
+  ].join(", ");
   const pulseRing = Math.max(2, Math.round(size * 0.012));
 
   return (
@@ -316,32 +331,38 @@ export function Orb({
         outline: "none",
         ["WebkitTouchCallout" as string]: "none",
         ["WebkitUserDrag" as string]: "none",
-        ["--lx" as string]: `${DEFAULT_LX}%`,
-        ["--ly" as string]: `${DEFAULT_LY}%`,
-        ["--s1" as string]: `${S1_REST}%`,
-        ["--s2" as string]: `${S2_REST}%`,
+        // layer centers + radii (updated by rAF)
+        ["--core-x" as string]: "50%",
+        ["--core-y" as string]: `${REST_Y}%`,
+        ["--warm-x" as string]: "50%",
+        ["--warm-y" as string]: `${REST_Y}%`,
+        ["--amb-x" as string]: "50%",
+        ["--amb-y" as string]: `${REST_Y}%`,
+        ["--touch-x" as string]: "50%",
+        ["--touch-y" as string]: `${REST_Y}%`,
+        ["--core-r" as string]: "27%",
+        ["--warm-r" as string]: "50%",
+        ["--amb-r" as string]: "62%",
+        ["--touch-r" as string]: "18%",
       }}
     >
-      {/* Body — the sphere IS the light. Single radial-gradient background; inner
-          light moves/swells via --lx/--ly/--s1/--s2 only. No child light layer,
-          no blur. border-radius:50% + overflow:hidden close the silhouette.
-          Subtle breathing scale = life (#1). */}
-      <motion.span
+      {/* Body — the sphere IS the volumetric light: ONE element, five stacked
+          radial-gradients, no child layer, no transform, no blur. border-radius
+          + overflow:hidden close the silhouette; the diagonal stays a true circle. */}
+      <span
         aria-hidden
-        animate={{ scale: [1, 1.02, 1] }}
-        transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut" }}
         style={{
           position: "absolute",
           inset: 0,
           borderRadius: "50%",
           overflow: "hidden",
           background: orbBody,
-          boxShadow: `inset 0 0 ${Math.round(size * 0.18)}px color-mix(in srgb, black 36%, transparent)`,
+          boxShadow: `inset 0 0 ${Math.round(size * 0.16)}px color-mix(in srgb, black 32%, transparent)`,
         }}
       />
 
-      {/* Reaction pulse — SEPARATE layer, NOT clipped to the body; concentric
-          from centre, soft thin ring, 1-shot per arrival, removed on completion. */}
+      {/* Reaction pulse — SEPARATE layer (allowed transform/blur), concentric
+          from centre, 1-shot per arrival, removed on completion. */}
       {pulses.map((id) => (
         <motion.span
           key={id}
