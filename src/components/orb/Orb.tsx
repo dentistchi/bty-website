@@ -91,6 +91,14 @@ const OFFSET_LERP = 0.2; // direction smoothing (not the weight — g is the wei
 const RELEASE_BASE_MS = 1300; // disperse slightly slower than it gathered
 const RELEASE_SCALE_MS = 2200;
 
+// v3.7/3.8 — two INDEPENDENT levers (flip either back without touching the other).
+const A_PULSE_VISIBLE = true; // A: pulse visibility +1 (peak opacity + stroke)
+const B_PRESS_GIVE = true; // B: micro press-give flinch (snail's-eye, not a button)
+const GIVE_MAX = 0.012; // ≤1.2% inward — a flinch, never a sustained depress (v3.7 depth)
+// v3.8 ASYMMETRIC curve = life: fast reflexive contract → slow eased recovery (~7.5×).
+const GIVE_CONTRACT_MS = 100; // 탁 — fast in (ease-out)
+const GIVE_RECOVER_MS = 750; // 스르르 — slow melt back to baseline (ease-out)
+
 // Each layer leans toward the finger by lean·g (Warm/Touch carry the gather;
 // Core barely moves = centre of mass; Edge static). Touch uses gTrail (latest).
 const LAYERS = [
@@ -132,6 +140,7 @@ export function Orb({
   const pressTsRef = React.useRef(0);
   const gRef = React.useRef(0); // gather progress 0..1 (gather + fill + brightness)
   const gTrailRef = React.useRef(0);
+  const giveStartRef = React.useRef(-1); // B: flinch start timestamp (-1 = inactive)
   const releaseRef = React.useRef<ReleaseState>({ active: false, from: 0, startTs: 0, settleMs: 0 });
 
   // Reaction pulse — separate layer, concentric from centre, removed on end.
@@ -188,6 +197,19 @@ export function Orb({
 
       const breath = Math.sin((t / BREATH_PERIOD_MS) * Math.PI * 2);
 
+      // B (v3.8): asymmetric press-give — fast contract, slow recover, one-shot.
+      let give = 0;
+      if (B_PRESS_GIVE && giveStartRef.current >= 0) {
+        const e = t - giveStartRef.current;
+        if (e < GIVE_CONTRACT_MS) {
+          give = GIVE_MAX * easeOutCubic(e / GIVE_CONTRACT_MS); // 탁 in
+        } else if (e < GIVE_CONTRACT_MS + GIVE_RECOVER_MS) {
+          give = GIVE_MAX * (1 - easeOutCubic((e - GIVE_CONTRACT_MS) / GIVE_RECOVER_MS)); // 스르르 out
+        } else {
+          giveStartRef.current = -1; // settled to baseline (even while still held)
+        }
+      }
+
       const el = containerRef.current;
       if (el) {
         for (const layer of LAYERS) {
@@ -204,6 +226,9 @@ export function Orb({
         // v3.6: near-side gather fill +1 notch (gain 20→30) — brighter at the HOLD
         // ceiling only; idle (gTrail=0) stays 28% = unchanged. Wider, not a hotspot.
         el.style.setProperty("--touch-r", `${28 + gTrail * 30}%`);
+        // B: whole-sphere micro give (uniform scale on body = squircle-safe).
+        el.style.setProperty("--give-scale", `${1 - give}`);
+        el.style.setProperty("--give-dark", `${GIVE_MAX > 0 ? give / GIVE_MAX : 0}`);
       }
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -233,6 +258,7 @@ export function Orb({
       pressedRef.current = true;
       releaseRef.current.active = false; // g continues from its current value
       targetOffRef.current = offset;
+      if (B_PRESS_GIVE) giveStartRef.current = now(); // trigger the flinch (one-shot)
       spawnPulse();
       if (enableHaptic) triggerOrbHaptic();
       onTouch?.();
@@ -298,7 +324,9 @@ export function Orb({
     `radial-gradient(circle at var(--amb-x,50%) var(--amb-y,46%), ${ambColor} 0%, transparent var(--amb-r,66%))`,
     `radial-gradient(circle at 50% 50%, ${baseCenter} 0%, ${baseTok} 58%, ${rimColor} 100%)`,
   ].join(", ");
-  const pulseRing = Math.max(2, Math.round(size * 0.012));
+  // A: pulse visibility — slightly thicker stroke + higher peak opacity (1-shot kept).
+  const pulseRing = Math.max(2, Math.round(size * (A_PULSE_VISIBLE ? 0.018 : 0.012)));
+  const pulsePeak = A_PULSE_VISIBLE ? 0.3 : 0.22;
 
   return (
     <div
@@ -342,6 +370,8 @@ export function Orb({
         ["--warm-r" as string]: "52%",
         ["--amb-r" as string]: "66%",
         ["--touch-r" as string]: "28%",
+        ["--give-scale" as string]: "1",
+        ["--give-dark" as string]: "0",
       }}
     >
       {/* Body — the sphere IS the volumetric field: ONE element, five stacked
@@ -355,7 +385,10 @@ export function Orb({
           borderRadius: "50%",
           overflow: "hidden",
           background: orbBody,
-          boxShadow: `inset 0 0 ${Math.round(size * 0.16)}px color-mix(in srgb, black 32%, transparent)`,
+          // B: uniform scale on the body (the clipped circle itself) → squircle-safe.
+          // rim shadow deepens slightly during the give (pressed-material cue).
+          transform: "scale(var(--give-scale, 1))",
+          boxShadow: `inset 0 0 calc(${Math.round(size * 0.16)}px + var(--give-dark, 0) * ${Math.round(size * 0.05)}px) color-mix(in srgb, black 32%, transparent)`,
         }}
       />
 
@@ -365,7 +398,7 @@ export function Orb({
         <motion.span
           key={id}
           aria-hidden
-          initial={{ scale: 1, opacity: 0.22 }}
+          initial={{ scale: 1, opacity: pulsePeak }}
           animate={{ scale: 1.5, opacity: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
           onAnimationComplete={() => setPulses((prev) => prev.filter((x) => x !== id))}
