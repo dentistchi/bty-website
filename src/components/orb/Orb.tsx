@@ -1,23 +1,24 @@
 "use client";
 
 /**
- * Orb — Product A · Spine v1 presentation primitive (P0b · silhouette-isolated
- * light + reaction pulse).
+ * Orb — Product A · Spine v1 presentation primitive (P0b · single-background
+ * inner light, no separate light layer).
  *
- * The "heart" of the ritual: a VOLUMETRIC sphere with ONE internal light that is
- * CLIPPED inside a fixed silhouette (no glow ever persists outside the sphere —
- * outside space is occupied only by a transient pulse). Contact merely leans the
- * inner warm centre slightly toward the finger; it does not spotlight-track.
+ * The "heart" of the ritual: a VOLUMETRIC sphere whose inner light IS the body's
+ * own radial-gradient background — there is NO separate light blob/div/pseudo.
+ * (A transformed/blurred child escapes border-radius clipping and bleeds square
+ * corners diagonally; painting the sphere itself avoids that entirely.) The
+ * light moves and swells only by updating CSS vars on the gradient — never a
+ * transform layer, never blur.
  *
  * PRESENTATION ONLY — does NOT mount itself, persist, read the clock for a
- * "day", or call any API/DB. Colour is driven entirely by the P0a `--bty-orb-*`
- * tokens; every gradient stop is render-time DERIVED via color-mix (no new
- * tokens).
+ * "day", or call any API/DB. Colour is render-time DERIVED from the P0a
+ * `--bty-orb-*` tokens via color-mix (no new tokens).
  *
- * Touch energy (glow + swell) is driven by PRESS STATE + DWELL ELAPSED in the
- * rAF loop. Stroking only moves the light origin — never resets dwell. Rebound
- * runs ONLY on pointer up/cancel (proportional ease-out). The reaction pulse
- * fires ONCE on arrival, concentric from the orb centre (not the contact point).
+ * Touch energy is driven by PRESS STATE + DWELL ELAPSED in the rAF loop, applied
+ * to the gradient stop positions (swell). Stroking only moves the light origin —
+ * never resets dwell. Rebound runs ONLY on pointer up/cancel (proportional). The
+ * reaction pulse is a SEPARATE layer (not clipped to the body), once per arrival.
  *
  * ╔═══════════════════════════════════════════════════════════════════════╗
  * ║  #배타성 LOCK — HAPTIC EXCLUSIVITY (P0c, locked canon)                  ║
@@ -83,7 +84,7 @@ const now = (): number =>
   typeof performance !== "undefined" ? performance.now() : 0;
 
 const DEFAULT_LX = 50;
-const DEFAULT_LY = 44; // core sits centre ~ a touch up (rest)
+const DEFAULT_LY = 46; // light sits centre ~ a touch up (rest)
 const CENTER = 50;
 const MAX_DISP = 7; // ≈ radius(50) * 0.14 — only a slight inner lean, not a spotlight
 
@@ -91,6 +92,12 @@ const BREATH_PERIOD_MS = 4200;
 const DWELL_FULL_MS = 1100; // press duration to reach full swell ceiling
 const SETTLE_MIN_MS = 320; // shallow tap → quick settle
 const SETTLE_MAX_MS = 1450; // deep hold → slow settle + long after-heat
+
+// Gradient stop positions (percent) — swell expands the bright inner region.
+const S1_REST = 18;
+const S2_REST = 50;
+const S1_GAIN = 8; // held → ~26
+const S2_GAIN = 15; // held → ~65
 
 type ReleaseState = { active: boolean; from: number; startTs: number; settleMs: number };
 
@@ -119,11 +126,9 @@ export function Orb({
   const curRef = React.useRef({ x: DEFAULT_LX, y: DEFAULT_LY });
   const rafRef = React.useRef<number | null>(null);
 
-  // Touch energy is ref-driven so the rAF loop owns it and it never rebounds on
-  // a fixed timer or on a stroke move.
   const pressedRef = React.useRef(false);
   const pressStartRef = React.useRef(0);
-  const intensityRef = React.useRef(0); // current displayed 0..1
+  const intensityRef = React.useRef(0);
   const releaseRef = React.useRef<ReleaseState>({ active: false, from: 0, startTs: 0, settleMs: 0 });
 
   // Reaction pulses — one per arrival, concentric from centre, removed on end.
@@ -131,15 +136,13 @@ export function Orb({
   const pulseSeq = React.useRef(0);
 
   const baseTok = baseTokenFor(mode);
-  const coreColor = lighten(baseTok, 26);
-  const midColor = baseTok;
-  const rimColor = darken(baseTok, 48);
-  const emberBright = lighten(baseTok, 44);
-  const emberMid = lighten(baseTok, 10);
+  const highlight = lighten(baseTok, 40); // brightest, inner
+  const midColor = lighten(baseTok, 16);
+  const rimColor = darken(baseTok, 50); // dark closure at 100%
   const pulseColor = lighten(baseTok, 42);
 
-  // Single rAF loop: light-origin follow (--lx/--ly, clamped) + dwell-driven
-  // energy (--core-op / --core-scale). Writes CSS vars only.
+  // Single rAF loop: light-origin (--lx/--ly) + swell as gradient stops
+  // (--s1/--s2). All inner light lives in the body background — no extra layer.
   React.useEffect(() => {
     const tick = () => {
       const t = now();
@@ -167,17 +170,19 @@ export function Orb({
       }
       intensityRef.current = intensity;
 
+      // breathing (#1) — gentle stop oscillation, damped as energy rises so a
+      // held orb stays steady.
       const breath = Math.sin((t / BREATH_PERIOD_MS) * Math.PI * 2);
       const damp = 1 - 0.85 * intensity;
-      const coreOp = clamp01(0.8 + 0.2 * intensity + breath * 0.12 * damp);
-      const coreScale = 1 + 0.2 * intensity + breath * 0.02 * damp;
+      const s1 = S1_REST + intensity * S1_GAIN + breath * 1.5 * damp;
+      const s2 = S2_REST + intensity * S2_GAIN + breath * 3 * damp;
 
       const el = containerRef.current;
       if (el) {
         el.style.setProperty("--lx", `${cur.x}%`);
         el.style.setProperty("--ly", `${cur.y}%`);
-        el.style.setProperty("--core-op", `${coreOp}`);
-        el.style.setProperty("--core-scale", `${coreScale}`);
+        el.style.setProperty("--s1", `${s1}%`);
+        el.style.setProperty("--s2", `${s2}%`);
       }
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -268,9 +273,10 @@ export function Orb({
     [release]
   );
 
-  const lightAt = "var(--lx, 50%) var(--ly, 44%)";
-  const orbBody = `radial-gradient(circle at ${lightAt}, ${coreColor} 0%, ${midColor} 45%, ${rimColor} 100%)`;
-  const orbEmber = `radial-gradient(circle at ${lightAt}, ${emberBright} 0%, ${emberMid} 30%, transparent 62%)`;
+  // 'circle' keyword is REQUIRED (ellipse would distort); stops close to dark at 100%.
+  const orbBody =
+    `radial-gradient(circle at var(--lx, 50%) var(--ly, 46%), ` +
+    `${highlight} 0%, ${midColor} var(--s1, 18%), ${baseTok} var(--s2, 50%), ${rimColor} 100%)`;
   const pulseRing = Math.max(2, Math.round(size * 0.012));
 
   return (
@@ -292,7 +298,7 @@ export function Orb({
         position: "relative",
         width: size,
         height: size,
-        borderRadius: "9999px",
+        borderRadius: "50%",
         display: "grid",
         placeItems: "center",
         cursor: "pointer",
@@ -305,13 +311,14 @@ export function Orb({
         ["WebkitUserDrag" as string]: "none",
         ["--lx" as string]: `${DEFAULT_LX}%`,
         ["--ly" as string]: `${DEFAULT_LY}%`,
-        ["--core-op" as string]: "0.8",
-        ["--core-scale" as string]: "1",
+        ["--s1" as string]: `${S1_REST}%`,
+        ["--s2" as string]: `${S2_REST}%`,
       }}
     >
-      {/* Body — fixed silhouette, limb-darkened to the rim; overflow:hidden so the
-          internal light can NEVER paint outside the sphere. Subtle breathing
-          scale = life (#1). The ONE light core lives inside it (clipped). */}
+      {/* Body — the sphere IS the light. Single radial-gradient background; inner
+          light moves/swells via --lx/--ly/--s1/--s2 only. No child light layer,
+          no blur. border-radius:50% + overflow:hidden close the silhouette.
+          Subtle breathing scale = life (#1). */}
       <motion.span
         aria-hidden
         animate={{ scale: [1, 1.02, 1] }}
@@ -319,31 +326,15 @@ export function Orb({
         style={{
           position: "absolute",
           inset: 0,
-          borderRadius: "9999px",
+          borderRadius: "50%",
           overflow: "hidden",
           background: orbBody,
           boxShadow: `inset 0 0 ${Math.round(size * 0.22)}px color-mix(in srgb, black 55%, transparent)`,
         }}
-      >
-        <span
-          aria-hidden
-          style={{
-            position: "absolute",
-            inset: 0,
-            borderRadius: "9999px",
-            background: orbEmber,
-            mixBlendMode: "screen",
-            opacity: "var(--core-op, 0.8)",
-            transform: "scale(var(--core-scale, 1))",
-            transformOrigin: "var(--lx, 50%) var(--ly, 44%)",
-            willChange: "opacity, transform",
-          }}
-        />
-      </motion.span>
+      />
 
-      {/* Reaction pulse — concentric from centre, soft thin ring, 1-shot per
-          arrival, removed from DOM on completion. Occupies outside space only
-          transiently (it is the ONLY thing allowed beyond the silhouette). */}
+      {/* Reaction pulse — SEPARATE layer, NOT clipped to the body; concentric
+          from centre, soft thin ring, 1-shot per arrival, removed on completion. */}
       {pulses.map((id) => (
         <motion.span
           key={id}
@@ -355,7 +346,7 @@ export function Orb({
           style={{
             position: "absolute",
             inset: 0,
-            borderRadius: "9999px",
+            borderRadius: "50%",
             border: `${pulseRing}px solid ${pulseColor}`,
             filter: `blur(${Math.round(size * 0.02)}px)`,
             pointerEvents: "none",
