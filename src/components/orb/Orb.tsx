@@ -1,24 +1,23 @@
 "use client";
 
 /**
- * Orb — Product A · Spine v1 presentation primitive (P0b · Living Response v3).
+ * Orb — Product A · Spine v1 presentation primitive (P0b · Living Response v3.5,
+ * weighted gather physics).
  *
- * "Don't animate the light — animate the LIFE inside the orb." The animated
- * subject is the energy FIELD DENSITY, not a highlight position. Touch
- * redistributes internal density toward the hand; any visible brightness is just
- * where density briefly gathered. There is NO bulb — luminance is spread across
- * several wide, low-opacity gradients so the user never perceives a "centre".
+ * Model: warm light is spread evenly through the orb; touch is a gravity well at
+ * the fingertip that GATHERS the density toward it. Far = slow, nearer = faster,
+ * gathered = brighter; not all of it can arrive, so it settles at a ceiling.
+ * Lift → it slowly disperses back. The motion subject is the field DENSITY, not
+ * a highlight; a single progress value `g` (0→1) drives gather + fill + bright.
  *
  * ── HARD CONSTRAINT (squircle/UI-regression guard, highest priority) ─────────
- * - NO particles/dots as real elements (no dot/sprite/particle div/canvas). The
- *   field is gradient-density flow ONLY. "If you can see particles, it failed —
- *   it should only be felt."
- * - All inner light = comma-stacked radial-gradient(circle …) layers (≤5) on the
- *   body element's SINGLE background. NO child light layer, NO transform on the
- *   light, NO filter:blur on the light. Softness = wide stop spreads, never blur.
+ * - NO particles/dots as real elements — density via gradients only.
+ * - All inner light = comma-stacked radial-gradient(circle …) (≤5) on the body
+ *   element's SINGLE background. NO child light layer, NO transform on the light,
+ *   NO filter:blur on the light. Softness = wide stop spreads, never blur.
  * - body: border-radius:50%; overflow:hidden. Every gradient uses 'circle'.
  *
- * PRESENTATION ONLY — no mount, no persist, no clock/day, no API/DB. Colour is
+ * PRESENTATION ONLY — no mount, persist, clock/day, or API/DB. Colour is
  * render-time DERIVED from the P0a `--bty-orb-*` tokens via color-mix.
  *
  * ╔═══════════════════════════════════════════════════════════════════════╗
@@ -67,7 +66,6 @@ function lighten(token: string, pct: number): string {
 function darken(token: string, pct: number): string {
   return `color-mix(in srgb, black ${pct}%, ${token})`;
 }
-/** Translucent version of a colour (literal alpha — no var). */
 function alpha(color: string, pct: number): string {
   return `color-mix(in srgb, ${color} ${pct}%, transparent)`;
 }
@@ -79,30 +77,33 @@ const now = (): number =>
 
 const CENTER = 50;
 const REST_Y = 46;
-const MAX_DISP = 13; // ≈ radius(50) * 0.26 — the warm MASS visibly gathers toward the
-// hand. Flashlight is avoided by a SOFT, BROAD profile (wide radii), not by limiting
-// displacement: the brightest region leans directionally but never narrows to a pinpoint.
+const MAX_DISP = 13; // ≈ radius(50) * 0.26 — gather displacement cap (no flashlight)
 
-const BREATH_PERIOD_MS = 5200; // slow — noticed only after watching a while
-const DWELL_FULL_MS = 3000; // ~3s ease-in accumulation (waking, never a snap)
-const ONSET_MS = 70; // sense → perceive: brief no-flow window (not dead, not instant)
-const SETTLE_MIN_MS = 600;
-const SETTLE_MAX_MS = 2200; // deep hold → density slowly disperses back
+const BREATH_PERIOD_MS = 5200; // slow, independent heartbeat
+const ONSET_MS = 70; // brief sense beat before the gather begins
 
-// Five density layers (single background). Each center approaches the hand at its
-// OWN speed + displacement → composite density FLOWS (no single layer is the
-// star, none is a moving point). Edge is fully static (limb darkening = volume).
+// Weighted gather: g self-accelerates (slow → fast) while held, caps at 1
+// (ceiling), then holds. dg/dt = K·(BASE + g) → reaches ~ceiling in ~2.5s.
+const GATHER_K = 0.85; // per second
+const GATHER_BASE = 0.15;
+const TRAIL_LERP = 0.06; // trailing layer follows g laggier (liquid separation)
+const OFFSET_LERP = 0.2; // direction smoothing (not the weight — g is the weight)
+const RELEASE_BASE_MS = 1300; // disperse slightly slower than it gathered
+const RELEASE_SCALE_MS = 2200;
+
+// Each layer leans toward the finger by lean·g (Warm/Touch carry the gather;
+// Core barely moves = centre of mass; Edge static). Touch uses gTrail (latest).
 const LAYERS = [
-  { key: "core", lean: 0.12, lerp: 0.02 }, // centre of mass — barely moves
-  { key: "warm", lean: 1.0, lerp: 0.22 }, // body heat — gathers FAST & visibly (~150-250ms)
-  { key: "amb", lean: 0.5, lerp: 0.09 }, // depth — mid
-  { key: "touch", lean: 1.0, lerp: 0.06 }, // the ONE trailing liquid layer — arrives latest
+  { key: "core", lean: 0.12, useTrail: false },
+  { key: "warm", lean: 1.0, useTrail: false },
+  { key: "amb", lean: 0.5, useTrail: false },
+  { key: "touch", lean: 1.0, useTrail: true },
 ] as const;
 type LayerKey = (typeof LAYERS)[number]["key"];
 
 type ReleaseState = { active: boolean; from: number; startTs: number; settleMs: number };
 
-function clampLean(x: number, y: number): { x: number; y: number } {
+function clampLeanOffset(x: number, y: number): { x: number; y: number } {
   let dx = x - CENTER;
   let dy = y - CENTER;
   const len = Math.hypot(dx, dy);
@@ -111,7 +112,7 @@ function clampLean(x: number, y: number): { x: number; y: number } {
     dx *= s;
     dy *= s;
   }
-  return { x: CENTER + dx, y: CENTER + dy };
+  return { x: dx, y: dy };
 }
 
 export function Orb({
@@ -122,19 +123,15 @@ export function Orb({
   ariaLabel,
 }: OrbProps): React.ReactElement {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
-  const targetRef = React.useRef({ x: CENTER, y: REST_Y });
-  const posRef = React.useRef<Record<LayerKey, { x: number; y: number }>>({
-    core: { x: CENTER, y: REST_Y },
-    warm: { x: CENTER, y: REST_Y },
-    amb: { x: CENTER, y: REST_Y },
-    touch: { x: CENTER, y: REST_Y },
-  });
+  const targetOffRef = React.useRef({ x: 0, y: 0 }); // finger offset from centre
+  const dispOffRef = React.useRef({ x: 0, y: 0 }); // smoothed displayed offset
   const rafRef = React.useRef<number | null>(null);
+  const lastTsRef = React.useRef(0);
 
   const pressedRef = React.useRef(false);
-  const pressTsRef = React.useRef(0); // real arrival time (for onset delay)
-  const dwellStartRef = React.useRef(0); // accumulation clock (offset for re-press)
-  const energyRef = React.useRef(0);
+  const pressTsRef = React.useRef(0);
+  const gRef = React.useRef(0); // gather progress 0..1 (gather + fill + brightness)
+  const gTrailRef = React.useRef(0);
   const releaseRef = React.useRef<ReleaseState>({ active: false, from: 0, startTs: 0, settleMs: 0 });
 
   // Reaction pulse — separate layer, concentric from centre, removed on end.
@@ -142,68 +139,69 @@ export function Orb({
   const pulseSeq = React.useRef(0);
 
   const baseTok = baseTokenFor(mode);
-  // Distributed luminance — NO bulb, but the warm MASS must be perceptibly filled
-  // (v3 over-flattened). Higher peak opacity, radii stay WIDE (mass, not a point).
-  // Volume still from edge darkening.
+  // v3.4 luminance levels (peak held; the RAMP now comes from g, not opacity).
   const coreColor = alpha(lighten(baseTok, 18), 46);
-  const warmColor = alpha(lighten(baseTok, 16), 74); // v3.4: peak +1 more notch (wide profile kept)
+  const warmColor = alpha(lighten(baseTok, 16), 74);
   const ambColor = alpha(lighten(baseTok, 7), 38);
-  const touchColor = alpha(lighten(baseTok, 24), 66); // v3.4: near-side directional +1 more notch
-  const baseCenter = lighten(baseTok, 8); // gently filled inside, still not a highlight
-  const rimColor = darken(baseTok, 38); // soft closure (no near-black)
+  const touchColor = alpha(lighten(baseTok, 24), 66);
+  const baseCenter = lighten(baseTok, 8);
+  const rimColor = darken(baseTok, 38);
   const pulseColor = lighten(baseTok, 40);
 
-  // rAF loop: per-layer density centers flow toward the hand (each its own lag);
-  // energy (accumulation) + breathing (independent, always on) drive radii.
   React.useEffect(() => {
     const tick = () => {
       const t = now();
+      let dt = lastTsRef.current ? (t - lastTsRef.current) / 1000 : 0.016;
+      lastTsRef.current = t;
+      if (dt > 0.05) dt = 0.05; // clamp after tab-away
 
-      // onset: for the first ~120ms of a press the field does NOT flow yet.
-      const onset = pressedRef.current && t - pressTsRef.current < ONSET_MS;
-      const aim = onset ? { x: CENTER, y: REST_Y } : targetRef.current;
-      const ox = aim.x - CENTER;
-      const oy = aim.y - CENTER;
+      // direction smoothing (the *weight/timing* is g, not this)
+      const off = dispOffRef.current;
+      const tgt = targetOffRef.current;
+      off.x += (tgt.x - off.x) * OFFSET_LERP;
+      off.y += (tgt.y - off.y) * OFFSET_LERP;
 
-      // energy: ease-in accumulation while held (HOLDS at ceiling, position-
-      // independent); proportional ease-out on release.
-      let energy: number;
+      // gather progress g: self-accelerating ease-in while held (after onset),
+      // caps at ceiling; proportional ease-out on release (a touch slower).
+      let g = gRef.current;
       if (pressedRef.current) {
-        const dwell = clamp01((t - dwellStartRef.current) / DWELL_FULL_MS);
-        energy = Math.pow(dwell, 1.5); // gentle ease-in — waking, not switching on
+        if (t - pressTsRef.current >= ONSET_MS) {
+          g += dt * GATHER_K * (GATHER_BASE + g);
+          if (g > 1) g = 1;
+        }
       } else if (releaseRef.current.active) {
         const r = releaseRef.current;
         const rt = (t - r.startTs) / r.settleMs;
         if (rt >= 1) {
-          energy = 0;
+          g = 0;
           r.active = false;
         } else {
-          energy = r.from * (1 - easeOutCubic(rt));
+          g = r.from * (1 - easeOutCubic(rt));
         }
       } else {
-        energy = 0;
+        g = 0;
       }
-      energyRef.current = energy;
+      gRef.current = g;
+      // trailing layer lags g (one layer never quite keeps up → liquid)
+      gTrailRef.current += (g - gTrailRef.current) * TRAIL_LERP;
+      const gTrail = gTrailRef.current;
 
-      // breathing — INDEPENDENT of touch, never stops; dwell adds on top.
       const breath = Math.sin((t / BREATH_PERIOD_MS) * Math.PI * 2);
 
       const el = containerRef.current;
       if (el) {
         for (const layer of LAYERS) {
-          const p = posRef.current[layer.key];
-          p.x += (CENTER + ox * layer.lean - p.x) * layer.lerp;
-          p.y += (CENTER + oy * layer.lean - p.y) * layer.lerp;
-          el.style.setProperty(`--${layer.key}-x`, `${p.x}%`);
-          el.style.setProperty(`--${layer.key}-y`, `${p.y}%`);
+          const gg = layer.useTrail ? gTrail : g;
+          const cx = CENTER + off.x * layer.lean * gg;
+          const cy = REST_Y + off.y * layer.lean * gg;
+          el.style.setProperty(`--${layer.key}-x`, `${cx}%`);
+          el.style.setProperty(`--${layer.key}-y`, `${cy}%`);
         }
-        // wide radii; energy fills warm/ambient (accumulation), breathing swells
-        // gently (+~20% vs prior). Softness via spread, never blur.
-        // dwell visibly fills the warmth (0→3s clearly seen); breathing on top.
-        el.style.setProperty("--core-r", `${44 + energy * 10 + breath * 6}%`);
-        el.style.setProperty("--warm-r", `${52 + energy * 40 + breath * 3}%`);
-        el.style.setProperty("--amb-r", `${66 + energy * 22}%`);
-        el.style.setProperty("--touch-r", `${28 + energy * 20}%`);
+        // fill ramps with g (gather → brighter near-side); breathing on top.
+        el.style.setProperty("--core-r", `${44 + g * 10 + breath * 6}%`);
+        el.style.setProperty("--warm-r", `${52 + g * 40 + breath * 3}%`);
+        el.style.setProperty("--amb-r", `${66 + g * 22}%`);
+        el.style.setProperty("--touch-r", `${28 + gTrail * 20}%`);
       }
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -228,15 +226,11 @@ export function Orb({
 
   // Contact arrival — the only place haptic fires AND the only place a pulse spawns.
   const beginPress = React.useCallback(
-    (origin: { x: number; y: number }) => {
-      const t = now();
-      // continue accumulation from residual energy (no dip on quick re-press).
-      const t0 = Math.pow(clamp01(energyRef.current), 1 / 1.5); // inverse of dwell^1.5
-      dwellStartRef.current = t - t0 * DWELL_FULL_MS;
-      pressTsRef.current = t;
+    (offset: { x: number; y: number }) => {
+      pressTsRef.current = now();
       pressedRef.current = true;
-      releaseRef.current.active = false;
-      targetRef.current = origin;
+      releaseRef.current.active = false; // g continues from its current value
+      targetOffRef.current = offset;
       spawnPulse();
       if (enableHaptic) triggerOrbHaptic();
       onTouch?.();
@@ -247,21 +241,21 @@ export function Orb({
   const release = React.useCallback(() => {
     if (!pressedRef.current) return;
     pressedRef.current = false;
-    const from = energyRef.current;
+    const from = gRef.current;
     releaseRef.current = {
       active: true,
       from,
       startTs: now(),
-      settleMs: SETTLE_MIN_MS + from * (SETTLE_MAX_MS - SETTLE_MIN_MS),
+      // disperse time ∝ how far it gathered (deeper → slower scatter).
+      settleMs: RELEASE_BASE_MS + from * RELEASE_SCALE_MS,
     };
-    targetRef.current = { x: CENTER, y: REST_Y };
   }, []);
 
   const onPointerDown = React.useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       e.currentTarget.setPointerCapture?.(e.pointerId);
       const p = toLocal(e.clientX, e.clientY);
-      beginPress(clampLean(p.x, p.y));
+      beginPress(clampLeanOffset(p.x, p.y));
     },
     [beginPress, toLocal]
   );
@@ -269,9 +263,9 @@ export function Orb({
   const onPointerMove = React.useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (!pressedRef.current) return;
-      // POSITION ONLY — target updated; centers lag in rAF. Never touches energy.
+      // DIRECTION ONLY — magnitude/timing is g. Never touches g here.
       const p = toLocal(e.clientX, e.clientY);
-      targetRef.current = clampLean(p.x, p.y);
+      targetOffRef.current = clampLeanOffset(p.x, p.y);
     },
     [toLocal]
   );
@@ -281,7 +275,7 @@ export function Orb({
       if (e.key !== "Enter" && e.key !== " ") return;
       e.preventDefault();
       if (e.repeat) return;
-      beginPress({ x: CENTER, y: REST_Y });
+      beginPress({ x: 0, y: 0 });
     },
     [beginPress]
   );
@@ -294,8 +288,7 @@ export function Orb({
     [release]
   );
 
-  // Five comma-stacked radial-gradients on ONE background (no bulb): wide, low-
-  // opacity warm fields over an opaque limb-darkened base. Order top→bottom.
+  // Five comma-stacked radial-gradients on ONE background. Wide, soft fields.
   const orbBody = [
     `radial-gradient(circle at var(--touch-x,50%) var(--touch-y,46%), ${touchColor} 0%, transparent var(--touch-r,28%))`,
     `radial-gradient(circle at var(--core-x,50%) var(--core-y,46%), ${coreColor} 0%, transparent var(--core-r,44%))`,
@@ -350,7 +343,7 @@ export function Orb({
       }}
     >
       {/* Body — the sphere IS the volumetric field: ONE element, five stacked
-          radial-gradients, no child layer, no transform, no blur. The diagonal
+          radial-gradients, no child layer, no transform, no blur. Diagonal
           stays a true circle. */}
       <span
         aria-hidden
