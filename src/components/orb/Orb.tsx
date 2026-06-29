@@ -86,18 +86,20 @@ const now = (): number =>
 const DEFAULT_LX = 50;
 const DEFAULT_LY = 46; // light sits centre ~ a touch up (rest)
 const CENTER = 50;
-const MAX_DISP = 7; // ≈ radius(50) * 0.14 — only a slight inner lean, not a spotlight
+const MAX_DISP = 6; // ≈ radius(50) * 0.12 — warmth leans, not a spotlight that tracks
+const FOLLOW_LERP = 0.1; // light lags the finger (~120–220ms feel) — alive, not instant
 
 const BREATH_PERIOD_MS = 4200;
 const DWELL_FULL_MS = 1100; // press duration to reach full swell ceiling
 const SETTLE_MIN_MS = 320; // shallow tap → quick settle
 const SETTLE_MAX_MS = 1450; // deep hold → slow settle + long after-heat
 
-// Gradient stop positions (percent) — swell expands the bright inner region.
-const S1_REST = 18;
-const S2_REST = 50;
-const S1_GAIN = 8; // held → ~26
-const S2_GAIN = 15; // held → ~65
+// Gradient stop positions (percent) — a BROAD soft warm centre (not a point),
+// swell expands the bright inner region.
+const S1_REST = 30; // widened warm centre (was 18) → diffuse, not a hotspot
+const S2_REST = 60;
+const S1_GAIN = 8; // held → ~38
+const S2_GAIN = 12; // held → ~72
 
 type ReleaseState = { active: boolean; from: number; startTs: number; settleMs: number };
 
@@ -136,9 +138,11 @@ export function Orb({
   const pulseSeq = React.useRef(0);
 
   const baseTok = baseTokenFor(mode);
-  const highlight = lighten(baseTok, 40); // brightest, inner
-  const midColor = lighten(baseTok, 16);
-  const rimColor = darken(baseTok, 50); // dark closure at 100%
+  // Softer, not brighter — a warm centre, not a button. Rim lightened so the
+  // ball stops reading "heavy"; depth kept (core still clearly above rim).
+  const highlight = lighten(baseTok, 30); // gentle peak (was 40)
+  const midColor = lighten(baseTok, 13);
+  const rimColor = darken(baseTok, 40); // softer closure (was 50; no near-black)
   const pulseColor = lighten(baseTok, 42);
 
   // Single rAF loop: light-origin (--lx/--ly) + swell as gradient stops
@@ -147,10 +151,13 @@ export function Orb({
     const tick = () => {
       const t = now();
 
+      // Light lags the finger: --lx/--ly are NEVER set directly on move — only
+      // the target is updated there; here we lerp toward it (hand first, warmth
+      // trails). Dwell swell is independent of this lag (position only).
       const cur = curRef.current;
       const tgt = targetRef.current;
-      cur.x += (tgt.x - cur.x) * 0.2;
-      cur.y += (tgt.y - cur.y) * 0.2;
+      cur.x += (tgt.x - cur.x) * FOLLOW_LERP;
+      cur.y += (tgt.y - cur.y) * FOLLOW_LERP;
 
       let intensity: number;
       if (pressedRef.current) {
@@ -276,7 +283,7 @@ export function Orb({
   // 'circle' keyword is REQUIRED (ellipse would distort); stops close to dark at 100%.
   const orbBody =
     `radial-gradient(circle at var(--lx, 50%) var(--ly, 46%), ` +
-    `${highlight} 0%, ${midColor} var(--s1, 18%), ${baseTok} var(--s2, 50%), ${rimColor} 100%)`;
+    `${highlight} 0%, ${midColor} var(--s1, 30%), ${baseTok} var(--s2, 60%), ${rimColor} 100%)`;
   const pulseRing = Math.max(2, Math.round(size * 0.012));
 
   return (
@@ -329,7 +336,7 @@ export function Orb({
           borderRadius: "50%",
           overflow: "hidden",
           background: orbBody,
-          boxShadow: `inset 0 0 ${Math.round(size * 0.22)}px color-mix(in srgb, black 55%, transparent)`,
+          boxShadow: `inset 0 0 ${Math.round(size * 0.18)}px color-mix(in srgb, black 36%, transparent)`,
         }}
       />
 
