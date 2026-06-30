@@ -82,7 +82,8 @@ function organic(t: number, pa: number, pb: number, ph: number): number {
 const CENTER = 50;
 const REST_Y = 46;
 const MAX_DISP = 13; // ≈ radius(50) * 0.26 — gather displacement cap (no flashlight)
-const DRIFT_MAX = 3; // ≈ radius(50) * 0.06 — idle light drift (overpowered by gather)
+const DRIFT_MAX = 5.5; // ≈ radius(50) * 0.11 — idle light drift, visibly alive (v3.11 ↑);
+// still overpowered by gather on touch. Periods stay slow (calm, not busy).
 
 // Weighted gather: g self-accelerates (slow → fast) while held, caps at 1.
 const GATHER_K = 0.85;
@@ -203,8 +204,8 @@ export function Orb({
           el.style.setProperty(`--${layer.key}-x`, `${cx}%`);
           el.style.setProperty(`--${layer.key}-y`, `${cy}%`);
         }
-        el.style.setProperty("--core-r", `${44 + g * 10 + breath * 8}%`);
-        el.style.setProperty("--warm-r", `${52 + g * 40 + breath * 3}%`);
+        el.style.setProperty("--core-r", `${44 + g * 10 + breath * 14}%`); // v3.11: pulse amp ↑
+        el.style.setProperty("--warm-r", `${52 + g * 40 + breath * 5}%`);
         el.style.setProperty("--amb-r", `${66 + g * 22}%`);
         el.style.setProperty("--touch-r", `${28 + gTrail * 30}%`);
       }
