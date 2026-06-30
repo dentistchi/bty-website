@@ -74,16 +74,16 @@ const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
 const clamp01 = (v: number): number => Math.max(0, Math.min(1, v));
 const now = (): number =>
   typeof performance !== "undefined" ? performance.now() : 0;
-/** Two incommensurate sines → irregular, non-repeating organic signal in ~[-1,1]. */
-function organic(t: number, pa: number, pb: number, ph: number): number {
-  return (Math.sin((t / pa) * Math.PI * 2) + 0.6 * Math.sin((t / pb) * Math.PI * 2 + ph)) / 1.6;
-}
 
 const CENTER = 50;
 const REST_Y = 46;
 const MAX_DISP = 13; // ≈ radius(50) * 0.26 — gather displacement cap (no flashlight)
-const DRIFT_MAX = 5.5; // ≈ radius(50) * 0.11 — idle light drift, visibly alive (v3.11 ↑);
-// still overpowered by gather on touch. Periods stay slow (calm, not busy).
+const FLOW_MAX = 5.5; // ≈ radius(50) * 0.11 — slow circulation amplitude (trackable A→B flow)
+// Heartbeat: rare, irregular, localized swell — "something pulsed once inside".
+const HB_DUR_MS = 1500;
+const HB_MIN_MS = 6000;
+const HB_MAX_MS = 12000;
+const HB_SIZE = 11; // warm-r bump during a beat (restrained, < gather)
 
 // Weighted gather: g self-accelerates (slow → fast) while held, caps at 1.
 const GATHER_K = 0.85;
@@ -97,10 +97,10 @@ const ONSET_MS = 70;
 const A_PULSE_VISIBLE = true; // pulse visibility (v3.7) — kept
 
 const LAYERS = [
-  { key: "core", lean: 0.12, useTrail: false, drift: 0.25 },
-  { key: "warm", lean: 1.0, useTrail: false, drift: 1.0 },
-  { key: "amb", lean: 0.5, useTrail: false, drift: 0.8 },
-  { key: "touch", lean: 1.0, useTrail: true, drift: 0 }, // directional only
+  { key: "core", lean: 0.12, useTrail: false },
+  { key: "warm", lean: 1.0, useTrail: false },
+  { key: "amb", lean: 0.5, useTrail: false },
+  { key: "touch", lean: 1.0, useTrail: true },
 ] as const;
 type LayerKey = (typeof LAYERS)[number]["key"];
 
@@ -136,6 +136,8 @@ export function Orb({
   const gRef = React.useRef(0);
   const gTrailRef = React.useRef(0);
   const releaseRef = React.useRef<ReleaseState>({ active: false, from: 0, startTs: 0, settleMs: 0 });
+  const hbStartRef = React.useRef(-1); // heartbeat: active swell start (-1 = none)
+  const hbNextRef = React.useRef(0); // heartbeat: scheduled next-beat timestamp
 
   const [pulses, setPulses] = React.useState<number[]>([]);
   const pulseSeq = React.useRef(0);
@@ -186,26 +188,50 @@ export function Orb({
       // v3.10 — LIFE lives in the light, not the boundary. Irregular (multi-sine)
       // drift of the inner light + slow irregular brightness pulse. At idle this is
       // the only motion; on touch the gather overpowers the drift.
-      const driftAx = organic(t, 7300, 11900, 0.5) * DRIFT_MAX;
-      const driftAy = organic(t, 9700, 13300, 2.2) * DRIFT_MAX;
-      const driftBx = organic(t, 8900, 15100, 1.3) * DRIFT_MAX;
-      const driftBy = organic(t, 6700, 12700, 3.0) * DRIFT_MAX;
-      const breath = organic(t, 4800, 7700, 1.1); // slow irregular light pulse
+      // v3.12 — directional CIRCULATION: each layer's center travels a slow Lissajous
+      // path (incommensurate periods → non-repeating, trackable A→B). Core ~fixed
+      // (centre of mass); Warm/Ambient circulate. Gather (on touch) adds on top.
+      const s = (p: number, ph: number): number => Math.sin((t / p) * Math.PI * 2 + ph);
+      const flowX: Record<LayerKey, number> = {
+        core: FLOW_MAX * 0.15 * s(19000, 0),
+        warm: FLOW_MAX * s(13000, 0),
+        amb: FLOW_MAX * s(15000, 2.0),
+        touch: 0,
+      };
+      const flowY: Record<LayerKey, number> = {
+        core: FLOW_MAX * 0.15 * s(23000, 1.0),
+        warm: FLOW_MAX * s(17000, 1.3),
+        amb: FLOW_MAX * s(11000, 0.5),
+        touch: 0,
+      };
+      const breath = s(6300, 1.1); // uniform pulse demoted to auxiliary
+
+      // heartbeat: rare, irregular, localized swell — one beat then schedule the next.
+      if (hbNextRef.current === 0) hbNextRef.current = t + 4000;
+      if (hbStartRef.current < 0 && t >= hbNextRef.current) hbStartRef.current = t;
+      let hb = 0;
+      if (hbStartRef.current >= 0) {
+        const e = t - hbStartRef.current;
+        if (e >= HB_DUR_MS) {
+          hbStartRef.current = -1;
+          hbNextRef.current = t + HB_MIN_MS + Math.random() * (HB_MAX_MS - HB_MIN_MS);
+        } else {
+          hb = Math.sin((Math.PI * e) / HB_DUR_MS); // 0→1→0 swell
+        }
+      }
 
       const el = containerRef.current;
       if (el) {
         for (const layer of LAYERS) {
           const gg = layer.useTrail ? gTrail : g;
-          // warm uses driftA, ambient uses driftB, core a small share of driftA.
-          const dx = layer.key === "amb" ? driftBx : driftAx;
-          const dy = layer.key === "amb" ? driftBy : driftAy;
-          const cx = CENTER + off.x * layer.lean * gg + dx * layer.drift;
-          const cy = REST_Y + off.y * layer.lean * gg + dy * layer.drift;
+          const cx = CENTER + flowX[layer.key] + off.x * layer.lean * gg;
+          const cy = REST_Y + flowY[layer.key] + off.y * layer.lean * gg;
           el.style.setProperty(`--${layer.key}-x`, `${cx}%`);
           el.style.setProperty(`--${layer.key}-y`, `${cy}%`);
         }
-        el.style.setProperty("--core-r", `${44 + g * 10 + breath * 14}%`); // v3.11: pulse amp ↑
-        el.style.setProperty("--warm-r", `${52 + g * 40 + breath * 5}%`);
+        el.style.setProperty("--core-r", `${44 + g * 10 + breath * 5}%`);
+        // heartbeat blooms the warm mass briefly at its current (circulating) spot.
+        el.style.setProperty("--warm-r", `${52 + g * 40 + breath * 3 + hb * HB_SIZE}%`);
         el.style.setProperty("--amb-r", `${66 + g * 22}%`);
         el.style.setProperty("--touch-r", `${28 + gTrail * 30}%`);
       }
