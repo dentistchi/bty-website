@@ -143,12 +143,13 @@ export function Orb({
   const pulseSeq = React.useRef(0);
 
   const baseTok = baseTokenFor(mode);
-  const coreColor = alpha(lighten(baseTok, 18), 46);
+  const coreColor = alpha(lighten(baseTok, 18), 52); // v3.13: core slightly denser (wide kept)
   const warmColor = alpha(lighten(baseTok, 16), 74);
   const ambColor = alpha(lighten(baseTok, 7), 38);
   const touchColor = alpha(lighten(baseTok, 24), 66);
   const baseCenter = lighten(baseTok, 8);
-  const rimColor = darken(baseTok, 38);
+  const rimMid = darken(baseTok, 26); // v3.13: intermediate dark in the outer band
+  const rimColor = darken(baseTok, 55); // v3.13: deeper edge (was 38) → volumetric, filled
   const pulseColor = lighten(baseTok, 40);
 
   React.useEffect(() => {
@@ -323,7 +324,7 @@ export function Orb({
     `radial-gradient(circle at var(--core-x,50%) var(--core-y,46%), ${coreColor} 0%, transparent var(--core-r,44%))`,
     `radial-gradient(circle at var(--warm-x,50%) var(--warm-y,46%), ${warmColor} 0%, transparent var(--warm-r,52%))`,
     `radial-gradient(circle at var(--amb-x,50%) var(--amb-y,46%), ${ambColor} 0%, transparent var(--amb-r,66%))`,
-    `radial-gradient(circle at 50% 50%, ${baseCenter} 0%, ${baseTok} 58%, ${rimColor} 100%)`,
+    `radial-gradient(circle at 50% 50%, ${baseCenter} 0%, ${baseTok} 50%, ${rimMid} 78%, ${rimColor} 100%)`,
   ].join(", ");
   const pulseRing = Math.max(2, Math.round(size * (A_PULSE_VISIBLE ? 0.018 : 0.012)));
   const pulsePeak = A_PULSE_VISIBLE ? 0.3 : 0.22;
@@ -382,7 +383,8 @@ export function Orb({
           borderRadius: "50%",
           overflow: "hidden",
           background: orbBody,
-          boxShadow: `inset 0 0 ${Math.round(size * 0.16)}px color-mix(in srgb, black 32%, transparent)`,
+          // v3.13: deeper inset limb-darkening ring → rounded, filled volume (not flat).
+          boxShadow: `inset 0 0 ${Math.round(size * 0.2)}px color-mix(in srgb, black 46%, transparent)`,
         }}
       />
 
