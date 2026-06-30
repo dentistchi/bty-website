@@ -1,3 +1,24 @@
+## 2026-06-29 — P0 Orb Sensory PASS · Sensory Gate 상설화
+PASS: P0 Orb = BTY 첫 Sensory Gate 통과 표면. (staging /dev/orb, v3.13)
+  Commander 육안 5문: 1 살아있음 ✅ · 2 두번터치 ✅ · 3 맥박 ✅ · 4 속찬불씨 ✅ · 5 햅틱=앱단계 보류. ★PASS "0.5초 뒤 손이 간다" ✅.
+  ★독립 검증: 첫 사용자(비개발자) 첫인상 = "눌러보고 싶다" — 개발자 친숙 가능성 해소.
+Shipped (inner-main HEAD 48c46991 / staging Version b1d5d7eb):
+  · color tokens: orb-morning #BD8348 / touch #E3A25A / evening #A6542A / chronicle·ivory #ECE3CF / spine-ritual(ember) #A6542A (NAMING LAW=감정기반명만)
+  · Orb src/components/orb/Orb.tsx + /dev/orb sensory preview (frontend-only, auth-free, DB 0)
+  · 배타성: triggerOrbHaptic() 단일 vibrate + docs/ORB_HAPTIC_EXCLUSIVITY_LOCK.md
+Orb 감각 설계 결론(여정 산물):
+  · click 문법 → pointer(접촉) 문법
+  · Surface Lighting → Volumetric Lighting (빛=자식 레이어 X, 구 자체 단일 background)
+  · 빛 모임 = 중량감 있는 가속(등속 X) + hold 시 환해짐 + ceiling 정착 + 서서히 흩어짐
+  · press-give(움찔)=실험 후 제거 — 평면 원에선 미세=무의미/가시=버튼; 생명은 빛으로 증명
+  · 호흡 = 외곽 scale X → 내부 빛 방향성 흐름+heartbeat (육안 식별 약하나 무의식 층 생명감)
+  · 체적 = rim darkening ↔ core 농밀 대비 (탁구공 회피)
+색 PARK: brand-navy/discovery-gold = Orb 미소비 → spine 토큰 미생성(No Reader→No Projection). navy #1B2A47(intent) vs repo #0B1F3A · gold canonical #C9A66B — reconcile = 표면 생길 때.
+GATE 상설화: Sensory Gate = 4번째 관문(Architecture/Reality/Implementation 다음). "눈으로 보기 전에 몸이 먼저 기억하는가?" 통과 못 하면 구현 완벽해도 BTY답지 않음. PASS 기준=동작확인 아니라 "0.5초 뒤 또 만지고 싶은가". 신규 BTY 표면 전부 통과 필수.
+배포 절차 보강: slow-uplink preload(.cjs)는 세션마다 scratchpad 소거 → 매 세션 재생성 필요.
+CARRY: #2/★ "개발자 친숙" 우려는 첫 사용자 검증으로 1차 해소 — 향후 다수 사용자로 재확인 권장.
+NEXT: STEP 1C(userDayKey 설계) 검수 → STEP 1A live-schema GO → tz/util 구현 → G2 → D2.
+
 **[2026-06-28] Arena Experience Canon v1 — PROMOTED PROPOSED→LOCKED (authority granted).** Applied `BTY_CANON_BOUNDARY_REVIEW_RULE.md` (c2f595f) Boundary Conditions to `BTY_ARENA_EXPERIENCE_CANON.md`. All five MET: **C0** Class = Experience Canon (identified pre-review) · **C1** Provenance = R1/R2 measurement, no reconstruction · **C2** Layer = Measured Product Canon, flat placement, Human_View excluded by provenance not name · **C3** all articles §1–Appendix A ratified article-by-article · **C4** Governance Compatibility = Compatible (§F NOT FOUND by measurement; Incubator Boundary Review is Founder-layer, inapplicable; no conflict). Conditions were already satisfied by the in-session review — applying the rule confirmed, did not re-review. Promotion-only commit enforced by Promotion Invariance Check: Status PROPOSED→LOCKED, Authority PENDING_BOUNDARY_REVIEW→Commander; canon body, §0 Provenance, and Appendix A byte-identical (verified 2-line diff + empty ignore-Status/Authority diff). Authority changed the document's state, not its content — Review ≠ Rewrite proven at code level. Single outer commit, no push.
 CARRY-FORWARD:
 · **Push decision** — placement 9f1aedb + criteria c2f595f + this promotion hold local, ahead 3, not pushed. Awaiting Commander push call.
