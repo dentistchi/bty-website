@@ -1,11 +1,11 @@
 # BTY_ORB_ENTRY_CONTRACT_v1
 
-**Status:** DRAFT — Commander-authored · NOT repository authority until committed
+**Status:** LOCKED v1 — Commander-approved · COMMITTED @ 1d6c681 (authority live; runtime gesture-verify = track CLOSE, separate · PENDING)
 **Track:** Product A spine · Arena Day-0 entry
 **Authored by:** dispatch chat (NON-MUTATING). Repo write/commit/push = Claude Code only, after explicit Commander "go".
 **Implements:** inner 6dec1cc2 (implementation provenance)
 
-> 이 문서는 검토용 초안이다. lock·commit·push 전까지 권위 없음 (phantom lock = footgun).
+> Phantom-lock 원칙(일반 규칙): 초안은 lock·commit·push 전까지 권위 없음 (phantom lock = footgun). — 본 문서는 committed(@1d6c681)되어 권위 발효; 이 줄은 원칙 서술이지 현재 상태가 아니다.
 
 **Provenance separation:** 측정 = Claude Code (read-only) · 검증 = dispatch arbiter · 의미 본문 = Commander 저작.
 **Create-only:** 이 파일은 v1. 정정은 새 버전 파일로만(create-only) — locked prior byte 절대 수정 금지.
@@ -84,4 +84,4 @@ Orb는 장식이 아니다. BTY의 **첫 의식(ritual)**이다. 하루는 버�
 ## §4 · AUTHORITY (권위)
 
 - 권위 원천 = **Commander 의미 저작 (§1).** inner `6dec1cc2` = **implementation provenance**일 뿐, 권위 원천 아님.
-- 이 문서는 commit 전까지 DRAFT(권위 없음). lock = Commander "go" → Claude Code가 outer `docs/` write→commit→push.
+- 이 문서는 committed(@1d6c681) → LOCKED, 권위 발효. (phantom-lock = 미commit 초안에 적용되는 일반 원칙, ↑blockquote.)
