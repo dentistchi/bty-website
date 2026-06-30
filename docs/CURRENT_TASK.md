@@ -1,3 +1,26 @@
+## 2026-06-29 — Orb Begin Today · hold-to-commit Entry (Contract v1)
+PASS: Orb가 장식이 아니라 BTY 첫 의식이 됨 — 만짐이 아니라 머무름이 하루를 연다.
+  계약: Touch=attention · Hold=intention · Commit=point of no return.
+  Release before commit = nothing begun · Release after = day already open.
+Shipped (inner-main HEAD 6dec1cc2 / staging Version 미배포):
+  · Orb.tsx: onCommit? + COMMIT_G=0.97 (intention-weight ≈2.4s) + 순수 shouldCommit() + committedRef latch (rising-edge, beginPress reset)
+  · commit detection = clamp 직후 g 관찰만 → gather/settle 곡선 byte-identical, Sensory 5/5 불회귀
+  · today/page.client.tsx: gold <Link> → <Orb mode="morning" onCommit>, navigatedRef navigate-once, beginHref/useArenaEntryResolution 재사용, router.prefetch
+  · Day-0 one-time hint "꾹 눌러 시작"/"Hold to begin" (localStorage btyOrbHintSeen:v1, day-key 아님, history 불암시, today-side only)
+  · lib/i18n.ts: orbHint KO/EN 추가
+측정 (Reality > Memory):
+  · g 동역학 = positive-feedback exponential, asymptote 아님 — hard clamp로 g==1 SATURATE @ ~2.4s hold
+  · commit = g-threshold(0.97), NOT hold-timer (frame-drop 하 timer는 잘못된 시각에 fire)
+검증:
+  · jsdom 7/7 PASS (shouldCommit 5 latch + handleCommit navigate-once), tsc --noEmit 0
+  · double-fire 이중 폐쇄: committedRef(Orb, per-press) + navigatedRef(today)
+  · gold token 무손실: goldCta=inline literal 단일 consumer, 제거 후 dangling 0 / bg-bty-gold·text-bty-navy 살아있음
+PENDING — runtime-verify (트랙 미CLOSE):
+  · jsdom은 latch만 증명. 제스처 실측(0.97 fire가 full-gather 순간인가 · hint 노출→소멸 · async gap point-of-no-return 가시성) = OAuth-gated → staging deploy 수동검증 유일 경로. 미배포.
+PARK / carry-forward:
+  · streak day-model divergence: useArenaSession.ts:412 device-local-midnight vs Train 05:00 (D1 LOCK 위반) → STEP 1C 하류, day-key util 없이 수정 불가
+  · BTY Orb Entry Contract v1 = Commander-authored Draft → docs/ 승격 PENDING (별도 commit)
+
 ## 2026-06-29 — P0 Orb Sensory PASS · Sensory Gate 상설화
 PASS: P0 Orb = BTY 첫 Sensory Gate 통과 표면. (staging /dev/orb, v3.13)
   Commander 육안 5문: 1 살아있음 ✅ · 2 두번터치 ✅ · 3 맥박 ✅ · 4 속찬불씨 ✅ · 5 햅틱=앱단계 보류. ★PASS "0.5초 뒤 손이 간다" ✅.
