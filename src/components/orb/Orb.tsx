@@ -39,6 +39,13 @@ export interface OrbProps {
   mode: OrbMode;
   /** Fired on a completed contact arrival (press / keyboard activate). */
   onTouch?: () => void;
+  /**
+   * Fired ONCE when the gather saturates past {@link COMMIT_G} during a single
+   * press (hold-to-commit). Observes the existing `g` only — does NOT alter the
+   * gather/settle curve and adds no haptic. Release before commit never fires;
+   * held past commit does not re-fire (latched per press).
+   */
+  onCommit?: () => void;
   /** Pixel diameter of the orb. Defaults to 200. */
   size?: number;
   /**
@@ -48,6 +55,21 @@ export interface OrbProps {
   enableHaptic?: boolean;
   /** Accessible label for the touch target. */
   ariaLabel?: string;
+}
+
+// Hold-to-commit threshold on the gather value `g`. The gather self-accelerates
+// (exponential) and hard-clamps to 1.0 at ~2.4s of hold; 0.97 fires within ~1
+// frame of full saturation (Commander-locked intention-weight ≈ 2.4s hold).
+// OBSERVED only — this does NOT change the gather/settle animation curve.
+const COMMIT_G = 0.97;
+
+/**
+ * Pure commit decision — rising-edge: true only when the gather has saturated
+ * past {@link COMMIT_G} and this press has not yet committed. Extracted for unit
+ * test; observes state, never mutates the curve.
+ */
+export function shouldCommit(g: number, committed: boolean, commitG: number = COMMIT_G): boolean {
+  return !committed && g >= commitG;
 }
 
 /** The sole sanctioned haptic call site in the entire app (#배타성 LOCK). */
@@ -121,11 +143,22 @@ function clampLeanOffset(x: number, y: number): { x: number; y: number } {
 export function Orb({
   mode,
   onTouch,
+  onCommit,
   size = 200,
   enableHaptic = true,
   ariaLabel,
 }: OrbProps): React.ReactElement {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Latest-ref for onCommit — the rAF loop below mounts once ([] deps) and would
+  // otherwise close over a stale handler. Synced every render.
+  const onCommitRef = React.useRef(onCommit);
+  React.useEffect(() => {
+    onCommitRef.current = onCommit;
+  });
+  // Once-per-press commit latch (reset in beginPress). Held-past-commit keeps g
+  // pinned at 1.0 across many frames → latch guarantees a single fire.
+  const committedRef = React.useRef(false);
   const targetOffRef = React.useRef({ x: 0, y: 0 });
   const dispOffRef = React.useRef({ x: 0, y: 0 });
   const rafRef = React.useRef<number | null>(null);
@@ -169,6 +202,11 @@ export function Orb({
         if (t - pressTsRef.current >= ONSET_MS) {
           g += dt * GATHER_K * (GATHER_BASE + g);
           if (g > 1) g = 1;
+          // Commit detection — OBSERVES g only (no curve mutation, no haptic).
+          if (shouldCommit(g, committedRef.current, COMMIT_G)) {
+            committedRef.current = true;
+            onCommitRef.current?.();
+          }
         }
       } else if (releaseRef.current.active) {
         const r = releaseRef.current;
@@ -262,6 +300,7 @@ export function Orb({
     (offset: { x: number; y: number }) => {
       pressTsRef.current = now();
       pressedRef.current = true;
+      committedRef.current = false; // fresh press — re-arm the commit latch
       releaseRef.current.active = false;
       targetOffRef.current = offset;
       spawnPulse();

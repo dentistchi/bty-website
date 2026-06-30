@@ -1,10 +1,10 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import ScreenShell from "@/components/bty/layout/ScreenShell";
 import { InfoCard } from "@/components/bty/ui/InfoCard";
+import { Orb } from "@/components/orb/Orb";
 import { CardSkeleton, AvatarComposite, UserAvatar } from "@/components/bty-arena";
 import { arenaFetch } from "@/lib/http/arenaFetch";
 import { supabase } from "@/lib/supabase";
@@ -48,7 +48,16 @@ export default function TodayHomeClient() {
   const locale = (typeof params?.locale === "string" ? params.locale : "en") as string;
   const loc = (locale === "ko" ? "ko" : "en") as Locale;
   const t = getMessages(loc).today;
-  const { contract: arenaEntry } = useArenaEntryResolution(loc);
+  const router = useRouter();
+  const { contract: arenaEntry, resolving } = useArenaEntryResolution(loc);
+
+  // D5 Orb entry — navigate-once guard (commit can latch once per press; this
+  // makes the route change strictly single across any re-press while mounted).
+  const navigatedRef = React.useRef(false);
+  // One-time Day-0 hold-to-begin hint. localStorage BOOLEAN flag (not a day-key,
+  // no clock read, no history implied) — shown until the first successful commit.
+  const ORB_HINT_KEY = "btyOrbHintSeen:v1";
+  const [showHint, setShowHint] = React.useState(false);
 
   const [loading, setLoading] = React.useState(true);
   const [core, setCore] = React.useState<CoreXpRes | null>(null);
@@ -80,6 +89,15 @@ export default function TodayHomeClient() {
         setDisplayName(typeof n === "string" && n.trim() !== "" ? n.trim() : null);
       })
       .catch(() => {});
+  }, []);
+
+  // Day-0 hint visibility — read the one-time flag on mount (client-only).
+  React.useEffect(() => {
+    try {
+      setShowHint(localStorage.getItem(ORB_HINT_KEY) == null);
+    } catch {
+      setShowHint(false);
+    }
   }, []);
 
   const load = React.useCallback(async () => {
@@ -135,10 +153,26 @@ export default function TodayHomeClient() {
 
   const greeting = displayName ? t.greetingNamed.replace("{name}", displayName) : t.greetingPlain;
   const beginHref = pending ? `/${locale}/my-page?arena_contract=resolve` : arenaEntry.href;
-  const goldCta =
-    "inline-flex w-full items-center justify-center rounded-2xl bg-bty-gold px-4 py-3.5 " +
-    "text-center text-sm font-semibold text-bty-navy outline-none transition-opacity " +
-    "hover:opacity-90 focus-visible:ring-2 focus-visible:ring-bty-gold focus-visible:ring-offset-2";
+
+  // Commit handler — fires at the fully-gathered Orb state. Navigate-once guard;
+  // clears the Day-0 hint permanently on first successful begin.
+  const handleCommit = React.useCallback(() => {
+    if (navigatedRef.current) return;
+    navigatedRef.current = true;
+    try {
+      localStorage.setItem(ORB_HINT_KEY, "1");
+    } catch {
+      /* private mode — hint may re-show; harmless */
+    }
+    setShowHint(false);
+    router.push(beginHref);
+  }, [router, beginHref]);
+
+  // Collapse commit→route latency: prefetch the resolved destination once entry
+  // resolution settles, so the commit push is near-instant.
+  React.useEffect(() => {
+    if (!resolving) router.prefetch(beginHref);
+  }, [resolving, beginHref, router]);
 
   return (
     <ScreenShell
@@ -199,10 +233,15 @@ export default function TodayHomeClient() {
               ) : (
                 <p className="text-sm text-white/70">{t.choiceWaiting}</p>
               )}
-              <div className="mt-3">
-                <Link href={beginHref} className={goldCta}>
-                  {t.beginCta}
-                </Link>
+              {/* Begin Today — hold-to-commit Orb (D5). Press = haptic + gather
+                  (no nav); navigation fires only at the fully-gathered state. */}
+              <div className="mt-4 flex flex-col items-center gap-3">
+                <Orb mode="morning" onCommit={handleCommit} ariaLabel={t.beginCta} />
+                {showHint ? (
+                  <p role="note" className="text-xs text-white/50">
+                    {t.orbHint}
+                  </p>
+                ) : null}
               </div>
             </InfoCard>
 

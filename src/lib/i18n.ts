@@ -54,6 +54,8 @@ export type Messages = {
     behaviorTitle: string;
     behaviorWaiting: string;
     growthTitle: string;
+    /** D5 Orb entry — one-time Day-0 hold-to-begin hint (today-side, localStorage-gated). */
+    orbHint: string;
   };
   /** Lane 2: team-membership submission form + S2 arena-entry gate. KO values are TODO_KO placeholders (translation fast-follow). */
   membership: {
@@ -2127,6 +2129,7 @@ const ko: Messages = {
     behaviorTitle: "오늘의 행동",
     behaviorWaiting: "기다리는 중",
     growthTitle: "성장",
+    orbHint: "꾹 눌러 시작",
   },
   // KO membership copy: EN fallback until the KO translation lane lands.
   // Convention: untranslated KO == EN verbatim; track remaining work via ko-vs-en git diff.
@@ -3996,6 +3999,7 @@ const en: Messages = {
     behaviorTitle: "Today's action",
     behaviorWaiting: "Waiting",
     growthTitle: "Growth",
+    orbHint: "Hold to begin",
   },
   membership: {
     form: {
