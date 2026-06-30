@@ -19,7 +19,7 @@ PENDING — runtime-verify (트랙 미CLOSE):
   · jsdom은 latch만 증명. 제스처 실측(0.97 fire가 full-gather 순간인가 · hint 노출→소멸 · async gap point-of-no-return 가시성) = OAuth-gated → staging deploy 수동검증 유일 경로. 미배포.
 PARK / carry-forward:
   · streak day-model divergence: useArenaSession.ts:412 device-local-midnight vs Train 05:00 (D1 LOCK 위반) → STEP 1C 하류, day-key util 없이 수정 불가
-  · BTY Orb Entry Contract v1 = Commander-authored Draft → docs/ 승격 PENDING (별도 commit)
+  · BTY Orb Entry Contract v1 = docs/ 승격 DONE → docs/BTY_ORB_ENTRY_CONTRACT_v1.md (Style B header, §1 Meaning Canon / §2 Implementation Reference 분리, Status DRAFT · lock PENDING runtime-verify, create-only v1)
 
 ## 2026-06-29 — P0 Orb Sensory PASS · Sensory Gate 상설화
 PASS: P0 Orb = BTY 첫 Sensory Gate 통과 표면. (staging /dev/orb, v3.13)
