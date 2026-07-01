@@ -94,6 +94,12 @@ function safeOrigin(): string {
   return window.location.origin;
 }
 
+/** Lowercase hex of a byte array (SHA-256 nonce digest; NOT base64). */
+const hexFromBytes = (b: Uint8Array) =>
+  Array.from(b)
+    .map((x) => x.toString(16).padStart(2, "0"))
+    .join("");
+
 /**
  * Supabase redirects here after IdP → `auth/v1/callback` with `?code=` or implicit hash tokens.
  * Use the locale **page** (`/[locale]/auth/callback`) so the browser client can exchange the code / read hashes
@@ -101,12 +107,26 @@ function safeOrigin(): string {
  */
 function buildOAuthRedirectTo(locale: LoginCardLocale, nextPath: string): string {
   const next = encodeURIComponent(nextPath);
-  // Native shell: return through the custom scheme so the system browser hands
-  // the deep link back to the app (the WebView cannot complete Google OAuth).
-  if (isNative()) return `btyarena://auth/callback?next=${next}`;
   const origin = safeOrigin();
   return `${origin}/${locale}/auth/callback?next=${next}`;
 }
+
+/**
+ * Native Google Sign-In plugin (@capgo/capacitor-social-login) injected into the
+ * hosted WebView by the native shell. Typed locally so the inner web bundle keeps
+ * NO `@capacitor/*` import (same rule as isNative.ts's bridge shim).
+ */
+type SocialLoginPlugin = {
+  initialize: (options: {
+    google: { iOSClientId: string; mode: "online" | "offline" };
+  }) => Promise<void>;
+  login: (options: {
+    provider: "google";
+    options: { scopes?: string[]; nonce?: string; forcePrompt?: boolean };
+  }) => Promise<{
+    result: { idToken: string | null };
+  }>;
+};
 
 /** Logs full provider message; UI shows short copy only (release safety). */
 function userFacingOauthOrOtpError(raw: string | undefined, t: { errorGeneric: string }): string {
@@ -178,6 +198,76 @@ export default function LoginCard({ locale, nextPath, initialError }: LoginCardP
       setOauthProvider(provider);
       try {
         const supabase = getSupabase();
+        // Native path (Google only): native Google Sign-In → idToken →
+        // signInWithIdToken → reuse the existing POST /api/auth/session. No system
+        // browser, no btyarena:// round-trip, no PKCE verifier / stash / bridge / latch.
+        if (isNative() && provider === "google") {
+          const social = (
+            window.Capacitor?.Plugins as
+              | { SocialLogin?: SocialLoginPlugin }
+              | undefined
+          )?.SocialLogin;
+          if (!social) {
+            setPhase("error");
+            setError(userFacingOauthOrOtpError("native-google-unavailable", t));
+            setOauthProvider(null);
+            return;
+          }
+          await social.initialize({
+            google: {
+              iOSClientId:
+                "1012329580428-fp0r4m3kt06jtojog2f8qmtnvluhkmoe.apps.googleusercontent.com",
+              mode: "online",
+            },
+          });
+          // Nonce symmetry: generate rawNonce ONCE, send its SHA-256 hex DIGEST to
+          // Google (embedded as id_token.nonce), and the RAW value to Supabase, which
+          // re-hashes and compares. getRandomValues (NOT randomUUID — needs iOS 15.4;
+          // target is 15.0). forcePrompt forces a fresh sign-in so OUR nonce is used
+          // (not a cached/restored token that would ignore it).
+          const rawNonce = hexFromBytes(crypto.getRandomValues(new Uint8Array(32)));
+          const digestBuf = await crypto.subtle.digest(
+            "SHA-256",
+            new TextEncoder().encode(rawNonce)
+          );
+          const nonceDigest = hexFromBytes(new Uint8Array(digestBuf));
+          const res = await social.login({
+            provider: "google",
+            options: { nonce: nonceDigest, forcePrompt: true },
+          });
+          const idToken = res.result.idToken;
+          if (!idToken) {
+            setPhase("error");
+            setError(userFacingOauthOrOtpError("native-google-no-idtoken", t));
+            setOauthProvider(null);
+            return;
+          }
+          const { data: idData, error: idError } = await supabase.auth.signInWithIdToken({
+            provider: "google",
+            token: idToken,
+            nonce: rawNonce,
+          });
+          if (idError || !idData.session) {
+            setPhase("error");
+            setError(userFacingOauthOrOtpError(idError?.message, t));
+            setOauthProvider(null);
+            return;
+          }
+          // Reuse the server-session POST (mirrors the callback page's postServerSession):
+          // the WebView JS-store session is invisible to the server gate, so POST the
+          // tokens → server Set-Cookies the httpOnly session into WKHTTPCookieStore
+          // before /start's gate fires.
+          await fetch("/api/auth/session", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              access_token: idData.session.access_token,
+              refresh_token: idData.session.refresh_token,
+            }),
+          });
+          window.location.assign(nextPath);
+          return;
+        }
         const redirectTo = buildOAuthRedirectTo(locale, nextPath);
         const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
           provider,
@@ -196,12 +286,6 @@ export default function LoginCard({ locale, nextPath, initialError }: LoginCardP
           setError(userFacingOauthOrOtpError(oauthError.message, t));
           setOauthProvider(null);
           return;
-        }
-        // Native-only: the client init above minted the PKCE verifier cookie in
-        // the WebView; now hand the authorize URL to the system browser via the
-        // shell bridge. No-op on web (isNative() false, data.url unused).
-        if (isNative() && data?.url) {
-          await window.Capacitor?.Plugins?.Browser?.open({ url: data.url });
         }
       } catch (e) {
         setPhase("error");
