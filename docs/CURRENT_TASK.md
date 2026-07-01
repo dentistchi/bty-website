@@ -1,3 +1,6 @@
+**2026-07-01 — First Orb haptic alive-gate VERIFIED.**  
+A-track reached its first real alive-gate PASS on device: native Google sign-in → signInWithIdToken → session → /start with no bounce → Orb → Haptics.impact ×3. This was the first morning the system did not merely load; the body felt it. Inner-main locked the verified path in four atomic commits on top of 6dec1cc2: b6a5f46b auth native Google sign-in, 5992c569 shell start-to-Orb route, 6a6c14eb native haptic impact, 8df7e65c obsolete auth bridge removal. Held/excluded residue remains intentional: auth callback held, cookie-utils deferred to Step5 residency cleanup, docs/video excluded. Inner and outer remain unpushed until this ledger lands, then push separately.
+
 ## 2026-06-29 — Orb Begin Today · hold-to-commit Entry (Contract v1)
 PASS: Orb가 장식이 아니라 BTY 첫 의식이 됨 — 만짐이 아니라 머무름이 하루를 연다.
   계약: Touch=attention · Hold=intention · Commit=point of no return.
