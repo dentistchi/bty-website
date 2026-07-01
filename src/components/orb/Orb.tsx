@@ -31,6 +31,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
+import { isNative } from "@/lib/native/isNative";
 
 export type OrbMode = "morning" | "evening";
 
@@ -75,6 +76,13 @@ export function shouldCommit(g: number, committed: boolean, commitG: number = CO
 /** The sole sanctioned haptic call site in the entire app (#배타성 LOCK). */
 function triggerOrbHaptic(): void {
   if (typeof navigator === "undefined") return;
+  // Native (iOS WKWebView): web Vibration API is dead → route the morning pulse
+  // through Capacitor Haptics impact(Light). Still the SOLE haptic site (#배타성
+  // LOCK) — this is a platform branch, not a second call site.
+  if (isNative()) {
+    window.Capacitor?.Plugins?.Haptics?.impact?.({ style: "LIGHT" });
+    return;
+  }
   if (typeof navigator.vibrate !== "function") return;
   navigator.vibrate(18);
 }

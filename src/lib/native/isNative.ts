@@ -26,6 +26,8 @@ type CapacitorBridge = {
         listener: (event: { url: string }) => void
       ) => Promise<{ remove: () => void }>;
     };
+    /** Native iOS impact feedback (morning Orb pulse). `style` = ImpactStyle wire value ("LIGHT"). */
+    Haptics?: { impact?: (o: { style: string }) => Promise<void> };
   };
 };
 
