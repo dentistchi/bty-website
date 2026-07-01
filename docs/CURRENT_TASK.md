@@ -1,3 +1,19 @@
+**2026-07-01 — Alive Gate PASS / Concern Disposition / Rule Locks**
+
+**Alive Gate: PASS.** Physical device, morning Orb touch, impact(Light) felt. Native haptic branch reality-verified. Orb Ledger PENDING → resolved.
+
+**Measured HEAD (inner-main): 8df7e65c.** Chain b6a5f46b(C1) → 5992c569(C2) → 6a6c14eb(C3) → 8df7e65c(C4) on base 6dec1cc2. Memory of "5 uncommitted concerns" corrected by measurement: 3 landed via C1–C4, 1 reverted, 2 remained.
+
+**Concern disposition (Commander verdict):**
+- auth/callback/page.client.tsx → HOLD. Unverified path (alive-gate flow bypasses callback). Promotion condition defined: native callback reachability + Supabase redirect allow-list check (read-only). Promotion dispatch deferred by decision.
+- docs/video/* → removed from inner code scope. NOT deleted. Disposition remains OPEN on separate docs track.
+
+**Operational rule locks (canon):**
+- terminology gate = net-increase-vs-HEAD; baseline counts descriptive only
+- whole-module orphan = candidate only; observation ≠ proof
+
+**No code mutation. No false record.**
+
 **2026-07-01 — First Orb haptic alive-gate VERIFIED.**  
 A-track reached its first real alive-gate PASS on device: native Google sign-in → signInWithIdToken → session → /start with no bounce → Orb → Haptics.impact ×3. This was the first morning the system did not merely load; the body felt it. Inner-main locked the verified path in four atomic commits on top of 6dec1cc2: b6a5f46b auth native Google sign-in, 5992c569 shell start-to-Orb route, 6a6c14eb native haptic impact, 8df7e65c obsolete auth bridge removal. Held/excluded residue remains intentional: auth callback held, cookie-utils deferred to Step5 residency cleanup, docs/video excluded. Inner and outer remain unpushed until this ledger lands, then push separately.
 
