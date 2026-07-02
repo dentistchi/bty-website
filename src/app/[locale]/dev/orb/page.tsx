@@ -1,38 +1,37 @@
 "use client";
 
 /**
- * /[locale]/dev/orb — P0 Orb Sensory Test (dev-only · frontend-only · auth-free).
+ * /[locale]/dev/orb — Orb Living Presence · Phase A review surface
+ * (dev-only · frontend-only · auth-free).
  *
- * Screen = Orb only. NO captions, labels, hex, or colour names rendered
- * (Never explain emotion — the point is to touch, not to read). Zero features:
- * no scenario, no record, no nav, no DB. Two touchable Orbs, nothing else.
+ * Renders the DEV-ONLY `OrbLiving` (idle living presence, Canvas 2D — Phase A of
+ * docs/ORB_LIVING_PRESENCE_SPEC.md, canon a9b51b8). It does NOT render the
+ * production `Orb.tsx` (shared by /start and /today), which stays untouched.
  *
- * Rendered as a fixed full-screen overlay so it covers the global locale header
- * without editing that shared component. Not mounted in the ritual home (G3).
+ * Screen = Orb only. NO captions, labels, hex, or colour names (never explain
+ * emotion — the point is to feel it, not to read it). Fixed full-screen overlay
+ * so it covers the global locale header without editing that shared component.
  */
 
 import React from "react";
-import { Orb } from "@/components/orb/Orb";
+import OrbLiving from "@/components/orb/OrbLiving";
 
 export default function DevOrbSensoryPage(): React.ReactElement {
   return (
     <div
-      data-testid="dev-orb-sensory-v1"
+      data-testid="dev-orb-living-a"
       style={{
         position: "fixed",
         inset: 0,
         zIndex: 9999,
         background: "#0E1116",
         display: "flex",
-        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: "14vh",
         overscrollBehavior: "none",
       }}
     >
-      <Orb mode="morning" enableHaptic />
-      <Orb mode="evening" enableHaptic />
+      <OrbLiving />
     </div>
   );
 }
