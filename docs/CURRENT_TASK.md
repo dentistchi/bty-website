@@ -1,3 +1,13 @@
+**2026-07-02 — BTY Daily OS v0.1 Slice 1+2 server layer CLOSED (first product-code mutation).**
+
+**Landed (inner `e3c7bdec`, origin/inner-main):** daily-gate-check (`lib/bty/daily/dailyGateCheck.ts` + `api/me/daily`) + relationship-pulse projection (`lib/bty/daily/relationshipPulse.ts` + `api/me/pulse`). Read-only server layer, no UI.
+
+**Guarantees:** STEP 0 purity gate passed — all 5 gate fns confirmed pure-read for this use; **daily open write-free**. Scope Lock §5/§6/§7/§8/§9/§10 honored. `statePriorityForRuntime()` NOT imported (local `DAILY_GATE_ORDER`). Forward-only `contract_id` dedupe preserved; `le_verification_log` not counted as independent evidence; band/narrative-only payload (no raw score/count/internal label). tsc passed; terminology net-increase 0; HELD/HOLD (`Orb.tsx`, `OrbLiving.tsx`, `auth/callback`) untouched.
+
+**v0.1 flags carried forward (deferred/accepted):** (1) Gates 4/5 center-scoped; (2) UTC calendar-day window; (3) contracts→`others`, `pattern_family` re-homing deferred (no confirmed map); (4) `le_verification_log` confidence-weighting deferred; (5) unit tests deferred to Slice 6.
+
+**Next:** Commander decision on Flag 1 (accept center-scoped vs full-evidence Yesterday Mirror before UI) + Slice 6 test-gate timing, before Today Shell UI dispatch.
+
 **2026-07-02 — DEBT-1 CLOSED: validation_approved_at reproducibility gap resolved.**
 
 **Fix (inner):** Live column shape re-measured this round via PostgREST OpenAPI catalog introspection — confirmed `timestamptz`, nullable, no default. One idempotent tracked migration added in inner repo (`bty-app/supabase/migrations/20260702000000_bty_action_contracts_validation_approved_at.sql`); inner commit `ba4845ae` pushed to origin/inner-main. Live apply NOT performed — separate Commander step; live already has the column so apply is a no-op.
