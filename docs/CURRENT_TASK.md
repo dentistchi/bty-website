@@ -1,3 +1,13 @@
+**2026-07-02 — Daily OS v0.1 Flag 1(b) full-evidence gate + Slice 6(a) server test gate CLOSED.**
+
+**Realized (inner `2b5a801d`, origin/inner-main):** Gates 4/5 now use **full 3-domain evidence** (self/others/ground) via a shared window-parameterized `hasAnyEvidenceInWindow` helper (Commander Flag 1 = b). Arena/Foundry evidence left yesterday now triggers **Yesterday Mirror**, not "quiet". Window bug fixed: latest-entry-relative → now-derived **UTC calendar-day**.
+
+**Test gate (Slice 6 = a):** 26 server tests pass — gate ordering, 3-domain full-evidence routing, forward-only dedupe / no `le_verification_log` double-count, no-score payload (§6/§10), fail-quiet. tsc passed; terminology net-increase 0; HELD/HOLD untouched; `statePriorityForRuntime()` not imported; daily open write-free.
+
+**Unchanged deferrals:** contracts→`others` (`pattern_family` re-homing), timezone/userDayKey, `le_verification_log` confidence-weighting, DEBT-2 — all still v0.2.
+
+**Next:** Today Shell UI dispatch (Slices 3–5) consuming the 3-domain gate.
+
 **2026-07-02 — BTY Daily OS v0.1 Slice 1+2 server layer CLOSED (first product-code mutation).**
 
 **Landed (inner `e3c7bdec`, origin/inner-main):** daily-gate-check (`lib/bty/daily/dailyGateCheck.ts` + `api/me/daily`) + relationship-pulse projection (`lib/bty/daily/relationshipPulse.ts` + `api/me/pulse`). Read-only server layer, no UI.
