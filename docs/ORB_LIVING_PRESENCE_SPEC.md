@@ -217,3 +217,84 @@ These notes are **not canon**. They guide a future implementation dispatch and m
 - **Rendering:** the particle system may exceed CSS limits — canvas / WebGL likely required. Decision deferred to the implementation dispatch.
 - **Verification surface:** `/dev/orb` (auth-free preview).
 - **Performance gate:** 60fps + battery. Concrete thresholds are defined in the implementation dispatch, not here.
+
+---
+
+## §C — Discovered Principles (Phase A, 2026-07-01)
+
+Commander-authored experience principles that surfaced during Phase A Sensory Gate iteration. Bodies are **verbatim**, preserved byte-for-byte (arrows →/↓, `*` bullets, and quote characters as received; typos preserved — report only). The one-line **titles are a structural frame added here (NOT 원문)**.
+
+### §C-1 — 빛의 원인이 움직여야 한다
+
+```
+지금 Orb는 빛이 움직입니다.
+제가 원하는 것은
+빛의 원인이 움직이는 것입니다.
+그 차이는 매우 작지만, 사용자는 무의식적으로 구분합니다.
+* 빛이 움직인다 → 특수효과
+* 무언가가 빛을 만들어낸다 → 생명
+BTY의 Orb는 두 번째가 되어야 합니다.
+```
+
+### §C-2 — Core → Propagation → Body
+
+```
+숨을 쉬는 것은 구가 아니라 "코어"여야 합니다.
+Core
+↓
+Propagation
+↓
+Body
+살아있는 것은
+항상
+안쪽이 먼저입니다.
+The center should always lead.
+The shell should always follow.
+Think of a heartbeat hidden beneath skin,
+not a balloon inflating.
+Change the order of motion,
+not the amount of motion.
+```
+
+### §C-3 — 완벽한 주기는 죽은 것 (숨에도 감정이 있다)
+
+```
+생명에는 "의식의 변화"가 있습니다.
+숨에도
+미세한 감정이 있어야 합니다.
+Do not make breathing perfectly periodic.
+Avoid randomness.
+Instead create natural biological rhythm.
+The user should never notice the variation consciously.
+They should only feel
+that the Orb is alive.
+```
+
+### §C-4 — 정적도 호흡의 일부
+
+```
+생명은
+완벽한 사인파가 아니기 때문입니다.
+The Orb should sometimes simply exist.
+Not every moment needs movement.
+Life is communicated as much through stillness
+as through motion.
+Silence is part of breathing.
+```
+
+### §C-5 — 생명은 감산으로 만들어진다
+
+```
+생명은 움직임을 추가해서 만들어지지 않았다.
+움직임을 줄이면서 만들어졌다.
+처음에는 더 많은 효과를 넣을수록 살아있을 것 같았지만,
+실제로는
+* 과한 움직임을 빼고
+* 규칙성을 깨고
+* 고요함을 남겼을 때
+비로소 존재감이 생겼습니다.
+이 원칙은 Orb뿐 아니라 앞으로 BTY의 Companion, Avatar,
+Center까지 모두 적용될 수 있는 중요한 경험 원칙이라고 생각합니다.
+```
+
+**Footnote (non-normative) — §C-5:** Candidate for promotion beyond Orb scope per Constitution convergence rule — promote only if the same Order re-surfaces independently on another surface (Companion / Avatar / Center).
