@@ -9,11 +9,15 @@
  * import `statePriorityForRuntime()` or reuse arena-internal priority weights — the
  * order is the local {@link DAILY_GATE_ORDER} constant; first match wins, short-circuit.
  *
- * Purity (verified pre-mutation): all five gate functions are pure-read.
+ * Gates 4/5 use FULL 3-domain evidence (self / others / ground) via
+ * {@link hasAnyEvidenceInWindow} (Scope Lock §5, Commander Flag 1 = b): a user who left
+ * Arena or Foundry evidence yesterday reads as YESTERDAY_MIRROR, not "quiet".
+ *
+ * Purity (verified pre-mutation): all reused functions are pure-read.
  *  - userHasForcedResetPending      — read; open-on-failure (returns false on db error)
  *  - fetchBlockingArenaContractForSession — read; filters deadline>now, does NOT expire
  *  - fetchFirstDueNoChangeReexposureMeta  — read; consume-write lives in a separate fn
- *  - getResilienceEntries           — read; delegates to a pure domain aggregator
+ *  - hasAnyEvidenceInWindow         — read; head+count over confirmed sources, fail-quiet
  *  - getOnboardingStep              — read; THROWS on error → wrapped fail-quiet here
  * A passive daily open triggers NO write.
  *
@@ -25,7 +29,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { userHasForcedResetPending } from "@/lib/bty/leadership-engine/state-service";
 import { fetchBlockingArenaContractForSession } from "@/lib/bty/arena/blockingArenaActionContract";
 import { fetchFirstDueNoChangeReexposureMeta } from "@/engine/scenario/delayed-outcome-trigger.service";
-import { getResilienceEntries } from "@/lib/bty/center/resilienceService";
+import { hasAnyEvidenceInWindow } from "@/lib/bty/daily/relationshipPulse";
 import { getOnboardingStep } from "@/engine/integration/onboarding-flow.service";
 
 export type DailyGate =
@@ -82,9 +86,9 @@ function addUtcDays(base: Date, days: number): Date {
   return d;
 }
 
-/** UTC calendar day (YYYY-MM-DD). v0.1 uses UTC days; timezone localization deferred. */
-function utcDateStr(d: Date): string {
-  return d.toISOString().slice(0, 10);
+/** Start-of-UTC-day ISO (YYYY-MM-DDT00:00:00.000Z). v0.1 uses UTC days; tz localization deferred. */
+function startOfUtcDayIso(d: Date): string {
+  return d.toISOString().slice(0, 10) + "T00:00:00.000Z";
 }
 
 /**
@@ -133,25 +137,28 @@ export async function evaluateDailyGate(
     };
   }
 
-  // 4/5 — share center evidence dates (fetched once). v0.1: center-scoped signal, UTC day.
-  const centerDates = await quiet(
-    async () => {
-      const res = await getResilienceEntries(supabase, userId);
-      return res.ok ? res.entries.map((e) => e.date) : [];
-    },
-    [] as string[],
-    "center_evidence",
-  );
-  const yesterdayStr = utcDateStr(addUtcDays(now, -1));
-  const cutoff14Str = utcDateStr(addUtcDays(now, -14));
+  // 4/5 — full 3-domain evidence (self/others/ground), UTC calendar-day windows.
+  const yesterdayWindowSince = startOfUtcDayIso(addUtcDays(now, -1));
+  const todayWindowStart = startOfUtcDayIso(now);
+  const cutoff14Iso = addUtcDays(now, -14).toISOString();
 
-  // 4 — Yesterday evidence exists → Yesterday Mirror.
-  if (centerDates.includes(yesterdayStr)) {
+  // 4 — Any-domain evidence yesterday → Yesterday Mirror.
+  const hasYesterdayEvidence = await quiet(
+    () => hasAnyEvidenceInWindow(supabase, userId, yesterdayWindowSince, todayWindowStart),
+    false,
+    "yesterday_evidence",
+  );
+  if (hasYesterdayEvidence) {
     return { gate: "YESTERDAY_MIRROR", destination: { kind: "today" } };
   }
 
-  // 5 — Yesterday empty + 14-day evidence exists → Quiet invitation.
-  if (centerDates.some((d) => d >= cutoff14Str)) {
+  // 5 — Yesterday empty + any-domain evidence in the 14-day window → Quiet invitation.
+  const has14dEvidence = await quiet(
+    () => hasAnyEvidenceInWindow(supabase, userId, cutoff14Iso),
+    false,
+    "window14_evidence",
+  );
+  if (has14dEvidence) {
     return { gate: "QUIET_INVITATION", destination: { kind: "today" } };
   }
 
