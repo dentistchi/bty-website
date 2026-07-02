@@ -138,22 +138,34 @@ Forbidden dangling names (STEP 0 confirmed ABSENT from live schema — do not re
 
 ## 9. Orb Boundary Lock
 
-Production `Orb.tsx` is a **sealed primitive.**
+Production `Orb.tsx` is a **sealed primitive.** Today Shell must not modify `Orb.tsx`
+internals, its haptic behavior, or inject gate-state visuals into it.
+
+**OrbLiving is promoted for BTY Daily OS v0.1** as a **separate** Today Shell visual
+presence primitive. This is a **swap / wrapper** promotion — **not a merge into `Orb.tsx`.**
+OrbLiving remains **visual-only and haptic-free**; haptic exclusivity stays with the
+existing Orb haptic lock (sole site: `Orb.tsx`).
 
 Allowed:
-- Compose **around** Orb
-- Use the existing prop surface only
-- Preserve the existing `mode` / `onCommit` / `onTouch` contract
+- Compose **around** Orb / OrbLiving
+- Render `OrbLiving` as the Today Shell visual presence (swap / wrapper)
+- Use each component's existing prop surface only
 - Preserve the haptic lock
 
 Forbidden:
-- Inject gate-state visuals into Orb internals
-- Merge Today Shell with `OrbLiving`
+- Inject gate-state visuals into Orb / OrbLiving internals
+- Merge `OrbLiving` into `Orb.tsx`
+- Modify `Orb.tsx` internals for Today Shell
+- Add haptic behavior to `OrbLiving`
 - Change haptic exclusivity
-- Treat `OrbLiving` as production
 
-`OrbLiving.tsx` remains **HOLD** and isolated.
 `auth/callback/page.client.tsx` remains **HELD** and untouched.
+
+**Mandatory Today-surface re-gate:** the previous `/dev/orb` OrbLiving Sensory Gate PASS
+applies to the OrbLiving *primitive* only. Today Shell promotion requires a **new
+Today-surface Sensory Gate re-pass** — the surface, size, and surrounding ritual context
+differ — on `/ko/today` and `/en/today`. No final Sensory PASS may be claimed before
+Commander confirms the Today-surface re-gate.
 
 ## 10. AI Placement Lock
 
@@ -204,14 +216,19 @@ Scope Lock canon write
 
 ## 13. Deferred Work
 
-Deferred to v0.2 / data-integrity track:
+Deferred to v0.2 / later tracks:
 - `le_verification_log.contract_id` backfill
 - FK `VALIDATE`
 - historical relationship evidence reconstruction
-- advanced `OrbLiving` production merge
-- high-fidelity particle / touch animation
+- advanced `OrbLiving` **merge into `Orb.tsx`**
+- Phase B touch-gravity / deeper interaction work
+- additional haptic expansion
+- high-fidelity particle / touch animation beyond the locked Phase A / B-1.5 visual presence
 - full AI drawer implementation
 - Foundry artifact system expansion
+
+**Not deferred:** the v0.1 Today Shell **OrbLiving visual swap**, provided `Orb.tsx` remains
+sealed and the Today-surface Sensory Gate re-passes.
 
 ## 14. Final Lock Statement
 
