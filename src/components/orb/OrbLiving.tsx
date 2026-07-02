@@ -183,9 +183,12 @@ export default function OrbLiving({
     const NOTICE_S = 0.08; // 60–100ms notice delay before attention begins (§B)
     const MAX_DRIFT = orbR * 0.55; // core stays interior; cap on drift toward touch
     const SLOW_SPEED = 220; // px/s — above = ignore (no pursuit); below = retarget
-    const TAU_CORE = 0.55; // s — core drift ease (leads)
-    const TAU_MID = 0.9; // s — mid follows
-    const TAU_SHELL = 1.4; // s — shell follows last
+    const TAU_SEED = 0.42; // s — Seed (life origin) leads the core slightly (~0ms)
+    const TAU_CORE = 0.55; // s — Attention Core drift ease (~40ms) — B-1, PRESERVED
+    const TAU_MID = 0.9; // s — mid glow (part of core body) follows core
+    const TAU_FIELD = 1.05; // s — Energy Field follows the CORE (not finger) (~120ms)
+    const FIELD_AMP = 0.55; // Energy Field reduced amplitude (damped cohesion, no chase)
+    const TAU_SHELL = 1.4; // s — Shell follows the field last, weakest (~180ms)
     const TAU_ENGAGE = 0.6; // s — engage (wander-shrink / subtle brighten) ease
     const RELEASE_TAU_SCALE = 1.7; // release returns calmer (slower ease to idle)
     const WANDER_REDUCE = 0.5; // core wander radius shrinks by this ×engage on arrival
@@ -202,10 +205,14 @@ export default function OrbLiving({
     let lastMoveY = 0;
     let lastMoveTs = 0;
     let engage = 0; // 0 idle → 1 attentive
+    let seedShiftX = 0; // Seed — leads the core (life origin)
+    let seedShiftY = 0;
     let coreShiftX = 0;
     let coreShiftY = 0;
     let midShiftX = 0;
     let midShiftY = 0;
+    let fieldShiftX = 0; // Energy Field — follows the core, damped + reduced
+    let fieldShiftY = 0;
     let shellShiftX = 0;
     let shellShiftY = 0;
 
@@ -241,17 +248,29 @@ export default function OrbLiving({
           tsy = (tsy / m) * MAX_DRIFT;
         }
       }
+      // Layer cascade (§C-2 order, B-1.5): Seed → Attention Core → Energy Field →
+      // Shell. Each follows the PREVIOUS layer (never the finger) with a longer
+      // time-constant → one body flexing inward-to-outward, not separate circles.
+      // The Field follows the CORE (damped, reduced amplitude) — this is what keeps
+      // the medium attached to the core during drift (no core-medium separation),
+      // while still honouring No-Chase (§D-4): the field never targets the finger.
       const rel = noticed ? 1 : RELEASE_TAU_SCALE; // calmer return on release
+      const kSeed = 1 - Math.exp(-dt / (TAU_SEED * rel));
       const kCore = 1 - Math.exp(-dt / (TAU_CORE * rel));
       const kMid = 1 - Math.exp(-dt / (TAU_MID * rel));
+      const kField = 1 - Math.exp(-dt / (TAU_FIELD * rel));
       const kShell = 1 - Math.exp(-dt / (TAU_SHELL * rel));
       engage += ((noticed ? 1 : 0) - engage) * (1 - Math.exp(-dt / (TAU_ENGAGE * rel)));
-      coreShiftX += (tsx - coreShiftX) * kCore; // core LEADS
+      seedShiftX += (tsx - seedShiftX) * kSeed; // Seed leads (fastest → ~0ms)
+      seedShiftY += (tsy - seedShiftY) * kSeed;
+      coreShiftX += (tsx - coreShiftX) * kCore; // Attention Core (B-1, PRESERVED)
       coreShiftY += (tsy - coreShiftY) * kCore;
-      midShiftX += (coreShiftX - midShiftX) * kMid; // mid follows core
+      midShiftX += (coreShiftX - midShiftX) * kMid; // mid glow follows the core body
       midShiftY += (coreShiftY - midShiftY) * kMid;
-      shellShiftX += (midShiftX - shellShiftX) * kShell; // shell follows last
-      shellShiftY += (midShiftY - shellShiftY) * kShell;
+      fieldShiftX += (coreShiftX * FIELD_AMP - fieldShiftX) * kField; // Field ← CORE, damped
+      fieldShiftY += (coreShiftY * FIELD_AMP - fieldShiftY) * kField;
+      shellShiftX += (fieldShiftX - shellShiftX) * kShell; // Shell follows field, last
+      shellShiftY += (fieldShiftY - shellShiftY) * kShell;
 
       // ── Phase-lag propagation (order of motion, NOT amount) ─────────────────
       // ONE shared heartbeat originates at the core; each outer layer reads the
@@ -358,16 +377,22 @@ export default function OrbLiving({
       ctx.arc(ecx, ecy, coreR, 0, Math.PI * 2);
       ctx.fill();
 
-      // (4) Heart — small dense point at the core, irregular flicker (micro
-      // imperfection: "life exists inside imperfection"). Leads with the beat.
+      // (4) Seed — the life origin: a small, faint inner point that LEADS the core
+      // (seedShift eases fastest → moves first, ~0ms). Irregular flicker (micro
+      // imperfection: "life exists inside imperfection"). Kept near-invisible and
+      // folded into the core, so no new circle is read — it only makes the core
+      // feel like it has a deeper, first-moving heart. Same alpha/size as before →
+      // no added brightness.
+      const seedX = exBase + seedShiftX;
+      const seedY = eyBase + seedShiftY;
       const heartR = orbR * 0.16 * (1 + 0.12 * beat(t));
       const heartA = 0.18 + 0.07 * Math.sin(t * 0.9) + 0.04 * Math.sin(t * 1.7 + 1.1);
-      const hg = ctx.createRadialGradient(ecx, ecy, 0, ecx, ecy, heartR);
+      const hg = ctx.createRadialGradient(seedX, seedY, 0, seedX, seedY, heartR);
       hg.addColorStop(0, rgba(touch, Math.max(0, heartA)));
       hg.addColorStop(1, rgba(touch, 0));
       ctx.fillStyle = hg;
       ctx.beginPath();
-      ctx.arc(ecx, ecy, heartR, 0, Math.PI * 2);
+      ctx.arc(seedX, seedY, heartR, 0, Math.PI * 2);
       ctx.fill();
 
       // (5) Luminous MEDIUM (was discrete particles). Each cell is a LARGE, very
@@ -378,8 +403,13 @@ export default function OrbLiving({
       // into the field (fade = dissolution, not on/off). Additive 'lighter' → only
       // ever ADDS warm light, can never darken (no dust). Touch-UNRESPONSIVE (§D-3):
       // orbits the IDLE centre, receives no attention shift.
-      const ccx = bxIdle * 0.4 + exIdle * 0.6;
-      const ccy = byIdle * 0.4 + eyIdle * 0.6;
+      // Energy Field follows the Attention Core (via fieldShift — delayed, damped,
+      // reduced amplitude): the medium moves WITH the core during drift → one
+      // cohesive body, no leftover dots. Still touch-UNRESPONSIVE to the finger
+      // itself (§D-3 / No-Chase §D-4): the shift comes ONLY from the core layer,
+      // never from the touch point.
+      const ccx = bxIdle * 0.4 + exIdle * 0.6 + fieldShiftX;
+      const ccy = byIdle * 0.4 + eyIdle * 0.6 + fieldShiftY;
       for (let i = 0; i < cells.length; i++) {
         const c = cells[i]!;
         const ang = c.angle + c.angVel * t;
