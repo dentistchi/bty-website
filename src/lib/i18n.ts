@@ -15,6 +15,36 @@ export type Locale = "ko" | "en";
 export type Messages = {
   /** D3-0 Slice 1: BTY Daily OS "Today" static surface. First fold = Direction; status fields are static placeholders (no data wiring this slice). */
   today: {
+    dailyOs: {
+      pulseHeading: string;
+      doorHeading: string;
+      mirrorHasEvidence: string;
+      mirrorNoEvidence: string;
+      openLoopTitle: string;
+      openLoopBody: string;
+      openLoopCta: string;
+      centerFirstTitle: string;
+      centerFirstBody: string;
+      centerFirstCta: string;
+      reexposureTitle: string;
+      reexposureBody: string;
+      reexposureCta: string;
+      firstDayTitle: string;
+      firstDayBody: string;
+      doorCenterTitle: string;
+      doorCenterSub: string;
+      doorArenaTitle: string;
+      doorArenaSub: string;
+      doorFoundryTitle: string;
+      doorFoundrySub: string;
+      exitLine: string;
+      loadingLabel: string;
+      pulse: {
+        self: { quiet: string; living: string; connected: string; deepening: string };
+        others: { quiet: string; living: string; connected: string; deepening: string };
+        ground: { quiet: string; living: string; connected: string; deepening: string };
+      };
+    };
     eyebrow: string;
     title: string;
     greeting: string;
@@ -2092,6 +2122,51 @@ export type Messages = {
 
 const ko: Messages = {
   today: {
+    dailyOs: {
+      pulseHeading: "지금, 나의 관계들",
+      doorHeading: "오늘, 하나를 선택하세요",
+      mirrorHasEvidence: "어제, 하나가 현실로 넘어갔어요.",
+      mirrorNoEvidence: "아직 조용합니다. 오늘 하나를 선택할 수 있어요.",
+      openLoopTitle: "닫히지 않은 약속",
+      openLoopBody: "아직 닫히지 않은 약속이 있습니다.",
+      openLoopCta: "약속으로 돌아가기",
+      centerFirstTitle: "잠깐, 나에게 먼저",
+      centerFirstBody: "지금은 나에게 돌아갈 시간이에요.",
+      centerFirstCta: "센터로 돌아가기",
+      reexposureTitle: "다시 마주할 순간",
+      reexposureBody: "지난 선택이 당신을 기다리고 있어요.",
+      reexposureCta: "아레나로 들어가기",
+      firstDayTitle: "오늘, 처음",
+      firstDayBody: "BTY의 첫 날이에요. 하나만 선택해보세요.",
+      doorCenterTitle: "나와의 관계",
+      doorCenterSub: "나에게 돌아가기",
+      doorArenaTitle: "이웃과의 관계",
+      doorArenaSub: "관계 안으로 들어가기",
+      doorFoundryTitle: "세상과의 관계",
+      doorFoundrySub: "세상에 하나 심기",
+      exitLine: "하나만 선택하고, 오늘로 돌아가세요.",
+      loadingLabel: "오늘을 여는 중…",
+      pulse: {
+        self: {
+          quiet: "나와의 관계는 아직 조용합니다.",
+          living: "요즘 나에게 돌아오고 있어요.",
+          connected: "나와 자주 마주하고 있어요.",
+          deepening: "나와 깊어지는 중이에요.",
+        },
+        others: {
+          quiet: "이웃과의 관계는 아직 조용합니다.",
+          living: "이웃과 만나기 시작했어요.",
+          connected: "이웃과 자주 마주하고 있어요.",
+          deepening: "이웃과 깊어지는 중이에요.",
+        },
+        ground: {
+          quiet: "세상과의 관계는 아직 조용합니다.",
+          living: "세상에 무언가 심기 시작했어요.",
+          connected: "세상에 자주 남기고 있어요.",
+          deepening: "세상과 깊어지는 중이에요.",
+        },
+      },
+    },
     eyebrow: "BTY 데일리",
     title: "오늘 마주할 선택은 무엇인가요?",
     greeting: "좋은 아침입니다.",
@@ -3962,6 +4037,51 @@ const ko: Messages = {
 
 const en: Messages = {
   today: {
+    dailyOs: {
+      pulseHeading: "Your relationships, now",
+      doorHeading: "Today, choose one",
+      mirrorHasEvidence: "Yesterday, one thing crossed into real life.",
+      mirrorNoEvidence: "It's quiet. You can choose one thing today.",
+      openLoopTitle: "An open promise",
+      openLoopBody: "You have a promise that isn't closed yet.",
+      openLoopCta: "Return to your promise",
+      centerFirstTitle: "First, come back to yourself",
+      centerFirstBody: "Now is a time to return to yourself.",
+      centerFirstCta: "Go to Center",
+      reexposureTitle: "A moment to face again",
+      reexposureBody: "A past choice is waiting for you.",
+      reexposureCta: "Enter the Arena",
+      firstDayTitle: "Today, the first",
+      firstDayBody: "It's your first day at BTY. Try choosing just one.",
+      doorCenterTitle: "With yourself",
+      doorCenterSub: "Return to yourself",
+      doorArenaTitle: "With others",
+      doorArenaSub: "Step into connection",
+      doorFoundryTitle: "With the world",
+      doorFoundrySub: "Plant one thing in the world",
+      exitLine: "Choose one, then return to your day.",
+      loadingLabel: "Opening today…",
+      pulse: {
+        self: {
+          quiet: "Quiet with yourself, for now.",
+          living: "You've been coming back to yourself.",
+          connected: "You meet yourself often.",
+          deepening: "Going deeper with yourself.",
+        },
+        others: {
+          quiet: "Quiet with others, for now.",
+          living: "You've started meeting others.",
+          connected: "You meet others often.",
+          deepening: "Going deeper with others.",
+        },
+        ground: {
+          quiet: "Quiet with the world, for now.",
+          living: "You've started planting in the world.",
+          connected: "You leave your mark often.",
+          deepening: "Going deeper with the world.",
+        },
+      },
+    },
     eyebrow: "BTY Daily",
     title: "What choice will you face today?",
     greeting: "Good morning.",
