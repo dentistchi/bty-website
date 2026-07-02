@@ -418,3 +418,99 @@ not velocity.
 The Orb does not follow where your finger goes.
 It follows where your intention settles.
 ```
+
+---
+
+## §E — B-1 Discovered & Authored Principles (2026-07-02)
+
+Commander-authored during Phase B-1 / B-1.5 Sensory Gate iteration. Bodies are **verbatim**, preserved byte-for-byte (arrows →, quote characters, and mixed KO/EN as received; typos preserved — report only). The one-line **titles are a structural frame added here (NOT 원문)**.
+
+### §E-1 — Volumetric Living Light
+
+```
+The Orb should not contain particles.
+The Orb should contain living light.
+Particles should only emerge
+when the eye naturally detects
+small density variations
+inside that light.
+If the viewer can count particles,
+the illusion has failed.
+
+Particle System을 만드는 것이 아니라
+Volumetric Light를 만드는 것처럼 생각해야 합니다.
+순서: Continuous Light → Density fluctuation
+→ Occasionally perceived as particles.
+```
+
+### §E-2 — 가시성 계층
+
+```
+95% — 거의 안 보임
+4% — 희미하게 보임
+1% — 잠깐 드러남
+숫자가 아니라 존재감이 중요합니다.
+```
+
+### §E-3 — Forbidden Outcome
+
+```
+The eye must never lock onto
+individual particles.
+The eye should naturally settle
+on the Orb itself.
+If a viewer starts tracking dots,
+the rendering has failed.
+```
+
+### §E-4 — 4계층 해부학
+
+```
+Seed: life origin. 거의 보이지 않음.
+Attention Core: 사용자를 알아차리고 drift함.
+Energy Field: 손가락을 직접 보지 않음.
+Attention Core를 늦게 따라감.
+Shell: 가장 늦고 가장 약하게 반응.
+
+심장 → 신경 → 근육 → 피부.
+피부가 먼저 움직이지 않습니다.
+onset 계단: Seed 0ms → Attention ~40ms
+→ Energy ~120ms → Shell ~180ms.
+새로운 원을 추가하지 말고, 새로운 역할을 추가해야 합니다.
+구조는 4단계지만, 시각적으로는 여전히 3단계처럼 보여야 합니다.
+```
+
+### §E-5 — Energy Follows Attention
+
+```
+The Energy Field must never chase the finger.
+It may only follow the Attention Core,
+with delay, damping, and reduced amplitude.
+This preserves no-chase while preventing
+core-medium separation.
+
+Energy does not follow the finger.
+Energy follows Attention.
+Attention is allowed to notice the user.
+Energy is only allowed to respond to Attention.
+```
+
+### §E-6 — One Living Body
+
+```
+The Orb should not appear as:
+moving core + leftover particles.
+It should appear as:
+one living luminous body whose attention has shifted.
+```
+
+### §E-7 — Sensory Gate 4문 체계
+
+```
+1. 나를 본 것 같은가?
+2. 점이 아니라 빛으로 보이는가?
+3. 시선이 입자가 아니라 Orb 전체에 머무는가?
+4. Touch/drift 중에도 Orb가 한 몸으로 보이는가?
+```
+
+**Footnote (non-normative) — §E-4:** Seed depth (Seed reveals only in deep moments — long touch, relationship formation) = registered as B-2 design input, not locked here.
