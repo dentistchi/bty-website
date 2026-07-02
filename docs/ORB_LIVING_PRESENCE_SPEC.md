@@ -298,3 +298,123 @@ Center까지 모두 적용될 수 있는 중요한 경험 원칙이라고 생각
 ```
 
 **Footnote (non-normative) — §C-5:** Candidate for promotion beyond Orb scope per Constitution convergence rule — promote only if the same Order re-surfaces independently on another surface (Companion / Avatar / Center).
+
+---
+
+## §D — Phase B Principles (design-time, Commander-authored, 2026-07-01)
+
+Unlike §C (discovered during implementation), these are **authored before implementation** — the principle exists first, the code follows (Canon → Implementation). Bodies are **verbatim**, preserved byte-for-byte (arrows →/↓, `###` sub-labels, quote characters as received; typos preserved — report only). The one-line **titles are a structural frame added here (NOT 원문)**.
+
+### §D-1 — Attention = Transition
+
+```
+Attention은 State가 아니라 Transition입니다.
+Attention은
+Idle에서 Relationship으로 넘어가는 문입니다.
+Touch
+↓
+Notice
+↓
+Attention
+↓
+Core Drift
+↓
+Propagation
+↓
+Particles
+↓
+Connection
+새로운 State를 만들지 않습니다.
+```
+
+### §D-2 — Influence Field (감산 적용)
+
+```
+생명은
+모두가 반응하지 않습니다.
+Core
+↓
+Near Field
+↓
+Middle Field
+↓
+Far Field (거의 무반응)
+### Near Field
+즉시
+반응합니다.
+### Middle Field
+조금 늦게
+합류합니다.
+### Far Field
+거의
+움직이지 않습니다.
+그냥
+조금
+기울어질 뿐입니다.
+사용자는
+"구 전체가 움직였다."
+가 아니라
+"안에서 영향이 퍼졌다."
+를 느낍니다.
+Touch Gravity는
+Gravity가 아니라
+Influence Field에 더 가깝습니다.
+```
+
+### §D-3 — 3단계 분할 + Sensory Gate 질문
+
+```
+B-1 Relationship begins:
+Touch → Notice → Attention → Core Drift → Stabilize
+입자는 거의 안 움직입니다. 핵심은 "알아차림."
+Sensory Gate: "나를 본 것 같은가?"
+B-2 Influence:
+Core → Near Field → Middle Field
+여기서 처음으로 입자가 모입니다.
+Sensory Gate: "끌려오는 것 같은가?"
+B-3 Release:
+Release → Memory → Return
+Sensory Gate: "헤어지기 싫어하는가?"
+각 단계마다 독립 Sensory Gate 통과 후 다음 단계 진행.
+```
+
+### §D-4 — No Pursuit (Invitation)
+
+```
+The Orb does not chase.
+It acknowledges.
+It notices.
+It welcomes.
+But it never follows like a cursor.
+Connection is created by invitation,
+not pursuit.
+The Orb never pursues the user. It simply lets the user
+know they have been noticed.
+```
+
+### §D-5 — Attention Refresh (Intention, not Velocity)
+
+```
+The Orb never chases motion.
+It updates attention.
+Fast motion is ignored.
+Slow intention is acknowledged.
+Rule:
+Fast movement → Ignore
+Slow movement → Gradual realignment
+Follower가 아니라 관심의 갱신입니다.
+Cursor Follow는 금지하지만 Attention Refresh는 허용합니다.
+Refresh는 별도의 애니메이션이 아닙니다.
+Core Drift를 매우 낮은 속도로 재목표화(retarget)하는 것입니다.
+The Orb never chases motion.
+It only updates attention.
+Attention follows intention,
+not velocity.
+```
+
+### §D Anchor
+
+```
+The Orb does not follow where your finger goes.
+It follows where your intention settles.
+```
