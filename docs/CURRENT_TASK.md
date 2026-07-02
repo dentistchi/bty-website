@@ -1,3 +1,20 @@
+**2026-07-02 — Orb B-1 + B-1.5: Relationship begins — Sensory Gate 4/4 PASS, LOCKED**
+
+**Canon:** §D Phase B principles locked pre-implementation at 342bd2f (Canon→Implementation protocol). §E appended at 232f79a — 7 principles discovered/authored during B-1 iteration (volumetric living light, 95-4-1 visibility hierarchy, forbidden outcome, four-layer anatomy Seed→Attention Core→Energy Field→Shell, Energy-follows-Attention, one living body, 4-gate system).
+
+**Implementation (inner):** checkpoint f3edfbb7 (tiered medium WIP, idle-verified) → a97deab2 B-1+B-1.5 LOCKED. Attention: notice(80ms)→drift→stabilize→slow refresh (fast=ignore). Rendering model transition: particles → luminous medium → tiered volumetric. Cohesion: field follows core, never finger. Quantified: drift crest median 2→1, max 10→7 at 91px drift. Production Orb.tsx untouched; haptic exclusivity preserved.
+
+**Sensory Gate: 4/4 PASS** (Gates: 나를 본 것 같은가 / 점이 아니라 빛인가 / 시선이 Orb에 머무는가 / drift 중에도 한 몸인가).
+
+**Protocol incidents (3) + new pre-check rules (candidates):**
+- stale bundle: uncommitted WIP absent from staging → measured "no difference" was correct. Rule: freshness pre-check before every Sensory Gate measurement.
+- surface identity: native app entry = /start (production Orb, no B-1) → measured wrong surface. Rule: surface identity (URL + which orb) confirmed before measurement.
+- deploy propagation lag: edge served old chunk mid-deploy. Rule: live grep valid only after propagation settles (stable across repeated reads).
+
+**Working tree:** auth/callback HOLD + docs/video OPEN — untouched through all rounds.
+
+**Next: B-2 (Influence Field).** Inputs: density-gradient translation of touch influence + Seed depth (deep-moment reveal) + Near/Middle/Far field + release memory deferred to B-3.
+
 **2026-07-01 — Orb Living Presence: canon LOCK + Phase A LOCK + Sensory Gate PASS**
 
 **Canon:** docs/ORB_LIVING_PRESENCE_SPEC.md locked at a9b51b8 (§A living-companion spec + §B approach-awareness reality-bound translation, Commander verbatim). §C appended at d2e8ee7 — 5 discovered principles (cause-of-light / Core→Propagation→Body / imperfect periodicity / stillness-as-breathing / life-by-subtraction). §C-5 = promotion candidate per convergence rule.
