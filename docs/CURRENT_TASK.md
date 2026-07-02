@@ -1,3 +1,31 @@
+**2026-07-02 — Product direction: Orb → Daily Experience. Constitution Candidate registered. North Star transition.**
+
+**Constitution Candidate (Commander verbatim, NOT canon):**
+
+Product Principle (Candidate)
+
+Orb exists to deepen
+the daily experience.
+
+The daily experience
+does not exist
+to showcase the Orb.
+
+Retention before refinement.
+
+Every new feature must answer:
+
+"If this feature did not exist,
+would the user still come back tomorrow?"
+
+**Promotion condition:** Daily Experience built + pilot users verified returning daily → then Constitution. 좋은 생각 ≠ Canon.
+
+**North Star transition (Commander):** "Make the Orb feel alive." → "Make the day feel alive." Orb의 새 역할 = Door. 사용자는 Orb를 보러 오지 않는다 — Orb를 통해 오늘 안으로 들어간다.
+
+**Resource rebalance (Commander):** Orb 20% / Today 40% / Companion 25% / Arena 15%. B-2 = core only; Seed depth, B-2.5, B-3 → backlog pending Daily Experience.
+
+**Next: Today design — question first, screen second:** "아침 7시, 눈을 뜬 손이 자동으로 BTY를 누른다. 왜? 그 다음 10초 동안 무슨 일이 일어나야 '오늘을 시작했다'고 느끼는가?"
+
 **2026-07-02 — Orb B-1 + B-1.5: Relationship begins — Sensory Gate 4/4 PASS, LOCKED**
 
 **Canon:** §D Phase B principles locked pre-implementation at 342bd2f (Canon→Implementation protocol). §E appended at 232f79a — 7 principles discovered/authored during B-1 iteration (volumetric living light, 95-4-1 visibility hierarchy, forbidden outcome, four-layer anatomy Seed→Attention Core→Energy Field→Shell, Energy-follows-Attention, one living body, 4-gate system).
