@@ -1,3 +1,15 @@
+**2026-07-01 — Orb Living Presence: canon LOCK + Phase A LOCK + Sensory Gate PASS**
+
+**Canon:** docs/ORB_LIVING_PRESENCE_SPEC.md locked at a9b51b8 (§A living-companion spec + §B approach-awareness reality-bound translation, Commander verbatim). §C appended at d2e8ee7 — 5 discovered principles (cause-of-light / Core→Propagation→Body / imperfect periodicity / stillness-as-breathing / life-by-subtraction). §C-5 = promotion candidate per convergence rule.
+
+**Implementation:** OrbLiving.tsx (new, dev-only) + /dev/orb comparison surface. Phase A = Existence: idle breathing, phase-lag propagation (core leads, shell follows), biological rhythm (deterministic FM+AM, no randomness), rare amplitude settle (sinking, not freezing). Production Orb.tsx untouched. Haptic exclusivity preserved (zero haptic calls).
+
+**Sensory Gate: PASS** (4 refinement rounds, real-device). Commander verdict: "존재가 계속 유지된다." Phase A LOCKED — no further visual refinement. Inner commit 614e355b (inner-main, pushed).
+
+**Working tree unchanged:** auth/callback HOLD + docs/video OPEN — both untouched through all rounds.
+
+**Next: Phase B (Existence → Relationship).** Inputs: Touch Gravity + Core Drift + Release Memory + Attention layer (deferred from Phase A by decision).
+
 **2026-07-01 — Alive Gate PASS / Concern Disposition / Rule Locks**
 
 **Alive Gate: PASS.** Physical device, morning Orb touch, impact(Light) felt. Native haptic branch reality-verified. Orb Ledger PENDING → resolved.
