@@ -128,7 +128,7 @@ Allowed sources (STEP 0 live-confirmed unless noted):
 - `arena_pending_outcomes`
 - `user_dojo_attempts`
 - `user_program_progress`
-- `dojo_submissions` — **UNCONFIRMED.** Not directly probed in Dispatch A. **Dispatch B must live-confirm before use.** Until re-confirmed, treat as not-allowed.
+- `dojo_submissions` — **LIVE-CONFIRMED (Dispatch B, 2026-07-02, PostgREST OpenAPI, control-verified):** PRESENT with `user_id` + `created_at`. Admissible as a `ground` evidence source for v0.1. (§8's original "confirm → admissible" condition is now satisfied; prior "not-allowed until re-confirmed" phrasing superseded.)
 
 Forbidden dangling names (STEP 0 confirmed ABSENT from live schema — do not reference as evidence tables unless re-confirmed live):
 - `center_recovery`
