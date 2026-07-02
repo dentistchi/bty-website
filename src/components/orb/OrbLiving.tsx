@@ -319,7 +319,11 @@ export default function OrbLiving({
       // Core LEADS — off-centre asymmetric wander (unchanged), strongest pulse.
       const wanderX = Math.sin(t * 0.23) * 0.62 + Math.sin(t * 0.37 + 1.3) * 0.38;
       const wanderY = Math.cos(t * 0.19 + 0.5) * 0.55 + Math.sin(t * 0.41 + 2.1) * 0.3;
-      const coreAmp = size * 0.055;
+      // Idle wander amplitude — size-normalized, then reduced sub-linearly BELOW the
+      // 220px dev reference so the 160px Today core reads as a stable living heart, not
+      // a wandering object. 220px+ preserved exactly (min(1, …)); 160px → ~0.53× → the
+      // ember breathes within a small central zone. Rhythm/periodicity unchanged.
+      const coreAmp = size * 0.055 * Math.min(1, (size / 220) ** 2);
       // Idle (Phase A) wander bases — FULL amplitude, shift-free. Particles and the
       // untouched path reference these → untouched output is byte-identical to
       // Phase A (engage=0 → ×1.0, all shifts 0 → +0.0, both exact in IEEE-754).
@@ -377,7 +381,7 @@ export default function OrbLiving({
 
       // (3) Ember core — bright, dense, OFF-CENTRE, LEADS. Glows from within.
       const cg = ctx.createRadialGradient(ecx, ecy, 0, ecx, ecy, coreR);
-      cg.addColorStop(0, rgba(touch, 0.46 * coreDens));
+      cg.addColorStop(0, rgba(touch, 0.4 * coreDens)); // softened center — ember, not spotlight
       cg.addColorStop(0.32, rgba(touch, 0.22 * coreDens));
       cg.addColorStop(0.7, rgba(morning, 0.07));
       cg.addColorStop(1, rgba(morning, 0));
@@ -390,14 +394,15 @@ export default function OrbLiving({
       // (seedShift eases fastest → moves first, ~0ms). Irregular flicker (micro
       // imperfection: "life exists inside imperfection"). Kept near-invisible and
       // folded into the core, so no new circle is read — it only makes the core
-      // feel like it has a deeper, first-moving heart. Same alpha/size as before →
-      // no added brightness.
+      // feel like it has a deeper, first-moving heart. Softened for the Today surface
+      // (wider, lower peak, gradual falloff) → ember glow, never a spotlight.
       const seedX = exBase + seedShiftX;
       const seedY = eyBase + seedShiftY;
-      const heartR = orbR * 0.16 * (1 + 0.12 * beat(t));
-      const heartA = 0.18 + 0.07 * Math.sin(t * 0.9) + 0.04 * Math.sin(t * 1.7 + 1.1);
+      const heartR = orbR * 0.2 * (1 + 0.12 * beat(t)); // wider → soft ember glow, not a pinpoint
+      const heartA = 0.15 + 0.06 * Math.sin(t * 0.9) + 0.03 * Math.sin(t * 1.7 + 1.1);
       const hg = ctx.createRadialGradient(seedX, seedY, 0, seedX, seedY, heartR);
       hg.addColorStop(0, rgba(touch, Math.max(0, heartA)));
+      hg.addColorStop(0.5, rgba(touch, Math.max(0, heartA * 0.4))); // gradual falloff → no spotlight edge
       hg.addColorStop(1, rgba(touch, 0));
       ctx.fillStyle = hg;
       ctx.beginPath();
