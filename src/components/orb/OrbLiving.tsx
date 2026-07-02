@@ -22,9 +22,12 @@
  * colour literals. Token-value fallbacks mirror globals.css and are marked.
  *
  * ── Rendering ────────────────────────────────────────────────────────────────
- * Canvas 2D. One offscreen soft sprite is pre-rendered once, then drawImage per
- * particle (no per-frame gradient/shadowBlur allocation) → holds the 60fps gate.
- * DPR capped at 2; loop pauses while the tab is hidden (battery).
+ * Canvas 2D. Body/core/heart plus a luminous MEDIUM (many large, soft, low-peak
+ * overlapping lobes that read as one continuous light field, not particles) are all
+ * radial-gradient FILLS under globalCompositeOperation 'lighter' → every element
+ * only ADDS light (never darkens what is beneath — no dust/dirt; Safari composited
+ * the old drawImage sprite as source-over). DPR capped at 2; loop pauses while the
+ * tab is hidden (battery).
  */
 
 import React from "react";
@@ -56,24 +59,30 @@ function readToken(name: string, fallback: string): RGB {
 
 const rgba = (c: RGB, a: number) => `rgba(${c.r}, ${c.g}, ${c.b}, ${a})`;
 
-type Particle = {
-  angle: number; // orbital position
+// A cell of the luminous MEDIUM (not a particle). A large, soft, low-peak additive
+// lobe; heavy overlap of many cells sums into a CONTINUOUS light field where local
+// density fluctuations occasionally become visible. The cell is not an entity — it
+// is a brief moment where the living light becomes perceptible.
+type MediumCell = {
+  angle: number; // orbital drift position
   radius: number; // base distance from centre (fraction of orbR)
-  angVel: number; // angular velocity — slow, signed → circulation, not a spin
+  angVel: number; // slow signed drift
   radAmp: number; // radial drift amplitude (fraction)
   radFreq: number; // radial drift frequency
-  radPhase: number; // per-particle phase offset (micro imperfection)
-  size: number; // sprite scale
-  alpha: number; // base alpha (kept low → inner light, not sparkles)
-  twFreq: number; // slow alpha-breathing frequency
-  twPhase: number;
+  radPhase: number; // per-cell phase offset (no synchronized motion)
+  lobe: number; // soft lobe radius (× orbR) — LARGE → overlaps into a field
+  peak: number; // low peak alpha (mostly SUB-visible)
+  densFreq: number; // slow visibility fluctuation (density leads, not brightness)
+  densPhase: number;
+  densPow: number; // dissolve sharpness — tier-specific (gentle → sparse)
+  floor: number; // visibility floor — tier A stays near peak; tier C floors to 0
 };
 
 export interface OrbLivingProps {
   /** Pixel diameter. Default 220. */
   size?: number;
-  /** Particle count (clamped to the 60–120 performance gate). Default 90. */
-  particleCount?: number;
+  /** Luminous-medium cell count (clamped 24–64). Default 40 — presence, not a number. */
+  fieldCells?: number;
 }
 
 /**
@@ -82,7 +91,7 @@ export interface OrbLivingProps {
  */
 export default function OrbLiving({
   size = 220,
-  particleCount = 90,
+  fieldCells = 40,
 }: OrbLivingProps): React.ReactElement {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
 
@@ -113,45 +122,92 @@ export default function OrbLiving({
     const cy = size / 2;
     const orbR = size * 0.42; // body radius (soft-edge margin left over)
 
-    const count = Math.max(60, Math.min(120, Math.round(particleCount)));
+    const CELLS = Math.max(24, Math.min(64, Math.round(fieldCells)));
 
-    // Pre-render ONE soft warm sprite (offscreen) → cheap drawImage per particle.
-    const spriteR = 8;
-    const sprite = document.createElement("canvas");
-    sprite.width = spriteR * 2;
-    sprite.height = spriteR * 2;
-    const sctx = sprite.getContext("2d");
-    if (!sctx) return;
-    const sg = sctx.createRadialGradient(
-      spriteR,
-      spriteR,
-      0,
-      spriteR,
-      spriteR,
-      spriteR
-    );
-    sg.addColorStop(0, rgba(touch, 0.9));
-    sg.addColorStop(0.4, rgba(touch, 0.35));
-    sg.addColorStop(1, rgba(touch, 0));
-    sctx.fillStyle = sg;
-    sctx.fillRect(0, 0, spriteR * 2, spriteR * 2);
-
-    // Randomized field — no two particles share timing (micro imperfection, no
-    // synchronized motion). sqrt(radius) → even areal spread; mixed angVel sign
-    // → circulation rather than a rigid rotation.
+    // ── Tiered visibility (Commander): the Orb contains living LIGHT, not
+    // particles. ~86% pure medium (sub-visible, never crests — the light itself) /
+    // ~11% faint edgeless swell / ~3% rare brief emergence that dissolves FAST.
+    // Size, peak, dissolve sharpness, and drift ALL differ by tier (no uniform
+    // cells) → at most ~1 diffuse crest is ever perceptible; the eye cannot count.
+    // Tier thresholds 0.863 / 0.971 double as this rework's chunk-freshness marker.
     const rand = (a: number, b: number) => a + Math.random() * (b - a);
-    const particles: Particle[] = Array.from({ length: count }, () => ({
-      angle: rand(0, Math.PI * 2),
-      radius: Math.sqrt(Math.random()) * 0.82,
-      angVel: rand(0.02, 0.09) * (Math.random() < 0.5 ? -1 : 1),
-      radAmp: rand(0.02, 0.07),
-      radFreq: rand(0.15, 0.5),
-      radPhase: rand(0, Math.PI * 2),
-      size: rand(0.5, 1.7),
-      alpha: rand(0.04, 0.2),
-      twFreq: rand(0.2, 0.7),
-      twPhase: rand(0, Math.PI * 2),
-    }));
+    const makeCell = (): MediumCell => {
+      const roll = Math.random();
+      let lobe: number, peak: number, densFreq: number, densPow: number;
+      let floor: number, drift: number;
+      if (roll < 0.863) {
+        // TIER A — pure medium: the continuous light. Never crests. Largest, most
+        // diffuse, very dim, near-constant → overlap sums to a smooth living field.
+        lobe = rand(0.2, 0.34);
+        peak = rand(0.004, 0.007);
+        densFreq = rand(0.02, 0.06);
+        densPow = 1;
+        floor = 0.72;
+        drift = rand(0.008, 0.02);
+      } else if (roll < 0.971) {
+        // TIER B — faint swell: occasionally a faint, edgeless density bump.
+        lobe = rand(0.16, 0.26);
+        peak = rand(0.012, 0.019);
+        densFreq = rand(0.045, 0.1);
+        densPow = 3;
+        floor = 0.12;
+        drift = rand(0.01, 0.024);
+      } else {
+        // TIER C — emergence: rare, brief, illusion-level; dissolves FAST into the
+        // medium; slowest drift + soft → cannot be tracked; ≤1 visible at a time.
+        lobe = rand(0.11, 0.17);
+        peak = rand(0.02, 0.03);
+        densFreq = rand(0.05, 0.12);
+        densPow = 6;
+        floor = 0;
+        drift = rand(0.006, 0.014);
+      }
+      return {
+        angle: rand(0, Math.PI * 2),
+        radius: Math.sqrt(Math.random()) * 0.72,
+        angVel: drift * (Math.random() < 0.5 ? -1 : 1),
+        radAmp: rand(0.03, 0.1),
+        radFreq: rand(0.05, 0.18),
+        radPhase: rand(0, Math.PI * 2),
+        lobe,
+        peak,
+        densFreq,
+        densPhase: rand(0, Math.PI * 2),
+        densPow,
+        floor,
+      };
+    };
+    const cells: MediumCell[] = Array.from({ length: CELLS }, makeCell);
+
+    // ── B-1 tuning knobs (Sensory Gate round) ──────────────────────────────────
+    const NOTICE_S = 0.08; // 60–100ms notice delay before attention begins (§B)
+    const MAX_DRIFT = orbR * 0.55; // core stays interior; cap on drift toward touch
+    const SLOW_SPEED = 220; // px/s — above = ignore (no pursuit); below = retarget
+    const TAU_CORE = 0.55; // s — core drift ease (leads)
+    const TAU_MID = 0.9; // s — mid follows
+    const TAU_SHELL = 1.4; // s — shell follows last
+    const TAU_ENGAGE = 0.6; // s — engage (wander-shrink / subtle brighten) ease
+    const RELEASE_TAU_SCALE = 1.7; // release returns calmer (slower ease to idle)
+    const WANDER_REDUCE = 0.5; // core wander radius shrinks by this ×engage on arrival
+    const ENGAGE_BRIGHTEN = 0.05; // subtle "noticed" warmth (§C-5: kept minimal)
+
+    // B-1 attention state — mutable across frames. Reaction path is deterministic;
+    // only the touch COORDINATE/TIME (input) is non-deterministic.
+    let realT = 0; // unscaled seconds — notice timing (independent of reduceMotion)
+    let touching = false;
+    let touchDownT = 0;
+    let touchX = cx;
+    let touchY = cy;
+    let lastMoveX = 0;
+    let lastMoveY = 0;
+    let lastMoveTs = 0;
+    let engage = 0; // 0 idle → 1 attentive
+    let coreShiftX = 0;
+    let coreShiftY = 0;
+    let midShiftX = 0;
+    let midShiftY = 0;
+    let shellShiftX = 0;
+    let shellShiftY = 0;
 
     let raf = 0;
     let last = 0;
@@ -162,6 +218,40 @@ export default function OrbLiving({
       const dt = Math.min(0.05, (ts - last) / 1000); // clamp resume gaps
       last = ts;
       t += reduceMotion ? dt * 0.4 : dt;
+
+      // ── B-1 attention (Existence → Relationship) ────────────────────────────
+      // Touch → Notice(delay) → Attention → Core Drift → Stabilize, + slow refresh.
+      // NOTICE: `realT` is UNSCALED so the 60–100ms delay is real regardless of
+      // reduceMotion. While touching-but-not-yet-noticed, nothing shifts — the
+      // delay itself is the "noticing" (no visual change, §B). After notice the
+      // core eases toward the (clamped) touch point; mid then shell follow with
+      // longer time-constants (core-first, §C-2). RELEASE: target → idle and every
+      // layer eases calmly back (no linger — that is B-3). Particles never receive
+      // this shift (§D-3). All easing is exponential-toward-target → no snap.
+      realT += dt;
+      const noticed = touching && realT - touchDownT >= NOTICE_S;
+      let tsx = 0;
+      let tsy = 0;
+      if (noticed) {
+        tsx = touchX - cx;
+        tsy = touchY - cy;
+        const m = Math.hypot(tsx, tsy);
+        if (m > MAX_DRIFT) {
+          tsx = (tsx / m) * MAX_DRIFT;
+          tsy = (tsy / m) * MAX_DRIFT;
+        }
+      }
+      const rel = noticed ? 1 : RELEASE_TAU_SCALE; // calmer return on release
+      const kCore = 1 - Math.exp(-dt / (TAU_CORE * rel));
+      const kMid = 1 - Math.exp(-dt / (TAU_MID * rel));
+      const kShell = 1 - Math.exp(-dt / (TAU_SHELL * rel));
+      engage += ((noticed ? 1 : 0) - engage) * (1 - Math.exp(-dt / (TAU_ENGAGE * rel)));
+      coreShiftX += (tsx - coreShiftX) * kCore; // core LEADS
+      coreShiftY += (tsy - coreShiftY) * kCore;
+      midShiftX += (coreShiftX - midShiftX) * kMid; // mid follows core
+      midShiftY += (coreShiftY - midShiftY) * kMid;
+      shellShiftX += (midShiftX - shellShiftX) * kShell; // shell follows last
+      shellShiftY += (midShiftY - shellShiftY) * kShell;
 
       // ── Phase-lag propagation (order of motion, NOT amount) ─────────────────
       // ONE shared heartbeat originates at the core; each outer layer reads the
@@ -202,24 +292,36 @@ export default function OrbLiving({
       const wanderX = Math.sin(t * 0.23) * 0.62 + Math.sin(t * 0.37 + 1.3) * 0.38;
       const wanderY = Math.cos(t * 0.19 + 0.5) * 0.55 + Math.sin(t * 0.41 + 2.1) * 0.3;
       const coreAmp = size * 0.055;
-      const ecx = cx + wanderX * coreAmp;
-      const ecy = cy + wanderY * coreAmp * 0.78; // less vertical travel → asymmetry
+      // Idle (Phase A) wander bases — FULL amplitude, shift-free. Particles and the
+      // untouched path reference these → untouched output is byte-identical to
+      // Phase A (engage=0 → ×1.0, all shifts 0 → +0.0, both exact in IEEE-754).
+      const exIdle = cx + wanderX * coreAmp;
+      const eyIdle = cy + wanderY * coreAmp * 0.78;
+      const bxIdle = cx + Math.sin(t * 0.13) * (size * 0.005);
+      const byIdle = cy + Math.cos(t * 0.11 + 0.6) * (size * 0.005);
+      // Attention applied: core wander shrinks as attention settles (wr=1 idle) and
+      // the lagged shift moves the RENDERED centres (core leads → mid → shell).
+      const wr = 1 - WANDER_REDUCE * engage;
+      const exBase = cx + wanderX * coreAmp * wr;
+      const eyBase = cy + wanderY * coreAmp * 0.78 * wr;
+      const ecx = exBase + coreShiftX;
+      const ecy = eyBase + coreShiftY;
       const corePulse = 1 + 0.1 * beat(t) + 0.02 * Math.sin(t * 0.71 + 0.9);
       const coreR = orbR * 0.46 * corePulse;
-      const coreDens = 0.85 + 0.15 * beat(t); // brightness leads with the beat
+      const coreDens = (0.85 + 0.15 * beat(t)) * (1 + ENGAGE_BRIGHTEN * engage);
 
       // Surrounding light RESPONDS — mid radius, beat lagged by LAG_MID, smaller
       // amplitude, centre leaning back toward the middle (wanders less than core).
       const midPulse = 1 + 0.05 * beat(t - LAG_MID) + 0.015 * Math.sin(t * 0.63 + 2.0);
       const midR = orbR * 0.72 * midPulse;
       const midDens = 0.85 + 0.15 * beat(t - LAG_MID);
-      const mcx = cx * 0.7 + ecx * 0.3;
-      const mcy = cy * 0.7 + ecy * 0.3;
+      const mcx = cx * 0.7 + exBase * 0.3 + midShiftX;
+      const mcy = cy * 0.7 + eyBase * 0.3 + midShiftY;
 
       // Outer shell FOLLOWS last — widest, beat lagged most, barely moves (skin).
       const shellPulse = 1 + 0.007 * beat(t - LAG_SHELL);
-      const bcx = cx + Math.sin(t * 0.13) * (size * 0.005);
-      const bcy = cy + Math.cos(t * 0.11 + 0.6) * (size * 0.005);
+      const bcx = bxIdle + shellShiftX;
+      const bcy = byIdle + shellShiftY;
       const shellR = orbR * shellPulse;
 
       ctx.clearRect(0, 0, size, size);
@@ -268,33 +370,42 @@ export default function OrbLiving({
       ctx.arc(ecx, ecy, heartR, 0, Math.PI * 2);
       ctx.fill();
 
-      // (5) Internal circulation — particles orbit the WANDERING core, radius
-      // scaled to the shell. Faint and slow; count/amplitude unchanged.
-      const ccx = bcx * 0.4 + ecx * 0.6;
-      const ccy = bcy * 0.4 + ecy * 0.6;
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i]!;
-        const ang = p.angle + p.angVel * t;
-        const rOsc = p.radius + Math.sin(t * p.radFreq + p.radPhase) * p.radAmp;
-        const rr = Math.max(0, Math.min(0.92, rOsc)) * shellR;
+      // (5) Luminous MEDIUM (was discrete particles). Each cell is a LARGE, very
+      // soft, low-peak additive lobe; heavy overlap sums into a CONTINUOUS light
+      // field, so the eye reads breathing light — not dots. Density (not
+      // brightness) leads: a cell dwells SUB-visible and only occasionally crests
+      // above the visibility threshold (~10–20% at any moment), then dissolves back
+      // into the field (fade = dissolution, not on/off). Additive 'lighter' → only
+      // ever ADDS warm light, can never darken (no dust). Touch-UNRESPONSIVE (§D-3):
+      // orbits the IDLE centre, receives no attention shift.
+      const ccx = bxIdle * 0.4 + exIdle * 0.6;
+      const ccy = byIdle * 0.4 + eyIdle * 0.6;
+      for (let i = 0; i < cells.length; i++) {
+        const c = cells[i]!;
+        const ang = c.angle + c.angVel * t;
+        const rOsc = c.radius + Math.sin(t * c.radFreq + c.radPhase) * c.radAmp;
+        const rr = Math.max(0, Math.min(0.85, rOsc)) * shellR;
         const px = ccx + Math.cos(ang) * rr;
         const py = ccy + Math.sin(ang) * rr;
-        // Fade toward the rim → reads as INTERNAL light, not edge sparkles.
+        // Density fluctuation — tier-specific: tier A undulates near its floor
+        // (never crests); tier C floors to 0 and rarely spikes then dissolves fast.
+        const dens =
+          c.floor +
+          (1 - c.floor) * Math.pow(0.5 + 0.5 * Math.sin(t * c.densFreq + c.densPhase), c.densPow);
+        // Dissolve toward the rim so the medium fades into the field, no hard edge.
         const rimFade = 1 - Math.min(1, rr / shellR / 0.95);
-        const tw = 0.6 + 0.4 * Math.sin(t * p.twFreq + p.twPhase);
-        const a = p.alpha * tw * (0.35 + 0.65 * rimFade);
-        if (a <= 0.002) continue;
-        const s = p.size;
-        ctx.globalAlpha = a;
-        ctx.drawImage(
-          sprite,
-          px - s * spriteR * 0.5,
-          py - s * spriteR * 0.5,
-          s * spriteR,
-          s * spriteR
-        );
+        const a = c.peak * dens * (0.4 + 0.6 * rimFade);
+        if (a <= 0.0012) continue; // truly sub-visible → skip (perf)
+        const R = c.lobe * orbR; // large soft lobe (overlaps neighbours)
+        const g = ctx.createRadialGradient(px, py, 0, px, py, R);
+        g.addColorStop(0, rgba(touch, a));
+        g.addColorStop(0.5, rgba(touch, a * 0.35)); // very gradual → soft, edgeless
+        g.addColorStop(1, rgba(morning, 0)); // dissolves into transparent field
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(px, py, R, 0, Math.PI * 2);
+        ctx.fill();
       }
-      ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = "source-over";
 
       raf = window.requestAnimationFrame(draw);
@@ -312,11 +423,57 @@ export default function OrbLiving({
     document.addEventListener("visibilitychange", onVisibility);
     raf = window.requestAnimationFrame(draw);
 
+    // ── B-1 pointer input (touch coordinate = input; reaction stays deterministic).
+    const localPoint = (e: PointerEvent) => {
+      const r = canvas.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      const p = localPoint(e);
+      touching = true;
+      touchDownT = realT; // notice delay starts now
+      touchX = p.x;
+      touchY = p.y;
+      lastMoveX = p.x;
+      lastMoveY = p.y;
+      lastMoveTs = e.timeStamp;
+      canvas.setPointerCapture?.(e.pointerId);
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      if (!touching) return;
+      const p = localPoint(e);
+      const dtMs = Math.max(1, e.timeStamp - lastMoveTs);
+      const dist = Math.hypot(p.x - lastMoveX, p.y - lastMoveY);
+      const speed = (dist / dtMs) * 1000; // px/s (input-derived)
+      lastMoveX = p.x;
+      lastMoveY = p.y;
+      lastMoveTs = e.timeStamp;
+      // Attention Refresh (§D-5 / No Pursuit §D-4): fast motion → IGNORE (no
+      // cursor-follow); slow intention → retarget the drift GOAL only. The slow
+      // ease does the realignment — this is not per-frame following.
+      if (speed <= SLOW_SPEED) {
+        touchX = p.x;
+        touchY = p.y;
+      }
+    };
+    const onPointerUp = (e: PointerEvent) => {
+      touching = false; // → drift eases back to idle (calm return, no linger)
+      canvas.releasePointerCapture?.(e.pointerId);
+    };
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerup", onPointerUp);
+    canvas.addEventListener("pointercancel", onPointerUp);
+
     return () => {
       if (raf) window.cancelAnimationFrame(raf);
       document.removeEventListener("visibilitychange", onVisibility);
+      canvas.removeEventListener("pointerdown", onPointerDown);
+      canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("pointerup", onPointerUp);
+      canvas.removeEventListener("pointercancel", onPointerUp);
     };
-  }, [size, particleCount]);
+  }, [size, fieldCells]);
 
   return (
     <canvas
