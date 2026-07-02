@@ -12,7 +12,7 @@
  * ritual-first, never dashboard/score-first (Scope Lock §1/§2/§10).
  */
 import React from "react";
-import { Orb } from "@/components/orb/Orb";
+import OrbLiving from "@/components/orb/OrbLiving";
 import { InfoCard } from "@/components/bty/ui/InfoCard";
 import { getMessages, type Locale } from "@/lib/i18n";
 import type { DailyGateSnapshot } from "@/lib/bty/daily/dailyGateCheck";
@@ -86,10 +86,12 @@ export function CriticalGateCheckHost({
     <div className="space-y-6">
       {top}
       <RelationshipPulseSummary pulse={pulse} locale={locale} />
-      {/* Orb — presence/wake only. Sealed primitive: existing prop surface, no onCommit,
-          no gate-state visuals injected, haptic exclusivity untouched. */}
+      {/* OrbLiving — living visual presence (Scope Lock §9 amended, swap not merge).
+          Separate primitive from the sealed Orb.tsx; visual-only and haptic-free.
+          Decorative (aria-hidden) — the ritual copy carries meaning; navigation is
+          the Today Door cards, so no onCommit here. */}
       <div className="flex flex-col items-center py-2">
-        <Orb mode="morning" size={160} ariaLabel={m.today.beginCta} />
+        <OrbLiving size={160} />
       </div>
       <TodayDoorCards locale={locale} />
       <ExitLine locale={locale} />

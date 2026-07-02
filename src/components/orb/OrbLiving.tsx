@@ -10,12 +10,14 @@
  * and /today). Per the dispatch, production Orb.tsx is NOT modified; all Phase A
  * work lives here, dev-only.
  *
- * ── Phase A scope ONLY ───────────────────────────────────────────────────────
+ * ── Scope: Phase A idle presence + B-1/B-1.5 pointer notice ───────────────────
  * idle breathing · micro imperfection · subtle internal particle circulation ·
- * living presence BEFORE any touch. NOT implemented here (later phases):
- * touch gravity, on-touch core drift, release memory, approach/hover detection,
- * new haptics, WebGL. This component makes ZERO haptic calls — the #배타성 LOCK
- * (haptic exclusivity, sole site in Orb.tsx) is untouched.
+ * living presence before touch, PLUS B-1/B-1.5 pointer notice→attention→core
+ * drift→stabilize (the pointer supplies the touch coordinate/time only; the
+ * reaction path is deterministic). Still deferred (later phases): full touch
+ * gravity, release memory, approach/hover detection, WebGL, and ANY haptic. This
+ * component makes ZERO haptic calls — the #배타성 LOCK (haptic exclusivity, sole
+ * site in Orb.tsx) is untouched.
  *
  * ── Colour (보강 4) ──────────────────────────────────────────────────────────
  * Derived at runtime from the --bty-orb-* tokens via getComputedStyle. No new
@@ -86,20 +88,27 @@ export interface OrbLivingProps {
 }
 
 /**
- * Idle living-presence orb (Phase A). No pointer handlers — it does not react to
- * touch by design; it only exists, quietly alive.
+ * Living-presence orb — Phase A idle presence + B-1/B-1.5 pointer notice. Pointer
+ * input supplies the touch coordinate/time only; the reaction path is deterministic
+ * and haptic-free. Production-safety: reduced-motion → a single static frame (no
+ * autonomous motion); canvas-unavailable → a static CSS-gradient presence fallback
+ * (never blank).
  */
 export default function OrbLiving({
   size = 220,
   fieldCells = 40,
 }: OrbLivingProps): React.ReactElement {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const [failed, setFailed] = React.useState(false);
 
   React.useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!ctx) {
+      setFailed(true); // canvas unavailable → static CSS-gradient presence fallback
+      return;
+    }
 
     const dpr = Math.min(
       typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1,
@@ -438,7 +447,9 @@ export default function OrbLiving({
       }
       ctx.globalCompositeOperation = "source-over";
 
-      raf = window.requestAnimationFrame(draw);
+      // Reduced-motion: draw exactly ONE static frame — no autonomous motion for
+      // vestibular sensitivity. Otherwise keep the living loop.
+      if (!reduceMotion) raf = window.requestAnimationFrame(draw);
     };
 
     const onVisibility = () => {
@@ -506,10 +517,31 @@ export default function OrbLiving({
   }, [size, fieldCells]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      aria-hidden
-      style={{ width: size, height: size, display: "block", touchAction: "none" }}
-    />
+    <div aria-hidden style={{ position: "relative", width: size, height: size }}>
+      <canvas
+        ref={canvasRef}
+        aria-hidden
+        style={{
+          width: size,
+          height: size,
+          display: failed ? "none" : "block",
+          touchAction: "none",
+        }}
+      />
+      {failed ? (
+        // Static presence fallback (canvas unavailable). Colours mirror the
+        // --bty-orb-* token fallbacks; static → also reduced-motion safe.
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "50%",
+            background:
+              "radial-gradient(circle at 50% 45%, rgba(227,162,90,0.55), rgba(189,131,72,0.35) 45%, rgba(189,131,72,0) 72%)",
+          }}
+        />
+      ) : null}
+    </div>
   );
 }
