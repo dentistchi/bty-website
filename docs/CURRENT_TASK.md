@@ -1,3 +1,9 @@
+**2026-07-02 — DEBT-1 CLOSED: validation_approved_at reproducibility gap resolved.**
+
+**Fix (inner):** Live column shape re-measured this round via PostgREST OpenAPI catalog introspection — confirmed `timestamptz`, nullable, no default. One idempotent tracked migration added in inner repo (`bty-app/supabase/migrations/20260702000000_bty_action_contracts_validation_approved_at.sql`); inner commit `ba4845ae` pushed to origin/inner-main. Live apply NOT performed — separate Commander step; live already has the column so apply is a no-op.
+
+**Status:** DEBT-2 remains deferred to v0.2. v0.1 implementation blockers now clear for Dispatch B. This outer ledger entry is a separate governance record from the inner schema commit.
+
 **2026-07-02 — Product direction: Orb → Daily Experience. Constitution Candidate registered. North Star transition.**
 
 **Constitution Candidate (Commander verbatim, NOT canon):**
