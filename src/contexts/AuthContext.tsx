@@ -4,6 +4,12 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { usePathname } from "next/navigation";
 import { fetchJson } from "@/lib/read-json";
 import { sanitizeNext } from "@/lib/sanitize-next";
+import { isNative } from "@/lib/native/isNative";
+import {
+  restoreNativeSession,
+  clearNativeSession,
+  syncNativeSessionFromClient,
+} from "@/lib/native/durableSession";
 
 type AuthUser = {
   id: string;
@@ -125,9 +131,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     setLoading(true);
     try {
-      const j = await fetchSessionOnce();
+      let j = await fetchSessionOnce();
+
+      // STEP A2 — native durable session restore (native only). A hard-kill right
+      // after login can lose the WKWebView cookie before it flushes to disk, so the
+      // gate returns unauthenticated even though the iOS Keychain still holds valid
+      // session material. Rebuild from Keychain, then re-read the gate. Web is
+      // unchanged: isNative() is false, so restoreNativeSession() no-ops → false.
+      if ((!j || !j.ok || !j.user) && isNative()) {
+        const restored = await restoreNativeSession();
+        if (restored) {
+          sessionInflight = null;
+          j = await fetchSessionOnce();
+        }
+      }
+
       if (!mounted.current) return;
-      setUser(j?.ok ? (j.user ?? null) : null);
+      const authed = j?.ok ? (j.user ?? null) : null;
+      setUser(authed);
+
+      // STEP A2 — keep the Keychain copy synced to the client's latest (possibly
+      // auto-rotated) tokens so a later hard-kill can still restore. Native only,
+      // best-effort, non-blocking.
+      if (authed && isNative()) void syncNativeSessionFromClient();
     } catch (e: any) {
       if (!mounted.current) return;
       setUser(null);
@@ -271,6 +297,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 서버에 logout route가 있으면 호출해도 좋지만, 지금은 쿠키 기반이라
     // supabase signOut route를 만들거나, 쿠키 삭제 route를 만들기 전까지는
     // 사용자 상태만 비우고 refresh로 동기화하는 방식
+    // STEP A2 — clear the iOS Keychain session BEFORE refresh(), so the restore path
+    // does not silently re-authenticate the user on logout. No-op on web.
+    await clearNativeSession();
     setUser(null);
     sessionInflight = null;
     await refresh();

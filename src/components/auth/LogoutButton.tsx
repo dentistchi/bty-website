@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
+import { clearNativeSession } from "@/lib/native/durableSession";
 
 export function LogoutButton() {
   const pathname = usePathname() ?? "";
@@ -14,6 +15,9 @@ export function LogoutButton() {
     // #20: revoke the Supabase session server-side (auth.signOut) + clear cookies.
     // The old `/bty/logout` path only expired cookies, leaving the Supabase
     // session live so the next OAuth click silently re-authenticated.
+    // STEP A2 — clear the iOS Keychain durable session so relaunch after logout
+    // requires Google again (no silent restore). No-op on web.
+    await clearNativeSession();
     try {
       await fetch(`/api/auth/logout`, { method: "POST", credentials: "include" });
     } catch {

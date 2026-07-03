@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getSupabase, supabase as supabaseMaybe } from "@/lib/supabase";
 import { isNative } from "@/lib/native/isNative";
+import { storeNativeSession } from "@/lib/native/durableSession";
 
 export type LoginCardLocale = "en" | "ko";
 
@@ -264,6 +265,14 @@ export default function LoginCard({ locale, nextPath, initialError }: LoginCardP
               access_token: idData.session.access_token,
               refresh_token: idData.session.refresh_token,
             }),
+          });
+          // STEP A2 — persist durable session to the iOS Keychain BEFORE leaving
+          // login, so a hard-kill immediately after login (before WKWebView flushes
+          // its cookie to disk) can restore on relaunch without Google. Awaited.
+          await storeNativeSession({
+            access_token: idData.session.access_token,
+            refresh_token: idData.session.refresh_token,
+            expires_at: idData.session.expires_at ?? null,
           });
           window.location.assign(nextPath);
           return;
