@@ -23,6 +23,7 @@ import { PageLoadingFallback } from "@/components/bty-arena";
 type Phase = "splash" | "orb";
 
 const SPLASH_MS = 500;
+const HOLD_MS = 800; // §G deliberate press-and-hold before the door opens Today
 
 function currentLocale(): string {
   return (typeof document !== "undefined" && document.documentElement.lang) || "ko";
@@ -54,6 +55,24 @@ export default function StartShellClient() {
     router.push(`/${currentLocale()}/today`);
   }, [router]);
 
+  // Keyboard commit mirrors the pointer press-and-hold: Space/Enter must be HELD ≥ HOLD_MS;
+  // an early keyup cancels. A quick key press does not open Today.
+  const keyHoldRef = React.useRef<number | null>(null);
+  const startKeyHold = React.useCallback(() => {
+    if (keyHoldRef.current != null) return;
+    keyHoldRef.current = window.setTimeout(() => {
+      keyHoldRef.current = null;
+      openToday();
+    }, HOLD_MS);
+  }, [openToday]);
+  const cancelKeyHold = React.useCallback(() => {
+    if (keyHoldRef.current != null) {
+      clearTimeout(keyHoldRef.current);
+      keyHoldRef.current = null;
+    }
+  }, []);
+  React.useEffect(() => () => cancelKeyHold(), [cancelKeyHold]);
+
   if (loading) return <PageLoadingFallback />;
   if (!user) return <div className="p-6">redirecting…</div>;
 
@@ -69,16 +88,23 @@ export default function StartShellClient() {
         <div
           role="button"
           tabIndex={0}
-          aria-label="Begin today"
+          aria-label="Begin today (press and hold)"
           onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
+            if ((e.key === "Enter" || e.key === " ") && !e.repeat) {
               e.preventDefault();
-              openToday();
+              startKeyHold();
             }
           }}
+          onKeyUp={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              cancelKeyHold();
+            }
+          }}
+          onBlur={cancelKeyHold}
           className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         >
-          <OrbLiving size={220} onCommit={openToday} />
+          <OrbLiving size={220} holdMs={HOLD_MS} onCommit={openToday} />
         </div>
       )}
     </main>

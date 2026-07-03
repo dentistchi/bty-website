@@ -86,10 +86,17 @@ export interface OrbLivingProps {
   /** Luminous-medium cell count (clamped 24–64). Default 40 — presence, not a number. */
   fieldCells?: number;
   /**
-   * Fired on a tap/commit release (pointer up) — Threshold-Door use (§G), e.g. navigate.
+   * Fired on commit — Threshold-Door use (§G), e.g. navigate.
    * Visual-only: OrbLiving adds NO haptic (exclusivity sole-site remains Orb.tsx).
    */
   onCommit?: () => void;
+  /**
+   * Press-and-hold threshold in ms before `onCommit` fires. `0`/undefined → fire on tap
+   * (pointer-up). `> 0` → deliberate hold: a brief tap does NOT commit; the press must be
+   * held ≥ `holdMs`, and an early release/cancel aborts. Behavior-only — no visual-parameter
+   * change; timer-based (reduced-motion-safe, independent of the rAF loop).
+   */
+  holdMs?: number;
 }
 
 /**
@@ -103,15 +110,18 @@ export default function OrbLiving({
   size = 220,
   fieldCells = 40,
   onCommit,
+  holdMs = 0,
 }: OrbLivingProps): React.ReactElement {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const [failed, setFailed] = React.useState(false);
-  // Keep the latest onCommit in a ref so the (size/fieldCells-scoped) pointer effect
-  // never captures a stale closure. Visual-only — no haptic (§G).
+  // Keep the latest onCommit / holdMs in refs so the (size/fieldCells-scoped) pointer
+  // effect never captures a stale closure. Visual-only — no haptic (§G).
   const onCommitRef = React.useRef(onCommit);
+  const holdMsRef = React.useRef(holdMs);
   React.useEffect(() => {
     onCommitRef.current = onCommit;
-  }, [onCommit]);
+    holdMsRef.current = holdMs;
+  }, [onCommit, holdMs]);
 
   React.useEffect(() => {
     const canvas = canvasRef.current;
@@ -220,6 +230,8 @@ export default function OrbLiving({
     let realT = 0; // unscaled seconds — notice timing (independent of reduceMotion)
     let touching = false;
     let touchDownT = 0;
+    let committed = false; // per-press latch — onCommit fires at most once per press
+    let holdTimer = 0; // §G press-and-hold timer id (0 = none)
     let touchX = cx;
     let touchY = cy;
     let lastMoveX = 0;
@@ -511,9 +523,16 @@ export default function OrbLiving({
       const r = canvas.getBoundingClientRect();
       return { x: e.clientX - r.left, y: e.clientY - r.top };
     };
+    const clearHold = () => {
+      if (holdTimer) {
+        clearTimeout(holdTimer);
+        holdTimer = 0;
+      }
+    };
     const onPointerDown = (e: PointerEvent) => {
       const p = localPoint(e);
       touching = true;
+      committed = false;
       touchDownT = realT; // notice delay starts now
       touchX = p.x;
       touchY = p.y;
@@ -521,6 +540,18 @@ export default function OrbLiving({
       lastMoveY = p.y;
       lastMoveTs = e.timeStamp;
       canvas.setPointerCapture?.(e.pointerId);
+      // §G press-and-hold: a brief tap must NOT navigate. Hold ≥ holdMs → commit.
+      const hold = holdMsRef.current;
+      if (hold > 0) {
+        clearHold();
+        holdTimer = window.setTimeout(() => {
+          holdTimer = 0;
+          if (touching && !committed) {
+            committed = true;
+            onCommitRef.current?.(); // visual-only, NO haptic
+          }
+        }, hold);
+      }
     };
     const onPointerMove = (e: PointerEvent) => {
       if (!touching) return;
@@ -542,11 +573,17 @@ export default function OrbLiving({
     const onPointerUp = (e: PointerEvent) => {
       touching = false; // → drift eases back to idle (calm return, no linger)
       canvas.releasePointerCapture?.(e.pointerId);
-      onCommitRef.current?.(); // §G tap/commit — visual-only, NO haptic
+      clearHold(); // release before threshold → cancel the hold commit
+      // Tap mode only (holdMs <= 0) commits on release; hold mode commits via the timer.
+      if (holdMsRef.current <= 0 && !committed) {
+        committed = true;
+        onCommitRef.current?.(); // visual-only, NO haptic
+      }
     };
     const onPointerCancel = (e: PointerEvent) => {
       touching = false; // cancelled (not a commit) → no onCommit
       canvas.releasePointerCapture?.(e.pointerId);
+      clearHold();
     };
     canvas.addEventListener("pointerdown", onPointerDown);
     canvas.addEventListener("pointermove", onPointerMove);
@@ -555,6 +592,7 @@ export default function OrbLiving({
 
     return () => {
       if (raf) window.cancelAnimationFrame(raf);
+      if (holdTimer) clearTimeout(holdTimer);
       document.removeEventListener("visibilitychange", onVisibility);
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);
