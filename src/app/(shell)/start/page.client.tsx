@@ -3,41 +3,41 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { Orb } from "@/components/orb/Orb";
+import OrbLiving from "@/components/orb/OrbLiving";
 import { PageLoadingFallback } from "@/components/bty-arena";
 
 /**
- * App Shell v0 — "Morning 30s": App Launch → Splash(0.5s) → Orb → Fade(~600ms) → Mini Today.
- * ONE route, ONE client phase machine. Phases = internal state, NOT separate routes.
+ * App Shell v0 — Threshold Door (Scope Lock §4 / spec §G). App Launch → Splash(0.5s) →
+ * living OrbLiving door @220px. Tap/commit OPENS /today (navigation) — it does NOT
+ * self-terminate into mini-Today. The Orb is the door; /today is the revealed room.
  *
- * CRUX — Orb `onCommit` advances the ritual IN-PLACE (→ 'fade' → 'miniToday'). It does NOT
- * navigate, does NOT call useArenaEntryResolution, does NOT leave for /today's beginHref.
- * The Orb commits the ritual itself — "Orb in the right house."
+ * Living door = OrbLiving (visual-only, haptic-free per §G). Data-free: no
+ * daily-gate-check / relationship-pulse fetch, no server interpretation. Locale from
+ * <html lang> (root layout sets it; defaults "ko") — /start is not under [locale].
  *
- * Auth — client gate mirroring /app, but redirects to the REAL /[locale]/bty/login
- * (NOT /app's broken /login). Locale read from <html lang> (root layout sets it; defaults "ko").
- *
- * Haptic — imports Orb.tsx as-is → only its internal triggerOrbHaptic (press arrival) fires.
- * NO vibrate on splash / fade / miniToday; commit is silent. Zero new vibrate site.
+ * Haptic (§G, v0.1): the door chooses living visual presence over press-haptic; the
+ * previous production Orb.tsx press-haptic is intentionally not used. OrbLiving adds NO
+ * haptic (exclusivity sole-site remains Orb.tsx).
  */
 
-type Phase = "splash" | "orb" | "fade" | "miniToday";
+type Phase = "splash" | "orb";
 
 const SPLASH_MS = 500;
-const FADE_MS = 600; // provisional, ease-out
+
+function currentLocale(): string {
+  return (typeof document !== "undefined" && document.documentElement.lang) || "ko";
+}
 
 export default function StartShellClient() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [phase, setPhase] = React.useState<Phase>("splash");
-  const [miniIn, setMiniIn] = React.useState(false);
+  const navigatedRef = React.useRef(false);
 
-  // Client auth gate (mirror /app) — redirect to the REAL login, not /app's broken /login.
+  // Client auth gate — redirect to the REAL login.
   React.useEffect(() => {
     if (loading || user) return;
-    const locale =
-      (typeof document !== "undefined" && document.documentElement.lang) || "ko";
-    router.replace(`/${locale}/bty/login?next=${encodeURIComponent("/start")}`);
+    router.replace(`/${currentLocale()}/bty/login?next=${encodeURIComponent("/start")}`);
   }, [loading, user, router]);
 
   // splash(0.5s) → orb  (only once authenticated)
@@ -47,19 +47,12 @@ export default function StartShellClient() {
     return () => clearTimeout(t);
   }, [loading, user, phase]);
 
-  // fade(~600ms) → miniToday
-  React.useEffect(() => {
-    if (phase !== "fade") return;
-    const t = setTimeout(() => setPhase("miniToday"), FADE_MS);
-    return () => clearTimeout(t);
-  }, [phase]);
-
-  // miniToday gentle fade-in
-  React.useEffect(() => {
-    if (phase !== "miniToday") return;
-    const r = requestAnimationFrame(() => setMiniIn(true));
-    return () => cancelAnimationFrame(r);
-  }, [phase]);
+  // Door → Today. Navigate-once guard (commit latches once per press).
+  const openToday = React.useCallback(() => {
+    if (navigatedRef.current) return;
+    navigatedRef.current = true;
+    router.push(`/${currentLocale()}/today`);
+  }, [router]);
 
   if (loading) return <PageLoadingFallback />;
   if (!user) return <div className="p-6">redirecting…</div>;
@@ -69,28 +62,25 @@ export default function StartShellClient() {
       {/* Splash (0.5s) — quiet brand moment, fixed copy. */}
       {phase === "splash" ? (
         <p className="text-xs uppercase tracking-[0.32em] text-white/55">Better Than Yesterday</p>
-      ) : null}
-
-      {/* Orb — mounted in 'orb' and 'fade'; fades out over FADE_MS on commit. */}
-      {phase === "orb" || phase === "fade" ? (
+      ) : (
+        // Threshold Door — living OrbLiving @220 (§G). Tap/commit opens /today. The canvas
+        // is decorative (aria-hidden); role=button + keyboard here carry the accessible name
+        // and activation. onCommit fires the door on touch/tap. No haptic.
         <div
-          style={{ transition: `opacity ${FADE_MS}ms ease-out`, opacity: phase === "fade" ? 0 : 1 }}
+          role="button"
+          tabIndex={0}
+          aria-label="Begin today"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              openToday();
+            }
+          }}
+          className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         >
-          {/* CRUX: commit advances the ritual in-place — no navigation, no beginHref. */}
-          <Orb mode="morning" onCommit={() => setPhase("fade")} ariaLabel="Begin today" />
+          <OrbLiving size={220} onCommit={openToday} />
         </div>
-      ) : null}
-
-      {/* Mini Today — fixed placeholder copy only. No fetch / data / timezone / personalization. */}
-      {phase === "miniToday" ? (
-        <div
-          className="text-center"
-          style={{ transition: `opacity ${FADE_MS}ms ease-out`, opacity: miniIn ? 1 : 0 }}
-        >
-          <h1 className="text-2xl font-semibold text-white">Today begins.</h1>
-          <p className="mt-2 text-sm text-white/70">Carry one thing today.</p>
-        </div>
-      ) : null}
+      )}
     </main>
   );
 }

@@ -85,6 +85,11 @@ export interface OrbLivingProps {
   size?: number;
   /** Luminous-medium cell count (clamped 24–64). Default 40 — presence, not a number. */
   fieldCells?: number;
+  /**
+   * Fired on a tap/commit release (pointer up) — Threshold-Door use (§G), e.g. navigate.
+   * Visual-only: OrbLiving adds NO haptic (exclusivity sole-site remains Orb.tsx).
+   */
+  onCommit?: () => void;
 }
 
 /**
@@ -97,9 +102,16 @@ export interface OrbLivingProps {
 export default function OrbLiving({
   size = 220,
   fieldCells = 40,
+  onCommit,
 }: OrbLivingProps): React.ReactElement {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const [failed, setFailed] = React.useState(false);
+  // Keep the latest onCommit in a ref so the (size/fieldCells-scoped) pointer effect
+  // never captures a stale closure. Visual-only — no haptic (§G).
+  const onCommitRef = React.useRef(onCommit);
+  React.useEffect(() => {
+    onCommitRef.current = onCommit;
+  }, [onCommit]);
 
   React.useEffect(() => {
     const canvas = canvasRef.current;
@@ -530,11 +542,16 @@ export default function OrbLiving({
     const onPointerUp = (e: PointerEvent) => {
       touching = false; // → drift eases back to idle (calm return, no linger)
       canvas.releasePointerCapture?.(e.pointerId);
+      onCommitRef.current?.(); // §G tap/commit — visual-only, NO haptic
+    };
+    const onPointerCancel = (e: PointerEvent) => {
+      touching = false; // cancelled (not a commit) → no onCommit
+      canvas.releasePointerCapture?.(e.pointerId);
     };
     canvas.addEventListener("pointerdown", onPointerDown);
     canvas.addEventListener("pointermove", onPointerMove);
     canvas.addEventListener("pointerup", onPointerUp);
-    canvas.addEventListener("pointercancel", onPointerUp);
+    canvas.addEventListener("pointercancel", onPointerCancel);
 
     return () => {
       if (raf) window.cancelAnimationFrame(raf);
@@ -542,7 +559,7 @@ export default function OrbLiving({
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerUp);
-      canvas.removeEventListener("pointercancel", onPointerUp);
+      canvas.removeEventListener("pointercancel", onPointerCancel);
     };
   }, [size, fieldCells]);
 
