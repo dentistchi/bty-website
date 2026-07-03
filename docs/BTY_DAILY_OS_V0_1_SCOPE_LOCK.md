@@ -221,14 +221,16 @@ Deferred to v0.2 / later tracks:
 - FK `VALIDATE`
 - historical relationship evidence reconstruction
 - advanced `OrbLiving` **merge into `Orb.tsx`**
-- Phase B touch-gravity / deeper interaction work
+- deeper Touch-Gravity beyond the v0.1 Today secondary Influence Field (release memory B-3, approach/hover sensing, production-wide touch gravity)
 - additional haptic expansion
 - high-fidelity particle / touch animation beyond the locked Phase A / B-1.5 visual presence
 - full AI drawer implementation
 - Foundry artifact system expansion
 
-**Not deferred:** the v0.1 Today Shell **OrbLiving visual swap**, provided `Orb.tsx` remains
-sealed and the Today-surface Sensory Gate re-passes.
+**Not deferred:** (a) the v0.1 Today Shell **OrbLiving visual swap**; (b) the v0.1 Today
+**B-2 secondary Influence Field** — core anchored, a slow/wide/heavy **visual-only,
+haptic-free** gather toward touch (per spec §F). Both require `Orb.tsx` sealed and the
+Today-surface Sensory Gate to re-pass.
 
 ## 14. Final Lock Statement
 

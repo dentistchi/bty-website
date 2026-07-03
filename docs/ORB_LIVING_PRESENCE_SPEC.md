@@ -514,3 +514,34 @@ one living luminous body whose attention has shifted.
 ```
 
 **Footnote (non-normative) — §E-4:** Seed depth (Seed reveals only in deep moments — long touch, relationship formation) = registered as B-2 design input, not locked here.
+
+---
+
+## §F — Today Surface Activation (v0.1 Daily OS) — Commander-authorized amendment (2026-07-03)
+
+**Status:** NORMATIVE for the BTY Daily OS v0.1 Today surface only
+(/[locale]/today, OrbLiving @160px). Additive — no edit to the verbatim
+§A–§E bodies. **Partially supersedes** the B-1.5 cohesion principle for this
+surface: the **Attention Core remains core-anchored** (B-1.5 "never chase the
+finger" is preserved for the core), while a **new secondary Influence Field
+(B-2)** may gather toward touch (§B "gather" · §D Touch Gravity), otherwise deferred.
+
+**Commander directive (verbatim, 2026-07-03):**
+> core가 손가락을 따라가면 안 된다.
+> central anchor는 유지한다.
+> 다만 secondary influence field가 손끝 방향으로 아주 느리게, 넓게, 무겁게 모인다.
+
+**Implementation standard (this surface):**
+- **Attention Core anchored** — the bright center does NOT translate toward touch; idle
+  micro-drift + breath only (stable heart, §C-2).
+- **Secondary Influence Field (B-2)** gathers toward the touch point **very slowly, widely,
+  heavily** — soft, wide, delayed/inertial; light *density* is drawn toward the finger, the
+  core does not move.
+- **Preserved:** visual-only; **haptic-free** (exclusivity sole-site remains Orb.tsx — §9 /
+  ORB_HAPTIC_EXCLUSIVITY_LOCK intact); deterministic reaction (input = touch coordinate/time
+  only); gradient-only softness (no hard stroke/blur); no WebGL; no new dependency.
+- **Still deferred (unchanged):** release memory (B-3), approach/hover sensing, production-wide
+  touch gravity beyond this surface, any haptic.
+
+**Mandatory re-gate:** must re-pass the Today-surface Sensory Gate (§E-7) on `/ko/today` +
+`/en/today`. No final Sensory PASS before Commander confirms.
