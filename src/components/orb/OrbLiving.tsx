@@ -602,7 +602,22 @@ export default function OrbLiving({
   }, [size, fieldCells]);
 
   return (
-    <div aria-hidden style={{ position: "relative", width: size, height: size }}>
+    <div
+      aria-hidden
+      onContextMenu={(e) => e.preventDefault()}
+      style={{
+        position: "relative",
+        width: size,
+        height: size,
+        // iOS WKWebView: suppress the long-press selection/callout ("Copy / Translate")
+        // menu so the press-and-hold ritual is not interrupted. Non-visual.
+        touchAction: "none",
+        WebkitTouchCallout: "none",
+        WebkitUserSelect: "none",
+        userSelect: "none",
+        WebkitTapHighlightColor: "transparent",
+      }}
+    >
       <canvas
         ref={canvasRef}
         aria-hidden
@@ -611,6 +626,10 @@ export default function OrbLiving({
           height: size,
           display: failed ? "none" : "block",
           touchAction: "none",
+          WebkitTouchCallout: "none",
+          WebkitUserSelect: "none",
+          userSelect: "none",
+          WebkitTapHighlightColor: "transparent",
         }}
       />
       {failed ? (

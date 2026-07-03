@@ -103,6 +103,16 @@ export default function StartShellClient() {
             }
           }}
           onBlur={cancelKeyHold}
+          onContextMenu={(e) => e.preventDefault()}
+          style={{
+            // iOS WKWebView: block the long-press selection/callout menu on the hold target
+            // so the press-and-hold reaches the commit threshold uninterrupted. Non-visual.
+            touchAction: "none",
+            WebkitTouchCallout: "none",
+            WebkitUserSelect: "none",
+            userSelect: "none",
+            WebkitTapHighlightColor: "transparent",
+          }}
           className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         >
           <OrbLiving size={220} holdMs={HOLD_MS} onCommit={openToday} />
