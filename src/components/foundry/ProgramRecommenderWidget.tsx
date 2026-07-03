@@ -167,10 +167,17 @@ function mergeUnlockState(
 export type ProgramRecommenderWidgetProps = {
   /** Route prefix e.g. `ko` or `en` */
   locale: string;
+  /**
+   * "list" (default) = original 3-card "Recommended programs" list (arena styling).
+   * "today" = Daily OS room variant — ONE calm navy practice card (top rec), no heading,
+   * calm loading/empty/error. Same data/lock/live-update/select logic.
+   */
+  variant?: "list" | "today";
 };
 
-export function ProgramRecommenderWidget({ locale }: ProgramRecommenderWidgetProps) {
+export function ProgramRecommenderWidget({ locale, variant = "list" }: ProgramRecommenderWidgetProps) {
   const loc = locale === "ko" ? "ko" : "en";
+  const isKo = loc === "ko";
   const t = getMessages(loc as Locale).bty;
   const router = useRouter();
 
@@ -305,6 +312,17 @@ export function ProgramRecommenderWidget({ locale }: ProgramRecommenderWidgetPro
   );
 
   if (loading && rows.length === 0) {
+    if (variant === "today") {
+      return (
+        <div
+          role="status"
+          aria-busy="true"
+          className="rounded-2xl border border-white/10 bg-[var(--bty-panel,#11294A)] px-5 py-5 text-sm text-white/50"
+        >
+          {isKo ? "오늘의 하나를 여는 중…" : "Opening today's one thing…"}
+        </div>
+      );
+    }
     return (
       <section role="status" aria-busy="true" aria-label={t.programRecommenderWidgetLoading}>
         <p className="text-sm font-semibold text-[var(--arena-text)] m-0">{t.programRecommenderWidgetTitle}</p>
@@ -314,6 +332,16 @@ export function ProgramRecommenderWidget({ locale }: ProgramRecommenderWidgetPro
   }
 
   if (error) {
+    if (variant === "today") {
+      return (
+        <div
+          role="alert"
+          className="rounded-2xl border border-white/10 bg-[var(--bty-panel,#11294A)] px-5 py-5 text-sm text-white/60"
+        >
+          {isKo ? "지금은 불러오지 못했어요. 잠시 후 다시 열립니다." : "Couldn't load right now. It'll open again shortly."}
+        </div>
+      );
+    }
     return (
       <section role="alert" aria-label={t.programRecommenderWidgetRegionAria}>
         <p className="text-sm font-semibold text-[var(--arena-text)] m-0">{t.programRecommenderWidgetTitle}</p>
@@ -323,11 +351,72 @@ export function ProgramRecommenderWidget({ locale }: ProgramRecommenderWidgetPro
   }
 
   if (rows.length === 0) {
+    if (variant === "today") {
+      return (
+        <div className="rounded-2xl border border-white/10 bg-[var(--bty-panel,#11294A)] px-5 py-5">
+          <p className="text-sm text-white/80 m-0">{isKo ? "아직 열리지 않았습니다." : "Nothing is open yet."}</p>
+          <p className="text-xs text-white/50 mt-1 m-0">
+            {isKo ? "오늘은 작은 연습 하나를 준비합니다." : "Today, prepare one small practice."}
+          </p>
+        </div>
+      );
+    }
     return (
       <section aria-label={t.programRecommenderWidgetRegionAria}>
         <p className="text-sm font-semibold text-[var(--arena-text)] m-0">{t.programRecommenderWidgetTitle}</p>
         <p className="text-xs text-[var(--arena-text-soft)] mt-1 m-0">{t.programRecommenderWidgetEmpty}</p>
       </section>
+    );
+  }
+
+  if (variant === "today") {
+    const row = rows[0];
+    const locked = !isProgramUnlocked(row.program_id, row.scenario_tags, unlockTokens, unlockedProgramIds);
+    const matched = new Set(row.matched_tags);
+    const displayTags = [...new Set([...row.matched_tags, ...row.scenario_tags])].slice(0, 4);
+    return (
+      <button
+        type="button"
+        onClick={() => onSelect(row)}
+        aria-label={locked ? `${row.title}. ${t.programRecommenderWidgetLocked}` : row.title}
+        className="w-full text-left rounded-2xl border border-white/10 bg-[var(--bty-panel,#11294A)] px-5 py-5 transition hover:border-bty-gold/40"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-base font-medium text-white">{row.title}</div>
+            {row.phase_label ? (
+              <span className="mt-1 inline-block text-[10px] uppercase tracking-wide font-medium px-2 py-0.5 rounded-full border border-bty-gold/35 text-bty-gold">
+                {row.phase_label}
+              </span>
+            ) : null}
+          </div>
+          {locked ? (
+            <span className="shrink-0 text-[10px] rounded-full border border-white/15 px-2 py-0.5 text-white/50">
+              {t.programRecommenderWidgetLocked}
+            </span>
+          ) : (
+            <span className="shrink-0 text-white/30" aria-hidden>
+              →
+            </span>
+          )}
+        </div>
+        {displayTags.length ? (
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {displayTags.map((tag) => (
+              <span
+                key={`${row.program_id}-${tag}`}
+                className={
+                  matched.has(tag)
+                    ? "text-[11px] px-2 py-0.5 rounded-md bg-bty-gold/15 text-bty-gold border border-bty-gold/30"
+                    : "text-[11px] px-2 py-0.5 rounded-md text-white/50 border border-white/15"
+                }
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </button>
     );
   }
 
