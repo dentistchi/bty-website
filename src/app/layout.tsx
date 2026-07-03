@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import localFont from "next/font/local";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -22,6 +22,19 @@ const notoSerifKr = localFont({
 export const metadata: Metadata = {
   title: "btyARENA — Better Than Yesterday",
   description: "A leadership training arena where everyday decisions become better than yesterday.",
+};
+
+/**
+ * Native/mobile app shell: `viewportFit: "cover"` lets the WebView draw under the iOS status
+ * bar / home indicator and — critically — makes `env(safe-area-inset-*)` resolve to non-zero.
+ * Without it those insets are 0, so the ArenaLayoutShell status-bar spacer and the BottomNav
+ * bottom padding would be inert. width/initial-scale keep Next.js's default responsive viewport
+ * (so Tailwind `md:` breakpoints behave as mobile in the app). Desktop is unaffected.
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({
