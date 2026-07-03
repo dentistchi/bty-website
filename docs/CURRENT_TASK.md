@@ -1,3 +1,15 @@
+**2026-07-03 — Today Shell Door Arc PASS — v0.1 core flow closed.**
+
+**Sensory PASS (Commander):** accepted after the hold-duration adjustment. `/start` is the canonical **locale-less `(shell)` Threshold Door** rendering the **living Orb** (OrbLiving); it opens only on **deliberate press-and-hold** (not accidental tap) — final **HOLD_MS = 1800ms**, long enough that the B-2 light-gather is **visible before** the door opens. `/start` navigates to the localized **`/[locale]/today`**.
+
+**`/today` reveal-only:** the large central Orb is gone; the room is Relationship Pulse → Today Choose One → Center/Arena/Foundry → Exit.
+
+**Today Choose One — no mutation required:** the cards were already wired as real `<Link>` route doors — Center → `/[locale]/center`, Arena → `/[locale]/bty-arena`, Foundry → `/[locale]/bty/foundry` — locale + auth preserved, no dashboard/score/leaderboard tone. Product goal already satisfied → no activation commit.
+
+**Meaning:** the Orb is no longer decoration — it is the **living door**; `/today` is the **room** after the door opens; **Choose One is not a menu but three relational entry doors** (self / others / world). The first-60s ritual now reads as one flow: **living door → reveal → choose one → return to the day.**
+
+**Provenance (inner-main):** Today Shell `56ed7eec` · form `4312ef35` · luminance `c7c508a8` · B-2 touch `ce877d4e` · §G Threshold-Door canon `94f857c` · flow correction `20d90fa1` · route canon `912cad5` · hold-to-open `a1e5523a` · hold 1800ms `7b0636a1` · deploy `07f1b539` · Choose One = STEP 0 no-mutation (already wired).
+
 **2026-07-02 — Daily OS v0.1 Flag 1(b) full-evidence gate + Slice 6(a) server test gate CLOSED.**
 
 **Realized (inner `2b5a801d`, origin/inner-main):** Gates 4/5 now use **full 3-domain evidence** (self/others/ground) via a shared window-parameterized `hasAnyEvidenceInWindow` helper (Commander Flag 1 = b). Arena/Foundry evidence left yesterday now triggers **Yesterday Mirror**, not "quiet". Window bug fixed: latest-entry-relative → now-derived **UTC calendar-day**.
