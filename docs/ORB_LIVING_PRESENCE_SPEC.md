@@ -545,3 +545,39 @@ finger" is preserved for the core), while a **new secondary Influence Field
 
 **Mandatory re-gate:** must re-pass the Today-surface Sensory Gate (§E-7) on `/ko/today` +
 `/en/today`. No final Sensory PASS before Commander confirms.
+
+---
+
+## §G — Threshold Door Surface (v0.1 Daily OS) — Commander-authorized amendment (2026-07-03)
+
+**Status:** NORMATIVE for the BTY Daily OS v0.1 **`/[locale]/start` Threshold only.**
+Additive — no edit to the verbatim §A–§E bodies. Companion to §F: §F governs the **Today**
+B-2 touch influence field; §G authorizes OrbLiving as the living **Threshold Door**.
+
+**Product lock (Commander):** The Orb is the **door**; the Today screen is the revealed room.
+The door opens Today and does not remain large inside the room after entry.
+
+**Threshold Door standard (`/start`):**
+1. `/start` **may render OrbLiving** as the living Threshold Door — **visual-only, haptic-free**.
+2. Threshold Door size is authorized at **220px** (separate from the Today §F **160px**).
+3. `/start` remains **data-free**: no `daily-gate-check` fetch, no `relationship-pulse` fetch,
+   no server interpretation.
+4. `/start` tap/commit **may navigate to `/today`**; it must **not** self-terminate into
+   mini-Today as the final revealed state.
+5. **Haptic decision (v0.1):** the Threshold Door chooses living **visual presence over
+   press-haptic**. The previous production `Orb.tsx` press-haptic on `/start` is **not used**;
+   its loss is **intentional and accepted for v0.1**. This does **not** weaken
+   ORB_HAPTIC_EXCLUSIVITY_LOCK — it prevents adding haptic logic into OrbLiving. OrbLiving
+   **must not add haptics**; `Orb.tsx` remains the sole sanctioned haptic site. Haptic
+   reintegration requires separate canon (v0.2).
+
+**Reveal separation (`/today`):** the reveal content (Relationship Pulse → Today Choose One →
+Center / Arena / Foundry → Exit) belongs **after** the Orb door is opened; `/today` must **not**
+render the large Orb as decoration after reveal.
+
+**If the §F B-2 Influence Field is reused on `/start`,** it is allowed only under §G constraints:
+central core **anchored**; **secondary field only**; **haptic-free**; visual-only; **no server
+data**; no hover/approach; no production-wide touch gravity.
+
+**Still deferred (unchanged):** B-3 release memory, approach/hover sensing, production-wide touch
+gravity, **OrbLiving haptic integration**, physics/WebGL, multi-pointer/force systems.

@@ -51,8 +51,10 @@ Truth remains actual evidence:
 
 ## 4. Entry Model Lock
 
-- `/start` = **Threshold ritual**
-- `/today` = **Daily OS surface**
+- `/start` = **Threshold Door** — data-free; renders the living OrbLiving door (spec §G, @220px,
+  visual-only, haptic-free); tap/commit **opens `/today`**. Must **not** end in mini-Today as the
+  final Daily OS surface.
+- `/today` = **Daily OS Reveal** — the revealed room; **no large central Orb** after reveal.
 - Today Shell **extends** the existing `/start → /today` flow.
 - **No new entry ritual route.**
 - **No duplicate threshold surface.**
@@ -149,6 +151,7 @@ existing Orb haptic lock (sole site: `Orb.tsx`).
 Allowed:
 - Compose **around** Orb / OrbLiving
 - Render `OrbLiving` as the Today Shell visual presence (swap / wrapper)
+- Render `OrbLiving` as the **`/start` Threshold Door** (spec §G — @220px, visual-only, haptic-free)
 - Use each component's existing prop surface only
 - Preserve the haptic lock
 
@@ -222,14 +225,16 @@ Deferred to v0.2 / later tracks:
 - historical relationship evidence reconstruction
 - advanced `OrbLiving` **merge into `Orb.tsx`**
 - deeper Touch-Gravity beyond the v0.1 Today secondary Influence Field (release memory B-3, approach/hover sensing, production-wide touch gravity)
-- additional haptic expansion
+- OrbLiving haptic integration / Threshold Door press-haptic (additional haptic expansion)
 - high-fidelity particle / touch animation beyond the locked Phase A / B-1.5 visual presence
 - full AI drawer implementation
 - Foundry artifact system expansion
 
 **Not deferred:** (a) the v0.1 Today Shell **OrbLiving visual swap**; (b) the v0.1 Today
 **B-2 secondary Influence Field** — core anchored, a slow/wide/heavy **visual-only,
-haptic-free** gather toward touch (per spec §F). Both require `Orb.tsx` sealed and the
+haptic-free** gather toward touch (per spec §F); (c) the v0.1 **`/start` Threshold Door** —
+OrbLiving visual surface **@220px**, visual-only, haptic-free (per spec §G); (d) **`/today`
+reveal-only** (no large central Orb after reveal). All require `Orb.tsx` sealed and the
 Today-surface Sensory Gate to re-pass.
 
 ## 14. Final Lock Statement
