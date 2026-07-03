@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { LangSwitch } from "@/components/LangSwitch";
 import HubTopNav from "@/components/bty/HubTopNav";
+import BottomNav from "@/components/bty/navigation/BottomNav";
 
 /** DESIGN_FIRST_IMPRESSION_BRIEF §4 B: 제목·로고용 포인트 폰트 (Arena 영역만)
  * FONT_VENDOR_A: self-hosted latin-subset Noto Sans KR (was the Google font loader).
@@ -23,13 +24,23 @@ const notoSansKr = localFont({
 /**
  * Arena 공통 레이아웃: 스티키 헤더 + 크림 배경 + max-w-6xl 본문.
  * /en, /ko 의 /bty/*, /bty-arena/* 에서 공통 사용.
+ *
+ * App-shell rule (native/mobile): the desktop web nav (logo + HubTopNav + LangSwitch +
+ * Logout) is DESKTOP-ONLY (`hidden md:block`). On mobile/native the primary experience is
+ * app-like — no top web nav (so the logo can't overlap the iOS status bar), a safe-area
+ * spacer clears the notch, and the shared 5-tab {@link BottomNav} floor
+ * (Today·Arena·Foundry·Center·Me) is the primary navigation. Pure mobile-viewport CSS
+ * (`md:` breakpoints) — desktop is unchanged. Language/logout/dashboard/leaderboard remain
+ * reachable on desktop here and, on mobile, inside their deeper surfaces (unchanged routes).
  */
 export function ArenaLayoutShell({ children, locale }: { children: ReactNode; locale?: string }) {
   const brandHref = locale ? `/${locale}` : "/en";
   return (
     <div className={`bty-arena-area ${notoSansKr.variable}`} data-theme="arena">
+      {/* Mobile/native: safe-area spacer so content clears the iOS status bar (header is hidden). */}
+      <div className="md:hidden" style={{ height: "env(safe-area-inset-top)" }} aria-hidden />
       <header
-        className="sticky top-0 z-20 backdrop-blur border-b border-[var(--arena-bg-end)]"
+        className="hidden md:block sticky top-0 z-20 backdrop-blur border-b border-[var(--arena-bg-end)]"
         style={{ background: "rgba(245, 240, 232, 0.92)" }}
       >
         <div className="max-w-6xl mx-auto px-4 py-2 min-h-12 flex flex-wrap items-start justify-between gap-x-4 gap-y-2 shrink-0">
@@ -52,7 +63,11 @@ export function ArenaLayoutShell({ children, locale }: { children: ReactNode; lo
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">{children}</div>
+      {/* pb-28 on mobile keeps content clear of the fixed BottomNav; desktop keeps py-8. */}
+      <div className="max-w-6xl mx-auto px-4 py-8 pb-28 md:pb-8">{children}</div>
+
+      {/* Mobile/native primary nav — the app floor. Desktop hides it (top nav owns nav there). */}
+      {locale ? <BottomNav locale={locale} className="md:hidden" /> : null}
     </div>
   );
 }

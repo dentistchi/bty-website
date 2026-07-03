@@ -59,11 +59,11 @@ export default function BottomNav({
   const items = getBtyNavItems(
     locale,
     {
-      home: "Home",
+      home: "Today",
       arena: "Arena",
       foundry: "Foundry",
       center: "Center",
-      "my-page": "Profile",
+      "my-page": "Me",
     },
     arenaEntry.href,
   );
