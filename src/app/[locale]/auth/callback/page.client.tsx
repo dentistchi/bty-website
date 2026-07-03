@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { inferLocaleFromNextParam, sanitizeNextForRedirect } from "@/lib/auth/sanitize-next-for-redirect";
 import { supabase } from "@/lib/supabase";
+import { isNative } from "@/lib/native/isNative";
 
 function parseHashParams(hash: string): Record<string, string> {
   const params: Record<string, string> = {};
@@ -15,6 +16,25 @@ function parseHashParams(hash: string): Record<string, string> {
     if (k && v) params[decodeURIComponent(k)] = decodeURIComponent(v.replace(/\+/g, " "));
   }
   return params;
+}
+
+/**
+ * Native-only server-session establishment. The client exchange wrote the session to
+ * document.cookie (JS store), invisible to the server gate (GET /api/auth/session → getUser
+ * reads the HTTP cookie store). POST the tokens so the server Set-Cookies the httpOnly session
+ * into WKHTTPCookieStore (the reliable server→HTTP-store direction). Callers AWAIT this BEFORE
+ * redirecting so the cookie lands before /start's gate fires. Web never calls it (gate is
+ * isNative()) → web byte-unchanged.
+ */
+async function postServerSession(session: { access_token: string; refresh_token: string }): Promise<void> {
+  await fetch("/api/auth/session", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
+    }),
+  });
 }
 
 function AuthCallbackForm() {
@@ -61,6 +81,8 @@ function AuthCallbackForm() {
         if (error) {
           const { data: recovered } = await supabaseClient.auth.getSession();
           if (recovered.session?.user) {
+            // Native: establish the server session before redirect (recovered-session path).
+            if (isNative() && recovered.session) await postServerSession(recovered.session);
             redirectAfterSession();
             return;
           }
@@ -68,7 +90,7 @@ function AuthCallbackForm() {
           setMessage("인증 처리에 실패했습니다. 다시 시도해주세요.");
           return;
         }
-        await supabaseClient.auth.getSession();
+        const { data: sess } = await supabaseClient.auth.getSession();
         if (type === "recovery") {
           if (typeof window !== "undefined") {
             window.location.assign(`/${locale}/reset-password`);
@@ -77,6 +99,8 @@ function AuthCallbackForm() {
           }
           return;
         }
+        // Native: establish the server session before redirect (see postServerSession).
+        if (isNative() && sess.session) await postServerSession(sess.session);
         redirectAfterSession();
         return;
       }
