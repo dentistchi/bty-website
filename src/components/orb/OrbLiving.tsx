@@ -339,13 +339,13 @@ export default function OrbLiving({
       const ecx = exBase + coreShiftX;
       const ecy = eyBase + coreShiftY;
       const corePulse = 1 + 0.1 * beat(t) + 0.02 * Math.sin(t * 0.71 + 0.9);
-      const coreR = orbR * 0.54 * corePulse; // wider ember (fills the body, not a dot)
+      const coreR = orbR * 0.56 * corePulse; // wide ember — a warmer region of the lit body
       const coreDens = (0.85 + 0.15 * beat(t)) * (1 + ENGAGE_BRIGHTEN * engage);
 
       // Surrounding light RESPONDS — mid radius, beat lagged by LAG_MID, smaller
       // amplitude, centre leaning back toward the middle (wanders less than core).
       const midPulse = 1 + 0.05 * beat(t - LAG_MID) + 0.015 * Math.sin(t * 0.63 + 2.0);
-      const midR = orbR * 0.72 * midPulse;
+      const midR = orbR * 0.85 * midPulse; // wider ambient glow → lights the whole body
       const midDens = 0.85 + 0.15 * beat(t - LAG_MID);
       const mcx = cx * 0.7 + exBase * 0.3 + midShiftX;
       const mcy = cy * 0.7 + eyBase * 0.3 + midShiftY;
@@ -362,10 +362,10 @@ export default function OrbLiving({
       // inside the boundary (gradient-only, no stroke/blur), so the Orb reads as ONE
       // living body (spec §E-6), not a smoky blob. Breathes via shellPulse (§C-2 skin).
       const bg = ctx.createRadialGradient(bcx, bcy, 0, bcx, bcy, shellR);
-      bg.addColorStop(0, rgba(morning, 0.16));
-      bg.addColorStop(0.6, rgba(morning, 0.14));
-      bg.addColorStop(0.86, rgba(morning, 0.17)); // soft membrane — gentle rim, defines the sphere
-      bg.addColorStop(0.97, rgba(morning, 0.06)); // quick-but-soft edge falloff (never a hard ring)
+      bg.addColorStop(0, rgba(morning, 0.26)); // softly luminous body — lit before the core reads
+      bg.addColorStop(0.6, rgba(morning, 0.22));
+      bg.addColorStop(0.86, rgba(morning, 0.26)); // soft membrane — gentle rim, defines the sphere
+      bg.addColorStop(0.97, rgba(morning, 0.1)); // quick-but-soft edge falloff (never a hard ring)
       bg.addColorStop(1, rgba(morning, 0));
       ctx.fillStyle = bg;
       ctx.beginPath();
@@ -375,8 +375,8 @@ export default function OrbLiving({
       // (2) Surrounding light — responds to the core, LAG_MID behind. Additive.
       ctx.globalCompositeOperation = "lighter";
       const mg = ctx.createRadialGradient(mcx, mcy, 0, mcx, mcy, midR);
-      mg.addColorStop(0, rgba(morning, 0.16 * midDens));
-      mg.addColorStop(0.5, rgba(morning, 0.09 * midDens));
+      mg.addColorStop(0, rgba(morning, 0.24 * midDens));
+      mg.addColorStop(0.55, rgba(morning, 0.14 * midDens));
       mg.addColorStop(1, rgba(morning, 0));
       ctx.fillStyle = mg;
       ctx.beginPath();
@@ -385,7 +385,7 @@ export default function OrbLiving({
 
       // (3) Ember core — bright, dense, OFF-CENTRE, LEADS. Glows from within.
       const cg = ctx.createRadialGradient(ecx, ecy, 0, ecx, ecy, coreR);
-      cg.addColorStop(0, rgba(touch, 0.32 * coreDens)); // softer center — ember glow, not a dot
+      cg.addColorStop(0, rgba(touch, 0.3 * coreDens)); // warmer region of the lit body, not an eye
       cg.addColorStop(0.4, rgba(touch, 0.19 * coreDens));
       cg.addColorStop(0.74, rgba(morning, 0.07));
       cg.addColorStop(1, rgba(morning, 0));
