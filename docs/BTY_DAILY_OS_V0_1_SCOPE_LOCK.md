@@ -51,10 +51,12 @@ Truth remains actual evidence:
 
 ## 4. Entry Model Lock
 
-- `/start` = **Threshold Door** — data-free; renders the living OrbLiving door (spec §G, @220px,
-  visual-only, haptic-free); tap/commit **opens `/today`**. Must **not** end in mini-Today as the
-  final Daily OS surface.
-- `/today` = **Daily OS Reveal** — the revealed room; **no large central Orb** after reveal.
+- `/start` = **Threshold Door** — a **locale-less `(shell)` route** (outside `[locale]` chrome);
+  data-free; renders the living OrbLiving door (spec §G, @220px, visual-only, haptic-free);
+  tap/commit **opens `/[locale]/today`** (active locale). Must **not** end in mini-Today as the
+  final Daily OS surface. `/ko/start` / `/en/start` are not canonical.
+- `/[locale]/today` = **localized Daily OS Reveal** — the revealed room; **no large central Orb**
+  after reveal.
 - Today Shell **extends** the existing `/start → /today` flow.
 - **No new entry ritual route.**
 - **No duplicate threshold surface.**

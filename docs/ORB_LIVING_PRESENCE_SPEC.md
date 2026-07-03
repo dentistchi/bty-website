@@ -550,9 +550,16 @@ finger" is preserved for the core), while a **new secondary Influence Field
 
 ## §G — Threshold Door Surface (v0.1 Daily OS) — Commander-authorized amendment (2026-07-03)
 
-**Status:** NORMATIVE for the BTY Daily OS v0.1 **`/[locale]/start` Threshold only.**
-Additive — no edit to the verbatim §A–§E bodies. Companion to §F: §F governs the **Today**
-B-2 touch influence field; §G authorizes OrbLiving as the living **Threshold Door**.
+**Status:** NORMATIVE for the BTY Daily OS v0.1 **`/start` Threshold only** (locale-less shell
+route). Additive — no edit to the verbatim §A–§E bodies. Companion to §F: §F governs the
+**Today** B-2 touch influence field; §G authorizes OrbLiving as the living **Threshold Door**.
+
+**Route reality (correction, 2026-07-03):** the Threshold Door lives at **`/start`**, a
+**locale-less `(shell)` route** — intentionally outside the `[locale]` route group to preserve
+the bare ritual surface. **`/ko/start` and `/en/start` are NOT canonical entry surfaces** (they
+have no page). The localized Daily OS surface begins **after** the door opens, at
+**`/[locale]/today`**; the door navigates to the active-locale Today route (locale from
+`<html lang>`). Sensory re-gate is performed at **`/start`**, not `/ko/start`.
 
 **Product lock (Commander):** The Orb is the **door**; the Today screen is the revealed room.
 The door opens Today and does not remain large inside the room after entry.
