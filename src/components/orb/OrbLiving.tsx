@@ -190,10 +190,10 @@ export default function OrbLiving({
 
     // ── B-1 tuning knobs (Sensory Gate round) ──────────────────────────────────
     const NOTICE_S = 0.08; // 60–100ms notice delay before attention begins (§B)
-    const MAX_DRIFT = orbR * 0.55; // core stays interior; cap on drift toward touch
+    const MAX_DRIFT = orbR * 0.35; // gather range (core anchored; caps the B-2 field toward touch)
     const SLOW_SPEED = 220; // px/s — above = ignore (no pursuit); below = retarget
     const TAU_SEED = 0.42; // s — Seed (life origin) leads the core slightly (~0ms)
-    const TAU_CORE = 0.55; // s — Attention Core drift ease (~40ms) — B-1, PRESERVED
+    const TAU_CORE = 0.7; // s — heavy B-2 field ease (core anchored; drives the influence field)
     const TAU_MID = 0.9; // s — mid glow (part of core body) follows core
     const TAU_FIELD = 1.05; // s — Energy Field follows the CORE (not finger) (~120ms)
     const FIELD_AMP = 0.55; // Energy Field reduced amplitude (damped cohesion, no chase)
@@ -336,8 +336,10 @@ export default function OrbLiving({
       const wr = 1 - WANDER_REDUCE * engage;
       const exBase = cx + wanderX * coreAmp * wr;
       const eyBase = cy + wanderY * coreAmp * 0.78 * wr;
-      const ecx = exBase + coreShiftX;
-      const ecy = eyBase + coreShiftY;
+      // §F: Attention Core ANCHORED — never translates toward touch (idle micro-drift +
+      // breath only). coreShift is retained solely to drive the B-2 influence field below.
+      const ecx = exBase;
+      const ecy = eyBase;
       const corePulse = 1 + 0.1 * beat(t) + 0.02 * Math.sin(t * 0.71 + 0.9);
       const coreR = orbR * 0.56 * corePulse; // wide ember — a warmer region of the lit body
       const coreDens = (0.85 + 0.15 * beat(t)) * (1 + ENGAGE_BRIGHTEN * engage);
@@ -362,10 +364,10 @@ export default function OrbLiving({
       // inside the boundary (gradient-only, no stroke/blur), so the Orb reads as ONE
       // living body (spec §E-6), not a smoky blob. Breathes via shellPulse (§C-2 skin).
       const bg = ctx.createRadialGradient(bcx, bcy, 0, bcx, bcy, shellR);
-      bg.addColorStop(0, rgba(morning, 0.26)); // softly luminous body — lit before the core reads
-      bg.addColorStop(0.6, rgba(morning, 0.22));
-      bg.addColorStop(0.86, rgba(morning, 0.26)); // soft membrane — gentle rim, defines the sphere
-      bg.addColorStop(0.97, rgba(morning, 0.1)); // quick-but-soft edge falloff (never a hard ring)
+      bg.addColorStop(0, rgba(morning, 0.34)); // softly luminous body — lit before the core reads
+      bg.addColorStop(0.6, rgba(morning, 0.3));
+      bg.addColorStop(0.86, rgba(morning, 0.34)); // soft membrane — gentle rim, defines the sphere
+      bg.addColorStop(0.97, rgba(morning, 0.14)); // quick-but-soft edge falloff (never a hard ring)
       bg.addColorStop(1, rgba(morning, 0));
       ctx.fillStyle = bg;
       ctx.beginPath();
@@ -375,17 +377,36 @@ export default function OrbLiving({
       // (2) Surrounding light — responds to the core, LAG_MID behind. Additive.
       ctx.globalCompositeOperation = "lighter";
       const mg = ctx.createRadialGradient(mcx, mcy, 0, mcx, mcy, midR);
-      mg.addColorStop(0, rgba(morning, 0.24 * midDens));
-      mg.addColorStop(0.55, rgba(morning, 0.14 * midDens));
+      mg.addColorStop(0, rgba(morning, 0.3 * midDens));
+      mg.addColorStop(0.55, rgba(morning, 0.18 * midDens));
       mg.addColorStop(1, rgba(morning, 0));
       ctx.fillStyle = mg;
       ctx.beginPath();
       ctx.arc(mcx, mcy, midR, 0, Math.PI * 2);
       ctx.fill();
 
-      // (3) Ember core — bright, dense, OFF-CENTRE, LEADS. Glows from within.
+      // (2c) B-2 Influence Field (§F) — on touch, light DENSITY gathers toward the finger:
+      // a soft, WIDE additive glow whose centre eases toward the touch point via coreShift
+      // (heavy TAU) and whose opacity ramps with `engage` (delayed ~0.6s appear, ~1s release
+      // fade). The anchored core does NOT move; only this secondary field gathers. Visual-only.
+      if (engage > 0.01) {
+        const gx = cx + coreShiftX;
+        const gy = cy + coreShiftY;
+        const gatherR = orbR * 0.7;
+        const gatherA = engage * 0.18;
+        const fg = ctx.createRadialGradient(gx, gy, 0, gx, gy, gatherR);
+        fg.addColorStop(0, rgba(touch, gatherA));
+        fg.addColorStop(0.6, rgba(touch, gatherA * 0.4));
+        fg.addColorStop(1, rgba(touch, 0));
+        ctx.fillStyle = fg;
+        ctx.beginPath();
+        ctx.arc(gx, gy, gatherR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // (3) Ember core — the stable, anchored luminous center (§F). Idle micro-drift + breath.
       const cg = ctx.createRadialGradient(ecx, ecy, 0, ecx, ecy, coreR);
-      cg.addColorStop(0, rgba(touch, 0.3 * coreDens)); // warmer region of the lit body, not an eye
+      cg.addColorStop(0, rgba(touch, 0.34 * coreDens)); // stable bright center (anchored) → dimensionality
       cg.addColorStop(0.4, rgba(touch, 0.19 * coreDens));
       cg.addColorStop(0.74, rgba(morning, 0.07));
       cg.addColorStop(1, rgba(morning, 0));
@@ -400,10 +421,10 @@ export default function OrbLiving({
       // folded into the core, so no new circle is read — it only makes the core
       // feel like it has a deeper, first-moving heart. Softened for the Today surface
       // (wider, lower peak, gradual falloff) → ember glow, never a spotlight.
-      const seedX = exBase + seedShiftX;
-      const seedY = eyBase + seedShiftY;
+      const seedX = exBase; // anchored with the core (stable heart, §F)
+      const seedY = eyBase;
       const heartR = orbR * 0.2 * (1 + 0.12 * beat(t)); // wider → soft ember glow, not a pinpoint
-      const heartA = 0.12 + 0.05 * Math.sin(t * 0.9) + 0.03 * Math.sin(t * 1.7 + 1.1);
+      const heartA = 0.14 + 0.05 * Math.sin(t * 0.9) + 0.03 * Math.sin(t * 1.7 + 1.1);
       const hg = ctx.createRadialGradient(seedX, seedY, 0, seedX, seedY, heartR);
       hg.addColorStop(0, rgba(touch, Math.max(0, heartA)));
       hg.addColorStop(0.5, rgba(touch, Math.max(0, heartA * 0.4))); // gradual falloff → no spotlight edge
