@@ -319,11 +319,11 @@ export default function OrbLiving({
       // Core LEADS — off-centre asymmetric wander (unchanged), strongest pulse.
       const wanderX = Math.sin(t * 0.23) * 0.62 + Math.sin(t * 0.37 + 1.3) * 0.38;
       const wanderY = Math.cos(t * 0.19 + 0.5) * 0.55 + Math.sin(t * 0.41 + 2.1) * 0.3;
-      // Idle wander amplitude — size-normalized, then reduced sub-linearly BELOW the
-      // 220px dev reference so the 160px Today core reads as a stable living heart, not
-      // a wandering object. 220px+ preserved exactly (min(1, …)); 160px → ~0.53× → the
-      // ember breathes within a small central zone. Rhythm/periodicity unchanged.
-      const coreAmp = size * 0.055 * Math.min(1, (size / 220) ** 2);
+      // Core drift LOCKED near centre (spec §C-2: "change the ORDER of motion, not the
+      // amount" — life comes from breath + inner→outer propagation, NOT core travel).
+      // ≈0.016×size ⇒ ≈2.6px at 160 / ≈3.5px at 220 — the core stays a stable heart
+      // beneath the skin; the body breathes and the mid/shell propagate its lead.
+      const coreAmp = size * 0.016;
       // Idle (Phase A) wander bases — FULL amplitude, shift-free. Particles and the
       // untouched path reference these → untouched output is byte-identical to
       // Phase A (engage=0 → ×1.0, all shifts 0 → +0.0, both exact in IEEE-754).
@@ -339,7 +339,7 @@ export default function OrbLiving({
       const ecx = exBase + coreShiftX;
       const ecy = eyBase + coreShiftY;
       const corePulse = 1 + 0.1 * beat(t) + 0.02 * Math.sin(t * 0.71 + 0.9);
-      const coreR = orbR * 0.46 * corePulse;
+      const coreR = orbR * 0.54 * corePulse; // wider ember (fills the body, not a dot)
       const coreDens = (0.85 + 0.15 * beat(t)) * (1 + ENGAGE_BRIGHTEN * engage);
 
       // Surrounding light RESPONDS — mid radius, beat lagged by LAG_MID, smaller
@@ -358,10 +358,14 @@ export default function OrbLiving({
 
       ctx.clearRect(0, 0, size, size);
 
-      // (1) Outer shell — wide, dim, flat; follows the beat a full lag behind.
+      // (1) Body / skin — a coherent spherical volume with a SOFT membrane rim just
+      // inside the boundary (gradient-only, no stroke/blur), so the Orb reads as ONE
+      // living body (spec §E-6), not a smoky blob. Breathes via shellPulse (§C-2 skin).
       const bg = ctx.createRadialGradient(bcx, bcy, 0, bcx, bcy, shellR);
-      bg.addColorStop(0, rgba(morning, 0.13));
-      bg.addColorStop(0.55, rgba(morning, 0.1));
+      bg.addColorStop(0, rgba(morning, 0.16));
+      bg.addColorStop(0.6, rgba(morning, 0.14));
+      bg.addColorStop(0.86, rgba(morning, 0.17)); // soft membrane — gentle rim, defines the sphere
+      bg.addColorStop(0.97, rgba(morning, 0.06)); // quick-but-soft edge falloff (never a hard ring)
       bg.addColorStop(1, rgba(morning, 0));
       ctx.fillStyle = bg;
       ctx.beginPath();
@@ -381,9 +385,9 @@ export default function OrbLiving({
 
       // (3) Ember core — bright, dense, OFF-CENTRE, LEADS. Glows from within.
       const cg = ctx.createRadialGradient(ecx, ecy, 0, ecx, ecy, coreR);
-      cg.addColorStop(0, rgba(touch, 0.4 * coreDens)); // softened center — ember, not spotlight
-      cg.addColorStop(0.32, rgba(touch, 0.22 * coreDens));
-      cg.addColorStop(0.7, rgba(morning, 0.07));
+      cg.addColorStop(0, rgba(touch, 0.32 * coreDens)); // softer center — ember glow, not a dot
+      cg.addColorStop(0.4, rgba(touch, 0.19 * coreDens));
+      cg.addColorStop(0.74, rgba(morning, 0.07));
       cg.addColorStop(1, rgba(morning, 0));
       ctx.fillStyle = cg;
       ctx.beginPath();
@@ -399,7 +403,7 @@ export default function OrbLiving({
       const seedX = exBase + seedShiftX;
       const seedY = eyBase + seedShiftY;
       const heartR = orbR * 0.2 * (1 + 0.12 * beat(t)); // wider → soft ember glow, not a pinpoint
-      const heartA = 0.15 + 0.06 * Math.sin(t * 0.9) + 0.03 * Math.sin(t * 1.7 + 1.1);
+      const heartA = 0.12 + 0.05 * Math.sin(t * 0.9) + 0.03 * Math.sin(t * 1.7 + 1.1);
       const hg = ctx.createRadialGradient(seedX, seedY, 0, seedX, seedY, heartR);
       hg.addColorStop(0, rgba(touch, Math.max(0, heartA)));
       hg.addColorStop(0.5, rgba(touch, Math.max(0, heartA * 0.4))); // gradual falloff → no spotlight edge
