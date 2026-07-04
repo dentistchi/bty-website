@@ -1,3 +1,9 @@
+**2026-07-04 — STEP 5.2b-fix DEPLOYED (Commander GO). `bty-arena-staging` Version `1f29b424-8105-441b-8b8b-9500479bf621`, HEAD `33bb473a`.**
+
+Deployed inner HEAD **`33bb473a`** (arrival-anchored entry-light recede). **Freshness proof:** new Orb chunk `7566-3a2c32aedfddfb6e.js` (≠ prior 5.2b `7566-e3eab364407573e2.js`); served chunk contains the `/today` pathname poll (`includes("/today")`) + the updated failsafe string `arrival/recede did not complete` (both live). Distinct from prior: version `1f29b424` ≠ `c708ceb4`. `/start` 200, `/en/dev/orb` 200. No code change (deployed existing commit). **Real-device iPhone Sensory Gate pending (Commander):** no `/start` re-reveal between commit and Today; hold→recede over Today; overlay never stuck (watch for the failsafe `console.warn`).
+
+---
+
 **2026-07-04 — STEP 5.2b-fix — Gate entry-light recede on Today arrival. Inner commit `33bb473a`; deploy HELD (Commander GO required).**
 
 **On-device finding (frame-verified):** the golden entry light receded on a commit-anchored timer, completing BEFORE navigation landed → `/start` (blue + Orb) was re-revealed, then a hard cut to Today. Root cause = time-anchored recede, not arrival-anchored.
