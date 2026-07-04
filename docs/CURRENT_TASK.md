@@ -1,3 +1,19 @@
+**2026-07-04 — STEP 5.1 — Restore Orb outward wave baseline (revert fea92eb5). Inner-only; deploy HELD.**
+
+**What:** reverted `fea92eb5` (STEP 5 Orb→Today transition) on `inner-main` — inner revert commit **`4c8bdc01`** (2 files, 9+/85−; symmetric reverse). NOT deployed.
+
+**Root cause (STEP 5.0 read-only diag):** fea92eb5 added `transform: scale(1)` + `will-change: transform` to the `/start` Orb wrapper `<div role="button">` — an ancestor of OrbLiving's `position:fixed` field-wave canvas. A non-`none` transform (and, independently, `will-change: transform`) makes that element the **containing block** for fixed descendants, so the full-viewport wave canvas re-anchored to the 220px wrapper (screen-centre) instead of the viewport → outward wave landed offset (좌하단) + the layer's edges showed on screen. Present even at idle (transform/will-change applied when not exiting). At the approved baseline `ceb3163f` no such ancestor transform existed. Wave origin = `canvas.getBoundingClientRect()` centre (viewport coords) drawn into a canvas whose origin had shifted → mismatch.
+
+**Restored:** `/start` back to plain `router.push('/{locale}/today')` (no wrapper transform/will-change); Today `?enter=orb` light-echo removed (STEP 5 소속, 함께 소멸). **OrbLiving.tsx untouched (0 diff)** — accepted Orb brightness/haptic/restrained-core/outward-wave baseline intact. Hold-to-enter **deferred** (not in this commit).
+
+**Gates:** tsc PASS; terminology 14 flagged = pre-existing baseline, my 2 files contribute 0 → net-increase 0. Inner pushed `fea92eb5..4c8bdc01` → origin/inner-main (remote == local).
+
+**Deploy:** **HELD** — awaiting iPhone Native Smoke Gate + Commander GO before `bty-arena-staging` deploy.
+
+**Next (when STEP 5 transition is re-introduced):** adopt **Option B1 — portal the field-wave canvas to `document.body`** so `position:fixed` stays viewport-anchored regardless of any transformed ancestor. Do NOT re-add a transform on a fixed-canvas ancestor.
+
+---
+
 **2026-07-03 — STEP A2 — Native Durable Session Restore CLOSED.**
 
 **Status:** CLOSED. Inner commit `71af9192`; deploy `bty-arena-staging` `06a5ec38-c287-4f62-951d-b5c6c1c3dfe2`.
