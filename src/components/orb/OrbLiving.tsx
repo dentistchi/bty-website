@@ -12,17 +12,17 @@
  * SANCTIONED haptic call site moves here (`orbHaptic()` below) — Orb.tsx is retired
  * (rendered by no live surface), so there is still exactly ONE live haptic site.
  * Haptic fires ONCE on contact (+ one optional soft impact when the hold engages);
- * never continuously. Do not add a second live site. STEP 4/4.1 tune VISUAL
- * brightness/halo, touch-origin bloom + wave, and this haptic only; the motion
- * cascade, breath, medium, routing, and commit behaviour are unchanged.
+ * never continuously. Do not add a second live site. STEP 4/4.1/4.2 tune VISUAL
+ * brightness/halo, a touch contact-proof, the Orb-emitted OUTWARD field wave, and
+ * this haptic only; the motion cascade, breath, medium, routing, commit unchanged.
  *
  * ── Scope: Phase A idle presence + B-1/B-1.5 pointer notice ───────────────────
  * idle breathing · micro imperfection · subtle internal particle circulation ·
  * living presence before touch, PLUS B-1/B-1.5 pointer notice→attention→core
  * drift→stabilize (the pointer supplies the touch coordinate/time only; the
  * reaction path is deterministic). Still deferred (later phases): full touch
- * gravity, release memory, approach/hover detection, WebGL. Touch-origin contact
- * bloom + wave and the sole haptic are added in STEP 4/4.1 (above).
+ * gravity, release memory, approach/hover detection, WebGL. A touch contact-proof,
+ * the Orb-emitted outward field wave, and the sole haptic are added in STEP 4/4.1/4.2.
  *
  * ── Colour (보강 4) ──────────────────────────────────────────────────────────
  * Derived at runtime from the --bty-orb-* tokens via getComputedStyle. No new
@@ -133,6 +133,8 @@ export default function OrbLiving({
   holdMs = 0,
 }: OrbLivingProps): React.ReactElement {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  // STEP 4.2: full-viewport field layer the Orb emits its outward waves into.
+  const fieldCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const [failed, setFailed] = React.useState(false);
   // Keep the latest onCommit / holdMs in refs so the (size/fieldCells-scoped) pointer
   // effect never captures a stale closure. Visual-only — no haptic (§G).
@@ -172,6 +174,36 @@ export default function OrbLiving({
     const cx = size / 2;
     const cy = size / 2;
     const orbR = size * 0.42; // body radius (soft-edge margin left over)
+
+    // ── STEP 4.2 FIELD layer ────────────────────────────────────────────────────
+    // A full-viewport, pointer-events:none canvas the Orb emits waves INTO — so the
+    // wave travels beyond the 220px orb into the surrounding screen field instead of
+    // being clipped by the orb canvas's square bounds (the old rectangular artifact).
+    // Transparent except the fading circular ring bands (cleared each frame) → no
+    // rectangular edge is ever revealed.
+    const fieldCanvas = fieldCanvasRef.current;
+    const fctx = fieldCanvas ? fieldCanvas.getContext("2d") : null;
+    let fieldW = 0;
+    let fieldH = 0;
+    let fieldWasActive = false;
+    const sizeField = () => {
+      if (!fieldCanvas || !fctx) return;
+      fieldW = window.innerWidth;
+      fieldH = window.innerHeight;
+      fieldCanvas.width = Math.round(fieldW * dpr);
+      fieldCanvas.height = Math.round(fieldH * dpr);
+      fieldCanvas.style.width = `${fieldW}px`;
+      fieldCanvas.style.height = `${fieldH}px`;
+      fctx.setTransform(dpr, 0, 0, dpr, 0, 0); // reset+scale (no accumulation on resize)
+    };
+    sizeField();
+    if (fctx) window.addEventListener("resize", sizeField);
+    // Orb-emitted waves: each is centred on the ORB (viewport coords), not the finger.
+    const fieldWaves: { t0: number; cx: number; cy: number }[] = [];
+    const FIELD_WAVE_DUR = 0.95; // s — emit → travel → fade
+    const FIELD_RING_W = orbR * 0.45; // soft ring half-width (edgeless band)
+    const FIELD_MAX_TRAVEL = orbR * 3.2; // travels well beyond the orb into the field
+    const FIELD_WAVE_A = 0.16; // subtle peak alpha (premium; never a flash)
 
     const CELLS = Math.max(24, Math.min(64, Math.round(fieldCells)));
 
@@ -250,7 +282,6 @@ export default function OrbLiving({
     const TAU_CORE_ANSWER = 0.9; // s — core brighten eases SLOWLY (delayed secondary, ~500ms+)
     const CONTACT_TAU = 0.16; // s — fingertip contact-bloom decay (brightest at 0–80ms, eases out)
     const CONTACT_PEAK = 0.5; // contact-bloom peak α — the brightest INITIAL area (at the finger)
-    const WAVE_DUR = 0.5; // s — soft ripple expands from the touch point and fades (contact proof)
     const ENGAGE_HAPTIC_G = 0.6; // engage level → one optional soft second impact (latched per press)
 
     // B-1 attention state — mutable across frames. Reaction path is deterministic;
@@ -267,9 +298,9 @@ export default function OrbLiving({
     let lastMoveTs = 0;
     let engage = 0; // 0 idle → 1 attentive (fast — drives fingertip response)
     let coreAnswer = 0; // 0→1 SLOW — delayed core brighten (secondary, STEP 4.1)
-    // STEP 4.1 touch-origin: contact bloom + expanding wave anchored at the CONTACT point.
-    let contactT0 = -1; // realT of pointer-down for the fingertip bloom (-1 = none)
-    let waveT0 = -1; // realT of the ripple start (-1 = inactive)
+    // STEP 4.1/4.2: a subtle contact PROOF stays at the touch point (not the main wave);
+    // the main wave is Orb-emitted onto the field layer (see fieldWaves above).
+    let contactT0 = -1; // realT of pointer-down for the fingertip contact bloom (-1 = none)
     let waveX = cx; // contact origin (fixed at down — the wave does not chase the finger)
     let waveY = cy;
     let engagedHaptic = false; // per-press latch for the optional second soft impact
@@ -490,28 +521,6 @@ export default function OrbLiving({
         }
       }
 
-      // (2e) STEP 4.1 — WAVE (contact proof): a soft ripple expands from the contact point
-      // over ~WAVE_DUR and fades — bright at the growing radius, hollow center → reads as a
-      // spreading ring, never a flash. One per press, one at a time, calm.
-      if (waveT0 >= 0) {
-        const wp = (realT - waveT0) / WAVE_DUR;
-        if (wp >= 1) {
-          waveT0 = -1;
-        } else {
-          const wease = 1 - Math.pow(1 - wp, 3);
-          const wr = orbR * (0.15 + 0.95 * wease);
-          const wa = 0.3 * (1 - wp) * (1 - wp); // fades as it expands
-          const wg = ctx.createRadialGradient(waveX, waveY, Math.max(0, wr * 0.55), waveX, waveY, wr);
-          wg.addColorStop(0, rgba(touch, 0));
-          wg.addColorStop(0.72, rgba(touch, wa));
-          wg.addColorStop(1, rgba(touch, 0));
-          ctx.fillStyle = wg;
-          ctx.beginPath();
-          ctx.arc(waveX, waveY, wr, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-
       // (3) Ember core — the stable, anchored luminous center (§F). Idle micro-drift + breath.
       const cg = ctx.createRadialGradient(ecx, ecy, 0, ecx, ecy, coreR);
       cg.addColorStop(0, rgba(touch, 0.3 * coreDens)); // STEP 4.1: restrained center (responder, NOT a flashlight)
@@ -585,6 +594,46 @@ export default function OrbLiving({
       }
       ctx.globalCompositeOperation = "source-over";
 
+      // ── STEP 4.2 OUTWARD FIELD WAVE ─────────────────────────────────────────────
+      // The Orb is the SOURCE: each emitted ring is centred on the ORB (viewport
+      // coords), begins just outside the orb boundary, and expands OUTWARD across the
+      // full-viewport field, fading as it travels. Only circular ring bands are drawn
+      // over transparency (cleared each frame) → the wave leaves the orb and dissolves
+      // into the screen with no rectangular edge. The finger only TRIGGERS it.
+      if (fctx) {
+        if (fieldWaves.length) {
+          fctx.clearRect(0, 0, fieldW, fieldH);
+          fctx.globalCompositeOperation = "lighter";
+          for (let i = fieldWaves.length - 1; i >= 0; i--) {
+            const w = fieldWaves[i]!;
+            const wp = (realT - w.t0) / FIELD_WAVE_DUR;
+            if (wp >= 1) {
+              fieldWaves.splice(i, 1);
+              continue;
+            }
+            const travel = 1 - Math.pow(1 - wp, 2.2); // decelerating outward travel
+            const R = orbR + FIELD_RING_W + travel * FIELD_MAX_TRAVEL; // starts at the boundary
+            const fadeIn = Math.min(1, wp / 0.12); // ~110ms emerge from the orb
+            const a = FIELD_WAVE_A * fadeIn * (1 - wp) * (1 - wp); // fades outward
+            if (a <= 0.002) continue;
+            const inner = Math.max(0, R - FIELD_RING_W);
+            const rg = fctx.createRadialGradient(w.cx, w.cy, inner, w.cx, w.cy, R + FIELD_RING_W);
+            rg.addColorStop(0, rgba(touch, 0));
+            rg.addColorStop(0.5, rgba(touch, a)); // soft band peak
+            rg.addColorStop(1, rgba(touch, 0));
+            fctx.fillStyle = rg;
+            fctx.beginPath();
+            fctx.arc(w.cx, w.cy, R + FIELD_RING_W, 0, Math.PI * 2);
+            fctx.fill();
+          }
+          fctx.globalCompositeOperation = "source-over";
+          fieldWasActive = true;
+        } else if (fieldWasActive) {
+          fctx.clearRect(0, 0, fieldW, fieldH); // one final clear → field returns to fully transparent
+          fieldWasActive = false;
+        }
+      }
+
       // Reduced-motion: draw exactly ONE static frame — no autonomous motion for
       // vestibular sensitivity. Otherwise keep the living loop.
       if (!reduceMotion) raf = window.requestAnimationFrame(draw);
@@ -624,12 +673,18 @@ export default function OrbLiving({
       lastMoveY = p.y;
       lastMoveTs = e.timeStamp;
       canvas.setPointerCapture?.(e.pointerId);
-      // STEP 4.1 — touch-origin life: anchor the contact bloom + wave at the finger,
-      // re-arm the engage-haptic latch, and fire the single contact haptic (sole site).
+      // STEP 4.1/4.2 — the finger TRIGGERS the Orb: a subtle contact proof stays at the
+      // touch point, but the main wave is EMITTED FROM THE ORB. Anchor the wave's centre
+      // on the orb (viewport coords, so it can expand across the screen field), re-arm the
+      // engage-haptic latch, and fire the single contact haptic (sole live site).
       contactT0 = realT;
-      waveT0 = realT;
       waveX = p.x;
       waveY = p.y;
+      if (fctx) {
+        const r = canvas.getBoundingClientRect();
+        fieldWaves.push({ t0: realT, cx: r.left + r.width / 2, cy: r.top + r.height / 2 });
+        if (fieldWaves.length > 5) fieldWaves.shift(); // cap concurrent emissions
+      }
       engagedHaptic = false;
       orbHaptic("LIGHT");
       // §G press-and-hold: a brief tap must NOT navigate. Hold ≥ holdMs → commit.
@@ -685,6 +740,7 @@ export default function OrbLiving({
     return () => {
       if (raf) window.cancelAnimationFrame(raf);
       if (holdTimer) clearTimeout(holdTimer);
+      if (fctx) window.removeEventListener("resize", sizeField);
       document.removeEventListener("visibilitychange", onVisibility);
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);
@@ -710,10 +766,26 @@ export default function OrbLiving({
         WebkitTapHighlightColor: "transparent",
       }}
     >
+      {/* STEP 4.2 field layer — full-viewport, behind the Orb, non-interactive. The Orb
+          emits its outward waves here so they travel into the screen field rather than
+          clipping on the orb canvas's square bounds. Transparent except the fading rings. */}
+      <canvas
+        ref={fieldCanvasRef}
+        aria-hidden
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: "none",
+          display: failed ? "none" : "block",
+        }}
+      />
       <canvas
         ref={canvasRef}
         aria-hidden
         style={{
+          position: "relative",
+          zIndex: 1,
           width: size,
           height: size,
           display: failed ? "none" : "block",
