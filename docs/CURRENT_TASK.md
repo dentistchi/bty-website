@@ -1,3 +1,11 @@
+**2026-07-04 — STEP 5.2a NOTE — wave origin source confirmed = Orb element; 5.2b radius caveat recorded. (docs-only)**
+
+**Origin source (Commander Q):** the wave origin is measured from the **Orb canvas element** (`canvasRef.current`, `OrbLiving.tsx:714` `canvas.getBoundingClientRect()`), **NOT** the body-mounted field canvas (`fieldCanvas.getBoundingClientRect` = none). → answer **(a)**. Because `getBoundingClientRect()` includes transforms, the origin stays centered on the Orb even under a future Orb scale/move — no origin-source change needed before 5.2b. (The 5.0 regression was the *drawing surface* offset by a transformed ancestor, not the origin measurement; 5.2a fixed the surface.)
+
+**5.2b caveat (radius, NOT origin — record now, fix later):** the ring **start radius** uses the constant logical `orbR = size*0.42` (`OrbLiving.tsx:641` `R = orbR + FIELD_RING_W + …`). If 5.2b scales the Orb, the center stays correct but the ring would start at the *unscaled* radius → **inside** the enlarged Orb. **5.2b fix:** derive the start radius from the measured Orb rect (`r.width/2`) so the wave still emits from the *scaled* boundary. Origin needs no change. Not this track; recorded for 5.2b.
+
+---
+
 **2026-07-04 — STEP 5.2a — Orb wave portal stabilization. Inner commit `0637b9fb`; deploy HELD (Commander GO required).**
 
 **What:** moved OrbLiving's outward-wave canvas out of the Orb wrapper and mounted it **directly on `document.body`** (imperative `createElement`+`appendChild` in the existing effect; `fieldCanvas.remove()` on unmount). `OrbLiving.tsx` only (1 file, 16+/18−). **NOT deployed.**
