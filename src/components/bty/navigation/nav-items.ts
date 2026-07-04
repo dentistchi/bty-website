@@ -15,7 +15,8 @@ export function pathnameMatchesArenaEntryHref(pathname: string, arenaEntryHref: 
 }
 
 /**
- * 5-tab order (image brand): Home · Arena · Foundry · Center · Profile.
+ * 5-tab order (relationship model): Home(Today) · Center(self) · Arena(others) · Foundry(world) · Profile(Me).
+ * Self → others → world = Center → Arena → Foundry; Today first (the day's door), Me last (identity).
  * `home` → `/today` (Daily OS home surface); `foundry` → `/bty/foundry` (route-group
  * `(protected)` is not in the URL). `my-page` keeps its key; label renders as "Profile".
  *
@@ -29,9 +30,9 @@ export function getBtyNavItems(
   const base = `/${locale}`;
   return [
     { key: "home", label: labels.home, href: `${base}/today` },
+    { key: "center", label: labels.center, href: `${base}/center` },
     { key: "arena", label: labels.arena, href: arenaHrefOverride ?? `${base}/bty-arena` },
     { key: "foundry", label: labels.foundry, href: `${base}/bty/foundry` },
-    { key: "center", label: labels.center, href: `${base}/center` },
     { key: "my-page", label: labels["my-page"], href: `${base}/my-page` },
   ];
 }
