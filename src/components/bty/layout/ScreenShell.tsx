@@ -19,6 +19,11 @@ export type ScreenShellProps = {
   bottomNavAriaLabel?: string;
   /** 배경 변형. 기본 `"default"`(크림 #F6F4EE, 전역 21화면 불변). `"navy"`는 today 한정 brand navy 배경. */
   surface?: "default" | "navy";
+  /**
+   * true면 상단에 mobile-only iOS safe-area 스페이서를 넣어 콘텐츠가 상태바와 겹치지 않게 함
+   * (ArenaLayoutShell과 동일 패턴). 기본 false — 기존 호출부 렌더는 무변경. 현재 Today만 opt-in.
+   */
+  safeAreaTop?: boolean;
 };
 
 /**
@@ -37,6 +42,7 @@ export default function ScreenShell({
   mainAriaLabel,
   bottomNavAriaLabel,
   surface = "default",
+  safeAreaTop = false,
 }: ScreenShellProps) {
   const container = fullWidth
     ? `mx-auto w-full max-w-full px-0 py-6 ${contentClassName}`
@@ -46,6 +52,11 @@ export default function ScreenShell({
     <div
       className={`min-h-screen ${isNavy ? "bg-bty-navy text-white" : "bg-[#F6F4EE] text-[#1F2937]"}`}
     >
+      {/* Mobile/native: safe-area spacer so the top chrome clears the iOS status bar
+          (mirrors ArenaLayoutShell). md:hidden + env()=0 on web → desktop/web unchanged. */}
+      {safeAreaTop ? (
+        <div className="md:hidden" style={{ height: "env(safe-area-inset-top)" }} aria-hidden />
+      ) : null}
       <div className={container}>
         {eyebrow || title || subtitle ? (
           <header className="mb-5 space-y-2">

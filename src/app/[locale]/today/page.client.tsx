@@ -73,6 +73,7 @@ export default function TodayHomeClient() {
       mainAriaLabel={m.today.eyebrow}
       contentClassName="pb-28"
       surface="navy"
+      safeAreaTop
     >
       {loading ? (
         <div className="space-y-4" aria-label={m.today.dailyOs.loadingLabel}>
