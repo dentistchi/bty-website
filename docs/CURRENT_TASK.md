@@ -1,3 +1,9 @@
+**2026-07-04 — STEP 5.2a DEPLOYED (Commander GO). `bty-arena-staging` Version `cb521c11-8dc5-4d0c-97fd-0559d8acba00`, HEAD `0637b9fb`.**
+
+Deployed inner-main HEAD **`0637b9fb`** (wave canvas moved to `document.body`, transform-immune). **Freshness proof:** new Orb chunk hash `9365-ccc676377efc763f.js` (≠ prior `9365-f9f3ad26d1697135.js`); served chunk contains `document.body.appendChild(fieldCanvas)` (the 5.2a body-mount, absent before) + `Haptics` (preserved). Distinct from prior deploy: version `cb521c11` ≠ `b6d1ecdc`; HEAD `0637b9fb` ≠ `4c8bdc01`. `/start` 200, `/en/dev/orb` 200. No code change (deployed the existing 5.2a commit); no runtime change beyond the body-mounted wave layer. Auth/native/routing/Today/BottomNav unchanged. **Real-device iPhone Sensory Gate pending (Commander).**
+
+---
+
 **2026-07-04 — STEP 5.2a NOTE — wave origin source confirmed = Orb element; 5.2b radius caveat recorded. (docs-only)**
 
 **Origin source (Commander Q):** the wave origin is measured from the **Orb canvas element** (`canvasRef.current`, `OrbLiving.tsx:714` `canvas.getBoundingClientRect()`), **NOT** the body-mounted field canvas (`fieldCanvas.getBoundingClientRect` = none). → answer **(a)**. Because `getBoundingClientRect()` includes transforms, the origin stays centered on the Orb even under a future Orb scale/move — no origin-source change needed before 5.2b. (The 5.0 regression was the *drawing surface* offset by a transformed ancestor, not the origin measurement; 5.2a fixed the surface.)
