@@ -66,6 +66,24 @@ export default function TodayHomeClient() {
     void load();
   }, [load]);
 
+  // STEP 1C / D1 — on entering Today, resolve + persist the canonical userDayKey and idempotently
+  // create/reuse today's server-authoritative row. Best-effort (fire-and-forget): sends the device
+  // IANA tz for capture; UTC fallback + idempotency are handled server-side. No UI dependency yet
+  // (new-day vs already-began, streak/comeback derive from this foundation later).
+  React.useEffect(() => {
+    let tz: string | null = null;
+    try {
+      tz = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+    } catch {
+      tz = null;
+    }
+    void fetch("/api/me/day/open", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ tz }),
+    }).catch(() => {});
+  }, []);
+
   return (
     <ScreenShell
       locale={locale}
