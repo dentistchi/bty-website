@@ -1,3 +1,13 @@
+**2026-07-04 — STEP 1C / D1 — Migrations APPLIED + DEPLOYED (both Commander GO). `bty-arena-staging` Version `29e8c1fc-b67d-49f5-80f2-38a5a62187ca`, HEAD `430e0371`.**
+
+**GATE 1 (migration apply) — DONE by Commander via Supabase Studio:** `20260704000000` + `20260704000100` both "Success". Read-only verify (REST + migration-success): (1) `arena_profiles.timezone` exists ✓ (2) `user_day` exists ✓ (3) `UNIQUE(user_id,day_key)` ✓ (4) `timezone_snapshot`/`tz_fallback`/`day_key`/`opened_at` exist ✓ (5) RLS enabled ✓ (6) `user_day_select_own` policy ✓ (7) anon read+write → `401 42501 permission denied` ✓ (8) service_role read 200; sole writer ✓ (9) additive only, existing+new co-query ✓ (10) fail-soft intact ✓. `tz_fallback` column KEPT (Commander). No unexpected objects/policies/grants.
+
+**GATE 2 (deploy) — DONE:** deployed `430e0371`. Worker-only (no `db push`). **Freshness:** `/api/me/day/open` live + **fail-soft** (unauth POST → `200 {ok:false}`, no 500); served Today chunk `page-f2c3b0e2757b0323.js` carries the fire-on-mount `/api/me/day/open` call (local==live); route registered in server handler. Distinct: version `29e8c1fc` ≠ `1f29b424`; HEAD `430e0371` ≠ `33bb473a`. `/start` 200, `/en/today` 307 (auth gate).
+
+**Now live:** entering Today fires one idempotent server-authoritative `user_day` write (+ one-time `arena_profiles.timezone` device-tz capture when null). **UNVERIFIED-BY-CODE:** authenticated round-trip (logged-in Today → `user_day` row + isNew) — Commander on-device/DB check. Ad-hoc day-logic migration (streak/train/scenario-stats → `userDayKey`) = later pass; leaderboard/weekly/season stay UTC.
+
+---
+
 **2026-07-04 — STEP 1C / D1 — Daily day-key foundation. Inner commit `430e0371`. Migrations WRITTEN (NOT APPLIED); deploy HELD. Two gates await Commander GO.**
 
 **What (7 files, inner):** `src/domain/daily/userDayKey.ts` (+test), `src/lib/bty/daily/userDay.ts`, `POST /api/me/day/open`, `today/page.client.tsx` (fire-on-mount), migrations `20260704000000_arena_profiles_timezone.sql` + `20260704000100_user_day.sql`.
