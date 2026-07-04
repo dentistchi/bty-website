@@ -133,8 +133,6 @@ export default function OrbLiving({
   holdMs = 0,
 }: OrbLivingProps): React.ReactElement {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
-  // STEP 4.2: full-viewport field layer the Orb emits its outward waves into.
-  const fieldCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const [failed, setFailed] = React.useState(false);
   // Keep the latest onCommit / holdMs in refs so the (size/fieldCells-scoped) pointer
   // effect never captures a stale closure. Visual-only — no haptic (§G).
@@ -181,8 +179,17 @@ export default function OrbLiving({
     // being clipped by the orb canvas's square bounds (the old rectangular artifact).
     // Transparent except the fading circular ring bands (cleared each frame) → no
     // rectangular edge is ever revealed.
-    const fieldCanvas = fieldCanvasRef.current;
-    const fctx = fieldCanvas ? fieldCanvas.getContext("2d") : null;
+    // STEP 5.2a — mount the outward-wave layer DIRECTLY on document.body (transform-immune).
+    // It is no longer a descendant of the Orb wrapper, so a future Orb scale/transform cannot
+    // become its containing block and shift the origin (the STEP 5.0 regression). Purely
+    // imperative → no React tree / SSR / hydration / ref-timing concerns. Wave coordinates stay
+    // in VIEWPORT space (via getBoundingClientRect below), so the origin is correct now and would
+    // remain correct even if the Orb is later scaled. pointer-events:none → never intercepts touch.
+    const fieldCanvas = document.createElement("canvas");
+    fieldCanvas.setAttribute("aria-hidden", "true");
+    fieldCanvas.style.cssText = "position:fixed;left:0;top:0;z-index:0;pointer-events:none;";
+    document.body.appendChild(fieldCanvas);
+    const fctx = fieldCanvas.getContext("2d");
     let fieldW = 0;
     let fieldH = 0;
     let fieldWasActive = false;
@@ -764,6 +771,7 @@ export default function OrbLiving({
       if (raf) window.cancelAnimationFrame(raf);
       if (holdTimer) clearTimeout(holdTimer);
       if (fctx) window.removeEventListener("resize", sizeField);
+      fieldCanvas.remove(); // STEP 5.2a — tear down the document.body wave layer on unmount
       document.removeEventListener("visibilitychange", onVisibility);
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);
@@ -789,20 +797,10 @@ export default function OrbLiving({
         WebkitTapHighlightColor: "transparent",
       }}
     >
-      {/* STEP 4.2 field layer — full-viewport, behind the Orb, non-interactive. The Orb
-          emits its outward waves here so they travel into the screen field rather than
-          clipping on the orb canvas's square bounds. Transparent except the fading rings. */}
-      <canvas
-        ref={fieldCanvasRef}
-        aria-hidden
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 0,
-          pointerEvents: "none",
-          display: failed ? "none" : "block",
-        }}
-      />
+      {/* STEP 4.2 wave field — the Orb emits its outward waves into a full-viewport layer so
+          they travel into the surrounding field, not clipping on the orb canvas's square bounds.
+          STEP 5.2a: that layer is now mounted imperatively on document.body (transform-immune) —
+          it is NOT rendered here, so a future Orb-wrapper transform cannot shift its origin. */}
       <canvas
         ref={canvasRef}
         aria-hidden
