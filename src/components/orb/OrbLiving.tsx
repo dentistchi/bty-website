@@ -200,10 +200,17 @@ export default function OrbLiving({
     if (fctx) window.addEventListener("resize", sizeField);
     // Orb-emitted waves: each is centred on the ORB (viewport coords), not the finger.
     const fieldWaves: { t0: number; cx: number; cy: number }[] = [];
-    const FIELD_WAVE_DUR = 0.95; // s — emit → travel → fade
-    const FIELD_RING_W = orbR * 0.45; // soft ring half-width (edgeless band)
-    const FIELD_MAX_TRAVEL = orbR * 3.2; // travels well beyond the orb into the field
-    const FIELD_WAVE_A = 0.16; // subtle peak alpha (premium; never a flash)
+    // STEP 4.3 — subtler, slower, wider, more premium: ambient pressure moving through
+    // the field, not a UI ripple. Lower opacity, longer life, farther travel, softer band.
+    const FIELD_WAVE_DUR = 1.15; // s — slow emit → travel → long fade
+    const FIELD_RING_W = orbR * 0.62; // wider, softer edgeless band (blurrier ring)
+    const FIELD_MAX_TRAVEL = orbR * 4.6; // travels farther out into the screen field
+    const FIELD_WAVE_A = 0.09; // ~44% lower peak — restrained resonance, never a flash
+    // STEP 4.3 tap acknowledgement — a transient disturbance OVERLAID on the idle body
+    // (§A–§E idle breath/wander/medium are NOT modified; this only rides on top and relaxes).
+    const TAP_TAU = 0.2; // s — decay of the tap impulse (visible <180ms, relaxes ~400–500ms)
+    const TAP_TURB = 0.12; // idle-medium radial swell on tap (idle light briefly disturbed)
+    const TAP_CORE = 0.08; // restrained transient core acknowledgement on tap (NOT a flashlight)
 
     const CELLS = Math.max(24, Math.min(64, Math.round(fieldCells)));
 
@@ -304,6 +311,7 @@ export default function OrbLiving({
     let waveX = cx; // contact origin (fixed at down — the wave does not chase the finger)
     let waveY = cy;
     let engagedHaptic = false; // per-press latch for the optional second soft impact
+    let tapImpulse = 0; // STEP 4.3: 0→1 on any contact (even a quick tap), decays over ~TAP_TAU
     let seedShiftX = 0; // Seed — leads the core (life origin)
     let seedShiftY = 0;
     let coreShiftX = 0;
@@ -335,6 +343,9 @@ export default function OrbLiving({
       // layer eases calmly back (no linger — that is B-3). Particles never receive
       // this shift (§D-3). All easing is exponential-toward-target → no snap.
       realT += dt;
+      // STEP 4.3: relax the tap impulse (immediate rise on contact → gentle exponential decay).
+      tapImpulse *= Math.exp(-dt / TAP_TAU);
+      if (tapImpulse < 0.001) tapImpulse = 0;
       const noticed = touching && realT - touchDownT >= NOTICE_S;
       let tsx = 0;
       let tsy = 0;
@@ -441,7 +452,9 @@ export default function OrbLiving({
       const ecy = eyBase;
       const corePulse = 1 + 0.1 * beat(t) + 0.02 * Math.sin(t * 0.71 + 0.9);
       const coreR = orbR * 0.56 * corePulse; // wide ember — a warmer region of the lit body
-      const coreDens = (0.85 + 0.15 * beat(t)) * (1 + ENGAGE_BRIGHTEN * coreAnswer); // STEP 4.1: core answers LATE
+      // STEP 4.1 core answers LATE on hold (coreAnswer); STEP 4.3 adds a small transient
+      // acknowledgement even on a quick tap (TAP_CORE·tapImpulse) — restrained, never a flashlight.
+      const coreDens = (0.85 + 0.15 * beat(t)) * (1 + ENGAGE_BRIGHTEN * coreAnswer + TAP_CORE * tapImpulse);
 
       // Surrounding light RESPONDS — mid radius, beat lagged by LAG_MID, smaller
       // amplitude, centre leaning back toward the middle (wanders less than core).
@@ -506,7 +519,9 @@ export default function OrbLiving({
       // (2d) STEP 4.1 — CONTACT BLOOM: the fingertip is the ORIGIN of life. A bright, small
       // additive bloom at the exact contact point, peaking at contact (0–80ms) then easing
       // into the sustained gather → the brightest INITIAL area is the finger, not the center.
-      if (contactT0 >= 0 && touching) {
+      if (contactT0 >= 0) {
+        // STEP 4.3: not gated on `touching` → a quick tap's brief contact proof completes its
+        // fade after release (small secondary cue), instead of vanishing the instant you lift.
         const ca = CONTACT_PEAK * Math.exp(-(realT - contactT0) / CONTACT_TAU);
         if (ca > 0.004) {
           const cr = orbR * 0.34;
@@ -570,7 +585,11 @@ export default function OrbLiving({
         const c = cells[i]!;
         const ang = c.angle + c.angVel * t;
         const rOsc = c.radius + Math.sin(t * c.radFreq + c.radPhase) * c.radAmp;
-        const rr = Math.max(0, Math.min(0.85, rOsc)) * shellR;
+        // STEP 4.3: a quick tap briefly SWELLS the idle medium outward (idle random light
+        // disturbed), then relaxes as tapImpulse decays. The idle orbit/breath is unchanged —
+        // this is a transient multiplier riding on top (§A–§E idle body preserved).
+        const rr =
+          Math.max(0, Math.min(0.85, rOsc)) * shellR * (1 + TAP_TURB * tapImpulse);
         const px = ccx + Math.cos(ang) * rr;
         const py = ccy + Math.sin(ang) * rr;
         // Density fluctuation — tier-specific: tier A undulates near its floor
@@ -611,15 +630,18 @@ export default function OrbLiving({
               fieldWaves.splice(i, 1);
               continue;
             }
-            const travel = 1 - Math.pow(1 - wp, 2.2); // decelerating outward travel
+            const travel = wp * wp * (3 - 2 * wp); // smoothstep — breath-like, no punchy snap
             const R = orbR + FIELD_RING_W + travel * FIELD_MAX_TRAVEL; // starts at the boundary
-            const fadeIn = Math.min(1, wp / 0.12); // ~110ms emerge from the orb
-            const a = FIELD_WAVE_A * fadeIn * (1 - wp) * (1 - wp); // fades outward
-            if (a <= 0.002) continue;
+            const fadeIn = Math.min(1, wp / 0.16); // gentler ~180ms emerge from the orb body
+            const a = FIELD_WAVE_A * fadeIn * (1 - wp) * (1 - wp); // long, soft outward fade
+            if (a <= 0.0015) continue;
             const inner = Math.max(0, R - FIELD_RING_W);
             const rg = fctx.createRadialGradient(w.cx, w.cy, inner, w.cx, w.cy, R + FIELD_RING_W);
+            // Wide, gradual peak → a blurred, edgeless ring (ambient pressure, not a UI ripple).
             rg.addColorStop(0, rgba(touch, 0));
+            rg.addColorStop(0.35, rgba(touch, a * 0.45));
             rg.addColorStop(0.5, rgba(touch, a)); // soft band peak
+            rg.addColorStop(0.65, rgba(touch, a * 0.45));
             rg.addColorStop(1, rgba(touch, 0));
             fctx.fillStyle = rg;
             fctx.beginPath();
@@ -680,6 +702,7 @@ export default function OrbLiving({
       contactT0 = realT;
       waveX = p.x;
       waveY = p.y;
+      tapImpulse = 1; // STEP 4.3: even a quick tap disturbs the idle light + lightly answers the core
       if (fctx) {
         const r = canvas.getBoundingClientRect();
         fieldWaves.push({ t0: realT, cx: r.left + r.width / 2, cy: r.top + r.height / 2 });
