@@ -25,8 +25,6 @@ type Phase = "splash" | "orb";
 const SPLASH_MS = 500;
 const HOLD_MS = 1800; // §G deliberate hold — long enough (~3× the B-2 engage ease) for the
 // secondary Influence Field to visibly gather toward the finger before the door opens Today.
-// STEP 5 — brief Orb exit before the route change so Today feels opened BY the Orb, not routed to.
-const EXIT_MS = 420;
 
 function currentLocale(): string {
   return (typeof document !== "undefined" && document.documentElement.lang) || "ko";
@@ -36,7 +34,6 @@ export default function StartShellClient() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [phase, setPhase] = React.useState<Phase>("splash");
-  const [exiting, setExiting] = React.useState(false);
   const navigatedRef = React.useRef(false);
 
   // Client auth gate — redirect to the REAL login.
@@ -53,23 +50,10 @@ export default function StartShellClient() {
   }, [loading, user, phase]);
 
   // Door → Today. Navigate-once guard (commit latches once per press).
-  // STEP 5 — bridge instead of a hard cut: the Orb light breathes outward + fades briefly,
-  // THEN we navigate with ?enter=orb so Today echoes the light in. The navy background is
-  // shared across /start and /today, so it never flashes during the swap. Reduced-motion →
-  // navigate immediately (no exit animation). Haptic/routing/Orb tuning are untouched.
   const openToday = React.useCallback(() => {
     if (navigatedRef.current) return;
     navigatedRef.current = true;
-    const target = `/${currentLocale()}/today?enter=orb`;
-    const reduce =
-      typeof window !== "undefined" &&
-      !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) {
-      router.push(target);
-      return;
-    }
-    setExiting(true);
-    window.setTimeout(() => router.push(target), EXIT_MS);
+    router.push(`/${currentLocale()}/today`);
   }, [router]);
 
   // Keyboard commit mirrors the pointer press-and-hold: Space/Enter must be HELD ≥ HOLD_MS;
@@ -128,13 +112,6 @@ export default function StartShellClient() {
             WebkitUserSelect: "none",
             userSelect: "none",
             WebkitTapHighlightColor: "transparent",
-            // STEP 5 exit bridge — on commit the Orb breathes gently outward and fades over
-            // EXIT_MS, then the route changes; the shared navy holds so nothing flashes.
-            opacity: exiting ? 0 : 1,
-            transform: exiting ? "scale(1.06)" : "scale(1)",
-            transition:
-              "opacity 420ms ease-out, transform 560ms cubic-bezier(0.22, 1, 0.36, 1)",
-            willChange: "opacity, transform",
           }}
           className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         >
