@@ -1,3 +1,17 @@
+**2026-07-04 — STEP 1C / D1 — CLOSED. Commander live-data verification PASS. Foundation LOCKED. Closing HEAD `430e0371` / deploy `29e8c1fc`.**
+
+**Live verification (Commander):** authenticated Today entry created **1 `user_day` row** — `day_key = 2026-07-04`, `timezone_snapshot = America/Los_Angeles`, `tz_fallback = false`; `arena_profiles.timezone` captured (device tz, not UTC fallback). Round-trip confirmed end-to-end.
+
+**D1 foundation LOCKED:**
+- Canonical **`userDayKey(instant, userTz, openHour=5)`** — 05:00 user-local boundary, IANA-only, DST-safe (`src/domain/daily/userDayKey.ts`, pure + tested).
+- **`user_day`** idempotent daily instance — server-authoritative, `UNIQUE(user_id, day_key)` (one row/user/day), RLS **select-own**, **service_role** write only; `timezone_snapshot` + `tz_fallback` for audit.
+- Timezone capture = **UTC-for-request + recapture** (profile tz → device tz [+capture] → UTC fallback that never overwrites the profile; retried on later entries).
+- Exception preserved: **leaderboard / weekly / season remain UTC-locked** (untouched).
+
+**NEXT (own dispatch): ad-hoc day-logic migration pass** — point `useArenaSession.ts:412` (device-local-midnight streak, the D1-LOCK violation), `trainProgress.ts` (local-05:00), and `scenario-stats.service.ts` (UTC) at the canonical `userDayKey`; **leaderboard/weekly/season UTC 불변**. Then derive new-day / already-began / missed-yesterday / streak from the `user_day` foundation.
+
+---
+
 **2026-07-04 — STEP 1C / D1 — Migrations APPLIED + DEPLOYED (both Commander GO). `bty-arena-staging` Version `29e8c1fc-b67d-49f5-80f2-38a5a62187ca`, HEAD `430e0371`.**
 
 **GATE 1 (migration apply) — DONE by Commander via Supabase Studio:** `20260704000000` + `20260704000100` both "Success". Read-only verify (REST + migration-success): (1) `arena_profiles.timezone` exists ✓ (2) `user_day` exists ✓ (3) `UNIQUE(user_id,day_key)` ✓ (4) `timezone_snapshot`/`tz_fallback`/`day_key`/`opened_at` exist ✓ (5) RLS enabled ✓ (6) `user_day_select_own` policy ✓ (7) anon read+write → `401 42501 permission denied` ✓ (8) service_role read 200; sole writer ✓ (9) additive only, existing+new co-query ✓ (10) fail-soft intact ✓. `tz_fallback` column KEPT (Commander). No unexpected objects/policies/grants.
