@@ -1,3 +1,24 @@
+**2026-07-04 — STEP 1C / D1 — Daily day-key foundation. Inner commit `430e0371`. Migrations WRITTEN (NOT APPLIED); deploy HELD. Two gates await Commander GO.**
+
+**What (7 files, inner):** `src/domain/daily/userDayKey.ts` (+test), `src/lib/bty/daily/userDay.ts`, `POST /api/me/day/open`, `today/page.client.tsx` (fire-on-mount), migrations `20260704000000_arena_profiles_timezone.sql` + `20260704000100_user_day.sql`.
+
+**Day-key source:** new canonical **`userDayKey(instant, userTz, openHour=5)`** (pure domain, `Intl`/IANA, DST-safe). Supersedes 3 divergent ad-hoc bases (`useArenaSession` device-local-midnight, `trainProgress` local-05:00, `scenario-stats`/`dailyGateCheck` UTC) — **those are NOT migrated this step (later pass)**. `dailyGateCheck`/`relationshipPulse` untouched.
+
+**Timezone basis:** D1 FINAL LOCK — UTC storage, user-local experience, 05:00 boundary, IANA only. **Leaderboard/weekly/season stay UTC** (untouched). Fallback (Commander) = **UTC-for-request + recapture**: profile tz (valid) → device tz (valid, +capture) → else UTC for that key with `tz_fallback=true`; **never writes 'UTC' to the profile**; retried on later entries. `user_day.timezone_snapshot` records the tz actually used.
+
+**DB migration needed:** YES (both). **A** `arena_profiles.timezone text` (nullable IANA; NULL=unresolved). **B** `user_day` — `UNIQUE(user_id, day_key)` (idempotent daily creation, no dup rows), `timezone_snapshot`, `tz_fallback`, `opened_at`; RLS default-deny **select-own**, writes **service_role** only; `REVOKE anon/PUBLIC` + `GRANT SELECT authenticated`.
+
+**Idempotency / no-dup:** `UNIQUE(user_id, day_key)` + `upsert(..., ignoreDuplicates:true)` (ON CONFLICT DO NOTHING); `isNew` = a row was actually inserted. Server-authoritative (service_role); no client-only truth. Fail-soft on any DB error (incl. pre-migration) so Today never breaks.
+
+**Gates:** tsc PASS; build PASS (306/306; `/api/me/day/open` registered); userDayKey 5/5; existing daily tests 26/26; terminology net-0. Inner pushed `33bb473a..430e0371`.
+
+**MIGRATION EXECUTION GATE (single Supabase project = production-effective):** SQL written+committed; **NOT applied.** Apply plan below awaits explicit Commander GO. **DEPLOY GATE:** HALT after apply GO too.
+- Apply: `supabase migration up` (or `db push`) applying ONLY `20260704000000` + `20260704000100` (additive: ADD COLUMN IF NOT EXISTS; CREATE TABLE IF NOT EXISTS + RLS/grants). Rollback: `DROP TABLE IF EXISTS public.user_day;` + `ALTER TABLE public.arena_profiles DROP COLUMN IF EXISTS timezone;`.
+
+**UNVERIFIED-BY-CODE:** live idempotency / RLS behavior (needs migration applied); on-device Today→day/open round-trip.
+
+---
+
 **2026-07-04 — STEP 5.2b-fix DEPLOYED (Commander GO). `bty-arena-staging` Version `1f29b424-8105-441b-8b8b-9500479bf621`, HEAD `33bb473a`.**
 
 Deployed inner HEAD **`33bb473a`** (arrival-anchored entry-light recede). **Freshness proof:** new Orb chunk `7566-3a2c32aedfddfb6e.js` (≠ prior 5.2b `7566-e3eab364407573e2.js`); served chunk contains the `/today` pathname poll (`includes("/today")`) + the updated failsafe string `arrival/recede did not complete` (both live). Distinct from prior: version `1f29b424` ≠ `c708ceb4`. `/start` 200, `/en/dev/orb` 200. No code change (deployed existing commit). **Real-device iPhone Sensory Gate pending (Commander):** no `/start` re-reveal between commit and Today; hold→recede over Today; overlay never stuck (watch for the failsafe `console.warn`).
