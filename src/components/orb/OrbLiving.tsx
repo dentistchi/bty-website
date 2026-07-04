@@ -1,14 +1,16 @@
 "use client";
 
 /**
- * OrbLiving — DEV-ONLY living-presence exploration. Phase A of
- * docs/ORB_LIVING_PRESENCE_SPEC.md (canon commit a9b51b8). Rendered ONLY by
- * /[locale]/dev/orb.
+ * OrbLiving — the living-presence Threshold Door. Phase A of
+ * docs/ORB_LIVING_PRESENCE_SPEC.md (canon commit a9b51b8). Now the PRODUCTION
+ * cold-launch gate: rendered by `/start` (StartShellClient, the D5 Threshold Door)
+ * and by `/[locale]/dev/orb` (review surface). It replaced the old `Orb.tsx` at
+ * `/start`; that legacy component is no longer rendered by any live surface.
  *
- * ── Shared-component rule (보강 1) ────────────────────────────────────────────
- * This is a SEPARATE component from the production `Orb.tsx` (shared by /start
- * and /today). Per the dispatch, production Orb.tsx is NOT modified; all Phase A
- * work lives here, dev-only.
+ * ── Haptic exclusivity ───────────────────────────────────────────────────────
+ * OrbLiving makes ZERO haptic calls — the #배타성 LOCK (haptic exclusivity) is
+ * untouched here. STEP 4 tunes VISUAL brightness/halo + touch wake-up only; the
+ * motion cascade, breath, medium, routing, and commit/haptic behaviour are unchanged.
  *
  * ── Scope: Phase A idle presence + B-1/B-1.5 pointer notice ───────────────────
  * idle breathing · micro imperfection · subtle internal particle circulation ·
@@ -220,10 +222,11 @@ export default function OrbLiving({
     const TAU_FIELD = 1.05; // s — Energy Field follows the CORE (not finger) (~120ms)
     const FIELD_AMP = 0.55; // Energy Field reduced amplitude (damped cohesion, no chase)
     const TAU_SHELL = 1.4; // s — Shell follows the field last, weakest (~180ms)
-    const TAU_ENGAGE = 0.6; // s — engage (wander-shrink / subtle brighten) ease
+    const TAU_ENGAGE = 0.34; // s — engage (wander-shrink / brighten) ease. STEP 4: faster so the
+    // touch "wake-up" is clearly perceptible within ~150–250ms (still eased, never a snap).
     const RELEASE_TAU_SCALE = 1.7; // release returns calmer (slower ease to idle)
     const WANDER_REDUCE = 0.5; // core wander radius shrinks by this ×engage on arrival
-    const ENGAGE_BRIGHTEN = 0.05; // subtle "noticed" warmth (§C-5: kept minimal)
+    const ENGAGE_BRIGHTEN = 0.12; // "noticed" warmth — STEP 4: clearer idle↔touch contrast (core visibly wakes)
 
     // B-1 attention state — mutable across frames. Reaction path is deterministic;
     // only the touch COORDINATE/TIME (input) is non-deterministic.
@@ -371,7 +374,7 @@ export default function OrbLiving({
       // Surrounding light RESPONDS — mid radius, beat lagged by LAG_MID, smaller
       // amplitude, centre leaning back toward the middle (wanders less than core).
       const midPulse = 1 + 0.05 * beat(t - LAG_MID) + 0.015 * Math.sin(t * 0.63 + 2.0);
-      const midR = orbR * 0.85 * midPulse; // wider ambient glow → lights the whole body
+      const midR = orbR * 0.9 * midPulse; // wider ambient glow → lights the whole body (STEP 4: wider halo)
       const midDens = 0.85 + 0.15 * beat(t - LAG_MID);
       const mcx = cx * 0.7 + exBase * 0.3 + midShiftX;
       const mcy = cy * 0.7 + eyBase * 0.3 + midShiftY;
@@ -388,10 +391,10 @@ export default function OrbLiving({
       // inside the boundary (gradient-only, no stroke/blur), so the Orb reads as ONE
       // living body (spec §E-6), not a smoky blob. Breathes via shellPulse (§C-2 skin).
       const bg = ctx.createRadialGradient(bcx, bcy, 0, bcx, bcy, shellR);
-      bg.addColorStop(0, rgba(morning, 0.34)); // softly luminous body — lit before the core reads
-      bg.addColorStop(0.6, rgba(morning, 0.3));
-      bg.addColorStop(0.86, rgba(morning, 0.34)); // soft membrane — gentle rim, defines the sphere
-      bg.addColorStop(0.97, rgba(morning, 0.14)); // quick-but-soft edge falloff (never a hard ring)
+      bg.addColorStop(0, rgba(morning, 0.4)); // softly luminous body — lit before the core reads (STEP 4: brighter)
+      bg.addColorStop(0.6, rgba(morning, 0.35));
+      bg.addColorStop(0.86, rgba(morning, 0.4)); // soft membrane — gentle rim, defines the sphere
+      bg.addColorStop(0.97, rgba(morning, 0.16)); // quick-but-soft edge falloff (never a hard ring)
       bg.addColorStop(1, rgba(morning, 0));
       ctx.fillStyle = bg;
       ctx.beginPath();
@@ -401,8 +404,8 @@ export default function OrbLiving({
       // (2) Surrounding light — responds to the core, LAG_MID behind. Additive.
       ctx.globalCompositeOperation = "lighter";
       const mg = ctx.createRadialGradient(mcx, mcy, 0, mcx, mcy, midR);
-      mg.addColorStop(0, rgba(morning, 0.3 * midDens));
-      mg.addColorStop(0.55, rgba(morning, 0.18 * midDens));
+      mg.addColorStop(0, rgba(morning, 0.38 * midDens)); // STEP 4: stronger halo
+      mg.addColorStop(0.55, rgba(morning, 0.24 * midDens));
       mg.addColorStop(1, rgba(morning, 0));
       ctx.fillStyle = mg;
       ctx.beginPath();
@@ -416,8 +419,8 @@ export default function OrbLiving({
       if (engage > 0.01) {
         const gx = cx + coreShiftX;
         const gy = cy + coreShiftY;
-        const gatherR = orbR * 0.7;
-        const gatherA = engage * 0.18;
+        const gatherR = orbR * 0.78; // STEP 4: slightly wider gather footprint
+        const gatherA = engage * 0.3; // STEP 4: light visibly tightens toward the touch on hold
         const fg = ctx.createRadialGradient(gx, gy, 0, gx, gy, gatherR);
         fg.addColorStop(0, rgba(touch, gatherA));
         fg.addColorStop(0.6, rgba(touch, gatherA * 0.4));
@@ -430,8 +433,8 @@ export default function OrbLiving({
 
       // (3) Ember core — the stable, anchored luminous center (§F). Idle micro-drift + breath.
       const cg = ctx.createRadialGradient(ecx, ecy, 0, ecx, ecy, coreR);
-      cg.addColorStop(0, rgba(touch, 0.34 * coreDens)); // stable bright center (anchored) → dimensionality
-      cg.addColorStop(0.4, rgba(touch, 0.19 * coreDens));
+      cg.addColorStop(0, rgba(touch, 0.44 * coreDens)); // stable bright center (anchored) → dimensionality (STEP 4: brighter core)
+      cg.addColorStop(0.4, rgba(touch, 0.26 * coreDens));
       cg.addColorStop(0.74, rgba(morning, 0.07));
       cg.addColorStop(1, rgba(morning, 0));
       ctx.fillStyle = cg;
@@ -448,7 +451,7 @@ export default function OrbLiving({
       const seedX = exBase; // anchored with the core (stable heart, §F)
       const seedY = eyBase;
       const heartR = orbR * 0.2 * (1 + 0.12 * beat(t)); // wider → soft ember glow, not a pinpoint
-      const heartA = 0.14 + 0.05 * Math.sin(t * 0.9) + 0.03 * Math.sin(t * 1.7 + 1.1);
+      const heartA = 0.17 + 0.05 * Math.sin(t * 0.9) + 0.03 * Math.sin(t * 1.7 + 1.1); // STEP 4: warmer inner seed
       const hg = ctx.createRadialGradient(seedX, seedY, 0, seedX, seedY, heartR);
       hg.addColorStop(0, rgba(touch, Math.max(0, heartA)));
       hg.addColorStop(0.5, rgba(touch, Math.max(0, heartA * 0.4))); // gradual falloff → no spotlight edge
