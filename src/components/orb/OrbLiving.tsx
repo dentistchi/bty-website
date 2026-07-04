@@ -7,19 +7,22 @@
  * and by `/[locale]/dev/orb` (review surface). It replaced the old `Orb.tsx` at
  * `/start`; that legacy component is no longer rendered by any live surface.
  *
- * ── Haptic exclusivity ───────────────────────────────────────────────────────
- * OrbLiving makes ZERO haptic calls — the #배타성 LOCK (haptic exclusivity) is
- * untouched here. STEP 4 tunes VISUAL brightness/halo + touch wake-up only; the
- * motion cascade, breath, medium, routing, and commit/haptic behaviour are unchanged.
+ * ── Haptic exclusivity (#배타성) ──────────────────────────────────────────────
+ * STEP 4.1: since OrbLiving replaced Orb.tsx as the live /start door, the sole
+ * SANCTIONED haptic call site moves here (`orbHaptic()` below) — Orb.tsx is retired
+ * (rendered by no live surface), so there is still exactly ONE live haptic site.
+ * Haptic fires ONCE on contact (+ one optional soft impact when the hold engages);
+ * never continuously. Do not add a second live site. STEP 4/4.1 tune VISUAL
+ * brightness/halo, touch-origin bloom + wave, and this haptic only; the motion
+ * cascade, breath, medium, routing, and commit behaviour are unchanged.
  *
  * ── Scope: Phase A idle presence + B-1/B-1.5 pointer notice ───────────────────
  * idle breathing · micro imperfection · subtle internal particle circulation ·
  * living presence before touch, PLUS B-1/B-1.5 pointer notice→attention→core
  * drift→stabilize (the pointer supplies the touch coordinate/time only; the
  * reaction path is deterministic). Still deferred (later phases): full touch
- * gravity, release memory, approach/hover detection, WebGL, and ANY haptic. This
- * component makes ZERO haptic calls — the #배타성 LOCK (haptic exclusivity, sole
- * site in Orb.tsx) is untouched.
+ * gravity, release memory, approach/hover detection, WebGL. Touch-origin contact
+ * bloom + wave and the sole haptic are added in STEP 4/4.1 (above).
  *
  * ── Colour (보강 4) ──────────────────────────────────────────────────────────
  * Derived at runtime from the --bty-orb-* tokens via getComputedStyle. No new
@@ -35,6 +38,21 @@
  */
 
 import React from "react";
+import { isNative } from "@/lib/native/isNative";
+
+/**
+ * The sole LIVE haptic call site (#배타성 LOCK), relocated from the retired Orb.tsx.
+ * Native iOS WKWebView routes through Capacitor Haptics (the web Vibration API is dead
+ * there); plain web falls back to navigator.vibrate. Subtle, one-shot — never spammed.
+ */
+function orbHaptic(style: "LIGHT" | "MEDIUM"): void {
+  if (typeof navigator === "undefined") return;
+  if (isNative()) {
+    window.Capacitor?.Plugins?.Haptics?.impact?.({ style });
+    return;
+  }
+  if (typeof navigator.vibrate === "function") navigator.vibrate(style === "LIGHT" ? 14 : 22);
+}
 
 type RGB = { r: number; g: number; b: number };
 
@@ -227,6 +245,13 @@ export default function OrbLiving({
     const RELEASE_TAU_SCALE = 1.7; // release returns calmer (slower ease to idle)
     const WANDER_REDUCE = 0.5; // core wander radius shrinks by this ×engage on arrival
     const ENGAGE_BRIGHTEN = 0.12; // "noticed" warmth — STEP 4: clearer idle↔touch contrast (core visibly wakes)
+    // ── STEP 4.1 touch-origin knobs — the FINGERTIP is the origin of life; the core
+    // answers late & softly (no center flashlight). ──────────────────────────────
+    const TAU_CORE_ANSWER = 0.9; // s — core brighten eases SLOWLY (delayed secondary, ~500ms+)
+    const CONTACT_TAU = 0.16; // s — fingertip contact-bloom decay (brightest at 0–80ms, eases out)
+    const CONTACT_PEAK = 0.5; // contact-bloom peak α — the brightest INITIAL area (at the finger)
+    const WAVE_DUR = 0.5; // s — soft ripple expands from the touch point and fades (contact proof)
+    const ENGAGE_HAPTIC_G = 0.6; // engage level → one optional soft second impact (latched per press)
 
     // B-1 attention state — mutable across frames. Reaction path is deterministic;
     // only the touch COORDINATE/TIME (input) is non-deterministic.
@@ -240,7 +265,14 @@ export default function OrbLiving({
     let lastMoveX = 0;
     let lastMoveY = 0;
     let lastMoveTs = 0;
-    let engage = 0; // 0 idle → 1 attentive
+    let engage = 0; // 0 idle → 1 attentive (fast — drives fingertip response)
+    let coreAnswer = 0; // 0→1 SLOW — delayed core brighten (secondary, STEP 4.1)
+    // STEP 4.1 touch-origin: contact bloom + expanding wave anchored at the CONTACT point.
+    let contactT0 = -1; // realT of pointer-down for the fingertip bloom (-1 = none)
+    let waveT0 = -1; // realT of the ripple start (-1 = inactive)
+    let waveX = cx; // contact origin (fixed at down — the wave does not chase the finger)
+    let waveY = cy;
+    let engagedHaptic = false; // per-press latch for the optional second soft impact
     let seedShiftX = 0; // Seed — leads the core (life origin)
     let seedShiftY = 0;
     let coreShiftX = 0;
@@ -297,6 +329,15 @@ export default function OrbLiving({
       const kField = 1 - Math.exp(-dt / (TAU_FIELD * rel));
       const kShell = 1 - Math.exp(-dt / (TAU_SHELL * rel));
       engage += ((noticed ? 1 : 0) - engage) * (1 - Math.exp(-dt / (TAU_ENGAGE * rel)));
+      // STEP 4.1: the CORE answers on a much slower ease → it brightens LATE (secondary),
+      // so the first light is at the fingertip, not a center flashlight.
+      coreAnswer += ((noticed ? 1 : 0) - coreAnswer) * (1 - Math.exp(-dt / (TAU_CORE_ANSWER * rel)));
+      // STEP 4.1: one optional soft second impact when the hold crosses engagement (latched
+      // per press → no repeated buzzing). The first impact fires on contact (pointer-down).
+      if (touching && !engagedHaptic && engage >= ENGAGE_HAPTIC_G) {
+        engagedHaptic = true;
+        orbHaptic("LIGHT");
+      }
       seedShiftX += (tsx - seedShiftX) * kSeed; // Seed leads (fastest → ~0ms)
       seedShiftY += (tsy - seedShiftY) * kSeed;
       coreShiftX += (tsx - coreShiftX) * kCore; // Attention Core (B-1, PRESERVED)
@@ -369,7 +410,7 @@ export default function OrbLiving({
       const ecy = eyBase;
       const corePulse = 1 + 0.1 * beat(t) + 0.02 * Math.sin(t * 0.71 + 0.9);
       const coreR = orbR * 0.56 * corePulse; // wide ember — a warmer region of the lit body
-      const coreDens = (0.85 + 0.15 * beat(t)) * (1 + ENGAGE_BRIGHTEN * engage);
+      const coreDens = (0.85 + 0.15 * beat(t)) * (1 + ENGAGE_BRIGHTEN * coreAnswer); // STEP 4.1: core answers LATE
 
       // Surrounding light RESPONDS — mid radius, beat lagged by LAG_MID, smaller
       // amplitude, centre leaning back toward the middle (wanders less than core).
@@ -431,10 +472,50 @@ export default function OrbLiving({
         ctx.fill();
       }
 
+      // (2d) STEP 4.1 — CONTACT BLOOM: the fingertip is the ORIGIN of life. A bright, small
+      // additive bloom at the exact contact point, peaking at contact (0–80ms) then easing
+      // into the sustained gather → the brightest INITIAL area is the finger, not the center.
+      if (contactT0 >= 0 && touching) {
+        const ca = CONTACT_PEAK * Math.exp(-(realT - contactT0) / CONTACT_TAU);
+        if (ca > 0.004) {
+          const cr = orbR * 0.34;
+          const cbg = ctx.createRadialGradient(waveX, waveY, 0, waveX, waveY, cr);
+          cbg.addColorStop(0, rgba(touch, ca));
+          cbg.addColorStop(0.5, rgba(touch, ca * 0.4));
+          cbg.addColorStop(1, rgba(touch, 0));
+          ctx.fillStyle = cbg;
+          ctx.beginPath();
+          ctx.arc(waveX, waveY, cr, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // (2e) STEP 4.1 — WAVE (contact proof): a soft ripple expands from the contact point
+      // over ~WAVE_DUR and fades — bright at the growing radius, hollow center → reads as a
+      // spreading ring, never a flash. One per press, one at a time, calm.
+      if (waveT0 >= 0) {
+        const wp = (realT - waveT0) / WAVE_DUR;
+        if (wp >= 1) {
+          waveT0 = -1;
+        } else {
+          const wease = 1 - Math.pow(1 - wp, 3);
+          const wr = orbR * (0.15 + 0.95 * wease);
+          const wa = 0.3 * (1 - wp) * (1 - wp); // fades as it expands
+          const wg = ctx.createRadialGradient(waveX, waveY, Math.max(0, wr * 0.55), waveX, waveY, wr);
+          wg.addColorStop(0, rgba(touch, 0));
+          wg.addColorStop(0.72, rgba(touch, wa));
+          wg.addColorStop(1, rgba(touch, 0));
+          ctx.fillStyle = wg;
+          ctx.beginPath();
+          ctx.arc(waveX, waveY, wr, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
       // (3) Ember core — the stable, anchored luminous center (§F). Idle micro-drift + breath.
       const cg = ctx.createRadialGradient(ecx, ecy, 0, ecx, ecy, coreR);
-      cg.addColorStop(0, rgba(touch, 0.44 * coreDens)); // stable bright center (anchored) → dimensionality (STEP 4: brighter core)
-      cg.addColorStop(0.4, rgba(touch, 0.26 * coreDens));
+      cg.addColorStop(0, rgba(touch, 0.3 * coreDens)); // STEP 4.1: restrained center (responder, NOT a flashlight)
+      cg.addColorStop(0.4, rgba(touch, 0.17 * coreDens));
       cg.addColorStop(0.74, rgba(morning, 0.07));
       cg.addColorStop(1, rgba(morning, 0));
       ctx.fillStyle = cg;
@@ -543,6 +624,14 @@ export default function OrbLiving({
       lastMoveY = p.y;
       lastMoveTs = e.timeStamp;
       canvas.setPointerCapture?.(e.pointerId);
+      // STEP 4.1 — touch-origin life: anchor the contact bloom + wave at the finger,
+      // re-arm the engage-haptic latch, and fire the single contact haptic (sole site).
+      contactT0 = realT;
+      waveT0 = realT;
+      waveX = p.x;
+      waveY = p.y;
+      engagedHaptic = false;
+      orbHaptic("LIGHT");
       // §G press-and-hold: a brief tap must NOT navigate. Hold ≥ holdMs → commit.
       const hold = holdMsRef.current;
       if (hold > 0) {
