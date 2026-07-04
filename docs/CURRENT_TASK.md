@@ -1,3 +1,19 @@
+**2026-07-04 — STEP 5.2a — Orb wave portal stabilization. Inner commit `0637b9fb`; deploy HELD (Commander GO required).**
+
+**What:** moved OrbLiving's outward-wave canvas out of the Orb wrapper and mounted it **directly on `document.body`** (imperative `createElement`+`appendChild` in the existing effect; `fieldCanvas.remove()` on unmount). `OrbLiving.tsx` only (1 file, 16+/18−). **NOT deployed.**
+
+**Why:** STEP 5.0 diag — a transform on the `/start` Orb wrapper made the fixed wave canvas (then a *descendant*) resolve to the 220px wrapper instead of the viewport → wave drifted to 좌하단 + layer edges showed. Prepares for the future hold-to-enter Orb scale-up without origin drift.
+
+**Transform immunity:** the wave layer now has **no transformed ancestor** (body child), so a future Orb scale/transform cannot become its containing block. Wave origin stays in **viewport space** via `canvas.getBoundingClientRect()` (getBoundingClientRect already accounts for transforms) → centered on the Orb now, and correct even under a future Orb scale.
+
+**Preserved (0-change):** wave draw path + all constants (`FIELD_WAVE_A 0.09`, `FIELD_MAX_TRAVEL orbR*4.6`, ring easing) unchanged → accepted outward-wave feel intact; `orbHaptic` untouched (haptic timing/exclusivity unchanged); `pointer-events:none` (no touch intercept); transparent except fading rings (no rectangular bounds). **NOT done:** hold-to-enter, Orb scale-up, Today transition (all deferred).
+
+**Gates:** tsc PASS; build PASS (306/306); terminology net-increase 0 (OrbLiving not flagged). Inner pushed `4c8bdc01..0637b9fb` → origin/inner-main.
+
+**Deploy:** **HELD** — awaiting **real-device iPhone Native Sensory Gate + explicit Commander GO** (this step changes wave render structure; on-device is the deploy criterion). Manual sensory checklist (tap/hold haptic, wave-from-Orb, outward, no random/lower-left/rectangular origin) = **UNVERIFIED-BY-CODE**; code-level checks (transform immunity, viewport origin, constants/haptic unchanged) confirmed.
+
+---
+
 **2026-07-04 — STEP 5.1 — Restore Orb outward wave baseline (revert fea92eb5). Inner-only; deploy HELD.**
 
 **What:** reverted `fea92eb5` (STEP 5 Orb→Today transition) on `inner-main` — inner revert commit **`4c8bdc01`** (2 files, 9+/85−; symmetric reverse). NOT deployed.
