@@ -1,3 +1,21 @@
+**2026-07-03 — STEP A2 — Native Durable Session Restore CLOSED.**
+
+**Status:** CLOSED. Inner commit `71af9192`; deploy `bty-arena-staging` `06a5ec38-c287-4f62-951d-b5c6c1c3dfe2`.
+
+**Purpose:** solve the WKWebView async cookie-persistence race on native app hard-kill.
+
+**Root cause:** Supabase auth cookies were persistent in principle, but WKWebView's disk flush is asynchronous — an immediate app kill after login could lose the auth cookie before it reached disk, and no native durable copy existed. STEP A (session-gate refresh) could not help this case (no refresh_token cookie survived to refresh).
+
+**Fix:** Keychain-backed native durable session restore. Plugin `capacitor-secure-storage-plugin@0.13.0` (iOS Keychain); key `bty.session.v1`. All web glue is `isNative()`-gated; server routes reused unchanged.
+
+**Behavior:** (1) native login stores session material in Keychain before redirect; (2) native launch restore reads Keychain when the normal session gate is unauthenticated; (3) restore re-establishes the session without Google login; (4) logout clears Keychain before restore can run.
+
+**Verification:** (1) app kill after login → relaunch → Google login does NOT appear → Orb appears: **PASS**; (2) logout → relaunch → Google login required: **PASS**.
+
+**Scope:** web behavior unchanged · server routes unchanged · auth/callback untouched · PKCE untouched · legacy JWT untouched · Orb / Foundry / Today / Arena / Center / BottomNav untouched · no DB migration · no schema change.
+
+**Final product meaning:** Google OAuth remains account binding/recovery; daily relaunch now restores silently and enters Orb; the first major Daily Entry v1 blocker is resolved.
+
 **2026-07-03 — Today Shell Door Arc PASS — v0.1 core flow closed.**
 
 **Sensory PASS (Commander):** accepted after the hold-duration adjustment. `/start` is the canonical **locale-less `(shell)` Threshold Door** rendering the **living Orb** (OrbLiving); it opens only on **deliberate press-and-hold** (not accidental tap) — final **HOLD_MS = 1800ms**, long enough that the B-2 light-gather is **visible before** the door opens. `/start` navigates to the localized **`/[locale]/today`**.
