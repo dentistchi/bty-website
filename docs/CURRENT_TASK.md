@@ -8,7 +8,7 @@
 
 **Gates:** tsc PASS; terminology 14 flagged = pre-existing baseline, my 2 files contribute 0 → net-increase 0. Inner pushed `fea92eb5..4c8bdc01` → origin/inner-main (remote == local).
 
-**Deploy:** **HELD** — awaiting iPhone Native Smoke Gate + Commander GO before `bty-arena-staging` deploy.
+**Deploy:** **DONE** (Commander GO 2026-07-04) — `bty-arena-staging` Version **`b6d1ecdc-6a25-4d34-af5e-79f1cccf76f4`**, HEAD `4c8bdc01`. 3-way fresh: served `/start` chunk no longer contains `scale(1.06)`/`enter=orb` (offending transform + echo gone → fixed wave canvas re-anchored to viewport); OrbLiving chunk still carries Haptics + the `pointer-events:none` field layer. `/start` 200, `/en/dev/orb` 200.
 
 **Next (when STEP 5 transition is re-introduced):** adopt **Option B1 — portal the field-wave canvas to `document.body`** so `position:fixed` stays viewport-anchored regardless of any transformed ancestor. Do NOT re-add a transform on a fixed-canvas ancestor.
 
