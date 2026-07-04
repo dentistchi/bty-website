@@ -23,8 +23,8 @@ import { PageLoadingFallback } from "@/components/bty-arena";
 type Phase = "splash" | "orb";
 
 const SPLASH_MS = 500;
-const HOLD_MS = 1800; // §G deliberate hold — long enough (~3× the B-2 engage ease) for the
-// secondary Influence Field to visibly gather toward the finger before the door opens Today.
+const HOLD_MS = 3000; // §G deliberate hold — STEP 5.2b: ~3s hold-to-enter. Progress builds the
+// Orb enlargement + warm-golden entry light (OrbLiving); a brief tap stays a response (no nav).
 
 function currentLocale(): string {
   return (typeof document !== "undefined" && document.documentElement.lang) || "ko";

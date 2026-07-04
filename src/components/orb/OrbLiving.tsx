@@ -39,6 +39,7 @@
 
 import React from "react";
 import { isNative } from "@/lib/native/isNative";
+import * as goldenOverlay from "./orbGoldenOverlay";
 
 /**
  * The sole LIVE haptic call site (#배타성 LOCK), relocated from the retired Orb.tsx.
@@ -206,13 +207,19 @@ export default function OrbLiving({
     sizeField();
     if (fctx) window.addEventListener("resize", sizeField);
     // Orb-emitted waves: each is centred on the ORB (viewport coords), not the finger.
-    const fieldWaves: { t0: number; cx: number; cy: number }[] = [];
+    // r0 = the Orb's boundary radius AT EMISSION, derived from the measured rect so the ring
+    // starts at the (possibly scaled) Orb boundary (STEP 5.2b). r.width == size at scale 1 →
+    // r0 == orbR → byte-identical to the accepted baseline.
+    const fieldWaves: { t0: number; cx: number; cy: number; r0: number }[] = [];
     // STEP 4.3 — subtler, slower, wider, more premium: ambient pressure moving through
     // the field, not a UI ripple. Lower opacity, longer life, farther travel, softer band.
     const FIELD_WAVE_DUR = 1.15; // s — slow emit → travel → long fade
     const FIELD_RING_W = orbR * 0.62; // wider, softer edgeless band (blurrier ring)
     const FIELD_MAX_TRAVEL = orbR * 4.6; // travels farther out into the screen field
     const FIELD_WAVE_A = 0.09; // ~44% lower peak — restrained resonance, never a flash
+    // STEP 5.2b hold-to-enter (visual; the timer still owns the actual commit).
+    const SCALE_MAX = 0.22; // Orb enlarges up to ×1.22 as hold progress → 1
+    const REWIND_S = 0.3; // early-release rollback of scale + entry light (~300ms)
     // STEP 4.3 tap acknowledgement — a transient disturbance OVERLAID on the idle body
     // (§A–§E idle breath/wander/medium are NOT modified; this only rides on top and relaxes).
     const TAP_TAU = 0.2; // s — decay of the tap impulse (visible <180ms, relaxes ~400–500ms)
@@ -296,7 +303,6 @@ export default function OrbLiving({
     const TAU_CORE_ANSWER = 0.9; // s — core brighten eases SLOWLY (delayed secondary, ~500ms+)
     const CONTACT_TAU = 0.16; // s — fingertip contact-bloom decay (brightest at 0–80ms, eases out)
     const CONTACT_PEAK = 0.5; // contact-bloom peak α — the brightest INITIAL area (at the finger)
-    const ENGAGE_HAPTIC_G = 0.6; // engage level → one optional soft second impact (latched per press)
 
     // B-1 attention state — mutable across frames. Reaction path is deterministic;
     // only the touch COORDINATE/TIME (input) is non-deterministic.
@@ -317,8 +323,10 @@ export default function OrbLiving({
     let contactT0 = -1; // realT of pointer-down for the fingertip contact bloom (-1 = none)
     let waveX = cx; // contact origin (fixed at down — the wave does not chase the finger)
     let waveY = cy;
-    let engagedHaptic = false; // per-press latch for the optional second soft impact
     let tapImpulse = 0; // STEP 4.3: 0→1 on any contact (even a quick tap), decays over ~TAP_TAU
+    // STEP 5.2b hold-to-enter (non-reduced-motion visuals; timer owns commit).
+    let holdProgress = 0; // 0→1 while holding; eases back to 0 on early release (rewind)
+    let nextRampT = 0; // realT for the next progressive haptic ramp pulse
     let seedShiftX = 0; // Seed — leads the core (life origin)
     let seedShiftY = 0;
     let coreShiftX = 0;
@@ -353,6 +361,34 @@ export default function OrbLiving({
       // STEP 4.3: relax the tap impulse (immediate rise on contact → gentle exponential decay).
       tapImpulse *= Math.exp(-dt / TAP_TAU);
       if (tapImpulse < 0.001) tapImpulse = 0;
+
+      // ── STEP 5.2b hold-to-enter visuals (non-reduced-motion; the setTimeout owns the actual
+      // commit so reduced-motion still enters). Progress builds with the hold → the Orb enlarges
+      // (CSS scale on the orb canvas — no fixed descendant under it, so the body-mounted wave /
+      // entry-light layers are unaffected) and the warm-golden entry light ramps up. Early
+      // release eases progress back to 0 over ~REWIND_S (scale + light roll back; no commit).
+      if (!reduceMotion && holdMsRef.current > 0) {
+        const holdS = holdMsRef.current / 1000;
+        const wasActive = touching || holdProgress > 0;
+        if (touching && !committed) {
+          holdProgress = Math.min(1, (realT - touchDownT) / holdS);
+        } else if (!committed && holdProgress > 0) {
+          holdProgress = Math.max(0, holdProgress - dt / REWIND_S); // early-release rewind
+        } // committed → freeze (Orb stays enlarged, drawn into the light)
+        if (wasActive) {
+          canvas.style.transform = holdProgress > 0 ? `scale(${1 + holdProgress * SCALE_MAX})` : "scale(1)";
+          if (!committed) {
+            goldenOverlay.setProgress(holdProgress);
+            if (!touching && holdProgress <= 0) goldenOverlay.clear(); // fully rewound → remove
+            // Progressive haptic ramp: subtle LIGHT pulses at a shrinking interval as the hold
+            // deepens (0.42s → ~0.09s). Contact pulse already fired on pointer-down.
+            if (touching && holdProgress > 0.02 && holdProgress < 0.985 && realT >= nextRampT) {
+              orbHaptic("LIGHT");
+              nextRampT = realT + (0.42 - 0.33 * holdProgress);
+            }
+          }
+        }
+      }
       const noticed = touching && realT - touchDownT >= NOTICE_S;
       let tsx = 0;
       let tsy = 0;
@@ -381,12 +417,9 @@ export default function OrbLiving({
       // STEP 4.1: the CORE answers on a much slower ease → it brightens LATE (secondary),
       // so the first light is at the fingertip, not a center flashlight.
       coreAnswer += ((noticed ? 1 : 0) - coreAnswer) * (1 - Math.exp(-dt / (TAU_CORE_ANSWER * rel)));
-      // STEP 4.1: one optional soft second impact when the hold crosses engagement (latched
-      // per press → no repeated buzzing). The first impact fires on contact (pointer-down).
-      if (touching && !engagedHaptic && engage >= ENGAGE_HAPTIC_G) {
-        engagedHaptic = true;
-        orbHaptic("LIGHT");
-      }
+      // STEP 5.2b: the old engage-cross LIGHT pulse is REMOVED (two pulses ~0.5s apart read as
+      // stutter on device). Haptic grammar is now: contact LIGHT → progressive ramp during hold
+      // (below) → single MEDIUM commit pulse (in the hold timer).
       seedShiftX += (tsx - seedShiftX) * kSeed; // Seed leads (fastest → ~0ms)
       seedShiftY += (tsy - seedShiftY) * kSeed;
       coreShiftX += (tsx - coreShiftX) * kCore; // Attention Core (B-1, PRESERVED)
@@ -638,7 +671,7 @@ export default function OrbLiving({
               continue;
             }
             const travel = wp * wp * (3 - 2 * wp); // smoothstep — breath-like, no punchy snap
-            const R = orbR + FIELD_RING_W + travel * FIELD_MAX_TRAVEL; // starts at the boundary
+            const R = w.r0 + FIELD_RING_W + travel * FIELD_MAX_TRAVEL; // starts at the (scaled) Orb boundary
             const fadeIn = Math.min(1, wp / 0.16); // gentler ~180ms emerge from the orb body
             const a = FIELD_WAVE_A * fadeIn * (1 - wp) * (1 - wp); // long, soft outward fade
             if (a <= 0.0015) continue;
@@ -703,20 +736,21 @@ export default function OrbLiving({
       lastMoveTs = e.timeStamp;
       canvas.setPointerCapture?.(e.pointerId);
       // STEP 4.1/4.2 — the finger TRIGGERS the Orb: a subtle contact proof stays at the
-      // touch point, but the main wave is EMITTED FROM THE ORB. Anchor the wave's centre
-      // on the orb (viewport coords, so it can expand across the screen field), re-arm the
-      // engage-haptic latch, and fire the single contact haptic (sole live site).
+      // touch point, but the main wave is EMITTED FROM THE ORB. Anchor the wave's centre on
+      // the orb (viewport coords, so it can expand across the screen field) and record the
+      // emission-time Orb boundary radius (STEP 5.2b radius fix). Fire the single contact haptic.
       contactT0 = realT;
       waveX = p.x;
       waveY = p.y;
       tapImpulse = 1; // STEP 4.3: even a quick tap disturbs the idle light + lightly answers the core
       if (fctx) {
         const r = canvas.getBoundingClientRect();
-        fieldWaves.push({ t0: realT, cx: r.left + r.width / 2, cy: r.top + r.height / 2 });
+        const r0 = orbR * (r.width / size); // scaled Orb boundary; == orbR at scale 1
+        fieldWaves.push({ t0: realT, cx: r.left + r.width / 2, cy: r.top + r.height / 2, r0 });
         if (fieldWaves.length > 5) fieldWaves.shift(); // cap concurrent emissions
       }
-      engagedHaptic = false;
-      orbHaptic("LIGHT");
+      nextRampT = realT + 0.42; // first hold-ramp pulse comes after the contact pulse
+      orbHaptic("LIGHT"); // contact pulse (sole live site; fires once per press)
       // §G press-and-hold: a brief tap must NOT navigate. Hold ≥ holdMs → commit.
       const hold = holdMsRef.current;
       if (hold > 0) {
@@ -725,7 +759,9 @@ export default function OrbLiving({
           holdTimer = 0;
           if (touching && !committed) {
             committed = true;
-            onCommitRef.current?.(); // visual-only, NO haptic
+            orbHaptic("MEDIUM"); // single decisive COMMIT pulse
+            if (!reduceMotion) goldenOverlay.commit(); // hand off the entry light (persists through nav)
+            onCommitRef.current?.(); // navigate into Today
           }
         }, hold);
       }
@@ -772,6 +808,7 @@ export default function OrbLiving({
       if (holdTimer) clearTimeout(holdTimer);
       if (fctx) window.removeEventListener("resize", sizeField);
       fieldCanvas.remove(); // STEP 5.2a — tear down the document.body wave layer on unmount
+      goldenOverlay.clear(); // STEP 5.2b — remove the entry light if NOT committed (committed self-manages)
       document.removeEventListener("visibilitychange", onVisibility);
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);
