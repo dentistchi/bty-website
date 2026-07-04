@@ -1,3 +1,25 @@
+**2026-07-04 — STEP 5.2b — Hold-to-enter Orb transition. Inner commit `b41360dc`; deploy HELD (Commander GO required).**
+
+**What (3 files, inner):** `orbGoldenOverlay.ts` (new), `OrbLiving.tsx`, `start/page.client.tsx`. **NOT deployed.** Built on 5.2a (Wave Portal LOCKED).
+
+**Experience:** short tap = response (wave + haptic, no nav) — unchanged. **~3s hold = entry:** Orb enlarges with hold progress; warm-golden entry light ramps; on commit the Orb stays enlarged (drawn into light), the overlay persists through `router.push` and recedes over Today ("revealed from inside the light", never white). Early release: ramp stops, scale + light rewind ~300ms, no commit, no failure styling.
+
+**Light-reveal mechanism (Commander-approved A):** body-mounted, React-independent **golden-overlay singleton** on `document.body` → transform-immune AND persists across the client route change; **HARD FAILSAFE** commit-anchored ~4s force-remove + non-silent `console.warn` (stuck-overlay can never lock UI). Today **untouched** (overlay does the reveal; no `?enter` flag).
+
+**Orb scale:** CSS transform on the orb canvas element — it has **no fixed descendant** (wave + entry-light both body-mounted) → cannot re-trap them (5.0 trap avoided). Verified.
+
+**Radius fix (precondition):** wave ring start now `r0 = orbR·(r.width/size)` (measured Orb rect) → emits from the SCALED boundary; **`const R = orbR` no longer used (0 refs)**; `r0 == orbR` at scale 1 → **byte-identical**. Origin logic untouched (still Orb-element rect).
+
+**Haptic (revised, Orb-only):** contact LIGHT → progressive ramp during hold (shrinking interval 0.42→~0.09s) → single **MEDIUM** commit pulse. **Engage-cross pulse REMOVED** (stutter) + its `engagedHaptic` latch/`ENGAGE_HAPTIC_G` const. Contact one-shot preserved.
+
+**Reduced-motion two-path:** rAF-gated visuals off → timer commit + contact/commit haptics, no ramp/rewind. `HOLD_MS 1800→3000`.
+
+**Gates:** tsc PASS; build PASS (306/306); terminology net-increase 0. Inner pushed `0637b9fb..b41360dc` → origin/inner-main.
+
+**Deploy:** **HELD** — Commander GO required. **UNVERIFIED-BY-CODE (real-device iPhone Sensory Gate):** hold feel/scale, golden brighten (no white), Today-from-light reveal, overlay recede + no-stuck, haptic ramp cadence, rewind calmness, tap-still-response. Code-verified: transform-immunity, radius byte-identical at scale 1, engage-cross removed, failsafe+warn present, reduced-motion path, no leftover latch.
+
+---
+
 **2026-07-04 — STEP 5.2a DEPLOYED (Commander GO). `bty-arena-staging` Version `cb521c11-8dc5-4d0c-97fd-0559d8acba00`, HEAD `0637b9fb`.**
 
 Deployed inner-main HEAD **`0637b9fb`** (wave canvas moved to `document.body`, transform-immune). **Freshness proof:** new Orb chunk hash `9365-ccc676377efc763f.js` (≠ prior `9365-f9f3ad26d1697135.js`); served chunk contains `document.body.appendChild(fieldCanvas)` (the 5.2a body-mount, absent before) + `Haptics` (preserved). Distinct from prior deploy: version `cb521c11` ≠ `b6d1ecdc`; HEAD `0637b9fb` ≠ `4c8bdc01`. `/start` 200, `/en/dev/orb` 200. No code change (deployed the existing 5.2a commit); no runtime change beyond the body-mounted wave layer. Auth/native/routing/Today/BottomNav unchanged. **Real-device iPhone Sensory Gate pending (Commander).**
