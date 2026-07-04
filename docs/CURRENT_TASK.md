@@ -1,3 +1,9 @@
+**2026-07-04 — STEP 5.2b DEPLOYED (Commander GO). `bty-arena-staging` Version `c708ceb4-06f3-4a87-b4cc-7435c3574f77`, HEAD `b41360dc`.**
+
+Deployed inner HEAD **`b41360dc`** (hold-to-enter). **Freshness proof:** new Orb chunk `7566-e3eab364407573e2.js` (≠ prior 5.2a `9365-ccc676377efc763f.js`); served chunk contains the golden-overlay failsafe string `entry light force-removed` (5.2b-unique) + `Haptics`; start chunk carries `HOLD_MS 3000`. Distinct from prior: version `c708ceb4` ≠ `cb521c11`; HEAD `b41360dc` ≠ `0637b9fb`. `/start` 200, `/en/dev/orb` 200, `/en/today` 307→login (auth gate intact). No code change (deployed existing commit). **Real-device iPhone Sensory Gate pending (Commander):** hold feel/scale, golden brighten (no white), Today-from-light reveal + overlay recede (never stuck), haptic ramp + MEDIUM commit, rewind calmness, tap-still-response.
+
+---
+
 **2026-07-04 — STEP 5.2b — Hold-to-enter Orb transition. Inner commit `b41360dc`; deploy HELD (Commander GO required).**
 
 **What (3 files, inner):** `orbGoldenOverlay.ts` (new), `OrbLiving.tsx`, `start/page.client.tsx`. **NOT deployed.** Built on 5.2a (Wave Portal LOCKED).
