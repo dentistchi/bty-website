@@ -6,8 +6,10 @@
  * A body-mounted, React-INDEPENDENT singleton. It is mounted on `document.body` so that:
  *  1. it has NO transformed ancestor (transform-immune, like the STEP 5.2a wave layer), and
  *  2. it PERSISTS across the client route change (Orb `/start` → `/today`): it ramps up while
- *     the user holds, and on commit it hands off — surviving the navigation — then recedes over
- *     the freshly-mounted Today, revealing it "from inside the light" (no hard cut, never white).
+ *     the user holds, and on commit it hands off — surviving the navigation. The recede is
+ *     ARRIVAL-anchored (5.2b-fix): it HOLDS at peak until `location.pathname` reaches `/today`,
+ *     then recedes over the freshly-mounted Today — so the blue `/start` + Orb are never
+ *     re-revealed between commit and arrival ("from inside the light", no hard cut, never white).
  *
  * HARD FAILSAFE (Commander-required): a commit-anchored ~4s timeout force-removes the overlay
  * (and `console.warn`s, non-silently) if the normal fade/removal ever fails — so a stuck
@@ -16,15 +18,19 @@
  * Colour is warm gold only (never `#fff`), so brightening reads as golden light, not a flash.
  */
 
-const FADE_MS = 820; // commit recede over Today
-const FAILSAFE_MS = 4000; // hard commit-anchored force-remove
+const FADE_MS = 820; // recede over Today (ease-out; warm hue retained, only opacity falls)
+const FAILSAFE_MS = 4000; // hard commit-anchored force-remove (timing UNCHANGED)
 const PEAK = 0.94; // max opacity (never fully opaque → soft, not a hard cut)
 const Z = 2147483000; // above app UI; pointer-events:none so it never intercepts
+const ARRIVAL_SETTLE_MS = 150; // after /today lands, brief hold so Today paints under the light
+const POLL_MS = 50; // arrival poll cadence (location.pathname → /today)
 
 let el: HTMLDivElement | null = null;
 let committed = false;
 let removeTimer = 0;
 let failsafeTimer = 0;
+let arrivalTimer = 0; // pathname poll (commit → arrival at /today)
+let settleTimer = 0; // brief hold after arrival, before recede
 
 function ensure(): HTMLDivElement {
   if (el) return el;
@@ -49,9 +55,27 @@ function finalize(): void {
     clearTimeout(failsafeTimer);
     failsafeTimer = 0;
   }
+  if (arrivalTimer) {
+    clearTimeout(arrivalTimer);
+    arrivalTimer = 0;
+  }
+  if (settleTimer) {
+    clearTimeout(settleTimer);
+    settleTimer = 0;
+  }
   if (el && el.parentNode) el.parentNode.removeChild(el);
   el = null;
   committed = false;
+}
+
+/** Begin the recede over Today (called only AFTER arrival at /today + settle). */
+function recede(): void {
+  settleTimer = 0;
+  if (!el || !committed) return;
+  // ease-out; gradient colours are fixed warm gold → only opacity falls (no hue shift to white/grey).
+  el.style.transition = `opacity ${FADE_MS}ms ease-out`;
+  el.style.opacity = "0";
+  removeTimer = window.setTimeout(finalize, FADE_MS + 140);
 }
 
 /**
@@ -75,23 +99,31 @@ export function commit(): void {
   const d = ensure();
   committed = true;
   d.style.transition = "opacity 90ms linear";
-  d.style.opacity = String(PEAK);
-  // Two frames so PEAK paints before the recede starts (the nav fires this same tick).
-  requestAnimationFrame(() =>
-    requestAnimationFrame(() => {
-      if (!el) return;
-      el.style.transition = `opacity ${FADE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
-      el.style.opacity = "0";
-    })
-  );
-  removeTimer = window.setTimeout(finalize, FADE_MS + 140);
+  d.style.opacity = String(PEAK); // HOLD at peak — do NOT fade yet (5.2b-fix).
+
+  // HARD FAILSAFE — commit-anchored, timing UNCHANGED. Force-remove + non-silent warn if the
+  // route never lands on /today (nav failure / auth redirect) or the recede is interrupted.
   failsafeTimer = window.setTimeout(() => {
     if (el) {
-      // Non-silent: surface that the normal recede did not complete.
-      console.warn("[orbGoldenOverlay] failsafe fired — entry light force-removed (recede did not complete)");
+      console.warn("[orbGoldenOverlay] failsafe fired — entry light force-removed (arrival/recede did not complete)");
     }
     finalize();
   }, FAILSAFE_MS);
+
+  // ARRIVAL-ANCHORED recede (5.2b-fix): the overlay HOLDS at peak until navigation actually
+  // lands on /today, so the blue /start + Orb are never re-revealed between commit and arrival.
+  // Poll location.pathname (no Today coupling); on match, settle briefly so Today paints under
+  // the light, then recede.
+  const poll = (): void => {
+    arrivalTimer = 0;
+    if (!el || !committed) return;
+    if (typeof window !== "undefined" && window.location.pathname.includes("/today")) {
+      settleTimer = window.setTimeout(recede, ARRIVAL_SETTLE_MS);
+      return;
+    }
+    arrivalTimer = window.setTimeout(poll, POLL_MS);
+  };
+  arrivalTimer = window.setTimeout(poll, POLL_MS);
 }
 
 /**
