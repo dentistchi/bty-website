@@ -1,3 +1,17 @@
+**2026-07-04 — STEP 5.2b-fix — Gate entry-light recede on Today arrival. Inner commit `33bb473a`; deploy HELD (Commander GO required).**
+
+**On-device finding (frame-verified):** the golden entry light receded on a commit-anchored timer, completing BEFORE navigation landed → `/start` (blue + Orb) was re-revealed, then a hard cut to Today. Root cause = time-anchored recede, not arrival-anchored.
+
+**Fix (`orbGoldenOverlay.ts` only):** after commit the overlay **HOLDS at PEAK** (no fade); the body-mounted singleton **polls `location.pathname` (~50ms, no Today coupling)** until it reaches `/today`, then **settles ~150ms** (Today paints under the light) and **recedes** (`ease-out`; warm gold hue fixed in the gradient → only opacity falls, no white/grey shift). The removed piece was the immediate double-rAF commit-time fade. **HARD FAILSAFE unchanged** — commit-anchored ~4s force-remove + `console.warn` still fires if arrival never detected (nav failure / auth redirect) or recede interrupted (`finalize` now also clears the arrival/settle timers).
+
+**Scope:** `orbGoldenOverlay.ts` only. **OrbLiving / Today / routing untouched**; all prior 5.2b locks intact.
+
+**Gates:** tsc PASS; build PASS (306/306); terminology net-increase 0. Inner pushed `b41360dc..33bb473a` → origin/inner-main.
+
+**Deploy:** **HELD** — Commander GO required. **UNVERIFIED-BY-CODE (real-device):** no `/start` re-reveal between commit and Today; smooth hold→recede over Today; no stuck overlay (watch for the failsafe `console.warn`).
+
+---
+
 **2026-07-04 — STEP 5.2b DEPLOYED (Commander GO). `bty-arena-staging` Version `c708ceb4-06f3-4a87-b4cc-7435c3574f77`, HEAD `b41360dc`.**
 
 Deployed inner HEAD **`b41360dc`** (hold-to-enter). **Freshness proof:** new Orb chunk `7566-e3eab364407573e2.js` (≠ prior 5.2a `9365-ccc676377efc763f.js`); served chunk contains the golden-overlay failsafe string `entry light force-removed` (5.2b-unique) + `Haptics`; start chunk carries `HOLD_MS 3000`. Distinct from prior: version `c708ceb4` ≠ `cb521c11`; HEAD `b41360dc` ≠ `0637b9fb`. `/start` 200, `/en/dev/orb` 200, `/en/today` 307→login (auth gate intact). No code change (deployed existing commit). **Real-device iPhone Sensory Gate pending (Commander):** hold feel/scale, golden brighten (no white), Today-from-light reveal + overlay recede (never stuck), haptic ramp + MEDIUM commit, rewind calmness, tap-still-response.
