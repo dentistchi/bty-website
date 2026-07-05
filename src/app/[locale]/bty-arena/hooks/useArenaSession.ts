@@ -33,6 +33,8 @@ import {
 } from "@/lib/bty/arena/arenaRuntimeSnapshot.types";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
+import { userDayKey } from "@/domain/daily/userDayKey";
+import { nextStreakState, type StreakState } from "@/domain/daily/streakBridge";
 import { difficultyFromScenarioChoices } from "@/lib/bty/arena/arenaLabXp";
 import { BTY_ARENA_STATE_STORAGE_KEY } from "@/lib/bty/arena/arenaLocalState";
 import type { ArenaRecallPrompt } from "@/lib/bty/arena/memoryRecallPrompt.types";
@@ -405,29 +407,48 @@ function normalizeEliteResumePhase(
   return phase;
 }
 
+/**
+ * Device tz for the streak day-basis (STEP 1 / D1 client ladder: profile → device → UTC).
+ * A client hook has no profile tz in its call path, so the effective top rung is the device
+ * IANA zone via Intl; unresolved/invalid → UTC fallback (pre-capture mismatch vs server SITE2
+ * is an accepted Commander trade-off — converges once Today captures the profile tz).
+ */
+function resolveStreakTz(): string {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (typeof tz === "string" && tz.length > 0) {
+      new Intl.DateTimeFormat("en-US", { timeZone: tz }); // throws on invalid IANA id
+      return tz;
+    }
+  } catch {
+    /* fall through to UTC */
+  }
+  return "UTC";
+}
+
+/** userDayKey with a hard UTC fallback so an unexpected tz can never throw out of updateStreak. */
+function streakDayKey(now: Date): string {
+  const tz = resolveStreakTz();
+  try {
+    return userDayKey(now, tz, 5);
+  } catch {
+    return userDayKey(now, "UTC", 5);
+  }
+}
+
 function updateStreak(): { streak: number; message?: SystemMsg } {
   try {
     const raw = localStorage.getItem(STREAK_KEY);
-    const today = new Date();
-    const dayKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+    const prev = raw ? (JSON.parse(raw) as StreakState) : null;
+    const todayKey = streakDayKey(new Date());
 
-    if (!raw) {
-      localStorage.setItem(STREAK_KEY, JSON.stringify({ streak: 1, lastDayKey: dayKey }));
-      return { streak: 1 };
+    const { state, changed } = nextStreakState(prev, todayKey);
+    if (changed) localStorage.setItem(STREAK_KEY, JSON.stringify(state));
+
+    if (changed && state.streak === 3) {
+      return { streak: state.streak, message: SYSTEM_MESSAGES.find((m) => m.id === "consistency") };
     }
-
-    const parsed = JSON.parse(raw) as { streak: number; lastDayKey: string };
-    if (parsed.lastDayKey === dayKey) return { streak: parsed.streak };
-
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    const yKey = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()}`;
-
-    const nextStreak = parsed.lastDayKey === yKey ? parsed.streak + 1 : 1;
-    localStorage.setItem(STREAK_KEY, JSON.stringify({ streak: nextStreak, lastDayKey: dayKey }));
-
-    if (nextStreak === 3) return { streak: nextStreak, message: SYSTEM_MESSAGES.find((m) => m.id === "consistency") };
-    return { streak: nextStreak };
+    return { streak: state.streak };
   } catch {
     return { streak: 1 };
   }

@@ -167,6 +167,37 @@ describe("evaluateDailyGate — Gates 4/5 full 3-domain evidence (Flag 1 = b)", 
   });
 });
 
+describe("evaluateDailyGate — canonical 05:00-local day boundary (D1 STEP 1)", () => {
+  // NOW = 2026-07-02T09:00:00Z. Canonical UTC user-day: [07-02T05:00Z, 07-03T05:00Z);
+  // yesterday: [07-01T05:00Z, 07-02T05:00Z). An event at 03:00Z is BEFORE the 05:00 open hour
+  // → it belongs to YESTERDAY, whereas the old UTC-midnight logic would have called it "today".
+  it("pre-05:00 evidence counts as yesterday, not today (tz=UTC injected)", async () => {
+    const r = await evaluateDailyGate(
+      sbEvidence({ center_letters: ["2026-07-02T03:00:00.000Z"] }),
+      "u1",
+      NOW,
+      "UTC",
+    );
+    expect(r.gate).toBe("YESTERDAY_MIRROR");
+  });
+
+  it("explicit userTz overrides profile resolution (Asia/Seoul yesterday window)", async () => {
+    // 2026-07-01T15:00Z == 00:00 KST 07-02 → before 05:00 KST → KST yesterday user-day.
+    const r = await evaluateDailyGate(
+      sbEvidence({ arena_runs: ["2026-07-01T15:00:00.000Z"] }),
+      "u1",
+      NOW,
+      "Asia/Seoul",
+    );
+    expect(r.gate).toBe("YESTERDAY_MIRROR");
+  });
+
+  it("no evidence still resolves to OPEN_DAY under an injected tz", async () => {
+    const r = await evaluateDailyGate(NO_EVIDENCE, "u1", NOW, "Asia/Seoul");
+    expect(r.gate).toBe("OPEN_DAY");
+  });
+});
+
 describe("evaluateDailyGate — failure behavior (§ fail-quiet, no 500)", () => {
   it("Gate 1 open-on-failure: helper false result → proceeds, no center lockout", async () => {
     // userHasForcedResetPending returns false on db error (its own open-on-failure contract);

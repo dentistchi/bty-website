@@ -26,6 +26,7 @@
  * next gate; the daily entry never 500s and degrades to OPEN_DAY.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { userDayStartInstant } from "@/domain/daily/userDayStartInstant";
 import { userHasForcedResetPending } from "@/lib/bty/leadership-engine/state-service";
 import { fetchBlockingArenaContractForSession } from "@/lib/bty/arena/blockingArenaActionContract";
 import { fetchFirstDueNoChangeReexposureMeta } from "@/engine/scenario/delayed-outcome-trigger.service";
@@ -80,25 +81,37 @@ async function quiet<T>(fn: () => Promise<T>, fallback: T, tag: string): Promise
   }
 }
 
-function addUtcDays(base: Date, days: number): Date {
-  const d = new Date(base.getTime());
-  d.setUTCDate(d.getUTCDate() + days);
-  return d;
-}
-
-/** Start-of-UTC-day ISO (YYYY-MM-DDT00:00:00.000Z). v0.1 uses UTC days; tz localization deferred. */
-function startOfUtcDayIso(d: Date): string {
-  return d.toISOString().slice(0, 10) + "T00:00:00.000Z";
+/**
+ * Per-user timezone for the day-window boundary, fail-quiet (D1 STEP 1). profile tz if a valid
+ * IANA id, else UTC. Never throws — a missing column / RLS denial / degraded client → UTC.
+ */
+async function resolveUserTzQuiet(supabase: SupabaseClient, userId: string): Promise<string> {
+  try {
+    const { data } = await supabase
+      .from("arena_profiles")
+      .select("timezone")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const tz = (data as { timezone?: string | null } | null)?.timezone;
+    if (typeof tz === "string" && tz.length > 0) {
+      new Intl.DateTimeFormat("en-US", { timeZone: tz }); // validate IANA (throws on unknown)
+      return tz;
+    }
+  } catch {
+    /* profile tz unavailable → UTC fallback */
+  }
+  return "UTC";
 }
 
 /**
  * Evaluate the Daily Gate for a user. Read-only; short-circuits on first match in
- * {@link DAILY_GATE_ORDER}.
+ * {@link DAILY_GATE_ORDER}. `userTz` (D1 STEP 1) overrides profile-tz resolution when supplied.
  */
 export async function evaluateDailyGate(
   supabase: SupabaseClient,
   userId: string,
   now: Date = new Date(),
+  userTz?: string,
 ): Promise<DailyGateSnapshot> {
   // 1 — FORCED_RESET → Center. Helper is open-on-failure by contract (do not invert).
   if (await userHasForcedResetPending(supabase, userId)) {
@@ -137,10 +150,14 @@ export async function evaluateDailyGate(
     };
   }
 
-  // 4/5 — full 3-domain evidence (self/others/ground), UTC calendar-day windows.
-  const yesterdayWindowSince = startOfUtcDayIso(addUtcDays(now, -1));
-  const todayWindowStart = startOfUtcDayIso(now);
-  const cutoff14Iso = addUtcDays(now, -14).toISOString();
+  // 4/5 — full 3-domain evidence (self/others/ground), canonical user-day windows (05:00-local,
+  // D1 STEP 1). Boundaries are the exact UTC instants of the user-day starts.
+  const tz = userTz ?? (await resolveUserTzQuiet(supabase, userId));
+  const todayStart = userDayStartInstant(now, tz, 5);
+  const yesterdayStart = userDayStartInstant(new Date(todayStart.getTime() - 1), tz, 5);
+  const yesterdayWindowSince = yesterdayStart.toISOString();
+  const todayWindowStart = todayStart.toISOString();
+  const cutoff14Iso = new Date(todayStart.getTime() - 14 * 86_400_000).toISOString();
 
   // 4 — Any-domain evidence yesterday → Yesterday Mirror.
   const hasYesterdayEvidence = await quiet(
