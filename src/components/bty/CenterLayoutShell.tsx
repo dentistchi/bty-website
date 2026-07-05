@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LangSwitch } from "@/components/LangSwitch";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import HubTopNav from "@/components/bty/HubTopNav";
+import BottomNav from "@/components/bty/navigation/BottomNav";
 
 /**
  * Center 공통 레이아웃: ArenaLayoutShell과 동일한 구조 — btyARENA 로고 + 스티키 헤더.
@@ -36,7 +37,11 @@ export function CenterLayoutShell({ children, locale }: { children: ReactNode; l
         </div>
       </header>
 
-      <div className="max-w-3xl mx-auto px-4 py-8">{children}</div>
+      {/* pb-28 on mobile keeps content clear of the fixed BottomNav; desktop keeps py-8. */}
+      <div className="max-w-3xl mx-auto px-4 py-8 pb-28 md:pb-8">{children}</div>
+
+      {/* Harness usability (nav-blocker exception): mobile 5-tab floor, mirrors ArenaLayoutShell. */}
+      {locale ? <BottomNav locale={locale} className="md:hidden" /> : null}
     </div>
   );
 }
