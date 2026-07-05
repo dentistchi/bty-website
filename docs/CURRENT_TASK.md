@@ -1,3 +1,24 @@
+**2026-07-05 — Ad-hoc day-logic correction pass (STEP 1 + 1.1) — DONE. Inner pushed `430e0371..48bbaa86` (origin/inner-main). Deploy HELD.**
+
+**What (inner):** canonical `userDayKey` now backs the three STEP-0-confirmed personal day-bases (the "NEXT" item below). Commits `ce3eeb10` (impl, 9 files) + `48bbaa86` (test-only, fall-back DST).
+- **SITE1 `useArenaSession.updateStreak`** (was device-local **midnight**): → `userDayKey` via new pure **`src/domain/daily/streakBridge.ts`** — normalize-before-compare (raw unpadded compare forbidden), future-marker **boundary guard** (early-morning midnight→05:00 window = same-day, no overwrite), yesterday by **calendar −1 on today's key** (never `instant−24h`). localStorage `btyArenaStreak:v1` key/schema unchanged; dashboard/ProgressXpPanel (count-only) untouched. **server-authoritative streak untouched.**
+- **SITE2 `trainProgress.ts`** (was device-local midnight/05:00): → `userDayKey`; `userTz` threaded (`getUnlockedDayCount`, `getDayLockState`). Ladder **profile→UTC**; **no device-tz wiring into train routes** (Commander decision); eligibility route carries no profile tz in call path → UTC fallback (reported limitation). `getUnlockedDayFromCompletions` (no dates) unchanged.
+- **`dailyGateCheck.ts`** (was UTC-midnight windows): → canonical **user-day-start instants** (05:00 user-local) via new pure **`src/domain/daily/userDayStartInstant.ts`** (two-pass DST-safe local→UTC). Per-user tz = fail-quiet `arena_profiles.timezone` → UTC; injectable `userTz`. Personal-gate reconfirmed (per-user; `/api/me/daily` + Today).
+
+**Boundary-guard trade-off (Commander-approved):** during the one-time midnight→05:00 transition window the guard trades a spurious streak reset for a possible +1-day overcount; one-time, user-favorable.
+
+**tz-ladder correction (report [PRE] fix):** SITE1 actual ladder = **device (Intl) → UTC** — the client hook has no profile tz in its call path (consistent with "profile timezone if available"). The prior report's "profile→device→UTC" overstated it.
+
+**Tests:** touched suites green; dependent regression (useArenaSession + daily domain/lib) **50 pass**; typecheck **0 error**. DST proven both directions — spring-forward (`streakBridge` d) and fall-back (d2) — calendar−1 correct where `instant−24h` fails. `npm run lint:eslint` unrunnable in-env (ajv/eslintrc incompat, pre-existing); canonical `tsc` clean.
+
+**Terminology:** STEP 1 diff contributes **0**; baseline reconciled **13 → 14** (all pre-existing multi-word "try again", none in STEP 1 files). Current 14 = `assessment/ui/AssessmentClient.tsx:95` · `api/auth/login/route.ts:30` · `api/auth/register/route.ts:33` · `api/auth/send-reset-email/route.ts:26` · `api/legal/accept/route.ts:22` · `my-page/MyPageLeadershipConsole.tsx:333` · `bty-arena/ArenaActionValidationForm.tsx:60` · `i18n.ts:2225,4030,4031,4138,5925,5949,5950`.
+
+**OUT OF SCOPE (untouched):** SITE3 `scenario-stats.streakDaysUtc` = **HOLD** (semantic engine scope — avatar/awakening/promotion consumers); `arena_profiles.streak` writer; `user_day` streak column; leaderboard/weekly/season UTC; schema/migrations; Orb/haptic/auth/native.
+
+**Deploy:** HELD (no `cf:build`/staging/prod). 3-way freshness awaits Commander GO.
+
+---
+
 **2026-07-04 — STEP 1C / D1 — CLOSED. Commander live-data verification PASS. Foundation LOCKED. Closing HEAD `430e0371` / deploy `29e8c1fc`.**
 
 **Live verification (Commander):** authenticated Today entry created **1 `user_day` row** — `day_key = 2026-07-04`, `timezone_snapshot = America/Los_Angeles`, `tz_fallback = false`; `arena_profiles.timezone` captured (device tz, not UTC fallback). Round-trip confirmed end-to-end.
