@@ -57,6 +57,22 @@ describe("streakBridge — nextStreakState (D1 legacy bridge invariants)", () =>
     expect(r.state.streak).toBe(6);
   });
 
+  it("(d2) fall-back DST boundary — 04:30 PST after fall-back still matches yesterday", () => {
+    // 2026-11-01 is the US fall-back day (02:00 PDT → 01:00 PST). 2026-11-01T12:30Z is 04:30 PST
+    // (post-transition, UTC-8) → BEFORE the 05:00 open hour → belongs to the previous user-day.
+    const todayKey = userDayKey(new Date("2026-11-01T12:30:00Z"), "America/Los_Angeles", 5);
+    expect(todayKey).toBe("2026-10-31");
+    // Calendar −1 on the current key → correct yesterday.
+    expect(previousDayKey(todayKey)).toBe("2026-10-30");
+    // instant − 24h would be WRONG here: 2026-10-31T12:30Z is 05:30 PDT (pre-fall-back, UTC-7) →
+    // userDayKey = "2026-10-31" == today's key, so an instant−24h impl would fail to see yesterday.
+    expect(userDayKey(new Date("2026-10-31T12:30:00Z"), "America/Los_Angeles", 5)).toBe("2026-10-31");
+    // Legacy bridge: lastDayKey = calendar-yesterday → increments (not reset).
+    const r = nextStreakState({ streak: 5, lastDayKey: "2026-10-30" }, todayKey);
+    expect(r.changed).toBe(true);
+    expect(r.state.streak).toBe(6);
+  });
+
   it("(e) normal continuation — yesterday match increments", () => {
     const r = nextStreakState({ streak: 2, lastDayKey: "2026-07-03" }, "2026-07-04");
     expect(r.state.streak).toBe(3);
