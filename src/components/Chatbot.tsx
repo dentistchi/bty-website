@@ -360,7 +360,7 @@ export function Chatbot() {
           type="button"
           onClick={() => setOpen((v) => !v)}
           className={cn(
-            "fixed bottom-6 right-6 z-[45] flex h-14 w-14 items-center justify-center rounded-full border-2 shadow-lg transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+            "fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-6 z-[45] flex h-14 w-14 items-center justify-center rounded-full border-2 shadow-lg transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 md:bottom-6",
             isBtyPage || isArenaPage
               ? "border-foundry-purple-muted bg-white hover:bg-foundry-purple-muted/20 focus-visible:ring-foundry-purple/40"
               : "border-dear-sage/40 bg-white hover:bg-dear-sage/10 focus-visible:ring-dear-sage/40"
@@ -374,7 +374,7 @@ export function Chatbot() {
       {open && (
         <div
           className={cn(
-            "fixed bottom-24 right-6 z-40 w-[calc(100vw-3rem)] max-w-md rounded-2xl border",
+            "fixed bottom-[calc(10rem+env(safe-area-inset-bottom))] right-6 z-40 w-[calc(100vw-3rem)] max-w-md rounded-2xl border md:bottom-24",
             themeColors.border,
             "bg-white shadow-xl flex flex-col max-h-[70vh] animate-fadeIn"
           )}

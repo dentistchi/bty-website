@@ -82,7 +82,7 @@ export default function BottomNav({
 
   return (
     <nav
-      className={`fixed bottom-0 left-0 right-0 z-[40] rounded-t-2xl border-t border-white/10 bg-bty-navy/95 px-2 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm ${className}`}
+      className={`fixed bottom-0 left-0 right-0 z-[40] rounded-t-2xl border-t border-white/15 bg-[#0B1F3AF2] px-2 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.35)] backdrop-blur-md ${className}`}
       aria-label={ariaLabel}
     >
       <div className={`mx-auto grid max-w-md ${gridColsClass} gap-1.5`}>
@@ -94,8 +94,8 @@ export default function BottomNav({
               href={item.href}
               className={`flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-center text-[11px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bty-gold/40 focus-visible:ring-offset-2 ${
                 isActive
-                  ? "text-bty-gold bg-white/[0.03] shadow-[0_0_20px_rgba(201,166,107,0.08)]"
-                  : "text-white/55 hover:text-white/80"
+                  ? "text-bty-gold bg-white/[0.06] shadow-[0_0_20px_rgba(201,166,107,0.08)]"
+                  : "text-white/75 hover:text-white/95"
               }`}
               aria-current={isActive ? "page" : undefined}
             >
