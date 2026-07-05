@@ -1,3 +1,17 @@
+**2026-07-05 — Day-Logic Correction Pass v1 배포 완결. staging Version `448f10a9` / HEAD `48bbaa86`. Deploy DONE (was HELD in the entry below).**
+
+**Deploy:** `bty-arena-staging` — canonical `npm run deploy` (prebuild + opennext build + deploy), **clean 빌드 체인** (HEAD `48bbaa86`, git clean), undici preload 적용(slow-uplink `headersTimeout` 회피, Total Upload 무행 완료). **Current Version ID `448f10a9-699c-4247-a7c1-4e0e43e08beb`** (신규 — 이전 `29e8c1fc`/`1f29b424`/`c708ceb4`와 구별). prod worker 부재 → staging = production-effective.
+
+**GO 경로:** outer push GO + deploy GO = **Commander direct GO to executor** (chat 경유 없음). Commander 권한 내 정상 경로 — 사후 확인 완료.
+
+**3-way freshness 예외 선례:** 로직 전용 배포(day-basis; 사용자향 유니크 문자열 부재)에서 3번 축의 **live literal 검증을 chunk 해시 안정성(`/start` 서브셋 2회 폴 동일 `92e2f997…`)으로 대체 허용.** 이 대체는 **로직 전용 배포에 한정**(사용자향 문자열이 있는 배포는 기존 live-literal 기준 유지). 나머지 축: 신규 Version ID + `worker.js` 재빌드(mtime 이번 세션) = 축1 ✅.
+
+**도달성:** `/start` 200 · `/en/today` 307 · `/en/bty-arena` 307 (auth gate 정상, 이전 배포와 동일 거동).
+
+**잔여:** Commander **on-device 행동 검증**(streak 05:00 롤 + legacy bridge / train unlock 05:00 / daily gate 새벽 evidence 재분류) — 이전 D1 단계와 동일하게 코드-미검증분. **SITE3 `streakDaysUtc` semantic review = HOLD** (avatar/awakening/promotion 소비 엔진 스코프). **server-authoritative streak = 별도 트랙.** **eslint 환경복구(ajv/eslintrc) = 백로그.**
+
+---
+
 **2026-07-05 — Ad-hoc day-logic correction pass (STEP 1 + 1.1) — DONE. Inner pushed `430e0371..48bbaa86` (origin/inner-main). Deploy HELD.**
 
 **What (inner):** canonical `userDayKey` now backs the three STEP-0-confirmed personal day-bases (the "NEXT" item below). Commits `ce3eeb10` (impl, 9 files) + `48bbaa86` (test-only, fall-back DST).
