@@ -1,3 +1,32 @@
+**2026-07-05 — Direction Lock: Web = Harness / New App Shell Track + Center Nav Harness Exception.**
+Commander direction change: existing web shell is now a temporary harness
+(backend/domain/auth/day-logic verification only); product track shifts to a
+new BTY Daily App Shell with 5 tabs (Today/Center/Arena/Foundry/Me). The
+previously recorded D1 Center-family web hotfix dispatch was halted before
+implementation. Harness blocker exception applied instead (live MVP cohort on
+web/staging): minimal mount fix inner `5740a37c` (+6/−1, CenterLayoutShell
+only) adds mobile BottomNav via ArenaLayoutShell pattern. Staging Version
+`cc922530`, 3-way freshness PASS via route-scoped chunk
+`center/layout-61f39f9b...js` containing BottomNav-unique markers with
+404→200 chunk-hash flip and 2-fetch SHA256 stability. Commander iPhone
+visual PASS: /center and /center/letters show readable bottom nav, no double
+nav, no content occlusion; Dear Me modal overlays correctly; my-page QR
+surface single nav. D3 = FULL PASS: Arena run/resolve screens visually
+confirmed single BottomNav — structural double-mount inference did not
+manifest in rendering; code cleanup deferred to IA restructure. Inventory
+correction (measured): /assessment and /journal do NOT inherit
+CenterLayoutShell (bare <main> under [locale]/layout.tsx) and remain
+uncovered — D6 = HOLD, deferred to new App Shell track, re-judged only on
+cohort blocker evidence. D4 shell unification / D5 Center HubTopNav =
+deferred to IA restructure. New App Shell design inputs recorded: Dr. Chi
+FAB overlaps content buttons on /center and Arena validation; status-bar
+safe-area-inset-top untreated (logo/clock overlap); Arena ACTION DECISION
+card shows duplicated copy (title = body) — scenario JSON check pending,
+harness no-fix. Web shell UI work beyond blocker exceptions is now
+prohibited.
+
+---
+
 **2026-07-05 — Mobile Nav Hotfix PASS + App Shell Inventory.** Mobile nav / Dr. Chi avatar hotfix completed and visually verified: inner `1fa77e11`, staging Version `7336dd98`, deployed HEAD `1fa77e11`; 3-way freshness PASS with live literal `.bg-[#0B1F3AF2]` present, `bg-bty-navy/95` absent, and 2-fetch SHA256 stable. Commander iPhone check PASS: QR/action light-background nav readable, Dr. Chi avatar no longer overlaps `Me`, and `Me` is tappable. App Shell consistency inventory PASS: Center nav absence root cause = structural shell branch; `CenterLayoutShell` is an `ArenaLayoutShell` sibling clone but does not import/mount `BottomNav`; `showBottomNav={false}` usage zero, so not intentional hide; not CSS/z-index. Affected Center family: `/center`, `/center/letters`, `/assessment`, `/journal`. Reverse finding recorded: possible Arena run/resolve mobile BottomNav double-mount, structural inference only, pending iPhone visual confirmation. Commander decisions: D1 add BottomNav to full Center family; D2 keep Arena run/QR nav behavior unchanged for now; D3 verify possible Arena double-mount before fixing; D4 shell unification and D5 Center HubTopNav decision deferred to IA restructure.
 
 ---
