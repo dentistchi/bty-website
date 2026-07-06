@@ -117,7 +117,13 @@ export function commit(): void {
   const poll = (): void => {
     arrivalTimer = 0;
     if (!el || !committed) return;
-    if (typeof window !== "undefined" && window.location.pathname.includes("/today")) {
+    // Arrival targets: the legacy /start→/today navigation (unchanged), OR the native
+    // BTY Daily App route `/app`, where entry is a LOCAL-STATE transition (no navigation,
+    // pathname stays /[locale]/app) — the Orb Threshold Door in BtyDailyAppShell. Both
+    // recede the entry light over the freshly-shown Today. Additive: /start still matches
+    // /today exactly as before (it never reaches /app), so its behaviour is unchanged.
+    const path = typeof window !== "undefined" ? window.location.pathname : "";
+    if (path.includes("/today") || path.includes("/app")) {
       settleTimer = window.setTimeout(recede, ARRIVAL_SETTLE_MS);
       return;
     }
