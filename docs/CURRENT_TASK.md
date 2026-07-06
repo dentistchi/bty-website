@@ -1,3 +1,24 @@
+**2026-07-06 — BTY Daily App Native Track 개통·안정화 (STEP 1~6H 종결).**
+[Native] baseline lock `9f05e56` → launch route /en/app `2f894f2` → 채널 진단
+`c23ebf6` → Safari leak 수리(allowNavigation) `29f468d` → cache purge
+`4e9a869`→`ad9b3da`(실효)→`7dc5d62`(조건부) → watchdog `e54aa89`(one-shot)→
+`eb8fc0c`(fast-poll 2s) → navy webview `a1168f3`+`8135fe9`. 원격
+github.com/dentistchi/bty-native-app main=`eb8fc0c` 완전 동기.
+[Inner] Today ritual v1 `333b5b0f` → landing polish `968f8094` → Orb Lite
+`6e0735f2`(폐기) → header exemption `52fec7aa` → canonical OrbLiving 복구
+`9f132105` → threshold door `93e467db`·`86b790a0` → golden overlay additive
+remediation `3ed695fe` → native session restore `42206add` → boot 진단
+`2078b07b` → SSR navy floor `6eb4a6f8`. Staging Version `762341c8`.
+[판정] 채널 baseline PASS / Orb threshold Sensory PASS / session persistence
+PASS / launch reliability P0 종결 (잔여: 1~2초 transient white = hosted-URL
+하한, P3 관찰).
+[거버넌스 사례] R1 텍스트 게이트 HALT→additive remediation / auto-mode push
+차단→Commander 직접 실행 / 가설 반전 2회 (3A inner 무죄, 6F return-null
+불성립) / purge 침묵 no-op ("로그 존재≠실행 실효" 교훈).
+[백로그 신규] 로컬 shell 번들링(transient white 근본 해소) / RSC prefetch
+소음 정리 / hold 3000ms 데일리 적정성 / restore 간헐 실패 관찰.
+[보류 해제 대기] Today Intelligence / 관계 rooms / full Orb.
+
 **2026-07-05 — App Shell v0 + Arena QR Loop Hardening Series (8 commits) + Direction Locks.**
 [App Shell] New BTY Daily App Shell v0 skeleton `54c6ae11` (/[locale]/app,
 5-tab local state, safe-area top+bottom, companion dock zone, legacy shell
