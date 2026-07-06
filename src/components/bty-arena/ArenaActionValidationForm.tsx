@@ -238,17 +238,6 @@ export function ArenaActionValidationForm({
         </div>
       ) : null}
 
-      {showQrCta ? (
-        <div className="mb-3">
-          <Link
-            href={`/${lang}/my-page`}
-            className="inline-flex items-center justify-center rounded-full bg-[#1E2A38] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#2A3A4D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40"
-          >
-            {c.qrCta}
-          </Link>
-        </div>
-      ) : null}
-
       <div className="space-y-3">
         <label className="block">
           <span className="text-sm font-semibold text-bty-navy">{c.whoLabel}</span>
@@ -300,6 +289,16 @@ export function ArenaActionValidationForm({
         >
           {submitting ? c.submitting : c.submit}
         </button>
+        {showQrCta ? (
+          <div className="mt-3">
+            <Link
+              href={`/${lang}/my-page`}
+              className="inline-flex items-center justify-center rounded-full bg-[#1E2A38] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#2A3A4D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40"
+            >
+              {c.qrCta}
+            </Link>
+          </div>
+        ) : null}
       </div>
     </div>
   );

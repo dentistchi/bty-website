@@ -36,6 +36,39 @@ export type ActionLoopQrCompletion = {
 /** localStorage one-time dismissal key (contract id only — never stores PII / promise text). */
 const actorSeenKey = (contractId: string) => `bty_d2_actor_seen_${contractId}`;
 
+// Client session guards (module-scoped → survive component remounts within one page
+// session; Private-mode-proof, independent of localStorage). Reset on full reload only.
+const SESSION_WORKED_CONTRACT_IDS = new Set<string>();
+const SESSION_SHEET_SHOWN_IDS = new Set<string>();
+
+/**
+ * Whether to show the actor completion sheet. Pure (unit-tested). The sheet fires
+ * ONLY for a completion of a contract worked THIS session (never a past latest-ever
+ * completion), once per session (Private-mode-proof), honoring a persisted
+ * localStorage "seen" flag when available.
+ */
+export function shouldShowCompletionSheet(args: {
+  actorCompletedId: string | null;
+  workedThisSession: boolean;
+  alreadyShownThisSession: boolean;
+  seenPersisted: boolean;
+}): boolean {
+  if (!args.actorCompletedId) return false;
+  if (!args.workedThisSession) return false;
+  if (args.alreadyShownThisSession) return false;
+  if (args.seenPersisted) return false;
+  return true;
+}
+
+/** Test-only: seed/reset the module session guards (they persist across remounts). */
+export const __completionSheetTestHooks = {
+  reset: () => {
+    SESSION_WORKED_CONTRACT_IDS.clear();
+    SESSION_SHEET_SHOWN_IDS.clear();
+  },
+  markWorked: (contractId: string) => SESSION_WORKED_CONTRACT_IDS.add(contractId),
+};
+
 /**
  * Decide whether the actor's open QR panel should close. Pure (unit-tested).
  * A residual completion prop (the actor's latest-ever verified contract) must
@@ -293,12 +326,22 @@ export function MyPageLeadershipConsole({
   // awaiting set (verified transition) — not on every 4s poll — so the scroll
   // position doesn't jump each cycle. Preserves the completion refresh at verify.
   useEffect(() => {
-    const count = serverPack?.awaiting_verification_contracts?.length ?? 0;
+    const awaiting = serverPack?.awaiting_verification_contracts ?? [];
+    // Mark contracts the actor has worked this session (were awaiting here) so their
+    // completion — and only theirs — can fire the sheet.
+    for (const ct of awaiting) SESSION_WORKED_CONTRACT_IDS.add(ct.id);
+    const count = awaiting.length;
     if (count < prevAwaitingCountRef.current) {
       routerRefresh();
     }
     prevAwaitingCountRef.current = count;
   }, [serverPack, routerRefresh]);
+
+  // Opening a QR for a contract also marks it as worked this session (covers the
+  // path where the actor never saw it in the awaiting list on this device).
+  useEffect(() => {
+    if (qrContractId) SESSION_WORKED_CONTRACT_IDS.add(qrContractId);
+  }, [qrContractId]);
 
   // Actor device: close the QR panel on the SAME signal that renders the confirmed
   // sheet — the server-detected completion prop `actionLoopQrCompletion` (delivered
@@ -340,11 +383,33 @@ export function MyPageLeadershipConsole({
     : null;
   useEffect(() => {
     if (!actorCompletedId) return;
+    let seenPersisted = false;
     if (typeof window !== "undefined") {
       try {
-        if (window.localStorage.getItem(actorSeenKey(actorCompletedId))) return;
+        seenPersisted = window.localStorage.getItem(actorSeenKey(actorCompletedId)) != null;
       } catch {
-        // localStorage unavailable — fail open (show once this session).
+        // localStorage unavailable (Private mode) — the session ref below guards this.
+      }
+    }
+    if (
+      !shouldShowCompletionSheet({
+        actorCompletedId,
+        workedThisSession: SESSION_WORKED_CONTRACT_IDS.has(actorCompletedId),
+        alreadyShownThisSession: SESSION_SHEET_SHOWN_IDS.has(actorCompletedId),
+        seenPersisted,
+      })
+    ) {
+      return;
+    }
+    // Record "seen" at SHOW time (not only on close) + a module-scoped session set,
+    // so navigating away without closing — or a remount — cannot re-fire the sheet
+    // (session set survives remounts and Private-mode localStorage failure).
+    SESSION_SHEET_SHOWN_IDS.add(actorCompletedId);
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(actorSeenKey(actorCompletedId), "1");
+      } catch {
+        // best-effort; the session set is the Private-mode guarantee.
       }
     }
     setActorCompletedContractId(actorCompletedId);

@@ -15,7 +15,7 @@ vi.mock("qrcode.react", () => ({
   QRCodeSVG: ({ value }: { value: string }) => <div data-testid="qr-code-mock" data-value={value} />,
 }));
 
-import { MyPageLeadershipConsole } from "./MyPageLeadershipConsole";
+import { MyPageLeadershipConsole, __completionSheetTestHooks } from "./MyPageLeadershipConsole";
 
 function mockLeadershipState() {
   return {
@@ -91,6 +91,7 @@ describe("MyPageLeadershipConsole", () => {
     fetchMock.mockReset();
     mockRouterRefresh.mockReset();
     vi.stubGlobal("fetch", fetchMock);
+    __completionSheetTestHooks.reset();
     try {
       window.localStorage.clear();
     } catch {
@@ -444,6 +445,7 @@ describe("MyPageLeadershipConsole", () => {
   it("actor return (D2): shows completion sheet with actor copy + completed action + reflection prompt", async () => {
     const payload = mockStatePayload();
     fetchMock.mockResolvedValue(jsonResponse(payload, 200));
+    __completionSheetTestHooks.markWorked("c1"); // worked this session → sheet may fire
 
     await act(async () => {
       render(
@@ -474,6 +476,7 @@ describe("MyPageLeadershipConsole", () => {
   it("actor return (D2): one-time guard — dismiss stores localStorage key (contract id only), refresh does not re-show", async () => {
     const payload = mockStatePayload();
     fetchMock.mockResolvedValue(jsonResponse(payload, 200));
+    __completionSheetTestHooks.markWorked("c1");
 
     const { unmount } = render(
       <MyPageLeadershipConsole
@@ -508,6 +511,7 @@ describe("MyPageLeadershipConsole", () => {
     const payload = mockStatePayload();
     fetchMock.mockResolvedValue(jsonResponse(payload, 200));
     window.localStorage.setItem("bty_d2_actor_seen_c1", "1");
+    __completionSheetTestHooks.markWorked("c2"); // c2 worked this session; c1 already seen
 
     await act(async () => {
       render(
