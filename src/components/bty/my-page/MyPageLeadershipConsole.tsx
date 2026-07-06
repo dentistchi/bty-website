@@ -176,9 +176,15 @@ export function MyPageLeadershipConsole({
     };
   }, []);
 
-  const load = useCallback(async () => {
-    setLoadError(false);
-    setIsLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    // Silent = background revalidation (polling / focus / visibility): never touch
+    // isLoading or clear serverPack, so the page doesn't strobe the skeleton every
+    // refetch (the "Show QR" button + panels stay mounted across polls).
+    const silent = opts?.silent === true;
+    if (!silent) {
+      setLoadError(false);
+      setIsLoading(true);
+    }
     void fetch("/api/arena/core-xp", { method: "GET", cache: "no-store" })
       .then((r) => (r.ok ? (r.json() as Promise<{ coreXpTotal?: number; seasonalXpTotal?: number }>) : null))
       .then((d) => {
@@ -198,15 +204,18 @@ export function MyPageLeadershipConsole({
         await new Promise((r) => setTimeout(r, 800));
         const retry = await fetch(url, { method: "GET", cache: "no-store" });
         if (!retry.ok) {
-          setServerPack(null);
-          setLoadError(true);
-          setIsLoading(false);
+          // Background failure must not wipe the screen — keep the prior serverPack.
+          if (!silent) {
+            setServerPack(null);
+            setLoadError(true);
+            setIsLoading(false);
+          }
           setMounted(true);
           return;
         }
         const retryData = (await retry.json()) as MyPageStateResponse;
         setServerPack(retryData);
-        setIsLoading(false);
+        if (!silent) setIsLoading(false);
         setMounted(true);
         return;
       }
@@ -225,10 +234,13 @@ export function MyPageLeadershipConsole({
           timestamp: new Date().toISOString(),
         },
       );
-      setServerPack(null);
-      setLoadError(true);
+      // Background failure keeps the last good serverPack (no blank flash).
+      if (!silent) {
+        setServerPack(null);
+        setLoadError(true);
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
       setMounted(true);
     }
   }, [locale]);
@@ -290,7 +302,9 @@ export function MyPageLeadershipConsole({
       // #3: no unconditional routerRefresh here — a per-poll RSC refresh jumps
       // scroll every 4s. load() updates serverPack; the effect below refreshes the
       // RSC only when a contract actually leaves the awaiting set (verified).
-      void load().then(() => {
+      // All syncNow sources (poll / focus / visibility / storage) are background
+      // revalidations of already-rendered content → silent (no skeleton strobe).
+      void load({ silent: true }).then(() => {
         console.info("[BTY SYNC] session refetch complete", { source });
         dispatchArenaEntryResolutionInvalidate();
       });
