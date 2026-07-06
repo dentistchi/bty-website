@@ -209,10 +209,17 @@ export function MyPageLeadershipConsole({
     }
   }, [load, routerRefresh]);
 
+  // Actor awaits a cross-device witness scan when a QR is being shown, or when a
+  // contract is listed awaiting verification. A scan on another device fires no
+  // focus/visibility/storage event here, so we poll only while this is true.
+  const hasAwaitingVerification =
+    (serverPack?.awaiting_verification_contracts?.length ?? 0) > 0;
+  const awaitingWitnessVerification = (qrPanelOpen && !!qrUrl) || hasAwaitingVerification;
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const syncCooldownMs = 1500;
-    const syncNow = (source: "focus" | "visibility" | "storage") => {
+    const syncNow = (source: "focus" | "visibility" | "storage" | "poll") => {
       const now = Date.now();
       if (now - lastSyncAtRef.current < syncCooldownMs) return;
       lastSyncAtRef.current = now;
@@ -234,12 +241,33 @@ export function MyPageLeadershipConsole({
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("storage", onStorage);
+    // Conditional polling (Step 6): a cross-device witness scan fires no local
+    // event, so while awaiting verification poll every 4s — the verified state
+    // (contract resolved, QR panel closed below) then reflects without manual
+    // navigation. The interval exists ONLY while awaiting → normal My Page
+    // browsing polls zero; deps include the condition so it stops when it clears.
+    const pollId = awaitingWitnessVerification
+      ? setInterval(() => syncNow("poll"), 4000)
+      : null;
     return () => {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("storage", onStorage);
+      if (pollId != null) clearInterval(pollId);
     };
-  }, [load, routerRefresh]);
+  }, [load, routerRefresh, awaitingWitnessVerification]);
+
+  // Actor device: once nothing is awaiting (the shown QR's contract got verified
+  // via a poll refetch), close the QR panel so gating goes false (polling stops)
+  // and the completion surface takes over.
+  useEffect(() => {
+    if (!qrPanelOpen || serverPack == null) return;
+    const stillAwaiting = hasAwaitingVerification || serverPack.open_action_contract != null;
+    if (!stillAwaiting) {
+      setQrPanelOpen(false);
+      setQrUrl(null);
+    }
+  }, [qrPanelOpen, serverPack, hasAwaitingVerification]);
 
   // D2 actor-return: server detects the latest completed contract and passes it here.
   // Show the completion sheet ONCE per contract (localStorage guard, contract id only).
