@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
+import OrbLiving from "@/components/orb/OrbLiving";
 
 /**
  * New BTY Daily App Shell — v0 skeleton.
@@ -90,39 +91,6 @@ function PlaceholderCard({ tag, body, soon }: { tag: string; body: string; soon:
   );
 }
 
-/**
- * Orb Lite — a CSS-only living anchor for the Today ritual. This is NOT the final
- * Orb/Rive avatar: no image asset, no dependency — pure radial-gradient + keyframes.
- * A navy sphere with a soft gold inner glow, a slow-pulsing gold core, and a faint
- * breathing ring. Keyframes are defined once at the shell root (so they exist on
- * every tab); prefers-reduced-motion stills it. Placeholder until the real Orb track.
- */
-function OrbLite() {
-  return (
-    <div className="mb-7 flex justify-center" aria-hidden>
-      <div className="relative h-24 w-24">
-        <div
-          className="btyOrbAnim absolute inset-0 rounded-full border border-[#C9A66B]/20"
-          style={{ animation: "btyOrbRing 6s ease-in-out infinite" }}
-        />
-        <div
-          className="btyOrbAnim absolute inset-[6px] rounded-full"
-          style={{
-            background:
-              "radial-gradient(circle at 50% 38%, rgba(201,166,107,.5) 0%, rgba(201,166,107,.12) 28%, rgba(11,31,58,.7) 62%, rgba(6,16,32,.92) 100%)",
-            boxShadow: "0 0 44px 6px rgba(201,166,107,.14), inset 0 0 22px rgba(0,0,0,.55)",
-            animation: "btyOrbBreathe 5.5s ease-in-out infinite",
-          }}
-        />
-        <div
-          className="btyOrbAnim absolute left-1/2 top-1/2 h-2.5 w-2.5 rounded-full bg-[#C9A66B]"
-          style={{ transform: "translate(-50%,-50%)", animation: "btyOrbCore 5.5s ease-in-out infinite" }}
-        />
-      </div>
-    </div>
-  );
-}
-
 function TodaySurface({
   copy,
   onChoose,
@@ -134,7 +102,14 @@ function TodaySurface({
   return (
     <>
       <SurfaceHeader title={copy.title} sub={copy.sub} />
-      <OrbLite />
+      {/* Canonical BTY Orb — the living daily doorway (OrbLiving, the production /start
+          Threshold Door + /dev/orb presence). Restored here to replace the temporary CSS
+          Orb Lite. Rendered as pure living presence (no onCommit/holdMs — Today is already
+          inside the app, so it is the day's anchor, not a navigation gate). Its sole
+          isNative-gated haptic Touch Language is preserved as-is (canonical, not new). */}
+      <div className="mb-7 flex justify-center">
+        <OrbLiving size={180} />
+      </div>
       <div className="space-y-3">
         {copy.cards.map((c) => (
           <button
@@ -163,12 +138,10 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
 
   return (
     <div className="flex h-[100dvh] flex-col bg-[#0B1F3A] text-white antialiased">
-      {/* Orb Lite + companion keyframes — defined once here so they exist on every
-          tab. prefers-reduced-motion stills all app animation. CSS-only, no assets. */}
+      {/* Companion-dock keyframe — the canonical Orb (OrbLiving) owns its own canvas
+          animation, so only the companion "alive" pulse lives here. prefers-reduced-motion
+          stills it. (OrbLiving is independently reduced-motion-safe.) */}
       <style>{`
-        @keyframes btyOrbBreathe{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.05);opacity:1}}
-        @keyframes btyOrbCore{0%,100%{opacity:.55;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.4)}}
-        @keyframes btyOrbRing{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:.55;transform:scale(1.07)}}
         @keyframes btyPulse{0%,100%{opacity:.35}50%{opacity:.9}}
         @media (prefers-reduced-motion: reduce){.btyOrbAnim{animation:none!important}}
       `}</style>
