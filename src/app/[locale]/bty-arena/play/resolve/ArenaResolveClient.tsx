@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArenaHeader,
@@ -222,6 +223,16 @@ export default function ArenaResolveClient({ locale }: Props) {
                         locale={locale}
                       />
                     ) : null}
+                    {/* Submitted → witness step lives on My Page (canonical QR panel +
+                        auto-refresh polling). Symmetric to the My Page gating-notice link. */}
+                    <div className="mt-3 text-center">
+                      <Link
+                        href={`/${locale}/my-page`}
+                        className="inline-flex items-center justify-center rounded-full bg-[#1E2A38] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#2A3A4D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40"
+                      >
+                        {locale === "ko" ? "검증용 QR 보기" : "Show QR for verification"}
+                      </Link>
+                    </div>
                   </>
                 )
               ) : (

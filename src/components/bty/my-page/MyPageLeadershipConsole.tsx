@@ -257,17 +257,21 @@ export function MyPageLeadershipConsole({
     };
   }, [load, routerRefresh, awaitingWitnessVerification]);
 
-  // Actor device: once nothing is awaiting (the shown QR's contract got verified
-  // via a poll refetch), close the QR panel so gating goes false (polling stops)
-  // and the completion surface takes over.
+  // Actor device: close the QR panel on the SAME signal that renders the confirmed
+  // sheet — the server-detected completion prop `actionLoopQrCompletion` (delivered
+  // via the poll's routerRefresh). The serverPack "nothing awaiting" check is a
+  // fallback for close paths that don't set the completion prop. Closing flips the
+  // gating false so polling stops and the completion surface takes over.
   useEffect(() => {
-    if (!qrPanelOpen || serverPack == null) return;
-    const stillAwaiting = hasAwaitingVerification || serverPack.open_action_contract != null;
-    if (!stillAwaiting) {
+    if (!qrPanelOpen) return;
+    const confirmed = actionLoopQrCompletion?.success === true;
+    const nothingAwaiting =
+      serverPack != null && !hasAwaitingVerification && serverPack.open_action_contract == null;
+    if (confirmed || nothingAwaiting) {
       setQrPanelOpen(false);
       setQrUrl(null);
     }
-  }, [qrPanelOpen, serverPack, hasAwaitingVerification]);
+  }, [qrPanelOpen, actionLoopQrCompletion?.success, serverPack, hasAwaitingVerification]);
 
   // D2 actor-return: server detects the latest completed contract and passes it here.
   // Show the completion sheet ONCE per contract (localStorage guard, contract id only).
