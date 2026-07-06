@@ -44,6 +44,20 @@ export type Messages = {
         others: { quiet: string; living: string; connected: string; deepening: string };
         ground: { quiet: string; living: string; connected: string; deepening: string };
       };
+      /** Today Intelligence v1 (STEP 7B) — deterministic relationship-focus brief. */
+      intel: {
+        focusLabel: string;
+        focus: {
+          Self: { title: string; line: string };
+          Others: { title: string; line: string };
+          World: { title: string; line: string };
+          CleanStart: { title: string; line: string };
+          ContinuePending: { title: string; line: string };
+        };
+        ctaSelf: string;
+        ctaOthers: string;
+        ctaWorld: string;
+      };
     };
     eyebrow: string;
     title: string;
@@ -2169,6 +2183,34 @@ const ko: Messages = {
           deepening: "세상과 깊어지는 중이에요.",
         },
       },
+      intel: {
+        focusLabel: "오늘의 관계 초점",
+        focus: {
+          Self: {
+            title: "나와의 관계",
+            line: "오늘은 나 자신과의 관계를 먼저 세우는 날입니다.",
+          },
+          Others: {
+            title: "사람과의 관계",
+            line: "오늘은 사람과의 관계 안에서 하나의 행동을 닫는 날입니다.",
+          },
+          World: {
+            title: "현실과의 관계",
+            line: "오늘은 현실을 더 선명하게 다루는 날입니다.",
+          },
+          CleanStart: {
+            title: "오늘, 새로",
+            line: "오늘은 새로 열립니다. 아직 해석할 증거는 없습니다.",
+          },
+          ContinuePending: {
+            title: "아직 열린 하나",
+            line: "오늘은 새 과제가 아니라, 아직 열린 행동을 닫는 날입니다.",
+          },
+        },
+        ctaSelf: "나에게 돌아가기",
+        ctaOthers: "관계 안으로 들어가기",
+        ctaWorld: "세상에 하나 심기",
+      },
     },
     eyebrow: "BTY 데일리",
     title: "오늘 마주할 선택은 무엇인가요?",
@@ -4086,6 +4128,34 @@ const en: Messages = {
           connected: "You leave your mark often.",
           deepening: "Going deeper with the world.",
         },
+      },
+      intel: {
+        focusLabel: "Today's focus",
+        focus: {
+          Self: {
+            title: "With yourself",
+            line: "Today is a day to set your relationship with yourself first.",
+          },
+          Others: {
+            title: "With others",
+            line: "Today is a day to close one action inside a relationship.",
+          },
+          World: {
+            title: "With the world",
+            line: "Today is a day to hold reality a little more clearly.",
+          },
+          CleanStart: {
+            title: "Today, anew",
+            line: "Today opens fresh. There's nothing to read into yet.",
+          },
+          ContinuePending: {
+            title: "One thread, still open",
+            line: "Today isn't a new task — it's closing an action that's still open.",
+          },
+        },
+        ctaSelf: "Return to yourself",
+        ctaOthers: "Step into connection",
+        ctaWorld: "Plant one in the world",
       },
     },
     eyebrow: "BTY Daily",

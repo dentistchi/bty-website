@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import OrbLiving from "@/components/orb/OrbLiving";
 
@@ -175,36 +175,9 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   const [entering, setEntering] = useState(false);
   const t = COPY[locale];
 
-  // [BTYAppBoot] TEMPORARY launch diagnostics for the native cold-reopen white-screen
-  // P0. React error boundaries (see app/global-error.tsx) do NOT catch async / rAF /
-  // global errors — OrbLiving runs a requestAnimationFrame loop and body-canvas setup,
-  // so those escape a boundary. Capture them + a mount marker so the exact trigger is
-  // logged to the Xcode console (Capacitor forwards console.*). Logs only — no behavior
-  // change. If we see "shell mounted" then a later onerror → crash is post-mount (Orb/
-  // rAF/async); if we see global-error's "fatal render crash" with NO mount marker →
-  // crash is during render/hydration. Remove with global-error.tsx once fixed.
-  useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log("[BTYAppBoot] shell mounted", { locale, todayEntered, entering });
-    const onErr = (e: ErrorEvent) =>
-      // eslint-disable-next-line no-console
-      console.error("[BTYAppBoot] window.onerror", e.message, e.filename, e.lineno, e.error?.stack);
-    const onRej = (e: PromiseRejectionEvent) =>
-      // eslint-disable-next-line no-console
-      console.error(
-        "[BTYAppBoot] unhandledrejection",
-        (e.reason && (e.reason.message || String(e.reason))) || "unknown",
-        e.reason?.stack
-      );
-    window.addEventListener("error", onErr);
-    window.addEventListener("unhandledrejection", onRej);
-    return () => {
-      window.removeEventListener("error", onErr);
-      window.removeEventListener("unhandledrejection", onRej);
-    };
-    // Mount-only: install listeners + emit the boot marker exactly once.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Native cold-reopen white-screen P0 is CLOSED; the temporary [BTYAppBoot] boot
+  // diagnostics (mount marker + global error/rejection console capture) were removed.
+  // Genuine fatal-render logging still lives in app/global-error.tsx.
 
   const enterToday = useCallback(() => {
     if (entering) return;

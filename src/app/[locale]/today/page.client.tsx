@@ -20,8 +20,17 @@ import { getMessages, type Locale } from "@/lib/i18n";
 import { CriticalGateCheckHost } from "@/components/bty/today/CriticalGateCheckHost";
 import type { DailyGateSnapshot } from "@/lib/bty/daily/dailyGateCheck";
 import type { RelationshipPulse } from "@/lib/bty/daily/relationshipPulse";
+import type { TodayIntelligence } from "@/domain/daily/todayIntelligence";
 
 const FALLBACK_GATE: DailyGateSnapshot = { gate: "OPEN_DAY", destination: { kind: "today" } };
+// Today Intelligence fail-soft default — a clean open with no relationship claim.
+const FALLBACK_INTEL: TodayIntelligence = {
+  userState: "safe_fallback",
+  relationshipFocus: "CleanStart",
+  confidence: "none",
+  reasonCodes: ["READ_ERROR"],
+  fallbackMode: "read_error",
+};
 const FALLBACK_PULSE: RelationshipPulse = {
   overall: "quiet",
   domains: {
@@ -41,6 +50,7 @@ export default function TodayHomeClient() {
   const [loading, setLoading] = React.useState(true);
   const [gate, setGate] = React.useState<DailyGateSnapshot>(FALLBACK_GATE);
   const [pulse, setPulse] = React.useState<RelationshipPulse>(FALLBACK_PULSE);
+  const [intel, setIntel] = React.useState<TodayIntelligence>(FALLBACK_INTEL);
 
   const mounted = React.useRef(true);
   React.useEffect(() => {
@@ -52,13 +62,15 @@ export default function TodayHomeClient() {
 
   const load = React.useCallback(async () => {
     setLoading(true);
-    const [g, p] = await Promise.all([
+    const [g, p, i] = await Promise.all([
       arenaFetch<DailyGateSnapshot>("/api/me/daily").catch(() => FALLBACK_GATE),
       arenaFetch<RelationshipPulse>("/api/me/pulse").catch(() => FALLBACK_PULSE),
+      arenaFetch<TodayIntelligence>("/api/me/today-intelligence").catch(() => FALLBACK_INTEL),
     ]);
     if (!mounted.current) return;
     setGate(g ?? FALLBACK_GATE);
     setPulse(p ?? FALLBACK_PULSE);
+    setIntel(i ?? FALLBACK_INTEL);
     setLoading(false);
   }, []);
 
@@ -100,7 +112,7 @@ export default function TodayHomeClient() {
           <CardSkeleton lines={2} />
         </div>
       ) : (
-        <CriticalGateCheckHost snapshot={gate} pulse={pulse} locale={loc} />
+        <CriticalGateCheckHost snapshot={gate} pulse={pulse} intel={intel} locale={loc} />
       )}
     </ScreenShell>
   );

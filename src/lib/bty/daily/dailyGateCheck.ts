@@ -26,6 +26,7 @@
  * next gate; the daily entry never 500s and degrades to OPEN_DAY.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { DailyGate } from "@/domain/daily/dailyGate.types";
 import { userDayStartInstant } from "@/domain/daily/userDayStartInstant";
 import { userHasForcedResetPending } from "@/lib/bty/leadership-engine/state-service";
 import { fetchBlockingArenaContractForSession } from "@/lib/bty/arena/blockingArenaActionContract";
@@ -33,14 +34,7 @@ import { fetchFirstDueNoChangeReexposureMeta } from "@/engine/scenario/delayed-o
 import { hasAnyEvidenceInWindow } from "@/lib/bty/daily/relationshipPulse";
 import { getOnboardingStep } from "@/engine/integration/onboarding-flow.service";
 
-export type DailyGate =
-  | "FORCED_RESET"
-  | "ACTION_REQUIRED"
-  | "REEXPOSURE_DUE"
-  | "YESTERDAY_MIRROR"
-  | "QUIET_INVITATION"
-  | "FIRST_DAY"
-  | "OPEN_DAY";
+export type { DailyGate } from "@/domain/daily/dailyGate.types";
 
 export type DailyDestinationKind = "center" | "open_loop" | "arena_reexposure" | "today";
 

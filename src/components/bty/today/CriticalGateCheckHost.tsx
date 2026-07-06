@@ -16,8 +16,10 @@ import { InfoCard } from "@/components/bty/ui/InfoCard";
 import { getMessages, type Locale } from "@/lib/i18n";
 import type { DailyGateSnapshot } from "@/lib/bty/daily/dailyGateCheck";
 import type { RelationshipPulse } from "@/lib/bty/daily/relationshipPulse";
+import type { TodayIntelligence } from "@/domain/daily/todayIntelligence";
 import { RelationshipPulseSummary } from "./RelationshipPulseSummary";
 import { YesterdayMirrorLine } from "./YesterdayMirrorLine";
+import { TodayRelationshipBrief } from "./TodayRelationshipBrief";
 import { GateActionCard, OpenLoopCard } from "./OpenLoopCard";
 import { TodayDoorCards } from "./TodayDoorCards";
 import { ExitLine } from "./ExitLine";
@@ -27,10 +29,12 @@ export function CriticalGateCheckHost({
   snapshot,
   pulse,
   locale,
+  intel,
 }: {
   snapshot: DailyGateSnapshot;
   pulse: RelationshipPulse;
   locale: Locale;
+  intel?: TodayIntelligence;
 }) {
   const m = getMessages(locale);
   const { gate, destination } = snapshot;
@@ -72,14 +76,24 @@ export function CriticalGateCheckHost({
   }
 
   // ── Ritual gates (destination.kind === "today"). ─────────────────────────────
-  const top =
-    gate === "FIRST_DAY" ? (
-      <InfoCard title={m.today.dailyOs.firstDayTitle} tone="panel" className="shadow-lg">
-        <p className="text-sm text-white/80">{m.today.dailyOs.firstDayBody}</p>
-      </InfoCard>
-    ) : (
-      <YesterdayMirrorLine hasEvidence={gate === "YESTERDAY_MIRROR"} locale={locale} />
-    );
+  // Today Intelligence v1: a derived relationship focus is a CLAIM only when the deriver
+  // asserted it (confidence !== "none" + a Self/Others/World focus). Otherwise fall back to
+  // the first-day card or the neutral mirror line — never a guessed relationship.
+  const focus = intel?.relationshipFocus;
+  const hasRelationshipFocus =
+    !!intel &&
+    intel.confidence !== "none" &&
+    (focus === "Self" || focus === "Others" || focus === "World");
+
+  const top = hasRelationshipFocus ? (
+    <TodayRelationshipBrief focus={intel.relationshipFocus} locale={locale} />
+  ) : gate === "FIRST_DAY" ? (
+    <InfoCard title={m.today.dailyOs.firstDayTitle} tone="panel" className="shadow-lg">
+      <p className="text-sm text-white/80">{m.today.dailyOs.firstDayBody}</p>
+    </InfoCard>
+  ) : (
+    <YesterdayMirrorLine hasEvidence={gate === "YESTERDAY_MIRROR"} locale={locale} />
+  );
 
   return (
     <div className="space-y-6">
