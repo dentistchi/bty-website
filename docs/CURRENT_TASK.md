@@ -1,3 +1,18 @@
+**2026-07-06 — STEP 7B CLOSED: Today Intelligence v1 (deterministic) live on inner-main.**
+INNER_GIT_HEAD = bcdf2a692653ebda497de938eccce999746d0b25 (pushed, fast-forward from 6eb4a6f8).
+Canonical Daily Surface locked: /[locale]/today. /[locale]/app = future absorption candidate only.
+AXIS_RELATIONSHIP_LOOKUP_V1 approved and implemented (src/domain/daily/axisRelationship.ts). unknown axis → no derivation, structural.
+Derivation ladder: ContinuePending > mapped Self/Others/World > CleanStart; read-pure (no LE ensure* endpoints); no LLM; no schema change.
+New read-only endpoint: GET /api/me/today-intelligence (fail-quiet).
+DailyGate union relocated to src/domain/daily/ (backward-compatible re-export).
+[BTYAppBoot] boot diagnostics removed.
+Gates: tsc exit 0; terminology 13 violations — TERMINOLOGY BASELINE UPDATED 14 → 13 (net -1 from diagnostics removal). Net-increase gate now measures against 13.
+Tests: new 12/12, regression 60/60.
+STEP 7A inventory (read-only, zero mutation) surfaced two premise corrections: (1) /start routes to /[locale]/today, NOT /app — dispatch baseline was wrong; (2) anchor type-tag discipline now mandatory (INNER_GIT_HEAD / OUTER_GIT_HEAD / WORKER_VERSION_UUID / DEPLOY_URL) after 762341c8 baseline confusion.
+NOT DEPLOYED. Staging deploy = separate GO.
+Sensory verification (Xcode/iPhone) pending post-deploy — Product/UI final verdict remains open until Commander real-device pass.
+Outstanding: /app skeleton absorption (deferred); AI phrasing layer (next slice, copy-only role); QR-relational specificity v1.1; tz-null 05:00 boundary confidence drift (known, inherited).
+
 **2026-07-06 — BTY Daily App Native Track 개통·안정화 (STEP 1~6H 종결).**
 [Native] baseline lock `9f05e56` → launch route /en/app `2f894f2` → 채널 진단
 `c23ebf6` → Safari leak 수리(allowNavigation) `29f468d` → cache purge
