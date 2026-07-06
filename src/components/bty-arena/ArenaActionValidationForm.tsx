@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import type { Locale } from "@/lib/i18n";
 import { readActionDraft, writeActionDraft, clearActionDraft } from "./actionDraft";
 
@@ -57,7 +58,10 @@ const COPY = {
     reviseHeading: "Revise and resubmit:",
     rejectMsg: "This action statement was not accepted. Revise the three fields and submit again.",
     escalateMsg: "This action was sent for review. You can revise and resubmit, or check back later.",
-    errorMsg: "Validation could not be completed. Please try again.",
+    errorMsg: "Validation could not be completed.",
+    qrCta: "Show QR for verification",
+    alreadyVerified: "This action has already been verified.",
+    notReady: "This action is not ready for QR verification yet.",
   },
   ko: {
     title: "행동 검증",
@@ -74,7 +78,10 @@ const COPY = {
     reviseHeading: "수정 후 다시 제출해 주세요:",
     rejectMsg: "이 행동 진술은 승인되지 않았습니다. 세 칸을 수정해 다시 제출해 주세요.",
     escalateMsg: "이 행동은 검토로 넘어갔습니다. 수정해 다시 제출하거나 나중에 다시 확인해 주세요.",
-    errorMsg: "검증을 완료하지 못했습니다. 다시 시도해 주세요.",
+    errorMsg: "행동 검증을 완료할 수 없습니다.",
+    qrCta: "검증용 QR 보기",
+    alreadyVerified: "이 행동은 이미 확인 완료되었습니다.",
+    notReady: "아직 QR 확인을 받을 준비가 되지 않았습니다.",
   },
 } as const;
 
@@ -92,6 +99,8 @@ export function ArenaActionValidationForm({
   const [submitting, setSubmitting] = React.useState(false);
   const [layer1Errors, setLayer1Errors] = React.useState<Layer1Error[]>([]);
   const [banner, setBanner] = React.useState<Banner>(null);
+  // Escalate/already-submitted still land QR-ready server-side — surface the QR CTA.
+  const [showQrCta, setShowQrCta] = React.useState(false);
 
   React.useEffect(() => {
     writeActionDraft(contractId, { who, what, result });
@@ -110,6 +119,7 @@ export function ArenaActionValidationForm({
     setSubmitting(true);
     setLayer1Errors([]);
     setBanner(null);
+    setShowQrCta(false);
     try {
       const res = await fetch("/api/bty/action-contract/submit-validation", {
         method: "POST",
@@ -132,6 +142,14 @@ export function ArenaActionValidationForm({
       } | null;
 
       if (!res.ok || !data) {
+        // Known state error: the contract is already past submittable (submitted &
+        // QR-ready). Direct the actor to the QR surface instead of a generic
+        // failure/resubmit.
+        if (data?.error === "contract_not_submittable") {
+          setBanner({ kind: "info", text: c.escalateMsg });
+          setShowQrCta(true);
+          return;
+        }
         setBanner({ kind: "error", text: c.errorMsg });
         return;
       }
@@ -153,7 +171,24 @@ export function ArenaActionValidationForm({
         return;
       }
       if (data.outcome === "escalate") {
-        setBanner({ kind: "info", text: c.escalateMsg });
+        // Server lands escalate as `submitted` + validation_approved_at (QR-ready);
+        // Layer 2 is advisory. Keep the review banner AND surface the QR CTA so the
+        // actor reaches the same My Page QR surface as the approve path.
+        const qrReady = data.contract_state === "awaiting_qr" && data.verified_at == null;
+        if (qrReady) {
+          setBanner({ kind: "info", text: c.escalateMsg });
+          setShowQrCta(true);
+        } else if (data.verified_at != null) {
+          setBanner({ kind: "info", text: c.alreadyVerified });
+        } else {
+          // Unexpected: escalate without a QR-ready contract. Report and hold (no CTA).
+          console.warn("[submit-validation] escalate but not QR-ready", {
+            contractId,
+            contract_state: data.contract_state ?? null,
+            verified_at: data.verified_at ?? null,
+          });
+          setBanner({ kind: "error", text: c.notReady });
+        }
         return;
       }
       setBanner({ kind: "error", text: c.errorMsg });
@@ -200,6 +235,17 @@ export function ArenaActionValidationForm({
               ))}
             </ul>
           ) : null}
+        </div>
+      ) : null}
+
+      {showQrCta ? (
+        <div className="mb-3">
+          <Link
+            href={`/${lang}/my-page`}
+            className="inline-flex items-center justify-center rounded-full bg-[#1E2A38] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#2A3A4D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40"
+          >
+            {c.qrCta}
+          </Link>
         </div>
       ) : null}
 
