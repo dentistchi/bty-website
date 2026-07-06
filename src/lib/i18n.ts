@@ -2092,6 +2092,8 @@ export type Messages = {
     scanVerified: string;
     scanAlready: string;
     scanFailed: string;
+    scanValidationRequired: string;
+    qrValidationRequired: string;
     witnessPromiseTitle: string;
     witnessConfirmQuestion: string;
     witnessConfirmCta: string;
@@ -4007,6 +4009,8 @@ const ko: Messages = {
     scanVerified: "확인되었습니다. 이 행동은 오늘의 성장에 더해졌습니다.",
     scanAlready: "이미 인증된 실행입니다.",
     scanFailed: "인증에 실패했습니다. 다시 시도해 주세요.",
+    scanValidationRequired: "아직 증인 확인을 받을 준비가 되지 않았습니다. 실행자가 먼저 행동 검증을 완료해야 합니다.",
+    qrValidationRequired: "아직 행동 검증이 완료되지 않았습니다. 먼저 실행 내용을 제출한 뒤 QR을 보여주세요.",
     witnessPromiseTitle: "오늘의 약속",
     witnessConfirmQuestion: "오늘 정말 해냈나요?",
     witnessConfirmCta: "확인하기",
@@ -5923,6 +5927,8 @@ const en: Messages = {
     scanVerified: "Confirmed. This action is now part of today's growth.",
     scanAlready: "This action is already verified.",
     scanFailed: "Verification failed. Please try again.",
+    scanValidationRequired: "This action is not ready for witness verification yet. Ask the actor to complete validation first.",
+    qrValidationRequired: "Action validation is not complete yet. Submit validation first, then show the QR.",
     witnessPromiseTitle: "Today's Promise",
     witnessConfirmQuestion: "Did this really happen today?",
     witnessConfirmCta: "Confirm",

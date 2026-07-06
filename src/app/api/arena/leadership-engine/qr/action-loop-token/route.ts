@@ -68,25 +68,16 @@ export async function POST(req: NextRequest) {
       return out;
     }
   } else {
-    let byRun = await supabase
+    // Fetch the single non-verified contract for this run (unique per
+    // user_id+session_id). Eligibility (validation approved) is enforced by the
+    // shared gate below so `pending` cannot mint a QR.
+    const byRun = await supabase
       .from("bty_action_contracts")
       .select("id, user_id, session_id, run_id, status, validation_approved_at, verified_at")
       .eq("user_id", user.id)
       .eq("session_id", runIdStr)
-      .in("status", ["pending"])
+      .is("verified_at", null)
       .maybeSingle();
-
-    if (!byRun.data) {
-      byRun = await supabase
-        .from("bty_action_contracts")
-        .select("id, user_id, session_id, run_id, status, validation_approved_at, verified_at")
-        .eq("user_id", user.id)
-        .eq("session_id", runIdStr)
-        .eq("status", "approved")
-        .not("validation_approved_at", "is", null)
-        .is("verified_at", null)
-        .maybeSingle();
-    }
     contract = (byRun.data as ActionContractTokenRow | null) ?? null;
     if (!contract) {
       const out = NextResponse.json({ error: "no_pending_contract" }, { status: 409 });
@@ -107,12 +98,18 @@ export async function POST(req: NextRequest) {
     (status === "approved" || status === "submitted") &&
     contract.validation_approved_at != null &&
     contract.verified_at == null;
-  if (status !== "pending" && !approvedAwaiting) {
+  // ROOT FIX (QR CLASS A): a witness QR must NOT be minted until the actor's
+  // action validation is approved (validation_approved_at set). A `pending` or
+  // otherwise-unvalidated contract returns `action_validation_required` so the
+  // actor UI can prompt "submit validation first" — instead of issuing a QR that
+  // qr/validate will always reject (which the scanner saw as a generic failure).
+  if (!approvedAwaiting) {
     const isTerminal = contract.verified_at != null;
+    const needsValidation = !isTerminal && contract.validation_approved_at == null;
     const out = NextResponse.json(
       {
-        error: "contract_not_pending",
-        contract_state: isTerminal ? "terminal" : "awaiting_qr",
+        error: needsValidation ? "action_validation_required" : "contract_not_pending",
+        contract_state: isTerminal ? "terminal" : needsValidation ? "action_required" : "awaiting_qr",
         verified_at: contract.verified_at ?? null,
       },
       { status: 409 },

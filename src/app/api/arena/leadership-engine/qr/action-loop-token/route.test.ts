@@ -1,5 +1,6 @@
 /**
- * POST /api/arena/leadership-engine/qr/action-loop-token — mint QR token for pending contract.
+ * POST /api/arena/leadership-engine/qr/action-loop-token — mint QR token only for a
+ * validation-approved contract (validation_approved_at set); pending is denied.
  */
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -162,7 +163,7 @@ describe("POST /api/arena/leadership-engine/qr/action-loop-token", () => {
     expect((await res.json()).error).toBe("contract_not_pending");
   });
 
-  it("returns 200 with token and url when pending contract exists", async () => {
+  it("returns 200 with token and url when a validation-approved contract exists", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
       supabase: makeSupabaseContractMock([
@@ -171,7 +172,9 @@ describe("POST /api/arena/leadership-engine/qr/action-loop-token", () => {
             id: "cid-1",
             user_id: "u1",
             session_id: "run-xyz",
-            status: "pending",
+            status: "submitted",
+            validation_approved_at: "2026-01-01T00:00:00.000Z",
+            verified_at: null,
           },
         },
       ]),
@@ -210,7 +213,9 @@ describe("POST /api/arena/leadership-engine/qr/action-loop-token", () => {
             id: "cid-only",
             user_id: "u1",
             session_id: "run-from-contract",
-            status: "pending",
+            status: "submitted",
+            validation_approved_at: "2026-01-01T00:00:00.000Z",
+            verified_at: null,
           },
         },
       ]),
@@ -234,7 +239,9 @@ describe("POST /api/arena/leadership-engine/qr/action-loop-token", () => {
             user_id: "u1",
             session_id: null,
             run_id: "run-from-run-id",
-            status: "pending",
+            status: "submitted",
+            validation_approved_at: "2026-01-01T00:00:00.000Z",
+            verified_at: null,
           },
         },
       ]),
@@ -257,7 +264,9 @@ describe("POST /api/arena/leadership-engine/qr/action-loop-token", () => {
             id: "cid-1",
             user_id: "u1",
             session_id: "run-ko",
-            status: "pending",
+            status: "submitted",
+            validation_approved_at: "2026-01-01T00:00:00.000Z",
+            verified_at: null,
           },
         },
       ]),
@@ -269,11 +278,10 @@ describe("POST /api/arena/leadership-engine/qr/action-loop-token", () => {
     expect(data.url).toContain("/ko/my-page");
   });
 
-  it("returns 200 when validator-approved contract awaits execution verify (second query)", async () => {
+  it("returns 200 when a validation-approved contract awaits execution verify", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "u1" },
       supabase: makeSupabaseContractMock([
-        { data: null },
         {
           data: {
             id: "cid-val",
@@ -291,5 +299,27 @@ describe("POST /api/arena/leadership-engine/qr/action-loop-token", () => {
     expect(res.status).toBe(200);
     const data = (await res.json()) as { token: string };
     expect(data.token.startsWith("aalo1.")).toBe(true);
+  });
+
+  it("returns 409 action_validation_required when validation is not yet approved (pending)", async () => {
+    mockRequireUser.mockResolvedValue({
+      user: { id: "u1" },
+      supabase: makeSupabaseContractMock([
+        {
+          data: {
+            id: "cid-pending",
+            user_id: "u1",
+            session_id: "run-pending",
+            status: "pending",
+            validation_approved_at: null,
+            verified_at: null,
+          },
+        },
+      ]),
+      base: {},
+    });
+    const res = await POST(postReq({ runId: "run-pending" }, { origin: "https://app.example" }));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe("action_validation_required");
   });
 });

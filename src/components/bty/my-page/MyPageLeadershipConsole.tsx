@@ -76,8 +76,10 @@ export function MyPageLeadershipConsole({
   const [actorCompletedContractId, setActorCompletedContractId] = useState<string | null>(null);
   const [actorCompletedDescription, setActorCompletedDescription] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<
-    "verified" | "already" | "failed" | "self_blocked" | null
+    "verified" | "already" | "failed" | "self_blocked" | "validation_required" | null
   >(null);
+  // Actor-side notice when a QR is requested before action validation is approved.
+  const [qrGateNotice, setQrGateNotice] = useState<string | null>(null);
   // MVE-D2 Phase 2 (Ruling 3): witness pre-confirm — load the promised action, then a human confirms.
   const [witnessDescription, setWitnessDescription] = useState<string | null>(null);
   const [witnessLoadFailed, setWitnessLoadFailed] = useState(false);
@@ -334,9 +336,11 @@ export function MyPageLeadershipConsole({
         setScanResult(
           errData?.error === "self_witness_blocked"
             ? "self_blocked"
-            : errData?.error === "contract_not_pending" || errData?.verified_at != null
-              ? "already"
-              : "failed",
+            : errData?.error === "action_validation_required"
+              ? "validation_required"
+              : errData?.error === "contract_not_pending" || errData?.verified_at != null
+                ? "already"
+                : "failed",
         );
         return;
       }
@@ -397,7 +401,16 @@ export function MyPageLeadershipConsole({
           ...(contractId ? { contractId } : {}),
         }),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        const errData = (await res.json().catch(() => ({}))) as { error?: string };
+        // QR requested before action validation is approved: do not open a
+        // (doomed) QR — show the actor a specific "submit validation first" notice.
+        if (errData?.error === "action_validation_required") {
+          setQrGateNotice(tAction.qrValidationRequired);
+        }
+        return;
+      }
+      setQrGateNotice(null);
       const data = (await res.json()) as { token?: string; qrUrl?: string; url?: string };
       const returnedQrUrl =
         (typeof data.qrUrl === "string" && data.qrUrl.trim() !== "" ? data.qrUrl.trim() : "") ||
@@ -416,7 +429,7 @@ export function MyPageLeadershipConsole({
     } catch {
       // silent — user can retry
     }
-  }, [serverPack, locale]);
+  }, [serverPack, locale, tAction]);
 
   const handleRequestQrForContract = useCallback(async (contractId: string) => {
     if (!contractId) return;
@@ -499,6 +512,14 @@ export function MyPageLeadershipConsole({
             className="rounded-2xl border border-[#D6CFC0] bg-[#FAF8F3] p-6 text-center text-sm leading-relaxed text-[#5A4A2F] dark:border-amber-300/20 dark:bg-amber-500/[0.06] dark:text-amber-100"
           >
             {tAction.witnessSelfBlocked}
+          </div>
+        ) : scanResult === "validation_required" ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-2xl border border-[#D6CFC0] bg-[#FAF8F3] p-6 text-center text-sm leading-relaxed text-[#5A4A2F] dark:border-amber-300/20 dark:bg-amber-500/[0.06] dark:text-amber-100"
+          >
+            {tAction.scanValidationRequired}
           </div>
         ) : scanResult === "failed" ? (
           <div
@@ -605,6 +626,16 @@ export function MyPageLeadershipConsole({
           locale={locale}
           onRequestQr={handleRequestQr}
         />
+      )}
+
+      {qrGateNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-2xl border border-[#D6CFC0] bg-[#FAF8F3] p-4 text-center text-sm leading-relaxed text-[#5A4A2F]"
+        >
+          {qrGateNotice}
+        </div>
       )}
 
       {pendingPulseRunId && !pulseDismissed && (

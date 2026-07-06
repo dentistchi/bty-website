@@ -669,7 +669,7 @@ export function useArenaSession(_pipelineFromServer?: ArenaPipelineDefault) {
         isArenaActionBlockingRuntimeState(arenaServerSnapshot.runtime_state));
     if (!shouldAutoSync) return;
     const cooldownMs = 1500;
-    const syncSessionGate = (source: "focus" | "visibility" | "storage") => {
+    const syncSessionGate = (source: "focus" | "visibility" | "storage" | "poll") => {
       // A1b dirty-draft guard — full early-return.
       // null화만 skip하면 nonce++/refetch가 contract를 재churn시키므로
       // 게이트 전체 early-return. cross-tab QR stale 수용(ledger flag).
@@ -709,10 +709,17 @@ export function useArenaSession(_pipelineFromServer?: ArenaPipelineDefault) {
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("storage", onStorage);
+    // Conditional polling: a cross-device witness QR scan fires no focus/
+    // visibility/storage event on the actor's device. While the gate is active
+    // (shouldAutoSync above), poll so progression reflects without manual
+    // navigation. The effect early-returns once the gate clears, so this
+    // interval is torn down as soon as the run advances or the component unmounts.
+    const pollId = setInterval(() => syncSessionGate("poll"), 4000);
     return () => {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("storage", onStorage);
+      clearInterval(pollId);
     };
   }, [pendingActionContract, arenaServerSnapshot]);
 
