@@ -1,3 +1,47 @@
+**2026-07-05 — App Shell v0 + Arena QR Loop Hardening Series (8 commits) + Direction Locks.**
+[App Shell] New BTY Daily App Shell v0 skeleton `54c6ae11` (/[locale]/app,
+5-tab local state, safe-area top+bottom, companion dock zone, legacy shell
+untouched), staging `81347b80`. Reusable engine STEP 0 inventory PASS
+(auth/day-logic/scenario/QR API reuse map + anti-drift guardrails). Safari
+sensory check FAIL → sensory verification channel moved to Xcode/iPhone
+native. Product locks: new app first screen = Today ritual; web top-nav
+elements prohibited in new app. Native = Option B (~/Dev/bty-native-app,
+Capacitor 8 SPM, com.btyarena.app) live-proven (session restore + haptics).
+⚠ native workspace has zero git commits — initial commit required; launch
+URL /start → /en/app repoint pending.
+[QR Loop Series] Initial P0: witness scan failed generically + Arena
+blocked. CLASS A confirmed by runtime inverse evidence (QR mintable before
+validation_approved_at). `af2e8c20` mint gating + specific copy + Arena
+polling (staging 6304e994). `5bbd6c51` My Page→resolve link, trap close,
+routing canon unchanged (683e6951). `b7227fa6` My Page conditional polling
+for cross-device reflection (5aab5904). `31168c27` resolve→My Page link +
+close-signal alignment (d5c68a8c). `41807883` [regression: un-scoped
+completion prop closed new panels + 4s routerRefresh scroll jump] →
+contractId-scoped close + conditional refresh (1c48c978). `19fd49fd`
+[regression: escalate stranding — server QR-ready but client transitioned
+only on approve] → escalate QR CTA + terminology 14→13 (4af530a3).
+`9181d657` [regression: stale completion sheets cascading — un-scoped prop
+third surface + Private-mode-fragile seen guard] → session-scoped sheet +
+hardened guard + CTA moved adjacent to Submit (04db1cee). `467636a2`
+[regression: 4s poll strobing the !isLoading skeleton gate] → silent
+background refetch (7b676b3c). Final full-loop on-device verification:
+ALL PASS — validation → QR CTA (incl. escalate) → stable QR → witness
+scan → confirm → ~4s auto-reflection → single completion sheet → next
+scenario. Loop is repeatable.
+[New tracks] Staging validator LLM env absent → forced-escalate (approve
+path / Layer-2 real verdicts unverified on staging) — recovery track for
+BTY_VALIDATOR_OPENAI_MODEL et al., mind secret-put empty-string +
+.env.local bake footguns. Reject-outcome UX direction — Commander decision
+pending.
+[Backlog] MyPage QRCode-render stale tests (5) modernization / polling log
+label mismatch / terminology baseline re-lock at 13 / scenario JSON
+duplicated copy / bg-bty-navy opacity audit / completion-signal upstream
+scoping (App Shell design input).
+[Held] D6 HOLD / daily gate coarse after 05:00 / SITE3 untouched / IA
+restructure items (D4/D5, tab↔middleware divergence).
+
+---
+
 **2026-07-05 — Direction Lock: Web = Harness / New App Shell Track + Center Nav Harness Exception.**
 Commander direction change: existing web shell is now a temporary harness
 (backend/domain/auth/day-logic verification only); product track shifts to a
