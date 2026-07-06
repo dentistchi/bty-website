@@ -21,7 +21,7 @@ type Locale = "en" | "ko";
 
 type Copy = {
   appAria: string;
-  today: { title: string; sub: string; cards: { t: string; d: string }[] };
+  today: { title: string; sub: string; cards: { t: string; d: string; tab: AppTabKey }[] };
   center: { title: string; tag: string; body: string };
   arena: { title: string; tag: string; body: string };
   foundry: { title: string; tag: string; body: string };
@@ -34,12 +34,12 @@ const COPY: Record<Locale, Copy> = {
   en: {
     appAria: "BTY Daily app",
     today: {
-      title: "Begin today.",
+      title: "Good morning.",
       sub: "Choose the relationship you will live today.",
       cards: [
-        { t: "Self", d: "Return to yourself." },
-        { t: "Others", d: "Practice with others." },
-        { t: "World", d: "Build with the world." },
+        { t: "Self", d: "Return to yourself.", tab: "center" },
+        { t: "Others", d: "Enter the Arena with care.", tab: "arena" },
+        { t: "World", d: "Build what you are here to steward.", tab: "foundry" },
       ],
     },
     center: { title: "Return to yourself.", tag: "Relationship with Self", body: "A quiet place to recover." },
@@ -52,12 +52,12 @@ const COPY: Record<Locale, Copy> = {
   ko: {
     appAria: "BTY Daily 앱",
     today: {
-      title: "오늘을 시작하세요.",
-      sub: "오늘 살아갈 관계를 선택하세요.",
+      title: "좋은 아침입니다.",
+      sub: "오늘 어떤 관계를 살아내시겠습니까?",
       cards: [
-        { t: "나", d: "자신에게 돌아오기." },
-        { t: "타인", d: "타인과 연습하기." },
-        { t: "세계", d: "세계와 함께 짓기." },
+        { t: "나와의 관계", d: "나에게 돌아옵니다.", tab: "center" },
+        { t: "타인과의 관계", d: "조심스럽게 Arena로 들어갑니다.", tab: "arena" },
+        { t: "세상과의 관계", d: "오늘 맡겨진 것을 빚어갑니다.", tab: "foundry" },
       ],
     },
     center: { title: "자신에게 돌아오기.", tag: "나와의 관계", body: "조용히 회복하는 공간." },
@@ -90,7 +90,14 @@ function PlaceholderCard({ tag, body, soon }: { tag: string; body: string; soon:
   );
 }
 
-function TodaySurface({ copy }: { copy: Copy["today"] }) {
+function TodaySurface({
+  copy,
+  onChoose,
+}: {
+  copy: Copy["today"];
+  /** Relationship cards are navigation (not commitment): tapping sets the tab. */
+  onChoose: (tab: AppTabKey) => void;
+}) {
   return (
     <>
       <SurfaceHeader title={copy.title} sub={copy.sub} />
@@ -99,6 +106,7 @@ function TodaySurface({ copy }: { copy: Copy["today"] }) {
           <button
             key={c.t}
             type="button"
+            onClick={() => onChoose(c.tab)}
             className="flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-left transition-colors hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40"
           >
             <span aria-hidden className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#C9A66B]/15 text-lg font-semibold text-[#C9A66B]">
@@ -125,7 +133,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       <div style={{ height: "env(safe-area-inset-top)" }} aria-hidden />
 
       <main className="flex-1 overflow-y-auto px-5 pb-4 pt-8" aria-label={t.appAria}>
-        {tab === "today" && <TodaySurface copy={t.today} />}
+        {tab === "today" && <TodaySurface copy={t.today} onChoose={setTab} />}
         {tab === "center" && (
           <>
             <SurfaceHeader title={t.center.title} />
