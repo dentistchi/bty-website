@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import OrbLiving from "@/components/orb/OrbLiving";
 
@@ -102,14 +102,6 @@ function TodaySurface({
   return (
     <>
       <SurfaceHeader title={copy.title} sub={copy.sub} />
-      {/* Canonical BTY Orb — the living daily doorway (OrbLiving, the production /start
-          Threshold Door + /dev/orb presence). Restored here to replace the temporary CSS
-          Orb Lite. Rendered as pure living presence (no onCommit/holdMs — Today is already
-          inside the app, so it is the day's anchor, not a navigation gate). Its sole
-          isNative-gated haptic Touch Language is preserved as-is (canonical, not new). */}
-      <div className="mb-7 flex justify-center">
-        <OrbLiving size={180} />
-      </div>
       <div className="space-y-3">
         {copy.cards.map((c) => (
           <button
@@ -132,18 +124,75 @@ function TodaySurface({
   );
 }
 
+/**
+ * OrbThreshold — the living doorway BEFORE Today. An Orb-only surface (no cards, no
+ * companion dock, no tabs): the first moment is "entering the day", not "choosing a
+ * menu". Touching the canonical Orb fires its onCommit (tap; the contact haptic Touch
+ * Language is already wired in OrbLiving) → the parent transitions into Today. The
+ * whole surface cross-fades out via `entering`.
+ */
+function OrbThreshold({
+  locale,
+  entering,
+  onEnter,
+}: {
+  locale: Locale;
+  entering: boolean;
+  onEnter: () => void;
+}) {
+  // Microcopy kept a whisper — the Orb is the hero, this only affords the first touch.
+  const hint = locale === "ko" ? "터치하여 오늘을 엽니다." : "Touch to begin.";
+  return (
+    <div
+      className={`flex h-[100dvh] flex-col items-center justify-center bg-[#0B1F3A] text-white antialiased transition-opacity duration-700 ${
+        entering ? "opacity-0" : "opacity-100"
+      }`}
+      aria-label="BTY Daily — enter the day"
+    >
+      <div style={{ height: "env(safe-area-inset-top)" }} aria-hidden />
+      <div className="flex flex-1 flex-col items-center justify-center gap-10">
+        <OrbLiving size={240} onCommit={onEnter} />
+        <p className="text-[11px] font-medium tracking-wide text-white/35">{hint}</p>
+      </div>
+      <div style={{ height: "env(safe-area-inset-bottom)" }} aria-hidden />
+    </div>
+  );
+}
+
 export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   const [tab, setTab] = useState<AppTabKey>("today");
+  const [todayEntered, setTodayEntered] = useState(false);
+  const [entering, setEntering] = useState(false);
   const t = COPY[locale];
 
+  const enterToday = useCallback(() => {
+    if (entering) return;
+    setEntering(true); // cross-fade the threshold out
+    const reduce =
+      typeof window !== "undefined" &&
+      !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    // Calm transition; reduced-motion enters almost immediately. Local state only —
+    // no persistence, so a reload shows the threshold again (acceptable for v1).
+    window.setTimeout(() => setTodayEntered(true), reduce ? 120 : 900);
+  }, [entering]);
+
+  // Threshold door: the Orb is the doorway INTO the day. Until entry the app is
+  // Orb-only (no cards/companion/tabs). Session-local (STEP 5): switching tabs and
+  // returning keeps Today entered; only a reload re-shows the threshold.
+  if (!todayEntered) {
+    return <OrbThreshold locale={locale} entering={entering} onEnter={enterToday} />;
+  }
+
   return (
-    <div className="flex h-[100dvh] flex-col bg-[#0B1F3A] text-white antialiased">
+    <div className="btyFadeIn flex h-[100dvh] flex-col bg-[#0B1F3A] text-white antialiased">
       {/* Companion-dock keyframe — the canonical Orb (OrbLiving) owns its own canvas
           animation, so only the companion "alive" pulse lives here. prefers-reduced-motion
           stills it. (OrbLiving is independently reduced-motion-safe.) */}
       <style>{`
         @keyframes btyPulse{0%,100%{opacity:.35}50%{opacity:.9}}
-        @media (prefers-reduced-motion: reduce){.btyOrbAnim{animation:none!important}}
+        @keyframes btyEnter{from{opacity:0}to{opacity:1}}
+        .btyFadeIn{animation:btyEnter .7s ease both}
+        @media (prefers-reduced-motion: reduce){.btyOrbAnim,.btyFadeIn{animation:none!important}}
       `}</style>
       {/* iOS status-bar safe area — reserved so app content never underlaps the notch/clock. */}
       <div style={{ height: "env(safe-area-inset-top)" }} aria-hidden />
