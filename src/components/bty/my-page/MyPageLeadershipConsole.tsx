@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { computeMetrics, loadSignals } from "@/features/arena/logic";
@@ -632,9 +633,17 @@ export function MyPageLeadershipConsole({
         <div
           role="status"
           aria-live="polite"
-          className="rounded-2xl border border-[#D6CFC0] bg-[#FAF8F3] p-4 text-center text-sm leading-relaxed text-[#5A4A2F]"
+          className="space-y-3 rounded-2xl border border-[#D6CFC0] bg-[#FAF8F3] p-4 text-center text-sm leading-relaxed text-[#5A4A2F]"
         >
-          {qrGateNotice}
+          <p>{qrGateNotice}</p>
+          {/* Close the navigation trap: link straight to the validation form
+              (matches middleware `arenaResolvePath` = /[locale]/bty-arena/play/resolve). */}
+          <Link
+            href={`/${loc}/bty-arena/play/resolve`}
+            className="inline-flex items-center justify-center rounded-full bg-[#1E2A38] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#2A3A4D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40"
+          >
+            {tAction.goToValidationCta}
+          </Link>
         </div>
       )}
 
