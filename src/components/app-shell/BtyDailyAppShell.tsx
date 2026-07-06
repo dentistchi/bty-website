@@ -90,6 +90,39 @@ function PlaceholderCard({ tag, body, soon }: { tag: string; body: string; soon:
   );
 }
 
+/**
+ * Orb Lite — a CSS-only living anchor for the Today ritual. This is NOT the final
+ * Orb/Rive avatar: no image asset, no dependency — pure radial-gradient + keyframes.
+ * A navy sphere with a soft gold inner glow, a slow-pulsing gold core, and a faint
+ * breathing ring. Keyframes are defined once at the shell root (so they exist on
+ * every tab); prefers-reduced-motion stills it. Placeholder until the real Orb track.
+ */
+function OrbLite() {
+  return (
+    <div className="mb-7 flex justify-center" aria-hidden>
+      <div className="relative h-24 w-24">
+        <div
+          className="btyOrbAnim absolute inset-0 rounded-full border border-[#C9A66B]/20"
+          style={{ animation: "btyOrbRing 6s ease-in-out infinite" }}
+        />
+        <div
+          className="btyOrbAnim absolute inset-[6px] rounded-full"
+          style={{
+            background:
+              "radial-gradient(circle at 50% 38%, rgba(201,166,107,.5) 0%, rgba(201,166,107,.12) 28%, rgba(11,31,58,.7) 62%, rgba(6,16,32,.92) 100%)",
+            boxShadow: "0 0 44px 6px rgba(201,166,107,.14), inset 0 0 22px rgba(0,0,0,.55)",
+            animation: "btyOrbBreathe 5.5s ease-in-out infinite",
+          }}
+        />
+        <div
+          className="btyOrbAnim absolute left-1/2 top-1/2 h-2.5 w-2.5 rounded-full bg-[#C9A66B]"
+          style={{ transform: "translate(-50%,-50%)", animation: "btyOrbCore 5.5s ease-in-out infinite" }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function TodaySurface({
   copy,
   onChoose,
@@ -101,15 +134,16 @@ function TodaySurface({
   return (
     <>
       <SurfaceHeader title={copy.title} sub={copy.sub} />
+      <OrbLite />
       <div className="space-y-3">
         {copy.cards.map((c) => (
           <button
             key={c.t}
             type="button"
             onClick={() => onChoose(c.tab)}
-            className="flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-left transition-colors hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40"
+            className="group flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-left transition duration-200 hover:border-[#C9A66B]/25 hover:bg-white/[0.07] active:scale-[0.985] active:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40"
           >
-            <span aria-hidden className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#C9A66B]/15 text-lg font-semibold text-[#C9A66B]">
+            <span aria-hidden className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#C9A66B]/15 text-lg font-semibold text-[#C9A66B] ring-1 ring-[#C9A66B]/20 transition group-hover:bg-[#C9A66B]/25">
               {c.t.slice(0, 1)}
             </span>
             <span className="min-w-0">
@@ -129,6 +163,15 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
 
   return (
     <div className="flex h-[100dvh] flex-col bg-[#0B1F3A] text-white antialiased">
+      {/* Orb Lite + companion keyframes — defined once here so they exist on every
+          tab. prefers-reduced-motion stills all app animation. CSS-only, no assets. */}
+      <style>{`
+        @keyframes btyOrbBreathe{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.05);opacity:1}}
+        @keyframes btyOrbCore{0%,100%{opacity:.55;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.4)}}
+        @keyframes btyOrbRing{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:.55;transform:scale(1.07)}}
+        @keyframes btyPulse{0%,100%{opacity:.35}50%{opacity:.9}}
+        @media (prefers-reduced-motion: reduce){.btyOrbAnim{animation:none!important}}
+      `}</style>
       {/* iOS status-bar safe area — reserved so app content never underlaps the notch/clock. */}
       <div style={{ height: "env(safe-area-inset-top)" }} aria-hidden />
 
@@ -161,13 +204,19 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       </main>
 
       {/* Companion dock (v0): reserved, non-floating zone. Avatar disabled — it can
-          never cover cards/buttons/nav because it is a flex child, not fixed. */}
+          never cover cards/buttons/nav because it is a flex child, not fixed. A faint
+          gold pulse signals a living companion without adding functionality. */}
       <div className="shrink-0 px-5 pb-2">
-        <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5">
-          <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#C9A66B]/20 text-sm font-semibold text-[#C9A66B]">
+        <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-gradient-to-r from-white/[0.06] to-white/[0.03] px-4 py-2.5 backdrop-blur-sm">
+          <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#C9A66B]/20 text-sm font-semibold text-[#C9A66B] ring-1 ring-[#C9A66B]/25">
             치
           </span>
-          <span className="truncate text-xs text-white/55">{t.companion}</span>
+          <span className="truncate text-xs text-white/60">{t.companion}</span>
+          <span
+            aria-hidden
+            className="btyOrbAnim ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-[#C9A66B]"
+            style={{ animation: "btyPulse 3.2s ease-in-out infinite" }}
+          />
         </div>
       </div>
 
