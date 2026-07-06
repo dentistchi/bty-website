@@ -36,6 +36,32 @@ export type ActionLoopQrCompletion = {
 /** localStorage one-time dismissal key (contract id only — never stores PII / promise text). */
 const actorSeenKey = (contractId: string) => `bty_d2_actor_seen_${contractId}`;
 
+/**
+ * Decide whether the actor's open QR panel should close. Pure (unit-tested).
+ * A residual completion prop (the actor's latest-ever verified contract) must
+ * only close the panel when it matches the CURRENTLY-shown contract — otherwise
+ * a prior completion would flicker-close every newly-opened panel. The
+ * serverPack "nothing awaiting" transition is the verify fallback.
+ */
+export function shouldCloseQrPanel(args: {
+  qrPanelOpen: boolean;
+  completionSuccess: boolean;
+  completionContractId: string | null;
+  qrContractId: string | null;
+  hasAwaitingVerification: boolean;
+  serverPackLoaded: boolean;
+  openActionContractPresent: boolean;
+}): boolean {
+  if (!args.qrPanelOpen) return false;
+  const confirmed =
+    args.completionSuccess &&
+    args.completionContractId != null &&
+    args.completionContractId === args.qrContractId;
+  const nothingAwaiting =
+    args.serverPackLoaded && !args.hasAwaitingVerification && !args.openActionContractPresent;
+  return confirmed || nothingAwaiting;
+}
+
 type Props = {
   locale: string;
   actionLoopQrCompletion?: ActionLoopQrCompletion | null;
@@ -72,6 +98,9 @@ export function MyPageLeadershipConsole({
   const [weeklyXp, setWeeklyXp] = useState<number | null>(null);
   const [qrPanelOpen, setQrPanelOpen] = useState(false);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
+  // Which contract the open QR panel is for — so a residual completion prop from a
+  // *prior* contract can't close a newly-opened panel (flicker regression fix).
+  const [qrContractId, setQrContractId] = useState<string | null>(null);
   const [showPostCompletion, setShowPostCompletion] = useState(false);
   const [completionNarrativeState, setCompletionNarrativeState] = useState<string | null>(null);
   const [actorCompletedContractId, setActorCompletedContractId] = useState<string | null>(null);
@@ -88,6 +117,7 @@ export function MyPageLeadershipConsole({
   const [pendingPulseRunId, setPendingPulseRunId] = useState<string | null>(null);
   const [pulseDismissed, setPulseDismissed] = useState(false);
   const lastSyncAtRef = useRef(0);
+  const prevAwaitingCountRef = useRef(0);
   const qrPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -224,10 +254,12 @@ export function MyPageLeadershipConsole({
       if (now - lastSyncAtRef.current < syncCooldownMs) return;
       lastSyncAtRef.current = now;
       console.info("[BTY SYNC] visibility/focus refetch", { source });
+      // #3: no unconditional routerRefresh here — a per-poll RSC refresh jumps
+      // scroll every 4s. load() updates serverPack; the effect below refreshes the
+      // RSC only when a contract actually leaves the awaiting set (verified).
       void load().then(() => {
         console.info("[BTY SYNC] session refetch complete", { source });
         dispatchArenaEntryResolutionInvalidate();
-        routerRefresh();
       });
     };
     const onFocus = () => syncNow("focus");
@@ -255,7 +287,18 @@ export function MyPageLeadershipConsole({
       window.removeEventListener("storage", onStorage);
       if (pollId != null) clearInterval(pollId);
     };
-  }, [load, routerRefresh, awaitingWitnessVerification]);
+  }, [load, awaitingWitnessVerification]);
+
+  // #3: refresh the RSC (completion prop/sheet) ONLY when a contract leaves the
+  // awaiting set (verified transition) — not on every 4s poll — so the scroll
+  // position doesn't jump each cycle. Preserves the completion refresh at verify.
+  useEffect(() => {
+    const count = serverPack?.awaiting_verification_contracts?.length ?? 0;
+    if (count < prevAwaitingCountRef.current) {
+      routerRefresh();
+    }
+    prevAwaitingCountRef.current = count;
+  }, [serverPack, routerRefresh]);
 
   // Actor device: close the QR panel on the SAME signal that renders the confirmed
   // sheet — the server-detected completion prop `actionLoopQrCompletion` (delivered
@@ -263,15 +306,29 @@ export function MyPageLeadershipConsole({
   // fallback for close paths that don't set the completion prop. Closing flips the
   // gating false so polling stops and the completion surface takes over.
   useEffect(() => {
-    if (!qrPanelOpen) return;
-    const confirmed = actionLoopQrCompletion?.success === true;
-    const nothingAwaiting =
-      serverPack != null && !hasAwaitingVerification && serverPack.open_action_contract == null;
-    if (confirmed || nothingAwaiting) {
+    if (
+      shouldCloseQrPanel({
+        qrPanelOpen,
+        completionSuccess: actionLoopQrCompletion?.success === true,
+        completionContractId: actionLoopQrCompletion?.contractId ?? null,
+        qrContractId,
+        hasAwaitingVerification,
+        serverPackLoaded: serverPack != null,
+        openActionContractPresent: serverPack?.open_action_contract != null,
+      })
+    ) {
       setQrPanelOpen(false);
       setQrUrl(null);
+      setQrContractId(null);
     }
-  }, [qrPanelOpen, actionLoopQrCompletion?.success, serverPack, hasAwaitingVerification]);
+  }, [
+    qrPanelOpen,
+    actionLoopQrCompletion?.success,
+    actionLoopQrCompletion?.contractId,
+    qrContractId,
+    serverPack,
+    hasAwaitingVerification,
+  ]);
 
   // D2 actor-return: server detects the latest completed contract and passes it here.
   // Show the completion sheet ONCE per contract (localStorage guard, contract id only).
@@ -444,6 +501,7 @@ export function MyPageLeadershipConsole({
         return;
       }
       setQrGateNotice(null);
+      setQrContractId(contractId || null);
       const data = (await res.json()) as { token?: string; qrUrl?: string; url?: string };
       const returnedQrUrl =
         (typeof data.qrUrl === "string" && data.qrUrl.trim() !== "" ? data.qrUrl.trim() : "") ||
@@ -481,6 +539,7 @@ export function MyPageLeadershipConsole({
         (typeof data.url === "string" && data.url.trim() !== "" ? data.url.trim() : "");
       if (returnedQrUrl) {
         setQrUrl(returnedQrUrl);
+        setQrContractId(contractId);
         setQrPanelOpen(true);
       }
     } catch {
