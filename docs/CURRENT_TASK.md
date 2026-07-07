@@ -1,3 +1,17 @@
+**2026-07-07 — P2 #2 CLOSED: raw /my-page/progress XP / stage-tier / pattern diagnostics suppressed (D+ variant).**
+INNER_GIT_HEAD = 7914412ce5d8effae9b5e8c68f1cb157e724ce3f (inner-main, pushed, 9fee4639..7914412c) · OUTER_GIT_HEAD = this ledger commit (hash reported to Commander post-commit).
+D+ variant; maintenance classification (no new surface / route / API / persistence / canon / navigation change).
+Suppressed on ProgressXpPanel: E1 Core XP card · E2 Weekly XP card · E3 Today XP card · E4 "Peak {n}" label · E6 "Stage N of 4" tier line · E10 raw pattern_family enum · E11 raw ×count. Preserved (deferred): E5 numberless 7-day bar chart · E7 stageName (promoted to stage-card primary line) · E8 reset date · E9 local streak (localStorage). Recent Reflections (user-owned content) preserved.
+Fetches: /api/arena/core-xp + /api/arena/today-xp removed as in-panel dead code (only sinks were removed XP cards); /api/arena/weekly-stats retained (E5 bar ratios) · /api/arena/leadership-engine/stage-summary retained (E7/E8) · /api/bty/my-page/state retained (reflections). API routes themselves UNTOUCHED (all have other consumers).
+Tests converted exposure→suppression assertions: e2e/my-page.spec.ts "progress screen" (core/weekly/today/patterns testids toHaveCount(0) + residue asserts; stale my-page-system-note assert left unchanged per dispatch) and q237-my-page-subroutes.smoke.test.ts:30 (not.toMatch /Core XP|Weekly XP/ + safe-residue match). Navigation (Progress tab + dashboard link) unchanged.
+Gates: tsc exit 0 · terminology 13 pre-existing / 0 new · q237 smoke 3/3 PASS. 3 files (ProgressXpPanel.tsx + 2 test files). Playwright not executed in-env (needs running app + e2e/.auth + browsers); assertions verified by inspection.
+Outer mirror SKIPPED per Option A standing practice (bty-app/ source lag measurement still open). Ledger-only outer commit (docs/ safe zone). NOT DEPLOYED (production deploy = separate GO; no .open-next purge / npm run deploy / chunk-hash verify).
+STEP 0 methodology clause (STANDARD ADOPTION): "testid grep ≠ label grep — exposure inventory must search BOTH hyphenated data-testids AND spaced user-facing labels (KO+EN)." P2 #2 STEP 0 grepped only `my-page-core-xp` and missed the q237 `/Core XP|Weekly XP/` label assertion → mid-dispatch HALT for a third-file edit.
+P2 newly recorded:
+1. Progress tab relabel/retire review — page now reduces to numberless chart + stageName + reset date + local streak + reflections; "Progress" label adjudication is a separate nav-scope candidate.
+2. ProgressXpPanel borderline residue (E5/E7/E8/E9) re-adjudication at Phase 3 native Today migration.
+3. my-page-system-note stale e2e assertion audit — testid not found in source; left unchanged this dispatch, audit separately.
+
 **2026-07-07 — P2 #1 CLOSED: raw My Page XP / internal enum exposure suppressed (Option B).**
 INNER_GIT_HEAD = 9fee4639a613eaebe8c16b7cda4a0a9b7003b0df (inner-main, pushed) · OUTER_GIT_HEAD = this ledger commit (hash reported to Commander post-commit).
 Disposition B adopted; maintenance classification (existing-surface defect removal — no new runtime surface / API route / persistence / route reroute / canon change).
