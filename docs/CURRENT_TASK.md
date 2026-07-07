@@ -1,3 +1,11 @@
+**2026-07-07 — P2 #1 + #2 SUPPRESSIONS DEPLOYED (production/staging worker live).**
+INNER_GIT_HEAD = 7914412c (deploy source, inner-main) · WORKER_VERSION_UUID = 49e080fe-725e-49ab-b63a-7abd9b6fe831 (CF Version ID, supersedes ca12977d) · worker bty-arena-staging · OUTER_GIT_HEAD = this ledger commit (hash reported post-commit).
+Deploy: `rm -rf .open-next && npm run deploy` (exit 0); both canonical my-page chunks re-uploaded (my-page/page + my-page/progress/page).
+3-way freshness PASS: (1) CF UUID flip 49e080fe ≠ ca12977d; (2) git HEAD 7914412c; (3) scoped live literal check — suppressed literals ABSENT (Core XP / Weekly XP / 코어 XP / 주간 XP / Peak / Stage tier / pattern_family = 0 in both chunks) and residue literals PRESENT (Last 7 days / Leadership stage / Recent reflections; ActionContractHub "Action Required" intact).
+Deploy HOLD lifted — original rationale (OpenLoopCard CTA → legacy My Page raw-exposure + Progress-tab re-exposure) resolved by P2 #1 + P2 #2.
+Pending: Commander real-device sensory pass on /my-page + /my-page/progress (deterministic chunk evidence already closes the code-level verification; interactive authenticated visual A/B not run in-env).
+Methodology clause (STANDARD ADOPTION): chunk literal verification MUST use URL-encoded [locale] paths (%5B/%5D) — raw brackets 307 to false-empty 0-byte bodies. Require HTTP 200 + a residue-literal positive control alongside suppressed-literal absence (else the grep proves nothing). BTY_DEPLOY_VERSION observed stale (2026-04-27) — reconfirms the never-use-as-freshness rule (use CF Version ID only).
+
 **2026-07-07 — P2 #2 CLOSED: raw /my-page/progress XP / stage-tier / pattern diagnostics suppressed (D+ variant).**
 INNER_GIT_HEAD = 7914412ce5d8effae9b5e8c68f1cb157e724ce3f (inner-main, pushed, 9fee4639..7914412c) · OUTER_GIT_HEAD = this ledger commit (hash reported to Commander post-commit).
 D+ variant; maintenance classification (no new surface / route / API / persistence / canon / navigation change).
