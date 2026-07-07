@@ -1,16 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
-import OrbLiving from "@/components/orb/OrbLiving";
 import type { TodayIntelligence, TodayUserState } from "@/domain/daily/todayIntelligence";
-
-/**
- * Canonical hold-to-enter duration — mirrors the production /start Threshold Door
- * (start/page.client.tsx: HOLD_MS = 3000, "누르고 있으면 문이 열린다"). The hold is part
- * of the Orb's Touch Language, not a free parameter; reused here via OrbLiving.onCommit.
- */
-const HOLD_MS = 3000;
 
 /**
  * New BTY Daily App Shell — v1 (Phase 3 Today wire + A/A+ ritual beat).
@@ -387,53 +379,13 @@ export function CompanionBar({ label }: { label: string }) {
   );
 }
 
-/**
- * OrbThreshold — the living doorway BEFORE Today. An Orb-only surface (no cards, no
- * companion dock, no tabs): the first moment is "entering the day", not "choosing a
- * menu". Holding the canonical Orb fires its onCommit (the canonical hold-to-enter; the
- * contact→ramp→MEDIUM-commit haptic Touch Language and warm-golden entry light are
- * OrbLiving's own) → the parent transitions into Today, mounted under the receding light.
- */
-function OrbThreshold({
-  locale,
-  entering,
-  onEnter,
-}: {
-  locale: Locale;
-  entering: boolean;
-  onEnter: () => void;
-}) {
-  // Microcopy kept a whisper — the Orb is the hero, this only affords the hold-to-enter.
-  const hint = locale === "ko" ? "누르고 있으면 열립니다." : "Hold to begin.";
-  return (
-    <div
-      className={`flex h-[100dvh] flex-col items-center justify-center bg-[#0B1F3A] text-white antialiased transition-opacity duration-700 ${
-        entering ? "opacity-0" : "opacity-100"
-      }`}
-      aria-label="BTY Daily — enter the day"
-    >
-      <div style={{ height: "env(safe-area-inset-top)" }} aria-hidden />
-      <div className="flex flex-1 flex-col items-center justify-center gap-10">
-        {/* Canonical hold-to-enter: OrbLiving.onCommit IS the door trigger (no separate
-            onClick/tap wrapper). holdMs mirrors /start; the contact + progressive + MEDIUM
-            commit haptics and the golden entry light are OrbLiving's own Touch Language. */}
-        <OrbLiving size={220} holdMs={HOLD_MS} onCommit={onEnter} />
-        <p className="text-[11px] font-medium tracking-wide text-white/35">{hint}</p>
-      </div>
-      <div style={{ height: "env(safe-area-inset-bottom)" }} aria-hidden />
-    </div>
-  );
-}
-
 export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   const [tab, setTab] = useState<AppTabKey>("today");
-  const [todayEntered, setTodayEntered] = useState(false);
-  const [entering, setEntering] = useState(false);
   const t = COPY[locale];
 
   // Today Intelligence (Phase 3): deterministic bands/narrative, read-only. Plus the user's
-  // open promise (A+), read-only. Both fetched once on mount so Today is ready by the time
-  // the Orb threshold opens. Fail-soft — the shell always renders (FALLBACK_INTEL / null promise).
+  // open promise (A+), read-only. Both fetched once on mount so Today is ready immediately.
+  // Fail-soft — the shell always renders (FALLBACK_INTEL / null promise).
   const [intel, setIntel] = useState<TodayIntelligence>(FALLBACK_INTEL);
   const [intelLoading, setIntelLoading] = useState(true);
   const [promiseText, setPromiseText] = useState<string | null>(null);
@@ -457,31 +409,15 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // Native cold-reopen white-screen P0 is CLOSED; the temporary [BTYAppBoot] boot
   // diagnostics (mount marker + global error/rejection console capture) were removed.
   // Genuine fatal-render logging still lives in app/global-error.tsx.
-
-  const enterToday = useCallback(() => {
-    if (entering) return;
-    setEntering(true); // cross-fade the threshold out (reduced-motion path: no gold)
-    const reduce =
-      typeof window !== "undefined" &&
-      !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    // Normal motion: OrbLiving's golden entry light is at peak on commit and recedes over
-    // Today (orbGoldenOverlay, /app arrival) — so mount Today quickly UNDER the light
-    // ("from inside the light"). Reduced-motion has no gold → near-instant. Local state
-    // only — no persistence, so a reload shows the threshold again (acceptable for v1).
-    window.setTimeout(() => setTodayEntered(true), reduce ? 120 : 200);
-  }, [entering]);
-
-  // Threshold door: the Orb is the doorway INTO the day. Until entry the app is
-  // Orb-only (no cards/companion/tabs). Session-local (STEP 5): switching tabs and
-  // returning keeps Today entered; only a reload re-shows the threshold.
-  if (!todayEntered) {
-    return <OrbThreshold locale={locale} entering={entering} onEnter={enterToday} />;
-  }
+  //
+  // No shell-level threshold: /start is the canonical (and only) Threshold Door (B2). After
+  // the /start Orb hold routes to /{locale}/app, Today renders IMMEDIATELY — the earlier
+  // direct-/en/app-era OrbThreshold gate was removed to fix the B2 double-door defect.
 
   return (
     <div className="btyFadeIn flex h-[100dvh] flex-col bg-[#0B1F3A] text-white antialiased">
-      {/* Entry fade only — the canonical Orb (OrbLiving) owns its own canvas animation, and
-          the companion dock is now status-only (no pulse). prefers-reduced-motion stills it. */}
+      {/* Entry fade only (mount). The companion dock is status-only (no pulse); the sole Orb
+          now lives at /start. prefers-reduced-motion stills the fade. */}
       <style>{`
         @keyframes btyEnter{from{opacity:0}to{opacity:1}}
         .btyFadeIn{animation:btyEnter .7s ease both}

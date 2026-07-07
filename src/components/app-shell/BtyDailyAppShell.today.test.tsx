@@ -10,7 +10,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import {
+import BtyDailyAppShell, {
   COPY,
   CompanionBar,
   FALLBACK_INTEL,
@@ -196,6 +196,48 @@ describe("app-shell Today ritual beat (A / A+)", () => {
     expect(resolveActiveFocus(claim)).toBe("Self");
     expect(resolveActiveFocus({ ...claim, confidence: "none" })).toBeNull();
     expect(resolveActiveFocus({ ...claim, relationshipFocus: "ContinuePending" })).toBeNull();
+  });
+});
+
+describe("app-shell renders Today directly (no shell threshold / no double-door)", () => {
+  function stubShellFetch(promise: string | null = null) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const u = String(url);
+        if (u.includes("today-intelligence")) {
+          return new Response(JSON.stringify(FALLBACK_INTEL), { status: 200 });
+        }
+        if (u.includes("my-page/state")) {
+          return new Response(JSON.stringify({ open_action_contract: promise ? { action_text: promise } : null }), {
+            status: 200,
+          });
+        }
+        return new Response("{}", { status: 200 });
+      }),
+    );
+  }
+
+  it("shows Today (no 'Hold to begin' Orb threshold) on mount, with the bottom tabs", async () => {
+    stubShellFetch();
+    render(<BtyDailyAppShell locale="en" />);
+    // Today surface is present immediately — no second threshold gate.
+    await screen.findByText("Good morning.");
+    expect(screen.queryByText("Hold to begin.")).toBeNull();
+    expect(screen.queryByText("누르고 있으면 열립니다.")).toBeNull();
+    // Native app shell intact: bottom tab bar renders.
+    expect(screen.getByText("Foundry")).toBeTruthy();
+    expect(screen.getByText("Me")).toBeTruthy();
+  });
+
+  it("relationship selection still reveals confirmation + CTA inside the full shell", async () => {
+    stubShellFetch("Send the summary");
+    render(<BtyDailyAppShell locale="en" />);
+    await screen.findByText("Good morning.");
+    // Select the Self relationship card (the ritual selection, not navigation).
+    fireEvent.click(screen.getByText("Self"));
+    expect(document.querySelector("[data-today-confirm]")).not.toBeNull();
+    expect(screen.getByText("Carry this into today")).toBeTruthy();
   });
 });
 
