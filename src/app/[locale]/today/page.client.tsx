@@ -15,7 +15,6 @@ import React from "react";
 import { useParams } from "next/navigation";
 import ScreenShell from "@/components/bty/layout/ScreenShell";
 import { CardSkeleton } from "@/components/bty-arena";
-import { arenaFetch } from "@/lib/http/arenaFetch";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { CriticalGateCheckHost } from "@/components/bty/today/CriticalGateCheckHost";
 import type { DailyGateSnapshot } from "@/lib/bty/daily/dailyGateCheck";
@@ -41,6 +40,24 @@ const FALLBACK_PULSE: RelationshipPulse = {
   hasAnyEvidence: false,
 };
 
+/**
+ * Read a same-origin /api/me/* GET as JSON, fail-soft to `fallback`. Uses raw fetch
+ * (like the /api/me/day/open POST below) — NOT arenaFetch, which is path-guarded to
+ * /api/arena/* and would throw on /api/me/* before any request. On any failure it emits
+ * a developer-visible console.warn (browser + Capacitor→Xcode) so a silent transport
+ * failure can never masquerade as a legitimate zero-signal quiet day. No user-facing effect.
+ */
+async function fetchMe<T>(path: string, fallback: T): Promise<T> {
+  try {
+    const res = await fetch(path, { credentials: "include" });
+    if (!res.ok) throw new Error(`HTTP_${res.status}`);
+    return (await res.json()) as T;
+  } catch (e) {
+    console.warn(`[today] ${path} fell back:`, e instanceof Error ? e.message : e);
+    return fallback;
+  }
+}
+
 export default function TodayHomeClient() {
   const params = useParams();
   const locale = (typeof params?.locale === "string" ? params.locale : "en") as string;
@@ -63,9 +80,9 @@ export default function TodayHomeClient() {
   const load = React.useCallback(async () => {
     setLoading(true);
     const [g, p, i] = await Promise.all([
-      arenaFetch<DailyGateSnapshot>("/api/me/daily").catch(() => FALLBACK_GATE),
-      arenaFetch<RelationshipPulse>("/api/me/pulse").catch(() => FALLBACK_PULSE),
-      arenaFetch<TodayIntelligence>("/api/me/today-intelligence").catch(() => FALLBACK_INTEL),
+      fetchMe<DailyGateSnapshot>("/api/me/daily", FALLBACK_GATE),
+      fetchMe<RelationshipPulse>("/api/me/pulse", FALLBACK_PULSE),
+      fetchMe<TodayIntelligence>("/api/me/today-intelligence", FALLBACK_INTEL),
     ]);
     if (!mounted.current) return;
     setGate(g ?? FALLBACK_GATE);
