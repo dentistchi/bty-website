@@ -656,7 +656,7 @@ describe("MyPageLeadershipConsole", () => {
     expect(screen.queryByText("Verification failed. Please try again.")).toBeNull();
   });
 
-  it("renders PatternSignaturePanel with a real signature row when pattern_signatures is populated", async () => {
+  it("suppresses PatternSignaturePanel internal enum/pattern exposure even when pattern_signatures is populated (P2 #1)", async () => {
     const payload = {
       ...mockStatePayload(),
       pattern_signatures: [
@@ -679,10 +679,11 @@ describe("MyPageLeadershipConsole", () => {
       render(<MyPageLeadershipConsole locale="en" />);
     });
 
-    await waitFor(() => {
-      expect(screen.getByText("blame_shift")).toBeTruthy();
-    });
-    expect(screen.getByRole("list")).toBeTruthy();
-    expect(screen.getByText(/Shift: changed/i)).toBeTruthy();
+    // Confirm the populated payload actually loaded into the console...
+    await screen.findByTestId("my-page-code-name");
+    // ...yet none of the raw internal pattern identifiers reach the DOM.
+    expect(screen.queryByText("blame_shift")).toBeNull();
+    expect(screen.queryByText("Blame vs. Structural Honesty")).toBeNull();
+    expect(screen.queryByText(/Shift: changed/i)).toBeNull();
   });
 });

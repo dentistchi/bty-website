@@ -127,8 +127,6 @@ export function MyPageLeadershipConsole({
   const [serverPack, setServerPack] = useState<MyPageStateResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
-  const [coreXp, setCoreXp] = useState<number | null>(null);
-  const [weeklyXp, setWeeklyXp] = useState<number | null>(null);
   const [qrPanelOpen, setQrPanelOpen] = useState(false);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   // Which contract the open QR panel is for — so a residual completion prop from a
@@ -185,15 +183,8 @@ export function MyPageLeadershipConsole({
       setLoadError(false);
       setIsLoading(true);
     }
-    void fetch("/api/arena/core-xp", { method: "GET", cache: "no-store" })
-      .then((r) => (r.ok ? (r.json() as Promise<{ coreXpTotal?: number; seasonalXpTotal?: number }>) : null))
-      .then((d) => {
-        if (d != null) {
-          setCoreXp(d.coreXpTotal ?? 0);
-          setWeeklyXp(d.seasonalXpTotal ?? 0);
-        }
-      })
-      .catch(() => { /* silent */ });
+    // P2 #1: raw XP card exposure suppressed — the `/api/arena/core-xp` client fetch that
+    // fed the Core/Weekly XP numeric cards is removed. The API route is unchanged.
     try {
       const locParam = locale === "ko" ? "ko" : "en";
       const url = `/api/bty/my-page/state?locale=${encodeURIComponent(locParam)}`;
@@ -760,33 +751,9 @@ export function MyPageLeadershipConsole({
         </div>
       )}
 
-      {/* XP Summary */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-[#E8E3D8] bg-white px-4 py-4 shadow-sm text-center">
-          <p className="text-[11px] font-medium uppercase tracking-widest text-[#667085] mb-1">
-            {loc === "ko" ? "코어 XP" : "Core XP"}
-          </p>
-          {coreXp == null || !mounted ? (
-            <div className="mx-auto h-8 w-16 animate-pulse rounded-lg bg-[#E8E3D8]" />
-          ) : (
-            <p className="text-3xl font-bold tabular-nums text-[#1E2A38]">
-              {coreXp}
-            </p>
-          )}
-        </div>
-        <div className="rounded-2xl border border-[#E8E3D8] bg-white px-4 py-4 shadow-sm text-center">
-          <p className="text-[11px] font-medium uppercase tracking-widest text-[#667085] mb-1">
-            {loc === "ko" ? "주간 XP" : "Weekly XP"}
-          </p>
-          {weeklyXp == null || !mounted ? (
-            <div className="mx-auto h-8 w-16 animate-pulse rounded-lg bg-[#E8E3D8]" />
-          ) : (
-            <p className="text-3xl font-bold tabular-nums text-[#1E2A38]">
-              {weeklyXp}
-            </p>
-          )}
-        </div>
-      </div>
+      {/* P2 #1: raw XP summary cards (Core XP / Weekly XP) removed — internal XP totals
+          were exposed verbatim to the user. Suppression is unconditional (all My Page
+          entry paths). The ACTION_REQUIRED resolution path below is unaffected. */}
 
       {/* Action Contract Hub */}
       {isLoading ? (
