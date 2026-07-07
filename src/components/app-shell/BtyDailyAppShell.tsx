@@ -45,9 +45,13 @@ type Copy = {
   today: {
     title: string;
     sub: string;
-    cards: { t: string; d: string; tab: AppTabKey; focus: TodayFocusKey }[];
-    /** In-shell settle CTA revealed after a relationship is selected. */
+    cards: { t: string; d: string; tab: AppTabKey; focus: TodayFocusKey; select: string }[];
+    /** Confirmation-card sublabels — reuse the locked-room eyebrow tone (no new style). */
+    pathLabel: string;
+    promiseLabel: string;
+    /** In-shell settle CTA: pre-press (cta, strong) → settled (ctaDone, sunk). */
     cta: string;
+    ctaDone: string;
   };
   center: RoomCopy;
   arena: RoomCopy;
@@ -65,11 +69,14 @@ export const COPY: Record<Locale, Copy> = {
       title: "Good morning.",
       sub: "Choose the relationship you will live today.",
       cards: [
-        { t: "Self", d: "Return to yourself.", tab: "center", focus: "Self" },
-        { t: "Others", d: "Enter the Arena with care.", tab: "arena", focus: "Others" },
-        { t: "World", d: "Build what you are here to steward.", tab: "foundry", focus: "World" },
+        { t: "Self", d: "Return to yourself.", tab: "center", focus: "Self", select: "Self — Return to yourself with honesty." },
+        { t: "Others", d: "Enter the Arena with care.", tab: "arena", focus: "Others", select: "Others — Carry care into one relationship." },
+        { t: "World", d: "Build what you are here to steward.", tab: "foundry", focus: "World", select: "World — Build with stewardship today." },
       ],
+      pathLabel: "TODAY'S PATH",
+      promiseLabel: "PROMISE TO CARRY",
       cta: "Carry this into today",
+      ctaDone: "Carried into today",
     },
     // Locked rooms (Commander-authored). Tone: prepared, not broken. No "Soon".
     center: { tag: "Relationship with Self", body: "A quiet space for recovery is being prepared." },
@@ -84,14 +91,17 @@ export const COPY: Record<Locale, Copy> = {
       title: "좋은 아침입니다.",
       sub: "오늘 어떤 관계를 살아내시겠습니까?",
       cards: [
-        { t: "나와의 관계", d: "나에게 돌아옵니다.", tab: "center", focus: "Self" },
-        { t: "타인과의 관계", d: "조심스럽게 Arena로 들어갑니다.", tab: "arena", focus: "Others" },
-        { t: "세상과의 관계", d: "오늘 맡겨진 것을 빚어갑니다.", tab: "foundry", focus: "World" },
+        { t: "나와의 관계", d: "나에게 돌아옵니다.", tab: "center", focus: "Self", select: "나와의 관계 — 정직하게 자신에게 돌아갑니다." },
+        { t: "이웃과의 관계", d: "조심스럽게 Arena로 들어갑니다.", tab: "arena", focus: "Others", select: "이웃과의 관계 — 한 관계 안으로 조심스럽게 들어갑니다." },
+        { t: "세상과의 관계", d: "오늘 맡겨진 것을 빚어갑니다.", tab: "foundry", focus: "World", select: "세상과의 관계 — 맡겨진 것을 오늘도 빚어갑니다." },
       ],
+      pathLabel: "오늘의 길",
+      promiseLabel: "오늘로 가져갈 약속",
       cta: "오늘로 가져오기",
+      ctaDone: "오늘로 가져왔습니다",
     },
     center: { tag: "나와의 관계", body: "회복을 위한 고요한 공간을 준비하고 있습니다." },
-    arena: { tag: "타인과의 관계", body: "당신의 결정 훈련 공간을 준비하고 있습니다." },
+    arena: { tag: "이웃과의 관계", body: "당신의 결정 훈련 공간을 준비하고 있습니다." },
     foundry: { tag: "세상과의 관계", body: "당신의 창작과 만듦의 공간을 준비하고 있습니다." },
     me: { tag: "당신의 리더십 정체성", body: "당신이 지금 걷고 있는 길이 이곳에 모입니다." },
     companion: "Dr. Chi가 오늘 함께합니다.",
@@ -258,9 +268,6 @@ export function TodaySurface({
   // Gold ring: the user's pick once made, else the derived suggestion.
   const highlight = selected ?? activeFocus;
   const selectedCard = selected ? copy.cards.find((c) => c.focus === selected) : null;
-  // The promise brought into today (A+): the user's own open action_text, else the chosen
-  // relationship's own line (existing approved copy). NEVER an invented or reinterpreted promise.
-  const carryLine = promiseText ?? selectedCard?.d ?? "";
 
   return (
     <>
@@ -313,24 +320,47 @@ export function TodaySurface({
           data-today-confirm
           className="mt-6 rounded-2xl border border-[#C9A66B]/25 bg-[#C9A66B]/[0.05] p-5"
         >
-          {carryLine ? (
-            <p data-carry-line className="mb-4 text-[0.95rem] leading-6 text-white/80">
-              {carryLine}
-            </p>
+          {/* Layer 1 — path sublabel (reuses the locked-room eyebrow tone). */}
+          <span
+            data-path-label
+            className="block text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90"
+          >
+            {copy.pathLabel}
+          </span>
+          {/* Layer 2 — selection confirmation. Doubles as the fallback line when no promise. */}
+          <p data-select-line className="mt-2 text-[0.95rem] leading-6 text-white/85">
+            {selectedCard?.select}
+          </p>
+          {/* Layers 3 + 4 — the promise to carry, ONLY when a real open promise exists.
+              action_text is rendered verbatim (unchanged); no fabrication on fallback. */}
+          {promiseText ? (
+            <>
+              <span
+                data-promise-label
+                className="mt-4 block text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90"
+              >
+                {copy.promiseLabel}
+              </span>
+              <p data-carry-line className="mt-2 text-[0.95rem] leading-6 text-white/70">
+                {promiseText}
+              </p>
+            </>
           ) : null}
+          {/* CTA — pre-press is the strong filled-gold action; the settled state SINKS to
+              an outline + ✓ (reverses the earlier direction). */}
           <button
             type="button"
             onClick={() => setConfirmed(true)}
             aria-pressed={confirmed}
             data-today-cta
-            className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40 ${
+            className={`mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40 ${
               confirmed
-                ? "bg-[#C9A66B] text-[#0B1F3A]"
-                : "bg-[#C9A66B]/15 text-[#C9A66B] hover:bg-[#C9A66B]/25 active:scale-[0.985]"
+                ? "border border-[#C9A66B]/40 bg-transparent text-[#C9A66B]/80"
+                : "bg-[#C9A66B] text-[#0B1F3A] hover:bg-[#C9A66B]/90 active:scale-[0.985]"
             }`}
           >
             {confirmed ? <span aria-hidden>✓</span> : null}
-            {copy.cta}
+            {confirmed ? copy.ctaDone : copy.cta}
           </button>
         </div>
       ) : null}

@@ -130,27 +130,52 @@ describe("app-shell Today ritual beat (A / A+)", () => {
     expect(document.querySelector("[data-today-confirm]")).not.toBeNull();
   });
 
-  it("CTA settles the selection in-shell (aria-pressed) without routing", () => {
-    renderToday();
-    fireEvent.click(screen.getByText("Others"));
-    const cta = document.querySelector("[data-today-cta]") as HTMLButtonElement;
-    expect(cta.getAttribute("aria-pressed")).toBe("false");
-    fireEvent.click(cta);
-    expect(cta.getAttribute("aria-pressed")).toBe("true");
-  });
-
-  it("promise surface shows the user's action_text when present", () => {
+  it("renders the 3-layer hierarchy in order: path label → selection → promise label → promise → CTA", () => {
     const { container } = renderToday({ promiseText: "Call my mentor before noon" });
-    fireEvent.click(screen.getByText("Others"));
-    const confirm = container.querySelector("[data-today-confirm]");
-    expect(confirm?.textContent).toContain("Call my mentor before noon");
+    fireEvent.click(screen.getByText("Self"));
+    const text = container.querySelector("[data-today-confirm]")?.textContent ?? "";
+    const iPath = text.indexOf("TODAY'S PATH");
+    const iSelect = text.indexOf("Self — Return to yourself with honesty.");
+    const iPromiseLabel = text.indexOf("PROMISE TO CARRY");
+    const iPromise = text.indexOf("Call my mentor before noon");
+    const iCta = text.indexOf("Carry this into today");
+    expect(iPath).toBeGreaterThanOrEqual(0);
+    expect(iPath).toBeLessThan(iSelect);
+    expect(iSelect).toBeLessThan(iPromiseLabel);
+    expect(iPromiseLabel).toBeLessThan(iPromise);
+    expect(iPromise).toBeLessThan(iCta);
   });
 
-  it("promise surface falls back to the chosen relationship line when there is no promise", () => {
+  it("promise layers appear only with a promise; fallback keeps the selection line alone", () => {
+    // With a promise → promise label + action_text present.
+    renderToday({ promiseText: "Ship the draft" });
+    fireEvent.click(screen.getByText("Others"));
+    expect(document.querySelector("[data-promise-label]")).not.toBeNull();
+    expect(document.querySelector("[data-carry-line]")?.textContent).toBe("Ship the draft");
+    cleanup();
+
+    // No promise → promise label + carry line absent; the selection line stands as fallback.
     const { container } = renderToday({ promiseText: null });
     fireEvent.click(screen.getByText("Self"));
-    const carry = container.querySelector("[data-carry-line]");
-    expect(carry?.textContent).toBe("Return to yourself."); // Self's existing approved line
+    expect(container.querySelector("[data-promise-label]")).toBeNull();
+    expect(container.querySelector("[data-carry-line]")).toBeNull();
+    expect(container.querySelector("[data-select-line]")?.textContent).toBe(
+      "Self — Return to yourself with honesty.",
+    );
+  });
+
+  it("CTA reverses on press: strong pre-copy → settled post-copy + ✓, aria-pressed, no routing", () => {
+    renderToday();
+    fireEvent.click(screen.getByText("World"));
+    const cta = document.querySelector("[data-today-cta]") as HTMLButtonElement;
+    expect(cta.getAttribute("aria-pressed")).toBe("false");
+    expect(cta.textContent).toContain("Carry this into today");
+    expect(cta.textContent).not.toContain("✓");
+
+    fireEvent.click(cta);
+    expect(cta.getAttribute("aria-pressed")).toBe("true");
+    expect(cta.textContent).toContain("Carried into today");
+    expect(cta.textContent).toContain("✓");
   });
 
   it("never leaks internal/raw tokens into the confirmation output (with a promise present)", () => {
