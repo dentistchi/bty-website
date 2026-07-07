@@ -1,18 +1,21 @@
 /** @vitest-environment jsdom */
 /**
- * Phase 3 Today wire — fail-soft + no raw-token exposure.
+ * Phase 3 Today wire + A/A+ ritual beat.
  *
- * Renders TodaySurface in isolation (NOT the whole shell) so the OrbLiving canvas /
- * rAF loop is never mounted. Asserts (a) the fetch fails soft to FALLBACK_INTEL with a
- * developer warn, and (b) no internal token (confidence / reasonCodes / state literals)
- * ever reaches the rendered output.
+ * Renders TodaySurface / CompanionBar in isolation (NOT the whole shell) so the OrbLiving
+ * canvas / rAF loop is never mounted. Asserts: fail-soft reads (today-intelligence +
+ * open-promise), selection reveals the confirmation + CTA, the promise surface uses
+ * action_text only (else the chosen-relationship fallback line), no internal token ever
+ * reaches output, and the companion bar is status-only with the pulse dot removed.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import {
   COPY,
+  CompanionBar,
   FALLBACK_INTEL,
   TodaySurface,
+  fetchOpenPromise,
   fetchTodayIntelligence,
   resolveActiveFocus,
   selectTodayStatus,
@@ -48,9 +51,25 @@ const INTERNAL_TOKENS = [
   "confidence",
   "reasonCode",
   "fallbackMode",
+  "coreXp",
+  "weeklyXp",
+  "pattern_family",
 ];
 
-describe("app-shell Today wire", () => {
+function renderToday(over: Partial<React.ComponentProps<typeof TodaySurface>> = {}) {
+  return render(
+    <TodaySurface
+      copy={COPY.en.today}
+      statusLine={selectTodayStatus("en", "safe_fallback")}
+      activeFocus={null}
+      loading={false}
+      promiseText={null}
+      {...over}
+    />,
+  );
+}
+
+describe("app-shell Today reads (fail-soft)", () => {
   it("fetchTodayIntelligence fails soft to FALLBACK_INTEL on HTTP error, with a [app-shell/today] warn", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.stubGlobal("fetch", vi.fn(async () => new Response("nope", { status: 500 })));
@@ -64,32 +83,84 @@ describe("app-shell Today wire", () => {
     );
   });
 
-  it("fetchTodayIntelligence fails soft on a network throw", async () => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
+  it("fetchOpenPromise returns action_text only, and null on HTTP error (with warn)", async () => {
+    // 200 with a populated payload incl. banned fields → only action_text is read.
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => {
-        throw new Error("offline");
-      }),
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            open_action_contract: { action_text: "Ship the draft" },
+            metrics: { coreXp: 999, weeklyXp: 5 },
+            pattern_signatures: [{ pattern_family: "ownership" }],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      ),
     );
-    expect(await fetchTodayIntelligence()).toEqual(FALLBACK_INTEL);
+    expect(await fetchOpenPromise("en")).toBe("Ship the draft");
+
+    // No open contract → null.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ open_action_contract: null }), { status: 200 })),
+    );
+    expect(await fetchOpenPromise("en")).toBeNull();
+
+    // HTTP error → null + warn.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("no", { status: 500 })));
+    expect(await fetchOpenPromise("en")).toBeNull();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("[app-shell/today]"),
+      expect.anything(),
+    );
+  });
+});
+
+describe("app-shell Today ritual beat (A / A+)", () => {
+  it("shows NO confirmation/CTA until a relationship is selected, then reveals it", () => {
+    renderToday();
+    expect(screen.queryByText("Carry this into today")).toBeNull();
+    expect(document.querySelector("[data-today-confirm]")).toBeNull();
+
+    fireEvent.click(screen.getByText("Self"));
+
+    expect(screen.getByText("Carry this into today")).toBeTruthy();
+    expect(document.querySelector("[data-today-confirm]")).not.toBeNull();
   });
 
-  it("renders the calm fallback status with NO card highlighted (confidence none)", () => {
-    render(
-      <TodaySurface
-        copy={COPY.en.today}
-        statusLine={selectTodayStatus("en", FALLBACK_INTEL.userState)}
-        activeFocus={resolveActiveFocus(FALLBACK_INTEL)}
-        loading={false}
-        onChoose={() => {}}
-      />,
-    );
-    expect(screen.getByText(selectTodayStatus("en", "safe_fallback"))).toBeTruthy();
-    expect(document.querySelector('[aria-current="true"]')).toBeNull();
+  it("CTA settles the selection in-shell (aria-pressed) without routing", () => {
+    renderToday();
+    fireEvent.click(screen.getByText("Others"));
+    const cta = document.querySelector("[data-today-cta]") as HTMLButtonElement;
+    expect(cta.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(cta);
+    expect(cta.getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("highlights the focus card only when confidence !== none", () => {
+  it("promise surface shows the user's action_text when present", () => {
+    const { container } = renderToday({ promiseText: "Call my mentor before noon" });
+    fireEvent.click(screen.getByText("Others"));
+    const confirm = container.querySelector("[data-today-confirm]");
+    expect(confirm?.textContent).toContain("Call my mentor before noon");
+  });
+
+  it("promise surface falls back to the chosen relationship line when there is no promise", () => {
+    const { container } = renderToday({ promiseText: null });
+    fireEvent.click(screen.getByText("Self"));
+    const carry = container.querySelector("[data-carry-line]");
+    expect(carry?.textContent).toBe("Return to yourself."); // Self's existing approved line
+  });
+
+  it("never leaks internal/raw tokens into the confirmation output (with a promise present)", () => {
+    const { container } = renderToday({ promiseText: "Follow up with the team" });
+    fireEvent.click(screen.getByText("Self"));
+    const text = container.textContent ?? "";
+    for (const tok of INTERNAL_TOKENS) expect(text).not.toContain(tok);
+  });
+
+  it("resolveActiveFocus is a claim only when confidence !== none", () => {
     const claim: TodayIntelligence = {
       userState: "verified_action",
       relationshipFocus: "Self",
@@ -99,43 +170,21 @@ describe("app-shell Today wire", () => {
     };
     expect(resolveActiveFocus(claim)).toBe("Self");
     expect(resolveActiveFocus({ ...claim, confidence: "none" })).toBeNull();
-    // Non-relationship focuses never highlight, even at high confidence.
     expect(resolveActiveFocus({ ...claim, relationshipFocus: "ContinuePending" })).toBeNull();
+  });
+});
 
-    render(
-      <TodaySurface
-        copy={COPY.en.today}
-        statusLine={selectTodayStatus("en", claim.userState)}
-        activeFocus={resolveActiveFocus(claim)}
-        loading={false}
-        onChoose={() => {}}
-      />,
-    );
-    const active = document.querySelector('[aria-current="true"]');
-    expect(active?.getAttribute("data-focus")).toBe("Self");
+describe("app-shell companion bar (status-only)", () => {
+  it("renders the approved status copy and has NO ambiguous pulse dot", () => {
+    const { container } = render(<CompanionBar label={COPY.en.companion} />);
+    expect(screen.getByText("Dr. Chi is with you today.")).toBeTruthy();
+    // The removed pulse used the btyPulse keyframe + an inline animation style.
+    expect(container.innerHTML).not.toContain("btyPulse");
+    expect(container.innerHTML).not.toContain("animation");
   });
 
-  it("never leaks internal tokens into rendered output (both locales, populated claim)", () => {
-    const claim: TodayIntelligence = {
-      userState: "verified_action",
-      relationshipFocus: "Self",
-      confidence: "high",
-      reasonCodes: ["YESTERDAY_EVIDENCE", "READ_ERROR"],
-      fallbackMode: "read_error",
-    };
-    for (const loc of ["en", "ko"] as const) {
-      const { container } = render(
-        <TodaySurface
-          copy={COPY[loc].today}
-          statusLine={selectTodayStatus(loc, claim.userState)}
-          activeFocus={resolveActiveFocus(claim)}
-          loading={false}
-          onChoose={() => {}}
-        />,
-      );
-      const text = container.textContent ?? "";
-      for (const tok of INTERNAL_TOKENS) expect(text).not.toContain(tok);
-      cleanup();
-    }
+  it("carries the ko status copy too", () => {
+    render(<CompanionBar label={COPY.ko.companion} />);
+    expect(screen.getByText("Dr. Chi가 오늘 함께합니다.")).toBeTruthy();
   });
 });

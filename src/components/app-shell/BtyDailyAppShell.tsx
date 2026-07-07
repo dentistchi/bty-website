@@ -13,7 +13,7 @@ import type { TodayIntelligence, TodayUserState } from "@/domain/daily/todayInte
 const HOLD_MS = 3000;
 
 /**
- * New BTY Daily App Shell — v1 (Phase 3 Today wire).
+ * New BTY Daily App Shell — v1 (Phase 3 Today wire + A/A+ ritual beat).
  *
  * Mobile-first, full-height, app-native (no desktop top nav, no legacy
  * HubTopNav / ArenaLayoutShell / CenterLayoutShell / ScreenShell). Five tabs
@@ -21,10 +21,12 @@ const HOLD_MS = 3000;
  * iframes. Relationship model: Today (the day's door) · Center=Self · Arena=
  * Others · Foundry=World · Me=identity.
  *
- * Today now consumes REAL deterministic data from GET /api/me/today-intelligence
- * (bands / narrative only — never confidence numerics or reason-code tokens). The
- * other four tabs are locked rooms: prepared, not broken. Center/Arena/Foundry/Me
- * remain content placeholders until their own phases (P4).
+ * Today consumes REAL deterministic data from GET /api/me/today-intelligence
+ * (bands / narrative only — never confidence numerics or reason-code tokens).
+ * Choosing a relationship reveals an in-shell confirmation: the user's own open
+ * promise (action_text from /api/bty/my-page/state, or a calm fallback line) plus a
+ * "Carry this into today" CTA that settles the choice — no navigation, no persistence.
+ * The other four tabs are locked rooms: prepared, not broken (content = P4).
  *
  * Layout is a flex column so the tab bar and companion dock are real children,
  * never floating — content can never be occluded. Safe-area insets are handled
@@ -44,6 +46,8 @@ type Copy = {
     title: string;
     sub: string;
     cards: { t: string; d: string; tab: AppTabKey; focus: TodayFocusKey }[];
+    /** In-shell settle CTA revealed after a relationship is selected. */
+    cta: string;
   };
   center: RoomCopy;
   arena: RoomCopy;
@@ -65,13 +69,14 @@ export const COPY: Record<Locale, Copy> = {
         { t: "Others", d: "Enter the Arena with care.", tab: "arena", focus: "Others" },
         { t: "World", d: "Build what you are here to steward.", tab: "foundry", focus: "World" },
       ],
+      cta: "Carry this into today",
     },
     // Locked rooms (Commander-authored). Tone: prepared, not broken. No "Soon".
     center: { tag: "Relationship with Self", body: "A quiet space for recovery is being prepared." },
     arena: { tag: "Relationship with Others", body: "Your decision training space is being prepared." },
     foundry: { tag: "Relationship with the World", body: "Your craft and creation space is being prepared." },
     me: { tag: "Your leadership identity", body: "Your current path will gather here." },
-    companion: "Dr. Chi — your companion.",
+    companion: "Dr. Chi is with you today.",
   },
   ko: {
     appAria: "BTY Daily 앱",
@@ -83,12 +88,13 @@ export const COPY: Record<Locale, Copy> = {
         { t: "타인과의 관계", d: "조심스럽게 Arena로 들어갑니다.", tab: "arena", focus: "Others" },
         { t: "세상과의 관계", d: "오늘 맡겨진 것을 빚어갑니다.", tab: "foundry", focus: "World" },
       ],
+      cta: "오늘로 가져오기",
     },
     center: { tag: "나와의 관계", body: "회복을 위한 고요한 공간을 준비하고 있습니다." },
     arena: { tag: "타인과의 관계", body: "당신의 결정 훈련 공간을 준비하고 있습니다." },
     foundry: { tag: "세상과의 관계", body: "당신의 창작과 만듦의 공간을 준비하고 있습니다." },
     me: { tag: "당신의 리더십 정체성", body: "당신이 지금 걷고 있는 길이 이곳에 모입니다." },
-    companion: "닥터 치 — 당신의 동반자.",
+    companion: "Dr. Chi가 오늘 함께합니다.",
   },
 };
 
@@ -130,6 +136,15 @@ export const FALLBACK_INTEL: TodayIntelligence = {
 };
 
 /**
+ * Narrow read of GET /api/bty/my-page/state — ONLY the user's open promise text. The
+ * banned fields (metrics.*, signals[], pattern_signatures[], stageName verdict, counts)
+ * are deliberately NOT typed here so they cannot be destructured, read, or rendered.
+ */
+type MyPageStateNarrow = {
+  open_action_contract: { action_text: string | null } | null;
+};
+
+/**
  * Read GET /api/me/today-intelligence as JSON, fail-soft to {@link FALLBACK_INTEL}.
  * Uses RAW fetch (same-origin, cookie credentials) — NOT arenaFetch, which is
  * path-guarded to /api/arena/* and would throw on /api/me/* before any request
@@ -152,9 +167,34 @@ export async function fetchTodayIntelligence(): Promise<TodayIntelligence> {
 }
 
 /**
+ * Read the user's open promise (action_text) from GET /api/bty/my-page/state. RAW fetch —
+ * /api/bty/* is ALSO path-guarded out of arenaFetch (same trap). Narrow-typed: only
+ * open_action_contract.action_text is read; every other field of the payload is ignored.
+ * Returns null (→ fallback ritual line) on any failure, empty text, or no open contract,
+ * with a developer-visible warn. Never invents a promise.
+ */
+export async function fetchOpenPromise(locale: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/api/bty/my-page/state?locale=${encodeURIComponent(locale)}`, {
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error(`HTTP_${res.status}`);
+    const data = (await res.json()) as MyPageStateNarrow;
+    const text = data.open_action_contract?.action_text;
+    return typeof text === "string" && text.trim().length > 0 ? text.trim() : null;
+  } catch (e) {
+    console.warn(
+      "[app-shell/today] /api/bty/my-page/state promise fell back:",
+      e instanceof Error ? e.message : e,
+    );
+    return null;
+  }
+}
+
+/**
  * relationshipFocus is a CLAIM only when confidence !== "none" (domain lock). At "none"
  * — or for the non-relationship focuses (CleanStart / ContinuePending) — no card is
- * highlighted and Today reads neutral.
+ * suggested and Today reads neutral.
  */
 export function resolveActiveFocus(intel: TodayIntelligence): TodayFocusKey | null {
   if (intel.confidence === "none") return null;
@@ -194,17 +234,34 @@ export function TodaySurface({
   statusLine,
   activeFocus,
   loading,
-  onChoose,
+  promiseText,
 }: {
   copy: TodayCopy;
   /** Calm narrative status line derived from userState (already localized). */
   statusLine: string;
-  /** The relationship to spotlight, or null when there is no confident claim. */
+  /** The relationship to SUGGEST (derived), or null when there is no confident claim. */
   activeFocus: TodayFocusKey | null;
   loading: boolean;
-  /** Relationship cards are navigation (not commitment): tapping sets the tab. */
-  onChoose: (tab: AppTabKey) => void;
+  /** The user's own open promise sentence to carry into today, or null (→ fallback line). */
+  promiseText: string | null;
 }) {
+  // Relationship selection is a deliberate ritual choice (A): tapping reveals the
+  // confirmation + CTA in-shell. It does NOT navigate — the bottom tabs own room entry.
+  const [selected, setSelected] = useState<TodayFocusKey | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+
+  const select = (focus: TodayFocusKey) => {
+    setSelected(focus);
+    setConfirmed(false);
+  };
+
+  // Gold ring: the user's pick once made, else the derived suggestion.
+  const highlight = selected ?? activeFocus;
+  const selectedCard = selected ? copy.cards.find((c) => c.focus === selected) : null;
+  // The promise brought into today (A+): the user's own open action_text, else the chosen
+  // relationship's own line (existing approved copy). NEVER an invented or reinterpreted promise.
+  const carryLine = promiseText ?? selectedCard?.d ?? "";
+
   return (
     <>
       <SurfaceHeader title={copy.title} sub={copy.sub} />
@@ -217,16 +274,17 @@ export function TodaySurface({
       )}
       <div className="space-y-3">
         {copy.cards.map((c) => {
-          const isActive = c.focus === activeFocus;
+          const isHighlight = c.focus === highlight;
+          const isSelected = c.focus === selected;
           return (
             <button
               key={c.t}
               type="button"
-              onClick={() => onChoose(c.tab)}
-              aria-current={isActive ? "true" : undefined}
+              onClick={() => select(c.focus)}
+              aria-pressed={isSelected}
               data-focus={c.focus}
               className={`group flex w-full items-center gap-4 rounded-2xl border p-5 text-left transition duration-200 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40 ${
-                isActive
+                isHighlight
                   ? "border-[#C9A66B]/50 bg-[#C9A66B]/[0.07] ring-1 ring-[#C9A66B]/25"
                   : "border-white/10 bg-white/[0.04] hover:border-[#C9A66B]/25 hover:bg-white/[0.07] active:bg-white/[0.09]"
               }`}
@@ -234,7 +292,7 @@ export function TodaySurface({
               <span
                 aria-hidden
                 className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-lg font-semibold text-[#C9A66B] transition ${
-                  isActive
+                  isHighlight
                     ? "bg-[#C9A66B]/30 ring-1 ring-[#C9A66B]/40"
                     : "bg-[#C9A66B]/15 ring-1 ring-[#C9A66B]/20 group-hover:bg-[#C9A66B]/25"
                 }`}
@@ -249,7 +307,53 @@ export function TodaySurface({
           );
         })}
       </div>
+
+      {selected ? (
+        <div
+          data-today-confirm
+          className="mt-6 rounded-2xl border border-[#C9A66B]/25 bg-[#C9A66B]/[0.05] p-5"
+        >
+          {carryLine ? (
+            <p data-carry-line className="mb-4 text-[0.95rem] leading-6 text-white/80">
+              {carryLine}
+            </p>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setConfirmed(true)}
+            aria-pressed={confirmed}
+            data-today-cta
+            className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40 ${
+              confirmed
+                ? "bg-[#C9A66B] text-[#0B1F3A]"
+                : "bg-[#C9A66B]/15 text-[#C9A66B] hover:bg-[#C9A66B]/25 active:scale-[0.985]"
+            }`}
+          >
+            {confirmed ? <span aria-hidden>✓</span> : null}
+            {copy.cta}
+          </button>
+        </div>
+      ) : null}
     </>
+  );
+}
+
+/**
+ * Companion dock (v0) — STATUS-ONLY. A reserved, non-floating flex child that can never
+ * cover cards/buttons/nav. It states presence and nothing more: no chat launch, no AI
+ * call, no route. The earlier ambiguous gold "alive" pulse dot is removed — presence is
+ * carried by the avatar + the plain status line.
+ */
+export function CompanionBar({ label }: { label: string }) {
+  return (
+    <div className="shrink-0 px-5 pb-2">
+      <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-gradient-to-r from-white/[0.06] to-white/[0.03] px-4 py-2.5 backdrop-blur-sm">
+        <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#C9A66B]/20 text-sm font-semibold text-[#C9A66B] ring-1 ring-[#C9A66B]/25">
+          치
+        </span>
+        <span className="truncate text-xs text-white/60">{label}</span>
+      </div>
+    </div>
   );
 }
 
@@ -297,11 +401,12 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   const [entering, setEntering] = useState(false);
   const t = COPY[locale];
 
-  // Today Intelligence (Phase 3): deterministic bands/narrative, read-only. Fetched once
-  // on mount so the brief is ready by the time the Orb threshold opens into Today. Fail-soft
-  // to FALLBACK_INTEL (calm clean start) — the shell always renders.
+  // Today Intelligence (Phase 3): deterministic bands/narrative, read-only. Plus the user's
+  // open promise (A+), read-only. Both fetched once on mount so Today is ready by the time
+  // the Orb threshold opens. Fail-soft — the shell always renders (FALLBACK_INTEL / null promise).
   const [intel, setIntel] = useState<TodayIntelligence>(FALLBACK_INTEL);
   const [intelLoading, setIntelLoading] = useState(true);
+  const [promiseText, setPromiseText] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -310,10 +415,14 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       setIntel(data);
       setIntelLoading(false);
     });
+    void fetchOpenPromise(locale).then((text) => {
+      if (!alive) return;
+      setPromiseText(text);
+    });
     return () => {
       alive = false;
     };
-  }, []);
+  }, [locale]);
 
   // Native cold-reopen white-screen P0 is CLOSED; the temporary [BTYAppBoot] boot
   // diagnostics (mount marker + global error/rejection console capture) were removed.
@@ -341,14 +450,12 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
 
   return (
     <div className="btyFadeIn flex h-[100dvh] flex-col bg-[#0B1F3A] text-white antialiased">
-      {/* Companion-dock keyframe — the canonical Orb (OrbLiving) owns its own canvas
-          animation, so only the companion "alive" pulse lives here. prefers-reduced-motion
-          stills it. (OrbLiving is independently reduced-motion-safe.) */}
+      {/* Entry fade only — the canonical Orb (OrbLiving) owns its own canvas animation, and
+          the companion dock is now status-only (no pulse). prefers-reduced-motion stills it. */}
       <style>{`
-        @keyframes btyPulse{0%,100%{opacity:.35}50%{opacity:.9}}
         @keyframes btyEnter{from{opacity:0}to{opacity:1}}
         .btyFadeIn{animation:btyEnter .7s ease both}
-        @media (prefers-reduced-motion: reduce){.btyOrbAnim,.btyFadeIn{animation:none!important}}
+        @media (prefers-reduced-motion: reduce){.btyFadeIn{animation:none!important}}
       `}</style>
       {/* iOS status-bar safe area — reserved so app content never underlaps the notch/clock. */}
       <div style={{ height: "env(safe-area-inset-top)" }} aria-hidden />
@@ -360,7 +467,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             statusLine={selectTodayStatus(locale, intel.userState)}
             activeFocus={resolveActiveFocus(intel)}
             loading={intelLoading}
-            onChoose={setTab}
+            promiseText={promiseText}
           />
         )}
         {tab === "center" && <LockedRoom tag={t.center.tag} body={t.center.body} />}
@@ -369,22 +476,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
         {tab === "me" && <LockedRoom tag={t.me.tag} body={t.me.body} />}
       </main>
 
-      {/* Companion dock (v0): reserved, non-floating zone. Avatar disabled — it can
-          never cover cards/buttons/nav because it is a flex child, not fixed. A faint
-          gold pulse signals a living companion without adding functionality. */}
-      <div className="shrink-0 px-5 pb-2">
-        <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-gradient-to-r from-white/[0.06] to-white/[0.03] px-4 py-2.5 backdrop-blur-sm">
-          <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#C9A66B]/20 text-sm font-semibold text-[#C9A66B] ring-1 ring-[#C9A66B]/25">
-            치
-          </span>
-          <span className="truncate text-xs text-white/60">{t.companion}</span>
-          <span
-            aria-hidden
-            className="btyOrbAnim ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-[#C9A66B]"
-            style={{ animation: "btyPulse 3.2s ease-in-out infinite" }}
-          />
-        </div>
-      </div>
+      <CompanionBar label={t.companion} />
 
       <AppTabBar active={tab} onSelect={setTab} />
     </div>
