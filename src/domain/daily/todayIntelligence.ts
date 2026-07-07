@@ -1,19 +1,21 @@
 /**
- * BTY Today Intelligence v1 — deterministic derivation ladder (STEP 7B).
+ * BTY Today Intelligence — deterministic derivation ladder (STEP 7L).
  *
- * Pure domain: gate + evidence signals in, a derived Today brief out. No I/O, no LLM,
- * no display strings. Reality decides → rules derive → (AI may phrase later, not here).
+ * Pure domain: gate + same-window evidence candidates in, a derived Today brief out.
+ * No I/O, no LLM, no display strings. Reality decides → rules derive → (AI phrases later).
  *
  * LOCKS (Commander):
- *  - No evidence → no interpretation. No axis match → clean fallback (never guess).
- *  - Pending action → preserve continuity (ContinuePending), never a new invented task.
- *  - Never shame missed activity; never expose raw metrics.
- *  - `relationshipFocus` is a CLAIM only when `confidence !== "none"`. When confidence is
- *    "none", the consumer must render neutral / clean-start copy keyed off `fallbackMode`,
- *    NOT the placeholder focus value.
+ *  - Gate and brief must derive from the SAME evidence window whenever possible. For a
+ *    YESTERDAY_MIRROR day, prefer same-window evidence (verified/pending action, then
+ *    scenario/pattern signal); only then fall back to a stale active/unstable signature.
+ *  - axis PRIMARY, pattern_family FALLBACK (see {@link resolveRelationship}); never guess.
+ *  - Confidence ladder: window verified/pending action = high, window scenario signal =
+ *    medium, stale-signature fallback = low, nothing derivable = none.
+ *  - `relationshipFocus` is a CLAIM only when `confidence !== "none"`. At "none" the consumer
+ *    renders neutral / clean-start copy keyed off `fallbackMode`, not the placeholder focus.
  */
 import type { DailyGate } from "@/domain/daily/dailyGate.types";
-import { axisToRelationship, axisTokenFromRaw } from "@/domain/daily/axisRelationship";
+import { resolveRelationship } from "@/domain/daily/axisRelationship";
 
 export type TodayRelationshipFocus =
   | "Self"
@@ -28,7 +30,7 @@ export type TodayFallbackMode =
   | "none"
   | "no_evidence"
   | "unknown_axis"
-  | "ai_unavailable" // reserved for the future AI phrasing layer; unused in v1 (no LLM contact).
+  | "ai_unavailable" // reserved for the future AI phrasing layer; unused (no LLM contact).
   | "read_error";
 
 export type TodayUserState =
@@ -41,8 +43,13 @@ export type TodayUserState =
   | "scenario_signal"
   | "safe_fallback";
 
-/** Recency of the most-recent active pattern axis, relative to the user-day windows. */
-export type AxisRecency = "yesterday" | "window";
+/** An axis/family signal from some evidence source; axis is primary, family is fallback. */
+export type AxisCandidate = { axis?: string | null; patternFamily?: string | null };
+
+/** Priority tier of a same-window evidence candidate → maps to the confidence ladder. */
+export type WindowEvidenceTier = "verified_action" | "pending_action" | "scenario_signal";
+
+export type WindowEvidenceCandidate = AxisCandidate & { tier: WindowEvidenceTier };
 
 export type TodayIntelligence = {
   userState: TodayUserState;
@@ -56,8 +63,10 @@ export type DeriveTodayInput = {
   gate: DailyGate;
   /** Lifecycle status of the blocking contract, when gate === "ACTION_REQUIRED". */
   blockingContractStatus?: string | null;
-  /** Most-recent active pattern axis + its recency, or null when none/stale. */
-  recentAxis?: { axis: string; recency: AxisRecency } | null;
+  /** Same-window evidence, priority-ordered (verified → pending → scenario signal). */
+  windowCandidates?: WindowEvidenceCandidate[];
+  /** Stale active/unstable pattern signatures, recency-desc — low-confidence fallback only. */
+  staleCandidates?: AxisCandidate[];
   /** Set when the read layer failed — Today must still open cleanly. */
   readError?: boolean;
 };
@@ -93,22 +102,70 @@ function cleanStart(userState: TodayUserState, reasonCode: string): TodayIntelli
 }
 
 /**
- * Yesterday had evidence but no single relationship can be derived (no axis / unknown axis).
- * Evidence exists → NOT a clean start; the consumer renders the neutral mirror.
+ * Yesterday had evidence but no single relationship can be derived (no / unknown axis on
+ * every candidate). Evidence exists → NOT a clean start; the consumer renders the neutral
+ * mirror. `hadCandidates` distinguishes "candidates existed but none derived" (AXIS_UNKNOWN)
+ * from "no axis signal at all" (NO_AXIS_SIGNAL).
  */
-function unknownAxisWithEvidence(extraReason: string): TodayIntelligence {
+function unknownAxisWithEvidence(hadCandidates: boolean): TodayIntelligence {
   return {
     userState: "scenario_signal",
-    relationshipFocus: "CleanStart", // placeholder only — confidence "none" + fallbackMode gate this
+    relationshipFocus: "CleanStart", // placeholder — confidence "none" + fallbackMode gate this
     confidence: "none",
-    reasonCodes: ["YESTERDAY_EVIDENCE", extraReason],
+    reasonCodes: ["YESTERDAY_EVIDENCE", hadCandidates ? "AXIS_UNKNOWN" : "NO_AXIS_SIGNAL"],
     fallbackMode: "unknown_axis",
   };
 }
 
+const TIER_USER_STATE: Record<WindowEvidenceTier, TodayUserState> = {
+  verified_action: "verified_action",
+  pending_action: "pending_action",
+  scenario_signal: "scenario_signal",
+};
+
 /**
- * Derive the Today Intelligence brief. Deterministic, order = the STEP 7B ladder,
- * anchored on the already-computed daily gate (no duplicated gate logic).
+ * YESTERDAY_MIRROR derivation: same-window evidence first (high/medium), then a stale
+ * signature fallback (low), else neutral. Scans candidates in order and returns the FIRST
+ * derivable relationship — skipping unknown/unmapped rows rather than stopping at the first.
+ */
+function deriveFromEvidence(input: DeriveTodayInput): TodayIntelligence {
+  const windowCandidates = input.windowCandidates ?? [];
+  const staleCandidates = input.staleCandidates ?? [];
+
+  // A/B/C — same-window evidence (the reality that fired the gate).
+  for (const c of windowCandidates) {
+    const r = resolveRelationship({ axis: c.axis, patternFamily: c.patternFamily });
+    if (r) {
+      return {
+        userState: TIER_USER_STATE[c.tier],
+        relationshipFocus: r.relationship,
+        confidence: c.tier === "scenario_signal" ? "medium" : "high",
+        reasonCodes: ["YESTERDAY_EVIDENCE", `WINDOW_${c.tier.toUpperCase()}`, `VIA_${r.source.toUpperCase()}`],
+        fallbackMode: "none",
+      };
+    }
+  }
+
+  // D — stale active/unstable signature fallback (low confidence), never guessed.
+  for (const s of staleCandidates) {
+    const r = resolveRelationship({ axis: s.axis, patternFamily: s.patternFamily });
+    if (r) {
+      return {
+        userState: "scenario_signal",
+        relationshipFocus: r.relationship,
+        confidence: "low",
+        reasonCodes: ["YESTERDAY_EVIDENCE", "STALE_SIGNATURE", `VIA_${r.source.toUpperCase()}`],
+        fallbackMode: "none",
+      };
+    }
+  }
+
+  return unknownAxisWithEvidence(windowCandidates.length > 0 || staleCandidates.length > 0);
+}
+
+/**
+ * Derive the Today Intelligence brief. Deterministic, anchored on the already-computed
+ * daily gate (no duplicated gate logic).
  */
 export function deriveTodayIntelligence(input: DeriveTodayInput): TodayIntelligence {
   if (input.readError) return READ_ERROR;
@@ -128,20 +185,9 @@ export function deriveTodayIntelligence(input: DeriveTodayInput): TodayIntellige
     case "REEXPOSURE_DUE":
       return continuePending(["REEXPOSURE_DUE"]);
 
-    // 4 — Evidence yesterday → map the active axis to a relationship, else neutral mirror.
-    case "YESTERDAY_MIRROR": {
-      if (!input.recentAxis) return unknownAxisWithEvidence("NO_AXIS_SIGNAL");
-      const relationship = axisToRelationship(input.recentAxis.axis);
-      if (!relationship) return unknownAxisWithEvidence("AXIS_UNKNOWN");
-      const token = axisTokenFromRaw(input.recentAxis.axis);
-      return {
-        userState: "scenario_signal",
-        relationshipFocus: relationship,
-        confidence: input.recentAxis.recency === "yesterday" ? "high" : "medium",
-        reasonCodes: ["YESTERDAY_EVIDENCE", `AXIS_MAPPED_${token}`],
-        fallbackMode: "none",
-      };
-    }
+    // 4 — Evidence yesterday → derive from the SAME window, else stale fallback, else neutral.
+    case "YESTERDAY_MIRROR":
+      return deriveFromEvidence(input);
 
     // 5 — Quiet lately but active in the 14-day window → clean invitation, no fake continuity.
     case "QUIET_INVITATION":
