@@ -1,3 +1,8 @@
+**2026-07-07 — ORB LAB v2–v5 CONCLUDED (NO PROMOTION).**
+Isolated Orb Lab (/dev/orb-lab, dev-gated) ran 4 candidate rounds on top of the preserved Golden Master (OrbLiving). Verdicts: Candidate A (volumetric body) PASS; all interior/touch candidates (v2 particles → v3 luminous mass → v4 ember hierarchy → v5 heat tuning) FAIL — CSS gradient/blend cannot reproduce canvas additive luminosity; results plateaued at "painted light." Production Orb untouched throughout; lab fully removed; working tree restored clean.
+**Locked learning:** if the Orb is ever revisited, do NOT rebuild light in CSS on a new body. Instead add the validated body shading (limb darkening / specular / bottom density) as a canvas pass INSIDE OrbLiving's existing renderer — "GM에 몸을 입히기, A에 빛을 넣기 아님."
+Proof protocol locks from this arc (standing): deliverable videos = .mp4 (H.264/yuv420p/+faststart); lab-only pointer marker overlay for touch-causality proof.
+
 **2026-07-06 — TODAY INTELLIGENCE V1 ARC CLOSED (7F–7L.5). Boundary Migration Lock issued.**
 Final anchors: INNER_GIT_HEAD 843b42df (pushed) · NATIVE_GIT_HEAD 4b54106 (pushed, device-installed) · WORKER_VERSION_UUID ca12977d (staging live) · staging URL bty-arena-staging.
 7F: native server.url /en/app → /start (en locale guaranteed via SetLocale; native commit 4224599). 7G: watchdog false-reload fixed — success = rendered-content, not /app-only floor marker (native 4b54106); device log confirms healthy single-load launch.
