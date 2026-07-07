@@ -95,14 +95,23 @@ export function CriticalGateCheckHost({
     <YesterdayMirrorLine hasEvidence={gate === "YESTERDAY_MIRROR"} locale={locale} />
   );
 
+  // Door suppression (STEP 7L.5, decision A): when evidence derives ONE relationship focus,
+  // the day is already decided — show only the focus brief + its single CTA (+ the quiet
+  // pulse). Hide the 3-door chooser ("TODAY, CHOOSE ONE") and the "choose one" exit line so
+  // the surface never asks the user to choose again or reads as a menu/dashboard. The
+  // chooser + exit line remain for CleanStart / no-evidence / confidence-none states, where
+  // a gentle choice is the intended surface. (Blocking gates return above with their own
+  // continuity card and already show no chooser.)
   return (
     <div className="space-y-6">
       {top}
       <RelationshipPulseSummary pulse={pulse} locale={locale} />
-      {/* Reveal-only (§G): the Orb is the /start door, not decoration here. Navigation is
-          the Today Door cards below. */}
-      <TodayDoorCards locale={locale} />
-      <ExitLine locale={locale} />
+      {hasRelationshipFocus ? null : (
+        <>
+          <TodayDoorCards locale={locale} />
+          <ExitLine locale={locale} />
+        </>
+      )}
     </div>
   );
 }
