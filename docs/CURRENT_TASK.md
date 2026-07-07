@@ -1,3 +1,19 @@
+**2026-07-07 — P2 #1 CLOSED: raw My Page XP / internal enum exposure suppressed (Option B).**
+INNER_GIT_HEAD = 9fee4639a613eaebe8c16b7cda4a0a9b7003b0df (inner-main, pushed) · OUTER_GIT_HEAD = this ledger commit (hash reported to Commander post-commit).
+Disposition B adopted; maintenance classification (existing-surface defect removal — no new runtime surface / API route / persistence / route reroute / canon change).
+Suppressed unconditionally (all My Page entry paths, not gated on arena_contract=resolve): raw XP summary cards (Core/Weekly XP `{coreXp}`/`{weeklyXp}`) + their state and the now-dead `/api/arena/core-xp` client fetch removed from MyPageLeadershipConsole.tsx; PatternSignaturePanel collapsed to null — raw `pattern_family`/`axis`/`current_state` enum exposure removed. `/api/arena/core-xp` and `/api/bty/my-page/state` routes UNTOUCHED (still return payloads).
+ACTION_REQUIRED progression preserved: OpenLoopCard CTA + ActionContractHub resolve path intact; No Action → No Progression invariant unbroken.
+Gates: tsc exit 0; terminology 13 pre-existing / 0 new; Vitest non-regression proof — 5 failing QR-token tests confirmed baseline-identical via HEAD stash-test; new suppression test PASS. 3 files (2 source + 1 test under optional-test clause). Files: src/components/bty/my-page/{MyPageLeadershipConsole.tsx, PatternSignaturePanel.tsx, MyPageLeadershipConsole.test.tsx}.
+Outer mirror INTENTIONALLY SKIPPED per Option A — bty-app/ source NOT committed to outer/main; mirror-practice status = UNDER REVIEW. Ledger-only outer commit (docs/ safe zone). NOT DEPLOYED (production deploy = separate GO; no .open-next purge / npm run deploy / chunk-hash verify run).
+P2 newly recorded (from P2 #1 STEP 0 inventory):
+1. ProgressXpPanel raw XP exposure on /my-page/progress (Core/Weekly/Today XP, peak daily XP, "Stage N of 4", pattern ×count) — HIGH priority.
+2. ActionContractHub hardcoded English status labels bypass i18n — cleanup (not raw enum; untranslated-copy gap).
+3. PatternSignaturePanel residency measurement / semantic-subtraction candidate (now dead-rendered null but still imported; API still returns pattern_signatures).
+4. PremiumMyPageIdentityScreen {stage} = domain-formatted "STAGE N: CODENAME" borderline (tier number, not raw key) — RECORD ONLY / defer.
+5. /bty-arena/play/resolve exposure audit candidate — RECORD ONLY.
+6. Outer co-track bty-app/ source lag — full-scope measurement. ~590/90 line standing drift observed on my-page files during P2 #1. Origin commits unidentified. Disposition (bulk sync / retire mirror practice / keep) deferred until measured. Inode footgun applies.
+Today's Focus HOLD (standing): GPT Today's Focus remains HOLD. Voice Layer deferral intact. Web shell new-investment freeze intact. Restart conditions (all required): (1) canonical userDayKey finalized; (2) openHour=5 day boundary finalized; (3) native Today surface ownership finalized; (4) deterministic focus seed exists; (5) AI remains expression-only, not judgment.
+
 **2026-07-07 — ORB LAB v2–v5 CONCLUDED (NO PROMOTION).**
 Isolated Orb Lab (/dev/orb-lab, dev-gated) ran 4 candidate rounds on top of the preserved Golden Master (OrbLiving). Verdicts: Candidate A (volumetric body) PASS; all interior/touch candidates (v2 particles → v3 luminous mass → v4 ember hierarchy → v5 heat tuning) FAIL — CSS gradient/blend cannot reproduce canvas additive luminosity; results plateaued at "painted light." Production Orb untouched throughout; lab fully removed; working tree restored clean.
 **Locked learning:** if the Orb is ever revisited, do NOT rebuild light in CSS on a new body. Instead add the validated body shading (limb darkening / specular / bottom density) as a canvas pass INSIDE OrbLiving's existing renderer — "GM에 몸을 입히기, A에 빛을 넣기 아님."
