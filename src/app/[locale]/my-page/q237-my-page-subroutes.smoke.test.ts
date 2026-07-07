@@ -27,7 +27,9 @@ describe("my-page subroutes smoke (237)", () => {
     })) as ReactElement;
     const html = renderToString(el);
     expect(html).toContain("Progress");
-    expect(html).toMatch(/Core XP|Weekly XP/);
+    // P2 #2: raw XP labels suppressed; the page still renders safe non-raw residue.
+    expect(html).not.toMatch(/Core XP|Weekly XP/);
+    expect(html).toMatch(/Last 7 days|Leadership stage|Recent reflections/);
   });
 
   it("/my-page/team", async () => {

@@ -40,8 +40,14 @@ test.describe("My Page (authenticated)", () => {
   test("progress screen", async ({ page }) => {
     await page.goto("/en/my-page/progress");
     await expect(page.getByTestId("my-page-progress-screen")).toBeVisible();
-    await expect(page.getByTestId("my-page-core-xp")).toBeVisible();
-    await expect(page.getByTestId("my-page-weekly-xp")).toBeVisible();
+    // P2 #2: raw XP / pattern-enum exposures suppressed — these testids must be absent.
+    await expect(page.getByTestId("my-page-core-xp")).toHaveCount(0);
+    await expect(page.getByTestId("my-page-weekly-xp")).toHaveCount(0);
+    await expect(page.getByTestId("my-page-today-xp")).toHaveCount(0);
+    await expect(page.getByTestId("my-page-patterns")).toHaveCount(0);
+    // Safe progress-shape residue remains (numberless chart + local streak).
+    await expect(page.getByTestId("my-page-weekly-chart")).toBeVisible();
+    await expect(page.getByTestId("my-page-streak")).toBeVisible();
     await expect(page.getByTestId("my-page-system-note")).toBeVisible();
   });
 

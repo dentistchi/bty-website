@@ -7,14 +7,6 @@ import type { Locale } from "@/lib/i18n";
 
 type Props = { locale: Locale };
 
-type CoreXpRes = {
-  coreXpTotal?: number;
-  seasonalXpTotal?: number;
-  codeName?: string;
-  subName?: string;
-  tier?: number;
-};
-
 type StageSummaryRes = {
   currentStage?: 1 | 2 | 3 | 4;
   stageName?: string;
@@ -27,8 +19,6 @@ type WeeklyStatsRes = {
   reflectionQuestClaimed?: boolean;
   dailyXpSeries?: Array<{ date: string; xp: number }>;
 };
-
-type TodayXpRes = { xpToday?: number };
 
 const STREAK_KEY = "btyArenaStreak:v1";
 
@@ -55,9 +45,6 @@ function dayLabel(iso: string, locale: Locale): string {
 
 export function ProgressXpPanel({ locale }: Props) {
   const m = getMessages(locale).myPageStub;
-  const [coreXp, setCoreXp] = useState<number | null>(null);
-  const [weeklyXp, setWeeklyXp] = useState<number | null>(null);
-  const [todayXp, setTodayXp] = useState<number | null>(null);
   const [stage, setStage] = useState<StageSummaryRes | null>(null);
   const [stats, setStats] = useState<WeeklyStatsRes | null>(null);
   const [serverPack, setServerPack] = useState<MyPageStateResponse | null>(null);
@@ -75,26 +62,26 @@ export function ProgressXpPanel({ locale }: Props) {
     const safeJson = <T,>(p: Promise<Response>): Promise<T | null> =>
       p.then((r) => (r.ok ? (r.json() as Promise<T>) : null)).catch(() => null);
 
+    // P2 #2: raw XP exposures suppressed. The core-xp (E1/E2) and today-xp (E3) in-panel
+    // fetches are removed as dead code — their only sinks were the removed XP cards. The
+    // weekly-stats fetch stays (feeds the numberless E5 bar chart), stage-summary stays
+    // (feeds the preserved stageName E7 / reset date E8), and my-page/state stays (feeds
+    // the preserved Recent Reflections). API routes themselves are unchanged.
     Promise.all([
-      safeJson<CoreXpRes>(fetch("/api/arena/core-xp", { method: "GET", cache: "no-store" })),
       safeJson<StageSummaryRes>(
         fetch("/api/arena/leadership-engine/stage-summary", { method: "GET", cache: "no-store" }),
       ),
       safeJson<WeeklyStatsRes>(
         fetch("/api/arena/weekly-stats", { method: "GET", cache: "no-store" }),
       ),
-      safeJson<TodayXpRes>(fetch("/api/arena/today-xp", { method: "GET", cache: "no-store" })),
       safeJson<MyPageStateResponse>(
         fetch(`/api/bty/my-page/state?locale=${encodeURIComponent(locParam)}`, {
           method: "GET",
           cache: "no-store",
         }),
       ),
-    ]).then(([core, stageRes, statsRes, todayRes, statePack]) => {
+    ]).then(([stageRes, statsRes, statePack]) => {
       if (cancelled) return;
-      setCoreXp(core?.coreXpTotal ?? 0);
-      setWeeklyXp(core?.seasonalXpTotal ?? 0);
-      setTodayXp(todayRes?.xpToday ?? 0);
       setStage(stageRes);
       setStats(statsRes);
       setServerPack(statePack);
@@ -115,36 +102,15 @@ export function ProgressXpPanel({ locale }: Props) {
   const stageNum = stage?.currentStage ?? null;
   const stageName = stage?.stageName ?? null;
 
-  const patterns = serverPack?.pattern_signatures ?? [];
   const reflections = serverPack?.reflections ?? [];
 
   const isKo = locale === "ko";
 
   return (
     <div data-testid="my-page-progress-screen" className="space-y-4">
-      {/* XP Summary */}
-      <div className="grid grid-cols-3 gap-2">
-        {[
-          { label: m.coreXp, value: coreXp, testid: "my-page-core-xp" },
-          { label: m.weeklyXp, value: weeklyXp, testid: "my-page-weekly-xp" },
-          { label: isKo ? "오늘 XP" : "Today XP", value: todayXp, testid: "my-page-today-xp" },
-        ].map((c) => (
-          <div
-            key={c.testid}
-            data-testid={c.testid}
-            className="rounded-2xl border border-[#E8E3D8] bg-white px-3 py-4 shadow-sm text-center"
-          >
-            <p className="text-[10px] font-medium uppercase tracking-widest text-[#667085] mb-1">
-              {c.label}
-            </p>
-            {loaded ? (
-              <p className="text-2xl font-bold tabular-nums text-[#1E2A38]">{c.value ?? 0}</p>
-            ) : (
-              <div className="mx-auto h-7 w-12 animate-pulse rounded-lg bg-[#E8E3D8]" />
-            )}
-          </div>
-        ))}
-      </div>
+      {/* P2 #2: raw XP summary cards (Core / Weekly / Today XP) removed — internal XP
+          totals were exposed verbatim. The numberless 7-day chart below (relative bars,
+          no XP labels) is the preserved safe progress-shape residue. */}
 
       {/* 7-day XP chart */}
       <div
@@ -175,11 +141,7 @@ export function ProgressXpPanel({ locale }: Props) {
         </div>
         <div className="mt-2 flex items-center justify-between text-xs text-[#667085]">
           <span>{isKo ? "일별 합계" : "Daily total"}</span>
-          {loaded && (
-            <span className="tabular-nums">
-              {isKo ? "최고" : "Peak"} {seriesMax}
-            </span>
-          )}
+          {/* P2 #2: raw "Peak {n}" XP number removed; the relative bars carry the shape. */}
         </div>
       </div>
 
@@ -193,10 +155,9 @@ export function ProgressXpPanel({ locale }: Props) {
         </p>
         {loaded && stageNum != null ? (
           <>
-            <p className="mt-2 text-base font-semibold text-[#1E2A38]">
-              {isKo ? `${stageNum}단계 / 4` : `Stage ${stageNum} of 4`}
-            </p>
-            <p className="mt-1 text-sm text-[#667085]">{stageName}</p>
+            {/* P2 #2: raw progression tier ("Stage N of 4") removed; the stage NAME (a
+                domain-formatted label, preserved per D+) is the stage card's content. */}
+            <p className="mt-2 text-base font-semibold text-[#1E2A38]">{stageName}</p>
             {stage?.resetDueAt && (
               <p className="mt-2 text-xs text-[#98A2B3]">
                 {isKo ? "리셋 예정: " : "Reset due: "}
@@ -225,44 +186,10 @@ export function ProgressXpPanel({ locale }: Props) {
         </div>
       </div>
 
-      {/* Pattern Signatures */}
-      <div
-        data-testid="my-page-patterns"
-        className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm"
-      >
-        <p className="text-sm font-medium text-[#1E2A38]">
-          {isKo ? "패턴 시그니처" : "Pattern signatures"}
-        </p>
-        {!loaded ? (
-          <div className="mt-3 h-5 w-40 animate-pulse rounded bg-[#E8E3D8]" />
-        ) : patterns.length === 0 ? (
-          <p className="mt-2 text-sm text-[#667085]">
-            {isKo
-              ? "아직 누적된 패턴이 없습니다. Arena 런 후 표시됩니다."
-              : "No patterns yet. Show up after your Arena runs."}
-          </p>
-        ) : (
-          <ul className="mt-3 space-y-2">
-            {patterns.slice(0, 5).map((p, idx) => {
-              const family = (p as { pattern_family?: string; family?: string }).pattern_family
-                ?? (p as { family?: string }).family
-                ?? "—";
-              const count = (p as { occurrence_count?: number; repeat_count?: number }).occurrence_count
-                ?? (p as { repeat_count?: number }).repeat_count
-                ?? 0;
-              return (
-                <li
-                  key={idx}
-                  className="flex items-center justify-between rounded-lg border border-[#EEE7DA] bg-[#FAF7F0] px-3 py-2 text-sm"
-                >
-                  <span className="text-[#1E2A38]">{String(family)}</span>
-                  <span className="tabular-nums text-[#667085]">×{count}</span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+      {/* P2 #2: Pattern Signatures section removed — it exposed the raw `pattern_family`
+          enum (E10, same identifier suppressed in P2 #1) and the raw occurrence/repeat
+          count (E11). No safe standalone residue, so the section is dropped entirely.
+          `/api/bty/my-page/state` is unchanged and still feeds Recent Reflections below. */}
 
       {/* Recent Reflections */}
       <div
