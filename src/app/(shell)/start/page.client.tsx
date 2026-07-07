@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import OrbLiving from "@/components/orb/OrbLiving";
 import { PageLoadingFallback } from "@/components/bty-arena";
+import { isNative } from "@/lib/native/isNative";
 
 /**
  * App Shell v0 — Threshold Door (Scope Lock §4 / spec §G). App Launch → Splash(0.5s) →
@@ -49,11 +50,16 @@ export default function StartShellClient() {
     return () => clearTimeout(t);
   }, [loading, user, phase]);
 
-  // Door → Today. Navigate-once guard (commit latches once per press).
-  const openToday = React.useCallback(() => {
+  // Door → the day. Navigate-once guard (commit latches once per press). B2: the native
+  // shell lands on its own app surface /{locale}/app (BtyDailyAppShell); web stays on
+  // /{locale}/today. isNative() reads the existing BTYNative UA / Capacitor bridge signal
+  // (no new UA detection). Locale comes from the SAME currentLocale() the web push uses —
+  // zero change to locale resolution (guards the 4224599 locale regression). Never bare "/app".
+  const openDay = React.useCallback(() => {
     if (navigatedRef.current) return;
     navigatedRef.current = true;
-    router.push(`/${currentLocale()}/today`);
+    const locale = currentLocale();
+    router.push(isNative() ? `/${locale}/app` : `/${locale}/today`);
   }, [router]);
 
   // Keyboard commit mirrors the pointer press-and-hold: Space/Enter must be HELD ≥ HOLD_MS;
@@ -63,9 +69,9 @@ export default function StartShellClient() {
     if (keyHoldRef.current != null) return;
     keyHoldRef.current = window.setTimeout(() => {
       keyHoldRef.current = null;
-      openToday();
+      openDay();
     }, HOLD_MS);
-  }, [openToday]);
+  }, [openDay]);
   const cancelKeyHold = React.useCallback(() => {
     if (keyHoldRef.current != null) {
       clearTimeout(keyHoldRef.current);
@@ -115,7 +121,7 @@ export default function StartShellClient() {
           }}
           className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         >
-          <OrbLiving size={220} holdMs={HOLD_MS} onCommit={openToday} />
+          <OrbLiving size={220} holdMs={HOLD_MS} onCommit={openDay} />
         </div>
       )}
     </main>
