@@ -60,9 +60,11 @@ const HINT: Record<Locale, string> = {
   en: "The breathing light is today.",
   ko: "숨 쉬는 빛이 오늘입니다.",
 };
-const HINT_KEY = "weeklyOrbTodayHintSeen";
-// Fallback when localStorage is unavailable → show the hint at most once per session.
-let sessionHintShown = false;
+// Count-based gate: show the whisper for the first few views only, then never again.
+const HINT_KEY = "bty.weeklyOrb.todayHint.count.v1";
+const HINT_MAX_VIEWS = 3;
+// Fallback when localStorage is unavailable → count within the current session only.
+let sessionHintCount = 0;
 
 function parseHex(hex: string): RGB | null {
   const m = hex.trim().replace(/^#/, "");
@@ -96,7 +98,7 @@ export default function WeeklyOrb({ intensities, locale, size = 240 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [failed, setFailed] = useState(false);
   const [hintShown, setHintShown] = useState(false);
-  const [hintOut, setHintOut] = useState(false);
+  const [hintIn, setHintIn] = useState(false);
   const intensitiesRef = useRef(intensities);
   const drawRef = useRef<((ts: number) => void) | null>(null);
 
@@ -421,34 +423,40 @@ export default function WeeklyOrb({ intensities, locale, size = 240 }: Props) {
     return () => window.cancelAnimationFrame(id);
   }, [intensities]);
 
-  // One-time quiet whisper teaching the today marker. Shown briefly on first view, then
-  // fades out; persisted in localStorage so it never repeats. Fail-soft: if storage is
-  // unavailable, show at most once per session (module flag) and never crash.
+  // Quiet whisper teaching the today marker. Shown for the first HINT_MAX_VIEWS views only
+  // (counted in localStorage), fading in after the orb is visible and fading out on its own.
+  // Fail-soft: if storage is unavailable, count within the current session only, never crash.
   useEffect(() => {
-    let seen = false;
+    let count = 0;
     let storageOk = true;
     try {
-      seen = window.localStorage.getItem(HINT_KEY) === "1";
+      const raw = window.localStorage.getItem(HINT_KEY);
+      count = raw ? parseInt(raw, 10) || 0 : 0;
     } catch {
       storageOk = false;
     }
-    if (!storageOk) seen = sessionHintShown;
-    if (seen) return;
+    if (!storageOk) count = sessionHintCount;
+    if (count >= HINT_MAX_VIEWS) return;
+    // Mount hidden, then fade in on the next frame (soft fade-in after the orb is visible).
     setHintShown(true);
+    const raf = window.requestAnimationFrame(() => setHintIn(true));
+    // Count this view (only now that it is actually being shown).
+    const next = count + 1;
     if (storageOk) {
       try {
-        window.localStorage.setItem(HINT_KEY, "1");
+        window.localStorage.setItem(HINT_KEY, String(next));
       } catch {
         /* fail-soft: no persist */
       }
     } else {
-      sessionHintShown = true;
+      sessionHintCount = next;
     }
-    const t1 = window.setTimeout(() => setHintOut(true), 4000); // begin soft fade
-    const t2 = window.setTimeout(() => setHintShown(false), 4800); // unmount after fade
+    const tOut = window.setTimeout(() => setHintIn(false), 5000); // hold ~5s, then fade out
+    const tHide = window.setTimeout(() => setHintShown(false), 5800); // unmount after fade
     return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(tOut);
+      window.clearTimeout(tHide);
     };
   }, []);
 
@@ -481,10 +489,10 @@ export default function WeeklyOrb({ intensities, locale, size = 240 }: Props) {
       </div>
       <p className="text-xs tracking-[0.16em] text-white/45">{CAPTION[locale]}</p>
       {hintShown ? (
-        // A quiet product whisper — small, soft, no box/icon/colour; fades out on its own.
+        // A quiet product whisper — small, soft, no box/icon/colour; fades in then out.
         <p
           className="mt-1.5 text-[11px] leading-relaxed text-white/35 transition-opacity duration-700 ease-out"
-          style={{ opacity: hintOut ? 0 : 1 }}
+          style={{ opacity: hintIn ? 1 : 0 }}
         >
           {HINT[locale]}
         </p>
