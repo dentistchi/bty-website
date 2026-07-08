@@ -1,13 +1,20 @@
 import type { ReflectionEntry } from "@/features/growth/logic/types";
-import type { ArenaSignal, LeadershipMetrics, LeadershipState } from "@/features/my-page/logic/types";
+import type { LeadershipMetrics, LeadershipState } from "@/features/my-page/logic/types";
 import type { MyPageOpenActionContractUi } from "@/lib/bty/my-page/openActionContractForMyPage";
 
+/**
+ * Quiet-mirror payload minimization: the authed My Page ships only the derived `signalCount`.
+ * Raw metric numerics (xp / AIR / TII / relational/operational/emotional bias) and the raw
+ * `signals[]` trait/meta vectors are intentionally NOT serialized — the authed UI renders none
+ * of them (only `signalCount` drives dormant/active copy + the interpreted core-trace label).
+ */
+export type MyPagePublicMetrics = Pick<LeadershipMetrics, "signalCount">;
+
 export type MyPageStateResponse = {
-  metrics: LeadershipMetrics;
+  metrics: MyPagePublicMetrics;
   leadershipState: LeadershipState;
   recoveryTriggered: boolean;
   recoveryEntryCount: number;
-  signals: ArenaSignal[];
   reflections: ReflectionEntry[];
   open_action_contract: MyPageOpenActionContractUi | null;
   awaiting_verification_contracts: MyPageOpenActionContractUi[];

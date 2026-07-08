@@ -26,17 +26,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: result.message }, { status: 500 });
   }
 
-  const {
-    AIR: _airOmitted,
-    ...metricsPublic
-  } = result.data.metrics ?? {};
+  // Quiet-mirror payload minimization: ship only the derived signalCount. Raw metric numerics
+  // (xp / AIR / TII / relational/operational/emotional bias) and the raw signals[] trait/meta
+  // vectors are intentionally not serialized — the authed My Page UI renders none of them.
+  const signalCount = result.data.metrics?.signalCount ?? 0;
 
   return NextResponse.json({
-    metrics: metricsPublic,
+    metrics: { signalCount },
     leadershipState: result.data.leadershipState,
     recoveryTriggered: result.data.recoveryTriggered,
     recoveryEntryCount: result.data.recoveryEntryCount,
-    signals: result.data.signals,
     reflections: result.data.reflections,
     open_action_contract: result.data.open_action_contract,
     awaiting_verification_contracts: result.data.awaiting_verification_contracts,

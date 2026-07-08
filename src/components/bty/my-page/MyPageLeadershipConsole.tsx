@@ -618,9 +618,18 @@ export function MyPageLeadershipConsole({
 
   const metrics = useMemo(() => {
     if (serverPack) {
-      const m = serverPack.metrics;
-      const air = typeof m.AIR === "number" && Number.isFinite(m.AIR) ? m.AIR : 0;
-      return { ...m, AIR: air } satisfies LeadershipMetrics;
+      // Authed payload ships only signalCount (raw metric numerics are no longer serialized).
+      // The identity screen consumes only signalCount; the remaining LeadershipMetrics fields
+      // are inert placeholders kept solely to satisfy the downstream prop contract.
+      return {
+        xp: 0,
+        AIR: 0,
+        TII: 0,
+        relationalBias: 0,
+        operationalBias: 0,
+        emotionalRegulation: 0,
+        signalCount: serverPack.metrics.signalCount,
+      } satisfies LeadershipMetrics;
     }
     return computeMetrics(localSignals);
   }, [serverPack, localSignals]);

@@ -75,5 +75,13 @@ describe("GET /api/bty/my-page/state — pattern_signatures strip", () => {
     expect("pattern_signatures" in json).toBe(false);
     expect(JSON.stringify(json)).not.toContain("current_state");
     expect(JSON.stringify(json)).not.toContain("blame_shift");
+
+    // Payload minimization: raw signals[] and raw metric numerics must not reach the wire.
+    expect("signals" in json).toBe(false);
+    const metrics = json.metrics as Record<string, unknown>;
+    expect(Object.keys(metrics)).toEqual(["signalCount"]);
+    for (const raw of ["xp", "AIR", "TII", "relationalBias", "operationalBias", "emotionalRegulation"]) {
+      expect(raw in metrics).toBe(false);
+    }
   });
 });
