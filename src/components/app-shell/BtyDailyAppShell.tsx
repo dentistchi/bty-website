@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
+import CenterMeCard from "@/components/center/CenterMeCard";
 import type { TodayIntelligence, TodayUserState } from "@/domain/daily/todayIntelligence";
 
 /**
@@ -439,7 +440,11 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
         {tab === "center" && <LockedRoom tag={t.center.tag} body={t.center.body} />}
         {tab === "arena" && <LockedRoom tag={t.arena.tag} body={t.arena.body} />}
         {tab === "foundry" && <LockedRoom tag={t.foundry.tag} body={t.foundry.body} />}
-        {tab === "me" && <LockedRoom tag={t.me.tag} body={t.me.body} />}
+        {/* Me = Center/self-owned mirror rendered inside Today. Today supplies the
+            render slot + locale ONLY; the card reads its own Center/self-safe
+            derived value (leadershipState stage). The prepared-room copy (t.me)
+            is retained on COPY as the reserved fallback identity. */}
+        {tab === "me" && <CenterMeCard locale={locale} />}
       </main>
 
       <CompanionBar label={t.companion} />
