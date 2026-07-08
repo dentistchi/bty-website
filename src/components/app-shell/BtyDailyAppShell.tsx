@@ -63,7 +63,7 @@ export const COPY: Record<Locale, Copy> = {
       sub: "Choose the relationship you will live today.",
       cards: [
         { t: "Self", d: "Return to yourself.", tab: "center", focus: "Self", select: "Self — Return to yourself with honesty." },
-        { t: "Others", d: "Enter the Arena with care.", tab: "arena", focus: "Others", select: "Others — Carry care into one relationship." },
+        { t: "Others", d: "Meet others with care.", tab: "arena", focus: "Others", select: "Others — Carry care into one relationship." },
         { t: "World", d: "Build what you are here to steward.", tab: "foundry", focus: "World", select: "World — Build with stewardship today." },
       ],
       pathLabel: "TODAY'S PATH",
@@ -85,7 +85,7 @@ export const COPY: Record<Locale, Copy> = {
       sub: "오늘 어떤 관계를 살아내시겠습니까?",
       cards: [
         { t: "나와의 관계", d: "나에게 돌아옵니다.", tab: "center", focus: "Self", select: "나와의 관계 — 정직하게 자신에게 돌아갑니다." },
-        { t: "이웃과의 관계", d: "조심스럽게 Arena로 들어갑니다.", tab: "arena", focus: "Others", select: "이웃과의 관계 — 한 관계 안으로 조심스럽게 들어갑니다." },
+        { t: "이웃과의 관계", d: "이웃을 정성으로 마주합니다.", tab: "arena", focus: "Others", select: "이웃과의 관계 — 한 관계 안으로 조심스럽게 들어갑니다." },
         { t: "세상과의 관계", d: "오늘 맡겨진 것을 빚어갑니다.", tab: "foundry", focus: "World", select: "세상과의 관계 — 맡겨진 것을 오늘도 빚어갑니다." },
       ],
       pathLabel: "오늘의 길",
@@ -291,13 +291,13 @@ export function TodaySurface({
             >
               <span
                 aria-hidden
-                className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-lg font-semibold text-[#C9A66B] transition ${
+                className={`grid h-11 w-11 shrink-0 place-items-center rounded-full transition ${
                   isHighlight
                     ? "bg-[#C9A66B]/30 ring-1 ring-[#C9A66B]/40"
                     : "bg-[#C9A66B]/15 ring-1 ring-[#C9A66B]/20 group-hover:bg-[#C9A66B]/25"
                 }`}
               >
-                {c.t.slice(0, 1)}
+                <span className="h-1.5 w-1.5 rounded-full bg-[#C9A66B]" />
               </span>
               <span className="min-w-0">
                 <span className="block text-base font-semibold text-white">{c.t}</span>
