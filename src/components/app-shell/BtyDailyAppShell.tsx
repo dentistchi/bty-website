@@ -46,6 +46,9 @@ type Copy = {
     /** In-shell settle CTA: pre-press (cta, strong) → settled (ctaDone, sunk). */
     cta: string;
     ctaDone: string;
+    /** Chosen Path Rest State (STEP 3): present-tense benediction that REPLACES the
+     *  select-line after confirmation. Per-focus; fallback guarantees it never renders blank. */
+    benediction: { Self: string; Others: string; World: string; fallback: string };
   };
   center: RoomCopy;
   arena: RoomCopy;
@@ -71,6 +74,12 @@ export const COPY: Record<Locale, Copy> = {
       promiseLabel: "PROMISE TO CARRY",
       cta: "Carry this into today",
       ctaDone: "Carried into today",
+      benediction: {
+        Self: "You have entered the relationship with yourself today.",
+        Others: "You have entered the relationship with others today.",
+        World: "You have entered the relationship with the world today.",
+        fallback: "You have entered this relationship for today.",
+      },
     },
     // Locked rooms (Commander-authored). Tone: prepared, not broken. No "Soon".
     center: { tag: "Relationship with Self", body: "A quiet space for recovery is being prepared." },
@@ -93,6 +102,12 @@ export const COPY: Record<Locale, Copy> = {
       promiseLabel: "오늘로 가져갈 약속",
       cta: "오늘로 가져오기",
       ctaDone: "오늘로 가져왔습니다",
+      benediction: {
+        Self: "오늘 당신은 나와의 관계 안으로 들어갔습니다.",
+        Others: "오늘 당신은 이웃과의 관계 안으로 들어갔습니다.",
+        World: "오늘 당신은 세상과의 관계 안으로 들어갔습니다.",
+        fallback: "오늘 당신은 이 관계 안에 머뭅니다.",
+      },
     },
     center: { tag: "나와의 관계", body: "회복을 위한 고요한 공간을 준비하고 있습니다." },
     arena: { tag: "이웃과의 관계", body: "당신의 결정 훈련 공간을 준비하고 있습니다." },
@@ -300,106 +315,127 @@ export function TodaySurface({
       )}
       {/* Three ritual doors — thresholds, not selector rows. Each has a luminous opening
           seam and an interior warmth that leans in when invited. Selecting a door "opens"
-          it: the confirmation settles directly beneath as that door's interior (a sibling,
-          never a nested button), and the other two quiet down but stay present. */}
-      <div className="space-y-3">
+          it: the confirmation settles beneath as that door's interior (a sibling, never a
+          nested button). Before confirm the other two dim; AFTER confirm (Chosen Path Rest
+          State, STEP 3) they fade + collapse away entirely (grid-rows 1fr→0fr), leaving only
+          the held door — the day now holds one relationship. Session-only: no persistence. */}
+      <div>
         {copy.cards.map((c) => {
           const isHighlight = c.focus === highlight;
           const isSelected = c.focus === selected;
-          const isDimmed = selected !== null && !isSelected;
+          // Before confirm: unselected doors quiet to 40%. After confirm: they are GONE.
+          const isDimmed = selected !== null && !isSelected && !confirmed;
+          const isGone = confirmed && !isSelected;
           return (
             <div
               key={c.t}
-              className={`transition-opacity duration-300 ${isDimmed ? "opacity-40" : "opacity-100"}`}
+              aria-hidden={isGone || undefined}
+              className={`grid transition-all duration-500 ease-out ${
+                isGone ? "grid-rows-[0fr] mb-0 opacity-0" : "grid-rows-[1fr] mb-3 opacity-100"
+              }`}
             >
-              <button
-                type="button"
-                onClick={() => select(c.focus)}
-                aria-pressed={isSelected}
-                data-focus={c.focus}
-                className={`group relative flex w-full flex-col items-start gap-1.5 overflow-hidden border px-6 py-6 text-left transition duration-300 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40 ${
-                  isSelected
-                    ? "rounded-2xl rounded-b-none border-b-0 border-[#C9A66B]/45 bg-gradient-to-b from-[#C9A66B]/[0.08] to-[#C9A66B]/[0.04]"
-                    : isHighlight
-                      ? "rounded-2xl border-[#C9A66B]/30 bg-gradient-to-b from-[#C9A66B]/[0.06] to-white/[0.02] ring-1 ring-[#C9A66B]/15"
-                      : "rounded-2xl border-white/10 bg-gradient-to-b from-white/[0.055] to-white/[0.02] hover:border-[#C9A66B]/25 hover:from-white/[0.08]"
-                }`}
-              >
-                {/* Threshold seam — a soft luminous vertical edge: the door's opening. */}
-                <span
-                  aria-hidden
-                  className={`pointer-events-none absolute inset-y-4 left-0 w-px bg-gradient-to-b from-transparent via-[#C9A66B]/60 to-transparent transition-opacity duration-300 ${
-                    isHighlight ? "opacity-100" : "opacity-35 group-hover:opacity-70"
-                  }`}
-                />
-                {/* Interior depth — a quiet warmth leaning in from the seam, growing when invited. */}
-                <span
-                  aria-hidden
-                  className={`pointer-events-none absolute inset-0 bg-gradient-to-r from-[#C9A66B]/[0.08] via-transparent to-transparent transition-opacity duration-300 ${
-                    isHighlight ? "opacity-100" : "opacity-0 group-hover:opacity-60"
-                  }`}
-                />
-                <span className="relative text-lg font-semibold text-white">{c.t}</span>
-                <span className="relative text-sm leading-6 text-white/55">{c.d}</span>
-              </button>
-
-              {/* The opened interior — a sibling of the door (valid HTML: no nested button),
-                  merged flush beneath it (shared border, no top edge) so door + interior read
-                  as one opened whole. Confirmation structure/attributes are unchanged. */}
-              {isSelected ? (
+              {/* overflow-hidden lets the grid-rows 0fr collapse the door's height to zero. */}
+              <div className={`overflow-hidden ${isGone ? "pointer-events-none" : ""}`}>
                 <div
-                  data-today-confirm
-                  className="relative overflow-hidden rounded-b-2xl border border-t-0 border-[#C9A66B]/45 bg-[#C9A66B]/[0.05] px-6 pb-6 pt-5"
+                  className={`transition-opacity duration-300 ${isDimmed ? "opacity-40" : "opacity-100"}`}
                 >
-                  {/* Seam continues down into the interior — one continuous opening. */}
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute inset-y-0 left-0 w-px bg-gradient-to-b from-[#C9A66B]/40 via-[#C9A66B]/15 to-transparent"
-                  />
-                  {/* Layer 1 — path sublabel (reuses the locked-room eyebrow tone). */}
-                  <span
-                    data-path-label
-                    className="relative block text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90"
-                  >
-                    {copy.pathLabel}
-                  </span>
-                  {/* Layer 2 — selection confirmation. Doubles as the fallback line when no promise. */}
-                  <p data-select-line className="relative mt-2 text-[0.95rem] leading-6 text-white/85">
-                    {c.select}
-                  </p>
-                  {/* Layers 3 + 4 — the promise to carry, ONLY when a real open promise exists.
-                      action_text is rendered verbatim (unchanged); no fabrication on fallback. */}
-                  {promiseText ? (
-                    <>
-                      <span
-                        data-promise-label
-                        className="relative mt-4 block text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90"
-                      >
-                        {copy.promiseLabel}
-                      </span>
-                      <p data-carry-line className="relative mt-2 text-[0.95rem] leading-6 text-white/70">
-                        {promiseText}
-                      </p>
-                    </>
-                  ) : null}
-                  {/* CTA — pre-press is the strong filled-gold action; the settled state SINKS to
-                      an outline + ✓ (reverses the earlier direction). */}
                   <button
                     type="button"
-                    onClick={() => setConfirmed(true)}
-                    aria-pressed={confirmed}
-                    data-today-cta
-                    className={`relative mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40 ${
-                      confirmed
-                        ? "border border-[#C9A66B]/40 bg-transparent text-[#C9A66B]/80"
-                        : "bg-[#C9A66B] text-[#0B1F3A] hover:bg-[#C9A66B]/90 active:scale-[0.985]"
+                    // No undo: once confirmed, tapping the held door does nothing (it must not
+                    // re-open). Pre-confirm it selects/opens as before.
+                    onClick={() => {
+                      if (!confirmed) select(c.focus);
+                    }}
+                    aria-pressed={isSelected}
+                    tabIndex={isGone ? -1 : undefined}
+                    data-focus={c.focus}
+                    className={`group relative flex w-full flex-col items-start gap-1.5 overflow-hidden border px-6 py-6 text-left transition duration-300 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40 ${
+                      isSelected
+                        ? "rounded-2xl rounded-b-none border-b-0 border-[#C9A66B]/45 bg-gradient-to-b from-[#C9A66B]/[0.08] to-[#C9A66B]/[0.04]"
+                        : isHighlight
+                          ? "rounded-2xl border-[#C9A66B]/30 bg-gradient-to-b from-[#C9A66B]/[0.06] to-white/[0.02] ring-1 ring-[#C9A66B]/15"
+                          : "rounded-2xl border-white/10 bg-gradient-to-b from-white/[0.055] to-white/[0.02] hover:border-[#C9A66B]/25 hover:from-white/[0.08]"
                     }`}
                   >
-                    {confirmed ? <span aria-hidden>✓</span> : null}
-                    {confirmed ? copy.ctaDone : copy.cta}
+                    {/* Threshold seam — a soft luminous vertical edge: the door's opening. */}
+                    <span
+                      aria-hidden
+                      className={`pointer-events-none absolute inset-y-4 left-0 w-px bg-gradient-to-b from-transparent via-[#C9A66B]/60 to-transparent transition-opacity duration-300 ${
+                        isHighlight ? "opacity-100" : "opacity-35 group-hover:opacity-70"
+                      }`}
+                    />
+                    {/* Interior depth — a quiet warmth leaning in from the seam, growing when invited. */}
+                    <span
+                      aria-hidden
+                      className={`pointer-events-none absolute inset-0 bg-gradient-to-r from-[#C9A66B]/[0.08] via-transparent to-transparent transition-opacity duration-300 ${
+                        isHighlight ? "opacity-100" : "opacity-0 group-hover:opacity-60"
+                      }`}
+                    />
+                    <span className="relative text-lg font-semibold text-white">{c.t}</span>
+                    <span className="relative text-sm leading-6 text-white/55">{c.d}</span>
                   </button>
+
+                  {/* The opened interior — a sibling of the door (valid HTML: no nested button),
+                      merged flush beneath it (shared border, no top edge) so door + interior read
+                      as one opened whole. After confirm this is the held REST state. */}
+                  {isSelected ? (
+                    <div
+                      data-today-confirm
+                      className="relative overflow-hidden rounded-b-2xl border border-t-0 border-[#C9A66B]/45 bg-[#C9A66B]/[0.05] px-6 pb-6 pt-5"
+                    >
+                      {/* Seam continues down into the interior — one continuous opening. */}
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute inset-y-0 left-0 w-px bg-gradient-to-b from-[#C9A66B]/40 via-[#C9A66B]/15 to-transparent"
+                      />
+                      {/* Layer 1 — path sublabel (reuses the locked-room eyebrow tone). */}
+                      <span
+                        data-path-label
+                        className="relative block text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90"
+                      >
+                        {copy.pathLabel}
+                      </span>
+                      {/* Layer 2 — the chosen-path line. Before confirm: the selection line
+                          (doubles as the fallback when no promise). After confirm: it BECOMES the
+                          present-tense benediction (STEP 3) — one sentence, never two. */}
+                      <p data-select-line className="relative mt-2 text-[0.95rem] leading-6 text-white/85">
+                        {confirmed ? copy.benediction[c.focus] ?? copy.benediction.fallback : c.select}
+                      </p>
+                      {/* Layers 3 + 4 — the promise to carry, ONLY when a real open promise exists.
+                          action_text is rendered verbatim (unchanged); no fabrication on fallback. */}
+                      {promiseText ? (
+                        <>
+                          <span
+                            data-promise-label
+                            className="relative mt-4 block text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90"
+                          >
+                            {copy.promiseLabel}
+                          </span>
+                          <p data-carry-line className="relative mt-2 text-[0.95rem] leading-6 text-white/70">
+                            {promiseText}
+                          </p>
+                        </>
+                      ) : null}
+                      {/* CTA — pre-press is the strong filled-gold action; the settled state SINKS to
+                          an outline + ✓ (the quiet action-mark). No undo: it does not toggle back. */}
+                      <button
+                        type="button"
+                        onClick={() => setConfirmed(true)}
+                        aria-pressed={confirmed}
+                        data-today-cta
+                        className={`relative mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40 ${
+                          confirmed
+                            ? "border border-[#C9A66B]/40 bg-transparent text-[#C9A66B]/80"
+                            : "bg-[#C9A66B] text-[#0B1F3A] hover:bg-[#C9A66B]/90 active:scale-[0.985]"
+                        }`}
+                      >
+                        {confirmed ? <span aria-hidden>✓</span> : null}
+                        {confirmed ? copy.ctaDone : copy.cta}
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
+              </div>
             </div>
           );
         })}

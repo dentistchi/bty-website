@@ -158,7 +158,93 @@ Implementation of this arc is accepted only when ALL hold:
 
 ---
 
+## STEP 3 — Chosen Path Rest State (design intent, LOCKED)
+
+**Status:** design intent LOCKED (spec only, no implementation)
+**Builds on:** STEP 2 (live: inner `50fddf37`, staging `14df5e5b`). This adds the *rest state* after confirmation — it does not change arrival, the doors, or any data.
+
+### 3.0 The problem this closes
+
+After STEP 2, confirming ("Carry this into today") leaves a **button toggle**: the CTA sinks to "Carried into today ✓", the door stays open, the other two doors merely dim to 40%. Functionally "selected," emotionally still "pressed" — not *"I entered this relationship today."* STEP 3 turns the post-confirm surface into a quiet **rest state** that leaves a trace.
+
+### 3.1 Honest scope split (critical)
+
+- **v1 — Chosen Path *Rest State* (THIS arc):** a **session-only** trace. The choice is held as long as the shell stays mounted (tab-switch and return keeps it); a full reload resets it. No server write, no persistence.
+- **v2 — *Daily Consequence* (DEFERRED, not this arc):** the choice carried **across days** ("yesterday you entered Self"). This REQUIRES a server write and is explicitly out of scope until persistence is separately approved.
+
+Naming discipline: this arc is a *rest state*, not a cross-day consequence. The word "daily" must not pull v1 toward persistence.
+
+### 3.2 Rest-state model (LOCKED — Option 1: single held door)
+
+On "Carry this into today":
+1. The selected door becomes the **only** held surface.
+2. The two unselected doors **fade out and collapse away completely** — gone from layout, not merely dimmed. It reads as a *settling*, not a hard delete (soft fade + height collapse).
+3. The screen reads as *"I am now inside this relationship for today"* — one relationship. Not a selector, not a dashboard, not a task list.
+
+**Header/status frame is KEPT.** "Good morning." + the calm status line remain above as the day's frame. Only the three-door **list** collapses to the single held door. The day still "opens," now holding one relationship.
+
+### 3.3 Benediction (secondary layer, LOCKED)
+
+A **small present-tense benediction line inside the remaining door**, per relationship.
+
+- **Placement:** after confirmation, the benediction **replaces the earlier selected-relationship line** (the STEP 2 `data-select-line`, e.g. "Self — Return to yourself with honesty."). They are near-duplicates; the benediction is the settled evolution of that line, so there is exactly one such sentence, not two.
+- The ✓ **"Carried into today" settled CTA remains** as the quiet action-mark (it does not become an undo, does not navigate).
+- The **PROMISE TO CARRY** block (open `action_text`), when present, is unchanged and still shown.
+
+**Copy (LOCKED — Commander).** New i18n strings; EN+KO parity required; terminology-validator clean.
+
+| Focus | EN | KO |
+|---|---|---|
+| Self | You have entered the relationship with yourself today. | 오늘 당신은 나와의 관계 안으로 들어갔습니다. |
+| Others | You have entered the relationship with others today. | 오늘 당신은 이웃과의 관계 안으로 들어갔습니다. |
+| World | You have entered the relationship with the world today. | 오늘 당신은 세상과의 관계 안으로 들어갔습니다. |
+| Fallback | You have entered this relationship for today. | 오늘 당신은 이 관계 안에 머뭅니다. |
+
+The per-focus line is used when the confirmed door's `focus` is Self/Others/World; the Fallback line covers any other/unexpected case so the benediction never renders blank.
+
+### 3.4 Interaction model (v1, LOCKED)
+
+1. Arrive → three doors (STEP 2, unchanged).
+2. Tap a door → it opens with the confirmation interior (STEP 2, unchanged).
+3. Tap "Carry this into today" → **rest state**: unselected doors fade/collapse out; the held door remains; its select-line becomes the benediction; ✓ settled mark stays.
+4. **No undo, no new CTA.** The chosen path settles **for the session**. There is no in-shell way to re-choose after confirm in v1; a reload resets to arrival. (Deliberate: the day's choice is made.)
+5. **Session continuity:** switching to another tab and back to Today keeps the held rest state (component stays mounted). Reload resets. No persistence.
+
+### 3.5 Boundaries (LOCKED — non-negotiable)
+
+- **Session-only** — no persistence, no server write.
+- **No undo CTA**, no new CTA of any kind (only the existing `select` + `setConfirmed` handlers).
+- **CompanionBar is NOT the rest state** — the dock stays status-only, unchanged.
+- **Not ambient-color-only** — the rest state is the held door + benediction, not merely a background tint. (A subtle tonal warmth MAY accompany but must never be the sole signal.)
+- **No XP, no score, no streak, no count, no history/log, no dashboard language.** The trace is present-tense ("I am inside this relationship today"), never an aggregate.
+- **No API / data-contract changes** — Today keeps consuming the existing `today-intelligence` brief and narrowed `action_text`.
+- **No haptic. No navigation. No WeeklyOrb / CenterMeCard changes.**
+
+### 3.6 Implementation implication
+
+**Small composition change**, confined to `TodaySurface` in `BtyDailyAppShell.tsx`:
+- gate the door-list render on `confirmed` (confirmed → render only the held door; unselected doors fade/collapse out);
+- swap the `data-select-line` content for the benediction when `confirmed`;
+- add the benediction copy to the inline `COPY` records (EN+KO), keyed by focus with a fallback.
+
+No new data, no new route, no new contract. The STEP 2 test's confirm-order assertion (`data-select-line` text) will change and its update is a legitimate part of this arc.
+
+### 3.7 Acceptance criteria (for STEP 4 implementation)
+
+1. After confirm, **only the chosen door remains**; the other two are gone from layout (faded + collapsed), not merely dimmed.
+2. The header ("Good morning.") + status line **remain** above the held door.
+3. The held door shows the **benediction line in place of** the earlier select-line; the ✓ "Carried into today" settled mark remains; PROMISE TO CARRY (if present) is unchanged.
+4. Benediction is the **correct per-focus line** (Self/Others/World), Fallback otherwise, in **both KO and EN**, with no truncation/clipping.
+5. The rest state reads as *entering/holding one relationship*, not a selector/dashboard/list; **no XP/score/streak/count/dashboard language** anywhere.
+6. **No undo, no new CTA, no navigation, no haptic, no server write.** Tab-switch-and-return keeps the rest state; reload resets to arrival.
+7. Surface never clips above CompanionBar / AppTabBar; both remain non-floating flex children. CompanionBar unchanged.
+8. `tsc --noEmit` clean; terminology validator clean; `BtyDailyAppShell.today.test.tsx` green (with the confirm-order assertion updated for the benediction).
+
+---
+
 ## Change log
 
 - **STEP 0** — read-only inventory completed (Today located, mapped, boundary-checked; verdict: relationship-based day selector with flat arrival).
-- **STEP 1** — this doc. Arrival model LOCKED to **(B) ritual doors, in-shell, no room navigation for v1**. Implementation assessed as a **small composition change**. No app code changed.
+- **STEP 1** — arrival model LOCKED to **(B) ritual doors, in-shell, no room navigation for v1**. Implementation assessed as a **small composition change**. No app code changed.
+- **STEP 2** — relationship-doors composition SHIPPED (inner `50fddf37`, staging `14df5e5b`). `TodaySurface` reshaped from selector rows into ritual doors; confirmation settles as the opened door's interior. Verified (tsc, 12/12 tests, visual harness, live-artifact). Accepted.
+- **STEP 3** — this section. Chosen Path **Rest State** (session-only) LOCKED: single held door after confirm + per-focus benediction replacing the select-line; header/status kept; no undo/persistence/dashboard. **Daily Consequence (cross-day) explicitly deferred** to a persistence-gated v2. Implementation assessed as a **small composition change**. No app code changed.

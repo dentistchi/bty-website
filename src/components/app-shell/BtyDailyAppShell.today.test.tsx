@@ -199,6 +199,63 @@ describe("app-shell Today ritual beat (A / A+)", () => {
   });
 });
 
+describe("app-shell Today Chosen Path Rest State (STEP 3, session-only)", () => {
+  function confirmSelf(over: Partial<React.ComponentProps<typeof TodaySurface>> = {}) {
+    renderToday(over);
+    fireEvent.click(screen.getByText("Self"));
+    fireEvent.click(document.querySelector("[data-today-cta]") as HTMLButtonElement);
+  }
+
+  it("benediction REPLACES the select-line after confirm (EN, per-focus), ✓ mark + promise remain", () => {
+    confirmSelf({ promiseText: "Call my mentor before noon" });
+    // The select sentence is gone; the present-tense benediction stands in its place.
+    expect(document.querySelector("[data-select-line]")?.textContent).toBe(
+      "You have entered the relationship with yourself today.",
+    );
+    expect(screen.queryByText("Self — Return to yourself with honesty.")).toBeNull();
+    // Promise (action_text) unchanged; ✓ settled mark remains.
+    expect(document.querySelector("[data-carry-line]")?.textContent).toBe("Call my mentor before noon");
+    const cta = document.querySelector("[data-today-cta]") as HTMLButtonElement;
+    expect(cta.textContent).toContain("Carried into today");
+    expect(cta.textContent).toContain("✓");
+  });
+
+  it("unselected doors collapse away (aria-hidden), not merely dimmed", () => {
+    confirmSelf();
+    // The two unselected doors are still in the DOM but inside an aria-hidden collapsed wrapper.
+    expect(screen.getByText("Others").closest("[aria-hidden]")).not.toBeNull();
+    expect(screen.getByText("World").closest("[aria-hidden]")).not.toBeNull();
+    // The held door is NOT inside an aria-hidden wrapper.
+    expect(screen.getByText("Self").closest("[aria-hidden]")).toBeNull();
+  });
+
+  it("NO undo: tapping the held door after confirm does not re-open (benediction + ✓ persist)", () => {
+    confirmSelf();
+    fireEvent.click(screen.getByText("Self"));
+    expect(document.querySelector("[data-select-line]")?.textContent).toBe(
+      "You have entered the relationship with yourself today.",
+    );
+    expect((document.querySelector("[data-today-cta]") as HTMLButtonElement).textContent).toContain("✓");
+  });
+
+  it("renders the KO benediction after confirm", () => {
+    render(
+      <TodaySurface
+        copy={COPY.ko.today}
+        statusLine={selectTodayStatus("ko", "safe_fallback")}
+        activeFocus={null}
+        loading={false}
+        promiseText={null}
+      />,
+    );
+    fireEvent.click(screen.getByText("이웃과의 관계"));
+    fireEvent.click(document.querySelector("[data-today-cta]") as HTMLButtonElement);
+    expect(document.querySelector("[data-select-line]")?.textContent).toBe(
+      "오늘 당신은 이웃과의 관계 안으로 들어갔습니다.",
+    );
+  });
+});
+
 describe("app-shell renders Today directly (no shell threshold / no double-door)", () => {
   function stubShellFetch(promise: string | null = null) {
     vi.stubGlobal(
