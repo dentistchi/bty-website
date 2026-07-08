@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import CenterMeCard from "@/components/center/CenterMeCard";
+import WeeklyOrb from "@/components/app-shell/WeeklyOrb";
 import type { TodayIntelligence, TodayUserState } from "@/domain/daily/todayIntelligence";
 
 /**
@@ -191,6 +192,32 @@ export async function fetchOpenPromise(locale: string): Promise<string | null> {
       e instanceof Error ? e.message : e,
     );
     return null;
+  }
+}
+
+/**
+ * Read the week's numberless visual rhythm — dailyBarSeries[].barIntensity (0–5, up to 7
+ * days) — from GET /api/arena/weekly-stats for the Me-tab Weekly Orb. weekly-stats is an
+ * /api/arena/* route, but we use the shell's fail-soft RAW fetch (credentials + warn +
+ * resting-orb fallback) for consistency with fetchTodayIntelligence / fetchOpenPromise.
+ * Narrow-typed: ONLY barIntensity is read — no raw XP, no reflection fields, nothing else
+ * is destructured. Returns [] on any failure (→ a quiet resting orb); never throws into Me.
+ */
+type WeeklyRhythmNarrow = { dailyBarSeries?: Array<{ barIntensity?: number }> };
+
+export async function fetchWeeklyRhythm(): Promise<number[]> {
+  try {
+    const res = await fetch("/api/arena/weekly-stats", { credentials: "include" });
+    if (!res.ok) throw new Error(`HTTP_${res.status}`);
+    const data = (await res.json()) as WeeklyRhythmNarrow;
+    const series = Array.isArray(data.dailyBarSeries) ? data.dailyBarSeries : [];
+    return series.map((d) => (typeof d?.barIntensity === "number" ? d.barIntensity : 0));
+  } catch (e) {
+    console.warn(
+      "[app-shell/me] /api/arena/weekly-stats fell back (resting orb):",
+      e instanceof Error ? e.message : e,
+    );
+    return [];
   }
 }
 
@@ -390,6 +417,8 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   const [intel, setIntel] = useState<TodayIntelligence>(FALLBACK_INTEL);
   const [intelLoading, setIntelLoading] = useState(true);
   const [promiseText, setPromiseText] = useState<string | null>(null);
+  // Me-tab Weekly Orb rhythm (numberless barIntensity[]). Fail-soft: [] → resting orb.
+  const [weeklyRhythm, setWeeklyRhythm] = useState<number[]>([]);
 
   useEffect(() => {
     let alive = true;
@@ -401,6 +430,10 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
     void fetchOpenPromise(locale).then((text) => {
       if (!alive) return;
       setPromiseText(text);
+    });
+    void fetchWeeklyRhythm().then((rhythm) => {
+      if (!alive) return;
+      setWeeklyRhythm(rhythm);
     });
     return () => {
       alive = false;
@@ -443,8 +476,18 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
         {/* Me = Center/self-owned mirror rendered inside Today. Today supplies the
             render slot + locale ONLY; the card reads its own Center/self-safe
             derived value (leadershipState stage). The prepared-room copy (t.me)
-            is retained on COPY as the reserved fallback identity. */}
-        {tab === "me" && <CenterMeCard locale={locale} />}
+            is retained on COPY as the reserved fallback identity.
+
+            Below the mirror, a quiet Weekly Orb reflects the week's numberless rhythm as
+            light (not a chart/link/control). The Arena read + composition happen HERE at
+            the shell (the composition layer) — CenterMeCard stays Center-pure and never
+            reads /api/arena/*. Framed as a self "weekly trace," not competition. */}
+        {tab === "me" && (
+          <div className="flex flex-col">
+            <CenterMeCard locale={locale} />
+            <WeeklyOrb intensities={weeklyRhythm} locale={locale} />
+          </div>
+        )}
       </main>
 
       <CompanionBar label={t.companion} />
