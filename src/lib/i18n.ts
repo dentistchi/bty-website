@@ -2030,19 +2030,6 @@ export type Messages = {
     leadershipAbbrevAir: string;
     /** AIR row footnote — separates execution integrity from Pattern Shift */
     leadershipAirExecutionFootnote: string;
-    /** Arena Phase B — pattern signature accumulation (re-exposure / reinforcement) */
-    patternSignatureConsoleTitle: string;
-    patternSignatureConsoleLead: string;
-    patternSignatureConsoleEmpty: string;
-    patternSignatureConsoleAria: string;
-    patternSignatureConfidence: string;
-    patternSignatureRepeat: string;
-    patternSignatureLastShift: string;
-    patternSignatureWatch: string;
-    patternSignatureSeen: string;
-    patternSignatureShiftChanged: string;
-    patternSignatureShiftNoChange: string;
-    patternSignatureShiftUnstable: string;
     leadershipAbbrevTii: string;
     leadershipAbbrevRhythm: string;
     leadershipNextFocusHeading: string;
@@ -3978,19 +3965,6 @@ const ko: Messages = {
     leadershipAbbrevAir: "AIR (실행 무결성)",
     leadershipAirExecutionFootnote:
       "요약 레이블은 Arena 결정 흔적에서 해석됩니다. 공식 AIR는 리더십 엔진 활성화 창을 사용합니다. 패턴 시프트와 별도입니다.",
-    patternSignatureConsoleTitle: "패턴 서명 (Arena)",
-    patternSignatureConsoleLead:
-      "재노출·강화 루프에서 같은 축으로 누적된 패턴입니다. 점수가 아니라 반복 증거의 요약입니다.",
-    patternSignatureConsoleEmpty: "아직 누적된 패턴 서명이 없습니다. Arena 재노출 검증 후 표시됩니다.",
-    patternSignatureConsoleAria: "Arena 패턴 서명 요약",
-    patternSignatureConfidence: "신뢰도",
-    patternSignatureRepeat: "반복",
-    patternSignatureLastShift: "최근 변화",
-    patternSignatureWatch: "관찰점",
-    patternSignatureSeen: "최근 기록",
-    patternSignatureShiftChanged: "변화",
-    patternSignatureShiftNoChange: "유지",
-    patternSignatureShiftUnstable: "불안정",
     leadershipAbbrevTii: "TII",
     leadershipAbbrevRhythm: "리듬",
     leadershipNextFocusHeading: "다음 포커스",
@@ -5924,19 +5898,6 @@ const en: Messages = {
     leadershipAbbrevAir: "AIR (execution integrity)",
     leadershipAirExecutionFootnote:
       "This row summarizes Arena decision traces. Formal AIR uses Leadership Engine activation windows. Separate from Pattern Shift.",
-    patternSignatureConsoleTitle: "Pattern signatures (Arena)",
-    patternSignatureConsoleLead:
-      "Accumulated from re-exposure and reinforcement on the same axis — a read-model of repeated evidence, not a score.",
-    patternSignatureConsoleEmpty: "No pattern signatures yet. They appear after Arena re-exposure validation.",
-    patternSignatureConsoleAria: "Arena pattern signature summary",
-    patternSignatureConfidence: "Confidence",
-    patternSignatureRepeat: "Repeat",
-    patternSignatureLastShift: "Last shift",
-    patternSignatureWatch: "Watch",
-    patternSignatureSeen: "Seen",
-    patternSignatureShiftChanged: "Shift: changed",
-    patternSignatureShiftNoChange: "Shift: steady",
-    patternSignatureShiftUnstable: "Shift: unstable",
     leadershipAbbrevTii: "TII",
     leadershipAbbrevRhythm: "Rhythm",
     leadershipNextFocusHeading: "Next focus",
