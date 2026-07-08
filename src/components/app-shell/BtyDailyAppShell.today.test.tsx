@@ -17,6 +17,8 @@ import BtyDailyAppShell, {
   TodaySurface,
   fetchOpenPromise,
   fetchTodayIntelligence,
+  greetingBand,
+  pickGreeting,
   resolveActiveFocus,
   selectTodayStatus,
 } from "@/components/app-shell/BtyDailyAppShell";
@@ -26,6 +28,7 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 // Internal tokens that must NEVER appear in user-facing output.
@@ -256,6 +259,45 @@ describe("app-shell Today Chosen Path Rest State (STEP 3, session-only)", () => 
   });
 });
 
+describe("app-shell Today time-aware greeting (client-local, Arrival Warmth STEP 1)", () => {
+  it("greetingBand maps local hours to bands at the boundaries", () => {
+    expect(greetingBand(5)).toBe("morning");
+    expect(greetingBand(11)).toBe("morning");
+    expect(greetingBand(12)).toBe("afternoon");
+    expect(greetingBand(16)).toBe("afternoon");
+    expect(greetingBand(17)).toBe("evening");
+    expect(greetingBand(22)).toBe("evening");
+    expect(greetingBand(23)).toBe("lateNight");
+    expect(greetingBand(0)).toBe("lateNight");
+    expect(greetingBand(4)).toBe("lateNight");
+  });
+
+  it("pickGreeting returns the EN band copy (all four bands)", () => {
+    const g = COPY.en.today.greetings;
+    expect(pickGreeting(g, 9)).toBe("Good morning.");
+    expect(pickGreeting(g, 14)).toBe("Good afternoon.");
+    expect(pickGreeting(g, 20)).toBe("Good evening.");
+    expect(pickGreeting(g, 2)).toBe("Still awake?");
+  });
+
+  it("pickGreeting returns KO band copy (non-morning bands)", () => {
+    const g = COPY.ko.today.greetings;
+    expect(pickGreeting(g, 14)).toBe("좋은 오후입니다.");
+    expect(pickGreeting(g, 20)).toBe("좋은 저녁입니다.");
+    expect(pickGreeting(g, 2)).toBe("아직 깨어 계시군요.");
+  });
+
+  it("TodaySurface resolves the local-time band after mount (evening → 'Good evening.')", async () => {
+    // Fake ONLY Date so RTL's real-timer polling (findByText) still works.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 0, 1, 20, 0, 0)); // 20:00 local → evening
+    renderToday();
+    expect(await screen.findByText("Good evening.")).toBeTruthy();
+    // The SSR/first-paint default greeting is replaced (no stale "Good morning.").
+    expect(screen.queryByText("Good morning.")).toBeNull();
+  });
+});
+
 describe("app-shell renders Today directly (no shell threshold / no double-door)", () => {
   function stubShellFetch(promise: string | null = null) {
     vi.stubGlobal(
@@ -279,7 +321,8 @@ describe("app-shell renders Today directly (no shell threshold / no double-door)
     stubShellFetch();
     render(<BtyDailyAppShell locale="en" />);
     // Today surface is present immediately — no second threshold gate.
-    await screen.findByText("Good morning.");
+    // Anchor on the (time-independent) sub line so the assertion never depends on wall-clock.
+    await screen.findByText("Choose the relationship you will live today.");
     expect(screen.queryByText("Hold to begin.")).toBeNull();
     expect(screen.queryByText("누르고 있으면 열립니다.")).toBeNull();
     // Native app shell intact: bottom tab bar renders.
@@ -290,7 +333,8 @@ describe("app-shell renders Today directly (no shell threshold / no double-door)
   it("relationship selection still reveals confirmation + CTA inside the full shell", async () => {
     stubShellFetch("Send the summary");
     render(<BtyDailyAppShell locale="en" />);
-    await screen.findByText("Good morning.");
+    // Anchor on the (time-independent) sub line so the assertion never depends on wall-clock.
+    await screen.findByText("Choose the relationship you will live today.");
     // Select the Self relationship card (the ritual selection, not navigation).
     fireEvent.click(screen.getByText("Self"));
     expect(document.querySelector("[data-today-confirm]")).not.toBeNull();

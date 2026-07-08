@@ -37,7 +37,11 @@ type RoomCopy = { tag: string; body: string };
 type Copy = {
   appAria: string;
   today: {
+    /** SSR-safe default greeting (morning). The rendered greeting is resolved to a local-time
+     *  band after mount (see {@link pickGreeting}); this stays the server/first-paint value. */
     title: string;
+    /** Time-aware greeting bands (Today Arrival Warmth STEP 1) — client-local hour → band. */
+    greetings: { morning: string; afternoon: string; evening: string; lateNight: string };
     sub: string;
     cards: { t: string; d: string; tab: AppTabKey; focus: TodayFocusKey; select: string }[];
     /** Confirmation-card sublabels — reuse the locked-room eyebrow tone (no new style). */
@@ -64,6 +68,12 @@ export const COPY: Record<Locale, Copy> = {
     appAria: "BTY Daily app",
     today: {
       title: "Good morning.",
+      greetings: {
+        morning: "Good morning.",
+        afternoon: "Good afternoon.",
+        evening: "Good evening.",
+        lateNight: "Still awake?",
+      },
       sub: "Choose the relationship you will live today.",
       cards: [
         { t: "Self", d: "Return to yourself.", tab: "center", focus: "Self", select: "Self — Return to yourself with honesty." },
@@ -92,6 +102,12 @@ export const COPY: Record<Locale, Copy> = {
     appAria: "BTY Daily 앱",
     today: {
       title: "좋은 아침입니다.",
+      greetings: {
+        morning: "좋은 아침입니다.",
+        afternoon: "좋은 오후입니다.",
+        evening: "좋은 저녁입니다.",
+        lateNight: "아직 깨어 계시군요.",
+      },
       sub: "오늘 어떤 관계를 살아내시겠습니까?",
       cards: [
         { t: "나와의 관계", d: "나에게 돌아옵니다.", tab: "center", focus: "Self", select: "나와의 관계 — 정직하게 자신에게 돌아갑니다." },
@@ -252,6 +268,23 @@ export function selectTodayStatus(loc: Locale, userState: TodayUserState): strin
   return TODAY_STATUS[loc][userState];
 }
 
+/**
+ * Local-hour → greeting band. Bands (client-local time): morning 05:00–11:59,
+ * afternoon 12:00–16:59, evening 17:00–22:59, late night 23:00–04:59. Pure.
+ */
+export type GreetingBand = "morning" | "afternoon" | "evening" | "lateNight";
+export function greetingBand(hour: number): GreetingBand {
+  if (hour >= 5 && hour < 12) return "morning";
+  if (hour >= 12 && hour < 17) return "afternoon";
+  if (hour >= 17 && hour < 23) return "evening";
+  return "lateNight";
+}
+
+/** Resolve the time-aware greeting from a locale's greeting record + a local hour. Pure. */
+export function pickGreeting(greetings: TodayCopy["greetings"], hour: number): string {
+  return greetings[greetingBand(hour)];
+}
+
 function SurfaceHeader({ title, sub }: { title: string; sub?: string }) {
   return (
     <header className="mb-5 space-y-2">
@@ -303,9 +336,18 @@ export function TodaySurface({
   // The invited door: the user's pick once made, else the softly-suggested derived focus.
   const highlight = selected ?? activeFocus;
 
+  // Time-aware greeting (Today Arrival Warmth STEP 1). SSR-safe: the server + first client
+  // paint render the default morning greeting (copy.title) so hydration matches; after mount we
+  // resolve the real local-time band from the device clock (client-local Date only — no API, no
+  // timezone service, no storage). The 0.7s shell mount-fade masks the one-frame swap.
+  const [greeting, setGreeting] = useState(copy.title);
+  useEffect(() => {
+    setGreeting(pickGreeting(copy.greetings, new Date().getHours()));
+  }, [copy]);
+
   return (
     <>
-      <SurfaceHeader title={copy.title} sub={copy.sub} />
+      <SurfaceHeader title={greeting} sub={copy.sub} />
       {loading ? (
         <div aria-hidden className="mb-6 h-4 w-2/3 animate-pulse rounded bg-white/10" />
       ) : (
