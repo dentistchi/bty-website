@@ -285,9 +285,8 @@ export function TodaySurface({
     setConfirmed(false);
   };
 
-  // Gold ring: the user's pick once made, else the derived suggestion.
+  // The invited door: the user's pick once made, else the softly-suggested derived focus.
   const highlight = selected ?? activeFocus;
-  const selectedCard = selected ? copy.cards.find((c) => c.focus === selected) : null;
 
   return (
     <>
@@ -299,91 +298,112 @@ export function TodaySurface({
           {statusLine}
         </p>
       )}
+      {/* Three ritual doors — thresholds, not selector rows. Each has a luminous opening
+          seam and an interior warmth that leans in when invited. Selecting a door "opens"
+          it: the confirmation settles directly beneath as that door's interior (a sibling,
+          never a nested button), and the other two quiet down but stay present. */}
       <div className="space-y-3">
         {copy.cards.map((c) => {
           const isHighlight = c.focus === highlight;
           const isSelected = c.focus === selected;
+          const isDimmed = selected !== null && !isSelected;
           return (
-            <button
+            <div
               key={c.t}
-              type="button"
-              onClick={() => select(c.focus)}
-              aria-pressed={isSelected}
-              data-focus={c.focus}
-              className={`group flex w-full items-center gap-4 rounded-2xl border p-5 text-left transition duration-200 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40 ${
-                isHighlight
-                  ? "border-[#C9A66B]/50 bg-[#C9A66B]/[0.07] ring-1 ring-[#C9A66B]/25"
-                  : "border-white/10 bg-white/[0.04] hover:border-[#C9A66B]/25 hover:bg-white/[0.07] active:bg-white/[0.09]"
-              }`}
+              className={`transition-opacity duration-300 ${isDimmed ? "opacity-40" : "opacity-100"}`}
             >
-              <span
-                aria-hidden
-                className={`grid h-11 w-11 shrink-0 place-items-center rounded-full transition ${
-                  isHighlight
-                    ? "bg-[#C9A66B]/30 ring-1 ring-[#C9A66B]/40"
-                    : "bg-[#C9A66B]/15 ring-1 ring-[#C9A66B]/20 group-hover:bg-[#C9A66B]/25"
+              <button
+                type="button"
+                onClick={() => select(c.focus)}
+                aria-pressed={isSelected}
+                data-focus={c.focus}
+                className={`group relative flex w-full flex-col items-start gap-1.5 overflow-hidden border px-6 py-6 text-left transition duration-300 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40 ${
+                  isSelected
+                    ? "rounded-2xl rounded-b-none border-b-0 border-[#C9A66B]/45 bg-gradient-to-b from-[#C9A66B]/[0.08] to-[#C9A66B]/[0.04]"
+                    : isHighlight
+                      ? "rounded-2xl border-[#C9A66B]/30 bg-gradient-to-b from-[#C9A66B]/[0.06] to-white/[0.02] ring-1 ring-[#C9A66B]/15"
+                      : "rounded-2xl border-white/10 bg-gradient-to-b from-white/[0.055] to-white/[0.02] hover:border-[#C9A66B]/25 hover:from-white/[0.08]"
                 }`}
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-[#C9A66B]" />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-base font-semibold text-white">{c.t}</span>
-                <span className="block text-sm text-white/55">{c.d}</span>
-              </span>
-            </button>
+                {/* Threshold seam — a soft luminous vertical edge: the door's opening. */}
+                <span
+                  aria-hidden
+                  className={`pointer-events-none absolute inset-y-4 left-0 w-px bg-gradient-to-b from-transparent via-[#C9A66B]/60 to-transparent transition-opacity duration-300 ${
+                    isHighlight ? "opacity-100" : "opacity-35 group-hover:opacity-70"
+                  }`}
+                />
+                {/* Interior depth — a quiet warmth leaning in from the seam, growing when invited. */}
+                <span
+                  aria-hidden
+                  className={`pointer-events-none absolute inset-0 bg-gradient-to-r from-[#C9A66B]/[0.08] via-transparent to-transparent transition-opacity duration-300 ${
+                    isHighlight ? "opacity-100" : "opacity-0 group-hover:opacity-60"
+                  }`}
+                />
+                <span className="relative text-lg font-semibold text-white">{c.t}</span>
+                <span className="relative text-sm leading-6 text-white/55">{c.d}</span>
+              </button>
+
+              {/* The opened interior — a sibling of the door (valid HTML: no nested button),
+                  merged flush beneath it (shared border, no top edge) so door + interior read
+                  as one opened whole. Confirmation structure/attributes are unchanged. */}
+              {isSelected ? (
+                <div
+                  data-today-confirm
+                  className="relative overflow-hidden rounded-b-2xl border border-t-0 border-[#C9A66B]/45 bg-[#C9A66B]/[0.05] px-6 pb-6 pt-5"
+                >
+                  {/* Seam continues down into the interior — one continuous opening. */}
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-y-0 left-0 w-px bg-gradient-to-b from-[#C9A66B]/40 via-[#C9A66B]/15 to-transparent"
+                  />
+                  {/* Layer 1 — path sublabel (reuses the locked-room eyebrow tone). */}
+                  <span
+                    data-path-label
+                    className="relative block text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90"
+                  >
+                    {copy.pathLabel}
+                  </span>
+                  {/* Layer 2 — selection confirmation. Doubles as the fallback line when no promise. */}
+                  <p data-select-line className="relative mt-2 text-[0.95rem] leading-6 text-white/85">
+                    {c.select}
+                  </p>
+                  {/* Layers 3 + 4 — the promise to carry, ONLY when a real open promise exists.
+                      action_text is rendered verbatim (unchanged); no fabrication on fallback. */}
+                  {promiseText ? (
+                    <>
+                      <span
+                        data-promise-label
+                        className="relative mt-4 block text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90"
+                      >
+                        {copy.promiseLabel}
+                      </span>
+                      <p data-carry-line className="relative mt-2 text-[0.95rem] leading-6 text-white/70">
+                        {promiseText}
+                      </p>
+                    </>
+                  ) : null}
+                  {/* CTA — pre-press is the strong filled-gold action; the settled state SINKS to
+                      an outline + ✓ (reverses the earlier direction). */}
+                  <button
+                    type="button"
+                    onClick={() => setConfirmed(true)}
+                    aria-pressed={confirmed}
+                    data-today-cta
+                    className={`relative mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40 ${
+                      confirmed
+                        ? "border border-[#C9A66B]/40 bg-transparent text-[#C9A66B]/80"
+                        : "bg-[#C9A66B] text-[#0B1F3A] hover:bg-[#C9A66B]/90 active:scale-[0.985]"
+                    }`}
+                  >
+                    {confirmed ? <span aria-hidden>✓</span> : null}
+                    {confirmed ? copy.ctaDone : copy.cta}
+                  </button>
+                </div>
+              ) : null}
+            </div>
           );
         })}
       </div>
-
-      {selected ? (
-        <div
-          data-today-confirm
-          className="mt-6 rounded-2xl border border-[#C9A66B]/25 bg-[#C9A66B]/[0.05] p-5"
-        >
-          {/* Layer 1 — path sublabel (reuses the locked-room eyebrow tone). */}
-          <span
-            data-path-label
-            className="block text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90"
-          >
-            {copy.pathLabel}
-          </span>
-          {/* Layer 2 — selection confirmation. Doubles as the fallback line when no promise. */}
-          <p data-select-line className="mt-2 text-[0.95rem] leading-6 text-white/85">
-            {selectedCard?.select}
-          </p>
-          {/* Layers 3 + 4 — the promise to carry, ONLY when a real open promise exists.
-              action_text is rendered verbatim (unchanged); no fabrication on fallback. */}
-          {promiseText ? (
-            <>
-              <span
-                data-promise-label
-                className="mt-4 block text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90"
-              >
-                {copy.promiseLabel}
-              </span>
-              <p data-carry-line className="mt-2 text-[0.95rem] leading-6 text-white/70">
-                {promiseText}
-              </p>
-            </>
-          ) : null}
-          {/* CTA — pre-press is the strong filled-gold action; the settled state SINKS to
-              an outline + ✓ (reverses the earlier direction). */}
-          <button
-            type="button"
-            onClick={() => setConfirmed(true)}
-            aria-pressed={confirmed}
-            data-today-cta
-            className={`mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40 ${
-              confirmed
-                ? "border border-[#C9A66B]/40 bg-transparent text-[#C9A66B]/80"
-                : "bg-[#C9A66B] text-[#0B1F3A] hover:bg-[#C9A66B]/90 active:scale-[0.985]"
-            }`}
-          >
-            {confirmed ? <span aria-hidden>✓</span> : null}
-            {confirmed ? copy.ctaDone : copy.cta}
-          </button>
-        </div>
-      ) : null}
     </>
   );
 }
