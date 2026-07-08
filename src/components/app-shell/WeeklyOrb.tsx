@@ -55,6 +55,15 @@ const ARIA: Record<Locale, string> = {
   ko: "이번 주의 활동 리듬",
 };
 
+// One-time quiet whisper teaching the today marker (not a label/CTA/tooltip).
+const HINT: Record<Locale, string> = {
+  en: "The breathing light is today.",
+  ko: "숨 쉬는 빛이 오늘입니다.",
+};
+const HINT_KEY = "weeklyOrbTodayHintSeen";
+// Fallback when localStorage is unavailable → show the hint at most once per session.
+let sessionHintShown = false;
+
 function parseHex(hex: string): RGB | null {
   const m = hex.trim().replace(/^#/, "");
   if (m.length !== 6) return null;
@@ -86,6 +95,8 @@ function smoothstep(a: number, b: number, x: number): number {
 export default function WeeklyOrb({ intensities, locale, size = 240 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [failed, setFailed] = useState(false);
+  const [hintShown, setHintShown] = useState(false);
+  const [hintOut, setHintOut] = useState(false);
   const intensitiesRef = useRef(intensities);
   const drawRef = useRef<((ts: number) => void) | null>(null);
 
@@ -410,6 +421,37 @@ export default function WeeklyOrb({ intensities, locale, size = 240 }: Props) {
     return () => window.cancelAnimationFrame(id);
   }, [intensities]);
 
+  // One-time quiet whisper teaching the today marker. Shown briefly on first view, then
+  // fades out; persisted in localStorage so it never repeats. Fail-soft: if storage is
+  // unavailable, show at most once per session (module flag) and never crash.
+  useEffect(() => {
+    let seen = false;
+    let storageOk = true;
+    try {
+      seen = window.localStorage.getItem(HINT_KEY) === "1";
+    } catch {
+      storageOk = false;
+    }
+    if (!storageOk) seen = sessionHintShown;
+    if (seen) return;
+    setHintShown(true);
+    if (storageOk) {
+      try {
+        window.localStorage.setItem(HINT_KEY, "1");
+      } catch {
+        /* fail-soft: no persist */
+      }
+    } else {
+      sessionHintShown = true;
+    }
+    const t1 = window.setTimeout(() => setHintOut(true), 4000); // begin soft fade
+    const t2 = window.setTimeout(() => setHintShown(false), 4800); // unmount after fade
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, []);
+
   return (
     // No card / no background fill / no wrapper gradient — only light. The shell applies the
     // upward lift; here the caption is pulled snug under the orb with safe bottom spacing.
@@ -438,6 +480,15 @@ export default function WeeklyOrb({ intensities, locale, size = 240 }: Props) {
         ) : null}
       </div>
       <p className="text-xs tracking-[0.16em] text-white/45">{CAPTION[locale]}</p>
+      {hintShown ? (
+        // A quiet product whisper — small, soft, no box/icon/colour; fades out on its own.
+        <p
+          className="mt-1.5 text-[11px] leading-relaxed text-white/35 transition-opacity duration-700 ease-out"
+          style={{ opacity: hintOut ? 0 : 1 }}
+        >
+          {HINT[locale]}
+        </p>
+      ) : null}
     </div>
   );
 }
