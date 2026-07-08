@@ -485,7 +485,12 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
         {tab === "me" && (
           <div className="flex flex-col">
             <CenterMeCard locale={locale} />
-            <WeeklyOrb intensities={weeklyRhythm} locale={locale} />
+            {/* Lift the weekly light up into the open space below the mirror so it is the
+                emotional centre of the Me tab (not a bottom decoration) and its caption
+                clears the companion dock. vh-relative so the lift scales across devices. */}
+            <div className="-mt-[24vh]">
+              <WeeklyOrb intensities={weeklyRhythm} locale={locale} />
+            </div>
           </div>
         )}
       </main>
