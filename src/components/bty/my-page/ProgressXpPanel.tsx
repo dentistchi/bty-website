@@ -32,6 +32,46 @@ const BAR_INTENSITY_HEIGHT: Record<number, number> = {
   5: 100,
 };
 
+// "Ember rhythm" — translate barIntensity (0–5) into light/material/presence, never a
+// number or score. Cool + matte at low intensity; a restrained BTY-gold (#C9A66B) top
+// highlight + soft glow + gentle breathing enter only at the highest intensities. Purely
+// presentational: this carries no XP meaning and 5 is never announced as a peak.
+function emberBar(intensity: number): {
+  background: string;
+  boxShadow?: string;
+  breath: boolean;
+} {
+  if (intensity >= 4) {
+    const strong = intensity >= 5;
+    return {
+      background: "linear-gradient(to top, #37506B 0%, #6E7B84 52%, #C9A66B 100%)",
+      boxShadow: `0 0 ${strong ? 16 : 11}px -3px rgba(201,166,107,${
+        strong ? 0.5 : 0.34
+      }), 0 1px 2px rgba(55,80,107,0.22)`,
+      breath: true,
+    };
+  }
+  if (intensity >= 2) {
+    return {
+      background: "linear-gradient(to top, #37506B 0%, #54718F 100%)",
+      boxShadow: "0 1px 2px rgba(55,80,107,0.16)",
+      breath: false,
+    };
+  }
+  if (intensity >= 1) {
+    return {
+      background: "linear-gradient(to top, #435D78 0%, #566F89 100%)",
+      breath: false,
+    };
+  }
+  // 0 — quiet resting mark; warm grey harmonizes with the cream card so empty days read
+  // as calm rest rather than a broken nub.
+  return {
+    background: "linear-gradient(to top, #CFC7B6 0%, #D9D1C2 100%)",
+    breath: false,
+  };
+}
+
 const STREAK_KEY = "btyArenaStreak:v1";
 
 function readLocalStreak(): number {
@@ -106,6 +146,9 @@ export function ProgressXpPanel({ locale }: Props) {
   }, [locale]);
 
   const series = stats?.dailyBarSeries ?? [];
+  const days = loaded
+    ? series
+    : Array.from({ length: 7 }, () => ({ date: "", barIntensity: 0 }));
 
   const stageNum = stage?.currentStage ?? null;
   const stageName = stage?.stageName ?? null;
@@ -120,36 +163,81 @@ export function ProgressXpPanel({ locale }: Props) {
           totals were exposed verbatim. The numberless 7-day chart below (relative bars,
           no XP labels) is the preserved safe progress-shape residue. */}
 
-      {/* 7-day XP chart */}
+      {/* 7-day rhythm — "Ember rhythm": barIntensity 0–5 rendered as light / material /
+          presence, never a number or score. Cool + matte at low intensity; restrained
+          BTY-gold warmth + soft glow + gentle breathing at the highest intensities. */}
       <div
         data-testid="my-page-weekly-chart"
-        className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm"
+        className="rounded-[28px] border border-[#EBE4D6] bg-gradient-to-b from-white to-[#FBF7F0] p-5"
+        style={{
+          boxShadow:
+            "0 8px 28px -10px rgba(64,90,116,0.20), inset 0 1px 0 rgba(255,255,255,0.75)",
+        }}
       >
+        <style>{`
+          @keyframes btyEmberBreath { 0%, 100% { opacity: 0.9; } 50% { opacity: 1; } }
+          .bty-ember-breath { animation: btyEmberBreath 4.2s ease-in-out infinite; will-change: opacity; }
+          @media (prefers-reduced-motion: reduce) {
+            .bty-ember-breath { animation: none; opacity: 1; }
+          }
+        `}</style>
         <p className="text-sm font-medium text-[#1E2A38]">
           {isKo ? "최근 7일의 흔적" : "Last 7 days"}
         </p>
-        <div className="mt-4 flex items-end gap-1.5 h-24" aria-hidden>
-          {(loaded ? series : Array.from({ length: 7 }, () => ({ date: "", barIntensity: 0 }))).map((d, i) => {
-            const heightPct = BAR_INTENSITY_HEIGHT[d.barIntensity] ?? 4;
-            return (
-              <div key={`${d.date}-${i}`} className="flex-1 flex flex-col items-center gap-1">
-                <div className="flex-1 w-full flex items-end">
+
+        {/* Deliberate a11y decision (not left by default): the ember glow now carries meaning
+            through light, so a blanket aria-hidden would give screen-reader users nothing while
+            the visual richness grows. We expose the chart as a SINGLE numberless summary
+            (role="img" + one ambient label) — parity of *meaning* without numbers or a per-day
+            readout, keeping the numberless ethos equal for sighted and SR users. */}
+        <div
+          role="img"
+          aria-label={isKo ? "지난 7일의 활동 리듬" : "Your rhythm over the last 7 days"}
+        >
+          <div className="relative mt-4 flex h-24 items-end gap-1.5">
+            {/* resting baseline — bars sit on quiet ground; empty days read as rest, not glitch */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px rounded-full bg-[#EADFCB]" />
+            {days.map((d, i) => {
+              const heightPct = BAR_INTENSITY_HEIGHT[d.barIntensity] ?? 4;
+              if (!loaded) {
+                return (
                   <div
-                    className={`w-full rounded-t-md ${loaded ? "bg-[#405A74]" : "bg-[#E8E3D8] animate-pulse"}`}
+                    key={`bar-${i}`}
+                    className="flex-1 rounded-full bg-[#E8E3D8] animate-pulse"
                     style={{ height: `${heightPct}%` }}
                   />
-                </div>
-                <p className="text-[10px] text-[#98A2B3] tabular-nums">
-                  {d.date ? dayLabel(d.date, locale) : ""}
-                </p>
-              </div>
-            );
-          })}
+                );
+              }
+              const eb = emberBar(d.barIntensity);
+              return (
+                <div
+                  key={`${d.date}-${i}`}
+                  className={`flex-1 rounded-full ${eb.breath ? "bty-ember-breath" : ""}`}
+                  style={{
+                    height: `${heightPct}%`,
+                    background: eb.background,
+                    boxShadow: eb.boxShadow,
+                    animationDelay: eb.breath ? `${i * 220}ms` : undefined,
+                  }}
+                />
+              );
+            })}
+          </div>
+          <div className="mt-1.5 flex gap-1.5">
+            {days.map((d, i) => (
+              <p
+                key={`lbl-${d.date}-${i}`}
+                className="flex-1 text-center text-[10px] text-[#98A2B3] tabular-nums"
+              >
+                {d.date ? dayLabel(d.date, locale) : ""}
+              </p>
+            ))}
+          </div>
         </div>
-        <div className="mt-2 flex items-center justify-between text-xs text-[#667085]">
-          <span>{isKo ? "일별 합계" : "Daily total"}</span>
-          {/* P2 #2: raw "Peak {n}" XP number removed; the relative bars carry the shape. */}
-        </div>
+
+        <p className="mt-3 text-xs text-[#B7A98C]">
+          {isKo ? "숫자보다 흐름을 남깁니다." : "More rhythm than numbers."}
+        </p>
       </div>
 
       {/* Leadership Stage */}
