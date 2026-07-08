@@ -16,24 +16,25 @@ import { useEffect, useRef, useState } from "react";
  *   - mean intensity   → body size / core warmth / breath depth
  *   - active-day count → inner medium (particle) density
  *   - each day's value → one daily light whose RADIUS + brightness + warmth rise with it
- *   - today            → a soft living pulse (in-progress) — no ring, no completed marker
+ *   - today            → a living pulse-halo (temporal identity) — no ring, works even at 0
  *   - empty week       → a quiet RESTING orb (presence floor), never "failure"
  *
- * STEP 4 — luminous absorb / no-frame: much brighter ("빛/light", not a dim glow); the 7
- * daily lights orbit slowly and run a clearly visible ~7s ABSORB/RELEASE cycle — gathering
- * far inward, their edges fading with faint trails toward the centre while the weekly orb
- * brightens to RECEIVE them, then releasing back out. The canvas is intentionally larger
- * than the orb so every glow fades to full transparency BEFORE the square edge — no visible
- * rectangular frame; the light blends into the dark Me surface. Reduced motion → a brighter
- * STATIC orb + static intensity-sized nodes (no orbit / absorb / pulse loop).
+ * STEP 5 — true merge: the 7 daily lights orbit slowly and run a phased ~8s cycle —
+ * GATHER far inward (~78%, past the core edge, trailing light) → a brief MERGE hold where
+ * they read as one weekly light and the core FLARES with accumulated warmth → RELEASE back
+ * out into 7 distinct intensity-sized days. Today breathes a soft warm pulse so you can tell
+ * which light is today. The canvas is larger than the orb so all glows fade to zero BEFORE
+ * the square edge — no rectangular frame; the light blends into the dark Me surface. Reduced
+ * motion → a brighter STATIC orb + static intensity-sized nodes + a static today halo (no
+ * orbit / merge / pulse loop; single repaint when data arrives).
  */
 
 type Locale = "en" | "ko";
 
 type Props = {
-  /** Canvas diameter in px (glows fade well inside this). Default 260. */
   intensities: number[];
   locale: Locale;
+  /** Canvas diameter in px (glows fade well inside this). Default 280. */
   size?: number;
 };
 
@@ -76,8 +77,14 @@ const lerp = (a: RGB, b: RGB, t: number): RGB => ({
   g: Math.round(a.g + (b.g - a.g) * t),
   b: Math.round(a.b + (b.b - a.b) * t),
 });
+// Smooth 0→1 ease used to shape the gather / release so the merge feels organic (no
+// suction, no spinner).
+function smoothstep(a: number, b: number, x: number): number {
+  const u = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return u * u * (3 - 2 * u);
+}
 
-export default function WeeklyOrb({ intensities, locale, size = 260 }: Props) {
+export default function WeeklyOrb({ intensities, locale, size = 280 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [failed, setFailed] = useState(false);
   // Latest intensities in a ref so the (size-scoped) loop reads fresh weekly data without
@@ -116,9 +123,9 @@ export default function WeeklyOrb({ intensities, locale, size = 260 }: Props) {
 
     const cx = size / 2;
     const cy = size / 2;
-    // orbR kept small vs the canvas so the halo (≈0.43·size radius) and node glows all fade
-    // to zero well before the square edge → no rectangular frame is ever revealed.
-    const orbR = size * 0.17;
+    // orbR kept small vs the canvas so the halo, node glows and today pulse-halo all fade to
+    // zero well before the square edge → no rectangular frame is ever revealed.
+    const orbR = size * 0.14;
 
     // A brighter STATIC frame under reduced motion (no shimmer to draw the eye, so lift the
     // steady glow a touch to compensate).
@@ -142,10 +149,12 @@ export default function WeeklyOrb({ intensities, locale, size = 260 }: Props) {
     // Per-node statics — each of the 7 daily lights carries a slightly different resting
     // radius and its own slow wobble, so the orbiting ring feels organic, not mechanical.
     const nodeParams = Array.from({ length: 7 }, () => ({
-      radOffset: (Math.random() - 0.5) * 0.08,
+      radOffset: (Math.random() - 0.5) * 0.07,
       wobPhase: Math.random() * Math.PI * 2,
       wobFreq: 0.05 + Math.random() * 0.06,
     }));
+
+    const CYCLE = 8; // seconds — full gather → merge hold → release → rest
 
     let raf = 0;
     let last = 0;
@@ -166,24 +175,34 @@ export default function WeeklyOrb({ intensities, locale, size = 260 }: Props) {
       const mean = n > 0 ? clamped.reduce((s, v) => s + v, 0) / n : 0; // 0–5
       const vitality = mean / 5; // 0–1
       const density = n > 0 ? activeDays / n : 0; // 0–1
+      // Today = the freshest (last) bucket. The server builds the 7-day series ENDING at
+      // today, so the last index is today by construction — temporal, not score-based, and
+      // needing no date math here (so no UTC mismatch to fix in this component).
       const todayIdx = n - 1;
 
-      // Gentle body breath (~7s). Absorb/release runs on its own clear ~7s cycle: 0 = fully
-      // released (out at orbit), 1 = fully gathered inward. Slow whole-ring rotation ~24s.
       const beat = reduceMotion ? 0 : Math.sin(t * 0.9);
       const breath = 1 + (0.02 + 0.035 * vitality) * beat;
-      const absorb = reduceMotion ? 0 : 0.5 - 0.5 * Math.cos(t * ((Math.PI * 2) / 7));
       const commonRot = reduceMotion ? 0 : t * ((Math.PI * 2) / 24);
-      // Today pulse ~3s — a living breath of opacity + glow radius (no ring, no flash).
-      const todayPulse = reduceMotion ? 0.65 : 0.5 + 0.5 * Math.sin(t * ((Math.PI * 2) / 3));
+      // Merge amount m: 0 released (7 distinct) → 1 merged (one light). Gather (slower),
+      // brief hold, smooth release, then a rest with the days fully separated.
+      let m = 0;
+      if (!reduceMotion) {
+        const cyc = (t % CYCLE) / CYCLE;
+        if (cyc < 0.47) m = smoothstep(0.06, 0.47, cyc); // gather
+        else if (cyc < 0.55) m = 1; // merge hold (~0.64s "one light")
+        else if (cyc < 0.9) m = 1 - smoothstep(0.55, 0.9, cyc); // release
+        else m = 0; // rest — 7 distinct living days
+      }
+      // Today pulse ~3.2s — a living breath of alpha + a soft warm halo (no ring, no flash).
+      const todayPulse = reduceMotion ? 0.6 : 0.5 + 0.5 * Math.sin(t * ((Math.PI * 2) / 3.2));
 
       ctx.clearRect(0, 0, size, size);
 
       // (1) Body — luminous warm sphere; size & warmth ride vitality, bounded so a resting
-      // orb is calm, never empty. Brighter than before ("빛", not a dim glow).
+      // orb is calm, never empty.
       const bodyR = orbR * (0.96 + 0.14 * vitality) * breath;
       const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, bodyR);
-      bg.addColorStop(0, rgba(morning, (0.56 + 0.18 * vitality) * glow));
+      bg.addColorStop(0, rgba(morning, (0.58 + 0.16 * vitality) * glow));
       bg.addColorStop(0.55, rgba(morning, (0.36 + 0.12 * vitality) * glow));
       bg.addColorStop(0.85, rgba(morning, 0.16 * glow));
       bg.addColorStop(1, rgba(morning, 0));
@@ -194,9 +213,9 @@ export default function WeeklyOrb({ intensities, locale, size = 260 }: Props) {
 
       ctx.globalCompositeOperation = "lighter";
 
-      // (2) Outer halo — a wide, soft circular bloom that fades fully inside the canvas (no
-      // rectangular clip). Present on the dark surface without being neon.
-      const haloR = orbR * 2.5 * breath;
+      // (2) Outer halo — a wide, soft circular bloom that EXPANDS slightly at merge peak and
+      // still fades fully inside the canvas (no rectangular clip).
+      const haloR = orbR * (2.6 + 0.5 * m) * breath;
       const hg = ctx.createRadialGradient(cx, cy, orbR * 0.5, cx, cy, haloR);
       hg.addColorStop(0, rgba(morning, (0.16 + 0.1 * vitality) * glow));
       hg.addColorStop(0.5, rgba(GOLD, (0.09 + 0.06 * vitality) * glow));
@@ -206,11 +225,11 @@ export default function WeeklyOrb({ intensities, locale, size = 260 }: Props) {
       ctx.arc(cx, cy, haloR, 0, Math.PI * 2);
       ctx.fill();
 
-      // (3) Core ember — warm amber; brightens with vitality AND noticeably with `absorb`
-      // (the weekly orb receiving the days' gathered light). Alive, not a notification pulse.
+      // (3) Core ember — warm amber; brightens with vitality AND strongly with merge `m` (the
+      // weekly orb receiving the gathered days). Alive, not a notification pulse.
       const coreR = orbR * 0.58 * breath;
       const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR);
-      cg.addColorStop(0, rgba(touch, (0.38 + 0.28 * vitality + 0.22 * absorb) * glow));
+      cg.addColorStop(0, rgba(touch, (0.38 + 0.26 * vitality + 0.3 * m) * glow));
       cg.addColorStop(0.45, rgba(touch, (0.2 + 0.16 * vitality) * glow));
       cg.addColorStop(1, rgba(touch, 0));
       ctx.fillStyle = cg;
@@ -218,16 +237,31 @@ export default function WeeklyOrb({ intensities, locale, size = 260 }: Props) {
       ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
       ctx.fill();
 
-      // (4) Inner gold heart — restrained warm-gold; also lifts with vitality + absorb.
+      // (4) Inner gold heart — restrained warm-gold; lifts with vitality + merge.
       const seedR = orbR * 0.34 * breath;
       const sg = ctx.createRadialGradient(cx, cy, 0, cx, cy, seedR);
-      sg.addColorStop(0, rgba(GOLD, (0.32 + 0.28 * vitality + 0.24 * absorb) * glow));
+      sg.addColorStop(0, rgba(GOLD, (0.32 + 0.26 * vitality + 0.3 * m) * glow));
       sg.addColorStop(0.5, rgba(GOLD, (0.14 + 0.14 * vitality) * glow));
       sg.addColorStop(1, rgba(GOLD, 0));
       ctx.fillStyle = sg;
       ctx.beginPath();
       ctx.arc(cx, cy, seedR, 0, Math.PI * 2);
       ctx.fill();
+
+      // (4b) Merge flare — a soft warm bloom that appears only near the merge peak: the
+      // accumulated light of the week's days becoming one. Smooth, organic, brief.
+      if (m > 0.01) {
+        const flareR = orbR * (1.5 + 0.7 * m) * breath;
+        const fa = 0.24 * m * glow;
+        const fg = ctx.createRadialGradient(cx, cy, 0, cx, cy, flareR);
+        fg.addColorStop(0, rgba(GOLD, fa));
+        fg.addColorStop(0.5, rgba(touch, fa * 0.45));
+        fg.addColorStop(1, rgba(morning, 0));
+        ctx.fillStyle = fg;
+        ctx.beginPath();
+        ctx.arc(cx, cy, flareR, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       // (5) Inner medium — how many cells are "lit" scales with active-day density; the rest
       // linger faintly (never fully dead). More days lived → more inner life circulating.
@@ -254,12 +288,11 @@ export default function WeeklyOrb({ intensities, locale, size = 260 }: Props) {
         ctx.fill();
       }
 
-      // (6) The week's daily lights — 7 orbiting on a slowly rotating ring. RADIUS,
-      // brightness and warmth all rise with that day's intensity. The absorb cycle pulls them
-      // clearly inward (up to ~35%), softening their edge + trailing light toward the centre
-      // as if drawn in; release returns them to orbit. Today breathes a soft living pulse —
-      // no ring, no completed-marker outline.
-      const ringBase = orbR * 1.4;
+      // (6) The week's daily lights — 7 orbiting on a slowly rotating ring. On the merge
+      // cycle they gather ~78% inward (past the core edge → one light), softening and
+      // trailing toward the centre, then release back to 7 distinct intensity-sized days.
+      // Today carries a warm breathing pulse-halo so its light is identifiable.
+      const ringBase = orbR * 1.5;
       for (let i = 0; i < n; i++) {
         const inten = clamped[i]! / 5; // 0–1
         const np = nodeParams[i] ?? nodeParams[0]!;
@@ -267,28 +300,25 @@ export default function WeeklyOrb({ intensities, locale, size = 260 }: Props) {
         const base = -Math.PI / 2 + (i / n) * Math.PI * 2;
         const ang =
           base + commonRot + (reduceMotion ? 0 : 0.05 * Math.sin(t * np.wobFreq + np.wobPhase));
-        // Clear inward gather (up to 35%) on the absorb cycle.
-        const ringR = ringBase * (1 + np.radOffset) * (1 - 0.35 * absorb);
+        // True near-merge: contract up to 78% of orbit radius (node falls inside the core).
+        const ringR = ringBase * (1 + np.radOffset) * (1 - 0.78 * m);
         const nx = cx + Math.cos(ang) * ringR;
         const ny = cy + Math.sin(ang) * ringR;
 
-        // Radius by intensity — visibly different on a phone. Today also breathes its radius.
-        const baseNodeR = orbR * (0.14 + 0.3 * inten);
-        const nodeR = baseNodeR * (isToday ? 1 + 0.28 * todayPulse : 1);
+        // Radius/warmth by intensity (visibly different). Today breathes its radius a touch.
+        const baseNodeR = orbR * (0.16 + 0.3 * inten);
+        const nodeR = baseNodeR * (isToday ? 1 + 0.1 * todayPulse : 1);
         const glowR = nodeR * (2.2 + 0.5 * inten);
-
-        // Warmth: cool/quiet (morning) → warm gold as intensity rises; blends toward the body
-        // tone as it is absorbed inward.
         const warm = lerp(morning, GOLD, inten);
-        const nodeCol = lerp(warm, morning, 0.35 * absorb);
+        const nodeCol = lerp(warm, morning, 0.4 * m); // blends into the body as it merges
 
         // Faint trails toward the centre while gathering — light being drawn in (subtle).
-        if (!reduceMotion && absorb > 0.08) {
+        if (!reduceMotion && m > 0.08) {
           for (const k of [0.66, 0.4]) {
             const tx = nx + (cx - nx) * k;
             const ty = ny + (cy - ny) * k;
             const tr = baseNodeR * (0.95 - 0.35 * k);
-            const ta = 0.13 * (0.4 + 0.6 * inten) * absorb * (1 - k * 0.55);
+            const ta = 0.14 * (0.4 + 0.6 * inten) * m * (1 - k * 0.55);
             const tgr = ctx.createRadialGradient(tx, ty, 0, tx, ty, tr);
             tgr.addColorStop(0, rgba(nodeCol, ta));
             tgr.addColorStop(1, rgba(nodeCol, 0));
@@ -299,10 +329,25 @@ export default function WeeklyOrb({ intensities, locale, size = 260 }: Props) {
           }
         }
 
-        // Brightness by intensity (bright, glowing — not dust). Today breathes; gathered
-        // lights soften their outer edge (absorbed into the orb).
-        let nodeA = (0.4 + 0.55 * inten) * glow * (1 - 0.38 * absorb);
-        if (isToday) nodeA *= 0.6 + 0.7 * todayPulse;
+        // Today's living pulse-halo — a soft warm aura that breathes (~3.2s). Present even at
+        // intensity 0 (temporal identity), and eased down at merge peak so it doesn't shout.
+        if (isToday) {
+          const phaloR = baseNodeR * (2.8 + 0.9 * todayPulse);
+          const phaloA = (0.14 + 0.12 * todayPulse) * glow * (1 - 0.5 * m);
+          const pg = ctx.createRadialGradient(nx, ny, 0, nx, ny, phaloR);
+          pg.addColorStop(0, rgba(GOLD, phaloA));
+          pg.addColorStop(0.5, rgba(GOLD, phaloA * 0.4));
+          pg.addColorStop(1, rgba(GOLD, 0));
+          ctx.fillStyle = pg;
+          ctx.beginPath();
+          ctx.arc(nx, ny, phaloR, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Node glow — bright, glowing (not dust). Softens/fades as it merges (light mass is
+        // carried by the central flare). Today also breathes its alpha.
+        let nodeA = (0.42 + 0.55 * inten) * glow * (1 - 0.55 * m);
+        if (isToday) nodeA *= 0.65 + 0.6 * todayPulse;
         const ng = ctx.createRadialGradient(nx, ny, 0, nx, ny, glowR);
         ng.addColorStop(0, rgba(nodeCol, Math.min(0.95, nodeA)));
         ng.addColorStop(0.4, rgba(nodeCol, nodeA * 0.5));
@@ -312,10 +357,10 @@ export default function WeeklyOrb({ intensities, locale, size = 260 }: Props) {
         ctx.arc(nx, ny, glowR, 0, Math.PI * 2);
         ctx.fill();
 
-        // Living centre — a warm bright core so each day reads as a light. Scales with
-        // intensity; today breathes; softens when absorbed.
-        let dotA = Math.min(0.98, 0.55 + 0.4 * inten) * glow * (1 - 0.32 * absorb);
-        if (isToday) dotA *= 0.6 + 0.7 * todayPulse;
+        // Living centre — a warm bright core so each day reads as a light. Fades hard at the
+        // merge peak (individual dots dissolve into the one light), returns on release.
+        let dotA = Math.min(0.98, 0.55 + 0.4 * inten) * glow * (1 - 0.7 * m);
+        if (isToday) dotA *= 0.65 + 0.6 * todayPulse;
         const dotCol = lerp(nodeCol, SHINE, 0.35 + 0.35 * inten);
         const dg = ctx.createRadialGradient(nx, ny, 0, nx, ny, nodeR);
         dg.addColorStop(0, rgba(dotCol, dotA));
