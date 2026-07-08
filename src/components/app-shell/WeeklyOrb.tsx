@@ -16,7 +16,8 @@ import { useEffect, useRef, useState } from "react";
  *   - mean intensity   → body size / core warmth / breath depth
  *   - active-day count → inner medium (particle) density
  *   - each day's value → one daily light whose RADIUS + brightness + warmth rise with it
- *   - today            → a warm living pulse-halo + whiter centre + short trail (temporal)
+ *   - today            → a breathing warm halo + outward crescent + short trail (temporal;
+ *                        NOT brighter — brightness stays reserved for activity intensity)
  *   - empty week       → a quiet RESTING orb (presence floor), never "failure"
  *
  * STEP 6 — hybrid rhythm "7 distinct days → one weekly light → 7 distinct days":
@@ -24,7 +25,7 @@ import { useEffect, useRef, useState } from "react";
  * gather ~90% inward and — near the peak (a brief ~0.6s hold) — their individual centres
  * DISSOLVE while the core FLARES, so the viewer reads ONE weekly light, not seven clustered
  * dots; then they release and regain identity. Today is always identifiable (a breathing
- * warm halo + whiter centre + short trailing glow — never a ring/label). The canvas is
+ * breathing warm halo + outward crescent + short trail — never a ring/label). The canvas is
  * larger than the orb so every glow fades to zero before the square edge (no rectangular
  * frame). Reduced motion → a brighter STATIC orb + static intensity-sized nodes + a static
  * today halo (no orbit / merge / pulse loop; single repaint when data arrives).
@@ -286,7 +287,8 @@ export default function WeeklyOrb({ intensities, locale, size = 240 }: Props) {
         const ny = cy + Math.sin(ang) * ringR;
 
         const baseNodeR = orbR * (0.16 + 0.3 * inten);
-        const nodeR = baseNodeR * (isToday ? 1 + 0.12 * todayPulse : 1);
+        // Node size = activity intensity ONLY (today's identity is its halo, not its size).
+        const nodeR = baseNodeR;
         const glowR = nodeR * (2.2 + 0.5 * inten);
         const warm = lerp(morning, GOLD, inten);
         const nodeCol = lerp(warm, morning, 0.4 * m);
@@ -309,7 +311,8 @@ export default function WeeklyOrb({ intensities, locale, size = 240 }: Props) {
         }
 
         // Today identity — a warm breathing halo (size partly independent of intensity, so
-        // today reads even at 0), a short trailing glow, and a whiter centre. Eased down at
+        // today reads even at 0), plus a short trailing glow. Brightness is NOT used (that is
+        // reserved for intensity). Eased down at
         // the merge peak so it, too, dissolves into the one light, then returns on release.
         if (isToday) {
           // short trailing glow behind the orbiting today node (the living day in motion)
@@ -329,9 +332,13 @@ export default function WeeklyOrb({ intensities, locale, size = 240 }: Props) {
               ctx.fill();
             }
           }
-          const phaloR = orbR * (0.62 + 0.34 * todayPulse) + baseNodeR * 0.6;
-          const phaloA = (0.24 + 0.2 * todayPulse) * glow * (1 - absorbHi);
-          const pg = ctx.createRadialGradient(nx, ny, 0, nx, ny, phaloR);
+          const phaloR = orbR * (0.55 + 0.5 * todayPulse) + baseNodeR;
+          const phaloA = (0.26 + 0.18 * todayPulse) * glow * (1 - absorbHi);
+          // Warm breathing aura offset slightly OUTWARD → a soft crescent lean (a distinct
+          // SHAPE no other node has); today reads by presence/motion, not luminance.
+          const ox = Math.cos(ang) * baseNodeR * 0.7;
+          const oy = Math.sin(ang) * baseNodeR * 0.7;
+          const pg = ctx.createRadialGradient(nx + ox, ny + oy, 0, nx, ny, phaloR);
           pg.addColorStop(0, rgba(GOLD, phaloA));
           pg.addColorStop(0.5, rgba(GOLD, phaloA * 0.4));
           pg.addColorStop(1, rgba(GOLD, 0));
@@ -343,8 +350,9 @@ export default function WeeklyOrb({ intensities, locale, size = 240 }: Props) {
 
         // Node glow — dissolves near the merge peak (absorbHi) so individual dots vanish and
         // the core flare is the single light; restores on release.
-        let nodeA = (0.42 + 0.55 * inten) * glow * (1 - 0.55 * m) * (1 - 0.85 * absorbHi);
-        if (isToday) nodeA *= 0.65 + 0.6 * todayPulse;
+        // Brightness = activity intensity ONLY — today gets no luminance advantage, so the
+        // "brightest" light never reads as "today"; today's cue is the breathing halo/trail.
+        const nodeA = (0.42 + 0.55 * inten) * glow * (1 - 0.55 * m) * (1 - 0.85 * absorbHi);
         const ng = ctx.createRadialGradient(nx, ny, 0, nx, ny, glowR);
         ng.addColorStop(0, rgba(nodeCol, Math.min(0.95, nodeA)));
         ng.addColorStop(0.4, rgba(nodeCol, nodeA * 0.5));
@@ -354,10 +362,10 @@ export default function WeeklyOrb({ intensities, locale, size = 240 }: Props) {
         ctx.arc(nx, ny, glowR, 0, Math.PI * 2);
         ctx.fill();
 
-        // Living centre — bright warm core (today = whiter). Fully dissolves at peak.
-        let dotA = Math.min(0.98, 0.55 + 0.4 * inten) * glow * (1 - 0.7 * m) * (1 - 0.9 * absorbHi);
-        if (isToday) dotA *= 0.65 + 0.6 * todayPulse;
-        const dotCol = isToday ? lerp(nodeCol, SHINE, 0.7) : lerp(nodeCol, SHINE, 0.35 + 0.35 * inten);
+        // Living centre — bright warm core; size/brightness track intensity for ALL days
+        // (today included). Fully dissolves at peak.
+        const dotA = Math.min(0.98, 0.55 + 0.4 * inten) * glow * (1 - 0.7 * m) * (1 - 0.9 * absorbHi);
+        const dotCol = lerp(nodeCol, SHINE, 0.35 + 0.35 * inten);
         const dg = ctx.createRadialGradient(nx, ny, 0, nx, ny, nodeR);
         dg.addColorStop(0, rgba(dotCol, dotA));
         dg.addColorStop(1, rgba(nodeCol, 0));
