@@ -11,7 +11,6 @@ import {
   type MyPageOpenActionContractUi,
 } from "@/lib/bty/my-page/openActionContractForMyPage";
 import { fetchUserPatternSignaturesForMyPage } from "@/lib/bty/arena/fetchUserPatternSignatures.server";
-import type { UserPatternSignaturePublic } from "@/lib/bty/arena/patternSignature.types";
 import { buildFingerprintInput, resolveArchetypeForUser } from "@/lib/bty/archetype";
 import { CODE_NAMES } from "@/domain/constants";
 import { tierFromCoreXp, codeIndexFromTier } from "@/domain/rules/level-tier";
@@ -30,8 +29,6 @@ export type MyPageIdentityPayload = {
   open_action_contract: MyPageOpenActionContractUi | null;
   /** 안2-B: all awaiting-verification contracts (plural owner QR list). */
   awaiting_verification_contracts: MyPageOpenActionContractUi[];
-  /** Arena Phase B — aggregated pattern signatures (re-exposure / reinforcement), newest first. */
-  pattern_signatures: UserPatternSignaturePublic[];
 };
 
 /**
@@ -116,7 +113,6 @@ export async function getMyPageIdentityState(
       reflections,
       open_action_contract: openContract,
       awaiting_verification_contracts: awaitingContracts,
-      pattern_signatures: sigBundle.rows,
     },
   };
 }

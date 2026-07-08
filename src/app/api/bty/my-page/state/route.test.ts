@@ -1,5 +1,6 @@
 /**
- * C5: GET /api/bty/my-page/state exposes pattern_signatures for PatternSignaturePanel.
+ * Diagnosis-class strip: GET /api/bty/my-page/state must NOT expose pattern_signatures
+ * on the wire, even when the identity service still provides them internally.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
@@ -16,7 +17,7 @@ vi.mock("@/lib/bty/identity", () => ({
 
 const { createSupabaseRouteClient } = await import("@/lib/supabase/server");
 
-describe("GET /api/bty/my-page/state — pattern_signatures", () => {
+describe("GET /api/bty/my-page/state — pattern_signatures strip", () => {
   beforeEach(() => {
     vi.mocked(createSupabaseRouteClient).mockResolvedValue({
       auth: {
@@ -25,7 +26,7 @@ describe("GET /api/bty/my-page/state — pattern_signatures", () => {
     } as Awaited<ReturnType<typeof createSupabaseRouteClient>>);
   });
 
-  it("returns 200 with pattern_signatures rows when identity state includes them", async () => {
+  it("returns 200 WITHOUT pattern_signatures even when identity state includes them", async () => {
     mockGetMyPageIdentityState.mockResolvedValue({
       ok: true,
       data: {
@@ -69,10 +70,10 @@ describe("GET /api/bty/my-page/state — pattern_signatures", () => {
 
     const res = await GET(new NextRequest("http://localhost/api/bty/my-page/state?locale=en"));
     expect(res.status).toBe(200);
-    const json = (await res.json()) as { pattern_signatures?: Array<{ pattern_family: string; axis: string }> };
-    expect(Array.isArray(json.pattern_signatures)).toBe(true);
-    expect(json.pattern_signatures?.length).toBe(1);
-    expect(json.pattern_signatures?.[0]?.pattern_family).toBe("blame_shift");
-    expect(json.pattern_signatures?.[0]?.axis).toContain("Blame");
+    const json = (await res.json()) as Record<string, unknown>;
+    // Diagnosis-class (pattern_signatures / current_state) must not reach the wire.
+    expect("pattern_signatures" in json).toBe(false);
+    expect(JSON.stringify(json)).not.toContain("current_state");
+    expect(JSON.stringify(json)).not.toContain("blame_shift");
   });
 });

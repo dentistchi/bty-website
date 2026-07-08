@@ -11,7 +11,6 @@ import { computeLeadershipState, mergeLeadershipReflectionLayer } from "@/featur
 import type { ArenaSignal, LeadershipMetrics, LeadershipState } from "@/features/my-page/logic/types";
 import { MyPageLeadershipScreen } from "@/features/my-page/MyPageLeadershipScreen";
 import { ActionContractHub } from "@/components/bty/my-page/ActionContractHub";
-import { PatternSignaturePanel } from "@/components/bty/my-page/PatternSignaturePanel";
 import { PostCompletionSheet } from "@/components/bty/my-page/PostCompletionSheet";
 import ArenaPulsePrompt from "@/components/bty-arena/ArenaPulsePrompt";
 import { ActionLoopQrPanel } from "@/components/arena/ActionLoopQrPanel";
@@ -817,17 +816,6 @@ export function MyPageLeadershipConsole({
           )}
           locale={locale}
           onShowQr={handleRequestQrForContract}
-        />
-      )}
-
-      {!isLoading && (
-        <PatternSignaturePanel
-          locale={locale}
-          rows={serverPack?.pattern_signatures}
-          title={t.patternSignatureConsoleTitle}
-          lead={t.patternSignatureConsoleLead}
-          empty={t.patternSignatureConsoleEmpty}
-          regionAria={t.patternSignatureConsoleAria}
         />
       )}
 
