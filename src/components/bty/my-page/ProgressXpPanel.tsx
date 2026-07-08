@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { MyPageStateResponse } from "@/features/my-page/api/getMyPageState";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
@@ -17,7 +17,19 @@ type WeeklyStatsRes = {
   reflectionCount?: number;
   reflectionTarget?: number;
   reflectionQuestClaimed?: boolean;
-  dailyXpSeries?: Array<{ date: string; xp: number }>;
+  dailyBarSeries?: Array<{ date: string; barIntensity: number }>;
+};
+
+// Purely cosmetic barIntensity → bar-height ramp. These percentages are presentation
+// only — they carry no XP/score meaning and must never be read as data. 0 preserves the
+// quiet empty-day stub the previous ratio path rendered at 4%.
+const BAR_INTENSITY_HEIGHT: Record<number, number> = {
+  0: 4,
+  1: 24,
+  2: 42,
+  3: 60,
+  4: 80,
+  5: 100,
 };
 
 const STREAK_KEY = "btyArenaStreak:v1";
@@ -93,11 +105,7 @@ export function ProgressXpPanel({ locale }: Props) {
     };
   }, [locale]);
 
-  const series = stats?.dailyXpSeries ?? [];
-  const seriesMax = useMemo(
-    () => series.reduce((m, d) => (d.xp > m ? d.xp : m), 0),
-    [series],
-  );
+  const series = stats?.dailyBarSeries ?? [];
 
   const stageNum = stage?.currentStage ?? null;
   const stageName = stage?.stageName ?? null;
@@ -118,12 +126,11 @@ export function ProgressXpPanel({ locale }: Props) {
         className="rounded-[28px] border border-[#E8E3D8] bg-white p-5 shadow-sm"
       >
         <p className="text-sm font-medium text-[#1E2A38]">
-          {isKo ? "최근 7일 XP" : "Last 7 days"}
+          {isKo ? "최근 7일의 흔적" : "Last 7 days"}
         </p>
         <div className="mt-4 flex items-end gap-1.5 h-24" aria-hidden>
-          {(loaded ? series : Array.from({ length: 7 }, () => ({ date: "", xp: 0 }))).map((d, i) => {
-            const ratio = seriesMax > 0 ? d.xp / seriesMax : 0;
-            const heightPct = Math.max(4, Math.round(ratio * 100));
+          {(loaded ? series : Array.from({ length: 7 }, () => ({ date: "", barIntensity: 0 }))).map((d, i) => {
+            const heightPct = BAR_INTENSITY_HEIGHT[d.barIntensity] ?? 4;
             return (
               <div key={`${d.date}-${i}`} className="flex-1 flex flex-col items-center gap-1">
                 <div className="flex-1 w-full flex items-end">

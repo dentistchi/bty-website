@@ -42,24 +42,32 @@ export async function GET() {
     const day = (row.created_at as string).slice(0, 10);
     dailySums[day] = (dailySums[day] ?? 0) + (typeof row.xp === "number" ? row.xp : 0);
   }
-  const weekMaxDailyXp = Object.values(dailySums).length > 0 ? Math.max(...Object.values(dailySums)) : 0;
 
-  // Build a 7-day series ending at "today" (UTC) so UI can render a consistent bar chart.
-  const dailyXpSeries: Array<{ date: string; xp: number }> = [];
+  // Build the 7-day display window (ending "today" UTC), then project each day to a 0–5
+  // relative visual intensity. Raw XP never leaves the server: the response carries only
+  // barIntensity — a presentation shape (0 = no activity, 5 = highest day in the window) —
+  // not a score, rank, or metric. seriesMax is derived from the display window only and is
+  // never emitted (emitting it would let a known anchor reconstruct absolute XP).
+  const windowDays: Array<{ date: string; xp: number }> = [];
   const todayUtc = new Date();
   for (let i = 6; i >= 0; i--) {
     const d = new Date(todayUtc);
     d.setUTCDate(d.getUTCDate() - i);
     const key = d.toISOString().slice(0, 10);
-    dailyXpSeries.push({ date: key, xp: dailySums[key] ?? 0 });
+    windowDays.push({ date: key, xp: dailySums[key] ?? 0 });
   }
+  const seriesMax = windowDays.reduce((max, day) => (day.xp > max ? day.xp : max), 0);
+  const dailyBarSeries = windowDays.map(({ date, xp }) => {
+    const barIntensity =
+      seriesMax > 0 && xp > 0 ? Math.max(1, Math.floor((xp / seriesMax) * 5)) : 0;
+    return { date, barIntensity };
+  });
 
   return NextResponse.json({
     reflectionCount: reflectionCount ?? 0,
     reflectionTarget: REFLECTION_QUEST_TARGET,
     reflectionQuestClaimed: !!claim,
     weekStartISO: weekStartISO,
-    weekMaxDailyXp,
-    dailyXpSeries,
+    dailyBarSeries,
   });
 }

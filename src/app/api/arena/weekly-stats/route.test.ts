@@ -80,6 +80,32 @@ describe("GET /api/arena/weekly-stats", () => {
     expect(typeof data.reflectionTarget).toBe("number");
     expect(data.reflectionQuestClaimed).toBe(false);
     expect(data.weekStartISO).toMatch(/^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/);
-    expect(data.weekMaxDailyXp).toBe(0);
+
+    // Projection safety: raw XP must never leave the server. Only the numberless
+    // barIntensity shape (0–5) may be present, and none of the reconstruction vectors.
+    expect(data.weekMaxDailyXp).toBeUndefined();
+    expect(data.dailyXpSeries).toBeUndefined();
+    for (const forbidden of [
+      "max",
+      "seriesMax",
+      "ratio",
+      "percent",
+      "heightPct",
+      "thresholds",
+      "weekMaxDailyXp",
+      "dailyXpSeries",
+    ]) {
+      expect(data[forbidden]).toBeUndefined();
+    }
+
+    expect(Array.isArray(data.dailyBarSeries)).toBe(true);
+    expect(data.dailyBarSeries.length).toBe(7);
+    for (const entry of data.dailyBarSeries) {
+      expect(typeof entry.date).toBe("string");
+      expect(Number.isInteger(entry.barIntensity)).toBe(true);
+      expect(entry.barIntensity).toBeGreaterThanOrEqual(0);
+      expect(entry.barIntensity).toBeLessThanOrEqual(5);
+      expect("xp" in entry).toBe(false);
+    }
   });
 });
