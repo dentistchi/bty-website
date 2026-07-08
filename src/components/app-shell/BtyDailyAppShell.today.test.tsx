@@ -298,6 +298,26 @@ describe("app-shell Today time-aware greeting (client-local, Arrival Warmth STEP
   });
 });
 
+describe("app-shell Today arrival header hierarchy (Arrival Warmth STEP 2)", () => {
+  it("loading state reserves the status line SILENTLY — no pulse, no data-today-status yet", () => {
+    const { container } = renderToday({ loading: true });
+    expect(container.querySelector(".animate-pulse")).toBeNull();
+    expect(container.querySelector("[data-today-status]")).toBeNull();
+  });
+
+  it("resolved status keeps data-today-status and renders the (unchanged) status copy", () => {
+    renderToday({ loading: false, statusLine: selectTodayStatus("en", "verified_action") });
+    const s = document.querySelector("[data-today-status]");
+    expect(s).not.toBeNull();
+    expect(s?.textContent).toBe("You followed through. Carry it into today.");
+  });
+
+  it("keeps the (unchanged) sub copy present under the greeting", () => {
+    renderToday();
+    expect(screen.getByText("Choose the relationship you will live today.")).toBeTruthy();
+  });
+});
+
 describe("app-shell renders Today directly (no shell threshold / no double-door)", () => {
   function stubShellFetch(promise: string | null = null) {
     vi.stubGlobal(

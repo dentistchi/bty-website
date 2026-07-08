@@ -287,9 +287,12 @@ export function pickGreeting(greetings: TodayCopy["greetings"], hour: number): s
 
 function SurfaceHeader({ title, sub }: { title: string; sub?: string }) {
   return (
-    <header className="mb-5 space-y-2">
+    // Greeting + sub read as ONE identity unit: the sub is demoted (smaller + quieter, tucked
+    // close under the greeting) so it no longer competes with the day's status whisper below.
+    // Copy unchanged.
+    <header className="mb-5 space-y-1.5">
       <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-white">{title}</h1>
-      {sub ? <p className="text-[0.95rem] leading-6 text-white/60">{sub}</p> : null}
+      {sub ? <p className="text-sm leading-5 text-white/45">{sub}</p> : null}
     </header>
   );
 }
@@ -348,10 +351,14 @@ export function TodaySurface({
   return (
     <>
       <SurfaceHeader title={greeting} sub={copy.sub} />
+      {/* The day's status whisper — the single calm bridge into the doors, promoted above the
+          demoted sub. While loading we reserve the line's height SILENTLY (no pulse/shimmer
+          machinery); when it resolves the line simply fades in, reusing the shell's
+          reduced-motion-guarded btyFadeIn (inert when rendered outside the shell). */}
       {loading ? (
-        <div aria-hidden className="mb-6 h-4 w-2/3 animate-pulse rounded bg-white/10" />
+        <div aria-hidden className="mb-6 h-6" />
       ) : (
-        <p data-today-status className="mb-6 text-[0.95rem] leading-6 text-white/70">
+        <p data-today-status className="btyFadeIn mb-6 text-[0.95rem] leading-6 text-white/70">
           {statusLine}
         </p>
       )}
