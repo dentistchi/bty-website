@@ -31,7 +31,9 @@ export default function DevOrbSensoryPage(): React.ReactElement {
         overscrollBehavior: "none",
       }}
     >
-      <OrbLiving />
+      {/* Lab-only volumetric body-shading candidate ON here (STEP 2). Production /start
+          renders <OrbLiving/> without this flag → body shading stays OFF in production. */}
+      <OrbLiving bodyShading />
     </div>
   );
 }

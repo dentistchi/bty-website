@@ -40,6 +40,7 @@
 import React from "react";
 import { isNative } from "@/lib/native/isNative";
 import * as goldenOverlay from "./orbGoldenOverlay";
+import { drawOrbBodyShading } from "./orbBodyShading";
 
 /**
  * The sole LIVE haptic call site (#배타성 LOCK), relocated from the retired Orb.tsx.
@@ -118,6 +119,13 @@ export interface OrbLivingProps {
    * change; timer-based (reduced-motion-safe, independent of the rAF loop).
    */
   holdMs?: number;
+  /**
+   * LAB-ONLY (dev/orb) — when true, draws a volumetric body-shading pass (limb darkening /
+   * bottom density / depth / grounding / faint specular) in the source-over body region,
+   * BEFORE the additive interior light. Default OFF. Production (`/start`) never passes it, so
+   * production stays visually and behaviorally unchanged. Adds no motion, no haptic, no state.
+   */
+  bodyShading?: boolean;
 }
 
 /**
@@ -132,17 +140,21 @@ export default function OrbLiving({
   fieldCells = 40,
   onCommit,
   holdMs = 0,
+  bodyShading = false,
 }: OrbLivingProps): React.ReactElement {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const [failed, setFailed] = React.useState(false);
-  // Keep the latest onCommit / holdMs in refs so the (size/fieldCells-scoped) pointer
-  // effect never captures a stale closure. Visual-only — no haptic (§G).
+  // Keep the latest onCommit / holdMs / bodyShading in refs so the (size/fieldCells-scoped)
+  // draw effect never captures a stale closure AND is never re-initialised by these props.
+  // Visual-only — no haptic (§G). bodyShading is lab-only (default OFF in production).
   const onCommitRef = React.useRef(onCommit);
   const holdMsRef = React.useRef(holdMs);
+  const bodyShadingRef = React.useRef(bodyShading);
   React.useEffect(() => {
     onCommitRef.current = onCommit;
     holdMsRef.current = holdMs;
-  }, [onCommit, holdMs]);
+    bodyShadingRef.current = bodyShading;
+  }, [onCommit, holdMs, bodyShading]);
 
   React.useEffect(() => {
     const canvas = canvasRef.current;
@@ -525,6 +537,17 @@ export default function OrbLiving({
       ctx.beginPath();
       ctx.arc(bcx, bcy, shellR, 0, Math.PI * 2);
       ctx.fill();
+
+      // (1b) LAB-ONLY volumetric body shading (STEP 2 · dev/orb only · default OFF in
+      // production). Runs in the source-over region — AFTER the body fill, BEFORE the
+      // additive switch below — and is confined to the body disk (the helper save()/
+      // restore()s the context). It shapes the sphere (limb darkening / bottom density /
+      // depth / grounding / faint specular) WITHOUT touching the additive interior light
+      // passes (2–6). Derived only from the (breathing) body geometry → no new motion, so
+      // reduced-motion (single-frame) simply renders it once, statically.
+      if (bodyShadingRef.current) {
+        drawOrbBodyShading(ctx, { cx: bcx, cy: bcy, radius: shellR });
+      }
 
       // (2) Surrounding light — responds to the core, LAG_MID behind. Additive.
       ctx.globalCompositeOperation = "lighter";
