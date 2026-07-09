@@ -390,6 +390,37 @@ describe("app-shell renders Today directly (no shell threshold / no double-door)
     expect(document.querySelector("[data-today-confirm]")).not.toBeNull();
     expect(screen.getByText("Carry this into today")).toBeTruthy();
   });
+
+  // Center Daily Trace STEP 1A — native Today arrival records a quiet self-return.
+  it("POSTs /api/me/day/open on native Today mount, device tz only, no client day-key", async () => {
+    stubShellFetch();
+    render(<BtyDailyAppShell locale="en" />);
+    await screen.findByText("Choose the relationship you will live today.");
+    const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls as Array<[string, RequestInit?]>;
+    const dayOpen = calls.find(([u]) => String(u).includes("/api/me/day/open"));
+    expect(dayOpen).toBeTruthy();
+    expect(dayOpen?.[1]?.method).toBe("POST");
+    // The client sends ONLY the device tz for server-side capture — no day-key is computed here.
+    const body = JSON.parse(String(dayOpen?.[1]?.body ?? "{}")) as Record<string, unknown>;
+    expect(Object.keys(body)).toEqual(["tz"]);
+  });
+
+  it("self-return capture is fire-and-forget: a day/open failure never blocks Today", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const u = String(url);
+        if (u.includes("/api/me/day/open")) throw new Error("network down");
+        if (u.includes("today-intelligence")) {
+          return new Response(JSON.stringify(FALLBACK_INTEL), { status: 200 });
+        }
+        return new Response("{}", { status: 200 });
+      }),
+    );
+    render(<BtyDailyAppShell locale="en" />);
+    // Today still renders despite the rejected self-return call.
+    await screen.findByText("Choose the relationship you will live today.");
+  });
 });
 
 describe("app-shell companion bar (status-only)", () => {

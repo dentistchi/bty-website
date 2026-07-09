@@ -237,6 +237,38 @@ export async function fetchOpenPromise(locale: string): Promise<string | null> {
 export const fetchWeeklyRhythm = fetchMeWeeklyRhythm;
 
 /**
+ * Native Today self-return capture (Center Daily Trace STEP 1A).
+ *
+ * Fire-and-forget POST to the EXISTING /api/me/day/open flow (server-side {@link ensureUserDay})
+ * when the native app Today surface is reached, so a quiet self-RETURN is recorded server-side in
+ * `user_day` — the future Center/self-owned WeeklyOrb source. This is the native counterpart of the
+ * legacy /today day-open call; native Today did not previously populate user_day.
+ *
+ * Contract:
+ *  - Sends the device IANA tz for capture ONLY. The canonical day-key, UTC fallback, and
+ *    idempotency (one row per user/day, ON CONFLICT DO NOTHING) are ALL resolved server-side —
+ *    NO client day-key logic, NO localStorage.
+ *  - Best-effort: unauthenticated (route returns 200 {ok:false}) or any transport failure is
+ *    swallowed and never blocks, alters, or is visible on Today.
+ *  - Records only — renders nothing, changes no UI, and is not tied to Orb timing (the Orb lives
+ *    on /start). Does NOT re-source WeeklyOrb (that still reads the meWeeklyRhythm temporary carrier).
+ */
+export function recordNativeSelfReturn(): void {
+  let tz: string | null = null;
+  try {
+    tz = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    tz = null;
+  }
+  void fetch("/api/me/day/open", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ tz }),
+  }).catch(() => {});
+}
+
+/**
  * relationshipFocus is a CLAIM only when confidence !== "none" (domain lock). At "none"
  * — or for the non-relationship focuses (CleanStart / ContinuePending) — no card is
  * suggested and Today reads neutral.
@@ -551,6 +583,15 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       alive = false;
     };
   }, [locale]);
+
+  // Center Daily Trace STEP 1A — record a quiet self-return the first time the native app is
+  // reached (Today is the default surface, so shell mount == native Today arrival). Fire-and-forget,
+  // once per mount; server-side idempotency (one user_day row per day) makes repeat tab visits and
+  // cold relaunches safe. Records only — no visible UI, not tied to Orb timing, and WeeklyOrb is NOT
+  // re-sourced here (it still reads the meWeeklyRhythm temporary Arena carrier).
+  useEffect(() => {
+    recordNativeSelfReturn();
+  }, []);
 
   // Native cold-reopen white-screen P0 is CLOSED; the temporary [BTYAppBoot] boot
   // diagnostics (mount marker + global error/rejection console capture) were removed.
