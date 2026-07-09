@@ -536,11 +536,11 @@ export function TodaySurface({
                         <>
                           <span
                             data-promise-label
-                            className="relative mt-4 block text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90"
+                            className="relative mt-4 block text-[11px] font-normal tracking-normal text-white/40"
                           >
                             {copy.promiseLabel}
                           </span>
-                          <p data-carry-line className="relative mt-2 text-[0.95rem] leading-6 text-white/70">
+                          <p data-carry-line className="relative mt-2 text-[0.95rem] leading-6 text-white/80">
                             {promiseText}
                           </p>
                         </>
