@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import CenterMeCard from "@/components/center/CenterMeCard";
+import CenterKeepRoom from "@/components/center/CenterKeepRoom";
 import WeeklyOrb from "@/components/app-shell/WeeklyOrb";
 import { fetchMeWeeklyRhythm, type MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
 import type { TodayIntelligence, TodayUserState } from "@/domain/daily/todayIntelligence";
@@ -629,7 +630,12 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             promiseText={promiseText}
           />
         )}
-        {tab === "center" && <LockedRoom tag={t.center.tag} body={t.center.body} />}
+        {/* Center = the self-owned Daily Keep room (Center Promise Loop STEP 1A): write and
+            save ONE honest line for today. Server-persisted (Center-owned dear_me_letters,
+            marker prompt='center_daily_keep') — NO Arena action contract, NO LLM reply, NO
+            localStorage. The prepared-room copy (t.center) is retained on COPY as a reserved
+            fallback identity. arena/foundry stay LockedRoom until their own steps. */}
+        {tab === "center" && <CenterKeepRoom locale={locale} />}
         {tab === "arena" && <LockedRoom tag={t.arena.tag} body={t.arena.body} />}
         {tab === "foundry" && <LockedRoom tag={t.foundry.tag} body={t.foundry.body} />}
         {/* Me = Center/self-owned mirror rendered inside Today. Today supplies the
