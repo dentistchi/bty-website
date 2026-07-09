@@ -290,7 +290,7 @@ function SurfaceHeader({ title, sub }: { title: string; sub?: string }) {
     // Greeting + sub read as ONE identity unit: the sub is demoted (smaller + quieter, tucked
     // close under the greeting) so it no longer competes with the day's status whisper below.
     // Copy unchanged.
-    <header className="mb-5 space-y-1.5">
+    <header className="btyRise mb-5 space-y-1.5" style={{ animationDelay: "40ms" }}>
       <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-white">{title}</h1>
       {sub ? <p className="text-sm leading-5 text-white/45">{sub}</p> : null}
     </header>
@@ -351,14 +351,21 @@ export function TodaySurface({
   return (
     <>
       <SurfaceHeader title={greeting} sub={copy.sub} />
-      {/* The day's status whisper — the single calm bridge into the doors, promoted above the
-          demoted sub. While loading we reserve the line's height SILENTLY (no pulse/shimmer
-          machinery); when it resolves the line simply fades in, reusing the shell's
-          reduced-motion-guarded btyFadeIn (inert when rendered outside the shell). */}
+      {/* The yesterday-trace sentence — the arrival beat (STEP 4). It is the emotional bridge
+          between the greeting and the doors, so it is ELEVATED: a touch larger + brighter than
+          body copy and given its own breathing room (an "arrival zone" above the doors), yet
+          still quiet — no gold, no number, no verdict. It is the SECOND beat of the cascade
+          (btyRise, delay 460ms) so it settles in just after the greeting and before the doors.
+          While loading we reserve one line's height SILENTLY (no pulse/shimmer) so nothing
+          jumps; when it resolves the sentence rises into the reserved space. */}
       {loading ? (
-        <div aria-hidden className="mb-6 h-6" />
+        <div aria-hidden className="mb-8 mt-0.5 h-7" />
       ) : (
-        <p data-today-status className="btyFadeIn mb-6 text-[0.95rem] leading-6 text-white/70">
+        <p
+          data-today-status
+          className="btyRise mb-8 mt-0.5 text-[1.05rem] font-normal leading-7 text-white/85"
+          style={{ animationDelay: "460ms" }}
+        >
           {statusLine}
         </p>
       )}
@@ -368,7 +375,11 @@ export function TodaySurface({
           nested button). Before confirm the other two dim; AFTER confirm (Chosen Path Rest
           State, STEP 3) they fade + collapse away entirely (grid-rows 1fr→0fr), leaving only
           the held door — the day now holds one relationship. Session-only: no persistence. */}
-      <div>
+      {/* Third beat of the arrival cascade (STEP 4): the doors rise in last (delay 880ms), a
+          calm buffer after the trace sentence so the eye lands on greeting → trace → doors in
+          sequence. The buffer also keeps the doors behind the trace even when the deterministic
+          today-intelligence read resolves in the typical <~400ms window. */}
+      <div className="btyRise" style={{ animationDelay: "880ms" }}>
         {copy.cards.map((c) => {
           const isHighlight = c.focus === highlight;
           const isSelected = c.focus === selected;
@@ -564,7 +575,13 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       <style>{`
         @keyframes btyEnter{from{opacity:0}to{opacity:1}}
         .btyFadeIn{animation:btyEnter .7s ease both}
-        @media (prefers-reduced-motion: reduce){.btyFadeIn{animation:none!important}}
+        /* Arrival cascade (Today Arrival Warmth STEP 4): a calm rise+fade used to stagger
+           the Today reveal — greeting, then the yesterday-trace sentence, then the doors —
+           so arrival is felt as a short sequence, not a single flat paint. Each element sets
+           its own animation-delay inline. reduced-motion stills it (elements show at rest). */
+        @keyframes btyRise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+        .btyRise{animation:btyRise .8s cubic-bezier(0.22,1,0.36,1) both}
+        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise{animation:none!important}}
       `}</style>
       {/* iOS status-bar safe area — reserved so app content never underlaps the notch/clock. */}
       <div style={{ height: "env(safe-area-inset-top)" }} aria-hidden />
