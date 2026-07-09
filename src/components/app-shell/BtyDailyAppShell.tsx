@@ -351,20 +351,23 @@ export function TodaySurface({
   return (
     <>
       <SurfaceHeader title={greeting} sub={copy.sub} />
-      {/* The yesterday-trace sentence — the arrival beat (STEP 4). It is the emotional bridge
+      {/* The yesterday-trace sentence — the arrival beat (STEP 4/5). It is the emotional bridge
           between the greeting and the doors, so it is ELEVATED: a touch larger + brighter than
           body copy and given its own breathing room (an "arrival zone" above the doors), yet
-          still quiet — no gold, no number, no verdict. It is the SECOND beat of the cascade
-          (btyRise, delay 460ms) so it settles in just after the greeting and before the doors.
-          While loading we reserve one line's height SILENTLY (no pulse/shimmer) so nothing
-          jumps; when it resolves the sentence rises into the reserved space. */}
+          still quiet — no gold, no number, no verdict. It is the SECOND beat of the cascade —
+          it AND the doors both key their btyRise off content-ready (the moment loading clears),
+          so the trace ALWAYS rises before the doors regardless of fetch latency (STEP 5 fixes
+          the STEP-4 inversion where the doors' mount-clock could beat the fetch-gated trace).
+          Delay 260ms lands it just after the greeting; the doors follow at 720ms. While loading
+          we reserve one line's height SILENTLY (no pulse/shimmer) so nothing jumps; when it
+          resolves the sentence rises into the reserved space. */}
       {loading ? (
         <div aria-hidden className="mb-8 mt-0.5 h-7" />
       ) : (
         <p
           data-today-status
           className="btyRise mb-8 mt-0.5 text-[1.05rem] font-normal leading-7 text-white/85"
-          style={{ animationDelay: "460ms" }}
+          style={{ animationDelay: "260ms" }}
         >
           {statusLine}
         </p>
@@ -375,12 +378,16 @@ export function TodaySurface({
           nested button). Before confirm the other two dim; AFTER confirm (Chosen Path Rest
           State, STEP 3) they fade + collapse away entirely (grid-rows 1fr→0fr), leaving only
           the held door — the day now holds one relationship. Session-only: no persistence. */}
-      {/* Third beat of the arrival cascade (STEP 4): the doors rise in last (delay 880ms), a
-          calm buffer after the trace sentence so the eye lands on greeting → trace → doors in
-          sequence. The buffer also keeps the doors behind the trace even when the deterministic
-          today-intelligence read resolves in the typical <~400ms window. */}
-      <div className="btyRise" style={{ animationDelay: "880ms" }}>
-        {copy.cards.map((c) => {
+      {/* Third beat of the arrival cascade (STEP 5): the doors are GATED on content-ready — they
+          mount only once loading clears, so their btyRise clock starts at the SAME moment as the
+          trace's and they can never precede it (this is the STEP-4 inversion fix). Delay 720ms
+          gives a ~460ms read window after the trace before the doors become visually dominant.
+          Gating on !loading also means the "invited" (gold) door appears once, already settled —
+          no early gold-pop from FALLBACK→resolved highlight flicker competing with the text.
+          reduced-motion: btyRise is inert, so the doors simply appear at rest on content-ready. */}
+      {!loading && (
+        <div className="btyRise" style={{ animationDelay: "720ms" }}>
+          {copy.cards.map((c) => {
           const isHighlight = c.focus === highlight;
           const isSelected = c.focus === selected;
           // Before confirm: unselected doors quiet to 40%. After confirm: they are GONE.
@@ -502,8 +509,9 @@ export function TodaySurface({
               </div>
             </div>
           );
-        })}
-      </div>
+          })}
+        </div>
+      )}
     </>
   );
 }
