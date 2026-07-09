@@ -21,6 +21,22 @@ import { useEffect, useState } from "react";
  *
  * Read-only: no input, no CTA, no tap handler, no navigation. The Center route is
  * reserved inertly (data attribute only) for a future arc — it is NOT a link.
+ *
+ * ─── CONTRACT / INVARIANTS (Native Me Provenance Guardrails STEP 1) ───────────────────
+ * CenterMeCard is a Center/self MIRROR. To keep it from drifting into an Arena/progression
+ * panel, it MUST hold to all of the following:
+ *   • It may read ONLY `leadershipState.codeName` and `leadershipState.stage` from
+ *     GET /api/bty/my-page/state (narrow-typed below so nothing else is destructurable).
+ *   • It MUST NOT read /api/arena/leadership-engine/stage-summary (or any /api/arena/* route).
+ *   • It MUST render only the composed identity form "<codeName> · Stage <ordinal>"
+ *     (see {@link composeStageLine}); it MUST NOT render an Arena stageName or a raw stage string.
+ *   • It MUST NOT render XP, rank, leaderboard, streak, raw AIR, reset windows / due dates,
+ *     pattern signatures, current_state, posture, or ANY competition language.
+ *   • Fail-soft: on any read failure or missing/odd stage → the mirror line renders ALONE
+ *     (never a fake, invented, or partial stage).
+ * Changing any of these turns Me into Arena Progress — do not, without an explicit ontology
+ * decision. The weekly rhythm's Arena coupling is likewise isolated behind ./meWeeklyRhythm.
+ * ──────────────────────────────────────────────────────────────────────────────────────
  */
 
 type Locale = "en" | "ko";
@@ -43,11 +59,16 @@ const COPY: Record<Locale, Copy> = {
 };
 
 /**
- * Compose the display stage line from real derived fields only. "STAGE 1: FORGE"
- * + code "FORGE" → "FORGE · Stage 1" (presentation reformat, not computation).
- * On an unexpected stage shape, render the derived string verbatim (still real).
- * Returns null when there is no derived stage — the caller then shows the mirror
- * line alone. NEVER returns an invented label.
+ * Compose the display stage line from real derived fields only: identity `codeName` +
+ * the Core-XP-derived `stage` ("STAGE N: CODE") → "FORGE · Stage 1" (presentation reformat,
+ * not computation).
+ *
+ * GUARDRAIL (Native Me Provenance Guardrails STEP 1): this returns ONLY the composed
+ * `<codeName> · Stage <ordinal>` identity form, or null. It intentionally does NOT fall back
+ * to rendering the raw `stage` string verbatim — a raw pass-through could leak an unexpected
+ * stage label (and must never surface an Arena stageName). When codeName is missing OR the
+ * stage does not match "STAGE N: …", we return null and the caller shows the mirror line ALONE.
+ * NEVER returns an invented label, a raw stage string, or an Arena stageName.
  */
 export function composeStageLine(
   codeName?: string | null,
@@ -56,8 +77,9 @@ export function composeStageLine(
   if (typeof stage !== "string" || stage.trim().length === 0) return null;
   const m = stage.match(/^STAGE\s+(\d+)\s*:/i);
   const code = typeof codeName === "string" && codeName.trim().length > 0 ? codeName.trim() : null;
+  // Only the clean identity form renders; anything else → mirror-only (null), never a raw label.
   if (m && code) return `${code} · Stage ${m[1]}`;
-  return stage.trim();
+  return null;
 }
 
 /**

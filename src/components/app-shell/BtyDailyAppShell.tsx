@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import CenterMeCard from "@/components/center/CenterMeCard";
 import WeeklyOrb from "@/components/app-shell/WeeklyOrb";
+import { fetchMeWeeklyRhythm, type MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
 import type { TodayIntelligence, TodayUserState } from "@/domain/daily/todayIntelligence";
 
 /**
@@ -227,30 +228,13 @@ export async function fetchOpenPromise(locale: string): Promise<string | null> {
 }
 
 /**
- * Read the week's numberless visual rhythm — dailyBarSeries[].barIntensity (0–5, up to 7
- * days) — from GET /api/arena/weekly-stats for the Me-tab Weekly Orb. weekly-stats is an
- * /api/arena/* route, but we use the shell's fail-soft RAW fetch (credentials + warn +
- * resting-orb fallback) for consistency with fetchTodayIntelligence / fetchOpenPromise.
- * Narrow-typed: ONLY barIntensity is read — no raw XP, no reflection fields, nothing else
- * is destructured. Returns [] on any failure (→ a quiet resting orb); never throws into Me.
+ * The Me-tab weekly rhythm read now lives behind an explicit PROVENANCE BOUNDARY
+ * ({@link fetchMeWeeklyRhythm} in ./meWeeklyRhythm) — the single, named, swappable seam where the
+ * (temporary) Arena weekly-stats coupling is isolated. The Me tab depends on MeWeeklyRhythm, never
+ * on Arena, so re-sourcing to a Center/self daily-trace source is a one-place change there.
+ * `fetchWeeklyRhythm` is kept as a thin re-export for the existing call site / any importer.
  */
-type WeeklyRhythmNarrow = { dailyBarSeries?: Array<{ barIntensity?: number }> };
-
-export async function fetchWeeklyRhythm(): Promise<number[]> {
-  try {
-    const res = await fetch("/api/arena/weekly-stats", { credentials: "include" });
-    if (!res.ok) throw new Error(`HTTP_${res.status}`);
-    const data = (await res.json()) as WeeklyRhythmNarrow;
-    const series = Array.isArray(data.dailyBarSeries) ? data.dailyBarSeries : [];
-    return series.map((d) => (typeof d?.barIntensity === "number" ? d.barIntensity : 0));
-  } catch (e) {
-    console.warn(
-      "[app-shell/me] /api/arena/weekly-stats fell back (resting orb):",
-      e instanceof Error ? e.message : e,
-    );
-    return [];
-  }
-}
+export const fetchWeeklyRhythm = fetchMeWeeklyRhythm;
 
 /**
  * relationshipFocus is a CLAIM only when confidence !== "none" (domain lock). At "none"
@@ -546,7 +530,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   const [intelLoading, setIntelLoading] = useState(true);
   const [promiseText, setPromiseText] = useState<string | null>(null);
   // Me-tab Weekly Orb rhythm (numberless barIntensity[]). Fail-soft: [] → resting orb.
-  const [weeklyRhythm, setWeeklyRhythm] = useState<number[]>([]);
+  const [weeklyRhythm, setWeeklyRhythm] = useState<MeWeeklyRhythm>([]);
 
   useEffect(() => {
     let alive = true;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
 
 /**
  * WeeklyOrb — a quiet, INTERACTION-FREE weekly-light presence for the native Me tab.
@@ -34,7 +35,10 @@ import { useEffect, useRef, useState } from "react";
 type Locale = "en" | "ko";
 
 type Props = {
-  intensities: number[];
+  /** Daily light intensities only (see {@link MeWeeklyRhythm}) — the Orb's whole contract. It
+   *  depends on this numberless rhythm, NOT on any Arena/weekly-stats shape, so the rhythm's
+   *  data carrier can be swapped behind the boundary without touching this component. */
+  intensities: MeWeeklyRhythm;
   locale: Locale;
   /** Canvas diameter in px (glows fade well inside this). Default 240. */
   size?: number;
