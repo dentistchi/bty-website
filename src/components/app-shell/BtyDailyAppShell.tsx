@@ -510,7 +510,7 @@ export function TodaySurface({
                   {isSelected ? (
                     <div
                       data-today-confirm
-                      className="relative overflow-hidden rounded-b-2xl border border-t-0 border-[#C9A66B]/45 bg-[#C9A66B]/[0.05] px-6 pb-6 pt-5"
+                      className="btyOpenRoom relative overflow-hidden rounded-b-2xl border border-t-0 border-[#C9A66B]/45 bg-[#C9A66B]/[0.05] px-6 pb-6 pt-5"
                     >
                       {/* Seam continues down into the interior — one continuous opening. */}
                       <span
@@ -680,7 +680,13 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
            its own animation-delay inline. reduced-motion stills it (elements show at rest). */
         @keyframes btyRise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
         .btyRise{animation:btyRise .8s cubic-bezier(0.22,1,0.36,1) both}
-        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise{animation:none!important}}
+        /* Selected-door interior reveal (Alive Room STEP 1): a soft, non-bouncy open so the
+           chosen relationship interior feels ENTERED (a room opening) rather than a card popping
+           in. Gentle rise + a barely-there settle-in scale; no glow burst, no pulse loop. Keyed
+           off the interior's mount (isSelected). reduced-motion stills it (interior at rest). */
+        @keyframes btyOpenRoom{from{opacity:0;transform:translateY(8px) scale(0.992)}to{opacity:1;transform:translateY(0) scale(1)}}
+        .btyOpenRoom{animation:btyOpenRoom .48s cubic-bezier(0.22,1,0.36,1) both}
+        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise,.btyOpenRoom{animation:none!important}}
       `}</style>
       {/* iOS status-bar safe area — reserved so app content never underlaps the notch/clock. */}
       <div style={{ height: "env(safe-area-inset-top)" }} aria-hidden />
