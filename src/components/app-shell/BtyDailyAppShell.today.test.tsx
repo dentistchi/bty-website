@@ -16,6 +16,7 @@ import BtyDailyAppShell, {
   FALLBACK_INTEL,
   TodaySurface,
   fetchOpenPromise,
+  fetchTodayCenterKeep,
   fetchTodayIntelligence,
   greetingBand,
   pickGreeting,
@@ -67,6 +68,7 @@ function renderToday(over: Partial<React.ComponentProps<typeof TodaySurface>> = 
       activeFocus={null}
       loading={false}
       promiseText={null}
+      centerKeepLine={null}
       {...over}
     />,
   );
@@ -118,6 +120,76 @@ describe("app-shell Today reads (fail-soft)", () => {
       expect.stringContaining("[app-shell/today]"),
       expect.anything(),
     );
+  });
+});
+
+describe("app-shell Today Center keep (STEP 1B — read-only surface)", () => {
+  it("fetchTodayCenterKeep hits /api/bty/center/keep (never Arena), returns line only when keptToday", async () => {
+    const calls: string[] = [];
+    // keptToday true → returns the line.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        calls.push(String(url));
+        return new Response(
+          JSON.stringify({ line: "Deeper relationship", keptToday: true }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }),
+    );
+    expect(await fetchTodayCenterKeep()).toBe("Deeper relationship");
+    expect(calls.every((u) => u.includes("/api/bty/center/keep"))).toBe(true);
+    // Center keep never routes through an Arena / action-contract endpoint.
+    expect(calls.some((u) => /arena|action-contract/.test(u))).toBe(false);
+
+    // keptToday false → null (nothing to surface).
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ line: "stale", keptToday: false }), { status: 200 })),
+    );
+    expect(await fetchTodayCenterKeep()).toBeNull();
+
+    // HTTP error → null + [app-shell/today] warn (fail-soft).
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("no", { status: 500 })));
+    expect(await fetchTodayCenterKeep()).toBeNull();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("[app-shell/today]"),
+      expect.anything(),
+    );
+  });
+
+  it("renders the held keep (label + quoted line + support) after the relationship section when present", () => {
+    renderToday({ centerKeepLine: "Deeper relationship" });
+    const keep = document.querySelector("[data-today-center-keep]");
+    expect(keep).toBeTruthy();
+    expect(screen.getByText("Held in Center")).toBeTruthy();
+    expect(screen.getByText(/Deeper relationship/)).toBeTruthy();
+    expect(screen.getByText("Carry it quietly today.")).toBeTruthy();
+    // Arrival sequence intact: greeting + status + doors still render alongside the keep.
+    expect(document.querySelector("[data-today-status]")).toBeTruthy();
+    expect(document.querySelectorAll("[data-focus]").length).toBe(3);
+  });
+
+  it("renders nothing quietly when there is no keep for today", () => {
+    renderToday({ centerKeepLine: null });
+    expect(document.querySelector("[data-today-center-keep]")).toBeFalsy();
+    // Arrival sequence unaffected.
+    expect(document.querySelector("[data-today-status]")).toBeTruthy();
+    expect(document.querySelectorAll("[data-focus]").length).toBe(3);
+  });
+
+  it("keeps the Center keep separate from the Arena promise (distinct labels, both can show)", () => {
+    // A door is selected so the Arena promise (promiseText) is visible, plus a Center keep.
+    renderToday({ activeFocus: "Self", promiseText: "Ship the draft", centerKeepLine: "Deeper relationship" });
+    fireEvent.click(document.querySelector('[data-focus="Self"]')!);
+    // Arena promise label + text (inside the chosen door).
+    expect(screen.getByText(COPY.en.today.promiseLabel)).toBeTruthy();
+    expect(screen.getByText("Ship the draft")).toBeTruthy();
+    // Center keep label + line (its own section) — a different label, not conflated.
+    expect(screen.getByText("Held in Center")).toBeTruthy();
+    expect(screen.getByText(/Deeper relationship/)).toBeTruthy();
+    expect(COPY.en.today.promiseLabel).not.toBe(COPY.en.today.centerKeep.label);
   });
 });
 
@@ -249,6 +321,7 @@ describe("app-shell Today Chosen Path Rest State (STEP 3, session-only)", () => 
         activeFocus={null}
         loading={false}
         promiseText={null}
+        centerKeepLine={null}
       />,
     );
     fireEvent.click(screen.getByText("이웃과의 관계"));

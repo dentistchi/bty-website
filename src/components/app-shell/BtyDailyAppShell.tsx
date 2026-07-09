@@ -55,6 +55,9 @@ type Copy = {
     /** Chosen Path Rest State (STEP 3): present-tense benediction that REPLACES the
      *  select-line after confirmation. Per-focus; fallback guarantees it never renders blank. */
     benediction: { Self: string; Others: string; World: string; fallback: string };
+    /** Center Promise Loop STEP 1B: the quiet self-owned keep surfaced (read-only) below the
+     *  relationship section. Deliberately distinct from the Arena promise (promiseLabel). */
+    centerKeep: { label: string; support: string };
   };
   center: RoomCopy;
   arena: RoomCopy;
@@ -92,6 +95,7 @@ export const COPY: Record<Locale, Copy> = {
         World: "You have entered the relationship with the world today.",
         fallback: "You have entered this relationship for today.",
       },
+      centerKeep: { label: "Held in Center", support: "Carry it quietly today." },
     },
     // Locked rooms (Commander-authored). Tone: prepared, not broken. No "Soon".
     center: { tag: "Relationship with Self", body: "A quiet space for recovery is being prepared." },
@@ -126,6 +130,7 @@ export const COPY: Record<Locale, Copy> = {
         World: "오늘 당신은 세상과의 관계 안으로 들어갔습니다.",
         fallback: "오늘 당신은 이 관계 안에 머뭅니다.",
       },
+      centerKeep: { label: "센터에 붙잡은 한 줄", support: "오늘 조용히 가지고 갑니다." },
     },
     center: { tag: "나와의 관계", body: "회복을 위한 고요한 공간을 준비하고 있습니다." },
     arena: { tag: "이웃과의 관계", body: "당신의 결정 훈련 공간을 준비하고 있습니다." },
@@ -222,6 +227,39 @@ export async function fetchOpenPromise(locale: string): Promise<string | null> {
   } catch (e) {
     console.warn(
       "[app-shell/today] /api/bty/my-page/state promise fell back:",
+      e instanceof Error ? e.message : e,
+    );
+    return null;
+  }
+}
+
+/**
+ * Read the user's Center daily keep (Center Promise Loop STEP 1B) from GET /api/bty/center/keep.
+ * Surfaced on Today READ-ONLY — Today never writes/edits the keep (Center owns the write flow).
+ * Returns the saved line ONLY when keptToday is true (else null → nothing renders). The device tz
+ * is sent for server-side day-boundary resolution (capture-only; NO client day-key, NO localStorage).
+ * This is NOT the Arena promise (that is action_text via {@link fetchOpenPromise}) and NOT
+ * bty_action_contracts. Fail-soft: any failure → null, with a developer-visible warn.
+ */
+export async function fetchTodayCenterKeep(): Promise<string | null> {
+  let tz: string | null = null;
+  try {
+    tz = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    tz = null;
+  }
+  try {
+    const res = await fetch(`/api/bty/center/keep${tz ? `?tz=${encodeURIComponent(tz)}` : ""}`, {
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error(`HTTP_${res.status}`);
+    const data = (await res.json()) as { line?: string | null; keptToday?: boolean };
+    return data.keptToday && typeof data.line === "string" && data.line.trim().length > 0
+      ? data.line.trim()
+      : null;
+  } catch (e) {
+    console.warn(
+      "[app-shell/today] /api/bty/center/keep fell back:",
       e instanceof Error ? e.message : e,
     );
     return null;
@@ -333,6 +371,7 @@ export function TodaySurface({
   activeFocus,
   loading,
   promiseText,
+  centerKeepLine,
 }: {
   copy: TodayCopy;
   /** Calm narrative status line derived from userState (already localized). */
@@ -342,6 +381,8 @@ export function TodaySurface({
   loading: boolean;
   /** The user's own open promise sentence to carry into today, or null (→ fallback line). */
   promiseText: string | null;
+  /** STEP 1B: the self-owned Center keep for today (read-only), or null → nothing renders. */
+  centerKeepLine: string | null;
 }) {
   // Relationship selection is a deliberate ritual choice (A): tapping reveals the
   // confirmation + CTA in-shell. It does NOT navigate — the bottom tabs own room entry.
@@ -529,6 +570,23 @@ export function TodaySurface({
           })}
         </div>
       )}
+      {/* Center Promise Loop STEP 1B — the self-owned Center keep, surfaced READ-ONLY beneath the
+          relationship section (after the doors, never before the arrival sentence). Today only
+          reflects it; the write/edit flow stays in Center. Deliberately SEPARATE from the Arena
+          "Promise to Carry" (promiseLabel, action_text) rendered inside a chosen door — its own
+          eyebrow ("Held in Center") + the quoted line + a quiet support line. No number, no
+          streak, no verdict, no CTA. Renders only when a keep exists for today (keptToday). */}
+      {!loading && centerKeepLine ? (
+        <div data-today-center-keep className="btyRise mt-10 border-t border-white/5 pt-6">
+          <span className="block text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
+            {copy.centerKeep.label}
+          </span>
+          <p data-center-keep-line className="mt-2 text-[1.05rem] leading-7 text-white/85">
+            “{centerKeepLine}”
+          </p>
+          <p className="mt-1.5 text-sm leading-6 text-white/45">{copy.centerKeep.support}</p>
+        </div>
+      ) : null}
     </>
   );
 }
@@ -562,6 +620,9 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   const [intel, setIntel] = useState<TodayIntelligence>(FALLBACK_INTEL);
   const [intelLoading, setIntelLoading] = useState(true);
   const [promiseText, setPromiseText] = useState<string | null>(null);
+  // Center Promise Loop STEP 1B: the self-owned Center keep, surfaced read-only on Today.
+  // null unless a keep exists for today (keptToday). Fail-soft → null (nothing renders).
+  const [centerKeepLine, setCenterKeepLine] = useState<string | null>(null);
   // Me-tab Weekly Orb rhythm (numberless barIntensity[]). Fail-soft: [] → resting orb.
   const [weeklyRhythm, setWeeklyRhythm] = useState<MeWeeklyRhythm>([]);
 
@@ -575,6 +636,10 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
     void fetchOpenPromise(locale).then((text) => {
       if (!alive) return;
       setPromiseText(text);
+    });
+    void fetchTodayCenterKeep().then((line) => {
+      if (!alive) return;
+      setCenterKeepLine(line);
     });
     void fetchWeeklyRhythm().then((rhythm) => {
       if (!alive) return;
@@ -628,6 +693,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             activeFocus={resolveActiveFocus(intel)}
             loading={intelLoading}
             promiseText={promiseText}
+            centerKeepLine={centerKeepLine}
           />
         )}
         {/* Center = the self-owned Daily Keep room (Center Promise Loop STEP 1A): write and
