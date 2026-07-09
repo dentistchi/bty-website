@@ -196,12 +196,12 @@ describe("app-shell Today Center keep (STEP 1B — read-only surface)", () => {
 describe("app-shell Today ritual beat (A / A+)", () => {
   it("shows NO confirmation/CTA until a relationship is selected, then reveals it", () => {
     renderToday();
-    expect(screen.queryByText("Carry this into today")).toBeNull();
+    expect(screen.queryByText("I’ll live this relationship today")).toBeNull();
     expect(document.querySelector("[data-today-confirm]")).toBeNull();
 
     fireEvent.click(screen.getByText("Self"));
 
-    expect(screen.getByText("Carry this into today")).toBeTruthy();
+    expect(screen.getByText("I’ll live this relationship today")).toBeTruthy();
     expect(document.querySelector("[data-today-confirm]")).not.toBeNull();
   });
 
@@ -213,7 +213,7 @@ describe("app-shell Today ritual beat (A / A+)", () => {
     const iSelect = text.indexOf("Self — Return to yourself with honesty.");
     const iPromiseLabel = text.indexOf("PROMISE TO CARRY");
     const iPromise = text.indexOf("Call my mentor before noon");
-    const iCta = text.indexOf("Carry this into today");
+    const iCta = text.indexOf("I’ll live this relationship today");
     expect(iPath).toBeGreaterThanOrEqual(0);
     expect(iPath).toBeLessThan(iSelect);
     expect(iSelect).toBeLessThan(iPromiseLabel);
@@ -244,12 +244,12 @@ describe("app-shell Today ritual beat (A / A+)", () => {
     fireEvent.click(screen.getByText("World"));
     const cta = document.querySelector("[data-today-cta]") as HTMLButtonElement;
     expect(cta.getAttribute("aria-pressed")).toBe("false");
-    expect(cta.textContent).toContain("Carry this into today");
+    expect(cta.textContent).toContain("I’ll live this relationship today");
     expect(cta.textContent).not.toContain("✓");
 
     fireEvent.click(cta);
     expect(cta.getAttribute("aria-pressed")).toBe("true");
-    expect(cta.textContent).toContain("Carried into today");
+    expect(cta.textContent).toContain("I’m living this relationship today");
     expect(cta.textContent).toContain("✓");
   });
 
@@ -291,7 +291,7 @@ describe("app-shell Today Chosen Path Rest State (STEP 3, session-only)", () => 
     // Promise (action_text) unchanged; ✓ settled mark remains.
     expect(document.querySelector("[data-carry-line]")?.textContent).toBe("Call my mentor before noon");
     const cta = document.querySelector("[data-today-cta]") as HTMLButtonElement;
-    expect(cta.textContent).toContain("Carried into today");
+    expect(cta.textContent).toContain("I’m living this relationship today");
     expect(cta.textContent).toContain("✓");
   });
 
@@ -461,7 +461,7 @@ describe("app-shell renders Today directly (no shell threshold / no double-door)
     // Select the Self relationship card (the ritual selection, not navigation).
     fireEvent.click(screen.getByText("Self"));
     expect(document.querySelector("[data-today-confirm]")).not.toBeNull();
-    expect(screen.getByText("Carry this into today")).toBeTruthy();
+    expect(screen.getByText("I’ll live this relationship today")).toBeTruthy();
   });
 
   // Center Daily Trace STEP 1A — native Today arrival records a quiet self-return.

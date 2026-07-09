@@ -87,8 +87,8 @@ export const COPY: Record<Locale, Copy> = {
       ],
       pathLabel: "TODAY'S PATH",
       promiseLabel: "PROMISE TO CARRY",
-      cta: "Carry this into today",
-      ctaDone: "Carried into today",
+      cta: "I’ll live this relationship today",
+      ctaDone: "I’m living this relationship today",
       benediction: {
         Self: "You have entered the relationship with yourself today.",
         Others: "You have entered the relationship with others today.",
@@ -122,8 +122,8 @@ export const COPY: Record<Locale, Copy> = {
       ],
       pathLabel: "오늘의 길",
       promiseLabel: "오늘로 가져갈 약속",
-      cta: "오늘로 가져오기",
-      ctaDone: "오늘로 가져왔습니다",
+      cta: "오늘 이 관계로 살아갑니다",
+      ctaDone: "오늘 이 관계 안에 있습니다",
       benediction: {
         Self: "오늘 당신은 나와의 관계 안으로 들어갔습니다.",
         Others: "오늘 당신은 이웃과의 관계 안으로 들어갔습니다.",
