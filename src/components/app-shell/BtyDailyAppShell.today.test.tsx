@@ -318,6 +318,36 @@ describe("app-shell Today arrival header hierarchy (Arrival Warmth STEP 2)", () 
   });
 });
 
+describe("app-shell Today suggested-door transition-in (Arrival Warmth STEP 3)", () => {
+  // The invited door's glow must lean in gently (700ms ease-out) and snap under reduced
+  // motion — while the parent button stays crisp (300ms) for hover/press/active feedback.
+  it("decorative glow spans use duration-700 ease-out + motion-reduce:transition-none", () => {
+    const { container } = renderToday();
+    const glowSpans = Array.from(container.querySelectorAll("span")).filter((s) =>
+      s.className.includes("transition-opacity"),
+    );
+    // 3 doors × 2 decorative spans (seam + interior warmth).
+    expect(glowSpans.length).toBe(6);
+    for (const s of glowSpans) {
+      expect(s.className).toContain("duration-700");
+      expect(s.className).toContain("ease-out");
+      expect(s.className).toContain("motion-reduce:transition-none");
+      expect(s.className).not.toContain("duration-300");
+    }
+  });
+
+  it("keeps the parent door button crisp (duration-300, not slowed)", () => {
+    const { container } = renderToday();
+    const buttons = Array.from(container.querySelectorAll("button[data-focus]"));
+    expect(buttons.length).toBe(3);
+    for (const b of buttons) {
+      expect(b.className).toContain("duration-300");
+      expect(b.className).toContain("active:scale-[0.99]");
+      expect(b.className).not.toContain("duration-700");
+    }
+  });
+});
+
 describe("app-shell renders Today directly (no shell threshold / no double-door)", () => {
   function stubShellFetch(promise: string | null = null) {
     vi.stubGlobal(

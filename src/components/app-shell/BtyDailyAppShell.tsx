@@ -406,17 +406,21 @@ export function TodaySurface({
                           : "rounded-2xl border-white/10 bg-gradient-to-b from-white/[0.055] to-white/[0.02] hover:border-[#C9A66B]/25 hover:from-white/[0.08]"
                     }`}
                   >
-                    {/* Threshold seam — a soft luminous vertical edge: the door's opening. */}
+                    {/* Threshold seam — a soft luminous vertical edge: the door's opening. Glow
+                        eases over 700ms (STEP 3) so the invited door leans in gently, matched to the
+                        arrival fade, rather than snapping in at 300ms. motion-reduce stills it. The
+                        parent button keeps its crisp 300ms (hover/press/active) — untouched. */}
                     <span
                       aria-hidden
-                      className={`pointer-events-none absolute inset-y-4 left-0 w-px bg-gradient-to-b from-transparent via-[#C9A66B]/60 to-transparent transition-opacity duration-300 ${
+                      className={`pointer-events-none absolute inset-y-4 left-0 w-px bg-gradient-to-b from-transparent via-[#C9A66B]/60 to-transparent transition-opacity duration-700 ease-out motion-reduce:transition-none ${
                         isHighlight ? "opacity-100" : "opacity-35 group-hover:opacity-70"
                       }`}
                     />
-                    {/* Interior depth — a quiet warmth leaning in from the seam, growing when invited. */}
+                    {/* Interior depth — a quiet warmth leaning in from the seam, growing when invited.
+                        Same gentle 700ms ease-out warm-in (STEP 3), reduced-motion-guarded. */}
                     <span
                       aria-hidden
-                      className={`pointer-events-none absolute inset-0 bg-gradient-to-r from-[#C9A66B]/[0.08] via-transparent to-transparent transition-opacity duration-300 ${
+                      className={`pointer-events-none absolute inset-0 bg-gradient-to-r from-[#C9A66B]/[0.08] via-transparent to-transparent transition-opacity duration-700 ease-out motion-reduce:transition-none ${
                         isHighlight ? "opacity-100" : "opacity-0 group-hover:opacity-60"
                       }`}
                     />
