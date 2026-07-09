@@ -1,57 +1,65 @@
 /**
- * Me-tab weekly rhythm — PROVENANCE BOUNDARY (guardrail; Native Me Provenance Guardrails STEP 1).
+ * Me-tab weekly rhythm — PROVENANCE BOUNDARY (Center Daily Trace STEP 1C: flipped to self-source).
  *
  * The native Me tab's WeeklyOrb renders a numberless "self trace" of light. Its ONLY input is a
  * plain array of DAILY LIGHT INTENSITIES ({@link MeWeeklyRhythm}) — no XP, no rank, no score, no
- * dates, no reflection fields. This module is the single, explicit, swappable seam between that
- * self-facing light and its CURRENT data carrier.
+ * dates, no reflection fields. This module is the single, named seam between that self-facing light
+ * and its data source.
  *
- * ⚠️ TEMPORARY CARRIER — NOT a Center/self source.
- * The intensities currently come from GET /api/arena/weekly-stats, an ARENA endpoint. That is a
- * rhythm CARRIER of convenience while no Center-owned equivalent exists — it must NOT be treated
- * as, or described to the user as, a true Center/self source. As of STEP 1 no authoritative
- * Center/self daily-trace source produces a 7-day intensity series (checked: src/domain/daily/*,
- * /api/me/daily, /api/me/day/open — none emit a barIntensity / dailyBarSeries series).
+ * PROVENANCE (now Center/self-owned):
+ *  - WeeklyOrb is fed by the Center/self-return trace GET /api/me/daily-trace (STEP 1B).
+ *  - dailyTrace is PRESENCE-AS-LIGHT derived from `user_day`: intensity 1 = the user returned to
+ *    that day (a self-return row exists), 0 = no row / resting.
+ *  - It is NOT a streak, score, XP, rank, leaderboard, or Arena-activity metric. A quiet day is
+ *    simply unlit (rest), never a deficit.
  *
- * WHEN a Center/self daily-trace source exists, swap ONLY the fetch inside
- * {@link fetchMeWeeklyRhythm}. WeeklyOrb and the Me tab depend on {@link MeWeeklyRhythm}, never on
- * Arena, so the visible experience needs no change and the coupling flips in one place.
+ * The prior temporary Arena carrier (/api/arena/weekly-stats) is no longer read here (that route
+ * still exists and serves Arena surfaces; it just no longer feeds native Me). Should the source
+ * change again, swap ONLY the fetch inside {@link fetchMeWeeklyRhythm} — WeeklyOrb and the Me tab
+ * depend on {@link MeWeeklyRhythm}, so the visible experience needs no change.
  *
  * Guardrails this boundary enforces:
- *  - narrow read: ONLY dailyBarSeries[].barIntensity is destructured (never XP / reflections / etc.)
+ *  - narrow read: ONLY dailyTrace[].intensity is consumed (never a date, count, or any other field)
+ *  - display mapping is numberless: presence → a soft visible light, absence → rest — NOT a score
  *  - fail-soft: any failure → [] (a quiet resting orb), never a throw into Me
- *  - the Arena coupling lives HERE and nowhere else — the seam is named and swappable
  */
 
-/** Daily light intensities (0–5, up to 7 days), oldest→today. Numberless: this array is the
- *  WeeklyOrb's whole contract — it carries light, never a number, rank, or score shown to a user. */
+/** Daily light intensities (up to 7 days), oldest→today. Numberless: this array is the WeeklyOrb's
+ *  whole contract — it carries light, never a number, rank, or score shown to a user. */
 export type MeWeeklyRhythm = number[];
 
-/** Explicit provenance marker for the CURRENT (temporary) rhythm carrier. Change this alongside
- *  the fetch below when re-sourcing to a Center/self daily-trace source. */
-export const ME_WEEKLY_RHYTHM_CARRIER = "arena/weekly-stats (temporary)" as const;
-
-/** Narrow shape of the carrier payload — ONLY barIntensity is read; every other weekly-stats
- *  field (XP, reflectionCount, quest flags, …) is deliberately un-typed so it cannot be read. */
-type CarrierPayloadNarrow = { dailyBarSeries?: Array<{ barIntensity?: number }> };
+/** Explicit provenance marker for the CURRENT rhythm source (Center/self-return trace). */
+export const ME_WEEKLY_RHYTHM_CARRIER = "me/daily-trace (Center self-return)" as const;
 
 /**
- * Read the week's numberless light rhythm for the Me-tab WeeklyOrb. RAW fail-soft fetch
- * (same-origin, cookie credentials + warn + resting-orb []-fallback), consistent with the shell's
- * other Me reads. This is the ONE place the Arena coupling lives — swap the fetch here to re-source.
+ * Display light for a present self-return day. Presence is binary (0 | 1) at the source; here 1 is
+ * mapped to a soft, clearly-visible orb light — display scaling ONLY, never surfaced as a number or
+ * score. Absence maps to 0 (resting). Deliberately mid-range (below the orb's gold-peak/breath tier)
+ * so a returned day reads warm and alive without becoming a "high score".
+ */
+const PRESENT_LIGHT = 3;
+
+/** Narrow shape of the daily-trace payload — ONLY `intensity` is read; `date` and any other field
+ *  are deliberately un-typed so they cannot be consumed. */
+type DailyTraceNarrow = { dailyTrace?: Array<{ intensity?: number }> };
+
+/**
+ * Read the week's numberless light rhythm for the Me-tab WeeklyOrb from the Center/self-return
+ * trace. RAW fail-soft fetch (same-origin, cookie credentials + warn + resting-orb []-fallback),
+ * consistent with the shell's other Me reads. This is the ONE place the source coupling lives.
  */
 export async function fetchMeWeeklyRhythm(): Promise<MeWeeklyRhythm> {
   try {
-    // ⚠️ SWAP SEAM: replace this Arena endpoint with a Center/self daily-trace source when one
-    // exists. Nothing downstream (WeeklyOrb / Me tab) changes — they depend on MeWeeklyRhythm.
-    const res = await fetch("/api/arena/weekly-stats", { credentials: "include" });
+    const res = await fetch("/api/me/daily-trace", { credentials: "include" });
     if (!res.ok) throw new Error(`HTTP_${res.status}`);
-    const data = (await res.json()) as CarrierPayloadNarrow;
-    const series = Array.isArray(data.dailyBarSeries) ? data.dailyBarSeries : [];
-    return series.map((d) => (typeof d?.barIntensity === "number" ? d.barIntensity : 0));
+    const data = (await res.json()) as DailyTraceNarrow;
+    const series = Array.isArray(data.dailyTrace) ? data.dailyTrace : [];
+    // Presence-as-light: a self-return day → soft visible light; otherwise rest. Only `intensity`
+    // is consumed; the mapping is numberless (never a count/streak/score reaches the orb).
+    return series.map((d) => (d?.intensity === 1 ? PRESENT_LIGHT : 0));
   } catch (e) {
     console.warn(
-      "[app-shell/me] weekly rhythm carrier fell back (resting orb):",
+      "[app-shell/me] daily-trace rhythm fell back (resting orb):",
       e instanceof Error ? e.message : e,
     );
     return [];
