@@ -538,15 +538,28 @@ export default function OrbLiving({
       ctx.arc(bcx, bcy, shellR, 0, Math.PI * 2);
       ctx.fill();
 
-      // (1b) LAB-ONLY volumetric body shading (STEP 2 · dev/orb only · default OFF in
-      // production). Runs in the source-over region — AFTER the body fill, BEFORE the
-      // additive switch below — and is confined to the body disk (the helper save()/
-      // restore()s the context). It shapes the sphere (limb darkening / bottom density /
-      // depth / grounding / faint specular) WITHOUT touching the additive interior light
-      // passes (2–6). Derived only from the (breathing) body geometry → no new motion, so
-      // reduced-motion (single-frame) simply renders it once, statically.
+      // (1b) LAB-ONLY volumetric body shading (dev/orb only · default OFF in production).
+      // Runs in the source-over region — AFTER the body fill, BEFORE the additive switch
+      // below — and is confined to the body disk (the helper save()/restore()s the context).
+      // It shapes the sphere WITHOUT touching the additive interior light passes (2–6).
+      // Derived only from the (breathing) body geometry → no new motion, so reduced-motion
+      // (single-frame) renders it once, statically.
+      //
+      // STEP 3 · A-2 Body Shading Lite: the STEP 2 candidate read too dominant in motion
+      // ("warm glass lamp", suppressed the living interior). A-2 borrows just ~40% of that
+      // strength — enough to read rounder (rim + lower-third + faint grounding, minimal
+      // specular) while the Golden Master's core/medium luminosity below stays untouched.
+      // Explicit lite overrides (helper defaults are the STEP 2 strength; not used here).
       if (bodyShadingRef.current) {
-        drawOrbBodyShading(ctx, { cx: bcx, cy: bcy, radius: shellR });
+        drawOrbBodyShading(ctx, {
+          cx: bcx,
+          cy: bcy,
+          radius: shellR,
+          limb: 0.14, // ← 0.34 (STEP 2)
+          bottom: 0.11, // ← 0.26
+          grounding: 0.07, // ← 0.18
+          specular: 0.02, // ← 0.05
+        });
       }
 
       // (2) Surrounding light — responds to the core, LAG_MID behind. Additive.
