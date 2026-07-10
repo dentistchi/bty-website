@@ -545,20 +545,20 @@ export default function OrbLiving({
       // Derived only from the (breathing) body geometry → no new motion, so reduced-motion
       // (single-frame) renders it once, statically.
       //
-      // STEP 3 · A-2 Body Shading Lite: the STEP 2 candidate read too dominant in motion
-      // ("warm glass lamp", suppressed the living interior). A-2 borrows just ~40% of that
-      // strength — enough to read rounder (rim + lower-third + faint grounding, minimal
-      // specular) while the Golden Master's core/medium luminosity below stays untouched.
-      // Explicit lite overrides (helper defaults are the STEP 2 strength; not used here).
+      // STEP 4 · A-3 Edge-Only Body Cue: A-2 (~40% strength) still read as a warm glowing
+      // OBJECT because the body pass COVERED too much of the orb. A-3 makes shading an EDGE
+      // CUE, not an atmosphere layer — the inner ~84% stays untouched (helper geometry), and
+      // opacity drops further so only the outer rim + a lower-rim hint + a tiny depth specular
+      // remain. The Golden Master's living center/medium luminosity below is preserved.
       if (bodyShadingRef.current) {
         drawOrbBodyShading(ctx, {
           cx: bcx,
           cy: bcy,
           radius: shellR,
-          limb: 0.14, // ← 0.34 (STEP 2)
-          bottom: 0.11, // ← 0.26
-          grounding: 0.07, // ← 0.18
-          specular: 0.02, // ← 0.05
+          limb: 0.1, // ← 0.14 (A-2)
+          bottom: 0.05, // ← 0.11
+          grounding: 0.01, // ← 0.07 (nearly removed)
+          specular: 0.012, // ← 0.02
         });
       }
 

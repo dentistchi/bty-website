@@ -25,7 +25,7 @@ type OrbDevMode = "gm" | "candidate";
 
 const MODES: ReadonlyArray<{ key: OrbDevMode; label: string }> = [
   { key: "gm", label: "Golden Master" },
-  { key: "candidate", label: "A-2 Body Shading Lite" },
+  { key: "candidate", label: "A-3 Edge-Only Body Cue" },
 ];
 
 export default function DevOrbSensoryPage(): React.ReactElement {
@@ -114,7 +114,7 @@ export default function DevOrbSensoryPage(): React.ReactElement {
           pointerEvents: "none",
         }}
       >
-        {candidate ? "A-2 Body Shading Lite" : "Golden Master"}
+        {candidate ? "A-3 Edge-Only Body Cue" : "Golden Master"}
       </div>
     </div>
   );

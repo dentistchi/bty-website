@@ -83,12 +83,14 @@ export function drawOrbBodyShading(
   ctx.arc(cx, cy, radius, 0, Math.PI * 2);
   ctx.clip();
 
-  // (b) Limb darkening — transparent core → darker toward the rim, so the surface curves
-  // away at the edges (a lit sphere, not a flat disk).
+  // (b) Limb darkening — EDGE-ONLY (A-3). The inner ~84% stays fully transparent so the
+  // living center is untouched; darkening exists only in the OUTER RIM (transparent-hold
+  // stop 0.80 → effective onset ≈0.84·radius). It reads as a form cue at the edge, not a
+  // surface coating over the interior.
   if (limb > 0) {
     const lg = ctx.createRadialGradient(cx, cy, radius * 0.2, cx, cy, radius);
     lg.addColorStop(0, "rgba(0,0,0,0)");
-    lg.addColorStop(0.72, "rgba(0,0,0,0)");
+    lg.addColorStop(0.8, "rgba(0,0,0,0)");
     lg.addColorStop(1, `rgba(0,0,0,${0.55 * limb})`);
     ctx.fillStyle = lg;
     ctx.beginPath();
@@ -96,23 +98,24 @@ export function drawOrbBodyShading(
     ctx.fill();
   }
 
-  // (c) Bottom density — a downward vertical darkening so the base sinks and the body
-  // carries mass (top stays open). Linear top→bottom, clipped to the sphere.
+  // (c) Bottom density — a LOWER-RIM HINT (A-3), not a full lower-third wash. Transparent
+  // down to 0.80 of the vertical span (≈0.6·radius below centre) so only the bottom rim
+  // carries a whisper of weight; the mid/centre stays open.
   if (bottom > 0) {
     const bg = ctx.createLinearGradient(cx, cy - radius, cx, cy + radius);
     bg.addColorStop(0, "rgba(0,0,0,0)");
-    bg.addColorStop(0.55, "rgba(0,0,0,0)");
+    bg.addColorStop(0.8, "rgba(0,0,0,0)");
     bg.addColorStop(1, `rgba(0,0,0,${0.5 * bottom})`);
     ctx.fillStyle = bg;
     ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
   }
 
-  // (d) Specular — a small, faint highlight offset toward the upper-left implying one light
-  // direction. Kept very low; the additive interior passes still layer on top afterwards.
+  // (d) Specular — a tiny depth HINT (A-3), not a shiny surface. Smaller footprint (0.38·
+  // radius) offset upper-left, kept very low; the additive interior passes layer on top.
   if (specular > 0) {
     const sx = cx - radius * 0.32;
     const sy = cy - radius * 0.4;
-    const sr = radius * 0.5;
+    const sr = radius * 0.38;
     const sg = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr);
     sg.addColorStop(0, `rgba(255,246,228,${0.5 * specular})`);
     sg.addColorStop(0.5, `rgba(255,246,228,${0.18 * specular})`);
