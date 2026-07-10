@@ -6,7 +6,7 @@ import CenterMeCard from "@/components/center/CenterMeCard";
 import CenterKeepRoom from "@/components/center/CenterKeepRoom";
 import WeeklyOrb from "@/components/app-shell/WeeklyOrb";
 import { fetchMeWeeklyRhythm, type MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
-import type { TodayIntelligence, TodayUserState } from "@/domain/daily/todayIntelligence";
+import type { TodayConfidence, TodayIntelligence, TodayUserState } from "@/domain/daily/todayIntelligence";
 
 /**
  * New BTY Daily App Shell — v1 (Phase 3 Today wire + A/A+ ritual beat).
@@ -316,6 +316,27 @@ export function resolveActiveFocus(intel: TodayIntelligence): TodayFocusKey | nu
   if (intel.confidence === "none") return null;
   const f = intel.relationshipFocus;
   return f === "Self" || f === "Others" || f === "World" ? f : null;
+}
+
+/**
+ * Invitation-strength gate (Invitation Strength Alignment STEP 1). A derived relationshipFocus is
+ * only strong enough to earn the VISUAL AUTHORITY of the invited door (gold ring + "begin here"
+ * heartbeat) at MEDIUM or HIGH confidence. At NONE/LOW the focus stays present in the intelligence
+ * payload (never mutated) but Today shows three equal, open doors — the app does not project
+ * certainty it has not earned. Same evidence→authority principle as generation admission (LOW is
+ * diagnostic-only, never a claim the user is nudged to act on).
+ */
+export function isEvidenceStrongEnoughForInvitation(confidence: TodayConfidence): boolean {
+  return confidence === "medium" || confidence === "high";
+}
+
+/**
+ * The relationship to VISUALLY INVITE (invited-door treatment), or null. Combines the derived focus
+ * claim (resolveActiveFocus) with the invitation-strength gate: NONE/LOW → null (no invited door,
+ * no heartbeat), MEDIUM/HIGH → the derived focus. Never touches relationshipFocus or the payload.
+ */
+export function resolveInvitedFocus(intel: TodayIntelligence): TodayFocusKey | null {
+  return isEvidenceStrongEnoughForInvitation(intel.confidence) ? resolveActiveFocus(intel) : null;
 }
 
 /** Pick the calm status line for the derived userState. */
@@ -894,7 +915,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
           <TodaySurface
             copy={t.today}
             statusLine={selectTodayStatus(locale, intel.userState)}
-            activeFocus={resolveActiveFocus(intel)}
+            activeFocus={resolveInvitedFocus(intel)}
             loading={intelLoading}
             promiseText={promiseText}
             centerKeepLine={centerKeepLine}
