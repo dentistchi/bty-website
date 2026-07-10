@@ -20,6 +20,7 @@ import {
 } from "@/lib/bty/today-intelligence/todayMirrorEvidence.server";
 import { buildTodayIntelligence } from "@/lib/bty/daily/todayIntelligence.server";
 import { selectMirrorLens } from "@/domain/daily/todayMirrorLens";
+import { admitTodayMirrorGeneration, packetProvenanceComplete } from "@/domain/daily/todayMirrorAdmission";
 import type { TodayIntelligence } from "@/domain/daily/todayIntelligence";
 import type { TodayMirrorEvidencePacket } from "@/domain/daily/todayMirror.types";
 import type {
@@ -61,6 +62,8 @@ export type PilotEvidenceShadowStatus = {
   };
   returnAfterMiss: { deterministicLinkageAvailable: false; signalEmitted: false; status: "RETURN_LINKAGE_UNAVAILABLE" };
   allowedNumericClaimsEmpty: boolean;
+  /** Whether the assembled evidence would be admitted for provider generation. Value-safe. */
+  generationAdmission: { eligible: boolean; reason: string };
 };
 
 // ───────────────────────────── read-only user-scope enforcement ─────────────────────
@@ -172,10 +175,8 @@ function scanForProhibitedKeys(value: unknown, seen = new Set<unknown>()): boole
   return false;
 }
 
-function evidenceReferencesResolve(packet: TodayMirrorEvidencePacket): boolean {
-  const factIds = new Set(packet.confirmedFacts.map((f) => f.id));
-  return packet.derivedSignals.every((s) => s.supportingEvidenceIds.every((id) => factIds.has(id)));
-}
+// Provenance resolution is the SINGLE shared invariant from the admission policy — pilot status and
+// admission must never disagree, so both call packetProvenanceComplete (no local re-implementation).
 
 function signalStatus(
   packet: TodayMirrorEvidencePacket,
@@ -196,6 +197,8 @@ function signalStatus(
 /** Derive the value-safe status from an in-memory packet. Returns codes/booleans only. */
 export function deriveShadowStatus(packet: TodayMirrorEvidencePacket): Omit<PilotEvidenceShadowStatus, "config" | "verdict"> {
   const analysis = selectMirrorLens(packet);
+  const prohibitedFieldsPresent = scanForProhibitedKeys(packet);
+  const admission = admitTodayMirrorGeneration(packet, analysis, { prohibitedFieldsPresent });
   return {
     database: { readOnly: true, singleUserScoped: true },
     signals: {
@@ -213,14 +216,15 @@ export function deriveShadowStatus(packet: TodayMirrorEvidencePacket): Omit<Pilo
       assembled: true,
       confirmedFactsPresent: packet.confirmedFacts.length > 0,
       derivedSignalsPresent: packet.derivedSignals.length > 0,
-      evidenceReferencesResolve: evidenceReferencesResolve(packet),
-      prohibitedFieldsAbsent: !scanForProhibitedKeys(packet),
+      evidenceReferencesResolve: packetProvenanceComplete(packet),
+      prohibitedFieldsAbsent: !prohibitedFieldsPresent,
       selectedLens: analysis.selectedLens,
       confidence: packet.confidence,
       openContractGuardActive: packet.openContract !== null,
     },
     returnAfterMiss: { deterministicLinkageAvailable: false, signalEmitted: false, status: "RETURN_LINKAGE_UNAVAILABLE" },
     allowedNumericClaimsEmpty: true, // V1 signals emit no numeric claims; the packet carries none
+    generationAdmission: { eligible: admission.eligible, reason: admission.reason },
   };
 }
 
@@ -265,6 +269,8 @@ function inertStatus(
     },
     returnAfterMiss: { deterministicLinkageAvailable: false, signalEmitted: false, status: "RETURN_LINKAGE_UNAVAILABLE" },
     allowedNumericClaimsEmpty: true,
+    // No packet assembled → nothing admissible for provider generation.
+    generationAdmission: { eligible: false, reason: "INSUFFICIENT_EVIDENCE" },
   };
 }
 

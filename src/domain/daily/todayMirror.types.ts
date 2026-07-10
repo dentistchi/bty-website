@@ -48,8 +48,14 @@ export type DerivedSignal = {
   code: string;
   relationship?: Relationship;
   confidence: MirrorConfidence;
-  /** ConfirmedFact ids that support this signal. Must all exist in the packet. */
+  /** ConfirmedFact ids that support this signal. EVERY id MUST resolve to a ConfirmedFact.id. */
   supportingEvidenceIds: string[];
+  /**
+   * Opaque provenance/derivation markers (e.g. "outcome:<eventId>" comparison pointers) that
+   * DESCRIBE how the signal was derived but are NOT independent evidence facts. They are never
+   * resolved against confirmedFacts and never count toward evidence-anchor sufficiency.
+   */
+  provenanceMarkers?: string[];
 };
 
 /**

@@ -176,8 +176,10 @@ export function deriveReexposureChange(input: NormalizedReexposure): SignalOutpu
     relationship: input.relationship,
     summaryCode: `REEXPOSURE_${(input.lastValidationResult ?? "unknown").toUpperCase()}`,
   };
-  const supporting = [fact.id];
-  if (input.laterEventId) supporting.push(`outcome:${input.laterEventId}`);
+  // The later exposure event is a comparison-provenance MARKER (how the change was derived), not an
+  // independently-loaded evidence fact — it is NOT put in supportingEvidenceIds (which must all
+  // resolve to ConfirmedFacts). The signature fact is the sole evidence anchor.
+  const provenanceMarkers = input.laterEventId ? [`outcome:${input.laterEventId}`] : undefined;
 
   if (input.lastValidationResult === "changed") {
     // HIGH requires traceable comparison provenance (both exposure events). confidence_score alone
@@ -187,7 +189,7 @@ export function deriveReexposureChange(input: NormalizedReexposure): SignalOutpu
       hasComparisonProvenance && (input.confidenceScore ?? 0) >= 0.66 ? "high" : "medium";
     return out({
       facts: [fact],
-      signals: [{ code: "REEXPOSURE_CHANGED", relationship: input.relationship, confidence: conf, supportingEvidenceIds: supporting }],
+      signals: [{ code: "REEXPOSURE_CHANGED", relationship: input.relationship, confidence: conf, supportingEvidenceIds: [fact.id], provenanceMarkers }],
       insufficientEvidence: hasComparisonProvenance ? [] : ["REEXPOSURE_NO_COMPARISON_EVENT"],
     });
   }
