@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { drawOrbBodyShading } from "./orbBodyShading";
+import { drawOrbBodyShading, drawOrbContrastFrame } from "./orbBodyShading";
 
 /**
  * Lab-only body-shading helper (STEP 2). These tests verify the pure canvas contract only —
@@ -90,5 +90,42 @@ describe("drawOrbBodyShading — lab-only volumetric body pass", () => {
     expect(calls.filter((c) => c === "fill" || c === "fillRect").length).toBe(0);
     expect(ctx.save).toHaveBeenCalledTimes(1);
     expect(ctx.restore).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("drawOrbContrastFrame — lab-only AB-1 contrast vignette", () => {
+  it("is importable/callable, clips to the disk, balances save/restore, and draws a gradient", () => {
+    const { ctx, calls } = makeMockCtx();
+    expect(() =>
+      drawOrbContrastFrame(ctx as unknown as CanvasRenderingContext2D, { cx: 110, cy: 110, radius: 92 }),
+    ).not.toThrow();
+    expect(ctx.save.mock.calls.length).toBe(ctx.restore.mock.calls.length);
+    expect(ctx.clip).toHaveBeenCalled();
+    expect(calls.filter((c) => c === "createRadialGradient").length).toBeGreaterThan(0);
+    expect(calls.filter((c) => c === "fill").length).toBeGreaterThan(0);
+  });
+
+  it("never changes globalCompositeOperation (source-over only — no additive/behind draw)", () => {
+    const { ctx } = makeMockCtx();
+    drawOrbContrastFrame(ctx as unknown as CanvasRenderingContext2D, { cx: 50, cy: 50, radius: 60 });
+    expect(ctx.globalCompositeOperation).toBe("source-over");
+  });
+
+  it("no-ops on non-positive radius or zero strength (adds no darkening)", () => {
+    const a = makeMockCtx();
+    drawOrbContrastFrame(a.ctx as unknown as CanvasRenderingContext2D, { cx: 10, cy: 10, radius: 0 });
+    expect(a.ctx.save).not.toHaveBeenCalled();
+
+    const b = makeMockCtx();
+    drawOrbContrastFrame(b.ctx as unknown as CanvasRenderingContext2D, { cx: 10, cy: 10, radius: 40, strength: 0 });
+    expect(b.ctx.save).not.toHaveBeenCalled();
+  });
+
+  it("is pure/deterministic — same params → identical call sequence", () => {
+    const a = makeMockCtx();
+    const b = makeMockCtx();
+    drawOrbContrastFrame(a.ctx as unknown as CanvasRenderingContext2D, { cx: 50, cy: 50, radius: 60 });
+    drawOrbContrastFrame(b.ctx as unknown as CanvasRenderingContext2D, { cx: 50, cy: 50, radius: 60 });
+    expect(a.calls).toEqual(b.calls);
   });
 });

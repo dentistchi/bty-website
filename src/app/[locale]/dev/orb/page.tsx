@@ -21,16 +21,28 @@
 import React from "react";
 import OrbLiving from "@/components/orb/OrbLiving";
 
-type OrbDevMode = "gm" | "candidate";
+type OrbDevMode = "gm" | "a3" | "ab1";
 
 const MODES: ReadonlyArray<{ key: OrbDevMode; label: string }> = [
   { key: "gm", label: "Golden Master" },
-  { key: "candidate", label: "A-3 Edge-Only Body Cue" },
+  { key: "a3", label: "A-3 Edge-Only Body Cue" },
+  { key: "ab1", label: "AB-1 Contrast Frame" },
 ];
+
+const MODE_LABEL: Record<OrbDevMode, string> = {
+  gm: "Golden Master",
+  a3: "A-3 Edge-Only Body Cue",
+  ab1: "AB-1 Contrast Frame",
+};
 
 export default function DevOrbSensoryPage(): React.ReactElement {
   const [mode, setMode] = React.useState<OrbDevMode>("gm");
-  const candidate = mode === "candidate";
+  // Two orthogonal lab flags compose the three modes (both default OFF = Golden Master):
+  //   gm  → bodyShading off, contrastFrame off
+  //   a3  → bodyShading on,  contrastFrame off
+  //   ab1 → bodyShading on,  contrastFrame on  (A-3 edge cue + contrast frame)
+  const bodyShading = mode !== "gm";
+  const contrastFrame = mode === "ab1";
 
   return (
     <div
@@ -93,9 +105,10 @@ export default function DevOrbSensoryPage(): React.ReactElement {
         })}
       </div>
 
-      {/* Single OrbLiving — GM mode = bodyShading OFF (identical to production <OrbLiving/>);
-          Candidate mode = bodyShading ON. Exactly one instance; prop toggled by local state. */}
-      <OrbLiving bodyShading={candidate} />
+      {/* Single OrbLiving — GM = both flags OFF (identical to production <OrbLiving/>); A-3 =
+          bodyShading ON; AB-1 = bodyShading + contrastFrame ON. Exactly one instance; flags
+          toggled by local state (both optional, default OFF). */}
+      <OrbLiving bodyShading={bodyShading} contrastFrame={contrastFrame} />
 
       {/* Unambiguous active-mode caption (dev-only). */}
       <div
@@ -114,7 +127,7 @@ export default function DevOrbSensoryPage(): React.ReactElement {
           pointerEvents: "none",
         }}
       >
-        {candidate ? "A-3 Edge-Only Body Cue" : "Golden Master"}
+        {MODE_LABEL[mode]}
       </div>
     </div>
   );

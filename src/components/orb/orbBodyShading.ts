@@ -128,3 +128,63 @@ export function drawOrbBodyShading(
 
   ctx.restore();
 }
+
+export interface OrbContrastFrameParams {
+  /** Body centre x, in the caller's (dpr-scaled) canvas space. */
+  cx: number;
+  /** Body centre y. */
+  cy: number;
+  /** Body radius (the caller's shellR). */
+  radius: number;
+  /** Peak vignette alpha at the rim, 0..1. Default 0.12 — a whisper, never a bowl. */
+  strength?: number;
+  /** Radial fraction held FULLY transparent to protect the living center + inner medium. Default 0.6. */
+  hold?: number;
+}
+
+/**
+ * drawOrbContrastFrame — LAB-ONLY contrast framing for OrbLiving (AB-1 · Mechanism A).
+ *
+ * This adds NO light and NO motion. It is a very-low-opacity, source-over radial VIGNETTE,
+ * clipped to the body disk and held FULLY TRANSPARENT through the living center + inner
+ * medium (default inner 60%). It darkens only the outer, already-rim-faded band so the
+ * Golden Master's EXISTING inner breath reads better by contrast — a frame around the
+ * luminosity, not a coating over it. NOT a shell / lamp bowl / amber fog (neutral black).
+ *
+ * Contract (same as drawOrbBodyShading): call ONLY in OrbLiving's source-over region, BEFORE
+ * the additive 'lighter' switch; pure, no React/DOM/haptics/state/time/Math.random; fully
+ * save()/restore()s the context. It never touches the additive interior passes (2–6) and adds
+ * nothing to the center — it only frames what is already there. No-ops on radius/strength ≤ 0.
+ */
+export function drawOrbContrastFrame(
+  ctx: CanvasRenderingContext2D,
+  params: OrbContrastFrameParams,
+): void {
+  const { cx, cy, radius } = params;
+  if (!(radius > 0)) return;
+  const strength = clamp01(params.strength ?? 0.12);
+  const hold = clamp01(params.hold ?? 0.6);
+  if (strength <= 0) return; // nothing to frame
+
+  ctx.save();
+  // Clip to the body disk so the frame NEVER darkens the surrounding field (no halo ring).
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Vignette: transparent through the living center/inner medium (to `hold`), then a gentle
+  // low-peak darkening toward the rim. The knee sits ~62% of the way from hold → rim so the
+  // ramp is soft (no visible ring). Neutral, source-over — never over the bright core.
+  const knee = hold + (1 - hold) * 0.62;
+  const vg = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+  vg.addColorStop(0, "rgba(0,0,0,0)");
+  vg.addColorStop(hold, "rgba(0,0,0,0)");
+  vg.addColorStop(knee, `rgba(0,0,0,${0.42 * strength})`);
+  vg.addColorStop(1, `rgba(0,0,0,${strength})`);
+  ctx.fillStyle = vg;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}

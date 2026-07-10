@@ -40,7 +40,7 @@
 import React from "react";
 import { isNative } from "@/lib/native/isNative";
 import * as goldenOverlay from "./orbGoldenOverlay";
-import { drawOrbBodyShading } from "./orbBodyShading";
+import { drawOrbBodyShading, drawOrbContrastFrame } from "./orbBodyShading";
 
 /**
  * The sole LIVE haptic call site (#배타성 LOCK), relocated from the retired Orb.tsx.
@@ -126,6 +126,13 @@ export interface OrbLivingProps {
    * production stays visually and behaviorally unchanged. Adds no motion, no haptic, no state.
    */
   bodyShading?: boolean;
+  /**
+   * LAB-ONLY (dev/orb · AB-1) — when true, draws a very-low-opacity source-over contrast
+   * VIGNETTE that frames the existing luminosity (held transparent through the living center)
+   * so the Golden Master's inner breath reads better by contrast. Adds NO light, motion, or
+   * new interior pass. Default OFF. Production (`/start`) never passes it → unchanged.
+   */
+  contrastFrame?: boolean;
 }
 
 /**
@@ -141,20 +148,24 @@ export default function OrbLiving({
   onCommit,
   holdMs = 0,
   bodyShading = false,
+  contrastFrame = false,
 }: OrbLivingProps): React.ReactElement {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const [failed, setFailed] = React.useState(false);
-  // Keep the latest onCommit / holdMs / bodyShading in refs so the (size/fieldCells-scoped)
-  // draw effect never captures a stale closure AND is never re-initialised by these props.
-  // Visual-only — no haptic (§G). bodyShading is lab-only (default OFF in production).
+  // Keep the latest onCommit / holdMs / bodyShading / contrastFrame in refs so the
+  // (size/fieldCells-scoped) draw effect never captures a stale closure AND is never
+  // re-initialised by these props. Visual-only — no haptic (§G). bodyShading + contrastFrame
+  // are lab-only (default OFF in production).
   const onCommitRef = React.useRef(onCommit);
   const holdMsRef = React.useRef(holdMs);
   const bodyShadingRef = React.useRef(bodyShading);
+  const contrastFrameRef = React.useRef(contrastFrame);
   React.useEffect(() => {
     onCommitRef.current = onCommit;
     holdMsRef.current = holdMs;
     bodyShadingRef.current = bodyShading;
-  }, [onCommit, holdMs, bodyShading]);
+    contrastFrameRef.current = contrastFrame;
+  }, [onCommit, holdMs, bodyShading, contrastFrame]);
 
   React.useEffect(() => {
     const canvas = canvasRef.current;
@@ -560,6 +571,15 @@ export default function OrbLiving({
           grounding: 0.01, // ← 0.07 (nearly removed)
           specular: 0.012, // ← 0.02
         });
+      }
+
+      // (1c) LAB-ONLY contrast frame (AB-1 · Mechanism A · dev/orb only · default OFF). Still
+      // source-over, still BEFORE the additive switch. A whisper-opacity vignette held fully
+      // transparent through the living center (inner 60%) that frames the EXISTING luminosity
+      // so the inner breath reads better by contrast — adds NO light, NO motion, and touches
+      // NONE of the additive interior passes (2–6). Composed with A-3 edge cue above.
+      if (contrastFrameRef.current) {
+        drawOrbContrastFrame(ctx, { cx: bcx, cy: bcy, radius: shellR, strength: 0.12, hold: 0.6 });
       }
 
       // (2) Surrounding light — responds to the core, LAG_MID behind. Additive.
