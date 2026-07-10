@@ -372,6 +372,10 @@ export function TodaySurface({
   loading,
   promiseText,
   centerKeepLine,
+  selected: selectedProp,
+  setSelected: setSelectedProp,
+  confirmed: confirmedProp,
+  setConfirmed: setConfirmedProp,
 }: {
   copy: TodayCopy;
   /** Calm narrative status line derived from userState (already localized). */
@@ -383,15 +387,37 @@ export function TodaySurface({
   promiseText: string | null;
   /** STEP 1B: the self-owned Center keep for today (read-only), or null → nothing renders. */
   centerKeepLine: string | null;
+  /** Post-confirm settling (STEP 1) — selection + confirmation LIFTED to the shell so they
+   *  survive a same-session tab switch (BtyDailyAppShell owns them; in-memory only — no storage,
+   *  no API, no cold-launch persistence). CONTROLLED when provided; when absent (isolated render /
+   *  unit tests) TodaySurface falls back to owning the state locally, so it still works standalone. */
+  selected?: TodayFocusKey | null;
+  setSelected?: (focus: TodayFocusKey | null) => void;
+  confirmed?: boolean;
+  setConfirmed?: (confirmed: boolean) => void;
 }) {
+  // Controlled (shell-owned) ↔ uncontrolled (local) resolution. In production the shell lifts the
+  // state up so a brief tab visit no longer discards the accepted day; a cold launch / full remount
+  // still resets it (intentional). The local fallback exists ONLY for isolated rendering.
+  const [selectedLocal, setSelectedLocal] = useState<TodayFocusKey | null>(null);
+  const [confirmedLocal, setConfirmedLocal] = useState(false);
+  const selected = selectedProp !== undefined ? selectedProp : selectedLocal;
+  const setSelected: (focus: TodayFocusKey | null) => void = setSelectedProp ?? setSelectedLocal;
+  const confirmed = confirmedProp !== undefined ? confirmedProp : confirmedLocal;
+  const setConfirmed: (confirmed: boolean) => void = setConfirmedProp ?? setConfirmedLocal;
+
+  // `justOpened` is a TRANSIENT, component-local signal (NOT product state, NOT lifted): true only
+  // after a fresh in-session selection so the interior open-animation (btyOpenRoom) plays once. On a
+  // tab-return REMOUNT it starts false, so a RESTORED selection paints at rest — no open-animation
+  // replay. It dies with the component; it is animation bookkeeping only, never persisted or lifted.
+  const [justOpened, setJustOpened] = useState(false);
+
   // Relationship selection is a deliberate ritual choice (A): tapping reveals the
   // confirmation + CTA in-shell. It does NOT navigate — the bottom tabs own room entry.
-  const [selected, setSelected] = useState<TodayFocusKey | null>(null);
-  const [confirmed, setConfirmed] = useState(false);
-
   const select = (focus: TodayFocusKey) => {
     setSelected(focus);
     setConfirmed(false);
+    setJustOpened(true);
   };
 
   // The invited door: the user's pick once made, else the softly-suggested derived focus.
@@ -506,11 +532,18 @@ export function TodaySurface({
 
                   {/* The opened interior — a sibling of the door (valid HTML: no nested button),
                       merged flush beneath it (shared border, no top edge) so door + interior read
-                      as one opened whole. After confirm this is the held REST state. */}
+                      as one opened whole. After confirm this is the held REST state — its EXISTING
+                      gold tint deepens one restrained step (0.05 → 0.08) via a ONE-TIME background-
+                      color transition (no scale/transform). On a tab-return remount it mounts already
+                      at the confirmed tint (transitions never run on initial mount) and btyOpenRoom is
+                      gated on justOpened, so a RESTORED selection paints at rest — no warmth replay, no
+                      open-animation replay. motion-reduce stills the warmth (immediate, no breathing). */}
                   {isSelected ? (
                     <div
                       data-today-confirm
-                      className="btyOpenRoom relative overflow-hidden rounded-b-2xl border border-t-0 border-[#C9A66B]/45 bg-[#C9A66B]/[0.05] px-6 pb-6 pt-5"
+                      className={`relative overflow-hidden rounded-b-2xl border border-t-0 border-[#C9A66B]/45 px-6 pb-6 pt-5 transition-colors duration-200 ease-out motion-reduce:transition-none ${
+                        justOpened ? "btyOpenRoom " : ""
+                      }${confirmed ? "bg-[#C9A66B]/[0.08]" : "bg-[#C9A66B]/[0.05]"}`}
                     >
                       {/* Seam continues down into the interior — one continuous opening. */}
                       <span
@@ -546,10 +579,14 @@ export function TodaySurface({
                         </>
                       ) : null}
                       {/* CTA — pre-press is the strong filled-gold action; the settled state SINKS to
-                          an outline + ✓ (the quiet action-mark). No undo: it does not toggle back. */}
+                          an outline + ✓ (the quiet action-mark). No undo: it does not toggle back, and
+                          once confirmed the press is idempotently inert (guarded) — aria-pressed, the
+                          accessible name, and focus are unchanged, so repeat activation is harmless. */}
                       <button
                         type="button"
-                        onClick={() => setConfirmed(true)}
+                        onClick={() => {
+                          if (!confirmed) setConfirmed(true);
+                        }}
                         aria-pressed={confirmed}
                         data-today-cta
                         className={`relative mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40 ${
@@ -613,6 +650,13 @@ export function CompanionBar({ label }: { label: string }) {
 export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   const [tab, setTab] = useState<AppTabKey>("today");
   const t = COPY[locale];
+
+  // Post-confirm settling (STEP 1): the Today selection + confirmation are OWNED here at the shell —
+  // LIFTED out of TodaySurface — so a same-session tab switch no longer discards the accepted day
+  // (TodaySurface unmounts on tab change; the shell does not). In-memory ONLY: no storage, no cookie,
+  // no API, no DB — a cold launch / full shell remount resets them (intentional).
+  const [todaySelected, setTodaySelected] = useState<TodayFocusKey | null>(null);
+  const [todayConfirmed, setTodayConfirmed] = useState(false);
 
   // Today Intelligence (Phase 3): deterministic bands/narrative, read-only. Plus the user's
   // open promise (A+), read-only. Both fetched once on mount so Today is ready immediately.
@@ -700,6 +744,10 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             loading={intelLoading}
             promiseText={promiseText}
             centerKeepLine={centerKeepLine}
+            selected={todaySelected}
+            setSelected={setTodaySelected}
+            confirmed={todayConfirmed}
+            setConfirmed={setTodayConfirmed}
           />
         )}
         {/* Center = the self-owned Daily Keep room (Center Promise Loop STEP 1A): write and
