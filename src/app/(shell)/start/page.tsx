@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import { PageLoadingFallback } from "@/components/bty-arena";
 import StartShellClient from "./page.client";
+import { StartNavySurface } from "./StartNavySurface";
 
 // App Shell v0 — "Morning 30s" ritual. Root-level (shell) route group: inherits ONLY the
 // root layout (AuthProvider / fonts / globals + --bty-orb-* tokens) — NOT the [locale] layout,
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default function StartShellPage() {
   return (
-    <Suspense fallback={<PageLoadingFallback />}>
+    <Suspense fallback={<StartNavySurface />}>
       <StartShellClient />
     </Suspense>
   );

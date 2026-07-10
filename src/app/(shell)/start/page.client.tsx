@@ -4,8 +4,8 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import OrbLiving from "@/components/orb/OrbLiving";
-import { PageLoadingFallback } from "@/components/bty-arena";
 import { isNative } from "@/lib/native/isNative";
+import { StartNavySurface } from "./StartNavySurface";
 
 /**
  * App Shell v0 — Threshold Door (Scope Lock §4 / spec §G). App Launch → Splash(0.5s) →
@@ -80,8 +80,12 @@ export default function StartShellClient() {
   }, []);
   React.useEffect(() => () => cancelKeyHold(), [cancelKeyHold]);
 
-  if (loading) return <PageLoadingFallback />;
-  if (!user) return <div className="p-6">redirecting…</div>;
+  // Native Launch Seam STEP 1: every pre-Orb wait shows the quiet navy surface (not the white
+  // PageLoadingFallback), so the launch stays continuous navy → Orb. Auth timing is UNCHANGED —
+  // this only swaps the visual of the loading/pre-redirect frames. The redirect itself is still
+  // driven by the effect above; `!user` renders navy only until that replace() lands.
+  if (loading) return <StartNavySurface />;
+  if (!user) return <StartNavySurface />;
 
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center bg-bty-navy px-6 text-white">
