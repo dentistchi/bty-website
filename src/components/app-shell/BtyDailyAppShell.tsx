@@ -451,7 +451,7 @@ export function TodaySurface({
         <p
           data-today-status
           className="btyRise mb-8 mt-0.5 text-[1.05rem] font-normal leading-7 text-white/85"
-          style={{ animationDelay: "260ms" }}
+          style={{ animationDelay: "200ms" }}
         >
           {statusLine}
         </p>
@@ -470,8 +470,30 @@ export function TodaySurface({
           no early gold-pop from FALLBACK→resolved highlight flicker competing with the text.
           reduced-motion: btyRise is inert, so the doors simply appear at rest on content-ready. */}
       {!loading && (
-        <div className="btyRise" style={{ animationDelay: "720ms" }}>
-          {copy.cards.map((c) => {
+        <div className="relative">
+          {/* Spine of light — one continuous gold thread drawing down the LEFT EDGE of the three
+              doors as they arrive, a bright spark riding its head. It aligns with each door's own
+              seam, so the doors read as three openings ALONG one line of light (the day's spine),
+              not three separate cards. After the draw it rests as a faint thread and resizes with
+              the stack when doors collapse post-confirm. z-10 so the spark rides OVER the doors. */}
+          <span
+            aria-hidden
+            className="btySpine pointer-events-none absolute bottom-1 left-0 top-1 z-10 w-px bg-gradient-to-b from-transparent via-[#C9A66B]/50 to-transparent"
+            style={{ animationDelay: "150ms" }}
+          >
+            <span
+              className="btySpark absolute left-0 h-12 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#C9A66B] blur-[2px]"
+              style={{ animationDelay: "150ms" }}
+            />
+          </span>
+          {copy.cards.map((c, i) => {
+          // Experiment A "Daybreak": the three doors no longer rise as one block — each rises
+          // in sequence (three lamps coming on), 100ms apart after the trace has landed, and its
+          // threshold seam ignites a beat later AS THE SPINE'S SPARK REACHES IT. The staggered
+          // ignition IS the "worlds awakening"; the eye follows the spark down to a door, and the
+          // finger follows the eye.
+          const riseDelay = 300 + i * 100;
+          const igniteDelay = riseDelay + 70;
           const isHighlight = c.focus === highlight;
           const isSelected = c.focus === selected;
           // Before confirm: unselected doors quiet to 40%. After confirm: they are GONE.
@@ -485,8 +507,14 @@ export function TodaySurface({
                 isGone ? "grid-rows-[0fr] mb-0 opacity-0" : "grid-rows-[1fr] mb-3 opacity-100"
               }`}
             >
-              {/* overflow-hidden lets the grid-rows 0fr collapse the door's height to zero. */}
-              <div className={`overflow-hidden ${isGone ? "pointer-events-none" : ""}`}>
+              {/* overflow-hidden lets the grid-rows 0fr collapse the door's height to zero.
+                  btyRise (staggered per door) lives HERE — not on the grid parent (which toggles
+                  opacity for dim/gone) nor the dim child — so its opacity:1 `both`-fill never
+                  fights those states; dim/gone are carried by ancestor/child opacity instead. */}
+              <div
+                className={`btyRise overflow-hidden ${isGone ? "pointer-events-none" : ""}`}
+                style={{ animationDelay: `${riseDelay}ms` }}
+              >
                 <div
                   className={`transition-opacity duration-300 ${isDimmed ? "opacity-40" : "opacity-100"}`}
                 >
@@ -496,6 +524,19 @@ export function TodaySurface({
                     // re-open). Pre-confirm it selects/opens as before.
                     onClick={() => {
                       if (!confirmed) select(c.focus);
+                    }}
+                    // Magnetic warmth (Experiment A): track the pointer/finger as CSS vars set
+                    // DIRECTLY on the node (no React state → no re-render on move) so the interior
+                    // light can GATHER wherever the finger is about to press. Touch fires pointer
+                    // events, so this works on device. On leave the light settles back to the seam.
+                    onPointerMove={(e) => {
+                      const r = e.currentTarget.getBoundingClientRect();
+                      e.currentTarget.style.setProperty("--mx", `${((e.clientX - r.left) / r.width) * 100}%`);
+                      e.currentTarget.style.setProperty("--my", `${((e.clientY - r.top) / r.height) * 100}%`);
+                    }}
+                    onPointerLeave={(e) => {
+                      e.currentTarget.style.setProperty("--mx", "0%");
+                      e.currentTarget.style.setProperty("--my", "-10%");
                     }}
                     aria-pressed={isSelected}
                     tabIndex={isGone ? -1 : undefined}
@@ -518,13 +559,42 @@ export function TodaySurface({
                         isHighlight ? "opacity-100" : "opacity-35 group-hover:opacity-70"
                       }`}
                     />
-                    {/* Interior depth — a quiet warmth leaning in from the seam, growing when invited.
-                        Same gentle 700ms ease-out warm-in (STEP 3), reduced-motion-guarded. */}
+                    {/* Experiment A — the seam IGNITE: a brighter core that sweeps down the seam
+                        once as this door arrives (staggered per door), then fades to nothing. It is
+                        the "lamp coming on" beat; at rest only the base seam above remains. Sits at
+                        opacity 0 by default so reduced-motion (animation:none) shows nothing extra. */}
                     <span
                       aria-hidden
-                      className={`pointer-events-none absolute inset-0 bg-gradient-to-r from-[#C9A66B]/[0.08] via-transparent to-transparent transition-opacity duration-700 ease-out motion-reduce:transition-none ${
-                        isHighlight ? "opacity-100" : "opacity-0 group-hover:opacity-60"
+                      className="btyIgnite pointer-events-none absolute inset-y-4 left-0 w-0.5 origin-top bg-gradient-to-b from-[#C9A66B]/0 via-[#C9A66B] to-[#C9A66B]/0 opacity-0 blur-[0.5px]"
+                      style={{ animationDelay: `${igniteDelay}ms` }}
+                    />
+                    {/* Interior depth — a warmth leaning in from the seam, STRONGER when invited.
+                        When this is the SUGGESTED door and nothing is chosen yet, it keeps a slow
+                        heartbeat (btyHeart) — "begin here" — which stops the instant a choice is
+                        made. reduced-motion stills the pulse (holds lit). */}
+                    <span
+                      aria-hidden
+                      className={`pointer-events-none absolute inset-0 bg-gradient-to-r ${
+                        isHighlight ? "from-[#C9A66B]/[0.16]" : "from-[#C9A66B]/[0.08]"
+                      } via-transparent to-transparent transition-opacity duration-700 ease-out motion-reduce:transition-none ${
+                        isHighlight
+                          ? selected === null
+                            ? "btyHeart opacity-100"
+                            : "opacity-100"
+                          : "opacity-0 group-hover:opacity-60"
                       }`}
+                    />
+                    {/* Magnetic warmth — an interior light that GATHERS under the finger/cursor,
+                        tracking the pointer via the --mx/--my vars set on move. This is the
+                        "touchable" pull: the door lights up exactly where you are about to press.
+                        Shown on hover (desktop) and while pressed (touch). pointer-events-none. */}
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100 group-active:opacity-100"
+                      style={{
+                        background:
+                          "radial-gradient(220px circle at var(--mx,0%) var(--my,-10%), rgba(201,166,107,0.24), transparent 55%)",
+                      }}
                     />
                     <span className="relative text-lg font-semibold text-white">{c.t}</span>
                     <span className="relative text-sm leading-6 text-white/55">{c.d}</span>
@@ -550,6 +620,17 @@ export function TodaySurface({
                         aria-hidden
                         className="pointer-events-none absolute inset-y-0 left-0 w-px bg-gradient-to-b from-[#C9A66B]/40 via-[#C9A66B]/15 to-transparent"
                       />
+                      {/* Answer BLOOM (Experiment A) — the world REPLIES to the choice: a warm burst
+                          blooms once from the chosen seam when the relationship is confirmed. It
+                          mounts only when confirmed, so it fires on the press; the room's overflow-
+                          hidden clips it into the interior, like light filling the room. */}
+                      {confirmed ? (
+                        <span
+                          aria-hidden
+                          className="btyBloom pointer-events-none absolute left-0 top-0 h-44 w-44 -translate-x-1/3 -translate-y-1/4 rounded-full"
+                          style={{ background: "radial-gradient(circle, rgba(201,166,107,0.5), transparent 62%)" }}
+                        />
+                      ) : null}
                       {/* Layer 1 — path sublabel (reuses the locked-room eyebrow tone). */}
                       <span
                         data-path-label
@@ -712,7 +793,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // direct-/en/app-era OrbThreshold gate was removed to fix the B2 double-door defect.
 
   return (
-    <div className="btyFadeIn flex h-[100dvh] flex-col bg-[#0B1F3A] text-white antialiased">
+    <div className="btyFadeIn relative flex h-[100dvh] flex-col overflow-hidden bg-[#0B1F3A] text-white antialiased">
       {/* Entry fade only (mount). The companion dock is status-only (no pulse); the sole Orb
           now lives at /start. prefers-reduced-motion stills the fade. */}
       <style>{`
@@ -730,12 +811,85 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
            off the interior's mount (isSelected). reduced-motion stills it (interior at rest). */
         @keyframes btyOpenRoom{from{opacity:0;transform:translateY(8px) scale(0.992)}to{opacity:1;transform:translateY(0) scale(1)}}
         .btyOpenRoom{animation:btyOpenRoom .48s cubic-bezier(0.22,1,0.36,1) both}
-        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise,.btyOpenRoom{animation:none!important}}
+        /* ───────────────────────────────────────────────────────────────────────
+           TODAY WOW LAB — Experiment A · "DAYBREAK" (bold pass). Today does not load,
+           it IGNITES: a seed of light blooms, a living aurora drifts behind everything,
+           a single spine of gold draws down the left edge and the three doors ignite
+           along it, the invited door keeps a warm heartbeat, and the world answers the
+           finger that touches it. Loud in LIGHT, never in colour — gold (#C9A66B) on
+           navy only, no second hue, no neon.
+           ─────────────────────────────────────────────────────────────────────── */
+        /* Aurora field entrance — the living light fades up as Today is entered. */
+        @keyframes btyWake{from{opacity:0}to{opacity:1}}
+        .btyWake{animation:btyWake 1.4s ease-out both}
+        /* Living aurora — two warm gold fields drifting on their own slow loops, never
+           still: the space BREATHES on its own, not a frozen gradient. */
+        @keyframes btyDriftA{0%{transform:translate3d(-4%,2%,0) scale(1.05)}50%{transform:translate3d(5%,-3%,0) scale(1.2)}100%{transform:translate3d(-4%,2%,0) scale(1.05)}}
+        @keyframes btyDriftB{0%{transform:translate3d(3%,-2%,0) scale(1.12)}50%{transform:translate3d(-5%,4%,0) scale(1)}100%{transform:translate3d(3%,-2%,0) scale(1.12)}}
+        .btyDriftA{animation:btyDriftA 17s ease-in-out infinite}
+        .btyDriftB{animation:btyDriftB 23s ease-in-out infinite}
+        /* Ignition seed — a single point of light blooms outward once as Today opens
+           (the Orb handing its light to the day), then dissolves into the aurora. */
+        @keyframes btySeed{0%{opacity:0;transform:translate(-50%,-50%) scale(0.12)}22%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(2.7)}}
+        .btySeed{animation:btySeed 1.5s cubic-bezier(0.22,1,0.36,1) both}
+        /* Spine of light — one continuous gold line DRAWING down the doors' left edge,
+           stitching the three worlds into a single opening. */
+        @keyframes btySpine{0%{transform:scaleY(0);opacity:0}12%{opacity:1}100%{transform:scaleY(1);opacity:1}}
+        .btySpine{transform-origin:top;animation:btySpine .95s cubic-bezier(0.22,1,0.36,1) both}
+        /* …with a bright spark riding the head of the line as it draws. */
+        @keyframes btySpark{0%{top:-2%;opacity:0}12%{opacity:1}86%{opacity:1}100%{top:100%;opacity:0}}
+        .btySpark{animation:btySpark .95s cubic-bezier(0.22,1,0.36,1) both}
+        /* Per-door seam IGNITE — the lamp coming on as the spine passes each door.
+           Ends at opacity 0, so at rest only the door's base seam remains. */
+        @keyframes btyIgnite{0%{opacity:0;transform:translateY(-45%) scaleY(0.35)}45%{opacity:1}100%{opacity:0;transform:translateY(0) scaleY(1)}}
+        .btyIgnite{animation:btyIgnite .8s cubic-bezier(0.22,1,0.36,1) both}
+        /* Invited-door HEARTBEAT — the suggested door pulses a slow warm breath:
+           "begin here." Stops the instant a choice is made. */
+        @keyframes btyHeart{0%,100%{opacity:0.4}50%{opacity:1}}
+        .btyHeart{animation:btyHeart 3.4s ease-in-out infinite}
+        /* Answer BLOOM — the world replies when a relationship is confirmed: a warm
+           burst blooms from the chosen seam, once. */
+        @keyframes btyBloom{0%{opacity:0;transform:scale(0.5)}28%{opacity:0.9}100%{opacity:0;transform:scale(2.2)}}
+        .btyBloom{animation:btyBloom 1.1s cubic-bezier(0.22,1,0.36,1) both}
+        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise,.btyOpenRoom,.btyWake,.btyDriftA,.btyDriftB,.btySeed,.btySpine,.btySpark,.btyIgnite,.btyHeart,.btyBloom{animation:none!important}}
       `}</style>
+      {/* TODAY WOW LAB — Experiment A "Daybreak" LIVING FIELD. A full-bleed light stage behind
+          all content: two warm gold aurora currents drifting on independent slow loops (the space
+          is never still), a cool depth wash at the crown for top-to-bottom pull, and a single
+          ignition SEED that blooms outward once as Today opens — the Orb handing its light to the
+          day. z-0, behind the z-10 content; pointer-transparent. reduced-motion → all still, lit. */}
+      <div aria-hidden className="btyWake pointer-events-none absolute inset-0 z-0 overflow-hidden">
+        {/* Aurora current A — the warm dawn rising from below. */}
+        <div
+          className="btyDriftA absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(68% 54% at 50% 116%, rgba(201,166,107,0.22), rgba(201,166,107,0.05) 44%, transparent 68%)",
+          }}
+        />
+        {/* Aurora current B — a second warm current, offset, drifting the other way. */}
+        <div
+          className="btyDriftB absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(52% 44% at 20% 90%, rgba(201,166,107,0.13), transparent 60%), radial-gradient(48% 40% at 84% 98%, rgba(201,166,107,0.11), transparent 58%)",
+          }}
+        />
+        {/* Cool depth wash at the crown — a faint blue pull so the field has a sky-to-ground axis. */}
+        <div
+          className="absolute inset-0"
+          style={{ background: "radial-gradient(95% 55% at 50% -12%, rgba(120,150,210,0.09), transparent 60%)" }}
+        />
+        {/* Ignition seed — one point of light blooming outward as Today opens, then gone. */}
+        <div
+          className="btySeed absolute left-1/2 top-[40%] h-72 w-72 rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(201,166,107,0.55), rgba(201,166,107,0.14) 38%, transparent 70%)" }}
+        />
+      </div>
       {/* iOS status-bar safe area — reserved so app content never underlaps the notch/clock. */}
-      <div style={{ height: "env(safe-area-inset-top)" }} aria-hidden />
+      <div style={{ height: "env(safe-area-inset-top)" }} aria-hidden className="relative z-10" />
 
-      <main className="flex-1 overflow-y-auto px-5 pb-4 pt-8" aria-label={t.appAria}>
+      <main className="relative z-10 flex-1 overflow-y-auto px-5 pb-4 pt-8" aria-label={t.appAria}>
         {tab === "today" && (
           <TodaySurface
             copy={t.today}
@@ -780,9 +934,11 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
         )}
       </main>
 
-      <CompanionBar label={t.companion} />
-
-      <AppTabBar active={tab} onSelect={setTab} />
+      {/* Bottom dock lifted above the wake layer (z-10) so the ambient glow stays behind it. */}
+      <div className="relative z-10 flex shrink-0 flex-col">
+        <CompanionBar label={t.companion} />
+        <AppTabBar active={tab} onSelect={setTab} />
+      </div>
     </div>
   );
 }
