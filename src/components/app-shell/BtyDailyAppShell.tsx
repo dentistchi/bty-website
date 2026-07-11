@@ -585,13 +585,19 @@ export function TodaySurface({
               // invisible. Here it sits ABOVE the ambient (z-0 in this isolated context, below the
               // z-10 doors), and it is a STRONGER, localized, ASYMMETRIC warm field that travels
               // top→bottom far faster than the ambient's 17-23s drift — so it reads as light MOVING.
-              className="btyAurora pointer-events-none absolute inset-x-[-22%] inset-y-[-10%] z-0"
+              className="btyAurora pointer-events-none absolute inset-x-[-10%] inset-y-[-10%] z-0"
               style={{
                 background:
                   "radial-gradient(closest-side, rgba(201,166,107,0.46), rgba(201,166,107,0.20) 48%, transparent 76%), radial-gradient(closest-side, rgba(150,180,220,0.10), transparent 70%)",
                 backgroundRepeat: "no-repeat, no-repeat",
                 backgroundSize: "150% 34%, 120% 44%",
                 filter: "blur(56px)",
+                // OPTICAL SAFE FADE (V3.1): a SYMMETRIC horizontal mask so the wide warmth dissolves
+                // into the navy before either viewport edge — no hard rectangle cutoff, no side
+                // curtain, equal left/right. Vertical is unclipped (field is mid-scroll, not at a
+                // main edge). This lets the atmosphere carry the spatial reach the card halo gave up.
+                WebkitMaskImage: "linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%)",
+                maskImage: "linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%)",
               }}
             />
           ) : null}
@@ -1061,9 +1067,12 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
         /* (D) PRIMARY ACTION — the action label lifts in luminance (gold-white glow), briefly. */
         @keyframes btyAffordLift{0%,100%{text-shadow:none}42%{text-shadow:0 0 18px rgba(201,166,107,0.9),0 0 4px rgba(255,255,255,0.5)}}
         .btyAffordLift{animation:btyAffordLift .7s ease-in-out both}
-        /* (C) OUTER HALO — a glow reaching OUTSIDE the card (box-shadow on the grid cell), traveling
-           with the sequence. V2: reaches ~44px. Ends at no-shadow (calm settle). */
-        @keyframes btyHalo{0%{box-shadow:0 0 0 0 rgba(201,166,107,0)}42%{box-shadow:0 0 52px 7px rgba(201,166,107,0.62)}100%{box-shadow:0 0 0 0 rgba(201,166,107,0)}}
+        /* (C) CARD-LOCAL DEPTH (V3.1 clip correction) — a warm depth glow on the grid cell, now
+           HORIZONTALLY SAFE: blur 30 with a strong negative spread keeps its horizontal reach ~12px
+           (inside the ~15px gutter after scale) so it fades before the viewport edge, while a small
+           downward offset retains the vertical spatial depth. The WIDE spatial reach moved to the
+           group atmosphere (below), which fades to navy before both edges. Ends at no-shadow. */
+        @keyframes btyHalo{0%{box-shadow:0 0 0 0 rgba(201,166,107,0)}42%{box-shadow:0 13px 30px -18px rgba(201,166,107,0.62)}100%{box-shadow:0 0 0 0 rgba(201,166,107,0)}}
         .btyHalo{animation:btyHalo .7s ease-in-out both}
         /* Active-door breath — a restrained ~3% scale lift during the bloom (no bounce, settles to 1). */
         @keyframes btyAffordScale{0%,100%{transform:scale(1)}42%{transform:scale(1.03)}}
