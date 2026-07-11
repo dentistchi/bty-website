@@ -592,12 +592,14 @@ export function TodaySurface({
                 backgroundRepeat: "no-repeat, no-repeat",
                 backgroundSize: "150% 34%, 120% 44%",
                 filter: "blur(56px)",
-                // OPTICAL SAFE FADE (V3.1): a SYMMETRIC horizontal mask so the wide warmth dissolves
-                // into the navy before either viewport edge — no hard rectangle cutoff, no side
-                // curtain, equal left/right. Vertical is unclipped (field is mid-scroll, not at a
-                // main edge). This lets the atmosphere carry the spatial reach the card halo gave up.
-                WebkitMaskImage: "linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%)",
-                maskImage: "linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%)",
+                // OPTICAL SAFE FADE (V3.2): SYMMETRIC horizontal mask with TRANSPARENT PLATEAUS that
+                // fully contain both actual viewport clip boundaries. main clips at its padding box
+                // (viewport edge), 20px outside the doors container; with the atmosphere at 120% of
+                // container width the real boundaries land at ~3.1–4.1% / ~95.9–96.9% across device
+                // widths — inside the 0–9.5% and 90.5–100% transparent plateaus. So opacity is
+                // exactly zero at each clip boundary: the warmth dissolves into navy, never hard-cut.
+                WebkitMaskImage: "linear-gradient(to right, transparent 0%, transparent 9.5%, #000 19%, #000 81%, transparent 90.5%, transparent 100%)",
+                maskImage: "linear-gradient(to right, transparent 0%, transparent 9.5%, #000 19%, #000 81%, transparent 90.5%, transparent 100%)",
               }}
             />
           ) : null}
