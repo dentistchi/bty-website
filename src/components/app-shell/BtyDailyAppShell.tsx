@@ -569,7 +569,27 @@ export function TodaySurface({
           neutral affordance, for a MEDIUM/HIGH result. No skeleton, spinner, or placeholder — the
           doors ARE the ritual, present from the first frame. */}
       {(
-        <div className="relative">
+        <div className="relative isolate">
+          {/* SCREEN-SPACE AURORA (Sensory Overreach V2): one SHARED atmospheric field behind the
+              whole door group whose warm center TRAVELS vertically with the sequence — Self (top) →
+              Others (middle) → World (bottom). It sits at -z-10 inside this isolated stacking
+              context, so it warms the navy in the negative space around/behind the cards without
+              touching layout or navigation. It exists only during an active affordance (removed the
+              instant a door is selected) and its keyframe ends fully faded (no residue). */}
+          {showAffordance ? (
+            <div
+              data-aurora
+              aria-hidden
+              className="btyAurora pointer-events-none absolute inset-x-[-18%] inset-y-[-6%] -z-10"
+              style={{
+                background:
+                  "radial-gradient(closest-side, rgba(201,166,107,0.30), rgba(201,166,107,0.13) 52%, transparent 78%)",
+                backgroundRepeat: "no-repeat",
+                backgroundSize: "180% 40%",
+                filter: "blur(42px)",
+              }}
+            />
+          ) : null}
           {/* The descending left-edge "spine + spark" rail was REMOVED (Intuitive Door Language
               STEP 2): on device it read as a gold rail sliding down the left edge and MASKED the
               intended affordance while communicating nothing about choosing a door. The affordance
@@ -674,10 +694,25 @@ export function TodaySurface({
                         aria-hidden
                         className="btyAfford pointer-events-none absolute inset-0 rounded-2xl ring-2 ring-inset ring-[#C9A66B]/80"
                         style={{
+                          // V2 "lit from within": a tight central IGNITION core (0.66) over a broad
+                          // full-surface warm wash — the whole card shifts toward warm deep gold, not
+                          // just the border.
                           background:
-                            "radial-gradient(120% 100% at 50% 45%, rgba(201,166,107,0.52), rgba(201,166,107,0.18) 62%, transparent 100%)",
+                            "radial-gradient(60% 52% at 50% 42%, rgba(201,166,107,0.66), rgba(201,166,107,0.30) 55%, transparent 100%), radial-gradient(130% 110% at 50% 50%, rgba(201,166,107,0.22), rgba(201,166,107,0.10) 60%, transparent 100%)",
                           animationDelay: `${affordDelay}ms`,
                         }}
+                      />
+                    ) : null}
+                    {/* COLLECTIVE MAP REVEAL (V2 STEP 4): after the wave completes, all three door
+                        outlines glow faintly together, once, for ~300ms — "these three belong to one
+                        life map," never "all selected." Same delay on every door (not staggered) so
+                        they resolve as one; ends fully faded. */}
+                    {showAffordance ? (
+                      <span
+                        data-map-reveal
+                        aria-hidden
+                        className="btyMapReveal pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-[#C9A66B]/25"
+                        style={{ animationDelay: `${AFFORDANCE_TOTAL_MS - 120}ms` }}
                       />
                     ) : null}
                     {/* Interior depth — a warmth leaning in from the seam, STRONGER when invited.
@@ -995,19 +1030,26 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
         @keyframes btyAffordLift{0%,100%{text-shadow:none}42%{text-shadow:0 0 18px rgba(201,166,107,0.9),0 0 4px rgba(255,255,255,0.5)}}
         .btyAffordLift{animation:btyAffordLift .7s ease-in-out both}
         /* (C) OUTER HALO — a glow reaching OUTSIDE the card (box-shadow on the grid cell), traveling
-           with the sequence. Ends at no-shadow (calm settle). */
-        @keyframes btyHalo{0%{box-shadow:0 0 0 0 rgba(201,166,107,0)}42%{box-shadow:0 0 28px 3px rgba(201,166,107,0.55)}100%{box-shadow:0 0 0 0 rgba(201,166,107,0)}}
+           with the sequence. V2: reaches ~44px. Ends at no-shadow (calm settle). */
+        @keyframes btyHalo{0%{box-shadow:0 0 0 0 rgba(201,166,107,0)}42%{box-shadow:0 0 44px 5px rgba(201,166,107,0.6)}100%{box-shadow:0 0 0 0 rgba(201,166,107,0)}}
         .btyHalo{animation:btyHalo .7s ease-in-out both}
-        /* Active-door breath — a restrained ~1.5% scale lift during the bloom (no bounce, settles to 1). */
-        @keyframes btyAffordScale{0%,100%{transform:scale(1)}42%{transform:scale(1.015)}}
+        /* Active-door breath — a restrained ~2.5% scale lift during the bloom (no bounce, settles to 1). */
+        @keyframes btyAffordScale{0%,100%{transform:scale(1)}42%{transform:scale(1.025)}}
         .btyAffordScale{animation:btyAffordScale .7s ease-in-out both}
+        /* SCREEN-SPACE AURORA — the shared warm field TRAVELS Self(top)→Others(mid)→World(bottom)
+           across the whole sequence via background-position, fading up then fully out (no residue). */
+        @keyframes btyAurora{0%{opacity:0;background-position:50% 12%}10%{opacity:1;background-position:50% 12%}40%{background-position:50% 50%}68%{background-position:50% 88%}88%{opacity:1;background-position:50% 88%}100%{opacity:0;background-position:50% 88%}}
+        .btyAurora{animation:btyAurora 1.66s ease-in-out both}
+        /* COLLECTIVE MAP REVEAL — all three outlines glow faintly together, once, then gone. */
+        @keyframes btyMapReveal{0%,100%{opacity:0}50%{opacity:1}}
+        .btyMapReveal{animation:btyMapReveal .34s ease-in-out both}
         /* SELECTION ACKNOWLEDGE — a one-time warm scale-pop on tap (no overshoot, settles to 1). */
         @keyframes btySelectAck{0%{transform:scale(0.994)}45%{transform:scale(1.02)}100%{transform:scale(1)}}
         .btySelectAck{animation:btySelectAck .3s cubic-bezier(0.22,1,0.36,1) both}
         /* LIVING SELECTED-DOOR — interior content settles in with a restrained opacity + rise. */
         @keyframes btySettle{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         .btySettle{animation:btySettle .3s ease-out both}
-        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise,.btyOpenRoom,.btyWake,.btyDriftA,.btyDriftB,.btySeed,.btySpine,.btySpark,.btyIgnite,.btyHeart,.btyBloom,.btyAfford,.btyAffordLift,.btyHalo,.btyAffordScale,.btySelectAck,.btySettle{animation:none!important}}
+        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise,.btyOpenRoom,.btyWake,.btyDriftA,.btyDriftB,.btySeed,.btySpine,.btySpark,.btyIgnite,.btyHeart,.btyBloom,.btyAfford,.btyAffordLift,.btyHalo,.btyAffordScale,.btySelectAck,.btySettle,.btyAurora,.btyMapReveal{animation:none!important}}
       `}</style>
       {/* TODAY WOW LAB — Experiment A "Daybreak" LIVING FIELD. A full-bleed light stage behind
           all content: two warm gold aurora currents drifting on independent slow loops (the space
