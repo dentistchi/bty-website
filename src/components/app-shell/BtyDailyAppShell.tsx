@@ -365,14 +365,25 @@ export function pickGreeting(greetings: TodayCopy["greetings"], hour: number): s
 }
 
 /**
- * Three-door affordance timing (Three-Door Affordance STEP 2). One restrained surface-warmth bloom
- * per door, staggered in DOM order, one pass only. Envelope: ~440ms per door, ~120ms between →
- * total ≈ 680ms (well under the 1.8s ceiling). AFFORDANCE_TOTAL_MS also gates when the deferred
- * evidence invitation may appear (never before the neutral sequence is legible).
+ * Three-door affordance timing. One restrained FULL-DOOR bloom per door, staggered in DOM order,
+ * one pass only: ~500ms per door, 250ms between → ~1000ms total (AFFORDANCE_TOTAL_MS).
+ *
+ * VISIBILITY CORRECTION: the bloom must not start at mount — the doors are still fading/rising in
+ * (btyFadeIn 700ms + per-door btyRise: last door riseDelay 500ms + 800ms duration ≈ 1300ms settle),
+ * so a mount-anchored bloom plays UNDERNEATH the arrival and finishes before the cards are still —
+ * invisible on device. The sequence now starts only AFTER the arrival has settled (≈1300ms) plus a
+ * short still breath (~350ms) → AFFORDANCE_START_MS, so the user sees: Today arrives → still →
+ * Self → Others → World bloom on already-settled cards.
  */
 export const AFFORDANCE_DOOR_MS = 500;
 export const AFFORDANCE_GAP_MS = 250;
 export const AFFORDANCE_TOTAL_MS = AFFORDANCE_GAP_MS * 2 + AFFORDANCE_DOOR_MS; // 3 doors → 1000ms
+/** When the last door has finished its arrival rise (last riseDelay 500ms + btyRise 800ms). */
+export const AFFORDANCE_ARRIVAL_SETTLE_MS = 1300;
+/** A brief still moment after the cards settle, so the map is perceived before the bloom begins. */
+export const AFFORDANCE_STILL_BREATH_MS = 350;
+/** Delay from TodaySurface mount to the first door's bloom (arrival settle + still breath). */
+export const AFFORDANCE_START_MS = AFFORDANCE_ARRIVAL_SETTLE_MS + AFFORDANCE_STILL_BREATH_MS; // 1650ms
 
 function SurfaceHeader({ title, sub }: { title: string; sub?: string }) {
   return (
@@ -473,16 +484,27 @@ export function TodaySurface({
   const [playArrival] = useState(firstArrival);
   const animateArrival = playArrival && !reducedMotion;
 
+  // The bloom starts only AFTER Today has visibly arrived (arrival settle + still breath), never at
+  // mount — otherwise it plays under the arrival fade/rise and is invisible on device. reduced-
+  // motion / tab-return (animateArrival=false) never arm the timer, so no bloom ever appears there.
+  const [affordanceStarted, setAffordanceStarted] = useState(false);
+  useEffect(() => {
+    if (!animateArrival) return;
+    const id = setTimeout(() => setAffordanceStarted(true), AFFORDANCE_START_MS);
+    return () => clearTimeout(id);
+  }, [animateArrival]);
+
   // The evidence-backed invitation (gold ring / heartbeat) must not appear BEFORE the neutral
-  // affordance is legible. On first animated arrival it is deferred until the sequence completes;
-  // otherwise (tab-return / reduced-motion) it is immediate. NONE/LOW have no invited focus anyway.
+  // affordance is legible. On first animated arrival it is deferred until the sequence has both
+  // STARTED and completed; otherwise (tab-return / reduced-motion) it is immediate. NONE/LOW have
+  // no invited focus anyway.
   const [showInvitation, setShowInvitation] = useState(!animateArrival);
   useEffect(() => {
     if (!animateArrival) {
       setShowInvitation(true);
       return;
     }
-    const id = setTimeout(() => setShowInvitation(true), AFFORDANCE_TOTAL_MS);
+    const id = setTimeout(() => setShowInvitation(true), AFFORDANCE_START_MS + AFFORDANCE_TOTAL_MS);
     return () => clearTimeout(id);
   }, [animateArrival]);
 
@@ -494,9 +516,10 @@ export function TodaySurface({
   // The invited door: the user's pick once made, else the softly-suggested derived focus — but the
   // system suggestion is withheld until the affordance sequence has played (showInvitation).
   const highlight = selected ?? (showInvitation ? activeFocus : null);
-  // The one-time affordance illumination plays only during an animated first arrival, before any
-  // selection. A tap immediately suppresses the remaining sequence (selected !== null).
-  const showAffordance = animateArrival && selected === null;
+  // The one-time affordance illumination plays only during an animated first arrival, AFTER the
+  // arrival has settled (affordanceStarted), and only before any selection. A tap before the start
+  // (selected set first) means it never plays; a tap during it suppresses the remaining doors.
+  const showAffordance = animateArrival && selected === null && affordanceStarted;
 
   // Time-aware greeting (Today Arrival Warmth STEP 1). SSR-safe: the server + first client
   // paint render the default morning greeting (copy.title) so hydration matches; after mount we
@@ -632,10 +655,10 @@ export function TodaySurface({
                       <span
                         data-afford
                         aria-hidden
-                        className="btyAfford pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-[#C9A66B]/35"
+                        className="btyAfford pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-[#C9A66B]/45"
                         style={{
                           background:
-                            "radial-gradient(120% 100% at 50% 50%, rgba(201,166,107,0.20), rgba(201,166,107,0.06) 68%, transparent 100%)",
+                            "radial-gradient(120% 100% at 50% 50%, rgba(201,166,107,0.26), rgba(201,166,107,0.08) 68%, transparent 100%)",
                           animationDelay: `${affordDelay}ms`,
                         }}
                       />
@@ -950,7 +973,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
         @keyframes btyAfford{0%{opacity:0}45%{opacity:1}100%{opacity:0}}
         .btyAfford{animation:btyAfford .5s ease-in-out both}
         /* …with a coordinated action-text luminance lift on the same door, same delay. */
-        @keyframes btyAffordLift{0%,100%{text-shadow:none}45%{text-shadow:0 0 10px rgba(201,166,107,0.55)}}
+        @keyframes btyAffordLift{0%,100%{text-shadow:none}45%{text-shadow:0 0 12px rgba(201,166,107,0.6)}}
         .btyAffordLift{animation:btyAffordLift .5s ease-in-out both}
         /* LIVING SELECTED-DOOR — interior content settles in with a restrained opacity + rise. */
         @keyframes btySettle{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}

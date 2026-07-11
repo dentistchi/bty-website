@@ -6,12 +6,15 @@
  * artifact removed, the affordance replaced with an EQUAL full-door bloom, and a staged selected-
  * door content entrance. Internal focus keys + protected interior copy are unchanged.
  */
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/react";
-import { COPY, TodaySurface, resolveInvitedFocus, selectTodayStatus } from "@/components/app-shell/BtyDailyAppShell";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { AFFORDANCE_START_MS, COPY, TodaySurface, resolveInvitedFocus, selectTodayStatus } from "@/components/app-shell/BtyDailyAppShell";
 import type { TodayConfidence, TodayIntelligence, TodayRelationshipFocus } from "@/domain/daily/todayIntelligence";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 function intel(confidence: TodayConfidence, relationshipFocus: TodayRelationshipFocus): TodayIntelligence {
   return { userState: "scenario_signal", relationshipFocus, confidence, reasonCodes: [], fallbackMode: "none" };
@@ -65,7 +68,9 @@ describe("full-door bloom replaces the left rail", () => {
   });
 
   it("5. all three affordance surfaces are equal FULL-DOOR blooms (inset-0, ring, radial bg, one class)", () => {
+    vi.useFakeTimers();
     const { container } = renderToday({ activeFocus: resolveInvitedFocus(intel("high", "Self")) });
+    act(() => void vi.advanceTimersByTime(AFFORDANCE_START_MS)); // bloom begins after arrival settles
     const spans = Array.from(container.querySelectorAll<HTMLElement>("[data-afford]"));
     expect(spans.length).toBe(3);
     for (const s of spans) {
