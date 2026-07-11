@@ -199,7 +199,7 @@ describe("app-shell Today ritual beat (A / A+)", () => {
     expect(screen.queryByText("I’ll live this relationship today")).toBeNull();
     expect(document.querySelector("[data-today-confirm]")).toBeNull();
 
-    fireEvent.click(screen.getByText("Self"));
+    fireEvent.click(screen.getByText("SELF"));
 
     expect(screen.getByText("I’ll live this relationship today")).toBeTruthy();
     expect(document.querySelector("[data-today-confirm]")).not.toBeNull();
@@ -207,7 +207,7 @@ describe("app-shell Today ritual beat (A / A+)", () => {
 
   it("renders the 3-layer hierarchy in order: path label → selection → promise label → promise → CTA", () => {
     const { container } = renderToday({ promiseText: "Call my mentor before noon" });
-    fireEvent.click(screen.getByText("Self"));
+    fireEvent.click(screen.getByText("SELF"));
     const text = container.querySelector("[data-today-confirm]")?.textContent ?? "";
     const iPath = text.indexOf("TODAY'S PATH");
     const iSelect = text.indexOf("Self — Return to yourself with honesty.");
@@ -224,14 +224,14 @@ describe("app-shell Today ritual beat (A / A+)", () => {
   it("promise layers appear only with a promise; fallback keeps the selection line alone", () => {
     // With a promise → promise label + action_text present.
     renderToday({ promiseText: "Ship the draft" });
-    fireEvent.click(screen.getByText("Others"));
+    fireEvent.click(screen.getByText("OTHERS"));
     expect(document.querySelector("[data-promise-label]")).not.toBeNull();
     expect(document.querySelector("[data-carry-line]")?.textContent).toBe("Ship the draft");
     cleanup();
 
     // No promise → promise label + carry line absent; the selection line stands as fallback.
     const { container } = renderToday({ promiseText: null });
-    fireEvent.click(screen.getByText("Self"));
+    fireEvent.click(screen.getByText("SELF"));
     expect(container.querySelector("[data-promise-label]")).toBeNull();
     expect(container.querySelector("[data-carry-line]")).toBeNull();
     expect(container.querySelector("[data-select-line]")?.textContent).toBe(
@@ -241,7 +241,7 @@ describe("app-shell Today ritual beat (A / A+)", () => {
 
   it("CTA reverses on press: strong pre-copy → settled post-copy + ✓, aria-pressed, no routing", () => {
     renderToday();
-    fireEvent.click(screen.getByText("World"));
+    fireEvent.click(screen.getByText("WORLD"));
     const cta = document.querySelector("[data-today-cta]") as HTMLButtonElement;
     expect(cta.getAttribute("aria-pressed")).toBe("false");
     expect(cta.textContent).toContain("I’ll live this relationship today");
@@ -255,7 +255,7 @@ describe("app-shell Today ritual beat (A / A+)", () => {
 
   it("never leaks internal/raw tokens into the confirmation output (with a promise present)", () => {
     const { container } = renderToday({ promiseText: "Follow up with the team" });
-    fireEvent.click(screen.getByText("Self"));
+    fireEvent.click(screen.getByText("SELF"));
     const text = container.textContent ?? "";
     for (const tok of INTERNAL_TOKENS) expect(text).not.toContain(tok);
   });
@@ -277,7 +277,7 @@ describe("app-shell Today ritual beat (A / A+)", () => {
 describe("app-shell Today Chosen Path Rest State (STEP 3, session-only)", () => {
   function confirmSelf(over: Partial<React.ComponentProps<typeof TodaySurface>> = {}) {
     renderToday(over);
-    fireEvent.click(screen.getByText("Self"));
+    fireEvent.click(screen.getByText("SELF"));
     fireEvent.click(document.querySelector("[data-today-cta]") as HTMLButtonElement);
   }
 
@@ -298,15 +298,15 @@ describe("app-shell Today Chosen Path Rest State (STEP 3, session-only)", () => 
   it("unselected doors collapse away (aria-hidden), not merely dimmed", () => {
     confirmSelf();
     // The two unselected doors are still in the DOM but inside an aria-hidden collapsed wrapper.
-    expect(screen.getByText("Others").closest("[aria-hidden]")).not.toBeNull();
-    expect(screen.getByText("World").closest("[aria-hidden]")).not.toBeNull();
+    expect(screen.getByText("OTHERS").closest("[aria-hidden]")).not.toBeNull();
+    expect(screen.getByText("WORLD").closest("[aria-hidden]")).not.toBeNull();
     // The held door is NOT inside an aria-hidden wrapper.
-    expect(screen.getByText("Self").closest("[aria-hidden]")).toBeNull();
+    expect(screen.getByText("SELF").closest("[aria-hidden]")).toBeNull();
   });
 
   it("NO undo: tapping the held door after confirm does not re-open (benediction + ✓ persist)", () => {
     confirmSelf();
-    fireEvent.click(screen.getByText("Self"));
+    fireEvent.click(screen.getByText("SELF"));
     expect(document.querySelector("[data-select-line]")?.textContent).toBe(
       "You have entered the relationship with yourself today.",
     );
@@ -324,7 +324,7 @@ describe("app-shell Today Chosen Path Rest State (STEP 3, session-only)", () => 
         centerKeepLine={null}
       />,
     );
-    fireEvent.click(screen.getByText("이웃과의 관계"));
+    fireEvent.click(screen.getByText("이웃"));
     fireEvent.click(document.querySelector("[data-today-cta]") as HTMLButtonElement);
     expect(document.querySelector("[data-select-line]")?.textContent).toBe(
       "오늘 당신은 이웃과의 관계 안으로 들어갔습니다.",
@@ -387,7 +387,7 @@ describe("app-shell Today arrival header hierarchy (Arrival Warmth STEP 2)", () 
 
   it("keeps the (unchanged) sub copy present under the greeting", () => {
     renderToday();
-    expect(screen.getByText("Choose the relationship you will live today.")).toBeTruthy();
+    expect(screen.getByText("Where will you show up today?")).toBeTruthy();
   });
 });
 
@@ -445,7 +445,7 @@ describe("app-shell renders Today directly (no shell threshold / no double-door)
     render(<BtyDailyAppShell locale="en" />);
     // Today surface is present immediately — no second threshold gate.
     // Anchor on the (time-independent) sub line so the assertion never depends on wall-clock.
-    await screen.findByText("Choose the relationship you will live today.");
+    await screen.findByText("Where will you show up today?");
     expect(screen.queryByText("Hold to begin.")).toBeNull();
     expect(screen.queryByText("누르고 있으면 열립니다.")).toBeNull();
     // Native app shell intact: bottom tab bar renders.
@@ -457,9 +457,9 @@ describe("app-shell renders Today directly (no shell threshold / no double-door)
     stubShellFetch("Send the summary");
     render(<BtyDailyAppShell locale="en" />);
     // Anchor on the (time-independent) sub line so the assertion never depends on wall-clock.
-    await screen.findByText("Choose the relationship you will live today.");
+    await screen.findByText("Where will you show up today?");
     // Select the Self relationship card (the ritual selection, not navigation).
-    fireEvent.click(screen.getByText("Self"));
+    fireEvent.click(screen.getByText("SELF"));
     expect(document.querySelector("[data-today-confirm]")).not.toBeNull();
     expect(screen.getByText("I’ll live this relationship today")).toBeTruthy();
   });
@@ -468,7 +468,7 @@ describe("app-shell renders Today directly (no shell threshold / no double-door)
   it("POSTs /api/me/day/open on native Today mount, device tz only, no client day-key", async () => {
     stubShellFetch();
     render(<BtyDailyAppShell locale="en" />);
-    await screen.findByText("Choose the relationship you will live today.");
+    await screen.findByText("Where will you show up today?");
     const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls as Array<[string, RequestInit?]>;
     const dayOpen = calls.find(([u]) => String(u).includes("/api/me/day/open"));
     expect(dayOpen).toBeTruthy();
@@ -492,7 +492,7 @@ describe("app-shell renders Today directly (no shell threshold / no double-door)
     );
     render(<BtyDailyAppShell locale="en" />);
     // Today still renders despite the rejected self-return call.
-    await screen.findByText("Choose the relationship you will live today.");
+    await screen.findByText("Where will you show up today?");
   });
 });
 

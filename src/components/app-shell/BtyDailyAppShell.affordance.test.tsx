@@ -100,7 +100,7 @@ describe("affordance sequence + deferred invitation", () => {
     expect(spans.length).toBe(3);
     for (const s of spans) expect(s.className).toContain("btyAfford"); // identical effect
     const delays = spans.map((s) => s.style.animationDelay);
-    expect(delays).toEqual(["0ms", "120ms", "240ms"]); // sequential, equal gap
+    expect(delays).toEqual(["0ms", "250ms", "500ms"]); // sequential, equal gap
   });
 
   it("10. tab-return (firstArrival=false) → no affordance replay, invitation immediate", () => {

@@ -45,7 +45,10 @@ type Copy = {
     /** Time-aware greeting bands (Today Arrival Warmth STEP 1) — client-local hour → band. */
     greetings: { morning: string; afternoon: string; evening: string; lateNight: string };
     sub: string;
-    cards: { t: string; d: string; tab: AppTabKey; focus: TodayFocusKey; select: string }[];
+    /** Each door: `noun` = the BTY ontology label (quiet eyebrow) · `action` = the lived daily
+     *  choice (primary, visually strongest). `focus` (self/others/world) is the unchanged internal
+     *  key. `select`/benediction are protected interior copy. */
+    cards: { noun: string; action: string; tab: AppTabKey; focus: TodayFocusKey; select: string }[];
     /** Confirmation-card sublabels — reuse the locked-room eyebrow tone (no new style). */
     pathLabel: string;
     promiseLabel: string;
@@ -79,11 +82,11 @@ export const COPY: Record<Locale, Copy> = {
         evening: "Good evening.",
         lateNight: "Still awake?",
       },
-      sub: "Choose the relationship you will live today.",
+      sub: "Where will you show up today?",
       cards: [
-        { t: "Self", d: "Return to yourself.", tab: "center", focus: "Self", select: "Self — Return to yourself with honesty." },
-        { t: "Others", d: "Meet others with care.", tab: "arena", focus: "Others", select: "Others — Carry care into one relationship." },
-        { t: "World", d: "Build what you are here to steward.", tab: "foundry", focus: "World", select: "World — Build with stewardship today." },
+        { noun: "SELF", action: "Return to myself", tab: "center", focus: "Self", select: "Self — Return to yourself with honesty." },
+        { noun: "OTHERS", action: "Be there for someone", tab: "arena", focus: "Others", select: "Others — Carry care into one relationship." },
+        { noun: "WORLD", action: "Move what matters forward", tab: "foundry", focus: "World", select: "World — Build with stewardship today." },
       ],
       pathLabel: "TODAY'S PATH",
       promiseLabel: "PROMISE TO CARRY",
@@ -114,11 +117,11 @@ export const COPY: Record<Locale, Copy> = {
         evening: "좋은 저녁입니다.",
         lateNight: "아직 깨어 계시군요.",
       },
-      sub: "오늘 어떤 관계를 살아내시겠습니까?",
+      sub: "오늘, 어디에 마음을 둘까요?",
       cards: [
-        { t: "나와의 관계", d: "나에게 돌아옵니다.", tab: "center", focus: "Self", select: "나와의 관계 — 정직하게 자신에게 돌아갑니다." },
-        { t: "이웃과의 관계", d: "이웃을 정성으로 마주합니다.", tab: "arena", focus: "Others", select: "이웃과의 관계 — 한 관계 안으로 조심스럽게 들어갑니다." },
-        { t: "세상과의 관계", d: "오늘 맡겨진 것을 빚어갑니다.", tab: "foundry", focus: "World", select: "세상과의 관계 — 맡겨진 것을 오늘도 빚어갑니다." },
+        { noun: "나", action: "나에게 돌아오기", tab: "center", focus: "Self", select: "나와의 관계 — 정직하게 자신에게 돌아갑니다." },
+        { noun: "이웃", action: "누군가의 곁에 서기", tab: "arena", focus: "Others", select: "이웃과의 관계 — 한 관계 안으로 조심스럽게 들어갑니다." },
+        { noun: "세상", action: "중요한 일을 한 걸음 앞으로", tab: "foundry", focus: "World", select: "세상과의 관계 — 맡겨진 것을 오늘도 빚어갑니다." },
       ],
       pathLabel: "오늘의 길",
       promiseLabel: "오늘로 가져갈 약속",
@@ -367,9 +370,9 @@ export function pickGreeting(greetings: TodayCopy["greetings"], hour: number): s
  * total ≈ 680ms (well under the 1.8s ceiling). AFFORDANCE_TOTAL_MS also gates when the deferred
  * evidence invitation may appear (never before the neutral sequence is legible).
  */
-export const AFFORDANCE_DOOR_MS = 440;
-export const AFFORDANCE_GAP_MS = 120;
-export const AFFORDANCE_TOTAL_MS = AFFORDANCE_GAP_MS * 2 + AFFORDANCE_DOOR_MS; // 3 doors → 680ms
+export const AFFORDANCE_DOOR_MS = 500;
+export const AFFORDANCE_GAP_MS = 250;
+export const AFFORDANCE_TOTAL_MS = AFFORDANCE_GAP_MS * 2 + AFFORDANCE_DOOR_MS; // 3 doors → 1000ms
 
 function SurfaceHeader({ title, sub }: { title: string; sub?: string }) {
   return (
@@ -542,29 +545,16 @@ export function TodaySurface({
           doors ARE the ritual, present from the first frame. */}
       {(
         <div className="relative">
-          {/* Spine of light — drawn only during an animated first arrival (session-once), riding
-              the head of the door-illumination sequence. On a tab-return / reduced-motion the doors
-              simply appear at rest with no spine draw. */}
-          {animateArrival ? (
-          <span
-            aria-hidden
-            className="btySpine pointer-events-none absolute bottom-1 left-0 top-1 z-10 w-px bg-gradient-to-b from-transparent via-[#C9A66B]/50 to-transparent"
-            style={{ animationDelay: "150ms" }}
-          >
-            <span
-              className="btySpark absolute left-0 h-12 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#C9A66B] blur-[2px]"
-              style={{ animationDelay: "150ms" }}
-            />
-          </span>
-          ) : null}
+          {/* The descending left-edge "spine + spark" rail was REMOVED (Intuitive Door Language
+              STEP 2): on device it read as a gold rail sliding down the left edge and MASKED the
+              intended affordance while communicating nothing about choosing a door. The affordance
+              is now a full-door bloom on each card (below); door identity is carried by the base
+              threshold seam, which remains. */}
           {copy.cards.map((c, i) => {
-          // Experiment A "Daybreak": the three doors no longer rise as one block — each rises
-          // in sequence (three lamps coming on), 100ms apart after the trace has landed, and its
-          // threshold seam ignites a beat later AS THE SPINE'S SPARK REACHES IT. The staggered
-          // ignition IS the "worlds awakening"; the eye follows the spark down to a door, and the
-          // finger follows the eye.
+          // Each door rises once on the animated first arrival; the affordance bloom (full-card
+          // warmth + border + action-text lift) then blooms per door in DOM order.
           const riseDelay = 300 + i * 100;
-          const igniteDelay = riseDelay + 70;
+          const affordDelay = i * AFFORDANCE_GAP_MS;
           const isHighlight = c.focus === highlight;
           const isSelected = c.focus === selected;
           // Before confirm: unselected doors quiet to 40%. After confirm: they are GONE.
@@ -572,7 +562,7 @@ export function TodaySurface({
           const isGone = confirmed && !isSelected;
           return (
             <div
-              key={c.t}
+              key={c.focus}
               aria-hidden={isGone || undefined}
               className={`grid transition-all duration-500 ease-out ${
                 isGone ? "grid-rows-[0fr] mb-0 opacity-0" : "grid-rows-[1fr] mb-3 opacity-100"
@@ -630,28 +620,24 @@ export function TodaySurface({
                         isHighlight ? "opacity-100" : "opacity-35 group-hover:opacity-70"
                       }`}
                     />
-                    {/* Experiment A — the seam IGNITE: a brighter core that sweeps down the seam
-                        once as this door arrives (staggered per door), then fades to nothing. It is
-                        the "lamp coming on" beat; at rest only the base seam above remains. Sits at
-                        opacity 0 by default so reduced-motion (animation:none) shows nothing extra. */}
-                    <span
-                      aria-hidden
-                      className={`${animateArrival ? "btyIgnite " : ""}pointer-events-none absolute inset-y-4 left-0 w-0.5 origin-top bg-gradient-to-b from-[#C9A66B]/0 via-[#C9A66B] to-[#C9A66B]/0 opacity-0 blur-[0.5px]`}
-                      style={animateArrival ? { animationDelay: `${igniteDelay}ms` } : undefined}
-                    />
-                    {/* THREE-DOOR AFFORDANCE (Three-Door Affordance STEP 2): a restrained, EQUAL,
-                        one-time surface warmth that blooms once on each door in DOM order (Self →
-                        Others → World), staggered by AFFORDANCE_GAP_MS. Its sole meaning is "choose
-                        one of these three" — identical on all doors, never a recommendation. It is
-                        capped below the invited-door interior warmth (0.14 < 0.16), ends at opacity
-                        0 (no residue), plays only on an animated first arrival, and is suppressed the
-                        instant a door is selected. reduced-motion removes it entirely. */}
+                    {/* THREE-DOOR AFFORDANCE (Intuitive Door Language STEP 2): a restrained, EQUAL,
+                        one-time FULL-DOOR bloom — a warm radial surface fill (peak 0.20, legible on a
+                        WKWebView navy display, not a left-edge smear) PLUS a brief warm inset border,
+                        blooming once per door in DOM order (Self → Others → World) staggered by
+                        AFFORDANCE_GAP_MS. Identical intensity/duration/easing on all three; its sole
+                        meaning is "choose one of these." Ends at opacity 0 (no residue), plays only on
+                        an animated first arrival, and is suppressed the instant a door is selected.
+                        The old left-seam ignite was removed — it competed with this full-door cue. */}
                     {showAffordance ? (
                       <span
                         data-afford
                         aria-hidden
-                        className="btyAfford pointer-events-none absolute inset-0 bg-gradient-to-r from-[#C9A66B]/[0.14] via-transparent to-transparent"
-                        style={{ animationDelay: `${i * AFFORDANCE_GAP_MS}ms` }}
+                        className="btyAfford pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-[#C9A66B]/35"
+                        style={{
+                          background:
+                            "radial-gradient(120% 100% at 50% 50%, rgba(201,166,107,0.20), rgba(201,166,107,0.06) 68%, transparent 100%)",
+                          animationDelay: `${affordDelay}ms`,
+                        }}
                       />
                     ) : null}
                     {/* Interior depth — a warmth leaning in from the seam, STRONGER when invited.
@@ -682,8 +668,19 @@ export function TodaySurface({
                           "radial-gradient(220px circle at var(--mx,0%) var(--my,-10%), rgba(201,166,107,0.24), transparent 55%)",
                       }}
                     />
-                    <span className="relative text-lg font-semibold text-white">{c.t}</span>
-                    <span className="relative text-sm leading-6 text-white/55">{c.d}</span>
+                    {/* Meaning hierarchy (Intuitive Door Language STEP 1): the ontology noun is a
+                        QUIET eyebrow; the lived ACTION is the primary, visually strongest decision
+                        label — the daily choice must be understood as an action, the BTY noun is
+                        learned through repetition. */}
+                    <span className="relative text-[0.7rem] font-medium uppercase tracking-[0.18em] text-white/45">
+                      {c.noun}
+                    </span>
+                    <span
+                      className={`relative text-lg font-semibold leading-snug text-white ${showAffordance ? "btyAffordLift" : ""}`}
+                      style={showAffordance ? { animationDelay: `${affordDelay}ms` } : undefined}
+                    >
+                      {c.action}
+                    </span>
                   </button>
 
                   {/* The opened interior — a sibling of the door (valid HTML: no nested button),
@@ -717,23 +714,28 @@ export function TodaySurface({
                           style={{ background: "radial-gradient(circle, rgba(201,166,107,0.5), transparent 62%)" }}
                         />
                       ) : null}
+                      {/* LIVING SELECTED-DOOR TRANSITION (Intuitive Door Language STEP 3): on a fresh
+                          selection the interior content settles in ORDER — path/benediction (0ms) →
+                          promise (70ms) → CTA (140ms) — a restrained opacity + vertical settle so the
+                          commitment feels intentional, never a menu opening. Gated on justOpened, so a
+                          tab-return RESTORE paints at rest (no replay). reduced-motion stills it. */}
                       {/* Layer 1 — path sublabel (reuses the locked-room eyebrow tone). */}
                       <span
                         data-path-label
-                        className="relative block text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90"
+                        className={`relative block text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90 ${justOpened ? "btySettle" : ""}`}
                       >
                         {copy.pathLabel}
                       </span>
                       {/* Layer 2 — the chosen-path line. Before confirm: the selection line
                           (doubles as the fallback when no promise). After confirm: it BECOMES the
                           present-tense benediction (STEP 3) — one sentence, never two. */}
-                      <p data-select-line className="relative mt-2 text-[0.95rem] leading-6 text-white/85">
+                      <p data-select-line className={`relative mt-2 text-[0.95rem] leading-6 text-white/85 ${justOpened ? "btySettle" : ""}`}>
                         {confirmed ? copy.benediction[c.focus] ?? copy.benediction.fallback : c.select}
                       </p>
                       {/* Layers 3 + 4 — the promise to carry, ONLY when a real open promise exists.
                           action_text is rendered verbatim (unchanged); no fabrication on fallback. */}
                       {promiseText ? (
-                        <>
+                        <div className={justOpened ? "btySettle" : ""} style={justOpened ? { animationDelay: "70ms" } : undefined}>
                           <span
                             data-promise-label
                             className="relative mt-4 block text-[11px] font-normal tracking-normal text-white/40"
@@ -743,7 +745,7 @@ export function TodaySurface({
                           <p data-carry-line className="relative mt-2 text-[0.95rem] leading-6 text-white/80">
                             {promiseText}
                           </p>
-                        </>
+                        </div>
                       ) : null}
                       {/* CTA — pre-press is the strong filled-gold action; the settled state SINKS to
                           an outline + ✓ (the quiet action-mark). No undo: it does not toggle back, and
@@ -756,7 +758,8 @@ export function TodaySurface({
                         }}
                         aria-pressed={confirmed}
                         data-today-cta
-                        className={`relative mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40 ${
+                        style={justOpened ? { animationDelay: "140ms" } : undefined}
+                        className={`relative mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40 ${justOpened ? "btySettle " : ""}${
                           confirmed
                             ? "border border-[#C9A66B]/40 bg-transparent text-[#C9A66B]/80"
                             : "bg-[#C9A66B] text-[#0B1F3A] hover:bg-[#C9A66B]/90 active:scale-[0.985]"
@@ -942,11 +945,17 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
            burst blooms from the chosen seam, once. */
         @keyframes btyBloom{0%{opacity:0;transform:scale(0.5)}28%{opacity:0.9}100%{opacity:0;transform:scale(2.2)}}
         .btyBloom{animation:btyBloom 1.1s cubic-bezier(0.22,1,0.36,1) both}
-        /* THREE-DOOR AFFORDANCE — an equal, restrained surface warmth that blooms once on each door
-           in sequence ("choose one of these three"). One pass, ends at opacity 0 (no residue). */
+        /* THREE-DOOR AFFORDANCE — an equal, restrained FULL-DOOR warmth that blooms once on each
+           door in sequence ("choose one of these three"). One pass, ends at opacity 0 (no residue). */
         @keyframes btyAfford{0%{opacity:0}45%{opacity:1}100%{opacity:0}}
-        .btyAfford{animation:btyAfford .44s ease-in-out both}
-        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise,.btyOpenRoom,.btyWake,.btyDriftA,.btyDriftB,.btySeed,.btySpine,.btySpark,.btyIgnite,.btyHeart,.btyBloom,.btyAfford{animation:none!important}}
+        .btyAfford{animation:btyAfford .5s ease-in-out both}
+        /* …with a coordinated action-text luminance lift on the same door, same delay. */
+        @keyframes btyAffordLift{0%,100%{text-shadow:none}45%{text-shadow:0 0 10px rgba(201,166,107,0.55)}}
+        .btyAffordLift{animation:btyAffordLift .5s ease-in-out both}
+        /* LIVING SELECTED-DOOR — interior content settles in with a restrained opacity + rise. */
+        @keyframes btySettle{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+        .btySettle{animation:btySettle .26s ease-out both}
+        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise,.btyOpenRoom,.btyWake,.btyDriftA,.btyDriftB,.btySeed,.btySpine,.btySpark,.btyIgnite,.btyHeart,.btyBloom,.btyAfford,.btyAffordLift,.btySettle{animation:none!important}}
       `}</style>
       {/* TODAY WOW LAB — Experiment A "Daybreak" LIVING FIELD. A full-bleed light stage behind
           all content: two warm gold aurora currents drifting on independent slow loops (the space
