@@ -44,6 +44,57 @@ describe("transparent wrapper (no paint / filter / mask / clip)", () => {
     expect(w.className).not.toMatch(/overflow-x-(auto|scroll|hidden)/);
     expect(w.className).toContain("z-0");
   });
+
+  it("1b. wrapper is the inset expansion runway: full-height, inset 20px each side, centered", () => {
+    const c = atStart();
+    const w = c.querySelector<HTMLElement>("[data-aurora-wrapper]")!;
+    // V3.3.2: inset-y-0 keeps full vertical geometry; inset-x-5 (20px) each side gives the oversized
+    // blobs a protected horizontal runway. Symmetric x-inset ⇒ still centered.
+    expect(w.className).toContain("inset-y-0");
+    expect(w.className).toContain("inset-x-5");
+    expect(w.className).not.toContain("inset-0"); // no longer edge-to-edge
+    expect(w.className).not.toMatch(/(^|\s)(left-|right-|ml-|mr-|translate-x)/); // no asymmetric shift
+  });
+});
+
+describe("V3.3.2 expansion runway — no nonzero atmosphere alpha reaches the viewport edge", () => {
+  // Geometry model (px). The wrapper is the doors group (viewport - 40 main padding) inset a further
+  // 20px each side; each blob is sized as a % of the wrapper; its last nonzero alpha sits at 84% of
+  // the closest-side radius (transparent plateau 84%→100%).
+  const contentWidth = (vw: number) => vw - 40; // main px-5 (20px) each side
+  const wrapperWidth = (vw: number) => contentWidth(vw) - 40; // inset-x-5 (20px) each side
+  const blobWidth = (vw: number, insetPct: number) => wrapperWidth(vw) * (1 + 2 * insetPct); // inset-x-[-p%]
+  const visibleRadius = (vw: number, insetPct: number) => (blobWidth(vw, insetPct) / 2) * 0.84;
+  const wrapperCenter = (vw: number) => vw / 2; // symmetric insets keep the wrapper centered on the viewport
+  const screenMargin = (vw: number, insetPct: number) => wrapperCenter(vw) - visibleRadius(vw, insetPct);
+  const COOL = 0.18; // inset-x-[-18%]
+  const GOLD = 0.125; // inset-x-[-12.5%]
+
+  it("cool-blob screen margins match the confirmed geometry at 320/360/390/430", () => {
+    const near = (a: number, b: number) => expect(Math.abs(a - b)).toBeLessThan(0.01);
+    near(screenMargin(320, COOL), 22.912);
+    near(screenMargin(360, COOL), 20.064);
+    near(screenMargin(390, COOL), 17.928);
+    near(screenMargin(430, COOL), 15.08);
+  });
+
+  it("screenMargin >= 14px across every supported phone width 320–430, both edges equal", () => {
+    for (let vw = 320; vw <= 430; vw += 1) {
+      const m = screenMargin(vw, COOL);
+      expect(m).toBeGreaterThanOrEqual(14); // breathing room before the edge — never clipped
+      // symmetric insets ⇒ left margin === right margin by construction
+      expect(wrapperCenter(vw) - visibleRadius(vw, COOL)).toBe(m);
+    }
+  });
+
+  it("gold margin > cool margin (gold blob narrower); atmosphere still wider than one card", () => {
+    for (const vw of [320, 360, 390, 430]) {
+      expect(screenMargin(vw, GOLD)).toBeGreaterThan(screenMargin(vw, COOL)); // gold sits further inside
+      // atmosphere field is wider than a single door (~1/3 of the group, minus gaps)
+      const oneCard = wrapperWidth(vw) / 3;
+      expect(blobWidth(vw, COOL)).toBeGreaterThan(oneCard);
+    }
+  });
 });
 
 describe("two filterless light blobs; radial-only softness with transparent plateau", () => {

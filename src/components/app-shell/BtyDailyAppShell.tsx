@@ -575,11 +575,13 @@ export function TodaySurface({
               by `background-position` and rasterized by a carrier-level `filter: blur`. Replaced by a
               fully TRANSPARENT wrapper (positioning/stacking only — no bg, no filter, no mask, no
               overflow) holding two real light BLOBS. Each blob owns a full-element radial that fades
-              to zero BEFORE its bounds (transparent buffer > blur reach on all four sides — see the
-              geometry proof in the tests), carries its own blur, and TRAVELS by transform:translateY
-              (Self→Others→World). No background tile, so no rectangle can appear. */}
+              to zero BEFORE its bounds via a transparent outer plateau (84%→100%), and TRAVELS by
+              transform:translateY (Self→Others→World). No background tile, so no rectangle can appear.
+              V3.3.2: the wrapper is inset-x-5 (20px each side) — a dedicated expansion RUNWAY so the
+              oversized blobs' last visible alpha lands inside the viewport instead of at the screen
+              edge. The cards keep their full page-aligned width; only this decorative field is inset. */}
           {showAffordance ? (
-            <div data-aurora-wrapper aria-hidden className="pointer-events-none absolute inset-0 z-0">
+            <div data-aurora-wrapper aria-hidden className="pointer-events-none absolute inset-y-0 inset-x-5 z-0">
               {/* V3.3.1: NO filter anywhere. Softness comes entirely from a multi-stop radial with a
                   long alpha tail + a fully TRANSPARENT OUTER PLATEAU (84%→100%), so alpha is exactly
                   zero at every element boundary — four-sided safety by construction, no blur spread to
