@@ -672,7 +672,9 @@ export function TodaySurface({
                     aria-pressed={isSelected}
                     tabIndex={isGone ? -1 : undefined}
                     data-focus={c.focus}
-                    // btyAffordScale — the active door breathes up ~1.5% during its bloom window.
+                    // btyAffordScale — V3.4 BOUNDED: the door settles in from 0.985→1.0 (never wider
+                    // than its layout box) with a subtle -1px forward-lift, so its outer material can
+                    // no longer expand past the viewport edge. Scale is supportive, not the signature.
                     // btySelectAck — a one-time warm scale acknowledge on the tap. Both are transient
                     // (settle back to scale 1); neither loops.
                     style={
@@ -1079,7 +1081,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
         @keyframes btyHalo{0%{box-shadow:0 0 0 0 rgba(201,166,107,0)}42%{box-shadow:0 13px 30px -18px rgba(201,166,107,0.62)}100%{box-shadow:0 0 0 0 rgba(201,166,107,0)}}
         .btyHalo{animation:btyHalo .7s ease-in-out both}
         /* Active-door breath — a restrained ~3% scale lift during the bloom (no bounce, settles to 1). */
-        @keyframes btyAffordScale{0%,100%{transform:scale(1)}42%{transform:scale(1.03)}}
+        @keyframes btyAffordScale{0%{transform:scale(0.985)}42%{transform:scale(1) translateY(-1px)}100%{transform:scale(1)}}
         .btyAffordScale{animation:btyAffordScale .7s ease-in-out both}
         /* FULL-PERIMETER IGNITION — a warm-white→gold arc travels once around the whole rounded
            boundary via the --btyAngle custom property (registered below for smooth animation). */
