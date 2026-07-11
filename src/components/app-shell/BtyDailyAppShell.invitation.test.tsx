@@ -83,9 +83,11 @@ describe("invited-door rendering follows the gate", () => {
     expect(invitedCount(container)).toBe(0);
   });
 
-  it("8. loading → no invited-door flash (doors do not render until content-ready)", () => {
-    const { container } = renderToday({ loading: true, activeFocus: resolveInvitedFocus(intel("high", "Self")) });
-    expect(container.querySelectorAll("[data-focus]").length).toBe(0);
+  it("8. loading (intel unresolved) → doors render immediately, zero invited (no flash)", () => {
+    // Nonblocking arrival: doors are present from the first frame; the unresolved read is neutral
+    // (FALLBACK confidence none → no invited focus), so no gold flash appears.
+    const { container } = renderToday({ loading: true, activeFocus: resolveInvitedFocus(intel("none", "CleanStart")) });
+    expect(container.querySelectorAll("[data-focus]").length).toBe(3);
     expect(invitedCount(container)).toBe(0);
   });
 });

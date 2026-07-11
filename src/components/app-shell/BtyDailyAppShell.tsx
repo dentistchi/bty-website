@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import CenterMeCard from "@/components/center/CenterMeCard";
 import CenterKeepRoom from "@/components/center/CenterKeepRoom";
@@ -361,6 +361,16 @@ export function pickGreeting(greetings: TodayCopy["greetings"], hour: number): s
   return greetings[greetingBand(hour)];
 }
 
+/**
+ * Three-door affordance timing (Three-Door Affordance STEP 2). One restrained surface-warmth bloom
+ * per door, staggered in DOM order, one pass only. Envelope: ~440ms per door, ~120ms between →
+ * total ≈ 680ms (well under the 1.8s ceiling). AFFORDANCE_TOTAL_MS also gates when the deferred
+ * evidence invitation may appear (never before the neutral sequence is legible).
+ */
+export const AFFORDANCE_DOOR_MS = 440;
+export const AFFORDANCE_GAP_MS = 120;
+export const AFFORDANCE_TOTAL_MS = AFFORDANCE_GAP_MS * 2 + AFFORDANCE_DOOR_MS; // 3 doors → 680ms
+
 function SurfaceHeader({ title, sub }: { title: string; sub?: string }) {
   return (
     // Greeting + sub read as ONE identity unit: the sub is demoted (smaller + quieter, tucked
@@ -397,6 +407,8 @@ export function TodaySurface({
   setSelected: setSelectedProp,
   confirmed: confirmedProp,
   setConfirmed: setConfirmedProp,
+  firstArrival = false,
+  onArrivalConsumed,
 }: {
   copy: TodayCopy;
   /** Calm narrative status line derived from userState (already localized). */
@@ -416,6 +428,12 @@ export function TodaySurface({
   setSelected?: (focus: TodayFocusKey | null) => void;
   confirmed?: boolean;
   setConfirmed?: (confirmed: boolean) => void;
+  /** True only on the FIRST Today mount of a shell session — plays the one-time three-door
+   *  affordance sequence and defers the evidence invitation until after it. Default false
+   *  (isolated renders / tab-returns paint at rest with the invitation immediate). */
+  firstArrival?: boolean;
+  /** Called once on mount so the shell can mark the session affordance consumed (no replay). */
+  onArrivalConsumed?: () => void;
 }) {
   // Controlled (shell-owned) ↔ uncontrolled (local) resolution. In production the shell lifts the
   // state up so a brief tab visit no longer discards the accepted day; a cold launch / full remount
@@ -441,8 +459,41 @@ export function TodaySurface({
     setJustOpened(true);
   };
 
-  // The invited door: the user's pick once made, else the softly-suggested derived focus.
-  const highlight = selected ?? activeFocus;
+  // Three-door affordance sequence (nonblocking arrival). `playArrival` is captured at MOUNT so a
+  // later prop flip (the shell marks the session consumed) never interrupts a running sequence; a
+  // tab-return remount reads firstArrival=false → paints at rest. reduced-motion is resolved
+  // synchronously (lazy init) so the first paint is already correct — no one-frame animate→still.
+  const [reducedMotion] = useState(
+    () => typeof window !== "undefined" && typeof window.matchMedia === "function"
+      && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  const [playArrival] = useState(firstArrival);
+  const animateArrival = playArrival && !reducedMotion;
+
+  // The evidence-backed invitation (gold ring / heartbeat) must not appear BEFORE the neutral
+  // affordance is legible. On first animated arrival it is deferred until the sequence completes;
+  // otherwise (tab-return / reduced-motion) it is immediate. NONE/LOW have no invited focus anyway.
+  const [showInvitation, setShowInvitation] = useState(!animateArrival);
+  useEffect(() => {
+    if (!animateArrival) {
+      setShowInvitation(true);
+      return;
+    }
+    const id = setTimeout(() => setShowInvitation(true), AFFORDANCE_TOTAL_MS);
+    return () => clearTimeout(id);
+  }, [animateArrival]);
+
+  // Mark the session affordance consumed on first mount so a tab-return does not replay it.
+  useEffect(() => {
+    onArrivalConsumed?.();
+  }, [onArrivalConsumed]);
+
+  // The invited door: the user's pick once made, else the softly-suggested derived focus — but the
+  // system suggestion is withheld until the affordance sequence has played (showInvitation).
+  const highlight = selected ?? (showInvitation ? activeFocus : null);
+  // The one-time affordance illumination plays only during an animated first arrival, before any
+  // selection. A tap immediately suppresses the remaining sequence (selected !== null).
+  const showAffordance = animateArrival && selected === null;
 
   // Time-aware greeting (Today Arrival Warmth STEP 1). SSR-safe: the server + first client
   // paint render the default morning greeting (copy.title) so hydration matches; after mount we
@@ -483,20 +534,18 @@ export function TodaySurface({
           nested button). Before confirm the other two dim; AFTER confirm (Chosen Path Rest
           State, STEP 3) they fade + collapse away entirely (grid-rows 1fr→0fr), leaving only
           the held door — the day now holds one relationship. Session-only: no persistence. */}
-      {/* Third beat of the arrival cascade (STEP 5): the doors are GATED on content-ready — they
-          mount only once loading clears, so their btyRise clock starts at the SAME moment as the
-          trace's and they can never precede it (this is the STEP-4 inversion fix). Delay 720ms
-          gives a ~460ms read window after the trace before the doors become visually dominant.
-          Gating on !loading also means the "invited" (gold) door appears once, already settled —
-          no early gold-pop from FALLBACK→resolved highlight flicker competing with the text.
-          reduced-motion: btyRise is inert, so the doors simply appear at rest on content-ready. */}
-      {!loading && (
+      {/* NONBLOCKING ARRIVAL (Three-Door Affordance STEP 1): the doors render IMMEDIATELY on mount
+          and are fully interactive — they no longer wait for /api/me/today-intelligence. While the
+          read is unresolved the state is the fail-soft neutral one (activeFocus null → no invited
+          door, no ring, no heartbeat); the invited treatment can only appear later, after the
+          neutral affordance, for a MEDIUM/HIGH result. No skeleton, spinner, or placeholder — the
+          doors ARE the ritual, present from the first frame. */}
+      {(
         <div className="relative">
-          {/* Spine of light — one continuous gold thread drawing down the LEFT EDGE of the three
-              doors as they arrive, a bright spark riding its head. It aligns with each door's own
-              seam, so the doors read as three openings ALONG one line of light (the day's spine),
-              not three separate cards. After the draw it rests as a faint thread and resizes with
-              the stack when doors collapse post-confirm. z-10 so the spark rides OVER the doors. */}
+          {/* Spine of light — drawn only during an animated first arrival (session-once), riding
+              the head of the door-illumination sequence. On a tab-return / reduced-motion the doors
+              simply appear at rest with no spine draw. */}
+          {animateArrival ? (
           <span
             aria-hidden
             className="btySpine pointer-events-none absolute bottom-1 left-0 top-1 z-10 w-px bg-gradient-to-b from-transparent via-[#C9A66B]/50 to-transparent"
@@ -507,6 +556,7 @@ export function TodaySurface({
               style={{ animationDelay: "150ms" }}
             />
           </span>
+          ) : null}
           {copy.cards.map((c, i) => {
           // Experiment A "Daybreak": the three doors no longer rise as one block — each rises
           // in sequence (three lamps coming on), 100ms apart after the trace has landed, and its
@@ -533,8 +583,8 @@ export function TodaySurface({
                   opacity for dim/gone) nor the dim child — so its opacity:1 `both`-fill never
                   fights those states; dim/gone are carried by ancestor/child opacity instead. */}
               <div
-                className={`btyRise overflow-hidden ${isGone ? "pointer-events-none" : ""}`}
-                style={{ animationDelay: `${riseDelay}ms` }}
+                className={`${animateArrival ? "btyRise " : ""}overflow-hidden ${isGone ? "pointer-events-none" : ""}`}
+                style={animateArrival ? { animationDelay: `${riseDelay}ms` } : undefined}
               >
                 <div
                   className={`transition-opacity duration-300 ${isDimmed ? "opacity-40" : "opacity-100"}`}
@@ -586,9 +636,24 @@ export function TodaySurface({
                         opacity 0 by default so reduced-motion (animation:none) shows nothing extra. */}
                     <span
                       aria-hidden
-                      className="btyIgnite pointer-events-none absolute inset-y-4 left-0 w-0.5 origin-top bg-gradient-to-b from-[#C9A66B]/0 via-[#C9A66B] to-[#C9A66B]/0 opacity-0 blur-[0.5px]"
-                      style={{ animationDelay: `${igniteDelay}ms` }}
+                      className={`${animateArrival ? "btyIgnite " : ""}pointer-events-none absolute inset-y-4 left-0 w-0.5 origin-top bg-gradient-to-b from-[#C9A66B]/0 via-[#C9A66B] to-[#C9A66B]/0 opacity-0 blur-[0.5px]`}
+                      style={animateArrival ? { animationDelay: `${igniteDelay}ms` } : undefined}
                     />
+                    {/* THREE-DOOR AFFORDANCE (Three-Door Affordance STEP 2): a restrained, EQUAL,
+                        one-time surface warmth that blooms once on each door in DOM order (Self →
+                        Others → World), staggered by AFFORDANCE_GAP_MS. Its sole meaning is "choose
+                        one of these three" — identical on all doors, never a recommendation. It is
+                        capped below the invited-door interior warmth (0.14 < 0.16), ends at opacity
+                        0 (no residue), plays only on an animated first arrival, and is suppressed the
+                        instant a door is selected. reduced-motion removes it entirely. */}
+                    {showAffordance ? (
+                      <span
+                        data-afford
+                        aria-hidden
+                        className="btyAfford pointer-events-none absolute inset-0 bg-gradient-to-r from-[#C9A66B]/[0.14] via-transparent to-transparent"
+                        style={{ animationDelay: `${i * AFFORDANCE_GAP_MS}ms` }}
+                      />
+                    ) : null}
                     {/* Interior depth — a warmth leaning in from the seam, STRONGER when invited.
                         When this is the SUGGESTED door and nothing is chosen yet, it keeps a slow
                         heartbeat (btyHeart) — "begin here" — which stops the instant a choice is
@@ -760,6 +825,11 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   const [todaySelected, setTodaySelected] = useState<TodayFocusKey | null>(null);
   const [todayConfirmed, setTodayConfirmed] = useState(false);
 
+  // Three-door affordance is a ONCE-PER-SESSION cue. TodaySurface unmounts on tab switch; this ref
+  // (held at the shell, which does NOT unmount) makes the sequence play on the first Today mount of
+  // the session only — never on a tab-return or an intelligence refresh. In-memory; no persistence.
+  const arrivalPlayedRef = useRef(false);
+
   // Today Intelligence (Phase 3): deterministic bands/narrative, read-only. Plus the user's
   // open promise (A+), read-only. Both fetched once on mount so Today is ready immediately.
   // Fail-soft — the shell always renders (FALLBACK_INTEL / null promise).
@@ -872,7 +942,11 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
            burst blooms from the chosen seam, once. */
         @keyframes btyBloom{0%{opacity:0;transform:scale(0.5)}28%{opacity:0.9}100%{opacity:0;transform:scale(2.2)}}
         .btyBloom{animation:btyBloom 1.1s cubic-bezier(0.22,1,0.36,1) both}
-        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise,.btyOpenRoom,.btyWake,.btyDriftA,.btyDriftB,.btySeed,.btySpine,.btySpark,.btyIgnite,.btyHeart,.btyBloom{animation:none!important}}
+        /* THREE-DOOR AFFORDANCE — an equal, restrained surface warmth that blooms once on each door
+           in sequence ("choose one of these three"). One pass, ends at opacity 0 (no residue). */
+        @keyframes btyAfford{0%{opacity:0}45%{opacity:1}100%{opacity:0}}
+        .btyAfford{animation:btyAfford .44s ease-in-out both}
+        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise,.btyOpenRoom,.btyWake,.btyDriftA,.btyDriftB,.btySeed,.btySpine,.btySpark,.btyIgnite,.btyHeart,.btyBloom,.btyAfford{animation:none!important}}
       `}</style>
       {/* TODAY WOW LAB — Experiment A "Daybreak" LIVING FIELD. A full-bleed light stage behind
           all content: two warm gold aurora currents drifting on independent slow loops (the space
@@ -923,6 +997,10 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             setSelected={setTodaySelected}
             confirmed={todayConfirmed}
             setConfirmed={setTodayConfirmed}
+            firstArrival={!arrivalPlayedRef.current}
+            onArrivalConsumed={() => {
+              arrivalPlayedRef.current = true;
+            }}
           />
         )}
         {/* Center = the self-owned Daily Keep room (Center Promise Loop STEP 1A): write and
