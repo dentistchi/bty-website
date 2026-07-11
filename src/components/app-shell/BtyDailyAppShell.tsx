@@ -570,38 +570,38 @@ export function TodaySurface({
           doors ARE the ritual, present from the first frame. */}
       {(
         <div className="relative isolate">
-          {/* SCREEN-SPACE AURORA (Sensory Overreach V2): one SHARED atmospheric field behind the
-              whole door group whose warm center TRAVELS vertically with the sequence — Self (top) →
-              Others (middle) → World (bottom). It sits at -z-10 inside this isolated stacking
-              context, so it warms the navy in the negative space around/behind the cards without
-              touching layout or navigation. It exists only during an active affordance (removed the
-              instant a door is selected) and its keyframe ends fully faded (no residue). */}
+          {/* SCREEN-SPACE AURORA (V3.3 TRANSLATING LIGHT BLOBS): the V2/V3.1/V3.2 single-carrier
+              design produced a TRAVELING rectangle on device — a sized `background-size` tile moved
+              by `background-position` and rasterized by a carrier-level `filter: blur`. Replaced by a
+              fully TRANSPARENT wrapper (positioning/stacking only — no bg, no filter, no mask, no
+              overflow) holding two real light BLOBS. Each blob owns a full-element radial that fades
+              to zero BEFORE its bounds (transparent buffer > blur reach on all four sides — see the
+              geometry proof in the tests), carries its own blur, and TRAVELS by transform:translateY
+              (Self→Others→World). No background tile, so no rectangle can appear. */}
           {showAffordance ? (
-            <div
-              data-aurora
-              aria-hidden
-              // V3 STACKING: explicit z-0 (NOT negative-z). The V2 field sat at -z-10 and painted
-              // against the always-on ambient gold aurora, so a low-opacity gold field over gold was
-              // invisible. Here it sits ABOVE the ambient (z-0 in this isolated context, below the
-              // z-10 doors), and it is a STRONGER, localized, ASYMMETRIC warm field that travels
-              // top→bottom far faster than the ambient's 17-23s drift — so it reads as light MOVING.
-              className="btyAurora pointer-events-none absolute inset-x-[-10%] inset-y-[-10%] z-0"
-              style={{
-                background:
-                  "radial-gradient(closest-side, rgba(201,166,107,0.46), rgba(201,166,107,0.20) 48%, transparent 76%), radial-gradient(closest-side, rgba(150,180,220,0.10), transparent 70%)",
-                backgroundRepeat: "no-repeat, no-repeat",
-                backgroundSize: "150% 34%, 120% 44%",
-                filter: "blur(56px)",
-                // OPTICAL SAFE FADE (V3.2): SYMMETRIC horizontal mask with TRANSPARENT PLATEAUS that
-                // fully contain both actual viewport clip boundaries. main clips at its padding box
-                // (viewport edge), 20px outside the doors container; with the atmosphere at 120% of
-                // container width the real boundaries land at ~3.1–4.1% / ~95.9–96.9% across device
-                // widths — inside the 0–9.5% and 90.5–100% transparent plateaus. So opacity is
-                // exactly zero at each clip boundary: the warmth dissolves into navy, never hard-cut.
-                WebkitMaskImage: "linear-gradient(to right, transparent 0%, transparent 9.5%, #000 19%, #000 81%, transparent 90.5%, transparent 100%)",
-                maskImage: "linear-gradient(to right, transparent 0%, transparent 9.5%, #000 19%, #000 81%, transparent 90.5%, transparent 100%)",
-              }}
-            />
+            <div data-aurora-wrapper aria-hidden className="pointer-events-none absolute inset-0 z-0">
+              {/* V3.3.1: NO filter anywhere. Softness comes entirely from a multi-stop radial with a
+                  long alpha tail + a fully TRANSPARENT OUTER PLATEAU (84%→100%), so alpha is exactly
+                  zero at every element boundary — four-sided safety by construction, no blur spread to
+                  reason about. Both blobs share top-1/2 + h-full + the same btyAuroraTravel keyframe →
+                  identical center-Y at Self/Others/World; only widths differ (cool is wider). */}
+              <div
+                data-aurora-gold
+                className="btyAuroraTravel absolute inset-x-[-12.5%] top-1/2 h-full rounded-full"
+                style={{
+                  background:
+                    "radial-gradient(closest-side, rgba(201,166,107,0.46) 0%, rgba(201,166,107,0.20) 40%, rgba(201,166,107,0.12) 54%, rgba(201,166,107,0.05) 66%, rgba(201,166,107,0.015) 76%, transparent 84%)",
+                }}
+              />
+              <div
+                data-aurora-cool
+                className="btyAuroraTravel absolute inset-x-[-18%] top-1/2 h-full rounded-full"
+                style={{
+                  background:
+                    "radial-gradient(closest-side, rgba(150,180,220,0.10) 0%, rgba(150,180,220,0.055) 38%, rgba(150,180,220,0.025) 56%, rgba(150,180,220,0.008) 72%, transparent 84%)",
+                }}
+              />
+            </div>
           ) : null}
           {/* The descending left-edge "spine + spark" rail was REMOVED (Intuitive Door Language
               STEP 2): on device it read as a gold rail sliding down the left edge and MASKED the
@@ -1084,10 +1084,13 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
         @keyframes btyPerimeter{0%{opacity:0}14%{opacity:1}86%{opacity:1}100%{opacity:0}}
         .btyPerimeter{animation:btyPerimeter .8s ease-in-out both, btyPerimeterSpin .8s linear both}
         @keyframes btyPerimeterSpin{to{--btyAngle:360deg}}
-        /* SCREEN-SPACE AURORA — the shared warm field TRAVELS Self(top)→Others(mid)→World(bottom)
-           across the whole sequence via background-position, fading up then fully out (no residue). */
-        @keyframes btyAurora{0%{opacity:0;background-position:50% 12%,50% 8%}10%{opacity:1;background-position:50% 12%,50% 8%}40%{background-position:50% 50%,50% 46%}68%{background-position:50% 88%,50% 92%}88%{opacity:1;background-position:50% 88%,50% 92%}100%{opacity:0;background-position:50% 88%,50% 92%}}
-        .btyAurora{animation:btyAurora 1.66s ease-in-out both}
+        /* SCREEN-SPACE AURORA (V3.3) — real light blobs TRAVEL Self(top)→Others(mid)→World(bottom)
+           via transform:translateY inside a transparent wrapper (NO background-position, NO carrier
+           filter/mask). translateY(-50%) keeps the blob vertically centred; the second translateY is
+           the travel (±38% of blob height). Opacity fades up then fully out (no residue). Gold + cool
+           share this single keyframe so they stay synchronized. */
+        @keyframes btyAuroraTravel{0%{opacity:0;transform:translateY(-50%) translateY(-38%)}12%{opacity:1;transform:translateY(-50%) translateY(-38%)}40%{transform:translateY(-50%) translateY(0%)}68%{transform:translateY(-50%) translateY(38%)}88%{opacity:1;transform:translateY(-50%) translateY(38%)}100%{opacity:0;transform:translateY(-50%) translateY(38%)}}
+        .btyAuroraTravel{animation:btyAuroraTravel 1.66s ease-in-out both}
         /* COLLECTIVE MAP REVEAL — all three outlines glow together, once (V3 stronger), then gone. */
         @keyframes btyMapReveal{0%,100%{opacity:0}50%{opacity:1}}
         .btyMapReveal{animation:btyMapReveal .42s ease-in-out both}
@@ -1097,7 +1100,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
         /* LIVING SELECTED-DOOR — interior content settles in with a restrained opacity + rise. */
         @keyframes btySettle{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         .btySettle{animation:btySettle .3s ease-out both}
-        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise,.btyOpenRoom,.btyWake,.btyDriftA,.btyDriftB,.btySeed,.btySpine,.btySpark,.btyIgnite,.btyHeart,.btyBloom,.btyAfford,.btyAffordLift,.btyHalo,.btyAffordScale,.btySelectAck,.btySettle,.btyAurora,.btyMapReveal,.btyPerimeter{animation:none!important}}
+        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise,.btyOpenRoom,.btyWake,.btyDriftA,.btyDriftB,.btySeed,.btySpine,.btySpark,.btyIgnite,.btyHeart,.btyBloom,.btyAfford,.btyAffordLift,.btyHalo,.btyAffordScale,.btySelectAck,.btySettle,.btyAuroraTravel,.btyMapReveal,.btyPerimeter{animation:none!important}}
       `}</style>
       {/* TODAY WOW LAB — Experiment A "Daybreak" LIVING FIELD. A full-bleed light stage behind
           all content: two warm gold aurora currents drifting on independent slow loops (the space

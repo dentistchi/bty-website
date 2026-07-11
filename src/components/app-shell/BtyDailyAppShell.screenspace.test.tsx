@@ -25,22 +25,24 @@ function renderToday(over: Partial<React.ComponentProps<typeof TodaySurface>> = 
   );
 }
 const advance = (ms: number) => act(() => void vi.advanceTimersByTime(ms));
-const aurora = (c: HTMLElement) => c.querySelectorAll("[data-aurora]").length;
+const aurora = (c: HTMLElement) => c.querySelectorAll("[data-aurora-wrapper]").length;
 const mapReveal = (c: HTMLElement) => c.querySelectorAll("[data-map-reveal]").length;
 
 describe("screen-space aurora", () => {
-  it("1/3/4. one shared aurora exists after settle, sits BEHIND cards (-z-10), travels on the sequence timeline", () => {
+  it("1/3/4. one shared aurora wrapper exists after settle, sits BEHIND cards (z-0), blobs travel via transform", () => {
     vi.useFakeTimers();
     const { container } = renderToday();
     expect(aurora(container)).toBe(0); // 3. not before the settled boundary
     advance(AFFORDANCE_START_MS);
-    expect(aurora(container)).toBe(1); // 1. single shared field
-    const el = container.querySelector<HTMLElement>("[data-aurora]")!;
-    // V3 explicit stacking: atmosphere at z-0, doors at z-10 (no negative-z for the principal effect).
+    expect(aurora(container)).toBe(1); // 1. single shared wrapper
+    const el = container.querySelector<HTMLElement>("[data-aurora-wrapper]")!;
+    // V3.3 explicit stacking: wrapper at z-0, doors at z-10 (no negative-z).
     expect(el.className).toContain("z-0");
     expect(el.className).not.toContain("-z-10");
-    expect(el.className).toContain("btyAurora"); // travels (background-position keyframe)
-    expect(el.style.background).toContain("radial-gradient");
+    // travel is a transform keyframe on the child blobs (no carrier background/tile)
+    const gold = container.querySelector<HTMLElement>("[data-aurora-gold]")!;
+    expect(gold.className).toContain("btyAuroraTravel");
+    expect(gold.style.background).toContain("radial-gradient");
     const doorCell = container.querySelector('[data-focus="Self"]')!.closest(".grid")!;
     expect(doorCell.className).toContain("z-10"); // doors explicitly above the atmosphere
   });

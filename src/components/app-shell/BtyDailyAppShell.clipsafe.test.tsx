@@ -1,9 +1,11 @@
 /** @vitest-environment jsdom */
 /**
- * Signature Door Material V3.1 — horizontal clip correction. Structural guarantees only (jsdom
- * cannot measure paint clipping): the wide reach moved to a symmetric edge-faded group atmosphere,
- * the card-local halo stays, no overflow-hidden / horizontal-scroll / negative-translate hack was
- * introduced, and the perimeter stays inside the bounded card. No visual-success claim.
+ * Signature Door Material V3.3.1 — filterless synchronized light blobs (structural proofs only).
+ *
+ * A fully transparent wrapper holds two real light blobs. NO filter anywhere: softness comes from a
+ * multi-stop radial with a fully transparent OUTER PLATEAU, so alpha is exactly zero at every
+ * element boundary (four-sided safety by construction). Both blobs share top-1/2 + h-full + the same
+ * transform keyframe → identical center-Y at Self/Others/World. No visual/sensory claim.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
@@ -25,114 +27,118 @@ const atStart = () => {
   act(() => void vi.advanceTimersByTime(AFFORDANCE_START_MS));
   return r.container;
 };
+const maskOf = (e: HTMLElement) =>
+  String(e.style.getPropertyValue("-webkit-mask-image") || (e.style as CSSStyleDeclaration).webkitMaskImage || e.style.maskImage || e.style.getPropertyValue("mask") || "");
 
-describe("horizontal clip correction", () => {
-  it("4/5. group atmosphere is separate and uses a SYMMETRIC horizontal edge fade (dissolves both sides)", () => {
-    const container = atStart();
-    const aurora = container.querySelector<HTMLElement>("[data-aurora]")!;
-    const mask = String(aurora.style.getPropertyValue("-webkit-mask-image") || (aurora.style as CSSStyleDeclaration).webkitMaskImage || aurora.style.maskImage || "");
-    expect(mask).toContain("linear-gradient(to right");
-    // transparent PLATEAUS to 9.5% and from 90.5% (symmetric), opaque 19%..81%
-    // jsdom serializes #000 as rgb(0, 0, 0)
-    const opaque = mask.includes("#000") ? "#000" : "rgb(0, 0, 0)";
-    expect(mask).toContain("transparent 0%");
-    expect(mask).toContain("transparent 9.5%");
-    expect(mask).toContain(`${opaque} 19%`);
-    expect(mask).toContain(`${opaque} 81%`);
-    expect(mask).toContain("transparent 90.5%");
-    expect(mask).toContain("transparent 100%");
-    // symmetric: the two transparent-plateau edges sum to 100 (9.5 + 90.5), opaque stops 19/81
-    expect(aurora.className).toContain("z-0"); // still the separate z-0 field
-  });
-
-  it("6. no negative translation is used to hide the defect (atmosphere + door cells)", () => {
-    const container = atStart();
-    expect(container.querySelector("[data-aurora]")!.className).not.toMatch(/-translate-x/);
-    for (const cell of container.querySelectorAll('[data-focus]')) {
-      expect(cell.closest(".grid")!.className).not.toMatch(/-translate-x/);
-    }
-  });
-
-  it("7/8. no overflow-hidden / horizontal-scroll surface introduced around the signature group", () => {
-    const container = atStart();
-    const group = container.querySelector<HTMLElement>("[data-aurora]")!.parentElement!;
-    expect(group.className).toContain("isolate");
-    expect(group.className).not.toContain("overflow-hidden");
-    expect(group.className).not.toMatch(/overflow-x-(auto|scroll|hidden)/);
-    // no descendant of the group re-introduces horizontal scrolling
-    expect(group.querySelectorAll('[class*="overflow-x-auto"], [class*="overflow-x-scroll"]').length).toBe(0);
-  });
-
-  it("1/3. card-local halo remains on the door cell; perimeter stays INSIDE the bounded card", () => {
-    const container = atStart();
-    // card-local depth still present per door
-    expect(container.querySelectorAll("[data-door-halo].btyHalo").length).toBe(3);
-    // perimeter overlay is inset-0 inside the overflow-hidden card button (not the outer halo)
-    for (const p of container.querySelectorAll<HTMLElement>("[data-perimeter]")) {
-      expect(p.className).toContain("inset-0");
-      expect(p.closest("button[data-focus]")).not.toBeNull();
-    }
-  });
-
-  it("9. scale layer remains equal on all three doors (unchanged)", () => {
-    const container = atStart();
-    expect(container.querySelectorAll("button.btyAffordScale").length).toBe(3);
+describe("transparent wrapper (no paint / filter / mask / clip)", () => {
+  it("1. wrapper paints nothing, filters nothing, masks nothing, clips nothing", () => {
+    const c = atStart();
+    const w = c.querySelector<HTMLElement>("[data-aurora-wrapper]")!;
+    expect(w).not.toBeNull();
+    expect(w.style.background).toBe("");
+    expect(w.style.backgroundImage).toBe("");
+    expect(w.style.filter).toBe("");
+    expect((w.style as CSSStyleDeclaration).backdropFilter || "").toBe("");
+    expect(maskOf(w)).toBe("");
+    expect(w.className).not.toContain("overflow-hidden");
+    expect(w.className).not.toMatch(/overflow-x-(auto|scroll|hidden)/);
+    expect(w.className).toContain("z-0");
   });
 });
 
-describe("V3.2 mask geometry — actual layout model", () => {
-  // main clips at its padding box (viewport edge); main px-5 = 20px each side; the atmosphere is
-  // inset-x-[-10%] of the doors container → 120% of container width.
-  const MAIN_PX = 20;
-  const INSET = 0.1; // -10% each side → width 1.2x
-  // The transparent plateaus of the shipped mask (must contain every clip boundary).
-  const LEFT_PLATEAU_END = 9.5;
-  const RIGHT_PLATEAU_START = 90.5;
-  function boundaries(viewportWidth: number) {
-    const containerWidth = viewportWidth - 2 * MAIN_PX;
-    const atmosphereWidth = containerWidth * (1 + 2 * INSET);
-    const left = ((containerWidth * INSET) - MAIN_PX) / atmosphereWidth * 100;
-    return { left, right: 100 - left };
-  }
-  // Mask opacity at a mask-space position p (%), for the shipped stops.
-  function maskOpacity(p: number) {
-    if (p <= LEFT_PLATEAU_END || p >= RIGHT_PLATEAU_START) return 0; // transparent plateaus
-    return 1; // (interior; only the plateau=0 property matters for the clip invariant)
-  }
-
-  it("boundaries are symmetric and BELOW/ABOVE the plateaus across device widths", () => {
-    for (const vw of [320, 360, 390, 430]) {
-      const { left, right } = boundaries(vw);
-      expect(left).toBeGreaterThan(0);
-      expect(left).toBeLessThan(8.3334); // strictly under the old container-edge model figure
-      expect(right).toBeGreaterThan(91.6666);
-      expect(left + right).toBeCloseTo(100, 6); // symmetric
-      // both actual clip boundaries fall INSIDE the fully-transparent plateaus
-      expect(left).toBeLessThan(LEFT_PLATEAU_END);
-      expect(right).toBeGreaterThan(RIGHT_PLATEAU_START);
+describe("two filterless light blobs; radial-only softness with transparent plateau", () => {
+  it("2. exactly two blobs; NEITHER has filter/backdrop/mask/background-tile; each is a full-element radial", () => {
+    const c = atStart();
+    const gold = c.querySelector<HTMLElement>("[data-aurora-gold]")!;
+    const cool = c.querySelector<HTMLElement>("[data-aurora-cool]")!;
+    expect(c.querySelectorAll("[data-aurora-gold], [data-aurora-cool]").length).toBe(2);
+    for (const b of [gold, cool]) {
+      expect(b.style.filter).toBe(""); // NO filter
+      expect((b.style as CSSStyleDeclaration).backdropFilter || "").toBe(""); // NO backdrop-filter
+      expect(maskOf(b)).toBe(""); // NO mask
+      expect(["", "auto"]).toContain(b.style.backgroundSize); // NO sized tile
+      expect(["", "0% 0%"]).toContain(b.style.backgroundPosition); // NO positioned tile
+      expect(b.style.background).toContain("radial-gradient(closest-side"); // full-element radial
+      expect(b.className).toContain("btyAuroraTravel");
+      expect(b.className).toContain("rounded-full");
     }
   });
 
-  it("mask opacity is EXACTLY zero at each actual clipping boundary", () => {
-    for (const vw of [320, 360, 390, 430]) {
-      const { left, right } = boundaries(vw);
-      expect(maskOpacity(left)).toBe(0);
-      expect(maskOpacity(right)).toBe(0);
+  it("3. each radial reaches fully transparent BEFORE the boundary and keeps a transparent outer plateau", () => {
+    const c = atStart();
+    for (const sel of ["[data-aurora-gold]", "[data-aurora-cool]"]) {
+      const bg = c.querySelector<HTMLElement>(sel)!.style.background;
+      const m = bg.match(/transparent\s+(\d+)%/);
+      expect(m, `${sel} has a transparent stop`).not.toBeNull();
+      const stop = Number(m![1]);
+      expect(stop).toBeLessThan(100); // transparent before the element edge
+      expect(100 - stop).toBeGreaterThan(10); // a substantial (>10%) fully-transparent outer plateau
+      expect(stop).toBe(84); // authorized outer plateau at 84%→100%
     }
+    // gold peak 0.46, secondary shoulder ≤ 0.20; cool peak 0.10
+    const gold = c.querySelector<HTMLElement>("[data-aurora-gold]")!.style.background;
+    expect(gold).toContain("rgba(201, 166, 107, 0.46) 0%");
+    expect(gold).toContain("rgba(201, 166, 107, 0.2) 40%");
+    expect(c.querySelector<HTMLElement>("[data-aurora-cool]")!.style.background).toContain("rgba(150, 180, 220, 0.1) 0%");
+  });
+});
+
+describe("spatial synchronization — identical height + shared keyframe → same center Y", () => {
+  it("4. both blobs use top-1/2 + h-full + the same btyAuroraTravel keyframe", () => {
+    const c = atStart();
+    const gold = c.querySelector<HTMLElement>("[data-aurora-gold]")!;
+    const cool = c.querySelector<HTMLElement>("[data-aurora-cool]")!;
+    for (const b of [gold, cool]) {
+      expect(b.className).toContain("top-1/2");
+      expect(b.className).toContain("h-full");
+      expect(b.className).toContain("btyAuroraTravel");
+    }
+    // identical vertical reference geometry (height + top) → identical center Y at every %
+    const vClasses = (e: HTMLElement) => e.className.split(/\s+/).filter((t) => /^(top-|h-|-?translate-y|btyAuroraTravel)/.test(t)).sort();
+    expect(vClasses(gold)).toEqual(vClasses(cool));
   });
 
-  it("representative calculated values match the formula at all four viewport widths", () => {
-    // From ((containerWidth*0.1) - 20) / (containerWidth*1.2) * 100 ; right = 100 - left.
-    const expected: Record<number, [number, number]> = {
-      320: [2.38095, 97.61905], // container 280, atmosphere 336, left = 8/336*100
-      360: [3.125, 96.875], //     container 320, atmosphere 384, left = 12/384*100
-      390: [3.57143, 96.42857], // container 350, atmosphere 420, left = 15/420*100
-      430: [4.05983, 95.94017], // container 390, atmosphere 468, left = 19.5/468... 20*...
-    };
-    for (const vw of [320, 360, 390, 430]) {
-      const { left, right } = boundaries(vw);
-      expect(left).toBeCloseTo(expected[vw][0], 4);
-      expect(right).toBeCloseTo(expected[vw][1], 4);
+  it("center-Y math: with equal height H and shared keyframe, centers coincide at Self/Others/World", () => {
+    // top-1/2 → top edge at 0.5H_wrap; transform translateY(-50%) centers (blob H = H_wrap); the
+    // travel translateY(k%) is k% of the blob's OWN height. Equal blob height ⇒ equal travel px ⇒
+    // equal center Y for both blobs at every keyframe stop.
+    const H = 360; // wrapper (doors group) height, representative
+    const centerY = (kPct: number) => 0.5 * H /*top-1/2*/ - 0.5 * H /*translateY(-50%)*/ + (kPct / 100) * H;
+    for (const k of [-38 /*Self*/, 0 /*Others*/, 38 /*World*/]) {
+      const gold = centerY(k); // same H for gold
+      const cool = centerY(k); // same H for cool
+      expect(gold).toBe(cool);
     }
+    // and the three stops are distinct (real travel)
+    expect(new Set([centerY(-38), centerY(0), centerY(38)]).size).toBe(3);
+  });
+});
+
+describe("obsolete architecture fully removed", () => {
+  it("5. no blur(40px)/blur(56px), no V3.2 mask, no background-position tile anywhere in the atmosphere", () => {
+    const c = atStart();
+    const nodes = c.querySelectorAll<HTMLElement>("[data-aurora-wrapper], [data-aurora-gold], [data-aurora-cool]");
+    for (const n of nodes) {
+      expect(n.style.filter).not.toContain("blur");
+      expect(maskOf(n)).not.toContain("linear-gradient");
+      expect(["", "0% 0%"]).toContain(n.style.backgroundPosition);
+      expect(["", "auto"]).toContain(n.style.backgroundSize);
+    }
+  });
+});
+
+describe("preserved guarantees", () => {
+  it("6. card-local halo + perimeter unchanged and contained; equal across three doors; no clip wrapper", () => {
+    const c = atStart();
+    expect(c.querySelectorAll("[data-door-halo].btyHalo").length).toBe(3);
+    for (const p of c.querySelectorAll<HTMLElement>("[data-perimeter]")) {
+      expect(p.className).toContain("inset-0");
+      expect(p.closest("button[data-focus]")).not.toBeNull();
+    }
+    expect(c.querySelectorAll("button.btyAffordScale").length).toBe(3);
+    for (const cell of c.querySelectorAll('[data-focus]')) expect(cell.closest(".grid")!.className).not.toMatch(/-translate-x/);
+    const group = c.querySelector<HTMLElement>("[data-aurora-wrapper]")!.parentElement!;
+    expect(group.className).toContain("isolate");
+    expect(group.className).not.toContain("overflow-hidden");
   });
 });

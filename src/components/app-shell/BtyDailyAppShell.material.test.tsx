@@ -30,7 +30,7 @@ describe("explicit stacking + resting material", () => {
     vi.useFakeTimers();
     const { container } = renderToday();
     advance(AFFORDANCE_START_MS);
-    const el = container.querySelector<HTMLElement>("[data-aurora]")!;
+    const el = container.querySelector<HTMLElement>("[data-aurora-wrapper]")!;
     expect(el.className).toContain("z-0");
     expect(el.className).not.toContain("-z-10");
     expect(container.querySelector('[data-focus="Self"]')!.closest(".grid")!.className).toContain("z-10");
@@ -68,7 +68,7 @@ describe("full-perimeter ignition", () => {
     expect(perimeter(container).length).toBe(3);
     fireEvent.click(container.querySelector('[data-focus="Others"]')!);
     expect(perimeter(container).length).toBe(0);
-    expect(container.querySelectorAll("[data-aurora]").length).toBe(0);
+    expect(container.querySelectorAll("[data-aurora-wrapper]").length).toBe(0);
   });
 });
 
@@ -100,7 +100,7 @@ describe("deeper active stack + stronger resolution", () => {
     vi.useFakeTimers();
     const { container } = renderToday({ activeFocus: resolveInvitedFocus(intel("low", "Self")) });
     advance(AFFORDANCE_START_MS + AFFORDANCE_TOTAL_MS + 200);
-    expect(container.querySelectorAll("[data-perimeter], [data-aurora]").length).toBe(0); // reduced-motion: none
+    expect(container.querySelectorAll("[data-perimeter], [data-aurora-wrapper]").length).toBe(0); // reduced-motion: none
     expect(container.querySelectorAll(".btyHeart").length).toBe(0); // NONE/LOW: no perpetual pulse
   });
 });
