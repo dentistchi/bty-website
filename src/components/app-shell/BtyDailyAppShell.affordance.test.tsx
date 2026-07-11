@@ -60,7 +60,7 @@ describe("nonblocking doors, delayed bloom", () => {
     advance(AFFORDANCE_START_MS);
     const spans = Array.from(container.querySelectorAll<HTMLElement>("[data-afford]"));
     expect(spans.length).toBe(3);
-    expect(spans.map((s) => s.style.animationDelay)).toEqual(["0ms", "250ms", "500ms"]); // sequential
+    expect(spans.map((s) => s.style.animationDelay)).toEqual(["0ms", "480ms", "960ms"]); // sequential
     for (const s of spans) expect(s.className).toContain("btyAfford");
     expect(new Set(spans.map((s) => s.className)).size).toBe(1); // identical treatment
   });

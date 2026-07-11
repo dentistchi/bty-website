@@ -375,9 +375,11 @@ export function pickGreeting(greetings: TodayCopy["greetings"], hour: number): s
  * short still breath (~350ms) → AFFORDANCE_START_MS, so the user sees: Today arrives → still →
  * Self → Others → World bloom on already-settled cards.
  */
-export const AFFORDANCE_DOOR_MS = 500;
-export const AFFORDANCE_GAP_MS = 250;
-export const AFFORDANCE_TOTAL_MS = AFFORDANCE_GAP_MS * 2 + AFFORDANCE_DOOR_MS; // 3 doors → 1000ms
+// SENSORY OVERREACH V1: three readable moments. Each active door is a full ~700ms illumination,
+// staggered ~480ms so Self → Others → World are individually identifiable (traveling light).
+export const AFFORDANCE_DOOR_MS = 700;
+export const AFFORDANCE_GAP_MS = 480;
+export const AFFORDANCE_TOTAL_MS = AFFORDANCE_GAP_MS * 2 + AFFORDANCE_DOOR_MS; // 3 doors → 1660ms
 /** When the last door has finished its arrival rise (last riseDelay 500ms + btyRise 800ms). */
 export const AFFORDANCE_ARRIVAL_SETTLE_MS = 1300;
 /** A brief still moment after the cards settle, so the map is perceived before the bloom begins. */
@@ -587,9 +589,14 @@ export function TodaySurface({
             <div
               key={c.focus}
               aria-hidden={isGone || undefined}
-              className={`grid transition-all duration-500 ease-out ${
+              // OUTER HALO lives on the grid cell (not the overflow-hidden card) so the glow can
+              // extend OUTSIDE the door. Gated on showAffordance with the per-door stagger; ends at
+              // no-shadow (settled state is calm). data-door-halo lets tests assert the layer.
+              {...(showAffordance ? { "data-door-halo": "" } : {})}
+              className={`grid transition-all duration-500 ease-out ${showAffordance ? "btyHalo " : ""}${
                 isGone ? "grid-rows-[0fr] mb-0 opacity-0" : "grid-rows-[1fr] mb-3 opacity-100"
               }`}
+              style={showAffordance ? { animationDelay: `${affordDelay}ms` } : undefined}
             >
               {/* overflow-hidden lets the grid-rows 0fr collapse the door's height to zero.
                   btyRise (staggered per door) lives HERE — not on the grid parent (which toggles
@@ -600,7 +607,9 @@ export function TodaySurface({
                 style={animateArrival ? { animationDelay: `${riseDelay}ms` } : undefined}
               >
                 <div
-                  className={`transition-opacity duration-300 ${isDimmed ? "opacity-40" : "opacity-100"}`}
+                  // FOCUS phase — unselected doors recede (dim + slight shrink) but stay legible as
+                  // the rest of the life map; the selected door stays at full size (dominant).
+                  className={`origin-center transition-all duration-300 ${isDimmed ? "opacity-40 scale-[0.97]" : "opacity-100 scale-100"}`}
                 >
                   <button
                     type="button"
@@ -625,9 +634,17 @@ export function TodaySurface({
                     aria-pressed={isSelected}
                     tabIndex={isGone ? -1 : undefined}
                     data-focus={c.focus}
+                    // btyAffordScale — the active door breathes up ~1.5% during its bloom window.
+                    // btySelectAck — a one-time warm scale acknowledge on the tap. Both are transient
+                    // (settle back to scale 1); neither loops.
+                    style={
+                      showAffordance ? { animationDelay: `${affordDelay}ms` } : undefined
+                    }
                     className={`group relative flex w-full flex-col items-start gap-1.5 overflow-hidden border px-6 py-6 text-left transition duration-300 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40 ${
+                      showAffordance ? "btyAffordScale " : ""
+                    }${isSelected && justOpened ? "btySelectAck " : ""}${
                       isSelected
-                        ? "rounded-2xl rounded-b-none border-b-0 border-[#C9A66B]/45 bg-gradient-to-b from-[#C9A66B]/[0.08] to-[#C9A66B]/[0.04]"
+                        ? "rounded-2xl rounded-b-none border-b-0 border-[#C9A66B]/70 bg-gradient-to-b from-[#C9A66B]/[0.12] to-[#C9A66B]/[0.05]"
                         : isHighlight
                           ? "rounded-2xl border-[#C9A66B]/30 bg-gradient-to-b from-[#C9A66B]/[0.06] to-white/[0.02] ring-1 ring-[#C9A66B]/15"
                           : "rounded-2xl border-white/10 bg-gradient-to-b from-white/[0.055] to-white/[0.02] hover:border-[#C9A66B]/25 hover:from-white/[0.08]"
@@ -655,10 +672,10 @@ export function TodaySurface({
                       <span
                         data-afford
                         aria-hidden
-                        className="btyAfford pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-[#C9A66B]/45"
+                        className="btyAfford pointer-events-none absolute inset-0 rounded-2xl ring-2 ring-inset ring-[#C9A66B]/80"
                         style={{
                           background:
-                            "radial-gradient(120% 100% at 50% 50%, rgba(201,166,107,0.26), rgba(201,166,107,0.08) 68%, transparent 100%)",
+                            "radial-gradient(120% 100% at 50% 45%, rgba(201,166,107,0.52), rgba(201,166,107,0.18) 62%, transparent 100%)",
                           animationDelay: `${affordDelay}ms`,
                         }}
                       />
@@ -926,8 +943,8 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
            chosen relationship interior feels ENTERED (a room opening) rather than a card popping
            in. Gentle rise + a barely-there settle-in scale; no glow burst, no pulse loop. Keyed
            off the interior's mount (isSelected). reduced-motion stills it (interior at rest). */
-        @keyframes btyOpenRoom{from{opacity:0;transform:translateY(8px) scale(0.992)}to{opacity:1;transform:translateY(0) scale(1)}}
-        .btyOpenRoom{animation:btyOpenRoom .48s cubic-bezier(0.22,1,0.36,1) both}
+        @keyframes btyOpenRoom{from{opacity:0;transform:translateY(12px) scale(0.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+        .btyOpenRoom{animation:btyOpenRoom .5s cubic-bezier(0.22,1,0.36,1) both}
         /* ───────────────────────────────────────────────────────────────────────
            TODAY WOW LAB — Experiment A · "DAYBREAK" (bold pass). Today does not load,
            it IGNITES: a seed of light blooms, a living aurora drifts behind everything,
@@ -968,17 +985,29 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
            burst blooms from the chosen seam, once. */
         @keyframes btyBloom{0%{opacity:0;transform:scale(0.5)}28%{opacity:0.9}100%{opacity:0;transform:scale(2.2)}}
         .btyBloom{animation:btyBloom 1.1s cubic-bezier(0.22,1,0.36,1) both}
-        /* THREE-DOOR AFFORDANCE — an equal, restrained FULL-DOOR warmth that blooms once on each
-           door in sequence ("choose one of these three"). One pass, ends at opacity 0 (no residue). */
-        @keyframes btyAfford{0%{opacity:0}45%{opacity:1}100%{opacity:0}}
-        .btyAfford{animation:btyAfford .5s ease-in-out both}
-        /* …with a coordinated action-text luminance lift on the same door, same delay. */
-        @keyframes btyAffordLift{0%,100%{text-shadow:none}45%{text-shadow:0 0 12px rgba(201,166,107,0.6)}}
-        .btyAffordLift{animation:btyAffordLift .5s ease-in-out both}
+        /* THREE-DOOR AFFORDANCE (Sensory Overreach V1) — four coordinated layers per active door,
+           each staggered by the per-door delay: (A) INNER LIGHT — the full-card radial surface
+           warmth; (B) RIM — the whole rounded border goes gold (ring on the same overlay); (A+B
+           share this opacity keyframe). Ends at opacity 0 (settled state is calm, no residue). */
+        @keyframes btyAfford{0%{opacity:0}42%{opacity:1}100%{opacity:0}}
+        .btyAfford{animation:btyAfford .7s ease-in-out both}
+        /* (D) PRIMARY ACTION — the action label lifts in luminance (gold-white glow), briefly. */
+        @keyframes btyAffordLift{0%,100%{text-shadow:none}42%{text-shadow:0 0 18px rgba(201,166,107,0.9),0 0 4px rgba(255,255,255,0.5)}}
+        .btyAffordLift{animation:btyAffordLift .7s ease-in-out both}
+        /* (C) OUTER HALO — a glow reaching OUTSIDE the card (box-shadow on the grid cell), traveling
+           with the sequence. Ends at no-shadow (calm settle). */
+        @keyframes btyHalo{0%{box-shadow:0 0 0 0 rgba(201,166,107,0)}42%{box-shadow:0 0 28px 3px rgba(201,166,107,0.55)}100%{box-shadow:0 0 0 0 rgba(201,166,107,0)}}
+        .btyHalo{animation:btyHalo .7s ease-in-out both}
+        /* Active-door breath — a restrained ~1.5% scale lift during the bloom (no bounce, settles to 1). */
+        @keyframes btyAffordScale{0%,100%{transform:scale(1)}42%{transform:scale(1.015)}}
+        .btyAffordScale{animation:btyAffordScale .7s ease-in-out both}
+        /* SELECTION ACKNOWLEDGE — a one-time warm scale-pop on tap (no overshoot, settles to 1). */
+        @keyframes btySelectAck{0%{transform:scale(0.994)}45%{transform:scale(1.02)}100%{transform:scale(1)}}
+        .btySelectAck{animation:btySelectAck .3s cubic-bezier(0.22,1,0.36,1) both}
         /* LIVING SELECTED-DOOR — interior content settles in with a restrained opacity + rise. */
-        @keyframes btySettle{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-        .btySettle{animation:btySettle .26s ease-out both}
-        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise,.btyOpenRoom,.btyWake,.btyDriftA,.btyDriftB,.btySeed,.btySpine,.btySpark,.btyIgnite,.btyHeart,.btyBloom,.btyAfford,.btyAffordLift,.btySettle{animation:none!important}}
+        @keyframes btySettle{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        .btySettle{animation:btySettle .3s ease-out both}
+        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise,.btyOpenRoom,.btyWake,.btyDriftA,.btyDriftB,.btySeed,.btySpine,.btySpark,.btyIgnite,.btyHeart,.btyBloom,.btyAfford,.btyAffordLift,.btyHalo,.btyAffordScale,.btySelectAck,.btySettle{animation:none!important}}
       `}</style>
       {/* TODAY WOW LAB — Experiment A "Daybreak" LIVING FIELD. A full-bleed light stage behind
           all content: two warm gold aurora currents drifting on independent slow loops (the space
