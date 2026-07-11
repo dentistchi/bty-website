@@ -580,13 +580,18 @@ export function TodaySurface({
             <div
               data-aurora
               aria-hidden
-              className="btyAurora pointer-events-none absolute inset-x-[-18%] inset-y-[-6%] -z-10"
+              // V3 STACKING: explicit z-0 (NOT negative-z). The V2 field sat at -z-10 and painted
+              // against the always-on ambient gold aurora, so a low-opacity gold field over gold was
+              // invisible. Here it sits ABOVE the ambient (z-0 in this isolated context, below the
+              // z-10 doors), and it is a STRONGER, localized, ASYMMETRIC warm field that travels
+              // top→bottom far faster than the ambient's 17-23s drift — so it reads as light MOVING.
+              className="btyAurora pointer-events-none absolute inset-x-[-22%] inset-y-[-10%] z-0"
               style={{
                 background:
-                  "radial-gradient(closest-side, rgba(201,166,107,0.30), rgba(201,166,107,0.13) 52%, transparent 78%)",
-                backgroundRepeat: "no-repeat",
-                backgroundSize: "180% 40%",
-                filter: "blur(42px)",
+                  "radial-gradient(closest-side, rgba(201,166,107,0.46), rgba(201,166,107,0.20) 48%, transparent 76%), radial-gradient(closest-side, rgba(150,180,220,0.10), transparent 70%)",
+                backgroundRepeat: "no-repeat, no-repeat",
+                backgroundSize: "150% 34%, 120% 44%",
+                filter: "blur(56px)",
               }}
             />
           ) : null}
@@ -613,7 +618,10 @@ export function TodaySurface({
               // extend OUTSIDE the door. Gated on showAffordance with the per-door stagger; ends at
               // no-shadow (settled state is calm). data-door-halo lets tests assert the layer.
               {...(showAffordance ? { "data-door-halo": "" } : {})}
-              className={`grid transition-all duration-500 ease-out ${showAffordance ? "btyHalo " : ""}${
+              // relative z-10 → doors sit explicitly ABOVE the z-0 traveling atmosphere (V3 STEP 1).
+              // A permanent soft float shadow (drop-shadow filter, not the clipped box-shadow) gives
+              // the resting card material separation from the page — touchable before any animation.
+              className={`relative z-10 grid transition-all duration-500 ease-out drop-shadow-[0_5px_14px_rgba(0,0,0,0.5)] ${showAffordance ? "btyHalo " : ""}${
                 isGone ? "grid-rows-[0fr] mb-0 opacity-0" : "grid-rows-[1fr] mb-3 opacity-100"
               }`}
               style={showAffordance ? { animationDelay: `${affordDelay}ms` } : undefined}
@@ -667,7 +675,7 @@ export function TodaySurface({
                         ? "rounded-2xl rounded-b-none border-b-0 border-[#C9A66B]/70 bg-gradient-to-b from-[#C9A66B]/[0.12] to-[#C9A66B]/[0.05]"
                         : isHighlight
                           ? "rounded-2xl border-[#C9A66B]/30 bg-gradient-to-b from-[#C9A66B]/[0.06] to-white/[0.02] ring-1 ring-[#C9A66B]/15"
-                          : "rounded-2xl border-white/10 bg-gradient-to-b from-white/[0.055] to-white/[0.02] hover:border-[#C9A66B]/25 hover:from-white/[0.08]"
+                          : "rounded-2xl border-white/[0.14] bg-gradient-to-b from-white/[0.085] via-white/[0.03] to-white/[0.012] shadow-[inset_0_1px_0_rgba(255,255,255,0.10),inset_0_-18px_30px_-22px_rgba(0,0,0,0.6)] hover:border-[#C9A66B]/25 hover:from-white/[0.11]"
                     }`}
                   >
                     {/* Threshold seam — a soft luminous vertical edge: the door's opening. Glow
@@ -703,15 +711,36 @@ export function TodaySurface({
                         }}
                       />
                     ) : null}
-                    {/* COLLECTIVE MAP REVEAL (V2 STEP 4): after the wave completes, all three door
-                        outlines glow faintly together, once, for ~300ms — "these three belong to one
-                        life map," never "all selected." Same delay on every door (not staggered) so
-                        they resolve as one; ends fully faded. */}
+                    {/* FULL-PERIMETER IGNITION (V3 STEP 3): a warm-white→gold arc travels ONCE around
+                        the COMPLETE rounded boundary (conic gradient masked to a 2px border ring; the
+                        --btyAngle custom property spins it). Not a static ring, not a single edge —
+                        the whole perimeter is energized as the light circles it. Identical on every
+                        door, staggered by affordDelay; ends fully faded. */}
+                    {showAffordance ? (
+                      <span
+                        data-perimeter
+                        aria-hidden
+                        className="btyPerimeter pointer-events-none absolute inset-0 rounded-2xl"
+                        style={{
+                          background:
+                            "conic-gradient(from var(--btyAngle,0deg), transparent 0deg, rgba(255,236,190,0.98) 40deg, rgba(201,166,107,0.72) 92deg, transparent 150deg)",
+                          padding: "2px",
+                          WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+                          WebkitMaskComposite: "xor",
+                          maskComposite: "exclude",
+                          animationDelay: `${affordDelay}ms`,
+                        }}
+                      />
+                    ) : null}
+                    {/* COLLECTIVE MAP REVEAL (V2 STEP 4, V3 stronger): after the wave completes, all
+                        three door outlines glow together, once — "these three belong to one life
+                        map," never "all selected." Same delay on every door (not staggered) so they
+                        resolve as one; ends fully faded. */}
                     {showAffordance ? (
                       <span
                         data-map-reveal
                         aria-hidden
-                        className="btyMapReveal pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-[#C9A66B]/25"
+                        className="btyMapReveal pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-[#C9A66B]/45"
                         style={{ animationDelay: `${AFFORDANCE_TOTAL_MS - 120}ms` }}
                       />
                     ) : null}
@@ -968,6 +997,9 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       <style>{`
         @keyframes btyEnter{from{opacity:0}to{opacity:1}}
         .btyFadeIn{animation:btyEnter .7s ease both}
+        /* Registered angle for the full-perimeter ignition (V3). Enables smooth conic rotation on
+           WKWebView (iOS 16.4+); where unsupported it degrades to a static bright perimeter arc. */
+        @property --btyAngle{syntax:'<angle>';initial-value:0deg;inherits:false}
         /* Arrival cascade (Today Arrival Warmth STEP 4): a calm rise+fade used to stagger
            the Today reveal — greeting, then the yesterday-trace sentence, then the doors —
            so arrival is felt as a short sequence, not a single flat paint. Each element sets
@@ -1031,25 +1063,30 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
         .btyAffordLift{animation:btyAffordLift .7s ease-in-out both}
         /* (C) OUTER HALO — a glow reaching OUTSIDE the card (box-shadow on the grid cell), traveling
            with the sequence. V2: reaches ~44px. Ends at no-shadow (calm settle). */
-        @keyframes btyHalo{0%{box-shadow:0 0 0 0 rgba(201,166,107,0)}42%{box-shadow:0 0 44px 5px rgba(201,166,107,0.6)}100%{box-shadow:0 0 0 0 rgba(201,166,107,0)}}
+        @keyframes btyHalo{0%{box-shadow:0 0 0 0 rgba(201,166,107,0)}42%{box-shadow:0 0 52px 7px rgba(201,166,107,0.62)}100%{box-shadow:0 0 0 0 rgba(201,166,107,0)}}
         .btyHalo{animation:btyHalo .7s ease-in-out both}
-        /* Active-door breath — a restrained ~2.5% scale lift during the bloom (no bounce, settles to 1). */
-        @keyframes btyAffordScale{0%,100%{transform:scale(1)}42%{transform:scale(1.025)}}
+        /* Active-door breath — a restrained ~3% scale lift during the bloom (no bounce, settles to 1). */
+        @keyframes btyAffordScale{0%,100%{transform:scale(1)}42%{transform:scale(1.03)}}
         .btyAffordScale{animation:btyAffordScale .7s ease-in-out both}
+        /* FULL-PERIMETER IGNITION — a warm-white→gold arc travels once around the whole rounded
+           boundary via the --btyAngle custom property (registered below for smooth animation). */
+        @keyframes btyPerimeter{0%{opacity:0}14%{opacity:1}86%{opacity:1}100%{opacity:0}}
+        .btyPerimeter{animation:btyPerimeter .8s ease-in-out both, btyPerimeterSpin .8s linear both}
+        @keyframes btyPerimeterSpin{to{--btyAngle:360deg}}
         /* SCREEN-SPACE AURORA — the shared warm field TRAVELS Self(top)→Others(mid)→World(bottom)
            across the whole sequence via background-position, fading up then fully out (no residue). */
-        @keyframes btyAurora{0%{opacity:0;background-position:50% 12%}10%{opacity:1;background-position:50% 12%}40%{background-position:50% 50%}68%{background-position:50% 88%}88%{opacity:1;background-position:50% 88%}100%{opacity:0;background-position:50% 88%}}
+        @keyframes btyAurora{0%{opacity:0;background-position:50% 12%,50% 8%}10%{opacity:1;background-position:50% 12%,50% 8%}40%{background-position:50% 50%,50% 46%}68%{background-position:50% 88%,50% 92%}88%{opacity:1;background-position:50% 88%,50% 92%}100%{opacity:0;background-position:50% 88%,50% 92%}}
         .btyAurora{animation:btyAurora 1.66s ease-in-out both}
-        /* COLLECTIVE MAP REVEAL — all three outlines glow faintly together, once, then gone. */
+        /* COLLECTIVE MAP REVEAL — all three outlines glow together, once (V3 stronger), then gone. */
         @keyframes btyMapReveal{0%,100%{opacity:0}50%{opacity:1}}
-        .btyMapReveal{animation:btyMapReveal .34s ease-in-out both}
+        .btyMapReveal{animation:btyMapReveal .42s ease-in-out both}
         /* SELECTION ACKNOWLEDGE — a one-time warm scale-pop on tap (no overshoot, settles to 1). */
         @keyframes btySelectAck{0%{transform:scale(0.994)}45%{transform:scale(1.02)}100%{transform:scale(1)}}
         .btySelectAck{animation:btySelectAck .3s cubic-bezier(0.22,1,0.36,1) both}
         /* LIVING SELECTED-DOOR — interior content settles in with a restrained opacity + rise. */
         @keyframes btySettle{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         .btySettle{animation:btySettle .3s ease-out both}
-        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise,.btyOpenRoom,.btyWake,.btyDriftA,.btyDriftB,.btySeed,.btySpine,.btySpark,.btyIgnite,.btyHeart,.btyBloom,.btyAfford,.btyAffordLift,.btyHalo,.btyAffordScale,.btySelectAck,.btySettle,.btyAurora,.btyMapReveal{animation:none!important}}
+        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise,.btyOpenRoom,.btyWake,.btyDriftA,.btyDriftB,.btySeed,.btySpine,.btySpark,.btyIgnite,.btyHeart,.btyBloom,.btyAfford,.btyAffordLift,.btyHalo,.btyAffordScale,.btySelectAck,.btySettle,.btyAurora,.btyMapReveal,.btyPerimeter{animation:none!important}}
       `}</style>
       {/* TODAY WOW LAB — Experiment A "Daybreak" LIVING FIELD. A full-bleed light stage behind
           all content: two warm gold aurora currents drifting on independent slow loops (the space

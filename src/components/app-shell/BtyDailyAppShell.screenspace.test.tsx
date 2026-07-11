@@ -36,9 +36,13 @@ describe("screen-space aurora", () => {
     advance(AFFORDANCE_START_MS);
     expect(aurora(container)).toBe(1); // 1. single shared field
     const el = container.querySelector<HTMLElement>("[data-aurora]")!;
-    expect(el.className).toContain("-z-10"); // behind cards + text
+    // V3 explicit stacking: atmosphere at z-0, doors at z-10 (no negative-z for the principal effect).
+    expect(el.className).toContain("z-0");
+    expect(el.className).not.toContain("-z-10");
     expect(el.className).toContain("btyAurora"); // travels (background-position keyframe)
     expect(el.style.background).toContain("radial-gradient");
+    const doorCell = container.querySelector('[data-focus="Self"]')!.closest(".grid")!;
+    expect(doorCell.className).toContain("z-10"); // doors explicitly above the atmosphere
   });
 
   it("9. all atmospheric effects clear when a door is selected (tap during)", () => {
