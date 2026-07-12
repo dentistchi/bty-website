@@ -405,6 +405,53 @@ export async function fetchTodayCommitment(): Promise<TodayCommitment | null> {
 }
 
 /**
+ * Today Living Response (V1) — one short perspective for today's committed relationship. The client
+ * NEVER generates; it only reads the server's settled/pending view. `status` ∈ pending|ready|fallback;
+ * only ready/fallback carry a `perspective` line (pending renders nothing). No provider call here.
+ */
+export type LivingResponseView = {
+  status: "pending" | "ready" | "fallback";
+  relationship: "self" | "others" | "world";
+  perspective: string | null;
+  source: "generated" | "fallback" | null;
+  confidence: "grounded" | "limited" | null;
+};
+
+/** Fire the Living Response POST AFTER commitment confirmation (never blocks/undoes the commit). */
+export async function postLivingResponse(): Promise<LivingResponseView | null> {
+  try {
+    const res = await fetch("/api/me/today/living-response", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ timeZone: deviceTz() }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { response?: LivingResponseView | null };
+    return data.response ?? null;
+  } catch (e) {
+    console.warn("[app-shell/today] living-response POST failed:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+/** Restore today's settled/pending Living Response on mount (same-day re-entry). No generation. */
+export async function fetchLivingResponse(): Promise<LivingResponseView | null> {
+  try {
+    const tz = deviceTz();
+    const res = await fetch(`/api/me/today/living-response${tz ? `?tz=${encodeURIComponent(tz)}` : ""}`, {
+      credentials: "include",
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { response?: LivingResponseView | null };
+    return data.response ?? null;
+  } catch (e) {
+    console.warn("[app-shell/today] living-response GET fell back:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+/**
  * relationshipFocus is a CLAIM only when confidence !== "none" (domain lock). At "none"
  * — or for the non-relationship focuses (CleanStart / ContinuePending) — no card is
  * suggested and Today reads neutral.
@@ -518,6 +565,7 @@ export function TodaySurface({
   confirmed: confirmedProp,
   setConfirmed: setConfirmedProp,
   onConfirm,
+  livingResponse,
   firstArrival = false,
   onArrivalConsumed,
 }: {
@@ -544,6 +592,9 @@ export function TodaySurface({
    *  true); the shell owns the canonical selected/confirmed flip. Absent in isolated/unit renders,
    *  where the CTA falls back to the in-memory setConfirmed(true) so standalone tests still pass. */
   onConfirm?: (focus: TodayFocusKey) => Promise<boolean>;
+  /** Today Living Response (V1): the settled/pending perspective for the committed relationship.
+   *  Only status ready|fallback carries a `perspective` line; pending (or null) renders nothing. */
+  livingResponse?: LivingResponseView | null;
   /** True only on the FIRST Today mount of a shell session — plays the one-time three-door
    *  affordance sequence and defers the evidence invitation until after it. Default false
    *  (isolated renders / tab-returns paint at rest with the invitation immediate). */
@@ -968,6 +1019,20 @@ export function TodaySurface({
                           </p>
                         </div>
                       ) : null}
+                      {/* Living Response (V1) — one quiet grounded perspective for the committed
+                          relationship, fades in AFTER the terminal is already complete (discovered,
+                          not appended). Only when confirmed + a settled line exists (ready|fallback);
+                          pending renders nothing. Held one register below the benediction so it never
+                          competes with the chosen path or the commitment. */}
+                      {confirmed && isSelected && livingResponse?.perspective && livingResponse.status !== "pending" ? (
+                        <p
+                          data-living-response
+                          data-living-response-source={livingResponse.source ?? undefined}
+                          className="btyLivingReveal relative mt-4 text-[0.9rem] italic leading-6 text-white/60"
+                        >
+                          {livingResponse.perspective}
+                        </p>
+                      ) : null}
                       {/* CTA — pre-press is the strong filled-gold action; the settled state SINKS to
                           an outline + ✓ (the quiet action-mark). No undo: it does not toggle back, and
                           once confirmed the press is idempotently inert (guarded) — aria-pressed, the
@@ -1067,6 +1132,10 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // session (the shell does not remount on tab switch), so tab-return never re-holds.
   const [todayHydrated, setTodayHydrated] = useState(false);
 
+  // Today Living Response (V1): the one grounded perspective for today's commitment. Read-only on the
+  // client — settled/pending view only; only ready/fallback carry a line (pending renders nothing).
+  const [livingResponse, setLivingResponse] = useState<LivingResponseView | null>(null);
+
   // Three-door affordance is a ONCE-PER-SESSION cue. TodaySurface unmounts on tab switch; this ref
   // (held at the shell, which does NOT unmount) makes the sequence play on the first Today mount of
   // the session only — never on a tab-return or an intelligence refresh. In-memory; no persistence.
@@ -1129,6 +1198,10 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
           setTodaySelected(focusFromRelationship(commitment.relationship));
           setTodayConfirmed(true);
           arrivalPlayedRef.current = true; // committed day paints at rest — no arrival animation
+          // Restore any settled/pending Living Response for the committed day (no generation).
+          void fetchLivingResponse().then((r) => {
+            if (alive && r) setLivingResponse(r);
+          });
         }
       })
       .finally(() => {
@@ -1147,6 +1220,11 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
     if (outcome.status === "committed" || outcome.status === "locked") {
       setTodaySelected(outcome.focus);
       setTodayConfirmed(true);
+      // Fire the Living Response POST AFTER confirmation — never awaited, never blocks the CTA. The
+      // perspective (ready/fallback) fades in when it resolves; failure leaves the terminal intact.
+      void postLivingResponse().then((r) => {
+        if (r) setLivingResponse(r);
+      });
       return true;
     }
     return false;
@@ -1222,6 +1300,10 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
            burst blooms from the chosen seam, once. */
         @keyframes btyBloom{0%{opacity:0;transform:scale(0.5)}28%{opacity:0.9}100%{opacity:0;transform:scale(2.2)}}
         .btyBloom{animation:btyBloom 1.1s cubic-bezier(0.22,1,0.36,1) both}
+        /* Living Response — a slow quiet fade-in (discovered, not announced). Reserves no space
+           when absent (it renders nothing); when present it eases in without a layout jump. */
+        @keyframes btyLivingReveal{0%{opacity:0;transform:translateY(2px)}100%{opacity:1;transform:translateY(0)}}
+        .btyLivingReveal{animation:btyLivingReveal 1.4s ease-out both}
         /* THREE-DOOR AFFORDANCE (Sensory Overreach V1) — four coordinated layers per active door,
            each staggered by the per-door delay: (A) INNER LIGHT — the full-card radial surface
            warmth; (B) RIM — the whole rounded border goes gold (ring on the same overlay); (A+B
@@ -1262,7 +1344,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
         /* LIVING SELECTED-DOOR — interior content settles in with a restrained opacity + rise. */
         @keyframes btySettle{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         .btySettle{animation:btySettle .3s ease-out both}
-        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise,.btyOpenRoom,.btyWake,.btyDriftA,.btyDriftB,.btySeed,.btySpine,.btySpark,.btyIgnite,.btyHeart,.btyBloom,.btyAfford,.btyAffordLift,.btyHalo,.btyAffordScale,.btySelectAck,.btySettle,.btyAuroraTravel,.btyMapReveal,.btyPerimeter{animation:none!important}}
+        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise,.btyOpenRoom,.btyWake,.btyDriftA,.btyDriftB,.btySeed,.btySpine,.btySpark,.btyIgnite,.btyHeart,.btyBloom,.btyAfford,.btyAffordLift,.btyHalo,.btyAffordScale,.btySelectAck,.btySettle,.btyAuroraTravel,.btyMapReveal,.btyPerimeter,.btyLivingReveal{animation:none!important}}
       `}</style>
       {/* TODAY WOW LAB — Experiment A "Daybreak" LIVING FIELD. A full-bleed light stage behind
           all content: two warm gold aurora currents drifting on independent slow loops (the space
@@ -1315,6 +1397,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
               confirmed={todayConfirmed}
               setConfirmed={setTodayConfirmed}
               onConfirm={handleTodayConfirm}
+              livingResponse={livingResponse}
               firstArrival={!arrivalPlayedRef.current}
               onArrivalConsumed={() => {
                 arrivalPlayedRef.current = true;

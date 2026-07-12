@@ -115,6 +115,30 @@ export async function commitTodayRelationship(
   return { status: existing.relationship === relationship ? "exists" : "locked", commitment: existing };
 }
 
+/**
+ * Internal ref (id + relationship + dayKey + locale) for the current BTY day, or null. Used by the
+ * Living Response layer to link its row (FK) — does NOT change the public commitment route/shape.
+ */
+export async function getTodayCommitmentRef(
+  admin: SupabaseClient,
+  userId: string,
+  instant: Date,
+  deviceTz: string | null | undefined,
+): Promise<{ id: string; relationship: RelationshipValue; dayKey: string; locale: string | null } | null> {
+  const { timezone } = await resolveUserTzContext(admin, userId, deviceTz);
+  const dayKey = userDayKey(instant, timezone, 5);
+  const { data, error } = await admin
+    .from(TABLE)
+    .select("id, relationship, day_key, locale")
+    .eq("user_id", userId)
+    .eq("day_key", dayKey)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const row = data as { id: string; relationship: string; day_key: string; locale: string | null };
+  return { id: String(row.id), relationship: row.relationship as RelationshipValue, dayKey: row.day_key, locale: row.locale ?? null };
+}
+
 /** Read the user's commitment for the current canonical BTY day, or null if none. */
 export async function getTodayCommitment(
   admin: SupabaseClient,
