@@ -1135,6 +1135,10 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // Today Living Response (V1): the one grounded perspective for today's commitment. Read-only on the
   // client — settled/pending view only; only ready/fallback carry a line (pending renders nothing).
   const [livingResponse, setLivingResponse] = useState<LivingResponseView | null>(null);
+  // Commitment-scoped one-shot guard for hydration MATERIALIZATION: at most one POST per commitment
+  // (keyed by BTY day_key — one commitment per user/day) per mounted session. Marked BEFORE the await
+  // and held in a ref so it survives React Strict-Mode effect replay, rerenders, and tab-return.
+  const materializeKeyRef = useRef<string | null>(null);
 
   // Three-door affordance is a ONCE-PER-SESSION cue. TodaySurface unmounts on tab switch; this ref
   // (held at the shell, which does NOT unmount) makes the sequence play on the first Today mount of
@@ -1191,6 +1195,41 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // Always release the hydration gate (fail-soft) so an uncommitted / degraded day still arrives.
   useEffect(() => {
     let alive = true;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+    const POLL_MAX = 5;
+    const POLL_INTERVAL_MS = 1500;
+
+    // Bounded, quiet GET recheck while a generation attempt is IN_PROGRESS (never POSTs, never loops
+    // forever, cancels on unmount / commitment change). Settled result renders when it arrives.
+    const pollPending = (attempt: number) => {
+      if (!alive || attempt >= POLL_MAX) return;
+      pollTimer = setTimeout(() => {
+        void fetchLivingResponse().then((r) => {
+          if (!alive) return;
+          if (r && r.status !== "pending") setLivingResponse(r);
+          else pollPending(attempt + 1);
+        });
+      }, POLL_INTERVAL_MS);
+    };
+
+    // Materialize the Living Response for an already-committed day. GET first: settled → render;
+    // pending → bounded recheck; NULL (no row ever created) → one idempotent POST to generate. The
+    // per-commitment guard makes the POST at most once. Any failure stays visually quiet.
+    const materialize = async (dayKey: string) => {
+      const first = await fetchLivingResponse();
+      if (!alive) return;
+      if (first && first.status !== "pending") return void setLivingResponse(first);
+      if (first && first.status === "pending") return pollPending(0);
+      // first === null (no row): POST once per commitment (guard marked BEFORE the await).
+      if (materializeKeyRef.current === dayKey) return pollPending(0);
+      materializeKeyRef.current = dayKey;
+      const posted = await postLivingResponse();
+      if (!alive) return;
+      if (posted && posted.status !== "pending") return void setLivingResponse(posted);
+      if (posted && posted.status === "pending") return pollPending(0);
+      // posted === null → quiet failure: no toast/spinner/error; confirmed Today stays intact.
+    };
+
     void fetchTodayCommitment()
       .then((commitment) => {
         if (!alive) return;
@@ -1198,10 +1237,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
           setTodaySelected(focusFromRelationship(commitment.relationship));
           setTodayConfirmed(true);
           arrivalPlayedRef.current = true; // committed day paints at rest — no arrival animation
-          // Restore any settled/pending Living Response for the committed day (no generation).
-          void fetchLivingResponse().then((r) => {
-            if (alive && r) setLivingResponse(r);
-          });
+          void materialize(commitment.dayKey);
         }
       })
       .finally(() => {
@@ -1209,6 +1245,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       });
     return () => {
       alive = false;
+      if (pollTimer) clearTimeout(pollTimer);
     };
   }, []);
 

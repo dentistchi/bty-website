@@ -5,6 +5,7 @@
  * waits on the Living Response POST; the POST fires only AFTER the commitment; failure leaves the
  * terminal intact; same-day re-entry restores the line. The client never calls any generation endpoint.
  */
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import BtyDailyAppShell, { COPY, TodaySurface, selectTodayStatus, type LivingResponseView } from "@/components/app-shell/BtyDailyAppShell";
@@ -143,5 +144,98 @@ describe("shell — POST after commit, re-entry, provider zero-call", () => {
     await waitFor(() => expect(calls.some((c) => c.url.includes("/api/me/today/living-response"))).toBe(true));
     const forbidden = /todayMirror|mirror\/generate|\/llm|generate-today|living-response\/generate/i;
     expect(calls.every((c) => !forbidden.test(c.url))).toBe(true);
+  });
+});
+
+// ── hydration materialization (the no-visible-change fix) ──
+const lrPosts = (calls: Call[]) => calls.filter((c) => c.url.includes("/api/me/today/living-response") && c.method === "POST").length;
+
+describe("shell — hydration materialization for an existing commitment", () => {
+  it("A. GET returns settled → NO POST, settled line renders", async () => {
+    const calls: Call[] = [];
+    installFetch({ commitGet: () => ({ ok: true, commitment: commitment("self") }), livingGet: () => ({ ok: true, committed: true, response: view({ perspective: "Already settled today." }) }) }, calls);
+    const { container } = render(<BtyDailyAppShell locale="en" />);
+    await waitFor(() => expect(container.querySelector("[data-living-response]")).not.toBeNull());
+    expect(container.querySelector("[data-living-response]")!.textContent).toBe("Already settled today.");
+    expect(lrPosts(calls)).toBe(0);
+  });
+
+  it("B. GET returns null → exactly ONE POST → returned settled line renders", async () => {
+    const calls: Call[] = [];
+    installFetch({ commitGet: () => ({ ok: true, commitment: commitment("self") }), livingGet: () => ({ ok: true, committed: true, response: null }), livingPost: () => ({ ok: true, response: view({ perspective: "Materialized on hydration." }) }) }, calls);
+    const { container } = render(<BtyDailyAppShell locale="en" />);
+    await waitFor(() => expect(container.querySelector("[data-living-response]")).not.toBeNull());
+    expect(container.querySelector("[data-living-response]")!.textContent).toBe("Materialized on hydration.");
+    expect(lrPosts(calls)).toBe(1);
+  });
+
+  it("C. Strict-Mode effect replay → still exactly one materialization POST", async () => {
+    const calls: Call[] = [];
+    installFetch({ commitGet: () => ({ ok: true, commitment: commitment("self") }), livingGet: () => ({ ok: true, committed: true, response: null }), livingPost: () => ({ ok: true, response: view() }) }, calls);
+    render(
+      <StrictMode>
+        <BtyDailyAppShell locale="en" />
+      </StrictMode>,
+    );
+    await waitFor(() => expect(lrPosts(calls)).toBeGreaterThanOrEqual(1));
+    await act(async () => {});
+    expect(lrPosts(calls)).toBe(1);
+  });
+
+  it("D. GET returns pending → NO POST, bounded GET recheck, settled result renders", async () => {
+    vi.useFakeTimers();
+    try {
+      const calls: Call[] = [];
+      let getN = 0;
+      installFetch(
+        {
+          commitGet: () => ({ ok: true, commitment: commitment("self") }),
+          livingGet: () => ({ ok: true, committed: true, response: ++getN >= 2 ? view({ perspective: "Ready after polling." }) : view({ status: "pending", perspective: null, source: null, confidence: null }) }),
+        },
+        calls,
+      );
+      const { container } = render(<BtyDailyAppShell locale="en" />);
+      await act(async () => {}); // flush hydration + first GET (pending)
+      expect(container.querySelector("[data-living-response]")).toBeNull();
+      expect(lrPosts(calls)).toBe(0);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1600); // one poll interval → GET again (settled)
+      });
+      expect(container.querySelector("[data-living-response]")!.textContent).toBe("Ready after polling.");
+      expect(lrPosts(calls)).toBe(0); // never POSTed while pending
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("E. POST returns fallback → fallback line renders normally", async () => {
+    const calls: Call[] = [];
+    installFetch({ commitGet: () => ({ ok: true, commitment: commitment("world") }), livingGet: () => ({ ok: true, committed: true, response: null }), livingPost: () => ({ ok: true, response: view({ status: "fallback", source: "fallback", confidence: "limited", relationship: "world", perspective: "Move one real thing forward." }) }) }, calls);
+    const { container } = render(<BtyDailyAppShell locale="en" />);
+    await waitFor(() => expect(container.querySelector('[data-living-response][data-living-response-source="fallback"]')).not.toBeNull());
+    expect(lrPosts(calls)).toBe(1);
+  });
+
+  it("F. POST/GET failure → no error UI, confirmed Today terminal intact, no line", async () => {
+    const calls: Call[] = [];
+    installFetch({ commitGet: () => ({ ok: true, commitment: commitment("self") }), livingGet: () => ({ ok: true, committed: true, response: null }), livingPost: () => ({ ok: true, response: null }) }, calls);
+    const { container } = render(<BtyDailyAppShell locale="en" />);
+    await waitFor(() => expect(container.querySelector("[data-today-cta]")).not.toBeNull());
+    await act(async () => {});
+    expect(container.querySelector("[data-living-response]")).toBeNull(); // no line
+    expect(container.querySelector("[data-today-cta]")!.getAttribute("aria-pressed")).toBe("true"); // terminal intact
+    expect(container.querySelector('[class*="spinner"], [role="alert"], [data-toast]')).toBeNull(); // no error UI
+  });
+
+  it("G. a different commitment (remount) receives its own one materialization POST", async () => {
+    const calls: Call[] = [];
+    installFetch({ commitGet: () => ({ ok: true, commitment: commitment("self") }), livingGet: () => ({ ok: true, committed: true, response: null }), livingPost: () => ({ ok: true, response: view() }) }, calls);
+    const first = render(<BtyDailyAppShell locale="en" />);
+    await waitFor(() => expect(lrPosts(calls)).toBe(1));
+    first.unmount();
+    const calls2: Call[] = [];
+    installFetch({ commitGet: () => ({ ok: true, commitment: commitment("others") }), livingGet: () => ({ ok: true, committed: true, response: null }), livingPost: () => ({ ok: true, response: view({ relationship: "others" }) }) }, calls2);
+    render(<BtyDailyAppShell locale="en" />);
+    await waitFor(() => expect(lrPosts(calls2)).toBe(1));
   });
 });
