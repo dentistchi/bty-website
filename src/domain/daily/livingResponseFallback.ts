@@ -11,7 +11,79 @@
  */
 import type { LivingResponseRelationship } from "@/domain/daily/livingResponse";
 
-export const FALLBACK_VERSION = "lrfb_v1";
+export const FALLBACK_VERSION = "lrfb_v2";
+
+// Concept → the evidence-specific fallback family it selects (so a fallback still feels grounded).
+const CONCEPT_FAMILY: Record<string, string> = {
+  ownership: "ownership",
+  accountability: "ownership",
+  repair: "repair",
+  directness: "directness",
+  communication: "directness",
+  regard: "directness",
+  truth: "truth",
+  naming: "truth",
+  follow_through: "follow_through",
+  change: "follow_through",
+  return: "return",
+  consistency: "return",
+};
+
+// Evidence-specific fallback families — one calm, grounded, observant line per concept. No wellness,
+// no instruction, no counts; each surfaces its concept naturally so the fallback never feels inferior.
+const FALLBACK_BY_CONCEPT: Record<string, readonly string[]> = {
+  ownership: [
+    "Responsibility becomes real the moment it enters a conversation.",
+    "What you quietly own still has to be said out loud to land.",
+  ],
+  repair: [
+    "Repair begins when what was avoided is finally named.",
+    "What was left unaddressed gets lighter the moment it is faced.",
+  ],
+  directness: [
+    "What is said directly is easier for someone else to trust.",
+    "A clear word carries further than a careful silence.",
+  ],
+  truth: [
+    "What is named clearly becomes easier to carry honestly.",
+    "Naming one thing plainly makes the rest less heavy.",
+  ],
+  follow_through: [
+    "What you keep returning to slowly becomes something others can rely on.",
+    "A change holds when it is carried through more than once.",
+  ],
+  return: [
+    "Returning to yourself can begin by naming one thing clearly.",
+    "The steadiness you keep returning to is quietly becoming reliable.",
+  ],
+};
+
+const FALLBACK_BY_CONCEPT_KO: Record<string, readonly string[]> = {
+  ownership: [
+    "책임은 대화 속으로 들어올 때 비로소 분명해집니다.",
+    "조용히 떠안은 것도 결국 말이 되어야 가 닿습니다.",
+  ],
+  repair: [
+    "회복은 미뤄 두었던 것을 마주할 때 시작됩니다.",
+    "말하지 못한 것은 마주한 순간부터 가벼워집니다.",
+  ],
+  directness: [
+    "직접 건넨 말이 상대에게는 더 믿을 만하게 남습니다.",
+    "분명한 한마디가 조심스러운 침묵보다 멀리 갑니다.",
+  ],
+  truth: [
+    "분명히 이름 붙인 것은 정직하게 지고 가기가 더 쉬워집니다.",
+    "한 가지를 또렷이 이름 붙이면 나머지가 한결 가벼워집니다.",
+  ],
+  follow_through: [
+    "계속 돌아오는 그 자리는 천천히 남들이 기댈 곳이 됩니다.",
+    "변화는 한 번이 아니라 이어질 때 비로소 자리를 잡습니다.",
+  ],
+  return: [
+    "나에게 돌아오는 일은 한 가지를 분명히 이름 붙이는 데서 시작될 수 있습니다.",
+    "꾸준히 돌아오는 그 자리가 조용히 단단해지고 있습니다.",
+  ],
+};
 
 /** Curated bounded sets — one calm perspective line per relationship. No counts, no diagnosis. */
 const FALLBACK_LINES: Record<LivingResponseRelationship, readonly string[]> = {
@@ -50,9 +122,9 @@ const FALLBACK_LINES_KO: Record<LivingResponseRelationship, readonly string[]> =
   ],
 };
 
-/** Deterministic index from relationship + day_key + version (stable per user/day). */
-function pick(relationship: LivingResponseRelationship, dayKey: string, count: number): number {
-  const material = `${FALLBACK_VERSION}:${relationship}:${dayKey}`;
+/** Deterministic index from key + day_key + version (stable per user/day). */
+function pick(key: string, dayKey: string, count: number): number {
+  const material = `${FALLBACK_VERSION}:${key}:${dayKey}`;
   let h = 0x811c9dc5;
   for (let i = 0; i < material.length; i++) {
     h ^= material.charCodeAt(i);
@@ -65,8 +137,18 @@ export function selectFallbackLine(
   relationship: LivingResponseRelationship,
   dayKey: string,
   locale: string | null,
+  concepts: string[] = [],
 ): string {
-  const table = locale === "ko" ? FALLBACK_LINES_KO : FALLBACK_LINES;
+  const isKo = locale === "ko";
+  // Prefer an evidence-specific family when a packet concept maps to one (grounded, not generic).
+  const family = concepts.map((c) => CONCEPT_FAMILY[c]).find(Boolean);
+  if (family) {
+    const byConcept = isKo ? FALLBACK_BY_CONCEPT_KO : FALLBACK_BY_CONCEPT;
+    const lines = byConcept[family];
+    if (lines && lines.length > 0) return lines[pick(`${relationship}:${family}`, dayKey, lines.length)];
+  }
+  // Otherwise the calm per-relationship set (World / insufficient-evidence still feels complete).
+  const table = isKo ? FALLBACK_LINES_KO : FALLBACK_LINES;
   const lines = table[relationship];
   return lines[pick(relationship, dayKey, lines.length)];
 }

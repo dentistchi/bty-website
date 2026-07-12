@@ -106,8 +106,8 @@ export async function POST(req: NextRequest) {
     // CLAIMED | RECLAIMED → this attempt owns generation.
 
     const nowIso = now.toISOString();
-    const settleFallback = async (reason: string, fingerprint: string | null) => {
-      const line = selectFallbackLine(relationship, ref.dayKey, ref.locale);
+    const settleFallback = async (reason: string, fingerprint: string | null, concepts: string[] = []) => {
+      const line = selectFallbackLine(relationship, ref.dayKey, ref.locale, concepts);
       return settleLivingResponse(
         admin,
         ref.id,
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
     const packet = await assembleLivingResponsePacket(admin, user.id, ref, now);
     const admission = admitLivingResponse(packet);
     if (!admission.eligible) {
-      const response = await settleFallback(admission.reason, packet.evidenceFingerprint);
+      const response = await settleFallback(admission.reason, packet.evidenceFingerprint, packet.concepts);
       return noStore(NextResponse.json({ ok: true, response }, { status: 200 }));
     }
 
@@ -130,18 +130,20 @@ export async function POST(req: NextRequest) {
     const gen = await generateLivingResponse(packet, { locale: ref.locale, recentTexts: recent });
     if (!gen.ok) {
       const reason = gen.reason === "LLM_UNAVAILABLE" ? "PROVIDER_UNAVAILABLE" : gen.reason === "BAD_JSON" ? "INVALID_OUTPUT" : "PROVIDER_TIMEOUT";
-      const response = await settleFallback(reason, packet.evidenceFingerprint);
+      const response = await settleFallback(reason, packet.evidenceFingerprint, packet.concepts);
       return noStore(NextResponse.json({ ok: true, response }, { status: 200 }));
     }
 
-    // Validate: any rejection → deterministic fallback (no looser-retry).
+    // Validate: any rejection (incl. generic wellness / missing evidence anchor) → deterministic
+    // evidence-specific fallback (no looser-retry).
     const validation = validateLivingResponse(gen.perspective, {
       relationship,
       guardPhrases: guardPhrasesFor(ref.locale, relationship),
+      concepts: packet.concepts,
       recentTexts: recent,
     });
     if (!validation.ok) {
-      const response = await settleFallback("POLICY_REJECTION", packet.evidenceFingerprint);
+      const response = await settleFallback("POLICY_REJECTION", packet.evidenceFingerprint, packet.concepts);
       return noStore(NextResponse.json({ ok: true, response }, { status: 200 }));
     }
 

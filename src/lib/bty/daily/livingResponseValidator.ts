@@ -15,10 +15,41 @@ import { scanProhibited } from "@/lib/bty/today-intelligence/todayMirrorPolicy";
 import { checkReportLike, hasMetricPoint } from "@/lib/bty/today-intelligence/todayMirrorSemanticFloor";
 import { openingPatternOf } from "@/domain/daily/todayMirrorNovelty";
 import { isRestatement } from "@/domain/daily/livingResponseGuardPhrases";
+import { anchorMatcher } from "@/domain/daily/livingResponseConcepts";
 import type { LivingResponseRelationship } from "@/domain/daily/livingResponse";
 
-export const LIVING_RESPONSE_POLICY_VERSION = "lrpol_v1";
+export const LIVING_RESPONSE_POLICY_VERSION = "lrpol_v2";
 const MAX_LEN = 160;
+
+// Generic wellness / meditation / motivational phrase families — a Living Response must never read
+// like a wellness app. Reject if ANY family matches (case-insensitive), EN + KO.
+const WELLNESS_FAMILIES: RegExp[] = [
+  /\bembrace\b/i,
+  /\bnurtur\w*/i,
+  /\bessence\b/i,
+  /\byour (own )?(essence|journey|power|center|truth|light|being)\b/i,
+  /\b(inner|true|authentic) (self|strength|peace|child|voice|wisdom)\b/i,
+  /\bsteady presence within\b/i,
+  /\bconnect(ion)? (with|to) (your|yourself|your own)\b/i,
+  /\bhonor (your|yourself)\b/i,
+  /\bstep into your\b/i,
+  /\btrust the process\b/i,
+  /\bbe present\b/i,
+  /\bcultivat\w*/i,
+  /\ballow yourself\b/i,
+  /\bgentle reminder\b/i,
+  /\bfind (your )?balance\b/i,
+  /\bhold space\b/i,
+  /\btoday is an opportunity\b/i,
+  /\b(radiate|manifest|abundance|serenity|bliss|wholeness)\b/i,
+  /명상|내면의 (빛|힘|평화)|우주의|당신의 본질|온전한 자아|균형을 찾/i,
+];
+
+// Instruction / imperative language — a Living Response observes; it never prescribes.
+const INSTRUCTION = /\b(remember to|make sure|be sure to|try to|you should|you must|don'?t forget|take a moment to)\b|하세요|하십시오|해야 합니다|기억하세요|잊지 마/i;
+
+// Raw machine code accidentally surfaced (e.g. SELF_RETURN_STRONG, OTHERS_RELATIONAL).
+const MACHINE_CODE = /\b[A-Z]{2,}_[A-Z_]{2,}\b/;
 
 // LR-specific count expressions the shared Today Mirror validator does not cover: English number
 // WORDS + a count noun, and Korean 수사/count expressions. (Arabic-digit counts are already caught by
@@ -38,7 +69,11 @@ export type LivingResponseViolation =
   | "QUESTION"
   | "RELATIONSHIP_IRRELEVANT"
   | "RESTATES_GUARD"
-  | "NOVELTY_REPEAT";
+  | "NOVELTY_REPEAT"
+  | "GENERIC_WELLNESS"
+  | "INSTRUCTION"
+  | "MACHINE_CODE"
+  | "ANCHOR_MISSING";
 
 const norm = (s: string) => s.toLowerCase().replace(/[\s.,!?—-]+/g, " ").trim();
 
@@ -54,6 +89,8 @@ export type ValidateLivingResponseInput = {
   relationship: LivingResponseRelationship;
   /** The canonical CTA/benediction phrases (from guardPhrasesFor) this line must not restate. */
   guardPhrases: string[];
+  /** Safe evidence concept anchors from the packet — the line must surface at least one naturally. */
+  concepts: string[];
   recentTexts: string[];
 };
 
@@ -81,8 +118,19 @@ export function validateLivingResponse(
   // Layer 2 — LR-specific count words (EN number-words / KO 수사) beyond BARE_COUNT.
   if (EN_COUNT.test(t) || KO_COUNT.test(t)) v.push("COUNT_EXPRESSION");
 
-  // Relationship relevance.
-  if (!RELATIONSHIP_ANCHORS[input.relationship].test(t)) v.push("RELATIONSHIP_IRRELEVANT");
+  // Generic wellness / motivational / instruction language — a Living Response is observant, not
+  // therapeutic or prescriptive.
+  if (WELLNESS_FAMILIES.some((r) => r.test(t))) v.push("GENERIC_WELLNESS");
+  if (INSTRUCTION.test(t)) v.push("INSTRUCTION");
+  if (MACHINE_CODE.test(t)) v.push("MACHINE_CODE");
+
+  // Evidence anchor — the line must surface at least one concept the packet actually supports.
+  const hasAnchor = anchorMatcher(input.concepts)(t);
+  if (input.concepts.length > 0 && !hasAnchor) v.push("ANCHOR_MISSING");
+
+  // Relevance — satisfied by an explicit relationship anchor OR a packet-derived concept anchor (an
+  // evidence concept IS relationship-derived, so evidence-grounded lines needn't restate the label).
+  if (!RELATIONSHIP_ANCHORS[input.relationship].test(t) && !hasAnchor) v.push("RELATIONSHIP_IRRELEVANT");
 
   // Must not restate the canonical CTA/benediction (exact + near-restatement).
   if (isRestatement(t, input.guardPhrases)) v.push("RESTATES_GUARD");

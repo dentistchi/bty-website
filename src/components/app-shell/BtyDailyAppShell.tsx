@@ -1019,19 +1019,25 @@ export function TodaySurface({
                           </p>
                         </div>
                       ) : null}
-                      {/* Living Response (V1) — one quiet grounded perspective for the committed
-                          relationship, fades in AFTER the terminal is already complete (discovered,
-                          not appended). Only when confirmed + a settled line exists (ready|fallback);
-                          pending renders nothing. Held one register below the benediction so it never
-                          competes with the chosen path or the commitment. */}
-                      {confirmed && isSelected && livingResponse?.perspective && livingResponse.status !== "pending" ? (
-                        <p
-                          data-living-response
-                          data-living-response-source={livingResponse.source ?? undefined}
-                          className="btyLivingReveal relative mt-4 text-[0.9rem] italic leading-6 text-white/60"
-                        >
-                          {livingResponse.perspective}
-                        </p>
+                      {/* Living Response (V1.1) — STABLE reserved slot. The slot's footprint is
+                          reserved from the moment the confirmed terminal renders (bounded min-height
+                          for the canonical max line count), so the CTA never moves and the card never
+                          jumps when the perspective arrives. No placeholder / skeleton / loading text.
+                          The line fades in by OPACITY ONLY inside the slot ("already part of the card
+                          and quietly became legible"). Held one register below the benediction so it
+                          never competes with the chosen path or the commitment. */}
+                      {confirmed && isSelected ? (
+                        <div data-living-response-slot className="relative mt-4 min-h-[3rem]">
+                          {livingResponse?.perspective && livingResponse.status !== "pending" ? (
+                            <p
+                              data-living-response
+                              data-living-response-source={livingResponse.source ?? undefined}
+                              className="btyLivingReveal text-[0.9rem] italic leading-6 text-white/60"
+                            >
+                              {livingResponse.perspective}
+                            </p>
+                          ) : null}
+                        </div>
                       ) : null}
                       {/* CTA — pre-press is the strong filled-gold action; the settled state SINKS to
                           an outline + ✓ (the quiet action-mark). No undo: it does not toggle back, and
@@ -1339,7 +1345,9 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
         .btyBloom{animation:btyBloom 1.1s cubic-bezier(0.22,1,0.36,1) both}
         /* Living Response — a slow quiet fade-in (discovered, not announced). Reserves no space
            when absent (it renders nothing); when present it eases in without a layout jump. */
-        @keyframes btyLivingReveal{0%{opacity:0;transform:translateY(2px)}100%{opacity:1;transform:translateY(0)}}
+        /* V1.1: OPACITY ONLY — no transform/height/margin. The line becomes legible in place inside
+           the reserved slot; nothing moves. Reduced-motion shows it instantly (disable list below). */
+        @keyframes btyLivingReveal{from{opacity:0}to{opacity:1}}
         .btyLivingReveal{animation:btyLivingReveal 1.4s ease-out both}
         /* THREE-DOOR AFFORDANCE (Sensory Overreach V1) — four coordinated layers per active door,
            each staggered by the per-door delay: (A) INNER LIGHT — the full-card radial surface

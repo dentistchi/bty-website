@@ -51,6 +51,10 @@ export type LivingResponsePacket = {
   dayKey: string;
   relationship: LivingResponseRelationship;
   facts: LivingResponseEvidenceFact[];
+  /** Safe behavioral concept anchors derived from the facts (ownership, repair, naming, …). Used to
+   *  ground the prompt, require a real anchor in validation, and select evidence-specific fallback.
+   *  Never machine codes; never shown as tokens. */
+  concepts: string[];
   prohibitedFieldsPresent: boolean;
   evidenceFingerprint: string;
 };

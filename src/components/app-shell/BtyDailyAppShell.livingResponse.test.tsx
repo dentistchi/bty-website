@@ -60,6 +60,32 @@ describe("TodaySurface — living response line", () => {
     const { container } = renderSurface(null);
     expect(container.querySelector("[data-living-response]")).toBeNull();
   });
+
+  // V1.1 layout stability
+  it("V1.1 stable slot exists in confirmed state for BOTH pending and settled (reserves footprint)", () => {
+    const pendingC = renderSurface(view({ status: "pending", perspective: null, source: null, confidence: null }));
+    const slotPending = pendingC.container.querySelector("[data-living-response-slot]");
+    expect(slotPending).not.toBeNull(); // slot present even while pending → CTA position stable
+    expect(slotPending!.className).toMatch(/min-h-\[/); // bounded reserved min-height
+    const pendingSlotClass = slotPending!.className;
+    expect(pendingC.container.querySelector("[data-living-response]")).toBeNull(); // no line/placeholder yet
+    cleanup();
+    const settledC = renderSurface(view());
+    const slotSettled = settledC.container.querySelector("[data-living-response-slot]");
+    expect(slotSettled).not.toBeNull();
+    expect(slotSettled!.className).toBe(pendingSlotClass); // identical structural slot in both states
+  });
+
+  it("V1.1 reveal is OPACITY-only (no transform/height/margin/position animation) + no loading UI", () => {
+    const { container } = renderSurface(view());
+    const line = container.querySelector("[data-living-response]")!;
+    expect(line.className).toContain("btyLivingReveal");
+    // no forbidden animation utility classes on the line
+    expect(line.className).not.toMatch(/translate|scale|\bh-\[|max-h|grid-rows|\bm[trblxy]?-/);
+    // no loading affordances anywhere in the confirmed card
+    expect(container.querySelector('[class*="spinner"],[class*="skeleton"],[class*="shimmer"],[role="status"],[data-toast]')).toBeNull();
+    expect(container.textContent).not.toMatch(/thinking|loading|generating/i);
+  });
 });
 
 // ── shell-level ──

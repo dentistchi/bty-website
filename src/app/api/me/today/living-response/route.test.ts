@@ -31,10 +31,10 @@ vi.mock("@/lib/bty/daily/livingResponse.server", () => ({
 
 import { GET, POST } from "./route";
 
-const packet = (facts: LivingResponsePacket["facts"], relationship: "self" | "others" | "world" = "self"): LivingResponsePacket => ({
-  commitmentId: "c1", userId: "user-1", dayKey: "2026-07-12", relationship, facts, prohibitedFieldsPresent: false, evidenceFingerprint: evidenceFingerprint(facts),
+const packet = (facts: LivingResponsePacket["facts"], relationship: "self" | "others" | "world" = "self", concepts: string[] = []): LivingResponsePacket => ({
+  commitmentId: "c1", userId: "user-1", dayKey: "2026-07-12", relationship, facts, concepts, prohibitedFieldsPresent: false, evidenceFingerprint: evidenceFingerprint(facts),
 });
-const strongSelf = packet([{ id: "f", code: "SELF_RETURN_STRONG", relationship: "self", evidenceClass: "self_return_continuity", confidence: "high", provenanceIds: ["d1", "d2", "d3", "d4"] }]);
+const strongSelf = packet([{ id: "f", code: "SELF_RETURN_STRONG", relationship: "self", evidenceClass: "self_return_continuity", confidence: "high", provenanceIds: ["d1", "d2", "d3", "d4"] }], "self", ["return", "consistency"]);
 const settledView = (status: string, perspective: string, source: string) => ({ status, relationship: "self", perspective, source, confidence: source === "generated" ? "grounded" : "limited" });
 
 const authed = () => mockGetUser.mockResolvedValue({ data: { user: { id: "user-1" } }, error: null });

@@ -34,6 +34,7 @@ describe("assembleLivingResponsePacket — provenance-safe, correctly classified
     const returnFact = packet.facts.find((f) => f.evidenceClass === "self_return_continuity");
     expect(returnFact?.confidence).toBe("low");
     expect(returnFact?.provenanceIds).toContain(TODAY); // canonical day_key, not a count
+    expect(packet.concepts).toEqual(expect.arrayContaining(["return", "consistency"])); // intrinsic self concepts
     expect(admitLivingResponse(packet).eligible).toBe(false);
   });
 
@@ -61,6 +62,8 @@ describe("assembleLivingResponsePacket — provenance-safe, correctly classified
     const f = packet.facts.find((x) => x.evidenceClass === "others_verified_relational_action");
     expect(f).toBeTruthy();
     expect(f?.relationship).toBe("others");
+    // ownership_escape → concept 'ownership' surfaces on the packet (makes copy SPECIFIC, not generic)
+    expect(packet.concepts).toContain("ownership");
     expect(admitLivingResponse(packet).eligible).toBe(true);
   });
 

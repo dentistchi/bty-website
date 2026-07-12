@@ -20,7 +20,7 @@ function fact(over: Partial<LivingResponseEvidenceFact> = {}): LivingResponseEvi
   };
 }
 function packet(relationship: LivingResponseRelationship, facts: LivingResponseEvidenceFact[], over: Partial<LivingResponsePacket> = {}): LivingResponsePacket {
-  return { commitmentId: "c1", userId: "u1", dayKey: "2026-07-12", relationship, facts, prohibitedFieldsPresent: false, evidenceFingerprint: evidenceFingerprint(facts), ...over };
+  return { commitmentId: "c1", userId: "u1", dayKey: "2026-07-12", relationship, facts, concepts: [], prohibitedFieldsPresent: false, evidenceFingerprint: evidenceFingerprint(facts), ...over };
 }
 
 describe("admitLivingResponse — fail-closed generation gate", () => {

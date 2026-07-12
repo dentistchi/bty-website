@@ -35,6 +35,26 @@ describe("selectFallbackLine — deterministic, bounded, safe", () => {
   });
 
   it("version constant is stable", () => {
-    expect(FALLBACK_VERSION).toBe("lrfb_v1");
+    expect(FALLBACK_VERSION).toBe("lrfb_v2");
+  });
+
+  it("selects an evidence-specific family when a concept is provided", () => {
+    const own = selectFallbackLine("others", "2026-07-12", "en", ["ownership"]);
+    const repair = selectFallbackLine("others", "2026-07-12", "en", ["repair"]);
+    expect(own).not.toBe(repair); // different concept → different family line
+    expect(/responsib|own|conversation|said/i.test(own)).toBe(true); // grounded in ownership/communication
+    expect(/repair|avoided|faced|address/i.test(repair)).toBe(true);
+  });
+
+  it("falls back to the generic per-relationship set when no concept maps", () => {
+    const line = selectFallbackLine("world", "2026-07-12", "en", []);
+    expect(line.length).toBeGreaterThan(0);
+    expect(line).not.toMatch(/\d/);
+  });
+
+  it("KO concept fallback is Korean and has no digits", () => {
+    const ko = selectFallbackLine("others", "2026-07-12", "ko", ["repair"]);
+    expect(ko).toMatch(/[가-힣]/);
+    expect(ko).not.toMatch(/\d/);
   });
 });

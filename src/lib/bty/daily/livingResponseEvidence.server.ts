@@ -10,6 +10,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { projectDailyTrace } from "@/lib/bty/daily/dailyTrace.server";
 import { inferRelationshipFromPatternFamily, axisToRelationship, type Relationship } from "@/domain/daily/axisRelationship";
+import { CONCEPT_FROM_PATTERN_FAMILY, CONCEPTS_FROM_EVIDENCE_CLASS } from "@/domain/daily/livingResponseConcepts";
 import {
   evidenceFingerprint,
   type FactConfidence,
@@ -86,8 +87,12 @@ async function selfFacts(admin: SupabaseClient, userId: string, now: Date): Prom
   return facts;
 }
 
-async function othersFacts(admin: SupabaseClient, userId: string): Promise<LivingResponseEvidenceFact[]> {
+async function othersFacts(
+  admin: SupabaseClient,
+  userId: string,
+): Promise<{ facts: LivingResponseEvidenceFact[]; familyConcepts: string[] }> {
   const facts: LivingResponseEvidenceFact[] = [];
+  const familyConcepts: string[] = [];
 
   // verified relational action — approved contracts whose pattern_family DERIVES to Others.
   // (No auto-classification: a contract is Others only if its family→axis→relationship == Others.)
@@ -113,6 +118,12 @@ async function othersFacts(admin: SupabaseClient, userId: string): Promise<Livin
         confidence,
         provenanceIds: relational.map((r) => String(r.id)),
       });
+      // The specific concept the relational evidence carries (ownership / repair / directness / …),
+      // derived from pattern_family — this is what makes the perspective SPECIFIC, not generic.
+      for (const r of relational) {
+        const concept = r.pattern_family ? CONCEPT_FROM_PATTERN_FAMILY[r.pattern_family] : undefined;
+        if (concept && !familyConcepts.includes(concept)) familyConcepts.push(concept);
+      }
     }
   } catch {
     /* fail-soft */
@@ -150,7 +161,7 @@ async function othersFacts(admin: SupabaseClient, userId: string): Promise<Livin
     /* fail-soft */
   }
 
-  return facts;
+  return { facts, familyConcepts };
 }
 
 export async function assembleLivingResponsePacket(
@@ -160,12 +171,18 @@ export async function assembleLivingResponsePacket(
   now: Date,
 ): Promise<LivingResponsePacket> {
   let facts: LivingResponseEvidenceFact[] = [];
+  let familyConcepts: string[] = [];
   if (commitment.relationship === "self") facts = await selfFacts(admin, userId, now);
-  else if (commitment.relationship === "others") facts = await othersFacts(admin, userId);
+  else if (commitment.relationship === "others") ({ facts, familyConcepts } = await othersFacts(admin, userId));
   // world: no facts assembled (fallback-only in V1).
 
   // Defense-in-depth: only facts matching the committed relationship survive (admission also checks).
   facts = facts.filter((f) => f.relationship === commitment.relationship && CAP[f.relationship]);
+
+  // Safe behavioral concept anchors: intrinsic (per evidence class) + family-derived (Others action).
+  const concepts = new Set<string>();
+  for (const f of facts) for (const c of CONCEPTS_FROM_EVIDENCE_CLASS[f.evidenceClass] ?? []) concepts.add(c);
+  if (facts.some((f) => f.evidenceClass === "others_verified_relational_action")) for (const c of familyConcepts) concepts.add(c);
 
   return {
     commitmentId: commitment.id,
@@ -173,6 +190,7 @@ export async function assembleLivingResponsePacket(
     dayKey: commitment.dayKey,
     relationship: commitment.relationship,
     facts,
+    concepts: [...concepts],
     prohibitedFieldsPresent: false, // by construction: no raw text/PII column is ever selected
     evidenceFingerprint: evidenceFingerprint(facts),
   };
