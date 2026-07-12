@@ -7,6 +7,12 @@ import CenterKeepRoom from "@/components/center/CenterKeepRoom";
 import WeeklyOrb from "@/components/app-shell/WeeklyOrb";
 import { fetchMeWeeklyRhythm, type MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
 import type { TodayConfidence, TodayIntelligence, TodayUserState } from "@/domain/daily/todayIntelligence";
+import {
+  focusFromRelationship,
+  relationshipFromFocus,
+  type RelationshipValue,
+  type TodayCommitment,
+} from "@/domain/daily/todayRelationshipCommitment";
 
 /**
  * New BTY Daily App Shell — v1 (Phase 3 Today wire + A/A+ ritual beat).
@@ -310,6 +316,94 @@ export function recordNativeSelfReturn(): void {
   }).catch(() => {});
 }
 
+function deviceTz(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Today Relationship Commitment (V1) — outcome of a CTA confirm POST.
+ *  - "committed": BTY durably holds this relationship for today (fresh insert OR an existing row
+ *    with the SAME relationship). `focus` = the canonical committed door.
+ *  - "locked": a DIFFERENT relationship was already committed today; `focus` = the server's canonical
+ *    door, so the client restores truth instead of the just-tapped door.
+ *  - "failed": no server acknowledgement (transport/persistence). The CTA must stay retryable and
+ *    NEVER fabricate a confirmation.
+ */
+export type TodayCommitOutcome =
+  | { status: "committed"; focus: TodayFocusKey }
+  | { status: "locked"; focus: TodayFocusKey }
+  | { status: "failed" };
+
+/**
+ * POST the confirmed relationship to /api/me/today/commit. Server-authoritative + insert-only;
+ * this never calls any AI/generation surface. Maps HTTP → {@link TodayCommitOutcome}:
+ *   201 / 200 → committed · 409 COMMITMENT_LOCKED → locked (canonical from server) · else → failed.
+ */
+export async function postTodayCommitment(
+  focus: TodayFocusKey,
+  suggestedFocus: TodayFocusKey | null,
+  locale: string,
+): Promise<TodayCommitOutcome> {
+  try {
+    const res = await fetch("/api/me/today/commit", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        relationship: relationshipFromFocus(focus),
+        suggestedRelationship: suggestedFocus ? relationshipFromFocus(suggestedFocus) : null,
+        locale,
+        timeZone: deviceTz(),
+      }),
+    });
+    const data = (await res.json().catch(() => null)) as
+      | { commitment?: TodayCommitment | null }
+      | null;
+    const canonical = data?.commitment?.relationship as RelationshipValue | undefined;
+    if (res.status === 409) {
+      // Locked to a different relationship — restore the server's canonical door.
+      return canonical
+        ? { status: "locked", focus: focusFromRelationship(canonical) }
+        : { status: "failed" };
+    }
+    if (res.ok && canonical) return { status: "committed", focus: focusFromRelationship(canonical) };
+    return { status: "failed" };
+  } catch (e) {
+    console.warn(
+      "[app-shell/today] /api/me/today/commit POST failed:",
+      e instanceof Error ? e.message : e,
+    );
+    return { status: "failed" };
+  }
+}
+
+/**
+ * Read the user's commitment for today's canonical BTY day (GET /api/me/today/commit). Used to
+ * REHYDRATE the confirmed terminal state on mount so a refresh / route re-entry / native cold launch
+ * restores truth. Fail-soft → null (→ the normal uncommitted arrival). Never calls generation.
+ */
+export async function fetchTodayCommitment(): Promise<TodayCommitment | null> {
+  try {
+    const tz = deviceTz();
+    const res = await fetch(`/api/me/today/commit${tz ? `?tz=${encodeURIComponent(tz)}` : ""}`, {
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error(`HTTP_${res.status}`);
+    const data = (await res.json()) as { commitment?: TodayCommitment | null };
+    return data.commitment ?? null;
+  } catch (e) {
+    console.warn(
+      "[app-shell/today] /api/me/today/commit GET fell back:",
+      e instanceof Error ? e.message : e,
+    );
+    return null;
+  }
+}
+
 /**
  * relationshipFocus is a CLAIM only when confidence !== "none" (domain lock). At "none"
  * — or for the non-relationship focuses (CleanStart / ContinuePending) — no card is
@@ -423,6 +517,7 @@ export function TodaySurface({
   setSelected: setSelectedProp,
   confirmed: confirmedProp,
   setConfirmed: setConfirmedProp,
+  onConfirm,
   firstArrival = false,
   onArrivalConsumed,
 }: {
@@ -444,6 +539,11 @@ export function TodaySurface({
   setSelected?: (focus: TodayFocusKey | null) => void;
   confirmed?: boolean;
   setConfirmed?: (confirmed: boolean) => void;
+  /** Durable commit hook (Today Relationship Commitment V1). When provided, the CTA POSTs the
+   *  confirmed relationship and enters the terminal state ONLY on server acknowledgement (resolving
+   *  true); the shell owns the canonical selected/confirmed flip. Absent in isolated/unit renders,
+   *  where the CTA falls back to the in-memory setConfirmed(true) so standalone tests still pass. */
+  onConfirm?: (focus: TodayFocusKey) => Promise<boolean>;
   /** True only on the FIRST Today mount of a shell session — plays the one-time three-door
    *  affordance sequence and defers the evidence invitation until after it. Default false
    *  (isolated renders / tab-returns paint at rest with the invitation immediate). */
@@ -466,6 +566,11 @@ export function TodaySurface({
   // tab-return REMOUNT it starts false, so a RESTORED selection paints at rest — no open-animation
   // replay. It dies with the component; it is animation bookkeeping only, never persisted or lifted.
   const [justOpened, setJustOpened] = useState(false);
+
+  // `committing` — a TRANSIENT, component-local pending flag while the durable commit POST is
+  // in flight. Gates against double-submission and lets the CTA show a quiet inline pending
+  // treatment (dim + disabled), never a spinner/toast. Not lifted, not persisted.
+  const [committing, setCommitting] = useState(false);
 
   // Relationship selection is a deliberate ritual choice (A): tapping reveals the
   // confirmation + CTA in-shell. It does NOT navigate — the bottom tabs own room entry.
@@ -870,12 +975,23 @@ export function TodaySurface({
                       <button
                         type="button"
                         onClick={() => {
-                          if (!confirmed) setConfirmed(true);
+                          if (confirmed || committing) return;
+                          // Isolated/unit render (no server hook): keep the in-memory settle.
+                          if (!onConfirm) {
+                            setConfirmed(true);
+                            return;
+                          }
+                          // Durable commit: enter the terminal state ONLY on server acknowledgement
+                          // (the shell flips `confirmed`). On failure, stay retryable — no fabrication.
+                          setCommitting(true);
+                          void onConfirm(c.focus).finally(() => setCommitting(false));
                         }}
+                        disabled={committing}
                         aria-pressed={confirmed}
+                        aria-busy={committing}
                         data-today-cta
                         style={justOpened ? { animationDelay: "140ms" } : undefined}
-                        className={`relative mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40 ${justOpened ? "btySettle " : ""}${
+                        className={`relative mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40 ${justOpened ? "btySettle " : ""}${committing ? "opacity-70 " : ""}${
                           confirmed
                             ? "border border-[#C9A66B]/40 bg-transparent text-[#C9A66B]/80"
                             : "bg-[#C9A66B] text-[#0B1F3A] hover:bg-[#C9A66B]/90 active:scale-[0.985]"
@@ -944,6 +1060,13 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   const [todaySelected, setTodaySelected] = useState<TodayFocusKey | null>(null);
   const [todayConfirmed, setTodayConfirmed] = useState(false);
 
+  // Today Relationship Commitment (V1): the confirmed relationship is a DURABLE, server-recognized
+  // decision for the canonical BTY day. `todayHydrated` gates the Today doors until the mount GET
+  // resolves, so a committed day restores its terminal state with NO uncommitted-door flash and NO
+  // arrival replay; an uncommitted day plays the normal arrival. Flips true exactly once per shell
+  // session (the shell does not remount on tab switch), so tab-return never re-holds.
+  const [todayHydrated, setTodayHydrated] = useState(false);
+
   // Three-door affordance is a ONCE-PER-SESSION cue. TodaySurface unmounts on tab switch; this ref
   // (held at the shell, which does NOT unmount) makes the sequence play on the first Today mount of
   // the session only — never on a tab-return or an intelligence refresh. In-memory; no persistence.
@@ -993,6 +1116,41 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   useEffect(() => {
     recordNativeSelfReturn();
   }, []);
+
+  // Rehydrate today's commitment before showing an interactive (uncommitted) Today. If a commitment
+  // exists, restore the confirmed terminal state and mark the arrival consumed so it does NOT replay.
+  // Always release the hydration gate (fail-soft) so an uncommitted / degraded day still arrives.
+  useEffect(() => {
+    let alive = true;
+    void fetchTodayCommitment()
+      .then((commitment) => {
+        if (!alive) return;
+        if (commitment) {
+          setTodaySelected(focusFromRelationship(commitment.relationship));
+          setTodayConfirmed(true);
+          arrivalPlayedRef.current = true; // committed day paints at rest — no arrival animation
+        }
+      })
+      .finally(() => {
+        if (alive) setTodayHydrated(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // CTA confirm → durable commitment. On committed/locked, adopt the SERVER's canonical relationship
+  // (locked restores a different, already-committed door) and enter the confirmed terminal state.
+  // On failure, return false so the CTA stays retryable — never fabricate a confirmation.
+  const handleTodayConfirm = async (focus: TodayFocusKey): Promise<boolean> => {
+    const outcome = await postTodayCommitment(focus, resolveInvitedFocus(intel), locale);
+    if (outcome.status === "committed" || outcome.status === "locked") {
+      setTodaySelected(outcome.focus);
+      setTodayConfirmed(true);
+      return true;
+    }
+    return false;
+  };
 
   // Native cold-reopen white-screen P0 is CLOSED; the temporary [BTYAppBoot] boot
   // diagnostics (mount marker + global error/rejection console capture) were removed.
@@ -1143,24 +1301,30 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       <div style={{ height: "env(safe-area-inset-top)" }} aria-hidden className="relative z-10" />
 
       <main className="relative z-10 flex-1 overflow-y-auto px-5 pb-4 pt-8" aria-label={t.appAria}>
-        {tab === "today" && (
-          <TodaySurface
-            copy={t.today}
-            statusLine={selectTodayStatus(locale, intel.userState)}
-            activeFocus={resolveInvitedFocus(intel)}
-            loading={intelLoading}
-            promiseText={promiseText}
-            centerKeepLine={centerKeepLine}
-            selected={todaySelected}
-            setSelected={setTodaySelected}
-            confirmed={todayConfirmed}
-            setConfirmed={setTodayConfirmed}
-            firstArrival={!arrivalPlayedRef.current}
-            onArrivalConsumed={() => {
-              arrivalPlayedRef.current = true;
-            }}
-          />
-        )}
+        {tab === "today" &&
+          (todayHydrated ? (
+            <TodaySurface
+              copy={t.today}
+              statusLine={selectTodayStatus(locale, intel.userState)}
+              activeFocus={resolveInvitedFocus(intel)}
+              loading={intelLoading}
+              promiseText={promiseText}
+              centerKeepLine={centerKeepLine}
+              selected={todaySelected}
+              setSelected={setTodaySelected}
+              confirmed={todayConfirmed}
+              setConfirmed={setTodayConfirmed}
+              onConfirm={handleTodayConfirm}
+              firstArrival={!arrivalPlayedRef.current}
+              onArrivalConsumed={() => {
+                arrivalPlayedRef.current = true;
+              }}
+            />
+          ) : (
+            // Bounded hydration hold — a calm, empty Today surface (never the uncommitted doors)
+            // while the commitment GET resolves. No spinner, no copy; the dark shell is enough.
+            <div data-today-hydrating aria-hidden className="min-h-full" />
+          ))}
         {/* Center = the self-owned Daily Keep room (Center Promise Loop STEP 1A): write and
             save ONE honest line for today. Server-persisted (Center-owned dear_me_letters,
             marker prompt='center_daily_keep') — NO Arena action contract, NO LLM reply, NO

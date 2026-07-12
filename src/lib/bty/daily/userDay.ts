@@ -35,16 +35,27 @@ export function isValidIanaTz(tz: unknown): tz is string {
   }
 }
 
-export async function ensureUserDay(
+/**
+ * The tz actually used to compute a BTY day_key for this request, plus the fallback flag.
+ * Shared by every server-authoritative daily surface so they all resolve the SAME canonical
+ * day_key for the same (user, instant, deviceTz) — see {@link resolveUserTzContext}.
+ */
+export type UserTzContext = { timezone: string; tzFallback: boolean };
+
+/**
+ * Resolve the canonical timezone for a user's BTY day_key (profile → device[+capture] → UTC).
+ * Extracted so `user_day` and the Today relationship commitment produce identical day_keys; the
+ * ladder and capture behavior are unchanged from the original inline logic.
+ *
+ *   1. `arena_profiles.timezone` if a valid IANA id → use it.
+ *   2. else the request's device tz if valid IANA → use it AND capture it to the profile.
+ *   3. else → "UTC" with tzFallback=true; leave the profile tz null so capture is retried later.
+ */
+export async function resolveUserTzContext(
   admin: SupabaseClient,
   userId: string,
-  instant: Date,
   deviceTz: string | null | undefined,
-): Promise<UserDayResult> {
-  // 1) Resolve the timezone (profile → device[+capture] → UTC fallback).
-  let resolvedTz = "UTC";
-  let tzFallback = true;
-
+): Promise<UserTzContext> {
   let profileTz: string | null = null;
   try {
     const { data } = await admin
@@ -58,19 +69,28 @@ export async function ensureUserDay(
   }
 
   if (isValidIanaTz(profileTz)) {
-    resolvedTz = profileTz;
-    tzFallback = false;
-  } else if (isValidIanaTz(deviceTz)) {
-    resolvedTz = deviceTz;
-    tzFallback = false;
+    return { timezone: profileTz, tzFallback: false };
+  }
+  if (isValidIanaTz(deviceTz)) {
     // Capture the newly-resolved device tz (best-effort; never overwrite a real tz with UTC).
     try {
       await admin.from("arena_profiles").update({ timezone: deviceTz }).eq("user_id", userId);
     } catch {
       /* capture is best-effort; the key is still correct this request */
     }
+    return { timezone: deviceTz, tzFallback: false };
   }
-  // else: resolvedTz stays "UTC", tzFallback stays true; profile.timezone left null (retry later).
+  return { timezone: "UTC", tzFallback: true };
+}
+
+export async function ensureUserDay(
+  admin: SupabaseClient,
+  userId: string,
+  instant: Date,
+  deviceTz: string | null | undefined,
+): Promise<UserDayResult> {
+  // 1) Resolve the timezone (profile → device[+capture] → UTC fallback) via the shared resolver.
+  const { timezone: resolvedTz, tzFallback } = await resolveUserTzContext(admin, userId, deviceTz);
 
   const dayKey = userDayKey(instant, resolvedTz, 5);
 
