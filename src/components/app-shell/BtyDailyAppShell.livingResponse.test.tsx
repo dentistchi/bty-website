@@ -76,6 +76,12 @@ describe("TodaySurface — living response line", () => {
     expect(slotSettled!.className).toBe(pendingSlotClass); // identical structural slot in both states
   });
 
+  it("V1.2 line is hard-capped to 2 lines (line-clamp-2) so the reserved slot can never grow", () => {
+    const { container } = renderSurface(view({ perspective: "A very long perspective ".repeat(10) }));
+    const line = container.querySelector("[data-living-response]")!;
+    expect(line.className).toContain("line-clamp-2"); // caps at 2 lines regardless of text length
+  });
+
   it("V1.1 reveal is OPACITY-only (no transform/height/margin/position animation) + no loading UI", () => {
     const { container } = renderSurface(view());
     const line = container.querySelector("[data-living-response]")!;

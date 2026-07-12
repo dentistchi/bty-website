@@ -18,14 +18,36 @@ const others = (t: string) => ok(t, { relationship: "others", concepts: OTHERS_C
 
 describe("validateLivingResponse — structural", () => {
   it("accepts a calm, single, evidence-anchored sentence", () => {
-    const r = ok("Returning to yourself can begin by naming one thing clearly.");
+    const r = ok("Returning to yourself starts with one thing named clearly.");
     expect(r.ok).toBe(true);
     expect(r.violations).toEqual([]);
   });
   it("rejects a question", () => expect(ok("What will you carry with you today?").violations).toContain("QUESTION"));
   it("rejects two sentences", () => expect(ok("You returned. It counts for something.").violations).toContain("NOT_ONE_SENTENCE"));
-  it("rejects an over-long line", () => expect(ok("Your quiet return " + "and steady presence ".repeat(12)).violations).toContain("TOO_LONG"));
+  it("rejects an over-long line (chars or >16 words)", () => {
+    expect(ok("Your quiet return " + "and steady work ".repeat(12)).violations).toContain("TOO_LONG");
+    expect(ok("What is named plainly and directly and openly and honestly becomes real when it truly reaches another person nearby").violations).toContain("TOO_LONG"); // >16 words
+  });
   it("empty output fails", () => expect(ok("   ").violations).toContain("EMPTY"));
+});
+
+describe("V1.2 — the new device-observed generic line is rejected", () => {
+  it("rejects 'Regularly naming one specific thought or feeling can create a steady anchor'", () => {
+    const r = ok("Regularly naming one specific thought or feeling can create a steady anchor.");
+    expect(r.ok).toBe(false);
+    expect(r.violations).toEqual(expect.arrayContaining(["INSTRUCTION", "GENERIC_WELLNESS"])); // 'regularly' + 'steady anchor'
+  });
+  it("rejects the expanded imperative words", () => {
+    for (const s of [
+      "Try to own your part in the conversation.",
+      "Remember what you avoided and face it.",
+      "Consider the change before it reaches anyone.",
+      "Keep returning to the same honest word.",
+      "Practice naming one thing each day.",
+    ]) {
+      expect(ok(s, { concepts: OTHERS_CONCEPTS }).violations).toContain("INSTRUCTION");
+    }
+  });
 });
 
 describe("V1.1 — generic wellness rejection", () => {

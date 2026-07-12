@@ -18,8 +18,11 @@ import { isRestatement } from "@/domain/daily/livingResponseGuardPhrases";
 import { anchorMatcher } from "@/domain/daily/livingResponseConcepts";
 import type { LivingResponseRelationship } from "@/domain/daily/livingResponse";
 
-export const LIVING_RESPONSE_POLICY_VERSION = "lrpol_v2";
-const MAX_LEN = 160;
+export const LIVING_RESPONSE_POLICY_VERSION = "lrpol_v3";
+// Geometry-aligned length contract: short enough to fit the reserved 2-line slot at mobile width,
+// so the line can never grow the card. One sentence, ≤ MAX_WORDS words, ≤ MAX_LEN chars.
+const MAX_LEN = 100;
+const MAX_WORDS = 16;
 
 // Generic wellness / meditation / motivational phrase families — a Living Response must never read
 // like a wellness app. Reject if ANY family matches (case-insensitive), EN + KO.
@@ -27,8 +30,14 @@ const WELLNESS_FAMILIES: RegExp[] = [
   /\bembrace\b/i,
   /\bnurtur\w*/i,
   /\bessence\b/i,
+  /\banchor\b/i,
+  /\bjourney\b/i,
+  /\binner peace\b/i,
+  /\bspace for (your|yourself)\b/i,
+  /\bdaily distractions\b/i,
   /\byour (own )?(essence|journey|power|center|truth|light|being)\b/i,
   /\b(inner|true|authentic) (self|strength|peace|child|voice|wisdom)\b/i,
+  /\bsteady (presence|anchor)\b/i,
   /\bsteady presence within\b/i,
   /\bconnect(ion)? (with|to) (your|yourself|your own)\b/i,
   /\bhonor (your|yourself)\b/i,
@@ -46,7 +55,8 @@ const WELLNESS_FAMILIES: RegExp[] = [
 ];
 
 // Instruction / imperative language — a Living Response observes; it never prescribes.
-const INSTRUCTION = /\b(remember to|make sure|be sure to|try to|you should|you must|don'?t forget|take a moment to)\b|하세요|하십시오|해야 합니다|기억하세요|잊지 마/i;
+const INSTRUCTION =
+  /\b(try|remember|consider|practice|regularly|make sure|be sure to|take time|focus on|begin by|continue to|keep|allow yourself|you should|you must|don'?t forget|take a moment to)\b|하세요|하십시오|해야 합니다|기억하세요|잊지 마|규칙적으로/i;
 
 // Raw machine code accidentally surfaced (e.g. SELF_RETURN_STRONG, OTHERS_RELATIONAL).
 const MACHINE_CODE = /\b[A-Z]{2,}_[A-Z_]{2,}\b/;
@@ -102,7 +112,7 @@ export function validateLivingResponse(
   const t = (text ?? "").trim();
 
   if (t.length === 0) v.push("EMPTY");
-  if (t.length > MAX_LEN) v.push("TOO_LONG");
+  if (t.length > MAX_LEN || t.split(/\s+/).filter(Boolean).length > MAX_WORDS) v.push("TOO_LONG");
   if (/\?|？/.test(t)) v.push("QUESTION");
 
   // Exactly one sentence: at most one terminal mark, and no interior sentence break.

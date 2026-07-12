@@ -35,7 +35,7 @@ describe("selectFallbackLine — deterministic, bounded, safe", () => {
   });
 
   it("version constant is stable", () => {
-    expect(FALLBACK_VERSION).toBe("lrfb_v2");
+    expect(FALLBACK_VERSION).toBe("lrfb_v3");
   });
 
   it("selects an evidence-specific family when a concept is provided", () => {

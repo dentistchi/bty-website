@@ -11,7 +11,7 @@
  */
 import type { LivingResponseRelationship } from "@/domain/daily/livingResponse";
 
-export const FALLBACK_VERSION = "lrfb_v2";
+export const FALLBACK_VERSION = "lrfb_v3";
 
 // Concept → the evidence-specific fallback family it selects (so a fallback still feels grounded).
 const CONCEPT_FAMILY: Record<string, string> = {
@@ -49,12 +49,12 @@ const FALLBACK_BY_CONCEPT: Record<string, readonly string[]> = {
     "Naming one thing plainly makes the rest less heavy.",
   ],
   follow_through: [
-    "What you keep returning to slowly becomes something others can rely on.",
-    "A change holds when it is carried through more than once.",
+    "What you return to again becomes something others can rely on.",
+    "A change holds once it is carried all the way through.",
   ],
   return: [
-    "Returning to yourself can begin by naming one thing clearly.",
-    "The steadiness you keep returning to is quietly becoming reliable.",
+    "Returning to yourself starts with one thing named clearly.",
+    "The place you return to is quietly becoming solid ground.",
   ],
 };
 

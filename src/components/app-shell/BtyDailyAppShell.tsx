@@ -1032,7 +1032,7 @@ export function TodaySurface({
                             <p
                               data-living-response
                               data-living-response-source={livingResponse.source ?? undefined}
-                              className="btyLivingReveal text-[0.9rem] italic leading-6 text-white/60"
+                              className="btyLivingReveal line-clamp-2 text-[0.9rem] italic leading-6 text-white/60"
                             >
                               {livingResponse.perspective}
                             </p>

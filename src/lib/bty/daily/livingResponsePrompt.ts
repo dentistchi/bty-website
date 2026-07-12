@@ -11,7 +11,7 @@
 import type { LlmChatMessage } from "@/lib/bty/llm/client";
 import type { LivingResponsePacket } from "@/domain/daily/livingResponse";
 
-export const LIVING_RESPONSE_PROMPT_VERSION = "lrprompt_v2";
+export const LIVING_RESPONSE_PROMPT_VERSION = "lrprompt_v3";
 
 // Human, non-code phrasing for each concept — the model anchors to these, never to the token.
 const CONCEPT_HINT: Record<string, string> = {
@@ -43,24 +43,29 @@ export function buildLivingResponseMessages(
   const conceptHints = packet.concepts.map((c) => CONCEPT_HINT[c] ?? c);
 
   const system = [
-    "You write ONE short 'Living Response' for a calm daily reflection app.",
-    "It is a single, specific, evidence-grounded perspective — NOT a summary, affirmation, or instruction.",
-    "The relationship the user chose is the FRAME. Do NOT restate or explain it. Reveal a perspective",
-    "about the SPECIFIC behavioral concept the evidence carries.",
+    "You write ONE quiet 'Living Response' — a single evidence-grounded PERSPECTIVE that reveals one",
+    "deeper meaning already present in the user's commitment and evidence. It is NOT advice, coaching,",
+    "instruction, diagnosis, encouragement, summary, restatement, or affirmation.",
+    "The relationship the user chose is the FRAME — do NOT restate or explain it.",
+    "",
+    "Target form (structure only, do NOT copy verbatim):",
+    "  \"X becomes visible when it reaches another person.\"",
+    "  \"What changes within becomes real when it enters a conversation.\"",
+    "  \"Ownership changes shape when someone else can experience it.\"",
     "",
     "Hard rules:",
     "- Output STRICT JSON only: {\"perspective\": \"<one sentence>\"}. No other keys, no prose.",
-    "- Exactly one sentence. No question. Under 160 characters.",
-    "- Ground it in the provided behavioral concept(s); use concrete behavioral nouns and verbs.",
-    "- Do NOT restate the chosen relationship (self/others/world) or the commitment.",
-    "- BANNED wellness/meditation/motivational language: embrace, nurture, your essence, inner self,",
-    "  steady presence within, connect with yourself, honor your journey, step into your power, trust",
-    "  the process, be present, cultivate, allow yourself, gentle reminder, authentic self, find balance,",
-    "  hold space, radiate, manifest, abundance.",
-    "- Do NOT diagnose, evaluate improvement, praise, flatter, or give an instruction (no 'try', 'remember').",
-    "- Do NOT expose numbers, counts, scores, metrics, ranks, streaks, or any code.",
-    "- The sentence must be hard to reuse for a different evidence set — make it specific to this concept.",
-    "- Observant, calm, restrained; then release the user back into the day.",
+    "- Exactly one sentence. No question. 8–16 words. Under 100 characters. Fits two short lines.",
+    "- Ground it in the provided behavioral concept; concrete behavioral nouns/verbs only.",
+    "- REVEAL a meaning; NEVER tell the user to do anything and NEVER add a second action, habit, ritual,",
+    "  journaling, naming task, breathing, or self-care step.",
+    "- BANNED instruction words: try, remember, consider, practice, regularly, begin by, make sure, focus on,",
+    "  take time, allow yourself, continue to, keep, embrace.",
+    "- BANNED wellness/meditation language: your essence, inner peace, steady anchor, nurture, embrace,",
+    "  daily distractions, authentic self, inner strength, journey, space for yourself, gentle reminder.",
+    "- Do NOT restate the relationship or the commitment; do NOT diagnose; no numbers/scores/codes.",
+    "- Must be hard to reuse for a different user — specific to THIS concept.",
+    "- Observant, restrained, unmistakably grounded; then release the user.",
     `- Write in ${lang}.`,
   ].join("\n");
 
