@@ -44,3 +44,9 @@ export type PairRedeemInput = z.infer<typeof PairRedeemSchema>;
 export const PairMintSchema = z
   .object({ label: z.string().trim().max(60).optional() })
   .optional();
+
+// Guest cancels their own request with the bounded capability issued at submit.
+export const CancelRequestSchema = z.object({
+  token: z.string().trim().min(1).max(512),
+});
+export type CancelRequestInput = z.infer<typeof CancelRequestSchema>;

@@ -93,6 +93,16 @@ export function newArrivals(prevIds: readonly string[], nowIds: readonly string[
   return nowIds.filter((id) => !prev.has(id));
 }
 
+/**
+ * Whether a guest may cancel their own request from its status card. Allowed
+ * only while it is still in line (waiting / up_next). Once it is on stage
+ * (now_playing) or terminal (done / removed / not_found) it can't be cancelled.
+ * The server re-checks the stored status — this mirrors it for the UI.
+ */
+export function canGuestCancel(state: GuestQueueState): boolean {
+  return state === 'waiting' || state === 'up_next';
+}
+
 // ── Guest position resolver ──────────────────────────────────────────────
 // One canonical model of "where am I in line" for a single request, derived
 // from the room's active queue. Presentation-agnostic; the guest client renders

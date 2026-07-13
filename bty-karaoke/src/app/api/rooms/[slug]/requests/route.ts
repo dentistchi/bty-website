@@ -7,6 +7,7 @@ import { parseYoutubeVideoId } from '@/domain/youtube';
 import { CreateRequestSchema } from '@/lib/validation';
 import { addRequest, getPublicRoomBySlug, listActiveRequests } from '@/lib/rooms.server';
 import { requestAcceptance } from '@/lib/sessions.server';
+import { signCancelCapability } from '@/lib/capability.server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -73,12 +74,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     sessionId: acceptance.sessionId,
   });
 
+  // Bounded capability so ONLY this device can later cancel this request.
+  const cancelToken = await signCancelCapability(request.id);
+
   return NextResponse.json(
     {
       ok: true,
       request,
       status,
       activeCount,
+      cancelToken,
       // Back-compat scalar; the canonical live number is `status.position`.
       positionInQueue: status.position,
       message: status.isUpNext ? `You're up next` : `You're #${status.position} in the queue`,

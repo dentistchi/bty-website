@@ -196,6 +196,44 @@ export async function getGuestQueueStatus(
   return resolveGuestStatus(requestId, toOrderEntries(active), target.status);
 }
 
+export type GuestCancelOutcome =
+  | { outcome: 'ok'; status: GuestQueueStatus }
+  | { outcome: 'not_found' }
+  | { outcome: 'not_cancellable'; from: RequestStatus };
+
+/**
+ * Cancel a guest's own request (capability already verified by the caller).
+ * Atomic + status-guarded: ONLY a still-`waiting` row flips to `removed`, so a
+ * song that reached the stage (`playing`) or a terminal state can't be pulled.
+ * Removal drops it from the active queue; every other guest's position then
+ * recomputes from the canonical resolver on their next poll.
+ */
+export async function cancelOwnRequest(
+  roomId: string,
+  requestId: string,
+): Promise<GuestCancelOutcome> {
+  const db = karaokeDb();
+  const { data, error } = await db
+    .from('karaoke_requests')
+    .update({ status: 'removed' })
+    .eq('id', requestId)
+    .eq('room_id', roomId)
+    .eq('status', 'waiting')
+    .select('id')
+    .maybeSingle();
+  if (error) throw error;
+
+  if (data) {
+    const status = await getGuestQueueStatus(roomId, requestId);
+    // status is non-null here (row exists); fall back defensively.
+    return { outcome: 'ok', status: status ?? { requestId, state: 'removed', position: 0, aheadCount: 0, isUpNext: false, isNowPlaying: false } };
+  }
+
+  const cur = await getRequestOrderFields(roomId, requestId);
+  if (!cur) return { outcome: 'not_found' };
+  return { outcome: 'not_cancellable', from: cur.status };
+}
+
 export interface AddRequestArgs {
   roomId: string;
   guestName: string;

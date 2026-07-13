@@ -26,6 +26,7 @@
   --magenta: #ff4d8d;
   --green: #34d399;
   --danger: #ff5c7c;
+  --coral: #ef8f7c; /* restrained cancel tone — never harsh warning red */
 
   /* Back-compat aliases used by existing guest/DJ classes */
   --accent: var(--gold);
@@ -1094,4 +1095,153 @@ main.dj-console {
 }
 .status-actions {
   margin-top: 16px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   GUEST REQUEST FLOW V2 — name-once, request cards, swipe language
+   ══════════════════════════════════════════════════════════════ */
+
+/* Identity — entered once, then a compact row */
+.identity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  margin-bottom: 12px;
+}
+.identity-name {
+  font-size: 0.95rem;
+}
+.identity-name b {
+  color: var(--gold);
+}
+.identity-edit {
+  margin-bottom: 8px;
+}
+
+/* Requestable result cards */
+.result-group {
+  display: grid;
+  gap: 4px;
+}
+.req-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.req-card.reco {
+  background: rgba(255, 255, 255, 0.03);
+  border-style: dashed;
+}
+.req-card .title {
+  font-weight: 600;
+}
+.req-btn {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 10px 15px;
+  border-radius: 12px;
+  font-weight: 800;
+  background: linear-gradient(180deg, var(--gold), var(--gold-2));
+  color: #241a03;
+}
+.more-results {
+  display: block;
+  margin: 8px auto 2px;
+}
+
+/* Related songs — visually distinct from primary results */
+.reco-group {
+  margin-top: 18px;
+}
+.reco-head {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: var(--gold);
+  margin: 6px 2px 10px;
+}
+
+/* ── Swipe language: meaning via tone + icon + label + motion ── */
+.swipe-wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  margin: 4px 0;
+}
+.swipe-reveal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 24px;
+  font-weight: 800;
+  pointer-events: none;
+}
+.swipe-wrap.dir-right .swipe-reveal {
+  justify-content: flex-start; /* exposed on the left as the card moves right */
+}
+.swipe-wrap.dir-left .swipe-reveal {
+  justify-content: flex-end; /* exposed on the right as the card moves left */
+}
+.swipe-wrap.tone-gold .swipe-reveal {
+  background: linear-gradient(90deg, rgba(245, 196, 81, 0.3), rgba(245, 196, 81, 0.1));
+  color: var(--gold);
+}
+.swipe-wrap.tone-coral .swipe-reveal {
+  background: linear-gradient(270deg, rgba(239, 143, 124, 0.28), rgba(239, 143, 124, 0.08));
+  color: var(--coral);
+}
+.swipe-ico {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+.swipe-content {
+  position: relative;
+  touch-action: pan-y; /* vertical scroll stays with the page */
+  will-change: transform;
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease;
+}
+.swipe-content.dragging {
+  transition: box-shadow 0.2s ease; /* follow the finger, no lag */
+}
+.swipe-wrap.tone-gold .swipe-content.armed {
+  box-shadow: var(--ring-gold);
+}
+.swipe-wrap.tone-coral .swipe-content.armed {
+  box-shadow: 0 0 0 1px rgba(239, 143, 124, 0.6);
+}
+
+/* Cancel confirmation + terminal */
+.confirm-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cancel-commit {
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-weight: 800;
+  background: linear-gradient(180deg, #f2a08f, var(--coral));
+  color: #3a120c;
+}
+.cancel-link {
+  color: var(--coral) !important;
+  text-decoration-color: var(--coral);
+}
+.status-card.cancelled {
+  border: 1px solid rgba(239, 143, 124, 0.35);
+  background: linear-gradient(180deg, rgba(239, 143, 124, 0.08), var(--stage-1));
+  border-radius: var(--radius);
+  padding: 18px;
 }

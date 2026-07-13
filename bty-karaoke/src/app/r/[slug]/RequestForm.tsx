@@ -1,10 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { YoutubeSearchItem } from '@/domain/youtube-search';
 import type { GuestQueueStatus } from '@/domain/queue';
+import { rankResults } from '@/domain/youtube-rank';
+import { guestNameKey, normalizeGuestName, isValidGuestName } from '@/domain/guest-identity';
 import GuestStatusCard from './GuestStatusCard';
+import RequestResultCard from './RequestResultCard';
 
 interface Props {
   slug: string;
@@ -18,23 +21,43 @@ interface Submitted {
   artist: string | null;
   guestName: string;
   status: GuestQueueStatus;
+  cancelToken: string | null;
 }
 
 type SearchState = 'idle' | 'searching' | 'done';
 
 export default function RequestForm({ slug, roomOpen }: Props) {
   const router = useRouter();
+
+  // Identity — remembered once per room/device (never authentication).
   const [guestName, setGuestName] = useState('');
+  const [nameLocked, setNameLocked] = useState(false);
+  const [editingName, setEditingName] = useState(true);
+
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<YoutubeSearchItem[]>([]);
-  const [selected, setSelected] = useState<YoutubeSearchItem | null>(null);
+  const [resultQuery, setResultQuery] = useState('');
+  const [showMore, setShowMore] = useState(false);
+  const [recos, setRecos] = useState<YoutubeSearchItem[]>([]);
   const [manualInput, setManualInput] = useState('');
   const [searchState, setSearchState] = useState<SearchState>('idle');
   const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
   const [searchNote, setSearchNote] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [submittingKey, setSubmittingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<Submitted | null>(null);
+
+  // Load the remembered name once.
+  useEffect(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem(guestNameKey(slug)) : null;
+    if (saved && isValidGuestName(saved)) {
+      setGuestName(normalizeGuestName(saved));
+      setNameLocked(true);
+      setEditingName(false);
+    }
+  }, [slug]);
+
+  const ranked = useMemo(() => rankResults(results, resultQuery), [results, resultQuery]);
 
   async function runSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -42,87 +65,121 @@ export default function RequestForm({ slug, roomOpen }: Props) {
     setError(null);
     setSearchState('searching');
     setResults([]);
-    setSelected(null);
+    setRecos([]);
+    setShowMore(false);
     setFallbackUrl(null);
     setSearchNote(null);
     try {
       const res = await fetch(`/api/youtube/search?q=${encodeURIComponent(query.trim())}`);
       const data = await res.json();
       if (!res.ok) {
-        setError(data?.error ?? 'Search failed');
+        setError(data?.error ?? '검색에 실패했어요');
         setSearchState('idle');
         return;
       }
-      setResults(data.items ?? []);
+      const items: YoutubeSearchItem[] = data.items ?? [];
+      setResults(items);
+      setResultQuery(query.trim());
       setFallbackUrl(data.fallbackUrl ?? null);
       if (data.gated) {
-        setSearchNote('Search is being set up. Open YouTube to find your song, or paste a link below.');
+        setSearchNote('검색을 준비 중이에요. YouTube에서 찾거나 아래에 링크를 붙여넣어 주세요.');
       } else if (data.degraded) {
-        setSearchNote('Search is busy right now. Open YouTube instead, or paste a link below.');
-      } else if ((data.items ?? []).length === 0) {
-        setSearchNote('No results. Try different words, or paste a YouTube link below.');
+        setSearchNote('검색이 잠시 붐벼요. YouTube에서 열거나 아래에 링크를 붙여넣어 주세요.');
+      } else if (items.length === 0) {
+        setSearchNote('결과가 없어요. 다른 단어로 검색하거나 아래에 링크를 붙여넣어 주세요.');
       }
       setSearchState('done');
+      void loadRecommendations(items, query.trim());
     } catch {
-      setError('Network error — please try again');
+      setError('네트워크 오류 — 다시 시도해 주세요');
       setSearchState('idle');
     }
   }
 
-  async function submit() {
-    setError(null);
-    setSubmitting(true);
+  // Related songs — best-effort, never blocks the primary results.
+  async function loadRecommendations(items: YoutubeSearchItem[], q: string) {
+    const top = rankResults(items, q).top[0];
+    if (!top) return;
     try {
-      const body: Record<string, unknown> = {
-        guestName,
-        searchQuery: query.trim() || undefined,
-      };
-      if (selected) {
-        body.youtubeVideoId = selected.videoId;
-        body.youtubeTitle = selected.title;
-        body.youtubeChannelTitle = selected.channelTitle;
-        if (selected.thumbnailUrl) body.youtubeThumbnailUrl = selected.thumbnailUrl;
-      } else {
-        body.youtubeInput = manualInput.trim();
-      }
+      const url = `/api/youtube/recommend?title=${encodeURIComponent(top.title)}&channel=${encodeURIComponent(
+        top.channelTitle,
+      )}&videoId=${encodeURIComponent(top.videoId)}`;
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const data = await res.json();
+      setRecos((data.items ?? []).filter((r: YoutubeSearchItem) => r.videoId !== top.videoId));
+    } catch {
+      /* recommendations are optional */
+    }
+  }
 
+  async function submit(
+    payload: Record<string, unknown>,
+    displayTitle: string,
+    displayArtist: string | null,
+    key: string,
+  ) {
+    if (submittingKey) return; // one in-flight request at a time (dedupe)
+    const name = normalizeGuestName(guestName);
+    if (!isValidGuestName(name)) {
+      setEditingName(true);
+      setError('먼저 이름을 입력해 주세요');
+      return;
+    }
+    setSubmittingKey(key);
+    setError(null);
+    try {
       const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/requests`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ guestName: name, searchQuery: resultQuery || undefined, ...payload }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data?.error ?? 'Something went wrong');
+        setError(data?.error ?? '문제가 발생했어요');
         return;
       }
+      window.localStorage.setItem(guestNameKey(slug), name);
+      setGuestName(name);
+      setNameLocked(true);
+      setEditingName(false);
       const req = data.request;
       setSubmitted({
         requestId: req.id,
-        title: req?.youtube_title ?? req?.search_query ?? '신청한 곡',
-        artist: req?.youtube_channel_title ?? null,
-        guestName: req?.guest_name ?? guestName.trim(),
+        title: req?.youtube_title ?? req?.search_query ?? displayTitle,
+        artist: req?.youtube_channel_title ?? displayArtist,
+        guestName: req?.guest_name ?? name,
         status: data.status as GuestQueueStatus,
+        cancelToken: data.cancelToken ?? null,
       });
-      setResults([]);
-      setSelected(null);
-      setManualInput('');
-      setQuery('');
-      setSearchState('idle');
       router.refresh();
     } catch {
-      setError('Network error — please try again');
+      setError('네트워크 오류 — 다시 시도해 주세요');
     } finally {
-      setSubmitting(false);
+      setSubmittingKey(null);
     }
   }
+
+  const requestItem = (item: YoutubeSearchItem) =>
+    submit(
+      {
+        youtubeVideoId: item.videoId,
+        youtubeTitle: item.title,
+        youtubeChannelTitle: item.channelTitle,
+        ...(item.thumbnailUrl ? { youtubeThumbnailUrl: item.thumbnailUrl } : {}),
+      },
+      item.title,
+      item.channelTitle,
+      item.videoId,
+    );
+
+  const requestManual = () =>
+    submit({ youtubeInput: manualInput.trim() }, manualInput.trim(), null, 'manual');
 
   if (!roomOpen) {
     return <div className="banner error">이 방은 닫혀 있어 신청을 받지 않습니다.</div>;
   }
 
-  // After a successful request, the persistent live status card replaces the
-  // form. "다른 곡 신청하기" clears it back to the form for another request.
   if (submitted) {
     return (
       <GuestStatusCard
@@ -132,40 +189,66 @@ export default function RequestForm({ slug, roomOpen }: Props) {
         artist={submitted.artist}
         guestName={submitted.guestName}
         initial={submitted.status}
+        cancelToken={submitted.cancelToken}
         onReset={() => {
           setSubmitted(null);
-          setGuestName('');
+          setResults([]);
+          setRecos([]);
+          setQuery('');
+          setSearchState('idle');
         }}
       />
     );
   }
 
-  const canSubmit = Boolean(guestName.trim() && (selected || manualInput.trim()));
-
   return (
     <div className="card">
       {error && <div className="banner error">{error}</div>}
 
-      <label htmlFor="name">이름</label>
-      <input
-        id="name"
-        type="text"
-        value={guestName}
-        onChange={(e) => setGuestName(e.target.value)}
-        placeholder="예: 지민"
-        maxLength={40}
-      />
+      {/* Identity — entered once, then a compact row */}
+      {nameLocked && !editingName ? (
+        <div className="identity-row">
+          <span className="identity-name">
+            신청자 <b>{guestName}</b>
+          </span>
+          <button type="button" className="linkish" onClick={() => setEditingName(true)}>
+            변경
+          </button>
+        </div>
+      ) : (
+        <div className="identity-edit">
+          <label htmlFor="name">이름</label>
+          <input
+            id="name"
+            type="text"
+            value={guestName}
+            onChange={(e) => setGuestName(e.target.value)}
+            placeholder="예: 한빛"
+            maxLength={40}
+          />
+          {nameLocked && (
+            <button
+              type="button"
+              className="linkish"
+              onClick={() => isValidGuestName(guestName) && setEditingName(false)}
+            >
+              완료
+            </button>
+          )}
+        </div>
+      )}
 
       <form onSubmit={runSearch}>
-        <label htmlFor="q">노래 또는 가수 검색</label>
+        <label htmlFor="q">무슨 노래를 부르고 싶으세요?</label>
         <div className="row" style={{ flexWrap: 'nowrap' }}>
           <input
             id="q"
-            type="text"
+            type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="예: 아이유 밤편지 / IU Blueming"
+            placeholder="노래 제목 또는 가수"
             maxLength={100}
+            autoFocus
           />
           <button type="submit" disabled={query.trim().length < 2 || searchState === 'searching'}>
             {searchState === 'searching' ? '…' : '검색'}
@@ -184,34 +267,48 @@ export default function RequestForm({ slug, roomOpen }: Props) {
         </p>
       )}
 
-      {results.length > 0 && (
-        <div style={{ marginTop: 12 }}>
-          {results.map((r) => {
-            const active = selected?.videoId === r.videoId;
-            return (
-              <button
+      {/* Primary results — best few, directly requestable */}
+      {ranked.top.length > 0 && (
+        <div className="result-group" style={{ marginTop: 12 }}>
+          {ranked.top.map((r) => (
+            <RequestResultCard
+              key={r.videoId}
+              item={r}
+              onRequest={requestItem}
+              pending={submittingKey === r.videoId}
+            />
+          ))}
+
+          {!showMore && ranked.more.length > 0 && (
+            <button type="button" className="linkish more-results" onClick={() => setShowMore(true)}>
+              결과 더 보기 ({ranked.more.length})
+            </button>
+          )}
+          {showMore &&
+            ranked.more.map((r) => (
+              <RequestResultCard
                 key={r.videoId}
-                type="button"
-                className={`result${active ? ' selected' : ''}`}
-                onClick={() => {
-                  setSelected(r);
-                  setManualInput('');
-                }}
-              >
-                {r.thumbnailUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img className="thumb" src={r.thumbnailUrl} alt="" loading="lazy" />
-                ) : (
-                  <div className="thumb placeholder" />
-                )}
-                <div className="grow">
-                  <div className="title">{r.title}</div>
-                  <div className="muted">{r.channelTitle}</div>
-                </div>
-                <div className="pick">{active ? '✓' : ''}</div>
-              </button>
-            );
-          })}
+                item={r}
+                onRequest={requestItem}
+                pending={submittingKey === r.videoId}
+              />
+            ))}
+        </div>
+      )}
+
+      {/* Related songs — visually distinct, same request interaction */}
+      {recos.length > 0 && (
+        <div className="reco-group">
+          <div className="reco-head">이 노래와 잘 어울려요</div>
+          {recos.slice(0, 3).map((r) => (
+            <RequestResultCard
+              key={r.videoId}
+              item={r}
+              onRequest={requestItem}
+              pending={submittingKey === r.videoId}
+              variant="reco"
+            />
+          ))}
         </div>
       )}
 
@@ -220,19 +317,18 @@ export default function RequestForm({ slug, roomOpen }: Props) {
         <input
           type="text"
           value={manualInput}
-          onChange={(e) => {
-            setManualInput(e.target.value);
-            if (e.target.value.trim()) setSelected(null);
-          }}
+          onChange={(e) => setManualInput(e.target.value)}
           placeholder="https://youtu.be/… 또는 dQw4w9WgXcQ"
         />
-      </details>
-
-      <div style={{ marginTop: 16 }}>
-        <button type="button" onClick={submit} disabled={!canSubmit || submitting}>
-          {submitting ? '신청 중…' : '노래 신청하기'}
+        <button
+          type="button"
+          style={{ marginTop: 10 }}
+          onClick={requestManual}
+          disabled={!manualInput.trim() || submittingKey === 'manual'}
+        >
+          {submittingKey === 'manual' ? '신청 중…' : '이 링크로 신청'}
         </button>
-      </div>
+      </details>
     </div>
   );
 }

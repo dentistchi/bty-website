@@ -6,6 +6,7 @@ import {
   selectDjView,
   selectStage,
   newArrivals,
+  canGuestCancel,
   resolveGuestStatus,
   type QueueOrderEntry,
 } from './queue';
@@ -197,5 +198,18 @@ describe('resolveGuestStatus', () => {
     // b was created first → ahead of a; a has exactly one waiting song ahead.
     expect(resolveGuestStatus('b', active, 'waiting').aheadCount).toBe(0);
     expect(resolveGuestStatus('a', active, 'waiting').aheadCount).toBe(1);
+  });
+});
+
+describe('canGuestCancel', () => {
+  it('allows cancel while waiting or up_next', () => {
+    expect(canGuestCancel('waiting')).toBe(true);
+    expect(canGuestCancel('up_next')).toBe(true);
+  });
+  it('forbids cancel once playing or terminal', () => {
+    expect(canGuestCancel('now_playing')).toBe(false);
+    expect(canGuestCancel('done')).toBe(false);
+    expect(canGuestCancel('removed')).toBe(false);
+    expect(canGuestCancel('not_found')).toBe(false);
   });
 });
