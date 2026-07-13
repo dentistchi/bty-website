@@ -5,6 +5,7 @@ import type { DjDevice } from '@/lib/devices.server';
 import type { KaraokeSession } from '@/lib/sessions.server';
 import { PRODUCT_NAME } from '@/lib/brand';
 import { pairingSecondsRemaining, formatCountdown } from '@/domain/pairing';
+import { adminInitFromProbe } from '@/domain/admin-init';
 
 interface Props {
   slug: string;
@@ -49,18 +50,24 @@ export default function AdminConsole({ slug, displayName }: Props) {
 
   const authHeader = useCallback((c: string) => ({ authorization: `Bearer ${c}` }), []);
 
+  // Tri-state (like DjConsole): 401 is a DEFINITIVE reject; anything else is a
+  // transient error we must NOT treat as "not enrolled".
   const loadSession = useCallback(
-    async (c: string): Promise<boolean> => {
-      const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/admin/session`, {
-        headers: authHeader(c),
-        cache: 'no-store',
-      });
-      if (res.status === 401) return false;
-      if (!res.ok) throw new Error('session_failed');
-      const data = await res.json();
-      setSession(data.session ?? null);
-      setStats(data.stats ?? { requests: 0, guests: 0 });
-      return true;
+    async (c: string): Promise<'ok' | 'unauth' | 'neterr'> => {
+      try {
+        const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/admin/session`, {
+          headers: authHeader(c),
+          cache: 'no-store',
+        });
+        if (res.status === 401) return 'unauth';
+        if (!res.ok) return 'neterr';
+        const data = await res.json();
+        setSession(data.session ?? null);
+        setStats(data.stats ?? { requests: 0, guests: 0 });
+        return 'ok';
+      } catch {
+        return 'neterr';
+      }
     },
     [slug, authHeader],
   );
@@ -91,25 +98,45 @@ export default function AdminConsole({ slug, displayName }: Props) {
     setPhase('need-auth');
   }, [slug]);
 
-  // On mount: try a stored admin device token from this phone.
+  // On mount: restore the stored Admin device session. A VALID session always
+  // takes precedence; the PIN form appears ONLY on a definitive 401 or when no
+  // credential is stored. Transient failures retry quietly — never flash the PIN
+  // form (the bug where a slow mobile-Safari /admin/session fetch showed the PIN).
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey(slug)) : null;
     if (!saved) {
       setPhase('need-auth');
       return;
     }
-    loadSession(saved)
-      .then((ok) => {
-        if (ok) {
+    let cancelled = false;
+    (async () => {
+      for (let attempt = 0; attempt < 3 && !cancelled; attempt++) {
+        const decision = adminInitFromProbe(true, await loadSession(saved));
+        if (cancelled) return;
+        if (decision === 'authed') {
           setCred(saved);
           setPhase('authed');
           void loadDevices(saved);
-        } else {
-          window.localStorage.removeItem(storageKey(slug));
-          setPhase('need-auth');
+          return;
         }
-      })
-      .catch(() => setPhase('need-auth'));
+        if (decision === 'need-auth') {
+          window.localStorage.removeItem(storageKey(slug)); // revoked/invalid → clear
+          setPhase('need-auth');
+          return;
+        }
+        // 'retry' — transient; brief backoff, keep the cred, stay on loading.
+        await new Promise((r) => window.setTimeout(r, 400 * (attempt + 1)));
+      }
+      if (cancelled) return;
+      // Still only transient failures: a valid cred takes precedence — enter the
+      // console (polling signs out on a real 401) rather than show the PIN form.
+      setCred(saved);
+      setPhase('authed');
+      void loadDevices(saved);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [slug, loadSession, loadDevices]);
 
   // Ticking clock for the pairing countdown (only while a code is shown).

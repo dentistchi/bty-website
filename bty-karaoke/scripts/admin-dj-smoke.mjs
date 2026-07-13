@@ -44,6 +44,7 @@ ck('DJ token CANNOT mint pairing (admin-only → 401)', (await fetch(api('/admin
 ck('DJ token CANNOT rotate (admin-only → 401)', (await fetch(api('/admin/rotate'), { method: 'POST', headers: bearer(djToken) })).status === 401);
 ck('DJ token CANNOT end the night (admin-only → 401)', (await fetch(api('/admin/session'), { method: 'DELETE', headers: bearer(djToken) })).status === 401);
 ck('DJ token CANNOT list devices (admin-only → 401)', (await fetch(api('/admin/devices'), { headers: bearer(djToken) })).status === 401);
+ck('DJ token CANNOT read admin session (Admin Console gate → 401)', (await fetch(api('/admin/session'), { headers: bearer(djToken) })).status === 401);
 
 // Guest (no token) still fails authorizeDj.
 ck('no-auth /dj/queue → 401', (await fetch(api('/dj/queue'))).status === 401);
