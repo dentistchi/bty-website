@@ -12,6 +12,11 @@ type KeepCopy = {
   saving: string;
   held: string;
   again: string;
+  // Center ↔ Today loop V1 — the RETURN (night) framing. When Center opens and a
+  // keep already exists for today, Center remembers the same anchor rather than
+  // confirming a save. A mirror ("I remember what held you today"), not a coach.
+  remember: string;
+  rememberSub: string;
 };
 
 /**
@@ -27,6 +32,8 @@ const COPY: Record<Locale, KeepCopy> = {
     saving: "Keeping…",
     held: "Held for today.",
     again: "Write another line",
+    remember: "Today you carried",
+    rememberSub: "I remember what held you today.",
   },
   ko: {
     eyebrow: "나와의 관계",
@@ -36,6 +43,8 @@ const COPY: Record<Locale, KeepCopy> = {
     saving: "붙잡는 중…",
     held: "오늘의 한 줄을 붙잡았습니다.",
     again: "다른 한 줄 남기기",
+    remember: "오늘 당신이 품고 온 한 줄",
+    rememberSub: "오늘 당신을 붙잡아 준 것을, 기억합니다.",
   },
 };
 
@@ -60,6 +69,11 @@ export default function CenterKeepRoom({ locale }: { locale: Locale }) {
   const [input, setInput] = useState("");
   const [heldLine, setHeldLine] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Center ↔ Today loop V1: true when Center OPENED onto an already-held anchor (the
+  // return / night path) — remembrance framing. False when the line was authored in
+  // this very session (the save path) — the existing quiet confirmation. Presentation
+  // only; the server keep is the single source of truth either way.
+  const [returned, setReturned] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -73,6 +87,7 @@ export default function CenterKeepRoom({ locale }: { locale: Locale }) {
         if (data?.keptToday && typeof data.line === "string" && data.line.trim()) {
           setHeldLine(data.line);
           setInput(data.line);
+          setReturned(true); // opened onto an existing anchor → the return / night path
           setMode("held");
         } else {
           setMode("writing");
@@ -99,6 +114,7 @@ export default function CenterKeepRoom({ locale }: { locale: Locale }) {
       });
       if (res.ok) {
         setHeldLine(line);
+        setReturned(false); // authored this session → quiet confirmation, not remembrance
         setMode("held");
       }
       // Fail-soft: on a non-ok response, stay in writing mode (button re-enables). No error surface.
@@ -150,13 +166,34 @@ export default function CenterKeepRoom({ locale }: { locale: Locale }) {
       )}
 
       {mode === "held" && (
-        <div data-center-keep-held="" className="flex w-full max-w-[20rem] flex-col items-center">
-          {heldLine ? (
-            <p className="mb-4 max-w-[18rem] text-[1.05rem] leading-7 text-white/85">
-              “{heldLine}”
-            </p>
-          ) : null}
-          <p className="text-[0.85rem] leading-6 text-white/45">{t.held}</p>
+        <div
+          data-center-keep-held=""
+          data-center-remember={returned ? "" : undefined}
+          className="flex w-full max-w-[20rem] flex-col items-center"
+        >
+          {/* Return / night path: Center remembers the SAME anchor Today carried. A quiet
+              "Today you carried" lead + the anchor shown plainly (mirroring Today's Held in
+              Center) + a remembrance closer. Not a save confirmation, not an evaluation. */}
+          {returned ? (
+            <>
+              <span className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-white/40">
+                {t.remember}
+              </span>
+              {heldLine ? (
+                <p className="max-w-[18rem] text-[1.05rem] leading-7 text-white/85">{heldLine}</p>
+              ) : null}
+              <p className="mt-4 text-[0.85rem] leading-6 text-white/45">{t.rememberSub}</p>
+            </>
+          ) : (
+            <>
+              {heldLine ? (
+                <p className="mb-4 max-w-[18rem] text-[1.05rem] leading-7 text-white/85">
+                  “{heldLine}”
+                </p>
+              ) : null}
+              <p className="text-[0.85rem] leading-6 text-white/45">{t.held}</p>
+            </>
+          )}
           <button
             type="button"
             onClick={() => setMode("writing")}

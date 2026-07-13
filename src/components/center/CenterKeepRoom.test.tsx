@@ -102,4 +102,69 @@ describe("CenterKeepRoom (Center Daily Keep, STEP 1A)", () => {
     expect(screen.getByText(/Return to myself with honesty\./)).toBeTruthy();
     expect(document.querySelector("[data-center-keep-input]")).toBeFalsy();
   });
+
+  // Center ↔ Today loop V1 — opening Center onto an already-held anchor is the RETURN
+  // (night) path: Center REMEMBERS the same anchor Today carried. A mirror, not a coach.
+  it("remembers the same anchor (returned-home framing) when Center opens onto today's keep", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({ line: "Live as a child of God", keptToday: true }),
+            { status: 200 },
+          ),
+      ),
+    );
+
+    render(<CenterKeepRoom locale="en" />);
+
+    const held = (await waitFor(() => {
+      const el = document.querySelector("[data-center-keep-held]");
+      expect(el).toBeTruthy();
+      return el as HTMLElement;
+    }));
+
+    // Remembrance framing, not a save confirmation.
+    expect(held.getAttribute("data-center-remember")).toBe("");
+    expect(screen.getByText("Today you carried")).toBeTruthy();
+    expect(screen.getByText("Live as a child of God")).toBeTruthy();
+    expect(screen.getByText("I remember what held you today.")).toBeTruthy();
+    // NOT the save-confirmation copy, and no evaluation/achievement/score language.
+    expect(screen.queryByText("Held for today.")).toBeNull();
+    expect(held.textContent).not.toMatch(/\d|%|score|streak|complete|badge|progress|goal/i);
+  });
+
+  // The SAVE path (authored this session) keeps its quiet confirmation — not remembrance.
+  it("shows the quiet save confirmation (not remembrance) when the line was authored this session", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        const method = init?.method ?? "GET";
+        if (method === "GET") {
+          return new Response(JSON.stringify({ line: null, keptToday: false }), { status: 200 });
+        }
+        return new Response(JSON.stringify({ ok: true, keptToday: true }), { status: 200 });
+      }),
+    );
+
+    render(<CenterKeepRoom locale="en" />);
+
+    const input = (await waitFor(() => {
+      const el = document.querySelector("[data-center-keep-input]");
+      expect(el).toBeTruthy();
+      return el as HTMLTextAreaElement;
+    }));
+    fireEvent.change(input, { target: { value: "Stay honest with myself." } });
+    fireEvent.click(document.querySelector("[data-center-keep-save]")!);
+
+    const held = (await waitFor(() => {
+      const el = document.querySelector("[data-center-keep-held]");
+      expect(el).toBeTruthy();
+      return el as HTMLElement;
+    }));
+    expect(held.getAttribute("data-center-remember")).toBeNull();
+    expect(screen.getByText("Held for today.")).toBeTruthy();
+    expect(screen.queryByText("Today you carried")).toBeNull();
+  });
 });
