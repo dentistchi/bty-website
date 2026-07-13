@@ -20,10 +20,11 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getTodayCommitmentRef } from "@/lib/bty/daily/todayRelationshipCommitment.server";
 import { assembleLivingResponsePacket } from "@/lib/bty/daily/livingResponseEvidence.server";
 import { admitLivingResponse } from "@/domain/daily/livingResponse";
+import { deriveCommitmentFrame, selectProposition } from "@/domain/daily/livingResponseFrame";
 import { generateLivingResponse } from "@/lib/bty/daily/livingResponseGenerate.server";
 import { validateLivingResponse, LIVING_RESPONSE_POLICY_VERSION } from "@/lib/bty/daily/livingResponseValidator";
 import { LIVING_RESPONSE_PROMPT_VERSION } from "@/lib/bty/daily/livingResponsePrompt";
-import { selectFallbackLine } from "@/domain/daily/livingResponseFallback";
+import { selectFallbackLine, selectFrameFallbackLine } from "@/domain/daily/livingResponseFallback";
 import { guardPhrasesFor } from "@/domain/daily/livingResponseGuardPhrases";
 import {
   claimLivingResponse,
@@ -105,9 +106,16 @@ export async function POST(req: NextRequest) {
     }
     // CLAIMED | RECLAIMED → this attempt owns generation.
 
+    // V2.1: the Commitment Frame is derived server-side from the canonical committed relationship
+    // (never from Today Path / Promise text). Identical on every retry/reclaim from the immutable row.
+    const frame = deriveCommitmentFrame(relationship);
+
     const nowIso = now.toISOString();
-    const settleFallback = async (reason: string, fingerprint: string | null, concepts: string[] = []) => {
-      const line = selectFallbackLine(relationship, ref.dayKey, ref.locale, concepts);
+    // Frame-specific deterministic fallback FLOOR (movement-reflecting, replay-stable). Falls back to
+    // the legacy per-relationship line only if the frame is somehow underivable (impossible for a
+    // validated relationship, but never fabricate).
+    const settleFallback = async (reason: string, fingerprint: string | null) => {
+      const line = frame ? selectFrameFallbackLine(frame, ref.locale) : selectFallbackLine(relationship, ref.dayKey, ref.locale);
       return settleLivingResponse(
         admin,
         ref.id,
@@ -117,33 +125,41 @@ export async function POST(req: NextRequest) {
       );
     };
 
-    // Assemble provenance-safe evidence + admit (fail-closed → deterministic fallback, 0 provider calls).
+    // Assemble provenance-safe evidence (incl. derived frame) + admit (fail-closed → 0 provider calls).
     const packet = await assembleLivingResponsePacket(admin, user.id, ref, now);
     const admission = admitLivingResponse(packet);
     if (!admission.eligible) {
-      const response = await settleFallback(admission.reason, packet.evidenceFingerprint, packet.concepts);
+      const response = await settleFallback(admission.reason, packet.evidenceFingerprint);
       return noStore(NextResponse.json({ ok: true, response }, { status: 200 }));
     }
 
-    // ONE admitted generation path.
+    // ONE admitted generation path. Build the ONE authorized proposition + selected angle server-side;
+    // the provider only EXPRESSES it. Angle seed is stable per day+relationship (deterministic replay).
     const recent = await recentPerspectives(admin, user.id);
-    const gen = await generateLivingResponse(packet, { locale: ref.locale, recentTexts: recent });
+    const proposition = selectProposition(
+      packet.commitmentFrame,
+      admission.depth ?? "commitment",
+      admission.qualifyingEvidenceCodes,
+      `${ref.dayKey}:${relationship}`,
+    );
+    const gen = await generateLivingResponse(packet, { locale: ref.locale, recentTexts: recent, proposition });
     if (!gen.ok) {
       const reason = gen.reason === "LLM_UNAVAILABLE" ? "PROVIDER_UNAVAILABLE" : gen.reason === "BAD_JSON" ? "INVALID_OUTPUT" : "PROVIDER_TIMEOUT";
-      const response = await settleFallback(reason, packet.evidenceFingerprint, packet.concepts);
+      const response = await settleFallback(reason, packet.evidenceFingerprint);
       return noStore(NextResponse.json({ ok: true, response }, { status: 200 }));
     }
 
-    // Validate: any rejection (incl. generic wellness / missing evidence anchor) → deterministic
-    // evidence-specific fallback (no looser-retry).
+    // Validate: any rejection (incl. generic wellness / missing frame anchor / historical / contrast)
+    // → deterministic frame-specific fallback (no looser-retry).
     const validation = validateLivingResponse(gen.perspective, {
       relationship,
       guardPhrases: guardPhrasesFor(ref.locale, relationship),
       concepts: packet.concepts,
       recentTexts: recent,
+      proposition,
     });
     if (!validation.ok) {
-      const response = await settleFallback("POLICY_REJECTION", packet.evidenceFingerprint, packet.concepts);
+      const response = await settleFallback("POLICY_REJECTION", packet.evidenceFingerprint);
       return noStore(NextResponse.json({ ok: true, response }, { status: 200 }));
     }
 

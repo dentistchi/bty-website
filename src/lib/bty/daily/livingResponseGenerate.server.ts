@@ -9,6 +9,7 @@
 import { getLlmClient } from "@/lib/bty/llm/client";
 import { buildLivingResponseMessages, LIVING_RESPONSE_PROMPT_VERSION } from "@/lib/bty/daily/livingResponsePrompt";
 import type { LivingResponsePacket } from "@/domain/daily/livingResponse";
+import type { LivingResponseProposition } from "@/domain/daily/livingResponseFrame";
 
 const TIMEOUT_MS = 12_000;
 const MAX_RETRIES = 1;
@@ -34,7 +35,7 @@ function parsePerspective(raw: string | null | undefined): string | null {
 
 export async function generateLivingResponse(
   packet: LivingResponsePacket,
-  opts: { locale: string | null; recentTexts: string[] },
+  opts: { locale: string | null; recentTexts: string[]; proposition: LivingResponseProposition },
 ): Promise<LivingResponseGenerateResult> {
   let client;
   try {

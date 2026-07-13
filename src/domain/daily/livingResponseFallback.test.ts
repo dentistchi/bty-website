@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { FALLBACK_VERSION, selectFallbackLine } from "@/domain/daily/livingResponseFallback";
+import { FALLBACK_VERSION, selectFallbackLine, selectFrameFallbackLine } from "@/domain/daily/livingResponseFallback";
+import { deriveCommitmentFrame, selectProposition } from "@/domain/daily/livingResponseFrame";
+import { validateLivingResponse } from "@/lib/bty/daily/livingResponseValidator";
+import { guardPhrasesFor } from "@/domain/daily/livingResponseGuardPhrases";
 
 describe("selectFallbackLine — deterministic, bounded, safe", () => {
   it("is deterministic for the same relationship + day + version", () => {
@@ -56,5 +59,60 @@ describe("selectFallbackLine — deterministic, bounded, safe", () => {
     const ko = selectFallbackLine("others", "2026-07-12", "ko", ["repair"]);
     expect(ko).toMatch(/[가-힣]/);
     expect(ko).not.toMatch(/\d/);
+  });
+});
+
+describe("selectFrameFallbackLine — V2.1 frame-specific Golden floor", () => {
+  const REL = ["self", "others", "world"] as const;
+
+  it("is deterministic per frame and locale, distinct per frame", () => {
+    const lines = REL.map((r) => selectFrameFallbackLine(deriveCommitmentFrame(r)!, "en"));
+    expect(new Set(lines).size).toBe(3); // one distinct Golden per frame
+    for (const r of REL) {
+      const f = deriveCommitmentFrame(r)!;
+      expect(selectFrameFallbackLine(f, "en")).toBe(selectFrameFallbackLine(f, "en")); // replay-stable
+    }
+  });
+
+  it("provides a KO variant with no digits and no newline", () => {
+    for (const r of REL) {
+      const ko = selectFrameFallbackLine(deriveCommitmentFrame(r)!, "ko");
+      expect(ko).toMatch(/[가-힣]/);
+      expect(ko).not.toMatch(/\d/);
+      expect(ko).not.toContain("\n");
+    }
+  });
+
+  it("every EN Golden fallback PASSES the real validator against its own proposition", () => {
+    for (const r of REL) {
+      const frame = deriveCommitmentFrame(r)!;
+      const line = selectFrameFallbackLine(frame, "en");
+      const proposition = selectProposition(frame, "commitment", [], `2026-07-12:${r}`);
+      const res = validateLivingResponse(line, {
+        relationship: r,
+        guardPhrases: guardPhrasesFor("en", r),
+        concepts: [],
+        recentTexts: [],
+        proposition,
+      });
+      expect(res.violations).toEqual([]);
+      expect(res.ok).toBe(true);
+    }
+  });
+
+  it("every KO Golden fallback PASSES the real validator against its own proposition", () => {
+    for (const r of REL) {
+      const frame = deriveCommitmentFrame(r)!;
+      const line = selectFrameFallbackLine(frame, "ko");
+      const proposition = selectProposition(frame, "commitment", [], `2026-07-12:${r}`);
+      const res = validateLivingResponse(line, {
+        relationship: r,
+        guardPhrases: guardPhrasesFor("ko", r),
+        concepts: [],
+        recentTexts: [],
+        proposition,
+      });
+      expect(res.ok).toBe(true);
+    }
   });
 });

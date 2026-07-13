@@ -10,8 +10,36 @@
  * evidence is insufficient or generation/validation fails.
  */
 import type { LivingResponseRelationship } from "@/domain/daily/livingResponse";
+import type { TodayCommitmentFrame, TodayCommitmentPathId } from "@/domain/daily/livingResponseFrame";
 
 export const FALLBACK_VERSION = "lrfb_v3";
+
+/**
+ * V2.1 frame-specific Golden floor — ONE conservative line per Commitment Frame. It reflects the
+ * frame's MOVEMENT (not history, not contrast, not a paraphrase of the Today Path), is slightly
+ * plainer/safer than a provider line, surfaces a movement/destination anchor so it passes the
+ * validator, and is deterministic. Preferred over the generic relationship set when a frame is known.
+ */
+const FRAME_GOLDEN: Record<TodayCommitmentPathId, { en: string; ko: string }> = {
+  self_return_honestly: {
+    en: "What stays inward begins to take form once it is named honestly.",
+    ko: "안에 머물던 것도 정직하게 이름 붙일 때 형태를 얻습니다.",
+  },
+  others_carry_care: {
+    en: "Care takes real shape only when another person can receive it.",
+    ko: "마음은 상대가 받을 수 있을 때 비로소 형태를 얻습니다.",
+  },
+  world_build_stewardship: {
+    en: "Stewardship becomes real in the form of what is actually built.",
+    ko: "책임은 실제로 짓는 것의 형태로 현실이 됩니다.",
+  },
+};
+
+/** The single deterministic Golden fallback line for a Commitment Frame (replay-stable per frame). */
+export function selectFrameFallbackLine(frame: TodayCommitmentFrame, locale: string | null): string {
+  const g = FRAME_GOLDEN[frame.pathId];
+  return locale === "ko" ? g.ko : g.en;
+}
 
 // Concept → the evidence-specific fallback family it selects (so a fallback still feels grounded).
 const CONCEPT_FAMILY: Record<string, string> = {

@@ -18,6 +18,7 @@ import {
   type LivingResponsePacket,
   type LivingResponseRelationship,
 } from "@/domain/daily/livingResponse";
+import { deriveCommitmentFrame } from "@/domain/daily/livingResponseFrame";
 import { CENTER_KEEP_MARKER } from "@/lib/bty/center/centerKeepService";
 
 const CAP: Record<LivingResponseRelationship, Relationship> = { self: "Self", others: "Others", world: "World" };
@@ -184,14 +185,23 @@ export async function assembleLivingResponsePacket(
   for (const f of facts) for (const c of CONCEPTS_FROM_EVIDENCE_CLASS[f.evidenceClass] ?? []) concepts.add(c);
   if (facts.some((f) => f.evidenceClass === "others_verified_relational_action")) for (const c of familyConcepts) concepts.add(c);
 
+  // V2.1: derive the server-owned Commitment Frame from the canonical committed relationship. Never
+  // reads any Today Path / Promise text — the relationship value alone determines the frame meaning.
+  const commitmentFrame = deriveCommitmentFrame(commitment.relationship);
+  if (!commitmentFrame) {
+    // Impossible for a validated RelationshipValue, but fail closed rather than fabricate a frame.
+    throw new Error("LIVING_RESPONSE_FRAME_UNDERIVABLE");
+  }
+
   return {
     commitmentId: commitment.id,
     userId,
     dayKey: commitment.dayKey,
     relationship: commitment.relationship,
+    commitmentFrame,
     facts,
     concepts: [...concepts],
     prohibitedFieldsPresent: false, // by construction: no raw text/PII column is ever selected
-    evidenceFingerprint: evidenceFingerprint(facts),
+    evidenceFingerprint: evidenceFingerprint(facts, commitmentFrame),
   };
 }

@@ -17,8 +17,62 @@ import { openingPatternOf } from "@/domain/daily/todayMirrorNovelty";
 import { isRestatement } from "@/domain/daily/livingResponseGuardPhrases";
 import { anchorMatcher } from "@/domain/daily/livingResponseConcepts";
 import type { LivingResponseRelationship } from "@/domain/daily/livingResponse";
+import type { LivingResponseProposition } from "@/domain/daily/livingResponseFrame";
 
-export const LIVING_RESPONSE_POLICY_VERSION = "lrpol_v3";
+// Bumped for V2.1 (proposition-aware anchoring + depth markers). Distinguishes V2.1 settled rows.
+export const LIVING_RESPONSE_POLICY_VERSION = "lrpol_v4";
+
+// V2.1 movement + destination anchor patterns (EN + KO). A commitment/repetition line MUST surface at
+// least one of its proposition's requiredAnchors (its movement or destination). This IS the
+// anti-universal rule: a generic aphorism ("clarity / growth / presence / alignment") contains none of
+// these, so it fails MOVEMENT_ANCHOR_MISSING.
+const ANCHOR_PATTERNS: Record<string, RegExp> = {
+  // movements
+  unspoken_to_named: /\b(nam(e|es|ed|ing)|inward|inner|unspoken|honest\w*|take[s]? form|takes shape|into form)\b|이름|안에|내면|정직|또렷|분명|형태/i,
+  private_to_relational: /\b(receiv\w*|another person|someone else|reach(es|ed|ing)?|shared|relational|care|between)\b|상대|다른 사람|곁|받|가 닿|마음/i,
+  decision_to_action: /\b(built?|build\w*|made|make[s]?|shap(e|es|ed|ing)|created?|into (what|the)|actually (built|made))\b|짓|만들|빚|형태|현실|지은/i,
+  // destinations
+  self: /\b(yourself|your own|inward|inner|within you)\b|자신|스스로|내면|안에/i,
+  another_person: /\b(another person|someone|someone else|others?|receive it|they can)\b|상대|다른 사람|이웃|누군가|곁/i,
+  shared_reality: /\b(built?|world|made|created?|what (you )?(make|build)|shared)\b|세상|만든|지은|현실/i,
+};
+
+// Contrast markers — FORBIDDEN at every V2.1 depth (V2.1 never authorizes a previous-vs-today claim).
+const CONTRAST_MARKERS =
+  /\b(no longer|used to|previously|before now|unlike before|has changed|now different|instead of before|once (was|were))\b|더\s*이상|예전|이전엔|전에는|바뀌었|달라졌/i;
+
+// Historical / repetition markers — FORBIDDEN at commitment depth (allowed only at repetition depth).
+const HISTORICAL_MARKERS =
+  /\b(again|repeatedly|keeps? \w+ing|kept \w+ing|as before|each time|over and over|consistently|every day|day after day)\b|다시|계속|반복|매번|여전/i;
+
+// Praise / evaluation — a Living Response observes; it never congratulates or grades the user.
+const PRAISE =
+  /\b(well done|good job|great job|nicely done|so proud|proud of you|you did (great|well|so well)|doing (so |really )?well|impressive|amazing (work|job)|way to go)\b|잘\s*했|훌륭|대단|자랑스/i;
+
+// The Today Path `select` copy (cores, EN + KO) — a Living Response must not paraphrase/restate it.
+// Kept here (not in the shell-mirrored guard set) so this stays a pure LR-validator concern.
+const PATH_PHRASES: Record<LivingResponseRelationship, string[]> = {
+  self: ["Return to yourself with honesty", "정직하게 자신에게 돌아갑니다"],
+  others: ["Carry care into one relationship", "한 관계 안으로 조심스럽게 들어갑니다"],
+  world: ["Build with stewardship today", "맡겨진 것을 오늘도 빚어갑니다"],
+};
+
+// Narrow lexical markers for the proposition-forbidden CLAIMS that have a clear surface form and do
+// NOT collide with any authorized movement/destination anchor (e.g. "another person"/"receive" stay
+// legal for Others). Only claims listed in the proposition's prohibitedClaims are checked.
+const CLAIM_MARKERS: Record<string, RegExp> = {
+  productivity: /\bproductiv\w*|efficien\w*/i,
+  achievement: /\bachiev\w*|accomplish\w*|succe(ed|ss)\w*/i,
+  procrastination: /\bprocrastinat\w*/i,
+  completion: /\b(finish(ed|es|ing)?|completed|all done)\b|완료|끝냈/i,
+  business_result: /\b(revenue|profit|sales)\b|매출|이익/i,
+  repair: /\brepair\w*|mend\w*|fix(ed|es|ing)?\b|고치|바로잡/i,
+  apology: /\bapolog\w*|sorry\b|사과|미안/i,
+  conversation: /\bconversation|talk to|speak to|tell them\b|대화|말을 걸/i,
+  dishonesty: /\bdishonest\w*|\blie[ds]?\b|lying|deceiv\w*/i,
+  avoidance: /\bavoid\w*|escap\w*|evad\w*/i,
+  emotion: /\b(anxious|afraid|scared|sad|angry|depress\w*|ashamed|guilt\w*)\b|불안|두려|슬프|우울/i,
+};
 // Geometry-aligned length contract: short enough to fit the reserved 2-line slot at mobile width,
 // so the line can never grow the card. One sentence, ≤ MAX_WORDS words, ≤ MAX_LEN chars.
 const MAX_LEN = 100;
@@ -83,7 +137,14 @@ export type LivingResponseViolation =
   | "GENERIC_WELLNESS"
   | "INSTRUCTION"
   | "MACHINE_CODE"
-  | "ANCHOR_MISSING";
+  | "ANCHOR_MISSING"
+  // V2.1 proposition-aware
+  | "MOVEMENT_ANCHOR_MISSING" // sentence surfaces neither the authorized movement nor destination
+  | "HISTORICAL_CLAIM" // repetition/history marker at commitment depth
+  | "CONTRAST_CLAIM" // previous-vs-today claim (never authorized in V2.1)
+  | "PATH_PARAPHRASE" // restates/paraphrases the Today Path copy
+  | "PROHIBITED_CLAIM" // surfaces a meaning the proposition explicitly forbids
+  | "PRAISE"; // congratulates or grades the user
 
 const norm = (s: string) => s.toLowerCase().replace(/[\s.,!?—-]+/g, " ").trim();
 
@@ -102,6 +163,10 @@ export type ValidateLivingResponseInput = {
   /** Safe evidence concept anchors from the packet — the line must surface at least one naturally. */
   concepts: string[];
   recentTexts: string[];
+  /** V2.1: the authorized proposition. When present, the line must surface the movement/destination
+   *  anchor (anti-universal), must not carry contrast markers, and — at commitment depth — must not
+   *  carry historical/repetition markers. Absent → legacy V1 validation only. */
+  proposition?: LivingResponseProposition;
 };
 
 export function validateLivingResponse(
@@ -134,13 +199,33 @@ export function validateLivingResponse(
   if (INSTRUCTION.test(t)) v.push("INSTRUCTION");
   if (MACHINE_CODE.test(t)) v.push("MACHINE_CODE");
 
-  // Evidence anchor — the line must surface at least one concept the packet actually supports.
-  const hasAnchor = anchorMatcher(input.concepts)(t);
-  if (input.concepts.length > 0 && !hasAnchor) v.push("ANCHOR_MISSING");
+  // V2.1 proposition-aware checks — the sentence must EXPRESS the authorized meaning, specifically.
+  let hasFrameAnchor = false;
+  if (input.proposition) {
+    // Anti-universal rule: the line must surface the authorized movement OR destination — a generic
+    // aphorism (clarity / growth / presence / alignment) surfaces neither.
+    hasFrameAnchor = input.proposition.requiredAnchors.some((a) => ANCHOR_PATTERNS[a]?.test(t));
+    if (!hasFrameAnchor) v.push("MOVEMENT_ANCHOR_MISSING");
+    // No previous-vs-today claim is ever authorized in V2.1.
+    if (CONTRAST_MARKERS.test(t)) v.push("CONTRAST_CLAIM");
+    // Commitment depth may not lean on repetition/history.
+    if (input.proposition.depth === "commitment" && HISTORICAL_MARKERS.test(t)) v.push("HISTORICAL_CLAIM");
+    // Must not paraphrase the Today Path copy.
+    if (isRestatement(t, PATH_PHRASES[input.relationship])) v.push("PATH_PARAPHRASE");
+    // Must not surface any meaning the proposition explicitly forbids (frame meaning limits, §5).
+    if (input.proposition.prohibitedClaims.some((c) => CLAIM_MARKERS[c]?.test(t))) v.push("PROHIBITED_CLAIM");
+    // A Living Response observes; it never praises.
+    if (PRAISE.test(t)) v.push("PRAISE");
+  }
 
-  // Relevance — satisfied by an explicit relationship anchor OR a packet-derived concept anchor (an
-  // evidence concept IS relationship-derived, so evidence-grounded lines needn't restate the label).
-  if (!RELATIONSHIP_ANCHORS[input.relationship].test(t) && !hasAnchor) v.push("RELATIONSHIP_IRRELEVANT");
+  // Evidence anchor — the line must ground in a packet concept OR (V2.1) the authorized frame anchor.
+  const hasConceptAnchor = anchorMatcher(input.concepts)(t);
+  if (input.concepts.length > 0 && !hasConceptAnchor && !hasFrameAnchor) v.push("ANCHOR_MISSING");
+
+  // Relevance — satisfied by a relationship anchor, a packet concept anchor, OR the frame anchor (the
+  // movement/destination IS relationship-derived, so a frame-grounded line needn't restate the label).
+  const hasAnyAnchor = hasConceptAnchor || hasFrameAnchor;
+  if (!RELATIONSHIP_ANCHORS[input.relationship].test(t) && !hasAnyAnchor) v.push("RELATIONSHIP_IRRELEVANT");
 
   // Must not restate the canonical CTA/benediction (exact + near-restatement).
   if (isRestatement(t, input.guardPhrases)) v.push("RESTATES_GUARD");

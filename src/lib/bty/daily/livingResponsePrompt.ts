@@ -10,72 +10,79 @@
  */
 import type { LlmChatMessage } from "@/lib/bty/llm/client";
 import type { LivingResponsePacket } from "@/domain/daily/livingResponse";
+import type {
+  LivingResponseProposition,
+  LivingResponseMovement,
+  LivingResponseDestination,
+  LivingResponseAngle,
+} from "@/domain/daily/livingResponseFrame";
 
-export const LIVING_RESPONSE_PROMPT_VERSION = "lrprompt_v3";
+// V2.1: expression-only. The provider no longer "reveals deeper meaning"; it renders the authorized
+// proposition in one sentence, at one angle. Prompt version bumped so V1.x settled rows are distinct.
+export const LIVING_RESPONSE_PROMPT_VERSION = "lrprompt_v4";
 
-// Human, non-code phrasing for each concept — the model anchors to these, never to the token.
-const CONCEPT_HINT: Record<string, string> = {
-  ownership: "owning / taking responsibility",
-  accountability: "answering for what one does",
-  repair: "repairing / addressing what was avoided",
-  directness: "being direct / saying it clearly",
-  communication: "putting it into a conversation",
-  truth: "naming what is true",
-  naming: "naming one thing clearly",
-  follow_through: "following through / finishing",
-  change: "a real change",
-  consistency: "steadiness / returning again",
-  return: "returning / beginning again",
-  regard: "how one is seen by others",
+// Human, non-code phrasing for the movement the sentence must make visible.
+const MOVEMENT_HINT: Record<LivingResponseMovement, string> = {
+  unspoken_to_named: "an inward reality taking clear, honest form as it is named",
+  private_to_relational: "care moving out of privacy so another person can actually receive it",
+  decision_to_action: "responsibility taking form in what is actually built",
 };
 
-const FRAME: Record<string, string> = {
-  self: "the user's relationship with themselves (returning to themselves)",
-  others: "the user's relationship with the people around them (being there for someone)",
-  world: "the user's relationship with the world (moving what matters forward)",
+const DESTINATION_HINT: Record<LivingResponseDestination, string> = {
+  self: "the user's own inward ground (no other person involved)",
+  another_person: "one other person who can receive it",
+  shared_reality: "the shared, made, external reality",
+};
+
+// One selected angle — the single lens the sentence takes. The provider gets exactly one.
+const ANGLE_HINT: Record<LivingResponseAngle, string> = {
+  boundary: "the moment it crosses from inside into reality",
+  visibility: "how it becomes visible / takes form",
+  consequence: "what becomes possible once it lands",
+  continuity: "that it holds by being returned to, not that today is different",
 };
 
 export function buildLivingResponseMessages(
   packet: LivingResponsePacket,
-  opts: { locale: string | null; recentTexts: string[] },
+  opts: { locale: string | null; recentTexts: string[]; proposition: LivingResponseProposition },
 ): LlmChatMessage[] {
   const lang = opts.locale === "ko" ? "Korean" : "English";
-  const conceptHints = packet.concepts.map((c) => CONCEPT_HINT[c] ?? c);
+  const p = opts.proposition;
 
   const system = [
-    "You write ONE quiet 'Living Response' — a single evidence-grounded PERSPECTIVE that reveals one",
-    "deeper meaning already present in the user's commitment and evidence. It is NOT advice, coaching,",
-    "instruction, diagnosis, encouragement, summary, restatement, or affirmation.",
-    "The relationship the user chose is the FRAME — do NOT restate or explain it.",
-    "",
-    "Target form (structure only, do NOT copy verbatim):",
-    "  \"X becomes visible when it reaches another person.\"",
-    "  \"What changes within becomes real when it enters a conversation.\"",
-    "  \"Ownership changes shape when someone else can experience it.\"",
+    "You render ONE quiet 'Living Response': you EXPRESS an already-decided meaning in a single sentence.",
+    "You do NOT create, reveal, deepen, or add meaning. You do NOT analyze the user. It is NOT advice,",
+    "coaching, instruction, diagnosis, encouragement, praise, summary, restatement, or affirmation.",
+    "The chosen relationship is the FRAME — do NOT restate or explain it, and do NOT paraphrase the",
+    "commitment wording.",
     "",
     "Hard rules:",
     "- Output STRICT JSON only: {\"perspective\": \"<one sentence>\"}. No other keys, no prose.",
     "- Exactly one sentence. No question. 8–16 words. Under 100 characters. Fits two short lines.",
-    "- Ground it in the provided behavioral concept; concrete behavioral nouns/verbs only.",
-    "- REVEAL a meaning; NEVER tell the user to do anything and NEVER add a second action, habit, ritual,",
-    "  journaling, naming task, breathing, or self-care step.",
-    "- BANNED instruction words: try, remember, consider, practice, regularly, begin by, make sure, focus on,",
-    "  take time, allow yourself, continue to, keep, embrace.",
+    "- Use ONLY the supplied meaning and the ONE angle below. Add nothing not given.",
+    "- Concrete behavioral nouns/verbs only — the sentence must surface the movement or destination,",
+    "  not a generic abstraction (clarity, growth, presence, intention, alignment, awareness).",
+    "- NEVER tell the user to do anything; NEVER add a second action, habit, ritual, journaling,",
+    "  naming task, breathing, or self-care step.",
+    "- Make NO claim about the past, about repetition, or about today being different (no contrast).",
+    "- BANNED instruction words: try, remember, consider, practice, regularly, begin by, make sure,",
+    "  focus on, take time, allow yourself, continue to, keep, embrace.",
     "- BANNED wellness/meditation language: your essence, inner peace, steady anchor, nurture, embrace,",
-    "  daily distractions, authentic self, inner strength, journey, space for yourself, gentle reminder.",
-    "- Do NOT restate the relationship or the commitment; do NOT diagnose; no numbers/scores/codes.",
-    "- Must be hard to reuse for a different user — specific to THIS concept.",
-    "- Observant, restrained, unmistakably grounded; then release the user.",
+    "  authentic self, inner strength, journey, space for yourself, gentle reminder.",
+    "- No numbers, scores, codes, names. Observant and restrained; then release the user.",
     `- Write in ${lang}.`,
   ].join("\n");
 
   const user = [
-    `Committed relationship frame (do not restate): ${FRAME[packet.relationship] ?? packet.relationship}.`,
-    conceptHints.length
-      ? `Ground the perspective in this behavioral evidence concept: ${conceptHints.join("; ")}.`
-      : "Evidence is thin; keep it concrete and non-generic.",
+    `Express this authorized meaning about ${p.subject}: ${MOVEMENT_HINT[p.movement]}.`,
+    `Where it lands: ${DESTINATION_HINT[packet.commitmentFrame.destination]}.`,
+    `Take exactly this one angle: ${ANGLE_HINT[p.angle]}.`,
+    `Ground the wording in these words (weave, do not list): ${p.meaningTokens.join(", ")}.`,
+    p.prohibitedClaims.length
+      ? `Do not imply any of: ${p.prohibitedClaims.join(", ")}.`
+      : "",
     opts.recentTexts.length
-      ? `Avoid repeating the phrasing/opening of these recent lines: ${opts.recentTexts.slice(0, 3).map((t) => `"${t}"`).join("; ")}.`
+      ? `Do not repeat the opening/shape of these recent lines: ${opts.recentTexts.slice(0, 3).map((t) => `"${t}"`).join("; ")}.`
       : "",
     "Return only the JSON object.",
   ]

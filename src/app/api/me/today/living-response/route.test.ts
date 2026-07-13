@@ -6,6 +6,7 @@
 import { NextRequest } from "next/server";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { evidenceFingerprint, type LivingResponsePacket } from "@/domain/daily/livingResponse";
+import { deriveCommitmentFrame } from "@/domain/daily/livingResponseFrame";
 
 const mockGetUser = vi.fn();
 const mockGetAdmin = vi.fn();
@@ -31,9 +32,11 @@ vi.mock("@/lib/bty/daily/livingResponse.server", () => ({
 
 import { GET, POST } from "./route";
 
-const packet = (facts: LivingResponsePacket["facts"], relationship: "self" | "others" | "world" = "self", concepts: string[] = []): LivingResponsePacket => ({
-  commitmentId: "c1", userId: "user-1", dayKey: "2026-07-12", relationship, facts, concepts, prohibitedFieldsPresent: false, evidenceFingerprint: evidenceFingerprint(facts),
+const packet = (facts: LivingResponsePacket["facts"], relationship: "self" | "others" | "world" = "self", concepts: string[] = [], over: Partial<LivingResponsePacket> = {}): LivingResponsePacket => ({
+  commitmentId: "c1", userId: "user-1", dayKey: "2026-07-12", relationship, commitmentFrame: deriveCommitmentFrame(relationship)!, facts, concepts, prohibitedFieldsPresent: false, evidenceFingerprint: evidenceFingerprint(facts, deriveCommitmentFrame(relationship)!), ...over,
 });
+// A V2.1 commitment/repetition line that passes the real validator (surfaces movement + destination).
+const VALID_SELF_LINE = "What remains inward gains form when it can be named honestly.";
 const strongSelf = packet([{ id: "f", code: "SELF_RETURN_STRONG", relationship: "self", evidenceClass: "self_return_continuity", confidence: "high", provenanceIds: ["d1", "d2", "d3", "d4"] }], "self", ["return", "consistency"]);
 const settledView = (status: string, perspective: string, source: string) => ({ status, relationship: "self", perspective, source, confidence: source === "generated" ? "grounded" : "limited" });
 
@@ -92,10 +95,22 @@ describe("/api/me/today/living-response", () => {
     expect(mockGenerate).not.toHaveBeenCalled();
   });
 
-  it("CLAIMED + ineligible (no facts) → fallback, ZERO provider calls", async () => {
+  it("CLAIMED + commitment depth (valid frame, no facts) → ONE provider call, generated", async () => {
     authed();
     mockClaim.mockResolvedValue("CLAIMED");
-    mockAssemble.mockResolvedValue(packet([]));
+    mockAssemble.mockResolvedValue(packet([])); // frame present, no historical facts → commitment depth
+    mockGenerate.mockResolvedValue({ ok: true, perspective: VALID_SELF_LINE, modelVersion: "m", promptVersion: "p" });
+    const res = await POST(post());
+    const d = await res.json();
+    expect(mockGenerate).toHaveBeenCalledTimes(1); // commitment-depth generation IS authorized in V2.1
+    expect(d.response.status).toBe("ready");
+    expect(d.response.source).toBe("generated");
+  });
+
+  it("CLAIMED + fail-closed (prohibited fields) → fallback, ZERO provider calls", async () => {
+    authed();
+    mockClaim.mockResolvedValue("CLAIMED");
+    mockAssemble.mockResolvedValue(packet([], "self", [], { prohibitedFieldsPresent: true }));
     const res = await POST(post());
     const d = await res.json();
     expect(d.response.status).toBe("fallback");
@@ -106,7 +121,7 @@ describe("/api/me/today/living-response", () => {
     authed();
     mockClaim.mockResolvedValue("CLAIMED");
     mockAssemble.mockResolvedValue(strongSelf);
-    mockGenerate.mockResolvedValue({ ok: true, perspective: "Returning to yourself is quiet work, and it still counts.", modelVersion: "m", promptVersion: "p" });
+    mockGenerate.mockResolvedValue({ ok: true, perspective: VALID_SELF_LINE, modelVersion: "m", promptVersion: "p" });
     const res = await POST(post());
     const d = await res.json();
     expect(mockGenerate).toHaveBeenCalledTimes(1);
