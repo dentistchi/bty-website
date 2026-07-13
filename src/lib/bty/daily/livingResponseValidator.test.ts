@@ -129,3 +129,21 @@ describe("count rejection (Arabic / EN number-words / KO 수사)", () => {
     expect(koOk("세 번 나에게 돌아왔습니다").violations).toContain("COUNT_EXPRESSION");
   });
 });
+
+describe("Living Memory V0 — memory-exposure rejection (continuity felt, never named)", () => {
+  it("rejects explicit memory/time references", () => {
+    expect(ok("Yesterday you returned, and today you name it again.").violations).toContain("MEMORY_EXPOSURE");
+    expect(ok("The last time was quieter than what you name inward now.").violations).toContain("MEMORY_EXPOSURE");
+    expect(ok("What you named previously is inward and taking form.").violations).toContain("MEMORY_EXPOSURE");
+    expect(ok("I remember your inward return taking honest form.").violations).toContain("MEMORY_EXPOSURE");
+    const koOk = (t: string) => validateLivingResponse(t, { relationship: "self", guardPhrases: guardsKo, concepts: SELF_CONCEPTS, recentTexts: [] });
+    expect(koOk("어제 돌아온 자리를 오늘 다시 이름 붙입니다").violations).toContain("MEMORY_EXPOSURE");
+  });
+  it("does NOT reject 'again' as memory exposure (trajectory/repetition legitimately authorizes it)", () => {
+    // 'again' can still be blocked by HISTORICAL_CLAIM at commitment depth, but never as MEMORY_EXPOSURE.
+    expect(ok("You come back again to what stays inward.").violations).not.toContain("MEMORY_EXPOSURE");
+  });
+  it("a clean continuity-shaped line that names nothing passes memory check", () => {
+    expect(ok("What stays inward takes honest form as you name it.").violations).not.toContain("MEMORY_EXPOSURE");
+  });
+});

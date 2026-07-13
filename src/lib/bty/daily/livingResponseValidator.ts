@@ -20,8 +20,17 @@ import type { LivingResponseRelationship } from "@/domain/daily/livingResponse";
 import type { LivingResponseProposition } from "@/domain/daily/livingResponseFrame";
 
 // V2.2: adds user-interpretation rejection + repetition grounding. V2.3: adds trajectory grounding
-// (commitment-sequence shape) + non-judgment guards. Bumped from lrpol_v5.
-export const LIVING_RESPONSE_POLICY_VERSION = "lrpol_v6";
+// (commitment-sequence shape) + non-judgment guards. Living Memory V0: adds memory-exposure rejection
+// (continuity must be felt, never named). Bumped from lrpol_v6.
+export const LIVING_RESPONSE_POLICY_VERSION = "lrpol_v7";
+
+// Living Memory V0 — the response may be SHAPED by yesterday, but must never EXPOSE that it read the
+// past. Reject explicit memory/time-reference words. NOTE: "again" is intentionally NOT here — it is
+// already context-gated (blocked at commitment depth via HISTORICAL_MARKERS; authorized only when a
+// V2.3 recurrence trajectory/repetition legitimately expresses it), so banning it here would regress
+// the shipped continuity layer.
+const MEMORY_EXPOSURE =
+  /\byesterday\b|\b(the )?last time\b|\bpreviously\b|\bthe day before\b|\bearlier (this week|today)\b|\bdays? ago\b|\bback then\b|\bI (remember|recall)\b|어제|지난번|예전에|기억(하|해|나)|지난 며칠/i;
 
 // V2.2 — user-level interpretation: a Living Response describes the action relationship, never the
 // user's identity, character, values, motive, emotion, stable tendency, or growth. Unconditional (a
@@ -197,8 +206,10 @@ export type LivingResponseViolation =
   | "USER_INTERPRETATION" // claims identity/character/values/motive/emotion/tendency/growth
   | "REPETITION_ANCHOR_MISSING" // repetition depth but no provenance-backed recurrence expressed
   // V2.3
-  | "TRAJECTORY_ANCHOR_MISSING"; // trajectory present but the sequence shape is not expressed (or a
+  | "TRAJECTORY_ANCHOR_MISSING" // trajectory present but the sequence shape is not expressed (or a
                                  // beginning/widening shape wrongly carries a recurrence marker)
+  // Living Memory V0
+  | "MEMORY_EXPOSURE"; // explicitly names/reads the past (yesterday, last time, I remember, …)
 
 const norm = (s: string) => s.toLowerCase().replace(/[\s.,!?—-]+/g, " ").trim();
 
@@ -254,6 +265,8 @@ export function validateLivingResponse(
   if (MACHINE_CODE.test(t)) v.push("MACHINE_CODE");
   // V2.2 — never interpret the user (identity/character/values/motive/emotion/tendency/growth).
   if (USER_INTERPRETATION.test(t)) v.push("USER_INTERPRETATION");
+  // Living Memory V0 — continuity may shape the line but must never be NAMED (yesterday / last time / …).
+  if (MEMORY_EXPOSURE.test(t)) v.push("MEMORY_EXPOSURE");
 
   // V2.1 proposition-aware checks — the sentence must EXPRESS the authorized meaning, specifically.
   let hasFrameAnchor = false;

@@ -21,6 +21,7 @@ import {
 import { deriveCommitmentFrame } from "@/domain/daily/livingResponseFrame";
 import { classifyTrajectory } from "@/domain/daily/livingResponseTrajectory";
 import { recentCommitments } from "@/lib/bty/daily/todayRelationshipCommitment.server";
+import { readYesterdayContext } from "@/lib/bty/daily/livingResponseYesterday.server";
 import { CENTER_KEEP_MARKER } from "@/lib/bty/center/centerKeepService";
 
 const CAP: Record<LivingResponseRelationship, Relationship> = { self: "Self", others: "Others", world: "World" };
@@ -201,6 +202,9 @@ export async function assembleLivingResponsePacket(
   const history = await recentCommitments(admin, userId, commitment.dayKey);
   const trajectory = classifyTrajectory(commitment.relationship, commitment.dayKey, history);
 
+  // Living Memory V0 — hidden yesterday continuity context (provenance-safe; fail-soft → { existed:false }).
+  const yesterday = await readYesterdayContext(admin, userId, commitment.dayKey);
+
   return {
     commitmentId: commitment.id,
     userId,
@@ -210,6 +214,7 @@ export async function assembleLivingResponsePacket(
     facts,
     concepts: [...concepts],
     trajectory,
+    yesterday,
     prohibitedFieldsPresent: false, // by construction: no raw text/PII column is ever selected
     evidenceFingerprint: evidenceFingerprint(facts, commitmentFrame),
   };

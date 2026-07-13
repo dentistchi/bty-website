@@ -40,6 +40,21 @@ export type LivingResponseEvidenceClass = (typeof LIVING_RESPONSE_EVIDENCE_CLASS
 export type FactConfidence = "low" | "medium" | "high";
 export type ResponseConfidence = "grounded" | "limited";
 
+/**
+ * Living Memory V0 — yesterday's context, read-only, provenance-safe (relationship enum + BTY's own
+ * prior generated line + a presence boolean; NEVER user PII / action text / letter body). Passed into
+ * the provider ONLY as HIDDEN continuity: it may shape today's wording, but the output must never
+ * mention/quote it (the person should FEEL continuity, never READ it). Absent day → { existed:false }.
+ */
+export type LivingResponseYesterday = {
+  existed: boolean;
+  relationship: LivingResponseRelationship | null;
+  /** BTY's own prior settled line (not user text), or null if none/pending. Continuity + do-not-echo. */
+  livingResponse: string | null;
+  /** Presence proxy — the user returned yesterday (a user_day row existed). null = unknown/degraded. */
+  completed: boolean | null;
+};
+
 /** A canonical, provenance-anchored evidence fact. Carries ONLY machine codes — never raw text. */
 export type LivingResponseEvidenceFact = {
   /** Stable id within the packet, e.g. "fact:self_return_continuity". */
@@ -71,6 +86,9 @@ export type LivingResponsePacket = {
    *  the canonical Today-internal commitment history ONLY; never diagnosis/metrics/identity. Optional:
    *  absent when history is unreadable → the response simply falls back to frame/repetition behavior. */
   trajectory?: LivingResponseTrajectory;
+  /** Living Memory V0 — hidden yesterday continuity context (provenance-safe). Optional: absent/degraded
+   *  reads contribute nothing (→ no continuity hint; the response is unchanged from today-only). */
+  yesterday?: LivingResponseYesterday;
   prohibitedFieldsPresent: boolean;
   evidenceFingerprint: string;
 };

@@ -20,9 +20,9 @@ import type {
 import type { LivingResponseTrajectoryKind } from "@/domain/daily/livingResponseTrajectory";
 
 // V2.1: expression-only. V2.2: adds the repetition relationship at repetition depth. V2.3: adds the
-// Living Continuity trajectory (commitment-sequence shape). Version bumped so earlier settled rows
-// stay distinct.
-export const LIVING_RESPONSE_PROMPT_VERSION = "lrprompt_v6";
+// Living Continuity trajectory (commitment-sequence shape). Living Memory V0: adds hidden yesterday
+// context (never named). Version bumped so earlier settled rows stay distinct.
+export const LIVING_RESPONSE_PROMPT_VERSION = "lrprompt_v7";
 
 // V2.3 — human phrasing for the commitment-sequence TRAJECTORY. Describes the SHAPE of today against
 // recent days ONLY. Never a judgment, an absolute, an identity claim, or a count. The provider states
@@ -93,6 +93,10 @@ export function buildLivingResponseMessages(
     "- BANNED wellness/meditation language: your essence, inner peace, steady anchor, nurture, embrace,",
     "  authentic self, inner strength, journey, space for yourself, gentle reminder.",
     "- No numbers, scores, codes, names. Observant and restrained; then release the user.",
+    // Living Memory V0 — continuity may shape the wording but must NEVER be named or exposed.
+    "- NEVER reveal that any earlier day informed this. BANNED memory words: yesterday, last time, the",
+    "  last time, previously, the day before, earlier this week, days ago, I remember, I recall. The",
+    "  person should FEEL the thread, never READ it.",
     `- Write in ${lang}.`,
   ].join("\n");
 
@@ -117,6 +121,10 @@ export function buildLivingResponseMessages(
       : "",
     opts.recentTexts.length
       ? `Do not repeat the opening/shape of these recent lines: ${opts.recentTexts.slice(0, 3).map((t) => `"${t}"`).join("; ")}.`
+      : "",
+    // Living Memory V0 — HIDDEN yesterday context. Shapes wording only; never named/quoted (system rule).
+    packet.yesterday?.existed
+      ? `Hidden continuity (background ONLY — never mention, name, quote, or reference it): the prior focus was ${packet.yesterday.relationship ?? "unclear"}${packet.yesterday.completed === false ? ", left unfinished" : packet.yesterday.completed ? ", carried through" : ""}.${packet.yesterday.livingResponse ? ` The prior line read: "${packet.yesterday.livingResponse}" — do NOT echo, quote, or paraphrase it; simply let today move on from it.` : ""} Let this quietly influence today's wording; the person must FEEL the thread, never READ it.`
       : "",
     "Return only the JSON object.",
   ]
