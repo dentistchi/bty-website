@@ -23,8 +23,9 @@ export const CreateRequestSchema = z
 export type CreateRequestInput = z.infer<typeof CreateRequestSchema>;
 
 // The DJ credential now travels in the Authorization header, not the body.
+// 'move_next' (먼저 부르기) is a reorder, not a status change — handled separately.
 export const DjActionSchema = z.object({
-  action: z.enum(['play', 'complete', 'skip']),
+  action: z.enum(['play', 'complete', 'skip', 'remove', 'move_next']),
 });
 export type DjActionInput = z.infer<typeof DjActionSchema>;
 

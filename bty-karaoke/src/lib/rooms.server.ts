@@ -9,6 +9,7 @@ import {
   ACTIVE_STATUSES,
   isValidTransition,
   nextPosition,
+  frontPosition,
   resolveGuestStatus,
   type DjAction,
   type GuestQueueStatus,
@@ -296,6 +297,7 @@ const NEXT_STATUS: Record<DjAction, RequestStatus> = {
   play: 'playing',
   complete: 'completed',
   skip: 'skipped',
+  remove: 'removed',
 };
 
 export type DjTransition =
@@ -324,13 +326,57 @@ export async function setRequestStatus(
   if (!isValidTransition(from, action)) return { outcome: 'invalid', from };
 
   const patch: Record<string, unknown> = { status: NEXT_STATUS[action] };
-  if (action !== 'skip') patch[NOW_COLUMN[action]] = new Date().toISOString();
+  if (action === 'play' || action === 'complete') {
+    patch[NOW_COLUMN[action]] = new Date().toISOString();
+  }
 
   const { data, error } = await db
     .from('karaoke_requests')
     .update(patch)
     .eq('id', requestId)
     .eq('room_id', roomId)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return { outcome: 'ok', request: data as KaraokeRequest };
+}
+
+/**
+ * "먼저 부르기" — move a still-waiting request to the FRONT of the waiting line
+ * by giving it a position one before the smallest active position. A narrow,
+ * single-row update: the playing song is untouched, no full renumber, and the
+ * canonical resolver orders this request ahead of every other waiting song.
+ * Status-guarded (only from `waiting`) so a playing/terminal request can't move.
+ */
+export async function moveToNextWaiting(
+  roomId: string,
+  requestId: string,
+): Promise<DjTransition> {
+  const db = karaokeDb();
+
+  const active = await listActiveRequests(roomId);
+  const target = active.find((r) => r.id === requestId);
+  if (!target) {
+    // Not active — distinguish not-found vs wrong-state for a truthful result.
+    const { data: cur } = await db
+      .from('karaoke_requests')
+      .select('status')
+      .eq('id', requestId)
+      .eq('room_id', roomId)
+      .maybeSingle();
+    if (!cur) return { outcome: 'not_found' };
+    return { outcome: 'invalid', from: cur.status as RequestStatus };
+  }
+  if (target.status !== 'waiting') return { outcome: 'invalid', from: target.status };
+
+  const newPosition = frontPosition(active.map((r) => r.position));
+
+  const { data, error } = await db
+    .from('karaoke_requests')
+    .update({ position: newPosition })
+    .eq('id', requestId)
+    .eq('room_id', roomId)
+    .eq('status', 'waiting')
     .select('*')
     .single();
   if (error) throw error;

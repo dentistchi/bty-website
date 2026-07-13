@@ -131,7 +131,7 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
     else setReconnecting(r === 'neterr');
   }, [cred, loadQueue]);
 
-  async function mutate(id: string, action: 'play' | 'complete' | 'skip') {
+  async function mutate(id: string, action: 'play' | 'complete' | 'skip' | 'remove' | 'move_next') {
     if (!cred) return;
     setError(null);
     setBusy(true);
@@ -276,7 +276,8 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
       dev={dev}
       onStart={(id) => mutate(id, 'play')}
       onFinish={(id) => mutate(id, 'complete')}
-      onSkip={(id) => mutate(id, 'skip')}
+      onMoveNext={(id) => mutate(id, 'move_next')}
+      onRemove={(id) => mutate(id, 'remove')}
       onRefresh={refresh}
       onDisconnect={disconnectManual}
     />

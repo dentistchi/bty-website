@@ -23,7 +23,7 @@ export function positionInQueue(
   return idx === -1 ? 0 : idx + 1;
 }
 
-export type DjAction = 'play' | 'complete' | 'skip';
+export type DjAction = 'play' | 'complete' | 'skip' | 'remove';
 
 /** DJ state machine: play only from waiting, complete only from playing. */
 export function isValidTransition(status: RequestStatus, action: DjAction): boolean {
@@ -34,9 +34,23 @@ export function isValidTransition(status: RequestStatus, action: DjAction): bool
       return status === 'playing';
     case 'skip':
       return status === 'waiting' || status === 'playing';
+    case 'remove':
+      // "곡 빼기" — only a still-waiting song; never the one on stage.
+      return status === 'waiting';
     default:
       return false;
   }
+}
+
+/**
+ * The position that places a request at the FRONT of the waiting line — one
+ * before the smallest active position. "먼저 부르기" uses this: a narrow
+ * single-row update (no full renumber) that the canonical resolver orders
+ * ahead of every other waiting song, while the playing song stays on stage.
+ */
+export function frontPosition(activePositions: readonly number[]): number {
+  if (activePositions.length === 0) return 1;
+  return Math.min(...activePositions) - 1;
 }
 
 export interface QueueEntry {

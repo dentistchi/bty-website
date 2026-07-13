@@ -7,16 +7,25 @@ interface Props {
   item: YoutubeSearchItem;
   onRequest: (item: YoutubeSearchItem) => void;
   pending: boolean;
+  /** Briefly true right after a successful request — shows "✓ 신청됨". */
+  requested?: boolean;
   variant?: 'primary' | 'reco';
 }
 
 // A requestable song card. Right-swipe reveals the gold 🎤 신청하기 surface; the
 // always-visible "신청" button triggers the exact same action for discoverability
 // and accessibility. Both feel like placing the song onto the stage.
-export default function RequestResultCard({ item, onRequest, pending, variant = 'primary' }: Props) {
+export default function RequestResultCard({
+  item,
+  onRequest,
+  pending,
+  requested = false,
+  variant = 'primary',
+}: Props) {
   const act = () => {
     if (!pending) onRequest(item);
   };
+  const label = pending ? '신청 중…' : requested ? '✓ 신청됨' : '신청 →';
   return (
     <SwipeableCard
       direction="right"
@@ -39,12 +48,12 @@ export default function RequestResultCard({ item, onRequest, pending, variant = 
         </div>
         <button
           type="button"
-          className="req-btn"
+          className={`req-btn${requested ? ' done' : ''}`}
           onClick={act}
           disabled={pending}
           aria-label={`${item.title} 신청하기`}
         >
-          {pending ? '신청 중…' : '신청 →'}
+          {label}
         </button>
       </div>
     </SwipeableCard>

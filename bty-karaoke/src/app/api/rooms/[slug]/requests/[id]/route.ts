@@ -9,6 +9,7 @@ import {
   getGuestQueueStatus,
   getPublicRoomBySlug,
   setRequestStatus,
+  moveToNextWaiting,
 } from '@/lib/rooms.server';
 
 export const dynamic = 'force-dynamic';
@@ -54,13 +55,19 @@ export async function PATCH(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const result = await setRequestStatus(auth.room.id, id, parsed.data.action);
+  const action = parsed.data.action;
+  // 'move_next' (먼저 부르기) is a reorder; the rest are status transitions.
+  const result =
+    action === 'move_next'
+      ? await moveToNextWaiting(auth.room.id, id)
+      : await setRequestStatus(auth.room.id, id, action);
+
   if (result.outcome === 'not_found') {
     return NextResponse.json({ error: 'Request not found in this room' }, { status: 404 });
   }
   if (result.outcome === 'invalid') {
     return NextResponse.json(
-      { error: `Cannot ${parsed.data.action} a request that is '${result.from}'` },
+      { error: `Cannot ${action} a request that is '${result.from}'` },
       { status: 409 },
     );
   }

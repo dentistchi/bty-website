@@ -2,10 +2,12 @@
 
 import { useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import {
-  isHorizontalIntent,
+  decideIntent,
   clampToDirection,
   swipeProgress,
   swipeCommitted,
+  commitThresholdPx,
+  isEdgeStart,
   type SwipeDirection,
 } from '@/domain/swipe';
 
@@ -22,11 +24,12 @@ interface Props {
   children: ReactNode;
 }
 
-// A card that reveals a colored action surface (icon + label) as it is swiped,
-// springs back under the threshold, and commits once past it. Swipe is an
-// ENHANCEMENT — callers must also render a visible button that calls the same
-// action. Vertical scrolling is preserved (touch-action: pan-y + intent gate);
-// reduced-motion is honored via CSS transitions.
+// A card that reveals a colored action surface (icon + label) as it is swiped.
+// Pointer Events + `touch-action: pan-y` (set in CSS) so vertical scrolling stays
+// with the page. Intent uses a dead-zone-then-decide machine (never abandons on a
+// noisy first sample — the bug that killed left-swipe on iPhone). Commit distance
+// is a fraction of the card width. Swipe is an ENHANCEMENT: callers ALSO render a
+// visible button that calls the same action.
 export default function SwipeableCard({
   direction,
   onCommit,
@@ -38,52 +41,60 @@ export default function SwipeableCard({
 }: Props) {
   const [dx, setDx] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
-  const claimed = useRef(false);
+  const intent = useRef<'pending' | 'horizontal' | 'vertical'>('pending');
+  const threshold = useRef(96);
 
   function down(e: PointerEvent) {
     if (disabled) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+    // Leave OS back/forward edge gestures alone.
+    if (typeof window !== 'undefined' && isEdgeStart(e.clientX, window.innerWidth)) return;
     start.current = { x: e.clientX, y: e.clientY };
-    claimed.current = false;
+    intent.current = 'pending';
+    threshold.current = commitThresholdPx(wrapRef.current?.getBoundingClientRect().width ?? 0);
   }
 
   function move(e: PointerEvent) {
     if (!start.current || disabled) return;
-    const rawDx = e.clientX - start.current.x;
-    const rawDy = e.clientY - start.current.y;
+    const dX = e.clientX - start.current.x;
+    const dY = e.clientY - start.current.y;
 
-    if (!claimed.current) {
-      if (isHorizontalIntent(rawDx, rawDy) && clampToDirection(rawDx, direction) !== 0) {
-        claimed.current = true;
+    if (intent.current === 'pending') {
+      const decided = decideIntent(dX, dY, direction);
+      if (decided === 'pending') return; // still in the dead zone — keep waiting
+      intent.current = decided;
+      if (decided === 'horizontal') {
         setDragging(true);
         try {
           (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
         } catch {
           /* not fatal */
         }
-      } else if (Math.abs(rawDy) > Math.abs(rawDx)) {
-        // Clearly vertical → let the page scroll; abandon this gesture.
-        start.current = null;
+      } else {
+        start.current = null; // vertical → let the page scroll
+        return;
       }
-      return;
     }
-    setDx(clampToDirection(rawDx, direction));
+    if (intent.current === 'horizontal') setDx(clampToDirection(dX, direction));
   }
 
-  function up() {
-    if (claimed.current && swipeCommitted(dx, direction)) onCommit();
+  function end() {
+    if (intent.current === 'horizontal' && swipeCommitted(dx, direction, threshold.current)) {
+      onCommit();
+    }
     start.current = null;
-    claimed.current = false;
+    intent.current = 'pending';
     setDragging(false);
     setDx(0);
   }
 
-  const progress = swipeProgress(dx, direction);
+  const progress = swipeProgress(dx, direction, threshold.current);
   const armed = progress >= 1;
 
   return (
-    <div className={`swipe-wrap tone-${tone} dir-${direction}`}>
+    <div ref={wrapRef} className={`swipe-wrap tone-${tone} dir-${direction}`}>
       <div className="swipe-reveal" aria-hidden style={{ opacity: 0.4 + progress * 0.6 }}>
         <span className="swipe-ico">{icon}</span>
         <span className="swipe-label">{label}</span>
@@ -93,8 +104,8 @@ export default function SwipeableCard({
         style={{ transform: dx ? `translateX(${dx}px)` : undefined }}
         onPointerDown={down}
         onPointerMove={move}
-        onPointerUp={up}
-        onPointerCancel={up}
+        onPointerUp={end}
+        onPointerCancel={end}
       >
         {children}
       </div>

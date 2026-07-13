@@ -5,7 +5,9 @@ import type { KaraokeRequest } from '@/lib/rooms.server';
 import type { KaraokeSession } from '@/lib/sessions.server';
 import { selectStage } from '@/domain/queue';
 import { requestDisplayTitle } from '@/domain/request-view';
+import { displaySong } from '@/domain/song-title';
 import { youtubeWatchUrl } from '@/domain/youtube-search';
+import DjActionSheet from './DjActionSheet';
 
 interface QueuePayload {
   room: { display_name: string; status: 'open' | 'closed' };
@@ -26,7 +28,8 @@ interface Props {
   dev?: boolean;
   onStart: (id: string) => void | Promise<void>;
   onFinish: (id: string) => void | Promise<void>;
-  onSkip: (id: string) => void | Promise<void>;
+  onMoveNext: (id: string) => void | Promise<void>;
+  onRemove: (id: string) => void | Promise<void>;
   onRefresh: () => void | Promise<void>;
   onDisconnect: () => void;
 }
@@ -41,12 +44,14 @@ export default function DjBoard({
   error,
   onStart,
   onFinish,
-  onSkip,
+  onMoveNext,
+  onRemove,
   onRefresh,
   onDisconnect,
 }: Props) {
   const [guestQr, setGuestQr] = useState<{ qrSvg: string; url: string } | null>(null);
   const [loadingQr, setLoadingQr] = useState(false);
+  const [sheetFor, setSheetFor] = useState<KaraokeRequest | null>(null);
 
   const requests = data?.requests ?? [];
   const { current, queue } = selectStage(requests);
@@ -69,10 +74,6 @@ export default function DjBoard({
     } finally {
       setLoadingQr(false);
     }
-  }
-
-  function confirmSkip(id: string, title: string) {
-    if (window.confirm(`Remove “${title}” from the queue?`)) void onSkip(id);
   }
 
   // Awareness/navigation only: jump to the earliest still-highlighted new song
@@ -151,11 +152,16 @@ export default function DjBoard({
                   🎤
                 </div>
               )}
-              <div className="stage-title">{requestDisplayTitle(current)}</div>
-              {current.youtube_channel_title && (
-                <div className="stage-artist">{current.youtube_channel_title}</div>
-              )}
-              <div className="stage-req">Requested by {current.guest_name}</div>
+              <div className="stage-req strong">{current.guest_name}</div>
+              {(() => {
+                const d = displaySong(current.youtube_title ?? '', current.youtube_channel_title);
+                return (
+                  <>
+                    <div className="stage-title">{d.song || requestDisplayTitle(current)}</div>
+                    {d.artist && <div className="stage-artist">{d.artist}</div>}
+                  </>
+                );
+              })()}
               <div className="stage-actions">
                 <button className="cyan lg" onClick={() => openVideo(current.youtube_video_id)}>
                   Open in YouTube
@@ -232,30 +238,22 @@ export default function DjBoard({
           ) : (
             queue.map((r, i) => {
               const isNew = newSet.has(r.id);
-              const title = requestDisplayTitle(r);
+              const d = displaySong(r.youtube_title ?? '', r.youtube_channel_title);
+              const song = d.song || requestDisplayTitle(r);
               return (
                 <div
                   id={`req-${r.id}`}
-                  className={`q-card${i === 0 ? ' head' : ''}${isNew ? ' isnew stage-slide' : ''}`}
+                  className={`q-card singer-first${i === 0 ? ' head' : ''}${isNew ? ' isnew stage-slide' : ''}`}
                   key={r.id}
                 >
-                  <span
-                    className="drag-affordance"
-                    aria-hidden
-                    title="Reorder (coming soon)"
-                  >
-                    ⠿
-                  </span>
                   <span className="q-pos">{String(i + 1).padStart(2, '0')}</span>
                   <div className="q-main">
-                    <div className="q-title">
+                    <div className="q-singer">
                       {isNew && <span className="new-badge">✨ NEW</span>}
-                      {title}
-                    </div>
-                    <div className="q-sub">
-                      {r.youtube_channel_title ? `${r.youtube_channel_title} · ` : ''}
                       {r.guest_name}
                     </div>
+                    <div className="q-song">{song}</div>
+                    {d.artist && <div className="q-artist">{d.artist}</div>}
                   </div>
                   <div className="q-actions">
                     {stageOpen && (
@@ -265,8 +263,9 @@ export default function DjBoard({
                     )}
                     <button
                       className="q-overflow"
-                      aria-label={`Remove ${title}`}
-                      onClick={() => confirmSkip(r.id, title)}
+                      aria-label={`${r.guest_name}님의 신청곡 ${song}${d.artist ? ` — ${d.artist}` : ''} 관리`}
+                      aria-haspopup="dialog"
+                      onClick={() => setSheetFor(r)}
                     >
                       ⋯
                     </button>
@@ -295,6 +294,23 @@ export default function DjBoard({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Custom queue action sheet (replaces window.confirm) ──── */}
+      {sheetFor && (
+        <DjActionSheet
+          request={sheetFor}
+          busy={busy}
+          onMoveNext={(id) => {
+            void onMoveNext(id);
+            setSheetFor(null);
+          }}
+          onRemove={(id) => {
+            void onRemove(id);
+            setSheetFor(null);
+          }}
+          onClose={() => setSheetFor(null)}
+        />
       )}
     </main>
   );

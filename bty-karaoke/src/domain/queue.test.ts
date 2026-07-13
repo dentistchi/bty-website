@@ -7,6 +7,7 @@ import {
   selectStage,
   newArrivals,
   canGuestCancel,
+  frontPosition,
   resolveGuestStatus,
   type QueueOrderEntry,
 } from './queue';
@@ -51,6 +52,21 @@ describe('isValidTransition', () => {
     expect(isValidTransition('waiting', 'skip')).toBe(true);
     expect(isValidTransition('playing', 'skip')).toBe(true);
     expect(isValidTransition('completed', 'skip')).toBe(false);
+  });
+  it('allows remove only from waiting — never the playing song', () => {
+    expect(isValidTransition('waiting', 'remove')).toBe(true);
+    expect(isValidTransition('playing', 'remove')).toBe(false);
+    expect(isValidTransition('completed', 'remove')).toBe(false);
+  });
+});
+
+describe('frontPosition (먼저 부르기)', () => {
+  it('is 1 for an empty active set', () => {
+    expect(frontPosition([])).toBe(1);
+  });
+  it('is one before the smallest active position', () => {
+    expect(frontPosition([3, 5, 8])).toBe(2);
+    expect(frontPosition([1, 2])).toBe(0);
   });
 });
 

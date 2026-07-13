@@ -1245,3 +1245,241 @@ main.dj-console {
   border-radius: var(--radius);
   padding: 18px;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   GUEST V2.1 — floating "내 신청곡" dock + requested state
+   ══════════════════════════════════════════════════════════════ */
+
+.req-btn.done {
+  background: linear-gradient(180deg, #4fe3b4, var(--green));
+  color: #052a1f;
+}
+
+/* Floating dock, anchored above the Safari bottom bar */
+.dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  padding: 10px 12px calc(12px + var(--safe-b));
+  pointer-events: none;
+}
+.dock > * {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 640px;
+}
+
+/* Collapsed pill */
+.dock-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: auto;
+  margin: 0 auto;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--panel-2), var(--stage-1));
+  border: 1px solid rgba(245, 196, 81, 0.4);
+  color: var(--text);
+  box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.8), var(--ring-gold);
+  font-weight: 800;
+}
+.dock-ico {
+  font-size: 1.15rem;
+}
+.dock-count {
+  color: var(--gold);
+}
+.dock-sub {
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+/* Expanded stack */
+.dock.expanded > * {
+  background: linear-gradient(180deg, var(--panel-2), var(--stage-1));
+  border: 1px solid rgba(245, 196, 81, 0.28);
+  border-radius: 18px;
+  padding: 12px 12px 8px;
+  box-shadow: 0 20px 46px -18px rgba(0, 0, 0, 0.85);
+}
+.dock-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.dock-title {
+  font-weight: 800;
+}
+.dock-list {
+  display: grid;
+  gap: 6px;
+}
+.dock-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line-2);
+}
+.dock-row.tone-now_playing {
+  border-color: rgba(255, 77, 141, 0.4);
+  background: rgba(255, 77, 141, 0.08);
+}
+.dock-row.tone-up_next {
+  border-color: rgba(245, 196, 81, 0.35);
+}
+.dock-num {
+  flex: 0 0 auto;
+  width: 22px;
+  text-align: center;
+  font-weight: 800;
+  color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
+}
+.dock-song {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dock-status {
+  font-size: 0.82rem;
+  color: var(--cyan);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DJ QUEUE — singer-first cards + custom action sheet
+   ══════════════════════════════════════════════════════════════ */
+
+.q-card.singer-first .q-main {
+  display: grid;
+  gap: 1px;
+}
+.q-singer {
+  font-weight: 800;
+  font-size: 1.02rem;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.q-song {
+  font-weight: 600;
+  color: var(--text);
+  opacity: 0.92;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.q-artist {
+  font-size: 0.8rem;
+  color: var(--muted-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stage-req.strong {
+  color: var(--text);
+  font-weight: 800;
+  font-size: 1.05rem;
+  opacity: 1;
+}
+
+/* Action sheet */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: end center;
+  padding: 0 0 calc(0px + var(--safe-b));
+  background: rgba(6, 9, 16, 0.72);
+  backdrop-filter: blur(4px);
+}
+@media (min-width: 700px) {
+  .sheet-backdrop {
+    place-items: center;
+    padding: 20px;
+  }
+}
+.action-sheet {
+  width: 100%;
+  max-width: 560px;
+  background:
+    radial-gradient(120% 90% at 50% -10%, rgba(245, 196, 81, 0.14), transparent 60%),
+    linear-gradient(180deg, var(--panel-2), var(--stage-1));
+  border: 1px solid rgba(245, 196, 81, 0.28);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -20px 60px -20px rgba(0, 0, 0, 0.85);
+  padding: 22px 20px calc(22px + var(--safe-b));
+  animation: fade-up 0.28s ease both;
+}
+@media (min-width: 700px) {
+  .action-sheet {
+    border-radius: 22px;
+  }
+}
+.sheet-eyebrow {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.sheet-singer {
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+.sheet-song {
+  color: var(--muted);
+  margin-top: 4px;
+  font-size: 0.95rem;
+}
+.sheet-actions {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+.sheet-actions.two {
+  grid-template-columns: 1fr 1fr;
+}
+.sheet-btn {
+  min-height: 56px;
+  border-radius: 16px;
+  font-weight: 800;
+  font-size: 1.02rem;
+}
+.sheet-btn.gold {
+  background: linear-gradient(180deg, var(--gold), var(--gold-2));
+  color: #241a03;
+  box-shadow: var(--ring-gold);
+}
+.sheet-btn.coral {
+  background: linear-gradient(180deg, #f2a08f, var(--coral));
+  color: #3a120c;
+}
+.sheet-btn.ghost {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+.sheet-close {
+  display: block;
+  margin: 14px auto 0;
+}
+.sheet-confirm {
+  margin-top: 18px;
+}
+.sheet-confirm-q {
+  font-weight: 700;
+  margin: 0 0 12px;
+}
