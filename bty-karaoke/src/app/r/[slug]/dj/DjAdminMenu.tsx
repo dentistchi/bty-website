@@ -132,7 +132,8 @@ export default function DjAdminMenu({ slug, displayName, cred, onShowGuestQr, on
         setConfirmRevoke(null);
         await loadDevices();
       } else {
-        setError('기기를 해제하지 못했어요.');
+        const d = await res.json().catch(() => ({}));
+        setError(d?.error ?? '기기를 해제하지 못했어요.');
       }
     } finally {
       setBusy(false);

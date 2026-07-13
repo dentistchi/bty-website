@@ -7,6 +7,11 @@ compatibility_date = "2026-04-26"
 
 compatibility_flags = ["nodejs_compat"]
 
+# Admin-PIN enrollment runs PBKDF2 (a few ms of CPU); raise the per-request CPU
+# budget so the KDF completes well within limits on the Workers Standard plan.
+[limits]
+cpu_ms = 50
+
 [assets]
 directory = ".open-next/assets"
 binding = "ASSETS"

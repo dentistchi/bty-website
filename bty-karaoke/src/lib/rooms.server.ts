@@ -133,6 +133,26 @@ export async function authorizeAdmin(slug: string, bearer: string): Promise<Room
   return null;
 }
 
+/** The room's encoded Admin-PIN record (or null when no PIN is configured). */
+export async function getRoomAdminPinHash(roomId: string): Promise<string | null> {
+  const { data, error } = await karaokeDb()
+    .from('karaoke_rooms')
+    .select('admin_pin_hash')
+    .eq('id', roomId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data?.admin_pin_hash as string | null) ?? null;
+}
+
+/** Set/rotate the room's Admin-PIN hash. Does NOT touch any device tokens. */
+export async function setRoomAdminPinHash(roomId: string, pinHash: string): Promise<void> {
+  const { error } = await karaokeDb()
+    .from('karaoke_rooms')
+    .update({ admin_pin_hash: pinHash, admin_pin_updated_at: new Date().toISOString() })
+    .eq('id', roomId);
+  if (error) throw error;
+}
+
 export interface RoomStats {
   requests: number;
   guests: number;

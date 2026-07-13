@@ -33,6 +33,8 @@ export default function AdminConsole({ slug, displayName }: Props) {
   const [phase, setPhase] = useState<Phase>('loading');
   const [cred, setCred] = useState<string | null>(null);
   const [input, setInput] = useState('');
+  const [pin, setPin] = useState('');
+  const [showHostCode, setShowHostCode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -118,8 +120,41 @@ export default function AdminConsole({ slug, displayName }: Props) {
     return () => clearInterval(t);
   }, [pairing]);
 
-  // First-time bootstrap: exchange the master credential for a durable admin
-  // device token, then keep only the device token.
+  // Primary enrollment on an already-set-up room: enter the Admin PIN → mint a
+  // new durable admin device (uniform failure; no leak of room/PIN state).
+  async function enrollWithPin(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const p = pin;
+    if (!p) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/admin/enroll`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ pin: p }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.error ?? '등록할 수 없습니다. 잠시 후 다시 시도해 주세요.');
+        return;
+      }
+      window.localStorage.setItem(storageKey(slug), data.adminToken);
+      setCred(data.adminToken);
+      setPin('');
+      await loadSession(data.adminToken);
+      await loadDevices(data.adminToken);
+      setPhase('authed');
+      vibrate(12);
+    } catch {
+      setError('네트워크 오류입니다. 다시 시도해 주세요.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Advanced fallback: exchange the master credential (host code) for a durable
+  // admin device token, then keep only the device token.
   async function connect(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -252,8 +287,15 @@ export default function AdminConsole({ slug, displayName }: Props) {
 
   async function revoke(id: string, label: string) {
     if (!window.confirm(`Revoke "${label}"? That device will lose DJ access immediately.`)) return;
+    setError(null);
     const res = await adminCall(`/admin/devices/${encodeURIComponent(id)}`, { method: 'DELETE' });
-    if (res?.ok && cred) void loadDevices(cred);
+    if (!res) return;
+    if (res.ok) {
+      if (cred) void loadDevices(cred);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setError(data?.error ?? '기기를 해제하지 못했어요.');
+    }
   }
 
   async function rotate() {
@@ -288,31 +330,60 @@ export default function AdminConsole({ slug, displayName }: Props) {
       <>
         {brandHead}
         <div className="card hero glow">
-          <div className="eyebrow">Host access</div>
+          <div className="eyebrow">관리자 기기 등록</div>
           <div className="display-sm" style={{ marginTop: 6 }}>
-            Unlock {displayName}
+            {displayName} 관리자
           </div>
-          <p className="lead">Enter the host code once. This phone becomes the room controller.</p>
-          <form onSubmit={connect} style={{ marginTop: 12 }}>
+          <p className="lead">관리자 PIN을 입력하면 이 iPhone이 관리자로 등록돼요.</p>
+          <form onSubmit={enrollWithPin} style={{ marginTop: 12 }}>
             {error && <div className="banner error">{error}</div>}
-            <label htmlFor="admincode">Host code</label>
+            <label htmlFor="adminpin">관리자 PIN</label>
             <input
-              id="admincode"
+              id="adminpin"
               type="password"
+              inputMode="text"
               autoComplete="off"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Host code"
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              placeholder="관리자 PIN"
             />
             <button
               type="submit"
               className="primary lg block"
               style={{ marginTop: 14 }}
-              disabled={busy || !input.trim()}
+              disabled={busy || !pin}
             >
-              {busy ? 'Unlocking…' : 'Unlock room'}
+              {busy ? '등록 중…' : '이 iPhone을 관리자로 등록'}
             </button>
           </form>
+          <p className="lead" style={{ marginTop: 14, fontSize: '0.9rem' }}>
+            아직 PIN이 없다면, Mac에서 만든 <b>설정 QR</b>을 스캔해 처음 등록하세요.
+          </p>
+          <div style={{ marginTop: 8 }}>
+            <button type="button" className="linkish" onClick={() => setShowHostCode((s) => !s)}>
+              {showHostCode ? '숨기기' : '고급: 호스트 코드로 등록'}
+            </button>
+            {showHostCode && (
+              <form onSubmit={connect} style={{ marginTop: 8 }}>
+                <input
+                  id="admincode"
+                  type="password"
+                  autoComplete="off"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Host code"
+                />
+                <button
+                  type="submit"
+                  className="ghost block"
+                  style={{ marginTop: 10 }}
+                  disabled={busy || !input.trim()}
+                >
+                  {busy ? '확인 중…' : '호스트 코드로 등록'}
+                </button>
+              </form>
+            )}
+          </div>
         </div>
       </>
     );

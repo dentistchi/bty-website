@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bearerFromHeader } from '@/lib/dj-auth.server';
 import { authorizeAdmin } from '@/lib/rooms.server';
-import { revokeDevice } from '@/lib/devices.server';
+import { revokeDeviceSafely } from '@/lib/devices.server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -19,7 +19,15 @@ export async function DELETE(
   const auth = await authorizeAdmin(slug, bearer);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const device = await revokeDevice(auth.room.id, id);
-  if (!device) return NextResponse.json({ error: 'Device not found' }, { status: 404 });
-  return NextResponse.json({ ok: true, device });
+  const result = await revokeDeviceSafely(auth.room.id, id);
+  if (result.outcome === 'not_found') {
+    return NextResponse.json({ error: 'Device not found' }, { status: 404 });
+  }
+  if (result.outcome === 'last_admin') {
+    return NextResponse.json(
+      { error: '마지막 관리자 기기는 해제할 수 없어요. 다른 관리자 기기를 먼저 등록하세요.' },
+      { status: 409 },
+    );
+  }
+  return NextResponse.json({ ok: true, device: result.device });
 }

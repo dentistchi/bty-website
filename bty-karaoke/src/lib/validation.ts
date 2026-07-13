@@ -51,3 +51,17 @@ export const CancelRequestSchema = z.object({
   token: z.string().trim().min(1).max(512),
 });
 export type CancelRequestInput = z.infer<typeof CancelRequestSchema>;
+
+// Admin PIN enrollment. `pin` is only bounded here; the real policy (NFC, no
+// whitespace, ≥6 digits / ≥8 passphrase) is enforced server-side by normalizePin.
+// Do NOT .trim() the pin — whitespace handling is the normalizer's job.
+export const AdminSetupSchema = z.object({
+  token: z.string().min(1).max(256),
+  pin: z.string().min(1).max(128),
+});
+export const AdminEnrollSchema = z.object({
+  pin: z.string().min(1).max(128),
+});
+export const AdminPinRotateSchema = z.object({
+  pin: z.string().min(1).max(128),
+});

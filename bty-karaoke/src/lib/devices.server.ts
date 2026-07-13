@@ -93,6 +93,44 @@ export async function listDevices(roomId: string): Promise<DjDevice[]> {
   return (data as DjDevice[]) ?? [];
 }
 
+/** Count of ACTIVE admin-role devices in a room (for the last-admin guard). */
+export async function countActiveAdminDevices(roomId: string): Promise<number> {
+  const { count, error } = await karaokeDb()
+    .from('karaoke_dj_devices')
+    .select('id', { count: 'exact', head: true })
+    .eq('room_id', roomId)
+    .eq('role', 'admin')
+    .eq('status', 'active');
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export type RevokeOutcome =
+  | { outcome: 'ok'; device: DjDevice }
+  | { outcome: 'not_found' }
+  | { outcome: 'last_admin' };
+
+/**
+ * Revoke with server-side guards: refuses to revoke the LAST active admin device
+ * (so a room can never be left with no usable Admin). DJ devices revoke freely.
+ */
+export async function revokeDeviceSafely(roomId: string, deviceId: string): Promise<RevokeOutcome> {
+  const { data, error } = await karaokeDb()
+    .from('karaoke_dj_devices')
+    .select('id, role, status')
+    .eq('room_id', roomId)
+    .eq('id', deviceId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return { outcome: 'not_found' };
+
+  if (data.role === 'admin' && data.status === 'active') {
+    if ((await countActiveAdminDevices(roomId)) <= 1) return { outcome: 'last_admin' };
+  }
+  const device = await revokeDevice(roomId, deviceId);
+  return device ? { outcome: 'ok', device } : { outcome: 'not_found' };
+}
+
 /** Revoke a single device (scoped to the room). Idempotent. */
 export async function revokeDevice(roomId: string, deviceId: string): Promise<DjDevice | null> {
   const { data, error } = await karaokeDb()

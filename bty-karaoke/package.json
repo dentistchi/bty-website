@@ -16,7 +16,8 @@
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare preview",
     "cf:deploy": "opennextjs-cloudflare deploy",
-    "make:qr": "node scripts/make-qr.mjs"
+    "make:qr": "node scripts/make-qr.mjs",
+    "admin:setup": "node scripts/admin-setup-qr.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
