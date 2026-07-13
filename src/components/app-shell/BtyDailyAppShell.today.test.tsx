@@ -455,13 +455,13 @@ describe("app-shell Today arrival header hierarchy (Arrival Warmth STEP 2)", () 
   });
 });
 
-// Yesterday → Today Memory Bridge V1 — the evidence-backed remembered line PROMOTES the existing
-// arrival trace (same slot, single line). No evidence → the trace is byte-identical to before.
-describe("app-shell Today yesterday memory (Memory Bridge V1)", () => {
+// Yesterday → Today Memory Bridge V1 (+ Arrival Order Patch V1) — the evidence-backed remembered
+// line PROMOTES the existing arrival trace (same slot, single line) and, once present, rides its own
+// arrival beat WITHOUT waiting on the intel read. No evidence → the trace is byte-identical to before.
+describe("app-shell Today yesterday memory (Memory Bridge V1 / Arrival Order Patch V1)", () => {
   it("renders the remembered line in the SAME trace slot when yesterday evidence exists", () => {
     renderToday({
       loading: false,
-      memoryPending: false,
       yesterdayMemory: "Yesterday, you chose to return to yourself.",
       statusLine: selectTodayStatus("en", "safe_fallback"),
     });
@@ -476,10 +476,19 @@ describe("app-shell Today yesterday memory (Memory Bridge V1)", () => {
     expect(document.querySelectorAll("[data-today-status]").length).toBe(1);
   });
 
+  it("shows the remembered line IMMEDIATELY even while intel is still loading (rides its own beat)", () => {
+    // ARRIVAL ORDER PATCH V1: a present memory no longer waits on the intel read — it occupies the
+    // trace beat right away, ahead of the doors, instead of appearing late after a separate fetch.
+    renderToday({ loading: true, yesterdayMemory: "Yesterday, you chose to meet the world." });
+    const s = document.querySelector("[data-today-status]");
+    expect(s).not.toBeNull();
+    expect(s?.textContent).toBe("Yesterday, you chose to meet the world.");
+    expect(s?.getAttribute("data-today-memory")).toBe("");
+  });
+
   it("renders the unchanged status line (no memory marker) when there is no yesterday evidence", () => {
     renderToday({
       loading: false,
-      memoryPending: false,
       yesterdayMemory: null,
       statusLine: selectTodayStatus("en", "verified_action"),
     });
@@ -488,10 +497,9 @@ describe("app-shell Today yesterday memory (Memory Bridge V1)", () => {
     expect(s?.getAttribute("data-today-memory")).toBeNull();
   });
 
-  it("holds the reserved height (no trace yet) while the memory read is still pending", () => {
-    // Intel resolved (loading:false) but memory still pending → the slot waits so the remembered
-    // line appears once, never as a status→memory swap.
-    const { container } = renderToday({ loading: false, memoryPending: true, yesterdayMemory: null });
+  it("still reserves the line height (no trace yet) while intel loads and there is NO memory", () => {
+    // Unchanged for no-memory users: the status line waits for intel, reserving one line silently.
+    const { container } = renderToday({ loading: true, yesterdayMemory: null });
     expect(container.querySelector("[data-today-status]")).toBeNull();
     expect(container.querySelector(".animate-pulse")).toBeNull();
   });
@@ -528,7 +536,7 @@ describe("app-shell Today suggested-door transition-in (Arrival Warmth STEP 3)",
 });
 
 describe("app-shell renders Today directly (no shell threshold / no double-door)", () => {
-  function stubShellFetch(promise: string | null = null) {
+  function stubShellFetch(promise: string | null = null, memoryLine: string | null = null) {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string) => {
@@ -538,6 +546,11 @@ describe("app-shell renders Today directly (no shell threshold / no double-door)
         }
         if (u.includes("my-page/state")) {
           return new Response(JSON.stringify({ open_action_contract: promise ? { action_text: promise } : null }), {
+            status: 200,
+          });
+        }
+        if (u.includes("yesterday-memory")) {
+          return new Response(JSON.stringify({ ok: true, memory: memoryLine ? { line: memoryLine } : null }), {
             status: 200,
           });
         }
@@ -557,6 +570,27 @@ describe("app-shell renders Today directly (no shell threshold / no double-door)
     // Native app shell intact: bottom tab bar renders.
     expect(screen.getByText("Foundry")).toBeTruthy();
     expect(screen.getByText("Me")).toBeTruthy();
+  });
+
+  // ARRIVAL ORDER PATCH V1 — the arrival waits for the memory read, so when Today arrives the
+  // remembered line is ALREADY in the trace (never a late post-doors pop).
+  it("holds the arrival until memory resolves, then Today arrives WITH the memory in the trace", async () => {
+    stubShellFetch(null, "Yesterday, you chose to return to yourself.");
+    render(<BtyDailyAppShell locale="en" />);
+    // When Today arrives, the memory line is present in the trace immediately (not added later).
+    await screen.findByText("Where will you show up today?");
+    const s = document.querySelector("[data-today-status]");
+    expect(s?.getAttribute("data-today-memory")).toBe("");
+    expect(s?.textContent).toBe("Yesterday, you chose to return to yourself.");
+  });
+
+  it("memory-absent users still arrive at Today with no memory marker (no empty pause regression)", async () => {
+    stubShellFetch(null, null);
+    render(<BtyDailyAppShell locale="en" />);
+    await screen.findByText("Where will you show up today?");
+    // Doors are present and interactive; no memory marker was introduced.
+    expect(document.querySelectorAll("button[data-focus]").length).toBe(3);
+    expect(document.querySelector("[data-today-memory]")).toBeNull();
   });
 
   it("relationship selection still reveals confirmation + CTA inside the full shell", async () => {

@@ -557,6 +557,13 @@ export const AFFORDANCE_STILL_BREATH_MS = 350;
 /** Delay from TodaySurface mount to the first door's bloom (arrival settle + still breath). */
 export const AFFORDANCE_START_MS = AFFORDANCE_ARRIVAL_SETTLE_MS + AFFORDANCE_STILL_BREATH_MS; // 1650ms
 
+/** ARRIVAL ORDER PATCH V1 — bounded backstop for the yesterday-memory read. The Today arrival waits
+ *  for memory so the remembered line is present when the cascade plays (Greeting → Memory → doors);
+ *  a normal read (a couple indexed point-lookups, parallel with the commitment read) clears well
+ *  before this. If the read is pathologically slow, Today still arrives at the cap (memory simply
+ *  absent this arrival) so the greeting is never held longer than this. */
+export const MEMORY_ARRIVAL_CAP_MS = 900;
+
 function SurfaceHeader({ title, sub }: { title: string; sub?: string }) {
   return (
     // Greeting + sub read as ONE identity unit: the sub is demoted (smaller + quieter, tucked
@@ -594,7 +601,6 @@ export function TodaySurface({
   copy,
   statusLine,
   yesterdayMemory = null,
-  memoryPending = false,
   activeFocus,
   loading,
   promiseText,
@@ -617,12 +623,15 @@ export function TodaySurface({
   /** Yesterday → Today Memory Bridge V1: the one evidence-backed remembered line (from yesterday's
    *  real commitment), or null → the existing statusLine renders unchanged. When present it OCCUPIES
    *  the SAME arrival-trace slot as statusLine (single line, same typography) — a promotion of the
-   *  existing trace, never a second trace. English-only (V1 scope). */
+   *  existing trace, never a second trace. English-only (V1 scope).
+   *
+   *  ARRIVAL ORDER PATCH V1: the shell resolves memory BEFORE this surface mounts (its existing
+   *  hydration hold now also awaits the memory read, bounded), so when a memory exists it is present
+   *  at first paint and rides the trace's own arrival beat (btyRise @200ms) — ahead of the doors
+   *  (@300ms+) — instead of arriving late after a separate fetch. The trace therefore no longer waits
+   *  on the intel read when a memory exists: memory shows immediately in its beat; only the generic
+   *  status line still waits for intel (unchanged for no-memory users). */
   yesterdayMemory?: string | null;
-  /** True until the yesterday-memory read settles. The trace holds its reserved one-line height
-   *  until BOTH intel and memory resolve, so the remembered line appears once (no status→memory
-   *  hard swap, no layout shift). */
-  memoryPending?: boolean;
   /** The relationship to SUGGEST (derived), or null when there is no confident claim. */
   activeFocus: TodayFocusKey | null;
   loading: boolean;
@@ -763,12 +772,13 @@ export function TodaySurface({
           we reserve one line's height SILENTLY (no pulse/shimmer) so nothing jumps; when it
           resolves the sentence rises into the reserved space.
 
-          MEMORY BRIDGE V1: the slot holds until BOTH intel AND the yesterday-memory read settle
-          (loading || memoryPending), then renders the evidence-backed remembered line when one
-          exists, else the unchanged status line — a PROMOTION of this same trace (identical slot,
-          single line, same typography), never a second trace and never a status→memory swap. The
-          doors are non-blocking, so this extra hold never delays them. */}
-      {loading || memoryPending ? (
+          MEMORY BRIDGE V1 + ARRIVAL ORDER PATCH V1: the shell has already resolved memory before
+          this surface mounts, so a remembered line is present at first paint and rides THIS beat
+          (btyRise @200ms) ahead of the doors — the emotional order Greeting → Memory → doors. The
+          trace no longer waits on the intel read when a memory exists (memory shows in its beat);
+          only the generic status line still reserves the line's height until intel settles
+          (unchanged for no-memory users). Never a second trace, never a status→memory swap. */}
+      {loading && !yesterdayMemory ? (
         <div aria-hidden className="mb-8 mt-0.5 h-7" />
       ) : (
         <p
@@ -1239,7 +1249,12 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // commitment (null unless yesterday held one). memoryPending holds the arrival trace's reserved
   // height until the read settles, so the line appears once (no status→memory swap, no layout jump).
   const [yesterdayMemory, setYesterdayMemory] = useState<string | null>(null);
+  // ARRIVAL ORDER PATCH V1: the Today arrival is held (via the existing hydration gate) until the
+  // memory read settles, so a remembered line is present when the cascade plays. `memoryPending`
+  // clears on the read settling OR the bounded cap firing (whichever first); the cap ref then
+  // prevents a late read from swapping a line into an already-arrived Today.
   const [memoryPending, setMemoryPending] = useState(true);
+  const memoryCappedRef = useRef(false);
   // Me-tab Weekly Orb rhythm (numberless barIntensity[]). Fail-soft: [] → resting orb.
   const [weeklyRhythm, setWeeklyRhythm] = useState<MeWeeklyRhythm>([]);
 
@@ -1259,7 +1274,10 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       setCenterKeepLine(line);
     });
     void fetchYesterdayMemory().then((line) => {
-      if (!alive) return;
+      // If the cap already released the arrival (pathologically slow read), do NOT inject a late
+      // line — that would be a status→memory swap on an already-arrived Today. Normal reads win the
+      // race and set the line before the cap, so memory is present when the cascade plays.
+      if (!alive || memoryCappedRef.current) return;
       setYesterdayMemory(line);
       setMemoryPending(false);
     });
@@ -1271,6 +1289,17 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       alive = false;
     };
   }, [locale]);
+
+  // ARRIVAL ORDER PATCH V1 — bounded backstop so a pathologically slow memory read can never hold
+  // the Today arrival longer than MEMORY_ARRIVAL_CAP_MS. On cap, release the arrival (memory absent
+  // this time) and lock out a late read so it cannot swap in after the cascade has played.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      memoryCappedRef.current = true;
+      setMemoryPending(false);
+    }, MEMORY_ARRIVAL_CAP_MS);
+    return () => clearTimeout(id);
+  }, []);
 
   // Center Daily Trace STEP 1A — record a quiet self-return the first time the native app is
   // reached (Today is the default surface, so shell mount == native Today arrival). Fire-and-forget,
@@ -1523,12 +1552,16 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
 
       <main className="relative z-10 flex-1 overflow-y-auto px-5 pb-4 pt-8" aria-label={t.appAria}>
         {tab === "today" &&
-          (todayHydrated ? (
+          // ARRIVAL ORDER PATCH V1: hold the surface behind the EXISTING hydration gate until the
+          // memory read has also settled (bounded by MEMORY_ARRIVAL_CAP_MS), so a remembered line is
+          // present at first paint and rides its arrival beat ahead of the doors — never a late,
+          // post-doors pop. No-memory users clear this in the same fast read; the greeting is never
+          // held beyond the cap.
+          (todayHydrated && !memoryPending ? (
             <TodaySurface
               copy={t.today}
               statusLine={selectTodayStatus(locale, intel.userState)}
               yesterdayMemory={yesterdayMemory}
-              memoryPending={memoryPending}
               activeFocus={resolveInvitedFocus(intel)}
               loading={intelLoading}
               promiseText={promiseText}
