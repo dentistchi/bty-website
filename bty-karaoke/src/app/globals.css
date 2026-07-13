@@ -1,0 +1,1097 @@
+/* btyNorebang — premium night-stage design system.
+   Deep-navy stage, warm gold, electric cyan, live magenta, success green.
+   Colour carries state; the room never looks like an admin dashboard. */
+
+:root {
+  color-scheme: dark;
+
+  /* Stage depth */
+  --stage-0: #070b14;
+  --stage-1: #0b1020;
+  --stage-2: #10172a;
+  --bg: var(--stage-0);
+  --panel: #0e1526;
+  --panel-2: #141d32;
+  --line: rgba(255, 255, 255, 0.09);
+  --line-2: rgba(255, 255, 255, 0.06);
+
+  --text: #f4f6fb;
+  --muted: #9aa6c0;
+  --muted-2: #6b7796;
+
+  /* Accents — state, not decoration */
+  --gold: #f5c451;
+  --gold-2: #e0a93b;
+  --cyan: #3fe0ff;
+  --magenta: #ff4d8d;
+  --green: #34d399;
+  --danger: #ff5c7c;
+
+  /* Back-compat aliases used by existing guest/DJ classes */
+  --accent: var(--gold);
+  --accent-2: var(--cyan);
+
+  --radius: 18px;
+  --radius-sm: 12px;
+  --shadow-lift: 0 18px 40px -18px rgba(0, 0, 0, 0.75);
+  --ring-gold: 0 0 0 1px rgba(245, 196, 81, 0.55), 0 0 34px -8px rgba(245, 196, 81, 0.45);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Layered stage lighting: gold centre halo + cool cyan wash over deep navy. */
+body {
+  background-color: var(--stage-0);
+  background-image:
+    radial-gradient(120% 80% at 50% -8%, rgba(245, 196, 81, 0.16), transparent 60%),
+    radial-gradient(90% 60% at 88% 8%, rgba(63, 224, 255, 0.1), transparent 55%),
+    radial-gradient(120% 90% at 10% 100%, rgba(124, 92, 255, 0.08), transparent 55%),
+    linear-gradient(180deg, var(--stage-1), var(--stage-0) 46%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+main {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: calc(24px + var(--safe-t)) 18px calc(72px + var(--safe-b));
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin: 0 0 4px;
+  letter-spacing: -0.02em;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* ── Brand wordmark ─────────────────────────────────────────── */
+.brand {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  background: linear-gradient(96deg, var(--gold), #ffe6a3 42%, var(--cyan));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+h1.brand {
+  font-size: 1.9rem;
+}
+
+.brand-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.brand-head .brand {
+  font-size: 1.2rem;
+}
+
+.brand-tag {
+  font-size: 0.8rem;
+  color: var(--muted-2);
+  letter-spacing: 0.01em;
+}
+
+/* ── Structural type ────────────────────────────────────────── */
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.eyebrow.cyan {
+  color: var(--cyan);
+}
+.eyebrow.muted {
+  color: var(--muted-2);
+}
+
+.display {
+  font-size: clamp(2rem, 7vw, 2.9rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  margin: 6px 0;
+}
+
+.display-sm {
+  font-size: clamp(1.5rem, 5.4vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+}
+
+.lead {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.5;
+  margin: 6px 0 0;
+}
+
+/* ── Cards & surfaces ───────────────────────────────────────── */
+.card {
+  background: linear-gradient(180deg, var(--panel), var(--stage-1));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin: 14px 0;
+}
+
+.card.glow {
+  box-shadow: var(--shadow-lift);
+}
+
+/* Hero card — the strongest object on screen (now-playing, primary CTA). */
+.hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(245, 196, 81, 0.28);
+  background:
+    radial-gradient(120% 120% at 50% -20%, rgba(245, 196, 81, 0.16), transparent 62%),
+    linear-gradient(180deg, var(--panel-2), var(--stage-1));
+  box-shadow: var(--shadow-lift);
+}
+
+.hero.live {
+  border-color: rgba(255, 77, 141, 0.36);
+  background:
+    radial-gradient(130% 120% at 50% -20%, rgba(255, 77, 141, 0.18), transparent 60%),
+    linear-gradient(180deg, var(--panel-2), var(--stage-1));
+}
+
+/* ── Pills / status ─────────────────────────────────────────── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.pill.gold {
+  color: #2a1e04;
+  background: linear-gradient(180deg, var(--gold), var(--gold-2));
+  border-color: transparent;
+}
+.pill.cyan {
+  color: var(--cyan);
+  border-color: rgba(63, 224, 255, 0.4);
+  background: rgba(63, 224, 255, 0.08);
+}
+.pill.live {
+  color: var(--magenta);
+  border-color: rgba(255, 77, 141, 0.45);
+  background: rgba(255, 77, 141, 0.1);
+}
+.pill.ok {
+  color: var(--green);
+  border-color: rgba(52, 211, 153, 0.42);
+  background: rgba(52, 211, 153, 0.1);
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--magenta);
+  box-shadow: 0 0 0 0 rgba(255, 77, 141, 0.6);
+  animation: pulse-dot 1.8s ease-out infinite;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--muted-2);
+  flex: 0 0 auto;
+}
+.status-dot.ok {
+  background: var(--green);
+  box-shadow: 0 0 10px -1px rgba(52, 211, 153, 0.7);
+}
+.status-dot.warn {
+  background: var(--gold);
+}
+
+/* ── Metrics ────────────────────────────────────────────────── */
+.metric-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.metric {
+  background: linear-gradient(180deg, var(--panel), var(--stage-1));
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+}
+
+.metric .n {
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.metric .k {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* ── Buttons ────────────────────────────────────────────────── */
+input,
+button {
+  font: inherit;
+}
+
+.btn,
+button {
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  padding: 13px 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #0a0f1c;
+  background: linear-gradient(180deg, var(--gold), var(--gold-2));
+  transition: transform 0.08s ease, box-shadow 0.18s ease, filter 0.18s ease;
+  min-height: 46px;
+}
+
+.btn:active,
+button:active {
+  transform: translateY(1px) scale(0.995);
+}
+
+.btn.block,
+button.block {
+  width: 100%;
+}
+
+.btn.lg,
+button.lg {
+  padding: 17px 20px;
+  font-size: 1.06rem;
+  border-radius: 16px;
+}
+
+.btn.primary {
+  background: linear-gradient(180deg, var(--gold), var(--gold-2));
+  color: #241a03;
+  box-shadow: var(--ring-gold);
+}
+
+.btn.cyan {
+  background: linear-gradient(180deg, #6fe9ff, var(--cyan));
+  color: #052430;
+}
+
+.btn.ghost,
+button.secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+
+.btn.ok,
+button.ok {
+  background: linear-gradient(180deg, #4fe3b4, var(--green));
+  color: #052a1f;
+}
+
+.btn.danger,
+button.danger {
+  background: transparent;
+  border: 1px solid rgba(255, 92, 124, 0.55);
+  color: var(--danger);
+}
+
+.btn:disabled,
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+  filter: grayscale(0.2);
+}
+
+button.big {
+  width: 100%;
+  padding: 18px;
+  font-size: 1.08rem;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #6fe9ff, var(--cyan));
+  color: #052430;
+}
+
+button.big.secondary-big {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+
+/* Text link / quiet action */
+.linkish {
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 8px 6px;
+  min-height: 0;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ── Inputs ─────────────────────────────────────────────────── */
+label {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin: 12px 0 6px;
+}
+
+input[type='text'],
+input[type='password'],
+input[type='search'] {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--stage-2);
+  color: var(--text);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+input:focus {
+  outline: none;
+  border-color: rgba(63, 224, 255, 0.6);
+  box-shadow: 0 0 0 3px rgba(63, 224, 255, 0.16);
+}
+
+/* ── QR surfaces ────────────────────────────────────────────── */
+.qr-surface {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 18px;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 24px 60px -22px rgba(0, 0, 0, 0.8), var(--ring-gold);
+  margin: 6px auto;
+  max-width: 340px;
+}
+
+.qr-surface svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 6px;
+}
+
+.qr-caption {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-top: 12px;
+}
+
+.countdown {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  color: var(--gold);
+  letter-spacing: 0.02em;
+}
+
+/* Full-screen guest-QR overlay (used by the DJ console) */
+.qr-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: calc(28px + var(--safe-t)) 22px calc(28px + var(--safe-b));
+  background:
+    radial-gradient(90% 60% at 50% 0%, rgba(245, 196, 81, 0.14), transparent 60%),
+    rgba(6, 9, 16, 0.94);
+  backdrop-filter: blur(6px);
+  text-align: center;
+}
+
+.qr-overlay .qr-surface {
+  max-width: min(64vh, 460px);
+}
+
+/* ── Device list (admin) ────────────────────────────────────── */
+.device-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line-2);
+}
+.device-row:first-of-type {
+  border-top: none;
+}
+.device-row .grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.device-row .d-name {
+  font-weight: 700;
+}
+.device-row .d-meta {
+  font-size: 0.8rem;
+  color: var(--muted-2);
+}
+.device-row.revoked {
+  opacity: 0.5;
+}
+
+/* ── Banners ────────────────────────────────────────────────── */
+.banner {
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin: 12px 0;
+  font-weight: 600;
+}
+.banner.success {
+  background: rgba(52, 211, 153, 0.14);
+  border: 1px solid rgba(52, 211, 153, 0.5);
+  color: var(--green);
+}
+.banner.error {
+  background: rgba(255, 92, 124, 0.14);
+  border: 1px solid rgba(255, 92, 124, 0.5);
+  color: var(--danger);
+}
+.banner.info {
+  background: rgba(63, 224, 255, 0.1);
+  border: 1px solid rgba(63, 224, 255, 0.4);
+  color: var(--cyan);
+}
+
+/* ── Empty states ───────────────────────────────────────────── */
+.empty {
+  text-align: center;
+  padding: 30px 20px;
+}
+.empty .display-sm {
+  margin-bottom: 8px;
+}
+
+/* ── Rows / layout helpers ──────────────────────────────────── */
+.row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.row.between {
+  justify-content: space-between;
+}
+.grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.stack {
+  display: grid;
+  gap: 10px;
+}
+
+/* ── Queue (existing guest/DJ classes, restyled) ────────────── */
+.queue-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line-2);
+}
+
+.pos {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.pos.playing {
+  background: linear-gradient(180deg, var(--magenta), #d63d76);
+  color: #fff;
+}
+
+.title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag {
+  font-size: 0.72rem;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+/* Search results (guest) */
+.result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 10px;
+  margin: 8px 0;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-weight: 400;
+}
+.result.selected {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 1px var(--cyan);
+}
+.result .pick {
+  flex: 0 0 auto;
+  width: 24px;
+  color: var(--cyan);
+  font-weight: 700;
+  text-align: center;
+}
+
+.thumb {
+  flex: 0 0 auto;
+  width: 96px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 10px;
+  background: var(--stage-2);
+}
+.thumb.sm {
+  width: 64px;
+  height: 36px;
+}
+.thumb.lg {
+  width: 168px;
+  height: 94px;
+}
+.thumb.placeholder {
+  background: linear-gradient(135deg, var(--panel-2), var(--stage-2));
+}
+
+.fallback {
+  margin-top: 14px;
+  border-top: 1px solid var(--line-2);
+  padding-top: 10px;
+}
+.fallback summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.fallback input {
+  margin-top: 10px;
+}
+
+/* DJ dominant card (existing) */
+.card.now {
+  border-color: rgba(255, 77, 141, 0.34);
+}
+.now-body {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin: 12px 0;
+}
+.now-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+
+/* ── Motion ─────────────────────────────────────────────────── */
+@keyframes pulse-dot {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 77, 141, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 9px rgba(255, 77, 141, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 77, 141, 0);
+  }
+}
+
+@keyframes bloom {
+  0% {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.015);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.bloom {
+  animation: bloom 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes arrival {
+  0% {
+    box-shadow: 0 0 0 0 rgba(63, 224, 255, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 0 14px rgba(63, 224, 255, 0);
+  }
+}
+.arrival {
+  animation: arrival 0.9s ease-out 1;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fade-up {
+  animation: fade-up 0.32s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ── Focus visibility ───────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DJ CONSOLE (STEP 5) — premium hero shell, iPad-first
+   ══════════════════════════════════════════════════════════════ */
+
+/* Console owns the whole viewport width (wider than the 680px reading column). */
+main.dj-console {
+  max-width: 1180px;
+}
+
+/* Thin, fast-read status bar */
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent);
+  margin-bottom: 16px;
+}
+.statusbar .sb-room {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.statusbar .sb-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--line);
+}
+.statusbar .sb-metric {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.statusbar .sb-metric b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.statusbar .grow {
+  flex: 1 1 auto;
+}
+
+/* NEW-songs indicator (top-right of the status bar) — pressable: jumps to the
+   newest song in its real queue slot (awareness/navigation only). */
+.new-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 7px 12px;
+  border-radius: 999px;
+  color: var(--cyan);
+  background: rgba(63, 224, 255, 0.1);
+  border: 1px solid rgba(63, 224, 255, 0.4);
+  cursor: pointer;
+}
+.new-chip:hover {
+  background: rgba(63, 224, 255, 0.16);
+}
+
+/* Stage / queue split — single column by default (portrait / phone). */
+.dj-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.dj-col-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 2px 2px 10px;
+}
+
+/* NOW SINGING hero — the strongest object on the stage. */
+.stage-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  border: 1px solid rgba(255, 77, 141, 0.32);
+  padding: 22px;
+  background:
+    radial-gradient(130% 120% at 30% -10%, rgba(255, 77, 141, 0.2), transparent 60%),
+    linear-gradient(180deg, var(--panel-2), var(--stage-1));
+  box-shadow: var(--shadow-lift);
+}
+.stage-hero.ready {
+  border-color: rgba(245, 196, 81, 0.3);
+  background:
+    radial-gradient(130% 120% at 30% -10%, rgba(245, 196, 81, 0.18), transparent 60%),
+    linear-gradient(180deg, var(--panel-2), var(--stage-1));
+}
+.stage-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--panel-2), var(--stage-2));
+  margin-bottom: 16px;
+}
+.stage-thumb.ph {
+  display: grid;
+  place-items: center;
+  color: var(--muted-2);
+  font-size: 2.4rem;
+}
+.stage-title {
+  font-size: clamp(1.7rem, 3.4vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+.stage-artist {
+  font-size: 1.05rem;
+  color: var(--text);
+  opacity: 0.85;
+  margin-top: 4px;
+}
+.stage-req {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.stage-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+/* Queue cards (UP NEXT) */
+.q-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  margin-bottom: 10px;
+}
+.q-card.head {
+  border-color: rgba(245, 196, 81, 0.4);
+  background: rgba(245, 196, 81, 0.06);
+}
+.q-card.isnew {
+  border-color: rgba(63, 224, 255, 0.5);
+}
+.q-pos {
+  flex: 0 0 auto;
+  width: 30px;
+  text-align: center;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.q-card.head .q-pos {
+  color: var(--gold);
+}
+.q-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.q-title {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.q-sub {
+  font-size: 0.82rem;
+  color: var(--muted-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.new-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: #062430;
+  background: linear-gradient(180deg, #7febff, var(--cyan));
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.q-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.q-start {
+  padding: 9px 14px;
+  min-height: 40px;
+  border-radius: 11px;
+  font-size: 0.86rem;
+}
+/* Drag affordance — STEP 6 wires the real behavior; here it's a visual handle. */
+.drag-affordance {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--muted-2);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line-2);
+  cursor: grab;
+  touch-action: none;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.q-overflow {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line-2);
+  color: var(--muted);
+}
+
+/* Reconnecting strip */
+.reconnecting {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(245, 196, 81, 0.4);
+  background: rgba(245, 196, 81, 0.08);
+  color: var(--gold);
+  font-size: 0.88rem;
+  margin-bottom: 14px;
+}
+
+@keyframes stage-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.stage-slide {
+  animation: stage-slide-in 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* iPad landscape (and up): 40 / 60 stage-vs-queue split. */
+@media (min-width: 900px) {
+  .dj-grid {
+    grid-template-columns: minmax(0, 40fr) minmax(0, 60fr);
+    align-items: start;
+    gap: 20px;
+  }
+  .dj-stage {
+    position: sticky;
+    top: 16px;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   GUEST STATUS CARD (STEP 5 · A) — persistent, self-updating "where
+   am I in line" surface. Replaces the one-shot success banner.
+   ══════════════════════════════════════════════════════════════ */
+.status-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius, 18px);
+  border: 1px solid rgba(63, 224, 255, 0.32);
+  padding: 20px;
+  background:
+    radial-gradient(130% 120% at 25% -20%, rgba(63, 224, 255, 0.16), transparent 60%),
+    linear-gradient(180deg, var(--panel-2), var(--stage-1));
+  box-shadow: var(--shadow-lift, 0 18px 40px rgba(0, 0, 0, 0.35));
+  animation: stage-slide-in 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.status-card.next {
+  border-color: rgba(245, 196, 81, 0.42);
+}
+.status-card.now {
+  border-color: rgba(255, 77, 141, 0.5);
+  background:
+    radial-gradient(130% 120% at 25% -20%, rgba(255, 77, 141, 0.22), transparent 60%),
+    linear-gradient(180deg, var(--panel-2), var(--stage-1));
+}
+.status-card.done {
+  border-color: var(--line);
+  background: linear-gradient(180deg, var(--panel-2), var(--stage-1));
+}
+.status-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.status-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+.status-card.next .status-eyebrow {
+  color: var(--gold);
+}
+.status-card.now .status-eyebrow {
+  color: var(--magenta);
+}
+.status-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.status-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--cyan);
+  box-shadow: 0 0 0 0 rgba(63, 224, 255, 0.6);
+  animation: pulse-dot 1.8s ease-out infinite;
+}
+.status-headline {
+  margin-top: 10px;
+  font-size: clamp(1.5rem, 6vw, 2.1rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.status-song {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+}
+.status-song-title {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.status-song-sub {
+  margin-top: 3px;
+  font-size: 0.84rem;
+  color: var(--muted-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.status-support {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.status-actions {
+  margin-top: 16px;
+}

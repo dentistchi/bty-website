@@ -1,0 +1,18 @@
+# Isolated Karaoke worker. Separate from bty-arena-staging (bty-app) — do not merge.
+# Secrets (KARAOKE_SUPABASE_URL, KARAOKE_SUPABASE_SERVICE_ROLE_KEY) are set via
+# `wrangler secret put` and are NEVER stored in this file.
+name = "bty-karaoke"
+main = ".open-next/worker.js"
+compatibility_date = "2026-04-26"
+
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+# Dedicated Karaoke KV namespace — backs the YouTube search cache (biased query
+# -> projected results), keyed `ytq:<biasedQuery>`, TTL 1h.
+[[kv_namespaces]]
+binding = "KARAOKE_SEARCH_KV"
+id = "096e2af632174be1a7d9f380f43ae553"

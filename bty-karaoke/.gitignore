@@ -1,0 +1,20 @@
+# Secrets — never commit
+.dev.vars
+.dev.vars.*
+.env
+.env.local
+.env*.local
+.dj-credential-*.local
+
+# Build / tooling
+node_modules
+.next
+.open-next
+.wrangler
+.DS_Store
+tsconfig.tsbuildinfo
+next-env.d.ts
+
+# Generated QR artifacts
+qr-*.png
+qr-*.svg
