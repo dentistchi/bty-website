@@ -158,16 +158,34 @@ describe("app-shell Today Center keep (STEP 1B — read-only surface)", () => {
     );
   });
 
-  it("renders the held keep (label + anchor line + support) after the relationship section when present", () => {
+  // THE HELD ARC V0.1 — production default is anchor-only: label + anchor, NO release line.
+  it("Variant A (default): renders label + anchor after the relationship section, with the release line absent from the DOM", () => {
     renderToday({ centerKeepLine: "Deeper relationship" });
     const keep = document.querySelector("[data-today-center-keep]");
     expect(keep).toBeTruthy();
+    expect(keep!.getAttribute("data-held-variant")).toBe("anchor-only");
     expect(screen.getByText("Held in Center")).toBeTruthy();
     expect(screen.getByText(/Deeper relationship/)).toBeTruthy();
-    expect(screen.getByText("Carry it quietly today.")).toBeTruthy();
+    // The secondary release line is not rendered at all (not hidden, not reserved height).
+    expect(screen.queryByText("Carry it quietly today.")).toBeNull();
+    // The section holds exactly two lines: the label + the anchor (no empty secondary wrapper).
+    expect(keep!.querySelectorAll("p").length).toBe(1);
     // Arrival sequence intact: greeting + status + doors still render alongside the keep.
     expect(document.querySelector("[data-today-status]")).toBeTruthy();
     expect(document.querySelectorAll("[data-focus]").length).toBe(3);
+  });
+
+  // Variant B is the comparison baseline — restorable in code (flip HELD_IN_CENTER_VARIANT).
+  // Overriding the prop proves the approved copy still renders EXACTLY when B is selected.
+  it("Variant B (baseline): renders the approved release line exactly when anchor-with-release is selected", () => {
+    renderToday({ centerKeepLine: "Deeper relationship", heldVariant: "anchor-with-release" });
+    const keep = document.querySelector("[data-today-center-keep]")!;
+    expect(keep.getAttribute("data-held-variant")).toBe("anchor-with-release");
+    expect(screen.getByText("Held in Center")).toBeTruthy();
+    expect(screen.getByText(/Deeper relationship/)).toBeTruthy();
+    // Approved copy, unchanged and exact.
+    expect(screen.getByText("Carry it quietly today.")).toBeTruthy();
+    expect(keep.querySelectorAll("p").length).toBe(2);
   });
 
   // THE HELD ARC V0 — read-only projection, quiet presence (not a quote card / not a widget).

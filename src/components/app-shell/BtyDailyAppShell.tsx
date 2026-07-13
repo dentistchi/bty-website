@@ -550,6 +550,14 @@ function LockedRoom({ tag, body }: { tag: string; body: string }) {
   );
 }
 
+// THE HELD ARC V0.1 — minimalism A/B. A narrow, reversible PROTOTYPE switch: NOT a
+// feature-flag framework, NO env var, NO DB field, NO user preference, NO exposed UI
+// toggle. Default is "anchor-only" — the secondary release line is removed from the DOM
+// entirely (never hidden behind reserved height). Flip this one constant to restore
+// Variant B (the comparison baseline) with no other change. Production ships anchor-only.
+type HeldInCenterVariant = "anchor-only" | "anchor-with-release";
+const HELD_IN_CENTER_VARIANT: HeldInCenterVariant = "anchor-only";
+
 export function TodaySurface({
   copy,
   statusLine,
@@ -567,6 +575,7 @@ export function TodaySurface({
   onLivingArrivalEnd,
   firstArrival = false,
   onArrivalConsumed,
+  heldVariant = HELD_IN_CENTER_VARIANT,
 }: {
   copy: TodayCopy;
   /** Calm narrative status line derived from userState (already localized). */
@@ -606,6 +615,10 @@ export function TodaySurface({
   firstArrival?: boolean;
   /** Called once on mount so the shell can mark the session affordance consumed (no replay). */
   onArrivalConsumed?: () => void;
+  /** THE HELD ARC V0.1 minimalism A/B. Defaults to the module const (anchor-only in
+   *  production). Overridable only so the comparison baseline (Variant B) stays testable —
+   *  not exposed in the UI, not persisted, not a user preference. */
+  heldVariant?: HeldInCenterVariant;
 }) {
   // Controlled (shell-owned) ↔ uncontrolled (local) resolution. In production the shell lifts the
   // state up so a brief tab visit no longer discards the accepted day; a cold launch / full remount
@@ -1103,14 +1116,25 @@ export function TodaySurface({
           action card by breathing room (no card/box/divider/footer), a de-golded eyebrow, an anchor
           no heavier than the Promise, no quotation marks, and opacity-only entry. */}
       {!loading && centerKeepLine ? (
-        <section data-today-center-keep className="btyFadeIn mt-14">
+        <section
+          data-today-center-keep
+          data-held-variant={heldVariant}
+          // Anchor-only closes with a deliberate breath of open space (an existing token,
+          // pb-6) so the last line reads as intentional silence before the bottom nav — not
+          // leftover copy. Variant B keeps its own terminal line, so no extra bottom space.
+          className={`btyFadeIn mt-14${heldVariant === "anchor-only" ? " pb-6" : ""}`}
+        >
           <span className="block text-xs font-medium uppercase tracking-[0.18em] text-white/40">
             {copy.centerKeep.label}
           </span>
           <p data-center-keep-line className="mt-3 text-[0.95rem] leading-7 text-white/80">
             {centerKeepLine}
           </p>
-          <p className="mt-1.5 text-sm leading-6 text-white/45">{copy.centerKeep.support}</p>
+          {/* Variant B (comparison baseline) only — the release line is absent from the DOM in
+              anchor-only, not hidden with reserved height. Flip HELD_IN_CENTER_VARIANT to restore. */}
+          {heldVariant === "anchor-with-release" ? (
+            <p className="mt-1.5 text-sm leading-6 text-white/45">{copy.centerKeep.support}</p>
+          ) : null}
         </section>
       ) : null}
     </>
