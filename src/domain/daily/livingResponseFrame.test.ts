@@ -68,10 +68,67 @@ describe("selectProposition — one authorized meaning + one angle, deterministi
   });
 });
 
+describe("selectProposition — V2.2 provenance-bounded repetition meaning", () => {
+  const self = deriveCommitmentFrame("self")!;
+  const others = deriveCommitmentFrame("others")!;
+
+  it("SELF_RETURN_* → repeated_inward_return with exact provenance", () => {
+    const p = selectProposition(self, "repetition", ["SELF_RETURN_STRONG"], "d:self");
+    expect(p.depth).toBe("repetition");
+    expect(p.repetition?.movement).toBe("repeated_inward_return");
+    expect(p.repetition?.provenanceCodes).toEqual(["SELF_RETURN_STRONG"]); // exact source code
+    expect(p.propositionCode).toBe("self_return_honestly.repetition.repeated_inward_return");
+  });
+
+  it("SELF_KEEP_* → repeated_naming; return has priority when both present", () => {
+    expect(selectProposition(self, "repetition", ["SELF_KEEP_STEADY"], "d:self").repetition?.movement).toBe("repeated_naming");
+    expect(selectProposition(self, "repetition", ["SELF_KEEP_STEADY", "SELF_RETURN_STRONG"], "d:self").repetition?.movement).toBe("repeated_inward_return");
+  });
+
+  it("OTHERS_RELATIONAL_* → repeated_relational_presence", () => {
+    const p = selectProposition(others, "repetition", ["OTHERS_RELATIONAL_STRONG"], "d:others");
+    expect(p.repetition?.movement).toBe("repeated_relational_presence");
+  });
+
+  it("no evidence → no repetition meaning → DOWNGRADE to commitment", () => {
+    const p = selectProposition(self, "repetition", [], "d:self");
+    expect(p.depth).toBe("commitment");
+    expect(p.repetition).toBeUndefined();
+  });
+
+  it("unsupported / change-flavored code cannot create a repetition meaning → DOWNGRADE", () => {
+    // OTHERS_REEXPOSURE_* is change-flavored (unmapped in Step 1); MYSTERY has no rule.
+    expect(selectProposition(others, "repetition", ["OTHERS_REEXPOSURE_STRONG"], "d:others").depth).toBe("commitment");
+    expect(selectProposition(self, "repetition", ["MYSTERY_CODE"], "d:self").depth).toBe("commitment");
+  });
+
+  it("relationship mismatch fails closed (self frame + Others code → no meaning → commitment)", () => {
+    const p = selectProposition(self, "repetition", ["OTHERS_RELATIONAL_STRONG"], "d:self");
+    expect(p.depth).toBe("commitment");
+    expect(p.repetition).toBeUndefined();
+  });
+
+  it("repetition does NOT create contrast/improvement; prohibited vocabulary is propagated", () => {
+    const p = selectProposition(self, "repetition", ["SELF_RETURN_STRONG"], "d:self");
+    // recurrence-prohibited extensions reach prohibitedClaims (validator) + repetition.prohibitedExtensions (prompt)
+    for (const t of ["another_person", "private", "improvement", "growth", "values"]) {
+      expect(p.prohibitedClaims).toContain(t);
+      expect(p.repetition?.prohibitedExtensions).toContain(t);
+    }
+  });
+
+  it("is deterministic (same inputs → identical proposition incl. repetition)", () => {
+    const a = selectProposition(self, "repetition", ["SELF_RETURN_STRONG"], "2026-07-12:self");
+    const b = selectProposition(self, "repetition", ["SELF_RETURN_STRONG"], "2026-07-12:self");
+    expect(a).toEqual(b);
+  });
+});
+
 // ─── GOLDEN SET: strong examples MUST pass; adversarial examples MUST be rejected ───────────────────
 
+const REP_CODE: Record<LivingResponseRelationship, string> = { self: "SELF_RETURN_STRONG", others: "OTHERS_RELATIONAL_STRONG", world: "X" };
 const propFor = (r: LivingResponseRelationship, depth: "commitment" | "repetition" = "commitment") =>
-  selectProposition(deriveCommitmentFrame(r)!, depth, depth === "repetition" ? ["X_STRONG"] : [], `2026-07-12:${r}`);
+  selectProposition(deriveCommitmentFrame(r)!, depth, depth === "repetition" ? [REP_CODE[r]] : [], `2026-07-12:${r}`);
 
 const check = (
   t: string,
@@ -148,5 +205,52 @@ describe("V2.1 adversarial — every case is rejected", () => {
   });
   it("metric / count leak → rejected", () => {
     expect(check("You named what stays inward three times.", "self").ok).toBe(false);
+  });
+});
+
+describe("V2.2 — user interpretation + repetition grounding", () => {
+  // USER_INTERPRETATION (unconditional)
+  it("'This shows that you value honesty.' → USER_INTERPRETATION", () => {
+    expect(check("This shows that you value honesty.", "self").violations).toContain("USER_INTERPRETATION");
+  });
+  it("'You are growing in ownership.' → USER_INTERPRETATION", () => {
+    expect(check("You are growing in ownership.", "self").violations).toContain("USER_INTERPRETATION");
+  });
+  it("'You tend to keep decisions private.' → USER_INTERPRETATION", () => {
+    expect(check("You tend to keep decisions private.", "self").violations).toContain("USER_INTERPRETATION");
+  });
+
+  // Repetition grounding
+  it("cross-portable frame-only line at repetition depth → REPETITION_ANCHOR_MISSING", () => {
+    expect(check("Returning to oneself becomes tangible when named with clarity.", "self", "repetition").violations).toContain("REPETITION_ANCHOR_MISSING");
+  });
+  it("multiple frame tokens but no recurrence → REPETITION_ANCHOR_MISSING", () => {
+    expect(check("Returning inward becomes tangible when honesty is named.", "self", "repetition").violations).toContain("REPETITION_ANCHOR_MISSING");
+  });
+  it("'again' with no frame anchor → rejected (movement + repetition)", () => {
+    const r = check("Again, clarity turns intention into action.", "self", "repetition");
+    expect(r.ok).toBe(false);
+    expect(r.violations).toContain("MOVEMENT_ANCHOR_MISSING");
+  });
+  it("valid provenance-backed recurrence (self) → PASS at repetition depth", () => {
+    const r = check("What has returned inward more than once is being named again today.", "self", "repetition");
+    expect(r.violations).toEqual([]);
+    expect(r.ok).toBe(true);
+  });
+  it("the SAME recurrence line at COMMITMENT depth → HISTORICAL_CLAIM", () => {
+    expect(check("What has returned inward more than once is being named again today.", "self", "commitment").violations).toContain("HISTORICAL_CLAIM");
+  });
+  it("valid provenance-backed recurrence (others) → PASS", () => {
+    const r = check("The care carried more than once is reaching another person again today.", "others", "repetition");
+    expect(r.violations).toEqual([]);
+    expect(r.ok).toBe(true);
+  });
+
+  // Prohibited extensions on top of recurrence
+  it("unsupported relational recipient on a SELF recurrence → PROHIBITED_CLAIM", () => {
+    expect(check("What has returned inward more than once now reaches another person again.", "self", "repetition").violations).toContain("PROHIBITED_CLAIM");
+  });
+  it("unsupported privacy claim on a recurrence → PROHIBITED_CLAIM", () => {
+    expect(check("What has returned inward more than once is kept private again today.", "self", "repetition").violations).toContain("PROHIBITED_CLAIM");
   });
 });

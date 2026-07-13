@@ -19,8 +19,20 @@ import { anchorMatcher } from "@/domain/daily/livingResponseConcepts";
 import type { LivingResponseRelationship } from "@/domain/daily/livingResponse";
 import type { LivingResponseProposition } from "@/domain/daily/livingResponseFrame";
 
-// Bumped for V2.1 (proposition-aware anchoring + depth markers). Distinguishes V2.1 settled rows.
-export const LIVING_RESPONSE_POLICY_VERSION = "lrpol_v4";
+// V2.2: adds user-interpretation rejection + repetition grounding. Bumped from lrpol_v4.
+export const LIVING_RESPONSE_POLICY_VERSION = "lrpol_v5";
+
+// V2.2 — user-level interpretation: a Living Response describes the action relationship, never the
+// user's identity, character, values, motive, emotion, stable tendency, or growth. Unconditional (a
+// core safety rule); narrow enough not to reject valid action-centered sentences that merely say "you".
+const USER_INTERPRETATION =
+  /\bthis (shows|means|reflects|reveals|tells us|suggests|says)( that)? you\b|\byou (value|tend|prefer|fear|avoid|struggle|care about)\b|\byou'?re (becoming|growing|learning)\b|\byou are (becoming|growing|learning|someone who|a person who|the kind of)\b|\b(reveals|reflects|shows) your (character|values|nature|true self)\b|당신은\b|당신이 .*(사람|성향|가치)|가치관을 보여|성격을 (보여|드러)/i;
+
+// V2.2 — recurrence markers (repetition depth REQUIRES one; commitment depth already blocks them via
+// HISTORICAL_MARKERS). Recurrence ≠ contrast: "again" is recurrence; "no longer" is contrast (blocked
+// separately). A bare recurrence marker is NOT enough on its own — see REPETITION_ANCHOR_MISSING.
+const RECURRENCE_MARKER =
+  /\b(again|more than once|over and over|time and again|has (returned|been named|been kept|shown up|carried)|keeps? (return|nam|show|carr)\w*|repeatedly|each time)\b|다시|또다시|거듭|여러\s*번|반복/i;
 
 // V2.1 movement + destination anchor patterns (EN + KO). A commitment/repetition line MUST surface at
 // least one of its proposition's requiredAnchors (its movement or destination). This IS the
@@ -72,6 +84,20 @@ const CLAIM_MARKERS: Record<string, RegExp> = {
   dishonesty: /\bdishonest\w*|\blie[ds]?\b|lying|deceiv\w*/i,
   avoidance: /\bavoid\w*|escap\w*|evad\w*/i,
   emotion: /\b(anxious|afraid|scared|sad|angry|depress\w*|ashamed|guilt\w*)\b|불안|두려|슬프|우울/i,
+  // V2.2 repetition-prohibited extensions (recurrence alone cannot support these). Collision-checked
+  // against frame/repetition safe anchors: none of these overlap "returned/inward/named/carried/…".
+  improvement: /\bimprov\w*|\bbetter\b|\bprogress\w*|\bstronger\b/i,
+  growth: /\bgrow(s|ing|th)?\b/i,
+  values: /\bvalue[sd]?\b|matters to you/i,
+  tendency: /\btend(s|ency)?\b|habitually|usually you/i,
+  fear: /\bfear\w*|afraid|scared\b|두려|겁/i,
+  delay: /\bdelay\w*|put off|postpon\w*/i,
+  withheld: /\bwithh\w*|held back|kept inside\b/i,
+  distance: /\bdistanc\w*|withdrawn|pulled away|apart\b/i,
+  private: /\bprivate(ly)?\b|in secret|hidden away\b|비밀|숨긴/i,
+  spoken: /\bspoken|said aloud|voiced|out loud\b|소리 내어/i,
+  hearing: /\bhearing\b|heard by|listen(s|ed|ing)?\b|듣는|들리/i,
+  another_person: /\banother person|someone else\b|다른 사람|남에게/i,
 };
 // Geometry-aligned length contract: short enough to fit the reserved 2-line slot at mobile width,
 // so the line can never grow the card. One sentence, ≤ MAX_WORDS words, ≤ MAX_LEN chars.
@@ -144,7 +170,10 @@ export type LivingResponseViolation =
   | "CONTRAST_CLAIM" // previous-vs-today claim (never authorized in V2.1)
   | "PATH_PARAPHRASE" // restates/paraphrases the Today Path copy
   | "PROHIBITED_CLAIM" // surfaces a meaning the proposition explicitly forbids
-  | "PRAISE"; // congratulates or grades the user
+  | "PRAISE" // congratulates or grades the user
+  // V2.2
+  | "USER_INTERPRETATION" // claims identity/character/values/motive/emotion/tendency/growth
+  | "REPETITION_ANCHOR_MISSING"; // repetition depth but no provenance-backed recurrence expressed
 
 const norm = (s: string) => s.toLowerCase().replace(/[\s.,!?—-]+/g, " ").trim();
 
@@ -198,6 +227,8 @@ export function validateLivingResponse(
   if (WELLNESS_FAMILIES.some((r) => r.test(t))) v.push("GENERIC_WELLNESS");
   if (INSTRUCTION.test(t)) v.push("INSTRUCTION");
   if (MACHINE_CODE.test(t)) v.push("MACHINE_CODE");
+  // V2.2 — never interpret the user (identity/character/values/motive/emotion/tendency/growth).
+  if (USER_INTERPRETATION.test(t)) v.push("USER_INTERPRETATION");
 
   // V2.1 proposition-aware checks — the sentence must EXPRESS the authorized meaning, specifically.
   let hasFrameAnchor = false;
@@ -212,10 +243,21 @@ export function validateLivingResponse(
     if (input.proposition.depth === "commitment" && HISTORICAL_MARKERS.test(t)) v.push("HISTORICAL_CLAIM");
     // Must not paraphrase the Today Path copy.
     if (isRestatement(t, PATH_PHRASES[input.relationship])) v.push("PATH_PARAPHRASE");
-    // Must not surface any meaning the proposition explicitly forbids (frame meaning limits, §5).
+    // Must not surface any meaning the proposition explicitly forbids (frame meaning limits, §5;
+    // V2.2 repetition-prohibited extensions: privacy/relational/improvement/change/…).
     if (input.proposition.prohibitedClaims.some((c) => CLAIM_MARKERS[c]?.test(t))) v.push("PROHIBITED_CLAIM");
     // A Living Response observes; it never praises.
     if (PRAISE.test(t)) v.push("PRAISE");
+
+    // V2.2 repetition grounding — at repetition depth the line must EXPRESS the provenance-backed
+    // recurrence, not merely carry several frame tokens. Requires BOTH (a) a recurrence marker (EN+KO)
+    // AND (b) the frame movement/destination anchor (hasFrameAnchor above, EN+KO) — the anchor ties the
+    // recurrence to THIS specific behavior. A frame-only line (no recurrence marker) or a "again"-only
+    // line (no frame anchor) fails. Both signals are proposition-derived, not a global token list.
+    if (input.proposition.repetition) {
+      const hasRecurrence = RECURRENCE_MARKER.test(t);
+      if (!hasRecurrence || !hasFrameAnchor) v.push("REPETITION_ANCHOR_MISSING");
+    }
   }
 
   // Evidence anchor — the line must ground in a packet concept OR (V2.1) the authorized frame anchor.

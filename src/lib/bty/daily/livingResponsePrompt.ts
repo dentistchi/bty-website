@@ -15,11 +15,20 @@ import type {
   LivingResponseMovement,
   LivingResponseDestination,
   LivingResponseAngle,
+  LivingResponseRepetitionMovement,
 } from "@/domain/daily/livingResponseFrame";
 
-// V2.1: expression-only. The provider no longer "reveals deeper meaning"; it renders the authorized
-// proposition in one sentence, at one angle. Prompt version bumped so V1.x settled rows are distinct.
-export const LIVING_RESPONSE_PROMPT_VERSION = "lrprompt_v4";
+// V2.1: expression-only. V2.2: adds the repetition relationship at repetition depth. Version bumped so
+// earlier settled rows stay distinct.
+export const LIVING_RESPONSE_PROMPT_VERSION = "lrprompt_v5";
+
+// Human phrasing for the provenance-backed RECURRENCE (repetition depth only). Recurrence ONLY — the
+// prompt never turns these into improvement, avoidance, privacy, or change.
+const REPETITION_HINT: Record<LivingResponseRepetitionMovement, string> = {
+  repeated_inward_return: "the user has returned inward more than once in recent days",
+  repeated_naming: "the user has named something for themselves more than once in recent days",
+  repeated_relational_presence: "the user has shown up for someone more than once in recent days",
+};
 
 // Human, non-code phrasing for the movement the sentence must make visible.
 const MOVEMENT_HINT: Record<LivingResponseMovement, string> = {
@@ -78,6 +87,10 @@ export function buildLivingResponseMessages(
     `Where it lands: ${DESTINATION_HINT[packet.commitmentFrame.destination]}.`,
     `Take exactly this one angle: ${ANGLE_HINT[p.angle]}.`,
     `Ground the wording in these words (weave, do not list): ${p.meaningTokens.join(", ")}.`,
+    // V2.2 — repetition depth: express the deterministic recurrence relationship. Recurrence ONLY.
+    p.repetition
+      ? `Recent verified fact (recurrence ONLY): ${REPETITION_HINT[p.repetition.movement]}. Express that this repeated thing relates to today's meaning — say it happened more than once and is happening again today. You MAY use words like: ${p.repetition.safeTokens.join(", ")}. Recurrence does NOT mean it improved, that the user avoids or delays anything, that anything became private or was spoken to another person, or that anything changed from before — state none of those.`
+      : "",
     p.prohibitedClaims.length
       ? `Do not imply any of: ${p.prohibitedClaims.join(", ")}.`
       : "",

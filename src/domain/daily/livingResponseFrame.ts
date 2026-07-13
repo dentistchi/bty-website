@@ -17,7 +17,9 @@
 import type { LivingResponseRelationship } from "@/domain/daily/livingResponse";
 
 export const COMMITMENT_FRAME_VERSION = "cf_v1";
-export const LIVING_RESPONSE_PROPOSITION_VERSION = "lrprop_v1";
+// V2.2: repetition-depth propositions now carry a provenance-bounded repetition meaning (not just a
+// "continuity" angle). Bumped so V2.2 settled rows / fingerprints are distinct from V2.1.
+export const LIVING_RESPONSE_PROPOSITION_VERSION = "lrprop_v2";
 
 export type TodayCommitmentFrameVersion = "cf_v1";
 export type TodayCommitmentPathId =
@@ -45,6 +47,22 @@ export type LivingResponseDepth = "commitment" | "repetition" | "contrast";
 
 export type LivingResponseAngle = "boundary" | "visibility" | "consequence" | "continuity";
 
+/** V2.2 provenance-bounded repetition meaning. Recurrence ONLY — never avoidance/change/improvement. */
+export type LivingResponseRepetitionMovement =
+  | "repeated_inward_return"
+  | "repeated_naming"
+  | "repeated_relational_presence";
+
+export type LivingResponseRepetitionMeaning = {
+  movement: LivingResponseRepetitionMovement;
+  /** Human recurrence vocabulary the provider may weave. Never codes/counts/dates/PII. */
+  safeTokens: readonly string[];
+  /** Meanings the provider must NOT add on top of recurrence (privacy/relational/improvement/…). */
+  prohibitedExtensions: readonly string[];
+  /** The exact machine codes that PROVE this recurrence — server-side only, never in the prompt. */
+  provenanceCodes: readonly string[];
+};
+
 export type LivingResponseProposition = {
   depth: LivingResponseDepth;
   propositionCode: string;
@@ -58,6 +76,9 @@ export type LivingResponseProposition = {
   angle: LivingResponseAngle;
   /** Machine evidence codes — server-side provenance only; NEVER placed in the prompt. */
   provenanceCodes: readonly string[];
+  /** V2.2: present ONLY at repetition depth. The deterministic, provenance-backed recurrence the
+   *  sentence must express in relation to today's frame. Absent → no repetition may be claimed. */
+  repetition?: LivingResponseRepetitionMeaning;
 };
 
 /** relationship → the single static Today Path meaning. Exhaustive; unknown → null (fail closed). */
@@ -141,6 +162,56 @@ const MEANING_BY_PATH: Readonly<Record<TodayCommitmentPathId, PathMeaning>> = {
   },
 };
 
+// ── V2.2 repetition-meaning derivation ─────────────────────────────────────────────────────────────
+// A qualifying evidence code proves ONLY recurrence of a specific behavior. It is NEVER converted into
+// avoidance, privacy, delay, change, improvement, or any user trait. Codes whose provenance is
+// change-flavored (OTHERS_REEXPOSURE_* — validated as "changed") are deliberately NOT mapped here:
+// expressing them safely would require contrast provenance, which STEP 1 must not add. Their packets
+// therefore DOWNGRADE to commitment depth.
+
+// Prohibited-extension claim ids (checked by the validator, hinted in the prompt). These are meanings
+// recurrence alone cannot support.
+const REPETITION_PROHIBITED_BASE = [
+  "improvement", "growth", "values", "tendency", "avoidance", "fear", "delay", "withheld", "distance",
+] as const;
+const REPETITION_PROHIBITED_SELF = [...REPETITION_PROHIBITED_BASE, "another_person", "private", "spoken", "hearing", "conversation", "apology", "repair"];
+const REPETITION_PROHIBITED_OTHERS = [...REPETITION_PROHIBITED_BASE, "private", "spoken", "hearing", "conversation", "apology", "repair"]; // another_person permitted (Others frame destination)
+
+type RepetitionRule = {
+  test: RegExp;
+  relationship: LivingResponseRelationship;
+  movement: LivingResponseRepetitionMovement;
+  safeTokens: readonly string[];
+  prohibitedExtensions: readonly string[];
+};
+
+// Priority order: the first qualifying code that maps (and matches the frame relationship) wins.
+const REPETITION_RULES: readonly RepetitionRule[] = [
+  { test: /^SELF_RETURN_/, relationship: "self", movement: "repeated_inward_return", safeTokens: ["again", "more than once", "returned", "return", "inward"], prohibitedExtensions: REPETITION_PROHIBITED_SELF },
+  { test: /^SELF_KEEP_/, relationship: "self", movement: "repeated_naming", safeTokens: ["again", "more than once", "named", "naming", "kept"], prohibitedExtensions: REPETITION_PROHIBITED_SELF },
+  { test: /^OTHERS_RELATIONAL_/, relationship: "others", movement: "repeated_relational_presence", safeTokens: ["again", "more than once", "carried", "alongside", "present"], prohibitedExtensions: REPETITION_PROHIBITED_OTHERS },
+  // OTHERS_REEXPOSURE_* intentionally unmapped (change-flavored provenance) → commitment downgrade.
+];
+
+/** Derive the ONE provenance-bounded repetition meaning from qualifying codes, or null (→ downgrade). */
+function deriveRepetitionMeaning(
+  relationship: LivingResponseRelationship,
+  historyCodes: readonly string[],
+): LivingResponseRepetitionMeaning | null {
+  for (const rule of REPETITION_RULES) {
+    if (rule.relationship !== relationship) continue;
+    const matched = historyCodes.filter((c) => rule.test.test(c));
+    if (matched.length === 0) continue;
+    return {
+      movement: rule.movement,
+      safeTokens: rule.safeTokens,
+      prohibitedExtensions: rule.prohibitedExtensions,
+      provenanceCodes: matched, // exact codes that PROVE this recurrence
+    };
+  }
+  return null;
+}
+
 /** Deterministic FNV-1a index — stable per (day, relationship, propositionCode); no Math.random. */
 function pickIndex(material: string, count: number): number {
   if (count <= 0) return 0;
@@ -168,14 +239,22 @@ export function selectProposition(
   angleSeed: string,
 ): LivingResponseProposition {
   const meaning = MEANING_BY_PATH[frame.pathId];
-  // V2.1: contrast is never authorized; any non-repetition depth collapses to commitment.
-  const runtimeDepth: LivingResponseDepth = depth === "repetition" ? "repetition" : "commitment";
+  // V2.1: contrast is never authorized. V2.2: repetition depth is honored ONLY when a provenance-backed
+  // repetition meaning is derivable — otherwise DOWNGRADE to commitment (never claim unsupported history).
+  const repetition = depth === "repetition" ? deriveRepetitionMeaning(frame.relationship, historyCodes) : null;
+  const runtimeDepth: LivingResponseDepth = repetition ? "repetition" : "commitment";
 
   const allowedAngles: LivingResponseAngle[] =
     runtimeDepth === "repetition" ? [...meaning.commitmentAngles, "continuity"] : [...meaning.commitmentAngles];
 
-  const propositionCode = `${frame.pathId}.${runtimeDepth}`;
+  const propositionCode = repetition ? `${frame.pathId}.repetition.${repetition.movement}` : `${frame.pathId}.commitment`;
   const angle = allowedAngles[pickIndex(`${angleSeed}:${propositionCode}`, allowedAngles.length)];
+
+  // At repetition depth the frame's prohibited claims are joined with the recurrence-specific ones so
+  // the validator rejects any privacy/relational/improvement/change extension the provider might add.
+  const prohibitedClaims = repetition
+    ? [...new Set([...meaning.prohibitedClaims, ...repetition.prohibitedExtensions])]
+    : meaning.prohibitedClaims;
 
   return {
     depth: runtimeDepth,
@@ -184,8 +263,9 @@ export function selectProposition(
     movement: frame.movement,
     meaningTokens: meaning.meaningTokens,
     requiredAnchors: [frame.movement, frame.destination],
-    prohibitedClaims: meaning.prohibitedClaims,
+    prohibitedClaims,
     angle,
-    provenanceCodes: runtimeDepth === "repetition" ? [...historyCodes] : [],
+    provenanceCodes: repetition ? [...repetition.provenanceCodes] : [],
+    ...(repetition ? { repetition } : {}),
   };
 }

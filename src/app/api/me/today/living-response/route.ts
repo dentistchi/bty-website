@@ -21,6 +21,7 @@ import { getTodayCommitmentRef } from "@/lib/bty/daily/todayRelationshipCommitme
 import { assembleLivingResponsePacket } from "@/lib/bty/daily/livingResponseEvidence.server";
 import { admitLivingResponse } from "@/domain/daily/livingResponse";
 import { deriveCommitmentFrame, selectProposition } from "@/domain/daily/livingResponseFrame";
+import type { LivingResponseRepetitionMovement } from "@/domain/daily/livingResponseFrame";
 import { generateLivingResponse } from "@/lib/bty/daily/livingResponseGenerate.server";
 import { validateLivingResponse, LIVING_RESPONSE_POLICY_VERSION } from "@/lib/bty/daily/livingResponseValidator";
 import { LIVING_RESPONSE_PROMPT_VERSION } from "@/lib/bty/daily/livingResponsePrompt";
@@ -111,11 +112,15 @@ export async function POST(req: NextRequest) {
     const frame = deriveCommitmentFrame(relationship);
 
     const nowIso = now.toISOString();
-    // Frame-specific deterministic fallback FLOOR (movement-reflecting, replay-stable). Falls back to
-    // the legacy per-relationship line only if the frame is somehow underivable (impossible for a
-    // validated relationship, but never fabricate).
-    const settleFallback = async (reason: string, fingerprint: string | null) => {
-      const line = frame ? selectFrameFallbackLine(frame, ref.locale) : selectFallbackLine(relationship, ref.dayKey, ref.locale);
+    // Frame-specific deterministic fallback FLOOR (movement-reflecting, replay-stable). At repetition
+    // depth (repMovement supplied) it returns the recurrence-only repetition Golden. Falls back to the
+    // legacy per-relationship line only if the frame is somehow underivable (never fabricate).
+    const settleFallback = async (
+      reason: string,
+      fingerprint: string | null,
+      repMovement?: LivingResponseRepetitionMovement,
+    ) => {
+      const line = frame ? selectFrameFallbackLine(frame, ref.locale, repMovement) : selectFallbackLine(relationship, ref.dayKey, ref.locale);
       return settleLivingResponse(
         admin,
         ref.id,
@@ -145,7 +150,7 @@ export async function POST(req: NextRequest) {
     const gen = await generateLivingResponse(packet, { locale: ref.locale, recentTexts: recent, proposition });
     if (!gen.ok) {
       const reason = gen.reason === "LLM_UNAVAILABLE" ? "PROVIDER_UNAVAILABLE" : gen.reason === "BAD_JSON" ? "INVALID_OUTPUT" : "PROVIDER_TIMEOUT";
-      const response = await settleFallback(reason, packet.evidenceFingerprint);
+      const response = await settleFallback(reason, packet.evidenceFingerprint, proposition.repetition?.movement);
       return noStore(NextResponse.json({ ok: true, response }, { status: 200 }));
     }
 
@@ -159,7 +164,7 @@ export async function POST(req: NextRequest) {
       proposition,
     });
     if (!validation.ok) {
-      const response = await settleFallback("POLICY_REJECTION", packet.evidenceFingerprint);
+      const response = await settleFallback("POLICY_REJECTION", packet.evidenceFingerprint, proposition.repetition?.movement);
       return noStore(NextResponse.json({ ok: true, response }, { status: 200 }));
     }
 

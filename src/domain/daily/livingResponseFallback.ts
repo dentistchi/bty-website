@@ -10,7 +10,7 @@
  * evidence is insufficient or generation/validation fails.
  */
 import type { LivingResponseRelationship } from "@/domain/daily/livingResponse";
-import type { TodayCommitmentFrame, TodayCommitmentPathId } from "@/domain/daily/livingResponseFrame";
+import type { TodayCommitmentFrame, TodayCommitmentPathId, LivingResponseRepetitionMovement } from "@/domain/daily/livingResponseFrame";
 
 export const FALLBACK_VERSION = "lrfb_v3";
 
@@ -35,10 +35,41 @@ const FRAME_GOLDEN: Record<TodayCommitmentPathId, { en: string; ko: string }> = 
   },
 };
 
-/** The single deterministic Golden fallback line for a Commitment Frame (replay-stable per frame). */
-export function selectFrameFallbackLine(frame: TodayCommitmentFrame, locale: string | null): string {
+// V2.2 repetition Golden floor — ONE conservative line per repetition movement. Expresses RECURRENCE
+// ONLY (no improvement/contrast/avoidance/privacy/relational-recipient beyond the frame). Passes the
+// V2.2 validator at repetition depth (recurrence marker + frame anchor), replay-stable per movement.
+const FRAME_GOLDEN_REPETITION: Record<LivingResponseRepetitionMovement, { en: string; ko: string }> = {
+  repeated_inward_return: {
+    en: "What has returned inward more than once is being named again today.",
+    ko: "여러 번 안으로 돌아온 그 자리를 오늘 다시 이름 붙입니다.",
+  },
+  repeated_naming: {
+    en: "What has been named more than once is being named again today.",
+    ko: "여러 번 이름 붙였던 그것을 오늘 다시 이름 붙입니다.",
+  },
+  repeated_relational_presence: {
+    en: "The care carried more than once is reaching another person again today.",
+    ko: "여러 번 건넨 마음이 오늘 다시 상대에게 가 닿습니다.",
+  },
+};
+
+/**
+ * The single deterministic Golden fallback line for a Commitment Frame (replay-stable). When a
+ * `repetitionMovement` is supplied (repetition depth), returns the recurrence-only repetition Golden;
+ * otherwise the commitment-level frame Golden.
+ */
+export function selectFrameFallbackLine(
+  frame: TodayCommitmentFrame,
+  locale: string | null,
+  repetitionMovement?: LivingResponseRepetitionMovement,
+): string {
+  const isKo = locale === "ko";
+  if (repetitionMovement) {
+    const r = FRAME_GOLDEN_REPETITION[repetitionMovement];
+    return isKo ? r.ko : r.en;
+  }
   const g = FRAME_GOLDEN[frame.pathId];
-  return locale === "ko" ? g.ko : g.en;
+  return isKo ? g.ko : g.en;
 }
 
 // Concept → the evidence-specific fallback family it selects (so a fallback still feels grounded).

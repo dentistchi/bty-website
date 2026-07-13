@@ -116,3 +116,40 @@ describe("selectFrameFallbackLine — V2.1 frame-specific Golden floor", () => {
     }
   });
 });
+
+describe("selectFrameFallbackLine — V2.2 repetition Golden floor", () => {
+  const REP = [
+    { rel: "self" as const, code: "SELF_RETURN_STRONG", movement: "repeated_inward_return" as const },
+    { rel: "self" as const, code: "SELF_KEEP_STEADY", movement: "repeated_naming" as const },
+    { rel: "others" as const, code: "OTHERS_RELATIONAL_STRONG", movement: "repeated_relational_presence" as const },
+  ];
+
+  it("returns a distinct recurrence Golden per movement, replay-stable", () => {
+    const lines = REP.map(({ rel, movement }) => selectFrameFallbackLine(deriveCommitmentFrame(rel)!, "en", movement));
+    expect(new Set(lines).size).toBe(3);
+    for (const { rel, movement } of REP) {
+      const f = deriveCommitmentFrame(rel)!;
+      expect(selectFrameFallbackLine(f, "en", movement)).toBe(selectFrameFallbackLine(f, "en", movement));
+    }
+  });
+
+  for (const loc of ["en", "ko"] as const) {
+    it(`every ${loc.toUpperCase()} repetition Golden PASSES the validator at repetition depth`, () => {
+      for (const { rel, code, movement } of REP) {
+        const frame = deriveCommitmentFrame(rel)!;
+        const line = selectFrameFallbackLine(frame, loc, movement);
+        const proposition = selectProposition(frame, "repetition", [code], `2026-07-12:${rel}`);
+        expect(proposition.repetition?.movement).toBe(movement); // sanity: proposition really is repetition
+        const res = validateLivingResponse(line, {
+          relationship: rel,
+          guardPhrases: guardPhrasesFor(loc, rel),
+          concepts: [],
+          recentTexts: [],
+          proposition,
+        });
+        expect(res.violations, `${loc}/${movement}`).toEqual([]);
+        expect(res.ok).toBe(true);
+      }
+    });
+  }
+});
