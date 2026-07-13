@@ -566,6 +566,8 @@ export function TodaySurface({
   setConfirmed: setConfirmedProp,
   onConfirm,
   livingResponse,
+  animateLivingArrival = false,
+  onLivingArrivalEnd,
   firstArrival = false,
   onArrivalConsumed,
 }: {
@@ -595,6 +597,12 @@ export function TodaySurface({
   /** Today Living Response (V1): the settled/pending perspective for the committed relationship.
    *  Only status ready|fallback carries a `perspective` line; pending (or null) renders nothing. */
   livingResponse?: LivingResponseView | null;
+  /** Presence V1.1: true ONLY when this line is a FIRST-generation arrival (user committed this
+   *  session and the perspective just resolved) → play the pause+rise reveal once. Restore /
+   *  tab-return / cold-launch / re-render leave it false → the line renders immediately at rest. */
+  animateLivingArrival?: boolean;
+  /** Called on the arrival animation end so the shell consumes the one-shot (no replay on remount). */
+  onLivingArrivalEnd?: () => void;
   /** True only on the FIRST Today mount of a shell session — plays the one-time three-door
    *  affordance sequence and defers the evidence invitation until after it. Default false
    *  (isolated renders / tab-returns paint at rest with the invitation immediate). */
@@ -1032,7 +1040,14 @@ export function TodaySurface({
                             <p
                               data-living-response
                               data-living-response-source={livingResponse.source ?? undefined}
-                              className="btyLivingReveal line-clamp-2 text-[0.9rem] italic leading-6 text-white/60"
+                              data-living-response-arrival={animateLivingArrival ? "1" : undefined}
+                              // Presence V1.1: the ARRIVAL reveal (pause → rise-in) plays ONLY for a
+                              // first-generation line. Restore / tab-return / re-render render at rest
+                              // (no class → immediately legible, no replayed animation). onAnimationEnd
+                              // consumes the one-shot so a later remount never re-plays it. No italic /
+                              // quotes / emphasis; one register below the Promise (/70 vs Promise /80).
+                              className={`${animateLivingArrival ? "btyLivingArrival " : ""}line-clamp-2 text-[0.9rem] leading-6 text-white/70`}
+                              onAnimationEnd={animateLivingArrival ? onLivingArrivalEnd : undefined}
                             >
                               {livingResponse.perspective}
                             </p>
@@ -1141,6 +1156,10 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // Today Living Response (V1): the one grounded perspective for today's commitment. Read-only on the
   // client — settled/pending view only; only ready/fallback carry a line (pending renders nothing).
   const [livingResponse, setLivingResponse] = useState<LivingResponseView | null>(null);
+  // Presence V1.1 — arms the ONE-TIME arrival reveal. Set true ONLY when a first-generation line
+  // resolves from this session's own commit (handleTodayConfirm); the hydration/restore path never
+  // arms it, and onLivingArrivalEnd disarms it after the reveal so a tab-return remount paints at rest.
+  const [animateLivingArrival, setAnimateLivingArrival] = useState(false);
   // Commitment-scoped one-shot guard for hydration MATERIALIZATION: at most one POST per commitment
   // (keyed by BTY day_key — one commitment per user/day) per mounted session. Marked BEFORE the await
   // and held in a ref so it survives React Strict-Mode effect replay, rerenders, and tab-return.
@@ -1264,9 +1283,13 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       setTodaySelected(outcome.focus);
       setTodayConfirmed(true);
       // Fire the Living Response POST AFTER confirmation — never awaited, never blocks the CTA. The
-      // perspective (ready/fallback) fades in when it resolves; failure leaves the terminal intact.
+      // perspective (ready/fallback) arrives when it resolves; failure leaves the terminal intact.
+      // FIRST GENERATION: arm the one-time arrival reveal only when a real line resolves (never for a
+      // pending view, and never on the restore path).
       void postLivingResponse().then((r) => {
-        if (r) setLivingResponse(r);
+        if (!r) return;
+        setLivingResponse(r);
+        if (r.status !== "pending" && r.perspective) setAnimateLivingArrival(true);
       });
       return true;
     }
@@ -1343,12 +1366,16 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
            burst blooms from the chosen seam, once. */
         @keyframes btyBloom{0%{opacity:0;transform:scale(0.5)}28%{opacity:0.9}100%{opacity:0;transform:scale(2.2)}}
         .btyBloom{animation:btyBloom 1.1s cubic-bezier(0.22,1,0.36,1) both}
-        /* Living Response — a slow quiet fade-in (discovered, not announced). Reserves no space
-           when absent (it renders nothing); when present it eases in without a layout jump. */
-        /* V1.1: OPACITY ONLY — no transform/height/margin. The line becomes legible in place inside
-           the reserved slot; nothing moves. Reduced-motion shows it instantly (disable list below). */
-        @keyframes btyLivingReveal{from{opacity:0}to{opacity:1}}
-        .btyLivingReveal{animation:btyLivingReveal 1.4s ease-out both}
+        /* Living Response ARRIVAL (Presence V1.1) — the received-presence rhythm, applied ONLY to a
+           FIRST-generation line (never to a tab/cold restore or a re-render). The both-fill + delay
+           gives Phase B: the line is held invisible in its already-reserved slot for the pause, then
+           Phase C eases it in with a restrained 4px rise. Timing over spectacle: opacity 0→1 +
+           translateY(4px)→0, calm ease-out, no bounce/scale/glow/blur. The 4px transform is
+           compositor-only inside the fixed min-h slot, so nothing reflows (zero layout shift). */
+        @keyframes btyLivingArrival{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+        .btyLivingArrival{animation:btyLivingArrival 420ms cubic-bezier(0.22,0.61,0.36,1) 320ms both}
+        /* Reduced-motion arrival — opacity only, ≤150ms, no translate, no pause (hierarchy still reads). */
+        @keyframes btyLivingArrivalRM{from{opacity:0}to{opacity:1}}
         /* THREE-DOOR AFFORDANCE (Sensory Overreach V1) — four coordinated layers per active door,
            each staggered by the per-door delay: (A) INNER LIGHT — the full-card radial surface
            warmth; (B) RIM — the whole rounded border goes gold (ring on the same overlay); (A+B
@@ -1389,7 +1416,8 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
         /* LIVING SELECTED-DOOR — interior content settles in with a restrained opacity + rise. */
         @keyframes btySettle{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         .btySettle{animation:btySettle .3s ease-out both}
-        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise,.btyOpenRoom,.btyWake,.btyDriftA,.btyDriftB,.btySeed,.btySpine,.btySpark,.btyIgnite,.btyHeart,.btyBloom,.btyAfford,.btyAffordLift,.btyHalo,.btyAffordScale,.btySelectAck,.btySettle,.btyAuroraTravel,.btyMapReveal,.btyPerimeter,.btyLivingReveal{animation:none!important}}
+        @media (prefers-reduced-motion: reduce){.btyFadeIn,.btyRise,.btyOpenRoom,.btyWake,.btyDriftA,.btyDriftB,.btySeed,.btySpine,.btySpark,.btyIgnite,.btyHeart,.btyBloom,.btyAfford,.btyAffordLift,.btyHalo,.btyAffordScale,.btySelectAck,.btySettle,.btyAuroraTravel,.btyMapReveal,.btyPerimeter{animation:none!important}}
+        @media (prefers-reduced-motion: reduce){.btyLivingArrival{animation:btyLivingArrivalRM 150ms ease-out both!important}}
       `}</style>
       {/* TODAY WOW LAB — Experiment A "Daybreak" LIVING FIELD. A full-bleed light stage behind
           all content: two warm gold aurora currents drifting on independent slow loops (the space
@@ -1443,6 +1471,8 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
               setConfirmed={setTodayConfirmed}
               onConfirm={handleTodayConfirm}
               livingResponse={livingResponse}
+              animateLivingArrival={animateLivingArrival}
+              onLivingArrivalEnd={() => setAnimateLivingArrival(false)}
               firstArrival={!arrivalPlayedRef.current}
               onArrivalConsumed={() => {
                 arrivalPlayedRef.current = true;

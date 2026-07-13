@@ -18,7 +18,7 @@ afterEach(() => {
 
 const view = (over: Partial<LivingResponseView> = {}): LivingResponseView => ({ status: "ready", relationship: "self", perspective: "A quiet return still counts today.", source: "generated", confidence: "grounded", ...over });
 
-function renderSurface(livingResponse: LivingResponseView | null) {
+function renderSurface(livingResponse: LivingResponseView | null, animateLivingArrival = false) {
   return render(
     <TodaySurface
       copy={COPY.en.today}
@@ -32,6 +32,7 @@ function renderSurface(livingResponse: LivingResponseView | null) {
       confirmed
       setConfirmed={() => {}}
       livingResponse={livingResponse}
+      animateLivingArrival={animateLivingArrival}
       firstArrival={false}
     />,
   );
@@ -82,15 +83,29 @@ describe("TodaySurface — living response line", () => {
     expect(line.className).toContain("line-clamp-2"); // caps at 2 lines regardless of text length
   });
 
-  it("V1.1 reveal is OPACITY-only (no transform/height/margin/position animation) + no loading UI", () => {
+  it("V1.1 confirmed card carries NO loading affordance in any state", () => {
     const { container } = renderSurface(view());
-    const line = container.querySelector("[data-living-response]")!;
-    expect(line.className).toContain("btyLivingReveal");
-    // no forbidden animation utility classes on the line
-    expect(line.className).not.toMatch(/translate|scale|\bh-\[|max-h|grid-rows|\bm[trblxy]?-/);
     // no loading affordances anywhere in the confirmed card
     expect(container.querySelector('[class*="spinner"],[class*="skeleton"],[class*="shimmer"],[role="status"],[data-toast]')).toBeNull();
     expect(container.textContent).not.toMatch(/thinking|loading|generating/i);
+  });
+
+  // Presence V1.1 — arrival rhythm applies ONLY to a first-generation line.
+  it("Presence V1.1 arrival: first-generation line plays btyLivingArrival (pause+rise), no italic/quotes", () => {
+    const { container } = renderSurface(view(), /* animateLivingArrival */ true);
+    const line = container.querySelector("[data-living-response]")!;
+    expect(line.className).toContain("btyLivingArrival"); // the pause+rise reveal
+    expect(line.getAttribute("data-living-response-arrival")).toBe("1");
+    expect(line.className).not.toContain("italic"); // received presence, not a caption/quote
+    expect(line.textContent).not.toMatch(/["“”]/); // no quotation marks
+  });
+
+  it("Presence V1.1 restore: a NON-arrival line renders at rest (no arrival animation class)", () => {
+    const { container } = renderSurface(view(), /* animateLivingArrival */ false);
+    const line = container.querySelector("[data-living-response]")!;
+    expect(line.className).not.toContain("btyLivingArrival"); // restore/tab-return/re-render = immediate, at rest
+    expect(line.getAttribute("data-living-response-arrival")).toBeNull();
+    expect(line.className).toContain("line-clamp-2"); // still hard-capped to the 2-line slot
   });
 });
 
@@ -139,6 +154,9 @@ describe("shell — POST after commit, re-entry, provider zero-call", () => {
     expect(livingPostIdx).toBeGreaterThan(commitPostIdx);
     // the line fades in
     await waitFor(() => expect(container.querySelector("[data-living-response]")).not.toBeNull());
+    // Presence V1.1: a FIRST-generation line (this session's own commit) plays the arrival reveal
+    expect(container.querySelector("[data-living-response]")!.className).toContain("btyLivingArrival");
+    expect(container.querySelector("[data-living-response]")!.getAttribute("data-living-response-arrival")).toBe("1");
   });
 
   it("generation failure (LR POST null) leaves the terminal intact and shows no line", async () => {
@@ -165,6 +183,9 @@ describe("shell — POST after commit, re-entry, provider zero-call", () => {
     const { container } = render(<BtyDailyAppShell locale="en" />);
     await waitFor(() => expect(container.querySelector("[data-living-response]")).not.toBeNull());
     expect(container.querySelector("[data-living-response]")!.textContent).toBe("You've kept returning, quietly.");
+    // Presence V1.1: a RESTORE (hydration GET) line renders at rest — no arrival reveal replays
+    expect(container.querySelector("[data-living-response]")!.className).not.toContain("btyLivingArrival");
+    expect(container.querySelector("[data-living-response]")!.getAttribute("data-living-response-arrival")).toBeNull();
     // never played arrival (committed re-entry) → no three-door affordance surface
     expect(container.querySelectorAll("[data-aurora-wrapper]").length).toBe(0);
   });
