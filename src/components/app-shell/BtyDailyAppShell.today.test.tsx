@@ -158,7 +158,7 @@ describe("app-shell Today Center keep (STEP 1B — read-only surface)", () => {
     );
   });
 
-  it("renders the held keep (label + quoted line + support) after the relationship section when present", () => {
+  it("renders the held keep (label + anchor line + support) after the relationship section when present", () => {
     renderToday({ centerKeepLine: "Deeper relationship" });
     const keep = document.querySelector("[data-today-center-keep]");
     expect(keep).toBeTruthy();
@@ -168,6 +168,26 @@ describe("app-shell Today Center keep (STEP 1B — read-only surface)", () => {
     // Arrival sequence intact: greeting + status + doors still render alongside the keep.
     expect(document.querySelector("[data-today-status]")).toBeTruthy();
     expect(document.querySelectorAll("[data-focus]").length).toBe(3);
+  });
+
+  // THE HELD ARC V0 — read-only projection, quiet presence (not a quote card / not a widget).
+  it("Held V0: anchor carries no quotation marks and the section is non-interactive (no CTA/icon/button)", () => {
+    renderToday({ centerKeepLine: "Live as a child of God" });
+    const keep = document.querySelector("[data-today-center-keep]")!;
+    expect(keep.tagName.toLowerCase()).toBe("section"); // semantic grouping
+    const anchor = keep.querySelector("[data-center-keep-line]")!;
+    expect(anchor.textContent).toBe("Live as a child of God"); // exact — no wrapping quotes
+    expect(anchor.textContent).not.toMatch(/["“”]/);
+    // no interaction affordance anywhere in the held section
+    expect(keep.querySelector("button, a, [role='button'], svg, img")).toBeNull();
+    // not a card: no filled/rounded/border-box/shadow container classes on the section
+    expect(keep.className).not.toMatch(/rounded|border|bg-|shadow/);
+  });
+
+  it("Held V0: does not expose the Dr. Chi name or any AI/companion framing", () => {
+    renderToday({ centerKeepLine: "Live as a child of God" });
+    const keep = document.querySelector("[data-today-center-keep]")!;
+    expect(keep.textContent).not.toMatch(/Dr\.?\s*Chi|AI|companion|reflection/i);
   });
 
   it("renders nothing quietly when there is no keep for today", () => {

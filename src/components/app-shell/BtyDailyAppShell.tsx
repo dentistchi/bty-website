@@ -1096,18 +1096,22 @@ export function TodaySurface({
           relationship section (after the doors, never before the arrival sentence). Today only
           reflects it; the write/edit flow stays in Center. Deliberately SEPARATE from the Arena
           "Promise to Carry" (promiseLabel, action_text) rendered inside a chosen door — its own
-          eyebrow ("Held in Center") + the quoted line + a quiet support line. No number, no
-          streak, no verdict, no CTA. Renders only when a keep exists for today (keptToday). */}
+          muted eyebrow ("Held in Center") + the anchor line + a quiet release line. No number, no
+          streak, no verdict, no CTA. Renders only when a keep exists for today (keptToday).
+          THE HELD ARC V0: read-only projection of the user's canonical Center keep (Center owns the
+          meaning; Today only reflects it — no mutation, no reinterpretation). Separated from the
+          action card by breathing room (no card/box/divider/footer), a de-golded eyebrow, an anchor
+          no heavier than the Promise, no quotation marks, and opacity-only entry. */}
       {!loading && centerKeepLine ? (
-        <div data-today-center-keep className="btyRise mt-10 border-t border-white/5 pt-6">
-          <span className="block text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
+        <section data-today-center-keep className="btyFadeIn mt-14">
+          <span className="block text-xs font-medium uppercase tracking-[0.18em] text-white/40">
             {copy.centerKeep.label}
           </span>
-          <p data-center-keep-line className="mt-2 text-[1.05rem] leading-7 text-white/85">
-            “{centerKeepLine}”
+          <p data-center-keep-line className="mt-3 text-[0.95rem] leading-7 text-white/80">
+            {centerKeepLine}
           </p>
           <p className="mt-1.5 text-sm leading-6 text-white/45">{copy.centerKeep.support}</p>
-        </div>
+        </section>
       ) : null}
     </>
   );
