@@ -1232,12 +1232,14 @@ main.dj-console {
   padding: 10px 16px;
   border-radius: 12px;
   font-weight: 800;
+  white-space: nowrap;
   background: linear-gradient(180deg, #f2a08f, var(--coral));
   color: #3a120c;
 }
 .cancel-link {
   color: var(--coral) !important;
   text-decoration-color: var(--coral);
+  white-space: nowrap;
 }
 .status-card.cancelled {
   border: 1px solid rgba(239, 143, 124, 0.35);
@@ -1255,7 +1257,7 @@ main.dj-console {
   color: #052a1f;
 }
 
-/* Floating dock, anchored above the Safari bottom bar */
+/* Compact floating pill — the permanent default, above the Safari bottom bar. */
 .dock {
   position: fixed;
   left: 0;
@@ -1264,32 +1266,27 @@ main.dj-console {
   z-index: 50;
   display: flex;
   justify-content: center;
-  padding: 10px 12px calc(12px + var(--safe-b));
+  padding: 10px 16px calc(12px + var(--safe-b));
   pointer-events: none;
 }
-.dock > * {
-  pointer-events: auto;
-  width: 100%;
-  max-width: 640px;
-}
-
-/* Collapsed pill */
 .dock-pill {
-  display: flex;
+  pointer-events: auto;
+  display: inline-flex;
   align-items: center;
   gap: 10px;
-  width: auto;
-  margin: 0 auto;
-  padding: 12px 18px;
+  max-width: calc(100vw - 32px);
+  padding: 11px 18px;
   border-radius: 999px;
   background: linear-gradient(180deg, var(--panel-2), var(--stage-1));
   border: 1px solid rgba(245, 196, 81, 0.4);
   color: var(--text);
   box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.8), var(--ring-gold);
   font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
 }
 .dock-ico {
-  font-size: 1.15rem;
+  font-size: 1.1rem;
 }
 .dock-count {
   color: var(--gold);
@@ -1297,63 +1294,168 @@ main.dj-console {
 .dock-sub {
   font-weight: 600;
   color: var(--muted);
-  font-size: 0.86rem;
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 360px) {
+  .dock-sub {
+    display: none; /* narrower screens: just "🎤 내 신청곡 N" */
+  }
+}
+@keyframes dock-pulse {
+  0% {
+    box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.8), 0 0 0 0 rgba(245, 196, 81, 0.55);
+  }
+  100% {
+    box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.8), 0 0 0 12px rgba(245, 196, 81, 0);
+  }
+}
+.dock-pill.pulse {
+  animation: dock-pulse 0.9s ease-out;
 }
 
-/* Expanded stack */
-.dock.expanded > * {
-  background: linear-gradient(180deg, var(--panel-2), var(--stage-1));
-  border: 1px solid rgba(245, 196, 81, 0.28);
-  border-radius: 18px;
-  padding: 12px 12px 8px;
-  box-shadow: 0 20px 46px -18px rgba(0, 0, 0, 0.85);
-}
-.dock-head {
+/* Full-width bottom sheet (opens only on tap) — never a side column. */
+.dock-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(6, 9, 16, 0.66);
+  backdrop-filter: blur(4px);
+}
+.dock-sheet {
+  width: 100%;
+  max-width: 680px;
+  max-height: 78vh;
+  max-height: 78dvh; /* iOS Safari: dynamic viewport accounts for the toolbar */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background:
+    radial-gradient(120% 70% at 50% -6%, rgba(245, 196, 81, 0.12), transparent 60%),
+    linear-gradient(180deg, var(--panel-2), var(--stage-1));
+  border: 1px solid rgba(245, 196, 81, 0.28);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -20px 60px -20px rgba(0, 0, 0, 0.85);
+  padding: 16px 16px calc(16px + var(--safe-b));
+  animation: fade-up 0.28s ease both;
+}
+@media (min-width: 700px) {
+  .dock-sheet-backdrop {
+    align-items: center;
+    padding: 20px;
+  }
+  .dock-sheet {
+    border-radius: 22px;
+    max-height: 70vh;
+    max-height: 70dvh;
+  }
+}
+/* Header + close stay fixed; only the list scrolls. */
+.dock-sheet-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 8px;
+  gap: 12px;
+  margin-bottom: 12px;
 }
-.dock-title {
+.dock-sheet-title {
+  font-size: 1.3rem;
   font-weight: 800;
+  letter-spacing: -0.02em;
 }
-.dock-list {
-  display: grid;
-  gap: 6px;
+.dock-sheet-sub {
+  color: var(--muted);
+  font-size: 0.86rem;
+  margin-top: 2px;
 }
-.dock-row {
+.dock-sheet-close {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+/* The scroll viewport: consumes the remaining sheet height and scrolls
+   internally. min-height:0 is what lets a flex child actually scroll instead of
+   compressing its children. */
+.dock-sheet-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* No double spacing from the optional swipe wrapper inside the list. */
+.dock-sheet-list .swipe-wrap {
+  margin: 0;
+  flex: 0 0 auto;
+}
+/* Rows keep a STABLE height regardless of how many there are — never compress. */
+.sheet-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
-  border-radius: 12px;
+  width: 100%;
+  min-height: 68px;
+  padding: 12px 14px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--line-2);
 }
-.dock-row.tone-now_playing {
+.sheet-row.tone-now_playing {
   border-color: rgba(255, 77, 141, 0.4);
   background: rgba(255, 77, 141, 0.08);
 }
-.dock-row.tone-up_next {
+.sheet-row.tone-up_next {
   border-color: rgba(245, 196, 81, 0.35);
 }
-.dock-num {
+.sheet-num {
   flex: 0 0 auto;
-  width: 22px;
+  width: 26px;
   text-align: center;
   font-weight: 800;
   color: var(--muted-2);
   font-variant-numeric: tabular-nums;
+  padding-top: 2px;
 }
-.dock-song {
-  font-weight: 700;
+.sheet-row-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.sheet-row-song {
+  font-weight: 800;
+  font-size: 1.02rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.dock-status {
-  font-size: 0.82rem;
+.sheet-row-artist {
+  color: var(--muted);
+  font-size: 0.86rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sheet-row-status {
   color: var(--cyan);
+  font-size: 0.84rem;
+  margin-top: 2px;
+}
+.sheet-row-action {
+  flex: 0 0 auto;
+  align-self: center;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1482,4 +1584,63 @@ main.dj-console {
 .sheet-confirm-q {
   font-weight: 700;
   margin: 0 0 12px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   V2.3 — dock cancel note + Admin menu inside DJ console
+   ══════════════════════════════════════════════════════════════ */
+
+.sheet-row-note {
+  font-size: 0.78rem;
+  color: var(--muted-2);
+  white-space: nowrap;
+}
+.sheet-row-confirm-q {
+  color: var(--coral);
+  font-size: 0.84rem;
+  margin-top: 4px;
+}
+
+/* Admin trigger in the DJ status bar (admin role only) */
+.admin-trigger {
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--gold);
+  background: rgba(245, 196, 81, 0.1);
+  border: 1px solid rgba(245, 196, 81, 0.4);
+}
+
+/* Admin menu (reuses .sheet-backdrop + .action-sheet) */
+.action-sheet.admin-menu {
+  max-width: 520px;
+}
+.admin-group {
+  display: grid;
+  gap: 8px;
+  margin: 6px 0 4px;
+}
+.admin-group-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  margin: 14px 2px 4px;
+}
+.admin-item {
+  min-height: 52px;
+  border-radius: 14px;
+  font-weight: 700;
+  text-align: left;
+  padding: 0 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+.admin-item.danger-item {
+  color: var(--coral);
+  border-color: rgba(239, 143, 124, 0.4);
+  background: rgba(239, 143, 124, 0.08);
 }

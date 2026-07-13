@@ -2,7 +2,7 @@
 // presentation only — never canonical queue truth (each status still comes from
 // the server resolver). Bounded: entries expire with the cancel-capability TTL.
 
-import type { GuestQueueState } from './queue';
+import { canGuestCancel, type GuestQueueState } from './queue';
 
 export const MY_REQUESTS_TTL_MS = 12 * 60 * 60 * 1000;
 
@@ -40,12 +40,17 @@ export function addMyRequest(list: readonly MyRequest[], entry: MyRequest): MyRe
 
 export interface CollapsedSummary {
   count: number;
+  /** Soonest waiting position among the guest's own requests, or null. */
+  nearestPosition: number | null;
+  /** Sub-line for the collapsed pill. Unambiguous — never "N번 · N곡". */
   label: string;
 }
 
 /**
- * Compact label for the collapsed dock pill given each active row's live status.
- * Leads with the soonest waiting position; notes when one is on stage.
+ * Compact summary for the collapsed dock pill given each active row's live
+ * status. The count is shown separately ("내 신청곡 N"); this `label` is the
+ * sub-line and states the NEAREST position without implying all songs share it.
+ * Terminal rows never inflate the count.
  */
 export function collapsedSummary(
   rows: readonly { state: GuestQueueState; position: number }[],
@@ -56,11 +61,25 @@ export function collapsedSummary(
   const waiting = active
     .filter((r) => r.state === 'waiting' || r.state === 'up_next')
     .sort((a, b) => a.position - b.position);
+  const nearestPosition = waiting.length ? waiting[0].position : null;
 
-  let label: string;
-  if (count === 0) label = '내 신청곡';
-  else if (waiting.length) label = count > 1 ? `대기 ${waiting[0].position}번 · ${count}곡` : `대기 ${waiting[0].position}번`;
-  else if (onStage) label = count > 1 ? `무대 위 · ${count}곡` : '무대 위';
-  else label = `${count}곡`;
-  return { count, label };
+  let label = '';
+  if (count === 0) label = '';
+  else if (nearestPosition != null) label = count > 1 ? `가장 빠른 순번 ${nearestPosition}번` : `지금 대기 ${nearestPosition}번`;
+  else if (onStage) label = '무대 위';
+  return { count, nearestPosition, label };
+}
+
+export type CancelAction = 'cancel' | 'unavailable' | 'none';
+
+/**
+ * What the cancel control should show for a request row:
+ *  - 'cancel'      → still cancellable AND this device holds the capability
+ *  - 'unavailable' → cancellable state but no token (older entry) → honest note,
+ *                    never an unauthorized request
+ *  - 'none'        → playing/terminal → no cancel affordance
+ */
+export function cancelRowAction(state: GuestQueueState, hasToken: boolean): CancelAction {
+  if (!canGuestCancel(state)) return 'none';
+  return hasToken ? 'cancel' : 'unavailable';
 }

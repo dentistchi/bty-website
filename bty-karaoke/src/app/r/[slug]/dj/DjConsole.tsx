@@ -18,7 +18,10 @@ type Phase = 'loading' | 'unpaired' | 'disconnected' | 'authed';
 // localStorage (NOT a cookie): the device token is never auto-attached to
 // requests and never lands in page HTML. It travels only in an Authorization
 // header on explicit DJ calls; a revoked/rotated device drops to 'disconnected'.
+// A paired DJ iPad uses the DJ key; an authenticated Admin phone reuses its
+// admin key so it can enter the DJ Console WITHOUT pairing (admin ⊇ dj).
 const storageKey = (slug: string) => `bty-dj-cred:${slug}`;
+const adminKey = (slug: string) => `bty-admin-cred:${slug}`;
 
 const POLL_MS = 4000;
 const NEW_HOLD_MS = 4500;
@@ -34,6 +37,7 @@ interface QueuePayload {
 export default function DjConsole({ slug, displayName, dev = false }: Props) {
   const [phase, setPhase] = useState<Phase>('loading');
   const [cred, setCred] = useState<string | null>(null);
+  const [credSource, setCredSource] = useState<'dj' | 'admin' | null>(null);
   const [data, setData] = useState<QueuePayload | null>(null);
   const [newIds, setNewIds] = useState<string[]>([]);
   const [reconnecting, setReconnecting] = useState(false);
@@ -87,27 +91,42 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
     [slug, authHeader, markArrivals],
   );
 
-  // On mount: try the stored device token from this iPad.
+  // On mount: try the paired DJ token first, then the Admin token (admin ⊇ dj).
+  // Either landing straight in the console; only fall to the pairing screen when
+  // neither authenticates.
   useEffect(() => {
-    const saved = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey(slug)) : null;
-    if (!saved) {
+    if (typeof window === 'undefined') return;
+    const candidates: Array<{ source: 'dj' | 'admin'; key: string; token: string }> = [];
+    const djTok = window.localStorage.getItem(storageKey(slug));
+    const adminTok = window.localStorage.getItem(adminKey(slug));
+    if (djTok) candidates.push({ source: 'dj', key: storageKey(slug), token: djTok });
+    if (adminTok) candidates.push({ source: 'admin', key: adminKey(slug), token: adminTok });
+    if (candidates.length === 0) {
       setPhase('unpaired');
       return;
     }
-    loadQueue(saved).then((r) => {
-      if (r === 'ok') {
-        setCred(saved);
-        setPhase('authed');
-      } else if (r === 'unauth') {
-        window.localStorage.removeItem(storageKey(slug));
-        setPhase('unpaired');
-      } else {
+    (async () => {
+      for (const c of candidates) {
+        const r = await loadQueue(c.token);
+        if (r === 'ok') {
+          setCred(c.token);
+          setCredSource(c.source);
+          setPhase('authed');
+          return;
+        }
+        if (r === 'unauth') {
+          window.localStorage.removeItem(c.key); // stale token — drop it, try the next
+          continue;
+        }
         // Network hiccup on cold open — keep the token, show reconnecting.
-        setCred(saved);
+        setCred(c.token);
+        setCredSource(c.source);
         setReconnecting(true);
         setPhase('authed');
+        return;
       }
-    });
+      setPhase('unpaired');
+    })();
   }, [slug, loadQueue]);
 
   // Live polling while authed.
@@ -162,8 +181,12 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
   }
 
   function disconnectManual() {
+    // Only ever clears the DJ pairing on this device. An Admin using the console
+    // via their admin session keeps that session (they manage via the Admin menu),
+    // so we never wipe the admin key here.
     window.localStorage.removeItem(storageKey(slug));
     setCred(null);
+    setCredSource(null);
     setData(null);
     initedRef.current = false;
     seenRef.current = new Set();
@@ -188,6 +211,7 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
       }
       window.localStorage.setItem(storageKey(slug), c);
       setCred(c);
+      setCredSource('dj');
       setCode('');
       initedRef.current = false;
       await loadQueue(c);
@@ -274,6 +298,7 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
       busy={busy}
       error={error}
       dev={dev}
+      adminCred={data?.role === 'admin' ? cred : null}
       onStart={(id) => mutate(id, 'play')}
       onFinish={(id) => mutate(id, 'complete')}
       onMoveNext={(id) => mutate(id, 'move_next')}

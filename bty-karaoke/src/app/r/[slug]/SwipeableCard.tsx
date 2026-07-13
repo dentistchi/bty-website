@@ -95,7 +95,7 @@ export default function SwipeableCard({
 
   return (
     <div ref={wrapRef} className={`swipe-wrap tone-${tone} dir-${direction}`}>
-      <div className="swipe-reveal" aria-hidden style={{ opacity: 0.4 + progress * 0.6 }}>
+      <div className="swipe-reveal" aria-hidden style={{ opacity: dragging ? progress : 0 }}>
         <span className="swipe-ico">{icon}</span>
         <span className="swipe-label">{label}</span>
       </div>

@@ -8,6 +8,7 @@ import { requestDisplayTitle } from '@/domain/request-view';
 import { displaySong } from '@/domain/song-title';
 import { youtubeWatchUrl } from '@/domain/youtube-search';
 import DjActionSheet from './DjActionSheet';
+import DjAdminMenu from './DjAdminMenu';
 
 interface QueuePayload {
   room: { display_name: string; status: 'open' | 'closed' };
@@ -26,6 +27,8 @@ interface Props {
   busy: boolean;
   error: string | null;
   dev?: boolean;
+  /** Admin-capable bearer, present only when the authenticated role is admin. */
+  adminCred?: string | null;
   onStart: (id: string) => void | Promise<void>;
   onFinish: (id: string) => void | Promise<void>;
   onMoveNext: (id: string) => void | Promise<void>;
@@ -42,6 +45,7 @@ export default function DjBoard({
   reconnecting,
   busy,
   error,
+  adminCred,
   onStart,
   onFinish,
   onMoveNext,
@@ -52,12 +56,14 @@ export default function DjBoard({
   const [guestQr, setGuestQr] = useState<{ qrSvg: string; url: string } | null>(null);
   const [loadingQr, setLoadingQr] = useState(false);
   const [sheetFor, setSheetFor] = useState<KaraokeRequest | null>(null);
+  const [adminOpen, setAdminOpen] = useState(false);
 
   const requests = data?.requests ?? [];
   const { current, queue } = selectStage(requests);
   const live = Boolean(data?.session);
   const stageOpen = !current;
   const newSet = new Set(newIds);
+  const isAdmin = data?.role === 'admin';
 
   function openVideo(videoId: string) {
     window.open(youtubeWatchUrl(videoId), '_blank', 'noopener');
@@ -121,6 +127,16 @@ export default function DjBoard({
         <span className="sb-metric" title="This iPad is a connected DJ">
           <span className="status-dot ok" aria-hidden /> DJ connected
         </span>
+        {isAdmin && (
+          <button
+            type="button"
+            className="admin-trigger"
+            aria-haspopup="dialog"
+            onClick={() => setAdminOpen(true)}
+          >
+            ⋯ Admin
+          </button>
+        )}
       </div>
 
       {reconnecting && (
@@ -208,9 +224,11 @@ export default function DjBoard({
               <button className="linkish" onClick={() => onRefresh()}>
                 Refresh
               </button>
-              <button className="linkish" onClick={onDisconnect}>
-                Disconnect
-              </button>
+              {!isAdmin && (
+                <button className="linkish" onClick={onDisconnect}>
+                  Disconnect
+                </button>
+              )}
             </div>
           </div>
         </section>
@@ -294,6 +312,18 @@ export default function DjBoard({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Admin menu (admin role only; secondary to the live surface) ─ */}
+      {isAdmin && adminOpen && adminCred && (
+        <DjAdminMenu
+          slug={slug}
+          displayName={displayName}
+          cred={adminCred}
+          onShowGuestQr={showGuestQr}
+          onSessionEnded={() => onRefresh()}
+          onClose={() => setAdminOpen(false)}
+        />
       )}
 
       {/* ── Custom queue action sheet (replaces window.confirm) ──── */}
