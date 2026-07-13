@@ -127,6 +127,8 @@ describe("CenterKeepRoom (Center Daily Keep, STEP 1A)", () => {
 
     // Remembrance framing, not a save confirmation.
     expect(held.getAttribute("data-center-remember")).toBe("");
+    // Center Return V1 — the RETURN block settles into presence (motion-level return marker).
+    expect(held.className).toContain("btyCenterReturn");
     expect(screen.getByText("Today you carried")).toBeTruthy();
     expect(screen.getByText("Live as a child of God")).toBeTruthy();
     expect(screen.getByText("I remember what held you today.")).toBeTruthy();
@@ -166,5 +168,7 @@ describe("CenterKeepRoom (Center Daily Keep, STEP 1A)", () => {
     expect(held.getAttribute("data-center-remember")).toBeNull();
     expect(screen.getByText("Held for today.")).toBeTruthy();
     expect(screen.queryByText("Today you carried")).toBeNull();
+    // Save is instant/quiet — it must NOT borrow the RETURN settle (return ≠ save at motion level).
+    expect(held.className).not.toContain("btyCenterReturn");
   });
 });

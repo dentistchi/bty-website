@@ -130,6 +130,18 @@ export default function CenterKeepRoom({ locale }: { locale: Locale }) {
       data-center-keep=""
       className="flex min-h-[60vh] flex-col items-center justify-center px-2 text-center"
     >
+      {/* Center Return V1 — the RETURN settle. When Center opens onto an already-held anchor,
+          the remembered block resolves into presence with an opacity-led, no-delay settle
+          (≈ the shell's fade language, but its own). NO delay = "already here", not "arriving";
+          the whole block settles as ONE place, not a message sequence. The SAVE path never
+          uses this (it keeps its instant quiet confirmation) — so return and save differ at the
+          motion level too. reduced-motion → opacity only, no translate. */}
+      <style>{`
+        @keyframes btyCenterReturn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+        .btyCenterReturn{animation:btyCenterReturn 560ms cubic-bezier(0.22,0.61,0.36,1) both}
+        @keyframes btyCenterReturnRM{from{opacity:0}to{opacity:1}}
+        @media (prefers-reduced-motion: reduce){.btyCenterReturn{animation:btyCenterReturnRM 150ms ease-out both}}
+      `}</style>
       <span className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
         {t.eyebrow}
       </span>
@@ -169,7 +181,9 @@ export default function CenterKeepRoom({ locale }: { locale: Locale }) {
         <div
           data-center-keep-held=""
           data-center-remember={returned ? "" : undefined}
-          className="flex w-full max-w-[20rem] flex-col items-center"
+          className={`flex w-full max-w-[20rem] flex-col items-center${
+            returned ? " btyCenterReturn" : ""
+          }`}
         >
           {/* Return / night path: Center remembers the SAME anchor Today carried. A quiet
               "Today you carried" lead + the anchor shown plainly (mirroring Today's Held in
