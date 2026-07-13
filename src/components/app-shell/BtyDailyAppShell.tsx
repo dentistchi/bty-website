@@ -30,7 +30,7 @@ import {
  * "Carry this into today" CTA that settles the choice — no navigation, no persistence.
  * The other four tabs are locked rooms: prepared, not broken (content = P4).
  *
- * Layout is a flex column so the tab bar and companion dock are real children,
+ * Layout is a flex column so the tab bar is a real child,
  * never floating — content can never be occluded. Safe-area insets are handled
  * top (status bar) and bottom (home indicator).
  */
@@ -72,7 +72,6 @@ type Copy = {
   arena: RoomCopy;
   foundry: RoomCopy;
   me: RoomCopy;
-  companion: string;
 };
 
 export type TodayCopy = Copy["today"];
@@ -111,7 +110,6 @@ export const COPY: Record<Locale, Copy> = {
     arena: { tag: "Relationship with Others", body: "Your decision training space is being prepared." },
     foundry: { tag: "Relationship with the World", body: "Your craft and creation space is being prepared." },
     me: { tag: "Your leadership identity", body: "Your current path will gather here." },
-    companion: "Dr. Chi is with you today.",
   },
   ko: {
     appAria: "BTY Daily 앱",
@@ -145,7 +143,6 @@ export const COPY: Record<Locale, Copy> = {
     arena: { tag: "이웃과의 관계", body: "당신의 결정 훈련 공간을 준비하고 있습니다." },
     foundry: { tag: "세상과의 관계", body: "당신의 창작과 만듦의 공간을 준비하고 있습니다." },
     me: { tag: "당신의 리더십 정체성", body: "당신이 지금 걷고 있는 길이 이곳에 모입니다." },
-    companion: "Dr. Chi가 오늘 함께합니다.",
   },
 };
 
@@ -1116,25 +1113,6 @@ export function TodaySurface({
   );
 }
 
-/**
- * Companion dock (v0) — STATUS-ONLY. A reserved, non-floating flex child that can never
- * cover cards/buttons/nav. It states presence and nothing more: no chat launch, no AI
- * call, no route. The earlier ambiguous gold "alive" pulse dot is removed — presence is
- * carried by the avatar + the plain status line.
- */
-export function CompanionBar({ label }: { label: string }) {
-  return (
-    <div className="shrink-0 px-5 pb-2">
-      <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-gradient-to-r from-white/[0.06] to-white/[0.03] px-4 py-2.5 backdrop-blur-sm">
-        <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#C9A66B]/20 text-sm font-semibold text-[#C9A66B] ring-1 ring-[#C9A66B]/25">
-          치
-        </span>
-        <span className="truncate text-xs text-white/60">{label}</span>
-      </div>
-    </div>
-  );
-}
-
 export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   const [tab, setTab] = useState<AppTabKey>("today");
   const t = COPY[locale];
@@ -1306,8 +1284,8 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
 
   return (
     <div className="btyFadeIn relative flex h-[100dvh] flex-col overflow-hidden bg-[#0B1F3A] text-white antialiased">
-      {/* Entry fade only (mount). The companion dock is status-only (no pulse); the sole Orb
-          now lives at /start. prefers-reduced-motion stills the fade. */}
+      {/* Entry fade only (mount). The sole Orb now lives at /start.
+          prefers-reduced-motion stills the fade. */}
       <style>{`
         @keyframes btyEnter{from{opacity:0}to{opacity:1}}
         .btyFadeIn{animation:btyEnter .7s ease both}
@@ -1505,7 +1483,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             <CenterMeCard locale={locale} />
             {/* Lift the weekly light up into the open space below the mirror so it is the
                 emotional centre of the Me tab (not a bottom decoration) and its caption
-                clears the companion dock. vh-relative so the lift scales across devices. */}
+                clears the bottom tab dock. vh-relative so the lift scales across devices. */}
             <div className="-mt-[24vh]">
               <WeeklyOrb intensities={weeklyRhythm} locale={locale} />
             </div>
@@ -1515,7 +1493,6 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
 
       {/* Bottom dock lifted above the wake layer (z-10) so the ambient glow stays behind it. */}
       <div className="relative z-10 flex shrink-0 flex-col">
-        <CompanionBar label={t.companion} />
         <AppTabBar active={tab} onSelect={setTab} />
       </div>
     </div>

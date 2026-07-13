@@ -2,17 +2,16 @@
 /**
  * Phase 3 Today wire + A/A+ ritual beat.
  *
- * Renders TodaySurface / CompanionBar in isolation (NOT the whole shell) so the OrbLiving
+ * Renders TodaySurface in isolation (NOT the whole shell) so the OrbLiving
  * canvas / rAF loop is never mounted. Asserts: fail-soft reads (today-intelligence +
  * open-promise), selection reveals the confirmation + CTA, the promise surface uses
- * action_text only (else the chosen-relationship fallback line), no internal token ever
- * reaches output, and the companion bar is status-only with the pulse dot removed.
+ * action_text only (else the chosen-relationship fallback line), and no internal token
+ * ever reaches output.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import BtyDailyAppShell, {
   COPY,
-  CompanionBar,
   FALLBACK_INTEL,
   TodaySurface,
   fetchOpenPromise,
@@ -496,17 +495,20 @@ describe("app-shell renders Today directly (no shell threshold / no double-door)
   });
 });
 
-describe("app-shell companion bar (status-only)", () => {
-  it("renders the approved status copy and has NO ambiguous pulse dot", () => {
-    const { container } = render(<CompanionBar label={COPY.en.companion} />);
-    expect(screen.getByText("Dr. Chi is with you today.")).toBeTruthy();
-    // The removed pulse used the btyPulse keyframe + an inline animation style.
-    expect(container.innerHTML).not.toContain("btyPulse");
-    expect(container.innerHTML).not.toContain("animation");
-  });
-
-  it("carries the ko status copy too", () => {
-    render(<CompanionBar label={COPY.ko.companion} />);
-    expect(screen.getByText("Dr. Chi가 오늘 함께합니다.")).toBeTruthy();
+describe("app-shell — no explicit AI companion announcement", () => {
+  it("the shell renders no 'Dr. Chi is with you today.' companion line or avatar", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const u = String(url);
+        if (u.includes("today-intelligence")) return new Response(JSON.stringify(FALLBACK_INTEL), { status: 200 });
+        return new Response("{}", { status: 200 });
+      }),
+    );
+    const { container } = render(<BtyDailyAppShell locale="en" />);
+    await screen.findByText("Where will you show up today?"); // shell mounted (all tabs share the bottom dock)
+    expect(screen.queryByText("Dr. Chi is with you today.")).toBeNull();
+    expect(container.textContent).not.toContain("Dr. Chi");
+    expect(container.textContent).not.toContain("치"); // the removed avatar glyph
   });
 });
