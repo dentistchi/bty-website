@@ -17,6 +17,7 @@ import BtyDailyAppShell, {
   fetchOpenPromise,
   fetchTodayCenterKeep,
   fetchTodayIntelligence,
+  fetchYesterdayMemory,
   greetingBand,
   pickGreeting,
   resolveActiveFocus,
@@ -85,6 +86,32 @@ describe("app-shell Today reads (fail-soft)", () => {
       expect.stringContaining("[app-shell/today]"),
       expect.anything(),
     );
+  });
+
+  it("fetchYesterdayMemory returns the remembered line, and null (fail-soft) on error/empty", async () => {
+    // 200 with a memory line → the trimmed line is returned.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify({ ok: true, memory: { line: "Yesterday, you chose to meet the world." } }), {
+          status: 200,
+        }),
+      ),
+    );
+    expect(await fetchYesterdayMemory()).toBe("Yesterday, you chose to meet the world.");
+
+    // 200 with memory:null (no yesterday evidence) → null (the existing trace stays unchanged).
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ ok: true, memory: null }), { status: 200 })),
+    );
+    expect(await fetchYesterdayMemory()).toBeNull();
+
+    // HTTP error → null, fail-soft (never breaks Today's arrival).
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("nope", { status: 503 })));
+    expect(await fetchYesterdayMemory()).toBeNull();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("[app-shell/today]"), expect.anything());
   });
 
   it("fetchOpenPromise returns action_text only, and null on HTTP error (with warn)", async () => {
@@ -425,6 +452,48 @@ describe("app-shell Today arrival header hierarchy (Arrival Warmth STEP 2)", () 
   it("keeps the (unchanged) sub copy present under the greeting", () => {
     renderToday();
     expect(screen.getByText("Where will you show up today?")).toBeTruthy();
+  });
+});
+
+// Yesterday → Today Memory Bridge V1 — the evidence-backed remembered line PROMOTES the existing
+// arrival trace (same slot, single line). No evidence → the trace is byte-identical to before.
+describe("app-shell Today yesterday memory (Memory Bridge V1)", () => {
+  it("renders the remembered line in the SAME trace slot when yesterday evidence exists", () => {
+    renderToday({
+      loading: false,
+      memoryPending: false,
+      yesterdayMemory: "Yesterday, you chose to return to yourself.",
+      statusLine: selectTodayStatus("en", "safe_fallback"),
+    });
+    const s = document.querySelector("[data-today-status]");
+    expect(s).not.toBeNull();
+    // The memory occupies the trace slot (not a second trace) and carries the memory marker.
+    expect(s?.textContent).toBe("Yesterday, you chose to return to yourself.");
+    expect(s?.getAttribute("data-today-memory")).toBe("");
+    // The generic status copy is NOT also shown.
+    expect(document.body.textContent).not.toContain("Today is open. Choose the relationship you will live.");
+    // Still exactly one trace line — no extra bordered card/panel introduced.
+    expect(document.querySelectorAll("[data-today-status]").length).toBe(1);
+  });
+
+  it("renders the unchanged status line (no memory marker) when there is no yesterday evidence", () => {
+    renderToday({
+      loading: false,
+      memoryPending: false,
+      yesterdayMemory: null,
+      statusLine: selectTodayStatus("en", "verified_action"),
+    });
+    const s = document.querySelector("[data-today-status]");
+    expect(s?.textContent).toBe("You followed through. Carry it into today.");
+    expect(s?.getAttribute("data-today-memory")).toBeNull();
+  });
+
+  it("holds the reserved height (no trace yet) while the memory read is still pending", () => {
+    // Intel resolved (loading:false) but memory still pending → the slot waits so the remembered
+    // line appears once, never as a status→memory swap.
+    const { container } = renderToday({ loading: false, memoryPending: true, yesterdayMemory: null });
+    expect(container.querySelector("[data-today-status]")).toBeNull();
+    expect(container.querySelector(".animate-pulse")).toBeNull();
   });
 });
 

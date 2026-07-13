@@ -273,6 +273,38 @@ export async function fetchTodayCenterKeep(): Promise<string | null> {
 }
 
 /**
+ * Read the user's Yesterday → Today memory line (Memory Bridge V1) from GET
+ * /api/me/today/yesterday-memory. Returns the one remembered line ONLY when yesterday held a real
+ * commitment (else null → the existing arrival trace renders unchanged). The device tz is sent for
+ * server-side day-boundary resolution (05:00-local, capture-only; NO client day-key). Read-only,
+ * evidence-backed — the server is the sole source of truth. Fail-soft: any failure → null.
+ */
+export async function fetchYesterdayMemory(): Promise<string | null> {
+  let tz: string | null = null;
+  try {
+    tz = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    tz = null;
+  }
+  try {
+    const res = await fetch(
+      `/api/me/today/yesterday-memory${tz ? `?tz=${encodeURIComponent(tz)}` : ""}`,
+      { credentials: "include" },
+    );
+    if (!res.ok) throw new Error(`HTTP_${res.status}`);
+    const data = (await res.json()) as { memory?: { line?: string | null } | null };
+    const line = data.memory?.line;
+    return typeof line === "string" && line.trim().length > 0 ? line.trim() : null;
+  } catch (e) {
+    console.warn(
+      "[app-shell/today] /api/me/today/yesterday-memory fell back:",
+      e instanceof Error ? e.message : e,
+    );
+    return null;
+  }
+}
+
+/**
  * The Me-tab weekly rhythm read now lives behind an explicit PROVENANCE BOUNDARY
  * ({@link fetchMeWeeklyRhythm} in ./meWeeklyRhythm) — the single, named, swappable seam where the
  * (temporary) Arena weekly-stats coupling is isolated. The Me tab depends on MeWeeklyRhythm, never
@@ -561,6 +593,8 @@ const HELD_IN_CENTER_VARIANT: HeldInCenterVariant = "anchor-only";
 export function TodaySurface({
   copy,
   statusLine,
+  yesterdayMemory = null,
+  memoryPending = false,
   activeFocus,
   loading,
   promiseText,
@@ -580,6 +614,15 @@ export function TodaySurface({
   copy: TodayCopy;
   /** Calm narrative status line derived from userState (already localized). */
   statusLine: string;
+  /** Yesterday → Today Memory Bridge V1: the one evidence-backed remembered line (from yesterday's
+   *  real commitment), or null → the existing statusLine renders unchanged. When present it OCCUPIES
+   *  the SAME arrival-trace slot as statusLine (single line, same typography) — a promotion of the
+   *  existing trace, never a second trace. English-only (V1 scope). */
+  yesterdayMemory?: string | null;
+  /** True until the yesterday-memory read settles. The trace holds its reserved one-line height
+   *  until BOTH intel and memory resolve, so the remembered line appears once (no status→memory
+   *  hard swap, no layout shift). */
+  memoryPending?: boolean;
   /** The relationship to SUGGEST (derived), or null when there is no confident claim. */
   activeFocus: TodayFocusKey | null;
   loading: boolean;
@@ -718,16 +761,23 @@ export function TodaySurface({
           the STEP-4 inversion where the doors' mount-clock could beat the fetch-gated trace).
           Delay 260ms lands it just after the greeting; the doors follow at 720ms. While loading
           we reserve one line's height SILENTLY (no pulse/shimmer) so nothing jumps; when it
-          resolves the sentence rises into the reserved space. */}
-      {loading ? (
+          resolves the sentence rises into the reserved space.
+
+          MEMORY BRIDGE V1: the slot holds until BOTH intel AND the yesterday-memory read settle
+          (loading || memoryPending), then renders the evidence-backed remembered line when one
+          exists, else the unchanged status line — a PROMOTION of this same trace (identical slot,
+          single line, same typography), never a second trace and never a status→memory swap. The
+          doors are non-blocking, so this extra hold never delays them. */}
+      {loading || memoryPending ? (
         <div aria-hidden className="mb-8 mt-0.5 h-7" />
       ) : (
         <p
           data-today-status
+          data-today-memory={yesterdayMemory ? "" : undefined}
           className="btyRise mb-8 mt-0.5 text-[1.05rem] font-normal leading-7 text-white/85"
           style={{ animationDelay: "200ms" }}
         >
-          {statusLine}
+          {yesterdayMemory ?? statusLine}
         </p>
       )}
       {/* Three ritual doors — thresholds, not selector rows. Each has a luminous opening
@@ -1185,6 +1235,11 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // Center Promise Loop STEP 1B: the self-owned Center keep, surfaced read-only on Today.
   // null unless a keep exists for today (keptToday). Fail-soft → null (nothing renders).
   const [centerKeepLine, setCenterKeepLine] = useState<string | null>(null);
+  // Yesterday → Today Memory Bridge V1: the one evidence-backed remembered line from yesterday's real
+  // commitment (null unless yesterday held one). memoryPending holds the arrival trace's reserved
+  // height until the read settles, so the line appears once (no status→memory swap, no layout jump).
+  const [yesterdayMemory, setYesterdayMemory] = useState<string | null>(null);
+  const [memoryPending, setMemoryPending] = useState(true);
   // Me-tab Weekly Orb rhythm (numberless barIntensity[]). Fail-soft: [] → resting orb.
   const [weeklyRhythm, setWeeklyRhythm] = useState<MeWeeklyRhythm>([]);
 
@@ -1202,6 +1257,11 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
     void fetchTodayCenterKeep().then((line) => {
       if (!alive) return;
       setCenterKeepLine(line);
+    });
+    void fetchYesterdayMemory().then((line) => {
+      if (!alive) return;
+      setYesterdayMemory(line);
+      setMemoryPending(false);
     });
     void fetchWeeklyRhythm().then((rhythm) => {
       if (!alive) return;
@@ -1467,6 +1527,8 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             <TodaySurface
               copy={t.today}
               statusLine={selectTodayStatus(locale, intel.userState)}
+              yesterdayMemory={yesterdayMemory}
+              memoryPending={memoryPending}
               activeFocus={resolveInvitedFocus(intel)}
               loading={intelLoading}
               promiseText={promiseText}
