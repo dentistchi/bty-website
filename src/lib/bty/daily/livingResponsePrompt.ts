@@ -17,10 +17,24 @@ import type {
   LivingResponseAngle,
   LivingResponseRepetitionMovement,
 } from "@/domain/daily/livingResponseFrame";
+import type { LivingResponseTrajectoryKind } from "@/domain/daily/livingResponseTrajectory";
 
-// V2.1: expression-only. V2.2: adds the repetition relationship at repetition depth. Version bumped so
-// earlier settled rows stay distinct.
-export const LIVING_RESPONSE_PROMPT_VERSION = "lrprompt_v5";
+// V2.1: expression-only. V2.2: adds the repetition relationship at repetition depth. V2.3: adds the
+// Living Continuity trajectory (commitment-sequence shape). Version bumped so earlier settled rows
+// stay distinct.
+export const LIVING_RESPONSE_PROMPT_VERSION = "lrprompt_v6";
+
+// V2.3 — human phrasing for the commitment-sequence TRAJECTORY. Describes the SHAPE of today against
+// recent days ONLY. Never a judgment, an absolute, an identity claim, or a count. The provider states
+// the shape in relation to today's meaning and stops.
+const TRAJECTORY_HINT: Record<LivingResponseTrajectoryKind, string> = {
+  first_step: "today is a genuine first step into this — a beginning, not a return; do NOT imply it happened before",
+  continuation: "today carries straight on from very recent days in the same direction, unbroken",
+  long_held_direction: "this same direction has been chosen across several recent days and holds again today",
+  return: "the user was here before, moved elsewhere, and today comes back to it — a return, still willingly",
+  re_entry: "after a pause with no recent days, today quietly picks this back up — a re-entry, with NO blame for the gap",
+  expansion: "today reaches past where recent days have been, into newer ground — a widening, not a correction",
+};
 
 // Human phrasing for the provenance-backed RECURRENCE (repetition depth only). Recurrence ONLY — the
 // prompt never turns these into improvement, avoidance, privacy, or change.
@@ -87,7 +101,14 @@ export function buildLivingResponseMessages(
     `Where it lands: ${DESTINATION_HINT[packet.commitmentFrame.destination]}.`,
     `Take exactly this one angle: ${ANGLE_HINT[p.angle]}.`,
     `Ground the wording in these words (weave, do not list): ${p.meaningTokens.join(", ")}.`,
+    // V2.3 — Living Continuity: express the deterministic commitment-sequence TRAJECTORY (supersedes
+    // repetition when present). State the shape in relation to today's meaning, then release the user.
+    p.trajectory
+      ? `Today's place in the recent sequence: ${TRAJECTORY_HINT[p.trajectory.kind]}. Let the sentence quietly carry this ${p.trajectory.recurrence ? "returning / continuing" : "beginning / widening"} shape in relation to today's meaning. You MAY use words like: ${p.trajectory.safeTokens.join(", ")}. This is a fact about the SHAPE of the days only — it does NOT mean the user is a certain kind of person, that they succeeded or failed, avoided or gave up, mastered anything, or that this is always or never true. Add none of those.`
+      : "",
     // V2.2 — repetition depth: express the deterministic recurrence relationship. Recurrence ONLY.
+    // (Consumed by the trajectory when an informative one is present — its provenance folds into the
+    //  meaning above it — so at most one continuity claim ever reaches this prompt.)
     p.repetition
       ? `Recent verified fact (recurrence ONLY): ${REPETITION_HINT[p.repetition.movement]}. Express that this repeated thing relates to today's meaning — say it happened more than once and is happening again today. You MAY use words like: ${p.repetition.safeTokens.join(", ")}. Recurrence does NOT mean it improved, that the user avoids or delays anything, that anything became private or was spoken to another person, or that anything changed from before — state none of those.`
       : "",

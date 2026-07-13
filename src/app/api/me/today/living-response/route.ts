@@ -21,11 +21,11 @@ import { getTodayCommitmentRef } from "@/lib/bty/daily/todayRelationshipCommitme
 import { assembleLivingResponsePacket } from "@/lib/bty/daily/livingResponseEvidence.server";
 import { admitLivingResponse } from "@/domain/daily/livingResponse";
 import { deriveCommitmentFrame, selectProposition } from "@/domain/daily/livingResponseFrame";
-import type { LivingResponseRepetitionMovement } from "@/domain/daily/livingResponseFrame";
+import type { LivingResponseRepetitionMovement, LivingResponseProposition } from "@/domain/daily/livingResponseFrame";
 import { generateLivingResponse } from "@/lib/bty/daily/livingResponseGenerate.server";
 import { validateLivingResponse, LIVING_RESPONSE_POLICY_VERSION } from "@/lib/bty/daily/livingResponseValidator";
 import { LIVING_RESPONSE_PROMPT_VERSION } from "@/lib/bty/daily/livingResponsePrompt";
-import { selectFallbackLine, selectFrameFallbackLine } from "@/domain/daily/livingResponseFallback";
+import { selectFallbackLine, selectFrameFallbackLine, selectTrajectoryFallbackLine } from "@/domain/daily/livingResponseFallback";
 import { guardPhrasesFor } from "@/domain/daily/livingResponseGuardPhrases";
 import {
   claimLivingResponse,
@@ -118,9 +118,16 @@ export async function POST(req: NextRequest) {
     const settleFallback = async (
       reason: string,
       fingerprint: string | null,
-      repMovement?: LivingResponseRepetitionMovement,
+      proposition?: LivingResponseProposition,
     ) => {
-      const line = frame ? selectFrameFallbackLine(frame, ref.locale, repMovement) : selectFallbackLine(relationship, ref.dayKey, ref.locale);
+      // Prefer the expressed continuity layer's floor: trajectory (V2.3) supersedes repetition (V2.2),
+      // then the plain frame Golden, then the legacy per-relationship line (frame somehow underivable).
+      const repMovement: LivingResponseRepetitionMovement | undefined = proposition?.repetition?.movement;
+      const line = proposition?.trajectory
+        ? selectTrajectoryFallbackLine(proposition.trajectory.kind, ref.locale)
+        : frame
+          ? selectFrameFallbackLine(frame, ref.locale, repMovement)
+          : selectFallbackLine(relationship, ref.dayKey, ref.locale);
       return settleLivingResponse(
         admin,
         ref.id,
@@ -146,11 +153,12 @@ export async function POST(req: NextRequest) {
       admission.depth ?? "commitment",
       admission.qualifyingEvidenceCodes,
       `${ref.dayKey}:${relationship}`,
+      packet.trajectory, // V2.3: an informative commitment-sequence shape supersedes behavioral repetition
     );
     const gen = await generateLivingResponse(packet, { locale: ref.locale, recentTexts: recent, proposition });
     if (!gen.ok) {
       const reason = gen.reason === "LLM_UNAVAILABLE" ? "PROVIDER_UNAVAILABLE" : gen.reason === "BAD_JSON" ? "INVALID_OUTPUT" : "PROVIDER_TIMEOUT";
-      const response = await settleFallback(reason, packet.evidenceFingerprint, proposition.repetition?.movement);
+      const response = await settleFallback(reason, packet.evidenceFingerprint, proposition);
       return noStore(NextResponse.json({ ok: true, response }, { status: 200 }));
     }
 
@@ -164,7 +172,7 @@ export async function POST(req: NextRequest) {
       proposition,
     });
     if (!validation.ok) {
-      const response = await settleFallback("POLICY_REJECTION", packet.evidenceFingerprint, proposition.repetition?.movement);
+      const response = await settleFallback("POLICY_REJECTION", packet.evidenceFingerprint, proposition);
       return noStore(NextResponse.json({ ok: true, response }, { status: 200 }));
     }
 

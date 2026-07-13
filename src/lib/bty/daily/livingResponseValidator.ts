@@ -19,8 +19,9 @@ import { anchorMatcher } from "@/domain/daily/livingResponseConcepts";
 import type { LivingResponseRelationship } from "@/domain/daily/livingResponse";
 import type { LivingResponseProposition } from "@/domain/daily/livingResponseFrame";
 
-// V2.2: adds user-interpretation rejection + repetition grounding. Bumped from lrpol_v4.
-export const LIVING_RESPONSE_POLICY_VERSION = "lrpol_v5";
+// V2.2: adds user-interpretation rejection + repetition grounding. V2.3: adds trajectory grounding
+// (commitment-sequence shape) + non-judgment guards. Bumped from lrpol_v5.
+export const LIVING_RESPONSE_POLICY_VERSION = "lrpol_v6";
 
 // V2.2 — user-level interpretation: a Living Response describes the action relationship, never the
 // user's identity, character, values, motive, emotion, stable tendency, or growth. Unconditional (a
@@ -33,6 +34,15 @@ const USER_INTERPRETATION =
 // separately). A bare recurrence marker is NOT enough on its own — see REPETITION_ANCHOR_MISSING.
 const RECURRENCE_MARKER =
   /\b(again|more than once|over and over|time and again|has (returned|been named|been kept|shown up|carried)|keeps? (return|nam|show|carr)\w*|repeatedly|each time)\b|다시|또다시|거듭|여러\s*번|반복/i;
+
+// V2.3 — trajectory anchor markers (EN + KO). A RECURRENCE trajectory (continuation/return/re_entry/
+// long_held) must surface a returning/continuing marker; a BEGINNING/widening trajectory (expansion)
+// must surface a beginning marker AND must NOT carry a recurrence marker (it is a first-time/widening
+// shape, never "again").
+const TRAJ_RECURRENCE_MARKER =
+  /\b(again|still|back|returns?|returned|returning|continues?|continuing|carried forward|once more|picks?\s+\w+\s+up|keeps?|kept)\b|다시|또|여전|이어|돌아|계속/i;
+const TRAJ_BEGINNING_MARKER =
+  /\b(first|begins?|beginning|new(er)?|opens?|wider|beyond|further|fresh|starts?|starting|onto|into (newer|wider|new)\s|new ground)\b|처음|새로|넓|열리|나아가/i;
 
 // V2.1 movement + destination anchor patterns (EN + KO). A commitment/repetition line MUST surface at
 // least one of its proposition's requiredAnchors (its movement or destination). This IS the
@@ -98,6 +108,18 @@ const CLAIM_MARKERS: Record<string, RegExp> = {
   spoken: /\bspoken|said aloud|voiced|out loud\b|소리 내어/i,
   hearing: /\bhearing\b|heard by|listen(s|ed|ing)?\b|듣는|들리/i,
   another_person: /\banother person|someone else\b|다른 사람|남에게/i,
+  // V2.3 trajectory-prohibited extensions — a commitment-sequence SHAPE never becomes judgment,
+  // failure/abandonment, mastery/superiority, or an absolute. (Scoped: only checked when the id is in
+  // the proposition's prohibitedClaims, i.e. a trajectory/repetition proposition.)
+  failure: /\bfail(s|ed|ure|ing)?\b|실패/i,
+  gave_up: /\bgave up|giving up|give up\b|포기/i,
+  abandoned: /\babandon\w*\b|저버리|내버려/i,
+  always: /\balways\b|항상|언제나/i,
+  never_left: /\bnever (left|stopped|gone|abandoned)\b|떠난 적 (없|이 없)/i,
+  disappeared: /\bdisappear\w*|vanish\w*\b|사라(졌|진)/i,
+  mastery: /\bmaster(ed|y|ing)?\b|perfected\b|통달|완벽히/i,
+  finished: /\bfinished\b|done with\b|끝냈|다 끝/i,
+  superiority: /\bbetter than|superior(ity)?\b|우월|더 나은/i,
 };
 // Geometry-aligned length contract: short enough to fit the reserved 2-line slot at mobile width,
 // so the line can never grow the card. One sentence, ≤ MAX_WORDS words, ≤ MAX_LEN chars.
@@ -173,7 +195,10 @@ export type LivingResponseViolation =
   | "PRAISE" // congratulates or grades the user
   // V2.2
   | "USER_INTERPRETATION" // claims identity/character/values/motive/emotion/tendency/growth
-  | "REPETITION_ANCHOR_MISSING"; // repetition depth but no provenance-backed recurrence expressed
+  | "REPETITION_ANCHOR_MISSING" // repetition depth but no provenance-backed recurrence expressed
+  // V2.3
+  | "TRAJECTORY_ANCHOR_MISSING"; // trajectory present but the sequence shape is not expressed (or a
+                                 // beginning/widening shape wrongly carries a recurrence marker)
 
 const norm = (s: string) => s.toLowerCase().replace(/[\s.,!?—-]+/g, " ").trim();
 
@@ -239,8 +264,12 @@ export function validateLivingResponse(
     if (!hasFrameAnchor) v.push("MOVEMENT_ANCHOR_MISSING");
     // No previous-vs-today claim is ever authorized in V2.1.
     if (CONTRAST_MARKERS.test(t)) v.push("CONTRAST_CLAIM");
-    // Commitment depth may not lean on repetition/history.
-    if (input.proposition.depth === "commitment" && HISTORICAL_MARKERS.test(t)) v.push("HISTORICAL_CLAIM");
+    // Commitment depth may not lean on repetition/history — EXCEPT when a recurrence trajectory (V2.3)
+    // authorizes exactly that sequence language (continuation/return/re_entry/long_held). A
+    // beginning/widening trajectory (expansion) is NOT authorized to use history markers.
+    const trajectoryAuthorizesHistory = !!input.proposition.trajectory?.recurrence;
+    if (input.proposition.depth === "commitment" && HISTORICAL_MARKERS.test(t) && !trajectoryAuthorizesHistory)
+      v.push("HISTORICAL_CLAIM");
     // Must not paraphrase the Today Path copy.
     if (isRestatement(t, PATH_PHRASES[input.relationship])) v.push("PATH_PARAPHRASE");
     // Must not surface any meaning the proposition explicitly forbids (frame meaning limits, §5;
@@ -257,6 +286,20 @@ export function validateLivingResponse(
     if (input.proposition.repetition) {
       const hasRecurrence = RECURRENCE_MARKER.test(t);
       if (!hasRecurrence || !hasFrameAnchor) v.push("REPETITION_ANCHOR_MISSING");
+    }
+
+    // V2.3 trajectory grounding — the line must EXPRESS the commitment-sequence shape AND tie it to the
+    // frame (hasFrameAnchor). A recurrence trajectory requires a returning/continuing marker; a
+    // beginning/widening trajectory requires a beginning marker AND must carry NO recurrence marker (an
+    // "again" would contradict a first-time/expansion shape). Non-judgment is enforced separately via
+    // USER_INTERPRETATION + the proposition's prohibitedClaims (PROHIBITED_CLAIM).
+    if (input.proposition.trajectory) {
+      if (input.proposition.trajectory.recurrence) {
+        if (!TRAJ_RECURRENCE_MARKER.test(t) || !hasFrameAnchor) v.push("TRAJECTORY_ANCHOR_MISSING");
+      } else {
+        if (!TRAJ_BEGINNING_MARKER.test(t) || !hasFrameAnchor || TRAJ_RECURRENCE_MARKER.test(t))
+          v.push("TRAJECTORY_ANCHOR_MISSING");
+      }
     }
   }
 

@@ -23,6 +23,7 @@
  */
 import type { TodayCommitmentFrame, LivingResponseDepth } from "@/domain/daily/livingResponseFrame";
 import { isTodayCommitmentFrame, LIVING_RESPONSE_PROPOSITION_VERSION } from "@/domain/daily/livingResponseFrame";
+import type { LivingResponseTrajectory } from "@/domain/daily/livingResponseTrajectory";
 
 export type LivingResponseRelationship = "self" | "others" | "world";
 export const LIVING_RESPONSE_RELATIONSHIPS: readonly LivingResponseRelationship[] = ["self", "others", "world"];
@@ -65,6 +66,11 @@ export type LivingResponsePacket = {
    *  ground the prompt, require a real anchor in validation, and select evidence-specific fallback.
    *  Never machine codes; never shown as tokens. */
   concepts: string[];
+  /** Living Continuity layer — the SHAPE of today's commitment against the recent commitment sequence
+   *  (continuation / return / expansion / first_step / re_entry / long_held_direction). Derived from
+   *  the canonical Today-internal commitment history ONLY; never diagnosis/metrics/identity. Optional:
+   *  absent when history is unreadable → the response simply falls back to frame/repetition behavior. */
+  trajectory?: LivingResponseTrajectory;
   prohibitedFieldsPresent: boolean;
   evidenceFingerprint: string;
 };

@@ -11,6 +11,7 @@
  */
 import type { LivingResponseRelationship } from "@/domain/daily/livingResponse";
 import type { TodayCommitmentFrame, TodayCommitmentPathId, LivingResponseRepetitionMovement } from "@/domain/daily/livingResponseFrame";
+import type { LivingResponseTrajectoryKind } from "@/domain/daily/livingResponseTrajectory";
 
 export const FALLBACK_VERSION = "lrfb_v3";
 
@@ -70,6 +71,43 @@ export function selectFrameFallbackLine(
   }
   const g = FRAME_GOLDEN[frame.pathId];
   return isKo ? g.ko : g.en;
+}
+
+// V2.3 Living Continuity Golden floor — ONE conservative line per commitment-sequence trajectory.
+// Expresses the SHAPE only (continuation / return / re-entry / expansion / long-held): no judgment, no
+// absolute, no identity claim, no count. Relationship-neutral (the provider path carries the
+// frame-specific richness); this is the deterministic floor when generation/validation fails.
+const TRAJECTORY_GOLDEN: Record<LivingResponseTrajectoryKind, { en: string; ko: string }> = {
+  first_step: {
+    en: "Today opens onto ground you have not stood on before.",
+    ko: "오늘은 아직 밟아 본 적 없는 자리로 열립니다.",
+  },
+  continuation: {
+    en: "What you turned toward before is here again today, unforced.",
+    ko: "앞서 향했던 그것이 오늘도 억지 없이 이어집니다.",
+  },
+  long_held_direction: {
+    en: "This direction, returned to across these days, is settling into familiar ground.",
+    ko: "며칠에 걸쳐 돌아온 이 방향이 익숙한 자리로 내려앉고 있습니다.",
+  },
+  return: {
+    en: "After a while elsewhere, today comes back to this and it still fits.",
+    ko: "한동안 다른 곳에 있다가, 오늘 이 자리로 돌아왔고 여전히 맞습니다.",
+  },
+  re_entry: {
+    en: "After a pause, today quietly picks the thread back up.",
+    ko: "잠시 멈춤 뒤에, 오늘 그 실을 조용히 다시 잡습니다.",
+  },
+  expansion: {
+    en: "Today reaches past where you have lately been into wider ground.",
+    ko: "오늘은 최근 머물던 곳을 지나 더 넓은 자리로 나아갑니다.",
+  },
+};
+
+/** The single deterministic Golden fallback line for a commitment-sequence trajectory (replay-stable). */
+export function selectTrajectoryFallbackLine(kind: LivingResponseTrajectoryKind, locale: string | null): string {
+  const g = TRAJECTORY_GOLDEN[kind];
+  return locale === "ko" ? g.ko : g.en;
 }
 
 // Concept → the evidence-specific fallback family it selects (so a fallback still feels grounded).

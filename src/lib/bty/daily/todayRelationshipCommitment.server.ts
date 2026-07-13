@@ -139,6 +139,34 @@ export async function getTodayCommitmentRef(
   return { id: String(row.id), relationship: row.relationship as RelationshipValue, dayKey: row.day_key, locale: row.locale ?? null };
 }
 
+/**
+ * Read the user's recent PRIOR confirmed commitments (machine columns only: relationship + day_key),
+ * most recent first, excluding today. Feeds the Living Continuity trajectory classifier. Fail-soft: a
+ * degraded read returns [] (→ no trajectory expressed, never a fabricated one). No text/PII selected.
+ */
+export async function recentCommitments(
+  admin: SupabaseClient,
+  userId: string,
+  todayDayKey: string,
+  limit = 14,
+): Promise<{ relationship: RelationshipValue; dayKey: string }[]> {
+  try {
+    const { data } = await admin
+      .from(TABLE)
+      .select("relationship, day_key")
+      .eq("user_id", userId)
+      .order("day_key", { ascending: false })
+      .limit(limit + 1); // +1 so today's row (filtered below) never shortens the prior window
+    const rows = (data ?? []) as { relationship: string; day_key: string }[];
+    return rows
+      .filter((r) => r.day_key < todayDayKey)
+      .slice(0, limit)
+      .map((r) => ({ relationship: r.relationship as RelationshipValue, dayKey: r.day_key }));
+  } catch {
+    return [];
+  }
+}
+
 /** Read the user's commitment for the current canonical BTY day, or null if none. */
 export async function getTodayCommitment(
   admin: SupabaseClient,

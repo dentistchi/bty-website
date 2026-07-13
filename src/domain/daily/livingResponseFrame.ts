@@ -15,11 +15,14 @@
  * carrying care into a relationship (others), building with stewardship (world).
  */
 import type { LivingResponseRelationship } from "@/domain/daily/livingResponse";
+import type { LivingResponseTrajectory } from "@/domain/daily/livingResponseTrajectory";
+import { isInformativeTrajectory } from "@/domain/daily/livingResponseTrajectory";
 
 export const COMMITMENT_FRAME_VERSION = "cf_v1";
 // V2.2: repetition-depth propositions now carry a provenance-bounded repetition meaning (not just a
-// "continuity" angle). Bumped so V2.2 settled rows / fingerprints are distinct from V2.1.
-export const LIVING_RESPONSE_PROPOSITION_VERSION = "lrprop_v2";
+// "continuity" angle). V2.3: adds the Living Continuity `trajectory` (commitment-sequence shape).
+// Bumped so V2.3 settled rows / fingerprints are distinct from V2.2.
+export const LIVING_RESPONSE_PROPOSITION_VERSION = "lrprop_v3";
 
 export type TodayCommitmentFrameVersion = "cf_v1";
 export type TodayCommitmentPathId =
@@ -79,6 +82,12 @@ export type LivingResponseProposition = {
   /** V2.2: present ONLY at repetition depth. The deterministic, provenance-backed recurrence the
    *  sentence must express in relation to today's frame. Absent → no repetition may be claimed. */
   repetition?: LivingResponseRepetitionMeaning;
+  /** V2.3 Living Continuity: present ONLY when an INFORMATIVE commitment-sequence shape exists
+   *  (return / re_entry / expansion / long_held_direction) — the MEANING layer the sentence expresses
+   *  in relation to today's frame. When present, `repetition` is absent because the trajectory has
+   *  CONSUMED it (the behavioral evidence's provenance is preserved in `provenanceCodes`, not
+   *  discarded) — so the Voice carries exactly one continuity claim. Absent → no trajectory claimed. */
+  trajectory?: LivingResponseTrajectory;
 };
 
 /** relationship → the single static Today Path meaning. Exhaustive; unknown → null (fail closed). */
@@ -231,30 +240,70 @@ function pickIndex(material: string, count: number): number {
  * @param historyCodes qualifying evidence codes (repetition provenance) — server-side only.
  * @param angleSeed    stable seed (e.g. `${dayKey}:${relationship}`) so the angle is deterministic and
  *                     identical on retry/reclaim; NOT provider temperature.
+ * @param trajectory   V2.3 Living Continuity shape from the commitment sequence — the MEANING layer.
+ *                     When INFORMATIVE (return/re_entry/expansion/long_held_direction) it is the
+ *                     expressed continuity meaning and CONSUMES the behavioral `repetition` evidence
+ *                     (its provenance/guards fold in; it is never discarded). first_step/continuation
+ *                     are neutral, so the behavioral repetition itself remains the expressed grounding.
  */
 export function selectProposition(
   frame: TodayCommitmentFrame,
   depth: LivingResponseDepth,
   historyCodes: readonly string[],
   angleSeed: string,
+  trajectory?: LivingResponseTrajectory | null,
 ): LivingResponseProposition {
   const meaning = MEANING_BY_PATH[frame.pathId];
-  // V2.1: contrast is never authorized. V2.2: repetition depth is honored ONLY when a provenance-backed
-  // repetition meaning is derivable — otherwise DOWNGRADE to commitment (never claim unsupported history).
-  const repetition = depth === "repetition" ? deriveRepetitionMeaning(frame.relationship, historyCodes) : null;
-  const runtimeDepth: LivingResponseDepth = repetition ? "repetition" : "commitment";
+
+  // ── LAYERING (Commander-ratified): Evidence → Trajectory → Voice ─────────────────────────────────
+  // Repetition is EVIDENCE; trajectory is MEANING. Trajectory CONSUMES repetition — it never destroys
+  // it. So repetition is always DETECTED here (the Evidence step), then either (a) consumed by an
+  // informative commitment-sequence trajectory — its provenance/guards fold into the meaning while the
+  // Voice expresses the trajectory — or (b) when the trajectory is neutral (first_step/continuation),
+  // the behavioral repetition IS the expressed grounding (V2.2 preserved). Exactly one continuity claim
+  // reaches the Voice; the consumed evidence is never discarded (its codes stay in provenanceCodes).
+  // Future trajectories extend this same consume step — never a per-signal "trajectory supersedes X".
+
+  // EVIDENCE — V2.2: repetition is honored ONLY when a provenance-backed meaning is derivable at
+  // repetition depth (else there is simply no behavioral recurrence to consume or express).
+  const repetitionEvidence = depth === "repetition" ? deriveRepetitionMeaning(frame.relationship, historyCodes) : null;
+
+  // MEANING — an informative trajectory is the interpretation the Voice speaks; it consumes the
+  // evidence. A neutral trajectory lets the evidence itself be expressed.
+  const informativeTrajectory = trajectory && isInformativeTrajectory(trajectory.kind) ? trajectory : null;
+  const consumedRepetition = informativeTrajectory ? repetitionEvidence : null; // folded in, not spoken
+  const expressedRepetition = informativeTrajectory ? null : repetitionEvidence; // spoken when no meaning above it
+
+  const runtimeDepth: LivingResponseDepth = expressedRepetition ? "repetition" : "commitment";
 
   const allowedAngles: LivingResponseAngle[] =
-    runtimeDepth === "repetition" ? [...meaning.commitmentAngles, "continuity"] : [...meaning.commitmentAngles];
+    expressedRepetition || informativeTrajectory ? [...meaning.commitmentAngles, "continuity"] : [...meaning.commitmentAngles];
 
-  const propositionCode = repetition ? `${frame.pathId}.repetition.${repetition.movement}` : `${frame.pathId}.commitment`;
+  const propositionCode = informativeTrajectory
+    ? `${frame.pathId}.trajectory.${informativeTrajectory.kind}`
+    : expressedRepetition
+      ? `${frame.pathId}.repetition.${expressedRepetition.movement}`
+      : `${frame.pathId}.commitment`;
   const angle = allowedAngles[pickIndex(`${angleSeed}:${propositionCode}`, allowedAngles.length)];
 
-  // At repetition depth the frame's prohibited claims are joined with the recurrence-specific ones so
-  // the validator rejects any privacy/relational/improvement/change extension the provider might add.
-  const prohibitedClaims = repetition
-    ? [...new Set([...meaning.prohibitedClaims, ...repetition.prohibitedExtensions])]
+  // Prohibited claims = frame limits + the EXPRESSED meaning's extensions + any CONSUMED evidence's
+  // extensions (consuming repetition inherits its guards too), so the validator rejects any
+  // judgment/diagnosis/absolute the provider might add on top of the shape.
+  const continuityProhibited = informativeTrajectory
+    ? [...informativeTrajectory.prohibitedExtensions, ...(consumedRepetition?.prohibitedExtensions ?? [])]
+    : expressedRepetition
+      ? expressedRepetition.prohibitedExtensions
+      : [];
+  const prohibitedClaims = continuityProhibited.length
+    ? [...new Set([...meaning.prohibitedClaims, ...continuityProhibited])]
     : meaning.prohibitedClaims;
+
+  // Provenance preserves EVERY consumed/expressed evidence code — proof the layer consumed, not
+  // destroyed (and it keeps the evidence trail intact even when the Voice speaks only the trajectory).
+  const provenanceCodes = [
+    ...(expressedRepetition?.provenanceCodes ?? []),
+    ...(consumedRepetition?.provenanceCodes ?? []),
+  ];
 
   return {
     depth: runtimeDepth,
@@ -265,7 +314,8 @@ export function selectProposition(
     requiredAnchors: [frame.movement, frame.destination],
     prohibitedClaims,
     angle,
-    provenanceCodes: repetition ? [...repetition.provenanceCodes] : [],
-    ...(repetition ? { repetition } : {}),
+    provenanceCodes,
+    ...(expressedRepetition ? { repetition: expressedRepetition } : {}),
+    ...(informativeTrajectory ? { trajectory: informativeTrajectory } : {}),
   };
 }
