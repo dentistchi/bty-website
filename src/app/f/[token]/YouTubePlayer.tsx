@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { classifyYoutubePlayerError, type YoutubePlayerErrorKind } from "@/domain/foundry/youtube";
 
 /**
  * Thin wrapper over the OFFICIAL YouTube IFrame Player API. Loads the API once,
@@ -41,10 +42,12 @@ export function YouTubePlayer({
   videoId,
   onStarted,
   onEnded,
+  onError,
 }: {
   videoId: string;
   onStarted?: () => void;
   onEnded?: () => void;
+  onError?: (kind: YoutubePlayerErrorKind) => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
@@ -52,8 +55,10 @@ export function YouTubePlayer({
   const endedRef = useRef(false);
   const onStartedRef = useRef(onStarted);
   const onEndedRef = useRef(onEnded);
+  const onErrorRef = useRef(onError);
   onStartedRef.current = onStarted;
   onEndedRef.current = onEnded;
+  onErrorRef.current = onError;
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +81,9 @@ export function YouTubePlayer({
               endedRef.current = true;
               onEndedRef.current?.();
             }
+          },
+          onError: (e: { data: number }) => {
+            onErrorRef.current?.(classifyYoutubePlayerError(e.data));
           },
         },
       });

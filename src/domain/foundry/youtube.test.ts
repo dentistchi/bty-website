@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { parseYoutubeVideoId, youtubeWatchUrl, youtubeThumbnailUrl } from "./youtube";
+import {
+  parseYoutubeVideoId,
+  youtubeWatchUrl,
+  youtubeThumbnailUrl,
+  classifyYoutubePlayerError,
+} from "./youtube";
 
 const ID = "dQw4w9WgXcQ"; // canonical 11-char sample
 
@@ -74,5 +79,23 @@ describe("url helpers", () => {
   });
   it("builds a keyless thumbnail URL", () => {
     expect(youtubeThumbnailUrl(ID)).toBe(`https://i.ytimg.com/vi/${ID}/hqdefault.jpg`);
+  });
+});
+
+describe("classifyYoutubePlayerError", () => {
+  it("101 and 150 → embedding_not_allowed (owner disabled embedding)", () => {
+    expect(classifyYoutubePlayerError(101)).toBe("embedding_not_allowed");
+    expect(classifyYoutubePlayerError(150)).toBe("embedding_not_allowed");
+  });
+  it("100 → video_unavailable", () => {
+    expect(classifyYoutubePlayerError(100)).toBe("video_unavailable");
+  });
+  it("153 → client_identity_missing", () => {
+    expect(classifyYoutubePlayerError(153)).toBe("client_identity_missing");
+  });
+  it("anything else → unknown", () => {
+    expect(classifyYoutubePlayerError(2)).toBe("unknown");
+    expect(classifyYoutubePlayerError(5)).toBe("unknown");
+    expect(classifyYoutubePlayerError(undefined)).toBe("unknown");
   });
 });

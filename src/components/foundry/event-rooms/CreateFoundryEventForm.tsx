@@ -28,12 +28,16 @@ export function CreateFoundryEventForm({
   const [prompt, setPrompt] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<FieldError>(null);
+  const [youtubeMsg, setYoutubeMsg] = useState<string | null>(null);
   const submittingRef = useRef(false);
 
   const onSubmit = useCallback(async () => {
     if (submittingRef.current) return;
     if (title.trim().length < 1) return setError("title");
-    if (youtube.trim().length < 1) return setError("youtube");
+    if (youtube.trim().length < 1) {
+      setYoutubeMsg(null);
+      return setError("youtube");
+    }
     if (prompt.trim().length < 1) return setError("prompt");
 
     submittingRef.current = true;
@@ -52,11 +56,19 @@ export function CreateFoundryEventForm({
         }),
       });
       const data = await res.json().catch(() => null);
+      const reason = data?.error as string | undefined;
+      const ytMsg: Record<string, string> = {
+        youtube_url_invalid: t.youtubeError,
+        video_not_embeddable: t.youtubeNotEmbeddable,
+        video_not_found: t.youtubeNotFound,
+        youtube_check_failed: t.youtubeCheckFailed,
+      };
       if (res.ok && data?.event) {
         onCreated(data as ManagerSnapshot);
-      } else if (data?.error === "youtube_url_invalid") {
+      } else if (reason && reason in ytMsg) {
+        setYoutubeMsg(ytMsg[reason]);
         setError("youtube");
-      } else if (data?.error === "prompt_required" || data?.error === "prompt_too_long") {
+      } else if (reason === "prompt_required" || reason === "prompt_too_long") {
         setError("prompt");
       } else {
         setError("title");
@@ -67,7 +79,7 @@ export function CreateFoundryEventForm({
       submittingRef.current = false;
       setSubmitting(false);
     }
-  }, [title, youtube, prompt, onCreated]);
+  }, [title, youtube, prompt, onCreated, t]);
 
   const field = (
     label: string,
@@ -112,7 +124,7 @@ export function CreateFoundryEventForm({
         className="flex flex-col gap-4"
       >
         {field(t.nameLabel, title, setTitle, t.namePlaceholder, "title", 80, t.titleError, true)}
-        {field(t.youtubeLabel, youtube, setYoutube, t.youtubePlaceholder, "youtube", 400, t.youtubeError)}
+        {field(t.youtubeLabel, youtube, setYoutube, t.youtubePlaceholder, "youtube", 400, youtubeMsg ?? t.youtubeError)}
         {field(t.promptLabel, prompt, setPrompt, t.promptPlaceholder, "prompt", 300, t.promptError)}
         <div className="flex gap-3">
           <button

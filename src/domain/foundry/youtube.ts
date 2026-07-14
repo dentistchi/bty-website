@@ -63,3 +63,25 @@ export function youtubeWatchUrl(videoId: string): string {
 export function youtubeThumbnailUrl(videoId: string): string {
   return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 }
+
+/**
+ * Classify a YouTube IFrame Player API `onError` code (pure). Even with the
+ * creation-time embeddability gate, a video can become non-embeddable after an
+ * event is created, so the player must still degrade safely at runtime.
+ *   101 / 150 → the owner disabled embedding (playback on other sites)
+ *   100       → video removed / private / unavailable
+ *   153       → missing/blocked embedder identity (referrer/origin)
+ *   other     → unknown (2 = bad param, 5 = HTML5 player error, etc.)
+ */
+export type YoutubePlayerErrorKind =
+  | "embedding_not_allowed"
+  | "video_unavailable"
+  | "client_identity_missing"
+  | "unknown";
+
+export function classifyYoutubePlayerError(code: unknown): YoutubePlayerErrorKind {
+  if (code === 101 || code === 150) return "embedding_not_allowed";
+  if (code === 100) return "video_unavailable";
+  if (code === 153) return "client_identity_missing";
+  return "unknown";
+}

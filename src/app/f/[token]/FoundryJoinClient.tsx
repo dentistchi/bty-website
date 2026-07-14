@@ -34,6 +34,9 @@ type Copy = {
   joining: string;
   todaysTraining: string;
   finishVideo: string;
+  playerErrorTitle: string;
+  playerErrorBody: string;
+  playerErrorHint: string;
   carryForward: string;
   responsePlaceholder: string;
   complete: string;
@@ -64,6 +67,9 @@ const COPY: Record<Locale, Copy> = {
     joining: "Joining…",
     todaysTraining: "TODAY’S TRAINING",
     finishVideo: "Finish the video to continue.",
+    playerErrorTitle: "THIS VIDEO CAN’T PLAY HERE",
+    playerErrorBody: "This video isn’t available in this training room.",
+    playerErrorHint: "Please let the host know.",
     carryForward: "ONE THING TO CARRY FORWARD",
     responsePlaceholder: "Write one thing you will carry forward…",
     complete: "Complete training",
@@ -92,6 +98,9 @@ const COPY: Record<Locale, Copy> = {
     joining: "입장 중…",
     todaysTraining: "오늘의 훈련",
     finishVideo: "영상을 끝까지 보면 계속됩니다.",
+    playerErrorTitle: "이 영상은 여기서 재생할 수 없습니다",
+    playerErrorBody: "이 영상은 이 훈련 방에서 재생할 수 없습니다.",
+    playerErrorHint: "호스트에게 알려주세요.",
     carryForward: "오늘 가지고 갈 한 가지",
     responsePlaceholder: "오늘 가지고 갈 한 가지를 적어주세요…",
     complete: "훈련 완료",
@@ -151,6 +160,7 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   const [busy, setBusy] = useState(false);
   const [nameError, setNameError] = useState(false);
   const [responseError, setResponseError] = useState(false);
+  const [playerError, setPlayerError] = useState(false);
   const busyRef = useRef(false);
   const autoClaimedRef = useRef(false);
 
@@ -346,6 +356,20 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   }
 
   if (stage === "watch" && snapshot.training) {
+    // A player error (e.g. 101/150 owner-disabled embedding) keeps the response
+    // LOCKED — no ENDED fires, so no video-complete / completion / XP. We surface
+    // a calm message and never offer a "watch on YouTube" completion path.
+    if (playerError) {
+      return (
+        <Frame>
+          <div className="btyFadeIn flex flex-1 flex-col justify-center gap-3">
+            <Eyebrow>{t.playerErrorTitle}</Eyebrow>
+            <p className="text-base leading-6 text-white/80">{t.playerErrorBody}</p>
+            <p className="text-sm leading-6 text-white/50">{t.playerErrorHint}</p>
+          </div>
+        </Frame>
+      );
+    }
     return (
       <Frame>
         <div className="btyFadeIn flex flex-1 flex-col justify-center gap-4">
@@ -355,6 +379,7 @@ export default function FoundryJoinClient({ token }: { token: string }) {
             videoId={snapshot.training.youtube_video_id}
             onStarted={onVideoStarted}
             onEnded={onVideoEnded}
+            onError={() => setPlayerError(true)}
           />
           <p className="text-sm leading-6 text-white/55">{t.finishVideo}</p>
         </div>

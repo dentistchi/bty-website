@@ -6,6 +6,14 @@ vi.mock("@/lib/bty/arena/applyCoreXp", () => ({
   applyDirectCoreXp: vi.fn(async () => ({ newCoreTotal: 10 })),
 }));
 
+// Control the embeddability gate; keep the real allow/reason helpers. Default
+// "embeddable" so the existing create-based setups proceed.
+const embedState = { value: "embeddable" as string };
+vi.mock("./youtubeEmbed", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./youtubeEmbed")>();
+  return { ...actual, resolveYoutubeEmbeddable: async () => embedState.value };
+});
+
 import { applyDirectCoreXp } from "@/lib/bty/arena/applyCoreXp";
 import { createEvent, joinEvent } from "./foundryEventService";
 import {
@@ -23,7 +31,10 @@ beforeAll(() => {
 });
 
 const awardSpy = applyDirectCoreXp as unknown as ReturnType<typeof vi.fn>;
-beforeEach(() => awardSpy.mockClear());
+beforeEach(() => {
+  awardSpy.mockClear();
+  embedState.value = "embeddable";
+});
 
 // ---- Capable in-memory fake (4 tables + core_xp_ledger, with unique constraints) ----
 type Row = Record<string, unknown>;
@@ -281,6 +292,53 @@ describe("createTrainingEvent", () => {
     const { admin } = makeFakeAdmin();
     const r = await createTrainingEvent(admin, OWNER, { title: "T", youtube_url: YT, completion_prompt: "  " });
     expect(r).toEqual({ ok: false, reason: "prompt_required" });
+  });
+});
+
+describe("createTrainingEvent — embeddability gate (atomic)", () => {
+  const input = { title: "T", youtube_url: YT, completion_prompt: "q?" };
+
+  it("embeddable → creates the event", async () => {
+    const { admin } = makeFakeAdmin();
+    embedState.value = "embeddable";
+    expect((await createTrainingEvent(admin, OWNER, input)).ok).toBe(true);
+  });
+
+  it("not_embeddable → rejected with NO event/content rows (atomic)", async () => {
+    const { admin, tables } = makeFakeAdmin();
+    embedState.value = "not_embeddable";
+    expect(await createTrainingEvent(admin, OWNER, input)).toEqual({
+      ok: false,
+      reason: "video_not_embeddable",
+    });
+    expect(tables.foundry_events).toHaveLength(0);
+    expect(tables.foundry_event_training_content).toHaveLength(0);
+  });
+
+  it("missing video → video_not_found, no rows", async () => {
+    const { admin, tables } = makeFakeAdmin();
+    embedState.value = "not_found";
+    expect(await createTrainingEvent(admin, OWNER, input)).toEqual({
+      ok: false,
+      reason: "video_not_found",
+    });
+    expect(tables.foundry_events).toHaveLength(0);
+  });
+
+  it("API failure → youtube_check_failed, no rows (fail closed)", async () => {
+    const { admin, tables } = makeFakeAdmin();
+    embedState.value = "check_failed";
+    expect(await createTrainingEvent(admin, OWNER, input)).toEqual({
+      ok: false,
+      reason: "youtube_check_failed",
+    });
+    expect(tables.foundry_events).toHaveLength(0);
+  });
+
+  it("unconfigured (local/dev only) → allowed to create", async () => {
+    const { admin } = makeFakeAdmin();
+    embedState.value = "unconfigured";
+    expect((await createTrainingEvent(admin, OWNER, input)).ok).toBe(true);
   });
 });
 

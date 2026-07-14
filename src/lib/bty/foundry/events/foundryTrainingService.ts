@@ -11,6 +11,11 @@ import {
   FOUNDRY_TRAINING_XP,
 } from "@/domain/foundry/events/foundry-training";
 import { parseYoutubeVideoId, youtubeThumbnailUrl } from "@/domain/foundry/youtube";
+import {
+  resolveYoutubeEmbeddable,
+  embedCheckAllowsCreate,
+  embedCheckReason,
+} from "./youtubeEmbed";
 import { applyDirectCoreXp } from "@/lib/bty/arena/applyCoreXp";
 import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
 import { userDayStartInstant } from "@/domain/daily/userDayStartInstant";
@@ -119,6 +124,12 @@ export async function createTrainingEvent(
 
   const prompt = validateCompletionPrompt(input.completion_prompt);
   if (!prompt.ok) return { ok: false, reason: prompt.reason };
+
+  // Embeddability gate — BEFORE any insert, so a non-embeddable video creates NO
+  // event/content rows (atomic). A video whose owner disabled embedding would
+  // otherwise strand employees with IFrame error 101/150.
+  const embed = await resolveYoutubeEmbeddable(videoId);
+  if (!embedCheckAllowsCreate(embed)) return { ok: false, reason: embedCheckReason(embed) };
 
   const { data: event, error: evErr } = await admin
     .from("foundry_events")

@@ -24,6 +24,9 @@ export type EventRoomsCopy = {
   cancel: string;
   titleError: string;
   youtubeError: string;
+  youtubeNotEmbeddable: string;
+  youtubeNotFound: string;
+  youtubeCheckFailed: string;
   promptError: string;
   // roster status labels
   status_joined: string;
@@ -75,6 +78,9 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     cancel: "Cancel",
     titleError: "Please enter an event name.",
     youtubeError: "Please paste a valid YouTube link.",
+    youtubeNotEmbeddable: "This video can’t be played inside Foundry. Choose another YouTube video.",
+    youtubeNotFound: "This YouTube video couldn’t be found. Check the link.",
+    youtubeCheckFailed: "Couldn’t verify this video right now. Please try again.",
     promptError: "Please enter a completion question.",
     status_joined: "Joined",
     status_watching: "Watching",
@@ -121,6 +127,9 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     cancel: "취소",
     titleError: "이벤트 이름을 입력해 주세요.",
     youtubeError: "올바른 YouTube 링크를 붙여넣어 주세요.",
+    youtubeNotEmbeddable: "이 영상은 Foundry 안에서 재생할 수 없습니다. 다른 YouTube 영상을 선택하세요.",
+    youtubeNotFound: "이 YouTube 영상을 찾을 수 없습니다. 링크를 확인해 주세요.",
+    youtubeCheckFailed: "지금 영상을 확인할 수 없습니다. 다시 시도해 주세요.",
     promptError: "완료 질문을 입력해 주세요.",
     status_joined: "입장",
     status_watching: "시청 중",
