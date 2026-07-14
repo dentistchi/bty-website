@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { classifyYoutubePlayerError, type YoutubePlayerErrorKind } from "@/domain/foundry/youtube";
+import {
+  classifyYoutubePlayerError,
+  foundryPlayerVars,
+  type YoutubePlayerErrorKind,
+} from "@/domain/foundry/youtube";
 
 /**
  * Thin wrapper over the OFFICIAL YouTube IFrame Player API. Loads the API once,
@@ -47,7 +51,7 @@ export function YouTubePlayer({
   videoId: string;
   onStarted?: () => void;
   onEnded?: () => void;
-  onError?: (kind: YoutubePlayerErrorKind) => void;
+  onError?: (kind: YoutubePlayerErrorKind, rawCode: number) => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
@@ -67,9 +71,11 @@ export function YouTubePlayer({
 
     loadIframeApi().then(() => {
       if (cancelled || !mountRef.current || !window.YT?.Player) return;
+      // Client-only (post-hydration) effect → window.location.origin is the real
+      // page origin. Passing it fixes the enablejsapi identity handshake (err 153).
       playerRef.current = new window.YT.Player(mountRef.current, {
         videoId,
-        playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
+        playerVars: foundryPlayerVars(window.location.origin),
         events: {
           onStateChange: (e: { data: number }) => {
             const YT = window.YT;
@@ -83,7 +89,8 @@ export function YouTubePlayer({
             }
           },
           onError: (e: { data: number }) => {
-            onErrorRef.current?.(classifyYoutubePlayerError(e.data));
+            // Preserve the RAW code alongside the classification (measurement).
+            onErrorRef.current?.(classifyYoutubePlayerError(e.data), e.data);
           },
         },
       });

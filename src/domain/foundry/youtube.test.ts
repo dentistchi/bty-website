@@ -4,6 +4,7 @@ import {
   youtubeWatchUrl,
   youtubeThumbnailUrl,
   classifyYoutubePlayerError,
+  foundryPlayerVars,
 } from "./youtube";
 
 const ID = "dQw4w9WgXcQ"; // canonical 11-char sample
@@ -97,5 +98,30 @@ describe("classifyYoutubePlayerError", () => {
     expect(classifyYoutubePlayerError(2)).toBe("unknown");
     expect(classifyYoutubePlayerError(5)).toBe("unknown");
     expect(classifyYoutubePlayerError(undefined)).toBe("unknown");
+  });
+});
+
+describe("foundryPlayerVars (identity fix for error 153)", () => {
+  it("uses the passed origin verbatim (the caller's window.location.origin)", () => {
+    const pv = foundryPlayerVars("https://bty-arena-staging.ywamer2022.workers.dev");
+    expect(pv.origin).toBe("https://bty-arena-staging.ywamer2022.workers.dev");
+    // no path / trailing slash beyond what was passed
+    expect(String(pv.origin)).not.toMatch(/\/$/);
+  });
+
+  it("enables the JS API + inline iOS playback + keeps approved params", () => {
+    const pv = foundryPlayerVars("https://x.example");
+    expect(pv.enablejsapi).toBe(1);
+    expect(pv.playsinline).toBe(1);
+    expect(pv.rel).toBe(0);
+    expect(pv.modestbranding).toBe(1);
+  });
+
+  it("does NOT hardcode localhost / staging / production hosts", () => {
+    const pv = foundryPlayerVars("https://the-real-origin.example");
+    const s = JSON.stringify(pv);
+    expect(s).not.toMatch(/localhost/i);
+    expect(s).not.toMatch(/workers\.dev/); // only appears if the caller passes it
+    expect(pv.origin).toBe("https://the-real-origin.example");
   });
 });

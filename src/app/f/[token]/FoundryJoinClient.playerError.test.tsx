@@ -3,12 +3,12 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { useEffect } from "react";
 import { render, screen, waitFor, cleanup } from "@testing-library/react";
 
-// Stub the real IFrame player with a component that immediately fires an
-// embedding error (101/150) — proving the client's error handling.
+// Stub the real IFrame player with a component that immediately fires a client-
+// identity error (153) — proving the client preserves the raw code and locks.
 vi.mock("./YouTubePlayer", () => ({
-  YouTubePlayer: ({ onError }: { onError?: (k: string) => void }) => {
+  YouTubePlayer: ({ onError }: { onError?: (k: string, code: number) => void }) => {
     useEffect(() => {
-      onError?.("embedding_not_allowed");
+      onError?.("client_identity_missing", 153);
     }, [onError]);
     return <div data-testid="yt-stub" />;
   },
@@ -41,9 +41,10 @@ describe("FoundryJoinClient — player error keeps the response locked (no compl
 
     render(<FoundryJoinClient token="tok" />);
 
-    // The player error surface appears...
+    // The player error surface appears with the RAW code preserved as a reference...
     expect(await screen.findByText(/THIS VIDEO CAN.?T PLAY HERE/i)).toBeTruthy();
     expect(screen.getByText(/let the host know/i)).toBeTruthy();
+    expect(screen.getByText(/Reference:\s*YT-153/)).toBeTruthy();
 
     // ...and NO completion/XP request was ever made (response stays locked).
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());

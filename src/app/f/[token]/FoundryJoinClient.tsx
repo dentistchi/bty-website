@@ -160,7 +160,7 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   const [busy, setBusy] = useState(false);
   const [nameError, setNameError] = useState(false);
   const [responseError, setResponseError] = useState(false);
-  const [playerError, setPlayerError] = useState(false);
+  const [playerError, setPlayerError] = useState<number | null>(null);
   const busyRef = useRef(false);
   const autoClaimedRef = useRef(false);
 
@@ -359,13 +359,16 @@ export default function FoundryJoinClient({ token }: { token: string }) {
     // A player error (e.g. 101/150 owner-disabled embedding) keeps the response
     // LOCKED — no ENDED fires, so no video-complete / completion / XP. We surface
     // a calm message and never offer a "watch on YouTube" completion path.
-    if (playerError) {
+    if (playerError !== null) {
       return (
         <Frame>
           <div className="btyFadeIn flex flex-1 flex-col justify-center gap-3">
             <Eyebrow>{t.playerErrorTitle}</Eyebrow>
             <p className="text-base leading-6 text-white/80">{t.playerErrorBody}</p>
             <p className="text-sm leading-6 text-white/50">{t.playerErrorHint}</p>
+            {/* Short diagnostic reference (raw YouTube error code) — display only;
+                does NOT unlock the response or XP. */}
+            <p className="mt-2 text-xs text-white/30">Reference: YT-{playerError}</p>
           </div>
         </Frame>
       );
@@ -379,7 +382,7 @@ export default function FoundryJoinClient({ token }: { token: string }) {
             videoId={snapshot.training.youtube_video_id}
             onStarted={onVideoStarted}
             onEnded={onVideoEnded}
-            onError={() => setPlayerError(true)}
+            onError={(_kind, code) => setPlayerError(code)}
           />
           <p className="text-sm leading-6 text-white/55">{t.finishVideo}</p>
         </div>

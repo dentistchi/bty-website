@@ -85,3 +85,15 @@ export function classifyYoutubePlayerError(code: unknown): YoutubePlayerErrorKin
   if (code === 153) return "client_identity_missing";
   return "unknown";
 }
+
+/**
+ * playerVars for `new YT.Player`. `origin` MUST be the page's own
+ * window.location.origin (passed in by the caller at runtime — never hardcode a
+ * localhost/staging/production host): the IFrame API's enablejsapi postMessage
+ * handshake fails with error 153 ("client identity missing") on iOS Safari when
+ * origin is absent or mismatched. `playsinline` keeps playback inside the page
+ * on iOS. `rel`/`modestbranding` are the existing approved parameters.
+ */
+export function foundryPlayerVars(origin: string): Record<string, string | number> {
+  return { rel: 0, modestbranding: 1, playsinline: 1, enablejsapi: 1, origin };
+}
