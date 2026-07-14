@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { KaraokeRequest } from '@/lib/rooms.server';
 import type { KaraokeSession } from '@/lib/sessions.server';
 import { selectStage } from '@/domain/queue';
+import { primaryPlayTarget, runPlayOnTv } from '@/domain/play-flow';
 import { requestDisplayTitle } from '@/domain/request-view';
 import { displaySong } from '@/domain/song-title';
 import { youtubeWatchUrl } from '@/domain/youtube-search';
@@ -57,16 +58,34 @@ export default function DjBoard({
   const [loadingQr, setLoadingQr] = useState(false);
   const [sheetFor, setSheetFor] = useState<KaraokeRequest | null>(null);
   const [adminOpen, setAdminOpen] = useState(false);
+  // Re-entry guard so rapid taps can't open two tabs or fire two play mutations.
+  const startingRef = useRef(false);
 
   const requests = data?.requests ?? [];
   const { current, queue } = selectStage(requests);
   const live = Boolean(data?.session);
-  const stageOpen = !current;
   const newSet = new Set(newIds);
   const isAdmin = data?.role === 'admin';
+  // The single "▶ Play on TV" target: the first waiting song, only while the
+  // stage is open. Null once a song is playing (finish it first — no swap).
+  const playTarget = primaryPlayTarget(current, queue);
 
   function openVideo(videoId: string) {
     window.open(youtubeWatchUrl(videoId), '_blank', 'noopener');
+  }
+
+  // One-tap play: open YouTube inside this gesture FIRST (popup-safe), then mark
+  // the song playing. Idempotent under repeated taps; on mutation failure the
+  // error banner shows and the song stays waiting so the DJ can retry.
+  function playOnTv(r: KaraokeRequest) {
+    if (busy || startingRef.current) return;
+    startingRef.current = true;
+    void runPlayOnTv({
+      openVideo: () => openVideo(r.youtube_video_id),
+      play: () => onStart(r.id),
+    }).finally(() => {
+      startingRef.current = false;
+    });
   }
 
   async function showGuestQr() {
@@ -183,20 +202,40 @@ export default function DjBoard({
                   Open in YouTube
                 </button>
                 <button className="ok lg" disabled={busy} onClick={() => onFinish(current.id)}>
-                  Finish song · Next
+                  ✓ Finish song
                 </button>
               </div>
             </div>
-          ) : queue.length > 0 ? (
-            <div className="stage-hero ready">
-              <div className="eyebrow">The stage is ready</div>
-              <div className="stage-title" style={{ marginTop: 10 }}>
-                Start the night
-              </div>
-              <p className="lead">Choose the first song and put it on stage.</p>
+          ) : playTarget ? (
+            <div className="stage-hero ready" key={playTarget.id}>
+              <div className="eyebrow">Up first</div>
+              {playTarget.youtube_thumbnail_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  className="stage-thumb"
+                  src={playTarget.youtube_thumbnail_url}
+                  alt=""
+                  style={{ marginTop: 12 }}
+                />
+              ) : (
+                <div className="stage-thumb ph" style={{ marginTop: 12 }} aria-hidden>
+                  🎤
+                </div>
+              )}
+              <div className="stage-req strong">{playTarget.guest_name}</div>
+              {(() => {
+                const d = displaySong(playTarget.youtube_title ?? '', playTarget.youtube_channel_title);
+                return (
+                  <>
+                    <div className="stage-title">{d.song || requestDisplayTitle(playTarget)}</div>
+                    {d.artist && <div className="stage-artist">{d.artist}</div>}
+                  </>
+                );
+              })()}
+              <p className="lead">Opens the video, then puts this song on stage.</p>
               <div className="stage-actions">
-                <button className="primary lg" disabled={busy} onClick={() => onStart(queue[0].id)}>
-                  Start “{requestDisplayTitle(queue[0])}”
+                <button className="primary lg" disabled={busy} onClick={() => playOnTv(playTarget)}>
+                  ▶ Play on TV
                 </button>
               </div>
             </div>
@@ -274,11 +313,6 @@ export default function DjBoard({
                     {d.artist && <div className="q-artist">{d.artist}</div>}
                   </div>
                   <div className="q-actions">
-                    {stageOpen && (
-                      <button className="primary q-start" disabled={busy} onClick={() => onStart(r.id)}>
-                        Start
-                      </button>
-                    )}
                     <button
                       className="q-overflow"
                       aria-label={`${r.guest_name}님의 신청곡 ${song}${d.artist ? ` — ${d.artist}` : ''} 관리`}

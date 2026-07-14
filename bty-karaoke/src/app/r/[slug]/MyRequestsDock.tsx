@@ -18,11 +18,11 @@ function statusText(s?: GuestQueueStatus): string {
   if (!s) return '상태 확인 중…';
   switch (s.state) {
     case 'now_playing':
-      return '당신 차례예요 🎤';
+      return '지금 부를 차례입니다 🎤';
     case 'up_next':
       return '곧 당신 차례예요';
     case 'waiting':
-      return `지금 대기 ${s.position}번이에요`;
+      return `현재 대기 순서 #${s.position}`;
     case 'done':
       return '이 곡이 끝났어요 🎉';
     case 'removed':
