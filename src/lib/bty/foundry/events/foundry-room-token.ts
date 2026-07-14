@@ -29,14 +29,46 @@ export type FoundryRoomTokenPayload = {
 /** Token prefix — distinct from `btyev1` (event) and `aalo1` (arena action). */
 export const FOUNDRY_ROOM_TOKEN_PREFIX = "btyfr1";
 
+/** True in the deployed environments (staging is production-effective here). */
+function isProdEnv(): boolean {
+  const env = process.env.BTY_ENV;
+  return env === "production" || env === "staging";
+}
+
 /**
- * Secret resolution. Prefers a dedicated `FOUNDRY_ROOM_QR_SECRET` so Foundry
- * room tokens can be rotated independently, but falls back to the existing QR
- * secret chain so no new env var is required to ship V1.
+ * Production preflight: the deployed environments MUST use the dedicated
+ * `FOUNDRY_ROOM_QR_SECRET` — never an unrelated Arena/CRON secret via fallback.
+ * Throws (clearly, without printing the value) if it is absent in prod/staging.
+ * A no-op in local/test. Call from a deploy/health preflight; it is also enforced
+ * lazily inside {@link resolveFoundryRoomSecret}.
+ */
+export function assertFoundryRoomSecretConfigured(): void {
+  if (isProdEnv() && !process.env.FOUNDRY_ROOM_QR_SECRET?.trim()) {
+    throw new Error(
+      `FOUNDRY_ROOM_QR_SECRET is required in ${process.env.BTY_ENV} — the dedicated ` +
+        "Foundry room secret must be set (no Arena/CRON fallback is accepted in production).",
+    );
+  }
+}
+
+/**
+ * Secret resolution. Uses the dedicated `FOUNDRY_ROOM_QR_SECRET`. In prod/staging
+ * the dedicated secret is REQUIRED (no fallback — see {@link assertFoundryRoomSecretConfigured});
+ * in local/test only, the existing QR secret chain is accepted so no new env var
+ * is needed to run tests. Never logs the value; never touches Arena/CRON secrets.
  */
 function resolveFoundryRoomSecret(): string {
+  const dedicated = process.env.FOUNDRY_ROOM_QR_SECRET;
+  if (isProdEnv()) {
+    if (!dedicated?.trim()) {
+      throw new Error(
+        `FOUNDRY_ROOM_QR_SECRET is required in ${process.env.BTY_ENV} (no fallback in production).`,
+      );
+    }
+    return dedicated;
+  }
   const s =
-    process.env.FOUNDRY_ROOM_QR_SECRET ??
+    dedicated ??
     process.env.EVENT_QR_SECRET ??
     process.env.ARENA_ACTION_LOOP_QR_SECRET ??
     process.env.CRON_SECRET;

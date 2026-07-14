@@ -16,12 +16,14 @@ type Stage =
   | "removed"
   | "inactive";
 
+type XpStatus = "awarded" | "claimable" | "owner_ineligible" | "daily_limit" | "none";
+
 type Snapshot = {
   event: { title: string; status: "open" | "closed" } | null;
   participant: { display_name: string } | null;
   training: { youtube_video_id: string; completion_prompt: string | null } | null;
   stage: Stage;
-  xp_status: "awarded" | "claimable" | "none";
+  xp_status: XpStatus;
 };
 
 type Copy = {
@@ -42,6 +44,7 @@ type Copy = {
   xpClaimable: string;
   saveXp: string;
   saving: string;
+  xpDailyLimit: string;
   closedTitle: string;
   closedBody: string;
   endedTitle: string;
@@ -70,6 +73,7 @@ const COPY: Record<Locale, Copy> = {
     carryOne: "Carry one thing forward.",
     xpClaimable: "10 Core XP is ready to save.",
     saveXp: "Save XP to BTY",
+    xpDailyLimit: "Today’s Core XP is already saved. Come back tomorrow.",
     saving: "Saving…",
     closedTitle: "THIS EVENT IS CLOSED",
     closedBody: "New participants can no longer join.",
@@ -97,6 +101,7 @@ const COPY: Record<Locale, Copy> = {
     carryOne: "한 가지를 가지고 가세요.",
     xpClaimable: "10 Core XP를 저장할 수 있습니다.",
     saveXp: "BTY에 XP 저장",
+    xpDailyLimit: "오늘의 Core XP는 이미 저장되었습니다. 내일 다시 오세요.",
     saving: "저장 중…",
     closedTitle: "종료된 이벤트입니다",
     closedBody: "더 이상 새로 입장할 수 없습니다.",
@@ -303,32 +308,38 @@ export default function FoundryJoinClient({ token }: { token: string }) {
     );
   }
 
-  if (stage === "completed_awarded") {
-    return (
-      <Frame>
-        <div className="btyFadeIn flex flex-1 flex-col justify-center gap-3">
-          <Eyebrow>{t.trainingComplete}</Eyebrow>
-          <p className="text-3xl font-semibold text-[#C9A66B]">{t.xpAwarded}</p>
-          <p className="text-sm leading-6 text-white/60">{t.carryOne}</p>
-        </div>
-      </Frame>
-    );
-  }
-
-  if (stage === "completed_claimable") {
+  // Completed family — the SAME "training complete" surface; XP presentation is
+  // driven by xp_status (awarded / claimable / owner-ineligible / daily-limit).
+  // Owner-ineligible and daily-limit are shown calmly — never as an error.
+  if (stage === "completed_awarded" || stage === "completed_claimable") {
+    const xp = snapshot.xp_status;
     return (
       <Frame>
         <div className="btyFadeIn flex flex-1 flex-col justify-center gap-4">
           <Eyebrow>{t.trainingComplete}</Eyebrow>
-          <p className="text-base leading-6 text-white/80">{t.xpClaimable}</p>
-          <button
-            type="button"
-            onClick={() => onClaim(false)}
-            disabled={busy}
-            className="rounded-xl bg-[#C9A66B] px-5 py-3.5 text-base font-semibold text-[#0B1F3A] transition-opacity disabled:opacity-60"
-          >
-            {busy ? t.saving : t.saveXp}
-          </button>
+          {xp === "awarded" ? (
+            <>
+              <p className="text-3xl font-semibold text-[#C9A66B]">{t.xpAwarded}</p>
+              <p className="text-sm leading-6 text-white/60">{t.carryOne}</p>
+            </>
+          ) : xp === "claimable" ? (
+            <>
+              <p className="text-base leading-6 text-white/80">{t.xpClaimable}</p>
+              <button
+                type="button"
+                onClick={() => onClaim(false)}
+                disabled={busy}
+                className="rounded-xl bg-[#C9A66B] px-5 py-3.5 text-base font-semibold text-[#0B1F3A] transition-opacity disabled:opacity-60"
+              >
+                {busy ? t.saving : t.saveXp}
+              </button>
+            </>
+          ) : xp === "daily_limit" ? (
+            <p className="text-sm leading-6 text-white/60">{t.xpDailyLimit}</p>
+          ) : (
+            // owner_ineligible / none — completion stands, quietly.
+            <p className="text-sm leading-6 text-white/60">{t.carryOne}</p>
+          )}
         </div>
       </Frame>
     );

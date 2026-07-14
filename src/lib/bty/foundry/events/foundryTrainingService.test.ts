@@ -183,8 +183,49 @@ function makeFakeAdmin() {
     }
   }
 
+  // Simulate the atomic award RPC (mirrors bty_foundry_award_daily_capped SQL):
+  // idempotency by source_id, one-per-(user,event), per-day cap; inserts ledger.
+  function rpc(name: string, p: Record<string, unknown>) {
+    if (name !== "bty_foundry_award_daily_capped") {
+      return Promise.resolve({ data: null, error: { message: "unknown rpc" } });
+    }
+    const led = tables.core_xp_ledger;
+    const SRC = "foundry_training_completion";
+    if (led.some((l) => l.source_type === SRC && l.source_id === p.p_source_id)) {
+      return Promise.resolve({ data: "already_awarded", error: null });
+    }
+    const eventAwarded = led.some((l) => {
+      if (l.source_type !== SRC || l.user_id !== p.p_user_id) return false;
+      const pr = tables.foundry_event_training_progress.find((x) => x.id === l.source_id);
+      return pr && pr.event_id === p.p_event_id;
+    });
+    if (eventAwarded) return Promise.resolve({ data: "event_already_awarded", error: null });
+    const count = led.filter(
+      (l) =>
+        l.user_id === p.p_user_id &&
+        l.source_type === SRC &&
+        (l.created_at as string) >= (p.p_day_start as string) &&
+        (l.created_at as string) < (p.p_day_end as string),
+    ).length;
+    if (count >= (p.p_max_per_day as number)) {
+      return Promise.resolve({ data: "daily_limit", error: null });
+    }
+    led.push({
+      id: nid("led"),
+      user_id: p.p_user_id,
+      delta_xp: p.p_xp,
+      source_type: SRC,
+      source_id: p.p_source_id,
+      created_at: new Date().toISOString(),
+    });
+    return Promise.resolve({ data: "awarded", error: null });
+  }
+
   return {
-    admin: { from: (t: string) => new Q(tables[t], t) } as unknown as SupabaseClient,
+    admin: {
+      from: (t: string) => new Q((tables[t] ??= []), t),
+      rpc,
+    } as unknown as SupabaseClient,
     tables,
   };
 }
@@ -316,6 +357,73 @@ describe("XP: authenticated award vs anonymous claim", () => {
   it("claim requires a completed progress row", async () => {
     const { admin, token, session } = await setupJoined();
     expect(await claimXp(admin, token, session, AUTH)).toEqual({ ok: false, reason: "not_completed" });
+  });
+});
+
+describe("XP integrity hardening (owner / daily cap / same-user-same-event)", () => {
+  async function makeEvent(admin: SupabaseClient, owner: string, title: string) {
+    const c = await createTrainingEvent(admin, owner, {
+      title,
+      youtube_url: YT,
+      completion_prompt: "q?",
+    });
+    if (!c.ok) throw new Error("create failed");
+    return { eventId: c.value.event.id, token: c.value.event.join_token };
+  }
+  async function joinComplete(
+    admin: SupabaseClient,
+    token: string,
+    name: string,
+    authUser: string | null,
+  ) {
+    const j = await joinEvent(admin, token, name, null);
+    if (!j.ok) throw new Error("join failed");
+    await completeVideo(admin, token, j.sessionToken);
+    return completeTraining(admin, token, j.sessionToken, "reflection", authUser);
+  }
+
+  it("event owner earns no XP from their own event (owner_ineligible, completion valid)", async () => {
+    const { admin, tables } = makeFakeAdmin();
+    const { token } = await makeEvent(admin, OWNER, "Owner's own");
+    const r = await joinComplete(admin, token, "TheOwner", OWNER); // owner completes own event
+    expect(r.ok && r.snapshot.stage).toBe("completed_claimable");
+    expect(r.ok && r.snapshot.xp_status).toBe("owner_ineligible");
+    expect(tables.core_xp_ledger).toHaveLength(0);
+    expect(awardSpy).not.toHaveBeenCalled();
+  });
+
+  it("caps at 3 Core XP awards per canonical BTY day; 4th returns daily_limit", async () => {
+    const { admin, tables } = makeFakeAdmin();
+    const LEARNER = "learner-1";
+    for (let i = 1; i <= 3; i++) {
+      const { token } = await makeEvent(admin, OWNER, `E${i}`);
+      const r = await joinComplete(admin, token, "Lee", LEARNER);
+      expect(r.ok && r.snapshot.xp_status).toBe("awarded");
+    }
+    expect(tables.core_xp_ledger).toHaveLength(3);
+    expect(awardSpy).toHaveBeenCalledTimes(3);
+
+    const { token: t4 } = await makeEvent(admin, OWNER, "E4");
+    const r4 = await joinComplete(admin, t4, "Lee", LEARNER);
+    expect(r4.ok && r4.snapshot.xp_status).toBe("daily_limit");
+    expect(tables.core_xp_ledger).toHaveLength(3); // no 4th ledger row
+    expect(awardSpy).toHaveBeenCalledTimes(3); // no 4th total bump
+  });
+
+  it("same user, two participants, same event → awarded once, delta exactly 10", async () => {
+    const { admin, tables } = makeFakeAdmin();
+    const LEARNER = "learner-2";
+    const { token } = await makeEvent(admin, OWNER, "One event");
+
+    const first = await joinComplete(admin, token, "Kim (phone)", LEARNER);
+    expect(first.ok && first.snapshot.xp_status).toBe("awarded");
+
+    // Second device: new participant + session, same event, same user.
+    const second = await joinComplete(admin, token, "Kim (laptop)", LEARNER);
+    expect(second.ok && second.snapshot.xp_status).toBe("awarded"); // already holds it
+    expect(tables.core_xp_ledger).toHaveLength(1); // exactly one award
+    expect(awardSpy).toHaveBeenCalledTimes(1); // total bumped once
+    expect(tables.core_xp_ledger[0].delta_xp).toBe(10);
   });
 });
 

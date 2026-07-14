@@ -72,7 +72,11 @@ create table if not exists public.foundry_event_participants (
   constraint foundry_event_participants_status_check
     check (status in ('joined', 'removed')),
   constraint foundry_event_participants_session_hash_unique
-    unique (participant_session_token_hash)
+    unique (participant_session_token_hash),
+  -- Enables the composite FK from training progress so a progress row can only
+  -- reference a participant that belongs to the SAME event (cross-event guard).
+  constraint foundry_event_participants_event_id_unique
+    unique (event_id, id)
 );
 
 -- Hot paths: owner's event list (newest first), status scans, and roster read
@@ -140,7 +144,7 @@ create table if not exists public.foundry_event_training_content (
 create table if not exists public.foundry_event_training_progress (
   id uuid primary key default gen_random_uuid(),
   event_id uuid not null references public.foundry_events (id) on delete cascade,
-  participant_id uuid not null references public.foundry_event_participants (id) on delete cascade,
+  participant_id uuid not null,
   video_started_at timestamptz,
   video_completed_at timestamptz,
   response_text text,
@@ -150,10 +154,26 @@ create table if not exists public.foundry_event_training_progress (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint foundry_training_progress_unique unique (event_id, participant_id),
+  -- Composite FK: the participant MUST belong to this event. Replaces a naive
+  -- standalone participant_id FK (which allowed a progress row to pair an event
+  -- with a participant from a DIFFERENT event). ON DELETE CASCADE with the
+  -- participant row.
+  constraint foundry_training_progress_participant_fk
+    foreign key (event_id, participant_id)
+    references public.foundry_event_participants (event_id, id) on delete cascade,
   constraint foundry_training_progress_response_len_check
     check (response_text is null or char_length(btrim(response_text)) between 1 and 1000),
-  constraint foundry_training_progress_completed_needs_response_check
-    check (completed_at is null or response_text is not null),
+  -- A completed training REQUIRES both the video to have completed AND a valid
+  -- response — the client cannot fabricate completion without the server flags.
+  constraint foundry_training_progress_completed_needs_video_and_response_check
+    check (
+      completed_at is null
+      or (
+        video_completed_at is not null
+        and response_text is not null
+        and char_length(btrim(response_text)) between 1 and 1000
+      )
+    ),
   constraint foundry_training_progress_xp_needs_complete_check
     check (xp_awarded_at is null or completed_at is not null)
 );
@@ -162,6 +182,13 @@ create index if not exists foundry_training_progress_event_idx
   on public.foundry_event_training_progress (event_id);
 create index if not exists foundry_training_progress_participant_idx
   on public.foundry_event_training_progress (participant_id);
+
+-- One Core XP award per (event, user): a user cannot farm the same event's XP
+-- via multiple device/browser participants. NULL linked_user_id (anonymous, not
+-- yet claimed) is excluded from the constraint.
+create unique index if not exists foundry_training_progress_event_user_unique_idx
+  on public.foundry_event_training_progress (event_id, linked_user_id)
+  where linked_user_id is not null;
 
 -- Grants: content is owner-readable; progress is service-role ONLY (no
 -- authenticated grant/policy) so the private response is never client-readable
@@ -183,3 +210,89 @@ create policy "foundry_training_content_select_owner" on public.foundry_event_tr
 -- Progress: RLS enabled, NO policy and NO authenticated grant => default-deny
 -- for every client role. Only service-role (bypasses RLS) reads/writes it.
 alter table public.foundry_event_training_progress enable row level security;
+
+-- ===========================================================================
+-- Atomic Core-XP award gate for Foundry training (integrity hardening).
+--
+-- Enforces THREE integrity rules race-safely for concurrent claims, which a
+-- read-count-then-insert at the service layer cannot: (1) idempotency per
+-- completion (source_id = progress id), (2) one award per (user, event), and
+-- (3) a per-canonical-BTY-day cap. The 05:00-local BTY-day boundary is computed
+-- in TypeScript (domain/daily/userDayStartInstant) and passed in as
+-- p_day_start / p_day_end — SQL never computes the domain day rule.
+--
+-- Serialized with pg_advisory_xact_lock(user, day) so concurrent claims cannot
+-- exceed the cap. Writes ONLY the canonical core_xp_ledger (source_type=
+-- 'foundry_training_completion'); the authoritative arena_profiles.core_xp_total
+-- bump + avatar reprojection stay in TS (applyDirectCoreXp), called only on a
+-- fresh 'awarded' result — mirroring bty_event_scan_award's SQL/TS split.
+--
+-- Returns: 'awarded' | 'already_awarded' | 'event_already_awarded' | 'daily_limit'.
+-- Owner-exclusion is enforced in the service (needs no lock).
+-- ===========================================================================
+create or replace function public.bty_foundry_award_daily_capped(
+  p_user_id     uuid,
+  p_event_id    uuid,
+  p_source_id   text,
+  p_xp          int,
+  p_day_start   timestamptz,
+  p_day_end     timestamptz,
+  p_max_per_day int default 3
+)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_count int;
+begin
+  -- Serialize this (user, BTY-day) so the count+insert below is race-safe.
+  perform pg_advisory_xact_lock(
+    hashtextextended(p_user_id::text, 0),
+    hashtextextended(to_char(p_day_start at time zone 'UTC', 'YYYY-MM-DD'), 0)
+  );
+
+  -- (1) Idempotency per completion.
+  if exists (
+    select 1 from public.core_xp_ledger
+    where source_type = 'foundry_training_completion' and source_id = p_source_id
+  ) then
+    return 'already_awarded';
+  end if;
+
+  -- (2) One award per (user, event) — a user cannot re-earn the same event's XP
+  -- via a second participant/session.
+  if exists (
+    select 1
+    from public.core_xp_ledger l
+    join public.foundry_event_training_progress pr on pr.id::text = l.source_id
+    where l.source_type = 'foundry_training_completion'
+      and l.user_id = p_user_id
+      and pr.event_id = p_event_id
+  ) then
+    return 'event_already_awarded';
+  end if;
+
+  -- (3) Per-canonical-BTY-day cap.
+  select count(*) into v_count
+  from public.core_xp_ledger
+  where user_id = p_user_id
+    and source_type = 'foundry_training_completion'
+    and created_at >= p_day_start
+    and created_at < p_day_end;
+
+  if v_count >= p_max_per_day then
+    return 'daily_limit';
+  end if;
+
+  insert into public.core_xp_ledger (user_id, delta_xp, source_type, source_id)
+  values (p_user_id, p_xp, 'foundry_training_completion', p_source_id);
+
+  return 'awarded';
+end;
+$$;
+
+-- Service-role only (route gate + owner/token verification precede the call).
+revoke all on function public.bty_foundry_award_daily_capped(uuid, uuid, text, int, timestamptz, timestamptz, int) from public, anon, authenticated;
+grant execute on function public.bty_foundry_award_daily_capped(uuid, uuid, text, int, timestamptz, timestamptz, int) to service_role;

@@ -12,6 +12,8 @@ import {
 } from "@/domain/foundry/events/foundry-training";
 import { parseYoutubeVideoId, youtubeThumbnailUrl } from "@/domain/foundry/youtube";
 import { applyDirectCoreXp } from "@/lib/bty/arena/applyCoreXp";
+import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
+import { userDayStartInstant } from "@/domain/daily/userDayStartInstant";
 import {
   getOwnerEventSnapshot,
   resolveEventByToken,
@@ -212,12 +214,14 @@ export async function getOwnerTrainingSnapshot(
 // Public: employee training progress
 // ---------------------------------------------------------------------------
 
+export type PublicXpStatus = "awarded" | "claimable" | "owner_ineligible" | "daily_limit" | "none";
+
 export type PublicTrainingSnapshot = {
   event: { title: string; status: FoundryEventStatus } | null;
   participant: { display_name: string } | null;
   training: { youtube_video_id: string; completion_prompt: string | null } | null;
   stage: PublicTrainingStage;
-  xp_status: "awarded" | "claimable" | "none";
+  xp_status: PublicXpStatus;
 };
 
 async function getProgress(
@@ -266,6 +270,7 @@ function buildPublicSnapshot(
   progress: ProgressRow | null,
   content: ContentRow | null,
   tokenVersionCurrent: boolean,
+  xpOverride?: PublicXpStatus,
 ): PublicTrainingSnapshot {
   const hasParticipant = Boolean(participant);
   const stage = projectPublicTrainingStage({
@@ -296,11 +301,14 @@ function buildPublicSnapshot(
         }
       : null;
 
-  const xp_status: PublicTrainingSnapshot["xp_status"] = progress?.xp_awarded_at
+  const derivedXp: PublicXpStatus = progress?.xp_awarded_at
     ? "awarded"
     : progress?.completed_at
       ? "claimable"
       : "none";
+  // An award attempt can end owner_ineligible / daily_limit while completion is
+  // valid — that outcome isn't derivable from timestamps, so the action overrides.
+  const xp_status: PublicXpStatus = xpOverride ?? derivedXp;
 
   return {
     event: { title: event.title, status: event.status },
@@ -363,10 +371,20 @@ async function snapshotFor(
   admin: SupabaseClient,
   event: EventRow,
   participant: ParticipantRow,
+  xpOverride?: PublicXpStatus,
 ): Promise<PublicTrainingSnapshot> {
   const progress = await getProgress(admin, event.id, participant.id);
   const content = await getContent(admin, event.id);
-  return buildPublicSnapshot(event, participant, progress, content, true);
+  return buildPublicSnapshot(event, participant, progress, content, true, xpOverride);
+}
+
+/** Compute the caller's canonical BTY-day window [start, end) (05:00 user-local). */
+async function btyDayWindow(admin: SupabaseClient, userId: string): Promise<{ start: string; end: string }> {
+  const { timezone } = await resolveUserTzContext(admin, userId, null);
+  const now = new Date();
+  const start = userDayStartInstant(now, timezone, 5);
+  const end = userDayStartInstant(new Date(start.getTime() + 86_400_000 + 1), timezone, 5);
+  return { start: start.toISOString(), end: end.toISOString() };
 }
 
 export type ProgressResult =
@@ -418,26 +436,59 @@ export async function completeVideo(
   return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant) };
 }
 
-/** Award (idempotent) via the canonical Core XP path. Never writes a total itself. */
+export type AwardOutcome = "awarded" | "already_awarded" | "owner_ineligible" | "daily_limit";
+
+/** Map an award outcome to the public xp_status the client renders. */
+function outcomeToXpStatus(outcome: AwardOutcome): PublicXpStatus {
+  if (outcome === "owner_ineligible") return "owner_ineligible";
+  if (outcome === "daily_limit") return "daily_limit";
+  return "awarded"; // awarded | already_awarded (via this or another participant)
+}
+
+/**
+ * Award 10 Core XP through the integrity gate:
+ *  - the event OWNER never earns XP from their own event (owner_ineligible),
+ *  - one award per (user, event), one per completion, max 3 per canonical BTY day,
+ *    all enforced race-safely in the SECURITY DEFINER RPC (advisory-locked),
+ *  - the authoritative total + avatar bump stays in the canonical applyDirectCoreXp,
+ *    called ONLY on a fresh 'awarded' result.
+ * Never writes an XP total directly; never logs identifiers.
+ */
 async function awardTrainingCoreXp(
   admin: SupabaseClient,
   userId: string,
+  eventId: string,
+  ownerUserId: string,
   progressId: string,
-): Promise<{ awarded: boolean } | { error: string }> {
-  const { error } = await admin.from("core_xp_ledger").insert({
-    user_id: userId,
-    delta_xp: FOUNDRY_TRAINING_XP,
-    source_type: SOURCE_TYPE,
-    source_id: progressId,
+): Promise<AwardOutcome> {
+  if (userId === ownerUserId) return "owner_ineligible";
+
+  const window = await btyDayWindow(admin, userId);
+  const { data, error } = await admin.rpc("bty_foundry_award_daily_capped", {
+    p_user_id: userId,
+    p_event_id: eventId,
+    p_source_id: progressId,
+    p_xp: FOUNDRY_TRAINING_XP,
+    p_day_start: window.start,
+    p_day_end: window.end,
+    p_max_per_day: 3,
   });
-  if (error) {
-    // 23505 = the (source_type, source_id) row already exists → already awarded.
-    if ((error as { code?: string }).code === "23505") return { awarded: false };
-    return { error: error.message };
+
+  if (error) return "already_awarded"; // fail-safe: never double-award on RPC error
+  const result = String(data);
+
+  if (result === "awarded") {
+    // Fresh ledger row committed atomically — now bump the authoritative total + avatar.
+    const bump = await applyDirectCoreXp(admin, userId, FOUNDRY_TRAINING_XP);
+    if ("error" in bump) {
+      // Ledger row exists (XP is audited); total bump can be reconciled — treat as awarded.
+      return "awarded";
+    }
+    return "awarded";
   }
-  const res = await applyDirectCoreXp(admin, userId, FOUNDRY_TRAINING_XP);
-  if ("error" in res) return { error: res.error };
-  return { awarded: true };
+  if (result === "daily_limit") return "daily_limit";
+  // already_awarded | event_already_awarded → the user already holds this event's XP
+  return "already_awarded";
 }
 
 /**
@@ -480,20 +531,21 @@ export async function completeTraining(
 
   const progressId = updated?.id ?? prog.id;
 
-  // Immediate award for an authenticated participant.
+  // Immediate award for an authenticated participant (owner excluded, capped).
+  let xpOverride: PublicXpStatus | undefined;
   if (authUserId) {
-    const award = await awardTrainingCoreXp(admin, authUserId, progressId);
-    if (!("error" in award)) {
+    const outcome = await awardTrainingCoreXp(admin, authUserId, r.event.id, r.event.owner_user_id, progressId);
+    if (outcome === "awarded") {
       await admin
         .from("foundry_event_training_progress")
         .update({ linked_user_id: authUserId, xp_awarded_at: new Date().toISOString() })
         .eq("id", progressId)
         .is("xp_awarded_at", null);
     }
-    // On award error we still keep completion; XP stays claimable.
+    xpOverride = outcomeToXpStatus(outcome);
   }
 
-  return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant) };
+  return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant, xpOverride) };
 }
 
 /**
@@ -512,16 +564,16 @@ export async function claimXp(
 
   const prog = await getProgress(admin, r.event.id, r.participant.id);
   if (!prog || !prog.completed_at) return { ok: false, reason: "not_completed" };
-  if (prog.xp_awarded_at) return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant) };
+  if (prog.xp_awarded_at) return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant, "awarded") };
 
-  const award = await awardTrainingCoreXp(admin, authUserId, prog.id);
-  if ("error" in award) return { ok: false, reason: "award_failed" };
+  const outcome = await awardTrainingCoreXp(admin, authUserId, r.event.id, r.event.owner_user_id, prog.id);
+  if (outcome === "awarded") {
+    await admin
+      .from("foundry_event_training_progress")
+      .update({ linked_user_id: authUserId, xp_awarded_at: new Date().toISOString() })
+      .eq("id", prog.id)
+      .is("xp_awarded_at", null);
+  }
 
-  await admin
-    .from("foundry_event_training_progress")
-    .update({ linked_user_id: authUserId, xp_awarded_at: new Date().toISOString() })
-    .eq("id", prog.id)
-    .is("xp_awarded_at", null);
-
-  return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant) };
+  return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant, outcomeToXpStatus(outcome)) };
 }
