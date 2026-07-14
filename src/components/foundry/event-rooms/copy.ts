@@ -5,6 +5,9 @@ export type Locale = "en" | "ko";
 
 export type EventRoomsCopy = {
   eyebrow: string;
+  // non-host (no active Foundry Host grant) quiet state
+  nonHostLead: string;
+  nonHostSub: string;
   // empty state
   emptyLead: string;
   createCta: string;
@@ -56,6 +59,8 @@ export type EventRoomsCopy = {
 export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
   en: {
     eyebrow: "FOUNDRY",
+    nonHostLead: "Training rooms are opened by authorized hosts.",
+    nonHostSub: "Scan an invitation QR to join a training event.",
     emptyLead: "Bring your team into one room.",
     createCta: "Create an event",
     createEyebrow: "CREATE TRAINING EVENT",
@@ -100,6 +105,8 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
   },
   ko: {
     eyebrow: "FOUNDRY",
+    nonHostLead: "훈련 방은 승인된 호스트가 엽니다.",
+    nonHostSub: "초대 QR을 스캔하여 훈련 이벤트에 참여하세요.",
     emptyLead: "팀을 하나의 방으로 모으세요.",
     createCta: "이벤트 만들기",
     createEyebrow: "훈련 이벤트 만들기",

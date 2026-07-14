@@ -64,4 +64,28 @@ describe("Foundry migration integrity (schema-intent)", () => {
   it("progress table is service-role only (no authenticated grant)", () => {
     expect(SQL).not.toMatch(/grant select on public\.foundry_event_training_progress to authenticated/i);
   });
+
+  // --- Foundry Host capability (Host Authorization V1) ---
+  it("host grant table exists with status + revocation CHECKs", () => {
+    expect(SQL).toMatch(/create table if not exists public\.foundry_host_grants/i);
+    expect(SQL).toMatch(/check\s*\(\s*status in \('active', 'revoked'\)\s*\)/i);
+    expect(SQL).toMatch(
+      /status = 'active' and revoked_at is null[^)]*\)\s*or\s*\(\s*status = 'revoked' and revoked_at is not null/i,
+    );
+  });
+
+  it("host grant table is client-deny (RLS on, no anon/authenticated grants)", () => {
+    expect(SQL).toMatch(/revoke all on public\.foundry_host_grants from public, anon, authenticated/i);
+    expect(SQL).toMatch(/alter table public\.foundry_host_grants enable row level security/i);
+    expect(SQL).not.toMatch(/grant (select|insert|update|delete)[^;]*public\.foundry_host_grants to (anon|authenticated)/i);
+  });
+
+  it("does NOT seed any pilot Host (no hardcoded user id / email)", () => {
+    expect(SQL).not.toMatch(/insert into public\.foundry_host_grants/i);
+    expect(SQL).not.toMatch(/@/); // no email literal anywhere in the migration
+  });
+
+  it("rollback drops the host grant table", () => {
+    expect(SQL).toMatch(/drop table if exists public\.foundry_host_grants/i);
+  });
 });

@@ -2,15 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { isActiveFoundryHost } from "./foundryHostService";
 
 /**
- * Shared manager-route gate for Foundry Event Rooms.
+ * Shared manager-route gate for Foundry Training Rooms.
  *
- * Order: authenticated user (401) → service-role client available (503). Every
- * manager operation is owner-scoped INSIDE the service (queries filter by
- * owner_user_id), so this gate proves identity; the service proves ownership.
- * Foundry Events are open to any authenticated user (no Arena membership /
- * leader-track coupling — Foundry owns its own boundary).
+ * Order: authenticated (401) → service-role client (503) → ACTIVE Foundry Host
+ * grant (403 foundry_host_required) → [service proves Event ownership]. Every
+ * manager operation is additionally owner-scoped inside the service (queries
+ * filter by owner_user_id). Authentication alone is NOT authority — a Host grant
+ * is required to create/operate events (a Host operates only events they own).
+ * The `foundry_host_required` code lets the native UI render a quiet non-host
+ * state instead of a raw 403 — no separate access API needed.
  */
 export type ManagerContext = {
   user: { id: string };
@@ -27,6 +30,14 @@ export async function requireManager(
   const admin = getSupabaseAdmin();
   if (!admin) {
     const res = NextResponse.json({ error: "ADMIN_CLIENT_UNAVAILABLE" }, { status: 503 });
+    copyCookiesAndDebug(base, res, req, true);
+    return { ok: false, response: res };
+  }
+
+  // Foundry Host capability — required for every manager operation.
+  const isHost = await isActiveFoundryHost(admin, user.id);
+  if (!isHost) {
+    const res = NextResponse.json({ error: "foundry_host_required" }, { status: 403 });
     copyCookiesAndDebug(base, res, req, true);
     return { ok: false, response: res };
   }

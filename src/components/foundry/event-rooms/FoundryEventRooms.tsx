@@ -30,6 +30,10 @@ export default function FoundryEventRooms({ locale }: { locale: string }) {
 
   const [view, setView] = useState<View>({ kind: "home" });
   const [events, setEvents] = useState<ManagerEventSummary[] | null>(null);
+  // Host-capability access, resolved from the events list response. A non-host
+  // sees a quiet employee-pointer state; an auth/network error is NOT shown as
+  // "non-host" (it stays a neutral loading hold so we never misrepresent it).
+  const [access, setAccess] = useState<"loading" | "host" | "non_host">("loading");
 
   const loadList = useCallback(async () => {
     try {
@@ -37,14 +41,23 @@ export default function FoundryEventRooms({ locale }: { locale: string }) {
         credentials: "include",
         cache: "no-store",
       });
-      if (!res.ok) {
-        setEvents([]);
+      if (res.ok) {
+        const data = (await res.json()) as { events?: ManagerEventSummary[] };
+        setEvents(Array.isArray(data.events) ? data.events : []);
+        setAccess("host");
         return;
       }
-      const data = (await res.json()) as { events?: ManagerEventSummary[] };
-      setEvents(Array.isArray(data.events) ? data.events : []);
+      if (res.status === 403) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        if (body?.error === "foundry_host_required") {
+          setAccess("non_host");
+          return;
+        }
+      }
+      // Auth expiry / network / server error → stay in a neutral hold (not non-host).
+      setAccess("loading");
     } catch {
-      setEvents([]);
+      setAccess("loading");
     }
   }, []);
 
@@ -79,7 +92,24 @@ export default function FoundryEventRooms({ locale }: { locale: string }) {
     );
   }
 
-  // home
+  // home — non-host quiet state (no Create CTA, no permission-request CTA, no
+  // "coming soon"; employees join via the public QR route). An unresolved auth/
+  // network error stays a neutral hold, never mislabeled as non-host.
+  if (access === "non_host") {
+    return (
+      <div className="btyFadeIn flex min-h-[55vh] flex-col items-center justify-center gap-4 text-center">
+        <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
+          {t.eyebrow}
+        </span>
+        <p className="max-w-[18rem] text-base leading-7 text-white/80">{t.nonHostLead}</p>
+        <p className="max-w-[18rem] text-sm leading-6 text-white/50">{t.nonHostSub}</p>
+      </div>
+    );
+  }
+  if (access === "loading") {
+    return <div aria-hidden className="min-h-[40vh]" />;
+  }
+
   const open = (events ?? []).filter((e) => e.status === "open");
   const past = (events ?? []).filter((e) => e.status === "closed");
 

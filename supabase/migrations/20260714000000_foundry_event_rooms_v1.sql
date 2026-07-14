@@ -36,11 +36,46 @@
 -- no leaderboard, no season linkage — Foundry Event Rooms is not an XP surface.
 --
 -- Rollback (drop in FK-dependency order):
+--   DROP FUNCTION IF EXISTS public.bty_foundry_award_daily_capped(uuid, uuid, text, int, timestamptz, timestamptz, int);
 --   DROP TABLE IF EXISTS public.foundry_event_training_progress;
 --   DROP TABLE IF EXISTS public.foundry_event_training_content;
 --   DROP TABLE IF EXISTS public.foundry_event_participants;
 --   DROP TABLE IF EXISTS public.foundry_events;
+--   DROP TABLE IF EXISTS public.foundry_host_grants;
 -- =============================================================================
+
+-- ---------------------------------------------------------------------------
+-- Foundry Host capability (authorization). "Foundry Host" = permission to
+-- create and operate Foundry Training Events — a product capability, NOT an org
+-- role (a clinical director, trainer, mentor, or doctor may all be Hosts). V1 is
+-- a GLOBAL capability (no org/region scope). Client cannot read/write this table;
+-- all authorization is server-side (service-role). No user is seeded here — the
+-- first pilot Host is granted out-of-band after apply (scripts/manage-foundry-host).
+-- ---------------------------------------------------------------------------
+create table if not exists public.foundry_host_grants (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  status text not null default 'active',
+  granted_by_user_id uuid references auth.users (id) on delete set null,
+  granted_at timestamptz not null default now(),
+  revoked_at timestamptz,
+  constraint foundry_host_grants_status_check
+    check (status in ('active', 'revoked')),
+  constraint foundry_host_grants_revocation_check
+    check (
+      (status = 'active' and revoked_at is null)
+      or
+      (status = 'revoked' and revoked_at is not null)
+    )
+);
+
+-- Hot path: "is this user an active Host?" (also the only listing the ops script needs).
+create index if not exists foundry_host_grants_active_idx
+  on public.foundry_host_grants (status)
+  where status = 'active';
+
+-- Default-deny for every client role; authorization is service-role only.
+revoke all on public.foundry_host_grants from public, anon, authenticated;
+alter table public.foundry_host_grants enable row level security;
 
 create table if not exists public.foundry_events (
   id uuid primary key default gen_random_uuid(),

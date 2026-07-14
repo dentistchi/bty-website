@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
  * are mocked so we exercise only the route + gate + attachJoinUrl.
  */
 const currentUser = vi.fn<() => { id: string } | null>();
+const hostActive = vi.fn<() => boolean>();
 const createTrainingEvent = vi.fn();
 const listOwnerEvents = vi.fn();
 
@@ -17,6 +18,9 @@ vi.mock("@/lib/supabase/route-client", () => ({
   copyCookiesAndDebug: () => {},
 }));
 vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => ({}) }));
+vi.mock("@/lib/bty/foundry/events/foundryHostService", () => ({
+  isActiveFoundryHost: async () => hostActive(),
+}));
 vi.mock("@/lib/bty/foundry/events/foundryTrainingService", () => ({
   createTrainingEvent: (...args: unknown[]) => createTrainingEvent(...args),
 }));
@@ -35,6 +39,8 @@ beforeEach(() => {
   currentUser.mockReset();
   createTrainingEvent.mockReset();
   listOwnerEvents.mockReset();
+  hostActive.mockReset();
+  hostActive.mockReturnValue(true); // default: an active Foundry Host (overridden per test)
 });
 
 function req(body?: unknown) {
@@ -101,11 +107,46 @@ describe("GET /api/bty/foundry/events", () => {
     expect((await GET(req())).status).toBe(401);
   });
 
-  it("returns an events array for an authenticated owner", async () => {
+  it("returns an events array for an authenticated active host", async () => {
     currentUser.mockReturnValue({ id: "owner-1" });
     listOwnerEvents.mockResolvedValue([]);
     const res = await GET(req());
     expect(res.status).toBe(200);
     expect(Array.isArray((await res.json()).events)).toBe(true);
+  });
+});
+
+describe("Foundry Host authorization gate", () => {
+  it("authenticated non-host create → 403 foundry_host_required (service untouched)", async () => {
+    currentUser.mockReturnValue({ id: "user-x" });
+    hostActive.mockReturnValue(false);
+    const res = await POST(req(VALID));
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe("foundry_host_required");
+    expect(createTrainingEvent).not.toHaveBeenCalled();
+  });
+
+  it("authenticated non-host list → 403 foundry_host_required (no event data)", async () => {
+    currentUser.mockReturnValue({ id: "user-x" });
+    hostActive.mockReturnValue(false);
+    const res = await GET(req());
+    expect(res.status).toBe(403);
+    const json = await res.json();
+    expect(json.error).toBe("foundry_host_required");
+    expect(json.events).toBeUndefined();
+    expect(listOwnerEvents).not.toHaveBeenCalled();
+  });
+
+  it("revoked host (no active grant) is treated as non-host → 403", async () => {
+    currentUser.mockReturnValue({ id: "was-host" });
+    hostActive.mockReturnValue(false); // revoked => isActiveFoundryHost() === false
+    expect((await POST(req(VALID))).status).toBe(403);
+  });
+
+  it("active host create → 201", async () => {
+    currentUser.mockReturnValue({ id: "owner-1" });
+    hostActive.mockReturnValue(true);
+    createTrainingEvent.mockResolvedValue({ ok: true, value: SNAPSHOT });
+    expect((await POST(req(VALID))).status).toBe(201);
   });
 });
