@@ -1852,3 +1852,50 @@ a.btn.block {
   margin-top: 10px;
   line-height: 1.4;
 }
+
+/* ── DJ queue reorder ───────────────────────────────────────── */
+/* Grip handle — the ONLY place a drag starts. touch-action:none keeps a drag
+   from scrolling the list; the card body still scrolls normally. */
+.q-handle {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 10px;
+  color: var(--muted-2);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line-2);
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+.q-handle:active {
+  cursor: grabbing;
+  color: var(--gold);
+  border-color: rgba(245, 196, 81, 0.4);
+}
+/* Lifted card while dragging — clear but restrained (no wild animation). */
+.q-card.dragging {
+  border-color: rgba(245, 196, 81, 0.55);
+  background: rgba(245, 196, 81, 0.1);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.42);
+  transform: scale(1.02);
+  position: relative;
+  z-index: 3;
+}
+/* Fine one-step move controls in the action sheet. */
+.sheet-move {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.sheet-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

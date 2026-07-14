@@ -7,6 +7,11 @@ import { displaySong } from '@/domain/song-title';
 interface Props {
   request: KaraokeRequest;
   busy: boolean;
+  /** Whether this song can move up / down (false at the ends of the line). */
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMoveUp: (id: string) => void;
+  onMoveDown: (id: string) => void;
   onMoveNext: (id: string) => void;
   onRemove: (id: string) => void;
   onClose: () => void;
@@ -15,7 +20,17 @@ interface Props {
 // BTY-styled queue action sheet — replaces window.confirm(). Singer-first header,
 // two fast actions (먼저 부르기 / 곡 빼기 with an in-sheet confirm), backdrop +
 // Escape dismissal, focus trap, and focus restored to the opener on close.
-export default function DjActionSheet({ request, busy, onMoveNext, onRemove, onClose }: Props) {
+export default function DjActionSheet({
+  request,
+  busy,
+  canMoveUp,
+  canMoveDown,
+  onMoveUp,
+  onMoveDown,
+  onMoveNext,
+  onRemove,
+  onClose,
+}: Props) {
   const [confirmRemove, setConfirmRemove] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<Element | null>(null);
@@ -94,6 +109,26 @@ export default function DjActionSheet({ request, busy, onMoveNext, onRemove, onC
           </div>
         ) : (
           <>
+            <div className="sheet-move" role="group" aria-label="한 칸씩 순서 이동">
+              <button
+                type="button"
+                className="sheet-btn ghost"
+                disabled={busy || !canMoveUp}
+                onClick={() => onMoveUp(request.id)}
+                aria-label={`${singer} 신청곡 한 칸 위로`}
+              >
+                ↑ 위로
+              </button>
+              <button
+                type="button"
+                className="sheet-btn ghost"
+                disabled={busy || !canMoveDown}
+                onClick={() => onMoveDown(request.id)}
+                aria-label={`${singer} 신청곡 한 칸 아래로`}
+              >
+                ↓ 아래로
+              </button>
+            </div>
             <div className="sheet-actions two">
               <button
                 type="button"
@@ -106,9 +141,9 @@ export default function DjActionSheet({ request, busy, onMoveNext, onRemove, onC
               <button
                 type="button"
                 className="sheet-btn gold"
-                disabled={busy}
+                disabled={busy || !canMoveUp}
                 onClick={() => onMoveNext(request.id)}
-                aria-label={`${singer} 신청곡 먼저 부르기`}
+                aria-label={`${singer} 신청곡 맨 앞으로 (먼저 부르기)`}
               >
                 ↑ 먼저 부르기
               </button>

@@ -202,6 +202,45 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
     }
   }
 
+  // Persist a DJ reorder of the waiting queue. Returns a coarse result so the
+  // board can keep or roll back its optimistic order. On 401 we drop to
+  // disconnected; on 409 (queue changed under the DJ) and on any failure we
+  // refetch canonical truth so the board rolls back to the server order.
+  async function reorder(orderedRequestIds: string[]): Promise<'ok' | 'conflict' | 'error'> {
+    if (!cred) return 'error';
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/dj/reorder`, {
+        method: 'POST',
+        headers: { ...authHeader(cred), 'content-type': 'application/json' },
+        body: JSON.stringify({ orderedRequestIds }),
+      });
+      if (res.status === 401) {
+        setPhase('disconnected');
+        return 'error';
+      }
+      if (res.status === 409) {
+        await loadQueue(cred); // queue changed — resync to canonical
+        return 'conflict';
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body?.error ?? 'Could not save the new order.');
+        await loadQueue(cred);
+        return 'error';
+      }
+      await loadQueue(cred);
+      return 'ok';
+    } catch {
+      setError('Network error.');
+      await loadQueue(cred).catch(() => undefined);
+      return 'error';
+    } finally {
+      setBusy(false);
+    }
+  }
+
   // End the whole EVENT (distinct from disconnecting this iPad). Uses this
   // device's existing DJ credential — no manager token is created here.
   async function endEvent(): Promise<'ok' | 'error'> {
@@ -346,6 +385,7 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
       onFinish={(id) => mutate(id, 'complete')}
       onMoveNext={(id) => mutate(id, 'move_next')}
       onRemove={(id) => mutate(id, 'remove')}
+      onReorder={reorder}
       onRefresh={refresh}
       onDisconnect={disconnectManual}
       onEndEvent={endEvent}

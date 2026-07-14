@@ -29,6 +29,15 @@ export const DjActionSchema = z.object({
 });
 export type DjActionInput = z.infer<typeof DjActionSchema>;
 
+// DJ reorders the waiting queue: the full waiting line in the DJ's desired order.
+// Ids are the request UUIDs the DJ currently sees; the server re-validates them
+// against the live waiting set (room-scoped) and appends any new arrivals. The
+// cap bounds a single request; a real karaoke line never approaches it.
+export const ReorderQueueSchema = z.object({
+  orderedRequestIds: z.array(z.string().uuid()).min(1).max(200),
+});
+export type ReorderQueueInput = z.infer<typeof ReorderQueueSchema>;
+
 export const SearchQuerySchema = z.object({
   q: z.string().trim().min(2, 'Enter at least 2 characters').max(MAX_QUERY_LEN),
 });

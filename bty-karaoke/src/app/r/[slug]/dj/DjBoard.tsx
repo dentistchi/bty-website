@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KaraokeRequest } from '@/lib/rooms.server';
 import type { KaraokeSession } from '@/lib/sessions.server';
 import type { DjEventStatus } from '@/lib/events.server';
@@ -38,6 +38,8 @@ interface Props {
   onFinish: (id: string) => void | Promise<void>;
   onMoveNext: (id: string) => void | Promise<void>;
   onRemove: (id: string) => void | Promise<void>;
+  /** Persist a new waiting-queue order; resolves 'ok' | 'conflict' | 'error'. */
+  onReorder: (orderedRequestIds: string[]) => Promise<'ok' | 'conflict' | 'error'>;
   onRefresh: () => void | Promise<void>;
   onDisconnect: () => void;
   /** Ends the whole event (distinct from Disconnect); resolves 'ok' on success. */
@@ -57,6 +59,7 @@ export default function DjBoard({
   onFinish,
   onMoveNext,
   onRemove,
+  onReorder,
   onRefresh,
   onDisconnect,
   onEndEvent,
@@ -71,8 +74,73 @@ export default function DjBoard({
   // Re-entry guard so rapid taps can't open two tabs or fire two play mutations.
   const startingRef = useRef(false);
 
+  // ── Queue reorder (optimistic) ────────────────────────────────────────────
+  // `override` = the DJ's saved-but-not-yet-confirmed order; `dragIds` = the live
+  // order during an in-progress drag. Either, when set, drives what UP NEXT shows
+  // over the server order — and new server arrivals are appended so a concurrent
+  // guest request is never hidden. `savingRef` serializes saves (no overlapping
+  // reorders, no out-of-order responses clobbering the queue).
+  const [override, setOverride] = useState<string[] | null>(null);
+  const [dragIds, setDragIds] = useState<string[] | null>(null);
+  const savingRef = useRef(false);
+  const dragRef = useRef<{ id: string; ids: string[] } | null>(null);
+
   const requests = data?.requests ?? [];
   const { current, queue } = selectStage(requests);
+
+  // Resolve the order to render: an active drag wins, then a pending save, else
+  // the server's canonical order. Ids no longer present server-side drop out;
+  // freshly-arrived waiting songs append at the tail.
+  const displayQueue = useMemo(() => {
+    const order = dragIds ?? override;
+    if (!order) return queue;
+    const byId = new Map(queue.map((r) => [r.id, r] as const));
+    const head = order.map((id) => byId.get(id)).filter((r): r is KaraokeRequest => Boolean(r));
+    const headIds = new Set(head.map((r) => r.id));
+    const tail = queue.filter((r) => !headIds.has(r.id));
+    return [...head, ...tail];
+  }, [queue, override, dragIds]);
+  const displayIds = useCallback(() => displayQueue.map((r) => r.id), [displayQueue]);
+
+  const reordering = busy || savingRef.current;
+
+  // Save a new full waiting order optimistically. The console refetches canonical
+  // truth on every outcome, so we clear the override afterwards: 'ok' matches the
+  // optimistic order (no flicker); 'conflict'/'error' rolls back to the server.
+  const applyReorder = useCallback(
+    async (nextIds: string[]) => {
+      if (savingRef.current) return;
+      savingRef.current = true;
+      setOverride(nextIds);
+      try {
+        await onReorder(nextIds);
+      } finally {
+        setOverride(null);
+        savingRef.current = false;
+      }
+    },
+    [onReorder],
+  );
+
+  // Accessible reorder: move one waiting id up / down / to the top. Produces the
+  // full new order and saves it — same server path as drag.
+  const moveBy = useCallback(
+    (id: string, to: 'up' | 'down' | 'top') => {
+      if (savingRef.current || busy) return;
+      const ids = displayIds();
+      const from = ids.indexOf(id);
+      if (from < 0) return;
+      const next = ids.slice();
+      next.splice(from, 1);
+      const target = to === 'top' ? 0 : to === 'up' ? from - 1 : from + 1;
+      const clamped = Math.max(0, Math.min(next.length, target));
+      next.splice(clamped, 0, id);
+      if (next.every((v, i) => v === ids[i])) return; // no change
+      void applyReorder(next);
+    },
+    [displayIds, applyReorder, busy],
+  );
+
   const live = Boolean(data?.session);
   const eventStatus = data?.eventStatus ?? null;
   const durationLabel = eventStatus ? formatEventDuration(eventStatus.startsAt, nowMs || Date.now()) : '';
@@ -102,7 +170,8 @@ export default function DjBoard({
   const isAdmin = data?.role === 'admin';
   // The single "▶ Play on TV" target: the first waiting song, only while the
   // stage is open. Null once a song is playing (finish it first — no swap).
-  const playTarget = primaryPlayTarget(current, queue);
+  // Follows the DJ's visible order so a just-reordered top song plays first.
+  const playTarget = primaryPlayTarget(current, displayQueue);
 
   // Navigate THIS Safari tab to the video (not window.open). On iPad this hands
   // off to the YouTube app without leaving a blank Safari window behind; the DJ
@@ -151,11 +220,72 @@ export default function DjBoard({
   // Awareness/navigation only: jump to the earliest still-highlighted new song
   // in its REAL queue position. Never reorders — the card does not move.
   function goToFirstNew() {
-    const target = queue.find((r) => newSet.has(r.id));
+    const target = displayQueue.find((r) => newSet.has(r.id));
     if (!target) return;
     document
       .getElementById(`req-${target.id}`)
       ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  // ── Drag-to-reorder (pointer-based; iPad Safari first) ─────────────────────
+  // Drag starts ONLY from a card's grip handle (never the body), so it can't
+  // collide with the overflow button, text selection, or vertical scroll. The
+  // handle captures the pointer; we compute the insertion slot from the other
+  // rows' vertical midpoints and reorder a live preview. Drop saves the order.
+  function rowMidY(id: string): number {
+    const el = document.getElementById(`req-${id}`);
+    if (!el) return Number.POSITIVE_INFINITY;
+    const r = el.getBoundingClientRect();
+    return r.top + r.height / 2;
+  }
+
+  function onHandleDown(e: React.PointerEvent, id: string) {
+    if (busy || savingRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const ids = displayIds();
+    dragRef.current = { id, ids };
+    setDragIds(ids);
+    try {
+      (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    } catch {
+      /* capture is best-effort */
+    }
+  }
+
+  function onHandleMove(e: React.PointerEvent) {
+    const d = dragRef.current;
+    if (!d) return;
+    e.preventDefault();
+    const y = e.clientY;
+    const others = d.ids.filter((x) => x !== d.id);
+    let insert = others.length;
+    for (let i = 0; i < others.length; i++) {
+      if (y < rowMidY(others[i])) {
+        insert = i;
+        break;
+      }
+    }
+    const next = [...others.slice(0, insert), d.id, ...others.slice(insert)];
+    if (next.length !== d.ids.length || next.some((v, i) => v !== d.ids[i])) {
+      d.ids = next;
+      setDragIds(next);
+    }
+  }
+
+  function endHandleDrag(e: React.PointerEvent, save: boolean) {
+    const d = dragRef.current;
+    dragRef.current = null;
+    try {
+      (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    setDragIds(null);
+    if (!d || !save) return;
+    const serverIds = queue.map((r) => r.id);
+    const changed = d.ids.length !== serverIds.length || d.ids.some((v, i) => v !== serverIds[i]);
+    if (changed) void applyReorder(d.ids);
   }
 
   return (
@@ -370,10 +500,10 @@ export default function DjBoard({
         <section className="dj-queue" aria-label="Up next">
           <div className="dj-col-title">
             <span className="eyebrow">Up next</span>
-            <span className="muted">{queue.length}</span>
+            <span className="muted">{displayQueue.length}</span>
           </div>
 
-          {queue.length === 0 ? (
+          {displayQueue.length === 0 ? (
             <div className="card empty">
               <div className="display-sm">No requests yet</div>
               <p className="lead">Share the guest QR and let the room choose the music.</p>
@@ -387,16 +517,30 @@ export default function DjBoard({
               </button>
             </div>
           ) : (
-            queue.map((r, i) => {
+            displayQueue.map((r, i) => {
               const isNew = newSet.has(r.id);
               const d = displaySong(r.youtube_title ?? '', r.youtube_channel_title);
               const song = d.song || requestDisplayTitle(r);
+              const isDragging = dragIds != null && dragRef.current?.id === r.id;
               return (
                 <div
                   id={`req-${r.id}`}
-                  className={`q-card singer-first${i === 0 ? ' head' : ''}${isNew ? ' isnew stage-slide' : ''}`}
+                  className={`q-card singer-first${i === 0 ? ' head' : ''}${isNew ? ' isnew stage-slide' : ''}${isDragging ? ' dragging' : ''}`}
                   key={r.id}
                 >
+                  <button
+                    type="button"
+                    className="q-handle"
+                    aria-label={`${r.guest_name}님 순서 이동 핸들 · 현재 ${i + 1}번 · 위아래로 끌어 순서 변경`}
+                    title="끌어서 순서 변경"
+                    onPointerDown={(e) => onHandleDown(e, r.id)}
+                    onPointerMove={onHandleMove}
+                    onPointerUp={(e) => endHandleDrag(e, true)}
+                    onPointerCancel={(e) => endHandleDrag(e, false)}
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    ⠿
+                  </button>
                   <span className="q-pos">{String(i + 1).padStart(2, '0')}</span>
                   <div className="q-main">
                     <div className="q-singer">
@@ -409,7 +553,7 @@ export default function DjBoard({
                   <div className="q-actions">
                     <button
                       className="q-overflow"
-                      aria-label={`${r.guest_name}님의 신청곡 ${song}${d.artist ? ` — ${d.artist}` : ''} 관리`}
+                      aria-label={`${r.guest_name}님의 신청곡 ${song}${d.artist ? ` — ${d.artist}` : ''} 관리 · 순서 이동`}
                       aria-haspopup="dialog"
                       onClick={() => setSheetFor(r)}
                     >
@@ -471,21 +615,36 @@ export default function DjBoard({
       )}
 
       {/* ── Custom queue action sheet (replaces window.confirm) ──── */}
-      {sheetFor && (
-        <DjActionSheet
-          request={sheetFor}
-          busy={busy}
-          onMoveNext={(id) => {
-            void onMoveNext(id);
-            setSheetFor(null);
-          }}
-          onRemove={(id) => {
-            void onRemove(id);
-            setSheetFor(null);
-          }}
-          onClose={() => setSheetFor(null)}
-        />
-      )}
+      {sheetFor &&
+        (() => {
+          const idx = displayQueue.findIndex((r) => r.id === sheetFor.id);
+          const total = displayQueue.length;
+          return (
+            <DjActionSheet
+              request={sheetFor}
+              busy={reordering}
+              canMoveUp={idx > 0}
+              canMoveDown={idx >= 0 && idx < total - 1}
+              onMoveUp={(id) => {
+                moveBy(id, 'up');
+                setSheetFor(null);
+              }}
+              onMoveDown={(id) => {
+                moveBy(id, 'down');
+                setSheetFor(null);
+              }}
+              onMoveNext={(id) => {
+                void onMoveNext(id);
+                setSheetFor(null);
+              }}
+              onRemove={(id) => {
+                void onRemove(id);
+                setSheetFor(null);
+              }}
+              onClose={() => setSheetFor(null)}
+            />
+          );
+        })()}
     </main>
   );
 }

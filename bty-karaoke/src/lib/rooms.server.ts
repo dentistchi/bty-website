@@ -402,3 +402,34 @@ export async function moveToNextWaiting(
   if (error) throw error;
   return { outcome: 'ok', request: data as KaraokeRequest };
 }
+
+export type ReorderResult =
+  | { outcome: 'ok'; requests: KaraokeRequest[] }
+  | { outcome: 'queue_changed' } //  a listed id is no longer waiting → client refetches
+  | { outcome: 'invalid' } //        duplicate ids in the payload
+  | { outcome: 'empty' }; //         nothing to reorder
+
+/**
+ * Reorder the room's WAITING queue to the DJ's chosen order. Delegates the whole
+ * operation to the atomic `reorder_karaoke_requests` RPC (advisory-locked, one
+ * transaction) so concurrent reorders / guest adds / play transitions can never
+ * corrupt positions or partially apply. The playing song is untouched; new
+ * arrivals are preserved at the tail. On success returns the fresh active queue.
+ */
+export async function reorderWaitingRequests(
+  roomId: string,
+  orderedRequestIds: string[],
+): Promise<ReorderResult> {
+  const { data, error } = await karaokeDb().rpc('reorder_karaoke_requests', {
+    p_room_id: roomId,
+    p_ordered_ids: orderedRequestIds,
+  });
+  if (error) throw error;
+
+  const outcome = data as 'ok' | 'queue_changed' | 'invalid' | 'empty';
+  if (outcome === 'ok') {
+    const requests = await listActiveRequests(roomId);
+    return { outcome: 'ok', requests };
+  }
+  return { outcome };
+}
