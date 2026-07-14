@@ -70,6 +70,7 @@ export default function ManagerConsole() {
   const [qr, setQr] = useState<QrModal>(null);
   const [nowMs, setNowMs] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [confirmEnd, setConfirmEnd] = useState(false);
 
   // Create form
   const [name, setName] = useState('');
@@ -170,6 +171,7 @@ export default function ManagerConsole() {
 
   async function openDetail(id: string) {
     setError(null);
+    setConfirmEnd(false);
     const res = await managerCall(`/api/admin/events/${encodeURIComponent(id)}`);
     if (!res) return;
     if (res.ok) {
@@ -177,16 +179,23 @@ export default function ManagerConsole() {
     }
   }
 
-  async function endEvent(id: string, name: string) {
-    if (!window.confirm(`End "${name}"? Guests can no longer request songs. History is kept.`)) return;
+  function closeDetail() {
+    setDetail(null);
+    setConfirmEnd(false);
+  }
+
+  // Confirmed via the inline End Event confirmation in the detail sheet (never a
+  // browser alert). Ends the event server-side; the detail then re-loads to show
+  // the ended state, and the list reflects it. Does NOT touch DJ disconnect.
+  async function endEvent(id: string) {
     setBusy(true);
     try {
       const res = await managerCall(`/api/admin/events/${encodeURIComponent(id)}/end`, { method: 'POST' });
       if (!res) return;
       if (res.ok) {
-        setDetail(null);
-        await loadList();
-        setView('list');
+        setConfirmEnd(false);
+        await openDetail(id); // re-render detail in its ended state (read-only)
+        void loadList();
       }
     } finally {
       setBusy(false);
@@ -411,10 +420,24 @@ export default function ManagerConsole() {
             </div>
           </div>
 
-          <div className="row" style={{ justifyContent: 'center', marginTop: 20 }}>
-            <button className="linkish" onClick={() => { setCreated(null); setView('list'); void loadList(); }}>
-              Done
+          <div className="stack" style={{ marginTop: 20 }}>
+            <button
+              className="ghost block"
+              onClick={() => {
+                const id = created.event.id;
+                setCreated(null);
+                setView('list');
+                void loadList();
+                void openDetail(id); // straight to detail: stats, QRs, End Event
+              }}
+            >
+              Manage event
             </button>
+            <div className="row" style={{ justifyContent: 'center' }}>
+              <button className="linkish" onClick={() => { setCreated(null); setView('list'); void loadList(); }}>
+                Done
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -425,7 +448,7 @@ export default function ManagerConsole() {
           <div style={{ width: '100%', maxWidth: 420 }}>
             <div className="row between">
               <div className="eyebrow">{detail.event.status === 'active' ? 'Active' : detail.event.status}</div>
-              <button className="linkish" onClick={() => setDetail(null)}>
+              <button className="linkish" onClick={closeDetail}>
                 Close
               </button>
             </div>
@@ -472,11 +495,33 @@ export default function ManagerConsole() {
               </a>
             </div>
 
-            {detail.event.status === 'active' && (
+            {detail.event.status === 'active' &&
+              (confirmEnd ? (
+                <div className="card" style={{ marginTop: 6, borderColor: 'rgba(255, 92, 124, 0.45)' }}>
+                  <div className="d-name">End “{detail.event.name}”?</div>
+                  <p className="lead" style={{ marginTop: 6 }}>
+                    New song requests will stop. The current queue and history stay — nothing is
+                    deleted.
+                  </p>
+                  <div className="stack" style={{ marginTop: 12 }}>
+                    <button className="ghost block" disabled={busy} onClick={() => setConfirmEnd(false)}>
+                      Keep Event Open
+                    </button>
+                    <button className="danger block" disabled={busy} onClick={() => endEvent(detail.event.id)}>
+                      {busy ? 'Ending…' : 'End Event'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="row" style={{ justifyContent: 'center', marginTop: 6 }}>
+                  <button className="danger" disabled={busy} onClick={() => setConfirmEnd(true)}>
+                    End Event
+                  </button>
+                </div>
+              ))}
+            {detail.event.status !== 'active' && (
               <div className="row" style={{ justifyContent: 'center', marginTop: 6 }}>
-                <button className="danger" disabled={busy} onClick={() => endEvent(detail.event.id, detail.event.name)}>
-                  End Event
-                </button>
+                <span className="pill">Event ended · history preserved</span>
               </div>
             )}
           </div>
