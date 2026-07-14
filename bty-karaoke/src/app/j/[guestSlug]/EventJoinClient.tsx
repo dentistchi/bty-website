@@ -1,26 +1,42 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { PRODUCT_NAME } from '@/lib/brand';
 import { guestNameKey, normalizeGuestName, isValidGuestName } from '@/domain/guest-identity';
+import type { GuestLivePresence, EventStatus } from '@/domain/live-presence';
 import RequestForm from '@/app/r/[slug]/RequestForm';
+import LivePresenceCard from './LivePresenceCard';
 
 interface Props {
+  guestSlug: string;
   /** Internal room slug (never shown) that backs the queue/request APIs. */
   roomSlug: string;
   eventName: string;
   hostName: string | null;
-  notStarted: boolean;
+  eventStatus: EventStatus;
+  initialPresence: GuestLivePresence | null;
 }
 
-// Name-first gate, then the reused search/request form. The name is remembered
-// per room on this device (the SAME key RequestForm reads), so a returning guest
-// skips straight in — it is a convenience label, never authentication.
-export default function EventJoinClient({ roomSlug, eventName, hostName, notStarted }: Props) {
+const POLL_MS = 4000;
+
+// Name-first gate, then the reused search/request form with a live-presence card
+// on top. Live state comes from polling the PUBLIC /api/events/<slug>/live
+// endpoint (reusing the guest 4s cadence) and degrades quietly — a failed poll
+// keeps the last good state and never blanks the card or blocks search.
+export default function EventJoinClient({
+  guestSlug,
+  roomSlug,
+  eventName,
+  hostName,
+  eventStatus,
+  initialPresence,
+}: Props) {
   const [ready, setReady] = useState(false);
   const [joined, setJoined] = useState(false);
   const [name, setName] = useState('');
   const [returning, setReturning] = useState(false);
+  const [presence, setPresence] = useState<GuestLivePresence | null>(initialPresence);
+  const presenceRef = useRef<string>(JSON.stringify(initialPresence));
 
   useEffect(() => {
     const saved = window.localStorage.getItem(guestNameKey(roomSlug));
@@ -32,45 +48,81 @@ export default function EventJoinClient({ roomSlug, eventName, hostName, notStar
     setReady(true);
   }, [roomSlug]);
 
+  // Poll the live presence. Keeps the last good state on any failure (never
+  // blanks); skips redundant re-renders when the payload is unchanged.
+  const poll = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/events/${encodeURIComponent(guestSlug)}/live`, { cache: 'no-store' });
+      if (!res.ok) return; // keep last good state
+      const data = (await res.json()) as GuestLivePresence;
+      const sig = JSON.stringify(data);
+      if (sig !== presenceRef.current) {
+        presenceRef.current = sig;
+        setPresence(data);
+      }
+    } catch {
+      /* transient — keep the last good state */
+    }
+  }, [guestSlug]);
+
+  useEffect(() => {
+    void poll();
+    const t = window.setInterval(() => {
+      if (!document.hidden) void poll();
+    }, POLL_MS);
+    const onVisible = () => {
+      if (!document.hidden) void poll();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [poll]);
+
+  const status: EventStatus = presence?.event.status ?? eventStatus;
+  const ended = status === 'ended' || status === 'archived';
+
   const header = (
     <div className="brand-head">
       <span className="brand">{PRODUCT_NAME}</span>
     </div>
   );
-
-  const eventHead = (
+  const identity = (
     <>
-      <div className="eyebrow">{hostName ? `Hosted by ${hostName}` : 'Karaoke'}</div>
-      <div className="display" style={{ marginTop: 4 }}>
+      {hostName && <div className="eyebrow">Hosted by {hostName}</div>}
+      <div className="display" style={{ marginTop: hostName ? 4 : 0 }}>
         {eventName}
       </div>
     </>
   );
 
-  if (!ready) {
-    return (
-      <>
-        {header}
-        <p className="lead">Loading…</p>
-      </>
-    );
-  }
-
-  if (notStarted) {
+  // Ended: no name gate, no search — read-only close-out.
+  if (ended) {
+    const counts = presence?.counts;
     return (
       <>
         {header}
         <div className="card hero glow">
-          {eventHead}
-          <p className="lead" style={{ marginTop: 10 }}>
-            The karaoke night hasn’t started yet. Hang tight — the host will open it any moment.
-          </p>
+          <div className="eyebrow">This event has ended</div>
+          <div className="display" style={{ marginTop: 6 }}>
+            {eventName}
+          </div>
+          {counts ? (
+            <p className="lead">
+              {counts.requests} {counts.requests === 1 ? 'song' : 'songs'} requested · {counts.guests}{' '}
+              {counts.guests === 1 ? 'guest' : 'guests'} joined
+            </p>
+          ) : (
+            <p className="lead">Thanks for singing!</p>
+          )}
         </div>
       </>
     );
   }
 
-  if (!joined) {
+  // Name-first gate (new guest) — event identity + live card shown above it.
+  if (ready && !joined) {
     const submit = (e: React.FormEvent) => {
       e.preventDefault();
       const n = normalizeGuestName(name);
@@ -82,9 +134,10 @@ export default function EventJoinClient({ roomSlug, eventName, hostName, notStar
     return (
       <>
         {header}
-        <div className="card hero glow fade-up">
-          {eventHead}
-          <form onSubmit={submit} style={{ marginTop: 16 }}>
+        {identity}
+        <LivePresenceCard presence={presence} />
+        <div className="card glow fade-up">
+          <form onSubmit={submit}>
             <label htmlFor="guestname">What should we call you?</label>
             <input
               id="guestname"
@@ -109,17 +162,19 @@ export default function EventJoinClient({ roomSlug, eventName, hostName, notStar
     );
   }
 
+  // Joined (or returning) — identity, optional welcome, live card, then search.
   return (
     <>
       {header}
       <div className="row between" style={{ marginBottom: 4 }}>
-        <div className="eyebrow">{hostName ? `Hosted by ${hostName}` : 'Karaoke'}</div>
+        {hostName ? <div className="eyebrow">Hosted by {hostName}</div> : <span />}
         {returning && <span className="pill">Welcome back, {name}</span>}
       </div>
       <div className="display" style={{ marginBottom: 8 }}>
         {eventName}
       </div>
-      <RequestForm slug={roomSlug} roomOpen />
+      <LivePresenceCard presence={presence} />
+      {ready && <RequestForm slug={roomSlug} roomOpen onSubmitted={() => void poll()} />}
     </>
   );
 }

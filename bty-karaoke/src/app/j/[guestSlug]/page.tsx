@@ -1,11 +1,13 @@
 // Guest join by pretty slug: /j/<guestSlug>. Resolves the event → its room and
-// renders the guest join + search flow (reusing RequestForm). Guests never see a
-// room slug, a credential, or a room code. An ended event shows a friendly
-// closed screen instead of the request form.
+// renders the guest join + live-presence + search flow (reusing RequestForm).
+// Guests never see a room slug, a credential, or a room code. The event name is
+// server-rendered immediately; the live presence + ended handling live in the
+// client so polling can transition state without a reload.
 
-import { getEventByGuestSlug, eventStats } from '@/lib/events.server';
+import { getEventByGuestSlug, getGuestLivePresenceByEvent } from '@/lib/events.server';
 import { eventRoomSlug } from '@/domain/event-code';
 import { PRODUCT_NAME } from '@/lib/brand';
+import type { GuestLivePresence } from '@/domain/live-presence';
 import EventJoinClient from './EventJoinClient';
 
 export const dynamic = 'force-dynamic';
@@ -29,36 +31,25 @@ export default async function GuestJoinPage({ params }: { params: Promise<{ gues
     );
   }
 
-  if (event.status === 'ended' || event.status === 'archived') {
-    const stats = await eventStats(event);
-    return (
-      <main>
-        <div className="brand-head">
-          <span className="brand">{PRODUCT_NAME}</span>
-        </div>
-        <div className="card hero glow">
-          <div className="eyebrow">This event has ended</div>
-          <div className="display" style={{ marginTop: 6 }}>
-            {event.name}
-          </div>
-          <p className="lead">
-            {stats.totalRequests > 0
-              ? `${stats.totalRequests} ${stats.totalRequests === 1 ? 'song was' : 'songs were'} requested. Thanks for singing!`
-              : 'Thanks for coming!'}
-          </p>
-        </div>
-      </main>
-    );
+  // Best-effort initial presence (server-rendered) so the live card appears with
+  // no flash. Never blocks the page: on failure the client shows a quiet
+  // "unavailable" state and can still search, and still knows the event status.
+  let initialPresence: GuestLivePresence | null = null;
+  try {
+    initialPresence = await getGuestLivePresenceByEvent(event);
+  } catch {
+    initialPresence = null;
   }
 
-  const roomSlug = eventRoomSlug(event.public_code);
   return (
     <main>
       <EventJoinClient
-        roomSlug={roomSlug}
+        guestSlug={guestSlug}
+        roomSlug={eventRoomSlug(event.public_code)}
         eventName={event.name}
         hostName={event.host_name}
-        notStarted={event.status !== 'active'}
+        eventStatus={event.status}
+        initialPresence={initialPresence}
       />
     </main>
   );

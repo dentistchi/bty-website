@@ -8,12 +8,14 @@
 import { karaokeDb } from './supabase.server';
 import { sha256Hex, randomToken } from './dj-auth.server';
 import { mintPairingToken } from './pairing.server';
+import { listActiveRequests } from './rooms.server';
 import {
   publicCodeFromBytes,
   buildGuestSlug,
   eventRoomSlug,
 } from '@/domain/event-code';
 import { computeEventStats, type EventStats, type StatRequest } from '@/domain/event-stats';
+import { selectLivePresence, type GuestLivePresence, type LiveRow } from '@/domain/live-presence';
 
 export type EventStatus = 'draft' | 'active' | 'ended' | 'archived';
 
@@ -294,6 +296,45 @@ export async function endEvent(eventId: string): Promise<KaraokeEvent | null> {
     .maybeSingle();
   if (error) throw error;
   return (data as KaraokeEvent) ?? event;
+}
+
+/**
+ * The PUBLIC guest live-presence view for an event: identity + now-singing +
+ * up-next + counts. No room_id / slug / credential / private identifier — only
+ * what the guest screen renders. Two indexed queries (active rows + count rows);
+ * no full-history detail fetch, no YouTube call. Reuses the canonical resolver
+ * and the shared event-stats helper so the numbers agree everywhere.
+ */
+export async function getGuestLivePresenceByEvent(event: KaraokeEvent): Promise<GuestLivePresence> {
+  const [active, statRows] = await Promise.all([
+    listActiveRequests(event.room_id),
+    statRowsForRooms([event.room_id]),
+  ]);
+
+  const liveRows: LiveRow[] = active.map((r) => ({
+    id: r.id,
+    status: r.status,
+    position: r.position,
+    created_at: r.created_at,
+    started_at: r.started_at,
+    guest_name: r.guest_name,
+    youtube_title: r.youtube_title,
+    search_query: r.search_query,
+    youtube_video_id: r.youtube_video_id,
+    youtube_thumbnail_url: r.youtube_thumbnail_url,
+  }));
+
+  const { nowPlaying, upNext } = selectLivePresence(liveRows);
+  const stats = computeEventStats(statRows.get(event.room_id) ?? []);
+
+  return {
+    event: { name: event.name, hostName: event.host_name, status: event.status },
+    nowPlaying,
+    upNext,
+    // counts.requests uses the shared computeEventStats.totalRequests definition
+    // (all rows, removed included) so guest + manager numbers always agree.
+    counts: { guests: stats.uniqueGuests, requests: stats.totalRequests, waiting: stats.waiting },
+  };
 }
 
 export interface DjEnrollment {

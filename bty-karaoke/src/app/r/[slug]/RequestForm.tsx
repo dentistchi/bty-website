@@ -16,11 +16,17 @@ import MyRequestsDock from './MyRequestsDock';
 interface Props {
   slug: string;
   roomOpen: boolean;
+  /**
+   * Optional: fired after a request is successfully submitted. The event guest
+   * screen uses it to refresh live presence immediately; legacy callers omit it
+   * (no behavior change).
+   */
+  onSubmitted?: () => void;
 }
 
 type SearchState = 'idle' | 'searching' | 'done';
 
-export default function RequestForm({ slug, roomOpen }: Props) {
+export default function RequestForm({ slug, roomOpen, onSubmitted }: Props) {
   // Identity — remembered once per room/device (never authentication).
   const [guestName, setGuestName] = useState('');
   const [nameLocked, setNameLocked] = useState(false);
@@ -167,6 +173,7 @@ export default function RequestForm({ slug, roomOpen }: Props) {
       // Brief "✓ 신청됨" on the card that was submitted.
       setRequestedIds((prev) => [...prev, key]);
       window.setTimeout(() => setRequestedIds((prev) => prev.filter((k) => k !== key)), 2500);
+      onSubmitted?.(); // event guest screen refreshes live presence immediately
     } catch {
       setError('네트워크 오류 — 다시 시도해 주세요');
     } finally {
