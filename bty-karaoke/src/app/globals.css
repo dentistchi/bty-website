@@ -1644,3 +1644,33 @@ main.dj-console {
   border-color: rgba(239, 143, 124, 0.4);
   background: rgba(239, 143, 124, 0.08);
 }
+
+/* ── Manager: event list rows ───────────────────────────────── */
+/* A tappable list item styled as a card (overrides the default gold button). */
+.event-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  color: var(--text);
+  background: linear-gradient(180deg, var(--panel), var(--stage-1));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  min-height: 0;
+  font-weight: 500;
+}
+.event-row .d-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.event-row .d-meta {
+  color: var(--muted);
+  font-size: 0.86rem;
+  margin-top: 6px;
+}
+/* Anchor styled as a block button (a.btn.ghost.block). */
+a.btn.block {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}

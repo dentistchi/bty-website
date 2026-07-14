@@ -65,3 +65,18 @@ export const AdminEnrollSchema = z.object({
 export const AdminPinRotateSchema = z.object({
   pin: z.string().min(1).max(128),
 });
+
+// Manager (global operator) login — a single shared passcode exchanged for a
+// signed session token. Bounded only here; the real check is constant-time.
+export const ManagerLoginSchema = z.object({
+  passcode: z.string().min(1).max(256),
+});
+
+// Manager creates an event. Name is required; host is optional. `startNow`
+// starts the karaoke night immediately (defaults to true).
+export const CreateEventSchema = z.object({
+  name: z.string().trim().min(1, 'Event name is required').max(80),
+  hostName: z.string().trim().max(80).optional(),
+  startNow: z.boolean().optional(),
+});
+export type CreateEventInput = z.infer<typeof CreateEventSchema>;
