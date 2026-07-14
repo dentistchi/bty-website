@@ -21,43 +21,41 @@ describe('primaryPlayTarget', () => {
 });
 
 describe('runPlayOnTv', () => {
-  it('opens YouTube BEFORE running the play mutation', async () => {
+  it('commits the play mutation BEFORE navigating to YouTube', async () => {
     const calls: string[] = [];
     await runPlayOnTv({
-      openVideo: () => calls.push('open'),
       play: async () => {
         calls.push('mutate');
       },
+      openVideo: () => calls.push('navigate'),
     });
-    expect(calls).toEqual(['open', 'mutate']);
+    expect(calls).toEqual(['mutate', 'navigate']);
   });
 
-  it('opens the video synchronously in the gesture, before the first await', () => {
+  it('does not navigate until the mutation has resolved', async () => {
     const openVideo = vi.fn();
-    let mutationStarted = false;
-    // Do not await — inspect state right after the synchronous prefix runs.
-    void runPlayOnTv({
-      openVideo,
-      play: () => {
-        mutationStarted = true;
-      },
-    });
-    // window.open must already have fired inside the gesture...
+    let resolvePlay!: () => void;
+    const play = () => new Promise<void>((r) => (resolvePlay = r));
+    const done = runPlayOnTv({ play, openVideo });
+    // Mutation is still pending — navigation must not have fired yet.
+    await Promise.resolve();
+    expect(openVideo).not.toHaveBeenCalled();
+    resolvePlay();
+    await done;
     expect(openVideo).toHaveBeenCalledTimes(1);
-    // ...but this synchronous check runs before the awaited mutation body.
-    expect(mutationStarted).toBe(true);
   });
 
-  it('still opened the video even if the mutation rejects (song stays waiting for retry)', async () => {
+  it('skips navigation if the mutation rejects (song stays waiting for retry)', async () => {
     const openVideo = vi.fn();
     await expect(
       runPlayOnTv({
-        openVideo,
         play: async () => {
           throw new Error('server 409');
         },
+        openVideo,
       }),
     ).rejects.toThrow('server 409');
-    expect(openVideo).toHaveBeenCalledTimes(1);
+    // Never sent the DJ to YouTube for a song that never started.
+    expect(openVideo).not.toHaveBeenCalled();
   });
 });

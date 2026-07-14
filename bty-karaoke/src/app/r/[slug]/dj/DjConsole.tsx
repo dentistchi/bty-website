@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KaraokeRequest } from '@/lib/rooms.server';
 import type { KaraokeSession } from '@/lib/sessions.server';
+import type { DjEventStatus } from '@/lib/events.server';
 import { newArrivals } from '@/domain/queue';
 import { PRODUCT_NAME } from '@/lib/brand';
 import DjBoard from './DjBoard';
@@ -32,6 +33,8 @@ interface QueuePayload {
   session: KaraokeSession | null;
   stats: { requests: number; guests: number };
   requests: KaraokeRequest[];
+  /** Event context (null for legacy non-event rooms) — powers the status sheet. */
+  eventStatus: DjEventStatus | null;
 }
 
 export default function DjConsole({ slug, displayName, dev = false }: Props) {
@@ -150,6 +153,25 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
     else setReconnecting(r === 'neterr');
   }, [cred, loadQueue]);
 
+  // Returning from YouTube (foreground/bfcache) refreshes the queue ONCE so the
+  // console is immediately current — not a new polling loop, just a single
+  // event-driven refresh per return. The 4s interval above is unchanged.
+  useEffect(() => {
+    if (phase !== 'authed') return;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refresh();
+    };
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) void refresh(); // restored from bfcache (not a fresh load)
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pageshow', onPageShow);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pageshow', onPageShow);
+    };
+  }, [phase, refresh]);
+
   async function mutate(id: string, action: 'play' | 'complete' | 'skip' | 'remove' | 'move_next') {
     if (!cred) return;
     setError(null);
@@ -177,6 +199,27 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
       setError('Network error.');
     } finally {
       setBusy(false);
+    }
+  }
+
+  // End the whole EVENT (distinct from disconnecting this iPad). Uses this
+  // device's existing DJ credential — no manager token is created here.
+  async function endEvent(): Promise<'ok' | 'error'> {
+    if (!cred) return 'error';
+    try {
+      const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/dj/end-event`, {
+        method: 'POST',
+        headers: authHeader(cred),
+      });
+      if (res.status === 401) {
+        setPhase('disconnected');
+        return 'error';
+      }
+      if (!res.ok) return 'error';
+      await loadQueue(cred); // header + sheet reflect the ended state
+      return 'ok';
+    } catch {
+      return 'error';
     }
   }
 
@@ -305,6 +348,7 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
       onRemove={(id) => mutate(id, 'remove')}
       onRefresh={refresh}
       onDisconnect={disconnectManual}
+      onEndEvent={endEvent}
     />
   );
 }

@@ -1,6 +1,7 @@
 // Pure model for the DJ "▶ Play on TV" one-tap flow. No I/O, no DB, no DOM.
-// The UI renders from these decisions and wires the concrete effects (window.open
-// + the play mutation); this module owns the ordering and target rules.
+// The UI renders from these decisions and wires the concrete effects (the play
+// mutation + same-window navigation); this module owns the ordering and target
+// rules.
 
 import type { RequestStatus } from './queue';
 
@@ -28,25 +29,30 @@ export function primaryPlayTarget<T extends StageEntry>(
 }
 
 export interface PlayOnTvEffects {
-  /** Open the YouTube video. MUST be called synchronously inside the user
-   *  gesture so iPad Safari / standalone PWA does not block the popup. */
-  openVideo: () => void;
-  /** Transition the request to `playing` on the server. */
+  /** Transition the request to `playing` on the server. Awaited FIRST so the
+   *  state is committed while the page is still alive. */
   play: () => Promise<unknown> | unknown;
+  /** Navigate THIS browsing context to the YouTube video (e.g. location.assign).
+   *  Runs LAST, only after the mutation resolves. Reusing the current window —
+   *  never window.open / a new tab — means iPad Safari hands off to the YouTube
+   *  app without leaving a blank Safari window behind, and same-window navigation
+   *  has no popup blocker to dodge. */
+  openVideo: () => void;
 }
 
 /**
- * Run the one-tap play flow in the ONLY safe order:
- *   A. open YouTube first, synchronously, inside the tap gesture (popup-safe)
- *   B. only then run the play mutation
+ * Run the one-tap play flow in the ONLY safe order for same-window navigation:
+ *   B. run the play mutation and AWAIT it (commit waiting→playing)
+ *   A. only then navigate the current window to YouTube
  *
- * `openVideo` is invoked before the first `await`, so a caller that calls this
- * directly from an onClick keeps the window.open inside the user gesture. If the
- * mutation rejects, the error propagates to the caller (the song stays waiting so
- * the DJ can retry) — the video has already opened either way. Callers guard
- * re-entry so repeated taps never fire the mutation twice.
+ * Navigation is deferred to the end because navigating the current browsing
+ * context unloads this page and would abort an in-flight play fetch — so the
+ * mutation must finish first. If the mutation rejects, the error propagates and
+ * navigation is skipped (the song stays waiting; the DJ sees the error and
+ * retries — we never send them to YouTube for a song that never started).
+ * Callers guard re-entry so repeated taps never fire the mutation twice.
  */
 export async function runPlayOnTv(effects: PlayOnTvEffects): Promise<void> {
-  effects.openVideo(); // A — must be first, in-gesture, before any await
-  await effects.play(); // B — after the window is opened
+  await effects.play(); // B — commit the state while the page is still alive
+  effects.openVideo(); // A — then navigate this window (no blank window)
 }

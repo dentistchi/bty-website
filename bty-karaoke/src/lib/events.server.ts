@@ -8,7 +8,7 @@
 import { karaokeDb } from './supabase.server';
 import { sha256Hex, randomToken } from './dj-auth.server';
 import { mintPairingToken } from './pairing.server';
-import { listActiveRequests } from './rooms.server';
+import { listActiveRequests, type KaraokeRequest } from './rooms.server';
 import {
   publicCodeFromBytes,
   buildGuestSlug,
@@ -305,13 +305,8 @@ export async function endEvent(eventId: string): Promise<KaraokeEvent | null> {
  * no full-history detail fetch, no YouTube call. Reuses the canonical resolver
  * and the shared event-stats helper so the numbers agree everywhere.
  */
-export async function getGuestLivePresenceByEvent(event: KaraokeEvent): Promise<GuestLivePresence> {
-  const [active, statRows] = await Promise.all([
-    listActiveRequests(event.room_id),
-    statRowsForRooms([event.room_id]),
-  ]);
-
-  const liveRows: LiveRow[] = active.map((r) => ({
+function toLiveRow(r: KaraokeRequest): LiveRow {
+  return {
     id: r.id,
     status: r.status,
     position: r.position,
@@ -322,9 +317,16 @@ export async function getGuestLivePresenceByEvent(event: KaraokeEvent): Promise<
     search_query: r.search_query,
     youtube_video_id: r.youtube_video_id,
     youtube_thumbnail_url: r.youtube_thumbnail_url,
-  }));
+  };
+}
 
-  const { nowPlaying, upNext } = selectLivePresence(liveRows);
+export async function getGuestLivePresenceByEvent(event: KaraokeEvent): Promise<GuestLivePresence> {
+  const [active, statRows] = await Promise.all([
+    listActiveRequests(event.room_id),
+    statRowsForRooms([event.room_id]),
+  ]);
+
+  const { nowPlaying, upNext } = selectLivePresence(active.map(toLiveRow));
   const stats = computeEventStats(statRows.get(event.room_id) ?? []);
 
   return {
@@ -334,6 +336,51 @@ export async function getGuestLivePresenceByEvent(event: KaraokeEvent): Promise<
     // counts.requests uses the shared computeEventStats.totalRequests definition
     // (all rows, removed included) so guest + manager numbers always agree.
     counts: { guests: stats.uniqueGuests, requests: stats.totalRequests, waiting: stats.waiting },
+  };
+}
+
+/** Compact event status for the DJ's Event Status sheet (reuses the same helpers
+ *  as the guest presence + manager stats, so nothing is recomputed in the UI). */
+export interface DjEventStatus {
+  name: string;
+  startsAt: string | null;
+  endedAt: string | null;
+  status: EventStatus;
+  counts: { guests: number; requests: number; completed: number; waiting: number; skipped: number };
+  nowPlaying: { title: string; guestName: string } | null;
+  upNext: { title: string; guestName: string } | null;
+}
+
+/**
+ * Event status for the room a DJ is authorized on, or null when the room is a
+ * legacy non-event room (so the DJ header/sheet stay unchanged there). Two indexed
+ * queries; reuses computeEventStats + selectLivePresence.
+ */
+export async function getEventStatusForRoom(roomId: string): Promise<DjEventStatus | null> {
+  const event = await getEventByRoomId(roomId);
+  if (!event) return null;
+
+  const [active, statRows] = await Promise.all([
+    listActiveRequests(roomId),
+    statRowsForRooms([roomId]),
+  ]);
+  const stats = computeEventStats(statRows.get(roomId) ?? []);
+  const { nowPlaying, upNext } = selectLivePresence(active.map(toLiveRow));
+
+  return {
+    name: event.name,
+    startsAt: event.starts_at,
+    endedAt: event.ended_at,
+    status: event.status,
+    counts: {
+      guests: stats.uniqueGuests,
+      requests: stats.totalRequests,
+      completed: stats.completed,
+      waiting: stats.waiting,
+      skipped: stats.skipped,
+    },
+    nowPlaying: nowPlaying ? { title: nowPlaying.title, guestName: nowPlaying.guestName } : null,
+    upNext: upNext ? { title: upNext.title, guestName: upNext.guestName } : null,
   };
 }
 

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   selectLivePresence,
   presenceState,
+  formatEventDuration,
   type LiveRow,
   type GuestLivePresence,
 } from './live-presence';
@@ -103,6 +104,17 @@ describe('presenceState', () => {
         }),
       ),
     ).toBe('now_singing_up_next');
+  });
+
+  it('formatEventDuration formats hours+minutes, minutes, and edges', () => {
+    const start = '2026-07-14T00:00:00.000Z';
+    const at = (min: number) => Date.parse(start) + min * 60_000;
+    expect(formatEventDuration(start, at(84))).toBe('1h 24m');
+    expect(formatEventDuration(start, at(24))).toBe('24m');
+    expect(formatEventDuration(start, at(0) + 30_000)).toBe('<1m');
+    expect(formatEventDuration(start, at(120))).toBe('2h 0m');
+    expect(formatEventDuration(null, at(84))).toBe('');
+    expect(formatEventDuration(start, Date.parse(start) - 5_000)).toBe('0m'); // clock skew guard
   });
 
   it('ended/archived event overrides any queue state', () => {

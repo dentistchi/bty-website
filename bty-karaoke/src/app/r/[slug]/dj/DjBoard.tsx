@@ -1,15 +1,18 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { KaraokeRequest } from '@/lib/rooms.server';
 import type { KaraokeSession } from '@/lib/sessions.server';
+import type { DjEventStatus } from '@/lib/events.server';
 import { selectStage } from '@/domain/queue';
 import { primaryPlayTarget, runPlayOnTv } from '@/domain/play-flow';
 import { requestDisplayTitle } from '@/domain/request-view';
 import { displaySong } from '@/domain/song-title';
+import { formatEventDuration } from '@/domain/live-presence';
 import { youtubeWatchUrl } from '@/domain/youtube-search';
 import DjActionSheet from './DjActionSheet';
 import DjAdminMenu from './DjAdminMenu';
+import DjEventStatusSheet from './DjEventStatusSheet';
 
 interface QueuePayload {
   room: { display_name: string; status: 'open' | 'closed' };
@@ -17,6 +20,7 @@ interface QueuePayload {
   session: KaraokeSession | null;
   stats: { requests: number; guests: number };
   requests: KaraokeRequest[];
+  eventStatus: DjEventStatus | null;
 }
 
 interface Props {
@@ -36,6 +40,8 @@ interface Props {
   onRemove: (id: string) => void | Promise<void>;
   onRefresh: () => void | Promise<void>;
   onDisconnect: () => void;
+  /** Ends the whole event (distinct from Disconnect); resolves 'ok' on success. */
+  onEndEvent: () => Promise<'ok' | 'error'>;
 }
 
 export default function DjBoard({
@@ -53,36 +59,68 @@ export default function DjBoard({
   onRemove,
   onRefresh,
   onDisconnect,
+  onEndEvent,
 }: Props) {
   const [guestQr, setGuestQr] = useState<{ qrSvg: string; url: string } | null>(null);
   const [loadingQr, setLoadingQr] = useState(false);
   const [sheetFor, setSheetFor] = useState<KaraokeRequest | null>(null);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [nowMs, setNowMs] = useState(() => 0);
   // Re-entry guard so rapid taps can't open two tabs or fire two play mutations.
   const startingRef = useRef(false);
 
   const requests = data?.requests ?? [];
   const { current, queue } = selectStage(requests);
   const live = Boolean(data?.session);
+  const eventStatus = data?.eventStatus ?? null;
+  const durationLabel = eventStatus ? formatEventDuration(eventStatus.startsAt, nowMs || Date.now()) : '';
+
+  // Tick a coarse clock (30s) so the header/sheet duration stays current while a
+  // live event is open. Only runs when there IS a live event.
+  useEffect(() => {
+    if (!eventStatus || eventStatus.status !== 'active') return;
+    setNowMs(Date.now());
+    const t = window.setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => window.clearInterval(t);
+  }, [eventStatus]);
+
+  async function copyGuestLink() {
+    try {
+      const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/guest-qr`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const d = await res.json();
+      await navigator.clipboard.writeText(d.url);
+      setCopiedLink(true);
+      window.setTimeout(() => setCopiedLink(false), 1600);
+    } catch {
+      /* clipboard blocked — Show Guest QR still works */
+    }
+  }
   const newSet = new Set(newIds);
   const isAdmin = data?.role === 'admin';
   // The single "▶ Play on TV" target: the first waiting song, only while the
   // stage is open. Null once a song is playing (finish it first — no swap).
   const playTarget = primaryPlayTarget(current, queue);
 
+  // Navigate THIS Safari tab to the video (not window.open). On iPad this hands
+  // off to the YouTube app without leaving a blank Safari window behind; the DJ
+  // returns to the console with the browser Back gesture.
   function openVideo(videoId: string) {
-    window.open(youtubeWatchUrl(videoId), '_blank', 'noopener');
+    window.location.assign(youtubeWatchUrl(videoId));
   }
 
-  // One-tap play: open YouTube inside this gesture FIRST (popup-safe), then mark
-  // the song playing. Idempotent under repeated taps; on mutation failure the
-  // error banner shows and the song stays waiting so the DJ can retry.
+  // One-tap play: commit waiting→playing FIRST, then navigate this tab to
+  // YouTube (navigating away would abort the in-flight mutation, so it must land
+  // first). Idempotent under repeated taps; on mutation failure the error banner
+  // shows, we do NOT leave for YouTube, and the song stays waiting for a retry.
   function playOnTv(r: KaraokeRequest) {
     if (busy || startingRef.current) return;
     startingRef.current = true;
     void runPlayOnTv({
-      openVideo: () => openVideo(r.youtube_video_id),
       play: () => onStart(r.id),
+      openVideo: () => openVideo(r.youtube_video_id),
     }).finally(() => {
       startingRef.current = false;
     });
@@ -115,14 +153,39 @@ export default function DjBoard({
     <main className="dj-console">
       {/* ── Status bar ─────────────────────────────────────────── */}
       <div className="statusbar" role="banner">
-        <span className="sb-room">{displayName}</span>
-        {live ? (
-          <span className="pill live">
-            <span className="live-dot" aria-hidden />
-            LIVE
-          </span>
+        {eventStatus ? (
+          <button
+            type="button"
+            className="sb-event"
+            aria-haspopup="dialog"
+            aria-label={`Event status for ${displayName}`}
+            onClick={() => setStatusOpen(true)}
+          >
+            <span className="sb-room">{displayName}</span>
+            {eventStatus.status !== 'active' ? (
+              <span className="pill">Ended</span>
+            ) : (
+              <span className="pill live">
+                <span className="live-dot" aria-hidden />
+                {live ? `LIVE · ${durationLabel}` : 'Paused'}
+              </span>
+            )}
+            <span className="sb-chevron" aria-hidden>
+              ›
+            </span>
+          </button>
         ) : (
-          <span className="pill">Paused</span>
+          <>
+            <span className="sb-room">{displayName}</span>
+            {live ? (
+              <span className="pill live">
+                <span className="live-dot" aria-hidden />
+                LIVE
+              </span>
+            ) : (
+              <span className="pill">Paused</span>
+            )}
+          </>
         )}
         <span className="sb-sep" aria-hidden />
         <span className="sb-metric">
@@ -346,6 +409,22 @@ export default function DjBoard({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Event Status sheet (tap the event header) ────────────────── */}
+      {statusOpen && eventStatus && (
+        <DjEventStatusSheet
+          status={eventStatus}
+          nowMs={nowMs || Date.now()}
+          copied={copiedLink}
+          onShowGuestQr={() => {
+            setStatusOpen(false);
+            void showGuestQr();
+          }}
+          onCopyGuestLink={copyGuestLink}
+          onEndEvent={onEndEvent}
+          onClose={() => setStatusOpen(false)}
+        />
       )}
 
       {/* ── Admin menu (admin role only; secondary to the live surface) ─ */}

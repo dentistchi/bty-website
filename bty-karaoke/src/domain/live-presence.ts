@@ -107,3 +107,20 @@ export function presenceState(p: GuestLivePresence): PresenceState {
   if (p.upNext) return 'up_next';
   return 'ready';
 }
+
+/**
+ * Compact "how long the event has been live" label from its start instant, e.g.
+ * "1h 24m" / "24m" / "<1m". Empty string when there is no start time. Pure so the
+ * DJ header and the status sheet format duration identically (caller passes now).
+ */
+export function formatEventDuration(startIso: string | null, nowMs: number): string {
+  if (!startIso) return '';
+  const ms = nowMs - Date.parse(startIso);
+  if (!Number.isFinite(ms) || ms < 0) return '0m';
+  const totalMin = Math.floor(ms / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  if (totalMin > 0) return `${m}m`;
+  return '<1m';
+}

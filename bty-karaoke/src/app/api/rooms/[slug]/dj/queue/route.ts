@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { bearerFromHeader } from '@/lib/dj-auth.server';
 import { authorizeDj, listActiveRequests, activeRequestStats } from '@/lib/rooms.server';
 import { getActiveSession } from '@/lib/sessions.server';
+import { getEventStatusForRoom } from '@/lib/events.server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -18,10 +19,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
   const auth = await authorizeDj(slug, cred);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const [requests, stats, session] = await Promise.all([
+  const [requests, stats, session, eventStatus] = await Promise.all([
     listActiveRequests(auth.room.id),
     activeRequestStats(auth.room.id),
     getActiveSession(auth.room.id),
+    getEventStatusForRoom(auth.room.id), // null for legacy non-event rooms
   ]);
 
   return NextResponse.json({
@@ -30,5 +32,6 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
     session,
     stats,
     requests,
+    eventStatus,
   });
 }
