@@ -1,21 +1,27 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { YouTubePlayer } from "./YouTubePlayer";
 
 type Locale = "en" | "ko";
 
-type RoomState =
+type Stage =
   | "pre_join"
-  | "joined"
-  | "closed_joined"
+  | "watch"
+  | "response"
+  | "completed_awarded"
+  | "completed_claimable"
+  | "closed_incomplete"
   | "closed"
   | "removed"
   | "inactive";
 
 type Snapshot = {
   event: { title: string; status: "open" | "closed" } | null;
-  participant: { display_name: string; joined_at: string } | null;
-  room_state: RoomState;
+  participant: { display_name: string } | null;
+  training: { youtube_video_id: string; completion_prompt: string | null } | null;
+  stage: Stage;
+  xp_status: "awarded" | "claimable" | "none";
 };
 
 type Copy = {
@@ -24,8 +30,18 @@ type Copy = {
   namePlaceholder: string;
   join: string;
   joining: string;
-  youreIn: string;
-  roomGuide: string;
+  todaysTraining: string;
+  finishVideo: string;
+  carryForward: string;
+  responsePlaceholder: string;
+  complete: string;
+  completing: string;
+  trainingComplete: string;
+  xpAwarded: string;
+  carryOne: string;
+  xpClaimable: string;
+  saveXp: string;
+  saving: string;
   closedTitle: string;
   closedBody: string;
   endedTitle: string;
@@ -33,6 +49,7 @@ type Copy = {
   removed: string;
   inactive: string;
   nameError: string;
+  responseError: string;
 };
 
 const COPY: Record<Locale, Copy> = {
@@ -40,10 +57,20 @@ const COPY: Record<Locale, Copy> = {
     eyebrow: "FOUNDRY",
     enterName: "Enter your name to join.",
     namePlaceholder: "Your name",
-    join: "Join event",
+    join: "Join training",
     joining: "Joining…",
-    youreIn: "YOU’RE IN",
-    roomGuide: "This room will guide today’s session.",
+    todaysTraining: "TODAY’S TRAINING",
+    finishVideo: "Finish the video to continue.",
+    carryForward: "ONE THING TO CARRY FORWARD",
+    responsePlaceholder: "Write one thing you will carry forward…",
+    complete: "Complete training",
+    completing: "Saving…",
+    trainingComplete: "TRAINING COMPLETE",
+    xpAwarded: "+10 Core XP",
+    carryOne: "Carry one thing forward.",
+    xpClaimable: "10 Core XP is ready to save.",
+    saveXp: "Save XP to BTY",
+    saving: "Saving…",
     closedTitle: "THIS EVENT IS CLOSED",
     closedBody: "New participants can no longer join.",
     endedTitle: "EVENT CLOSED",
@@ -51,15 +78,26 @@ const COPY: Record<Locale, Copy> = {
     removed: "Your access to this event has ended.",
     inactive: "This invitation is no longer active.",
     nameError: "Please enter your name.",
+    responseError: "Please write one line to complete.",
   },
   ko: {
     eyebrow: "FOUNDRY",
     enterName: "이름을 입력하고 입장하세요.",
     namePlaceholder: "이름",
-    join: "입장하기",
+    join: "훈련 입장",
     joining: "입장 중…",
-    youreIn: "입장했습니다",
-    roomGuide: "이 방이 오늘의 세션을 안내합니다.",
+    todaysTraining: "오늘의 훈련",
+    finishVideo: "영상을 끝까지 보면 계속됩니다.",
+    carryForward: "오늘 가지고 갈 한 가지",
+    responsePlaceholder: "오늘 가지고 갈 한 가지를 적어주세요…",
+    complete: "훈련 완료",
+    completing: "저장 중…",
+    trainingComplete: "훈련 완료",
+    xpAwarded: "+10 Core XP",
+    carryOne: "한 가지를 가지고 가세요.",
+    xpClaimable: "10 Core XP를 저장할 수 있습니다.",
+    saveXp: "BTY에 XP 저장",
+    saving: "저장 중…",
     closedTitle: "종료된 이벤트입니다",
     closedBody: "더 이상 새로 입장할 수 없습니다.",
     endedTitle: "이벤트가 종료되었습니다",
@@ -67,17 +105,15 @@ const COPY: Record<Locale, Copy> = {
     removed: "이 이벤트에 대한 접근이 종료되었습니다.",
     inactive: "이 초대는 더 이상 유효하지 않습니다.",
     nameError: "이름을 입력해 주세요.",
+    responseError: "완료하려면 한 줄을 적어주세요.",
   },
 };
 
 function resolveLocale(): Locale {
-  if (typeof navigator !== "undefined" && navigator.language?.toLowerCase().startsWith("ko")) {
-    return "ko";
-  }
+  if (typeof navigator !== "undefined" && navigator.language?.toLowerCase().startsWith("ko")) return "ko";
   return "en";
 }
 
-/** Fill-screen navy frame with safe-area padding. No nav, no login, no app chrome. */
 function Frame({ children }: { children: React.ReactNode }) {
   return (
     <main
@@ -94,37 +130,35 @@ function Frame({ children }: { children: React.ReactNode }) {
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-xs font-medium uppercase tracking-[0.18em] text-[#C9A66B]/90">
-      {children}
-    </span>
+    <span className="text-xs font-medium uppercase tracking-[0.18em] text-[#C9A66B]/90">{children}</span>
   );
 }
+
+const api = (token: string, path = "") =>
+  `/api/bty/foundry/public/${encodeURIComponent(token)}${path}`;
 
 export default function FoundryJoinClient({ token }: { token: string }) {
   const [locale, setLocale] = useState<Locale>("en");
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [name, setName] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [response, setResponse] = useState("");
+  const [busy, setBusy] = useState(false);
   const [nameError, setNameError] = useState(false);
-  const submittingRef = useRef(false);
+  const [responseError, setResponseError] = useState(false);
+  const busyRef = useRef(false);
+  const autoClaimedRef = useRef(false);
 
   const t = COPY[locale];
 
-  useEffect(() => {
-    setLocale(resolveLocale());
-  }, []);
+  useEffect(() => setLocale(resolveLocale()), []);
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/bty/foundry/public/${encodeURIComponent(token)}`, {
-        credentials: "include",
-        cache: "no-store",
-      });
-      const data = (await res.json()) as Snapshot;
-      setSnapshot(data);
+      const res = await fetch(api(token), { credentials: "include", cache: "no-store" });
+      setSnapshot((await res.json()) as Snapshot);
     } catch {
-      setSnapshot({ event: null, participant: null, room_state: "inactive" });
+      setSnapshot({ event: null, participant: null, training: null, stage: "inactive", xp_status: "none" });
     } finally {
       setLoaded(true);
     }
@@ -134,45 +168,111 @@ export default function FoundryJoinClient({ token }: { token: string }) {
     void load();
   }, [load]);
 
-  const onJoin = useCallback(async () => {
-    if (submittingRef.current) return;
-    if (name.trim().length < 1) {
-      setNameError(true);
-      return;
-    }
-    submittingRef.current = true;
-    setSubmitting(true);
-    setNameError(false);
-    try {
-      const res = await fetch(`/api/bty/foundry/public/${encodeURIComponent(token)}/join`, {
+  const post = useCallback(
+    async (path: string, body?: unknown): Promise<{ ok: boolean; status: number; data: unknown }> => {
+      const res = await fetch(api(token, path), {
         method: "POST",
         credentials: "include",
         cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ display_name: name.trim() }),
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
       });
       const data = await res.json().catch(() => null);
-      if (res.ok && data?.ok) {
-        setSnapshot({
-          event: data.event ?? null,
-          participant: data.participant ?? null,
-          room_state: data.room_state ?? "joined",
-        });
-      } else if (data?.error === "name_required" || data?.error === "name_too_long") {
-        setNameError(true);
-      } else {
-        // inactive / rotated / closed — reload the canonical snapshot for the right surface.
-        await load();
-      }
-    } catch {
-      await load();
-    } finally {
-      submittingRef.current = false;
-      setSubmitting(false);
-    }
-  }, [name, token, load]);
+      return { ok: res.ok, status: res.status, data };
+    },
+    [token],
+  );
 
-  // Quiet stable frame while the first snapshot resolves (no spinner, no flash).
+  const applyResult = useCallback((data: unknown) => {
+    const d = data as { ok?: boolean; event?: Snapshot["event"]; participant?: Snapshot["participant"]; training?: Snapshot["training"]; stage?: Stage; xp_status?: Snapshot["xp_status"] } | null;
+    if (d?.ok && d.stage) {
+      setSnapshot({
+        event: d.event ?? null,
+        participant: d.participant ?? null,
+        training: d.training ?? null,
+        stage: d.stage,
+        xp_status: d.xp_status ?? "none",
+      });
+      return true;
+    }
+    return false;
+  }, []);
+
+  // --- actions ---
+  const onJoin = useCallback(async () => {
+    if (busyRef.current) return;
+    if (name.trim().length < 1) return setNameError(true);
+    busyRef.current = true;
+    setBusy(true);
+    setNameError(false);
+    try {
+      const { ok, data } = await post("/join", { display_name: name.trim() });
+      const d = data as { error?: string } | null;
+      if (ok) await load();
+      else if (d?.error === "name_required" || d?.error === "name_too_long") setNameError(true);
+      else await load();
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }, [name, post, load]);
+
+  const onVideoStarted = useCallback(() => {
+    void post("/progress/start");
+  }, [post]);
+
+  const onVideoEnded = useCallback(async () => {
+    const { data } = await post("/progress/video-complete");
+    if (!applyResult(data)) await load();
+  }, [post, applyResult, load]);
+
+  const onComplete = useCallback(async () => {
+    if (busyRef.current) return;
+    if (response.trim().length < 1) return setResponseError(true);
+    busyRef.current = true;
+    setBusy(true);
+    setResponseError(false);
+    try {
+      const { ok, data } = await post("/progress/complete", { response_text: response.trim() });
+      const d = data as { error?: string } | null;
+      if (ok) applyResult(data);
+      else if (d?.error === "response_required" || d?.error === "response_too_long") setResponseError(true);
+      else await load();
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }, [response, post, applyResult, load]);
+
+  const onClaim = useCallback(
+    async (silent: boolean) => {
+      if (busyRef.current) return;
+      busyRef.current = true;
+      if (!silent) setBusy(true);
+      try {
+        const { ok, status, data } = await post("/progress/claim-xp");
+        if (ok) applyResult(data);
+        else if (status === 401 && !silent) {
+          // Need to sign in first — return here afterward.
+          const next = encodeURIComponent(`/f/${token}`);
+          window.location.href = `/${locale}/bty/login?next=${next}`;
+        }
+      } finally {
+        busyRef.current = false;
+        setBusy(false);
+      }
+    },
+    [post, applyResult, token, locale],
+  );
+
+  // Auto-claim once when returning to a claimable state (e.g. back from login).
+  useEffect(() => {
+    if (snapshot?.stage === "completed_claimable" && !autoClaimedRef.current) {
+      autoClaimedRef.current = true;
+      void onClaim(true);
+    }
+  }, [snapshot?.stage, onClaim]);
+
   if (!loaded || !snapshot) {
     return (
       <Frame>
@@ -182,73 +282,119 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   }
 
   const title = snapshot.event?.title ?? "";
-  const state = snapshot.room_state;
+  const stage = snapshot.stage;
 
-  if (state === "joined") {
+  if (stage === "inactive") return <Frame><Centered>{t.inactive}</Centered></Frame>;
+  if (stage === "removed") return <Frame><Centered>{t.removed}</Centered></Frame>;
+
+  if (stage === "closed") {
+    return (
+      <Frame>
+        <Block eyebrow={t.closedTitle} title={title} body={t.closedBody} />
+      </Frame>
+    );
+  }
+
+  if (stage === "closed_incomplete") {
+    return (
+      <Frame>
+        <Block eyebrow={t.endedTitle} title={title} body={t.endedBody} />
+      </Frame>
+    );
+  }
+
+  if (stage === "completed_awarded") {
     return (
       <Frame>
         <div className="btyFadeIn flex flex-1 flex-col justify-center gap-3">
-          <Eyebrow>{t.youreIn}</Eyebrow>
-          <h1 className="text-2xl font-semibold leading-snug text-white">{title}</h1>
-          <p className="text-sm leading-6 text-white/60">{t.roomGuide}</p>
+          <Eyebrow>{t.trainingComplete}</Eyebrow>
+          <p className="text-3xl font-semibold text-[#C9A66B]">{t.xpAwarded}</p>
+          <p className="text-sm leading-6 text-white/60">{t.carryOne}</p>
         </div>
       </Frame>
     );
   }
 
-  if (state === "closed_joined") {
+  if (stage === "completed_claimable") {
     return (
       <Frame>
-        <div className="btyFadeIn flex flex-1 flex-col justify-center gap-3">
-          <Eyebrow>{t.endedTitle}</Eyebrow>
-          <h1 className="text-2xl font-semibold leading-snug text-white">{title}</h1>
-          <p className="text-sm leading-6 text-white/60">{t.endedBody}</p>
+        <div className="btyFadeIn flex flex-1 flex-col justify-center gap-4">
+          <Eyebrow>{t.trainingComplete}</Eyebrow>
+          <p className="text-base leading-6 text-white/80">{t.xpClaimable}</p>
+          <button
+            type="button"
+            onClick={() => onClaim(false)}
+            disabled={busy}
+            className="rounded-xl bg-[#C9A66B] px-5 py-3.5 text-base font-semibold text-[#0B1F3A] transition-opacity disabled:opacity-60"
+          >
+            {busy ? t.saving : t.saveXp}
+          </button>
         </div>
       </Frame>
     );
   }
 
-  if (state === "closed") {
+  if (stage === "watch" && snapshot.training) {
     return (
       <Frame>
-        <div className="btyFadeIn flex flex-1 flex-col justify-center gap-3">
-          <Eyebrow>{t.closedTitle}</Eyebrow>
-          {title ? <h1 className="text-2xl font-semibold leading-snug text-white">{title}</h1> : null}
-          <p className="text-sm leading-6 text-white/60">{t.closedBody}</p>
+        <div className="btyFadeIn flex flex-1 flex-col justify-center gap-4">
+          <Eyebrow>{t.todaysTraining}</Eyebrow>
+          <h1 className="text-xl font-semibold leading-snug text-white">{title}</h1>
+          <YouTubePlayer
+            videoId={snapshot.training.youtube_video_id}
+            onStarted={onVideoStarted}
+            onEnded={onVideoEnded}
+          />
+          <p className="text-sm leading-6 text-white/55">{t.finishVideo}</p>
         </div>
       </Frame>
     );
   }
 
-  if (state === "removed") {
+  if (stage === "response") {
     return (
       <Frame>
-        <div className="btyFadeIn flex flex-1 flex-col justify-center">
-          <p className="text-base leading-6 text-white/70">{t.removed}</p>
+        <div className="btyFadeIn flex flex-1 flex-col justify-center gap-4">
+          <Eyebrow>{t.carryForward}</Eyebrow>
+          {snapshot.training?.completion_prompt ? (
+            <p className="text-lg font-medium leading-relaxed text-white">
+              {snapshot.training.completion_prompt}
+            </p>
+          ) : null}
+          <textarea
+            rows={4}
+            maxLength={1000}
+            value={response}
+            onChange={(e) => {
+              setResponse(e.target.value);
+              if (responseError) setResponseError(false);
+            }}
+            placeholder={t.responsePlaceholder}
+            aria-label={t.carryForward}
+            aria-invalid={responseError}
+            className="w-full resize-none rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-base leading-6 text-white placeholder:text-white/30 outline-none focus:border-[#C9A66B]/60"
+          />
+          {responseError ? <p className="text-xs text-white/50">{t.responseError}</p> : null}
+          <button
+            type="button"
+            onClick={onComplete}
+            disabled={busy}
+            className="rounded-xl bg-[#C9A66B] px-5 py-3.5 text-base font-semibold text-[#0B1F3A] transition-opacity disabled:opacity-60"
+          >
+            {busy ? t.completing : t.complete}
+          </button>
         </div>
       </Frame>
     );
   }
 
-  if (state === "inactive") {
-    return (
-      <Frame>
-        <div className="btyFadeIn flex flex-1 flex-col justify-center">
-          <p className="text-base leading-6 text-white/70">{t.inactive}</p>
-        </div>
-      </Frame>
-    );
-  }
-
-  // pre_join — the name form.
+  // pre_join (default)
   return (
     <Frame>
       <div className="btyFadeIn flex flex-1 flex-col justify-center gap-5">
         <div className="flex flex-col gap-2">
           <Eyebrow>{t.eyebrow}</Eyebrow>
-          <h1 className="text-2xl font-semibold uppercase leading-snug tracking-wide text-white">
-            {title}
-          </h1>
+          <h1 className="text-2xl font-semibold uppercase leading-snug tracking-wide text-white">{title}</h1>
           <p className="text-sm leading-6 text-white/60">{t.enterName}</p>
         </div>
         <form
@@ -260,7 +406,6 @@ export default function FoundryJoinClient({ token }: { token: string }) {
         >
           <input
             type="text"
-            inputMode="text"
             autoComplete="name"
             enterKeyHint="go"
             maxLength={60}
@@ -277,13 +422,31 @@ export default function FoundryJoinClient({ token }: { token: string }) {
           {nameError ? <p className="text-xs text-white/50">{t.nameError}</p> : null}
           <button
             type="submit"
-            disabled={submitting}
+            disabled={busy}
             className="w-full rounded-xl bg-[#C9A66B] px-4 py-3.5 text-base font-semibold text-[#0B1F3A] transition-opacity disabled:opacity-60"
           >
-            {submitting ? t.joining : t.join}
+            {busy ? t.joining : t.join}
           </button>
         </form>
       </div>
     </Frame>
+  );
+}
+
+function Centered({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="btyFadeIn flex flex-1 flex-col justify-center">
+      <p className="text-base leading-6 text-white/70">{children}</p>
+    </div>
+  );
+}
+
+function Block({ eyebrow, title, body }: { eyebrow: string; title: string; body: string }) {
+  return (
+    <div className="btyFadeIn flex flex-1 flex-col justify-center gap-3">
+      <Eyebrow>{eyebrow}</Eyebrow>
+      {title ? <h1 className="text-2xl font-semibold leading-snug text-white">{title}</h1> : null}
+      <p className="text-sm leading-6 text-white/60">{body}</p>
+    </div>
   );
 }

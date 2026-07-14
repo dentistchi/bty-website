@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { requireManager, managerJson, attachJoinUrl } from "@/lib/bty/foundry/events/managerGate";
 import { rotateJoinVersion } from "@/lib/bty/foundry/events/foundryEventService";
+import { getOwnerTrainingSnapshot } from "@/lib/bty/foundry/events/foundryTrainingService";
 
 export const runtime = "nodejs";
 
@@ -16,8 +17,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ eventId: s
   const { user, admin, base } = gate.ctx;
 
   const { eventId } = await ctx.params;
-  const snapshot = await rotateJoinVersion(admin, user.id, eventId);
-  if (!snapshot) return managerJson(base, req, { error: "not_found" }, 404);
+  const rotated = await rotateJoinVersion(admin, user.id, eventId);
+  if (!rotated) return managerJson(base, req, { error: "not_found" }, 404);
 
+  const snapshot = await getOwnerTrainingSnapshot(admin, user.id, eventId);
+  if (!snapshot) return managerJson(base, req, { error: "not_found" }, 404);
   return managerJson(base, req, attachJoinUrl(req, snapshot));
 }

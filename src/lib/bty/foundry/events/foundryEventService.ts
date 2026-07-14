@@ -33,7 +33,7 @@ import {
 
 const EVENT_COLS = "id, owner_user_id, title, status, join_version, created_at, closed_at";
 
-type EventRow = {
+export type EventRow = {
   id: string;
   owner_user_id: string;
   title: string;
@@ -43,7 +43,7 @@ type EventRow = {
   closed_at: string | null;
 };
 
-type ParticipantRow = {
+export type ParticipantRow = {
   id: string;
   event_id: string;
   display_name: string;
@@ -308,7 +308,7 @@ export type PublicSnapshot = {
 };
 
 /** Resolve an event strictly from a signed token (signature + shape + existence). */
-async function resolveEventByToken(
+export async function resolveEventByToken(
   admin: SupabaseClient,
   token: string,
 ): Promise<{ ok: true; event: EventRow; tokenVersion: number } | { ok: false }> {
@@ -325,7 +325,7 @@ async function resolveEventByToken(
   return { ok: true, event, tokenVersion: verified.payload.joinVersion };
 }
 
-async function findParticipantBySession(
+export async function findParticipantBySession(
   admin: SupabaseClient,
   eventId: string,
   rawSessionToken: string | null | undefined,

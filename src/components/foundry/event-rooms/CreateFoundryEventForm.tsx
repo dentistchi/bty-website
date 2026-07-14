@@ -6,10 +6,13 @@ import { EVENT_ROOMS_COPY } from "./copy";
 import type { ManagerSnapshot } from "./types";
 
 /**
- * Create form — ONE input, one button (spec §5B). No date/place/category/goal/
- * headcount/AI. On success the parent routes straight into the control room so
- * the QR is visible immediately.
+ * Create form — THREE inputs (event name, YouTube link, completion question),
+ * one button (spec §8). No date/place/category/goal/headcount/AI, no XP input
+ * (system-fixed award). Field-level errors. On success the parent routes straight
+ * into the control room so the QR is visible immediately.
  */
+type FieldError = null | "title" | "youtube" | "prompt";
+
 export function CreateFoundryEventForm({
   locale,
   onCreated,
@@ -21,40 +24,80 @@ export function CreateFoundryEventForm({
 }) {
   const t: EventRoomsCopy = EVENT_ROOMS_COPY[locale];
   const [title, setTitle] = useState("");
+  const [youtube, setYoutube] = useState("");
+  const [prompt, setPrompt] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<FieldError>(null);
   const submittingRef = useRef(false);
 
   const onSubmit = useCallback(async () => {
     if (submittingRef.current) return;
-    if (title.trim().length < 1) {
-      setError(true);
-      return;
-    }
+    if (title.trim().length < 1) return setError("title");
+    if (youtube.trim().length < 1) return setError("youtube");
+    if (prompt.trim().length < 1) return setError("prompt");
+
     submittingRef.current = true;
     setSubmitting(true);
-    setError(false);
+    setError(null);
     try {
       const res = await fetch("/api/bty/foundry/events", {
         method: "POST",
         credentials: "include",
         cache: "no-store",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: title.trim() }),
+        body: JSON.stringify({
+          title: title.trim(),
+          youtube_url: youtube.trim(),
+          completion_prompt: prompt.trim(),
+        }),
       });
       const data = await res.json().catch(() => null);
       if (res.ok && data?.event) {
         onCreated(data as ManagerSnapshot);
+      } else if (data?.error === "youtube_url_invalid") {
+        setError("youtube");
+      } else if (data?.error === "prompt_required" || data?.error === "prompt_too_long") {
+        setError("prompt");
       } else {
-        setError(true);
+        setError("title");
       }
     } catch {
-      setError(true);
+      setError("title");
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
     }
-  }, [title, onCreated]);
+  }, [title, youtube, prompt, onCreated]);
+
+  const field = (
+    label: string,
+    value: string,
+    setValue: (v: string) => void,
+    placeholder: string,
+    key: Exclude<FieldError, null>,
+    max: number,
+    errorMsg: string,
+    autoFocus = false,
+  ) => (
+    <label className="flex flex-col gap-2">
+      <span className="text-sm text-white/70">{label}</span>
+      <input
+        type="text"
+        autoFocus={autoFocus}
+        maxLength={max}
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value);
+          if (error === key) setError(null);
+        }}
+        placeholder={placeholder}
+        aria-label={label}
+        aria-invalid={error === key}
+        className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3.5 text-base text-white placeholder:text-white/30 outline-none focus:border-[#C9A66B]/60"
+      />
+      {error === key ? <span className="text-xs text-white/50">{errorMsg}</span> : null}
+    </label>
+  );
 
   return (
     <div className="btyFadeIn flex flex-col gap-6">
@@ -68,25 +111,9 @@ export function CreateFoundryEventForm({
         }}
         className="flex flex-col gap-4"
       >
-        <label className="flex flex-col gap-2">
-          <span className="text-sm text-white/70">{t.nameLabel}</span>
-          <input
-            type="text"
-            autoFocus
-            enterKeyHint="done"
-            maxLength={80}
-            value={title}
-            onChange={(e) => {
-              setTitle(e.target.value);
-              if (error) setError(false);
-            }}
-            placeholder={t.namePlaceholder}
-            aria-label={t.nameLabel}
-            aria-invalid={error}
-            className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3.5 text-base text-white placeholder:text-white/30 outline-none focus:border-[#C9A66B]/60"
-          />
-        </label>
-        {error ? <p className="text-xs text-white/50">{t.titleError}</p> : null}
+        {field(t.nameLabel, title, setTitle, t.namePlaceholder, "title", 80, t.titleError, true)}
+        {field(t.youtubeLabel, youtube, setYoutube, t.youtubePlaceholder, "youtube", 400, t.youtubeError)}
+        {field(t.promptLabel, prompt, setPrompt, t.promptPlaceholder, "prompt", 300, t.promptError)}
         <div className="flex gap-3">
           <button
             type="button"

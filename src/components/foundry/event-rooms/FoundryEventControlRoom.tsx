@@ -62,6 +62,9 @@ export function FoundryEventControlRoom({
   const event = snapshot?.event ?? null;
   const participants = snapshot?.participants ?? [];
   const isOpen = event?.status === "open";
+  const training = event?.training ?? null;
+  const joinedCount = snapshot?.joined_count ?? participants.length;
+  const completedCount = snapshot?.completed_count ?? 0;
 
   const onShare = useCallback(async () => {
     if (!event) return;
@@ -133,6 +136,19 @@ export function FoundryEventControlRoom({
             </span>
           </header>
 
+          {/* Quiet training identity — the video this room is built around. */}
+          {training ? (
+            <div className="overflow-hidden rounded-xl border border-white/8 bg-black/30">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={training.youtube_thumbnail_url}
+                alt=""
+                className="aspect-video w-full object-cover opacity-90"
+                loading="lazy"
+              />
+            </div>
+          ) : null}
+
           {isOpen ? (
             <>
               <FoundryEventQr url={event.join_url} t={t} />
@@ -162,7 +178,12 @@ export function FoundryEventControlRoom({
 
           <section className="flex flex-col gap-3">
             <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">
-              {t.joinedHeader(participants.length)}
+              {t.joinedHeader(joinedCount)}
+              {completedCount > 0 ? (
+                <span className="ml-2 text-[#C9A66B]/80">
+                  · {t.completedCount(completedCount, joinedCount)}
+                </span>
+              ) : null}
             </h2>
             <FoundryParticipantRoster
               participants={participants}

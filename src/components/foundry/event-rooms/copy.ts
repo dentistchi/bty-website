@@ -12,10 +12,22 @@ export type EventRoomsCopy = {
   createEyebrow: string;
   nameLabel: string;
   namePlaceholder: string;
+  youtubeLabel: string;
+  youtubePlaceholder: string;
+  promptLabel: string;
+  promptPlaceholder: string;
   create: string;
   creating: string;
   cancel: string;
   titleError: string;
+  youtubeError: string;
+  promptError: string;
+  // roster status labels
+  status_joined: string;
+  status_watching: string;
+  status_response_pending: string;
+  status_complete: string;
+  completedCount: (done: number, total: number) => string;
   // home
   openHeader: string;
   pastHeader: string;
@@ -46,13 +58,24 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     eyebrow: "FOUNDRY",
     emptyLead: "Bring your team into one room.",
     createCta: "Create an event",
-    createEyebrow: "CREATE EVENT",
+    createEyebrow: "CREATE TRAINING EVENT",
     nameLabel: "Event name",
-    namePlaceholder: "e.g. July Manager Meeting",
-    create: "Create event",
+    namePlaceholder: "e.g. Handling Difficult Conversations",
+    youtubeLabel: "YouTube link",
+    youtubePlaceholder: "https://www.youtube.com/watch?v=…",
+    promptLabel: "Completion question",
+    promptPlaceholder: "e.g. What is one conversation you will handle differently this week?",
+    create: "Create training event",
     creating: "Creating…",
     cancel: "Cancel",
     titleError: "Please enter an event name.",
+    youtubeError: "Please paste a valid YouTube link.",
+    promptError: "Please enter a completion question.",
+    status_joined: "Joined",
+    status_watching: "Watching",
+    status_response_pending: "Response pending",
+    status_complete: "Complete",
+    completedCount: (done, total) => `${done} of ${total} completed`,
     openHeader: "OPEN EVENTS",
     pastHeader: "PAST EVENTS",
     joinedCount: (n) => (n === 1 ? "1 joined" : `${n} joined`),
@@ -79,13 +102,24 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     eyebrow: "FOUNDRY",
     emptyLead: "팀을 하나의 방으로 모으세요.",
     createCta: "이벤트 만들기",
-    createEyebrow: "이벤트 만들기",
+    createEyebrow: "훈련 이벤트 만들기",
     nameLabel: "이벤트 이름",
-    namePlaceholder: "예: 7월 매니저 미팅",
-    create: "이벤트 만들기",
+    namePlaceholder: "예: 어려운 대화 다루기",
+    youtubeLabel: "YouTube 링크",
+    youtubePlaceholder: "https://www.youtube.com/watch?v=…",
+    promptLabel: "완료 질문",
+    promptPlaceholder: "예: 이번 주에 다르게 다뤄볼 대화 하나는 무엇인가요?",
+    create: "훈련 이벤트 만들기",
     creating: "만드는 중…",
     cancel: "취소",
     titleError: "이벤트 이름을 입력해 주세요.",
+    youtubeError: "올바른 YouTube 링크를 붙여넣어 주세요.",
+    promptError: "완료 질문을 입력해 주세요.",
+    status_joined: "입장",
+    status_watching: "시청 중",
+    status_response_pending: "응답 대기",
+    status_complete: "완료",
+    completedCount: (done, total) => `${total}명 중 ${done}명 완료`,
     openHeader: "진행 중인 이벤트",
     pastHeader: "지난 이벤트",
     joinedCount: (n) => `${n}명 입장`,

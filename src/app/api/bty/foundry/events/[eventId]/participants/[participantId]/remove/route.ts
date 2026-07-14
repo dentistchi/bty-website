@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { requireManager, managerJson, attachJoinUrl } from "@/lib/bty/foundry/events/managerGate";
-import { removeParticipant, getOwnerEventSnapshot } from "@/lib/bty/foundry/events/foundryEventService";
+import { removeParticipant } from "@/lib/bty/foundry/events/foundryEventService";
+import { getOwnerTrainingSnapshot } from "@/lib/bty/foundry/events/foundryTrainingService";
 
 export const runtime = "nodejs";
 
@@ -22,7 +23,7 @@ export async function POST(
   const removed = await removeParticipant(admin, user.id, eventId, participantId);
   if (!removed) return managerJson(base, req, { error: "not_found" }, 404);
 
-  const snapshot = await getOwnerEventSnapshot(admin, user.id, eventId);
+  const snapshot = await getOwnerTrainingSnapshot(admin, user.id, eventId);
   if (!snapshot) return managerJson(base, req, { error: "not_found" }, 404);
   return managerJson(base, req, attachJoinUrl(req, snapshot));
 }
