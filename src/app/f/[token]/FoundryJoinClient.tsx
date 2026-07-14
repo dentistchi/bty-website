@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { YouTubePlayer } from "./YouTubePlayer";
+import type { CompletionState } from "@/domain/foundry/watch-integrity";
+import type { LivingReflection } from "@/domain/foundry/living-reflection";
+import { selectReflectionPrompt, selectCheckpointPrompt } from "@/lib/bty/foundry/events/reflectionExpression";
+import { keepScreenAwake, type WakeLockController } from "@/lib/native/keepAwake";
 
 type Locale = "en" | "ko";
 
@@ -56,6 +60,14 @@ type Copy = {
   inactive: string;
   nameError: string;
   responseError: string;
+  checkpointEyebrow: string;
+  checkpointContinue: string;
+  reflectionEyebrow: string;
+  reflectionLoading: string;
+  secWhatEmerged: string;
+  secWhereStretched: string;
+  secLivingSentence: string;
+  secNextInvitation: string;
 };
 
 const COPY: Record<Locale, Copy> = {
@@ -89,6 +101,14 @@ const COPY: Record<Locale, Copy> = {
     inactive: "This invitation is no longer active.",
     nameError: "Please enter your name.",
     responseError: "Please write one line to complete.",
+    checkpointEyebrow: "A MOMENT",
+    checkpointContinue: "Continue",
+    reflectionEyebrow: "A LIVING REFLECTION",
+    reflectionLoading: "Reflecting…",
+    secWhatEmerged: "What emerged",
+    secWhereStretched: "Where you stretched",
+    secLivingSentence: "A living sentence",
+    secNextInvitation: "Your next invitation",
   },
   ko: {
     eyebrow: "FOUNDRY",
@@ -120,6 +140,14 @@ const COPY: Record<Locale, Copy> = {
     inactive: "이 초대는 더 이상 유효하지 않습니다.",
     nameError: "이름을 입력해 주세요.",
     responseError: "완료하려면 한 줄을 적어주세요.",
+    checkpointEyebrow: "잠깐",
+    checkpointContinue: "계속하기",
+    reflectionEyebrow: "리빙 리플렉션",
+    reflectionLoading: "성찰을 준비하고 있어요…",
+    secWhatEmerged: "떠오른 것",
+    secWhereStretched: "당신이 뻗어간 곳",
+    secLivingSentence: "살아있는 한 문장",
+    secNextInvitation: "내일의 초대",
   },
 };
 
@@ -161,8 +189,15 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   const [nameError, setNameError] = useState(false);
   const [responseError, setResponseError] = useState(false);
   const [playerError, setPlayerError] = useState<number | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [checkpoint, setCheckpoint] = useState<{ index: number; resume: () => void } | null>(null);
+  const [reflection, setReflection] = useState<LivingReflection | null>(null);
+  const [reflectionLoading, setReflectionLoading] = useState(false);
   const busyRef = useRef(false);
   const autoClaimedRef = useRef(false);
+  const completionStateRef = useRef<CompletionState | null>(null);
+  const wakeRef = useRef<WakeLockController | null>(null);
+  const reflectionRequestedRef = useRef(false);
 
   const t = COPY[locale];
 
@@ -288,6 +323,46 @@ export default function FoundryJoinClient({ token }: { token: string }) {
     }
   }, [snapshot?.stage, onClaim]);
 
+  // Keep the screen awake while the video plays; release the moment it stops.
+  useEffect(() => {
+    if (isPlaying && !wakeRef.current) {
+      wakeRef.current = keepScreenAwake();
+    } else if (!isPlaying && wakeRef.current) {
+      wakeRef.current.release();
+      wakeRef.current = null;
+    }
+    return () => {
+      if (wakeRef.current) {
+        wakeRef.current.release();
+        wakeRef.current = null;
+      }
+    };
+  }, [isPlaying]);
+
+  // Once the training is complete, ask for the Living Reflection (once). The
+  // client-computed CompletionState (ephemeral) is sent as meaning; the server
+  // grounds and persists. Idempotent — a returning visitor gets the stored one.
+  const completedStage = snapshot?.stage === "completed_awarded" || snapshot?.stage === "completed_claimable";
+  useEffect(() => {
+    if (!completedStage || reflectionRequestedRef.current) return;
+    reflectionRequestedRef.current = true;
+    setReflectionLoading(true);
+    void (async () => {
+      try {
+        const { data } = await post("/reflection", { completion_state: completionStateRef.current, locale });
+        const d = data as { ok?: boolean; reflection?: LivingReflection } | null;
+        if (d?.ok && d.reflection) setReflection(d.reflection);
+      } finally {
+        setReflectionLoading(false);
+      }
+    })();
+  }, [completedStage, post, locale]);
+
+  const onContinueCheckpoint = useCallback(() => {
+    checkpoint?.resume();
+    setCheckpoint(null);
+  }, [checkpoint]);
+
   if (!loaded || !snapshot) {
     return (
       <Frame>
@@ -325,7 +400,23 @@ export default function FoundryJoinClient({ token }: { token: string }) {
     const xp = snapshot.xp_status;
     return (
       <Frame>
-        <div className="btyFadeIn flex flex-1 flex-col justify-center gap-4">
+        <div className="btyFadeIn flex flex-1 flex-col justify-center gap-6 py-6">
+          {/* The Living Reflection — a mirror, not a score. Shown above the XP. */}
+          {reflection ? (
+            <section className="flex flex-col gap-4">
+              <Eyebrow>{t.reflectionEyebrow}</Eyebrow>
+              <ReflectionSection label={t.secWhatEmerged} body={reflection.whatEmerged} />
+              <ReflectionSection label={t.secWhereStretched} body={reflection.whereYouStretched} />
+              <p className="border-l-2 border-[#C9A66B]/60 pl-4 text-lg font-medium italic leading-relaxed text-white">
+                “{reflection.livingSentence}”
+              </p>
+              <ReflectionSection label={t.secNextInvitation} body={reflection.nextInvitation} />
+            </section>
+          ) : reflectionLoading ? (
+            <p className="text-sm leading-6 text-white/45">{t.reflectionLoading}</p>
+          ) : null}
+
+          <div className="flex flex-col gap-4">
           <Eyebrow>{t.trainingComplete}</Eyebrow>
           {xp === "awarded" ? (
             <>
@@ -350,6 +441,7 @@ export default function FoundryJoinClient({ token }: { token: string }) {
             // owner_ineligible / none — completion stands, quietly.
             <p className="text-sm leading-6 text-white/60">{t.carryOne}</p>
           )}
+          </div>
         </div>
       </Frame>
     );
@@ -373,19 +465,57 @@ export default function FoundryJoinClient({ token }: { token: string }) {
         </Frame>
       );
     }
+    const videoId = snapshot.training.youtube_video_id;
     return (
       <Frame>
         <div className="btyFadeIn flex flex-1 flex-col justify-center gap-4">
-          <Eyebrow>{t.todaysTraining}</Eyebrow>
-          <h1 className="text-xl font-semibold leading-snug text-white">{title}</h1>
+          {/* Immersive mode: while playing, the surrounding UI recedes so only the
+              training remains. It returns the moment playback pauses or ends. */}
+          <div
+            className="flex flex-col gap-2 transition-opacity duration-500"
+            style={{ opacity: isPlaying ? 0 : 1, pointerEvents: isPlaying ? "none" : "auto" }}
+            aria-hidden={isPlaying}
+          >
+            <Eyebrow>{t.todaysTraining}</Eyebrow>
+            <h1 className="text-xl font-semibold leading-snug text-white">{title}</h1>
+          </div>
           <YouTubePlayer
-            videoId={snapshot.training.youtube_video_id}
+            videoId={videoId}
             onStarted={onVideoStarted}
             onEnded={onVideoEnded}
             onError={(_kind, code) => setPlayerError(code)}
+            onIntegrity={(state) => {
+              completionStateRef.current = state;
+            }}
+            onPlayingChange={setIsPlaying}
+            onCheckpoint={(index, resume) => setCheckpoint({ index, resume })}
           />
-          <p className="text-sm leading-6 text-white/55">{t.finishVideo}</p>
+          <p
+            className="text-sm leading-6 text-white/55 transition-opacity duration-500"
+            style={{ opacity: isPlaying ? 0 : 1 }}
+            aria-hidden={isPlaying}
+          >
+            {t.finishVideo}
+          </p>
         </div>
+
+        {checkpoint ? (
+          <div className="btyFadeIn fixed inset-0 z-50 flex items-center justify-center bg-[#0B1F3A]/92 px-6 backdrop-blur-sm">
+            <div className="flex w-full max-w-sm flex-col gap-5 text-center">
+              <Eyebrow>{t.checkpointEyebrow}</Eyebrow>
+              <p className="text-lg font-medium leading-relaxed text-white">
+                {selectCheckpointPrompt(videoId, checkpoint.index, locale)}
+              </p>
+              <button
+                type="button"
+                onClick={onContinueCheckpoint}
+                className="self-center rounded-xl bg-[#C9A66B] px-6 py-3 text-base font-semibold text-[#0B1F3A]"
+              >
+                {t.checkpointContinue}
+              </button>
+            </div>
+          </div>
+        ) : null}
       </Frame>
     );
   }
@@ -400,6 +530,11 @@ export default function FoundryJoinClient({ token }: { token: string }) {
               {snapshot.training.completion_prompt}
             </p>
           ) : null}
+          {/* Anti-summary framing: a personal-reflection question the video alone
+              can't answer — never "what was the main point?". */}
+          <p className="text-sm leading-6 text-[#C9A66B]/85">
+            {selectReflectionPrompt(snapshot.training?.youtube_video_id ?? token, locale)}
+          </p>
           <textarea
             rows={4}
             maxLength={1000}
@@ -469,6 +604,15 @@ export default function FoundryJoinClient({ token }: { token: string }) {
         </form>
       </div>
     </Frame>
+  );
+}
+
+function ReflectionSection({ label, body }: { label: string; body: string }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-xs font-medium uppercase tracking-[0.14em] text-white/40">{label}</span>
+      <p className="text-base leading-7 text-white/85">{body}</p>
+    </div>
   );
 }
 

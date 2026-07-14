@@ -1,18 +1,36 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   classifyYoutubePlayerError,
   foundryPlayerVars,
   type YoutubePlayerErrorKind,
 } from "@/domain/foundry/youtube";
+import {
+  createWatchAccumulator,
+  recordTick,
+  setDuration,
+  markReachedEnd,
+  computeWatchIntegrity,
+  computeCheckpoints,
+  type CompletionState,
+  type WatchCheckpoint,
+} from "@/domain/foundry/watch-integrity";
 
 /**
  * Thin wrapper over the OFFICIAL YouTube IFrame Player API. Loads the API once,
  * instantiates one player, and maps PLAYING → onStarted (once) and ENDED →
- * onEnded (once). Official controls/branding are preserved (no overlay, no hidden
- * player, no autoplay). The player is destroyed on unmount. Callbacks are held in
- * refs so identity changes don't tear down the player.
+ * onEnded (once). Official controls/branding are preserved.
+ *
+ * Immersive Learning V1 additions (all client-side, all EPHEMERAL — no telemetry
+ * ever leaves this component):
+ *   - Watch Integrity Engine: polls currentTime/duration while playing to derive
+ *     a CompletionState (pass/review/incomplete), emitted once on ENDED.
+ *   - onPlayingChange: lets the parent drive wake-lock + immersive UI hiding.
+ *   - One-tap fullscreen button.
+ *   - Playback resume: restores the last position from sessionStorage.
+ *   - Optional checkpoints: pauses once at a mid-video mark and invites a
+ *     reflection, then resumes (never mandatory).
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -42,54 +60,199 @@ function loadIframeApi(): Promise<void> {
   return apiPromise;
 }
 
+const POLL_MS = 750;
+const RESUME_MIN_SECONDS = 8; // don't bother resuming a near-start position
+const RESUME_TAIL_SECONDS = 15; // don't resume right at the end
+
+function resumeKey(videoId: string): string {
+  return `bty_fr_pos_${videoId}`;
+}
+
+function readResumePosition(videoId: string): number | null {
+  try {
+    const raw = window.sessionStorage.getItem(resumeKey(videoId));
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeResumePosition(videoId: string, seconds: number): void {
+  try {
+    window.sessionStorage.setItem(resumeKey(videoId), String(Math.floor(seconds)));
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearResumePosition(videoId: string): void {
+  try {
+    window.sessionStorage.removeItem(resumeKey(videoId));
+  } catch {
+    /* ignore */
+  }
+}
+
 export function YouTubePlayer({
   videoId,
   onStarted,
   onEnded,
   onError,
+  onIntegrity,
+  onPlayingChange,
+  onCheckpoint,
+  enableResume = true,
 }: {
   videoId: string;
   onStarted?: () => void;
   onEnded?: () => void;
   onError?: (kind: YoutubePlayerErrorKind, rawCode: number) => void;
+  /** Derived watch meaning, emitted once when the video ends. */
+  onIntegrity?: (state: CompletionState) => void;
+  /** True while playing, false on pause/end — drives wake-lock + immersive UI. */
+  onPlayingChange?: (playing: boolean) => void;
+  /** Fires once per checkpoint; call `resume()` to continue playback. */
+  onCheckpoint?: (index: number, resume: () => void) => void;
+  enableResume?: boolean;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
   const startedRef = useRef(false);
   const endedRef = useRef(false);
+
   const onStartedRef = useRef(onStarted);
   const onEndedRef = useRef(onEnded);
   const onErrorRef = useRef(onError);
+  const onIntegrityRef = useRef(onIntegrity);
+  const onPlayingChangeRef = useRef(onPlayingChange);
+  const onCheckpointRef = useRef(onCheckpoint);
   onStartedRef.current = onStarted;
   onEndedRef.current = onEnded;
   onErrorRef.current = onError;
+  onIntegrityRef.current = onIntegrity;
+  onPlayingChangeRef.current = onPlayingChange;
+  onCheckpointRef.current = onCheckpoint;
+
+  // Ephemeral watch evidence — never persisted, never leaves the component.
+  const accRef = useRef(createWatchAccumulator());
+  const checkpointsRef = useRef<WatchCheckpoint[]>([]);
+  const firedCheckpointsRef = useRef<Set<number>>(new Set());
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     startedRef.current = false;
     endedRef.current = false;
+    accRef.current = createWatchAccumulator();
+    firedCheckpointsRef.current = new Set();
+    checkpointsRef.current = [];
+
+    const stopPolling = () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+
+    const sampleOnce = () => {
+      const p = playerRef.current;
+      if (!p) return;
+      let pos = 0;
+      let dur = 0;
+      try {
+        pos = typeof p.getCurrentTime === "function" ? p.getCurrentTime() : 0;
+        dur = typeof p.getDuration === "function" ? p.getDuration() : 0;
+      } catch {
+        return;
+      }
+      if (dur > 0) {
+        accRef.current = setDuration(accRef.current, dur);
+        if (checkpointsRef.current.length === 0) {
+          checkpointsRef.current = computeCheckpoints(dur);
+        }
+      }
+      accRef.current = recordTick(accRef.current, pos);
+      if (enableResume) writeResumePosition(videoId, pos);
+
+      // Checkpoints — fire once, pause, invite, resume.
+      if (onCheckpointRef.current) {
+        for (const cp of checkpointsRef.current) {
+          if (!firedCheckpointsRef.current.has(cp.index) && pos >= cp.atSeconds) {
+            firedCheckpointsRef.current.add(cp.index);
+            try {
+              p.pauseVideo?.();
+            } catch {
+              /* ignore */
+            }
+            onCheckpointRef.current(cp.index, () => {
+              try {
+                playerRef.current?.playVideo?.();
+              } catch {
+                /* ignore */
+              }
+            });
+            break;
+          }
+        }
+      }
+    };
+
+    const startPolling = () => {
+      if (pollRef.current) return;
+      pollRef.current = setInterval(sampleOnce, POLL_MS);
+    };
 
     loadIframeApi().then(() => {
       if (cancelled || !mountRef.current || !window.YT?.Player) return;
-      // Client-only (post-hydration) effect → window.location.origin is the real
-      // page origin. Passing it fixes the enablejsapi identity handshake (err 153).
       playerRef.current = new window.YT.Player(mountRef.current, {
         videoId,
         playerVars: foundryPlayerVars(window.location.origin),
         events: {
+          onReady: () => {
+            if (cancelled || !enableResume) return;
+            const resumeAt = readResumePosition(videoId);
+            const p = playerRef.current;
+            if (resumeAt == null || !p) return;
+            try {
+              const dur = typeof p.getDuration === "function" ? p.getDuration() : 0;
+              if (resumeAt >= RESUME_MIN_SECONDS && (dur === 0 || resumeAt < dur - RESUME_TAIL_SECONDS)) {
+                p.seekTo?.(resumeAt, true);
+              }
+            } catch {
+              /* ignore */
+            }
+          },
           onStateChange: (e: { data: number }) => {
             const YT = window.YT;
-            if (e.data === YT.PlayerState.PLAYING && !startedRef.current) {
-              startedRef.current = true;
-              onStartedRef.current?.();
+            if (e.data === YT.PlayerState.PLAYING) {
+              if (!startedRef.current) {
+                startedRef.current = true;
+                onStartedRef.current?.();
+              }
+              onPlayingChangeRef.current?.(true);
+              startPolling();
+            }
+            if (e.data === YT.PlayerState.PAUSED || e.data === YT.PlayerState.BUFFERING) {
+              onPlayingChangeRef.current?.(false);
+              if (e.data === YT.PlayerState.PAUSED) stopPolling();
             }
             if (e.data === YT.PlayerState.ENDED && !endedRef.current) {
               endedRef.current = true;
+              stopPolling();
+              sampleOnce();
+              accRef.current = markReachedEnd(accRef.current);
+              onPlayingChangeRef.current?.(false);
+              clearResumePosition(videoId);
+              onIntegrityRef.current?.(computeWatchIntegrity(accRef.current).completionState);
               onEndedRef.current?.();
             }
           },
           onError: (e: { data: number }) => {
-            // Preserve the RAW code alongside the classification (measurement).
             onErrorRef.current?.(classifyYoutubePlayerError(e.data), e.data);
           },
         },
@@ -98,6 +261,8 @@ export function YouTubePlayer({
 
     return () => {
       cancelled = true;
+      stopPolling();
+      onPlayingChangeRef.current?.(false);
       try {
         playerRef.current?.destroy?.();
       } catch {
@@ -105,11 +270,46 @@ export function YouTubePlayer({
       }
       playerRef.current = null;
     };
-  }, [videoId]);
+  }, [videoId, enableResume]);
+
+  // Track fullscreen state so the button label/behaviour stays in sync.
+  useEffect(() => {
+    const onFsChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    const el = containerRef.current;
+    if (!el) return;
+    try {
+      if (document.fullscreenElement) {
+        void document.exitFullscreen?.();
+      } else if (el.requestFullscreen) {
+        void el.requestFullscreen().catch(() => {});
+      }
+    } catch {
+      /* unsupported (e.g. iOS Safari) — the native YT fullscreen control remains */
+    }
+  };
 
   return (
-    <div className="relative w-full overflow-hidden rounded-xl bg-black" style={{ aspectRatio: "16 / 9" }}>
+    <div ref={containerRef} className="relative w-full overflow-hidden rounded-xl bg-black" style={{ aspectRatio: "16 / 9" }}>
       <div ref={mountRef} className="absolute inset-0 h-full w-full" />
+      <button
+        type="button"
+        onClick={toggleFullscreen}
+        aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        className="absolute right-2 top-2 z-10 rounded-lg bg-black/45 px-2.5 py-1.5 text-white/90 backdrop-blur-sm transition-opacity hover:bg-black/60"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          {isFullscreen ? (
+            <path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5" strokeLinecap="round" strokeLinejoin="round" />
+          ) : (
+            <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" strokeLinecap="round" strokeLinejoin="round" />
+          )}
+        </svg>
+      </button>
     </div>
   );
 }
