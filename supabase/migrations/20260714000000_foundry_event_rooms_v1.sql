@@ -283,9 +283,10 @@ declare
   v_count int;
 begin
   -- Serialize this (user, BTY-day) so the count+insert below is race-safe.
+  -- Single 64-bit key form: hashtextextended returns bigint, matching
+  -- pg_advisory_xact_lock(bigint) (the two-arg form takes int4, int4).
   perform pg_advisory_xact_lock(
-    hashtextextended(p_user_id::text, 0),
-    hashtextextended(to_char(p_day_start at time zone 'UTC', 'YYYY-MM-DD'), 0)
+    hashtextextended(p_user_id::text || ':' || to_char(p_day_start at time zone 'UTC', 'YYYY-MM-DD'), 0)
   );
 
   -- (1) Idempotency per completion.
