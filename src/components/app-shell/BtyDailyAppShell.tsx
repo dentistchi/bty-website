@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import CenterMeCard from "@/components/center/CenterMeCard";
 import CenterKeepRoom from "@/components/center/CenterKeepRoom";
+import FoundryEventRooms from "@/components/foundry/event-rooms/FoundryEventRooms";
 import WeeklyOrb from "@/components/app-shell/WeeklyOrb";
 import { fetchMeWeeklyRhythm, type MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
 import type { TodayConfidence, TodayIntelligence, TodayUserState } from "@/domain/daily/todayIntelligence";
@@ -1591,7 +1592,10 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             fallback identity. arena/foundry stay LockedRoom until their own steps. */}
         {tab === "center" && <CenterKeepRoom locale={locale} />}
         {tab === "arena" && <LockedRoom tag={t.arena.tag} body={t.arena.body} />}
-        {tab === "foundry" && <LockedRoom tag={t.foundry.tag} body={t.foundry.body} />}
+        {/* Foundry = relationship with the world. V1 is Event Rooms: a manager
+            opens one real shared room and brings the team in by QR. Replaces the
+            LockedRoom placeholder (t.foundry retained as reserved fallback copy). */}
+        {tab === "foundry" && <FoundryEventRooms locale={locale} />}
         {/* Me = Center/self-owned mirror rendered inside Today. Today supplies the
             render slot + locale ONLY; the card reads its own Center/self-safe
             derived value (leadershipState stage). The prepared-room copy (t.me)
