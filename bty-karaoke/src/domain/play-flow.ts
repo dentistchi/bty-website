@@ -56,3 +56,19 @@ export async function runPlayOnTv(effects: PlayOnTvEffects): Promise<void> {
   await effects.play(); // B — commit the state while the page is still alive
   effects.openVideo(); // A — then navigate this window (no blank window)
 }
+
+export interface OpenOnDeviceEffects {
+  /** Navigate THIS window to the YouTube video (same-window, no blank tab). */
+  openVideo: () => void;
+}
+
+/**
+ * "Open on this iPad" — a PERSONAL-SCREEN open, NOT a playback transition. It ONLY
+ * navigates to the video; it deliberately has NO `play` effect, so it can never
+ * move a request to `playing`, create a second playing row, finish a song, or
+ * touch any state. Only runPlayOnTv performs the playing transition. Same-window
+ * navigation preserves the no-blank-window behavior and pops no blocker.
+ */
+export function runOpenOnDevice(effects: OpenOnDeviceEffects): void {
+  effects.openVideo();
+}

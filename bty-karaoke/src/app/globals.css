@@ -1837,3 +1837,18 @@ a.btn.block {
 .event-line-label.gold { color: var(--gold); }
 .event-line-label.cyan { color: var(--cyan); }
 .event-end-zone { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+
+/* ── DJ dual playback controls ──────────────────────────────── */
+.playback-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin: 14px 0 8px;
+}
+.playback-help {
+  font-size: 0.82rem;
+  margin-top: 10px;
+  line-height: 1.4;
+}

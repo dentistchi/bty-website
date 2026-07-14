@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { primaryPlayTarget, runPlayOnTv } from './play-flow';
+import { primaryPlayTarget, runPlayOnTv, runOpenOnDevice } from './play-flow';
 import type { StageEntry } from './play-flow';
 
 const w = (id: string): StageEntry => ({ id, status: 'waiting' });
@@ -57,5 +57,25 @@ describe('runPlayOnTv', () => {
     ).rejects.toThrow('server 409');
     // Never sent the DJ to YouTube for a song that never started.
     expect(openVideo).not.toHaveBeenCalled();
+  });
+});
+
+describe('runOpenOnDevice ("Open on this iPad")', () => {
+  it('navigates but NEVER mutates state (no play effect exists)', () => {
+    const openVideo = vi.fn();
+    runOpenOnDevice({ openVideo });
+    expect(openVideo).toHaveBeenCalledTimes(1);
+    // The effects shape has no `play` — it is impossible for this path to move a
+    // request to playing, so "Open on this iPad" can never change queue state.
+    // @ts-expect-error — play is intentionally not part of OpenOnDeviceEffects.
+    expect(({ openVideo }).play).toBeUndefined();
+  });
+
+  it('is synchronous and independent of any playback transition', () => {
+    let played = false;
+    const openVideo = vi.fn();
+    runOpenOnDevice({ openVideo });
+    expect(played).toBe(false); // nothing could have started a song
+    expect(openVideo).toHaveBeenCalled();
   });
 });

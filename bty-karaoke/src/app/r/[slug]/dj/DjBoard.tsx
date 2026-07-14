@@ -5,11 +5,11 @@ import type { KaraokeRequest } from '@/lib/rooms.server';
 import type { KaraokeSession } from '@/lib/sessions.server';
 import type { DjEventStatus } from '@/lib/events.server';
 import { selectStage } from '@/domain/queue';
-import { primaryPlayTarget, runPlayOnTv } from '@/domain/play-flow';
+import { primaryPlayTarget, runPlayOnTv, runOpenOnDevice } from '@/domain/play-flow';
 import { requestDisplayTitle } from '@/domain/request-view';
 import { displaySong } from '@/domain/song-title';
 import { formatEventDuration } from '@/domain/live-presence';
-import { youtubeWatchUrl } from '@/domain/youtube-search';
+import { safeYoutubeWatchUrl } from '@/domain/youtube';
 import DjActionSheet from './DjActionSheet';
 import DjAdminMenu from './DjAdminMenu';
 import DjEventStatusSheet from './DjEventStatusSheet';
@@ -106,9 +106,18 @@ export default function DjBoard({
 
   // Navigate THIS Safari tab to the video (not window.open). On iPad this hands
   // off to the YouTube app without leaving a blank Safari window behind; the DJ
-  // returns to the console with the browser Back gesture.
+  // returns to the console with the browser Back gesture. The id is validated —
+  // a malformed id yields no URL and we simply do not navigate.
   function openVideo(videoId: string) {
-    window.location.assign(youtubeWatchUrl(videoId));
+    const url = safeYoutubeWatchUrl(videoId);
+    if (url) window.location.assign(url);
+  }
+
+  // "Open on this iPad" — a personal-screen open of the CURRENT/selected video.
+  // It ONLY navigates (runOpenOnDevice has no play effect), so it never changes a
+  // request's state, never starts/finishes a song, and never disconnects the TV.
+  function openOnThisIpad(videoId: string) {
+    runOpenOnDevice({ openVideo: () => openVideo(videoId) });
   }
 
   // One-tap play: commit waiting→playing FIRST, then navigate this tab to
@@ -260,14 +269,23 @@ export default function DjBoard({
                   </>
                 );
               })()}
+              <div className="playback-label">Playback options</div>
               <div className="stage-actions">
-                <button className="cyan lg" onClick={() => openVideo(current.youtube_video_id)}>
-                  Open in YouTube
+                <button
+                  className="cyan lg"
+                  disabled={!current.youtube_video_id}
+                  onClick={() => openOnThisIpad(current.youtube_video_id)}
+                >
+                  Open on this iPad
                 </button>
                 <button className="ok lg" disabled={busy} onClick={() => onFinish(current.id)}>
                   ✓ Finish song
                 </button>
               </div>
+              <p className="muted playback-help">
+                Opens this song on the iPad for a closer screen. YouTube may keep the iPad connected
+                as the TV remote.
+              </p>
             </div>
           ) : playTarget ? (
             <div className="stage-hero ready" key={playTarget.id}>
@@ -295,12 +313,25 @@ export default function DjBoard({
                   </>
                 );
               })()}
-              <p className="lead">Opens the video, then puts this song on stage.</p>
+              <p className="lead">Play on the TV, or open it just on this iPad.</p>
+              <div className="playback-label">Playback options</div>
               <div className="stage-actions">
                 <button className="primary lg" disabled={busy} onClick={() => playOnTv(playTarget)}>
                   ▶ Play on TV
                 </button>
+                <button
+                  className="ghost lg"
+                  disabled={!playTarget.youtube_video_id}
+                  onClick={() => openOnThisIpad(playTarget.youtube_video_id)}
+                >
+                  Open on this iPad
+                </button>
               </div>
+              <p className="muted playback-help">
+                “Play on TV” puts this song on stage. “Open on this iPad” just opens it here for a
+                closer screen — it doesn’t change the queue. YouTube may keep the iPad as the TV
+                remote.
+              </p>
             </div>
           ) : (
             <div className="stage-hero ready">

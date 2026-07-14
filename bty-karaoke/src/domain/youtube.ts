@@ -40,3 +40,20 @@ export function parseYoutubeVideoId(input: string): string | null {
 
   return null;
 }
+
+/** True iff `id` is a canonical 11-char YouTube video id. */
+export function isValidVideoId(id: string | null | undefined): boolean {
+  return typeof id === 'string' && VIDEO_ID.test(id);
+}
+
+/**
+ * Canonical https watch URL for a VALIDATED video id, or null when the id is not
+ * a well-formed 11-char id. Returning null (never a URL) for anything malformed
+ * is the guard that keeps a bad/stored id from producing a javascript: or
+ * otherwise unexpected navigation target — callers must no-op on null.
+ */
+export function safeYoutubeWatchUrl(videoId: string | null | undefined): string | null {
+  if (!isValidVideoId(videoId)) return null;
+  // The id charset ([A-Za-z0-9_-]) is URL-safe, so this is a pure https URL.
+  return `https://www.youtube.com/watch?v=${videoId}`;
+}
