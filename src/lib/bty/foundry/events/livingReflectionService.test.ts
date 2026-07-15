@@ -105,10 +105,10 @@ const VALID_JSON = JSON.stringify({
 // A valid, distinct, gate-passing stored reflection (four sections that each do
 // their own job — used to exercise the idempotent restore path).
 const VALID_STORED = {
-  whatEmerged: "You keep returning to the cost of staying silent.",
+  whatEmerged: "Your response names the cost of staying silent.",
   whereYouStretched: "There is a pull between protecting calm and naming what is true.",
   livingSentence: "Naming the hard thing is its own quiet courage.",
-  nextInvitation: "Carry this toward the next moment that asks for your honesty.",
+  nextInvitation: "The unresolved question is what your honesty would ask of the room.",
 };
 
 beforeEach(() => {
