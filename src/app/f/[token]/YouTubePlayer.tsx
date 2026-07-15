@@ -16,6 +16,12 @@ import {
   type CompletionState,
   type WatchCheckpoint,
 } from "@/domain/foundry/watch-integrity";
+import {
+  enterFullscreen,
+  exitNativeFullscreen,
+  currentFullscreenElement,
+  isNativeFullscreenActive,
+} from "@/lib/native/fullscreen";
 
 /**
  * Thin wrapper over the OFFICIAL YouTube IFrame Player API. Loads the API once,
@@ -143,6 +149,8 @@ export function YouTubePlayer({
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // In-app immersive fallback for platforms without element-fullscreen (iPhone/WKWebView).
+  const [immersive, setImmersive] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -214,7 +222,23 @@ export function YouTubePlayer({
         playerVars: foundryPlayerVars(window.location.origin),
         events: {
           onReady: () => {
-            if (cancelled || !enableResume) return;
+            if (cancelled) return;
+            // Ensure the generated iframe permits fullscreen (the YT native control
+            // + any element-fullscreen path depend on this). Idempotent.
+            try {
+              const iframe: HTMLIFrameElement | undefined = playerRef.current?.getIframe?.();
+              if (iframe) {
+                iframe.setAttribute("allowfullscreen", "");
+                iframe.setAttribute("webkitallowfullscreen", "");
+                const allow = iframe.getAttribute("allow") ?? "";
+                if (!/\bfullscreen\b/.test(allow)) {
+                  iframe.setAttribute("allow", allow ? `${allow}; fullscreen` : "fullscreen");
+                }
+              }
+            } catch {
+              /* ignore */
+            }
+            if (!enableResume) return;
             const resumeAt = readResumePosition(videoId);
             const p = playerRef.current;
             if (resumeAt == null || !p) return;
@@ -272,38 +296,80 @@ export function YouTubePlayer({
     };
   }, [videoId, enableResume]);
 
-  // Track fullscreen state so the button label/behaviour stays in sync.
+  // Track NATIVE fullscreen state (standard + webkit) so the control stays in sync
+  // and an OS-level exit (swipe/back) restores our layout.
   useEffect(() => {
-    const onFsChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    const onFsChange = () => setIsFullscreen(isNativeFullscreenActive());
     document.addEventListener("fullscreenchange", onFsChange);
-    return () => document.removeEventListener("fullscreenchange", onFsChange);
+    document.addEventListener("webkitfullscreenchange", onFsChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFsChange);
+      document.removeEventListener("webkitfullscreenchange", onFsChange);
+    };
   }, []);
+
+  // While in the in-app immersive fallback, lock body scroll (minimal + reversible).
+  useEffect(() => {
+    if (!immersive) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [immersive]);
+
+  // Filling the screen = native fullscreen OR the in-app immersive fallback.
+  const filling = isFullscreen || immersive;
 
   const toggleFullscreen = () => {
     const el = containerRef.current;
     if (!el) return;
-    try {
-      if (document.fullscreenElement) {
-        void document.exitFullscreen?.();
-      } else if (el.requestFullscreen) {
-        void el.requestFullscreen().catch(() => {});
-      }
-    } catch {
-      /* unsupported (e.g. iOS Safari) — the native YT fullscreen control remains */
+    // Exit path.
+    if (isNativeFullscreenActive()) {
+      exitNativeFullscreen();
+      return;
     }
+    if (immersive) {
+      setImmersive(false);
+      return;
+    }
+    // Enter path — initiated synchronously (gesture preserved). Native when the
+    // platform supports it; otherwise the in-app immersive fallback activates.
+    void enterFullscreen(el, () => setImmersive(true));
   };
 
   return (
-    <div ref={containerRef} className="relative w-full overflow-hidden rounded-xl bg-black" style={{ aspectRatio: "16 / 9" }}>
+    <div
+      ref={containerRef}
+      className={
+        "overflow-hidden bg-black " +
+        (filling
+          ? "fixed inset-0 z-[60] flex items-center justify-center"
+          : "relative w-full rounded-xl")
+      }
+      style={
+        filling
+          ? { width: "100vw", height: "100dvh" }
+          : { aspectRatio: "16 / 9" }
+      }
+      data-immersive={immersive ? "true" : undefined}
+    >
+      {/* The player mount fills its box; YouTube letterboxes the video internally,
+          so a portrait viewport still shows the video correctly. Never remounted
+          on a fullscreen transition — playback is preserved. */}
       <div ref={mountRef} className="absolute inset-0 h-full w-full" />
       <button
         type="button"
         onClick={toggleFullscreen}
-        aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-        className="absolute right-2 top-2 z-10 rounded-lg bg-black/45 px-2.5 py-1.5 text-white/90 backdrop-blur-sm transition-opacity hover:bg-black/60"
+        aria-label={filling ? "Exit fullscreen" : "Enter fullscreen"}
+        className="absolute z-[61] rounded-lg bg-black/45 px-2.5 py-1.5 text-white/90 backdrop-blur-sm transition-opacity hover:bg-black/60"
+        style={{
+          top: filling ? "max(0.75rem, env(safe-area-inset-top))" : "0.5rem",
+          right: filling ? "max(0.75rem, env(safe-area-inset-right))" : "0.5rem",
+        }}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-          {isFullscreen ? (
+          {filling ? (
             <path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5" strokeLinecap="round" strokeLinejoin="round" />
           ) : (
             <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" strokeLinecap="round" strokeLinejoin="round" />
