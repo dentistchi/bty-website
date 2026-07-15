@@ -42,6 +42,31 @@ describe("renderTemplateReflection (deterministic expression)", () => {
     const r = renderTemplateReflection(buildReflectionContext({ completionState: "pass", responseText: "watched a lot", locale: "en" }));
     expect(validateLivingReflection(r).ok).toBe(true);
   });
+
+  it("the no-response fallback passes the quality gate in both locales", () => {
+    for (const locale of ["en", "ko"] as const) {
+      const r = renderTemplateReflection(buildReflectionContext({ completionState: "incomplete", responseText: "", locale }));
+      expect(validateLivingReflection(r).ok).toBe(true);
+    }
+  });
+
+  it("the fallback never narrates watch behavior or speaks in third person", () => {
+    // Fallback must not depend on watch-state interpretation: identical output
+    // across states, and free of third-person / engagement / avoidance language.
+    for (const has of [true, false]) {
+      const text = (["pass", "review", "incomplete"] as const)
+        .map((completionState) =>
+          Object.values(
+            renderTemplateReflection(
+              buildReflectionContext({ completionState, responseText: has ? "my note" : "", locale: "en" }),
+            ),
+          ).join(" "),
+        );
+      // Watch-state does not change the fallback wording.
+      expect(new Set(text).size).toBe(1);
+      expect(text[0].toLowerCase()).not.toMatch(/participant|engag|avoid|skip|conscious/);
+    }
+  });
 });
 
 describe("anti-summary reflection prompts", () => {

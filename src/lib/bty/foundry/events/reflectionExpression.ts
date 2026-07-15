@@ -16,86 +16,63 @@ import {
   type ReflectionLocale,
   normalizeReflectionLocale,
 } from "@/domain/foundry/living-reflection";
-import type { CompletionState } from "@/domain/foundry/watch-integrity";
 
 // ---------------------------------------------------------------------------
-// Deterministic template renderer — the always-available fallback expression.
-// Same MEANING as the LLM path; only the wording is fixed.
+// Deterministic template renderer — the always-available, always-clean fallback.
+//
+// This is the safety net when the LLM is unavailable OR its output fails the
+// quality gate. It must therefore satisfy the SAME contract the gate enforces:
+// second person only, grounded in the employee's own words + the host's frame,
+// never a verdict about viewing behavior, never praise/grade/coaching. It is
+// keyed on whether the employee left words — NOT on watch-state — because
+// watch-state must never become the subject of the mirror.
 // ---------------------------------------------------------------------------
 
-type StateCopy = {
-  emerged: (excerpt: string, hasResponse: boolean) => string;
+type FallbackCopy = {
+  emerged: (excerpt: string) => string;
   stretched: string;
   sentence: string;
   invitation: string;
 };
 
-const TEMPLATES: Record<ReflectionLocale, Record<CompletionState, StateCopy>> = {
+type LocaleFallback = { withResponse: FallbackCopy; withoutResponse: FallbackCopy };
+
+const TEMPLATES: Record<ReflectionLocale, LocaleFallback> = {
   en: {
-    pass: {
-      emerged: (ex, has) =>
-        has
-          ? `You stayed with the whole of it, and what surfaced for you was clear: “${ex}”.`
-          : `You stayed with the whole of it, present from beginning to end.`,
-      stretched: `Today you didn't look away when it would have been easier to. That is its own kind of practice.`,
+    withResponse: {
+      emerged: (ex) => `What comes through most clearly in your words is this: “${ex}”.`,
+      stretched: `You put language to something that isn't simple to hold in a single line.`,
+      sentence: `What you notice is where your leadership begins.`,
+      invitation: `Let this stay with you as you carry it toward what the question asked of you.`,
+    },
+    withoutResponse: {
+      emerged: () => `You showed up for this, and that presence is its own kind of answer.`,
+      stretched: `Some reflections take shape quietly first, before there are words for them.`,
       sentence: `Presence is the first act of leadership.`,
-      invitation: `Tomorrow, bring this same attention to one conversation you'd normally rush.`,
-    },
-    review: {
-      emerged: (ex, has) =>
-        has
-          ? `You moved through it in your own way, returning to what mattered: “${ex}”.`
-          : `You moved through it in your own way, circling back to the parts that held you.`,
-      stretched: `You let yourself skip ahead and come back — following your own attention rather than the timeline.`,
-      sentence: `What you return to is what you're really learning.`,
-      invitation: `Tomorrow, revisit the one moment here you skipped past — it was asking for you.`,
-    },
-    incomplete: {
-      emerged: (ex, has) =>
-        has
-          ? `Even a first pass left something with you: “${ex}”.`
-          : `You began here, and beginnings count.`,
-      stretched: `You made contact with the material — the door is open, not closed.`,
-      sentence: `Every return is a new beginning.`,
-      invitation: `Tomorrow, give this the quiet ten minutes it deserves.`,
+      invitation: `When the words come, let them meet what the question asked of you.`,
     },
   },
   ko: {
-    pass: {
-      emerged: (ex, has) =>
-        has
-          ? `처음부터 끝까지 함께 머물렀고, 당신에게 또렷하게 떠오른 것은 이것이었습니다: “${ex}”.`
-          : `처음부터 끝까지, 온전히 함께 머물렀습니다.`,
-      stretched: `오늘 당신은 눈을 돌리는 게 더 쉬웠을 순간에도 그러지 않았습니다. 그것 자체가 하나의 훈련입니다.`,
-      sentence: `머무름은 리더십의 첫 번째 행동입니다.`,
-      invitation: `내일, 평소라면 서둘렀을 대화 하나에 오늘의 이 집중을 가져가 보세요.`,
+    withResponse: {
+      emerged: (ex) => `당신의 말에서 가장 또렷하게 다가오는 것은 이것입니다: “${ex}”.`,
+      stretched: `당신은 한 줄로 담기 어려운 무언가에 언어를 입혔습니다.`,
+      sentence: `당신이 알아차리는 그곳에서 당신의 리더십이 시작됩니다.`,
+      invitation: `이것을 지닌 채, 그 질문이 당신에게 물은 것을 향해 천천히 나아가 보세요.`,
     },
-    review: {
-      emerged: (ex, has) =>
-        has
-          ? `당신만의 방식으로 지나가며, 중요한 곳으로 다시 돌아왔습니다: “${ex}”.`
-          : `당신만의 방식으로 지나가며, 마음을 붙든 부분으로 다시 돌아왔습니다.`,
-      stretched: `타임라인이 아니라 당신의 주의를 따라, 건너뛰고 다시 돌아오기를 스스로 허락했습니다.`,
-      sentence: `당신이 다시 돌아가는 곳이, 당신이 진짜 배우는 것입니다.`,
-      invitation: `내일, 여기서 건너뛴 그 한 순간을 다시 보세요. 그 순간이 당신을 부르고 있었습니다.`,
-    },
-    incomplete: {
-      emerged: (ex, has) =>
-        has
-          ? `첫걸음만으로도 당신에게 무언가가 남았습니다: “${ex}”.`
-          : `당신은 여기서 시작했고, 시작은 그 자체로 의미가 있습니다.`,
-      stretched: `당신은 이 내용과 접촉했습니다 — 문은 닫힌 게 아니라 열려 있습니다.`,
-      sentence: `모든 돌아옴은 새로운 시작입니다.`,
-      invitation: `내일, 이 영상에 조용한 10분을 온전히 내어주세요.`,
+    withoutResponse: {
+      emerged: () => `당신은 이 자리에 머물렀고, 그 머무름 자체가 하나의 응답입니다.`,
+      stretched: `어떤 성찰은 말이 되기 전에 먼저 조용히 자리를 잡습니다.`,
+      sentence: `현존은 리더십의 첫 번째 행동입니다.`,
+      invitation: `말이 찾아올 때, 그 말이 그 질문이 당신에게 물은 것과 만나게 해 보세요.`,
     },
   },
 };
 
-/** Render the four-section mirror deterministically from the context. */
+/** Render the four-section mirror deterministically. Always clean, always grounded. */
 export function renderTemplateReflection(ctx: ReflectionContext): LivingReflection {
-  const copy = TEMPLATES[ctx.locale][ctx.completionState];
+  const copy = ctx.hasResponse ? TEMPLATES[ctx.locale].withResponse : TEMPLATES[ctx.locale].withoutResponse;
   return {
-    whatEmerged: copy.emerged(ctx.responseExcerpt, ctx.hasResponse),
+    whatEmerged: copy.emerged(ctx.responseExcerpt),
     whereYouStretched: copy.stretched,
     livingSentence: copy.sentence,
     nextInvitation: copy.invitation,

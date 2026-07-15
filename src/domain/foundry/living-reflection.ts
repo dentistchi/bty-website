@@ -113,6 +113,17 @@ export type ReflectionValidation =
   | { ok: true; value: LivingReflection }
   | { ok: false; reason: string };
 
+/** Optional grounding context so cross-section rules (question repetition) can run. */
+export type ReflectionValidationContext = {
+  questionExcerpt?: string;
+  responseExcerpt?: string;
+};
+
+/** A living sentence / quoted line shorter than this many words is a bare fragment. */
+const MIN_SENTENCE_WORDS = 4;
+/** Two sections sharing more than this fraction of significant words are duplicates. */
+const MAX_SECTION_SIMILARITY = 0.6;
+
 /**
  * Raw watch metrics MUST NEVER reach the user, and a reflection must never turn
  * into a score/grade/homework. These patterns reject an expression that leaks
@@ -132,12 +143,83 @@ const FORBIDDEN_PATTERNS: RegExp[] = [
 ];
 
 /**
- * Validate a reflection against the four rules:
- *  - exactly the four string sections, each non-empty and within the cap,
- *  - no leaked raw metrics, no score/grade/homework framing.
- * On any failure the caller falls back to the deterministic template.
+ * Quality guard (V1). A Living Reflection is a mirror held up to the person — it
+ * speaks to "you", grounds only in their own words + the host's frame, and never
+ * turns watch-state into a verdict about who they are. These reject the exact
+ * failure modes seen live: third-person reporting ("the participant noted…"),
+ * watch-behavior interpreted as intent ("a conscious choice to limit engagement"),
+ * generic coaching, praise, character claims, and answer-grading.
  */
-export function validateLivingReflection(input: unknown): ReflectionValidation {
+const QUALITY_FORBIDDEN_PATTERNS: RegExp[] = [
+  // Third-person references to the employee — a mirror always speaks to "you".
+  /\bthe (participant|participants|user|users|employee|employees|learner|viewer)\b/i,
+  /\bparticipant(?:'s|s)?\b/i,
+  // Watch-behavior read as motivation / effort / attention / avoidance / engagement.
+  /\bengag(?:e|es|ed|ing|ement)\b/i,
+  /\bconscious(?:ly)?\b/i,
+  /\bchose to\b/i,
+  /\bchoice to\b/i,
+  /\bavoid(?:ed|ing|s)?\b/i,
+  /\bskip(?:ped|ping|s)?\b/i,
+  /\black(?:ed|ing|s)?\b/i,
+  /\beffort\b/i,
+  /\bpay(?:ing)? attention\b/i,
+  /\bnot (?:fully |really )?(?:engaged|present|watching|paying attention)\b/i,
+  /\bwatched? (?:less|more|little|enough)\b/i,
+  // Personality / character claims.
+  /\byour personality\b/i,
+  /\bthis shows (?:that )?you\b/i,
+  /\byou are (?:a|an|the)\b/i,
+  /\byou tend to\b/i,
+  // Generic praise.
+  /\b(?:great job|well done|good job|good work|excellent|amazing|fantastic|impressive|wonderful|brilliant)\b/i,
+  /\bstrong leader\b/i,
+  // "Correct answer" framing.
+  /\b(?:correct|right|wrong|incorrect) answer\b/i,
+  /\byou(?:'| a)?re (?:correct|right|wrong|incorrect)\b/i,
+  // Generic coaching / commands that would fit anyone.
+  /\bconsider how\b/i,
+  /\bthink about how\b/i,
+  /\byou should\b/i,
+  /\bmake sure\b/i,
+  /\bclear communication\b/i,
+];
+
+function normalizeForMatch(s: string): string {
+  return s.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function wordCount(s: string): number {
+  return s.split(/\s+/).filter(Boolean).length;
+}
+
+/** Significant words (length ≥ 4) — the basis for near-duplicate detection. */
+function significantTokens(s: string): Set<string> {
+  return new Set(normalizeForMatch(s).split(/[^a-z0-9]+/i).filter((w) => w.length >= 4));
+}
+
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0;
+  let inter = 0;
+  for (const w of a) if (b.has(w)) inter++;
+  return inter / (a.size + b.size - inter);
+}
+
+/**
+ * Validate a reflection against the mirror contract:
+ *  - exactly the four string sections, each non-empty and within the cap,
+ *  - no leaked raw metrics, no score/grade/homework framing,
+ *  - no third-person reporting, watch-behavior judgment, praise, character claims,
+ *    answer-grading, or generic coaching (the live-failure quality guard),
+ *  - the living sentence is a real line, not a bare 1–3 word fragment,
+ *  - the four sections do not restate one idea, and the host question is not
+ *    repeated verbatim across sections.
+ * On ANY failure the caller falls back to the deterministic template.
+ */
+export function validateLivingReflection(
+  input: unknown,
+  ctx?: ReflectionValidationContext,
+): ReflectionValidation {
   if (!input || typeof input !== "object") return { ok: false, reason: "not_object" };
   const obj = input as Record<string, unknown>;
 
@@ -151,7 +233,36 @@ export function validateLivingReflection(input: unknown): ReflectionValidation {
     for (const pattern of FORBIDDEN_PATTERNS) {
       if (pattern.test(trimmed)) return { ok: false, reason: `forbidden_${key}` };
     }
+    for (const pattern of QUALITY_FORBIDDEN_PATTERNS) {
+      if (pattern.test(trimmed)) return { ok: false, reason: `quality_${key}` };
+    }
     out[key] = trimmed;
   }
+
+  // The living sentence / quoted line must be a real line, never a bare fragment.
+  if (wordCount(out.livingSentence) < MIN_SENTENCE_WORDS) {
+    return { ok: false, reason: "quote_fragment" };
+  }
+
+  // The four sections must each do their own job — reject near-duplicates.
+  const tokenSets = REFLECTION_SECTION_KEYS.map((k) => significantTokens(out[k]));
+  for (let i = 0; i < tokenSets.length; i++) {
+    for (let j = i + 1; j < tokenSets.length; j++) {
+      if (jaccard(tokenSets[i], tokenSets[j]) > MAX_SECTION_SIMILARITY) {
+        return { ok: false, reason: "sections_repeat" };
+      }
+    }
+  }
+
+  // The host question may frame one section, but must not be repeated verbatim.
+  const q = ctx?.questionExcerpt ? normalizeForMatch(ctx.questionExcerpt).replace(/[?.!]+$/, "").trim() : "";
+  if (q.length >= 12) {
+    let hits = 0;
+    for (const key of REFLECTION_SECTION_KEYS) {
+      if (normalizeForMatch(out[key]).includes(q)) hits++;
+    }
+    if (hits >= 2) return { ok: false, reason: "question_repeated" };
+  }
+
   return { ok: true, value: out };
 }

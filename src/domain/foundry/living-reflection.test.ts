@@ -120,6 +120,98 @@ describe("validateLivingReflection (the gate)", () => {
   });
 });
 
+describe("validateLivingReflection — quality guard (V1, live-failure regression)", () => {
+  it("rejects third-person reporting ('the participant')", () => {
+    expect(validateLivingReflection({ ...VALID, whatEmerged: "The participant noted a shift." }).ok).toBe(false);
+    expect(validateLivingReflection({ ...VALID, whatEmerged: "Participant's response was clear." }).ok).toBe(false);
+  });
+
+  it("rejects other third-person employee references", () => {
+    expect(validateLivingReflection({ ...VALID, whatEmerged: "The employee described a tension." }).ok).toBe(false);
+    expect(validateLivingReflection({ ...VALID, whereYouStretched: "The user hesitated here." }).ok).toBe(false);
+  });
+
+  it("rejects watch-behavior read as intention ('conscious choice to limit engagement')", () => {
+    expect(
+      validateLivingReflection({
+        ...VALID,
+        whatEmerged: "Today involved a conscious choice to limit engagement with the video.",
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("rejects inferred disengagement / attention / avoidance from watch data", () => {
+    expect(validateLivingReflection({ ...VALID, whereYouStretched: "You were not fully engaged." }).ok).toBe(false);
+    expect(validateLivingReflection({ ...VALID, whereYouStretched: "You avoided parts of the video." }).ok).toBe(false);
+    expect(validateLivingReflection({ ...VALID, whereYouStretched: "You skipped ahead often." }).ok).toBe(false);
+    expect(validateLivingReflection({ ...VALID, whereYouStretched: "You lacked attention here." }).ok).toBe(false);
+    expect(validateLivingReflection({ ...VALID, whereYouStretched: "You watched less than before." }).ok).toBe(false);
+  });
+
+  it("rejects generic praise", () => {
+    expect(validateLivingReflection({ ...VALID, whatEmerged: "Great job on this one." }).ok).toBe(false);
+    expect(validateLivingReflection({ ...VALID, whatEmerged: "This shows you are a strong leader." }).ok).toBe(false);
+  });
+
+  it("rejects 'correct answer' framing and character claims", () => {
+    expect(validateLivingReflection({ ...VALID, nextInvitation: "The correct answer is empathy." }).ok).toBe(false);
+    expect(validateLivingReflection({ ...VALID, whatEmerged: "This shows that you avoid conflict." }).ok).toBe(false);
+    expect(validateLivingReflection({ ...VALID, whatEmerged: "Based on your personality, you lead well." }).ok).toBe(false);
+  });
+
+  it("rejects generic coaching that would fit anyone", () => {
+    expect(
+      validateLivingReflection({ ...VALID, nextInvitation: "Consider how clear communication could help your team." }).ok,
+    ).toBe(false);
+    expect(validateLivingReflection({ ...VALID, nextInvitation: "You should think about how to improve." }).ok).toBe(false);
+  });
+
+  it("rejects a meaningless quotation fragment as the living sentence", () => {
+    expect(validateLivingReflection({ ...VALID, livingSentence: "Less observation." }).ok).toBe(false);
+    expect(validateLivingReflection({ ...VALID, livingSentence: "More clarity." }).ok).toBe(false);
+  });
+
+  it("rejects four sections that restate one idea", () => {
+    const same = "You keep returning to the same steady question.";
+    expect(
+      validateLivingReflection({
+        whatEmerged: same,
+        whereYouStretched: same,
+        livingSentence: same,
+        nextInvitation: same,
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("rejects the host question repeated verbatim across sections", () => {
+    const q = "what will you change tomorrow";
+    const res = validateLivingReflection(
+      {
+        whatEmerged: "What will you change tomorrow, you asked yourself honestly.",
+        whereYouStretched: "There is a real pull between comfort and honesty for you.",
+        livingSentence: "Honesty asks more of you than comfort ever will.",
+        nextInvitation: "What will you change tomorrow is worth carrying into Monday.",
+      },
+      { questionExcerpt: q },
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.reason).toBe("question_repeated");
+  });
+
+  it("accepts meaningful second-person grounding with the question framing ONE section", () => {
+    const res = validateLivingReflection(
+      {
+        whatEmerged: "You keep pointing at the silence you have been keeping with your team.",
+        whereYouStretched: "There is a pull between protecting calm and naming what is true.",
+        livingSentence: "The unsaid thing shapes the room more than the said one.",
+        nextInvitation: "What would you change tomorrow if that silence were named out loud.",
+      },
+      { questionExcerpt: "what would you change tomorrow" },
+    );
+    expect(res.ok).toBe(true);
+  });
+});
+
 describe("version", () => {
   it("is v1", () => {
     expect(REFLECTION_VERSION).toBe("v1");

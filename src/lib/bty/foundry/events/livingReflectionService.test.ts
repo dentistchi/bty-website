@@ -68,18 +68,28 @@ function makeAdmin(): SupabaseClient {
         : { data: row },
     update(patch: Record<string, unknown>) {
       lastUpdate = patch;
-      // Simulate the conditional `.is('reflection_generated_at', null)` claim.
-      return {
+      const chain = {
         eq() {
-          return this;
+          return chain;
         },
+        // Guarded first-generation claim: only writes when the slot is still empty.
         is: async () => {
           if (row.reflection_generated_at == null) {
             row = { ...row, ...(patch as Partial<ProgressRow>) };
           }
           return { error: null };
         },
+        // Awaiting the chain directly = unconditional overwrite (self-heal path).
+        then(resolve: (v: { error: null }) => void, reject: (e: unknown) => void) {
+          return Promise.resolve()
+            .then(() => {
+              row = { ...row, ...(patch as Partial<ProgressRow>) };
+              return { error: null as null };
+            })
+            .then(resolve, reject);
+        },
       };
+      return chain;
     },
   };
   return api as unknown as SupabaseClient;
@@ -91,6 +101,15 @@ const VALID_JSON = JSON.stringify({
   livingSentence: "Presence is the first act of leadership.",
   nextInvitation: "Tomorrow, slow one conversation down.",
 });
+
+// A valid, distinct, gate-passing stored reflection (four sections that each do
+// their own job — used to exercise the idempotent restore path).
+const VALID_STORED = {
+  whatEmerged: "You keep returning to the cost of staying silent.",
+  whereYouStretched: "There is a pull between protecting calm and naming what is true.",
+  livingSentence: "Naming the hard thing is its own quiet courage.",
+  nextInvitation: "Carry this toward the next moment that asks for your honesty.",
+};
 
 beforeEach(() => {
   resolveState.resolvable = true;
@@ -216,7 +235,7 @@ describe("generateLivingReflection — host-question grounding", () => {
     const messages = llm.lastMessages as { role: string; content: string }[];
     const userMsg = messages.find((m) => m.role === "user")?.content ?? "";
     expect(userMsg).toContain("What will you protect and what will you change?");
-    expect(userMsg).toContain("the host");
+    expect(userMsg).toContain("host's question");
   });
 
   it("omits question evidence when the event has no completion prompt", async () => {
@@ -237,12 +256,7 @@ describe("generateLivingReflection — host-question grounding", () => {
     contentPrompt = "Should never be requested on restore.";
     row.reflection_generated_at = "2026-07-14T11:00:00Z";
     row.completion_state = "pass";
-    row.reflection = {
-      whatEmerged: "Stored A.",
-      whereYouStretched: "Stored B.",
-      livingSentence: "Stored C.",
-      nextInvitation: "Stored D.",
-    };
+    row.reflection = { ...VALID_STORED };
     const r = await generateLivingReflection(makeAdmin(), "tok", "sess", "pass", "en");
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.generated).toBe(false);
@@ -250,21 +264,45 @@ describe("generateLivingReflection — host-question grounding", () => {
   });
 });
 
+describe("generateLivingReflection — quality self-heal", () => {
+  it("regenerates AND overwrites a stored reflection that fails the quality gate", async () => {
+    // A legacy row persisted BEFORE the quality guard: third-person + fragment.
+    row.reflection_generated_at = "2026-07-14T11:00:00Z";
+    row.completion_state = "pass";
+    row.reflection = {
+      whatEmerged: "The participant noted a conscious choice to limit engagement.",
+      whereYouStretched: "The participant was not fully engaged.",
+      livingSentence: "Less observation.",
+      nextInvitation: "Consider how clear communication could help your team.",
+    };
+    llm.available = false; // force the clean deterministic fallback
+    const admin = makeAdmin();
+    const r = await generateLivingReflection(admin, "tok", "sess", "pass", "en");
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.generated).toBe(true);
+      // The healed reflection is clean: no third-person, no fragment.
+      expect(r.reflection.whatEmerged).not.toMatch(/participant/i);
+      expect(r.reflection.livingSentence.split(/\s+/).length).toBeGreaterThanOrEqual(4);
+    }
+    // It was persisted (overwrite), so a second read returns it unchanged.
+    expect(lastUpdate).toBeTruthy();
+    const second = await generateLivingReflection(admin, "tok", "sess", "pass", "en");
+    expect(second.ok).toBe(true);
+    if (second.ok) expect(second.generated).toBe(false);
+  });
+});
+
 describe("generateLivingReflection — idempotency (user history)", () => {
   it("returns the stored reflection unchanged and does not regenerate", async () => {
     row.reflection_generated_at = "2026-07-14T11:00:00Z";
     row.completion_state = "pass";
-    row.reflection = {
-      whatEmerged: "Stored A.",
-      whereYouStretched: "Stored B.",
-      livingSentence: "Stored C.",
-      nextInvitation: "Stored D.",
-    };
+    row.reflection = { ...VALID_STORED };
     const r = await generateLivingReflection(makeAdmin(), "tok", "sess", "incomplete", "en");
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.generated).toBe(false);
-      expect(r.reflection.whatEmerged).toBe("Stored A.");
+      expect(r.reflection.whatEmerged).toBe(VALID_STORED.whatEmerged);
       expect(r.completion_state).toBe("pass"); // stored state wins, not the new client value
     }
     expect(lastUpdate).toBeNull(); // no write on the idempotent path

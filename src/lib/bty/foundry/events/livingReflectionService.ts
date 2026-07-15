@@ -46,17 +46,21 @@ export type ReflectionResult =
   | { ok: true; reflection: LivingReflection; completion_state: CompletionState; generated: boolean }
   | { ok: false; reason: string };
 
-/** Human phrase for the LLM — the derived MEANING, never a metric. */
-function completionPhrase(state: CompletionState, locale: "en" | "ko"): string {
+/**
+ * The watch-state as a FACTUAL CONTENT BOUNDARY only — never a behavior verdict.
+ * It tells the model how much content exists to ground in; it is never to be
+ * mentioned or read as motivation, effort, attention, avoidance, or engagement.
+ */
+function completionBoundary(state: CompletionState, locale: "en" | "ko"): string {
   const en: Record<CompletionState, string> = {
-    pass: "The participant stayed with the whole video, present throughout.",
-    review: "The participant moved through the video in their own way, skipping and returning to parts.",
-    incomplete: "The participant made an early pass and did not stay with the whole video.",
+    pass: "All of the video is available to ground in.",
+    review: "All of the video is available to ground in.",
+    incomplete: "Only the earlier portion of the video is available to ground in.",
   };
   const ko: Record<CompletionState, string> = {
-    pass: "참가자는 영상 전체와 함께 머물렀고, 처음부터 끝까지 함께했습니다.",
-    review: "참가자는 자신만의 방식으로 영상을 지나가며, 일부를 건너뛰고 다시 돌아왔습니다.",
-    incomplete: "참가자는 초반만 보았고 영상 전체와 함께 머물지는 않았습니다.",
+    pass: "영상 전체를 근거로 삼을 수 있습니다.",
+    review: "영상 전체를 근거로 삼을 수 있습니다.",
+    incomplete: "영상의 앞부분만 근거로 삼을 수 있습니다.",
   };
   return (locale === "ko" ? ko : en)[state];
 }
@@ -64,27 +68,30 @@ function completionPhrase(state: CompletionState, locale: "en" | "ko"): string {
 function buildLlmMessages(ctx: ReflectionContext): LlmChatMessage[] {
   const isKo = ctx.locale === "ko";
   const system = [
-    "You are the voice of a BTY Living Reflection — a mirror, never a judge.",
-    "You do NOT decide what the participant means or felt. You only re-express, in warm natural language, the meaning you are given.",
-    "Rules you must obey:",
-    "- Ground everything ONLY in the evidence provided. Invent no facts, infer no hidden traits, draw no behavioral conclusions beyond the evidence.",
-    "- The host's question is context for what mattered here — let the reflection connect the participant's own words to what was asked. Do NOT answer, solve, or grade the question, and do NOT quote or restate it in more than one section.",
-    "- Never mention numbers, percentages, metrics, watching statistics, seeking, or coverage. Never grade, score, or assign homework.",
-    "- This is reflection, not evaluation. Be kind, specific, and brief.",
-    `- Write in ${isKo ? "Korean" : "English"}.`,
-    "Return ONLY a compact JSON object with EXACTLY these four string keys:",
-    '"whatEmerged" (the thinking that showed up), "whereYouStretched" (how today differed), "livingSentence" (one memorable BTY sentence), "nextInvitation" (one gentle invitation for tomorrow — not homework).',
+    "You are the voice of a BTY Living Reflection — a mirror held up to the person, never a judge, grader, or coach.",
+    "Speak to them directly in second person (\"you\", \"your response\"). NEVER refer to them in the third person — never \"the participant\", \"the user\", or \"the employee\".",
+    "EVIDENCE PRIORITY: the employee's own written response is the PRIMARY evidence. The host's question supplies the intended frame. Watch-state data ONLY bounds what content may be referenced — it must NEVER be read as motivation, effort, attention, avoidance, engagement, or character.",
+    "Ground everything in that evidence. Invent no people, teams, deadlines, circumstances, or consequences that are not in the response.",
+    "Do not praise, grade, diagnose, label personality, or say an answer is correct or incorrect. Do not give generic advice that would fit anyone.",
+    "Never mention numbers, percentages, watching statistics, or the act of watching itself unless the employee explicitly wrote about it.",
+    `Write in ${isKo ? "Korean" : "English"}.`,
+    "Return ONLY a compact JSON object with EXACTLY these four string keys, each doing a DISTINCT job:",
+    '"whatEmerged": mirror the single clearest idea actually present in their response, in second person. Not their submission and not their viewing behavior.',
+    '"whereYouStretched": name one tension, tradeoff, or hesitation visible in their response. If none is genuinely there, offer a restrained line rather than inventing one. No praise, no accusation.',
+    '"livingSentence": either one exact, meaningful, COMPLETE phrase quoted from their response, OR one short grounded sentence. Never a bare two- or three-word fragment.',
+    '"nextInvitation": one grounded perspective that connects their response to what the host asked. Offer it — do not command it. No generic communication or leadership advice.',
+    "Let the host's question shape at least one section, but never repeat its wording in more than one section.",
     "No markdown, no code fences, no extra keys, no commentary.",
   ].join("\n");
 
   const evidenceLines = [
-    `Watching (meaning, not metrics): ${completionPhrase(ctx.completionState, ctx.locale)}`,
-    ctx.hasQuestion
-      ? `What the host invited them to reflect on: "${ctx.questionExcerpt}"`
-      : "The host left no specific reflection question.",
     ctx.hasResponse
-      ? `The participant's own words: "${ctx.responseExcerpt}"`
-      : "The participant did not leave written words this time.",
+      ? `The employee's own words (PRIMARY evidence): "${ctx.responseExcerpt}"`
+      : "The employee did not leave written words this time.",
+    ctx.hasQuestion
+      ? `The host's question (the intended frame): "${ctx.questionExcerpt}"`
+      : "The host left no specific reflection question.",
+    `Content boundary (do NOT mention or interpret): ${completionBoundary(ctx.completionState, ctx.locale)}`,
   ];
 
   return [
@@ -125,7 +132,10 @@ async function expressReflectionWithLlm(ctx: ReflectionContext): Promise<LivingR
     } catch {
       return null;
     }
-    const validated = validateLivingReflection(parsed);
+    const validated = validateLivingReflection(parsed, {
+      questionExcerpt: ctx.questionExcerpt,
+      responseExcerpt: ctx.responseExcerpt,
+    });
     return validated.ok ? validated.value : null;
   } catch {
     return null;
@@ -189,13 +199,15 @@ export async function generateLivingReflection(
   if (!row || !row.completed_at) return { ok: false, reason: "not_completed" };
 
   // Already produced → return the stored history unchanged (idempotent).
-  if (row.reflection_generated_at && row.reflection) {
+  const alreadyGenerated = Boolean(row.reflection_generated_at && row.reflection);
+  if (alreadyGenerated) {
     const stored = validateLivingReflection(row.reflection);
     if (stored.ok) {
       const state = parseCompletionState(row.completion_state) ?? "pass";
       return { ok: true, reflection: stored.value, completion_state: state, generated: false };
     }
-    // Stored value somehow invalid → fall through and regenerate.
+    // Stored value fails the (possibly stricter) quality gate → self-heal below:
+    // regenerate AND overwrite the persisted value so the next read is stable.
   }
 
   const completionState: CompletionState =
@@ -217,18 +229,23 @@ export async function generateLivingReflection(
   const expressed = await expressReflectionWithLlm(ctx);
   const reflection = expressed ?? renderTemplateReflection(ctx);
 
-  // Persist MEANING only (never telemetry). Only claim the slot if still empty.
-  await admin
-    .from("foundry_event_training_progress")
-    .update({
-      completion_state: completionState,
-      reflection,
-      reflection_version: REFLECTION_VERSION,
-      reflection_generated_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", row.id)
-    .is("reflection_generated_at", null);
+  // Persist MEANING only (never telemetry).
+  //  - First generation: claim the slot only if still empty (exactly-once guard).
+  //  - Self-heal (stored value failed the quality gate): overwrite by id so the
+  //    corrected reflection is stable on the next read.
+  const patch = {
+    completion_state: completionState,
+    reflection,
+    reflection_version: REFLECTION_VERSION,
+    reflection_generated_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  const write = admin.from("foundry_event_training_progress").update(patch).eq("id", row.id);
+  if (alreadyGenerated) {
+    await write; // overwrite the invalid stored value
+  } else {
+    await write.is("reflection_generated_at", null); // first-generation claim
+  }
 
   return { ok: true, reflection, completion_state: completionState, generated: true };
 }
