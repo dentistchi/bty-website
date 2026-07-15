@@ -8,12 +8,12 @@
 // local `next dev`) search still works, uncached.
 
 import {
-  biasKaraokeQuery,
   projectYoutubeItem,
   youtubeSearchUrl,
   SEARCH_MAX_RESULTS,
   type YoutubeSearchItem,
 } from '@/domain/youtube-search';
+import { biasStyleQuery, normalizeStyle, type PerformanceStyle } from '@/domain/performance-style';
 import { optionalEnv } from './env.server';
 
 export const SEARCH_CACHE_TTL_SECONDS = 3600; // 1 hour
@@ -86,11 +86,18 @@ async function resolveSearchKv(): Promise<SearchKv | null> {
 export async function searchYoutubeWithCache(
   query: string,
   kv: SearchKv | null,
-  opts?: { bias?: boolean },
+  opts?: { bias?: boolean; style?: PerformanceStyle },
 ): Promise<YoutubeSearchResponse> {
-  // Default ON: bias toward karaoke/노래방. "Original" mode (bias:false) searches
-  // the raw query so a DJ/guest can find the official version on purpose.
-  const biasedQuery = opts?.bias === false ? query : biasKaraokeQuery(query);
+  // Performance Style drives the query bias. `style` is the canonical input
+  // (mr = default backing track, karaoke = 노래방/lyrics, original = raw). The
+  // legacy `bias` boolean is still honoured for older callers: bias:false ==
+  // original, bias:true/absent == karaoke.
+  const style: PerformanceStyle = opts?.style
+    ? normalizeStyle(opts.style)
+    : opts?.bias === false
+      ? 'original'
+      : 'karaoke';
+  const biasedQuery = biasStyleQuery(query, style);
   const fallbackUrl = youtubeSearchUrl(biasedQuery);
   const base = { query, biasedQuery, fallbackUrl, items: [] as YoutubeSearchItem[] };
 
@@ -127,7 +134,7 @@ export async function searchYoutubeWithCache(
 /** Search YouTube, using the KV cache when the binding is present. */
 export async function searchYoutube(
   query: string,
-  opts?: { bias?: boolean },
+  opts?: { bias?: boolean; style?: PerformanceStyle },
 ): Promise<YoutubeSearchResponse> {
   return searchYoutubeWithCache(query, await resolveSearchKv(), opts);
 }

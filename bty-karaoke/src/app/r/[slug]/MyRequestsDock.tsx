@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { GuestQueueStatus } from '@/domain/queue';
+import type { DisplayState } from '@/domain/display';
 import { collapsedSummary, isTerminalState, cancelRowAction, type MyRequest } from '@/domain/guest-requests';
 import { displaySong } from '@/domain/song-title';
+import { safeYoutubeWatchUrl } from '@/domain/youtube';
 import SwipeableCard from './SwipeableCard';
 
 interface Props {
@@ -43,6 +45,12 @@ export default function MyRequestsDock({ slug, requests, onRemoved }: Props) {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Room-wide stage awareness (one /display poll): whether the stage is open and
+  // which request is canonical-first, so "Start My Song" appears ONLY when this
+  // guest is genuinely next AND nobody is singing. The server re-checks anyway.
+  const [stageOpen, setStageOpen] = useState<boolean | null>(null);
+  const [nextId, setNextId] = useState<string | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
   const prevCount = useRef(0);
   const terminalSeen = useRef<Set<string>>(new Set());
 
@@ -75,15 +83,33 @@ export default function MyRequestsDock({ slug, requests, onRemoved }: Props) {
     });
   }, [slug, requests]);
 
-  useEffect(() => {
+  // One room-wide read to learn if the stage is open and who is first in line.
+  const pollStage = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/display`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = (await res.json()) as DisplayState;
+      setStageOpen(data.playing == null);
+      setNextId(data.next?.id ?? null);
+    } catch {
+      /* transient — keep last known stage state */
+    }
+  }, [slug]);
+
+  const refreshAll = useCallback(() => {
     void poll();
+    void pollStage();
+  }, [poll, pollStage]);
+
+  useEffect(() => {
+    refreshAll();
     const t = window.setInterval(() => {
-      if (!document.hidden) void poll();
+      if (!document.hidden) refreshAll();
     }, POLL_MS);
     // Returning to the tab (app switch, YouTube handoff, screen unlock, bfcache)
     // refreshes #N immediately — the guest never has to reload to see a reorder.
     const onVisible = () => {
-      if (!document.hidden) void poll();
+      if (!document.hidden) refreshAll();
     };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('pageshow', onVisible);
@@ -92,7 +118,7 @@ export default function MyRequestsDock({ slug, requests, onRemoved }: Props) {
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('pageshow', onVisible);
     };
-  }, [poll]);
+  }, [refreshAll]);
 
   // A new request bumps the count + a brief edge pulse. It NEVER auto-opens.
   useEffect(() => {
@@ -158,7 +184,92 @@ export default function MyRequestsDock({ slug, requests, onRemoved }: Props) {
     }
   }
 
+  // Start MY song: promote my waiting request to the stage (only when I'm first
+  // and the stage is open — the server enforces this atomically). On success I
+  // hand THIS phone off to the YouTube app to cast to the TV; the iPad Display
+  // shows the same video. Idempotent under double-tap via the acting guard.
+  async function doStart(r: MyRequest) {
+    if (actingId) return;
+    if (!r.cancelToken) {
+      setError('이 신청은 이 기기에서 시작할 수 없어요.');
+      return;
+    }
+    setActingId(r.requestId);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/rooms/${encodeURIComponent(slug)}/requests/${encodeURIComponent(r.requestId)}/start`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          cache: 'no-store',
+          body: JSON.stringify({ token: r.cancelToken }),
+        },
+      );
+      if (res.ok) {
+        refreshAll();
+        // Hand off to YouTube on THIS phone to cast to the TV. Same-window
+        // navigation (no popup blocker; iPad Safari opens the YouTube app).
+        const url = safeYoutubeWatchUrl(r.videoId ?? null);
+        if (url) window.location.assign(url);
+        return;
+      }
+      if (res.status === 403) setError('이 기기에서는 이 곡을 시작할 수 없어요.');
+      else if (res.status === 409) setError('아직 차례가 아니거나 다른 곡이 재생 중이에요.');
+      else if (res.status === 404) setError('신청곡을 찾을 수 없어요.');
+      else setError('지금은 시작할 수 없어요.');
+      refreshAll();
+    } catch {
+      setError('네트워크 오류 — 다시 시도해 주세요.');
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  // Finish MY song: end the request I'm currently singing. Idempotent server-side.
+  async function doFinish(r: MyRequest) {
+    if (actingId) return;
+    if (!r.cancelToken) {
+      setError('이 신청은 이 기기에서 끝낼 수 없어요.');
+      return;
+    }
+    setActingId(r.requestId);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/rooms/${encodeURIComponent(slug)}/requests/${encodeURIComponent(r.requestId)}/finish`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          cache: 'no-store',
+          body: JSON.stringify({ token: r.cancelToken }),
+        },
+      );
+      if (res.ok) {
+        refreshAll();
+        return;
+      }
+      if (res.status === 403) setError('이 기기에서는 이 곡을 끝낼 수 없어요.');
+      else if (res.status === 409) setError('이 곡은 재생 중이 아니에요.');
+      else setError('지금은 끝낼 수 없어요.');
+      refreshAll();
+    } catch {
+      setError('네트워크 오류 — 다시 시도해 주세요.');
+    } finally {
+      setActingId(null);
+    }
+  }
+
   if (requests.length === 0) return null;
+
+  // Actionable self-service state, surfaced prominently (not hidden in the sheet).
+  const playingMine = requests.find((r) => statuses[r.requestId]?.state === 'now_playing');
+  const startableMine = requests.find(
+    (r) =>
+      statuses[r.requestId]?.state === 'up_next' &&
+      stageOpen === true &&
+      (nextId == null || r.requestId === nextId),
+  );
 
   const summary = collapsedSummary(
     requests.map((r) => {
@@ -169,8 +280,28 @@ export default function MyRequestsDock({ slug, requests, onRemoved }: Props) {
 
   return (
     <>
-      {/* Permanent compact pill */}
+      {/* Permanent compact pill — with a prominent self-service action when it's
+          this guest's turn (their song is on stage, or they can start it now). */}
       <div className="dock">
+        {playingMine ? (
+          <button
+            type="button"
+            className="dock-action finish"
+            onClick={() => doFinish(playingMine)}
+            disabled={actingId === playingMine.requestId}
+          >
+            {actingId === playingMine.requestId ? '끝내는 중…' : '✓ 내 노래 끝내기'}
+          </button>
+        ) : startableMine ? (
+          <button
+            type="button"
+            className="dock-action start"
+            onClick={() => doStart(startableMine)}
+            disabled={actingId === startableMine.requestId}
+          >
+            {actingId === startableMine.requestId ? '시작하는 중…' : '🎤 내 차례 시작하기'}
+          </button>
+        ) : null}
         <button
           type="button"
           className={`dock-pill${pulse ? ' pulse' : ''}`}

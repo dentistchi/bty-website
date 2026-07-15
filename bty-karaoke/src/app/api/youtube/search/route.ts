@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeSearchQuery } from '@/domain/youtube-search';
+import { normalizeStyle } from '@/domain/performance-style';
 import { SearchQuerySchema } from '@/lib/validation';
 import { searchYoutube } from '@/lib/youtube.server';
 
@@ -24,10 +25,15 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // `?original=1` searches the raw query (no karaoke bias) for the toggle's
-  // "Original" mode; default stays karaoke/노래방-biased.
+  // Performance Style drives the bias. New callers pass `?style=mr|karaoke|
+  // original` (MR is the default). The legacy `?original=1` flag still maps to
+  // the Original style for backward compatibility.
+  const styleParam = req.nextUrl.searchParams.get('style');
   const original = req.nextUrl.searchParams.get('original') === '1';
-  const result = await searchYoutube(parsed.data.q, { bias: !original });
+  const style = styleParam ? normalizeStyle(styleParam) : original ? 'original' : undefined;
+  const result = style
+    ? await searchYoutube(parsed.data.q, { style })
+    : await searchYoutube(parsed.data.q, { bias: true });
   // result never contains the API key.
   return NextResponse.json(result);
 }

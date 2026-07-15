@@ -2,11 +2,21 @@ import { describe, it, expect } from 'vitest';
 import { classifyVideo, badgeForKind, badgeForVideo } from './video-kind';
 
 describe('classifyVideo', () => {
-  it('detects karaoke / 노래방 / instrumental / MR', () => {
+  it('detects karaoke / 노래방', () => {
     expect(classifyVideo('Dancing Queen (Karaoke Version)')).toBe('karaoke');
     expect(classifyVideo('아이유 - 좋은날 노래방')).toBe('karaoke');
-    expect(classifyVideo('Bohemian Rhapsody Instrumental')).toBe('karaoke');
-    expect(classifyVideo('밤편지 MR')).toBe('karaoke');
+  });
+
+  it('detects MR / instrumental as its own family', () => {
+    expect(classifyVideo('Bohemian Rhapsody Instrumental')).toBe('mr');
+    expect(classifyVideo('밤편지 MR')).toBe('mr');
+    expect(classifyVideo('Someone Like You (Backing Track)')).toBe('mr');
+    expect(classifyVideo('좋은날 반주')).toBe('mr');
+  });
+
+  it('MR wins over karaoke when both terms appear', () => {
+    // A "karaoke MR" clip is the vocals-removed one — MR is the stronger signal.
+    expect(classifyVideo('좋은날 노래방 MR')).toBe('mr');
   });
 
   it('detects lyrics / 가사 / 자막 videos', () => {
@@ -36,6 +46,8 @@ describe('classifyVideo', () => {
 
 describe('badgeForKind / badgeForVideo', () => {
   it('gives a badge for confident kinds', () => {
+    expect(badgeForKind('mr')?.tone).toBe('mr');
+    expect(badgeForKind('mr')?.emoji).toBe('🎹');
     expect(badgeForKind('karaoke')?.tone).toBe('karaoke');
     expect(badgeForKind('lyrics')?.label).toBe('Lyrics');
     expect(badgeForKind('mv')?.emoji).toBe('🎬');

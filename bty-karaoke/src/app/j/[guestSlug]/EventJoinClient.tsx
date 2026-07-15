@@ -5,6 +5,7 @@ import { PRODUCT_NAME } from '@/lib/brand';
 import { guestNameKey, normalizeGuestName, isValidGuestName } from '@/domain/guest-identity';
 import type { GuestLivePresence, EventStatus } from '@/domain/live-presence';
 import RequestForm from '@/app/r/[slug]/RequestForm';
+import QueueBoard from '@/app/r/[slug]/QueueBoard';
 import LivePresenceCard from './LivePresenceCard';
 
 interface Props {
@@ -175,6 +176,7 @@ export default function EventJoinClient({
       </div>
       <LivePresenceCard presence={presence} />
       {ready && <RequestForm slug={roomSlug} roomOpen onSubmitted={() => void poll()} />}
+      {ready && <QueueBoard slug={roomSlug} />}
     </>
   );
 }

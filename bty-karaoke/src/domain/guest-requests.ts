@@ -11,6 +11,8 @@ export interface MyRequest {
   cancelToken: string | null;
   title: string;
   artist: string | null;
+  /** The selected YouTube video id — used to hand off to YouTube on Start. */
+  videoId?: string | null;
   submittedAt: number; // epoch ms
 }
 

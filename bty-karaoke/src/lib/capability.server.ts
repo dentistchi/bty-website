@@ -56,6 +56,19 @@ export async function signCancelCapability(requestId: string, nowMs = Date.now()
   return `${p}.${sig}`;
 }
 
+/**
+ * Alias: the same signed capability issued at submit ALSO proves ownership for
+ * self-service start / finish. Binding the request id + expiry is exactly the
+ * "this device submitted this request" proof those actions need — no new token,
+ * no DB owner column. Kept as distinct names so call sites read by intent.
+ */
+export const signOwnerCapability = signCancelCapability;
+export const verifyOwnerCapability = (
+  token: string | null | undefined,
+  requestId: string,
+  nowMs = Date.now(),
+) => verifyCancelCapability(token, requestId, nowMs);
+
 /** True iff `token` is a valid, unexpired capability for exactly `requestId`. */
 export async function verifyCancelCapability(
   token: string | null | undefined,

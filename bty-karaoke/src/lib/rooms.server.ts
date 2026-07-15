@@ -11,11 +11,15 @@ import {
   nextPosition,
   frontPosition,
   resolveGuestStatus,
+  canonicalRank,
   type DjAction,
   type GuestQueueStatus,
   type QueueOrderEntry,
   type RequestStatus,
 } from '@/domain/queue';
+import { classifyVideo } from '@/domain/video-kind';
+import { requestDisplayTitle } from '@/domain/request-view';
+import type { DisplayRequest, DisplayState } from '@/domain/display';
 
 export interface PublicRoom {
   id: string;
@@ -432,4 +436,127 @@ export async function reorderWaitingRequests(
     return { outcome: 'ok', requests };
   }
   return { outcome };
+}
+
+// ── Self-service (V2): guests start / finish their OWN song ─────────────────
+// Ownership is proven by the caller (a signed capability over the request id);
+// these helpers enforce the QUEUE rules (first-in-line, single stage) atomically.
+
+export type StartOutcome =
+  | 'ok'
+  | 'not_found'
+  | 'not_waiting'
+  | 'not_next'
+  | 'already_playing';
+
+export interface StartResult {
+  outcome: StartOutcome;
+  request?: KaraokeRequest;
+  status?: GuestQueueStatus;
+}
+
+/**
+ * Promote a guest's OWN waiting request to `playing` — but ONLY when it is the
+ * canonical first waiting song AND the stage is open. Delegates the whole check
+ * to the advisory-locked `start_karaoke_request` RPC so two simultaneous
+ * "Start My Song" taps resolve to exactly one winner (the partial unique index
+ * is the final backstop). Ownership is verified by the route before calling.
+ */
+export async function startOwnRequest(
+  roomId: string,
+  requestId: string,
+): Promise<StartResult> {
+  const { data, error } = await karaokeDb().rpc('start_karaoke_request', {
+    p_room_id: roomId,
+    p_request_id: requestId,
+  });
+  if (error) throw error;
+  const outcome = data as StartOutcome;
+  if (outcome !== 'ok') return { outcome };
+
+  const active = await listActiveRequests(roomId);
+  const request = active.find((r) => r.id === requestId);
+  const status = await getGuestQueueStatus(roomId, requestId);
+  return { outcome: 'ok', request: request ?? undefined, status: status ?? undefined };
+}
+
+export type FinishOutcome = 'ok' | 'already_done' | 'not_playing' | 'not_found';
+
+export interface FinishResult {
+  outcome: FinishOutcome;
+  from?: RequestStatus;
+}
+
+/**
+ * Finish a guest's OWN playing request: `playing → completed`. Atomic + status-
+ * guarded (only a row still `playing` flips), so a double-tap or two racing
+ * finishes settle idempotently — the first wins, the rest see `already_done`.
+ * Ownership is verified by the route before calling.
+ */
+export async function finishOwnRequest(
+  roomId: string,
+  requestId: string,
+): Promise<FinishResult> {
+  const db = karaokeDb();
+  const { data, error } = await db
+    .from('karaoke_requests')
+    .update({ status: 'completed', completed_at: new Date().toISOString() })
+    .eq('id', requestId)
+    .eq('room_id', roomId)
+    .eq('status', 'playing')
+    .select('id')
+    .maybeSingle();
+  if (error) throw error;
+  if (data) return { outcome: 'ok' };
+
+  const cur = await getRequestOrderFields(roomId, requestId);
+  if (!cur) return { outcome: 'not_found' };
+  // Already completed (this guest or a fallback finished it) → idempotent success.
+  if (cur.status === 'completed') return { outcome: 'already_done', from: cur.status };
+  return { outcome: 'not_playing', from: cur.status };
+}
+
+// ── Public display / full-queue read model ─────────────────────────────────
+// The single safe projection the iPad Display and the guest full-queue board
+// both render. NEVER exposes session_id, dj_secret, the room UUID, or any
+// credential — only what is already visible in the room (name, singer names,
+// public YouTube ids, queue order).
+
+function toDisplayRequest(r: KaraokeRequest): DisplayRequest {
+  return {
+    id: r.id,
+    guestName: r.guest_name,
+    title: requestDisplayTitle(r),
+    artist: r.youtube_channel_title,
+    videoId: r.youtube_video_id,
+    videoKind: classifyVideo(r.youtube_title ?? r.search_query ?? '', r.youtube_channel_title ?? ''),
+    thumbnailUrl: r.youtube_thumbnail_url,
+    status: r.status === 'playing' ? 'playing' : 'waiting',
+  };
+}
+
+/**
+ * Build the public display state for a room from its canonical active queue.
+ * `playing` is the song on stage (null when open); `waiting` is the ordered
+ * line; `next` is the first waiting song. Order matches the canonical resolver.
+ */
+export async function getDisplayState(room: PublicRoom): Promise<DisplayState> {
+  const active = await listActiveRequests(room.id);
+  const playingRow = active.find((r) => r.status === 'playing') ?? null;
+  const waitingRows = active
+    .filter((r) => r.status === 'waiting')
+    .sort((a, b) =>
+      canonicalRank(
+        { id: a.id, status: a.status, position: a.position, created_at: a.created_at },
+        { id: b.id, status: b.status, position: b.position, created_at: b.created_at },
+      ),
+    );
+  const waiting = waitingRows.map(toDisplayRequest);
+  return {
+    room: { name: room.display_name, slug: room.slug, open: room.status === 'open' },
+    playing: playingRow ? toDisplayRequest(playingRow) : null,
+    next: waiting[0] ?? null,
+    waiting,
+    waitingCount: waiting.length,
+  };
 }

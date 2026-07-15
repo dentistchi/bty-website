@@ -36,6 +36,30 @@ describe('searchYoutube — credential gate', () => {
   });
 });
 
+describe('searchYoutube — Performance Style bias', () => {
+  beforeEach(() => delete process.env.YOUTUBE_API_KEY); // gated: no network, biasedQuery only
+
+  it('MR style biases toward instrumental (non-Korean) / MR (Korean)', async () => {
+    vi.stubGlobal('fetch', vi.fn());
+    expect((await searchYoutube('Dancing Queen', { style: 'mr' })).biasedQuery).toBe(
+      'Dancing Queen instrumental',
+    );
+    expect((await searchYoutube('아이유 밤편지', { style: 'mr' })).biasedQuery).toBe('아이유 밤편지 MR');
+  });
+
+  it('Karaoke style biases toward 노래방 / karaoke', async () => {
+    vi.stubGlobal('fetch', vi.fn());
+    expect((await searchYoutube('밤편지', { style: 'karaoke' })).biasedQuery).toBe('밤편지 노래방');
+  });
+
+  it('Original style sends the raw query (no bias)', async () => {
+    vi.stubGlobal('fetch', vi.fn());
+    expect((await searchYoutube('Dancing Queen', { style: 'original' })).biasedQuery).toBe(
+      'Dancing Queen',
+    );
+  });
+});
+
 describe('searchYoutube — with key', () => {
   beforeEach(() => {
     process.env.YOUTUBE_API_KEY = 'test-key';

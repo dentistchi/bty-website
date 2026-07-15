@@ -3,6 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { YoutubeSearchItem } from '@/domain/youtube-search';
 import { rankResults } from '@/domain/youtube-rank';
+import {
+  type PerformanceStyle,
+  PERFORMANCE_STYLES,
+  DEFAULT_STYLE,
+  styleCopy,
+} from '@/domain/performance-style';
 import { guestNameKey, normalizeGuestName, isValidGuestName } from '@/domain/guest-identity';
 import {
   myRequestsKey,
@@ -33,7 +39,10 @@ export default function RequestForm({ slug, roomOpen, onSubmitted }: Props) {
   const [editingName, setEditingName] = useState(true);
 
   const [query, setQuery] = useState('');
-  const [searchMode, setSearchMode] = useState<'karaoke' | 'original'>('karaoke');
+  // Performance Style: MR is the default (Dr. Chi's preference — clean backing
+  // tracks). Karaoke biases toward on-screen-words videos; Original is the raw
+  // query. Changing style re-runs the search with the same query.
+  const [style, setStyle] = useState<PerformanceStyle>(DEFAULT_STYLE);
   const [results, setResults] = useState<YoutubeSearchItem[]>([]);
   const [resultQuery, setResultQuery] = useState('');
   const [showMore, setShowMore] = useState(false);
@@ -80,7 +89,7 @@ export default function RequestForm({ slug, roomOpen, onSubmitted }: Props) {
 
   const ranked = useMemo(() => rankResults(results, resultQuery), [results, resultQuery]);
 
-  async function runSearch(e: React.FormEvent | null, mode: 'karaoke' | 'original' = searchMode) {
+  async function runSearch(e: React.FormEvent | null, mode: PerformanceStyle = style) {
     e?.preventDefault();
     if (query.trim().length < 2) return;
     setError(null);
@@ -92,7 +101,7 @@ export default function RequestForm({ slug, roomOpen, onSubmitted }: Props) {
     setSearchNote(null);
     try {
       const res = await fetch(
-        `/api/youtube/search?q=${encodeURIComponent(query.trim())}${mode === 'original' ? '&original=1' : ''}`,
+        `/api/youtube/search?q=${encodeURIComponent(query.trim())}&style=${mode}`,
       );
       const data = await res.json();
       if (!res.ok) {
@@ -170,6 +179,7 @@ export default function RequestForm({ slug, roomOpen, onSubmitted }: Props) {
           cancelToken: data.cancelToken ?? null,
           title: req?.youtube_title ?? req?.search_query ?? displayTitle,
           artist: req?.youtube_channel_title ?? displayArtist,
+          videoId: req?.youtube_video_id ?? null,
           submittedAt: Date.now(),
         }),
       );
@@ -258,30 +268,23 @@ export default function RequestForm({ slug, roomOpen, onSubmitted }: Props) {
               {searchState === 'searching' ? '…' : '검색'}
             </button>
           </div>
-          <div className="search-modes" role="group" aria-label="검색 종류">
-            <button
-              type="button"
-              className={`seg${searchMode === 'karaoke' ? ' on' : ''}`}
-              aria-pressed={searchMode === 'karaoke'}
-              onClick={() => {
-                setSearchMode('karaoke');
-                if (query.trim().length >= 2) void runSearch(null, 'karaoke');
-              }}
-            >
-              🎤 노래방 / 가사
-            </button>
-            <button
-              type="button"
-              className={`seg${searchMode === 'original' ? ' on' : ''}`}
-              aria-pressed={searchMode === 'original'}
-              onClick={() => {
-                setSearchMode('original');
-                if (query.trim().length >= 2) void runSearch(null, 'original');
-              }}
-            >
-              원곡
-            </button>
+          <div className="search-modes" role="group" aria-label="공연 스타일">
+            {PERFORMANCE_STYLES.map((s) => (
+              <button
+                key={s}
+                type="button"
+                className={`seg${style === s ? ' on' : ''}`}
+                aria-pressed={style === s}
+                onClick={() => {
+                  setStyle(s);
+                  if (query.trim().length >= 2) void runSearch(null, s);
+                }}
+              >
+                {styleCopy(s).label}
+              </button>
+            ))}
           </div>
+          <p className="muted style-hint">{styleCopy(style).hint}</p>
         </form>
 
         {searchNote && (

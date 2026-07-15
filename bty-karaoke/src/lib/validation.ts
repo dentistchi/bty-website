@@ -80,6 +80,14 @@ export const CancelRequestSchema = z.object({
 });
 export type CancelRequestInput = z.infer<typeof CancelRequestSchema>;
 
+// Guest starts / finishes their OWN song. Same bounded capability as cancel —
+// it proves "this device submitted this request". The queue rules (first in
+// line, single stage) are enforced server-side, not by the token.
+export const OwnerActionSchema = z.object({
+  token: z.string().trim().min(1).max(512),
+});
+export type OwnerActionInput = z.infer<typeof OwnerActionSchema>;
+
 // Admin PIN enrollment. `pin` is only bounded here; the real policy (NFC, no
 // whitespace, ≥6 digits / ≥8 passphrase) is enforced server-side by normalizePin.
 // Do NOT .trim() the pin — whitespace handling is the normalizer's job.

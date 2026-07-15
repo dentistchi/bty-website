@@ -1276,9 +1276,45 @@ main.dj-console {
   bottom: 0;
   z-index: 50;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
   padding: 10px 16px calc(12px + var(--safe-b));
   pointer-events: none;
+}
+/* Prominent self-service action — this guest's turn to start or finish. */
+.dock-action {
+  pointer-events: auto;
+  min-height: 52px;
+  padding: 0 26px;
+  border-radius: 999px;
+  border: none;
+  font-weight: 900;
+  font-size: 1.02rem;
+  letter-spacing: 0.01em;
+  color: #06231b;
+  box-shadow: 0 16px 40px -14px rgba(0, 0, 0, 0.85);
+  animation: dockActionIn 0.28s ease-out;
+}
+.dock-action.start {
+  background: linear-gradient(180deg, #8ff0d0, #35d6a3);
+}
+.dock-action.finish {
+  background: linear-gradient(180deg, #f7d98a, var(--gold, #f5c451));
+  color: #2a1e02;
+}
+.dock-action:disabled {
+  opacity: 0.6;
+}
+@keyframes dockActionIn {
+  from {
+    transform: translateY(8px) scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
 }
 .dock-pill {
   pointer-events: auto;
@@ -1965,6 +2001,11 @@ a.btn.block {
   border-color: rgba(160, 130, 255, 0.4);
   background: rgba(160, 130, 255, 0.08);
 }
+.vk-badge.vk-mr {
+  color: #8fe6c8;
+  border-color: rgba(90, 220, 180, 0.42);
+  background: rgba(90, 220, 180, 0.1);
+}
 
 /* Segmented Original ↔ Karaoke/Lyrics toggle (guest + DJ add). */
 .search-modes,
@@ -2065,4 +2106,307 @@ a.btn.block {
   border: 1px solid rgba(78, 214, 143, 0.4);
   background: rgba(78, 214, 143, 0.1);
   color: #b7f0cf;
+}
+
+/* Performance-style hint under the search box. */
+.style-hint {
+  margin-top: 8px;
+  font-size: 0.82rem;
+}
+
+/* ── Guest QueueBoard — read-only full-queue view (self-service V2) ───────── */
+.qb {
+  margin-top: 14px;
+}
+.qb-now {
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  background: rgba(245, 196, 81, 0.08);
+  border: 1px solid rgba(245, 196, 81, 0.35);
+}
+.qb-now.me {
+  background: rgba(53, 214, 163, 0.12);
+  border-color: rgba(53, 214, 163, 0.5);
+}
+.qb-now-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #f7d98a;
+  text-transform: uppercase;
+}
+.qb-now-song {
+  font-weight: 800;
+  font-size: 1.05rem;
+  margin-top: 4px;
+}
+.qb-now-singer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.qb-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.qb-empty {
+  margin: 4px 0 0;
+}
+.qb-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.qb-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line-2);
+  background: rgba(255, 255, 255, 0.02);
+}
+.qb-row.me {
+  border-color: rgba(53, 214, 163, 0.55);
+  background: rgba(53, 214, 163, 0.1);
+}
+.qb-pos {
+  flex: 0 0 auto;
+  width: 24px;
+  text-align: center;
+  font-weight: 800;
+  color: var(--muted);
+}
+.qb-row-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.qb-song {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.qb-singer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.qb-me-tag {
+  font-size: 0.66rem;
+  font-weight: 900;
+  color: #06231b;
+  background: #35d6a3;
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+.qb-badge {
+  margin-top: 0;
+  flex: 0 0 auto;
+}
+
+/* ── iPad Karaoke Display — the quiet song board by the mic (self-service V2) ── */
+.kd {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(245, 196, 81, 0.14), transparent 60%),
+    linear-gradient(180deg, var(--stage-1), var(--stage-0) 55%);
+  padding: calc(16px + var(--safe-t)) 22px calc(16px + var(--safe-b));
+  gap: 14px;
+  overflow: hidden;
+}
+.kd-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex: 0 0 auto;
+}
+.kd-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kd-brand .brand {
+  font-size: 1.5rem;
+}
+.kd-room {
+  font-size: 1rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+.kd-top-right {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.kd-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kd-ctl {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.kd-qr {
+  text-align: center;
+}
+.kd-qr-svg {
+  width: 118px;
+  height: 118px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 7px;
+}
+.kd-qr-svg svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.kd-qr-cap {
+  margin-top: 5px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--gold);
+}
+
+.kd-stage {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+.kd-video {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.kd-iframe {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 100%;
+  border: 0;
+}
+.kd-video-ph {
+  font-size: 4rem;
+  opacity: 0.5;
+}
+.kd-video-ph.big {
+  font-size: 6rem;
+}
+.kd-nowbar {
+  flex: 0 0 auto;
+  text-align: center;
+}
+.kd-now-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: var(--magenta);
+}
+.kd-now-singer {
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  margin-top: 2px;
+}
+.kd-now-song {
+  font-size: clamp(1.1rem, 2.6vw, 1.7rem);
+  color: var(--muted);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.kd-badge {
+  font-size: 0.8rem;
+}
+.kd-next {
+  margin-top: 8px;
+  font-size: clamp(0.95rem, 2vw, 1.25rem);
+  color: var(--text);
+}
+.kd-next.standalone {
+  margin-top: 14px;
+}
+.kd-next-label {
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: var(--cyan);
+  margin-right: 8px;
+}
+.kd-lyric-note {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: var(--muted-2);
+}
+
+.kd-empty {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+}
+.kd-empty-qr {
+  width: min(46vh, 340px);
+  height: min(46vh, 340px);
+  background: #fff;
+  border-radius: 20px;
+  padding: 16px;
+}
+.kd-empty-qr svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.kd-empty-title {
+  font-size: clamp(1.8rem, 5vw, 3rem);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+.kd-empty-sub {
+  font-size: clamp(1rem, 2.4vw, 1.4rem);
+  color: var(--muted);
 }
