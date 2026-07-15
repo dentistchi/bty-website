@@ -85,6 +85,17 @@ export default function FoundryHubClient({
             </li>
           ))}
         </ul>
+
+        {/* Quiet doorway to what has already been faced here — not a scoreboard. */}
+        <a
+          href={`/${locale}/bty/foundry/history`}
+          className="mt-8 flex items-baseline justify-between rounded-xl border border-white/10 bg-white/[0.02] px-4 py-4 text-white/70 transition-colors hover:text-white"
+        >
+          <span className="text-sm font-medium">{isKo ? "지나온 것" : "What you have faced here"}</span>
+          <span className="text-xs text-white/35" aria-hidden>
+            →
+          </span>
+        </a>
       </div>
     </main>
   );

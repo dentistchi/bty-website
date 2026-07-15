@@ -238,6 +238,28 @@ const DELAY_COST_FRAME =
 const PATIENCE_RETREAT =
   /\b(?:in your own time|when you(?:'re| are) ready|no rush|take your time|there is no hurry|yours to carry|carry this forward)\b/i;
 
+/**
+ * One source of truth for the expression bans (metrics + quality: third-person,
+ * watch-judgment, identity/character claims, praise, grading, generic coaching,
+ * unsupported recurrence). Returns the violated rule code, or null if clean.
+ * Shared so the Living Thread validator enforces the SAME bans as the reflection.
+ */
+export function scanForbiddenExpression(text: string): string | null {
+  for (const p of FORBIDDEN_PATTERNS) if (p.test(text)) return "metric_leak";
+  for (const rule of QUALITY_RULES) if (rule.re.test(text)) return rule.code;
+  return null;
+}
+
+/** True when the text reads as a delay / accumulating-cost / impact-on-others frame. */
+export function matchesDelayCostFrame(text: string): boolean {
+  return DELAY_COST_FRAME.test(text);
+}
+
+/** True when the text uses gentle-patience / private-retreat language. */
+export function matchesPatienceRetreat(text: string): boolean {
+  return PATIENCE_RETREAT.test(text);
+}
+
 function normalizeForMatch(s: string): string {
   return s.toLowerCase().replace(/\s+/g, " ").trim();
 }
