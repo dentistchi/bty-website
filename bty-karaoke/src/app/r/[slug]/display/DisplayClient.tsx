@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DisplayState } from '@/domain/display';
-import { displayEmbedUrl } from '@/domain/display';
 import { badgeForKind } from '@/domain/video-kind';
 
 interface Props {
@@ -12,13 +11,15 @@ interface Props {
 
 const POLL_MS = 2000; // iPad Display refreshes faster than the guest phones.
 
-// Read-only "song board". Big type, high contrast, minimal controls — readable
-// from across the room. QR is always present; NOW SINGING + the selected video
-// take centre stage; NEXT sits below. No queue management, no DJ actions.
+// Read-only "song board" by the microphone. Big type, high contrast — readable
+// from across the room. It is NOT a video player: the karaoke video and lyrics
+// live on the TV (via the singer's YouTube handoff). Many karaoke uploads block
+// external embedding, so an on-Display iframe would show "Video unavailable" —
+// V3.1 removes it entirely. The board shows only QR + NOW SINGING + NEXT, which
+// never fail. No credential, no mutation, no DJ controls.
 export default function DisplayClient({ slug, roomName }: Props) {
   const [state, setState] = useState<DisplayState | null>(null);
   const [qr, setQr] = useState<{ qrSvg: string; url: string } | null>(null);
-  const [muted, setMuted] = useState(true); // sound lives on the TV, not the iPad
   const seq = useRef(0);
 
   const poll = useCallback(async () => {
@@ -102,12 +103,11 @@ export default function DisplayClient({ slug, roomName }: Props) {
 
   const playing = state?.playing ?? null;
   const next = state?.next ?? null;
-  const embedUrl = playing ? displayEmbedUrl(playing.videoId) : null;
   const playingBadge = playing ? badgeForKind(playing.videoKind) : null;
 
   return (
     <div className="kd">
-      {/* Top bar: brand + QR + minimal controls */}
+      {/* Top bar: brand + QR + fullscreen (no video, so no mute control) */}
       <header className="kd-top">
         <div className="kd-brand">
           <span className="brand">btyNorebang</span>
@@ -115,9 +115,6 @@ export default function DisplayClient({ slug, roomName }: Props) {
         </div>
         <div className="kd-top-right">
           <div className="kd-controls">
-            <button type="button" className="kd-ctl" onClick={() => setMuted((m) => !m)}>
-              {muted ? '🔇 iPad 음소거' : '🔊 iPad 소리'}
-            </button>
             <button type="button" className="kd-ctl" onClick={enterFullscreen}>
               ⛶ 전체화면
             </button>
@@ -132,25 +129,8 @@ export default function DisplayClient({ slug, roomName }: Props) {
       </header>
 
       {playing ? (
-        <section className="kd-stage" aria-label="지금 부르는 중">
-          <div className="kd-video">
-            {embedUrl ? (
-              <iframe
-                key={`${playing.videoId}:${muted ? 'm' : 's'}`}
-                className="kd-iframe"
-                src={muted ? embedUrl : embedUrl.replace('mute=1', 'mute=0')}
-                title={playing.title}
-                allow="autoplay; encrypted-media; picture-in-picture"
-                allowFullScreen
-                referrerPolicy="strict-origin-when-cross-origin"
-              />
-            ) : (
-              <div className="kd-video-ph" aria-hidden>
-                🎤
-              </div>
-            )}
-          </div>
-          <div className="kd-nowbar">
+        <section className="kd-stage board" aria-label="지금 부르는 중">
+          <div className="kd-nowbar hero">
             <div className="kd-now-label">
               <span className="live-dot" aria-hidden /> NOW SINGING
             </div>
@@ -163,12 +143,13 @@ export default function DisplayClient({ slug, roomName }: Props) {
                 </span>
               )}
             </div>
+            {playing.artist && <div className="kd-now-artist">{playing.artist}</div>}
             {next && (
               <div className="kd-next">
                 <span className="kd-next-label">NEXT</span> {next.guestName} · {next.title}
               </div>
             )}
-            <p className="kd-lyric-note">가사는 선택한 영상에 포함된 경우 화면에 표시돼요.</p>
+            <p className="kd-tv-note">영상과 가사는 TV에서 확인하세요.</p>
           </div>
         </section>
       ) : (
@@ -183,8 +164,8 @@ export default function DisplayClient({ slug, roomName }: Props) {
           <div className="kd-empty-title">Scan to join</div>
           <div className="kd-empty-sub">
             {state && state.waitingCount > 0
-              ? `${state.waitingCount}곡 대기 중 — 다음 사람이 시작하면 됩니다`
-              : '아직 신청된 곡이 없어요'}
+              ? `${state.waitingCount}곡 대기 중 — 휴대폰으로 스캔해 노래를 신청하세요.`
+              : '휴대폰으로 스캔해 노래를 신청하세요.'}
           </div>
           {next && (
             <div className="kd-next standalone">

@@ -10,6 +10,8 @@ interface Props {
   /** Admin-capable bearer (admin device token or master credential). */
   cred: string;
   onShowGuestQr: () => void;
+  /** Open the DJ Add-Song sheet (admin-only secondary; off the base screen). */
+  onOpenAddSong?: () => void;
   onClose: () => void;
   onSessionEnded?: () => void;
 }
@@ -19,7 +21,7 @@ type View = 'menu' | 'pair' | 'devices' | 'end' | 'rotate';
 // Restrained Admin menu shown ONLY to an authenticated Admin inside the DJ
 // Console — it never replaces the live karaoke surface. Reuses the existing admin
 // routes (pair / devices / rotate / session); every action is server-authorized.
-export default function DjAdminMenu({ slug, displayName, cred, onShowGuestQr, onClose, onSessionEnded }: Props) {
+export default function DjAdminMenu({ slug, displayName, cred, onShowGuestQr, onOpenAddSong, onClose, onSessionEnded }: Props) {
   const [view, setView] = useState<View>('menu');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -202,6 +204,18 @@ export default function DjAdminMenu({ slug, displayName, cred, onShowGuestQr, on
               >
                 손님 초대 QR
               </button>
+              {onOpenAddSong && (
+                <button
+                  type="button"
+                  className="admin-item"
+                  onClick={() => {
+                    onOpenAddSong();
+                    onClose();
+                  }}
+                >
+                  노래 추가 (예외)
+                </button>
+              )}
             </div>
             <div className="admin-group-label">방 관리</div>
             <div className="admin-group">

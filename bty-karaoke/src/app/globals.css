@@ -2111,6 +2111,17 @@ a.btn.block {
   flex: 1 1 0;
   min-height: 44px;
 }
+/* This console is an exception surface — the note makes that unmistakable. */
+.dj-exception-note {
+  margin: 10px 0 2px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(245, 196, 81, 0.32);
+  background: rgba(245, 196, 81, 0.08);
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
 
 /* Video-kind badge — "likely has words on the TV" hint. Gold = karaoke/lyrics. */
 .vk-badge {
@@ -2440,24 +2451,8 @@ a.btn.block {
   gap: 16px;
   min-height: 0;
 }
-.kd-video {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #000;
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid var(--line);
-}
-.kd-iframe {
-  width: 100%;
-  height: 100%;
-  aspect-ratio: 16 / 9;
-  max-height: 100%;
-  border: 0;
-}
+/* V3.1: no video on the board — NOW SINGING is the text hero, centred and large
+   so it reads from across the room. The karaoke video + lyrics live on the TV. */
 .kd-video-ph {
   font-size: 4rem;
   opacity: 0.5;
@@ -2465,41 +2460,54 @@ a.btn.block {
 .kd-video-ph.big {
   font-size: 6rem;
 }
+.kd-stage.board {
+  align-items: center;
+  justify-content: center;
+}
 .kd-nowbar {
   flex: 0 0 auto;
   text-align: center;
+}
+.kd-nowbar.hero {
+  max-width: min(90vw, 900px);
 }
 .kd-now-label {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.9rem;
+  font-size: clamp(0.9rem, 1.6vw, 1.15rem);
   font-weight: 900;
   letter-spacing: 0.14em;
   color: var(--magenta);
 }
 .kd-now-singer {
-  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  font-size: clamp(2.4rem, 8vw, 5rem);
   font-weight: 900;
   letter-spacing: -0.02em;
-  margin-top: 2px;
+  margin-top: 8px;
+  line-height: 1.05;
 }
 .kd-now-song {
-  font-size: clamp(1.1rem, 2.6vw, 1.7rem);
-  color: var(--muted);
-  margin-top: 2px;
+  font-size: clamp(1.4rem, 4vw, 2.6rem);
+  color: var(--text);
+  margin-top: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
 }
+.kd-now-artist {
+  font-size: clamp(1rem, 2.4vw, 1.5rem);
+  color: var(--muted);
+  margin-top: 4px;
+}
 .kd-badge {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
 }
 .kd-next {
-  margin-top: 8px;
-  font-size: clamp(0.95rem, 2vw, 1.25rem);
+  margin-top: 18px;
+  font-size: clamp(1rem, 2.4vw, 1.5rem);
   color: var(--text);
 }
 .kd-next.standalone {
@@ -2511,9 +2519,9 @@ a.btn.block {
   color: var(--cyan);
   margin-right: 8px;
 }
-.kd-lyric-note {
-  margin: 8px 0 0;
-  font-size: 0.82rem;
+.kd-tv-note {
+  margin: 18px 0 0;
+  font-size: clamp(0.85rem, 1.6vw, 1.05rem);
   color: var(--muted-2);
 }
 

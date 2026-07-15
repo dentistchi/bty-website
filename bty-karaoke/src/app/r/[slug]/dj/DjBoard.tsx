@@ -25,11 +25,10 @@ import type { KaraokeSession } from '@/lib/sessions.server';
 import type { DjEventStatus } from '@/lib/events.server';
 import { selectStage } from '@/domain/queue';
 import { moveWithin, orderChanged } from '@/domain/reorder';
-import { primaryPlayTarget, runPlayOnTv, runOpenOnDevice } from '@/domain/play-flow';
+import { primaryPlayTarget } from '@/domain/play-flow';
 import { requestDisplayTitle } from '@/domain/request-view';
 import { displaySong } from '@/domain/song-title';
 import { formatEventDuration } from '@/domain/live-presence';
-import { safeYoutubeWatchUrl } from '@/domain/youtube';
 import { badgeForVideo } from '@/domain/video-kind';
 import DjActionSheet from './DjActionSheet';
 import DjAdminMenu from './DjAdminMenu';
@@ -185,8 +184,6 @@ export default function DjBoard({
   const [statusOpen, setStatusOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [nowMs, setNowMs] = useState(() => 0);
-  // Re-entry guard so rapid taps can't open two tabs or fire two play mutations.
-  const startingRef = useRef(false);
 
   // ── Queue reorder (optimistic, dnd-kit) ───────────────────────────────────
   // `override` is the order UP NEXT renders instead of the server's: it freezes
@@ -312,54 +309,11 @@ export default function DjBoard({
   }
   const newSet = new Set(newIds);
   const isAdmin = data?.role === 'admin';
-  // The single "▶ Play on TV" target: the first waiting song, only while the
-  // stage is open. Null once a song is playing (finish it first — no swap).
-  // Follows the DJ's visible order so a just-reordered top song plays first.
+  // Informational "up next" for the exception console: the first waiting song
+  // while the stage is open (null once a song is playing). This console no longer
+  // starts playback — the singer starts their own song from their phone; we only
+  // surface who is up so an admin can reorder/remove if needed.
   const playTarget = primaryPlayTarget(current, displayQueue);
-
-  // Navigate THIS Safari tab to the video (not window.open). On iPad this hands
-  // off to the YouTube app without leaving a blank Safari window behind; the DJ
-  // returns to the console with the browser Back gesture. The id is validated —
-  // a malformed id yields no URL and we simply do not navigate.
-  function openVideo(videoId: string) {
-    const url = safeYoutubeWatchUrl(videoId);
-    if (url) window.location.assign(url);
-  }
-
-  // Drop focus from any text input before we hand off to YouTube. A focused
-  // <input> is (on iOS) in a magnified state; app-switching while focused is what
-  // brings the DJ back to a zoomed console. Blurring first returns Safari to 1.0.
-  function blurActive() {
-    try {
-      (document.activeElement as HTMLElement | null)?.blur?.();
-    } catch {
-      /* ignore */
-    }
-  }
-
-  // "Open on this iPad" — a personal-screen open of the CURRENT/selected video.
-  // It ONLY navigates (runOpenOnDevice has no play effect), so it never changes a
-  // request's state, never starts/finishes a song, and never disconnects the TV.
-  function openOnThisIpad(videoId: string) {
-    blurActive();
-    runOpenOnDevice({ openVideo: () => openVideo(videoId) });
-  }
-
-  // One-tap play: commit waiting→playing FIRST, then navigate this tab to
-  // YouTube (navigating away would abort the in-flight mutation, so it must land
-  // first). Idempotent under repeated taps; on mutation failure the error banner
-  // shows, we do NOT leave for YouTube, and the song stays waiting for a retry.
-  function playOnTv(r: KaraokeRequest) {
-    if (busy || startingRef.current) return;
-    blurActive();
-    startingRef.current = true;
-    void runPlayOnTv({
-      play: () => onStart(r.id),
-      openVideo: () => openVideo(r.youtube_video_id),
-    }).finally(() => {
-      startingRef.current = false;
-    });
-  }
 
   async function showGuestQr() {
     setLoadingQr(true);
@@ -441,8 +395,8 @@ export default function DjBoard({
             🎵 {newIds.length} new
           </button>
         )}
-        <span className="sb-metric" title="This iPad is a connected DJ">
-          <span className="status-dot ok" aria-hidden /> DJ connected
+        <span className="sb-metric" title="Admin / emergency controls">
+          <span className="status-dot ok" aria-hidden /> Admin Controls
         </span>
         {isAdmin && (
           <button
@@ -456,13 +410,19 @@ export default function DjBoard({
         )}
       </div>
 
-      {/* Always-available DJ actions — never hidden behind the empty state. */}
-      <div className="dj-actions-bar" role="group" aria-label="DJ actions">
+      {/* This console is an EXCEPTION surface — normal operation runs on each
+          guest's phone. Make that explicit so a host doesn't drive from here. */}
+      <div className="dj-exception-note" role="note">
+        정상 운영은 참가자가 각자의 휴대폰에서 진행합니다. 이 화면은 순서 변경이나 강제 종료가 필요할 때만
+        사용하세요.
+      </div>
+
+      {/* Always-available exception actions — never hidden behind the empty
+          state. Guest QR only (Add song lives in the admin menu, off the base
+          screen; playback is not a DJ action anymore). */}
+      <div className="dj-actions-bar" role="group" aria-label="Admin actions">
         <button className="ghost" onClick={showGuestQr} disabled={loadingQr}>
           🔳 Guest QR
-        </button>
-        <button className="cyan" onClick={() => setAddOpen(true)}>
-          ＋ Add song
         </button>
       </div>
 
@@ -506,27 +466,19 @@ export default function DjBoard({
                   </>
                 );
               })()}
-              <div className="playback-label">Playback options</div>
               <div className="stage-actions">
-                <button
-                  className="cyan lg"
-                  disabled={!current.youtube_video_id}
-                  onClick={() => openOnThisIpad(current.youtube_video_id)}
-                >
-                  Open on this iPad
-                </button>
                 <button className="ok lg" disabled={busy} onClick={() => onFinish(current.id)}>
-                  ✓ Finish song
+                  ✓ Force-finish
                 </button>
               </div>
               <p className="muted playback-help">
-                “Open on this iPad” opens the song here for a closer screen. When you return to
-                Safari, the console reloads with this NOW SINGING card and Finish song still here.
+                Emergency only — use this if a singer left without passing their turn. Normally the
+                singer finishes from their own phone.
               </p>
             </div>
           ) : playTarget ? (
             <div className="stage-hero ready" key={playTarget.id}>
-              <div className="eyebrow">Up first</div>
+              <div className="eyebrow">Up next</div>
               {playTarget.youtube_thumbnail_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -551,26 +503,9 @@ export default function DjBoard({
                   </>
                 );
               })()}
-              <p className="lead">Play on the TV, or open it just on this iPad.</p>
-              <div className="playback-label">Playback options</div>
-              <div className="stage-actions">
-                <button className="primary lg" disabled={busy} onClick={() => playOnTv(playTarget)}>
-                  ▶ Play on TV
-                </button>
-                <button
-                  className="ghost lg"
-                  disabled={!playTarget.youtube_video_id}
-                  onClick={() => openOnThisIpad(playTarget.youtube_video_id)}
-                >
-                  Open on this iPad
-                </button>
-              </div>
-              <p className="muted playback-help">
-                “Play on TV” marks the song playing, then opens YouTube to cast it to the TV.
-                YouTube may open as its own screen — just switch back to Safari (app switcher or
-                the tab bar) and the console returns at normal size with NOW SINGING and Finish
-                song ready; no need to pinch or reload. “Open on this iPad” only opens the video
-                here and doesn’t change the queue.
+              <p className="lead">
+                This singer starts their own song from their phone. Use the queue on the right to
+                reorder or remove if needed.
               </p>
             </div>
           ) : (
@@ -717,6 +652,10 @@ export default function DjBoard({
           displayName={displayName}
           cred={adminCred}
           onShowGuestQr={showGuestQr}
+          onOpenAddSong={() => {
+            setAdminOpen(false);
+            setAddOpen(true);
+          }}
           onSessionEnded={() => onRefresh()}
           onClose={() => setAdminOpen(false)}
         />

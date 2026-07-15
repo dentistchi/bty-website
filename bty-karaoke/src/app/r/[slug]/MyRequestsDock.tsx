@@ -336,6 +336,11 @@ export default function MyRequestsDock({ slug, requests, onRemoved }: Props) {
             </div>
             <div className="perf-title">🎙️ 지금 노래하는 중</div>
             {stageSong && <div className="perf-song">{stageSong}</div>}
+            {/* Honest: this app can't stop the YouTube app or the TV cast. The
+                singer stops the video in YouTube, then passes the turn here. */}
+            <div className="perf-sub">
+              노래를 마치면 YouTube에서 영상을 먼저 멈춘 뒤 차례를 넘겨주세요.
+            </div>
             <div className="perf-actions">
               {stageYoutubeUrl && (
                 <button
@@ -343,19 +348,19 @@ export default function MyRequestsDock({ slug, requests, onRemoved }: Props) {
                   className="perf-btn ghost"
                   onClick={() => window.location.assign(stageYoutubeUrl)}
                 >
-                  ▶ YouTube에서 열기
+                  ▶ YouTube 열기
                 </button>
               )}
               {finishConfirmId === stageReq.requestId ? (
                 <div className="perf-confirm">
-                  <span className="perf-confirm-q">이 노래를 끝낼까요?</span>
+                  <span className="perf-confirm-q">TV의 영상도 멈췄나요?</span>
                   <div className="perf-confirm-row">
                     <button
                       type="button"
                       className="perf-btn ghost"
                       onClick={() => setFinishConfirmId(null)}
                     >
-                      아니요
+                      아직이요
                     </button>
                     <button
                       type="button"
@@ -363,7 +368,7 @@ export default function MyRequestsDock({ slug, requests, onRemoved }: Props) {
                       onClick={() => doFinish(stageReq)}
                       disabled={actingId === stageReq.requestId}
                     >
-                      {actingId === stageReq.requestId ? '끝내는 중…' : '네, 끝내기'}
+                      {actingId === stageReq.requestId ? '넘기는 중…' : '네, 차례 넘기기'}
                     </button>
                   </div>
                 </div>
@@ -373,7 +378,7 @@ export default function MyRequestsDock({ slug, requests, onRemoved }: Props) {
                   className="perf-btn finish"
                   onClick={() => setFinishConfirmId(stageReq.requestId)}
                 >
-                  ✓ 내 노래 끝내기
+                  ✓ 차례 넘기기
                 </button>
               )}
             </div>
@@ -402,6 +407,9 @@ export default function MyRequestsDock({ slug, requests, onRemoved }: Props) {
             <div className="perf-eyebrow">🎤 준비 완료</div>
             <div className="perf-title">시작할까요?</div>
             {stageSong && <div className="perf-song">{stageSong}</div>}
+            <div className="perf-sub">
+              시작하면 YouTube 앱이 열립니다. TV에 연결한 뒤 노래를 시작하세요.
+            </div>
             <div className="perf-actions">
               <button
                 type="button"

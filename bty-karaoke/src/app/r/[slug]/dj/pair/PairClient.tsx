@@ -51,9 +51,12 @@ export default function PairClient({ slug, displayName }: Props) {
       } catch {
         /* best effort */
       }
-      // Full navigation to the clean DJ URL — drops the token from the address
-      // bar and lets the console pick up the new device session.
-      window.location.replace(`/r/${encodeURIComponent(slug)}/dj`);
+      // V3.1 — the paired iPad's DEFAULT destination is the read-only Display
+      // (the song board by the mic), NOT the DJ console. Normal operation runs on
+      // each guest's phone; the device token stays in localStorage so an admin can
+      // reach the exception console at /r/<slug>/dj when reorder/force-finish is
+      // needed. Full navigation drops the token from the address bar.
+      window.location.replace(`/r/${encodeURIComponent(slug)}/display`);
     } catch {
       setError('Network error. Try again.');
       setPhase('error');
@@ -95,19 +98,22 @@ export default function PairClient({ slug, displayName }: Props) {
       <div className="display" style={{ margin: '6px 0' }}>
         {displayName}
       </div>
-      <p className="lead">This iPad will control:</p>
+      <p className="lead">This iPad becomes the room’s Display:</p>
       <ul className="stack" style={{ margin: '12px 0', paddingLeft: 18, color: 'var(--muted)' }}>
-        <li>Song requests</li>
-        <li>Queue order</li>
-        <li>YouTube playback flow</li>
+        <li>Guest QR to scan and join</li>
+        <li>Now singing &amp; who’s next</li>
       </ul>
+      <p className="muted" style={{ marginTop: 4 }}>
+        Everyone runs their own song from their phone. Reorder and force-finish stay in Admin
+        Controls when you need them.
+      </p>
       <button
         className="primary lg block"
         style={{ marginTop: 6 }}
         disabled={phase === 'connecting'}
         onClick={connect}
       >
-        {phase === 'connecting' ? 'Connecting…' : 'Connect this iPad'}
+        {phase === 'connecting' ? 'Connecting…' : 'Open the Display'}
       </button>
     </div>
   );
