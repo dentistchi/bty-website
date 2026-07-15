@@ -19,7 +19,8 @@ import {
 } from '@/domain/queue';
 import { classifyVideo } from '@/domain/video-kind';
 import { requestDisplayTitle } from '@/domain/request-view';
-import type { DisplayRequest, DisplayState } from '@/domain/display';
+import { displayStatsFrom, type DisplayRequest, type DisplayState } from '@/domain/display';
+import type { StatRequest } from '@/domain/event-stats';
 
 export interface PublicRoom {
   id: string;
@@ -558,5 +559,20 @@ export async function getDisplayState(room: PublicRoom): Promise<DisplayState> {
     next: waiting[0] ?? null,
     waiting,
     waitingCount: waiting.length,
+    stats: displayStatsFrom(await displayStatRows(room.id)),
   };
+}
+
+/**
+ * Minimal rows for the LIVE panel counts (guest_name + status, any status) — the
+ * same shape `computeEventStats` consumes. Safe/public: names + statuses only,
+ * never a secret. One lightweight read alongside the active-queue read.
+ */
+async function displayStatRows(roomId: string): Promise<StatRequest[]> {
+  const { data, error } = await karaokeDb()
+    .from('karaoke_requests')
+    .select('guest_name, status')
+    .eq('room_id', roomId);
+  if (error) throw error;
+  return (data ?? []) as StatRequest[];
 }

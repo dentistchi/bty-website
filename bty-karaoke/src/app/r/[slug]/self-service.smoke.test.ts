@@ -123,6 +123,60 @@ describe('iPad Display — read-only song board, NOT a video player (V3.1)', () 
   });
 });
 
+describe('Display polish V4 — hero, LIVE panel, empty stage, data-keyed motion', () => {
+  it('renders the hero ladder in order: singer → song → badge → artist', () => {
+    const singer = display.indexOf('kd-now-singer');
+    const song = display.indexOf('kd-now-song');
+    const badge = display.indexOf('kd-now-badge');
+    const artist = display.indexOf('kd-now-artist');
+    expect(singer).toBeGreaterThan(-1);
+    expect(singer).toBeLessThan(song);
+    expect(song).toBeLessThan(badge);
+    expect(badge).toBeLessThan(artist);
+  });
+
+  it('shows an information-only LIVE panel from the display stats', () => {
+    expect(display).toContain('kd-live');
+    expect(display).toContain('state?.stats');
+    expect(display).toContain('stats.singers');
+    expect(display).toContain('stats.completed');
+    // Information only — the panel is not a button / has no click handler.
+    expect(display).not.toMatch(/kd-live[^]{0,400}onClick/);
+  });
+
+  it('animates ONLY on real data change (keyed by id/value, never every poll)', () => {
+    // NOW fades keyed by the singing request id; NEXT slides keyed by next id;
+    // each LIVE number pops keyed by its value. Same data → same key → no re-anim.
+    expect(display).toMatch(/kd-fade[^]{0,60}key=\{playing\.id\}|key=\{playing\.id\}[^]{0,60}kd-fade/);
+    expect(display).toMatch(/kd-slide[^]{0,60}key=\{next\.id\}|key=\{next\.id\}[^]{0,60}kd-slide/);
+    expect(display).toMatch(/kd-live-num[^]*key=\{value\}|key=\{value\}[^]*kd-live-num/);
+  });
+
+  it('has a welcoming empty stage (not just a bare QR)', () => {
+    expect(display).toContain('오늘의 노래');
+    expect(display).toContain('첫 번째 신청자가 오늘의 무대를 시작합니다');
+  });
+});
+
+describe('Guest cards polish V4 — MC-style Ready & Finish heroes', () => {
+  it('Ready hero emphasises "노래 시작" (not "I’m Ready")', () => {
+    expect(dock).toContain('perf-card ready hero');
+    expect(dock).toContain('🎤 노래 시작');
+    expect(dock).not.toContain('내 노래 시작하기');
+  });
+
+  it('greets the singer by name when known', () => {
+    expect(dock).toContain('namePrefix');
+    expect(dock).toContain('준비되셨나요?');
+  });
+
+  it('Finish is framed as passing the stage, kept honest and 2-step', () => {
+    expect(dock).toContain('perf-card playing hero');
+    expect(dock).toContain('노래를 마쳤나요?');
+    expect(dock).toContain('차례 넘기기');
+  });
+});
+
 describe('paired iPad defaults to the Display, not the DJ console (V3.1)', () => {
   it('redeems then navigates to /display', () => {
     expect(pair).toMatch(/location\.replace\(`\/r\/\$\{encodeURIComponent\(slug\)\}\/display`\)/);

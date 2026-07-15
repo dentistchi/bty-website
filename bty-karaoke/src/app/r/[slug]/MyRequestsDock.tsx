@@ -12,6 +12,8 @@ import SwipeableCard from './SwipeableCard';
 interface Props {
   slug: string;
   requests: MyRequest[];
+  /** The guest's name — used only for a warm MC-style greeting on the cards. */
+  guestName?: string;
   onRemoved: (requestId: string) => void;
 }
 
@@ -39,7 +41,9 @@ function statusText(s?: GuestQueueStatus): string {
 // auto-expands — a new request only bumps the count and flashes a short gold edge
 // pulse. Tapping the pill opens a clean full-width bottom sheet (not a side
 // column / split-screen). Every status comes from the canonical server resolver.
-export default function MyRequestsDock({ slug, requests, onRemoved }: Props) {
+export default function MyRequestsDock({ slug, requests, guestName, onRemoved }: Props) {
+  // A warm "MC" greeting: "한빛님" when we know the name, else a neutral fallback.
+  const namePrefix = guestName && guestName.trim() ? `${guestName.trim()}님` : '';
   const [statuses, setStatuses] = useState<Record<string, GuestQueueStatus>>({});
   const [expanded, setExpanded] = useState(false);
   const [pulse, setPulse] = useState(false);
@@ -330,11 +334,12 @@ export default function MyRequestsDock({ slug, requests, onRemoved }: Props) {
           confirm); nothing here auto-advances or auto-finishes. */}
       <div className="dock">
         {stageReq && stage.kind === 'playing' && (
-          <div className="perf-card playing" role="status">
+          <div className="perf-card playing hero" role="status">
+            <div className="perf-hero-ico" aria-hidden>🎙️</div>
             <div className="perf-eyebrow">
-              <span className="live-dot" aria-hidden /> 지금 무대 위
+              <span className="live-dot" aria-hidden /> {namePrefix ? `${namePrefix} 무대 위` : '지금 무대 위'}
             </div>
-            <div className="perf-title">🎙️ 지금 노래하는 중</div>
+            <div className="perf-title big">노래를 마쳤나요?</div>
             {stageSong && <div className="perf-song">{stageSong}</div>}
             {/* Honest: this app can't stop the YouTube app or the TV cast. The
                 singer stops the video in YouTube, then passes the turn here. */}
@@ -386,26 +391,28 @@ export default function MyRequestsDock({ slug, requests, onRemoved }: Props) {
         )}
 
         {stageReq && stage.kind === 'my_turn' && !isReady && (
-          <div className={`perf-card myturn${arrived ? ' arrival' : ''}`} role="status">
-            <div className="perf-eyebrow">🎤 It’s your turn</div>
-            <div className="perf-title">내 차례예요</div>
-            <div className="perf-sub">노래할 준비가 되면 시작하세요.</div>
+          <div className={`perf-card myturn hero${arrived ? ' arrival' : ''}`} role="status">
+            <div className="perf-hero-ico" aria-hidden>🎤</div>
+            <div className="perf-eyebrow">It’s your turn</div>
+            <div className="perf-title big">{namePrefix ? `${namePrefix}, 준비되셨나요?` : '준비되셨나요?'}</div>
+            <div className="perf-sub">노래를 시작하면 YouTube 앱이 열립니다.</div>
             <div className="perf-actions">
               <button
                 type="button"
                 className="perf-btn ready"
                 onClick={() => setReadyId(stageReq.requestId)}
               >
-                준비됐어요 · I’m Ready
+                준비됐어요
               </button>
             </div>
           </div>
         )}
 
         {stageReq && stage.kind === 'my_turn' && isReady && (
-          <div className="perf-card ready" role="status">
-            <div className="perf-eyebrow">🎤 준비 완료</div>
-            <div className="perf-title">시작할까요?</div>
+          <div className="perf-card ready hero" role="status">
+            <div className="perf-hero-ico" aria-hidden>🎤</div>
+            <div className="perf-eyebrow">{namePrefix ? namePrefix : '준비 완료'}</div>
+            <div className="perf-title big">이제 시작할까요?</div>
             {stageSong && <div className="perf-song">{stageSong}</div>}
             <div className="perf-sub">
               시작하면 YouTube 앱이 열립니다. TV에 연결한 뒤 노래를 시작하세요.
@@ -417,7 +424,7 @@ export default function MyRequestsDock({ slug, requests, onRemoved }: Props) {
                 onClick={() => doStart(stageReq)}
                 disabled={actingId === stageReq.requestId}
               >
-                {actingId === stageReq.requestId ? '시작하는 중…' : '🎤 내 노래 시작하기'}
+                {actingId === stageReq.requestId ? '시작하는 중…' : '🎤 노래 시작'}
               </button>
               <button type="button" className="perf-btn ghost" onClick={() => setReadyId(null)}>
                 아직이요

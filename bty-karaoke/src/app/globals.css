@@ -1386,6 +1386,25 @@ main.dj-console {
   letter-spacing: -0.01em;
   color: var(--text);
 }
+.perf-title.big {
+  font-size: 1.42rem;
+}
+/* Hero framing for the my-turn / ready / playing performance moments. */
+.perf-card.hero {
+  padding-top: 16px;
+  text-align: center;
+}
+.perf-card.hero .perf-eyebrow {
+  justify-content: center;
+}
+.perf-card.hero .perf-actions {
+  margin-top: 14px;
+}
+.perf-hero-ico {
+  font-size: 2rem;
+  line-height: 1;
+  margin-bottom: 2px;
+}
 .perf-sub {
   margin-top: 2px;
   font-size: 0.9rem;
@@ -2387,6 +2406,86 @@ a.btn.block {
   justify-content: space-between;
   gap: 16px;
   flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+/* LIVE panel — glanceable counts, information only. */
+.kd-live {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 2vw, 20px);
+  padding: 8px 16px;
+  border-radius: 14px;
+  background: rgba(78, 214, 143, 0.08);
+  border: 1px solid rgba(78, 214, 143, 0.28);
+  align-self: center;
+}
+.kd-live-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: clamp(0.7rem, 1.3vw, 0.9rem);
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: #7be3ab;
+}
+.kd-live-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.kd-live-ico {
+  font-size: clamp(0.9rem, 1.6vw, 1.2rem);
+}
+.kd-live-num {
+  display: inline-block;
+  font-size: clamp(1.05rem, 2.2vw, 1.6rem);
+  font-weight: 900;
+  color: var(--text);
+  min-width: 1ch;
+  text-align: center;
+  animation: kdPop 0.3s ease;
+}
+@keyframes kdPop {
+  0% {
+    transform: scale(1.35);
+    color: #7be3ab;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes kdFade {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.kd-fade {
+  animation: kdFade 0.28s ease both;
+}
+@keyframes kdSlide {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.kd-slide {
+  animation: kdSlide 0.28s ease both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kd-fade,
+  .kd-slide,
+  .kd-live-num {
+    animation: none;
+  }
 }
 .kd-brand {
   display: flex;
@@ -2480,47 +2579,66 @@ a.btn.block {
   letter-spacing: 0.14em;
   color: var(--magenta);
 }
+/* Typography ladder (PART H): Singer ≫ Song > NEXT singer > Artist > Badge. */
 .kd-now-singer {
-  font-size: clamp(2.4rem, 8vw, 5rem);
+  font-size: clamp(2.8rem, 10vw, 6.5rem);
   font-weight: 900;
   letter-spacing: -0.02em;
   margin-top: 8px;
-  line-height: 1.05;
+  line-height: 1.02;
+  color: var(--gold);
 }
 .kd-now-song {
-  font-size: clamp(1.4rem, 4vw, 2.6rem);
+  font-size: clamp(1.6rem, 5vw, 3.2rem);
+  font-weight: 700;
   color: var(--text);
+  margin-top: 12px;
+}
+.kd-now-badge {
   margin-top: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
 }
 .kd-now-artist {
   font-size: clamp(1rem, 2.4vw, 1.5rem);
   color: var(--muted);
-  margin-top: 4px;
+  margin-top: 8px;
 }
 .kd-badge {
-  font-size: 0.9rem;
+  font-size: clamp(0.85rem, 1.4vw, 1.05rem);
 }
-.kd-next {
-  margin-top: 18px;
-  font-size: clamp(1rem, 2.4vw, 1.5rem);
-  color: var(--text);
-}
-.kd-next.standalone {
-  margin-top: 14px;
+/* NEXT — big and unmistakable (PART A). */
+.kd-next-hero {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-top: 6px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
 }
 .kd-next-label {
   font-weight: 900;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   color: var(--cyan);
-  margin-right: 8px;
+  font-size: clamp(0.9rem, 1.8vw, 1.25rem);
+}
+.kd-next-singer {
+  font-size: clamp(1.6rem, 4.5vw, 3rem);
+  font-weight: 900;
+  color: #fff;
+}
+.kd-next-song {
+  font-size: clamp(1.2rem, 3vw, 2rem);
+  color: var(--muted);
+}
+.kd-next-song.muted {
+  font-size: clamp(1rem, 2.4vw, 1.5rem);
 }
 .kd-tv-note {
-  margin: 18px 0 0;
+  margin: 16px 0 0;
   font-size: clamp(0.85rem, 1.6vw, 1.05rem);
   color: var(--muted-2);
 }
@@ -2534,9 +2652,19 @@ a.btn.block {
   gap: 12px;
   text-align: center;
 }
+.kd-empty-mic {
+  font-size: clamp(2.4rem, 6vw, 4rem);
+}
+.kd-empty-eyebrow {
+  font-size: clamp(1rem, 2.2vw, 1.4rem);
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
 .kd-empty-qr {
-  width: min(46vh, 340px);
-  height: min(46vh, 340px);
+  width: min(42vh, 320px);
+  height: min(42vh, 320px);
   background: #fff;
   border-radius: 20px;
   padding: 16px;
@@ -2547,7 +2675,7 @@ a.btn.block {
   display: block;
 }
 .kd-empty-title {
-  font-size: clamp(1.8rem, 5vw, 3rem);
+  font-size: clamp(1.6rem, 4.5vw, 2.6rem);
   font-weight: 900;
   letter-spacing: -0.02em;
 }

@@ -103,16 +103,31 @@ export default function DisplayClient({ slug, roomName }: Props) {
 
   const playing = state?.playing ?? null;
   const next = state?.next ?? null;
+  const stats = state?.stats ?? null;
   const playingBadge = playing ? badgeForKind(playing.videoKind) : null;
 
   return (
     <div className="kd">
-      {/* Top bar: brand + QR + fullscreen (no video, so no mute control) */}
+      {/* Top bar: brand + LIVE panel + QR + fullscreen (no video, no mute) */}
       <header className="kd-top">
         <div className="kd-brand">
           <span className="brand">btyNorebang</span>
           <span className="kd-room">{roomName}</span>
         </div>
+
+        {/* LIVE panel — information only (no click). Numbers pop on real change. */}
+        {stats && (
+          <div className="kd-live" role="status" aria-label="라이브 현황">
+            <span className="kd-live-tag">
+              <span className="live-dot" aria-hidden /> LIVE
+            </span>
+            <LiveStat icon="👥" value={stats.singers} label="singers" />
+            <LiveStat icon="🎵" value={stats.requests} label="requests" />
+            <LiveStat icon="✅" value={stats.completed} label="done" />
+            <LiveStat icon="⏳" value={stats.waiting} label="waiting" />
+          </div>
+        )}
+
         <div className="kd-top-right">
           <div className="kd-controls">
             <button type="button" className="kd-ctl" onClick={enterFullscreen}>
@@ -130,50 +145,67 @@ export default function DisplayClient({ slug, roomName }: Props) {
 
       {playing ? (
         <section className="kd-stage board" aria-label="지금 부르는 중">
-          <div className="kd-nowbar hero">
+          {/* Keyed by the singing request id: the hero fades in ONLY when the
+              singer actually changes, never on a routine 2s poll re-render. */}
+          <div className="kd-nowbar hero kd-fade" key={playing.id}>
             <div className="kd-now-label">
               <span className="live-dot" aria-hidden /> NOW SINGING
             </div>
             <div className="kd-now-singer">{playing.guestName}</div>
-            <div className="kd-now-song">
-              {playing.title}
-              {playingBadge && (
+            <div className="kd-now-song">{playing.title}</div>
+            {playingBadge && (
+              <div className="kd-now-badge">
                 <span className={`vk-badge vk-${playingBadge.tone} kd-badge`}>
                   {playingBadge.emoji} {playingBadge.label}
                 </span>
-              )}
-            </div>
-            {playing.artist && <div className="kd-now-artist">{playing.artist}</div>}
-            {next && (
-              <div className="kd-next">
-                <span className="kd-next-label">NEXT</span> {next.guestName} · {next.title}
               </div>
             )}
+            {playing.artist && <div className="kd-now-artist">{playing.artist}</div>}
             <p className="kd-tv-note">영상과 가사는 TV에서 확인하세요.</p>
           </div>
+
+          {/* NEXT — big and unmistakable; slides in only when it changes. */}
+          {next ? (
+            <div className="kd-next-hero kd-slide" key={next.id}>
+              <span className="kd-next-label">NEXT</span>
+              <span className="kd-next-singer">{next.guestName}</span>
+              <span className="kd-next-song">{next.title}</span>
+            </div>
+          ) : (
+            <div className="kd-next-hero empty">
+              <span className="kd-next-label">NEXT</span>
+              <span className="kd-next-song muted">휴대폰으로 다음 곡을 신청하세요</span>
+            </div>
+          )}
         </section>
       ) : (
         <section className="kd-empty" aria-label="대기 중">
+          <div className="kd-empty-mic" aria-hidden>🎤</div>
+          <div className="kd-empty-eyebrow">오늘의 노래</div>
           {qr ? (
             <div className="kd-empty-qr" dangerouslySetInnerHTML={{ __html: qr.qrSvg }} />
           ) : (
-            <div className="kd-video-ph big" aria-hidden>
-              🎤
-            </div>
+            <div className="kd-video-ph big" aria-hidden>🎤</div>
           )}
-          <div className="kd-empty-title">Scan to join</div>
+          <div className="kd-empty-title">휴대폰으로 노래를 신청하세요</div>
           <div className="kd-empty-sub">
             {state && state.waitingCount > 0
-              ? `${state.waitingCount}곡 대기 중 — 휴대폰으로 스캔해 노래를 신청하세요.`
-              : '휴대폰으로 스캔해 노래를 신청하세요.'}
+              ? `${state.waitingCount}곡이 대기 중이에요.`
+              : '첫 번째 신청자가 오늘의 무대를 시작합니다.'}
           </div>
-          {next && (
-            <div className="kd-next standalone">
-              <span className="kd-next-label">UP NEXT</span> {next.guestName} · {next.title}
-            </div>
-          )}
         </section>
       )}
     </div>
+  );
+}
+
+// One LIVE number. Keyed by its value so it re-mounts (and pops) ONLY when the
+// count actually changes — a routine poll with the same numbers is silent.
+function LiveStat({ icon, value, label }: { icon: string; value: number; label: string }) {
+  return (
+    <span className="kd-live-stat" title={label}>
+      <span className="kd-live-ico" aria-hidden>{icon}</span>
+      <span className="kd-live-num" key={value}>{value}</span>
+    </span>
   );
 }

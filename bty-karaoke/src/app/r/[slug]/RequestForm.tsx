@@ -364,7 +364,7 @@ export default function RequestForm({ slug, roomOpen, onSubmitted }: Props) {
       </div>
 
       {/* Floating live confirmation / my-requests dock */}
-      <MyRequestsDock slug={slug} requests={myRequests} onRemoved={removeMyRequest} />
+      <MyRequestsDock slug={slug} requests={myRequests} guestName={guestName} onRemoved={removeMyRequest} />
     </>
   );
 }

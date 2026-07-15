@@ -38,6 +38,7 @@ beforeEach(() => {
     next: null,
     waiting: [],
     waitingCount: 0,
+    stats: { singers: 1, requests: 1, completed: 0, waiting: 0 },
   };
 });
 
