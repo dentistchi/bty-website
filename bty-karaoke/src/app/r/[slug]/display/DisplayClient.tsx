@@ -104,10 +104,17 @@ export default function DisplayClient({ slug, roomName }: Props) {
   const playing = state?.playing ?? null;
   const next = state?.next ?? null;
   const stats = state?.stats ?? null;
+  const ended = state?.event?.status === 'ended' || state?.event?.status === 'archived';
   const playingBadge = playing ? badgeForKind(playing.videoKind) : null;
 
   return (
     <div className="kd">
+      {/* Honest ended state — the one canonical event closed. History is kept. */}
+      {ended && (
+        <div className="kd-ended" role="status">
+          이벤트가 종료되었어요 · 오늘의 기록은 그대로 보존됩니다
+        </div>
+      )}
       {/* Top bar: brand + LIVE panel + QR + fullscreen (no video, no mute) */}
       <header className="kd-top">
         <div className="kd-brand">

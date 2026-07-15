@@ -2400,6 +2400,18 @@ a.btn.block {
   gap: 14px;
   overflow: hidden;
 }
+/* Honest ended ribbon — the canonical event closed; history preserved. */
+.kd-ended {
+  flex: 0 0 auto;
+  text-align: center;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-weight: 800;
+  font-size: clamp(0.9rem, 1.8vw, 1.15rem);
+}
 .kd-top {
   display: flex;
   align-items: flex-start;

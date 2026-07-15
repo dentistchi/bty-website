@@ -37,6 +37,19 @@ export interface DisplayStats {
   waiting: number;
 }
 
+/**
+ * The room's ONE canonical event identity (V5), or null for a legacy room that no
+ * event owns. Every screen carries the same `id` so Admin / DJ / Display / Guest
+ * are provably in the same group. `status` lets each screen show an honest ended
+ * state. Populated at the service/route boundary (which knows events); the domain
+ * projection stays event-agnostic.
+ */
+export interface DisplayEventInfo {
+  id: string;
+  name: string;
+  status: 'draft' | 'active' | 'ended' | 'archived';
+}
+
 export interface DisplayState {
   room: { name: string; slug: string; open: boolean };
   playing: DisplayRequest | null;
@@ -44,6 +57,8 @@ export interface DisplayState {
   waiting: DisplayRequest[];
   waitingCount: number;
   stats: DisplayStats;
+  /** The room's single canonical event, or null (legacy/self-service room). */
+  event: DisplayEventInfo | null;
 }
 
 /**

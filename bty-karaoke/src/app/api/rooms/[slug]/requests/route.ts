@@ -7,6 +7,7 @@ import { parseYoutubeVideoId } from '@/domain/youtube';
 import { CreateRequestSchema } from '@/lib/validation';
 import { addRequest, getPublicRoomBySlug, listActiveRequests } from '@/lib/rooms.server';
 import { requestAcceptance } from '@/lib/sessions.server';
+import { resolveEventAccess } from '@/lib/events.server';
 import { signCancelCapability } from '@/lib/capability.server';
 
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
   if (room.status !== 'open') {
     return NextResponse.json({ error: 'This room is closed' }, { status: 409 });
+  }
+
+  // Canonical-event gate (V5): if this room is owned by an event, that one event
+  // is the source of truth. An ended/archived event refuses new requests honestly.
+  // Legacy self-service rooms have no event → this is a no-op (backward compatible).
+  const access = await resolveEventAccess(room);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error, code: access.code }, { status: access.status });
   }
 
   // Once the session model is in use, requests are accepted only while a night is

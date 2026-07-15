@@ -560,6 +560,9 @@ export async function getDisplayState(room: PublicRoom): Promise<DisplayState> {
     waiting,
     waitingCount: waiting.length,
     stats: displayStatsFrom(await displayStatRows(room.id)),
+    // The room layer does not know events (that would be an import cycle). The
+    // canonical event is injected at the service/route boundary; default null.
+    event: null,
   };
 }
 

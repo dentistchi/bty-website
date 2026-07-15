@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getPublicRoomBySlug, getDisplayState } from '@/lib/rooms.server';
+import { getCanonicalEvent } from '@/lib/events.server';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -19,6 +20,12 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ slug: stri
   if (!room) {
     return NextResponse.json({ error: 'Room not found' }, { status: 404, headers: NO_STORE });
   }
-  const state = await getDisplayState(room);
-  return NextResponse.json(state, { headers: NO_STORE });
+  const [state, event] = await Promise.all([getDisplayState(room), getCanonicalEvent(room.id)]);
+  // Inject the room's ONE canonical event identity so Display / Guest / DJ all
+  // read the same event id + honest status. Null for legacy self-service rooms.
+  const withEvent = {
+    ...state,
+    event: event ? { id: event.id, name: event.name, status: event.status } : null,
+  };
+  return NextResponse.json(withEvent, { headers: NO_STORE });
 }

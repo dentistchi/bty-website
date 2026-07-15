@@ -16,6 +16,7 @@ import {
 } from '@/domain/event-code';
 import { computeEventStats, type EventStats, type StatRequest } from '@/domain/event-stats';
 import { selectLivePresence, type GuestLivePresence, type LiveRow } from '@/domain/live-presence';
+import { decideEventAccess } from '@/domain/event-access';
 
 export type EventStatus = 'draft' | 'active' | 'ended' | 'archived';
 
@@ -140,6 +141,49 @@ export async function getEventById(eventId: string): Promise<KaraokeEvent | null
     .maybeSingle();
   if (error) throw error;
   return (data as KaraokeEvent) ?? null;
+}
+
+/**
+ * THE single canonical resolver of "which Event is this room's group" (V5).
+ *
+ * An Event owns exactly one room (1:1), so a room maps to at most ONE Event —
+ * this is a deterministic lookup, NOT a "latest event" / "first active session"
+ * / "current session" inference (those anti-patterns must never exist). Every
+ * operational screen (Admin / DJ / Display / Guest) must resolve its Event
+ * through THIS function so all four share exactly one `event.id`. Returns null
+ * for a legacy room that no Event owns (e.g. a fixed self-service room); callers
+ * treat null as "no event bound" and behave exactly as before.
+ */
+export async function getCanonicalEvent(roomId: string): Promise<KaraokeEvent | null> {
+  return getEventByRoomId(roomId);
+}
+
+export type EventAccess =
+  | { ok: true; event: KaraokeEvent | null }
+  | { ok: false; status: 403 | 409; code: string; error: string };
+
+/**
+ * Validate that an operational caller may act on `room` under an OPTIONAL asserted
+ * event id (from a URL or a signed capability). The single gate every route can
+ * use so Admin / DJ / Display / Guest agree on exactly one live event:
+ *
+ *  - resolve the room's ONE canonical event (deterministic 1:1 — no inference);
+ *  - if the caller asserts an eventId, it MUST equal the room's canonical event id
+ *    → otherwise 403 (mismatch, and cross-room is a mismatch by construction since
+ *    the canonical event for THIS room can never be a foreign event's id);
+ *  - asserting an eventId for a room that has NO event → 403;
+ *  - a canonical event that is ended/archived → 409 (honest "event has ended");
+ *  - a legacy room with no asserted eventId → ok with event: null (V4 backward
+ *    compatibility — the current self-service flow is untouched).
+ */
+export async function resolveEventAccess(
+  room: { id: string },
+  assertedEventId?: string | null,
+): Promise<EventAccess> {
+  const event = await getCanonicalEvent(room.id);
+  const decision = decideEventAccess(event, assertedEventId);
+  if (!decision.ok) return decision;
+  return { ok: true, event };
 }
 
 /** The event that owns a room, if any (rooms created outside events return null). */
