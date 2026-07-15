@@ -874,18 +874,10 @@ main.dj-console {
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.03);
   margin-bottom: 10px;
-  /* Hint GPU compositing for the dnd-kit translate transform (no top/left). */
-  will-change: transform;
 }
 /* Inline reorder-failure note, above the queue. */
 .reorder-error {
   margin: 0 0 10px;
-}
-@media (prefers-reduced-motion: reduce) {
-  /* dnd-kit sets an inline transition on neighbours; keep motion minimal here. */
-  .q-card {
-    will-change: auto;
-  }
 }
 .q-card.head {
   border-color: rgba(245, 196, 81, 0.4);
@@ -2099,30 +2091,54 @@ a.btn.block {
    ghost — NOT a big empty box competing with the lifted overlay. A whisper of the
    original outline is all that marks "this row is in flight". Neighbours slide
    into it via dnd-kit's own (short) transform transition. */
-.q-card.placeholder {
-  opacity: 0.18;
-  border-style: solid;
-  border-color: var(--line);
-  background: transparent;
-  box-shadow: none;
+/* V5.1.2: during a drag the list is STATIC. The row being dragged is fully
+   hidden (its space stays as the drop gap) — it can never double-paint under the
+   overlay. No opacity ghost, no transform, no transition on any row. */
+.q-list {
+  position: relative;
 }
-.q-card.placeholder .q-handle,
-.q-card.placeholder .q-main,
-.q-card.placeholder .q-actions {
+.q-card.dragging {
   visibility: hidden;
 }
-/* The lifted card that follows the finger — crisp, raised, slightly enlarged. */
-.q-card.overlay {
-  cursor: grabbing;
-  border-color: rgba(245, 196, 81, 0.65);
-  background: #10182b;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
-  transform: scale(1.03);
+/* The thin gold insertion line — the ONLY moving thing besides the preview. */
+.q-insert-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  margin-top: -6px;
+  border-radius: 3px;
+  background: var(--gold, #f5c451);
+  box-shadow: 0 0 0 1px rgba(245, 196, 81, 0.35);
+  pointer-events: none;
+  z-index: 5;
 }
-.q-card.overlay .q-handle {
+/* Minimal drag preview — one solid, cheap-to-paint card that follows the finger.
+   No image, no buttons, no blur, no big shadow, no transition. */
+.q-drag-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(245, 196, 81, 0.65);
+  background: #10182b;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+  color: var(--text);
+  pointer-events: none;
+  cursor: grabbing;
+  contain: layout paint;
+  will-change: transform;
+}
+.q-drag-preview .q-handle {
   color: var(--gold);
   border-color: rgba(245, 196, 81, 0.5);
-  display: grid;
+}
+.q-drag-preview .q-song {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60vw;
 }
 /* Fine one-step move controls in the action sheet. */
 .sheet-move {

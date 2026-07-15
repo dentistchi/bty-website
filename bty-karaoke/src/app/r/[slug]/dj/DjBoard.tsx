@@ -9,9 +9,8 @@ import {
   KeyboardSensor,
   useSensor,
   useSensors,
-  closestCenter,
-  type CollisionDetection,
   type DragStartEvent,
+  type DragMoveEvent,
   type DragEndEvent,
 } from '@dnd-kit/core';
 import {
@@ -25,7 +24,13 @@ import type { KaraokeRequest } from '@/lib/rooms.server';
 import type { KaraokeSession } from '@/lib/sessions.server';
 import type { DjEventStatus } from '@/lib/events.server';
 import { selectStage } from '@/domain/queue';
-import { moveWithin, orderChanged, reconcileDecision, resolveVerticalOverId } from '@/domain/reorder';
+import {
+  orderChanged,
+  reconcileDecision,
+  resolveInsertionIndex,
+  insertAt,
+  type DragRowRect,
+} from '@/domain/reorder';
 import { primaryPlayTarget } from '@/domain/play-flow';
 import { requestDisplayTitle } from '@/domain/request-view';
 import { displaySong } from '@/domain/song-title';
@@ -77,31 +82,33 @@ function QueueCardContent({ r, index, isNew }: { r: KaraokeRequest; index: numbe
 // NOT re-render every card mid-drag — the biggest source of touch jank. It
 // re-renders only when a field it actually paints changes. `onOpenSheet` is a
 // stable callback that takes the request, so it never breaks memoization.
+// V5.1.2 — the list is FROZEN during a drag: rows never take a sort transform and
+// never animate, so nothing on the page moves except the single overlay preview.
+// When `frozen` is true the row renders statically; the row being dragged is fully
+// hidden (visibility:hidden) so its original card can never double-paint under the
+// overlay — its space stays as the drop gap. No neighbour movement = no jitter.
 const SortableQueueCard = memo(
   function SortableQueueCard({
     r,
     index,
     isNew,
     disabled,
+    frozen,
     onOpenSheet,
   }: {
     r: KaraokeRequest;
     index: number;
     isNew: boolean;
     disabled: boolean;
+    frozen: boolean;
     onOpenSheet: (r: KaraokeRequest) => void;
   }) {
     const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
-      useSortable({
-        id: r.id,
-        disabled,
-        // Neighbours yield with a short ease-out slide (not the ~200ms default), so
-        // the row that opens the drop target reads as one smooth motion rather than
-        // a stepwise jump. The overlay itself has no CSS transition (it follows the
-        // finger via DragOverlay), so only displaced rows animate.
-        transition: { duration: 160, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' },
-      });
-    const style = { transform: CSS.Translate.toString(transform), transition };
+      useSortable({ id: r.id, disabled });
+    // Frozen (any drag active): no transform, no transition — the row does not move.
+    const style = frozen
+      ? { transform: undefined, transition: 'none' }
+      : { transform: CSS.Translate.toString(transform), transition };
     const d = displaySong(r.youtube_title ?? '', r.youtube_channel_title);
     const song = d.song || requestDisplayTitle(r);
     return (
@@ -109,7 +116,7 @@ const SortableQueueCard = memo(
         ref={setNodeRef}
         id={`req-${r.id}`}
         style={style}
-        className={`q-card singer-first${index === 0 ? ' head' : ''}${isNew ? ' isnew' : ''}${isDragging ? ' placeholder' : ''}`}
+        className={`q-card singer-first${index === 0 ? ' head' : ''}${isNew ? ' isnew' : ''}${isDragging ? ' dragging' : ''}`}
       >
         <button
           ref={setActivatorNodeRef}
@@ -141,11 +148,34 @@ const SortableQueueCard = memo(
     a.index === b.index &&
     a.isNew === b.isNew &&
     a.disabled === b.disabled &&
+    a.frozen === b.frozen &&
     a.onOpenSheet === b.onOpenSheet &&
     a.r.guest_name === b.r.guest_name &&
     a.r.youtube_title === b.r.youtube_title &&
     a.r.youtube_channel_title === b.r.youtube_channel_title,
 );
+
+// The ONE thing that follows the finger (V5.1.2). Deliberately minimal: a grip
+// glyph + singer + song, at a fixed size captured on lift. NO thumbnail, buttons,
+// menu, useSortable, animation, blur, or big shadow — nothing to re-measure or
+// re-paint per frame. pointer-events:none so it never intercepts the gesture.
+// dnd-kit collision is disabled — the drop slot is computed from the frozen
+// snapshot in onDragMove, so no per-frame rect intersection runs.
+const NO_COLLISION = () => [];
+
+function QueueDragPreview({ r, width }: { r: KaraokeRequest; width: number }) {
+  const d = displaySong(r.youtube_title ?? '', r.youtube_channel_title);
+  const song = d.song || requestDisplayTitle(r);
+  return (
+    <div className="q-drag-preview" style={width ? { width } : undefined}>
+      <span className="q-handle" aria-hidden>⠿</span>
+      <div className="q-main">
+        <div className="q-singer">{r.guest_name}</div>
+        <div className="q-song">{song}</div>
+      </div>
+    </div>
+  );
+}
 
 interface QueuePayload {
   room: { display_name: string; status: 'open' | 'closed' };
@@ -220,6 +250,16 @@ export default function DjBoard({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [reorderError, setReorderError] = useState<string | null>(null);
   const savingRef = useRef(false);
+  // V5.1.2 frozen-rect drag model: the list never moves; only a thin insertion
+  // line does. Row rects are snapshotted ONCE on lift — no per-frame DOM
+  // re-measure, no collision recomputation, no neighbour animation.
+  const [insertionTop, setInsertionTop] = useState<number | null>(null);
+  const frozenRef = useRef<{ rows: DragRowRect[]; listTop: number; width: number } | null>(null);
+  const insIdxRef = useRef(0);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  // The active id in a ref, set synchronously on lift (state setters are async),
+  // so the insertion-line math is correct on the very first frame.
+  const activeIdRef = useRef<string | null>(null);
 
   const requests = data?.requests ?? [];
   const { current, queue } = selectStage(requests);
@@ -239,6 +279,11 @@ export default function DjBoard({
     return [...head, ...tail];
   }, [queue, override]);
   const displayIds = useCallback(() => displayQueue.map((r) => r.id), [displayQueue]);
+  // Stable SortableContext items: same reference while the id order is unchanged,
+  // so a 4s poll never hands the sortable subtree a fresh array mid-drag.
+  const sortableIdsKey = displayQueue.map((r) => r.id).join(',');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const sortableIds = useMemo(() => displayQueue.map((r) => r.id), [sortableIdsKey]);
   // The server's canonical waiting order for the current poll — the reconcile
   // target for a held optimistic order.
   const serverWaitingIds = useMemo(() => queue.map((r) => r.id), [queue]);
@@ -256,56 +301,89 @@ export default function DjBoard({
   }, [serverWaitingIds, override, activeId]);
 
   const sensors = useSensors(
-    // Mouse/trackpad: a tiny move starts the drag. Touch: the drag is bound to the
-    // grip (touch-action:none) so a short hold starts it while a flick elsewhere
-    // still scrolls; a snappier delay makes the card follow the finger sooner.
+    // Mouse/trackpad: a tiny move starts the drag. Touch: bound to the grip
+    // (touch-action:none), a short hold starts it while a flick elsewhere scrolls.
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 90, tolerance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 140, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  // The row currently under the drag — held across pointer moves (a ref, so it
-  // never re-renders anything) to give the collision hysteresis its "previous"
-  // target. Prevents the order from flickering when a finger wobbles at a boundary.
-  const overIdRef = useRef<string | null>(null);
-  const collisionDetection = useCallback<CollisionDetection>((args) => {
-    const { droppableRects, droppableContainers, pointerCoordinates, collisionRect } = args;
-    const pointerY = pointerCoordinates?.y ?? collisionRect.top + collisionRect.height / 2;
-    const candidates: { id: string; center: number }[] = [];
-    for (const c of droppableContainers) {
-      const rect = droppableRects.get(c.id);
-      if (rect) candidates.push({ id: String(c.id), center: rect.top + rect.height / 2 });
+  // Compute the insertion line's Y (list-relative) for an insertion index against
+  // the frozen snapshot: the top of the row now occupying that slot, or the bottom
+  // of the last row when dropping at the end.
+  const lineTopForIndex = useCallback((idx: number): number => {
+    const snap = frozenRef.current;
+    if (!snap) return 0;
+    const others = snap.rows.filter((row) => row.id !== activeIdRef.current);
+    if (others.length === 0) return 0;
+    const clamped = Math.max(0, Math.min(others.length, idx));
+    if (clamped >= others.length) {
+      const last = others[others.length - 1];
+      return last.top + last.height - snap.listTop;
     }
-    const overId = resolveVerticalOverId({ pointerY, candidates, previousOverId: overIdRef.current });
-    overIdRef.current = overId;
-    return overId ? [{ id: overId }] : closestCenter(args);
+    return others[clamped].top - snap.listTop;
   }, []);
 
   function onDragStart(e: DragStartEvent) {
     if (reordering) return;
     setReorderError(null);
-    overIdRef.current = String(e.active.id); // seed hysteresis at the lifted card
-    setActiveId(String(e.active.id));
-    setOverride(displayIds()); // freeze the current order for the drag duration
-  }
-  function onDragEnd(e: DragEndEvent) {
-    const active = String(e.active.id);
-    const over = e.over ? String(e.over.id) : null;
-    overIdRef.current = null;
-    setActiveId(null);
-    const base = displayIds();
-    if (!over || over === active) {
-      // No drop target: keep whatever order was already visible (an in-flight
-      // optimistic order stays; otherwise the reconcile effect settles it).
-      return;
+    const id = String(e.active.id);
+    activeIdRef.current = id; // synchronous — used by the line math this frame
+    // Snapshot every waiting row's rect ONCE. From here the list is static.
+    const listTop = listRef.current?.getBoundingClientRect().top ?? 0;
+    const rows: DragRowRect[] = [];
+    let width = 0;
+    let activeTop = 0;
+    for (const rq of displayQueue) {
+      const el = document.getElementById(`req-${rq.id}`);
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      rows.push({ id: rq.id, top: rect.top, height: rect.height });
+      if (rq.id === id) {
+        width = rect.width;
+        activeTop = rect.top;
+      }
     }
-    const next = moveWithin(base, active, over);
+    frozenRef.current = { rows, listTop, width };
+    insIdxRef.current = resolveInsertionIndex(
+      (rows.find((row) => row.id === id)?.top ?? 0) + (rows.find((row) => row.id === id)?.height ?? 0) / 2,
+      rows,
+      id,
+    );
+    setActiveId(id);
+    setOverride(displayIds()); // freeze the rendered order for the drag duration
+    setInsertionTop(activeTop - listTop); // the line starts where the lifted card sat
+  }
+  function onDragMove(e: DragMoveEvent) {
+    const snap = frozenRef.current;
+    const id = activeIdRef.current;
+    if (!snap || !id) return;
+    // Pointer proxy: the dragged card's translated centre (frozen rect + delta).
+    const tr = e.active.rect.current.translated;
+    const centerY = tr ? tr.top + tr.height / 2 : 0;
+    const idx = resolveInsertionIndex(centerY, snap.rows, id);
+    if (idx !== insIdxRef.current) {
+      insIdxRef.current = idx;
+      setInsertionTop(lineTopForIndex(idx)); // only state update when the slot changes
+    }
+  }
+  function onDragEnd() {
+    const id = activeIdRef.current;
+    const idx = insIdxRef.current;
+    activeIdRef.current = null;
+    frozenRef.current = null;
+    setInsertionTop(null);
+    setActiveId(null);
+    if (!id) return;
+    const base = displayIds();
+    const next = insertAt(base, id, idx); // the ONE array move, on drop
     if (orderChanged(next, base)) void applyReorder(next);
-    // else: dropped in the same spot → leave the visible order as-is.
   }
   function onDragCancel() {
-    overIdRef.current = null;
-    setActiveId(null); // pointercancel / Escape → the reconcile effect settles the order
+    activeIdRef.current = null;
+    frozenRef.current = null;
+    setInsertionTop(null);
+    setActiveId(null); // the reconcile effect settles the order
   }
 
   // Save a new full waiting order optimistically and HOLD it until a fresh poll
@@ -645,45 +723,42 @@ export default function DjBoard({
           ) : (
             <DndContext
               sensors={sensors}
-              collisionDetection={collisionDetection}
+              // We compute the drop slot ourselves from a frozen snapshot, so
+              // dnd-kit does no collision work (one fewer coordinate path).
+              collisionDetection={NO_COLLISION}
+              autoScroll={false}
               onDragStart={onDragStart}
+              onDragMove={onDragMove}
               onDragEnd={onDragEnd}
               onDragCancel={onDragCancel}
             >
-              <SortableContext items={displayIds()} strategy={verticalListSortingStrategy}>
-                {displayQueue.map((r, i) => (
-                  <SortableQueueCard
-                    key={r.id}
-                    r={r}
-                    index={i}
-                    isNew={newSet.has(r.id)}
-                    disabled={reordering}
-                    onOpenSheet={openSheet}
-                  />
-                ))}
-              </SortableContext>
-              {/* No drop animation: onDragEnd already reorders the optimistic list
-                  so the real card is at the target the instant the finger lifts.
-                  A drop-glide here would land the overlay, vanish, then show the row
-                  moving again — the "double landing". null = one clean landing. */}
+              {/* position:relative host for the absolute insertion line. The list
+                  is STATIC during a drag — only this thin line moves. */}
+              <div className="q-list" ref={listRef}>
+                {insertionTop != null && (
+                  <div className="q-insert-line" style={{ top: insertionTop }} aria-hidden />
+                )}
+                <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+                  {displayQueue.map((r, i) => (
+                    <SortableQueueCard
+                      key={r.id}
+                      r={r}
+                      index={i}
+                      isNew={newSet.has(r.id)}
+                      disabled={reordering}
+                      frozen={activeId != null}
+                      onOpenSheet={openSheet}
+                    />
+                  ))}
+                </SortableContext>
+              </div>
+              {/* The ONE thing that follows the finger — a minimal preview, no drop
+                  animation (the optimistic list already lands the row on release). */}
               <DragOverlay dropAnimation={null}>
                 {activeId
                   ? (() => {
-                      const i = displayQueue.findIndex((x) => x.id === activeId);
-                      const r = displayQueue[i];
-                      return r ? (
-                        <div className="q-card singer-first overlay">
-                          <span className="q-handle" aria-hidden>
-                            ⠿
-                          </span>
-                          <QueueCardContent r={r} index={i} isNew={newSet.has(r.id)} />
-                          <div className="q-actions">
-                            <span className="q-overflow" aria-hidden>
-                              ⋯
-                            </span>
-                          </div>
-                        </div>
-                      ) : null;
+                      const r = displayQueue.find((x) => x.id === activeId);
+                      return r ? <QueueDragPreview r={r} width={frozenRef.current?.width ?? 0} /> : null;
                     })()
                   : null}
               </DragOverlay>

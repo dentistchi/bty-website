@@ -1,5 +1,40 @@
 import { describe, it, expect } from 'vitest';
-import { planReorder, moveWithin, orderChanged, reconcileDecision, resolveVerticalOverId } from './reorder';
+import {
+  planReorder,
+  moveWithin,
+  orderChanged,
+  reconcileDecision,
+  resolveVerticalOverId,
+  resolveInsertionIndex,
+  insertAt,
+} from './reorder';
+
+describe('resolveInsertionIndex + insertAt — frozen-rect drop model (V5.1.2)', () => {
+  // Rows a/b/c, height 40 → midpoints 20, 60, 100.
+  const rows = [
+    { id: 'a', top: 0, height: 40 },
+    { id: 'b', top: 40, height: 40 },
+    { id: 'c', top: 80, height: 40 },
+  ];
+  it('counts the non-active rows whose midpoint is above the pointer', () => {
+    expect(resolveInsertionIndex(10, rows, 'a')).toBe(0);
+    expect(resolveInsertionIndex(70, rows, 'a')).toBe(1); // past b (mid 60)
+    expect(resolveInsertionIndex(110, rows, 'a')).toBe(2); // past b and c
+  });
+  it('ignores the active row itself when counting', () => {
+    expect(resolveInsertionIndex(110, rows, 'b')).toBe(2); // a(20) + c(100) above
+    expect(resolveInsertionIndex(50, rows, 'b')).toBe(1); // a above, c below
+  });
+  it('insertAt drops the active id at the slot among the others', () => {
+    expect(insertAt(['a', 'b', 'c'], 'a', 0)).toEqual(['a', 'b', 'c']);
+    expect(insertAt(['a', 'b', 'c'], 'a', 1)).toEqual(['b', 'a', 'c']);
+    expect(insertAt(['a', 'b', 'c'], 'a', 2)).toEqual(['b', 'c', 'a']);
+  });
+  it('insertAt clamps an out-of-range index', () => {
+    expect(insertAt(['a', 'b'], 'a', 99)).toEqual(['b', 'a']);
+    expect(insertAt(['a', 'b'], 'a', -5)).toEqual(['a', 'b']);
+  });
+});
 
 describe('reconcileDecision — drag optimistic-order settling (V5.1)', () => {
   it('confirms when the server order equals the optimistic order (no flash, no visual change)', () => {

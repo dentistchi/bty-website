@@ -58,6 +58,44 @@ export function moveWithin(ids: readonly string[], activeId: string, overId: str
   return next;
 }
 
+export interface DragRowRect {
+  id: string;
+  top: number;
+  height: number;
+}
+
+/**
+ * Insertion index for the dragged card given the pointer's Y and a FROZEN snapshot
+ * of the row rects captured at drag start (V5.1.2). The list does not move during
+ * a drag — only a thin insertion line shifts — so this is computed purely from the
+ * snapshot + pointer, never a live DOM re-measure. Returns the slot (0..N) among
+ * the OTHER rows where the active card would land: the count of non-active rows
+ * whose vertical midpoint sits above the pointer.
+ */
+export function resolveInsertionIndex(
+  pointerY: number,
+  rows: readonly DragRowRect[],
+  activeId: string,
+): number {
+  let idx = 0;
+  for (const r of rows) {
+    if (r.id === activeId) continue;
+    if (r.top + r.height / 2 < pointerY) idx++;
+  }
+  return idx;
+}
+
+/**
+ * Place `activeId` at `index` among the other ids (drop result). Pure: removes the
+ * active id, clamps the index into range, and splices it back — the single array
+ * mutation that happens once on drop.
+ */
+export function insertAt(order: readonly string[], activeId: string, index: number): string[] {
+  const without = order.filter((id) => id !== activeId);
+  const clamped = Math.max(0, Math.min(without.length, index));
+  return [...without.slice(0, clamped), activeId, ...without.slice(clamped)];
+}
+
 /**
  * Choose the queue row the dragged card is currently over, from vertical geometry,
  * WITH HYSTERESIS — so a small wobble near a card boundary does not toggle the

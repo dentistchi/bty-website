@@ -1,8 +1,8 @@
-// Source guards for the Admin-Controls queue-drag fluidity invariants (V5.1).
-// These are client-component behaviors that can't run in the node env, so we pin
-// the anti-jank structure to source: Display stays read-only, the optimistic
-// order is HELD (no drop flash), rows are memoized, and the drag is transform-
-// based off a touch-action:none handle.
+// Source guards for the V5.1.2 iPad drag-rendering RESET. The model is now:
+// static list · one minimal overlay preview · a thin insertion line · frozen-rect
+// index · one arrayMove on drop. These pin the anti-flicker architecture so a
+// regression (e.g. re-introducing neighbour movement or a full-card overlay)
+// fails CI.
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -16,97 +16,86 @@ const code = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/
 const djCode = code(dj);
 const displayCode = code(display);
 
-/** The CSS block for a selector, `.sel { … }`. */
 function cssBlock(sel: string): string {
   const i = css.indexOf(sel + ' {');
   if (i < 0) return '';
   return css.slice(i, css.indexOf('}', i));
 }
+/** The source between a start marker and the next end marker (exclusive). */
+function between(src: string, startMarker: string, endMarker: string): string {
+  const a = src.indexOf(startMarker);
+  if (a < 0) return '';
+  const b = src.indexOf(endMarker, a + startMarker.length);
+  return src.slice(a, b < 0 ? undefined : b);
+}
 
-describe('Display stays read-only (no drag / reorder)', () => {
-  it('DisplayClient has no dnd / sortable / reorder controls', () => {
-    expect(displayCode).not.toMatch(/DndContext|useSortable|DragOverlay|SortableContext/);
-    expect(displayCode).not.toMatch(/reorder/i);
+describe('Display stays read-only (no drag)', () => {
+  it('DisplayClient has no dnd / sortable / reorder', () => {
+    expect(displayCode).not.toMatch(/DndContext|useSortable|DragOverlay|reorder/i);
   });
 });
 
-describe('Admin Controls owns the reorder, transform-based off a handle', () => {
-  it('DjBoard uses dnd-kit sortable with a stable request-id key', () => {
-    expect(dj).toContain('DndContext');
-    expect(dj).toContain('useSortable(');
-    expect(dj).toContain('key={r.id}');
-    expect(dj).toContain('CSS.Translate.toString(transform)'); // transform-based move, not top/left
+describe('the list is STATIC during a drag (V5.1.2)', () => {
+  it('rows take no transform/transition while frozen (no neighbour movement)', () => {
+    expect(djCode).toContain('frozen={activeId != null}');
+    expect(djCode).toMatch(/frozen\s*\?\s*\{\s*transform:\s*undefined,\s*transition:\s*'none'\s*\}/);
   });
-  it('the grip handle is the drag activator and is touch-action:none', () => {
-    expect(dj).toContain('setActivatorNodeRef');
-    expect(cssBlock('.q-handle')).toMatch(/touch-action:\s*none/);
+  it('the dragged row is fully hidden (never double-paints under the overlay)', () => {
+    expect(cssBlock('.q-card.dragging')).toMatch(/visibility:\s*hidden/);
+    // The opacity-ghost placeholder is gone.
+    expect(css).not.toContain('.q-card.placeholder');
   });
-});
-
-describe('optimistic order is HELD until a fresh poll reconciles (no drop flash)', () => {
-  it('reconcile uses the pure decision and only settles when idle', () => {
-    expect(dj).toContain('reconcileDecision(');
-    expect(dj).toMatch(/reconcileDecision\(override, serverWaitingIds\)\s*!==\s*'hold'/);
-  });
-  it('a successful save keeps the override (refresh, NOT snap-back)', () => {
-    // In the ok branch we refresh and do NOT clear the override.
-    expect(djCode).toMatch(/result === 'ok'\)\s*\{[^}]*onRefresh\(\)/);
-    expect(djCode).not.toMatch(/result === 'ok'\)\s*\{[^}]*setOverride\(null\)/);
-  });
-  it('only a failed save rolls back with an inline error', () => {
-    expect(dj).toContain('순서를 저장하지 못했습니다');
-    expect(dj).toContain('reorder-error');
+  it('a thin insertion line marks the drop slot (list does not reflow)', () => {
+    expect(djCode).toContain('q-insert-line');
+    expect(cssBlock('.q-insert-line')).toMatch(/position:\s*absolute/);
+    expect(cssBlock('.q-insert-line')).toMatch(/pointer-events:\s*none/);
   });
 });
 
-describe('rows are render-isolated so a 4s poll does not re-render every card', () => {
-  it('SortableQueueCard is memoized and takes a stable onOpenSheet', () => {
-    expect(dj).toMatch(/const SortableQueueCard = memo\(/);
-    expect(dj).toContain('onOpenSheet={openSheet}');
-    expect(dj).toMatch(/const openSheet = useCallback/);
+describe('ONE minimal moving visual (V5.1.2)', () => {
+  it('the overlay renders QueueDragPreview, not the full SortableQueueCard', () => {
+    expect(djCode).toMatch(/<QueueDragPreview\s+r=\{r\}/);
+    expect(djCode).not.toContain('q-card singer-first overlay');
+  });
+  it('the preview has NO useSortable, image, or button', () => {
+    const preview = between(dj, 'function QueueDragPreview', 'interface QueuePayload');
+    expect(preview).not.toMatch(/useSortable|<img|thumbnail|<button|onClick/);
+  });
+  it('the preview CSS carries pointer-events:none and no blur/backdrop-filter', () => {
+    const block = cssBlock('.q-drag-preview');
+    expect(block).toMatch(/pointer-events:\s*none/);
+    expect(block).not.toMatch(/backdrop-filter|blur|filter:/);
+    expect(block).not.toMatch(/transition:/);
   });
 });
 
-describe('CSS avoids layout-thrashing move animations', () => {
-  it('the queue card block has no transition: all and no top/left animation', () => {
-    const block = cssBlock('.q-card');
-    expect(block).not.toMatch(/transition:\s*all/);
-    expect(block).not.toMatch(/\btop:\s|\bleft:\s/);
+describe('one coordinate path: autoScroll off, no collision, frozen rects', () => {
+  it('autoScroll is disabled', () => {
+    expect(djCode).toContain('autoScroll={false}');
+  });
+  it('dnd-kit collision is disabled (we compute the slot ourselves)', () => {
+    expect(djCode).toContain('collisionDetection={NO_COLLISION}');
+    expect(djCode).toMatch(/const NO_COLLISION = \(\) => \[\]/);
+  });
+  it('rects are measured ONCE on lift, never per move', () => {
+    // getBoundingClientRect only inside onDragStart; onDragMove uses the frozen snapshot.
+    expect(between(dj, 'function onDragStart', 'function onDragMove')).toContain('getBoundingClientRect');
+    const move = between(dj, 'function onDragMove', 'function onDragEnd');
+    expect(move).not.toContain('getBoundingClientRect');
+    expect(move).toContain('resolveInsertionIndex(');
   });
 });
 
-describe('drag motion polish (V5.1.1) — placeholder, collision, drop, transition', () => {
-  it('the source slot is a FAINT ghost, not a heavy empty box', () => {
-    const block = cssBlock('.q-card.placeholder');
-    // Low opacity, transparent background, weak solid border — never the big
-    // dashed/filled box that competed with the lifted overlay.
-    expect(block).toMatch(/opacity:\s*0\.(0|1|2)\d?/); // <= ~0.25
-    expect(block).toMatch(/background:\s*transparent/);
-    expect(block).not.toMatch(/border-style:\s*dashed/);
-    // It keeps its space (height) — content is hidden, the row is NOT display:none.
-    expect(djCode).not.toMatch(/display:\s*['"]?none/);
-  });
-
-  it('displaced neighbours use a short transform transition (not the ~200ms default, not "all")', () => {
-    expect(djCode).toMatch(/transition:\s*\{\s*duration:\s*160/);
-    expect(djCode).toMatch(/cubic-bezier\(0\.2,\s*0\.8,\s*0\.2,\s*1\)/);
-    // The overlay itself carries no position transition (it follows the finger).
-    expect(cssBlock('.q-card.overlay')).not.toMatch(/transition:/);
-  });
-
-  it('collision uses the hysteresis helper (no boundary flicker), not bare closestCenter', () => {
-    expect(djCode).toContain('resolveVerticalOverId(');
-    expect(djCode).toMatch(/collisionDetection=\{collisionDetection\}/);
-    expect(djCode).toContain('overIdRef'); // previous-over kept in a ref (no re-render)
-  });
-
-  it('the drop animation is disabled so the optimistic list lands once (no double landing)', () => {
-    expect(djCode).toMatch(/dropAnimation=\{null\}/);
-  });
-
-  it('the server mutation still fires only on drop end (drop-only sorting preserved)', () => {
-    // No onDragOver reorder — arrayMove/applyReorder happens in onDragEnd only.
+describe('drop-only sorting: one arrayMove on release', () => {
+  it('there is no onDragOver; the order changes only in onDragEnd via insertAt', () => {
     expect(djCode).not.toMatch(/onDragOver/);
-    expect(djCode).toMatch(/function onDragEnd[\s\S]*applyReorder\(/);
+    expect(between(dj, 'function onDragEnd', 'function onDragCancel')).toContain('insertAt(');
+  });
+  it('no drop animation (the optimistic list already lands the row)', () => {
+    expect(djCode).toContain('dropAnimation={null}');
+  });
+  it('SortableContext uses a stable memoized items reference', () => {
+    expect(djCode).toContain('items={sortableIds}');
+    expect(djCode).toMatch(/const sortableIds = useMemo/);
   });
 });
