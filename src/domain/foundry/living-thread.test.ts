@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   evaluateThreadEligibility,
   buildEvidencePacket,
-  evidenceFingerprint,
+  canonicalEvidenceString,
   validateLivingThread,
   LIVING_THREAD_PROMPT_VERSION,
   type FoundryHistoryRecord,
@@ -73,20 +73,23 @@ describe("evaluateThreadEligibility", () => {
   });
 });
 
-describe("evidenceFingerprint", () => {
-  it("same evidence + prompt version → same fingerprint", () => {
-    expect(evidenceFingerprint(THREE_ELIGIBLE)).toBe(evidenceFingerprint([...THREE_ELIGIBLE].reverse()));
+describe("canonicalEvidenceString (fingerprint material)", () => {
+  it("same evidence → same canonical string (order-independent)", () => {
+    expect(canonicalEvidenceString(THREE_ELIGIBLE)).toBe(canonicalEvidenceString([...THREE_ELIGIBLE].reverse()));
   });
-  it("changed user text → new fingerprint", () => {
+  it("changed user text → different canonical string", () => {
     const edited = [
       THREE_ELIGIBLE[0],
       THREE_ELIGIBLE[1],
       { ...THREE_ELIGIBLE[2], responseText: "A different reflection entirely." },
     ];
-    expect(evidenceFingerprint(edited)).not.toBe(evidenceFingerprint(THREE_ELIGIBLE));
+    expect(canonicalEvidenceString(edited)).not.toBe(canonicalEvidenceString(THREE_ELIGIBLE));
   });
-  it("carries the prompt version", () => {
-    expect(evidenceFingerprint(THREE_ELIGIBLE).startsWith(LIVING_THREAD_PROMPT_VERSION + ":")).toBe(true);
+  it("uses the full user text, not the excerpt", () => {
+    expect(canonicalEvidenceString(THREE_ELIGIBLE)).toContain("The delay is now costing the team clarity.");
+  });
+  it("prompt version constant is available for the service fingerprint prefix", () => {
+    expect(LIVING_THREAD_PROMPT_VERSION).toBe("v1");
   });
 });
 

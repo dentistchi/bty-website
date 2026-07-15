@@ -107,6 +107,9 @@ describe("getOrGenerateLivingThread — generation + idempotency", () => {
     expect(second.status).toBe("eligible");
     if (second.status === "eligible") expect(second.generated).toBe(false); // restored
     expect(insertCount).toBe(1); // no second write for the same evidence
+
+    // The persisted fingerprint is a SHA-256 hex (v1:<64 hex>), not 32-bit FNV.
+    expect([...store.keys()].some((k) => /\|v1:[0-9a-f]{64}$/.test(k))).toBe(true);
   });
 
   it("changed evidence → new fingerprint → new generation", async () => {

@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   evaluateThreadEligibility,
   buildEvidencePacket,
-  evidenceFingerprint,
+  canonicalEvidenceString,
   validateLivingThread,
   LIVING_THREAD_PROMPT_VERSION,
   type FoundryHistoryRecord,
@@ -46,6 +46,19 @@ function logThreadOutcome(outcome: string, code?: string): void {
 
 function stripJsonFences(text: string): string {
   return text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+}
+
+/**
+ * A collision-resistant fingerprint of the evidence set (SHA-256 of the domain's
+ * canonical string, prefixed with the prompt version). Web Crypto is available in
+ * both the Workers runtime and Node, so no dependency is added. Same evidence +
+ * prompt version → same fingerprint (idempotent restore); any change → a new one.
+ */
+async function evidenceFingerprint(records: FoundryHistoryRecord[]): Promise<string> {
+  const bytes = new TextEncoder().encode(canonicalEvidenceString(records));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const hex = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+  return `${LIVING_THREAD_PROMPT_VERSION}:${hex}`;
 }
 
 async function expressThreadWithLlm(packet: EvidencePacket): Promise<LivingThread | null> {
@@ -117,7 +130,7 @@ export async function restoreLivingThread(
   if (!elig.eligible) {
     return { status: elig.status as Exclude<ThreadStatus, "eligible">, thread: null, needsGeneration: false, sourceCount: packet.sourceCount, spanDays: packet.spanDays };
   }
-  const stored = await getStoredThread(admin, userId, evidenceFingerprint(records), packet);
+  const stored = await getStoredThread(admin, userId, await evidenceFingerprint(records), packet);
   return { status: "eligible", thread: stored, needsGeneration: stored === null, sourceCount: packet.sourceCount, spanDays: packet.spanDays };
 }
 
@@ -138,7 +151,7 @@ export async function getOrGenerateLivingThread(
     return { status: elig.status as Exclude<ThreadStatus, "eligible">, thread: null, sourceCount: packet.sourceCount, spanDays: packet.spanDays };
   }
 
-  const fingerprint = evidenceFingerprint(records);
+  const fingerprint = await evidenceFingerprint(records);
 
   // Restore the canonical thread for this exact evidence set (idempotent).
   const stored = await getStoredThread(admin, userId, fingerprint, packet);

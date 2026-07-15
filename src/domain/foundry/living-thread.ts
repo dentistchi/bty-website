@@ -165,28 +165,18 @@ export function buildEvidencePacket(records: FoundryHistoryRecord[]): EvidencePa
   };
 }
 
-/** FNV-1a — stable, dependency-free hash. */
-function fnv1a(seed: string): string {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < seed.length; i++) {
-    h ^= seed.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return (h >>> 0).toString(16).padStart(8, "0");
-}
-
 /**
- * A stable fingerprint of the exact evidence a thread was built from. Same
- * evidence + same prompt version → same fingerprint → restore the stored thread;
- * any change to the eligible responses (add/edit) → new fingerprint → regenerate.
- * Hashes the FULL user text (not the excerpt) so real edits are detected.
+ * The canonical string of the EXACT evidence a thread is built from — the material
+ * a fingerprint hashes. Same evidence → same string (order-independent: eligible
+ * records are date-sorted); any change to the eligible responses (add/edit) → a
+ * different string. Uses the FULL user text (not the excerpt) so real edits are
+ * detected. Pure and hash-free: the SERVICE turns this into a collision-resistant
+ * SHA-256 fingerprint (domain stays free of runtime crypto).
  */
-export function evidenceFingerprint(records: FoundryHistoryRecord[]): string {
-  const elig = eligibleRecords(records);
-  const canonical = elig
-    .map((r) => `${r.eventId}|${r.completedAt}|${fnv1a(collapse(r.responseText))}`)
+export function canonicalEvidenceString(records: FoundryHistoryRecord[]): string {
+  return eligibleRecords(records)
+    .map((r) => `${r.eventId}|${r.completedAt}|${collapse(r.responseText)}`)
     .join("~");
-  return `${LIVING_THREAD_PROMPT_VERSION}:${fnv1a(canonical)}`;
 }
 
 // ---------------------------------------------------------------------------
