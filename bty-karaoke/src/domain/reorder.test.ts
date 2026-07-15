@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { planReorder } from './reorder';
+import { planReorder, moveWithin, orderChanged } from './reorder';
 
 describe('planReorder', () => {
   const waiting = ['a', 'b', 'c', 'd']; // canonical order
@@ -57,5 +57,38 @@ describe('planReorder', () => {
       outcome: 'ok',
       finalOrder: ['b', 'a', 'c', 'd'],
     });
+  });
+});
+
+describe('moveWithin (drag drop semantics)', () => {
+  const ids = ['a', 'b', 'c', 'd'];
+
+  it('moves an item down to the drop target index', () => {
+    expect(moveWithin(ids, 'a', 'c')).toEqual(['b', 'c', 'a', 'd']);
+  });
+
+  it('moves an item up to the drop target index', () => {
+    expect(moveWithin(ids, 'd', 'b')).toEqual(['a', 'd', 'b', 'c']);
+  });
+
+  it('move to the very top', () => {
+    expect(moveWithin(ids, 'c', 'a')).toEqual(['c', 'a', 'b', 'd']);
+  });
+
+  it('a drop on itself is a no-op (returns the same order)', () => {
+    expect(moveWithin(ids, 'b', 'b')).toEqual(ids);
+  });
+
+  it('unknown ids leave the order unchanged', () => {
+    expect(moveWithin(ids, 'zzz', 'a')).toEqual(ids);
+    expect(moveWithin(ids, 'a', 'zzz')).toEqual(ids);
+  });
+});
+
+describe('orderChanged', () => {
+  it('detects reorders and length changes; false when identical', () => {
+    expect(orderChanged(['a', 'b'], ['a', 'b'])).toBe(false);
+    expect(orderChanged(['a', 'b'], ['b', 'a'])).toBe(true);
+    expect(orderChanged(['a'], ['a', 'b'])).toBe(true);
   });
 });

@@ -13,7 +13,14 @@ import {
 } from '@/lib/rooms.server';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 export const runtime = 'nodejs';
+
+// A guest's live queue position is real-time operational state — it must NEVER be
+// served from any cache (browser, CDN, or Next). force-dynamic + revalidate=0 stop
+// Next/route caching; this explicit header stops every intermediary too, so a
+// DJ reorder shows up on the guest's very next 4s poll.
+const NO_STORE = { 'Cache-Control': 'no-store, max-age=0' } as const;
 
 // Guest-facing live status for one request. Public (no DJ credential): returns
 // ONLY the compact position model for this single request — never the full
@@ -21,12 +28,12 @@ export const runtime = 'nodejs';
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ slug: string; id: string }> }) {
   const { slug, id } = await ctx.params;
   const room = await getPublicRoomBySlug(slug);
-  if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+  if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404, headers: NO_STORE });
 
   const status = await getGuestQueueStatus(room.id, id);
-  if (!status) return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+  if (!status) return NextResponse.json({ error: 'Request not found' }, { status: 404, headers: NO_STORE });
 
-  return NextResponse.json({ status });
+  return NextResponse.json({ status }, { headers: NO_STORE });
 }
 
 export async function PATCH(

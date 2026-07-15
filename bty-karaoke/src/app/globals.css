@@ -1879,14 +1879,31 @@ a.btn.block {
   color: var(--gold);
   border-color: rgba(245, 196, 81, 0.4);
 }
-/* Lifted card while dragging — clear but restrained (no wild animation). */
-.q-card.dragging {
-  border-color: rgba(245, 196, 81, 0.55);
-  background: rgba(245, 196, 81, 0.1);
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.42);
-  transform: scale(1.02);
-  position: relative;
-  z-index: 3;
+/* The card left behind in the list while its content rides the DragOverlay:
+   a clearly-visible empty slot that keeps full height (never collapses) so the
+   queue doesn't jump. Neighbours slide via dnd-kit's own transition. */
+.q-card.placeholder {
+  opacity: 0.4;
+  border-style: dashed;
+  border-color: rgba(245, 196, 81, 0.5);
+  background: rgba(245, 196, 81, 0.05);
+}
+.q-card.placeholder .q-main,
+.q-card.placeholder .q-actions {
+  visibility: hidden;
+}
+/* The lifted card that follows the finger — crisp, raised, slightly enlarged. */
+.q-card.overlay {
+  cursor: grabbing;
+  border-color: rgba(245, 196, 81, 0.65);
+  background: #10182b;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+  transform: scale(1.03);
+}
+.q-card.overlay .q-handle {
+  color: var(--gold);
+  border-color: rgba(245, 196, 81, 0.5);
+  display: grid;
 }
 /* Fine one-step move controls in the action sheet. */
 .sheet-move {

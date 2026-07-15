@@ -1,10 +1,30 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { KaraokeRequest } from '@/lib/rooms.server';
 import type { KaraokeSession } from '@/lib/sessions.server';
 import type { DjEventStatus } from '@/lib/events.server';
 import { selectStage } from '@/domain/queue';
+import { moveWithin, orderChanged } from '@/domain/reorder';
 import { primaryPlayTarget, runPlayOnTv, runOpenOnDevice } from '@/domain/play-flow';
 import { requestDisplayTitle } from '@/domain/request-view';
 import { displaySong } from '@/domain/song-title';
@@ -13,6 +33,82 @@ import { safeYoutubeWatchUrl } from '@/domain/youtube';
 import DjActionSheet from './DjActionSheet';
 import DjAdminMenu from './DjAdminMenu';
 import DjEventStatusSheet from './DjEventStatusSheet';
+
+// Inner content shared by the in-list sortable card and the lifted drag overlay,
+// so the overlay is a pixel-identical copy of the card being dragged.
+function QueueCardContent({ r, index, isNew }: { r: KaraokeRequest; index: number; isNew: boolean }) {
+  const d = displaySong(r.youtube_title ?? '', r.youtube_channel_title);
+  const song = d.song || requestDisplayTitle(r);
+  return (
+    <>
+      <span className="q-pos">{String(index + 1).padStart(2, '0')}</span>
+      <div className="q-main">
+        <div className="q-singer">
+          {isNew && <span className="new-badge">✨ NEW</span>}
+          {r.guest_name}
+        </div>
+        <div className="q-song">{song}</div>
+        {d.artist && <div className="q-artist">{d.artist}</div>}
+      </div>
+    </>
+  );
+}
+
+// One reorderable UP NEXT card. Drag is bound to the grip handle ONLY (via the
+// activator ref + listeners), so the card body still scrolls the list and the
+// ⋯ button still taps. While this card is the one being dragged, it stays in
+// place as a dimmed placeholder (its content rides in the DragOverlay) — the
+// slot never collapses and neighbours slide to open the drop target.
+function SortableQueueCard({
+  r,
+  index,
+  isNew,
+  disabled,
+  onOpenSheet,
+}: {
+  r: KaraokeRequest;
+  index: number;
+  isNew: boolean;
+  disabled: boolean;
+  onOpenSheet: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
+    useSortable({ id: r.id, disabled });
+  const style = { transform: CSS.Translate.toString(transform), transition };
+  const d = displaySong(r.youtube_title ?? '', r.youtube_channel_title);
+  const song = d.song || requestDisplayTitle(r);
+  return (
+    <div
+      ref={setNodeRef}
+      id={`req-${r.id}`}
+      style={style}
+      className={`q-card singer-first${index === 0 ? ' head' : ''}${isNew ? ' isnew' : ''}${isDragging ? ' placeholder' : ''}`}
+    >
+      <button
+        ref={setActivatorNodeRef}
+        type="button"
+        className="q-handle"
+        aria-label={`${r.guest_name}님 순서 이동 핸들 · 현재 ${index + 1}번 · 끌거나 방향키로 순서 변경`}
+        title="끌어서 순서 변경"
+        {...attributes}
+        {...listeners}
+      >
+        ⠿
+      </button>
+      <QueueCardContent r={r} index={index} isNew={isNew} />
+      <div className="q-actions">
+        <button
+          className="q-overflow"
+          aria-label={`${r.guest_name}님의 신청곡 ${song}${d.artist ? ` — ${d.artist}` : ''} 관리 · 순서 이동`}
+          aria-haspopup="dialog"
+          onClick={onOpenSheet}
+        >
+          ⋯
+        </button>
+      </div>
+    </div>
+  );
+}
 
 interface QueuePayload {
   room: { display_name: string; status: 'open' | 'closed' };
@@ -74,35 +170,65 @@ export default function DjBoard({
   // Re-entry guard so rapid taps can't open two tabs or fire two play mutations.
   const startingRef = useRef(false);
 
-  // ── Queue reorder (optimistic) ────────────────────────────────────────────
-  // `override` = the DJ's saved-but-not-yet-confirmed order; `dragIds` = the live
-  // order during an in-progress drag. Either, when set, drives what UP NEXT shows
-  // over the server order — and new server arrivals are appended so a concurrent
-  // guest request is never hidden. `savingRef` serializes saves (no overlapping
-  // reorders, no out-of-order responses clobbering the queue).
+  // ── Queue reorder (optimistic, dnd-kit) ───────────────────────────────────
+  // `override` is the order UP NEXT renders instead of the server's: it freezes
+  // the list during a drag (so a 4s poll can't reshuffle mid-drag), then holds
+  // the DJ's chosen order while the save is in flight. New server arrivals still
+  // append at the tail, so a concurrent guest request is never hidden or lost.
+  // `savingRef` serializes saves (no overlapping reorders; no stale response
+  // clobbering). `activeId` is the card currently lifted into the DragOverlay.
   const [override, setOverride] = useState<string[] | null>(null);
-  const [dragIds, setDragIds] = useState<string[] | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const savingRef = useRef(false);
-  const dragRef = useRef<{ id: string; ids: string[] } | null>(null);
 
   const requests = data?.requests ?? [];
   const { current, queue } = selectStage(requests);
 
-  // Resolve the order to render: an active drag wins, then a pending save, else
-  // the server's canonical order. Ids no longer present server-side drop out;
+  // Resolve the order to render: a pending/frozen `override` wins, else the
+  // server's canonical order. Ids no longer present server-side drop out;
   // freshly-arrived waiting songs append at the tail.
   const displayQueue = useMemo(() => {
-    const order = dragIds ?? override;
-    if (!order) return queue;
+    if (!override) return queue;
     const byId = new Map(queue.map((r) => [r.id, r] as const));
-    const head = order.map((id) => byId.get(id)).filter((r): r is KaraokeRequest => Boolean(r));
+    const head = override.map((id) => byId.get(id)).filter((r): r is KaraokeRequest => Boolean(r));
     const headIds = new Set(head.map((r) => r.id));
     const tail = queue.filter((r) => !headIds.has(r.id));
     return [...head, ...tail];
-  }, [queue, override, dragIds]);
+  }, [queue, override]);
   const displayIds = useCallback(() => displayQueue.map((r) => r.id), [displayQueue]);
 
   const reordering = busy || savingRef.current;
+
+  const sensors = useSensors(
+    // Mouse/trackpad: a tiny move starts the drag. Touch: a short press-hold
+    // starts it (a quick flick still scrolls the list). Keyboard: full a11y DnD.
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 160, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function onDragStart(e: DragStartEvent) {
+    if (reordering) return;
+    setActiveId(String(e.active.id));
+    setOverride(displayIds()); // freeze the current order for the drag duration
+  }
+  function onDragEnd(e: DragEndEvent) {
+    const active = String(e.active.id);
+    const over = e.over ? String(e.over.id) : null;
+    setActiveId(null);
+    const base = displayIds();
+    if (!over || over === active) {
+      setOverride(null); // no drop target → unfreeze back to canonical
+      return;
+    }
+    const next = moveWithin(base, active, over);
+    if (orderChanged(next, base)) void applyReorder(next);
+    else setOverride(null);
+  }
+  function onDragCancel() {
+    setActiveId(null);
+    setOverride(null); // pointercancel / Escape → snap back to canonical
+  }
 
   // Save a new full waiting order optimistically. The console refetches canonical
   // truth on every outcome, so we clear the override afterwards: 'ok' matches the
@@ -225,67 +351,6 @@ export default function DjBoard({
     document
       .getElementById(`req-${target.id}`)
       ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-
-  // ── Drag-to-reorder (pointer-based; iPad Safari first) ─────────────────────
-  // Drag starts ONLY from a card's grip handle (never the body), so it can't
-  // collide with the overflow button, text selection, or vertical scroll. The
-  // handle captures the pointer; we compute the insertion slot from the other
-  // rows' vertical midpoints and reorder a live preview. Drop saves the order.
-  function rowMidY(id: string): number {
-    const el = document.getElementById(`req-${id}`);
-    if (!el) return Number.POSITIVE_INFINITY;
-    const r = el.getBoundingClientRect();
-    return r.top + r.height / 2;
-  }
-
-  function onHandleDown(e: React.PointerEvent, id: string) {
-    if (busy || savingRef.current) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const ids = displayIds();
-    dragRef.current = { id, ids };
-    setDragIds(ids);
-    try {
-      (e.currentTarget as Element).setPointerCapture(e.pointerId);
-    } catch {
-      /* capture is best-effort */
-    }
-  }
-
-  function onHandleMove(e: React.PointerEvent) {
-    const d = dragRef.current;
-    if (!d) return;
-    e.preventDefault();
-    const y = e.clientY;
-    const others = d.ids.filter((x) => x !== d.id);
-    let insert = others.length;
-    for (let i = 0; i < others.length; i++) {
-      if (y < rowMidY(others[i])) {
-        insert = i;
-        break;
-      }
-    }
-    const next = [...others.slice(0, insert), d.id, ...others.slice(insert)];
-    if (next.length !== d.ids.length || next.some((v, i) => v !== d.ids[i])) {
-      d.ids = next;
-      setDragIds(next);
-    }
-  }
-
-  function endHandleDrag(e: React.PointerEvent, save: boolean) {
-    const d = dragRef.current;
-    dragRef.current = null;
-    try {
-      (e.currentTarget as Element).releasePointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-    setDragIds(null);
-    if (!d || !save) return;
-    const serverIds = queue.map((r) => r.id);
-    const changed = d.ids.length !== serverIds.length || d.ids.some((v, i) => v !== serverIds[i]);
-    if (changed) void applyReorder(d.ids);
   }
 
   return (
@@ -517,52 +582,47 @@ export default function DjBoard({
               </button>
             </div>
           ) : (
-            displayQueue.map((r, i) => {
-              const isNew = newSet.has(r.id);
-              const d = displaySong(r.youtube_title ?? '', r.youtube_channel_title);
-              const song = d.song || requestDisplayTitle(r);
-              const isDragging = dragIds != null && dragRef.current?.id === r.id;
-              return (
-                <div
-                  id={`req-${r.id}`}
-                  className={`q-card singer-first${i === 0 ? ' head' : ''}${isNew ? ' isnew stage-slide' : ''}${isDragging ? ' dragging' : ''}`}
-                  key={r.id}
-                >
-                  <button
-                    type="button"
-                    className="q-handle"
-                    aria-label={`${r.guest_name}님 순서 이동 핸들 · 현재 ${i + 1}번 · 위아래로 끌어 순서 변경`}
-                    title="끌어서 순서 변경"
-                    onPointerDown={(e) => onHandleDown(e, r.id)}
-                    onPointerMove={onHandleMove}
-                    onPointerUp={(e) => endHandleDrag(e, true)}
-                    onPointerCancel={(e) => endHandleDrag(e, false)}
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    ⠿
-                  </button>
-                  <span className="q-pos">{String(i + 1).padStart(2, '0')}</span>
-                  <div className="q-main">
-                    <div className="q-singer">
-                      {isNew && <span className="new-badge">✨ NEW</span>}
-                      {r.guest_name}
-                    </div>
-                    <div className="q-song">{song}</div>
-                    {d.artist && <div className="q-artist">{d.artist}</div>}
-                  </div>
-                  <div className="q-actions">
-                    <button
-                      className="q-overflow"
-                      aria-label={`${r.guest_name}님의 신청곡 ${song}${d.artist ? ` — ${d.artist}` : ''} 관리 · 순서 이동`}
-                      aria-haspopup="dialog"
-                      onClick={() => setSheetFor(r)}
-                    >
-                      ⋯
-                    </button>
-                  </div>
-                </div>
-              );
-            })
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={onDragStart}
+              onDragEnd={onDragEnd}
+              onDragCancel={onDragCancel}
+            >
+              <SortableContext items={displayIds()} strategy={verticalListSortingStrategy}>
+                {displayQueue.map((r, i) => (
+                  <SortableQueueCard
+                    key={r.id}
+                    r={r}
+                    index={i}
+                    isNew={newSet.has(r.id)}
+                    disabled={reordering}
+                    onOpenSheet={() => setSheetFor(r)}
+                  />
+                ))}
+              </SortableContext>
+              <DragOverlay>
+                {activeId
+                  ? (() => {
+                      const i = displayQueue.findIndex((x) => x.id === activeId);
+                      const r = displayQueue[i];
+                      return r ? (
+                        <div className="q-card singer-first overlay">
+                          <span className="q-handle" aria-hidden>
+                            ⠿
+                          </span>
+                          <QueueCardContent r={r} index={i} isNew={newSet.has(r.id)} />
+                          <div className="q-actions">
+                            <span className="q-overflow" aria-hidden>
+                              ⋯
+                            </span>
+                          </div>
+                        </div>
+                      ) : null;
+                    })()
+                  : null}
+              </DragOverlay>
+            </DndContext>
           )}
         </section>
       </div>

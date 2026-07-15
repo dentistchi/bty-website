@@ -77,8 +77,21 @@ export default function MyRequestsDock({ slug, requests, onRemoved }: Props) {
 
   useEffect(() => {
     void poll();
-    const t = window.setInterval(() => void poll(), POLL_MS);
-    return () => window.clearInterval(t);
+    const t = window.setInterval(() => {
+      if (!document.hidden) void poll();
+    }, POLL_MS);
+    // Returning to the tab (app switch, YouTube handoff, screen unlock, bfcache)
+    // refreshes #N immediately — the guest never has to reload to see a reorder.
+    const onVisible = () => {
+      if (!document.hidden) void poll();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pageshow', onVisible);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pageshow', onVisible);
+    };
   }, [poll]);
 
   // A new request bumps the count + a brief edge pulse. It NEVER auto-opens.
