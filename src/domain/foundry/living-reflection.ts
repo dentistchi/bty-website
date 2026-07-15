@@ -127,10 +127,11 @@ export type ReflectionValidation =
   | { ok: true; value: LivingReflection }
   | { ok: false; reason: string };
 
-/** Optional grounding context so cross-section rules (question repetition) can run. */
+/** Optional grounding context so cross-section rules (question repetition, frame) can run. */
 export type ReflectionValidationContext = {
   questionExcerpt?: string;
   responseExcerpt?: string;
+  responseFull?: string;
 };
 
 /** A living sentence / quoted line shorter than this many words is a bare fragment. */
@@ -214,7 +215,28 @@ const QUALITY_RULES: QualityRule[] = [
   { re: /\bwhat the question asked of you\b/i, code: "generic_coaching" },
   { re: /\blet this stay with you\b/i, code: "generic_coaching" },
   { re: /\bcarry this forward\b/i, code: "generic_coaching" },
+  // Unsupported recurrence — a single training response is never "repeated
+  // evidence", so recurrence framing invents a pattern that is not there.
+  { re: /\byou keep \w+ing\b/i, code: "unsupported_recurrence" },
+  { re: /\byou repeatedly\b/i, code: "unsupported_recurrence" },
+  { re: /\byou continue to (?:notice|name|return|circle|point)\b/i, code: "unsupported_recurrence" },
+  { re: /\bthis keeps (?:appearing|coming back|returning|surfacing)\b/i, code: "unsupported_recurrence" },
+  { re: /\byou often\b/i, code: "unsupported_recurrence" },
+  { re: /\byou always\b/i, code: "unsupported_recurrence" },
+  { re: /\b(?:time and again|again and again)\b/i, code: "unsupported_recurrence" },
 ];
+
+/**
+ * Signals that the grounded frame is about delay / accumulating cost / impact on
+ * others — the exact case where a "take your time" invitation would contradict the
+ * reflection by permitting the very postponement being examined.
+ */
+const DELAY_COST_FRAME =
+  /\b(?:delay|delayed|postpon\w*|procrastinat\w*|urgen\w*|overdue|waiting|the wait|putting (?:it|this|them) off|cost|costing|unclear expectation|the team|other people|people around|the others|everyone else)\b/i;
+
+/** Gentle-patience / private-retreat phrases that must not stand against a delay frame. */
+const PATIENCE_RETREAT =
+  /\b(?:in your own time|when you(?:'re| are) ready|no rush|take your time|there is no hurry|yours to carry|carry this forward)\b/i;
 
 function normalizeForMatch(s: string): string {
   return s.toLowerCase().replace(/\s+/g, " ").trim();
@@ -293,6 +315,17 @@ export function validateLivingReflection(
       if (normalizeForMatch(out[key]).includes(q)) hits++;
     }
     if (hits >= 2) return { ok: false, reason: "question_repeated" };
+  }
+
+  // When the grounded frame is about delay / cost / others, a "take your time"
+  // invitation silently permits the very postponement being reflected. Reject
+  // patience-retreat language ONLY in that frame — gentle language is not banned
+  // broadly, only when it removes or contradicts the grounded tension.
+  const frameText = `${ctx?.questionExcerpt ?? ""} ${ctx?.responseFull ?? ctx?.responseExcerpt ?? ""}`;
+  if (DELAY_COST_FRAME.test(frameText)) {
+    for (const key of REFLECTION_SECTION_KEYS) {
+      if (PATIENCE_RETREAT.test(out[key])) return { ok: false, reason: "invitation_contradicts_frame" };
+    }
   }
 
   return { ok: true, value: out };

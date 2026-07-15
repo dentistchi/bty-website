@@ -203,7 +203,7 @@ describe("validateLivingReflection — quality guard (V1, live-failure regressio
     // not a viewing verdict. The V1 guard wrongly rejected these; V1.1 accepts.
     const avoiding = validateLivingReflection(
       {
-        whatEmerged: "You keep circling the conversation with your office manager that you have been avoiding.",
+        whatEmerged: "Your response names the conversation with your office manager that you have been avoiding.",
         whereYouStretched: "You call it giving her time, yet the team is left without clear expectations.",
         livingSentence: "The delay you named as patience is quietly becoming everyone else's confusion.",
         nextInvitation: "The cost has already moved to the people who never chose this wait.",
@@ -234,12 +234,50 @@ describe("validateLivingReflection — quality guard (V1, live-failure regressio
   it("accepts meaningful second-person grounding with the question framing ONE section", () => {
     const res = validateLivingReflection(
       {
-        whatEmerged: "You keep pointing at the silence you have been keeping with your team.",
+        whatEmerged: "Your response points at the silence you have been keeping with your team.",
         whereYouStretched: "There is a pull between protecting calm and naming what is true.",
         livingSentence: "The unsaid thing shapes the room more than the said one.",
         nextInvitation: "What would you change tomorrow if that silence were named out loud.",
       },
       { questionExcerpt: "what would you change tomorrow" },
+    );
+    expect(res.ok).toBe(true);
+  });
+
+  it("rejects unsupported recurrence language on a single response", () => {
+    expect(validateLivingReflection({ ...VALID, whatEmerged: "You keep returning to this same worry." }).ok).toBe(false);
+    expect(validateLivingReflection({ ...VALID, whatEmerged: "You repeatedly circle the same fear." }).ok).toBe(false);
+    expect(validateLivingReflection({ ...VALID, whereYouStretched: "This keeps appearing in what you say." }).ok).toBe(false);
+    expect(validateLivingReflection({ ...VALID, whatEmerged: "You often avoid the hard part." }).ok).toBe(false);
+  });
+
+  it("rejects a 'take your time' invitation when the frame is delay + cost to others", () => {
+    const base = {
+      whatEmerged: "Your response names the conversation you have been holding back.",
+      whereYouStretched: "You call it giving time while the team waits without clarity.",
+      livingSentence: "The delay you named as patience is landing on other people.",
+      nextInvitation: "What you named here is still yours to carry, in your own time.",
+    };
+    const framed = validateLivingReflection(base, {
+      questionExcerpt: "what conversation are you postponing and what is the delay costing the people around you",
+    });
+    expect(framed.ok).toBe(false);
+    if (!framed.ok) expect(framed.reason).toBe("invitation_contradicts_frame");
+
+    // The SAME gentle phrase is fine when there is no delay/cost frame.
+    const unframed = validateLivingReflection(base, { questionExcerpt: "what did you notice about yourself today" });
+    expect(unframed.ok).toBe(true);
+  });
+
+  it("accepts a non-commanding, specific transferred-cost invitation in a delay frame", () => {
+    const res = validateLivingReflection(
+      {
+        whatEmerged: "Your response names the conversation you have been holding back.",
+        whereYouStretched: "You call it protecting her while the team is left without clarity.",
+        livingSentence: "The delay you framed as patience is quietly moving the cost elsewhere.",
+        nextInvitation: "The question now is whether more time still protects the conversation, or passes the cost of delay to the wider team.",
+      },
+      { questionExcerpt: "what conversation are you postponing and what is the delay costing the people around you" },
     );
     expect(res.ok).toBe(true);
   });

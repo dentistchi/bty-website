@@ -157,6 +157,7 @@ async function expressReflectionWithLlm(ctx: ReflectionContext): Promise<LivingR
     const validated = validateLivingReflection(parsed, {
       questionExcerpt: ctx.questionExcerpt,
       responseExcerpt: ctx.responseExcerpt,
+      responseFull: ctx.responseFull,
     });
     if (!validated.ok) {
       logReflectionOutcome("provider_invalid", validated.reason);

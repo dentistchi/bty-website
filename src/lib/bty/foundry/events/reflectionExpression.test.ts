@@ -80,7 +80,7 @@ describe("renderTemplateReflection (deterministic expression)", () => {
       expect(validateLivingReflection(r).ok).toBe(true);
     });
 
-    it("never emits the banned generic filler phrases", () => {
+    it("never emits banned filler, unsupported recurrence, or delay-permitting patience phrases", () => {
       const joined = Object.values(render()).join(" ").toLowerCase();
       for (const banned of [
         "you put language to",
@@ -89,6 +89,9 @@ describe("renderTemplateReflection (deterministic expression)", () => {
         "let this stay with you",
         "carry this forward",
         "isn't simple",
+        "you keep returning",
+        "yours to carry",
+        "in your own time",
       ]) {
         expect(joined).not.toContain(banned);
       }

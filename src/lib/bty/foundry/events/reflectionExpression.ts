@@ -99,13 +99,15 @@ const COPY: Record<ReflectionLocale, Copy> = {
     }
     return {
       whatEmerged: g.twoQuotes
-        ? `You keep returning to one thing you wrote: “${g.whatClause}”.`
-        : `You put one clear thing into words, and it holds more than its size.`,
+        ? `One line in your response holds it directly: “${g.whatClause}”.`
+        : `Your response names one thing with unusual clarity.`,
       whereYouStretched: g.twoQuotes
         ? `You are holding two things at once here, and they pull in different directions.`
-        : `You are letting this stay open rather than closing it too quickly.`,
+        : `Your response lets this stand as an open tension rather than a settled answer.`,
       livingSentence: g.living ?? `The words you chose are still doing their quiet work.`,
-      nextInvitation: `What you named here is still yours to carry, in your own time.`,
+      nextInvitation: g.twoQuotes
+        ? `The unresolved question is which of these two you follow, and what the other one costs if you don't.`
+        : `The unresolved question is what this asks of you now — and of the people it quietly touches.`,
     };
   },
   ko: (g) => {
@@ -127,13 +129,15 @@ const COPY: Record<ReflectionLocale, Copy> = {
     }
     return {
       whatEmerged: g.twoQuotes
-        ? `당신이 쓴 말 중 자꾸 되돌아오는 한 가지가 있습니다: “${g.whatClause}”.`
-        : `당신은 한 가지를 또렷이 말로 옮겼고, 그것은 크기보다 더 많은 것을 담고 있습니다.`,
+        ? `당신의 응답 속 한 문장이 그것을 곧바로 담고 있습니다: “${g.whatClause}”.`
+        : `당신의 응답은 한 가지를 보기 드문 또렷함으로 이름 붙입니다.`,
       whereYouStretched: g.twoQuotes
         ? `당신은 지금 두 가지를 동시에 붙들고 있고, 그 둘은 서로 다른 방향으로 당깁니다.`
-        : `당신은 이것을 서둘러 닫기보다 열어 둔 채로 두고 있습니다.`,
+        : `당신의 응답은 이것을 서둘러 닫지 않고 열린 긴장으로 남겨 둡니다.`,
       livingSentence: g.living ?? `당신이 고른 말들은 여전히 조용히 자기 일을 하고 있습니다.`,
-      nextInvitation: `당신이 여기서 이름 붙인 것은, 당신의 시간 속에서 당신이 안고 갈 몫으로 남아 있습니다.`,
+      nextInvitation: g.twoQuotes
+        ? `아직 풀리지 않은 물음은, 이 둘 중 무엇을 따를 것인가 — 그리고 따르지 않을 때 다른 하나가 치르는 대가는 무엇인가입니다.`
+        : `아직 풀리지 않은 물음은, 이것이 지금 당신에게 — 그리고 그것이 조용히 가닿는 사람들에게 무엇을 요구하는가입니다.`,
     };
   },
 };
